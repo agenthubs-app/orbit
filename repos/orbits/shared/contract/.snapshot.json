@@ -367,6 +367,334 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "actionPreview": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentActionPreviewContract"
+        }
+      }
+    },
+    "agent-v1.ts::AgentCardStatus": {
+      "kind": "enum",
+      "values": [
+        "'approved'",
+        "'awaiting_confirmation'",
+        "'canceled'",
+        "'completed'",
+        "'deferred'",
+        "'executing'",
+        "'expired'",
+        "'failed'",
+        "'partially_failed'",
+        "'rejected'",
+        "'undone'"
+      ]
+    },
+    "agent-v1.ts::AgentCardOperationStatus": {
+      "kind": "enum",
+      "values": [
+        "'abandoned'",
+        "'failed'",
+        "'needs_review'",
+        "'pending'",
+        "'skipped'",
+        "'succeeded'",
+        "'undone'",
+        "'user_confirmed'"
+      ]
+    },
+    "agent-v1.ts::AgentCardChangeContract": {
+      "kind": "object",
+      "members": {
+        "operationId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "field": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "shownBefore": {
+          "optional": false,
+          "kind": "text",
+          "type": "unknown"
+        },
+        "now": {
+          "optional": false,
+          "kind": "text",
+          "type": "unknown"
+        },
+        "to": {
+          "optional": true,
+          "kind": "text",
+          "type": "unknown"
+        }
+      }
+    },
+    "agent-v1.ts::AgentCardOperationPreviewContract": {
+      "kind": "object",
+      "members": {
+        "operationId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "partId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "capability": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "target": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "collection": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "id": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        },
+        "before": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "[string]": {
+              "optional": false,
+              "kind": "text",
+              "type": "unknown"
+            }
+          }
+        },
+        "after": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "[string]": {
+              "optional": false,
+              "kind": "text",
+              "type": "unknown"
+            }
+          }
+        },
+        "shown": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "[string]": {
+              "optional": false,
+              "kind": "text",
+              "type": "unknown"
+            }
+          }
+        },
+        "dependsOn": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentCardOperationStatus"
+        }
+      }
+    },
+    "agent-v1.ts::AgentActionPreviewContract": {
+      "kind": "object",
+      "members": {
+        "actionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "revision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "payloadHash": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentCardStatus"
+        },
+        "expiresAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "origin": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ kind: 'conversation'; conversationId: string; requestId: string; } | { kind: 'automation'; ruleId: string; firedAt: string; } | { kind: 'connection'; connectionId: string; externalRequestKey: string; } | undefined"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "summary": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "operations": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentCardOperationPreviewContract[]"
+        },
+        "changes": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentCardChangeContract[]"
+        },
+        "revisions": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "revision": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              },
+              "payloadHash": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentCardDecisionInputContract": {
+      "kind": "object",
+      "members": {
+        "transition": {
+          "optional": false,
+          "kind": "text",
+          "type": "'confirm' | 'reject' | 'retry' | 'mark_done' | 'abandon'"
+        },
+        "revision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "payloadHash": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientDecisionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "operationId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentCardDecisionResultContract": {
+      "kind": "object",
+      "members": {
+        "decisionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientDecisionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "actionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "decision": {
+          "optional": false,
+          "kind": "text",
+          "type": "'confirm' | 'reject' | 'retry' | 'mark_done' | 'abandon'"
+        },
+        "operationId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "outcome": {
+          "optional": false,
+          "kind": "text",
+          "type": "'accepted' | 'already_decided' | 'refused'"
+        },
+        "accepted": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "replayed": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "reason": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "message": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "revision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "changes": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentCardChangeContract[]"
+        },
+        "decidedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
         }
       }
     },
@@ -13020,7 +13348,7 @@
         "kind": {
           "optional": false,
           "kind": "text",
-          "type": "'event' | 'schedule' | 'task' | 'appointment' | 'batch' | 'conversation' | 'source'"
+          "type": "'conversation' | 'event' | 'schedule' | 'task' | 'appointment' | 'batch' | 'source'"
         },
         "id": {
           "optional": false,

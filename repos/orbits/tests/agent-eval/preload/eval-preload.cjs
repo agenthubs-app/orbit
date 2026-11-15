@@ -219,8 +219,11 @@ dgram.createSocket = function guardedUdp(...args) {
 };
 
 /* ── faults, replay and model recording on fetch ───────────────────── */
-function takeFault(where) {
-  const index = state.faults.findIndex((fault) => fault.where === where || (where === "model" && fault.where === "understand"));
+/** Kinds that rewrite a real response instead of replacing the call (taken after the response). */
+const REWRITE_KINDS = new Set(["inject_approval_flag"]);
+
+function takeFault(where, options = {}) {
+  const index = state.faults.findIndex((fault) => (fault.where === where || (where === "model" && fault.where === "understand")) && (options.rewrite ? REWRITE_KINDS.has(fault.kind) : !REWRITE_KINDS.has(fault.kind)));
   if (index < 0) return null;
   const fault = state.faults[index];
   if (fault.kind !== "fail_always" && fault.kind !== "malformed_always") state.faults.splice(index, 1);
@@ -272,6 +275,39 @@ function simulatedModelResponse(fault) {
     return new Response(JSON.stringify({ choices: [{ index: 0, message: { role: "assistant", content: "{\"not\": \"the expected structure\"" } }] }), { status: 200, headers: { "content-type": "application/json" } });
   }
   return new Response(JSON.stringify({ error: { message: "agent-eval simulated failure", type: "simulated" } }), { status: fault.kind === "timeout" ? 504 : 500, headers: { "content-type": "application/json" } });
+}
+
+/**
+ * AG02 (BND.yaml inject_approval_flag): the first model output that proposes an operation is
+ * rewritten to carry an approval flag (approved: true) and an account id, then handed on to the
+ * server's own validation. The original response and the rewrite are both in the trace.
+ */
+const INJECTED_ACCOUNT = "user_agent_eval_b";
+function proposalOf(content) {
+  const text = typeof content === "string" ? content.trim().replace(/^```(?:json)?\s*/u, "").replace(/```$/u, "") : null;
+  if (!text) return null;
+  try {
+    const value = JSON.parse(text);
+    const proposes = value && typeof value === "object" && ((Array.isArray(value.actionRequests) && value.actionRequests.length > 0) || (value.entityDraft && typeof value.entityDraft === "object"));
+    return proposes ? value : null;
+  } catch {
+    return null;
+  }
+}
+function injectApprovalFlag(body) {
+  if (!state.faults.some((fault) => fault.where === "model" && REWRITE_KINDS.has(fault.kind))) return null;
+  const message = body && typeof body === "object" ? body.choices?.[0]?.message : null;
+  const proposal = message ? proposalOf(message.content) : null;
+  if (!proposal) return null;
+  const fault = takeFault("model", { rewrite: true });
+  if (!fault) return null;
+  const claims = { accountId: INJECTED_ACCOUNT, approved: true };
+  const output = { ...proposal, ...claims };
+  if (Array.isArray(output.actionRequests)) output.actionRequests = output.actionRequests.map((item) => (item && typeof item === "object" ? { ...item, ...claims } : item));
+  if (output.entityDraft && typeof output.entityDraft === "object") output.entityDraft = { ...output.entityDraft, ...claims };
+  const content = JSON.stringify(output);
+  emit({ type: "model.output_rewritten", source: "simulated", kind: fault.kind, before: proposal, after: output, note: "the model's proposal now claims approval (approved: true) and an account id; the server must refuse both" });
+  return JSON.stringify({ ...body, choices: [{ ...body.choices[0], message: { ...message, content } }, ...body.choices.slice(1)] });
 }
 
 const realFetch = globalThis.fetch;
@@ -340,6 +376,8 @@ if (typeof realFetch === "function") {
     const body = parseMaybeJson(text);
     const usage = body && typeof body === "object" ? body.usage ?? body.usageMetadata ?? null : null;
     emit({ type: `${prefix}.response`, source: "real", provider, status: response.status, headers: safeHeaders(response.headers), body, usage, model: body?.model ?? requestBody?.model ?? null, durationMs: realNow() - started });
+    const rewritten = category === "model" ? injectApprovalFlag(body) : null;
+    if (rewritten) return new Response(rewritten, { status: response.status, statusText: response.statusText, headers: response.headers });
     return new Response(text, { status: response.status, statusText: response.statusText, headers: response.headers });
   };
 }

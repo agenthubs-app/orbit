@@ -19,6 +19,8 @@ export const AGENT_LEDGER_ENTRY_STATUSES = [
   "canceled",
   "undone",
   "deferred",
+  // agent-design AG02 (设计稿附录 D).
+  "expired",
 ] as const;
 
 export const AGENT_LEDGER_OPERATION_STATUSES = [
@@ -27,6 +29,10 @@ export const AGENT_LEDGER_OPERATION_STATUSES = [
   "succeeded",
   "failed",
   "undone",
+  // agent-design AG02 (设计稿附录 D): outcome unknown, marked done by the user, given up.
+  "needs_review",
+  "user_confirmed",
+  "abandoned",
 ] as const;
 
 export const AGENT_LEDGER_OPERATION_TYPES = [
@@ -44,6 +50,9 @@ export const AGENT_LEDGER_OPERATION_TYPES = [
   "propose_meeting_slots",
   "sync_event_to_calendar",
   "save_memory",
+  // agent-design AG02: the to-do create and update executors (todo.create, todo.update).
+  "create_todo",
+  "update_todo",
 ] as const;
 
 // 语音只允许保存“用户编辑确认后的转写文本”；原始音频永不进入 evidence。
@@ -62,6 +71,9 @@ export const AGENT_LEDGER_TRANSITIONS = [
   "cancel",
   "undo",
   "retry",
+  // agent-design AG02: the two other ways to settle an item whose outcome is unknown.
+  "mark_done",
+  "abandon",
 ] as const;
 
 export const AGENT_LEDGER_ERROR_CODES = [

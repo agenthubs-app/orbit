@@ -24,6 +24,9 @@ import { serverControl } from "./server";
 import { readSeedReport, type SeedReportFile } from "./selfcheck";
 import { diffStates, readAllPayloads, readDatabaseState, recordKey, restoreSnapshot, type DatabaseDiff } from "./snapshot";
 import { CaseLog, mergeTrace, readServerEvents, scrubSecrets, traceFileSize, type TraceEvent } from "./trace-log";
+import type { AgentActionPreviewContract } from "../../../shared/contract/agent-v1";
+import { agentRequestIdFor } from "../../../features/agent-v1/entry/store";
+import { CARD_STATUS_LABEL, cardText, intentsFor, seedCard, seedSpecFor, type CardOpSpec } from "./cards";
 import { DEFAULT_CLOCK } from "./vocabulary";
 import { loadWorld, patchRecords, type FixtureRecord, type WorldFixture } from "./world";
 import { createWorldWriter, type WorldWriter } from "./seed";
@@ -46,7 +49,7 @@ export interface CaseOutcome {
 }
 
 const STEP_SUPPORT_NOTE: Record<string, string> = {
-  card_edit: "removing an item from a card is not offered by the current product (AG02/AG07)",
+  card_edit: "removing an item from a card is not offered by the current product (AG06/AG07)",
   disconnect: "the real-time channel needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   legacy_update: "old-client compatibility arrives in AG18",
   local_pending_edit: "unsynced App edits are simulated from AG07",
@@ -54,9 +57,7 @@ const STEP_SUPPORT_NOTE: Record<string, string> = {
   mcp_paginate: "MCP access arrives in AG17",
   open_link: "confirmation links arrive in AG17",
   reconnect: "the real-time channel needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
-  regenerate: "expired cards and regeneration arrive in AG02",
   resume_conversation: "resuming a saved conversation with its progress arrives in AG14",
-  review: "the review queue for unknown outcomes arrives in AG02",
   revoke: "revoking a read or a push permission is simulated from AG11/AG16",
   rollback: "rollback arrives in AG18",
   scheduler_tick: "scheduled dispatch driven by the runner arrives in AG15",
@@ -96,6 +97,10 @@ export interface RunnerContext {
   runDir: string;
   writer: WorldWriter | null;
   currentWorld: string | null;
+  /** AG02 `--seed-cards`: put the card a case's card_ops describe into the ledger before its first message. */
+  seedCards?: boolean;
+  /** The cases of each area file (seedSpecFor looks for a case with the same first message). */
+  areaCases?: Record<string, EvalCase[]>;
 }
 
 function accountLabelFor(testCase: EvalCase, world: WorldFixture): string {
@@ -108,7 +113,7 @@ function stripLifecycle(payload: Record<string, unknown> | null | undefined): Re
   return rest;
 }
 
-async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches: Record<string, any>, writer: WorldWriter, report: SeedReportFile, unsupported: Observation["unsupported"]): Promise<Record<string, string>> {
+async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches: Record<string, any>, writer: WorldWriter, report: SeedReportFile, unsupported: Observation["unsupported"], fixtureCards: FixtureRecord[] = []): Promise<Record<string, string>> {
   const extraIds: Record<string, string> = {};
   for (const name of testCase.patches ?? []) {
     const patch = world.patches[name] ?? filePatches[name];
@@ -117,6 +122,11 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
     for (const record of records) {
       try {
         const before = new Set(Object.keys(writer.report.ids));
+        // AG02: fixture cards go into the ledger once the case's conversation exists (runCase).
+        if (record.kind === "card") {
+          fixtureCards.push(record);
+          continue;
+        }
         if (record.kind === "contact") await writer.writeContact(record);
         else if (record.kind === "memo") await writer.writeMemo(record);
         else if (record.kind === "todo") await writer.writeTodo(record, false);
@@ -169,7 +179,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     }
   }
   Object.assign(ctx.writer.report.ids, report.ids);
-  const extraIds = await applyPatches(testCase, world, filePatches, ctx.writer, report, unsupported);
+  const fixtureCards: FixtureRecord[] = [];
+  const extraIds = await applyPatches(testCase, world, filePatches, ctx.writer, report, unsupported, fixtureCards);
   const idMap: Record<string, string> = { ...report.ids, ...extraIds };
   const reverse = new Map(Object.entries(idMap).map(([fixture, product]) => [product, fixture]));
   const fixtureIdOf = (productId: string | null | undefined) => (productId ? reverse.get(productId) ?? null : null);
@@ -195,6 +206,10 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const answers: Observation["answers"] = [];
   const requests: Observation["requests"] = [];
   let clarifications = 0;
+  /** AG02: the cards' final state, written at the end of the transcript. */
+  const cardEndLines: string[] = [];
+  /** AG02: what external_change steps set, per collection and record id. */
+  const externalSets = new Map<string, Record<string, unknown>>();
   let fake: FakeDefect | null = null;
   const stepRecords: StepRecord[] = [];
   // AG01: with the new entry on, web and app send protocol 3 and follow the session channel.
@@ -232,6 +247,65 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       await entry.start(["web", "app"]);
     }
 
+    // ── AG02: cards. Hashes per revision as the clients saw them (click.revision), seeding. ──
+    const cardHashes = new Map<string, Map<number, string>>();
+    const noteCard = (card: AgentActionPreviewContract | null | undefined, by?: string) => {
+      if (!card?.actionId) return;
+      const seen = cardsSeen.get(card.actionId) ?? { kind: "ledger_action" as const, observedBy: new Set<string>() };
+      if (by) seen.observedBy.add(by);
+      cardsSeen.set(card.actionId, seen);
+      const hashes = cardHashes.get(card.actionId) ?? new Map<number, string>();
+      hashes.set(card.revision, card.payloadHash);
+      for (const old of card.revisions ?? []) hashes.set(old.revision, old.payloadHash);
+      cardHashes.set(card.actionId, hashes);
+    };
+    const seedSpec = ctx.seedCards ? seedSpecFor(testCase, ctx.areaCases?.[area] ?? []) : null;
+    let seeded = false;
+    const seedConversationCard = async (index: number, requestId: string) => {
+      if (!seedSpec || seeded) return;
+      seeded = true;
+      const result = await seedCard({ actorId: accounts[account], createdAt: clockNow(), intents: intentsFor(seedSpec.ops, (id) => idMap[id]), locale: testCase.locale, requestId, sessionId: conversation.sessionId });
+      noteCard(result.preview);
+      log.push({ borrowedFrom: seedSpec.from === testCase.id ? null : seedSpec.from, card: result.action, cardId: result.action.actionId, cardKind: "ledger_action", hash: result.action.payloadHash, requestId, revision: result.action.revision ?? 1, seeded: "seed-cards", step: index, type: "card.frozen" });
+      transcript.push(`*（--seed-cards：运行器按用例的 card_ops${seedSpec.from === testCase.id ? "" : `（取自第一句话相同的 ${seedSpec.from}）`}把这张卡作为这条消息（${requestId}）的卡预置进账本，出处是对话）*`, ...cardText(result.preview), "");
+    };
+    for (const record of fixtureCards) {
+      const requestId = `request:fixture:${testCase.id}:${record.id}`;
+      const data = record.data as { createdAt?: string; status?: string; operations?: CardOpSpec[] };
+      const createdAt = data.createdAt ? new Date(data.createdAt).toISOString() : clockNow();
+      const result = await seedCard({ actorId: accounts[account], createdAt, intents: intentsFor(data.operations ?? [], (id) => idMap[id]), locale: testCase.locale, requestId, sessionId: conversation.sessionId, status: data.status });
+      idMap[record.id] = result.action.actionId;
+      reverse.set(result.action.actionId, record.id);
+      noteCard(result.preview);
+      log.push({ card: result.action, cardId: result.action.actionId, cardKind: "ledger_action", fixture: record.id, hash: result.action.payloadHash, revision: result.action.revision ?? 1, seeded: "fixture", step: 0, type: "card.frozen" });
+      transcript.push(`*（夹具里的卡 ${record.id}，状态 ${CARD_STATUS_LABEL[result.preview.status] ?? result.preview.status}）*`, ...cardText(result.preview), "");
+    }
+    /** What a client shows of a card right now: the single-card GET. */
+    const readCardAs = async (clientName: string, cardId: string, purpose: string) => {
+      const client = await clientFor(clientName);
+      const result = await client.request("GET", `/api/agent/ledger/${encodeURIComponent(cardId)}`, undefined, { purpose });
+      const card = result.body?.data?.card as AgentActionPreviewContract | undefined;
+      noteCard(card, clientName);
+      return card ?? null;
+    };
+    /** One button decision as a client sends it; the response's card is what that client shows next. */
+    const sendDecision = async (index: number, clientName: string, cardId: string, body: Record<string, unknown>, resend: boolean) => {
+      const client = await clientFor(clientName);
+      const result = await client.request("POST", `/api/agent/ledger/${encodeURIComponent(cardId)}/transition`, body, { purpose: resend ? "resend the same decision" : "click" });
+      const data = (result.body?.data ?? {}) as { decision?: Record<string, any>; card?: AgentActionPreviewContract };
+      const decision = data.decision ?? {};
+      noteCard(data.card, clientName);
+      const accepted = decision.accepted === true && decision.replayed !== true;
+      log.push({ accepted, cardId, client: clientName, clientDecisionId: body.clientDecisionId, decision: String(body.transition), operationId: body.operationId ?? null, outcome: decision.outcome ?? null, reason: decision.reason ?? result.body?.error?.reason ?? (result.status >= 400 ? `HTTP_${result.status}` : null), replayed: decision.replayed === true, revision: data.card?.revision ?? null, status: result.status, type: "card.decision", via: "click" });
+      const outcome = decision.replayed ? `重复提交，返回第一次的结果（${decision.outcome}${decision.reason ? `，${decision.reason}` : ""}）` : decision.outcome === "accepted" ? "已接受" : decision.outcome === "already_decided" ? "没有新的决定：这张卡已经处理过了" : `拒绝（${decision.reason ?? result.body?.error?.code ?? result.status}）`;
+      transcript.push(`- 服务端（HTTP ${result.status}）：${outcome}。${decision.message ?? result.body?.error?.message ?? ""}`, ...cardText(data.card), "");
+    };
+    /** Cards the entry delivered in result documents (in the order the server received them). */
+    const refreshDeliveredCards = async () => {
+      if (!entry) return;
+      for (const row of (await entry.requests()).sort((left, right) => left.receivedSeq - right.receivedSeq)) noteCard(row.document?.actionPreview);
+    };
+
     const sendUser = async (index: number, step: Step, resendOf?: unknown): Promise<void> => {
       const client = await clientFor(step.client ?? "web");
       const text = String(step.user ?? (resendOf as { message?: string } | undefined)?.message ?? "");
@@ -258,8 +332,11 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       const clientName = step.client ?? "web";
       if (entry && clientName !== "app_old") {
         // Protocol 3: one POST that is only acknowledged; the result arrives on the channel / by requestId.
+        const clientMessageId = `message:${randomUUID()}`;
+        // AG02 --seed-cards: the card this message would have produced, prepared before it is sent.
+        if (!resendOf && seedSpec && !seeded) await seedConversationCard(index, agentRequestIdFor(accounts[account], conversation.sessionId, clientMessageId));
         const v3Body = (resendOf as Record<string, unknown>) ?? {
-          clientMessageId: `message:${randomUUID()}`,
+          clientMessageId,
           locale: testCase.locale,
           message: text,
           ...(conversation.started ? {} : { origin: { entryClient: clientName === "app" ? "app" : "web", entryPointId: "ai.new_chat", initialGroupId: null, kind: "manual", template: null } }),
@@ -444,17 +521,43 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           transcript.push(`*（换成账号 ${label}）*`, "");
           return;
         }
-        case "click": {
-          const selector = step.click?.card ?? "last";
+        case "click":
+        case "review": {
+          await refreshDeliveredCards();
+          const spec = (step[word] ?? {}) as { card?: string | number; decision?: string; revision?: number; op?: number; action?: string };
+          const selector = spec.card ?? "last";
           const ids = [...cardsSeen.keys()];
           const cardId = selector === "last" ? ids[ids.length - 1] : ids[Number(selector) - 1];
-          const decision = String(step.click?.decision);
-          log.push({ cardId: cardId ?? null, client: step.client ?? "web", decision, step: index, type: "turn.click" });
+          const decision = word === "review" ? String(spec.action) : String(spec.decision);
+          const clientName = step.client ?? "web";
+          const kindOfCard = cardId ? cardsSeen.get(cardId)!.kind : null;
+          // AG02: a ledger card is decided with what this client shows (revision and hash), or with an older revision.
+          const shown = cardId && kindOfCard === "ledger_action" ? await readCardAs(clientName, cardId, word === "review" ? "show the card before reviewing an item" : "show the card before the click") : null;
+          if (shown?.origin) {
+            const revision = spec.revision ?? shown.revision;
+            const payloadHash = cardHashes.get(cardId!)?.get(revision) ?? null;
+            const operationId = word === "review" ? shown.operations[Number(spec.op ?? 1) - 1]?.operationId : undefined;
+            log.push({ cardId, client: clientName, decision, operationId: operationId ?? null, revision, step: index, type: "turn.click" });
+            transcript.push(`**用户点击**（${clientName}）：${word === "review" ? `核对第 ${spec.op ?? 1} 项 → ${decision}` : decision}（${cardId}，按第 ${revision} 版${spec.revision !== undefined ? "，这一端还停在旧版" : ""}）`, "");
+            if (!payloadHash) {
+              unsupported.push({ reason: `the client never saw revision ${revision} of ${cardId}`, step: index, word: "click.revision" });
+              return;
+            }
+            const body = { clientDecisionId: `decision:${randomUUID()}`, payloadHash, revision, transition: decision, ...(operationId ? { operationId } : {}) };
+            sentBodies.set(index, { cardId, clientName, decisionBody: body });
+            await sendDecision(index, clientName, cardId!, body, false);
+            return;
+          }
+          log.push({ cardId: cardId ?? null, client: clientName, decision, step: index, type: "turn.click" });
           transcript.push(`**用户点击**：${decision}${cardId ? `（${cardId}）` : "（没有可点的卡）"}`, "");
-          if (step.click?.revision !== undefined) unsupported.push({ reason: "clicking with an older card revision arrives in AG02", step: index, word: "click.revision" });
+          if (word === "review") {
+            unsupported.push({ reason: "reviewing an item needs a card with an origin (AG02 ledger cards)", step: index, word });
+            return;
+          }
+          if (spec.revision !== undefined) unsupported.push({ reason: "clicking with an older revision needs a card with an origin (AG02 ledger cards)", step: index, word: "click.revision" });
           if (!cardId) return;
-          const client = await clientFor(step.client ?? "web");
-          const kind = cardsSeen.get(cardId)!.kind;
+          const client = await clientFor(clientName);
+          const kind = kindOfCard!;
           const result = kind === "entity_draft"
             ? await client.request("POST", `/api/ai/entity-drafts/${encodeURIComponent(cardId)}`, { action: decision === "confirm" ? "confirm" : decision === "reject" ? "cancel" : decision }, { purpose: "click" })
             : await client.request("POST", `/api/agent/ledger/${encodeURIComponent(cardId)}/transition`, { transition: decision }, { purpose: "click" });
@@ -471,8 +574,34 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
             unsupported.push({ reason: `resend of step ${target + 1}: only user messages can be resent by the current product`, step: index, word });
             return;
           }
+          const decisionResend = (original as { decisionBody?: Record<string, unknown>; cardId?: string; clientName?: string }).decisionBody;
+          if (decisionResend) {
+            // AG02 (BND.yaml resend): the same decision, the same clientDecisionId, sent again as is.
+            const { cardId, clientName } = original as { cardId: string; clientName: string };
+            transcript.push(`*（原样重发第 ${target + 1} 步的点击，沿用同一个 clientDecisionId ${String(decisionResend.clientDecisionId)}）*`, "");
+            await sendDecision(index, clientName, cardId, decisionResend, true);
+            return;
+          }
           transcript.push(`*（重发第 ${target + 1} 步）*`, "");
           await sendUser(index, testCase.steps[target], original);
+          return;
+        }
+        case "regenerate": {
+          await refreshDeliveredCards();
+          const selector = step.regenerate?.card ?? "last";
+          const ids = [...cardsSeen.keys()];
+          const cardId = selector === "last" ? ids[ids.length - 1] : ids[Number(selector) - 1];
+          const clientName = step.client ?? "web";
+          log.push({ cardId: cardId ?? null, client: clientName, step: index, type: "turn.regenerate" });
+          transcript.push(`**用户点击**（${clientName}）：重新生成${cardId ? `（${cardId}）` : "（没有可点的卡）"}`, "");
+          if (!cardId) return;
+          const client = await clientFor(clientName);
+          const result = await client.request("POST", `/api/agent/ledger/${encodeURIComponent(cardId)}/regenerate`, {}, { purpose: "regenerate" });
+          const card = result.body?.data?.card as AgentActionPreviewContract | undefined;
+          noteCard(card, clientName);
+          const message = result.body?.data?.regeneration?.message ?? result.body?.error?.message ?? "";
+          log.push({ cardId, outcome: result.body?.data?.regeneration?.outcome ?? null, reason: result.body?.error?.reason ?? null, revision: card?.revision ?? null, status: result.status, type: "card.regenerate" });
+          transcript.push(`- 服务端（HTTP ${result.status}）：${message}`, ...cardText(card), "");
           return;
         }
         case "concurrent": {
@@ -481,8 +610,22 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           return;
         }
         case "external_change": {
-          log.push({ change: step.external_change, step: index, type: "turn.external_change" });
-          unsupported.push({ reason: "external changes are written by the runner from AG02 on", step: index, word });
+          // AG02 (BND 约定一): another device changes the record through the product's normal update
+          // endpoint. The change is not the tested system's write (excluded from no_business_writes).
+          const change = (step.external_change ?? {}) as { target?: string; set?: Record<string, unknown>; delete?: boolean };
+          log.push({ change, step: index, type: "turn.external_change" });
+          const productId = change.target ? idMap[change.target] : undefined;
+          if (!productId || change.delete || !productId.startsWith("task:")) {
+            unsupported.push({ reason: `external change of ${change.target}: only updating a to-do is simulated in AG02`, step: index, word });
+            return;
+          }
+          const other = new EvalClient(baseUrl(environment), log, await cookieFor(account), "web");
+          const current = await other.request("GET", `/api/tasks/${encodeURIComponent(productId)}`, undefined, { purpose: "external change: read the to-do on another device" });
+          const updatedAt = current.body?.data?.task?.updatedAt;
+          const result = await other.request("PATCH", `/api/tasks/${encodeURIComponent(productId)}`, { action: "update", expectedUpdatedAt: updatedAt, idempotencyKey: `agent-eval:external:${testCase.id}:${index}`, patch: change.set ?? {} }, { purpose: "external change: edit the to-do on another device" });
+          externalSets.set(`tasks\u0000${productId}`, { ...(externalSets.get(`tasks\u0000${productId}`) ?? {}), ...(change.set ?? {}) });
+          transcript.push(`*（别处改了 ${change.target}：${JSON.stringify(change.set ?? {})}，经待办的正常更新接口，HTTP ${result.status}）*`, "");
+          if (result.status !== 200) unsupported.push({ reason: `external change of ${change.target} failed (HTTP ${result.status})`, step: index, word });
           return;
         }
         case "setting":
@@ -518,7 +661,15 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       await entry.settleViews();
       entryRows = await entry.requests();
       for (const channel of entry.channels.values()) if (channel.online) onlineAtEnd.add(channel.name);
+      await refreshDeliveredCards();
       await entry.close();
+    }
+    // AG02: each ledger card as it ends, as the web client would show it (the single-card GET).
+    const ledgerCards = [...cardsSeen.entries()].filter(([, seen]) => seen.kind === "ledger_action").map(([cardId]) => cardId);
+    if (ledgerCards.length && !fake) {
+      const finalLines: string[] = [];
+      for (const cardId of ledgerCards) finalLines.push(...cardText(await readCardAs("web", cardId, "runner: the card's final state for the transcript")));
+      cardEndLines.push("## 卡片的最终状态", "", ...finalLines, "");
     }
     await new Promise((resolve) => setTimeout(resolve, 600));
     const serverState = await serverControl<{ faults: { where: string; kind: string; applied: number }[] }>(environment, "state");
@@ -583,7 +734,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     }
     transcript.push("", "## 结果文档（服务端按 requestId 保存的版本）", "");
     for (const row of entryObservation.requests) {
-      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, "");
+      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, ...(row.document?.actionPreview ? ["- 这一轮结果文档里的卡（交付时的状态）：", ...cardText(row.document.actionPreview)] : []), "");
     }
     const reconnects = events.filter((event) => event.type === "turn.reconnect");
     if (reconnects.length) {
@@ -613,13 +764,20 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const cardIds = [...new Set([...frozen.map((event) => String(event.cardId)), ...cardsSeen.keys()])];
   const afterByKey = new Map(diff.records.map((change) => [`${change.collection}\u0000${change.id}`, change.after]));
   const cards: CardObservation[] = cardIds.map((cardId) => {
-    const frozenEvent = frozen.find((event) => event.cardId === cardId);
-    const kind = (frozenEvent?.cardKind as CardObservation["kind"]) ?? cardsSeen.get(cardId)?.kind ?? "ledger_action";
-    const card = (frozenEvent?.card ?? {}) as Record<string, any>;
+    // AG02: a card can be frozen again as a new revision; the latest version is the card.
+    const frozenForCard = frozen.filter((event) => event.cardId === cardId);
+    const firstFrozen = frozenForCard[0];
+    const latestFrozen = frozenForCard[frozenForCard.length - 1];
+    // Ledger rows keep the action under `entity`.
+    const storedRow = afterByKey.get(`agentActionsV2\u0000${cardId}`) as Record<string, any> | undefined;
+    const storedCard = (storedRow?.entity ?? undefined) as Record<string, any> | undefined;
+    const kind = (firstFrozen?.cardKind as CardObservation["kind"]) ?? cardsSeen.get(cardId)?.kind ?? "ledger_action";
+    const card = (storedCard?.operations ? storedCard : latestFrozen?.card ?? {}) as Record<string, any>;
+    const frozenEvent = firstFrozen;
     const ops = kind === "entity_draft" ? normalizeDraftOps(card) : kind === "fake"
       ? ((card.operations ?? []) as Record<string, any>[]).map((op) => ({ op: String(op.op), raw: op, set: op.set ?? {}, target: fixtureIdOf(op.target) ?? op.target ?? null }))
       : normalizeLedgerOps(card, fixtureIdOf);
-    const stored = afterByKey.get(`agentActionsV2\u0000${cardId}`) ?? afterByKey.get(`agent_entity_drafts\u0000${cardId}`) ?? [...afterByKey.entries()].find(([key]) => key.endsWith(`\u0000${cardId}`))?.[1] ?? null;
+    const stored = storedCard ?? afterByKey.get(`agent_entity_drafts\u0000${cardId}`) ?? [...afterByKey.entries()].find(([key]) => key.endsWith(`\u0000${cardId}`))?.[1] ?? null;
     const draftState: Record<string, string> = { cancelled: "rejected", created: "completed", pending_confirmation: "awaiting_confirmation", superseded: "superseded" };
     const state = kind === "entity_draft" ? draftState[String(stored?.state)] ?? String(stored?.state ?? card.state ?? "") : String(stored?.status ?? card.status ?? (kind === "fake" ? "awaiting_confirmation" : ""));
     return { cardId, frozenSeq: frozenEvent ? Number(frozenEvent.seq) : null, kind, observedBy: [...(cardsSeen.get(cardId)?.observedBy ?? [])], ops, revisions: Number(card.revision ?? card.payloadVersion ?? 1), state: state || null };
@@ -649,10 +807,20 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     }
   }
 
-  const externalKeys = new Set<string>();
+  // AG02 (BND 约定一): a change is external when it is exactly what an external_change step set:
+  // every changed field (bookkeeping aside) is one it set, with the value it set.
+  const isExternal = (change: (typeof diff.records)[number]) => {
+    const set = externalSets.get(`${change.collection}\u0000${change.id}`);
+    if (!set || change.kind !== "updated") return false;
+    const fields = change.fields.filter((field) => !/(^|\.)(updatedAt|__lifecycleState|version|revision|activities|deferralCount)(\.|$|\[)/u.test(field.field));
+    return fields.every((field) => {
+      const name = field.field.split(".").pop() ?? field.field;
+      return name in set && JSON.stringify(set[name]) === JSON.stringify(field.to);
+    });
+  };
   const businessChanges = diff.records
     .filter((change) => BUSINESS_COLLECTIONS.has(change.collection))
-    .map((change) => ({ ...change, external: externalKeys.has(recordKey(change)), fixtureId: fixtureIdOf(change.id) }));
+    .map((change) => ({ ...change, external: isExternal(change), fixtureId: fixtureIdOf(change.id) }));
   fs.writeFileSync(path.join(dir, "db-diff.json"), JSON.stringify({
     records: diff.records.map((change) => ({ ...change, after: stripLifecycle(change.after), before: stripLifecycle(change.before), business: BUSINESS_COLLECTIONS.has(change.collection), fixtureId: fixtureIdOf(change.id) })),
     tables: diff.tables,
@@ -682,7 +850,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const context: CheckContext = { otherAccountRecords, rawTrace, secrets };
   const checks = runHardChecks(testCase as never, observation, context);
   fs.writeFileSync(path.join(dir, "hard-checks.json"), JSON.stringify({ caseId: testCase.id, checks, hardPass: hardChecksPass(checks), unsupported }, null, 2));
-  transcript.push("", "---", "", `数据变化（业务）：${businessChanges.length ? businessChanges.map((change) => `${change.fixtureId ?? change.id} ${change.kind}`).join("、") : "无"}`);
+  if (cardEndLines.length) transcript.push("", ...cardEndLines);
+  transcript.push("", "---", "", `数据变化（业务）：${businessChanges.length ? businessChanges.map((change) => `${change.fixtureId ?? change.id} ${change.kind}${change.external ? "（别处的修改，不算被测系统写入）" : ""}`).join("、") : "无"}`);
   fs.writeFileSync(path.join(dir, "transcript.md"), `${transcript.join("\n")}\n`);
   const simulated = events.some((event) => ["model.request", "judgment.request", "web.search", "web.fetch", "exec.call"].includes(event.type) && (event.source === "simulated" || event.source === "replay")) || testCase.steps.some((step) => "fault" in step) || replay.length > 0;
   return { account, area, checks, caseId: testCase.id, dir, durationMs: Date.now() - started, error, events, fake: fake !== null, hardPass: hardChecksPass(checks), observation, simulated, unsupported };

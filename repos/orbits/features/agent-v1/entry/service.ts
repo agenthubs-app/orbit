@@ -15,6 +15,7 @@
 import { randomUUID } from "node:crypto";
 
 import type {
+  AgentActionPreviewContract,
   AgentCancelResultContract,
   AgentResultDocument,
   AgentSendInputContract,
@@ -51,6 +52,8 @@ export interface AgentEntryExecuteInput {
 export interface AgentEntryExecuteResult {
   text: string;
   sourceRefs: readonly string[];
+  /** AG02: the card of this round, frozen in the action ledger (never a direct write). */
+  actionPreview?: AgentActionPreviewContract;
 }
 
 export type AgentEntryExecutor = (input: AgentEntryExecuteInput) => Promise<AgentEntryExecuteResult>;
@@ -322,8 +325,11 @@ async function processRequest(deps: AgentEntryDependencies, actorId: string, rec
     if (result !== "stopped") {
       outcome = {
         answer: { sourceRefs: [...result.sourceRefs], text: result.text },
-        partResults: [{ partId: "p1", status: "answered" }],
+        partResults: [result.actionPreview && (result.actionPreview.status === "awaiting_confirmation" || result.actionPreview.status === "deferred")
+          ? { operationId: result.actionPreview.operations[0]?.operationId, partId: "p1", status: "awaiting_confirmation" }
+          : { partId: "p1", status: "answered" }],
         status: "completed",
+        ...(result.actionPreview ? { actionPreview: result.actionPreview } : {}),
       };
     }
   } catch (error) {

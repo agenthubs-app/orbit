@@ -14,6 +14,7 @@
 import { createHash } from "node:crypto";
 
 import type {
+  AgentActionPreviewContract,
   AgentAnswerContract,
   AgentPartResult,
   AgentRequestEndingContract,
@@ -76,6 +77,8 @@ export interface AgentEntryOutcome {
   answer: AgentAnswerContract | null;
   partResults: readonly AgentPartResult[];
   ending?: AgentRequestEndingContract;
+  /** AG02: the card this round produced (or the one it showed). */
+  actionPreview?: AgentActionPreviewContract;
 }
 
 export interface AgentEntryStore {
@@ -261,6 +264,7 @@ function createOperations(withLane: WithLane, read: (actorId: string, requestId:
           partResults: input.outcome.partResults,
           status: input.outcome.status,
           ...(input.outcome.ending ? { ending: input.outcome.ending } : {}),
+          ...(input.outcome.actionPreview ? { actionPreview: input.outcome.actionPreview } : {}),
         });
         lane.running = null;
         await pushEvent(unit, lane, record, "document", input.now);

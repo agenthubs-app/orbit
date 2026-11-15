@@ -48,7 +48,8 @@ async function main(argv: readonly string[]): Promise<void> {
   applyEvalEnvironment(environment, { paidKeys: true });
   const state = readServerState(environment);
   if (!state || !processAlive(state.pid)) throw new Error("The eval server is not running; start it with npm run agent-eval:env.");
-  if (argv.includes("--seed-cards")) throw new Error("--seed-cards is delivered by AG02 (it needs the ledger origin field); not available yet.");
+  // AG02 (SPRINTS.md「AG02 用预置的卡」): seed the card a case's card_ops describe before its first message.
+  const seedCards = argv.includes("--seed-cards");
   const sealed = argv.includes("--sealed");
   const gate = flag(argv, "--gate");
   const caseIds = flag(argv, "--case")?.split(",").map((id) => id.trim()).filter(Boolean);
@@ -80,6 +81,7 @@ async function main(argv: readonly string[]): Promise<void> {
     model: { judgment: "gemini-decision-1 (not called by the current agent)", main: environment.env.ORBIT_DEEPSEEK_MODEL ?? "deepseek-v4-flash (product default)", provider: environment.env.ORBIT_AGENT_PROVIDER },
     promptVersions: "current product prompts (no versioned prompt set before AG03)",
     runId,
+    seedCards,
     selection: { all: argv.includes("--all"), caseIds: caseIds ?? null, sealed },
     server: { buildId: state.buildId, pid: state.pid, port: state.port },
     soloExcluded: selection.solo.map((testCase) => testCase.id),
@@ -99,7 +101,7 @@ async function main(argv: readonly string[]): Promise<void> {
   }
 
   const balanceBefore = await readDeepSeekBalance(environment.env.DEEPSEEK_API_KEY);
-  const ctx: RunnerContext = { currentWorld: null, environment, runDir, runId, writer: null };
+  const ctx: RunnerContext = { areaCases: Object.fromEntries(areaFiles.map((file) => [file.area, file.cases as EvalCase[]])), currentWorld: null, environment, runDir, runId, seedCards, writer: null };
   const outcomes: CaseOutcome[] = [];
   for (const [index, testCase] of selection.cases.entries()) {
     const file = fileOf.get(testCase.id)!;
