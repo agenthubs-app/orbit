@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import type { AiPageContextContract, AiSessionOriginContract, AiSessionOriginInputContract } from "../../shared/contract/ai-sessions";
+import type { AiPageContextContract, AiSessionOriginContract, AiSessionOriginInputContract, AiSessionReferenceType } from "../../shared/contract/ai-sessions";
 import {
   ORBIT_AGENT_CHAT_HISTORY_WINDOW,
   type OrbitAgentChatSessionProvider,
@@ -14,7 +14,8 @@ export interface ReliableSendInput {
   origin?: AiSessionOriginInputContract | undefined;
   pageContext?: AiPageContextContract | undefined;
   protocolVersion: 2;
-  references: readonly { id: string; type: "contact" | "event" | "note" }[];
+  /** Protocol 2 accepts contact, event and note only (its schema); the type is the shared one (AG05 widened it for protocol 3). */
+  references: readonly { id: string; type: AiSessionReferenceType }[];
   requestId: string;
   sessionId: string;
 }

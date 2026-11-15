@@ -11,7 +11,7 @@
  * twice. A part that answered an earlier question, and a question shelved after two unrelated
  * messages, are handed to the executor to write back into that earlier request.
  */
-import type { AgentClarificationContract, AgentPartResult } from "../../../../shared/contract/agent-v1";
+import type { AgentClarificationContract, AgentPartGap, AgentPartResult } from "../../../../shared/contract/agent-v1";
 import { CLARIFY_WORDS, type MissingItem } from "../../clarify/copy";
 import { readingLabel, recordKindOf, type Reading } from "../../clarify/default-readings";
 import { capabilityLabel } from "../../clarify/options";
@@ -136,12 +136,27 @@ function lineFor(scope: NodeScope, state: AgentGraphState, part: GraphPart, lang
   return `${CLARIFY_WORDS.continuing(language, item.quote)}\n${line}`;
 }
 
+/** AG05: §3.11 row 3 — how a read part was understood, in code's words, before its answer. */
+function understoodLine(scope: NodeScope, part: GraphPart, language: ReplyLanguage): string {
+  if (!part.reading) return "";
+  const object = objectOf(scope, part);
+  const said = object.name ?? (object.kind === "contact" ? object.text?.replace(/^@/u, "") ?? null : null);
+  return CLARIFY_WORDS.understoodAs(language, readingLabel(part.reading as Reading, language, said, capabilityLabel));
+}
+
+/** AG05: a part that read records — how it was understood, the answer, then code's sentences on what was missing. */
+function readLine(scope: NodeScope, part: GraphPart, language: ReplyLanguage, withEntries: (line: string) => string): string {
+  const lines = [understoodLine(scope, part, language), scope.run.answers.get(part.localId) ?? "", ...(scope.run.gapLines.get(part.localId) ?? [])];
+  return withEntries(lines.filter((line) => line.trim()).join("\n"));
+}
+
 function partLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, language: ReplyLanguage): string {
   const parts = state.parts;
   const words = handoffWords(language);
   const message = scope.input.message;
   const quote = quoteOf(message, part);
   const withEntries = (line: string) => [line, entriesLine(scope, state, part, language)].filter((text) => text.trim()).join("\n");
+  if (part.route === "read" && (part.status === "answered" || part.status === "unfinished") && part.reason !== "budget" && part.reason !== "still_unclear") return readLine(scope, part, language, withEntries);
   switch (part.status) {
     case "answered": {
       if (part.continues?.kind === "alternative") {
@@ -221,6 +236,18 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
       if (ref.recordId && name) mentioned.push({ at: now, id: ref.recordId, name, type: handle?.type ?? ref.entity });
     }
   }
+  // AG05: the records the answer cited are the ones mentioned last of their kind; a list answer is the list shown last.
+  for (const part of state.parts) {
+    for (const ref of part.cites ?? []) {
+      const at = ref.indexOf(":");
+      const id = ref.slice(at + 1);
+      const name = run.readNames.get(id)?.name;
+      if (at > 0 && name) mentioned.push({ at: now, id, name, type: ref.slice(0, at) });
+    }
+    if ((part.cites?.length ?? 0) >= 2 && ["list", "ranked_list", "comparison"].includes(part.plan.deliverable)) {
+      next.shownList = { items: part.cites!.map((ref) => ({ id: ref.slice(ref.indexOf(":") + 1), name: run.readNames.get(ref.slice(ref.indexOf(":") + 1))?.name ?? "", type: ref.slice(0, ref.indexOf(":")) })), shownAt: now };
+    }
+  }
   for (const item of mentioned) next.lastMentioned = [item, ...next.lastMentioned.filter((old) => old.type !== item.type)];
   // Open items: continued ones close; the others count one more unrelated message and are shelved after two
   // (or when the session was idle); new alternatives and questions open.
@@ -245,7 +272,9 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
     } else if (part.status === "awaiting_clarification") {
       const set = setFor(state, part, "q");
       const asks = missingOf(part, set?.kind === "not_understood" || !set ? "intent" : set.asks ?? "object");
-      kept.push({ asks, createdAt: now, kind: "clarification", partId: part.localId, quote, ref: `clarification:${input.requestId}:${part.localId}`, requestId: input.requestId, summary: summaryOfQuestion(scope, state, part), unrelatedMessages: 0, writes: writesIn(part) });
+      // AG05: the clue words go with the matter, so a reply that continues it ("他") reads the same person.
+      const clues = part.refs.map((ref) => ({ entity: ref.entity, text: clueWords(input.message, ref) ?? "" })).filter((clue) => clue.text);
+      kept.push({ asks, createdAt: now, kind: "clarification", partId: part.localId, quote, ref: `clarification:${input.requestId}:${part.localId}`, requestId: input.requestId, summary: summaryOfQuestion(scope, state, part), unrelatedMessages: 0, writes: writesIn(part), ...(clues.length ? { clues } : {}) });
     }
   }
   next.openItems = kept;
@@ -287,6 +316,9 @@ export function deliverNode(scope: NodeScope): GraphNode {
       text = written.map((part) => lineFor(scope, state, part, language)).filter((line) => line.trim()).join("\n\n");
       partResults = state.parts.map((part) => ({
         partId: part.localId,
+        // AG05: what the read did not give, and how much of it was read.
+        ...(part.gaps?.length ? { gaps: part.gaps as AgentPartGap[] } : {}),
+        ...(part.coverage?.length ? { coverage: part.coverage.map((item) => ({ complete: item.complete, kind: item.kind, pagesRead: item.pagesRead, seen: item.seen, ...(item.total !== null ? { total: item.total } : {}) })) } : {}),
         ...(part.reason ? { reason: part.reason } : {}),
         ...(part.route ? { route: part.route } : {}),
         sourceQuote: quoteOf(input.message, part),

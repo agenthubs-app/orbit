@@ -5,6 +5,11 @@
  * the discussion parts (one repair if its output is unusable and the round has not repaired yet);
  * if the round's budget is used up they stay unfinished, saying why.
  */
+import { gapWords } from "../../answer/gap-copy";
+import { formatWhen } from "../../answer/materials";
+import { groundedAnswerSystemPrompt, groundedAnswerUserText, GROUNDED_ANSWER_PROMPT_VERSION, type GroundedItem } from "../../answer/prompt";
+import { parseAnswerOutput } from "../../answer/schema";
+import { verifyCitations } from "../../answer/verify";
 import { stripCardTalk } from "../../entry/approval-claims";
 import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
@@ -48,12 +53,89 @@ export function answerSegments(text: string, wanted: ReadonlySet<string>, dropCa
   return { error: cardOnly.length ? `the answer for ${cardOnly.join(", ")} only talks about a confirmation card, and this turn shows none; answer the item itself` : `no answer text for ${missing.join(", ")}`, ok: false };
 }
 
-export function answerNode({ deps, input, run }: NodeScope): GraphNode {
+/**
+ * AG05: when some due parts read records (resolve gave them materials), one call answers every due part
+ * with the grounded prompt; the parts that read cite this turn's materials and verifyCitations() checks
+ * them. Not compliant: one repair (inside the round's budget, shared with understand's), then what passed
+ * is delivered and a records part without a valid citation is left unfinished, saying why.
+ */
+async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: GraphPart[], due: GraphPart[]): Promise<Partial<AgentGraphState>> {
+  const { deps, input, run } = scope;
+  const budget = { ...state.budget };
+  const dropCardTalk = !run.cardPrepared;
+  const understood = run.understood;
+  const items: GroundedItem[] = [...due].sort((left, right) => left.quote[0] - right.quote[0]).map((part) => {
+    const source = understood?.parts.find((item) => item.localId === part.localId);
+    const quote = input.message.slice(part.quote[0], part.quote[1]);
+    const materials = [...(run.materials.get(part.localId) ?? []), ...part.dependsOn.flatMap((id) => run.materials.get(id) ?? [])];
+    return { constraints: source?.constraints ?? [], goal: source?.goal ?? quote, kind: materials.length ? "records" : "discussion", materials, notes: run.readNotes.get(part.localId) ?? [], partId: part.localId, quote };
+  });
+  const allMaterials = [...new Map(items.flatMap((item) => item.materials).map((material) => [material.handle, material])).values()];
+  const readParts = new Set(items.filter((item) => item.kind === "records").map((item) => item.partId));
+  const wanted = new Set(items.map((item) => item.partId));
+  const zone = state.timeZone || "Asia/Tokyo";
+  const system = groundedAnswerSystemPrompt(state.language);
+  const conversation = (run.context?.messages ?? []).map((message) => ({ role: message.role, text: message.text }));
+  const user = groundedAnswerUserText({ conversation, items, message: input.message, timeZone: zone, today: formatWhen(state.asOf || deps.now(), zone) });
+  emitTrace({ materials: allMaterials.map((material) => ({ handle: material.handle, partId: material.partId, ref: material.ref, sentences: material.sentences.length })), promptVersion: GROUNDED_ANSWER_PROMPT_VERSION, type: "answer.prompt" });
+  const check = (text: string) => {
+    const parsed = parseAnswerOutput(text);
+    if (parsed.ok === false) return { error: parsed.error, verification: null };
+    const cleaned = { ...parsed.value, segments: parsed.value.segments.map((segment) => ({ ...segment, text: withoutCardTalk(segment.text, segment.partId, dropCardTalk) })) };
+    return { error: null, verification: verifyCitations(cleaned, { materials: allMaterials, readParts, wanted }) };
+  };
+  let repairs = state.repairs;
+  let result: MainModelResult = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "first", requestId: input.requestId, system, user });
+  let checked = result.ok === true ? check(result.text) : null;
+  const problemsOf = (value: typeof checked) => (value?.error ? [value.error] : value?.verification?.problems ?? []);
+  if (checked && problemsOf(checked).length && repairs < 1) {
+    repairs += 1;
+    emitTrace({ problems: problemsOf(checked), type: "answer.invalid" });
+    const retry = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "repair", requestId: input.requestId, system, user: `${user}\n\nYour previous output could not be used:\n${problemsOf(checked).map((problem) => `- ${problem}`).join("\n")}\nOutput the corrected JSON object only.` });
+    if (retry.ok === true) {
+      const second = check(retry.text);
+      // Keep whichever verified more parts (the repair can only add).
+      if ((second.verification?.segments.size ?? 0) >= (checked.verification?.segments.size ?? 0)) checked = second;
+    }
+    result = retry.ok === true ? retry : result;
+  }
+  const verification = checked?.verification ?? null;
+  if (verification?.problems.length) emitTrace({ problems: verification.problems, type: "answer.citations_rejected" });
+  const words = gapWords(state.language);
+  for (const part of due) {
+    const segment = verification?.segments.get(part.localId);
+    if (segment) {
+      run.answers.set(part.localId, segment.text);
+      if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref);
+      continue;
+    }
+    const budgetOut = result.ok === false && result.reason === "budget";
+    if (readParts.has(part.localId) && !budgetOut && result.ok === true) {
+      // Nothing about the user's records goes out without a valid source.
+      part.status = "unfinished";
+      part.reason = "unverified";
+      run.gapLines.set(part.localId, [...(run.gapLines.get(part.localId) ?? []).filter((line) => line !== words.fromNotes()), words.unverified(input.message.slice(part.quote[0], part.quote[1]))]);
+      continue;
+    }
+    part.status = budgetOut ? "unfinished" : "failed";
+    part.reason = budgetOut ? "budget" : result.ok === true ? "model_output_invalid" : "model_error";
+  }
+  settleDependencies(parts);
+  return { budget, parts, repairs };
+}
+
+export function answerNode(scope: NodeScope): GraphNode {
+  const { deps, input, run } = scope;
   return async (state: AgentGraphState) => {
-    // AG04: resuming a paused request makes no model call (§3.9); its parts are written by code.
-    if (state.touched !== null) return {};
+    const resume = state.touched !== null;
     const parts: GraphPart[] = state.parts.map((part) => ({ ...part }));
-    const due = parts.filter((part) => part.route === "answer" && part.status === "answered");
+    // AG05: parts that read and have something to answer from (a click on a reading resumes into one).
+    const reading = parts.filter((part) => part.route === "read" && part.status === "answered" && (run.materials.get(part.localId)?.length ?? 0) > 0 && (!resume || state.touched!.includes(part.localId)));
+    // AG04: resuming a paused request makes no model call (§3.9) unless it now reads; its parts are written by code.
+    if (resume && !reading.length) return {};
+    const discussion = resume ? [] : parts.filter((part) => part.route === "answer" && part.status === "answered");
+    if (reading.length) return groundedAnswer(scope, state, parts, [...discussion, ...reading]);
+    const due = discussion;
     if (!due.length) return {};
     const dropCardTalk = !run.cardPrepared;
     if (state.plainChat && run.plainReply && parts.every((part) => part.route === "answer")) {

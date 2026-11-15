@@ -4,7 +4,8 @@ import test from "node:test";
 import { buildFirstLayerContext, type ContextMessage } from "../../features/agent-v1/context/build";
 import type { AgentSessionState } from "../../features/agent-v1/context/session-state";
 import { runAgentGraph } from "../../features/agent-v1/graph/build";
-import { captureTrace, deepseekStub, graphKit, json, part } from "./graph-kit";
+import { captureTrace, deepseekStub, graphKit, json, part, recordAccessOf } from "./graph-kit";
+import { contact, memo, todo } from "./read-kit";
 
 /**
  * agent-design AG03-4 (设计稿 §3.10): the first layer sees the latest 10 messages (text only, long
@@ -71,15 +72,24 @@ test("the record of each kind mentioned last resolves 他; the shown list resolv
       part({ localId: "p1", objectClues: [{ entity: "todo", referenceId: second, text: "第二个" }], requiredCapabilities: ["todo.read"], sourceQuote: "第二个现在是什么状态？" }),
       part({ localId: "p2", objectClues: [{ entity: "contact", referenceId: him, text: "他" }], requiredCapabilities: ["contact.read"], sourceQuote: "他那边呢？" }),
     ], plainChat: false });
+  }, (call) => {
+    // AG05: the bound records are read and answered from (the shown list's second item, the person last mentioned).
+    assert.match(call.user, /Title: 给李薇寄样片/u);
+    assert.match(call.user, /Name: 小林健/u);
+    const todoHandle = /(s\d+) — to-do/u.exec(call.user)![1];
+    const contactHandle = /(s\d+) — contact profile/u.exec(call.user)![1];
+    return json({ segments: [{ cites: [{ sentenceIds: [2], sourceRef: todoHandle }], partId: "p1", text: "给李薇寄样片还没做完。" }, { cites: [{ sentenceIds: [1], sourceRef: contactHandle }], partId: "p2", text: "小林健那边暂无更新。" }] });
   }]);
   const trace = captureTrace();
   try {
-    const kit = graphKit(model.fetchImplementation, { messages: conversation(2), state: STATE });
+    const records = recordAccessOf({ events: [], records: [todo("actor:a", "task:t44", "回复田中的询价"), todo("actor:a", "task:t45", "给李薇寄样片", { plannedDate: "2026-11-10" }), contact("actor:a", "contact:c17", "小林健"), memo("actor:a", "note:m31", "和小林聊了报价初稿。", "2026-11-12T09:30:00.000Z", ["contact:c17"])] });
+    const kit = graphKit(model.fetchImplementation, { messages: conversation(2), records, state: STATE });
     await kit.seeded;
     const result = await runAgentGraph(kit.deps, kit.input(message));
     const handoff = trace.events.find((event) => event.type === "first_layer.handoff") as { parts: { objectClues: { recordId: string }[] }[] };
     assert.deepEqual(handoff.parts.map((item) => item.objectClues[0].recordId), ["task:t45", "contact:c17"]);
-    assert.match(result.text, /第二个现在是什么状态？」（对象：给李薇寄样片）/u);
+    assert.match(result.text, /给李薇寄样片还没做完/u);
+    assert.deepEqual(result.sourceRefs, ["todo:task:t45", "contact:contact:c17"]);
   } finally {
     trace.restore();
   }

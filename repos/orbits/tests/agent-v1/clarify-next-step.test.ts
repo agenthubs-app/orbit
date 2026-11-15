@@ -160,7 +160,8 @@ test("AG04-2: a mistagged statement is answered with at most one entry; clicking
   const kit = graphKit(model.fetchImplementation, { now: NOW });
   const input = kit.input(message);
   const result = await runAgentGraph(kit.deps, input);
-  assert.deepEqual(result.partResults.map((item) => [item.partId, item.route, item.status]), [["p1", "answer", "answered"], ["p2", "read", "unfinished"]]);
+  // AG05: p2 reads (an empty account here: nothing found, still answered, with the no_record gap).
+  assert.deepEqual(result.partResults.map((item) => [item.partId, item.route, item.status, item.gaps]), [["p1", "answer", "answered", undefined], ["p2", "read", "answered", ["no_record"]]]);
   assert.equal(result.status, "completed");
   const entries = result.clarifications.flatMap((set) => set.options);
   assert.equal(entries.length, 1, "at most one entry");

@@ -40,7 +40,7 @@ export function clueWords(message: string, ref: GraphPart["refs"][number] | unde
 export function nameOf(scope: NodeScope, recordId: string | null | undefined): string | null {
   if (!recordId) return null;
   const handle = [...(scope.run.context?.handles.values() ?? [])].find((item) => item.id === recordId);
-  return handle?.name || scope.run.names.get(recordId) || null;
+  return handle?.name || scope.run.names.get(recordId) || scope.run.readNames.get(recordId)?.name || null;
 }
 
 export function objectOf(scope: NodeScope, part: GraphPart): OptionObject {
@@ -53,6 +53,9 @@ export function objectOf(scope: NodeScope, part: GraphPart): OptionObject {
 }
 
 function candidatesFor(scope: NodeScope, part: GraphPart): { clue: number; candidates: NamedRecordRef[] } | null {
+  // AG05: several people of the name the user said (resolve looked them up in the account).
+  const found = scope.run.candidates.get(part.localId);
+  if (found?.length) return { candidates: found, clue: Math.max(0, part.refs.findIndex((ref) => ref.entity === "contact")) };
   const context = scope.run.context;
   if (!context) return null;
   const pool: NamedRecordRef[] = [...context.lastMentionedForCode, ...context.shownList.map((item) => ({ id: item.id, name: item.name ?? "", type: item.type }))].filter((item) => item.name);

@@ -27,6 +27,29 @@ export interface NoteContract {
   updatedAt: string;
   /** R08: a demo-world record; the UI shows the sample tag and never stores, counts or searches it. */
   sample?: true;
+  /**
+   * agent-design AG05 (设计稿 §4, 附录 E): the actual interaction this memo records, if it records one.
+   * Read in AG05; written by the Agent's memo writes from AG06.
+   */
+  interaction?: NoteInteractionContract;
+}
+
+/**
+ * A real exchange the user had with people (设计稿附录 E). `actualContactIds` is a subset of the memo's
+ * contactIds: a memo can mention two people and record a call with one. Only a date is kept when only
+ * a date is known (precision day); the time it happened is separate from when the memo was written.
+ */
+export interface NoteInteractionContract {
+  actualContactIds: readonly string[];
+  channel: "phone" | "meeting" | "message" | "email" | "other";
+  direction: "incoming" | "outgoing" | "mutual";
+  /** YYYY-MM-DD, when only the date is known. */
+  occurredOn?: string;
+  /** ISO instant. */
+  occurredAt?: string;
+  precision: "day" | "instant";
+  /** The sentence that supports it, as offsets into the body. */
+  sentence?: { start: number; end: number };
 }
 
 export interface NotesCollectionContract {

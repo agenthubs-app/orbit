@@ -6,7 +6,11 @@ import { MemorySaver } from "@langchain/langgraph";
 
 import type { ContextMessage } from "../../features/agent-v1/context/build";
 import { createMemoryAgentSessionStateStore, type AgentSessionState, type NamedRecordRef } from "../../features/agent-v1/context/session-state";
-import type { AgentGraphDependencies, AgentGraphInput } from "../../features/agent-v1/graph/deps";
+import type { AgentGraphDependencies, AgentGraphInput, AgentRecordAccess } from "../../features/agent-v1/graph/deps";
+import { visibleRefs } from "../../features/agent-v1/domains/configured";
+import { createDomainRegistry } from "../../features/agent-v1/domains/registry";
+import { createMemoryRecordSource, type MemoryRecord } from "../../features/agent-v1/domains/source";
+import type { CanonicalEventRecord } from "../../features/events/core/contract";
 
 export interface ModelCall {
   node: string | null;
@@ -67,9 +71,30 @@ export function captureTrace() {
 export interface KitOptions {
   messages?: ContextMessage[];
   state?: AgentSessionState | null;
-  references?: NamedRecordRef[];
+  references?: (NamedRecordRef & { accessible?: boolean })[];
   now?: string;
   modelCallLimit?: number;
+  /** AG05: the records the graph reads (an empty account by default). */
+  records?: AgentRecordAccess;
+}
+
+/** AG05: record access over a memory world (read-kit), scoped like the product's. */
+export function recordAccessOf(world?: { records: MemoryRecord[]; events: CanonicalEventRecord[] }, options: { denied?: Set<string>; maxPages?: number } = {}): AgentRecordAccess & { source: ReturnType<typeof createMemoryRecordSource>; denied: Set<string> } {
+  // Without a world (the AG03/AG04 tests), the records the context points at count as existing and every read finds nothing.
+  const assumeVisible = !world;
+  world ??= { events: [], records: [] };
+  const source = createMemoryRecordSource(world.records);
+  const denied = options.denied ?? new Set<string>();
+  const events = { async byIds(ids: readonly string[]) { return world.events.filter((event) => ids.includes(event.eventId)); } };
+  const reader = createDomainRegistry({ cursorKey: new Uint8Array(Buffer.from("agent-v1-graph-kit-cursor-key-0123456789")), denied: () => denied, events, now: () => "2026-11-15T01:00:00.000Z", source });
+  return {
+    denied,
+    maxPages: options.maxPages ?? 5,
+    reader,
+    scope: (actorId) => ({ accountId: actorId, authorizationEpoch: "agent-v1:1", workspaceId: "workspace:test" }),
+    source,
+    visible: async (actorId, refs) => (assumeVisible ? new Set(refs.filter((ref) => !denied.has(ref.slice(ref.indexOf(":") + 1)))) : visibleRefs(source, { accountId: actorId, workspaceId: "workspace:test" }, refs, denied)),
+  };
 }
 
 export function graphKit(fetchImplementation: typeof fetch, options: KitOptions = {}) {
@@ -89,6 +114,7 @@ export function graphKit(fetchImplementation: typeof fetch, options: KitOptions 
       return options.messages ?? [];
     },
     now: () => options.now ?? "2026-11-15T10:00:00.000Z",
+    records: options.records ?? recordAccessOf(),
     sessionState,
     ...(options.modelCallLimit !== undefined ? { modelCallLimit: options.modelCallLimit } : {}),
   };

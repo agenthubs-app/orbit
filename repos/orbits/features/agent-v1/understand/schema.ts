@@ -58,6 +58,27 @@ export interface UnderstandReading {
 
 export const MAX_READINGS = 3;
 
+/**
+ * AG05: how a part that reads records narrows its read (附录 C has no field for it; 登记 in the AG05
+ * REPORT). Code compiles the read request from it; anything invalid is dropped, never a reason to
+ * reject the output.
+ * - `text`: words to look for in titles and bodies, copied from the CURRENT message (a topic, a title).
+ * - `order`: newest (default), oldest ("the first time"), both (then and now).
+ * - `status`: open / completed (to-dos).
+ * - `from`/`to`: a date range, YYYY-MM-DD, both inclusive, resolved from the message and today's date.
+ */
+export const READ_ORDERS = ["newest", "oldest", "both"] as const;
+export type ReadOrder = (typeof READ_ORDERS)[number];
+export const READ_STATUSES = ["open", "completed"] as const;
+
+export interface ReadFilter {
+  text?: string;
+  order?: ReadOrder;
+  status?: (typeof READ_STATUSES)[number];
+  from?: string;
+  to?: string;
+}
+
 export interface UnderstandPart {
   localId: string;
   sourceQuote: string;
@@ -74,6 +95,8 @@ export interface UnderstandPart {
   intentBasis: IntentBasis;
   dataOwner: DataOwner;
   persistence: Persistence;
+  /** AG05: the read's narrowing (see ReadFilter). */
+  readFilter?: ReadFilter;
 }
 
 export interface UnderstandOutput {

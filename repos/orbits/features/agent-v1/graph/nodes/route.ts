@@ -88,6 +88,11 @@ export function routeNode(scope: NodeScope): GraphNode {
       if (decision.step) run.steps.set(part.localId, decision.step);
       return {
         ...part,
+        // AG05: a part routed again reads again (under the permissions of now).
+        cites: undefined,
+        coverage: undefined,
+        gaps: undefined,
+        reads: undefined,
         reading: decision.step?.kind === "most_likely" ? { capabilities: [...decision.step.reading.capabilities], ...(decision.step.reading.key ? { key: decision.step.reading.key } : {}) } : null,
         reason,
         route: decision.route,

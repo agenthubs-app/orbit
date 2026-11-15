@@ -63,7 +63,33 @@ export interface AgentPartResult {
   waitReason?: AgentPartWaitReason | undefined;
   /** AG03：子目标停在这个状态的原因代码，如 not_in_this_version、budget、dependency_pending。 */
   reason?: string | undefined;
+  /**
+   * AG05：读取没有给全的地方（设计稿附录 C gaps）。no_record 查到零条；partial 有一部分读不到；
+   * unreadable 引用的记录打不开；service_error 读取出错（不代表没有记录）。
+   */
+  gaps?: readonly AgentPartGap[] | undefined;
+  /** AG05：读了多少（每类记录：翻了几页、看了几条、一共几条）。 */
+  coverage?: readonly AgentPartCoverage[] | undefined;
 }
+
+/** AG05：缺口原因，取设计稿附录 C 的值。 */
+export type AgentPartGap = "no_record" | "partial" | "unreadable" | "conflict" | "service_error" | "budget";
+
+export interface AgentPartCoverage {
+  kind: string;
+  pagesRead: number;
+  seen: number;
+  total?: number | undefined;
+  complete: boolean;
+}
+
+/**
+ * AG05：协议 3 的消息引用，六类（设计稿 §3.6、附录 E）。旧的 note 视同 memo 继续可读。
+ * 句中位置在 AG11。服务端逐条授权，引用不授予修改权。
+ */
+export type AgentReferenceType = AiSessionReferenceContract["type"];
+
+export type AgentReferenceContract = AiSessionReferenceContract;
 
 export interface AgentAnswerContract {
   text: string;
@@ -263,6 +289,7 @@ export interface AgentSendInputContract {
   clientMessageId: string;
   locale: "en" | "ja" | "zh";
   message: string;
+  /** AG05：六类引用（AiSessionReferenceType 加了 memo、todo、schedule、attendance）；旧的 note 视同 memo。 */
   references: readonly AiSessionReferenceContract[];
   origin?: AiSessionOriginInputContract | undefined;
   pageContext?: AiPageContextContract | undefined;

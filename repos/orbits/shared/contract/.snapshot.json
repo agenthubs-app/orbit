@@ -340,6 +340,84 @@
           "optional": true,
           "kind": "text",
           "type": "string"
+        },
+        "gaps": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentPartGap[]"
+        },
+        "coverage": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentPartCoverage[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentPartGap": {
+      "kind": "enum",
+      "values": [
+        "'budget'",
+        "'conflict'",
+        "'no_record'",
+        "'partial'",
+        "'service_error'",
+        "'unreadable'"
+      ]
+    },
+    "agent-v1.ts::AgentPartCoverage": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "pagesRead": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "seen": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "total": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "complete": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "agent-v1.ts::AgentReferenceType": {
+      "kind": "enum",
+      "values": [
+        "'attendance'",
+        "'contact'",
+        "'event'",
+        "'memo'",
+        "'note'",
+        "'schedule'",
+        "'todo'"
+      ]
+    },
+    "agent-v1.ts::AgentReferenceContract": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "type": {
+          "optional": false,
+          "kind": "text",
+          "type": "AiSessionReferenceType"
         }
       }
     },
@@ -1442,9 +1520,13 @@
     "ai-sessions.ts::AiSessionReferenceType": {
       "kind": "enum",
       "values": [
+        "'attendance'",
         "'contact'",
         "'event'",
-        "'note'"
+        "'memo'",
+        "'note'",
+        "'schedule'",
+        "'todo'"
       ]
     },
     "ai-sessions.ts::AiSessionReferenceContract": {
@@ -13596,7 +13678,7 @@
         "kind": {
           "optional": false,
           "kind": "text",
-          "type": "'conversation' | 'event' | 'schedule' | 'task' | 'appointment' | 'batch' | 'source'"
+          "type": "'event' | 'schedule' | 'conversation' | 'task' | 'appointment' | 'batch' | 'source'"
         },
         "id": {
           "optional": false,
@@ -16162,6 +16244,62 @@
           "optional": true,
           "kind": "text",
           "type": "true"
+        },
+        "interaction": {
+          "optional": true,
+          "kind": "text",
+          "type": "NoteInteractionContract"
+        }
+      }
+    },
+    "notes.ts::NoteInteractionContract": {
+      "kind": "object",
+      "members": {
+        "actualContactIds": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "channel": {
+          "optional": false,
+          "kind": "text",
+          "type": "'other' | 'phone' | 'email' | 'message' | 'meeting'"
+        },
+        "direction": {
+          "optional": false,
+          "kind": "text",
+          "type": "'incoming' | 'outgoing' | 'mutual'"
+        },
+        "occurredOn": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "occurredAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "precision": {
+          "optional": false,
+          "kind": "text",
+          "type": "'day' | 'instant'"
+        },
+        "sentence": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "start": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "end": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
         }
       }
     },

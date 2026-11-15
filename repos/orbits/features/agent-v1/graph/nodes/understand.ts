@@ -3,6 +3,7 @@
  * checks, one repair call that is told what was wrong (§3.3). Each call first checks the round's
  * budget (models/main.ts). Still invalid after the repair: nothing is made up, deliver says so.
  */
+import { formatWhen } from "../../answer/materials";
 import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
 import { hypothesisOf, negationOf } from "../../route/decide";
@@ -35,6 +36,8 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
         negation: negationOf(part),
         persistence: part.persistence,
         readings: (part.readings ?? []).map((reading) => ({ capabilities: [...reading.capabilities], deliverable: reading.deliverable })),
+        // The checkpoint keeps the words as offsets into this turn's message, never the words.
+        ...(part.readFilter ? { readFilter: { ...part.readFilter, text: part.readFilter.text && message.includes(part.readFilter.text) ? [message.indexOf(part.readFilter.text), message.indexOf(part.readFilter.text) + part.readFilter.text.length] as [number, number] : undefined } } : {}),
       },
       quote: [start, start + part.sourceQuote.length],
       reading: null,
@@ -69,7 +72,10 @@ export function understandNode(scope: NodeScope): GraphNode {
     const budget = { ...state.budget };
     const validation: UnderstandValidationInput = { handles: new Set(context.handles.keys()), message: input.message, openItemRefs: new Set(context.openItemHandles.keys()) };
     const system = understandSystemPrompt();
-    const user = understandUserText({ contextText: context.promptText, message: input.message });
+    // AG05: today (with its weekday, in the user's time zone) lets the first layer give a date range.
+    const zone = state.timeZone || "Asia/Tokyo";
+    const today = `${formatWhen(state.asOf || deps.now(), zone, false)}, ${zone}`;
+    const user = understandUserText({ contextText: context.promptText, message: input.message, today });
     emitTrace({ contextMessages: context.messages.length, promptVersion: UNDERSTAND_PROMPT_VERSION, type: "understand.prompt" });
     let repairs = state.repairs;
     let first = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "understand", purpose: "first", requestId: input.requestId, system, user });
@@ -84,7 +90,7 @@ export function understandNode(scope: NodeScope): GraphNode {
       emitTrace({ errors: checked.errors, purpose: "first", type: "understand.invalid" });
       if (repairs >= 1) return { budget, repairs, understanding: "invalid" };
       repairs += 1;
-      const repair = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "understand", purpose: "repair", requestId: input.requestId, system, user: repairUserText({ contextText: context.promptText, errors: checked.errors, message: input.message, previousOutput: first.text }) });
+      const repair = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "understand", purpose: "repair", requestId: input.requestId, system, user: repairUserText({ contextText: context.promptText, errors: checked.errors, message: input.message, previousOutput: first.text, today }) });
       if (repair.ok === false) return { budget, repairs, understanding: failedUnderstanding(repair) };
       checked = check(repair.text, validation);
       if (checked.ok === false) {

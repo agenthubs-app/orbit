@@ -162,8 +162,8 @@ export function decideRoute(part: RouteInput, options: RouteOptions = {}): Route
 
 export type PartStatus = "answered" | "awaiting_clarification" | "awaiting_confirmation" | "awaiting_acceptance" | "suggested_external" | "waiting_dependency" | "declined" | "unfinished" | "failed";
 
-/** Routes this sprint delivers no result for (reads AG05, web AG09, writes AG06): reported as not done. */
-export const NOT_YET_ROUTES: ReadonlySet<Route> = new Set(["read", "probe", "web_lookup", "propose_write"]);
+/** Routes this version delivers no result for (web AG09, writes AG06): reported as not done. Reads work from AG05. */
+export const NOT_YET_ROUTES: ReadonlySet<Route> = new Set(["probe", "web_lookup", "propose_write"]);
 
 /**
  * The status a route leaves a part in before dependencies are settled. An `answer` part is counted
@@ -181,6 +181,9 @@ export function statusForRoute(route: Route): PartStatus {
     case "clarify":
       return "awaiting_clarification";
     case "answer":
+      return "answered";
+    case "read":
+      // AG05: answered unless resolve finds it could not read (it sets the gap and the status).
       return "answered";
     default:
       return "unfinished";

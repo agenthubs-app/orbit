@@ -8,6 +8,8 @@
  * action ledger (confirm-boundary.ts); other write proposals are not carded and are said so.
  */
 import type { FeatureMode } from "../../../shared/config/feature-mode";
+import type { AiSessionReferenceContract } from "../../../shared/contract/ai-sessions";
+import type { AgentEntryInput } from "./store";
 import { createAgentFeedbackService } from "../../agent/feedback/service-factory";
 import { createAgentMemoryService } from "../../agent/memory/service-factory";
 import { createContactCardService } from "../../contacts/card-service";
@@ -38,10 +40,18 @@ export function createLegacyRuntimeExecutor(mode: FeatureMode): AgentEntryExecut
   };
 }
 
+/** AG05: the protocol-3 references the old path and the chat session store know (contact, event, note; a memo is a note). */
+export function sessionReferencesOf(references: AgentEntryInput["references"]): AiSessionReferenceContract[] {
+  return references.flatMap((reference): AiSessionReferenceContract[] => {
+    const type = reference.type === "memo" ? "note" : reference.type;
+    return type === "contact" || type === "event" || type === "note" ? [{ id: reference.id, type }] : [];
+  });
+}
+
 function createLegacyRuntimeTurn(mode: FeatureMode): (execution: Parameters<AgentEntryExecutor>[0]) => Promise<LegacyTurn> {
   return async ({ actorId, fetchImplementation, history, input }) => {
     try {
-      await authorizeAiSessionContactReferences({ actorId, references: input.references, service: createContactDetailTagStatusService() });
+      await authorizeAiSessionContactReferences({ actorId, references: sessionReferencesOf(input.references), service: createContactDetailTagStatusService() });
     } catch (error) {
       if (error instanceof AiSessionReferenceAuthorizationError) throw new AgentEntryExecutionError(error.code === "REFERENCE_NOT_ACCESSIBLE" ? "REFERENCE_NOT_ACCESSIBLE" : "REFERENCE_UNVERIFIED");
       throw error;
@@ -194,17 +204,18 @@ export function createSessionWriter(provider: OrbitAgentChatSessionProvider): Ag
         create: {
           createdAt,
           origin: origin
-            ? { ...origin, firstSentText: record.input.message, firstUserMessageId: record.clientMessageId, recordedAt: createdAt, references: record.input.references, schemaVersion: 1 }
+            ? { ...origin, firstSentText: record.input.message, firstUserMessageId: record.clientMessageId, recordedAt: createdAt, references: sessionReferencesOf(record.input.references), schemaVersion: 1 }
             : undefined,
           title: record.input.message.slice(0, 120),
         },
-        messages: [{ createdAt, id: record.clientMessageId, references: record.input.references, role: "user", text: record.input.message }],
+        messages: [{ createdAt, id: record.clientMessageId, references: sessionReferencesOf(record.input.references), role: "user", text: record.input.message }],
         updatedAt: createdAt,
       });
     },
-    async appendAssistant(sessionId, record, text, createdAt, key) {
+    async appendAssistant(sessionId, record, text, createdAt, key, recordRefs) {
       await provider.appendMessages(sessionId, {
-        messages: [{ createdAt, id: key ? `assistant:${record.requestId}:${key}` : `assistant:${record.requestId}`, role: "assistant", text }],
+        // AG05: the cited records go with the message (as typed refs), so the next turn can point back at them.
+        messages: [{ createdAt, id: key ? `assistant:${record.requestId}:${key}` : `assistant:${record.requestId}`, role: "assistant", text, ...(recordRefs?.length ? { recordRefs: [...recordRefs] } : {}) } as never],
         updatedAt: createdAt,
       });
     },
