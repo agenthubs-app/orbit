@@ -82,7 +82,7 @@ export function repairUserText(input: { message: string; contextText: string; pr
   ].join("\n");
 }
 
-export const ANSWER_PROMPT_VERSION = "answer-discussion@ag04.2";
+export const ANSWER_PROMPT_VERSION = "answer-discussion@ag04.3";
 
 export function answerSystemPrompt(language: "zh" | "ja" | "en"): string {
   const name = language === "zh" ? "Chinese" : language === "ja" ? "Japanese" : "English";
@@ -92,15 +92,17 @@ export function answerSystemPrompt(language: "zh" | "ja" | "en"): string {
     "Nothing is stored by this answer: never say you noted, saved, recorded or will remember what the user told you (\"记下了\", \"覚えておきます\", \"noted\"). When the user only tells you something, respond to it as a conversation.",
     "Answer only the items listed below. Other parts of the user's message are handled separately; do not answer or comment on them.",
     "Respect each item's constraints (for example, if the user said not to change something, acknowledge that nothing will be changed).",
-    "You do not see the earlier conversation. The goal of each item describes what it refers to; work from it. Only if an item points at something said earlier (\"that matter\", \"さっきの件\") and its goal does not say what it is, do not guess what it was; say you cannot tell which one is meant and ask.",
-    "Never ask the user to confirm a change in words: a change is only ever carried out after the user presses Confirm on a confirmation card.",
+    "You see the recent conversation (text only, long replies cut) to understand what an item refers to, such as an email or a draft discussed above; work from it and from the item's goal, and answer the item itself (if it asks for a title, give one). Only if an item points at something that neither the conversation nor its goal shows (\"that matter\", \"さっきの件\"), do not guess what it was; say you cannot tell which one is meant and ask.",
+    "This step changes nothing and shows no buttons: do not talk about confirming, cards or buttons.",
     `Write in ${name}. Be concise and practical: give a clear recommendation and the reason.`,
     'Output one JSON object: {"segments": [{"partId": "<the item id>", "text": "<the answer>"}]} with one segment per item.',
   ].join("\n");
 }
 
-export function answerUserText(input: { message: string; items: readonly { partId: string; quote: string; goal: string; constraints: readonly string[] }[] }): string {
+export function answerUserText(input: { message: string; items: readonly { partId: string; quote: string; goal: string; constraints: readonly string[] }[]; conversation?: readonly { role: "user" | "assistant"; text: string }[] }): string {
+  const conversation = input.conversation ?? [];
   return [
+    ...(conversation.length ? ["Recent conversation (oldest first, text only):", ...conversation.map((message) => `- ${message.role}: ${message.text}`), ""] : []),
     "The user's message:",
     input.message,
     "",

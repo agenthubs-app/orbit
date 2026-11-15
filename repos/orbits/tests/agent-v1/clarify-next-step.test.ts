@@ -192,7 +192,8 @@ test("repair round 1: the first layer lists change readings for 'handle it', and
   assert.match(understand, /goal must stand on its own/u);
   // Repair round 2: only looking at a record reads; the change readings are for handling a matter.
   assert.match(understand, /only to look at or check a record[^.]*has only readings that read — never a change/u);
-  assert.match(answerSystemPrompt("zh"), /The goal of each item describes what it refers to/u);
+  // run-02 repair round 1: the answer step now also sees the conversation window; the goal still counts.
+  assert.match(answerSystemPrompt("zh"), /work from it and from the item's goal/u);
 });
 
 test("AG04-3: a person named only in words is said back by those words in the understanding", async () => {
