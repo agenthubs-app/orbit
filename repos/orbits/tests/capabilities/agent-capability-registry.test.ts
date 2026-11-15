@@ -37,7 +37,10 @@ test("agent capability registry covers every current tool, workflow, and ledger 
         .list()
         .flatMap((capability) => capability.operationTypes),
     )].sort(),
-    [...AGENT_LEDGER_OPERATION_TYPES].sort(),
+    // agent-design AG02: create_todo and update_todo are card-only operations of the new entry's
+    // ledger cards (features/agent/runtime/todo-operations.ts). They are deliberately not in this
+    // registry, which also feeds the old planner's capability list; AG06 registers them (domains/).
+    [...AGENT_LEDGER_OPERATION_TYPES].filter((type) => type !== "create_todo" && type !== "update_todo").sort(),
   );
 });
 
