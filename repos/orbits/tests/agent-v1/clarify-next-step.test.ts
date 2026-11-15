@@ -190,6 +190,8 @@ test("repair round 1: the first layer lists change readings for 'handle it', and
   const understand = understandSystemPrompt();
   assert.match(understand, /handling or taking care of a matter usually means doing something about it/iu);
   assert.match(understand, /goal must stand on its own/u);
+  // Repair round 2: only looking at a record reads; the change readings are for handling a matter.
+  assert.match(understand, /only to look at or check a record[^.]*has only readings that read — never a change/u);
   assert.match(answerSystemPrompt("zh"), /The goal of each item describes what it refers to/u);
 });
 

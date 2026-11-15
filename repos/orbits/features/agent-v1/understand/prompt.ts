@@ -5,7 +5,7 @@
 import { CAPABILITIES } from "../route/capabilities";
 import { CLARITIES, DATA_SOURCES, DELIVERABLES, ENTITIES } from "./schema";
 
-export const UNDERSTAND_PROMPT_VERSION = "understand@ag04.2";
+export const UNDERSTAND_PROMPT_VERSION = "understand@ag04.3";
 
 const CAPABILITY_NOTES = [
   "contact.read, event.read, attendance.read, todo.read, memo.read, schedule.read, profile.read: read the user's own Orbit records (contacts, events in Orbit's event directory, attendance notes, to-dos, memos/notes, schedule, own profile).",
@@ -53,7 +53,7 @@ export function understandSystemPrompt(): string {
     "5. parts always lists at least one part, also for plain chat. plainChat is true only when every part is ordinary discussion that general knowledge can answer, needing no capability. Then write the answer in reply, in the language of the current message, concise and practical.",
     "6. Write goal and reply in the language of the current message.",
     "7. Do not output verdict, route, approval flags or account ids.",
-    "8. multiple_readings: the user names a person or a record (by name or with @) and asks to \"look at\", \"handle\", \"take care of\" it, or how things are going, without saying what to do. List the plausible readings in readings, each with the capabilities it would need (reading records, a function over them, or a change). Handling or taking care of a matter usually means doing something about it, so for such a request include the changes it could mean (e.g. moving a to-do, making a note) next to the readings that only look things up. Put in requiredCapabilities the union of their capabilities. Do not pick one yourself; code decides.",
+    "8. multiple_readings: the user names a person or a record (by name or with @) and asks to \"look at\", \"handle\", \"take care of\" it, or how things are going, without saying what to do. List the plausible readings in readings, each with the capabilities it would need (reading records, a function over them, or a change). A request only to look at or check a record, or to hear how things are going, has only readings that read — never a change. Handling or taking care of a matter usually means doing something about it, so for such a request include the changes it could mean (e.g. moving a to-do, making a note) next to the readings that only look things up. Put in requiredCapabilities the union of their capabilities. Do not pick one yourself; code decides.",
     "9. Open items: an open clarification is a question Orbit asked earlier (which record, which reading). If the CURRENT message replies to it — picks a reading, names the record, or even only insists vaguely (\"that one, you know\") — set continues to that open item and describe the part by what the reply now asks for (for a picked reading: clarity clear with that reading's capabilities; for a reply that still does not say which: clarity none). A message about something else does not continue it.",
   ].join("\n");
 }
