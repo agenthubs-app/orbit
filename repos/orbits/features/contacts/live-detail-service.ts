@@ -33,8 +33,10 @@ import {
   type ContactDetailLastInteractionChannel,
   type ContactDetailLastInteractionInput,
   type ContactDetailLastInteractionMetadata,
+  type ContactDetailMemoChannel,
   type ContactDetailNote,
   type ContactDetailNoteInput,
+  type ContactDetailNoteOrigin,
   type ContactDetailPublicProfile,
   type ContactDetailSourceReference,
   type ContactDetailSourceType,
@@ -53,6 +55,7 @@ import {
 import type {
   ContactEnrichmentEdit,
   LiveContactDetailState,
+  LiveContactDetailStoredNote,
   LiveContactsGraphProvider,
 } from "./live-service";
 import {
@@ -474,7 +477,7 @@ function notesFor(input: {
         {
           authorLabel: "名片备注",
           body: input.contact.notes,
-          createdAt: input.contact.updatedAt,
+          createdAt: input.contact.createdAt, // 登记时间：记交流会推进 updatedAt，名片备注的日期不该跟着变
           evidenceIds: input.contact.evidenceIds,
           noteId: `note:business-card-notes:${input.contact.id}`,
           noteWriteExecuted: false as const,
@@ -554,6 +557,24 @@ function lastInteractionFor(input: {
   };
 }
 
+/** 「记一笔交流」：系统拼出的记录的来源——名片备注与名片识别的依据是 card，其余（生成的背景说明、别的依据）是 system。 */
+function baseNoteOrigin(note: ContactDetailNote): ContactDetailNoteOrigin {
+  if (note.noteId.startsWith("note:business-card-notes:")) return "card";
+  if (note.noteId.startsWith("note:relationship-evidence:") && note.source.type === "business_card_ocr") return "card";
+  return "system";
+}
+
+/** 存储行里 memo 的附加字段 → 详情 payload 的可选字段（origin 恒为 user）；非 memo 只带 origin。 */
+function memoPayloadFields(stored: Pick<LiveContactDetailStoredNote, "kind" | "occurredAt" | "channel" | "topics">): Pick<ContactDetailNote, "origin" | "occurredAt" | "channel" | "topics"> {
+  const memo = stored.kind === "memo";
+  return {
+    origin: "user",
+    ...(memo && stored.occurredAt ? { occurredAt: stored.occurredAt } : {}),
+    ...(memo && stored.channel && MEMO_CHANNELS.has(stored.channel) ? { channel: stored.channel } : {}),
+    ...(memo && stored.topics?.length ? { topics: [...stored.topics] } : {}),
+  };
+}
+
 function detailFor(input: {
   collectedAt: string;
   contact: ContactDTO;
@@ -595,9 +616,11 @@ function detailFor(input: {
     source,
   });
   const persistedNotes = (input.persistedState?.notes ?? []).map((stored) => {
-    // W0046：memo 的 occurredAt／eventId／kind 只在存储与时间线里用；详情 payload（App 同步）的 notes 字段保持不变。
+    // W0046：memo 的 eventId／kind 只在存储与时间线里用，不进详情 payload。
+    // 「记一笔交流」：memo 的日期、方式、聊到的 chip 作为可选字段带出（App 解析忽略多余字段），
+    // 存储行里的记录都是用户自己记下的（origin = user）。
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { occurredAt: _occurredAt, eventId: _eventId, kind: _kind, ...note } = stored;
+    const { occurredAt, eventId: _eventId, kind, channel, topics, ...note } = stored;
     const manual = note.noteId.startsWith("note:live-contact-detail-update:") && note.privacy !== "relationship_shared";
     return {
       ...note,
@@ -606,6 +629,7 @@ function detailFor(input: {
       evidenceIds: manual ? [] : input.contact.evidenceIds,
       noteWriteExecuted: false,
       productionAuditLogWriteExecuted: false as const,
+      ...memoPayloadFields({ kind, occurredAt, channel, topics }),
     };
   });
   const baseLastInteraction = lastInteractionFor({
@@ -688,7 +712,9 @@ function detailFor(input: {
       )
         ? (input.persistedState.status as ContactDetailStatusOption)
         : statusFor(input.contact)),
-    notes: [...baseNotes, ...persistedNotes],
+    notes: [...baseNotes.map((note) => ({ ...note, origin: baseNoteOrigin(note) })), ...persistedNotes],
+    // 日期取稳定值（最近证据或登记时间），不随记交流推进的 updatedAt 变动。
+    generatedInteraction: { occurredAt: latestEvidence?.occurredAt ?? input.contact.createdAt, summary: baseLastInteraction.summary },
     lastInteraction: persistedLastInteraction
       ? {
           ...baseLastInteraction,
@@ -931,17 +957,25 @@ function normalizeNoteInput(
 }
 
 const MEMO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+const MEMO_CHANNELS: ReadonlySet<string> = new Set<ContactDetailMemoChannel>(["meeting", "call", "event", "other"]);
+const MEMO_TOPICS_MAX = 12;
+const MEMO_TOPIC_CHARS_MAX = 80;
+
+type MemoFields = { kind: "memo"; occurredAt: string; eventId?: string; channel?: ContactDetailMemoChannel; topics?: readonly string[] };
 
 /**
  * W0046：「写 memo」的附加字段。kind = "memo" 且日期是合法东京日期时才生效（handler 已拒绝非法形状）；
  * 其余写法（App 的 `{ note: "文本" }`／`{ body, authorLabel }`）返回 null，行为与改前一致。
+ * 「记一笔交流」：channel／topics 可选（handler 已拒绝非法值；这里再按同一规则收一次，不合法的项丢掉）。
  */
-function memoFieldsFor(note: ContactDetailNoteInput): { kind: "memo"; occurredAt: string; eventId?: string } | null {
+export function memoFieldsFor(note: ContactDetailNoteInput): MemoFields | null {
   if (note.kind !== "memo") return null;
   const day = note.occurredAt?.trim() ?? "";
   if (!MEMO_DAY.test(day) || parseStrictTokyoInstant(day) === null) return null;
   const eventId = note.eventId?.trim();
-  return { kind: "memo", occurredAt: day, ...(eventId ? { eventId } : {}) };
+  const channel = note.channel && MEMO_CHANNELS.has(note.channel) ? note.channel : undefined;
+  const topics = [...new Set((note.topics ?? []).map((topic) => topic.trim()).filter((topic) => topic && Array.from(topic).length <= MEMO_TOPIC_CHARS_MAX))].slice(0, MEMO_TOPICS_MAX);
+  return { kind: "memo", occurredAt: day, ...(eventId ? { eventId } : {}), ...(channel ? { channel } : {}), ...(topics.length ? { topics } : {}) };
 }
 
 /** memo 选的东京日期 → 该日东京 00:00 的 UTC ISO。 */
@@ -995,6 +1029,8 @@ function buildNote(input: {
         noteInput.body,
         // W0046：memo 的日期参与身份——同正文不同日是两条；旧写法哈希不变（App 重试仍幂等）。
         ...(noteInput.kind === "memo" && noteInput.occurredAt ? [`memo@${noteInput.occurredAt}`] : []),
+        // 「记一笔交流」：方式也参与身份（同正文同日不同方式是两条）；不传方式时哈希与改前相同。
+        ...(noteInput.kind === "memo" && noteInput.channel ? [`channel@${noteInput.channel}`] : []),
       ].join("\u0000"),
     )
     .digest("hex")
@@ -1021,6 +1057,7 @@ function buildNote(input: {
     evidenceIds: [],
     noteWriteExecuted: false,
     productionAuditLogWriteExecuted: false,
+    ...memoPayloadFields(memoFieldsFor(noteInput) ?? {}),
   };
 }
 
@@ -1141,7 +1178,7 @@ function persistedStateFor(input: {
   collectedAt: string;
   contact: ContactDetail;
   /** W0046：本次写入的 memo（noteId + 附加字段）。 */
-  memo?: { noteId: string; occurredAt: string; eventId?: string } | null;
+  memo?: ({ noteId: string } & Omit<MemoFields, "kind">) | null;
   persistedState: LiveContactDetailState | null;
   statusRequested: boolean;
 }): LiveContactDetailState {
@@ -1149,18 +1186,22 @@ function persistedStateFor(input: {
     input.persistedState?.notes.map((note) => note.noteId),
   );
   // 详情 payload 的 notes 不带 memo 字段，这里按 noteId 从存储行（或本次写入）补回，任何 PATCH 都不丢。
-  const memoFields = new Map<string, { occurredAt?: string; eventId?: string; kind?: "memo" }>();
+  type StoredMemoFields = Pick<LiveContactDetailStoredNote, "occurredAt" | "eventId" | "kind" | "channel" | "topics">;
+  const memoFields = new Map<string, StoredMemoFields>();
   for (const note of input.persistedState?.notes ?? []) {
-    if (note.occurredAt || note.eventId || note.kind) {
+    if (note.occurredAt || note.eventId || note.kind || note.channel || note.topics) {
       memoFields.set(note.noteId, {
         ...(note.occurredAt ? { occurredAt: note.occurredAt } : {}),
         ...(note.eventId ? { eventId: note.eventId } : {}),
         ...(note.kind ? { kind: note.kind } : {}),
+        ...(note.channel ? { channel: note.channel } : {}),
+        ...(note.topics?.length ? { topics: [...note.topics] } : {}),
       });
     }
   }
   if (input.memo && !memoFields.has(input.memo.noteId)) {
-    memoFields.set(input.memo.noteId, { occurredAt: input.memo.occurredAt, ...(input.memo.eventId ? { eventId: input.memo.eventId } : {}), kind: "memo" });
+    const { noteId, occurredAt, eventId, channel, topics } = input.memo;
+    memoFields.set(noteId, { occurredAt, ...(eventId ? { eventId } : {}), kind: "memo", ...(channel ? { channel } : {}), ...(topics?.length ? { topics: [...topics] } : {}) });
   }
   return {
     actorId: input.actorId,
@@ -1531,7 +1572,13 @@ export function createLiveContactDetailTagStatusService({
           const noteInput = normalizeNoteInput(input.note);
           const note = noteInput ? buildNote({ actorId, contact: base.contact ?? attemptPreview.contact!, note: input.note, now: collectedAt }) : null;
           const memoWrite = note && noteInput?.kind === "memo" && noteInput.occurredAt
-            ? { noteId: note.noteId, occurredAt: noteInput.occurredAt, ...(noteInput.eventId ? { eventId: noteInput.eventId } : {}) }
+            ? {
+                noteId: note.noteId,
+                occurredAt: noteInput.occurredAt,
+                ...(noteInput.eventId ? { eventId: noteInput.eventId } : {}),
+                ...(noteInput.channel ? { channel: noteInput.channel } : {}),
+                ...(noteInput.topics?.length ? { topics: noteInput.topics } : {}),
+              }
             : null;
           try {
             await provider.upsertContactDetailState?.(

@@ -175,3 +175,32 @@
 .effect { font-size: var(--fs-body-sm); color: var(--ink-2); padding-left: 16px; position: relative; }
 .effect::before { content: ""; position: absolute; left: 4px; top: 9px; width: 5px; height: 5px; border-radius: var(--r-pill); background: var(--ink-3); }
 .chip svg { width: 12px; height: 12px; flex: none; }
+
+/* 「记一笔交流」（docs/designs/contact-log-2026-11 ①–④）：往来的入口按钮、时间线标签、弹层。 */
+.tlTag { display: inline-block; font-size: var(--fs-caption); font-weight: var(--fw-bold); padding: 1px 7px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-3); margin-right: 6px; vertical-align: 1px; }
+.tlWay { background: var(--mac-lav); color: var(--mac-lav-text); }
+.tlDim { color: var(--ink-2); }
+.tlBody { white-space: pre-line; }
+.logEmptyAdd { margin-top: 10px; align-self: flex-start; }
+.logField { margin-bottom: 16px; }
+.logField > .lbl { display: block; margin-bottom: 8px; }
+.logSeg { display: flex; gap: 6px; flex-wrap: wrap; }
+.logSegBtn.logSegBtn, .logChip.logChip { display: inline-flex; align-items: center; padding: 7px 14px; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-meta); font-weight: var(--fw-bold); cursor: pointer; font-family: inherit; }
+.logSegBtn.logSegBtn[aria-pressed="true"], .logChip.logChip[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.logChip.logChip { padding: 6px 11px; font-weight: var(--fw-semibold); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; }
+.logChip.logChipMore { background: transparent; color: var(--ink-3); padding-left: 4px; }
+.logChips { display: flex; flex-wrap: wrap; gap: 6px; }
+.logDate { height: 44px; border-radius: var(--r-md); background: var(--surface-2); display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: var(--fs-body-sm); }
+.logDate input { border: 0; background: transparent; color: var(--ink); font: inherit; font-size: var(--fs-body-sm); min-width: 0; }
+.logDate em { font-style: normal; color: var(--ink-3); font-size: var(--fs-meta); }
+.logSide { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 12px; border-radius: var(--r-lg); background: var(--bg); }
+.logGroup + .logGroup { margin-top: 10px; }
+.logGroupLabel { font-size: var(--fs-caption); color: var(--ink-3); margin-bottom: 6px; display: flex; gap: 6px; align-items: center; }
+.logWho { font-weight: var(--fw-heavy); color: var(--ink-2); }
+.logTextarea.logTextarea { width: 100%; min-height: 76px; border: 0; border-radius: var(--r-md); background: var(--surface-2); padding: 10px 12px; font: inherit; font-size: var(--fs-body-sm); line-height: 1.6; color: var(--ink); resize: vertical; box-sizing: border-box; }
+.logTextarea::placeholder { color: var(--ink-3); }
+.logPreview { font-size: var(--fs-meta); color: var(--ink-2); background: var(--surface-2); border-radius: var(--r-md); padding: 8px 12px; margin-bottom: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.logPreview b { color: var(--ink); }
+.logEmpty { font-size: var(--fs-meta); color: var(--ink-2); background: var(--bg); border-radius: var(--r-md); padding: 12px; line-height: 1.6; }
+.logEmpty a { color: var(--ink); font-weight: var(--fw-bold); text-decoration: none; margin-left: 4px; }
+.logError { font-size: var(--fs-meta); color: var(--coral-text); margin: 0 0 10px; }

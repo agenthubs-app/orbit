@@ -142,6 +142,80 @@ test("the contact drawer: why (value line), the type confirm card → decision, 
   await page.waitForFunction(() => (window as any).shellFixture.fetches.some((call: any) => call.method === "POST" && call.url === "/api/contacts/c-ito/restore"));
 });
 
+test("「やりとりを記録」（contact-log-2026-11 ①–③）: the 往来 button opens the in-drawer modal, chips come from both profiles in order, preview, save → memo PATCH with channel / topics, the new entry tops the timeline", async (t) => {
+  const MEMO = { noteId: "note:live-contact-detail-update:m1", body: "話したこと：資本政策の助言、中日市場進入\n来月工場の担当者を紹介してくれる", createdAt: "2026-11-16T03:00:00.000Z", origin: "user", occurredAt: "2026-11-16", channel: "call", topics: ["資本政策の助言", "中日市場進入"] };
+  const CARD = { noteId: "note:business-card-notes:c-ito", body: "出会い：交流会", createdAt: "2026-10-30T01:00:00.000Z", origin: "card" };
+  const PROFILE = ok({ state: "success", profile: { displayName: "Me", offering: ["中日市場進入", "交流会運営"], seeking: [], topics: ["AI", "採用", "物流", "出海", "供給網", "製造 DX"] } });
+  const page = await screen(t, { handlers: [
+    { method: "GET", url: "^/api/profile$", reply: PROFILE },
+    { method: "PATCH", url: "^/api/contacts/c-ito$", reply: ok({ state: "success", contact: DETAIL.contact }) },
+    ...HANDLERS,
+  ] });
+  await page.locator("[data-network-row='c-ito']").click();
+  const drawer = page.locator("[data-contact-drawer='c-ito']");
+  await drawer.getByText("DD の資料リストを受領", { exact: true }).waitFor();
+  assert.equal(await drawer.locator("a[href^='/app/notes/new']").count(), 0, "no dead link to /app/notes/new");
+  await drawer.getByRole("button", { name: "＋ やりとりを記録" }).click();
+  const modal = page.locator("[data-contact-log]");
+  await modal.waitFor();
+  await page.getByRole("heading", { name: "やりとりを記録 · 伊藤 直子" }).waitFor();
+  assert.equal(await modal.getByRole("button", { name: "対面" }).getAttribute("aria-pressed"), "true");
+  await modal.locator("[data-contact-log-group='myTopics']").waitFor();
+  assert.deepEqual(await modal.locator("[data-contact-log-group]").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-contact-log-group"))),
+    ["theirIndustry", "theirOffering", "theirSeeking", "myOffering", "myTopics"], "empty 自分 · 探していること is hidden");
+  assert.equal(await modal.locator("[data-contact-log-group='myTopics'] button").count(), 5, "4 chips + 「+2」");
+  await modal.getByRole("button", { name: "+2" }).click();
+  await modal.getByRole("button", { name: "製造 DX" }).waitFor();
+  const save = page.locator("[data-contact-log-save]");
+  assert.equal(await save.isDisabled(), true, "nothing picked, nothing written");
+  await modal.getByRole("button", { name: "電話" }).click();
+  await modal.locator("[data-contact-log-group='theirOffering']").getByRole("button", { name: "資本政策の助言" }).click();
+  await modal.locator("[data-contact-log-group='myOffering']").getByRole("button", { name: "中日市場進入" }).click();
+  await modal.getByRole("textbox", { name: "補足" }).fill("来月工場の担当者を紹介してくれる");
+  assert.equal(await modal.locator("[data-contact-log-preview]").innerText(), "記録される内容：電話 · 話したこと：資本政策の助言、中日市場進入　来月工場の担当者を紹介してくれる");
+  if (process.env.ORBIT_2026_SCREENSHOTS) await page.screenshot({ path: `${process.env.ORBIT_2026_SCREENSHOTS}/contact-log-modal.png` });
+  await page.evaluate(([memo, cardNote]) => {
+    const fixture = (window as any).shellFixture;
+    const detail = fixture.handlers.find((handler: any) => handler.method === "GET" && handler.url === "^/api/contacts/c-ito$");
+    detail.reply = { status: 200, body: { success: true, data: { ...detail.reply.body.data, contact: { ...detail.reply.body.data.contact, notes: [...detail.reply.body.data.contact.notes, cardNote, memo] } } } };
+  }, [MEMO, CARD]);
+  await save.click();
+  await page.waitForFunction(() => !document.querySelector("[data-contact-log]"));
+  const patch = (await fetches(page)).find((call) => call.method === "PATCH" && call.url === "/api/contacts/c-ito");
+  assert.deepEqual(patch?.body, { note: { body: "話したこと：資本政策の助言、中日市場進入\n来月工場の担当者を紹介してくれる", authorLabel: "我", occurredAt: patch?.body.note.occurredAt, kind: "memo", channel: "call", topics: ["資本政策の助言", "中日市場進入"] } });
+  assert.match(patch?.body.note.occurredAt, /^\d{4}-\d{2}-\d{2}$/);
+  const first = drawer.locator("[data-network-interactions] [data-timeline-origin]").first();
+  await first.getByText("来月工場の担当者を紹介してくれる", { exact: true }).waitFor();
+  assert.equal(await first.getAttribute("data-timeline-origin"), "user");
+  assert.match(await first.innerText(), /^11\/16\s*電話話したこと：資本政策の助言、中日市場進入/u);
+  await drawer.locator("[data-timeline-origin='card']").getByText("名刺読み取り", { exact: true }).waitFor();
+  if (process.env.ORBIT_2026_SCREENSHOTS) await drawer.locator("[data-network-interactions]").screenshot({ path: `${process.env.ORBIT_2026_SCREENSHOTS}/contact-log-timeline.png` });
+});
+
+test("「やりとりを記録」: both profiles empty → hint with the profile link and 話した内容 is required; イベントで lists that day's events", async (t) => {
+  const today = new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10);
+  const page = await screen(t, { handlers: [
+    { method: "GET", url: "^/api/profile$", reply: ok({ state: "success", profile: { displayName: "Me", offering: [], seeking: [], topics: [] } }) },
+    { method: "GET", url: "^/api/contacts/memo-event-options$", reply: ok({ options: [{ eventId: "ev1", title: "中日創業交流会", startsAt: `${today}T01:00:00.000Z` }, { eventId: "ev0", title: "昔の会", startsAt: "2026-01-01T01:00:00.000Z" }] }) },
+    { method: "GET", url: "^/api/contacts/c-mori$", reply: ok({ state: "success", contact: { id: "c-mori", displayName: "森 恭平", organization: "東雲キャピタル", role: "プリンシパル", status: "active", tags: [], publicProfile: { offering: [], seeking: [] }, notes: [], lastInteraction: null, updatedAt: "2026-10-06T00:00:00.000Z", fieldHistory: [] } }) },
+    ...HANDLERS,
+  ] });
+  await page.locator("[data-network-row='c-mori']").click();
+  const drawer = page.locator("[data-contact-drawer='c-mori']");
+  await drawer.getByText("まだやりとりの記録はありません", { exact: true }).waitFor();
+  await drawer.getByRole("button", { name: "＋ やりとりを記録" }).click();
+  const modal = page.locator("[data-contact-log]");
+  await modal.locator("[data-contact-log-empty]").waitFor();
+  assert.equal(await modal.getByRole("link", { name: "プロフィールを整える ›" }).getAttribute("href"), "/app/profile?edit=tags");
+  assert.equal(await page.locator("[data-contact-log-save]").isDisabled(), true);
+  await modal.getByRole("button", { name: "イベントで" }).click();
+  await modal.locator("[data-contact-log-events]").getByRole("button", { name: "中日創業交流会" }).click();
+  assert.equal(await modal.getByRole("button", { name: "昔の会" }).count(), 0);
+  await modal.getByRole("textbox", { name: "話した内容" }).fill("資金調達の話");
+  assert.equal(await page.locator("[data-contact-log-save]").isDisabled(), false);
+  if (process.env.ORBIT_2026_SCREENSHOTS) await page.screenshot({ path: `${process.env.ORBIT_2026_SCREENSHOTS}/contact-log-empty-event.png` });
+});
+
 test("an invite-linked person: 本人入力, 同期停止 on the field I changed, connected via, 共有する項目; つながりを解除 (480 modal, keep on by default)", async (t) => {
   const page = await screen(t);
   await page.locator("[data-network-row='c-matsui']").click();

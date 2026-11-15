@@ -246,7 +246,22 @@ export interface ContactDetailNote {
   productionAuditLogWriteExecuted: false;
   privacy?: "private" | "relationship_shared";
   sourceLabel?: string;
+  /**
+   * 「记一笔交流」：这条记录从哪来——`user` 用户自己记的（memo 与旧备注）、`card` 名片识别原文／名片备注、
+   * `system` 系统生成的说明与其他来源的依据。只读字段；旧客户端忽略即可。
+   */
+  origin?: ContactDetailNoteOrigin;
+  /** 用户记的 memo：所选东京日期 `YYYY-MM-DD`（时间线按它排序）。只有 memo 才有。 */
+  occurredAt?: string;
+  /** 「记一笔交流」的方式；旧 memo 没有。 */
+  channel?: ContactDetailMemoChannel;
+  /** 「记一笔交流」点中的 chip 原文；没有点时不出现。 */
+  topics?: readonly string[];
 }
+
+export type ContactDetailNoteOrigin = "user" | "card" | "system";
+/** 面谈／电话／活动上遇到／其他。 */
+export type ContactDetailMemoChannel = "meeting" | "call" | "event" | "other";
 
 // PublicProfile 是可展示的公开关系资料摘要。
 // 它和私密关系上下文分开建模，方便 UI 明确哪些内容来自公开介绍。
@@ -324,6 +339,8 @@ export interface ContactDetail {
   status: ContactDetailStatusOption;
   notes: readonly ContactDetailNote[];
   lastInteraction: ContactDetailLastInteractionMetadata;
+  /** 系统按联系人与关系记录生成的背景说明；用户记了交流后 lastInteraction 会被替换，这条仍在时间线里保留（origin = system）。 */
+  generatedInteraction?: { occurredAt: string; summary: string };
   nextAction: string;
   updatedAt: string;
   tagWriteExecuted: boolean;
@@ -393,6 +410,10 @@ export interface ContactDetailNoteInput {
   eventId?: string | null;
   /** W0046：`"memo"` = 「写 memo」弹窗写入；不传 = 旧写法（App 与旧编辑器）。 */
   kind?: "memo" | null;
+  /** 「记一笔交流」：方式（仅 kind = "memo"）。 */
+  channel?: ContactDetailMemoChannel | null;
+  /** 「记一笔交流」：点中的 chip 原文，至多 12 个（仅 kind = "memo"）。 */
+  topics?: readonly string[] | null;
 }
 
 export interface ContactDetailLastInteractionInput {

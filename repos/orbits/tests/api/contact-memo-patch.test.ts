@@ -79,7 +79,7 @@ function harness(t: { mock: { method: (...args: never[]) => unknown } }, options
 
 const memo = (body: string, occurredAt: string, eventId?: string) => ({ note: { body, occurredAt, ...(eventId ? { eventId } : {}), kind: "memo" } });
 
-test("memo PATCH 只写 contact_detail_states，新记录带 occurredAt／eventId／kind；详情 payload 的 notes 不带这些字段", async (t) => {
+test("memo PATCH 只写 contact_detail_states，新记录带 occurredAt／eventId／kind；详情 payload 的 notes 只多 occurredAt 与 origin", async (t) => {
   const { jobs, patch, stored, writes } = harness(t);
   const response = await patch(memo("聊了 B 轮融资", "2026-10-02", "event:e1"));
   assert.equal(response.status, 200);
@@ -99,7 +99,10 @@ test("memo PATCH 只写 contact_detail_states，新记录带 occurredAt／eventI
   const body = await response.json() as { data: { contact: { notes: Record<string, unknown>[] } } };
   const publicNote = body.data.contact.notes.find((item) => item.body === "聊了 B 轮融资");
   assert.ok(publicNote);
-  for (const key of ["occurredAt", "eventId", "kind"]) assert.equal(Object.hasOwn(publicNote, key), false, key);
+  // 「记一笔交流」：日期与来源进 payload（App 解析忽略多余字段）；eventId／kind 仍只在存储里。
+  assert.equal(publicNote.occurredAt, "2026-10-02");
+  assert.equal(publicNote.origin, "user");
+  for (const key of ["eventId", "kind", "channel", "topics"]) assert.equal(Object.hasOwn(publicNote, key), false, key);
 });
 
 test("同正文不同日期是两条，同正文同日期去重；之后只改标签的 PATCH 不丢 memo 字段", async (t) => {
@@ -196,7 +199,7 @@ test("encounters 投影写同一行后 memo 字段仍在（Postgres 投影仓库
   assert.deepEqual(kept, memoNote);
 });
 
-test("contactDetailPayloadFromGraph 输出的 notes 与改前逐字段相同（App 同步）", () => {
+test("contactDetailPayloadFromGraph：旧备注只多 origin；memo 只多 occurredAt／channel／topics（App 同步容忍多余字段）", () => {
   const contact = contactPayload as unknown as ContactDTO;
   const legacyNote = { noteId: "note:live-contact-detail-update:m1", body: "memo", authorLabel: "我", createdAt: AT, privacy: "private" as const, sourceLabel: "联系人备注" };
   const state = (notes: LiveContactDetailState["notes"]): LiveContactDetailState => ({ actorId: "a", contactId: "own", notes, status: "active", tags: [], updatedAt: AT });
@@ -204,8 +207,12 @@ test("contactDetailPayloadFromGraph 输出的 notes 与改前逐字段相同（A
     collectedAt: NOW, contact, connections: [], evidence: [], persistedState, provider: { source: "s", sourceLabel: "S" },
   })!.contact!.notes;
   const before = read(state([legacyNote]));
-  const after = read(state([{ ...legacyNote, occurredAt: "2026-09-20", eventId: "event:e1", kind: "memo" }]));
-  assert.deepEqual(after, before);
+  assert.deepEqual(before.map((note) => note.origin), ["system", "user"]);
+  const after = read(state([{ ...legacyNote, occurredAt: "2026-09-20", eventId: "event:e1", kind: "memo", channel: "call", topics: ["渠道"] }]));
+  assert.deepEqual(after, before.map((note) => note.noteId === legacyNote.noteId ? { ...note, occurredAt: "2026-09-20", channel: "call", topics: ["渠道"] } : note));
+  // 非 memo 的存储行即使带了这些字段也不外露。
+  const stray = read(state([{ ...legacyNote, occurredAt: "2026-09-20", channel: "call" }]));
+  assert.deepEqual(stray, before);
 });
 
 test("同正文不同日期：保存服务返回各自的 savedNoteId，两个提取作业的 noteId 不同", async (t) => {

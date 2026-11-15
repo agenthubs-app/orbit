@@ -10,6 +10,7 @@ import {
   contactDetailTagStatusFailureContext,
   contactDetailTagStatusFailureToAppError,
   type ContactDetailLastInteractionInput,
+  type ContactDetailMemoChannel,
   type ContactDetailNoteInput,
   type ContactDetailTagStatusResult,
   type ContactDetailUpdateInput,
@@ -84,6 +85,25 @@ function readStringList(value: unknown): readonly string[] | undefined {
 
 const MEMO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 const MEMO_EVENT_ID_MAX = 256;
+/** 「记一笔交流」：方式四选一；聊到的 chip 原文去空去重后至多 12 个、每个至多 80 字。 */
+const MEMO_CHANNELS: ReadonlySet<string> = new Set<ContactDetailMemoChannel>(["meeting", "call", "event", "other"]);
+const MEMO_TOPICS_MAX = 12;
+const MEMO_TOPIC_CHARS_MAX = 80;
+
+/** memo 的 topics：缺省 → undefined；形状不对、超过个数或长度 → "invalid"；去空去重后为空 → undefined。 */
+export function readMemoTopics(value: unknown): readonly string[] | undefined | "invalid" {
+  if (value === undefined || value === null) return undefined;
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) return "invalid";
+  const topics: string[] = [];
+  for (const item of value as string[]) {
+    const topic = item.trim();
+    if (!topic || topics.includes(topic)) continue;
+    if (Array.from(topic).length > MEMO_TOPIC_CHARS_MAX) return "invalid";
+    topics.push(topic);
+  }
+  if (topics.length > MEMO_TOPICS_MAX) return "invalid";
+  return topics.length ? topics : undefined;
+}
 
 function readNote(value: unknown): ContactDetailNoteInput | string | undefined | "invalid" {
   // note 既可传纯文本，也可传带 authorLabel 的结构化对象（App 与旧编辑器的写法，照常可用）。
@@ -100,16 +120,24 @@ function readNote(value: unknown): ContactDetailNoteInput | string | undefined |
     authorLabel:
       typeof value.authorLabel === "string" ? value.authorLabel : undefined,
   };
-  if (value.kind === undefined || value.kind === null) return base;
+  const hasChannel = value.channel !== undefined && value.channel !== null;
+  const hasTopics = value.topics !== undefined && value.topics !== null;
+  if (value.kind === undefined || value.kind === null) return hasChannel || hasTopics ? "invalid" : base;
   // W0046「写 memo」：kind = "memo"，日期必填（东京日期 YYYY-MM-DD），关联活动可选；形状不对整条 PATCH 拒绝。
   if (value.kind !== "memo") return "invalid";
   if (typeof value.occurredAt !== "string" || !MEMO_DAY.test(value.occurredAt) || parseStrictTokyoInstant(value.occurredAt) === null) return "invalid";
   if (value.eventId !== undefined && value.eventId !== null && (typeof value.eventId !== "string" || value.eventId.length > MEMO_EVENT_ID_MAX)) return "invalid";
+  // 「记一笔交流」：channel／topics 可选；传了但不合法整条 PATCH 拒绝，不传与改前相同。
+  if (hasChannel && (typeof value.channel !== "string" || !MEMO_CHANNELS.has(value.channel))) return "invalid";
+  const topics = readMemoTopics(value.topics);
+  if (topics === "invalid") return "invalid";
   return {
     ...base,
     kind: "memo",
     occurredAt: value.occurredAt,
     ...(typeof value.eventId === "string" && value.eventId.trim() ? { eventId: value.eventId.trim() } : {}),
+    ...(hasChannel ? { channel: value.channel as ContactDetailMemoChannel } : {}),
+    ...(topics ? { topics } : {}),
   };
 }
 

@@ -2,7 +2,9 @@
 // 头卡（名片式）· 人物タイプの確認カード（fit candidate）· なぜこの人か（value-lines，联网增强）· 次の一手 · 力になれること /
 // 求めていること · やりとり。招待でつながった人：本人入力 chip、本人入力的项目、同期停止的项目、⋯ 里的共有 / 解除（R15 sheet）。
 // 以前の値（fieldHistory）。顶栏 ⋯：編集 / 共有する項目 / つながりを解除 / 削除。日历键打开新建个人日程（带上这位联系人）。
-// 往来：联系人记录里的备忘 + 笔记里关联 / @ 到这个人的笔记（本机笔记镜像），新的在上，点开进笔记。
+// 往来：联系人记录里的备忘 + 笔记里关联 / @ 到这个人的笔记（本机笔记镜像），按交流日期新的在上，点开进笔记。
+// 「＋ 记一笔交流」（docs/designs/contact-log-2026-11 ⑤）：底部弹层 ContactLogSheet；自己记的前面是方式标签（lav），
+// 名片原文 / 系统说明前面是灰色来源标签。
 // 本机优先：详情读同步镜像，离线照常显示；value-lines / fit / 招待连接是联网增强，失败或「尚未実装」时整块隐藏（G18）。
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -16,7 +18,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { contactFollowupTemplate, registerAiTemplatePrefill } from "../../data/ai-template-prefill";
 import { AppScreen } from "../../components/AppScreen";
-import { ActionSheet, Avatar, Button, Chip, ConfirmDialog, Icon, IconButton, OfflineBar, RetryCard, Skeleton, UiPressable, UiText, useToast } from "../../components/ui";
+import { ActionSheet, Avatar, Button, Chip, ConfirmDialog, Icon, IconButton, InlineChip, OfflineBar, RetryCard, Skeleton, UiPressable, UiText, useToast } from "../../components/ui";
 import Svg, { Defs, Rect, Stop } from "../../components/ui/svg";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -32,6 +34,8 @@ import { ContactRelationshipInitializer, useContactInitialization } from "../con
 import { useNotesListSource } from "../notes/notes-source";
 import { NETWORK_CHIP_COPY } from "./NetworkScreen";
 import { detailContactFrom, detailHeaderChips, fitCandidate, localizedCardNotes, previousValues, recentSelfUpdates, tokyoMonthDay, type DetailContact, type DetailFieldHistoryEntry } from "./contact-detail-model";
+import { ContactLogSheet } from "./ContactLogSheet";
+import { monthDayOf, sortTimeline, timelineDay, type ContactLogPatch } from "./contact-log-model";
 import { useDeleteContact } from "./useDeleteContact";
 import { useNetworkMerge } from "./useNetworkMerge";
 import { useNetworkDesignContacts } from "./network-design-fixture";
@@ -84,6 +88,9 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const [unlinkOpen, setUnlinkOpen] = useState(fixture.enabled && params.design === "unlink");
   useEffect(() => { if (fixture.enabled) setUnlinkOpen(params.design === "unlink"); }, [fixture.enabled, params.design]);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
+  // 刚保存、同步镜像还没带回来的交流（同步回来后按正文去重，不会显示两次）。
+  const [justLogged, setJustLogged] = useState<DetailContact["notes"]>([]);
   const [openHistory, setOpenHistory] = useState<string | null>(null);
   const [deciding, setDeciding] = useState(false);
   const [updateDismissed, setUpdateDismissed] = useState(false);
@@ -177,9 +184,11 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   // placeholder ("Background generated from…", dated today) — not an interaction, so it is left out; card notes speak the UI language.
   const hasEvidence = contact.notes.some((note) => note.id.startsWith("note:relationship-evidence:"));
   const meetingLabels = { intro: t("network.metReferral"), formerColleague: t("add.completion.optionFormerColleague"), forgot: t("add.completion.optionUnknown") };
-  const linkedNotes = mergeTimelineNotes(contact.notes.filter((note) => !note.id.startsWith("note:live-contact-detail:"))
-    .map((note) => (note.id.startsWith("note:business-card-notes:") ? { ...note, body: localizedCardNotes(note.body, t("network.edit.met"), meetingLabels) } : note)), linkedSource.notes ?? []);
+  const recordNotes = contact.notes.filter((note) => !note.id.startsWith("note:live-contact-detail:"))
+    .map((note) => (note.id.startsWith("note:business-card-notes:") ? { ...note, body: localizedCardNotes(note.body, t("network.edit.met"), meetingLabels) } : note));
+  const linkedNotes = mergeTimelineNotes([...recordNotes, ...justLogged.filter((pending) => !recordNotes.some((note) => note.origin === "user" && note.body === pending.body))], linkedSource.notes ?? []);
   const lastInteraction = hasEvidence ? contact.lastInteraction : null;
+  const timeline = withSystemEntries(linkedNotes, lastInteraction, hasEvidence ? contact.generatedInteraction : null);
   const openDraft = () => {
     if (!auth.actorId || !server.ready) { toast.error(t("network.detail.draftSignIn")); return; }
     const prefillIntent = registerAiTemplatePrefill({ actorId: auth.actorId, baseUrl: server.baseUrl, ...contactFollowupTemplate({ channel: "email", contactId, contactName: contact.displayName, organization: contact.organization, rationale: valueLine?.relation ?? "", recommendedAction: nextStep }) });
@@ -192,6 +201,21 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
     { key: "delete", label: t("network.detail.delete"), destructive: true },
   ];
   const history = (field: string) => previousValues(contact.fieldHistory, field);
+  const logOffline = fixture.enabled ? fixture.offline : local.available ? local.freshness.offline : false;
+  const logTarget = { id: contactId, displayName: contact.displayName, offering: contact.offering, seeking: contact.seeking,
+    industry: [contact.primaryIndustryLabel, contact.secondaryIndustryLabel].filter(Boolean).join(" · ") || contact.profileIndustry || "" };
+  const logged = (patch: ContactLogPatch) => {
+    setLogOpen(false);
+    const at = new Date(now()).toISOString();
+    setJustLogged((current) => [{ id: `pending-log:${at}`, body: patch.note.body, kind: "memo", createdAt: at, title: "", origin: "user", occurredAt: patch.note.occurredAt, channel: patch.note.channel, ...(patch.note.topics ? { topics: patch.note.topics } : {}) }, ...current]);
+    toast.success(t("network.log.saved"));
+    if (local.available) local.refresh(); else if (!fixture.enabled) remote.refresh();
+  };
+  const logButton = (
+    <UiPressable accessibilityRole="button" accessibilityLabel={t("network.log.add")} onPress={() => setLogOpen(true)} testID="network-log-open">
+      <UiText style={styles.more}>{t("network.log.add")}</UiText>
+    </UiPressable>
+  );
 
   return (
     <AppScreen inset="kit" title="" backAccessibilityLabel={t("network.detail.back")}
@@ -337,30 +361,31 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
         <View style={[styles.card, styles.gapTop]} testID="network-interactions">
           <View style={styles.between}>
             <UiText style={styles.cardH}>{t("network.detail.interactions")}</UiText>
-            <UiPressable accessibilityRole="button" accessibilityLabel={t("network.detail.addMemo")} onPress={() => router.push(`/notes/new?contactId=${encodeURIComponent(contactId)}&contactName=${encodeURIComponent(contact.displayName)}` as Href)}>
-              <UiText style={styles.more}>{t("network.detail.addMemo")}</UiText>
-            </UiPressable>
+            {timeline.length ? logButton : null}
           </View>
-          {linkedNotes.length || lastInteraction ? (
+          {timeline.length ? (
             <>
-              {lastInteraction && !linkedNotes.some((note) => note.body === lastInteraction.summary) ? (
-                <View style={styles.tl}><UiText style={styles.tlTime}>{tokyoMonthDay(lastInteraction.occurredAt)}</UiText><UiText style={[styles.body, styles.grow]}>{lastInteraction.summary}</UiText></View>
-              ) : null}
-              {linkedNotes.slice(0, 8).map((note) => {
+              {timeline.slice(0, 8).map((note) => {
                 const row = <>
-                  <UiText style={styles.tlTime}>{tokyoMonthDay(note.createdAt)}</UiText>
-                  <View style={styles.grow}>{note.title ? <UiText style={styles.cardTitle}>{note.title}</UiText> : null}<UiText numberOfLines={note.linked ? 3 : undefined} style={note.title ? styles.lbl : styles.body}>{note.body}</UiText></View>
+                  <UiText style={styles.tlTime}>{note.occurredAt ? monthDayOf(timelineDay(note)) : tokyoMonthDay(note.createdAt)}</UiText>
+                  <View style={styles.grow}>{note.title ? <UiText style={styles.cardTitle}>{note.title}</UiText> : null}<TimelineBody note={note} /></View>
                   {note.linked ? <Icon name="right" size={16} color={colors.ink3} /> : null}
                 </>;
                 return note.linked
                   ? <UiPressable key={note.id} accessibilityRole="button" accessibilityLabel={note.title || note.body.slice(0, 40)} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}` as Href)} style={styles.tl} testID={`network-note-${note.id}`}>{row}</UiPressable>
-                  : <View key={note.id} style={styles.tl}>{row}</View>;
+                  : <View key={note.id} style={styles.tl} testID={`network-timeline-${note.origin}`}>{row}</View>;
               })}
             </>
-          ) : <UiText style={styles.lbl}>{t("network.detail.noInteractions")}</UiText>}
+          ) : (
+            <>
+              <UiText style={styles.lbl}>{t("network.detail.noInteractions")}</UiText>
+              <View style={styles.emptyAdd}><Button variant="secondary" size="sm" label={t("network.log.add")} onPress={() => setLogOpen(true)} /></View>
+            </>
+          )}
         </View>
       </View>
 
+      <ContactLogSheet visible={logOpen} contact={logTarget} offline={logOffline} onClose={() => setLogOpen(false)} onSaved={logged} />
       <ActionSheet visible={menuOpen} title={contact.displayName} options={menuOptions} onClose={() => setMenuOpen(false)}
         onSelect={(key) => { setMenuOpen(false); if (key === "edit") router.push(`/contacts/edit/${encodeURIComponent(contactId)}` as Href); else if (key === "share") setShareOpen(true); else if (key === "unlink") setUnlinkOpen(true); else if (key === "delete") setDeleteOpen(true); }} />
       <ConfirmDialog visible={deleteOpen} destructive title={t("network.delete.title", { name: contact.displayName })}
@@ -379,7 +404,10 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
 }
 
 type TimelineNote = DetailContact["notes"][number] & { linked: boolean };
-/** 往来：联系人记录里的备忘 + 笔记镜像里关联到这个人的笔记（同一 id 以笔记为准、可点开），新的在上。 */
+/**
+ * 往来：联系人记录里的备忘 + 笔记镜像里关联到这个人的笔记（同一 id 以笔记为准、可点开）。
+ * 按交流日期倒序（memo 用所选东京日期，其余用 createdAt 的东京日），同一天按记下的时间倒序。
+ */
 export function mergeTimelineNotes(recordNotes: DetailContact["notes"], linked: readonly { id: string; title?: string | null; body: string; createdAt: string; noteKind?: string | null; sample?: true }[]): TimelineNote[] {
   const byId = new Map<string, TimelineNote>();
   for (const note of recordNotes) byId.set(note.id, { ...note, linked: false });
@@ -387,9 +415,51 @@ export function mergeTimelineNotes(recordNotes: DetailContact["notes"], linked: 
     if (note.sample) continue;
     const body = note.body.trim(), title = note.title?.trim() ?? "";
     // A note without its own title is named by its first line: show the body once, not the line twice.
-    byId.set(note.id, { id: note.id, body, kind: note.noteKind ?? "", createdAt: note.createdAt, title: title && !body.startsWith(title.replace(/…$/u, "")) ? title : "", linked: true });
+    byId.set(note.id, { id: note.id, body, kind: note.noteKind ?? "", createdAt: note.createdAt, title: title && !body.startsWith(title.replace(/…$/u, "")) ? title : "", origin: "user", linked: true });
   }
-  return [...byId.values()].sort((left, right) => (left.createdAt < right.createdAt ? 1 : left.createdAt > right.createdAt ? -1 : 0));
+  return sortTimeline([...byId.values()]);
+}
+
+/**
+ * 往来 = 记录 + 系统条目，按交流日期排序（同 Web timelineWithSystemEntries）：
+ * 「上次互动」摘要与某条记录是同一件事时不重复；系统背景说明一直保留。
+ */
+export function withSystemEntries(notes: readonly TimelineNote[], lastInteraction: { occurredAt: string; summary: string } | null, generatedInteraction: { occurredAt: string; summary: string } | null): TimelineNote[] {
+  const entries: TimelineNote[] = [...notes];
+  const candidates: [string, { occurredAt: string; summary: string } | null][] = [["system:last-interaction", lastInteraction], ["system:generated", generatedInteraction]];
+  for (const [id, item] of candidates) {
+    if (!item || !item.summary.trim() || entries.some((entry) => sameLine(entry.body, item.summary))) continue;
+    entries.push({ id, body: item.summary, title: "", kind: "", createdAt: item.occurredAt, origin: "system", linked: false });
+  }
+  return sortTimeline(entries);
+}
+
+/** 「上次互动」的摘要是某条记录正文（或其第一行）时不再单列一行。 */
+function sameLine(body: string, summary: string): boolean {
+  const first = body.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? "";
+  return body === summary || (summary.trim() !== "" && first.startsWith(summary.trim()));
+}
+
+const WAY_KEY = { meeting: "network.log.channelMeeting", call: "network.log.channelCall", event: "network.log.channelEvent", other: "network.log.channelOther" } as const;
+
+/** 往来一行的正文：自己记的交流前面是方式标签（lav，补充换行接在下面），名片原文 / 系统说明前面是灰色来源标签。 */
+function TimelineBody({ note }: { note: TimelineNote }) {
+  const { styles } = useStyles();
+  const { t } = useOrbitLocale();
+  const textStyle = note.title ? styles.lbl : styles.body;
+  const lines = note.linked ? 3 : undefined;
+  if (note.origin !== "user") {
+    return <UiText style={[textStyle, styles.dim]}><InlineChip label={t(note.origin === "card" ? "network.log.sourceCard" : "network.log.sourceSystem")} />{` ${note.body}`}</UiText>;
+  }
+  if (!note.channel) return <UiText numberOfLines={lines} style={textStyle}>{note.body}</UiText>;
+  const [head = "", ...rest] = note.body.split(/\r?\n/);
+  const extra = rest.join("\n").trim();
+  return (
+    <>
+      <UiText numberOfLines={lines} style={textStyle}><InlineChip label={t(WAY_KEY[note.channel])} tone="lav" />{` ${extra ? head : note.body}`}</UiText>
+      {extra ? <UiText style={[styles.lbl, styles.dim]}>{extra}</UiText> : null}
+    </>
+  );
 }
 
 function evidenceLabel(label: string, t: ReturnType<typeof useOrbitLocale>["t"]): string {
@@ -472,4 +542,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   prev: { paddingVertical: 4, paddingLeft: 8 },
   tl: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 8 },
   tlTime: { color: colors.ink3, fontSize: 14, width: 38 },
+  dim: { color: colors.ink2 },
+  emptyAdd: { alignSelf: "flex-start", marginTop: 12 },
 }));

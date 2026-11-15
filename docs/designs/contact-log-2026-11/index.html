@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>记一笔交流 · 设计稿</title>
+<style>
+:root{
+  --bg:#F7F5F7;--surface:#FFFFFF;--surface-2:#F2EFF3;--ink:#1E1A24;--ink-2:#5E5866;--ink-3:#85808C;
+  --lav:#ECE6F7;--lav-t:#6E5C9A;--teal:#DCF0EA;--teal-t:#387361;--apr:#F7ECDD;--apr-t:#8B602E;
+  --r-card:22px;--r-md:14px;--line:#E6E2E8;
+  font-family:-apple-system,"PingFang SC","Hiragino Sans","Noto Sans JP",sans-serif;color:var(--ink);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#E9E6EB;padding:32px 24px 80px}
+h1{font-size:20px;margin:0 0 6px}
+.lead{color:var(--ink-2);font-size:13px;margin:0 0 28px;max-width:900px;line-height:1.7}
+.board{margin:0 0 48px}
+.board>h2{font-size:15px;margin:0 0 4px}
+.board>.note{font-size:12px;color:var(--ink-2);margin:0 0 14px;line-height:1.7;max-width:900px}
+.boards{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}
+
+/* drawer */
+.drawer{width:560px;background:var(--bg);border-radius:28px;padding:20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 40px rgba(30,26,36,.12)}
+.card{background:var(--surface);border-radius:var(--r-card);padding:20px}
+.cardH{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.cardH h3{margin:0;font-size:14.5px;font-weight:800}
+.btn{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 16px;border:0;border-radius:999px;background:var(--surface-2);color:var(--ink);font:inherit;font-size:13px;font-weight:700;white-space:nowrap}
+.btn.primary{background:var(--ink);color:var(--bg)}
+.btn.sm{height:32px;padding:0 12px;font-size:12px}
+.btn[disabled]{opacity:.5}
+.lbl{font-size:11.5px;color:var(--ink-3);font-weight:500}
+.tl{display:flex;gap:12px;padding:8px 0;font-size:14px;line-height:1.6}
+.tl time{width:40px;flex:none;font-size:11.5px;color:var(--ink-3);padding-top:2px}
+.tl .src{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--surface-2);color:var(--ink-3);margin-right:6px;vertical-align:1px}
+.tl .way{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--lav);color:var(--lav-t);margin-right:6px;vertical-align:1px}
+.tl .dim{color:var(--ink-2)}
+.hl{outline:2px dashed #C07A3A;outline-offset:4px;border-radius:999px}
+.hlBox{outline:2px dashed #C07A3A;outline-offset:3px;border-radius:12px}
+
+/* modal */
+.scrim{width:560px;background:rgba(30,26,36,.28);border-radius:28px;padding:28px 20px;display:flex;justify-content:center}
+.modal{width:100%;background:var(--surface);border-radius:24px;padding:22px 22px 18px;box-shadow:0 12px 40px rgba(30,26,36,.18)}
+.mH{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.mH b{font-size:16px;font-weight:800}
+.x{width:32px;height:32px;border-radius:999px;background:var(--surface-2);display:grid;place-items:center;color:var(--ink-2);font-size:16px}
+.fld{margin-bottom:16px}
+.fld>.lbl{display:block;margin-bottom:8px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg span{padding:7px 14px;border-radius:999px;background:var(--surface-2);font-size:12px;font-weight:700;color:var(--ink-2)}
+.seg span.on{background:var(--ink);color:var(--bg)}
+.date{height:44px;border-radius:var(--r-md);background:var(--surface-2);display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:13px}
+.date em{font-style:normal;color:var(--ink-3);font-size:12px}
+.grp{margin-bottom:10px}
+.grp .gl{font-size:11px;color:var(--ink-3);margin-bottom:6px;display:flex;gap:6px;align-items:center}
+.who{font-size:11px;font-weight:800;color:var(--ink-2)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:6px 11px;border-radius:999px;background:var(--surface-2);font-size:12px;font-weight:600;color:var(--ink-2);max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip.on{background:var(--ink);color:var(--bg)}
+.chip.more{background:transparent;color:var(--ink-3);padding-left:4px}
+.side{display:grid;grid-template-columns:1fr;gap:12px;padding:12px;border-radius:16px;background:#FAF9FB}
+.ta{min-height:76px;border-radius:var(--r-md);background:var(--surface-2);padding:10px 12px;font-size:13px;line-height:1.6;color:var(--ink-3)}
+.ta.filled{color:var(--ink)}
+.preview{font-size:12px;color:var(--ink-2);background:var(--surface-2);border-radius:12px;padding:8px 12px;margin-bottom:14px;line-height:1.6}
+.mF{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.empty{font-size:12.5px;color:var(--ink-2);background:#FAF9FB;border-radius:12px;padding:12px;line-height:1.6}
+.empty a{color:var(--ink);font-weight:700;text-decoration:none}
+
+/* phone */
+.phone{width:390px;height:844px;background:var(--bg);border-radius:44px;position:relative;overflow:hidden;box-shadow:0 10px 40px rgba(30,26,36,.14);border:10px solid #111}
+.phone .dim{position:absolute;inset:0;background:rgba(30,26,36,.28)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:26px 26px 0 0;padding:10px 18px 30px;max-height:92%;overflow:hidden}
+.grab{width:36px;height:5px;border-radius:9px;background:#D9D4DC;margin:0 auto 12px}
+.legend{font-size:12px;color:var(--ink-2);background:var(--surface);border-radius:14px;padding:14px 16px;line-height:1.8;max-width:420px}
+.legend b{color:var(--ink)}
+</style>
+</head>
+<body>
+<h1>记一笔交流 · 设计稿（2026-11-16）</h1>
+<p class="lead">人脉抽屉里「往来」的入口改名并改成抽屉内弹层，不再跳到不存在的 /app/notes/new。方式 4 选 1、日期默认今天、内容可以只点 chip。chip 从<b>对方资料</b>（行业 / 能提供 / 在找）和<b>我的资料</b>（能提供 / 在找 / 想聊的话题）里取；资料里没有的分组整组不显示。名片原文和系统说明保留在时间线里，只加来源小标签。橙色虚线框 = 本次新增或改动的位置。</p>
+
+<!-- 1 -->
+<section class="board">
+  <h2>① Web 抽屉 · 「往来」卡片（入口 + 时间线）</h2>
+  <p class="note">右上角「添加备忘」文字链接改成小按钮「＋ 记一笔交流」。新记的交流前面带「方式」标签，日期按你选的那天排序。名片原文、系统生成的说明照旧保留，前面加灰色来源标签以便区分。</p>
+  <div class="boards">
+    <div class="drawer">
+      <div class="card">
+        <div class="cardH"><h3>往来</h3><span class="btn sm hl">＋ 记一笔交流</span></div>
+        <div class="tl hlBox"><time>11/16</time><div><span class="way">面谈</span>聊到：质量管理体系相关资源、Orbit 的日本市场落地<div class="dim">他说下个月可以介绍工厂那边的负责人。</div></div></div>
+        <div class="tl"><time>10/30</time><div><span class="src">系统</span><span class="dim">联系人与关系记录生成的背景信息。</span></div></div>
+        <div class="tl"><time>10/30</time><div><span class="src">名片识别</span><span class="dim">正面 · 截屏2026-09-27 00.43.03.png 原文姓名: 安川 高宏 传真: 03-6452-6692 网站: https://section-8.jp 资质: IS 749001</span></div></div>
+      </div>
+    </div>
+    <div class="legend"><b>不变</b>：「为什么是安川 高宏」里的 起草 / 提议时间 两个按钮原样不动。<br><b>排序</b>：按交流日期倒序；同一天按记下的时间倒序。<br><b>空状态</b>：「还没有往来记录」下方同样有「＋ 记一笔交流」。</div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="board">
+  <h2>② Web 弹层 · 刚打开（默认态）</h2>
+  <p class="note">方式默认「面谈」，日期默认今天。chip 按「对方 / 我」两块分组，每组最多显示 4 个，多的收进「+N」。没点 chip、没写字时「保存」不可点。</p>
+  <div class="boards">
+    <div class="scrim"><div class="modal">
+      <div class="mH"><b>记一笔交流 · 安川 高宏</b><span class="x">✕</span></div>
+      <div class="fld"><span class="lbl">方式</span><div class="seg"><span class="on">面谈</span><span>电话</span><span>活动上遇到</span><span>其他</span></div></div>
+      <div class="fld"><span class="lbl">日期</span><div class="date">2026-11-16（今天）<em>▾</em></div></div>
+      <div class="fld"><span class="lbl">聊到了（可多选）</span>
+        <div class="side">
+          <div>
+            <div class="grp"><div class="gl"><span class="who">对方</span>行业</div><div class="chips"><span class="chip">制造业 · 质量认证</span></div></div>
+            <div class="grp"><div class="gl"><span class="who">对方</span>能提供</div><div class="chips"><span class="chip">企业决策与内部落地推动</span><span class="chip">质量管理体系相关资源</span></div></div>
+          </div>
+          <div>
+            <div class="grp"><div class="gl"><span class="who">我</span>能提供</div><div class="chips"><span class="chip">中日市场进入咨询</span><span class="chip">交流会运营</span></div></div>
+            <div class="grp"><div class="gl"><span class="who">我</span>在找</div><div class="chips"><span class="chip">制造业客户介绍</span></div></div>
+            <div class="grp" style="margin-bottom:0"><div class="gl"><span class="who">我</span>想聊的话题</div><div class="chips"><span class="chip">Orbit 的日本市场落地</span><span class="chip">AI 在中小企业的应用</span><span class="chip">出海团队招聘</span><span class="chip">供应链</span><span class="chip more">+2</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="fld"><span class="lbl">补充</span><div class="ta">还聊了什么（可不填）</div></div>
+      <div class="mF"><span class="btn">取消</span><span class="btn primary" disabled>保存</span></div>
+    </div></div>
+    <div class="legend"><b>「对方在找」</b>这个人资料里是空的，所以整组不显示（不出现「—」）。<br><b>chip 文字</b>：直接用资料原文，超过一行宽度省略号截断，悬停看全文。<br><b>只取已有资料</b>：不调用 AI，不额外生成话题。</div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="board">
+  <h2>③ Web 弹层 · 点了 chip 之后</h2>
+  <p class="note">点中的 chip 变黑。底部出现一行「会记为」预览，让你看到存下来的样子；只点 chip 不写补充也能保存。</p>
+  <div class="boards">
+    <div class="scrim"><div class="modal">
+      <div class="mH"><b>记一笔交流 · 安川 高宏</b><span class="x">✕</span></div>
+      <div class="fld"><span class="lbl">方式</span><div class="seg"><span class="on">面谈</span><span>电话</span><span>活动上遇到</span><span>其他</span></div></div>
+      <div class="fld"><span class="lbl">日期</span><div class="date">2026-11-16（今天）<em>▾</em></div></div>
+      <div class="fld"><span class="lbl">聊到了（可多选）</span>
+        <div class="side">
+          <div>
+            <div class="grp"><div class="gl"><span class="who">对方</span>行业</div><div class="chips"><span class="chip">制造业 · 质量认证</span></div></div>
+            <div class="grp"><div class="gl"><span class="who">对方</span>能提供</div><div class="chips"><span class="chip">企业决策与内部落地推动</span><span class="chip on">质量管理体系相关资源</span></div></div>
+          </div>
+          <div>
+            <div class="grp"><div class="gl"><span class="who">我</span>能提供</div><div class="chips"><span class="chip">中日市场进入咨询</span><span class="chip">交流会运营</span></div></div>
+            <div class="grp"><div class="gl"><span class="who">我</span>在找</div><div class="chips"><span class="chip">制造业客户介绍</span></div></div>
+            <div class="grp" style="margin-bottom:0"><div class="gl"><span class="who">我</span>想聊的话题</div><div class="chips"><span class="chip on">Orbit 的日本市场落地</span><span class="chip">AI 在中小企业的应用</span><span class="chip">出海团队招聘</span><span class="chip">供应链</span><span class="chip more">+2</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="fld"><span class="lbl">补充</span><div class="ta filled">他说下个月可以介绍工厂那边的负责人。</div></div>
+      <div class="preview hlBox">会记为：<b>面谈</b> · 聊到：质量管理体系相关资源、Orbit 的日本市场落地　他说下个月可以介绍工厂那边的负责人。</div>
+      <div class="mF"><span class="btn">取消</span><span class="btn primary">保存</span></div>
+    </div></div>
+    <div class="legend"><b>保存后</b>：弹层关闭，新记录出现在「往来」最上面（见 ①），联系人的「上次互动」按所选日期更新。<br><b>存储</b>：沿用现有的联系人 memo 写入（带日期），新增「方式」和「聊到的 chip」两个字段；正文 = 「聊到：…」+ 补充。</div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="board">
+  <h2>④ 方式选「活动上遇到」 · 资料都为空</h2>
+  <p class="note">左：选「活动上遇到」时，日期下面多一行「哪场活动」，列出你那天参加的活动（沿用旧版 memo 弹窗已有的逻辑），可不选。右：双方资料里都没有可用内容时，chip 区换成一行提示加「完善我的资料」链接。</p>
+  <div class="boards">
+    <div class="scrim"><div class="modal">
+      <div class="mH"><b>记一笔交流 · 安川 高宏</b><span class="x">✕</span></div>
+      <div class="fld"><span class="lbl">方式</span><div class="seg"><span>面谈</span><span>电话</span><span class="on">活动上遇到</span><span>其他</span></div></div>
+      <div class="fld"><span class="lbl">日期</span><div class="date">2026-11-12<em>▾</em></div></div>
+      <div class="fld hlBox"><span class="lbl">哪场活动（可不选）</span><div class="chips"><span class="chip on">中日创业交流会 · 第 4 回</span><span class="chip">AI × 制造 Meetup</span></div></div>
+      <div class="fld"><span class="lbl">聊到了（可多选）</span><div class="side"><div class="grp" style="margin:0"><div class="gl"><span class="who">对方</span>能提供</div><div class="chips"><span class="chip">企业决策与内部落地推动</span><span class="chip">质量管理体系相关资源</span></div></div></div></div>
+      <div class="fld"><span class="lbl">补充</span><div class="ta">还聊了什么（可不填）</div></div>
+      <div class="mF"><span class="btn">取消</span><span class="btn primary" disabled>保存</span></div>
+    </div></div>
+    <div class="scrim"><div class="modal">
+      <div class="mH"><b>记一笔交流 · 田中 一郎</b><span class="x">✕</span></div>
+      <div class="fld"><span class="lbl">方式</span><div class="seg"><span class="on">面谈</span><span>电话</span><span>活动上遇到</span><span>其他</span></div></div>
+      <div class="fld"><span class="lbl">日期</span><div class="date">2026-11-16（今天）<em>▾</em></div></div>
+      <div class="fld"><span class="lbl">聊到了</span><div class="empty hlBox">你和对方的资料里还没有行业、资源或话题。<a href="#">完善我的资料 ›</a></div></div>
+      <div class="fld"><span class="lbl">内容</span><div class="ta">聊了什么</div></div>
+      <div class="mF"><span class="btn">取消</span><span class="btn primary" disabled>保存</span></div>
+    </div></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="board">
+  <h2>⑤ App · 底部弹出（iPhone 390）</h2>
+  <p class="note">App 的人脉详情页「往来」卡片右上同样改成「＋ 记一笔交流」，点开从底部弹出，内容和 Web 一致；chip 横向换行，补充输入框获得焦点时弹层随键盘上移。</p>
+  <div class="boards">
+    <div class="phone"><div class="dim"></div>
+      <div class="sheet"><div class="grab"></div>
+        <div class="mH" style="margin-bottom:14px"><b>记一笔交流 · 安川 高宏</b><span class="x">✕</span></div>
+        <div class="fld"><span class="lbl">方式</span><div class="seg"><span class="on">面谈</span><span>电话</span><span>活动上遇到</span><span>其他</span></div></div>
+        <div class="fld"><span class="lbl">日期</span><div class="date">2026-11-16（今天）<em>▾</em></div></div>
+        <div class="fld"><span class="lbl">聊到了（可多选）</span>
+          <div class="side">
+            <div class="grp"><div class="gl"><span class="who">对方</span>能提供</div><div class="chips"><span class="chip">企业决策与内部落地推动</span><span class="chip on">质量管理体系相关资源</span></div></div>
+            <div class="grp"><div class="gl"><span class="who">我</span>在找</div><div class="chips"><span class="chip">制造业客户介绍</span></div></div>
+            <div class="grp" style="margin:0"><div class="gl"><span class="who">我</span>想聊的话题</div><div class="chips"><span class="chip on">Orbit 的日本市场落地</span><span class="chip">AI 在中小企业的应用</span><span class="chip more">+4</span></div></div>
+          </div>
+        </div>
+        <div class="fld"><span class="lbl">补充</span><div class="ta">还聊了什么（可不填）</div></div>
+        <span class="btn primary" style="width:100%;justify-content:center;height:48px">保存</span>
+      </div>
+    </div>
+    <div class="legend"><b>App 精简</b>：底部只放一个整宽「保存」，关闭靠右上 ✕ 或下滑。<br><b>chip 分组</b>：顺序同 Web（对方行业 → 对方能提供 → 对方在找 → 我能提供 → 我在找 → 我想聊的话题），空组隐藏。</div>
+  </div>
+</section>
+</body>
+</html>

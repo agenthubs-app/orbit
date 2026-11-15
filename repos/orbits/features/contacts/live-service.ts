@@ -33,6 +33,10 @@ export interface LiveContactDetailStoredNote {
   eventId?: string;
   /** W0046：`"memo"` = 「写 memo」写入。 */
   kind?: "memo";
+  /** 「记一笔交流」：方式（面谈／电话／活动上遇到／其他）。 */
+  channel?: "meeting" | "call" | "event" | "other";
+  /** 「记一笔交流」：点中的 chip 原文。 */
+  topics?: readonly string[];
 }
 
 export interface LiveContactDetailStoredInteraction {

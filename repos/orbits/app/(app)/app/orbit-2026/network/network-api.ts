@@ -16,9 +16,23 @@ import type { ContactGoalRelatedIdsDTO } from "../../../../../shared/contract/co
 import type { InviteConnectionView, InviteSharedFieldKey, InviteUnlinkResult } from "../../../../../shared/contract/invite-codes";
 import type { PlanContactFit } from "../../../../../shared/contract/plan-v2";
 import type { ContactSyncPayload } from "../../../../../shared/contract/contact-local-directory";
+import type { ContactLogEventOption } from "./contact-log-model";
 
 export type NetworkApiFailure = "unavailable" | "not_found" | "invalid" | "network" | "not_implemented";
 export type NetworkApiResult<T> = { ok: true; data: T } | { ok: false; reason: NetworkApiFailure; status: number };
+
+/** Lenient read of GET /api/contacts/memo-event-options: rows that are not three strings are dropped. */
+const memoEventOptionsSchema = {
+  safeParse: (value: unknown) => {
+    const rows = typeof value === "object" && value !== null && Array.isArray((value as { options?: unknown }).options) ? (value as { options: unknown[] }).options : null;
+    if (!rows) return { success: false as const };
+    const options = rows.flatMap((row) => {
+      const item = row as Record<string, unknown>;
+      return typeof item?.eventId === "string" && typeof item.title === "string" && typeof item.startsAt === "string" ? [{ eventId: item.eventId, title: item.title, startsAt: item.startsAt }] : [];
+    });
+    return { success: true as const, data: { options } };
+  },
+} as unknown as ZodType<{ options: ContactLogEventOption[] }>;
 
 const anything = { safeParse: (value: unknown) => ({ success: true as const, data: value }) } as unknown as ZodType<unknown>;
 
@@ -93,6 +107,8 @@ export const networkApi = {
     call<InviteUnlinkResult>(`/api/invite-codes/connections/${id(contactId)}/unlink`, { method: "POST", body: JSON.stringify({ keepAsContact, idempotencyKey: key() }) }, inviteUnlinkResultSchema as unknown as ZodType<InviteUnlinkResult>),
   updateFields: (contactId: string, values: Partial<Record<ContactEditableField, string | null>>) =>
     call<ContactFieldsUpdateResult>(`/api/contacts/${id(contactId)}/fields`, { method: "PATCH", body: JSON.stringify({ values }) }, contactFieldsUpdateResultSchema as unknown as ZodType<ContactFieldsUpdateResult>),
+  /** 「记一笔交流」：近期报名的活动（选「活动上遇到」时读一次；浏览器按日期筛当天）。 */
+  memoEventOptions: () => call<{ options: ContactLogEventOption[] }>("/api/contacts/memo-event-options", undefined, memoEventOptionsSchema),
   updateDetail: (contactId: string, patch: Record<string, unknown>) => call(`/api/contacts/${id(contactId)}`, { method: "PATCH", body: JSON.stringify(patch) }, anything),
   remove: (contactId: string) => call<ContactDeleteResult>(`/api/contacts/${id(contactId)}`, { method: "DELETE" }, contactDeleteResultSchema as unknown as ZodType<ContactDeleteResult>),
   restore: (contactId: string) => call<ContactRestoreResult>(`/api/contacts/${id(contactId)}/restore`, { method: "POST" }, contactRestoreResultSchema as unknown as ZodType<ContactRestoreResult>),

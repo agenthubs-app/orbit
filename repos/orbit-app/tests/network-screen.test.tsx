@@ -21,7 +21,7 @@ const defaults = () => [
   row(card("c-ito", "伊藤 直子", "株式会社ハルモニア", "CFO", { density: 3, sourceChip: "meishi", metKind: "event", addedAt: "2026-10-05T00:00:00.000Z", primaryIndustryId: "finance_investment", region: { countryCode: "JP", city: "Tokyo" } }), 5,
     { state: "success", contact: { id: "c-ito", displayName: "伊藤 直子", organization: "株式会社ハルモニア", role: "CFO", status: "nurture", primaryIndustryId: "finance_investment", primaryIndustryLabel: "金融・投資", region: { countryCode: "JP", city: "Tokyo" },
       primaryEmail: "ito@example.test", primaryPhone: "", nextAction: "決算資料のお礼を送る", tags: ["source:external-import", "CFO", "会食"], publicProfile: { offering: ["資本政策の助言"], seeking: ["製造業 SaaS"] },
-      notes: [{ noteId: "n1", body: "DD の資料リストを受領", kind: "memo", createdAt: "2026-10-06T01:00:00.000Z" }],
+      notes: [{ noteId: "n1", body: "DD の資料リストを受領", origin: "user", createdAt: "2026-10-06T01:00:00.000Z" }],
       lastInteraction: { occurredAt: "2026-10-06T01:00:00.000Z", summary: "DD の資料リストを受領" },
       fieldHistory: [{ field: "role", previous: "経理部長", next: "CFO", source: "manual", at: "2026-10-02T00:00:00.000Z" }] } }),
   row(card("c-takahashi", "高橋 美咲", "青葉ベンチャーズ", "パートナー", { density: 2, sourceChip: "meishi", metKind: "event", addedAt: "2026-10-04T00:00:00.000Z", primaryIndustryId: "finance_investment" }), 4),
@@ -58,6 +58,14 @@ export const useSyncedCollection = ({ kind }) => ({
   refresh: async () => { state.syncs++; return null; }, invalidate: async () => null, currentSession,
 });
 const offline = { kind: "offline", error: { code: "NETWORK", message: "Network request failed" }, meta: {}, status: 0, refreshing: false, refresh() {} };
+// 「记一笔交流」: the sheet reads the account's own profile from the self-profile page copy (shared with 我的 / home).
+const accountProfile = (extra) => ({ state: "success", profile: { id: "p1", displayName: "我", headline: "", organization: "", role: "", homeMarket: "", relationshipGoal: "", targetRelationshipTypes: [], preferredFollowUpWindow: "", preferredLanguage: "ja", preferredIntroChannels: [], updatedAt: "2026-11-01T00:00:00.000Z", ...extra },
+  completeness: { score: 50, status: "action-needed", completedFields: [], missingFields: [], nextBestField: null }, editor: { canSave: true, lastSavedAt: null, dirtyFields: [], validationMessages: [] }, nextAction: "" });
+export const usePageCopyResource = (path, _isEmpty, options) => {
+  if (options?.enabled === false) return { kind: "loading", refreshing: false, refresh() {}, copy: null };
+  state.requests.push("copy:" + options.copy.id + ":" + path);
+  return { kind: "success", data: accountProfile(state.myProfile ?? { offering: ["中日市場進出の相談"], seeking: ["製造業の顧客紹介"], topics: ["AI 活用", "日本市場", "採用", "資金調達", "海外展開", "SaaS"] }), meta: {}, status: 200, refreshing: false, refresh() {}, copy: null };
+};
 export const useApiResource = (path, _isEmpty, options) => {
   if (options?.enabled !== false) state.requests.push("resource:" + path);
   return options?.enabled === false ? { kind: "loading", refreshing: false, refresh() {} } : offline;
@@ -71,7 +79,7 @@ const answers = {
   "/api/invite-codes/connections/c-suzuki": { contactId: "c-suzuki", connectedAt: "2026-10-08T03:00:00.000Z", via: { code: "7Q2K-8M4P" }, sharedByMe: ["organization"], sharedByPeer: ["organization", "email", "offering", "seeking"], pausedFields: ["email"] },
 };
 const client = {
-  async get(path) { state.requests.push("get:" + path); if (!state.online) return offlineResult; return Object.hasOwn(answers, path) ? { success: true, status: 200, data: answers[path] } : { success: false, status: 404, error: { code: "NOT_FOUND", message: "nope" } }; },
+  async get(path) { state.requests.push("get:" + path); if (!state.online) return offlineResult; if (path === "/api/contacts/memo-event-options") return { success: true, status: 200, data: { options: state.eventOptions ?? [] } }; return Object.hasOwn(answers, path) ? { success: true, status: 200, data: answers[path] } : { success: false, status: 404, error: { code: "NOT_FOUND", message: "nope" } }; },
   async post(path, options) { state.requests.push("post:" + path + (options?.body ? " " + JSON.stringify(options.body) : "")); return state.online ? { success: true, status: 200, data: {} } : offlineResult; },
   async patch(path, options) { state.requests.push("patch:" + path + " " + JSON.stringify(options?.body ?? null)); return state.online ? { success: true, status: 200, data: {} } : offlineResult; },
   async delete(path) { state.requests.push("delete:" + path); return state.online ? { success: true, status: 200, data: {} } : offlineResult; },
@@ -115,7 +123,7 @@ test.before(async () => {
       name: "network-native-boundaries",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "network-native" }));
-        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useApiResource|useOrbitApiClient|useSyncedCollection|AuthSessionProvider|ApiBaseUrlProvider)$|^@react-native-async-storage\/async-storage$/ }, () => ({ path: "fixture", namespace: "network-native" }));
+        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useApiResource|usePageCopyResource|useOrbitApiClient|useSyncedCollection|AuthSessionProvider|ApiBaseUrlProvider)$|^@react-native-async-storage\/async-storage$/ }, () => ({ path: "fixture", namespace: "network-native" }));
         plugin.onResolve({ filter: /^react-native-reanimated$|^react-native-gesture-handler$|^expo-haptics$|^expo-blur$|^react-native-svg$/ }, (args) => ({ path: `${process.cwd()}/tests/helpers/stubs/${args.path}.js` }));
         plugin.onResolve({ filter: /^@expo\/vector-icons$|^expo-crypto$|^expo-camera$|^expo-image-picker$|^expo-clipboard$|^expo-sharing$|^expo-linking$|^expo-web-browser$/ }, () => ({ path: "icons", namespace: "network-native" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "network-native" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
@@ -412,4 +420,94 @@ test("edit (b5 #42 / #43): fields → PATCH …/fields, industry / level / stage
   const offline = await open(t, { screen: "edit", params: { id: "c-ito" }, status: "stale", online: false });
   await offline.getByText("編集にはインターネット接続が必要です", { exact: true }).waitFor();
   assert.equal(await offline.getByRole("button", { name: "保存" }).isDisabled(), true);
+});
+
+test("記一笔交流 (contact-log ⑤): ＋ opens the bottom sheet; chips in the board's group order; save → PATCH memo with channel / topics; the new entry is on top", async (t) => {
+  const page = await open(t, { screen: "detail", params: { id: "c-ito" } });
+  const timeline = page.getByTestId("network-interactions");
+  await timeline.getByRole("button", { name: "＋ やりとりを記録" }).click();
+  const sheet = page.getByTestId("contact-log-sheet");
+  await sheet.getByText("やりとりを記録 · 伊藤 直子", { exact: true }).waitFor();
+  assert.equal(await sheet.getByRole("tab", { name: "対面" }).getAttribute("aria-selected"), "true", "面谈 by default");
+  await sheet.getByTestId("contact-log-date").getByText(/（今日）/).waitFor();
+  const groups = await sheet.locator("[data-testid^='contact-log-group-']").evaluateAll((rows) => rows.map((row) => row.getAttribute("data-testid")!.replace("contact-log-group-", "")));
+  assert.deepEqual(groups, ["theirIndustry", "theirOffering", "theirSeeking", "myOffering", "mySeeking", "myTopics"]);
+  // Four chips a group, the rest behind 「+N」.
+  const topics = sheet.getByTestId("contact-log-group-myTopics");
+  assert.equal(await topics.getByText("SaaS", { exact: true }).count(), 0);
+  await topics.getByRole("button", { name: "+2" }).click();
+  await topics.getByText("SaaS", { exact: true }).waitFor();
+  const save = sheet.getByRole("button", { name: "保存" });
+  assert.equal(await save.getAttribute("aria-disabled"), "true", "nothing picked, nothing typed: cannot save");
+  await sheet.getByRole("checkbox", { name: "資本政策の助言" }).click();
+  await sheet.getByRole("checkbox", { name: "AI 活用" }).click();
+  await sheet.getByRole("tab", { name: "イベントで" }).click();
+  await sheet.getByLabel("補足").fill("来月紹介してくれる");
+  await sheet.getByTestId("contact-log-preview").getByText("記録される内容：イベントで · 話したこと：資本政策の助言、AI 活用　来月紹介してくれる", { exact: true }).waitFor();
+  await save.click();
+  await page.waitForFunction(() => !document.querySelector("[data-testid='contact-log-sheet']"));
+  const patch = (await requests(page)).find((path) => path.startsWith("patch:/api/contacts/c-ito "));
+  assert.ok(patch, "PATCH /api/contacts/:id");
+  assert.deepEqual(JSON.parse(patch!.slice("patch:/api/contacts/c-ito ".length)), { note: {
+    body: "話したこと：資本政策の助言、AI 活用\n来月紹介してくれる", authorLabel: "我", occurredAt: await page.evaluate(() => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10)), kind: "memo", channel: "event", topics: ["資本政策の助言", "AI 活用"],
+  } });
+  assert.ok((await requests(page)).includes("get:/api/contacts/memo-event-options"), "event options read only after choosing イベントで");
+  await page.getByText("記録しました", { exact: true }).waitFor();
+  const first = timeline.locator("[data-testid^='network-timeline-']").first();
+  assert.match(await first.innerText(), /イベントで[\s\S]*話したこと：資本政策の助言、AI 活用[\s\S]*来月紹介してくれる/);
+});
+
+test("記一笔交流: the day's events are offered under イベントで and the picked one is sent", async (t) => {
+  const page = await open(t, { screen: "detail", params: { id: "c-ito" } });
+  const today = await page.evaluate(() => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10));
+  await page.evaluate((day) => { (window as any).fixture.eventOptions = [{ eventId: "event:e1", title: "日中創業交流会", startsAt: `${day}T03:00:00.000Z` }, { eventId: "event:old", title: "先週の会", startsAt: "2026-01-01T03:00:00.000Z" }]; }, today);
+  await page.getByTestId("network-interactions").getByRole("button", { name: "＋ やりとりを記録" }).click();
+  const sheet = page.getByTestId("contact-log-sheet");
+  assert.equal(await sheet.getByTestId("contact-log-events").count(), 0, "not read before イベントで");
+  await sheet.getByRole("tab", { name: "イベントで" }).click();
+  const events = sheet.getByTestId("contact-log-events");
+  await events.getByRole("radio", { name: "日中創業交流会" }).click();
+  assert.equal(await events.getByText("先週の会").count(), 0, "only the chosen day's events");
+  await sheet.getByLabel("補足").fill("名刺交換");
+  await sheet.getByRole("button", { name: "保存" }).click();
+  await page.waitForFunction(() => !document.querySelector("[data-testid='contact-log-sheet']"));
+  const patch = (await requests(page)).find((path) => path.startsWith("patch:/api/contacts/c-ito "));
+  assert.equal(JSON.parse(patch!.slice("patch:/api/contacts/c-ito ".length)).note.eventId, "event:e1");
+});
+
+test("記一笔交流: card / system entries carry a grey source tag; with no chips on either side the sheet asks to complete the profile and needs text", async (t) => {
+  const page = await open(t, { screen: "detail", params: { id: "c-legacy" }, myProfile: {}, contacts: [
+    { id: "c-legacy", card: { id: "c-legacy", displayName: "前田 隼人", organization: "", role: "", sourceType: "manual", status: "active", pendingInitialization: false, nextActionPreview: "", valueTypes: [], updatedAt: "2026-10-01T00:00:00.000Z", density: 1, sourceChip: "meishi", metKind: "other", addedAt: "2026-10-01T00:00:00.000Z" }, tags: [],
+      search: { text: "前田 隼人", occurredAt: "2026-10-01T00:00:00.000000Z", updatedAt: "2026-10-01T00:00:00.000000Z", error: null },
+      detail: { state: "success", contact: { id: "c-legacy", displayName: "前田 隼人", status: "active", tags: [], publicProfile: {}, fieldHistory: [],
+        lastInteraction: { occurredAt: "2026-10-03T00:00:00.000Z", summary: "話したこと：資金調達" }, generatedInteraction: { occurredAt: "2026-09-29T00:00:00.000Z", summary: "連絡先から生成した背景情報です。" }, notes: [
+        { noteId: "note:business-card-notes:c-legacy", body: "名刺の裏のメモ", origin: "card", createdAt: "2026-10-01T00:00:00.000Z" },
+        { noteId: "note:relationship-evidence:c-legacy:e1", body: "イベント名簿から追加", origin: "system", createdAt: "2026-10-02T00:00:00.000Z" },
+        { noteId: "note:live-contact-detail-update:m1", body: "話したこと：資金調達", origin: "user", channel: "call", occurredAt: "2026-09-30", createdAt: "2026-10-03T00:00:00.000Z" },
+      ] } } },
+  ] });
+  const timeline = page.getByTestId("network-interactions");
+  await timeline.getByTestId("network-timeline-card").getByText(/名刺読み取り/).waitFor();
+  await timeline.getByTestId("network-timeline-system").first().getByText(/システム/).waitFor();
+  const order = await timeline.locator("[data-testid^='network-timeline-']").evaluateAll((rows) => rows.map((row) => row.getAttribute("data-testid")));
+  assert.deepEqual(order, ["network-timeline-system", "network-timeline-card", "network-timeline-user", "network-timeline-system"], "by the day it happened: the call (9/30) comes after the card (10/1); the generated background (9/29) stays even though the last interaction is now the call");
+  assert.equal(await timeline.getByText("話したこと：資金調達").count(), 1, "the last interaction that is the call itself is not listed twice");
+  await timeline.getByText(/連絡先から生成した背景情報です。/).waitFor();
+  assert.match(await timeline.getByTestId("network-timeline-user").innerText(), /電話/);
+  await timeline.getByRole("button", { name: "＋ やりとりを記録" }).click();
+  const sheet = page.getByTestId("contact-log-sheet");
+  await sheet.getByTestId("contact-log-empty").getByText("あなたと相手のプロフィールに、業界・リソース・話題がまだありません。", { exact: true }).waitFor();
+  assert.equal(await sheet.getByRole("button", { name: "保存" }).getAttribute("aria-disabled"), "true");
+  await sheet.getByLabel("話した内容").fill("電話で近況");
+  assert.notEqual(await sheet.getByRole("button", { name: "保存" }).getAttribute("aria-disabled"), "true");
+  await sheet.getByRole("link", { name: "プロフィールを整える ›" }).click();
+  assert.ok((await navigation(page)).includes("/profile/edit"));
+});
+
+test("記一笔交流: no interactions yet — the entry sits in the empty state", async (t) => {
+  const page = await open(t, { screen: "detail", params: { id: "c-suzuki" } });
+  const timeline = page.getByTestId("network-interactions");
+  await timeline.getByText("まだやりとりの記録はありません", { exact: true }).waitFor();
+  await timeline.getByRole("button", { name: "＋ やりとりを記録" }).click();
+  await page.getByTestId("contact-log-sheet").waitFor();
 });

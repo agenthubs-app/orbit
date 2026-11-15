@@ -17,6 +17,8 @@ import { pickCopy } from "../copy/types";
 import { Checkbox, ConfirmDialog, ContextMenu, Drawer, Icon, Modal, Toggle, fillCopy, useToast } from "../ui";
 import { avatarTone, initials } from "../ui";
 import { ContactEditDrawer } from "./ContactEditDrawer";
+import { ContactLogModal } from "./ContactLogModal";
+import { monthDayOf, timelineWithSystemEntries, timelineChannelOf, timelineDay, timelineOriginOf, type TimelineNote } from "./contact-log-model";
 import { networkApi } from "./network-api";
 import { tokyoMonthDay, regionLabel, type NetworkCityKey } from "./network-model";
 import styles from "./network.module.css";
@@ -33,8 +35,8 @@ export interface DrawerContact {
   id: string; displayName: string; organization: string; role: string; status: string;
   primaryIndustryId?: string; secondaryIndustryId?: string; primaryIndustryLabel?: string; seniorityLevel?: string;
   region?: { countryCode: string; city?: string | null }; primaryEmail: string; primaryPhone: string; nextAction: string; tags: string[];
-  offering: string[]; seeking: string[]; notes: { id: string; body: string; title: string; createdAt: string }[];
-  lastInteraction: { occurredAt: string; summary: string } | null; fieldHistory: HistoryEntry[]; updatedAt: string; cardNotes?: string;
+  offering: string[]; seeking: string[]; notes: TimelineNote[]; secondaryIndustryLabel?: string; profileIndustry?: string;
+  lastInteraction: { occurredAt: string; summary: string } | null; generatedInteraction: { occurredAt: string; summary: string } | null; fieldHistory: HistoryEntry[]; updatedAt: string; cardNotes?: string;
 }
 
 const str = (value: unknown) => (typeof value === "string" ? value : "");
@@ -47,11 +49,14 @@ export function drawerContactFrom(payload: Record<string, unknown> | null | unde
   const profile = (typeof raw.publicProfile === "object" && raw.publicProfile !== null ? raw.publicProfile : {}) as Record<string, unknown>;
   const fallback = new Set(list(profile.fallbackFields));
   const last = (typeof raw.lastInteraction === "object" && raw.lastInteraction !== null ? raw.lastInteraction : null) as Record<string, unknown> | null;
+  const generated = (typeof raw.generatedInteraction === "object" && raw.generatedInteraction !== null ? raw.generatedInteraction : null) as Record<string, unknown> | null;
   return {
     id: raw.id, displayName: raw.displayName, organization: str(raw.organization), role: str(raw.role), status: str(raw.status) || "active",
     ...(str(raw.primaryIndustryId) ? { primaryIndustryId: str(raw.primaryIndustryId) } : {}),
     ...(str(raw.secondaryIndustryId) ? { secondaryIndustryId: str(raw.secondaryIndustryId) } : {}),
     ...(str(raw.primaryIndustryLabel) ? { primaryIndustryLabel: str(raw.primaryIndustryLabel) } : {}),
+    ...(str(raw.secondaryIndustryLabel) ? { secondaryIndustryLabel: str(raw.secondaryIndustryLabel) } : {}),
+    ...(!fallback.has("industry") && str(profile.industry).trim() ? { profileIndustry: str(profile.industry).trim() } : {}),
     ...(str(raw.seniorityLevel) ? { seniorityLevel: str(raw.seniorityLevel) } : {}),
     ...(typeof raw.region === "object" && raw.region !== null ? { region: raw.region as { countryCode: string; city?: string | null } } : {}),
     primaryEmail: str(raw.primaryEmail), primaryPhone: str(raw.primaryPhone), nextAction: str(raw.nextAction), tags: list(raw.tags),
@@ -59,9 +64,18 @@ export function drawerContactFrom(payload: Record<string, unknown> | null | unde
     notes: (Array.isArray(raw.notes) ? raw.notes : []).flatMap((item) => {
       const note = item as Record<string, unknown>;
       const body = str(note.body).trim();
-      return body ? [{ id: str(note.noteId) || body.slice(0, 20), body, title: str(note.title), createdAt: str(note.createdAt) || str(note.occurredAt) }] : [];
+      if (!body) return [];
+      // 「记一笔交流」：memo 的日期／方式／聊到的 chip 与来源（旧服务端没给 origin 时按 noteId 推）。
+      const channel = timelineChannelOf(note.channel);
+      const topics = list(note.topics);
+      return [{
+        id: str(note.noteId) || body.slice(0, 20), body, title: str(note.title), createdAt: str(note.createdAt) || str(note.occurredAt), origin: timelineOriginOf(note),
+        ...(str(note.occurredAt) && str(note.createdAt) ? { occurredAt: str(note.occurredAt) } : {}),
+        ...(channel ? { channel } : {}), ...(topics.length ? { topics } : {}),
+      }];
     }),
     lastInteraction: last && str(last.occurredAt) && str(last.summary) ? { occurredAt: str(last.occurredAt), summary: str(last.summary) } : null,
+    generatedInteraction: generated && str(generated.occurredAt) && str(generated.summary) ? { occurredAt: str(generated.occurredAt), summary: str(generated.summary) } : null,
     fieldHistory: (Array.isArray(raw.fieldHistory) ? raw.fieldHistory : []).flatMap((item) => {
       const entry = item as Record<string, unknown>;
       return typeof entry.field === "string" && typeof entry.at === "string" ? [{ field: entry.field, previous: typeof entry.previous === "string" ? entry.previous : null, next: typeof entry.next === "string" ? entry.next : null, source: str(entry.source), at: entry.at }] : [];
@@ -110,6 +124,7 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   const [unlinkOpen, setUnlinkOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [proposalOpen, setProposalOpen] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
   const [openHistory, setOpenHistory] = useState<string | null>(null);
   const [updateDismissed, setUpdateDismissed] = useState(false);
   const menuAnchor = useRef<HTMLButtonElement>(null);
@@ -158,6 +173,7 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   const stagedOffering = syncMoment ? [...(contact?.offering ?? []), t("detailSyncSampleOffering")] : contact?.offering ?? [];
   const nextStep = contact?.nextAction.trim() ?? "";
   const draftHref = contact ? `/app/agent?q=${encodeURIComponent(t("detailDraftIntent", { name: contact.displayName, step: nextStep }))}` : "#";
+  const logButton = <button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => setLogOpen(true)} data-contact-log-open="">{t("logAdd")}</button>;
 
   return (
     <>
@@ -277,15 +293,12 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
               ) : null}
 
               <div className={styles.card} data-network-interactions="">
-                <div className={styles.cardH}><h3>{t("detailInteractions")}</h3><a className={styles.more} href={`/app/notes/new?contactId=${encodeURIComponent(contactId)}`}>{t("detailAddMemo")}</a></div>
+                <div className={styles.cardH}><h3>{t("detailInteractions")}</h3>{contact.notes.length || contact.lastInteraction ? logButton : null}</div>
                 {contact.notes.length || contact.lastInteraction ? (
                   <>
-                    {contact.lastInteraction && !contact.notes.some((note) => note.body === contact.lastInteraction!.summary) ? <div className={styles.tl}><time>{tokyoMonthDay(contact.lastInteraction.occurredAt)}</time><div>{contact.lastInteraction.summary}</div></div> : null}
-                    {[...contact.notes].sort((left, right) => (left.createdAt < right.createdAt ? 1 : -1)).slice(0, 8).map((note) => (
-                      <div key={note.id} className={styles.tl}><time>{tokyoMonthDay(note.createdAt)}</time><div>{note.title ? <b>{note.title}</b> : null}<div className={note.title ? styles.lbl : undefined}>{note.body}</div></div></div>
-                    ))}
+                    {timelineWithSystemEntries(contact.notes, contact.lastInteraction, contact.generatedInteraction).slice(0, 8).map((note) => <TimelineRow key={note.id} note={note} t={t} />)}
                   </>
-                ) : <p className={styles.lbl}>{t("detailNoInteractions")}</p>}
+                ) : <><p className={styles.lbl}>{t("detailNoInteractions")}</p><div className={styles.logEmptyAdd}>{logButton}</div></>}
               </div>
             </>
           )}
@@ -306,7 +319,34 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
         onUnlinked={() => { setUnlinkOpen(false); setConnection(null); onChanged?.({ kind: "unlinked", contactId, name: contact.displayName }); }} /> : null}
       {contact && connection ? <InviteShareModal open={shareOpen} name={contact.displayName} connection={connection} onClose={() => setShareOpen(false)} onSaved={(next) => { setShareOpen(false); setConnection(next); }} /> : null}
       <MeetingProposalModal open={proposalOpen} contactId={contactId} onClose={() => setProposalOpen(false)} />
+      {contact ? <ContactLogModal open={logOpen} t={t} onClose={() => setLogOpen(false)}
+        contact={{ id: contactId, displayName: contact.displayName, offering: contact.offering, seeking: contact.seeking,
+          industry: [contact.primaryIndustryLabel, contact.secondaryIndustryLabel].filter(Boolean).join(" · ") || contact.profileIndustry || "" }}
+        onSaved={() => { setLogOpen(false); void load(contactId); onChanged?.({ kind: "saved", contactId, name: contact.displayName }); }} /> : null}
     </>
+  );
+}
+
+/** 「上次互动」的摘要是某条记录正文（或其第一行）时不再单列一行。 */
+const WAY_KEY = { meeting: "logChannelMeeting", call: "logChannelCall", event: "logChannelEvent", other: "logChannelOther" } as const;
+
+/** 往来的一行：用户记的交流前面是方式标签（lav），名片原文／系统说明前面是灰色来源标签。 */
+function TimelineRow({ note, t }: { note: TimelineNote; t: NetworkT }) {
+  const day = note.occurredAt ? monthDayOf(timelineDay(note)) : tokyoMonthDay(note.createdAt);
+  const tag = note.origin === "user"
+    ? note.channel ? <span className={`${styles.tlTag} ${styles.tlWay}`}>{t(WAY_KEY[note.channel])}</span> : null
+    : <span className={styles.tlTag}>{t(note.origin === "card" ? "logSourceCard" : "logSourceSystem")}</span>;
+  const [head, ...rest] = note.body.split(/\r?\n/);
+  const extra = rest.join("\n").trim();
+  return (
+    <div className={styles.tl} data-timeline-origin={note.origin}><time>{day}</time>
+      <div className={styles.grow}>
+        {note.title ? <b>{note.title}</b> : null}
+        {note.origin === "user" ? (
+          <div className={note.title ? styles.lbl : undefined}>{tag}{note.channel && extra ? <>{head}<div className={`${styles.tlDim} ${styles.tlBody}`}>{extra}</div></> : <span className={styles.tlBody}>{note.body}</span>}</div>
+        ) : <div>{tag}<span className={`${styles.tlDim} ${styles.tlBody}`}>{note.body}</span></div>}
+      </div>
+    </div>
   );
 }
 

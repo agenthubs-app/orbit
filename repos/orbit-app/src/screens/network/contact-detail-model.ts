@@ -4,8 +4,18 @@ import { regionOptionLabel, type NetworkCityKey } from "./network-model";
 import { industryLabel, isIndustryIdCode } from "../../api/domain/industries";
 import { COMPLETION_OPTION_LABELS, MEETING_NOTE_PREFIX } from "../../api/compute/completion-question-rules";
 import type { OrbitLanguage } from "../../api/contract/language";
+import { timelineChannelOf, timelineOriginOf, type ContactLogChannel, type TimelineOrigin } from "./contact-log-model";
 
 export interface DetailFieldHistoryEntry { field: string; previous: string | null; next: string | null; source: string; at: string }
+
+/**
+ * 往来的一条记录。`origin`：user 用户自己记的 / card 名片原文 / system 系统说明（旧服务端没给时按 noteId 推）；
+ * memo 才有 `occurredAt`（所选东京日期）、`channel`、`topics`。`kind` 旧 payload 才有，新 payload 不带。
+ */
+export interface DetailNote {
+  id: string; body: string; kind: string; createdAt: string; title: string;
+  origin: TimelineOrigin; occurredAt?: string; channel?: ContactLogChannel; topics?: string[];
+}
 
 export interface DetailContact {
   id: string;
@@ -27,8 +37,12 @@ export interface DetailContact {
   tags: string[];
   offering: string[];
   seeking: string[];
-  notes: { id: string; body: string; kind: string; createdAt: string; title: string }[];
+  /** 「记一笔交流」的对方行业 chip 在没有行业标签时的退路（publicProfile.industry，不是关系推测的值）。 */
+  profileIndustry?: string;
+  notes: DetailNote[];
   lastInteraction: { occurredAt: string; summary: string } | null;
+  /** 系统按联系人与关系记录生成的背景说明；记了交流后 lastInteraction 被替换，它仍保留在往来里。 */
+  generatedInteraction: { occurredAt: string; summary: string } | null;
   fieldHistory: DetailFieldHistoryEntry[];
 }
 
@@ -43,6 +57,7 @@ export function detailContactFrom(payload: Record<string, unknown> | null | unde
   const profile = (typeof raw.publicProfile === "object" && raw.publicProfile !== null ? raw.publicProfile : {}) as Record<string, unknown>;
   const fallback = new Set(list(profile.fallbackFields));
   const last = (typeof raw.lastInteraction === "object" && raw.lastInteraction !== null ? raw.lastInteraction : null) as Record<string, unknown> | null;
+  const generated = (typeof raw.generatedInteraction === "object" && raw.generatedInteraction !== null ? raw.generatedInteraction : null) as Record<string, unknown> | null;
   const region = typeof raw.region === "object" && raw.region !== null ? raw.region as { countryCode: string; city?: string | null } : undefined;
   return {
     id: raw.id,
@@ -65,12 +80,23 @@ export function detailContactFrom(payload: Record<string, unknown> | null | unde
     // W0060: relationship fallback values are not the person's own; only real values are shown.
     offering: fallback.has("offering") ? [] : list(profile.offering),
     seeking: fallback.has("seeking") ? [] : list(profile.seeking),
-    notes: (Array.isArray(raw.notes) ? raw.notes : []).flatMap((item) => {
+    ...(!fallback.has("industry") && str(profile.industry).trim() ? { profileIndustry: str(profile.industry).trim() } : {}),
+    notes: (Array.isArray(raw.notes) ? raw.notes : []).flatMap((item): DetailNote[] => {
       const note = item as Record<string, unknown>;
       const body = str(note.body).trim();
-      return body ? [{ id: str(note.noteId) || str(note.id) || body.slice(0, 20), body, kind: str(note.kind), createdAt: str(note.createdAt) || str(note.occurredAt), title: str(note.title) }] : [];
+      if (!body) return [];
+      const channel = timelineChannelOf(note.channel);
+      const topics = list(note.topics);
+      return [{
+        id: str(note.noteId) || str(note.id) || body.slice(0, 20), body, kind: str(note.kind), createdAt: str(note.createdAt) || str(note.occurredAt), title: str(note.title),
+        origin: timelineOriginOf(note),
+        // 旧 payload 只有 occurredAt（当 createdAt 用）；两个都有时 occurredAt 才是 memo 的交流日期。
+        ...(str(note.occurredAt) && str(note.createdAt) ? { occurredAt: str(note.occurredAt) } : {}),
+        ...(channel ? { channel } : {}), ...(topics.length ? { topics } : {}),
+      }];
     }),
     lastInteraction: last && str(last.occurredAt) && str(last.summary) ? { occurredAt: str(last.occurredAt), summary: str(last.summary) } : null,
+    generatedInteraction: generated && str(generated.occurredAt) && str(generated.summary) ? { occurredAt: str(generated.occurredAt), summary: str(generated.summary) } : null,
     fieldHistory: (Array.isArray(raw.fieldHistory) ? raw.fieldHistory : []).flatMap((item) => {
       const entry = item as Record<string, unknown>;
       return typeof entry.field === "string" && typeof entry.at === "string"

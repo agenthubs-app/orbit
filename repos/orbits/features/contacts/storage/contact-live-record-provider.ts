@@ -174,6 +174,9 @@ function storedNote(value: unknown): LiveContactDetailStoredNote | null {
     ...(typeof value.occurredAt === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.occurredAt) ? { occurredAt: value.occurredAt } : {}),
     ...(nonEmptyString(value.eventId) ? { eventId: value.eventId } : {}),
     ...(value.kind === "memo" ? { kind: "memo" as const } : {}),
+    // 「记一笔交流」：方式与聊到的 chip 同样原样保留。
+    ...(value.channel === "meeting" || value.channel === "call" || value.channel === "event" || value.channel === "other" ? { channel: value.channel } : {}),
+    ...(Array.isArray(value.topics) && value.topics.length && value.topics.every((topic) => typeof topic === "string") ? { topics: [...value.topics] as string[] } : {}),
   };
 }
 
