@@ -102,3 +102,7 @@ REPORT 包含：验收项对应的提交 SHA、文件与证据；命令与退出
 3. 评测服务是生产构建，改产品代码后先 `--stop` 再 `--build`。
 4. 第 5 步的“两个新会话评审、`agent-eval:report` 汇总并登记 `RUNS.md`”由协调者做；Generator 停在 `agent-eval:judge-pack`（generator-brief）。
 5. 本 worktree 没有本机测试库变量，DB 测试在本机 Postgres 上另建 `orbit_agent_v1_entry_test`，经 `ORBIT_LIFECYCLE_TEST_DATABASE_URL` 只给定向测试用；全量 `npm test` 与开工前一样不设它。
+
+## 追加记录（2026-11-15，run-02 登记）
+
+run-01 结束为 failed（修复轮 2 的门槛 `20261115-214128-65b2ed1-AG01-gate` 双评 7/8，AE-ENT-005 R1 不过：交付文本里的卡片是原始字段和 UTC 时间）。协调者开 run-02，范围只限这一处：把现有运行时的结果卡片写成用户读得懂的文字（按请求语言，时间用记录自己的时区，去掉内部字段）。验收项、用例与运行器不变。run-02 开工时本文件 SHA-256 `4339c8f26a65c77df8623061b2a39f3e4c8b5878b2e81267958f9f181acc1875`，基线 HEAD `a1e3e2859`。
