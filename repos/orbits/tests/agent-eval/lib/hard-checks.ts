@@ -832,7 +832,9 @@ export function runHardChecks(testCase: { hard: Record<string, unknown>[] }, obs
     }
   }
   for (const step of obs.unsupported) {
-    results.push({ args: { step: step.step }, check: `step:${step.word}`, detail: step.reason, evidence: [], status: "cannot_judge" });
+    // run-03: a planned fault that never fired means the case did not test what it plans — said as such.
+    if (step.word === "fault") results.push({ args: { step: step.step }, check: "fault_not_fired", detail: `fault not fired: ${step.reason}`, evidence: [], status: "fail" });
+    else results.push({ args: { step: step.step }, check: `step:${step.word}`, detail: step.reason, evidence: [], status: "cannot_judge" });
   }
   if (expectFail) {
     const expected = new Set(expectFail);

@@ -784,7 +784,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     await new Promise((resolve) => setTimeout(resolve, 600));
     const serverState = await serverControl<{ faults: { where: string; kind: string; applied: number }[] }>(environment, "state");
     for (const fault of serverState.faults ?? []) {
-      if (!fault.applied) unsupported.push({ reason: `fault ${fault.where}/${fault.kind} was armed but never reached`, step: -1, word: "fault" });
+      if (!fault.applied) unsupported.push({ reason: `${fault.where}/${fault.kind} was armed but never reached, so this case did not test what it plans`, step: -1, word: "fault" });
     }
     const after = await readDatabaseState(db);
     diff = await diffStates(db, before, beforePayloads, after);

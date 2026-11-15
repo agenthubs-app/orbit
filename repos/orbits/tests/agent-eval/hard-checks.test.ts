@@ -415,3 +415,12 @@ test("AG04 clarify_max_per_part: questions per subgoal from clarify.asked", () =
   const twice = obs({ events: [{ subgoal: "clarification:r1:p1", type: "clarify.asked" }, { subgoal: "clarification:r1:p1", type: "clarify.asked" }] as never });
   assert.equal(run("clarify_max_per_part", 1, twice).status, "fail");
 });
+
+test("run-03: a planned fault that never fired is its own failed check, 'fault not fired', not only another check failing", () => {
+  const results = runHardChecks({ hard: [] }, { ...obs(), unsupported: [{ reason: "understand/mistag_write was armed but never reached", step: -1, word: "fault" }] }, context);
+  const fault = results.find((result) => result.check === "fault_not_fired");
+  assert.ok(fault, "the check is named fault_not_fired");
+  assert.equal(fault!.status, "fail");
+  assert.match(fault!.detail, /^fault not fired: understand\/mistag_write/u);
+  assert.equal(hardChecksPass(results), false);
+});
