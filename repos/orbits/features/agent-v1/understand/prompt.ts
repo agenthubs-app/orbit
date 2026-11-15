@@ -25,7 +25,7 @@ export function understandSystemPrompt(): string {
     '{"plainChat": boolean, "reply": string (only when plainChat is true), "parts": [Part, ...]}',
     "Part = {",
     '  "localId": "p1", "p2", …',
-    '  "sourceQuote": a continuous piece of the CURRENT message copied character for character (no paraphrase, no added or removed characters; it may be a whole clause),',
+    '  "sourceQuote": a continuous piece of the CURRENT message copied character for character (no paraphrase, no added or removed characters; it may be a whole clause) covering all the words that belong to this part, including its limits and how long the user wants Orbit to keep going,',
     '  "goal": what the user wants from this part, one short sentence in the user\'s language,',
     `  "clarity": one of ${CLARITIES.join(", ")} (clear = what is wanted is clear, including any ordinary question; statement = the user states something, reports what someone else said or asked, asks a hypothetical, or asks for an opinion — not a request for Orbit to do it; missing_one = a change is asked but its object or value is missing — still give the change capability it would need (moving a date of something unnamed is todo.update or schedule.update); multiple_readings = the person or record is named but what to do with it can be read in clearly different ways (see rule 8); none = only when nothing to do can be read out of it at all, e.g. just a name, "嗯", or "go ahead with that" when neither the message nor the context says what "that" is),`,
     '  "readings": only for multiple_readings, at most 3: [{"label": a few words, "deliverable": one of the deliverables, "capabilities": capability names}] — the different things the user could mean,',

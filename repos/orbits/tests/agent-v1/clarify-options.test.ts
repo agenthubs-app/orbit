@@ -68,6 +68,24 @@ test("readings: code's labels per capability with the object; model labels are n
   assert.equal(options[1].label, capabilityLabel("todo.update", "en", "Emily"));
 });
 
+test("labels read naturally for a person: functions over notes are about the interactions with them", () => {
+  const options = optionsFor({
+    language: "en",
+    object: { kind: "contact", name: null, text: "Emily" },
+    purpose: "readings",
+    readings: [{ capabilities: ["fn.summarize"], deliverable: "summary" }, { capabilities: ["fn.extractFollowUps"], deliverable: "list" }, { capabilities: ["privateEvent.create"], deliverable: "change" }],
+  });
+  assert.deepEqual(options.map((option) => option.label), ["See a summary of your interactions with Emily", "Find follow-ups with Emily", "Create an event of my own about Emily"]);
+  assert.equal(capabilityLabel("fn.extractFollowUps", "zh", "小林", "contact"), "找出和小林要跟进的事");
+  assert.equal(capabilityLabel("fn.extractFollowUps", "zh", "这篇笔记", "memo"), "找出这篇笔记里要跟进的事");
+});
+
+test("Japanese lists of choices quote each label", async () => {
+  const { CLARIFY_WORDS } = await import("../../features/agent-v1/clarify/copy");
+  assert.equal(CLARIFY_WORDS.notUnderstood("ja", null, ["自分の記録を調べる", "メモを残す", "リマインダーを設定する"]), "何をすればよいか分かりませんでした。「自分の記録を調べる」「メモを残す」「リマインダーを設定する」のどれでしょうか？");
+  assert.match(CLARIFY_WORDS.askReadings("ja", "X", ["a", "b"]), /「a」「b」のどれにしますか？/u);
+});
+
 test("an object question offers the session's candidates, the one mentioned last first", () => {
   const options = optionsFor({
     candidates: [{ id: "contact:c17", name: "小林健", type: "contact" }, { id: "contact:c31", name: "李薇", type: "contact" }],

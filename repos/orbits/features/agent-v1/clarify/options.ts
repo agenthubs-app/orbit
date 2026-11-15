@@ -125,9 +125,17 @@ const LABELS: Partial<Record<Capability, Label>> = {
   "web.search": words((x) => `上网查${x}的公开资料`, "上网查公开资料", (x) => `${x}の公開情報をネットで調べる`, "公開情報をネットで調べる", (x) => `Look up public information on ${x}`, "Look up public information"),
 };
 
-/** Code's words for a capability with the object (the clue or the name), or without one. */
-export function capabilityLabel(capability: Capability, language: ReplyLanguage, object: string | null): string {
-  const label = LABELS[capability];
+/** For a person, a function over notes is about the interactions with them ("找出和小林要跟进的事"). */
+const PERSON_LABELS: Partial<Record<Capability, Label>> = {
+  "fn.extractFollowUps": words((x) => `找出和${x}要跟进的事`, "找出要跟进的事", (x) => `${x}とのフォローすることを洗い出す`, "フォローすることを洗い出す", (x) => `Find follow-ups with ${x}`, "Find follow-ups"),
+  "fn.extractInteractions": words((x) => `找出和${x}的往来`, "找出往来", (x) => `${x}とのやり取りを洗い出す`, "やり取りを洗い出す", (x) => `Find interactions with ${x}`, "Find interactions"),
+  "fn.summarize": words((x) => `看和${x}往来的摘要`, "看往来的摘要", (x) => `${x}とのやり取りの要約を見る`, "やり取りの要約を見る", (x) => `See a summary of your interactions with ${x}`, "See a summary of interactions"),
+  "privateEvent.create": words((x) => `建一场和${x}有关的我的活动`, "新建一场我的活动", (x) => `${x}に関する自分のイベントを作る`, "自分のイベントを作る", (x) => `Create an event of my own about ${x}`, "Add an event of my own"),
+};
+
+/** Code's words for a capability with the object (the clue or the name), or without one; `kind` is the object's record kind. */
+export function capabilityLabel(capability: Capability, language: ReplyLanguage, object: string | null, kind?: RecordKind | null): string {
+  const label = (kind === "contact" ? PERSON_LABELS[capability] : undefined) ?? LABELS[capability];
   if (label) return label[language](object);
   // Every capability of 附录 A has its words above; this is only a guard for a new capability.
   return language === "zh" ? "这一项" : language === "ja" ? "この項目" : "This";
@@ -166,7 +174,9 @@ const registeredReadings = (readings: OptionsInput["readings"]): Reading[] => (r
 export function optionsFor(input: OptionsInput): ClarifyOption[] {
   const { language } = input;
   const object = objectWords(input.object);
-  const label = (capability: Capability, x: string | null) => capabilityLabel(capability, language, x);
+  const objectKind = input.object?.kind ?? null;
+  const label = (capability: Capability, x: string | null, kind: RecordKind | null = objectKind) => capabilityLabel(capability, language, x, kind);
+  const labelOf = (capability: Capability, lang: ReplyLanguage, x: string | null) => capabilityLabel(capability, lang, x, objectKind);
   switch (input.purpose) {
     case "directions": {
       // 1. this turn's @ references and the page.
@@ -175,7 +185,7 @@ export function optionsFor(input: OptionsInput): ClarifyOption[] {
         const kind = recordKindOf(reference.type);
         if (!kind) continue;
         const name = reference.name?.trim() || null;
-        for (const capability of COMMON_ACTIONS[kind]) fromContext.push(option(0, [capability], label(capability, name ?? defaultObjectWords(kind, language)), name ? { id: reference.id, name, type: reference.type } : undefined));
+        for (const capability of COMMON_ACTIONS[kind]) fromContext.push(option(0, [capability], label(capability, name ?? defaultObjectWords(kind, language), kind), name ? { id: reference.id, name, type: reference.type } : undefined));
       }
       if (input.pageKind) for (const capability of COMMON_ACTIONS[input.pageKind]) fromContext.push(option(0, [capability], label(capability, null)));
       // 2. the session's open items: an alternative still waiting to be accepted.
@@ -198,7 +208,7 @@ export function optionsFor(input: OptionsInput): ClarifyOption[] {
     }
     case "readings": {
       const readings = registeredReadings(input.readings);
-      const found = readings.map((reading, index) => option(index, reading.capabilities, readingLabel(reading, language, object, capabilityLabel)));
+      const found = readings.map((reading, index) => option(index, reading.capabilities, readingLabel(reading, language, object, labelOf)));
       // Fewer than three readings: the object kind's registered actions fill up the list.
       if (input.object?.kind) for (const capability of COMMON_ACTIONS[input.object.kind]) found.push(option(found.length, [capability], label(capability, object ?? defaultObjectWords(input.object.kind, language))));
       if (found.length < 2) for (const capability of GENERIC_DIRECTIONS) found.push(option(found.length, [capability], label(capability, null)));
@@ -210,7 +220,7 @@ export function optionsFor(input: OptionsInput): ClarifyOption[] {
     }
     case "other_readings": {
       const readings = registeredReadings(input.readings).filter((reading) => isReadOnlyReading(reading) && !(input.exclude && (sameReading(reading, input.exclude) || reading.capabilities.some((capability) => capabilityKind(capability) === "function" && input.exclude!.capabilities.includes(capability)))));
-      return dedupe(readings.map((reading, index) => option(index, reading.capabilities, readingLabel(reading, language, object, capabilityLabel)))).slice(0, MAX_OTHER_READINGS);
+      return dedupe(readings.map((reading, index) => option(index, reading.capabilities, readingLabel(reading, language, object, labelOf)))).slice(0, MAX_OTHER_READINGS);
     }
     case "entry":
     case "alternative": {

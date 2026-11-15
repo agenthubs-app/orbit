@@ -17,6 +17,9 @@ const list = (language: ReplyLanguage, labels: readonly string[], last: "or" | "
   return `${head.join(", ")}${last === "or" ? ", or " : ", and "}${tail}`;
 };
 
+/** Japanese choices are each quoted: 「a」「b」「c」のどれ… */
+const quoted = (labels: readonly string[]) => labels.map((label) => `「${label}」`).join("");
+
 const MISSING: Record<MissingItem, Record<ReplyLanguage, string>> = {
   intent: { en: "what you would like me to do", ja: "何をすればよいか", zh: "要做的是什么" },
   object: { en: "which one it is", ja: "どれのことか", zh: "要改的是哪一条" },
@@ -29,14 +32,14 @@ export const CLARIFY_WORDS = {
   notUnderstood(language: ReplyLanguage, quote: string | null, labels: readonly string[]): string {
     const choices = labels.length ? list(language, labels, "or") : "";
     if (language === "zh") return `${quote ? `「${quote}」` : ""}我没看懂你想让我做什么${choices ? `，是想${choices}？` : "，能具体说一下吗？"}`;
-    if (language === "ja") return `${quote ? `「${quote}」は、` : ""}何をすればよいか分かりませんでした${choices ? `。${choices}のどれでしょうか？` : "。もう少し詳しく教えてください。"}`;
+    if (language === "ja") return `${quote ? `「${quote}」は、` : ""}何をすればよいか分かりませんでした${labels.length ? `。${quoted(labels)}のどれでしょうか？` : "。もう少し詳しく教えてください。"}`;
     return `${quote ? `In "${quote}", ` : ""}I couldn't tell what you'd like me to do${choices ? ` — ${choices}?` : ". Could you say a bit more?"}`;
   },
   /** Row 5: readings that include a write are not guessed; the readings are listed. */
   askReadings(language: ReplyLanguage, quote: string, labels: readonly string[]): string {
     const choices = list(language, labels, "or");
     if (language === "zh") return `「${quote}」可以有几种做法，你想要哪一种：${choices}？`;
-    if (language === "ja") return `「${quote}」にはいくつかの意味が考えられます。${choices}のどれにしますか？`;
+    if (language === "ja") return `「${quote}」にはいくつかの意味が考えられます。${quoted(labels)}のどれにしますか？`;
     return `"${quote}" could mean a few things. Which one do you want: ${choices}?`;
   },
   /** Row 3: how a read-only part was understood, said first. */
