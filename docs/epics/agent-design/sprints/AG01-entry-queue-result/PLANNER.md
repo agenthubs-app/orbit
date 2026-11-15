@@ -93,3 +93,12 @@
 
 外部条件缺失（AG00 未合回、评测环境或密钥不可用）先不启动；run 已开始则按规则产出 failed／blocked 报告。门槛不过时最多两个修复轮次，每轮把门槛整套重跑，每次运行都登记。
 REPORT 包含：验收项对应的提交 SHA、文件与证据；命令与退出码；全量对照新增失败；门槛运行编号、`bundle.sha256`、真实调用次数、token 与费用；`shadow` 的处理方式；排队时长与“处理中又来消息”比例的样本；交给 AG02 的接口名与签名。分支 `sprint/AG01-entry-queue-result`，固定最终 SHA，由协调者 `--no-ff` 合回 `orbit-agent-claude`，在合并树上跑收口集、typecheck 与 App 四个同步测试后才标 completed。push 需要用户另行授权。
+
+## 追加记录（2026-11-15，Generator run-01 开工核对；原文与原哈希 d8d21e9f… 保留）
+
+按 AG00 REPORT 核对“前序交接要点”：命令名、`emitTrace(event)`、`takeEvalFault`、运行器位置一致。有出入的几处，以 AG00 REPORT 与协调者说明为准：
+1. 基线 HEAD 是 `c891947e8`（AG00 合并），不是编制时的 `324943ad5`。
+2. GitNexus：`.gitnexus/run.cjs` 读不了索引，改用 `npx gitnexus@latest analyze --index-only` 与 `impact`／`detect-changes`；`[id]` 目录下的路由文件不在索引里，这几处用文本搜索补查。
+3. 评测服务是生产构建，改产品代码后先 `--stop` 再 `--build`。
+4. 第 5 步的“两个新会话评审、`agent-eval:report` 汇总并登记 `RUNS.md`”由协调者做；Generator 停在 `agent-eval:judge-pack`（generator-brief）。
+5. 本 worktree 没有本机测试库变量，DB 测试在本机 Postgres 上另建 `orbit_agent_v1_entry_test`，经 `ORBIT_LIFECYCLE_TEST_DATABASE_URL` 只给定向测试用；全量 `npm test` 与开工前一样不设它。
