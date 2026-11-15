@@ -1,0 +1,499 @@
+/**
+ * Writes a fixture world through the product's own write services (PLANNER 易错边界 4):
+ * accounts (auth user + account provisioning), contacts (the acquisition write provider, contact + connection),
+ * notes, tasks, personal schedule, host-lifecycle platform events with canonical registrations,
+ * agent memory, agent automations and stored chat sessions. Nothing here calls `upsertRecord` directly.
+ *
+ * Fields the current product has no place for are listed in the seed report's `gaps` instead of being forced in.
+ */
+import { createHash } from "node:crypto";
+
+import { createStorageAuthAccountProvisioningProvider } from "../../../features/auth/storage/auth-account-provisioning-provider";
+import { createStorageAuthUserProvider, toAuthUserDTO } from "../../../features/auth/storage/auth-user-live-record-provider";
+import { createStorageBusinessCardContactWriteProvider } from "../../../features/contacts/storage/contact-write-live-record-provider";
+import { createConfiguredNoteService } from "../../../features/notes/service-factory";
+import { createConfiguredTaskService } from "../../../features/tasks/service-factory";
+import { createPersonalScheduleService } from "../../../features/personal-schedule/service";
+import { createPersonalScheduleAssociationReader } from "../../../features/personal-schedule/association-reader";
+import { createStorageAgentMemoryService } from "../../../features/agent/memory/service";
+import { createStorageAgentAutomationService } from "../../../features/agent/automations/service";
+import { AGENT_CAPABILITY_DEFINITIONS } from "../../../features/agent/capabilities/registry";
+import { createConfiguredStorageOrbitAgentChatSessionProvider } from "../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
+import { createConfiguredEventOperationsPostgresRuntime } from "../../../features/events/event-operations/storage/postgres-client";
+import { createPostgresEventOperationsRepository } from "../../../features/events/event-operations/storage/postgres-repository";
+import { createHostLifecycle } from "../../../features/events/host/storage/lifecycle";
+import { createHostProfiles } from "../../../features/events/host/storage/profiles";
+import { eventRegistrationId } from "../../../features/events/registration/service";
+import type { EventRegistration } from "../../../features/events/registration/contract";
+import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
+import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/storage/transactional-postgres";
+import { createPostgresLiveRecordStore } from "../../../shared/storage/postgres-live-record-store";
+import type { ContactDTO, ConnectionDTO } from "../../../shared/domain/contracts";
+import type { FixtureRecord } from "./world";
+
+export interface AccountIdentity {
+  label: string;
+  userId: string;
+  email: string;
+  displayName: string;
+}
+
+export const EVAL_ORGANIZER: AccountIdentity = { displayName: "评测平台活动主办方", email: "agent-eval-host@orbit.test", label: "HOST", userId: "user_agent_eval_host" };
+
+export function accountIdentity(label: string, displayName: string): AccountIdentity {
+  const slug = label.toLowerCase();
+  return { displayName, email: `agent-eval-${slug}@orbit.test`, label, userId: `user_agent_eval_${slug}` };
+}
+
+export interface SeedReport {
+  world: string;
+  accounts: Record<string, { userId: string; email: string }>;
+  /** fixture id → product id */
+  ids: Record<string, string>;
+  counts: Record<string, Record<string, number>>;
+  gaps: { record: string; field: string; reason: string }[];
+}
+
+function productId(prefix: string, world: string, fixtureId: string): string {
+  return `${prefix}:${createHash("sha256").update(`agent-eval\u0000${world}\u0000${fixtureId}`).digest("hex").slice(0, 24)}`;
+}
+
+const REGIONS: Record<string, { countryCode: string; city: string | null }> = {
+  东京: { city: "Tokyo", countryCode: "JP" },
+  大阪: { city: "Osaka", countryCode: "JP" },
+  横滨: { city: "Yokohama", countryCode: "JP" },
+  京都: { city: "Kyoto", countryCode: "JP" },
+  栃木: { city: "Tochigi", countryCode: "JP" },
+  神奈川: { city: "Kanagawa", countryCode: "JP" },
+  茨城: { city: "Ibaraki", countryCode: "JP" },
+  上海: { city: "Shanghai", countryCode: "CN" },
+  杭州: { city: "Hangzhou", countryCode: "CN" },
+  苏州: { city: "Suzhou", countryCode: "CN" },
+  深圳: { city: "Shenzhen", countryCode: "CN" },
+  北京: { city: "Beijing", countryCode: "CN" },
+  台北: { city: "Taipei", countryCode: "TW" },
+  新加坡: { city: "Singapore", countryCode: "SG" },
+  槟城: { city: "Penang", countryCode: "MY" },
+  波特兰: { city: "Portland", countryCode: "US" },
+  伦敦: { city: "London", countryCode: "GB" },
+  慕尼黑: { city: "Munich", countryCode: "DE" },
+};
+
+const INDUSTRIES: Record<string, ContactDTO["primaryIndustryId"]> = {
+  软件: "technology_internet",
+  工业软件: "technology_internet",
+  贸易: "trade_logistics",
+  物流: "trade_logistics",
+  摄影: "media_creative",
+  设计: "media_creative",
+  出版: "media_creative",
+  媒体: "media_creative",
+  金融: "finance_investment",
+  教育: "education_research",
+  零售: "retail_consumer",
+  餐饮: "food_hospitality",
+  茶饮: "food_hospitality",
+  陶艺: "manufacturing_supply_chain",
+  半导体: "manufacturing_supply_chain",
+  机器人: "manufacturing_supply_chain",
+  汽车电子: "manufacturing_supply_chain",
+  能源: "manufacturing_supply_chain",
+  医疗器械: "healthcare_life_sciences",
+  咨询: "professional_services",
+  会展: "professional_services",
+};
+
+function jst(day: string, time = "09:00"): string {
+  return new Date(`${day}T${time}:00+09:00`).toISOString();
+}
+
+function iso(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value) return undefined;
+  const ms = Date.parse(value);
+  return Number.isNaN(ms) ? undefined : new Date(ms).toISOString();
+}
+
+export interface SeedContext {
+  world: string;
+  clock: string;
+  report: SeedReport;
+  actorOf: (label: string) => string;
+}
+
+function count(report: SeedReport, account: string, kind: string, by = 1): void {
+  report.counts[account] ??= {};
+  report.counts[account][kind] = (report.counts[account][kind] ?? 0) + by;
+}
+
+function gap(report: SeedReport, record: string, field: string, reason: string): void {
+  report.gaps.push({ field, reason, record });
+}
+
+/** Sequential writer with a bounded concurrency (domain services are safe to call in parallel per actor). */
+async function inBatches<T>(items: readonly T[], size: number, work: (item: T) => Promise<void>): Promise<void> {
+  for (let index = 0; index < items.length; index += size) {
+    await Promise.all(items.slice(index, index + size).map(work));
+  }
+}
+
+export function createWorldWriter(world: string, clock: string) {
+  const configured = createConfiguredPostgresLiveRecordStore();
+  const runtime = createConfiguredTransactionalPostgresRuntime();
+  const events = createConfiguredEventOperationsPostgresRuntime();
+  if (!configured || !runtime || !events) throw new Error("The eval database is not configured (ORBIT_DATABASE_TARGET=local, ORBIT_LOCAL_DATABASE_URL).");
+  const { store, workspaceId } = configured;
+  const report: SeedReport = { accounts: {}, counts: {}, gaps: [], ids: {}, world };
+  const actors = new Map<string, string>();
+  const notes = createConfiguredNoteService();
+  const tasks = createConfiguredTaskService();
+  let scheduleNow = new Date().toISOString();
+  const schedule = createPersonalScheduleService({
+    associationReaderForStore: (transactionStore) => createPersonalScheduleAssociationReader({ store: transactionStore, workspaceId }),
+    client: runtime.client,
+    now: () => scheduleNow,
+    store: createPostgresLiveRecordStore({ client: runtime.client }),
+    workspaceId,
+  });
+  const contactWriter = createStorageBusinessCardContactWriteProvider({ recordProvider: "orbit-agent-eval-seed", store, workspaceId });
+  const hostLifecycle = createHostLifecycle({ client: events.client, workspaceId });
+  const hostProfiles = createHostProfiles({ client: events.client, workspaceId });
+  const eventRepository = createPostgresEventOperationsRepository({ client: events.client, workspaceId });
+  let organizerProfileId: string | null = null;
+
+  const actorOf = (label: string) => {
+    const actor = actors.get(label);
+    if (!actor) throw new Error(`account ${label} was not created`);
+    return actor;
+  };
+  const idOf = (fixtureId: string) => report.ids[fixtureId];
+
+  async function ensureAccount(identity: AccountIdentity): Promise<string> {
+    const users = createStorageAuthUserProvider({ store, workspaceId });
+    const existing = await users.getUserByEmail(identity.email);
+    const timestamp = "2026-01-05T00:00:00.000Z";
+    const user = existing ?? (await users.saveUser({
+      createdAt: timestamp,
+      displayName: identity.displayName,
+      email: identity.email,
+      id: identity.userId,
+      passwordHash: null,
+      provider: "credentials",
+      providerAccountId: null,
+      updatedAt: timestamp,
+    }));
+    await createStorageAuthAccountProvisioningProvider({ store, workspaceId }).ensureAccountForUser(toAuthUserDTO(user));
+    actors.set(identity.label, user.id);
+    report.accounts[identity.label] = { email: identity.email, userId: user.id };
+    return user.id;
+  }
+
+  async function writeContact(record: FixtureRecord): Promise<void> {
+    const actorId = actorOf(record.account);
+    const data = record.data;
+    const id = productId("contact", world, record.id);
+    const evidenceId = productId("evidence", world, record.id);
+    const updatedAt = iso(data.updatedAt) ?? new Date(Date.parse(clock) - 30 * 86_400_000).toISOString();
+    const industry = typeof data.industry === "string" ? data.industry : null;
+    const region = typeof data.region === "string" ? data.region : null;
+    const tags = [...((data.tags as string[] | undefined) ?? [])];
+    if (industry) tags.push(`行业:${industry}`);
+    const contact: ContactDTO = {
+      createdAt: updatedAt,
+      customTags: tags,
+      displayName: String(data.name),
+      evidenceIds: [evidenceId],
+      id,
+      lifecycleInitialization: "ready",
+      ...(data.org ? { organization: String(data.org) } : {}),
+      ...(data.role ? { role: String(data.role) } : {}),
+      ...(region ? { location: region } : {}),
+      ...(region && REGIONS[region] ? { region: REGIONS[region] } : {}),
+      ...(data.email ? { primaryEmail: String(data.email) } : {}),
+      ...(data.phone ? { primaryPhone: String(data.phone) } : {}),
+      ...(industry && INDUSTRIES[industry] ? { primaryIndustryId: INDUSTRIES[industry] } : {}),
+      ...(data.notes ? { notes: String(data.notes) } : {}),
+      source: { id: `agent-eval:${world}`, label: "Agent eval fixture", type: "manual" },
+      stage: "active",
+      updatedAt,
+    };
+    const connection: ConnectionDTO = {
+      accountId: actorId,
+      contactId: id,
+      createdAt: updatedAt,
+      evidenceIds: [evidenceId],
+      id: productId("connection", world, record.id),
+      lifecycleInitialization: "ready",
+      source: contact.source,
+      stage: "active",
+      summary: "",
+      updatedAt,
+      valueTypes: ["community_context"],
+    };
+    await contactWriter.saveEvidence({ confidence: 1, createdBy: actorId, id: evidenceId, occurredAt: updatedAt, sourceId: `agent-eval:${world}`, sourceType: "manual", summary: "Agent eval fixture contact." }, actorId);
+    await contactWriter.initializeAcquiredRelationship!({ connection, contact }, actorId);
+    report.ids[record.id] = id;
+    count(report, record.account, "contacts");
+    if (data.aliases) gap(report, record.id, "aliases", "contacts have no alias field");
+    if (data.lastInteractionOn) gap(report, record.id, "lastInteractionOn", "最近互动 is derived from interactions (AG05); kept in the fixture only");
+    if (data.version && Number(data.version) > 1) gap(report, record.id, "version", "contacts have no usable version yet (AG12)");
+  }
+
+  async function writeMemo(record: FixtureRecord): Promise<void> {
+    const actorId = actorOf(record.account);
+    const data = record.data;
+    const contactIds = ((data.contactIds as string[] | undefined) ?? []).map(idOf).filter(Boolean);
+    const eventIds = ((data.eventRefs as { kind: string; id: string }[] | undefined) ?? [])
+      .filter((ref) => ref.kind === "platform" && idOf(ref.id))
+      .map((ref) => idOf(ref.id));
+    const createdAt = iso(data.createdAt) ?? new Date(Date.parse(clock) - 86_400_000).toISOString();
+    const input = { actorId, body: String(data.body), contactIds, idempotencyKey: `agent-eval:${world}:${record.id}`, now: createdAt, ...(data.title ? { title: String(data.title) } : {}) };
+    let result = await notes.create({ ...input, ...(eventIds.length ? { eventIds } : {}) }).catch((error: unknown) => {
+      if (!eventIds.length) throw error;
+      gap(report, record.id, "eventRefs", `platform event link refused: ${error instanceof Error ? error.message : error}`);
+      return notes.create(input);
+    });
+    const note = (result as { note?: { id: string; version: number } }).note ?? (result as unknown as { id: string; version: number });
+    report.ids[record.id] = note.id;
+    const targetVersion = Number(data.version ?? 1);
+    let version = Number(note.version ?? 1);
+    while (version < targetVersion) {
+      const updated = await notes.update({ actorId, body: String(data.body), expectedVersion: version, idempotencyKey: `agent-eval:${world}:${record.id}:v${version + 1}`, noteId: note.id, now: createdAt } as never);
+      const saved = (updated as { note?: { version: number } }).note ?? (updated as unknown as { version: number });
+      if (!saved?.version || saved.version <= version) break;
+      version = saved.version;
+      result = updated;
+    }
+    count(report, record.account, "memos");
+    if (data.interaction) gap(report, record.id, "interaction", "Memo has no interaction field yet (AG05/AG06)");
+    if (data.locale) gap(report, record.id, "locale", "notes have no locale field");
+    if ((data.eventRefs as { kind: string }[] | undefined)?.some((ref) => ref.kind === "private")) gap(report, record.id, "eventRefs.private", "private events arrive in AG13");
+  }
+
+  async function writeTodo(record: FixtureRecord, formal: boolean): Promise<void> {
+    const actorId = actorOf(record.account);
+    const data = record.data;
+    const related = formal ? [data.contactId as string] : ((data.relatedContactIds as string[] | undefined) ?? (data.contactId ? [data.contactId as string] : []));
+    const contactIds = related.filter(Boolean).map(idOf).filter(Boolean);
+    const eventRef = ((data.relatedEventRefs as { kind: string; id: string }[] | undefined) ?? []).find((ref) => ref.kind === "platform" && idOf(ref.id));
+    const completedAt = iso(data.completedAt);
+    const updatedAt = iso(data.updatedAt) ?? completedAt ?? new Date(Date.parse(clock) - 3 * 86_400_000).toISOString();
+    const createdAt = completedAt && Date.parse(completedAt) < Date.parse(updatedAt) ? new Date(Date.parse(completedAt) - 3_600_000).toISOString() : completedAt ? new Date(Date.parse(completedAt) - 3_600_000).toISOString() : updatedAt;
+    const source = data.source as { memoId?: string; memoVersion?: number } | undefined;
+    const created = await tasks.create({
+      actorId,
+      category: formal || contactIds.length ? "relationship" : "work",
+      idempotencyKey: `agent-eval:${world}:${record.id}`,
+      now: createdAt,
+      source: formal ? "contact" : "manual",
+      title: String(data.title),
+      ...(data.plannedDate ? { plannedDate: String(data.plannedDate) } : {}),
+      ...(data.dueAt ? { dueAt: iso(data.dueAt) } : {}),
+      ...(contactIds[0] ? { relatedContactId: contactIds[0] } : {}),
+      ...(eventRef ? { relatedEventId: idOf(eventRef.id) } : {}),
+      ...(source?.memoId && idOf(source.memoId) ? { sourceNoteId: idOf(source.memoId), sourceNoteVersion: Number(source.memoVersion ?? 1) } : {}),
+      ...(data.note ? { notes: String(data.note) } : {}),
+    });
+    const task = (created as { task?: { id: string } }).task ?? (created as unknown as { id: string });
+    report.ids[record.id] = task.id;
+    if (data.status === "completed") {
+      await tasks.complete({ actorId, completedBy: actorId, completionSource: "user", idempotencyKey: `agent-eval:${world}:${record.id}:complete`, now: completedAt ?? updatedAt, taskId: task.id });
+    }
+    count(report, record.account, formal ? "formal_followups" : "todos");
+    if (formal) gap(report, record.id, "formal", "seeded as a relationship task; the relationship-lifecycle follow-up stage needs a connection command (kept for later sprints)");
+    if (contactIds.length > 1) gap(report, record.id, "relatedContactIds", "Todo has one related contact until AG13; extra links dropped");
+    if ((data.relatedEventRefs as { kind: string }[] | undefined)?.some((ref) => ref.kind === "private")) gap(report, record.id, "relatedEventRefs.private", "private events arrive in AG13");
+  }
+
+  async function writeSchedule(record: FixtureRecord): Promise<void> {
+    const actorId = actorOf(record.account);
+    const data = record.data;
+    scheduleNow = new Date(Math.min(Date.parse(String(data.startsAt)) - 7 * 86_400_000, Date.parse(clock) - 86_400_000)).toISOString();
+    const contactIds = ((data.contactIds as string[] | undefined) ?? []).map(idOf).filter(Boolean);
+    const noteIds = ((data.memoIds as string[] | undefined) ?? []).map(idOf).filter(Boolean);
+    const created = await schedule.create(actorId, {
+      idempotencyKey: `agent-eval:${world}:${record.id}`,
+      startsAt: iso(data.startsAt)!,
+      title: String(data.title),
+      ...(data.endsAt ? { endsAt: iso(data.endsAt) } : {}),
+      ...(data.timeZone ? { timeZone: String(data.timeZone) } : {}),
+      ...(contactIds.length ? { contactIds } : {}),
+      ...(noteIds.length ? { noteIds } : {}),
+      ...(data.recurrence ? { recurrence: { frequency: "weekly" } } : {}),
+    } as never);
+    const item = (created as { item?: { id: string } }).item ?? (created as unknown as { id: string });
+    report.ids[record.id] = item.id;
+    count(report, record.account, "schedule");
+  }
+
+  let organizerPromise: Promise<string> | null = null;
+  function ensureOrganizer(): Promise<string> {
+    organizerPromise ??= (async () => {
+      const actorId = await ensureAccount(EVAL_ORGANIZER);
+      const existing = await hostProfiles.list(actorId);
+      organizerProfileId = existing[0]?.profileId ?? (await hostProfiles.create(actorId, { displayName: EVAL_ORGANIZER.displayName, slug: "agent-eval-host" } as never)).profileId;
+      return organizerProfileId;
+    })();
+    return organizerPromise;
+  }
+
+  async function writePlatformEvent(record: FixtureRecord): Promise<void> {
+    const profileId = await ensureOrganizer();
+    const organizerActor = actorOf(EVAL_ORGANIZER.label);
+    const data = record.data;
+    const topics = ((data.topics as string[] | undefined) ?? []).join("、");
+    const fee = String(data.fee ?? "");
+    const amount = Number(fee.match(/(\d[\d,]*)\s*日元/u)?.[1]?.replace(/,/gu, "") ?? Number.NaN);
+    const startsAt = iso(data.startsAt);
+    const description = [topics ? `主题：${topics}` : "", fee ? `费用：${fee}` : "", data.note && !startsAt ? String(data.note) : ""].filter(Boolean).join("\n");
+    const created = await hostLifecycle.create(organizerActor, {
+      description,
+      endsAt: startsAt ? new Date(Date.parse(startsAt) + 3 * 3_600_000).toISOString() : "2027-12-31T12:00:00.000Z",
+      feeKind: Number.isFinite(amount) ? "amount" : "free",
+      ...(Number.isFinite(amount) ? { feeAmountYen: amount } : {}),
+      organizerProfileId: profileId,
+      startsAt: startsAt ?? "2027-12-31T09:00:00.000Z",
+      timezone: "Asia/Tokyo",
+      title: String(data.title),
+      venueName: data.venue ? String(data.venue) : null,
+    });
+    report.ids[record.id] = created.eventId;
+    if (startsAt) await hostLifecycle.publish(organizerActor, created.eventId, created.version);
+    else gap(report, record.id, "startsAt", "an event without a start time cannot be published; left as an unpublished draft");
+    count(report, "platform", "platform_events");
+  }
+
+  async function writeMyEvent(record: FixtureRecord): Promise<void> {
+    const actorId = actorOf(record.account);
+    const eventId = idOf(String(record.data.eventId));
+    if (!eventId) {
+      gap(report, record.id, "eventId", "event not seeded");
+      return;
+    }
+    const registeredAt = new Date(Date.parse(clock) - 20 * 86_400_000).toISOString();
+    const participantProfileId = `event-participant-profile:${encodeURIComponent(eventId)}:${encodeURIComponent(actorId)}`;
+    const registration: EventRegistration = {
+      cancelledAt: null,
+      eventId,
+      id: eventRegistrationId(eventId, actorId),
+      participantProfile: { answers: {}, createdAt: registeredAt, displayName: "评测账号", eventId, id: participantProfileId, updatedAt: registeredAt, userId: actorId } as never,
+      participantProfileId,
+      reactivatedAt: null,
+      registeredAt,
+      sideEffects: { calendarUpdateExecuted: false, emailSent: false, globalProfileWriteExecuted: false, notificationDelivered: false, organizerMessageSent: false, refundRequested: false },
+      status: "rsvped",
+      updatedAt: registeredAt,
+      userId: actorId,
+    };
+    await eventRepository.seedCanonicalRegistration(registration);
+    report.ids[record.id] = registration.id;
+    count(report, record.account, "my_events");
+    if (record.data.status === "attended") gap(report, record.id, "status", "attended needs an on-site check-in; stored as registered");
+  }
+
+  async function writeMemory(record: FixtureRecord): Promise<void> {
+    const actorId = actorOf(record.account);
+    const data = record.data;
+    const service = createStorageAgentMemoryService({ actorId, now: () => new Date(Date.parse(clock) - 10 * 86_400_000).toISOString(), store: store as never, workspaceId });
+    const memory = await service.create({ category: data.category as never, content: String(data.content), memoryId: productId("memory", world, record.id), source: "manual" as never });
+    report.ids[record.id] = (memory as { memoryId?: string; id?: string }).memoryId ?? (memory as unknown as { id: string }).id;
+    count(report, record.account, "memory");
+    for (const field of ["appliesTo", "structured", "validUntil"]) if (data[field] !== undefined) gap(report, record.id, field, "memory scope fields arrive in AG14");
+    if (Number(data.revision ?? 1) > 1) gap(report, record.id, "revision", "memory has no revision yet (AG14)");
+  }
+
+  async function writeRule(record: FixtureRecord): Promise<void> {
+    const actorId = actorOf(record.account);
+    const data = record.data;
+    const scheduleSpec = data.schedule as { kind: string; daysOfWeek?: number[]; time: string; timeZone: string };
+    const service = createStorageAgentAutomationService({ actorId, now: () => new Date(Date.parse(clock) - 7 * 86_400_000).toISOString(), store: store as never, workspaceId });
+    const title = String(data.title);
+    const capability = AGENT_CAPABILITY_DEFINITIONS.find((definition) => definition.userConfigurableAutomation && (/活动|events?/iu.test(title) ? /event/iu.test(definition.id) : /联系|候选|contact/iu.test(title) ? /contact/iu.test(definition.id) : /follow|task/iu.test(definition.id)));
+    const trigger = scheduleSpec.kind === "weekly"
+      ? { kind: "schedule", schedule: { daysOfWeek: (scheduleSpec.daysOfWeek ?? []).map((day) => day % 7), kind: "weekly", time: scheduleSpec.time, timeZone: scheduleSpec.timeZone } }
+      : { kind: "schedule", schedule: { kind: scheduleSpec.kind, time: scheduleSpec.time, timeZone: scheduleSpec.timeZone } };
+    const automation = await service.create({
+      capabilityId: capability?.id ?? AGENT_CAPABILITY_DEFINITIONS.find((definition) => definition.userConfigurableAutomation)!.id,
+      delivery: (data.notify as { push?: boolean } | undefined)?.push ? "push" : "in_app",
+      instruction: [data.candidateScope, data.rankingBasis, data.maxItems ? `最多 ${data.maxItems} 项` : ""].filter(Boolean).join("；") || title,
+      source: "manual",
+      title,
+      trigger: trigger as never,
+    });
+    report.ids[record.id] = (automation as { automationId?: string; id?: string }).automationId ?? (automation as unknown as { id: string }).id;
+    count(report, record.account, "rules");
+    gap(report, record.id, "references/maxItems/onEmpty", "rule fields arrive in AG15; folded into the instruction text");
+  }
+
+  async function writeConversation(record: FixtureRecord): Promise<void> {
+    const actorId = actorOf(record.account);
+    const provider = createConfiguredStorageOrbitAgentChatSessionProvider({ actorId });
+    if (!provider) throw new Error("chat session storage is not configured");
+    const messages = (record.data.messages as { role: "user" | "assistant"; text: string; at?: string }[]) ?? [];
+    const id = productId("session", world, record.id).replace(":", "_");
+    const createdAt = iso(messages[0]?.at) ?? iso(record.data.startedAt) ?? new Date(Date.parse(clock) - 86_400_000).toISOString();
+    const updatedAt = iso(record.data.lastActivityAt) ?? iso(messages[messages.length - 1]?.at) ?? createdAt;
+    for (let index = 0; index < messages.length; index += 50) {
+      await provider.upsertSession({
+        createdAt,
+        id,
+        messages: messages.slice(index, index + 50).map((message, offset) => ({ id: `${id}:m${index + offset + 1}`, role: message.role, text: message.text, ...(message.at ? { createdAt: iso(message.at) } : {}) })),
+        title: String(record.data.title ?? messages[0]?.text ?? "对话").slice(0, 120),
+        updatedAt,
+      } as never);
+    }
+    report.ids[record.id] = id;
+    count(report, record.account, "conversations");
+    if (record.data.state || record.data.shownList) gap(report, record.id, "state", "conversation state (shown list, last mentioned) arrives in AG03");
+  }
+
+  async function writeAll(records: readonly FixtureRecord[], labels: Record<string, string>, onProgress?: (message: string) => void): Promise<SeedReport> {
+    for (const [label, name] of Object.entries(labels)) await ensureAccount(accountIdentity(label, name));
+    const byKind = (kind: FixtureRecord["kind"]) => records.filter((record) => record.kind === kind);
+    const step = async (kind: FixtureRecord["kind"], size: number, work: (record: FixtureRecord) => Promise<void>) => {
+      const list = byKind(kind);
+      if (!list.length) return;
+      const started = Date.now();
+      await inBatches(list, size, async (record) => {
+        try {
+          // Serializable transactions may conflict under parallel writes; the idempotency keys make a retry safe.
+          for (let attempt = 1; ; attempt += 1) {
+            try {
+              await work(record);
+              break;
+            } catch (error) {
+              const serialization = /could not serialize|deadlock detected/u.test(error instanceof Error ? error.message : String(error));
+              if (!serialization || attempt >= 6) throw error;
+              await new Promise((resolve) => setTimeout(resolve, 30 * attempt + Math.floor(Math.random() * 40)));
+            }
+          }
+        } catch (error) {
+          throw new Error(`${record.id} (${kind}, account ${record.account}): ${error instanceof Error ? error.message : error}`, { cause: error });
+        }
+      });
+      onProgress?.(`${kind}: ${list.length} in ${Math.round((Date.now() - started) / 100) / 10}s`);
+    };
+    await step("contact", 8, writeContact);
+    await step("platform_event", 1, writePlatformEvent);
+    await step("my_event", 1, writeMyEvent);
+    await step("memo", 8, writeMemo);
+    await step("todo", 8, (record) => writeTodo(record, false));
+    await step("followup", 8, (record) => writeTodo(record, true));
+    await step("schedule", 1, writeSchedule);
+    await step("memory", 1, writeMemory);
+    await step("rule", 1, writeRule);
+    await step("conversation", 4, writeConversation);
+    for (const kind of ["private_event", "attendance", "connection", "card", "push_device"] as const) {
+      for (const record of byKind(kind)) gap(report, record.id, kind, `${kind} cannot be written by the current product; arrives in a later sprint`);
+      if (byKind(kind).length) count(report, byKind(kind)[0].account, `${kind}_not_seeded`, byKind(kind).length);
+    }
+    return report;
+  }
+
+  async function close(): Promise<void> {
+    await Promise.allSettled([configured.client.close(), runtime.client.close(), events.client.close()]);
+  }
+
+  return { actorOf, close, ensureAccount, report, writeAll, writeContact, writeMemo, writeMemory, writeRule, writeSchedule, writeTodo };
+}
+
+export type WorldWriter = ReturnType<typeof createWorldWriter>;
