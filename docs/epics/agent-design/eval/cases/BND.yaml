@@ -47,6 +47,8 @@ cases:
       - no_business_writes: true
       - card_state: { card: last, state: awaiting_confirmation }
       - decisions: { count: 0 }
+      - card_ops:
+          - { op: todo.update, target: T42, set: { plannedDate: "2026-11-20" } }
     rubric:
       - id: R1
         text: 第二轮的回应告诉用户需要点卡上的按钮，而不是说“已修改”。
