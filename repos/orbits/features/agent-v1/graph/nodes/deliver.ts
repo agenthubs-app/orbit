@@ -182,7 +182,9 @@ function partLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, lan
       if (part.reading) {
         // §3.11 row 3: how it was understood comes first, in code's words.
         const object = objectOf(scope, part);
-        const label = readingLabel(part.reading as Reading, language, object.name, capabilityLabel);
+        // A person named only in words is said back by those words; a note or event not read yet stays "this note".
+        const said = object.name ?? (object.kind === "contact" ? object.text?.replace(/^@/u, "") ?? null : null);
+        const label = readingLabel(part.reading as Reading, language, said, capabilityLabel);
         return withEntries([CLARIFY_WORDS.understoodAs(language, label), notYetText(language, part.route ?? "read", quote, boundNames(scope, part))].join("\n"));
       }
       return notYetText(language, part.route ?? "read", quote, boundNames(scope, part));

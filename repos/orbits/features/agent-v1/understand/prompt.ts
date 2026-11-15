@@ -5,7 +5,7 @@
 import { CAPABILITIES } from "../route/capabilities";
 import { CLARITIES, DATA_SOURCES, DELIVERABLES, ENTITIES } from "./schema";
 
-export const UNDERSTAND_PROMPT_VERSION = "understand@ag04.1";
+export const UNDERSTAND_PROMPT_VERSION = "understand@ag04.2";
 
 const CAPABILITY_NOTES = [
   "contact.read, event.read, attendance.read, todo.read, memo.read, schedule.read, profile.read: read the user's own Orbit records (contacts, events in Orbit's event directory, attendance notes, to-dos, memos/notes, schedule, own profile).",
@@ -26,7 +26,7 @@ export function understandSystemPrompt(): string {
     "Part = {",
     '  "localId": "p1", "p2", …',
     '  "sourceQuote": a continuous piece of the CURRENT message copied character for character (no paraphrase, no added or removed characters; it may be a whole clause) covering all the words that belong to this part, including its limits and how long the user wants Orbit to keep going,',
-    '  "goal": what the user wants from this part, one short sentence in the user\'s language,',
+    '  "goal": what the user wants from this part, one short sentence in the user\'s language; the goal must stand on its own — the next step does not see the conversation, so when the part builds on earlier messages (that email, the draft above) say what it is about in a few words, without record contents,',
     `  "clarity": one of ${CLARITIES.join(", ")} (clear = what is wanted is clear, including any ordinary question; statement = the user states something, reports what someone else said or asked, asks a hypothetical, or asks for an opinion — not a request for Orbit to do it; missing_one = a change is asked but its object or value is missing — still give the change capability it would need (moving a date of something unnamed is todo.update or schedule.update); multiple_readings = the person or record is named but what to do with it can be read in clearly different ways (see rule 8); none = only when nothing to do can be read out of it at all, e.g. just a name, "嗯", or "go ahead with that" when neither the message nor the context says what "that" is),`,
     '  "readings": only for multiple_readings, at most 3: [{"label": a few words, "deliverable": one of the deliverables, "capabilities": capability names}] — the different things the user could mean,',
     '  "objectClues": [{"entity": one of ' + ENTITIES.join(", ") + ', "text": the shortest words of the CURRENT message that point at the object — a name, a pronoun or an ordinal, without words around it (e.g. "他", "第二个", "那篇笔记", "she", "彼女", "@名字"), "referenceId": a record handle from the context (r1, r2 …) only when the context clearly identifies it}] — one clue per pointing word: "her meeting" gives a contact clue "her" and a schedule clue "her meeting",',
@@ -53,7 +53,7 @@ export function understandSystemPrompt(): string {
     "5. parts always lists at least one part, also for plain chat. plainChat is true only when every part is ordinary discussion that general knowledge can answer, needing no capability. Then write the answer in reply, in the language of the current message, concise and practical.",
     "6. Write goal and reply in the language of the current message.",
     "7. Do not output verdict, route, approval flags or account ids.",
-    "8. multiple_readings: the user names a person or a record (by name or with @) and asks to \"look at\", \"handle\", \"take care of\" it, or how things are going, without saying what to do. List the plausible readings in readings, each with the capabilities it would need (reading records, a function over them, or a change). Put in requiredCapabilities the union of their capabilities. Do not pick one yourself; code decides.",
+    "8. multiple_readings: the user names a person or a record (by name or with @) and asks to \"look at\", \"handle\", \"take care of\" it, or how things are going, without saying what to do. List the plausible readings in readings, each with the capabilities it would need (reading records, a function over them, or a change). Handling or taking care of a matter usually means doing something about it, so for such a request include the changes it could mean (e.g. moving a to-do, making a note) next to the readings that only look things up. Put in requiredCapabilities the union of their capabilities. Do not pick one yourself; code decides.",
     "9. Open items: an open clarification is a question Orbit asked earlier (which record, which reading). If the CURRENT message replies to it — picks a reading, names the record, or even only insists vaguely (\"that one, you know\") — set continues to that open item and describe the part by what the reply now asks for (for a picked reading: clarity clear with that reading's capabilities; for a reply that still does not say which: clarity none). A message about something else does not continue it.",
   ].join("\n");
 }
@@ -82,7 +82,7 @@ export function repairUserText(input: { message: string; contextText: string; pr
   ].join("\n");
 }
 
-export const ANSWER_PROMPT_VERSION = "answer-discussion@ag04.1";
+export const ANSWER_PROMPT_VERSION = "answer-discussion@ag04.2";
 
 export function answerSystemPrompt(language: "zh" | "ja" | "en"): string {
   const name = language === "zh" ? "Chinese" : language === "ja" ? "Japanese" : "English";
@@ -92,7 +92,7 @@ export function answerSystemPrompt(language: "zh" | "ja" | "en"): string {
     "Nothing is stored by this answer: never say you noted, saved, recorded or will remember what the user told you (\"记下了\", \"覚えておきます\", \"noted\"). When the user only tells you something, respond to it as a conversation.",
     "Answer only the items listed below. Other parts of the user's message are handled separately; do not answer or comment on them.",
     "Respect each item's constraints (for example, if the user said not to change something, acknowledge that nothing will be changed).",
-    "You do not see the earlier conversation. If an item points at something said earlier (\"that matter\", \"さっきの件\"), do not guess what it was; say you cannot tell which one is meant and ask.",
+    "You do not see the earlier conversation. The goal of each item describes what it refers to; work from it. Only if an item points at something said earlier (\"that matter\", \"さっきの件\") and its goal does not say what it is, do not guess what it was; say you cannot tell which one is meant and ask.",
     "Never ask the user to confirm a change in words: a change is only ever carried out after the user presses Confirm on a confirmation card.",
     `Write in ${name}. Be concise and practical: give a clear recommendation and the reason.`,
     'Output one JSON object: {"segments": [{"partId": "<the item id>", "text": "<the answer>"}]} with one segment per item.',

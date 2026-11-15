@@ -185,6 +185,21 @@ test("AG04-2: the answer to a statement never says it was noted or saved; it ans
   assert.match(prompt, /Answer only the items listed below/u);
 });
 
+test("repair round 1: the first layer lists change readings for 'handle it', and goals stand on their own for the answer step", async () => {
+  const { answerSystemPrompt, understandSystemPrompt } = await import("../../features/agent-v1/understand/prompt");
+  const understand = understandSystemPrompt();
+  assert.match(understand, /handling or taking care of a matter usually means doing something about it/iu);
+  assert.match(understand, /goal must stand on its own/u);
+  assert.match(answerSystemPrompt("zh"), /The goal of each item describes what it refers to/u);
+});
+
+test("AG04-3: a person named only in words is said back by those words in the understanding", async () => {
+  const model = deepseekStub([json({ parts: [part({ clarity: "multiple_readings", objectClues: [{ entity: "contact", text: "田中" }], readings: [{ capabilities: ["view.recentInteraction", "todo.read"], deliverable: "summary", label: "a" }, { capabilities: ["memo.read", "fn.summarize"], deliverable: "summary", label: "b" }], requiredCapabilities: ["view.recentInteraction"], sourceQuote: "田中最近怎么样" })], plainChat: false })]);
+  const kit = graphKit(model.fetchImplementation, { now: NOW });
+  const result = await runAgentGraph(kit.deps, kit.input("田中最近怎么样"));
+  assert.match(result.text, /^我按「看和田中最近的往来、还有没做完的事」来理解/u);
+});
+
 test("AG04-3: @ a note and 「帮我看看」 → the summary is the reading, said first; the other readings are entries; nothing asked", async () => {
   const message = "@竞品笔记 A 帮我看看";
   const model = deepseekStub([json({ parts: [part({ clarity: "multiple_readings", dataSources: ["orbit_records"], objectClues: [{ entity: "memo", referenceId: "r1", text: "@竞品笔记 A" }], readings: [
