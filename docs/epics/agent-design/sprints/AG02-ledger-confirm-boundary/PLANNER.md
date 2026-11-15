@@ -102,3 +102,11 @@
 
 外部条件缺失（AG01 未合回、两项裁决未定、评测环境或密钥不可用）先不启动；run 已开始则按规则产出 failed／blocked 报告。门槛不过时最多两个修复轮次，每轮把门槛整套重跑，每次运行都登记。
 REPORT 包含：验收项对应的提交 SHA、文件与证据；命令与退出码；全量对照新增失败；门槛运行编号、`bundle.sha256`、真实调用次数、token 与费用；两项裁决的落实方式；重新生成用的接口；App 对新状态的实测表现；交给 AG03 起各 sprint 的账本字段与 `decideAction()` 签名。分支 `sprint/AG02-ledger-confirm-boundary`，固定最终 SHA，由协调者 `--no-ff` 合回 `orbit-agent-claude`，在合并树上跑收口集、typecheck 与 App 四个同步测试后才标 completed。push 需要用户另行授权。
+
+## 追加记录（run-01，2026-11-15，Generator）
+
+开工时本页 SHA-256 `66e6ca6e5901568811f7adba7565210b04ae927ac5b7625311ae67f027892b25`，基线 HEAD `1a97ce231`。原文不改，以下按 CONVENTIONS §4、§8 与 AG00、AG01 REPORT 核对后补记：
+
+1. **进入条件 3 的两项裁决已由 CONVENTIONS §8 给出**：门槛用 `--seed-cards` 预置卡片，AG02 交付待办的新建（`todo.create`）和修改（`todo.update`）两个执行器，甲、乙两个方案都不用，提示词不改；不变量包只含顺延之后归属不晚于 AG02 的不变量用例（BND ×12 与 AE-H-002、003、004）。
+2. **App 端**：CONVENTIONS §4 的 AG02 交接写明「状态 expired（App 端账本契约同步）」，与本页「本 sprint 不改 App」不一致，按 CONVENTIONS 执行：`repos/orbit-app/src/api/agent-ledger-contract.ts` 与 `src/view-models/agent-ledger.ts` 认识 `expired` 和三种新回执。改之前 App 遇到 `expired` 时 `allowedTransitions` 返回 undefined，状态文字为空。
+3. **前序交接要点**与 AG00、AG01 REPORT 一致。补一条：运行器原先从账本行的 `payload` 顶层读卡片状态，而账本把动作放在 `payload.entity` 下，AG02 一并改正。
