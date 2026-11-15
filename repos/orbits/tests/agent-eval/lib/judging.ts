@@ -70,6 +70,35 @@ export function eventIndexLine(event: TraceEvent): string {
   }
 }
 
+export interface RubricItem {
+  id: string;
+  text: string;
+  gate?: string;
+}
+
+function rubricOf(caseYaml: string): RubricItem[] {
+  try {
+    const parsed = yaml.load(caseYaml) as { rubric?: RubricItem[] } | null;
+    return Array.isArray(parsed?.rubric) ? parsed.rubric.filter((item) => item && typeof item.id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * README §3.3/§6: in a gate run for AGx, an item gated later than AGx is judged but does not count
+ * towards the case result (listed as deferred). Outside gate runs (runGate null) every item counts.
+ */
+export function countedRubric(rubric: readonly RubricItem[], runGate: string | null): { counted: string[]; deferred: { id: string; gate: string }[] } {
+  const counted: string[] = [];
+  const deferred: { id: string; gate: string }[] = [];
+  for (const item of rubric) {
+    if (runGate && item.gate && item.gate > runGate) deferred.push({ gate: item.gate, id: item.id });
+    else counted.push(item.id);
+  }
+  return { counted, deferred };
+}
+
 export function renderJudgePacket(input: {
   caseDir: string;
   caseYaml: string;
@@ -85,6 +114,12 @@ export function renderJudgePacket(input: {
   lines.push(`你是新开的评审会话。按下面「评审者的指示」评这一例，把结果写成 \`${path.join(input.caseDir, "judge-<N>.json")}\`（第几位评审就写第几号，本例需要 ${input.judgeCount} 份，互不相见）。只读本材料，需要核对时打开 \`${path.join(input.caseDir, "trace.jsonl")}\`。不要打开代码仓库、REPORT 或别的评审结果。`, "");
   lines.push("## 评审者的指示", "", input.judgePrompt.trim(), "");
   lines.push("## 用例原文", "", "```yaml", input.caseYaml.trim(), "```", "");
+  const rubric = rubricOf(input.caseYaml);
+  if (rubric.length) {
+    lines.push("## 评审项", "", "每一条都照常评（通过、不通过、看不出，各引日志序号）。标了起始 sprint 的条目，只影响报告怎么计入本例结论，不影响你怎么评。", "");
+    for (const item of rubric) lines.push(`- ${item.id}：${item.text}${item.gate ? `（从 ${item.gate} 起计入本例结论）` : ""}`);
+    lines.push("");
+  }
   lines.push("## transcript.md（用户看到的内容）", "", input.transcript.trim(), "");
   lines.push(`## 代码判定（hard-checks.json）：${input.hardPass ? "全部通过" : "有不通过"}`, "", "| 判定 | 结果 | 说明 | 事件序号 |", "|---|---|---|---|");
   for (const check of input.checks) {
@@ -131,17 +166,25 @@ export interface CaseVerdict {
   disagreements: string[];
   reasons: string[];
   expectJudgeVerdicts?: { item: string; verdict: string }[];
+  /** Judged items left out of this gate run's result (README §3.3). */
+  deferred?: { id: string; gate: string }[];
 }
 
 /**
  * README §6: pass needs every hard check and every rubric item of every judgment to pass.
  * expect_judge_verdicts (H.yaml): the listed items must have exactly that verdict, the rest pass.
  * Disagreeing judges → the item is listed for manual review (a third judge settles the verdict).
+ * The result is computed from the per-item verdicts of `rubricIds` (the counted items), never from a
+ * judge's own `overall`. `deferred` items (gated later than this gate run) are listed, not counted.
  */
-export function decideCase(input: { caseId: string; hardPass: boolean; rubricIds: string[]; required: number; validations: JudgeValidation[]; expectJudgeVerdicts?: { item: string; verdict: string }[] }): CaseVerdict {
+export function decideCase(input: { caseId: string; hardPass: boolean; rubricIds: string[]; required: number; validations: JudgeValidation[]; expectJudgeVerdicts?: { item: string; verdict: string }[]; deferred?: { id: string; gate: string }[] }): CaseVerdict {
   const valid = input.validations.filter((validation) => validation.judge && validation.problems.length === 0);
   const reasons: string[] = [];
   for (const validation of input.validations.filter((item) => item.problems.length)) reasons.push(`rejected ${path.basename(validation.file)}: ${validation.problems.join("; ")}`);
+  for (const item of input.deferred ?? []) {
+    const verdicts = valid.map((validation) => validation.judge!.items.find((entry) => entry.id === item.id)?.verdict ?? "missing");
+    reasons.push(`${item.id} 已评（${verdicts.join(", ") || "无"}），从 ${item.gate} 起计入`);
+  }
   const disagreements: string[] = [];
   const expected = new Map((input.expectJudgeVerdicts ?? []).map((item) => [item.item, item.verdict]));
   for (const id of input.rubricIds) {
@@ -150,7 +193,7 @@ export function decideCase(input: { caseId: string; hardPass: boolean; rubricIds
     if (verdicts.includes("unclear")) reasons.push(`${id} unclear in a judgment (counts as fail, listed for review)`);
   }
   const judges = input.validations.map((validation) => ({ file: path.basename(validation.file), overall: validation.judge?.overall ?? null, problems: validation.problems }));
-  const base = { caseId: input.caseId, disagreements, hardPass: input.hardPass, judges, ...(input.expectJudgeVerdicts ? { expectJudgeVerdicts: input.expectJudgeVerdicts } : {}) };
+  const base = { caseId: input.caseId, disagreements, hardPass: input.hardPass, judges, ...(input.expectJudgeVerdicts ? { expectJudgeVerdicts: input.expectJudgeVerdicts } : {}), ...(input.deferred?.length ? { deferred: input.deferred } : {}) };
   if (valid.length < input.required) {
     return { ...base, reasons: [...reasons, `${valid.length} valid judgment(s), ${input.required} required`], verdict: input.hardPass ? "unjudged" : "fail" };
   }

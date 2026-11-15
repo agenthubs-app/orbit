@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
-import { decideCase, eventIndexLine, renderJudgePacket, validateJudgeFile, type JudgeFile } from "./lib/judging";
+import { countedRubric, decideCase, eventIndexLine, renderJudgePacket, validateJudgeFile, type JudgeFile } from "./lib/judging";
 import { costsProblems } from "./lib/run-files";
 import { deepseekCost, finishCosts, isPeakBeijing, tallyCosts } from "./lib/costs";
 
@@ -69,6 +69,50 @@ test("the judge packet carries the prompt, the case, the hard checks and a seq i
   });
   for (const part of ["评审者的指示", "id: AE-H-001", "trace_complete", "1 · turn.user · 你好", "2 · model.response [real]", "本例需要 2 份"]) assert.ok(packet.includes(part), part);
   assert.match(eventIndexLine({ host: "collect.example.test", port: 443, seq: 4, at: "2026-11-15T01:00:00Z", type: "egress.blocked" }), /collect\.example\.test:443/u);
+});
+
+// ── README §3.3/§6 (CHANGES 2026-11-15): rubric-item gate; the case result comes from the items ──
+
+test("in a gate run, items gated later are judged but left out of the result and listed; elsewhere every item counts", () => {
+  const rubric = [{ id: "R1", text: "a" }, { id: "R2", gate: "AG05", text: "b" }];
+  const atAG01 = countedRubric(rubric, "AG01");
+  assert.deepEqual(atAG01, { counted: ["R1"], deferred: [{ gate: "AG05", id: "R2" }] });
+  assert.deepEqual(countedRubric(rubric, "AG05"), { counted: ["R1", "R2"], deferred: [] });
+  assert.deepEqual(countedRubric(rubric, "AG07"), { counted: ["R1", "R2"], deferred: [] });
+  assert.deepEqual(countedRubric(rubric, null), { counted: ["R1", "R2"], deferred: [] }, "--all, --sealed and baseline runs count everything");
+
+  const items = [{ evidence: [2], id: "R1", reason: "x", verdict: "pass" as const }, { evidence: [5], id: "R2", reason: "content not there yet", verdict: "fail" as const }];
+  const validations = ["g1.json", "g2.json"].map((name, index) => validateJudgeFile(write(name, judge(items, { session: `g${index}` })), "AE-H-005", ["R1", "R2"], 40));
+  const gated = decideCase({ caseId: "AE-H-005", deferred: atAG01.deferred, hardPass: true, required: 2, rubricIds: atAG01.counted, validations });
+  assert.equal(gated.verdict, "pass");
+  assert.ok(gated.reasons.some((reason) => /R2 已评（fail, fail），从 AG05 起计入/u.test(reason)));
+  const all = countedRubric(rubric, null);
+  assert.equal(decideCase({ caseId: "AE-H-005", deferred: all.deferred, hardPass: true, required: 2, rubricIds: all.counted, validations }).verdict, "fail");
+});
+
+test("the case result never comes from the judge's own overall", () => {
+  const passingItems = [{ evidence: [2], id: "R1", reason: "x", verdict: "pass" as const }];
+  const saysFail = validateJudgeFile(write("o1.json", { ...judge(passingItems), overall: "fail" }), "AE-H-005", ["R1"], 40);
+  assert.equal(decideCase({ caseId: "AE-H-005", hardPass: true, required: 1, rubricIds: ["R1"], validations: [saysFail] }).verdict, "pass");
+  const failingItems = [{ evidence: [2], id: "R1", reason: "x", verdict: "fail" as const }];
+  const saysPass = validateJudgeFile(write("o2.json", { ...judge(failingItems), overall: "pass" }), "AE-H-005", ["R1"], 40);
+  assert.equal(decideCase({ caseId: "AE-H-005", hardPass: true, required: 1, rubricIds: ["R1"], validations: [saysPass] }).verdict, "fail");
+});
+
+test("the judge packet notes each item's gate; judges still judge every item", () => {
+  const packet = renderJudgePacket({
+    caseDir: dir,
+    caseYaml: "id: AE-ENT-004\nrubric:\n  - id: R1\n    text: 第一条针对待办\n  - id: R3\n    text: 第一条列出了未完成的待办\n    gate: AG05\n",
+    checks: [],
+    events: [],
+    hardPass: true,
+    judgeCount: 2,
+    judgePrompt: "指示",
+    transcript: "",
+  });
+  assert.ok(packet.includes("- R1：第一条针对待办"));
+  assert.ok(packet.includes("- R3：第一条列出了未完成的待办（从 AG05 起计入本例结论）"));
+  assert.match(packet, /每一条都照常评/u);
 });
 
 test("costs: priced from usage at the call time, real only; problems listed when the balance is missing", () => {

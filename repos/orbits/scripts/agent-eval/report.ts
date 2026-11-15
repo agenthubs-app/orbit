@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { CostSummary } from "../../tests/agent-eval/lib/costs";
-import { decideCase, readCaseYaml, validateJudgeFile, type CaseVerdict } from "../../tests/agent-eval/lib/judging";
+import { countedRubric, decideCase, readCaseYaml, validateJudgeFile, type CaseVerdict } from "../../tests/agent-eval/lib/judging";
 import { evalPaths, RUNS_MD } from "../../tests/agent-eval/lib/paths";
 import { renderRunReport, type JudgedCase } from "../../tests/agent-eval/lib/report-md";
 import { writeBundleSha } from "../../tests/agent-eval/lib/run-files";
@@ -31,12 +31,15 @@ export function judgeRun(runDir: string, required: number): { verdicts: CaseVerd
     const judgeFiles = fs.readdirSync(caseDir).filter((name) => /^judge-\d+\.json$/u.test(name)).sort();
     const validations = judgeFiles.map((name) => validateJudgeFile(path.join(caseDir, name), item.id, (testCase.rubric ?? []).map((r: { id: string }) => r.id), maxSeq));
     const expectEntry = (testCase.hard ?? []).find((entry: Record<string, unknown>) => "expect_judge_verdicts" in entry);
+    // README §3.3/§6: in a gate run, items gated later are judged but not counted; other runs count every item.
+    const { counted, deferred } = countedRubric(testCase.rubric ?? [], typeof summary.gate === "string" ? summary.gate : null);
     const verdict = decideCase({
       caseId: item.id,
+      deferred,
       expectJudgeVerdicts: expectEntry?.expect_judge_verdicts,
       hardPass: item.hardPass,
       required: expectEntry ? Math.max(2, required) : required,
-      rubricIds: (testCase.rubric ?? []).map((r: { id: string }) => r.id),
+      rubricIds: counted,
       validations,
     });
     fs.writeFileSync(path.join(caseDir, "verdict.json"), JSON.stringify(verdict, null, 2));
