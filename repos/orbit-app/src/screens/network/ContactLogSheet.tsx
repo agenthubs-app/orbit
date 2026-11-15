@@ -171,7 +171,18 @@ function ContactLogForm({ contact, offline, onClose, onSaved }: { contact: Conta
         </View>
       ) : null}
 
-      {noChips ? (
+      {me === undefined ? (
+        // 自己的资料还在读：占位 chip 先站住位置，读到后原位换成真实 chip（不先少一组再冒出来）。
+        <View style={styles.field} testID="contact-log-loading" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <UiText style={styles.lbl}>{t("network.log.topics")}</UiText>
+          {[0, 1].map((side) => (
+            <View key={side} style={styles.side}><View style={styles.group}>
+              <View style={styles.labelBone} />
+              <View style={styles.chips}>{[88, 120, 88].map((width, index) => <View key={index} style={[styles.chipBone, { width }]} />)}</View>
+            </View></View>
+          ))}
+        </View>
+      ) : noChips ? (
         <View style={styles.field}>
           <UiText style={styles.lbl}>{t("network.log.topicsPlain")}</UiText>
           <View style={styles.empty} testID="contact-log-empty">
@@ -227,6 +238,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   chip: { maxWidth: "100%", paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.surface2 },
   chipOn: { backgroundColor: colors.ink },
+  chipBone: { height: 34, borderRadius: 999, backgroundColor: colors.surface2 },
+  labelBone: { width: 64, height: 12, marginVertical: 3, borderRadius: 999, backgroundColor: colors.surface2 },
   chipText: { color: colors.ink2, fontSize: 14, fontWeight: "600" },
   chipTextOn: { color: colors.onAccent },
   chipMore: { backgroundColor: "transparent", paddingLeft: 4 },

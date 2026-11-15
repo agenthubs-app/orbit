@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { InviteConnectionView, InviteSharedFieldKey } from "../../../../../shared/contract/invite-codes";
 import type { PlanContactFit } from "../../../../../shared/contract/plan-v2";
+import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { MeetingProposalModal } from "../calendar/MeetingProposalModal";
 import { networkCopy } from "../copy/network";
@@ -17,7 +18,7 @@ import { pickCopy } from "../copy/types";
 import { Checkbox, ConfirmDialog, ContextMenu, Drawer, Icon, Modal, Toggle, fillCopy, useToast } from "../ui";
 import { avatarTone, initials } from "../ui";
 import { ContactEditDrawer } from "./ContactEditDrawer";
-import { ContactLogModal } from "./ContactLogModal";
+import { ContactLogModal, warmMyProfile } from "./ContactLogModal";
 import { monthDayOf, timelineWithSystemEntries, timelineChannelOf, timelineDay, timelineOriginOf, type TimelineNote } from "./contact-log-model";
 import { networkApi } from "./network-api";
 import { tokyoMonthDay, regionLabel, type NetworkCityKey } from "./network-model";
@@ -93,6 +94,12 @@ export function ContactAvatar({ name, large = false }: { name: string; large?: b
   return <span className={`${styles.avatar} ${styles[`a_${avatarTone(name)}`]} ${large ? styles.avatarLg : ""}`} aria-hidden>{initials(name)}</span>;
 }
 
+type ValueLine = { relation?: string | null; evidence?: string[] };
+const valueLineLang = (language: string) => (language === "zh" ? "zh" : "en");
+const valueLineKey = (contactId: string, lang: string) => `network:value-line:${contactId}:${lang}`;
+/** The last answer for this person (null = read, nothing to say); undefined = never read on this page. */
+const cachedValueLine = (contactId: string, language: string) => lastAnswer<ValueLine | null>(valueLineKey(contactId, valueLineLang(language)));
+
 export interface ContactDrawerProps {
   contactId: string | null;
   onClose: () => void;
@@ -114,7 +121,8 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   const toast = useToast();
   const [payload, setPayload] = useState<Record<string, unknown> | null>(initial);
   const [failed, setFailed] = useState(false);
-  const [valueLine, setValueLine] = useState<{ relation?: string | null; evidence?: string[] } | null>(null);
+  // undefined = still reading (the why card holds a one-line skeleton instead of popping in later).
+  const [valueLine, setValueLine] = useState<ValueLine | null | undefined>(() => (contactId ? cachedValueLine(contactId, language) : undefined));
   const [fit, setFit] = useState<PlanContactFit | null>(null);
   const [connection, setConnection] = useState<InviteConnectionView | null>(null);
   const [whyOpen, setWhyOpen] = useState(false);
@@ -135,10 +143,15 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   }, []);
   useEffect(() => {
     if (!contactId) return;
-    setValueLine(null); setFit(null); setConnection(null); setWhyOpen(false); setUpdateDismissed(false);
+    setValueLine(cachedValueLine(contactId, language)); setFit(null); setConnection(null); setWhyOpen(false); setUpdateDismissed(false);
     if (!initial) void load(contactId);
-    const lang = language === "zh" ? "zh" : "en";
-    void networkApi.valueLine(contactId, lang).then((result) => { if (result.ok) setValueLine(result.data.lines.find((line) => line.contactId === contactId) ?? null); });
+    warmMyProfile();
+    const lang = valueLineLang(language);
+    void networkApi.valueLine(contactId, lang).then((result) => {
+      const line = result.ok ? result.data.lines.find((item) => item.contactId === contactId) ?? null : null;
+      if (result.ok) rememberAnswer(valueLineKey(contactId, lang), line);
+      setValueLine((current) => (result.ok ? line : current ?? null));
+    });
     void networkApi.fit(contactId).then((result) => { if (result.ok && Array.isArray(result.data?.fits)) setFit(result.data); });
     if (inviteLinked !== false) void networkApi.connection(contactId).then((result) => { if (result.ok) setConnection(result.data); });
   }, [contactId, initial, language, load, inviteLinked]);
@@ -218,11 +231,12 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
                 </div>
               ) : null}
 
-              {!self && (valueLine?.relation || nextStep || goalLabel) ? (
+              {!self && (valueLine === undefined || valueLine?.relation || nextStep || goalLabel) ? (
                 <div className={styles.card} data-network-why="">
                   <div className={styles.row}><span className={`${styles.emo} ${styles.emoSm} ${styles.t_pink}`}>🎯</span><b className={styles.grow}>{t("detailWhyTitle", { name: contact.displayName })}</b>
                     {valueLine?.evidence?.length ? <button type="button" className={styles.why} onClick={() => setWhyOpen((value) => !value)} aria-expanded={whyOpen}>?</button> : null}</div>
-                  {valueLine?.relation ? <div style={{ marginTop: 8 }}>{valueLine.relation}</div> : nextStep ? <div style={{ marginTop: 8 }}>{nextStep}</div> : null}
+                  {valueLine === undefined ? <div className={styles.whySkeleton} aria-hidden="true" data-network-why-loading=""><i /></div>
+                    : valueLine?.relation ? <div style={{ marginTop: 8 }}>{valueLine.relation}</div> : nextStep ? <div style={{ marginTop: 8 }}>{nextStep}</div> : null}
                   {whyOpen && valueLine?.evidence?.length ? <div className={styles.whyBody} style={{ marginTop: 8 }}>{t("detailWhyBasis", { basis: valueLine.evidence.map((label) => evidenceLabel(label, t)).join(" · ") })}</div> : null}
                   {goalLabel ? <div className={styles.chips}><span className={`${styles.chip} ${styles.chipLav}`}>{t("detailPlanChip", { label: goalLabel })}</span></div> : null}
                   <div className={styles.row} style={{ marginTop: 12, gap: 8, flexWrap: "wrap" }}>

@@ -41,6 +41,10 @@ import { useNetworkMerge } from "./useNetworkMerge";
 import { useNetworkDesignContacts } from "./network-design-fixture";
 
 interface ValueLine { relation?: string | null; evidence?: string[]; meetingCount?: number }
+const valueLineLang = (language: string) => (language === "zh" ? "zh" : "en");
+// This app session's last answer per person (in memory only): reopening a person draws the line at once, no bone.
+const valueLineCache = new Map<string, ValueLine | null>();
+const cachedValueLine = (contactId: string, language: string): ValueLine | null | undefined => valueLineCache.get(`${contactId}:${valueLineLang(language)}`);
 
 const STATUS_COPY = { active: "network.status.active", nurture: "network.status.nurture", needs_follow_up: "network.status.needs_follow_up", archived: "network.status.archived" } as const;
 const FIELD_COPY: Record<string, "network.detail.fieldName" | "network.detail.fieldCompany" | "network.detail.fieldRole" | "network.detail.fieldEmail" | "network.detail.fieldPhone" | "network.detail.fieldOffering" | "network.detail.fieldSeeking"> = {
@@ -73,7 +77,8 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const linkedSource = useNotesListSource({ actorId: auth.actorId ?? "", scopeKey: `network-contact:${contactId}`, association: "all", contactId, noteKind: "all", q: "" });
   const goalLink = fixture.enabled ? fixture.data?.links.find((link) => link.contactId === contactId) ?? null : merge.links.get(contactId) ?? null;
 
-  const [valueLine, setValueLine] = useState<ValueLine | null>(null);
+  // undefined = still reading: the why card holds a one-line bone instead of popping in later.
+  const [valueLine, setValueLine] = useState<ValueLine | null | undefined>(() => (fixture.enabled ? null : cachedValueLine(contactId, language)));
   const [fit, setFit] = useState<PlanContactFit | null>(null);
   const [connection, setConnection] = useState<InviteConnectionView | null>(null);
   // QA-C3: a person you can message in Orbit (an open conversation) gets a Message button on their page.
@@ -105,10 +110,15 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
       }
       return () => { live = false; };
     }
-    const lang = language === "zh" ? "zh" : "en";
+    const lang = valueLineLang(language);
+    setValueLine(cachedValueLine(contactId, language));
     void client.get<{ lines: (ValueLine & { contactId: string })[] }>(`/api/contacts/value-lines?ids=${encodeURIComponent(contactId)}&lang=${lang}`).then((result) => {
-      if (!live || whenNotImplemented(result, { use: "hide" }) || !result.success) return;
-      setValueLine(result.data.lines.find((line) => line.contactId === contactId) ?? null);
+      if (!live) return;
+      // Offline / failed / not implemented: keep the last answer, or hide the card (G18) — never hold the bone.
+      if (whenNotImplemented(result, { use: "hide" }) || !result.success) { setValueLine((current) => current ?? null); return; }
+      const line = result.data.lines.find((item) => item.contactId === contactId) ?? null;
+      valueLineCache.set(`${contactId}:${lang}`, line);
+      setValueLine(line);
     });
     void client.get<PlanContactFit>(`/api/agent/plans/v2/contacts/${encodeURIComponent(contactId)}/fit`).then((result) => {
       if (live && result.success && Array.isArray(result.data?.fits)) setFit(result.data);
@@ -280,7 +290,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
           </View>
         ) : null}
 
-        {!self && (valueLine?.relation || goalLink) ? (
+        {!self && (valueLine === undefined || valueLine?.relation || goalLink) ? (
           <View style={[styles.card, styles.whyCard, styles.gapTop]} testID="network-why-card">
             <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
               <Defs><LinearGradient id="networkWhyGradient" x1="0%" y1="0%" x2="100%" y2="100%"><Stop offset="0%" stopColor={colors.macPink} /><Stop offset="65%" stopColor={colors.surface} /></LinearGradient></Defs>
@@ -291,7 +301,8 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
               <UiText style={[styles.cardTitle, styles.grow]}>{t("network.detail.whyTitle", { name: contact.displayName })}</UiText>
               {valueLine?.evidence?.length ? <IconButton icon="info" accessibilityLabel={t("network.detail.whyBasis", { basis: "" })} onPress={() => setWhyOpen((value) => !value)} /> : null}
             </View>
-            {valueLine?.relation ? <UiText style={[styles.body, styles.whyBody]}>{valueLine.relation}</UiText> : null}
+            {valueLine === undefined ? <View style={styles.whyBone} testID="network-why-loading"><View style={styles.whyBoneBar} /></View>
+              : valueLine?.relation ? <UiText style={[styles.body, styles.whyBody]}>{valueLine.relation}</UiText> : null}
             {whyOpen && valueLine?.evidence?.length ? <UiText style={styles.lbl}>{t("network.detail.whyBasis", { basis: valueLine.evidence.map((label) => evidenceLabel(label, t)).join(" · ") })}</UiText> : null}
             {goalLink || valueLine?.meetingCount ? <View style={styles.whyChips}>
               {goalLink ? <Chip label={t("network.detail.planChip", { label: goalLink.label })} tone="lav" /> : null}
@@ -522,6 +533,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionEmpty: { opacity: 0.4 },
   whyCard: { overflow: "hidden" },
   whyBody: { fontSize: 17, lineHeight: 25, fontWeight: "700" },
+  whyBone: { height: 25, justifyContent: "center", marginTop: 6 },
+  whyBoneBar: { width: "72%", height: 15, borderRadius: 999, backgroundColor: colors.surface2 },
   whyChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 12 },
   rowCenter: { flexDirection: "row", alignItems: "center", gap: 8 },
   messageButton: { alignSelf: "center", marginTop: 4 },

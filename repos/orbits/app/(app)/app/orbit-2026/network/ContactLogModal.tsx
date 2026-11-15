@@ -24,18 +24,27 @@ const strings = (value: unknown) => (Array.isArray(value) ? value.filter((item):
 const myProfileOf = (payload: ProfilePayload | undefined): MyProfile | null =>
   payload?.profile ? { offering: strings(payload.profile.offering), seeking: strings(payload.profile.seeking), topics: strings(payload.profile.topics) } : null;
 
-/** 自己的资料里能当 chip 的三项。undefined = 还在读；读失败按空。 */
+let profileRead: Promise<MyProfile | null> | null = null;
+/** One /api/profile read at a time; a fresh cached answer needs none. The drawer calls this on open so the chips are ready before 「＋ 记一笔交流」. */
+function readMyProfile(): Promise<MyProfile | null> {
+  const cached = myProfileOf(lastAnswer<ProfilePayload>(PROFILE_ANSWER_KEY));
+  if (cached && answerFresh(PROFILE_ANSWER_KEY, FRESH.slow)) return Promise.resolve(cached);
+  profileRead ??= fetch("/api/profile", { cache: "no-store" }).then((response) => (response.ok ? response.json() : null)).then((body: { success?: boolean; data?: ProfilePayload } | null) => {
+    if (body?.success && body.data?.profile) rememberAnswer(PROFILE_ANSWER_KEY, body.data);
+    return myProfileOf(body?.data ?? undefined) ?? cached;
+  }).catch(() => cached).finally(() => { profileRead = null; });
+  return profileRead;
+}
+export function warmMyProfile(): void { void readMyProfile(); }
+
+// undefined = still reading: the chip area holds skeleton pills instead of the 「我」 groups popping in later.
 function useMyProfile(): MyProfile | null | undefined {
   const [profile, setProfile] = useState<MyProfile | null | undefined>(() => myProfileOf(lastAnswer<ProfilePayload>(PROFILE_ANSWER_KEY)) ?? undefined);
   useEffect(() => {
-    if (profile !== undefined && answerFresh(PROFILE_ANSWER_KEY, FRESH.slow)) return;
     let alive = true;
-    void fetch("/api/profile", { cache: "no-store" }).then((response) => (response.ok ? response.json() : null)).then((body: { success?: boolean; data?: ProfilePayload } | null) => {
-      if (body?.success && body.data?.profile) rememberAnswer(PROFILE_ANSWER_KEY, body.data);
-      if (alive) setProfile(myProfileOf(body?.data ?? undefined) ?? null);
-    }).catch(() => { if (alive) setProfile((current) => current ?? null); });
+    void readMyProfile().then((next) => { if (alive) setProfile((current) => next ?? current ?? null); });
     return () => { alive = false; };
-  }, []); // once per open
+  }, []);
   return profile;
 }
 
@@ -138,7 +147,14 @@ function ContactLogSession({ contact, t, onClose, onSaved }: { contact: ContactL
             </div>
           </div>
         ) : null}
-        {noChips ? (
+        {me === undefined ? (
+          <div className={styles.logField} aria-hidden="true" data-contact-log-loading="">
+            <span className={styles.lbl}>{t("logTopics")}</span>
+            <div className={styles.logSide}>
+              {[0, 1].map((column) => <div key={column}><div className={styles.logGroup}><div className={styles.logGroupLabel}><i className={styles.logLabelBone} /></div><div className={styles.logChips}>{[0, 1, 2].map((pill) => <i key={pill} className={styles.logChipBone} />)}</div></div></div>)}
+            </div>
+          </div>
+        ) : noChips ? (
           <div className={styles.logField}>
             <span className={styles.lbl}>{t("logTopicsPlain")}</span>
             <div className={styles.logEmpty} data-contact-log-empty="">{t("logEmpty")}<a href="/app/profile?edit=tags">{t("logCompleteProfile")}</a></div>
