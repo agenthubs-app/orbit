@@ -202,9 +202,9 @@ export function createSessionWriter(provider: OrbitAgentChatSessionProvider): Ag
         updatedAt: createdAt,
       });
     },
-    async appendAssistant(sessionId, record, text, createdAt) {
+    async appendAssistant(sessionId, record, text, createdAt, key) {
       await provider.appendMessages(sessionId, {
-        messages: [{ createdAt, id: `assistant:${record.requestId}`, role: "assistant", text }],
+        messages: [{ createdAt, id: key ? `assistant:${record.requestId}:${key}` : `assistant:${record.requestId}`, role: "assistant", text }],
         updatedAt: createdAt,
       });
     },

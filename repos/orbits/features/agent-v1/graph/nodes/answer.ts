@@ -32,6 +32,8 @@ export function answerSegments(text: string, wanted: ReadonlySet<string>): Segme
 
 export function answerNode({ deps, input, run }: NodeScope): GraphNode {
   return async (state: AgentGraphState) => {
+    // AG04: resuming a paused request makes no model call (§3.9); its parts are written by code.
+    if (state.touched !== null) return {};
     const parts: GraphPart[] = state.parts.map((part) => ({ ...part }));
     const due = parts.filter((part) => part.route === "answer" && part.status === "answered");
     if (!due.length) return {};

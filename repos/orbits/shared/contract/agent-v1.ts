@@ -93,6 +93,63 @@ export interface AgentResultDocument {
   updatedAt: string;
   /** AG02：这一轮出的确认卡（设计稿 §5.1 的 actionPreview）。两端只按它渲染，不自己拼字段。 */
   actionPreview?: AgentActionPreviewContract | undefined;
+  /** AG04：这一轮给出的可点方向（追问的候选、没看懂时的方向、附带的入口）。两端照它显示，不自己编选项。 */
+  clarifications?: readonly AgentClarificationContract[] | undefined;
+}
+
+/** AG04：一个可点的方向（设计稿 §3.11）。文字由服务端代码写；capability 都在附录 A 的能力清单里。 */
+export interface AgentClarificationOptionContract {
+  optionId: string;
+  label: string;
+  capability: string;
+  /** 这个方向指向的记录（如追问“她”是谁时的候选人）。 */
+  ref?: { type: string; id: string; name: string } | undefined;
+}
+
+/**
+ * AG04：一组可点的方向。
+ * question：要改记录却缺一项、或几种读法里有要写入的，问一句；not_understood：读不出要做什么；
+ * entry：附带的入口（陈述后的“要记下来吗”、其余读法、接受替代方案），点了才算提出。
+ */
+export type AgentClarificationKind = "question" | "not_understood" | "entry";
+
+export interface AgentClarificationContract {
+  clarificationId: string;
+  partId: string;
+  kind: AgentClarificationKind;
+  /** question 问的是什么：缺的对象，还是几种读法选哪一种。 */
+  asks?: "object" | "reading" | undefined;
+  options: readonly AgentClarificationOptionContract[];
+  /** open：还能点；answered：点选或用文字回答过；shelved：用户没理会，已放下。 */
+  state: "open" | "answered" | "shelved";
+  selectedOptionId?: string | undefined;
+  /** 用文字回答时，回答所在的那条消息的 requestId。 */
+  answeredBy?: string | undefined;
+}
+
+/**
+ * AG04：在可点方向下点选（POST /api/ai/conversations，protocolVersion 3，带 selection）。
+ * 点选先落库、按会话顺序处理，接回原来那次委托，不产生新委托。
+ */
+export interface AgentSelectionInputContract {
+  protocolVersion: AgentProtocolVersion;
+  sessionId: string;
+  /** 点选的去重键：同一次点击重发时不变。 */
+  clientSelectionId: string;
+  selection: { requestId: string; clarificationId: string; optionId: string };
+}
+
+/** 点选的应答。拒收（所选不在当时给出的候选里、这组方向已关闭）返回 409，error.context.reason 写明原因。 */
+export interface AgentSelectionReceiptContract {
+  protocolVersion: AgentProtocolVersion;
+  requestId: string;
+  sessionId: string;
+  clientSelectionId: string;
+  clarificationId: string;
+  optionId: string;
+  status: AgentRequestStatus;
+  replayed: boolean;
+  acceptedAt: string;
 }
 
 /** 卡片状态（设计稿附录 D）：沿用账本的十种，新增 expired。 */

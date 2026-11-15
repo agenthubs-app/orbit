@@ -430,6 +430,196 @@
           "optional": true,
           "kind": "text",
           "type": "AgentActionPreviewContract"
+        },
+        "clarifications": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentClarificationContract[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentClarificationOptionContract": {
+      "kind": "object",
+      "members": {
+        "optionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "capability": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "ref": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "type": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "id": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "name": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "agent-v1.ts::AgentClarificationKind": {
+      "kind": "enum",
+      "values": [
+        "'entry'",
+        "'not_understood'",
+        "'question'"
+      ]
+    },
+    "agent-v1.ts::AgentClarificationContract": {
+      "kind": "object",
+      "members": {
+        "clarificationId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "partId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentClarificationKind"
+        },
+        "asks": {
+          "optional": true,
+          "kind": "text",
+          "type": "'object' | 'reading' | undefined"
+        },
+        "options": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentClarificationOptionContract[]"
+        },
+        "state": {
+          "optional": false,
+          "kind": "text",
+          "type": "'answered' | 'open' | 'shelved'"
+        },
+        "selectedOptionId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "answeredBy": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentSelectionInputContract": {
+      "kind": "object",
+      "members": {
+        "protocolVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "3"
+        },
+        "sessionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientSelectionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "selection": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "requestId": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "clarificationId": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "optionId": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "agent-v1.ts::AgentSelectionReceiptContract": {
+      "kind": "object",
+      "members": {
+        "protocolVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "3"
+        },
+        "requestId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sessionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientSelectionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clarificationId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "optionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentRequestStatus"
+        },
+        "replayed": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "acceptedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
         }
       }
     },
@@ -19000,7 +19190,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'confirmed' | 'open' | 'discarded'"
+          "type": "'open' | 'confirmed' | 'discarded'"
         },
         "intakeId": {
           "optional": false,
@@ -19629,7 +19819,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'confirmed' | 'open' | 'discarded'"
+          "type": "'open' | 'confirmed' | 'discarded'"
         },
         "intakeId": {
           "optional": false,
@@ -23150,7 +23340,7 @@
               "status": {
                 "optional": false,
                 "kind": "text",
-                "type": "'completed' | 'dismissed' | 'open' | 'scheduled'"
+                "type": "'completed' | 'open' | 'dismissed' | 'scheduled'"
               },
               "purpose": {
                 "optional": false,
@@ -23247,7 +23437,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'completed' | 'dismissed' | 'open' | 'scheduled'"
+          "type": "'completed' | 'open' | 'dismissed' | 'scheduled'"
         },
         "dueAt": {
           "optional": false,
@@ -23309,7 +23499,7 @@
               "status": {
                 "optional": false,
                 "kind": "text",
-                "type": "'completed' | 'dismissed' | 'open' | 'scheduled'"
+                "type": "'completed' | 'open' | 'dismissed' | 'scheduled'"
               },
               "dueAt": {
                 "optional": false,

@@ -1,62 +1,130 @@
 /**
- * route (code): verdict, route and wait reason per part (route/decide.ts), then the statuses this
- * sprint can reach, and dependencies settled. The first layer's handoff is traced here.
+ * route (code): verdict, route and wait reason per part (route/decide.ts), the statuses this sprint
+ * can reach, and dependencies settled. The first layer's handoff is traced here.
+ *
+ * AG04: on the first pass each part is first attributed to an open item it continues (§3.7,
+ * clarify/attribution.ts) — a part answering a question inherits that question, so it is not asked
+ * again — and an unclear part's next step comes from §3.11 (clarify/next-step.ts). After a pause only
+ * the parts the resume touched are routed again, from the plan kept in the checkpoint; nothing else
+ * changes and no model is called.
  */
+import { attributeMessage } from "../../clarify/attribution";
+import { recordKindOf } from "../../clarify/default-readings";
 import { emitTrace } from "../../observability/trace";
-import { decideRoute, NOT_YET_ROUTES, settleDependencies, statusForRoute } from "../../route/decide";
+import { decideRoute, NOT_YET_ROUTES, settleDependencies, statusForRoute, type RouteInput } from "../../route/decide";
+import type { ContinueKind } from "../../understand/schema";
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
+import { clueWords, needsDirections, objectOf, pageKindOf } from "./clarify";
 
-export function routeNode({ input, run }: NodeScope): GraphNode {
+export function routeInputOf(part: GraphPart): RouteInput {
+  return {
+    clarity: part.plan.clarity,
+    ...(part.continues ? { continues: { kind: part.continues.kind as ContinueKind, ref: part.continues.ref } } : {}),
+    dataOwner: part.plan.dataOwner,
+    dataSources: part.plan.dataSources,
+    hypothesis: part.plan.hypothesis,
+    intentBasis: part.plan.intentBasis,
+    negation: part.plan.negation,
+    objectClues: part.refs.map((ref) => ({ entity: ref.entity })),
+    persistence: part.plan.persistence,
+    readings: part.plan.readings,
+    requiredCapabilities: part.capabilities,
+  };
+}
+
+export function routeNode(scope: NodeScope): GraphNode {
+  const { input, run } = scope;
   return async (state: AgentGraphState) => {
+    const resume = state.touched !== null;
     const understood = run.understood;
-    if (!understood) return {};
-    const context = run.context!;
-    let acceptedAlternativeRef: string | null = null;
-    const parts: GraphPart[] = state.parts.map((part, index) => {
-      const source = understood.parts[index];
-      const accepted = part.continues?.kind === "alternative" ? context.openItems.find((item) => item.ref === part.continues!.ref && item.kind === "alternative") ?? null : null;
-      const decision = decideRoute(source, { acceptedAlternative: accepted });
-      if (accepted) acceptedAlternativeRef = accepted.ref;
+    if (!resume && !understood) return {};
+    const context = run.context;
+    run.steps = new Map();
+    const attribution = !resume && context
+      ? attributeMessage(state.parts.map((part) => ({ clarity: part.plan.clarity, continues: part.continues, localId: part.localId })), context.openItems)
+      : null;
+    let acceptedAlternativeRef: string | null = state.acceptedAlternativeRef;
+    const topicKind = context?.shownList.length ? recordKindOf(context.shownList[0].type) : null;
+    const parts: GraphPart[] = state.parts.map((original) => {
+      if (resume && !state.touched!.includes(original.localId)) return original;
+      const part: GraphPart = { ...original };
+      if (attribution) {
+        const found = attribution.get(part.localId);
+        if (found && found.kind !== "new") {
+          part.continues = { kind: found.kind, ref: found.item.ref };
+          if (found.kind === "clarification") part.asked = Math.max(part.asked, 1);
+          emitTrace({ fallback: found.fallback, item: { kind: found.item.kind, ref: found.item.ref, requestId: found.item.requestId }, partId: part.localId, type: "attribution.continues" });
+        } else {
+          if (part.continues) emitTrace({ claimed: part.continues, partId: part.localId, reason: "not an open item of that kind (or already taken)", type: "attribution.rejected" });
+          part.continues = null;
+        }
+      }
+      const openItem = part.continues ? context?.openItems.find((item) => item.ref === part.continues!.ref) ?? null : null;
+      const accepted = part.continues?.kind === "alternative"
+        ? (part.plan.acceptedLeadsTo ? { leadsTo: part.plan.acceptedLeadsTo } : openItem?.kind === "alternative" ? openItem : null)
+        : null;
+      const decision = decideRoute(routeInputOf(part), { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind });
+      if (accepted && part.continues) acceptedAlternativeRef = part.continues.ref;
       let status = statusForRoute(decision.route);
       let reason: string | null = NOT_YET_ROUTES.has(decision.route) ? "not_in_this_version" : null;
+      if (decision.step?.kind === "still_unclear") {
+        status = "unfinished";
+        reason = "still_unclear";
+      }
       if (decision.route === "propose_write" && run.cardPrepared) {
         status = "awaiting_confirmation";
         reason = null;
       }
-      return { ...part, reason, route: decision.route, status, verdict: decision.verdict, waitReason: decision.waitReason };
+      if (decision.step) run.steps.set(part.localId, decision.step);
+      return {
+        ...part,
+        reading: decision.step?.kind === "most_likely" ? { capabilities: [...decision.step.reading.capabilities], ...(decision.step.reading.key ? { key: decision.step.reading.key } : {}) } : null,
+        reason,
+        route: decision.route,
+        status,
+        step: decision.step?.kind ?? null,
+        verdict: decision.verdict,
+        waitReason: decision.waitReason,
+      };
     });
-    settleDependencies(parts);
-    for (const part of parts) if (part.status === "waiting_dependency") part.reason = "dependency_pending";
+    if (!resume) {
+      settleDependencies(parts);
+      for (const part of parts) if (part.status === "waiting_dependency") part.reason = "dependency_pending";
+    }
     emitTrace({
       acceptedAlternativeRef,
-      parts: parts.map((part, index) => {
-        const source = understood.parts[index];
+      parts: parts.map((part) => {
+        const source = understood?.parts.find((item) => item.localId === part.localId);
         return {
           capabilities: part.capabilities,
-          clarity: source.clarity,
-          constraints: source.constraints,
-          dataOwner: source.dataOwner,
-          dataSources: source.dataSources,
-          deliverable: source.deliverable,
+          clarity: part.plan.clarity,
+          ...(source ? { constraints: source.constraints, goal: source.goal } : {}),
+          dataOwner: part.plan.dataOwner,
+          dataSources: part.plan.dataSources,
+          deliverable: part.plan.deliverable,
           dependsOn: part.dependsOn,
-          goal: source.goal,
-          intentBasis: source.intentBasis,
-          objectClues: source.objectClues.map((clue, clueIndex) => ({ ...clue, recordId: part.refs[clueIndex]?.recordId ?? null })),
+          intentBasis: part.plan.intentBasis,
+          objectClues: part.refs.map((ref, index) => ({ entity: ref.entity, recordId: ref.recordId, text: clueWords(input.message, ref) ?? source?.objectClues[index]?.text ?? "", ...(source?.objectClues[index]?.referenceId ? { referenceId: source.objectClues[index].referenceId } : {}) })),
           partId: part.localId,
-          persistence: source.persistence,
+          persistence: part.plan.persistence,
+          ...(part.plan.readings.length ? { readings: part.plan.readings } : {}),
           route: part.route,
-          sourceQuote: source.sourceQuote,
+          sourceQuote: input.message.slice(part.quote[0], part.quote[1]),
           status: part.status,
+          step: part.step,
           verdict: part.verdict,
           waitReason: part.waitReason,
           ...(part.continues ? { continues: part.continues } : {}),
+          ...(part.origin ? { origin: part.origin } : {}),
         };
       }),
       plainChat: state.plainChat,
       requestId: input.requestId,
+      ...(resume ? { resumed: true } : {}),
       type: "first_layer.handoff",
     });
-    return { acceptedAlternativeRef, parts };
+    run.needsDirections = parts.some((part) => (!resume || state.touched!.includes(part.localId)) && needsDirections(part, run.steps.get(part.localId), state.optionSets));
+    return { acceptedAlternativeRef, parts, resumeNext: null };
   };
 }

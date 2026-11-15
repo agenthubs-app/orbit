@@ -11,33 +11,20 @@
 import { after, NextResponse } from "next/server";
 
 import { failure, runtimeBoundaryHeaders, success } from "../../../shared/api/envelope";
-import { agentEventsAfterSchema, agentSendInputSchema } from "../../../shared/api-schema/agent-v1";
+import { agentEventsAfterSchema, agentSelectionInputSchema, agentSendInputSchema } from "../../../shared/api-schema/agent-v1";
 import type { FeatureMode } from "../../../shared/config/feature-mode";
 import type { AgentResultDocument } from "../../../shared/contract/agent-v1";
 import { AppError, getHttpStatusForAppErrorCode } from "../../../shared/errors/app-error";
-import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/storage/transactional-postgres";
 import { createOrbitAgentChatSessionProvider } from "../../orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 import { emitTrace } from "../observability/trace";
 import { createGraphExecutor } from "../graph/executor";
+import { configuredAgentEntryStore } from "./configured-store";
 import { createSessionWriter } from "./legacy-runtime";
 import { agentV1EntryEnabled } from "./mode";
-import { acceptMessage, cancelCurrentRun, getRequestResult, listSessionEvents, maybeResumeSession, type AgentEntryDependencies } from "./service";
-import { AgentEntryError, createMemoryAgentEntryStore, createPostgresAgentEntryStore, type AgentEntryStore } from "./store";
+import { acceptMessage, acceptSelection, cancelCurrentRun, getRequestResult, listSessionEvents, maybeResumeSession, type AgentEntryDependencies } from "./service";
+import { AgentEntryError } from "./store";
 
-let memoryStore: AgentEntryStore | null = null;
-let postgresStore: AgentEntryStore | null = null;
-
-function storeFor(mode: FeatureMode): AgentEntryStore | null {
-  if (mode === "mock" || mode === "hybrid") {
-    memoryStore ??= createMemoryAgentEntryStore();
-    return memoryStore;
-  }
-  if (postgresStore) return postgresStore;
-  const runtime = createConfiguredTransactionalPostgresRuntime();
-  if (!runtime) return null;
-  postgresStore = createPostgresAgentEntryStore({ client: runtime.client, workspaceId: runtime.workspaceId });
-  return postgresStore;
-}
+const storeFor = configuredAgentEntryStore;
 
 /** Processing runs after the response (next/server `after`); outside a request scope it starts at once. */
 function afterResponse(task: () => Promise<void>): void {
@@ -75,6 +62,7 @@ export async function handleAgentV1Send(input: {
   if (!agentV1EntryEnabled()) {
     return errorResponse(mode, new AppError("VALIDATION_ERROR", "Protocol version 3 is not enabled on this server; send with protocol version 2."), 400);
   }
+  if ("selection" in input.body) return handleAgentV1Select({ ...input, mode });
   const parsed = agentSendInputSchema.safeParse(input.body);
   if (!parsed.success) return errorResponse(mode, new AppError("VALIDATION_ERROR", "A valid protocol 3 conversation request is required."), 400);
   if (parsed.data.origin?.entryPointId === "contacts.analysis") {
@@ -89,6 +77,36 @@ export async function handleAgentV1Send(input: {
   } catch (error) {
     if (error instanceof AgentEntryError) {
       return errorResponse(mode, new AppError("CONFLICT", "This message key was already used with different content."), 409);
+    }
+    return errorResponse(mode, new AppError("SERVICE_UNAVAILABLE", "Agent request storage is unavailable.", { cause: error }), 503);
+  }
+}
+
+const SELECTION_REFUSALS: Record<string, { status: number; message: string }> = {
+  CLARIFICATION_CLOSED: { message: "These options are no longer open.", status: 409 },
+  CLARIFICATION_NOT_FOUND: { message: "These options were not offered in this request.", status: 409 },
+  OPTION_NOT_OFFERED: { message: "That option was not one of those offered.", status: 409 },
+  REQUEST_ID_REUSED: { message: "This selection key was already used for another choice.", status: 409 },
+  REQUEST_NOT_FOUND: { message: "No such request in this conversation.", status: 404 },
+  REQUEST_NOT_WAITING: { message: "This request is still being processed; try again when it has answered.", status: 409 },
+};
+
+/** AG04: a click under a request's directions (same POST, protocol 3, body with `selection`). */
+async function handleAgentV1Select(input: { body: Record<string, unknown>; actorId: string | null; mode: FeatureMode; dependencies?: AgentEntryDependencies | null }): Promise<Response> {
+  const { mode } = input;
+  const parsed = agentSelectionInputSchema.safeParse(input.body);
+  if (!parsed.success) return errorResponse(mode, new AppError("VALIDATION_ERROR", "A valid protocol 3 selection is required."), 400);
+  const actorId = input.actorId ?? "mock:anonymous";
+  const dependencies = input.dependencies ?? configuredAgentEntryDependencies(mode, actorId);
+  if (!dependencies) return errorResponse(mode, new AppError("SERVICE_UNAVAILABLE", "Agent request storage is not configured."), 503);
+  try {
+    const { receipt } = await acceptSelection(dependencies, { actorId, body: parsed.data });
+    return NextResponse.json(success({ agentSelection: receipt }), { headers: runtimeBoundaryHeaders(mode), status: 202 });
+  } catch (error) {
+    const refusal = error instanceof AgentEntryError ? SELECTION_REFUSALS[error.code] : undefined;
+    if (refusal && error instanceof AgentEntryError) {
+      const appError = new AppError(refusal.status === 404 ? "NOT_FOUND" : "CONFLICT", refusal.message);
+      return NextResponse.json(failure(appError, { reason: error.code }), { headers: runtimeBoundaryHeaders(mode), status: refusal.status });
     }
     return errorResponse(mode, new AppError("SERVICE_UNAVAILABLE", "Agent request storage is unavailable.", { cause: error }), 503);
   }

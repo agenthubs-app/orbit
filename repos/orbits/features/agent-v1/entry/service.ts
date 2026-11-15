@@ -18,7 +18,10 @@ import type {
   AgentActionPreviewContract,
   AgentPartResult,
   AgentCancelResultContract,
+  AgentClarificationContract,
   AgentResultDocument,
+  AgentSelectionInputContract,
+  AgentSelectionReceiptContract,
   AgentSendInputContract,
   AgentSendReceiptContract,
   AgentSessionEventsPageContract,
@@ -32,6 +35,7 @@ import {
   type AgentEntryOutcome,
   type AgentEntryRequestRecord,
   type AgentEntryStore,
+  type AgentPendingResume,
 } from "./store";
 
 export interface AgentEntryHistoryTurn {
@@ -48,6 +52,10 @@ export interface AgentEntryExecuteInput {
   /** Refuses every call after the run is stopped; pass it to the model provider. */
   fetchImplementation: typeof fetch;
   signal: AbortSignal;
+  /** AG04: a click resumes this request (its thread waits in clarify); no new message. */
+  resume?: AgentPendingResume;
+  /** AG04: the request's result document as delivered so far (the labels of its directions). */
+  document?: AgentResultDocument;
 }
 
 export interface AgentEntryExecuteResult {
@@ -59,6 +67,8 @@ export interface AgentEntryExecuteResult {
   partResults?: readonly AgentPartResult[];
   /** AG03: waiting_user when a part waits for the user (an alternative to accept, a question). */
   status?: "completed" | "waiting_user";
+  /** AG04: the round's clickable directions. */
+  clarifications?: readonly AgentClarificationContract[];
 }
 
 export type AgentEntryExecutor = (input: AgentEntryExecuteInput) => Promise<AgentEntryExecuteResult>;
@@ -80,7 +90,8 @@ export class AgentRunStoppedError extends Error {
 export interface AgentEntrySessionWriter {
   history(sessionId: string): Promise<AgentEntryHistoryTurn[]>;
   appendUser(sessionId: string, record: AgentEntryRequestRecord, createdAt: string): Promise<void>;
-  appendAssistant(sessionId: string, record: AgentEntryRequestRecord, text: string, createdAt: string): Promise<void>;
+  /** `key` (AG04): a continuation after a click is its own assistant message. */
+  appendAssistant(sessionId: string, record: AgentEntryRequestRecord, text: string, createdAt: string, key?: string): Promise<void>;
 }
 
 export interface AgentEntryDependencies {
@@ -184,6 +195,37 @@ export async function acceptMessage(
   else if (replayed) void maybeResumeSession(deps, input.actorId, body.sessionId);
   else kickSession(deps, input.actorId, body.sessionId);
   return { receipt: receiptOf(record, replayed), replayed };
+}
+
+/**
+ * AG04: a click under a set of directions (设计稿 §3.7 第一行). Stored first and answered at once; it is
+ * checked against the options offered then and processed in the session's order, resuming the request
+ * it was offered in. It is not a new request and never goes to the model.
+ */
+export async function acceptSelection(
+  deps: AgentEntryDependencies,
+  input: { actorId: string; body: AgentSelectionInputContract },
+): Promise<{ receipt: AgentSelectionReceiptContract; replayed: boolean }> {
+  const { body } = input;
+  const accepted = await deps.store.acceptSelection({
+    actorId: input.actorId,
+    clarificationId: body.selection.clarificationId,
+    clientSelectionId: body.clientSelectionId,
+    leaseMs: deps.leaseMs ?? DEFAULT_LEASE_MS,
+    now: nowOf(deps),
+    optionId: body.selection.optionId,
+    requestId: body.selection.requestId,
+    sessionId: body.sessionId,
+    workerId: workerOf(deps),
+  });
+  const { record, replayed } = accepted;
+  emitTrace({ clarificationId: body.selection.clarificationId, optionId: body.selection.optionId, replayed, requestId: record.requestId, sessionId: body.sessionId, status: record.status, type: replayed ? "entry.selection_replayed" : "entry.selection_accepted" });
+  if (accepted.claimed) kickSession(deps, input.actorId, body.sessionId, record);
+  else if (!replayed) kickSession(deps, input.actorId, body.sessionId);
+  return {
+    receipt: { acceptedAt: (record.selections ?? []).find((item) => item.clientSelectionId === body.clientSelectionId)?.at ?? nowOf(deps), clarificationId: body.selection.clarificationId, clientSelectionId: body.clientSelectionId, optionId: body.selection.optionId, protocolVersion: 3, replayed, requestId: record.requestId, sessionId: record.sessionId, status: record.status },
+    replayed,
+  };
 }
 
 /** GET conversation/request: the result document, for its owner only. */
@@ -318,13 +360,17 @@ async function processRequest(deps: AgentEntryDependencies, actorId: string, rec
     controller.signal.addEventListener("abort", () => resolve("stopped"), { once: true });
   });
   let outcome: AgentEntryOutcome | null = null;
+  const resume = record.pendingResume ?? null;
   try {
     const history = (await deps.sessions?.history(record.sessionId).catch(() => [])) ?? [];
-    await deps.sessions?.appendUser(record.sessionId, record, startedAt).catch((error: unknown) => {
-      emitTrace({ error: error instanceof Error ? error.message : String(error), requestId: record.requestId, type: "error", where: "entry.appendUser" });
-    });
+    // A click resumes a request whose message is already in the session.
+    if (!resume) {
+      await deps.sessions?.appendUser(record.sessionId, record, startedAt).catch((error: unknown) => {
+        emitTrace({ error: error instanceof Error ? error.message : String(error), requestId: record.requestId, type: "error", where: "entry.appendUser" });
+      });
+    }
     const fetchImplementation = createStoppableFetch(controller.signal, () => emitTrace({ requestId: record.requestId, type: "entry.model_call_refused" }));
-    const execution = deps.execute({ actorId, fetchImplementation, history, input: record.input, requestId: record.requestId, sessionId: record.sessionId, signal: controller.signal });
+    const execution = deps.execute({ actorId, fetchImplementation, history, input: record.input, requestId: record.requestId, sessionId: record.sessionId, signal: controller.signal, ...(resume ? { document: record.document, resume } : {}) });
     execution.catch(() => undefined);
     const result = await Promise.race([execution, stopped]);
     if (result !== "stopped") {
@@ -335,6 +381,7 @@ async function processRequest(deps: AgentEntryDependencies, actorId: string, rec
           : { partId: "p1", status: "answered" }],
         status: result.status ?? "completed",
         ...(result.actionPreview ? { actionPreview: result.actionPreview } : {}),
+        ...(result.clarifications ? { clarifications: result.clarifications } : {}),
       };
     }
   } catch (error) {
@@ -363,7 +410,7 @@ async function processRequest(deps: AgentEntryDependencies, actorId: string, rec
     return;
   }
   if (outcome.status !== "failed" && outcome.answer?.text) {
-    await deps.sessions?.appendAssistant(record.sessionId, finished.record!, outcome.answer.text, finishedAt).catch((error: unknown) => {
+    await deps.sessions?.appendAssistant(record.sessionId, finished.record!, outcome.answer.text, finishedAt, resume ? resume.clientSelectionId : undefined).catch((error: unknown) => {
       emitTrace({ error: error instanceof Error ? error.message : String(error), requestId: record.requestId, type: "error", where: "entry.appendAssistant" });
     });
   }

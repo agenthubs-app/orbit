@@ -9,17 +9,60 @@
  */
 import { Annotation } from "@langchain/langgraph";
 
-import type { AgentPartResult } from "../../../shared/contract/agent-v1";
+import type { AgentClarificationContract, AgentPartResult } from "../../../shared/contract/agent-v1";
+import type { NextStep } from "../clarify/next-step";
 import type { FirstLayerContext } from "../context/build";
 import type { Capability, Route, Verdict, WaitReason } from "../route/capabilities";
 import type { PartStatus } from "../route/decide";
-import type { UnderstandOutput } from "../understand/schema";
+import type { Clarity, DataOwner, DataSource, Deliverable, IntentBasis, Persistence, UnderstandOutput } from "../understand/schema";
 
 export interface GraphPartRef {
   entity: string;
   /** The product id the clue was bound to (null: not bound). */
   recordId: string | null;
+  /** AG04: the clue's words as [start, end) in this turn's message (the words themselves are not kept). */
+  quote?: [number, number] | null;
 }
+
+/**
+ * AG04: what code needs of a part to route it again after a pause — codes only, no words. Negation
+ * and hypothesis are decided once from the first layer's constraints; readings keep capabilities and
+ * the deliverable, never the model's label.
+ */
+export interface PartPlan {
+  clarity: Clarity;
+  dataSources: DataSource[];
+  deliverable: Deliverable;
+  intentBasis: IntentBasis;
+  dataOwner: DataOwner;
+  persistence: Persistence;
+  negation: boolean;
+  hypothesis: boolean;
+  readings: { capabilities: Capability[]; deliverable: Deliverable }[];
+  /** A click accepted the alternative offered for this part; it leads to this capability. */
+  acceptedLeadsTo?: Capability | null;
+}
+
+/** AG04: a set of clickable directions as the checkpoint keeps it (ids and codes; the labels are in the result document). */
+export interface OptionSetState {
+  clarificationId: string;
+  partId: string;
+  kind: "question" | "not_understood" | "entry";
+  asks?: "object" | "reading";
+  purpose: "directions" | "readings" | "object" | "other_readings" | "entry" | "alternative";
+  state: "open" | "answered" | "shelved";
+  selectedOptionId?: string | null;
+  answeredBy?: string | null;
+  /** The open item the question stands for (clarify_max_per_part counts per subgoal). */
+  subgoal: string;
+  options: { optionId: string; capability: Capability; capabilities: Capability[]; refType?: string; refId?: string }[];
+}
+
+/** AG04: what resumes a paused request (§3.9 暂停与恢复): a click, a later message that answered it, or shelving. */
+export type GraphResolution =
+  | { kind: "select"; clarificationId: string; optionId: string }
+  | { kind: "continued"; clarificationId: string; requestId: string; status: PartStatus; reason?: string | null; route?: Route | null }
+  | { kind: "shelve"; clarificationId: string };
 
 export interface GraphPart {
   localId: string;
@@ -36,6 +79,16 @@ export interface GraphPart {
   refs: GraphPartRef[];
   /** The open item this part answers or accepts (its stored ref). */
   continues: { kind: string; ref: string } | null;
+  /** AG04: the codes route needs again after a pause. */
+  plan: PartPlan;
+  /** AG04: questions asked for this part so far (a part answering a question inherits one). */
+  asked: number;
+  /** AG04: the §3.11 step code took (not_understood, ask_missing, most_likely …), null when plainly clear. */
+  step: string | null;
+  /** AG04: the reading done for a "most likely" part (its registered key, if any, and capabilities). */
+  reading: { key?: string; capabilities: Capability[] } | null;
+  /** AG04: a part made by a click on an entry: the part it was offered under. */
+  origin: string | null;
 }
 
 const replace = <T>(fallback: () => T) => Annotation<T>({ default: fallback, reducer: (_previous, next) => next });
@@ -59,6 +112,14 @@ export const AgentGraphAnnotation = Annotation.Root({
   acceptedAlternativeRef: replace<string | null>(() => null),
   requestStatus: replace<"completed" | "waiting_user" | null>(() => null),
   delivered: replace<boolean>(() => false),
+  /** AG04: the clickable directions of this request and their state. */
+  optionSets: replace<OptionSetState[]>(() => []),
+  /** AG04: deliver left open directions; clarify waits (interrupt) for a click or an answer. */
+  pausing: replace<boolean>(() => false),
+  /** AG04: after a resume, where clarify goes: route (a click to carry out) or deliver (closed from outside). */
+  resumeNext: replace<"route" | "deliver" | null>(() => null),
+  /** AG04: the parts a resume touched (null on the first pass: every part). */
+  touched: replace<string[] | null>(() => null),
 });
 
 export type AgentGraphState = typeof AgentGraphAnnotation.State;
@@ -77,4 +138,18 @@ export interface AgentGraphRun {
   /** The delivered text and part results (filled by deliver). */
   text: string;
   partResults: AgentPartResult[];
+  /** AG04: the §3.11 step of each part routed in this pass (its readings and options are built from it). */
+  steps: Map<string, NextStep>;
+  /** AG04: route found parts that need directions built (clarify's prepare pass runs). */
+  needsDirections: boolean;
+  /** AG04: option labels written in this pass, by clarificationId → optionId. */
+  optionLabels: Map<string, Map<string, { label: string; refName?: string }>>;
+  /** AG04: on a resume, the labels the result document already shows. */
+  previousClarifications: readonly AgentClarificationContract[] | null;
+  /** AG04: names of records a click bound (from the result document, never from the checkpoint). */
+  names: Map<string, string>;
+  /** AG04: the delivered sets of directions (filled by deliver). */
+  clarifications: AgentClarificationContract[];
+  /** AG04: earlier requests this one answered or shelved; the executor resumes them after this run. */
+  earlier: { requestId: string; resolution: GraphResolution }[];
 }

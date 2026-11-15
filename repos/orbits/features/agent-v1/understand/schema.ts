@@ -45,11 +45,25 @@ export interface ObjectClue {
   referenceId?: string;
 }
 
+/**
+ * AG04 (附录 C `readings`, at most 3): what an unclear part could mean. Code uses the capabilities and
+ * the deliverable only to pick a reading or build a clickable direction; the model's `label` is never
+ * shown (clarify/options.ts writes the words). A reading with a capability outside 附录 A is dropped.
+ */
+export interface UnderstandReading {
+  label: string;
+  deliverable: Deliverable;
+  capabilities: Capability[];
+}
+
+export const MAX_READINGS = 3;
+
 export interface UnderstandPart {
   localId: string;
   sourceQuote: string;
   goal: string;
   clarity: Clarity;
+  readings?: UnderstandReading[];
   continues?: { kind: ContinueKind; ref: string };
   objectClues: ObjectClue[];
   constraints: string[];

@@ -27,7 +27,7 @@ type Words = {
   notYet: Record<"read" | "web_lookup" | "propose_write", (quote: string, names: string) => string>;
   external: (quote: string) => string;
   declined: (quote: string) => string;
-  alternative: (quote: string, topic: string, scope: "events" | "records") => string;
+  alternative: (quote: string, topic: string, scope: "events" | "records", accept?: string | null) => string;
   acceptedAlternative: (rule: boolean) => string;
   waiting: (quote: string, dependency: string) => string;
   clarifyObject: (quote: string, clue: string, candidates: readonly string[]) => string;
@@ -44,7 +44,7 @@ const WORDS: Record<ReplyLanguage, Words> = {
     acceptedAlternative: (rule) => rule
       ? "好，就按定期留意来。定期留意要建一条定期任务，这需要你在确认卡上点了确认才会建；这一版还不能在对话里出这张卡，所以现在还没有建任何定期任务。"
       : "好，就按这个做法来。",
-    alternative: (quote, topic, scope) => `「${quote}」：我没办法一直不停地找下去。可以换个做法：定期留意${scope === "events" ? " Orbit 的活动目录" : "你在 Orbit 里的记录"}，看有没有新出现的${topic}，有合适的再告诉你。要不要这样做，由你决定，回一句就行。`,
+    alternative: (quote, topic, scope, accept) => `「${quote}」：我没办法一直不停地找下去。可以换个做法：定期留意${scope === "events" ? " Orbit 的活动目录" : "你在 Orbit 里的记录"}，看有没有新出现的${topic}，有合适的再告诉你。要不要这样做，由你决定：${accept ? `回一句，或点「${accept}」就行。` : "回一句就行。"}`,
     answerFailed: (quote) => `「${quote}」这次没处理成：写回答时出了问题。请再发一次。`,
     budget: (quote) => `「${quote}」这次没做完：这一轮能用的处理次数已经用完了，并不是 Orbit 做不了这件事。再发一次，我就接着处理。`,
     budgetBeforeUnderstanding: "这次没处理成：这一轮能用的处理次数已经用完了。请再发一次。",
@@ -67,7 +67,7 @@ const WORDS: Record<ReplyLanguage, Words> = {
     acceptedAlternative: (rule) => rule
       ? "では、定期的にチェックする方法で進めます。定期チェックには定期タスクを1件作る必要があり、確認カードで「確認」を押したときに作られます。このバージョンではまだ会話の中でそのカードを出せないため、定期タスクはまだ何も作っていません。"
       : "では、その方法で進めます。",
-    alternative: (quote, topic, scope) => `「${quote}」：ずっと探し続けることはできません。代わりに、${scope === "events" ? "Orbit のイベント一覧" : "Orbit の記録"}に新しく${topic}が出ていないかを定期的にチェックして、合うものがあればお知らせする方法があります。そうするかどうかはお任せします。一言お返事ください。`,
+    alternative: (quote, topic, scope, accept) => `「${quote}」：ずっと探し続けることはできません。代わりに、${scope === "events" ? "Orbit のイベント一覧" : "Orbit の記録"}に新しく${topic}が出ていないかを定期的にチェックして、合うものがあればお知らせする方法があります。そうするかどうかはお任せします。${accept ? `一言お返事いただくか、「${accept}」を押してください。` : "一言お返事ください。"}`,
     answerFailed: (quote) => `「${quote}」は今回うまく処理できませんでした。回答を作る途中で問題が起きました。もう一度送ってください。`,
     budget: (quote) => `「${quote}」は今回終わっていません。この回で使える処理回数を使い切ったためで、Orbit にできないことではありません。もう一度送っていただければ続けます。`,
     budgetBeforeUnderstanding: "今回はうまく処理できませんでした。この回で使える処理回数を使い切りました。もう一度送ってください。",
@@ -90,7 +90,7 @@ const WORDS: Record<ReplyLanguage, Words> = {
     acceptedAlternative: (rule) => rule
       ? "OK, we'll go with checking regularly. That needs a scheduled task, which is only created after you press Confirm on a confirmation card; this version cannot offer that card in the conversation yet, so no scheduled task has been created."
       : "OK, we'll go with that approach.",
-    alternative: (quote, topic, scope) => `"${quote}": I can't keep searching without end. Instead, I could regularly check ${scope === "events" ? "Orbit's event directory" : "your Orbit records"} for new ${topic} and tell you when something fits. Whether to do that is up to you; just reply.`,
+    alternative: (quote, topic, scope, accept) => `"${quote}": I can't keep searching without end. Instead, I could regularly check ${scope === "events" ? "Orbit's event directory" : "your Orbit records"} for new ${topic} and tell you when something fits. Whether to do that is up to you: ${accept ? `reply, or press "${accept}".` : "just reply."}`,
     answerFailed: (quote) => `"${quote}" was not handled this time: something went wrong while writing the answer. Please send it again.`,
     budget: (quote) => `"${quote}" is not done this time: this round's processing allowance ran out. It is not something Orbit can't do; send it again and I'll continue.`,
     budgetBeforeUnderstanding: "This was not handled: this round's processing allowance ran out. Please send it again.",
