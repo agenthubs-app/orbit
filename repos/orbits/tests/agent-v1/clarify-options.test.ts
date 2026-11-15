@@ -78,6 +78,8 @@ test("labels read naturally for a person: functions over notes are about the int
   assert.deepEqual(options.map((option) => option.label), ["See a summary of your interactions with Emily", "Find follow-ups with Emily", "Create an event of my own about Emily"]);
   assert.equal(capabilityLabel("fn.extractFollowUps", "zh", "小林", "contact"), "找出和小林要跟进的事");
   assert.equal(capabilityLabel("fn.extractFollowUps", "zh", "这篇笔记", "memo"), "找出这篇笔记里要跟进的事");
+  assert.equal(capabilityLabel("memo.read", "zh", "竞品笔记 A", "memo"), "看竞品笔记 A的全文", "reading a note itself, not 'notes about' it");
+  assert.equal(capabilityLabel("memo.read", "zh", "小林", "contact"), "看小林的笔记");
 });
 
 test("Japanese lists of choices quote each label", async () => {

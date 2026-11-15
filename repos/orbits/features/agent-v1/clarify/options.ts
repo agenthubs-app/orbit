@@ -133,9 +133,15 @@ const PERSON_LABELS: Partial<Record<Capability, Label>> = {
   "privateEvent.create": words((x) => `建一场和${x}有关的我的活动`, "新建一场我的活动", (x) => `${x}に関する自分のイベントを作る`, "自分のイベントを作る", (x) => `Create an event of my own about ${x}`, "Add an event of my own"),
 };
 
+/** For a note itself, reading it is reading the note, not "notes about" it. */
+const NOTE_LABELS: Partial<Record<Capability, Label>> = {
+  "memo.read": words((x) => `看${x}的全文`, "看这篇笔记的全文", (x) => `${x}の全文を見る`, "このメモの全文を見る", (x) => `Read ${x} in full`, "Read this note in full"),
+};
+
 /** Code's words for a capability with the object (the clue or the name), or without one; `kind` is the object's record kind. */
 export function capabilityLabel(capability: Capability, language: ReplyLanguage, object: string | null, kind?: RecordKind | null): string {
-  const label = (kind === "contact" ? PERSON_LABELS[capability] : undefined) ?? LABELS[capability];
+  const byKind = kind === "contact" ? PERSON_LABELS[capability] : kind === "memo" ? NOTE_LABELS[capability] : undefined;
+  const label = byKind ?? LABELS[capability];
   if (label) return label[language](object);
   // Every capability of 附录 A has its words above; this is only a guard for a new capability.
   return language === "zh" ? "这一项" : language === "ja" ? "この項目" : "This";
