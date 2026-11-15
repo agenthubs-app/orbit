@@ -94,6 +94,35 @@ export function nameTokens(words: string): string[] {
   return out;
 }
 
+/**
+ * AG05 run-02: what a record clue says to look for, when the first layer gave no search words — the
+ * clue's own words without pronouns, back-references, counts, ordinals, "my" and the words for a kind of
+ * record ("那三份竞品笔记" → 竞品, "灰釉のメモ" → 灰釉, "the competitor notes" → competitor). Undefined when
+ * nothing is left ("那篇笔记", "第二个", "this note"): the clue names no words to search by.
+ */
+const CJK_NOISE = [
+  "我记过的", "我记的", "我写的", "我的", "私が書いた", "私の", "关于", "有关", "について",
+  "刚才", "刚刚", "上面", "前面", "之前", "先前", "さっき", "先ほど",
+  "这些", "那些", "这个", "那个", "这条", "那条", "这篇", "那篇", "这件", "那件", "这份", "那份", "这次", "那次", "他们", "她们", "它们", "彼女", "あの人", "その人", "例の", "それ", "これ", "あれ", "その", "この", "あの",
+  "笔记", "记录", "备忘", "待办", "任务", "日程", "活动", "联系人", "事情", "东西", "内容", "要点", "话题", "話", "メモ", "ノート", "タスク", "ToDo", "予定", "イベント", "もの", "こと",
+  "他", "她", "它", "这", "那", "该", "彼", "我", "私", "件", "的", "の",
+];
+const LATIN_NOISE = new Set(["the", "a", "an", "this", "that", "these", "those", "it", "its", "my", "mine", "our", "your", "his", "her", "their", "him", "them", "me", "i", "about", "of", "on", "for", "in", "at", "to", "note", "notes", "memo", "memos", "record", "records", "todo", "todos", "to-do", "to-dos", "task", "tasks", "schedule", "event", "events", "item", "items", "one", "ones", "first", "second", "third", "last", "earlier", "above", "previous", "wrote", "written"]);
+
+export function clueSearchWords(words: string): string | undefined {
+  let rest = words.replace(/^@/u, "").trim();
+  if (!rest) return undefined;
+  if (/^[\x20-\x7e’]+$/u.test(rest)) {
+    const kept = rest.toLowerCase().split(/[^a-z0-9'’-]+/u).filter((word) => word && !LATIN_NOISE.has(word));
+    const joined = kept.join(" ");
+    return joined.length >= 3 ? joined : undefined;
+  }
+  rest = rest.replace(/第[一二三四五六七八九十\d]+[个条件篇位份]?/gu, "").replace(/[一二两三四五六七八九十几\d]+\s*[份篇条个件本つ枚]/gu, "");
+  for (const noise of CJK_NOISE) rest = rest.split(noise).join("");
+  rest = rest.replace(/[\s、，。・,.!?！？「」『』"“”]/gu, "");
+  return rest.length >= 2 ? rest : undefined;
+}
+
 /** "2026-11-16" at 00:00 in the time zone, as a UTC instant. */
 export function localMidnight(day: string, timeZone: string): string {
   const guess = new Date(`${day}T00:00:00Z`);
@@ -212,7 +241,8 @@ export function resolveNode(scope: NodeScope): GraphNode {
       let filter = part.plan.readFilter;
       let text = filter?.text ? input.message.slice(filter.text[0], filter.text[1]) : undefined;
       for (const ref of part.refs) {
-        if (ref.recordId || ref.entity === "contact" || text) continue;
+        // A clue with words of its own is searched by them (below), not taken for the record mentioned last.
+        if (ref.recordId || ref.entity === "contact" || text || clueSearchWords(clueWords(input.message, ref) ?? "")) continue;
         const last = context?.lastMentioned.find((item) => recordKindOf(item.type) === recordKindOf(ref.entity));
         if (last) {
           ref.recordId = last.id;
@@ -387,7 +417,23 @@ export function resolveNode(scope: NodeScope): GraphNode {
       const interactionAnswers = kinds.has("interaction") && !text && order === "newest" && read.views.some((view) => view.kind === "memo");
       const searchKinds = (["memo", "todo", "schedule"] as const).filter((kind) => kinds.has(kind) && !boundIds.has(kind) && !(kind === "memo" && interactionAnswers));
       const subjects = contacts.length ? contacts.map((item) => item.id) : [undefined];
+      let unclear = false;
       for (const kind of searchKinds) {
+        // run-02: a read never gets wider because a field was left out. Without the first layer's words, the
+        // record clue's own words are the search; a clue of only a pronoun with no person to read for points
+        // at nothing code can find — it says so instead of reading the newest page.
+        const clue = part.refs.find((ref) => !ref.recordId && recordKindOf(ref.entity) === kind);
+        const clueText = clue ? clueSearchWords(clueWords(input.message, clue) ?? "") : undefined;
+        const kindText = text ?? clueText;
+        if (clue && !kindText && !contacts.length) {
+          unclear = true;
+          continue;
+        }
+        // With nothing else to narrow by: a to-do list is the open ones, a schedule question is what is coming.
+        const kindStatus = kind === "todo" ? status ?? (!contacts.length && !kindText ? "open" : undefined) : undefined;
+        const kindFrom = kind === "schedule" && !from && !to && !contacts.length && !kindText ? now : from;
+        if (kind === "todo" && kindStatus && !status) read.notes.push("Only the to-dos not done yet were read.");
+        if (kind === "schedule" && kindFrom !== from) read.notes.push("Only schedule items from now on were read.");
         read.wantsRecords = true;
         for (const contactId of subjects) {
           const orders: ("newest" | "oldest")[] = order === "both" ? ["newest", "oldest"] : [order];
@@ -396,23 +442,23 @@ export function resolveNode(scope: NodeScope): GraphNode {
               const queryOf = (words: string | undefined) => ({
                 ...(contactId ? { contactId } : {}),
                 ...(words ? { text: words } : {}),
-                ...(kind === "todo" && status ? { status } : {}),
-                ...(from ? { from } : {}),
+                ...(kindStatus ? { status: kindStatus } : {}),
+                ...(kindFrom ? { from: kindFrom } : {}),
                 ...(to ? { to } : {}),
                 ...(kind === "todo" && !filter?.order ? {} : { order: direction }),
               });
-              let pages = await readPages(records.reader, kind, accountScope, queryOf(text), order === "both" ? 1 : maxPages);
-              // The words were the first layer's narrowing: when none of the person's records has them, read the
-              // person's records without them and say so (a person's "where he works" is not a word in the notes).
-              if (text && contactId && !pages.items.length && !pages.withheld) {
+              let pages = await readPages(records.reader, kind, accountScope, queryOf(kindText), order === "both" ? 1 : maxPages);
+              // The words were a narrowing: when none of the person's records has them, read the person's records
+              // without them and say so. With no person, nothing found stays nothing found (no newest page instead).
+              if (kindText && contactId && !pages.items.length && !pages.withheld) {
                 pages = await readPages(records.reader, kind, accountScope, queryOf(undefined), order === "both" ? 1 : maxPages);
-                if (pages.items.length) read.notes.push(`No note of theirs contains "${text}"; these are their ${kind === "memo" ? "notes" : "records"} without that filter.`);
+                if (pages.items.length) read.notes.push(`No note of theirs contains "${kindText}"; these are their ${kind === "memo" ? "notes" : "records"} without that filter.`);
               }
               withheld += pages.withheld;
               let items = pages.items;
-              if (kind === "schedule" && (from || to)) {
+              if (kind === "schedule" && (kindFrom || to)) {
                 items = items.filter((view) => {
-                  const at = occurrenceIn(String(view.fields.startsAt), typeof view.fields.recurrence === "string" ? view.fields.recurrence : undefined, from, to);
+                  const at = occurrenceIn(String(view.fields.startsAt), typeof view.fields.recurrence === "string" ? view.fields.recurrence : undefined, kindFrom, to);
                   if (at && at !== view.fields.startsAt) read.occurrences.set(view.ref, at);
                   return Boolean(at);
                 });
@@ -443,6 +489,11 @@ export function resolveNode(scope: NodeScope): GraphNode {
         read.gaps.add("partial");
         read.notes.push(`${withheld} more matching record(s) cannot be read now; do not guess what they say.`);
         read.lines.push(words.partial());
+      }
+      if (unclear && !recordViews.length && !failures.length) {
+        read.lines.push(words.notWhich(quote));
+        finish("unfinished", "object_unclear");
+        continue;
       }
       if (!recordViews.length && !failures.length && !withheld && (read.wantsRecords || !contacts.length) && !read.gaps.has("unreadable")) {
         read.gaps.add("no_record");
