@@ -73,6 +73,9 @@
     "db:backup:local": "pg_dump \"$ORBIT_EVENT_DATABASE_URL\" -t orbit_records --data-only -f orbit-local-backup.sql && echo backed up to orbit-local-backup.sql"
   },
   "dependencies": {
+    "@langchain/core": "1.3.7",
+    "@langchain/langgraph": "1.7.4",
+    "@langchain/langgraph-checkpoint-postgres": "1.1.3",
     "@napi-rs/canvas": "^1.0.8",
     "@vercel/blob": "2.8.0",
     "@vercel/queue": "0.5.1",
