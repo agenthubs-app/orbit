@@ -76,7 +76,7 @@
 | `npm run agent-eval:check` | 校验用例和夹具。 |
 | `npm run agent-eval:env` | 建本机专用库、起服务、做开始前的自检。 |
 | `npm run agent-eval:seed` | 经产品写入链路生成三个账号的数据并存快照。 |
-| `npm run agent-eval:run -- --gate AGnn` | 跑某个 sprint 的门槛：按 `gate`（没有就按 `sprint`）归到它的用例，加上顺延之后不晚于它的不变量用例。`--seed-cards` 只给 AG02 用，见 SPRINTS.md。`--all` 跑全部可见用例，`--sealed` 跑封存集。 |
+| `npm run agent-eval:run -- --gate AGnn` | 跑某个 sprint 的门槛：按 `gate`（没有就按 `sprint`）归到它的用例，加上顺延之后不晚于它的不变量用例。`--seed-cards` 从 AG02 用到 AG05（AG06 之前新入口不从对话出卡，门槛里的 BND 区含不变量包只能靠预置卡），AG06 起不再用，见第 8 节。`--all` 跑全部可见用例，`--sealed` 跑封存集。 |
 | `npm run agent-eval:judge-pack -- --run <运行编号>` | 生成评审材料。评审由新开的 Claude 会话完成。 |
 | `npm run agent-eval:report -- --run <运行编号>` | 汇总评审结果，算出通过与否，给出要登记进 `RUNS.md` 的一行。 |
 
@@ -169,4 +169,6 @@ AG00 实现用例的基本词。eval/README.md §3.4 里各区补充的词，由
 | AG12 的风险 | 联系人现有的 `version` 字段被关系初始化流程占用，那套流程依赖它为空。AG12 启动时先确认改为递增版本的影响，必要时另起一个字段。 |
 | AG18 的参考 | 发布方案 `docs/superpowers/specs/2026-09-30-staging-production-release-design.md` 在主目录里是未跟踪文件，2026-11-15 已复制进本 worktree 的同一路径；AG18 以它为准，不再用 W0019 的发布清单代替。 |
 | 评审项级 gate（AG01 中途加） | 评审项可带 `gate: AGnn`，规则见评测规范 §3.3、§6，登记见 CHANGES.md。ENT-002、ENT-003、ENT-004 的回答内容项顺延到 AG03／AG05：AG03、AG05 的门槛运行要把 ENT 区一并跑上并让这些项通过。 |
+| `--seed-cards` 的范围（AG03 起） | 原写“只给 AG02 用”。AG03 起新入口由流程图处理，图到 AG06 才从对话出卡，而 BND ×12 作为不变量进每个门槛，所以 AG02～AG05 的门槛都加 `--seed-cards`；AG06 去掉它，按完整对话重跑 BND 区。预置内容取自用例的 `card_ops`，BND-001、BND-008 已明写（CHANGES.md）。 |
+| AG03～AG04 的新入口不读记录 | 图到 AG05 才读业务记录，ENT-003 R1（日程）也顺延到 AG05，与 ENT-002 R1、ENT-004 R3/R4 一样；ENT-003 R3（会议纪要技巧）从 AG03 起计入。`--gate AGnn` 也跑带 `gate: AGnn` 评审项的用例（评测规范 §3.3），AG05 的门槛因此自动带上 ENT-002、003、004。 |
 | 旧入口的卡片（AG01 发现） | 运行器走协议 2（`app_old`）时不把回复里的 `artifacts` 写进 transcript 和回答，AG00 基线的评审因此看不到卡片里的记录。第一个门槛用到 `app_old` 的 sprint（AG18 的 CMP 区）先补上。 |
