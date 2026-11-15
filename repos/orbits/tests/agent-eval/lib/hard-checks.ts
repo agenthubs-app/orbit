@@ -6,6 +6,7 @@
  * produces no evidence for it yet. `deferred` checks are run-level and settled by `settleRunLevelChecks`.
  * Adding a check: implement it in CHECKS below and drop it from NOT_YET (with the sprint that delivers it).
  */
+import { CAPABILITY_TABLE } from "../../../features/agent-v1/route/capabilities";
 import { isBusinessChange, productIdsIn, writesFor, type CardObservation, type NormalizedOp, type Observation } from "./observations";
 import type { TraceEvent } from "./trace-log";
 
@@ -36,7 +37,6 @@ const cannot = (detail: string) => ({ detail, evidence: [], status: "cannot_judg
 /** Words with no evidence in the current system, and the sprint that is expected to provide it. */
 export const NOT_YET: Record<string, string> = {
   card_effects: "AG12",
-  clarify_max_per_part: "AG04",
   client_view: "AG07",
   field_history: "AG12",
   functions_called: "AG10",
@@ -52,7 +52,6 @@ export const NOT_YET: Record<string, string> = {
   memory_state: "AG14",
   model_input_excludes: "AG12",
   no_auto_extraction: "AG06",
-  offered_options: "AG04",
   pages_read: "AG05",
   push_delivery: "AG16",
   push_excludes: "AG16",
@@ -400,9 +399,41 @@ export const CHECKS: Record<string, CheckFn> = {
   },
 
   clarifications(args, obs) {
-    // AG03: on the new entry a question is a part left awaiting_clarification in its result document.
-    const asked = obs.clarifications + (obs.entry?.requests ?? []).reduce((sum, request) => sum + (request.document?.partResults ?? []).filter((part) => part.status === "awaiting_clarification").length, 0);
+    // AG04: on the new entry a question is a set of directions of kind question or not_understood in a
+    // result document, whatever its state now (answered, shelved). AG03 documents without sets: parts left
+    // awaiting_clarification.
+    const requests = obs.entry?.requests ?? [];
+    const asked = obs.clarifications + requests.reduce((sum, request) => {
+      const sets = request.document?.clarifications;
+      if (sets) return sum + sets.filter((set) => set.kind === "question" || set.kind === "not_understood").length;
+      return sum + (request.document?.partResults ?? []).filter((part) => part.status === "awaiting_clarification").length;
+    }, 0);
     return asked === Number(args?.count) ? pass(`${asked} clarification(s)`) : fail(`${asked} clarification(s), expected ${args?.count}`);
+  },
+
+  clarify_max_per_part(args, obs) {
+    // AG04: each question is traced once (clarify.asked) with the subgoal it stands for; a part answering a question keeps its subgoal.
+    const asked = obs.events.filter((event) => event.type === "clarify.asked");
+    const bySubgoal = new Map<string, number[]>();
+    for (const event of asked) bySubgoal.set(String(event.subgoal), [...(bySubgoal.get(String(event.subgoal)) ?? []), Number(event.seq)]);
+    const over = [...bySubgoal.entries()].filter(([, seqsOf]) => seqsOf.length > Number(args));
+    return over.length ? fail(over.map(([subgoal, seqsOf]) => `${subgoal} asked ${seqsOf.length} times`).join("; "), over.flatMap(([, seqsOf]) => seqsOf)) : pass(`${asked.length} question(s) over ${bySubgoal.size} subgoal(s), at most ${args} each`, seqs(asked));
+  },
+
+  offered_options(args, obs) {
+    // AG04: the clickable directions in the result documents (all kinds), and whether each is an 附录 A capability.
+    if (!obs.entry) return cannot("the case did not run on the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)");
+    const options = obs.entry.requests.flatMap((request) => (request.document?.clarifications ?? []).flatMap((set) => set.options.map((option) => ({ ...option, requestId: request.requestId }))));
+    const problems: string[] = [];
+    if (args?.min !== undefined && options.length < Number(args.min)) problems.push(`${options.length} option(s), at least ${args.min} expected`);
+    if (args?.max !== undefined && options.length > Number(args.max)) problems.push(`${options.length} option(s), at most ${args.max} expected`);
+    if (args?.all_registered) {
+      const outside = options.filter((option) => !Object.prototype.hasOwnProperty.call(CAPABILITY_TABLE, option.capability));
+      if (outside.length) problems.push(`not registered: ${outside.map((option) => option.capability).join(", ")}`);
+    }
+    const listing = options.map((option) => `${option.label} (${option.capability})`).join("; ") || "none";
+    const evidence = obs.entry.requests.map((request) => request.endSeq).filter((seq): seq is number => seq !== null);
+    return problems.length ? fail(`${problems.join(" | ")}: ${listing}`, evidence) : pass(`${options.length} option(s): ${listing}`, evidence);
   },
 
   // ── AG03: the first layer (UND.yaml / CTX.yaml / SCL.yaml proposed_checks) ──

@@ -385,3 +385,33 @@ test("request_status: the last received request's final status", () => {
   assert.equal(run("request_status", "cancelled", two).status, "pass");
   assert.equal(run("request_status", "completed", two).status, "fail");
 });
+
+const clarified = (sets: NonNullable<AgentResultDocument["clarifications"]>[], partResults: AgentResultDocument["partResults"][] = []) => {
+  const o = entryObs({ requests: sets.map(() => ({ status: "completed" })) });
+  o.entry!.requests.forEach((request, index) => { request.document = { ...request.document, clarifications: sets[index], partResults: partResults[index] ?? [] }; });
+  return o;
+};
+const option = (capability: string, optionId = capability) => ({ capability, label: capability, optionId });
+
+test("AG04 clarifications: questions and not-understood replies asked, from the documents, whatever their state now", () => {
+  const o = clarified([[{ clarificationId: "a", kind: "question", options: [], partId: "p1", state: "answered" }, { clarificationId: "b", kind: "entry", options: [option("memo.create")], partId: "p2", state: "open" }]], [[{ partId: "p1", status: "unfinished" }]]);
+  assert.equal(run("clarifications", { count: 1 }, o).status, "pass", "an entry is not a question; a written-back part still counts as asked");
+  assert.equal(run("clarifications", { count: 0 }, o).status, "fail");
+});
+
+test("AG04 offered_options: count across the documents, every option an Appendix A capability", () => {
+  const o = clarified([[{ clarificationId: "a", kind: "not_understood", options: [option("contact.read"), option("memo.create"), option("todo.create")], partId: "p1", state: "open" }], []]);
+  assert.equal(run("offered_options", { all_registered: true, max: 3, min: 2 }, o).status, "pass");
+  assert.equal(run("offered_options", { max: 1, min: 0 }, o).status, "fail");
+  const bad = clarified([[{ clarificationId: "a", kind: "question", options: [option("external.deepResearch"), option("contact.call")], partId: "p1", state: "open" }]]);
+  assert.equal(run("offered_options", { all_registered: true, max: 3, min: 0 }, bad).status, "fail", "contact.call is not in Appendix A");
+  assert.equal(run("offered_options", { max: 1, min: 0 }, clarified([[]])).status, "pass", "none offered");
+  assert.equal(NOT_YET.offered_options, undefined);
+});
+
+test("AG04 clarify_max_per_part: questions per subgoal from clarify.asked", () => {
+  const once = obs({ events: [{ subgoal: "clarification:r1:p1", type: "clarify.asked" }, { subgoal: "clarification:r1:p2", type: "clarify.asked" }] as never });
+  assert.equal(run("clarify_max_per_part", 1, once).status, "pass");
+  const twice = obs({ events: [{ subgoal: "clarification:r1:p1", type: "clarify.asked" }, { subgoal: "clarification:r1:p1", type: "clarify.asked" }] as never });
+  assert.equal(run("clarify_max_per_part", 1, twice).status, "fail");
+});
