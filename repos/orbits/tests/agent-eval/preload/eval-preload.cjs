@@ -91,12 +91,28 @@ function currentNode() {
   }
 }
 
+/**
+ * AG05 run-02: requests the runner makes as the simulated other device (header x-agent-eval-device:
+ * other, external_change) run in an async context of their own; every event emitted in it carries
+ * `device: "other"`, so the runner can tell those reads from the tested system's by attribution.
+ */
+const deviceContext = new (require("node:async_hooks").AsyncLocalStorage)();
+function currentDevice() {
+  try {
+    return deviceContext.getStore()?.device ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function emit(event) {
   if (!traceFile) return;
   localSeq += 1;
   const requestId = currentRequestId();
   const node = currentNode();
+  const device = currentDevice();
   const line = {
+    ...(device ? { device } : {}),
     at: new RealDate(realNow() + state.offsetMs).toISOString(),
     realAt: new RealDate(realNow()).toISOString(),
     pid: process.pid,
@@ -729,6 +745,9 @@ http.Server.prototype.emit = function evalServerEmit(event, req, res, ...rest) {
       const { host } = state.probe;
       state.probe = null;
       setTimeout(() => runProbe(host), 0);
+    }
+    if (req.headers?.["x-agent-eval-device"] === "other") {
+      return deviceContext.run({ device: "other" }, () => Reflect.apply(originalEmit, this, [event, req, res, ...rest]));
     }
   }
   return Reflect.apply(originalEmit, this, [event, req, res, ...rest]);

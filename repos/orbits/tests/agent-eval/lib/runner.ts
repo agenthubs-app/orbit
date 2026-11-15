@@ -50,6 +50,18 @@ export interface CaseOutcome {
   error?: string;
 }
 
+/**
+ * AG05 run-02: the eval-only header the runner sends on the simulated other device's requests
+ * (external_change). The preload runs such a request in its own async context and tags what is emitted
+ * in it with `device: "other"`.
+ */
+export const OTHER_DEVICE_HEADER = "x-agent-eval-device";
+
+/** The read.result events of the tested system: those the other device's requests made are left out (by tag, not by time). */
+export function readsOfTestedSystem(events: readonly TraceEvent[]): TraceEvent[] {
+  return events.filter((event) => event.type === "read.result" && event.device !== "other");
+}
+
 const STEP_SUPPORT_NOTE: Record<string, string> = {
   card_edit: "removing an item from a card is not offered by the current product (AG06/AG07)",
   disconnect: "the real-time channel needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
@@ -676,7 +688,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           if (productId && change.delete && productId.startsWith("note:")) {
             // AG05: the note is deleted on another device through the product's normal delete endpoint.
             const device = new EvalClient(baseUrl(environment), log, await cookieFor(account), "web");
-            const result = await device.request("DELETE", `/api/notes/${encodeURIComponent(productId)}`, undefined, { purpose: "external change: delete the note on another device" });
+            const result = await device.request("DELETE", `/api/notes/${encodeURIComponent(productId)}`, undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: "external change: delete the note on another device" });
             externalDeletes.add(`notes\u0000${productId}`);
             transcript.push(`*（别处删除了 ${change.target}，经笔记的正常删除接口，HTTP ${result.status}）*`, "");
             if (result.status !== 200) unsupported.push({ reason: `external delete of ${change.target} failed (HTTP ${result.status})`, step: index, word });
@@ -687,9 +699,9 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
             return;
           }
           const other = new EvalClient(baseUrl(environment), log, await cookieFor(account), "web");
-          const current = await other.request("GET", `/api/tasks/${encodeURIComponent(productId)}`, undefined, { purpose: "external change: read the to-do on another device" });
+          const current = await other.request("GET", `/api/tasks/${encodeURIComponent(productId)}`, undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: "external change: read the to-do on another device" });
           const updatedAt = current.body?.data?.task?.updatedAt;
-          const result = await other.request("PATCH", `/api/tasks/${encodeURIComponent(productId)}`, { action: "update", expectedUpdatedAt: updatedAt, idempotencyKey: `agent-eval:external:${testCase.id}:${index}`, patch: change.set ?? {} }, { purpose: "external change: edit the to-do on another device" });
+          const result = await other.request("PATCH", `/api/tasks/${encodeURIComponent(productId)}`, { action: "update", expectedUpdatedAt: updatedAt, idempotencyKey: `agent-eval:external:${testCase.id}:${index}`, patch: change.set ?? {} }, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: "external change: edit the to-do on another device" });
           externalSets.set(`tasks\u0000${productId}`, { ...(externalSets.get(`tasks\u0000${productId}`) ?? {}), ...(change.set ?? {}) });
           transcript.push(`*（别处改了 ${change.target}：${JSON.stringify(change.set ?? {})}，经待办的正常更新接口，HTTP ${result.status}）*`, "");
           if (result.status !== 200) unsupported.push({ reason: `external change of ${change.target} failed (HTTP ${result.status})`, step: index, word });
@@ -919,13 +931,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const reads: ReadObservation[] = [];
   // A conversation (its messages) is not a business record: reading the session the case talks in is not a private read.
   const conversationFixtures = new Set([...world.anchors.filter((record) => record.kind === "conversation").map((record) => record.id), ...patchConversations]);
-  // AG05: what the simulated other device reads while it makes an external_change is not the tested system's read.
-  const externalWindows = events.filter((event) => event.type === "http.request" && String(event.purpose ?? "").startsWith("external change")).map((request) => {
-    const response = events.find((event) => event.type === "http.response" && event.httpId === request.httpId);
-    return [Number(request.seq), Number(response?.seq ?? request.seq)] as const;
-  });
-  const byOtherDevice = (seq: number) => externalWindows.some(([from, to]) => seq > from && seq < to);
-  for (const event of events.filter((item) => item.type === "read.result" && !byOtherDevice(Number(item.seq)))) {
+  for (const event of readsOfTestedSystem(events)) {
     for (const record of (event.records ?? []) as { collection: string | null; id: string | null; owner: string | null; workspace: string | null }[]) {
       if (!record.id) continue;
       const collection = record.collection ?? null;
