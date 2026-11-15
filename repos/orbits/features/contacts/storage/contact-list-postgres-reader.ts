@@ -984,9 +984,8 @@ ${openFollowUpContactIdsSql("$1", "$4")}  ) f
         and jsonb_typeof(v.next_action_value->'text') = 'string'
         and nullif(btrim(v.next_action_value->>'text', ${ECMASCRIPT_TRIM_CHARS_SQL}), '') is not null
         then btrim(v.next_action_value->>'text', ${ECMASCRIPT_TRIM_CHARS_SQL})
-      when v.effective_stage = 'needs_follow_up'
-        then 'Review the next follow-up for ' || v.display_name || '.'
-      else 'Review ' || v.display_name || ' with source evidence before agent use.'
+      -- No next action of the person's own: nothing (the stage chip already says 待跟进; no filler line).
+      else ''
     end as next_action,
     case v.effective_stage
       when 'captured' then 'needs_follow_up'

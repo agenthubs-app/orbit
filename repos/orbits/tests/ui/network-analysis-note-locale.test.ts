@@ -16,3 +16,9 @@ test("the 人脉分析 person card localizes its note", () => {
   assert.match(source, /localizeNextActionText\(person\.nextActionPreview, language\)/);
   assert.doesNotMatch(source, /\{person\.nextActionPreview\}/);
 });
+
+test("the contact list reader no longer invents a next action for contacts without one", () => {
+  const source = readFileSync("features/contacts/storage/contact-list-postgres-reader.ts", "utf8");
+  assert.doesNotMatch(source, /with source evidence before agent use/);
+  assert.doesNotMatch(source, /Review the next follow-up for/);
+});
