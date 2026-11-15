@@ -26,6 +26,16 @@ function flag(argv: readonly string[], name: string): string | null {
   return index >= 0 ? argv[index + 1] ?? null : null;
 }
 
+function crashedOutcome(testCase: EvalCase, area: string, runDir: string, error: unknown): CaseOutcome {
+  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  const dir = path.join(runDir, "cases", testCase.id);
+  fs.mkdirSync(dir, { recursive: true });
+  const checks = [{ args: null, check: "runner", detail: `the runner failed on this case: ${message.split("\n")[0]}`, evidence: [], status: "cannot_judge" as const }];
+  fs.writeFileSync(path.join(dir, "hard-checks.json"), JSON.stringify({ caseId: testCase.id, checks, hardPass: false, runnerError: message }, null, 2));
+  const observation = { account: "", accounts: {}, answers: [], businessChanges: [], cards: [], caseId: testCase.id, clarifications: 0, clicks: [], decisions: [], diff: { records: [], tables: [] }, events: [], fake: false, fixtureIdOf: () => null, idMap: {}, reads: [], requests: [], unsupported: [] };
+  return { account: "", area, caseId: testCase.id, checks, dir, durationMs: 0, error: message, events: [], fake: false, hardPass: false, observation, simulated: false, unsupported: [] };
+}
+
 function runIdFor(short: string, label: string): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -91,7 +101,13 @@ async function main(argv: readonly string[]): Promise<void> {
   const outcomes: CaseOutcome[] = [];
   for (const [index, testCase] of selection.cases.entries()) {
     const file = fileOf.get(testCase.id)!;
-    const outcome = await runCase(testCase as EvalCase, file.new_patches ?? {}, file.area, ctx);
+    let outcome: CaseOutcome;
+    try {
+      outcome = await runCase(testCase as EvalCase, file.new_patches ?? {}, file.area, ctx);
+    } catch (caseError) {
+      // A runner failure fails this case and the run goes on.
+      outcome = crashedOutcome(testCase as EvalCase, file.area, runDir, caseError);
+    }
     outcomes.push(outcome);
     const failed = outcome.checks.filter((check) => (check.status === "fail" || check.status === "cannot_judge") && !check.expectedToFail).map((check) => check.check);
     console.log(`  [${index + 1}/${selection.cases.length}] ${testCase.id} hard ${outcome.hardPass ? "pass" : `FAIL (${failed.join(", ")})`} ${Math.round(outcome.durationMs / 100) / 10}s`);

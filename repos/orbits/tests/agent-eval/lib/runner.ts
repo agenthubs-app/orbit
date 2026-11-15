@@ -156,7 +156,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
 
   restoreSnapshot(environment.database.url, report.snapshot.file);
   if (!ctx.writer || ctx.currentWorld !== testCase.world) {
-    await ctx.writer?.close();
+    // Do not close the previous writer: the configured stores and pools are cached per process and shared.
     ctx.writer = createWorldWriter(testCase.world, world.clock);
     ctx.currentWorld = testCase.world;
     for (const [label, account] of Object.entries(report.accounts)) {
