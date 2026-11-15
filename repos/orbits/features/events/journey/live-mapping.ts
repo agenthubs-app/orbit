@@ -99,7 +99,7 @@ export function journeyEventFromCanonical(event: CanonicalEventLike, extra: { re
   const facts = payloadFacts(payload);
   const payloadCapacity = typeof payload.capacity === "number" && Number.isSafeInteger(payload.capacity) && payload.capacity > 0 ? payload.capacity : null;
   return {
-    agenda: facts.agenda.map((item) => ({ at: item.at, title: item.title })),
+    agenda: facts.agenda.map((item) => ({ at: item.at, title: item.title, ...(item.detail ? { detail: item.detail } : {}) })),
     badges: [],
     capacity: extra.policy?.capacity ?? payloadCapacity,
     description: event.description?.trim() || null,

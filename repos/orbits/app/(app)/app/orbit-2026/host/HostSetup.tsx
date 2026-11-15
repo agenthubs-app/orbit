@@ -12,6 +12,8 @@ import { ConfirmDialog, Icon, Segmented, useToast } from "../ui";
 import { QuestionLibraryDrawer } from "./QuestionLibrary";
 import { failureOf, hostApi, hostEventApi } from "./host-api";
 import { HostContactCard, draftContact } from "./HostEventForm";
+import { AgendaEditor, agendaMissing, focusAgendaMissing } from "./AgendaEditor";
+import { agendaDraftToItems, agendaItemsToDraft, blankAgendaRow, type AgendaDraftRow } from "../../../../../shared/compute/host-agenda";
 import { eventTone, hostDateDay, hostDateLong, hostTranslator, tokyoParts, type HostT } from "./host-model";
 import {
   DESC_MAX, DESC_WARN, NOTE_MAX, QUESTION_MAX, addSuggested, agoText, applyLinkText, blankQuestion, charCount, clampText, draftInput, draftOf, draftProblems, hasLink, moveItem, sameDraft, switchKind, templateQuestions,
@@ -298,12 +300,11 @@ export function QuestionsEditor({ questions, t, language, editing, onEdit, onCha
  * pay in the group, get approved). Same field and card as 基本情報を編集; saved on its own through the event
  * update (no change preview, nobody is notified), separate from the form's autosave.
  */
-function SetupContactCard({ event, t, disabled }: { event: HostSetupResponse["event"]; t: HostT; disabled: boolean }) {
+function SetupContactCard({ event, t, disabled, version, onVersion }: { event: HostSetupResponse["event"]; t: HostT; disabled: boolean; /** 议程卡也单独保存：两张卡共用最新的事件版本。 */ version: number; onVersion: (version: number) => void }) {
   const toast = useToast();
   const initial = { contactNote: event.contact?.note ?? "", lineId: event.contact?.lineId ?? "", wechatId: event.contact?.wechatId ?? "" };
   const [draft, setDraft] = useState(initial);
   const [saved, setSaved] = useState(initial);
-  const [version, setVersion] = useState(event.version);
   const [busy, setBusy] = useState(false);
   const dirty = draft.wechatId !== saved.wechatId || draft.lineId !== saved.lineId || draft.contactNote !== saved.contactNote;
   const checked = draftContact(draft);
@@ -313,7 +314,7 @@ function SetupContactCard({ event, t, disabled }: { event: HostSetupResponse["ev
     const res = await hostEventApi.update(event.eventId, { contact: checked.contact, expectedVersion: version });
     setBusy(false);
     if (!res.ok) { toast.error(t(failureOf(res) === "conflict" ? "conflictError" : "saveError")); return; }
-    setVersion(res.data.event.version);
+    onVersion(res.data.event.version);
     setSaved(draft);
     toast.success(t("evSaved"));
   };
@@ -327,6 +328,55 @@ function SetupContactCard({ event, t, disabled }: { event: HostSetupResponse["ev
       )}
     </div>
   );
+}
+
+/**
+ * 议程 on 申込設定（2026-11-15，event-detail-agenda-proposal ④ ⑤）：放在「介绍」卡下面，单独「保存议程」（和主办方联系方式卡同一做法：
+ * 走事件更新，不通知、不出变更预览；只改议程不动报名表）。不能删到 0 行；缺时间 / 标题的行不能保存（行下红字并聚焦）。
+ * 还没有议程的旧活动：顶部一行红字。活动结束后只读。
+ */
+export function SetupAgendaCard({ event, t, ended, version, onVersion }: { event: HostSetupResponse["event"]; t: HostT; ended: boolean; version: number; onVersion: (version: number) => void }) {
+  const toast = useToast();
+  const initial = event.agenda?.length ? agendaItemsToDraft(event.agenda) : [blankAgendaRow()];
+  const [rows, setRows] = useState<AgendaDraftRow[]>(initial);
+  const [saved, setSaved] = useState(() => JSON.stringify(agendaDraftToItems(initial)));
+  const [hasSaved, setHasSaved] = useState(Boolean(event.agenda?.length));
+  const [showMissing, setShowMissing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  const items = agendaDraftToItems(rows);
+  const dirty = JSON.stringify(items) !== saved;
+  const start = tokyoHm(event.startsAt);
+  const end = tokyoHm(event.endsAt);
+  const save = async () => {
+    if (busy) return;
+    if (agendaMissing(rows).some(Boolean)) { setShowMissing(true); requestAnimationFrame(() => focusAgendaMissing(ref.current, rows)); return; }
+    setBusy(true);
+    const res = await hostEventApi.update(event.eventId, { agenda: items, expectedVersion: version });
+    setBusy(false);
+    if (!res.ok) { toast.error(t(failureOf(res) === "conflict" ? "conflictError" : "saveError")); return; }
+    onVersion(res.data.event.version);
+    setSaved(JSON.stringify(items));
+    setHasSaved(items.length > 0);
+    setShowMissing(false);
+    toast.success(t("evSaved"));
+  };
+  return (
+    <div ref={ref} data-host-setup-agenda="">
+      <AgendaEditor rows={rows} t={t} start={start} end={end} readOnly={ended} noneSaved={!hasSaved && !ended} showMissing={showMissing} disabled={busy} onChange={setRows} />
+      {ended ? null : (
+        <div className={`${s.row} ${u.contactActs}`}>
+          <button type="button" className={`btn ${s.btn} ${s.primary}`} disabled={!dirty || busy} onClick={() => void save()} data-host-setup-agenda-save="">{t("evAgendaSave")}</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** ISO → 东京时间 HH:MM。 */
+function tokyoHm(iso: string | null | undefined): string | null {
+  const p = tokyoParts(iso);
+  return p ? `${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}` : null;
 }
 
 function NoticesSection({ data, t, open, kind, note, busy, readOnly, onOpen, onKind, onNote, onSave }: { data: HostSetupResponse; t: HostT; open: boolean; kind: HostNoticeTemplateKind; note: string; busy: boolean; /** 開催済み・中止・アーカイブ：ひとことも変えられない（サーバーも拒否）。 */ readOnly: boolean; onOpen?: (open: boolean) => void; onKind?: (kind: HostNoticeTemplateKind) => void; onNote?: (text: string) => void; onSave?: () => void }) {
@@ -391,6 +441,9 @@ export function HostSetupView(props: HostSetupViewProps) {
   const ended = data.event.status === "ended" || data.event.status === "cancelled" || data.event.status === "archived";
   const suggestion = data.suggestion && suggestionOpen && !ended ? data.suggestion : null;
   const ago = agoText(data.savedAt, now, t, (iso) => hostDateDay(iso, t, language));
+  // 联系方式卡与议程卡各自单独保存（事件更新）：共用最新版本，免得先存一张、另一张就版本冲突。
+  const [eventVersion, setEventVersion] = useState(data.event.version);
+  useEffect(() => { setEventVersion(data.event.version); }, [data.event.version]);
   const status = saveState === "saving" ? t("suSaving") : saveState === "dirty" ? t("suUnsaved") : saveState === "invalid" ? t("suInvalid") : ago ? t("suSavedAgo", { ago }) : "";
   return (
     <>
@@ -408,6 +461,7 @@ export function HostSetupView(props: HostSetupViewProps) {
             <span className={`${u.counter} ${length >= DESC_WARN ? u.counterWarn : ""}`} aria-live="polite">{t("suCounter", { n: length })}</span>
           </label>
         </div>
+        <SetupAgendaCard key={`${data.event.eventId}:agenda`} event={data.event} t={t} ended={ended} version={eventVersion} onVersion={setEventVersion} />
         {empty ? (
           <>
             <div className={`${s.card} ${u.blk}`}>
@@ -458,7 +512,7 @@ export function HostSetupView(props: HostSetupViewProps) {
       <div className={`${u.col} ${u.span5}`}>
         <Preview data={data} draft={draft} t={t} language={language} mode={preview} onMode={props.onPreview} />
         <div className={ended ? u.readOnly : undefined} inert={ended || undefined}><Settings data={data} draft={draft} t={t} language={language} host={host} onChange={change} /></div>
-        <SetupContactCard key={`${data.event.eventId}:${data.event.version}`} event={data.event} t={t} disabled={ended} />
+        <SetupContactCard key={`${data.event.eventId}:${data.event.version}`} event={data.event} t={t} disabled={ended} version={eventVersion} onVersion={setEventVersion} />
       </div>
       <NoticesSection data={data} t={t} open={notesOpen} kind={props.noticeKind ?? "admission_approved"} note={noteDraft} busy={busy} readOnly={ended}
         onOpen={props.onNotesOpen} onKind={props.onNoticeKind} onNote={props.onNoteDraft} onSave={props.onNoteSave} />

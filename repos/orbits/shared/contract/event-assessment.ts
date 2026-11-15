@@ -47,6 +47,8 @@ export interface EventAssessmentAgendaItem {
   title: string;
   /** Minutes, when the page says. */
   minutes?: number;
+  /** One small line under the title (host-written agenda, ≤120 chars). */
+  detail?: string;
 }
 
 /** R26: where each fact came from — read from the page, guessed, typed by the user, or derived by rule. */

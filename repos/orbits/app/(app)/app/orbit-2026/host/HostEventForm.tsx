@@ -7,9 +7,10 @@
 // 下書きの「公開する」在运营台横幅（b12 #440）。
 // b12 #396–#475 待用户过目（§38），照画板实现但不进门禁。
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { HOST_CONTACT_ID_MAX, HOST_CONTACT_NOTE_MAX, hostEventContactInputObject, hostNoteText } from "../../../../../shared/api-schema/host-events";
+import { agendaDraftToItems, agendaItemsToDraft, blankAgendaRow, type AgendaDraftRow } from "../../../../../shared/compute/host-agenda";
 import { normalizeHostContact } from "../../../../../shared/compute/host-contact";
 import type { HostSetupQuestion } from "../../../../../shared/contract/host-console";
 import type { HostEventChangePreview, HostEventContact, HostEventFeeKind, HostEventInput, HostEventUpdateInput, HostEventView } from "../../../../../shared/contract/host-events";
@@ -18,6 +19,7 @@ import type { OrganizerProfile } from "../../../../../shared/contract/organizer-
 import { ShellPage } from "../shell/slots";
 import { Icon, Modal, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { failureOf, hostEventApi } from "./host-api";
+import { AgendaEditor, AgendaPreview, agendaMissing, focusAgendaMissing } from "./AgendaEditor";
 import { QuestionsEditor } from "./HostSetup";
 import { templateKeyOf, templateQuestions } from "./setup-model";
 import { consoleHref, hostDateLong, hostTranslator, tokyoParts, type HostT } from "./host-model";
@@ -50,6 +52,8 @@ export type EventDraft = {
   wechatId: string;
   lineId: string;
   contactNote: string;
+  /** 议程（2026-11-15：必填，公开前至少 1 行完整的）。新建时 1 行空行；旧い一時保存には無いことがある。 */
+  agenda: AgendaDraftRow[];
 };
 
 const chars = (value: string) => [...value].length;
@@ -70,7 +74,7 @@ export function tokyoIso(date: string, time: string): string | null {
 
 export function draftFromEvent(event: HostEventView | null, profiles: readonly OrganizerProfile[]): EventDraft {
   if (!event) {
-    return { capacity: "", contactNote: "", date: "", description: "", questions: [], end: "21:30", feeAmount: "", feeKind: "free", feeUrl: "", lineId: "", online: false, organizerProfileId: profiles[0]?.profileId ?? "", start: "19:00", templateId: null, title: "", venueName: "", wechatId: "" };
+    return { agenda: [blankAgendaRow()], capacity: "", contactNote: "", date: "", description: "", questions: [], end: "21:30", feeAmount: "", feeKind: "free", feeUrl: "", lineId: "", online: false, organizerProfileId: profiles[0]?.profileId ?? "", start: "19:00", templateId: null, title: "", venueName: "", wechatId: "" };
   }
   const start = tokyoInputs(event.startsAt);
   const end = tokyoInputs(event.endsAt);
@@ -78,10 +82,11 @@ export function draftFromEvent(event: HostEventView | null, profiles: readonly O
     capacity: event.capacity == null ? "" : String(event.capacity), date: start.date, description: event.description ?? "", questions: [], end: end.time, feeAmount: event.feeAmountYen == null ? "" : String(event.feeAmountYen),
     feeKind: event.feeKind, feeUrl: event.feeUrl ?? "", online: event.online, organizerProfileId: event.organizerProfileId ?? profiles[0]?.profileId ?? "", start: start.time, templateId: null, title: event.title, venueName: event.venueName ?? "",
     contactNote: event.contact?.note ?? "", lineId: event.contact?.lineId ?? "", wechatId: event.contact?.wechatId ?? "",
+    agenda: event.agenda?.length ? agendaItemsToDraft(event.agenda) : [blankAgendaRow()],
   };
 }
 
-export type DraftProblem = "evInvalidName" | "evInvalidDate" | "evInvalidTime" | "evInvalidQuestion" | "evInvalidVenue" | "evInvalidFee" | "evInvalidProfile" | "evInvalidContact";
+export type DraftProblem = "evInvalidName" | "evInvalidDate" | "evInvalidTime" | "evInvalidQuestion" | "evInvalidVenue" | "evInvalidFee" | "evInvalidProfile" | "evInvalidContact" | "evInvalidAgenda";
 
 /** 入力欄の連絡先 → 契約（全部空 = null）。ID ≤60 字、ひとこと ≤200 字・リンク不可に違反していれば problem。 */
 export function draftContact(draft: Pick<EventDraft, "wechatId" | "lineId" | "contactNote">): { contact: HostEventContact | null; problem: boolean } {
@@ -90,8 +95,11 @@ export function draftContact(draft: Pick<EventDraft, "wechatId" | "lineId" | "co
   return { contact: normalizeHostContact(raw), problem: false };
 }
 
-/** 入力 → 契約（建 / 改共用）。問題があれば最初の 1 つ。 */
-export function draftToInput(draft: EventDraft): { input: Omit<HostEventInput, "organizerProfileId"> & { organizerProfileId: string }; problem: null } | { input: null; problem: DraftProblem } {
+/**
+ * 入力 → 契約（建 / 改共用）。問題があれば最初の 1 つ。
+ * 议程：全空的行丢掉；有一行缺时间 / 标题就是问题（服务端也不收）。`forPublish`（「前往公开」）时还要至少 1 行完整的。
+ */
+export function draftToInput(draft: EventDraft, options: { forPublish?: boolean } = {}): { input: Omit<HostEventInput, "organizerProfileId"> & { organizerProfileId: string }; problem: null } | { input: null; problem: DraftProblem } {
   const title = draft.title.trim();
   if (!title) return { input: null, problem: "evInvalidName" };
   const startsAt = tokyoIso(draft.date, draft.start);
@@ -113,12 +121,16 @@ export function draftToInput(draft: EventDraft): { input: Omit<HostEventInput, "
   if (capacity != null && (!Number.isInteger(capacity) || capacity <= 0)) return { input: null, problem: "evInvalidFee" };
   const contact = draftContact(draft);
   if (contact.problem) return { input: null, problem: "evInvalidContact" };
+  const agendaRows = draft.agenda ?? [];
+  const agenda = agendaDraftToItems(agendaRows);
+  if (agendaMissing(agendaRows).some(Boolean) && (options.forPublish || agenda.length > 0)) return { input: null, problem: "evInvalidAgenda" };
   return {
     input: {
       capacity, description: draft.description.trim() || null, endsAt, feeAmountYen: draft.feeKind === "free" || draft.feeKind === "external_link" ? null : amount, feeKind: draft.feeKind,
       feeUrl: draft.feeKind === "external_link" ? draft.feeUrl.trim() : null, online: draft.online, organizerProfileId: draft.organizerProfileId, startsAt, timezone: "Asia/Tokyo", title,
       venueName: venueName || null, ...(draft.templateId ? { templateId: draft.templateId } : {}), ...(questions.length ? { questions } : {}),
       ...(contact.contact ? { contact: contact.contact } : {}),
+      ...(agenda.length ? { agenda } : {}),
     },
     problem: null,
   };
@@ -143,6 +155,10 @@ export function changedFields(event: HostEventView, input: Omit<HostEventInput, 
   const contact = normalizeHostContact(input.contact ?? null);
   const before = normalizeHostContact(event.contact ?? null);
   if (JSON.stringify(contact) !== JSON.stringify(before)) out.contact = contact;
+  // 议程整体替换；同样不进通知判定。
+  const agenda = (input.agenda ?? []).map((item) => ({ at: item.at, title: item.title, ...(item.detail ? { detail: item.detail } : {}) }));
+  const agendaBefore = (event.agenda ?? []).map((item) => ({ at: item.at, title: item.title, ...(item.detail ? { detail: item.detail } : {}) }));
+  if (JSON.stringify(agenda) !== JSON.stringify(agendaBefore)) out.agenda = agenda;
   return out as Omit<HostEventUpdateInput, "expectedVersion">;
 }
 
@@ -249,9 +265,11 @@ export type HostEventFormViewProps = {
   editingQuestion?: number;
   onEditQuestion?: (index: number) => void;
   onTemplate?: (templateId: EventDraft["templateId"]) => void;
+  /** 按过「前往公开 / 保存」被议程挡住：缺时间 / 标题的行出红字。 */
+  agendaShowMissing?: boolean;
 };
 
-export function HostEventFormView({ mode, draft, profiles, language, event = null, busy = false, readOnly = false, showTemplates = false, onChange, onSaveDraft, onPrimary, editingQuestion = -1, onEditQuestion, onTemplate }: HostEventFormViewProps) {
+export function HostEventFormView({ mode, draft, profiles, language, event = null, busy = false, readOnly = false, showTemplates = false, onChange, onSaveDraft, onPrimary, editingQuestion = -1, onEditQuestion, onTemplate, agendaShowMissing = false }: HostEventFormViewProps) {
   const t = useMemo(() => hostTranslator(language), [language]);
   const toast = useToast();
   const set = <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => onChange?.({ ...draft, [key]: value });
@@ -334,6 +352,8 @@ export function HostEventFormView({ mode, draft, profiles, language, event = nul
               <span className={`${f.counter} ${length > DESC_MAX - 100 ? f.counterBad : ""}`} aria-live="polite">{t("evCounter", { n: length })}</span>
             </label>
           </div>
+          <AgendaEditor rows={draft.agenda ?? []} t={t} start={draft.start || null} end={draft.end || null} required showMissing={agendaShowMissing}
+            readOnly={event?.status === "ended"} disabled={readOnly} onChange={(agenda) => set("agenda", agenda)} />
           <HostContactCard draft={draft} t={t} disabled={readOnly || event?.status === "ended"} onChange={(next) => onChange?.({ ...draft, ...next })} />
           {mode === "create" ? (
             <div className={`${s.card} ${f.blk}`} data-host-evquestions={draft.questions.length}>
@@ -354,6 +374,7 @@ export function HostEventFormView({ mode, draft, profiles, language, event = nul
                 <b className={f.pvTitle}>{draft.title.trim() || t("evUntitled")}</b>
                 <div className={`${s.lbl} ${f.pvMeta}`}>{meta}</div>
                 {draft.description.trim() ? <div className={`${s.sub} ${f.pvDesc}`}>{draft.description.trim()}</div> : null}
+                <AgendaPreview rows={draft.agenda ?? []} t={t} />
                 <span className={`btn ${s.btn} ${s.primary} ${f.pvBtn}`} aria-hidden>{t("evRegister")}</span>
               </div>
             </div>
@@ -415,7 +436,8 @@ export type TempDraft = { savedAt: string; draft: EventDraft };
 /** 入力が何かあるか（既定値だけなら保存しない）。 */
 export function draftHasInput(draft: EventDraft): boolean {
   return Boolean(draft.title.trim() || draft.description.trim() || draft.venueName.trim() || draft.date || draft.capacity.trim() || draft.feeAmount.trim() || draft.feeUrl.trim() || draft.templateId
-    || (draft.wechatId ?? "").trim() || (draft.lineId ?? "").trim() || (draft.contactNote ?? "").trim());
+    || (draft.wechatId ?? "").trim() || (draft.lineId ?? "").trim() || (draft.contactNote ?? "").trim()
+    || (draft.agenda ?? []).some((row) => row.at.trim() || row.title.trim() || row.detail.trim()));
 }
 
 export function readTempDraft(storage: Pick<Storage, "getItem" | "removeItem"> | null, userKey: string, now: Date): TempDraft | null {
@@ -470,6 +492,9 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
   const [userKey, setUserKey] = useState("");
   const [restoredAt, setRestoredAt] = useState<string | null>(null);
   const [editingQuestion, setEditingQuestion] = useState(-1);
+  // 「前往公开 / 保存」被议程挡住后：红字 + 聚焦到第一处。
+  const [agendaShowMissing, setAgendaShowMissing] = useState(false);
+  const formRef = useRef<HTMLDivElement | null>(null);
   // テンプレート → 申込フォームの初期質問（質問集から；未選択は「交流会」と同じ。主催者の画面の言語で入れる）。
   const questionsFor = useCallback((templateId: EventDraft["templateId"]) => templateQuestions(templateKeyOf(templateId), language), [language]);
 
@@ -488,7 +513,7 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
       const key = session?.user?.id ?? "";
       setUserKey(key);
       const temp = readTempDraft(browserStorage(), key, new Date());
-      if (temp) { setDraft({ ...fresh, ...temp.draft, questions: Array.isArray(temp.draft.questions) && temp.draft.questions.length ? temp.draft.questions : questionsFor(temp.draft.templateId ?? null), organizerProfileId: list.some((item) => item.profileId === temp.draft.organizerProfileId) ? temp.draft.organizerProfileId : fresh.organizerProfileId }); setRestoredAt(temp.savedAt); return; }
+      if (temp) { setDraft({ ...fresh, ...temp.draft, agenda: Array.isArray(temp.draft.agenda) && temp.draft.agenda.length ? temp.draft.agenda : fresh.agenda, questions: Array.isArray(temp.draft.questions) && temp.draft.questions.length ? temp.draft.questions : questionsFor(temp.draft.templateId ?? null), organizerProfileId: list.some((item) => item.profileId === temp.draft.organizerProfileId) ? temp.draft.organizerProfileId : fresh.organizerProfileId }); setRestoredAt(temp.savedAt); return; }
     }
     setDraft(mode === "create" ? { ...fresh, questions: questionsFor(fresh.templateId) } : fresh);
   }, [eventId, mode, questionsFor]);
@@ -501,15 +526,20 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
     return () => clearTimeout(timer);
   }, [draft, mode, userKey]);
 
-  const problemOf = (): ReturnType<typeof draftToInput> | null => {
+  const problemOf = (forPublish = false): ReturnType<typeof draftToInput> | null => {
     if (!draft) return null;
-    const result = draftToInput(draft);
+    const result = draftToInput(draft, { forPublish });
+    if (result.problem === "evInvalidAgenda") {
+      setAgendaShowMissing(true);
+      const rows = draft.agenda ?? [];
+      requestAnimationFrame(() => focusAgendaMissing(formRef.current, rows));
+    }
     if (result.problem) toast.error(t(result.problem));
     return result;
   };
 
   const create = async (thenPublish: boolean) => {
-    const result = problemOf();
+    const result = problemOf(thenPublish);
     if (!result?.input) return;
     setBusy(true);
     const res = await hostEventApi.create(result.input);
@@ -527,6 +557,7 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
     if (!draft) return;
     const result = draftToInput(draft);
     if (result.input) { void create(false); return; }
+    // 暂存不挡：议程没填完也照原样存在这台设备上（2026-11-15）。
     if (!writeTempDraft(browserStorage(), userKey, draft, new Date())) { toast.error(t("saveError")); return; }
     setRestoredAt(null);
     toast.success(t("evTempSaved", { what: t(result.problem) }));
@@ -600,11 +631,13 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
           <button type="button" className={`btn ${s.btn} ${s.sm}`} onClick={discardTemp}>{t("evDiscardTemp")}</button>
         </div>
       ) : null}
-      <HostEventFormView mode={mode} draft={draft} profiles={profiles} language={language} event={event} busy={busy} readOnly={readOnly}
+      <div ref={formRef} className={f.contents}>
+      <HostEventFormView mode={mode} draft={draft} profiles={profiles} language={language} event={event} busy={busy} readOnly={readOnly} agendaShowMissing={agendaShowMissing}
         showTemplates={mode === "create" && params.get("from") === "template"} onChange={setDraft}
         editingQuestion={editingQuestion} onEditQuestion={setEditingQuestion}
         onTemplate={(templateId) => { setDraft((current) => (current ? { ...current, templateId, questions: questionsFor(templateId) } : current)); setEditingQuestion(-1); }}
         onSaveDraft={() => (mode === "create" ? saveTemp() : save())} onPrimary={() => (mode === "create" ? void create(true) : save())} />
+      </div>
       {preview ? <ChangeNotifyConfirm preview={preview.change} t={t} language={language} busy={busy} onClose={() => setPreview(null)} onSilent={() => void patch(preview.patch, false)} onNotify={() => void patch(preview.patch, true)} /> : null}
       {publishFor ? <PublishEventConfirm event={publishFor} t={t} language={language} busy={busy} onCancel={() => { setPublishFor(null); router.push(`/app/events/${encodeURIComponent(publishFor.eventId)}/edit`); }} onPublish={() => void publish()} /> : null}
     </>

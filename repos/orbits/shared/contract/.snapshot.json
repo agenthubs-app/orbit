@@ -5414,6 +5414,11 @@
           "optional": true,
           "kind": "text",
           "type": "number"
+        },
+        "detail": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
         }
       }
     },
@@ -6973,6 +6978,41 @@
               "optional": true,
               "kind": "text",
               "type": "{ eventId: string; title: string; startsAt: string; } | null"
+            },
+            "bio": {
+              "optional": true,
+              "kind": "text",
+              "type": "string | null"
+            },
+            "past": {
+              "optional": true,
+              "kind": "array",
+              "readonly": true,
+              "element": {
+                "kind": "object",
+                "members": {
+                  "eventId": {
+                    "optional": false,
+                    "kind": "text",
+                    "type": "string"
+                  },
+                  "title": {
+                    "optional": false,
+                    "kind": "text",
+                    "type": "string"
+                  },
+                  "startsAt": {
+                    "optional": false,
+                    "kind": "text",
+                    "type": "string"
+                  },
+                  "attendance": {
+                    "optional": false,
+                    "kind": "text",
+                    "type": "number | null"
+                  }
+                }
+              }
             }
           }
         },
@@ -12332,6 +12372,26 @@
         }
       }
     },
+    "host-events.ts::HostAgendaItem": {
+      "kind": "object",
+      "members": {
+        "at": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "detail": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
     "host-events.ts::HostEventView": {
       "kind": "object",
       "members": {
@@ -12515,6 +12575,11 @@
           "kind": "text",
           "type": "HostEventContact | null"
         },
+        "agenda": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly HostAgendaItem[]"
+        },
         "sample": {
           "optional": true,
           "kind": "text",
@@ -12609,6 +12674,11 @@
           "optional": true,
           "kind": "text",
           "type": "HostEventContactInput | null"
+        },
+        "agenda": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly HostAgendaItem[]"
         }
       }
     },
@@ -12689,6 +12759,11 @@
           "optional": true,
           "kind": "text",
           "type": "HostEventContactInput | null"
+        },
+        "agenda": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly HostAgendaItem[]"
         },
         "notify": {
           "optional": true,
@@ -13655,6 +13730,7 @@
         "HostAdmissionDecision",
         "HostAdmissionMode",
         "HostAdmitOnSiteInput",
+        "HostAgendaItem",
         "HostCenterEventRow",
         "HostCenterFilter",
         "HostCenterFilterCounts",

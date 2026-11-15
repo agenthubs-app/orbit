@@ -151,7 +151,7 @@ export const eventsJourney = {
   "eventsJourney.hostMonthlySince": "Monthly since {y} · {n} editions",
   "eventsJourney.hostEditions": "{n} editions",
   "eventsJourney.noDescription": "The host hasn't added a description yet",
-  "eventsJourney.noAgenda": "No schedule posted yet",
+  "eventsJourney.noAgenda": "The host hasn't published the agenda yet",
   "eventsJourney.noPeopleHere": "No one here yet",
   "eventsJourney.onlyYou": "So far you're the only one registered",
   "eventsJourney.hostUnnamed": "The organizer has not shared a name",

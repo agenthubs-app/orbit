@@ -151,7 +151,7 @@ export const eventsJourney = {
   "eventsJourney.hostMonthlySince": "{y}年起每月举办 · 累计{n}次",
   "eventsJourney.hostEditions": "累计{n}次",
   "eventsJourney.noDescription": "主办方还没有写介绍",
-  "eventsJourney.noAgenda": "还没有公布议程",
+  "eventsJourney.noAgenda": "主办方还没有公布议程",
   "eventsJourney.noPeopleHere": "这里还没有人",
   "eventsJourney.onlyYou": "目前只有你报名了",
   "eventsJourney.hostUnnamed": "主办方没有公开名称",

@@ -5,6 +5,8 @@
  */
 import type { EventOperationsPostgresClient } from "../event-operations/storage/postgres-client";
 import type { HostEventPayload } from "./storage/lifecycle";
+import type { HostAgendaItem } from "../../../shared/contract/host-events";
+import { normalizeHostAgenda } from "../../../shared/compute/host-agenda";
 
 type Row = Record<string, unknown>;
 
@@ -39,6 +41,8 @@ export interface HostEventFacts {
   archivedAt: string | null;
   version: number;
   payload: Partial<HostEventPayload>;
+  /** source_payload.agenda（null = 还没有）。 */
+  agenda: HostAgendaItem[] | null;
   publicSlug: string | null;
   applied: number;
   pending: number;
@@ -80,9 +84,11 @@ const FACTS_SELECT = `
       on role_head.workspace_id = e.workspace_id and role_head.event_id = e.event_id and role_head.subject_actor_id = $2 and role_head.state = 'active'`;
 
 function factsFromRow(row: Row): HostEventFacts {
-  const payload = ((typeof row.source_payload === "string" ? JSON.parse(row.source_payload) : row.source_payload) as { host?: Partial<HostEventPayload> }).host ?? {};
+  const source = (typeof row.source_payload === "string" ? JSON.parse(row.source_payload) : row.source_payload) as { host?: Partial<HostEventPayload>; agenda?: unknown } | null;
+  const payload = source?.host ?? {};
   const capacity = row.policy_capacity !== null && row.policy_capacity !== undefined ? num(row.policy_capacity) : payload.capacity ?? null;
   return {
+    agenda: normalizeHostAgenda(source?.agenda),
     admissionMode: row.admission_mode === "instant" ? "first_come" : "review",
     admitted: Math.max(num(row.admitted_app), num(row.members)),
     applied: Math.max(num(row.applied_app), num(row.members)),

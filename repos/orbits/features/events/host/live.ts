@@ -151,6 +151,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       cancelledAt: facts.cancelledAt,
       capabilities: mine,
       capacity: facts.capacity,
+      agenda: facts.agenda ?? [],
       contact: normalizeHostContact(facts.payload.contact),
       cohostCount: cohostList.length,
       cohosts: cohostList.slice(0, 5),

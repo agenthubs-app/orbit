@@ -151,7 +151,7 @@ export const eventsJourney = {
   "eventsJourney.hostMonthlySince": "{y}年から毎月開催 · 累計 {n}回",
   "eventsJourney.hostEditions": "累計 {n}回",
   "eventsJourney.noDescription": "主催者はまだ紹介文を書いていません",
-  "eventsJourney.noAgenda": "タイムテーブルはまだ公開されていません",
+  "eventsJourney.noAgenda": "主催者はまだアジェンダを公開していません",
   "eventsJourney.noPeopleHere": "まだ誰もいません",
   "eventsJourney.onlyYou": "今のところ登録しているのはあなただけです",
   "eventsJourney.hostUnnamed": "主催者名は公開されていません",

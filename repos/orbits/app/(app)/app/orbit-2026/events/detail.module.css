@@ -179,7 +179,7 @@
 
 /* < 768 兜底：本文件的 span8/7/5 不随 events.module.css 的 span 重置，单列网格里会撑出隐式列、把卡挤成窄条。 */
 @media (max-width: 767px) {
-  .span8, .span7, .span5 { grid-column: auto; }
+  .span8, .span7, .span6, .span5 { grid-column: auto; }
   .facts { grid-template-columns: repeat(2, 1fr); }
 }
 
@@ -211,3 +211,33 @@
 .relSlot { align-self: start; }
 .pRel.pRel { margin-top: 14px; }
 .pGuideTitle { display: block; font-size: var(--fs-body-sm); margin-top: 2px; }
+
+/* ---------- 2026-11-15 议程卡 / 右栏两张卡（event-detail-agenda-proposal ① ②） ---------- */
+.span6 { grid-column: span 6; }
+.ag { display: grid; grid-template-columns: 52px 1fr; gap: 4px 10px; font-size: var(--fs-control); }
+.ag time { font-family: var(--font-num); font-weight: var(--fw-bold); color: var(--ink-2); }
+.agTi small { display: block; font-size: var(--fs-caption); color: var(--ink-3); }
+.agEmpty { font-size: var(--fs-meta); color: var(--ink-3); }
+.railCardH { margin: 0; font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); }
+.meetRows { margin-top: 8px; }
+.meetGuide { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 8px; font-size: var(--fs-control); color: var(--ink-2); }
+.railSub { display: flex; justify-content: space-between; gap: 8px; margin: 12px 0 6px; font-size: var(--fs-label); font-weight: var(--fw-bold); color: var(--ink-3); }
+.railSub a { font-weight: var(--fw-regular); color: var(--ink-3); text-decoration: none; }
+.railSub a:hover { color: var(--ink); }
+.meetNone { font-size: var(--fs-meta); color: var(--ink-3); padding: 4px 0 2px; }
+.meetGate { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-control); }
+.meetGate span { font-size: var(--fs-caption); color: var(--ink-3); }
+.meetLi { display: flex; align-items: center; gap: 9px; padding: 6px 0; font-size: var(--fs-control); }
+.meetLi .meta b { display: block; font-weight: var(--fw-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meetLi .meta span { display: block; font-size: var(--fs-caption); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.orgRow { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.orgEmo.orgEmo { width: 38px; height: 38px; border-radius: var(--r-md); font-size: var(--fs-emoji-sm); }
+.orgRow .meta b { display: block; font-size: var(--fs-body-sm); }
+.orgRow .meta span { display: block; font-size: var(--fs-caption); color: var(--ink-3); }
+.followBtn.followBtn { flex: 0 0 auto; background: var(--surface-2); }
+.orgBio { margin-top: 8px; font-size: var(--fs-meta); color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pastRow { display: flex; align-items: center; gap: 9px; padding: 3px 0; font-size: var(--fs-control); color: var(--ink); text-decoration: none; }
+.pastRow:hover .pastTitle { text-decoration: underline; }
+.pastDate { width: 42px; flex: 0 0 auto; font-family: var(--font-num); font-weight: var(--fw-bold); font-size: var(--fs-meta); color: var(--ink-3); }
+.pastTitle { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pastN { margin-left: auto; flex: 0 0 auto; font-size: var(--fs-caption); color: var(--ink-3); }

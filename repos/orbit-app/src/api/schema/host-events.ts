@@ -152,6 +152,7 @@ export const hostEventViewObject = z.object({
   archivedAt: z.string().nullable(),
   version: z.number().int().min(1),
   contact: hostEventContactObject.nullable().optional().catch(null),
+  agenda: readableItems(z.object({ at: z.string(), title: z.string(), detail: z.string().nullable().optional() })).optional().catch(undefined),
   sample: z.literal(true).optional(),
 });
 export const hostEventViewSchema = hostEventViewObject as unknown as z.ZodType<HostEventView>;
@@ -216,6 +217,23 @@ export const hostEventContactInputObject = z.object({
   note: hostContactNoteText.nullable().optional(),
 }).strict();
 
+/**
+ * 议程（2026-11-15）：每行 时间 HH:MM（必填）+ 标题（必填，≤60 字）+ 说明（选填，≤120 字）；最多 40 行；顺序按主办方排的。
+ * 下書き / 暂存可以 0 行；「公開へ進む」要求至少 1 行（界面挡）。
+ */
+// 与 shared/compute/host-agenda.ts 的 AGENDA_* 同值（api-schema 会同步到 App，不依赖 compute）。
+export const HOST_AGENDA_MAX_ROWS = 40;
+export const HOST_AGENDA_TITLE_MAX = 60;
+export const HOST_AGENDA_DETAIL_MAX = 120;
+export const HOST_AGENDA_TIME = /^([01]\d|2[0-3]):[0-5]\d$/u;
+const charsMax = (max: number) => (value: string) => [...value].length <= max;
+export const hostAgendaItemInput = z.object({
+  at: z.string().trim().regex(HOST_AGENDA_TIME),
+  title: z.string().trim().min(1).refine(charsMax(HOST_AGENDA_TITLE_MAX), "title too long"),
+  detail: z.string().trim().refine(charsMax(HOST_AGENDA_DETAIL_MAX), "detail too long").nullable().optional(),
+}).strict();
+export const hostAgendaInput = z.array(hostAgendaItemInput).max(HOST_AGENDA_MAX_ROWS);
+
 export const hostEventInputObject = z.object({
   title,
   emoji: emoji.optional(),
@@ -235,6 +253,7 @@ export const hostEventInputObject = z.object({
   // 2026-11-13: the registration questions are set while creating the event (up to 5).
   questions: hostQuestionList.optional(),
   contact: hostEventContactInputObject.nullable().optional(),
+  agenda: hostAgendaInput.optional(),
 }).strict();
 export const hostEventInputSchema = hostEventInputObject as unknown as z.ZodType<HostEventInput>;
 
@@ -254,6 +273,7 @@ export const hostEventUpdateInputObject = z.object({
   description: description.optional(),
   organizerProfileId: profileId.optional(),
   contact: hostEventContactInputObject.nullable().optional(),
+  agenda: hostAgendaInput.optional(),
   notify: z.boolean().optional(),
 }).strict();
 export const hostEventUpdateInputSchema = hostEventUpdateInputObject as unknown as z.ZodType<HostEventUpdateInput>;

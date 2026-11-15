@@ -62,7 +62,9 @@ export function payloadFacts(payload: Readonly<Record<string, unknown>>): { pric
     const at = asString(record.at ?? record.time ?? record.startsAt ?? record.start);
     const title = asString(record.title ?? record.name ?? record.label);
     const minutes = typeof record.minutes === "number" ? record.minutes : typeof record.durationMinutes === "number" ? record.durationMinutes : undefined;
-    return at && title ? [{ at: at.slice(0, 40), title: title.slice(0, 200), ...(minutes !== undefined ? { minutes } : {}) }] : [];
+    // 主办方写的说明（标题下一行小字，2026-11-15）；外部导入的议程没有。
+    const detail = asString(record.detail);
+    return at && title ? [{ at: at.slice(0, 40), title: title.slice(0, 200), ...(minutes !== undefined ? { minutes } : {}), ...(detail ? { detail: detail.slice(0, 200) } : {}) }] : [];
   }).slice(0, 40);
   return {
     agenda,

@@ -162,6 +162,16 @@ export interface HostEventContactInput {
   note?: string | null;
 }
 
+/**
+ * 议程一行（2026-11-15 用户：议程必填）。存在 `event_ops_events.source_payload.agenda`（与外部导入的议程同一个键，详情 / 会场 / 会前准备都读它）。
+ * `at` = 东京时间 "HH:MM"；`title` ≤60 字；`detail` 可选 ≤120 字（标题下一行小字）。顺序按主办方排的，不自动按时间排。
+ */
+export interface HostAgendaItem {
+  at: string;
+  title: string;
+  detail?: string | null;
+}
+
 /** 一场活动的主办侧视图（建活动 / 编辑 / 运营台页头共用）。 */
 export interface HostEventView {
   eventId: string;
@@ -208,6 +218,8 @@ export interface HostEventView {
   version: number;
   /** 主催者の連絡先（编辑表单预填；旧服务端没有这个字段）。 */
   contact?: HostEventContact | null;
+  /** 议程（编辑表单 / 申込設定预填；旧服务端没有这个字段；还没填 = 空数组）。 */
+  agenda?: readonly HostAgendaItem[];
   sample?: true;
 }
 
@@ -233,6 +245,8 @@ export interface HostEventInput {
   questions?: readonly HostSetupQuestion[];
   /** 主催者の連絡先（任意）。只给已报名的人看。 */
   contact?: HostEventContactInput | null;
+  /** 议程（≤40 行）。下書き / 暂存可以为空；公开前界面要求至少 1 行完整的。 */
+  agenda?: readonly HostAgendaItem[];
 }
 
 /** `PATCH /api/host/events/[id]`：改基本情報（`event.edit`）。已公开的活动改日時或会場时，`notify` 决定是否发定型通知。 */
@@ -253,6 +267,8 @@ export interface HostEventUpdateInput {
   organizerProfileId?: string;
   /** 主催者の連絡先：给了就整体替换（null / 全空 = 清除）；改它不通知参加者。 */
   contact?: HostEventContactInput | null;
+  /** 议程：给了就整体替换；改它不通知参加者、不出 changePreview。 */
+  agenda?: readonly HostAgendaItem[];
   /** 已公开且日時 / 会場有变化：true = 保存して知らせる，false = 知らせずに保存。 */
   notify?: boolean;
 }

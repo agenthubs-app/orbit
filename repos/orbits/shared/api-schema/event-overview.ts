@@ -47,6 +47,8 @@ export const eventOverviewResponseObject = z.object({
     myAttendance: z.number().int().min(0).nullable().optional().catch(null),
     following: z.boolean().optional(),
     next: z.object({ eventId: z.string(), title: z.string(), startsAt: z.string() }).nullable().optional().catch(null),
+    bio: z.string().nullable().optional().catch(null),
+    past: readableItems(z.object({ eventId: z.string().min(1), title: z.string(), startsAt: z.string(), attendance: z.number().int().min(0).nullable().catch(null) })).optional().catch(undefined),
   }),
   assessment: z.object({
     score: z.number().int().min(0).max(100),

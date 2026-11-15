@@ -196,10 +196,11 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       const now = new Date();
       // The detail already identifies its event. Read only this organizer's dates,
       // not every event's descriptions and source payloads in the workspace.
-      const mine: Array<{ eventId: string; startsAt: string; title?: string | null }> = [];
+      const mine: Array<{ eventId: string; startsAt: string; endsAt?: string | null; title?: string | null }> = [];
+      let bio: string | null = null;
       if (eventId) {
         const rows = await query(`/* events:r27-journey:organizer-event-dates */
-          select e.event_id,e.starts_at,e.title,origin.organizer_actor_id,origin.organizer_profile_id
+          select e.event_id,e.starts_at,e.ends_at,e.title,origin.organizer_actor_id,origin.organizer_profile_id
             from event_ops_events origin join event_ops_events e on e.workspace_id=origin.workspace_id
              and (case when origin.organizer_profile_id is not null
                     then e.organizer_profile_id=origin.organizer_profile_id
@@ -210,7 +211,14 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
         for (const row of rows.rows) {
           if (eventOrganizerKey(str(row.organizer_actor_id),str(row.organizer_profile_id)) !== organizerKey) return null;
           const startsAt=iso(row.starts_at);
-          if (startsAt) mine.push({ eventId:String(row.event_id),startsAt,title:str(row.title) });
+          if (startsAt) mine.push({ eventId:String(row.event_id),startsAt,endsAt:iso(row.ends_at),title:str(row.title) });
+        }
+        // 详情右栏主办方卡的一句简介：主办方资料页的 bio（和 o/[slug] 同一来源；只读这一列、这一行）。
+        const profileId = str(rows.rows[0]?.organizer_profile_id);
+        if (profileId) {
+          const profile = await query(`/* events:r27-journey:organizer-bio */ select bio from organizer_profiles where workspace_id = $1 and profile_id = $2 limit 1`, [workspaceId, profileId])
+            .catch(warned("r27_journey_organizer_bio_failed", { rows: [] as Array<Record<string, unknown>> }));
+          bio = str(profile.rows[0]?.bio);
         }
       } else {
         const published = await core.listPublishedEvents(now);
@@ -245,7 +253,13 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       const row = share.rows[0];
       const answered = Number(row?.answered ?? 0);
       const typeShare = row?.label && answered >= 5 ? { label: String(row.label), percent: Math.round((Number(row.hit) / answered) * 100) } : null;
-      return { ...history, next, typeShare };
+      // 「以往活动」：同一份日期列表里已结束的最近 2 场（不含这一场），人数 = 受付人数（没有受付记录 = null，界面不写人数）。
+      const past = mine
+        .filter((event) => event.eventId !== eventId && event.title?.trim() && Date.parse(event.endsAt ?? event.startsAt) <= now.getTime())
+        .sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt))
+        .slice(0, 2)
+        .map((event) => ({ attendance: attended.get(event.eventId) || null, eventId: event.eventId, startsAt: event.startsAt, title: event.title!.trim() }));
+      return { ...history, bio, next, past, typeShare };
     },
 
     async eventIdByCode(code) {

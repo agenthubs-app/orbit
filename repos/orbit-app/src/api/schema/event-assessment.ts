@@ -19,7 +19,7 @@ const factFields = {
   exhibitorCount: z.number().int().min(0).max(100000).optional(),
   expectedAttendees: z.number().int().min(0).max(1000000).optional(),
   format: z.object({ networking: z.boolean(), tableTalk: z.boolean().optional(), matching: z.boolean().optional() }).optional(),
-  agenda: z.array(z.object({ at: z.string().min(1).max(40), title: z.string().min(1).max(200), minutes: z.number().int().min(0).max(1440).optional() })).max(40).optional(),
+  agenda: z.array(z.object({ at: z.string().min(1).max(40), title: z.string().min(1).max(200), minutes: z.number().int().min(0).max(1440).optional(), detail: z.string().max(200).optional() })).max(40).optional(),
 };
 const FACT_KEYS = ["title", "startsAt", "venue", "organizer", "price", "url", "endsAt", "area", "speakers", "exhibitorCount", "expectedAttendees", "format", "agenda"] as const;
 const FAILURE_REASONS = ["login_required", "not_event_page", "unreadable", "fetch_failed", "too_large", "blocked_host", "ai_unavailable", "quota_exceeded", "timeout"] as const;

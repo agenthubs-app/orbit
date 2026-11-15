@@ -10,8 +10,9 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { participationCodeFromBytes } from "../../../../shared/compute/participation-code";
+import { normalizeHostAgenda } from "../../../../shared/compute/host-agenda";
 import { normalizeHostContact } from "../../../../shared/compute/host-contact";
-import type { HostEventContact, HostEventFeeKind, HostEventInput, HostEventUpdateInput } from "../../../../shared/contract/host-events";
+import type { HostAgendaItem, HostEventContact, HostEventFeeKind, HostEventInput, HostEventUpdateInput } from "../../../../shared/contract/host-events";
 import { acquireSyncCommitOrderLock } from "../../../sync/commit-order-lock";
 import type { EventOperationsPostgresClient, EventOperationsSqlExecutor } from "../../event-operations/storage/postgres-client";
 import { HostError } from "../service";
@@ -52,6 +53,8 @@ export interface HostEventRow {
   archivedAt: string | null;
   version: number;
   payload: HostEventPayload;
+  /** source_payload.agenda（顶层键，和外部导入的议程同一个；详情 / 会场 / 会前准备都读它）。null = 还没有这个键（不写回，免得盖掉别的格式）。 */
+  agenda: HostAgendaItem[] | null;
 }
 
 const DEFAULT_PAYLOAD: HostEventPayload = { capacity: null, emoji: null, feeAmountYen: null, feeKind: "free", feeUrl: null, online: false, templateId: null, venueArea: null };
@@ -59,8 +62,9 @@ const DEFAULT_PAYLOAD: HostEventPayload = { capacity: null, emoji: null, feeAmou
 const iso = (value: unknown) => (value instanceof Date ? value.toISOString() : value === null || value === undefined ? null : new Date(String(value)).toISOString());
 
 function rowToEvent(row: Row): HostEventRow {
-  const source = (typeof row.source_payload === "string" ? JSON.parse(row.source_payload) : row.source_payload ?? {}) as { host?: Partial<HostEventPayload> };
+  const source = (typeof row.source_payload === "string" ? JSON.parse(row.source_payload) : row.source_payload ?? {}) as { host?: Partial<HostEventPayload>; agenda?: unknown };
   return {
+    agenda: normalizeHostAgenda(source.agenda),
     archivedAt: iso(row.archived_at),
     cancelledAt: iso(row.cancelled_at),
     createdBy: (row.created_by as string | null) ?? null,
@@ -88,7 +92,8 @@ export async function readHostEvent(executor: EventOperationsSqlExecutor, worksp
 }
 
 function contentHash(event: HostEventRow): string {
-  const content = { description: event.description, endsAt: event.endsAt, eventId: event.eventId, lifecycle: event.lifecycle, organizerActorId: event.organizerActorId, payload: event.payload, publicCode: event.publicCode, startsAt: event.startsAt, timezone: event.timezone, title: event.title, venue: event.venue };
+  // 议程只在有的时候进哈希（没有议程的旧活动哈希不变）。
+  const content = { description: event.description, endsAt: event.endsAt, eventId: event.eventId, lifecycle: event.lifecycle, organizerActorId: event.organizerActorId, payload: event.payload, publicCode: event.publicCode, startsAt: event.startsAt, timezone: event.timezone, title: event.title, venue: event.venue, ...(event.agenda?.length ? { agenda: event.agenda } : {}) };
   return createHash("sha256").update(JSON.stringify(content)).digest("hex");
 }
 
@@ -264,11 +269,11 @@ export function createHostLifecycle(deps: HostLifecycleDeps) {
       `update event_ops_events set
          lifecycle_state_v2 = $3, title = $4, description = $5, venue = $6, starts_at = $7, ends_at = $8, public_code = $9,
          cancelled_at = $10, archived_at = $11, organizer_profile_id = $12,
-         source_payload = jsonb_set(coalesce(source_payload, '{}'::jsonb), '{host}', $13::jsonb),
+         source_payload = jsonb_set(coalesce(source_payload, '{}'::jsonb), '{host}', $13::jsonb) || coalesce($15::jsonb, '{}'::jsonb),
          event_version = event_version + 1, updated_at = now(), revision = revision + 1
        where workspace_id = $1 and event_id = $2 and event_version = $14
        returning ${EVENT_COLUMNS}`,
-      [workspaceId, current.eventId, next.lifecycle, next.title, next.description, next.venue, next.startsAt, next.endsAt, next.publicCode, next.cancelledAt, next.archivedAt, next.organizerProfileId, JSON.stringify(next.payload), current.version],
+      [workspaceId, current.eventId, next.lifecycle, next.title, next.description, next.venue, next.startsAt, next.endsAt, next.publicCode, next.cancelledAt, next.archivedAt, next.organizerProfileId, JSON.stringify(next.payload), current.version, next.agenda === null ? null : JSON.stringify({ agenda: next.agenda })],
     );
     if (!result.rows[0]) throw new HostError("VERSION_CONFLICT");
     const saved = rowToEvent(result.rows[0]);
@@ -308,7 +313,7 @@ export function createHostLifecycle(deps: HostLifecycleDeps) {
              title, description, venue, timezone, starts_at, ends_at, lifecycle_state_v2, source_payload, event_version, organizer_profile_id, created_by
            ) values ($1, $2, $3, 'active', 'canonical', 1, now(), now(), $4, $5, $6, $7, $8, $9, 'draft', $10::jsonb, 1, $11, 'host')
            returning ${EVENT_COLUMNS}`,
-          [workspaceId, eventId, actorId, input.title.trim(), input.description ?? null, input.venueName ?? null, input.timezone ?? "Asia/Tokyo", input.startsAt, input.endsAt, JSON.stringify({ host: payloadFrom(input) }), input.organizerProfileId],
+          [workspaceId, eventId, actorId, input.title.trim(), input.description ?? null, input.venueName ?? null, input.timezone ?? "Asia/Tokyo", input.startsAt, input.endsAt, JSON.stringify({ host: payloadFrom(input), ...(input.agenda !== undefined ? { agenda: normalizeHostAgenda(input.agenda) ?? [] } : {}) }), input.organizerProfileId],
         );
         const event = rowToEvent(result.rows[0]!);
         await appendVersion(executor, workspaceId, event);
@@ -345,7 +350,9 @@ export function createHostLifecycle(deps: HostLifecycleDeps) {
           // 連絡先只是给已报名的人看的信息：改它不算日時 / 会場变更，不通知、不出 changePreview。
           ...(input.contact !== undefined ? { contact: normalizeHostContact(input.contact) } : {}),
         };
-        const saved = await setEvent(executor, current, { ...current, description: input.description !== undefined ? input.description : current.description, endsAt, organizerProfileId: input.organizerProfileId ?? current.organizerProfileId, payload, startsAt, title: input.title?.trim() ?? current.title, venue });
+        // 议程同理：整体替换，不算日時 / 会場变更，不通知、不出 changePreview（2026-11-15）。
+        const agenda = input.agenda !== undefined ? normalizeHostAgenda(input.agenda) ?? [] : current.agenda;
+        const saved = await setEvent(executor, current, { ...current, agenda, description: input.description !== undefined ? input.description : current.description, endsAt, organizerProfileId: input.organizerProfileId ?? current.organizerProfileId, payload, startsAt, title: input.title?.trim() ?? current.title, venue });
         if (current.lifecycle === "published" && timeChanged) {
           const policy = await executor.query<{ policy_version: string; registration_closes_at: unknown; registration_opens_at: unknown }>(`select v.policy_version::text, v.registration_opens_at, v.registration_closes_at from event_ops_admission_policy_heads h join event_ops_admission_policy_versions v using (workspace_id, event_id, policy_version) where h.workspace_id = $1 and h.event_id = $2`, [workspaceId, eventId]);
           const row = policy.rows[0];

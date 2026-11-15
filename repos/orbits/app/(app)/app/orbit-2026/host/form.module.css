@@ -103,3 +103,4 @@
 
 /* 申込フォームの質問（新規作成）：カード見出しの下の一行説明。 */
 .qNote { margin: -4px 0 12px; line-height: var(--lh-prose); }
+.contents { display: contents; }

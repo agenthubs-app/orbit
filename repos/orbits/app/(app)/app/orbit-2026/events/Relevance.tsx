@@ -98,13 +98,22 @@ export function RelevanceCard({ relevance, language, className, heading = true }
   return (
     <div className={`${styles.card} ${styles.relCard} ${className ?? ""}`} data-relevance-card="">
       {heading ? <div className={styles.lbl}>{say(language, "relTitle")}</div> : null}
+      <RelevanceRows rows={rows} />
+    </div>
+  );
+}
+
+/** 只有事实行（没有卡片外框）：活动详情右栏把它和「会えそうな人」放在同一张卡里（2026-11-15）。 */
+export function RelevanceRows({ rows }: { rows: readonly RelevanceRow[] }) {
+  return (
+    <>
       {rows.map((row) => (
         <div key={row.key} className={`${styles.relRow} ${row.tone === "warn" ? styles.relWarn : ""}`} data-relevance-row={row.key}>
           <span className={`${styles.relIc} ${ICON_TONE[row.tone] ?? ""}`} aria-hidden>{row.icon}</span>
           <div className={styles.relText}>{row.main}{row.basis ? <small>{row.basis}</small> : null}</div>
         </div>
       ))}
-    </div>
+    </>
   );
 }
 

@@ -57,6 +57,10 @@ export interface EventOverviewResponse {
     following?: boolean;
     /** The organizer's soonest event that has not started yet (shown on an ended event's 「次回」 card). */
     next?: { eventId: string; title: string; startsAt: string } | null;
+    /** One-line organizer profile bio (`organizer_profiles.bio`); null when none. 2026-11-15 detail rail organizer card. */
+    bio?: string | null;
+    /** Up to 2 most recent ended events of the same organizer (not this one); `attendance` = check-ins, null when none recorded. */
+    past?: readonly { eventId: string; title: string; startsAt: string; attendance: number | null }[];
   };
   /** Rule-based (no AI) assessment for my current plan; absent when signed out or without a plan. */
   assessment?: {
