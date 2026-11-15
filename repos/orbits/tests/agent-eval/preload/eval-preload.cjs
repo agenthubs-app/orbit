@@ -509,6 +509,10 @@ function observePg() {
     if (!kind || !tables.length || tables.every((table) => table.startsWith("pg_") || table.startsWith("information_schema"))) return Reflect.apply(original, this, arguments);
     const params = (Array.isArray(values) ? values : Array.isArray(config?.values) ? config.values : []).map(shortParam);
     const queryId = `${process.pid}:${(sqlSeq += 1)}`;
+    // AG05 run-02: pg answers on its socket's callbacks, outside the request's async context; the device is
+    // taken when the query is made and carried to the result.
+    const device = currentDevice();
+    const tag = device ? { device } : {};
     if (kind === "read") emit({ type: "read.query", queryId, tables, sql: text.slice(0, 3000), params });
     const finish = (error, result) => {
       if (kind === "read") {
@@ -520,9 +524,9 @@ function observePg() {
           workspace: row.workspace_id ?? null,
         }));
         const fields = rows.slice(0, 40).map((row) => row.payload ?? row);
-        emit({ type: "read.result", queryId, tables, rowCount: rows.length, records, sample: fields, error: error ? String(error.message ?? error) : null });
+        emit({ type: "read.result", ...tag, queryId, tables, rowCount: rows.length, records, sample: fields, error: error ? String(error.message ?? error) : null });
       } else if (!error && (result?.rowCount ?? 0) > 0) {
-        emit({ type: "db.write", source: "real", queryId, tables, rowCount: result.rowCount, sql: text.slice(0, 3000), params, returned: Array.isArray(result?.rows) ? result.rows.slice(0, 20) : [] });
+        emit({ type: "db.write", ...tag, source: "real", queryId, tables, rowCount: result.rowCount, sql: text.slice(0, 3000), params, returned: Array.isArray(result?.rows) ? result.rows.slice(0, 20) : [] });
       }
     };
     const args = [...arguments];
