@@ -12,6 +12,7 @@ import { createAgentMemoryService } from "../../agent/memory/service-factory";
 import { createContactCardService } from "../../contacts/card-service";
 import { createContactDetailTagStatusService } from "../../contacts/service-factory";
 import { AiSessionReferenceAuthorizationError, authorizeAiSessionContactReferences } from "../../orbit-ai/ai-session-reference-authorization";
+import type { OrbitAgentArtifactPayload } from "../../orbit-ai/artifact-contract";
 import type { OrbitAgentSendMessageInput } from "../../orbit-ai/conversation-contract";
 import { AiPageContextError, authorizeAiPageContext } from "../../orbit-ai/page-context";
 import { createOrbitAgentConversationServiceForActor } from "../../orbit-ai/service-factory";
@@ -53,9 +54,36 @@ export function createLegacyRuntimeExecutor(mode: FeatureMode): AgentEntryExecut
     });
     if (result.success === false) throw new AgentEntryExecutionError(result.error.code === "ORBIT_AGENT_MESSAGE_REQUIRED" ? "MESSAGE_REQUIRED" : "MODEL_UNAVAILABLE");
     const assistant = [...result.data.messages].reverse().find((message) => message.role === "assistant" && message.content.trim());
-    const text = result.data.assistantMessage.trim() || assistant?.content.trim() || "";
+    const reply = result.data.assistantMessage.trim() || assistant?.content.trim() || "";
+    // The runtime's reply assumes its result cards are shown under it (gemini-provider synthesis
+    // instruction: "do not list those records again in prose"). The result document has no cards,
+    // so the cards' content is written into the delivered text; otherwise the records are lost.
+    const text = [reply, cardsAsText(result.data.artifacts ?? [], input.locale)].filter(Boolean).join("\n\n");
     return { sourceRefs: [...new Set(result.data.provenance?.evidenceIds ?? [])].filter((id) => typeof id === "string" && id.trim()), text };
   };
+}
+
+const CARD_HEADER: Record<string, string> = { en: "Result cards:", ja: "結果カード：", zh: "结果卡片：" };
+
+/** The runtime's result cards (artifact generated views) as plain text, in the order it returned them. */
+export function cardsAsText(artifacts: readonly OrbitAgentArtifactPayload[], locale: string): string {
+  const blocks: string[] = [];
+  for (const artifact of artifacts) {
+    const view = artifact.result?.generatedView;
+    const sections = (view?.sections ?? []).filter((section) => section.items?.length);
+    if (!sections.length) continue;
+    const lines: string[] = [];
+    for (const section of sections) {
+      if (section.title?.trim()) lines.push(`${section.title.trim()}`);
+      for (const item of section.items.slice(0, 10)) {
+        lines.push(`- ${item.title}${item.subtitle ? `（${item.subtitle}）` : ""}`);
+        for (const field of (item.metadata ?? []).slice(0, 8)) lines.push(`  ${field.label}: ${field.value}`);
+        if (item.body?.trim()) lines.push(`  ${item.body.trim().slice(0, 500)}`);
+      }
+    }
+    blocks.push(lines.join("\n"));
+  }
+  return blocks.length ? `${CARD_HEADER[locale] ?? CARD_HEADER.en}\n${blocks.join("\n\n")}` : "";
 }
 
 /** Appends the turn to the chat session so its history (and later turns) see it; idempotent by message id. */
