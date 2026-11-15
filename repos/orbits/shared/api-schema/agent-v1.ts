@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import type {
+  AgentActionPreviewContract,
+  AgentCardDecisionInputContract,
   AgentResultDocument,
   AgentSendInputContract,
   AgentSendReceiptContract,
@@ -40,7 +42,54 @@ export const agentSendInputSchema: z.ZodType<AgentSendInputContract> = z.object(
   sessionId: identifier,
 });
 
+const cardStatusSchema = z.enum(["awaiting_confirmation", "deferred", "approved", "executing", "completed", "partially_failed", "failed", "rejected", "canceled", "undone", "expired"]);
+const cardOperationStatusSchema = z.enum(["pending", "succeeded", "failed", "skipped", "undone", "needs_review", "user_confirmed", "abandoned"]);
+const cardChangeSchema = z.object({ field: z.string(), now: z.unknown(), operationId: z.string(), shownBefore: z.unknown(), to: z.unknown().optional() });
+
+/** AG02：一张卡的当前版（设计稿 §5.1 actionPreview）。 */
+export const agentActionPreviewSchema: z.ZodType<AgentActionPreviewContract> = z.object({
+  actionId: identifier,
+  changes: z.array(cardChangeSchema).optional(),
+  expiresAt: z.string().optional(),
+  operations: z.array(z.object({
+    after: z.record(z.string(), z.unknown()),
+    before: z.record(z.string(), z.unknown()).optional(),
+    capability: z.string(),
+    dependsOn: z.array(z.string()).optional(),
+    operationId: z.string(),
+    partId: z.string().optional(),
+    shown: z.record(z.string(), z.unknown()).optional(),
+    status: cardOperationStatusSchema,
+    target: z.object({ collection: z.string(), id: z.string() }).optional(),
+    text: z.string(),
+  })),
+  origin: z.union([
+    z.object({ conversationId: z.string(), kind: z.literal("conversation"), requestId: z.string() }),
+    z.object({ firedAt: z.string(), kind: z.literal("automation"), ruleId: z.string() }),
+    z.object({ connectionId: z.string(), externalRequestKey: z.string(), kind: z.literal("connection") }),
+  ]).optional(),
+  payloadHash: z.string().min(1),
+  revision: z.number().int().positive(),
+  revisions: z.array(z.object({ payloadHash: z.string(), revision: z.number().int().positive() })),
+  status: cardStatusSchema,
+  summary: z.string(),
+  title: z.string(),
+  updatedAt: z.string(),
+}) as unknown as z.ZodType<AgentActionPreviewContract>;
+
+/** AG02：按钮决定的请求体。旧形状（没有 revision、payloadHash、clientDecisionId）对新卡一律被拒。 */
+export const agentCardDecisionInputSchema: z.ZodType<AgentCardDecisionInputContract> = z.object({
+  clientDecisionId: identifier,
+  operationId: identifier.optional(),
+  payloadHash: z.string().trim().min(1).max(200),
+  revision: z.number().int().positive(),
+  transition: z.enum(["confirm", "reject", "retry", "mark_done", "abandon"]),
+}).refine((value) => (["retry", "mark_done", "abandon"].includes(value.transition)) === Boolean(value.operationId), {
+  message: "operationId is required for retry, mark_done and abandon, and only for them.",
+}) as unknown as z.ZodType<AgentCardDecisionInputContract>;
+
 export const agentResultDocumentSchema: z.ZodType<AgentResultDocument> = z.object({
+  actionPreview: agentActionPreviewSchema.optional(),
   answer: z.object({ sourceRefs: z.array(z.string()), text: z.string() }).nullable(),
   ending: z.object({
     at: z.string(),

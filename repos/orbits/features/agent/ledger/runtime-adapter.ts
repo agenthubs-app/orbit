@@ -14,6 +14,7 @@ import type {
   AgentRunDetail,
 } from "../runtime/contract";
 import type { AgentRuntimeService } from "../runtime/service";
+import { cardOperationStatus, effectiveCardStatus } from "../runtime/decision";
 
 export interface RuntimeBackedAgentLedgerServiceOptions {
   runtime: AgentRuntimeService;
@@ -46,6 +47,8 @@ function operationStatus(
   action: AgentActionRecord,
   detail: AgentRunDetail | null,
 ): AgentLedgerOperation["status"] {
+  // agent-design AG02: cards with an origin report the three review receipts and expiry.
+  if (action.origin) return cardOperationStatus(operationId, action, detail, new Date().toISOString());
   if (action.status === "undone") return "undone";
   if (action.status === "rejected" || action.status === "canceled") {
     return "skipped";
@@ -103,7 +106,7 @@ export function agentActionToLedgerEntry(
     title: action.title,
     contactName: action.contactName,
     organization: action.organization,
-    status: action.status,
+    status: action.origin ? effectiveCardStatus(action, new Date().toISOString()) : action.status,
     riskLevel: action.riskLevel,
     preview: action.preview,
     whyNow: action.whyNow,

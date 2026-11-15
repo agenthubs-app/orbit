@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(canonicalize);
@@ -12,6 +14,14 @@ function canonicalize(value: unknown): unknown {
   }
 
   return value;
+}
+
+/**
+ * agent-design AG02 (设计稿 §5.1): the card hash. SHA-256 over the canonical JSON of what the card
+ * shows and does. `stablePayloadHash` stays as it is: it also derives record ids elsewhere.
+ */
+export function sha256PayloadHash(value: unknown): string {
+  return `sha256:${createHash("sha256").update(JSON.stringify(canonicalize(value))).digest("hex")}`;
 }
 
 export function stablePayloadHash(value: unknown): string {

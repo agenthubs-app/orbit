@@ -30,5 +30,18 @@ export function withAgentBackgroundDispatch(
     ...runtime,
     approveAction: async (input) => dispatch(await runtime.approveAction(input)),
     retryAction: async (actionId) => dispatch(await runtime.retryAction(actionId)),
+    // agent-design AG02: an accepted confirm or retry on a card is handed to the queue the same way.
+    ...(runtime.decideAction
+      ? {
+          decideAction: async (input) => {
+            const result = await runtime.decideAction!(input);
+            if (result?.accepted && !result.replayed && (input.decision === "confirm" || input.decision === "retry")) {
+              const action = await runtime.getAction(input.actionId);
+              if (action) await dispatch(action);
+            }
+            return result;
+          },
+        } satisfies Pick<AgentRuntimeService, "decideAction">
+      : {}),
   };
 }

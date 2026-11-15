@@ -33,6 +33,8 @@ test("ledger entry statuses cover proposal, approval, execution, rejection, and 
       "canceled",
       "undone",
       "deferred",
+      // agent-design AG02 (设计稿附录 D).
+      "expired",
     ],
   );
 });
@@ -40,7 +42,8 @@ test("ledger entry statuses cover proposal, approval, execution, rejection, and 
 test("operation statuses cover selection, execution, and undo", () => {
   assert.deepEqual(
     [...AGENT_LEDGER_OPERATION_STATUSES],
-    ["pending", "skipped", "succeeded", "failed", "undone"],
+    // agent-design AG02 adds the three review receipts (设计稿附录 D).
+    ["pending", "skipped", "succeeded", "failed", "undone", "needs_review", "user_confirmed", "abandoned"],
   );
 });
 
@@ -62,6 +65,9 @@ test("operation types cover the design-derived write operations", () => {
       "propose_meeting_slots",
       "sync_event_to_calendar",
       "save_memory",
+      // agent-design AG02: the to-do create and update executors.
+      "create_todo",
+      "update_todo",
     ],
   );
 });
@@ -83,7 +89,8 @@ test("evidence kinds allow confirmed transcripts but never raw voice or audio", 
 test("transitions cover confirmation, refusal, cancellation, and recovery", () => {
   assert.deepEqual(
     [...AGENT_LEDGER_TRANSITIONS],
-    ["confirm", "defer", "reject", "cancel", "undo", "retry"],
+    // agent-design AG02: mark_done and abandon settle an item whose outcome is unknown.
+    ["confirm", "defer", "reject", "cancel", "undo", "retry", "mark_done", "abandon"],
   );
 });
 

@@ -12,6 +12,32 @@ import type { AgentExecutorRegistry } from "./executor-registry";
 import { stablePayloadHash } from "./hash";
 import { emitTrace, takeEvalFault } from "../../agent-v1/observability/trace";
 import type { AgentRuntimeRepository } from "./repository";
+import {
+  AGENT_CARD_TTL_MS,
+  buildCardOperations,
+  cardTexts,
+  decideAction,
+  regenerateCard,
+  type AgentDecisionInput,
+  type AgentDecisionResult,
+  type AgentRegenerateResult,
+  type FrozenCardInput,
+} from "./decision";
+import type { TodoReader } from "./todo-operations";
+
+/**
+ * agent-design AG02: an executor can say its outcome is unknown (the write may or may not have
+ * happened and cannot be looked up). Such an item is not retried automatically; it waits for the
+ * user's review (设计稿 §5.2).
+ */
+export class AgentExecutionOutcomeUnknownError extends Error {
+  readonly code = "EXECUTION_OUTCOME_UNKNOWN";
+}
+
+function outcomeUnknown(error: unknown): boolean {
+  return error instanceof AgentExecutionOutcomeUnknownError ||
+    (typeof error === "object" && error !== null && (error as { code?: unknown }).code === "EXECUTION_OUTCOME_UNKNOWN");
+}
 
 const MAX_OUTBOX_ATTEMPTS = 5;
 const INITIAL_RETRY_DELAY_MS = 30_000;
@@ -99,6 +125,13 @@ export interface AgentRuntimeService {
     failed: number;
     deadLettered: number;
   }>;
+  // ── agent-design AG02 (decision.ts). Optional so wrappers and fixtures keep compiling. ──
+  /** Freezes revision 1 of a card from operation intents and the current data; idempotent by actionId. */
+  freezeCard?: (input: FrozenCardInput & { createdAt?: string }) => Promise<{ action: AgentActionRecord | null; missingTargets: readonly string[]; created: boolean }>;
+  /** The button decision interface; null when the card does not exist. */
+  decideAction?: (input: AgentDecisionInput) => Promise<AgentDecisionResult | null>;
+  /** Re-issues an expired card from its intents as a new revision; null when it does not exist. */
+  regenerateCard?: (input: { actionId: string }) => Promise<AgentRegenerateResult | null>;
 }
 
 const TERMINAL_RUN_STATUSES = new Set<AgentRun["status"]>([
@@ -167,6 +200,8 @@ export interface AgentRuntimeServiceOptions {
   id?: () => string;
   now?: () => string;
   repository: AgentRuntimeRepository;
+  /** agent-design AG02: reads the to-dos a card changes (freeze, the check at the click, regeneration). */
+  cardReader?: TodoReader | null;
 }
 
 function immutablePayloadFor(action: {
@@ -213,10 +248,14 @@ function aggregateActionStatus(
   const completed = relevant.filter(
     (event) => event.status === "completed",
   ).length;
+  // AG02: an item the user abandoned (its event canceled) is settled and did not succeed.
+  const abandoned = relevant.filter((event) => event.status === "canceled").length;
   const failed = relevant.filter(
     (event) => event.status === "dead_letter",
-  ).length;
+  ).length + abandoned;
   const operationCount = selected.size;
+  // Every item given up by the user (none succeeded, none failed): the user stopped this card.
+  if (abandoned > 0 && abandoned >= operationCount && completed === 0) return "canceled";
 
   if (completed >= operationCount && failed === 0) return "completed";
   if (completed > 0 && completed + failed >= operationCount) {
@@ -229,11 +268,28 @@ export function createAgentRuntimeService({
   executors,
   now = () => new Date().toISOString(),
   repository,
+  cardReader = null,
 }: AgentRuntimeServiceOptions): AgentRuntimeService {
+  const cardDependencies = () => ({
+    afterChange: async (action: AgentActionRecord) => refreshRunStatus(action.runId),
+    refreshAction: async (actionId: string) => {
+      await refreshActionStatus(actionId);
+    },
+    now,
+    reader: cardReader,
+    repository,
+  });
   async function requireAction(actionId: string): Promise<AgentActionRecord> {
     const action = await repository.getAction(actionId);
     if (!action) throw new Error(`Agent action ${actionId} was not found.`);
     return action;
+  }
+
+  /** AG02: a card with an origin is decided only through decideAction (revision, hash, decision key). */
+  function refuseOldShapeDecision(action: AgentActionRecord): void {
+    if (action.origin) {
+      throw new Error(`Agent action ${action.actionId} takes button decisions only (revision, payloadHash, clientDecisionId).`);
+    }
   }
 
   async function saveActionStatus(
@@ -285,6 +341,7 @@ export function createAgentRuntimeService({
       "rejected",
       "canceled",
       "undone",
+      "expired",
     ]);
     let status: AgentRun["status"];
     if (statuses.every((value) => terminal.has(value))) {
@@ -354,7 +411,7 @@ export function createAgentRuntimeService({
     return updated;
   }
 
-  return {
+  const service: AgentRuntimeService = {
     async createRun(input) {
       const existing = await repository.getRun(input.runId);
       if (existing) return existing.run;
@@ -566,6 +623,7 @@ export function createAgentRuntimeService({
     },
     async approveAction(input) {
       const action = await requireAction(input.actionId);
+      refuseOldShapeDecision(action);
       const requestedSelection = [
         ...new Set(
           input.selectedOperationIds?.length
@@ -652,6 +710,7 @@ export function createAgentRuntimeService({
     },
     async deferAction(actionId) {
       const action = await requireAction(actionId);
+      refuseOldShapeDecision(action);
       assertStatus(action, ["awaiting_confirmation"]);
       const updated = await saveActionStatus(
         action,
@@ -663,6 +722,7 @@ export function createAgentRuntimeService({
     },
     async rejectAction(actionId) {
       const action = await requireAction(actionId);
+      refuseOldShapeDecision(action);
       assertStatus(action, ["awaiting_confirmation", "deferred"]);
       const updated = await saveActionStatus(
         action,
@@ -695,6 +755,7 @@ export function createAgentRuntimeService({
     },
     async retryAction(actionId) {
       const action = await requireAction(actionId);
+      refuseOldShapeDecision(action);
       assertStatus(action, ["failed", "partially_failed"]);
       const detail = await repository.getRun(action.runId);
       if (!detail) throw new Error(`Agent run ${action.runId} was not found.`);
@@ -733,6 +794,7 @@ export function createAgentRuntimeService({
     },
     async updateDraft(input) {
       const action = await requireAction(input.actionId);
+      refuseOldShapeDecision(action);
       assertStatus(action, ["awaiting_confirmation", "deferred"]);
       const operationIndex = action.operations.findIndex(
         (operation) => operation.operationId === input.operationId,
@@ -910,6 +972,43 @@ export function createAgentRuntimeService({
     listActions: repository.listActions,
     listActionPage: repository.listActionPage,
     getAction: repository.getAction,
+    async freezeCard(input) {
+      const existing = await repository.getAction(input.actionId);
+      if (existing) return { action: existing, created: false, missingTargets: [] };
+      const createdAt = input.createdAt ?? now();
+      const { operations, missing } = await buildCardOperations(cardReader, { actionId: input.actionId, intents: input.intents, locale: input.locale, revision: 1 });
+      if (!operations.length) return { action: null, created: false, missingTargets: missing };
+      const texts = cardTexts(operations, input.locale, 1);
+      const runId = `run:${input.actionId}`;
+      const conversationId = input.origin.kind === "conversation" ? input.origin.conversationId : undefined;
+      await service.createRun({ conversationId, createdAt, runId, trigger: "chat", workflowKey: "agent_v1_card" });
+      const action = await service.proposeAction({
+        actionId: input.actionId,
+        compensation: { supported: false },
+        conversationId,
+        createdAt,
+        evidenceChips: [],
+        evidenceIds: [],
+        expiresAt: new Date(Date.parse(createdAt) + AGENT_CARD_TTL_MS).toISOString(),
+        locale: input.locale,
+        operations,
+        origin: input.origin,
+        payloadHash: texts.payloadHash,
+        payloadVersion: 1,
+        preview: texts.preview,
+        revision: 1,
+        riskLevel: "write",
+        runId,
+        sourceRefs: [],
+        title: texts.title,
+        whyNow: "",
+        workflowKey: "agent_v1_card",
+        workflowVersion: 1,
+      });
+      return { action, created: true, missingTargets: missing };
+    },
+    decideAction: (input) => decideAction(cardDependencies(), input),
+    regenerateCard: (input) => regenerateCard(cardDependencies(), input),
     async processOutbox(input = {}) {
       const timestamp = now();
       const requestedLimit = input.limit ?? 20;
@@ -987,19 +1086,35 @@ export function createAgentRuntimeService({
         };
         await repository.saveAction(started);
         // AG00: exec.* events and the `executor` fault point exist only under the agent eval.
+        // AG02: an item waits for the items it depends on; an abandoned or failed prerequisite skips it.
+        const runOutbox = operation.dependsOn?.length ? (await repository.getRun(action.runId))?.outbox ?? [] : [];
+        const prerequisites = (operation.dependsOn ?? []).map((operationId) =>
+          runOutbox.find((item) => item.actionId === action.actionId && item.operationId === operationId));
+        if (prerequisites.some((item) => item && (item.status === "canceled" || item.status === "dead_letter"))) {
+          await repository.saveReceipt({ receiptId: `receipt:${event.idempotencyKey}:skipped`, outboxId: event.outboxId, actionId: action.actionId, operationId: operation.operationId, runId: action.runId, idempotencyKey: operation.idempotencyKey, executorKey: operation.executorKey, status: "skipped", resultSummary: "Skipped: an item it depends on did not complete.", createdAt: timestamp, updatedAt: timestamp });
+          await repository.saveOutbox({ ...event, status: "canceled", processedAt: timestamp, updatedAt: timestamp });
+          emitTrace({ type: "exec.receipt", source: "real", actionId: action.actionId, operationId: operation.operationId, status: "skipped" });
+          await refreshActionStatus(action.actionId);
+          continue;
+        }
+        if (prerequisites.some((item) => !item || item.status !== "completed")) {
+          await repository.saveOutbox({ ...event, status: "pending", attempt: Math.max(0, event.attempt - 1), leasedAt: undefined, leaseOwner: undefined, updatedAt: timestamp });
+          continue;
+        }
         const execTrace = { actionId: action.actionId, operationId: operation.operationId, executorKey: operation.executorKey, idempotencyKey: operation.idempotencyKey };
         emitTrace({ type: "exec.call", source: "real", ...execTrace, operation });
         try {
           const fault = takeEvalFault("executor");
-          if (fault && (fault.kind !== "unknown_outcome" || !fault.appliedFlag)) throw new Error(`agent-eval simulated executor ${fault.kind}`);
-          const result = await executors.execute(operation, {
+          if (fault?.kind === "unknown_outcome" && !fault.appliedFlag) throw new AgentExecutionOutcomeUnknownError("agent-eval simulated executor unknown_outcome (nothing written)");
+          if (fault && fault.kind !== "unknown_outcome") throw new Error(`agent-eval simulated executor ${fault.kind}`);
+          const result = await executors.execute({ ...operation, payload: event.payload }, {
             actionId: action.actionId,
             runId: action.runId,
             operationId: operation.operationId,
             idempotencyKey: operation.idempotencyKey,
             now: timestamp,
           });
-          if (fault) throw new Error("agent-eval simulated executor unknown_outcome (write applied)");
+          if (fault) throw new AgentExecutionOutcomeUnknownError("agent-eval simulated executor unknown_outcome (write applied)");
           emitTrace({ type: "exec.receipt", source: "real", ...execTrace, status: "completed", resultRef: result.resultRef, summary: result.summary });
           const receipt: AgentExecutionReceipt = {
             receiptId: `receipt:${event.idempotencyKey}`,
@@ -1026,6 +1141,28 @@ export function createAgentRuntimeService({
           completed += 1;
         } catch (error) {
           const execError = error instanceof Error ? error.message : "Executor failed.";
+          if (outcomeUnknown(error)) {
+            // AG02: the write may or may not have happened and cannot be looked up: no automatic
+            // retry; the item waits for the user's review (retry / mark done / abandon).
+            emitTrace({ type: "exec.receipt", source: execError.startsWith("agent-eval simulated") ? "simulated" : "real", ...execTrace, status: "needs_review", error: execError });
+            await repository.saveReceipt({
+              receiptId: `receipt:${event.idempotencyKey}:review:${event.attempt}`,
+              outboxId: event.outboxId,
+              actionId: action.actionId,
+              operationId: operation.operationId,
+              runId: action.runId,
+              idempotencyKey: operation.idempotencyKey,
+              executorKey: operation.executorKey,
+              status: "needs_review",
+              resultSummary: "The outcome is unknown: the write may or may not have happened.",
+              createdAt: timestamp,
+              updatedAt: timestamp,
+            });
+            await repository.saveOutbox({ ...event, status: "needs_review", lastError: execError, processedAt: timestamp, updatedAt: timestamp });
+            failed += 1;
+            await refreshActionStatus(action.actionId);
+            continue;
+          }
           emitTrace({ type: "exec.receipt", source: execError.startsWith("agent-eval simulated") ? "simulated" : "real", ...execTrace, status: "failed", error: execError });
           const attempt = event.attempt;
           const deadLetter = attempt >= event.maxAttempts;
@@ -1069,4 +1206,5 @@ export function createAgentRuntimeService({
       };
     },
   };
+  return service;
 }

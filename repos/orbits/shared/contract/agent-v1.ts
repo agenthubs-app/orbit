@@ -64,6 +64,111 @@ export interface AgentResultDocument {
   partResults: readonly AgentPartResult[];
   ending?: AgentRequestEndingContract | undefined;
   updatedAt: string;
+  /** AG02：这一轮出的确认卡（设计稿 §5.1 的 actionPreview）。两端只按它渲染，不自己拼字段。 */
+  actionPreview?: AgentActionPreviewContract | undefined;
+}
+
+/** 卡片状态（设计稿附录 D）：沿用账本的十种，新增 expired。 */
+export type AgentCardStatus =
+  | "awaiting_confirmation"
+  | "deferred"
+  | "approved"
+  | "executing"
+  | "completed"
+  | "partially_failed"
+  | "failed"
+  | "rejected"
+  | "canceled"
+  | "undone"
+  | "expired";
+
+/** 逐项回执（设计稿附录 D）。needs_review、user_confirmed、abandoned 是 AG02 新增的。 */
+export type AgentCardOperationStatus =
+  | "pending"
+  | "succeeded"
+  | "failed"
+  | "skipped"
+  | "undone"
+  | "needs_review"
+  | "user_confirmed"
+  | "abandoned";
+
+/** 卡片出新版时，标出变化的一行：卡上原来显示的值、现在的值、要改成的值。 */
+export interface AgentCardChangeContract {
+  operationId: string;
+  field: string;
+  shownBefore: unknown;
+  now: unknown;
+  to?: unknown;
+}
+
+export interface AgentCardOperationPreviewContract {
+  operationId: string;
+  partId?: string | undefined;
+  /** 操作目录里的名字，如 todo.create、todo.update。 */
+  capability: string;
+  target?: { collection: string; id: string } | undefined;
+  before?: Readonly<Record<string, unknown>> | undefined;
+  after: Readonly<Record<string, unknown>>;
+  /** 卡上用来认出对象的内容，如标题。 */
+  shown?: Readonly<Record<string, unknown>> | undefined;
+  dependsOn?: readonly string[] | undefined;
+  /** 用户读到的一行字，按卡片的语言，日期带星期。 */
+  text: string;
+  status: AgentCardOperationStatus;
+}
+
+/** 一张卡的当前版（GET /api/agent/ledger/[id] 与结果文档的 actionPreview 同一形状）。 */
+export interface AgentActionPreviewContract {
+  actionId: string;
+  revision: number;
+  /** 决定接口要原样带回的哈希。 */
+  payloadHash: string;
+  status: AgentCardStatus;
+  expiresAt?: string | undefined;
+  origin?:
+    | { kind: "conversation"; conversationId: string; requestId: string }
+    | { kind: "automation"; ruleId: string; firedAt: string }
+    | { kind: "connection"; connectionId: string; externalRequestKey: string }
+    | undefined;
+  title: string;
+  /** 每项一行，合起来就是卡上的文字。 */
+  summary: string;
+  operations: readonly AgentCardOperationPreviewContract[];
+  /** 最近一次因数据变化出新版时的差异。 */
+  changes?: readonly AgentCardChangeContract[] | undefined;
+  /** 旧版的编号和哈希（旧版载荷保留在服务端）。 */
+  revisions: readonly { revision: number; payloadHash: string }[];
+  updatedAt: string;
+}
+
+/** POST /api/agent/ledger/[id]/transition 的按钮决定（设计稿 §5.1）。可执行的字段一律由服务端重新读取。 */
+export interface AgentCardDecisionInputContract {
+  transition: "confirm" | "reject" | "retry" | "mark_done" | "abandon";
+  revision: number;
+  payloadHash: string;
+  clientDecisionId: string;
+  /** 处理待核对项时必带。 */
+  operationId?: string | undefined;
+}
+
+export interface AgentCardDecisionResultContract {
+  decisionId: string;
+  clientDecisionId: string;
+  actionId: string;
+  decision: AgentCardDecisionInputContract["transition"];
+  operationId?: string | undefined;
+  outcome: "accepted" | "already_decided" | "refused";
+  /** 这次是否产生了一个新的、被接受的决定。 */
+  accepted: boolean;
+  /** 同一个 clientDecisionId 重发：返回第一次的结果。 */
+  replayed: boolean;
+  /** 被拒的原因：CARD_REVISION_CHANGED、CARD_CONTENT_CHANGED、CARD_EXPIRED、CARD_CLOSED、OPERATION_NOT_IN_REVIEW。 */
+  reason?: string | undefined;
+  message: string;
+  revision: number;
+  changes?: readonly AgentCardChangeContract[] | undefined;
+  decidedAt: string;
 }
 
 /** POST /api/ai/conversations，protocolVersion 3。requestId 由服务端按会话与客户端消息键生成。 */

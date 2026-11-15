@@ -18,6 +18,9 @@ import { createAgentCalendarExecutorAdapter } from "./calendar-executor-adapter"
 import { createAgentDomainExecutors } from "./domain-executors";
 import { createAgentExecutorRegistry } from "./executor-registry";
 import { createAgentRuntimeService, type AgentRuntimeService } from "./service";
+import { createTodoExecutors, createTodoReader } from "./todo-operations";
+import { createConfiguredTaskService } from "../../tasks/service-factory";
+import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/storage/transactional-postgres";
 
 interface OrbitAgentRuntimeGlobal {
   __orbitAgentRuntimeServices?: Map<string, AgentRuntimeService>;
@@ -47,6 +50,15 @@ export interface OrbitAgentRuntimeActorContext {
    * an untrusted request body.
    */
   actorId: string;
+}
+
+function configuredTasksOrNull(): ReturnType<typeof createConfiguredTaskService> | null {
+  try {
+    return createConfiguredTaskService();
+  } catch {
+    // Without to-do storage the runtime still serves every other card; to-do cards cannot be made.
+    return null;
+  }
 }
 
 export function createOrbitAgentRuntimeService(
@@ -82,14 +94,19 @@ export function createOrbitAgentRuntimeService(
     store: store as Parameters<
       typeof createStorageAgentRuntimeRepository
     >[0]["store"],
+    // agent-design AG02: approvals, decisions and card revisions are one transaction each.
+    transactionClient: mode === "live" ? createConfiguredTransactionalPostgresRuntime()?.client : undefined,
     workspaceId: agentWorkspaceId,
   });
+  // agent-design AG02: the to-do create and update executors and the reader the card checks use.
+  const tasks = mode === "live" && actorId ? configuredTasksOrNull() : null;
   const integrations =
     mode === "live"
       ? createConfiguredOrbitIntegrationService({ actorId })
       : null;
-  const executors = createAgentExecutorRegistry(
-    createAgentDomainExecutors({
+  const executors = createAgentExecutorRegistry([
+    ...(tasks ? createTodoExecutors({ actorId, tasks }) : []),
+    ...createAgentDomainExecutors({
       contacts: createStorageContactArchiveActionWriter({
         store,
         workspaceId,
@@ -118,8 +135,8 @@ export function createOrbitAgentRuntimeService(
         ? createAgentCalendarExecutorAdapter(integrations)
         : undefined,
     }),
-  );
-  const base = createAgentRuntimeService({ executors, repository });
+  ]);
+  const base = createAgentRuntimeService({ cardReader: tasks ? createTodoReader(tasks, actorId) : null, executors, repository });
   const service = mode === "live" && process.env.VERCEL === "1"
     ? withAgentBackgroundDispatch(base, actorId, enqueueAgentAction)
     : base;
