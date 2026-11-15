@@ -74,9 +74,9 @@
 | 命令 | 作用 |
 |---|---|
 | `npm run agent-eval:check` | 校验用例和夹具。 |
-| `npm run agent-eval:env` | 建本机专用库、起服务、做开始前的自检。 |
+| `npm run agent-eval:env` | 建本机专用库、起服务、做开始前的自检。`--build` 先停掉正在跑的服务再构建并重启（AG04 起），服务在评测模式下报出自己的构建 SHA，每次运行都记下。 |
 | `npm run agent-eval:seed` | 经产品写入链路生成三个账号的数据并存快照。 |
-| `npm run agent-eval:run -- --gate AGnn` | 跑某个 sprint 的门槛：按 `gate`（没有就按 `sprint`）归到它的用例，加上顺延之后不晚于它的不变量用例。`--seed-cards` 从 AG02 用到 AG05（AG06 之前新入口不从对话出卡，门槛里的 BND 区含不变量包只能靠预置卡），AG06 起不再用，见第 8 节。`--all` 跑全部可见用例，`--sealed` 跑封存集。 |
+| `npm run agent-eval:run -- --gate AGnn` | 跑某个 sprint 的门槛：按 `gate`（没有就按 `sprint`）归到它的用例，加上顺延之后不晚于它的不变量用例。`--seed-cards` 从 AG02 用到 AG05（AG06 之前新入口不从对话出卡，门槛里的 BND 区含不变量包只能靠预置卡），AG06 起不再用，见第 8 节。`--all` 跑全部可见用例，`--sealed` 跑封存集。AG04 起，服务的构建 SHA 与 HEAD 不一致或工作区不干净时，`--gate` 拒绝开始（只有构建改写的 `next-env.d.ts` 路由引用行不算不干净）。 |
 | `npm run agent-eval:judge-pack -- --run <运行编号>` | 生成评审材料。评审由新开的 Claude 会话完成。 |
 | `npm run agent-eval:report -- --run <运行编号>` | 汇总评审结果，算出通过与否，给出要登记进 `RUNS.md` 的一行。 |
 
@@ -90,7 +90,7 @@
 | AG01 | `entry/` 的 `acceptMessage()`、`getRequestResult()`、`cancelCurrentRun()`；会话顺序处理；契约里的 `AgentRequestStatus`、`AgentResultDocument`、`AgentPartResult`；协议版本 3；`ORBIT_AGENT_V1_MODE`。现有运行时不能从外部中断，停止当前这一轮由新入口在结果交付前丢弃。 |
 | AG02 | 账本记录新增 `origin`、`revision`、各版载荷、`expiresAt`；`decideAction()`；状态 `expired`（App 端账本契约同步）；回执 `needs_review`、`user_confirmed`、`abandoned`；批准与出队一个事务；按编号取单张卡的接口；待办的新建和修改两个执行器；运行器的 `--seed-cards`；新入口上的直写与文字确认已关闭。 |
 | AG03 | `graph/` 的图与 `AgentGraphState`；`understand/` 的 `UnderstandOutput` 与校验；`context/` 的 `buildFirstLayerContext()` 和会话级状态；`route/` 的能力清单与 `decideRoute()`；`models/main.ts`。 |
-| AG04 | `clarify/` 的 `decideNextStep()`、`optionsFor()`、`attributeMessage()`；追问的暂停与恢复。 |
+| AG04 | `clarify/` 的 `decideNextStep()`、`optionsFor()`、`attributeMessage()`、`attributeSelection()`；追问的暂停与恢复（`resumeAgentGraph()`，`clarify` 节点的 `interrupt`）；结果文档的 `clarifications[]`；点选：协议 3 的 `POST /api/ai/conversations` 带 `{ clientSelectionId, selection: { requestId, clarificationId, optionId } }`，先落库、按会话顺序处理、接回原委托、不产生新委托，所选不在候选里或已关闭返回 409（`error.context.reason`）；搁置与文字回答回写旧委托；没绑定的指代词在没有上文时当缺对象（`isPronounClue()`）；评测服务的构建编号与门槛前核对。 |
 | AG05 | `domains/registry.ts` 与五类记录的 `read`（生产路径上的读取适配器，现有 `executeAiRead` 只有测试在调用）；三个读取视图；Memo 的 `interaction` 字段的契约与读取（写入在 AG06）；消息引用扩到六类并带位置的服务端契约与授权（两端选择器在 AG11）；`text/` 的按句切分；`answer/` 的 `AnswerOutput` 与 `verifyCitations()`。 |
 | AG06 | `propose/` 的 `OperationIntent`、`resolveIntents()`、`freezeCard()`；`todo` 与 `memo` 的 `prepare`、`applyApproved`（待办沿用 AG02 的执行器，Memo 含新建和修改）；写入 Memo 的往来字段；前置项失败后跳过依赖项、不可恢复的失败停止重试；对应的执行器登记。 |
 | AG07 | 两端的确认卡组件；结果文档的客户端读取；离线与未同步时的规则。 |
