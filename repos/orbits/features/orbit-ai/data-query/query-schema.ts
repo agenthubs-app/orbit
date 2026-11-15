@@ -149,6 +149,8 @@ export function createAiReadInputSchema(_toolName: AiReadTool): Validator<ReadIn
         return { success: false, error: "limit must be an integer from 1 to 10" };
       }
       if (value.status !== undefined && !optionalText(value.status, 128)) return { success: false, error: "status is invalid" };
+      // agent-design AG05: notes take one status only, "interaction" (memos that record one); no other status filter.
+      if (toolName === "notes.query" && value.status !== undefined && value.status !== "interaction") return { success: false, error: "notes.query takes status interaction only" };
       if (value.order !== undefined && value.order !== "newest" && value.order !== "oldest") return { success: false, error: "order must be newest or oldest" };
       if (!optionalInstant(value.from) || !optionalInstant(value.to) || (value.from && value.to && compareInstants(value.from, value.to) > 0)) {
         return { success: false, error: "time range is invalid" };
