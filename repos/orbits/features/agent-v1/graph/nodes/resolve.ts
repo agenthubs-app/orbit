@@ -284,6 +284,23 @@ export function resolveNode(scope: NodeScope): GraphNode {
           // A reply that continues an earlier matter is about that matter's person (AG05: open item clues).
           const item = part.continues ? context?.openItems.find((open) => open.ref === part.continues!.ref) : undefined;
           said = item?.clues?.find((clue) => clue.entity === "contact" && !isPronounClue(clue.text))?.text ?? null;
+          // run-02 repair 2 (AE-AMB-012): otherwise the person named earlier in the same message ("小林…。…给他的…")
+          // in a part that was not read (a statement). A read part's person is inherited below, with its narrowing.
+          if (!said && ![...resolvedParts.values()].some((item) => item.contacts.length)) {
+            const antecedent = parts
+              .filter((other) => other !== part && other.quote[0] < part.quote[0])
+              .sort((left, right) => right.quote[0] - left.quote[0])
+              .flatMap((other) => other.refs.filter((item) => recordKindOf(item.entity) === "contact"))
+              .find((item) => item.recordId || !isPronounClue(clueWords(input.message, item) ?? "他"));
+            if (antecedent?.recordId) {
+              ref.recordId = antecedent.recordId;
+              contacts.push({ id: antecedent.recordId, name: handleOf(antecedent.recordId)?.name ?? run.readNames.get(antecedent.recordId)?.name ?? "", view: null });
+              emitTrace({ partId: part.localId, recordId: antecedent.recordId, type: "resolve.antecedent_bound" });
+              continue;
+            }
+            said = antecedent ? clueWords(input.message, antecedent) : null;
+            if (said) emitTrace({ partId: part.localId, type: "resolve.antecedent_named", words: said });
+          }
         }
         if (!said) continue;
         const { failed, matches } = await findContacts(records, accountScope, said, quote, input.message);
@@ -337,12 +354,16 @@ export function resolveNode(scope: NodeScope): GraphNode {
         }
       }
       resolvedParts.set(part.localId, { contacts: [...contacts], filter, partId: part.localId });
-      // A person pointed at only by a pronoun that nothing resolved: do not read everyone's records instead.
+      // A person pointed at only by a pronoun that nothing resolved: do not read everyone's records instead —
+      // unless the part names what to look for (its words, or a record it points at). It never says the person
+      // is missing: no lookup found no one (run-02 repair 2).
       if (!contacts.length && part.refs.some((ref) => recordKindOf(ref.entity) === "contact")) {
-        read.gaps.add("no_record");
-        read.lines.push(words.noContact(""));
-        finish("answered", null);
-        continue;
+        const narrowed = Boolean(text) || part.refs.some((ref) => recordKindOf(ref.entity) !== "contact" && (ref.recordId || clueSearchWords(clueWords(input.message, ref) ?? "")));
+        if (!narrowed) {
+          read.lines.push(words.notWho(quote));
+          finish("unfinished", "object_unclear");
+          continue;
+        }
       }
 
       // 3. What to read.
@@ -431,6 +452,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
       const searchKinds = (["memo", "todo", "schedule"] as const).filter((kind) => kinds.has(kind) && !boundIds.has(kind) && !(kind === "memo" && interactionAnswers));
       const subjects = contacts.length ? contacts.map((item) => item.id) : [undefined];
       let unclear = false;
+      const reads = new Map<string, { complete: boolean; kind: string; pagesRead: number; total: number | null }>();
       for (const kind of searchKinds) {
         // run-02: a read never gets wider because a field was left out. Without the first layer's words, the
         // record clue's own words are the search; a clue of only a pronoun with no person to read for points
@@ -477,7 +499,11 @@ export function resolveNode(scope: NodeScope): GraphNode {
                 });
               }
               for (const view of items) push(view);
-              read.coverage.push({ complete: pages.complete, kind, pagesRead: pages.pagesRead, seen: pages.items.length, total: pages.total });
+              // run-02 repair 2 (AE-SCL-007): one entry per kind and person; the newest and oldest reads of the same
+              // records share one total, and `seen` is set below from what is really given to the answer.
+              const key = `${kind}|${contactId ?? ""}`;
+              const prior = reads.get(key);
+              reads.set(key, { complete: (prior?.complete ?? true) && pages.complete, kind, pagesRead: (prior?.pagesRead ?? 0) + pages.pagesRead, total: prior?.total ?? pages.total });
               if (!pages.complete || (pages.total !== null && pages.total > pages.items.length)) {
                 read.notes.push(pages.total !== null
                   ? `${kind}: ${pages.total} match in all (an exact count); the ${pages.items.length} listed here are the ${kind === "todo" ? "soonest due" : direction === "oldest" ? "oldest" : "newest"} of them. Give the total as ${pages.total}; do not present the listed ones as all.`
@@ -489,6 +515,13 @@ export function resolveNode(scope: NodeScope): GraphNode {
             }
           }
         }
+      }
+      for (const kind of searchKinds) {
+        const entries = [...reads.values()].filter((item) => item.kind === kind);
+        if (!entries.length) continue;
+        const seen = read.views.filter((view) => view.kind === kind).length;
+        const total = entries.every((item) => item.total !== null) ? entries.reduce((sum, item) => sum + (item.total ?? 0), 0) : null;
+        read.coverage.push({ complete: entries.every((item) => item.complete) || (total !== null && seen >= total), kind, pagesRead: entries.reduce((sum, item) => sum + item.pagesRead, 0), seen, total });
       }
       if (kinds.has("event") && !boundIds.has("event")) read.notes.push("Events are read when the user attaches one; none was attached.");
 

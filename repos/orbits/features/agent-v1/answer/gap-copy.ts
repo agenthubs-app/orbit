@@ -23,11 +23,14 @@ export interface GapWords {
   eventSearch(quote: string): string;
   /** run-02: a clue of only a pronoun that nothing resolved: which record is not known, so nothing was read. */
   notWhich(quote: string): string;
+  /** run-02 repair 2: a person pointed at only by a pronoun nothing resolved (no lookup ran). */
+  notWho(quote: string): string;
 }
 
 const WORDS: Record<ReplyLanguage, GapWords> = {
   en: {
     coverage: (seen, total) => (total !== null && total > seen ? `(There are ${total} in all; I looked at ${seen} of them.)` : `(I looked at ${seen}; there may be more.)`),
+    notWho: (quote) => `"${quote}": I'm not sure who you mean, so I didn't look anything up. Could you give the name, or attach the contact with @?`,
     notWhich: (quote) => `"${quote}": I'm not sure which record you mean, so I didn't look anything up. Could you name it, or attach it with @?`,
     eventSearch: (quote) => `"${quote}": this means searching Orbit's event directory by conditions, which this version can't do yet, so I didn't search. Attach an event with @ and I can read it.`,
     fromNotes: () => "(From your notes.)",
@@ -41,6 +44,7 @@ const WORDS: Record<ReplyLanguage, GapWords> = {
   },
   ja: {
     coverage: (seen, total) => (total !== null && total > seen ? `（全部で ${total} 件あり、今回はそのうち ${seen} 件を見ました。）` : `（今回見たのは ${seen} 件で、ほかにもある可能性があります。）`),
+    notWho: (quote) => `「${quote}」：どなたのことか分からないため、今回は読んでいません。お名前を挙げるか、@ で選んでください。`,
     notWhich: (quote) => `「${quote}」：どの記録のことか分からないため、今回は読んでいません。名前を挙げるか、@ で選んでください。`,
     eventSearch: (quote) => `「${quote}」：条件で Orbit のイベント一覧を探す必要がありますが、このバージョンではまだできないため、今回は探していません。@ でイベントを選べば、その内容は読めます。`,
     fromNotes: () => "（メモの内容からです。）",
@@ -54,6 +58,7 @@ const WORDS: Record<ReplyLanguage, GapWords> = {
   },
   zh: {
     coverage: (seen, total) => (total !== null && total > seen ? `（共 ${total} 条，这次看了其中 ${seen} 条。）` : `（这次看了 ${seen} 条，可能还有更多。）`),
+    notWho: (quote) => `「${quote}」：我不确定你说的是哪一位，所以这次没有去读。可以说一下名字，或者用 @ 选一下。`,
     notWhich: (quote) => `「${quote}」：我不确定你指的是哪一条记录，所以这次没有去读。可以说一下它的名字，或者用 @ 选一下。`,
     eventSearch: (quote) => `「${quote}」：这要按条件在 Orbit 活动目录里找活动，这一版还不能这样找，所以这次没有找。用 @ 选一场活动，我可以读它的内容。`,
     fromNotes: () => "（以上出自你的笔记。）",
