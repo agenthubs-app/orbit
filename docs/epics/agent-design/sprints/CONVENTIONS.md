@@ -168,3 +168,5 @@ AG00 实现用例的基本词。eval/README.md §3.4 里各区补充的词，由
 | 工作区 | 第一版取部署的工作区编号；评测账号同在一个工作区，按账号隔离。 |
 | AG12 的风险 | 联系人现有的 `version` 字段被关系初始化流程占用，那套流程依赖它为空。AG12 启动时先确认改为递增版本的影响，必要时另起一个字段。 |
 | AG18 的参考 | 发布方案 `docs/superpowers/specs/2026-09-30-staging-production-release-design.md` 在主目录里是未跟踪文件，2026-11-15 已复制进本 worktree 的同一路径；AG18 以它为准，不再用 W0019 的发布清单代替。 |
+| 评审项级 gate（AG01 中途加） | 评审项可带 `gate: AGnn`，规则见评测规范 §3.3、§6，登记见 CHANGES.md。ENT-002、ENT-003、ENT-004 的回答内容项顺延到 AG03／AG05：AG03、AG05 的门槛运行要把 ENT 区一并跑上并让这些项通过。 |
+| 旧入口的卡片（AG01 发现） | 运行器走协议 2（`app_old`）时不把回复里的 `artifacts` 写进 transcript 和回答，AG00 基线的评审因此看不到卡片里的记录。第一个门槛用到 `app_old` 的 sprint（AG18 的 CMP 区）先补上。 |
