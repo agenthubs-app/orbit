@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { runAgentGraph } from "../../features/agent-v1/graph/build";
+import { isPronounClue } from "../../features/agent-v1/route/decide";
 import { understandSystemPrompt } from "../../features/agent-v1/understand/prompt";
 import { deepseekStub, graphKit, json, part, recordAccessOf } from "./graph-kit";
 import { contact, memo, smallWorld, todo } from "./read-kit";
@@ -98,4 +99,23 @@ test("then and now: the coverage footnote counts the records read and given to t
   const coverage = result.partResults[0].coverage ?? [];
   assert.deepEqual(coverage.map((item) => [item.kind, item.seen, item.total]), [["memo", 20, 122]]);
   assert.match(result.text, /共 122 条，这次看了其中 20 条/u);
+});
+
+test("a pronoun clue with the little word around it (给他的, 彼に, 跟她) is still a pronoun; a name is not (AE-AMB-012 dev3)", async () => {
+  for (const text of ["给他的", "彼に", "跟她", "对他"]) assert.equal(isPronounClue(text), true, text);
+  for (const text of ["给小林的", "小林", "山本さんに"]) assert.equal(isPronounClue(text), false, text);
+
+  const records = recordAccessOf(world());
+  const message = "小林今天又来电话催报价了。帮我看看给他的修订报价那条待办排在哪天。";
+  const model = deepseekStub([
+    json({ parts: [
+      part({ clarity: "statement", dataSources: ["turn_material"], localId: "p1", objectClues: [{ entity: "contact", text: "小林" }], requiredCapabilities: [], sourceQuote: "小林今天又来电话催报价了。" }),
+      part({ dataSources: ["orbit_records"], localId: "p2", objectClues: [{ entity: "contact", text: "给他的" }, { entity: "todo", text: "修订报价那条待办" }], readFilter: { text: "修订报价" }, requiredCapabilities: ["todo.read"], sourceQuote: "帮我看看给他的修订报价那条待办排在哪天。" }),
+    ], plainChat: false }),
+    (call) => json({ segments: [{ cites: [], partId: "p1", text: "催得很紧。" }, { cites: [{ sentenceIds: [3], sourceRef: /(s\d+) — to-do/u.exec(call.user)![1] }], partId: "p2", text: "排在 11 月 18 日（周三）。" }] }),
+  ]);
+  const kit = graphKit(model.fetchImplementation, { records });
+  const result = await runAgentGraph(kit.deps, kit.input(message));
+  assert.deepEqual(result.sourceRefs, ["todo:task:t42"]);
+  assert.doesNotMatch(result.text, /没有找到你说的这位/u);
 });

@@ -51,7 +51,8 @@ const PRONOUN_WORDS_CJK = [
   "他们", "她们", "它们", "这些", "那些", "这个", "那个", "这条", "那条", "这篇", "那篇", "这件", "那件", "这位", "那位", "这场", "那场", "这次", "那次", "这份", "那份", "他", "她", "它", "这", "那", "该",
   "彼女ら", "彼女", "彼ら", "あの人", "この人", "その人", "あの方", "その方", "あいつ", "あれ", "それ", "これ", "あの", "その", "この", "例の", "彼",
 ];
-const GENERIC_WORDS_CJK = ["待办", "笔记", "活动", "日程", "联系人", "事情", "会议", "记录", "东西", "人", "事", "会", "的", "メモ", "ToDo", "イベント", "予定", "打ち合わせ", "やつ", "件", "人", "の"];
+// AG05 run-02 repair 2 (AE-AMB-012): the little words a clue may carry around the pronoun ("给他的", "彼に").
+const GENERIC_WORDS_CJK = ["待办", "笔记", "活动", "日程", "联系人", "事情", "会议", "记录", "东西", "人", "事", "会", "的", "关于", "给", "跟", "和", "对", "向", "为", "与", "メモ", "ToDo", "イベント", "予定", "打ち合わせ", "について", "から", "やつ", "件", "人", "の", "に", "と", "へ"];
 const PRONOUN_WORDS_LATIN = new Set(["he", "she", "him", "her", "his", "hers", "it", "its", "they", "them", "their", "that", "this", "those", "these", "one", "ones", "the", "s"]);
 const GENERIC_WORDS_LATIN = new Set(["note", "notes", "to-do", "todo", "task", "event", "meeting", "person", "thing", "item", "record", "contact"]);
 
