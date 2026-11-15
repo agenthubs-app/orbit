@@ -1,0 +1,583 @@
+# 夹具世界 large-v1：较大账号。全部是合成数据，人物、公司、网址都是虚构的。
+# 与 base-v1、regular-v1 互相独立，人物和故事都不共用。本文件的编号一律以 L 开头。
+# 锚点记录逐条写在 anchors 里，用例用编号指认；其余记录由 AG00 的生成器按 bulk 的规则和固定种子生成。
+
+version: large-v1
+clock: "2026-11-15T10:00:00+09:00"   # 周日
+timezone: Asia/Tokyo
+
+# 日历备查：2026-05-20 周三，11-09 周一，11-10 周二，11-11 周三，11-12 周四，11-13 周五，11-14 周六，
+# 11-15 周日，11-16 周一，11-17 周二，11-18 周三，11-19 周四，11-20 周五，11-21 周六，11-22 周日，
+# 11-24 周二，11-25 周三，11-27 周五，2027-05-19 周三。
+
+accounts:
+  L: { name: 测试用户丁, workspace: WL, locale: zh, role: "较大账号。半导体和机器人方向的猎头顾问，常驻东京，也做上海和新加坡的职位；中文、日语、英语都用" }
+  B: { name: 测试用户乙, workspace: W2, locale: zh, role: "只用来检验隔离，与 base-v1 的账号乙是同一个；本文件给它加的记录见 anchors.account_B" }
+
+defaults:
+  settings: { web: on, memory_use: on, memory_learn: off, judgment: on }
+
+conventions:
+  turn: "一轮是一条用户消息加紧随其后的一条助手回复。第 n 轮对应第 2n-1、2n 条消息；最近 10 条消息就是最后 5 轮"
+  default_sort:
+    contacts: "最近更新的在前（updatedAt 由新到旧），同一时刻按编号"
+    memos: "发生时间由新到旧，没有发生时间的用创建时间"
+    todos: "先按截止时间由近到远，再按计划日；两者都没有的排最后"
+    schedule: "按开始时间"
+    platform_events: "按开始时间，时间未公布的排最后"
+  page_size: "各读取接口单页不超过 50 条。标了“第一页之外”的锚点，在默认排序里都排在第 60 位之后"
+  links: "Todo 的多值关联写作 relatedContactIds、relatedEventRefs（设计稿附录 E）；Memo 和日程的活动关联写作 eventRefs"
+  ids: "锚点用两位序号（LC01）；批量记录从 10001 起（LC10001），记忆和对话的批量记录从 1001 起，两者不重叠"
+  last_interaction: "带 lastInteractionOn 的锚点联系人，由生成器补一篇只有一句话的批量往来笔记（带往来字段），使「最近互动」算出的日期等于该值；已有锚点笔记能给出这个日期的不补。补的笔记计入批量笔记的总数"
+
+# 第 11 节规定的数量。anchors_plus_bulk 写的是 [锚点数, 批量数]，两者相加等于总数。
+scale:
+  contacts: 3000
+  memos: 5000
+  todos: { total: 1500, formal_followups: 200 }
+  schedule: { total: 800, recurring_series: 40 }
+  private_events: 120
+  platform_events: { total: 600, related_to_me: 200 }
+  memory: 40
+  conversations: { total: 120, over_100_turns: 3 }
+  anchors_plus_bulk:
+    contacts: [29, 2971]
+    memos: [19, 4981]
+    todos_plain: [12, 1288]
+    formal_followups: [2, 198]
+    schedule: [2, 798]
+    private_events: [3, 117]
+    platform_events: [7, 593]
+    related_to_me: [2, 198]
+    memory: [8, 32]
+    conversations: [3, 117]
+
+# 批量记录的生成规则。同一个种子每次生成的结果相同。
+bulk:
+  seed: 261116
+  languages: { zh: 0.5, ja: 0.25, en: 0.25 }
+  contacts:
+    count: 2971
+    ids: "LC10001 到 LC12971"
+    name_pools:
+      zh_surnames: [赵, 钱, 孙, 郑, 冯, 褚, 蒋, 韩, 杨, 朱, 秦, 尤, 吕, 施, 孔, 曹, 严, 华, 金, 魏, 陶, 姜, 戚, 谢, 邹, 喻, 柏, 窦, 苏, 潘, 葛, 范, 彭, 鲁, 马, 方, 俞, 任, 袁, 唐]
+      ja_surnames: [井上, 木村, 清水, 山崎, 池田, 橋本, 阿部, 石井, 山下, 前田, 藤田, 岡田, 長谷川, 村上, 近藤, 坂本, 遠藤, 青木, 藤井, 福田]
+      en_given: [Alex, Jordan, Morgan, Casey, Riley, Avery, Quinn, Rowan, Devon, Harper, Sasha, Emerson, Blake, Reese, Skyler]
+      en_surnames: [Fischer, Novak, Okafor, Haddad, Moreau, Petrov, Castillo, Lindholm, Ferrand, Whitlock, Marchetti, Osei, Kowalski, Duarte, Halloran]
+    mix: { zh: 0.5, ja: 0.25, en: 0.25 }
+    industries: [半导体, 机器人, 汽车电子, 工业软件, 物流, 咨询, 医疗器械, 能源]
+    regions: [东京, 神奈川, 大阪, 茨城, 上海, 苏州, 杭州, 深圳, 北京, 新加坡, 槟城, 慕尼黑]
+    semiconductor_roles: [数字设计工程师, 验证工程师, 测试工程师, 现场应用工程师, 销售经理, 产品经理, 采购经理, 版图工程师, EDA 工程师, 市场经理]
+    rules:
+      - "LC10001 到 LC10374 这 374 位的地区是新加坡，行业不是半导体；其余批量联系人的地区不是新加坡"
+      - "LC10375 到 LC10894 这 520 位的行业是半导体，职位只从 semiconductor_roles 里取；其余批量联系人的行业不是半导体"
+      - "半导体的 520 位里：LC10375 到 LC10610 这 236 位最近一次真实往来在 2025-01-01 到 2026-09-09 之间；LC10611 到 LC10850 这 240 位在 2026-09-23 到 2026-11-14 之间；LC10851 到 LC10894 这 44 位没有往来记录"
+      - "其余批量联系人：八成有往来记录，最近一次在时钟之前 400 天以内；两成没有"
+      - "updatedAt 落在 2025-01-01 到 2026-11-14 之间"
+      - "每位都有邮箱和电话，格式为 <编号小写>@bulk.example.test 和 +81-90-8000-<五位序号>"
+      - "全名不与任何锚点联系人相同，也不与另一位批量联系人相同"
+  memos:
+    count: 4981
+    ids: "LM10001 到 LM14981"
+    date_range: ["2024-01-01", "2026-11-14"]
+    over_time: "2024 年每月 80 篇；2025 年每月 150 篇；2026 年 1 月到 10 月每月 205 篇；2026 年 11 月 1 日到 14 日共 171 篇"
+    over_contacts:
+      - "134 篇只关联 LC11（Priya Raman），日期在 2025-03-15 到 2026-10-27 之间"
+      - "117 篇只关联 LC13（Tomás Rivera），日期在 2024-06-19 到 2026-10-20 之间"
+      - "57 篇只关联 LC01（曜石半导体的张伟），日期早于 2026-10-01"
+      - "34 篇只关联 LC02（岚图机器人的张伟），日期早于 2026-11-01"
+      - "47 篇只关联 LC08（鈴木健太），日期早于 2026-11-05"
+      - "8 篇只关联 LC09（鈴木健）"
+      - "14 篇是 conventions.last_interaction 说的补记，各关联一位带 lastInteractionOn 的锚点联系人"
+      - "其余各关联 0 到 2 位批量联系人，同一位批量联系人不超过 40 篇"
+      - "除上面列出的以外，批量笔记不关联任何锚点联系人，也不关联任何锚点活动"
+    rules:
+      - "三成带往来字段，实际对象是它关联的联系人之一"
+      - "正文一到三句，讲约见、简历更新、客户反馈、行业消息这类事"
+      - "正文里不出现邮箱、电话和网址"
+      - "关联 LC11 的批量笔记不谈薪资、期望、面试官名单、到场日期和 JD；关联 LC13 的不谈他在哪家公司、换没换工作；关联 LC01、LC02 的不谈到岗时间"
+      - "标题不与任何锚点笔记的标题相同或只差括号里的字"
+  todos:
+    plain: { count: 1288, ids: "LT10001 到 LT11288", open: 370, completed: 918 }
+    formal_followups: { count: 198, ids: "LF10001 到 LF10198", open: 31, completed: 167 }
+    rules:
+      - "LT10001 到 LT10061 这 61 条未完成、只关联 LC08（鈴木健太）：截止时间或计划日都在 2026-11-16 之后，或两者都没有"
+      - "LT10062 到 LT10072 这 11 条未完成、只关联 LC09（鈴木健）：截止时间都在 2026-11-16 之后"
+      - "LT10073 到 LT10092 这 20 条已完成、只关联 LC11（Priya Raman）"
+      - "其余批量待办只关联批量联系人，每条 0 到 2 位；一成另关联一场批量活动"
+      - "批量正式跟进只关联批量联系人，都有截止时间"
+      - "除上面列出的以外，批量待办和正式跟进不关联任何锚点联系人"
+  schedule:
+    count: 798
+    ids: "LS10001 到 LS10798"
+    series: { count: 38, ids: "LS10001 到 LS10038" }
+    singles: { count: 760, date_range: ["2026-06-01", "2027-01-31"] }
+    rules:
+      - "只关联批量联系人"
+  private_events:
+    count: 117
+    ids: "LP10001 到 LP10117"
+    date_range: ["2024-06-01", "2027-03-31"]
+    rules:
+      - "不落在 2026-11-16 到 2026-11-22 之间"
+  platform_events:
+    count: 593
+    ids: "LE10001 到 LE10593"
+    date_range: ["2026-01-01", "2027-06-30"]
+    topics: [汽车电子, 工业软件, 物流, 医疗器械, 能源, 人力资源, 创业, 设计]
+    rules:
+      - "LE10001 到 LE10036 这 36 场在 2026-11-16 到 2026-11-22 之间开始；其余批量活动不在这一周"
+      - "每场都有开始时间"
+      - "与本人有关的 198 场是 LE10037 到 LE10234，都在 2026-11-15 之前开始，状态为已报名或已参加"
+  memory:
+    count: 32
+    ids: "LMM1001 到 LMM1032"
+    by_category: { constraint: 9, preference: 13, goal: 6, identity: 4 }
+    rules:
+      - "appliesTo 只从 todo.plan、memo.summarize、schedule.plan 里取；不出现 event.recommend、contact.recommend 和 all"
+      - "都在有效期内，状态有效，revision 为 1"
+  conversations:
+    count: 117
+    ids: "LCV1001 到 LCV1117"
+    rules:
+      - "每段 1 到 30 轮，最后活动时间早于 2026-11-14 22:00"
+      - "结束时没有未答的追问，也没有未决的卡"
+  must_not_produce:
+    surnames: [张, 章, 沈, 何, 郭, 柳, 鈴木, 渡辺, 柳原, 小林, 陈, 田中, 李, 山本, 佐藤, 王]
+    en_names: [Priya, Kavya, Raman, Tomás, Rivera, Marcus, Lindqvist, Lindgren, Ingrid, Solberg, Aaron, Tan, Tang, Goh, Iyer, Lim, Wee, Aziz, Brandt, Emily, Carter]
+    orgs: [曜石, 岚图, 星汉精密, 澄川自动化, 溪谷传感, 東都精機, 相模メカトロ, Corvid, Helio, Kestrel, Halden, Northwind, Aster Motion, Fennel, Meridian, Straits Silicon, Lioncity, 筑波パワーデバイス, 临港功率, Penang Power, Nordlicht, Lumen, Lumina]
+    words: [到岗, 入职日期, 薪资, 年薪, salary, expectation, JD, 面试官名单, panel, on-site, 功率, SiC, GaN, 封装, 工艺, パワー, パッケージ, power, packaging, process, 机器视觉, 本周重点职位, 报价, quote, reference check, 背调, 终面, 候補者リスト, 定例ミーティング, キャリアフォーラム, 半导体, 机器人, 晚上, 周末]
+    note: "以上不出现在任何批量记录的姓名、机构、职位、标题、正文、标签和主题里。唯一的例外是批量联系人的 industry 字段可以取“半导体”“机器人”"
+  facts:
+    contacts_in_singapore: { count: 380, members: "LC17 到 LC22 加 LC10001 到 LC10374" }
+    contacts_in_singapore_and_semiconductor: { count: 5, members: [LC17, LC18, LC19, LC21, LC22] }
+    semiconductor_contacts_last_interaction_on_or_before_2026-09-16: { count: 241, members: "LC24 到 LC28 加 LC10375 到 LC10610" }
+    memos_linked_to_LC11: { count: 140, anchors: [LM12, LM13, LM14, LM15, LM16, LM17], note: "按由新到旧排，LM17、LM16、LM14、LM15 是前四篇，LM12 排第 140 位" }
+    memos_linked_to_LC13: { count: 120, anchors: [LM04, LM05, LM06], note: "按由新到旧排，LM06 排第 1 位，LM04 排第 120 位" }
+    memos_linked_to_LC01: { count: 60 }
+    memos_linked_to_LC02: { count: 35, note: "最新的一篇是 LM03" }
+    memos_linked_to_LC08: { count: 48 }
+    open_todos: { total: 412, plain: 380, formal_followups: 32 }
+    open_todos_linked_to_LC08: { count: 64, overdue: [LT01, LT02, LT03], note: "都是普通待办，没有正式跟进" }
+    open_todos_linked_to_LC09: { count: 12, overdue: [LT05] }
+    open_items_linked_to_LC11: { todos: [LT08, LT09], formal_followups: [LF01] }
+    platform_events_2026-11-16_to_22: { count: 41, members: "LE01、LE04、LE05、LE06、LE07 加 LE10001 到 LE10036" }
+
+anchors:
+  contacts:
+    # 七位姓张的，其中 LC01 和 LC02 全名相同、公司不同。
+    - { id: LC01, name: 张伟, org: 曜石半导体, role: 工艺整合总监, industry: 半导体, region: 上海, email: zhangwei@yaoshi-semi.example.test, phone: "+86-138-0000-0101", version: 5, updatedAt: "2026-11-09T19:00:00+09:00", note: "候选人。最近一次往来见 LM02" }
+    - { id: LC02, name: 张伟, org: 岚图机器人, role: 人力资源总监, industry: 机器人, region: 上海, email: zhangwei@lantu-robotics.example.test, phone: "+86-138-0000-0102", version: 3, updatedAt: "2026-11-11T18:00:00+09:00", note: 客户方 }
+    - { id: LC03, name: 张薇, org: 星汉精密, role: 设备工程经理, industry: 半导体, region: 苏州, lastInteractionOn: "2026-10-12", version: 2, updatedAt: "2026-10-12T12:00:00+09:00" }
+    - { id: LC04, name: 张玮, org: 澄川自动化, role: 运动控制架构师, industry: 机器人, region: 深圳, version: 2, updatedAt: "2026-09-18T20:00:00+09:00" }
+    - { id: LC05, name: 张卫东, org: 曜石半导体, role: 招聘主管, industry: 半导体, region: 上海, lastInteractionOn: "2026-10-30", version: 1, updatedAt: "2026-10-30T12:00:00+09:00" }
+    - { id: LC06, name: 张蔚然, org: 溪谷传感, role: 算法负责人, industry: 机器人, region: 杭州, version: 1, updatedAt: "2026-08-03T12:00:00+09:00" }
+    - { id: LC07, name: 张维, org: 自由顾问, role: 薪酬顾问, industry: 咨询, region: 北京, version: 1, updatedAt: "2026-04-22T12:00:00+09:00" }
+    # 三位姓鈴木的，其中两位名字只差一个字。
+    - { id: LC08, name: 鈴木健太, org: 東都精機, role: 人事部長, industry: 机器人, region: 东京, version: 4, updatedAt: "2026-11-12T16:00:00+09:00", note: 客户方 }
+    - { id: LC09, name: 鈴木健, org: 相模メカトロ, role: 開発部マネージャー, industry: 机器人, region: 神奈川, version: 2, updatedAt: "2026-10-22T12:00:00+09:00", note: 候选人 }
+    - { id: LC10, name: 鈴木真由美, org: 東都精機, role: 採用担当, industry: 机器人, region: 东京, version: 1, updatedAt: "2026-09-01T12:00:00+09:00" }
+    - { id: LC11, name: Priya Raman, org: Corvid Robotics, role: VP of Engineering, industry: 机器人, region: 东京, email: priya.raman@corvid-robotics.example.test, notes: "Salary expectation: JPY 21M base (noted Feb 2026)", version: 6, updatedAt: "2026-02-20T15:00:00+09:00", note: "备注里的期望年薪比 LM14 旧" }
+    - { id: LC12, name: Kavya Raman, org: Helio Sensors, role: Product Lead, industry: 机器人, region: 东京, version: 1, updatedAt: "2026-11-12T14:00:00+09:00" }
+    - { id: LC13, name: Tomás Rivera, org: Halden Robotics, role: Solutions Architect, industry: 机器人, region: 大阪, version: 2, updatedAt: "2025-09-03T12:00:00+09:00", note: "资料停在 2025 年 9 月，比 LM06 旧" }
+    - { id: LC14, name: Marcus Lindqvist, org: Aster Motion, role: Director of Hardware, industry: 机器人, region: 东京, version: 3, updatedAt: "2026-11-13T17:00:00+09:00", note: 候选人 }
+    - { id: LC15, name: Marcus Lindgren, org: Fennel Systems, role: Staff Engineer, industry: 工业软件, region: 东京, version: 1, updatedAt: "2026-06-30T12:00:00+09:00" }
+    - { id: LC16, name: Ingrid Solberg, org: Aster Motion, role: CTO, industry: 机器人, region: 东京, version: 1, updatedAt: "2026-10-10T12:00:00+09:00", note: "Marcus Lindqvist 的推荐人" }
+    # 新加坡的半导体联系人，以及名字相近的一位。
+    - { id: LC17, name: Aaron Tan, org: Meridian Power Devices, role: Packaging Process Manager, industry: 半导体, region: 新加坡, email: aaron.tan@meridian-power.example.test, phone: "+65-8000-0117", lastInteractionOn: "2026-11-10", version: 2, updatedAt: "2026-11-10T12:00:00+09:00" }
+    - { id: LC18, name: Mei Ling Goh, org: Straits Silicon, role: "Senior Packaging Engineer, SiC Modules", industry: 半导体, region: 新加坡, lastInteractionOn: "2026-10-20", version: 1, updatedAt: "2026-10-20T12:00:00+09:00" }
+    - { id: LC19, name: Rajesh Iyer, org: Meridian Power Devices, role: "Process Integration Lead, Power Devices", industry: 半导体, region: 新加坡, lastInteractionOn: "2026-10-28", version: 1, updatedAt: "2026-10-28T12:00:00+09:00" }
+    - { id: LC20, name: Aaron Tang, org: Lioncity Freight, role: Sales Director, industry: 物流, region: 新加坡, version: 1, updatedAt: "2026-03-14T12:00:00+09:00" }
+    - { id: LC21, name: Grace Lim, org: Straits Silicon, role: Regional Sales Director, industry: 半导体, region: 新加坡, lastInteractionOn: "2026-10-05", version: 1, updatedAt: "2026-10-05T12:00:00+09:00" }
+    - { id: LC22, name: Daniel Wee, org: Meridian Power Devices, role: HR Business Partner, industry: 半导体, region: 新加坡, lastInteractionOn: "2026-09-28", version: 1, updatedAt: "2026-09-28T12:00:00+09:00" }
+    - { id: LC23, name: 渡辺修, org: 筑波パワーデバイス, role: パッケージ技術部長, industry: 半导体, region: 茨城, lastInteractionOn: "2026-11-05", version: 1, updatedAt: "2026-11-05T12:00:00+09:00", note: "方向很对口，但不在新加坡，最近也刚联系过" }
+    # 功率器件方向、超过 60 天没有往来的五位。
+    - { id: LC24, name: 何志远, org: 临港功率半导体, role: SiC 器件工艺负责人, industry: 半导体, region: 上海, lastInteractionOn: "2026-08-20", version: 1, updatedAt: "2026-08-20T12:00:00+09:00" }
+    - { id: LC25, name: 柳原達也, org: 筑波パワーデバイス, role: GaNデバイス開発リーダー, industry: 半导体, region: 茨城, lastInteractionOn: "2026-07-02", version: 1, updatedAt: "2026-07-02T12:00:00+09:00" }
+    - { id: LC26, name: Farah Aziz, org: Penang Power Modules, role: Power Module Process Lead, industry: 半导体, region: 槟城, lastInteractionOn: "2026-06-15", version: 1, updatedAt: "2026-06-15T12:00:00+09:00" }
+    - { id: LC27, name: 沈可, org: 曜石半导体, role: 功率器件工艺经理, industry: 半导体, region: 上海, lastInteractionOn: "2026-05-30", version: 1, updatedAt: "2026-05-30T12:00:00+09:00" }
+    - { id: LC28, name: Oliver Brandt, org: Nordlicht Power, role: Head of SiC Process, industry: 半导体, region: 慕尼黑, lastInteractionOn: "2026-04-11", version: 1, updatedAt: "2026-04-11T12:00:00+09:00" }
+    - { id: LC29, name: 郭敏, org: 澄川自动化, role: 机器视觉算法负责人, industry: 机器人, region: 深圳, lastInteractionOn: "2026-07-20", version: 1, updatedAt: "2026-07-20T12:00:00+09:00", note: "对口的是上周已经关闭的职位" }
+
+  memos:
+    - id: LM01
+      version: 1
+      createdAt: "2026-10-08T19:00:00+09:00"
+      contactIds: [LC01]
+      body: "和曜石半导体的张伟通话。他说手上的项目 11 月底收尾，最快 12 月 1 日可以到岗。"
+      interaction: { actualContactIds: [LC01], channel: phone, direction: outgoing, occurredOn: "2026-10-08", precision: day }
+    - id: LM02
+      version: 1
+      createdAt: "2026-11-09T18:30:00+09:00"
+      contactIds: [LC01]
+      body: "张伟来电：项目交接延后，最快 1 月 5 日到岗，之前说的 12 月 1 日作废。"
+      interaction: { actualContactIds: [LC01], channel: phone, direction: incoming, occurredOn: "2026-11-09", precision: day }
+    - id: LM03
+      version: 1
+      createdAt: "2026-11-11T17:00:00+09:00"
+      contactIds: [LC02]
+      body: "和岚图机器人的张伟开会。他们希望新人的到岗时间不晚于 12 月 15 日，超过就要重新走审批。"
+      interaction: { actualContactIds: [LC02], channel: meeting, direction: mutual, occurredOn: "2026-11-11", precision: day }
+    - id: LM04
+      version: 1
+      locale: en
+      createdAt: "2024-06-18T21:00:00+09:00"
+      contactIds: [LC13]
+      body: "Met Tomás Rivera at a trade show. He is a field applications engineer at Kestrel Microsystems."
+      interaction: { actualContactIds: [LC13], channel: meeting, direction: mutual, occurredOn: "2024-06-18", precision: day }
+      note: "和他的第一篇笔记，在 120 篇里按由新到旧排第 120 位"
+    - { id: LM05, version: 1, locale: en, createdAt: "2025-09-03T11:00:00+09:00", contactIds: [LC13], body: "Tomás joined Halden Robotics as Solutions Architect last month." }
+    - { id: LM06, version: 1, locale: en, createdAt: "2026-10-21T16:00:00+09:00", contactIds: [LC13], body: "Tomás told me he left Halden Robotics. He started at Northwind Automation on October 1 as Head of Solutions. His contact card still shows Halden." }
+    - id: LM07
+      version: 1
+      locale: ja
+      createdAt: "2026-11-05T15:00:00+09:00"
+      contactIds: [LC08]
+      body: "鈴木健太さんと電話。候補者リストはまだ送れていない。今週中に送ると伝えた。"
+      interaction: { actualContactIds: [LC08], channel: phone, direction: outgoing, occurredOn: "2026-11-05", precision: day }
+      note: "LT04 已在 11 月 12 日完成，这篇里的“还没送”是旧的"
+    - { id: LM08, version: 1, locale: en, createdAt: "2026-09-10T10:00:00+09:00", title: Lumen ATS quote, body: "Lumen ATS quote from their sales rep: Team plan at JPY 1,900 per seat per month, minimum 30 seats." }
+    - { id: LM09, version: 1, locale: en, createdAt: "2026-11-02T10:00:00+09:00", title: Lumen ATS quote (updated), body: "Lumen ATS updated their quote: Team plan at JPY 2,050 per seat per month, minimum 20 seats. The September quote of JPY 1,900 has expired." }
+    - { id: LM10, version: 1, locale: en, createdAt: "2026-10-19T10:00:00+09:00", title: Lumina HR quote, body: "Lumina HR quote: JPY 1,500 per seat per month with no seat minimum, but interview scheduling is not included." }
+    - id: LM11
+      version: 1
+      createdAt: "2026-11-11T21:00:00+09:00"
+      title: 11 月第二周通话记录
+      contactIds: [LC03, LC04, LC01]
+      eventRefs: [ { kind: platform, id: LE02 }, { kind: private, id: LP01 } ]
+      body: "11 月 9 日我给张薇打了电话，聊了星汉精密的设备经理职位，我答应 11 月 19 日前把 JD 发给她。11 月 11 日张玮来电，说下周给我回音。听张玮说，曜石半导体的张伟上周已经和客户见过面。张薇是 5 月那场半導体キャリアフォーラム上认识的，张玮是岚图招聘说明会上认识的。"
+      note: "关联 3 位联系人和 2 场活动；实际往来只有张薇、张玮两次，张伟只是被转述。没有往来字段"
+    - id: LM12
+      version: 1
+      locale: en
+      createdAt: "2025-03-14T18:00:00+09:00"
+      contactIds: [LC11]
+      body: "First call with Priya Raman. She is Director of Engineering at Corvid Robotics. Salary expectation: JPY 18M base."
+      interaction: { actualContactIds: [LC11], channel: phone, direction: outgoing, occurredOn: "2025-03-14", precision: day }
+      note: "和她的第一篇笔记，在 140 篇里按由新到旧排第 140 位"
+    - { id: LM13, version: 1, locale: en, createdAt: "2026-02-20T15:00:00+09:00", contactIds: [LC11], body: "Priya was promoted to VP of Engineering. Her expectation is now JPY 21M base." }
+    - { id: LM14, version: 1, locale: en, createdAt: "2026-10-30T12:00:00+09:00", contactIds: [LC11], body: "Priya updated her expectation: JPY 24M base plus equity. Earlier figures are out of date." }
+    - { id: LM15, version: 1, locale: en, createdAt: "2026-10-28T09:00:00+09:00", contactIds: [LC11], body: "Still need to send Priya the JD for the Aster Motion role.", note: "LT10 已在 11 月 3 日完成，这篇是旧的" }
+    - id: LM16
+      version: 1
+      locale: en
+      createdAt: "2026-11-10T17:00:00+09:00"
+      contactIds: [LC11]
+      body: "Called Priya. She can do the on-site on November 24 or November 25. I promised to send her the interview panel list by November 18."
+      interaction: { actualContactIds: [LC11], channel: phone, direction: outgoing, occurredOn: "2026-11-10", precision: day }
+    - id: LM17
+      version: 1
+      locale: en
+      createdAt: "2026-11-12T14:00:00+09:00"
+      contactIds: [LC12, LC11]
+      body: "Lunch with Kavya Raman (no relation to Priya). Kavya mentioned that Priya Raman is also talking to a competitor."
+      interaction: { actualContactIds: [LC12], channel: meeting, direction: mutual, occurredOn: "2026-11-12", precision: day }
+      note: "Priya 只是被提到，往来对象是 Kavya"
+    - { id: LM18, version: 3, createdAt: "2026-11-14T20:00:00+09:00", title: 本周重点职位, body: "本周重点：功率器件（SiC／GaN）方向的工艺负责人，客户是临港的一家新厂。上周的机器视觉算法负责人职位已经关闭，不用再推人。" }
+    - { id: LM19, version: 1, createdAt: "2026-11-07T20:00:00+09:00", title: 本周重点职位, body: "本周重点：机器视觉算法负责人，客户是澄川自动化。", note: "标题与 LM18 相同，是上一周写的" }
+
+  todos:
+    - { id: LT01, title: 鈴木健太さんに面接日程の候補を送る, status: open, plannedDate: null, dueAt: "2026-11-10T18:00:00+09:00", relatedContactIds: [LC08], updatedAt: "2026-11-04T10:00:00+09:00", note: 已过期 }
+    - { id: LT02, title: 東都精機の求人票を更新する, status: open, plannedDate: null, dueAt: "2026-11-12T12:00:00+09:00", relatedContactIds: [LC08, LC10], updatedAt: "2026-11-04T10:05:00+09:00", note: 已过期 }
+    - { id: LT03, title: 鈴木健太さんに請求書の宛先を確認する, status: open, plannedDate: null, dueAt: "2026-11-14T18:00:00+09:00", relatedContactIds: [LC08], updatedAt: "2026-11-06T10:00:00+09:00", note: 已过期 }
+    - { id: LT04, title: 鈴木健太さんに候補者リストを送る, status: completed, completedAt: "2026-11-12T16:00:00+09:00", relatedContactIds: [LC08], updatedAt: "2026-11-12T16:00:00+09:00" }
+    - { id: LT05, title: 鈴木健さんに職務経歴書のフォーマットを送る, status: open, plannedDate: null, dueAt: "2026-11-11T18:00:00+09:00", relatedContactIds: [LC09], updatedAt: "2026-11-03T10:00:00+09:00", note: "已过期，但属于另一位鈴木" }
+    - { id: LT06, title: Reference check for Marcus Lindqvist, status: open, plannedDate: "2026-11-17", dueAt: null, relatedContactIds: [LC14, LC16], updatedAt: "2026-11-13T17:10:00+09:00" }
+    - { id: LT07, title: Reference check for Marcus Lindgren, status: open, plannedDate: "2026-11-18", dueAt: null, relatedContactIds: [LC15], updatedAt: "2026-06-30T12:10:00+09:00" }
+    - { id: LT08, title: Send interview panel list to Priya, status: open, plannedDate: null, dueAt: "2026-11-18T18:00:00+09:00", relatedContactIds: [LC11], source: { memoId: LM16, memoVersion: 1 }, updatedAt: "2026-11-10T17:05:00+09:00" }
+    - { id: LT09, title: Confirm Priya's on-site date with Aster Motion, status: open, plannedDate: "2026-11-17", dueAt: null, relatedContactIds: [LC11, LC16], updatedAt: "2026-11-10T17:06:00+09:00" }
+    - { id: LT10, title: Send Priya the JD, status: completed, completedAt: "2026-11-03T11:00:00+09:00", relatedContactIds: [LC11], updatedAt: "2026-11-03T11:00:00+09:00" }
+    - { id: LT11, title: 准备曜石终面的候选人材料, status: open, plannedDate: "2026-11-18", dueAt: null, relatedContactIds: [LC01, LC05], relatedEventRefs: [ { kind: private, id: LP02 } ], updatedAt: "2026-11-09T19:10:00+09:00" }
+    - { id: LT12, title: 准备岚图终面的候选人材料, status: open, plannedDate: "2026-11-20", dueAt: null, relatedContactIds: [LC02], relatedEventRefs: [ { kind: private, id: LP03 } ], updatedAt: "2026-11-11T18:10:00+09:00" }
+
+  formal_followups:
+    - { id: LF01, contactId: LC11, title: Follow up with Priya on the competing offer, dueAt: "2026-11-20T18:00:00+09:00", status: open }
+    - { id: LF02, contactId: LC11, title: Follow up with Priya after the first client call, dueAt: "2026-10-12T18:00:00+09:00", status: completed, completedAt: "2026-10-15T10:00:00+09:00" }
+
+  schedule:
+    - { id: LS01, title: 東都精機 定例ミーティング, startsAt: "2026-11-17T15:00:00+09:00", endsAt: "2026-11-17T16:00:00+09:00", timeZone: Asia/Tokyo, recurrence: { frequency: weekly }, contactIds: [LC08, LC10], memoIds: [LM07], note: 每周二 }
+    - { id: LS02, title: 東都精機 定例ミーティング（社内準備）, startsAt: "2026-11-16T17:00:00+09:00", endsAt: "2026-11-16T17:30:00+09:00", timeZone: Asia/Tokyo, recurrence: { frequency: weekly }, note: 每周一 }
+
+  private_events:
+    - { id: LP01, title: 岚图机器人招聘说明会, startsAt: "2026-09-18T14:00:00+09:00", venue: 上海, version: 1 }
+    - { id: LP02, title: 曜石半导体终面日, startsAt: "2026-11-25T10:00:00+09:00", venue: 上海, version: 1 }
+    - { id: LP03, title: 岚图机器人终面日, startsAt: "2026-11-27T10:00:00+09:00", venue: 上海, version: 1 }
+
+  attendance:
+    - { id: LA01, eventRef: { kind: private, id: LP01 }, attendedOn: "2026-09-18", dayParts: [afternoon], selfNote: 认识了张玮和澄川的两位工程师, version: 1 }
+    - { id: LA02, eventRef: { kind: platform, id: LE02 }, attendedOn: "2026-05-20", dayParts: [afternoon], selfNote: 认识了张薇, version: 1 }
+
+  platform_events:
+    # 同名不同期的系列：LE01、LE02、LE03。
+    - { id: LE01, title: 半導体キャリアフォーラム, startsAt: "2026-11-19T13:00:00+09:00", venue: 東京国際フォーラム, topics: [半导体, 招聘], fee: 免费 }
+    - { id: LE02, title: 半導体キャリアフォーラム, startsAt: "2026-05-20T13:00:00+09:00", venue: 東京国際フォーラム, topics: [半导体, 招聘], fee: 免费, note: 上一期，已经办完 }
+    - { id: LE03, title: 半導体キャリアフォーラム, startsAt: "2027-05-19T13:00:00+09:00", venue: 東京国際フォーラム, topics: [半导体, 招聘], fee: 免费, note: 下一期 }
+    - { id: LE04, title: 功率半导体技术沙龙, startsAt: "2026-11-20T10:00:00+09:00", venue: 大阪, topics: [半导体, 功率器件], fee: 2000 日元 }
+    - { id: LE05, title: 协作机器人应用研讨会, startsAt: "2026-11-17T14:00:00+09:00", venue: 品川, topics: [机器人], fee: 免费 }
+    - { id: LE06, title: ロボティクス人材ミートアップ, startsAt: "2026-11-18T19:00:00+09:00", venue: 涩谷, topics: [机器人, 招聘], fee: 1500 日元, note: 晚上 }
+    - { id: LE07, title: 半导体设备展·夜场交流, startsAt: "2026-11-19T18:30:00+09:00", venue: 幕张, topics: [半导体], fee: 免费, note: 晚上 }
+
+  my_events:
+    - { eventId: LE01, status: registered }
+    - { eventId: LE02, status: attended }
+
+  # 40 条记忆里手写 8 条，其余 32 条由 bulk.memory 生成。appliesTo 写的是任务类型：event.recommend 推荐活动，
+  # contact.recommend 推荐或挑选联系人，memo.summarize 整理笔记，todo.plan 安排待办，schedule.plan 安排日程，all 不限。
+  # 约束类共 12 条：LMM01、LMM02、LMM05 加批量的 9 条。
+  memory:
+    - { id: LMM01, category: constraint, content: 不要推荐晚上的活动（18 点以后开始的）, appliesTo: [event.recommend], revision: 2 }
+    - { id: LMM02, category: constraint, content: 时间一律写 24 小时制, appliesTo: [all], revision: 1 }
+    - { id: LMM03, category: preference, content: 推荐活动时优先半导体和机器人主题, appliesTo: [event.recommend], structured: { topics: [半导体, 机器人], strength: prefer }, revision: 1 }
+    - { id: LMM04, category: preference, content: 推荐活动时优先周末, appliesTo: [event.recommend], validUntil: "2026-08-31", revision: 1, note: "已过有效期，不该再用" }
+    - { id: LMM05, category: constraint, content: 推荐联系人时每个人都写明公司, appliesTo: [contact.recommend], revision: 1 }
+    - { id: LMM06, category: identity, content: 我是做半导体和机器人方向的猎头顾问, appliesTo: [contact.recommend, memo.summarize], revision: 1 }
+    - { id: LMM07, category: goal, content: 年底前认识三位功率器件方向的技术负责人, appliesTo: [contact.recommend], revision: 1 }
+    - { id: LMM08, category: preference, content: 安排面试相关的待办时尽量放在上午, appliesTo: [todo.plan], revision: 1 }
+
+  rules:
+    - id: LRU01
+      title: 每周一挑五位本周该联系的半导体候选人
+      schedule: { kind: weekly, daysOfWeek: [1], time: "08:30", timeZone: Asia/Tokyo }
+      candidateScope: 行业是半导体、最近一次真实往来在 60 天以前的联系人
+      references: [ { type: memo, id: LM18 } ]
+      rankingBasis: 与笔记「本周重点职位」写的职位方向相关
+      maxItems: 5
+      onEmpty: silent
+      notify: { inApp: true, push: false }
+      status: active
+      version: 2
+      nextRunAt: "2026-11-16T08:30:00+09:00"
+
+  connections:
+    - { id: lconn-codex, client: Codex, scopes: ["contacts:read", "todos:read", "todos:propose", "proposals:read"] }
+
+  # 加在账号乙名下的引子，用来检验隔离。账号丁的回答、卡片、读取和工具结果里都不该出现。
+  account_B:
+    contacts:
+      - { id: LBC1, name: 张伟, org: 曜石半导体, role: 工艺整合总监 }
+      - { id: LBC2, name: Aaron Tan, org: Meridian Power Devices, role: Packaging Process Manager, region: 新加坡 }
+    memos:
+      - { id: LBM1, version: 1, createdAt: "2026-11-12T10:00:00+09:00", contactIds: [LBC1], body: "乙的笔记：张伟说 11 月 20 日就能到岗。" }
+
+# 五类干扰（README 第 12 节）。anchors 列的是组成这一类的锚点，hard 是难在哪里。
+interference:
+  same_or_similar:
+    anchors: [LC01, LC02, LC03, LC04, LC05, LC06, LC07, LC08, LC09, LC10, LC11, LC12, LC14, LC15, LC17, LC20, LT01, LT05, LT06, LT07, LT11, LT12, LM08, LM09, LM10, LM18, LM19, LE01, LE02, LE03, LS01, LS02]
+    hard: "七位姓张，其中两位都叫张伟、公司不同，还有张薇、张玮这样读音相同的；鈴木健太和鈴木健只差一个字；两位 Raman、两位 Marcus、Aaron Tan 和 Aaron Tang；标题只差一个词的待办和笔记；同名不同期的职业论坛。只说名字分不出是哪一位、哪一条"
+  multi_entity_links:
+    anchors: [LM11, LT11, LM17, LT06, LT02, LT09, LS01]
+    hard: "LM11 关联 3 位联系人和 2 场活动，真正通过话的只有两位；LT11 关联 2 位联系人和 1 场活动；LM17 关联两位 Raman，往来对象只有 Kavya；LS01 关联 2 位联系人和 1 篇笔记。只被提到的人不算往来对象，加一项关联时原有的要留着"
+  cross_page:
+    anchors: [LM12, LM04, LT01, LT02, LT03, LC17, LC18, LC19, LC24, LC25, LC26, LC27, LC28]
+    hard: "Priya 有 140 篇笔记、Tomás 有 120 篇，各自的第一篇排在最后；鈴木健太名下未完成的待办有 64 条；新加坡的联系人有 380 位，符合定时规则范围的有 241 位，都远超一页，也超过送判断的上限"
+  old_vs_new:
+    anchors: [LM01, LM02, LC13, LM05, LM06, LC11, LM12, LM13, LM14, LM08, LM09, LM07, LT04, LM15, LT10, LM18, LM19, LMM04]
+    hard: "到岗时间从 12 月 1 日改到 1 月 5 日；联系人资料还写着旧公司；期望年薪改过两次，联系人备注停在中间那次；报价更新而旧报价过期；待办已完成而旧笔记说还没做；上周的重点职位已经关闭；一条偏好已过有效期"
+  long_conversation:
+    anchors: [LCV01, LCV02, LCV03]
+    hard: "三段都超过 100 轮：很早提过的人、几十轮之前的长期指令、说到一半放弃的请求、只管那一次的例外、多次换话题；其中一段已经两天没动过"
+
+conversations:
+  - id: LCV01
+    title: 採用まわりの相談
+    turns: 112
+    startedAt: "2026-11-14T13:00:00+09:00"
+    lastActivityAt: "2026-11-15T09:55:00+09:00"
+    language: 日语
+    key_turns:
+      - turn: 1
+        why: 开场
+        user: "今日は採用まわりのことをいくつか相談させてください。"
+        assistant: "はい、どうぞ。"
+      - turn: 4
+        why: 很早提过的对象
+        user: "東都精機の鈴木健太さんから、来月の採用計画について相談を受けています。"
+        assistant: "承知しました。鈴木健太さんとのやり取りや関連するToDoを確認したいときは、お知らせください。"
+      - turn: 9
+        why: 几十轮之前的指令
+        user: "これからは、面談の話が出たら毎回フォローアップのToDoを作っておいてください。"
+        assistant: "自動では作成しません。必要なときに言っていただければカードをお出しします。確認を押すまでは何も変わりません。"
+      - turn: 31
+        why: 换话题
+        user: "話は変わりますが、英語の推薦状の書き出しはどうすればいいですか。"
+        assistant: "推薦者と候補者の関係、一緒に働いた期間を最初の一文で示すのが一般的です。"
+      - turn: 57
+        why: 中途放弃的请求
+        user: "東都精機の定例ミーティングを水曜の15時に動かして……いや、やっぱりそのままでいいです。"
+        assistant: "承知しました。変更はしていません。"
+      - turn: 74
+        why: 换话题
+        user: "別件です。交通費精算のメモは、どこまで細かく書くべきでしょうか。"
+        assistant: "日付、区間、目的の三つがあれば十分です。"
+      - turn: 108
+        why: 最后五轮之一
+        user: "構造化面接の質問は何問くらいが適切ですか。"
+        assistant: "一時間の面接なら五問から七問が目安です。"
+      - turn: 109
+        why: 最后五轮之一
+        user: "評価シートは5段階と4段階、どちらがいいでしょう。"
+        assistant: "中間に逃げにくい4段階のほうが、評価者ごとの差が見えやすくなります。"
+      - turn: 110
+        why: 最后五轮之一
+        user: "逆質問の時間はどれくらい取るべきですか。"
+        assistant: "最後の十分ほどを確保しておくと、候補者の関心も把握できます。"
+      - turn: 111
+        why: 最后五轮之一
+        user: "オンライン面接で気をつける点はありますか。"
+        assistant: "接続確認の時間を先に取り、質問は一つずつ区切って話すとよいです。"
+      - turn: 112
+        why: 收尾
+        at: "2026-11-15T09:55:00+09:00"
+        user: "ありがとう、参考になりました。"
+        assistant: "どういたしまして。"
+    state:
+      shownList: null
+      lastMentioned:
+        - { type: contact, id: LC08, name: 鈴木健太, turn: 4 }
+        - { type: schedule, id: LS01, name: 東都精機 定例ミーティング, turn: 57 }
+      openItems: []
+    filler:
+      turns: "其余 101 轮"
+      rule: "日语的普通问答：面试技巧、邮件措辞、推荐信、报销、商务礼节。用户每条不超过 60 个字，助手每条不超过 200 个字，没有引用，也没有记录编号"
+      must_not: "不出现任何联系人、公司、活动的名字；不出现“これからは”“毎回”“今後は”这类长期指令；不提出新增、修改、删除记录的请求；不出现 bulk.must_not_produce 里的词"
+
+  - id: LCV02
+    title: Candidate pipeline Q&A
+    turns: 118
+    startedAt: "2026-11-12T10:00:00+09:00"
+    lastActivityAt: "2026-11-13T17:40:00+09:00"
+    language: 英语
+    note: "到时钟为止已经两天没有新消息，超过 60 分钟的空闲线"
+    key_turns:
+      - turn: 1
+        why: 开场
+        user: "I want to think through a few things about my candidate pipeline."
+        assistant: "Sure. Go ahead."
+      - turn: 12
+        why: 很早提过的对象
+        user: "Marcus Lindgren at Fennel Systems might be open to a move next year."
+        assistant: "Understood. Tell me if you want me to look up his record or your history with him."
+      - turn: 20
+        why: 几十轮之前的指令
+        user: "From now on, whenever I mention a reference check, set its due date to two days later."
+        assistant: "I can't apply that automatically. Tell me each time, and I'll put the change on a card for you to confirm."
+      - turn: 45
+        why: 换话题
+        user: "Different topic: how long should a first outreach message be?"
+        assistant: "Three or four sentences: why them, why now, and one clear ask."
+      - turn: 63
+        why: 中途放弃的请求
+        user: "Draft a to-do to call Ingrid Solberg... actually, never mind, I'll do it myself."
+        assistant: "Okay. Nothing was created."
+      - turn: 88
+        why: 换话题
+        user: "Switching gears. What notice period is fair to assume for a director in Japan?"
+        assistant: "One to three months is common. Ask early, because handovers at that level often run long."
+      - turn: 116
+        why: 最近提到的联系人
+        at: "2026-11-13T17:30:00+09:00"
+        user: "@Marcus Lindqvist's on-site went well. What should a reference check cover for a hardware director?"
+        refs: [ { type: contact, id: LC14, quote: "@Marcus Lindqvist" } ]
+        assistant: "Cover what he owned end to end, how he handled a slipped schedule, team retention, and how he works with manufacturing."
+        recordRefs: ["contact:LC14"]
+      - turn: 117
+        why: 最后五轮之一
+        user: "How many referees is normal at this level?"
+        assistant: "Two or three: a former manager, a peer, and someone who reported to him."
+      - turn: 118
+        why: 收尾
+        at: "2026-11-13T17:40:00+09:00"
+        user: "Got it, thanks."
+        assistant: "You're welcome."
+    state:
+      shownList: null
+      lastMentioned:
+        - { type: contact, id: LC14, name: Marcus Lindqvist, turn: 116 }
+      openItems: []
+    filler:
+      turns: "其余 109 轮（含第 114、115 轮）"
+      rule: "英语的普通问答：外联措辞、面试安排的一般做法、离职交接、跨时区约时间。用户每条不超过 30 个词，助手每条不超过 60 个词，没有引用，也没有记录编号"
+      must_not: "不出现任何联系人、公司、活动的名字；不出现 from now on、always、every time 这类长期指令；不提出新增、修改、删除记录的请求；不出现 bulk.must_not_produce 里的词"
+
+  - id: LCV03
+    title: 活动和名片整理
+    turns: 105
+    startedAt: "2026-11-14T19:00:00+09:00"
+    lastActivityAt: "2026-11-15T09:50:00+09:00"
+    language: 中文
+    key_turns:
+      - turn: 1
+        why: 开场
+        user: "想聊聊最近要去的活动。"
+        assistant: "好，你说。"
+      - turn: 5
+        why: 很早说过的目标
+        user: "下周想去几场行业活动，主要想认识做功率器件的人。"
+        assistant: "好，这次挑的时候我会把这个目标算进去。"
+      - turn: 14
+        why: 只管那一次的例外
+        user: "这次先别管我不看晚上活动的习惯，看看周三、周四晚上有什么。"
+        assistant: "好，这一次把晚上的也算进来。周三、周四晚上有两场，按开始时间排好了。"
+        recordRefs: ["event:LE06", "event:LE07"]
+      - turn: 40
+        why: 换话题
+        user: "换个话题：见完面当天发感谢邮件，还是隔天发？"
+        assistant: "当天晚上或第二天上午都可以，重点是提到一句当面聊过的具体内容。"
+      - turn: 60
+        why: 几十轮之前的指令，当时没有保存
+        user: "以后推荐活动优先周末吧。"
+        assistant: "“从对话里记住新的”这个开关现在关着，这句话只用在这一轮。想长期保存，可以到设置里加一条。"
+      - turn: 83
+        why: 中途放弃的请求
+        user: "帮我报名功率半导体技术沙龙……算了，我自己去官网报。"
+        assistant: "好，没有做任何操作。"
+      - turn: 101
+        why: 最后五轮之一
+        user: "名片上手写的备注要不要也录进去？"
+        assistant: "建议录。见面时的印象和约定最容易忘，录成一句话就够。"
+      - turn: 102
+        why: 最后五轮之一
+        user: "同一个人换了公司，旧名片还留吗？"
+        assistant: "留着做记录，但把新公司写在最前面，免得之后看错。"
+      - turn: 103
+        why: 最后五轮之一
+        user: "录名片是当天做好，还是攒一周一起做？"
+        assistant: "当天做更稳，隔久了对不上是在哪里认识的。"
+      - turn: 104
+        why: 最后五轮之一
+        user: "中文名和英文名都有的人，哪个放前面？"
+        assistant: "放你平时称呼他的那个，另一个写在备注里。"
+      - turn: 105
+        why: 收尾
+        at: "2026-11-15T09:50:00+09:00"
+        user: "好的，明白了。"
+        assistant: "好。"
+    state:
+      shownList:
+        shownAtTurn: 14
+        items:
+          - { type: event, id: LE06, name: ロボティクス人材ミートアップ }
+          - { type: event, id: LE07, name: 半导体设备展·夜场交流 }
+      lastMentioned:
+        - { type: event, id: LE04, name: 功率半导体技术沙龙, turn: 83 }
+      openItems: []
+    filler:
+      turns: "其余 94 轮"
+      rule: "中文的普通问答：名片整理、邮件礼节、会面准备、出差安排。用户每条不超过 60 个字，助手每条不超过 200 个字，没有引用，也没有记录编号"
+      must_not: "不出现任何联系人、公司、活动的名字；不出现“以后”“每次”“从现在起”这类长期指令；不提出新增、修改、删除记录的请求；不出现 bulk.must_not_produce 里的词"
+
+# 联网回放。用例在 settings 里用 web_replay 指定。
+web_replay:
+  lumen-pricing:
+    kind: fetch
+    url: "https://lumen-ats.example.test/pricing"
+    title: Lumen ATS Pricing
+    updated: "2026-10-01"
+    text: "Team plan: JPY 2,400 per seat per month, billed annually (effective October 1, 2026). Minimum 5 seats. Enterprise: contact sales."
+  lumen-empty-search:
+    kind: search
+    match: "*"
+    results: []
+
+# 目前没有用例需要增量。
+patches: {}
