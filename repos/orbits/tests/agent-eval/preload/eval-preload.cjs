@@ -67,15 +67,27 @@ const state = {
   pushes: [],
 };
 
+/** AG01: the request being processed (features/agent-v1/observability/trace.ts runWithTraceContext). */
+function currentRequestId() {
+  try {
+    const context = globalThis.__orbitAgentTraceContext?.getStore?.();
+    return context && typeof context.requestId === "string" ? context.requestId : null;
+  } catch {
+    return null;
+  }
+}
+
 function emit(event) {
   if (!traceFile) return;
   localSeq += 1;
+  const requestId = currentRequestId();
   const line = {
     at: new RealDate(realNow() + state.offsetMs).toISOString(),
     realAt: new RealDate(realNow()).toISOString(),
     pid: process.pid,
     localSeq,
     caseId: state.context.caseId,
+    ...(requestId ? { requestId } : {}),
     ...event,
   };
   try {
@@ -314,10 +326,17 @@ if (typeof realFetch === "function") {
     try {
       response = await realFetch(input, init);
     } catch (error) {
-      emit({ type: `${prefix}.response`, source: "real", provider, status: null, error: error instanceof Error ? error.message : String(error), usage: null, durationMs: realNow() - started });
+      emit({ type: `${prefix}.response`, source: "real", provider, status: null, error: error instanceof Error ? error.message : String(error), aborted: Boolean(init?.signal?.aborted), usage: null, durationMs: realNow() - started });
       throw error;
     }
-    const text = await response.text();
+    let text;
+    try {
+      text = await response.text();
+    } catch (error) {
+      // AG01: a run stopped while the body was still arriving aborts here; keep request/response paired.
+      emit({ type: `${prefix}.response`, source: "real", provider, status: response.status, error: error instanceof Error ? error.message : String(error), aborted: Boolean(init?.signal?.aborted), usage: null, durationMs: realNow() - started });
+      throw error;
+    }
     const body = parseMaybeJson(text);
     const usage = body && typeof body === "object" ? body.usage ?? body.usageMetadata ?? null : null;
     emit({ type: `${prefix}.response`, source: "real", provider, status: response.status, headers: safeHeaders(response.headers), body, usage, model: body?.model ?? requestBody?.model ?? null, durationMs: realNow() - started });

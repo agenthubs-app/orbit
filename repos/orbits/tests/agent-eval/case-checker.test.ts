@@ -49,6 +49,17 @@ test("a missing required field is reported with the case id and field", () => {
   assert.ok(issues.some((issue) => issue.caseId === "AE-H-901" && issue.field === "rubric" && /missing/u.test(issue.message)));
 });
 
+test("a rubric item may carry a gate: a known sprint not earlier than the case's own attribution", () => {
+  assert.deepEqual(checkOne(validCase({ rubric: [{ id: "R1", text: "行为" }, { gate: "AG05", id: "R2", text: "内容" }] })), []);
+  assert.deepEqual(checkOne(validCase({ rubric: [{ gate: "AG00", id: "R1", text: "同一 sprint" }] })), []);
+  const unknown = checkOne(validCase({ rubric: [{ gate: "AG42", id: "R1", text: "x" }] }));
+  assert.ok(unknown.some((issue) => issue.field === "rubric[0].gate" && /unknown sprint "AG42"/u.test(issue.message)));
+  const notString = checkOne(validCase({ rubric: [{ gate: 5, id: "R1", text: "x" }] }));
+  assert.ok(notString.some((issue) => issue.field === "rubric[0].gate"));
+  const early = checkOne(validCase({ gate: "AG03", rubric: [{ gate: "AG02", id: "R1", text: "x" }], sprint: "AG00" }), "H");
+  assert.ok(early.some((issue) => issue.field === "rubric[0].gate" && /earlier than the case's gate AG03/u.test(issue.message)));
+});
+
 test("undefined step and check words are reported", () => {
   const issues = checkOne(validCase({ steps: [{ teleport: { to: "x" } }], hard: [{ looks_good: true }] }));
   assert.ok(issues.some((issue) => issue.field === "steps[0]" && /undefined step word "teleport"/u.test(issue.message)));

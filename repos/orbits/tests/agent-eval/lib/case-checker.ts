@@ -222,6 +222,13 @@ export function checkCase(testCase: EvalCase, areaFile: AreaFile, context: Check
       if (!isRecord(item) || typeof item.id !== "string" || typeof item.text !== "string" || !item.text.trim()) {
         push(`rubric[${index}]`, "each item needs an id and a text");
       }
+      // README §3.3: an item may count only from a later sprint, never before the case's own gate.
+      if (isRecord(item) && item.gate !== undefined) {
+        if (typeof item.gate !== "string" || !sprintPattern.test(item.gate)) push(`rubric[${index}].gate`, `unknown sprint "${String(item.gate)}"`);
+        else if (typeof owningSprint === "string" && sprintPattern.test(owningSprint) && item.gate < owningSprint) {
+          push(`rubric[${index}].gate`, `${item.gate} is earlier than the case's ${testCase.gate ? "gate" : "sprint"} ${owningSprint}`);
+        }
+      }
     });
   }
   if (world) {

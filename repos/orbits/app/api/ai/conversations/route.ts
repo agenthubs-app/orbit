@@ -66,6 +66,7 @@ import {
   AiSessionReferenceAuthorizationError,
   authorizeAiSessionContactReferences,
 } from "../../../../features/orbit-ai/ai-session-reference-authorization";
+import { handleAgentV1Send } from "../../../../features/agent-v1/entry/http";
 
 // 这个 route 是 OrbitRealAgent 前端聊天框调用的服务端入口。
 // 业务逻辑不写在 route 里：route 只负责读请求、调用 conversation service、
@@ -649,6 +650,11 @@ export async function POST(request: Request): Promise<Response> {
   if (!agentContext) return agentRequestUnauthorizedResponse();
   const readBodyStartedAt = timing.now();
   const body = await readJsonBody(request);
+  // agent-design AG01: protocol 3 only persists and answers (processing follows);
+  // refused while ORBIT_AGENT_V1_MODE is off. Protocol 2 continues below unchanged.
+  if (body.protocolVersion === 3) {
+    return handleAgentV1Send({ actorId: agentContext.actorId, body, mode });
+  }
   const input = readSendInput(body, new URL(request.url).searchParams);
   const reliableInput =
     body.protocolVersion === 2 ? reliableAiSendInputSchema.safeParse(body) : null;

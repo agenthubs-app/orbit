@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -48,10 +49,34 @@ function withoutSecrets(value: unknown, depth = 0): unknown {
   );
 }
 
+export interface AgentTraceContext {
+  requestId: string;
+}
+
+/**
+ * AG01: the request being processed, so that events emitted deeper down (and the eval
+ * preload's model.* / db.* events, which read the same store through globalThis) carry
+ * its requestId. One store per process, shared by every bundle that loads this module.
+ */
+function traceContextStore(): AsyncLocalStorage<AgentTraceContext> {
+  const holder = globalThis as { __orbitAgentTraceContext?: AsyncLocalStorage<AgentTraceContext> };
+  holder.__orbitAgentTraceContext ??= new AsyncLocalStorage<AgentTraceContext>();
+  return holder.__orbitAgentTraceContext;
+}
+
+export function runWithTraceContext<T>(context: AgentTraceContext, operation: () => T): T {
+  return traceContextStore().run(context, operation);
+}
+
+export function currentTraceContext(): AgentTraceContext | null {
+  return traceContextStore().getStore() ?? null;
+}
+
 export function emitTrace(event: AgentTraceEvent): void {
   try {
     const hook = evalHook();
-    const payload = withoutSecrets({ origin: "product", ...event }) as Record<string, unknown>;
+    const context = currentTraceContext();
+    const payload = withoutSecrets({ origin: "product", ...(context && !event.requestId ? { requestId: context.requestId } : {}), ...event }) as Record<string, unknown>;
     if (hook) {
       hook.emit(payload);
       return;

@@ -2,6 +2,7 @@
  * What a case run shows, derived from the merged trace, the db-diff and the fixture id map.
  * Hard checks read only this; adding evidence for a new check word starts here.
  */
+import type { AgentResultDocument } from "../../../shared/contract/agent-v1";
 import type { DatabaseDiff, RecordChange } from "./snapshot";
 import type { TraceEvent } from "./trace-log";
 
@@ -61,6 +62,29 @@ export interface ReadObservation {
   account: string | null;
 }
 
+/** AG01: the protocol-3 entry as the runner saw it (requests stored by the server, acks, client views). */
+export interface EntryObservation {
+  requests: {
+    requestId: string;
+    sessionId: string;
+    message: string;
+    status: string;
+    receivedSeq: number;
+    receivedAt: string;
+    startedAt: string | null;
+    endedAt: string | null;
+    attempts: number;
+    arrivedWhileRunning: boolean;
+    queueAheadAtArrival: number;
+    document: AgentResultDocument;
+    /** Trace seq of the server's entry.started / last entry.finished or entry.cancelled. */
+    startSeq: number | null;
+    endSeq: number | null;
+  }[];
+  acks: { client: string; step: number; resend: boolean; message: string; httpStatus: number; requestId: string | null; status: string | null; replayed: boolean | null; error: string | null; seq: number }[];
+  clients: Record<string, { docs: Record<string, AgentResultDocument>; duplicates: number[]; onlineAtEnd: boolean; received: number }>;
+}
+
 export interface Observation {
   caseId: string;
   account: string;
@@ -79,6 +103,7 @@ export interface Observation {
   clarifications: number;
   unsupported: { step: number; word: string; reason: string }[];
   fake: boolean;
+  entry?: EntryObservation;
   /** Run-level facts filled in at the end of the run (costs, summary, voiding). */
   run?: Record<string, unknown>;
 }

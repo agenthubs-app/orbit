@@ -75,6 +75,8 @@ async function main(argv: readonly string[]): Promise<void> {
     invariantPack: selection.invariants.map((testCase) => testCase.id),
     judgePrompt: { sha256: fileSha256(JUDGE_PROMPT), version: Number(fs.readFileSync(JUDGE_PROMPT, "utf8").match(/版本\s*(\d+)/u)?.[1] ?? 1) },
     label,
+    // AG01: which entry the clients used (on = protocol 3 for web/app; app_old stays on protocol 2).
+    agentV1Mode: environment.env.ORBIT_AGENT_V1_MODE ?? "off",
     model: { judgment: "gemini-decision-1 (not called by the current agent)", main: environment.env.ORBIT_DEEPSEEK_MODEL ?? "deepseek-v4-flash (product default)", provider: environment.env.ORBIT_AGENT_PROVIDER },
     promptVersions: "current product prompts (no versioned prompt set before AG03)",
     runId,

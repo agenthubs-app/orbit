@@ -25,7 +25,8 @@ export interface EvalCase {
   interference?: unknown;
   steps: Step[];
   hard: HardCheck[];
-  rubric: { id: string; text: string }[];
+  /** `gate`: the item counts from that sprint's gate on (README §3.3). */
+  rubric: { id: string; text: string; gate?: string }[];
   notes?: string;
   [key: string]: unknown;
 }

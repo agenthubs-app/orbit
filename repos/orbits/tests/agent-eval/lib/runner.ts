@@ -13,11 +13,12 @@ import pg from "pg";
 
 import type { EvalCase, Step } from "./cases";
 import { EvalClient, signSessionCookie } from "./client";
+import { EntryHarness, type EntryRequestRow } from "./entry-client";
 import type { EvalEnvironment } from "./env-guard";
 import { baseUrl } from "./eval-env";
 import { fakeTurn, FAKE_DEFECTS, type FakeDefect } from "./fake-agent";
 import { hardChecksPass, runHardChecks, type CheckContext, type CheckResult } from "./hard-checks";
-import { BUSINESS_COLLECTIONS, normalizeDraftOps, normalizeLedgerOps, PRIVATE_READ_COLLECTIONS, productIdsIn, type CardObservation, type Observation, type ReadObservation } from "./observations";
+import { BUSINESS_COLLECTIONS, normalizeDraftOps, normalizeLedgerOps, PRIVATE_READ_COLLECTIONS, productIdsIn, type CardObservation, type EntryObservation, type Observation, type ReadObservation } from "./observations";
 import { evalPaths } from "./paths";
 import { serverControl } from "./server";
 import { readSeedReport, type SeedReportFile } from "./selfcheck";
@@ -46,13 +47,13 @@ export interface CaseOutcome {
 
 const STEP_SUPPORT_NOTE: Record<string, string> = {
   card_edit: "removing an item from a card is not offered by the current product (AG02/AG07)",
-  disconnect: "the current product has no real-time channel to drop (AG01)",
+  disconnect: "the real-time channel needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   legacy_update: "old-client compatibility arrives in AG18",
   local_pending_edit: "unsynced App edits are simulated from AG07",
   mcp: "MCP access arrives in AG17",
   mcp_paginate: "MCP access arrives in AG17",
   open_link: "confirmation links arrive in AG17",
-  reconnect: "the current product has no real-time channel (AG01)",
+  reconnect: "the real-time channel needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   regenerate: "expired cards and regeneration arrive in AG02",
   resume_conversation: "resuming a saved conversation with its progress arrives in AG14",
   review: "the review queue for unknown outcomes arrives in AG02",
@@ -60,7 +61,7 @@ const STEP_SUPPORT_NOTE: Record<string, string> = {
   rollback: "rollback arrives in AG18",
   scheduler_tick: "scheduled dispatch driven by the runner arrives in AG15",
   select: "clarification options arrive in AG04",
-  stop: "stopping a running turn arrives in AG01",
+  stop: "stopping a running turn needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   sync: "App sync simulation arrives in AG07",
 };
 
@@ -76,6 +77,10 @@ interface StepRecord {
   word: string;
   body?: unknown;
 }
+
+const FINAL_REQUEST_STATUSES = new Set(["completed", "failed", "cancelled"]);
+const STATUS_LABEL: Record<string, string> = { cancelled: "已停止（用户点了停止）", completed: "已完成", failed: "失败", queued: "排队中（等前一条处理完）", running: "处理中", waiting_user: "等用户" };
+const statusLabel = (status: string | null | undefined) => (status ? STATUS_LABEL[status] ?? status : "（无）");
 
 function caseClock(testCase: EvalCase, world: WorldFixture): string {
   return testCase.clock ?? world.clock ?? DEFAULT_CLOCK;
@@ -192,6 +197,11 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   let clarifications = 0;
   let fake: FakeDefect | null = null;
   const stepRecords: StepRecord[] = [];
+  // AG01: with the new entry on, web and app send protocol 3 and follow the session channel.
+  const useEntry = environment.env.ORBIT_AGENT_V1_MODE === "on";
+  let entry: EntryHarness | null = null;
+  let entryRows: EntryRequestRow[] = [];
+  const onlineAtEnd = new Set<string>();
   try {
     const before = await readDatabaseState(db);
     const beforePayloads = await readAllPayloads(db);
@@ -217,6 +227,10 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     let conversation: ConversationState = { history: [], messageRevision: 0, sessionId: `session_${randomUUID()}`, started: false };
     const sentBodies = new Map<number, unknown>();
     const clientFor = async (name: string) => new EvalClient(baseUrl(environment), log, await cookieFor(account), (name as "web" | "app") ?? "web");
+    if (useEntry) {
+      entry = new EntryHarness({ actorId: () => accounts[account], baseUrl: baseUrl(environment), cookie: () => cookieFor(account), db, log, sessionId: conversation.sessionId });
+      await entry.start(["web", "app"]);
+    }
 
     const sendUser = async (index: number, step: Step, resendOf?: unknown): Promise<void> => {
       const client = await clientFor(step.client ?? "web");
@@ -241,6 +255,29 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         return;
       }
       if (step.refs?.length) unsupported.push({ reason: "@ references beyond contacts arrive in AG05/AG11; sent without them", step: index, word: "user.refs" });
+      const clientName = step.client ?? "web";
+      if (entry && clientName !== "app_old") {
+        // Protocol 3: one POST that is only acknowledged; the result arrives on the channel / by requestId.
+        const v3Body = (resendOf as Record<string, unknown>) ?? {
+          clientMessageId: `message:${randomUUID()}`,
+          locale: testCase.locale,
+          message: text,
+          ...(conversation.started ? {} : { origin: { entryClient: clientName === "app" ? "app" : "web", entryPointId: "ai.new_chat", initialGroupId: null, kind: "manual", template: null } }),
+          protocolVersion: 3,
+          references: [],
+          sessionId: conversation.sessionId,
+        };
+        conversation.started = true;
+        sentBodies.set(index, v3Body);
+        const result = await client.request("POST", "/api/ai/conversations", v3Body, { purpose: resendOf ? "resend with the same message key" : "send" });
+        const receipt = result.body?.data?.agentRequest;
+        entry.acks.push({ client: clientName, error: result.body?.error?.code ?? null, httpId: String(result.requestSeqRef.httpId), httpStatus: result.status, message: String(v3Body.message), replayed: receipt?.replayed ?? null, requestId: receipt?.requestId ?? null, resend: Boolean(resendOf), status: receipt?.status ?? null, step: index });
+        entry.noteSent(clientName, receipt?.requestId ?? null, receipt?.status ?? null);
+        transcript.push(receipt
+          ? `- 服务端应答（HTTP ${result.status}）：${receipt.replayed ? "同一条消息，返回原来的委托" : "已收到"} ${receipt.requestId}，接收顺序 #${receipt.receivedSeq}，状态：${statusLabel(receipt.status)}`
+          : `- 服务端应答（HTTP ${result.status}）：未收下（${result.body?.error?.code ?? "无应答"}）`, "");
+        return;
+      }
       const body = (resendOf as Record<string, unknown>) ?? {
         clientMessageId: `message:${randomUUID()}`,
         expectedMessageRevision: conversation.messageRevision,
@@ -308,11 +345,57 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     const runStep = async (step: Step, index: number): Promise<void> => {
       const word = Object.keys(step).find((key) => !["client", "refs", "while_running"].includes(key)) ?? "unknown";
       stepRecords.push({ index, word });
-      if (step.while_running) unsupported.push({ reason: "while_running needs a request that can be overtaken mid-turn (AG01)", step: index, word: "while_running" });
+      if (step.while_running && !entry) unsupported.push({ reason: "while_running needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)", step: index, word: "while_running" });
       switch (word) {
         case "user":
           await sendUser(index, step);
           return;
+        case "disconnect":
+        case "reconnect":
+        case "stop": {
+          if (!entry) {
+            log.push({ step: index, type: `turn.${word}`, value: step[word] });
+            unsupported.push({ reason: STEP_SUPPORT_NOTE[word], step: index, word });
+            return;
+          }
+          const name = String((step[word] as { client?: string } | undefined)?.client ?? step.client ?? "web");
+          if (word === "disconnect") {
+            if (step.while_running) {
+              // The client drops the channel mid-turn: only after it has seen part of that turn.
+              const waited = await entry.waitForEventOfRunningTurn(name);
+              if (waited.late) {
+                log.push({ client: name, reason: waited.reason, requestId: waited.requestId, step: index, type: "turn.disconnect_late" });
+                transcript.push(`*（${name} 本想在处理中途断开，但${waited.reason === undefined ? "" : `：${waited.reason}`}；照样断开）*`, "");
+              }
+            }
+            log.push({ client: name, lastSeq: entry.channel(name).lastSeq, step: index, type: "turn.disconnect" });
+            entry.disconnect(name);
+            transcript.push(`*（${name} 断开实时通道；断开前最后收到的序号 ${entry.channel(name).lastSeq}）*`, "");
+            return;
+          }
+          if (word === "reconnect") {
+            const after = entry.channel(name).lastSeq;
+            log.push({ after, client: name, step: index, type: "turn.reconnect" });
+            entry.connect(name);
+            await entry.waitCaughtUp(name);
+            const client = await clientFor(name);
+            const read = await entry.readBack(name, (requestPath, purpose) => client.request("GET", requestPath, undefined, { purpose }));
+            transcript.push(`*（${name} 重新连上，带上序号 ${after}，从它之后接着收；再按 requestId 读回 ${read} 条结果）*`, "");
+            return;
+          }
+          const seen = entry.runningAsSeenBy(name);
+          const rows = await entry.requests();
+          const current = rows.filter((row) => row.sessionId === entry!.currentSessionId);
+          const target = (seen && current.find((row) => row.requestId === seen && !FINAL_REQUEST_STATUSES.has(row.status))) || current.find((row) => row.status === "running") || null;
+          log.push({ client: name, requestId: target?.requestId ?? null, seenAsRunning: seen, step: index, type: "turn.stop" });
+          transcript.push(`**用户点击**（${name}）：停止${target ? `（${target.requestId}）` : "（没有正在处理的一轮）"}`, "");
+          if (!target) return;
+          const client = await clientFor(name);
+          const result = await client.request("POST", `/api/ai/runs/${encodeURIComponent(target.requestId)}/transition`, { action: "cancel" }, { purpose: "stop" });
+          const stopped = result.body?.data?.agentRequest;
+          transcript.push(`- 服务端：${result.status === 200 ? (stopped?.changed ? "这一轮已停止" : `没有变化（${statusLabel(stopped?.document?.status)}）`) : `拒绝（HTTP ${result.status}）`}`, "");
+          return;
+        }
         case "use_fake_agent": {
           const defect = step.use_fake_agent?.defect as FakeDefect;
           if (!FAKE_DEFECTS.includes(defect)) {
@@ -344,6 +427,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         }
         case "new_conversation":
           conversation = { history: [], messageRevision: 0, sessionId: `session_${randomUUID()}`, started: false };
+          await entry?.switchSession(conversation.sessionId);
           log.push({ sessionId: conversation.sessionId, step: index, type: "turn.new_conversation" });
           transcript.push("*（新开对话）*", "");
           return;
@@ -355,6 +439,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           }
           account = label;
           conversation = { history: [], messageRevision: 0, sessionId: `session_${randomUUID()}`, started: false };
+          await entry?.switchSession(conversation.sessionId);
           log.push({ account: label, step: index, type: "turn.switch_account" });
           transcript.push(`*（换成账号 ${label}）*`, "");
           return;
@@ -411,11 +496,29 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
 
     for (const [index, step] of testCase.steps.entries()) {
       try {
+        if (entry && !fake) {
+          // eval/README.md §3.4 while_running: act while a turn is still being processed; otherwise
+          // first let the earlier turns end. The wait reads the eval database, not a client.
+          if (step.while_running) {
+            if (!(await entry.waitRunning())) log.push({ note: "while_running: no turn of the session was running any more", step: index, type: "runner.note" });
+            // A person presses stop after seeing the turn run for a moment, not within milliseconds of sending.
+            else if ("stop" in step) await new Promise((resolve) => setTimeout(resolve, 1_500));
+          } else if (!(await entry.waitIdle())) {
+            log.push({ note: "the earlier turns did not end within 240 s", step: index, type: "runner.note" });
+          }
+        }
         await runStep(step, index);
       } catch (stepError) {
         log.push({ error: stepError instanceof Error ? stepError.message : String(stepError), step: index, type: "error" });
         unsupported.push({ reason: `step failed: ${stepError instanceof Error ? stepError.message : stepError}`, step: index, word: "error" });
       }
+    }
+    if (entry) {
+      if (!(await entry.waitIdle())) log.push({ note: "some turns had not ended 240 s after the last step", type: "runner.note" });
+      await entry.settleViews();
+      entryRows = await entry.requests();
+      for (const channel of entry.channels.values()) if (channel.online) onlineAtEnd.add(channel.name);
+      await entry.close();
     }
     await new Promise((resolve) => setTimeout(resolve, 600));
     const serverState = await serverControl<{ faults: { where: string; kind: string; applied: number }[] }>(environment, "state");
@@ -432,6 +535,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     unsupported.push({ reason: `case aborted: ${caseError instanceof Error ? caseError.message : caseError}`, step: -1, word: "error" });
     if (!mergedEvents.length) mergedEvents = mergeTrace(log.events, []);
   } finally {
+    await entry?.close().catch(() => undefined);
     await db.end();
   }
 
@@ -447,13 +551,62 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   for (const change of diff.records.filter((item) => item.collection === "orbit_agent_chat_requests" && item.kind === "created")) {
     const requestId = String(change.after?.requestId ?? change.id);
     const response = sendResponses.find((event) => JSON.stringify(event.body ?? null).includes(requestId));
-    requests.push({ requestId, seq: Number(response?.seq ?? -1), state: (change.after?.state as string) ?? null, status: Number(response?.status ?? 0) });
+    requests.push({ requestId, seq: Number(response?.seq ?? -1), state: ((change.after?.state ?? change.after?.status) as string) ?? null, status: Number(response?.status ?? 0) });
   }
 
   const secrets = businessSecretValues(environment);
   const rawTrace = mergedEvents.map((event) => scrubSecrets(JSON.stringify(event), secrets)).join("\n");
   fs.writeFileSync(path.join(dir, "trace.jsonl"), `${rawTrace}\n`);
   const events = rawTrace.split("\n").filter(Boolean).map((line) => JSON.parse(line) as TraceEvent);
+
+  // AG01: the protocol-3 requests as the server stored them, the acks the clients got and what each client shows.
+  let entryObservation: EntryObservation | undefined;
+  if (entry) {
+    const harness: EntryHarness = entry;
+    const seqOf = (types: string[], requestId: string, pick: "first" | "last" = "first") => {
+      const found = events.filter((event) => types.includes(event.type) && event.requestId === requestId && event.origin !== "runner");
+      const chosen = pick === "first" ? found[0] : found[found.length - 1];
+      return chosen ? Number(chosen.seq) : null;
+    };
+    const known = new Set(Object.values(idMap));
+    entryObservation = {
+      acks: harness.acks.map((ack) => ({ ...ack, seq: Number(events.find((event) => event.type === "http.response" && event.httpId === ack.httpId)?.seq ?? -1) })),
+      clients: Object.fromEntries([...harness.channels.values()].map((channel) => [channel.name, { docs: Object.fromEntries(channel.docs), duplicates: [...channel.duplicates], onlineAtEnd: onlineAtEnd.has(channel.name), received: channel.received.length }])),
+      requests: entryRows.map((row) => ({ ...row, endSeq: seqOf(["entry.finished", "entry.cancelled"], row.requestId, "last"), startSeq: seqOf(["entry.started"], row.requestId) })),
+    };
+    for (const row of entryObservation.requests) {
+      const text = row.document?.answer?.text;
+      if (!text) continue;
+      const refs = row.document.answer?.sourceRefs ?? [];
+      const product = new Set([...productIdsIn(refs, known), ...refs.map((ref) => ref.replace(/^[a-z_]+:/u, "")).filter((id) => known.has(id))]);
+      answers.push({ citations: [...product].map((id) => fixtureIdOf(id)).filter((id): id is string => Boolean(id)), seq: Number(row.endSeq ?? -1), text });
+    }
+    transcript.push("", "## 结果文档（服务端按 requestId 保存的版本）", "");
+    for (const row of entryObservation.requests) {
+      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, "");
+    }
+    const reconnects = events.filter((event) => event.type === "turn.reconnect");
+    if (reconnects.length) {
+      transcript.push("## 实时通道重连", "");
+      for (const reconnect of reconnects) {
+        const name = String(reconnect.client);
+        const opened = events.find((event) => event.type === "entry.channel.open" && event.stream === true && Number(event.seq) > Number(reconnect.seq));
+        const received = events.filter((event) => event.type === "client.channel_event" && event.client === name && Number(event.seq) > Number(reconnect.seq));
+        const repeated = received.filter((event) => event.duplicate === true).map((event) => `#${event.channelSeq}`);
+        transcript.push(`- ${name}：重连时带上的最后序号（Last-Event-ID）${reconnect.after}；服务端按 after=${opened?.after ?? "（未见）"} 推送（事件 seq ${opened?.seq ?? "-"}）；重连后收到 ${received.map((event) => `#${event.channelSeq}`).join("、") || "无"}；重复收到：${repeated.join("、") || "无"}`);
+      }
+      transcript.push("");
+    }
+    transcript.push("## 两端最后显示的内容", "");
+    for (const [name, view] of Object.entries(entryObservation.clients)) {
+      transcript.push(`- ${name}（最后${view.onlineAtEnd ? "在线" : "离线"}，经通道收到 ${view.received} 个事件${view.duplicates.length ? `，重复收到序号 ${view.duplicates.join("、")}` : ""}）：`);
+      for (const row of entryObservation.requests) {
+        const shown = view.docs[row.requestId];
+        transcript.push(`  - #${row.receivedSeq}：${shown ? `${statusLabel(shown.status)}；${shown.answer?.text ? `回答 ${shown.answer.text.length} 字` : "无回答"}；${JSON.stringify(shown) === JSON.stringify(row.document) ? "与结果文档一致" : "与结果文档不一致"}` : "没有显示这一条"}`);
+      }
+    }
+    transcript.push("");
+  }
 
   // Cards: card.frozen events (product or fake) and cards the client saw.
   const frozen = events.filter((event) => event.type === "card.frozen");
@@ -516,6 +669,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     clicks: events.filter((event) => event.type === "turn.click"),
     decisions,
     diff,
+    ...(entryObservation ? { entry: entryObservation } : {}),
     events,
     fake: fake !== null,
     fixtureIdOf,

@@ -234,6 +234,320 @@
         }
       }
     },
+    "agent-v1.ts::AgentProtocolVersion": {
+      "kind": "enum",
+      "values": [
+        "3"
+      ]
+    },
+    "agent-v1.ts::AgentRequestStatus": {
+      "kind": "enum",
+      "values": [
+        "'cancelled'",
+        "'completed'",
+        "'failed'",
+        "'queued'",
+        "'running'",
+        "'waiting_user'"
+      ]
+    },
+    "agent-v1.ts::AgentPartStatus": {
+      "kind": "enum",
+      "values": [
+        "'answered'",
+        "'awaiting_acceptance'",
+        "'awaiting_clarification'",
+        "'awaiting_confirmation'",
+        "'declined'",
+        "'failed'",
+        "'suggested_external'",
+        "'unfinished'",
+        "'waiting_dependency'"
+      ]
+    },
+    "agent-v1.ts::AgentPartResult": {
+      "kind": "object",
+      "members": {
+        "partId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentPartStatus"
+        },
+        "operationId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentAnswerContract": {
+      "kind": "object",
+      "members": {
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sourceRefs": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentRequestEndingContract": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'failed' | 'stopped_by_user'"
+        },
+        "at": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "reason": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentResultDocument": {
+      "kind": "object",
+      "members": {
+        "schemaVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "1"
+        },
+        "requestId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sessionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentRequestStatus"
+        },
+        "revision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "answer": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentAnswerContract | null"
+        },
+        "partResults": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentPartResult[]"
+        },
+        "ending": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentRequestEndingContract"
+        },
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentSendInputContract": {
+      "kind": "object",
+      "members": {
+        "protocolVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "3"
+        },
+        "sessionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientMessageId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "locale": {
+          "optional": false,
+          "kind": "text",
+          "type": "'zh' | 'en' | 'ja'"
+        },
+        "message": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "references": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AiSessionReferenceContract[]"
+        },
+        "origin": {
+          "optional": true,
+          "kind": "text",
+          "type": "AiSessionOriginInputContract"
+        },
+        "pageContext": {
+          "optional": true,
+          "kind": "text",
+          "type": "AiPageContextContract"
+        }
+      }
+    },
+    "agent-v1.ts::AgentSendReceiptContract": {
+      "kind": "object",
+      "members": {
+        "protocolVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "3"
+        },
+        "requestId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sessionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientMessageId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentRequestStatus"
+        },
+        "receivedSeq": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "replayed": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "acceptedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentSessionEventKind": {
+      "kind": "enum",
+      "values": [
+        "'accepted'",
+        "'document'",
+        "'status'"
+      ]
+    },
+    "agent-v1.ts::AgentSessionEventContract": {
+      "kind": "object",
+      "members": {
+        "seq": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "sessionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "requestId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentSessionEventKind"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentRequestStatus"
+        },
+        "at": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "document": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentResultDocument"
+        }
+      }
+    },
+    "agent-v1.ts::AgentSessionEventsPageContract": {
+      "kind": "object",
+      "members": {
+        "sessionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "events": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentSessionEventContract[]"
+        },
+        "lastSeq": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "agent-v1.ts::AgentCancelResultContract": {
+      "kind": "object",
+      "members": {
+        "requestId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "changed": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "document": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentResultDocument"
+        }
+      }
+    },
     "ai-artifacts.ts::AiContactArtifactStatus": {
       "kind": "enum",
       "values": [
@@ -2884,7 +3198,7 @@
         "density": {
           "optional": true,
           "kind": "text",
-          "type": "1 | 2 | 3 | undefined"
+          "type": "3 | 1 | 2 | undefined"
         },
         "sourceChip": {
           "optional": true,
@@ -3191,7 +3505,7 @@
         "densityIfAnswered": {
           "optional": true,
           "kind": "text",
-          "type": "1 | 2 | 3"
+          "type": "3 | 1 | 2"
         }
       }
     },
@@ -3221,7 +3535,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'skipped' | 'answered'"
+          "type": "'answered' | 'skipped'"
         },
         "next": {
           "optional": false,
@@ -3231,7 +3545,7 @@
         "densityAfter": {
           "optional": true,
           "kind": "text",
-          "type": "1 | 2 | 3"
+          "type": "3 | 1 | 2"
         }
       }
     },
@@ -4633,7 +4947,7 @@
         "density": {
           "optional": true,
           "kind": "text",
-          "type": "1 | 2 | 3"
+          "type": "3 | 1 | 2"
         },
         "sourceChip": {
           "optional": true,
@@ -6904,6 +7218,11 @@
               "kind": "text",
               "type": "string"
             },
+            "unnamed": {
+              "optional": true,
+              "kind": "text",
+              "type": "boolean"
+            },
             "slug": {
               "optional": true,
               "kind": "text",
@@ -6948,6 +7267,11 @@
               "optional": true,
               "kind": "text",
               "type": "boolean"
+            },
+            "next": {
+              "optional": true,
+              "kind": "text",
+              "type": "{ eventId: string; title: string; startsAt: string; } | null"
             }
           }
         },
@@ -6957,6 +7281,11 @@
           "type": "{ score: number; verdict: EventAssessmentVerdict; display: { goalFit: number; people: number; timeCost: number; }; basis: string; assessmentId?: string | null | undefined; } | null"
         },
         "assessmentPeopleUnknown": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "hasPlan": {
           "optional": true,
           "kind": "text",
           "type": "boolean"
@@ -9296,7 +9625,7 @@
         "currentStep": {
           "optional": false,
           "kind": "text",
-          "type": "1 | 2 | 3 | null"
+          "type": "3 | 1 | 2 | null"
         },
         "grandfathered": {
           "optional": false,
@@ -13037,7 +13366,20 @@
         "AccountExportScope",
         "AccountLanguagePreferenceSaveContract",
         "AccountLanguagePreferenceSaveReceiptContract",
+        "AgentAnswerContract",
+        "AgentCancelResultContract",
+        "AgentPartResult",
+        "AgentPartStatus",
+        "AgentProtocolVersion",
         "AgentReminderPreferencesContract",
+        "AgentRequestEndingContract",
+        "AgentRequestStatus",
+        "AgentResultDocument",
+        "AgentSendInputContract",
+        "AgentSendReceiptContract",
+        "AgentSessionEventContract",
+        "AgentSessionEventKind",
+        "AgentSessionEventsPageContract",
         "AiContactArtifactContract",
         "AiContactArtifactItemContract",
         "AiContactArtifactStatus",
@@ -15343,7 +15685,7 @@
         "dailyCap": {
           "optional": true,
           "kind": "text",
-          "type": "1 | 2 | 3"
+          "type": "3 | 1 | 2"
         },
         "secretaryMail": {
           "optional": true,
@@ -15434,7 +15776,7 @@
         "dailyCap": {
           "optional": true,
           "kind": "text",
-          "type": "1 | 2 | 3"
+          "type": "3 | 1 | 2"
         },
         "secretaryMail": {
           "optional": true,
@@ -17020,7 +17362,7 @@
         "schemaVersion": {
           "optional": true,
           "kind": "text",
-          "type": "2 | 3"
+          "type": "3 | 2"
         },
         "outcome": {
           "optional": true,
@@ -19284,7 +19626,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'dismissed' | 'accepted'"
+          "type": "'accepted' | 'dismissed'"
         },
         "award": {
           "optional": true,
@@ -19715,7 +20057,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'dismissed' | 'accepted'"
+          "type": "'accepted' | 'dismissed'"
         },
         "replayed": {
           "optional": false,
@@ -20806,7 +21148,7 @@
         "schemaVersion": {
           "optional": true,
           "kind": "text",
-          "type": "2 | 3"
+          "type": "3 | 2"
         },
         "outcome": {
           "optional": true,
@@ -21299,12 +21641,12 @@
         "currentScreen": {
           "optional": false,
           "kind": "text",
-          "type": "1 | 2 | 3 | 4 | 5 | null"
+          "type": "3 | 1 | 2 | 4 | 5 | null"
         },
         "lastConfirmedScreen": {
           "optional": false,
           "kind": "text",
-          "type": "0 | 1 | 2 | 3 | 4 | 5"
+          "type": "0 | 3 | 1 | 2 | 4 | 5"
         },
         "finishedAt": {
           "optional": false,
@@ -21921,7 +22263,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'expired' | 'pending' | 'revoked' | 'accepted'"
+          "type": "'expired' | 'pending' | 'accepted' | 'revoked'"
         },
         "canAccept": {
           "optional": false,
@@ -23906,7 +24248,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'expired' | 'pending' | 'dismissed' | 'accepted' | 'snoozed'"
+          "type": "'expired' | 'pending' | 'accepted' | 'dismissed' | 'snoozed'"
         },
         "suggestedPlannedDate": {
           "optional": true,

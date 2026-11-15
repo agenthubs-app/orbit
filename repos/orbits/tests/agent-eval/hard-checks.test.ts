@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { CHECKS, hardChecksPass, NOT_YET, runHardChecks, type CheckContext } from "./lib/hard-checks";
+import type { AgentResultDocument } from "../../shared/contract/agent-v1";
 import type { Observation } from "./lib/observations";
 import type { RecordChange } from "./lib/snapshot";
 import type { TraceEvent } from "./lib/trace-log";
@@ -232,4 +233,76 @@ test("an unimplemented check and an unsupported step count as failures with thei
   assert.match(results[0].detail, /AG03/u);
   assert.equal(results[1].check, "step:mcp");
   assert.equal(hardChecksPass(results), false);
+});
+
+// ── AG01: request_states, order, client_view_matches_result, request_status ──
+
+function doc(requestId: string, status: string, revision: number, text: string | null): AgentResultDocument {
+  return { answer: text === null ? null : { sourceRefs: [], text }, partResults: [], requestId, revision, schemaVersion: 1, sessionId: "s", status: status as AgentResultDocument["status"], updatedAt: "t" };
+}
+
+type EntryObs = NonNullable<Observation["entry"]>;
+
+function entryObs(input: { events?: TraceEvent[]; clients?: EntryObs["clients"]; requests?: Partial<EntryObs["requests"][number]>[]; acks?: Partial<EntryObs["acks"][number]>[] }): Observation {
+  const requests = (input.requests ?? []).map((request, index) => ({
+    arrivedWhileRunning: false, attempts: 1, document: doc(request.requestId ?? `r${index + 1}`, request.status ?? "completed", 3, "答"), endSeq: null, endedAt: "2026-11-15T01:00:02.000Z",
+    message: `消息${index + 1}`, queueAheadAtArrival: 0, receivedAt: "2026-11-15T01:00:00.000Z", receivedSeq: index + 1, requestId: `r${index + 1}`, sessionId: "s", startSeq: null,
+    startedAt: "2026-11-15T01:00:01.000Z", status: "completed", ...request,
+  }));
+  return {
+    ...obs({ events: input.events }),
+    entry: {
+      acks: (input.acks ?? []).map((ack) => ({ client: "web", error: null, httpStatus: 202, message: "消息1", replayed: false, requestId: "r1", resend: false, seq: 1, status: "running", step: 0, ...ack })),
+      clients: input.clients ?? {},
+      requests: requests as EntryObs["requests"],
+    },
+  };
+}
+
+test("request_states: the ack comes before the first model.response, resends keep the requestId, the final state matches", () => {
+  const events: TraceEvent[] = [{ type: "http.response" }, { requestId: "r1", type: "model.request" }, { requestId: "r1", type: "model.response" }, { type: "http.response" }];
+  const message = "开场聊天的话题是什么";
+  const good = entryObs({ acks: [{ message, seq: 1 }, { message, replayed: true, resend: true, seq: 4 }], events, requests: [{ message }] });
+  assert.equal(run("request_states", [{ acked: ["queued", "running"], final: "completed", quote: "开场聊天" }], good).status, "pass");
+  const late = entryObs({ acks: [{ message, seq: 4 }], events, requests: [{ message }] });
+  assert.match(run("request_states", [{ acked: "running", final: "completed", quote: "开场聊天" }], late).detail, /not before the first model\.response/u);
+  const newId = entryObs({ acks: [{ message, seq: 1 }, { message, requestId: "r2", resend: true, seq: 4 }], events, requests: [{ message }] });
+  assert.match(run("request_states", [{ acked: "running", final: "completed", quote: "开场聊天" }], newId).detail, /not the original r1/u);
+  const runningAck = entryObs({ acks: [{ message, status: "running" }], requests: [{ message }] });
+  assert.equal(run("request_states", [{ acked: "queued", final: "completed", quote: "开场聊天" }], runningAck).status, "fail");
+  assert.equal(run("request_states", [{ acked: "running", final: "cancelled", quote: "开场聊天" }], runningAck).status, "fail");
+  assert.equal(run("request_states", [], obs()).status, "cannot_judge", "without the protocol-3 entry there is no evidence");
+});
+
+test("order: one round after another, in the listed order or the received order", () => {
+  const sequential = entryObs({ requests: [
+    { endedAt: "2026-11-15T01:00:02.000Z", message: "明天有什么日程", startedAt: "2026-11-15T01:00:01.000Z" },
+    { endedAt: "2026-11-15T01:00:04.000Z", message: "八百字左右的短文", startedAt: "2026-11-15T01:00:02.000Z" },
+  ] });
+  assert.equal(run("order", "as_received", sequential).status, "pass");
+  assert.equal(run("order", [{ quote: "明天有什么日程" }, { quote: "八百字" }], sequential).status, "pass");
+  assert.equal(run("order", [{ quote: "八百字" }, { quote: "明天有什么日程" }], sequential).status, "fail");
+  const overlapping = entryObs({ requests: [
+    { endedAt: "2026-11-15T01:00:03.000Z", message: "一", startedAt: "2026-11-15T01:00:01.000Z" },
+    { endedAt: "2026-11-15T01:00:04.000Z", message: "二", startedAt: "2026-11-15T01:00:02.000Z" },
+  ] });
+  assert.match(run("order", "as_received", overlapping).detail, /before #1 ended/u);
+});
+
+test("client_view_matches_result: every stored document exactly once, nothing extra, nothing replayed", () => {
+  const stored = doc("r1", "completed", 3, "答");
+  const base = { requests: [{ document: stored }] };
+  const view = (docs: Record<string, AgentResultDocument>, duplicates: number[] = []) => ({ docs, duplicates, onlineAtEnd: true, received: 3 });
+  assert.equal(run("client_view_matches_result", ["web", "app"], entryObs({ ...base, clients: { app: view({ r1: stored }), web: view({ r1: stored }) } })).status, "pass");
+  const channelOnly = doc("r1", "running", 3, "只在通道里出现过的一段");
+  assert.match(run("client_view_matches_result", ["web"], entryObs({ ...base, clients: { web: view({ r1: channelOnly }) } })).detail, /stored document is revision 3 completed/u);
+  assert.match(run("client_view_matches_result", ["web"], entryObs({ ...base, clients: { web: view({}) } })).detail, /does not show #1/u);
+  assert.match(run("client_view_matches_result", ["web"], entryObs({ ...base, clients: { web: view({ r1: stored }, [2]) } })).detail, /more than once/u);
+  assert.match(run("client_view_matches_result", ["web"], entryObs({ ...base, clients: { web: view({ r1: stored, r9: stored }) } })).detail, /does not hold/u);
+});
+
+test("request_status: the last received request's final status", () => {
+  const two = entryObs({ requests: [{ status: "completed" }, { status: "cancelled" }] });
+  assert.equal(run("request_status", "cancelled", two).status, "pass");
+  assert.equal(run("request_status", "completed", two).status, "fail");
 });
