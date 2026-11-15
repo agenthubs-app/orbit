@@ -100,7 +100,7 @@ function ShellFrame({ language, pathname, currentBuildId, focus = null, children
   const hasHeader = Boolean(slots.title || slots.left || slots.right || slots.demoPill || rail);
   // b11 TT2 (2026-10-28): on a primary page (a left-rail destination itself) the title takes its own
   // row and the side controls drop to a toolbar row under it — left search / segments, right action.
-  const twoTier = Boolean(slots.left || slots.right) && SHELL_NAV.some((item) => item.href === pathname.replace(/\/+$/u, ""));
+  const twoTier = Boolean(slots.left || slots.right) && (Boolean(slots.twoTier) || SHELL_NAV.some((item) => item.href === pathname.replace(/\/+$/u, "")));
   const chrome: ShellChrome = { openPalette, openRail: () => setRailDrawer(true), inboxDot: dot, rail, railLabel, railOpenLabel };
   useEffect(() => { setRailDrawer(false); }, [pathname]);
   return (

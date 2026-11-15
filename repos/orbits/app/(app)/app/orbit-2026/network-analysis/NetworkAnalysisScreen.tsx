@@ -126,7 +126,7 @@ function AnalysisInner({ language, view, snapshot: initialSnapshot, evidenceName
   if (!view) {
     return (
       <>
-        <ShellPage title={t("title")} left={back} rightRail={false} />
+        <ShellPage title={t("title")} left={back} twoTier rightRail={false} />
         <RetryCard title={t("countFailed")} onRetry={() => router.refresh()} />
       </>
     );
@@ -134,7 +134,7 @@ function AnalysisInner({ language, view, snapshot: initialSnapshot, evidenceName
   if (view.lock.state === "locked") {
     return (
       <>
-        <ShellPage title={t("title")} subtitle={subtitle} left={back} rightRail={false} />
+        <ShellPage title={t("title")} subtitle={subtitle} left={back} twoTier rightRail={false} />
         <LockedView total={view.lock.total} required={view.lock.required} missing={view.lock.missing} />
       </>
     );
@@ -144,7 +144,7 @@ function AnalysisInner({ language, view, snapshot: initialSnapshot, evidenceName
     initial={selectionKey !== null && selectionKey === openingKey ? initialRail?.[selectionKey] : undefined} /> : <p className={styles.lbl}>{t("listPick")}</p>;
   return (
     <>
-      <ShellPage title={t("title")} subtitle={subtitle} left={back} right={tabs} rightRail={demo ? false : rail} />
+      <ShellPage title={t("title")} subtitle={subtitle} left={back} twoTier right={tabs} rightRail={demo ? false : rail} />
       {view.lock.reference ? (
         <div className={styles.banner} style={{ marginBottom: 18 }} data-analysis-reference>
           <Icon name="chart" size={16} />

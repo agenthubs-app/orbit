@@ -157,7 +157,7 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   const stagedRole = syncMoment ? t("detailSyncSampleRole") : contact?.role ?? "";
   const stagedOffering = syncMoment ? [...(contact?.offering ?? []), t("detailSyncSampleOffering")] : contact?.offering ?? [];
   const nextStep = contact?.nextAction.trim() ?? "";
-  const draftHref = contact ? `/app/agent?prefill=${encodeURIComponent(t("detailDraftIntent", { name: contact.displayName, step: nextStep }))}` : "#";
+  const draftHref = contact ? `/app/agent?q=${encodeURIComponent(t("detailDraftIntent", { name: contact.displayName, step: nextStep }))}` : "#";
 
   return (
     <>
