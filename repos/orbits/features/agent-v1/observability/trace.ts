@@ -31,6 +31,8 @@ export interface AgentEvalFault {
 interface AgentEvalHook {
   emit(event: Record<string, unknown>): void;
   takeFault?(where: string): AgentEvalFault | null;
+  /** AG03: a per-case deployment setting the eval set (e.g. model_calls_limit for model-budget-1). */
+  setting?(name: string): unknown;
 }
 
 const SECRET_KEY = /^(authorization|cookie|set-cookie|password|secret|token|api[-_]?key|access[-_]?token)$/iu;
@@ -51,6 +53,8 @@ function withoutSecrets(value: unknown, depth = 0): unknown {
 
 export interface AgentTraceContext {
   requestId: string;
+  /** AG03: the graph node running (understand, answer …); model events and eval faults read it. */
+  node?: string;
 }
 
 /**
@@ -76,7 +80,7 @@ export function emitTrace(event: AgentTraceEvent): void {
   try {
     const hook = evalHook();
     const context = currentTraceContext();
-    const payload = withoutSecrets({ origin: "product", ...(context && !event.requestId ? { requestId: context.requestId } : {}), ...event }) as Record<string, unknown>;
+    const payload = withoutSecrets({ origin: "product", ...(context && !event.requestId ? { requestId: context.requestId } : {}), ...(context?.node && !event.node ? { node: context.node } : {}), ...event }) as Record<string, unknown>;
     if (hook) {
       hook.emit(payload);
       return;
@@ -100,6 +104,18 @@ export function traceWriteFailures(): number {
 export function takeEvalFault(where: string): AgentEvalFault | null {
   try {
     return evalHook()?.takeFault?.(where) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Eval-only deployment setting for the current case (AG03: `model_calls_limit` of the
+ * model-budget-1 patch). Null outside the eval; production builds never load the preload.
+ */
+export function evalSetting(name: string): unknown {
+  try {
+    return evalHook()?.setting?.(name) ?? null;
   } catch {
     return null;
   }

@@ -1,0 +1,104 @@
+/**
+ * The first layer's prompt (设计稿 §3.1, 附录 A, 附录 C; agent-design AG03).
+ * The model splits the CURRENT message into parts and names what each needs; code decides routes.
+ */
+import { CAPABILITIES } from "../route/capabilities";
+import { CLARITIES, DATA_SOURCES, DELIVERABLES, ENTITIES } from "./schema";
+
+export const UNDERSTAND_PROMPT_VERSION = "understand@ag03.2";
+
+const CAPABILITY_NOTES = [
+  "contact.read, event.read, attendance.read, todo.read, memo.read, schedule.read, profile.read: read the user's own Orbit records (contacts, events in Orbit's event directory, attendance notes, to-dos, memos/notes, schedule, own profile).",
+  "view.context, view.timeline, view.recentInteraction: read views over a contact (context, timeline, last interaction).",
+  "contact.*, privateEvent.*, attendance.*, todo.*, memo.*, schedule.*, rule.*, memory.* with create/update/delete/…: change the user's records; only when the user explicitly asks Orbit to change something now.",
+  "rule.create: a scheduled or recurring task that Orbit runs later (e.g. regularly check for new events).",
+  "fn.rank, fn.compare, fn.group, fn.summarize, fn.extractInteractions, fn.extractFollowUps: work over records already read (rank, compare, group, summarize, extract interactions or follow-ups from notes).",
+  "web.fetch: read a public web page whose URL the user gave. web.search: look up a public fact on the web (a company's listed price, a public person's role).",
+  "external.deepResearch: open-ended research Orbit does not offer: due diligence reports, market-entry research, finding competitors and industry data by itself, chasing every source, cross-verifying many sources. external.otherTool: any other tool Orbit does not have.",
+];
+
+export function understandSystemPrompt(): string {
+  return [
+    "You are the first step of Orbit, a personal relationship assistant. You do not answer the user's records questions and you do not decide what Orbit will do; you describe what the user's CURRENT message asks for, as JSON. Code decides the route of each part.",
+    "",
+    "Output exactly one JSON object, with plainChat first:",
+    '{"plainChat": boolean, "reply": string (only when plainChat is true), "parts": [Part, ...]}',
+    "Part = {",
+    '  "localId": "p1", "p2", …',
+    '  "sourceQuote": a continuous piece of the CURRENT message copied character for character (no paraphrase, no added or removed characters; it may be a whole clause),',
+    '  "goal": what the user wants from this part, one short sentence in the user\'s language,',
+    `  "clarity": one of ${CLARITIES.join(", ")} (clear = what is wanted is clear, including any ordinary question; statement = the user states something, reports what someone else said or asked, asks a hypothetical, or asks for an opinion — not a request for Orbit to do it; missing_one = a change is asked but its object or value is missing; multiple_readings = it can be read several ways; none = only when nothing to do can be read out of it at all, e.g. just a name, "嗯", or "go ahead with that" when neither the message nor the context says what "that" is),`,
+    '  "objectClues": [{"entity": one of ' + ENTITIES.join(", ") + ', "text": the words of the CURRENT message that point at the object (e.g. "他", "第二个", "那篇笔记", "she", "彼女", "@名字"), "referenceId": a record handle from the context (r1, r2 …) only when the context clearly identifies it}],',
+    '  "constraints": negations, limits and hypotheses that apply, copied from the message (e.g. "先别改", "don\'t add anything to my to-dos", "もし…なら"),',
+    '  "dependsOn": localIds of parts whose result this part needs first,',
+    '  "requiredCapabilities": capability names from the list below (empty for ordinary discussion),',
+    `  "dataSources": any of ${DATA_SOURCES.join(", ")} (turn_material = only what is in the message itself),`,
+    `  "deliverable": one of ${DELIVERABLES.join(", ")},`,
+    '  "intentBasis": "instruction" (the user asks for it now) | "selection" | "accepted_context",',
+    '  "dataOwner": "self" | "other_user" (other_user when the data belongs to another Orbit user, e.g. another user\'s notes),',
+    '  "persistence": "this_turn" | "until_satisfied" (until_satisfied when the user asks Orbit to keep going without an end, e.g. keep searching until satisfied),',
+    '  "continues": {"kind": "alternative" | "clarification" | "card" | "pending_external", "ref": an open item handle o1, o2 …} — only when the CURRENT message answers or accepts that open item',
+    "}",
+    "",
+    "Capabilities (use these names only):",
+    CAPABILITIES.join(", "),
+    ...CAPABILITY_NOTES.map((note) => `- ${note}`),
+    "",
+    "Rules:",
+    "1. Only the CURRENT message creates parts. Earlier messages, lists and open items are context for understanding references; never create a part for a request that appears only in earlier messages.",
+    "2. One part per thing the user wants delivered. A message asking three things gives three parts. A constraint (\"but don't…\", \"先别改\") belongs to the part it limits, not a part of its own, unless it is a separate request.",
+    "3. A question asking for advice or an opinion, a statement, a hypothetical (\"if…\", \"もし…\"), and a quoted instruction from someone else are clarity statement with no change capability. If the user takes back a change in the same message (\"…改到周五——等等，先别改\"), keep the change capability and put the negation in constraints.",
+    "4. Pronouns and ordinals (他, 她, he, she, 彼, 彼女, 第二个, that note) are resolved only from the context: the record of each kind mentioned last, the list shown last (by position), the records attached with @, and record handles in recent messages. Give the handle as referenceId; if the context does not identify it, leave referenceId out. A request about an earlier matter (\"刚才那件事\", \"さっきの件\", \"that thing\") that neither the message nor the context identifies has clarity none; do not pick a matter from old messages.",
+    "5. parts always lists at least one part, also for plain chat. plainChat is true only when every part is ordinary discussion that general knowledge can answer, needing no capability. Then write the answer in reply, in the language of the current message, concise and practical.",
+    "6. Write goal and reply in the language of the current message.",
+    "7. Do not output verdict, route, approval flags or account ids.",
+  ].join("\n");
+}
+
+export function understandUserText(input: { message: string; contextText: string }): string {
+  return [
+    "Context:",
+    input.contextText,
+    "",
+    "CURRENT message (split this one):",
+    input.message,
+  ].join("\n");
+}
+
+export function repairUserText(input: { message: string; contextText: string; previousOutput: string; errors: readonly string[] }): string {
+  return [
+    understandUserText(input),
+    "",
+    "Your previous output could not be used:",
+    input.previousOutput.slice(0, 4000),
+    "",
+    "Problems:",
+    ...input.errors.slice(0, 20).map((error) => `- ${error}`),
+    "",
+    "Output the corrected JSON object only.",
+  ].join("\n");
+}
+
+export const ANSWER_PROMPT_VERSION = "answer-discussion@ag03.2";
+
+export function answerSystemPrompt(language: "zh" | "ja" | "en"): string {
+  const name = language === "zh" ? "Chinese" : language === "ja" ? "Japanese" : "English";
+  return [
+    "You are Orbit, a personal relationship assistant. Answer the discussion items below from general knowledge only.",
+    "You have no access to the user's records in this step: do not claim to have looked anything up, do not invent facts about specific people, records or conversations, and do not say any record was created, changed or deleted.",
+    "Respect each item's constraints (for example, if the user said not to change something, acknowledge that nothing will be changed).",
+    "You do not see the earlier conversation. If an item points at something said earlier (\"that matter\", \"さっきの件\"), do not guess what it was; say you cannot tell which one is meant and ask.",
+    `Write in ${name}. Be concise and practical: give a clear recommendation and the reason.`,
+    'Output one JSON object: {"segments": [{"partId": "<the item id>", "text": "<the answer>"}]} with one segment per item.',
+  ].join("\n");
+}
+
+export function answerUserText(input: { message: string; items: readonly { partId: string; quote: string; goal: string; constraints: readonly string[] }[] }): string {
+  return [
+    "The user's message:",
+    input.message,
+    "",
+    "Items to answer:",
+    ...input.items.map((item) => `- ${item.partId}: "${item.quote}" — ${item.goal}${item.constraints.length ? ` (constraints: ${item.constraints.join("; ")})` : ""}`),
+  ].join("\n");
+}
