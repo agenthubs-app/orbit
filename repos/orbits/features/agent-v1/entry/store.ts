@@ -16,6 +16,7 @@ import { createHash } from "node:crypto";
 import type {
   AgentActionPreviewContract,
   AgentAnswerContract,
+  AgentClarificationContract,
   AgentPartResult,
   AgentRequestEndingContract,
   AgentRequestStatus,
@@ -24,6 +25,7 @@ import type {
   AgentSessionEventContract,
   AgentSessionEventKind,
 } from "../../../shared/contract/agent-v1";
+import { attributeSelection } from "../clarify/attribution";
 import { createPostgresLiveRecordStore } from "../../../shared/storage/postgres-live-record-store";
 import type { LiveRecordStoreLike } from "../../../shared/storage/live-record-store";
 import type { TransactionalPostgresClient } from "../../../shared/storage/transactional-postgres";
@@ -56,6 +58,24 @@ export interface AgentEntryRequestRecord {
   attempts: number;
   workerId: string | null;
   document: AgentResultDocument;
+  /** AG04: a click waiting to resume this request (stored first, processed in the session's order). */
+  pendingResume?: AgentPendingResume | null;
+  /** AG04: the clicks accepted for this request, by their key (a resend returns the first). */
+  selections?: { clientSelectionId: string; clarificationId: string; optionId: string; at: string }[];
+}
+
+export interface AgentPendingResume {
+  kind: "select";
+  clientSelectionId: string;
+  clarificationId: string;
+  optionId: string;
+}
+
+/** AG04: what an earlier request's document gets when a later message answered or shelved its question. */
+export interface AgentEntryAmendment {
+  partResults: readonly AgentPartResult[];
+  clarifications: readonly AgentClarificationContract[];
+  status: "completed" | "waiting_user";
 }
 
 export interface AgentSessionLane {
@@ -67,7 +87,7 @@ export interface AgentSessionLane {
 }
 
 export class AgentEntryError extends Error {
-  constructor(readonly code: "REQUEST_ID_REUSED") {
+  constructor(readonly code: "REQUEST_ID_REUSED" | "REQUEST_NOT_FOUND" | "REQUEST_NOT_WAITING" | "CLARIFICATION_NOT_FOUND" | "CLARIFICATION_CLOSED" | "OPTION_NOT_OFFERED") {
     super(code);
   }
 }
@@ -80,6 +100,8 @@ export interface AgentEntryOutcome {
   ending?: AgentRequestEndingContract;
   /** AG02: the card this round produced (or the one it showed). */
   actionPreview?: AgentActionPreviewContract;
+  /** AG04: the round's clickable directions. */
+  clarifications?: readonly AgentClarificationContract[];
 }
 
 export interface AgentEntryStore {
@@ -92,6 +114,13 @@ export interface AgentEntryStore {
   finish(input: { actorId: string; requestId: string; workerId: string; now: string; outcome: AgentEntryOutcome }): Promise<{ delivered: boolean; record: AgentEntryRequestRecord | null }>;
   /** Stops a queued or running request. A request that already ended is returned unchanged. */
   cancel(input: { actorId: string; requestId: string; now: string }): Promise<{ changed: boolean; record: AgentEntryRequestRecord } | null>;
+  /**
+   * AG04: a click under a set of directions. Checked against the options offered then (attributeSelection),
+   * stored on the request and queued in the session's order; it resumes that request and makes no new one.
+   */
+  acceptSelection(input: { actorId: string; sessionId: string; requestId: string; clientSelectionId: string; clarificationId: string; optionId: string; now: string; workerId: string; leaseMs: number }): Promise<{ record: AgentEntryRequestRecord; replayed: boolean; claimed: boolean }>;
+  /** AG04: writes back an earlier request that a later message answered or shelved (only while it is not running). */
+  amend(input: { actorId: string; requestId: string; now: string; amendment: AgentEntryAmendment }): Promise<AgentEntryRequestRecord | null>;
   get(actorId: string, requestId: string): Promise<AgentEntryRequestRecord | null>;
   lane(actorId: string, sessionId: string): Promise<AgentSessionLane | null>;
   listEvents(actorId: string, sessionId: string, afterSeq: number, limit: number): Promise<AgentSessionEventContract[]>;
@@ -260,18 +289,75 @@ function createOperations(withLane: WithLane, read: (actorId: string, requestId:
         }
         record.status = input.outcome.status;
         record.endedAt = input.now;
+        // AG04: a resumed request keeps what it delivered before; the continuation follows it.
+        const resumed = Boolean(record.pendingResume);
+        const previous = record.document.answer;
+        const answer = resumed && previous && input.outcome.answer
+          ? { sourceRefs: [...new Set([...previous.sourceRefs, ...input.outcome.answer.sourceRefs])], text: [previous.text, input.outcome.answer.text].filter((text) => text.trim()).join("\n\n") }
+          : resumed && !input.outcome.answer ? previous : input.outcome.answer;
+        record.pendingResume = null;
         record.document = nextDocument(record, input.now, {
-          answer: input.outcome.answer,
+          answer,
           partResults: input.outcome.partResults,
           status: input.outcome.status,
           ...(input.outcome.ending ? { ending: input.outcome.ending } : {}),
           ...(input.outcome.actionPreview ? { actionPreview: input.outcome.actionPreview } : {}),
+          ...(input.outcome.clarifications ? { clarifications: input.outcome.clarifications } : {}),
         });
         lane.running = null;
         await pushEvent(unit, lane, record, "document", input.now);
         await unit.putRequest(record);
         await unit.putLane(lane);
         return { delivered: true, record };
+      });
+    },
+
+    acceptSelection: (input) => withLane(input.actorId, input.sessionId, async (unit) => {
+      const record = await unit.getRequest(input.requestId);
+      if (!record || record.sessionId !== input.sessionId) throw new AgentEntryError("REQUEST_NOT_FOUND");
+      const earlier = (record.selections ?? []).find((item) => item.clientSelectionId === input.clientSelectionId);
+      if (earlier) {
+        if (earlier.clarificationId !== input.clarificationId || earlier.optionId !== input.optionId) throw new AgentEntryError("REQUEST_ID_REUSED");
+        return { claimed: false, record, replayed: true };
+      }
+      const check = attributeSelection(record.document.clarifications, { clarificationId: input.clarificationId, optionId: input.optionId });
+      if (check.ok === false) throw new AgentEntryError(check.reason);
+      if (record.status !== "waiting_user" && record.status !== "completed") throw new AgentEntryError("REQUEST_NOT_WAITING");
+      const lane = await unit.getLane();
+      // The set is answered now, so a second click (on any option) is refused; the click itself waits its turn.
+      const clarifications = (record.document.clarifications ?? []).map((item) => (item.clarificationId === input.clarificationId ? { ...item, selectedOptionId: input.optionId, state: "answered" as const } : item));
+      record.selections = [...(record.selections ?? []), { at: input.now, clarificationId: input.clarificationId, clientSelectionId: input.clientSelectionId, optionId: input.optionId }];
+      record.pendingResume = { clarificationId: input.clarificationId, clientSelectionId: input.clientSelectionId, kind: "select", optionId: input.optionId };
+      record.status = "queued";
+      record.document = nextDocument(record, input.now, { clarifications, status: "queued" });
+      await pushEvent(unit, lane, record, "status", input.now);
+      let claimed = false;
+      if (!lane.running && lane.queue.length === 0) {
+        startRunning(record, lane, input.workerId, input.now, input.leaseMs);
+        await pushEvent(unit, lane, record, "status", input.now);
+        claimed = true;
+      } else if (!lane.queue.includes(record.requestId)) {
+        lane.queue.push(record.requestId);
+      }
+      await unit.putRequest(record);
+      await unit.putLane(lane);
+      return { claimed, record, replayed: false };
+    }),
+
+    amend: async (input) => {
+      const known = await read(input.actorId, input.requestId);
+      if (!known) return null;
+      return withLane(input.actorId, known.sessionId, async (unit) => {
+        const record = await unit.getRequest(input.requestId);
+        // Only a delivered request is written back; one queued or running writes its own result.
+        if (!record || (record.status !== "waiting_user" && record.status !== "completed")) return record;
+        const lane = await unit.getLane();
+        record.status = input.amendment.status;
+        record.document = nextDocument(record, input.now, { clarifications: input.amendment.clarifications, partResults: input.amendment.partResults, status: input.amendment.status });
+        await pushEvent(unit, lane, record, "document", input.now);
+        await unit.putRequest(record);
+        await unit.putLane(lane);
+        return record;
       });
     },
 

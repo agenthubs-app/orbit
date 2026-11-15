@@ -100,3 +100,17 @@ REPORT 写验收映射、功能 SHA、命令与退出码、两次门槛的运行
 - 登记表的门槛只列 AMB ×12；本页加跑一次 AG03 门槛，是因为本 sprint 替换了 AE-CTX-006、008 所依赖的简易追问。
 - 点选的传输形状、接到哪个接口，CONVENTIONS 没有约定；本页定为经 AG01 的发送入口落库、按会话顺序处理、不产生新委托，具体字段在 REPORT 登记，并请协调者补进 CONVENTIONS 第 4 节。
 - “写入标记与陈述标记冲突时按保守结果”是本页在判断模型接入前的代码规则；AG08 接入 `intent.explicitWrite` 后替换保守分支，规则的触发条件不变。
+
+## 启动核对记录（run-01，2026-11-16，Generator 追加）
+
+原文不改。开工时本页 SHA-256 `54f8fe6707146135ea4e55197552f21df305d22ae7287908066b05fde7a56990`，基线 HEAD `323f6a432`（AG03 已合回，合并提交即此）。AG05 未开工，不并行。
+
+**AG03 交付、本 sprint 改的符号（按 AG03 REPORT 交接段）：** `decideRoute(part, options)`、`statusForRoute(route)`、`settleDependencies(parts)`（`route/decide.ts`）；`buildFirstLayerContext(input)`（`context/build.ts`，本 sprint 未改）；`UnderstandOutput`／`UnderstandPart`（`understand/schema.ts`）；`AgentGraphState`、`GraphPart`（`graph/state.ts`）；`buildAgentGraph(scope)`、`runAgentGraph(deps, input)`（`graph/build.ts`）；`deliverNode`、`routeNode`、`understandNode`、`answerNode`（`graph/nodes/`）；会话级状态 `SessionOpenItem`（`context/session-state.ts`）；`createGraphExecutor(mode, overrides)`（`graph/executor.ts`）。LangGraph 版本沿用 AG03 锁定的 `@langchain/langgraph` 1.7.4，`interrupt()` 与 `Command({ resume })` 从同一包导入。
+
+**与前序交接要点的出入：**
+
+1. **AG01 的结果文档没有 `clarifications[]`。** 本页“前序交接要点”写的 `AgentResultDocument` 的 `clarifications[]` 在 AG01 并不存在（AG01 只交付了 `partResults[]`）。本 sprint 在契约里新增可选的 `clarifications`（一组可点方向一项），App 副本同步。
+2. **点选的接口。** 本页“Planner 记录的出入”第 3 条请 REPORT 登记字段：沿用协议 3 的 `POST /api/ai/conversations`，请求体带 `selection: { requestId, clarificationId, optionId }` 和去重键 `clientSelectionId`；先落库、按会话顺序处理、接回原委托，不产生新委托；所选不在候选里或这组方向已关闭返回 409，`error.context.reason` 写明原因。
+3. **AG03 的两项遗留和一项运行器缺口**（协调者交代）一并在本 sprint 做：搁置时回写旧委托文档（遗留 2）、替代方案文案（遗留 3，经 `optionsFor()`）、运行目录 `report.md` 列出“已评、从 AGnn 起计入”的评审项。
+4. **门槛**：按 CONVENTIONS §3、§8，本 sprint 门槛是 `--gate AG04 --seed-cards`（AMB ×12、顺延来的 CTX-006/008，加不变量包）。本页步骤 5 另跑一次 AG03 门槛的要求照做，作为没有退步的证据。
+5. **GitNexus**：`.gitnexus/run.cjs` 读不到索引；用 `npx -y gitnexus@latest analyze --index-only --force` 重建后可用（增量建索引退出码 1，强制重建成功）。

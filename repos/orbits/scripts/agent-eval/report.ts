@@ -56,7 +56,7 @@ function main(argv: readonly string[]): void {
   const firstSummary = JSON.parse(fs.readFileSync(path.join(runDir, "summary.json"), "utf8"));
   const required = Number(flag(argv, "--judges") ?? (firstSummary.gate || /gate|AE-H-006/u.test(firstSummary.label) ? 2 : 1));
   const { costs, summary, verdicts } = judgeRun(runDir, required);
-  const judged = new Map<string, JudgedCase>(verdicts.map((verdict) => [verdict.caseId, { caseId: verdict.caseId, reasons: verdict.reasons, verdict: verdict.verdict === "unjudged" ? "needs_review" : verdict.verdict }]));
+  const judged = new Map<string, JudgedCase>(verdicts.map((verdict) => [verdict.caseId, { caseId: verdict.caseId, reasons: verdict.reasons, verdict: verdict.verdict === "unjudged" ? "needs_review" : verdict.verdict, ...(verdict.deferredVerdicts?.length ? { deferred: verdict.deferredVerdicts } : {}) }]));
   fs.writeFileSync(path.join(runDir, "judged.json"), JSON.stringify({ judgesRequired: required, runId, verdicts }, null, 2));
   fs.writeFileSync(path.join(runDir, "report.md"), renderRunReport(summary, costs, judged));
   const bundle = writeBundleSha(runDir);

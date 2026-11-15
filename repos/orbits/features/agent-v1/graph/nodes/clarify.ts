@@ -1,0 +1,243 @@
+/**
+ * clarify (code): the questions and clickable directions of a request, and its pause (设计稿 §3.9
+ * `clarify`, "暂停与恢复"; agent-design AG04, 易错边界 7).
+ *
+ * Two passes, by state:
+ * - prepare (after route): for each part whose §3.11 step needs them, the directions are built by
+ *   optionsFor() — a question (a missing object, or readings that include a write), the directions of
+ *   a message nothing could be read out of, or an entry (after a statement, the other readings of a
+ *   read-only part, accepting an alternative). The checkpoint keeps ids and codes; the labels go to the
+ *   result document through the run.
+ * - wait (after deliver left directions open): interrupt(). The thread stays paused until one of three
+ *   things resumes it, all decided by code and never by the model: a click (bound to the option it was
+ *   offered as; the part is routed again), a later message that answered it, or shelving after two
+ *   unrelated messages (the part is closed as it was left). Resuming runs no understand and no model
+ *   call; the question is not sent again (deliver writes only the parts the resume touched).
+ * A card decision never resumes the graph (§3.9 点击决定不恢复图).
+ */
+import { interrupt } from "@langchain/langgraph";
+
+import { recordKindOf, type RecordKind } from "../../clarify/default-readings";
+import type { NextStep } from "../../clarify/next-step";
+import { optionsFor, type ClarifyOption, type OptionObject } from "../../clarify/options";
+import type { NamedRecordRef } from "../../context/session-state";
+import { emitTrace } from "../../observability/trace";
+import { capabilityKind, type Capability } from "../../route/capabilities";
+import type { ReplyLanguage } from "../../route/handoff-copy";
+import type { GraphNode, NodeScope } from "../deps";
+import type { AgentGraphState, GraphPart, GraphResolution, OptionSetState, PartPlan } from "../state";
+
+export const setIdOf = (requestId: string, partId: string, slot: "q" | "e" | "a") => `${requestId}:${partId}.${slot}`;
+
+/** The clue words of a ref, read back from this turn's message. */
+export function clueWords(message: string, ref: GraphPart["refs"][number] | undefined): string | null {
+  if (!ref?.quote) return null;
+  const words = message.slice(ref.quote[0], ref.quote[1]).trim();
+  return words || null;
+}
+
+/** The name of a bound record: this turn's context, or a click's option (never the checkpoint). */
+export function nameOf(scope: NodeScope, recordId: string | null | undefined): string | null {
+  if (!recordId) return null;
+  const handle = [...(scope.run.context?.handles.values() ?? [])].find((item) => item.id === recordId);
+  return handle?.name || scope.run.names.get(recordId) || null;
+}
+
+export function objectOf(scope: NodeScope, part: GraphPart): OptionObject {
+  const bound = part.refs.find((ref) => ref.recordId);
+  const first = bound ?? part.refs[0];
+  const referenced = scope.run.context?.references ?? [];
+  const kind = recordKindOf(first?.entity) ?? (referenced.length === 1 ? recordKindOf(referenced[0].type) : null);
+  const name = bound ? nameOf(scope, bound.recordId) : null;
+  return { kind, name, text: clueWords(scope.input.message, first) };
+}
+
+function candidatesFor(scope: NodeScope, part: GraphPart): { clue: number; candidates: NamedRecordRef[] } | null {
+  const context = scope.run.context;
+  if (!context) return null;
+  const pool: NamedRecordRef[] = [...context.lastMentionedForCode, ...context.shownList.map((item) => ({ id: item.id, name: item.name ?? "", type: item.type }))].filter((item) => item.name);
+  const unresolved = part.refs.map((ref, index) => ({ index, ref })).filter(({ ref }) => !ref.recordId);
+  for (const { index, ref } of unresolved) {
+    const kind = recordKindOf(ref.entity);
+    const found = pool.filter((item, at) => recordKindOf(item.type) === kind && pool.findIndex((other) => other.id === item.id) === at);
+    if (found.length) return { candidates: found.slice(0, 3), clue: index };
+  }
+  return unresolved.length ? { candidates: [], clue: unresolved[0].index } : null;
+}
+
+const firstWrite = (capabilities: readonly Capability[]) => capabilities.find((capability) => capabilityKind(capability) === "write");
+
+function setOf(scope: NodeScope, language: ReplyLanguage, part: GraphPart, step: NextStep | undefined): { set: Omit<OptionSetState, "options">; options: ClarifyOption[] } | null {
+  const { input, run } = scope;
+  const words = { language };
+  const object = objectOf(scope, part);
+  const subgoal = part.continues?.kind === "clarification" ? part.continues.ref : `clarification:${input.requestId}:${part.localId}`;
+  const base = (slot: "q" | "e" | "a", kind: OptionSetState["kind"], purpose: OptionSetState["purpose"], asks?: OptionSetState["asks"]) => ({ clarificationId: setIdOf(input.requestId, part.localId, slot), kind, partId: part.localId, purpose, state: "open" as const, subgoal, ...(asks ? { asks } : {}) });
+  if (part.status === "awaiting_acceptance") {
+    return { options: optionsFor({ capability: "rule.create", language: words.language, purpose: "alternative" }), set: base("a", "entry", "alternative") };
+  }
+  switch (step?.kind) {
+    case "not_understood":
+      return { options: optionsFor({ language: words.language, object, openItems: run.context?.openItems ?? [], pageKind: pageKindOf(scope), purpose: "directions", references: (run.context?.references ?? []).map((item) => ({ id: item.id, name: item.name ?? "", type: item.type })) }), set: base("q", "not_understood", "directions") };
+    case "ask_missing": {
+      const found = candidatesFor(scope, part);
+      return { options: optionsFor({ candidates: found?.candidates ?? [], capability: firstWrite(part.capabilities) ?? part.capabilities[0], language: words.language, purpose: "object" }), set: base("q", "question", "object", "object") };
+    }
+    case "ask_readings":
+      return { options: optionsFor({ language: words.language, object, purpose: "readings", readings: step.readings }), set: base("q", "question", "readings", "reading") };
+    case "most_likely": {
+      const options = optionsFor({ exclude: step.reading, language: words.language, object, purpose: "other_readings", readings: step.others });
+      return options.length ? { options, set: base("e", "entry", "other_readings") } : null;
+    }
+    case "respond":
+      return step.entry ? { options: optionsFor({ capability: step.entry, language: words.language, object, purpose: "entry" }), set: base("e", "entry", "entry") } : null;
+    default:
+      return null;
+  }
+}
+
+export function pageKindOf(scope: NodeScope): RecordKind | null {
+  const route = scope.input.pageContext?.route ?? "";
+  if (/contact/iu.test(route)) return "contact";
+  if (/note|memo/iu.test(route)) return "memo";
+  if (/event/iu.test(route)) return "event";
+  if (/task|todo/iu.test(route)) return "todo";
+  if (/schedule|calendar/iu.test(route)) return "schedule";
+  return null;
+}
+
+/** Whether a part needs a set of directions it does not have yet. */
+export function needsDirections(part: GraphPart, step: NextStep | undefined, sets: readonly OptionSetState[]): boolean {
+  if (sets.some((set) => set.partId === part.localId)) return false;
+  if (part.status === "awaiting_acceptance") return true;
+  if (!step) return false;
+  if (step.kind === "respond") return Boolean(step.entry);
+  if (step.kind === "most_likely") return step.others.length > 0;
+  return step.kind === "not_understood" || step.kind === "ask_missing" || step.kind === "ask_readings";
+}
+
+function prepare(scope: NodeScope, state: AgentGraphState): Partial<AgentGraphState> {
+  const sets = [...state.optionSets];
+  for (const part of state.parts) {
+    if (state.touched && !state.touched.includes(part.localId)) continue;
+    const step = scope.run.steps.get(part.localId);
+    if (!needsDirections(part, step, sets)) continue;
+    const made = setOf(scope, state.language, part, step);
+    if (!made || !made.options.length && made.set.kind !== "question") continue;
+    const labels = new Map(made.options.map((option) => [option.optionId, { label: option.label, ...(option.ref ? { refName: option.ref.name } : {}) }]));
+    scope.run.optionLabels.set(made.set.clarificationId, labels);
+    sets.push({ ...made.set, options: made.options.map((option) => ({ capabilities: option.capabilities, capability: option.capability, optionId: option.optionId, ...(option.ref ? { refId: option.ref.id, refType: option.ref.type } : {}) })) });
+    if (made.set.kind !== "entry") emitTrace({ clarificationId: made.set.clarificationId, kind: made.set.kind, options: made.options.length, partId: part.localId, subgoal: made.set.subgoal, type: "clarify.asked" });
+    else emitTrace({ clarificationId: made.set.clarificationId, options: made.options.length, partId: part.localId, purpose: made.set.purpose, type: "clarify.entry_offered" });
+  }
+  return { optionSets: sets };
+}
+
+const writes = (capabilities: readonly Capability[]) => capabilities.some((capability) => capabilityKind(capability) === "write");
+
+function planFor(capabilities: Capability[], from: PartPlan): PartPlan {
+  return {
+    ...from,
+    acceptedLeadsTo: null,
+    clarity: "clear",
+    dataSources: capabilities.some((capability) => ["read", "function"].includes(capabilityKind(capability))) ? ["orbit_records"] : capabilities.some((capability) => capabilityKind(capability) === "web") ? ["public_web"] : [],
+    deliverable: writes(capabilities) ? "change" : from.deliverable === "change" ? "answer" : from.deliverable,
+    hypothesis: false,
+    intentBasis: "selection",
+    negation: false,
+    readings: [],
+  };
+}
+
+/** Applies a resolution to the paused state (pure: the same resolution gives the same state). */
+export function applyResolution(state: AgentGraphState, resolution: GraphResolution, requestId: string): Partial<AgentGraphState> {
+  const sets = state.optionSets.map((set) => ({ ...set, options: [...set.options] }));
+  const set = sets.find((item) => item.clarificationId === resolution.clarificationId);
+  if (!set) return { pausing: false, resumeNext: "deliver", touched: [] };
+  const parts = state.parts.map((part) => ({ ...part, plan: { ...part.plan }, refs: part.refs.map((ref) => ({ ...ref })) }));
+  const index = parts.findIndex((part) => part.localId === set.partId);
+  const part = parts[index];
+  if (resolution.kind === "shelve") {
+    set.state = "shelved";
+    if (part && part.status === "awaiting_clarification") {
+      part.status = "unfinished";
+      part.reason = "shelved";
+    }
+    return { optionSets: sets, parts, pausing: false, resumeNext: "deliver", touched: [] };
+  }
+  if (resolution.kind === "continued") {
+    set.state = "answered";
+    set.answeredBy = resolution.requestId;
+    if (part) {
+      part.status = resolution.status;
+      part.reason = resolution.reason ?? null;
+      part.waitReason = null;
+      if (resolution.route) part.route = resolution.route;
+    }
+    return { optionSets: sets, parts, pausing: false, resumeNext: "deliver", touched: [] };
+  }
+  const option = set.options.find((item) => item.optionId === resolution.optionId);
+  if (!option || set.state !== "open" || !part) return { pausing: false, resumeNext: "deliver", touched: [] };
+  set.state = "answered";
+  set.selectedOptionId = option.optionId;
+  const bindRef = (target: GraphPart) => {
+    if (!option.refId) return;
+    const kind = recordKindOf(option.refType);
+    const at = target.refs.findIndex((ref) => !ref.recordId && recordKindOf(ref.entity) === kind);
+    const free = at >= 0 ? at : target.refs.findIndex((ref) => !ref.recordId);
+    if (free >= 0) target.refs[free].recordId = option.refId;
+    else target.refs.push({ entity: option.refType ?? "contact", quote: null, recordId: option.refId });
+  };
+  if (set.purpose === "object") {
+    bindRef(part);
+    part.plan.clarity = "clear";
+    return { optionSets: sets, parts, pausing: false, resumeNext: "route", touched: [part.localId] };
+  }
+  if (set.purpose === "alternative") {
+    part.plan.acceptedLeadsTo = option.capability;
+    part.continues = { kind: "alternative", ref: `alternative:${requestId}:${part.localId}` };
+    return { optionSets: sets, parts, pausing: false, resumeNext: "route", touched: [part.localId] };
+  }
+  if (set.purpose === "readings" || set.purpose === "directions") {
+    part.capabilities = [...option.capabilities];
+    part.plan = planFor(option.capabilities, part.plan);
+    bindRef(part);
+    return { optionSets: sets, parts, pausing: false, resumeNext: "route", touched: [part.localId] };
+  }
+  // An entry (after a statement, another reading): a new part the user asked for by clicking (§3.11 用户点了才算提出).
+  const taken = new Set(parts.map((item) => item.localId));
+  let n = 1;
+  while (taken.has(`${part.localId}s${n}`)) n += 1;
+  const created: GraphPart = {
+    ...part,
+    asked: 0,
+    capabilities: [...option.capabilities],
+    continues: null,
+    dependsOn: [],
+    localId: `${part.localId}s${n}`,
+    origin: part.localId,
+    plan: planFor(option.capabilities, part.plan),
+    reading: null,
+    reason: null,
+    refs: part.refs.map((ref) => ({ ...ref })),
+    route: null,
+    status: "unfinished",
+    step: null,
+    verdict: null,
+    waitReason: null,
+  };
+  bindRef(created);
+  parts.splice(index + 1, 0, created);
+  return { optionSets: sets, parts, pausing: false, resumeNext: "route", touched: [created.localId] };
+}
+
+export function clarifyNode(scope: NodeScope): GraphNode {
+  return async (state: AgentGraphState) => {
+    if (!state.pausing) return prepare(scope, state);
+    const open = state.optionSets.filter((set) => set.state === "open").map((set) => set.clarificationId);
+    // Only ids go into the interrupt (and, on resume, the resolution): the checkpoint holds no words.
+    const resolution = interrupt({ open }) as GraphResolution;
+    emitTrace({ clarificationId: resolution.clarificationId, kind: resolution.kind, ...(resolution.kind === "select" ? { optionId: resolution.optionId } : {}), type: "clarify.resumed" });
+    return applyResolution(state, resolution, scope.input.requestId);
+  };
+}

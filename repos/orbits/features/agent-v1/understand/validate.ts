@@ -20,10 +20,12 @@ import {
   DELIVERABLES,
   ENTITIES,
   INTENT_BASES,
+  MAX_READINGS,
   PERSISTENCES,
   type ObjectClue,
   type UnderstandOutput,
   type UnderstandPart,
+  type UnderstandReading,
 } from "./schema";
 
 export const MAX_PARTS = 8;
@@ -162,6 +164,19 @@ export function validateUnderstandOutput(raw: unknown, input: UnderstandValidati
       if (referenceId && !input.handles.has(referenceId)) errors.push(`${at}.referenceId "${referenceId}" is not one of the record handles given in the context (${[...input.handles].join(", ") || "none"}); leave it out when no handle fits`);
       clues.push({ entity: clue.entity as ObjectClue["entity"], text, ...(referenceId ? { referenceId } : {}) });
     });
+    // AG04: readings are hints for code (附录 C). One with a capability outside 附录 A, or with none, is
+    // dropped whole and reported; it is never a reason to reject the output.
+    const readings: UnderstandReading[] = [];
+    if (item.readings !== undefined && item.readings !== null && !Array.isArray(item.readings)) dropped.push(`$.${where}.readings (not a list)`);
+    (Array.isArray(item.readings) ? item.readings : []).forEach((reading: unknown, readingIndex: number) => {
+      const at = `$.${where}.readings[${readingIndex}]`;
+      const list = isRecord(reading) && Array.isArray(reading.capabilities) ? reading.capabilities : [];
+      if (!isRecord(reading) || !list.length || !list.every(isCapability) || readings.length >= MAX_READINGS) {
+        dropped.push(`${at} (${readings.length >= MAX_READINGS ? `more than ${MAX_READINGS}` : "not a reading of Orbit capabilities"})`);
+        return;
+      }
+      readings.push({ capabilities: [...new Set(list as Capability[])], deliverable: oneOf(DELIVERABLES, reading.deliverable) ? reading.deliverable : "answer", label: typeof reading.label === "string" ? reading.label.slice(0, 80) : "" });
+    });
     let continues: UnderstandPart["continues"];
     if (item.continues !== undefined && item.continues !== null) {
       if (!isRecord(item.continues) || !oneOf(CONTINUE_KINDS, item.continues.kind) || typeof item.continues.ref !== "string") errors.push(`${where}.continues must be { kind, ref }`);
@@ -183,6 +198,7 @@ export function validateUnderstandOutput(raw: unknown, input: UnderstandValidati
       requiredCapabilities: capabilities,
       sourceQuote,
       ...(continues ? { continues } : {}),
+      ...(readings.length ? { readings } : {}),
     });
   });
   for (const part of parts) {

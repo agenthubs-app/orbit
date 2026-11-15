@@ -128,3 +128,17 @@ test("costs: priced from usage at the call time, real only; problems listed when
   const reading = { at: "t", currency: "CNY", raw: {}, total: 10 };
   assert.deepEqual(costsProblems(finishCosts(tally, reading, { ...reading, total: 9.99 }), outcomes), []);
 });
+
+test("report.md lists, per case, the items judged in a gate run but counted from a later sprint (README §3.3)", async () => {
+  const { renderRunReport } = await import("./lib/report-md");
+  const summary = { cases: [{ account: "A", area: "ENT", calls: { realJudgment: 0, realModel: 1, simulatedJudgment: 0, simulatedModel: 0 }, cannotJudge: [], costCny: 0, failed: [], hardPass: true, id: "AE-ENT-003", invariant: false, invariantChecks: { fail: 0, pass: 0 }, otherChecks: { fail: 0, pass: 3 }, unsupportedSteps: [] }], endedAt: "t1", gate: "AG04", hardPass: 1, invariantPack: [], label: "AG04-gate", runId: "r1", simulatedCases: [], soloExcluded: [], startedAt: "t0", total: 1, voidReasons: [], voided: false };
+  const costs = finishCosts(tallyCosts({}), null, null);
+  const judged = new Map([["AE-ENT-003", { caseId: "AE-ENT-003", deferred: [{ gate: "AG05", id: "R1", verdicts: ["fail", "fail"] }], reasons: [], verdict: "pass" as const }]]);
+  const report = renderRunReport(summary as never, costs, judged);
+  assert.match(report, /## 已评、从后续 sprint 起计入的评审项（1 项）/u);
+  assert.match(report, /\| AE-ENT-003 \| R1 \| AG05 \| fail, fail \|/u);
+  const none = renderRunReport(summary as never, costs, new Map([["AE-ENT-003", { caseId: "AE-ENT-003", reasons: [], verdict: "pass" as const }]]));
+  assert.match(none, /已评、从后续 sprint 起计入的评审项（0 项）/u);
+  const verdict = decideCase({ caseId: "AE-ENT-003", deferred: [{ gate: "AG05", id: "R1" }], hardPass: true, required: 0, rubricIds: [], validations: [] });
+  assert.deepEqual(verdict.deferredVerdicts, [{ gate: "AG05", id: "R1", verdicts: [] }], "decideCase hands the judged verdicts to the report");
+});

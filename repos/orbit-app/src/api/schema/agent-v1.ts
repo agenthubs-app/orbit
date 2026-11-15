@@ -3,7 +3,10 @@ import { z } from "zod";
 import type {
   AgentActionPreviewContract,
   AgentCardDecisionInputContract,
+  AgentClarificationContract,
   AgentResultDocument,
+  AgentSelectionInputContract,
+  AgentSelectionReceiptContract,
   AgentSendInputContract,
   AgentSendReceiptContract,
   AgentSessionEventContract,
@@ -88,9 +91,47 @@ export const agentCardDecisionInputSchema: z.ZodType<AgentCardDecisionInputContr
   message: "operationId is required for retry, mark_done and abandon, and only for them.",
 }) as unknown as z.ZodType<AgentCardDecisionInputContract>;
 
+/** AG04：一组可点的方向。 */
+export const agentClarificationSchema: z.ZodType<AgentClarificationContract> = z.object({
+  answeredBy: z.string().optional(),
+  asks: z.enum(["object", "reading"]).optional(),
+  clarificationId: identifier,
+  kind: z.enum(["question", "not_understood", "entry"]),
+  options: z.array(z.object({
+    capability: z.string(),
+    label: z.string(),
+    optionId: identifier,
+    ref: z.object({ id: z.string(), name: z.string(), type: z.string() }).optional(),
+  })),
+  partId: z.string(),
+  selectedOptionId: z.string().optional(),
+  state: z.enum(["open", "answered", "shelved"]),
+}) as unknown as z.ZodType<AgentClarificationContract>;
+
+/** AG04：点选。只带编号，选项的内容一律由服务端按当时给出的候选核对。 */
+export const agentSelectionInputSchema: z.ZodType<AgentSelectionInputContract> = z.object({
+  clientSelectionId: identifier,
+  protocolVersion: z.literal(3),
+  selection: z.object({ clarificationId: identifier, optionId: identifier, requestId: identifier }),
+  sessionId: identifier,
+});
+
+export const agentSelectionReceiptSchema: z.ZodType<AgentSelectionReceiptContract> = z.object({
+  acceptedAt: z.string(),
+  clarificationId: identifier,
+  clientSelectionId: identifier,
+  optionId: identifier,
+  protocolVersion: z.literal(3),
+  replayed: z.boolean(),
+  requestId: identifier,
+  sessionId: identifier,
+  status: agentRequestStatusSchema,
+});
+
 export const agentResultDocumentSchema: z.ZodType<AgentResultDocument> = z.object({
   actionPreview: agentActionPreviewSchema.optional(),
   answer: z.object({ sourceRefs: z.array(z.string()), text: z.string() }).nullable(),
+  clarifications: z.array(agentClarificationSchema).optional(),
   ending: z.object({
     at: z.string(),
     kind: z.enum(["stopped_by_user", "failed"]),

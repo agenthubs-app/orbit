@@ -38,6 +38,11 @@ export interface SessionOpenItem {
   unrelatedMessages: number;
   /** For an alternative: the capability its acceptance leads to (rule.create …). */
   leadsTo?: string;
+  /** AG04: the user's words of the part it was opened for (to say later what is still missing). */
+  quote?: string;
+  /** AG04: what the question asked for, and whether the part would change a record. */
+  asks?: "intent" | "object" | "person" | "reading";
+  writes?: boolean;
 }
 
 export interface AgentSessionState {

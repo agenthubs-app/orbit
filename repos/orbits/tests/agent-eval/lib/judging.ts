@@ -181,6 +181,8 @@ export interface CaseVerdict {
   expectJudgeVerdicts?: { item: string; verdict: string }[];
   /** Judged items left out of this gate run's result (README §3.3). */
   deferred?: { id: string; gate: string }[];
+  /** AG04: the same items with each valid judgment's verdict, for report.md ("已评、从 AGnn 起计入"). */
+  deferredVerdicts?: { id: string; gate: string; verdicts: string[] }[];
 }
 
 /**
@@ -194,9 +196,11 @@ export function decideCase(input: { caseId: string; hardPass: boolean; rubricIds
   const valid = input.validations.filter((validation) => validation.judge && validation.problems.length === 0);
   const reasons: string[] = [];
   for (const validation of input.validations.filter((item) => item.problems.length)) reasons.push(`rejected ${path.basename(validation.file)}: ${validation.problems.join("; ")}`);
+  const deferredVerdicts: { id: string; gate: string; verdicts: string[] }[] = [];
   for (const item of input.deferred ?? []) {
     const verdicts = valid.map((validation) => validation.judge!.items.find((entry) => entry.id === item.id)?.verdict ?? "missing");
     reasons.push(`${item.id} 已评（${verdicts.join(", ") || "无"}），从 ${item.gate} 起计入`);
+    deferredVerdicts.push({ gate: item.gate, id: item.id, verdicts });
   }
   const disagreements: string[] = [];
   const expected = new Map((input.expectJudgeVerdicts ?? []).map((item) => [item.item, item.verdict]));
@@ -206,7 +210,7 @@ export function decideCase(input: { caseId: string; hardPass: boolean; rubricIds
     if (verdicts.includes("unclear")) reasons.push(`${id} unclear in a judgment (counts as fail, listed for review)`);
   }
   const judges = input.validations.map((validation) => ({ file: path.basename(validation.file), overall: validation.judge?.overall ?? null, problems: validation.problems }));
-  const base = { caseId: input.caseId, disagreements, hardPass: input.hardPass, judges, ...(input.expectJudgeVerdicts ? { expectJudgeVerdicts: input.expectJudgeVerdicts } : {}), ...(input.deferred?.length ? { deferred: input.deferred } : {}) };
+  const base = { caseId: input.caseId, disagreements, hardPass: input.hardPass, judges, ...(input.expectJudgeVerdicts ? { expectJudgeVerdicts: input.expectJudgeVerdicts } : {}), ...(input.deferred?.length ? { deferred: input.deferred, deferredVerdicts } : {}) };
   if (valid.length < input.required) {
     return { ...base, reasons: [...reasons, `${valid.length} valid judgment(s), ${input.required} required`], verdict: input.hardPass ? "unjudged" : "fail" };
   }

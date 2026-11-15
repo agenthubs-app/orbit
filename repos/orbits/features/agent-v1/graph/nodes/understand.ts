@@ -5,6 +5,7 @@
  */
 import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
+import { hypothesisOf, negationOf } from "../../route/decide";
 import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_PROMPT_VERSION } from "../../understand/prompt";
 import type { UnderstandOutput } from "../../understand/schema";
 import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInput } from "../../understand/validate";
@@ -13,19 +14,38 @@ import type { AgentGraphState, GraphPart } from "../state";
 
 function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
   const context = scope.run.context!;
+  const message = scope.input.message;
   return output.parts.map((part) => {
-    const start = scope.input.message.indexOf(part.sourceQuote);
+    const start = message.indexOf(part.sourceQuote);
     const continued = part.continues ? context.openItemHandles.get(part.continues.ref) ?? null : null;
     return {
+      asked: 0,
       capabilities: [...part.requiredCapabilities],
       continues: part.continues && continued ? { kind: part.continues.kind, ref: continued.ref } : null,
       dependsOn: [...part.dependsOn],
       localId: part.localId,
+      origin: null,
+      plan: {
+        clarity: part.clarity,
+        dataOwner: part.dataOwner,
+        dataSources: [...part.dataSources],
+        deliverable: part.deliverable,
+        hypothesis: hypothesisOf(part),
+        intentBasis: part.intentBasis,
+        negation: negationOf(part),
+        persistence: part.persistence,
+        readings: (part.readings ?? []).map((reading) => ({ capabilities: [...reading.capabilities], deliverable: reading.deliverable })),
+      },
       quote: [start, start + part.sourceQuote.length],
+      reading: null,
       reason: null,
-      refs: part.objectClues.map((clue) => ({ entity: clue.entity, recordId: clue.referenceId ? context.handles.get(clue.referenceId)?.id ?? null : null })),
+      refs: part.objectClues.map((clue) => {
+        const at = message.indexOf(clue.text);
+        return { entity: clue.entity, quote: at >= 0 ? [at, at + clue.text.length] as [number, number] : null, recordId: clue.referenceId ? context.handles.get(clue.referenceId)?.id ?? null : null };
+      }),
       route: null,
       status: "unfinished",
+      step: null,
       verdict: null,
       waitReason: null,
     } satisfies GraphPart;

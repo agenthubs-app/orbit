@@ -234,7 +234,7 @@ dgram.createSocket = function guardedUdp(...args) {
 
 /* ── faults, replay and model recording on fetch ───────────────────── */
 /** Kinds that rewrite a real response instead of replacing the call (taken after the response). */
-const REWRITE_KINDS = new Set(["inject_approval_flag"]);
+const REWRITE_KINDS = new Set(["inject_approval_flag", "mistag_write"]);
 
 function takeFault(where, options = {}) {
   // AG03: an `understand` fault hits only the understand node's model calls; outside the graph (the old
@@ -333,6 +333,39 @@ function injectApprovalFlag(body) {
   return JSON.stringify({ ...body, choices: [{ ...body.choices[0], message: { ...message, content } }, ...body.choices.slice(1)] });
 }
 
+/**
+ * AG04 (AMB.yaml mistag_write): the first layer's output in the understand node is rewritten so the
+ * part holding `quote` is marked a write request — deliverable change, a write capability added —
+ * with the rest of the output as the model gave it. The original and the rewrite are both traced.
+ */
+function mistagWrite(body) {
+  if (currentNode() !== "understand" || !state.faults.some((fault) => fault.kind === "mistag_write")) return null;
+  const message = body && typeof body === "object" ? body.choices?.[0]?.message : null;
+  const text = message && typeof message.content === "string" ? message.content.trim().replace(/^```(?:json)?\s*/u, "").replace(/```$/u, "") : null;
+  let output;
+  try {
+    output = text ? JSON.parse(text) : null;
+  } catch {
+    return null;
+  }
+  if (!output || !Array.isArray(output.parts)) return null;
+  const pending = state.faults.find((fault) => fault.kind === "mistag_write");
+  const quote = String(pending?.quote ?? "");
+  const holds = (part) => part && typeof part.sourceQuote === "string" && (!quote || part.sourceQuote.includes(quote) || (part.sourceQuote.length >= 4 && quote.includes(part.sourceQuote)));
+  const index = output.parts.findIndex(holds);
+  if (index < 0) return null;
+  const fault = takeFault("model", { rewrite: true });
+  if (!fault) return null;
+  const before = JSON.parse(JSON.stringify(output));
+  const part = output.parts[index];
+  const capabilities = Array.isArray(part.requiredCapabilities) ? part.requiredCapabilities : [];
+  const WRITE = /^(contact|privateEvent|attendance|todo|memo|schedule|rule|memory)\.(create|update|delete|complete|reopen|unlink|restore|import|pause|resume|cancel)$/u;
+  part.requiredCapabilities = capabilities.some((capability) => WRITE.test(String(capability))) ? capabilities : [...capabilities, "memo.create"];
+  part.deliverable = "change";
+  emit({ type: "model.output_rewritten", source: "simulated", kind: fault.kind, quote, before, after: output, note: "the part holding the quote is now marked a write request (deliverable change, a write capability); the rest is the model's own output" });
+  return JSON.stringify({ ...body, choices: [{ ...body.choices[0], message: { ...message, content: JSON.stringify(output) } }, ...body.choices.slice(1)] });
+}
+
 const realFetch = globalThis.fetch;
 if (typeof realFetch === "function") {
   globalThis.fetch = async function evalFetch(input, init) {
@@ -399,7 +432,7 @@ if (typeof realFetch === "function") {
     const body = parseMaybeJson(text);
     const usage = body && typeof body === "object" ? body.usage ?? body.usageMetadata ?? null : null;
     emit({ type: `${prefix}.response`, source: "real", provider, status: response.status, headers: safeHeaders(response.headers), body, usage, model: body?.model ?? requestBody?.model ?? null, durationMs: realNow() - started });
-    const rewritten = category === "model" ? injectApprovalFlag(body) : null;
+    const rewritten = category === "model" ? mistagWrite(body) ?? injectApprovalFlag(body) : null;
     if (rewritten) return new Response(rewritten, { status: response.status, statusText: response.statusText, headers: response.headers });
     return new Response(text, { status: response.status, statusText: response.statusText, headers: response.headers });
   };
@@ -575,6 +608,14 @@ function environmentSummary() {
   };
 }
 
+function buildIdentity() {
+  try {
+    return JSON.parse(require("node:fs").readFileSync(require("node:path").join(process.cwd(), ".next", "agent-eval-build.json"), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 async function handleControl(req, res) {
   const remote = req.socket?.remoteAddress ?? "";
   if (!hostAllowed(remote) || MODEL_HOSTS[remote]) return reply(res, 403, { error: "loopback only" });
@@ -595,6 +636,9 @@ async function handleControl(req, res) {
         pushes: state.pushes,
         traceWriteFailures: writeFailures,
         environment: environmentSummary(),
+        // AG04 run-02: what this server was built from (written by agent-eval:env --build). Only the eval
+        // server loads this preload, so a production server never exposes it.
+        build: buildIdentity(),
       });
     }
     if (route === "context") {

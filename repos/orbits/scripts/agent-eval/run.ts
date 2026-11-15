@@ -9,6 +9,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { checkGateIdentity, readTree, type BuildIdentity } from "../../tests/agent-eval/lib/build-identity";
 import { gateOf, loadAreaFiles, selectCases, type EvalCase } from "../../tests/agent-eval/lib/cases";
 import { finishCosts, readDeepSeekBalance, tallyCosts } from "../../tests/agent-eval/lib/costs";
 import { applyEvalEnvironment, loadEvalEnvironment, processAlive, readServerState } from "../../tests/agent-eval/lib/eval-env";
@@ -58,6 +59,14 @@ async function main(argv: readonly string[]): Promise<void> {
   if (!selection.cases.length) throw new Error("No case selected.");
   const label = flag(argv, "--label") ?? (gate ? `${gate}-gate` : caseIds?.length ? (caseIds.length === 1 ? caseIds[0] : "cases") : sealed ? "sealed" : "all");
   const git = gitInfo(ORBITS_ROOT);
+  // AG04 run-02: the server's build identity is recorded by every run; a gate run needs a clean build of HEAD.
+  const tree = readTree(ORBITS_ROOT);
+  const served = await serverControl<{ build?: BuildIdentity | null }>(environment, "state");
+  const build = served.build ?? null;
+  if (gate) {
+    const problems = checkGateIdentity({ build, dirty: tree.dirty, head: tree.head });
+    if (problems.length) throw new Error(`A gate run does not start: ${problems.join("; ")}.`);
+  }
   const runId = runIdFor(git.short, label);
   const paths = evalPaths(environment.env);
   const runDir = path.join(paths.runs, runId);
@@ -70,7 +79,10 @@ async function main(argv: readonly string[]): Promise<void> {
     caseFiles: Object.fromEntries(areaFiles.filter((file) => selection.cases.some((testCase) => fileOf.get(testCase.id) === file)).map((file) => [path.basename(file.file), fileSha256(file.file)])),
     cases: selection.cases.map((testCase) => ({ gate: gateOf(testCase), id: testCase.id, invariant: testCase.invariant, sha256: sha256(stableStringify(testCase)) })),
     commit: git.commit,
-    dirtyWorkingTree: git.dirty,
+    // The tree's changes to tracked files, with next build's own rewrite of next-env.d.ts left out (listed as buildNoise).
+    dirtyWorkingTree: tree.dirty.length > 0,
+    dirtyPaths: tree.dirty,
+    buildNoise: tree.noise,
     fixtures: Object.fromEntries(worlds.map((world) => [world, fileSha256(loadWorld(world).file)])),
     gate: gate ?? null,
     invariantPack: selection.invariants.map((testCase) => testCase.id),
@@ -83,7 +95,7 @@ async function main(argv: readonly string[]): Promise<void> {
     runId,
     seedCards,
     selection: { all: argv.includes("--all"), caseIds: caseIds ?? null, sealed },
-    server: { buildId: state.buildId, pid: state.pid, port: state.port },
+    server: { build, buildId: state.buildId, builtFromHead: build?.commit === tree.head && !build?.dirty, pid: state.pid, port: state.port },
     soloExcluded: selection.solo.map((testCase) => testCase.id),
     startedAt,
     thresholds: "none before AG08",

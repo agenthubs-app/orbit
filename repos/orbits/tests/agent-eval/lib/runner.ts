@@ -61,7 +61,6 @@ const STEP_SUPPORT_NOTE: Record<string, string> = {
   revoke: "revoking a read or a push permission is simulated from AG11/AG16",
   rollback: "rollback arrives in AG18",
   scheduler_tick: "scheduled dispatch driven by the runner arrives in AG15",
-  select: "clarification options arrive in AG04",
   stop: "stopping a running turn needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   sync: "App sync simulation arrives in AG07",
 };
@@ -347,10 +346,13 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         return;
       }
       const clientName = step.client ?? "web";
-      // AG03: @ contacts go with the message (the entry authorizes them); other kinds arrive in AG05/AG11.
+      // AG03: @ contacts go with the message (the entry authorizes them). AG04: @ notes and events go too, as
+      // the protocol's existing kinds (note, event); the entry keeps only their kind until AG05 authorizes them.
+      // Other kinds (to-dos, schedule …) arrive in AG11.
       const refs = (step.refs ?? []) as { type: string; id: string }[];
-      const contactRefs = entry && clientName !== "app_old" ? refs.filter((ref) => ref.type === "contact" && idMap[ref.id]).map((ref) => ({ id: idMap[ref.id], type: "contact" as const })) : [];
-      if (refs.length > contactRefs.length) unsupported.push({ reason: `@ references other than contacts arrive in AG05/AG11; sent without ${refs.filter((ref) => !contactRefs.some((sent) => sent.id === idMap[ref.id])).map((ref) => `${ref.type} ${ref.id}`).join(", ")}`, step: index, word: "user.refs" });
+      const SENT_KIND: Record<string, "contact" | "note" | "event"> = { contact: "contact", event: "event", memo: "note", note: "note" };
+      const contactRefs = entry && clientName !== "app_old" ? refs.filter((ref) => SENT_KIND[ref.type] && idMap[ref.id]).map((ref) => ({ id: idMap[ref.id], type: SENT_KIND[ref.type] })) : [];
+      if (refs.length > contactRefs.length) unsupported.push({ reason: `@ references other than contacts, notes and events arrive in AG11; sent without ${refs.filter((ref) => !contactRefs.some((sent) => sent.id === idMap[ref.id])).map((ref) => `${ref.type} ${ref.id}`).join(", ")}`, step: index, word: "user.refs" });
       if (entry && clientName !== "app_old") {
         // Protocol 3: one POST that is only acknowledged; the result arrives on the channel / by requestId.
         const clientMessageId = `message:${randomUUID()}`;
@@ -492,6 +494,35 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           const result = await client.request("POST", `/api/ai/runs/${encodeURIComponent(target.requestId)}/transition`, { action: "cancel" }, { purpose: "stop" });
           const stopped = result.body?.data?.agentRequest;
           transcript.push(`- 服务端：${result.status === 200 ? (stopped?.changed ? "这一轮已停止" : `没有变化（${statusLabel(stopped?.document?.status)}）`) : `拒绝（HTTP ${result.status}）`}`, "");
+          return;
+        }
+        case "select": {
+          // AG04 (README §3.1): click one option under the latest question, as a client does — the same
+          // POST with protocol 3 and `selection`; the option key is a fixture id (the record it points at)
+          // or the option's own id or capability.
+          const key = String((step.select as { option?: unknown } | undefined)?.option ?? "");
+          const clientName = step.client ?? "web";
+          log.push({ client: clientName, option: key, step: index, type: "turn.select" });
+          if (!entry) {
+            unsupported.push({ reason: "clicking an option needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)", step: index, word });
+            return;
+          }
+          const rows = (await entry.requests()).filter((row) => row.sessionId === entry!.currentSessionId).sort((left, right) => right.receivedSeq - left.receivedSeq);
+          const openSets = rows.flatMap((row) => (row.document?.clarifications ?? []).filter((set) => set.state === "open").map((set) => ({ row, set })));
+          const target = openSets.find((item) => item.set.kind !== "entry") ?? openSets[0];
+          const product = idMap[key];
+          const chosen = target?.set.options.find((option) => (product && option.ref?.id === product) || option.optionId === key || option.capability === key);
+          transcript.push(`**用户点选**（${clientName}）：${chosen ? `「${chosen.label}」` : `「${key}」`}${target ? `（${target.row.requestId} 下的 ${target.set.clarificationId}）` : "（没有可点的方向）"}`, "");
+          if (!target || !chosen) {
+            unsupported.push({ reason: target ? `option ${key} is not among the options offered (${target.set.options.map((option) => (option.ref?.id ? fixtureIdOf(option.ref.id) ?? option.ref.id : option.optionId)).join(", ")})` : "no open question to click under", step: index, word });
+            return;
+          }
+          const client = await clientFor(clientName);
+          const body = { clientSelectionId: `selection:${randomUUID()}`, protocolVersion: 3, selection: { clarificationId: target.set.clarificationId, optionId: chosen.optionId, requestId: target.row.requestId }, sessionId: entry.currentSessionId };
+          sentBodies.set(index, body);
+          const result = await client.request("POST", "/api/ai/conversations", body, { purpose: "select an option" });
+          const receipt = result.body?.data?.agentSelection;
+          transcript.push(receipt ? `- 服务端应答（HTTP ${result.status}）：已收下点选，接回 ${receipt.requestId}，状态：${statusLabel(receipt.status)}` : `- 服务端应答（HTTP ${result.status}）：拒收（${result.body?.error?.context?.reason ?? result.body?.error?.code ?? "无应答"}）`, "");
           return;
         }
         case "use_fake_agent": {
@@ -773,7 +804,11 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     transcript.push("", "## 结果文档（服务端按 requestId 保存的版本）", "");
     for (const row of entryObservation.requests) {
       const partLines = (row.document?.partResults ?? []).filter((part) => part.sourceQuote).map((part) => `  - 「${part.sourceQuote}」：${PART_STATUS_LABEL[part.status] ?? part.status}${part.route ? `（去向 ${part.route}${part.reason ? `，原因 ${part.reason}` : ""}）` : ""}`);
-      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, ...(partLines.length ? ["- 拆出的子目标（结果文档里的服务端记录，不是给用户看的文字）：", ...partLines] : []), ...(row.document?.actionPreview ? ["- 这一轮结果文档里的卡（交付时的状态）：", ...cardText(row.document.actionPreview)] : []), "");
+      // AG04: the clickable directions as the clients get them (the buttons are drawn in AG07).
+      const SET_KIND: Record<string, string> = { entry: "附带的入口（点了才算提出）", not_understood: "没看懂时给的方向", question: "追问的候选" };
+      const SET_STATE: Record<string, string> = { answered: "已回答", open: "还能点", shelved: "已放下（用户没理会）" };
+      const setLines = (row.document?.clarifications ?? []).map((set) => `  - ${SET_KIND[set.kind] ?? set.kind}（子目标 ${set.partId}，${SET_STATE[set.state] ?? set.state}${set.selectedOptionId ? `，选了 ${set.selectedOptionId}` : ""}${set.answeredBy ? `，由后面的消息 ${set.answeredBy} 回答` : ""}）：${set.options.map((option) => `${option.optionId}「${option.label}」（${option.capability}${option.ref ? `，指向 ${fixtureIdOf(option.ref.id) ?? option.ref.id}` : ""}）`).join("；") || "没有候选"}`);
+      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, ...(setLines.length ? ["- 可点的方向（结果文档里由服务端代码给出，两端照此显示）：", ...setLines] : []), ...(partLines.length ? ["- 拆出的子目标（结果文档里的服务端记录，不是给用户看的文字）：", ...partLines] : []), ...(row.document?.actionPreview ? ["- 这一轮结果文档里的卡（交付时的状态）：", ...cardText(row.document.actionPreview)] : []), "");
     }
     const reconnects = events.filter((event) => event.type === "turn.reconnect");
     if (reconnects.length) {

@@ -21,6 +21,8 @@ export interface JudgedCase {
   caseId: string;
   verdict: "pass" | "fail" | "needs_review";
   reasons: string[];
+  /** README §3.3: items judged in this gate run but counted from a later sprint, with each judgment's verdict. */
+  deferred?: { id: string; gate: string; verdicts: string[] }[];
 }
 
 function cell(text: unknown): string {
@@ -73,6 +75,10 @@ export function renderRunReport(summary: RunSummaryLike, costs: CostSummary, jud
   lines.push("", `## 代码判定不通过（${failed.length} 项）`, "", "| 用例 | 判定 | 说明 |", "|---|---|---|");
   for (const item of failed) lines.push(`| ${item.id} | ${item.check} | ${cell(item.detail).slice(0, 400)} |`);
   if (judged) {
+    // README §3.3: judged here, not counted in this gate's result; listed per case so the report shows them.
+    const deferred = [...judged.values()].flatMap((item) => (item.deferred ?? []).map((entry) => ({ ...entry, caseId: item.caseId })));
+    lines.push("", `## 已评、从后续 sprint 起计入的评审项（${deferred.length} 项）`, "", "不计入本次门槛的结论；评审照常逐条评过。", "", "| 用例 | 评审项 | 从哪个 sprint 起计入 | 各次评审的结论 |", "|---|---|---|---|");
+    for (const entry of deferred) lines.push(`| ${entry.caseId} | ${entry.id} | ${entry.gate} | ${entry.verdicts.join(", ") || "无有效评审"} |`);
     const review = [...judged.values()].filter((item) => item.verdict === "needs_review");
     lines.push("", `## 人工复核清单（${review.length}）`, "");
     for (const item of review) lines.push(`- ${item.caseId}：${item.reasons.join("；")}`);

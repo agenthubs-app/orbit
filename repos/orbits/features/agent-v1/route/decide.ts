@@ -9,15 +9,18 @@
  * 2. a capability Orbit does not offer (external.*) → convert, suggest_external_agent
  * 3. it accepts an open alternative                 → accept, the alternative's next step
  * 4. "keep going until I'm satisfied"               → convert, offer_alternative (awaiting_acceptance)
- * 5. a statement, or a write under a negation or a hypothesis ("先别改", "don't add", "もし") → accept, answer
- * 6. nothing can be read out of it                  → clarify
- * 7. a write: missing its object or with several readings → clarify (object_ambiguous); else propose_write
+ * 5–7 (AG04). the §3.11 next step (clarify/next-step.ts): a statement, or a write under a negation or a
+ *    hypothesis → answer; nothing readable → clarify; a write missing one item or with readings that
+ *    write → clarify (object_ambiguous); only-reading readings → read the most likely one; asked once
+ *    and still unclear → clarify, left unfinished. Otherwise a clear write → propose_write.
  * 8. public web                                     → web_lookup
  * 9. Orbit records, views, functions                → read
  * 10. otherwise                                     → answer
  *
  * A part whose prerequisite part is not done this round waits (dependency_pending).
  */
+import type { Reading, RecordKind } from "../clarify/default-readings";
+import { decideNextStep, type NextStep } from "../clarify/next-step";
 import type { UnderstandPart } from "../understand/schema";
 import { capabilityKind, type Capability, type Route, type Verdict, type WaitReason } from "./capabilities";
 
@@ -29,6 +32,8 @@ export interface RouteDecision {
   reason: string;
   /** Write capabilities that were not taken up (a negation, a hypothesis, a statement). */
   blockedWrites: Capability[];
+  /** AG04: the §3.11 next step of a part that is not plainly clear (absent: the ordinary routes). */
+  step?: NextStep;
 }
 
 /** Negations and hypotheses that keep a part from becoming a write (zh, ja, en). */
@@ -36,16 +41,81 @@ const NEGATION = /(先别|别改|别动|不要改|不要加|不要建|不要删|
 const HYPOTHESIS = /(如果|要是|假如|假设|万一|もし|仮に|\bif\b|\bwhat if\b|\bsuppose\b|\bin case\b)/iu;
 const HYPOTHESIS_OPENING = /^\s*(如果|要是|假如|假设|万一|もし|仮に|if\b|what if\b|suppose\b)/iu;
 
+/**
+ * AG04 run-02 (设计稿 §3.10 "隔了多久算断开", §3.11 row 4): pronouns and demonstratives, and the generic
+ * words that may stand around them. A clue made of nothing else names no object by itself: only the
+ * context can resolve it, and when the context had nothing to offer, code does not guess — it asks.
+ * Longest first (Han and kana are matched as substrings; Latin words as whole words).
+ */
+const PRONOUN_WORDS_CJK = [
+  "他们", "她们", "它们", "这些", "那些", "这个", "那个", "这条", "那条", "这篇", "那篇", "这件", "那件", "这位", "那位", "这场", "那场", "这次", "那次", "这份", "那份", "他", "她", "它", "这", "那", "该",
+  "彼女ら", "彼女", "彼ら", "あの人", "この人", "その人", "あの方", "その方", "あいつ", "あれ", "それ", "これ", "あの", "その", "この", "例の", "彼",
+];
+const GENERIC_WORDS_CJK = ["待办", "笔记", "活动", "日程", "联系人", "事情", "会议", "记录", "东西", "人", "事", "会", "的", "メモ", "ToDo", "イベント", "予定", "打ち合わせ", "やつ", "件", "人", "の"];
+const PRONOUN_WORDS_LATIN = new Set(["he", "she", "him", "her", "his", "hers", "it", "its", "they", "them", "their", "that", "this", "those", "these", "one", "ones", "the", "s"]);
+const GENERIC_WORDS_LATIN = new Set(["note", "notes", "to-do", "todo", "task", "event", "meeting", "person", "thing", "item", "record", "contact"]);
+
+export function isPronounClue(text: string): boolean {
+  let rest = text.replace(/^@/u, "").trim();
+  if (!rest) return false;
+  const latin = rest.toLowerCase().split(/[\s'’]+/u).filter(Boolean);
+  if (/^[\x20-\x7e’]+$/u.test(rest)) return latin.length > 0 && latin.every((word) => PRONOUN_WORDS_LATIN.has(word) || GENERIC_WORDS_LATIN.has(word)) && latin.some((word) => PRONOUN_WORDS_LATIN.has(word) && word !== "the" && word !== "s");
+  let hadPronoun = false;
+  for (const word of PRONOUN_WORDS_CJK) {
+    if (rest.includes(word)) {
+      hadPronoun = true;
+      rest = rest.split(word).join("");
+    }
+  }
+  if (!hadPronoun) return false;
+  for (const word of GENERIC_WORDS_CJK) rest = rest.split(word).join("");
+  return rest.replace(/[\s、，。・]/gu, "") === "";
+}
+
 export function isNegatedOrHypothetical(part: Pick<UnderstandPart, "constraints" | "sourceQuote">): boolean {
-  return part.constraints.some((constraint) => NEGATION.test(constraint) || HYPOTHESIS.test(constraint)) || HYPOTHESIS_OPENING.test(part.sourceQuote);
+  return negationOf(part) || hypothesisOf(part);
+}
+
+/** "先别改", "don't add" … in the part's constraints (AG04 keeps the two signals apart). */
+export function negationOf(part: Pick<UnderstandPart, "constraints">): boolean {
+  return part.constraints.some((constraint) => NEGATION.test(constraint));
+}
+
+/** "如果", "もし", "if …" in the constraints, or the part opens with one. */
+export function hypothesisOf(part: Pick<UnderstandPart, "constraints" | "sourceQuote">): boolean {
+  return part.constraints.some((constraint) => HYPOTHESIS.test(constraint)) || HYPOTHESIS_OPENING.test(part.sourceQuote);
 }
 
 const kindsOf = (part: Pick<UnderstandPart, "requiredCapabilities">) => new Set(part.requiredCapabilities.map(capabilityKind));
 
-export function decideRoute(part: UnderstandPart, options: { acceptedAlternative?: { leadsTo?: string } | null } = {}): RouteDecision {
+/**
+ * What decideRoute reads of a part: the first layer's part (AG03), or — after a pause — the part's
+ * plan kept in the checkpoint (codes only, no words: negation and hypothesis already decided).
+ */
+export type RouteInput = Pick<UnderstandPart, "clarity" | "requiredCapabilities" | "dataSources" | "intentBasis" | "dataOwner" | "persistence" | "continues"> & {
+  constraints?: string[];
+  sourceQuote?: string;
+  negation?: boolean;
+  hypothesis?: boolean;
+  readings?: readonly { capabilities: readonly Capability[]; deliverable: string }[];
+  objectClues?: readonly { entity: string }[];
+};
+
+export interface RouteOptions {
+  acceptedAlternative?: { leadsTo?: string } | null;
+  /** AG04: questions already asked for this part (§3.11 只问一次). */
+  asked?: number;
+  objectKind?: RecordKind | null;
+  pageKind?: RecordKind | null;
+  topicKind?: RecordKind | null;
+  /** run-02: the part points at its object only with a pronoun nothing could resolve (route node decides). */
+  unboundPronoun?: boolean;
+}
+
+export function decideRoute(part: RouteInput, options: RouteOptions = {}): RouteDecision {
   const kinds = kindsOf(part);
   const writes = part.requiredCapabilities.filter((capability) => capabilityKind(capability) === "write");
-  const decision = (verdict: Verdict, route: Route, reason: string, waitReason: WaitReason | null = null, blockedWrites: Capability[] = []): RouteDecision => ({ blockedWrites, reason, route, verdict, waitReason });
+  const decision = (verdict: Verdict, route: Route, reason: string, waitReason: WaitReason | null = null, blockedWrites: Capability[] = [], step: NextStep | null = null): RouteDecision => ({ blockedWrites, reason, route, verdict, waitReason, ...(step ? { step } : {}) });
 
   if (part.dataOwner === "other_user") return decision("decline", "explain_limit", "data of another user; no permission from its owner", "permission_missing");
   if (kinds.has("external")) return decision("convert", "suggest_external_agent", "needs a capability Orbit does not offer (external.*)");
@@ -57,15 +127,34 @@ export function decideRoute(part: UnderstandPart, options: { acceptedAlternative
       : decision("accept", "answer", "accepts the alternative offered earlier");
   }
   if (part.persistence === "until_satisfied") return decision("convert", "offer_alternative", "an open-ended request; offer a bounded alternative first", "awaiting_acceptance");
-  if (part.clarity === "statement") return decision("accept", "answer", "a statement, not a request", null, writes);
-  if (writes.length && (isNegatedOrHypothetical(part) || part.intentBasis === "accepted_context")) {
-    return decision("accept", "answer", "a write under a negation or a hypothesis is not a request to change anything", null, writes);
+  // AG04: an unclear part's next step comes from the six rows of §3.11 (clarify/next-step.ts).
+  const step = decideNextStep({
+    capabilities: part.requiredCapabilities,
+    clarity: part.clarity,
+    hasContactClue: (part.objectClues ?? []).some((clue) => clue.entity === "contact"),
+    hypothesis: part.hypothesis ?? (part.constraints && part.sourceQuote !== undefined ? hypothesisOf({ constraints: part.constraints, sourceQuote: part.sourceQuote }) : false),
+    intentBasis: part.intentBasis,
+    negation: part.negation ?? (part.constraints ? negationOf({ constraints: part.constraints }) : false),
+    objectKind: options.objectKind ?? null,
+    readings: (part.readings ?? []).map((reading) => ({ capabilities: [...reading.capabilities], deliverable: reading.deliverable as Reading["deliverable"] })),
+    unboundPronoun: options.unboundPronoun ?? false,
+  }, { asked: options.asked ?? 0, pageKind: options.pageKind ?? null, topicKind: options.topicKind ?? null });
+  switch (step.kind) {
+    case "respond":
+      return decision("accept", "answer", step.conservative ? "a write tag on a statement, a hypothesis or a negation: answered as a statement until the judgment model checks it (AG08)" : "a statement, not a request", null, writes, step);
+    case "not_understood":
+      return decision("accept", "clarify", "nothing to act on can be read out of it", null, [], step);
+    case "still_unclear":
+      return decision("accept", "clarify", "asked once already and still unclear: delivered as far as it goes", null, [], step);
+    case "ask_missing":
+    case "ask_readings":
+      return decision("accept", "clarify", "a write that misses its object or reads several ways", "object_ambiguous", [], step);
+    case "most_likely":
+      return decision("accept", "read", "only reading: the most likely reading is done and said first", null, [], step);
+    default:
+      break;
   }
-  if (part.clarity === "none") return decision("accept", "clarify", "nothing to act on can be read out of it");
-  if (writes.length) {
-    if (part.clarity === "missing_one" || part.clarity === "multiple_readings") return decision("accept", "clarify", "a write that misses its object or reads several ways", "object_ambiguous");
-    return decision("accept", "propose_write", "an explicit request to change a record");
-  }
+  if (writes.length) return decision("accept", "propose_write", "an explicit request to change a record");
   if (kinds.has("web") || part.dataSources.includes("public_web")) return decision("accept", "web_lookup", "public sources");
   if (kinds.has("read") || kinds.has("function") || part.dataSources.includes("orbit_records")) return decision("accept", "read", "the user's Orbit records");
   return decision("accept", "answer", "discussion; no records or web needed");
