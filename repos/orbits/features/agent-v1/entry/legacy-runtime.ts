@@ -63,7 +63,12 @@ export function createSessionWriter(provider: OrbitAgentChatSessionProvider): Ag
   return {
     async history(sessionId) {
       const session = await provider.getSession(sessionId, { limit: ORBIT_AGENT_CHAT_HISTORY_WINDOW });
-      return (session?.messages ?? []).slice(-ORBIT_AGENT_CHAT_HISTORY_WINDOW).map(({ role, text }) => ({ content: text, role }));
+      const messages = (session?.messages ?? []).slice(-ORBIT_AGENT_CHAT_HISTORY_WINDOW);
+      // A user turn with no reply after it was stopped (or failed) before anything was delivered;
+      // the next turn answers its own message, so the stopped one is left out of the model's context.
+      return messages
+        .filter((message, index) => message.role !== "user" || messages[index + 1]?.role === "assistant")
+        .map(({ role, text }) => ({ content: text, role }));
     },
     async appendUser(sessionId, record, createdAt) {
       const origin = record.input.origin;
