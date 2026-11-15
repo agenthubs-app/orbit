@@ -40,6 +40,44 @@ test("the clue's own words, without pronouns, counts and generic words (zh, ja, 
   for (const only of ["那篇笔记", "第二个", "刚才的要点", "それ", "this note", "my notes"]) assert.equal(clueSearchWords(only), undefined, only);
 });
 
+test("words for a time, a state or recency are not search words (zh, ja, en)", () => {
+  for (const only of ["タスク", "明日の予定", "明天的日程", "最近的笔记", "没做完的待办", "まだ終わっていないタスク", "期限を過ぎているもの", "this month's notes", "open to-dos", "overdue tasks", "my latest notes", "tomorrow's schedule"]) assert.equal(clueSearchWords(only), undefined, only);
+  assert.equal(clueSearchWords("明天的周会"), "周会");
+});
+
+test("a clue that only names a kind of record (タスク, notes) is no pointer: the read goes on, narrowed by code's defaults", async () => {
+  const base = world();
+  base.records.push(todo(ACTOR, "task:done", "已经做完的", { status: "completed" }));
+  const records = recordAccessOf(base);
+  const model = deepseekStub([
+    json({ parts: [part({ dataSources: ["orbit_records"], deliverable: "list", objectClues: [{ entity: "todo", text: "タスク" }], requiredCapabilities: ["todo.read"], sourceQuote: "まだ終わっていないタスクを一覧にしてください" })], plainChat: false }),
+    (call) => json({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: /(s\d+) — to-do/u.exec(call.user)![1] }], partId: "p1", text: "ok" }] }),
+    json({ parts: [part({ dataSources: ["orbit_records"], objectClues: [{ entity: "schedule", text: "明日の予定" }], readFilter: { from: "2026-11-16", to: "2026-11-16" }, requiredCapabilities: ["schedule.read"], sourceQuote: "明日の予定を教えてください" })], plainChat: false }),
+    (call) => json({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: /(s\d+) — personal schedule item/u.exec(call.user)![1] }], partId: "p1", text: "ok" }] }),
+  ]);
+  const kit = graphKit(model.fetchImplementation, { records });
+  const todos = await runAgentGraph(kit.deps, kit.input("まだ終わっていないタスクを一覧にしてください。", { locale: "ja" }));
+  assert.deepEqual(todos.sourceRefs, ["todo:task:t42"]);
+  assert.equal(records.source.reads.includes("task:done"), false);
+  const tomorrow = await runAgentGraph(kit.deps, kit.input("明日の予定を教えてください。", { locale: "ja" }));
+  assert.deepEqual(tomorrow.sourceRefs, ["schedule:personal:s10"]);
+});
+
+test("a kind word is not taken for the record of that kind mentioned last; a pointer is", async () => {
+  const base = world();
+  base.records.push(todo(ACTOR, "task:other", "另一条待办"));
+  const records = recordAccessOf(base);
+  const state = { lastMentioned: [{ id: "task:t42", name: "给小林发修订报价", type: "todo" }], openItems: [], sessionId: "session:a", shownList: null, updatedAt: "2026-11-15T09:59:00.000Z" };
+  const model = deepseekStub([
+    json({ parts: [part({ dataSources: ["orbit_records"], deliverable: "list", objectClues: [{ entity: "todo", text: "待办" }], requiredCapabilities: ["todo.read"], sourceQuote: "列一下我的待办" })], plainChat: false }),
+    (call) => json({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: /(s\d+) — to-do/u.exec(call.user)![1] }], partId: "p1", text: "ok" }] }),
+  ]);
+  const kit = graphKit(model.fetchImplementation, { messages: [{ createdAt: "2026-11-15T09:59:00.000Z", role: "user", text: "x" }, { createdAt: "2026-11-15T09:59:10.000Z", role: "assistant", text: "y" }], records, state });
+  await kit.seeded;
+  await runAgentGraph(kit.deps, kit.input("列一下我的待办。"));
+  assert.ok(records.source.reads.includes("task:other"), "the list is read, not only the to-do mentioned last");
+});
+
 const reads = (records: ReturnType<typeof recordAccessOf>) => records.source.reads.filter((id) => id.startsWith("note:"));
 
 for (const [language, message, clue] of [

@@ -101,19 +101,30 @@ export function nameTokens(words: string): string[] {
  * nothing is left ("那篇笔记", "第二个", "this note"): the clue names no words to search by.
  */
 const CJK_NOISE = [
+  // run-02 repair 1: words for a time, a state or recency narrow by dates or status, never by words.
+  "まだ終わっていない", "終わっていない", "期限を過ぎている", "期限切れ", "完了した", "没做完的", "没做完", "未完成的", "未完成", "未完了", "已完成的", "已完成", "过期的", "过期",
+  "最近的", "最近", "最新的", "最新", "上次", "前回", "这个星期", "这个月", "上个月", "下个月", "今天", "明天", "昨天", "后天", "明後日", "今日", "明日", "昨日", "本周", "这周", "上周", "下周", "本月", "今週", "来週", "先週", "今月", "来月", "先月",
   "我记过的", "我记的", "我写的", "我的", "私が書いた", "私の", "关于", "有关", "について",
   "刚才", "刚刚", "上面", "前面", "之前", "先前", "さっき", "先ほど",
   "这些", "那些", "这个", "那个", "这条", "那条", "这篇", "那篇", "这件", "那件", "这份", "那份", "这次", "那次", "他们", "她们", "它们", "彼女", "あの人", "その人", "例の", "それ", "これ", "あれ", "その", "この", "あの",
   "笔记", "记录", "备忘", "待办", "任务", "日程", "活动", "联系人", "事情", "东西", "内容", "要点", "话题", "話", "メモ", "ノート", "タスク", "ToDo", "予定", "イベント", "もの", "こと",
   "他", "她", "它", "这", "那", "该", "彼", "我", "私", "件", "的", "の",
 ];
-const LATIN_NOISE = new Set(["the", "a", "an", "this", "that", "these", "those", "it", "its", "my", "mine", "our", "your", "his", "her", "their", "him", "them", "me", "i", "about", "of", "on", "for", "in", "at", "to", "note", "notes", "memo", "memos", "record", "records", "todo", "todos", "to-do", "to-dos", "task", "tasks", "schedule", "event", "events", "item", "items", "one", "ones", "first", "second", "third", "last", "earlier", "above", "previous", "wrote", "written"]);
+const LATIN_NOISE = new Set(["the", "a", "an", "this", "that", "these", "those", "it", "its", "my", "mine", "our", "your", "his", "her", "their", "him", "them", "me", "i", "about", "of", "on", "for", "in", "at", "to", "note", "notes", "memo", "memos", "record", "records", "todo", "todos", "to-do", "to-dos", "task", "tasks", "schedule", "event", "events", "item", "items", "one", "ones", "first", "second", "third", "last", "earlier", "above", "previous", "wrote", "written",
+  "today", "tomorrow", "yesterday", "week", "month", "year", "next", "latest", "recent", "open", "done", "completed", "finished", "overdue", "pending", "upcoming"]);
+
+/** run-02 repair 1: words that point at one record ("那篇", "第二个", "it") — as opposed to naming a kind ("タスク", "notes"). */
+const POINTER = /(这|那|该|此|它|他|她|彼|それ|これ|あれ|その|この|あの|例の|刚才|刚刚|上面|前面|之前|さっき|先ほど|第[一二三四五六七八九十\d]|\b(this|that|these|those|it|its)\b)/iu;
+
+export function cluePointsAtOne(words: string): boolean {
+  return POINTER.test(words);
+}
 
 export function clueSearchWords(words: string): string | undefined {
   let rest = words.replace(/^@/u, "").trim();
   if (!rest) return undefined;
   if (/^[\x20-\x7e’]+$/u.test(rest)) {
-    const kept = rest.toLowerCase().split(/[^a-z0-9'’-]+/u).filter((word) => word && !LATIN_NOISE.has(word));
+    const kept = rest.toLowerCase().split(/[^a-z0-9'’-]+/u).map((word) => word.replace(/['’]s$/u, "")).filter((word) => word && !LATIN_NOISE.has(word));
     const joined = kept.join(" ");
     return joined.length >= 3 ? joined : undefined;
   }
@@ -242,7 +253,9 @@ export function resolveNode(scope: NodeScope): GraphNode {
       let text = filter?.text ? input.message.slice(filter.text[0], filter.text[1]) : undefined;
       for (const ref of part.refs) {
         // A clue with words of its own is searched by them (below), not taken for the record mentioned last.
-        if (ref.recordId || ref.entity === "contact" || text || clueSearchWords(clueWords(input.message, ref) ?? "")) continue;
+        // run-02 repair 1: only a pointer ("那篇", "it") means that record; a kind word ("待办", "notes") does not.
+        const said = clueWords(input.message, ref) ?? "";
+        if (ref.recordId || ref.entity === "contact" || text || clueSearchWords(said) || !cluePointsAtOne(said)) continue;
         const last = context?.lastMentioned.find((item) => recordKindOf(item.type) === recordKindOf(ref.entity));
         if (last) {
           ref.recordId = last.id;
@@ -425,7 +438,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
         const clue = part.refs.find((ref) => !ref.recordId && recordKindOf(ref.entity) === kind);
         const clueText = clue ? clueSearchWords(clueWords(input.message, clue) ?? "") : undefined;
         const kindText = text ?? clueText;
-        if (clue && !kindText && !contacts.length) {
+        if (clue && !kindText && !contacts.length && cluePointsAtOne(clueWords(input.message, clue) ?? "")) {
           unclear = true;
           continue;
         }
