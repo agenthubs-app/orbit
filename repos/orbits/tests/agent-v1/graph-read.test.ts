@@ -202,6 +202,23 @@ test("a topic word and 'the first time' read the person's notes by the word, old
   assert.deepEqual(result.sourceRefs, ["memo:note:old-glaze"]);
 });
 
+test("words that match none of the person's notes: their notes are read without them, and the model is told so", async () => {
+  const base = world();
+  base.records.push(memo(ACTOR, "note:first", "Met him at a trade show. He is an engineer at Kestrel.", "2024-06-18T05:00:00.000Z", ["contact:c17"]), memo(ACTOR, "note:now", "He started at Northwind on October 1.", "2026-10-21T05:00:00.000Z", ["contact:c17"]));
+  const model = deepseekStub([
+    json({ parts: [part({ dataSources: ["orbit_records"], deliverable: "comparison", objectClues: [{ entity: "contact", text: "小林健" }], readFilter: { order: "both", text: "working" }, requiredCapabilities: ["contact.read", "view.timeline"], sourceQuote: "Where was 小林健 working when I first met him, and where is he now?" })], plainChat: false }),
+    (call) => {
+      assert.match(call.user, /No note of theirs contains "working"/u);
+      const first = handleOf(call.user, /(s\d+) — memo "Met him at a"/u);
+      const now = handleOf(call.user, /(s\d+) — memo "He started a"/u);
+      return json({ segments: [{ cites: [{ sentenceIds: [2], sourceRef: first }, { sentenceIds: [1], sourceRef: now }], partId: "p1", text: "Kestrel then, Northwind now." }] });
+    },
+  ]);
+  const kit = graphKit(model.fetchImplementation, { records: recordAccessOf(base) });
+  const result = await runAgentGraph(kit.deps, kit.input("Where was 小林健 working when I first met him, and where is he now?", { locale: "en" }));
+  assert.deepEqual([...result.sourceRefs].sort(), ["memo:note:first", "memo:note:now"]);
+});
+
 test("the checkpoint keeps refs, versions and gaps of a read, never the record's words", async () => {
   const model = deepseekStub([
     json({ parts: [part({ dataSources: ["orbit_records"], objectClues: [{ entity: "contact", text: "小林" }], requiredCapabilities: ["memo.read"], sourceQuote: "上次和小林聊了什么" })], plainChat: false }),

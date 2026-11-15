@@ -393,14 +393,21 @@ export function resolveNode(scope: NodeScope): GraphNode {
           const orders: ("newest" | "oldest")[] = order === "both" ? ["newest", "oldest"] : [order];
           for (const direction of orders) {
             try {
-              const pages = await readPages(records.reader, kind, accountScope, {
+              const queryOf = (words: string | undefined) => ({
                 ...(contactId ? { contactId } : {}),
-                ...(text ? { text } : {}),
+                ...(words ? { text: words } : {}),
                 ...(kind === "todo" && status ? { status } : {}),
                 ...(from ? { from } : {}),
                 ...(to ? { to } : {}),
                 ...(kind === "todo" && !filter?.order ? {} : { order: direction }),
-              }, order === "both" ? 1 : maxPages);
+              });
+              let pages = await readPages(records.reader, kind, accountScope, queryOf(text), order === "both" ? 1 : maxPages);
+              // The words were the first layer's narrowing: when none of the person's records has them, read the
+              // person's records without them and say so (a person's "where he works" is not a word in the notes).
+              if (text && contactId && !pages.items.length && !pages.withheld) {
+                pages = await readPages(records.reader, kind, accountScope, queryOf(undefined), order === "both" ? 1 : maxPages);
+                if (pages.items.length) read.notes.push(`No note of theirs contains "${text}"; these are their ${kind === "memo" ? "notes" : "records"} without that filter.`);
+              }
               withheld += pages.withheld;
               let items = pages.items;
               if (kind === "schedule" && (from || to)) {
