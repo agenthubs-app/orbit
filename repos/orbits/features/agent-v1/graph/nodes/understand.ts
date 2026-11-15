@@ -8,6 +8,7 @@ import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
 import { hypothesisOf, negationOf } from "../../route/decide";
 import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_PROMPT_VERSION } from "../../understand/prompt";
+import { coverEverySentence } from "../../understand/cover";
 import type { UnderstandOutput } from "../../understand/schema";
 import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInput } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
@@ -99,8 +100,11 @@ export function understandNode(scope: NodeScope): GraphNode {
       }
     }
     if (checked.dropped.length) emitTrace({ dropped: checked.dropped, note: "verdict, route and waitReason are decided by code; the model's values are dropped", type: "understand.fields_dropped" });
-    run.understood = checked.output;
-    run.plainReply = checked.output.plainChat ? checked.output.reply ?? null : null;
-    return { budget, parts: graphPartsOf(checked.output, scope), plainChat: checked.output.plainChat, repairs, understanding: "understood" };
+    // run-03: a sentence of the message no part holds becomes a statement part (code's, not the model's).
+    const covered = coverEverySentence(checked.output, input.message);
+    if (covered.added.length) emitTrace({ quotes: covered.added.map((words) => [input.message.indexOf(words), input.message.indexOf(words) + words.length]), type: "understand.sentence_covered" });
+    run.understood = covered.output;
+    run.plainReply = covered.output.plainChat ? covered.output.reply ?? null : null;
+    return { budget, parts: graphPartsOf(covered.output, scope), plainChat: covered.output.plainChat, repairs, understanding: "understood" };
   };
 }

@@ -115,6 +115,8 @@ function readFilterOf(raw: unknown, message: string, where: string, dropped: str
   else if (raw.order !== undefined && raw.order !== null) dropped.push(`${where}.order (${JSON.stringify(raw.order)})`);
   if (oneOf(READ_STATUSES, raw.status)) out.status = raw.status;
   else if (raw.status !== undefined && raw.status !== null) dropped.push(`${where}.status (${JSON.stringify(raw.status)})`);
+  if (raw.current === true) out.current = true;
+  else if (raw.current !== undefined && raw.current !== null && raw.current !== false) dropped.push(`${where}.current (${JSON.stringify(raw.current)})`);
   const from = validDay(raw.from) ? raw.from : undefined;
   const to = validDay(raw.to) ? raw.to : undefined;
   if (raw.from !== undefined && raw.from !== null && !from) dropped.push(`${where}.from (${JSON.stringify(raw.from)})`);

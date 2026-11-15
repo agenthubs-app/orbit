@@ -77,6 +77,8 @@ export interface ReadFilter {
   status?: (typeof READ_STATUSES)[number];
   from?: string;
   to?: string;
+  /** AG05 run-03: the part asks how the person stands now (where, what they do, how they are lately). */
+  current?: true;
 }
 
 export interface UnderstandPart {

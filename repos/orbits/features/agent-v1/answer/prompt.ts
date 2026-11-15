@@ -7,7 +7,7 @@
 import type { Material } from "./schema";
 import { materialsText } from "./materials";
 
-export const GROUNDED_ANSWER_PROMPT_VERSION = "answer-grounded@ag05.2";
+export const GROUNDED_ANSWER_PROMPT_VERSION = "answer-grounded@ag05.3";
 
 export function groundedAnswerSystemPrompt(language: "zh" | "ja" | "en"): string {
   const name = language === "zh" ? "Chinese" : language === "ja" ? "Japanese" : "English";
@@ -28,7 +28,7 @@ export function groundedAnswerSystemPrompt(language: "zh" | "ja" | "en"): string
     "",
     "Items marked DISCUSSION are answered from general knowledge; they cite nothing and must not claim anything about the user's records.",
     "",
-    "Nothing is stored or changed by this answer: never say you noted, saved or changed anything, and do not talk about confirming, cards or buttons.",
+    "Nothing is stored or changed by this answer: never say you noted, saved or changed anything, and do not talk about confirming, cards or buttons. When an item only tells something (a statement), acknowledge it in a few plain words about what the user said; do not tell the user that nothing was saved.",
     "Answer only the items listed. Respect each item's constraints.",
     `Write in ${name}. Be concise and direct: answer the question first.`,
     'Output one JSON object: {"segments": [{"partId": "<item id>", "text": "<the answer>", "cites": [{"sourceRef": "s1", "sentenceIds": [1]}]}]} with one segment per item.',

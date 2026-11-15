@@ -448,8 +448,12 @@ export function resolveNode(scope: NodeScope): GraphNode {
       }
       // Searches by kind (not for kinds the part already points at by id).
       // The interaction view stands in for the notes only for "the last time" without words to look for.
-      const interactionAnswers = kinds.has("interaction") && !text && order === "newest" && read.views.some((view) => view.kind === "memo");
-      const searchKinds = (["memo", "todo", "schedule"] as const).filter((kind) => kinds.has(kind) && !boundIds.has(kind) && !(kind === "memo" && interactionAnswers));
+      // run-03 (AE-SCL-007): how a person stands now also reads their newest notes, so a newer note wins over an
+      // older interaction or profile. "The last time" reads as before.
+      const current = Boolean(filter?.current) && contacts.length > 0;
+      const interactionAnswers = !current && kinds.has("interaction") && !text && order === "newest" && read.views.some((view) => view.kind === "memo");
+      const searchKinds = (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !(kind === "memo" && interactionAnswers));
+      if (current) read.notes.push("This asks how the person stands now: the interactions, their newest notes and the profile are all here; where they differ, the newer dated record is what holds now. Never give as current anything a newer record replaces (a former company, an old role).");
       const subjects = contacts.length ? contacts.map((item) => item.id) : [undefined];
       let unclear = false;
       const reads = new Map<string, { complete: boolean; kind: string; pagesRead: number; total: number | null }>();
