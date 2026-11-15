@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { NETWORK_ANALYSIS_RAIL_LIMIT, networkAnalysisPeopleSchema } from "../../../../../shared/api-schema/network-analysis-view";
 import type { NetworkAnalysisDimension, NetworkAnalysisPeopleDTO, NetworkAnalysisPeopleSort, NetworkAnalysisPersonRow } from "../../../../../shared/contract/network-analysis-view";
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { localizeNextActionText } from "../../orbit-contacts-presentation";
 import { Avatar, Icon, RetryCard, Segmented, Skeleton } from "../ui";
 import { SORT_KEY, analysisListHref, bucketLabel, networkListHref, useAnalysisT, type AnalysisT } from "./analysis-labels";
 import styles from "./network-analysis.module.css";
@@ -72,6 +73,9 @@ function stageChip(person: NetworkAnalysisPersonRow, t: AnalysisT) {
 
 export function PersonCard({ person, onOpen }: { person: NetworkAnalysisPersonRow; onOpen: (id: string) => void }) {
   const t = useAnalysisT();
+  const { language } = useOrbitLanguage();
+  // The list reader fills a contact with no next action with a fixed English line; show it in the page language.
+  const note = person.nextActionPreview ? localizeNextActionText(person.nextActionPreview, language) : "";
   return (
     <button type="button" className={`btn ${styles.person}`} onClick={() => onOpen(person.id)} data-analysis-person={person.id}>
       <div className={styles.row}>
@@ -82,7 +86,7 @@ export function PersonCard({ person, onOpen }: { person: NetworkAnalysisPersonRo
         </div>
         {stageChip(person, t)}
       </div>
-      {person.nextActionPreview ? <div className={`${styles.lbl} ${styles.note}`}>{person.nextActionPreview}</div> : null}
+      {note ? <div className={`${styles.lbl} ${styles.note}`}>{note}</div> : null}
     </button>
   );
 }
