@@ -692,7 +692,7 @@ export const plan = {
   "plan.type.routesNoteNone": "和这类人有联系的人",
   "plan.type.draftShort": "求介绍",
   "plan.type.makeDraftLong": "写引荐请求草稿",
-  "plan.type.eventsNoteV2": "按固定5项打分",
+  "plan.type.eventsNoteV2": "能见到人的在前",
   "plan.type.eventExpectedV2": "这类人约 {count}位参加",
   "plan.type.eventBonusV2": "参加活动也给活动栏 +{points}",
   "plan.type.openerJudge": "判定：{rule}",
@@ -878,4 +878,7 @@ export const plan = {
   "plan.home.factSaved": "已添加",
   "plan.home.factFailed": "没能添加。",
   "plan.home.eventRole": "去主办方和创作者聚集的场合",
+  "plan.type.eventsGroupPeople": "会来{label}",
+  "plan.type.eventsGroupTopic": "主题相近",
+  "plan.type.eventsGroupOther": "其他",
 } as const;

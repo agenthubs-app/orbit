@@ -8,8 +8,9 @@ import type { InboxRecordRepository } from '../storage/inbox-record-repository';
 export function selectDailyRecommendation(rows: readonly EventDiscoverRow[], dismissed: ReadonlySet<string>, registered: ReadonlySet<string>): EventDiscoverRow | null {
   return [...rows]
     .filter(row => row.eventId && !dismissed.has(row.eventId) && !registered.has(row.eventId)
-      && row.href.startsWith('/') && Number.isFinite(row.score) && row.score! > 0 && row.verdict !== 'skip')
-    .sort((a, b) => (b.score! - a.score!) || a.eventId.localeCompare(b.eventId))[0] ?? null;
+      && row.href.startsWith('/') && row.relevance?.group === 'people')
+    // 2026-11-15 去分数：会想见的人来的活动里，最近的一场。
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt) || a.eventId.localeCompare(b.eventId))[0] ?? null;
 }
 
 /** One semantic slot per actor and Tokyo day; R26 event-pick signatures remain independent. */

@@ -570,10 +570,13 @@ test("three type states: candidates, not in the network (persona, events), skipp
   await none.page.getByText("会える活動", { exact: true }).first().waitFor();
   assert.equal(await none.page.getByTestId("candidate-row").count(), 0);
   assert.ok(await none.page.getByTestId("event-row").count() > 0, "events still give a next step");
+  // 2026-11-15: events are no longer scored — the rows are grouped (会いたい人が来る → テーマ → そのほか) with no ring,
+  // and a row opens the event itself instead of the old 5-criterion breakdown.
+  assert.equal(await none.page.getByTestId("event-breakdown").count(), 0);
   await none.page.getByTestId("event-row").first().click();
-  const breakdown = none.page.getByTestId("event-breakdown");
-  await breakdown.waitFor();
-  for (const label of ["会える人の適合", "推定の確度", "時間とコスト", "既存のつながり", "交流の形式"]) await breakdown.getByText(label).waitFor();
+  const opened = (await navigation(none.page)).navigation.at(-1) as { method: string; href: string };
+  assert.equal(opened.method, "push");
+  assert.match(opened.href, /^\/events\//u);
   const skipped = await open(t, `/plans/${PLAN}/types/${item("lawyer")}`);
   // RD-16 design: the skipped row reads 「習熟済みとしてスキップ」 + 「(date ·) 話した人の点とは分けて表示します」.
   const skippedRow = skipped.page.getByTestId("type-skipped");
@@ -751,7 +754,6 @@ test("screenshots", { skip: !process.env.R24_SHOTS }, async (t) => {
     ["skip-confirm", `/plans/${PLAN}/types/${item("angel")}`, async (page) => { await page.getByRole("button", { name: "この分野はもう詳しい" }).click(); await page.getByText("この分野はもう詳しいですか？").waitFor(); }, {}],
     ["proposal-draft", `/plans/${PLAN}/types/${item("vc_partner")}`, async (page) => { await page.getByTestId("candidate-row").first().getByRole("checkbox").click(); await page.getByTestId("candidate-row").nth(1).getByRole("checkbox").click(); await page.getByRole("button", { name: "面談を提案" }).click(); await page.getByTestId("proposal-sheet").getByRole("button", { name: /さんへの下書きをつくる$/ }).first().click(); await page.getByTestId("mail-draft").waitFor(); }, { height: 1400, rewrite: withTwoCandidates() }],
     ["intro-draft", `/plans/${PLAN}/types/${item("funded_founder")}`, async (page) => { await page.getByRole("button", { name: "伊藤 直子さんへの依頼文をつくる" }).click(); await page.getByTestId("mail-draft").waitFor(); }, { rewrite: intro }],
-    ["event-breakdown", `/plans/${PLAN}/types/${item("funded_founder")}`, async (page) => { await page.getByTestId("event-row").first().click(); await page.getByTestId("event-breakdown").scrollIntoViewIfNeeded(); }, {}],
   ];
   for (const [name, path, act, options] of shots) {
     for (const dark of [false, true]) {

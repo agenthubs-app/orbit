@@ -8,13 +8,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { PlanCandidateView, PlanEventOption, PlanIntroRouteView, PlanPersonTypeDetail, PlanTalkedView } from "../../api/contract/plan-v2";
 import { unitPoints } from "../../api/compute/plan-allocation";
+import { compareByRelevance } from "../../api/compute/event-relevance";
 import { Avatar, Checkbox, Icon, UiPressable, UiText } from "../../components/ui";
-import Svg, { Circle } from "../../components/ui/svg";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useStandardCopy } from "../../i18n/standard-copy";
 import { KitButton, KitCard, KitCardHead, KitChip, KitEmo, KitGradient, KitHatch, KitSampleTag, kitText, useKitStyles, useKitWhy } from "./plan-kit";
 import type { TypeTone } from "./plan-overview-kit";
+import { PLAN_EVENT_EMOJI } from "./plan-model";
+import { RelevanceChips, relevanceChips, useRelevanceT } from "../events/v2/Relevance";
 
 type T = ReturnType<typeof useOrbitLocale>["t"];
 
@@ -373,43 +375,43 @@ export function RoutesCard({ routes, none, note, busy, onDraft }: { routes: read
 
 /* ---------- 会える活動 .v22ev ---------- */
 
-export function EventsListCard({ events, ring, bonus, onOpen }: { events: readonly PlanEventOption[]; ring: number; bonus: number | null; onOpen: (event: PlanEventOption) => void }) {
+export type PlanEventGroup = "people" | "topic" | "other";
+
+/** 会える活動の並び（2026-11-15 去分数）：会想见的人来 → 主题相近 → 其他，组内按日期；空组不出。没有 relevance 的算「其他」。 */
+export function planEventGroups(events: readonly PlanEventOption[]): { group: PlanEventGroup; events: PlanEventOption[] }[] {
+  const sorted = [...events].sort(compareByRelevance);
+  return (["people", "topic", "other"] as const)
+    .map((group) => ({ events: sorted.filter((event) => (event.relevance?.group ?? "other") === group), group }))
+    .filter((entry) => entry.events.length > 0);
+}
+
+export function EventsListCard({ events, typeLabel, bonus, onOpen }: { events: readonly PlanEventOption[]; typeLabel: string; bonus: number | null; onOpen: (event: PlanEventOption) => void }) {
   const { styles, colors } = useStyles();
   const kit = useKitStyles().styles;
   const { t, language } = useOrbitLocale();
-  const ringColor = (score: number) => (score >= 70 ? colors.plum700 : score >= 50 ? colors.plum500 : colors.rose500);
+  const rt = useRelevanceT();
+  const head = (group: PlanEventGroup) => group === "people" ? t("plan.type.eventsGroupPeople", { label: typeLabel }) : group === "topic" ? t("plan.type.eventsGroupTopic") : t("plan.type.eventsGroupOther");
   return (
     <KitCard style={styles.candCard}>
       <KitCardHead style={styles.evHead} title={t("plan.type.eventsTitle")} right={t("plan.type.eventsNoteV2")} />
-      {events.map((event, index) => (
-        <UiPressable key={event.eventId} accessibilityRole="button" accessibilityLabel={t("plan.type.eventScoreA11y", { score: event.score.total, title: event.title })} onPress={() => onOpen(event)} pressedScale={0.99} style={[styles.ev, index > 0 && styles.line]} testID="event-row">
-          <KitRing size={ring} score={event.score.total} color={ringColor(event.score.total)} />
-          <View style={kit.grow}>
-            <UiText numberOfLines={1} style={styles.evB}>{event.title}</UiText>
-            <UiText numberOfLines={1} style={kit.lbl}>{[eventDay(event.startsAt, language), event.venue].filter(Boolean).join(" · ")}</UiText>
-            {event.expectedCount ? <KitChip label={t("plan.type.eventExpectedV2", { count: event.expectedCount })} tone="lav" style={styles.evChip} /> : null}
-          </View>
-          <Icon name="right" size={16} color={colors.ink3} />
-        </UiPressable>
+      {planEventGroups(events).map(({ group, events: rows }) => (
+        <View key={group} testID={`event-group-${group}`}>
+          <UiText style={[kit.lbl, styles.evGroup]}>{head(group)}</UiText>
+          {rows.map((event) => (
+            <UiPressable key={event.eventId} accessibilityRole="button" accessibilityLabel={event.title} onPress={() => onOpen(event)} pressedScale={0.99} style={[styles.ev, styles.line]} testID="event-row">
+              <KitEmo emoji={event.emoji ?? PLAN_EVENT_EMOJI} tone="apricot" sm />
+              <View style={kit.grow}>
+                <UiText numberOfLines={1} style={styles.evB}>{event.title}</UiText>
+                <UiText numberOfLines={1} style={kit.lbl}>{[eventDay(event.startsAt, language), event.venue].filter(Boolean).join(" · ")}</UiText>
+                <RelevanceChips chips={relevanceChips(event.relevance, rt)} style={styles.evChip} />
+              </View>
+              <Icon name="right" size={16} color={colors.ink3} />
+            </UiPressable>
+          ))}
+        </View>
       ))}
       <UiText style={[kit.lbl, styles.evBonus]}>{bonus ? t("plan.type.eventBonusV2", { points: bonus }) : t("plan.type.eventBonus")}</UiText>
     </KitCard>
-  );
-}
-
-/** kit .ring：底圈 surface-3、分数弧 round cap（score / 100），中间 12px 800 数字。 */
-export function KitRing({ size, score, color }: { size: number; score: number; color: string }) {
-  const { styles, colors } = useStyles();
-  const r = (size - 5) / 2;
-  const length = 2 * Math.PI * r;
-  return (
-    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
-      <Svg width={size} height={size} style={styles.ringSvg}>
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke={colors.surface3} strokeWidth={5} fill="none" />
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={5} fill="none" strokeLinecap="round" strokeDasharray={`${(Math.max(0, Math.min(100, score)) / 100) * length} ${length}`} />
-      </Svg>
-      <UiText style={styles.ringText}>{String(score)}</UiText>
-    </View>
   );
 }
 
@@ -576,8 +578,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   evB: { color: colors.ink, ...kitText(13, "700") },
   evChip: { marginTop: 4 },
   evBonus: { paddingVertical: 8 },
-  ringSvg: { position: "absolute", transform: [{ rotate: "-90deg" }] },
-  ringText: { color: colors.ink, ...kitText(12, "800", 1.1) },
+  evGroup: { paddingBottom: 2, paddingTop: 10 },
 
   persona: { paddingVertical: 8, paddingHorizontal: 16 },
   personaHead: { marginTop: 8, marginBottom: 2 },

@@ -1,5 +1,5 @@
 // R27 イベント参加者の動線（App）的纯函数：日期（东京时间）、色调、标签（与 Web orbit-2026/events/DiscoverTab.tsx 同口径）。
-import type { EventDiscoverArea, EventDiscoverPeriod, EventDiscoverRow, EventDiscoverTheme } from "../../../api/contract/event-discover";
+import type { EventDiscoverArea, EventDiscoverPeriod, EventDiscoverTheme } from "../../../api/contract/event-discover";
 
 export type JourneyTone = "teal" | "lav" | "blue" | "apricot" | "pink";
 const RECOMMEND_TONES: readonly JourneyTone[] = ["teal", "lav", "blue"];
@@ -33,11 +33,9 @@ export function eventRange(startsAt: string, endsAt: string | null | undefined, 
 }
 export const monthDaySlash = (iso: string | null | undefined) => { const p = tokyo(iso); return p ? `${p.month}/${p.day}` : ""; };
 
-export function rowTone(row: Pick<EventDiscoverRow, "verdict">, index: number): { emo: JourneyTone; chip: JourneyTone | null } {
-  if (row.verdict === "conditional") return { chip: "apricot", emo: "apricot" };
-  if (row.verdict === "skip") return { chip: null, emo: "pink" };
-  const tone = RECOMMEND_TONES[index % RECOMMEND_TONES.length]!;
-  return { chip: tone, emo: tone };
+/** 卡片 emoji 底色按位置轮换（2026-11-15 去分数：不再按结论着色）。 */
+export function rowTone(index: number): JourneyTone {
+  return RECOMMEND_TONES[index % RECOMMEND_TONES.length]!;
 }
 
 export type JourneyT = (key: string, values?: Record<string, string | number>) => string;

@@ -1,7 +1,7 @@
 // R26 イベント (App; events DESIGN §2.1, app.html #13 / #14 / #15): 🔍 · イベント + 「10月 · 参加予定 N件」 · 📅, then
-// 評価 / 参加予定 N / 探す. 評価: 「このイベント、行く価値ある？」 (URL / poster), the 参加予定 carousel and 評価したイベント
-// (score order); empty: the three angles, a sample and the 参加コード card. 参加予定: events/mine. 探す: R27 DiscoverPage
-// (b2 #8). Scores come from the server (rule-based); nothing here calls AI.
+// 評価 / 参加予定 N / 探す. 評価: 「このイベントで、誰に会える？」 (URL / poster), the 参加予定 carousel and 調べたイベント
+// (newest first, the facts as chips — 2026-11-15 no scores); empty: the three angles, a sample and the 参加コード card.
+// 参加予定: events/mine. 探す: R27 DiscoverPage (b2 #8). Nothing here calls AI.
 import { useFocusEffect, useGlobalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
@@ -27,8 +27,8 @@ import { EventsOfflineNotice } from "./EventsOfflineNotice";
 import { usePageCopyResource } from "../../../hooks/usePageCopyResource";
 import { EVENTS_COPY_FRESH_MS, EVENTS_MINE_UPCOMING_PATH } from "./events-copies";
 
-import { ScoreRing } from "./ScoreRing";
-import { appCardLine, appEventWhen, monthOf, orderAssessed, relativeDay, ringColor, verdictKey, verdictTone } from "./events-model";
+import { RelevanceChips, relevanceChips, useRelevanceT } from "./Relevance";
+import { appCardLine, appEventWhen, monthOf, orderAssessed, relativeDay } from "./events-model";
 
 type Tab = "assess" | "going" | "discover";
 
@@ -129,6 +129,7 @@ function AssessPage({ items, upcoming, empty, now, language, onDelete }: { items
   const openAssess = (mode: "url" | "poster") => router.push(`/events/assess?mode=${mode}` as Href);
   const coming = upcoming.filter((item) => item.status !== "cancelled" && item.status !== "rejected");
   const fullCard = useFullCardWidth();
+  const rt = useRelevanceT();
   return (
     <ScrollView contentContainerStyle={styles.scroll} testID="events-assess">
       <View style={[styles.card, empty ? styles.cardBig : null]}>
@@ -152,7 +153,7 @@ function AssessPage({ items, upcoming, empty, now, language, onDelete }: { items
         </View>
         {empty ? (
           <View style={{ gap: 8, marginTop: 14 }}>
-            {([["🎯", "guideGoal", "guideGoalSubNone"], ["🤝", "guidePeople", "guidePeopleSubApp"], ["⏱️", "guideTime", "guideTimeSub"]] as const).map(([emoji, title, sub]) => (
+            {([["👥", "guideGoal", "guideGoalSubNone"], ["🤝", "guidePeople", "guidePeopleSubApp"], ["⏱️", "guideTime", "guideTimeSub"]] as const).map(([emoji, title, sub]) => (
               <View key={title} style={[styles.row, { gap: 10 }]}>
                 <View style={[styles.emo, styles.emoSm, { backgroundColor: colors.macApricot }]}><UiText style={styles.emoTextSm}>{emoji}</UiText></View>
                 <View style={styles.grow}><UiText style={styles.guideTitle}>{t(`eventsV2.${title}`)}</UiText><UiText style={styles.lbl}>{t(`eventsV2.${sub}`)}</UiText></View>
@@ -176,17 +177,17 @@ function AssessPage({ items, upcoming, empty, now, language, onDelete }: { items
       {!empty && items.length ? (
         // Rows sit in SwipeRow (its face pads 14), so the card pads 2 and the header 14: the same 16 as before.
         <View style={[styles.card, { marginTop: 18, paddingHorizontal: 2, paddingVertical: 8 }]}>
-          <View style={[styles.cardH, { marginBottom: 0, marginHorizontal: 14, marginTop: 8 }]}><UiText style={styles.h3}>{t("eventsV2.assessedTitle")}</UiText><UiText style={styles.more}>{t("eventsV2.byScore")}</UiText></View>
+          <View style={[styles.cardH, { marginBottom: 0, marginHorizontal: 14, marginTop: 8 }]}><UiText style={styles.h3}>{t("eventsV2.assessedTitle")}</UiText><UiText style={styles.more}>{t("eventsV2.relNewestFirst")}</UiText></View>
           {items.map((item, index) => (
             <SwipeRow key={item.id} actions={[{ icon: "trash", key: "delete", label: t("eventsV2.deleteAssessment"), onPress: () => onDelete(item.id), tone: "coral" }]}>
             <UiPressable accessibilityRole="button" accessibilityLabel={item.facts.title || item.sourceLabel || (item.sourceKind === "poster" ? t("eventsV2.posterImage") : "")} onPress={() => router.push(`/events/assessments/${encodeURIComponent(item.id)}` as Href)} style={styles.li} testID={`events-assessed-${item.id}`}>
               {index > 0 ? <View style={styles.liLine} /> : null}
-              <ScoreRing size={44} stroke={5} value={item.status === "reading" ? 0 : item.total} color={colors[ringColor(item.total)]} label={item.status === "reading" ? "…" : String(item.total)} fontSize={12} />
+              <View style={[styles.emo, styles.emoSm, { backgroundColor: colors.macLav }]}><UiText style={styles.emoTextSm}>{eventEmoji({ title: item.facts.title ?? "" })}</UiText></View>
               <View style={styles.meta}>
                 <UiText style={styles.metaTitle} numberOfLines={2}>{item.facts.title || item.sourceLabel || (item.sourceKind === "poster" ? t("eventsV2.posterImage") : "")}</UiText>
-                <UiText style={styles.metaSub} numberOfLines={1}>{appCardLine(item, language, t("eventsV2.free"))}</UiText>
+                <UiText style={styles.metaSub} numberOfLines={1}>{item.status === "reading" ? t("eventsV2.assessingTitle") : appCardLine(item, language, t("eventsV2.free"))}</UiText>
+                <RelevanceChips style={{ marginTop: 6 }} chips={relevanceChips(item.relevance, rt)} />
               </View>
-              <Chip label={item.userDecision === "dismissed" ? t("eventsV2.dismissed") : t(`eventsV2.${verdictKey(item.verdict)}`)} tone={item.userDecision === "dismissed" ? "neutral" : verdictTone(item.verdict)} />
             </UiPressable>
             </SwipeRow>
           ))}
@@ -199,6 +200,7 @@ function AssessPage({ items, upcoming, empty, now, language, onDelete }: { items
 function EmptyExtras() {
   const { styles, colors } = useStyles();
   const { t } = useOrbitLocale();
+  const rt = useRelevanceT();
   const router = useRouter();
   return (
     <>
@@ -207,11 +209,10 @@ function EmptyExtras() {
         <View style={{ opacity: 0.5 }}>
           <View style={[styles.row, { justifyContent: "space-between" }]}>
             <View style={[styles.emo, { backgroundColor: colors.macTeal }]}><UiText style={styles.emoText}>🎤</UiText></View>
-            <ScoreRing size={46} stroke={5} value={82} color={colors.plum700} label="82" fontSize={13} />
           </View>
           <UiText style={[styles.metaTitle, { fontSize: 17, lineHeight: 23, marginTop: 12 }]}>{t("eventsV2.exampleName")}</UiText>
           <UiText style={[styles.lbl, { marginTop: 4 }]}>{t("eventsV2.exampleSub")}</UiText>
-          <View style={[styles.row, { gap: 6, marginTop: 12, paddingTop: 10 }]}><Chip label={t("eventsV2.verdictRecommend")} tone="teal" /><Chip label={t("eventsV2.meetCount", { n: 14 })} tone="neutral" /></View>
+          <RelevanceChips style={{ marginTop: 12, paddingTop: 10 }} chips={relevanceChips({ group: "people", known: { count: 2, names: [] }, people: [{ count: 3, emoji: "", label: rt("eventsV2.relExampleType"), source: "registrants", typeKey: "sample" }], topic: null, warnings: [] }, rt)} />
         </View>
       </View>
       <View style={[styles.card, styles.flat, { marginTop: 14 }]}>

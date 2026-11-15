@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>イベント 去分数提案</title>
+<style>
+:root{
+  --bg:#F7F5F7;--surface:#fff;--surface-2:#F2EFF3;--surface-3:#EAE6EC;--line:rgba(40,30,50,.07);
+  --ink:#1E1A24;--ink-2:#5E5866;--ink-3:#6F6778;--ink-4:#C4BEC9;
+  --plum-900:#4F4466;--plum-700:#6E628A;--plum-500:#8E82A9;--plum-100:#E9E4F2;
+  --mac-pink:#F8E4EA;--mac-apricot:#F7ECDD;--mac-blue:#E2ECF8;--mac-teal:#DCF0EA;--mac-lav:#ECE6F7;
+  --mac-apricot-text:#8B602E;--mac-teal-text:#387361;--mac-lav-text:#6E5C9A;--mac-blue-text:#4A6B93;--mac-pink-text:#945465;
+  --coral-soft:#FBE7E1;--coral-text:#B83E23;
+  --font:"Hiragino Sans","PingFang SC",-apple-system,system-ui,sans-serif;
+  --num:"SF Pro Rounded",-apple-system,"SF Pro Display",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#EFECF1;color:var(--ink);font:14px/1.55 var(--font)}
+.wrap{max-width:1360px;margin:0 auto;padding:32px 28px 80px}
+.eyebrow{font-size:11px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase}
+h1{font-size:24px;margin:6px 0 8px}
+.lead{color:var(--ink-2);max-width:860px;font-size:13.5px}
+.rules{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px}
+.rules > span{background:#fff;border-radius:999px;padding:4px 12px;font-size:12px;color:var(--ink-2);border:1px solid var(--line)}
+.rules > span b{color:var(--coral-text);font-weight:600}
+.rules i{font-style:normal;color:var(--mac-teal-text);font-weight:600}
+h2{font-size:18px;margin:44px 0 4px}
+h2 small{font-size:12px;color:var(--ink-3);font-weight:400;margin-left:10px}
+.row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;margin-top:14px}
+.col{display:flex;flex-direction:column;gap:10px}
+.cap{font-size:12px;color:var(--ink-3)}
+.cap .tag{display:inline-block;border-radius:6px;padding:1px 7px;margin-left:6px;font-size:11px}
+.notes{max-width:390px;font-size:12px;color:var(--ink-2);padding-left:0;margin:0;list-style:none;counter-reset:n}
+.notes li{counter-increment:n;padding-left:22px;position:relative;margin:3px 0}
+.notes li::before{content:counter(n);position:absolute;left:0;top:1px;width:15px;height:15px;border-radius:50%;background:#C77C8E;color:#fff;font-size:10px;display:grid;place-items:center}
+.pin{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:#C77C8E;color:#fff;font-size:10px;vertical-align:middle;margin-right:4px;flex:none}
+
+/* phone */
+.phone{width:390px;height:844px;border-radius:52px;background:#141118;padding:11px;box-shadow:0 24px 60px -24px rgba(40,25,60,.45)}
+.screen{position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;
+  background:radial-gradient(500px 300px at 10% -5%,rgba(206,192,236,.55),transparent 60%),radial-gradient(400px 300px at 100% 0%,rgba(240,205,218,.5),transparent 60%),var(--bg)}
+.sb{display:flex;justify-content:space-between;padding:16px 30px 0;font-weight:600;font-size:14px}
+.island{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#141118}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 8px}
+.ib{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.75);display:grid;place-items:center;color:var(--ink-2);font-size:15px}
+.nav .t{text-align:center;font-weight:700;font-size:16px;line-height:1.2}
+.nav .t small{display:block;font-weight:400;font-size:11px;color:var(--ink-3)}
+.seg{margin:4px 18px 10px;background:rgba(255,255,255,.55);border-radius:12px;display:grid;grid-template-columns:repeat(3,1fr);padding:3px;font-size:12.5px;text-align:center;color:var(--ink-3)}
+.seg span{padding:6px 0;border-radius:9px}.seg .on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.search{margin:0 18px 10px;background:#fff;border-radius:14px;padding:10px 14px;font-size:13px;color:var(--ink-4);display:flex;gap:8px}
+.scroll{position:absolute;top:96px;bottom:0;left:0;right:0;overflow:hidden}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:14px 18px 8px;font-weight:700;font-size:15px}
+.sec small{font-weight:400;font-size:12px;color:var(--ink-3)}
+.card{background:#fff;border-radius:20px;margin:0 14px 10px;padding:14px}
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:84px;background:rgba(255,255,255,.88);backdrop-filter:blur(12px);display:grid;grid-template-columns:repeat(5,1fr);padding-top:10px;font-size:10px;color:var(--ink-3);text-align:center;border-top:1px solid var(--line)}
+.tabbar .on{color:var(--ink);font-weight:600}
+.tabbar i{display:block;width:20px;height:20px;margin:0 auto 3px;border:1.6px solid currentColor;border-radius:6px;opacity:.7}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.c-lav{background:var(--mac-lav);color:var(--mac-lav-text)}
+.c-teal{background:var(--mac-teal);color:var(--mac-teal-text)}
+.c-blue{background:var(--mac-blue);color:var(--mac-blue-text)}
+.c-warn{background:var(--coral-soft);color:var(--coral-text)}
+.c-grey{background:var(--surface-2);color:var(--ink-3)}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.7}
+
+/* carousel card */
+.car{display:flex;gap:10px;padding:0 14px;overflow:hidden}
+.ccard{flex:none;width:300px;background:#fff;border-radius:20px;padding:14px}
+.ccard.peek{width:60px;overflow:hidden}
+.emo{width:38px;height:38px;border-radius:12px;background:var(--mac-lav);display:grid;place-items:center;font-size:18px}
+.ccard h4{margin:10px 0 2px;font-size:15px}
+.meta{font-size:11.5px;color:var(--ink-3)}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:13px;font-weight:600}
+.btn-s{background:var(--surface-2);border-radius:999px;padding:4px 12px;font-size:12px}
+
+/* list rows */
+.lrow{display:flex;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
+.lrow:first-child{border-top:0;padding-top:2px}
+.date{width:40px;flex:none;text-align:center;background:var(--surface-2);border-radius:11px;padding:5px 0;line-height:1.1}
+.date b{display:block;font:700 17px var(--num)}.date span{font-size:10px;color:var(--ink-3)}
+.lrow .tt{font-weight:600;font-size:13.5px;line-height:1.35}
+.lrow .chips{margin-top:5px}
+.ended{opacity:.55}
+
+/* detail */
+.hero{margin:0 14px 10px;background:linear-gradient(135deg,#F5EEF8,#FBF3F5);border-radius:22px;padding:16px}
+.hero .badge{float:right;background:#fff;border-radius:999px;padding:2px 10px;font-size:11px;color:var(--ink-2)}
+.hero .org{font-size:11.5px;color:var(--ink-3);margin-top:12px}
+.hero h3{margin:2px 0 8px;font-size:19px}
+.hero .ln{font-size:12px;color:var(--ink-2);margin:2px 0}
+.rel{margin:0 14px 10px;background:#fff;border-radius:20px;padding:4px 14px}
+.rel .it{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
+.rel .it:first-child{border-top:0}
+.rel .ic{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font-size:13px;flex:none}
+.rel .tx{flex:1;font-size:13px;line-height:1.4}
+.rel .tx small{display:block;font-size:11px;color:var(--ink-3);margin-top:1px}
+.rel .go{color:var(--ink-4);font-size:14px;align-self:center}
+.av{display:flex;margin-top:5px}
+.av span{width:22px;height:22px;border-radius:50%;border:2px solid #fff;margin-left:-5px;font-size:10px;display:grid;place-items:center;font-weight:600}
+.av span:first-child{margin-left:0}
+.tabs{display:flex;gap:18px;margin:4px 20px 8px;font-size:13px;color:var(--ink-3)}
+.tabs .on{color:var(--ink);font-weight:700;border-bottom:2px solid var(--ink);padding-bottom:4px}
+.desc{margin:0 14px 10px;background:#fff;border-radius:20px;padding:14px;font-size:12.5px;color:var(--ink-2)}
+.cta{position:absolute;left:14px;right:14px;bottom:26px;display:flex;gap:10px;align-items:center}
+.cta .star{width:46px;height:46px;border-radius:50%;background:#fff;display:grid;place-items:center}
+.cta .main{flex:1;height:46px;border-radius:999px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:600;font-size:13.5px}
+.kv{display:grid;grid-template-columns:52px 1fr;gap:6px 10px;font-size:12.5px}
+.kv dt{color:var(--ink-3)}.kv dd{margin:0}
+.ann{outline:1.5px dashed #C77C8E;outline-offset:3px;border-radius:20px}
+
+/* before mini */
+.before{display:flex;gap:10px;align-items:center;background:#fff;border-radius:16px;padding:10px 12px;width:362px;opacity:.9}
+.ring{width:42px;height:42px;border-radius:50%;border:5px solid var(--plum-500);border-right-color:var(--surface-3);display:grid;place-items:center;font:700 12px var(--num);flex:none}
+.strike{position:relative}
+.strike::after{content:"";position:absolute;left:-4px;right:-4px;top:50%;height:2px;background:var(--coral-text);transform:rotate(-6deg)}
+
+/* web */
+.web{width:1000px;border-radius:22px;overflow:hidden;box-shadow:0 20px 60px -24px rgba(40,25,60,.35);
+  background:radial-gradient(700px 400px at 15% -5%,rgba(206,192,236,.5),transparent 60%),radial-gradient(600px 400px at 95% 0,rgba(240,205,218,.45),transparent 60%),var(--bg);display:grid;grid-template-columns:72px 1fr}
+.rail{display:flex;flex-direction:column;align-items:center;gap:18px;padding:20px 0;color:var(--ink-3);font-size:10px}
+.rail .lg{width:38px;height:38px;border-radius:12px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700}
+.rail .it{display:flex;flex-direction:column;align-items:center;gap:3px}.rail .it i{width:18px;height:18px;border:1.6px solid currentColor;border-radius:6px;opacity:.6}
+.rail .on{color:var(--ink);font-weight:600}
+.wmain{padding:22px 30px 30px}
+.crumb{font-size:12px;color:var(--ink-3)}
+.wh{font-size:20px;font-weight:700;margin:4px 0 16px}
+.panel{background:#fff;border-radius:20px;padding:16px 18px}
+.panel h5{margin:0 0 10px;font-size:14px;display:flex;justify-content:space-between}
+.panel h5 small{font-weight:400;color:var(--ink-3);font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:500;color:var(--ink-3);font-size:11.5px;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:11px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr.grp td{background:var(--surface-2);font-size:11.5px;color:var(--ink-2);font-weight:600;padding:5px 8px}
+td .sub{font-size:11.5px;color:var(--ink-3)}
+td .chips{margin-top:0}
+.addb{border:1px solid var(--surface-3);border-radius:999px;padding:3px 12px;font-size:12px;white-space:nowrap}
+.addb.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin-top:8px}
+.legend span{display:flex;gap:6px;align-items:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Orbit · イベント · 2026-11-15 提案</div>
+  <h1>活动不再打分：只写「跟你有关的事实」</h1>
+  <p class="lead">去掉分数圆环、「おすすめ / 条件付き / 見送り」和五项评分明细。每个活动只列能查到的事实：会来你想见的哪类人、你认识谁报名了、主题是否和计划相关；明确不合适时（超预算、时间冲突）才出一行提醒。查不到的就不显示，不扣分、不下结论。</p>
+  <div class="rules">
+    <span><span class="chip c-lav"><span class="dot"></span>VC 2名</span> 报名者 / 登壇者里有你计划想见的类型（有名单才出）</span>
+    <span><span class="chip c-teal"><span class="dot"></span>知り合い 1名</span> 你人脉里的人报名了</span>
+    <span><span class="chip c-blue"><span class="dot"></span>テーマが近い</span> 标题 / 说明 / 议程提到计划里的类型</span>
+    <span><span class="chip c-warn">予算オーバー</span> 只有超出你设定的上限、时间冲突时才出</span>
+  </div>
+  <div class="rules">
+    <span>排序：<i>会いたい人が来る</i> 横滑一行（有标签 1 的活动），下面「すべて」<i>按日期</i></span>
+    <span>没有计划的用户：不出标签 1 / 3，只按日期</span>
+    <span>0 人报名的新活动：<i>只是少几个标签</i>，和其他活动一样排、一样显示</span>
+  </div>
+
+  <!-- ===================== A 探す ===================== -->
+  <h2>① 探す <small>App 390 · Web 同结构（Web 卡片更宽，列表同一套标签）</small></h2>
+  <div class="row">
+    <div class="col">
+      <div class="cap">现在 → 去掉的部分</div>
+      <div class="before">
+        <div class="emo">🎤</div>
+        <div style="flex:1"><b style="font-size:13px">Japan SaaS Summit 2026 秋</b><div class="meta">10/16（金）· 東京国際フォーラム</div></div>
+        <div class="ring strike">82</div>
+      </div>
+      <div class="before">
+        <div class="date"><b>10</b><span>10月</span></div>
+        <div style="flex:1"><b style="font-size:13px">IoT 実装もくもく会</b><div class="meta">五反田 · ¥500</div></div>
+        <div class="ring strike" style="border-color:#D9A0AE;border-right-color:var(--surface-3)">38</div>
+      </div>
+      <div class="cap" style="margin-top:6px">0 人报名的活动在旧规则下最多 55 分 = 見送り，这就是死循环的来源。</div>
+    </div>
+
+    <div class="col">
+      <div class="cap">改后 · 有计划<span class="tag c-lav">主态</span></div>
+      <div class="phone"><div class="screen">
+        <div class="island"></div>
+        <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="nav"><span class="ib">⌕</span><div class="t">イベント<small>会いたい人に会える会を探す</small></div><span class="ib">▦</span></div>
+        <div style="position:absolute;top:96px;left:0;right:0;bottom:0;overflow:hidden">
+          <div class="seg"><span>評価</span><span>参加予定</span><span class="on">探す</span></div>
+          <div class="search">⌕ イベント名・主催・キーワード</div>
+          <div class="sec"><span><span class="pin">1</span>会いたい人が来る</span><small>3件</small></div>
+          <div class="car">
+            <div class="ccard ann">
+              <div style="display:flex;justify-content:space-between"><div class="emo">🎤</div><span class="chip c-grey" style="height:20px">申込 128名</span></div>
+              <h4>Japan SaaS Summit 2026 秋</h4>
+              <div class="meta">10/16（金）19:00 · 東京国際フォーラム</div>
+              <div class="chips"><span class="chip c-lav"><span class="dot"></span>VC パートナー 3名</span><span class="chip c-teal"><span class="dot"></span>知り合い 2名</span></div>
+              <div class="foot"><span>¥15,000</span><span class="btn-s">詳細</span></div>
+            </div>
+            <div class="ccard peek"><div class="emo" style="background:var(--mac-apricot)">🤝</div></div>
+          </div>
+          <div class="sec"><span><span class="pin">2</span>すべて</span><small>日付順 · 28件</small></div>
+          <div class="card" style="padding:12px 14px">
+            <div class="lrow">
+              <div class="date"><b>18</b><span>11月</span></div>
+              <div style="flex:1"><div class="tt">第5回 中日创业交流会</div><div class="meta">渋谷 · 無料 · 平日夜</div>
+                <div class="chips"><span class="chip c-blue"><span class="dot"></span>テーマが近い</span></div></div>
+            </div>
+            <div class="lrow">
+              <div class="date"><b>20</b><span>11月</span></div>
+              <div style="flex:1"><div class="tt">製造業 × SaaS ナイト</div><div class="meta">日本橋 · ¥2,000 · 平日夜</div>
+                <div class="chips"><span class="chip c-lav"><span class="dot"></span>CFO 1名</span><span class="chip c-teal"><span class="dot"></span>知り合い 1名</span></div></div>
+            </div>
+            <div class="lrow">
+              <div class="date"><b>22</b><span>11月</span></div>
+              <div style="flex:1"><div class="tt">スマートファクトリー EXPO 2026</div><div class="meta">有明 · 無料 · 土曜</div></div>
+            </div>
+            <div class="lrow">
+              <div class="date"><b>25</b><span>11月</span></div>
+              <div style="flex:1"><div class="tt">グローバル投資家サミット</div><div class="meta">虎ノ門 · ¥30,000 · 平日日中</div>
+                <div class="chips"><span class="chip c-lav"><span class="dot"></span>VC 4名</span><span class="chip c-warn">予算オーバー</span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar"><span><i></i>ホーム</span><span><i></i>人脈</span><span><i></i>iOrbit</span><span class="on"><i></i>イベント</span><span><i></i>Task</span></div>
+      </div></div>
+    </div>
+
+    <div class="col" style="padding-top:26px">
+      <ul class="notes">
+        <li>「会いたい人が来る」：报名者 / 登壇者里有你计划想见类型的活动，按日期。替代原来的「プランに効くイベント」（原来按分数）。没有这类活动时整行不出。</li>
+        <li>「すべて」：一律按日期。每行最多 3 个标签，顺序固定：想见的人 → 认识的人 → 主题 → 提醒。</li>
+      </ul>
+      <ul class="notes" style="margin-top:14px;counter-reset:n 2">
+        <li>第 5 回中日创业交流会：0 人报名，只有「テーマが近い」。和其他活动排在一起，不会被压到后面。</li>
+        <li>「スマートファクトリー EXPO」：什么都对不上 → 没有标签，就是一个普通活动。</li>
+        <li>「予算オーバー」：费用超过你设的上限（默认 ¥5,000）。只是提醒，不隐藏、不降序。</li>
+        <li>卡片右上「申込 128名」是事实；报名人数少于 10 时不显示（避免「才 2 人」的反效果）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===================== B 详情 ===================== -->
+  <h2>② 活动详情 <small>原「74 参加をおすすめ」评分带 → 「あなたに関係すること」</small></h2>
+  <div class="row">
+    <div class="col">
+      <div class="cap">新活动 · 报名 0 名<span class="tag c-blue">冷启动</span></div>
+      <div class="phone"><div class="screen">
+        <div class="island"></div>
+        <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="nav"><span class="ib">‹</span><span></span><span class="ib">⇪</span></div>
+        <div style="position:absolute;top:96px;left:0;right:0;bottom:0;overflow:hidden">
+          <div class="hero"><span class="badge">申込受付中 · 残り 80枠</span><div class="emo" style="background:#fff">🥂</div>
+            <div class="org">日中创新创业协会</div><h3>第5回 中日创业交流会</h3>
+            <div class="ln">🗓 11/18（水）19:00–21:30</div><div class="ln">📍 渋谷ストリーム 4F ホール</div><div class="ln">¥ 無料 · 定員 80名 · 審査あり</div></div>
+          <div class="rel ann">
+            <div class="it"><span class="ic c-blue">#</span><div class="tx">投資家・起業家向けの会<small>イベント説明より · あなたのプラン「VC パートナー」「起業家」と近い</small></div></div>
+          </div>
+          <div class="tabs"><span class="on">紹介</span><span>アジェンダ</span><span>主催</span><span>参加者 0</span></div>
+          <div class="desc">中日两国的创业者、投资人和企业创新负责人在此交流。前半是创业者 3 分钟路演，后半自由交流，现场有名片交换区…</div>
+        </div>
+        <div class="cta"><span class="star">☆</span><span class="main">参加登録・AI が5問だけ質問</span></div>
+      </div></div>
+    </div>
+
+    <div class="col">
+      <div class="cap">有报名者<span class="tag c-lav">主态</span></div>
+      <div class="phone"><div class="screen">
+        <div class="island"></div>
+        <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="nav"><span class="ib">‹</span><span></span><span class="ib">⇪</span></div>
+        <div style="position:absolute;top:96px;left:0;right:0;bottom:0;overflow:hidden">
+          <div class="hero"><span class="badge">締切間近 · 残り 22枠</span><div class="emo" style="background:#fff">🥂</div>
+            <div class="org">CFO Night 実行委員会</div><h3>CFO Night Tokyo vol.18</h3>
+            <div class="ln">🗓 10/7（水）19:00–21:30</div><div class="ln">📍 渋谷ストリーム 4F ホール</div><div class="ln">¥ ¥8,000 · 定員 150名 · 審査あり</div></div>
+          <div class="rel ann">
+            <div class="it"><span class="ic c-lav">👥</span><div class="tx">会いたい人 · CFO 3名 · VC 2名<small>申込者 128名より</small>
+              <div class="av"><span style="background:var(--mac-lav)">清</span><span style="background:var(--mac-blue)">森</span><span style="background:var(--mac-pink)">井</span><span style="background:var(--surface-2);color:var(--ink-3)">+2</span></div></div><span class="go">›</span></div>
+            <div class="it"><span class="ic c-teal">🤝</span><div class="tx">知り合い 1名が参加予定<small>山田 健太（ブルーム証券）</small></div><span class="go">›</span></div>
+            <div class="it"><span class="ic c-warn">!</span><div class="tx" style="color:var(--coral-text)">予算 ¥5,000 を超えています<small>設定で変更できます</small></div></div>
+          </div>
+          <div class="tabs"><span class="on">紹介</span><span>アジェンダ</span><span>主催</span><span>参加者 128</span></div>
+          <div class="desc">上場を目指すスタートアップの CFO・経営陣と、投資家・金融機関が本音で話す夜。キーノートのあと、テーブルトークを 3ラウンド…</div>
+        </div>
+        <div class="cta"><span class="star">☆</span><span class="main">参加登録・AI が5問だけ質問</span></div>
+      </div></div>
+    </div>
+
+    <div class="col" style="padding-top:26px">
+      <ul class="notes">
+        <li>一行一件事实，每行小字写依据（「イベント説明より」「申込者 128名より」）。</li>
+        <li>「会いたい人」点进去 = 参加者 tab 的「プランに合う」筛选；「知り合い」点进去 = 那个人的联系人页。</li>
+        <li>费用 / 时间已经在上面的标题卡里，这里不再重复，只在<b>超出上限或时间冲突</b>时出红色一行。</li>
+        <li>一行都没有（没计划、什么也对不上）→ 整张卡不出，页面直接是 tabs。</li>
+        <li>原来点评分带进入的「判定の内訳」页删除。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===================== C 外部活动评估 ===================== -->
+  <h2>③ 外部イベントを評価（贴链接）<small>结果页：圆环 + 内訳 → 读到的内容 + 同一张卡</small></h2>
+  <div class="row">
+    <div class="col">
+      <div class="phone"><div class="screen">
+        <div class="island"></div>
+        <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="nav"><span class="ib">‹</span><div class="t">イベント評価<small>peatix.com から読み取りました</small></div><span class="ib">⋯</span></div>
+        <div style="position:absolute;top:96px;left:0;right:0;bottom:0;overflow:hidden">
+          <div class="card">
+            <div style="font-weight:700;font-size:15px">シリーズA 実務勉強会 #12</div>
+            <dl class="kv" style="margin:10px 0 0">
+              <dt>日時</dt><dd>11/12（木）19:00–21:00</dd>
+              <dt>場所</dt><dd>オンライン</dd>
+              <dt>費用</dt><dd>¥3,000</dd>
+              <dt>主催</dt><dd>スタートアップ CFO 会</dd>
+              <dt>登壇</dt><dd>3名（VC 2 · 弁護士 1）</dd>
+            </dl>
+          </div>
+          <div class="sec"><span><span class="pin">1</span>あなたに関係すること</span></div>
+          <div class="rel ann">
+            <div class="it"><span class="ic c-lav">👥</span><div class="tx">会いたい人 · VC 2名<small>登壇者より · 参加者は非公開</small></div></div>
+            <div class="it"><span class="ic c-blue">#</span><div class="tx">テーマ「資金調達」がプランと近い<small>イベント説明より</small></div></div>
+            <div class="it"><span class="ic c-warn">!</span><div class="tx" style="color:var(--coral-text)">同じ時間に「投資家ランチ」の予定があります<small>カレンダーより</small></div></div>
+          </div>
+          <div class="cap" style="margin:0 20px"><span class="pin">2</span>読み取れなかった項目：参加者の構成</div>
+        </div>
+        <div class="cta"><span class="main" style="background:#fff;color:var(--ink);border:1px solid var(--surface-3)">元のページを開く</span><span class="main">参加予定に追加</span></div>
+      </div></div>
+    </div>
+    <div class="col" style="padding-top:6px">
+      <ul class="notes">
+        <li>和活动详情同一张卡、同一套规则。外部活动通常只有登壇者，标签会写「登壇者より」。</li>
+        <li>读不到的项目照实写一行，不再用「推定」去补分。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===================== D 计划页 ===================== -->
+  <h2>④ 计划页 · 人物类型下的活动 <small>Web 1440（App 同结构，表格变成列表行）</small></h2>
+  <div class="row">
+    <div class="web">
+      <div class="rail"><div class="lg">O</div><div class="it"><i></i>ホーム</div><div class="it"><i></i>人脈</div><div class="it on"><i></i>プラン</div><div class="it"><i></i>イベント</div><div class="it"><i></i>Task</div></div>
+      <div class="wmain">
+        <div class="crumb">プラン › シリーズAで3億円を調達 › VC パートナー</div>
+        <div class="wh">VC パートナー に会える会</div>
+        <div class="panel ann">
+          <h5>これからのイベント <small>会える人がいる順 → 日付順</small></h5>
+          <table>
+            <thead><tr><th style="width:74px">日付</th><th>イベント</th><th>あなたに関係すること</th><th style="width:96px"></th></tr></thead>
+            <tbody>
+              <tr class="grp"><td colspan="4"><span class="pin">1</span>VC パートナーが来る</td></tr>
+              <tr><td><b>10/16</b><div class="sub">金 19:00</div></td><td><b>Japan SaaS Summit 2026 秋</b><div class="sub">東京国際フォーラム · ¥15,000</div></td><td><div class="chips"><span class="chip c-lav"><span class="dot"></span>VC パートナー 3名</span><span class="chip c-teal"><span class="dot"></span>知り合い 2名</span><span class="chip c-warn">予算オーバー</span></div></td><td><span class="addb on">参加予定 ✓</span></td></tr>
+              <tr><td><b>11/12</b><div class="sub">木 19:00</div></td><td><b>シリーズA 実務勉強会 #12</b><div class="sub">オンライン · ¥3,000</div></td><td><div class="chips"><span class="chip c-lav"><span class="dot"></span>VC 2名（登壇）</span></div></td><td><span class="addb">＋ 追加</span></td></tr>
+              <tr class="grp"><td colspan="4"><span class="pin">2</span>テーマが近い</td></tr>
+              <tr><td><b>11/18</b><div class="sub">水 19:00</div></td><td><b>第5回 中日创业交流会</b><div class="sub">渋谷 · 無料</div></td><td><div class="chips"><span class="chip c-blue"><span class="dot"></span>投資家・起業家向け</span></div></td><td><span class="addb">＋ 追加</span></td></tr>
+              <tr class="grp"><td colspan="4">そのほか</td></tr>
+              <tr><td><b>11/22</b><div class="sub">土 10:00</div></td><td><b>スマートファクトリー EXPO 2026</b><div class="sub">有明 · 無料</div></td><td><span class="sub">—</span></td><td><span class="addb">＋ 追加</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col" style="padding-top:6px">
+      <ul class="notes">
+        <li>原「スコア」圆环列删除。分三组：<b>会想见的人来</b> → <b>主题相近</b> → <b>其他</b>；组内按日期。空组不显示。</li>
+        <li>「テーマが近い」组只有主题依据：报名者出来后，如果真有 VC 报名，会自动升到第 1 组。</li>
+      </ul>
+      <div class="legend" style="max-width:300px;margin-top:14px">
+        <span>其他受影响处（不另画）：</span>
+        <span>· 首页 / 秘书通知的「おすすめイベント」：取第 1 组里最近的一场</span>
+        <span>· 参加予定卡：去掉分数，保留标签</span>
+      </div>
+    </div>
+  </div>
+<style>
+.wx{width:1300px;border-radius:22px;overflow:hidden;box-shadow:0 20px 60px -24px rgba(40,25,60,.35);display:grid;grid-template-columns:72px 1fr 340px;min-height:760px;
+  background:radial-gradient(700px 400px at 15% -5%,rgba(206,192,236,.5),transparent 60%),radial-gradient(600px 400px at 70% 0,rgba(240,205,218,.45),transparent 60%),var(--bg)}
+.wx .center{padding:20px 26px 28px;min-width:0}
+.wx .rr{background:rgba(255,255,255,.72);border-left:1px solid var(--line);padding:18px 18px 22px;display:flex;flex-direction:column;gap:12px}
+.whead{display:grid;grid-template-columns:40px 1fr auto;align-items:center;margin-bottom:16px}
+.whead .t{text-align:center;font-weight:700;font-size:17px;line-height:1.2}.whead .t small{display:block;font-size:11px;font-weight:400;color:var(--ink-3)}
+.wseg{display:flex;background:rgba(255,255,255,.6);border-radius:999px;padding:3px;font-size:12px;gap:2px}
+.wseg span{padding:4px 12px;border-radius:999px;color:var(--ink-3)}.wseg .on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.wsearch{display:flex;gap:8px;margin-bottom:14px}
+.wsearch .in{flex:1;background:#fff;border-radius:14px;padding:9px 14px;font-size:13px;color:var(--ink-4)}
+.wsearch .f{background:#fff;border-radius:999px;padding:8px 13px;font-size:12px;color:var(--ink-2)}
+.wsec{display:flex;justify-content:space-between;align-items:baseline;margin:16px 2px 10px;font-weight:700;font-size:14.5px}
+.wsec small{font-weight:400;font-size:12px;color:var(--ink-3)}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.evc{background:#fff;border-radius:20px;padding:14px;display:flex;flex-direction:column;min-height:176px}
+.evc.sel{outline:2px solid var(--plum-500);outline-offset:-2px}
+.evc .tp{display:flex;justify-content:space-between;align-items:flex-start}
+.evc b.tt{font-size:14.5px;line-height:1.35;margin-top:10px}
+.evc .chips{margin-top:8px}
+.evc .ft{margin-top:auto;padding-top:10px;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:600}
+.rrh{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13.5px}
+.rcard{background:#fff;border-radius:18px;padding:14px}
+.rcard h6{margin:0 0 2px;font-size:15px}
+.rbtns{display:flex;gap:8px;margin-top:auto}
+.rbtns span{flex:1;text-align:center;border-radius:999px;padding:10px 0;font-size:13px;font-weight:600;background:#fff;border:1px solid var(--surface-3)}
+.rbtns .pri{background:var(--ink);color:#fff;border-color:var(--ink)}
+.wgrid{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.cover{background:linear-gradient(135deg,#F5EEF8,#FBF3F5);border-radius:22px;padding:18px 20px}
+.cover h3{margin:4px 0 10px;font-size:22px}
+.cover .ln{font-size:12.5px;color:var(--ink-2);margin:3px 0}
+.wtabs{display:flex;gap:22px;margin:16px 4px 10px;font-size:13px;color:var(--ink-3)}
+.wtabs .on{color:var(--ink);font-weight:700;border-bottom:2px solid var(--ink);padding-bottom:5px}
+.pmini{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:12.5px}
+.pmini:first-of-type{border-top:0}
+.pmini .a{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
+.pmini small{display:block;color:var(--ink-3);font-size:11px}
+.hero2{background:#fff;border-radius:22px;padding:18px 20px}
+.hero2 h3{margin:0 0 2px;font-size:18px;display:flex;gap:10px;align-items:center}
+.urlrow{display:flex;gap:8px;margin-top:12px}
+.urlrow .in{flex:1;background:var(--surface-2);border-radius:14px;padding:10px 14px;color:var(--ink-4);font-size:13px}
+.urlrow .go{background:var(--ink);color:#fff;border-radius:999px;padding:10px 18px;font-weight:600;font-size:13px}
+.drop{margin-top:8px;border:1.5px dashed var(--plum-100);border-radius:14px;padding:12px;text-align:center;color:var(--ink-3);font-size:12.5px;background:rgba(236,230,247,.35)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.tiles div{background:var(--mac-apricot);border-radius:14px;padding:10px 12px;font-size:12.5px;font-weight:600}
+.tiles small{display:block;font-weight:400;font-size:11px;color:var(--ink-3)}
+.tiles .lav{background:var(--mac-lav)}.tiles .teal{background:var(--mac-teal)}
+</style>
+
+  <!-- ===================== W1 Web 探す ===================== -->
+  <h2>⑤ Web · 探す <small>1440：中间 3 列卡片网格，右栏 = 选中活动的「あなたに関係すること」</small></h2>
+  <div class="row">
+    <div class="wx">
+      <div class="rail"><div class="lg">O</div><div class="it"><i></i>ホーム</div><div class="it"><i></i>人脈</div><div class="it"><i></i>iOrbit</div><div class="it on"><i></i>イベント</div><div class="it"><i></i>Task</div></div>
+      <div class="center">
+        <div class="whead"><span class="ib">⌕</span><div class="t">イベント<small>会いたい人に会える会を探す</small></div><div class="wseg"><span>評価</span><span>参加予定</span><span class="on">探す</span></div></div>
+        <div class="wsearch"><div class="in">⌕ イベント名・主催・キーワード</div><span class="f">今月 ▾</span><span class="f">東京 ▾</span><span class="f">テーマ ▾</span></div>
+        <div class="wsec"><span><span class="pin">1</span>会いたい人が来る</span><small>3件 · 日付順</small></div>
+        <div class="g3">
+          <div class="evc sel"><div class="tp"><span class="emo">🎤</span><span class="chip c-grey">申込 128名</span></div><b class="tt">Japan SaaS Summit 2026 秋</b><div class="meta">10/16（金）19:00 · 東京国際フォーラム</div>
+            <div class="chips"><span class="chip c-lav"><span class="dot"></span>VC パートナー 3名</span><span class="chip c-teal"><span class="dot"></span>知り合い 2名</span></div><div class="ft"><span>¥15,000</span><span class="btn-s">詳細</span></div></div>
+          <div class="evc"><div class="tp"><span class="emo" style="background:var(--mac-blue)">📈</span></div><b class="tt">シリーズA 実務勉強会 #12</b><div class="meta">11/12（木）19:00 · オンライン</div>
+            <div class="chips"><span class="chip c-lav"><span class="dot"></span>VC 2名（登壇）</span></div><div class="ft"><span>¥3,000</span><span class="btn-s">詳細</span></div></div>
+          <div class="evc"><div class="tp"><span class="emo" style="background:var(--mac-apricot)">🏭</span><span class="chip c-grey">申込 46名</span></div><b class="tt">製造業 × SaaS ナイト</b><div class="meta">11/20（金）19:00 · 日本橋</div>
+            <div class="chips"><span class="chip c-lav"><span class="dot"></span>CFO 1名</span><span class="chip c-teal"><span class="dot"></span>知り合い 1名</span></div><div class="ft"><span>¥2,000</span><span class="btn-s">詳細</span></div></div>
+        </div>
+        <div class="wsec"><span><span class="pin">2</span>すべて</span><small>日付順 · 28件</small></div>
+        <div class="g3">
+          <div class="evc"><div class="tp"><span class="emo" style="background:var(--mac-pink)">🥂</span></div><b class="tt">第5回 中日创业交流会</b><div class="meta">11/18（水）19:00 · 渋谷</div>
+            <div class="chips"><span class="chip c-blue"><span class="dot"></span>テーマが近い</span></div><div class="ft"><span>無料</span><span class="btn-s">詳細</span></div></div>
+          <div class="evc"><div class="tp"><span class="emo" style="background:var(--mac-teal)">🤖</span><span class="chip c-grey">申込 312名</span></div><b class="tt">スマートファクトリー EXPO 2026</b><div class="meta">11/22（土）10:00 · 有明</div>
+            <div class="ft"><span>無料</span><span class="btn-s">詳細</span></div></div>
+          <div class="evc"><div class="tp"><span class="emo" style="background:var(--mac-lav)">🌐</span><span class="chip c-grey">申込 85名</span></div><b class="tt">グローバル投資家サミット</b><div class="meta">11/25（水）13:00 · 虎ノ門</div>
+            <div class="chips"><span class="chip c-lav"><span class="dot"></span>VC 4名</span><span class="chip c-warn">予算オーバー</span></div><div class="ft"><span>¥30,000</span><span class="btn-s">詳細</span></div></div>
+        </div>
+      </div>
+      <div class="rr">
+        <div class="rrh">✦ 選択中のイベント</div>
+        <div class="rcard"><h6>Japan SaaS Summit 2026 秋</h6><div class="meta">10/16（金）19:00 · 東京国際フォーラム · ¥15,000</div></div>
+        <div class="rrh" style="font-size:12.5px;color:var(--ink-3);font-weight:600"><span class="pin">3</span>あなたに関係すること</div>
+        <div class="rel ann" style="margin:0">
+          <div class="it"><span class="ic c-lav">👥</span><div class="tx">会いたい人 · VC パートナー 3名<small>申込者 128名より</small><div class="av"><span style="background:var(--mac-lav)">清</span><span style="background:var(--mac-blue)">森</span><span style="background:var(--mac-pink)">井</span></div></div></div>
+          <div class="it"><span class="ic c-teal">🤝</span><div class="tx">知り合い 2名が参加予定<small>山田 健太 · 高橋 葵</small></div></div>
+          <div class="it"><span class="ic c-warn">!</span><div class="tx" style="color:var(--coral-text)">予算 ¥5,000 を超えています<small>設定で変更できます</small></div></div>
+        </div>
+        <div class="rbtns"><span>詳細を見る</span><span class="pri">参加予定に追加</span></div>
+      </div>
+    </div>
+    <div class="col" style="padding-top:6px;max-width:300px">
+      <ul class="notes">
+        <li>原来卡片右上的分数圆环 → 有 10 人以上报名时显示「申込 N名」，否则空着。</li>
+        <li>原来左下的「おすすめ / 条件付き」标签删除；「🎯 理由 ?」小框也并入标签。</li>
+        <li>右栏：点卡片 = 选中，右栏显示和活动详情同一张「あなたに関係すること」卡。没选中时显示第 1 组第一张。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===================== W2 Web 详情 ===================== -->
+  <h2>⑥ Web · 活动详情 <small>原「封面 + 右侧分数卡」→「封面 + あなたに関係すること」，右栏「会えそうな人」不变</small></h2>
+  <div class="row">
+    <div class="wx">
+      <div class="rail"><div class="lg">O</div><div class="it"><i></i>ホーム</div><div class="it"><i></i>人脈</div><div class="it"><i></i>iOrbit</div><div class="it on"><i></i>イベント</div><div class="it"><i></i>Task</div></div>
+      <div class="center">
+        <div class="whead"><span class="ib">‹</span><div class="t">イベント詳細</div><span class="ib">⇪</span></div>
+        <div class="wgrid">
+          <div class="cover"><span class="badge" style="float:right;background:#fff;border-radius:999px;padding:2px 10px;font-size:11px;color:var(--ink-2)">申込受付中 · 残り 80枠</span><div class="emo" style="background:#fff">🥂</div>
+            <div class="meta" style="margin-top:12px">日中创新创业协会</div><h3>第5回 中日创业交流会</h3>
+            <div class="ln">🗓 11/18（水）19:00–21:30</div><div class="ln">📍 渋谷ストリーム 4F ホール</div><div class="ln">¥ 無料 · 定員 80名 · 審査あり</div></div>
+          <div class="col" style="gap:8px">
+            <div class="cap" style="padding-left:4px"><span class="pin">1</span>あなたに関係すること</div>
+            <div class="rel ann" style="margin:0">
+              <div class="it"><span class="ic c-blue">#</span><div class="tx">投資家・起業家向けの会<small>イベント説明より · プランの「VC パートナー」「起業家」と近い</small></div></div>
+            </div>
+            <div class="cap" style="padding-left:4px">报名后有了名单，这里会多出「会いたい人」「知り合い」两行</div>
+          </div>
+        </div>
+        <div class="wtabs"><span class="on">紹介</span><span>アジェンダ</span><span>主催</span><span>参加者 0</span></div>
+        <div class="desc" style="margin:0">中日两国的创业者、投资人和企业创新负责人在此交流。前半是创业者 3 分钟路演，后半自由交流，现场有名片交换区。<br>参加对象：创业者、投资人、大企业新业务负责人。</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px"><span class="btn-s" style="padding:10px 16px">☆ 保存</span><span class="btn-s" style="padding:10px 18px;background:var(--ink);color:#fff">参加登録・AI が5問だけ質問</span></div>
+      </div>
+      <div class="rr">
+        <div class="rrh">✦ 会えそうな人</div>
+        <div class="rcard" style="text-align:center;color:var(--ink-3);font-size:12.5px;padding:22px 14px">まだ申込者はいません<br><span style="font-size:11.5px">申込が入ると、プランに合う人がここに出ます</span></div>
+        <div class="rcard"><b style="font-size:13px">主催者の連絡先</b><div class="meta">WeChat · LINE（申込後に表示）</div></div>
+      </div>
+    </div>
+    <div class="col" style="padding-top:6px;max-width:300px">
+      <ul class="notes">
+        <li>封面右边原来是「74 · 参加をおすすめ」分数卡，换成同一张事实卡。这里画的是 0 人报名的新活动，只有主题一行。</li>
+      </ul>
+      <div class="cap" style="margin-top:12px">有报名者的样子 = ② 里右边那台手机的卡片，放在同一位置；右栏「会えそうな人」照旧列人。</div>
+    </div>
+  </div>
+
+  <!-- ===================== W3 Web 評価 tab ===================== -->
+  <h2>⑦ Web · 評価（贴链接）<small>入口文案改为「誰に会えるか」，评估过的卡片不再按分数排</small></h2>
+  <div class="row">
+    <div class="wx">
+      <div class="rail"><div class="lg">O</div><div class="it"><i></i>ホーム</div><div class="it"><i></i>人脈</div><div class="it"><i></i>iOrbit</div><div class="it on"><i></i>イベント</div><div class="it"><i></i>Task</div></div>
+      <div class="center">
+        <div class="whead"><span class="ib">⌕</span><div class="t">イベント<small>10月 · 参加予定 3件 · 評価済み 4件</small></div><div class="wseg"><span class="on">評価</span><span>参加予定</span><span>探す</span></div></div>
+        <div class="hero2 ann">
+          <h3><span class="emo" style="width:32px;height:32px;font-size:15px">🔍</span><span class="pin">1</span>このイベントで、誰に会える？</h3>
+          <div class="meta">URL を貼るか、ポスター画像をドロップ。あなたのプランと人脈から調べます</div>
+          <div class="urlrow"><div class="in">🔗 https://</div><span class="go">調べる</span></div>
+          <div class="drop">🖼 ポスター・チラシの画像をドロップ</div>
+          <div class="tiles"><div class="lav">会いたい人<small>プランの人物タイプが来るか</small></div><div class="teal">知り合い<small>人脈から誰が参加するか</small></div><div>予算・時間<small>上限や予定とぶつからないか</small></div></div>
+        </div>
+        <div class="wsec"><span><span class="pin">2</span>調べたイベント</span><small>新しい順 ▾</small></div>
+        <div class="g3">
+          <div class="evc sel"><div class="tp"><span class="emo">📈</span></div><b class="tt">シリーズA 実務勉強会 #12</b><div class="meta">11/12（木）19:00 · オンライン · ¥3,000</div>
+            <div class="chips"><span class="chip c-lav"><span class="dot"></span>VC 2名（登壇）</span><span class="chip c-blue"><span class="dot"></span>テーマが近い</span></div></div>
+          <div class="evc"><div class="tp"><span class="emo" style="background:var(--mac-apricot)">🏭</span></div><b class="tt">製造業DXカンファレンス 大阪</b><div class="meta">10/23（金）· グランフロント大阪 · 無料</div>
+            <div class="chips"><span class="chip c-lav"><span class="dot"></span>製造業 DX 責任者</span></div></div>
+          <div class="evc"><div class="tp"><span class="emo" style="background:var(--mac-pink)">☕</span></div><b class="tt">丸の内スタートアップ朝会 #42</b><div class="meta">10/21（水）8:00 · 丸の内 · ¥1,000</div>
+            <div class="chips"><span class="chip c-warn">予定と重なる</span></div></div>
+        </div>
+      </div>
+      <div class="rr">
+        <div class="rrh">✦ 調べた結果</div>
+        <div class="rcard"><div class="meta" style="background:var(--surface-2);display:inline-block;border-radius:999px;padding:1px 10px;margin-bottom:6px">🔗 peatix.com</div><h6>シリーズA 実務勉強会 #12</h6>
+          <dl class="kv" style="margin:8px 0 0"><dt>日時</dt><dd>11/12（木）19:00–21:00</dd><dt>場所</dt><dd>オンライン</dd><dt>費用</dt><dd>¥3,000</dd><dt>登壇</dt><dd>3名（VC 2 · 弁護士 1）</dd></dl></div>
+        <div class="rrh" style="font-size:12.5px;color:var(--ink-3);font-weight:600"><span class="pin">3</span>あなたに関係すること</div>
+        <div class="rel" style="margin:0">
+          <div class="it"><span class="ic c-lav">👥</span><div class="tx">会いたい人 · VC 2名<small>登壇者より · 参加者は非公開</small></div></div>
+          <div class="it"><span class="ic c-blue">#</span><div class="tx">テーマ「資金調達」がプランと近い<small>イベント説明より</small></div></div>
+        </div>
+        <div class="cap">読み取れなかった項目：参加者の構成</div>
+        <div class="rbtns"><span>元のページ</span><span class="pri">参加予定に追加</span></div>
+      </div>
+    </div>
+    <div class="col" style="padding-top:6px;max-width:300px">
+      <ul class="notes">
+        <li>标题「このイベント、行く価値ある？」→「このイベントで、誰に会える？」；按钮「判定する」→「調べる」；三块说明对应三种标签。</li>
+        <li>「評価したイベント · スコア順」→「調べたイベント · 新しい順」，卡片去掉圆环和结论标签。</li>
+        <li>右栏去掉大圆环、三条分数条和「見送る」按钮，换成读到的内容 + 同一张事实卡。</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

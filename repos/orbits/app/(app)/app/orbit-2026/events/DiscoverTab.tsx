@@ -1,12 +1,14 @@
 "use client";
 
 // R27 イベント › 探す（Web；b2 #11 空 / #12 少量 / #13 大量 + テーマ弹层，b12 #346 / #348 1024 / 390）。
-// 数据来自 GET /api/events/discover（分数 = 计划页同一套 scoreEvent）；保存 = 库内活动的规则评估（不调 AI）→ 参加予定に追加。
-// 興味なし（契约 9）在表格行的菜单里；「?」展开依据。检索走 /api/events/search（R30 同一服务）。
+// 数据来自 GET /api/events/discover；2026-11-15 起不显示分数，卡片只列「あなたに関係すること」标签（Relevance.tsx），
+// 「会いたい人が来る」= 服务端 planFit（people 组，按日期），すべて 一律按日期。保存 = 参加予定に追加。
+// 興味なし（契约 9）在表格行的菜单里。检索走 /api/events/search（R30 同一服务）。
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { EventDiscoverArea, EventDiscoverFormat, EventDiscoverPeriod, EventDiscoverQuery, EventDiscoverResponse, EventDiscoverRow, EventDiscoverTheme } from "../../../../../shared/contract/event-discover";
+import type { EventRelevance } from "../../../../../shared/contract/event-relevance";
 import type { EventRecommendationDismissReason } from "../../../../../shared/contract/event-recommendation-feedback";
 import type { EventSearchResponse } from "../../../../../shared/contract/event-search";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
@@ -16,9 +18,10 @@ import { eventsJourneyCopy as jc } from "../copy/eventsJourney";
 import { DefaultRail } from "../shell/Orbit2026Shell";
 import { pickCopy } from "../copy/types";
 import { BottomSheet, ContextMenu, FilterOption, Icon, Kbd, SampleTag, Toggle, useStandardCopy, useToast, type MenuItem } from "../ui";
-import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
+import { translator as assessTranslator } from "./AssessmentDetail";
 import { eventsApi, newIdempotencyKey } from "./events-api";
 import { ringColor } from "./events-model";
+import { RelevanceCard, RelevanceChips, registrationChipText, relevanceRows, relevanceTitle } from "./Relevance";
 import { journeyApi } from "./journey-api";
 import { readSavedPlanGoal, type SavedPlanGoal } from "../plan/saved-goal";
 import styles from "./events.module.css";
@@ -103,38 +106,31 @@ export interface DiscoverRailState { loaded: boolean; row: EventDiscoverRow | nu
 /** The saved goal (no-plan guide card) as last read: `{ goal }` so a remembered "no goal" is told apart from "not read". */
 const SAVED_GOAL_KEY = "events:discover:savedGoal";
 
-function WhyBox({ reason, detail, t }: { reason: string; detail?: string | null; t: JourneyT }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div data-why-box="" className={d.whyBox}>
-      <div className={styles.row} style={{ gap: 6 }}>
-        <span className={`${styles.chip} ${styles.c_lav} ${d.reasonChip}`}>🎯 {reason}</span>
-        {detail ? <button type="button" className={`btn ${d.why}`} aria-expanded={open} aria-label={t("why")} onClick={(event) => { event.stopPropagation(); setOpen((value) => !value); }}>?</button> : null}
-      </div>
-      {detail && open ? <div className={d.whyBody}>{detail}</div> : null}
-    </div>
-  );
-}
+/** 没有计划、一场活动都没有时的「プランができると」示例卡：只放事实标签（不放分数）。 */
+const SAMPLE_RELEVANCE: readonly EventRelevance[] = [
+  { group: "people", known: null, people: [{ count: 3, emoji: "💼", label: "VC", source: "speakers", typeKey: "vc" }], topic: null, warnings: [] },
+  { group: "people", known: null, people: [{ count: 20, emoji: "🏢", label: "CVC", source: "registrants", typeKey: "cvc" }], topic: null, warnings: [] },
+  { group: "topic", known: { count: 1, names: [] }, people: [], topic: { labels: ["CFO"] }, warnings: [] },
+];
 
-function Ring({ score, size }: { score: number; size: number }) {
-  return <ScoreRing score={score} size={size} stroke={size >= 54 ? 6 : 4} label={String(score)}><span className={styles.score} style={{ fontSize: size >= 54 ? "var(--fs-body)" : "var(--fs-tiny)" }}>{score}</span></ScoreRing>;
-}
+/** 卡片 emoji 底色按位置轮换（不再按判定上色）。 */
+const emoTone = (index: number): Tone => RECOMMEND_TONES[index % RECOMMEND_TONES.length]!;
 
 export function EventCard({ row, index, language, t, selected, faded, ended, metaOverride, onSelect, onOpen }: { row: EventDiscoverRow; index: number; language: OrbitLanguage; t: JourneyT; selected?: boolean; faded?: boolean; ended?: boolean; metaOverride?: string; onSelect?: () => void; onOpen: () => void }) {
-  const at = assessTranslator(language);
-  const tone = rowTone(row, index);
-  const meta = metaOverride ?? [discoverWhen(row.startsAt, language), row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ");
+  const meta = metaOverride ?? [discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ");
+  const registered = ended ? null : registrationChipText(row.registrationCount, language);
+  const fee = feeText(row.priceYen, t);
   const card = (
     <div role="button" tabIndex={0} className={`${styles.evc} ${d.evc} ${selected ? styles.sel : ""}`} onClick={onSelect ?? onOpen} onKeyDown={(event) => { if (event.key === "Enter") (onSelect ?? onOpen)(); }} data-discover-card={row.eventId} style={faded ? { flex: 1 } : undefined}>
       <div className={`${styles.row} ${styles.between}`}>
-        <span className={`${styles.emo} ${styles[`t_${tone.emo}`]}`}>{row.emoji}</span>
-        {typeof row.score === "number" ? <Ring score={row.score} size={54} /> : null}
+        <span className={`${styles.emo} ${styles[`t_${emoTone(index)}`]}`}>{row.emoji}</span>
+        {registered ? <span className={`${styles.chip} ${styles.regChip}`} data-discover-registered="">{registered}</span> : null}
       </div>
       <b className={d.evcTitle}>{row.title}</b>
       <div className={styles.lbl}>{meta}</div>
-      {row.reason ? <WhyBox reason={row.reason} detail={row.reasonDetail ?? null} t={t} /> : null}
-      <div className={`${styles.row} ${d.push}`} style={{ gap: 6 }}>
-        {ended ? <span className={styles.chip}>{t("endedChip")}</span> : row.verdict ? <span className={`${styles.chip} ${tone.chip ? toneClass(tone.chip) : ""}`}>{row.verdict === "recommend" ? at("verdictRecommend") : row.verdict === "conditional" ? at("verdictConditional") : at("verdictSkip")}</span> : null}
+      {ended ? null : <RelevanceChips relevance={row.relevance} language={language} className={d.relChips} />}
+      <div className={`${styles.row} ${styles.between} ${d.push}`} style={{ gap: 6 }}>
+        {ended ? <span className={styles.chip}>{t("endedChip")}</span> : <b className={d.cardFee}>{fee ?? ""}</b>}
         <button type="button" className={`btn ${styles.btn} ${styles.sm} ${d.detailBtn}`} onClick={(event) => { event.stopPropagation(); onOpen(); }}>{t("detail")}</button>
       </div>
     </div>
@@ -167,7 +163,6 @@ function SearchResults({ data, language, t, onOpen, onFollow }: { data: EventSea
           <button key={hit.eventId} type="button" className={`btn ${d.searchRow}`} onClick={() => onOpen(hit.href)}>
             <div className={d.datebox}><b>{dm.day}</b><small>{dm.month}</small></div>
             <div className={d.grow}><b className={d.ell}>{hit.title}</b><div className={styles.lbl}>{[hit.venue, status(hit.myStatus) ?? (hit.badges?.includes("early_access") ? t("badgeEarly") : feeText(hit.priceYen, t))].filter(Boolean).join(" · ")}</div></div>
-            {typeof hit.score === "number" ? <Ring score={hit.score} size={32} /> : null}
           </button>
         );
       })}
@@ -198,7 +193,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
   const std = useStandardCopy();
   const [data, setData] = useState<EventDiscoverResponse | null>(() => lastAnswer<EventDiscoverResponse>(discoverAnswerKey(queryFromParams(params))) ?? null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [pop, setPop] = useState<"period" | "area" | "theme" | "sort" | null>(null);
+  const [pop, setPop] = useState<"period" | "area" | "theme" | null>(null);
   const [draftThemes, setDraftThemes] = useState<EventDiscoverTheme[]>([]);
   // R30：全局搜索「イベントで探す」带 ?q= 进来时直接开始搜（App 的 DiscoverPage 同一参数）。
   const [search, setSearch] = useState(() => params.get("q") ?? "");
@@ -279,10 +274,6 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
           <div className={`${styles.row} ${d.popFoot}`}><span className={styles.lbl}><Kbd>Esc</Kbd> {t("escClose")}</span><button type="button" className={`btn ${styles.btn} ${styles.primary} ${styles.sm}`} style={{ marginLeft: "auto" }} onClick={() => set({ themes: draftThemes })}>{t("showN", { n: data?.total ?? 0 })}</button></div>
         </FilterPopover>
       </div>
-      <div className={d.popWrap}>
-        <button type="button" className={`btn ${d.wfilter}`} onClick={() => setPop(pop === "sort" ? null : "sort")}><Icon name="sliders" size={16} />{query.sort === "date" ? t("sortDate") : t("sortRecommended")}</button>
-        <FilterPopover open={pop === "sort"} onClose={() => setPop(null)} align="right"><div className={`${styles.chips} ${d.optChips}`}>{(["recommended", "date"] as const).map((s) => <FilterOption key={s} label={s === "date" ? t("byDate") : t("sortRecommended").split("：").pop()} selected={query.sort === s} onToggle={() => set({ sort: s })} />)}</div></FilterPopover>
-      </div>
     </div>
   );
 
@@ -344,9 +335,9 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
           {/* 2026-10-27：没有目标也直接列真实活动（人気順，在引导卡正下方）；只有一场都没有时才画「有了计划后」示例。 */}
           {data.all.length ? null : <div className={`${styles.span12} ${styles.cardH} ${d.sectionHead}`}><h3>{t("samplePreview")} <SampleTag /></h3></div>}
           {data.all.length ? null : ([1, 2, 3] as const).map((n, index) => (
-            <EventCard key={n} faded index={index} language={language} t={t} onOpen={() => undefined} metaOverride={t(`sample${n}Meta`)} row={{ emoji: ["🎤", "🤝", "📚"][index]!, eventId: `sample-${n}`, href: "#", reason: t(`sample${n}Reason`).replace(/^🎯\s*/, ""), reasonDetail: t("sampleReasonDetail"), score: [82, 77, 71][index]!, startsAt: "", title: t(`sample${n}Title`), verdict: "recommend" }} />
+            <EventCard key={n} faded index={index} language={language} t={t} onOpen={() => undefined} metaOverride={t(`sample${n}Meta`)} row={{ emoji: ["🎤", "🤝", "📚"][index]!, eventId: `sample-${n}`, href: "#", relevance: SAMPLE_RELEVANCE[index]!, startsAt: "", title: t(`sample${n}Title`) }} />
           ))}
-          {data.all.length ? <AllTable rows={data.all} total={data.total} language={language} t={t} at={at} popular onOpen={open} onSave={save} onDismiss={dismiss} /> : null}
+          {data.all.length ? <AllTable rows={data.all} total={data.total} language={language} t={t} onOpen={open} onSave={save} onDismiss={dismiss} /> : null}
         </>
       ) : flat ? (
         <>
@@ -391,9 +382,9 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
               </div>
             </div>
           ) : null}
-          {data.planFit.length ? <div className={`${styles.span12} ${styles.cardH} ${d.sectionHead}`}><h3>{t("planFitTitle")}</h3><span className={styles.more}>{t("countN", { n: data.planFitTotal })} <Icon name="right" size={16} /></span></div> : null}
+          {data.planFit.length ? <div className={`${styles.span12} ${styles.cardH} ${d.sectionHead}`} data-discover-planfit-head=""><h3>{t("planFitTitle")}</h3><span className={styles.lbl}>{t("countN", { n: data.planFitTotal })} · {t("byDate")}</span></div> : null}
           {data.planFit.map((row, index) => card(row, index))}
-          {data.all.length ? <AllTable rows={data.all} total={data.total} language={language} t={t} at={at} onOpen={open} onSave={save} onDismiss={dismiss} /> : null}
+          {data.all.length ? <AllTable rows={data.all} total={data.total} language={language} t={t} onOpen={open} onSave={save} onDismiss={dismiss} /> : null}
         </>
       )}
       {pastSection}
@@ -412,19 +403,15 @@ function RowMenu({ label, items }: { label: string; items: MenuItem[] }) {
   );
 }
 
-/** `past`（開催済み）：服务端已按开始时间倒序；没有スコア列，判定列 =「終了」，没有 ☆ / 興味なし。 */
-function AllTable({ rows, total, language, t, at, popular, onOpen, onSave, onDismiss }: { rows: readonly EventDiscoverRow[]; total: number; language: OrbitLanguage; t: JourneyT; at: ReturnType<typeof assessTranslator>; popular?: boolean; onOpen: (href: string) => void; onSave: (row: EventDiscoverRow) => void; onDismiss: (row: EventDiscoverRow, reason: EventRecommendationDismissReason) => void }) {
-  // 表格按分数（プランに合うものを優先）排，同分按日期；画板 #13 的行序（82 / 77 / 71 / 68 / 58 / 41）。
-  const sorted = popular ? rows : [...rows].sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || Date.parse(a.startsAt) - Date.parse(b.startsAt));
-  const recommendIndex = new Map(sorted.filter((row) => row.verdict === "recommend").map((row, index) => [row.eventId, index]));
+/** すべて：服务端按日期排（2026-11-15 起与有无计划无关）；「あなたに関係すること」列放标签，没有就空着。 */
+function AllTable({ rows, total, language, t, onOpen, onSave, onDismiss }: { rows: readonly EventDiscoverRow[]; total: number; language: OrbitLanguage; t: JourneyT; onOpen: (href: string) => void; onSave: (row: EventDiscoverRow) => void; onDismiss: (row: EventDiscoverRow, reason: EventRecommendationDismissReason) => void }) {
   return (
     <div className={`${styles.card} ${styles.span12}`} data-discover-all="">
-      <div className={styles.cardH}><h3>{t("allTitle", { n: total })}</h3><span className={styles.more}>{popular ? t("byPopularity") : t("byDate")} <Icon name="down" size={16} /></span></div>
+      <div className={styles.cardH}><h3>{t("allTitle", { n: total })}</h3><span className={styles.lbl}>{t("byDate")}</span></div>
       <table className={d.table}>
-        <thead><tr><th>{t("colDate")}</th><th>{t("colEvent")}</th><th>{t("colPlace")}</th><th>{t("colFee")}</th><th>{t("colScore")}</th><th>{t("colVerdict")}</th><th /></tr></thead>
+        <thead><tr><th>{t("colDate")}</th><th>{t("colEvent")}</th><th>{t("colPlace")}</th><th>{t("colFee")}</th><th>{relevanceTitle(language)}</th><th /></tr></thead>
         <tbody>
-          {sorted.map((row) => {
-            const tone = rowTone(row, recommendIndex.get(row.eventId) ?? 0);
+          {rows.map((row) => {
             return (
               <tr key={row.eventId} onClick={(event) => {
                 // 行内操作（☆ / ↗ 菜单，菜单在 portal 里）不打开详情。
@@ -436,8 +423,7 @@ function AllTable({ rows, total, language, t, at, popular, onOpen, onSave, onDis
                 <td><b>{row.title}</b></td>
                 <td className={d.muted}>{row.venue}</td>
                 <td>{feeText(row.priceYen, t) ?? "—"}</td>
-                <td>{typeof row.score === "number" ? <Ring score={row.score} size={32} /> : "—"}</td>
-                <td>{row.verdict ? <span className={`${styles.chip} ${tone.chip ? toneClass(tone.chip) : ""}`}>{row.verdict === "recommend" ? at("verdictRecommend") : row.verdict === "conditional" ? at("verdictConditional") : at("verdictSkip")}</span> : null}</td>
+                <td><RelevanceChips relevance={row.relevance} language={language} /></td>
                 <td data-row-actions="">
                   <div className={d.hovActs}>
                     <button type="button" className={`btn ${d.lbtn}`} aria-label={t("save")} onClick={() => onSave(row)}><Icon name="star" size={16} /></button>
@@ -459,46 +445,30 @@ function AllTable({ rows, total, language, t, at, popular, onOpen, onSave, onDis
   );
 }
 
-const MEET_TONES = ["lav", "blue", "teal", "apricot"] as const;
-
-/** 1440 右栏「選択中のイベント」（b2 #12 / #13）：分数环 120、判定、会えそうな人、保存 / 詳細を見る。 */
+/** 1440 右栏「選択中のイベント」（event-relevance-proposal ⑤）：标题 + 日期·场所·费用、「あなたに関係すること」卡、詳細を見る / 参加予定に追加。 */
 export function DiscoverRail({ row, language }: { row: EventDiscoverRow; language: OrbitLanguage }) {
   const t = journeyTranslator(language);
   const at = assessTranslator(language);
   const toast = useToast();
-  const tone = rowTone(row, 0);
   const save = async () => {
     const created = await eventsApi.create({ eventId: row.eventId, idempotencyKey: newIdempotencyKey(), sourceKind: "orbit_event" });
     const added = created.ok ? await eventsApi.addToPlan(created.data.id) : null;
     if (added?.ok) toast.success(t("saved")); else toast.error(at("genericError"));
   };
+  const hasFacts = relevanceRows(row.relevance, language).length > 0;
   return (
     <div className={`${styles.rail} ${d.rail}`} data-discover-rail="">
       <h4 className={`${styles.railH} ${d.railH}`}><Icon name="sparkle" size={16} />{t("railTitle")}</h4>
       <div className={`${styles.card} ${d.railHero}`}>
         <b className={d.railName}>{row.title}</b>
-        <div className={styles.lbl}>{[discoverWhen(row.startsAt, language), feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</div>
-        {typeof row.score === "number" ? (
-          <div className={d.railRing}>
-            <ScoreRing score={row.score} size={120} stroke={12} label={String(row.score)}>
-              <div className={`${styles.big} ${d.railBig}`}>{row.score}</div>
-              <div className={styles.lbl}>{t("outOf")}</div>
-            </ScoreRing>
-          </div>
-        ) : null}
-        {row.verdict ? <span className={`${styles.chip} ${tone.chip ? toneClass(tone.chip) : ""} ${styles.verdictBig}`}>{row.verdict === "recommend" ? at("verdictRecommend") : row.verdict === "conditional" ? at("verdictConditional") : at("verdictSkip")}</span> : null}
+        <div className={styles.lbl}>{[discoverWhen(row.startsAt, language), row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</div>
       </div>
-      {row.meetCandidates?.length ? (
-        <div className={styles.card}>
-          <div className={styles.lbl}>{t("meetTitle")}</div>
-          {row.meetCandidates.map((meet, index) => (
-            <div key={`${meet.label}-${index}`} className={styles.meetRow}><span className={`${styles.emo} ${styles.emoSm} ${styles[`t_${MEET_TONES[index % 4]}`]}`}>{meet.emoji}</span>{meet.label}</div>
-          ))}
-        </div>
-      ) : null}
+      {hasFacts ? <div className={d.railSub}>{relevanceTitle(language)}</div> : null}
+      <RelevanceCard relevance={row.relevance} language={language} heading={false} />
+      <div className={d.spacer} />
       <div className={styles.grid2}>
-        <button type="button" className={`btn ${styles.btn}`} onClick={() => void save()}><Icon name="star" size={16} />{t("save")}</button>
-        <a className={`btn ${styles.btn} ${styles.primary}`} href={`/app${row.href}`}>{t("seeDetail")}</a>
+        <a className={`btn ${styles.btn}`} href={`/app${row.href}`}>{t("seeDetail")}</a>
+        <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={() => void save()}>{at("addToPlan")}</button>
       </div>
     </div>
   );
@@ -511,7 +481,7 @@ function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, on
   const [page, setPage] = useState(0);
   const count = (query.period && query.period !== "upcoming" ? 1 : 0) + (query.areas?.length ?? 0) + (query.themes?.length ?? 0) + (query.freeOnly ? 1 : 0);
   const past = query.period === "past";
-  const rows = past || query.sort === "recommended" ? data.all : [...data.all].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+  const rows = data.all;
   const datebox = (iso: string) => { const dm = dayMonth(iso, t); return <div className={d.pDate}><b>{dm.day}</b><small>{dm.month}</small></div>; };
   const endedRow = (row: EventDiscoverRow) => (
     <button key={row.eventId} type="button" className={`btn ${d.pLi} ${d.ended}`} data-discover-row="" data-discover-ended="" onClick={() => onOpen(row.href)}>
@@ -558,12 +528,12 @@ function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, on
             {data.planFit.map((row, index) => (
               <div key={row.eventId} className={d.pCard} role="button" tabIndex={0} data-discover-card={row.eventId} onClick={() => onOpen(row.href)} onKeyDown={(event) => { if (event.key === "Enter") onOpen(row.href); }}>
                 <div className={`${styles.row} ${styles.between}`}>
-                  <span className={`${styles.emo} ${styles[`t_${rowTone(row, index).emo}`]}`}>{row.emoji}</span>
-                  {typeof row.score === "number" ? <ScoreRing score={row.score} size={46} stroke={5} label={String(row.score)}><span className={styles.score} style={{ fontSize: "var(--fs-body-sm)" }}>{row.score}</span></ScoreRing> : null}
+                  <span className={`${styles.emo} ${styles[`t_${emoTone(index)}`]}`}>{row.emoji}</span>
+                  {registrationChipText(row.registrationCount, language) ? <span className={`${styles.chip} ${styles.regChip}`}>{registrationChipText(row.registrationCount, language)}</span> : null}
                 </div>
                 <b className={d.pCardTitle}>{row.title}</b>
                 <div className={`${styles.lbl} ${d.pCardMeta}`}>{[discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ")}</div>
-                {row.reason ? <div className={`${styles.row} ${d.pReason}`}><span className={`${styles.chip} ${styles.c_lav} ${d.ell} ${d.pReasonChip}`}>{`🎯 ${row.reason}`}</span></div> : null}
+                <RelevanceChips relevance={row.relevance} language={language} className={d.pReason} />
                 <div className={`${styles.row} ${d.pCardFoot}`}>{feeText(row.priceYen, t) ? <span className={styles.chip}>{feeText(row.priceYen, t)}</span> : null}<button type="button" className={`btn ${styles.btn} ${styles.sm} ${d.pDetail}`} onClick={(event) => { event.stopPropagation(); onOpen(row.href); }}>{t("detailsBtn")}</button></div>
               </div>
             ))}
@@ -573,13 +543,12 @@ function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, on
       ) : null}
       {rows.length ? (
         <div className={`${styles.card} ${d.pAll}`} data-discover-all="">
-          <div className={`${styles.cardH} ${d.pAllH}`}><h3>{past ? t("pastTitle", { n: data.total }) : t("allPlain")}</h3>{past ? <span className={styles.lbl}>{t("byNewest")}</span> : <button type="button" className={`btn ${d.pMore}`} onClick={() => onQuery({ sort: query.sort === "recommended" ? "date" : "recommended" })}>{query.sort === "recommended" ? t("sortRecommended").split("：").pop() : t("byDate")} <Icon name="down" size={16} /></button>}</div>
+          <div className={`${styles.cardH} ${d.pAllH}`}><h3>{past ? t("pastTitle", { n: data.total }) : t("allPlain")}</h3><span className={styles.lbl}>{past ? t("byNewest") : t("byDate")}</span></div>
           <div className={d.pList}>
             {past ? rows.map(endedRow) : rows.map((row) => (
               <button key={row.eventId} type="button" className={`btn ${d.pLi}`} data-discover-row="" onClick={() => onOpen(row.href)}>
                 {datebox(row.startsAt)}
-                <div className={d.pMeta}><b>{row.title}</b><span>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</span></div>
-                {typeof row.score === "number" ? <ScoreRing score={row.score} size={36} stroke={4} label={String(row.score)}><span className={styles.score} style={{ fontSize: "var(--fs-caption)" }}>{row.score}</span></ScoreRing> : null}
+                <div className={d.pMeta}><b>{row.title}</b><span>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</span><RelevanceChips relevance={row.relevance} language={language} /></div>
               </button>
             ))}
           </div>

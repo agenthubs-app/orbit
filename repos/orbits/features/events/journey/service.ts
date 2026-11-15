@@ -112,7 +112,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       }
       for (const candidate of candidates) {
         const result = judged.results[candidate.eventId];
-        if (result) candidate.judge = { knownAttendees: result.knownAttendees, meetCandidates: result.meetCandidates, reason: result.reason, reasonDetail: result.reasonDetail, score: result.score, verdict: result.verdict };
+        if (result) candidate.judge = { knownAttendees: result.knownAttendees, meetCandidates: result.meetCandidates, reason: result.reason, reasonDetail: result.reasonDetail, relevance: result.relevance, score: result.score, verdict: result.verdict };
       }
       const attended = new Set(mine.filter((item) => item.status === "attended" && item.organizerKey).map((item) => item.organizerKey!));
       const myIds = new Set(mine.filter((item) => item.status !== "cancelled" && item.status !== "rejected" && item.status !== "planned").map((item) => item.eventId));
@@ -215,7 +215,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       const result = judged.results[eventId];
       return {
         ...base,
-        assessment: result ? { assessmentId: result.assessmentId, basis: result.basis, display: result.display, score: result.score, verdict: result.verdict } : null,
+        assessment: result ? { assessmentId: result.assessmentId, basis: result.basis, display: result.display, relevance: result.relevance, score: result.score, verdict: result.verdict } : null,
         ...(result && roster.total === 0 ? { assessmentPeopleUnknown: true } : {}),
         hasPlan: judged.hasPlan,
         attendeeCounts: { all: roster.total, known: lockedCounts?.known ?? known.length, planFit: lockedCounts?.planFit ?? attendees.filter((item) => item.planFit).length },

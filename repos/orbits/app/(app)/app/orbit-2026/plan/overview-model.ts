@@ -193,3 +193,10 @@ export type TypeTone = (typeof TYPE_TONES)[number];
 export function typeTone(index: number): TypeTone {
   return TYPE_TONES[((index % TYPE_TONES.length) + TYPE_TONES.length) % TYPE_TONES.length]!;
 }
+
+/** 2026-11-15 活动不再打分：计划页活动按 relevance.group 分组（服务端已按 people → topic → other、组内日期排好）；空组不出。 */
+export type EventGroupKey = "people" | "topic" | "other";
+export function groupEventOptions<T extends { relevance?: { group: EventGroupKey } | null }>(events: readonly T[]): { key: EventGroupKey; events: T[] }[] {
+  const order: EventGroupKey[] = ["people", "topic", "other"];
+  return order.map((key) => ({ events: events.filter((event) => (event.relevance?.group ?? "other") === key), key })).filter((group) => group.events.length > 0);
+}

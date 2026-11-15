@@ -203,6 +203,7 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
       ...(context.goalLabel ? { goalLabel: context.goalLabel } : {}),
       knownAttendees: judged.knownAttendees,
       meetCandidates: judged.meetCandidates,
+      relevance: judged.relevance,
       ...(judged.partialAttendanceHint ? { partialAttendanceHint: judged.partialAttendanceHint } : {}),
       ...(judged.range ? { scoreRange: judged.range } : {}),
       ...(row.eventId ? { recomputeOnAttendeeList: true } : {}),

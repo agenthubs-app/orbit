@@ -66,6 +66,12 @@ export function typeOfPerson(person: AttendeePerson, types: readonly AttendeeTyp
   return null;
 }
 
+/** 「主题相近」用：标题 / 说明 / 议程里提到了哪些计划人物类型（太泛的「代表」「CEO」「capital」不算，和展示社归类同一口径）。 */
+export function typesMentionedIn(text: string | null | undefined, types: readonly AttendeeTypingType[]): string[] {
+  if (!text?.trim()) return [];
+  return types.filter((type) => matches(text, keywordsFor(type).filter((keyword) => keyword.length >= 2 && !["代表", "ceo", "capital"].includes(keyword)))).map((type) => type.key);
+}
+
 export function typeAttendees(input: {
   types: readonly AttendeeTypingType[];
   speakers?: readonly AttendeePerson[] | null;

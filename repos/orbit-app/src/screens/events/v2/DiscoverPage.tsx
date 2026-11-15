@@ -1,5 +1,6 @@
 // R27 イベント › 探す（App；b2 #8 大量）：搜索 + 筛选按钮（件数）· 已选 chip（今月 ✕ / 東京 ✕ / テーマ ▾ / 参加費 ▾）·
-// 📌 あなたのコミュニティ · プランに効くイベント（横滑卡 + 页点）· すべて（日付順）。数据：GET /api/events/discover（规则，不调 AI）。
+// 📌 あなたのコミュニティ · 会いたい人が来る（横滑卡 + 页点）· すべて（日付順）。2026-11-15 去分数：卡片 / 行只出「跟你有关」的标签，
+// 报名 ≥10 时卡片右上出「申込 N名」。数据：GET /api/events/discover（规则，不调 AI）。
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -17,8 +18,7 @@ import { radius } from "../../../design/tokens";
 import { addDesignMock } from "../../add/add-design-mock";
 import { useJourneyApi } from "./journey-api";
 import { AREAS, PERIODS, THEMES, areaLabel, discoverWhen, feeText, periodLabel, rowTone, themeLabel, tokyo, type JourneyTone } from "./journey-model";
-import { ringColor } from "./events-model";
-import { ScoreRing } from "./ScoreRing";
+import { RelevanceChips, registrationChipLabel, relevanceChips, useRelevanceT } from "./Relevance";
 import { PersonalScheduleDateTimePicker } from "../../schedule/PersonalScheduleDateTimePicker";
 import { useJourneyT } from "./useJourneyT";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
@@ -49,6 +49,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   const { styles, colors } = useStyles();
   const { t, language } = useJourneyT();
   const locale = useOrbitLocale();
+  const rt = useRelevanceT();
   const router = useRouter();
   const api = useJourneyApi();
   const [query, setQuery] = useState<EventDiscoverQuery>(initialQuery);
@@ -63,7 +64,6 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
     ? { ...initialQuery, themes: ["funding", "saas"], formats: ["networking"] }
     : initialQuery);
   const [page, setPage] = useState(0);
-  const [whyOpen, setWhyOpen] = useState<string | null>(null);
   // 门禁开发开关：聚焦不弹软键盘（画板从不画系统键盘）。
   const noKeyboard = addDesignMock("no-keyboard");
 
@@ -111,7 +111,8 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   const clear = (key: keyof EventDiscoverQuery) => setQuery((current) => { const next = { ...current }; delete next[key]; if (key === "period") { delete next.from; delete next.to; } return next; });
   const flat = data !== null && !data.popularityFallback && data.total <= 5 && data.all.length > 0;
   const count = (query.period ? 1 : 0) + (query.areas?.length ?? 0) + (query.themes?.length ?? 0) + (query.freeOnly ? 1 : 0);
-  const rows = useMemo(() => (data ? (query.sort === "recommended" ? data.all : [...data.all].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))) : []), [data, query.sort]);
+  // すべて is always by date (2026-11-15: no score order any more).
+  const rows = useMemo(() => (data ? [...data.all].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)) : []), [data]);
   const toneBg = (tone: JourneyTone) => (tone === "teal" ? colors.macTeal : tone === "lav" ? colors.macLav : tone === "blue" ? colors.macBlue : tone === "apricot" ? colors.macApricot : colors.macPink);
   const openSheet = () => { setDraft(query); setSheet(true); };
   // 指定日期: a start day, then an end day (Tokyo dates; the server's custom period reads from / to).
@@ -177,11 +178,11 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
             <View style={{ opacity: 0.5 }}>
               <View style={[styles.row, { justifyContent: "space-between" }]}>
                 <View style={[styles.emo, { backgroundColor: colors.macTeal }]}><UiText style={styles.emoText}>🎤</UiText></View>
-                <ScoreRing size={46} stroke={5} value={82} color={colors.plum700} label="82" fontSize={13} />
+                <View style={styles.chip}><UiText style={styles.chipText}>{rt("eventsV2.relChipRegistered", { n: 128 })}</UiText></View>
               </View>
               <UiText style={styles.evTitle}>{t("sample1Title")}</UiText>
               <UiText style={[styles.lbl, { marginTop: 3 }]}>{t("sample1Meta").split(" · ").slice(0, 2).join(" · ")}</UiText>
-              <View style={[styles.row, { gap: 6, marginTop: 10 }]}><View style={[styles.chip, styles.reasonChip, { backgroundColor: colors.macLav }]}><UiText style={[styles.chipText, { color: colors.macLavInk }]} numberOfLines={1}>{t("sample1Reason")}</UiText></View><View style={styles.why}><UiText style={styles.whyText}>?</UiText></View></View>
+              <RelevanceChips style={{ marginTop: 10 }} chips={relevanceChips({ group: "people", known: { count: 2, names: [] }, people: [{ count: 3, emoji: "", label: rt("eventsV2.relExampleType"), source: "registrants", typeKey: "sample" }], topic: null, warnings: [] }, rt)} />
               <View style={[styles.row, styles.cardFoot]}><View style={styles.chip}><UiText style={styles.chipText}>¥15,000</UiText></View><View style={styles.btnSm}><UiText style={styles.btnSmText}>{t("detailsBtn")}</UiText></View></View>
             </View>
             <View style={[styles.ghostRow, { marginTop: 12 }]}><View style={styles.ghostDot} /><UiText style={styles.ghostText}>{t("sampleCommunityLine")}</UiText></View>
@@ -197,8 +198,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
               <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={styles.li}>
                 {index > 0 ? <View style={styles.liLine} /> : null}
                 {datebox(row.startsAt)}
-                <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</UiText></View>
-                {typeof row.score === "number" ? <ScoreRing size={36} stroke={4} value={row.score} color={colors[ringColor(row.score)]} label={String(row.score)} fontSize={11} /> : null}
+                <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</UiText><RelevanceChips style={styles.rowChips} chips={relevanceChips(row.relevance, rt)} /></View>
               </UiPressable>
             ))}
           </View>
@@ -238,27 +238,19 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
 
       {!flat && data && data.planFit.length ? (
         <View style={styles.section} testID="events-discover-planfit">
-          <View style={styles.cardH}><UiText style={styles.h3}>{t("planFitTitle")}</UiText><UiText style={styles.more}>{t("countN", { n: data.planFitTotal })}</UiText></View>
+          <View style={styles.cardH}><UiText style={styles.h3}>{rt("eventsV2.relDiscoverPeople")}</UiText><UiText style={styles.more}>{t("countN", { n: data.planFitTotal })}</UiText></View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToOffsets={data.planFit.map((_row, index) => SHELL_GUTTER + index * (CARD + 12))} contentOffset={{ x: SHELL_GUTTER, y: 0 }} decelerationRate="fast" onScroll={onScroll} scrollEventThrottle={32} style={styles.carousel} contentContainerStyle={styles.carouselInner}>
             {data.planFit.map((row, index) => {
-              const tone = rowTone(row, index);
+              const registered = registrationChipLabel(row.registrationCount, rt);
               return (
                 <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={styles.evCard}>
                   <View style={[styles.row, { justifyContent: "space-between" }]}>
-                    <View style={[styles.emo, { backgroundColor: toneBg(tone.emo) }]}><UiText style={styles.emoText}>{row.emoji}</UiText></View>
-                    {typeof row.score === "number" ? <ScoreRing size={46} stroke={5} value={row.score} color={colors[ringColor(row.score)]} label={String(row.score)} fontSize={13} /> : null}
+                    <View style={[styles.emo, { backgroundColor: toneBg(rowTone(index)) }]}><UiText style={styles.emoText}>{row.emoji}</UiText></View>
+                    {registered ? <View style={styles.chip}><UiText style={styles.chipText}>{registered}</UiText></View> : null}
                   </View>
                   <UiText style={styles.evTitle}>{row.title}</UiText>
                   <UiText style={[styles.lbl, { marginTop: 3 }]}>{[discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ")}</UiText>
-                  {row.reason ? (
-                    <View style={{ marginTop: 10 }}>
-                      <View style={[styles.row, { gap: 6 }]}>
-                        <View style={[styles.chip, styles.reasonChip, { backgroundColor: colors.macLav }]}><UiText style={[styles.chipText, { color: colors.macLavInk }]} numberOfLines={1}>{`🎯 ${row.reason}`}</UiText></View>
-                        {row.reasonDetail ? <UiPressable accessibilityRole="button" accessibilityLabel={t("why")} onPress={() => setWhyOpen(whyOpen === row.eventId ? null : row.eventId)} style={styles.why}><UiText style={styles.whyText}>?</UiText></UiPressable> : null}
-                      </View>
-                      {whyOpen === row.eventId && row.reasonDetail ? <View style={styles.whyBody}><UiText style={styles.whyBodyText}>{row.reasonDetail}</UiText></View> : null}
-                    </View>
-                  ) : null}
+                  <RelevanceChips style={{ marginTop: 10 }} chips={relevanceChips(row.relevance, rt)} />
                   <View style={[styles.row, styles.cardFoot]}>
                     {feeText(row.priceYen, t) ? <View style={styles.chip}><UiText style={styles.chipText}>{feeText(row.priceYen, t)}</UiText></View> : null}
                     <UiPressable accessibilityRole="button" accessibilityLabel={t("detailsBtn")} onPress={() => open(row)} style={styles.btnSm}><UiText style={styles.btnSmText}>{t("detailsBtn")}</UiText></UiPressable>
@@ -275,16 +267,13 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
         <View style={[styles.card, styles.all]} testID="events-discover-all">
           <View style={[styles.cardH, { marginBottom: 0, marginTop: 8 }]}>
             <UiText style={styles.h3}>{t("allPlain")}</UiText>
-            <UiPressable accessibilityRole="button" accessibilityLabel={t("byDate")} onPress={() => patch({ sort: query.sort === "recommended" ? "date" : "recommended" })} style={[styles.row, { gap: 2 }]}>
-              <UiText style={styles.more}>{query.sort === "recommended" ? t("sortRecommended").split("：").pop() : t("byDate")}</UiText><Icon name="down" size={16} color={colors.ink3} />
-            </UiPressable>
+            <UiText style={styles.more}>{t("byDate")}</UiText>
           </View>
           {rows.map((row, index) => (
             <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={styles.li}>
               {index > 0 ? <View style={styles.liLine} /> : null}
               {datebox(row.startsAt)}
-              <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</UiText></View>
-              {typeof row.score === "number" ? <ScoreRing size={36} stroke={4} value={row.score} color={colors[ringColor(row.score)]} label={String(row.score)} fontSize={11} /> : null}
+              <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</UiText><RelevanceChips style={styles.rowChips} chips={relevanceChips(row.relevance, rt)} /></View>
             </UiPressable>
           ))}
         </View>
@@ -334,7 +323,6 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
                 {index > 0 ? <View style={styles.liLine} /> : null}
                 {datebox(hit.startsAt, true)}
                 <View style={styles.meta}><Highlight text={hit.title} q={search} style={styles.metaTitle} mark={styles.mark} /><UiText style={styles.metaSub} numberOfLines={1}>{[hit.venue, hit.myStatus === "registered" ? t("stRegistered") : hit.badges?.includes("early_access") ? t("badgeEarly") : feeText(hit.priceYen, t)].filter(Boolean).join(" · ")}</UiText></View>
-                {typeof hit.score === "number" ? <ScoreRing size={34} stroke={4} value={hit.score} color={colors[ringColor(hit.score)]} label={String(hit.score)} fontSize={11} /> : null}
               </UiPressable>
             ))}
           </View>
@@ -416,6 +404,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   dateDay: { color: colors.ink, fontSize: 19, fontWeight: "800", lineHeight: 21, textAlign: "center" },
   dateMonth: { color: colors.ink3, fontSize: 12, fontWeight: "700", lineHeight: 16, textAlign: "center" },
   meta: { flex: 1, minWidth: 0 },
+  rowChips: { marginTop: 6 },
   metaTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25 },
   metaSub: { color: colors.ink3, fontSize: 14, lineHeight: 21 },
   section: { marginTop: 18 },
@@ -426,11 +415,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   emoText: { fontSize: 23, lineHeight: 28 },
   evTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 23, marginTop: 12 },
   lbl: { color: colors.ink3, fontSize: 13, fontWeight: "500", lineHeight: 20 },
-  reasonChip: { flex: 1 },
-  why: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 18, justifyContent: "center", width: 18 },
-  whyText: { color: colors.ink3, fontSize: 12, fontWeight: "800", lineHeight: 15 },
-  whyBody: { backgroundColor: colors.surface2, borderRadius: 14, marginTop: 10, paddingHorizontal: 12, paddingVertical: 10 },
-  whyBodyText: { color: colors.ink2, fontSize: 14, lineHeight: 23 },
   cardFoot: { gap: 6, marginTop: "auto", paddingTop: 10 },
   btnSm: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 32, justifyContent: "center", marginLeft: "auto", paddingHorizontal: 12 },
   btnSmText: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21 },

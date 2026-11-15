@@ -1,13 +1,14 @@
 "use client";
 
 // R26 イベント (events DESIGN §2.1): the 評価 / 参加予定 / 探す page in the shell. 評価: the input card, 次の参加予定,
-// 評価したイベント (score order) and the selected assessment in the rail (1440) / a drawer (1024) / its own screen (390).
+// 調べたイベント (newest first; 2026-11-15 no scores) and the selected one in the rail (1440) / a drawer (1024) / its own screen (390).
 // 参加予定: events/mine upcoming + past. 探す: R27 `DiscoverTab`（コミュニティ / プランに効く / すべて，右栏「選択中のイベント」）。
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { eventEmoji } from "../../../../../shared/compute/event-emoji";
 import type { EventAssessmentAvailability, EventAssessmentContract, EventAssessmentCreateInput, EventAssessmentFacts } from "../../../../../shared/contract/event-assessment";
+import type { EventRelevance } from "../../../../../shared/contract/event-relevance";
 import type { MyEventItem } from "../../../../../shared/contract/events-mine";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
@@ -16,10 +17,11 @@ import { ShellSearchButton } from "../shell/Orbit2026Shell";
 import { ShellPage, useInShell } from "../shell/slots";
 import { Drawer, Icon, Kbd, Modal, Orbit2026Scope, SampleTag, Segmented, ToastProvider, useStandardCopy, useToast } from "../ui";
 import { Assessing, FillThree, LoginRequired, NotEventPage, PasteText } from "./AssessFlow";
-import { AssessmentPage, AssessmentRail, ScoreRing, translator, verdictLabel, type Translate } from "./AssessmentDetail";
+import { AssessmentPage, AssessmentRail, translator, type Translate } from "./AssessmentDetail";
 import { DiscoverHelpRail, DiscoverRail, DiscoverTab, type DiscoverRailState } from "./DiscoverTab";
 import { eventsApi, newIdempotencyKey, pollAssessment } from "./events-api";
-import { cardLine, eventWhen, isShownInGrid, meetCount, monthOf, orderAssessed, relativeDay, tabOf, verdictTone } from "./events-model";
+import { cardLine, eventWhen, isShownInGrid, monthOf, orderAssessed, relativeDay, tabOf } from "./events-model";
+import { RelevanceChips } from "./Relevance";
 import styles from "./events.module.css";
 
 type Tab = "assess" | "going" | "discover";
@@ -106,7 +108,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
 
   const ordered = useMemo(() => orderAssessed((items ?? []).filter(isShownInGrid).filter((item) => item.status !== "failed")), [items]);
   const current = useMemo(() => (items ?? []).find((item) => item.id === selected) ?? null, [items, selected]);
-  // 1440 rail shows the selected one; with nothing selected, the top-scored ready one (web.html #12 has the first card selected).
+  // 1440 rail shows the selected one; with nothing selected, the newest ready one (proposal ⑦ has the first card selected).
   const railItem = current ?? ordered.find((item) => item.status === "ready") ?? null;
 
   const replace = (next: EventAssessmentContract) => setItems((list) => [next, ...(list ?? []).filter((item) => item.id !== next.id)]);
@@ -178,14 +180,14 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
     void start({ facts, idempotencyKey: newIdempotencyKey(), sourceKind: "manual" });
   };
 
-  const decide = async (item: EventAssessmentContract, decision: "add" | "skip") => {
+  const addToPlan = async (item: EventAssessmentContract) => {
     setBusy(true);
-    const result = decision === "add" ? await eventsApi.addToPlan(item.id) : await eventsApi.dismiss(item.id);
+    const result = await eventsApi.addToPlan(item.id);
     setBusy(false);
     if (result.ok === false) { failureToast(result.reason); return; }
-    replace({ ...item, userDecision: decision === "add" ? "added" : "dismissed" });
-    toast.success(decision === "add" ? t("added") : t("skipped"));
-    if (decision === "add") void load();
+    replace({ ...item, userDecision: "added" });
+    toast.success(t("added"));
+    void load();
   };
 
   const assessedCount = (items ?? []).filter((item) => item.status === "ready" || item.status === "needs_input").length;
@@ -222,7 +224,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
     ? (!discover && !discoverRail.loaded ? undefined : discoverRail.row ? <DiscoverRail row={discoverRail.row} language={language} /> : <DiscoverHelpRail language={language} />)
     : !overviewLoaded ? undefined
     : shownRailItem
-    ? <AssessmentRail item={shownRailItem} language={language} busy={busy} onAdd={() => void decide(shownRailItem, "add")} onSkip={() => void decide(shownRailItem, "skip")} />
+    ? <AssessmentRail item={shownRailItem} language={language} busy={busy} onAdd={() => void addToPlan(shownRailItem)} />
     : true;
 
   return (
@@ -259,13 +261,13 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
             t={t} tier={tier} big={empty} url={url} setUrl={setUrl} onAssessUrl={submitUrl} busy={busy} availability={availability ?? null} fileRef={fileRef} dragging={dragging} setDragging={setDragging}
             onFiles={(files) => void submitPosters(files)} onManual={() => setFlow({ kind: "manual" })} goalLabel={null}
           />
-          {empty ? <EmptyCards t={t} onCode={() => setCodeOpen(true)} /> : null}
+          {empty ? <EmptyCards t={t} language={language} onCode={() => setCodeOpen(true)} /> : null}
           {!empty && upcoming?.[0] ? <NextCard t={t} tier={tier} item={upcoming[0]} language={language} now={now} /> : null}
           {!empty && ordered.length ? (
             <>
               <div className={tier === "narrow" ? `${styles.cardH} ${styles.phoneHead}` : `${styles.span12} ${styles.cardH} ${styles.listHead}`}>
-                <h3>{t("assessedTitle")}{tier === "medium" ? <span className={styles.lbl} style={{ fontWeight: 600 }}>{t("countItems", { n: ordered.length })}</span> : null}</h3>
-                <span className={styles.more}>{t("byScore")} <Icon name="down" size={16} /></span>
+                <h3>{t("checkedTitle")}{tier === "medium" ? <span className={styles.lbl} style={{ fontWeight: 600 }}>{t("countItems", { n: ordered.length })}</span> : null}</h3>
+                <span className={styles.lbl}>{t("byNewest")}</span>
               </div>
               {ordered.map((item) => (
                 <AssessedCard key={item.id} item={item} t={t} tier={tier} language={language} selected={railItem?.id === item.id && tier === "wide"} onOpen={() => {
@@ -280,11 +282,11 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
       {tier === "medium" && current && (current.status === "ready" || current.status === "needs_input") && tab === "assess" && !initialAssessmentId ? (
         <Drawer open onClose={() => setSelected(null)} title={t("detailTitle")} size="lg">
           <div className={styles.row} style={{ justifyContent: "flex-end", marginBottom: 10 }}><a className={`${styles.btn} ${styles.sm}`} href={`/app/events/assessments/${encodeURIComponent(current.id)}`}>{t("fullScreen")}</a></div>
-          <AssessmentPage item={current} language={language} busy={busy} phone onAdd={() => void decide(current, "add")} onSkip={() => void decide(current, "skip")} />
+          <AssessmentPage item={current} language={language} busy={busy} phone onAdd={() => void addToPlan(current)} />
         </Drawer>
       ) : null}
       {initialAssessmentId && current && tier !== "wide" && (current.status === "ready" || current.status === "needs_input") ? (
-        <div style={{ marginTop: 18 }}><AssessmentPage item={current} language={language} busy={busy} phone={tier === "narrow"} onAdd={() => void decide(current, "add")} onSkip={() => void decide(current, "skip")} /></div>
+        <div style={{ marginTop: 18 }}><AssessmentPage item={current} language={language} busy={busy} phone={tier === "narrow"} onAdd={() => void addToPlan(current)} /></div>
       ) : null}
       <ParticipationCodeModal open={codeOpen} onClose={() => setCodeOpen(false)} t={t} onCode={(code) => router.push(`/app/register/${encodeURIComponent(code)}`)} />
     </>
@@ -346,9 +348,9 @@ function AssessCard({ t, tier, big, url, setUrl, onAssessUrl, busy, availability
       )}
       {big ? (
         <div className={styles.grid3}>
-          <div className={`${styles.mac} ${styles.macApricot} ${styles.row}`}><span className={styles.guideEmoji}>🎯</span><div><b className={styles.guideName}>{t("guideGoal")}</b><div className={styles.lbl}>{goalLabel ? t("guideGoalSub", { goal: goalLabel }) : t("guideGoalSubNone")}</div></div></div>
-          <div className={`${styles.mac} ${styles.macApricot} ${styles.row}`}><span className={styles.guideEmoji}>🤝</span><div><b className={styles.guideName}>{t("guidePeople")}</b><div className={styles.lbl}>{t("guidePeopleSub")}</div></div></div>
-          <div className={`${styles.mac} ${styles.macApricot} ${styles.row}`}><span className={styles.guideEmoji}>⏱️</span><div><b className={styles.guideName}>{t("guideTime")}</b><div className={styles.lbl}>{t("guideTimeSub")}</div></div></div>
+          <div className={`${styles.mac} ${styles.t_lav} ${styles.row}`} data-events-tile="people"><span className={styles.guideEmoji}>👥</span><div><b className={styles.guideName}>{t("tilePeople")}</b><div className={styles.lbl}>{t("tilePeopleSub")}</div></div></div>
+          <div className={`${styles.mac} ${styles.t_teal} ${styles.row}`} data-events-tile="known"><span className={styles.guideEmoji}>🤝</span><div><b className={styles.guideName}>{t("tileKnown")}</b><div className={styles.lbl}>{t("tileKnownSub")}</div></div></div>
+          <div className={`${styles.mac} ${styles.macApricot} ${styles.row}`} data-events-tile="budget"><span className={styles.guideEmoji}>⏱️</span><div><b className={styles.guideName}>{t("tileBudget")}</b><div className={styles.lbl}>{t("tileBudgetSub")}</div></div></div>
         </div>
       ) : null}
     </div>
@@ -393,14 +395,17 @@ function GoingSkeleton() {
   );
 }
 
-function EmptyCards({ t, onCode }: { t: Translate; onCode: () => void }) {
+/** 「結果の例」: the same facts a checked event shows (no score). */
+const EXAMPLE_RELEVANCE: EventRelevance = { group: "people", known: { count: 1, names: [] }, people: [{ count: 3, emoji: "💼", label: "VC", source: "speakers", typeKey: "vc" }], topic: null, warnings: [] };
+
+function EmptyCards({ t, language, onCode }: { t: Translate; language: OrbitLanguage; onCode: () => void }) {
   return (
     <>
       <div className={`${styles.card} ${styles.span6}`} data-events-example="">
         <div className={styles.cardH}><h3>{t("exampleTitle")} <SampleTag /></h3></div>
         <div className={`${styles.row} ${styles.faded}`} style={{ gap: 16 }}>
-          <ScoreRing score={82} size={90} stroke={9} label="82"><b className={styles.score} style={{ fontSize: "var(--fs-number)" }}>82</b></ScoreRing>
-          <div><b>{t("exampleName")}</b><div className={styles.lbl}>{t("exampleSub")}</div></div>
+          <span className={`${styles.emo} ${styles.t_lav}`}>🎤</span>
+          <div><b>{t("exampleName")}</b><RelevanceChips relevance={EXAMPLE_RELEVANCE} language={language} className={styles.exampleChips} /></div>
         </div>
       </div>
       <div className={`${styles.card} ${styles.span6} ${styles.flat}`} style={{ alignItems: "center", flexDirection: "row", gap: 12 }} data-events-code="">
@@ -444,35 +449,29 @@ function NextCard({ t, tier, item, language, now }: { t: Translate; tier: Tier; 
 }
 
 function AssessedCard({ item, t, tier, language, selected, onOpen }: { item: EventAssessmentContract; t: Translate; tier: Tier; language: OrbitLanguage; selected: boolean; onOpen: () => void }) {
-  const count = meetCount(item);
-  const tone = verdictTone(item.verdict);
+  // 2026-11-15：no ring, no verdict — the same fact chips as 探す (proposal ⑦).
   const chips = (
     <>
-      {item.userDecision === "dismissed" ? <span className={styles.chip}>{t("dismissed")}</span> : item.status === "reading" ? null : <span className={`${styles.chip} ${tone === "pink" ? "" : styles[`c_${tone}`]}`}>{verdictLabel(item, t)}</span>}
-      {count ? <span className={styles.chip}>{t("meetCount", { n: count })}</span> : null}
+      {item.userDecision === "dismissed" ? <span className={styles.chip}>{t("dismissed")}</span> : null}
+      {item.status === "reading" ? <span className={styles.chip}>{t("reading")}</span> : <RelevanceChips relevance={item.relevance} language={language} className={styles.inlineChips} />}
     </>
   );
-  const ring = (size: number) => item.status === "reading" ? <span className={styles.chip}>{t("reading")}</span> : <ScoreRing score={item.total} size={size} stroke={6} label={`${item.total}`}><span className={`${styles.score} ${styles.ringSmall}`}>{item.total}</span></ScoreRing>;
   if (tier === "narrow") {
     return (
       <button type="button" className={`btn ${styles.card} ${styles.evm} ${item.userDecision === "dismissed" ? styles.dimmed : ""}`} onClick={onOpen} data-events-card={item.id}>
-        <span className={`${styles.emo} ${styles[`t_${tone}`]}`}>{item.status === "reading" ? "⏳" : emojiOf(item)}</span>
+        <span className={`${styles.emo} ${styles.t_lav}`}>{item.status === "reading" ? "⏳" : emojiOf(item)}</span>
         <div className={styles.meta}>
           <b className={styles.clamp2}>{item.facts.title ?? item.sourceLabel ?? item.facts.url}</b>
           <span className={`${styles.lbl} ${styles.clamp1}`}>{[eventWhen(item.facts.startsAt, language), item.facts.venue ?? item.facts.area].filter(Boolean).join(" · ")}</span>
-          <div className={styles.row} style={{ gap: 6, marginTop: 6 }}>{chips}</div>
+          <div className={styles.row} style={{ gap: 6, marginTop: 6, flexWrap: "wrap" }}>{chips}</div>
         </div>
-        {ring(50)}
       </button>
     );
   }
   const medium = tier === "medium";
   return (
     <button type="button" className={`btn ${styles.evc} ${styles.span3} ${selected ? styles.sel : ""} ${item.userDecision === "dismissed" ? styles.dimmed : ""}`} onClick={onOpen} data-events-card={item.id}>
-      <div className={`${styles.row} ${styles.between}`}>
-        <span className={`${styles.emo} ${styles[`t_${tone}`]}`}>{item.status === "reading" ? "⏳" : emojiOf(item)}</span>
-        {ring(54)}
-      </div>
+      <span className={`${styles.emo} ${styles.t_lav}`}>{item.status === "reading" ? "⏳" : emojiOf(item)}</span>
       <b className={`${styles.evcName} ${medium ? styles.clamp2 : ""}`}>{item.facts.title ?? item.sourceLabel ?? item.facts.url}</b>
       <div className={`${styles.lbl} ${medium ? styles.clamp1 : ""}`}>{cardLine(item, language, t("free"))}</div>
       <div className={styles.chips}>{chips}</div>

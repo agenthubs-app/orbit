@@ -692,7 +692,7 @@ export const plan = {
   "plan.type.routesNoteNone": "People connected to this type",
   "plan.type.draftShort": "Ask intro",
   "plan.type.makeDraftLong": "Draft an intro request",
-  "plan.type.eventsNoteV2": "Scored on 5 fixed criteria",
+  "plan.type.eventsNoteV2": "People first, then date",
   "plan.type.eventExpectedV2": "About {count} of this type attend",
   "plan.type.eventBonusV2": "Attending also adds +{points} to events",
   "plan.type.openerJudge": "Counts when: {rule}",
@@ -878,4 +878,7 @@ export const plan = {
   "plan.home.factSaved": "Added",
   "plan.home.factFailed": "Could not add it.",
   "plan.home.eventRole": "Go where organisers and makers gather",
+  "plan.type.eventsGroupPeople": "{label} will be there",
+  "plan.type.eventsGroupTopic": "Related topic",
+  "plan.type.eventsGroupOther": "Others",
 } as const;

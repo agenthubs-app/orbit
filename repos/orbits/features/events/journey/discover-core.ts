@@ -1,6 +1,6 @@
 /**
  * R27 探す 的纯逻辑（规则，不调 AI）：主题 / 形式 / 地区 / 时期判定、契约 9「興味なし」降权、三组划分。Owner: 甲 (R27).
- * - 分数：调用方传进来的就是计划页同一套 `scoreEvent`（经 R26 `judgeEvent`）的结果；这里只排序、分组，不改显示分数。
+ * - 2026-11-15 去分数：分组与排序只看 `judge.relevance`（people → topic → other，组内日期）；分数字段原样透传给旧版 App。
  * - 興味なし（DESIGN §9 #12）：被点的那一场离开推荐（コミュニティ / プランに効く），「すべて」里保留；
  *   schedule → 同时段降权、distance → 同地区降权、content → 同主办且同主题降权；同一主办方累计 3 次 → 整体降权；
  *   known 只过滤这一场。降权只影响排序，从不改分数。
@@ -19,6 +19,7 @@ import type {
 import type { EventDiscoverParsedQuery } from "../../../shared/api-schema/event-discover";
 import { guessPlace } from "../../../shared/compute/event-travel-estimate";
 import { tokyoParts } from "../../../shared/compute/event-score-input";
+import type { EventRelevance } from "../../../shared/contract/event-relevance";
 
 export const DISCOVER_THEME_KEYWORDS: Readonly<Record<EventDiscoverTheme, RegExp>> = {
   funding: /資金調達|調達|シリーズ\s?[A-DＡ-Ｄ]|VC|CVC|投資家|エンジェル|ファイナンス|デット/i,
@@ -120,6 +121,7 @@ export interface DiscoverCandidate {
     reasonDetail?: string | null;
     meetCandidates?: readonly { emoji: string; label: string }[];
     knownAttendees?: readonly string[];
+    relevance?: EventRelevance | null;
   } | null;
 }
 
@@ -247,20 +249,21 @@ export function buildDiscover(input: DiscoverInput, options: { dailyCandidates?:
         ...(judge.reasonDetail ? { reasonDetail: judge.reasonDetail } : {}),
         ...(judge.meetCandidates?.length ? { meetCandidates: judge.meetCandidates } : {}),
         ...(judge.knownAttendees?.length ? { knownAttendees: judge.knownAttendees } : {}),
+        ...(judge.relevance ? { relevance: judge.relevance } : {}),
       } : {}),
     };
   };
-  const rank = (item: Enriched) => (item.candidate.judge?.score ?? 0) - (effects.get(item.candidate.eventId)?.penalty ?? 0);
-  const popularity = (a: Enriched, b: Enriched) => (b.candidate.registrationCount ?? 0) - (a.candidate.registrationCount ?? 0) || a.time - b.time;
+  // 2026-11-15 去分数：不再按分数排；興味なし降权的往后放，其余按日期。
+  const penalized = (item: Enriched) => ((effects.get(item.candidate.eventId)?.penalty ?? 0) > 0 ? 1 : 0);
   const byDate = (a: Enriched, b: Enriched) => a.time - b.time || a.candidate.eventId.localeCompare(b.candidate.eventId);
   const recommendable = (item: Enriched) => !effects.get(item.candidate.eventId)?.hidden && !input.myEventIds.has(item.candidate.eventId);
 
-  // すべて：日付順；没有计划 / 未登录 → 人气順（DESIGN §9 #13）；planFirst 且有分 → 分数顺。
-  const allSorted = [...matched].sort(past ? (a, b) => byDate(b, a) : !scored ? popularity : input.query.planFirst && input.query.sort === "recommended" ? (a, b) => rank(b) - rank(a) || byDate(a, b) : byDate);
-  const planFitAll = scored && !past ? matched.filter((item) => recommendable(item) && item.candidate.judge && item.candidate.judge.verdict !== "skip")
-    .sort(options.dailyCandidates
-      ? (a, b) => (b.candidate.judge!.score - a.candidate.judge!.score) || a.candidate.eventId.localeCompare(b.candidate.eventId)
-      : (a, b) => rank(b) - rank(a) || byDate(a, b)) : [];
+  // すべて：一律日付順（2026-11-15 去分数：不再有人气順 / おすすめ順；「会いたい人が来る」一行已经把相关的提到前面）。
+  // `sort` / `planFirst` 参数仍接受（旧版 App 会带），对すべて不再起作用。
+  const allSorted = [...matched].sort(past ? (a, b) => byDate(b, a) : byDate);
+  // 会いたい人が来る：报名者 / 登壇者里有计划想见类型的活动，按日期（被点了興味なし的不进）。
+  const planFitAll = scored && !past ? matched.filter((item) => recommendable(item) && item.candidate.judge?.relevance?.group === "people")
+    .sort((a, b) => penalized(a) - penalized(b) || byDate(a, b)) : [];
   const community = input.signedIn && !past
     ? matched
       .filter((item) => recommendable(item) && item.candidate.organizerId && (input.followedOrganizers.has(item.candidate.organizerId) || input.attendedOrganizers.has(item.candidate.organizerId)))

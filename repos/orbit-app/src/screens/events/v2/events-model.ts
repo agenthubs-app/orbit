@@ -1,6 +1,6 @@
-// R26 イベント (App): pure view helpers (dates in Tokyo time, chips, ring colour, list order). No IO, no clock.
+// R26 イベント (App): pure view helpers (dates in Tokyo time, chips, list order). No IO, no clock.
 import { EVENT_PRICE_FREE } from "../../../api/compute/event-score-input";
-import type { EventAssessmentContract, EventAssessmentVerdict } from "../../../api/contract/event-assessment";
+import type { EventAssessmentContract } from "../../../api/contract/event-assessment";
 
 const TOKYO = 9 * 3_600_000;
 const LOCALE: Record<string, string> = { en: "en-US", ja: "ja-JP", zh: "zh-CN" };
@@ -43,28 +43,15 @@ export function monthOf(now: Date): number {
   return new Date(now.getTime() + TOKYO).getUTCMonth() + 1;
 }
 
-export function verdictKey(verdict: EventAssessmentVerdict): "verdictRecommend" | "verdictConditional" | "verdictSkip" {
-  return verdict === "recommend" ? "verdictRecommend" : verdict === "conditional" ? "verdictConditional" : "verdictSkip";
-}
-
-export function verdictTone(verdict: EventAssessmentVerdict): "teal" | "apricot" | "neutral" {
-  return verdict === "recommend" ? "teal" : verdict === "conditional" ? "apricot" : "neutral";
-}
-
-/** Ring colour key by score: ≥70 plum-700, 50–69 plum-500, <50 rose-500. */
-export function ringColor(score: number): "plum700" | "plum500" | "rose500" {
-  return score >= 70 ? "plum700" : score >= 50 ? "plum500" : "rose500";
-}
-
 export function meetCountOf(item: EventAssessmentContract): number | null {
   const people = (item.meetCandidates ?? []).filter((meet) => meet.source !== "known" && meet.emoji !== "👋");
   return people.length ? people.reduce((sum, meet) => sum + (meet.count ?? 0), 0) : null;
 }
 
-/** 評価したイベント · スコア順; reading first, 見送り last. */
+/** 調べたイベント · 新しい順（2026-11-15 去分数：不再按分数排）；読み取り中が先頭。 */
 export function orderAssessed(items: readonly EventAssessmentContract[]): EventAssessmentContract[] {
-  const rank = (item: EventAssessmentContract) => (item.status === "reading" ? 0 : item.userDecision === "dismissed" ? 2 : 1);
-  return [...items].sort((a, b) => rank(a) - rank(b) || b.total - a.total || b.createdAt.localeCompare(a.createdAt));
+  const rank = (item: EventAssessmentContract) => (item.status === "reading" ? 0 : 1);
+  return [...items].sort((a, b) => rank(a) - rank(b) || b.createdAt.localeCompare(a.createdAt));
 }
 
 /** 「7」/「10」（.datebox：東京の日と月）。 */

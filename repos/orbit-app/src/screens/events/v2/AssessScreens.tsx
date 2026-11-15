@@ -1,22 +1,24 @@
-// R26 イベント評価 (App): the input and 判定中 (app.html #30), the result (#31, dark #37) and the failure states
-// (b2 #0 login, #1 not an event page, #2 poster fill-in, #3 after filling). Scores come from the server by rule;
+// R26 イベント評価 (App): the input and 読み取り中 (app.html #30), the result (#31, dark #37) and the failure states
+// (b2 #0 login, #1 not an event page, #2 poster fill-in, #3 after filling). 2026-11-15: no score — the result shows the
+// facts read, 「あなたに関係すること」 and what could not be read;
 // a URL / poster read polls every 2 seconds for up to 90 seconds (DESIGN §5). The poster picker loads lazily.
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Platform, Share, StyleSheet, TextInput, View } from "react-native";
+import { Linking, Platform, Share, StyleSheet, TextInput, View } from "react-native";
 
 import { EVENT_AREA_ONLINE, EVENT_PRICE_FREE } from "../../../api/compute/event-score-input";
-import type { EventAssessmentContract, EventAssessmentCreateInput, EventAssessmentDisplayValue, EventAssessmentFacts } from "../../../api/contract/event-assessment";
+import type { EventAssessmentContract, EventAssessmentCreateInput, EventAssessmentFacts } from "../../../api/contract/event-assessment";
 import { AppScreen } from "../../../components/AppScreen";
 import { ActionSheet, ConfirmDialog, Icon, IconButton, UiPressable, UiText, useToast } from "../../../components/ui";
 import { createThemedStyles, useOrbitTheme } from "../../../design/theme";
 import { radius, shadows } from "../../../design/tokens";
+import type { MessageKey } from "../../../i18n/messages";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { newIdempotencyKey, useEventsApi, type EventsApi } from "./events-api";
 import { KitGradient } from "../../plan/plan-kit";
-import { appEventTime, appEventWhen, clipboardEventUrl, ringColor, tokyoDay, verdictKey } from "./events-model";
-import { ScoreRing } from "./ScoreRing";
+import { appEventTime, appEventWhen, clipboardEventUrl, tokyoDay } from "./events-model";
+import { RelevanceCard, useRelevanceT, type RelevanceRow } from "./Relevance";
 import { PersonalScheduleDateTimePicker } from "../../schedule/PersonalScheduleDateTimePicker";
 
 const POLL_MS = 2_000;
@@ -138,25 +140,6 @@ export function AssessInputScreen() {
   );
 }
 
-// .crit：名称和分数一行（不截断），下面是 6 高的 .bar、渐变填充 + 右端 14 的圆钮（rose 版用于时间对効果）。
-function Crit({ label, value, rose, gradientId }: { label: string; value: EventAssessmentDisplayValue; rose?: boolean; gradientId: string }) {
-  const { styles, colors } = useStyles();
-  const text = value.min !== undefined && value.max !== undefined && value.min !== value.max ? `${value.min}–${value.max}` : String(value.value);
-  const width = Math.max(0, Math.min(100, value.value));
-  return (
-    <View style={styles.crit}>
-      <View style={styles.critHead}><UiText style={styles.critLabel}>{label}</UiText><UiText style={styles.critScore}>{text}</UiText></View>
-      <View style={styles.bar}>
-        <View style={[styles.barFill, { width: `${width}%` }]}>
-          <KitGradient id={`events-crit-${rose ? "rose" : "plum"}-${gradientId}`} from={rose ? colors.rose300 : colors.plum300} to={rose ? colors.rose700 : colors.plum700} angle={90} />
-        </View>
-        <View style={[styles.barKnob, { borderColor: rose ? colors.rose700 : colors.plum700, left: `${width}%` }]} />
-      </View>
-      {value.reason ? <UiText style={styles.lbl}>{value.reason}</UiText> : null}
-    </View>
-  );
-}
-
 // .list > .li + .li::before：1px 线，从 50 起。
 function ListLine() {
   const { styles } = useStyles();
@@ -214,17 +197,17 @@ export function AssessmentResultScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [item, setItem] = useState<EventAssessmentContract | null>(null);
   const [busy, setBusy] = useState(false);
-  const [why, setWhy] = useState(false);
+  const rt = useRelevanceT();
   useEffect(() => { let live = true; void api.detail(id ?? "").then((result) => { if (live && result.ok) setItem(result.data); }); return () => { live = false; }; }, [api, id]);
 
   if (!item) return <AppScreen title={t("eventsV2.assessTitleShort")}><View /></AppScreen>;
-  const decide = async (decision: "add" | "skip") => {
+  const add = async () => {
     setBusy(true);
-    const result = decision === "add" ? await api.addToPlan(item.id) : await api.dismiss(item.id);
+    const result = await api.addToPlan(item.id);
     setBusy(false);
     if (result.ok === false) { toast.error(t("eventsV2.genericError")); return; }
-    setItem({ ...item, userDecision: decision === "add" ? "added" : "dismissed" });
-    toast.success(decision === "add" ? t("eventsV2.added") : t("eventsV2.skipped"));
+    setItem({ ...item, userDecision: "added" });
+    toast.success(t("eventsV2.added"));
   };
   const more = <AssessmentMoreButton item={item} />;
   if (item.failureReason === "not_event_page") return <NotEventPageScreen item={item} headerActions={more} />;
@@ -241,39 +224,40 @@ export function AssessmentResultScreen() {
   // Any other failed read (login wall, site not reachable, unreadable, AI busy) shows why and other ways to go on —
   // never a bare 0 / 100 result. (A poster that needs the user to fill in facts is handled above.)
   if (item.status === "failed") return <ReadFailedScreen item={item} headerActions={more} />;
-  const display = item.display;
   // 补过的项（有值的）与仍是不明的项（补的时候选了「不明」）。
   const userFields = item.userFilledFields ?? [];
   const filled = userFields.filter((field) => Boolean(item.facts[field]));
   const stillUnknown = userFields.filter((field) => !item.facts[field]);
   const fieldLabel = (field: keyof EventAssessmentFacts) => t(field === "startsAt" ? "eventsV2.fieldWhen" : field === "price" ? "eventsV2.fieldFee" : field === "venue" || field === "area" ? "eventsV2.fieldWhere" : "eventsV2.fieldName");
   const source = item.sourceKind === "url" ? t("eventsV2.sourceUrl", { s: item.readSeconds ?? 1 }) : item.sourceKind === "poster" ? (filled.length ? t("eventsV2.sourcePosterManual") : t("eventsV2.sourcePoster")) : item.sourceKind === "manual" ? t("eventsV2.sourceManual") : t("eventsV2.sourceOrbit");
-  const verdict = item.verdict === "conditional" && filled.length ? t("eventsV2.verdictConditionalLong") : t(`eventsV2.${verdictKey(item.verdict)}`);
   const price = item.facts.price === EVENT_PRICE_FREE ? t("eventsV2.free") : item.facts.price ?? (stillUnknown.includes("price") ? t("eventsV2.feeUnknownLabel") : null);
-  // The range note explains an unknown fee only; with a known fee the bar's own reason line says why.
-  const ranged = display && !item.facts.price ? [display.goalFit, display.people, display.timeCost].find((value) => value.min !== undefined && value.max !== undefined && value.min !== value.max) : undefined;
-  const hero = filled.length ? { pad: 20, ring: 130, stroke: 12, big: 40, gap: 16 } : { pad: 22, ring: 150, stroke: 13, big: 44, gap: 18 };
+  // 2026-11-15 去分数：读到的内容 + 「あなたに関係すること」+ 读不到的项目照实写一行（不再用「推定」补分）。
+  const speakers = item.facts.speakers?.length ?? 0;
+  const factRows = ([
+    ["eventsV2.fieldWhen", appEventWhen(item.facts.startsAt, language)],
+    ["eventsV2.fieldWhere", item.facts.venue ?? item.facts.area ?? null],
+    ["eventsV2.fieldFee", price],
+    ["eventsV2.fieldOrganizer", item.facts.organizer ?? null],
+    ["eventsV2.relFieldSpeakers", speakers ? t("eventsV2.relSpeakersValue", { n: speakers }) : null],
+  ] as readonly (readonly [MessageKey, string | null])[]).filter((row): row is readonly [MessageKey, string] => Boolean(row[1]));
+  const missing = [...new Set(item.missingFields.flatMap((field) => (MISSING_LABEL[field] ? [t(MISSING_LABEL[field]!)] : [])))];
+  const calendar = (item.cautions ?? []).filter((caution) => caution.kind === "calendar").map((caution, index): RelevanceRow => ({ basis: t("eventsV2.relBasisCalendar"), glyph: "!", key: `calendar-${index}`, kind: "calendar", main: caution.text }));
+  const sourceUrl = item.facts.url ?? null;
   const shareText = [item.facts.title, item.facts.url].filter(Boolean).join("\n");
   const share = () => { Share.share({ message: shareText }).catch(() => undefined); };
   return (
     <AppScreen title={t("eventsV2.assessTitleShort")} subtitle={source}
       headerActions={<>{shareText ? <IconButton icon="share" accessibilityLabel={t("eventsV2.share")} onPress={share} /> : null}{more}</>}>
       <View style={styles.page} testID="events-result">
-        <View style={[styles.card, { alignItems: "center", paddingHorizontal: 18, paddingVertical: hero.pad }]}>
+        <View style={styles.card}>
           <SourceChip item={item} />
-          {item.facts.title ? <UiText style={styles.title16}>{item.facts.title}</UiText> : null}
-          <UiText style={[styles.lbl, { textAlign: "center" }]}>{[appEventWhen(item.facts.startsAt, language), item.facts.venue ?? item.facts.area, price].filter(Boolean).join(" · ")}</UiText>
-          <View style={{ marginBottom: 6, marginTop: hero.gap }}>
-            <ScoreRing size={hero.ring} stroke={hero.stroke} value={item.total} color={colors[ringColor(item.total)]} label={String(item.total)} fontSize={hero.big}>
-              <View style={{ alignItems: "center" }}>
-                <UiText style={[styles.big, { fontSize: hero.big, lineHeight: hero.big * 1.05 * 1.1 }]}>{item.total}</UiText>
-                <UiText style={[styles.lbl, { lineHeight: 11.5 * 1.1 }]}>{t("eventsV2.outOf100")}</UiText>
-              </View>
-            </ScoreRing>
-          </View>
-          <View style={[styles.verdictChip, { backgroundColor: item.verdict === "recommend" ? colors.macTeal : item.verdict === "conditional" ? colors.macApricot : colors.surface2 }]}>
-            <UiText style={[styles.verdictText, { color: item.verdict === "recommend" ? colors.macTealInk : item.verdict === "conditional" ? colors.macApricotInk : colors.ink2 }]}>{item.verdict === "recommend" ? `✓ ${verdict}` : verdict}</UiText>
-          </View>
+          {item.facts.title ? <UiText style={[styles.title16, { textAlign: "left" }]}>{item.facts.title}</UiText> : null}
+          {factRows.map(([label, value], index) => (
+            <View key={label} style={[styles.frow, index > 0 ? styles.frowLine : null]}>
+              <UiText style={[styles.lbl, { width: 52 }]}>{t(label)}</UiText>
+              <UiText style={styles.frowValue}>{value}</UiText>
+            </View>
+          ))}
         </View>
         {filled.length ? (
           <View style={styles.card} testID="events-result-filled">
@@ -283,59 +267,31 @@ export function AssessmentResultScreen() {
                 <UiText style={styles.title13}>{t("eventsV2.filledByYou", { n: filled.length })}</UiText>
                 <UiText style={styles.lbl}>{filledLine([...filled.map((field) => (item.adoptedGuessFields ?? []).includes(field) ? `${fieldLabel(field)}${t("eventsV2.guessAdopted")}` : fieldLabel(field)), ...stillUnknown.map((field) => t("eventsV2.stillUnknown", { field: fieldLabel(field) }))])}</UiText>
               </View>
-              {ranged ? <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.why")} onPress={() => setWhy((open) => !open)} style={styles.why}><UiText style={styles.whyText}>?</UiText></UiPressable> : null}
-            </View>
-            {why && ranged ? <View style={styles.whyBody}><UiText style={styles.whyBodyText}>{t("eventsV2.rangeNote", { range: `${ranged.min}〜${ranged.max}` })}</UiText></View> : null}
-          </View>
-        ) : null}
-        {display ? (
-          <View style={styles.card}>
-            <View style={styles.cardH}><UiText style={styles.cardTitle}>{t("eventsV2.breakdownLong")}</UiText></View>
-            <View style={{ gap: 14 }}>
-              <Crit label={t("eventsV2.dimGoal")} value={display.goalFit} gradientId="goal" />
-              <Crit label={t("eventsV2.dimPeople")} value={display.people} gradientId="people" />
-              <Crit label={t("eventsV2.dimTime")} value={display.timeCost} rose gradientId="time" />
             </View>
           </View>
         ) : null}
-        {item.meetCandidates?.length ? (
-          <View style={styles.card}>
-            <View style={styles.cardH}><UiText style={styles.cardTitle}>{t("eventsV2.meetTitle")}</UiText><UiText style={styles.lbl}>{t("eventsV2.meetBasis")}</UiText></View>
-            {item.meetCandidates.map((meet, index) => (
-              <View key={`${meet.label}-${index}`} style={styles.li}>
-                {index > 0 ? <ListLine /> : null}
-                <View style={[styles.emoSm, { backgroundColor: [colors.macLav, colors.macBlue, colors.macTeal][index % 3] }]}><UiText style={styles.emoTextSm}>{meet.emoji}</UiText></View>
-                <View style={styles.grow}><UiText style={styles.metaTitle} numberOfLines={1}>{meet.label}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{meet.basis}</UiText></View>
-              </View>
-            ))}
-          </View>
-        ) : null}
-        {item.cautions?.length ? (
-          <View style={[styles.card, styles.flat]}>
-            <View style={[styles.row, { alignItems: "flex-start", gap: 8 }]}>
-              <View style={{ marginTop: 1 }}><Icon name="alert" size={16} color={colors.coral} /></View>
-              <View style={styles.grow}>
-                <UiText style={styles.cautionTitle}>{t("eventsV2.cautionsTitleShort")}</UiText>
-                <UiText style={styles.cautionText}>{item.cautions.map((caution) => caution.text).join(" · ")}</UiText>
-              </View>
-            </View>
-          </View>
-        ) : null}
+        <RelevanceCard relevance={item.relevance} t={rt} extra={calendar} />
+        {missing.length ? <UiText style={[styles.lbl, { marginHorizontal: 4 }]} testID="events-result-missing">{t("eventsV2.relMissing", { list: missing.join(t("eventsV2.relNamesSep")) })}</UiText> : null}
         <View style={styles.grid2}>
-          <UiPressable accessibilityRole="button" accessibilityLabel={item.userDecision === "dismissed" ? t("eventsV2.skipped") : t("eventsV2.skip")} disabled={busy || item.userDecision === "dismissed"} onPress={() => void decide("skip")} style={[styles.btn, styles.grow, item.userDecision === "dismissed" ? { opacity: 0.6 } : null]}><UiText style={styles.btnText}>{item.userDecision === "dismissed" ? t("eventsV2.skipped") : t("eventsV2.skip")}</UiText></UiPressable>
-          {filled.length && ranged && item.eventId ? (
-            // b2 #3：补过项、分数是幅时主按钮是「詳細を見る」——Orbit 的活动去活动详情（/events/[id]，R27 换页路径不变）；
-            // 外部活动没有详情页，展开幅的说明后换回「参加予定に追加」，不留死路（主会话 2026-10-15）。
-            <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.seeDetails")} onPress={() => (item.eventId ? router.push(`/events/${encodeURIComponent(item.eventId)}` as Href) : setWhy(true))} style={[styles.btnPrimary, styles.grow]}><UiText style={styles.btnPrimaryText}>{t("eventsV2.seeDetails")}</UiText></UiPressable>
-          ) : (
-            <UiPressable accessibilityRole="button" accessibilityLabel={item.userDecision === "added" ? t("eventsV2.added") : t("eventsV2.addToPlan")} disabled={busy || item.userDecision === "added"} onPress={() => void decide("add")} style={[styles.btnPrimary, styles.grow, item.userDecision === "added" ? { opacity: 0.6 } : null]}><UiText style={styles.btnPrimaryText}>{item.userDecision === "added" ? `✓ ${t("eventsV2.added")}` : t("eventsV2.addToPlan")}</UiText></UiPressable>
-          )}
+          {sourceUrl ? (
+            <UiPressable accessibilityRole="link" accessibilityLabel={t("eventsV2.relOpenSource")} onPress={() => { void Linking.openURL(sourceUrl).catch(() => undefined); }} style={[styles.btn, styles.grow]}><UiText style={styles.btnText}>{t("eventsV2.relOpenSource")}</UiText></UiPressable>
+          ) : item.eventId ? (
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.seeDetails")} onPress={() => router.push(`/events/${encodeURIComponent(item.eventId!)}` as Href)} style={[styles.btn, styles.grow]}><UiText style={styles.btnText}>{t("eventsV2.seeDetails")}</UiText></UiPressable>
+          ) : null}
+          <UiPressable accessibilityRole="button" accessibilityLabel={item.userDecision === "added" ? t("eventsV2.added") : t("eventsV2.addToPlan")} disabled={busy || item.userDecision === "added"} onPress={() => void add()} style={[styles.btnPrimary, styles.grow, item.userDecision === "added" ? { opacity: 0.6 } : null]}><UiText style={styles.btnPrimaryText}>{item.userDecision === "added" ? `✓ ${t("eventsV2.added")}` : t("eventsV2.addToPlan")}</UiText></UiPressable>
         </View>
       </View>
       {busy ? null : <View testID="events-result-ready" />}
     </AppScreen>
   );
 }
+
+/** 「読み取れなかった項目」に出す名前（url は出さない）。 */
+const MISSING_LABEL: Partial<Record<keyof EventAssessmentFacts, MessageKey>> = {
+  agenda: "eventsV2.relFieldAgenda", area: "eventsV2.fieldWhere", endsAt: "eventsV2.fieldWhen", exhibitorCount: "eventsV2.relFieldExhibitors",
+  expectedAttendees: "eventsV2.relFieldAttendees", format: "eventsV2.relFieldFormat", organizer: "eventsV2.fieldOrganizer", price: "eventsV2.fieldFee",
+  speakers: "eventsV2.relFieldSpeakers", startsAt: "eventsV2.fieldWhen", title: "eventsV2.fieldName", venue: "eventsV2.fieldWhere",
+};
 
 /** 「日時 · 場所（推測を採用）· 参加費は不明のまま」：全角括号后面的分隔只留「· 」（同画板）。 */
 function filledLine(parts: readonly string[]): string {
@@ -630,22 +586,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   stepDot: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 22, justifyContent: "center", width: 22 },
   stepNum: { color: colors.ink3, fontSize: 13, fontWeight: "700", lineHeight: 18 },
   stepText: { color: colors.ink3, fontSize: 15, lineHeight: 21 },
-  big: { color: colors.ink, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontWeight: "800", letterSpacing: -0.88 },
-  verdictChip: { borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5 },
-  verdictText: { fontSize: 15, fontWeight: "700", lineHeight: 23 },
-  crit: { gap: 6 },
-  critHead: { alignItems: "baseline", flexDirection: "row", gap: 10, justifyContent: "space-between" },
-  critLabel: { color: colors.ink, flexShrink: 1, fontSize: 14, fontWeight: "600", lineHeight: 21 },
-  bar: { backgroundColor: colors.surface3, borderRadius: 6, height: 6, marginHorizontal: 7 },
-  barFill: { borderRadius: 6, bottom: 0, left: 0, overflow: "hidden", position: "absolute", top: 0 },
-  barKnob: { backgroundColor: colors.surface, borderRadius: 7, borderWidth: 3, height: 14, marginLeft: -7, position: "absolute", top: -4, width: 14 },
-  critScore: { color: colors.ink, flexShrink: 0, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontSize: 14, fontWeight: "800", lineHeight: 21, textAlign: "right" },
   li: { alignItems: "center", flexDirection: "row", gap: 12, paddingVertical: 11 },
   liLine: { backgroundColor: colors.line, height: 1, left: 50, position: "absolute", right: 0, top: 0 },
   metaTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25 },
   metaSub: { color: colors.ink3, fontSize: 14, lineHeight: 21 },
-  cautionTitle: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 23 },
-  cautionText: { color: colors.ink3, fontSize: 15, lineHeight: 23 },
   grid2: { flexDirection: "row", gap: 12 },
   btn: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, flexDirection: "row", gap: 6, height: 40, justifyContent: "center", paddingHorizontal: 16 },
   btnGhost: { backgroundColor: "transparent" },
@@ -657,10 +601,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   chip: { alignItems: "center", alignSelf: "flex-start", backgroundColor: colors.surface2, borderRadius: radius.pill, flexDirection: "row", paddingHorizontal: 9, paddingVertical: 3 },
   chipLav: { backgroundColor: colors.macLav },
   chipText: { color: colors.ink2, fontSize: 13, fontWeight: "700", lineHeight: 20 },
-  why: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 9, height: 18, justifyContent: "center", width: 18 },
-  whyText: { color: colors.ink3, fontSize: 12, fontWeight: "800", lineHeight: 16 },
-  whyBody: { backgroundColor: colors.surface2, borderRadius: radius.md, marginTop: 10, paddingHorizontal: 12, paddingVertical: 10 },
-  whyBodyText: { color: colors.ink2, fontSize: 14, lineHeight: 23 },
   datebox: { backgroundColor: colors.surface2, borderRadius: 13, paddingVertical: 5, width: 44 },
   dateDay: { color: colors.ink, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontSize: 19, fontWeight: "800", lineHeight: 21, textAlign: "center" },
   // .datebox line-height 1.1：small 落在外层 14px 的行盒里（15.4）。

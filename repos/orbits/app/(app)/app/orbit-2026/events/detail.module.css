@@ -206,3 +206,8 @@
 .mockLine { width: 60%; margin-top: 6px; }
 
 .contactRail.contactRail { margin-top: 12px; }
+
+/* 2026-11-15 去分数：封面右边 / 手机封面下是「あなたに関係すること」卡或引导。 */
+.relSlot { align-self: start; }
+.pRel.pRel { margin-top: 14px; }
+.pGuideTitle { display: block; font-size: var(--fs-body-sm); margin-top: 2px; }

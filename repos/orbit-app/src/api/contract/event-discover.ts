@@ -1,6 +1,7 @@
 // R27 — 「探す」: community events, events that help my plan (scored with `scoreEvent`), and everything by date.
 // Owner: 甲 (R27). Used by: events (探す tab, both clients); signed-out visitors get the `all` group only (R26-08).
 import type { EventAssessmentVerdict } from "./event-assessment";
+import type { EventRelevance } from "./event-relevance";
 
 /** `upcoming` = not ended yet (default); `past` = ended in the last year, newest first (2026-10-29 DISCOVER-RULES). */
 export type EventDiscoverPeriod = "upcoming" | "this_week" | "this_month" | "next_month" | "past" | "custom";
@@ -40,6 +41,8 @@ export interface EventDiscoverRow {
   /** Names of my contacts who are going (「高橋さん・加藤さんも参加予定」). */
   knownAttendees?: readonly string[];
   registrationCount?: number | null;
+  /** 2026-11-15 去分数：跟你有关的事实（新版各端只看这个；score / verdict / reason 留给旧版 App）。有计划才有。 */
+  relevance?: EventRelevance | null;
   href: string;
   sample?: true;
 }

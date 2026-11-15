@@ -1,4 +1,4 @@
-// R27 イベント詳細（App；b2 #14 参加者 0 / #15 少 / #16 多 · 参加者 tab）：封面卡（facts）· 评分条（吸顶）· 下划线 tab ·
+// R27 イベント詳細（App；b2 #14 参加者 0 / #15 少 / #16 多 · 参加者 tab）：封面卡（facts）·「あなたに関係すること」（2026-11-15 取代评分条）· 下划线 tab ·
 // 紹介（会えそうな人：未公开时按登壇者推定）/ 参加者（プランに合う / 知り合い / 全員）· 底部 CTA。
 // 已报名时 CTA 位置换成 ⋯（カレンダーに追加 / 参加用プロフィールを編集 / 参加を取り消す，与 Web b12 378–381 §31 同位置）+ 会う準備へ。
 // 数据：GET /api/events/[id]/overview（规则评估，不调 AI）。
@@ -26,9 +26,8 @@ import { CancelSheet } from "./CancelSheet";
 import { HostContactCard, showHostContact } from "./HostContact";
 import { newIdempotencyKey, useEventsApi } from "./events-api";
 import { useJourneyApi } from "./journey-api";
-import { eventRange, feeText, publicOrganizerName, rowTone, subscribeEventChanged } from "./journey-model";
-import { ringColor, verdictKey } from "./events-model";
-import { ScoreRing } from "./ScoreRing";
+import { eventRange, feeText, publicOrganizerName, subscribeEventChanged } from "./journey-model";
+import { RelevanceCard, useRelevanceT } from "./Relevance";
 import { useJourneyT } from "./useJourneyT";
 
 type Tab = "intro" | "agenda" | "host" | "people";
@@ -73,6 +72,7 @@ export function EventDetailPage() {
   const { styles, colors } = useStyles();
   const { scheme } = useOrbitTheme();
   const locale = useOrbitLocale();
+  const rt = useRelevanceT();
   const { t, language } = useJourneyT();
   const router = useRouter();
   const toast = useToast();
@@ -90,7 +90,6 @@ export function EventDetailPage() {
   const [reload, setReload] = useState(0);
   const [tab, setTab] = useState<Tab>(params.tab === "people" || params.tab === "agenda" || params.tab === "host" ? params.tab : "intro");
   const [filter, setFilter] = useState<Filter | null>(null);
-  const [whyOpen, setWhyOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -181,7 +180,7 @@ export function EventDetailPage() {
   const hosting = data.hosting ?? probedHost ?? false;
   // The host is not asked whether their own event is worth going to.
   const assessment = data.signedOut || hosting ? null : data.assessment ?? null;
-  const verdictTone = assessment ? rowTone({ verdict: assessment.verdict }, 0).chip : null;
+  const relevance = assessment?.relevance ?? null;
   const facts: { icon: IconName; text: string }[] = [
     { icon: "calendar", text: eventRange(data.startsAt, data.endsAt, language) },
     { icon: "pin", text: data.venue ?? "—" },
@@ -240,7 +239,7 @@ export function EventDetailPage() {
   return (
     <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="events-detail">
       <ShellBackground />
-      <ScrollView contentContainerStyle={styles.pad} stickyHeaderIndices={assessment ? [offlineAt ? 3 : 2] : undefined}>
+      <ScrollView contentContainerStyle={styles.pad}>
         {header}
         {offlineAt ? <EventsOfflineNotice lastSyncedAt={offlineAt} /> : null}
         <View style={[styles.card, styles.coverCard]}>
@@ -254,22 +253,9 @@ export function EventDetailPage() {
             <View style={styles.facts}>{facts.map((fact) => <View key={fact.icon} style={styles.fact}><Icon name={fact.icon} size={16} color={colors.ink3} /><UiText style={styles.factText}>{fact.text}</UiText></View>)}</View>
           </View>
         </View>
-        {assessment ? (
-          <View style={styles.scorebar} testID="events-detail-score">
-            <UiPressable accessibilityRole="button" accessibilityLabel={t("why")} onPress={() => (assessment.assessmentId ? router.push(`/events/assessments/${encodeURIComponent(assessment.assessmentId)}` as Href) : setWhyOpen((value) => !value))} style={styles.scoreRow}>
-              <ScoreRing size={50} stroke={6} value={assessment.score} color={colors[ringColor(assessment.score)]} label={String(assessment.score)} fontSize={15} />
-              <View style={styles.grow}>
-                <View style={[styles.row, { gap: 6 }]}>
-                  <View style={[styles.chip, verdictTone ? { backgroundColor: tone(verdictTone)[0] } : null]}><UiText style={[styles.chipText, verdictTone ? { color: tone(verdictTone)[1] } : null]}>{locale.t(`eventsV2.${verdictKey(assessment.verdict)}`)}</UiText></View>
-                  <UiPressable accessibilityRole="button" accessibilityLabel={t("why")} accessibilityState={{ expanded: whyOpen }} onPress={() => setWhyOpen((value) => !value)} style={styles.why}><UiText style={styles.whyText}>?</UiText></UiPressable>
-                </View>
-                <UiText style={[styles.lbl, { marginTop: 3 }]} numberOfLines={1}>{t("critLine", { g: assessment.display.goalFit, p: data.assessmentPeopleUnknown ? "—" : assessment.display.people, t: assessment.display.timeCost })}</UiText>
-              </View>
-              {assessment.assessmentId ? <Icon name="right" size={16} color={colors.ink} /> : null}
-            </UiPressable>
-            {whyOpen ? <View style={styles.whyBody}><UiText style={styles.whyBodyText}>{assessment.basis}</UiText></View> : null}
-          </View>
-        ) : null}
+        {/* 一行一件事实；「会いたい人」点进去 = 参加者 tab 的「プランに合う」。原来评分条打开的「判定の内訳」不再从这里进。 */}
+        <RelevanceCard relevance={relevance} t={rt} style={styles.gap}
+          onPeople={() => { setTab("people"); if (data.attendeeCounts.planFit > 0) setFilter("planFit"); }} />
         {showHostContact(data) ? <HostContactCard contact={data.hostContact} t={t} status={data.registration.status} priceYen={data.priceYen} style={styles.gap} /> : null}
         <UnderlineTabs value={tab} onChange={setTab} testIDPrefix="events-detail-tab-"
           tabs={[{ key: "intro", label: t("tabIntro") }, { key: "agenda", label: t("tabAgenda") }, { key: "host", label: t("tabHost") }, { key: "people", label: t("tabPeople"), count: data.attendeeCounts.all }]} />
@@ -302,7 +288,7 @@ export function EventDetailPage() {
                 ))}
               </View>
             ) : null}
-            {data.knownNote && !data.rosterLocked ? knownCard(data.knownNote.text, data.knownNote.detail ?? "", known.slice(0, 1), ["teal"]) : null}
+            {data.knownNote && !data.rosterLocked && !relevance?.known ? knownCard(data.knownNote.text, data.knownNote.detail ?? "", known.slice(0, 1), ["teal"]) : null}
           </>
         ) : null}
         {tab === "agenda" ? (
@@ -406,12 +392,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   lbl: { color: colors.ink3, fontSize: 13, fontWeight: "500", lineHeight: 20 },
   sub: { color: colors.ink2, fontSize: 15, lineHeight: 23 },
   desc: { lineHeight: 21.875 },
-  scorebar: { backgroundColor: colors.surface, borderRadius: 20, marginTop: 14, paddingHorizontal: 14, paddingVertical: 10 },
-  scoreRow: { alignItems: "center", flexDirection: "row", gap: 12 },
-  why: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 18, justifyContent: "center", width: 18 },
-  whyText: { color: colors.ink3, fontSize: 12, fontWeight: "800", lineHeight: 15 },
-  whyBody: { backgroundColor: colors.surface2, borderRadius: 14, marginTop: 10, paddingHorizontal: 12, paddingVertical: 10 },
-  whyBodyText: { color: colors.ink2, fontSize: 14, lineHeight: 23 },
   cardH: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
   h3: { color: colors.ink, fontSize: 17, fontWeight: "800", lineHeight: 25 },
   li: { alignItems: "center", flexDirection: "row", gap: 12, paddingVertical: 11 },

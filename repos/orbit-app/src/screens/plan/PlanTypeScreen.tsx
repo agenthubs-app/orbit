@@ -9,6 +9,7 @@
 // Rework: the design draws no per-row buttons, so a long press on a candidate opens
 // 「プランの候補にする / 候補から外す / すでに話した」 (iOS context-menu habit), and
 // 「話したを記録 / この分野はもう詳しい / スキップを取り消す」 also sit under the top-right 「⋯」.
+import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -17,9 +18,7 @@ import { unitPoints } from "../../api/compute/plan-allocation";
 import { AppScreen } from "../../components/AppScreen";
 import {
   ActionSheet,
-  BottomSheet,
   Button,
-  Chip,
   ConfirmDialog,
   EmptyState,
   IconButton,
@@ -28,7 +27,7 @@ import {
   UiText,
   useToast,
 } from "../../components/ui";
-import { createThemedStyles, useOrbitTheme } from "../../design/theme";
+import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi } from "./plan-api";
@@ -189,10 +188,10 @@ function PlanTypeBody({ detail, plan, steps, reload, selected, onSelect, onAward
   const { styles } = useStyles();
   const shared = usePlanOverviewStyles().styles;
   const kit = useKitStyles().styles;
-  const { colors } = useOrbitTheme();
   const { t, language } = useOrbitLocale();
   const copy = useStandardCopy();
   const toast = useToast();
+  const router = useRouter();
   const failureText = useFailureText();
   const api = usePlanApi();
   const planId = detail.planId;
@@ -201,7 +200,8 @@ function PlanTypeBody({ detail, plan, steps, reload, selected, onSelect, onAward
   const [intro, setIntro] = useState<{ viaName: string; subject: string; body: string } | null>(null);
   const [rowMenu, setRowMenu] = useState<PlanCandidateView | null>(null);
   const [talkedOpen, setTalkedOpen] = useState(false);
-  const [openEvent, setOpenEvent] = useState<PlanEventOption | null>(null);
+  // 2026-11-15 去分数：点活动去活动详情（有评估记录时去评估结果），不再打开打分内訳。
+  const openEvent = (event: PlanEventOption) => router.push((event.assessmentHref ?? `/events/${encodeURIComponent(event.eventId)}`) as Href);
   const state = typeState(detail);
   const locale = language === "en" ? "en-US" : language === "zh" ? "zh-CN" : "ja-JP";
   const dateText = (iso: string) => new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "short" });
@@ -298,7 +298,7 @@ function PlanTypeBody({ detail, plan, steps, reload, selected, onSelect, onAward
   const rules = detail.skipped ? null : <CountRulesCard detail={detail} />;
   const hints = detail.recognizeHints.length > 0 && !detail.skipped ? <HintsCard hints={detail.recognizeHints} /> : null;
   const routes = detail.introRoutes.length > 0 && !detail.skipped ? <RoutesCard routes={detail.introRoutes} none={state === "none"} note={t(state === "none" ? "plan.type.routesNoteNone" : "plan.type.routesNote")} busy={busy} onDraft={makeIntro} /> : null;
-  const events = detail.events.length > 0 ? <EventsListCard events={detail.events} ring={state === "none" ? 44 : 42} bonus={eventUnit} onOpen={setOpenEvent} /> : null;
+  const events = detail.events.length > 0 ? <EventsListCard events={detail.events} typeLabel={detail.shortLabel} bonus={eventUnit} onOpen={openEvent} /> : null;
   const tasks = detail.tasks.length > 0 ? (
     <KitCard style={styles.pad1416}>
       <UiText accessibilityRole="header" style={styles.b135}>{t("plan.type.tasks")}</UiText>
@@ -375,30 +375,6 @@ function PlanTypeBody({ detail, plan, steps, reload, selected, onSelect, onAward
         }}
         onClose={() => setRowMenu(null)}
       />
-      <BottomSheet visible={openEvent !== null} onClose={() => setOpenEvent(null)} accessibilityLabel={openEvent?.title ?? t("plan.type.eventsTitle")}>
-        {openEvent ? (
-          <View style={styles.sheet} testID="event-breakdown">
-            <UiText accessibilityRole="header" style={styles.sheetTitle}>{openEvent.title}</UiText>
-            <UiText style={kit.lbl}>{t("plan.type.breakdown")}</UiText>
-            {openEvent.score.scoreBreakdown.map((item) => (
-              <View key={item.criterion} style={styles.criterion}>
-                <View style={shared.between}>
-                  <UiText style={styles.talkedName}>{item.reason}</UiText>
-                  <View style={shared.row}>
-                    {item.estimated ? <Chip label={copy.chip.estimated} tone="apricot" /> : null}
-                    <UiText style={shared.points}>{t("plan.type.criterionScore", { max: item.max, score: item.score })}</UiText>
-                  </View>
-                </View>
-                <View style={shared.track}>
-                  <View style={{ flex: item.score, backgroundColor: colors.plum700 }} />
-                  <View style={{ flex: Math.max(0, item.max - item.score) }} />
-                </View>
-                {item.facts.length > 0 ? <UiText style={kit.lbl}>{item.facts.join(" · ")}</UiText> : null}
-              </View>
-            ))}
-          </View>
-        ) : null}
-      </BottomSheet>
       <MailDraftSheet visible={intro !== null} onClose={() => setIntro(null)} title={t("plan.mail.introTitle")} subtitle={intro ? t("plan.mail.introSub", { letter: detail.letter, name: intro.viaName }) : undefined} to={intro?.viaName} subject={intro?.subject ?? ""} body={intro?.body ?? ""} />
       <ConfirmDialog
         visible={skipAsk}
@@ -428,7 +404,4 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   task: { paddingVertical: 8 },
   taskText: { color: colors.ink, ...kitText(13, "400", 1.6) },
   footSpace: { height: 76 },
-  sheet: { gap: 10 },
-  sheetTitle: { color: colors.ink, ...kitText(16, "800") },
-  criterion: { gap: 4 },
 }));

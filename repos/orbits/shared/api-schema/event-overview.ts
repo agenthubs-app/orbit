@@ -1,3 +1,4 @@
+import { optionalRelevance } from "./event-relevance";
 import { z } from "zod";
 import { readableItems, tolerantEnum } from "./tolerant";
 import type { EventOverviewResponse } from "../contract/event-overview";
@@ -53,6 +54,7 @@ export const eventOverviewResponseObject = z.object({
     display: z.object({ goalFit: z.number().int().min(0).max(100), people: z.number().int().min(0).max(100), timeCost: z.number().int().min(0).max(100) }),
     basis: z.string(),
     assessmentId: z.string().nullable().optional(),
+    relevance: optionalRelevance,
   }).nullable().optional().catch(null),
   assessmentPeopleUnknown: z.boolean().optional(),
   hasPlan: z.boolean().optional(),

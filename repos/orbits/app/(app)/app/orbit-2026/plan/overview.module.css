@@ -277,4 +277,6 @@
 .evMeta { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
 .evMeta > b { display: block; max-width: 100%; font-size: var(--fs-body-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .evMeta > .lbl { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evEmoji { width: 42px; height: 42px; border-radius: var(--r-sm); background: var(--mac-lav); display: grid; place-items: center; font-size: var(--fs-emoji-sm); flex: none; }
+.evChips { margin-top: 4px; }
 @media (max-width: 1279px) { .v22evg { grid-template-columns: 1fr; } .v22ev + .v22ev { border-top: 1px solid var(--line); } }

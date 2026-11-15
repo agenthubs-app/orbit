@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optionalRelevance } from "./event-relevance";
 import { knownValues, readableItems, tolerantEnum } from "./tolerant";
 import type { EventDiscoverResponse } from "../contract/event-discover";
 
@@ -29,6 +30,7 @@ export const eventDiscoverRowObject = z.object({
   communityReason: nullableEnum(["following", "attended"]),
   meetCandidates: readableItems(z.object({ emoji: z.string(), label: z.string() })).optional().catch(undefined),
   knownAttendees: z.array(z.string()).max(10).optional().catch(undefined),
+  relevance: optionalRelevance,
   registrationCount: z.number().int().min(0).nullable().optional().catch(null),
   href: z.string().min(1),
   sample: z.literal(true).optional(),

@@ -12,7 +12,8 @@ import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { closingStepNumbers, eventGatherTypeKeys, jaLatinGlue, stepChipsVisible } from "../../api/compute/plan-overview-labels";
 import { goalKindLabel, PLAN_EVENT_EMOJI } from "./plan-model";
-import { eventDay, KitRing } from "./plan-type-kit";
+import { eventDay } from "./plan-type-kit";
+import { RelevanceChips, relevanceChips, useRelevanceT } from "../events/v2/Relevance";
 import { KitButton, KitCard, KitCardHead, KitChip, KitEmo, KitGradient, KitHatch, kitText, useKitStyles, useKitWhy, type KitTone } from "./plan-kit";
 
 const TYPE_TONES = ["teal", "apricot", "pink", "lav", "blue"] as const;
@@ -372,9 +373,9 @@ function TypeCard({ card, first, onOpen }: { card: TypeCardView; first: boolean;
 
 export function EventsCard({ plan, onOpenEvent }: { plan: PlanV2Detail; onOpenEvent?: (event: PlanEventOption) => void }) {
   const { styles } = useStyles();
-  const { colors } = useOrbitTheme();
   const kit = useKitStyles().styles;
   const { t, language } = useOrbitLocale();
+  const rt = useRelevanceT();
   const event = plan.content.event;
   if (event.allocation <= 0) return null;
   const labels = new Map(plan.content.personTypes.map((type) => [type.key, type.shortLabel]));
@@ -403,14 +404,14 @@ export function EventsCard({ plan, onOpenEvent }: { plan: PlanV2Detail; onOpenEv
       </View>
       <UiText style={kit.lbl}>{[gather, t("plan.event.rule", { count, target: event.targetCount, unit })].filter(Boolean).join(" · ")}</UiText>
       <View style={[styles.mb, styles.evBar]}><View style={[styles.mbFill, { width: `${fill}%` }]} /></View>
-      {/* R26（D53）：推荐活动（app.html V2.evCard22 · EVREC 3 行，按规则分降序）。 */}
+      {/* R26（D53）：推荐活动（app.html V2.evCard22 · EVREC 3 行）。2026-11-15 去分数：服务端按 会想见的人来 → 主题 → 其他、组内日期排，行里只出事实标签。 */}
       {(plan.recommendedEvents ?? []).slice(0, 3).map((item, index) => (
-        <UiPressable key={item.eventId} accessibilityRole="button" accessibilityLabel={t("plan.type.eventScoreA11y", { score: item.score.total, title: item.title })} disabled={!onOpenEvent} onPress={() => onOpenEvent?.(item)} pressedScale={0.99} style={[styles.evRow, index > 0 && styles.evRowNext]} testID="plan-recommended-event">
-          <KitRing size={42} score={item.score.total} color={item.score.total >= 70 ? colors.plum700 : item.score.total >= 50 ? colors.plum500 : colors.rose500} />
+        <UiPressable key={item.eventId} accessibilityRole="button" accessibilityLabel={item.title} disabled={!onOpenEvent} onPress={() => onOpenEvent?.(item)} pressedScale={0.99} style={[styles.evRow, index > 0 && styles.evRowNext]} testID="plan-recommended-event">
+          <KitEmo emoji={item.emoji ?? PLAN_EVENT_EMOJI} tone="apricot" sm />
           <View style={kit.grow}>
             <UiText numberOfLines={1} style={styles.evRowTitle}>{item.title}</UiText>
             <UiText numberOfLines={1} style={kit.lbl}>{[when(item.startsAt), item.venue].filter(Boolean).join("· ")}</UiText>
-            {item.fitLabel ? <KitChip label={item.fitLabel} tone="lav" style={styles.evRowChip} /> : null}
+            <RelevanceChips chips={relevanceChips(item.relevance, rt)} style={styles.evRowChip} />
           </View>
         </UiPressable>
       ))}

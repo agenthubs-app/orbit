@@ -6,6 +6,7 @@
  */
 
 import type { EventAssessmentDisplay, EventAssessmentScoreItem } from "./event-assessment";
+import type { EventRelevance } from "./event-relevance";
 
 export type PlanGoalKind = "launch" | "fundraising" | "sales" | "hiring" | "partnership" | "career";
 /** 读取时未知的目标类型落到 `unknown`：界面只显示目标文，不显示类型名和 emoji。 */
@@ -805,6 +806,8 @@ export interface PlanEventOption {
   assessmentHref?: string | null;
   /** R26：3 维显示值（与评估页同一换算）。 */
   display?: EventAssessmentDisplay;
+  /** 2026-11-15 去分数：跟这一类（类型页）/ 这份计划（概要）有关的事实；排序 people → topic → other、组内日期。 */
+  relevance?: EventRelevance | null;
 }
 
 /** 与契约 8 同形状的分数（R26 不再改形状）。 */

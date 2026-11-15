@@ -692,7 +692,7 @@ export const plan = {
   "plan.type.routesNoteNone": "このタイプとつながっている人",
   "plan.type.draftShort": "依頼文",
   "plan.type.makeDraftLong": "紹介の依頼文を下書き",
-  "plan.type.eventsNoteV2": "固定の 5項目で採点",
+  "plan.type.eventsNoteV2": "会える人がいる順",
   "plan.type.eventExpectedV2": "このタイプが約 {count}人参加",
   "plan.type.eventBonusV2": "参加するとイベント枠にも +{points}",
   "plan.type.openerJudge": "判定：{rule}",
@@ -878,4 +878,7 @@ export const plan = {
   "plan.home.factSaved": "追加しました",
   "plan.home.factFailed": "追加できませんでした",
   "plan.home.eventRole": "主催者とつくり手が集まる場へ行く",
+  "plan.type.eventsGroupPeople": "{label}が来る",
+  "plan.type.eventsGroupTopic": "テーマが近い",
+  "plan.type.eventsGroupOther": "そのほか",
 } as const;

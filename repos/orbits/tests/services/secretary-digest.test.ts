@@ -6,17 +6,18 @@ import type { InboxRecordRepository, InboxStoredRecord } from '../../features/no
 import {createJourneyService, type JourneyRecords} from '../../features/events/journey/service';
 import type {JourneyEvent, JourneyLivePorts} from '../../features/events/journey/ports';
 
-const row = (eventId: string, score: number): EventDiscoverRow => ({ eventId, title: eventId, startsAt: '2026-10-21T10:00:00Z', emoji: '📅', href: `/events/${eventId}`, score, verdict: 'recommend', reason: '目標に合っています' });
+const people = { group: 'people' as const, known: null, people: [{ count: 2, emoji: '💼', label: 'VC', source: 'registrants' as const, typeKey: 'vc' }], topic: null, warnings: [] };
+const row = (eventId: string, score: number, startsAt = '2026-10-21T10:00:00Z'): EventDiscoverRow => ({ eventId, title: eventId, startsAt, emoji: '📅', href: `/events/${eventId}`, score, verdict: 'recommend', reason: '目標に合っています', relevance: people });
 
-test('daily Top-1 uses score then eventId, replaces dismissed candidate, and leaves no candidate empty', () => {
-  const candidates = [row('b', 84), row('a', 84), row('c', 72)];
+test('daily Top-1 (2026-11-15 去分数): soonest people-group event then eventId, replaces dismissed candidate, and leaves no candidate empty', () => {
+  const candidates = [row('b', 84), row('a', 10), row('c', 99, '2026-10-22T10:00:00Z'), { ...row('t', 99, '2026-10-20T10:00:00Z'), relevance: { ...people, group: 'topic' as const, people: [] } }];
   assert.equal(selectDailyRecommendation(candidates, new Set(), new Set())?.eventId, 'a');
   assert.equal(selectDailyRecommendation(candidates, new Set(['a']), new Set())?.eventId, 'b');
   assert.equal(selectDailyRecommendation(candidates, new Set(['a']), new Set(['b']))?.eventId, 'c');
   assert.equal(selectDailyRecommendation(candidates, new Set(['a', 'b', 'c']), new Set()), null);
 });
 
-test('live secretary source judges beyond the first 40 and selects the global score winner', async () => {
+test('live secretary source judges beyond the first 40 and selects the only people-group event', async () => {
   const events: JourneyEvent[] = Array.from({length: 41}, (_, index) => ({
     agenda: [], badges: [], capacity: 100, description: null, emoji: '🎟️', endsAt: null,
     eventId: `e${String(index).padStart(2,'0')}`, organizerKey: `org${index}`, organizerName: null,
@@ -30,13 +31,13 @@ test('live secretary source judges beyond the first 40 and selects the global sc
     judge: async (_actor: string, ids: readonly string[]) => {
       judgedBatches.push([...ids]);
       assert.ok(ids.length <= 40);
-      return {hasPlan:true,goal:'goal',results:Object.fromEntries(ids.map(id => [id,{score:id==='e40'?99:80,verdict:'recommend'}]))};
+      return {hasPlan:true,goal:'goal',results:Object.fromEntries(ids.map(id => [id,{score:80,verdict:'recommend',relevance:id==='e40'?people:{...people,group:'other',people:[]}}]))};
     },
   } as unknown as JourneyLivePorts;
   const records = {feedback:{entries:async()=>[]},follows:{followed:async()=>new Set<string>()}} as unknown as JourneyRecords;
   const journey = createJourneyService({ports,records,now:()=>new Date('2026-10-19T00:00:00Z')});
   const rows = await journey.dailyCandidates('actor','ja');
-  assert.equal(rows.length,41);
+  assert.equal(rows.length,1,'only people-group events are daily candidates');
   assert.equal(selectDailyRecommendation(rows,new Set(),new Set())?.eventId,'e40');
   assert.deepEqual(judgedBatches.map(batch=>batch.length),[40,1]);
 });

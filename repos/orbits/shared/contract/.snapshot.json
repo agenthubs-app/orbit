@@ -5780,6 +5780,11 @@
             }
           }
         },
+        "relevance": {
+          "optional": true,
+          "kind": "text",
+          "type": "EventRelevance | null"
+        },
         "cautions": {
           "optional": true,
           "kind": "text",
@@ -6172,6 +6177,11 @@
           "optional": true,
           "kind": "text",
           "type": "number | null"
+        },
+        "relevance": {
+          "optional": true,
+          "kind": "text",
+          "type": "EventRelevance | null"
         },
         "href": {
           "optional": false,
@@ -6702,6 +6712,11 @@
           "optional": true,
           "kind": "text",
           "type": "{ startsAt: string; endsAt: string; title: string; } | null"
+        },
+        "hostContact": {
+          "optional": true,
+          "kind": "text",
+          "type": "HostEventContact | null"
         }
       }
     },
@@ -6904,6 +6919,11 @@
               "kind": "text",
               "type": "string"
             },
+            "unnamed": {
+              "optional": true,
+              "kind": "text",
+              "type": "boolean"
+            },
             "slug": {
               "optional": true,
               "kind": "text",
@@ -6948,15 +6968,25 @@
               "optional": true,
               "kind": "text",
               "type": "boolean"
+            },
+            "next": {
+              "optional": true,
+              "kind": "text",
+              "type": "{ eventId: string; title: string; startsAt: string; } | null"
             }
           }
         },
         "assessment": {
           "optional": true,
           "kind": "text",
-          "type": "{ score: number; verdict: EventAssessmentVerdict; display: { goalFit: number; people: number; timeCost: number; }; basis: string; assessmentId?: string | null | undefined; } | null"
+          "type": "{ score: number; verdict: EventAssessmentVerdict; display: { goalFit: number; people: number; timeCost: number; }; basis: string; assessmentId?: string | null | undefined; relevance?: EventRelevance | null | undefined; } | null"
         },
         "assessmentPeopleUnknown": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "hasPlan": {
           "optional": true,
           "kind": "text",
           "type": "boolean"
@@ -7082,6 +7112,11 @@
               "type": "string"
             }
           }
+        },
+        "hostContact": {
+          "optional": true,
+          "kind": "text",
+          "type": "HostEventContact | null"
         },
         "signedOut": {
           "optional": true,
@@ -7819,6 +7854,78 @@
           "optional": true,
           "kind": "text",
           "type": "PortraitRegistrationSource | null"
+        }
+      }
+    },
+    "event-relevance.ts::EventRelevanceGroup": {
+      "kind": "enum",
+      "values": [
+        "'other'",
+        "'people'",
+        "'topic'"
+      ]
+    },
+    "event-relevance.ts::EventRelevancePeople": {
+      "kind": "object",
+      "members": {
+        "typeKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "count": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "source": {
+          "optional": false,
+          "kind": "text",
+          "type": "'speakers' | 'exhibitors' | 'registrants'"
+        }
+      }
+    },
+    "event-relevance.ts::EventRelevanceWarning": {
+      "kind": "alias",
+      "type": "EventRelevanceWarning"
+    },
+    "event-relevance.ts::EventRelevance": {
+      "kind": "object",
+      "members": {
+        "group": {
+          "optional": false,
+          "kind": "text",
+          "type": "EventRelevanceGroup"
+        },
+        "people": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventRelevancePeople[]"
+        },
+        "known": {
+          "optional": false,
+          "kind": "text",
+          "type": "{ count: number; names: readonly string[]; } | null"
+        },
+        "topic": {
+          "optional": false,
+          "kind": "text",
+          "type": "{ labels: readonly string[]; } | null"
+        },
+        "warnings": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventRelevanceWarning[]"
         }
       }
     },
@@ -9922,6 +10029,11 @@
           "kind": "text",
           "type": "readonly number[]"
         },
+        "trendStartDate": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
         "currentStep": {
           "optional": false,
           "kind": "text",
@@ -10410,6 +10522,206 @@
         }
       }
     },
+    "host-console.ts::HostPersonAnswer": {
+      "kind": "object",
+      "members": {
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "value": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-console.ts::HostPersonMate": {
+      "kind": "object",
+      "members": {
+        "participantId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "host-console.ts::HostPersonTable": {
+      "kind": "object",
+      "members": {
+        "round": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "table": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "theme": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "why": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "mates": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostPersonMate[]"
+        }
+      }
+    },
+    "host-console.ts::HostPersonRecommendation": {
+      "kind": "object",
+      "members": {
+        "rank": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "participantId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "reason": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "host-console.ts::HostPersonResponse": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "actorId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "initial": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostPeopleBucket"
+        },
+        "source": {
+          "optional": false,
+          "kind": "text",
+          "type": "'application' | 'member'"
+        },
+        "submittedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "checkedInAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "receptionNumber": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "attendCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "hostAnswers": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostPersonAnswer[]"
+        },
+        "profile": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostPersonAnswer[]"
+        },
+        "topics": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "offers": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "needs": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "matching": {
+          "optional": false,
+          "kind": "text",
+          "type": "{ published: boolean; tables: readonly HostPersonTable[]; recommendations: readonly HostPersonRecommendation[]; } | null"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
     "host-console.ts::HostPeopleResponse": {
       "kind": "object",
       "members": {
@@ -10640,6 +10952,11 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "closed": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
         },
         "title": {
           "optional": false,
@@ -11199,6 +11516,11 @@
           "optional": false,
           "kind": "text",
           "type": "readonly number[]"
+        },
+        "trendStartDate": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
         },
         "trendLabels": {
           "optional": false,
@@ -11970,6 +12292,46 @@
         }
       }
     },
+    "host-events.ts::HostEventContact": {
+      "kind": "object",
+      "members": {
+        "wechatId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "lineId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "note": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "host-events.ts::HostEventContactInput": {
+      "kind": "object",
+      "members": {
+        "wechatId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "lineId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "note": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
     "host-events.ts::HostEventView": {
       "kind": "object",
       "members": {
@@ -12148,6 +12510,11 @@
           "kind": "text",
           "type": "number"
         },
+        "contact": {
+          "optional": true,
+          "kind": "text",
+          "type": "HostEventContact | null"
+        },
         "sample": {
           "optional": true,
           "kind": "text",
@@ -12232,6 +12599,16 @@
           "optional": true,
           "kind": "text",
           "type": "'mixer' | 'study' | 'roundtable' | null"
+        },
+        "questions": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly HostSetupQuestion[]"
+        },
+        "contact": {
+          "optional": true,
+          "kind": "text",
+          "type": "HostEventContactInput | null"
         }
       }
     },
@@ -12307,6 +12684,11 @@
           "optional": true,
           "kind": "text",
           "type": "string"
+        },
+        "contact": {
+          "optional": true,
+          "kind": "text",
+          "type": "HostEventContactInput | null"
         },
         "notify": {
           "optional": true,
@@ -13234,6 +13616,10 @@
         "EventRecommendationDismissReason",
         "EventRecommendationDismissResult",
         "EventRecordContract",
+        "EventRelevance",
+        "EventRelevanceGroup",
+        "EventRelevancePeople",
+        "EventRelevanceWarning",
         "EventSearchEventHit",
         "EventSearchOrganizerHit",
         "EventSearchPersonHit",
@@ -19480,6 +19866,11 @@
           "optional": true,
           "kind": "text",
           "type": "EventAssessmentDisplay"
+        },
+        "relevance": {
+          "optional": true,
+          "kind": "text",
+          "type": "EventRelevance | null"
         }
       }
     },

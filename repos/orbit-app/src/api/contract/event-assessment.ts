@@ -1,4 +1,5 @@
 // R08 contract 8 — 「行く価値はある？」 event assessment. Owner: 甲 (R26). Used by: events, home.
+import type { EventRelevance } from "./event-relevance";
 /** R26 added `text` (pasted page text) and `manual` (the three facts typed in). */
 export type EventAssessmentSourceKind = "url" | "poster" | "orbit_event" | "text" | "manual";
 export type EventAssessmentStatus = "reading" | "ready" | "needs_input" | "failed";
@@ -140,6 +141,8 @@ export interface EventAssessmentContract {
   scoreRange?: { min: number; max: number };
   meetCandidates?: readonly EventAssessmentMeetCandidate[];
   knownAttendees?: readonly { contactId: string; name: string }[];
+  /** 2026-11-15 去分数：「あなたに関係すること」（新版只看这个；分数类字段留给旧版 App）。 */
+  relevance?: EventRelevance | null;
   cautions?: readonly EventAssessmentCaution[];
   /** 「午前だけの参加なら時間対効果は 64 → 78」. */
   partialAttendanceHint?: { window: string; timeCostAfter: number };

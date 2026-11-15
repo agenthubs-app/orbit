@@ -21,7 +21,8 @@ const q = (input: Record<string, string> = {}) => eventDiscoverQueryObject.parse
 function candidate(id: string, extra: Partial<DiscoverCandidate> = {}): DiscoverCandidate {
   return { emoji: "🎟️", eventId: id, organizerId: `org-${id}`, organizerName: `主催 ${id}`, startsAt: "2026-10-16T19:00:00+09:00", title: `イベント ${id}`, venue: "渋谷", ...extra };
 }
-const judged = (score: number, verdict: "recommend" | "conditional" | "skip" = score >= 70 ? "recommend" : score >= 50 ? "conditional" : "skip") => ({ judge: { reason: "VC パートナー 3名が登壇", score, verdict } });
+const relevance = (group: "people" | "topic" | "other") => ({ group, known: null, people: group === "people" ? [{ count: 3, emoji: "💼", label: "VC パートナー", source: "speakers" as const, typeKey: "vc_partner" }] : [], topic: group === "topic" ? { labels: ["VC パートナー"] } : null, warnings: [] });
+const judged = (score: number, group: "people" | "topic" | "other" = score >= 50 ? "people" : "other", verdict: "recommend" | "conditional" | "skip" = score >= 70 ? "recommend" : score >= 50 ? "conditional" : "skip") => ({ judge: { reason: "VC パートナー 3名が登壇", relevance: relevance(group), score, verdict } });
 const base = { attendedOrganizers: new Set<string>(), feedback: [], followedOrganizers: new Set<string>(), hasPlan: true, myEventIds: new Set<string>(), now: NOW, planGoal: "シリーズA 資金調達", signedIn: true };
 
 async function exercise(store: ActorRecordStore) {
@@ -101,39 +102,42 @@ test("興味なし: known only filters that event; schedule / distance / content
   assert.equal(feedbackEffect(facts("y"), three.slice(0, 2)).penalty, 0);
 });
 
-test("探す: planFit uses the given scores (never changed), dismissed / registered events leave recommendations but stay in すべて", () => {
-  const events = [candidate("a", judged(82)), candidate("b", judged(77)), candidate("c", judged(71)), candidate("d", judged(68)), candidate("e", judged(41))];
+test("探す（2026-11-15 去分数）: 会いたい人が来る = people 组按日期；dismissed / registered 离开推荐但留在すべて；分数原样透传", () => {
+  const at = (day: number) => `2026-10-${day}T19:00:00+09:00`;
+  const events = [candidate("a", { ...judged(82), startsAt: at(20) }), candidate("b", { ...judged(77), startsAt: at(18) }), candidate("c", { ...judged(71), startsAt: at(17) }), candidate("d", { ...judged(68, "topic"), startsAt: at(16) }), candidate("e", { ...judged(41, "people"), startsAt: at(25) })];
   const result = buildDiscover({ ...base, candidates: events, feedback: [{ eventId: "b", reason: "content" }], myEventIds: new Set(["c"]), query: q() });
   eventDiscoverResponseSchema.parse(result);
-  assert.deepEqual(result.planFit.map((row) => row.eventId), ["a", "d"]);
+  assert.deepEqual(result.planFit.map((row) => row.eventId), ["a", "e"], "people only, by date — the low old score of e no longer matters");
   assert.equal(result.planFitTotal, 2);
-  assert.deepEqual(result.planFit.map((row) => row.score), [82, 68]);
-  assert.equal(result.all.length, 5);
+  assert.deepEqual(result.planFit.map((row) => row.relevance?.group), ["people", "people"]);
+  assert.deepEqual(result.planFit.map((row) => row.score), [82, 41], "old App still reads score");
+  assert.deepEqual(result.all.map((row) => row.eventId), ["d", "c", "b", "a", "e"], "すべて by date");
   assert.equal(result.popularityFallback, false);
-  // 降权只改顺序：b 被同主办同主题降权后排在 d 后面，显示分不变。
-  const reordered = buildDiscover({ ...base, candidates: [candidate("a", { ...judged(80), organizerId: "o", title: "資金調達 ナイト" }), candidate("b", { ...judged(78), organizerId: "o", title: "VC 交流会" }), candidate("d", judged(70))], feedback: [{ eventId: "a", organizerId: "o", reason: "content", themes: ["funding"] }], query: q() });
-  assert.deepEqual(reordered.planFit.map((row) => [row.eventId, row.score]), [["d", 70], ["b", 78]]);
+  // 興味なし降权：同主办同主题的往后放。
+  const reordered = buildDiscover({ ...base, candidates: [candidate("a", { ...judged(80), organizerId: "o", startsAt: at(16), title: "資金調達 ナイト" }), candidate("d", { ...judged(70), startsAt: at(20) })], feedback: [{ eventId: "x", organizerId: "o", reason: "content", themes: ["funding"] }], query: q() });
+  assert.deepEqual(reordered.planFit.map((row) => row.eventId), ["d", "a"]);
 });
 
-test("secretary candidates keep every eligible row and rank by raw score then eventId", () => {
+test("secretary candidates: every people-group row, by date (penalised last), not capped at 3", () => {
   const events = [
     candidate("z", { ...judged(90), startsAt: "2026-10-10T19:00:00+09:00", organizerId: "org-x", title: "資金調達 ナイト" }),
     candidate("b", { ...judged(89), startsAt: "2026-10-11T19:00:00+09:00" }),
     candidate("c", { ...judged(88), startsAt: "2026-10-12T19:00:00+09:00" }),
     candidate("a", { ...judged(90), startsAt: "2026-10-20T19:00:00+09:00" }),
+    candidate("t", { ...judged(95, "topic"), startsAt: "2026-10-09T19:00:00+09:00" }),
   ];
   const input = { ...base, candidates: events, feedback: [{ eventId: "dismissed", organizerId: "org-x", reason: "content" as const, themes: ["funding" as const] }], query: q() };
-  assert.deepEqual(buildDiscover(input).planFit.map(row => row.eventId), ["a", "b", "c"]);
-  assert.deepEqual(buildDiscover(input, { dailyCandidates: true }).planFit.map(row => row.eventId), ["a", "z", "b", "c"]);
+  assert.deepEqual(buildDiscover(input).planFit.map(row => row.eventId), ["b", "c", "a"]);
+  assert.deepEqual(buildDiscover(input, { dailyCandidates: true }).planFit.map(row => row.eventId), ["b", "c", "a", "z"]);
 });
 
-test("探す: no plan / signed out → popularity order, no scores, no community; signed out never sees organizer ids", () => {
-  const events = [candidate("a", { ...judged(82), registrationCount: 10 }), candidate("b", { ...judged(60), registrationCount: 90 })];
+test("探す: no plan / signed out → date order, no scores, no community; signed out never sees organizer ids", () => {
+  const events = [candidate("a", { ...judged(82), registrationCount: 10, startsAt: "2026-10-15T19:00:00+09:00" }), candidate("b", { ...judged(60), registrationCount: 90, startsAt: "2026-10-16T19:00:00+09:00" })];
   const noPlan = buildDiscover({ ...base, candidates: events, hasPlan: false, query: q() });
   assert.equal(noPlan.popularityFallback, true);
-  assert.deepEqual(noPlan.all.map((row) => row.eventId), ["b", "a"]);
+  assert.deepEqual(noPlan.all.map((row) => row.eventId), ["a", "b"], "date, not popularity");
   assert.equal(noPlan.planFit.length, 0);
-  assert.equal(noPlan.all.some((row) => row.score !== undefined), false);
+  assert.equal(noPlan.all.some((row) => row.score !== undefined || row.relevance !== undefined), false);
   const out = buildDiscover({ ...base, candidates: events, followedOrganizers: new Set(["org-a"]), query: q(), signedIn: false });
   assert.equal(out.signedOut, true);
   assert.equal(out.community.length, 0);

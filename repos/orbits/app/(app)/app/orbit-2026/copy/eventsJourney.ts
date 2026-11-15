@@ -5,7 +5,7 @@ import type { OrbitCopyTable } from "./types";
 // Checked by `npm run copy:qa`.
 export const eventsJourneyCopy = {
   // 探す · 見出し
-  dSubtitleMany: { ja: "{period} {total}件 · プランに効く {n}件", zh: "{period}{total}场 · 对计划有用{n}场", en: "{period} {total} · {n} help your plan", kind: "label" },
+  dSubtitleMany: { ja: "{period} {total}件 · 会いたい人が来る {n}件", zh: "{period}{total}场 · 会见到想见的人{n}场", en: "{period} {total} · {n} with people you want to meet", kind: "label" },
   dSubtitleFew: { ja: "条件に合う {n}件", zh: "符合条件{n}场", en: "{n} match", kind: "label" },
   dSubtitleEmpty: { ja: "あなた向けのイベントを探す", zh: "找适合你的活动", en: "Find events for you", kind: "label" },
   searchPlaceholder: { ja: "イベント名・主催・キーワード", zh: "活动名、主办方、关键词", en: "Event, organizer, keyword", kind: "placeholder" },
@@ -57,7 +57,7 @@ export const eventsJourneyCopy = {
   attended: { ja: "前回参加", zh: "上次参加过", en: "Went last time", kind: "label" },
   badgeMembers: { ja: "メンバー限定", zh: "仅限成员", en: "Members only", kind: "chip" },
   badgeEarly: { ja: "先行申込", zh: "优先报名", en: "Early access", kind: "chip" },
-  planFitTitle: { ja: "プランに効くイベント", zh: "对计划有用的活动", en: "Events that help your plan", kind: "cardTitle" },
+  planFitTitle: { ja: "会いたい人が来る", zh: "会见到想见的人", en: "People you want to meet will be there", kind: "cardTitle" },
   countN: { ja: "{n}件", zh: "{n}场", en: "{n}", kind: "label" },
   allTitle: { ja: "すべて · {n}件", zh: "全部 · {n}场", en: "All · {n}", kind: "cardTitle" },
   allTitlePlain: { ja: "すべて", zh: "全部", en: "All", kind: "cardTitle" },
@@ -88,10 +88,10 @@ export const eventsJourneyCopy = {
   noPlanTitle: { ja: "目標を決めると、会うべき人が来るイベントが上に並びます", zh: "设定目标后，能见到该见的人的活动会排在前面", en: "Set a goal and events with the people you should meet move to the top", kind: "cardTitle" },
   noPlanTitleShort: { ja: "目標を決めると、", zh: "设定目标后，", en: "Set a goal and", kind: "cardTitle" },
   noPlanTitleRest: { ja: "会うべき人が来るイベントが上に並びます", zh: "能见到该见的人的活动会排在前面", en: "events with the people you should meet come first", kind: "cardTitle" },
-  noPlanSub: { ja: "今は「人気順」で表示しています。設定は約1分です。", zh: "现在按「热度」排序。设定约需1分钟。", en: "Showing by popularity for now. Setting a goal takes about a minute.", kind: "label" },
-  noPlanSubShort: { ja: "今は「人気順」で表示しています。約1分で設定できます。", zh: "现在按「热度」排序。约1分钟就能设定。", en: "Showing by popularity. It takes about a minute.", kind: "label" },
+  noPlanSub: { ja: "今は日付順で表示しています。設定は約1分です。", zh: "现在按日期排序。设定约需1分钟。", en: "Showing by date for now. Setting a goal takes about a minute.", kind: "label" },
+  noPlanSubShort: { ja: "今は日付順で表示しています。約1分で設定できます。", zh: "现在按日期排序。约1分钟就能设定。", en: "Showing by date. It takes about a minute.", kind: "label" },
   noPlanTitleGoal: { ja: "目標からプランを作ると、会うべき人が来るイベントが上に並びます", zh: "用你的目标做好计划后，能见到该见的人的活动会排在前面", en: "Make a plan from your goal and events with the people you should meet move to the top", kind: "cardTitle" },
-  noPlanSubGoal: { ja: "今は「人気順」で表示しています。", zh: "现在按「热度」排序。", en: "Showing by popularity for now.", kind: "label" },
+  noPlanSubGoal: { ja: "今は日付順で表示しています。", zh: "现在按日期排序。", en: "Showing by date for now.", kind: "label" },
   planFromGoal: { ja: "目標からプランを作る", zh: "用目标生成计划", en: "Make a plan from my goal", kind: "button" },
   setGoal: { ja: "目標を設定する", zh: "设定目标", en: "Set a goal", kind: "button" },
   tileUrl: { ja: "URL で評価", zh: "用网址评估", en: "Assess a link", kind: "label" },
@@ -119,7 +119,7 @@ export const eventsJourneyCopy = {
   railHelpBody: { ja: "目標が決まると「誰に会えるか」でイベントを並べ替えます。気になる告知があれば URL を貼ってください。", zh: "定好目标后，会按「能见到谁」给活动排序。看到感兴趣的活动页面，把网址贴进来就行。", en: "Once you set a goal I sort events by who you can meet. Paste the link of any event page you're curious about.", kind: "sentence" },
   railPromptVc: { ja: "今月、VC に会えるイベントは？", zh: "这个月有能见到 VC 的活动吗？", en: "Any events this month where I can meet VCs?", kind: "label" },
   railPromptEvening: { ja: "平日夜だけで探して", zh: "只找工作日晚上的", en: "Only weekday evenings, please", kind: "label" },
-  signedOutBanner: { ja: "ログインすると、あなたの目標で判定します", zh: "登录后按你的目标判断", en: "Sign in to check events against your goal", kind: "label" },
+  signedOutBanner: { ja: "ログインすると、会いたい人や知り合いが来るかがわかります", zh: "登录后能看到想见的人和认识的人会不会来", en: "Sign in to see whether people you want to meet or know are going", kind: "label" },
   // 選択中のイベント（右栏）
   railTitle: { ja: "選択中のイベント", zh: "选中的活动", en: "Selected event", kind: "cardTitle" },
   outOf: { ja: "/ 100", zh: "/ 100", en: "/ 100", kind: "label" },
@@ -174,7 +174,8 @@ export const eventsJourneyCopy = {
   readLess: { ja: "閉じる", zh: "收起", en: "Show less", kind: "button" },
   agendaEmpty: { ja: "未公開", zh: "暂未公开", en: "Not published", kind: "label" },
   // 2026-11-12 已结束活动的右上卡（没有评分可显示时）：下一场 → 关注主办方 → 接下来的活动。状态与人数页面别处已有，不重复（用户 11-12：去 AI 感、去重复）。
-  mockAssessLogin: { ja: "ログインして判定", zh: "登录后查看", en: "Log in to see", kind: "button" },
+  mockAssessLogin: { ja: "ログインして見る", zh: "登录后查看", en: "Log in to see", kind: "button" },
+  relLoginTitle: { ja: "ログインすると表示されます", zh: "登录后显示", en: "Log in to see it", kind: "cardTitle" },
   endedNextLbl: { ja: "次回", zh: "下一场", en: "Next", kind: "label" },
   endedNoNext: { ja: "未定", zh: "还没公布", en: "Not announced", kind: "label" },
   endedFollowHost: { ja: "主催者をフォロー", zh: "关注主办方", en: "Follow host", kind: "button" },
@@ -219,8 +220,8 @@ export const eventsJourneyCopy = {
   navStart: { ja: "無料で始める", zh: "免费开始", en: "Start free", kind: "button" },
   pubTitle: { ja: "イベント", zh: "活动", en: "Events", kind: "pageTitle" },
   pubSub: { ja: "公開イベント · {month}月", zh: "公开活动 · {month}月", en: "Public events · {month}/", kind: "label" },
-  loginAssessSub: { ja: "あなたの目標と人脈で判定します", zh: "按你的目标和人脉来判断", en: "Checked against your goal and network", kind: "label" },
-  loginAssessBtn: { ja: "ログインして行く価値を判定", zh: "登录后判断值不值得去", en: "Log in to check it", kind: "fullButton" },
+  loginAssessSub: { ja: "あなたのプランと人脈から調べます", zh: "按你的计划和人脉来查", en: "Checked against your plan and network", kind: "label" },
+  loginAssessBtn: { ja: "ログインして調べる", zh: "登录后查看", en: "Log in to check it", kind: "fullButton" },
   loginChip: { ja: "ログインで判定", zh: "登录后判断", en: "Log in to check", kind: "chip" },
   loginRegister: { ja: "ログインして参加登録", zh: "登录后报名", en: "Log in to register", kind: "fullButton" },
   // 会う準備

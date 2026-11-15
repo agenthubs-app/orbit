@@ -11,9 +11,10 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { planFlowCopy, planOverviewCopy as c, planReviewCopy as r } from "../copy/plan";
 import { goalKindLabel } from "./plan-model";
-import { Avatar, CountUp, Icon, Kbd, MacTile, Modal, Orbit2026Scope, RetryCard, RingChart, Skeleton, ToastProvider, fillCopy, useStandardCopy, useToast } from "../ui";
+import { Avatar, CountUp, Icon, Kbd, MacTile, Modal, Orbit2026Scope, RetryCard, Skeleton, ToastProvider, fillCopy, useStandardCopy, useToast } from "../ui";
 import { eventDate } from "../events/events-model";
 import { ShellPage, useInShell } from "../shell/slots";
+import { RelevanceChips } from "../events/Relevance";
 import { PLAN_EVENT_SEGMENT_KEY, eventView, overflowParts, stepGroups, stepOrderedCards, typeCards, typeTone, unitsOf, type TypeCardView } from "./overview-model";
 import { planApi } from "./plan-api";
 import { takePlanFlash } from "./plan-flash";
@@ -692,7 +693,7 @@ function EventCard({ detail, t }: { detail: PlanV2Detail; t: Translate }) {
   );
 }
 
-/** R26（D53）: the recommended events under the 🎟 イベント card (web.html V2.evCard22 .v22evg: three, by score). */
+/** R26（D53）: the recommended events under the 🎟 イベント card (three; 2026-11-15 no score — server order people → topic → other, then date; fact chips). */
 function RecommendedEvents({ detail, t }: { detail: PlanV2Detail; t: Translate }) {
   const { language } = useOrbitLanguage();
   const events = detail.recommendedEvents ?? [];
@@ -709,14 +710,11 @@ function RecommendedEvents({ detail, t }: { detail: PlanV2Detail; t: Translate }
     <div className={styles.v22evg} data-plan-recommended-events="">
       {events.slice(0, 3).map((event) => (
         <Link key={event.eventId} href={event.assessmentHref ?? `/app/events/${encodeURIComponent(event.eventId)}`} className={styles.v22ev}>
-          <span className={styles.evRing}>
-            <RingChart size={42} stroke={5} segments={[{ color: event.score.total >= 70 ? "var(--plum-700)" : event.score.total >= 50 ? "var(--plum-500)" : "var(--rose-500)", value: event.score.total / 100 }]} label={`${event.score.total}`} />
-            <span className={styles.evRingNum}>{event.score.total}</span>
-          </span>
+          <span className={styles.evEmoji} aria-hidden>{event.emoji ?? "🎟️"}</span>
           <span className={styles.evMeta}>
             <b>{event.title}</b>
             <span className={styles.lbl}>{[when(event.startsAt), event.venue].filter(Boolean).join("· ")}</span>
-            {event.fitLabel ? <span className={`${styles.chip} ${styles.chip_lav}`} style={{ marginTop: 4 }}>{event.fitLabel}</span> : null}
+            <RelevanceChips relevance={event.relevance} language={language} className={styles.evChips} />
           </span>
         </Link>
       ))}

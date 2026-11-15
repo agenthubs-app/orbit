@@ -80,6 +80,32 @@
 .c_lav { background: var(--mac-lav); color: var(--mac-lav-ink); }
 .c_pink { background: var(--mac-pink); color: var(--mac-pink-ink); }
 .chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+/* 2026-11-15「あなたに関係すること」（Relevance.tsx）：标签 lav / teal / blue / 提醒 coral，事实卡一行一件事 + 依据。 */
+.c_blue { background: var(--mac-blue); color: var(--mac-blue-ink); }
+.c_warn { background: var(--coral-soft); color: var(--coral-text); }
+.relDot { width: 6px; height: 6px; border-radius: var(--r-pill); background: currentColor; opacity: 0.7; flex: 0 0 auto; }
+.t_warn { background: var(--coral-soft); color: var(--coral-text); }
+.relCard.relCard { padding: 6px 16px; }
+.relCard > .lbl { padding-top: 10px; }
+.relRow { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
+.relCard > .lbl + .relRow, .relRow:first-child { border-top: 0; }
+.relIc { width: 28px; height: 28px; border-radius: var(--r-sm); display: grid; place-items: center; font-size: var(--fs-label); font-weight: var(--fw-heavy); flex: 0 0 auto; color: var(--ink-2); }
+.relText { flex: 1; min-width: 0; font-size: var(--fs-body-sm); line-height: var(--lh-body); color: var(--ink); }
+.relText small { display: block; font-size: var(--fs-caption); color: var(--ink-3); margin-top: 1px; }
+.relWarn .relText, .relWarn .relIc { color: var(--coral-text); }
+.regChip { color: var(--ink-3); }
+/* 「調べた結果」：读到的内容（dl 两列）+ 右栏小标题。 */
+.factCard.factCard { align-items: stretch; text-align: left; gap: 4px; }
+.srcChip { align-self: flex-start; margin-bottom: 4px; }
+.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; margin: 8px 0 0; font-size: var(--fs-body-sm); }
+.kvRow { display: contents; }
+.kv dt { color: var(--ink-3); }
+.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.railSub { font-size: var(--fs-label); font-weight: var(--fw-bold); color: var(--ink-3); }
+.railFill { flex: 1; }
+.railOne { display: grid; }
+.inlineChips { display: contents; }
+.exampleChips { margin-top: 6px; }
 
 /* avatars */
 .avs { display: flex; }

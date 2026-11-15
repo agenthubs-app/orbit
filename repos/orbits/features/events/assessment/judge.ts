@@ -6,7 +6,9 @@
  * 读取时按当前计划重算（同一场活动在评估页、概要、类型详情三处分数一致）。
  */
 import { eventDisplayFromItems, displayValueText } from "../../../shared/compute/event-assessment-display";
-import { typeAttendees, type AttendeeTypingResult } from "../../../shared/compute/event-attendee-typing";
+import { typeAttendees, typesMentionedIn, type AttendeeTypingResult } from "../../../shared/compute/event-attendee-typing";
+import { eventRelevance } from "../../../shared/compute/event-relevance";
+import type { EventRelevance } from "../../../shared/contract/event-relevance";
 import { connectionCounts } from "../../../shared/compute/event-facts-derive";
 import { partialAttendance } from "../../../shared/compute/event-partial-attendance";
 import { DEFAULT_EVENT_SCORE_PREFERENCES, scoreEvent, scoreEventRange, type EventAttendeeSource, type EventScoreFacts, type EventScorePreferences, type EventScoreType } from "../../../shared/compute/event-score";
@@ -48,6 +50,10 @@ export interface OrbitEventExtras {
   nameTags?: boolean | null;
   feeYen?: number | null;
   registrantCount?: number | null;
+  /** 每类的来源人数（`typeAttendees` 的 breakdown）；「跟你有关」用。 */
+  breakdown?: AttendeeTypingResult["breakdown"];
+  /** 标题 + 说明 + 议程（「主题相近」用）。 */
+  topicText?: string | null;
 }
 
 export interface JudgeResult {
@@ -63,6 +69,8 @@ export interface JudgeResult {
   partialAttendanceHint: { window: string; timeCostAfter: number } | null;
   basisLines: string[];
   fitLabel: string | null;
+  /** 2026-11-15 去分数：跟你有关的事实（各端只显示这个；分数字段留给旧版 App）。 */
+  relevance: EventRelevance;
 }
 
 const tri = (language: PlanCopyLanguage, text: Record<PlanCopyLanguage, string>) => text[language];
@@ -167,9 +175,22 @@ export function judgeEvent(input: { facts: EventAssessmentFacts; orbit?: OrbitEv
     ? hits.slice(0, 2).map((type) => tri(language, { en: `${type.shortLabel} ~${scoreFacts.expected[type.key]}`, ja: `${type.shortLabel} 約${scoreFacts.expected[type.key]}名`, zh: `${type.shortLabel} 约 ${scoreFacts.expected[type.key]} 位` })).join(" · ")
     : null;
 
+  const topicText = input.orbit ? input.orbit.topicText ?? facts.title ?? "" : [facts.title, facts.organizer, ...(facts.agenda ?? []).map((item) => item.title)].filter(Boolean).join(" ");
+  const relevanceTypes = context.types.map((type) => ({ key: type.key, roleSituation: type.roleSituation ?? null, shortLabel: type.shortLabel }));
+  const relevance = eventRelevance({
+    breakdown: input.orbit ? input.orbit.breakdown ?? {} : typing!.breakdown,
+    feeYen: fee,
+    known: connections.known,
+    limits: context.preferences,
+    mentioned: typesMentionedIn(topicText, relevanceTypes),
+    travelMinutes: scoreFacts.travelMinutes,
+    types: context.types,
+  });
+
   return {
     basisLines,
     cautions,
+    relevance,
     display,
     fitLabel,
     knownAttendees: connections.known,

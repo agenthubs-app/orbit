@@ -8,7 +8,9 @@ import { nextAward, PLAN_EVENT_SEGMENT_KEY } from "../../../shared/compute/plan-
 import type { PlanCopyLanguage } from "../../../shared/compute/plan-template-copy";
 import { scoreEvent, scoreEventRange, type EventScoreFacts, type EventScoreResult, type EventScoreType } from "../../../shared/compute/event-score";
 import { eventDisplayFromItems } from "../../../shared/compute/event-assessment-display";
-import { typeAttendees, type AttendeePerson } from "../../../shared/compute/event-attendee-typing";
+import { typeAttendees, typesMentionedIn, type AttendeePerson, type AttendeeTypingResult } from "../../../shared/compute/event-attendee-typing";
+import { compareByRelevance, eventRelevance } from "../../../shared/compute/event-relevance";
+import { DEFAULT_EVENT_SCORE_PREFERENCES } from "../../../shared/compute/event-score";
 import { eventEmoji } from "../../../shared/compute/event-emoji";
 import { tokyoParts } from "../../../shared/compute/event-score-input";
 import type { EventAssessmentScoreItem } from "../../../shared/contract/event-assessment";
@@ -43,6 +45,8 @@ export interface PlanEventFact {
    * （`resolveTypedEvents`，与评估页同一个 `typeAttendees`），所以三处分数一致。
    */
   typing?: { registrants?: readonly AttendeePerson[]; speakers?: readonly AttendeePerson[]; exhibitorCount?: number | null; text?: string | null };
+  /** 2026-11-15：`resolveTypedEvents` 现算的每类来源人数与内容提到的类型（「跟你有关」用）。 */
+  typed?: { breakdown: AttendeeTypingResult["breakdown"]; mentioned: string[] };
 }
 
 /** R26：按这份计划的人物类型补上每类预计人数（有 `typing` 的活动）；没有 `typing` 的原样返回（mock / 旧事实）。 */
@@ -56,7 +60,8 @@ export function resolveTypedEvents(events: readonly PlanEventFact[], types: read
       text: event.typing.text ?? event.title,
       types: types.map((type) => ({ key: type.personType.key, roleSituation: type.roleSituation, shortLabel: type.shortLabel })),
     });
-    return { ...event, facts: { ...event.facts, attendeeSource: typing.attendeeSource, expected: typing.expected } };
+    const typingTypes = types.map((type) => ({ key: type.personType.key, roleSituation: type.roleSituation, shortLabel: type.shortLabel }));
+    return { ...event, facts: { ...event.facts, attendeeSource: typing.attendeeSource, expected: typing.expected }, typed: { breakdown: typing.breakdown, mentioned: typesMentionedIn(event.typing.text ?? event.title, typingTypes) } };
   });
 }
 
@@ -198,12 +203,28 @@ export function fitLabel(input: Pick<OverviewInput, "types" | "awards" | "langua
   return parts.length ? parts.join(" · ") : null;
 }
 
-/** 会える活動：这一类人预计会来的活动（分数按规则，高到低）。 */
+/**
+ * 会える活動（2026-11-15 去分数）：类型页 = 这一类会来（people）或内容提到这一类（topic）的活动；概要 = 全部。
+ * 排序 people → topic → other，组内按日期。分数字段照算（旧版 App 还在读）。
+ */
 export function eventsFor(input: OverviewInput, type: PlanV2TypeItem | null): PlanEventOption[] {
   const types = scoreTypes(input);
+  const relevanceTypes = (type ? input.types.filter((item) => item.id === type.id) : input.types).map((item) => ({
+    emoji: item.personType.emoji, key: item.personType.key, metCount: metCount(input.awards, item.personType.key), shortLabel: item.shortLabel, skipped: Boolean(item.skippedAt), targetCount: item.targetCount,
+  }));
+  const relevanceOf = (event: PlanEventFact) => eventRelevance({
+    breakdown: event.typed?.breakdown ?? Object.fromEntries(Object.entries(event.facts.expected).map(([key, n]) => [key, { exhibitors: 0, registrants: event.facts.attendeeSource === "registrants" ? n : 0, speakers: event.facts.attendeeSource === "registrants" ? 0 : n }])),
+    feeYen: event.facts.fee,
+    known: Array.from({ length: event.facts.firstDegree ?? 0 }, () => ({ name: "" })),
+    limits: DEFAULT_EVENT_SCORE_PREFERENCES,
+    mentioned: event.typed?.mentioned ?? [],
+    travelMinutes: event.facts.travelMinutes,
+    types: relevanceTypes,
+  });
   return input.events
-    .filter((event) => !type || (event.facts.expected[type.personType.key] ?? 0) > 0)
-    .map((event) => {
+    .map((event) => ({ event, relevance: relevanceOf(event) }))
+    .filter(({ event, relevance }) => !type || (event.facts.expected[type.personType.key] ?? 0) > 0 || relevance.group !== "other")
+    .map(({ event, relevance }) => {
       const result = scoreEvent({ facts: event.facts, types });
       return {
         assessmentHref: event.assessmentId ? (input.platform === "app" ? `/events/assessments/${event.assessmentId}` : `/app/events/assessments/${event.assessmentId}`) : null,
@@ -213,13 +234,14 @@ export function eventsFor(input: OverviewInput, type: PlanV2TypeItem | null): Pl
         expectedCount: type ? event.facts.expected[type.personType.key] ?? null : null,
         fee: event.facts.fee ?? null,
         fitLabel: fitLabel(input, event),
+        relevance: relevance.known ? { ...relevance, known: { count: relevance.known.count, names: [] } } : relevance,
         score: eventScoreView(result, event, input.language, Object.fromEntries(input.types.map((item) => [item.personType.key, item.shortLabel]))),
         startsAt: event.startsAt,
         title: event.title,
         venue: event.venue,
       };
     })
-    .sort((a, b) => b.score.total - a.score.total || a.startsAt.localeCompare(b.startsAt));
+    .sort(compareByRelevance);
 }
 
 /**

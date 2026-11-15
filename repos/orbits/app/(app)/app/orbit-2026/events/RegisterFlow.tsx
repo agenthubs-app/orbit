@@ -10,7 +10,7 @@ import type { EventOverviewResponse } from "../../../../../shared/contract/event
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { ShellPage } from "../shell/slots";
 import { Icon, Orbit2026Scope, RingChart, ToastProvider, useToast } from "../ui";
-import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
+import { translator as assessTranslator } from "./AssessmentDetail";
 import { journeyTranslator, type JourneyT } from "./DiscoverTab";
 import { eventRange, monthDaySlash, parts, usePhone, useWide } from "./EventDetail";
 import { eventsCall, newIdempotencyKey } from "./events-api";
@@ -199,7 +199,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       {event ? (
         <div className={`${styles.card} ${r.railCard}`}>
           <div className={styles.row} style={{ gap: 12 }}>
-            {event.assessment ? <ScoreRing score={event.assessment.score} size={48} stroke={5} label={String(event.assessment.score)}><span className={styles.score} style={{ fontSize: "var(--fs-body)" }}>{event.assessment.score}</span></ScoreRing> : null}
+            <span className={`${styles.emo} ${styles.t_lav}`}>{event.emoji}</span>
             <div><b className={r.railName}>{event.title}</b><div className={styles.lbl}>{[eventRange(event.startsAt, null, language), venueArea(event.venue)].filter(Boolean).join(" · ")}</div></div>
           </div>
         </div>

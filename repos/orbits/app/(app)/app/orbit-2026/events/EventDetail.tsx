@@ -1,7 +1,7 @@
 "use client";
 
 // R27 イベント詳細（Web 1440：b2 #17 参加者 0 / #18 少 / #19 多，深色 #47；1024 / 390：b12 #350 / #352）。
-// 数据：GET /api/events/[id]/overview（规则评估、主办统计、只公开资料的参加者）。评估吸顶的分数与计划页同一套。
+// 数据：GET /api/events/[id]/overview（主办统计、只公开资料的参加者、「あなたに関係すること」）。2026-11-15 起不显示分数。
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { EventOverviewAttendee, EventOverviewResponse } from "../../../../../shared/contract/event-overview";
@@ -9,8 +9,9 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { eventJoinCancelResultSchema, eventJoinTentativeResultSchema } from "../../../../../shared/api-schema/event-join";
 import { ShellPage } from "../shell/slots";
 import { Icon, Orbit2026Scope, ToastProvider, UnderlineTabs, useToast } from "../ui";
-import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
-import { feeText, journeyTranslator, rowTone, toneClass, type JourneyT } from "./DiscoverTab";
+import { translator as assessTranslator } from "./AssessmentDetail";
+import { feeText, journeyTranslator, type JourneyT } from "./DiscoverTab";
+import { RelevanceCard, relevanceRows, relevanceTitle } from "./Relevance";
 import { CancelDialog } from "./CancelDialog";
 import { EventDescription } from "./EventDescription";
 import { HostContactCard } from "./HostContact";
@@ -91,75 +92,47 @@ export function HostNext({ data, t, language }: { data: EventOverviewResponse; t
   );
 }
 
-/** 示例评估的去向：未登录 → 登录后回到这场；已登录没计划 → 设定目标。 */
-function mockAssessCta(data: EventOverviewResponse, t: JourneyT) {
+/** 「あなたに関係すること」位置的引导去向：未登录 → 登录后回到这场；已登录没计划 → 设定目标。 */
+function relevanceGuideCta(data: EventOverviewResponse, t: JourneyT) {
   return data.signedOut
     ? { href: `/app/account/login?next=${encodeURIComponent(`/app/events/${encodeURIComponent(data.eventId)}`)}`, label: t("mockAssessLogin") }
     : { href: "/app/tasks?tab=plan", label: t("setGoal") };
 }
 
 /**
- * 没有真实评分（未登录 / 没有计划）时右上角的示例评估卡：和真实评分卡同一版式，分数、结论、条形做成马赛克
- * （没登录、没目标就算不出来，不放看得清的假分数），只露出三项维度名 + 一个按钮。用户 11-12。
+ * 没有「あなたに関係すること」可算（未登录 / 没有计划）时右上角的引导卡：小标题 + 一句 + 一个按钮。
+ * 2026-11-15 去分数：不再画马赛克分数。
  */
-export function MockAssessCard({ data, t, language, className }: { data: EventOverviewResponse; t: JourneyT; language: OrbitLanguage; className?: string }) {
-  const at = assessTranslator(language);
-  const tone = rowTone({ verdict: "recommend" }, 0);
-  const cta = mockAssessCta(data, t);
+export function RelevanceGuideCard({ data, t, language, className }: { data: EventOverviewResponse; t: JourneyT; language: OrbitLanguage; className?: string }) {
+  const cta = relevanceGuideCta(data, t);
   return (
-    <div className={`${styles.card} ${x.scoreCard} ${className ?? ""}`} data-detail-mock-assess="">
-      <div className={styles.lbl}>{t("yourAssessment")}</div>
-      <div className={`${x.scoreRing} ${x.mockBlur}`} aria-hidden="true">
-        <ScoreRing score={72} size={120} stroke={12} label="">
-          <div className={`${styles.big} ${x.big36}`}>72</div>
-          <div className={styles.lbl}>{t("outOf")}</div>
-        </ScoreRing>
-      </div>
-      <div className={`${styles.row} ${x.mockBlur}`} style={{ gap: 6, justifyContent: "center" }} aria-hidden="true">
-        <span className={`${styles.chip} ${tone?.chip ? toneClass(tone.chip) : ""} ${styles.verdictBig}`}>{at("verdictRecommend")}</span>
-      </div>
-      <div className={x.crits}>
-        <Crit label={at("dimGoal")} value={80} mock />
-        <Crit label={at("dimPeople")} value={70} mock />
-        <Crit label={at("dimTime")} value={60} rose mock />
-      </div>
-      <a className={`btn ${styles.btn} ${styles.primary} ${x.mockCta}`} href={cta.href}>{cta.label}</a>
+    <div className={`${styles.card} ${x.noPlan} ${className ?? ""}`} data-detail-relevance-guide="">
+      <div className={styles.lbl}>{relevanceTitle(language)}</div>
+      <b className={x.noPlanTitle}>{data.signedOut ? t("relLoginTitle") : t("noPlanScoreTitle")}</b>
+      <a className={`btn ${styles.btn} ${styles.primary} ${x.noPlanBtn}`} href={cta.href}>{data.signedOut ? null : <Icon name="target" size={16} />}{cta.label}</a>
     </div>
   );
 }
 
-/** 手机：封面下的评分条同样做成示例（马赛克圆环 + 一个按钮）。 */
-function MockScoreBar({ data, t }: { data: EventOverviewResponse; t: JourneyT }) {
-  const cta = mockAssessCta(data, t);
+/** 手机：封面下同一个引导（一行：小标题 + 按钮）。 */
+function RelevanceGuideBar({ data, t, language }: { data: EventOverviewResponse; t: JourneyT; language: OrbitLanguage }) {
+  const cta = relevanceGuideCta(data, t);
   return (
-    <div className={x.pScore} data-detail-mock-assess="">
+    <div className={x.pScore} data-detail-relevance-guide="">
       <div className={x.pScoreRow}>
-        <div className={x.mockBlur} aria-hidden="true"><ScoreRing score={72} size={50} stroke={5} label=""><span className={styles.score} style={{ fontSize: "var(--fs-emph)" }}>72</span></ScoreRing></div>
-        <div className={x.pGrow}><div className={styles.lbl}>{t("yourAssessment")}</div><i className={`${x.mosaicBar} ${x.mockLine}`} aria-hidden="true" /></div>
+        <div className={x.pGrow}><div className={styles.lbl}>{relevanceTitle(language)}</div><b className={x.pGuideTitle}>{data.signedOut ? t("relLoginTitle") : t("noPlanScoreTitle")}</b></div>
         <a className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`} href={cta.href}>{cta.label}</a>
       </div>
     </div>
   );
 }
 
-/** 没有计划时评分位 / 右栏的占位：一句「设定目标后显示」；评分位带一个「设定目标」按钮，右栏不重复放按钮。 */
-function NoPlanCard({ t, className, label, title, action = false }: { t: JourneyT; className?: string; label?: string; title: string; action?: boolean }) {
+/** 没有计划时右栏的占位：一句「设定目标后显示」，右栏不重复放按钮。 */
+function NoPlanCard({ className, label, title }: { className?: string; label?: string; title: string }) {
   return (
     <div className={`${styles.card} ${x.noPlan} ${className ?? ""}`} data-detail-no-plan="">
       {label ? <div className={styles.lbl}>{label}</div> : null}
       <b className={x.noPlanTitle}>{title}</b>
-      {action ? <a className={`btn ${styles.btn} ${styles.primary} ${x.noPlanBtn}`} href="/app/tasks?tab=plan"><Icon name="target" size={16} />{t("setGoal")}</a> : null}
-    </div>
-  );
-}
-
-/** `mock`：示例评估卡用——维度名照常，条形与数字做成马赛克（aria-hidden）。 */
-function Crit({ label, value, rose, unknown, mock }: { label: string; value: number; rose?: boolean; unknown?: boolean; mock?: boolean }) {
-  return (
-    <div className={x.crit}>
-      <span className={styles.muted}>{label}</span>
-      <div className={`${x.bar} ${rose ? x.barRose : ""} ${mock ? x.mockBlur : ""}`} aria-hidden={mock || undefined}>{unknown ? null : <i style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />}</div>
-      <b className={`${styles.score} ${x.critScore} ${mock ? x.mockBlur : ""}`} aria-hidden={mock || undefined}>{unknown ? "—" : value}</b>
     </div>
   );
 }
@@ -217,7 +190,7 @@ export function DetailRail({ data, t, onRegister, language = "ja", toast }: { da
   return (
     <div className={`${styles.rail} ${d.rail} ${x.detailRail}`} data-detail-rail="">
       <h4 className={`${styles.railH} ${d.railH}`}><Icon name="sparkle" size={16} />{t("meetTitle")}</h4>
-      {noPlan(data) && !ended ? <NoPlanCard t={t} title={t("railNoPlanTitle")} /> : data.rosterLocked && data.attendeeCounts.all > 0 ? (
+      {noPlan(data) && !ended ? <NoPlanCard title={t("railNoPlanTitle")} /> : data.rosterLocked && data.attendeeCounts.all > 0 ? (
         <div className={`${styles.card} ${x.railGate}`} data-rail-gate=""><b>{t("railGateTitle", { n: data.attendeeCounts.planFit })}</b><div className={styles.lbl}>{t(ended ? "pastRosterGate" : "railGateBody")}</div></div>
       ) : <>
       <div className={`${styles.card} ${x.railList}`}>
@@ -279,11 +252,8 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
     const created = await eventsApi.create({ eventId: data.eventId, idempotencyKey: newIdempotencyKey(), sourceKind: "orbit_event" });
     if (created.ok) toast.success(t("savedToAssess")); else toast.error(assessTranslator(language)("genericError"));
   };
-  const at = assessTranslator(language);
   const [tab, setTab] = useState<"intro" | "agenda" | "host" | "people">("intro");
   const [filter, setFilter] = useState<"planFit" | "known" | "all">("planFit");
-  const [whyOpen, setWhyOpen] = useState(false);
-  const tone = data.assessment ? rowTone({ verdict: data.assessment.verdict }, 0) : null;
   const people = data.attendees.filter((person) => (filter === "planFit" ? person.planFit : filter === "known" ? person.known : true));
   const facts = [
     { icon: "calendar" as const, text: eventRange(data.startsAt, data.endsAt, language) },
@@ -305,22 +275,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
           <div className={x.pFacts}>{facts.map((fact) => <div key={fact.icon}><Icon name={fact.icon} size={16} />{fact.text}</div>)}</div>
         </div>
       </div>
-      {data.assessment && !data.signedOut ? (
-        <div className={x.pScore} data-why-box="">
-          <div className={x.pScoreRow}>
-            <ScoreRing score={data.assessment.score} size={50} stroke={5} label={String(data.assessment.score)}><span className={styles.score} style={{ fontSize: "var(--fs-emph)" }}>{data.assessment.score}</span></ScoreRing>
-            <div className={x.pGrow}>
-              <div className={styles.row} style={{ gap: 6 }}>
-                <span className={`${styles.chip} ${tone?.chip ? toneClass(tone.chip) : ""}`}>{data.assessment.verdict === "recommend" ? at("verdictRecommend") : data.assessment.verdict === "conditional" ? at("verdictConditional") : at("verdictSkip")}</span>
-                <button type="button" className={`btn ${d.why}`} aria-expanded={whyOpen} aria-label={t("why")} onClick={() => setWhyOpen((value) => !value)}>?</button>
-              </div>
-              <div className={`${styles.lbl} ${d.ell} ${x.pCrit}`}>{t("critLine", { g: data.assessment.display.goalFit, p: data.assessment.display.people, t: data.assessment.display.timeCost })}</div>
-            </div>
-            <Icon name="right" size={16} />
-          </div>
-          {whyOpen ? <div className={d.whyBody}>{data.assessment.basis}</div> : null}
-        </div>
-      ) : data.signedOut || noPlan(data) ? <MockScoreBar data={data} t={t} /> : null}
+      {data.signedOut || noPlan(data) ? <RelevanceGuideBar data={data} t={t} language={language} /> : <RelevanceCard relevance={data.assessment?.relevance} language={language} className={x.pRel} />}
       {showHostContact(data) ? <HostContactCard contact={data.hostContact} t={t} status={data.registration.status} priceYen={data.priceYen} /> : null}
       <div className={x.pTabs} role="tablist">
         {(["intro", "agenda", "host", "people"] as const).map((key) => (
@@ -385,22 +340,22 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
   const agendaRef = useRef<HTMLDivElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const peopleRef = useRef<HTMLDivElement | null>(null);
-  const [whyOpen, setWhyOpen] = useState(false);
   const choose = (next: typeof tab) => {
     setTab(next);
     const ref = next === "agenda" ? agendaRef : next === "host" ? hostRef : next === "people" ? peopleRef : null;
     ref?.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const capacity = data.capacity ? (data.remaining !== null && data.remaining !== undefined && data.remaining < data.capacity && data.attendeeCounts.all > 0 ? t("capacityLeft", { left: data.remaining, n: data.capacity }) : data.review ? t("capacityReview", { n: data.capacity }) : String(data.capacity)) : "—";
-  const tone = data.assessment ? rowTone({ verdict: data.assessment.verdict }, 0) : null;
   const since = parts(data.organizer.since);
   const notify = async () => {
     const created = await eventsApi.create({ eventId: data.eventId, idempotencyKey: newIdempotencyKey(), sourceKind: "orbit_event" });
     if (created.ok) toast.success(t("notifyOn")); else toast.error(at("genericError"));
   };
+  // 有计划但没有一件相关的事：右边整张卡不出，封面占满一行（不留空洞）。
+  const slotEmpty = !data.signedOut && !noPlan(data) && relevanceRows(data.assessment?.relevance, language).length === 0;
   return (
     <div className={styles.wgrid} data-event-detail={data.eventId}>
-      <div className={`${styles.card} ${x.span8} ${x.coverCard}`}>
+      <div className={`${styles.card} ${slotEmpty ? styles.span12 : x.span8} ${x.coverCard}`}>
         <div className={x.cover}><span className={`${styles.emo} ${x.coverEmo}`}>{data.emoji}</span></div>
         <div className={x.coverBody}>
           {ended ? <span className={styles.chip}>{t("liveEnded")}</span> : null}
@@ -415,27 +370,9 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
           <EventDescription text={data.description} t={t} className={`${styles.sub} ${x.intro}`} />
         </div>
       </div>
-      {data.signedOut ? (!ended && signedOutAside ? signedOutAside : <MockAssessCard data={data} t={t} language={language} className={styles.span4} />) : data.assessment ? (
-        <div className={`${styles.card} ${styles.span4} ${x.scoreCard}`} data-why-box="">
-          <div className={styles.lbl}>{t("yourAssessment")}</div>
-          <div className={x.scoreRing}>
-            <ScoreRing score={data.assessment.score} size={120} stroke={12} label={String(data.assessment.score)}>
-              <div className={`${styles.big} ${x.big36}`}>{data.assessment.score}</div>
-              <div className={styles.lbl}>{t("outOf")}</div>
-            </ScoreRing>
-          </div>
-          <div className={styles.row} style={{ gap: 6, justifyContent: "center" }}>
-            <span className={`${styles.chip} ${tone?.chip ? toneClass(tone.chip) : ""} ${styles.verdictBig}`}>{data.assessment.verdict === "recommend" ? at("verdictRecommend") : data.assessment.verdict === "conditional" ? at("verdictConditional") : at("verdictSkip")}</span>
-            <button type="button" className={`btn ${d.why}`} aria-expanded={whyOpen} aria-label={t("why")} onClick={() => setWhyOpen((value) => !value)}>?</button>
-          </div>
-          {whyOpen ? <div className={d.whyBody}>{data.assessment.basis}</div> : null}
-          <div className={x.crits}>
-            <Crit label={at("dimGoal")} value={data.assessment.display.goalFit} />
-            <Crit label={at("dimPeople")} value={data.assessment.display.people} unknown={Boolean(data.assessmentPeopleUnknown)} />
-            <Crit label={at("dimTime")} value={data.assessment.display.timeCost} rose />
-          </div>
-        </div>
-      ) : noPlan(data) ? <MockAssessCard data={data} t={t} language={language} className={styles.span4} /> : null}
+      {data.signedOut ? (!ended && signedOutAside ? signedOutAside : <RelevanceGuideCard data={data} t={t} language={language} className={styles.span4} />)
+        : noPlan(data) ? <RelevanceGuideCard data={data} t={t} language={language} className={styles.span4} />
+        : <RelevanceCard relevance={data.assessment?.relevance} language={language} className={`${styles.span4} ${x.relSlot}`} />}
       {contactInBody && showHostContact(data) ? <HostContactCard contact={data.hostContact} t={t} status={data.registration.status} priceYen={data.priceYen} className={styles.span12} /> : null}
       <div ref={agendaRef} className={`${styles.card} ${x.span7}`}>
         <div className={styles.cardH}><h3>{t("tabAgenda")}</h3></div>

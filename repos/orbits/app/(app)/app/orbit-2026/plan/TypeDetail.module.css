@@ -320,3 +320,13 @@
 .ngmark { width: 24px; height: 24px; border-radius: var(--r-pill); background: var(--surface); color: var(--coral); display: grid; place-items: center; flex: none; }
 .ringWrap { position: relative; display: inline-grid; place-items: center; flex: none; }
 .ringWrap .ringNum { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-num); font-weight: var(--fw-heavy); font-size: var(--fs-meta); }
+
+/* 2026-11-15 活动不再打分（event-relevance-proposal ④）：组头行、日期列、右栏活动 emoji。 */
+.tableV2 tr.grpRow td { background: var(--surface-2); font-size: var(--fs-caption); font-weight: var(--fw-bold); color: var(--ink-2); padding: 5px 10px; }
+.tableV2 tbody tr.grpRow:hover { background: transparent; }
+.dateCell { white-space: nowrap; }
+.dateCell b { font-family: var(--font-num); font-weight: var(--fw-heavy); }
+.evLink { color: inherit; text-decoration: none; }
+.evLink:hover { text-decoration: underline; }
+.evEmoji { width: 36px; height: 36px; border-radius: var(--r-sm); background: var(--mac-lav); display: grid; place-items: center; font-size: var(--fs-emoji-sm); flex: none; }
+.evMeta > div:last-child { margin-top: 4px; }

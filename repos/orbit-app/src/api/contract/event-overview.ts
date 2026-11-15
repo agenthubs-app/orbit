@@ -1,6 +1,7 @@
 // R27 — イベント詳細 read model: event facts, my rule-based assessment strip, organizer stats, public attendees.
 // Owner: 甲 (R27). Used by: events (詳細, both clients; signed-out visitors get the public part only, R26-08).
 import type { EventAssessmentVerdict } from "./event-assessment";
+import type { EventRelevance } from "./event-relevance";
 import type { HostEventContact } from "./host-events";
 
 /** My relation to the event (same vocabulary as 参加予定, plus `none`). */
@@ -64,6 +65,8 @@ export interface EventOverviewResponse {
     display: { goalFit: number; people: number; timeCost: number };
     basis: string;
     assessmentId?: string | null;
+    /** 2026-11-15 去分数：「あなたに関係すること」卡（新版只看这个）。 */
+    relevance?: EventRelevance | null;
   } | null;
   /** Attendees not public yet: the assessment's 「会える人」 shows 「—」 and its `basis` explains why. */
   assessmentPeopleUnknown?: boolean;

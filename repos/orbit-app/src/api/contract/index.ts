@@ -376,6 +376,7 @@ export type { EventSearchEventHit, EventSearchOrganizerHit, EventSearchPersonHit
 export type { EventCodeResolveResponse } from "./event-code";
 export type { EventPrepAgendaItem, EventPrepChecklistItem, EventPrepChecklistKey, EventPrepChecklistPatch, EventPrepPerson, EventPrepRelation, EventPrepResponse } from "./event-prep";
 export type { OrganizerFollowResult } from "./organizer-follow";
+export type { EventRelevance, EventRelevanceGroup, EventRelevancePeople, EventRelevanceWarning } from "./event-relevance";
 export type { EventOverviewAttendee, EventOverviewRegistrationStatus, EventOverviewResponse } from "./event-overview";
 export type { EventVenueExchangeState, EventVenuePerson, EventVenueRelation, EventVenueResponse, EventVenueState } from "./event-venue";
 export type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterHighlight, EventAfterNextStep, EventAfterResponse, EventAfterScoreSlot } from "./event-after";

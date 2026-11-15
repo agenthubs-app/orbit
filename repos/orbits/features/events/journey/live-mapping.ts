@@ -166,7 +166,7 @@ export function reasonDetailFor(goal: string | null, basisLines: readonly string
 }
 
 /** `judgeEvent` 的结果 → 端口形状（分数与 3 维原样，不改数字）。 */
-export function judgeEntryFrom(result: Pick<JudgeResult, "total" | "verdict" | "display" | "meetCandidates" | "knownAttendees" | "basisLines">, input: { goal: string | null; language: JourneyLanguage; assessmentId: string | null; planFitNames: readonly string[] }): JudgeOut {
+export function judgeEntryFrom(result: Pick<JudgeResult, "total" | "verdict" | "display" | "meetCandidates" | "knownAttendees" | "basisLines" | "relevance">, input: { goal: string | null; language: JourneyLanguage; assessmentId: string | null; planFitNames: readonly string[] }): JudgeOut {
   const reason = reasonFromCandidate(result.meetCandidates[0], input.language);
   return {
     assessmentId: input.assessmentId,
@@ -177,6 +177,7 @@ export function judgeEntryFrom(result: Pick<JudgeResult, "total" | "verdict" | "
     planFitNames: [...input.planFitNames],
     reason,
     reasonDetail: reason ? reasonDetailFor(input.goal, result.basisLines, input.language) : null,
+    relevance: result.relevance,
     score: result.total,
     verdict: result.verdict,
   };

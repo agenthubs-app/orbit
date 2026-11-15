@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optionalRelevance } from "./event-relevance";
 import { readableItems, tolerantEnum } from "./tolerant";
 import type {
   ContactManualFactRequest,
@@ -679,6 +680,7 @@ const planEventOption = z.object({
   startsAt: z.string(),
   venue: z.string().nullable(),
   expectedCount: count.nullable(),
+  relevance: optionalRelevance,
   fee: count.nullable().optional().catch(null),
   score: eventScore,
   // R26 additions.

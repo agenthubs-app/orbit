@@ -79,10 +79,10 @@ export function cardLine(assessment: EventAssessmentContract, language: OrbitLan
   return [eventWhen(facts.startsAt, language), options.venue === false ? null : facts.venue ?? facts.area, price].filter(Boolean).join(" · ");
 }
 
-/** 評価したイベント · スコア順; 見送り at the bottom; still-reading first so the person sees it. */
+/** 調べたイベント · 新しい順 (2026-11-15: no score order); still-reading first so the person sees it. */
 export function orderAssessed(items: readonly EventAssessmentContract[]): EventAssessmentContract[] {
-  const rank = (item: EventAssessmentContract) => (item.status === "reading" ? 0 : item.userDecision === "dismissed" ? 2 : 1);
-  return [...items].sort((a, b) => rank(a) - rank(b) || b.total - a.total || b.createdAt.localeCompare(a.createdAt));
+  const rank = (item: EventAssessmentContract) => (item.status === "reading" ? 0 : 1);
+  return [...items].sort((a, b) => rank(a) - rank(b) || b.createdAt.localeCompare(a.createdAt));
 }
 
 /** Only ready / needs-input assessments are cards in the grid; failed ones open their failure screen. */

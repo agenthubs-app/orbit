@@ -150,6 +150,8 @@ export function createOrbitEventFactsReader(readers: OrbitEventReaders, options:
         emoji: eventEmoji({ emoji: payload.emoji, title: base.title }),
         extras: {
           attendeeSource: typing.attendeeSource,
+          breakdown: typing.breakdown,
+          topicText: [base.title, base.description, ...payload.agenda.map((item) => item.title)].filter(Boolean).join(" "),
           expected: typing.expected,
           feeYen: payload.feeYen,
           firstDegree: connections.firstDegree,

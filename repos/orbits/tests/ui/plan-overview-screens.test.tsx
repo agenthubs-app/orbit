@@ -311,23 +311,25 @@ test("type detail: candidates / not in network / skipped are three different pag
   assert.deepEqual(await writes(lawyer), [], "opening writes nothing");
 });
 
-test("events: the score ring is toned by threshold and 内訳 opens the five items with facts and 推定", async (t) => {
-  // b4 / b12 W-R24-08: the 会える活動 table is on the 「人脈にいない」 page (with candidates the events sit in the rail).
+test("events: no score — rows are grouped 〈type〉が来る → テーマが近い → そのほか with fact chips; no ring, no 内訳", async (t) => {
+  // 2026-11-15 event-relevance-proposal ④: the 会える活動 table on the 「人脈にいない」 page (with candidates the events sit in the rail).
   const type = clone(base.types[FOUNDER]!);
-  type.events = clone(base.types[VC]!.events);
-  (type.events[0]!.score.scoreBreakdown[1] as { estimated: boolean }).estimated = true;
+  const source = clone(base.types[VC]!.events);
+  const pick = (index: number) => ({ ...source[index % source.length]!, eventId: `${source[index % source.length]!.eventId}-${index}` });
+  type.events = [
+    { ...pick(0), relevance: { group: "people", known: { count: 2, names: [] }, people: [{ count: 3, emoji: "💼", label: "VC パートナー", source: "registrants", typeKey: "vc" }], topic: null, warnings: [{ feeYen: 15000, kind: "budget", limitYen: 5000 }] } },
+    { ...pick(1), relevance: { group: "topic", known: null, people: [], topic: { labels: ["起業家"] }, warnings: [] } },
+    { ...pick(2), relevance: null },
+  ] as typeof type.events;
   const page = await screen(t, { handlers: [typeRead(type), detailRead(base.detail)], itemId: FOUNDER, planId: PLAN, view: "type" });
-  const row = page.locator(`[data-plan-event-option="${type.events[0]!.eventId}"]`);
-  await row.waitFor();
-  assert.equal(await row.locator("[data-ring]").getAttribute("data-ring"), "mid", "57 → mid plum");
-  assert.equal(await page.locator("[data-plan-breakdown]").count(), 0);
-  await row.getByRole("button", { name: "内訳" }).click();
-  const breakdown = page.locator(`[data-plan-breakdown="${type.events[0]!.eventId}"]`);
-  const items = breakdown.locator("[data-criterion]");
-  assert.equal(await items.count(), 5);
-  await breakdown.locator('[data-criterion="fit"]').getByText(`${type.events[0]!.score.scoreBreakdown[0]!.score} / 45`).waitFor();
-  assert.equal(await breakdown.locator('[data-criterion="confidence"][data-estimated]').count(), 1, "推定 is marked on the item");
-  await breakdown.getByText(type.events[0]!.score.scoreBreakdown[0]!.facts[0]!, { exact: false }).waitFor();
+  await page.locator(`[data-plan-event-option="${type.events[0]!.eventId}"]`).waitFor();
+  assert.deepEqual(await page.locator("[data-plan-event-group]").evaluateAll((rows) => rows.map((row) => `${row.getAttribute("data-plan-event-group")}:${row.textContent}`)),
+    [`people:${type.shortLabel}が来る`, "topic:テーマが近い", "other:そのほか"]);
+  const first = page.locator(`[data-plan-event-option="${type.events[0]!.eventId}"]`);
+  assert.deepEqual(await first.locator("[data-relevance-chip]").allTextContents(), ["VC パートナー 3名", "知り合い 2名", "予算オーバー"]);
+  await page.locator(`[data-plan-event-option="${type.events[1]!.eventId}"]`).getByText("テーマが近い").waitFor();
+  assert.equal(await page.locator("[data-ring], [data-plan-breakdown], [data-criterion]").count(), 0);
+  assert.equal(await page.getByRole("button", { name: "内訳" }).count(), 0);
   assert.deepEqual(await writes(page), []);
 });
 

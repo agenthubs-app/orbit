@@ -1,3 +1,4 @@
+import { optionalRelevance } from "./event-relevance";
 import { z } from "zod";
 import { knownValues, readableItems, tolerantEnum } from "./tolerant";
 import type { EventAssessmentAddToPlanResult, EventAssessmentAvailability, EventAssessmentContract, EventAssessmentDeleteResult, EventAssessmentDismissResult, EventAssessmentScoreItem, EventAssessmentCreateInput, EventAssessmentPatchInput } from "../contract/event-assessment";
@@ -51,6 +52,7 @@ export const eventAssessmentObject = z.object({
   scoreRange: z.object({ min: z.number().int().min(0).max(100), max: z.number().int().min(0).max(100) }).optional().catch(undefined),
   meetCandidates: readableItems(z.object({ emoji: z.string().max(16), label: z.string().max(120), count: z.number().int().min(0).optional(), basis: z.string().max(200), source: z.enum(["speakers", "exhibitors", "registrants", "known"]).optional().catch(undefined), names: z.array(z.string().max(60)).max(6).optional().catch(undefined) })).optional(),
   knownAttendees: readableItems(z.object({ contactId: z.string().min(1), name: z.string().max(120) })).optional(),
+  relevance: optionalRelevance,
   cautions: readableItems(z.object({ kind: tolerantEnum(["fee", "off_target_session", "calendar", "travel", "other"], "other"), text: z.string().max(200), detail: z.string().max(200).optional() })).optional(),
   partialAttendanceHint: z.object({ window: z.string().max(60), timeCostAfter: z.number().int().min(0).max(100) }).optional().catch(undefined),
   failureReason: tolerantEnum(FAILURE_REASONS, "unreadable").optional(),

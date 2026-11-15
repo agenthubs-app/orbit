@@ -19,8 +19,9 @@ import { planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { planFlowCopy, planOverviewCopy as c } from "../copy/plan";
 import { ShellPage, useInShell } from "../shell/slots";
-import { Avatar, EmptyState, Icon, MacTile, Orbit2026Scope, RetryCard, RingChart, Skeleton, ToastProvider, fillCopy, useStandardCopy, useToast } from "../ui";
-import { eventView, ringTone, sortedCandidates, typeDetailState, typeTone, unitsOf, type TypeTone } from "./overview-model";
+import { Avatar, EmptyState, Icon, MacTile, Orbit2026Scope, RetryCard, Skeleton, ToastProvider, fillCopy, useStandardCopy, useToast } from "../ui";
+import { RelevanceChips } from "../events/Relevance";
+import { eventView, groupEventOptions, sortedCandidates, typeDetailState, typeTone, unitsOf, type EventGroupKey, type TypeTone } from "./overview-model";
 import { planApi } from "./plan-api";
 import { copyText, enc, usePlanWrites, v2Path } from "./plan-v2-actions";
 import { IntroDraftDrawer, ProposalDrawer, RecordModal, SkipDialog, type RecordMode, type RecordSubmit } from "./PlanTypeDialogs";
@@ -238,7 +239,7 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
         {state === "none" ? (
           <section className={`${k.card} ${k.span7}`} data-plan-events="">
             <div className={k.cardH}><h3>{t(c.eventsTitle)}</h3>{event && event.allocation > 0 ? <span className={k.lbl}>{t(c.eventsNoteV2, { n: event.unit })}</span> : null}</div>
-            {detail.events.length ? <EventTable events={detail.events} language={language} t={t} /> : <p className={k.lbl}>{t(c.eventsEmpty)}</p>}
+            {detail.events.length ? <EventTable events={detail.events} typeLabel={detail.shortLabel} language={language} t={t} /> : <p className={k.lbl}>{t(c.eventsEmpty)}</p>}
           </section>
         ) : (
           <section className={`${k.card} ${k.span7}`} data-plan-candidates="">
@@ -456,18 +457,6 @@ function CandidateRow({ candidate, on, disabled, language, t, onToggle }: { cand
   );
 }
 
-const CRITERIA = { confidence: c.criterionConfidence, connections: c.criterionConnections, fit: c.criterionFit, format: c.criterionFormat, timeCost: c.criterionTimeCost } as const;
-
-/** kit V2.evRing: 42 / 5 ring, the score in 12 px numerals in the middle. */
-function EventRing({ score, label }: { score: number; label: string }) {
-  return (
-    <span className={styles.ringWrap}>
-      <RingChart size={42} stroke={5} segments={[{ color: ringColor(score), value: score / 100 }]} label={label} />
-      <span className={styles.ringNum} aria-hidden>{score}</span>
-    </span>
-  );
-}
-
 /**
  * 右栏活动行的「日时 · 会場」（同概要 RecommendedEvents / b4 #11 右栏）：当天 17 点后写「今夜 19:00」；
  * 日文日期以全角括号结尾，「· 」前不再空格（「10月16日（金）· 東京国際フォーラム」）。
@@ -489,49 +478,45 @@ function eventDay(startsAt: string, language: OrbitLanguage): string {
   return `${day}（${weekday}）`;
 }
 
-function ringColor(score: number): `var(--${string})` {
-  const tone = ringTone(score);
-  return tone === "high" ? "var(--plum-700)" : tone === "mid" ? "var(--plum-500)" : "var(--rose-500)";
+function feeLabel(fee: number | null | undefined, t: Translate): string | null {
+  return fee === undefined || fee === null ? null : fee === 0 ? t(c.feeFree) : `¥${fee.toLocaleString("ja-JP")}`;
 }
 
-/** 会える活動 (b4 .k-wevs · b12 W-R24-08): ring · event · this type (est.) · fee · 内訳 (5 fixed items). */
-function EventTable({ events, language, t }: { events: readonly PlanEventOption[]; language: OrbitLanguage; t: Translate }) {
-  const [open, setOpen] = useState<string | null>(null);
+/** 「10/16」 + 「金 19:00」 (Tokyo), the plan table's date column (event-relevance-proposal ④). */
+function dateCell(startsAt: string, language: OrbitLanguage): { day: string; sub: string } {
+  const time = Date.parse(startsAt);
+  if (!Number.isFinite(time)) return { day: "", sub: "" };
+  const tokyo = new Date(time + 9 * 3_600_000);
+  const weekday = new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US", { timeZone: "Asia/Tokyo", weekday: "short" }).format(new Date(time));
+  return { day: `${tokyo.getUTCMonth() + 1}/${tokyo.getUTCDate()}`, sub: `${weekday} ${tokyo.getUTCHours()}:${String(tokyo.getUTCMinutes()).padStart(2, "0")}` };
+}
+
+/** 计划页活动表的组头：类型页「VC パートナーが来る」/ 概要「会いたい人が来る」、「テーマが近い」、「そのほか」。 */
+export function eventGroupTitle(key: EventGroupKey, typeLabel: string | null, t: Translate): string {
+  return key === "people" ? (typeLabel ? t(c.groupPeopleType, { label: typeLabel }) : t(c.groupPeopleAny)) : key === "topic" ? t(c.groupTopic) : t(c.groupOther);
+}
+
+/** 会える活動 (event-relevance-proposal ④)：日付 · イベント · あなたに関係すること；按组（会想见的人来 → 主题相近 → 其他）分段，空组不出。 */
+function EventTable({ events, typeLabel, language, t }: { events: readonly PlanEventOption[]; typeLabel: string | null; language: OrbitLanguage; t: Translate }) {
   return (
     <table className={styles.tableV2}>
-      <thead><tr><th>{t(c.colEventScore)}</th><th>{t(c.colEvent)}</th><th>{t(c.colEventType)}</th><th>{t(c.colFee)}</th><th aria-hidden /></tr></thead>
+      <thead><tr><th>{t(c.colEventDate)}</th><th>{t(c.colEvent)}</th><th>{t(c.colRelevance)}</th></tr></thead>
       <tbody>
-        {events.map((option) => {
-          const on = open === option.eventId;
-          return (
-            <Fragment key={option.eventId}>
-              <tr data-plan-event-option={option.eventId} data-selected={on ? "" : undefined}>
-                <td><span data-ring={ringTone(option.score.total)} style={{ display: "inline-block" }}><EventRing score={option.score.total} label={t(c.colEventScore)} /></span></td>
-                <td><b>{option.title}</b><div className={k.lbl}>{eventWhereLine(option.startsAt, option.venue, language, t)}</div></td>
-                <td>{option.expectedCount !== null ? <span className={`${k.chip} ${k.chip_lav}`}>{t(c.expectedV2, { n: option.expectedCount })}</span> : <span className={k.lbl}>—</span>}</td>
-                <td className={k.lbl}>{option.fee === undefined || option.fee === null ? "—" : option.fee === 0 ? t(c.feeFree) : `¥${option.fee.toLocaleString("ja-JP")}`}</td>
-                <td style={{ textAlign: "right" }}><button type="button" className={`btn ${styles.evtg}`} aria-expanded={on} onClick={() => setOpen(on ? null : option.eventId)}>{t(c.breakdown)}<Icon name={on ? "down" : "right"} size={16} /></button></td>
-              </tr>
-              {on ? (
-                <tr data-selected="" data-plan-breakdown={option.eventId}>
-                  <td />
-                  <td colSpan={4} style={{ borderTop: 0, paddingTop: 0 }}>
-                    <div className={styles.e5}>
-                      {option.score.scoreBreakdown.map((item) => (
-                        <div key={item.criterion} className={styles.e5r} data-criterion={item.criterion} data-estimated={item.estimated ? "" : undefined}>
-                          <span className={styles.e5l}>{t(CRITERIA[item.criterion])}</span>
-                          <div className={styles.e5b}><i style={{ width: `${item.max ? (item.score / item.max) * 100 : 0}%` }} /></div>
-                          <b>{item.score}<small> / {item.max}</small></b>
-                          {item.facts.length ? <div className={styles.e5f}>{item.facts.join(" · ")}{item.estimated ? <span className={`${k.chip} ${k.chip_apricot} ${styles.e5est}`}>{t(c.criterionEstimated)}</span> : null}</div> : null}
-                        </div>
-                      ))}
-                    </div>
-                  </td>
+        {groupEventOptions(events).map((group) => (
+          <Fragment key={group.key}>
+            <tr className={styles.grpRow} data-plan-event-group={group.key}><td colSpan={3}>{eventGroupTitle(group.key, typeLabel, t)}</td></tr>
+            {group.events.map((option) => {
+              const date = dateCell(option.startsAt, language);
+              return (
+                <tr key={option.eventId} data-plan-event-option={option.eventId}>
+                  <td className={styles.dateCell}><b>{date.day}</b><div className={k.lbl}>{date.sub}</div></td>
+                  <td><Link href={`/app/events/${encodeURIComponent(option.eventId)}`} className={styles.evLink}><b>{option.title}</b></Link><div className={k.lbl}>{[option.venue, feeLabel(option.fee, t)].filter(Boolean).join(" · ")}</div></td>
+                  <td>{option.relevance && (option.relevance.people.length || option.relevance.known || option.relevance.topic || option.relevance.warnings.length) ? <RelevanceChips relevance={option.relevance} language={language} /> : <span className={k.lbl}>—</span>}</td>
                 </tr>
-              ) : null}
-            </Fragment>
-          );
-        })}
+              );
+            })}
+          </Fragment>
+        ))}
       </tbody>
     </table>
   );
@@ -549,11 +534,11 @@ function TypeRail({ detail, t, language }: { detail: PlanPersonTypeDetail; t: Tr
           <div className={`${k.card} ${styles.railEvents}`}>
             {detail.events.slice(0, 2).map((option) => (
               <div key={option.eventId} className={styles.evRow}>
-                <EventRing score={option.score.total} label={t(c.colEventScore)} />
+                <span className={styles.evEmoji} aria-hidden>{option.emoji ?? "🎟️"}</span>
                 <div className={styles.evMeta}>
                   <b>{option.title}</b>
                   <span className={k.lbl}>{eventWhereLine(option.startsAt, option.venue, language, t)}</span>
-                  {option.fitLabel ? <span className={`${k.chip} ${k.chip_lav}`}>{option.fitLabel}</span> : option.expectedCount !== null ? <span className={`${k.chip} ${k.chip_lav}`}>{t(c.expectedV2, { n: option.expectedCount })}</span> : null}
+                  <RelevanceChips relevance={option.relevance} language={language} />
                 </div>
               </div>
             ))}
