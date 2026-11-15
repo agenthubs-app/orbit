@@ -52,6 +52,9 @@ export function objectOf(scope: NodeScope, part: GraphPart): OptionObject {
   return { kind, name, text: clueWords(scope.input.message, first) };
 }
 
+/** Pronouns for a person (zh, ja, en). */
+const PERSON_PRONOUN = /(他|她|彼女|彼|あの人|その人|\b(he|she|him|her|his)\b)/iu;
+
 function candidatesFor(scope: NodeScope, part: GraphPart): { clue: number; candidates: NamedRecordRef[] } | null {
   // AG05: several people of the name the user said (resolve looked them up in the account).
   const found = scope.run.candidates.get(part.localId);
@@ -64,6 +67,12 @@ function candidatesFor(scope: NodeScope, part: GraphPart): { clue: number; candi
     const kind = recordKindOf(ref.entity);
     const found = pool.filter((item, at) => recordKindOf(item.type) === kind && pool.findIndex((other) => other.id === item.id) === at);
     if (found.length) return { candidates: found.slice(0, 3), clue: index };
+  }
+  // AG05: "她的待办" points at a person by a pronoun even when no person clue was given: the people mentioned last.
+  const personal = unresolved.find(({ ref }) => PERSON_PRONOUN.test(clueWords(scope.input.message, ref) ?? ""));
+  if (personal) {
+    const people = pool.filter((item, at) => recordKindOf(item.type) === "contact" && pool.findIndex((other) => other.id === item.id) === at);
+    if (people.length) return { candidates: people.slice(0, 3), clue: personal.index };
   }
   return unresolved.length ? { candidates: [], clue: unresolved[0].index } : null;
 }

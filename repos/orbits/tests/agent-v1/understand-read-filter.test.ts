@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { understandSystemPrompt } from "../../features/agent-v1/understand/prompt";
 import { validateUnderstandOutput } from "../../features/agent-v1/understand/validate";
 import { part } from "./graph-kit";
 
@@ -26,6 +27,11 @@ test("words not in the message, a bad order or date are dropped (and reported), 
   assert.equal(result.output.parts[0].readFilter, undefined);
   assert.ok(result.dropped.some((item) => item.includes("readFilter.text")));
   assert.ok(result.dropped.some((item) => item.includes("readFilter.order")));
+});
+
+test("the prompt says a contact's to-dos and notes are the user's own records (dataOwner other_user is another Orbit user's account)", () => {
+  const prompt = understandSystemPrompt();
+  assert.match(prompt, /records the user keeps about a person \(their to-dos, notes, meetings: "他的待办"\) are the user's own: self/u);
 });
 
 test("a range given backwards is put in order", () => {

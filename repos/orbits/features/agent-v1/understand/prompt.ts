@@ -5,7 +5,7 @@
 import { CAPABILITIES } from "../route/capabilities";
 import { CLARITIES, DATA_SOURCES, DELIVERABLES, ENTITIES } from "./schema";
 
-export const UNDERSTAND_PROMPT_VERSION = "understand@ag05.1";
+export const UNDERSTAND_PROMPT_VERSION = "understand@ag05.2";
 
 const CAPABILITY_NOTES = [
   "contact.read, event.read, attendance.read, todo.read, memo.read, schedule.read, profile.read: read the user's own Orbit records (contacts, events in Orbit's event directory, attendance notes, to-dos, memos/notes, schedule, own profile).",
@@ -36,7 +36,7 @@ export function understandSystemPrompt(): string {
     `  "dataSources": any of ${DATA_SOURCES.join(", ")} (turn_material = only what is in the message itself),`,
     `  "deliverable": one of ${DELIVERABLES.join(", ")},`,
     '  "intentBasis": "instruction" (the user asks for it now) | "selection" | "accepted_context",',
-    '  "dataOwner": "self" | "other_user" (other_user when the data belongs to another Orbit user, e.g. another user\'s notes),',
+    '  "dataOwner": "self" | "other_user" (other_user only when the data belongs to another Orbit user\'s account, e.g. notes another user wrote; the records the user keeps about a person (their to-dos, notes, meetings: "他的待办") are the user\'s own: self),',
     '  "persistence": "this_turn" | "until_satisfied" (until_satisfied when the user asks Orbit to keep going without an end, e.g. keep searching until satisfied),',
     '  "continues": {"kind": "alternative" | "clarification" | "card" | "pending_external", "ref": an open item handle o1, o2 …} — only when the CURRENT message answers or accepts that open item,',
     '  "readFilter": only for a part that reads the user\'s records, and only what the message says: {"text": a topic or title words to look for, copied from the CURRENT message (e.g. "灰釉", "询价", "竞品笔记"; not a person\'s name, not a whole question), "order": "newest" (the latest, last time — the default) | "oldest" (the first time, the earliest) | "both" (then and now, how something changed), "status": "open" (not done yet) | "completed", "from" / "to": a date range as YYYY-MM-DD (inclusive) worked out from the message and today\'s date (e.g. tomorrow, this month)} — leave out what the message does not say',
