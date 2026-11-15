@@ -91,7 +91,9 @@ export async function runSelfCheck(environment: EvalEnvironment, worlds: readonl
     push("push goes to the local simulator", String(env.expoPushEndpoint ?? "").startsWith(baseUrl(environment)), env.expoPushEndpoint);
     push("main model is DeepSeek with a key; no other provider keys", env.providers?.agentProvider === "deepseek" && env.providers?.deepseekKeySet && !env.providers?.geminiKeySet && !env.providers?.openaiKeySet, env.providers);
     push("trace directory set", Boolean(env.traceDir), env.traceDir);
-    push("no blocked connection so far", (blocked ?? []).length === 0, blocked);
+    // Blocks inside a case belong to that case's run (and void it); a block outside any case means the server itself reached out.
+    const stray = (blocked ?? []).filter((entry) => !(entry as { caseId?: string | null }).caseId);
+    push("no blocked connection outside a case", stray.length === 0, stray);
   }
   const worldResults: SelfCheckResult["worlds"] = {};
   for (const world of worlds) {

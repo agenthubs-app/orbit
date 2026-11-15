@@ -16,6 +16,7 @@ import { evalPaths, JUDGE_PROMPT, ORBITS_ROOT } from "../../tests/agent-eval/lib
 import { costsProblems, settleRunLevelChecks, summarizeCase, writeBundleSha } from "../../tests/agent-eval/lib/run-files";
 import { gitInfo, runCase, type CaseOutcome, type RunnerContext } from "../../tests/agent-eval/lib/runner";
 import { runSelfCheck } from "../../tests/agent-eval/lib/selfcheck";
+import { serverControl } from "../../tests/agent-eval/lib/server";
 import { loadWorld } from "../../tests/agent-eval/lib/world";
 import { fileSha256, sha256, stableStringify } from "../../tests/agent-eval/lib/yaml";
 import { renderRunReport } from "../../tests/agent-eval/lib/report-md";
@@ -96,6 +97,8 @@ async function main(argv: readonly string[]): Promise<void> {
     console.log(`  [${index + 1}/${selection.cases.length}] ${testCase.id} hard ${outcome.hardPass ? "pass" : `FAIL (${failed.join(", ")})`} ${Math.round(outcome.durationMs / 100) / 10}s`);
   }
   await ctx.writer?.close();
+  // Back to idle: no case context, real time. A block from now on is attributed to no case.
+  await serverControl(environment, "context", { caseId: null, clock: new Date().toISOString(), runId: null });
   // Billing lags; give the balance a moment before the second reading.
   await new Promise((resolve) => setTimeout(resolve, 5000));
   const balanceAfter = await readDeepSeekBalance(environment.env.DEEPSEEK_API_KEY);
