@@ -41,6 +41,37 @@ const NEGATION = /(先别|别改|别动|不要改|不要加|不要建|不要删|
 const HYPOTHESIS = /(如果|要是|假如|假设|万一|もし|仮に|\bif\b|\bwhat if\b|\bsuppose\b|\bin case\b)/iu;
 const HYPOTHESIS_OPENING = /^\s*(如果|要是|假如|假设|万一|もし|仮に|if\b|what if\b|suppose\b)/iu;
 
+/**
+ * AG04 run-02 (设计稿 §3.10 "隔了多久算断开", §3.11 row 4): pronouns and demonstratives, and the generic
+ * words that may stand around them. A clue made of nothing else names no object by itself: only the
+ * context can resolve it, and when the context had nothing to offer, code does not guess — it asks.
+ * Longest first (Han and kana are matched as substrings; Latin words as whole words).
+ */
+const PRONOUN_WORDS_CJK = [
+  "他们", "她们", "它们", "这些", "那些", "这个", "那个", "这条", "那条", "这篇", "那篇", "这件", "那件", "这位", "那位", "这场", "那场", "这次", "那次", "这份", "那份", "他", "她", "它", "这", "那", "该",
+  "彼女ら", "彼女", "彼ら", "あの人", "この人", "その人", "あの方", "その方", "あいつ", "あれ", "それ", "これ", "あの", "その", "この", "例の", "彼",
+];
+const GENERIC_WORDS_CJK = ["待办", "笔记", "活动", "日程", "联系人", "事情", "会议", "记录", "东西", "人", "事", "会", "的", "メモ", "ToDo", "イベント", "予定", "打ち合わせ", "やつ", "件", "人", "の"];
+const PRONOUN_WORDS_LATIN = new Set(["he", "she", "him", "her", "his", "hers", "it", "its", "they", "them", "their", "that", "this", "those", "these", "one", "ones", "the", "s"]);
+const GENERIC_WORDS_LATIN = new Set(["note", "notes", "to-do", "todo", "task", "event", "meeting", "person", "thing", "item", "record", "contact"]);
+
+export function isPronounClue(text: string): boolean {
+  let rest = text.replace(/^@/u, "").trim();
+  if (!rest) return false;
+  const latin = rest.toLowerCase().split(/[\s'’]+/u).filter(Boolean);
+  if (/^[\x20-\x7e’]+$/u.test(rest)) return latin.length > 0 && latin.every((word) => PRONOUN_WORDS_LATIN.has(word) || GENERIC_WORDS_LATIN.has(word)) && latin.some((word) => PRONOUN_WORDS_LATIN.has(word) && word !== "the" && word !== "s");
+  let hadPronoun = false;
+  for (const word of PRONOUN_WORDS_CJK) {
+    if (rest.includes(word)) {
+      hadPronoun = true;
+      rest = rest.split(word).join("");
+    }
+  }
+  if (!hadPronoun) return false;
+  for (const word of GENERIC_WORDS_CJK) rest = rest.split(word).join("");
+  return rest.replace(/[\s、，。・]/gu, "") === "";
+}
+
 export function isNegatedOrHypothetical(part: Pick<UnderstandPart, "constraints" | "sourceQuote">): boolean {
   return negationOf(part) || hypothesisOf(part);
 }
@@ -77,6 +108,8 @@ export interface RouteOptions {
   objectKind?: RecordKind | null;
   pageKind?: RecordKind | null;
   topicKind?: RecordKind | null;
+  /** run-02: the part points at its object only with a pronoun nothing could resolve (route node decides). */
+  unboundPronoun?: boolean;
 }
 
 export function decideRoute(part: RouteInput, options: RouteOptions = {}): RouteDecision {
@@ -104,6 +137,7 @@ export function decideRoute(part: RouteInput, options: RouteOptions = {}): Route
     negation: part.negation ?? (part.constraints ? negationOf({ constraints: part.constraints }) : false),
     objectKind: options.objectKind ?? null,
     readings: (part.readings ?? []).map((reading) => ({ capabilities: [...reading.capabilities], deliverable: reading.deliverable as Reading["deliverable"] })),
+    unboundPronoun: options.unboundPronoun ?? false,
   }, { asked: options.asked ?? 0, pageKind: options.pageKind ?? null, topicKind: options.topicKind ?? null });
   switch (step.kind) {
     case "respond":

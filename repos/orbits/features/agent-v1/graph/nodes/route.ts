@@ -11,7 +11,7 @@
 import { attributeMessage } from "../../clarify/attribution";
 import { recordKindOf } from "../../clarify/default-readings";
 import { emitTrace } from "../../observability/trace";
-import { decideRoute, NOT_YET_ROUTES, settleDependencies, statusForRoute, type RouteInput } from "../../route/decide";
+import { decideRoute, isPronounClue, NOT_YET_ROUTES, settleDependencies, statusForRoute, type RouteInput } from "../../route/decide";
 import type { ContinueKind } from "../../understand/schema";
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
@@ -46,6 +46,14 @@ export function routeNode(scope: NodeScope): GraphNode {
       : null;
     let acceptedAlternativeRef: string | null = state.acceptedAlternativeRef;
     const topicKind = context?.shownList.length ? recordKindOf(context.shownList[0].type) : null;
+    // run-02 (§3.10): a pronoun is resolved from the conversation within the 60-minute window. With nothing
+    // to resolve it from — idle, or no conversation and no state — and nothing else named in this message,
+    // code does not guess. A resumed part was answered by a click, so its object is no longer missing.
+    // Open items are context too: a part answering one points at that matter's object.
+    const nothingToResolveFrom = !resume && Boolean(context) && context!.openItems.length === 0 && (context!.idle || (context!.messages.length === 0 && context!.shownList.length === 0 && context!.lastMentioned.length === 0));
+    const clueText = (ref: GraphPart["refs"][number]) => clueWords(input.message, ref) ?? "";
+    const namedInMessage = (context?.references.length ?? 0) > 0 || state.parts.some((part) => part.refs.some((ref) => ref.recordId || (clueText(ref) && !isPronounClue(clueText(ref)))));
+    const unboundPronoun = (part: GraphPart) => nothingToResolveFrom && !namedInMessage && !part.refs.some((ref) => ref.recordId) && part.refs.some((ref) => isPronounClue(clueText(ref)));
     const parts: GraphPart[] = state.parts.map((original) => {
       if (resume && !state.touched!.includes(original.localId)) return original;
       const part: GraphPart = { ...original };
@@ -64,7 +72,8 @@ export function routeNode(scope: NodeScope): GraphNode {
       const accepted = part.continues?.kind === "alternative"
         ? (part.plan.acceptedLeadsTo ? { leadsTo: part.plan.acceptedLeadsTo } : openItem?.kind === "alternative" ? openItem : null)
         : null;
-      const decision = decideRoute(routeInputOf(part), { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind });
+      const decision = decideRoute(routeInputOf(part), { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind, unboundPronoun: unboundPronoun(part) });
+      if (unboundPronoun(part)) emitTrace({ partId: part.localId, reason: "a pronoun with nothing to resolve it from (§3.10): the object is missing", type: "route.unbound_reference" });
       if (accepted && part.continues) acceptedAlternativeRef = part.continues.ref;
       let status = statusForRoute(decision.route);
       let reason: string | null = NOT_YET_ROUTES.has(decision.route) ? "not_in_this_version" : null;

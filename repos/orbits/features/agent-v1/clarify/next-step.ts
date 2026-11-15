@@ -36,6 +36,11 @@ export interface StepInput {
   objectKind: RecordKind | null;
   /** The part names a person (a contact clue): a statement about them may offer "记到往来里". */
   hasContactClue: boolean;
+  /**
+   * run-02 (§3.10, §3.11 row 4): the part points at its object only with a pronoun or demonstrative
+   * that nothing could resolve (no conversation to read, nothing else named in the message, nothing bound).
+   */
+  unboundPronoun?: boolean;
 }
 
 export interface StepContext {
@@ -67,6 +72,9 @@ export function decideNextStep(part: StepInput, context: StepContext): NextStep 
     return { conservative: true, entry: part.negation || part.intentBasis === "accepted_context" ? null : writes[0], kind: "respond" };
   }
   if (part.clarity === "statement") return { conservative: false, entry: part.hasContactClue ? "memo.create" : null, kind: "respond" };
+  // run-02: the object is missing whatever clarity the model gave (§3.10 系统不猜, §3.11 row 4); reads ask too.
+  const needsObject = part.capabilities.some((capability) => ["read", "write"].includes(capabilityKind(capability)));
+  if (part.unboundPronoun && needsObject && part.clarity !== "none") return asked ? { kind: "still_unclear", missing: "object" } : { kind: "ask_missing" };
   if (part.clarity === "none") return asked ? { kind: "still_unclear", missing: "intent" } : { kind: "not_understood" };
   if (part.clarity === "missing_one") {
     if (!writes.length) return { kind: "proceed" };
