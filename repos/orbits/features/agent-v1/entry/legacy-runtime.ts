@@ -2,9 +2,10 @@
  * AG01 hands processing to the existing runtime, read-only (agent-design AG01 易错边界 4).
  *
  * What the protocol-2 route checks before sending (references, page context) is checked here,
- * at processing time (设计稿 §3.7). The model's write proposals (proposedActionRequests,
- * proposedEntityDraft) are dropped: this entry never calls applyTaskInteraction, applyEntityDraft
- * or persistNaturalLanguageActionProposals, so it shows no card and writes no business data.
+ * at processing time (设计稿 §3.7). This entry never calls applyTaskInteraction, applyEntityDraft
+ * or persistNaturalLanguageActionProposals, so it writes no business data. From AG02 the model's
+ * explicit new to-do (its followups.createTask request or task draft) becomes one card in the
+ * action ledger (confirm-boundary.ts); other write proposals are not carded and are said so.
  */
 import type { FeatureMode } from "../../../shared/config/feature-mode";
 import { createAgentFeedbackService } from "../../agent/feedback/service-factory";
@@ -18,8 +19,26 @@ import { AiPageContextError, authorizeAiPageContext } from "../../orbit-ai/page-
 import { createOrbitAgentConversationServiceForActor } from "../../orbit-ai/service-factory";
 import { ORBIT_AGENT_CHAT_HISTORY_WINDOW, type OrbitAgentChatSessionProvider } from "../../orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
 import { AgentEntryExecutionError, type AgentEntryExecutor, type AgentEntrySessionWriter } from "./service";
+import { createOrbitAgentRuntimeService } from "../../agent/runtime/service-factory";
+import { runWithConfirmBoundary, type LegacyTurn } from "./confirm-boundary";
 
 export function createLegacyRuntimeExecutor(mode: FeatureMode): AgentEntryExecutor {
+  const turn = createLegacyRuntimeTurn(mode);
+  // AG02: the confirmation boundary. Explicit new to-dos become one ledger card per request; typed
+  // confirmations never decide a card; nothing here writes business data.
+  return async (execution) => {
+    const runtime = createOrbitAgentRuntimeService(mode, { actorId: execution.actorId });
+    return runWithConfirmBoundary({ runtime }, {
+      locale: execution.input.locale,
+      message: execution.input.message,
+      requestId: execution.requestId,
+      run: () => turn(execution),
+      sessionId: execution.sessionId,
+    });
+  };
+}
+
+function createLegacyRuntimeTurn(mode: FeatureMode): (execution: Parameters<AgentEntryExecutor>[0]) => Promise<LegacyTurn> {
   return async ({ actorId, fetchImplementation, history, input }) => {
     try {
       await authorizeAiSessionContactReferences({ actorId, references: input.references, service: createContactDetailTagStatusService() });
@@ -58,8 +77,13 @@ export function createLegacyRuntimeExecutor(mode: FeatureMode): AgentEntryExecut
     // The runtime's reply assumes its result cards are shown under it (gemini-provider synthesis
     // instruction: "do not list those records again in prose"). The result document has no cards,
     // so the cards' content is written into the delivered text; otherwise the records are lost.
-    const text = [reply, cardsAsText(result.data.artifacts ?? [], input.locale)].filter(Boolean).join("\n\n");
-    return { sourceRefs: [...new Set(result.data.provenance?.evidenceIds ?? [])].filter((id) => typeof id === "string" && id.trim()), text };
+    return {
+      actionRequests: result.data.proposedActionRequests ?? [],
+      entityDraft: result.data.proposedEntityDraft ?? null,
+      extraText: cardsAsText(result.data.artifacts ?? [], input.locale),
+      reply,
+      sourceRefs: [...new Set(result.data.provenance?.evidenceIds ?? [])].filter((id) => typeof id === "string" && id.trim()),
+    };
   };
 }
 
