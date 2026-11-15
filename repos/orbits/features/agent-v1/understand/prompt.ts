@@ -5,7 +5,7 @@
 import { CAPABILITIES } from "../route/capabilities";
 import { CLARITIES, DATA_SOURCES, DELIVERABLES, ENTITIES } from "./schema";
 
-export const UNDERSTAND_PROMPT_VERSION = "understand@ag03.2";
+export const UNDERSTAND_PROMPT_VERSION = "understand@ag03.3";
 
 const CAPABILITY_NOTES = [
   "contact.read, event.read, attendance.read, todo.read, memo.read, schedule.read, profile.read: read the user's own Orbit records (contacts, events in Orbit's event directory, attendance notes, to-dos, memos/notes, schedule, own profile).",
@@ -47,7 +47,7 @@ export function understandSystemPrompt(): string {
     "Rules:",
     "1. Only the CURRENT message creates parts. Earlier messages, lists and open items are context for understanding references; never create a part for a request that appears only in earlier messages.",
     "2. One part per thing the user wants delivered. A message asking three things gives three parts. A constraint (\"but don't…\", \"先别改\") belongs to the part it limits, not a part of its own, unless it is a separate request.",
-    "3. A question asking for advice or an opinion, a statement, a hypothetical (\"if…\", \"もし…\"), and a quoted instruction from someone else are clarity statement with no change capability. If the user takes back a change in the same message (\"…改到周五——等等，先别改\"), keep the change capability and put the negation in constraints.",
+    "3. A question asking for advice or an opinion, a statement, thanks, a greeting or an acknowledgement (\"ありがとう\", \"谢谢\", \"OK\"), a hypothetical (\"if…\", \"もし…\"), and a quoted instruction from someone else are clarity statement with no change capability. If the user takes back a change in the same message (\"…改到周五——等等，先别改\"), keep the change capability and put the negation in constraints.",
     "4. Pronouns and ordinals (他, 她, he, she, 彼, 彼女, 第二个, that note) are resolved only from the context: the record of each kind mentioned last, the list shown last (by position), the records attached with @, and record handles in recent messages. Give the handle as referenceId; if the context does not identify it, leave referenceId out. A request about an earlier matter (\"刚才那件事\", \"さっきの件\", \"that thing\") that neither the message nor the context identifies has clarity none; do not pick a matter from old messages.",
     "5. parts always lists at least one part, also for plain chat. plainChat is true only when every part is ordinary discussion that general knowledge can answer, needing no capability. Then write the answer in reply, in the language of the current message, concise and practical.",
     "6. Write goal and reply in the language of the current message.",
@@ -79,7 +79,7 @@ export function repairUserText(input: { message: string; contextText: string; pr
   ].join("\n");
 }
 
-export const ANSWER_PROMPT_VERSION = "answer-discussion@ag03.2";
+export const ANSWER_PROMPT_VERSION = "answer-discussion@ag03.3";
 
 export function answerSystemPrompt(language: "zh" | "ja" | "en"): string {
   const name = language === "zh" ? "Chinese" : language === "ja" ? "Japanese" : "English";
@@ -88,6 +88,7 @@ export function answerSystemPrompt(language: "zh" | "ja" | "en"): string {
     "You have no access to the user's records in this step: do not claim to have looked anything up, do not invent facts about specific people, records or conversations, and do not say any record was created, changed or deleted.",
     "Respect each item's constraints (for example, if the user said not to change something, acknowledge that nothing will be changed).",
     "You do not see the earlier conversation. If an item points at something said earlier (\"that matter\", \"さっきの件\"), do not guess what it was; say you cannot tell which one is meant and ask.",
+    "Never ask the user to confirm a change in words: a change is only ever carried out after the user presses Confirm on a confirmation card.",
     `Write in ${name}. Be concise and practical: give a clear recommendation and the reason.`,
     'Output one JSON object: {"segments": [{"partId": "<the item id>", "text": "<the answer>"}]} with one segment per item.',
   ].join("\n");

@@ -149,13 +149,14 @@ export function validateUnderstandOutput(raw: unknown, input: UnderstandValidati
     if (item.objectClues !== undefined && !Array.isArray(item.objectClues)) errors.push(`${where}.objectClues must be a list`);
     (Array.isArray(item.objectClues) ? item.objectClues : []).forEach((clue: unknown, clueIndex: number) => {
       const at = `${where}.objectClues[${clueIndex}]`;
-      if (!isRecord(clue)) {
-        errors.push(`${at} must be an object`);
+      const text = isRecord(clue) && typeof clue.text === "string" ? clue.text.trim() : "";
+      if (!isRecord(clue) || !oneOf(ENTITIES, clue.entity) || !text) {
+        // A clue that names no Orbit record kind (or no words) points at nothing code could bind; it is
+        // dropped and reported, not a reason to reject the whole output (a referenceId on it would be).
+        if (isRecord(clue) && typeof clue.referenceId === "string" && clue.referenceId.trim()) errors.push(`${at} has a referenceId but no valid entity and text`);
+        else dropped.push(`$.${at} (not a clue to an Orbit record: ${JSON.stringify(clue).slice(0, 80)})`);
         return;
       }
-      if (!oneOf(ENTITIES, clue.entity)) errors.push(`${at}.entity must be one of ${ENTITIES.join(", ")}`);
-      const text = typeof clue.text === "string" ? clue.text.trim() : "";
-      if (!text) errors.push(`${at}.text is required`);
       const referenceId = typeof clue.referenceId === "string" && clue.referenceId.trim() ? clue.referenceId.trim() : undefined;
       if (clue.referenceId !== undefined && clue.referenceId !== null && typeof clue.referenceId !== "string") errors.push(`${at}.referenceId must be a string`);
       if (referenceId && !input.handles.has(referenceId)) errors.push(`${at}.referenceId "${referenceId}" is not one of the record handles given in the context (${[...input.handles].join(", ") || "none"}); leave it out when no handle fits`);

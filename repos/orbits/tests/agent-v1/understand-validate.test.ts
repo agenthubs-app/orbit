@@ -82,6 +82,17 @@ test("plain chat with no part listed: the whole message is taken as one discussi
   assert.equal(validateUnderstandOutput({ parts: [], plainChat: false }, { ...none, message }).ok, false, "not for a non-chat output");
 });
 
+test("a clue that names no Orbit record kind is dropped and reported, not a reason to reject the output (gate 20261116-010334 AE-UND-014)", () => {
+  const message = "帮我想想催款邮件的开头怎么写比较得体";
+  const result = validateUnderstandOutput({ parts: [part({ objectClues: [{ entity: "text", words: "催款邮件的开头" }, { entity: "contact", text: "对方" }], sourceQuote: message })], plainChat: false }, { ...none, message });
+  assert.equal(result.ok, true);
+  if (result.ok !== true) return;
+  assert.deepEqual(result.output.parts[0].objectClues, [{ entity: "contact", text: "对方" }]);
+  assert.match(result.dropped.join(" "), /not a clue to an Orbit record/u);
+  const bound = validateUnderstandOutput({ parts: [part({ objectClues: [{ entity: "text", referenceId: "r1" }], sourceQuote: message })], plainChat: false }, { handles: new Set(["r1"]), message, openItemRefs: new Set() });
+  assert.equal(bound.ok, false, "a referenceId on an invalid clue is still an error");
+});
+
 test("capabilities outside 附录 A, a missing reply for plain chat and a non-JSON shape are rejected", () => {
   const message = "随便聊聊";
   assert.equal(validateUnderstandOutput({ parts: [part({ requiredCapabilities: ["todo.query"], sourceQuote: message })], plainChat: false }, { ...none, message }).ok, false);
