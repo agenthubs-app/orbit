@@ -63,27 +63,93 @@ export function createLegacyRuntimeExecutor(mode: FeatureMode): AgentEntryExecut
   };
 }
 
-const CARD_HEADER: Record<string, string> = { en: "Result cards:", ja: "結果カード：", zh: "结果卡片：" };
+type CardLocale = "en" | "ja" | "zh";
+type QueryDomain = "schedule" | "tasks" | "notes" | "followups";
 
-/** The runtime's result cards (artifact generated views) as plain text, in the order it returned them. */
-export function cardsAsText(artifacts: readonly OrbitAgentArtifactPayload[], locale: string): string {
+const CARD_WORDS: Record<CardLocale, {
+  header: string;
+  domains: Record<QueryDomain, string>;
+  place: string;
+  due: string;
+  noDue: string;
+  allDay: string;
+  status: Record<string, string>;
+}> = {
+  en: { allDay: "all day", domains: { followups: "Follow-ups", notes: "Notes", schedule: "Schedule", tasks: "To-dos" }, due: "due ", header: "Records found:", noDue: "no due date", place: "at ", status: { cancelled: "cancelled", completed: "done", open: "not done" } },
+  ja: { allDay: "終日", domains: { followups: "フォローアップ", notes: "メモ", schedule: "予定", tasks: "タスク" }, due: "期限 ", header: "見つかった記録：", noDue: "期限なし", place: "場所：", status: { cancelled: "取消", completed: "完了", open: "未完了" } },
+  zh: { allDay: "全天", domains: { followups: "跟进", notes: "笔记", schedule: "日程", tasks: "待办" }, due: "截止 ", header: "查到的记录：", noDue: "没有截止时间", place: "地点：", status: { cancelled: "已取消", completed: "已完成", open: "未完成" } },
+};
+const WEEKDAY: Record<"ja" | "zh", Record<string, string>> = {
+  ja: { Fri: "金", Mon: "月", Sat: "土", Sun: "日", Thu: "木", Tue: "火", Wed: "水" },
+  zh: { Fri: "周五", Mon: "周一", Sat: "周六", Sun: "周日", Thu: "周四", Tue: "周二", Wed: "周三" },
+};
+const MONTH_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function localParts(iso: string, timeZone: string) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { day: "numeric", hour: "2-digit", hourCycle: "h23", minute: "2-digit", month: "numeric", timeZone, weekday: "short", year: "numeric" })
+    .formatToParts(new Date(iso)).map((part) => [part.type, part.value]));
+  return { day: Number(parts.day), month: Number(parts.month), time: `${parts.hour}:${parts.minute}`, weekday: String(parts.weekday), year: Number(parts.year) };
+}
+
+function localDate(parts: ReturnType<typeof localParts>, locale: CardLocale): string {
+  if (locale === "en") return `${parts.weekday}, ${MONTH_EN[parts.month - 1]} ${parts.day}`;
+  return `${parts.month}月${parts.day}日（${WEEKDAY[locale][parts.weekday]}）`;
+}
+
+function when(startIso: string, endIso: string | undefined, allDay: boolean, timeZone: string, locale: CardLocale): string {
+  const start = localParts(startIso, timeZone);
+  if (allDay) return `${localDate(start, locale)}${locale === "en" ? ", " : ""}${CARD_WORDS[locale].allDay}`;
+  const startText = `${localDate(start, locale)}${locale === "en" ? ", " : ""}${start.time}`;
+  if (!endIso) return startText;
+  const end = localParts(endIso, timeZone);
+  const sameDay = end.year === start.year && end.month === start.month && end.day === start.day;
+  return sameDay ? `${startText}–${end.time}` : `${startText} – ${localDate(end, locale)}${locale === "en" ? ", " : ""}${end.time}`;
+}
+
+function validIso(value: string | undefined): value is string {
+  return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+
+/**
+ * The runtime's result cards as the plain lines a user reads, in the request's locale: local times in
+ * the record's own time zone (else `timeZone`), titles, places, due dates and statuses in words.
+ * Internal fields (kind, category, missingFields, ids, raw enums) never appear.
+ */
+export function cardsAsText(artifacts: readonly OrbitAgentArtifactPayload[], locale: string, timeZone = process.env.ORBIT_DEFAULT_TIME_ZONE ?? "Asia/Tokyo"): string {
+  const lang: CardLocale = locale === "ja" || locale === "zh" ? locale : "en";
+  const words = CARD_WORDS[lang];
   const blocks: string[] = [];
   for (const artifact of artifacts) {
-    const view = artifact.result?.generatedView;
-    const sections = (view?.sections ?? []).filter((section) => section.items?.length);
-    if (!sections.length) continue;
-    const lines: string[] = [];
-    for (const section of sections) {
-      if (section.title?.trim()) lines.push(`${section.title.trim()}`);
-      for (const item of section.items.slice(0, 10)) {
-        lines.push(`- ${item.title}${item.subtitle ? `（${item.subtitle}）` : ""}`);
-        for (const field of (item.metadata ?? []).slice(0, 8)) lines.push(`  ${field.label}: ${field.value}`);
-        if (item.body?.trim()) lines.push(`  ${item.body.trim().slice(0, 500)}`);
+    for (const section of artifact.result?.generatedView?.sections ?? []) {
+      const items = (section.items ?? []).slice(0, 10);
+      if (!items.length) continue;
+      const domain = /^(schedule|tasks|notes|followups) results$/u.exec(section.title ?? "")?.[1] as QueryDomain | undefined;
+      if (!domain) {
+        blocks.push(items.map((item) => `- ${item.title}${item.subtitle ? `（${item.subtitle}）` : ""}`).join("\n"));
+        continue;
       }
+      const lines = [words.domains[domain]];
+      for (const item of items) {
+        const field = Object.fromEntries((item.metadata ?? []).map((entry) => [entry.label, entry.value]));
+        const zone = field.timeZone || timeZone;
+        const opening = (item.body ?? "").trim();
+        const title = item.title && item.title !== item.id ? item.title : opening.length > 20 ? `${opening.slice(0, 20)}…` : opening || "—";
+        const parts = [title];
+        if (domain === "schedule" && validIso(field.startsAt)) {
+          parts.push(when(field.startsAt, validIso(field.endsAt) ? field.endsAt : undefined, field.allDay === "true", zone, lang));
+          if (field.location) parts.push(`${words.place}${field.location}`);
+        } else if (domain === "tasks" || domain === "followups") {
+          parts.push(validIso(field.dueAt) ? `${words.due}${when(field.dueAt, undefined, false, zone, lang)}` : words.noDue);
+          if (field.status) parts.push(words.status[field.status] ?? field.status);
+        } else if (domain === "notes" && validIso(field.createdAt)) {
+          parts.push(localDate(localParts(field.createdAt, zone), lang));
+        }
+        lines.push(`- ${parts.join(" · ")}`);
+      }
+      blocks.push(lines.join("\n"));
     }
-    blocks.push(lines.join("\n"));
   }
-  return blocks.length ? `${CARD_HEADER[locale] ?? CARD_HEADER.en}\n${blocks.join("\n\n")}` : "";
+  return blocks.length ? `${words.header}\n${blocks.join("\n\n")}` : "";
 }
 
 /** Appends the turn to the chat session so its history (and later turns) see it; idempotent by message id. */
