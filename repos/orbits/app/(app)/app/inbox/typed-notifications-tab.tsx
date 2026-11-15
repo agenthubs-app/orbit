@@ -98,6 +98,9 @@ function NotificationDetail({notification:n,now,timeZone,disabled,onAction}:{not
   </div>:null}
  </article>;
 }
+/** The remembered list per filter: 「秘书」 reads the same query as 「全部」 but keeps only secretary rows, so the two
+ * must not share a memory — back on 全部 the secretary page (often empty) would flash 「还没有通知」. */
+export function notificationListCacheKey(actorId:string,filter:string,query:string){return 'inbox:notifications:'+actorId+':'+filter+':'+query;}
 const WEEK_PAGES=4;
 type RailAnswer={preferences:InboxDeliveryPreferencesDTO|null;usage:{used:number;cap:number}|null;week:WeekCounts|null;timeZone:string};
 export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:string;onIdentityChanged:()=>void}) {
@@ -117,7 +120,7 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
  const changed=useRef(onIdentityChanged);changed.current=onIdentityChanged;
  const refreshList=useRef<(()=>void)|null>(null);
  useAreaChanges(['inbox'],()=>{refreshList.current?.();setStatsVersion(n=>n+1);});
- const listKey='inbox:notifications:'+actorId+':'+query;
+ const listKey=notificationListCacheKey(actorId,filter,query);
  async function request(path:string,options:RequestInit={},controller=scope.current,allowMissing=false){
   if(!controller||controller.signal.aborted)throw new Error();
   // Reads share the per-cycle identity confirmation; writes pass the fresh pre-write barrier (W0031).

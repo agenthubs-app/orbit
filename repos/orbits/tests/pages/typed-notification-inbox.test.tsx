@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';import test from 'node:test';import React from 'react';import {renderToStaticMarkup} from 'react-dom/server';
-import {NotificationRecordCard,notificationDayGroup} from '../../app/(app)/app/inbox/typed-notifications-tab';
+import {NotificationRecordCard,notificationDayGroup,notificationListCacheKey} from '../../app/(app)/app/inbox/typed-notifications-tab';
 import {notificationInboxView,notificationDetailView} from '../../app/(app)/app/inbox/notification-inbox-view-model';
 const at='2026-09-16T02:00:00Z';
 const row={id:'n',actorId:'a',revision:1,kind:'reminder',origin:'user',semanticKey:'s',title:'发送报价资料',reason:'会议中答应发送',sources:[{sourceKind:'note',sourceId:'note',sourceRevision:'1',occurredAt:at,readAt:at,excerpt:'原文承诺'}],target:{kind:'source',id:'note',href:'/notes/note',status:'available'},actions:['read'],occurredAt:at,updatedAt:at,readAt:null,disposition:'open'};
@@ -30,4 +30,9 @@ test('a foreign actor in an unreadable raw row rejects the whole page before tol
  assert.throws(()=>notificationInboxView({enabled:true,items:[row,future],unreadCount:2,nextCursor:null,asOf:at},'a'),/owner mismatch/i);
  const ownFuture={...future,actorId:'a'};
  assert.deepEqual(notificationInboxView({enabled:true,items:[row,ownFuture],unreadCount:2,nextCursor:null,asOf:at},'a').items.map(item=>item.id),['n']);
+});
+test('全部 and 秘书 keep separate remembered lists (the same query must not flash the secretary page as 全部)',()=>{
+ const query='language=zh';
+ assert.notEqual(notificationListCacheKey('a','all',query),notificationListCacheKey('a','secretary',query));
+ assert.notEqual(notificationListCacheKey('a','all',query),notificationListCacheKey('b','all',query));
 });
