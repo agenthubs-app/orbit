@@ -11,6 +11,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+import { refreshServer, writeBuildIdentity } from "../../tests/agent-eval/lib/build-identity";
 import { applyEvalEnvironment, loadEvalEnvironment, processAlive, readServerState } from "../../tests/agent-eval/lib/eval-env";
 import { evalPaths, ORBITS_ROOT } from "../../tests/agent-eval/lib/paths";
 import { runSelfCheck } from "../../tests/agent-eval/lib/selfcheck";
@@ -43,21 +44,38 @@ async function main(argv: readonly string[]): Promise<void> {
       if (result.status !== 0) throw new Error(`${migration} failed`);
     }
   }
-  if (argv.includes("--build") || !fs.existsSync(path.join(ORBITS_ROOT, ".next", "BUILD_ID"))) {
-    console.log("agent-eval:env: next build --webpack (no preload, paid keys blanked)…");
-    const result = spawnSync(path.join(ORBITS_ROOT, "node_modules", ".bin", "next"), ["build", "--webpack"], {
-      cwd: ORBITS_ROOT,
-      env: { ...environment.env, DEEPSEEK_API_KEY: "", ORBIT_GEMINI_DECISION_API_KEY: "" } as unknown as NodeJS.ProcessEnv,
-      stdio: "inherit",
-    });
-    if (result.status !== 0) throw new Error("next build failed");
-  }
-  const state = readServerState(environment);
-  if (!state || !processAlive(state.pid)) {
-    const started = await startServer(environment);
-    console.log(`agent-eval:env: server pid ${started.pid} on http://127.0.0.1:${started.port} (log ${started.log})`);
-  } else {
-    console.log(`agent-eval:env: server already running (pid ${state.pid}).`);
+  // AG04 run-02: --build replaces a running server (stop → build → identity → start), never leaves the old one serving.
+  const build = argv.includes("--build") || !fs.existsSync(path.join(ORBITS_ROOT, ".next", "BUILD_ID"));
+  await refreshServer({
+    build: async () => {
+      console.log("agent-eval:env: next build --webpack (no preload, paid keys blanked)…");
+      const result = spawnSync(path.join(ORBITS_ROOT, "node_modules", ".bin", "next"), ["build", "--webpack"], {
+        cwd: ORBITS_ROOT,
+        env: { ...environment.env, DEEPSEEK_API_KEY: "", ORBIT_GEMINI_DECISION_API_KEY: "" } as unknown as NodeJS.ProcessEnv,
+        stdio: "inherit",
+      });
+      if (result.status !== 0) throw new Error("next build failed");
+    },
+    recordIdentity: async () => {
+      const identity = writeBuildIdentity();
+      console.log(`agent-eval:env: build of ${identity.commit.slice(0, 10)}${identity.dirty ? ` from a DIRTY tree (${identity.dirtyPaths.join(", ")})` : " (clean tree)"}`);
+    },
+    running: async () => {
+      const state = readServerState(environment);
+      return Boolean(state && processAlive(state.pid));
+    },
+    start: async () => {
+      const started = await startServer(environment);
+      console.log(`agent-eval:env: server pid ${started.pid} on http://127.0.0.1:${started.port} (log ${started.log})`);
+    },
+    stop: async () => {
+      await stopServer(environment);
+      console.log("agent-eval:env: stopped the running eval server before building.");
+    },
+  }, { build });
+  if (!build) {
+    const state = readServerState(environment);
+    if (state) console.log(`agent-eval:env: server running (pid ${state.pid}).`);
   }
   const worlds = ["base-v1", "regular-v1", "large-v1"].filter((world) => fs.existsSync(path.join(evalPaths(environment.env).snapshots, `${world}.seed.json`)));
   const result = await runSelfCheck(environment, worlds);

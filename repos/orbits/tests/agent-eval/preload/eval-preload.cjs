@@ -608,6 +608,14 @@ function environmentSummary() {
   };
 }
 
+function buildIdentity() {
+  try {
+    return JSON.parse(require("node:fs").readFileSync(require("node:path").join(process.cwd(), ".next", "agent-eval-build.json"), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 async function handleControl(req, res) {
   const remote = req.socket?.remoteAddress ?? "";
   if (!hostAllowed(remote) || MODEL_HOSTS[remote]) return reply(res, 403, { error: "loopback only" });
@@ -628,6 +636,9 @@ async function handleControl(req, res) {
         pushes: state.pushes,
         traceWriteFailures: writeFailures,
         environment: environmentSummary(),
+        // AG04 run-02: what this server was built from (written by agent-eval:env --build). Only the eval
+        // server loads this preload, so a production server never exposes it.
+        build: buildIdentity(),
       });
     }
     if (route === "context") {
