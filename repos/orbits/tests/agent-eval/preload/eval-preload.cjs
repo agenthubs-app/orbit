@@ -67,15 +67,27 @@ const state = {
   pushes: [],
 };
 
+/** AG01: the request being processed (features/agent-v1/observability/trace.ts runWithTraceContext). */
+function currentRequestId() {
+  try {
+    const context = globalThis.__orbitAgentTraceContext?.getStore?.();
+    return context && typeof context.requestId === "string" ? context.requestId : null;
+  } catch {
+    return null;
+  }
+}
+
 function emit(event) {
   if (!traceFile) return;
   localSeq += 1;
+  const requestId = currentRequestId();
   const line = {
     at: new RealDate(realNow() + state.offsetMs).toISOString(),
     realAt: new RealDate(realNow()).toISOString(),
     pid: process.pid,
     localSeq,
     caseId: state.context.caseId,
+    ...(requestId ? { requestId } : {}),
     ...event,
   };
   try {

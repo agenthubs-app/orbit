@@ -81,6 +81,8 @@ export function buildEvalEnvironment(processEnv: Record<string, string | undefin
     ORBIT_LOCAL_WORKSPACE_ID: workspaceId,
     ORBIT_WORKSPACE_ID: workspaceId,
     ORBIT_AGENT_TRACE_DIR: paths.traceDir,
+    // AG01: from here on the eval tests the new entry; the env file may set off to run the old one.
+    ORBIT_AGENT_V1_MODE: fileEnv.ORBIT_AGENT_V1_MODE?.trim() || "on",
     ORBIT_LOCAL_EXPORT_STORAGE_DIR: paths.exportsDir,
     ORBIT_BATCH_UPLOAD_DIR: paths.batchUploads,
     ORBIT_EXPO_PUSH_ENDPOINT: `http://127.0.0.1:${port}/__agent-eval/push/expo/send`,

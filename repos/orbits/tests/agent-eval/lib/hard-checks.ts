@@ -38,7 +38,6 @@ export const NOT_YET: Record<string, string> = {
   card_effects: "AG12",
   clarify_max_per_part: "AG04",
   client_view: "AG07",
-  client_view_matches_result: "AG01",
   context_messages_max: "AG03",
   field_history: "AG12",
   first_layer_context: "AG03",
@@ -56,7 +55,6 @@ export const NOT_YET: Record<string, string> = {
   model_input_excludes: "AG12",
   no_auto_extraction: "AG06",
   offered_options: "AG04",
-  order: "AG01",
   pages_read: "AG05",
   part_plan: "AG03",
   parts: "AG03",
@@ -64,8 +62,6 @@ export const NOT_YET: Record<string, string> = {
   push_delivery: "AG16",
   push_excludes: "AG16",
   recent_interaction: "AG05",
-  request_states: "AG01",
-  request_status: "AG01",
   routes_absent: "AG03",
   rule_runs: "AG15",
   rule_state: "AG15",
@@ -147,6 +143,13 @@ function lastAnswer(obs: Observation) {
 }
 
 const CALL_EVENTS = new Set(["model.request", "judgment.request", "web.search", "web.fetch", "exec.call"]);
+
+type EntryRequest = NonNullable<Observation["entry"]>["requests"][number];
+
+/** The request whose message contains this fragment of the user's words. */
+function requestFor(entry: NonNullable<Observation["entry"]>, quote: string): EntryRequest | null {
+  return entry.requests.find((request) => request.message.includes(quote)) ?? null;
+}
 
 export const CHECKS: Record<string, CheckFn> = {
   no_write_before_click(_args, obs) {
@@ -385,6 +388,107 @@ export const CHECKS: Record<string, CheckFn> = {
 
   requests(args, obs) {
     return obs.requests.length === Number(args?.count) ? pass(`${obs.requests.length} request(s)`, obs.requests.map((r) => r.seq)) : fail(`${obs.requests.length} request(s), expected ${args?.count}`, obs.requests.map((r) => r.seq));
+  },
+
+  // ── AG01: the protocol-3 entry (ENT.yaml proposed_checks; eval/README.md §3.4) ──
+
+  request_states(args, obs) {
+    const entry = obs.entry;
+    if (!entry) return cannot("the case did not run on the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)");
+    const problems: string[] = [];
+    const evidence: number[] = [];
+    for (const spec of (Array.isArray(args) ? args : []) as { quote: string; acked: string | string[]; final: string }[]) {
+      const request = requestFor(entry, spec.quote);
+      if (!request) {
+        problems.push(`no request for "${spec.quote}"`);
+        continue;
+      }
+      const acks = entry.acks.filter((ack) => ack.message === request.message).sort((left, right) => left.seq - right.seq);
+      const first = acks[0];
+      if (!first) {
+        problems.push(`"${spec.quote}": no acknowledgement recorded`);
+        continue;
+      }
+      evidence.push(...acks.map((ack) => ack.seq));
+      const allowed = Array.isArray(spec.acked) ? spec.acked : [spec.acked];
+      if (first.requestId !== request.requestId) problems.push(`"${spec.quote}": first ack carries ${first.requestId}, the request is ${request.requestId}`);
+      if (!first.status || !allowed.includes(first.status)) problems.push(`"${spec.quote}": acknowledged as ${first.status ?? "nothing"} (HTTP ${first.httpStatus}), expected ${allowed.join(" or ")}`);
+      const firstModelResponse = obs.events.find((event) => event.type === "model.response" && event.requestId === request.requestId);
+      if (firstModelResponse) {
+        evidence.push(Number(firstModelResponse.seq));
+        if (!(first.seq < Number(firstModelResponse.seq))) problems.push(`"${spec.quote}": ack at seq ${first.seq} is not before the first model.response (seq ${firstModelResponse.seq})`);
+      }
+      for (const resend of acks.slice(1)) {
+        if (resend.requestId !== request.requestId) problems.push(`"${spec.quote}": resend at seq ${resend.seq} got ${resend.requestId}, not the original ${request.requestId}`);
+        if (!resend.status) problems.push(`"${spec.quote}": resend at seq ${resend.seq} got no status (HTTP ${resend.httpStatus})`);
+      }
+      if (request.status !== spec.final) problems.push(`"${spec.quote}": final status ${request.status}, expected ${spec.final}`);
+      if (request.endSeq !== null) evidence.push(request.endSeq);
+    }
+    const summary = entry.requests.map((request) => `#${request.receivedSeq} ${request.status}`).join(", ");
+    return problems.length ? fail(problems.join(" | "), evidence) : pass(`acks and final states as expected (${summary})`, evidence);
+  },
+
+  order(args, obs) {
+    const entry = obs.entry;
+    if (!entry) return cannot("the case did not run on the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)");
+    let sequence: EntryRequest[];
+    if (args === "as_received") {
+      sequence = [...entry.requests].sort((left, right) => left.receivedSeq - right.receivedSeq);
+    } else {
+      const quotes = (Array.isArray(args) ? args : []) as { quote: string }[];
+      const found = quotes.map((item) => requestFor(entry, item.quote));
+      const missing = quotes.filter((_, index) => !found[index]).map((item) => item.quote);
+      if (missing.length) return fail(`no request for ${missing.map((quote) => `"${quote}"`).join(", ")}`);
+      sequence = found as EntryRequest[];
+    }
+    const problems: string[] = [];
+    const evidence: number[] = [];
+    const ran = sequence.filter((request) => request.startedAt);
+    for (const request of ran) {
+      if (request.startSeq !== null) evidence.push(request.startSeq);
+      if (request.endSeq !== null) evidence.push(request.endSeq);
+    }
+    for (let index = 1; index < ran.length; index += 1) {
+      const previous = ran[index - 1];
+      const current = ran[index];
+      if (Date.parse(current.startedAt!) < Date.parse(previous.startedAt!)) problems.push(`#${current.receivedSeq} started before #${previous.receivedSeq}`);
+      if (!previous.endedAt || Date.parse(current.startedAt!) < Date.parse(previous.endedAt)) problems.push(`#${current.receivedSeq} started at ${current.startedAt} before #${previous.receivedSeq} ended (${previous.endedAt ?? "never"})`);
+      if (args !== "as_received" && current.receivedSeq < previous.receivedSeq) problems.push(`the server received "${current.message}" before "${previous.message}"`);
+    }
+    return problems.length ? fail(problems.join(" | "), evidence) : pass(`one round after another: ${ran.map((request) => `#${request.receivedSeq} ${request.startedAt}→${request.endedAt}`).join("; ")}`, evidence);
+  },
+
+  client_view_matches_result(args, obs) {
+    const entry = obs.entry;
+    if (!entry) return cannot("the case did not run on the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)");
+    const problems: string[] = [];
+    for (const name of (Array.isArray(args) ? args : []) as string[]) {
+      const view = entry.clients[name];
+      if (!view) {
+        problems.push(`${name}: no client view`);
+        continue;
+      }
+      if (view.duplicates.length) problems.push(`${name}: received seq ${view.duplicates.join(", ")} more than once`);
+      for (const request of entry.requests) {
+        const shown = view.docs[request.requestId];
+        if (!shown) problems.push(`${name}: does not show #${request.receivedSeq} (${request.requestId})`);
+        else if (JSON.stringify(shown) !== JSON.stringify(request.document)) problems.push(`${name}: #${request.receivedSeq} shows revision ${(shown as { revision?: number }).revision} ${(shown as { status?: string }).status}, the stored document is revision ${request.document.revision} ${request.document.status}`);
+      }
+      for (const requestId of Object.keys(view.docs)) {
+        if (!entry.requests.some((request) => request.requestId === requestId)) problems.push(`${name}: shows ${requestId}, which the server does not hold`);
+      }
+    }
+    const evidence = entry.requests.map((request) => request.endSeq).filter((seq): seq is number => seq !== null);
+    return problems.length ? fail(problems.join(" | "), evidence) : pass(`${(args as string[]).join(" and ")} show exactly the ${entry.requests.length} stored result document(s)`, evidence);
+  },
+
+  request_status(args, obs) {
+    const entry = obs.entry;
+    if (!entry) return cannot("the case did not run on the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)");
+    const last = [...entry.requests].sort((left, right) => left.receivedSeq - right.receivedSeq).pop();
+    if (!last) return fail("no request");
+    return last.status === args ? pass(`last request ${last.status}`, last.endSeq !== null ? [last.endSeq] : []) : fail(`last request ${last.status}, expected ${args}`, last.endSeq !== null ? [last.endSeq] : []);
   },
 
   inbox(args, obs) {
