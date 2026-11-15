@@ -1,0 +1,135 @@
+/**
+ * What a case run shows, derived from the merged trace, the db-diff and the fixture id map.
+ * Hard checks read only this; adding evidence for a new check word starts here.
+ */
+import type { DatabaseDiff, RecordChange } from "./snapshot";
+import type { TraceEvent } from "./trace-log";
+
+/** Collections that hold the user's own data. Writes anywhere else (chat, ledger, receipts, caches) are not business writes. */
+export const BUSINESS_COLLECTIONS = new Set([
+  "contacts",
+  "connections",
+  "contact_detail_states",
+  "contact_facts",
+  "contact_introductions",
+  "notes",
+  "tasks",
+  "personal_schedule_items",
+  "personal_schedule_occurrence_exceptions",
+  "orbitScheduleItems",
+  "event_registrations",
+  "agentMemories",
+  "agentAutomations",
+]);
+export const BUSINESS_TABLES = new Set(["event_ops_membership_heads", "event_ops_admission_application_heads", "event_ops_checkins", "event_ops_events"]);
+/** Read collections that count as reading a business record (no_private_reads, private_reads_within). */
+export const PRIVATE_READ_COLLECTIONS = new Set(["contacts", "connections", "contact_detail_states", "contact_facts", "notes", "tasks", "personal_schedule_items", "orbitScheduleItems", "event_registrations", "agentMemories", "agentAutomations"]);
+
+export interface NormalizedOp {
+  op: string;
+  target: string | null;
+  set: Record<string, unknown>;
+  raw: unknown;
+}
+
+export interface CardObservation {
+  cardId: string;
+  kind: "ledger_action" | "entity_draft" | "fake";
+  frozenSeq: number | null;
+  ops: NormalizedOp[];
+  state: string | null;
+  revisions: number;
+  observedBy: string[];
+}
+
+export interface DecisionObservation {
+  cardId: string;
+  decision: string;
+  accepted: boolean;
+  seq: number;
+  status: number;
+  reason: string | null;
+  via: "click" | "text";
+}
+
+export interface ReadObservation {
+  seq: number;
+  collection: string | null;
+  productId: string;
+  fixtureId: string | null;
+  owner: string | null;
+  account: string | null;
+}
+
+export interface Observation {
+  caseId: string;
+  account: string;
+  accounts: Record<string, string>;
+  idMap: Record<string, string>;
+  fixtureIdOf: (productId: string | null | undefined) => string | null;
+  events: TraceEvent[];
+  diff: DatabaseDiff;
+  businessChanges: (RecordChange & { fixtureId: string | null; external: boolean })[];
+  cards: CardObservation[];
+  decisions: DecisionObservation[];
+  requests: { requestId: string; seq: number; status: number; state: string | null }[];
+  answers: { seq: number; text: string; citations: string[] }[];
+  reads: ReadObservation[];
+  clicks: TraceEvent[];
+  clarifications: number;
+  unsupported: { step: number; word: string; reason: string }[];
+  fake: boolean;
+  /** Run-level facts filled in at the end of the run (costs, summary, voiding). */
+  run?: Record<string, unknown>;
+}
+
+const OP_NAMES: Record<string, string> = {
+  add_to_orbit_schedule: "schedule.create",
+  create_followup_task: "todo.create",
+  create_preparation_task: "todo.create",
+  save_meeting_note: "memo.create",
+  save_memory: "memory.save",
+};
+const DRAFT_OPS: Record<string, string> = { event: "event.create", note: "memo.create", schedule: "schedule.create", task: "todo.create" };
+
+export function normalizeLedgerOps(card: Record<string, any>, fixtureIdOf: Observation["fixtureIdOf"]): NormalizedOp[] {
+  return ((card.operations ?? []) as Record<string, any>[]).map((operation) => {
+    const payload = (operation.payload ?? {}) as Record<string, unknown>;
+    const targetProduct = (payload.taskId ?? payload.noteId ?? payload.contactId ?? payload.recordId ?? null) as string | null;
+    return { op: OP_NAMES[operation.operationType] ?? String(operation.operationType ?? operation.op), raw: operation, set: payload, target: fixtureIdOf(targetProduct) ?? targetProduct };
+  });
+}
+
+export function normalizeDraftOps(draft: Record<string, any>): NormalizedOp[] {
+  return [{ op: DRAFT_OPS[draft.kind] ?? `${draft.kind}.create`, raw: draft, set: (draft.fields ?? {}) as Record<string, unknown>, target: null }];
+}
+
+/** Record ids (product) found anywhere in a value. */
+export function productIdsIn(value: unknown, known: ReadonlySet<string>): string[] {
+  const out = new Set<string>();
+  const visit = (item: unknown, depth: number) => {
+    if (depth > 12 || item === null || item === undefined) return;
+    if (typeof item === "string") {
+      if (known.has(item)) out.add(item);
+      return;
+    }
+    if (Array.isArray(item)) item.forEach((entry) => visit(entry, depth + 1));
+    else if (typeof item === "object") Object.values(item as Record<string, unknown>).forEach((entry) => visit(entry, depth + 1));
+  };
+  visit(value, 0);
+  return [...out];
+}
+
+export function isBusinessChange(change: RecordChange): boolean {
+  return BUSINESS_COLLECTIONS.has(change.collection);
+}
+
+/** db.write events that touched this record (by id in params/returned rows or an explicit records list). */
+export function writesFor(events: readonly TraceEvent[], change: Pick<RecordChange, "id" | "collection">): TraceEvent[] {
+  return events.filter((event) => {
+    if (event.type !== "db.write") return false;
+    if (Array.isArray(event.records) && (event.records as { id: string; collection: string }[]).some((record) => record.id === change.id && record.collection === change.collection)) return true;
+    const haystack = JSON.stringify([event.params ?? null, event.returned ?? null]);
+    return haystack.includes(JSON.stringify(change.id)) && (haystack.includes(JSON.stringify(change.collection)) || String(event.sql ?? "").includes(change.collection) || (event.tables as string[] | undefined)?.includes("orbit_records") === true);
+  });
+}

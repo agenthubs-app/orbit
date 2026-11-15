@@ -10,6 +10,7 @@ import type {
 } from "./contract";
 import type { AgentExecutorRegistry } from "./executor-registry";
 import { stablePayloadHash } from "./hash";
+import { emitTrace, takeEvalFault } from "../../agent-v1/observability/trace";
 import type { AgentRuntimeRepository } from "./repository";
 
 const MAX_OUTBOX_ATTEMPTS = 5;
@@ -559,6 +560,8 @@ export function createAgentRuntimeService({
         waitingAt: timestamp,
         updatedAt: timestamp,
       });
+      // AG00: no-op outside the agent eval.
+      emitTrace({ type: "card.frozen", cardKind: "ledger_action", cardId: action.actionId, hash: action.immutablePayloadHash, version: action.payloadVersion, card: action });
       return action;
     },
     async approveAction(input) {
@@ -983,7 +986,12 @@ export function createAgentRuntimeService({
           updatedAt: timestamp,
         };
         await repository.saveAction(started);
+        // AG00: exec.* events and the `executor` fault point exist only under the agent eval.
+        const execTrace = { actionId: action.actionId, operationId: operation.operationId, executorKey: operation.executorKey, idempotencyKey: operation.idempotencyKey };
+        emitTrace({ type: "exec.call", source: "real", ...execTrace, operation });
         try {
+          const fault = takeEvalFault("executor");
+          if (fault && (fault.kind !== "unknown_outcome" || !fault.appliedFlag)) throw new Error(`agent-eval simulated executor ${fault.kind}`);
           const result = await executors.execute(operation, {
             actionId: action.actionId,
             runId: action.runId,
@@ -991,6 +999,8 @@ export function createAgentRuntimeService({
             idempotencyKey: operation.idempotencyKey,
             now: timestamp,
           });
+          if (fault) throw new Error("agent-eval simulated executor unknown_outcome (write applied)");
+          emitTrace({ type: "exec.receipt", source: "real", ...execTrace, status: "completed", resultRef: result.resultRef, summary: result.summary });
           const receipt: AgentExecutionReceipt = {
             receiptId: `receipt:${event.idempotencyKey}`,
             outboxId: event.outboxId,
@@ -1015,6 +1025,8 @@ export function createAgentRuntimeService({
           });
           completed += 1;
         } catch (error) {
+          const execError = error instanceof Error ? error.message : "Executor failed.";
+          emitTrace({ type: "exec.receipt", source: execError.startsWith("agent-eval simulated") ? "simulated" : "real", ...execTrace, status: "failed", error: execError });
           const attempt = event.attempt;
           const deadLetter = attempt >= event.maxAttempts;
           await repository.saveReceipt({
