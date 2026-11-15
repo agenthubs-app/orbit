@@ -137,6 +137,15 @@ export interface Observation {
   firstLayer?: FirstLayerObservation[];
   /** Run-level facts filled in at the end of the run (costs, summary, voiding). */
   run?: Record<string, unknown>;
+  /** AG05: the "recent interaction" view per contact fixture, read by the runner before and after the steps. */
+  recentInteractions?: Record<string, { before: RecentInteractionObservation | null; after: RecentInteractionObservation | null }>;
+}
+
+export interface RecentInteractionObservation {
+  occurredOn: string;
+  productId: string;
+  /** The fixture id of the source record (null: a record created in this run). */
+  source: string | null;
 }
 
 const OP_NAMES: Record<string, string> = {

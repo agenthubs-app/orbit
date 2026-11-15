@@ -30,6 +30,8 @@ import { CARD_STATUS_LABEL, cardText, decisionRecord, intentsFor, seedCard, seed
 import { DEFAULT_CLOCK } from "./vocabulary";
 import { loadWorld, patchRecords, type FixtureRecord, type WorldFixture } from "./world";
 import { createWorldWriter, type WorldWriter } from "./seed";
+import { configuredRecordAccess } from "../../../features/agent-v1/domains/configured";
+import { readRecentInteraction } from "../../../features/agent-v1/views/recent-interaction";
 import { stableStringify } from "./yaml";
 
 export interface CaseOutcome {
@@ -58,7 +60,7 @@ const STEP_SUPPORT_NOTE: Record<string, string> = {
   open_link: "confirmation links arrive in AG17",
   reconnect: "the real-time channel needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   resume_conversation: "resuming a saved conversation with its progress arrives in AG14",
-  revoke: "revoking a read or a push permission is simulated from AG11/AG16",
+  revoke: "revoking a connection or a push permission is simulated from AG16/AG17 (a read permission from AG05)",
   rollback: "rollback arrives in AG18",
   scheduler_tick: "scheduled dispatch driven by the runner arrives in AG15",
   stop: "stopping a running turn needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
@@ -222,6 +224,10 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const cardEndLines: string[] = [];
   /** AG02: what external_change steps set, per collection and record id. */
   const externalSets = new Map<string, Record<string, unknown>>();
+  /** AG05: records an external_change step deleted, per collection and record id. */
+  const externalDeletes = new Set<string>();
+  /** AG05: the "recent interaction" view per contact fixture, before and after the steps. */
+  const recentInteractions: NonNullable<Observation["recentInteractions"]> = {};
   let fake: FakeDefect | null = null;
   const stepRecords: StepRecord[] = [];
   // AG01: with the new entry on, web and app send protocol 3 and follow the session channel.
@@ -346,13 +352,12 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         return;
       }
       const clientName = step.client ?? "web";
-      // AG03: @ contacts go with the message (the entry authorizes them). AG04: @ notes and events go too, as
-      // the protocol's existing kinds (note, event); the entry keeps only their kind until AG05 authorizes them.
-      // Other kinds (to-dos, schedule …) arrive in AG11.
+      // AG05: protocol 3 carries the six kinds of @ reference (positions in the sentence arrive in AG11); the
+      // server authorizes each one. A record of another account is sent by its id as a client would.
       const refs = (step.refs ?? []) as { type: string; id: string }[];
-      const SENT_KIND: Record<string, "contact" | "note" | "event"> = { contact: "contact", event: "event", memo: "note", note: "note" };
+      const SENT_KIND: Record<string, string> = { attendance: "attendance", contact: "contact", event: "event", memo: "memo", note: "note", schedule: "schedule", todo: "todo" };
       const contactRefs = entry && clientName !== "app_old" ? refs.filter((ref) => SENT_KIND[ref.type] && idMap[ref.id]).map((ref) => ({ id: idMap[ref.id], type: SENT_KIND[ref.type] })) : [];
-      if (refs.length > contactRefs.length) unsupported.push({ reason: `@ references other than contacts, notes and events arrive in AG11; sent without ${refs.filter((ref) => !contactRefs.some((sent) => sent.id === idMap[ref.id])).map((ref) => `${ref.type} ${ref.id}`).join(", ")}`, step: index, word: "user.refs" });
+      if (refs.length > contactRefs.length) unsupported.push({ reason: `@ references not sent (unknown kind or record): ${refs.filter((ref) => !contactRefs.some((sent) => sent.id === idMap[ref.id])).map((ref) => `${ref.type} ${ref.id}`).join(", ")}`, step: index, word: "user.refs" });
       if (entry && clientName !== "app_old") {
         // Protocol 3: one POST that is only acknowledged; the result arrives on the channel / by requestId.
         const clientMessageId = `message:${randomUUID()}`;
@@ -538,7 +543,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         }
         case "fault": {
           log.push({ fault: step.fault, source: "simulated", step: index, type: "turn.fault" });
-          if (!["model", "understand", "executor"].includes(step.fault?.where)) unsupported.push({ reason: `fault point "${step.fault?.where}" has no consumer in the current product`, step: index, word });
+          // AG05: the read adapters are fault points too (<kind>.read).
+          if (!["model", "understand", "executor", "memo.read", "todo.read", "contact.read", "schedule.read", "event.read"].includes(step.fault?.where)) unsupported.push({ reason: `fault point "${step.fault?.where}" has no consumer in the current product`, step: index, word });
           await serverControl(environment, "fault", step.fault);
           return;
         }
@@ -667,8 +673,17 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           const change = (step.external_change ?? {}) as { target?: string; set?: Record<string, unknown>; delete?: boolean };
           log.push({ change, step: index, type: "turn.external_change" });
           const productId = change.target ? idMap[change.target] : undefined;
+          if (productId && change.delete && productId.startsWith("note:")) {
+            // AG05: the note is deleted on another device through the product's normal delete endpoint.
+            const device = new EvalClient(baseUrl(environment), log, await cookieFor(account), "web");
+            const result = await device.request("DELETE", `/api/notes/${encodeURIComponent(productId)}`, undefined, { purpose: "external change: delete the note on another device" });
+            externalDeletes.add(`notes\u0000${productId}`);
+            transcript.push(`*（别处删除了 ${change.target}，经笔记的正常删除接口，HTTP ${result.status}）*`, "");
+            if (result.status !== 200) unsupported.push({ reason: `external delete of ${change.target} failed (HTTP ${result.status})`, step: index, word });
+            return;
+          }
           if (!productId || change.delete || !productId.startsWith("task:")) {
-            unsupported.push({ reason: `external change of ${change.target}: only updating a to-do is simulated in AG02`, step: index, word });
+            unsupported.push({ reason: `external change of ${change.target}: updating a to-do and deleting a note are simulated (AG02, AG05)`, step: index, word });
             return;
           }
           const other = new EvalClient(baseUrl(environment), log, await cookieFor(account), "web");
@@ -680,6 +695,21 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           if (result.status !== 200) unsupported.push({ reason: `external change of ${change.target} failed (HTTP ${result.status})`, step: index, word });
           return;
         }
+        case "revoke": {
+          // AG05 (PLANNER 出入 4): the product has no per-record read permission yet; the eval's deny list,
+          // checked by every read, stands for it. `read: "memo:M31"` withdraws the read of that record.
+          const spec = (step.revoke ?? {}) as { read?: string };
+          log.push({ revoke: spec, step: index, type: "turn.revoke" });
+          const target = typeof spec.read === "string" ? spec.read.slice(spec.read.indexOf(":") + 1) : "";
+          const productId = target ? idMap[target] : undefined;
+          if (!productId) {
+            unsupported.push({ reason: STEP_SUPPORT_NOTE.revoke, step: index, word });
+            return;
+          }
+          await serverControl(environment, "revoke", { read: productId });
+          transcript.push(`*（撤回了对 ${target} 的读取权限：评测环境的拒读名单，之后的每次读取都会核对）*`, "");
+          return;
+        }
         case "setting":
           unsupported.push({ reason: `setting ${JSON.stringify(step.setting)} is not supported by the current product`, step: index, word });
           return;
@@ -688,6 +718,18 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           unsupported.push({ reason: STEP_SUPPORT_NOTE[word] ?? "step not supported by the current product", step: index, word });
       }
     };
+
+    // AG05 (RD.yaml recent_interaction): the runner reads the "recent interaction" view itself, before and after.
+    const interactionSpecs = ((testCase.hard.find((item) => "recent_interaction" in item) as { recent_interaction?: { contact: string }[] } | undefined)?.recent_interaction ?? []);
+    const recentOf = async (fixture: string) => {
+      const access = configuredRecordAccess();
+      if (!access || !idMap[fixture]) return null;
+      const view = await readRecentInteraction({ reader: access.reader, source: access.source }, access.scope(accounts[account]), { contactId: idMap[fixture], now: clockNow(), timeZone: world.timezone ?? "Asia/Tokyo" });
+      if (!view.latest) return null;
+      const productId = view.latest.ref.slice(view.latest.ref.indexOf(":") + 1);
+      return { occurredOn: view.latest.occurredOn, productId, source: fixtureIdOf(productId) };
+    };
+    for (const spec of interactionSpecs) recentInteractions[spec.contact] = { after: null, before: await recentOf(spec.contact).catch(() => null) };
 
     for (const [index, step] of testCase.steps.entries()) {
       try {
@@ -723,6 +765,10 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       for (const cardId of ledgerCards) finalLines.push(...cardText(await readCardAs("web", cardId, "runner: the card's final state for the transcript")));
       cardEndLines.push("## 卡片的最终状态", "", ...finalLines, "");
     }
+    for (const spec of interactionSpecs) recentInteractions[spec.contact].after = await recentOf(spec.contact).catch((viewError: unknown) => {
+      unsupported.push({ reason: `the recent-interaction view failed: ${viewError instanceof Error ? viewError.message : viewError}`, step: -1, word: "recent_interaction" });
+      return null;
+    });
     await new Promise((resolve) => setTimeout(resolve, 600));
     const serverState = await serverControl<{ faults: { where: string; kind: string; applied: number }[] }>(environment, "state");
     for (const fault of serverState.faults ?? []) {
@@ -873,7 +919,13 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const reads: ReadObservation[] = [];
   // A conversation (its messages) is not a business record: reading the session the case talks in is not a private read.
   const conversationFixtures = new Set([...world.anchors.filter((record) => record.kind === "conversation").map((record) => record.id), ...patchConversations]);
-  for (const event of events.filter((item) => item.type === "read.result")) {
+  // AG05: what the simulated other device reads while it makes an external_change is not the tested system's read.
+  const externalWindows = events.filter((event) => event.type === "http.request" && String(event.purpose ?? "").startsWith("external change")).map((request) => {
+    const response = events.find((event) => event.type === "http.response" && event.httpId === request.httpId);
+    return [Number(request.seq), Number(response?.seq ?? request.seq)] as const;
+  });
+  const byOtherDevice = (seq: number) => externalWindows.some(([from, to]) => seq > from && seq < to);
+  for (const event of events.filter((item) => item.type === "read.result" && !byOtherDevice(Number(item.seq)))) {
     for (const record of (event.records ?? []) as { collection: string | null; id: string | null; owner: string | null; workspace: string | null }[]) {
       if (!record.id) continue;
       const collection = record.collection ?? null;
@@ -889,6 +941,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   // AG02 (BND 约定一): a change is external when it is exactly what an external_change step set:
   // every changed field (bookkeeping aside) is one it set, with the value it set.
   const isExternal = (change: (typeof diff.records)[number]) => {
+    if (externalDeletes.has(`${change.collection}\u0000${change.id}`) && (change.kind === "deleted" || change.kind === "updated")) return true;
     const set = externalSets.get(`${change.collection}\u0000${change.id}`);
     if (!set || change.kind !== "updated") return false;
     const fields = change.fields.filter((field) => !/(^|\.)(updatedAt|__lifecycleState|version|revision|activities|deferralCount)(\.|$|\[)/u.test(field.field));
@@ -923,6 +976,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     fixtureIdOf,
     idMap,
     reads,
+    ...(Object.keys(recentInteractions).length ? { recentInteractions } : {}),
     requests,
     unsupported,
   };
@@ -939,6 +993,10 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
 
 /** Records of the other accounts in this world (for no_cross_account): their ids and distinctive strings. */
 function loadWorldRecordsForIsolation(world: WorldFixture, idMap: Record<string, string>, account: string): CheckContext["otherAccountRecords"] {
+  // AG05: a name or sentence the case's own account also has (account B's 松本彩 next to A's 松本彩) is not
+  // evidence of a leak when the answer says it; only what is the other account's alone counts.
+  const own = world.anchors.filter((record: FixtureRecord) => record.account === account).flatMap((record) => [record.data.name, record.data.title, record.data.body].filter((value): value is string => typeof value === "string"));
+  const ownToo = (text: string) => own.some((value) => value === text || value.includes(text));
   return world.anchors
     .filter((record: FixtureRecord) => record.account !== account && record.account !== "platform")
     .map((record) => {
@@ -951,7 +1009,7 @@ function loadWorldRecordsForIsolation(world: WorldFixture, idMap: Record<string,
         }
       }
       if (typeof record.data.title === "string") texts.push(record.data.title);
-      return { account: record.account, fixtureId: record.id, productId: idMap[record.id] ?? null, texts };
+      return { account: record.account, fixtureId: record.id, productId: idMap[record.id] ?? null, texts: texts.filter((text) => !ownToo(text)) };
     });
 }
 

@@ -12,6 +12,8 @@ import { createStorageAuthAccountProvisioningProvider } from "../../../features/
 import { createStorageAuthUserProvider, toAuthUserDTO } from "../../../features/auth/storage/auth-user-live-record-provider";
 import { createStorageBusinessCardContactWriteProvider } from "../../../features/contacts/storage/contact-write-live-record-provider";
 import { createConfiguredNoteService } from "../../../features/notes/service-factory";
+import { readNoteInteraction } from "../../../features/notes/interaction";
+import { createNoteRepository } from "../../../features/notes/repository";
 import { createConfiguredTaskService } from "../../../features/tasks/service-factory";
 import { createPersonalScheduleService } from "../../../features/personal-schedule/service";
 import { createPersonalScheduleAssociationReader } from "../../../features/personal-schedule/association-reader";
@@ -146,6 +148,9 @@ export function createWorldWriter(world: string, clock: string) {
   const report: SeedReport = { accounts: {}, counts: {}, gaps: [], ids: {}, world };
   const actors = new Map<string, string>();
   const notes = createConfiguredNoteService();
+  // AG05: the memo's interaction field (附录 E) has its contract and its read in AG05; the Agent's write path
+  // is AG06. The fixture's interaction is stored through the note repository's compare-and-swap write.
+  const noteRepository = createNoteRepository({ store, workspaceId });
   const tasks = createConfiguredTaskService();
   let scheduleNow = new Date().toISOString();
   const schedule = createPersonalScheduleService({
@@ -265,7 +270,14 @@ export function createWorldWriter(world: string, clock: string) {
       result = updated;
     }
     count(report, record.account, "memos");
-    if (data.interaction) gap(report, record.id, "interaction", "Memo has no interaction field yet (AG05/AG06)");
+    if (data.interaction) {
+      const raw = data.interaction as Record<string, unknown>;
+      const mapped = { ...raw, actualContactIds: ((raw.actualContactIds as string[] | undefined) ?? []).map(idOf).filter(Boolean) };
+      const stored = await noteRepository.get(actorId, note.id);
+      const interaction = stored ? readNoteInteraction(mapped, stored.note.contactIds) : null;
+      const saved = stored && interaction ? await noteRepository.saveIfVersion({ ...stored, note: { ...stored.note, interaction } }, { updatedAt: stored.note.updatedAt, version: stored.note.version }) : null;
+      if (!saved) gap(report, record.id, "interaction", "the interaction could not be stored (not well formed, or the note changed)");
+    }
     if (data.locale) gap(report, record.id, "locale", "notes have no locale field");
     if ((data.eventRefs as { kind: string }[] | undefined)?.some((ref) => ref.kind === "private")) gap(report, record.id, "eventRefs.private", "private events arrive in AG13");
   }

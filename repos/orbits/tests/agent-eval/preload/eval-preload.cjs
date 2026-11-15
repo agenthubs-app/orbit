@@ -62,6 +62,8 @@ const state = {
   faults: [],
   ended: [],
   settings: {},
+  // AG05: record ids whose read permission a case withdrew (revoke: { read }); every product read checks it.
+  denied: [],
   replay: [],
   probe: null,
   blocked: [],
@@ -652,6 +654,7 @@ async function handleControl(req, res) {
       state.pushes = [];
       // AG03: per-case deployment settings (model-budget-1: model_calls_limit), read by the product's evalSetting().
       state.settings = body.settings && typeof body.settings === "object" ? { ...body.settings } : {};
+      state.denied = [];
       if (body.clock) setClock(body.clock);
       emit({ type: "eval.context", runId: state.context.runId, account: state.context.account, clock: body.clock ?? null, replay: state.replay.map((item) => item.name ?? item.url ?? item.match), settings: state.settings });
       return reply(res, 200, { ok: true, now: new RealDate(realNow() + state.offsetMs).toISOString() });
@@ -672,6 +675,12 @@ async function handleControl(req, res) {
       state.faults.push({ where: body.where, kind: body.kind, quote: body.quote ?? null, applied: 0, appliedFlag: body.applied ?? null });
       emit({ type: "fault.armed", where: body.where, kind: body.kind, source: "simulated" });
       return reply(res, 200, { ok: true, pending: state.faults.length });
+    }
+    if (route === "revoke") {
+      if (typeof body.read !== "string" || !body.read) return reply(res, 400, { error: "revoke needs { read: <record id> }" });
+      if (!state.denied.includes(body.read)) state.denied.push(body.read);
+      emit({ type: "eval.revoke", read: body.read, source: "simulated" });
+      return reply(res, 200, { ok: true, denied: state.denied.length });
     }
     if (route === "probe") {
       state.probe = { host: String(body.host) };
@@ -729,6 +738,7 @@ globalThis.__orbitAgentEval = {
   emit,
   takeFault,
   setting: (name) => (state.settings && Object.prototype.hasOwnProperty.call(state.settings, name) ? state.settings[name] : null),
+  deniedReads: () => [...state.denied],
   get context() {
     return state.context;
   },

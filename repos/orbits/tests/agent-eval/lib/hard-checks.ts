@@ -40,10 +40,8 @@ export const NOT_YET: Record<string, string> = {
   client_view: "AG07",
   field_history: "AG12",
   functions_called: "AG10",
-  gaps: "AG05",
   import_rows: "AG12",
   judgment_question: "AG08",
-  listed: "AG10",
   mcp_collected: "AG17",
   mcp_result_excludes: "AG17",
   mcp_result_has: "AG17",
@@ -55,7 +53,6 @@ export const NOT_YET: Record<string, string> = {
   pages_read: "AG05",
   push_delivery: "AG16",
   push_excludes: "AG16",
-  recent_interaction: "AG05",
   rule_runs: "AG15",
   rule_state: "AG15",
   same_card_on: "AG07",
@@ -653,6 +650,72 @@ export const CHECKS: Record<string, CheckFn> = {
     const read = new Set(obs.reads.map((item) => item.fixtureId));
     const missing = (Array.isArray(args) ? args : []).filter((id: string) => !read.has(id));
     return missing.length ? fail(`not read: ${missing.join(", ")}`) : pass("all named records were read");
+  },
+
+  // ── AG05: reads (RD.yaml, SCL.yaml proposed_checks) ──
+
+  gaps(args, obs) {
+    if (!obs.firstLayer?.length) return cannot("no request reached the first layer (AG03 graph)");
+    const problems: string[] = [];
+    const shown: string[] = [];
+    for (const spec of (Array.isArray(args) ? args : []) as { quote: string; reason: string }[]) {
+      const layer = [...obs.firstLayer].reverse().find((item) => item.partResults.some((part) => part.sourceQuote && quoteMatches(part.sourceQuote, spec.quote)));
+      const part = layer?.partResults.find((item) => item.sourceQuote && quoteMatches(item.sourceQuote, spec.quote));
+      if (!part) {
+        problems.push(`no part holding "${spec.quote}"`);
+        continue;
+      }
+      const gaps = (part.gaps ?? []) as string[];
+      shown.push(`"${spec.quote}" ${gaps.join("/") || "no gap"}`);
+      if (!gaps.includes(spec.reason)) problems.push(`"${spec.quote}": ${gaps.length ? `gaps ${gaps.join(", ")}` : "no gap"}, expected ${spec.reason}`);
+    }
+    return problems.length ? fail(problems.join(" | ")) : pass(shown.join("; "));
+  },
+
+  recent_interaction(args, obs) {
+    const problems: string[] = [];
+    const shown: string[] = [];
+    for (const spec of (Array.isArray(args) ? args : []) as { contact: string; occurredOn?: string; source?: string; unchanged?: boolean }[]) {
+      const view = obs.recentInteractions?.[spec.contact];
+      if (!view) {
+        problems.push(`the recent-interaction view of ${spec.contact} was not read`);
+        continue;
+      }
+      const after = view.after;
+      shown.push(`${spec.contact}: ${after ? `${after.occurredOn} from ${after.source ?? after.productId}` : "none"}`);
+      if (spec.unchanged) {
+        if (JSON.stringify(view.before) !== JSON.stringify(after)) problems.push(`${spec.contact} changed: ${JSON.stringify(view.before)} → ${JSON.stringify(after)}`);
+        continue;
+      }
+      if (!after) {
+        problems.push(`${spec.contact}: no interaction`);
+        continue;
+      }
+      if (spec.occurredOn && after.occurredOn !== spec.occurredOn) problems.push(`${spec.contact}: on ${after.occurredOn}, expected ${spec.occurredOn}`);
+      if (spec.source === "created") {
+        if (!obs.diff.records.some((change) => change.kind === "created" && change.collection === "notes" && change.id === after.productId)) problems.push(`${spec.contact}: the source ${after.productId} is not a memo created in this run`);
+      } else if (spec.source && after.source !== spec.source) problems.push(`${spec.contact}: from ${after.source ?? after.productId}, expected ${spec.source}`);
+    }
+    return problems.length ? fail(problems.join(" | ")) : pass(shown.join("; "));
+  },
+
+  listed(args, obs) {
+    // AG05: until AG10's functions deliver lists of their own, the list delivered last is the last
+    // answer's cited records in the order they are cited (登记 in CHANGES.md).
+    const answer = lastAnswer(obs);
+    if (!answer) return fail("no answer");
+    const list = answer.citations;
+    const problems: string[] = [];
+    if (args?.exact && JSON.stringify(list) !== JSON.stringify(args.exact)) problems.push(`listed ${list.join(", ")}, expected exactly ${(args.exact as string[]).join(", ")}`);
+    if (args?.within) for (const id of list) if (!(args.within as string[]).includes(id)) problems.push(`${id} is outside ${(args.within as string[]).join(", ")}`);
+    if (args?.includes) for (const id of args.includes as string[]) if (!list.includes(id)) problems.push(`${id} is not listed`);
+    if (args?.excludes) for (const id of args.excludes as string[]) if (list.includes(id)) problems.push(`${id} should not be listed`);
+    if (args?.sequence) {
+      const positions = (args.sequence as string[]).map((id) => list.indexOf(id));
+      if (positions.some((at) => at < 0) || positions.some((at, index) => index > 0 && at < positions[index - 1])) problems.push(`not in the order ${(args.sequence as string[]).join(" → ")}`);
+    }
+    if (args?.count !== undefined && list.length !== Number(args.count)) problems.push(`${list.length} listed, expected ${args.count}`);
+    return problems.length ? fail(`${problems.join(" | ")} (listed: ${list.join(", ") || "none"})`, [answer.seq]) : pass(`listed ${list.join(", ")}`, [answer.seq]);
   },
 
   answer_uses(args, obs) {
