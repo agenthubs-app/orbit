@@ -62,6 +62,19 @@ export function eventIndexLine(event: TraceEvent): string {
     case "exec.call":
     case "exec.receipt":
       return `${base} · ${event.executorKey ?? ""} ${event.status ?? ""}`;
+    // AG01: the real-time channel (who resumed from which seq, what the server pushed).
+    case "turn.disconnect":
+      return `${base} · ${event.client} · 最后收到 #${event.lastSeq}`;
+    case "turn.disconnect_late":
+      return `${base} · ${event.client} · ${short(event.reason)}`;
+    case "turn.reconnect":
+      return `${base} · ${event.client} · Last-Event-ID ${event.after}`;
+    case "entry.channel.open":
+      return `${base} · after ${event.after}${event.stream === false ? " (JSON)" : ""}`;
+    case "entry.channel.push":
+      return `${base} · after ${event.after} → ${(event.seqs as number[] | undefined)?.join(",") ?? ""}`;
+    case "client.channel_event":
+      return `${base} · ${event.client} 收到 #${event.channelSeq} ${event.kind} ${event.status}${event.duplicate ? " (重复)" : ""}`;
     case "egress.blocked":
     case "egress.connected":
       return `${base} · ${event.host}:${event.port ?? ""} · ${event.at}`;

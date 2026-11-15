@@ -360,6 +360,14 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           }
           const name = String((step[word] as { client?: string } | undefined)?.client ?? step.client ?? "web");
           if (word === "disconnect") {
+            if (step.while_running) {
+              // The client drops the channel mid-turn: only after it has seen part of that turn.
+              const waited = await entry.waitForEventOfRunningTurn(name);
+              if (waited.late) {
+                log.push({ client: name, reason: waited.reason, requestId: waited.requestId, step: index, type: "turn.disconnect_late" });
+                transcript.push(`*（${name} 本想在处理中途断开，但${waited.reason === undefined ? "" : `：${waited.reason}`}；照样断开）*`, "");
+              }
+            }
             log.push({ client: name, lastSeq: entry.channel(name).lastSeq, step: index, type: "turn.disconnect" });
             entry.disconnect(name);
             transcript.push(`*（${name} 断开实时通道；断开前最后收到的序号 ${entry.channel(name).lastSeq}）*`, "");
@@ -576,6 +584,18 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     transcript.push("", "## 结果文档（服务端按 requestId 保存的版本）", "");
     for (const row of entryObservation.requests) {
       transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, "");
+    }
+    const reconnects = events.filter((event) => event.type === "turn.reconnect");
+    if (reconnects.length) {
+      transcript.push("## 实时通道重连", "");
+      for (const reconnect of reconnects) {
+        const name = String(reconnect.client);
+        const opened = events.find((event) => event.type === "entry.channel.open" && event.stream === true && Number(event.seq) > Number(reconnect.seq));
+        const received = events.filter((event) => event.type === "client.channel_event" && event.client === name && Number(event.seq) > Number(reconnect.seq));
+        const repeated = received.filter((event) => event.duplicate === true).map((event) => `#${event.channelSeq}`);
+        transcript.push(`- ${name}：重连时带上的最后序号（Last-Event-ID）${reconnect.after}；服务端按 after=${opened?.after ?? "（未见）"} 推送（事件 seq ${opened?.seq ?? "-"}）；重连后收到 ${received.map((event) => `#${event.channelSeq}`).join("、") || "无"}；重复收到：${repeated.join("、") || "无"}`);
+      }
+      transcript.push("");
     }
     transcript.push("## 两端最后显示的内容", "");
     for (const [name, view] of Object.entries(entryObservation.clients)) {

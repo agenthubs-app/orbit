@@ -54,12 +54,32 @@ export interface ClientChannel {
   known: Set<string>;
   /** The last status the channel showed per request (what the client displays while it runs). */
   statuses: Map<string, string>;
+  /** Requests this client has received at least one channel event for. */
+  eventFor: Set<string>;
   controller: AbortController | null;
   loop: Promise<void> | null;
 }
 
 const FINAL = new Set(["completed", "failed", "cancelled"]);
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * A disconnect "while running" means the client has already seen part of that turn on the channel
+ * (AE-ENT-006: it then resumes after a seq > 0). Waits for one event of the turn; if the turn ends
+ * (or the wait times out) first, the disconnect is late and the reason says why.
+ */
+export async function waitForChannelEvent(input: { hasEvent: () => boolean; isRunning: () => Promise<boolean>; timeoutMs?: number; pollMs?: number }): Promise<{ late: boolean; reason?: string }> {
+  const timeoutMs = input.timeoutMs ?? 30_000;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (input.hasEvent()) return { late: false };
+    if (!(await input.isRunning())) {
+      return input.hasEvent() ? { late: false } : { late: true, reason: "the turn ended before the client received any channel event of it" };
+    }
+    await sleep(input.pollMs ?? 50);
+  }
+  return input.hasEvent() ? { late: false } : { late: true, reason: `no channel event within ${timeoutMs} ms` };
+}
 
 export class EntryHarness {
   readonly channels = new Map<string, ClientChannel>();
@@ -82,7 +102,7 @@ export class EntryHarness {
   channel(name: string): ClientChannel {
     let channel = this.channels.get(name);
     if (!channel) {
-      channel = { controller: null, docs: new Map(), duplicates: [], known: new Set(), lastSeq: 0, loop: null, name, online: false, received: [], statuses: new Map() };
+      channel = { controller: null, docs: new Map(), duplicates: [], known: new Set(), lastSeq: 0, loop: null, name, online: false, received: [], statuses: new Map(), eventFor: new Set() };
       this.channels.set(name, channel);
     }
     return channel;
@@ -177,6 +197,7 @@ export class EntryHarness {
     channel.lastSeq = event.seq;
     channel.received.push(event.seq);
     channel.known.add(event.requestId);
+    channel.eventFor.add(event.requestId);
     channel.statuses.set(event.requestId, event.status);
     if (event.document) this.keep(channel, event.document);
   }
@@ -259,6 +280,19 @@ export class EntryHarness {
       await sleep(100);
     }
     return null;
+  }
+
+  /** Before a while_running disconnect: until this client has an event of the running turn (or it ended). */
+  async waitForEventOfRunningTurn(name: string, timeoutMs = 30_000): Promise<{ requestId: string | null; late: boolean; reason?: string }> {
+    const running = (await this.requests()).find((row) => row.sessionId === this.sessionId && row.status === "running");
+    if (!running) return { late: true, reason: "no turn of the session was running when the disconnect step came", requestId: null };
+    const channel = this.channel(name);
+    const outcome = await waitForChannelEvent({
+      hasEvent: () => channel.eventFor.has(running.requestId),
+      isRunning: async () => (await this.requests()).some((row) => row.requestId === running.requestId && row.status === "running"),
+      timeoutMs,
+    });
+    return { ...outcome, requestId: running.requestId };
   }
 
   /** Until each online client's documents equal the stored ones (it has caught up on the channel). */
