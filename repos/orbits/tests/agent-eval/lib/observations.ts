@@ -120,8 +120,10 @@ const DRAFT_OPS: Record<string, string> = { event: "event.create", note: "memo.c
 export function normalizeLedgerOps(card: Record<string, any>, fixtureIdOf: Observation["fixtureIdOf"]): NormalizedOp[] {
   return ((card.operations ?? []) as Record<string, any>[]).map((operation) => {
     const payload = (operation.payload ?? {}) as Record<string, unknown>;
-    const targetProduct = (payload.taskId ?? payload.noteId ?? payload.contactId ?? payload.recordId ?? null) as string | null;
-    return { op: OP_NAMES[operation.operationType] ?? String(operation.operationType ?? operation.op), raw: operation, set: payload, target: fixtureIdOf(targetProduct) ?? targetProduct };
+    // AG02 cards name their capability, target and the values they set (after) explicitly.
+    const targetProduct = (operation.targetRef?.id ?? payload.taskId ?? payload.noteId ?? payload.contactId ?? payload.recordId ?? null) as string | null;
+    const op = operation.capability ?? OP_NAMES[operation.operationType] ?? String(operation.operationType ?? operation.op);
+    return { op: String(op), raw: operation, set: (operation.after ?? payload) as Record<string, unknown>, target: fixtureIdOf(targetProduct) ?? targetProduct };
   });
 }
 
