@@ -41,8 +41,12 @@ export function stripApprovalClaims(value: unknown, path = "$"): { value: unknow
  * is confirmed, and only when the turn shows one (the AG02 boundary); a model answer that talks about a
  * card the user cannot see misleads (AE-BND-008, AE-UND-002, AE-AMB-011). The answer step drops such
  * sentences when the turn has no card.
+ *
+ * AG05 (AG04 coordinator review): only wording that explicitly means Orbit's confirmation card or a
+ * button on a card. "生日卡片上写什么", "在报名页点确认", "确认邮件", "click Confirm on the RSVP page" are
+ * ordinary discussion and are kept.
  */
-const CARD_TALK = /(确认卡|確認卡|确认卡片|確認カード|確認ボタン|卡片上|卡上的|点(击|一下)?[「“"]?确认|按(下)?[「“"]?确认|カードの[「“"]?(確認|Confirm)|confirmation card|confirm button|press(es|ing)? ["“']?Confirm)/iu;
+const CARD_TALK = /(确认卡|確認卡|確認カード|confirmation card|卡片?上的?[^。！？!?\n]{0,6}确认|カード[^。！？!?\n]{0,6}(確認|Confirm)|confirm(ation)? button on (the|this|a|your) card|(the|this|your) card'?s confirm)/iu;
 
 /** The text without its sentences about a confirmation card, and the sentences dropped. */
 export function stripCardTalk(text: string): { text: string; dropped: string[] } {
