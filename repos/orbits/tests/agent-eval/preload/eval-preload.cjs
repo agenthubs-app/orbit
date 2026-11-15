@@ -326,10 +326,17 @@ if (typeof realFetch === "function") {
     try {
       response = await realFetch(input, init);
     } catch (error) {
-      emit({ type: `${prefix}.response`, source: "real", provider, status: null, error: error instanceof Error ? error.message : String(error), usage: null, durationMs: realNow() - started });
+      emit({ type: `${prefix}.response`, source: "real", provider, status: null, error: error instanceof Error ? error.message : String(error), aborted: Boolean(init?.signal?.aborted), usage: null, durationMs: realNow() - started });
       throw error;
     }
-    const text = await response.text();
+    let text;
+    try {
+      text = await response.text();
+    } catch (error) {
+      // AG01: a run stopped while the body was still arriving aborts here; keep request/response paired.
+      emit({ type: `${prefix}.response`, source: "real", provider, status: response.status, error: error instanceof Error ? error.message : String(error), aborted: Boolean(init?.signal?.aborted), usage: null, durationMs: realNow() - started });
+      throw error;
+    }
     const body = parseMaybeJson(text);
     const usage = body && typeof body === "object" ? body.usage ?? body.usageMetadata ?? null : null;
     emit({ type: `${prefix}.response`, source: "real", provider, status: response.status, headers: safeHeaders(response.headers), body, usage, model: body?.model ?? requestBody?.model ?? null, durationMs: realNow() - started });
