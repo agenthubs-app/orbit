@@ -27,6 +27,10 @@ test("the first layer's prompt keeps rule 8 for 'how is it going with <person>' 
   assert.match(understandSystemPrompt(), /how things are going with a person[^.]*multiple_readings \(rule 8\)/u);
 });
 
+test("the first layer's prompt never leaves out order for a part about the first time, also when 'now' is its own part (AE-SCL-007 dev2)", () => {
+  assert.match(understandSystemPrompt(), /a part that asks about the first time or the earliest always gives "order": "oldest"/u);
+});
+
 test("a read-only part with several readings: code's 'understood as' sentence first, the other readings as entries, then the answer", async () => {
   const base = world();
   base.records.push(contact(ACTOR, "contact:c41", "山本直子", { organization: "山手出版" }), memo(ACTOR, "note:m38", "山本さんと打ち合わせ。原稿は12月5日までに送ると約束した。", "2026-11-09T06:00:00.000Z", ["contact:c41"]));
