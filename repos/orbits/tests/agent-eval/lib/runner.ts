@@ -18,7 +18,7 @@ import type { EvalEnvironment } from "./env-guard";
 import { baseUrl } from "./eval-env";
 import { fakeTurn, FAKE_DEFECTS, type FakeDefect } from "./fake-agent";
 import { hardChecksPass, runHardChecks, type CheckContext, type CheckResult } from "./hard-checks";
-import { BUSINESS_COLLECTIONS, normalizeDraftOps, normalizeLedgerOps, PRIVATE_READ_COLLECTIONS, productIdsIn, type CardObservation, type EntryObservation, type Observation, type ReadObservation } from "./observations";
+import { BUSINESS_COLLECTIONS, normalizeDraftOps, normalizeLedgerOps, PRIVATE_READ_COLLECTIONS, productIdsIn, type CardObservation, type EntryObservation, type FirstLayerObservation, type HandoffPart, type Observation, type ReadObservation } from "./observations";
 import { evalPaths } from "./paths";
 import { serverControl } from "./server";
 import { readSeedReport, type SeedReportFile } from "./selfcheck";
@@ -26,7 +26,7 @@ import { diffStates, readAllPayloads, readDatabaseState, recordKey, restoreSnaps
 import { CaseLog, mergeTrace, readServerEvents, scrubSecrets, traceFileSize, type TraceEvent } from "./trace-log";
 import type { AgentActionPreviewContract } from "../../../shared/contract/agent-v1";
 import { agentRequestIdFor } from "../../../features/agent-v1/entry/store";
-import { CARD_STATUS_LABEL, cardText, intentsFor, seedCard, seedSpecFor, type CardOpSpec } from "./cards";
+import { CARD_STATUS_LABEL, cardText, decisionRecord, intentsFor, seedCard, seedSpecFor, type CardOpSpec } from "./cards";
 import { DEFAULT_CLOCK } from "./vocabulary";
 import { loadWorld, patchRecords, type FixtureRecord, type WorldFixture } from "./world";
 import { createWorldWriter, type WorldWriter } from "./seed";
@@ -82,6 +82,7 @@ interface StepRecord {
 const FINAL_REQUEST_STATUSES = new Set(["completed", "failed", "cancelled"]);
 const STATUS_LABEL: Record<string, string> = { cancelled: "已停止（用户点了停止）", completed: "已完成", failed: "失败", queued: "排队中（等前一条处理完）", running: "处理中", waiting_user: "等用户" };
 const statusLabel = (status: string | null | undefined) => (status ? STATUS_LABEL[status] ?? status : "（无）");
+const PART_STATUS_LABEL: Record<string, string> = { answered: "已回答", awaiting_acceptance: "等用户接受替代方案", awaiting_clarification: "等用户回答追问", awaiting_confirmation: "等用户在卡上确认", declined: "无法承接", failed: "没处理成", suggested_external: "建议交给外部 Agent", unfinished: "这次没做", waiting_dependency: "等前一项的结果" };
 
 function caseClock(testCase: EvalCase, world: WorldFixture): string {
   return testCase.clock ?? world.clock ?? DEFAULT_CLOCK;
@@ -113,7 +114,10 @@ function stripLifecycle(payload: Record<string, unknown> | null | undefined): Re
   return rest;
 }
 
-async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches: Record<string, any>, writer: WorldWriter, report: SeedReportFile, unsupported: Observation["unsupported"], fixtureCards: FixtureRecord[] = []): Promise<Record<string, string>> {
+/** Deployment settings a patch may set for one case (AG03: model-budget-1); the eval preload hands them to the server. */
+const DEPLOYMENT_SETTINGS = new Set(["model_calls_limit"]);
+
+async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches: Record<string, any>, writer: WorldWriter, report: SeedReportFile, unsupported: Observation["unsupported"], fixtureCards: FixtureRecord[] = [], deploymentSettings: Record<string, unknown> = {}, conversations: string[] = []): Promise<Record<string, string>> {
   const extraIds: Record<string, string> = {};
   for (const name of testCase.patches ?? []) {
     const patch = world.patches[name] ?? filePatches[name];
@@ -134,7 +138,11 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
         else if (record.kind === "memory") await writer.writeMemory(record);
         else if (record.kind === "rule") await writer.writeRule(record);
         else if (record.kind === "schedule") await writer.writeSchedule(record);
-        else {
+        else if (record.kind === "conversation") {
+          // AG03 (CTX conv-prior-turns): the messages and the session state; the case continues this conversation.
+          await writer.writeConversation(record);
+          conversations.push(record.id);
+        } else {
           unsupported.push({ reason: `patch ${name}: ${record.kind} records cannot be written by the current product`, step: 0, word: "patch" });
           continue;
         }
@@ -146,7 +154,10 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
     for (const [section, items] of Object.entries(patch.set ?? {})) {
       for (const item of items as Record<string, unknown>[]) unsupported.push({ reason: `patch ${name}: changing ${section} ${item.id} in place is not supported yet`, step: 0, word: "patch" });
     }
-    if (patch.settings) unsupported.push({ reason: `patch ${name}: settings ${JSON.stringify(patch.settings)} are not supported by the current product`, step: 0, word: "patch" });
+    for (const [key, value] of Object.entries((patch.settings ?? {}) as Record<string, unknown>)) {
+      if (DEPLOYMENT_SETTINGS.has(key)) deploymentSettings[key] = value;
+      else unsupported.push({ reason: `patch ${name}: setting ${key}: ${JSON.stringify(value)} is not supported by the current product`, step: 0, word: "patch" });
+    }
     if (patch.generate) unsupported.push({ reason: `patch ${name}: generated records arrive with the sprint that needs them (AG08)`, step: 0, word: "patch" });
   }
   void report;
@@ -180,7 +191,9 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   }
   Object.assign(ctx.writer.report.ids, report.ids);
   const fixtureCards: FixtureRecord[] = [];
-  const extraIds = await applyPatches(testCase, world, filePatches, ctx.writer, report, unsupported, fixtureCards);
+  const deploymentSettings: Record<string, unknown> = {};
+  const patchConversations: string[] = [];
+  const extraIds = await applyPatches(testCase, world, filePatches, ctx.writer, report, unsupported, fixtureCards, deploymentSettings, patchConversations);
   const idMap: Record<string, string> = { ...report.ids, ...extraIds };
   const reverse = new Map(Object.entries(idMap).map(([fixture, product]) => [product, fixture]));
   const fixtureIdOf = (productId: string | null | undefined) => (productId ? reverse.get(productId) ?? null : null);
@@ -231,7 +244,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       world: testCase.world,
     }, null, 2));
 
-    await serverControl(environment, "context", { account, caseId: testCase.id, clock, replay, runId: ctx.runId });
+    await serverControl(environment, "context", { account, caseId: testCase.id, clock, replay, runId: ctx.runId, settings: deploymentSettings });
+    if (Object.keys(deploymentSettings).length) transcript.push(`*（部署侧设置：${Object.entries(deploymentSettings).map(([key, value]) => (key === "model_calls_limit" ? `单轮主模型调用上限压到 ${value} 次` : `${key}=${JSON.stringify(value)}`)).join("；")}）*`, "");
     const traceOffset = traceFileSize(paths.traceDir);
     const secret = environment.env.AUTH_SECRET;
     const cookies = new Map<string, string>();
@@ -239,7 +253,12 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       if (!cookies.has(label)) cookies.set(label, await signSessionCookie({ email: report.accounts[label].email, name: world.accounts[label]?.name ?? label, secret, userId: accounts[label] }));
       return cookies.get(label)!;
     };
-    let conversation: ConversationState = { history: [], messageRevision: 0, sessionId: `session_${randomUUID()}`, started: false };
+    // AG03: `conversation: RCV01` (or a patch's conversation) continues that stored session and its state.
+    const continued = testCase.conversation ?? patchConversations[0];
+    const continuedSession = continued ? idMap[continued] : undefined;
+    if (continued && !continuedSession) unsupported.push({ reason: `conversation ${continued} is not in the seeded world (re-run agent-eval:seed)`, step: 0, word: "conversation" });
+    let conversation: ConversationState = { history: [], messageRevision: 0, sessionId: continuedSession ?? `session_${randomUUID()}`, started: Boolean(continuedSession) };
+    if (continuedSession) transcript.push(`*（接着已有的对话 ${continued} 说；会话里存的上文和状态见 trace 的 context.built）*`, "");
     const sentBodies = new Map<number, unknown>();
     const clientFor = async (name: string) => new EvalClient(baseUrl(environment), log, await cookieFor(account), (name as "web" | "app") ?? "web");
     if (useEntry) {
@@ -295,8 +314,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       const data = (result.body?.data ?? {}) as { decision?: Record<string, any>; card?: AgentActionPreviewContract };
       const decision = data.decision ?? {};
       noteCard(data.card, clientName);
-      const accepted = decision.accepted === true && decision.replayed !== true;
-      log.push({ accepted, cardId, client: clientName, clientDecisionId: body.clientDecisionId, decision: String(body.transition), operationId: body.operationId ?? null, outcome: decision.outcome ?? null, reason: decision.reason ?? result.body?.error?.reason ?? (result.status >= 400 ? `HTTP_${result.status}` : null), replayed: decision.replayed === true, revision: data.card?.revision ?? null, status: result.status, type: "card.decision", via: "click" });
+      log.push(decisionRecord({ body, cardId, client: clientName, result }));
       const outcome = decision.replayed ? `重复提交，返回第一次的结果（${decision.outcome}${decision.reason ? `，${decision.reason}` : ""}）` : decision.outcome === "accepted" ? "已接受" : decision.outcome === "already_decided" ? "没有新的决定：这张卡已经处理过了" : `拒绝（${decision.reason ?? result.body?.error?.code ?? result.status}）`;
       transcript.push(`- 服务端（HTTP ${result.status}）：${outcome}。${decision.message ?? result.body?.error?.message ?? ""}`, ...cardText(data.card), "");
     };
@@ -328,8 +346,11 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         transcript.push(`**Agent**（假实现）：${result.text}`, "");
         return;
       }
-      if (step.refs?.length) unsupported.push({ reason: "@ references beyond contacts arrive in AG05/AG11; sent without them", step: index, word: "user.refs" });
       const clientName = step.client ?? "web";
+      // AG03: @ contacts go with the message (the entry authorizes them); other kinds arrive in AG05/AG11.
+      const refs = (step.refs ?? []) as { type: string; id: string }[];
+      const contactRefs = entry && clientName !== "app_old" ? refs.filter((ref) => ref.type === "contact" && idMap[ref.id]).map((ref) => ({ id: idMap[ref.id], type: "contact" as const })) : [];
+      if (refs.length > contactRefs.length) unsupported.push({ reason: `@ references other than contacts arrive in AG05/AG11; sent without ${refs.filter((ref) => !contactRefs.some((sent) => sent.id === idMap[ref.id])).map((ref) => `${ref.type} ${ref.id}`).join(", ")}`, step: index, word: "user.refs" });
       if (entry && clientName !== "app_old") {
         // Protocol 3: one POST that is only acknowledged; the result arrives on the channel / by requestId.
         const clientMessageId = `message:${randomUUID()}`;
@@ -341,7 +362,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           message: text,
           ...(conversation.started ? {} : { origin: { entryClient: clientName === "app" ? "app" : "web", entryPointId: "ai.new_chat", initialGroupId: null, kind: "manual", template: null } }),
           protocolVersion: 3,
-          references: [],
+          references: contactRefs,
           sessionId: conversation.sessionId,
         };
         conversation.started = true;
@@ -712,6 +733,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
 
   // AG01: the protocol-3 requests as the server stored them, the acks the clients got and what each client shows.
   let entryObservation: EntryObservation | undefined;
+  let firstLayer: FirstLayerObservation[] | undefined;
   if (entry) {
     const harness: EntryHarness = entry;
     const seqOf = (types: string[], requestId: string, pick: "first" | "last" = "first") => {
@@ -732,9 +754,26 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       const product = new Set([...productIdsIn(refs, known), ...refs.map((ref) => ref.replace(/^[a-z_]+:/u, "")).filter((id) => known.has(id))]);
       answers.push({ citations: [...product].map((id) => fixtureIdOf(id)).filter((id): id is string => Boolean(id)), seq: Number(row.endSeq ?? -1), text });
     }
+    // AG03: what the first layer got (context.built, the understand requests) and gave (first_layer.handoff).
+    const ofRequest = (type: string, requestId: string) => events.filter((event) => event.type === type && event.requestId === requestId && event.origin !== "runner");
+    firstLayer = entryObservation.requests.map((row) => {
+      const handoff = ofRequest("first_layer.handoff", row.requestId).pop();
+      const built = ofRequest("context.built", row.requestId).pop();
+      return {
+        contextMessages: built ? Number(built.messages ?? 0) : null,
+        contextSeq: built ? Number(built.seq) : null,
+        handoff: handoff ? { parts: (handoff.parts ?? []) as HandoffPart[], seq: Number(handoff.seq) } : null,
+        message: row.message,
+        partResults: row.document?.partResults ?? [],
+        receivedSeq: row.receivedSeq,
+        requestId: row.requestId,
+        understandPrompts: ofRequest("model.request", row.requestId).filter((event) => event.node === "understand").map((event) => ({ seq: Number(event.seq), text: JSON.stringify((event.body as { messages?: unknown } | undefined)?.messages ?? event.body ?? "") })),
+      };
+    });
     transcript.push("", "## 结果文档（服务端按 requestId 保存的版本）", "");
     for (const row of entryObservation.requests) {
-      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, ...(row.document?.actionPreview ? ["- 这一轮结果文档里的卡（交付时的状态）：", ...cardText(row.document.actionPreview)] : []), "");
+      const partLines = (row.document?.partResults ?? []).filter((part) => part.sourceQuote).map((part) => `  - 「${part.sourceQuote}」：${PART_STATUS_LABEL[part.status] ?? part.status}${part.route ? `（去向 ${part.route}${part.reason ? `，原因 ${part.reason}` : ""}）` : ""}`);
+      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, ...(partLines.length ? ["- 拆出的子目标（结果文档里的服务端记录，不是给用户看的文字）：", ...partLines] : []), ...(row.document?.actionPreview ? ["- 这一轮结果文档里的卡（交付时的状态）：", ...cardText(row.document.actionPreview)] : []), "");
     }
     const reconnects = events.filter((event) => event.type === "turn.reconnect");
     if (reconnects.length) {
@@ -789,7 +828,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     if (event.origin === "runner") {
       // The decision takes effect when the click is sent, before the server writes; use the click's seq.
       const click = events.filter((other) => other.type === "turn.click" && other.cardId === event.cardId && Number(other.seq) < Number(event.seq)).pop();
-      decisions.push({ accepted: Boolean(event.accepted), cardId: String(event.cardId), decision: String(event.decision), reason: (event.reason as string) ?? null, seq: Number(click?.seq ?? event.seq), status: Number(event.status ?? 0), via: "click" });
+      decisions.push({ accepted: Boolean(event.accepted), cardId: String(event.cardId), decision: String(event.decision), reason: (event.reason as string) ?? null, ...(event.replayed === true ? { replayed: true } : {}), seq: Number(click?.seq ?? event.seq), status: Number(event.status ?? 0), via: "click" });
     } else if (!events.some((other) => other.origin === "runner" && other.type === "turn.click" && other.cardId === event.cardId && Number(other.seq) < Number(event.seq))) {
       decisions.push({ accepted: true, cardId: String(event.cardId), decision: String(event.decision), reason: null, seq: Number(event.seq), status: 200, via: "text" });
     }
@@ -797,11 +836,16 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
 
   // Reads of business records, by owner account.
   const reads: ReadObservation[] = [];
+  // A conversation (its messages) is not a business record: reading the session the case talks in is not a private read.
+  const conversationFixtures = new Set([...world.anchors.filter((record) => record.kind === "conversation").map((record) => record.id), ...patchConversations]);
   for (const event of events.filter((item) => item.type === "read.result")) {
     for (const record of (event.records ?? []) as { collection: string | null; id: string | null; owner: string | null; workspace: string | null }[]) {
       if (!record.id) continue;
       const collection = record.collection ?? null;
-      const fixtureId = fixtureIdOf(record.id);
+      // AG03: a contact fixture is the contact and the account's relationship to it (connection:<same id>,
+      // written together by initializeAcquiredRelationship); reading either is reading that contact.
+      const fixtureId = fixtureIdOf(record.id) ?? (record.id.startsWith("connection:") ? fixtureIdOf(`contact:${record.id.slice("connection:".length)}`) : null);
+      if (fixtureId && conversationFixtures.has(fixtureId)) continue;
       if (collection ? !PRIVATE_READ_COLLECTIONS.has(collection) : !fixtureId) continue;
       reads.push({ account: record.owner ? accountByActor.get(record.owner) ?? null : null, collection, fixtureId, owner: record.owner, productId: record.id, seq: Number(event.seq) });
     }
@@ -839,6 +883,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     diff,
     ...(entryObservation ? { entry: entryObservation } : {}),
     events,
+    ...(firstLayer ? { firstLayer } : {}),
     fake: fake !== null,
     fixtureIdOf,
     idMap,

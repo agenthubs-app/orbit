@@ -133,3 +133,16 @@ test("gate selection: AG00 is the H area, AE-H-006 must run alone, no invariants
   assert.ok(ag04.invariants.length > 0 && ag04.invariants.every((item) => item.invariant));
   assert.ok(!selectCases(files, { gate: "AG03" }).cases.some((item) => item.id === "AE-CTX-006"));
 });
+
+test("gate selection (AG03): a case with a rubric item gated to the sprint runs in that gate, once", () => {
+  const rubricGated = (gate: string, sprint = "AG01", extra: Record<string, unknown> = {}) => ({ area: "X", cases: [{ id: `AE-X-${gate.slice(2)}1`, invariant: false, rubric: [{ id: "R1", text: "a" }, { gate, id: "R2", text: "b" }, { gate: "AG05", id: "R3", text: "c" }], sprint, steps: [], ...extra }], file: "x.yaml", raw: {}, sealed: false });
+  const files = [rubricGated("AG03"), rubricGated("AG04")] as never;
+  assert.deepEqual(selectCases(files, { gate: "AG03" }).cases.map((item) => item.id), ["AE-X-031"], "an item gated to AG03 pulls its case into the AG03 gate");
+  assert.deepEqual(selectCases(files, { gate: "AG02" }).cases.map((item) => item.id), [], "not into an earlier gate");
+  assert.deepEqual(selectCases(files, { gate: "AG05" }).cases.map((item) => item.id), ["AE-X-031", "AE-X-041"], "AG05 items pull both in");
+  const invariantToo = [rubricGated("AG03", "AG01", { invariant: true })] as never;
+  assert.deepEqual(selectCases(invariantToo, { gate: "AG03" }).cases.map((item) => item.id), ["AE-X-031"], "listed once even when it is also an invariant");
+  const real = selectCases(loadAreaFiles(), { gate: "AG03" });
+  assert.ok(real.cases.some((item) => item.id === "AE-ENT-003"), "AE-ENT-003 R3 is gated to AG03");
+  assert.ok(!real.cases.some((item) => item.id === "AE-ENT-002"), "ENT-002's later items do not pull it into AG03");
+});

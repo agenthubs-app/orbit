@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { cardOpsOf, intentsFor, seedSpecFor } from "./lib/cards";
+import { cardOpsOf, decisionRecord, intentsFor, seedSpecFor } from "./lib/cards";
 import type { EvalCase } from "./lib/cases";
 
 /** AG02 `--seed-cards`: which card a case seeds, and how its card_ops become operation intents. */
@@ -27,4 +27,17 @@ test("card_ops become to-do intents against product ids; other operations are re
   ]);
   assert.throws(() => intentsFor([{ op: "memo.create", set: {} }], () => undefined), /cannot be seeded in AG02/u);
   assert.throws(() => intentsFor([{ op: "todo.update", set: {}, target: "T99" }], () => undefined), /no product record/u);
+});
+
+test("the runner's record of a click says what the server said, a resent one included (AG02 BND-003 seq 331/332)", () => {
+  const body = { clientDecisionId: "decision:1", payloadHash: "h", revision: 1, transition: "confirm" };
+  const first = decisionRecord({ body, cardId: "card-1", client: "web", result: { body: { data: { card: { revision: 1 }, decision: { accepted: true, outcome: "accepted", replayed: false } } }, status: 200 } });
+  assert.equal(first.accepted, true);
+  assert.equal(first.replayed, false);
+  const resent = decisionRecord({ body, cardId: "card-1", client: "web", result: { body: { data: { card: { revision: 1 }, decision: { accepted: true, outcome: "accepted", replayed: true } } }, status: 200 } });
+  assert.equal(resent.accepted, true, "the server accepted it (as a replay of the first decision)");
+  assert.equal(resent.replayed, true);
+  assert.equal(resent.outcome, "accepted");
+  const refused = decisionRecord({ body, cardId: "card-1", client: "web", result: { body: { data: { decision: { accepted: false, outcome: "refused", reason: "CARD_CLOSED" } }, error: { reason: "CARD_CLOSED" } }, status: 409 } });
+  assert.deepEqual([refused.accepted, refused.replayed, refused.reason], [false, false, "CARD_CLOSED"]);
 });

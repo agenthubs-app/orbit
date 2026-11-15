@@ -19,6 +19,7 @@ import { createStorageAgentMemoryService } from "../../../features/agent/memory/
 import { createStorageAgentAutomationService } from "../../../features/agent/automations/service";
 import { AGENT_CAPABILITY_DEFINITIONS } from "../../../features/agent/capabilities/registry";
 import { createConfiguredStorageOrbitAgentChatSessionProvider } from "../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
+import { createLiveAgentSessionStateStore } from "../../../features/agent-v1/context/session-state";
 import { createConfiguredEventOperationsPostgresRuntime } from "../../../features/events/event-operations/storage/postgres-client";
 import { createPostgresEventOperationsRepository } from "../../../features/events/event-operations/storage/postgres-repository";
 import { createHostLifecycle } from "../../../features/events/host/storage/lifecycle";
@@ -428,22 +429,51 @@ export function createWorldWriter(world: string, clock: string) {
     const actorId = actorOf(record.account);
     const provider = createConfiguredStorageOrbitAgentChatSessionProvider({ actorId });
     if (!provider) throw new Error("chat session storage is not configured");
-    const messages = (record.data.messages as { role: "user" | "assistant"; text: string; at?: string }[]) ?? [];
+    const messages = (record.data.messages as { role: "user" | "assistant"; text: string; at?: string; recordRefs?: string[] }[]) ?? [];
     const id = productId("session", world, record.id).replace(":", "_");
     const createdAt = iso(messages[0]?.at) ?? iso(record.data.startedAt) ?? new Date(Date.parse(clock) - 86_400_000).toISOString();
     const updatedAt = iso(record.data.lastActivityAt) ?? iso(messages[messages.length - 1]?.at) ?? createdAt;
+    // AG03: a message's record refs ("todo:T44") are kept as "<type>:<product id>" (设计稿 §3.10: old answers keep their ids).
+    const productRef = (ref: string) => {
+      const at = ref.indexOf(":");
+      const product = at > 0 ? report.ids[ref.slice(at + 1)] : undefined;
+      return product ? `${ref.slice(0, at)}:${product}` : null;
+    };
     for (let index = 0; index < messages.length; index += 50) {
       await provider.upsertSession({
         createdAt,
         id,
-        messages: messages.slice(index, index + 50).map((message, offset) => ({ id: `${id}:m${index + offset + 1}`, role: message.role, text: message.text, ...(message.at ? { createdAt: iso(message.at) } : {}) })),
+        messages: messages.slice(index, index + 50).map((message, offset) => {
+          const refs = (message.recordRefs ?? []).map(productRef).filter((ref): ref is string => Boolean(ref));
+          return { id: `${id}:m${index + offset + 1}`, role: message.role, text: message.text, ...(message.at ? { createdAt: iso(message.at) } : {}), ...(refs.length ? { recordRefs: refs } : {}) };
+        }),
         title: String(record.data.title ?? messages[0]?.text ?? "对话").slice(0, 120),
         updatedAt,
       } as never);
     }
     report.ids[record.id] = id;
     count(report, record.account, "conversations");
-    if (record.data.state || record.data.shownList) gap(report, record.id, "state", "conversation state (shown list, last mentioned) arrives in AG03");
+    await writeConversationState(record, actorId, id, updatedAt);
+  }
+
+  /**
+   * AG03: the session state a fixture conversation carries (shown list, last mentioned, open items),
+   * by id and name only, through the product's session-state store. Fixture ids become product ids.
+   */
+  async function writeConversationState(record: FixtureRecord, actorId: string, sessionId: string, updatedAt: string): Promise<void> {
+    const state = (record.data.state ?? record.data) as { shownList?: unknown; lastMentioned?: unknown; openItems?: unknown };
+    const shown = Array.isArray(state.shownList) ? state.shownList : (state.shownList as { items?: unknown[] } | undefined)?.items;
+    const named = (items: unknown) => ((Array.isArray(items) ? items : []) as { type: string; id: string; name: string }[])
+      .map((item) => ({ id: report.ids[item.id], name: String(item.name), type: String(item.type) }))
+      .filter((item) => Boolean(item.id));
+    const lastMentioned = named(state.lastMentioned);
+    const shownList = named(shown);
+    const openItems = Array.isArray(state.openItems) ? state.openItems : [];
+    if (!lastMentioned.length && !shownList.length && !openItems.length) return;
+    if (openItems.length) gap(report, record.id, "openItems", "open items in a fixture conversation are not seeded yet (none of the AG03 fixtures has any)");
+    const store = createLiveAgentSessionStateStore();
+    if (!store) throw new Error("session state storage is not configured");
+    await store.put(actorId, { lastMentioned, openItems: [], sessionId, shownList: shownList.length ? { items: shownList, shownAt: updatedAt } : null, updatedAt });
   }
 
   async function writeAll(records: readonly FixtureRecord[], labels: Record<string, string>, onProgress?: (message: string) => void): Promise<SeedReport> {
@@ -493,7 +523,7 @@ export function createWorldWriter(world: string, clock: string) {
     await Promise.allSettled([configured.client.close(), runtime.client.close(), events.client.close()]);
   }
 
-  return { actorOf, close, ensureAccount, report, writeAll, writeContact, writeMemo, writeMemory, writeRule, writeSchedule, writeTodo };
+  return { actorOf, close, ensureAccount, report, writeAll, writeContact, writeConversation, writeMemo, writeMemory, writeRule, writeSchedule, writeTodo };
 }
 
 export type WorldWriter = ReturnType<typeof createWorldWriter>;

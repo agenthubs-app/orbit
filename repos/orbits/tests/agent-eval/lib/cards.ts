@@ -113,6 +113,31 @@ function localTime(iso: string): string {
   return `${parts.month}月${parts.day}日（${weekday[String(parts.weekday)] ?? parts.weekday}）${parts.hour}:${parts.minute}`;
 }
 
+/**
+ * The runner's `card.decision` record of one button decision, taken from the server's answer as is:
+ * a resent decision the server answers as a replay is `accepted: true, replayed: true` (AG03; in AG02
+ * the runner wrote accepted:false for it, BND-003 seq 331 vs 332). Counting it once is the checks' job.
+ */
+export function decisionRecord(input: { body: Record<string, unknown>; cardId: string; client: string; result: { status: number; body: any } }) {
+  const data = (input.result.body?.data ?? {}) as { decision?: Record<string, any>; card?: AgentActionPreviewContract };
+  const decision = data.decision ?? {};
+  return {
+    accepted: decision.accepted === true,
+    cardId: input.cardId,
+    client: input.client,
+    clientDecisionId: input.body.clientDecisionId,
+    decision: String(input.body.transition),
+    operationId: input.body.operationId ?? null,
+    outcome: decision.outcome ?? null,
+    reason: decision.reason ?? input.result.body?.error?.reason ?? (input.result.status >= 400 ? `HTTP_${input.result.status}` : null),
+    replayed: decision.replayed === true,
+    revision: data.card?.revision ?? null,
+    status: input.result.status,
+    type: "card.decision" as const,
+    via: "click" as const,
+  };
+}
+
 /** Card states in plain words for the transcript. */
 export const CARD_STATUS_LABEL: Record<string, string> = {
   abandoned: "已放弃（用户放弃）",

@@ -38,9 +38,7 @@ export const NOT_YET: Record<string, string> = {
   card_effects: "AG12",
   clarify_max_per_part: "AG04",
   client_view: "AG07",
-  context_messages_max: "AG03",
   field_history: "AG12",
-  first_layer_context: "AG03",
   functions_called: "AG10",
   gaps: "AG05",
   import_rows: "AG12",
@@ -56,13 +54,9 @@ export const NOT_YET: Record<string, string> = {
   no_auto_extraction: "AG06",
   offered_options: "AG04",
   pages_read: "AG05",
-  part_plan: "AG03",
-  parts: "AG03",
-  parts_split: "AG03",
   push_delivery: "AG16",
   push_excludes: "AG16",
   recent_interaction: "AG05",
-  routes_absent: "AG03",
   rule_runs: "AG15",
   rule_state: "AG15",
   same_card_on: "AG07",
@@ -151,6 +145,28 @@ function requestFor(entry: NonNullable<Observation["entry"]>, quote: string): En
   return entry.requests.find((request) => request.message.includes(quote)) ?? null;
 }
 
+/** AG03: the latest request that reached the first layer. */
+function lastLayer(obs: Observation) {
+  const layers = [...(obs.firstLayer ?? [])].sort((left, right) => left.receivedSeq - right.receivedSeq);
+  return layers[layers.length - 1] ?? null;
+}
+
+/** A part holds a fragment of the user's words when its quote contains it (or, for a short fragment, the other way round). */
+function quoteMatches(sourceQuote: string, fragment: string): boolean {
+  return sourceQuote.includes(fragment) || (sourceQuote.length >= 4 && fragment.includes(sourceQuote));
+}
+
+/** The latest request's handoff part holding the fragment (a case may quote an earlier turn, AE-UND-012). */
+function handoffPartFor(obs: Observation, fragment: string) {
+  const layers = [...(obs.firstLayer ?? [])].sort((left, right) => right.receivedSeq - left.receivedSeq);
+  for (const layer of layers) {
+    const parts = layer.handoff?.parts ?? [];
+    const part = parts.find((item) => item.sourceQuote.includes(fragment)) ?? parts.find((item) => quoteMatches(item.sourceQuote, fragment));
+    if (part) return { layer, part };
+  }
+  return null;
+}
+
 export const CHECKS: Record<string, CheckFn> = {
   no_write_before_click(_args, obs) {
     const problems: string[] = [];
@@ -222,7 +238,8 @@ export const CHECKS: Record<string, CheckFn> = {
   },
 
   decisions(args, obs) {
-    const accepted = obs.decisions.filter((decision) => decision.accepted);
+    // A replayed resend carries the first decision's result; it is not a second decision.
+    const accepted = obs.decisions.filter((decision) => decision.accepted && !decision.replayed);
     return accepted.length === Number(args?.count) ? pass(`${accepted.length} accepted decision(s)`, accepted.map((d) => d.seq)) : fail(`${accepted.length} accepted decision(s), expected ${args?.count}: ${accepted.map((d) => `${d.decision} via ${d.via} at seq ${d.seq}`).join(", ")}`, accepted.map((d) => d.seq));
   },
 
@@ -383,7 +400,102 @@ export const CHECKS: Record<string, CheckFn> = {
   },
 
   clarifications(args, obs) {
-    return obs.clarifications === Number(args?.count) ? pass(`${obs.clarifications} clarification(s)`) : fail(`${obs.clarifications} clarification(s), expected ${args?.count}`);
+    // AG03: on the new entry a question is a part left awaiting_clarification in its result document.
+    const asked = obs.clarifications + (obs.entry?.requests ?? []).reduce((sum, request) => sum + (request.document?.partResults ?? []).filter((part) => part.status === "awaiting_clarification").length, 0);
+    return asked === Number(args?.count) ? pass(`${asked} clarification(s)`) : fail(`${asked} clarification(s), expected ${args?.count}`);
+  },
+
+  // ── AG03: the first layer (UND.yaml / CTX.yaml / SCL.yaml proposed_checks) ──
+
+  parts_split(args, obs) {
+    const last = lastLayer(obs);
+    if (!last) return cannot("no request reached the first layer (AG03 graph)");
+    if (!last.handoff) return fail(`the last request ("${last.message}") has no first-layer handoff (its output was not usable)`);
+    const parts = last.handoff.parts;
+    const problems: string[] = [];
+    if (args?.count !== undefined && parts.length !== Number(args.count)) problems.push(`${parts.length} part(s), expected ${args.count}`);
+    if (args?.verbatim) for (const part of parts) if (!last.message.includes(part.sourceQuote)) problems.push(`${part.partId} quote "${part.sourceQuote}" is not in the message`);
+    const listing = parts.map((part) => `${part.partId} "${part.sourceQuote}"`).join("; ");
+    return problems.length ? fail(`${problems.join(" | ")} (${listing})`, [last.handoff.seq]) : pass(`${parts.length} part(s), quotes verbatim: ${listing}`, [last.handoff.seq]);
+  },
+
+  part_plan(args, obs) {
+    if (!obs.firstLayer?.length) return cannot("no request reached the first layer (AG03 graph)");
+    const problems: string[] = [];
+    const evidence: number[] = [];
+    const shown: string[] = [];
+    for (const spec of (Array.isArray(args) ? args : []) as { quote: string; verdict?: string; route?: string | string[]; after?: string; refers?: Record<string, string | null> }[]) {
+      const found = handoffPartFor(obs, spec.quote);
+      if (!found) {
+        problems.push(`no part holds "${spec.quote}"`);
+        continue;
+      }
+      const { layer, part } = found;
+      evidence.push(layer.handoff!.seq);
+      shown.push(`"${spec.quote}" → ${part.partId} ${part.verdict}/${part.route}${part.dependsOn.length ? ` after ${part.dependsOn.join(",")}` : ""}`);
+      if (spec.verdict !== undefined && part.verdict !== spec.verdict) problems.push(`"${spec.quote}": verdict ${part.verdict}, expected ${spec.verdict}`);
+      if (spec.route !== undefined) {
+        const routes = Array.isArray(spec.route) ? spec.route : [spec.route];
+        if (!routes.includes(String(part.route))) problems.push(`"${spec.quote}": route ${part.route}, expected ${routes.join(" or ")}`);
+      }
+      if (spec.after !== undefined) {
+        const before = layer.handoff!.parts.find((other) => other !== part && quoteMatches(other.sourceQuote, spec.after!));
+        if (!before) problems.push(`"${spec.quote}": no part of the same request holds "${spec.after}"`);
+        else if (!part.dependsOn.includes(before.partId)) problems.push(`"${spec.quote}" does not depend on "${spec.after}" (${before.partId}); dependsOn ${JSON.stringify(part.dependsOn)}`);
+      }
+      for (const [word, expected] of Object.entries(spec.refers ?? {})) {
+        const named = part.objectClues.filter((clue) => clue.text && (clue.text.includes(word) || word.includes(clue.text)));
+        const candidates = named.length ? named : part.objectClues;
+        const bound = candidates.map((clue) => obs.fixtureIdOf(clue.recordId) ?? clue.recordId).filter((id): id is string => Boolean(id));
+        if (expected === null ? bound.length > 0 : !bound.includes(String(expected))) problems.push(`"${spec.quote}": "${word}" bound to ${bound.join(", ") || "nothing"}, expected ${expected ?? "nothing"}`);
+      }
+    }
+    return problems.length ? fail(problems.join(" | "), evidence) : pass(shown.join("; "), evidence);
+  },
+
+  parts(args, obs) {
+    if (!obs.firstLayer?.length) return cannot("no request reached the first layer (AG03 graph)");
+    const problems: string[] = [];
+    const shown: string[] = [];
+    for (const spec of (Array.isArray(args) ? args : []) as { quote: string; status: string }[]) {
+      const layer = [...obs.firstLayer].reverse().find((item) => item.partResults.some((part) => part.sourceQuote && quoteMatches(part.sourceQuote, spec.quote)));
+      const part = layer?.partResults.find((item) => item.sourceQuote && quoteMatches(item.sourceQuote, spec.quote));
+      if (!part) {
+        problems.push(`no result for a part holding "${spec.quote}"`);
+        continue;
+      }
+      shown.push(`"${spec.quote}" ${part.status}`);
+      if (part.status !== spec.status) problems.push(`"${spec.quote}": ${part.status}${part.reason ? ` (${part.reason})` : ""}, expected ${spec.status}`);
+    }
+    return problems.length ? fail(problems.join(" | ")) : pass(shown.join("; "));
+  },
+
+  routes_absent(args, obs) {
+    const last = lastLayer(obs);
+    if (!last) return cannot("no request reached the first layer (AG03 graph)");
+    const banned = new Set((Array.isArray(args) ? args : []).map(String));
+    const parts = last.handoff?.parts ?? [];
+    const hit = parts.filter((part) => banned.has(String(part.route)));
+    const routes = parts.map((part) => `${part.partId} ${part.route}`).join(", ") || "no parts";
+    return hit.length ? fail(`${hit.map((part) => `${part.partId} "${part.sourceQuote}" → ${part.route}`).join("; ")}`, last.handoff ? [last.handoff.seq] : []) : pass(`last request: ${routes}`, last.handoff ? [last.handoff.seq] : []);
+  },
+
+  first_layer_context(args, obs) {
+    const last = lastLayer(obs);
+    if (!last || last.contextMessages === null) return cannot("no context.built event for the last request");
+    const problems: string[] = [];
+    if (args?.messages_max !== undefined && last.contextMessages > Number(args.messages_max)) problems.push(`${last.contextMessages} earlier message(s) given, max ${args.messages_max}`);
+    const sent = last.understandPrompts.map((prompt) => prompt.text).join("\n");
+    for (const fragment of (args?.excludes ?? []) as string[]) if (sent.includes(fragment)) problems.push(`"${fragment}" was sent to the first layer`);
+    const evidence = [last.contextSeq, ...last.understandPrompts.map((prompt) => prompt.seq)].filter((seq): seq is number => seq !== null);
+    return problems.length ? fail(problems.join(" | "), evidence) : pass(`${last.contextMessages} earlier message(s) given; ${last.understandPrompts.length} understand request(s) checked`, evidence);
+  },
+
+  context_messages_max(args, obs) {
+    const layers = (obs.firstLayer ?? []).filter((layer) => layer.contextMessages !== null);
+    if (!layers.length) return cannot("no context.built event");
+    const over = layers.filter((layer) => (layer.contextMessages ?? 0) > Number(args));
+    return over.length ? fail(over.map((layer) => `"${layer.message}": ${layer.contextMessages} message(s)`).join("; "), over.map((layer) => layer.contextSeq ?? -1)) : pass(`at most ${Math.max(...layers.map((layer) => layer.contextMessages ?? 0))} earlier message(s) per request`, layers.map((layer) => layer.contextSeq ?? -1));
   },
 
   requests(args, obs) {

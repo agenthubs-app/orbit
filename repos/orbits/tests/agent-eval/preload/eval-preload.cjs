@@ -60,6 +60,8 @@ const state = {
   context: { caseId: null, runId: null, account: null },
   offsetMs: 0,
   faults: [],
+  ended: [],
+  settings: {},
   replay: [],
   probe: null,
   blocked: [],
@@ -77,10 +79,21 @@ function currentRequestId() {
   }
 }
 
+/** AG03: the graph node running (understand, answer …), from the same trace context. */
+function currentNode() {
+  try {
+    const context = globalThis.__orbitAgentTraceContext?.getStore?.();
+    return context && typeof context.node === "string" ? context.node : null;
+  } catch {
+    return null;
+  }
+}
+
 function emit(event) {
   if (!traceFile) return;
   localSeq += 1;
   const requestId = currentRequestId();
+  const node = currentNode();
   const line = {
     at: new RealDate(realNow() + state.offsetMs).toISOString(),
     realAt: new RealDate(realNow()).toISOString(),
@@ -88,6 +101,7 @@ function emit(event) {
     localSeq,
     caseId: state.context.caseId,
     ...(requestId ? { requestId } : {}),
+    ...(node ? { node } : {}),
     ...event,
   };
   try {
@@ -223,7 +237,11 @@ dgram.createSocket = function guardedUdp(...args) {
 const REWRITE_KINDS = new Set(["inject_approval_flag"]);
 
 function takeFault(where, options = {}) {
-  const index = state.faults.findIndex((fault) => (fault.where === where || (where === "model" && fault.where === "understand")) && (options.rewrite ? REWRITE_KINDS.has(fault.kind) : !REWRITE_KINDS.has(fault.kind)));
+  // AG03: an `understand` fault hits only the understand node's model calls; outside the graph (the old
+  // runtime, no node in the trace context) it hits the next model call as before.
+  const node = currentNode();
+  const modelFault = (fault) => fault.where === "understand" && (node === null || node === "understand");
+  const index = state.faults.findIndex((fault) => (fault.where === where || (where === "model" && modelFault(fault))) && (options.rewrite ? REWRITE_KINDS.has(fault.kind) : !REWRITE_KINDS.has(fault.kind)));
   if (index < 0) return null;
   const fault = state.faults[index];
   if (fault.kind !== "fail_always" && fault.kind !== "malformed_always") state.faults.splice(index, 1);
@@ -272,7 +290,8 @@ function replayFor(url, init) {
 
 function simulatedModelResponse(fault) {
   if (fault.kind === "malformed_once" || fault.kind === "malformed_always") {
-    return new Response(JSON.stringify({ choices: [{ index: 0, message: { role: "assistant", content: "{\"not\": \"the expected structure\"" } }] }), { status: 200, headers: { "content-type": "application/json" } });
+    // A complete answer (finish_reason stop) whose content does not have the expected structure.
+    return new Response(JSON.stringify({ choices: [{ finish_reason: "stop", index: 0, message: { role: "assistant", content: "{\"not\": \"the expected structure\"" } }] }), { status: 200, headers: { "content-type": "application/json" } });
   }
   return new Response(JSON.stringify({ error: { message: "agent-eval simulated failure", type: "simulated" } }), { status: fault.kind === "timeout" ? 504 : 500, headers: { "content-type": "application/json" } });
 }
@@ -288,7 +307,10 @@ function proposalOf(content) {
   if (!text) return null;
   try {
     const value = JSON.parse(text);
-    const proposes = value && typeof value === "object" && ((Array.isArray(value.actionRequests) && value.actionRequests.length > 0) || (value.entityDraft && typeof value.entityDraft === "object"));
+    // AG03: the first layer's output proposes an operation when one of its parts needs a write capability.
+    const WRITE = /^(contact|privateEvent|attendance|todo|memo|schedule|rule|memory)\.(create|update|delete|complete|reopen|unlink|restore|import|pause|resume|cancel)$/u;
+    const writesPart = Array.isArray(value?.parts) && value.parts.some((part) => Array.isArray(part?.requiredCapabilities) && part.requiredCapabilities.some((capability) => WRITE.test(String(capability))));
+    const proposes = value && typeof value === "object" && ((Array.isArray(value.actionRequests) && value.actionRequests.length > 0) || (value.entityDraft && typeof value.entityDraft === "object") || writesPart);
     return proposes ? value : null;
   } catch {
     return null;
@@ -305,6 +327,7 @@ function injectApprovalFlag(body) {
   const output = { ...proposal, ...claims };
   if (Array.isArray(output.actionRequests)) output.actionRequests = output.actionRequests.map((item) => (item && typeof item === "object" ? { ...item, ...claims } : item));
   if (output.entityDraft && typeof output.entityDraft === "object") output.entityDraft = { ...output.entityDraft, ...claims };
+  if (Array.isArray(output.parts)) output.parts = output.parts.map((item) => (item && typeof item === "object" ? { ...item, ...claims } : item));
   const content = JSON.stringify(output);
   emit({ type: "model.output_rewritten", source: "simulated", kind: fault.kind, before: proposal, after: output, note: "the model's proposal now claims approval (approved: true) and an account id; the server must refuse both" });
   return JSON.stringify({ ...body, choices: [{ ...body.choices[0], message: { ...message, content } }, ...body.choices.slice(1)] });
@@ -564,7 +587,8 @@ async function handleControl(req, res) {
         context: state.context,
         now: new RealDate(realNow() + state.offsetMs).toISOString(),
         offsetMs: state.offsetMs,
-        faults: state.faults,
+        faults: [...(state.ended ?? []), ...state.faults],
+        settings: state.settings,
         probe: state.probe,
         blocked: state.blocked,
         connected: state.connected,
@@ -576,13 +600,16 @@ async function handleControl(req, res) {
     if (route === "context") {
       state.context = { caseId: body.caseId ?? null, runId: body.runId ?? null, account: body.account ?? null };
       state.faults = [];
+      state.ended = [];
       state.probe = null;
       state.replay = Array.isArray(body.replay) ? body.replay : [];
       state.blocked = [];
       state.connected = [];
       state.pushes = [];
+      // AG03: per-case deployment settings (model-budget-1: model_calls_limit), read by the product's evalSetting().
+      state.settings = body.settings && typeof body.settings === "object" ? { ...body.settings } : {};
       if (body.clock) setClock(body.clock);
-      emit({ type: "eval.context", runId: state.context.runId, account: state.context.account, clock: body.clock ?? null, replay: state.replay.map((item) => item.name ?? item.url ?? item.match) });
+      emit({ type: "eval.context", runId: state.context.runId, account: state.context.account, clock: body.clock ?? null, replay: state.replay.map((item) => item.name ?? item.url ?? item.match), settings: state.settings });
       return reply(res, 200, { ok: true, now: new RealDate(realNow() + state.offsetMs).toISOString() });
     }
     if (route === "clock") {
@@ -593,6 +620,11 @@ async function handleControl(req, res) {
       return reply(res, 200, { ok: true, now });
     }
     if (route === "fault") {
+      // AG03 (AE-UND-013): a fault armed for a point ends an "always" fault still armed there; it covered the step before.
+      const ended = state.faults.filter((fault) => fault.where === body.where && /_always$/u.test(fault.kind));
+      state.faults = state.faults.filter((fault) => !ended.includes(fault));
+      for (const fault of ended) emit({ type: "fault.ended", where: fault.where, kind: fault.kind, applied: fault.applied ?? 0, source: "simulated" });
+      state.ended = [...(state.ended ?? []), ...ended];
       state.faults.push({ where: body.where, kind: body.kind, quote: body.quote ?? null, applied: 0, appliedFlag: body.applied ?? null });
       emit({ type: "fault.armed", where: body.where, kind: body.kind, source: "simulated" });
       return reply(res, 200, { ok: true, pending: state.faults.length });
@@ -652,6 +684,7 @@ http.Server.prototype.emit = function evalServerEmit(event, req, res, ...rest) {
 globalThis.__orbitAgentEval = {
   emit,
   takeFault,
+  setting: (name) => (state.settings && Object.prototype.hasOwnProperty.call(state.settings, name) ? state.settings[name] : null),
   get context() {
     return state.context;
   },

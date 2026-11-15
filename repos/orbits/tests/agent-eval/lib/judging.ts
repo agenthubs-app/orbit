@@ -58,7 +58,7 @@ export function eventIndexLine(event: TraceEvent): string {
     case "card.frozen":
       return `${base} · ${event.cardKind} ${event.cardId}`;
     case "card.decision":
-      return `${base} · ${event.cardId} ${event.decision}${event.accepted === false ? ` 被拒 ${event.reason}` : ""}${event.via ? ` (${event.via})` : ""}`;
+      return `${base} · ${event.cardId} ${event.decision}${event.accepted === false ? ` 被拒 ${event.reason}` : ""}${event.replayed === true ? " 重复提交，服务端返回第一次的结果" : ""}${event.via ? ` (${event.via})` : ""}`;
     case "exec.call":
     case "exec.receipt":
       return `${base} · ${event.executorKey ?? ""} ${event.status ?? ""}`;

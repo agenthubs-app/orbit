@@ -265,7 +265,8 @@ export class EntryHarness {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
       const rows = await this.requests();
-      if (rows.every((row) => FINAL.has(row.status))) return true;
+      // AG03: a request delivered and waiting for the user (waiting_user) holds up nothing.
+      if (rows.every((row) => FINAL.has(row.status) || row.status === "waiting_user")) return true;
       await sleep(400);
     }
     return false;
