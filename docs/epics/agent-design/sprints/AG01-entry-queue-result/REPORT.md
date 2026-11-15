@@ -41,6 +41,25 @@
 - **run-01：failed。**修复轮 2 的门槛 `20261115-214128-65b2ed1-AG01-gate` 双评 7/8：两位评审都判 AE-ENT-005 R1 不通过——回答正文没说“12:00”和“和田中午餐”，附上的卡片文字是内部字段原样输出（`kind: personal`、`startsAt: 2026-11-19T03:00:00.000Z`），时间是 UTC。这是 AG01 适配层 `cardsAsText` 的缺陷。两个修复轮已用完。
 - **run-02（协调者决定）。**RULES §7 写的是失败后“不自动二次生成”；但当前目标是依次实现全部 sprint，而 AG02 起全部依赖 AG01。协调者据此开启 run-02，范围只限：卡片转文字时去掉内部字段、时间按用户时区显示。之后整套门槛重跑、双评。这是对规则的例外，用户可以否决。
 
+### run-02 运行记录
+
+- 结果：**门槛通过。**`20261115-225735-fddf242-AG01-gate` 双评 8/8，两位评审结论一致；不通过的只有顺延项 ENT-002 R1、ENT-003 R3、ENT-004 R3/R4（不计入 AG01），无 caseIssue。已登记 RUNS.md。门槛 `20261115-224854-bfd55f8` 不评，已登记为被取代。
+- Generator：Claude Opus 5.5，2026-11-15。run-02 开工时 PLANNER 的 SHA-256 `4339c8f26a65c77df8623061b2a39f3e4c8b5878b2e81267958f9f181acc1875`，基线 HEAD `a1e3e2859`。
+- 提交：`ba60b8128` 卡片写成用户读得懂的文字；`bfd55f813` PLANNER 登记 run-02；`fddf24241` 时间范围按时刻比较（协调者批准）。合并：等待协调者。push：无。
+- 影响分析：先重建了索引。`createActorQueryInputSchema`、`createAiReadInputSchema` 在 depth 3 报 CRITICAL（约 3,100），各只有 1 个直接调用方，depth 1 为 LOW。`query-service.ts` 的函数重建索引后仍查不到，文本搜索补查：`executeActorScopedQuery` 有 2 个生产调用方（`query-artifact-service.ts`、`query-result.ts`）。`cardsAsText` 不在索引里，文本搜索只有 1 个调用方。detect-changes 风险 low。证据 `run-02/impact-*`。
+- 测试：`agent-v1-entry-legacy-runtime.test.ts`（7 例）与 `orbit-ai-query-time-range.test.ts`（6 例）先写，修改前全部不通过、修改后通过；已有 data-query 测试 31/31；`tsconfig.build.json` 无错误。
+- 全量对照：开工前 26 失败，现在 24 失败，新增 0（单独跑）。
+- 门槛：`20261115-225735-fddf242-AG01-gate`，代码判定 8/8，真实调用 21 次，0.0278 元，`dirtyWorkingTree: false`，已 judge-pack，密钥扫描 71 个文件 0 命中；排队等待 p95 1,542 ms。
+- 付费调用（累计）：DeepSeek 真实 168 次，约 0.225 元，余额 58.82。Gemini 0 次。
+- 协调者复核：上述定向测试与评测测试 117 通过、0 失败（另 4 例 Postgres 排队测试接本机库单独跑 4/4）；typecheck:app 通过；读过 `instant.ts` 与两处校验改动。
+
+### run-02 说明
+
+1. **卡片写成文字（`ba60b8128`）。**按请求语言（zh、en、ja）写；时间用记录自己的时区，没写就用 `ORBIT_DEFAULT_TIME_ZONE`（缺省 Asia/Tokyo）。日程写“标题 · 11月19日（周四）12:00–13:00”，待办和跟进写截止时间和状态，笔记写标题和日期（没有标题取正文开头）。内部字段、编号、原始枚举值和英文分区标题不再出现。
+2. **时间范围按时刻比较（`fddf24241`，协调者批准）。**run-02 的第一次门槛里，模型按 11:00–14:00（+09:00）查日程，`query-service.ts` 把存储的 UTC 字符串和带 `+09:00` 的字符串按字面比较，12:00 的午餐被筛掉。这是现有产品的真实缺陷：按时间段查询会随模型给的时区写法漏记录。新增 `features/orbit-ai/data-query/instant.ts`，两边都能解析就按时刻比较，否则保留原来的字符串比较。改了日程、待办、跟进三处范围过滤（`query-service.ts:404-405`、`:256-257`、`:334-335`），四处排序（`:125`、`:218`、`:324`、`:394`），以及两个输入校验里“开始不晚于结束”的检查（`query-schema.ts:72`、`:150`）。
+3. **门槛核对。**8 份 transcript 不含内部字段；AE-ENT-005 交付“和田中午餐 · 11月19日（周四）12:00–13:00”。这次模型用的是整天范围，新的比较方式在完整对话里没被触发，靠单元测试覆盖。
+4. 用例和运行器都没有改。
+
 ## 修复轮 2
 
 - **问题（两位评审对 AE-ENT-006 的同一个 caseIssue）。**运行 `20261115-213218-5f29717` 里，`entry.started` 在 seq 45，App 的 `turn.disconnect` 在 seq 47，只隔 1 ms；第一次通道推送在约 150 ms 之后。所以 App 重连时带的是 `after: 0`，服务端从头推送是对的，但“带上次序号续传”这条路径在完整对话层面没有被检验到。
