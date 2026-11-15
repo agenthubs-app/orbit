@@ -18,7 +18,7 @@ import {
   type EntityDraftProposal,
 } from "./entity-drafts/contract";
 export const DEFAULT_GEMINI_ORBIT_AGENT_MODEL = "gemini-3.5-flash" as const;
-export const DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL = "deepseek-v4-flash" as const;
+export const DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL = "deepseek-flash" as const;
 export const DEFAULT_OPENAI_ORBIT_AGENT_MODEL = "gpt-4.1" as const;
 export const GEMINI_INTERACTIONS_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/interactions" as const;

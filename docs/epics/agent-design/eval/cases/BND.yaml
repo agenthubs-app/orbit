@@ -271,6 +271,8 @@ cases:
       - decisions: { count: 1 }
       - decision_result: { reason: CARD_CLOSED }
       - card_state: { card: 1, state: rejected }
+      - card_ops:
+          - { op: todo.create, set: { title: "見積書のドラフトを見直す", plannedDate: "2026-11-18" } }
     rubric:
       - id: R1
         text: 否决之后再点确认，拿到的是这张卡已经关闭的最新状态，没有显示已完成。

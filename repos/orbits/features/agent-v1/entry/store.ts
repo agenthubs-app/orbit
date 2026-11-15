@@ -73,7 +73,8 @@ export class AgentEntryError extends Error {
 }
 
 export interface AgentEntryOutcome {
-  status: "completed" | "failed";
+  /** waiting_user (AG03): the round is delivered and the lane moves on; a part waits for the user. */
+  status: "completed" | "failed" | "waiting_user";
   answer: AgentAnswerContract | null;
   partResults: readonly AgentPartResult[];
   ending?: AgentRequestEndingContract;

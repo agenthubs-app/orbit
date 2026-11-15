@@ -18,7 +18,8 @@ import { AppError, getHttpStatusForAppErrorCode } from "../../../shared/errors/a
 import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/storage/transactional-postgres";
 import { createOrbitAgentChatSessionProvider } from "../../orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 import { emitTrace } from "../observability/trace";
-import { createLegacyRuntimeExecutor, createSessionWriter } from "./legacy-runtime";
+import { createGraphExecutor } from "../graph/executor";
+import { createSessionWriter } from "./legacy-runtime";
 import { agentV1EntryEnabled } from "./mode";
 import { acceptMessage, cancelCurrentRun, getRequestResult, listSessionEvents, maybeResumeSession, type AgentEntryDependencies } from "./service";
 import { AgentEntryError, createMemoryAgentEntryStore, createPostgresAgentEntryStore, type AgentEntryStore } from "./store";
@@ -52,7 +53,8 @@ export function configuredAgentEntryDependencies(mode: FeatureMode, actorId: str
   if (!store) return null;
   const provider = createOrbitAgentChatSessionProvider(mode, actorId);
   return {
-    execute: createLegacyRuntimeExecutor(mode),
+    // AG03: the request graph replaces the existing runtime here; the confirmation boundary stays around it.
+    execute: createGraphExecutor(mode),
     schedule: afterResponse,
     sessions: provider ? createSessionWriter(provider) : null,
     store,

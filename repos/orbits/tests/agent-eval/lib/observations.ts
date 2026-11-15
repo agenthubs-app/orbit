@@ -51,6 +51,8 @@ export interface DecisionObservation {
   status: number;
   reason: string | null;
   via: "click" | "text";
+  /** A resent decision the server answered with the first one's result (accepted, but not a new decision). */
+  replayed?: boolean;
 }
 
 export interface ReadObservation {
@@ -85,6 +87,33 @@ export interface EntryObservation {
   clients: Record<string, { docs: Record<string, AgentResultDocument>; duplicates: number[]; onlineAtEnd: boolean; received: number }>;
 }
 
+/** AG03: one part of the first layer's handoff (the product's `first_layer.handoff` event). */
+export interface HandoffPart {
+  partId: string;
+  sourceQuote: string;
+  verdict: string | null;
+  route: string | null;
+  status: string | null;
+  waitReason: string | null;
+  dependsOn: string[];
+  objectClues: { entity: string; text: string; recordId: string | null }[];
+}
+
+/** AG03: what the first layer got and gave for one request (in the order the server received them). */
+export interface FirstLayerObservation {
+  requestId: string;
+  message: string;
+  receivedSeq: number;
+  handoff: { seq: number; parts: HandoffPart[] } | null;
+  /** Messages of earlier conversation given to the first layer (context.built). */
+  contextMessages: number | null;
+  contextSeq: number | null;
+  /** Everything sent to the main model by the understand node for this request. */
+  understandPrompts: { seq: number; text: string }[];
+  /** The result document's part results. */
+  partResults: AgentResultDocument["partResults"];
+}
+
 export interface Observation {
   caseId: string;
   account: string;
@@ -104,6 +133,8 @@ export interface Observation {
   unsupported: { step: number; word: string; reason: string }[];
   fake: boolean;
   entry?: EntryObservation;
+  /** AG03: the first layer per request (protocol-3 entry with the graph). */
+  firstLayer?: FirstLayerObservation[];
   /** Run-level facts filled in at the end of the run (costs, summary, voiding). */
   run?: Record<string, unknown>;
 }

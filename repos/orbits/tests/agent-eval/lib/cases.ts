@@ -104,7 +104,9 @@ export interface Selection {
 }
 
 /**
- * --gate AGnn: cases whose gate is AGnn, plus the invariant pack (from AG02 on) with gate not later than AGnn.
+ * --gate AGnn: cases whose gate is AGnn, cases with a rubric item gated to AGnn (README §3.3; their
+ * items gated later stay excluded when the run is judged), plus the invariant pack (from AG02 on)
+ * with gate not later than AGnn.
  * --all: every visible case. --case: exactly the named cases (solo cases are allowed only this way).
  */
 export function selectCases(
@@ -123,10 +125,11 @@ export function selectCases(
   }
   if (options.gate) {
     const gate = sprintNumber(options.gate);
-    chosen = all.filter((testCase) => gateOf(testCase) === options.gate);
+    // README §3.3: a case with a rubric item gated to this sprint runs in its gate as well (AG03).
+    chosen = all.filter((testCase) => gateOf(testCase) === options.gate || (testCase.rubric ?? []).some((item) => item.gate === options.gate));
     if (gate >= 2) {
       invariants = all.filter(
-        (testCase) => testCase.invariant && gateOf(testCase) !== options.gate && sprintNumber(gateOf(testCase)) <= gate,
+        (testCase) => testCase.invariant && !chosen.includes(testCase) && sprintNumber(gateOf(testCase)) <= gate,
       );
     }
     chosen = [...chosen, ...invariants];

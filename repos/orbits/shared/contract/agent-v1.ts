@@ -32,10 +32,37 @@ export type AgentPartStatus =
   | "unfinished"
   | "failed";
 
+/** AG03：子目标的承接结论与去向（设计稿附录 A），由服务端代码决定。 */
+export type AgentPartVerdict = "accept" | "convert" | "decline";
+export type AgentPartRoute =
+  | "answer"
+  | "read"
+  | "probe"
+  | "web_lookup"
+  | "propose_write"
+  | "offer_alternative"
+  | "suggest_external_agent"
+  | "explain_limit"
+  | "clarify";
+export type AgentPartWaitReason =
+  | "object_ambiguous"
+  | "permission_missing"
+  | "dependency_pending"
+  | "service_unavailable"
+  | "awaiting_acceptance"
+  | "awaiting_external_result";
+
 export interface AgentPartResult {
   partId: string;
   status: AgentPartStatus;
   operationId?: string | undefined;
+  /** AG03：这个子目标在本轮原话里对应的那一段（用户自己的话）。 */
+  sourceQuote?: string | undefined;
+  verdict?: AgentPartVerdict | undefined;
+  route?: AgentPartRoute | undefined;
+  waitReason?: AgentPartWaitReason | undefined;
+  /** AG03：子目标停在这个状态的原因代码，如 not_in_this_version、budget、dependency_pending。 */
+  reason?: string | undefined;
 }
 
 export interface AgentAnswerContract {

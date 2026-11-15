@@ -107,3 +107,14 @@ REPORT 写验收映射、功能 SHA、命令与退出码、运行编号与评审
 - 登记表给 AG03 的节点只有五个，但 AE-CTX-006、008 要求本 sprint 发出追问并在两条无关消息后搁置，这与 AG04 的范围重叠。本页取最小做法（易错边界 5），AG04 在其上补 `clarify` 节点与恢复。
 - 单轮调用上限的部署设置（`model-budget-1` 用到）和 `understand` 故障点不在 CONVENTIONS 第 2 节的开关表里；新增开关先由协调者登记到 CONVENTIONS，再在 REPORT 里写明名字。
 - 改 `DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL` 会同时改变活动运营和会后产物两处的默认模型。CONVENTIONS 要求改默认值，本页照做；impact 若为 HIGH/CRITICAL，先报告再改。
+
+## 启动核对记录（run-01，2026-11-16，Generator 追加）
+
+开工时本页 SHA-256 `0d50396d8b55d62b8accc3b8b2b0ad84951078043ccd29921601d5471f41e8f1`，基线 HEAD `c0b7bd8e5`（AG02 合并）。原文不改，以下按 CONVENTIONS §4、§8、SPRINTS.md 与 AG00–AG02 REPORT 核对后补记：
+
+1. **门槛用例数**：SPRINTS.md 登记表是 UND ×14、CTX ×6、SCL ×3。CONVENTIONS §8 已把 CTX-006、CTX-008 顺延到 AG04，所以本页“CTX 8 例”与易错边界 5（追问与搁置）不进 AG03 门槛；最小的追问与“两条无关消息后搁置”仍实现并有开发测试，完整版留给 AG04。
+2. **评测端口**：进入条件 ④ 写的 3100，按 CONVENTIONS §2 为 3110。
+3. **AG01 的接线点**：处理阶段的 `execute` 由 `createLegacyRuntimeExecutor` 换成 `createGraphExecutor`（`features/agent-v1/graph/executor.ts`），AG02 的 `runWithConfirmBoundary` 仍包在外面。
+4. **评审项级 gate**：协调者交代 AE-ENT-003 R3（`gate: AG03`）计入本门槛；运行器的 `--gate` 扩成也选带本 sprint 评审项 gate 的用例（README §3.3 补一句，CHANGES.md 登记）。
+5. **AG02 遗留**：运行器对重发点击的记录（BND-003 seq 331/332）按服务端应答记，先写测试。
+6. **`--seed-cards`**：CONVENTIONS §3 写“只给 AG02 用”，但 BND ×12 作为不变量进本门槛，AG06 之前只有预置卡这条出卡途径，本 sprint 的门槛照样加 `--seed-cards`（REPORT 登记，需协调者确认 CONVENTIONS 的写法）。

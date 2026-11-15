@@ -112,6 +112,10 @@ test("cards, card_ops, card_state, card_revision, decisions, decision_result", (
   assert.equal(run("decisions", { count: 1 }, o).status, "fail");
   assert.equal(run("decision_result", { reason: "CARD_EXPIRED" }, o).status, "pass");
   assert.equal(run("decision_result", { reason: "CARD_STALE" }, o).status, "fail");
+  // AG03: a resent decision the server accepted as a replay is recorded as accepted and replayed; it is not a second decision.
+  const replay = obs({ cards: [card()], decisions: [{ accepted: true, cardId: "card-1", decision: "confirm", reason: null, seq: 3, status: 200, via: "click" }, { accepted: true, cardId: "card-1", decision: "confirm", reason: null, replayed: true, seq: 5, status: 200, via: "click" }] });
+  assert.equal(run("decisions", { count: 1 }, replay).status, "pass");
+  assert.equal(run("decisions", { count: 2 }, replay).status, "fail");
 });
 
 test("receipts and duplicate_effects", () => {
@@ -299,6 +303,81 @@ test("client_view_matches_result: every stored document exactly once, nothing ex
   assert.match(run("client_view_matches_result", ["web"], entryObs({ ...base, clients: { web: view({}) } })).detail, /does not show #1/u);
   assert.match(run("client_view_matches_result", ["web"], entryObs({ ...base, clients: { web: view({ r1: stored }, [2]) } })).detail, /more than once/u);
   assert.match(run("client_view_matches_result", ["web"], entryObs({ ...base, clients: { web: view({ r1: stored, r9: stored }) } })).detail, /does not hold/u);
+});
+
+// ── AG03: the first layer (UND.yaml / CTX.yaml / SCL.yaml proposed_checks) ──
+
+function layerObs(requests: { message: string; parts?: Partial<import("./lib/observations").HandoffPart>[]; results?: Record<string, unknown>[]; contextMessages?: number; prompts?: string[] }[]): Observation {
+  const base = obs();
+  base.firstLayer = requests.map((request, index) => ({
+    contextMessages: request.contextMessages ?? 0,
+    contextSeq: 10 * index + 1,
+    handoff: request.parts ? { parts: request.parts.map((item, partIndex) => ({ dependsOn: [], objectClues: [], partId: `p${partIndex + 1}`, route: null, sourceQuote: "", status: null, verdict: null, waitReason: null, ...item })), seq: 10 * index + 2 } : null,
+    message: request.message,
+    partResults: (request.results ?? []) as never,
+    receivedSeq: index + 1,
+    requestId: `r${index + 1}`,
+    understandPrompts: (request.prompts ?? []).map((text, promptIndex) => ({ seq: 10 * index + 3 + promptIndex, text })),
+  }));
+  return base;
+}
+
+const THREE = "帮我看看田中上次访谈里最在意什么，再查一下 Acme Cloud 官网现在的标准版价格，另外做一份日本 SaaS 市场的进入调研。";
+
+test("parts_split: the last request's parts count, and every quote is the user's own words", () => {
+  const parts = [{ sourceQuote: "帮我看看田中上次访谈里最在意什么" }, { sourceQuote: "再查一下 Acme Cloud 官网现在的标准版价格" }, { sourceQuote: "另外做一份日本 SaaS 市场的进入调研" }];
+  assert.equal(run("parts_split", { count: 3, verbatim: true }, layerObs([{ message: THREE, parts }])).status, "pass");
+  assert.equal(run("parts_split", { count: 2 }, layerObs([{ message: THREE, parts }])).status, "fail");
+  assert.match(run("parts_split", { count: 3, verbatim: true }, layerObs([{ message: THREE, parts: [...parts.slice(0, 2), { sourceQuote: "做一份市场调研" }] }])).detail, /not in the message/u);
+  assert.equal(run("parts_split", { count: 1 }, layerObs([{ message: THREE }])).status, "fail", "no handoff, no parts");
+});
+
+test("part_plan: verdict, route (one of a list), after and refers of the part holding the quote", () => {
+  const o = layerObs([{ message: THREE, parts: [
+    { objectClues: [{ entity: "contact", recordId: "contact:c17", text: "田中" }], partId: "p1", route: "read", sourceQuote: "帮我看看田中上次访谈里最在意什么", verdict: "accept" },
+    { dependsOn: ["p1"], partId: "p2", route: "web_lookup", sourceQuote: "再查一下 Acme Cloud 官网现在的标准版价格", verdict: "accept" },
+  ] }]);
+  assert.equal(run("part_plan", [{ quote: "田中上次访谈", route: ["read", "probe"], verdict: "accept", refers: { 田中: "C17" } }, { after: "田中上次访谈", quote: "Acme Cloud 官网", route: "web_lookup" }], o).status, "pass");
+  assert.equal(run("part_plan", [{ quote: "Acme Cloud 官网", verdict: "convert" }], o).status, "fail");
+  assert.equal(run("part_plan", [{ quote: "田中上次访谈", after: "Acme Cloud 官网" }], o).status, "fail");
+  assert.equal(run("part_plan", [{ quote: "田中上次访谈", refers: { 田中: null } }], o).status, "fail");
+  assert.equal(run("part_plan", [{ quote: "Acme Cloud 官网", refers: { 它: null } }], o).status, "pass");
+  assert.match(run("part_plan", [{ quote: "日本 SaaS" }], o).detail, /no part/u);
+  // A quote from an earlier request (AE-UND-012): the latest request holding it is used.
+  const twoTurns = layerObs([{ message: "一直找下去", parts: [{ route: "offer_alternative", sourceQuote: "一直找下去", verdict: "convert" }] }, { message: "好", parts: [{ route: "answer", sourceQuote: "好", verdict: "accept" }] }]);
+  assert.equal(run("part_plan", [{ quote: "一直找下去", verdict: "convert" }], twoTurns).status, "pass");
+});
+
+test("parts: the final status of the part holding the quote, from the result document", () => {
+  const o = layerObs([{ message: THREE, parts: [], results: [{ partId: "p3", sourceQuote: "另外做一份日本 SaaS 市场的进入调研", status: "suggested_external" }, { partId: "p1", sourceQuote: "帮我看看田中上次访谈里最在意什么", status: "unfinished" }] }]);
+  assert.equal(run("parts", [{ quote: "日本 SaaS 市场的进入调研", status: "suggested_external" }, { quote: "田中上次访谈", status: "unfinished" }], o).status, "pass");
+  assert.equal(run("parts", [{ quote: "日本 SaaS 市场的进入调研", status: "declined" }], o).status, "fail");
+  assert.equal(run("parts", [{ quote: "东南亚", status: "unfinished" }], o).status, "fail");
+});
+
+test("routes_absent: no part of the last request goes to these routes", () => {
+  const o = layerObs([{ message: "a", parts: [{ route: "propose_write", sourceQuote: "a" }] }, { message: "b", parts: [{ route: "answer", sourceQuote: "b" }] }]);
+  assert.equal(run("routes_absent", ["propose_write", "read"], o).status, "pass");
+  assert.equal(run("routes_absent", ["answer"], o).status, "fail");
+});
+
+test("first_layer_context and context_messages_max: how many earlier messages the first layer got; fragments never sent", () => {
+  const o = layerObs([{ contextMessages: 4, message: "a", parts: [] }, { contextMessages: 10, message: "b", parts: [], prompts: ["Recent messages: … 讲的是报价初稿"] }]);
+  assert.equal(run("first_layer_context", { messages_max: 10 }, o).status, "pass");
+  assert.equal(run("first_layer_context", { messages_max: 9 }, o).status, "fail");
+  assert.equal(run("first_layer_context", { excludes: ["实施费单列"] }, o).status, "pass");
+  assert.equal(run("first_layer_context", { excludes: ["报价初稿"] }, o).status, "fail");
+  assert.equal(run("context_messages_max", 10, o).status, "pass");
+  assert.equal(run("context_messages_max", 5, o).status, "fail", "every request counts");
+  const noPrompt = layerObs([{ message: "b", parts: [] }]);
+  noPrompt.firstLayer![0].contextMessages = null;
+  assert.equal(run("first_layer_context", { messages_max: 10 }, noPrompt).status, "cannot_judge");
+});
+
+test("clarifications on the new entry: parts left waiting for an answer to a question", () => {
+  const o = entryObs({ requests: [{ status: "waiting_user" }] });
+  o.entry!.requests[0].document = { ...o.entry!.requests[0].document, partResults: [{ partId: "p1", status: "awaiting_clarification" }] };
+  assert.equal(run("clarifications", { count: 1 }, o).status, "pass");
 });
 
 test("request_status: the last received request's final status", () => {

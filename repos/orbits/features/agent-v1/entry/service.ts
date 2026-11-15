@@ -16,6 +16,7 @@ import { randomUUID } from "node:crypto";
 
 import type {
   AgentActionPreviewContract,
+  AgentPartResult,
   AgentCancelResultContract,
   AgentResultDocument,
   AgentSendInputContract,
@@ -54,6 +55,10 @@ export interface AgentEntryExecuteResult {
   sourceRefs: readonly string[];
   /** AG02: the card of this round, frozen in the action ledger (never a direct write). */
   actionPreview?: AgentActionPreviewContract;
+  /** AG03: one result per part the first layer found; without it the round is one part, p1. */
+  partResults?: readonly AgentPartResult[];
+  /** AG03: waiting_user when a part waits for the user (an alternative to accept, a question). */
+  status?: "completed" | "waiting_user";
 }
 
 export type AgentEntryExecutor = (input: AgentEntryExecuteInput) => Promise<AgentEntryExecuteResult>;
@@ -325,10 +330,10 @@ async function processRequest(deps: AgentEntryDependencies, actorId: string, rec
     if (result !== "stopped") {
       outcome = {
         answer: { sourceRefs: [...result.sourceRefs], text: result.text },
-        partResults: [result.actionPreview && (result.actionPreview.status === "awaiting_confirmation" || result.actionPreview.status === "deferred")
+        partResults: result.partResults?.length ? [...result.partResults] : [result.actionPreview && (result.actionPreview.status === "awaiting_confirmation" || result.actionPreview.status === "deferred")
           ? { operationId: result.actionPreview.operations[0]?.operationId, partId: "p1", status: "awaiting_confirmation" }
           : { partId: "p1", status: "answered" }],
-        status: "completed",
+        status: result.status ?? "completed",
         ...(result.actionPreview ? { actionPreview: result.actionPreview } : {}),
       };
     }
@@ -357,7 +362,7 @@ async function processRequest(deps: AgentEntryDependencies, actorId: string, rec
     emitTrace({ reason: finished.record?.status === "cancelled" ? "stopped" : "not_owner", requestId: record.requestId, sessionId: record.sessionId, type: "entry.discarded" });
     return;
   }
-  if (outcome.status === "completed" && outcome.answer?.text) {
+  if (outcome.status !== "failed" && outcome.answer?.text) {
     await deps.sessions?.appendAssistant(record.sessionId, finished.record!, outcome.answer.text, finishedAt).catch((error: unknown) => {
       emitTrace({ error: error instanceof Error ? error.message : String(error), requestId: record.requestId, type: "error", where: "entry.appendAssistant" });
     });

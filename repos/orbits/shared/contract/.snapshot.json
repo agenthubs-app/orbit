@@ -265,6 +265,39 @@
         "'waiting_dependency'"
       ]
     },
+    "agent-v1.ts::AgentPartVerdict": {
+      "kind": "enum",
+      "values": [
+        "'accept'",
+        "'convert'",
+        "'decline'"
+      ]
+    },
+    "agent-v1.ts::AgentPartRoute": {
+      "kind": "enum",
+      "values": [
+        "'answer'",
+        "'clarify'",
+        "'explain_limit'",
+        "'offer_alternative'",
+        "'probe'",
+        "'propose_write'",
+        "'read'",
+        "'suggest_external_agent'",
+        "'web_lookup'"
+      ]
+    },
+    "agent-v1.ts::AgentPartWaitReason": {
+      "kind": "enum",
+      "values": [
+        "'awaiting_acceptance'",
+        "'awaiting_external_result'",
+        "'dependency_pending'",
+        "'object_ambiguous'",
+        "'permission_missing'",
+        "'service_unavailable'"
+      ]
+    },
     "agent-v1.ts::AgentPartResult": {
       "kind": "object",
       "members": {
@@ -279,6 +312,31 @@
           "type": "AgentPartStatus"
         },
         "operationId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "sourceQuote": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "verdict": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentPartVerdict | undefined"
+        },
+        "route": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentPartRoute | undefined"
+        },
+        "waitReason": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentPartWaitReason | undefined"
+        },
+        "reason": {
           "optional": true,
           "kind": "text",
           "type": "string"
@@ -20365,7 +20423,7 @@
         "decision": {
           "optional": false,
           "kind": "text",
-          "type": "'dismiss' | 'accept'"
+          "type": "'accept' | 'dismiss'"
         },
         "idempotencyKey": {
           "optional": false,
