@@ -50,6 +50,22 @@ export async function readCard(input: { runtime: AgentRuntimeService; actionId: 
 
 const SETTLING = new Set(["approved", "executing"]);
 
+const RECEIPT_WORDS: Record<"zh" | "ja" | "en", Record<string, string> & { lead: string; join: string }> = {
+  en: { abandoned: "given up", failed: "could not be done (it will not be retried)", join: "; ", lead: "Result: ", needs_review: "outcome unknown, please check it", pending: "not done yet (it will be retried)", skipped: "skipped, because the item it waits for did not succeed", succeeded: "done", user_confirmed: "marked done by you" },
+  ja: { abandoned: "取りやめ", failed: "完了できませんでした（自動では再試行しません）", join: "、", lead: "結果：", needs_review: "結果が不明です。ご確認ください", pending: "まだ完了していません（再試行します）", skipped: "先に行う項目が完了しなかったため、実行していません", succeeded: "完了", user_confirmed: "ご判断で完了扱い" },
+  zh: { abandoned: "已放弃", failed: "没能完成（不会自动重试）", join: "；", lead: "执行结果：", needs_review: "结果不确定，请你核对", pending: "还没完成（会再试）", skipped: "因为它要等的那一项没成功，没有执行", succeeded: "已完成", user_confirmed: "已按你的判断标为完成" },
+};
+
+/** One sentence, item by item, from the card's own receipts (never "all done" when one failed). */
+export function receiptSummary(card: AgentActionPreviewContract, locale: string | undefined): string {
+  const words = RECEIPT_WORDS[locale === "ja" || locale === "en" ? locale : "zh"];
+  const items = card.operations.map((op, index) => {
+    const state = words[op.status] ?? op.status;
+    return locale === "en" ? `item ${index + 1} ${state}` : locale === "ja" ? `${index + 1} 件目は${state}` : `第 ${index + 1} 项${state}`;
+  });
+  return `${words.lead}${items.join(words.join)}${locale === "en" ? "." : "。"}`;
+}
+
 export async function handleCardDecision(input: {
   runtime: AgentRuntimeService;
   actionId: string;
@@ -96,7 +112,9 @@ export async function handleCardDecision(input: {
     }
   }
   const card = await preview(input.runtime, input.actionId, now());
-  const data = { card, decision: decision as AgentCardDecisionResultContract };
+  // AG06 (设计稿 §5.2 "Todo 已修改，Memo 保存失败"): after an execution, code says item by item how it went.
+  const summary = input.processNow && executes && card ? receiptSummary(card, action.locale) : "";
+  const data = { card, decision: (summary ? { ...decision, message: `${decision.message} ${summary}` } : decision) as AgentCardDecisionResultContract };
   if (decision.outcome === "refused") {
     return { body: failureBody("CONFLICT", decision.message, decision.reason ?? "CARD_REFUSED", data), status: 409 };
   }

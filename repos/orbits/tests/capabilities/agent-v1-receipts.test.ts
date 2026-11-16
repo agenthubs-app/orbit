@@ -6,6 +6,8 @@ import type { AgentActionExecutor } from "../../features/agent/runtime/executor-
 import { AgentExecutionPermanentError } from "../../features/agent/runtime/service";
 import { cardOperationStatus } from "../../features/agent/runtime/decision";
 import { cardWriteExecutors } from "../../features/agent-v1/domains/writes";
+import { agentCardPreview } from "../../features/agent/runtime/card-view";
+import { handleCardDecision, receiptSummary } from "../../features/agent/ledger/card-routes";
 import { ACTOR, createCardKit, decide, freeze, type CardKit } from "../services/agent-ledger-card-kit";
 
 /**
@@ -81,6 +83,22 @@ test("independent items: the to-do changes, the memo fails for good — partiall
   await kit.runtime.processOutbox({ actionId: card.actionId });
   assert.equal(kit.executorCalls.filter((call) => call.key === "todo.update").length, 1, "the succeeded item ran once");
   assert.equal((await kit.tasks.get({ actorId: ACTOR, taskId: todo.id }))?.plannedDate, "2026-11-20");
+  const action = (await kit.runtime.getAction(card.actionId))!;
+  const preview = agentCardPreview(action, await kit.runtime.getRun(action.runId), kit.now());
+  assert.equal(receiptSummary(preview, "zh"), "执行结果：第 1 项已完成；第 2 项没能完成（不会自动重试）。", "code says item by item; never 'all done'");
+});
+
+test("the receipt sentence through the decision route: a skipped item says why (zh, ja, en)", async () => {
+  const kit = createCardKit({ wrapExecutor: failing("memo.create", "always", []) });
+  const todo = await kit.todo("给小林发修订报价", "2026-11-18");
+  const card = await freeze(kit, [memoIntent(), { capability: "todo.update", dependsOn: [0], partId: "p2", set: { plannedDate: "2026-11-20" }, targetId: todo.id }]);
+  const result = await handleCardDecision({ actionId: card.actionId, body: { clientDecisionId: "d1", payloadHash: card.payloadHash, revision: 1, transition: "confirm" }, now: kit.now, processNow: true, runtime: kit.runtime, workerId: "test" });
+  const message = String(((result.body.data as Record<string, unknown>).decision as { message: string }).message);
+  assert.match(message, /第 1 项没能完成（不会自动重试）；第 2 项因为它要等的那一项没成功，没有执行。$/u);
+  const action = (await kit.runtime.getAction(card.actionId))!;
+  const preview = agentCardPreview(action, await kit.runtime.getRun(action.runId), kit.now());
+  assert.match(receiptSummary(preview, "ja"), /^結果：1 件目は完了できませんでした/u);
+  assert.match(receiptSummary(preview, "en"), /^Result: item 1 could not be done .*item 2 skipped/u);
 });
 
 test("a passing failure is retried with the same operation key and makes one memo", async () => {
