@@ -118,6 +118,13 @@ test("rows 4 and 5: a write missing one item asks for it; readings that include 
   assert.equal(decideRoute(routePart({ clarity: "missing_one", deliverable: "change", requiredCapabilities: ["todo.update"] }), { asked: 1 }).route, "clarify");
 });
 
+test("AG07 gate (AE-XL-005): 'missing_one' on a write whose object is named in its own words and whose new date is said is not asked; code finds the record (and asks with candidates if several fit)", () => {
+  assert.deepEqual(decideNextStep(step({ capabilities: ["todo.update"], clarity: "missing_one", namedObjectWithDate: true }), { asked: 0 }), { kind: "proceed" });
+  assert.deepEqual(decideNextStep(step({ capabilities: ["todo.update"], clarity: "missing_one", namedObjectWithDate: false }), { asked: 0 }), { kind: "ask_missing" }, "no named object or no date: still asked");
+  assert.equal(decideRoute(routePart({ clarity: "missing_one", deliverable: "change", requiredCapabilities: ["todo.update"] }), { asked: 0, namedObjectWithDate: true }).route, "propose_write");
+  assert.equal(decideRoute(routePart({ clarity: "missing_one", deliverable: "change", requiredCapabilities: ["todo.update"] }), { asked: 0 }).route, "clarify");
+});
+
 const NOW = "2026-11-15T10:00:00.000Z";
 
 test("AG04-1: only a name → one fixed sentence and two or three registered directions about it; no read, no second model call", async () => {

@@ -41,6 +41,11 @@ export interface StepInput {
    * that nothing could resolve (no conversation to read, nothing else named in the message, nothing bound).
    */
   unboundPronoun?: boolean;
+  /**
+   * AG07 gate (AE-XL-005): a write that names its object in its own words ("报价待办") and says the new date ("周五"):
+   * nothing is missing for code to look the record up (several that fit are asked about with candidates there).
+   */
+  namedObjectWithDate?: boolean;
 }
 
 export interface StepContext {
@@ -77,7 +82,7 @@ export function decideNextStep(part: StepInput, context: StepContext): NextStep 
   if (part.unboundPronoun && needsObject && part.clarity !== "none") return asked ? { kind: "still_unclear", missing: "object" } : { kind: "ask_missing" };
   if (part.clarity === "none") return asked ? { kind: "still_unclear", missing: "intent" } : { kind: "not_understood" };
   if (part.clarity === "missing_one") {
-    if (!writes.length) return { kind: "proceed" };
+    if (!writes.length || part.namedObjectWithDate) return { kind: "proceed" };
     return asked ? { kind: "still_unclear", missing: "object" } : { kind: "ask_missing" };
   }
   if (part.clarity === "multiple_readings") {

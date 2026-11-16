@@ -92,6 +92,23 @@ test("stab2 (AE-UIX-002): the same words with no person given by the model still
   assert.equal(result.actionPreview?.operations[0].target?.id, "task:t44", result.text);
 });
 
+test("gate (AE-XL-005): the first layer says 'missing_one' for 把报价待办改到周五; the to-do is named and the day said, so code finds it and freezes the card", async () => {
+  const message = "把报价待办改到周五";
+  const understand = json({ language: "zh", parts: [part({ clarity: "missing_one", deliverable: "change", localId: "p1", objectClues: [{ entity: "todo", text: "报价待办" }], requiredCapabilities: ["todo.update"], sourceQuote: message })], plainChat: false });
+  const propose = json({ operations: [{ dateText: "周五", dependsOn: [], entity: "todo", localId: "w1", partId: "p1", relations: [], selector: { clues: ["报价待办"] }, verb: "update" }] });
+  const model = deepseekStub((call: ModelCall) => (call.node === "understand" ? understand : propose));
+  const records = recordAccessOf(world());
+  const kit = graphKit(model.fetchImplementation, { now: NOW, records });
+  kit.deps.cards = cardsOver(records);
+  const result = await runAgentGraph(kit.deps, kit.input(message, { locale: "zh" }));
+  assert.equal(result.actionPreview?.operations[0].target?.id, "task:t42", result.text);
+  const vague = deepseekStub([json({ language: "zh", parts: [part({ clarity: "missing_one", deliverable: "change", localId: "p1", objectClues: [{ entity: "todo", text: "那条待办" }], requiredCapabilities: ["todo.update"], sourceQuote: "把那条待办改一下" })], plainChat: false })]);
+  const kit2 = graphKit(vague.fetchImplementation, { now: NOW, records });
+  kit2.deps.cards = cardsOver(records);
+  const asked = await runAgentGraph(kit2.deps, kit2.input("把那条待办改一下", { locale: "zh" }));
+  assert.equal(asked.actionPreview, null, "no day said and no own words: still asked");
+});
+
 test("AE-XL-009 unchanged: Chinese words that fit none of the person's Chinese to-dos still do not pick one", async () => {
   const message = "把给小林寄合同那条待办改到周五。";
   const result = await cardFor(message, "zh", { date: "周五", person: "小林", todo: "给小林寄合同那条待办" });

@@ -166,8 +166,14 @@ export function ProgressLine({ language, stage, action }: { language: OrbitLangu
 
 /** The answer text without the part that stands for the card (the card is shown instead). */
 export function answerTextOf(document: AgentResultDocument, showsCard: boolean): string {
-  const text = document.answer?.text ?? "";
+  let text = document.answer?.text ?? "";
+  // Coordinator note: with the basis line shown, the footnote saying the same is not repeated (documents stored
+  // before the server stopped writing it still carry it).
+  if (document.answer?.basis) for (const footnote of NOTES_FOOTNOTES) text = text.split(footnote).join("");
   const line = document.answer?.cardLine;
-  if (!showsCard || !line || !text.includes(line)) return text;
-  return text.replace(line, "").replace(/\n{3,}/gu, "\n\n").trim();
+  if (showsCard && line && text.includes(line)) text = text.replace(line, "");
+  return text.replace(/[ \t]+\n/gu, "\n").replace(/\n{3,}/gu, "\n\n").trim();
 }
+
+/** The server's footnote that the answer came from the notes (features/agent-v1/answer/gap-copy.ts fromNotes). */
+const NOTES_FOOTNOTES = ["（以上出自你的笔记。）", "（メモの内容からです。）", "(From your notes.)"];

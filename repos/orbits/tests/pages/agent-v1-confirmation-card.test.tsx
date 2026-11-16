@@ -115,6 +115,16 @@ test("options under a question are buttons; the card line leaves the text; queue
   assert.equal(textOf(renderToStaticMarkup(<ProgressLine language="en" stage={null} />)), "Putting the answer together… Usually under a minute");
 });
 
+test("coordinator note: with a basis line the notes footnote is not shown again; without one it stays", () => {
+  const basis = { links: [{ id: "note:m31", label: "11月12日的笔记", type: "memo" as const }], text: "按你11月12日记的笔记回答" };
+  const withBasis = { answer: { basis, sourceRefs: ["memo:note:m31"], text: "你们聊了报价初稿。 （以上出自你的笔记。）" } } as unknown as AgentResultDocument;
+  assert.equal(answerTextOf(withBasis, false), "你们聊了报价初稿。");
+  const en = { answer: { basis, sourceRefs: [], text: "You went over the first quote. (From your notes.)" } } as unknown as AgentResultDocument;
+  assert.equal(answerTextOf(en, false), "You went over the first quote.");
+  const noBasis = { answer: { sourceRefs: [], text: "你们聊了报价初稿。 （以上出自你的笔记。）" } } as unknown as AgentResultDocument;
+  assert.equal(answerTextOf(noBasis, false), "你们聊了报价初稿。 （以上出自你的笔记。）");
+});
+
 test("a restored assistant message names its request; the newer of the document's card and the clicked one is shown", () => {
   assert.equal(requestIdOfAssistantMessage("assistant:agreq_0123abcd"), "agreq_0123abcd");
   assert.equal(requestIdOfAssistantMessage("assistant:agreq_0123abcd:selection:1"), "agreq_0123abcd");

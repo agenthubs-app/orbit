@@ -10,12 +10,14 @@
  */
 import { attributeMessage } from "../../clarify/attribution";
 import { recordKindOf } from "../../clarify/default-readings";
+import { resolveSaidDate } from "../../propose/dates";
 import { emitTrace } from "../../observability/trace";
 import { decideRoute, isPronounClue, NOT_YET_ROUTES, settleDependencies, statusForRoute, type RouteInput } from "../../route/decide";
 import type { ContinueKind } from "../../understand/schema";
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
 import { clueWords, needsDirections, objectOf, pageKindOf } from "./clarify";
+import { clueSearchWords } from "./resolve";
 
 export function routeInputOf(part: GraphPart): RouteInput {
   return {
@@ -34,7 +36,7 @@ export function routeInputOf(part: GraphPart): RouteInput {
 }
 
 export function routeNode(scope: NodeScope): GraphNode {
-  const { input, run } = scope;
+  const { deps, input, run } = scope;
   return async (state: AgentGraphState) => {
     const resume = state.touched !== null;
     const understood = run.understood;
@@ -54,6 +56,12 @@ export function routeNode(scope: NodeScope): GraphNode {
     const clueText = (ref: GraphPart["refs"][number]) => clueWords(input.message, ref) ?? "";
     const namedInMessage = (context?.references.length ?? 0) > 0 || state.parts.some((part) => part.refs.some((ref) => ref.recordId || (clueText(ref) && !isPronounClue(clueText(ref)))));
     const unboundPronoun = (part: GraphPart) => nothingToResolveFrom && !namedInMessage && !part.refs.some((ref) => ref.recordId) && part.refs.some((ref) => isPronounClue(clueText(ref)));
+    // AG07 gate (AE-XL-005): the first layer called "把报价待办改到周五" missing one item although the to-do is named in
+    // its own words and the new day is said; code then looks it up instead of asking without candidates.
+    const namedObjectWithDate = (part: GraphPart) => {
+      const named = part.refs.some((ref) => ref.entity !== "contact" && !ref.recordId && Boolean(clueSearchWords(clueText(ref))) && !isPronounClue(clueText(ref)));
+      return named && resolveSaidDate(input.message.slice(part.quote[0], part.quote[1]), state.asOf || deps.now(), state.timeZone || "Asia/Tokyo") !== null;
+    };
     const parts: GraphPart[] = state.parts.map((original) => {
       if (resume && !state.touched!.includes(original.localId)) return original;
       const part: GraphPart = { ...original };
@@ -72,7 +80,7 @@ export function routeNode(scope: NodeScope): GraphNode {
       const accepted = part.continues?.kind === "alternative"
         ? (part.plan.acceptedLeadsTo ? { leadsTo: part.plan.acceptedLeadsTo } : openItem?.kind === "alternative" ? openItem : null)
         : null;
-      const decision = decideRoute(routeInputOf(part), { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind, unboundPronoun: unboundPronoun(part) });
+      const decision = decideRoute(routeInputOf(part), { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind, namedObjectWithDate: namedObjectWithDate(part), unboundPronoun: unboundPronoun(part) });
       if (unboundPronoun(part)) emitTrace({ partId: part.localId, reason: "a pronoun with nothing to resolve it from (§3.10): the object is missing", type: "route.unbound_reference" });
       if (accepted && part.continues) acceptedAlternativeRef = part.continues.ref;
       let status = statusForRoute(decision.route);

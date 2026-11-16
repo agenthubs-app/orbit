@@ -68,3 +68,11 @@ test("the basis line, the options, progress and the answer without its card line
   const document = { answer: { cardLine: "确认卡（修改 1 项）：\n① …", sourceRefs: [], text: "你们聊了报价初稿。\n\n确认卡（修改 1 项）：\n① …" } } as unknown as AgentResultDocument;
   assert.equal(answerTextOf(document, true), "你们聊了报价初稿。");
 });
+
+test("coordinator note: with a basis line the notes footnote is not shown again; without one it stays", () => {
+  const basis = { links: [{ id: "note:m31", label: "11月12日のメモ", type: "memo" as const }], text: "11月12日のメモをもとに回答" };
+  const withBasis = { answer: { basis, sourceRefs: [], text: "見積もりの初稿について話しました。（メモの内容からです。）" } } as unknown as AgentResultDocument;
+  assert.equal(answerTextOf(withBasis, false), "見積もりの初稿について話しました。");
+  const noBasis = { answer: { sourceRefs: [], text: "你们聊了报价初稿。（以上出自你的笔记。）" } } as unknown as AgentResultDocument;
+  assert.equal(answerTextOf(noBasis, false), "你们聊了报价初稿。（以上出自你的笔记。）");
+});
