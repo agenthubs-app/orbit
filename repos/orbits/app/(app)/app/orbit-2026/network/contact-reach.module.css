@@ -1,0 +1,27 @@
+/* contact-reach R41 ②③ 連絡する: one dialog, two paths (message / e-mail draft). */
+.head { display: flex; align-items: center; gap: var(--space-8); padding-bottom: var(--space-12); }
+.head h2 { margin: 0; font-size: var(--fs-body); font-weight: var(--fw-heavy); color: var(--ink); }
+.head .grow { flex: 1; }
+.tag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: var(--r-pill); font-size: var(--fs-caption); font-weight: var(--fw-bold); white-space: nowrap; }
+.tagOrbit { background: var(--mac-lav); color: var(--mac-lav-text); }
+.tagMail { background: var(--mac-apricot); color: var(--mac-apricot-text); }
+.body { display: grid; gap: var(--space-12); }
+.field { display: grid; gap: var(--space-6); }
+.lbl { font-size: var(--fs-label); color: var(--ink-3); font-weight: var(--fw-medium); }
+.to { font-size: var(--fs-body-sm); color: var(--ink); }
+.to em { font-style: normal; color: var(--ink-3-text); }
+.textarea { box-sizing: border-box; width: 100%; min-height: 180px; max-height: 45dvh; resize: vertical; border: 0; outline: 0; border-radius: var(--r-md); background: var(--surface-2); color: var(--ink); font: inherit; font-size: var(--fs-body-sm); line-height: 1.7; padding: var(--space-10) var(--space-12); }
+.textarea:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+.textareaBone { min-height: 180px; border-radius: var(--r-md); background: var(--surface-2); display: grid; align-content: start; gap: var(--space-8); padding: var(--space-12); }
+.attach { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.chipBtn:global(.btn) { display: inline-flex; align-items: center; gap: var(--space-6); height: 32px; min-height: 0; padding: 0 var(--space-12); border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink); font-size: var(--fs-meta); font-weight: var(--fw-bold); cursor: pointer; }
+.chipBtn:global(.btn):disabled { opacity: 0.5; cursor: default; }
+.prop { display: grid; gap: var(--space-6); padding: var(--space-12) var(--space-14); border-radius: var(--r-md); background: var(--surface-2); }
+.propHead { display: flex; align-items: center; gap: var(--space-8); font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); }
+.propHead .grow { flex: 1; min-width: 0; }
+.slot { display: flex; align-items: center; gap: var(--space-10); font-size: var(--fs-body-sm); font-family: var(--font-num); min-height: 28px; }
+.n { width: 20px; height: 20px; display: grid; place-items: center; flex: none; border-radius: var(--r-pill); background: var(--ink); color: var(--bg); font-size: var(--fs-caption); font-weight: var(--fw-heavy); }
+.alert { margin: 0; font-size: var(--fs-label); color: var(--coral-text); }
+.note { margin: 0; font-size: var(--fs-label); color: var(--ink-3-text); }
+.chipBtn.link:global(.btn) { text-decoration: none; height: 40px; padding: 0 var(--space-16); background: var(--ink); color: var(--bg); font-size: var(--fs-body-sm); }
+.link[aria-disabled="true"] { opacity: 0.45; pointer-events: none; }

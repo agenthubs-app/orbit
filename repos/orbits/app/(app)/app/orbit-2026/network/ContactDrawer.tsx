@@ -2,7 +2,8 @@
 
 // R11a 連絡先詳細（Web 抽屉; web.html #7, b6 #41 深, b8 #13 1024 / #14 390 全屏, b12 #500–#507 招待 / 確認カード / 以前の値 / 解除）。
 // 可复用组件（R10 首页会引用）：props 只收 contactId / onClose / 可选初始数据。
-// 头部 · 人物タイプの確認カード（fit candidate）· なぜこの人か（value-lines）+ 下書きを作成（抽屉内模板草稿）/ 予定を追加（Task 日历新建、预先关联此人，与 App 相同）·
+// 头部（📅 予定を追加：Task 日历新建、预先关联此人，与 App 相同）· 人物タイプの確認カード（fit candidate）· なぜこの人か（value-lines）+ 連絡する（contact-reach R41：
+// 站内信或邮件草稿，按 eligibility 判定，ContactReachModal）·
 // 招待でつながった人：本人入力的项目、同期停止（pausedFields）、あなたが共有 · 変更、⋯ › つながりを解除（Web 版 sheet，代定 6）·
 // 力になれること / 求めていること（以前の値 ›）· やりとり。⋯：編集 / 共有する項目 / つながりを解除 / 削除。
 // 联网增强（value-lines、fit、招待连接）失败或「尚未実装」时整块隐藏（G18）。
@@ -15,12 +16,13 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import { scheduleWithContactHref, stashScheduleContact } from "../calendar/schedule-contact-handoff";
 import { networkCopy } from "../copy/network";
 import { pickCopy } from "../copy/types";
-import { Checkbox, ConfirmDialog, ContextMenu, Drawer, Icon, Modal, Toggle, fillCopy, useToast } from "../ui";
+import { Bone, Checkbox, ConfirmDialog, ContextMenu, Drawer, Icon, Modal, Toggle, fillCopy, useToast } from "../ui";
 import { avatarTone, initials } from "../ui";
 import { ContactEditDrawer } from "./ContactEditDrawer";
 import { ContactLogModal, warmMyProfile } from "./ContactLogModal";
+import { ContactReachModal, reachPathOf } from "./ContactReachModal";
 import { monthDayOf, timelineWithSystemEntries, timelineChannelOf, timelineDay, timelineOriginOf, type TimelineNote } from "./contact-log-model";
-import { networkApi } from "./network-api";
+import { networkApi, type ReachEligibility } from "./network-api";
 import { tokyoMonthDay, regionLabel, type NetworkCityKey } from "./network-model";
 import styles from "./network.module.css";
 
@@ -134,9 +136,10 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   const [logOpen, setLogOpen] = useState(false);
   const [openHistory, setOpenHistory] = useState<string | null>(null);
   const [updateDismissed, setUpdateDismissed] = useState(false);
-  // 「起草」：抽屉内出模板草稿（W60-3 同一接口；不保存、不发送、0 次模型调用）。按联系人记，换人即清。
-  const [draft, setDraft] = useState<{ contactId: string; subject: string; body: string } | null>(null);
-  const [drafting, setDrafting] = useState(false);
+  // 連絡する（R41）：which way it goes. undefined = still reading (button and path line are bones, never a label that
+  // changes); null = could not be read → e-mail draft (DESIGN D7: a failed read never blocks).
+  const [reach, setReach] = useState<{ contactId: string; value: ReachEligibility | null } | null>(null);
+  const [reachOpen, setReachOpen] = useState(false);
   const menuAnchor = useRef<HTMLButtonElement>(null);
 
   const load = useCallback(async (id: string) => {
@@ -157,6 +160,13 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
     void networkApi.fit(contactId).then((result) => { if (result.ok && Array.isArray(result.data?.fits)) setFit(result.data); });
     if (inviteLinked !== false) void networkApi.connection(contactId).then((result) => { if (result.ok) setConnection(result.data); });
   }, [contactId, initial, language, load, inviteLinked]);
+  useEffect(() => {
+    if (!contactId) return;
+    let alive = true;
+    setReachOpen(false);
+    void networkApi.eligibility(contactId).then((result) => { if (alive) setReach({ contactId, value: result.ok ? result.data : null }); });
+    return () => { alive = false; };
+  }, [contactId]);
 
   const contact = useMemo(() => drawerContactFrom(payload), [payload]);
   const syncMoment = process.env.NODE_ENV !== "production" && contactId === "design-person-032" && designMoment === "sync";
@@ -187,20 +197,14 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   const stagedRole = syncMoment ? t("detailSyncSampleRole") : contact?.role ?? "";
   const stagedOffering = syncMoment ? [...(contact?.offering ?? []), t("detailSyncSampleOffering")] : contact?.offering ?? [];
   const nextStep = contact?.nextAction.trim() ?? "";
-  const shownDraft = draft?.contactId === contactId ? draft : null;
-  const writeDraft = async () => {
-    if (drafting || !contactId) return;
-    setDrafting(true);
-    const result = await networkApi.reconnectDraft(contactId, language);
-    setDrafting(false);
-    if (result.ok) setDraft({ contactId, ...result.data.draft });
-    else toast.error(t("detailDraftFailed"));
-  };
-  const copyDraft = async () => {
-    if (!shownDraft) return;
-    try { await navigator.clipboard.writeText(`${shownDraft.subject}\n\n${shownDraft.body}`); toast.success(t("detailDraftCopied")); }
-    catch { toast.error(t("detailDraftFailed")); }
-  };
+  const eligibility = reach?.contactId === contactId ? reach.value : undefined;
+  const reachRow = (
+    <div className={styles.row} style={{ marginTop: 12, gap: 8, flexWrap: "wrap" }} data-network-reach={eligibility === undefined ? "loading" : reachPathOf(eligibility)}>
+      <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={() => setReachOpen(true)} disabled={eligibility === undefined} aria-busy={eligibility === undefined} data-network-reach-open=""><Icon name="mail" size={16} />{t("reachButton")}</button>
+      {eligibility === undefined ? <Bone width={150} height={13} /> : <span className={styles.lbl}>{t(reachPathOf(eligibility) === "orbit" ? "reachPathOrbit" : "reachPathEmail")}</span>}
+    </div>
+  );
+  const whyShown = !self && (valueLine === undefined || Boolean(valueLine?.relation) || Boolean(nextStep) || Boolean(goalLabel));
   const logButton = <button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => setLogOpen(true)} data-contact-log-open="">{t("logAdd")}</button>;
 
   return (
@@ -210,6 +214,7 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
           <div className={styles.drawerTop}>
             <button type="button" className={`btn ${styles.rbtn}`} onClick={onClose} aria-label={t("drawerClose")}><Icon name="x" size={20} /></button>
             <div className={styles.row}>
+              {contact ? <a className={`btn ${styles.rbtn}`} href={scheduleWithContactHref(contactId)} onClick={() => stashScheduleContact({ id: contactId, name: contact.displayName })} aria-label={t("detailSchedule")} data-network-schedule=""><Icon name="calendar" size={20} /></a> : null}
               <a className={`btn ${styles.rbtn}`} href={`/app/contacts/${encodeURIComponent(contactId)}`} aria-label={t("drawerOpenPage")}><Icon name="out" size={20} /></a>
               <button ref={menuAnchor} type="button" className={`btn ${styles.rbtn}`} onClick={() => setMenuOpen(true)} aria-label={t("detailMore")}><Icon name="more" size={20} /></button>
             </div>
@@ -246,7 +251,7 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
                 </div>
               ) : null}
 
-              {!self && (valueLine === undefined || valueLine?.relation || nextStep || goalLabel) ? (
+              {whyShown ? (
                 <div className={styles.card} data-network-why="">
                   <div className={styles.row}><span className={`${styles.emo} ${styles.emoSm} ${styles.t_pink}`}>🎯</span><b className={styles.grow}>{t("detailWhyTitle", { name: contact.displayName })}</b>
                     {valueLine?.evidence?.length ? <button type="button" className={styles.why} onClick={() => setWhyOpen((value) => !value)} aria-expanded={whyOpen}>?</button> : null}</div>
@@ -254,20 +259,9 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
                     : valueLine?.relation ? <div style={{ marginTop: 8 }}>{valueLine.relation}</div> : nextStep ? <div style={{ marginTop: 8 }}>{nextStep}</div> : null}
                   {whyOpen && valueLine?.evidence?.length ? <div className={styles.whyBody} style={{ marginTop: 8 }}>{t("detailWhyBasis", { basis: valueLine.evidence.map((label) => evidenceLabel(label, t)).join(" · ") })}</div> : null}
                   {goalLabel ? <div className={styles.chips}><span className={`${styles.chip} ${styles.chipLav}`}>{t("detailPlanChip", { label: goalLabel })}</span></div> : null}
-                  <div className={styles.row} style={{ marginTop: 12, gap: 8, flexWrap: "wrap" }}>
-                    <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={() => void writeDraft()} disabled={drafting} aria-busy={drafting} data-network-draft=""><Icon name="mail" size={16} />{t(drafting ? "detailDrafting" : "detailDraft")}</button>
-                    <a className={`btn ${styles.btn}`} href={scheduleWithContactHref(contactId)} onClick={() => stashScheduleContact({ id: contactId, name: contact.displayName })} data-network-schedule=""><Icon name="calendar" size={16} />{t("detailSchedule")}</a>
-                    <span className={styles.lbl} style={{ marginLeft: "auto" }}>{t("detailNoSend")}</span>
-                  </div>
-                  {shownDraft ? (
-                    <div className={styles.draftBox} data-network-draft-result="">
-                      <input className={styles.draftSubject} aria-label={t("detailDraftSubject")} value={shownDraft.subject} onChange={(event) => setDraft({ ...shownDraft, subject: event.target.value })} />
-                      <textarea className={styles.draftBody} aria-label={t("detailDraftBody")} rows={8} value={shownDraft.body} onChange={(event) => setDraft({ ...shownDraft, body: event.target.value })} />
-                      <div className={styles.row}><button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => void copyDraft()}><Icon name="copy" size={15} />{t("detailDraftCopy")}</button></div>
-                    </div>
-                  ) : null}
+                  {reachRow}
                 </div>
-              ) : null}
+              ) : <div className={styles.card} data-network-reach-card="">{reachRow}</div>}
 
               {selfUpdate.length ? (
                 <div className={`${styles.card} ${styles.syncCard}`} data-network-self-update="">
@@ -354,6 +348,7 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
       {contact && connection ? <InviteUnlinkModal open={unlinkOpen} name={contact.displayName} contactId={contactId} onClose={() => setUnlinkOpen(false)}
         onUnlinked={() => { setUnlinkOpen(false); setConnection(null); onChanged?.({ kind: "unlinked", contactId, name: contact.displayName }); }} /> : null}
       {contact && connection ? <InviteShareModal open={shareOpen} name={contact.displayName} connection={connection} onClose={() => setShareOpen(false)} onSaved={(next) => { setShareOpen(false); setConnection(next); }} /> : null}
+      {contact ? <ContactReachModal open={reachOpen} contactId={contactId} name={contact.displayName} email={contact.primaryEmail} eligibility={eligibility ?? null} onClose={() => setReachOpen(false)} /> : null}
       {contact ? <ContactLogModal open={logOpen} t={t} onClose={() => setLogOpen(false)}
         contact={{ id: contactId, displayName: contact.displayName, offering: contact.offering, seeking: contact.seeking,
           industry: [contact.primaryIndustryLabel, contact.secondaryIndustryLabel].filter(Boolean).join(" · ") || contact.profileIndustry || "" }}

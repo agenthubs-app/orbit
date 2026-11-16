@@ -1,0 +1,13 @@
+/* contact-reach R41 ②⑥ 日程の提案カード (kit .prop): numbered candidate rows, 「これにする」 per row. */
+.card { display: grid; gap: var(--space-6); padding: var(--space-12) var(--space-14); border-radius: var(--r-md); background: var(--surface-2); max-width: 100%; }
+.card.dim { opacity: 0.6; }
+.head { display: flex; align-items: center; gap: var(--space-8); font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); color: var(--ink); }
+.head .grow { flex: 1; min-width: 0; }
+.tools { display: inline-flex; gap: var(--space-4); }
+.slot { display: flex; align-items: center; gap: var(--space-10); min-height: 32px; font-size: var(--fs-body-sm); font-family: var(--font-num); color: var(--ink); }
+.slot time { flex: 1; min-width: 0; }
+.n { width: 20px; height: 20px; display: grid; place-items: center; flex: none; border-radius: var(--r-pill); background: var(--ink); color: var(--bg); font-size: var(--fs-caption); font-weight: var(--fw-heavy); }
+.line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); font-size: var(--fs-body-sm); color: var(--ink); }
+.note { margin: 0; font-size: var(--fs-label); color: var(--ink-3-text); }
+.alert { margin: 0; font-size: var(--fs-label); color: var(--coral-text); }
+.foot { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-4); }

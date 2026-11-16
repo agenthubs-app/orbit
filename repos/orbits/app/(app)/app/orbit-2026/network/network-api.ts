@@ -16,6 +16,7 @@ import type { ContactGoalRelatedIdsDTO } from "../../../../../shared/contract/co
 import type { InviteConnectionView, InviteSharedFieldKey, InviteUnlinkResult } from "../../../../../shared/contract/invite-codes";
 import type { PlanContactFit } from "../../../../../shared/contract/plan-v2";
 import type { ContactSyncPayload } from "../../../../../shared/contract/contact-local-directory";
+import type { RelationshipEligibilityDTO, RelationshipMessageDTO, RelationshipMessageSendRequestDTO } from "../../../../../shared/contract/relationship-communication";
 import type { ContactLogEventOption } from "./contact-log-model";
 
 export type NetworkApiFailure = "unavailable" | "not_found" | "invalid" | "network" | "not_implemented";
@@ -40,6 +41,49 @@ const draftSchema = {
     return typeof draft?.subject === "string" && typeof draft.body === "string" ? { success: true as const, data: { draft: { subject: draft.subject, body: draft.body } } } : { success: false as const };
   },
 } as unknown as ZodType<{ draft: { subject: string; body: string } }>;
+
+/** contact-reach R41: the eligibility fields 連絡する reads (R39 交接); unknown values read as "not allowed". */
+export interface ReachEligibility {
+  canSend: boolean; canStart: boolean; canProposeMeeting: boolean; activeAppointmentId: string | null;
+  conversationId: string | null; qualificationVersion: string | null;
+}
+const eligibilitySchema = {
+  safeParse: (value: unknown) => {
+    const raw = value as Partial<RelationshipEligibilityDTO> | null;
+    if (!raw || typeof raw !== "object" || typeof raw.contactId !== "string") return { success: false as const };
+    const text = (item: unknown) => (typeof item === "string" && item ? item : null);
+    return { success: true as const, data: {
+      canSend: raw.canSend === true, canStart: raw.canStart === true, canProposeMeeting: raw.canProposeMeeting === true,
+      activeAppointmentId: raw.canProposeMeeting === true ? text(raw.activeAppointmentId) : null,
+      conversationId: text(raw.conversationId), qualificationVersion: text(raw.qualificationVersion),
+    } satisfies ReachEligibility };
+  },
+} as unknown as ZodType<ReachEligibility>;
+
+/** Why a message was not sent (R39 error codes). `active` carries the ongoing meeting when the server named it. */
+export type ReachSendFailure =
+  | { reason: "active"; appointmentId: string | null }
+  | { reason: "meeting_unavailable" | "stale" | "invalid" | "reused" | "unavailable" | "network" };
+export type ReachSendResult = { ok: true; message: RelationshipMessageDTO } | ({ ok: false } & ReachSendFailure);
+
+async function sendReachMessage(conversationId: string, request: Omit<RelationshipMessageSendRequestDTO, "requestId">, idempotencyKey: string): Promise<ReachSendResult> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/relationship-communication/conversations/${encodeURIComponent(conversationId)}/messages`, {
+      method: "POST", cache: "no-store", credentials: "same-origin",
+      headers: { "content-type": "application/json", "idempotency-key": idempotencyKey }, body: JSON.stringify(request),
+    });
+  } catch { return { ok: false, reason: "network" }; }
+  const body = (await response.json().catch(() => null)) as { success?: boolean; data?: { message?: RelationshipMessageDTO }; error?: { context?: { reason?: unknown; appointmentId?: unknown } } } | null;
+  if (response.ok && body?.success === true && body.data?.message && typeof body.data.message.messageId === "string") return { ok: true, message: body.data.message };
+  const reason = body?.error?.context?.reason;
+  if (reason === "MEETING_ALREADY_ACTIVE") return { ok: false, reason: "active", appointmentId: typeof body?.error?.context?.appointmentId === "string" ? body.error.context.appointmentId : null };
+  if (reason === "MEETING_NOT_AVAILABLE") return { ok: false, reason: "meeting_unavailable" };
+  if (reason === "REQUEST_REUSED") return { ok: false, reason: "reused" };
+  if (reason === "STALE" || reason === "REVOKED" || reason === "NOT_AVAILABLE" || response.status === 404 || response.status === 403) return { ok: false, reason: "stale" };
+  if (response.status === 400) return { ok: false, reason: "invalid" };
+  return { ok: false, reason: "unavailable" };
+}
 
 const anything = { safeParse: (value: unknown) => ({ success: true as const, data: value }) } as unknown as ZodType<unknown>;
 
@@ -117,6 +161,14 @@ export const networkApi = {
   /** 「起草」：模板草稿（不保存、不发送、0 次模型调用）。 */
   reconnectDraft: (contactId: string, language: string) =>
     designId(contactId) ? Promise.resolve(designMissing()) : call<{ draft: { subject: string; body: string } }>(`/api/contacts/${id(contactId)}/reconnect-draft`, { method: "POST", body: JSON.stringify({ language }) }, draftSchema),
+  /** contact-reach R41: which way 連絡する goes (canSend / canStart → message, otherwise e-mail draft). */
+  eligibility: (contactId: string) =>
+    designId(contactId) ? Promise.resolve(designMissing()) : call<ReachEligibility>(`/api/relationship-communication/eligibility?${new URLSearchParams({ contactId })}`, undefined, eligibilitySchema),
+  /** Opens (or returns) the conversation when eligibility only said canStart. */
+  startConversation: (contactId: string) =>
+    call<ReachEligibility>("/api/relationship-communication/conversations/start", { method: "POST", body: JSON.stringify({ contactId }) }, eligibilitySchema),
+  /** One request: the message, with the proposal when times were inserted (R39 atomic command). */
+  sendMessage: sendReachMessage,
   /** 「记一笔交流」：近期报名的活动（选「活动上遇到」时读一次；浏览器按日期筛当天）。 */
   memoEventOptions: () => call<{ options: ContactLogEventOption[] }>("/api/contacts/memo-event-options", undefined, memoEventOptionsSchema),
   updateDetail: (contactId: string, patch: Record<string, unknown>) => call(`/api/contacts/${id(contactId)}`, { method: "PATCH", body: JSON.stringify(patch) }, anything),
