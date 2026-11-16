@@ -47,6 +47,8 @@ type AgentMessage =
       runId?: string;
       taskInteraction?: AgentTaskInteractionView;
       text: string;
+      /** agent-design AG07: a protocol-3 turn; what it shows comes from this request's result document. */
+      v1RequestId?: string;
     };
 
 export function agentRetryRequestForAssistant(

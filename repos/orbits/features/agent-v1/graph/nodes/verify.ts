@@ -49,6 +49,11 @@ export function verifyNode({ deps, input, run }: NodeScope): GraphNode {
     run.sourceRefs = [...new Set(ordered.flatMap((part) => part.cites ?? []))];
     // AG07: the basis line and one link per cited record that was read in this request.
     run.basis = basisOf(run.sourceRefs, run.readSources, state.language);
+    // AG07 (coordinator note): the basis line already says the answer rests on the user's notes; code's footnote
+    // （以上出自你的笔记。） is not said a second time. Without a basis line it stays.
+    if (run.basis) {
+      for (const [partId, lines] of run.gapLines) run.gapLines.set(partId, lines.filter((line) => line !== words.fromNotes()));
+    }
     emitTrace({ basis: run.basis ? { links: run.basis.links.length, text: run.basis.text } : null, sourceRefs: run.sourceRefs, type: "verify.done" });
     return { parts };
   };

@@ -86,6 +86,22 @@ test("the basis line and links come from the cited records, in the reply languag
   assert.deepEqual(result.basis, { links: [{ contactId: "contact:c17", id: "note:m31", label: "11月12日的笔记", type: "memo" }], text: "按你11月12日记的笔记回答" });
 });
 
+test("coordinator note: with a basis line the code-written footnote （以上出自你的笔记。） is not said again", async () => {
+  const quote = "上次和小林聊了什么？";
+  const understand = json({ language: "zh", parts: [part({ goal: "last time", localId: "p1", objectClues: [{ entity: "contact", text: "小林" }], requiredCapabilities: ["view.recentInteraction"], sourceQuote: quote })], plainChat: false });
+  const cite = (call: { user: string }) => json({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: /(s\d+) — memo[^\n]*\n\s+1\. 和小林聊了报价初稿/u.exec(call.user)![1] }], partId: "p1", text: "你们聊了报价初稿。" }] });
+  const cited = deepseekStub([understand, cite]);
+  const kit = graphKit(cited.fetchImplementation, { records: recordAccessOf(smallWorld()) });
+  const result = await runAgentGraph(kit.deps, kit.input(quote, { actorId: "user:a" }));
+  assert.ok(result.basis, "the basis line is there");
+  assert.doesNotMatch(result.text, /以上出自你的笔记/u);
+  // No citation verified → no basis line → the footnote is not dropped by this rule (nothing else says where it came from).
+  const none = deepseekStub([understand, json({ segments: [{ cites: [], partId: "p1", text: "你们聊了报价初稿。" }] }), json({ segments: [{ cites: [], partId: "p1", text: "你们聊了报价初稿。" }] })]);
+  const kit2 = graphKit(none.fetchImplementation, { records: recordAccessOf(smallWorld()) });
+  const without = await runAgentGraph(kit2.deps, kit2.input(quote, { actorId: "user:a" }));
+  assert.equal(without.basis, null);
+});
+
 test("basisOf: one record of each kind, several records, three languages; nothing cited, no basis", () => {
   const sources = new Map([
     ["memo:note:m31", { contactId: "contact:c17", day: "2026-11-12", id: "note:m31", kind: "memo" as const }],

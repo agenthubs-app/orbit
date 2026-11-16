@@ -39,7 +39,9 @@ test("上次和小林聊了什么: no structured interaction, so the latest note
   assert.equal(model.calls.length, 2, "understand and answer only: the read is compiled by code");
   assert.deepEqual(result.sourceRefs, ["memo:note:m31"]);
   assert.match(result.text, /实施费单列/u);
-  assert.match(result.text, /出自你的笔记/u);
+  // AG07 (coordinator note): the basis line says it comes from the notes, so the footnote is not repeated in the text.
+  assert.equal(result.basis?.text, "按你11月12日记的笔记回答");
+  assert.doesNotMatch(result.text, /出自你的笔记/u);
   assert.deepEqual(result.partResults.map((item) => item.status), ["answered"]);
   assert.equal(records.source.reads.some((id) => id === "note:mb1" || id === "contact:cb1"), false);
 });
