@@ -46,7 +46,8 @@ import {
   subscribeMessageStateInvalidation,
 } from "../../api/message-state";
 import { DataCard } from "../../components/DataCard";
-import { decodeRelationshipReplyDraft } from "../../api/contact-communication";
+import { buildRelationshipMessageDeliveryRequest, decodeRelationshipReplyDraft, relationshipDeliveryReceiptMatches } from "../../api/contact-communication";
+import { AppointmentProposalCard } from "./AppointmentProposalCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -632,15 +633,16 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
 
 export function RelationshipInboxThreadScreen() {
   const locale = useOrbitLocale();
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[]; appointmentId?: string | string[] }>();
   const conversationId = firstParam(params.id);
+  const appointmentId = firstParam(params.appointmentId);
   const { actorId, ready, scopeKey } = useInboxIdentity(conversationId);
   if (!ready) return <InboxLayout title={locale.t("inbox.messageTitle")}><LoadingState /></InboxLayout>;
   if (!conversationId) return <InboxLayout title={locale.t("inbox.messageTitle")}><ErrorState message={locale.t("inbox.missingConversation")} title={locale.t("inbox.conversationUnavailable")} /></InboxLayout>;
-  return <ScopedRelationshipInboxThreadScreen key={scopeKey} actorId={actorId} conversationId={conversationId} scopeKey={scopeKey} />;
+  return <ScopedRelationshipInboxThreadScreen key={scopeKey} actorId={actorId} conversationId={conversationId} scopeKey={scopeKey} appointmentId={appointmentId} />;
 }
 
-function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey }: { actorId: string; conversationId: string; scopeKey: string }) {
+function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey, appointmentId = "" }: { actorId: string; conversationId: string; scopeKey: string; appointmentId?: string }) {
   const locale = useOrbitLocale();
   const router = useRouter();
   const { colors } = useOrbitTheme();
@@ -785,6 +787,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
           offline={offline}
           outbox={detail && fromDevice ? outbox : undefined}
           queued={historyCursor ? [] : queuedHere}
+          focusAppointmentId={appointmentId}
         />
         </View>
       ) : null}
@@ -1121,6 +1124,7 @@ function ThreadDetail({
   offline = false,
   outbox,
   queued = [],
+  focusAppointmentId = "",
 }: {
   clientGet: ClientGet;
   clientPost: ClientPost;
@@ -1129,6 +1133,8 @@ function ThreadDetail({
   isCurrent: () => boolean;
   detail: RelationshipThreadDetailView;
   previewOnly?: boolean;
+  /** contact-reach R42: the meeting a notification pointed at (its card is outlined; drawn on top when no loaded message carries it). */
+  focusAppointmentId?: string;
   delivery?: { actorId: string; qualificationVersion: string } | undefined;
   /** Sprint 0119: the device copy is shown as of its last sync; saving a draft needs the network. */
   offline?: boolean;
@@ -1143,8 +1149,10 @@ function ThreadDetail({
   const visibleMessages = showEmptyRecords
     ? detail.messages
     : detail.messages.filter(message => message.body !== "暂无消息正文");
+  const pinnedAppointment = delivery && focusAppointmentId && !detail.messages.some(message => message.appointmentId === focusAppointmentId) ? focusAppointmentId : "";
   return (
     <View style={styles.readingPane}>
+      {pinnedAppointment ? <AppointmentProposalCard appointmentId={pinnedAppointment} peerName={detail.participantName} offline={offline} highlighted /> : null}
       {/* QA-C3: a real conversation already names the person in the header; the heading and "Recipient:" line repeated it. */}
       {delivery ? null : <Text accessibilityRole="header" style={styles.readingSubject}>{detail.subject}</Text>}
       {!previewOnly && !delivery ? <Text style={styles.bodyText}>{locale.t("inbox.contactNamed", { name: detail.participantName })}</Text> : null}
@@ -1173,6 +1181,8 @@ function ThreadDetail({
               <Text selectable style={[styles.bubbleText, message.fromMe ? styles.bubbleTextMine : null]}>{message.body}</Text>
             </View>
             <Text style={styles.bubbleTime}>{message.time}</Text>
+            {/* contact-reach R42 ⑥: the meeting sent with this message — pick a time here. */}
+            {message.appointmentId ? <View style={styles.bubbleCard}><AppointmentProposalCard appointmentId={message.appointmentId} peerName={detail.participantName} offline={offline} highlighted={message.appointmentId === focusAppointmentId} /></View> : null}
           </View>
         ) : (
           <View
@@ -1194,7 +1204,8 @@ function ThreadDetail({
         <Text style={styles.safetyText}>{locale.t("inbox.previewOnly")}</Text>
       ) : (
         <>
-          <ReplyComposer clientGet={clientGet} clientPut={clientPut} contactId={contactId ?? ""} isCurrent={isCurrent} detail={detail} delivery={delivery} offline={offline} />
+          <ReplyComposer clientGet={clientGet} clientPost={clientPost} clientPut={clientPut} contactId={contactId ?? ""} isCurrent={isCurrent} detail={detail} delivery={delivery} offline={offline}
+            queueReply={delivery && outbox?.enabled && (offline || queued.length > 0) ? outbox : undefined} />
         </>
       )}
     </View>
@@ -1207,16 +1218,21 @@ function ReplyComposer({
   contactId,
   isCurrent,
   detail,
+  clientPost,
   delivery,
   offline = false,
+  queueReply,
 }: {
   clientGet: ClientGet;
   clientPut?: ClientPut | undefined;
   contactId: string;
   isCurrent: () => boolean;
   detail: RelationshipThreadDetailView;
+  clientPost: ClientPost;
   delivery?: { actorId: string; qualificationVersion: string } | undefined;
   offline?: boolean;
+  /** Sprint 0135: set while the reply must go through the device queue (offline, or behind queued messages). */
+  queueReply?: RelationshipMessageOutbox | undefined;
 }) {
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
@@ -1227,6 +1243,9 @@ function ReplyComposer({
   const draftEdited = useRef(false);
   const [rewriteError, setRewriteError] = useState<string | null>(null);
   const [staged, setStaged] = useState("");
+  // contact-reach U1 (2026-11-16): messages to an Orbit contact are really sent again (the 10-27 "drafts only" rule is gone).
+  const [sending, setSending] = useState(false);
+  const [sendFailed, setSendFailed] = useState(false);
   const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   // "Saved" belongs to the exact text of one save request (Sprint 0122, Codex
   // 104-A): edits while it is in flight keep the composer unsaved, and a receipt
@@ -1236,12 +1255,50 @@ function ReplyComposer({
   const draftSaveRequest = useRef<object | null>(null);
   const currentBody = useRef(body);
   currentBody.current = body;
+  const attempt = useRef<{ body: string; requestId: string; qualificationVersion: string } | null>(null);
+  const sendRequest = useRef<object | null>(null);
+  // Sprint 0135: the server time of the draft this composer knows; an offline send retires only that draft,
+  // never one saved after the message was written.
+  const knownDraftUpdatedAt = useRef<string | null>(null);
+  useEffect(() => { sendRequest.current = null; setSending(false); }, [isCurrent]);
   useEffect(() => {
     draftSaveRequest.current = null;
     setDraftSaveInFlight(false);
     setDraftStatus(status => status === "saving" ? "idle" : status);
   }, [isCurrent]);
   useEffect(() => { setRewriteError(null); }, [isCurrent]);
+
+  async function queueOfflineReply() {
+    if (!delivery || !queueReply || !isCurrent() || sendRequest.current || attempt.current || !body.trim()) return;
+    const request = {}; sendRequest.current = request; setSending(true); setSendFailed(false);
+    try {
+      await queueReply.enqueue({ conversationId: detail.conversationId, body: body.trim(), qualificationVersion: delivery.qualificationVersion, retireDraftThrough: knownDraftUpdatedAt.current });
+      if (!isCurrent() || sendRequest.current !== request) return;
+      draftEdited.current = true; setBody(""); setDraftStatus("idle");
+    } catch { if (isCurrent() && sendRequest.current === request) setSendFailed(true); }
+    finally { if (sendRequest.current === request) { sendRequest.current = null; setSending(false); } }
+  }
+
+  async function sendReply() {
+    if (queueReply && !attempt.current) { await queueOfflineReply(); return; }
+    if (!delivery || offline || !isCurrent() || sendRequest.current || (!body.trim() && !attempt.current)) return;
+    // The same text retried keeps its request id, so the server answers with the first delivery instead of a second message.
+    const currentAttempt = attempt.current ?? { body: body.trim(), requestId: randomUUID(), qualificationVersion: delivery.qualificationVersion };
+    const built = buildRelationshipMessageDeliveryRequest({ ...currentAttempt, conversationId: detail.conversationId });
+    if (!built.success) { setSendFailed(true); return; }
+    attempt.current = currentAttempt;
+    const request = {}; sendRequest.current = request; setSending(true); setSendFailed(false);
+    try {
+      const result = await clientPost(built.request.endpoint, { ...built.request.body, requestId: currentAttempt.requestId });
+      if (!isCurrent() || sendRequest.current !== request) return;
+      if (!result.success || result.status < 200 || result.status >= 300 || !relationshipDeliveryReceiptMatches(result.data, { ...currentAttempt, conversationId: detail.conversationId, senderAccountId: delivery.actorId })) {
+        setSendFailed(true); return;
+      }
+      attempt.current = null; draftEdited.current = true; setBody(""); setDraftStatus("idle"); emitMessageStateInvalidation();
+      // The delivery retires the saved draft on the server (Sprint 0122); no separate clear can fail here or erase newer text.
+    } catch { if (isCurrent() && sendRequest.current === request) setSendFailed(true); }
+    finally { if (sendRequest.current === request) { sendRequest.current = null; setSending(false); } }
+  }
 
   // Verified conversations keep the participant's own reply draft on the server
   // (Sprint 0104); it is loaded once per conversation unless the user is typing.
@@ -1251,6 +1308,7 @@ function ReplyComposer({
     void clientGet(relationshipReplyDraftPath(detail.conversationId)).then(result => {
       if (!current || !isCurrent() || draftEdited.current || !result.success) return;
       const draft = decodeRelationshipReplyDraft(result.data, detail.conversationId);
+      if (draft) knownDraftUpdatedAt.current = draft.updatedAt;
       if (draft?.body) setBody(draft.body);
     }).catch(() => {});
     return () => { current = false; };
@@ -1268,6 +1326,7 @@ function ReplyComposer({
       const result = await clientPut(relationshipReplyDraftPath(detail.conversationId), { body: saving });
       const saved = result.success ? decodeRelationshipReplyDraft(result.data, detail.conversationId) : null;
       outcome = saved && saved.body === saving ? "saved" : "failed";
+      if (saved && outcome === "saved") knownDraftUpdatedAt.current = saved.updatedAt;
     } catch { outcome = "failed"; }
     if (draftSaveRequest.current !== request || !isCurrent()) return;
     draftSaveRequest.current = null;
@@ -1334,6 +1393,7 @@ function ReplyComposer({
       <Text style={styles.fieldLabel}>{locale.t("inbox.replyDraft")}</Text>
       <TextInput
         accessibilityLabel={locale.t("inbox.replyBody")}
+        editable={!sending && !attempt.current}
         multiline
         onChangeText={(value) => {
           draftEdited.current = true;
@@ -1346,12 +1406,13 @@ function ReplyComposer({
         value={body}
       />
       {rewriteError ? <Text style={styles.errorText}>{rewriteError}</Text> : null}
+      {sendFailed ? <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("inbox.sendFailed")}</Text> : null}
       {draftStatus === "saved" ? <Text accessibilityRole="text" style={styles.safetyText}>{locale.t("inbox.draftSaved")}</Text> : null}
       {draftStatus === "failed" ? <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("inbox.draftSaveFailed")}</Text> : null}
       <Text style={styles.safetyText}>{delivery ? locale.t("inbox.verifiedSafety") : detail.safetyText}</Text>
       <View style={styles.buttonRow}>
         <ActionButton
-          disabled={!body.trim()}
+          disabled={!body.trim() || sending || !!attempt.current}
           icon="sparkles-outline"
           label={locale.t("inbox.polishDraft")}
           onPress={rewriteDraft}
@@ -1359,15 +1420,24 @@ function ReplyComposer({
         />
         {delivery && clientPut ? (
           <ActionButton
-            disabled={offline || draftSaveInFlight}
+            disabled={offline || sending || !!attempt.current || draftSaveInFlight}
             icon="save-outline"
             label={offline ? `${locale.t("inbox.saveDraft")} · ${locale.t("sync.needsNetwork")}` : locale.t(draftSaveInFlight ? "inbox.savingDraft" : "inbox.saveDraft")}
             onPress={saveDraft}
             variant="secondary"
           />
         ) : null}
-        {/* 10-27: relationship messages stop at drafts; Orbit never sends them. */}
-        {delivery ? null : (
+        {delivery ? (
+          <Button
+            variant="primary"
+            size="lg"
+            icon="send"
+            label={locale.t(sending ? "inbox.sending" : "inbox.send")}
+            loading={sending}
+            disabled={(offline && !queueReply) || sending || (!body.trim() && !attempt.current)}
+            onPress={() => void sendReply()}
+          />
+        ) : (
           <ActionButton
             disabled={!body.trim()}
             icon="mail-unread-outline"
@@ -1662,6 +1732,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bubbleText: { color: colors.ink, fontSize: 17, lineHeight: 24 },
   bubbleTextMine: { color: colors.onAccent },
   bubbleTime: { color: colors.ink3Text, fontSize: 13, paddingHorizontal: 6 },
+  bubbleCard: { alignSelf: "stretch", maxWidth: "92%", marginTop: 6 },
   messageInput: { minHeight: 88 },
   remindersPane: { gap: 12, paddingTop: 16 },
   resourceStatus: { color: colors.ink3Text, fontSize: 17, lineHeight: 25, paddingTop: 16 },

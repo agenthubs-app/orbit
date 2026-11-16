@@ -106,4 +106,5 @@ export const me = {
   "me.save": "Save",
   "me.saved": "Saved",
   "me.saveError": "Could not save. Please try again.",
+  "me.schedule": "Scheduling",
 } as const;

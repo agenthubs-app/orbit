@@ -128,4 +128,7 @@ export const inbox = {
   "inbox.preparing": "正在准备",
   "inbox.previewDraft": "预览草稿",
   "inbox.notificationSettings": "通知设置",
+  "inbox.send": "发送",
+  "inbox.sending": "发送中…",
+  "inbox.sendFailed": "没有发出去，内容已保留。",
 } as const;

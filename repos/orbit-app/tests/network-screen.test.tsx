@@ -77,9 +77,12 @@ const answers = {
   "/api/contacts/value-lines?ids=c-ito&lang=en": { lines: [{ contactId: "c-ito", state: "ready", relation: "Led two Series A raises as CFO.", evidence: ["card", "memo:面談メモ"] }] },
   "/api/agent/plans/v2/contacts/c-ito/fit": { contactId: "c-ito", fits: [{ planId: "p1", goal: "シリーズA", itemId: "cfo", shortLabel: "CFO 経験者", emoji: "📊", status: "candidate", reason: "役職が CFO" }] },
   "/api/invite-codes/connections/c-suzuki": { contactId: "c-suzuki", connectedAt: "2026-10-08T03:00:00.000Z", via: { code: "7Q2K-8M4P" }, sharedByMe: ["organization"], sharedByPeer: ["organization", "email", "offering", "seeking"], pausedFields: ["email"] },
+  // contact-reach R42: the invite-linked person can be messaged (no conversation yet); c-ito's read fails → e-mail draft.
+  "/api/relationship-communication/eligibility?contactId=c-suzuki": { contactId: "c-suzuki", status: "unregistered", canInvite: false, canSend: false, canStart: true, canProposeMeeting: true, activeAppointmentId: null },
 };
+const answerFor = (path) => window.fixture.answers && Object.hasOwn(window.fixture.answers, path) ? window.fixture.answers[path] : Object.hasOwn(answers, path) ? answers[path] : undefined;
 const client = {
-  async get(path) { state.requests.push("get:" + path); if (!state.online) return offlineResult; if (path === "/api/contacts/memo-event-options") return { success: true, status: 200, data: { options: state.eventOptions ?? [] } }; return Object.hasOwn(answers, path) ? { success: true, status: 200, data: answers[path] } : { success: false, status: 404, error: { code: "NOT_FOUND", message: "nope" } }; },
+  async get(path) { state.requests.push("get:" + path); if (!state.online) return offlineResult; if (state.holdEligibility && path.includes("/eligibility")) return new Promise(() => {}); if (path === "/api/contacts/memo-event-options") return { success: true, status: 200, data: { options: state.eventOptions ?? [] } }; return answerFor(path) !== undefined ? { success: true, status: 200, data: answerFor(path) } : { success: false, status: 404, error: { code: "NOT_FOUND", message: "nope" } }; },
   async post(path, options) { state.requests.push("post:" + path + (options?.body ? " " + JSON.stringify(options.body) : "")); return !state.online ? offlineResult : path.endsWith("/reconnect-draft") ? { success: true, status: 200, data: { draft: { subject: "ご無沙汰しております", body: "伊藤 直子様 ご無沙汰しております。", provider: "template" } } } : { success: true, status: 200, data: {} }; },
   async patch(path, options) { state.requests.push("patch:" + path + " " + JSON.stringify(options?.body ?? null)); return state.online ? { success: true, status: 200, data: {} } : offlineResult; },
   async delete(path) { state.requests.push("delete:" + path); return state.online ? { success: true, status: 200, data: {} } : offlineResult; },
@@ -307,18 +310,48 @@ test("detail (app.html #29): head card, the type confirm card, why (value line),
   await page.getByRole("button", { name: "当てはまる" }).click();
   await page.waitForFunction(() => !document.querySelector("[data-testid='network-fit-card']"));
   assert.ok((await requests(page)).some((path) => path.startsWith("post:/api/agent/plans/v2/p1/types/cfo/candidates/c-ito/decision") && path.includes("\"decision\":\"accept\"")));
-  await page.getByRole("button", { name: "下書きを作成" }).click();
-  // 起草 writes the template draft on this page (same reconnect-draft endpoint as the Web drawer), never jumps to iOrbit.
-  const result = page.getByTestId("network-draft-result");
-  await result.waitFor();
-  assert.equal(await result.getByLabel("件名").inputValue(), "ご無沙汰しております");
-  assert.match(await result.getByLabel("本文").inputValue(), /^伊藤 直子様/);
-  await result.getByRole("button", { name: "コピー" }).waitFor();
-  assert.ok((await requests(page)).some((path) => path.startsWith("post:/api/contacts/c-ito/reconnect-draft") && path.includes("\"language\":\"ja\"")));
+  // contact-reach R42 SC-01: 「連絡する」 replaces 下書きを作成; the line under it says the e-mail path (eligibility not readable).
+  assert.equal(await page.getByRole("button", { name: "下書きを作成" }).count(), 0);
+  await page.getByTestId("network-reach-email").waitFor();
+  await page.getByTestId("network-reach-path").getByText("メールの下書き · 送信はご自身で", { exact: true }).waitFor();
+  assert.ok((await requests(page)).includes("get:/api/relationship-communication/eligibility?contactId=c-ito"), "eligibility is read for a card contact too");
+  await page.getByRole("button", { name: "連絡する" }).click();
+  assert.ok((await navigation(page)).includes("/contacts/reach/c-ito"));
   assert.equal((await navigation(page)).some((href) => href.includes("prefillIntent")), false, "no hop to the AI screen");
-  // UX K6: 📅 opens a new personal schedule with this person linked (no dead-end proposal sheet).
+  // UX K6 / R42 D7: 📅 is in the header and opens a new personal schedule with this person linked.
   await page.getByRole("button", { name: "予定を追加" }).click();
   assert.ok((await navigation(page)).includes("/schedule/personal/new?contactId=c-ito"));
+});
+
+test("R42 SC-01: an invite-linked person gets 連絡する with the message path and 📅 in the header (it had none before)", async (t) => {
+  const page = await open(t, { screen: "detail", params: { id: "c-suzuki" } });
+  await page.getByText("本人が入力 · 相手の更新は自動で反映されます", { exact: true }).waitFor();
+  await page.getByTestId("network-reach-orbit").waitFor();
+  await page.getByTestId("network-reach-path").getByText("メッセージ · 相手は Orbit を利用中", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "メッセージ", exact: true }).count(), 0, "the old head Message button gave way to 連絡する");
+  await page.getByRole("button", { name: "連絡する" }).click();
+  assert.ok((await navigation(page)).includes("/contacts/reach/c-suzuki"));
+  await page.getByRole("button", { name: "予定を追加" }).click();
+  assert.ok((await navigation(page)).includes("/schedule/personal/new?contactId=c-suzuki"));
+  assert.equal((await requests(page)).filter((path) => path.startsWith("post:/api/relationship-communication")).length, 0, "opening the page starts nothing");
+});
+
+test("R42 SC-01: while eligibility is being read the button waits and the path line is a bone", async (t) => {
+  const page = await open(t, { screen: "detail", params: { id: "c-ito" }, holdEligibility: true });
+  await page.getByTestId("network-reach-loading").waitFor();
+  await page.getByTestId("network-reach-path-loading").waitFor();
+  assert.equal(await page.getByRole("button", { name: "連絡する" }).getAttribute("aria-disabled"), "true");
+});
+
+test("R42 SC-04: a meeting notification (/contacts/{id}?appointmentId=) opens the conversation's card; without a conversation the card shows here", async (t) => {
+  const withConversation = await open(t, { screen: "detail", params: { id: "c-suzuki", appointmentId: "appt-1" }, answers: {
+    "/api/relationship-communication/eligibility?contactId=c-suzuki": { contactId: "c-suzuki", status: "confirmed", canInvite: false, canSend: true, conversationId: "conv-1", qualificationVersion: "qv-1", canProposeMeeting: true, activeAppointmentId: "appt-1" },
+  } });
+  await withConversation.waitForFunction(() => (window as any).fixture.navigation.includes("replace:/inbox/conv-1?appointmentId=appt-1"));
+  const without = await open(t, { screen: "detail", params: { id: "c-ito", appointmentId: "appt-2" } });
+  await without.getByTestId("network-appointment").waitFor();
+  assert.ok((await requests(without)).includes("get:/api/appointments/appt-2"));
+  assert.equal((await navigation(without)).some((href) => href.startsWith("replace:/inbox/")), false);
 });
 
 test("detail 往来 (UX K3): notes that mention or link this person join the record notes, newest first, and open the note", async (t) => {

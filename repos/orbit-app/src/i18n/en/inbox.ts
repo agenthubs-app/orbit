@@ -128,4 +128,7 @@ export const inbox = {
   "inbox.preparing": "Preparing",
   "inbox.previewDraft": "Preview draft",
   "inbox.notificationSettings": "Notification settings",
+  "inbox.send": "Send",
+  "inbox.sending": "Sending…",
+  "inbox.sendFailed": "Didn't go through. Your message is kept.",
 } as const;

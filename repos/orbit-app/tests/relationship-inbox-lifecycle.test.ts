@@ -32,11 +32,13 @@ const state = window.fixture = {
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   emit(appState) { state.appState = appState; nativeListeners.forEach(fn => fn(appState)); },
   conversation(unreadCount = 2, body = "已有消息") { const remote = "remote:" + state.actor; return { conversationId: state.conversationId, contactId: "contact:one", participantAccountIds: [state.actor, remote], participantDisplayNames: { [state.actor]: "当前用户", [remote]: state.actor }, qualificationVersion: "qualification:one", status: "active", createdAt: "2026-09-13T00:00:00Z", updatedAt: "2026-09-13T00:01:00Z", unreadCount, messages: [
-    { messageId: "message:one", conversationId: state.conversationId, senderAccountId: remote, senderDisplayName: state.actor, body, sentAt: "2026-09-13T00:00:00Z", deliveryState: "delivered" },
+    { messageId: "message:one", conversationId: state.conversationId, senderAccountId: remote, senderDisplayName: state.actor, body, sentAt: "2026-09-13T00:00:00Z", deliveryState: "delivered", ...(state.meeting ? { appointmentId: state.meeting.appointmentId } : {}) },
     ...(unreadCount > 1 ? [{ messageId: "message:two", conversationId: state.conversationId, senderAccountId: remote, senderDisplayName: state.actor, body: "已有消息", sentAt: "2026-09-13T00:01:00Z", deliveryState: "delivered" }] : [])
   ] }; },
   thread(body = "已有消息") { return state.conversation(state.detailUnread, body); },
   data(path) {
+    if (state.meeting && path === "/api/appointments/" + encodeURIComponent(state.meeting.appointmentId)) return state.meeting;
+    if (state.meeting && path.endsWith("/commands")) return { ...state.meeting, status: "confirmed", version: state.meeting.version + 1, pendingProposalRevision: null, confirmed: { startsAtUtc: state.meeting.proposals[0].candidateTimes[1].startsAtUtc, durationMinutes: 60, medium: state.meeting.proposals[0].medium, timezone: "Asia/Tokyo", candidateId: "k2", proposalRevision: 1 } };
     if (state.typedDetail && path === "/api/inbox/notifications/inbox%3Aone") return state.typedInbox.items[0];
     if (path.startsWith("/api/inbox/notifications")) return state.typedInbox ?? { enabled: false, items: [], unreadCount: 0, nextCursor: null, asOf: '2026-09-16T00:00:00.000Z' };
     if (path.endsWith("/read")) return { conversationId: state.conversationId, lastReadMessageId: state.detailUnread > 1 ? "message:two" : "message:one", readAt: "2026-09-15T00:02:00Z" };
@@ -534,15 +536,46 @@ test("inbox foreground clears the hidden draft when identity changes in the back
   assert.doesNotMatch(await p.locator("body").innerText(), /actor:one/u);
 });
 
-// 10-27: relationship messages stop at drafts; the thread offers no send.
-test("the real inbox thread with AI analysis off offers no send and keeps the typed reply", async t => {
+// contact-reach U1 (2026-11-16, R42 SC-04): messages to an Orbit contact are really sent again (the 10-27 rule is gone).
+test("the real inbox thread sends the reply: one POST …/messages with a request id, a failure keeps the text, the retry reuses the id", async t => {
   const p = await open(t, { detail: true, allowPrivateAnalysis: false });
   const input = p.getByRole("textbox", { name: "回复正文" });
   await input.fill("从收件箱写的回复");
-  assert.equal(await p.getByRole("button", { name: /发送消息/ }).count(), 0);
-  await settle(p);
+  const sends = () => p.evaluate(() => (window as any).fixture.requests.map((r: any, index: number) => ({ index, method: r.method, path: r.path, body: r.body })).filter((r: any) => r.method === "POST" && r.path.endsWith("/messages")));
+  await p.getByRole("button", { name: "发送", exact: true }).click(); await settle(p);
+  const first = await sends();
+  assert.equal(first.length, 1);
+  assert.equal(first[0].body.body, "从收件箱写的回复");
+  assert.equal(first[0].body.qualificationVersion, "qualification:one");
+  assert.ok(first[0].body.requestId, "an idempotency id goes with the send");
+  await p.evaluate((index) => (window as any).fixture.reply(index, 503), first[0].index); await settle(p);
+  await p.getByText("没有发出去，内容已保留。", { exact: true }).waitFor();
   assert.equal(await input.inputValue(), "从收件箱写的回复");
-  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "POST" && r.path.endsWith("/messages")).length), 0);
+  await p.getByRole("button", { name: "发送", exact: true }).click(); await settle(p);
+  const second = await sends();
+  assert.equal(second.length, 2);
+  assert.equal(second[1].body.requestId, first[0].body.requestId, "the same text retried keeps its request id");
+  await p.evaluate((index) => { const s = (window as any).fixture; const conversationId = s.requests[index].path.split("/").at(-2); const id = decodeURIComponent(conversationId);
+    s.reply(index, 201, { conversationId: id, qualificationVersion: "qualification:one", deliveryState: "delivered", message: { messageId: "message:new", conversationId: id, senderAccountId: s.actor, senderDisplayName: "当前用户", body: "从收件箱写的回复", sentAt: "2026-09-25T00:00:00Z", deliveryState: "delivered" } }); }, second[1].index);
+  await settle(p); await settle(p);
+  assert.equal(await input.inputValue(), "", "a matching receipt clears the box");
+  assert.equal(await p.getByText("没有发出去，内容已保留。", { exact: true }).count(), 0);
+});
+
+// contact-reach R42 SC-04: a message carrying a meeting shows its proposal card in the conversation; 选这个 accepts it.
+test("a message with a meeting shows the proposal card under the bubble; 选这个 sends accept and the card says 已确定", async t => {
+  const meeting = { appointmentId: "appt-1", contactId: "contact:one", status: "awaiting_response", version: 2, visibility: "participants", eventId: null, title: "面谈", details: "", detailsUpdatedAt: null, detailsUpdatedBy: null, updatedAt: "2026-09-13T00:00:00Z", confirmed: null, pendingProposalRevision: 1,
+    proposals: [{ revision: 1, proposedBy: "other", createdAt: "2026-09-13T00:00:00Z", durationMinutes: 60, medium: { kind: "video", provider: "other", joinUrl: null }, note: "", timezone: "Asia/Tokyo",
+      candidateTimes: [{ candidateId: "k1", startsAtUtc: "2099-11-18T01:00:00.000Z" }, { candidateId: "k2", startsAtUtc: "2099-11-19T05:00:00.000Z" }, { candidateId: "k3", startsAtUtc: "2099-11-20T07:00:00.000Z" }] }] };
+  const p = await open(t, { detail: true, allowPrivateAnalysis: false, meeting });
+  const pick = p.getByRole("button", { name: "选这个 2", exact: true });
+  await pick.waitFor();
+  assert.equal(await p.getByRole("button", { name: /^选这个/ }).count(), 3);
+  await pick.click(); await settle(p);
+  const command = await p.evaluate(() => { const s = (window as any).fixture; const index = s.requests.findIndex((r: any) => r.method === "POST" && r.path.endsWith("/commands")); s.reply(index); return s.requests[index]; });
+  assert.equal(command.path, "/api/appointments/appt-1/commands");
+  assert.deepEqual(command.body, { candidateId: "k2", command: "accept", expectedVersion: 2 });
+  await p.getByText("已确定", { exact: true }).waitFor();
 });
 
 // Sprint 0104: the participant's reply draft lives on the relationship conversation.

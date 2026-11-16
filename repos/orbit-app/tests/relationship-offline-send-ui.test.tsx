@@ -158,17 +158,21 @@ const B_ID = "relationship-conversation:wang";
 
 const posts = (list: string[]) => list.filter((request) => request.startsWith("POST") && request.endsWith("/messages"));
 
-// 10-27: relationship messages stop at drafts. The composer neither sends nor
-// queues; messages queued before that are still shown and can be retried or discarded.
-test("conversation offline: the composer offers no send and queues nothing; drafts still need the network", async (t) => {
+// contact-reach U1 (2026-11-16, R42 SC-02/04): messages are really sent again. Offline the composer's 送信 puts the
+// plain text in the device outbox (sent by the next sync round); nothing is posted now, drafts still need the network.
+test("conversation offline: 发送 queues the reply on the device and posts nothing; drafts still need the network", async (t) => {
   const page = await open(t, { screen: "thread", status: "stale", params: { id: B_ID } });
   await page.getByText("王小明的第 40 条", { exact: true }).waitFor();
   await page.getByLabel("回复正文").fill("断网时写的第一条");
-  assert.equal(await page.getByRole("button", { name: /发送消息/ }).count(), 0);
-  assert.deepEqual(await fixtureValue(page, "enqueued"), []);
-  assert.deepEqual(posts(await requests(page)), [], "nothing is sent offline");
   assert.equal(await page.getByRole("button", { name: "保存草稿 · 需要联网" }).getAttribute("aria-disabled"), "true", "drafts still need the network");
   await page.getByText("标为已读 · 需要联网").waitFor();
+  await page.getByRole("button", { name: "发送", exact: true }).click();
+  await page.waitForFunction(() => (window as any).fixture.enqueued.length === 1);
+  const [queued] = await fixtureValue(page, "enqueued") as { requestJson?: string; body?: string }[];
+  assert.match(JSON.stringify(queued), /断网时写的第一条/);
+  assert.match(JSON.stringify(queued), new RegExp(B_ID.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.deepEqual(posts(await requests(page)), [], "nothing is posted offline");
+  await page.waitForFunction(() => (document.querySelector('[aria-label="回复正文"]') as HTMLTextAreaElement | null)?.value === "");
 });
 
 test("a refused message says 未发送 · 重试 · 复制 · 放弃; retry and discard act on that one row", async (t) => {

@@ -21,6 +21,7 @@ export function AccountSettingsContent({ t, name, email, accountName, accountEma
     <Card style={styles.group}>
       <AccountRow icon="target" title={t("me.iorbit")} onPress={() => onOpen("/settings/iorbit")} />
       <AccountRow icon="link" title={t("me.integrations")} onPress={() => onOpen("/settings/integrations")} />
+      <AccountRow icon="calendar" title={t("me.schedule")} onPress={() => onOpen("/settings/schedule")} />
       <AccountRow icon="bell" title={t("me.notification")} onPress={() => onOpen("/settings/notifications")} />
     </Card>
     <UiText style={styles.label}>{t("settings.language")}</UiText><Card>

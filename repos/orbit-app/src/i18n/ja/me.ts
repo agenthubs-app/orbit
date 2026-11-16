@@ -106,4 +106,5 @@ export const me = {
   "me.save": "保存",
   "me.saved": "保存しました",
   "me.saveError": "保存できませんでした。もう一度お試しください。",
+  "me.schedule": "日程",
 } as const;

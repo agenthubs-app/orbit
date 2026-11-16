@@ -21,6 +21,8 @@ export interface RelationshipConversationView {
 }
 
 export interface RelationshipMessageView {
+  /** contact-reach R39/R42: the meeting proposed with this message (its card is drawn under the bubble). */
+  appointmentId?: string;
   body: string;
   fromMe: boolean;
   id: string;

@@ -117,6 +117,7 @@ export function relationshipMessagePageView(page: RelationshipMessagePageDTO, ac
       id: message.messageId, body: message.body, fromMe: message.senderAccountId === actorId,
       sender: message.senderAccountId === actorId ? t("inboxVm.me") : remoteName,
       time: messageBubbleTime(message.sentAt, language),
+      ...(message.appointmentId ? { appointmentId: message.appointmentId } : {}),
     })),
   };
 }

@@ -128,4 +128,7 @@ export const inbox = {
   "inbox.preparing": "準備中",
   "inbox.previewDraft": "下書きをプレビュー",
   "inbox.notificationSettings": "通知設定",
+  "inbox.send": "送信",
+  "inbox.sending": "送信中…",
+  "inbox.sendFailed": "送信できませんでした。内容はそのまま残っています。",
 } as const;

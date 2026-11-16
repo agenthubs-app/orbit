@@ -7,14 +7,14 @@
 
 | 归属 | 数量 |
 | --- | --- |
-| 能断网看（本地优先） | 39 |
+| 能断网看（本地优先） | 40 |
 | └ 由 Sprint 0108 实现 | 8 |
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 12 |
-| 只能在线 | 57 |
+| 只能在线 | 58 |
 | 不读账号数据（布局、跳转、本机设置） | 40 |
-| 合计（路由文件） | 136 |
+| 合计（路由文件） | 138 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -37,6 +37,7 @@
 | `/contacts/list` | 旧联系人列表（R11a 起跳到 /contacts） | R11a | 无（跳转） | 跳到 /contacts |
 | `/contacts/:id` | 連絡先詳細（R11a） | R11a | 域 contacts；联网增强：/api/contacts/value-lines、/api/agent/plans/v2/contacts/:id/fit、/api/invite-codes/connections/:id | 「截至」；联网增强整块隐藏；删除进同步待发队列（LF12），各页面立刻隐藏，随同步补发，计入未同步 |
 | `/contacts/edit/:id` | 連絡先の編集（R11a） | R11a | 域 contacts | 「截至」；保存需要联网；删除进本机队列 |
+| `/contacts/reach/:id` | 連絡する · 写消息 / 邮件草稿（R42） | R42 | 域 contacts（姓名、邮箱）；资格 /api/relationship-communication/eligibility、模板 /api/contacts/:id/reconnect-draft、选时段的可约时间与忙闲在线读取；没发出的内容存本机（账号 + 联系人 + 路径） | 姓名和本机草稿照常；纯文字消息进本机队列；带候选时间的发送与选时段需要联网 |
 | `/contacts/dashboard` | 人脈分析（構造 / 機会 / インサイト，?tab=；10人未満は锁定；R11b） | R11b | LF3 起（0117 本机计算恢复）：構造・機会・インサイト由本机域 contacts（+ 目標に関係 id 缓存、域 tasks 的要フォロー）按共用规则 shared/compute/network-analysis-model.ts 在手机上算；/api/network/analysis 只为取计划需求（needs）读，保存在本机，新鲜期 10 分钟内不重读；服务器从没回应过时照旧读服务器；iOrbit の見立て读 /api/network/snapshot?lang=（只在 10 人以上读，不存本机）；見直す 写 /api/network/snapshot/recompute | 离线提示条；分析用本机联系人现算（计划缺口用上次保存的计划需求）；見立て显示「読み込めませんでした」；見直す需要联网；从没联网读过时显示可重试的「人数を読み込めませんでした」 |
 | `/contacts/analysis/:dimension/:bucketId` | 人脈分析の名簿（段階の内訳、並び順、R11b） | R11b | LF3 起：名簿在手机上用本机联系人按共用规则算（每一页，さらに表示不走网络）；本机算不了时（浏览器无本机库或服务器从没回应）读 /api/network/analysis/people，10人未満读 /api/network/analysis 显示锁定 | 离线提示条；本机现算的名簿照常翻页；服务器路径时显示上次保存的第一页，さらに表示需要联网 |
 | `/events/:id` | イベント詳細（R27） | LF2 | /api/events/:id/overview；上次回应存为按活动的页面副本 event-overview（最近 20 个），打开时先显示副本再在线更新 | 「截至」显示上次看到的详情；从没打开过的活动显示「需要联网」并可重试；报名、取消、保存评估需要联网 |
@@ -73,6 +74,7 @@
 | `/settings/notifications` | 通知设置（R14） | 涉及凭据或会话：读取本账号实时推送偏好与设备状态；版本写入和撤销设备须联网 | /api/inbox/delivery/preferences、/api/inbox/discovery/preferences、/api/devices/push | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/settings/notifications/secretary` | 秘書通知设置（R14） | 涉及凭据或会话：读取本账号实时来源开关和推送上限；版本写入须联网 | /api/inbox/delivery/preferences | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/settings/integrations` | 关联服务（R18a） | 涉及凭据或会话：读取真实授权状态；连接和解除均需服务器 | /api/integrations、/api/integrations/:provider | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/settings/schedule` | 日程 · 可约时间（R42） | 需要服务器实时计算：可约时间存在服务器、改动即存；日历连接状态在线读取 | /api/scheduling/availability、/api/integrations | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account` | 账号与会话 | 涉及凭据或会话：账号、登录会话和退出都在服务器上确认 | /api/account/me | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/login` | 登录 | 涉及凭据或会话：提交密码需要服务器验证 | /api/auth/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/signup` | 注册 | 涉及凭据或会话：建账号需要服务器 | /api/auth/register | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -219,6 +221,7 @@
 | `app/contacts/new/manual.tsx` | `/contacts/new/manual` | online-only |
 | `app/contacts/new/scan.tsx` | `/contacts/new/scan` | online-only |
 | `app/contacts/new/scan/[batchId].tsx` | `/contacts/new/scan/:batchId` | online-only |
+| `app/contacts/reach/[id].tsx` | `/contacts/reach/:id` | local-first (R42) |
 | `app/dashboard.tsx` | `/dashboard` | device-only |
 | `app/e/[slug].tsx` | `/e/:slug` | online-only |
 | `app/events/[id].tsx` | `/events/:id` | local-first (LF2) |
@@ -298,6 +301,7 @@
 | `app/settings/notifications.tsx` | `/settings/notifications` | online-only |
 | `app/settings/notifications/secretary.tsx` | `/settings/notifications/secretary` | online-only |
 | `app/settings/privacy.tsx` | `/settings/privacy` | device-only |
+| `app/settings/schedule.tsx` | `/settings/schedule` | online-only |
 | `app/settings/terms.tsx` | `/settings/terms` | device-only |
 | `app/showcase/components/[section].tsx` | `/showcase/components/[section]` | device-only |
 | `app/showcase/components/index.tsx` | `/showcase/components` | device-only |

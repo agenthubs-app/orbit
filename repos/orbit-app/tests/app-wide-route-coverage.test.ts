@@ -178,6 +178,9 @@ const integratedFeatureRoutes = [
   "/settings/privacy",
   // R11a 連絡先の編集（b5 #42–#44）。
   "/contacts/edit/[id]",
+  // contact-reach R42 ⑦ 連絡する (full-screen message / e-mail draft) and ⑤ 設定 › 日程 (可約時間).
+  "/contacts/reach/[id]",
+  "/settings/schedule",
   "/settings/[section]",
   "/settings/notifications",
   "/settings/notifications/secretary",

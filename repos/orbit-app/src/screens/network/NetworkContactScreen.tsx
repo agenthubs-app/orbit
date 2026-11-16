@@ -1,24 +1,22 @@
 // R11a 連絡先詳細（App; app.html #29, b9 #20 / #21 / #22 招待でつながった人, b5 #42–#44 編集・削除）。
 // 头卡（名片式）· 人物タイプの確認カード（fit candidate）· なぜこの人か（value-lines，联网增强）· 次の一手 · 力になれること /
 // 求めていること · やりとり。招待でつながった人：本人入力 chip、本人入力的项目、同期停止的项目、⋯ 里的共有 / 解除（R15 sheet）。
-// 以前の値（fieldHistory）。顶栏 ⋯：編集 / 共有する項目 / つながりを解除 / 削除。日历键打开新建个人日程（带上这位联系人）。
+// 以前の値（fieldHistory）。顶栏 📅（新建个人日程，带上这位联系人；所有联系人都有）· ⋯：編集 / 共有する項目 / つながりを解除 / 削除。
+// contact-reach R42 ⑦：「次の一手」卡（无下一步时只剩按钮）的「連絡する」打开全屏写消息页，下面一行说明走站内信还是邮件草稿。
 // 往来：联系人记录里的备忘 + 笔记里关联 / @ 到这个人的笔记（本机笔记镜像），按交流日期新的在上，点开进笔记。
 // 「＋ 记一笔交流」（docs/designs/contact-log-2026-11 ⑤）：底部弹层 ContactLogSheet；自己记的前面是方式标签（lav），
 // 名片原文 / 系统说明前面是灰色来源标签。
 // 本机优先：详情读同步镜像，离线照常显示；value-lines / fit / 招待连接是联网增强，失败或「尚未実装」时整块隐藏（G18）。
-import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 
 import { whenNotImplemented } from "../../api/compute/not-implemented";
-import { relationshipCommunicationEligibilityPath, relationshipCommunicationStartPath } from "../../api/endpoints";
 import type { InviteConnectionView } from "../../api/contract/invite-codes";
 import type { PlanContactFit } from "../../api/contract/plan-v2";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
-import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { AppScreen } from "../../components/AppScreen";
-import { ActionSheet, Avatar, Button, Chip, ConfirmDialog, Icon, IconButton, InlineChip, OfflineBar, RetryCard, Skeleton, TextField, UiPressable, UiText, useToast } from "../../components/ui";
+import { ActionSheet, Avatar, Button, Chip, ConfirmDialog, Icon, IconButton, InlineChip, OfflineBar, RetryCard, Skeleton, UiPressable, UiText, useToast } from "../../components/ui";
 import Svg, { Defs, Rect, Stop } from "../../components/ui/svg";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -35,6 +33,8 @@ import { useNotesListSource } from "../notes/notes-source";
 import { NETWORK_CHIP_COPY } from "./NetworkScreen";
 import { detailContactFrom, detailHeaderChips, fitCandidate, localizedCardNotes, previousValues, recentSelfUpdates, tokyoMonthDay, type DetailContact, type DetailFieldHistoryEntry } from "./contact-detail-model";
 import { ContactLogSheet } from "./ContactLogSheet";
+import { AppointmentProposalCard } from "../inbox/AppointmentProposalCard";
+import { loadReachEligibility, reachPathOf, rememberReachEligibility, type ReachEligibility } from "./contact-reach-model";
 import { monthDayOf, sortTimeline, timelineDay, type ContactLogPatch } from "./contact-log-model";
 import { useDeleteContact } from "./useDeleteContact";
 import { useNetworkMerge } from "./useNetworkMerge";
@@ -57,10 +57,11 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const { styles, colors } = useStyles();
   const { t, language } = useOrbitLocale();
   const router = useRouter();
-  const params = useLocalSearchParams<{ design?: string | string[] }>();
+  const params = useLocalSearchParams<{ design?: string | string[]; appointmentId?: string | string[] }>();
+  // A meeting notification opens /contacts/{id}?appointmentId=… (server href): the meeting lives in the conversation.
+  const appointmentId = (Array.isArray(params.appointmentId) ? params.appointmentId[0] : params.appointmentId) ?? "";
   const toast = useToast();
   const auth = useOrbitAuthSession();
-  const server = useOrbitApiBaseUrl();
   const client = useOrbitApiClient();
   const inviteApi = useInviteApi();
   const local = useLocalContacts();
@@ -81,11 +82,9 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const [valueLine, setValueLine] = useState<ValueLine | null | undefined>(() => (fixture.enabled ? null : cachedValueLine(contactId, language)));
   const [fit, setFit] = useState<PlanContactFit | null>(null);
   const [connection, setConnection] = useState<InviteConnectionView | null>(null);
-  // QA-C3: a person you can message in Orbit (an open conversation) gets a Message button on their page.
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  // Connected by invite code with no conversation yet: "Message" opens one.
-  const [canStart, setCanStart] = useState(false);
-  const [starting, setStarting] = useState(false);
+  // contact-reach R42 (D1/D7): which way 連絡する goes — read for every contact. undefined = still reading (the button
+  // waits and the path line is a bone, never a label that changes); null = not readable → e-mail draft, never blocks.
+  const [reach, setReach] = useState<{ contactId: string; value: ReachEligibility | null } | null>(null);
   const [whyOpen, setWhyOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<View>(null);
@@ -99,8 +98,6 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const [openHistory, setOpenHistory] = useState<string | null>(null);
   const [deciding, setDeciding] = useState(false);
   const [updateDismissed, setUpdateDismissed] = useState(false);
-  const [draft, setDraft] = useState<{ contactId: string; subject: string; body: string } | null>(null);
-  const [drafting, setDrafting] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -131,32 +128,22 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
     return () => { live = false; };
   }, [client, inviteApi, contactId, language, fixture.enabled, fixture.data]);
 
-  // Only people connected through an invite code can have a conversation in Orbit, so only their page asks.
-  const connected = connection !== null;
   useEffect(() => {
-    let live = true;
-    setConversationId(null);
-    setCanStart(false);
-    if (fixture.enabled || !connected) return () => { live = false; };
-    void client.get<{ canSend?: unknown; canStart?: unknown; conversationId?: unknown }>(relationshipCommunicationEligibilityPath(contactId)).then((result) => {
-      if (!live || !result.success) return;
-      if (result.data?.canSend === true && typeof result.data.conversationId === "string" && result.data.conversationId) setConversationId(result.data.conversationId);
-      else if (result.data?.canStart === true) setCanStart(true);
-    }).catch(() => undefined);
-    return () => { live = false; };
-  }, [client, contactId, connected, fixture.enabled]);
-
-  const startConversation = useCallback(async () => {
-    if (starting) return;
-    setStarting(true);
-    const result = await client.post<{ canSend?: unknown; conversationId?: unknown }>(relationshipCommunicationStartPath(), { body: { contactId } });
-    setStarting(false);
-    const id = result.success && typeof result.data?.conversationId === "string" ? result.data.conversationId : "";
-    if (!id) { toast.error(t("network.detail.messageFailed")); return; }
-    setConversationId(id);
-    setCanStart(false);
-    router.push(`/inbox/${encodeURIComponent(id)}` as Href);
-  }, [client, contactId, router, starting, t, toast]);
+    if (fixture.enabled) return;
+    const controller = new AbortController();
+    void loadReachEligibility(client, contactId, controller.signal).then((value) => {
+      if (controller.signal.aborted) return;
+      if (auth.actorId) rememberReachEligibility(auth.accountId ?? auth.actorId, contactId, value);
+      setReach({ contactId, value });
+    });
+    return () => controller.abort();
+  }, [auth.accountId, auth.actorId, client, contactId, fixture.enabled]);
+  const eligibility = fixture.enabled ? null : reach?.contactId === contactId ? reach.value : undefined;
+  // The notification's meeting: shown in its conversation when there is one, otherwise on this page.
+  const appointmentConversation = appointmentId && eligibility?.conversationId ? eligibility.conversationId : null;
+  useEffect(() => {
+    if (appointmentConversation) router.replace(`/inbox/${encodeURIComponent(appointmentConversation)}?appointmentId=${encodeURIComponent(appointmentId)}` as Href);
+  }, [appointmentConversation, appointmentId, router]);
 
   const candidate = fixture.enabled && params.design === "sync" ? null : fitCandidate(fit);
   const decide = useCallback(async (decision: "accept" | "dismiss") => {
@@ -201,20 +188,19 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const linkedNotes = mergeTimelineNotes([...recordNotes, ...justLogged.filter((pending) => !recordNotes.some((note) => note.origin === "user" && note.body === pending.body))], linkedSource.notes ?? []);
   const lastInteraction = hasEvidence ? contact.lastInteraction : null;
   const timeline = withSystemEntries(linkedNotes, lastInteraction, hasEvidence ? contact.generatedInteraction : null);
-  // 「起草」：页内模板草稿（与 Web 抽屉同一接口 reconnect-draft；不保存、不发送、0 次模型调用），可改、可复制。
-  const openDraft = async () => {
-    if (drafting) return;
-    if (!auth.actorId || !server.ready) { toast.error(t("network.detail.draftSignIn")); return; }
-    setDrafting(true);
-    const result = await client.post<{ draft?: { subject?: unknown; body?: unknown } }>(`/api/contacts/${encodeURIComponent(contactId)}/reconnect-draft`, { body: { language } });
-    setDrafting(false);
-    const value = result.success ? result.data?.draft : undefined;
-    if (typeof value?.subject === "string" && typeof value.body === "string") setDraft({ contactId, subject: value.subject, body: value.body });
-    else toast.error(t("network.detail.draftFailed"));
-  };
-  const shownDraft = draft?.contactId === contactId ? draft : null;
-  const copyDraft = () => { if (shownDraft) void Clipboard.setStringAsync(`${shownDraft.subject}\n\n${shownDraft.body}`).then(() => toast.success(t("network.detail.draftCopied")), () => toast.error(t("network.detail.draftFailed"))); };
-  const reach = (value: string, scheme: "mailto" | "tel", missing: "network.detail.noEmail" | "network.detail.noPhone") => { if (value) Linking.openURL(`${scheme}:${value}`).catch(() => toast.info(t("network.detail.openFailed", { value }))); else toast.info(t(missing)); };
+  // contact-reach R42 ⑦: 「連絡する」 opens the full-screen message / e-mail draft; the line under it says which.
+  const reachPath = eligibility === undefined ? null : reachPathOf(eligibility);
+  const reachCard = (
+    <View style={[styles.card, styles.gapTop]} testID="network-next-card">
+      {nextStep ? <><UiText style={styles.lbl}>{t("network.detail.nextTitle")}</UiText><UiText style={styles.cardTitle}>{nextStep}</UiText></> : null}
+      <View style={nextStep ? styles.gapSmall : undefined} testID={`network-reach-${reachPath ?? "loading"}`}>
+        <Button variant="primary" block icon="mail" label={t("network.reach.button")} disabled={eligibility === undefined} onPress={() => router.push(`/contacts/reach/${encodeURIComponent(contactId)}` as Href)} />
+      </View>
+      {reachPath ? <UiText style={[styles.lbl, styles.center]} testID="network-reach-path">{t(reachPath === "orbit" ? "network.reach.pathOrbit" : "network.reach.pathEmail")}</UiText>
+        : <View style={styles.pathBone} testID="network-reach-path-loading"><View style={styles.pathBoneBar} /></View>}
+    </View>
+  );
+  const reachOut = (value: string, scheme: "mailto" | "tel", missing: "network.detail.noEmail" | "network.detail.noPhone") => { if (value) Linking.openURL(`${scheme}:${value}`).catch(() => toast.info(t("network.detail.openFailed", { value }))); else toast.info(t(missing)); };
   const menuOptions = [
     { key: "edit", label: t("network.detail.edit") },
     ...(connection ? [{ key: "share", label: t("network.detail.share") }, { key: "unlink", label: t("network.detail.unlink"), destructive: true }] : []),
@@ -239,7 +225,11 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
 
   return (
     <AppScreen inset="kit" title="" backAccessibilityLabel={t("network.detail.back")}
-      headerActions={<IconButton ref={menuButtonRef} icon="more" accessibilityLabel={t("network.detail.more")} onPress={() => setMenuOpen(true)} />}>
+      headerActions={<>
+        {/* R42 (D7): 📅 予定を追加 sits in the header for every contact (invite-linked ones included). */}
+        <IconButton icon="calendar" accessibilityLabel={t("network.detail.schedule")} onPress={() => router.push(`/schedule/personal/new?contactId=${encodeURIComponent(contactId)}` as Href)} />
+        <IconButton ref={menuButtonRef} icon="more" accessibilityLabel={t("network.detail.more")} onPress={() => setMenuOpen(true)} />
+      </>}>
       <View testID="network-contact">
         {(fixture.enabled ? fixture.offline : local.freshness.offline) ? <View style={styles.gapBottom}><OfflineBar offline pending={0} /></View> : null}
 
@@ -251,8 +241,6 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
             <>
               <View style={styles.rowCenter}><DensityDots level={3} /><Chip label={t("network.chipSelf")} tone="teal" /></View>
               <UiText style={styles.lbl}>{t("network.detail.selfHint")}</UiText>
-              {conversationId ? <View style={styles.messageButton}><Button variant="primary" size="sm" icon="chat" label={t("network.detail.message")} onPress={() => router.push(`/inbox/${encodeURIComponent(conversationId)}` as Href)} /></View>
-                : canStart ? <View style={styles.messageButton}><Button variant="primary" size="sm" icon="chat" label={t("network.detail.message")} loading={starting} onPress={() => void startConversation()} /></View> : null}
             </>
           ) : (
             <View style={styles.chips}>
@@ -263,13 +251,18 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
           )}
           {!self ? (
             <View style={styles.actions}>
-              <View style={[styles.actionCircle, !contact.primaryEmail && styles.actionEmpty]}><IconButton icon="mail" accessibilityLabel={t("network.detail.mail")} onPress={() => reach(contact.primaryEmail, "mailto", "network.detail.noEmail")} /></View>
-              <View style={[styles.actionCircle, !contact.primaryPhone && styles.actionEmpty]}><IconButton icon="phone" accessibilityLabel={t("network.detail.call")} onPress={() => reach(contact.primaryPhone, "tel", "network.detail.noPhone")} /></View>
-              <View style={styles.actionCircle}><IconButton icon="calendar" accessibilityLabel={t("network.detail.schedule")} onPress={() => router.push(`/schedule/personal/new?contactId=${encodeURIComponent(contactId)}` as Href)} /></View>
+              <View style={[styles.actionCircle, !contact.primaryEmail && styles.actionEmpty]}><IconButton icon="mail" accessibilityLabel={t("network.detail.mail")} onPress={() => reachOut(contact.primaryEmail, "mailto", "network.detail.noEmail")} /></View>
+              <View style={[styles.actionCircle, !contact.primaryPhone && styles.actionEmpty]}><IconButton icon="phone" accessibilityLabel={t("network.detail.call")} onPress={() => reachOut(contact.primaryPhone, "tel", "network.detail.noPhone")} /></View>
               <View style={styles.actionCircle}><IconButton icon="pen" accessibilityLabel={t("network.detail.edit")} onPress={() => router.push(`/contacts/edit/${encodeURIComponent(contactId)}` as Href)} /></View>
             </View>
           ) : null}
         </View>
+
+        {appointmentId && !appointmentConversation && eligibility !== undefined ? (
+          <View style={styles.gapTop} testID="network-appointment">
+            <AppointmentProposalCard appointmentId={appointmentId} peerName={contact.displayName} highlighted offline={fixture.enabled ? fixture.offline : local.freshness.offline} />
+          </View>
+        ) : null}
 
         {card?.pendingInitialization && !(fixture.enabled ? fixture.offline : local.freshness.offline) ? <View style={styles.gapTop}><ContactRelationshipInitializer binding={initialization} /></View> : null}
 
@@ -344,21 +337,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
           </View>
         ) : null}
 
-        {nextStep ? (
-          <View style={[styles.card, styles.gapTop]} testID="network-next-card">
-            <UiText style={styles.lbl}>{t("network.detail.nextTitle")}</UiText>
-            <UiText style={styles.cardTitle}>{nextStep}</UiText>
-            <View style={styles.gapSmall}><Button variant="primary" block icon="mail" label={t(drafting ? "network.detail.drafting" : "network.detail.draft")} loading={drafting} disabled={drafting} onPress={() => void openDraft()} /></View>
-            <UiText style={[styles.lbl, styles.center]}>{t("network.detail.noSend")}</UiText>
-            {shownDraft ? (
-              <View style={styles.gapSmall} testID="network-draft-result">
-                <TextField label={t("network.detail.draftSubject")} value={shownDraft.subject} onChangeText={(subject) => setDraft({ ...shownDraft, subject })} />
-                <TextField label={t("network.detail.draftBody")} value={shownDraft.body} multiline scrollEnabled={false} textAlignVertical="top" onChangeText={(body) => setDraft({ ...shownDraft, body })} />
-                <Button size="sm" icon="copy" label={t("network.detail.draftCopy")} onPress={copyDraft} />
-              </View>
-            ) : null}
-          </View>
-        ) : null}
+        {reachCard}
 
         {!connection && (contact.offering.length || contact.seeking.length) ? (
           <View style={[styles.grid2, styles.gapTop]}>
@@ -554,7 +533,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   whyBoneBar: { width: "72%", height: 15, borderRadius: 999, backgroundColor: colors.surface2 },
   whyChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 12 },
   rowCenter: { flexDirection: "row", alignItems: "center", gap: 8 },
-  messageButton: { alignSelf: "center", marginTop: 4 },
+  pathBone: { height: 17, alignItems: "center", justifyContent: "center", marginTop: 4 },
+  pathBoneBar: { width: "46%", height: 12, borderRadius: 999, backgroundColor: colors.surface2 },
   between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   emo: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   emoText: { fontSize: 19 },
