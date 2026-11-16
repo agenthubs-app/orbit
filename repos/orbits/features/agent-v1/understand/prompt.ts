@@ -5,13 +5,14 @@
 import { CAPABILITIES } from "../route/capabilities";
 import { CLARITIES, DATA_SOURCES, DELIVERABLES, ENTITIES } from "./schema";
 
-export const UNDERSTAND_PROMPT_VERSION = "understand@ag06.1";
+export const UNDERSTAND_PROMPT_VERSION = "understand@ag06.2";
 
 const CAPABILITY_NOTES = [
   "contact.read, event.read, attendance.read, todo.read, memo.read, schedule.read, profile.read: read the user's own Orbit records (contacts, events in Orbit's event directory, attendance notes, to-dos, memos/notes, schedule, own profile).",
   "view.context, view.timeline, view.recentInteraction: read views over a contact (context, timeline, last interaction).",
   "contact.*, privateEvent.*, attendance.*, todo.*, memo.*, schedule.*, rule.*, memory.* with create/update/delete/…: change the user's records; only when the user explicitly asks Orbit to change something now.",
   "rule.create: a scheduled or recurring task that Orbit runs later (e.g. regularly check for new events).",
+  "memo.create: a note of the user's, including one that records a call, meeting or message with a person (\"记下他今天来过电话\", \"log that Emily called me\"). attendance.create/update/delete: only the user's own record of attending an event.",
   "fn.rank, fn.compare, fn.group, fn.summarize, fn.extractInteractions, fn.extractFollowUps: work over records already read (rank, compare, group, summarize, extract interactions or follow-ups from notes).",
   "web.fetch: read a public web page whose URL the user gave. web.search: look up a public fact on the web (a company's listed price, a public person's role).",
   "external.deepResearch: open-ended research Orbit does not offer: due diligence reports, market-entry research, finding competitors and industry data by itself, chasing every source, cross-verifying many sources. external.otherTool: any other tool Orbit does not have.",
