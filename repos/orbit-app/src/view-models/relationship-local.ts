@@ -41,10 +41,11 @@ export function relationshipDeviceMessages(records: readonly SyncRecord<Record<s
   for (const record of records) {
     const payload = record.payload;
     if (!payload || record.deletedAt) continue;
-    const { conversationId: id, seq, messageId, senderAccountId, senderDisplayName, body, sentAt } = payload;
+    const { conversationId: id, seq, messageId, senderAccountId, senderDisplayName, body, sentAt, appointmentId } = payload;
     if (conversationId !== undefined && id !== conversationId) continue;
     if (!text(id) || !Number.isSafeInteger(seq) || record.id !== `${id}/${seq}` || !text(messageId) || !text(senderAccountId) || !text(senderDisplayName) || typeof body !== "string" || !body.trim() || !text(sentAt)) continue;
-    rows.push({ conversationId: id, seq: seq as number, messageId, senderAccountId, senderDisplayName, body, sentAt });
+    // R39: the appointment sent with the message; plain messages (and rows mirrored before R39) have none.
+    rows.push({ conversationId: id, seq: seq as number, messageId, senderAccountId, senderDisplayName, body, sentAt, ...(text(appointmentId) ? { appointmentId } : {}) });
   }
   return rows;
 }

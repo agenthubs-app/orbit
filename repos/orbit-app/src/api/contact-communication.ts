@@ -84,16 +84,27 @@ export function buildRelationshipMessageDeliveryRequest(
   };
 }
 
+/**
+ * R39 (contact-reach D2): a message sent with a meeting proposal must come back
+ * carrying the appointment created with it (`withProposal: true`); a plain
+ * message must not carry one (absent in pre-R39 receipts, otherwise null).
+ */
 export function relationshipDeliveryReceiptMatches(
   value: unknown,
   expected: Pick<RelationshipMessageDeliveryRequestInput, "body" | "conversationId" | "qualificationVersion"> & {
     senderAccountId: string;
+    withProposal?: boolean;
   },
 ): value is RelationshipDeliveryReceiptDTO {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const receipt = value as Partial<RelationshipDeliveryReceiptDTO>;
   const message = receipt.message;
+  const appointmentId = message?.appointmentId;
+  const appointmentMatches = expected.withProposal
+    ? typeof appointmentId === "string" && appointmentId.length > 0
+    : appointmentId === undefined || appointmentId === null;
   return (
+    appointmentMatches &&
     receipt.deliveryState === "delivered" &&
     receipt.conversationId === expected.conversationId.trim() &&
     receipt.qualificationVersion === expected.qualificationVersion.trim() &&
