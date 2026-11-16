@@ -35,7 +35,7 @@ const IDLE: AgentSessionState = { lastMentioned: [{ at: "2026-11-15T10:00:00.000
 const HE = (clarity: string, referenceId?: string) => json({ parts: [part({ clarity, deliverable: "change", objectClues: [{ entity: "contact", text: "他", ...(referenceId ? { referenceId } : {}) }, { entity: "todo", text: "他的待办" }], requiredCapabilities: ["todo.update"], sourceQuote: "把他的待办改到周五" })], plainChat: false });
 
 test("idle 70 minutes, the model says clear: code still asks who 他 is, the one mentioned last first; a click resumes it", async () => {
-  const model = deepseekStub([HE("clear")]);
+  const model = deepseekStub([HE("clear"), json({ operations: [{ dateText: "周五", dependsOn: [], entity: "todo", localId: "w1", partId: "p1", relations: [{ clue: "他", entity: "contact", role: "about" }], selector: { clues: ["待办"] }, verb: "update" }] })]);
   const kit = graphKit(model.fetchImplementation, { now: "2026-11-15T11:10:00.000Z", state: IDLE });
   await kit.seeded;
   const input = kit.input("把他的待办改到周五。");
@@ -47,7 +47,8 @@ test("idle 70 minutes, the model says clear: code still asks who 他 is, the one
   assert.equal(question.options[0].ref?.id, "contact:c17");
   const resumed = await resumeAgentGraph(kit.deps, input, { clarificationId: question.clarificationId, kind: "select", optionId: question.options[0].optionId }, { names: { "contact:c17": "小林健" } });
   assert.equal(resumed.partResults[0].route, "propose_write", "after the click the object is no longer missing");
-  assert.equal(model.calls.length, 1);
+  assert.equal(model.calls.length, 2, "AG06: the second layer's one call after the click");
+  assert.match(resumed.text, /没有找到小林健的待办/u, "the person picked is the one looked for");
 });
 
 test("not idle: a pronoun the context bound resolves; one it left unbound is not second-guessed inside the 60-minute window", async () => {

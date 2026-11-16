@@ -30,7 +30,8 @@ export interface MemoCreateSet {
   body: string;
   /** Every person the memo is about: the actual contacts and the ones only mentioned. */
   contactIds: string[];
-  interaction: NoteInteractionContract;
+  /** Absent: a plain note with no actual contact (nobody was named). */
+  interaction?: NoteInteractionContract;
   /** Display names of the contacts, frozen with the card (the text names them). */
   names: Record<string, string>;
 }
@@ -74,6 +75,11 @@ const CHANNEL_WORDS: Record<CardLocale, Record<string, Record<string, string>>> 
 /** The line a user reads for a new interaction memo: who, which day, what kind of contact, who is only mentioned. */
 export function memoCreateText(set: MemoCreateSet, locale: CardLocale): string {
   const interaction = set.interaction;
+  if (!interaction) {
+    if (locale === "en") return `New note "${set.title}"`;
+    if (locale === "ja") return `メモ「${set.title}」を追加`;
+    return `新增笔记「${set.title}」`;
+  }
   const nameOf = (id: string) => set.names[id] ?? id;
   const actual = interaction.actualContactIds.map(nameOf);
   const mentioned = set.contactIds.filter((id) => !interaction.actualContactIds.includes(id)).map(nameOf);
@@ -124,7 +130,7 @@ export async function prepareCardOperation(input: {
   const { intent } = input;
   if (intent.capability === MEMO_CREATE) {
     const set = intent.set;
-    const after = { body: set.body, contactIds: [...set.contactIds], interaction: { ...set.interaction, actualContactIds: [...set.interaction.actualContactIds] }, title: set.title };
+    const after = { body: set.body, contactIds: [...set.contactIds], ...(set.interaction ? { interaction: { ...set.interaction, actualContactIds: [...set.interaction.actualContactIds] } } : {}), title: set.title };
     return {
       ...base({ ...input, partId: intent.partId }),
       after,
@@ -153,7 +159,7 @@ export function cardIntentOf(op: AgentActionOperationPayload, operations: readon
   if (op.capability === MEMO_CREATE) {
     const after = (op.after ?? {}) as Record<string, unknown>;
     const names = ((op.shown as Record<string, unknown> | undefined)?.names ?? {}) as Record<string, string>;
-    return { ...extra, capability: MEMO_CREATE, set: { body: String(after.body ?? ""), contactIds: [...((after.contactIds as string[]) ?? [])], interaction: after.interaction as NoteInteractionContract, names: { ...names }, title: String(after.title ?? "") } };
+    return { ...extra, capability: MEMO_CREATE, set: { body: String(after.body ?? ""), contactIds: [...((after.contactIds as string[]) ?? [])], ...(after.interaction ? { interaction: after.interaction as NoteInteractionContract } : {}), names: { ...names }, title: String(after.title ?? "") } };
   }
   const todo = todoIntentOf(op);
   return todo ? { ...todo, ...extra } : null;

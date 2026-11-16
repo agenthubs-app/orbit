@@ -22,6 +22,8 @@ export interface NamedRecordRef {
   id: string;
   name: string;
   at?: string;
+  /** AG06: what tells it apart in a question (a person's company and role); never stored in session state. */
+  detail?: string;
 }
 
 export type OpenItemKind = "clarification" | "alternative" | "card" | "pending_external";

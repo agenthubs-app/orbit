@@ -13,6 +13,32 @@ const KANA = /[぀-ゟ゠-ヿｦ-ﾟ]/u;
 const HAN = /[㐀-䶿一-鿿]/u;
 const LATIN = /[A-Za-z]/u;
 
+/**
+ * AG06: the first layer reports the message's language; code accepts it only when the text can be in that
+ * language, so one wrong guess cannot flip a whole answer:
+ * - Japanese: some kana or Han, at least as much as the Latin words, and either no kana at all (a kanji-only
+ *   note) or kana making at least 15% of the CJK characters;
+ * - Chinese: some Han, kana under 15% of the CJK characters, and at least as much CJK as Latin words;
+ * - English: the Latin words are at least the CJK characters.
+ * A report that is missing or does not fit the text falls back to replyLanguage() below.
+ */
+export function replyLanguageOf(message: string, reported: string | null | undefined, fallback?: string): { language: ReplyLanguage; source: "reported" | "rule"; rejected?: string } {
+  const han = (message.match(/[㐀-䶿一-鿿]/gu) ?? []).length;
+  const kana = (message.match(/[぀-ゟ゠-ヿｦ-ﾟ]/gu) ?? []).length;
+  const latinWords = (message.match(/[A-Za-z]+(?:['’-][A-Za-z]+)*/gu) ?? []).length;
+  // A Latin word counts as two characters: "by Friday" weighs about as much as 4 Han.
+  const latin = latinWords * 2;
+  // Japanese prose carries kana between its kanji (well over 15%); a Chinese sentence with a "さん" in it does not.
+  // A kanji-only note ("明日予定確認") has no kana at all and can be either, so the report decides.
+  const kanaShare = kana + han ? kana / (kana + han) : 0;
+  const fits = reported === "ja" ? (kana + han > 0 && kana + han >= latin && (kana === 0 || kanaShare >= 0.15))
+    : reported === "zh" ? (han > 0 && kanaShare < 0.15 && han + kana >= latin)
+      : reported === "en" ? (latinWords > 0 && latin >= han + kana)
+        : false;
+  if (fits) return { language: reported as ReplyLanguage, source: "reported" };
+  return { language: replyLanguage(message, fallback), source: "rule", ...(reported ? { rejected: reported } : {}) };
+}
+
 /** The reply language from this turn's words: kana → Japanese; Han without kana → Chinese; else English. */
 export function replyLanguage(message: string, fallback?: string): ReplyLanguage {
   if (KANA.test(message)) return "ja";
@@ -42,7 +68,7 @@ type Words = {
 const WORDS: Record<ReplyLanguage, Words> = {
   zh: {
     acceptedAlternative: (rule) => rule
-      ? "好，就按定期留意来。定期留意要建一条定期任务，这需要你在确认卡上点了确认才会建；这一版还不能在对话里出这张卡，所以现在还没有建任何定期任务。"
+      ? "好，就按定期留意来。定期留意要建一条定期任务，这一版还不能在对话里建，所以现在还没有建任何定期任务。"
       : "好，就按这个做法来。",
     alternative: (quote, topic, scope, accept) => `「${quote}」：我没办法一直不停地找下去。可以换个做法：定期留意${scope === "events" ? " Orbit 的活动目录" : "你在 Orbit 里的记录"}，看有没有新出现的${topic}，有合适的再告诉你。要不要这样做，由你决定：${accept ? `回一句，或点「${accept}」就行。` : "回一句就行。"}`,
     answerFailed: (quote) => `「${quote}」这次没处理成：写回答时出了问题。请再发一次。`,
@@ -56,7 +82,7 @@ const WORDS: Record<ReplyLanguage, Words> = {
     names: (names) => (names.length ? `（对象：${names.join("、")}）` : ""),
     notUnderstood: "这次没处理成：我没能把这条消息整理成可以处理的样子。请再发一次，或者换个说法。",
     notYet: {
-      propose_write: (quote, names) => `「${quote}」${names}：这要修改你的记录，这一版还不能在对话里出确认卡，所以这次什么都没有改。`,
+      propose_write: (quote, names) => `「${quote}」${names}：这一版还不能在对话里改这类记录，所以这次什么都没有改。`,
       read: (quote, names) => `「${quote}」${names}：这要读你在 Orbit 里的记录，这一版还不能读，所以这次没有查。`,
       web_lookup: (quote, names) => `「${quote}」${names}：这要上网查公开资料，这一版还不能联网，所以这次没有查。`,
     },
@@ -65,7 +91,7 @@ const WORDS: Record<ReplyLanguage, Words> = {
   },
   ja: {
     acceptedAlternative: (rule) => rule
-      ? "では、定期的にチェックする方法で進めます。定期チェックには定期タスクを1件作る必要があり、確認カードで「確認」を押したときに作られます。このバージョンではまだ会話の中でそのカードを出せないため、定期タスクはまだ何も作っていません。"
+      ? "では、定期的にチェックする方法で進めます。定期チェックには定期タスクを1件作る必要がありますが、このバージョンではまだ会話から作れないため、定期タスクはまだ何も作っていません。"
       : "では、その方法で進めます。",
     alternative: (quote, topic, scope, accept) => `「${quote}」：ずっと探し続けることはできません。代わりに、${scope === "events" ? "Orbit のイベント一覧" : "Orbit の記録"}に新しく${topic}が出ていないかを定期的にチェックして、合うものがあればお知らせする方法があります。そうするかどうかはお任せします。${accept ? `一言お返事いただくか、「${accept}」を押してください。` : "一言お返事ください。"}`,
     answerFailed: (quote) => `「${quote}」は今回うまく処理できませんでした。回答を作る途中で問題が起きました。もう一度送ってください。`,
@@ -79,7 +105,7 @@ const WORDS: Record<ReplyLanguage, Words> = {
     names: (names) => (names.length ? `（対象：${names.join("、")}）` : ""),
     notUnderstood: "今回はうまく処理できませんでした。メッセージの内容を処理できる形に整理できませんでした。もう一度送るか、言い方を変えてみてください。",
     notYet: {
-      propose_write: (quote, names) => `「${quote}」${names}：記録の変更が必要ですが、このバージョンではまだ会話の中で確認カードを出せないため、今回は何も変更していません。`,
+      propose_write: (quote, names) => `「${quote}」${names}：このバージョンでは、この種類の記録はまだ会話から変更できないため、今回は何も変更していません。`,
       read: (quote, names) => `「${quote}」${names}：Orbit の記録を読む必要がありますが、このバージョンではまだ読めないため、今回は調べていません。`,
       web_lookup: (quote, names) => `「${quote}」${names}：ネットで公開情報を調べる必要がありますが、このバージョンではまだ調べられないため、今回は調べていません。`,
     },
@@ -88,7 +114,7 @@ const WORDS: Record<ReplyLanguage, Words> = {
   },
   en: {
     acceptedAlternative: (rule) => rule
-      ? "OK, we'll go with checking regularly. That needs a scheduled task, which is only created after you press Confirm on a confirmation card; this version cannot offer that card in the conversation yet, so no scheduled task has been created."
+      ? "OK, we'll go with checking regularly. That needs a scheduled task, which this version cannot create from the conversation yet, so no scheduled task has been created."
       : "OK, we'll go with that approach.",
     alternative: (quote, topic, scope, accept) => `"${quote}": I can't keep searching without end. Instead, I could regularly check ${scope === "events" ? "Orbit's event directory" : "your Orbit records"} for new ${topic} and tell you when something fits. Whether to do that is up to you: ${accept ? `reply, or press "${accept}".` : "just reply."}`,
     answerFailed: (quote) => `"${quote}" was not handled this time: something went wrong while writing the answer. Please send it again.`,
@@ -102,7 +128,7 @@ const WORDS: Record<ReplyLanguage, Words> = {
     names: (names) => (names.length ? ` (about ${names.join(", ")})` : ""),
     notUnderstood: "This was not handled: I couldn't turn your message into something I can work on. Please send it again or put it another way.",
     notYet: {
-      propose_write: (quote, names) => `"${quote}"${names}: this needs a change to your records, and this version cannot offer a confirmation card in the conversation yet, so nothing was changed.`,
+      propose_write: (quote, names) => `"${quote}"${names}: this version cannot change this kind of record from the conversation yet, so nothing was changed.`,
       read: (quote, names) => `"${quote}"${names}: this needs your Orbit records, which this version cannot read yet, so I did not look it up.`,
       web_lookup: (quote, names) => `"${quote}"${names}: this needs public web pages, which this version cannot look up yet, so I did not look it up.`,
     },

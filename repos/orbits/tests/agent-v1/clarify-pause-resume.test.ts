@@ -29,10 +29,12 @@ const STATE: AgentSessionState = {
   updatedAt: "2026-11-15T10:00:00.000Z",
 };
 const MESSAGE = "把她的待办改到周五。";
+// AG06: after the click the write part goes on to the second layer (one call, inside the thread's budget).
+const PROPOSE = json({ operations: [{ dateText: "周五", dependsOn: [], entity: "todo", localId: "w1", partId: "p1", relations: [{ clue: "她", entity: "contact", role: "about" }], selector: { clues: ["待办"] }, verb: "update" }] });
 const ASK = json({ parts: [part({ clarity: "missing_one", deliverable: "change", objectClues: [{ entity: "contact", text: "她" }, { entity: "todo", text: "待办" }], requiredCapabilities: ["todo.update"], sourceQuote: "把她的待办改到周五" })], plainChat: false });
 
 test("pause and resume in the graph: the click is bound to the offered person, no model call, the question is not sent again", async () => {
-  const model = deepseekStub([ASK]);
+  const model = deepseekStub([ASK, PROPOSE]);
   const trace = captureTrace();
   try {
     const kit = graphKit(model.fetchImplementation, { now: IDLE_NOW, state: STATE });
@@ -47,8 +49,9 @@ test("pause and resume in the graph: the click is bound to the offered person, n
     assert.match(paused.text, /李薇/u);
     const calls = model.calls.length;
     const resumed = await resumeAgentGraph(kit.deps, input, { clarificationId: question.clarificationId, kind: "select", optionId: question.options[0].optionId }, { names: { "contact:c31": "李薇" } });
-    assert.equal(model.calls.length, calls, "resuming makes no model call");
-    assert.equal(resumed.modelCalls, paused.modelCalls, "the budget is the same thread's");
+    assert.equal(model.calls.length, calls + 1, "resuming runs no understand; the one call is the second layer's (AG06)");
+    assert.equal(model.calls.at(-1)?.node, "propose");
+    assert.equal(resumed.modelCalls, paused.modelCalls + 1, "the budget is the same thread's");
     assert.equal(resumed.partResults[0].route, "propose_write");
     assert.equal(resumed.partResults[0].status, "unfinished");
     assert.doesNotMatch(resumed.text, /指的是哪一位|是李薇吗/u, "the question is not sent again");
@@ -76,7 +79,7 @@ function entryKit(replies: Reply[], options: { now?: string; state?: AgentSessio
 }
 
 test("through the entry: a click is stored and processed in order, resumes the same request, and is never a new request", async () => {
-  const { deps, kit, model, store } = entryKit([ASK], { now: IDLE_NOW, state: STATE });
+  const { deps, kit, model, store } = entryKit([ASK, PROPOSE], { now: IDLE_NOW, state: STATE });
   await kit.seeded;
   const { receipt } = await acceptMessage(deps, { actorId: "actor:a", body: { clientMessageId: "m:1", locale: "zh", message: MESSAGE, protocolVersion: 3, references: [], sessionId: "session:resume" } });
   await settleSession("actor:a", "session:resume");
@@ -88,7 +91,7 @@ test("through the entry: a click is stored and processed in order, resumes the s
   assert.equal(click.replayed, false);
   await settleSession("actor:a", "session:resume");
   const done = (await getRequestResult(deps, { actorId: "actor:a", requestId: receipt.requestId }))!;
-  assert.equal(model.calls.length, 1);
+  assert.equal(model.calls.length, 2, "AG06: understand, then the second layer after the click");
   assert.equal(done.status, "completed");
   assert.equal(done.partResults[0].status, "unfinished");
   assert.ok(done.answer?.text.startsWith(asked.answer!.text), "what was delivered stays; the continuation follows it");
@@ -101,7 +104,7 @@ test("through the entry: a click is stored and processed in order, resumes the s
 });
 
 test("a click on an option that was not offered is refused at the entry and changes nothing", async () => {
-  const { deps, kit } = entryKit([ASK], { now: IDLE_NOW, state: STATE });
+  const { deps, kit } = entryKit([ASK, PROPOSE], { now: IDLE_NOW, state: STATE });
   await kit.seeded;
   const { receipt } = await acceptMessage(deps, { actorId: "actor:a", body: { clientMessageId: "m:1", locale: "zh", message: MESSAGE, protocolVersion: 3, references: [], sessionId: "session:resume" } });
   await settleSession("actor:a", "session:resume");
@@ -175,7 +178,7 @@ test("Postgres checkpointer: a paused thread is resumed by a fresh graph (anothe
   assert.match(new URL(databaseUrl!).hostname, /^(localhost|127\.0\.0\.1|::1)$/u, "only a local database");
   const saver = await createPostgresCheckpointer(databaseUrl!);
   try {
-    const model = deepseekStub([ASK]);
+    const model = deepseekStub([ASK, PROPOSE]);
     const kit = graphKit(model.fetchImplementation, { now: IDLE_NOW, state: STATE });
     await kit.seeded;
     const deps = { ...kit.deps, checkpointer: saver };
@@ -183,7 +186,7 @@ test("Postgres checkpointer: a paused thread is resumed by a fresh graph (anothe
     const paused = await runAgentGraph(deps, input);
     const question = paused.clarifications[0];
     const resumed = await resumeAgentGraph(deps, input, { clarificationId: question.clarificationId, kind: "select", optionId: question.options[0].optionId }, { names: { "contact:c31": "李薇" } });
-    assert.equal(model.calls.length, 1);
+    assert.equal(model.calls.length, 2, "AG06: understand, then the second layer after the click");
     assert.equal(resumed.partResults[0].route, "propose_write");
     assert.equal(resumed.paused, false);
     const pool = new Pool({ connectionString: databaseUrl });

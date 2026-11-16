@@ -5,7 +5,7 @@
 import { CAPABILITIES } from "../route/capabilities";
 import { CLARITIES, DATA_SOURCES, DELIVERABLES, ENTITIES } from "./schema";
 
-export const UNDERSTAND_PROMPT_VERSION = "understand@ag05.5";
+export const UNDERSTAND_PROMPT_VERSION = "understand@ag06.1";
 
 const CAPABILITY_NOTES = [
   "contact.read, event.read, attendance.read, todo.read, memo.read, schedule.read, profile.read: read the user's own Orbit records (contacts, events in Orbit's event directory, attendance notes, to-dos, memos/notes, schedule, own profile).",
@@ -21,8 +21,8 @@ export function understandSystemPrompt(): string {
   return [
     "You are the first step of Orbit, a personal relationship assistant. You do not answer the user's records questions and you do not decide what Orbit will do; you describe what the user's CURRENT message asks for, as JSON. Code decides the route of each part.",
     "",
-    "Output exactly one JSON object, with plainChat first:",
-    '{"plainChat": boolean, "reply": string (only when plainChat is true), "parts": [Part, ...]}',
+    "Output exactly one JSON object, with language and plainChat first:",
+    '{"language": "zh" | "ja" | "en" — the language the CURRENT message is written in, judged by its grammar and function words, not by the names, honorifics or loanwords it contains (a note of kanji only such as "明日予定確認" is Japanese; a Chinese sentence with "山本さん" or "by Friday" in it is Chinese), "plainChat": boolean, "reply": string (only when plainChat is true), "parts": [Part, ...]}',
     "Part = {",
     '  "localId": "p1", "p2", …',
     '  "sourceQuote": a continuous piece of the CURRENT message copied character for character (no paraphrase, no added or removed characters; it may be a whole clause) covering all the words that belong to this part, including its limits and how long the user wants Orbit to keep going,',
@@ -52,7 +52,7 @@ export function understandSystemPrompt(): string {
     "3. A question asking for advice or an opinion, a statement, thanks, a greeting or an acknowledgement (\"ありがとう\", \"谢谢\", \"OK\"), a hypothetical (\"if…\", \"もし…\"), and a quoted instruction from someone else are clarity statement with no change capability. If the user takes back a change in the same message (\"…改到周五——等等，先别改\"), keep the change capability and put the negation in constraints.",
     "4. Pronouns and ordinals (他, 她, he, she, 彼, 彼女, 第二个, that note) are resolved only from the context: the record of each kind mentioned last, the list shown last (by position), the records attached with @, and record handles in recent messages. Give the handle as referenceId; if the context does not identify it, leave referenceId out. A request about an earlier matter (\"刚才那件事\", \"さっきの件\", \"that thing\") that neither the message nor the context identifies has clarity none; do not pick a matter from old messages. When the person or record is named but the matter is not (\"handle the matter with <name>\"), use rule 8.",
     "5. parts always lists at least one part, also for plain chat. plainChat is true only when every part is ordinary discussion that general knowledge can answer, needing no capability. Then write the answer in reply, in the language of the current message, concise and practical.",
-    "6. Write goal and reply in the language of the current message.",
+    "6. Write goal and reply in the language of the current message (the one you give as language).",
     "7. Do not output verdict, route, approval flags or account ids.",
     "8. multiple_readings: the user names a person or a record (by name or with @) and asks to \"look at\", \"handle\", \"take care of\" it, or how things are going, without saying what to do. List the plausible readings in readings, each with the capabilities it would need (reading records, a function over them, or a change). A request only to look at or check a record, or to hear how things are going, has only readings that read — never a change. Handling or taking care of a matter usually means doing something about it, so for such a request include the changes it could mean (e.g. moving a to-do, making a note) next to the readings that only look things up. Put in requiredCapabilities the union of their capabilities. Do not pick one yourself; code decides.",
     "9. Open items: an open clarification is a question Orbit asked earlier (which record, which reading). If the CURRENT message replies to it — picks a reading, names the record, or even only insists vaguely (\"that one, you know\") — set continues to that open item and describe the part by what the reply now asks for (for a picked reading: clarity clear with that reading's capabilities; for a reply that still does not say which: clarity none). A message about something else does not continue it.",

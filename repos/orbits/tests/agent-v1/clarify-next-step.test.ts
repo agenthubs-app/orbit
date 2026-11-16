@@ -148,7 +148,7 @@ test("AG04-1: no context at all → exactly the three generic entries", async ()
   assert.match(result.text, /分かりません|分かりませんでした/u);
 });
 
-test("AG04-2: a mistagged statement is answered with at most one entry; clicking the entry makes a selection part (unfinished until AG06)", async () => {
+test("AG04-2: a mistagged statement is answered with at most one entry; clicking the entry makes a selection part that goes to the second layer (AG06)", async () => {
   const message = "小林今天又来电话催报价了。帮我看看给他的修订报价那条待办排在哪天。";
   const model = deepseekStub([
     json({ parts: [
@@ -156,6 +156,8 @@ test("AG04-2: a mistagged statement is answered with at most one entry; clicking
       part({ dataSources: ["orbit_records"], localId: "p2", objectClues: [{ entity: "todo", text: "给他的修订报价那条待办" }], requiredCapabilities: ["todo.read"], sourceQuote: "帮我看看给他的修订报价那条待办排在哪天" }),
     ], plainChat: false }),
     json({ segments: [{ partId: "p1", text: "催得这么紧，回电时可以先给一个确定的发送时间。" }] }),
+    // AG06: after the click, the second layer's one call for the new memo part.
+    json({ operations: [{ channel: "phone", dependsOn: [], direction: "incoming", entity: "memo", fields: [{ name: "body", valueText: "小林今天又来电话催报价了" }], localId: "w1", partId: "p1s1", relations: [{ clue: "小林", entity: "contact", role: "actual_contact" }], verb: "create" }] }),
   ]);
   const kit = graphKit(model.fetchImplementation, { now: NOW });
   const input = kit.input(message);
@@ -169,12 +171,15 @@ test("AG04-2: a mistagged statement is answered with at most one entry; clicking
   assert.doesNotMatch(result.text, /已(经)?记(下|好)|记进了/u);
   const entry = result.clarifications[0];
   const resumed = await resumeAgentGraph(kit.deps, input, { clarificationId: entry.clarificationId, kind: "select", optionId: entry.options[0].optionId });
-  assert.equal(model.calls.length, 2, "the click does not go to the model");
+  assert.equal(model.calls.length, 3, "the click runs no understand; the one new call is the second layer's (AG06)");
+  assert.equal(model.calls.at(-1)?.node, "propose");
   const created = resumed.partResults.find((item) => item.partId !== "p1" && item.partId !== "p2");
   assert.ok(created, "the click made a new part");
   assert.equal(created!.route, "propose_write");
+  // This kit has no contacts: the person is not found, so nothing is proposed and no card is mentioned.
   assert.equal(created!.status, "unfinished");
-  assert.match(resumed.text, /这一版还不能在对话里出确认卡/u);
+  assert.match(resumed.text, /没有找到你说的这位/u);
+  assert.doesNotMatch(resumed.text, /确认卡/u);
   const handoff = (resumed.state.parts.find((item) => item.localId === created!.partId))!;
   assert.equal(handoff.plan.intentBasis, "selection");
 });

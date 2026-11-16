@@ -103,6 +103,22 @@ export async function handleCardDecision(input: {
   return { body: { data, success: true }, status: 200 };
 }
 
+/** AG06: POST /api/agent/ledger/[id]/edit — take one item off a waiting card (revision, payloadHash, removeOperationId). */
+export async function handleCardEdit(input: { runtime: AgentRuntimeService; actionId: string; body: Record<string, unknown>; now?: () => string }): Promise<CardHttpResult> {
+  if (!input.runtime.editCard) return { body: failureBody("SERVICE_UNAVAILABLE", "Cards cannot be edited here.", "UNSUPPORTED"), status: 503 };
+  const action = await input.runtime.getAction(input.actionId);
+  if (!action?.origin) return { body: failureBody("NOT_FOUND", "No card matches that id.", "CARD_NOT_FOUND"), status: 404 };
+  const { revision, payloadHash, removeOperationId } = input.body;
+  if (!Number.isInteger(revision) || typeof payloadHash !== "string" || typeof removeOperationId !== "string" || !payloadHash || !removeOperationId) {
+    return { body: failureBody("VALIDATION_ERROR", "Taking an item off a card needs revision, payloadHash and removeOperationId.", "EDIT_FIELDS_REQUIRED"), status: 400 };
+  }
+  const result = await input.runtime.editCard({ actionId: input.actionId, payloadHash, removeOperationId, revision: revision as number });
+  if (!result) return { body: failureBody("NOT_FOUND", "No card matches that id.", "CARD_NOT_FOUND"), status: 404 };
+  const card = await preview(input.runtime, input.actionId, input.now?.() ?? new Date().toISOString());
+  if (result.outcome === "refused") return { body: failureBody("CONFLICT", result.message, result.reason ?? "CARD_REFUSED", { card, edit: result }), status: 409 };
+  return { body: { data: { card, edit: result }, success: true }, status: 200 };
+}
+
 export async function handleCardRegenerate(input: { runtime: AgentRuntimeService; actionId: string; now?: () => string }): Promise<CardHttpResult> {
   if (!input.runtime.regenerateCard) return { body: failureBody("SERVICE_UNAVAILABLE", "Cards cannot be regenerated here.", "UNSUPPORTED"), status: 503 };
   const action = await input.runtime.getAction(input.actionId);

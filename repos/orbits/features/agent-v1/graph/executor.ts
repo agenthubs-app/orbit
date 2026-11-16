@@ -22,6 +22,24 @@ import { GraphNotPausedError, resumeAgentGraph, runAgentGraph, type AgentGraphRe
 import { configuredCheckpointer } from "./checkpointer";
 import type { AgentGraphDependencies, AgentGraphInput, AgentRecordAccess, ReferenceHandle } from "./deps";
 import type { GraphResolution } from "./state";
+import { agentCardPreview } from "../../agent/runtime/card-view";
+import { cardLocale } from "../../agent/runtime/todo-operations";
+import type { AgentCardAccess } from "./deps";
+
+/**
+ * AG06: the graph's card is the request's card in the ledger (conversationCardId), frozen through
+ * runtime.freezeCard — idempotent per request — and shown as the ledger's one preview.
+ */
+export function ledgerCardAccess(runtime: AgentRuntimeService, now: () => string): AgentCardAccess {
+  return {
+    async freeze(input) {
+      if (!runtime.freezeCard) return null;
+      const frozen = await runtime.freezeCard({ actionId: conversationCardId(input.requestId), intents: input.intents, locale: cardLocale(input.locale), origin: { conversationId: input.sessionId, kind: "conversation", requestId: input.requestId } });
+      if (!frozen.action) return null;
+      return agentCardPreview(frozen.action, await runtime.getRun(frozen.action.runId), now());
+    },
+  };
+}
 
 /** How many stored messages are read to find the latest ten answered ones. */
 export const CONTEXT_READ_LIMIT = 30;
@@ -124,13 +142,15 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
     const entryStore = overrides.entryStore === undefined ? configuredAgentEntryStore(mode) : overrides.entryStore;
     const runtime = overrides.runtime ?? createOrbitAgentRuntimeService(mode, { actorId: execution.actorId });
     const records = overrides.records === undefined ? configuredRecordAccess() : overrides.records;
+    const now = overrides.now ?? (() => new Date().toISOString());
     const deps: AgentGraphDependencies = {
       authorizeReferences: overrides.authorizeReferences ?? referenceAuthorizer(records ?? null),
+      cards: overrides.cards ?? ledgerCardAccess(runtime, now),
       checkpointer: overrides.checkpointer ?? (await configuredCheckpointer(mode)),
       ...(records ? { records } : {}),
       fetchImplementation: overrides.fetchImplementation ?? execution.fetchImplementation,
       loadMessages: overrides.loadMessages ?? sessionMessagesLoader(mode, execution.actorId),
-      now: overrides.now ?? (() => new Date().toISOString()),
+      now,
       sessionState: overrides.sessionState ?? configuredAgentSessionStateStore(mode),
       timeZone: overrides.timeZone ?? process.env.ORBIT_DEFAULT_TIME_ZONE ?? "Asia/Tokyo",
       ...(overrides.modelCallLimit !== undefined ? { modelCallLimit: overrides.modelCallLimit } : {}),
@@ -138,7 +158,7 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
     if (execution.resume) {
       // AG04: a click resumes this request's paused thread; no message, no confirmation boundary, no model.
       const resumed = await resumeAgentGraph(deps, graphInputOf(execution.actorId, execution.requestId, execution.sessionId, execution.input, false), { clarificationId: execution.resume.clarificationId, kind: "select", optionId: execution.resume.optionId }, { names: namesIn(execution.document), previousClarifications: execution.document?.clarifications ?? null });
-      return { clarifications: resumed.clarifications, partResults: resumed.partResults, sourceRefs: resumed.sourceRefs, status: resumed.status, text: resumed.text };
+      return { ...(resumed.actionPreview ? { actionPreview: resumed.actionPreview } : {}), clarifications: resumed.clarifications, partResults: resumed.partResults, sourceRefs: resumed.sourceRefs, status: resumed.status, text: resumed.text };
     }
     const cardPrepared = Boolean(await runtime.getAction(conversationCardId(execution.requestId)).catch(() => null));
     let graph: AgentGraphResult | null = null;
@@ -148,7 +168,8 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       requestId: execution.requestId,
       run: async () => {
         graph = await runAgentGraph(deps, graphInputOf(execution.actorId, execution.requestId, execution.sessionId, execution.input, cardPrepared));
-        return { reply: graph.text, sourceRefs: graph.sourceRefs };
+        // AG06: the graph wrote its card line itself (from the frozen preview); the boundary does not add another.
+        return { cardShown: Boolean(graph.actionPreview), reply: graph.text, sourceRefs: graph.sourceRefs };
       },
       sessionId: execution.sessionId,
     });
@@ -156,7 +177,7 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
     if (!settled) return { actionPreview: boundary.actionPreview, sourceRefs: boundary.sourceRefs, text: boundary.text };
     if (settled.earlier.length && entryStore) await writeBackEarlier(deps, entryStore, execution.actorId, settled.earlier, deps.now);
     const operationId = boundary.actionPreview?.operations[0]?.operationId;
-    const partResults = settled.partResults.map((part) => (part.status === "awaiting_confirmation" && operationId ? { ...part, operationId } : part));
+    const partResults = settled.partResults.map((part) => (part.status === "awaiting_confirmation" && operationId && !part.operationId ? { ...part, operationId } : part));
     return {
       ...(boundary.actionPreview ? { actionPreview: boundary.actionPreview } : {}),
       ...(settled.clarifications.length ? { clarifications: settled.clarifications } : {}),

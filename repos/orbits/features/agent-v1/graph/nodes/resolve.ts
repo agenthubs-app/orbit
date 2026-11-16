@@ -146,14 +146,23 @@ function nextDay(day: string): string {
   return new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 }
 
-interface ContactMatch {
+export interface ContactMatch {
   id: string;
   name: string;
   view: RecordView | null;
+  /** AG06: what tells this person apart from others of the name (company, role), for a question. */
+  detail?: string;
+}
+
+/** AG06: the company and role of a contact view ("北辰软件 · 销售总监"), or nothing. */
+export function contactDetail(view: RecordView | null): string | undefined {
+  if (!view) return undefined;
+  const parts = [view.fields.company, view.fields.headline].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+  return parts.length ? parts.join(" · ") : undefined;
 }
 
 /** Looks a person up by name in the account (never elsewhere) and narrows by the company the user named. */
-async function findContacts(records: AgentRecordAccess, scope: DomainScope, words: string, quote: string, message: string): Promise<{ matches: ContactMatch[]; failed: boolean }> {
+export async function findContacts(records: AgentRecordAccess, scope: DomainScope, words: string, quote: string, message: string): Promise<{ matches: ContactMatch[]; failed: boolean }> {
   const tokens = nameTokens(words);
   let found: RecordView[] = [];
   let failed = false;
@@ -176,7 +185,7 @@ async function findContacts(records: AgentRecordAccess, scope: DomainScope, word
     const exact = matches.filter((view) => tokens.includes(String(view.fields.displayName)));
     if (exact.length) matches = exact;
   }
-  return { failed, matches: matches.map((view) => ({ id: view.id, name: String(view.fields.displayName ?? ""), view })) };
+  return { failed, matches: matches.map((view) => ({ detail: contactDetail(view), id: view.id, name: String(view.fields.displayName ?? ""), view })) };
 }
 
 interface PartRead {
@@ -318,7 +327,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
         }
         if (matches.length > 1) {
           // Several people of that name, the company does not tell them apart: ask which (§3.11), do not guess.
-          run.candidates.set(part.localId, matches.slice(0, 3).map((match): NamedRecordRef => ({ id: match.id, name: match.name, type: "contact" })));
+          run.candidates.set(part.localId, matches.slice(0, 3).map((match): NamedRecordRef => ({ id: match.id, name: match.name, type: "contact", ...(match.detail ? { detail: match.detail } : {}) })));
           run.steps.set(part.localId, { kind: "ask_missing" });
           run.needsDirections = true;
           part.status = "awaiting_clarification";

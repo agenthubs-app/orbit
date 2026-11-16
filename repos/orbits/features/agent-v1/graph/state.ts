@@ -17,6 +17,8 @@ import type { NamedRecordRef } from "../context/session-state";
 import type { ReferenceHandle } from "./deps";
 import type { Capability, Route, Verdict, WaitReason } from "../route/capabilities";
 import type { PartStatus } from "../route/decide";
+import type { PartWrite } from "../propose/resolve";
+import type { AgentActionPreviewContract } from "../../../shared/contract/agent-v1";
 import type { Clarity, DataOwner, DataSource, Deliverable, IntentBasis, Persistence, ReadFilter, UnderstandOutput } from "../understand/schema";
 
 export interface GraphPartRef {
@@ -63,7 +65,8 @@ export interface OptionSetState {
   partId: string;
   kind: "question" | "not_understood" | "entry";
   asks?: "object" | "reading";
-  purpose: "directions" | "readings" | "object" | "other_readings" | "entry" | "alternative";
+  /** AG06: operation — a question before the card (which person, which to-do, which date field). */
+  purpose: "directions" | "readings" | "object" | "other_readings" | "entry" | "alternative" | "operation";
   state: "open" | "answered" | "shelved";
   selectedOptionId?: string | null;
   answeredBy?: string | null;
@@ -111,6 +114,8 @@ export interface GraphPart {
   coverage?: PartCoverage[];
   /** AG05: the refs the delivered answer cites (verified). */
   cites?: string[];
+  /** AG06: a write part's intents (codes and offsets), the user's picks and its operations on the card. */
+  write?: PartWrite;
 }
 
 const replace = <T>(fallback: () => T) => Annotation<T>({ default: fallback, reducer: (_previous, next) => next });
@@ -188,4 +193,9 @@ export interface AgentGraphRun {
   candidates: Map<string, NamedRecordRef[]>;
   /** AG05: the delivered answer's verified source refs (filled by verify). */
   sourceRefs: string[];
+  /** AG06: code's sentences for write parts (not found, a question, cannot be done here). */
+  writeLines: Map<string, string>;
+  /** AG06: the card of this request as frozen, and code's line for it. */
+  actionPreview: AgentActionPreviewContract | null;
+  cardLine: string | null;
 }

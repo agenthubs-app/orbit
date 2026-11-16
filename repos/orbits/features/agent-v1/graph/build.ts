@@ -17,14 +17,15 @@ import { answerNode } from "./nodes/answer";
 import { clarifyNode } from "./nodes/clarify";
 import { deliverNode } from "./nodes/deliver";
 import { intakeNode } from "./nodes/intake";
+import { proposeDue, proposeNode } from "./nodes/propose";
 import { resolveNode } from "./nodes/resolve";
 import { routeNode } from "./nodes/route";
 import { understandNode } from "./nodes/understand";
 import { verifyNode } from "./nodes/verify";
 import { AgentGraphAnnotation, type AgentGraphRun, type AgentGraphState, type GraphResolution } from "./state";
-import type { AgentClarificationContract, AgentPartResult } from "../../../shared/contract/agent-v1";
+import type { AgentActionPreviewContract, AgentClarificationContract, AgentPartResult } from "../../../shared/contract/agent-v1";
 
-export const GRAPH_NODES = ["intake", "understand", "route", "resolve", "clarify", "answer", "verify", "deliver"] as const;
+export const GRAPH_NODES = ["intake", "understand", "route", "resolve", "propose", "clarify", "answer", "verify", "deliver"] as const;
 
 function traced(name: string, requestId: string, node: GraphNode): GraphNode {
   return (state) => runWithTraceContext({ node: name, requestId }, async () => {
@@ -58,6 +59,7 @@ export function buildAgentGraph(scope: NodeScope) {
     .addNode("understand", traced("understand", id, understandNode(scope)))
     .addNode("route", traced("route", id, routeNode(scope)))
     .addNode("resolve", traced("resolve", id, resolveNode(scope)))
+    .addNode("propose", traced("propose", id, proposeNode(scope)))
     .addNode("clarify", traced("clarify", id, clarifyNode(scope)))
     .addNode("answer", traced("answer", id, answerNode(scope)))
     .addNode("verify", traced("verify", id, verifyNode(scope)))
@@ -67,8 +69,10 @@ export function buildAgentGraph(scope: NodeScope) {
     .addConditionalEdges("understand", (state: AgentGraphState) => (state.understanding === "understood" ? "route" : "deliver"), ["route", "deliver"])
     // AG05: parts that read go through resolve first (it may find several people and need a question).
     // AG04: parts that need questions or directions go through clarify's prepare pass.
-    .addConditionalEdges("route", (state: AgentGraphState) => (readDue(state) ? "resolve" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["resolve", "clarify", "answer", "deliver"])
-    .addConditionalEdges("resolve", (state: AgentGraphState) => (scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["clarify", "answer", "deliver"])
+    // AG06: parts that write go through propose (after the reads, so a person found by a read is known).
+    .addConditionalEdges("route", (state: AgentGraphState) => (readDue(state) ? "resolve" : proposeDue(state) ? "propose" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["resolve", "propose", "clarify", "answer", "deliver"])
+    .addConditionalEdges("resolve", (state: AgentGraphState) => (proposeDue(state) ? "propose" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["propose", "clarify", "answer", "deliver"])
+    .addConditionalEdges("propose", (state: AgentGraphState) => (scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["clarify", "answer", "deliver"])
     // After prepare: answer or deliver. After a resume: route again (a click to carry out) or deliver (closed from outside).
     .addConditionalEdges("clarify", (state: AgentGraphState) => state.resumeNext ?? (answerDue(state) ? "answer" : "deliver"), ["route", "answer", "deliver"])
     .addEdge("answer", "verify")
@@ -92,6 +96,8 @@ export interface AgentGraphResult {
   earlier: AgentGraphRun["earlier"];
   /** AG05: the records the answer cites (verified, openable now), as typed refs. */
   sourceRefs: string[];
+  /** AG06: the card this request froze (this pass), from the ledger's one preview. */
+  actionPreview: AgentActionPreviewContract | null;
 }
 
 function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRun {
@@ -120,6 +126,9 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     steps: new Map(),
     text: "",
     understood: null,
+    writeLines: new Map(),
+    actionPreview: null,
+    cardLine: null,
   };
 }
 
@@ -128,6 +137,7 @@ const PAUSED_AT = "clarify";
 async function resultOf(graph: ReturnType<typeof buildAgentGraph>, run: AgentGraphRun, state: AgentGraphState, threadId: string): Promise<AgentGraphResult> {
   const snapshot = await graph.getState({ configurable: { thread_id: threadId } });
   return {
+    actionPreview: run.actionPreview,
     clarifications: run.clarifications,
     earlier: run.earlier,
     modelCalls: state.budget.used,

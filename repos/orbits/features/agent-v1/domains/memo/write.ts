@@ -39,7 +39,7 @@ export async function applyApprovedMemoCreate(
     body,
     contactIds,
     idempotencyKey: context.idempotencyKey,
-    interaction: payload.interaction as NoteInteractionContract,
+    ...(payload.interaction ? { interaction: payload.interaction as NoteInteractionContract } : {}),
     now: context.now,
     ...(typeof payload.title === "string" && payload.title.trim() ? { title: payload.title } : {}),
   });

@@ -139,7 +139,8 @@ test("a note, schedule or event draft gets no card here, and a fixed sentence sa
   const kit = createCardKit();
   const result = await runWithConfirmBoundary({ now: kit.now, runtime: kit.runtime }, { locale: "zh", message: "记一条笔记：今天和小林通了电话", requestId: "agreq_note", run: turnOf({ entityDraft: { fields: { title: "和小林通电话" }, kind: "note" } }), sessionId: SESSION });
   assert.equal(result.actionPreview, undefined);
-  assert.match(result.text, /这类记录（笔记）现在还不能在这里出确认卡，什么都没有保存。/u);
+  assert.match(result.text, /这类记录（笔记）现在还不能在这里保存，什么都没有保存。/u);
+  assert.doesNotMatch(result.text, /确认卡/u, "AG06: a turn without a card does not talk about cards");
   assert.equal((await kit.runtime.listActions()).length, 0);
 });
 
