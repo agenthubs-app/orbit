@@ -18,7 +18,10 @@ export async function refreshCardInDocument(input: { store: AgentEntryStore; act
   const record = await input.store.get(input.actorId, requestId);
   if (!record || record.document.actionPreview?.actionId !== input.updated.actionId) return false;
   const previous = input.previous ?? record.document.actionPreview;
-  if (previous.revision === input.updated.revision && previous.payloadHash === input.updated.payloadHash) return false;
+  // AG07 (AG07-2): a decision on one client changes the card's state without a new revision; the document follows it
+  // too, so the other client reading the document (or the channel) sees the same state.
+  const sameState = previous.status === input.updated.status && previous.operations.map((op) => op.status).join() === input.updated.operations.map((op) => op.status).join();
+  if (previous.revision === input.updated.revision && previous.payloadHash === input.updated.payloadHash && sameState) return false;
   const answer = record.document.answer;
   const languages = input.locale ? [cardLocale(input.locale)] : (["zh", "ja", "en"] as const);
   let text = answer?.text ?? null;

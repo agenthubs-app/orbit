@@ -3,6 +3,7 @@
  * Hard checks read only this; adding evidence for a new check word starts here.
  */
 import type { AgentResultDocument } from "../../../shared/contract/agent-v1";
+import type { ClientViewRecord } from "./client-views";
 import type { DatabaseDiff, RecordChange } from "./snapshot";
 import type { TraceEvent } from "./trace-log";
 
@@ -139,6 +140,8 @@ export interface Observation {
   run?: Record<string, unknown>;
   /** AG05: the "recent interaction" view per contact fixture, read by the runner before and after the steps. */
   recentInteractions?: Record<string, { before: RecentInteractionObservation | null; after: RecentInteractionObservation | null }>;
+  /** AG07: what each client showed of the last card after each step (client_view, same_card_on). */
+  clientViews?: ClientViewRecord[];
 }
 
 export interface RecentInteractionObservation {

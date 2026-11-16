@@ -53,8 +53,12 @@ const SETTLING = new Set(["approved", "executing"]);
 /** AG06 repair 1: called when a card got a new revision (edited, content changed, regenerated) with its new preview. */
 export type CardRevisedHook = (card: AgentActionPreviewContract) => Promise<void>;
 
-async function notifyRevised(hook: CardRevisedHook | undefined, before: number, card: AgentActionPreviewContract | null): Promise<void> {
-  if (!hook || !card || card.revision === before) return;
+/**
+ * The card changed (a new revision) or may have changed state (a decision): the hook brings the request's document
+ * up to date (AG07: it compares state as well as revision, and does nothing when nothing changed).
+ */
+async function notifyRevised(hook: CardRevisedHook | undefined, _before: number, card: AgentActionPreviewContract | null): Promise<void> {
+  if (!hook || !card) return;
   await hook(card).catch(() => undefined);
 }
 

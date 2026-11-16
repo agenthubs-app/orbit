@@ -19,6 +19,8 @@
  * Record content stays in the run (the answer step's materials); the checkpoint gets refs, versions,
  * gaps and counts only.
  */
+import { pinyin } from "pinyin-pro";
+
 import { readSourceOf } from "../../answer/basis";
 import { gapWords } from "../../answer/gap-copy";
 import { materialOf } from "../../answer/materials";
@@ -191,6 +193,41 @@ export function contactDetail(view: RecordView | null): string | undefined {
   return parts.length ? parts.join(" · ") : undefined;
 }
 
+const ROMANIZED_PAGES = 10;
+
+/**
+ * AG07 (AE-UIX-008): a name in Latin letters ("Li Wei", "Wei Li") that names no contact as written, against the
+ * account's contacts whose names are Chinese characters, read in pinyin without tones (either name order). Only the
+ * account's own contacts are read (a few pages); several of the same reading are all returned (the caller asks).
+ */
+export async function romanizedContacts(records: AgentRecordAccess, scope: DomainScope, words: string): Promise<RecordView[]> {
+  const clean = words.replace(/^@/u, "").replace(LATIN_TITLE, "").trim().toLowerCase();
+  if (!/^[a-z][a-z\s'’.-]*$/u.test(clean)) return [];
+  const syllables = clean.split(/[\s'’.-]+/u).filter(Boolean);
+  const said = syllables.join("");
+  if (said.length < 3) return [];
+  const reversed = [...syllables].reverse().join("");
+  const out: RecordView[] = [];
+  let cursor: string | undefined;
+  try {
+    for (let page = 0; page < ROMANIZED_PAGES; page += 1) {
+      const result = await records.reader.read("contact", scope, { limit: 10, ...(cursor ? { cursor } : {}) });
+      for (const view of result.items) {
+        const name = String(view.fields.displayName ?? "").replace(/\s+/gu, "");
+        if (!name || !/^\p{Script=Han}+$/u.test(name)) continue;
+        const reading = pinyin(name, { surname: "head", toneType: "none", type: "array" }).join("").toLowerCase();
+        if (reading === said || reading === reversed) out.push(view);
+      }
+      if (!result.nextCursor) break;
+      cursor = result.nextCursor;
+    }
+  } catch (error) {
+    emitTrace({ error: error instanceof Error ? error.message : String(error), type: "read.error", where: "resolve.contact_romanized" });
+  }
+  if (out.length) emitTrace({ found: out.map((view) => view.id), said: clean, type: "resolve.contact_romanized" });
+  return out;
+}
+
 /** Looks a person up by name in the account (never elsewhere) and narrows by the company the user named. */
 export async function findContacts(records: AgentRecordAccess, scope: DomainScope, words: string, quote: string, message: string): Promise<{ matches: ContactMatch[]; failed: boolean }> {
   const tokens = nameTokens(words);
@@ -206,6 +243,8 @@ export async function findContacts(records: AgentRecordAccess, scope: DomainScop
     emitTrace({ error: error instanceof Error ? error.message : String(error), type: "read.error", where: "resolve.contact_search" });
     failed = true;
   }
+  // AG07 (AE-UIX-008): "Li Wei" written in Latin letters names 李薇; the contacts' Chinese names are read in pinyin.
+  if (!found.length && !failed) found = await romanizedContacts(records, scope, words);
   let matches = found;
   if (matches.length > 1) {
     const named = matches.filter((view) => typeof view.fields.company === "string" && view.fields.company && (quote.includes(String(view.fields.company)) || message.includes(String(view.fields.company))));

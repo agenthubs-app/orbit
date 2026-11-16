@@ -7,7 +7,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { refreshCardInDocument } from "../../features/agent-v1/entry/card-document";
+import { createMemoryAgentEntryStore } from "../../features/agent-v1/entry/store";
 import { handleCardRecheck } from "../../features/agent/ledger/card-routes";
+import { agentCardPreview } from "../../features/agent/runtime/card-view";
 import { AGENT_CARD_TTL_MS } from "../../features/agent/runtime/decision";
 import { ACTOR, createCardKit, decide, freeze } from "./agent-ledger-card-kit";
 
@@ -49,4 +52,23 @@ test("nothing changed: the card stays revision 1; a closed card and an expired c
   kit.advance(AGENT_CARD_TTL_MS + 60_000);
   const expired = await handleCardRecheck({ actionId: card.actionId, now: kit.now, runtime: kit.runtime });
   assert.deepEqual([(expired.body.data as { recheck: { reason: string } }).recheck.reason, (expired.body.data as { card: { status: string } }).card.status], ["CARD_EXPIRED", "expired"]);
+});
+
+test("AG07-2: a decision changes the card's state without a new revision; the request's document follows it", async () => {
+  const kit = createCardKit();
+  const requestId = "agreq_ag07_follow";
+  const card = await freeze(kit, [{ capability: "todo.create", set: { plannedDate: "2026-11-30", title: "给客户寄新年贺卡" } }]);
+  const origin = { conversationId: "session:a", kind: "conversation" as const, requestId };
+  const shown = agentCardPreview({ ...(await kit.runtime.getAction(card.actionId))!, origin }, null, kit.now());
+  const store = createMemoryAgentEntryStore();
+  const now = kit.now();
+  await store.accept({ actorId: ACTOR, clientMessageId: "m1", fingerprint: "f", input: { locale: "zh", message: "…", references: [] }, leaseMs: 60_000, now, requestId, sessionId: "session:a", workerId: "w" });
+  await store.claimNext({ actorId: ACTOR, leaseMs: 60_000, now, sessionId: "session:a", workerId: "w" });
+  await store.finish({ actorId: ACTOR, now, outcome: { actionPreview: shown, answer: { sourceRefs: [], text: "好的。" }, partResults: [{ partId: "p1", status: "awaiting_confirmation" }], status: "completed" }, requestId, workerId: "w" });
+  await decide(kit, card, "reject", "decision:web");
+  const rejected = agentCardPreview({ ...(await kit.runtime.getAction(card.actionId))!, origin }, null, kit.now());
+  assert.equal(rejected.revision, shown.revision, "no new revision");
+  assert.equal(await refreshCardInDocument({ actorId: ACTOR, now: kit.now(), store, updated: rejected }), true);
+  assert.equal((await store.get(ACTOR, requestId))?.document.actionPreview?.status, "rejected");
+  assert.equal(await refreshCardInDocument({ actorId: ACTOR, now: kit.now(), store, updated: rejected }), false, "nothing changed: no amendment");
 });
