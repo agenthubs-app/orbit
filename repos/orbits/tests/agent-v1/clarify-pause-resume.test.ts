@@ -156,7 +156,7 @@ test("one sentence, two uses: the answer resumes the earlier request, the new re
   const doc = (await getRequestResult(deps, { actorId: "actor:a", requestId: two }))!;
   assert.equal(model.calls.length, 4);
   // AG05: the answered matter goes on and reads: "他" is the matter's person (田中), looked up in the account (empty here).
-  assert.match(doc.answer!.text, /没有找到你说的这位/u, "the answered matter goes on and reads for the matter's person");
+  assert.match(doc.answer!.text, /我不确定你说的是哪一位联系人/u, "the answered matter goes on and reads for the matter's person");
   assert.match(doc.answer!.text, /接着「田中那件事帮我处理一下」/u, "it says which earlier matter this goes on with");
   assert.match(doc.answer!.text, /感谢您上次的访谈/u, "and the new request is answered");
   assert.equal(doc.partResults.some((item) => item.route === "clarify"), false);

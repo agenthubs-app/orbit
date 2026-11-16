@@ -221,8 +221,10 @@ test("改 with no matching to-do: said, no card, never a new to-do", async () =>
   kit.deps.cards = cards.access;
   const result = await runAgentGraph(kit.deps, kit.input("把给小林寄合同那条待办改到周五。"));
   assert.equal(result.actionPreview, null);
-  assert.match(result.text, /没有找到「给小林寄合同」这样的待办，所以这次没有改，也没有新建/u);
-  assert.deepEqual(result.partResults.map((item) => [item.status, item.reason]), [["unfinished", "object_not_found"]]);
+  // AG06 repair 1: the words match none of 小林's to-dos, so his are offered ("可以问是不是指这一条"); never a new to-do.
+  assert.match(result.text, /没有找到「给小林寄合同」这样的待办，所以还没有改。是指「给小林发修订报价」/u);
+  assert.doesNotMatch(result.text, /新建|已改/u);
+  assert.deepEqual(result.partResults.map((item) => item.status), ["awaiting_clarification"]);
 });
 
 test("a model approval flag and account id in the propose output are stripped before the card; neither reaches the card or the ledger", async () => {
@@ -313,8 +315,8 @@ test("the kind of contact is read from the user's words where they say it; the b
 });
 
 test("reply language: the first layer's report, checked against the text (zh, ja, en); a report that does not fit falls back", () => {
-  assert.deepEqual(replyLanguageOf("明日予定確認", "ja", "ja"), { language: "ja", source: "reported" }, "kanji only: the report decides");
-  assert.equal(replyLanguageOf("明日予定確認", undefined, "ja").language, "zh", "without a report the old rule says Chinese");
+  assert.deepEqual(replyLanguageOf("明日予定確認", "ja", "ja"), { language: "ja", source: "locale" }, "AG06 repair 1: kanji only — the locale decides, not the report");
+  assert.equal(replyLanguageOf("明日予定確認", undefined, "ja").language, "ja", "AG06 repair 1: Han-only text without a report follows the locale");
   const mixed = "帮我查一下山本さん那边的原稿我答应哪天交，还有 Emily 说要 by Friday 发给我的那个是什么东西。";
   assert.deepEqual(replyLanguageOf(mixed, "zh", "zh"), { language: "zh", source: "reported" });
   assert.equal(replyLanguageOf(mixed, "ja", "zh").source, "rule", "a Chinese sentence with さん is not taken as Japanese");

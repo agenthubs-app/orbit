@@ -40,9 +40,19 @@ const RECORD_WORDS = /(记|記録|記入|メモ|写下|存一下|\blog\b|\bnote\
  */
 export function proposableOf(part: GraphPart, quote: string): string[] {
   const named = writesOf(part).filter(supported) as string[];
-  if (named.includes("memo.create") || !writesOf(part).length) return named;
-  return contactKindOf(quote).channel && RECORD_WORDS.test(quote) ? [...named, "memo.create"] : named;
+  if (!writesOf(part).length) return named;
+  const out = [...named];
+  if (!out.includes("memo.create") && contactKindOf(quote).channel && RECORD_WORDS.test(quote)) out.push("memo.create");
+  // AG06 repair 1 (AE-CTX-005): "山本さんとの食事のToDo、11月20日に予定を入れて" — a to-do word and no time of day is a
+  // to-do's date, not a schedule entry. A write this version cannot do never swallows one it can.
+  if (TODO_WORD.test(quote) && !TIME_OF_DAY.test(quote) && writesOf(part).some((capability) => capability.startsWith("schedule."))) {
+    for (const capability of ["todo.update", "todo.create"]) if (!out.includes(capability)) out.push(capability);
+  }
+  return out;
 }
+
+const TODO_WORD = /(待办|提醒|ToDo|TODO|タスク|\bto-?dos?\b|\btasks?\b)/iu;
+const TIME_OF_DAY = /(\d{1,2}\s*[:：]\s*\d{2}|\d{1,2}\s*(?:時|时|点)|\b\d{1,2}\s*(?:am|pm)\b|上午|下午|晚上|中午|午前|午後|夕方|\bmorning\b|\bafternoon\b|\bevening\b)/iu;
 
 /** Parts this pass proposes for. */
 export function proposeDue(state: AgentGraphState): boolean {
@@ -78,7 +88,7 @@ function questionSet(scope: NodeScope, state: AgentGraphState, part: GraphPart, 
     });
   }
   const shown = [...labels.values()].map((item) => item.label);
-  const line = question.type === "field" ? WRITE_WORDS.askField(language, quote, shown) : question.type === "todo" ? WRITE_WORDS.askTodo(language, quote, shown) : WRITE_WORDS.askPerson(language, quote, question.clue, shown);
+  const line = question.type === "field" ? WRITE_WORDS.askField(language, quote, shown) : question.type === "todo" ? (question.notFound !== undefined ? WRITE_WORDS.askTodoNotFound(language, quote, question.notFound, shown) : WRITE_WORDS.askTodo(language, quote, shown)) : WRITE_WORDS.askPerson(language, quote, question.clue, shown);
   return {
     labels,
     line,

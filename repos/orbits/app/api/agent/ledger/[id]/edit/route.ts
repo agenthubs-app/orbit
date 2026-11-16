@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { runtimeBoundaryHeaders } from "../../../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../../../shared/config/feature-mode";
 import { handleCardEdit } from "../../../../../../features/agent/ledger/card-routes";
+import { conversationCardHook } from "../../../../../../features/agent-v1/entry/card-document";
 import {
   agentRequestUnauthorizedResponse,
   resolveAgentRequestContext,
@@ -21,6 +22,6 @@ export async function POST(
   const agentContext = await resolveAgentRequestContext(mode);
   if (!agentContext) return agentRequestUnauthorizedResponse();
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-  const result = await handleCardEdit({ actionId: id, body: body ?? {}, runtime: agentContext.runtime });
+  const result = await handleCardEdit({ actionId: id, body: body ?? {}, onCardRevised: conversationCardHook(mode, agentContext.actorId), runtime: agentContext.runtime });
   return NextResponse.json(result.body, { headers: runtimeBoundaryHeaders(mode), status: result.status });
 }

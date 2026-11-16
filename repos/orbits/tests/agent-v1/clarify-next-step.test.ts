@@ -178,7 +178,7 @@ test("AG04-2: a mistagged statement is answered with at most one entry; clicking
   assert.equal(created!.route, "propose_write");
   // This kit has no contacts: the person is not found, so nothing is proposed and no card is mentioned.
   assert.equal(created!.status, "unfinished");
-  assert.match(resumed.text, /没有找到你说的这位/u);
+  assert.match(resumed.text, /我不确定你说的是哪一位联系人/u, "AG06 repair 1: never \"not found\" for a person");
   assert.doesNotMatch(resumed.text, /确认卡/u);
   const handoff = (resumed.state.parts.find((item) => item.localId === created!.partId))!;
   assert.equal(handoff.plan.intentBasis, "selection");

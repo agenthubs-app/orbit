@@ -134,7 +134,7 @@ test("a named person nobody matches, with no one else in the part, is still 'not
   const model = deepseekStub([json({ parts: [part({ dataSources: ["orbit_records"], objectClues: [{ entity: "contact", text: "王五" }], requiredCapabilities: ["memo.read"], sourceQuote: "王五上次说了什么" })], plainChat: false })]);
   const kit = graphKit(model.fetchImplementation, { records: recordAccessOf(shopWorld()) });
   const result = await runAgentGraph(kit.deps, kit.input("王五上次说了什么？"));
-  assert.match(result.text, /没有找到你说的这位/u);
+  assert.match(result.text, /我不确定你说的是哪一位联系人/u, "AG06 repair 1 (AE-XL-010): which person is not known; never that they do not exist");
 });
 
 test("AE-UND-010 shape: the waiting part names the prerequisite that is not done (the web read), not the answered one", async () => {

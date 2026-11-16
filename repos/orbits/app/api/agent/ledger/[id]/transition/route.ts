@@ -19,6 +19,7 @@ import {
 } from "../../../../_shared/agent-request-context";
 import { shouldProcessAgentLedgerOutbox } from "./transition-execution-policy";
 import { handleCardDecision, takesCardDecisions } from "../../../../../../features/agent/ledger/card-routes";
+import { conversationCardHook } from "../../../../../../features/agent-v1/entry/card-document";
 
 export const dynamic = "force-dynamic";
 
@@ -105,6 +106,7 @@ export async function POST(
       actionId: id,
       actorLabel: readString(body.actorLabel) ?? undefined,
       body,
+      onCardRevised: conversationCardHook(mode, agentContext.actorId),
       processNow: mode === "live",
       runtime: agentContext.runtime,
       workerId: `ledger-confirm:${agentContext.actorId ?? "server"}`,

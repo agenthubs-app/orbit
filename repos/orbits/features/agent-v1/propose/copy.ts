@@ -18,9 +18,9 @@ export const WRITE_WORDS = {
     return `"${quote}": I found no ${words ? `to-do like "${words}"` : person ? `to-do of ${person}` : "such to-do"}, so nothing was changed or added.`;
   },
   notFoundPerson(language: ReplyLanguage, quote: string): string {
-    if (language === "zh") return `「${quote}」：在你的联系人里没有找到你说的这位，所以这次没有改。`;
-    if (language === "ja") return `「${quote}」：おっしゃった方が連絡先に見つからなかったため、今回は何も変更していません。`;
-    return `"${quote}": I couldn't find that person in your contacts, so nothing was changed.`;
+    if (language === "zh") return `「${quote}」：我不确定你说的是哪一位联系人，所以这次没有改。可以告诉我全名，或者用 @ 选一下。`;
+    if (language === "ja") return `「${quote}」：どの連絡先の方のことか分からなかったため、今回は何も変更していません。フルネームか、@で連絡先を添えてください。`;
+    return `"${quote}": I couldn't tell which of your contacts you mean, so nothing was changed. Give the full name, or attach the contact with @.`;
   },
   notWho(language: ReplyLanguage, quote: string): string {
     if (language === "zh") return `「${quote}」我不确定说的是哪一位，所以这次没有改。`;
@@ -57,6 +57,12 @@ export const WRITE_WORDS = {
     if (language === "zh") return `「${quote}」对得上的待办不止一条，要改哪一条：${or(language, labels)}？`;
     if (language === "ja") return `「${quote}」に当たるToDoが複数あります。どれを変更しますか：${or(language, labels)}？`;
     return `More than one to-do fits "${quote}". Which one should I change: ${or(language, labels)}?`;
+  },
+  /** AG06 repair 1: the words matched no to-do; the person's to-dos are offered ("可以问是不是指这一条"). */
+  askTodoNotFound(language: ReplyLanguage, quote: string, words: string, labels: readonly string[]): string {
+    if (language === "zh") return `「${quote}」：没有找到${words ? `「${words}」这样的` : "对得上的"}待办，所以还没有改。是指${or(language, labels)}吗？`;
+    if (language === "ja") return `「${quote}」：${words ? `「${words}」に当たる` : "当てはまる"}ToDoが見つからなかったため、まだ変更していません。${or(language, labels)}のことですか？`;
+    return `"${quote}": I found no to-do${words ? ` like "${words}"` : ""}, so nothing is changed yet. Did you mean ${or(language, labels)}?`;
   },
   askField(language: ReplyLanguage, quote: string, labels: readonly string[]): string {
     if (language === "zh") return `「${quote}」：这条待办既有计划日期也有截止时间，要改哪一个：${or(language, labels)}？`;

@@ -11,7 +11,7 @@
 import { buildFirstLayerContext } from "../../context/build";
 import { modelCallLimit } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
-import { replyLanguage } from "../../route/handoff-copy";
+import { replyLanguageOf } from "../../route/handoff-copy";
 import type { GraphNode, NodeScope } from "../deps";
 
 const KNOWN = new Set(["contact", "memo", "todo", "schedule", "event"]);
@@ -67,7 +67,8 @@ export function intakeNode({ deps, input, run }: NodeScope): GraphNode {
       asOf: now,
       budget: { limit: deps.modelCallLimit ?? modelCallLimit(), used: 0 },
       context: summary,
-      language: replyLanguage(input.message, input.locale),
+      // AG06 repair 1: until the first layer reports it; a Han-only message follows the session, else the locale.
+      language: replyLanguageOf(input.message, null, input.locale, context.messages.filter((item) => item.role === "user").map((item) => item.text)).language,
       messageRef: `request:${input.requestId}`,
       references: references.filter((item) => item.accessible !== false).map((item) => item.id),
       requestId: input.requestId,

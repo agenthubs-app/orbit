@@ -107,7 +107,9 @@ export function understandNode(scope: NodeScope): GraphNode {
     run.understood = covered.output;
     run.plainReply = covered.output.plainChat ? covered.output.reply ?? null : null;
     // AG06: the reply language — the first layer's report, checked against the text (intake's rule is the fallback).
-    const chosen = replyLanguageOf(input.message, covered.output.language, input.locale);
+    // AG06 repair 1: a Han-only message is decided by the user's earlier messages of this session, else the locale.
+    const earlier = (run.context?.messages ?? []).filter((item) => item.role === "user").map((item) => item.text);
+    const chosen = replyLanguageOf(input.message, covered.output.language, input.locale, earlier);
     emitTrace({ language: chosen.language, reported: covered.output.language ?? null, decidedBy: chosen.source, ...(chosen.rejected ? { rejected: chosen.rejected } : {}), type: "understand.language" });
     return { budget, language: chosen.language, parts: graphPartsOf(covered.output, scope), plainChat: covered.output.plainChat, repairs, understanding: "understood" };
   };

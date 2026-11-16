@@ -76,6 +76,9 @@ export interface AgentEntryAmendment {
   partResults: readonly AgentPartResult[];
   clarifications: readonly AgentClarificationContract[];
   status: "completed" | "waiting_user";
+  /** AG06 repair 1: the card was frozen again; the document shows the new one (and its line in the answer). */
+  actionPreview?: AgentActionPreviewContract;
+  answer?: AgentAnswerContract;
 }
 
 export interface AgentSessionLane {
@@ -353,7 +356,7 @@ function createOperations(withLane: WithLane, read: (actorId: string, requestId:
         if (!record || (record.status !== "waiting_user" && record.status !== "completed")) return record;
         const lane = await unit.getLane();
         record.status = input.amendment.status;
-        record.document = nextDocument(record, input.now, { clarifications: input.amendment.clarifications, partResults: input.amendment.partResults, status: input.amendment.status });
+        record.document = nextDocument(record, input.now, { clarifications: input.amendment.clarifications, partResults: input.amendment.partResults, status: input.amendment.status, ...(input.amendment.actionPreview ? { actionPreview: input.amendment.actionPreview } : {}), ...(input.amendment.answer ? { answer: input.amendment.answer } : {}) });
         await pushEvent(unit, lane, record, "document", input.now);
         await unit.putRequest(record);
         await unit.putLane(lane);

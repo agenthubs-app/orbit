@@ -22,7 +22,37 @@ const LATIN = /[A-Za-z]/u;
  * - English: the Latin words are at least the CJK characters.
  * A report that is missing or does not fit the text falls back to replyLanguage() below.
  */
-export function replyLanguageOf(message: string, reported: string | null | undefined, fallback?: string): { language: ReplyLanguage; source: "reported" | "rule"; rejected?: string } {
+/** Words of Chinese written only in Han that Japanese does not write in kanji. */
+const CHINESE_ONLY = /[的了吗呢么这那们吧把被给说没还让很就啊呀嘛]/u;
+
+/** The language a text shows by its scripts alone, or null when it could be Chinese or Japanese (Han only). */
+function scriptLanguage(text: string): ReplyLanguage | null {
+  const han = (text.match(/[㐀-䶿一-鿿]/gu) ?? []).length;
+  const kana = (text.match(/[぀-ゟ゠-ヿｦ-ﾟ]/gu) ?? []).length;
+  const latin = (text.match(/[A-Za-z]+(?:['’-][A-Za-z]+)*/gu) ?? []).length * 2;
+  if (!han && !kana) return latin ? "en" : null;
+  if (latin > han + kana) return "en";
+  if (kana && kana / (kana + han) >= 0.15) return "ja";
+  if (kana) return "zh";
+  return CHINESE_ONLY.test(text) ? "zh" : null;
+}
+
+/**
+ * AG06 repair 1 (AE-AMB-001, AE-UND-015): a text of Han only and nothing else ("小林", "明日予定確認") reads as Chinese
+ * and as Japanese alike, so the model's report alone never decides it: the user's earlier messages in this session
+ * do (the latest one whose scripts tell), else the account's or app's locale; only without both, the report.
+ */
+function ambiguousLanguage(reported: string | null | undefined, fallback: string | undefined, earlier: readonly string[]): { language: ReplyLanguage; source: "session" | "locale" | "reported" | "rule" } {
+  for (const text of [...earlier].reverse()) {
+    const known = scriptLanguage(text);
+    if (known) return { language: known, source: "session" };
+  }
+  if (fallback === "zh" || fallback === "ja" || fallback === "en") return { language: fallback, source: "locale" };
+  if (reported === "zh" || reported === "ja") return { language: reported, source: "reported" };
+  return { language: "zh", source: "rule" };
+}
+
+export function replyLanguageOf(message: string, reported: string | null | undefined, fallback?: string, earlier: readonly string[] = []): { language: ReplyLanguage; source: "reported" | "rule" | "session" | "locale"; rejected?: string } {
   const han = (message.match(/[㐀-䶿一-鿿]/gu) ?? []).length;
   const kana = (message.match(/[぀-ゟ゠-ヿｦ-ﾟ]/gu) ?? []).length;
   const latinWords = (message.match(/[A-Za-z]+(?:['’-][A-Za-z]+)*/gu) ?? []).length;
@@ -31,6 +61,13 @@ export function replyLanguageOf(message: string, reported: string | null | undef
   // Japanese prose carries kana between its kanji (well over 15%); a Chinese sentence with a "さん" in it does not.
   // A kanji-only note ("明日予定確認") has no kana at all and can be either, so the report decides.
   const kanaShare = kana + han ? kana / (kana + han) : 0;
+  // Chinese prose of Han only still carries words Japanese never writes in kanji ("了", "么", "这", "的" …): it is
+  // Chinese whatever the report says. Without them ("小林", "明日予定確認") the text is ambiguous.
+  if (han > 0 && kana === 0 && latinWords === 0 && CHINESE_ONLY.test(message)) return { language: "zh", source: "rule", ...(reported && reported !== "zh" ? { rejected: reported } : {}) };
+  if (han > 0 && kana === 0 && latinWords === 0) {
+    const decided = ambiguousLanguage(reported, fallback, earlier);
+    return { ...decided, ...(reported && reported !== decided.language ? { rejected: reported } : {}) };
+  }
   const fits = reported === "ja" ? (kana + han > 0 && kana + han >= latin && (kana === 0 || kanaShare >= 0.15))
     : reported === "zh" ? (han > 0 && kanaShare < 0.15 && han + kana >= latin)
       : reported === "en" ? (latinWords > 0 && latin >= han + kana)

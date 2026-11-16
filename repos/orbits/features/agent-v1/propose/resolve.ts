@@ -19,7 +19,7 @@
 import type { NamedRecordRef } from "../context/session-state";
 import type { FirstLayerContext } from "../context/build";
 import type { DomainScope, RecordView } from "../domains/types";
-import { findContacts, clueSearchWords, nameTokens } from "../graph/nodes/resolve";
+import { findContacts, clueSearchWords, nameTokens, partialContacts } from "../graph/nodes/resolve";
 import type { AgentRecordAccess } from "../graph/deps";
 import type { GraphPart } from "../graph/state";
 import { emitTrace } from "../observability/trace";
@@ -45,7 +45,7 @@ export type Candidate = NamedRecordRef & { detail?: string };
 
 export type WriteQuestion =
   | { type: "contact"; clue: string; candidates: Candidate[] }
-  | { type: "todo"; clue: string; candidates: Candidate[] }
+  | { type: "todo"; clue: string; candidates: Candidate[]; /** AG06 repair 1: none matched the words; these are the person's. */ notFound?: string }
   | { type: "field"; options: { field: "plannedDate" | "dueAt"; current: string }[] };
 
 export type WriteOutcome =
@@ -131,8 +131,10 @@ async function resolvePerson(ctx: ResolveContext, part: GraphPart, write: PartWr
   if (!ctx.records || !ctx.scope) return { kind: "failed" };
   const { failed, matches } = await findContacts(ctx.records, ctx.scope, clue.text, words(ctx.message, part.quote), ctx.message);
   if (failed) return { kind: "failed" };
+  // AG06 repair 1 (AE-XL-010): a nickname matching contacts only partially is a question, never a guess or a "not found".
+  if (!matches.length) matches.push(...(await partialContacts(ctx.records, ctx.scope, clue.text)));
   if (!matches.length) return { kind: "none" };
-  if (matches.length === 1) return { id: matches[0].id, kind: "found", name: matches[0].name };
+  if (matches.length === 1 && !matches[0].partial) return { id: matches[0].id, kind: "found", name: matches[0].name };
   // Several of the name and the user picked one of them in this request's question.
   const chosen = picked ? matches.find((match) => match.id === picked.id) : undefined;
   if (chosen) return { id: chosen.id, kind: "found", name: chosen.name, ...(chosen.detail ? { detail: chosen.detail } : {}) };
@@ -153,7 +155,7 @@ function whenText(todo: TodoView, locale: CardLocale, timeZone: string): string 
   return null;
 }
 
-type TodoResult = { kind: "found"; todo: TodoView } | { kind: "ask"; clue: string; candidates: Candidate[] } | { kind: "none"; words: string } | { kind: "failed" };
+type TodoResult = { kind: "found"; todo: TodoView } | { kind: "ask"; clue: string; candidates: Candidate[]; notFound?: string } | { kind: "none"; words: string } | { kind: "failed" };
 
 async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrite, intent: StoredIntent, personId: string | null, personWords: string[], inherited = false): Promise<TodoResult> {
   if (!ctx.records || !ctx.scope) return { kind: "failed" };
@@ -203,6 +205,13 @@ async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrit
       if (found.length) break;
     }
     emitTrace({ found: found.map((item) => item.id), partId: part.localId, search: search ?? null, tried: searches, type: "propose.todo_lookup", withPerson: Boolean(personId) });
+    if (!found.length && personId && searches.length) {
+      // AG06 repair 1 (AE-CTX-005, AE-XL-009 "可以问是不是指这一条"): the words match none of the person's open to-dos
+      // (a title written in another language, other words): their to-dos are offered in a question, never picked.
+      const theirs = (await ctx.records.reader.read("todo", ctx.scope, { contactId: personId, limit: 10, status: "open" })).items.map(todoOf);
+      emitTrace({ offered: theirs.map((item) => item.id), partId: part.localId, type: "propose.todo_offered" });
+      if (theirs.length) return { candidates: theirs.slice(0, 3).map((item) => ({ detail: whenText(item, ctx.language, ctx.timeZone) ?? undefined, id: item.id, name: item.title, type: "todo" })), clue: clues[0] ?? "", kind: "ask", notFound: said || search || "" };
+    }
     if (!found.length) return { kind: "none", words: said || search || "" };
     if (found.length === 1) return { kind: "found", todo: found[0] };
     const exact = found.filter((item) => clues.includes(item.title));
@@ -228,10 +237,12 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
     const refClues = part.refs.filter((ref) => ref.entity === "contact").map((ref) => ({ quote: ref.quote ?? null, role: (intent.capability === "memo.create" ? "actual_contact" : "about") as StoredIntent["relations"][number]["role"], text: words(ctx.message, ref.quote) || (ref.recordId ? ctx.nameOf(ref.recordId) ?? "" : "") }));
     const clues = relationClues.length ? relationClues : refClues.filter((clue) => clue.text || clue.quote === null);
     const people: { id: string; name: string; role: StoredIntent["relations"][number]["role"]; text: string; detail?: string }[] = [];
+    const nameOfContact = async (id: string, known: string) => known || ctx.nameOf(id) || (ctx.records && ctx.scope ? String((await ctx.records.reader.read("contact", ctx.scope, { id }).catch(() => null))?.items[0]?.fields.displayName ?? "") : "");
     for (const clue of clues) {
       const found = await resolvePerson(ctx, part, write, { quote: clue.quote, text: clue.text });
       if (found.kind === "found") {
-        if (!people.some((person) => person.id === found.id)) people.push({ id: found.id, name: found.name, role: clue.role, text: clue.text, ...(found.detail ? { detail: found.detail } : {}) });
+        // AG06 repair 1 (AE-XL-003): the name is the contact's own; a pronoun is never written on a card.
+        if (!people.some((person) => person.id === found.id)) people.push({ id: found.id, name: await nameOfContact(found.id, found.name), role: clue.role, text: clue.text, ...(found.detail ? { detail: found.detail } : {}) });
         continue;
       }
       if (clue.role === "mentioned") continue; // Only mentioned and not found or not certain: not linked, never guessed.
@@ -249,7 +260,7 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
       const inheritedId = person ? null : write.picks.contact ?? [...ctx.people].filter((known) => known.at <= part.quote[0]).sort((left, right) => right.at - left.at)[0]?.id ?? null;
       const todo = await resolveTodo(ctx, part, write, intent, person?.id ?? inheritedId, people.map((item) => item.text), Boolean(inheritedId));
       if (todo.kind === "failed") return stop("read_failed", failedLine);
-      if (todo.kind === "ask") return { kind: "ask", question: { candidates: todo.candidates, clue: todo.clue, type: "todo" } };
+      if (todo.kind === "ask") return { kind: "ask", question: { candidates: todo.candidates, clue: todo.clue, type: "todo", ...(todo.notFound !== undefined ? { notFound: todo.notFound } : {}) } };
       if (todo.kind === "none") return stop("object_not_found", WRITE_WORDS.notFoundTodo(language, quote, todo.words || null, person?.name || null));
       const target = todo.todo;
       const title = words(ctx.message, intent.title);
@@ -293,7 +304,8 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
     const day = date?.day ?? resolveSaidDate(body, ctx.asOf, ctx.timeZone)?.day ?? localDayOf(ctx.asOf, ctx.timeZone);
     const contactIds = [...new Set(people.map((item) => item.id))];
     // A person picked among several of the name is named on the card with what told them apart.
-    const names = Object.fromEntries(people.map((item) => [item.id, item.detail ? (language === "en" ? `${item.name || item.text} (${item.detail})` : `${item.name || item.text}（${item.detail}）`) : item.name || item.text]));
+    if (people.some((item) => !item.name)) return stop("read_failed", failedLine);
+    const names = Object.fromEntries(people.map((item) => [item.id, item.detail ? (language === "en" ? `${item.name} (${item.detail})` : `${item.name}（${item.detail}）`) : item.name]));
     const title = body.split(/(?<=[。.!！？?])\s*/u)[0].replace(/[。.!！]+$/u, "").slice(0, 40) || body.slice(0, 40);
     ops.push({
       capability: "memo.create",

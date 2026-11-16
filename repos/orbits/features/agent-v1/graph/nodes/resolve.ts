@@ -120,6 +120,32 @@ export function cluePointsAtOne(words: string): boolean {
   return POINTER.test(words);
 }
 
+/** AG06 repair 1 (AE-SCL-008): the to-do status the user's words say (open before done: "没做完" holds "做完"). */
+const OPEN_WORDS = /(まだ終わっていない|終わっていない|終わってない|未完了|未完成|没做完|没完成|还没做|未处理|还没处理|残っている|\bopen\b|\bnot (yet )?done\b|\bunfinished\b|\boutstanding\b|\bpending\b|\bstill to do\b)/iu;
+const DONE_WORDS = /(已完成|做完了的|做完的|完了した|終わった|済んだ|\bcompleted\b|\bfinished\b|\bdone ones\b)/iu;
+
+export function statusSaidIn(words: string): "open" | "completed" | undefined {
+  if (OPEN_WORDS.test(words)) return "open";
+  if (DONE_WORDS.test(words)) return "completed";
+  return undefined;
+}
+
+/**
+ * AG06 repair 1 (AE-XL-010): a nickname ("小陈", "老王", "阿强") names no contact by itself; its family name may
+ * match contacts partially. Those are offered as candidates, never taken, and never "not found".
+ */
+export async function partialContacts(records: AgentRecordAccess, scope: DomainScope, words: string): Promise<ContactMatch[]> {
+  const clean = words.replace(/^@/u, "").replace(HONORIFIC, "").trim();
+  const core = clean.replace(/^(小|老|阿|大)/u, "");
+  if (core === clean || core.length < 1 || core.length > 2) return [];
+  try {
+    const found = (await records.reader.read("contact", scope, { limit: 10, text: core })).items;
+    return found.slice(0, 3).map((view) => ({ detail: contactDetail(view), id: view.id, name: String(view.fields.displayName ?? ""), partial: true, view }));
+  } catch {
+    return [];
+  }
+}
+
 export function clueSearchWords(words: string): string | undefined {
   let rest = words.replace(/^@/u, "").trim();
   if (!rest) return undefined;
@@ -152,6 +178,8 @@ export interface ContactMatch {
   view: RecordView | null;
   /** AG06: what tells this person apart from others of the name (company, role), for a question. */
   detail?: string;
+  /** AG06 repair 1: matched only partially (a nickname): offered in a question, never taken. */
+  partial?: boolean;
 }
 
 /** AG06: the company and role of a contact view ("北辰软件 · 销售总监"), or nothing. */
@@ -321,11 +349,16 @@ export function resolveNode(scope: NodeScope): GraphNode {
           break;
         }
         if (!matches.length) {
+          // AG06 repair 1 (AE-XL-010): a nickname that matches contacts only partially — offer them, never guess.
+          const partial = await partialContacts(records, accountScope, said);
+          if (partial.length) matches.push(...partial);
+        }
+        if (!matches.length) {
           // run-03 repair 1 (AE-CTX-007): decided after all clues — "not found" only when nobody was found.
           unmatched.push(said.replace(/^@/u, ""));
           continue;
         }
-        if (matches.length > 1) {
+        if (matches.length > 1 || matches[0].partial) {
           // Several people of that name, the company does not tell them apart: ask which (§3.11), do not guess.
           run.candidates.set(part.localId, matches.slice(0, 3).map((match): NamedRecordRef => ({ id: match.id, name: match.name, type: "contact", ...(match.detail ? { detail: match.detail } : {}) })));
           run.steps.set(part.localId, { kind: "ask_missing" });
@@ -406,7 +439,9 @@ export function resolveNode(scope: NodeScope): GraphNode {
       }
       const names = new Map<string, string>(contacts.filter((item) => item.name).map((item) => [item.id, item.name]));
       const order = filter?.order ?? "newest";
-      const status = filter?.status ?? (part.reading?.key === "contact.recent_and_open" ? "open" : undefined);
+      // AG06 repair 1 (AE-SCL-008): "まだ終わっていない", "没做完", "open" in the words narrow by status even when the first
+      // layer gave none; the read, and the total counted with it, then hold only those.
+      const status = filter?.status ?? statusSaidIn(quote) ?? (part.reading?.key === "contact.recent_and_open" ? "open" : undefined);
       const from = filter?.from ? localMidnight(filter.from, zone) : undefined;
       const to = filter?.to ? localMidnight(nextDay(filter.to), zone) : undefined;
       const maxPages = LIST_DELIVERABLES.has(part.plan.deliverable) ? records.maxPages : 1;
