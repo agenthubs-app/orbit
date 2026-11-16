@@ -80,6 +80,18 @@ test("AE-UIX-002 shape: '回复田中询价' is 「回复田中的询价」 with
   assert.deepEqual(Object.keys(result.actionPreview?.operations[0].after ?? {}), ["dueAt"]);
 });
 
+test("stab2 (AE-UIX-002): the same words with no person given by the model still find 「回复田中的询价」 by its characters in order", async () => {
+  const message = "把回复田中询价这条待办的截止时间改到 11 月 18 日下午六点。";
+  const understand = json({ language: "zh", parts: [part({ deliverable: "change", localId: "p1", objectClues: [{ entity: "todo", text: "回复田中询价这条待办" }], requiredCapabilities: ["todo.update"], sourceQuote: message })], plainChat: false });
+  const propose = json({ operations: [{ dateText: "11 月 18 日下午六点", dependsOn: [], entity: "todo", localId: "w1", partId: "p1", relations: [], selector: { clues: ["回复田中询价这条待办"] }, verb: "update" }] });
+  const model = deepseekStub((call: ModelCall) => (call.node === "understand" ? understand : propose));
+  const records = recordAccessOf(world());
+  const kit = graphKit(model.fetchImplementation, { now: NOW, records });
+  kit.deps.cards = cardsOver(records);
+  const result = await runAgentGraph(kit.deps, kit.input(message, { locale: "zh" }));
+  assert.equal(result.actionPreview?.operations[0].target?.id, "task:t44", result.text);
+});
+
 test("AE-XL-009 unchanged: Chinese words that fit none of the person's Chinese to-dos still do not pick one", async () => {
   const message = "把给小林寄合同那条待办改到周五。";
   const result = await cardFor(message, "zh", { date: "周五", person: "小林", todo: "给小林寄合同那条待办" });

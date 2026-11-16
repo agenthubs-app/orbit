@@ -233,6 +233,23 @@ async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrit
       if (found.length) break;
     }
     emitTrace({ found: found.map((item) => item.id), partId: part.localId, search: search ?? null, tried: searches, type: "propose.todo_lookup", withPerson: Boolean(personId) });
+    // AG07 stab2 (AE-UIX-002): the words are a title with a few characters left out ("回复田中询价" for 「回复田中的询价」),
+    // whether or not a person was given: the open to-dos that start like the words are checked character by character,
+    // and only a single one that fits is taken.
+    if (!found.length) {
+      const fitting = new Map<string, TodoView>();
+      for (const text of searches) {
+        const head = [...text].slice(0, 2).join("");
+        if ([...text].length < 4 || !head) continue;
+        const near = (await ctx.records.reader.read("todo", ctx.scope, { limit: 10, status: "open", text: head })).items.map(todoOf);
+        for (const item of near) if (fitsInOrder(text, item.title)) fitting.set(item.id, item);
+      }
+      if (fitting.size === 1) {
+        const [only] = fitting.values();
+        emitTrace({ partId: part.localId, recordId: only.id, rule: "title_in_order", type: "propose.todo_matched" });
+        return { kind: "found", todo: only };
+      }
+    }
     if (!found.length && personId && searches.length) {
       // AG06 repair 1 (AE-CTX-005, AE-XL-009 "可以问是不是指这一条"): the words match none of the person's open to-dos
       // (a title written in another language, other words): their to-dos are offered in a question, never picked.
