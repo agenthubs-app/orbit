@@ -62,8 +62,10 @@ export function readsOfTestedSystem(events: readonly TraceEvent[]): TraceEvent[]
   return events.filter((event) => event.type === "read.result" && event.device !== "other");
 }
 
+/** AG06: card operations a fault can be aimed at (fault.where), besides "executor" for any. */
+const EXECUTOR_FAULT_POINTS: readonly string[] = ["todo.create", "todo.update", "memo.create"];
+
 const STEP_SUPPORT_NOTE: Record<string, string> = {
-  card_edit: "removing an item from a card is not offered by the current product (AG06/AG07)",
   disconnect: "the real-time channel needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   legacy_update: "old-client compatibility arrives in AG18",
   local_pending_edit: "unsynced App edits are simulated from AG07",
@@ -165,7 +167,18 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
       }
     }
     for (const [section, items] of Object.entries(patch.set ?? {})) {
-      for (const item of items as Record<string, unknown>[]) unsupported.push({ reason: `patch ${name}: changing ${section} ${item.id} in place is not supported yet`, step: 0, word: "patch" });
+      for (const item of items as Record<string, unknown>[]) {
+        // AG06 (todo-plan-and-due): a to-do's fields are changed through the to-do service before the case starts.
+        if (section !== "todos") {
+          unsupported.push({ reason: `patch ${name}: changing ${section} ${item.id} in place is not supported yet`, step: 0, word: "patch" });
+          continue;
+        }
+        try {
+          await writer.updateTodo(String(item.id), String(item.account ?? world.mainAccount), item);
+        } catch (error) {
+          unsupported.push({ reason: `patch ${name}: changing ${section} ${item.id} failed: ${error instanceof Error ? error.message : error}`, step: 0, word: "patch" });
+        }
+      }
     }
     for (const [key, value] of Object.entries((patch.settings ?? {}) as Record<string, unknown>)) {
       if (DEPLOYMENT_SETTINGS.has(key)) deploymentSettings[key] = value;
@@ -555,8 +568,9 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         }
         case "fault": {
           log.push({ fault: step.fault, source: "simulated", step: index, type: "turn.fault" });
-          // AG05: the read adapters are fault points too (<kind>.read).
-          if (!["model", "understand", "executor", "memo.read", "todo.read", "contact.read", "schedule.read", "event.read"].includes(step.fault?.where)) unsupported.push({ reason: `fault point "${step.fault?.where}" has no consumer in the current product`, step: index, word });
+          // AG05: the read adapters are fault points too (<kind>.read). AG06: one card operation (memo.create …).
+          if (!["model", "understand", "executor", "memo.read", "todo.read", "contact.read", "schedule.read", "event.read", ...EXECUTOR_FAULT_POINTS].includes(step.fault?.where)) unsupported.push({ reason: `fault point "${step.fault?.where}" has no consumer in the current product`, step: index, word });
+          if (EXECUTOR_FAULT_POINTS.includes(step.fault?.where) || step.fault?.where === "executor") executorFaultArmed = String(step.fault?.where);
           await serverControl(environment, "fault", step.fault);
           return;
         }
@@ -656,6 +670,34 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           await sendUser(index, testCase.steps[target], original);
           return;
         }
+        case "card_edit": {
+          // AG06 (设计稿 §5.1): taking an item off the card is not a decision; it re-freezes the rest as a new version.
+          await refreshDeliveredCards();
+          const spec = (step.card_edit ?? {}) as { card?: string | number; remove_op?: number };
+          const ids = [...cardsSeen.keys()];
+          const cardId = (spec.card ?? "last") === "last" ? ids[ids.length - 1] : ids[Number(spec.card) - 1];
+          const clientName = step.client ?? "web";
+          log.push({ cardId: cardId ?? null, client: clientName, removeOp: spec.remove_op ?? null, step: index, type: "turn.card_edit" });
+          transcript.push(`**用户在卡上去掉一项**（${clientName}）：第 ${spec.remove_op} 项${cardId ? `（${cardId}）` : "（没有可编辑的卡）"}`, "");
+          if (!cardId) {
+            unsupported.push({ reason: "no card to edit", step: index, word });
+            return;
+          }
+          const shown = await readCardAs(clientName, cardId, "show the card before taking an item off");
+          const operationId = shown?.operations[Number(spec.remove_op ?? 0) - 1]?.operationId;
+          if (!shown || !operationId) {
+            unsupported.push({ reason: `the card has no item ${spec.remove_op}`, step: index, word });
+            return;
+          }
+          const client = await clientFor(clientName);
+          const result = await client.request("POST", `/api/agent/ledger/${encodeURIComponent(cardId)}/edit`, { payloadHash: shown.payloadHash, removeOperationId: operationId, revision: shown.revision }, { purpose: "take an item off the card" });
+          const card = result.body?.data?.card as AgentActionPreviewContract | undefined;
+          noteCard(card, clientName);
+          log.push({ cardId, outcome: result.body?.data?.edit?.outcome ?? null, reason: result.body?.error?.reason ?? null, revision: card?.revision ?? null, status: result.status, type: "card.edit" });
+          transcript.push(`- 服务端（HTTP ${result.status}）：${result.body?.data?.edit?.message ?? result.body?.error?.message ?? ""}`, ...cardText(card), "");
+          if (result.status !== 200) unsupported.push({ reason: `taking an item off the card was refused (HTTP ${result.status})`, step: index, word });
+          return;
+        }
         case "regenerate": {
           await refreshDeliveredCards();
           const selector = step.regenerate?.card ?? "last";
@@ -743,6 +785,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     };
     for (const spec of interactionSpecs) recentInteractions[spec.contact] = { after: null, before: await recentOf(spec.contact).catch(() => null) };
 
+    let executorFaultArmed: string | null = null;
     for (const [index, step] of testCase.steps.entries()) {
       try {
         if (entry && !fake) {
@@ -756,7 +799,15 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
             log.push({ note: "the earlier turns did not end within 240 s", step: index, type: "runner.note" });
           }
         }
+        const armedBefore = executorFaultArmed;
         await runStep(step, index);
+        // AG06 (XL.yaml notes: "故障只作用在第一次确认触发的执行上"): an executor fault covers the next step that runs
+        // an execution; an "always" one ends after it, so a later card is not hit by it.
+        if (armedBefore && !("fault" in step) && ("click" in step || "review" in step)) {
+          await serverControl(environment, "fault_end", { where: armedBefore });
+          log.push({ step: index, type: "turn.fault_end", where: armedBefore });
+          executorFaultArmed = null;
+        }
       } catch (stepError) {
         log.push({ error: stepError instanceof Error ? stepError.message : String(stepError), step: index, type: "error" });
         unsupported.push({ reason: `step failed: ${stepError instanceof Error ? stepError.message : stepError}`, step: index, word: "error" });

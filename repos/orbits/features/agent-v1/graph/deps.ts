@@ -7,6 +7,16 @@ import type { DomainReader, DomainScope } from "../domains/types";
 import type { ContextMessage } from "../context/build";
 import type { AgentSessionStateStore, NamedRecordRef } from "../context/session-state";
 import type { AgentGraphRun, AgentGraphState } from "./state";
+import type { CardOperationIntent } from "../../agent/runtime/card-operations";
+import type { AgentActionPreviewContract as CardPreview } from "../../../shared/contract/agent-v1";
+
+/**
+ * AG06: the request's card in the action ledger (one card per request, conversationCardId). `freeze` is
+ * idempotent per request: a card that exists already is returned as it is.
+ */
+export interface AgentCardAccess {
+  freeze(input: { requestId: string; sessionId: string; locale: string; intents: readonly CardOperationIntent[] }): Promise<CardPreview | null>;
+}
 
 /**
  * AG05: how the graph reads the user's records — the domain registry (five read adapters through
@@ -34,6 +44,8 @@ export interface AgentGraphDependencies {
   authorizeReferences(actorId: string, references: readonly AgentReferenceInput[]): Promise<ReferenceHandle[]>;
   /** AG05: reading the user's records (absent: parts that read are answered as unreadable sources). */
   records?: AgentRecordAccess;
+  /** AG06: the request's card (absent: write parts are reported as not done). */
+  cards?: AgentCardAccess;
   /** The session's latest messages, oldest first, with their time and record refs. */
   loadMessages(sessionId: string): Promise<ContextMessage[]>;
   sessionState: AgentSessionStateStore;

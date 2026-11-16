@@ -32,6 +32,12 @@ export interface NoteContract {
    * Read in AG05; written by the Agent's memo writes from AG06.
    */
   interaction?: NoteInteractionContract;
+  /**
+   * agent-design AG06 (设计稿 §4 "后续效果也属于写入范围", 附录 E): the memo was written by the Agent after a
+   * confirmation card, so the old automatic extraction of contact facts must not run on it. Persisted on
+   * the memo; both extraction paths (the save hook and the maintenance rescan) honour it.
+   */
+  autoExtraction?: "suppressed";
 }
 
 /**

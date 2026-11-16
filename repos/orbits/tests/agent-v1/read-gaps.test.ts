@@ -140,7 +140,7 @@ test("a person who exists only in another account: not found here, nothing of th
   const model = deepseekStub([json({ parts: [part({ dataSources: ["orbit_records"], objectClues: [{ entity: "contact", text: "小林诚" }], requiredCapabilities: ["memo.read"], sourceQuote: "小林诚上次跟我提的降价要求是什么" })], plainChat: false })]);
   const kit = graphKit(model.fetchImplementation, { records });
   const result = await runAgentGraph(kit.deps, kit.input("小林诚上次跟我提的降价要求是什么？"));
-  assert.match(result.text, /没有找到你说的这位/u);
+  assert.match(result.text, /我不确定你说的是哪一位联系人/u, "AG06 repair 1 (AE-XL-010): which person is not known; never that they do not exist");
   assert.doesNotMatch(result.text, /小林诚/u, "the name is not said back (it may be another account's)");
   assert.equal(model.calls.length, 1);
   for (const id of ["contact:cb1", "note:mb1"]) assert.equal(records.source.reads.includes(id), false, id);

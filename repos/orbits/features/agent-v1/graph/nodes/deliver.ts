@@ -157,6 +157,13 @@ function partLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, lan
   const quote = quoteOf(message, part);
   const withEntries = (line: string) => [line, entriesLine(scope, state, part, language)].filter((text) => text.trim()).join("\n");
   if (part.route === "read" && (part.status === "answered" || part.status === "unfinished") && part.reason !== "budget" && part.reason !== "still_unclear") return readLine(scope, part, language, withEntries);
+  // AG06: a write part says only code's words: a question, what was not found or cannot be done here. The
+  // card itself is one line for the whole request (after the parts); a part waiting for another's question says nothing.
+  if (part.route === "propose_write") {
+    const line = scope.run.writeLines.get(part.localId);
+    if (line) return line;
+    if (part.status === "awaiting_confirmation" || (part.status === "waiting_dependency" && (part.reason === "shares_question" || part.reason === "card_waits"))) return "";
+  }
   switch (part.status) {
     case "answered": {
       if (part.continues?.kind === "alternative") {
@@ -315,12 +322,14 @@ export function deliverNode(scope: NodeScope): GraphNode {
     } else {
       const ordered = [...state.parts].sort((left, right) => left.quote[0] - right.quote[0] || left.localId.localeCompare(right.localId));
       const written = resume ? ordered.filter((part) => state.touched!.includes(part.localId)) : ordered;
-      text = written.map((part) => lineFor(scope, state, part, language)).filter((line) => line.trim()).join("\n\n");
+      text = [...written.map((part) => lineFor(scope, state, part, language)), run.cardLine ?? ""].filter((line) => line.trim()).join("\n\n");
       partResults = state.parts.map((part) => ({
         partId: part.localId,
         // AG05: what the read did not give, and how much of it was read.
         ...(part.gaps?.length ? { gaps: part.gaps as AgentPartGap[] } : {}),
         ...(part.coverage?.length ? { coverage: part.coverage.map((item) => ({ complete: item.complete, kind: item.kind, pagesRead: item.pagesRead, seen: item.seen, ...(item.total !== null ? { total: item.total } : {}) })) } : {}),
+        // AG06: the card item of a write part.
+        ...(part.write?.operationIds?.length && part.status === "awaiting_confirmation" ? { operationId: part.write.operationIds[0] } : {}),
         ...(part.reason ? { reason: part.reason } : {}),
         ...(part.route ? { route: part.route } : {}),
         sourceQuote: quoteOf(input.message, part),

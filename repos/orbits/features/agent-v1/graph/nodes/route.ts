@@ -81,9 +81,10 @@ export function routeNode(scope: NodeScope): GraphNode {
         status = "unfinished";
         reason = "still_unclear";
       }
-      if (decision.route === "propose_write" && run.cardPrepared) {
-        status = "awaiting_confirmation";
-        reason = null;
+      if (decision.route === "propose_write") {
+        // AG06: the propose step finds the records and makes the card; a card prepared before the turn is shown as it is.
+        status = run.cardPrepared ? "awaiting_confirmation" : "unfinished";
+        reason = run.cardPrepared ? null : "proposing";
       }
       if (decision.step) run.steps.set(part.localId, decision.step);
       return {

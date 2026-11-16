@@ -252,5 +252,7 @@ export function validateUnderstandOutput(raw: unknown, input: UnderstandValidati
   const cycle = findDependencyCycle(parts.filter((part) => part.localId));
   if (cycle) errors.push(`dependsOn forms a cycle: ${cycle.join(" → ")}`);
   if (errors.length) return { errors, ok: false };
-  return { dropped, ok: true, output: { parts, plainChat: value.plainChat as boolean, ...(reply ? { reply } : {}) } };
+  // AG06: the language the first layer reports for the message (checked against the text by replyLanguageOf).
+  const language = value.language === "zh" || value.language === "ja" || value.language === "en" ? value.language : undefined;
+  return { dropped, ok: true, output: { ...(language ? { language } : {}), parts, plainChat: value.plainChat as boolean, ...(reply ? { reply } : {}) } };
 }

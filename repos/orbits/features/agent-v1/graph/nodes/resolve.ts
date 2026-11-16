@@ -120,6 +120,33 @@ export function cluePointsAtOne(words: string): boolean {
   return POINTER.test(words);
 }
 
+/** AG06 repair 1 (AE-SCL-008): the to-do status the user's words say (open before done: "没做完" holds "做完"). */
+const FIRST_TIME = /(第一次|头一次|初次|最初|最早|初めて|最初に|\bfirst (time|met|meet|meeting)\b|\bwhen (I|we) first\b|\bearliest\b)/iu;
+const OPEN_WORDS = /(まだ終わっていない|終わっていない|終わってない|未完了|未完成|没做完|没完成|还没做|未处理|还没处理|残っている|\bopen\b|\bnot (yet )?done\b|\bunfinished\b|\boutstanding\b|\bpending\b|\bstill to do\b)/iu;
+const DONE_WORDS = /(已完成|做完了的|做完的|完了した|終わった|済んだ|\bcompleted\b|\bfinished\b|\bdone ones\b)/iu;
+
+export function statusSaidIn(words: string): "open" | "completed" | undefined {
+  if (OPEN_WORDS.test(words)) return "open";
+  if (DONE_WORDS.test(words)) return "completed";
+  return undefined;
+}
+
+/**
+ * AG06 repair 1 (AE-XL-010): a nickname ("小陈", "老王", "阿强") names no contact by itself; its family name may
+ * match contacts partially. Those are offered as candidates, never taken, and never "not found".
+ */
+export async function partialContacts(records: AgentRecordAccess, scope: DomainScope, words: string): Promise<ContactMatch[]> {
+  const clean = words.replace(/^@/u, "").replace(HONORIFIC, "").trim();
+  const core = clean.replace(/^(小|老|阿|大)/u, "");
+  if (core === clean || core.length < 1 || core.length > 2) return [];
+  try {
+    const found = (await records.reader.read("contact", scope, { limit: 10, text: core })).items;
+    return found.slice(0, 3).map((view) => ({ detail: contactDetail(view), id: view.id, name: String(view.fields.displayName ?? ""), partial: true, view }));
+  } catch {
+    return [];
+  }
+}
+
 export function clueSearchWords(words: string): string | undefined {
   let rest = words.replace(/^@/u, "").trim();
   if (!rest) return undefined;
@@ -146,14 +173,25 @@ function nextDay(day: string): string {
   return new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 }
 
-interface ContactMatch {
+export interface ContactMatch {
   id: string;
   name: string;
   view: RecordView | null;
+  /** AG06: what tells this person apart from others of the name (company, role), for a question. */
+  detail?: string;
+  /** AG06 repair 1: matched only partially (a nickname): offered in a question, never taken. */
+  partial?: boolean;
+}
+
+/** AG06: the company and role of a contact view ("北辰软件 · 销售总监"), or nothing. */
+export function contactDetail(view: RecordView | null): string | undefined {
+  if (!view) return undefined;
+  const parts = [view.fields.company, view.fields.headline].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+  return parts.length ? parts.join(" · ") : undefined;
 }
 
 /** Looks a person up by name in the account (never elsewhere) and narrows by the company the user named. */
-async function findContacts(records: AgentRecordAccess, scope: DomainScope, words: string, quote: string, message: string): Promise<{ matches: ContactMatch[]; failed: boolean }> {
+export async function findContacts(records: AgentRecordAccess, scope: DomainScope, words: string, quote: string, message: string): Promise<{ matches: ContactMatch[]; failed: boolean }> {
   const tokens = nameTokens(words);
   let found: RecordView[] = [];
   let failed = false;
@@ -176,7 +214,7 @@ async function findContacts(records: AgentRecordAccess, scope: DomainScope, word
     const exact = matches.filter((view) => tokens.includes(String(view.fields.displayName)));
     if (exact.length) matches = exact;
   }
-  return { failed, matches: matches.map((view) => ({ id: view.id, name: String(view.fields.displayName ?? ""), view })) };
+  return { failed, matches: matches.map((view) => ({ detail: contactDetail(view), id: view.id, name: String(view.fields.displayName ?? ""), view })) };
 }
 
 interface PartRead {
@@ -312,13 +350,18 @@ export function resolveNode(scope: NodeScope): GraphNode {
           break;
         }
         if (!matches.length) {
+          // AG06 repair 1 (AE-XL-010): a nickname that matches contacts only partially — offer them, never guess.
+          const partial = await partialContacts(records, accountScope, said);
+          if (partial.length) matches.push(...partial);
+        }
+        if (!matches.length) {
           // run-03 repair 1 (AE-CTX-007): decided after all clues — "not found" only when nobody was found.
           unmatched.push(said.replace(/^@/u, ""));
           continue;
         }
-        if (matches.length > 1) {
+        if (matches.length > 1 || matches[0].partial) {
           // Several people of that name, the company does not tell them apart: ask which (§3.11), do not guess.
-          run.candidates.set(part.localId, matches.slice(0, 3).map((match): NamedRecordRef => ({ id: match.id, name: match.name, type: "contact" })));
+          run.candidates.set(part.localId, matches.slice(0, 3).map((match): NamedRecordRef => ({ id: match.id, name: match.name, type: "contact", ...(match.detail ? { detail: match.detail } : {}) })));
           run.steps.set(part.localId, { kind: "ask_missing" });
           run.needsDirections = true;
           part.status = "awaiting_clarification";
@@ -377,6 +420,16 @@ export function resolveNode(scope: NodeScope): GraphNode {
         }
       }
 
+      // AG06 repair 1 (AE-SCL-008): words that only name the person or their company ("東都精機" of "東都精機の鈴木健太さん")
+      // are who the records are about, not a topic: they never narrow that person's records.
+      if (text && contacts.length) {
+        const personWords = part.refs.filter((ref) => recordKindOf(ref.entity) === "contact").map((ref) => clueWords(input.message, ref) ?? "");
+        const companies = contacts.map((item) => String(item.view?.fields.company ?? "")).filter(Boolean);
+        if (personWords.some((said) => said.includes(text!)) || companies.some((company) => company.includes(text!) || text!.includes(company))) {
+          emitTrace({ partId: part.localId, type: "resolve.person_words_not_a_topic", words: text });
+          text = undefined;
+        }
+      }
       // 3. What to read.
       const capabilities = part.reading?.capabilities.length ? part.reading.capabilities : part.capabilities;
       const kinds = readKindsOf(capabilities);
@@ -396,8 +449,11 @@ export function resolveNode(scope: NodeScope): GraphNode {
         if (ref.recordId && kind && kind !== "contact") boundIds.set(kind as DomainKind, [...(boundIds.get(kind as DomainKind) ?? []), ref.recordId]);
       }
       const names = new Map<string, string>(contacts.filter((item) => item.name).map((item) => [item.id, item.name]));
-      const order = filter?.order ?? "newest";
-      const status = filter?.status ?? (part.reading?.key === "contact.recent_and_open" ? "open" : undefined);
+      // AG06 repair 1 (AE-SCL-007): "第一次", "初めて", "when I first met" read the oldest records even when the first layer gave no order.
+      const order = filter?.order ?? (FIRST_TIME.test(quote) ? "oldest" : "newest");
+      // AG06 repair 1 (AE-SCL-008): "まだ終わっていない", "没做完", "open" in the words narrow by status even when the first
+      // layer gave none; the read, and the total counted with it, then hold only those.
+      const status = filter?.status ?? statusSaidIn(quote) ?? (part.reading?.key === "contact.recent_and_open" ? "open" : undefined);
       const from = filter?.from ? localMidnight(filter.from, zone) : undefined;
       const to = filter?.to ? localMidnight(nextDay(filter.to), zone) : undefined;
       const maxPages = LIST_DELIVERABLES.has(part.plan.deliverable) ? records.maxPages : 1;

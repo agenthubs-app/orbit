@@ -163,8 +163,11 @@ export function decideRoute(part: RouteInput, options: RouteOptions = {}): Route
 
 export type PartStatus = "answered" | "awaiting_clarification" | "awaiting_confirmation" | "awaiting_acceptance" | "suggested_external" | "waiting_dependency" | "declined" | "unfinished" | "failed";
 
-/** Routes this version delivers no result for (web AG09, writes AG06): reported as not done. Reads work from AG05. */
-export const NOT_YET_ROUTES: ReadonlySet<Route> = new Set(["probe", "web_lookup", "propose_write"]);
+/**
+ * Routes this version delivers no result for (web AG09): reported as not done. Reads work from AG05; writes
+ * are proposed on a card from AG06 (graph/nodes/propose.ts).
+ */
+export const NOT_YET_ROUTES: ReadonlySet<Route> = new Set(["probe", "web_lookup"]);
 
 /**
  * The status a route leaves a part in before dependencies are settled. An `answer` part is counted
@@ -195,13 +198,16 @@ export function statusForRoute(route: Route): PartStatus {
  * A part whose prerequisite is not done this round waits for it. Done means answered; anything else
  * (suggested to an external agent, not available yet, declined …) leaves the dependent part waiting.
  */
-export function settleDependencies<T extends { localId: string; dependsOn: readonly string[]; status: PartStatus; waitReason: WaitReason | null }>(parts: T[]): T[] {
+export function settleDependencies<T extends { localId: string; dependsOn: readonly string[]; status: PartStatus; waitReason: WaitReason | null; route?: Route | null }>(parts: T[]): T[] {
   const byId = new Map(parts.map((part) => [part.localId, part]));
   let changed = true;
   while (changed) {
     changed = false;
     for (const part of parts) {
       if (part.status === "waiting_dependency" || part.status === "declined") continue;
+      // AG06: a write part's wait is decided by the propose step (a read it depends on is delivered first; an item
+      // that waits for another item goes on the same card with dependsOn).
+      if (part.route === "propose_write") continue;
       const blocked = part.dependsOn.some((id) => byId.get(id)?.status !== "answered");
       if (blocked) {
         part.status = "waiting_dependency";

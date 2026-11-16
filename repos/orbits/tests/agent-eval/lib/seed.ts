@@ -317,6 +317,22 @@ export function createWorldWriter(world: string, clock: string) {
     if ((data.relatedEventRefs as { kind: string }[] | undefined)?.some((ref) => ref.kind === "private")) gap(report, record.id, "relatedEventRefs.private", "private events arrive in AG13");
   }
 
+  /** AG06 (a patch's `set`, e.g. todo-plan-and-due): change fields of a seeded to-do through the to-do service. */
+  async function updateTodo(fixtureId: string, account: string, set: Record<string, unknown>): Promise<void> {
+    const actorId = actorOf(account);
+    const taskId = idOf(fixtureId);
+    if (!taskId) throw new Error(`${fixtureId} was not seeded`);
+    const current = await tasks.get({ actorId, taskId });
+    if (!current) throw new Error(`${fixtureId} cannot be read`);
+    const patch: Record<string, string | null> = {};
+    for (const [key, value] of Object.entries(set)) {
+      if (key === "id") continue;
+      if (!["title", "plannedDate", "dueAt"].includes(key)) throw new Error(`field ${key} cannot be set by a patch yet`);
+      patch[key] = key === "dueAt" && typeof value === "string" ? iso(value) ?? value : (value as string | null);
+    }
+    await tasks.update({ actorId, expectedUpdatedAt: current.updatedAt, idempotencyKey: `agent-eval:${world}:${fixtureId}:set:${JSON.stringify(patch)}`, now: current.updatedAt, patch, taskId });
+  }
+
   async function writeSchedule(record: FixtureRecord): Promise<void> {
     const actorId = actorOf(record.account);
     const data = record.data;
@@ -535,7 +551,7 @@ export function createWorldWriter(world: string, clock: string) {
     await Promise.allSettled([configured.client.close(), runtime.client.close(), events.client.close()]);
   }
 
-  return { actorOf, close, ensureAccount, report, writeAll, writeContact, writeConversation, writeMemo, writeMemory, writeRule, writeSchedule, writeTodo };
+  return { actorOf, close, ensureAccount, report, updateTodo, writeAll, writeContact, writeConversation, writeMemo, writeMemory, writeRule, writeSchedule, writeTodo };
 }
 
 export type WorldWriter = ReturnType<typeof createWorldWriter>;

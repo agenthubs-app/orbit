@@ -49,7 +49,6 @@ export const NOT_YET: Record<string, string> = {
   memory_recalled: "AG14",
   memory_state: "AG14",
   model_input_excludes: "AG12",
-  no_auto_extraction: "AG06",
   pages_read: "AG05",
   push_delivery: "AG16",
   push_excludes: "AG16",
@@ -91,6 +90,12 @@ function lookup(set: Record<string, unknown>, key: string): unknown {
   if (dotted !== undefined) return dotted;
   for (const nested of Object.values(set)) {
     if (nested && typeof nested === "object" && !Array.isArray(nested) && key in (nested as Record<string, unknown>)) return (nested as Record<string, unknown>)[key];
+  }
+  // AG06: a dotted key inside a wrapped payload ({ note: { interaction: { actualContactIds } } }).
+  for (const nested of Object.values(set)) {
+    if (!nested || typeof nested !== "object" || Array.isArray(nested)) continue;
+    const value = key.split(".").reduce<unknown>((item, part) => (item && typeof item === "object" ? (item as Record<string, unknown>)[part] : undefined), nested);
+    if (value !== undefined) return value;
   }
   return undefined;
 }
@@ -186,6 +191,25 @@ export const CHECKS: Record<string, CheckFn> = {
       else evidence.push(covering.seq);
     }
     return problems.length ? fail(problems.join(" | "), evidence) : pass(`${businessChanges(obs).length} business write(s), each after a confirm click`, evidence);
+  },
+
+  /**
+   * AG06 (XL.yaml): the memos the Agent wrote are marked so the old extraction never runs on them, no
+   * extraction job was recorded for them, and no contact or contact detail state changed in the run.
+   */
+  no_auto_extraction(_args, obs) {
+    const changes = obs.diff.records.filter((change) => !(obs.businessChanges.find((item) => item.collection === change.collection && item.id === change.id)?.external));
+    const memos = changes.filter((change) => change.collection === "notes" && change.kind === "created");
+    if (!memos.length) return fail("no memo was written in this run, so there is nothing to check");
+    const noteOf = (change: (typeof memos)[number]) => ((change.after as { note?: Record<string, unknown> } | undefined)?.note ?? change.after ?? {}) as Record<string, unknown>;
+    const problems: string[] = [];
+    for (const memo of memos) if (noteOf(memo).autoExtraction !== "suppressed") problems.push(`memo ${memo.id} is not marked autoExtraction: suppressed`);
+    const extractions = changes.filter((change) => change.collection === "memo_extractions");
+    if (extractions.length) problems.push(`${extractions.length} memo extraction record(s) written`);
+    const contactWrites = changes.filter((change) => ["contacts", "contact_detail_states", "contact_facts"].includes(change.collection));
+    if (contactWrites.length) problems.push(`contact data changed: ${contactWrites.map(describeChange).join(" | ")}`);
+    const evidence = memos.flatMap((memo) => seqs(writesFor(obs.events, memo)));
+    return problems.length ? fail(problems.join("; "), evidence) : pass(`${memos.length} memo(s) marked suppressed; no extraction record, no contact data written`, evidence);
   },
 
   no_business_writes(_args, obs) {
@@ -572,6 +596,27 @@ export const CHECKS: Record<string, CheckFn> = {
   order(args, obs) {
     const entry = obs.entry;
     if (!entry) return cannot("the case did not run on the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)");
+    // AG06 (XL.yaml 约定): elements that name a kind of result — clarification, answer, card. A result counts from
+    // the delivery that first showed it (the entry.finished after it was made); results of one delivery tie.
+    if (Array.isArray(args) && args.every((item) => typeof item === "string")) {
+      const finishes = obs.events.filter((event) => event.type === "entry.finished").map((event) => Number(event.seq));
+      const made: Record<string, (event: TraceEvent) => boolean> = {
+        answer: (event) => event.type === "node.enter" && event.node === "answer",
+        card: (event) => event.type === "card.frozen" && event.origin === "product",
+        clarification: (event) => event.type === "clarify.asked",
+      };
+      const deliveredAt = (kind: string) => {
+        const test = made[kind];
+        const first = test ? obs.events.find(test) : undefined;
+        if (!first) return null;
+        return finishes.find((seq) => seq >= Number(first.seq)) ?? null;
+      };
+      const seen = (args as string[]).map((kind) => ({ at: deliveredAt(kind), kind }));
+      const missing = seen.filter((item) => item.at === null).map((item) => item.kind);
+      if (missing.length) return fail(`never delivered: ${missing.join(", ")}`);
+      const problems = seen.slice(1).filter((item, index) => item.at! < seen[index].at!).map((item, index) => `${item.kind} was delivered before ${seen[index].kind}`);
+      return problems.length ? fail(problems.join("; "), seen.map((item) => item.at!)) : pass(seen.map((item) => `${item.kind} delivered at seq ${item.at}`).join(", "), seen.map((item) => item.at!));
+    }
     let sequence: EntryRequest[];
     if (args === "as_received") {
       sequence = [...entry.requests].sort((left, right) => left.receivedSeq - right.receivedSeq);

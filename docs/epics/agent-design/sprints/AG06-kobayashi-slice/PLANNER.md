@@ -102,3 +102,15 @@
 
 外部条件缺失先不启动；run 已开始则按 RULES 产出 failed 或 blocked 报告。只承接具体前序结果，不自动重跑整个 sprint。
 报告包含验收映射、功能 SHA、文件与理由、命令与退出码、门槛运行编号与 `RUNS.md` 行、未提交与失败项、费用与下一步。分支从 `orbit-agent-claude` 建 `sprint/AG06-kobayashi-slice`，路径限定提交，禁止 `git add .`；由协调者用 `--no-ff` 合回 `orbit-agent-claude`，在合并树上跑受影响测试和 typecheck 并记录合并 SHA 后，登记表才写 completed。push 需要用户另行授权。
+
+## 启动核对（Generator run-01，2026-11-16，追加；上文原样保留）
+
+- 本页开工时 SHA-256 `784f1130904de137d9c5ff01c035e26a95da445ac53598845fca03152c73bb72`；基线 HEAD `be10e575c`（AG05 已合回，含协调者新增的 ja/en 用例与两条回答语言用例）。run-01。
+- 进入条件：AG04、AG05 completed 并已合回；评测环境 `agent-eval:env -- --build` 自检通过。
+- 与前序 REPORT 对照的更正：
+  1. **AG02 的“依赖、跳过、永久失败不重试”**：AG02 只交付了 `dependsOn` 在出队和“放弃”里的生效，卡上没有依赖，失败一律重试到 5 次。本 sprint 在 `features/agent/runtime/` 补上：卡上依赖、永久失败立即停止并跳过依赖项、等前置的项在同一次处理里再跑一轮。
+  2. **CONVENTIONS §4 写“Memo 含新建和修改”**，本页、SPRINTS 与 GOAL 只列 `memo.create`。门槛没有 Memo 修改的用例；本 sprint 只做新建，修改记为待协调者定（REPORT）。
+  3. **`--seed-cards` 停用**（CONVENTIONS §3、§8）：门槛不带它，BND ×12 以完整对话出卡。
+  4. **协调者交代的五项**（brief）：去掉 `propose_write` 的“这一版还不能出确认卡”；AE-BND-008 打字同意由代码答；AE-BND-002 证明批准标志进不了卡和账本；Memo 往来字段的子集校验复用 `readNoteInteraction()`；回答语言由第一层报告、代码按原文核对。
+- 门槛：`npm run agent-eval:run -- --gate AG06`（不带 `--seed-cards`），XL ×12、SCL-009/011、BND ×12、UND-015/016 及不变量包；AG03、AG04、AG05 门槛各复跑一次。
+- GitNexus：`npx -y gitnexus@latest analyze --index-only --force` 重建成功；`impact`、`detect-changes` 用 `npx -y gitnexus@latest`（worktree 里的 `.gitnexus/run.cjs` 版本旧，读不了新索引）。

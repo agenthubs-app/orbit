@@ -44,6 +44,27 @@ export function isBareTypedConfirmation(message: string): boolean {
   return readEntityDraftIntent(text) !== null || BARE_CONFIRMATION.some((pattern) => pattern.test(text));
 }
 
+/** "照刚才的来", "やっぱりさっきの内容で進めてください", "go ahead with that": a sentence that only says to carry on. */
+const PROCEED = [
+  /^(那|那就|好)?(还是|就|也)?(按|照)(刚才|之前|上面|上一张|原来)的?(内容|那样|那个|卡)?(来|做|办|进行|执行|改)(吧|了|就行)?$/u,
+  /^(那|那就)?(就这么办|就这样办|继续|执行|做吧|执行吧|继续吧|改吧|建吧)(吧)?$/u,
+  /^(やっぱり|やはり)?(さっき|先ほど|前|元)の(内容|件|まま|とおり|通り)で(進めて|お願い|やって)(ください|します|下さい)?$/u,
+  /^(やっぱり|やはり)?(それで|そのまま)?(進めて|実行して)(ください|下さい)?$/u,
+  /^(ok,?\s*)?(please\s+)?(go ahead|proceed|do it|carry on|go on)(\s+with\s+(that|it|the (earlier|previous|last) (one|card|change)))?(,?\s*please)?$/iu,
+];
+
+/**
+ * AG06 (AE-BND-008): a message that only agrees in words — every sentence a bare yes or a "carry on with
+ * that". Used when the conversation's latest card is closed: code answers it alone, with the sentence that
+ * the card can no longer be carried out; no model writes a reply that could say it will proceed.
+ */
+export function isTypedAgreement(message: string): boolean {
+  const text = message.trim();
+  if (!text || text.length > 80) return false;
+  const sentences = text.split(/[。.!！?？\n]+/u).map((sentence) => sentence.trim().replace(/[，,、\s]+$/u, "")).filter(Boolean);
+  return sentences.length > 0 && sentences.every((sentence) => isBareTypedConfirmation(sentence) || PROCEED.some((pattern) => pattern.test(sentence)));
+}
+
 export function mentionsConfirmation(message: string): boolean {
   return CONFIRMATION_WORD.test(message);
 }
@@ -58,7 +79,7 @@ const TEXTS: Record<CardLocale, { reminder: string; card: (summary: string) => s
     },
     kinds: { contact: "contacts", event: "events", note: "notes", schedule: "schedule items" },
     reminder: "The card is still waiting for you. A typed reply does not carry out any change; press Confirm on the card.",
-    unsupported: (kind) => `Orbit cannot offer a confirmation card for ${kind} here yet; nothing was saved.`,
+    unsupported: (kind) => `Orbit cannot save ${kind} from here yet; nothing was saved.`,
   },
   ja: {
     card: (summary) => `確認カード：${summary}。カードの「確認」を押すまで実行しません。`,
@@ -69,7 +90,7 @@ const TEXTS: Record<CardLocale, { reminder: string; card: (summary: string) => s
     },
     kinds: { contact: "連絡先", event: "イベント", note: "メモ", schedule: "予定" },
     reminder: "カードはまだ確認待ちです。メッセージで返信しても変更は実行されません。カードの「確認」ボタンを押してください。",
-    unsupported: (kind) => `${kind}の確認カードはここではまだ出せません。何も保存していません。`,
+    unsupported: (kind) => `${kind}はここではまだ保存できません。何も保存していません。`,
   },
   zh: {
     card: (summary) => `确认卡：${summary}。点卡上的「确认」后才会执行。`,
@@ -80,7 +101,7 @@ const TEXTS: Record<CardLocale, { reminder: string; card: (summary: string) => s
     },
     kinds: { contact: "联系人", event: "活动", note: "笔记", schedule: "日程" },
     reminder: "卡片还在等你确认。打字回复不会执行任何修改，请点卡上的「确认」按钮。",
-    unsupported: (kind) => `这类记录（${kind}）现在还不能在这里出确认卡，什么都没有保存。`,
+    unsupported: (kind) => `这类记录（${kind}）现在还不能在这里保存，什么都没有保存。`,
   },
 };
 
@@ -155,6 +176,8 @@ export async function openConversationCards(runtime: Pick<AgentRuntimeService, "
 
 export interface LegacyTurn {
   reply: string;
+  /** AG06: the turn's reply already shows its card (the graph wrote the card line from the frozen preview). */
+  cardShown?: boolean;
   extraText?: string;
   sourceRefs: readonly string[];
   actionRequests?: readonly AgentNaturalLanguageActionRequest[];
@@ -190,6 +213,14 @@ export async function runWithConfirmBoundary(
       text: typedConfirmationReminder(locale),
     };
   }
+  // AG06 (AE-BND-008): agreeing in words while the latest card is closed: code's sentence only, no model call.
+  if (!open.length && isTypedAgreement(input.message)) {
+    const closedCard = await latestClosedConversationCard(deps.runtime, input.sessionId, now()).catch(() => null);
+    if (closedCard) {
+      emitTrace({ cardId: closedCard.action.actionId, decided: false, message: input.message, status: closedCard.status, type: "entry.typed_confirmation" });
+      return { modelCalled: false, sourceRefs: [], text: TEXTS[locale].closed[closedCard.status] };
+    }
+  }
   const turn = await input.run();
   const proposals = rejectModelApprovalClaims({ actionRequests: turn.actionRequests ?? [], entityDraft: turn.entityDraft ?? null }, "entry.proposals");
   const { intents, unsupportedKinds } = todoIntentsFrom(proposals);
@@ -212,7 +243,7 @@ export async function runWithConfirmBoundary(
   const lines = [
     turn.reply,
     turn.extraText ?? "",
-    actionPreview ? cardLine(actionPreview, locale) : "",
+    actionPreview && !turn.cardShown ? cardLine(actionPreview, locale) : "",
     ...unsupportedKinds.map((kind) => words.unsupported(words.kinds[kind] ?? kind)),
     open.length && !actionPreview && mentionsConfirmation(input.message) ? words.reminder : "",
     closed ? words.closed[closed.status] : "",

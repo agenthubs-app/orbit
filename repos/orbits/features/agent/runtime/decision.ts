@@ -37,13 +37,10 @@ import { emitTrace } from "../../agent-v1/observability/trace";
 import {
   cardLocale,
   checkTodoTarget,
-  prepareTodoOperation,
-  todoCardTitle,
-  todoIntentOf,
   type CardLocale,
-  type TodoOperationIntent,
   type TodoReader,
 } from "./todo-operations";
+import { buildCardOperationList, cardCountTitle, cardIntentOf, type CardOperationIntent } from "./card-operations";
 
 /** Conversation cards expire after 7 days (设计稿 §5.2). */
 export const AGENT_CARD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -233,25 +230,20 @@ export interface FrozenCardInput {
   actionId: string;
   origin: AgentActionOrigin;
   locale: string;
-  intents: readonly TodoOperationIntent[];
+  intents: readonly CardOperationIntent[];
 }
 
-/** Builds the operations of one revision from intents and the current data. Missing targets are reported. */
-export async function buildCardOperations(reader: TodoReader | null, input: { actionId: string; revision: number; locale: string; intents: readonly TodoOperationIntent[] }): Promise<{ operations: AgentActionOperationPayload[]; missing: string[] }> {
-  const operations: AgentActionOperationPayload[] = [];
-  const missing: string[] = [];
-  for (const [index, intent] of input.intents.entries()) {
-    if (intent.capability === "todo.update" && !reader) throw new Error("A to-do reader is required to prepare a to-do change.");
-    const op = await prepareTodoOperation({ actionId: input.actionId, index, intent, locale: cardLocale(input.locale), reader: reader ?? { read: async () => null }, revision: input.revision });
-    if (op) operations.push(op);
-    else if (intent.capability === "todo.update") missing.push(intent.targetId);
-  }
-  return { missing, operations };
+/**
+ * Builds the operations of one revision from intents and the current data. Missing targets are reported.
+ * AG06: to-dos and interaction memos (card-operations.ts); an item's dependencies become operation ids.
+ */
+export async function buildCardOperations(reader: TodoReader | null, input: { actionId: string; revision: number; locale: string; intents: readonly CardOperationIntent[] }): Promise<{ operations: AgentActionOperationPayload[]; missing: string[] }> {
+  return buildCardOperationList(reader, input);
 }
 
-/** Title, preview and hash of a revision. */
+/** Title (AG06: the count sentence, "修改 1 项，新增 1 项"), preview and hash of a revision. */
 export function cardTexts(operations: readonly AgentActionOperationPayload[], locale: string, revision: number) {
-  const title = todoCardTitle(operations, cardLocale(locale));
+  const title = cardCountTitle(operations, cardLocale(locale));
   const preview = operations.map((op) => op.preview).join("\n");
   return { payloadHash: cardPayloadHash({ operations, preview, revision, title }), preview, title };
 }
@@ -280,9 +272,11 @@ function requireCardRepository(repository: AgentRuntimeRepository): Required<Pic
 }
 
 /** A new revision of the card from its intents and the current data (content change or regeneration). */
-async function nextRevision(deps: AgentCardDependencies, action: AgentActionRecord, reason: AgentActionRevisionRecord["reason"], now: string): Promise<AgentActionRecord> {
+async function nextRevision(deps: AgentCardDependencies, action: AgentActionRecord, reason: AgentActionRevisionRecord["reason"], now: string, keep?: (op: AgentActionOperationPayload) => boolean): Promise<AgentActionRecord> {
   const revision = (action.revision ?? 1) + 1;
-  const intents = action.operations.map(todoIntentOf).filter((intent): intent is TodoOperationIntent => intent !== null);
+  // AG06: an edit keeps only some items; a kept item that waited for a removed one no longer waits.
+  const kept = keep ? action.operations.filter(keep) : action.operations;
+  const intents = kept.map((op) => cardIntentOf(op, kept)).filter((intent): intent is CardOperationIntent => intent !== null);
   const { operations } = await buildCardOperations(deps.reader, { actionId: action.actionId, intents, locale: action.locale ?? "zh", revision });
   const texts = cardTexts(operations, action.locale ?? "zh", revision);
   const previous: AgentActionRevisionRecord = {
@@ -541,4 +535,48 @@ export async function regenerateCard(deps: AgentCardDependencies, input: { actio
     return { message: messages.regenerated, outcome: "regenerated", revision: next.revision ?? 1 };
   }
   throw new Error(`Agent action ${input.actionId} kept changing while it was being regenerated.`);
+}
+
+export interface AgentEditCardResult {
+  outcome: "edited" | "refused";
+  reason?: "CARD_REVISION_CHANGED" | "CARD_CLOSED" | "CARD_EXPIRED" | "OPERATION_NOT_ON_CARD" | "LAST_OPERATION";
+  message: string;
+  revision: number;
+}
+
+const EDIT_MESSAGES: Record<CardLocale, { edited: string; last: string; notOnCard: string }> = {
+  en: { edited: "The item was taken off. The card now lists only the rest and still needs your click.", last: "This is the only item on the card; reject the card instead.", notOnCard: "That item is not on this version of the card." },
+  ja: { edited: "その項目を外しました。カードには残りの項目だけが載っています。確認を押すまで実行しません。", last: "カードに残っている項目はこれだけです。カードごと却下してください。", notOnCard: "その項目はこの版のカードにありません。" },
+  zh: { edited: "已去掉这一项，卡上只剩其余的项，点确认之前不会执行。", last: "卡上只剩这一项了，要不做的话请否决整张卡。", notOnCard: "这一版的卡上没有这一项。" },
+};
+
+/**
+ * agent-design AG06 (设计稿 §5.1 "去掉一项…只生成新版本", 附录 D): taking an item off a card is not a
+ * decision. The card must be the version the client saw (revision and hash) and still waiting; the
+ * remaining items are frozen again from their intents and the current data as revision+1, the count
+ * sentence follows, and the card still needs a click. Nothing is executed or written.
+ */
+export async function editCard(deps: AgentCardDependencies, input: { actionId: string; revision: number; payloadHash: string; removeOperationId: string }): Promise<AgentEditCardResult | null> {
+  const repository = requireCardRepository(deps.repository);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const action = await deps.repository.getAction(input.actionId);
+    if (!action) return null;
+    const now = deps.now();
+    const locale = cardLocale(action.locale);
+    const messages = cardMessages(action.locale);
+    const revision = action.revision ?? 1;
+    if (isPastExpiry(action, now) || action.status === "expired") return { message: messages.expired, outcome: "refused", reason: "CARD_EXPIRED", revision };
+    if (action.status !== "awaiting_confirmation" && action.status !== "deferred") return { message: action.status === "canceled" ? messages.closedCanceled : messages.closedRejected, outcome: "refused", reason: "CARD_CLOSED", revision };
+    if (input.revision !== revision || input.payloadHash !== action.payloadHash) return { message: messages.revisionChanged(revision), outcome: "refused", reason: "CARD_REVISION_CHANGED", revision };
+    if (!action.operations.some((op) => op.operationId === input.removeOperationId)) return { message: EDIT_MESSAGES[locale].notOnCard, outcome: "refused", reason: "OPERATION_NOT_ON_CARD", revision };
+    if (action.operations.length === 1) return { message: EDIT_MESSAGES[locale].last, outcome: "refused", reason: "LAST_OPERATION", revision };
+    const next = await nextRevision(deps, action, "edited", now, (op) => op.operationId !== input.removeOperationId);
+    const committed = await repository.commitCardChange({ actionId: action.actionId, expect: { revision, statuses: [action.status], updatedAt: action.updatedAt }, next });
+    if (!committed.committed) continue;
+    await deps.afterChange?.(next);
+    emitCard(next, "edited");
+    emitTrace({ cardId: action.actionId, removed: input.removeOperationId, revision: next.revision ?? 1, type: "card.edited" });
+    return { message: EDIT_MESSAGES[locale].edited, outcome: "edited", revision: next.revision ?? 1 };
+  }
+  throw new Error(`Agent action ${input.actionId} kept changing while it was being edited.`);
 }

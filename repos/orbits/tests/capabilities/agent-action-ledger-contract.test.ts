@@ -68,6 +68,8 @@ test("operation types cover the design-derived write operations", () => {
       // agent-design AG02: the to-do create and update executors.
       "create_todo",
       "update_todo",
+      // agent-design AG06: a new memo with its interaction (memo.create).
+      "create_memo",
     ],
   );
 });

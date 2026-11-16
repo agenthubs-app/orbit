@@ -200,10 +200,23 @@ export function applyResolution(state: AgentGraphState, resolution: GraphResolut
     if (free >= 0) target.refs[free].recordId = option.refId;
     else target.refs.push({ entity: option.refType ?? "contact", quote: null, recordId: option.refId });
   };
+  // AG06: the write parts of the request go on with any answer — those that shared this question get the
+  // person picked, the ones that waited for it are frozen onto the one card with the rest.
+  const writeParts = parts.filter((item) => item !== part && item.route === "propose_write" && item.write);
+  const pickFor = (target: GraphPart, type: string | undefined, id: string) => {
+    if (!target.write) return;
+    target.write = { ...target.write, picks: { ...target.write.picks, ...(type === "contact" ? { contact: id } : type === "todo" ? { todo: id } : type === "field" && (id === "plannedDate" || id === "dueAt") ? { field: id } : {}) } };
+  };
+  if (set.purpose === "operation") {
+    if (option.refId) pickFor(part, option.refType, option.refId);
+    if (option.refType === "contact" && option.refId) for (const other of writeParts) if (other.write?.waitsFor === part.localId) pickFor(other, "contact", option.refId);
+    return { optionSets: sets, parts, pausing: false, resumeNext: "route", touched: [part.localId, ...writeParts.map((item) => item.localId)] };
+  }
   if (set.purpose === "object") {
     bindRef(part);
     part.plan.clarity = "clear";
-    return { optionSets: sets, parts, pausing: false, resumeNext: "route", touched: [part.localId] };
+    if (option.refType === "contact" && option.refId) for (const other of writeParts) if (other.write?.waitsFor === part.localId) pickFor(other, "contact", option.refId);
+    return { optionSets: sets, parts, pausing: false, resumeNext: "route", touched: [part.localId, ...writeParts.map((item) => item.localId)] };
   }
   if (set.purpose === "alternative") {
     part.plan.acceptedLeadsTo = option.capability;

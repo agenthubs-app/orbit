@@ -328,7 +328,11 @@ function proposalOf(content) {
     // AG03: the first layer's output proposes an operation when one of its parts needs a write capability.
     const WRITE = /^(contact|privateEvent|attendance|todo|memo|schedule|rule|memory)\.(create|update|delete|complete|reopen|unlink|restore|import|pause|resume|cancel)$/u;
     const writesPart = Array.isArray(value?.parts) && value.parts.some((part) => Array.isArray(part?.requiredCapabilities) && part.requiredCapabilities.some((capability) => WRITE.test(String(capability))));
-    const proposes = value && typeof value === "object" && ((Array.isArray(value.actionRequests) && value.actionRequests.length > 0) || (value.entityDraft && typeof value.entityDraft === "object") || writesPart);
+    // AG06: inside the graph, the output that proposes operations is the propose node's (the first layer only describes).
+    const node = currentNode();
+    if (node === "understand" || node === "answer") return null;
+    const operations = node === "propose" && Array.isArray(value?.operations) && value.operations.length > 0;
+    const proposes = value && typeof value === "object" && (operations || (node !== "propose" && ((Array.isArray(value.actionRequests) && value.actionRequests.length > 0) || (value.entityDraft && typeof value.entityDraft === "object") || writesPart)));
     return proposes ? value : null;
   } catch {
     return null;
@@ -346,6 +350,7 @@ function injectApprovalFlag(body) {
   if (Array.isArray(output.actionRequests)) output.actionRequests = output.actionRequests.map((item) => (item && typeof item === "object" ? { ...item, ...claims } : item));
   if (output.entityDraft && typeof output.entityDraft === "object") output.entityDraft = { ...output.entityDraft, ...claims };
   if (Array.isArray(output.parts)) output.parts = output.parts.map((item) => (item && typeof item === "object" ? { ...item, ...claims } : item));
+  if (Array.isArray(output.operations)) output.operations = output.operations.map((item) => (item && typeof item === "object" ? { ...item, ...claims } : item));
   const content = JSON.stringify(output);
   emit({ type: "model.output_rewritten", source: "simulated", kind: fault.kind, before: proposal, after: output, note: "the model's proposal now claims approval (approved: true) and an account id; the server must refuse both" });
   return JSON.stringify({ ...body, choices: [{ ...body.choices[0], message: { ...message, content } }, ...body.choices.slice(1)] });
@@ -695,6 +700,14 @@ async function handleControl(req, res) {
       state.faults.push({ where: body.where, kind: body.kind, quote: body.quote ?? null, applied: 0, appliedFlag: body.applied ?? null });
       emit({ type: "fault.armed", where: body.where, kind: body.kind, source: "simulated" });
       return reply(res, 200, { ok: true, pending: state.faults.length });
+    }
+    if (route === "fault_end") {
+      // AG06: an "always" fault at an executor point covered the step after it; it ends there.
+      const ended = state.faults.filter((fault) => fault.where === body.where && /_always$/u.test(fault.kind));
+      state.faults = state.faults.filter((fault) => !ended.includes(fault));
+      for (const fault of ended) emit({ type: "fault.ended", where: fault.where, kind: fault.kind, applied: fault.applied ?? 0, source: "simulated" });
+      state.ended = [...(state.ended ?? []), ...ended];
+      return reply(res, 200, { ok: true, ended: ended.length });
     }
     if (route === "revoke") {
       if (typeof body.read !== "string" || !body.read) return reply(res, 400, { error: "revoke needs { read: <record id> }" });

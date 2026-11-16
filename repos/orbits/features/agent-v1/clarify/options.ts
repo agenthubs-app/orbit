@@ -222,7 +222,8 @@ export function optionsFor(input: OptionsInput): ClarifyOption[] {
     }
     case "object": {
       const capability = input.capability && isCapability(input.capability) ? input.capability : "contact.read";
-      return dedupe((input.candidates ?? []).map((candidate, index) => option(index, [capability], candidate.name, { id: candidate.id, name: candidate.name, type: candidate.type })));
+      // AG06 (AE-XL-002, AE-SCL-011): each candidate with what tells it apart (a person's company and role).
+      return dedupe((input.candidates ?? []).map((candidate, index) => option(index, [capability], candidate.detail ? (language === "en" ? `${candidate.name} (${candidate.detail})` : `${candidate.name}（${candidate.detail}）`) : candidate.name, { id: candidate.id, name: candidate.name, type: candidate.type })));
     }
     case "other_readings": {
       const readings = registeredReadings(input.readings).filter((reading) => isReadOnlyReading(reading) && !(input.exclude && (sameReading(reading, input.exclude) || reading.capabilities.some((capability) => capabilityKind(capability) === "function" && input.exclude!.capabilities.includes(capability)))));

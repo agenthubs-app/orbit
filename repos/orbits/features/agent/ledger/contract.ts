@@ -53,6 +53,8 @@ export const AGENT_LEDGER_OPERATION_TYPES = [
   // agent-design AG02: the to-do create and update executors (todo.create, todo.update).
   "create_todo",
   "update_todo",
+  // agent-design AG06: a new memo with its interaction (memo.create), written by the Agent after a card.
+  "create_memo",
 ] as const;
 
 // 语音只允许保存“用户编辑确认后的转写文本”；原始音频永不进入 evidence。

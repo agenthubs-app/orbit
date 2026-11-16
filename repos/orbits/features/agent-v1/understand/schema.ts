@@ -102,6 +102,11 @@ export interface UnderstandPart {
 }
 
 export interface UnderstandOutput {
+  /**
+   * AG06 (附录 C has no field for it; 登记 in the AG06 REPORT): the language the CURRENT message is written in
+   * (its grammar, not the names or loanwords in it). Code checks it against the text (replyLanguageOf).
+   */
+  language?: "zh" | "ja" | "en";
   plainChat: boolean;
   reply?: string;
   parts: UnderstandPart[];

@@ -50,6 +50,30 @@ export async function readCard(input: { runtime: AgentRuntimeService; actionId: 
 
 const SETTLING = new Set(["approved", "executing"]);
 
+/** AG06 repair 1: called when a card got a new revision (edited, content changed, regenerated) with its new preview. */
+export type CardRevisedHook = (card: AgentActionPreviewContract) => Promise<void>;
+
+async function notifyRevised(hook: CardRevisedHook | undefined, before: number, card: AgentActionPreviewContract | null): Promise<void> {
+  if (!hook || !card || card.revision === before) return;
+  await hook(card).catch(() => undefined);
+}
+
+const RECEIPT_WORDS: Record<"zh" | "ja" | "en", Record<string, string> & { lead: string; join: string }> = {
+  en: { abandoned: "given up", failed: "could not be done (it will not be retried)", join: "; ", lead: "Result: ", needs_review: "outcome unknown, please check it", pending: "not done yet (it will be retried)", skipped: "skipped, because the item it waits for did not succeed", succeeded: "done", user_confirmed: "marked done by you" },
+  ja: { abandoned: "取りやめ", failed: "完了できませんでした（自動では再試行しません）", join: "、", lead: "結果：", needs_review: "結果が不明です。ご確認ください", pending: "まだ完了していません（再試行します）", skipped: "先に行う項目が完了しなかったため、実行していません", succeeded: "完了", user_confirmed: "ご判断で完了扱い" },
+  zh: { abandoned: "已放弃", failed: "没能完成（不会自动重试）", join: "；", lead: "执行结果：", needs_review: "结果不确定，请你核对", pending: "还没完成（会再试）", skipped: "因为它要等的那一项没成功，没有执行", succeeded: "已完成", user_confirmed: "已按你的判断标为完成" },
+};
+
+/** One sentence, item by item, from the card's own receipts (never "all done" when one failed). */
+export function receiptSummary(card: AgentActionPreviewContract, locale: string | undefined): string {
+  const words = RECEIPT_WORDS[locale === "ja" || locale === "en" ? locale : "zh"];
+  const items = card.operations.map((op, index) => {
+    const state = words[op.status] ?? op.status;
+    return locale === "en" ? `item ${index + 1} ${state}` : locale === "ja" ? `${index + 1} 件目は${state}` : `第 ${index + 1} 项${state}`;
+  });
+  return `${words.lead}${items.join(words.join)}${locale === "en" ? "." : "。"}`;
+}
+
 export async function handleCardDecision(input: {
   runtime: AgentRuntimeService;
   actionId: string;
@@ -61,6 +85,7 @@ export async function handleCardDecision(input: {
   now?: () => string;
   /** How long a click that lost the race waits for the winner's execution to settle. */
   settleMs?: number;
+  onCardRevised?: CardRevisedHook;
 }): Promise<CardHttpResult> {
   const now = () => input.now?.() ?? new Date().toISOString();
   const action = await input.runtime.getAction(input.actionId);
@@ -96,20 +121,41 @@ export async function handleCardDecision(input: {
     }
   }
   const card = await preview(input.runtime, input.actionId, now());
-  const data = { card, decision: decision as AgentCardDecisionResultContract };
+  await notifyRevised(input.onCardRevised, action.revision ?? 1, card);
+  // AG06 (设计稿 §5.2 "Todo 已修改，Memo 保存失败"): after an execution, code says item by item how it went.
+  const summary = input.processNow && executes && card ? receiptSummary(card, action.locale) : "";
+  const data = { card, decision: (summary ? { ...decision, message: `${decision.message} ${summary}` } : decision) as AgentCardDecisionResultContract };
   if (decision.outcome === "refused") {
     return { body: failureBody("CONFLICT", decision.message, decision.reason ?? "CARD_REFUSED", data), status: 409 };
   }
   return { body: { data, success: true }, status: 200 };
 }
 
-export async function handleCardRegenerate(input: { runtime: AgentRuntimeService; actionId: string; now?: () => string }): Promise<CardHttpResult> {
+/** AG06: POST /api/agent/ledger/[id]/edit — take one item off a waiting card (revision, payloadHash, removeOperationId). */
+export async function handleCardEdit(input: { runtime: AgentRuntimeService; actionId: string; body: Record<string, unknown>; now?: () => string; onCardRevised?: CardRevisedHook }): Promise<CardHttpResult> {
+  if (!input.runtime.editCard) return { body: failureBody("SERVICE_UNAVAILABLE", "Cards cannot be edited here.", "UNSUPPORTED"), status: 503 };
+  const action = await input.runtime.getAction(input.actionId);
+  if (!action?.origin) return { body: failureBody("NOT_FOUND", "No card matches that id.", "CARD_NOT_FOUND"), status: 404 };
+  const { revision, payloadHash, removeOperationId } = input.body;
+  if (!Number.isInteger(revision) || typeof payloadHash !== "string" || typeof removeOperationId !== "string" || !payloadHash || !removeOperationId) {
+    return { body: failureBody("VALIDATION_ERROR", "Taking an item off a card needs revision, payloadHash and removeOperationId.", "EDIT_FIELDS_REQUIRED"), status: 400 };
+  }
+  const result = await input.runtime.editCard({ actionId: input.actionId, payloadHash, removeOperationId, revision: revision as number });
+  if (!result) return { body: failureBody("NOT_FOUND", "No card matches that id.", "CARD_NOT_FOUND"), status: 404 };
+  const card = await preview(input.runtime, input.actionId, input.now?.() ?? new Date().toISOString());
+  await notifyRevised(input.onCardRevised, action.revision ?? 1, card);
+  if (result.outcome === "refused") return { body: failureBody("CONFLICT", result.message, result.reason ?? "CARD_REFUSED", { card, edit: result }), status: 409 };
+  return { body: { data: { card, edit: result }, success: true }, status: 200 };
+}
+
+export async function handleCardRegenerate(input: { runtime: AgentRuntimeService; actionId: string; now?: () => string; onCardRevised?: CardRevisedHook }): Promise<CardHttpResult> {
   if (!input.runtime.regenerateCard) return { body: failureBody("SERVICE_UNAVAILABLE", "Cards cannot be regenerated here.", "UNSUPPORTED"), status: 503 };
   const action = await input.runtime.getAction(input.actionId);
   if (!action?.origin) return { body: failureBody("NOT_FOUND", "No card matches that id.", "CARD_NOT_FOUND"), status: 404 };
   const result = await input.runtime.regenerateCard({ actionId: input.actionId });
   if (!result) return { body: failureBody("NOT_FOUND", "No card matches that id.", "CARD_NOT_FOUND"), status: 404 };
   const card = await preview(input.runtime, input.actionId, input.now?.() ?? new Date().toISOString());
+  await notifyRevised(input.onCardRevised, action.revision ?? 1, card);
   if (result.outcome === "refused") return { body: failureBody("CONFLICT", result.message, result.reason ?? "CARD_NOT_EXPIRED", { card, regeneration: result }), status: 409 };
   return { body: { data: { card, regeneration: result }, success: true }, status: 200 };
 }

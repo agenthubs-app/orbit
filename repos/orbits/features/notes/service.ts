@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 
-import type { NoteMentionContract } from "../../shared/contract/notes";
+import type { NoteInteractionContract, NoteMentionContract } from "../../shared/contract/notes";
 import type { NoteDTO, NoteOperationKind, NoteOperationReceipt, NoteRecordPayload } from "./contract";
+import { readNoteInteraction } from "./interaction";
 import type { NoteRepository } from "./repository";
 
 export type NoteServiceErrorCode =
@@ -67,6 +68,13 @@ export interface NoteCreateInput {
   usedForPlan?: boolean;
   idempotencyKey: string;
   now: string;
+  /**
+   * agent-design AG06 (设计稿附录 E): the actual interaction the memo records. Its actualContactIds must be
+   * among the memo's contactIds (checked here with readNoteInteraction; an invalid one is refused).
+   */
+  interaction?: NoteInteractionContract;
+  /** AG06: the old automatic extraction must not run on this memo (persisted on it). */
+  autoExtraction?: "suppressed";
   /** Called only after a new write commits; derived work must not affect the note response. */
   onPersisted?: (note: NoteDTO) => void;
 }
@@ -320,7 +328,11 @@ export function createNoteService(input: { repository: NoteRepository; associati
       const nextNoteKind = noteKind(createInput.noteKind);
       const nextUsedForPlan = usedForPlan(createInput.usedForPlan);
       const noteId = stableId(createInput.actorId, createInput.idempotencyKey);
-      const operationFingerprint = fingerprint({ title, body, manualContactIds, mentions, eventIds, noteKind: nextNoteKind, usedForPlan: nextUsedForPlan });
+      // AG06 (附录 E): an interaction is kept only when well formed with its actual contacts among the memo's.
+      const interaction = createInput.interaction === undefined ? undefined : readNoteInteraction(createInput.interaction, contactIds);
+      if (createInput.interaction !== undefined && !interaction) throw new NoteServiceError("NOTE_INVALID_INPUT", "interaction is invalid: actualContactIds must be among the memo's contactIds, with a known channel, direction and date");
+      const suppressed = createInput.autoExtraction === "suppressed";
+      const operationFingerprint = fingerprint({ title, body, manualContactIds, mentions, eventIds, noteKind: nextNoteKind, usedForPlan: nextUsedForPlan, ...(interaction ? { interaction } : {}), ...(suppressed ? { autoExtraction: "suppressed" } : {}) });
       return withMutationLock(`${createInput.actorId}\u0000${noteId}`, async () => {
         // Sprint 0142: a committed create is answered from its receipt before
         // access checks, so a lost receipt followed by a revoked event or
@@ -343,6 +355,8 @@ export function createNoteService(input: { repository: NoteRepository; associati
           eventIds,
           ...(nextNoteKind === undefined ? {} : { noteKind: nextNoteKind }),
           ...(nextUsedForPlan === undefined ? {} : { usedForPlan: nextUsedForPlan }),
+          ...(interaction ? { interaction } : {}),
+          ...(suppressed ? { autoExtraction: "suppressed" as const } : {}),
           version: 1,
           createdAt: createInput.now,
           updatedAt: createInput.now,
