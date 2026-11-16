@@ -34,6 +34,13 @@ const memoEventOptionsSchema = {
   },
 } as unknown as ZodType<{ options: ContactLogEventOption[] }>;
 
+const draftSchema = {
+  safeParse: (value: unknown) => {
+    const draft = (value as { draft?: { subject?: unknown; body?: unknown } } | null)?.draft;
+    return typeof draft?.subject === "string" && typeof draft.body === "string" ? { success: true as const, data: { draft: { subject: draft.subject, body: draft.body } } } : { success: false as const };
+  },
+} as unknown as ZodType<{ draft: { subject: string; body: string } }>;
+
 const anything = { safeParse: (value: unknown) => ({ success: true as const, data: value }) } as unknown as ZodType<unknown>;
 
 async function call<T>(url: string, init: RequestInit | undefined, schema: ZodType<T>): Promise<NetworkApiResult<T>> {
@@ -107,6 +114,9 @@ export const networkApi = {
     call<InviteUnlinkResult>(`/api/invite-codes/connections/${id(contactId)}/unlink`, { method: "POST", body: JSON.stringify({ keepAsContact, idempotencyKey: key() }) }, inviteUnlinkResultSchema as unknown as ZodType<InviteUnlinkResult>),
   updateFields: (contactId: string, values: Partial<Record<ContactEditableField, string | null>>) =>
     call<ContactFieldsUpdateResult>(`/api/contacts/${id(contactId)}/fields`, { method: "PATCH", body: JSON.stringify({ values }) }, contactFieldsUpdateResultSchema as unknown as ZodType<ContactFieldsUpdateResult>),
+  /** 「起草」：模板草稿（不保存、不发送、0 次模型调用）。 */
+  reconnectDraft: (contactId: string, language: string) =>
+    designId(contactId) ? Promise.resolve(designMissing()) : call<{ draft: { subject: string; body: string } }>(`/api/contacts/${id(contactId)}/reconnect-draft`, { method: "POST", body: JSON.stringify({ language }) }, draftSchema),
   /** 「记一笔交流」：近期报名的活动（选「活动上遇到」时读一次；浏览器按日期筛当天）。 */
   memoEventOptions: () => call<{ options: ContactLogEventOption[] }>("/api/contacts/memo-event-options", undefined, memoEventOptionsSchema),
   updateDetail: (contactId: string, patch: Record<string, unknown>) => call(`/api/contacts/${id(contactId)}`, { method: "PATCH", body: JSON.stringify(patch) }, anything),

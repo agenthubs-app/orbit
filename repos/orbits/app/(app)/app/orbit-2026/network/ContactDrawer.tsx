@@ -135,6 +135,9 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   const [logOpen, setLogOpen] = useState(false);
   const [openHistory, setOpenHistory] = useState<string | null>(null);
   const [updateDismissed, setUpdateDismissed] = useState(false);
+  // 「起草」：抽屉内出模板草稿（W60-3 同一接口；不保存、不发送、0 次模型调用）。按联系人记，换人即清。
+  const [draft, setDraft] = useState<{ contactId: string; subject: string; body: string } | null>(null);
+  const [drafting, setDrafting] = useState(false);
   const menuAnchor = useRef<HTMLButtonElement>(null);
 
   const load = useCallback(async (id: string) => {
@@ -185,7 +188,20 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   const stagedRole = syncMoment ? t("detailSyncSampleRole") : contact?.role ?? "";
   const stagedOffering = syncMoment ? [...(contact?.offering ?? []), t("detailSyncSampleOffering")] : contact?.offering ?? [];
   const nextStep = contact?.nextAction.trim() ?? "";
-  const draftHref = contact ? `/app/agent?q=${encodeURIComponent(t("detailDraftIntent", { name: contact.displayName, step: nextStep }))}` : "#";
+  const shownDraft = draft?.contactId === contactId ? draft : null;
+  const writeDraft = async () => {
+    if (drafting || !contactId) return;
+    setDrafting(true);
+    const result = await networkApi.reconnectDraft(contactId, language);
+    setDrafting(false);
+    if (result.ok) setDraft({ contactId, ...result.data.draft });
+    else toast.error(t("detailDraftFailed"));
+  };
+  const copyDraft = async () => {
+    if (!shownDraft) return;
+    try { await navigator.clipboard.writeText(`${shownDraft.subject}\n\n${shownDraft.body}`); toast.success(t("detailDraftCopied")); }
+    catch { toast.error(t("detailDraftFailed")); }
+  };
   const logButton = <button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => setLogOpen(true)} data-contact-log-open="">{t("logAdd")}</button>;
 
   return (
@@ -240,10 +256,17 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
                   {whyOpen && valueLine?.evidence?.length ? <div className={styles.whyBody} style={{ marginTop: 8 }}>{t("detailWhyBasis", { basis: valueLine.evidence.map((label) => evidenceLabel(label, t)).join(" · ") })}</div> : null}
                   {goalLabel ? <div className={styles.chips}><span className={`${styles.chip} ${styles.chipLav}`}>{t("detailPlanChip", { label: goalLabel })}</span></div> : null}
                   <div className={styles.row} style={{ marginTop: 12, gap: 8, flexWrap: "wrap" }}>
-                    <a className={`btn ${styles.btn} ${styles.primary}`} href={draftHref}><Icon name="mail" size={16} />{t("detailDraft")}</a>
+                    <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={() => void writeDraft()} disabled={drafting} aria-busy={drafting} data-network-draft=""><Icon name="mail" size={16} />{t(drafting ? "detailDrafting" : "detailDraft")}</button>
                     <button type="button" className={`btn ${styles.btn}`} onClick={() => setProposalOpen(true)}><Icon name="calendar" size={16} />{t("proposeShort")}</button>
                     <span className={styles.lbl} style={{ marginLeft: "auto" }}>{t("detailNoSend")}</span>
                   </div>
+                  {shownDraft ? (
+                    <div className={styles.draftBox} data-network-draft-result="">
+                      <input className={styles.draftSubject} aria-label={t("detailDraftSubject")} value={shownDraft.subject} onChange={(event) => setDraft({ ...shownDraft, subject: event.target.value })} />
+                      <textarea className={styles.draftBody} aria-label={t("detailDraftBody")} rows={8} value={shownDraft.body} onChange={(event) => setDraft({ ...shownDraft, body: event.target.value })} />
+                      <div className={styles.row}><button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => void copyDraft()}><Icon name="copy" size={15} />{t("detailDraftCopy")}</button></div>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 

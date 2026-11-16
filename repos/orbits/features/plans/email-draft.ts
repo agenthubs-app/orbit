@@ -88,7 +88,7 @@ export function resolvePlanEmailDraftProvider(): PlanEmailDraftProvider {
 
 /** W0050（W50-4）：待唤醒「起草邮件」——重新联系一位久未往来的联系人。 */
 export interface ReconnectEmailDraftInput {
-  language: "zh" | "en";
+  language: "zh" | "en" | "ja";
   contactName: string;
   organization: string | null;
   role: string | null;
@@ -122,6 +122,23 @@ export function draftReconnectEmail(input: ReconnectEmailDraftInput): PlanEmailD
       ].join("\n"),
       provider: "template",
       subject: "It's been a while — could we catch up?",
+    };
+  }
+  if (input.language === "ja") {
+    const jaName = clean(input.contactName, 80);
+    const where = org && role ? `${org}での${role}としてのご経験` : org ? `${org}でのお仕事` : role ? `${role}としてのご経験` : "近況";
+    return {
+      body: [
+        ...(jaName ? [`${jaName}様`, ""] : []),
+        "ご無沙汰しております。お元気でお過ごしでしょうか。",
+        goal ? `現在「${goal}」に取り組んでおり、${where}をぜひ伺いたいと思いご連絡しました。` : `最近${where}のことをよく思い出し、久しぶりにお話しできればと思いご連絡しました。`,
+        "",
+        "今後数週間のうちに、20分ほどお時間をいただくことは可能でしょうか。ご都合のよい日時に合わせます。",
+        "",
+        "どうぞよろしくお願いいたします。",
+      ].join("\n"),
+      provider: "template",
+      subject: "ご無沙汰しております。近況をお話しできればと思います",
     };
   }
   const where = org && role ? `您在${org}担任${role}` : org ? `您在${org}的工作` : role ? `您作为${role}的经验` : "您的近况";

@@ -83,7 +83,7 @@ export function createReconnectDraftRouteHandlers(dependencies: ReconnectDraftRo
         const contactId = typeof id === "string" ? decodeURIComponent(id).trim() : "";
         if (!contactId || contactId.length > 200) throw new AppError("VALIDATION_ERROR", "A contact id is required.");
         const body = (await request.json().catch(() => ({}))) as { language?: unknown } | null;
-        const language = body && typeof body === "object" && body.language === "en" ? "en" : "zh";
+        const language = body && typeof body === "object" && (body.language === "en" || body.language === "ja") ? body.language : "zh";
         const contact = await readContact(actor.id, contactId);
         if (!contact) throw new AppError("NOT_FOUND", "Contact not found.");
         const goal = await readGoal(actor.id).catch(() => null);

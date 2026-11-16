@@ -55,3 +55,20 @@ test("SC-04: own contact → editable template draft; another actor's, deleted o
     assert.equal((await anonymous.POST(request(), context(`${ALICE}:zhou`))).status, 401);
   });
 });
+
+test("人脈抽屉「起草」：日文界面拿到日文模板（不再回退中文）", async () => {
+  const handlers = createReconnectDraftRouteHandlers({
+    readContact: async () => ({ displayName: "山田太郎", organization: "Acme", role: "CTO" }),
+    readGoal: async () => "AI 領域で協業先を探す。",
+    resolveActor: async () => ({ id: "actor-1" } as never),
+  });
+  const ja = new Request("http://localhost/api/contacts/x/reconnect-draft", { body: JSON.stringify({ language: "ja" }), headers: { "content-type": "application/json" }, method: "POST" });
+  const response = await handlers.POST(ja, { params: Promise.resolve({ id: "c1" }) });
+  assert.equal(response.status, 200);
+  const draft = ((await response.json()) as { data: { draft: { subject: string; body: string; provider: string } } }).data.draft;
+  assert.equal(draft.provider, "template");
+  assert.match(draft.body, /^山田太郎様\n/u);
+  assert.match(draft.body, /「AI 領域で協業先を探す」/u);
+  assert.match(draft.body, /Acmeでの CTO|AcmeでのCTOとしてのご経験/u);
+  assert.match(draft.subject, /ご無沙汰/u);
+});
