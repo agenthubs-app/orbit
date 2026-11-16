@@ -106,7 +106,7 @@ const WORDS: Record<CardLocale, {
   },
   zh: {
     cardCreate: "新增一条待办",
-    cardMany: (count) => `待办的 ${count} 项修改`,
+    cardMany: (count) => `待办的${count}项修改`,
     cardUpdate: "修改一条待办",
     create: (title, details) => `新增待办「${title}」${details ? `，${details}` : ""}`,
     field: { dueAt: "截止", plannedDate: "计划日", title: "标题" },

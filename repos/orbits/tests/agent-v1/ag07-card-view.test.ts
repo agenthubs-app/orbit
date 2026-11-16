@@ -24,7 +24,7 @@ const preview = (overrides: Partial<AgentActionPreviewContract> = {}): AgentActi
   revisions: [],
   status: "awaiting_confirmation",
   summary: "s",
-  title: "修改 1 项，新增 1 项",
+  title: "修改1项，新增1项",
   updatedAt: "2026-11-15T01:00:00.000Z",
   ...overrides,
 });
@@ -34,7 +34,7 @@ test("waiting: the count sentence, each item from the preview, both buttons, the
   const view = agentCardView(preview(), online, zh.aiCard);
   assert.equal(view.kind, "card");
   if (view.kind !== "card") return;
-  assert.deepEqual([view.chip.label, view.title], ["等你确认", "修改 1 项，新增 1 项"]);
+  assert.deepEqual([view.chip.label, view.title], ["等你确认", "修改1项，新增1项"]);
   assert.deepEqual(view.items.map((item) => [item.badge, item.record, item.rows.map((row) => `${row.label} ${row.before ?? ""}→${row.after}`)]), [["改", "待办「给小林发修订报价」", ["计划日期 11月18日（周三）→11月20日（周五）"]], ["新增", "笔记「小林今天来过电话」", ["往来对象 →小林健"]]]);
   assert.deepEqual(view.buttons, { confirm: "确认以上2项", confirmEnabled: true, dismiss: "不改了", dismissEnabled: true });
   assert.deepEqual([view.hint, view.blocked, view.banner, view.pendingCount], ["点确认之前，什么都不会改。", null, null, 1]);

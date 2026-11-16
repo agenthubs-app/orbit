@@ -28,7 +28,7 @@ const preview = (overrides: Partial<AgentActionPreviewContract> = {}): AgentActi
   revisions: [],
   status: "awaiting_confirmation",
   summary: "s",
-  title: "修改 1 项，新增 1 项",
+  title: "修改1项，新增1项",
   updatedAt: "2026-11-15T01:00:00.000Z",
   ...overrides,
 });
@@ -39,7 +39,7 @@ const textOf = (html: string) => html.replace(/<[^>]+>/gu, " ").replace(/\s+/gu,
 test("the waiting card: count sentence, each item as the preview wrote it, both buttons, nothing internal", () => {
   const html = renderToStaticMarkup(<ConfirmationCard card={preview()} language="zh" online onDecide={noop} onRegenerate={noop} />);
   const text = textOf(html);
-  for (const words of ["等你确认", "修改 1 项，新增 1 项", "改", "待办「给小林发修订报价」", "计划日期", "11月18日（周三）", "11月20日（周五）", "新增", "笔记「小林今天来过电话」", "往来对象", "小林健", "对方来电", "确认以上2项", "不改了", "点确认之前，什么都不会改。"]) assert.ok(text.includes(words), words);
+  for (const words of ["等你确认", "修改1项，新增1项", "改", "待办「给小林发修订报价」", "计划日期", "11月18日（周三）", "11月20日（周五）", "新增", "笔记「小林今天来过电话」", "往来对象", "小林健", "对方来电", "确认以上2项", "不改了", "点确认之前，什么都不会改。"]) assert.ok(text.includes(words), words);
   assert.match(html, /<s[^>]*>11月18日（周三）<\/s>/u, "the old value is struck through");
   assert.doesNotMatch(text, INTERNAL);
 });
@@ -107,7 +107,7 @@ test("options under a question are buttons; the card line leaves the text; queue
   renderer.root.findAll((node) => node.type === "button")[1].props.onClick();
   assert.deepEqual(picked, ["o2"]);
   assert.ok(JSON.stringify(renderer.toJSON()).includes("也可以直接打字回答。"));
-  const document = { answer: { cardLine: "确认卡（修改 1 项）：\n① …\n点卡上的「确认」之前，什么都不会改。", sourceRefs: [], text: "你们聊了报价初稿。\n\n确认卡（修改 1 项）：\n① …\n点卡上的「确认」之前，什么都不会改。" } } as unknown as AgentResultDocument;
+  const document = { answer: { cardLine: "确认卡（修改1项）：\n① …\n点卡上的「确认以上1项」之前，什么都不会改。", sourceRefs: [], text: "你们聊了报价初稿。\n\n确认卡（修改1项）：\n① …\n点卡上的「确认以上1项」之前，什么都不会改。" } } as unknown as AgentResultDocument;
   assert.equal(answerTextOf(document, true), "你们聊了报价初稿。");
   assert.equal(answerTextOf(document, false), document.answer!.text);
   assert.equal(textOf(renderToStaticMarkup(<QueuedNote language="zh" />)), "已收到，等前一条处理完");

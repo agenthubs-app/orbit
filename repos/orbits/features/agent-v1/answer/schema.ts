@@ -21,6 +21,8 @@ export interface AnswerSegment {
   cites: AnswerCite[];
   /** run-03 repair 1: the model's profile-check entries as given (profile-check.ts verifies them); absent when not given. */
   profile?: unknown[];
+  /** AG07 repair 2: the model's change-check entries as given (change-check.ts verifies them); absent when not given. */
+  changes?: unknown[];
 }
 
 export interface AnswerOutput {
@@ -57,7 +59,7 @@ export function parseAnswerOutput(text: string): { ok: true; value: AnswerOutput
       const ids = Array.isArray(cite.sentenceIds) ? cite.sentenceIds.map(Number).filter((id) => Number.isInteger(id)) : [];
       cites.push({ sentenceIds: ids, sourceRef: cite.sourceRef.trim() });
     }
-    segments.push({ cites, partId: typeof segment.partId === "string" ? segment.partId : "", text: typeof segment.text === "string" ? segment.text.trim() : "", ...(Array.isArray(segment.profile) ? { profile: segment.profile as unknown[] } : {}) });
+    segments.push({ cites, partId: typeof segment.partId === "string" ? segment.partId : "", text: typeof segment.text === "string" ? segment.text.trim() : "", ...(Array.isArray(segment.profile) ? { profile: segment.profile as unknown[] } : {}), ...(Array.isArray(segment.changes) ? { changes: segment.changes as unknown[] } : {}) });
   }
   return { ok: true, value: { gaps: [], segments } };
 }

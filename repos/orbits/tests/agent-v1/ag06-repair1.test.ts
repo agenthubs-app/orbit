@@ -135,7 +135,7 @@ test("4 AE-XL-006: after an item is taken off the card, the result document's ca
   await refreshCardInDocument({ actorId: ACTOR, now: NOW, previous: before!, store, updated: preview });
   const document = (await store.get(ACTOR, record.requestId))!.document;
   assert.equal(document.actionPreview?.revision, 2);
-  assert.match(document.answer!.text, /确认卡（修改 1 项）/u);
+  assert.match(document.answer!.text, /确认卡（修改1项）/u);
   assert.doesNotMatch(document.answer!.text, /新增往来笔记/u, "the removed item is no longer described");
   assert.match(document.answer!.text, /^聊了报价初稿。/u, "the rest of the answer stays");
   assert.deepEqual(document.partResults.map((item) => [item.partId, item.status, item.reason ?? null]), [["p2", "awaiting_confirmation", null], ["p3", "unfinished", "removed_from_card"]], "the part taken off the card no longer waits for it");
@@ -164,7 +164,7 @@ test("5 AE-CTX-005: a to-do word with no time of day is not swallowed by schedul
   const input = kit.input(message, { locale: "ja" });
   // AG07 (AE-UIX-007): Japanese words, a Chinese title, the person's one open to-do → it is the card's (still a click).
   const only = await runAgentGraph(kit.deps, input);
-  assert.doesNotMatch(only.text, /このバージョンでは/u, "not answered as not in this version");
+  assert.doesNotMatch(only.text, /今はまだ|このバージョンでは/u, "not answered as not doable yet");
   assert.equal(only.actionPreview?.operations[0].target?.id, "task:t47");
   assert.deepEqual(only.actionPreview?.operations[0].after, { plannedDate: "2026-11-20" });
   // With two open to-dos of the person, neither matching the words: offered, not guessed (AG06 repair 1).

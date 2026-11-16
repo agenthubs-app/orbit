@@ -87,14 +87,14 @@ test("小林: one answer, one card of two items — count sentence, values befor
   assert.equal(model.calls.length, 3, "understand, propose, answer");
   assert.ok(result.actionPreview, "one card");
   const card = result.actionPreview!;
-  assert.equal(card.title, "修改 1 项，新增 1 项");
+  assert.equal(card.title, "修改1项，新增1项");
   assert.deepEqual(card.operations.map((op) => op.capability), ["todo.update", "memo.create"]);
   assert.equal(card.operations[0].text, "待办「给小林发修订报价」：计划日 11月18日（周三） → 11月20日（周五）");
   assert.deepEqual(card.operations[0].after, { plannedDate: "2026-11-20" });
   assert.match(card.operations[1].text, /^新增往来笔记「小林健今天来过电话」：实际往来对象 小林健，11月15日（周日），对方来电$/u);
   assert.deepEqual((card.operations[1].after as Record<string, unknown>).interaction, { actualContactIds: ["contact:c17"], channel: "phone", direction: "incoming", occurredOn: "2026-11-15", precision: "day" });
   assert.match(result.text, /实施费单列/u, "the answer comes first");
-  assert.ok(result.text.indexOf("实施费单列") < result.text.indexOf("确认卡（修改 1 项，新增 1 项）"), "then the card line");
+  assert.ok(result.text.indexOf("实施费单列") < result.text.indexOf("确认卡（修改1项，新增1项）"), "then the card line");
   assert.deepEqual(result.partResults.map((item) => [item.partId, item.status]), [["p1", "answered"], ["p2", "awaiting_confirmation"], ["p3", "awaiting_confirmation"]]);
   assert.equal(result.partResults.find((item) => item.partId === "p2")?.operationId, card.operations[0].operationId);
 });
@@ -205,7 +205,7 @@ test("a planned date and a due time and words that name neither: ask which; the 
   kit.deps.cards = cards.access;
   const input = kit.input(message);
   const first = await runAgentGraph(kit.deps, input);
-  assert.deepEqual(first.clarifications[0].options.map((option) => [option.optionId, option.label]), [["plannedDate", "改计划日期（现在是 11月18日（周三））"], ["dueAt", "改截止时间（现在是 11月25日（周三） 18:00）"]]);
+  assert.deepEqual(first.clarifications[0].options.map((option) => [option.optionId, option.label]), [["plannedDate", "改计划日期（现在是11月18日（周三））"], ["dueAt", "改截止时间（现在是11月25日（周三） 18:00）"]]);
   const resumed = await resumeAgentGraph(kit.deps, input, { clarificationId: first.clarifications[0].clarificationId, kind: "select", optionId: "plannedDate" });
   assert.deepEqual(resumed.actionPreview?.operations[0].after, { plannedDate: "2026-11-20" });
 });
@@ -269,7 +269,7 @@ test("先…成功了再…: the second item waits for the first on the card", a
   const ops = result.actionPreview!.operations;
   assert.deepEqual(ops.map((op) => op.capability), ["memo.create", "todo.update"]);
   assert.deepEqual(ops[1].dependsOn, [ops[0].operationId]);
-  assert.match(ops[1].text, /第 1 项成功后才执行/u);
+  assert.match(ops[1].text, /第1项成功后才执行/u);
 });
 
 test("a person only mentioned is linked, never the actual contact; the body is the user's words", async () => {

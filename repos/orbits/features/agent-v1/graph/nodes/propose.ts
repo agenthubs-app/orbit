@@ -276,9 +276,32 @@ export function proposeNode(scope: NodeScope): GraphNode {
       settle(part, part.write!.operationIds.length ? "awaiting_confirmation" : "unfinished", part.write!.operationIds.length ? null : "target_gone", part.write!.operationIds.length ? null : WRITE_WORDS.gone(language, quoteOf(part)));
       part.waitReason = null;
     }
+    // AG07 repair 2 (AE-BND-008, AE-XL-011): a sentence whose words went into the card (its date, a note's body) is
+    // part of the card: it is not "not understood", not answered beside the card, and offers nothing of its own.
+    const inCard = usedByCard(parts, ready);
+    for (const part of inCard) {
+      settle(part, "awaiting_confirmation", "in_card", null);
+      part.waitReason = null;
+    }
+    if (inCard.length) emitTrace({ parts: inCard.map((part) => part.localId), type: "propose.sentences_in_card" });
+    const keptSets = inCard.length ? optionSets.filter((set) => !inCard.some((part) => part.localId === set.partId)) : optionSets;
     run.actionPreview = preview;
     run.cardLine = cardLineOf(preview, language);
     emitTrace({ cardId: preview.actionId, operations: preview.operations.map((op) => ({ capability: op.capability, operationId: op.operationId, partId: op.partId ?? null })), revision: preview.revision, type: "propose.card" });
-    return { budget, optionSets, parts, repairs };
+    return { budget, optionSets: keptSets, parts, repairs };
   };
+}
+
+/**
+ * AG07 repair 2: the parts whose sentence the card used — a part with nothing of its own on the card (a write part
+ * that gave no intent, or a statement) whose words an intent of a carded part points into (title, body, date, the
+ * record's words or a person's). A part that reads, or that has its own items on the card, is never one of them.
+ */
+export function usedByCard(parts: readonly GraphPart[], carded: readonly GraphPart[]): GraphPart[] {
+  const spans = carded.filter((part) => part.write?.operationIds?.length).flatMap((part) => (part.write?.intents ?? []).flatMap((intent) => [intent.title, intent.body, intent.date, ...intent.selector, ...intent.relations.map((relation) => relation.quote)].filter((span): span is [number, number] => Array.isArray(span))));
+  if (!spans.length) return [];
+  const overlaps = (part: GraphPart) => spans.some(([start, end]) => start < part.quote[1] && end > part.quote[0]);
+  return parts.filter((part) => !carded.includes(part) && !part.write?.operationIds?.length && part.route !== "read"
+    && ((part.route === "propose_write" && part.status === "unfinished" && part.reason === "not_understood") || (part.route === "answer" && part.status === "answered"))
+    && overlaps(part));
 }

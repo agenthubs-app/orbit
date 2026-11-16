@@ -55,7 +55,7 @@ test("the reply of a plain-chat output is not shown when code finds a part that 
   assert.match(result.text, /开头先感谢对方/u);
   // AG05: the read runs (an empty account here): nothing found, said by code; "this version cannot read" is gone.
   assert.match(result.text, /没有找到相关的内容/u);
-  assert.doesNotMatch(result.text, /这一版还不能读/u);
+  assert.doesNotMatch(result.text, /还不能读/u);
 });
 
 test("the default main model name is deepseek-flash (CONVENTIONS §2)", () => {
@@ -98,7 +98,7 @@ test("the AG02 boundary stays around the graph: a bare 「确认」 while a card
   await cards.repository.saveAction?.({ ...card!, origin: { conversationId: "session:boundary", kind: "conversation", requestId } } as never);
   const result = await executor({ actorId: "actor:a", fetchImplementation: model.fetchImplementation, history: [], input: { locale: "zh", message: "确认", references: [] }, requestId: "agreq_next", sessionId: "session:boundary", signal: new AbortController().signal });
   assert.equal(model.calls.length, 0);
-  assert.match(result.text, /请点卡上的「确认」按钮/u);
+  assert.match(result.text, /请点卡上的「确认以上1项」/u);
   assert.equal((await cards.runtime.getAction(conversationCardId(requestId)))?.status, "awaiting_confirmation");
 });
 
@@ -114,8 +114,8 @@ test("a card prepared for this request is shown; its write part waits for the cl
   assert.equal(result.actionPreview?.actionId, conversationCardId(requestId));
   assert.equal(result.partResults?.[0]?.status, "awaiting_confirmation");
   assert.ok(result.partResults?.[0]?.operationId);
-  assert.doesNotMatch(result.text, /这一版还不能/u);
-  assert.match(result.text, /点卡上的「确认」后才会执行/u);
+  assert.doesNotMatch(result.text, /现在还不能|这一版还不能/u);
+  assert.match(result.text, /点卡上的「确认以上1项」后才会执行/u);
 });
 
 test("switch off: protocol 3 is refused and the graph never runs; the old route is untouched", async () => {

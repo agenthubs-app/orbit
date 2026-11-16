@@ -8,11 +8,12 @@
 import { localizeAnswerDates } from "../../answer/dates";
 import { gapWords } from "../../answer/gap-copy";
 import { formatWhen } from "../../answer/materials";
+import { changeCheckNote, changeCheckOf, changeReasonLine, verifyChangeReasons, type ChangeReason } from "../../answer/change-check";
 import { profileCheckNote, profileCheckOf, profileLine, verifyProfileUpdates, type ProfileUpdate } from "../../answer/profile-check";
 import { groundedAnswerSystemPrompt, groundedAnswerUserText, GROUNDED_ANSWER_PROMPT_VERSION, type GroundedItem } from "../../answer/prompt";
 import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
-import { stripCardTalk } from "../../entry/approval-claims";
+import { stripCardTalk, stripSaveTalk } from "../../entry/approval-claims";
 import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
 import { settleDependencies } from "../../route/decide";
@@ -32,8 +33,11 @@ type Segments ={ ok: true; segments: Map<string, string> } | { ok: false; error:
  * the round's one repair like any other unusable output.
  */
 function withoutCardTalk(text: string, partId: string, enabled: boolean): string {
-  if (!enabled) return text;
-  const { dropped, text: kept } = stripCardTalk(text);
+  // AG07 repair 2 (AE-XL-011): what is or is not saved is said by code from the card, never by a model sentence.
+  const saved = stripSaveTalk(text);
+  if (saved.dropped.length) emitTrace({ dropped: saved.dropped, note: "a model sentence about what is or is not saved is not delivered; code says it from the card", partId, type: "model.save_talk_dropped" });
+  if (!enabled) return saved.text;
+  const { dropped, text: kept } = stripCardTalk(saved.text);
   if (dropped.length) emitTrace({ dropped, note: "this turn shows no card; a model sentence about a confirmation card is not delivered", partId, type: "model.card_talk_dropped" });
   return kept;
 }
@@ -70,6 +74,7 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   const dropCardTalk = !run.cardPrepared;
   const understood = run.understood;
   const profileParts = new Map<string, GroundedItem["materials"]>();
+  const changeParts = new Map<string, GroundedItem["materials"]>();
   const items: GroundedItem[] = [...due].sort((left, right) => left.quote[0] - right.quote[0]).map((part) => {
     const source = understood?.parts.find((item) => item.localId === part.localId);
     const quote = input.message.slice(part.quote[0], part.quote[1]);
@@ -79,7 +84,11 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
     const asksProfile = Boolean(part.plan.readFilter?.current) || part.plan.readFilter?.order === "both" || (part.capabilities.length > 0 && part.capabilities.every((capability) => PROFILE_CAPABILITIES.has(capability)));
     const contacts = materials.length && asksProfile ? profileCheckOf(materials) : [];
     if (contacts.length) profileParts.set(part.localId, materials);
-    return { constraints: source?.constraints ?? [], goal: source?.goal ?? quote, kind: materials.length ? "records" : "discussion", materials, notes: [...(run.readNotes.get(part.localId) ?? []), ...(contacts.length ? [profileCheckNote(contacts)] : [])], partId: part.localId, quote };
+    // AG07 repair 2 (AE-SCL-006 R2): two dated records read, one speaking of a change: the answer names any
+    // replacement in "changes", so code can state the newer record's reason.
+    const changes = changeCheckOf(materials);
+    if (changes) changeParts.set(part.localId, materials);
+    return { constraints: source?.constraints ?? [], goal: source?.goal ?? quote, kind: materials.length ? "records" : "discussion", materials, notes: [...(run.readNotes.get(part.localId) ?? []), ...(contacts.length ? [profileCheckNote(contacts)] : []), ...(changes ? [changeCheckNote()] : [])], partId: part.localId, quote };
   });
   const allMaterials = [...new Map(items.flatMap((item) => item.materials).map((material) => [material.handle, material])).values()];
   const readParts = new Set(items.filter((item) => item.kind === "records").map((item) => item.partId));
@@ -91,7 +100,7 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   emitTrace({ materials: allMaterials.map((material) => ({ handle: material.handle, partId: material.partId, ref: material.ref, sentences: material.sentences.length })), promptVersion: GROUNDED_ANSWER_PROMPT_VERSION, type: "answer.prompt" });
   const check = (text: string) => {
     const parsed = parseAnswerOutput(text);
-    if (parsed.ok === false) return { error: parsed.error, profiles: null, verification: null };
+    if (parsed.ok === false) return { changes: null, error: parsed.error, profiles: null, verification: null };
     const cleaned = { ...parsed.value, segments: parsed.value.segments.map((segment) => ({ ...segment, text: withoutCardTalk(segment.text, segment.partId, dropCardTalk) })) };
     const verification = verifyCitations(cleaned, { materials: allMaterials, readParts, wanted });
     const profiles = new Map<string, ProfileUpdate[]>();
@@ -106,7 +115,19 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       verification.problems.push(...checkedProfile.problems.map((problem) => `${partId}: ${problem}`));
       profiles.set(partId, checkedProfile.updates);
     }
-    return { error: null, profiles, verification };
+    const changes = new Map<string, ChangeReason[]>();
+    for (const [partId, materials] of changeParts) {
+      const segment = cleaned.segments.find((item) => item.partId === partId);
+      if (!segment || !verification.segments.has(partId)) continue;
+      if (!segment.changes) {
+        verification.problems.push(`${partId}: give "changes" — [] if your answer says no newer material replaces an older one, otherwise the entries the Change check under ${partId} asks for`);
+        continue;
+      }
+      const checkedChanges = verifyChangeReasons(segment.changes, materials);
+      verification.problems.push(...checkedChanges.problems.map((problem) => `${partId}: ${problem}`));
+      changes.set(partId, checkedChanges.changes);
+    }
+    return { changes, error: null, profiles, verification };
   };
   let repairs = state.repairs;
   let result: MainModelResult = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "first", requestId: input.requestId, system, user });
@@ -139,6 +160,16 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
           run.gapLines.set(part.localId, [line, ...(run.gapLines.get(part.localId) ?? [])]);
           part.cites = [...new Set([...(part.cites ?? []), ...updates.map((item) => item.source.ref)])];
           emitTrace({ fields: updates.map((item) => ({ contact: item.contact.ref, field: item.field, source: item.source.ref })), partId: part.localId, type: "answer.profile_outdated" });
+        }
+      }
+      if (changeParts.has(part.localId)) {
+        const changes = checked?.changes?.get(part.localId);
+        if (!changes) emitTrace({ partId: part.localId, type: "answer.change_check_missing" });
+        const line = changes ? changeReasonLine(state.language, changes, segment.text, zone) : null;
+        if (line && changes) {
+          run.gapLines.set(part.localId, [...(run.gapLines.get(part.localId) ?? []), line]);
+          part.cites = [...new Set([...(part.cites ?? []), ...changes.filter((item) => item.reason).map((item) => item.source.ref)])];
+          emitTrace({ changes: changes.map((item) => ({ older: item.older.ref, reason: Boolean(item.reason), source: item.source.ref })), partId: part.localId, type: "answer.change_reason" });
         }
       }
       continue;

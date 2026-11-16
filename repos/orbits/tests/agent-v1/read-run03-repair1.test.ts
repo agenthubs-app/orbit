@@ -49,7 +49,7 @@ test("profile entries are checked against the materials: profile value, newer re
 
 test("the profile sentence is code's, in zh / ja / en", () => {
   const { updates } = verifyProfileUpdates([{ contact: "s1", field: "organization", newValue: "彤云茶室", profileValue: "拾野选物店", source: "s2" }, { contact: "s1", field: "role", newValue: "彤云茶室", profileValue: "店长", source: "s2" }], [contactMaterial, newer]);
-  assert.equal(profileLine("zh", updates, "Asia/Tokyo"), "（联系人资料里写的还是「拾野选物店」「店长」，和 11月6日 的记录不一致，这份资料已经过时了。）");
+  assert.equal(profileLine("zh", updates, "Asia/Tokyo"), "（联系人资料里写的还是「拾野选物店」「店长」，和11月6日的记录不一致，这份资料已经过时了。）");
   assert.equal(profileLine("ja", updates, "Asia/Tokyo"), "（連絡先にはまだ「拾野选物店」「店长」とあり、11月6日の記録と食い違っています。連絡先の情報が古くなっています。）");
   assert.equal(profileLine("en", updates, "Asia/Tokyo"), '(The contact profile still says "拾野选物店", "店长", which differs from the record of Nov 6; the profile is out of date.)');
   assert.equal(profileLine("zh", [], "Asia/Tokyo"), null);
@@ -82,7 +82,7 @@ test("AE-SCL-004 shape: the answer text leaves the profile out; code still says 
   const result = await runAgentGraph(kit.deps, kit.input("吴晓彤现在在哪家店、做什么？"));
   assert.match(asked, /Profile check/u, "the answer step is asked the structured question");
   assert.match(result.text, /彤云茶室/u);
-  assert.match(result.text, /联系人资料里写的还是「拾野选物店」「店长」，和 11月6日 的记录不一致，这份资料已经过时了。/u);
+  assert.match(result.text, /联系人资料里写的还是「拾野选物店」「店长」，和11月6日的记录不一致，这份资料已经过时了。/u);
   assert.deepEqual(result.sourceRefs, ["memo:note:m50"]);
 });
 

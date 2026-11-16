@@ -7,7 +7,7 @@
 import type { Material } from "./schema";
 import { materialsText } from "./materials";
 
-export const GROUNDED_ANSWER_PROMPT_VERSION = "answer-grounded@ag07.1";
+export const GROUNDED_ANSWER_PROMPT_VERSION = "answer-grounded@ag07.2";
 
 export function groundedAnswerSystemPrompt(language: "zh" | "ja" | "en"): string {
   const name = language === "zh" ? "Chinese" : language === "ja" ? "Japanese" : "English";
@@ -32,7 +32,7 @@ export function groundedAnswerSystemPrompt(language: "zh" | "ja" | "en"): string
     "Nothing is stored or changed by this answer: never say you noted, saved or changed anything, and do not talk about confirming, cards or buttons. When an item only tells something (a statement), acknowledge it in a few plain words about what the user said; do not tell the user that nothing was saved.",
     "Answer only the items listed. Respect each item's constraints.",
     `Write in ${name}. Be concise and direct: answer the question first.`,
-    'Output one JSON object: {"segments": [{"partId": "<item id>", "text": "<the answer>", "cites": [{"sourceRef": "s1", "sentenceIds": [1]}], "profile": [only for an item with a Profile check]}]} with one segment per item.',
+    'Output one JSON object: {"segments": [{"partId": "<item id>", "text": "<the answer>", "cites": [{"sourceRef": "s1", "sentenceIds": [1]}], "profile": [only for an item with a Profile check], "changes": [only for an item with a Change check]}]} with one segment per item.',
   ].join("\n");
 }
 

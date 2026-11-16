@@ -52,7 +52,7 @@ test("an explicit new to-do becomes one ledger card of this request; nothing is 
   assert.equal(result.actionPreview?.status, "awaiting_confirmation");
   assert.deepEqual(result.actionPreview?.operations.map((op) => [op.capability, op.after.title]), [["todo.create", "续订域名"]]);
   assert.deepEqual(result.actionPreview?.origin, { conversationId: SESSION, kind: "conversation", requestId });
-  assert.match(result.text, /确认卡：新增待办「续订域名」。点卡上的「确认」后才会执行。/u);
+  assert.match(result.text, /确认卡：新增待办「续订域名」。点卡上的「确认以上1项」后才会执行。/u);
   assert.equal((await kit.listTasks()).length, 0, "no direct write");
   assert.equal(kit.executorCalls.length, 0);
   // The same request again (a resend or a takeover) keeps the one card.
@@ -68,7 +68,7 @@ test("typed 确认 / 好的 / OKです while a card waits: a fixed reminder, no 
   await kit.repository.saveAction(actionWithSession);
   const trace = captureTrace();
   try {
-    for (const [message, locale, reminder] of [["确认", "zh", /请点卡上的「确认」按钮/u], ["好的", "zh", /请点卡上的「确认」按钮/u], ["OKです", "ja", /カードの「確認」ボタンを押してください/u], ["OK", "en", /press Confirm on the card/u]] as const) {
+    for (const [message, locale, reminder] of [["确认", "zh", /请点卡上的「确认以上1项」/u], ["好的", "zh", /请点卡上的「确认以上1项」/u], ["OKです", "ja", /カードの「以上 1 件を確定」を押してください/u], ["OK", "en", /press "Confirm this change" on the card/u]] as const) {
       let modelCalls = 0;
       const result = await runWithConfirmBoundary({ now: kit.now, runtime: kit.runtime }, { locale, message, requestId: `agreq_${message}`, run: async () => { modelCalls += 1; return { reply: "已修改", sourceRefs: [] }; }, sessionId: SESSION });
       assert.equal(result.modelCalled, false, message);
@@ -162,6 +162,6 @@ test("a longer message that agrees while a card waits gets the reminder appended
   await kit.repository.saveAction({ ...card, origin: { conversationId: SESSION, kind: "conversation", requestId: "agreq_first" } });
   const result = await runWithConfirmBoundary({ now: kit.now, runtime: kit.runtime }, { locale: "ja", message: "やっぱりさっきの内容で進めてください。OKです。", requestId: "agreq_later", run: turnOf({ reply: "承知しました。" }), sessionId: SESSION });
   assert.equal(result.modelCalled, true);
-  assert.match(result.text, /カードの「確認」ボタンを押してください/u);
+  assert.match(result.text, /カードの「以上 1 件を確定」を押してください/u);
   assert.equal((await kit.runtime.getAction(card.actionId))?.status, "awaiting_confirmation");
 });

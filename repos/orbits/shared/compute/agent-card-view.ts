@@ -128,6 +128,11 @@ const WAITING: readonly AgentCardStatus[] = ["awaiting_confirmation", "deferred"
 
 const fill = (template: string, values: Readonly<Record<string, string | number>>) => template.replace(/\{([A-Za-z0-9_]+)\}/g, (match, key: string) => (key in values ? String(values[key]) : match));
 
+/** The confirm button label of a card with `count` items. Code text that names the button uses this too, so the words match (AG07 repair 2). */
+export function confirmButtonLabel(words: Pick<AgentCardWords, "confirmAll" | "confirmOne">, count: number): string {
+  return count === 1 ? words.confirmOne : fill(words.confirmAll, { count });
+}
+
 function chipOf(status: AgentCardStatus, review: boolean, words: AgentCardWords): { label: string; tone: AgentCardTone } {
   if (review) return { label: words.statusReview, tone: "apricot" };
   switch (status) {
@@ -231,7 +236,7 @@ export function agentCardView(preview: AgentActionPreviewContract, client: Agent
     actionId: preview.actionId,
     banner: waiting && changed.size ? words.changedBanner : null,
     blocked,
-    buttons: waiting ? { confirm: count === 1 ? words.confirmOne : fill(words.confirmAll, { count }), confirmEnabled, dismiss: words.dismiss, dismissEnabled: client.online } : null,
+    buttons: waiting ? { confirm: confirmButtonLabel(words, count), confirmEnabled, dismiss: words.dismiss, dismissEnabled: client.online } : null,
     cardContent: "shown",
     chip: chipOf(preview.status, review, words),
     confirmEnabled,

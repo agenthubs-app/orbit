@@ -46,6 +46,15 @@ test("a to-do change carries the record, the label and the old and new value, al
   });
 });
 
+test("AG07 repair 2 item 4: the card shows a note by its title and fields, never the raw body with its pronoun (approved draft)", async () => {
+  for (const locale of ["zh", "ja", "en"] as const) {
+    const op = await prepareCardOperation({ actionId: "card1", index: 1, intent: call, locale, reader, revision: 1 });
+    const shown = [op!.display?.record ?? "", ...(op!.display?.rows ?? []).flatMap((row) => [row.label, row.after, row.before ?? ""]), op!.preview ?? ""].join("\n");
+    assert.doesNotMatch(shown, /他今天来过电话/u, `${locale}: ${shown}`);
+    assert.match(shown, /小林健/u, `${locale}: the person is named`);
+  }
+});
+
 test("a new interaction memo lists who, which day and how, in the card's language", async () => {
   const zh = await prepareCardOperation({ actionId: "card1", index: 1, intent: call, locale: "zh", reader, revision: 1 });
   assert.deepEqual(zh?.display, {
@@ -79,7 +88,7 @@ test("a new to-do names itself and lists the dates it gets; a due time keeps its
 
 test("an item that waits for the one before says so on the card", async () => {
   const built = await buildCardOperationList(reader, { actionId: "card1", intents: [update, { ...call, dependsOn: [0] }], locale: "zh", revision: 1 });
-  assert.equal(built.operations[1].display?.note, "第 1 项成功后才执行");
+  assert.equal(built.operations[1].display?.note, "第1项成功后才执行");
   assert.equal(built.operations[0].display?.note, undefined);
 });
 

@@ -137,16 +137,16 @@ function lineFor(scope: NodeScope, state: AgentGraphState, part: GraphPart, lang
 }
 
 /** AG05: §3.11 row 3 — how a read part was understood, in code's words, before its answer. */
-function understoodLine(scope: NodeScope, part: GraphPart, language: ReplyLanguage): string {
+function understoodLine(scope: NodeScope, part: GraphPart, language: ReplyLanguage, parts: readonly GraphPart[] = []): string {
   if (!part.reading) return "";
-  const object = objectOf(scope, part);
+  const object = objectOf(scope, part, parts);
   const said = object.name ?? (object.kind === "contact" ? object.text?.replace(/^@/u, "") ?? null : null);
   return CLARIFY_WORDS.understoodAs(language, readingLabel(part.reading as Reading, language, said, capabilityLabel));
 }
 
 /** AG05: a part that read records — how it was understood, the answer, then code's sentences on what was missing. */
-function readLine(scope: NodeScope, part: GraphPart, language: ReplyLanguage, withEntries: (line: string) => string): string {
-  const lines = [understoodLine(scope, part, language), scope.run.answers.get(part.localId) ?? "", ...(scope.run.gapLines.get(part.localId) ?? [])];
+function readLine(scope: NodeScope, part: GraphPart, language: ReplyLanguage, withEntries: (line: string) => string, parts: readonly GraphPart[] = []): string {
+  const lines = [understoodLine(scope, part, language, parts), scope.run.answers.get(part.localId) ?? "", ...(scope.run.gapLines.get(part.localId) ?? [])];
   return withEntries(lines.filter((line) => line.trim()).join("\n"));
 }
 
@@ -156,7 +156,7 @@ function partLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, lan
   const message = scope.input.message;
   const quote = quoteOf(message, part);
   const withEntries = (line: string) => [line, entriesLine(scope, state, part, language)].filter((text) => text.trim()).join("\n");
-  if (part.route === "read" && (part.status === "answered" || part.status === "unfinished") && part.reason !== "budget" && part.reason !== "still_unclear") return readLine(scope, part, language, withEntries);
+  if (part.route === "read" && (part.status === "answered" || part.status === "unfinished") && part.reason !== "budget" && part.reason !== "still_unclear") return readLine(scope, part, language, withEntries, state.parts);
   // AG06: a write part says only code's words: a question, what was not found or cannot be done here. The
   // card itself is one line for the whole request (after the parts); a part waiting for another's question says nothing.
   if (part.route === "propose_write") {
@@ -205,7 +205,7 @@ function partLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, lan
       }
       if (part.reading) {
         // §3.11 row 3: how it was understood comes first, in code's words.
-        const object = objectOf(scope, part);
+        const object = objectOf(scope, part, state.parts);
         // A person named only in words is said back by those words; a note or event not read yet stays "this note".
         const said = object.name ?? (object.kind === "contact" ? object.text?.replace(/^@/u, "") ?? null : null);
         const label = readingLabel(part.reading as Reading, language, said, capabilityLabel);

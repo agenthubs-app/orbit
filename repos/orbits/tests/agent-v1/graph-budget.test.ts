@@ -70,7 +70,7 @@ test("limit 4 by default: understand plus one answer call for a mixed request", 
   assert.deepEqual(model.calls.map((call) => call.node), ["understand", "answer"]);
   assert.equal(result.state.budget.limit, 4);
   assert.match(result.text, /^开头先感谢合作/u);
-  assert.match(result.text, /这一版还不能联网/u);
+  assert.match(result.text, /现在还不能联网/u);
 });
 
 test("the call limit: ORBIT_AGENT_MODEL_CALL_LIMIT (default 4) and a lower eval deployment setting wins", () => {

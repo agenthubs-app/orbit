@@ -116,22 +116,22 @@ export function memoCreateDisplay(set: MemoCreateSet, locale: CardLocale): Agent
 const WAITS_NOTE: Record<CardLocale, (items: number[]) => string> = {
   en: (items) => `Runs only after item ${items.join(" and ")} succeeds`,
   ja: (items) => `${items.join("・")} 件目が成功してから実行`,
-  zh: (items) => `第 ${items.join("、")} 项成功后才执行`,
+  zh: (items) => `第${items.join("、")}项成功后才执行`,
 };
 
 const WAITS: Record<CardLocale, (items: number[]) => string> = {
   en: (items) => ` (runs only after item ${items.join(" and ")} succeeds)`,
   ja: (items) => `（${items.join("・")} 件目が成功してから実行）`,
-  zh: (items) => `（第 ${items.join("、")} 项成功后才执行）`,
+  zh: (items) => `（第${items.join("、")}项成功后才执行）`,
 };
 
-/** The count sentence of a card: how many changes and how many additions ("修改 1 项，新增 1 项"). */
+/** The count sentence of a card: how many changes and how many additions ("修改1项，新增1项"; R03: no space between Chinese and a number). */
 export function cardCountTitle(operations: readonly Pick<AgentActionOperationPayload, "capability">[], locale: CardLocale): string {
   const added = operations.filter((op) => op.capability === TODO_CREATE || op.capability === MEMO_CREATE).length;
   const changed = operations.length - added;
   if (locale === "en") return [changed ? `${changed} change${changed > 1 ? "s" : ""}` : "", added ? `${added} addition${added > 1 ? "s" : ""}` : ""].filter(Boolean).join(", ");
   if (locale === "ja") return [changed ? `変更 ${changed} 件` : "", added ? `追加 ${added} 件` : ""].filter(Boolean).join("、");
-  return [changed ? `修改 ${changed} 项` : "", added ? `新增 ${added} 项` : ""].filter(Boolean).join("，");
+  return [changed ? `修改${changed}项` : "", added ? `新增${added}项` : ""].filter(Boolean).join("，");
 }
 
 function base(input: { actionId: string; revision: number; index: number; partId?: string }) {
