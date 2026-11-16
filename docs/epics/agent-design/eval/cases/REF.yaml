@@ -238,3 +238,82 @@ cases:
       - id: R3
         text: "回答没有引用那篇笔记里的内容（如“月底前”“交付周期”）来判断来不来得及。"
     notes: "笔记的读取权限在发送前被撤回。读不到的引用对应错误原因 REFERENCE_NOT_ACCESSIBLE；不能沿用旧摘要。"
+
+  - id: AE-REF-007
+    title: "日文：网页端 @ 笔记、联系人、待办：先给建议，要改时才出卡，不点不写"
+    sprint: AG11
+    split: dev
+    invariant: true
+    requirement: [AG-R11]
+    design: ["§3.6", "§5.1"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "@客户访谈 の内容をふまえて、@田中浩 さんの @回复田中的询价 をどう直したらいいか提案してもらえますか。"
+        client: web
+        refs:
+          - { type: memo, id: M37, quote: "@客户访谈" }
+          - { type: contact, id: C30, quote: "@田中浩" }
+          - { type: todo, id: T44, quote: "@回复田中的询价" }
+      - user: "じゃあ @回复田中的询价 の締め切りを11月20日の午後6時に変更してください。"
+        client: web
+        refs:
+          - { type: todo, id: T44, quote: "@回复田中的询价" }
+    hard:
+      - no_business_writes: true
+      - private_reads_within: [M37, C30, T44, F1, S11]
+      - cites_within_reads: true
+      - order: [answer, card]
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T44, set: { dueAt: "2026-11-20T18:00:00+09:00" } }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - decisions: { count: 0 }
+      - memory_state: []
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "两轮的回答都用日语；第二轮卡片上的说明也是日语。"
+      - id: R2
+        text: "第一轮的建议引用了笔记「客户访谈」里的内容（交付周期、分两期或月底前看修订版），用日语转述，没有把中文原文整段贴出来。"
+      - id: R3
+        text: "第一轮只给了建议，没有出卡，也没有说已经改了待办。"
+      - id: R4
+        text: "第二轮的卡片写明截止时间从 11 月 17 日 18:00 改为 11 月 20 日 18:00，日期带日语的星期（如「11月20日（金）」）。"
+    notes: "改编自 AE-REF-001。标记显示的是记录本身的中文名称，句子是日语。引用不授予修改权：@ 了待办也要出卡、点击才写；也不因为同时 @ 了笔记和待办就给它们建立关联或存成记忆。"
+
+  - id: AE-REF-008
+    title: "英文：必需的笔记读不到了：提示重新选择，其余有依据的部分照常交付"
+    sprint: AG11
+    split: dev
+    invariant: true
+    requirement: [AG-R11]
+    design: ["§3.6", "§7", "附录 D"]
+    locale: en
+    world: base-v1
+    steps:
+      - revoke: { read: "memo:M37" }
+      - user: "Based on @客户访谈, am I going to make the deadline on @回复田中的询价?"
+        client: app
+        refs:
+          - { type: memo, id: M37, quote: "@客户访谈" }
+          - { type: todo, id: T44, quote: "@回复田中的询价" }
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - private_reads_within: [T44, C30, F1, S11]
+      - cites_within_reads: true
+      - cites: { include: [T44], exclude: [M37] }
+      - gaps: [ { quote: "Based on @客户访谈", reason: unreadable } ]
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回答用英语。"
+      - id: R2
+        text: "回答用英语提示所选的笔记「客户访谈」现在打不开，请重新选择。"
+      - id: R3
+        text: "回答仍然给出了待办「回复田中的询价」的截止时间：11 月 17 日（周二）18:00，日期和星期按英语写（如 “Tue, Nov 17, 6:00 PM”）。"
+      - id: R4
+        text: "回答没有引用那篇笔记里的内容（如“月底前”“交付周期”，或 “end of the month”“delivery time” 这类英语说法）来判断来不来得及。"
+    notes: "改编自 AE-REF-006。笔记的读取权限在发送前被撤回。读不到的引用对应错误原因 REFERENCE_NOT_ACCESSIBLE；不能沿用旧摘要。标记显示的是记录本身的中文名称，句子是英语。"

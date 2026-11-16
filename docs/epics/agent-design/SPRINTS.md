@@ -22,21 +22,21 @@ PLANNER 是在所有 sprint 动工之前一次写成的，所以后面 sprint �
 | AG03 | 流程骨架与第一层 | 二 小林切片 | AG02 | 服务端 | H | UND ×14、CTX ×6、SCL ×3 | completed（门槛 39/39 双评通过，--seed-cards；修复轮 1） |
 | AG04 | 需求不清楚、追问与归属 | 二 | AG03 | 服务端 | H | AMB ×12、CTX ×2 | completed via run-02（run-01 failed：门槛四次各有一例因第一层标注不过；协调者依据当前目标开启 run-02，把“不猜对象”写成代码规则；run-02 修复轮 1 后门槛 37/37 双评通过，--seed-cards） |
 | AG05 | 读取与带出处的回答 | 二 | AG03 | 服务端 | H | RD ×10、SCL ×5 | completed via run-03（run-01 failed：模型没给搜索词时读宽了，且最终 SHA 不在门槛里；run-02 failed：AG04 复跑 36/37，另有漏读较新笔记的已知缺陷；run-03 修复轮 1 后门槛 43/43 双评通过，AG03、AG04 复跑通过，--seed-cards） |
-| AG06 | 小林切片：一张卡改待办、记往来 | 二 | AG04、AG05 | 服务端 | H | XL ×12、SCL ×2、BND ×12 完整对话版 | planned |
-| AG07 | 两端的确认卡与对话界面 | 二 | AG06、视觉稿获批 | Web、App | H | UIX ×6 | planned |
+| AG06 | 小林切片：一张卡改待办、记往来 | 二 | AG04、AG05 | 服务端 | H | XL ×12、SCL ×2、BND ×12 完整对话版、UND ×2（回答语言，用例级 gate） | planned |
+| AG07 | 两端的确认卡与对话界面 | 二 | AG06、视觉稿获批 | Web、App | H | UIX ×8 | planned |
 | AG08 | 判断模型接入 | 三 能力补齐 | AG04、AG05、AG06 | 服务端 | H | JDG ×8、SCL ×2 | planned |
 | AG09 | 基础联网与出站把关 | 三 | AG08 | 服务端 | H | WEB ×12、SCL ×2 | planned |
 | AG10 | 排序、提取与整理 | 三 | AG06、AG08 | 服务端 | H | FN ×13、SCL ×4 | planned |
-| AG11 | 两端用 @ 指定上下文 | 三 | AG05、AG07、AG13 | Web、App | H | REF ×6、SCL ×2 | planned |
-| AG12 | 联系人写入 | 三 | AG06、AG07 | 服务端、两端 | H | CON ×8、SCL ×2 | planned |
+| AG11 | 两端用 @ 指定上下文 | 三 | AG05、AG07、AG13 | Web、App | H | REF ×8、SCL ×2 | planned |
+| AG12 | 联系人写入 | 三 | AG06、AG07 | 服务端、两端 | H | CON ×10、SCL ×2 | planned |
 | AG13 | 活动、参会、日程与 Todo 关联 | 三 | AG06、AG07 | 服务端、两端 | H | EVT ×12、SCL ×4 | planned |
 | AG14 | 个人记忆 | 四 记忆与持续任务 | AG06、AG08 | 服务端、两端 | H | MEM ×12、FN ×1、SCL ×2 | planned |
 | AG15 | 定时任务与站内收件箱 | 四 | AG02、AG10、AG14 | 服务端、两端 | H | SCH ×12、SCL ×2 | planned |
-| AG16 | 推送提醒 | 四 | AG15 | 服务端、两端 | H | PSH ×3 | planned |
+| AG16 | 推送提醒 | 四 | AG15 | 服务端、两端 | H | PSH ×5 | planned |
 | AG17 | 外部 Agent 接入（MCP） | 五 接入与放量 | AG02、AG05、AG06、AG07、AG15 | 服务端、Web | H | MCP ×8、SCL ×2 | planned |
 | AG18 | 兼容、影子运行与放量 | 五 | 全部 | 全部 | I | CMP ×5、全部可见用例、封存集 | planned |
 
-可见用例共 222 例，封存集 30 例。SCL 是跑在常规和较大两个账号上的用例，带同名、多实体关联、跨页、新旧冲突和长对话五类干扰；其余各区跑在小账号上。涉及读写数据的 sprint，门槛里三个账号的用例都要有。不变量包是可见用例里标了 `invariant: true` 的那些，从 AG02 起每个 sprint 都跑。
+可见用例共 232 例，封存集 30 例。SCL 是跑在常规和较大两个账号上的用例，带同名、多实体关联、跨页、新旧冲突和长对话五类干扰；其余各区跑在小账号上。涉及读写数据的 sprint，门槛里三个账号的用例都要有。不变量包是可见用例里标了 `invariant: true` 的那些，从 AG02 起每个 sprint 都跑。
 
 可以并行的组合：AG07 与 AG08；AG12 与 AG13；AG16 与 AG17。AG04 与 AG05 都要改流程图和路由的同一批文件，不并行。并行的第二条线按根目录规则在外接盘另建 worktree。
 

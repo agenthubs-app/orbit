@@ -118,7 +118,7 @@ test("all visible area files pass the checker", () => {
   const files = loadAreaFiles();
   const cases = files.flatMap((file) => file.cases);
   assert.equal(files.length, 21);
-  assert.equal(cases.length, 222);
+  assert.equal(cases.length, 232);
   assert.deepEqual(checkAreaFiles(files, context), []);
 });
 
