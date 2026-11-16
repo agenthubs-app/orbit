@@ -7,6 +7,7 @@ export const accountCopy = {
   account: { ja: "アカウント", zh: "账户", en: "Account", kind: "menu" },
   iorbit: { ja: "iOrbit が使う情報", zh: "iOrbit 使用的信息", en: "Information iOrbit uses", kind: "menu" },
   integrations: { ja: "連携", zh: "连接", en: "Connections", kind: "menu" },
+  schedule: { ja: "日程", zh: "日程", en: "Scheduling", kind: "menu" },
   notifications: { ja: "通知", zh: "通知", en: "Notifications", kind: "menu" },
   appearance: { ja: "言語と外観", zh: "语言和外观", en: "Language and appearance", kind: "menu" },
   permissions: { ja: "権限", zh: "权限", en: "Permissions", kind: "menu" },

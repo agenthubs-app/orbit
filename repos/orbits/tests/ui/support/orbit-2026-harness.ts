@@ -27,7 +27,8 @@ export async function bundle(entry: string, stubs: Record<string, string> = {}):
     platform: "browser",
     jsx: "automatic",
     loader: { ".module.css": "local-css", ".css": "css" },
-    define: { "process.env.NODE_ENV": '"test"' },
+    // process.env.* other than NODE_ENV (next/link, next/navigation internals) reads as unset in the browser bundle.
+    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}" },
     plugins: [stubPlugin],
   });
   const js = result.outputFiles.find((file) => file.path.endsWith(".js"))!.text;

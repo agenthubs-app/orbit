@@ -3,7 +3,11 @@ import { personalScheduleDayStart } from "../../tasks/personal-schedule-editor-m
 import { CalendarReadError, createCalendarReadClient } from "./calendar-read-client";
 import { MeetingProposalError } from "./meeting-proposal-client";
 
-export interface MeetingAvailability { from: string; to: string; complete: boolean; items: { startsAt: string; endsAt?: string; allDay?: boolean; timeZone?: string }[] }
+export interface MeetingAvailability { from: string; to: string; complete: boolean; items: { startsAt: string; endsAt?: string; allDay?: boolean; timeZone?: string }[];
+  /** R41: the external calendar's state when it was read ("not_connected" = only Orbit's own schedule was checked). */
+  external?: "connected" | "not_connected" | "off" | "other";
+  /** R41: Orbit's own schedule was read completely and no external calendar is connected or offered ("not_connected" / "off"). */
+  orbitOnly?: boolean }
 export function createMeetingAvailabilityCheck(zone: string, availability: MeetingAvailability): (candidate: { startsAt: string; endsAt: string }) => "free" | "busy" | "unknown" {
   const unknown = () => "unknown" as const;
   if (!validTimeZone(zone) || availability.items.length > 2000) return unknown;
@@ -54,10 +58,11 @@ export function seedAvailableMeetingCandidates(now: number, zone: string, availa
 
 export function createMeetingAvailabilityClient(options: { fetch?: typeof fetch } = {}) {
   const client = createCalendarReadClient(options);
-  return { async load(zone: string, now: number, signal?: AbortSignal): Promise<MeetingAvailability> {
+  return { /** `firstDay`: 1 (default, the reschedule flow) reads from tomorrow; R41's insert picker passes 0 to read today too. */
+  async load(zone: string, now: number, signal?: AbortSignal, options: { firstDay?: 0 | 1 } = {}): Promise<MeetingAvailability> {
     signal?.throwIfAborted();
     if (!validTimeZone(zone) || !Number.isFinite(now)) throw new MeetingProposalError("invalid");
-    const day = nextDay(localParts(now, zone).date), from = personalScheduleDayStart(day, zone), to = personalScheduleDayStart(nextDay(day, 14), zone);
+    const day = nextDay(localParts(now, zone).date, options.firstDay ?? 1), from = personalScheduleDayStart(day, zone), to = personalScheduleDayStart(nextDay(day, 14), zone);
     if (!from || !to) throw new MeetingProposalError("invalid");
     const controller = new AbortController(), activeSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
     const protect = <T,>(promise: Promise<T>): Promise<T | null> => promise.catch(error => {
@@ -66,6 +71,6 @@ export function createMeetingAvailabilityClient(options: { fetch?: typeof fetch 
     });
     const [native, external] = await Promise.all([protect(client.internal({ from, to }, "ja", activeSignal)), protect(client.external([{ from, to }], activeSignal))]);
     signal?.throwIfAborted();
-    return { from, to, complete: Boolean(native && external && native.skipped === 0 && external.skipped === 0 && ["connected", "not_connected"].includes(external.connection)), items: [...(native?.items ?? []).map(item => ({ startsAt: item.startsAt, endsAt: item.endsAt, allDay: item.allDay, timeZone: item.timeZone })), ...(external?.events ?? []).map(item => ({ startsAt: item.startsAt, endsAt: item.endsAt, allDay: item.allDay }))] };
+    return { from, to, complete: Boolean(native && external && native.skipped === 0 && external.skipped === 0 && ["connected", "not_connected"].includes(external.connection)), external: external?.connection === "connected" || external?.connection === "not_connected" || external?.connection === "off" ? external.connection : "other", orbitOnly: Boolean(native && native.skipped === 0 && external && ["not_connected", "off"].includes(external.connection)), items: [...(native?.items ?? []).map(item => ({ startsAt: item.startsAt, endsAt: item.endsAt, allDay: item.allDay, timeZone: item.timeZone })), ...(external?.events ?? []).map(item => ({ startsAt: item.startsAt, endsAt: item.endsAt, allDay: item.allDay }))] };
   } };
 }

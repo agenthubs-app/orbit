@@ -9,6 +9,7 @@ import { taskCopy } from "../copy/task";
 import { pickCopy } from "../copy/types";
 import { createMeetingProposalClient, MeetingProposalError, prepareMeetingProposal, type MeetingCandidate, type MeetingProposalTarget } from "./meeting-proposal-client";
 import { createMeetingAvailabilityCheck, createMeetingAvailabilityClient, seedAvailableMeetingCandidates, type MeetingAvailability } from "./meeting-availability";
+import { MeetingSlotPicker, type MeetingSlotPickerProps } from "./MeetingSlotPicker";
 import styles from "./meeting-proposal.module.css";
 
 export interface MeetingProposalModalProps {
@@ -20,7 +21,17 @@ export interface MeetingProposalModalProps {
   initialCandidates?: readonly { startsAt: string; endsAt: string }[];
 }
 
-export function MeetingProposalModal(props: MeetingProposalModalProps) {
+/**
+ * contact-reach R41: `mode="insert"` is the one-step 候補の時間を選ぶ (design ④) used by 連絡する and by the inbox
+ * proposal card — it only hands the times back (`onInsert`), never writes. Without `mode` this is the reschedule
+ * flow (CalendarWorkspace, with `appointmentId`), unchanged.
+ */
+export function MeetingProposalModal(props: MeetingProposalModalProps | ({ mode: "insert" } & MeetingSlotPickerProps)) {
+  if ("mode" in props && props.mode === "insert") { const { mode: _mode, ...picker } = props; return <MeetingSlotPicker {...picker} />; }
+  return <ProposalModal {...props as MeetingProposalModalProps} />;
+}
+
+function ProposalModal(props: MeetingProposalModalProps) {
   const { account, ready } = useSharedReadAccount();
   const language = useScopeLanguage();
   if (!props.open) return null;
