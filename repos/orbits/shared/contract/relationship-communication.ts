@@ -71,7 +71,7 @@ export interface RelationshipMessageDTO {
    * sent with a meeting proposal); null otherwise. Absent in responses and
    * stored rows from before R39 (read as null).
    */
-  appointmentId?: string | null;
+  appointmentId?: string | null | undefined;
 }
 
 export interface RelationshipConversationDTO {
