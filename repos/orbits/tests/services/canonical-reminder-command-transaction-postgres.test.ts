@@ -143,7 +143,7 @@ async function seedSchedulePlan(db: TestDatabase, actorId: string, targetId: str
   return plan;
 }
 
-function createService(db: TestDatabase, publisher: { publish: (message: unknown) => Promise<void> }, client = db.client) {
+function createService(db: TestDatabase, publisher: { publish: (message: unknown, options?: unknown) => Promise<void> }, client = db.client) {
   return createConfiguredReminderPlanService({
     now: () => NOW,
     publisher,
@@ -173,6 +173,24 @@ function isScheduleTargetRead(statement: string, values: readonly unknown[] | un
 function sqlState(error: unknown): string | undefined {
   return error && typeof error === "object" && "code" in error && typeof error.code === "string" ? error.code : undefined;
 }
+
+test("a reminder due within the lookahead is queued as a wake delayed until its fireAt; later ones are left to the hourly pass", async (t) => {
+  const db = await database(t);
+  if (!db) return;
+  const actorId = `actor:${randomUUID()}`;
+  const published: Array<{ message: unknown; options: unknown }> = [];
+  const service = createService(db, { publish: async (message: unknown, options?: unknown) => { published.push({ message, options }); } });
+  try {
+    const at = (minutes: number) => new Date(Date.parse(NOW) + minutes * 60_000).toISOString();
+    for (const [minutes, key] of [[30, "soon"], [70, "within-lookahead"], [120, "beyond-lookahead"]] as const) {
+      const targetId = await seedTask(db, actorId);
+      await service.create({ actorId, targetType: "task", targetId, fireAt: at(minutes), timeZone: "UTC", channels: ["in_app"], title: key, body: key, deepLink: `/app/tasks/${targetId}`, createdBy: "user", idempotencyKey: `lookahead-${key}` });
+    }
+    assert.deepEqual(published.map((item) => item.options), [{ delaySeconds: 30 * 60 + 2 }, { delaySeconds: 70 * 60 + 2 }]);
+  } finally {
+    await db.close();
+  }
+});
 
 test("configured pure in-app commands save plan and wake intent atomically, replay safely, and cancel the current generation", async (t) => {
   const db = await database(t);

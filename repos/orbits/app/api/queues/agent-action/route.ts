@@ -1,7 +1,6 @@
 import { handleCallback } from "@vercel/queue";
 import { AgentActionExecutionPending, isAgentActionWake, processAgentActionQueueWake } from "../../../../features/agent/runtime/action-queue-worker";
 import { createOrbitAgentRuntimeService } from "../../../../features/agent/runtime/service-factory";
-import { bootstrapMaintenanceHeartbeat } from "../../../../features/operations/maintenance/configured";
 
 export const maxDuration = 300;
 
@@ -14,7 +13,6 @@ const consume = handleCallback(async (message: unknown) => {
     if (error instanceof AgentActionExecutionPending) throw error;
     throw new Error("Agent background execution unavailable.");
   }
-  await bootstrapMaintenanceHeartbeat();
 }, {
   visibilityTimeoutSeconds: 360,
   retry: (error) => ({ afterSeconds: error instanceof AgentActionExecutionPending ? error.afterSeconds : 60 }),

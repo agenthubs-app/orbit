@@ -13,18 +13,24 @@ import { AppError } from "../../shared/errors/app-error";
 import { createReminderPlanRepository } from "./reminder-plan-repository";
 import { createReminderPlanService, ReminderPlanServiceError } from "./reminder-plan-service";
 import type { NotificationDeliveryDTO, NotificationPreferencesDTO, ReminderPlanDTO, ReminderTargetType } from "./reminder-plan-contract";
-import { MAINTENANCE_HEARTBEAT_TOPIC } from "../operations/maintenance/heartbeat";
 import {createInboxProjectionWorkRepository,type InboxProjectionSource} from './storage/inbox-projection-work';
 import {canonicalInboxProjectionRevision} from './canonical-inbox-projection-revision';
-
-export { MAINTENANCE_HEARTBEAT_TOPIC };
 
 export const CANONICAL_REMINDER_WAKE_COLLECTION = "canonical_reminder_wakes";
 export const CANONICAL_REMINDER_WAKE_KIND = "canonical-reminder-wake" as const;
 export const CANONICAL_REMINDER_WAKE_VERSION = 1 as const;
-export const CANONICAL_REMINDER_WAKE_TOPIC = MAINTENANCE_HEARTBEAT_TOPIC;
+// The topic keeps its historical name: vercel.json binds it to /api/queues/maintenance, which now only consumes
+// reminder wakes (the maintenance heartbeat chain is gone; maintenance runs from the hourly cron).
+export const CANONICAL_REMINDER_WAKE_TOPIC = "maintenance-heartbeat";
 export const CANONICAL_REMINDER_WAKE_LEASE_MS = 5 * 60 * 1_000;
 export const CANONICAL_REMINDER_WAKE_REPAIR_SECONDS = 600;
+/**
+ * How far ahead a wake is scheduled as a delayed queue message: the hourly maintenance cron plus slack for a late
+ * cron start, so every pending reminder is queued before it is due and fires on time instead of at the next sweep.
+ */
+export const CANONICAL_REMINDER_WAKE_LOOKAHEAD_SECONDS = 75 * 60;
+/** Delivered a moment after fireAt so the claim never sees a not-yet-due intent. */
+const CANONICAL_REMINDER_WAKE_DELAY_SLACK_SECONDS = 2;
 export const CANONICAL_REMINDER_WAKE_MAX_ACTORS = 25;
 export const CANONICAL_REMINDER_WAKE_MAX_PLANS_PER_ACTOR = 10;
 export const CANONICAL_REMINDER_WAKE_SCHEDULER_RECORD_ID = "canonical-reminder-scheduler:round-robin:v1";
@@ -93,8 +99,13 @@ export interface CanonicalReminderWakeLeaseMessage extends CanonicalReminderWake
 
 export type CanonicalReminderWakeMessage = CanonicalReminderWakeMessageBase | CanonicalReminderWakeLeaseMessage;
 
+export interface CanonicalReminderWakePublishOptions {
+  /** Seconds the queue holds the message before delivery; 0 or absent delivers now. */
+  delaySeconds?: number;
+}
+
 export interface CanonicalReminderWakePublisher {
-  publish(message: CanonicalReminderWakeMessage): Promise<void>;
+  publish(message: CanonicalReminderWakeMessage, options?: CanonicalReminderWakePublishOptions): Promise<void>;
 }
 
 export interface CanonicalReminderWakeRuntime {
@@ -292,25 +303,37 @@ export function isCanonicalReminderWakeMessage(value: unknown): value is Canonic
 }
 
 export function createCanonicalReminderWakePublisher({
-  // A cloud deployment is not an activation grant for this pilot. The
-  // configured factory must inject the publisher explicitly when the queue
-  // path has been approved; local/default construction is always inert.
+  // Inert unless enabled: local runs and tests have no queue. The configured publisher below enables it where
+  // the durable queue exists (VERCEL=1).
   enabled = false,
-  sendMessage = (topic: string, message: CanonicalReminderWakeMessage) => send(topic, message),
+  sendMessage = (topic: string, message: CanonicalReminderWakeMessage, options: { delaySeconds?: number }) => send(topic, message, options),
 }: {
   enabled?: boolean;
-  sendMessage?: (topic: string, message: CanonicalReminderWakeMessage) => Promise<unknown>;
+  sendMessage?: (topic: string, message: CanonicalReminderWakeMessage, options: { delaySeconds?: number }) => Promise<unknown>;
 } = {}): CanonicalReminderWakePublisher {
   return {
-    async publish(message) {
+    async publish(message, options) {
       if (!enabled) return;
       if (!isCanonicalReminderWakeMessage(message)) throw new Error("Invalid canonical reminder wake message");
-      await sendMessage(CANONICAL_REMINDER_WAKE_TOPIC, message);
+      const delaySeconds = Math.max(0, Math.ceil(options?.delaySeconds ?? 0));
+      await sendMessage(CANONICAL_REMINDER_WAKE_TOPIC, message, delaySeconds > 0 ? { delaySeconds } : {});
     },
   };
 }
 
-export const createDefaultCanonicalReminderWakePublisher = createCanonicalReminderWakePublisher;
+/** The production publisher: live wherever the queue exists, inert elsewhere. */
+export function createConfiguredCanonicalReminderWakePublisher(env: Record<string, string | undefined> = process.env): CanonicalReminderWakePublisher {
+  return createCanonicalReminderWakePublisher({ enabled: env.VERCEL === "1" });
+}
+
+/** Seconds from `now` until a wake for `fireAt` should be delivered (never negative). */
+export function canonicalReminderWakeDelaySeconds(fireAt: string, now: string): number {
+  const ms = Date.parse(fireAt) - Date.parse(now);
+  if (!Number.isFinite(ms) || ms <= 0) return 0;
+  return Math.ceil(ms / 1_000) + CANONICAL_REMINDER_WAKE_DELAY_SLACK_SECONDS;
+}
+
+export const createDefaultCanonicalReminderWakePublisher = createConfiguredCanonicalReminderWakePublisher;
 
 export function createCanonicalReminderWakeIntent(input: {
   plan: ReminderPlanDTO;
@@ -1464,7 +1487,9 @@ export async function repairCanonicalReminderWakes(input: RepairCanonicalReminde
       wakeContinuation: 1,
     };
   }
-  const publisher = input.runtime.publisher ?? createDefaultCanonicalReminderWakePublisher();
+  // Repair consumes each claimed wake inline below; queueing the same leased wake as well would only add an
+  // invocation that finds it fenced, so the default here is the inert publisher.
+  const publisher = input.runtime.publisher ?? createCanonicalReminderWakePublisher();
   const result: RepairCanonicalReminderWakesResult = {
     claimed: claim.claimed,
     inAppDelivered: 0,
@@ -1503,6 +1528,61 @@ export async function repairCanonicalReminderWakes(input: RepairCanonicalReminde
     }
   }
   if (result.deferred > 0) result.wakeContinuation = 1;
+  return result;
+}
+
+export type ScheduleUpcomingCanonicalReminderWakesResult = {
+  wakeScheduled: number;
+  wakeScheduleFailed: number;
+};
+
+/**
+ * Queues one delayed wake per pending intent due within the lookahead, so a reminder fires at its fireAt rather
+ * than at the next maintenance sweep. Re-scheduling an intent that already has a message queued is harmless: the
+ * consumer claims by intent + generation, and a second delivery finds it leased or delivered and drops it.
+ */
+export async function scheduleUpcomingCanonicalReminderWakes(input: {
+  runtime: Pick<CanonicalReminderWakeRuntime, "client" | "workspaceId">;
+  publisher: CanonicalReminderWakePublisher;
+  now: string;
+  lookaheadSeconds?: number;
+  limit?: number;
+  deadline?: number;
+  clock?: () => Date;
+}): Promise<ScheduleUpcomingCanonicalReminderWakesResult> {
+  const now = timestamp(input.now);
+  const until = new Date(Date.parse(now) + (input.lookaheadSeconds ?? CANONICAL_REMINDER_WAKE_LOOKAHEAD_SECONDS) * 1_000).toISOString();
+  const rows = await input.runtime.client.transaction(async (tx) => {
+    await boundTransaction(tx);
+    const result = await tx.query<{ payload: unknown }>(`
+      select r.payload
+      from orbit_records r
+      where r.workspace_id = $1 and r.collection_name = '${CANONICAL_REMINDER_WAKE_COLLECTION}'
+        and r.record_id <> '${CANONICAL_REMINDER_WAKE_SCHEDULER_RECORD_ID}'
+        and r.lifecycle_state = 'active' and r.deleted_at is null
+        and r.payload->>'kind' = '${CANONICAL_REMINDER_WAKE_KIND}' and r.payload->>'state' = 'pending'
+        and pg_input_is_valid(r.payload->>'nextAttemptAt', 'timestamptz')
+        and (r.payload->>'nextAttemptAt')::timestamptz > $2::timestamptz
+        and (r.payload->>'nextAttemptAt')::timestamptz <= $3::timestamptz
+      order by (r.payload->>'nextAttemptAt')::timestamptz, r.record_id
+      limit $4`, [input.runtime.workspaceId, now, until, input.limit ?? 500]);
+    return result.rows;
+  });
+  const result: ScheduleUpcomingCanonicalReminderWakesResult = { wakeScheduled: 0, wakeScheduleFailed: 0 };
+  for (const row of rows) {
+    if (input.deadline !== undefined && (input.clock?.() ?? new Date()).getTime() >= input.deadline) break;
+    const intent = parseCanonicalReminderWakeIntent(row.payload);
+    if (!intent || intent.workspaceId !== input.runtime.workspaceId || intent.state !== "pending") continue;
+    try {
+      await input.publisher.publish(
+        createCanonicalReminderWakeMessage({ workspaceId: intent.workspaceId, planId: intent.planId, generation: intent.generation }),
+        { delaySeconds: canonicalReminderWakeDelaySeconds(intent.nextAttemptAt, now) },
+      );
+      result.wakeScheduled += 1;
+    } catch {
+      result.wakeScheduleFailed += 1;
+    }
+  }
   return result;
 }
 

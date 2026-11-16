@@ -75,7 +75,6 @@ interface Harness {
   goals: Map<string, string | null>;
   stub: Stub;
   runtime: ContactInsightsRuntime;
-  heartbeats: number;
   instant(input: { actorId: string; contactIds?: string[]; maxBatches?: number }): ReturnType<typeof runInstantInsightGeneration>;
 }
 
@@ -107,9 +106,9 @@ async function withDatabase(run: (harness: Harness) => Promise<void>): Promise<v
     const generator = createDeepseekContactInsightGenerator({ apiKey: "test-key", fetchImplementation: stub.fetchImplementation });
     const runtime = createContactInsightsRuntime({ client, generator, now: () => clock.now, readGoal: async (actorId) => goals.get(actorId) ?? null, workspaceId: WORKSPACE });
     const harness: Harness = {
-      client, clock, goals, heartbeats: 0, pool, runtime, stub,
+      client, clock, goals, pool, runtime, stub,
       instant: (input) => {
-        const deps: InstantInsightDeps = { ...runtime, bootstrapHeartbeat: async () => { harness.heartbeats += 1; } };
+        const deps: InstantInsightDeps = { ...runtime };
         return runInstantInsightGeneration(deps, { coalesceMs: 0, ...input });
       },
     };
@@ -136,7 +135,7 @@ function maintenancePass(harness: Harness) {
   return createContactInsightsMaintenanceTask({ resolve: () => harness.runtime }).run({ deadline: Date.now() + 60_000, now: () => harness.clock.now } as never) as Promise<Record<string, number>>;
 }
 
-test("SC-01 confirm one card: the instant executor claims that contact, reserves 1 instant user-pool operation, calls the provider once, row ready; heartbeat bootstrapped", databaseTest, async () => {
+test("SC-01 confirm one card: the instant executor claims that contact, reserves 1 instant user-pool operation, calls the provider once, row ready", databaseTest, async () => {
   await withDatabase(async (harness) => {
     await seedContact(harness.pool, "contact:a", ALICE);
     await mark(harness, ALICE, ["contact:a"]);
@@ -151,7 +150,6 @@ test("SC-01 confirm one card: the instant executor claims that contact, reserves
     // D62：即时生成不占用户池 10 次（user=0），单独计 instant=1。
     const usage = await harness.runtime.ledger.readUsageToday(ALICE, NOW);
     assert.deepEqual([usage.user, usage.instant, usage.background], [0, 1, 0]);
-    assert.equal(harness.heartbeats, 1);
   });
 });
 
@@ -325,7 +323,7 @@ test("SC-03 W57-2: no goal → blocked, 0 calls, 0 reservations; goal set (empty
   });
 });
 
-test("SC-04 provider fails twice then succeeds: failed (retry in 5 min) → failed (retry in 10 min) → ready via the heartbeat maintenance; every attempt is a separate, never double-billed operation", databaseTest, async () => {
+test("SC-04 provider fails twice then succeeds: failed (retry in 5 min) → failed (retry in 10 min) → ready via the maintenance pass; every attempt is a separate, never double-billed operation", databaseTest, async () => {
   await withDatabase(async (harness) => {
     harness.stub.failOn = new Set([1, 2]);
     await seedContact(harness.pool, "contact:a", ALICE);

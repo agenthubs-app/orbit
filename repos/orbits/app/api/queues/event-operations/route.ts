@@ -5,7 +5,6 @@ import {
   isEventOperationsQueueWake,
   runEventOperationsCloudTick,
 } from "../../../../features/events/event-operations/cloud-worker";
-import { bootstrapMaintenanceHeartbeat } from "../../../../features/operations/maintenance/configured";
 
 export const maxDuration = 300;
 
@@ -47,7 +46,6 @@ const consume = handleCallback(async (message: unknown, metadata) => {
     outboxRetried: result.outboxRetried,
     workClaimed: result.workClaimed,
   }));
-  await bootstrapMaintenanceHeartbeat();
 }, {
   retry: (_error, metadata) => ({
     afterSeconds: Math.min(300, 60 * 2 ** Math.min(4, Math.max(0, metadata.deliveryCount - 1))),

@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   CANONICAL_REMINDER_WAKE_KIND,
-  MAINTENANCE_HEARTBEAT_TOPIC,
+  CANONICAL_REMINDER_WAKE_TOPIC,
+  canonicalReminderWakeDelaySeconds,
+  createConfiguredCanonicalReminderWakePublisher,
+  scheduleUpcomingCanonicalReminderWakes,
   createCanonicalReminderWakePublisher,
   createCanonicalReminderWakeMessage,
   isCanonicalReminderWakeMessage,
@@ -29,15 +32,74 @@ test("canonical wake is a strict maintenance-topic variant without actor authori
   assert.equal(isCanonicalReminderWakeMessage({ ...message, planId: "reminder:other" }), false);
   assert.equal(isCanonicalReminderWakeMessage({ ...message, leaseEpoch: 0 }), false);
 
-  const calls: Array<{ topic: string; message: unknown; argumentCount: number }> = [];
+  const calls: Array<{ topic: string; message: unknown; options: unknown }> = [];
   const publisher = createCanonicalReminderWakePublisher({
     enabled: true,
-    sendMessage: async (...args: [string, unknown]) => {
-      calls.push({ topic: args[0], message: args[1], argumentCount: args.length });
+    sendMessage: async (...args: [string, unknown, unknown]) => {
+      calls.push({ topic: args[0], message: args[1], options: args[2] });
     },
   });
   await publisher.publish(message);
-  assert.deepEqual(calls, [{ topic: MAINTENANCE_HEARTBEAT_TOPIC, message, argumentCount: 2 }]);
+  await publisher.publish(message, { delaySeconds: 90.2 });
+  assert.equal(CANONICAL_REMINDER_WAKE_TOPIC, "maintenance-heartbeat", "the topic vercel.json binds to /api/queues/maintenance");
+  assert.deepEqual(calls, [
+    { topic: CANONICAL_REMINDER_WAKE_TOPIC, message, options: {} },
+    { topic: CANONICAL_REMINDER_WAKE_TOPIC, message, options: { delaySeconds: 91 } },
+  ]);
+});
+
+test("the configured publisher is live only where the queue exists (VERCEL=1)", async () => {
+  const message = createCanonicalReminderWakeMessage({ workspaceId: "workspace:test", planId: "reminder:plan", generation: 1 });
+  const local = createConfiguredCanonicalReminderWakePublisher({});
+  await local.publish(message); // inert: no queue client is touched locally
+  assert.ok(createConfiguredCanonicalReminderWakePublisher({ VERCEL: "1" }));
+});
+
+test("wake delay lands just after fireAt and is never negative", () => {
+  assert.equal(canonicalReminderWakeDelaySeconds("2026-11-16T10:30:00.000Z", "2026-11-16T10:00:00.000Z"), 1_802);
+  assert.equal(canonicalReminderWakeDelaySeconds("2026-11-16T10:00:00.500Z", "2026-11-16T10:00:00.000Z"), 3);
+  assert.equal(canonicalReminderWakeDelaySeconds("2026-11-16T09:59:00.000Z", "2026-11-16T10:00:00.000Z"), 0);
+  assert.equal(canonicalReminderWakeDelaySeconds("not-a-date", "2026-11-16T10:00:00.000Z"), 0);
+});
+
+test("the hourly pass queues one delayed wake per pending intent inside the lookahead", async () => {
+  const now = "2026-11-16T10:00:00.000Z";
+  const intent = (planId: string, nextAttemptAt: string, extra: Record<string, unknown> = {}) => ({ payload: {
+    version: 1, kind: CANONICAL_REMINDER_WAKE_KIND, workspaceId: "workspace:test", actorId: "actor", planId,
+    targetType: "task", targetId: "task:1", fireAt: nextAttemptAt, sourceRevision: now, generation: 3, channels: ["in_app"],
+    state: "pending", nextAttemptAt, attempts: 0, leaseEpoch: 0, createdAt: now, updatedAt: now, ...extra,
+  } });
+  const queries: Array<{ statement: string; values?: readonly unknown[] }> = [];
+  const rows = [
+    intent("reminder:a", "2026-11-16T10:20:00.000Z"),
+    intent("reminder:b", "2026-11-16T11:10:00.000Z"),
+    intent("reminder:other-workspace", "2026-11-16T10:30:00.000Z", { workspaceId: "workspace:other" }),
+    { payload: { broken: true } },
+  ];
+  const client: TransactionalPostgresClient = {
+    query: async () => ({ rows: [] }),
+    transaction: async <T>(operation: (tx: TransactionalSqlExecutor) => Promise<T>): Promise<T> => operation({
+      query: async <TRow>(statement: string, values?: readonly unknown[]) => {
+        queries.push({ statement, values });
+        return { rows: (statement.includes("orbit_records") ? rows : []) as unknown as TRow[] };
+      },
+    }),
+    close: async () => undefined,
+  };
+  const sent: Array<{ planId: string; generation: number; delaySeconds?: number; leased: boolean }> = [];
+  const result = await scheduleUpcomingCanonicalReminderWakes({
+    runtime: { client, workspaceId: "workspace:test" },
+    publisher: { async publish(message, options) {
+      if (message.planId === "reminder:b") throw new Error("queue offline");
+      sent.push({ planId: message.planId, generation: message.generation, delaySeconds: options?.delaySeconds, leased: "leaseEpoch" in message });
+    } },
+    now,
+  });
+  assert.deepEqual(sent, [{ planId: "reminder:a", generation: 3, delaySeconds: 1_202, leased: false }]);
+  assert.deepEqual(result, { wakeScheduled: 1, wakeScheduleFailed: 1 });
+  const select = queries.find((query) => query.statement.includes("orbit_records"));
+  assert.deepEqual(select?.values, ["workspace:test", now, "2026-11-16T11:15:00.000Z", 500]);
+  assert.ok(queries.some((query) => query.statement.includes("statement_timeout")), "bounded like every wake transaction");
 });
 
 test("the default local publisher is inert and never requests a delayed provider message", async () => {

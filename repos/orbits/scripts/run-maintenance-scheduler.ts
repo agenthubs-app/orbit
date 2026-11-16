@@ -1,7 +1,7 @@
 import { loadEnvConfig } from "@next/env";
 
 import { createConfiguredMaintenanceTasks } from "../features/operations/maintenance/configured-tasks";
-import { resolveMaintenanceIntervalSeconds } from "../features/operations/maintenance/heartbeat";
+import { resolveMaintenanceIntervalSeconds } from "../features/operations/maintenance/configured";
 import { runMaintenancePass } from "../features/operations/maintenance/pass";
 
 // In-process scheduler for hosts without Vercel Cron or Queues (local

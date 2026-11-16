@@ -6,7 +6,8 @@ import {
   assertCanonicalReminderTargetOwned,
   canonicalReminderActorLockKey,
   canonicalReminderWakeId,
-  CANONICAL_REMINDER_WAKE_REPAIR_SECONDS,
+  CANONICAL_REMINDER_WAKE_LOOKAHEAD_SECONDS,
+  canonicalReminderWakeDelaySeconds,
   CanonicalReminderTargetNotOwnedError,
   createCanonicalReminderWakeIntent,
   createCanonicalReminderWakeMessage,
@@ -166,12 +167,13 @@ export function createCanonicalReminderCommandService({
     const publisher = runtime.publisher ?? createDefaultCanonicalReminderWakePublisher();
     const seen = new Set<string>();
     for (const candidate of candidates) {
-      if (Date.parse(candidate.fireAt) > Date.parse(commandNow) + CANONICAL_REMINDER_WAKE_REPAIR_SECONDS * 1_000) continue;
+      // Beyond the lookahead the hourly maintenance pass schedules the wake (scheduleUpcomingCanonicalReminderWakes).
+      if (Date.parse(candidate.fireAt) > Date.parse(commandNow) + CANONICAL_REMINDER_WAKE_LOOKAHEAD_SECONDS * 1_000) continue;
       const key = JSON.stringify(candidate.message);
       if (seen.has(key)) continue;
       seen.add(key);
       try {
-        await publisher.publish(candidate.message);
+        await publisher.publish(candidate.message, { delaySeconds: canonicalReminderWakeDelaySeconds(candidate.fireAt, commandNow) });
       } catch {
         // The transaction is already committed. A failed hint is repairable
         // from the durable intent and must never make the client repeat a
@@ -287,7 +289,9 @@ export function createCanonicalReminderCommandService({
     const committed = runtime.executor
       ? await operation(runtime.executor)
       : await transactionWithRetry(runtime.client, operation);
-    if (!runtime.executor) await publishAfterCommit(committed.candidates, commandNow);
+    // Inside a caller's transaction (inbox snooze) the wake is still safe to queue: it is delayed until fireAt and
+    // the consumer re-validates the intent, so a rolled-back or superseded mutation turns it into a stale no-op.
+    await publishAfterCommit(committed.candidates, commandNow);
     return committed.result;
   }
 

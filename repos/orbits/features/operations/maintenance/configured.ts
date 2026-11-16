@@ -1,134 +1,22 @@
-import { Pool } from "pg";
-import { meterPostgresPool } from "../../../shared/storage/metered-postgres-pool";
-import { send } from "@vercel/queue";
-import { resolveLiveDatabaseConnectionConfig } from "../../../shared/storage/live-database-config";
 import { createConfiguredMaintenanceTasks } from "./configured-tasks";
-import {
-  MAINTENANCE_HEARTBEAT_TOPIC,
-  ensureMaintenanceHeartbeat,
-  ensureMaintenanceHeartbeatSchema,
-  parkMaintenanceHeartbeat,
-  processMaintenanceHeartbeat,
-  resolveMaintenanceIntervalSeconds,
-  type EnsureMaintenanceHeartbeatResult,
-  type MaintenanceDeploymentIdentity,
-  type MaintenanceHeartbeatMessage,
-  type ProcessMaintenanceHeartbeatResult,
-} from "./heartbeat";
 import { runMaintenancePass, type MaintenancePassResult } from "./pass";
 
-// Process-level wiring for the scheduled maintenance pass and its queue
-// heartbeat. The heartbeat exists only where the durable queue does
-// (`VERCEL=1`); elsewhere `scripts/run-maintenance-scheduler.ts` loops in-process.
+// Process-level wiring for the scheduled maintenance pass. On Vercel the hourly cron (vercel.json →
+// /api/internal/maintenance) runs it against the current production deployment only; reminders that fall due
+// between passes are queued as delayed wakes by the pass itself (scheduleUpcomingCanonicalReminderWakes).
+// Elsewhere `scripts/run-maintenance-scheduler.ts` loops in-process.
 
-interface ConfiguredMaintenanceRuntime {
-  pool: Pool;
-  workspaceId: string;
-  ready: Promise<void>;
-}
+export const DEFAULT_MAINTENANCE_INTERVAL_SECONDS = 600;
+const MIN_INTERVAL_SECONDS = 60;
+const MAX_INTERVAL_SECONDS = 3_600;
 
-const globalCache = globalThis as unknown as { __orbitMaintenanceRuntime?: ConfiguredMaintenanceRuntime | null };
-
-export function getConfiguredMaintenanceRuntime(): ConfiguredMaintenanceRuntime | null {
-  if (globalCache.__orbitMaintenanceRuntime !== undefined) return globalCache.__orbitMaintenanceRuntime;
-  const config = resolveLiveDatabaseConnectionConfig();
-  if (!config) {
-    globalCache.__orbitMaintenanceRuntime = null;
-    return null;
-  }
-  const pool = meterPostgresPool(new Pool({ connectionString: config.connectionString, max: 2 }));
-  globalCache.__orbitMaintenanceRuntime = {
-    pool,
-    workspaceId: config.workspaceId,
-    ready: ensureMaintenanceHeartbeatSchema(pool),
-  };
-  return globalCache.__orbitMaintenanceRuntime;
-}
-
-/**
- * W0057 (SC-05): this process's deployment. `ORBIT_BUILD_AT` is inlined into the
- * bundle at build time by next.config.js (`env`), so it must be read as the literal
- * `process.env.ORBIT_BUILD_AT`; it is absent in local node runs (behaviour unchanged).
- */
-export function currentMaintenanceDeploymentIdentity(): MaintenanceDeploymentIdentity {
-  const buildAt = process.env.ORBIT_BUILD_AT?.trim() || null;
-  const deploymentId = process.env.VERCEL_DEPLOYMENT_ID?.trim() || null;
-  return { buildAt, deploymentId };
-}
-
-export function maintenanceHeartbeatEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.VERCEL === "1" && env.ORBIT_MAINTENANCE_HEARTBEAT !== "0";
-}
-
-/** Switched off on purpose on Vercel (not merely absent, as in local runs): a live chain must be parked. */
-export function maintenanceHeartbeatSwitchedOff(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.VERCEL === "1" && env.ORBIT_MAINTENANCE_HEARTBEAT === "0";
-}
-
-async function sendHeartbeat(message: MaintenanceHeartbeatMessage, delaySeconds: number): Promise<void> {
-  await send(MAINTENANCE_HEARTBEAT_TOPIC, message, { delaySeconds, retentionSeconds: 7 * 24 * 60 * 60 });
+/** Loop interval for the in-process scheduler (local / VM hosts). */
+export function resolveMaintenanceIntervalSeconds(env: Record<string, string | undefined> = process.env): number {
+  const parsed = Number.parseInt(env.ORBIT_MAINTENANCE_INTERVAL_SECONDS ?? "", 10);
+  if (!Number.isFinite(parsed)) return DEFAULT_MAINTENANCE_INTERVAL_SECONDS;
+  return Math.min(MAX_INTERVAL_SECONDS, Math.max(MIN_INTERVAL_SECONDS, parsed));
 }
 
 export function runConfiguredMaintenancePass(workerId = "maintenance"): Promise<MaintenancePassResult> {
   return runMaintenancePass({ tasks: createConfiguredMaintenanceTasks({ workerId }) });
-}
-
-/**
- * Starts or repairs the queue heartbeat chain; `null` when the heartbeat is not applicable here. Switched off
- * (ORBIT_MAINTENANCE_HEARTBEAT=0), it parks the chain an older deployment may still be running instead, so the
- * daily cron or the next queue consumer stops it (see parkMaintenanceHeartbeat).
- */
-export async function ensureConfiguredMaintenanceHeartbeat(): Promise<EnsureMaintenanceHeartbeatResult | null> {
-  if (maintenanceHeartbeatSwitchedOff()) {
-    const runtime = getConfiguredMaintenanceRuntime();
-    if (!runtime) return null;
-    await runtime.ready;
-    const parked = await parkMaintenanceHeartbeat({ pool: runtime.pool, workspaceId: runtime.workspaceId, identity: currentMaintenanceDeploymentIdentity() });
-    if (parked) console.info(JSON.stringify({ event: "maintenance_heartbeat_parked" }));
-    return null;
-  }
-  if (!maintenanceHeartbeatEnabled()) return null;
-  const runtime = getConfiguredMaintenanceRuntime();
-  if (!runtime) return null;
-  await runtime.ready;
-  return ensureMaintenanceHeartbeat({
-    pool: runtime.pool, workspaceId: runtime.workspaceId, send: sendHeartbeat,
-    intervalSeconds: resolveMaintenanceIntervalSeconds(),
-    identity: currentMaintenanceDeploymentIdentity(),
-  });
-}
-
-/**
- * Best-effort bootstrap for hosts without cron (Vercel Preview): any queue
- * consumer may call this after its own work so the first background wake of a
- * deployment starts the chain. Failures are logged as aggregates and swallowed
- * so they cannot fail the caller's message.
- */
-export async function bootstrapMaintenanceHeartbeat(): Promise<void> {
-  try {
-    const result = await ensureConfiguredMaintenanceHeartbeat();
-    if (result && result.outcome !== "alive") {
-      console.info(JSON.stringify({ event: "maintenance_heartbeat_bootstrap", outcome: result.outcome }));
-    }
-  } catch (error) {
-    console.error(JSON.stringify({
-      event: "maintenance_heartbeat_bootstrap_failed",
-      error: error instanceof Error && error.name ? error.name : "error",
-    }));
-  }
-}
-
-export async function processConfiguredMaintenanceHeartbeat(
-  message: MaintenanceHeartbeatMessage,
-): Promise<ProcessMaintenanceHeartbeatResult> {
-  const runtime = getConfiguredMaintenanceRuntime();
-  if (!runtime) throw new Error("Maintenance database unavailable.");
-  await runtime.ready;
-  return processMaintenanceHeartbeat(message, {
-    pool: runtime.pool, workspaceId: runtime.workspaceId, send: sendHeartbeat,
-    intervalSeconds: resolveMaintenanceIntervalSeconds(),
-    identity: currentMaintenanceDeploymentIdentity(),
-    switchedOff: maintenanceHeartbeatSwitchedOff(),
-    runPass: () => runConfiguredMaintenancePass(`maintenance-heartbeat:${message.seq}`),
-  });
 }

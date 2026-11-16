@@ -75,7 +75,7 @@ const request = (auth?: string, query = "") =>
 
 test("maintenance endpoint rejects missing, wrong and short secrets before touching any task", async () => {
   let runs = 0;
-  const deps = { run: async () => { runs++; return passResult(0); }, ensureHeartbeat: async () => null };
+  const deps = { run: async () => { runs++; return passResult(0); } };
   for (const [auth, configured] of [[undefined, secret], ["Bearer nope", secret], [`Bearer ${secret}`, undefined], ["Bearer short", "short"]] as const) {
     const response = await handleMaintenanceRequest(request(auth), deps, configured);
     assert.equal(response.status, 401);
@@ -86,46 +86,20 @@ test("maintenance endpoint rejects missing, wrong and short secrets before touch
   assert.equal(runs, 0);
 });
 
-test("maintenance endpoint reports the pass and heartbeat outcome with 503 on any failure", async () => {
-  const ok = await handleMaintenanceRequest(request(`Bearer ${secret}`), {
-    run: async () => passResult(0), ensureHeartbeat: async () => ({ outcome: "started", chainId: "c" }),
-  }, secret);
+test("maintenance endpoint reports the pass with 503 on any failure, without leaking error detail", async () => {
+  const ok = await handleMaintenanceRequest(request(`Bearer ${secret}`), { run: async () => passResult(0) }, secret);
   assert.equal(ok.status, 200);
-  assert.deepEqual((await ok.json()).data.heartbeat, "started");
+  assert.deepEqual(Object.keys((await ok.json()).data), ["pass"]);
 
-  const disabled = await handleMaintenanceRequest(request(`Bearer ${secret}`), {
-    run: async () => passResult(0), ensureHeartbeat: async () => null,
-  }, secret);
-  assert.equal(disabled.status, 200);
-  assert.equal((await disabled.json()).data.heartbeat, "disabled");
-
-  const failedTask = await handleMaintenanceRequest(request(`Bearer ${secret}`), {
-    run: async () => passResult(1), ensureHeartbeat: async () => ({ outcome: "alive", chainId: "c" }),
-  }, secret);
+  const failedTask = await handleMaintenanceRequest(request(`Bearer ${secret}`), { run: async () => passResult(1) }, secret);
   assert.equal(failedTask.status, 503);
   assert.equal((await failedTask.json()).data.pass.failed, 1);
 
-  const failedHeartbeat = await handleMaintenanceRequest(request(`Bearer ${secret}`), {
-    run: async () => passResult(0), ensureHeartbeat: async () => { throw new Error("queue offline: token=abc"); },
-  }, secret);
-  assert.equal(failedHeartbeat.status, 503);
-  const body = await failedHeartbeat.text();
-  assert.ok(body.includes('"heartbeat":"failed"'));
-  assert.ok(!body.includes("token=abc"));
-
   const unavailable = await handleMaintenanceRequest(request(`Bearer ${secret}`), {
-    run: async () => { throw new Error("db down"); }, ensureHeartbeat: async () => null,
+    run: async () => { throw new Error("db down: token=abc"); },
   }, secret);
   assert.equal(unavailable.status, 503);
-  assert.deepEqual(await unavailable.json(), { error: { code: "MAINTENANCE_UNAVAILABLE" } });
-});
-
-test("maintenance endpoint parks/repairs the heartbeat before the pass, even when the pass throws", async () => {
-  const order: string[] = [];
-  const response = await handleMaintenanceRequest(request(`Bearer ${secret}`), {
-    run: async () => { order.push("pass"); throw new Error("db down"); },
-    ensureHeartbeat: async () => { order.push("heartbeat"); return null; },
-  }, secret);
-  assert.equal(response.status, 503);
-  assert.deepEqual(order, ["heartbeat", "pass"]);
+  const body = await unavailable.text();
+  assert.deepEqual(JSON.parse(body), { error: { code: "MAINTENANCE_UNAVAILABLE" } });
+  assert.ok(!body.includes("token=abc"));
 });

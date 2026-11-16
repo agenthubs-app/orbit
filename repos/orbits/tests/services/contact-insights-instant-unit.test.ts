@@ -20,13 +20,6 @@ function deps(overrides: Partial<InstantInsightDeps> = {}): InstantInsightDeps {
   } as InstantInsightDeps;
 }
 
-test("the instant executor bootstraps the heartbeat once at the end; a failing bootstrap never changes the result", async () => {
-  let calls = 0;
-  const summary = await runInstantInsightGeneration(deps({ bootstrapHeartbeat: async () => { calls += 1; throw new Error("queue offline"); } }), { actorId: "a", coalesceMs: 0 });
-  assert.equal(calls, 1);
-  assert.deepEqual([summary.batches, summary.callsResponded], [0, 0]);
-});
-
 test("the executor waits the coalescing window before claiming (consecutive confirmations share a batch)", async () => {
   const order: string[] = [];
   await runInstantInsightGeneration(deps({

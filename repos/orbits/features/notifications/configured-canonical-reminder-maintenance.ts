@@ -15,7 +15,9 @@ import { createReminderPlanRepository } from "./reminder-plan-repository";
 import { createReminderPlanService } from "./reminder-plan-service";
 import {
   canonicalReminderActorLockKey,
+  createConfiguredCanonicalReminderWakePublisher,
   repairCanonicalReminderWakes,
+  scheduleUpcomingCanonicalReminderWakes,
   type RepairCanonicalReminderWakesResult,
   type CanonicalReminderWakePublisher,
   type CanonicalReminderWakeRuntime,
@@ -205,6 +207,14 @@ export function createConfiguredCanonicalReminderMaintenanceTask({
         wakePublishFailed: 0,
         wakeContinuation: 1,
       }));
+      // Due-now work is handled above; this queues what falls due before the next hourly pass so it fires on time.
+      const scheduleSummary: Record<string, number> = await scheduleUpcomingCanonicalReminderWakes({
+        runtime: configured,
+        publisher: configured.publisher ?? createConfiguredCanonicalReminderWakePublisher(env ?? process.env),
+        now: wakeRuntime.now(),
+        deadline: context.deadline,
+        clock: context.now,
+      }).catch(() => ({ wakeScheduled: 0, wakeScheduleFailed: 1 }));
       const legacyResult = await createCanonicalReminderMaintenanceTask({
         workerId, maxActors: 25, maxPlansPerActor: 10, now: context.now,
         actorScanner: {
@@ -219,13 +229,14 @@ export function createConfiguredCanonicalReminderMaintenanceTask({
         dispatcher: { dispatchDueForActor: ({ actorId, now }) => dispatchActor({...configured,inboxProjection}, actorId, now) },
       }).run(context);
       const projectionSummary: Record<string, number> = projectionEnabled?await runInboxProjectionPass({...configured,enabled:true,now:wakeRuntime.now,deadline:context.deadline,clock:context.now,limit:25}):{};
-      const sourceFailures = (windowSummary.windowFailed ?? 0) + (projectionSummary.projectionFailed ?? 0);
-      const wakeSummary: Record<string, number> = { ...wakeResult,...projectionSummary,...windowSummary, failed: wakeResult.failed + sourceFailures };
+      const sourceFailures = (windowSummary.windowFailed ?? 0) + (projectionSummary.projectionFailed ?? 0) + (scheduleSummary.wakeScheduleFailed ?? 0);
+      const wakeSummary: Record<string, number> = { ...wakeResult,...projectionSummary,...windowSummary,...scheduleSummary, failed: wakeResult.failed + sourceFailures };
       if ("skipped" in legacyResult) return wakeSummary;
       return {
         ...legacyResult,
         ...projectionSummary,
         ...windowSummary,
+        ...scheduleSummary,
         claimed: legacyResult.claimed + wakeResult.claimed,
         inAppDelivered: legacyResult.inAppDelivered + wakeResult.inAppDelivered,
         failed: legacyResult.failed + wakeResult.failed + sourceFailures,
@@ -237,4 +248,15 @@ export function createConfiguredCanonicalReminderMaintenanceTask({
       };
     },
   };
+}
+
+/**
+ * After a queued wake delivers a reminder, project it into the inbox right away instead of waiting for the next
+ * hourly pass. Bounded and best-effort: whatever is left is picked up by the maintenance pass.
+ */
+export async function projectConfiguredReminderInbox(env: Record<string, string | undefined> = process.env): Promise<void> {
+  if (env.ORBIT_CANONICAL_INBOX_PROJECTION !== '1') return;
+  const runtime = createConfiguredTransactionalPostgresRuntime({ max: 2 });
+  if (!runtime) return;
+  await runInboxProjectionPass({ client: runtime.client, workspaceId: runtime.workspaceId, enabled: true, limit: 5 });
 }

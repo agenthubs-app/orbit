@@ -26,7 +26,6 @@ test("sessionless Cron reaches its secret guard; missing and wrong secrets do no
       runs++;
       return { startedAt: new Date(0).toISOString(), durationMs: 0, budgetMs: 1000, ok: 0, failed: 0, skipped: 0, tasks: [] };
     },
-    ensureHeartbeat: async () => null,
   };
   for (const auth of [undefined, "Bearer incorrect", `Bearer ${secret}`]) {
     const request = new NextRequest("https://test/api/internal/maintenance", {
