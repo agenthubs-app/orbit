@@ -119,6 +119,58 @@ test("two people named 小林: one question for all three parts, no answer and n
   assert.ok(model.calls.length <= 4);
 });
 
+test("stab1 shape: the memo part depends on the read and the to-do part names nobody — still no card before the person is picked", async () => {
+  const records = recordAccessOf(world((list) => list.push(contact(ACTOR, "contact:c18", "小林美咲", { organization: "青叶设计", role: "设计师" }))));
+  const cards = cardsOver(records);
+  const understand = json({
+    language: "zh",
+    parts: [
+      part({ dataSources: ["orbit_records"], localId: "p1", objectClues: [{ entity: "contact", text: "小林" }], requiredCapabilities: ["view.recentInteraction"], sourceQuote: "查上次和小林聊了什么" }),
+      part({ deliverable: "change", localId: "p2", objectClues: [{ entity: "todo", text: "报价待办" }], requiredCapabilities: ["todo.update"], sourceQuote: "把报价待办改到周五" }),
+      part({ deliverable: "change", dependsOn: ["p1"], localId: "p3", objectClues: [{ entity: "contact", text: "他" }], requiredCapabilities: ["memo.create"], sourceQuote: "再记下他今天来过电话" }),
+    ],
+    plainChat: false,
+  });
+  const propose = json({ operations: [
+    { dateText: "周五", dependsOn: [], entity: "todo", localId: "w1", partId: "p2", selector: { clues: ["报价待办"] }, verb: "update" },
+    { channel: "phone", dateText: "今天", dependsOn: [], direction: "incoming", entity: "memo", fields: [{ name: "body", valueText: "他今天来过电话" }], localId: "w2", partId: "p3", relations: [{ clue: "他", entity: "contact", role: "actual_contact" }], verb: "create" },
+  ] });
+  const model = deepseekStub(byNode({ answer: answerXL, propose: () => propose, understand: () => understand }));
+  const kit = graphKit(model.fetchImplementation, { now: NOW, records });
+  kit.deps.cards = cards.access;
+  const input = kit.input(SENTENCE);
+  const first = await runAgentGraph(kit.deps, input);
+  assert.equal(first.actionPreview, null, "no card while the person is being asked");
+  assert.equal(first.clarifications.length, 1);
+  assert.doesNotMatch(first.text, /要等/u, "no 'has to wait' line for the parts that go on with the question");
+  const option = first.clarifications[0].options.find((item) => item.ref?.id === "contact:c17")!;
+  const resumed = await resumeAgentGraph(kit.deps, input, { clarificationId: first.clarifications[0].clarificationId, kind: "select", optionId: option.optionId });
+  assert.deepEqual(resumed.actionPreview?.operations.map((op) => op.capability), ["todo.update", "memo.create"]);
+  assert.match(resumed.text, /实施费单列/u);
+});
+
+test("stab1 shape (AE-XL-011): \"log that Emily called me\" tagged attendance.create still becomes an interaction memo; other writes stay not done", async () => {
+  const records = recordAccessOf(world((list) => list.push(contact(ACTOR, "contact:c40", "Emily Carter", { organization: "Harbor Analytics" }))));
+  const cards = cardsOver(records);
+  const message = "Log that Emily called me today. She said she's moving to the Tokyo office in January.";
+  const model = deepseekStub(byNode({
+    answer: () => json({ segments: [{ partId: "p2", text: "That's a big move." }] }),
+    propose: (call) => {
+      assert.match(call.user, /capabilities: memo\.create/u, "the second layer may make it a memo");
+      return json({ operations: [{ channel: "phone", dateText: "today", dependsOn: [], direction: "incoming", entity: "memo", fields: [{ name: "body", valueText: "Emily called me today. She said she's moving to the Tokyo office in January." }], localId: "w1", partId: "p1", relations: [{ clue: "Emily", entity: "contact", role: "actual_contact" }], verb: "create" }] });
+    },
+    understand: () => json({ language: "en", parts: [
+      part({ deliverable: "change", localId: "p1", objectClues: [{ entity: "contact", text: "Emily" }], requiredCapabilities: ["contact.read", "attendance.create"], sourceQuote: "Log that Emily called me today." }),
+      part({ clarity: "statement", localId: "p2", sourceQuote: "She said she's moving to the Tokyo office in January." }),
+    ], plainChat: false }),
+  }));
+  const kit = graphKit(model.fetchImplementation, { now: NOW, records });
+  kit.deps.cards = cards.access;
+  const result = await runAgentGraph(kit.deps, kit.input(message, { locale: "en" }));
+  assert.deepEqual(result.actionPreview?.operations.map((op) => op.capability), ["memo.create"]);
+  assert.match(result.actionPreview!.operations[0].text, /^New interaction note "Emily called me today": with Emily Carter, Sun, Nov 15, they called$/u);
+});
+
 test("two quote to-dos: the answer is delivered, only the to-do is asked; the pick is honoured", async () => {
   const records = recordAccessOf(world((list) => list.push(todo(ACTOR, "task:t43", "报价单内部审批", { plannedDate: "2026-11-17", relatedContactId: "contact:c17" }))));
   const cards = cardsOver(records);
@@ -284,6 +336,31 @@ test("typed agreement after a closed card: code's sentence only, no model call, 
   assert.equal(result.modelCalled, false);
   assert.match(result.text, /^先ほどのカードは却下済みのため、実行できません。/u);
   assert.doesNotMatch(result.text, /進めます/u);
+});
+
+test("two people of the full name, only a memo: ask with company and role, only the two of that name; the card names the one picked with it", async () => {
+  const records = recordAccessOf(world((list) => {
+    list.push(contact(ACTOR, "contact:lc01", "张伟", { organization: "曜石半导体", role: "工艺整合总监" }));
+    list.push(contact(ACTOR, "contact:lc02", "张伟", { organization: "岚图机器人", role: "人力资源总监" }));
+    list.push(contact(ACTOR, "contact:lc03", "张伟东", { organization: "别家" }));
+    list.push(contact(ACTOR, "contact:lc04", "张薇", { organization: "别家" }));
+  }));
+  const cards = cardsOver(records);
+  const message = "记一下：张伟今天来过电话。";
+  const model = deepseekStub(byNode({
+    propose: () => json({ operations: [{ channel: "phone", dateText: "今天", dependsOn: [], direction: "incoming", entity: "memo", fields: [{ name: "body", valueText: "张伟今天来过电话" }], localId: "w1", partId: "p1", relations: [{ clue: "张伟", entity: "contact", role: "actual_contact" }], verb: "create" }] }),
+    understand: () => json({ parts: [part({ deliverable: "change", objectClues: [{ entity: "contact", text: "张伟" }], requiredCapabilities: ["memo.create"], sourceQuote: "记一下：张伟今天来过电话。" })], plainChat: false }),
+  }));
+  const kit = graphKit(model.fetchImplementation, { now: NOW, records });
+  kit.deps.cards = cards.access;
+  const input = kit.input(message);
+  const first = await runAgentGraph(kit.deps, input);
+  assert.equal(first.actionPreview, null, "no card before the person is picked");
+  assert.deepEqual(first.clarifications[0].options.map((option) => option.label).sort(), ["张伟（岚图机器人 · 人力资源总监）", "张伟（曜石半导体 · 工艺整合总监）"]);
+  const pick = first.clarifications[0].options.find((option) => option.ref?.id === "contact:lc02")!;
+  const resumed = await resumeAgentGraph(kit.deps, input, { clarificationId: first.clarifications[0].clarificationId, kind: "select", optionId: pick.optionId });
+  assert.match(resumed.actionPreview!.operations[0].text, /实际往来对象 张伟（岚图机器人 · 人力资源总监）/u);
+  assert.deepEqual(((resumed.actionPreview!.operations[0].after as Record<string, unknown>).interaction as { actualContactIds: string[] }).actualContactIds, ["contact:lc02"]);
 });
 
 test("a title that holds the person's name is found by its own words (\"约山本吃饭\"), among the person's to-dos", async () => {

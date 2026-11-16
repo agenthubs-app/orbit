@@ -107,7 +107,7 @@ export function contactKindOf(text: string): { channel?: "phone" | "meeting" | "
   return { ...(channel ? { channel } : {}), ...(direction ? { direction } : {}) };
 }
 
-type PersonResult = { kind: "found"; id: string; name: string } | { kind: "ask"; clue: string; candidates: Candidate[] } | { kind: "shares"; with: string } | { kind: "none" } | { kind: "missing" } | { kind: "failed" };
+type PersonResult = { kind: "found"; id: string; name: string; detail?: string } | { kind: "ask"; clue: string; candidates: Candidate[] } | { kind: "shares"; with: string } | { kind: "none" } | { kind: "missing" } | { kind: "failed" };
 
 async function resolvePerson(ctx: ResolveContext, part: GraphPart, write: PartWrite, clue: { quote: [number, number] | null; text: string }): Promise<PersonResult> {
   // A clue the first layer bound (a handle of the context, an @ reference, a click).
@@ -135,7 +135,7 @@ async function resolvePerson(ctx: ResolveContext, part: GraphPart, write: PartWr
   if (matches.length === 1) return { id: matches[0].id, kind: "found", name: matches[0].name };
   // Several of the name and the user picked one of them in this request's question.
   const chosen = picked ? matches.find((match) => match.id === picked.id) : undefined;
-  if (chosen) return { id: chosen.id, kind: "found", name: chosen.name };
+  if (chosen) return { id: chosen.id, kind: "found", name: chosen.name, ...(chosen.detail ? { detail: chosen.detail } : {}) };
   const ids = matches.map((match) => match.id).sort();
   for (const [partId, asked] of ctx.asked) {
     if (partId !== part.localId && asked.length === ids.length && [...asked].sort().every((id, index) => id === ids[index])) return { kind: "shares", with: partId };
@@ -155,7 +155,7 @@ function whenText(todo: TodoView, locale: CardLocale, timeZone: string): string 
 
 type TodoResult = { kind: "found"; todo: TodoView } | { kind: "ask"; clue: string; candidates: Candidate[] } | { kind: "none"; words: string } | { kind: "failed" };
 
-async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrite, intent: StoredIntent, personId: string | null, personWords: string[]): Promise<TodoResult> {
+async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrite, intent: StoredIntent, personId: string | null, personWords: string[], inherited = false): Promise<TodoResult> {
   if (!ctx.records || !ctx.scope) return { kind: "failed" };
   const readOne = async (id: string) => (await ctx.records!.reader.read("todo", ctx.scope!, { id })).items[0] ?? null;
   try {
@@ -191,10 +191,15 @@ async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrit
     if (!searches.length && !personId) return { kind: "none", words: said };
     let found: TodoView[] = [];
     let search: string | undefined;
-    for (const text of searches.length ? searches : [undefined]) {
-      const result = await ctx.records.reader.read("todo", ctx.scope, { limit: 10, status: "open", ...(personId ? { contactId: personId } : {}), ...(text ? { text } : {}) });
-      found = result.items.map(todoOf);
-      search = text;
+    // A person only inherited from the message narrows the search; when none of theirs matches, the words alone decide.
+    const owners = inherited && searches.length ? [personId, null] : [personId];
+    for (const owner of owners) {
+      for (const text of searches.length ? searches : [undefined]) {
+        const result = await ctx.records.reader.read("todo", ctx.scope, { limit: 10, status: "open", ...(owner ? { contactId: owner } : {}), ...(text ? { text } : {}) });
+        found = result.items.map(todoOf);
+        search = text;
+        if (found.length) break;
+      }
       if (found.length) break;
     }
     emitTrace({ found: found.map((item) => item.id), partId: part.localId, search: search ?? null, tried: searches, type: "propose.todo_lookup", withPerson: Boolean(personId) });
@@ -222,11 +227,11 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
     const relationClues = intent.relations.map((relation) => ({ quote: relation.quote, role: relation.role, text: words(ctx.message, relation.quote) }));
     const refClues = part.refs.filter((ref) => ref.entity === "contact").map((ref) => ({ quote: ref.quote ?? null, role: (intent.capability === "memo.create" ? "actual_contact" : "about") as StoredIntent["relations"][number]["role"], text: words(ctx.message, ref.quote) || (ref.recordId ? ctx.nameOf(ref.recordId) ?? "" : "") }));
     const clues = relationClues.length ? relationClues : refClues.filter((clue) => clue.text || clue.quote === null);
-    const people: { id: string; name: string; role: StoredIntent["relations"][number]["role"]; text: string }[] = [];
+    const people: { id: string; name: string; role: StoredIntent["relations"][number]["role"]; text: string; detail?: string }[] = [];
     for (const clue of clues) {
       const found = await resolvePerson(ctx, part, write, { quote: clue.quote, text: clue.text });
       if (found.kind === "found") {
-        if (!people.some((person) => person.id === found.id)) people.push({ id: found.id, name: found.name, role: clue.role, text: clue.text });
+        if (!people.some((person) => person.id === found.id)) people.push({ id: found.id, name: found.name, role: clue.role, text: clue.text, ...(found.detail ? { detail: found.detail } : {}) });
         continue;
       }
       if (clue.role === "mentioned") continue; // Only mentioned and not found or not certain: not linked, never guessed.
@@ -240,7 +245,9 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
     const date = dateWords ? resolveSaidDate(dateWords, ctx.asOf, ctx.timeZone) : null;
     if (intent.capability === "todo.update") {
       const person = people.find((item) => item.role !== "mentioned") ?? null;
-      const todo = await resolveTodo(ctx, part, write, intent, person?.id ?? null, people.map((item) => item.text));
+      // No person named for the to-do: the one this message is about (picked in its question, or named before it).
+      const inheritedId = person ? null : write.picks.contact ?? [...ctx.people].filter((known) => known.at <= part.quote[0]).sort((left, right) => right.at - left.at)[0]?.id ?? null;
+      const todo = await resolveTodo(ctx, part, write, intent, person?.id ?? inheritedId, people.map((item) => item.text), Boolean(inheritedId));
       if (todo.kind === "failed") return stop("read_failed", failedLine);
       if (todo.kind === "ask") return { kind: "ask", question: { candidates: todo.candidates, clue: todo.clue, type: "todo" } };
       if (todo.kind === "none") return stop("object_not_found", WRITE_WORDS.notFoundTodo(language, quote, todo.words || null, person?.name || null));
@@ -285,7 +292,8 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
     const actualPeople = actual.length ? actual : people.filter((item) => item.role !== "mentioned").slice(0, 1);
     const day = date?.day ?? resolveSaidDate(body, ctx.asOf, ctx.timeZone)?.day ?? localDayOf(ctx.asOf, ctx.timeZone);
     const contactIds = [...new Set(people.map((item) => item.id))];
-    const names = Object.fromEntries(people.map((item) => [item.id, item.name || item.text]));
+    // A person picked among several of the name is named on the card with what told them apart.
+    const names = Object.fromEntries(people.map((item) => [item.id, item.detail ? (language === "en" ? `${item.name || item.text} (${item.detail})` : `${item.name || item.text}（${item.detail}）`) : item.name || item.text]));
     const title = body.split(/(?<=[。.!！？?])\s*/u)[0].replace(/[。.!！]+$/u, "").slice(0, 40) || body.slice(0, 40);
     ops.push({
       capability: "memo.create",

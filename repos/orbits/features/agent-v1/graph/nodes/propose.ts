@@ -20,7 +20,7 @@ import { formatWhen } from "../../answer/materials";
 import { handoffWords, type ReplyLanguage } from "../../route/handoff-copy";
 import { cardLineOf, WRITE_WORDS } from "../../propose/copy";
 import { proposeRepairText, proposeSystemPrompt, proposeUserText, PROPOSE_PROMPT_VERSION } from "../../propose/prompt";
-import { resolvePartIntents, waitsForPrevious, type PartWrite, type WriteOutcome, type WriteQuestion } from "../../propose/resolve";
+import { contactKindOf, resolvePartIntents, waitsForPrevious, type PartWrite, type WriteOutcome, type WriteQuestion } from "../../propose/resolve";
 import { checkProposeOutput, PROPOSED_CAPABILITIES } from "../../propose/validate";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
 import type { GraphNode, NodeScope } from "../deps";
@@ -29,6 +29,20 @@ import { nameOf as boundName, setIdOf } from "./clarify";
 
 const writesOf = (part: GraphPart) => part.capabilities.filter((capability) => capabilityKind(capability) === "write");
 const supported = (capability: Capability) => (PROPOSED_CAPABILITIES as readonly string[]).includes(capability);
+
+/** "记下…来过电话", "log that Emily called me", "電話があったことを記録": words that ask to record a contact that happened. */
+const RECORD_WORDS = /(记|記録|記入|メモ|写下|存一下|\blog\b|\bnote\b|\brecord\b|\bjot\b)/iu;
+
+/**
+ * stab1 (AE-XL-011): the operations a write part may become. Which record kind a write is, is the second
+ * layer's call (设计稿 §3.2); a part that asks to record a contact that happened (code reads it from the words)
+ * may become memo.create even when the first layer named another write (attendance.create, contact.update).
+ */
+export function proposableOf(part: GraphPart, quote: string): string[] {
+  const named = writesOf(part).filter(supported) as string[];
+  if (named.includes("memo.create") || !writesOf(part).length) return named;
+  return contactKindOf(quote).channel && RECORD_WORDS.test(quote) ? [...named, "memo.create"] : named;
+}
 
 /** Parts this pass proposes for. */
 export function proposeDue(state: AgentGraphState): boolean {
@@ -93,7 +107,9 @@ export function proposeNode(scope: NodeScope): GraphNode {
     // 0. A write that needs the result of another kind of part not done this round waits for it (route skips
     //    write parts when it settles dependencies; items waiting for other items go on the card instead).
     const byId = new Map(parts.map((part) => [part.localId, part]));
-    const blockedBy = (part: GraphPart) => part.dependsOn.map((id) => byId.get(id)).find((other) => other && other.route !== "propose_write" && other.status !== "answered");
+    // A prerequisite waiting for the user's answer to a question does not block: the card waits for that answer
+    // anyway (below), and the click resumes every write part (AE-XL-002).
+    const blockedBy = (part: GraphPart) => part.dependsOn.map((id) => byId.get(id)).find((other) => other && other.route !== "propose_write" && other.status !== "answered" && other.status !== "awaiting_clarification");
     // 1. Writes this version does not do in the conversation.
     const work: GraphPart[] = [];
     for (const part of due) {
@@ -103,7 +119,7 @@ export function proposeNode(scope: NodeScope): GraphNode {
         part.waitReason = "dependency_pending";
         continue;
       }
-      if (!writes.some(supported)) {
+      if (!proposableOf(part, quoteOf(part)).length) {
         // Accepting an offered alternative (a scheduled check) keeps its own sentence (deliver, AG03).
         if (part.continues?.kind === "alternative") {
           settle(part, "unfinished", "not_in_this_version", null);
@@ -123,10 +139,10 @@ export function proposeNode(scope: NodeScope): GraphNode {
       const zone = state.timeZone || "Asia/Tokyo";
       const user = proposeUserText({
         message,
-        parts: fresh.map((part) => ({ capabilities: writesOf(part).filter(supported), goal: run.understood?.parts.find((item) => item.localId === part.localId)?.goal ?? quoteOf(part), partId: part.localId, quote: quoteOf(part) })),
+        parts: fresh.map((part) => ({ capabilities: proposableOf(part, quoteOf(part)), goal: run.understood?.parts.find((item) => item.localId === part.localId)?.goal ?? quoteOf(part), partId: part.localId, quote: quoteOf(part) })),
         today: `${formatWhen(state.asOf || deps.now(), zone, false)}, ${zone}`,
       });
-      const validation = { message, parts: new Map(fresh.map((part) => [part.localId, writesOf(part).filter(supported) as string[]])) };
+      const validation = { message, parts: new Map(fresh.map((part) => [part.localId, proposableOf(part, quoteOf(part))])) };
       emitTrace({ parts: fresh.map((part) => part.localId), promptVersion: PROPOSE_PROMPT_VERSION, type: "propose.prompt" });
       const system = proposeSystemPrompt();
       let result = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "propose", purpose: "first", requestId: input.requestId, system, user });
@@ -205,12 +221,15 @@ export function proposeNode(scope: NodeScope): GraphNode {
         part.waitReason = "object_ambiguous";
       }
     }
-    const waiting = active.some((part) => part.status === "awaiting_clarification" || part.status === "waiting_dependency");
+    // AE-XL-002: while any part of the request waits for the user's answer (a read asking which person, too),
+    // no card is frozen — the answer may change what the card says; the click resumes every write part.
+    const askingElsewhere = parts.find((part) => !active.includes(part) && part.status === "awaiting_clarification");
+    const waiting = Boolean(askingElsewhere) || active.some((part) => part.status === "awaiting_clarification" || part.status === "waiting_dependency");
     const ready = active.filter((part) => outcomes.get(part.localId)?.kind === "ready");
     if (waiting) {
       // One card per request: the items already settled wait for the open question and go on with it.
       for (const part of ready) {
-        part.write!.waitsFor = firstAsking ?? active.find((other) => other.write?.waitsFor)?.write?.waitsFor ?? null;
+        part.write!.waitsFor = firstAsking ?? active.find((other) => other.write?.waitsFor)?.write?.waitsFor ?? askingElsewhere?.localId ?? null;
         settle(part, "waiting_dependency", "card_waits", null);
         part.waitReason = "dependency_pending";
       }
