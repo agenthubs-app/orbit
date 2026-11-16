@@ -22,10 +22,12 @@ export async function refreshCardInDocument(input: { store: AgentEntryStore; act
   const answer = record.document.answer;
   const languages = input.locale ? [cardLocale(input.locale)] : (["zh", "ja", "en"] as const);
   let text = answer?.text ?? null;
+  let cardLine: string | undefined;
   for (const language of languages) {
     const oldLine = cardLineOf(previous, language);
     if (text && text.includes(oldLine)) {
-      text = text.replace(oldLine, cardLineOf(input.updated, language));
+      cardLine = cardLineOf(input.updated, language);
+      text = text.replace(oldLine, cardLine);
       break;
     }
   }
@@ -34,7 +36,8 @@ export async function refreshCardInDocument(input: { store: AgentEntryStore; act
     actorId: input.actorId,
     amendment: {
       actionPreview: input.updated,
-      ...(answer && text !== null ? { answer: { ...answer, text } } : {}),
+      // AG07: the answer's card line follows the new revision, so clients that show the card still find it.
+      ...(answer && text !== null ? { answer: { ...answer, text, ...(cardLine ? { cardLine } : {}) } } : {}),
       clarifications: record.document.clarifications ?? [],
       // A part whose item was taken off the card no longer waits for it.
       partResults: record.document.partResults.map((item) => (item.status === "awaiting_confirmation" && item.operationId && !input.updated.operations.some((op) => op.operationId === item.operationId) ? { ...item, operationId: undefined, reason: "removed_from_card", status: "unfinished" as const } : item)),

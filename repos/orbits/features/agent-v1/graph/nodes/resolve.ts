@@ -19,6 +19,7 @@
  * Record content stays in the run (the answer step's materials); the checkpoint gets refs, versions,
  * gaps and counts only.
  */
+import { readSourceOf } from "../../answer/basis";
 import { gapWords } from "../../answer/gap-copy";
 import { materialOf } from "../../answer/materials";
 import type { GapReason, Material } from "../../answer/schema";
@@ -276,6 +277,17 @@ export function resolveNode(scope: NodeScope): GraphNode {
         continue;
       }
       const accountScope = records.scope(input.actorId);
+
+      // AG07 (AE-CTX-003): a clue bound to a record of another kind (the first layer gave a memo clue the contact's
+      // handle) does not point at that record; it is read as an unbound clue of its own kind, never as "unreadable".
+      for (const ref of part.refs) {
+        if (!ref.recordId) continue;
+        const known = recordKindOf(handleOf(ref.recordId)?.type ?? run.references.find((item) => item.id === ref.recordId)?.type ?? ref.recordId);
+        const wanted = recordKindOf(ref.entity);
+        if (!known || !wanted || known === wanted) continue;
+        emitTrace({ clue: ref.entity, partId: part.localId, recordId: ref.recordId, recordKind: known, type: "resolve.ref_kind_mismatch" });
+        ref.recordId = null;
+      }
 
       // 1. A record the part points at that cannot be opened: say so, read nothing else for it.
       const closed = part.refs.find((ref) => ref.recordId && (handleOf(ref.recordId)?.accessible === false || run.references.some((item) => item.id === ref.recordId && item.accessible === false)));
@@ -630,6 +642,11 @@ export function resolveNode(scope: NodeScope): GraphNode {
         run.materials.set(part.localId, materials);
         run.readNotes.set(part.localId, read.notes);
         for (const view of read.views) if (!run.readNames.has(view.id)) run.readNames.set(view.id, { name: nameOf(view, zone), type: view.kind });
+        // AG07: what the answer's links need of each record read (the basis line is written from the citations).
+        for (const view of read.views) {
+          const source = readSourceOf(view, zone);
+          if (source) run.readSources.set(view.ref, source);
+        }
         finish("answered", null);
       } else if (read.gaps.has("service_error")) {
         finish("unfinished", "read_failed");

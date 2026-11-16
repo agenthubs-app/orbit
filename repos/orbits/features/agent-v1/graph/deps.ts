@@ -1,7 +1,7 @@
 import type { BaseCheckpointSaver } from "@langchain/langgraph";
 
 import type { AiPageContextContract } from "../../../shared/contract/ai-sessions";
-import type { AgentReferenceContract } from "../../../shared/contract/agent-v1";
+import type { AgentReferenceContract, AgentRunStage } from "../../../shared/contract/agent-v1";
 import type { RecordSource } from "../domains/source";
 import type { DomainReader, DomainScope } from "../domains/types";
 import type { ContextMessage } from "../context/build";
@@ -56,6 +56,8 @@ export interface AgentGraphDependencies {
   timeZone?: string;
   /** The round's model call limit (models/main.ts modelCallLimit by default). */
   modelCallLimit?: number;
+  /** AG07: told when the round reaches a step a client shows as progress (reading, composing). */
+  onStage?: (stage: AgentRunStage) => void;
 }
 
 export interface AgentGraphInput {

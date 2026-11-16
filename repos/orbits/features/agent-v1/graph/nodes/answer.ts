@@ -5,6 +5,7 @@
  * the discussion parts (one repair if its output is unusable and the round has not repaired yet);
  * if the round's budget is used up they stay unfinished, saying why.
  */
+import { localizeAnswerDates } from "../../answer/dates";
 import { gapWords } from "../../answer/gap-copy";
 import { formatWhen } from "../../answer/materials";
 import { profileCheckNote, profileCheckOf, profileLine, verifyProfileUpdates, type ProfileUpdate } from "../../answer/profile-check";
@@ -128,7 +129,7 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   for (const part of due) {
     const segment = verification?.segments.get(part.localId);
     if (segment) {
-      run.answers.set(part.localId, segment.text);
+      run.answers.set(part.localId, localizeAnswerDates(segment.text, state.language));
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref);
       if (profileParts.has(part.localId)) {
         const updates = checked?.profiles?.get(part.localId);
@@ -174,7 +175,7 @@ export function answerNode(scope: NodeScope): GraphNode {
     if (state.plainChat && run.plainReply && parts.every((part) => part.route === "answer")) {
       const reply = withoutCardTalk(run.plainReply, due[0].localId, dropCardTalk);
       if (reply) {
-        run.answers.set(due[0].localId, reply);
+        run.answers.set(due[0].localId, localizeAnswerDates(reply, state.language));
         emitTrace({ note: "plain chat: the first layer's reply is shown, no second call", parts: due.map((part) => part.localId), type: "answer.plain_reply" });
         return {};
       }
@@ -202,7 +203,7 @@ export function answerNode(scope: NodeScope): GraphNode {
     }
     for (const part of due) {
       if (checked && checked.ok === true) {
-        run.answers.set(part.localId, checked.segments.get(part.localId)!);
+        run.answers.set(part.localId, localizeAnswerDates(checked.segments.get(part.localId)!, state.language));
         continue;
       }
       const budgetOut = result.ok === false && result.reason === "budget";

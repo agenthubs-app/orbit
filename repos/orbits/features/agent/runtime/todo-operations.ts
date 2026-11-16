@@ -7,6 +7,7 @@
  */
 import type { TaskItemDTO } from "../../tasks/contract";
 import type { TaskService } from "../../tasks/service";
+import type { AgentCardOperationDisplayContract } from "../../../shared/contract/agent-v1";
 import type { AgentActionOperationPayload } from "./contract";
 import type { AgentActionExecutor } from "./executor-registry";
 
@@ -140,6 +141,35 @@ export function todoOperationText(op: Pick<AgentActionOperationPayload, "capabil
   return words.update(title, changes);
 }
 
+const DISPLAY: Record<CardLocale, { record: (title: string) => string; label: Record<TodoField, string> }> = {
+  en: { label: { dueAt: "Due", plannedDate: "Planned date", title: "Title" }, record: (title) => `To-do "${title}"` },
+  ja: { label: { dueAt: "期限", plannedDate: "予定日", title: "タイトル" }, record: (title) => `タスク「${title}」` },
+  zh: { label: { dueAt: "截止时间", plannedDate: "计划日期", title: "标题" }, record: (title) => `待办「${title}」` },
+};
+
+/**
+ * AG07 (approved visual draft): how the card shows one to-do item — which record, and one row per field with
+ * its label and the value before and after, in the card's language. Frozen with the card; clients render it as is.
+ */
+export function todoOperationDisplay(op: Pick<AgentActionOperationPayload, "capability" | "before" | "after" | "shown">, locale: CardLocale, timeZone = process.env.ORBIT_DEFAULT_TIME_ZONE ?? "Asia/Tokyo"): AgentCardOperationDisplayContract {
+  const words = DISPLAY[locale];
+  const after = (op.after ?? {}) as Record<string, unknown>;
+  const plain = (field: TodoField, value: unknown) => (field === "title" ? (value === null || value === undefined || value === "" ? WORDS[locale].none : String(value)) : valueText(field, value, locale, timeZone));
+  if (op.capability === TODO_CREATE) {
+    return {
+      change: "create",
+      record: words.record(String(after.title ?? "")),
+      rows: TODO_FIELDS.filter((field) => field !== "title" && after[field]).map((field) => ({ after: plain(field, after[field]), field, label: words.label[field] })),
+    };
+  }
+  const before = (op.before ?? {}) as Record<string, unknown>;
+  return {
+    change: "update",
+    record: words.record(String((op.shown as Record<string, unknown> | undefined)?.title ?? "")),
+    rows: TODO_FIELDS.filter((field) => field in after).map((field) => ({ after: plain(field, after[field]), before: plain(field, before[field]), field, label: words.label[field] })),
+  };
+}
+
 export function todoCardTitle(operations: readonly Pick<AgentActionOperationPayload, "capability">[], locale: CardLocale): string {
   const words = WORDS[locale];
   if (operations.length !== 1) return words.cardMany(operations.length);
@@ -187,7 +217,7 @@ export async function prepareTodoOperation(input: {
       preconditions: { targetExists: false },
       preview: "",
     };
-    return { ...op, preview: todoOperationText(op, input.locale) };
+    return { ...op, display: todoOperationDisplay(op, input.locale), preview: todoOperationText(op, input.locale) };
   }
   const current = await input.reader.read(intent.targetId);
   if (!current) return null;
@@ -207,7 +237,7 @@ export async function prepareTodoOperation(input: {
     shown: { title: current.title },
     targetRef: { collection: "tasks", id: intent.targetId },
   };
-  return { ...op, preview: todoOperationText(op, input.locale) };
+  return { ...op, display: todoOperationDisplay(op, input.locale), preview: todoOperationText(op, input.locale) };
 }
 
 /** The intent an operation was frozen from (regeneration keeps it, 设计稿 §5.2). */

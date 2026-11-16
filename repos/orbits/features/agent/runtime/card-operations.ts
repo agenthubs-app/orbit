@@ -8,6 +8,7 @@
  * An intent carries its sub-goal (partId) and, when the user made one item wait for another (AE-XL-008),
  * the positions of the items it depends on; they become the frozen operations' `dependsOn`.
  */
+import type { AgentCardOperationDisplayContract } from "../../../shared/contract/agent-v1";
 import type { NoteInteractionContract } from "../../../shared/contract/notes";
 import type { AgentActionOperationPayload } from "./contract";
 import {
@@ -90,6 +91,34 @@ export function memoCreateText(set: MemoCreateSet, locale: CardLocale): string {
   return `新增往来笔记「${set.title}」：实际往来对象 ${actual.join("、")}，${when}，${how}${mentioned.length ? `；另关联 ${mentioned.join("、")}（只是提到）` : ""}`;
 }
 
+const MEMO_DISPLAY: Record<CardLocale, { record: (title: string) => string; with: string; day: string; how: string; also: string; mentioned: (names: string) => string; join: string }> = {
+  en: { also: "Also linked", day: "Date", how: "How", join: ", ", mentioned: (names) => `${names} (only mentioned)`, record: (title) => `Note "${title}"`, with: "With" },
+  ja: { also: "関連", day: "日付", how: "方法", join: "、", mentioned: (names) => `${names}（話に出ただけ）`, record: (title) => `メモ「${title}」`, with: "相手" },
+  zh: { also: "另关联", day: "日期", how: "方式", join: "、", mentioned: (names) => `${names}（只是提到）`, record: (title) => `笔记「${title}」`, with: "往来对象" },
+};
+
+/** AG07 (approved visual draft): how the card shows a new memo — the record, then who, which day, how, who is only mentioned. */
+export function memoCreateDisplay(set: MemoCreateSet, locale: CardLocale): AgentCardOperationDisplayContract {
+  const words = MEMO_DISPLAY[locale];
+  const nameOf = (id: string) => set.names[id] ?? id;
+  const interaction = set.interaction;
+  if (!interaction) return { change: "create", record: words.record(set.title), rows: [] };
+  const mentioned = set.contactIds.filter((id) => !interaction.actualContactIds.includes(id)).map(nameOf);
+  const rows: AgentCardOperationDisplayContract["rows"][number][] = [
+    { after: interaction.actualContactIds.map(nameOf).join(words.join), field: "interaction.actualContactIds", label: words.with },
+    { after: interaction.occurredOn ? dayText(interaction.occurredOn, locale) : interaction.occurredAt ?? "", field: interaction.occurredOn ? "interaction.occurredOn" : "interaction.occurredAt", label: words.day },
+    { after: CHANNEL_WORDS[locale][interaction.channel]?.[interaction.direction] ?? CHANNEL_WORDS[locale].other.mutual, field: "interaction.channel", label: words.how },
+  ];
+  if (mentioned.length) rows.push({ after: words.mentioned(mentioned.join(words.join)), field: "contactIds", label: words.also });
+  return { change: "create", record: words.record(set.title), rows };
+}
+
+const WAITS_NOTE: Record<CardLocale, (items: number[]) => string> = {
+  en: (items) => `Runs only after item ${items.join(" and ")} succeeds`,
+  ja: (items) => `${items.join("・")} 件目が成功してから実行`,
+  zh: (items) => `第 ${items.join("、")} 项成功后才执行`,
+};
+
 const WAITS: Record<CardLocale, (items: number[]) => string> = {
   en: (items) => ` (runs only after item ${items.join(" and ")} succeeds)`,
   ja: (items) => `（${items.join("・")} 件目が成功してから実行）`,
@@ -140,6 +169,7 @@ export async function prepareCardOperation(input: {
       // The executor writes these through the note service; extraction is suppressed (设计稿 §4).
       payload: { ...after, autoExtraction: "suppressed" },
       preconditions: { targetExists: false },
+      display: memoCreateDisplay(set, input.locale),
       preview: memoCreateText(set, input.locale),
       shown: { names: { ...set.names } },
     };
@@ -185,7 +215,7 @@ export async function buildCardOperationList(reader: TodoReader | null, input: {
       continue;
     }
     const positions = waits.map((item) => prepared.filter(Boolean).indexOf(item) + 1);
-    operations.push({ ...op, dependsOn: waits.map((item) => item.operationId), preview: `${op.preview}${WAITS[locale](positions)}` });
+    operations.push({ ...op, dependsOn: waits.map((item) => item.operationId), ...(op.display ? { display: { ...op.display, note: WAITS_NOTE[locale](positions) } } : {}), preview: `${op.preview}${WAITS[locale](positions)}` });
   }
   return { missing, operations };
 }

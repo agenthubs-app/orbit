@@ -148,6 +148,22 @@ export async function handleCardEdit(input: { runtime: AgentRuntimeService; acti
   return { body: { data: { card, edit: result }, success: true }, status: 200 };
 }
 
+/**
+ * AG07 (设计稿 §7): after a client synced its own edits, the card is looked at again. Not a decision: a value the card
+ * showed that changed re-freezes it as revision+1 (with the changed rows), which still needs a click; nothing is written.
+ */
+export async function handleCardRecheck(input: { runtime: AgentRuntimeService; actionId: string; now?: () => string; onCardRevised?: CardRevisedHook }): Promise<CardHttpResult> {
+  if (!input.runtime.recheckCard) return { body: failureBody("SERVICE_UNAVAILABLE", "Cards cannot be checked again here.", "UNSUPPORTED"), status: 503 };
+  const action = await input.runtime.getAction(input.actionId);
+  if (!action?.origin) return { body: failureBody("NOT_FOUND", "No card matches that id.", "CARD_NOT_FOUND"), status: 404 };
+  const result = await input.runtime.recheckCard({ actionId: input.actionId });
+  if (!result) return { body: failureBody("NOT_FOUND", "No card matches that id.", "CARD_NOT_FOUND"), status: 404 };
+  const card = await preview(input.runtime, input.actionId, input.now?.() ?? new Date().toISOString());
+  await notifyRevised(input.onCardRevised, action.revision ?? 1, card);
+  // A closed or expired card is not an error here: the client shows its latest state.
+  return { body: { data: { card, recheck: result }, success: true }, status: 200 };
+}
+
 export async function handleCardRegenerate(input: { runtime: AgentRuntimeService; actionId: string; now?: () => string; onCardRevised?: CardRevisedHook }): Promise<CardHttpResult> {
   if (!input.runtime.regenerateCard) return { body: failureBody("SERVICE_UNAVAILABLE", "Cards cannot be regenerated here.", "UNSUPPORTED"), status: 503 };
   const action = await input.runtime.getAction(input.actionId);

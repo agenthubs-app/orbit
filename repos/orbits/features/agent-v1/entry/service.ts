@@ -16,6 +16,8 @@ import { randomUUID } from "node:crypto";
 
 import type {
   AgentActionPreviewContract,
+  AgentAnswerBasisContract,
+  AgentRunStage,
   AgentPartResult,
   AgentCancelResultContract,
   AgentClarificationContract,
@@ -56,11 +58,17 @@ export interface AgentEntryExecuteInput {
   resume?: AgentPendingResume;
   /** AG04: the request's result document as delivered so far (the labels of its directions). */
   document?: AgentResultDocument;
+  /** AG07: the round reached a step a client shows as progress. */
+  onStage?: (stage: AgentRunStage) => void;
 }
 
 export interface AgentEntryExecuteResult {
   text: string;
   sourceRefs: readonly string[];
+  /** AG07: the answer's basis line and record links (code's, from sourceRefs). */
+  basis?: AgentAnswerBasisContract | null;
+  /** AG07: the part of `text` that stands for the card. */
+  cardLine?: string;
   /** AG02: the card of this round, frozen in the action ledger (never a direct write). */
   actionPreview?: AgentActionPreviewContract;
   /** AG03: one result per part the first layer found; without it the round is one part, p1. */
@@ -373,12 +381,19 @@ async function processRequest(deps: AgentEntryDependencies, actorId: string, rec
       });
     }
     const fetchImplementation = createStoppableFetch(controller.signal, () => emitTrace({ requestId: record.requestId, type: "entry.model_call_refused" }));
-    const execution = deps.execute({ actorId, fetchImplementation, history, input: record.input, requestId: record.requestId, sessionId: record.sessionId, signal: controller.signal, ...(resume ? { document: record.document, resume } : {}) });
+    // AG07: progress only (an event on the channel); a step reached after the round was stopped is not reported.
+    let lastStage: AgentRunStage | null = null;
+    const onStage = (stage: AgentRunStage) => {
+      if (stage === lastStage || controller.signal.aborted || !deps.store.markStage) return;
+      lastStage = stage;
+      void deps.store.markStage({ actorId, now: nowOf(deps), requestId: record.requestId, sessionId: record.sessionId, stage, workerId }).catch(() => undefined);
+    };
+    const execution = deps.execute({ actorId, fetchImplementation, history, input: record.input, onStage, requestId: record.requestId, sessionId: record.sessionId, signal: controller.signal, ...(resume ? { document: record.document, resume } : {}) });
     execution.catch(() => undefined);
     const result = await Promise.race([execution, stopped]);
     if (result !== "stopped") {
       outcome = {
-        answer: { sourceRefs: [...result.sourceRefs], text: result.text },
+        answer: { sourceRefs: [...result.sourceRefs], text: result.text, ...(result.basis ? { basis: result.basis } : {}), ...(result.cardLine ? { cardLine: result.cardLine } : {}) },
         partResults: result.partResults?.length ? [...result.partResults] : [result.actionPreview && (result.actionPreview.status === "awaiting_confirmation" || result.actionPreview.status === "deferred")
           ? { operationId: result.actionPreview.operations[0]?.operationId, partId: "p1", status: "awaiting_confirmation" }
           : { partId: "p1", status: "answered" }],

@@ -175,6 +175,8 @@ export function cardHashInput(card: {
       before: op.before ?? null,
       capability: op.capability ?? op.operationType,
       dependsOn: op.dependsOn ?? [],
+      // AG07: what the card shows of the item; absent on cards frozen before it, whose hash stays as it was.
+      ...(op.display ? { display: op.display } : {}),
       effects: op.effects ?? [],
       executorKey: op.executorKey,
       idempotencyKey: op.idempotencyKey,
@@ -535,6 +537,48 @@ export async function regenerateCard(deps: AgentCardDependencies, input: { actio
     return { message: messages.regenerated, outcome: "regenerated", revision: next.revision ?? 1 };
   }
   throw new Error(`Agent action ${input.actionId} kept changing while it was being regenerated.`);
+}
+
+export interface AgentRecheckResult {
+  outcome: "revised" | "unchanged" | "refused";
+  reason?: "CARD_CLOSED" | "CARD_EXPIRED";
+  message: string;
+  revision: number;
+  changes?: readonly AgentCardChange[];
+}
+
+/**
+ * agent-design AG07 (设计稿 §7 "同步后按最新数据重出差异", AE-UIX-006): a client that has just synced its own edits asks
+ * the server to look at a waiting card again. Not a decision and no business write: the values the card showed are
+ * read again (as at a click); when one changed, the card is frozen anew from the current data as revision+1 with the
+ * changed rows marked, and still needs a click. Nothing changed: the card stays as it is.
+ */
+export async function recheckCard(deps: AgentCardDependencies, input: { actionId: string }): Promise<AgentRecheckResult | null> {
+  const repository = requireCardRepository(deps.repository);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const action = await deps.repository.getAction(input.actionId);
+    if (!action) return null;
+    const now = deps.now();
+    const messages = cardMessages(action.locale);
+    const revision = action.revision ?? 1;
+    if (isPastExpiry(action, now) || action.status === "expired") return { message: messages.expired, outcome: "refused", reason: "CARD_EXPIRED", revision };
+    if (action.status !== "awaiting_confirmation" && action.status !== "deferred") return { message: messages.alreadyDecided, outcome: "refused", reason: "CARD_CLOSED", revision };
+    const changes: AgentCardChange[] = [];
+    for (const op of action.operations) {
+      if (!deps.reader) break;
+      const check = await checkTodoTarget(op, deps.reader);
+      for (const row of check.rows) changes.push({ operationId: op.operationId, ...row });
+    }
+    if (!changes.length) return { message: "", outcome: "unchanged", revision };
+    const next = { ...(await nextRevision(deps, action, "content_changed", now)), contentChanges: changes };
+    const committed = await repository.commitCardChange({ actionId: action.actionId, expect: { revision, statuses: [action.status], updatedAt: action.updatedAt }, next });
+    if (!committed.committed) continue;
+    await deps.afterChange?.(next);
+    emitCard(next, "content_changed");
+    emitTrace({ cardId: action.actionId, from: action.status, revision: next.revision ?? revision + 1, to: next.status, type: "card.state", via: "recheck" });
+    return { changes, message: messages.contentChanged, outcome: "revised", revision: next.revision ?? revision + 1 };
+  }
+  throw new Error(`Agent action ${input.actionId} kept changing while it was being checked again.`);
 }
 
 export interface AgentEditCardResult {

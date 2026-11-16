@@ -5,6 +5,7 @@
  * citation is not delivered (unfinished, with code's sentence). The result's sourceRefs are the
  * citations in the order the parts were said.
  */
+import { basisOf } from "../../answer/basis";
 import { gapWords } from "../../answer/gap-copy";
 import { emitTrace } from "../../observability/trace";
 import type { GraphNode, NodeScope } from "../deps";
@@ -16,6 +17,7 @@ export function verifyNode({ deps, input, run }: NodeScope): GraphNode {
     const cited = parts.filter((part) => part.cites?.length);
     if (!cited.length) {
       run.sourceRefs = [];
+      run.basis = null;
       return {};
     }
     const refs = [...new Set(cited.flatMap((part) => part.cites ?? []))];
@@ -45,7 +47,9 @@ export function verifyNode({ deps, input, run }: NodeScope): GraphNode {
     if (dropped.length) emitTrace({ dropped, note: "cited records that no longer open are not delivered", type: "verify.cites_dropped" });
     const ordered = [...parts].sort((left, right) => left.quote[0] - right.quote[0]);
     run.sourceRefs = [...new Set(ordered.flatMap((part) => part.cites ?? []))];
-    emitTrace({ sourceRefs: run.sourceRefs, type: "verify.done" });
+    // AG07: the basis line and one link per cited record that was read in this request.
+    run.basis = basisOf(run.sourceRefs, run.readSources, state.language);
+    emitTrace({ basis: run.basis ? { links: run.basis.links.length, text: run.basis.text } : null, sourceRefs: run.sourceRefs, type: "verify.done" });
     return { parts };
   };
 }

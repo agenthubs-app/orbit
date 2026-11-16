@@ -7,7 +7,7 @@
 import type { Material } from "./schema";
 import { materialsText } from "./materials";
 
-export const GROUNDED_ANSWER_PROMPT_VERSION = "answer-grounded@ag05.4";
+export const GROUNDED_ANSWER_PROMPT_VERSION = "answer-grounded@ag07.1";
 
 export function groundedAnswerSystemPrompt(language: "zh" | "ja" | "en"): string {
   const name = language === "zh" ? "Chinese" : language === "ja" ? "Japanese" : "English";
@@ -24,7 +24,8 @@ export function groundedAnswerSystemPrompt(language: "zh" | "ja" | "en"): string
     "- Just answer. Do not explain how records are kept (notes, interaction records, profiles, materials) and do not repeat the notes below an item; code adds what was missing or unreadable after your answer.",
     "- When the notes under an item say a part of the records could not be read, or only some of them were looked at, do not present what you have as all of it and do not guess the rest.",
     "- If the materials do not contain the answer, say what they do show, briefly; do not invent it.",
-    "- Dates: today and the time zone are given below; say dates as the user would (e.g. 11月12日（周四）).",
+    // AG07: the example is in the reply language (an English answer once copied "11月12日（周四）"); code rewrites any other form.
+    `- Dates: today and the time zone are given below; say dates as the user would, in ${name} (e.g. ${language === "en" ? "Thu, Nov 12" : language === "ja" ? "11月12日（木）" : "11月12日（周四）"}).`,
     "",
     "Items marked DISCUSSION are answered from general knowledge; they cite nothing and must not claim anything about the user's records.",
     "",

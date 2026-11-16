@@ -23,6 +23,7 @@ import type {
   AgentResultDocument,
   AgentSendInputContract,
   AgentSessionEventContract,
+  AgentRunStage,
   AgentSessionEventKind,
 } from "../../../shared/contract/agent-v1";
 import { attributeSelection } from "../clarify/attribution";
@@ -124,6 +125,8 @@ export interface AgentEntryStore {
   acceptSelection(input: { actorId: string; sessionId: string; requestId: string; clientSelectionId: string; clarificationId: string; optionId: string; now: string; workerId: string; leaseMs: number }): Promise<{ record: AgentEntryRequestRecord; replayed: boolean; claimed: boolean }>;
   /** AG04: writes back an earlier request that a later message answered or shelved (only while it is not running). */
   amend(input: { actorId: string; requestId: string; now: string; amendment: AgentEntryAmendment }): Promise<AgentEntryRequestRecord | null>;
+  /** AG07: a progress event (status running with a stage) while this worker still runs the request; no document change. */
+  markStage?(input: { actorId: string; sessionId: string; requestId: string; workerId: string; stage: AgentRunStage; now: string }): Promise<boolean>;
   get(actorId: string, requestId: string): Promise<AgentEntryRequestRecord | null>;
   lane(actorId: string, sessionId: string): Promise<AgentSessionLane | null>;
   listEvents(actorId: string, sessionId: string, afterSeq: number, limit: number): Promise<AgentSessionEventContract[]>;
@@ -197,6 +200,15 @@ function startRunning(record: AgentEntryRequestRecord, lane: AgentSessionLane, w
 
 function createOperations(withLane: WithLane, read: (actorId: string, requestId: string) => Promise<AgentEntryRequestRecord | null>): Omit<AgentEntryStore, "get" | "lane" | "listEvents"> {
   return {
+    markStage: (input) => withLane(input.actorId, input.sessionId, async (unit) => {
+      const record = await unit.getRequest(input.requestId);
+      if (!record || record.status !== "running" || record.workerId !== input.workerId) return false;
+      const lane = await unit.getLane();
+      lane.eventSeq += 1;
+      await unit.addEvent({ at: input.now, kind: "status", requestId: record.requestId, seq: lane.eventSeq, sessionId: record.sessionId, stage: input.stage, status: record.status });
+      await unit.putLane(lane);
+      return true;
+    }),
     accept: (input) => withLane(input.actorId, input.sessionId, async (unit) => {
       const existing = await unit.getRequest(input.requestId);
       if (existing) {

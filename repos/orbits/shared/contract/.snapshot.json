@@ -433,6 +433,56 @@
           "optional": false,
           "kind": "text",
           "type": "readonly string[]"
+        },
+        "basis": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentAnswerBasisContract"
+        },
+        "cardLine": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentAnswerBasisContract": {
+      "kind": "object",
+      "members": {
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "links": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentAnswerLinkContract[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentAnswerLinkContract": {
+      "kind": "object",
+      "members": {
+        "type": {
+          "optional": false,
+          "kind": "text",
+          "type": "'contact' | 'event' | 'memo' | 'todo' | 'schedule'"
+        },
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
         }
       }
     },
@@ -841,6 +891,61 @@
           "optional": false,
           "kind": "text",
           "type": "AgentCardOperationStatus"
+        },
+        "display": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentCardOperationDisplayContract"
+        }
+      }
+    },
+    "agent-v1.ts::AgentCardOperationDisplayContract": {
+      "kind": "object",
+      "members": {
+        "change": {
+          "optional": false,
+          "kind": "text",
+          "type": "'update' | 'create'"
+        },
+        "record": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "rows": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentCardDisplayRowContract[]"
+        },
+        "note": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentCardDisplayRowContract": {
+      "kind": "object",
+      "members": {
+        "field": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "before": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "after": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
         }
       }
     },
@@ -881,6 +986,11 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "locale": {
+          "optional": true,
+          "kind": "text",
+          "type": "'zh' | 'en' | 'ja' | undefined"
         },
         "summary": {
           "optional": false,
@@ -1122,6 +1232,14 @@
         "'status'"
       ]
     },
+    "agent-v1.ts::AgentRunStage": {
+      "kind": "enum",
+      "values": [
+        "'composing'",
+        "'reading'",
+        "'web'"
+      ]
+    },
     "agent-v1.ts::AgentSessionEventContract": {
       "kind": "object",
       "members": {
@@ -1159,6 +1277,11 @@
           "optional": true,
           "kind": "text",
           "type": "AgentResultDocument"
+        },
+        "stage": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentRunStage | undefined"
         }
       }
     },
@@ -1567,7 +1690,7 @@
         "entryClient": {
           "optional": false,
           "kind": "text",
-          "type": "'app' | 'web'"
+          "type": "'web' | 'app'"
         },
         "entryPointId": {
           "optional": false,
@@ -1648,7 +1771,7 @@
         "entryClient": {
           "optional": false,
           "kind": "text",
-          "type": "'app' | 'web'"
+          "type": "'web' | 'app'"
         },
         "entryPointId": {
           "optional": false,
