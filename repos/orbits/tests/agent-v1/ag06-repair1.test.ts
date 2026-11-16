@@ -184,6 +184,25 @@ test("6 AE-XL-010: a nickname no contact is named by is never said not to exist;
   assert.match(unknown.text, /不确定你说的是哪一位/u);
 });
 
+test("1c AE-SCL-007 final3: \"when I first met him\" with no order from the first layer reads the oldest notes (zh, ja, en words)", async () => {
+  const base = world((list) => {
+    for (let day = 1; day <= 12; day += 1) list.push({ collection: "notes", id: `note:t${day}`, payload: { note: { accountId: ACTOR, body: `Note ${day} about Tomás.${day === 1 ? " He works at Halden Robotics." : ""}`, contactIds: ["contact:tomas"], createdAt: `2026-10-${String(day).padStart(2, "0")}T01:00:00.000Z`, eventIds: [], id: `note:t${day}`, ownerUserId: ACTOR, title: `Note ${day}`, updatedAt: `2026-10-${String(day).padStart(2, "0")}T01:00:00.000Z`, version: 1 } }, searchText: `Note ${day}`, userId: ACTOR, workspaceId: "workspace:test" });
+    list.push(contact(ACTOR, "contact:tomas", "Tomás Rivera", { organization: "Northwind Automation" }));
+  });
+  let materials = "";
+  const message = "Where was Tomás Rivera working when I first met him?";
+  const model = deepseekStub(byNode({
+    answer: (call) => {
+      materials = call.user;
+      return json({ segments: [{ cites: [], partId: "p1", text: "Halden Robotics." }] });
+    },
+    understand: () => json({ language: "en", parts: [part({ dataSources: ["orbit_records"], objectClues: [{ entity: "contact", text: "Tomás Rivera" }], requiredCapabilities: ["contact.read", "view.timeline"], sourceQuote: message })], plainChat: false }),
+  }));
+  const kit = graphKit(model.fetchImplementation, { now: NOW, records: recordAccessOf(base) });
+  await runAgentGraph(kit.deps, kit.input(message, { locale: "en" }));
+  assert.match(materials, /Halden Robotics/u, "the first note is read although the first layer gave no order");
+});
+
 test("1b AE-SCL-008 dev3: search words that only name the person or their company (\"東都精機\") do not narrow the person's to-dos", async () => {
   const records = recordAccessOf(world((list) => {
     list.push(contact(ACTOR, "contact:suzuki", "鈴木健太", { organization: "東都精機" }));

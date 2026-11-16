@@ -121,6 +121,7 @@ export function cluePointsAtOne(words: string): boolean {
 }
 
 /** AG06 repair 1 (AE-SCL-008): the to-do status the user's words say (open before done: "没做完" holds "做完"). */
+const FIRST_TIME = /(第一次|头一次|初次|最初|最早|初めて|最初に|\bfirst (time|met|meet|meeting)\b|\bwhen (I|we) first\b|\bearliest\b)/iu;
 const OPEN_WORDS = /(まだ終わっていない|終わっていない|終わってない|未完了|未完成|没做完|没完成|还没做|未处理|还没处理|残っている|\bopen\b|\bnot (yet )?done\b|\bunfinished\b|\boutstanding\b|\bpending\b|\bstill to do\b)/iu;
 const DONE_WORDS = /(已完成|做完了的|做完的|完了した|終わった|済んだ|\bcompleted\b|\bfinished\b|\bdone ones\b)/iu;
 
@@ -448,7 +449,8 @@ export function resolveNode(scope: NodeScope): GraphNode {
         if (ref.recordId && kind && kind !== "contact") boundIds.set(kind as DomainKind, [...(boundIds.get(kind as DomainKind) ?? []), ref.recordId]);
       }
       const names = new Map<string, string>(contacts.filter((item) => item.name).map((item) => [item.id, item.name]));
-      const order = filter?.order ?? "newest";
+      // AG06 repair 1 (AE-SCL-007): "第一次", "初めて", "when I first met" read the oldest records even when the first layer gave no order.
+      const order = filter?.order ?? (FIRST_TIME.test(quote) ? "oldest" : "newest");
       // AG06 repair 1 (AE-SCL-008): "まだ終わっていない", "没做完", "open" in the words narrow by status even when the first
       // layer gave none; the read, and the total counted with it, then hold only those.
       const status = filter?.status ?? statusSaidIn(quote) ?? (part.reading?.key === "contact.recent_and_open" ? "open" : undefined);
