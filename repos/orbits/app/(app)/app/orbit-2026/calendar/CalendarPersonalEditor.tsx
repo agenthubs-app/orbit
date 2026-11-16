@@ -8,12 +8,15 @@ import { Button, Card, ConfirmDialog, Modal, TextField, Toggle, useScopeLanguage
 import { pickCopy } from "../copy/types";
 import { taskCopy } from "../copy/task";
 import { calendarDraftOverlaps } from "./calendar-overlap";
+import { readScheduleContactName } from "./schedule-contact-handoff";
 import type { CalendarEntry } from "./calendar-view-model";
 import styles from "./calendar.module.css";
 
 type Client = ReturnType<typeof createPersonalScheduleClient>;
-function newDraft(date: string, zone: string): PersonalScheduleDraft { return { ...personalScheduleDraft(null, zone), startDate: date, startTime: "09:00", endDate: date, endTime: "10:00" }; }
-export function CalendarPersonalEditor({ item, date, timeZone, client, entries, coverage, onSaved, onClose }: {
+function newDraft(date: string, zone: string, contactId?: string): PersonalScheduleDraft { return { ...personalScheduleDraft(null, zone), startDate: date, startTime: "09:00", endDate: date, endTime: "10:00", ...(contactId ? { contactIds: [contactId] } : {}) }; }
+export function CalendarPersonalEditor({ item, date, timeZone, client, entries, coverage, onSaved, onClose, initialContactId }: {
+  /** 人脈抽屉「予定を追加」：新建时先关联这位联系人（与 App ?contactId= 相同）。 */
+  initialContactId?: string;
   item: PersonalScheduleContract | null; date: string; timeZone: string; client: Client; entries: readonly CalendarEntry[];
   coverage: { from: string; to: string; complete: boolean }; onSaved: (item: PersonalScheduleContract | null) => void | Promise<void>; onClose: () => void;
 }) {
@@ -21,14 +24,16 @@ export function CalendarPersonalEditor({ item, date, timeZone, client, entries, 
   const t = (entry: typeof taskCopy[keyof typeof taskCopy]) => pickCopy(entry, language);
   const [zone] = useState(item?.timeZone ?? timeZone), [creationDate] = useState(date);
   const [baseline, setBaseline] = useState(item);
-  const [draft, setDraft] = useState(() => item ? personalScheduleDraft(item, zone) : newDraft(date, zone));
+  const [draft, setDraft] = useState(() => item ? personalScheduleDraft(item, zone) : newDraft(date, zone, initialContactId));
   const [scope, setScope] = useState<"occurrence" | "series" | undefined>();
   const [busy, setBusy] = useState(false), [error, setError] = useState<"invalid" | "write" | "read" | null>(null);
   const [confirmOverlap, setConfirmOverlap] = useState(false), [confirmDelete, setConfirmDelete] = useState(false), [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [contactName] = useState(() => initialContactId && !item ? readScheduleContactName(initialContactId) : null);
+  const linkedContact = !item && initialContactId && draft.contactIds?.includes(initialContactId);
   const alive = useRef(true), writing = useRef(false), focus = useRef<HTMLElement | null>(null);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const repeating = Boolean(item?.recurrence || item?.seriesId);
-  const clean = JSON.stringify(draft) === JSON.stringify(baseline ? personalScheduleDraft(baseline, zone) : newDraft(creationDate, zone));
+  const clean = JSON.stringify(draft) === JSON.stringify(baseline ? personalScheduleDraft(baseline, zone) : newDraft(creationDate, zone, initialContactId));
   const rulesDisabled = busy || repeating && scope !== "series";
   const change = buildPersonalScheduleChange(baseline, draft, zone);
   const fields = change.kind === "ready" ? change.fields : {};
@@ -68,6 +73,7 @@ export function CalendarPersonalEditor({ item, date, timeZone, client, entries, 
       {repeating ? <div className={styles.formGrid}><p className={styles.note}>{t(taskCopy.calendarChooseScope)}</p><div className={styles.row}><Button label={t(taskCopy.calendarOccurrence)} disabled={busy || !clean || !item?.occurrenceDate} aria-pressed={scope === "occurrence"} onClick={() => { void chooseScope("occurrence"); }} /><Button label={t(taskCopy.calendarSeries)} disabled={busy || !clean} aria-pressed={scope === "series"} onClick={() => { void chooseScope("series"); }} /></div></div> : null}
       <form ref={node => { focus.current = node?.querySelector("input") ?? null; }} className={styles.formGrid} onSubmit={event => { event.preventDefault(); void save(); }}>
         <TextField label={t(taskCopy.calendarScheduleTitle)} aria-label={t(taskCopy.calendarScheduleTitle)} value={draft.title} maxLength={300} disabled={busy} onChange={event => edit({ title: event.target.value })} />
+        {linkedContact ? <div className={styles.row} data-calendar-linked-contact=""><span className={styles.note}>{contactName ? t(taskCopy.calendarLinkedContact).replace("{name}", contactName) : t(taskCopy.calendarLinkedContactUnnamed)}</span><Button size="sm" variant="ghost" icon="x" label={t(taskCopy.calendarUnlinkContact)} disabled={busy} onClick={() => edit({ contactIds: (draft.contactIds ?? []).filter(id => id !== initialContactId) })} /></div> : null}
         <Card><div className={styles.row}><span>{t(taskCopy.calendarAllDay)}</span><Toggle label={t(taskCopy.calendarAllDay)} checked={Boolean(draft.allDay)} disabled={busy} onChange={allDay => edit({ allDay, endDate: draft.endDate || draft.startDate, endTime: allDay ? "" : draft.endTime || "10:00" })} /></div>
           <div className={styles.formDates}><TextField type="date" label={t(taskCopy.calendarStartDate)} aria-label={t(taskCopy.calendarStartDate)} value={draft.startDate} disabled={busy} onChange={event => edit({ startDate: event.target.value })} />{!draft.allDay ? <TextField type="time" label={t(taskCopy.calendarStartTime)} aria-label={t(taskCopy.calendarStartTime)} value={draft.startTime} disabled={busy} onChange={event => edit({ startTime: event.target.value })} /> : null}
             <TextField type="date" label={t(taskCopy.calendarEndDate)} aria-label={t(taskCopy.calendarEndDate)} value={draft.endDate} disabled={busy} onChange={event => edit({ endDate: event.target.value })} />{!draft.allDay ? <TextField type="time" label={t(taskCopy.calendarEndTime)} aria-label={t(taskCopy.calendarEndTime)} value={draft.endTime} disabled={busy} onChange={event => edit({ endTime: event.target.value, pickerEndInstant: undefined })} /> : null}</div></Card>

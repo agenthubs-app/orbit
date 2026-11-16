@@ -21,12 +21,12 @@ import { useCalendarPage } from "./useCalendarPage";
 import { ShellPage, useInShell } from "../shell/slots";
 import styles from "./calendar.module.css";
 
-interface Props { actorId: string; language: OrbitLanguage; timeZone: string; today: string; initialDate?: string; initialAdd?: boolean }
+interface Props { actorId: string; language: OrbitLanguage; timeZone: string; today: string; initialDate?: string; initialAdd?: boolean; initialContactId?: string }
 export function CalendarWorkspace(props: Props) {
   const { account } = useSharedReadAccount();
   return <Orbit2026Scope language={props.language}><ToastProvider><Workspace key={JSON.stringify([props.actorId, account])} {...props} /></ToastProvider></Orbit2026Scope>;
 }
-function Workspace({ actorId, language, timeZone, today, initialDate, initialAdd = false }: Props) {
+function Workspace({ actorId, language, timeZone, today, initialDate, initialAdd = false, initialContactId }: Props) {
   const inShell = useInShell();
   const { ready } = useSharedReadAccount();
   const [date, setDate] = useState(() => initialDate && calendarDate(initialDate) ? initialDate : today);
@@ -107,6 +107,6 @@ function Workspace({ actorId, language, timeZone, today, initialDate, initialAdd
     </Modal> : null}
     <ConfirmDialog open={confirmCancel && !cancelling && Boolean(selected?.meeting)} title={t(taskCopy.calendarMeetingCancelQuestion)} message={confirmed ? format(confirmed.startsAtUtc) : undefined} confirmLabel={t(taskCopy.calendarMeetingCancel)} destructive onConfirm={() => { void cancelMeeting(); }} onCancel={() => setConfirmCancel(false)} />
     {ready && !denied && proposal ? <MeetingProposalModal open appointmentId={proposal.appointmentId} contactId={proposal.contactId} onClose={() => setProposal(null)} onSent={() => { setProposal(null); toast.success(t(taskCopy.proposalSaved)); void resource.refresh(); }} /> : null}
-    {ready && !denied && editor !== undefined ? <CalendarPersonalEditor key={editor?.id ?? "new"} item={editor} date={date} timeZone={timeZone} client={client} entries={entries} coverage={coverage} onClose={() => setEditor(undefined)} onSaved={async item => { setEditor(undefined); closeDetail(); toast.success(t(item ? taskCopy.calendarSaved : taskCopy.calendarDeleted)); await resource.refresh(); }} /> : null}
+    {ready && !denied && editor !== undefined ? <CalendarPersonalEditor key={editor?.id ?? "new"} item={editor} initialContactId={editor === null && initialAdd ? initialContactId : undefined} date={date} timeZone={timeZone} client={client} entries={entries} coverage={coverage} onClose={() => setEditor(undefined)} onSaved={async item => { setEditor(undefined); closeDetail(); toast.success(t(item ? taskCopy.calendarSaved : taskCopy.calendarDeleted)); await resource.refresh(); }} /> : null}
   </>;
 }

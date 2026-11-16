@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 // Calendar reads the selected native window and a read-only external source. プラン is the
 // plan v2 overview / goal input / 以前のプラン (`plan-slot.tsx`), read only when that
 // tab is asked for: switching tabs on the client re-requests the page with ?tab=.
-export default async function AppTasksPage({ searchParams }: { searchParams?: Promise<LifecyclePageSearchParams & { tab?: string; plan?: string; new?: string; date?: string; task?: string | string[]; memo?: string }> } = {}) {
+export default async function AppTasksPage({ searchParams }: { searchParams?: Promise<LifecyclePageSearchParams & { tab?: string; plan?: string; new?: string; date?: string; task?: string | string[]; memo?: string; contactId?: string }> } = {}) {
   const params = await searchParams;
   const tab = taskTabFrom(params?.tab);
   const date = typeof params?.date === "string" && calendarDate(params.date) ? params.date : undefined;
@@ -30,6 +30,7 @@ export default async function AppTasksPage({ searchParams }: { searchParams?: Pr
     if (params?.tab) continuation.set("tab", tab);
     if (typeof params?.plan === "string") continuation.set("plan", params.plan);
     if (params?.new === "1") continuation.set("new", "1");
+    if (typeof params?.contactId === "string" && tab === "calendar") continuation.set("contactId", params.contactId);
     if (params?.view === "completed" || params?.view === "all") continuation.set("view", params.view);
     if (taskId && tab === "todo") continuation.set("task", taskId);
     if (typeof params?.memo === "string" && tab === "memo") continuation.set("memo", params.memo);
@@ -48,7 +49,7 @@ export default async function AppTasksPage({ searchParams }: { searchParams?: Pr
 
   return <TaskContainer
     initialTab={tab}
-    calendar={actor ? <CalendarTaskSlot actorId={actor.id} initialDate={date} initialAdd={tab === "calendar" && params?.new === "1"} /> : null}
+    calendar={actor ? <CalendarTaskSlot actorId={actor.id} initialDate={date} initialAdd={tab === "calendar" && params?.new === "1"} initialContactId={tab === "calendar" && params?.new === "1" && typeof params?.contactId === "string" && params.contactId.trim() && params.contactId.length <= 200 ? params.contactId : undefined} /> : null}
     todo={actor ? <TodoTaskSlot actorId={actor.id} initialAdd={tab === "todo" && params?.new === "1"} initialList={params?.view === "all" || params?.view === "completed" || Boolean(taskId)} initialCompleted={params?.view === "completed"} initialSelectedId={taskId} /> : null}
     memo={actor ? <MemoTaskSlot initialAdd={tab === "memo" && params?.new === "1"} initialSelectedId={typeof params?.memo === "string" ? params.memo : undefined} /> : null}
     plan={plan}

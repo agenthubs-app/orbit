@@ -2,7 +2,7 @@
 
 // R11a 連絡先詳細（Web 抽屉; web.html #7, b6 #41 深, b8 #13 1024 / #14 390 全屏, b12 #500–#507 招待 / 確認カード / 以前の値 / 解除）。
 // 可复用组件（R10 首页会引用）：props 只收 contactId / onClose / 可选初始数据。
-// 头部 · 人物タイプの確認カード（fit candidate）· なぜこの人か（value-lines）+ 下書きを作成 / 日程を提案（R20a MeetingProposalModal）·
+// 头部 · 人物タイプの確認カード（fit candidate）· なぜこの人か（value-lines）+ 下書きを作成（抽屉内模板草稿）/ 予定を追加（Task 日历新建、预先关联此人，与 App 相同）·
 // 招待でつながった人：本人入力的项目、同期停止（pausedFields）、あなたが共有 · 変更、⋯ › つながりを解除（Web 版 sheet，代定 6）·
 // 力になれること / 求めていること（以前の値 ›）· やりとり。⋯：編集 / 共有する項目 / つながりを解除 / 削除。
 // 联网增强（value-lines、fit、招待连接）失败或「尚未実装」时整块隐藏（G18）。
@@ -12,7 +12,7 @@ import type { InviteConnectionView, InviteSharedFieldKey } from "../../../../../
 import type { PlanContactFit } from "../../../../../shared/contract/plan-v2";
 import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { MeetingProposalModal } from "../calendar/MeetingProposalModal";
+import { scheduleWithContactHref, stashScheduleContact } from "../calendar/schedule-contact-handoff";
 import { networkCopy } from "../copy/network";
 import { pickCopy } from "../copy/types";
 import { Checkbox, ConfirmDialog, ContextMenu, Drawer, Icon, Modal, Toggle, fillCopy, useToast } from "../ui";
@@ -131,7 +131,6 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [unlinkOpen, setUnlinkOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [proposalOpen, setProposalOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [openHistory, setOpenHistory] = useState<string | null>(null);
   const [updateDismissed, setUpdateDismissed] = useState(false);
@@ -257,7 +256,7 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
                   {goalLabel ? <div className={styles.chips}><span className={`${styles.chip} ${styles.chipLav}`}>{t("detailPlanChip", { label: goalLabel })}</span></div> : null}
                   <div className={styles.row} style={{ marginTop: 12, gap: 8, flexWrap: "wrap" }}>
                     <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={() => void writeDraft()} disabled={drafting} aria-busy={drafting} data-network-draft=""><Icon name="mail" size={16} />{t(drafting ? "detailDrafting" : "detailDraft")}</button>
-                    <button type="button" className={`btn ${styles.btn}`} onClick={() => setProposalOpen(true)}><Icon name="calendar" size={16} />{t("proposeShort")}</button>
+                    <a className={`btn ${styles.btn}`} href={scheduleWithContactHref(contactId)} onClick={() => stashScheduleContact({ id: contactId, name: contact.displayName })} data-network-schedule=""><Icon name="calendar" size={16} />{t("detailSchedule")}</a>
                     <span className={styles.lbl} style={{ marginLeft: "auto" }}>{t("detailNoSend")}</span>
                   </div>
                   {shownDraft ? (
@@ -355,7 +354,6 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
       {contact && connection ? <InviteUnlinkModal open={unlinkOpen} name={contact.displayName} contactId={contactId} onClose={() => setUnlinkOpen(false)}
         onUnlinked={() => { setUnlinkOpen(false); setConnection(null); onChanged?.({ kind: "unlinked", contactId, name: contact.displayName }); }} /> : null}
       {contact && connection ? <InviteShareModal open={shareOpen} name={contact.displayName} connection={connection} onClose={() => setShareOpen(false)} onSaved={(next) => { setShareOpen(false); setConnection(next); }} /> : null}
-      <MeetingProposalModal open={proposalOpen} contactId={contactId} onClose={() => setProposalOpen(false)} />
       {contact ? <ContactLogModal open={logOpen} t={t} onClose={() => setLogOpen(false)}
         contact={{ id: contactId, displayName: contact.displayName, offering: contact.offering, seeking: contact.seeking,
           industry: [contact.primaryIndustryLabel, contact.secondaryIndustryLabel].filter(Boolean).join(" · ") || contact.profileIndustry || "" }}

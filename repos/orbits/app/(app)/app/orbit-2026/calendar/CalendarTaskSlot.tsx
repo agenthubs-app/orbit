@@ -9,7 +9,7 @@ import { Orbit2026Scope, RetryCard, Skeleton } from "../ui";
 import { CalendarWorkspace } from "./CalendarWorkspace";
 
 /** Match the Task To-do slot: select the device zone after hydration. */
-export function CalendarTaskSlot({ actorId, initialDate, initialAdd = false }: { actorId: string; initialDate?: string; initialAdd?: boolean }) {
+export function CalendarTaskSlot({ actorId, initialDate, initialAdd = false, initialContactId }: { actorId: string; initialDate?: string; initialAdd?: boolean; initialContactId?: string }) {
   const { language } = useOrbitLanguage();
   const [context, setContext] = useState<{ date: string; timeZone: string } | null>(null);
   const [failed, setFailed] = useState(false);
@@ -28,5 +28,5 @@ export function CalendarTaskSlot({ actorId, initialDate, initialAdd = false }: {
     return () => window.clearInterval(timer);
   }, [retry]);
   if (failed || !context) return <Orbit2026Scope language={language}>{failed ? <RetryCard title={pickCopy(taskCopy.calendarReadFailed, language)} onRetry={() => setRetry(value => value + 1)} /> : <Skeleton lines={5} />}</Orbit2026Scope>;
-  return <CalendarWorkspace actorId={actorId} language={language} timeZone={context.timeZone} today={context.date} initialDate={initialDate} initialAdd={initialAdd} />;
+  return <CalendarWorkspace actorId={actorId} language={language} timeZone={context.timeZone} today={context.date} initialDate={initialDate} initialAdd={initialAdd} initialContactId={initialContactId} />;
 }
