@@ -92,3 +92,10 @@ App 没有 NetInfo 一类的网络监听，离线是从读取失败得出的（`
 
 视觉稿未获批或其他外部条件缺失时不启动；run 已开始则按 RULES 产出 failed 或 blocked 报告，不降低验收。
 报告包含验收映射、功能 SHA、文件与理由、四处缺口各自怎么处理、命令与退出码、门槛运行编号与 `RUNS.md` 行、截图与回读记录、费用与下一步。分支从 `orbit-agent-claude` 建 `sprint/AG07-card-ui-both-clients`，两端改动各自路径限定提交，禁止 `git add .`；由协调者用 `--no-ff` 合回 `orbit-agent-claude`，在合并树上跑两端受影响测试和 typecheck 并记录合并 SHA 后，登记表才写 completed。push 需要用户另行授权。
+
+## 视觉稿批准记录（协调者追加，2026-11-16）
+
+- 视觉稿：https://claude.ai/artifact/NGFXiimkSuH3s9xmSDpCvk（确认卡与对话界面视觉稿）。
+- 2026-11-16 用户回复“批准”：按稿执行，需拍板的 D1～D7 取稿中推荐。
+- 截图与素材在 `~/orbit-sprint-evidence/agent-design/sprint-AG07/visual-draft/`。
+- 进入条件第一项已满足。
