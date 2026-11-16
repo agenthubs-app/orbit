@@ -37,10 +37,11 @@ export interface NotificationDeliveryPassOptions {
   now?: string;
   push?: ReturnType<typeof createConfiguredExpoPushAdapter>;
   workerId: string;
+  env?: NodeJS.ProcessEnv;
 }
 
 export class NotificationDeliveryUnconfigured extends Error {
-  constructor(readonly reason: "actor_database" | "event_database") {
+  constructor(readonly reason: "actor_database" | "event_database" | "push_token_key") {
     super(`Notification delivery is unavailable: ${reason} is not configured.`);
     this.name = "NotificationDeliveryUnconfigured";
   }
@@ -87,6 +88,9 @@ export async function runNotificationDeliveryPass(
     ? createConfiguredEventOperationsPostgresRuntime()
     : options.eventRuntime;
   if (!eventRuntime) throw new NotificationDeliveryUnconfigured("event_database");
+  // Push device records are encrypted with this key and the device service refuses to start without it, so push
+  // is simply not set up here: report it as unconfigured (a skipped task) instead of failing on every actor.
+  if (!(options.env ?? process.env).ORBIT_PUSH_TOKEN_KEY?.trim()) throw new NotificationDeliveryUnconfigured("push_token_key");
   const push = options.push === undefined ? createConfiguredExpoPushAdapter() : options.push;
   const now = options.now ?? new Date().toISOString();
   const { workerId } = options;
