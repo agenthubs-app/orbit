@@ -78,6 +78,10 @@ import {
 } from "../../view-models/conversations";
 import { noteSourceFromParams } from "../../view-models/note-suggestions";
 import { pendingWriteItems, usePendingWriteCounts } from "../../hooks/usePendingWriteCounts";
+import { agentProtocolVersion, requestIdOfAssistantMessage, sendAgentV1 } from "../../api/agent-v1-client";
+import { useAgentV1Turns, latestAgentCard, type AgentV1TurnsState } from "../../hooks/useAgentV1Turns";
+import { useCardLocalPendingEdits } from "../../hooks/useCardLocalPendingEdits";
+import { AgentBasisLine, AgentConfirmationCard, AgentProgress, AgentQuestionOptions, answerTextOf } from "./cards/AgentConfirmationCard";
 import { chooseReplyPolish, replyPolishTarget } from "../../data/reply-polish-handoff";
 
 function firstParam(value: string | string[] | undefined): string {
@@ -208,6 +212,14 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
   const client = useOrbitApiClient(scopeKey === undefined ? {} : { scopeKey });
+  // agent-design AG07: with the new entry on (the server says protocol 3), messages go through it and each turn shows
+  // its result document: the answer with its basis line, the options under a question, the confirmation card.
+  const [protocolV3, setProtocolV3] = useState(false);
+  useEffect(() => {
+    let current = true;
+    void agentProtocolVersion(client).then((version) => { if (current) setProtocolV3(version === 3); });
+    return () => { current = false; };
+  }, [client]);
   const localJournal = useRef<AiConversationJournal>({});
   const journal = providedJournal ?? localJournal.current;
   const readOptions = scopeKey === undefined ? {} : { scopeKey };
@@ -308,6 +320,13 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const conversationRead = loadedData && !isStoredAgentSession ? aiConversationListSchema.safeParse(loadedData) : null;
   const readInvalid = loadedData !== null && (isStoredAgentSession ? !loadedSession : !conversationRead?.success);
   const previousSession = sessionSnapshot ?? loadedSession;
+  // AG07: this device's protocol-3 turns are shown from the snapshot until the server's copy of the session has them.
+  const v1Snapshot = protocolV3 && sessionSnapshot && !(loadedSession && sessionSnapshot.messages.every((message) => !message.id || loadedSession.messages.some((stored) => stored.id === message.id))) ? sessionSnapshot : null;
+  const v1Session = v1Snapshot ?? loadedSession ?? localSession;
+  const v1RequestIds = protocolV3 && v1Session ? v1Session.messages.flatMap((message) => (message.role === "assistant" ? [requestIdOfAssistantMessage(message.id)].filter((id): id is string => Boolean(id)) : [])) : [];
+  const cardEdits = useCardLocalPendingEdits(protocolV3 && Boolean(auth.signedIn && auth.actorId));
+  const v1 = useAgentV1Turns({ client, enabled: protocolV3, pendingTargets: cardEdits.pendingTargets, requestIds: v1RequestIds, sessionId: v1Session?.id ?? null, syncedAt: cardEdits.syncedAt });
+  const v1Online = v1.online && !serverUnreachable;
   // Sprint 0112: the first page comes from the resource; older pages are
   // prepended as the reader asks for them, each with its own turns' cards.
   const firstPage = sessionRead?.success ? sessionRead.data.page : undefined;
@@ -333,7 +352,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const submittedMessage = journal.interruptedRequest?.message ?? failedRequest?.message;
   const initialThread: ConversationThreadView | null = !isDraftConversation ? null : submittedMessage ? pendingConversationThreadView(submittedMessage, locale.language)
     : { activeConversationId: null, assistantMessage: "", messages: [], nextAction: "", proposedToolIntents: [], title: locale.t("aiConversation.newChat") };
-  const resolvedThread = generatedThread
+  const resolvedThread = v1Snapshot ? rawSessionThread(withEarlier(v1Snapshot), combinedRecovery, locale.t, locale.language)
+    : generatedThread
     ? previousThread
       ? { ...generatedThread, title: previousThread.title, messages: previousThread.messages, entityCardTurns: previousThread.entityCardTurns ?? [] }
       : generatedThread
@@ -580,10 +600,50 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     requests.current.delete(controller); sendOperation.current = null; setSending(false);
   }
 
+  /**
+   * AG07: protocol 3. The send is only acknowledged; the turn shows its result document. Another message can be sent
+   * while one runs (it waits its turn). Offline nothing is sent: the composer says it needs the network.
+   */
+  async function sendV1(message: string) {
+    if (!owns() || sendOperation.current) return;
+    const controller = new AbortController();
+    sendOperation.current = controller; requests.current.add(controller);
+    setSendError(null); setSendCode(null);
+    draftValue.current = ""; setDraftMessage("");
+    const sessionId = previousSession?.id ?? `session_${randomUUID()}`;
+    const clientMessageId = `message:${randomUUID()}`;
+    const receipt = await sendAgentV1(client, {
+      clientMessageId,
+      locale: locale.language,
+      message,
+      sessionId,
+      ...(previousSession ? {} : { origin: sessionOrigin ?? { entryClient: "app", entryPointId: "ai.new_chat", initialGroupId: null, kind: "manual", template: null } }),
+    }).catch(() => null);
+    requests.current.delete(controller); sendOperation.current = null;
+    if (!owns()) return;
+    if (!receipt) {
+      setSendError(locale.t("aiConversation.incomplete"));
+      draftValue.current = message; setDraftMessage(message);
+      return;
+    }
+    const now = new Date().toISOString();
+    const added = [{ createdAt: now, id: clientMessageId, role: "user" as const, text: message }, { createdAt: now, id: `assistant:${receipt.requestId}`, role: "assistant" as const, text: "" }];
+    const base = sessionSnapshot ?? loadedSession;
+    const session: AiSession = base
+      ? { ...base, messages: [...base.messages, ...added], updatedAt: now }
+      : { createdAt: now, id: sessionId, messages: added, pinned: false, title: message.slice(0, 120), updatedAt: now } as AiSession;
+    setSessionSnapshot(session);
+    setSavedSessionId(session.id);
+  }
+
   async function sendMessage() {
     if (!owns()) return;
     const message = draftValue.current.trim();
     if (!message) return;
+    if (protocolV3 && (isDraftConversation || isStoredAgentSession || Boolean(previousSession))) {
+      await sendV1(message);
+      return;
+    }
     const usesSessionHistory = isDraftConversation || isStoredAgentSession || Boolean(previousSession);
     const history = previousSession ? conversationHistoryForRequest() : undefined;
     const sendPath = usesSessionHistory ? ORBIT_API_ENDPOINTS.conversations
@@ -798,6 +858,10 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       onEditEntityDraftField={(field, value) => setEntityDraftEdits((previous) => ({ ...previous, [field]: value }))}
       onResolveEntityDraft={resolveEntityDraft}
       thread={acceptedTaskId && thread.taskInteraction ? { ...thread, taskInteraction: { ...thread.taskInteraction, taskId: acceptedTaskId } } : thread}
+      v1Turn={protocolV3 ? (messageId) => {
+        const requestId = requestIdOfAssistantMessage(messageId);
+        return requestId ? <AgentV1Turn key={messageId} requestId={requestId} turns={v1} online={v1Online} pendingTargets={cardEdits.pendingTargets} language={locale.language} onOpenHref={openHref} /> : null;
+      } : undefined}
     />
   );
 }
@@ -844,7 +908,8 @@ function ConversationThread({
   draftLinkNotice,
   onEditEntityDraftField,
   onResolveEntityDraft,
-  thread
+  thread,
+  v1Turn
 }: {
   baseUrl: string;
   scopeKey?: string | undefined;
@@ -890,6 +955,8 @@ function ConversationThread({
   onEditEntityDraftField: (field: string, value: string) => void;
   onResolveEntityDraft: (action: "confirm" | "cancel") => void;
   thread: ConversationThreadView;
+  /** AG07: a protocol-3 turn, shown from its result document instead of the message bubble. */
+  v1Turn?: ((messageId: string) => React.ReactNode | null) | undefined;
 }) {
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
@@ -1003,10 +1070,10 @@ function ConversationThread({
             : <UiButton label={locale.t("aiConversation.loadEarlier")} variant="ghost" onPress={requestEarlier} />
           : earlier?.allLoaded ? <UiText style={styles.r21Muted}>{locale.t("aiConversation.allMessagesLoaded")}</UiText> : null}
         {thread.messages.map((message, index) => <Fragment key={message.id}>
-          <View style={message.role === "user" ? styles.r21User : styles.r21Assistant}>
+          {(message.role !== "user" ? v1Turn?.(message.id) : null) ?? <View style={message.role === "user" ? styles.r21User : styles.r21Assistant}>
             {message.role !== "user" ? <View style={styles.r21AssistantIcon}><UiIcon name="sparkle" size={16} color={colors.accentText} /></View> : null}
             <View style={styles.r21Message}><MessageBubble baseUrl={baseUrl} message={message} onOpenHref={onOpenHref} onUseVersion={useVersion} /></View>
-          </View>
+          </View>}
           {turnCards.get(message.id)?.length ? <AiEntityCardList onOpenHref={onOpenHref} views={turnCards.get(message.id)!} /> : null}
           {index === inlinePanelAnchorIndex && thread.entityCards?.cards.length ? <AiEntityCardList onOpenHref={onOpenHref} views={thread.entityCards.cards} /> : null}
         </Fragment>)}
@@ -1168,6 +1235,36 @@ function QuickRouteDock({
             </Text>
           </Pressable>
         ))}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * agent-design AG07: one protocol-3 turn from its result document — progress while it runs (or the note that it waits
+ * for the one before), then the basis line, the answer without the part that stands for the card, the options under a
+ * question and the confirmation card. Offline the card shows only the count (D7: the answer text stays).
+ */
+function AgentV1Turn({ requestId, turns, online, pendingTargets, language, onOpenHref }: { requestId: string; turns: AgentV1TurnsState; online: boolean; pendingTargets: readonly string[]; language: "en" | "ja" | "zh"; onOpenHref: (href: string) => void }) {
+  const { colors, styles } = useStyles();
+  const [picking, setPicking] = useState(false);
+  const document = turns.documents.get(requestId);
+  const fromDocument = document?.actionPreview;
+  const card = latestAgentCard(fromDocument, fromDocument ? turns.cards.get(fromDocument.actionId) : undefined);
+  const running = !document || document.status === "queued" || document.status === "running";
+  const text = document ? answerTextOf(document, Boolean(card)) : "";
+  return (
+    <View style={styles.r21Assistant} testID={`agent-turn-${requestId}`}>
+      <View style={styles.r21AssistantIcon}><UiIcon name="sparkle" size={16} color={colors.accentText} /></View>
+      <View style={styles.r21Message}>
+        {running ? <AgentProgress language={language} queued={document?.status === "queued"} /> : null}
+        {!running && document?.answer?.basis ? <AgentBasisLine basis={document.answer.basis} language={language} onOpenHref={onOpenHref} /> : null}
+        {!running && text ? <UiText selectable>{text}</UiText> : null}
+        {!running && document?.clarifications?.length ? <AgentQuestionOptions clarifications={document.clarifications} language={language} disabled={picking || !online} onSelect={(set, optionId) => {
+          setPicking(true);
+          void turns.select(requestId, set.clarificationId, optionId).finally(() => setPicking(false));
+        }} /> : null}
+        {card ? <AgentConfirmationCard card={card} language={language} online={online} pendingTargets={pendingTargets} onDecide={(decision, operationId) => turns.decide(card, decision, operationId)} onRegenerate={() => turns.regenerate(card)} /> : null}
       </View>
     </View>
   );

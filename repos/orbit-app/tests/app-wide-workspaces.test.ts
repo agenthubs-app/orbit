@@ -75,6 +75,8 @@ const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(
     if (state.kind === "loading") return new Promise(() => {});
     return { success: state.kind === "success" || state.kind === "empty", status: state.kind === "offline" ? 0 : state.kind === "failure" ? 503 : 200, data: dataFor(path), error: { code: "READ_FAILED", message: "连接暂时失败" }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
   }
+  // agent-design AG07: the conversation asks once which protocol the server speaks; this fixture speaks 2.
+  if (method === "get" && path === "/api/ai/conversations/protocol") return { success: true, status: 200, data: { protocolVersion: 2 }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
   state.requests.push({ method, path, body: options?.body });
   if (method === "get" && path.startsWith("/api/schedule-items?")) {
     state.requests[state.requests.length - 1].headers = options?.headers;
