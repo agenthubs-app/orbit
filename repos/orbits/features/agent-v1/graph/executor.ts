@@ -4,56 +4,41 @@
  * a card waits is answered without the graph, a card of this request is shown, typed agreement
  * never decides a card. The graph itself proposes no writes in this sprint.
  */
-import type { AiSessionReferenceContract } from "../../../shared/contract/ai-sessions";
 import type { FeatureMode } from "../../../shared/config/feature-mode";
 import { createOrbitAgentRuntimeService } from "../../agent/runtime/service-factory";
 import type { AgentRuntimeService } from "../../agent/runtime/service";
-import { createContactDetailTagStatusService } from "../../contacts/service-factory";
-import { AiSessionReferenceAuthorizationError, authorizeAiSessionContactReferences } from "../../orbit-ai/ai-session-reference-authorization";
 import { createOrbitAgentChatSessionProvider } from "../../orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 import type { AgentResultDocument } from "../../../shared/contract/agent-v1";
 import type { ContextMessage } from "../context/build";
-import { configuredAgentSessionStateStore, type NamedRecordRef } from "../context/session-state";
+import { configuredAgentSessionStateStore } from "../context/session-state";
+import { configuredRecordAccess } from "../domains/configured";
 import { configuredAgentEntryStore } from "../entry/configured-store";
 import { conversationCardId, runWithConfirmBoundary } from "../entry/confirm-boundary";
-import { AgentEntryExecutionError, type AgentEntryExecuteInput, type AgentEntryExecutor } from "../entry/service";
+import type { AgentEntryExecuteInput, AgentEntryExecutor } from "../entry/service";
+import { authorizeReferences } from "../references/authorize";
 import type { AgentEntryAmendment, AgentEntryStore } from "../entry/store";
 import { emitTrace } from "../observability/trace";
 import { GraphNotPausedError, resumeAgentGraph, runAgentGraph, type AgentGraphResult } from "./build";
 import { configuredCheckpointer } from "./checkpointer";
-import type { AgentGraphDependencies, AgentGraphInput } from "./deps";
+import type { AgentGraphDependencies, AgentGraphInput, AgentRecordAccess, ReferenceHandle } from "./deps";
 import type { GraphResolution } from "./state";
 
 /** How many stored messages are read to find the latest ten answered ones. */
 export const CONTEXT_READ_LIMIT = 30;
 
-/** Authorizes the @ contacts (the existing check) and keeps their names; other kinds wait for AG05. */
-export function contactReferenceAuthorizer(service: Parameters<typeof authorizeAiSessionContactReferences>[0]["service"] = createContactDetailTagStatusService()): AgentGraphDependencies["authorizeReferences"] {
+/**
+ * AG05 (设计稿 §3.6, references/authorize.ts): each of the six kinds of @ reference is authorized on its
+ * own through the read adapters. One that cannot be opened comes back `accessible: false` (no name) — the
+ * part that needs it asks to choose again and the rest of the turn goes on; the turn never fails for it.
+ * Replaces AG04's type-only handling of @ notes and events and the contact-only check that threw on the
+ * first failure (the old path keeps that check: entry/legacy-runtime.ts).
+ */
+export function referenceAuthorizer(records: AgentRecordAccess | null): AgentGraphDependencies["authorizeReferences"] {
   return async (actorId, references) => {
-    const names = new Map<string, string>();
-    try {
-      await authorizeAiSessionContactReferences({
-        actorId,
-        references,
-        service: {
-          async getContactDetail(lookup) {
-            const result = await service.getContactDetail(lookup);
-            if (result.success !== false && result.data.contact) names.set(result.data.contact.id, result.data.contact.displayName);
-            return result;
-          },
-        },
-      });
-    } catch (error) {
-      if (error instanceof AiSessionReferenceAuthorizationError) throw new AgentEntryExecutionError(error.code === "REFERENCE_NOT_ACCESSIBLE" ? "REFERENCE_NOT_ACCESSIBLE" : "REFERENCE_UNVERIFIED");
-      throw error;
-    }
-    // AG04: an @ note or event is kept by its kind only — it picks the most likely reading (笔记看摘要) —
-    // and is neither read nor named until AG05 authorizes those references (references/authorize.ts).
-    return references
-      .filter((reference: AiSessionReferenceContract) => (reference.type === "contact" && names.has(reference.id)) || reference.type === "note" || reference.type === "event")
-      .map((reference): NamedRecordRef => (reference.type === "contact"
-        ? { id: reference.id, name: names.get(reference.id)!, type: "contact" }
-        : { id: reference.id, name: "", type: reference.type === "note" ? "memo" : "event" }));
+    if (!records) return references.map((reference) => ({ accessible: false, id: reference.id, name: "", type: reference.type === "note" ? "memo" : reference.type }));
+    const authorized = await authorizeReferences(records.reader, records.scope(actorId), references);
+    emitTrace({ references: authorized.map((item) => ({ accessible: item.accessible, id: item.id, reason: item.reason ?? null, type: item.type })), type: "references.authorized" });
+    return authorized.map((item): ReferenceHandle => ({ id: item.id, name: item.name ?? "", type: item.type, ...(item.accessible ? {} : { accessible: false }) }));
   };
 }
 
@@ -126,7 +111,9 @@ function sessionMessagesLoader(mode: FeatureMode, actorId: string): AgentGraphDe
   };
 }
 
-export interface GraphExecutorOverrides extends Partial<AgentGraphDependencies> {
+export interface GraphExecutorOverrides extends Omit<Partial<AgentGraphDependencies>, "records"> {
+  /** AG05: the record access (configured from the database by default; null: none). */
+  records?: AgentRecordAccess | null;
   runtime?: AgentRuntimeService;
   /** AG04: where earlier requests are written back (the entry's own store by default). */
   entryStore?: AgentEntryStore | null;
@@ -136,9 +123,11 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
   return async (execution) => {
     const entryStore = overrides.entryStore === undefined ? configuredAgentEntryStore(mode) : overrides.entryStore;
     const runtime = overrides.runtime ?? createOrbitAgentRuntimeService(mode, { actorId: execution.actorId });
+    const records = overrides.records === undefined ? configuredRecordAccess() : overrides.records;
     const deps: AgentGraphDependencies = {
-      authorizeReferences: overrides.authorizeReferences ?? contactReferenceAuthorizer(),
+      authorizeReferences: overrides.authorizeReferences ?? referenceAuthorizer(records ?? null),
       checkpointer: overrides.checkpointer ?? (await configuredCheckpointer(mode)),
+      ...(records ? { records } : {}),
       fetchImplementation: overrides.fetchImplementation ?? execution.fetchImplementation,
       loadMessages: overrides.loadMessages ?? sessionMessagesLoader(mode, execution.actorId),
       now: overrides.now ?? (() => new Date().toISOString()),
@@ -149,7 +138,7 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
     if (execution.resume) {
       // AG04: a click resumes this request's paused thread; no message, no confirmation boundary, no model.
       const resumed = await resumeAgentGraph(deps, graphInputOf(execution.actorId, execution.requestId, execution.sessionId, execution.input, false), { clarificationId: execution.resume.clarificationId, kind: "select", optionId: execution.resume.optionId }, { names: namesIn(execution.document), previousClarifications: execution.document?.clarifications ?? null });
-      return { clarifications: resumed.clarifications, partResults: resumed.partResults, sourceRefs: [], status: resumed.status, text: resumed.text };
+      return { clarifications: resumed.clarifications, partResults: resumed.partResults, sourceRefs: resumed.sourceRefs, status: resumed.status, text: resumed.text };
     }
     const cardPrepared = Boolean(await runtime.getAction(conversationCardId(execution.requestId)).catch(() => null));
     let graph: AgentGraphResult | null = null;
@@ -159,7 +148,7 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       requestId: execution.requestId,
       run: async () => {
         graph = await runAgentGraph(deps, graphInputOf(execution.actorId, execution.requestId, execution.sessionId, execution.input, cardPrepared));
-        return { reply: graph.text, sourceRefs: [] };
+        return { reply: graph.text, sourceRefs: graph.sourceRefs };
       },
       sessionId: execution.sessionId,
     });

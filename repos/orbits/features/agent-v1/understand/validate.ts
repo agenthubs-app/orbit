@@ -22,7 +22,10 @@ import {
   INTENT_BASES,
   MAX_READINGS,
   PERSISTENCES,
+  READ_ORDERS,
+  READ_STATUSES,
   type ObjectClue,
+  type ReadFilter,
   type UnderstandOutput,
   type UnderstandPart,
   type UnderstandReading,
@@ -89,6 +92,43 @@ function stringList(value: unknown, field: string, errors: string[]): string[] {
     return [];
   }
   return value.map((item) => String(item));
+}
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/u;
+const validDay = (value: unknown): value is string => typeof value === "string" && DAY.test(value) && Number.isFinite(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().startsWith(value);
+
+/**
+ * AG05: a part's readFilter, keeping only what is valid (words copied from the message, a known order
+ * or status, real dates); the rest is dropped and reported, never a reason to reject the output.
+ */
+function readFilterOf(raw: unknown, message: string, where: string, dropped: string[]): ReadFilter | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!isRecord(raw)) {
+    dropped.push(`${where} (not an object)`);
+    return undefined;
+  }
+  const out: ReadFilter = {};
+  const text = typeof raw.text === "string" ? raw.text.trim().replace(/^["“「『]|["”」』]$/gu, "") : "";
+  if (text && message.includes(text)) out.text = text.slice(0, 80);
+  else if (raw.text !== undefined && raw.text !== null && raw.text !== "") dropped.push(`${where}.text (${JSON.stringify(raw.text).slice(0, 40)} is not words of the message)`);
+  if (oneOf(READ_ORDERS, raw.order)) out.order = raw.order;
+  else if (raw.order !== undefined && raw.order !== null) dropped.push(`${where}.order (${JSON.stringify(raw.order)})`);
+  if (oneOf(READ_STATUSES, raw.status)) out.status = raw.status;
+  else if (raw.status !== undefined && raw.status !== null) dropped.push(`${where}.status (${JSON.stringify(raw.status)})`);
+  if (raw.current === true) out.current = true;
+  else if (raw.current !== undefined && raw.current !== null && raw.current !== false) dropped.push(`${where}.current (${JSON.stringify(raw.current)})`);
+  const from = validDay(raw.from) ? raw.from : undefined;
+  const to = validDay(raw.to) ? raw.to : undefined;
+  if (raw.from !== undefined && raw.from !== null && !from) dropped.push(`${where}.from (${JSON.stringify(raw.from)})`);
+  if (raw.to !== undefined && raw.to !== null && !to) dropped.push(`${where}.to (${JSON.stringify(raw.to)})`);
+  if (from && to && from > to) {
+    out.from = to;
+    out.to = from;
+  } else {
+    if (from) out.from = from;
+    if (to) out.to = to;
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 export function validateUnderstandOutput(raw: unknown, input: UnderstandValidationInput): UnderstandValidation {
@@ -177,6 +217,7 @@ export function validateUnderstandOutput(raw: unknown, input: UnderstandValidati
       }
       readings.push({ capabilities: [...new Set(list as Capability[])], deliverable: oneOf(DELIVERABLES, reading.deliverable) ? reading.deliverable : "answer", label: typeof reading.label === "string" ? reading.label.slice(0, 80) : "" });
     });
+    const readFilter = readFilterOf(item.readFilter, input.message, `$.${where}.readFilter`, dropped);
     let continues: UnderstandPart["continues"];
     if (item.continues !== undefined && item.continues !== null) {
       if (!isRecord(item.continues) || !oneOf(CONTINUE_KINDS, item.continues.kind) || typeof item.continues.ref !== "string") errors.push(`${where}.continues must be { kind, ref }`);
@@ -199,6 +240,7 @@ export function validateUnderstandOutput(raw: unknown, input: UnderstandValidati
       sourceQuote,
       ...(continues ? { continues } : {}),
       ...(readings.length ? { readings } : {}),
+      ...(readFilter ? { readFilter } : {}),
     });
   });
   for (const part of parts) {

@@ -18,6 +18,8 @@ export const CONTEXT_MESSAGE_WINDOW = 10;
 export const IDLE_BREAK_MINUTES = 60;
 export const ASSISTANT_TEXT_LIMIT = 160;
 export const USER_TEXT_LIMIT = 400;
+/** AG05: what the model sees of an earlier answer whose source record cannot be read now. */
+export const STALE_ANSWER = "(an earlier answer based on a record that can no longer be read; its content is not available)";
 
 export interface ContextMessage {
   role: "user" | "assistant";
@@ -34,6 +36,8 @@ export interface ContextHandle {
   name: string | null;
   /** Where the model saw it: this turn's @ reference, the shown list, last mentioned, an old message. */
   source: "reference" | "shown_list" | "last_mentioned" | "message";
+  /** AG05: false when the record cannot be read now (deleted, not the account's, withdrawn). */
+  accessible?: boolean;
 }
 
 export interface FirstLayerContext {
@@ -83,8 +87,13 @@ export function buildFirstLayerContext(input: {
   messages: readonly ContextMessage[];
   state: AgentSessionState | null;
   now: string;
-  /** This turn's authorized @ references, with names. */
-  references: readonly NamedRecordRef[];
+  /** This turn's @ references, with names (AG05: `accessible: false` when one cannot be opened). */
+  references: readonly (NamedRecordRef & { accessible?: boolean })[];
+  /**
+   * AG05 (设计稿 §3.6 恢复时按当前权限重读): ids of records of the conversation and the session state that
+   * cannot be read now. Their handles say so, and an earlier answer that used one is not shown again.
+   */
+  inaccessible?: ReadonlySet<string>;
   window?: number;
   idleBreakMinutes?: number;
 }): FirstLayerContext {
@@ -97,24 +106,28 @@ export function buildFirstLayerContext(input: {
 
   const handles = new Map<string, ContextHandle>();
   const byId = new Map<string, ContextHandle>();
-  const handleFor = (ref: { type: string; id: string; name: string | null }, source: ContextHandle["source"]): ContextHandle => {
+  const closed = input.inaccessible ?? new Set<string>();
+  const handleFor = (ref: { type: string; id: string; name: string | null; accessible?: boolean }, source: ContextHandle["source"]): ContextHandle => {
     const known = byId.get(ref.id);
     if (known) {
-      if (!known.name && ref.name) known.name = ref.name;
+      if (!known.name && ref.name && known.accessible !== false) known.name = ref.name;
       return known;
     }
-    const made: ContextHandle = { handle: `r${handles.size + 1}`, id: ref.id, name: ref.name, source, type: ref.type };
+    const accessible = ref.accessible === false || closed.has(ref.id) ? false : undefined;
+    const made: ContextHandle = { handle: `r${handles.size + 1}`, id: ref.id, name: accessible === false ? null : ref.name, source, type: ref.type, ...(accessible === false ? { accessible } : {}) };
     handles.set(made.handle, made);
     byId.set(made.id, made);
     return made;
   };
 
-  const references = input.references.map((ref) => handleFor({ id: ref.id, name: ref.name, type: ref.type }, "reference"));
+  const references = input.references.map((ref) => handleFor({ accessible: ref.accessible, id: ref.id, name: ref.name || null, type: ref.type }, "reference"));
   const shownList = idle ? [] : (input.state?.shownList?.items ?? []).map((item) => handleFor({ id: item.id, name: item.name, type: item.type }, "shown_list"));
   const lastMentioned = idle ? [] : (input.state?.lastMentioned ?? []).map((item) => handleFor({ id: item.id, name: item.name, type: item.type }, "last_mentioned"));
   const messages = idle ? [] : all.slice(-window).map((message) => {
     const refs = (message.recordRefs ?? []).map((ref) => recordType(ref)).map((ref) => handleFor({ id: ref.id, name: null, type: ref.type }, "message"));
-    return { handles: refs.map((ref) => ref.handle), role: message.role, text: cut(message.text, message.role === "assistant" ? ASSISTANT_TEXT_LIMIT : USER_TEXT_LIMIT) };
+    // AG05: an earlier answer built on a record that cannot be read now is not shown again (its content would come back).
+    const stale = message.role === "assistant" && refs.some((ref) => ref.accessible === false);
+    return { handles: refs.map((ref) => ref.handle), role: message.role, text: stale ? STALE_ANSWER : cut(message.text, message.role === "assistant" ? ASSISTANT_TEXT_LIMIT : USER_TEXT_LIMIT) };
   });
   const openItemHandles = new Map<string, SessionOpenItem>();
   const openItems = (input.state?.openItems ?? []).map((item, index) => {
@@ -123,7 +136,7 @@ export function buildFirstLayerContext(input: {
     return { ...item, handle };
   });
 
-  const describe = (handle: ContextHandle) => `${handle.handle} ${handle.type}${handle.name ? ` ${handle.name}` : ""}`;
+  const describe = (handle: ContextHandle) => `${handle.handle} ${handle.type}${handle.name ? ` ${handle.name}` : ""}${handle.accessible === false ? " (cannot be opened now)" : ""}`;
   const lines: string[] = [];
   lines.push(idle
     ? `The session was idle for ${Math.round(idleMinutes ?? 0)} minutes, so earlier messages, the last shown list and the last mentioned records are not available. Do not guess who or what a pronoun refers to.`

@@ -29,7 +29,7 @@ const partStatusSchema = z.enum([
   "failed",
 ]);
 
-/** 协议版本 3 的发送。引用类型在 AG11 扩到六类之前与协议 2 相同。 */
+/** 协议版本 3 的发送。AG05：引用类型扩到六类（旧的 note 仍收）；句中位置在 AG11。 */
 export const agentSendInputSchema: z.ZodType<AgentSendInputContract> = z.object({
   clientMessageId: identifier,
   locale: z.enum(["zh", "en", "ja"]),
@@ -41,7 +41,7 @@ export const agentSendInputSchema: z.ZodType<AgentSendInputContract> = z.object(
     route: z.string().min(1).max(160),
   }).optional(),
   protocolVersion: z.literal(3),
-  references: z.array(z.object({ id: identifier, type: z.enum(["contact", "event", "note"]) })).max(20),
+  references: z.array(z.object({ id: identifier, type: z.enum(["contact", "event", "note", "memo", "todo", "schedule", "attendance"]) })).max(20),
   sessionId: identifier,
 });
 
@@ -138,6 +138,8 @@ export const agentResultDocumentSchema: z.ZodType<AgentResultDocument> = z.objec
     reason: z.string().optional(),
   }).optional(),
   partResults: z.array(z.object({
+    coverage: z.array(z.object({ complete: z.boolean(), kind: z.string(), pagesRead: z.number().int().nonnegative(), seen: z.number().int().nonnegative(), total: z.number().int().nonnegative().optional() })).optional(),
+    gaps: z.array(z.enum(["no_record", "partial", "unreadable", "conflict", "service_error", "budget"])).optional(),
     operationId: z.string().optional(),
     partId: z.string(),
     reason: z.string().optional(),

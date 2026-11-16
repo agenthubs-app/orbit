@@ -62,6 +62,8 @@ const state = {
   faults: [],
   ended: [],
   settings: {},
+  // AG05: record ids whose read permission a case withdrew (revoke: { read }); every product read checks it.
+  denied: [],
   replay: [],
   probe: null,
   blocked: [],
@@ -89,12 +91,28 @@ function currentNode() {
   }
 }
 
+/**
+ * AG05 run-02: requests the runner makes as the simulated other device (header x-agent-eval-device:
+ * other, external_change) run in an async context of their own; every event emitted in it carries
+ * `device: "other"`, so the runner can tell those reads from the tested system's by attribution.
+ */
+const deviceContext = new (require("node:async_hooks").AsyncLocalStorage)();
+function currentDevice() {
+  try {
+    return deviceContext.getStore()?.device ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function emit(event) {
   if (!traceFile) return;
   localSeq += 1;
   const requestId = currentRequestId();
   const node = currentNode();
+  const device = currentDevice();
   const line = {
+    ...(device ? { device } : {}),
     at: new RealDate(realNow() + state.offsetMs).toISOString(),
     realAt: new RealDate(realNow()).toISOString(),
     pid: process.pid,
@@ -491,6 +509,10 @@ function observePg() {
     if (!kind || !tables.length || tables.every((table) => table.startsWith("pg_") || table.startsWith("information_schema"))) return Reflect.apply(original, this, arguments);
     const params = (Array.isArray(values) ? values : Array.isArray(config?.values) ? config.values : []).map(shortParam);
     const queryId = `${process.pid}:${(sqlSeq += 1)}`;
+    // AG05 run-02: pg answers on its socket's callbacks, outside the request's async context; the device is
+    // taken when the query is made and carried to the result.
+    const device = currentDevice();
+    const tag = device ? { device } : {};
     if (kind === "read") emit({ type: "read.query", queryId, tables, sql: text.slice(0, 3000), params });
     const finish = (error, result) => {
       if (kind === "read") {
@@ -502,9 +524,9 @@ function observePg() {
           workspace: row.workspace_id ?? null,
         }));
         const fields = rows.slice(0, 40).map((row) => row.payload ?? row);
-        emit({ type: "read.result", queryId, tables, rowCount: rows.length, records, sample: fields, error: error ? String(error.message ?? error) : null });
+        emit({ type: "read.result", ...tag, queryId, tables, rowCount: rows.length, records, sample: fields, error: error ? String(error.message ?? error) : null });
       } else if (!error && (result?.rowCount ?? 0) > 0) {
-        emit({ type: "db.write", source: "real", queryId, tables, rowCount: result.rowCount, sql: text.slice(0, 3000), params, returned: Array.isArray(result?.rows) ? result.rows.slice(0, 20) : [] });
+        emit({ type: "db.write", ...tag, source: "real", queryId, tables, rowCount: result.rowCount, sql: text.slice(0, 3000), params, returned: Array.isArray(result?.rows) ? result.rows.slice(0, 20) : [] });
       }
     };
     const args = [...arguments];
@@ -652,6 +674,7 @@ async function handleControl(req, res) {
       state.pushes = [];
       // AG03: per-case deployment settings (model-budget-1: model_calls_limit), read by the product's evalSetting().
       state.settings = body.settings && typeof body.settings === "object" ? { ...body.settings } : {};
+      state.denied = [];
       if (body.clock) setClock(body.clock);
       emit({ type: "eval.context", runId: state.context.runId, account: state.context.account, clock: body.clock ?? null, replay: state.replay.map((item) => item.name ?? item.url ?? item.match), settings: state.settings });
       return reply(res, 200, { ok: true, now: new RealDate(realNow() + state.offsetMs).toISOString() });
@@ -672,6 +695,12 @@ async function handleControl(req, res) {
       state.faults.push({ where: body.where, kind: body.kind, quote: body.quote ?? null, applied: 0, appliedFlag: body.applied ?? null });
       emit({ type: "fault.armed", where: body.where, kind: body.kind, source: "simulated" });
       return reply(res, 200, { ok: true, pending: state.faults.length });
+    }
+    if (route === "revoke") {
+      if (typeof body.read !== "string" || !body.read) return reply(res, 400, { error: "revoke needs { read: <record id> }" });
+      if (!state.denied.includes(body.read)) state.denied.push(body.read);
+      emit({ type: "eval.revoke", read: body.read, source: "simulated" });
+      return reply(res, 200, { ok: true, denied: state.denied.length });
     }
     if (route === "probe") {
       state.probe = { host: String(body.host) };
@@ -721,6 +750,9 @@ http.Server.prototype.emit = function evalServerEmit(event, req, res, ...rest) {
       state.probe = null;
       setTimeout(() => runProbe(host), 0);
     }
+    if (req.headers?.["x-agent-eval-device"] === "other") {
+      return deviceContext.run({ device: "other" }, () => Reflect.apply(originalEmit, this, [event, req, res, ...rest]));
+    }
   }
   return Reflect.apply(originalEmit, this, [event, req, res, ...rest]);
 };
@@ -729,6 +761,7 @@ globalThis.__orbitAgentEval = {
   emit,
   takeFault,
   setting: (name) => (state.settings && Object.prototype.hasOwnProperty.call(state.settings, name) ? state.settings[name] : null),
+  deniedReads: () => [...state.denied],
   get context() {
     return state.context;
   },

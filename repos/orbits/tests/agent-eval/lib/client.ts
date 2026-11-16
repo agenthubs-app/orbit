@@ -34,9 +34,9 @@ export class EvalClient {
     public client: "web" | "app" | "app_old" = "web",
   ) {}
 
-  async request(method: string, path: string, body?: unknown, extra: { purpose?: string } = {}): Promise<HttpResult> {
+  async request(method: string, path: string, body?: unknown, extra: { purpose?: string; headers?: Record<string, string> } = {}): Promise<HttpResult> {
     const requestId = randomUUID();
-    const headers: Record<string, string> = { accept: "application/json", cookie: this.cookie };
+    const headers: Record<string, string> = { accept: "application/json", cookie: this.cookie, ...(extra.headers ?? {}) };
     if (body !== undefined) headers["content-type"] = "application/json";
     if (this.client !== "web") headers["user-agent"] = "OrbitApp/agent-eval";
     const ref = this.log.push({ body: body ?? null, client: this.client, headers: safeHeaders(headers), httpId: requestId, method, path, purpose: extra.purpose ?? null, type: "http.request" });

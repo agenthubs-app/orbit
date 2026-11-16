@@ -114,3 +114,18 @@ REPORT 写验收映射、功能 SHA、命令与退出码、各次门槛的运行
 - “参会记录”的实体在 AG13 才有，所以六类引用里这一类在本 sprint 只能判为不可访问。
 - 产品里没有按单条记录收回读取权限的功能；`revoke: { read }` 只能靠评测环境里的拒读名单实现，由读取授权在每次读取时查询。
 - 与 AG04 并行时两边都改 `graph/build.ts`、`graph/state.ts`、`route/decide.ts`，处理办法同 AG04 PLANNER 末节。
+
+## 启动核对记录（run-01，2026-11-16，Generator 追加）
+
+原文不改。开工时本页 SHA-256 `5bea9534a1935c587eca49794e0f95914628ec98b412816e9ed397336f540b8b`，基线 HEAD `459c5ec0c`（AG03、AG04 都已合回，AG04 的合并提交即此）。不与其他 sprint 并行。
+
+**AG03／AG04 交付、本 sprint 改的符号（按两份 REPORT 的交接段）：** `decideRoute`、`statusForRoute`、`NOT_YET_ROUTES`（`route/decide.ts`）；`buildFirstLayerContext`（`context/build.ts`）；`SessionOpenItem`（`context/session-state.ts`）；`UnderstandPart`、`validateUnderstandOutput`、`understandSystemPrompt`（`understand/`）；`AgentGraphState`、`GraphPart`、`PartPlan`、`AgentGraphRun`（`graph/state.ts`）；`AgentGraphDependencies`（`graph/deps.ts`）；`buildAgentGraph`、`runAgentGraph`、`resumeAgentGraph`（`graph/build.ts`）；`intakeNode`、`understandNode`、`routeNode`、`answerNode`、`deliverNode`、`clarify` 的 `candidatesFor`／`nameOf`（`graph/nodes/`）；`contactReferenceAuthorizer`、`createGraphExecutor`（`graph/executor.ts`）；`stripCardTalk` 的 `CARD_TALK`（`entry/approval-claims.ts`）；`AgentEntrySessionWriter.appendAssistant`（`entry/service.ts`、`legacy-runtime.ts`）。
+
+**与前序交接要点的出入：**
+
+1. **AG04 已合回**，读取时的多个同名对象按 AG04 的追问（`ask_missing` 加候选）处理，不猜。
+2. **AG00 的快照里 M41 没有 `interaction`**（种子把它记为缺口“Memo has no interaction field yet”），本页进入条件⑤的第一件不满足。按 CONVENTIONS §4（优先于本页“出入”第 1 条）AG05 交付“Memo 的 `interaction` 字段的契约与读取”：契约加在 `shared/contract/notes.ts`（可选字段，App 同步），种子经笔记仓库的条件写入存进这个字段（Agent 的写入路径仍在 AG06）。AE-RD-003 不改挂。
+3. **运行器的 `revoke: { read }`、`fault: { where: memo.read }`、`external_change` 删笔记、六类引用**，AG00～AG04 都没有落到产品上（`revoke` 记为不支持，`fault` 只认 model／understand／executor，`external_change` 只支持改待办，引用只发联系人、笔记、活动）。本 sprint 在评测侧补齐：评测预加载的拒读名单（产品每次读取时核对），读取适配器上的故障点，经笔记正常删除接口的删除，协议 3 的六类引用（契约与校验扩类型，位置仍在 AG11）。
+4. **`listed` 判定**原登记为 AG10 交付，但本 sprint 的门槛 AE-SCL-008 用到它；按 CONVENTIONS §7（第一个用到的门槛 sprint 实现）在本 sprint 实现，口径见 REPORT。
+5. **协调者交代的三项**（brief）：收窄 `CARD_TALK`；门槛里 ENT-002 R1、ENT-003 R1、ENT-004 R3/R4 要过；把 `read` 从 `NOT_YET_ROUTES` 去掉、@ 笔记和活动改为真授权、读得了的地方去掉“这一版还不能读”。
+6. **GitNexus**：`npx -y gitnexus@latest analyze --index-only --force` 重建成功；`impact` 用 `--repo /Volumes/ORICO/Dev/worktrees/orbit/orbit-agent-claude`。

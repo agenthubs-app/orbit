@@ -87,3 +87,13 @@ test("a new conversation and only a demonstrative: asked (AE-AMB-007, AE-CTX-008
   assert.equal(result.partResults[0].status, "awaiting_clarification");
   assert.match(result.text, /what "it" refers to/u);
 });
+
+test("AG05: only a clue like 她的待办 (no person clue): the people mentioned last are still offered (AE-AMB-008 shape)", async () => {
+  const model = deepseekStub([json({ parts: [part({ clarity: "missing_one", deliverable: "change", objectClues: [{ entity: "todo", text: "她的待办" }], requiredCapabilities: ["todo.update"], sourceQuote: "把她的待办改到周五" })], plainChat: false })]);
+  const state: AgentSessionState = { ...IDLE, lastMentioned: [{ at: "2026-11-15T10:00:00.000Z", id: "contact:c31", name: "李薇", type: "contact" }, { at: "2026-11-15T10:00:00.000Z", id: "note:m40", name: "李薇推荐了", type: "memo" }] };
+  const kit = graphKit(model.fetchImplementation, { now: "2026-11-15T11:10:00.000Z", state });
+  await kit.seeded;
+  const result = await runAgentGraph(kit.deps, kit.input("把她的待办改到周五。"));
+  const question = result.clarifications.find((set) => set.kind === "question");
+  assert.deepEqual(question?.options.map((option) => option.ref?.id), ["contact:c31"]);
+});

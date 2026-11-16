@@ -1,4 +1,8 @@
-export type AiSessionReferenceType = "contact" | "event" | "note";
+/**
+ * contact、event、note（旧的三类，协议 2 只收这三类）。agent-design AG05：协议 3 另收 memo、todo、schedule、
+ * attendance（设计稿附录 E 消息引用六类；note 视同 memo），服务端逐条授权；协议 2 与存进会话的引用仍只有旧三类。
+ */
+export type AiSessionReferenceType = "contact" | "event" | "note" | "memo" | "todo" | "schedule" | "attendance";
 
 export interface AiSessionReferenceContract {
   id: string;

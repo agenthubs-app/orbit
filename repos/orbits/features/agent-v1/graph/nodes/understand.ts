@@ -3,10 +3,12 @@
  * checks, one repair call that is told what was wrong (§3.3). Each call first checks the round's
  * budget (models/main.ts). Still invalid after the repair: nothing is made up, deliver says so.
  */
+import { formatWhen } from "../../answer/materials";
 import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
 import { hypothesisOf, negationOf } from "../../route/decide";
 import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_PROMPT_VERSION } from "../../understand/prompt";
+import { coverEverySentence } from "../../understand/cover";
 import type { UnderstandOutput } from "../../understand/schema";
 import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInput } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
@@ -35,6 +37,8 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
         negation: negationOf(part),
         persistence: part.persistence,
         readings: (part.readings ?? []).map((reading) => ({ capabilities: [...reading.capabilities], deliverable: reading.deliverable })),
+        // The checkpoint keeps the words as offsets into this turn's message, never the words.
+        ...(part.readFilter ? { readFilter: { ...part.readFilter, text: part.readFilter.text && message.includes(part.readFilter.text) ? [message.indexOf(part.readFilter.text), message.indexOf(part.readFilter.text) + part.readFilter.text.length] as [number, number] : undefined } } : {}),
       },
       quote: [start, start + part.sourceQuote.length],
       reading: null,
@@ -69,7 +73,10 @@ export function understandNode(scope: NodeScope): GraphNode {
     const budget = { ...state.budget };
     const validation: UnderstandValidationInput = { handles: new Set(context.handles.keys()), message: input.message, openItemRefs: new Set(context.openItemHandles.keys()) };
     const system = understandSystemPrompt();
-    const user = understandUserText({ contextText: context.promptText, message: input.message });
+    // AG05: today (with its weekday, in the user's time zone) lets the first layer give a date range.
+    const zone = state.timeZone || "Asia/Tokyo";
+    const today = `${formatWhen(state.asOf || deps.now(), zone, false)}, ${zone}`;
+    const user = understandUserText({ contextText: context.promptText, message: input.message, today });
     emitTrace({ contextMessages: context.messages.length, promptVersion: UNDERSTAND_PROMPT_VERSION, type: "understand.prompt" });
     let repairs = state.repairs;
     let first = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "understand", purpose: "first", requestId: input.requestId, system, user });
@@ -84,7 +91,7 @@ export function understandNode(scope: NodeScope): GraphNode {
       emitTrace({ errors: checked.errors, purpose: "first", type: "understand.invalid" });
       if (repairs >= 1) return { budget, repairs, understanding: "invalid" };
       repairs += 1;
-      const repair = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "understand", purpose: "repair", requestId: input.requestId, system, user: repairUserText({ contextText: context.promptText, errors: checked.errors, message: input.message, previousOutput: first.text }) });
+      const repair = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "understand", purpose: "repair", requestId: input.requestId, system, user: repairUserText({ contextText: context.promptText, errors: checked.errors, message: input.message, previousOutput: first.text, today }) });
       if (repair.ok === false) return { budget, repairs, understanding: failedUnderstanding(repair) };
       checked = check(repair.text, validation);
       if (checked.ok === false) {
@@ -93,8 +100,11 @@ export function understandNode(scope: NodeScope): GraphNode {
       }
     }
     if (checked.dropped.length) emitTrace({ dropped: checked.dropped, note: "verdict, route and waitReason are decided by code; the model's values are dropped", type: "understand.fields_dropped" });
-    run.understood = checked.output;
-    run.plainReply = checked.output.plainChat ? checked.output.reply ?? null : null;
-    return { budget, parts: graphPartsOf(checked.output, scope), plainChat: checked.output.plainChat, repairs, understanding: "understood" };
+    // run-03: a sentence of the message no part holds becomes a statement part (code's, not the model's).
+    const covered = coverEverySentence(checked.output, input.message);
+    if (covered.added.length) emitTrace({ quotes: covered.added.map((words) => [input.message.indexOf(words), input.message.indexOf(words) + words.length]), type: "understand.sentence_covered" });
+    run.understood = covered.output;
+    run.plainReply = covered.output.plainChat ? covered.output.reply ?? null : null;
+    return { budget, parts: graphPartsOf(covered.output, scope), plainChat: covered.output.plainChat, repairs, understanding: "understood" };
   };
 }

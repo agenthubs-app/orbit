@@ -21,7 +21,7 @@ PLANNER 是在所有 sprint 动工之前一次写成的，所以后面 sprint �
 | AG02 | 账本升级与确认边界 | 一 | AG01 | 服务端 | H | BND ×12 | completed（门槛 15/15 双评通过，--seed-cards） |
 | AG03 | 流程骨架与第一层 | 二 小林切片 | AG02 | 服务端 | H | UND ×14、CTX ×6、SCL ×3 | completed（门槛 39/39 双评通过，--seed-cards；修复轮 1） |
 | AG04 | 需求不清楚、追问与归属 | 二 | AG03 | 服务端 | H | AMB ×12、CTX ×2 | completed via run-02（run-01 failed：门槛四次各有一例因第一层标注不过；协调者依据当前目标开启 run-02，把“不猜对象”写成代码规则；run-02 修复轮 1 后门槛 37/37 双评通过，--seed-cards） |
-| AG05 | 读取与带出处的回答 | 二 | AG03 | 服务端 | H | RD ×10、SCL ×5 | planned |
+| AG05 | 读取与带出处的回答 | 二 | AG03 | 服务端 | H | RD ×10、SCL ×5 | completed via run-03（run-01 failed：模型没给搜索词时读宽了，且最终 SHA 不在门槛里；run-02 failed：AG04 复跑 36/37，另有漏读较新笔记的已知缺陷；run-03 修复轮 1 后门槛 43/43 双评通过，AG03、AG04 复跑通过，--seed-cards） |
 | AG06 | 小林切片：一张卡改待办、记往来 | 二 | AG04、AG05 | 服务端 | H | XL ×12、SCL ×2、BND ×12 完整对话版 | planned |
 | AG07 | 两端的确认卡与对话界面 | 二 | AG06、视觉稿获批 | Web、App | H | UIX ×6 | planned |
 | AG08 | 判断模型接入 | 三 能力补齐 | AG04、AG05、AG06 | 服务端 | H | JDG ×8、SCL ×2 | planned |

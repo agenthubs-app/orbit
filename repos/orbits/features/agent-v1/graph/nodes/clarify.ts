@@ -40,7 +40,7 @@ export function clueWords(message: string, ref: GraphPart["refs"][number] | unde
 export function nameOf(scope: NodeScope, recordId: string | null | undefined): string | null {
   if (!recordId) return null;
   const handle = [...(scope.run.context?.handles.values() ?? [])].find((item) => item.id === recordId);
-  return handle?.name || scope.run.names.get(recordId) || null;
+  return handle?.name || scope.run.names.get(recordId) || scope.run.readNames.get(recordId)?.name || null;
 }
 
 export function objectOf(scope: NodeScope, part: GraphPart): OptionObject {
@@ -52,7 +52,13 @@ export function objectOf(scope: NodeScope, part: GraphPart): OptionObject {
   return { kind, name, text: clueWords(scope.input.message, first) };
 }
 
+/** Pronouns for a person (zh, ja, en). */
+const PERSON_PRONOUN = /(他|她|彼女|彼|あの人|その人|\b(he|she|him|her|his)\b)/iu;
+
 function candidatesFor(scope: NodeScope, part: GraphPart): { clue: number; candidates: NamedRecordRef[] } | null {
+  // AG05: several people of the name the user said (resolve looked them up in the account).
+  const found = scope.run.candidates.get(part.localId);
+  if (found?.length) return { candidates: found, clue: Math.max(0, part.refs.findIndex((ref) => ref.entity === "contact")) };
   const context = scope.run.context;
   if (!context) return null;
   const pool: NamedRecordRef[] = [...context.lastMentionedForCode, ...context.shownList.map((item) => ({ id: item.id, name: item.name ?? "", type: item.type }))].filter((item) => item.name);
@@ -61,6 +67,12 @@ function candidatesFor(scope: NodeScope, part: GraphPart): { clue: number; candi
     const kind = recordKindOf(ref.entity);
     const found = pool.filter((item, at) => recordKindOf(item.type) === kind && pool.findIndex((other) => other.id === item.id) === at);
     if (found.length) return { candidates: found.slice(0, 3), clue: index };
+  }
+  // AG05: "她的待办" points at a person by a pronoun even when no person clue was given: the people mentioned last.
+  const personal = unresolved.find(({ ref }) => PERSON_PRONOUN.test(clueWords(scope.input.message, ref) ?? ""));
+  if (personal) {
+    const people = pool.filter((item, at) => recordKindOf(item.type) === "contact" && pool.findIndex((other) => other.id === item.id) === at);
+    if (people.length) return { candidates: people.slice(0, 3), clue: personal.index };
   }
   return unresolved.length ? { candidates: [], clue: unresolved[0].index } : null;
 }

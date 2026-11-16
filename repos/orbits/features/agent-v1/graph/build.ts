@@ -17,12 +17,14 @@ import { answerNode } from "./nodes/answer";
 import { clarifyNode } from "./nodes/clarify";
 import { deliverNode } from "./nodes/deliver";
 import { intakeNode } from "./nodes/intake";
+import { resolveNode } from "./nodes/resolve";
 import { routeNode } from "./nodes/route";
 import { understandNode } from "./nodes/understand";
+import { verifyNode } from "./nodes/verify";
 import { AgentGraphAnnotation, type AgentGraphRun, type AgentGraphState, type GraphResolution } from "./state";
 import type { AgentClarificationContract, AgentPartResult } from "../../../shared/contract/agent-v1";
 
-export const GRAPH_NODES = ["intake", "understand", "route", "clarify", "answer", "deliver"] as const;
+export const GRAPH_NODES = ["intake", "understand", "route", "resolve", "clarify", "answer", "verify", "deliver"] as const;
 
 function traced(name: string, requestId: string, node: GraphNode): GraphNode {
   return (state) => runWithTraceContext({ node: name, requestId }, async () => {
@@ -42,25 +44,35 @@ function traced(name: string, requestId: string, node: GraphNode): GraphNode {
   });
 }
 
-const answerDue = (state: AgentGraphState) => state.touched === null && state.parts.some((part) => part.route === "answer" && part.status === "answered");
+const touchedBy = (state: AgentGraphState, part: { localId: string }) => state.touched === null || state.touched.includes(part.localId);
+/** AG05: parts routed to read whose read has not run yet in this pass. */
+const readDue = (state: AgentGraphState) => state.parts.some((part) => part.route === "read" && part.status === "answered" && !part.reads && !part.gaps && touchedBy(state, part));
 
 export function buildAgentGraph(scope: NodeScope) {
   const id = scope.input.requestId;
+  // A discussion part to answer (first pass only), or a part that read and has something to answer from.
+  const answerDue = (state: AgentGraphState) => (state.touched === null && state.parts.some((part) => part.route === "answer" && part.status === "answered"))
+    || state.parts.some((part) => part.route === "read" && part.status === "answered" && (scope.run.materials.get(part.localId)?.length ?? 0) > 0 && touchedBy(state, part));
   return new StateGraph(AgentGraphAnnotation)
     .addNode("intake", traced("intake", id, intakeNode(scope)))
     .addNode("understand", traced("understand", id, understandNode(scope)))
     .addNode("route", traced("route", id, routeNode(scope)))
+    .addNode("resolve", traced("resolve", id, resolveNode(scope)))
     .addNode("clarify", traced("clarify", id, clarifyNode(scope)))
     .addNode("answer", traced("answer", id, answerNode(scope)))
+    .addNode("verify", traced("verify", id, verifyNode(scope)))
     .addNode("deliver", traced("deliver", id, deliverNode(scope)))
     .addEdge(START, "intake")
     .addEdge("intake", "understand")
     .addConditionalEdges("understand", (state: AgentGraphState) => (state.understanding === "understood" ? "route" : "deliver"), ["route", "deliver"])
-    // AG04: parts that need questions or directions go through clarify's prepare pass first.
-    .addConditionalEdges("route", (state: AgentGraphState) => (scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["clarify", "answer", "deliver"])
+    // AG05: parts that read go through resolve first (it may find several people and need a question).
+    // AG04: parts that need questions or directions go through clarify's prepare pass.
+    .addConditionalEdges("route", (state: AgentGraphState) => (readDue(state) ? "resolve" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["resolve", "clarify", "answer", "deliver"])
+    .addConditionalEdges("resolve", (state: AgentGraphState) => (scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["clarify", "answer", "deliver"])
     // After prepare: answer or deliver. After a resume: route again (a click to carry out) or deliver (closed from outside).
     .addConditionalEdges("clarify", (state: AgentGraphState) => state.resumeNext ?? (answerDue(state) ? "answer" : "deliver"), ["route", "answer", "deliver"])
-    .addEdge("answer", "deliver")
+    .addEdge("answer", "verify")
+    .addEdge("verify", "deliver")
     // Directions left open: the thread waits in clarify (interrupt) until a click, an answer or shelving resumes it.
     .addConditionalEdges("deliver", (state: AgentGraphState) => (state.pausing ? "clarify" : END), ["clarify", END])
     .compile({ checkpointer: scope.deps.checkpointer });
@@ -78,17 +90,22 @@ export interface AgentGraphResult {
   paused: boolean;
   /** AG04: earlier requests this one answered or shelved (the executor writes them back). */
   earlier: AgentGraphRun["earlier"];
+  /** AG05: the records the answer cites (verified, openable now), as typed refs. */
+  sourceRefs: string[];
 }
 
 function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRun {
   return {
     actorId: input.actorId,
     answers: new Map(),
+    candidates: new Map(),
     cardPrepared: input.cardPrepared,
     clarifications: [],
     context: null,
     earlier: [],
+    gapLines: new Map(),
     locale: input.locale,
+    materials: new Map(),
     message: input.message,
     names: new Map(Object.entries(extras.names ?? {})),
     needsDirections: false,
@@ -96,6 +113,10 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     partResults: [],
     plainReply: null,
     previousClarifications: extras.previousClarifications ?? null,
+    readNames: new Map(),
+    readNotes: new Map(),
+    references: [],
+    sourceRefs: [],
     steps: new Map(),
     text: "",
     understood: null,
@@ -112,6 +133,7 @@ async function resultOf(graph: ReturnType<typeof buildAgentGraph>, run: AgentGra
     modelCalls: state.budget.used,
     partResults: run.partResults,
     paused: snapshot.next.includes(PAUSED_AT),
+    sourceRefs: run.sourceRefs,
     state,
     status: state.requestStatus ?? "completed",
     text: run.text,

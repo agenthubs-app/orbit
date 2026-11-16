@@ -90,8 +90,11 @@ export class AgentRunStoppedError extends Error {
 export interface AgentEntrySessionWriter {
   history(sessionId: string): Promise<AgentEntryHistoryTurn[]>;
   appendUser(sessionId: string, record: AgentEntryRequestRecord, createdAt: string): Promise<void>;
-  /** `key` (AG04): a continuation after a click is its own assistant message. */
-  appendAssistant(sessionId: string, record: AgentEntryRequestRecord, text: string, createdAt: string, key?: string): Promise<void>;
+  /**
+   * `key` (AG04): a continuation after a click is its own assistant message. `recordRefs` (AG05): the
+   * records the answer cites, so a later turn can point back at them (and re-check them).
+   */
+  appendAssistant(sessionId: string, record: AgentEntryRequestRecord, text: string, createdAt: string, key?: string, recordRefs?: readonly string[]): Promise<void>;
 }
 
 export interface AgentEntryDependencies {
@@ -410,7 +413,7 @@ async function processRequest(deps: AgentEntryDependencies, actorId: string, rec
     return;
   }
   if (outcome.status !== "failed" && outcome.answer?.text) {
-    await deps.sessions?.appendAssistant(record.sessionId, finished.record!, outcome.answer.text, finishedAt, resume ? resume.clientSelectionId : undefined).catch((error: unknown) => {
+    await deps.sessions?.appendAssistant(record.sessionId, finished.record!, outcome.answer.text, finishedAt, resume ? resume.clientSelectionId : undefined, outcome.answer.sourceRefs).catch((error: unknown) => {
       emitTrace({ error: error instanceof Error ? error.message : String(error), requestId: record.requestId, type: "error", where: "entry.appendAssistant" });
     });
   }

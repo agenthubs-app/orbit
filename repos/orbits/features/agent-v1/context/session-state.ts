@@ -43,6 +43,8 @@ export interface SessionOpenItem {
   /** AG04: what the question asked for, and whether the part would change a record. */
   asks?: "intent" | "object" | "person" | "reading";
   writes?: boolean;
+  /** AG05: the part's object clues as the user said them (a reply that continues the matter reads the same person). */
+  clues?: { entity: string; text: string }[];
 }
 
 export interface AgentSessionState {

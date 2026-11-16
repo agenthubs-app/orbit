@@ -8,12 +8,14 @@ export const AI_READ_TOOLS = [
 ] as const satisfies readonly AiReadTool[];
 
 const fieldsByTool = {
-  "notes.query": ["title", "snippet", "body", "bodyTruncated", "contactIds", "eventIds", "createdAt"],
-  "tasks.query": ["title", "description", "status", "category", "dueAt", "contactId", "eventId", "scheduleId", "source", "createdAt"],
+  // agent-design AG05: a memo's updatedAt, version and interaction; a to-do's planned date and times; a
+  // schedule item's linked contacts and repetition; a contact's updatedAt. Contact methods stay out.
+  "notes.query": ["title", "snippet", "body", "bodyTruncated", "contactIds", "eventIds", "createdAt", "updatedAt", "version", "interaction"],
+  "tasks.query": ["title", "description", "status", "category", "dueAt", "plannedDate", "completedAt", "contactId", "eventId", "scheduleId", "source", "createdAt", "updatedAt"],
   "followups.query": ["title", "status", "contactId", "connectionId", "dueAt", "source", "evidenceSummary", "createdAt"],
-  "schedule.query": ["title", "kind", "category", "startsAt", "endsAt", "allDay", "timeZone", "location", "meetingMethod", "contactId", "eventId", "meetingId", "details", "missingFields"],
+  "schedule.query": ["title", "kind", "category", "startsAt", "endsAt", "allDay", "timeZone", "location", "meetingMethod", "contactId", "contactIds", "eventId", "meetingId", "details", "missingFields", "recurrence", "updatedAt"],
   "aiHistory.query": ["sessionId", "groupId", "title", "pinned", "role", "content", "visibleRunStatus", "visibleOutput"],
-  "contacts.query": ["displayName", "headline", "company", "relationship", "status", "tags"],
+  "contacts.query": ["displayName", "headline", "company", "relationship", "status", "tags", "updatedAt"],
   "relationshipEvidence.query": ["contactId", "kind", "summary", "occurredAt", "sourceId", "sourceRevision"],
   "messages.query": ["conversationId", "contactId", "direction", "content", "sentAt", "readAt", "visibleExtraction", "privacyState"],
   "notifications.query": ["kind", "title", "reason", "occurredAt", "readAt", "disposition", "targetStatus", "sourceIds"],
@@ -39,14 +41,23 @@ const texts = z.array(text);
 const textOrTexts = z.union([text, texts]);
 const scalarOrTexts = z.union([text, z.number(), z.boolean(), texts]);
 const optional = <T extends z.ZodType>(schema: T) => schema.optional();
+/** agent-design AG05 (设计稿附录 E): a memo's actual interaction, as stored. */
+const interaction = z.object({
+  actualContactIds: texts,
+  channel: z.enum(["phone", "meeting", "message", "email", "other"]),
+  direction: z.enum(["incoming", "outgoing", "mutual"]),
+  occurredOn: optional(text),
+  occurredAt: optional(text),
+  precision: z.enum(["day", "instant"]),
+}).strict();
 
 const fieldSchemas = {
-  "notes.query": z.object({ title: optional(text), snippet: optional(text), body: optional(text), bodyTruncated: optional(z.boolean()), contactIds: optional(texts), eventIds: optional(texts), createdAt: optional(text) }).strict(),
-  "tasks.query": z.object({ title: optional(text), description: optional(text), status: optional(text), category: optional(text), dueAt: optional(text), contactId: optional(text), eventId: optional(text), scheduleId: optional(text), source: optional(textOrTexts), createdAt: optional(text) }).strict(),
+  "notes.query": z.object({ title: optional(text), snippet: optional(text), body: optional(text), bodyTruncated: optional(z.boolean()), contactIds: optional(texts), eventIds: optional(texts), createdAt: optional(text), updatedAt: optional(text), version: optional(z.number()), interaction: optional(interaction) }).strict(),
+  "tasks.query": z.object({ title: optional(text), description: optional(text), status: optional(text), category: optional(text), dueAt: optional(text), plannedDate: optional(text), completedAt: optional(text), contactId: optional(text), eventId: optional(text), scheduleId: optional(text), source: optional(textOrTexts), createdAt: optional(text), updatedAt: optional(text) }).strict(),
   "followups.query": z.object({ title: optional(text), status: optional(text), contactId: optional(text), connectionId: optional(text), dueAt: optional(text), source: optional(textOrTexts), evidenceSummary: optional(text), createdAt: optional(text) }).strict(),
-  "schedule.query": z.object({ title: optional(text), kind: optional(text), category: optional(text), startsAt: optional(text), endsAt: optional(text), allDay: optional(z.boolean()), timeZone: optional(text), location: optional(text), meetingMethod: optional(text), contactId: optional(text), eventId: optional(text), meetingId: optional(text), details: optional(text), missingFields: optional(texts) }).strict(),
+  "schedule.query": z.object({ title: optional(text), kind: optional(text), category: optional(text), startsAt: optional(text), endsAt: optional(text), allDay: optional(z.boolean()), timeZone: optional(text), location: optional(text), meetingMethod: optional(text), contactId: optional(text), contactIds: optional(texts), eventId: optional(text), meetingId: optional(text), details: optional(text), missingFields: optional(texts), recurrence: optional(text), updatedAt: optional(text) }).strict(),
   "aiHistory.query": z.object({ sessionId: optional(text), groupId: optional(text), title: optional(text), pinned: optional(z.boolean()), role: optional(text), content: optional(text), visibleRunStatus: optional(text), visibleOutput: optional(textOrTexts) }).strict(),
-  "contacts.query": z.object({ displayName: optional(text), headline: optional(text), company: optional(text), relationship: optional(text), status: optional(text), tags: optional(texts) }).strict(),
+  "contacts.query": z.object({ displayName: optional(text), headline: optional(text), company: optional(text), relationship: optional(text), status: optional(text), tags: optional(texts), updatedAt: optional(text) }).strict(),
   "relationshipEvidence.query": z.object({ contactId: optional(text), kind: optional(text), summary: optional(text), occurredAt: optional(text), sourceId: optional(text), sourceRevision: optional(text) }).strict(),
   "messages.query": z.object({ conversationId: optional(text), contactId: optional(text), direction: optional(text), content: optional(text), sentAt: optional(text), readAt: optional(text), visibleExtraction: optional(textOrTexts), privacyState: optional(text) }).strict(),
   "notifications.query": z.object({ kind: optional(text), title: optional(text), reason: optional(text), occurredAt: optional(text), readAt: optional(text), disposition: optional(text), targetStatus: optional(text), sourceIds: optional(texts) }).strict(),

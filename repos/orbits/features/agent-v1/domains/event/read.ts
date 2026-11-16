@@ -1,0 +1,65 @@
+/**
+ * Event reads (设计稿 §4 活动, 附录 B; agent-design AG05): platform events by id, as the canonical event
+ * table holds them. An event is readable when it is published on the platform or the account organizes
+ * it. Private events arrive in AG13. Only the time, place and title fields are given.
+ */
+import { createHash } from "node:crypto";
+
+import type { CanonicalEventRecord } from "../../../events/core/contract";
+import type { CanonicalRow, ReadAdapter } from "../../../orbit-ai/data-query/read-contract";
+import { emitTrace, takeEvalFault } from "../../observability/trace";
+import { defined } from "../record-adapter";
+
+export interface EventSource {
+  byIds(ids: readonly string[]): Promise<readonly CanonicalEventRecord[]>;
+}
+
+function visible(event: CanonicalEventRecord, actorId: string): boolean {
+  if (event.archivedAt) return false;
+  return event.lifecycleState === "published" || event.organizerActorId === actorId;
+}
+
+function canonical(event: CanonicalEventRecord): CanonicalRow {
+  return {
+    evidenceIds: [],
+    fields: defined({ endsAt: event.endsAt ?? undefined, location: event.venue ?? undefined, startsAt: event.startsAt ?? undefined, title: event.title ?? undefined }),
+    id: event.eventId,
+    position: JSON.stringify([event.startsAt ?? "", event.eventId]),
+    revision: String(event.eventVersion),
+    updatedAt: event.startsAt ?? new Date(0).toISOString(),
+  };
+}
+
+export function createEventAdapter(options: { source: EventSource; denied?: () => ReadonlySet<string> }): ReadAdapter {
+  const allowed = (event: CanonicalEventRecord, actorId: string) => visible(event, actorId) && !options.denied?.().has(event.eventId);
+  return {
+    async authorize(scope) {
+      return Boolean(scope.actorId && scope.workspaceId);
+    },
+    async authorizeEvidence() {
+      return [];
+    },
+    async page(scope, input, _position, snapshot) {
+      const snap = snapshot ?? createHash("sha256").update(JSON.stringify(input)).digest("base64url");
+      const fault = takeEvalFault("event.read");
+      if (fault) {
+        emitTrace({ kind: fault.kind, note: "eval fault: the read source is unavailable", type: "read.fault", where: "event.read" });
+        return { partialReasons: ["source_unavailable"], rows: [], snapshot: snap };
+      }
+      const id = input.operation === "get" ? input.id : input.eventId;
+      // Only reads by id: searching the whole directory is not a read the Agent does in this version.
+      if (!id) return { partialReasons: [], rows: [], snapshot: snap, total: 0 };
+      try {
+        const events = (await options.source.byIds([id])).filter((event) => allowed(event, scope.actorId));
+        return { partialReasons: [], rows: events.map(canonical), snapshot: snap, total: events.length };
+      } catch (error) {
+        emitTrace({ error: error instanceof Error ? error.message : String(error), type: "read.error", where: "event.read" });
+        return { partialReasons: ["source_unavailable"], rows: [], snapshot: snap };
+      }
+    },
+    async readCurrentAtRevision(scope, expected) {
+      const events = (await options.source.byIds(expected.map((item) => item.id))).filter((event) => allowed(event, scope.actorId));
+      return events.map(canonical).filter((row) => expected.some((item) => item.id === row.id && item.revision === row.revision));
+    },
+  };
+}

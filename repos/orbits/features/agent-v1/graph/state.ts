@@ -10,11 +10,14 @@
 import { Annotation } from "@langchain/langgraph";
 
 import type { AgentClarificationContract, AgentPartResult } from "../../../shared/contract/agent-v1";
+import type { Material } from "../answer/schema";
 import type { NextStep } from "../clarify/next-step";
 import type { FirstLayerContext } from "../context/build";
+import type { NamedRecordRef } from "../context/session-state";
+import type { ReferenceHandle } from "./deps";
 import type { Capability, Route, Verdict, WaitReason } from "../route/capabilities";
 import type { PartStatus } from "../route/decide";
-import type { Clarity, DataOwner, DataSource, Deliverable, IntentBasis, Persistence, UnderstandOutput } from "../understand/schema";
+import type { Clarity, DataOwner, DataSource, Deliverable, IntentBasis, Persistence, ReadFilter, UnderstandOutput } from "../understand/schema";
 
 export interface GraphPartRef {
   entity: string;
@@ -41,6 +44,17 @@ export interface PartPlan {
   readings: { capabilities: Capability[]; deliverable: Deliverable }[];
   /** A click accepted the alternative offered for this part; it leads to this capability. */
   acceptedLeadsTo?: Capability | null;
+  /** AG05: how the part's read is narrowed: the words as [start, end) in this turn's message (the words are not kept), order, status, dates. */
+  readFilter?: Omit<ReadFilter, "text"> & { text?: [number, number] };
+}
+
+/** AG05: what a read part covered, per kind (codes and counts only). */
+export interface PartCoverage {
+  kind: string;
+  pagesRead: number;
+  seen: number;
+  total: number | null;
+  complete: boolean;
 }
 
 /** AG04: a set of clickable directions as the checkpoint keeps it (ids and codes; the labels are in the result document). */
@@ -89,6 +103,14 @@ export interface GraphPart {
   reading: { key?: string; capabilities: Capability[] } | null;
   /** AG04: a part made by a click on an entry: the part it was offered under. */
   origin: string | null;
+  /** AG05: the records this part read in this request, by ref and version (never their content). */
+  reads?: { ref: string; version: string }[];
+  /** AG05: what the read did not give (附录 C gaps). */
+  gaps?: string[];
+  /** AG05: how much was read, per kind. */
+  coverage?: PartCoverage[];
+  /** AG05: the refs the delivered answer cites (verified). */
+  cites?: string[];
 }
 
 const replace = <T>(fallback: () => T) => Annotation<T>({ default: fallback, reducer: (_previous, next) => next });
@@ -152,4 +174,18 @@ export interface AgentGraphRun {
   clarifications: AgentClarificationContract[];
   /** AG04: earlier requests this one answered or shelved; the executor resumes them after this run. */
   earlier: { requestId: string; resolution: GraphResolution }[];
+  /** AG05: this turn's @ references as authorized now (`accessible: false` when one cannot be opened). */
+  references: ReferenceHandle[];
+  /** AG05: per part, the records given to the answer step (numbered sentences). */
+  materials: Map<string, Material[]>;
+  /** AG05: per part, code's notes to the answer step (who was found, coverage, what could not be read). */
+  readNotes: Map<string, string[]>;
+  /** AG05: per part, code's sentences after the answer (no record, partial, failed, choose again). */
+  gapLines: Map<string, string[]>;
+  /** AG05: names of records read in this request (id → name), for the answer and the session state. */
+  readNames: Map<string, { type: string; name: string }>;
+  /** AG05: per part, several people match its name: the candidates to ask about. */
+  candidates: Map<string, NamedRecordRef[]>;
+  /** AG05: the delivered answer's verified source refs (filled by verify). */
+  sourceRefs: string[];
 }

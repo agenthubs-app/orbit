@@ -5,7 +5,7 @@
 import { CAPABILITIES } from "../route/capabilities";
 import { CLARITIES, DATA_SOURCES, DELIVERABLES, ENTITIES } from "./schema";
 
-export const UNDERSTAND_PROMPT_VERSION = "understand@ag04.3";
+export const UNDERSTAND_PROMPT_VERSION = "understand@ag05.5";
 
 const CAPABILITY_NOTES = [
   "contact.read, event.read, attendance.read, todo.read, memo.read, schedule.read, profile.read: read the user's own Orbit records (contacts, events in Orbit's event directory, attendance notes, to-dos, memos/notes, schedule, own profile).",
@@ -36,9 +36,10 @@ export function understandSystemPrompt(): string {
     `  "dataSources": any of ${DATA_SOURCES.join(", ")} (turn_material = only what is in the message itself),`,
     `  "deliverable": one of ${DELIVERABLES.join(", ")},`,
     '  "intentBasis": "instruction" (the user asks for it now) | "selection" | "accepted_context",',
-    '  "dataOwner": "self" | "other_user" (other_user when the data belongs to another Orbit user, e.g. another user\'s notes),',
+    '  "dataOwner": "self" | "other_user" (other_user only when the data belongs to another Orbit user\'s account, e.g. notes another user wrote; the records the user keeps about a person (their to-dos, notes, meetings: "他的待办") are the user\'s own: self),',
     '  "persistence": "this_turn" | "until_satisfied" (until_satisfied when the user asks Orbit to keep going without an end, e.g. keep searching until satisfied),',
-    '  "continues": {"kind": "alternative" | "clarification" | "card" | "pending_external", "ref": an open item handle o1, o2 …} — only when the CURRENT message answers or accepts that open item',
+    '  "continues": {"kind": "alternative" | "clarification" | "card" | "pending_external", "ref": an open item handle o1, o2 …} — only when the CURRENT message answers or accepts that open item,',
+    '  "readFilter": only for a part that reads the user\'s records, and only what the message says: {"text": a topic or title words to look for, copied from the CURRENT message (e.g. "灰釉", "询价", "竞品笔记"; not a person\'s name, not a whole question), "order": "newest" (the latest, last time — the default) | "oldest" (the first time, the earliest) | "both" (then and now, how something changed), "status": "open" (not done yet) | "completed", "from" / "to": a date range as YYYY-MM-DD (inclusive) worked out from the message and today\'s date (e.g. tomorrow, this month), "current": true (how the person stands now — where they are, what they do now, how they are lately — rather than what happened last time)} — leave out what the message does not say, except that a part that asks about the first time or the earliest always gives "order": "oldest" (also when "and now" is its own part)',
     "}",
     "",
     "Capabilities (use these names only):",
@@ -47,7 +48,7 @@ export function understandSystemPrompt(): string {
     "",
     "Rules:",
     "1. Only the CURRENT message creates parts. Earlier messages, lists and open items are context for understanding references; never create a part for a request that appears only in earlier messages.",
-    "2. One part per thing the user wants delivered. A message asking three things gives three parts. A constraint (\"but don't…\", \"先别改\") belongs to the part it limits, not a part of its own, unless it is a separate request.",
+    "2. One part per thing the user wants delivered. A message asking three things gives three parts. A constraint (\"but don't…\", \"先别改\") belongs to the part it limits, not a part of its own, unless it is a separate request. Every sentence of the CURRENT message belongs to some part: a sentence that only tells something (\"小林今天又来电话了\") is a statement part of its own.",
     "3. A question asking for advice or an opinion, a statement, thanks, a greeting or an acknowledgement (\"ありがとう\", \"谢谢\", \"OK\"), a hypothetical (\"if…\", \"もし…\"), and a quoted instruction from someone else are clarity statement with no change capability. If the user takes back a change in the same message (\"…改到周五——等等，先别改\"), keep the change capability and put the negation in constraints.",
     "4. Pronouns and ordinals (他, 她, he, she, 彼, 彼女, 第二个, that note) are resolved only from the context: the record of each kind mentioned last, the list shown last (by position), the records attached with @, and record handles in recent messages. Give the handle as referenceId; if the context does not identify it, leave referenceId out. A request about an earlier matter (\"刚才那件事\", \"さっきの件\", \"that thing\") that neither the message nor the context identifies has clarity none; do not pick a matter from old messages. When the person or record is named but the matter is not (\"handle the matter with <name>\"), use rule 8.",
     "5. parts always lists at least one part, also for plain chat. plainChat is true only when every part is ordinary discussion that general knowledge can answer, needing no capability. Then write the answer in reply, in the language of the current message, concise and practical.",
@@ -55,11 +56,13 @@ export function understandSystemPrompt(): string {
     "7. Do not output verdict, route, approval flags or account ids.",
     "8. multiple_readings: the user names a person or a record (by name or with @) and asks to \"look at\", \"handle\", \"take care of\" it, or how things are going, without saying what to do. List the plausible readings in readings, each with the capabilities it would need (reading records, a function over them, or a change). A request only to look at or check a record, or to hear how things are going, has only readings that read — never a change. Handling or taking care of a matter usually means doing something about it, so for such a request include the changes it could mean (e.g. moving a to-do, making a note) next to the readings that only look things up. Put in requiredCapabilities the union of their capabilities. Do not pick one yourself; code decides.",
     "9. Open items: an open clarification is a question Orbit asked earlier (which record, which reading). If the CURRENT message replies to it — picks a reading, names the record, or even only insists vaguely (\"that one, you know\") — set continues to that open item and describe the part by what the reply now asks for (for a picked reading: clarity clear with that reading's capabilities; for a reply that still does not say which: clarity none). A message about something else does not continue it.",
+    "10. A question about what the user's own records say (what someone said, when, what is not done, what is scheduled) reads records: give the read capabilities (memo.read, todo.read, schedule.read, contact.read, event.read, view.recentInteraction for the last interaction with a person) and dataSources orbit_records; it is never plainChat. Asking to repeat or go back to an earlier answer about records reads those records again — give the record handle from the context — never restate it from the conversation. Name the person as an objectClue with the user's words (a name, or a name with their company). Asking how things are going with a person, or only to look at a record, without saying what to look for, is still multiple_readings (rule 8).",
   ].join("\n");
 }
 
-export function understandUserText(input: { message: string; contextText: string }): string {
+export function understandUserText(input: { message: string; contextText: string; today?: string }): string {
   return [
+    ...(input.today ? [`Today: ${input.today}.`, ""] : []),
     "Context:",
     input.contextText,
     "",
@@ -68,7 +71,7 @@ export function understandUserText(input: { message: string; contextText: string
   ].join("\n");
 }
 
-export function repairUserText(input: { message: string; contextText: string; previousOutput: string; errors: readonly string[] }): string {
+export function repairUserText(input: { message: string; contextText: string; today?: string; previousOutput: string; errors: readonly string[] }): string {
   return [
     understandUserText(input),
     "",

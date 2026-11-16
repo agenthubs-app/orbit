@@ -34,7 +34,7 @@ test("plain chat: one model call, its reply is shown; nothing read, nothing prop
     assert.equal(result.text, "建议直接说来意，再用一句话寒暄收尾：对方时间有限。");
     assert.deepEqual(result.partResults, [{ partId: "p1", route: "answer", sourceQuote: CHAT, status: "answered", verdict: "accept" }]);
     assert.equal(result.status, "completed");
-    assert.deepEqual(trace.events.filter((event) => event.type === "node.enter").map((event) => event.node), ["intake", "understand", "route", "answer", "deliver"]);
+    assert.deepEqual(trace.events.filter((event) => event.type === "node.enter").map((event) => event.node), ["intake", "understand", "route", "answer", "verify", "deliver"]);
     assert.equal(trace.events.some((event) => /^(read\.|card\.|exec\.)/u.test(String(event.type))), false);
     assert.deepEqual(kit.authorized, [{ actorId: "actor:a", references: [] }], "intake checks the @ references and reads nothing else");
   } finally {
@@ -53,7 +53,9 @@ test("the reply of a plain-chat output is not shown when code finds a part that 
   assert.equal(model.calls.length, 2);
   assert.doesNotMatch(result.text, /小林上次说他会付款/u);
   assert.match(result.text, /开头先感谢对方/u);
-  assert.match(result.text, /这一版还不能读/u);
+  // AG05: the read runs (an empty account here): nothing found, said by code; "this version cannot read" is gone.
+  assert.match(result.text, /没有找到相关的内容/u);
+  assert.doesNotMatch(result.text, /这一版还不能读/u);
 });
 
 test("the default main model name is deepseek-flash (CONVENTIONS §2)", () => {

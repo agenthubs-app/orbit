@@ -33,6 +33,8 @@ interface AgentEvalHook {
   takeFault?(where: string): AgentEvalFault | null;
   /** AG03: a per-case deployment setting the eval set (e.g. model_calls_limit for model-budget-1). */
   setting?(name: string): unknown;
+  /** AG05: record ids whose read permission the case withdrew (`revoke: { read }`). */
+  deniedReads?(): readonly string[];
 }
 
 const SECRET_KEY = /^(authorization|cookie|set-cookie|password|secret|token|api[-_]?key|access[-_]?token)$/iu;
@@ -118,5 +120,17 @@ export function evalSetting(name: string): unknown {
     return evalHook()?.setting?.(name) ?? null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Eval-only deny list (agent-design AG05, PLANNER 出入 4): the product has no per-record read permission
+ * yet, so `revoke: { read }` is a list the eval keeps and every read checks. Empty outside the eval.
+ */
+export function evalDeniedReads(): ReadonlySet<string> {
+  try {
+    return new Set(evalHook()?.deniedReads?.() ?? []);
+  } catch {
+    return new Set();
   }
 }
