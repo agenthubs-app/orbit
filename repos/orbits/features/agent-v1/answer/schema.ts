@@ -19,6 +19,8 @@ export interface AnswerSegment {
   partId: string;
   text: string;
   cites: AnswerCite[];
+  /** run-03 repair 1: the model's profile-check entries as given (profile-check.ts verifies them); absent when not given. */
+  profile?: unknown[];
 }
 
 export interface AnswerOutput {
@@ -35,6 +37,10 @@ export interface Material {
   header: string;
   sentences: Sentence[];
   version: string;
+  /** run-03 repair 1: when the record is dated (a note's interaction or writing time, a to-do's update). */
+  at?: string | null;
+  /** run-03 repair 1: a contact profile's own values, for the profile check. */
+  profile?: { organization: string | null; role: string | null; updatedAt: string | null };
 }
 
 export function parseAnswerOutput(text: string): { ok: true; value: AnswerOutput } | { ok: false; error: string } {
@@ -51,7 +57,7 @@ export function parseAnswerOutput(text: string): { ok: true; value: AnswerOutput
       const ids = Array.isArray(cite.sentenceIds) ? cite.sentenceIds.map(Number).filter((id) => Number.isInteger(id)) : [];
       cites.push({ sentenceIds: ids, sourceRef: cite.sourceRef.trim() });
     }
-    segments.push({ cites, partId: typeof segment.partId === "string" ? segment.partId : "", text: typeof segment.text === "string" ? segment.text.trim() : "" });
+    segments.push({ cites, partId: typeof segment.partId === "string" ? segment.partId : "", text: typeof segment.text === "string" ? segment.text.trim() : "", ...(Array.isArray(segment.profile) ? { profile: segment.profile as unknown[] } : {}) });
   }
   return { ok: true, value: { gaps: [], segments } };
 }

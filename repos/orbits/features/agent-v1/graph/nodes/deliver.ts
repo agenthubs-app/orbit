@@ -177,7 +177,9 @@ function partLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, lan
     case "awaiting_clarification":
       return clarifyLine(scope, state, part, language);
     case "waiting_dependency": {
-      const dependency = parts.find((other) => part.dependsOn.includes(other.localId));
+      // run-03 repair 1 (AE-UND-010): the prerequisite that is not done is what it waits for, not the first one listed.
+      const prerequisites = parts.filter((other) => part.dependsOn.includes(other.localId));
+      const dependency = prerequisites.find((other) => other.status !== "answered") ?? prerequisites[0];
       return words.waiting(quote, dependency ? quoteOf(message, dependency) : "");
     }
     case "awaiting_confirmation":

@@ -40,9 +40,12 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
   const names = (ids: unknown) => (Array.isArray(ids) ? ids.map((id) => context.names.get(String(id))).filter(Boolean).join(", ") : "");
   let header: string;
   let sentences: Sentence[];
+  let at: string | null = null;
+  let profile: Material["profile"];
   switch (view.kind) {
     case "memo": {
       const interaction = f.interaction as { channel: string; direction: string; occurredOn?: string; occurredAt?: string; actualContactIds: string[] } | undefined;
+      at = text(interaction?.occurredAt) ?? text(interaction?.occurredOn) ?? text(f.createdAt);
       const about = names(f.contactIds);
       header = [
         `memo${text(f.title) ? ` "${text(f.title)}"` : ""}, written ${formatWhen(text(f.createdAt), context.timeZone)}`,
@@ -58,6 +61,7 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
       const due = text(f.dueAt);
       const overdue = open && due && Date.parse(due) < Date.parse(context.now) ? " — overdue" : "";
       header = `to-do, last updated ${formatWhen(text(f.updatedAt), context.timeZone)}`;
+      at = text(f.updatedAt);
       sentences = numbered([
         `Title: ${text(f.title) ?? "—"}`,
         `Status: ${text(f.status) ?? "—"}${f.completedAt ? ` (completed ${formatWhen(text(f.completedAt), context.timeZone)})` : ""}`,
@@ -90,10 +94,11 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
     default: {
       header = `contact profile, last updated ${formatWhen(text(f.updatedAt), context.timeZone, false)}`;
       sentences = numbered([`Name: ${text(f.displayName) ?? "—"}`, text(f.company) ? `Organization: ${text(f.company)}` : null, text(f.headline) ? `Role: ${text(f.headline)}` : null, Array.isArray(f.tags) && f.tags.length ? `Tags: ${f.tags.join(", ")}` : null]);
+      profile = { organization: text(f.company), role: text(f.headline), updatedAt: text(f.updatedAt) };
       break;
     }
   }
-  return { handle, header, kind: view.kind, partId, ref: view.ref, sentences, version: view.version };
+  return { at, handle, header, kind: view.kind, partId, ref: view.ref, sentences, version: view.version, ...(profile ? { profile } : {}) };
 }
 
 /** The materials block of the answer prompt. */

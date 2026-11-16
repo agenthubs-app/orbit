@@ -7,6 +7,7 @@
  */
 import { gapWords } from "../../answer/gap-copy";
 import { formatWhen } from "../../answer/materials";
+import { profileCheckNote, profileCheckOf, profileLine, verifyProfileUpdates, type ProfileUpdate } from "../../answer/profile-check";
 import { groundedAnswerSystemPrompt, groundedAnswerUserText, GROUNDED_ANSWER_PROMPT_VERSION, type GroundedItem } from "../../answer/prompt";
 import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
@@ -19,7 +20,10 @@ import { parseModelJson } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
 
-type Segments = { ok: true; segments: Map<string, string> } | { ok: false; error: string };
+/** run-03 repair 1: the reads that make a part a question about the person's profile. */
+const PROFILE_CAPABILITIES = new Set<string>(["contact.read", "profile.read", "view.context"]);
+
+type Segments ={ ok: true; segments: Map<string, string> } | { ok: false; error: string };
 
 /**
  * run-02 repair round 1: with no card in this turn, sentences about a confirmation card are dropped
@@ -64,11 +68,17 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   const budget = { ...state.budget };
   const dropCardTalk = !run.cardPrepared;
   const understood = run.understood;
+  const profileParts = new Map<string, GroundedItem["materials"]>();
   const items: GroundedItem[] = [...due].sort((left, right) => left.quote[0] - right.quote[0]).map((part) => {
     const source = understood?.parts.find((item) => item.localId === part.localId);
     const quote = input.message.slice(part.quote[0], part.quote[1]);
     const materials = [...(run.materials.get(part.localId) ?? []), ...part.dependsOn.flatMap((id) => run.materials.get(id) ?? [])];
-    return { constraints: source?.constraints ?? [], goal: source?.goal ?? quote, kind: materials.length ? "records" : "discussion", materials, notes: run.readNotes.get(part.localId) ?? [], partId: part.localId, quote };
+    // run-03 repair 1 (AE-SCL-004 R2): a part about how a person stands now, or about their profile, where a
+    // profile and a newer dated record were both read, must say in "profile" whether the profile still holds.
+    const asksProfile = Boolean(part.plan.readFilter?.current) || part.plan.readFilter?.order === "both" || (part.capabilities.length > 0 && part.capabilities.every((capability) => PROFILE_CAPABILITIES.has(capability)));
+    const contacts = materials.length && asksProfile ? profileCheckOf(materials) : [];
+    if (contacts.length) profileParts.set(part.localId, materials);
+    return { constraints: source?.constraints ?? [], goal: source?.goal ?? quote, kind: materials.length ? "records" : "discussion", materials, notes: [...(run.readNotes.get(part.localId) ?? []), ...(contacts.length ? [profileCheckNote(contacts)] : [])], partId: part.localId, quote };
   });
   const allMaterials = [...new Map(items.flatMap((item) => item.materials).map((material) => [material.handle, material])).values()];
   const readParts = new Set(items.filter((item) => item.kind === "records").map((item) => item.partId));
@@ -80,9 +90,22 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   emitTrace({ materials: allMaterials.map((material) => ({ handle: material.handle, partId: material.partId, ref: material.ref, sentences: material.sentences.length })), promptVersion: GROUNDED_ANSWER_PROMPT_VERSION, type: "answer.prompt" });
   const check = (text: string) => {
     const parsed = parseAnswerOutput(text);
-    if (parsed.ok === false) return { error: parsed.error, verification: null };
+    if (parsed.ok === false) return { error: parsed.error, profiles: null, verification: null };
     const cleaned = { ...parsed.value, segments: parsed.value.segments.map((segment) => ({ ...segment, text: withoutCardTalk(segment.text, segment.partId, dropCardTalk) })) };
-    return { error: null, verification: verifyCitations(cleaned, { materials: allMaterials, readParts, wanted }) };
+    const verification = verifyCitations(cleaned, { materials: allMaterials, readParts, wanted });
+    const profiles = new Map<string, ProfileUpdate[]>();
+    for (const [partId, materials] of profileParts) {
+      const segment = cleaned.segments.find((item) => item.partId === partId);
+      if (!segment || !verification.segments.has(partId)) continue;
+      if (!segment.profile) {
+        verification.problems.push(`${partId}: give "profile" — [] if the contact profile still holds, otherwise the entries the Profile check under ${partId} asks for`);
+        continue;
+      }
+      const checkedProfile = verifyProfileUpdates(segment.profile, materials);
+      verification.problems.push(...checkedProfile.problems.map((problem) => `${partId}: ${problem}`));
+      profiles.set(partId, checkedProfile.updates);
+    }
+    return { error: null, profiles, verification };
   };
   let repairs = state.repairs;
   let result: MainModelResult = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "first", requestId: input.requestId, system, user });
@@ -107,6 +130,16 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
     if (segment) {
       run.answers.set(part.localId, segment.text);
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref);
+      if (profileParts.has(part.localId)) {
+        const updates = checked?.profiles?.get(part.localId);
+        if (!updates) emitTrace({ partId: part.localId, type: "answer.profile_check_missing" });
+        const line = updates ? profileLine(state.language, updates, zone) : null;
+        if (line && updates) {
+          run.gapLines.set(part.localId, [line, ...(run.gapLines.get(part.localId) ?? [])]);
+          part.cites = [...new Set([...(part.cites ?? []), ...updates.map((item) => item.source.ref)])];
+          emitTrace({ fields: updates.map((item) => ({ contact: item.contact.ref, field: item.field, source: item.source.ref })), partId: part.localId, type: "answer.profile_outdated" });
+        }
+      }
       continue;
     }
     const budgetOut = result.ok === false && result.reason === "budget";

@@ -273,6 +273,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
 
       // 2. The people: bound, or looked up by name in the account.
       const contacts: ContactMatch[] = [];
+      const unmatched: string[] = [];
       let stop = false;
       for (const ref of part.refs.filter((item) => recordKindOf(item.entity) === "contact")) {
         if (ref.recordId) {
@@ -311,10 +312,9 @@ export function resolveNode(scope: NodeScope): GraphNode {
           break;
         }
         if (!matches.length) {
-          read.gaps.add("no_record");
-          read.lines.push(words.noContact(said.replace(/^@/u, "")));
-          stop = true;
-          break;
+          // run-03 repair 1 (AE-CTX-007): decided after all clues — "not found" only when nobody was found.
+          unmatched.push(said.replace(/^@/u, ""));
+          continue;
         }
         if (matches.length > 1) {
           // Several people of that name, the company does not tell them apart: ask which (§3.11), do not guess.
@@ -333,6 +333,17 @@ export function resolveNode(scope: NodeScope): GraphNode {
         contacts.push(matches[0]);
       }
       if (part.status === "awaiting_clarification") continue;
+      if (!stop && unmatched.length) {
+        if (!contacts.length) {
+          read.gaps.add("no_record");
+          read.lines.push(words.noContact(unmatched[0]));
+          stop = true;
+        } else {
+          // A person of the part was bound or found: a further clue no contact matches (a company, a place) is not a missing person.
+          read.notes.push(`${unmatched.map((said) => `"${said}"`).join(", ")} matched no contact; it is not taken as a person.`);
+          emitTrace({ partId: part.localId, type: "resolve.clue_unmatched", unmatched: unmatched.length });
+        }
+      }
       if (stop) {
         finish(read.gaps.has("service_error") ? "unfinished" : "answered", read.gaps.has("service_error") ? "read_failed" : null);
         continue;
@@ -376,7 +387,9 @@ export function resolveNode(scope: NodeScope): GraphNode {
         continue;
       }
       // A profile alone may be out of date (设计稿 §4: newer wins): a person's latest notes are read with it.
-      if (![...kinds].some((kind) => kind !== "contact")) kinds.add("memo");
+      // run-03 repair 1 (AE-CTX-007): those notes only check the profile — none found is not "no record".
+      const notesBesideProfile = ![...kinds].some((kind) => kind !== "contact");
+      if (notesBesideProfile) kinds.add("memo");
       const boundIds = new Map<DomainKind, string[]>();
       for (const ref of part.refs) {
         const kind = recordKindOf(ref.entity);
@@ -473,7 +486,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
         const kindFrom = kind === "schedule" && !from && !to && !contacts.length && !kindText ? now : from;
         if (kind === "todo" && kindStatus && !status) read.notes.push("Only the to-dos not done yet were read.");
         if (kind === "schedule" && kindFrom !== from) read.notes.push("Only schedule items from now on were read.");
-        read.wantsRecords = true;
+        if (!(kind === "memo" && notesBesideProfile && contacts.length)) read.wantsRecords = true;
         for (const contactId of subjects) {
           const orders: ("newest" | "oldest")[] = order === "both" ? ["newest", "oldest"] : [order];
           for (const direction of orders) {
