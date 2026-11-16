@@ -306,7 +306,9 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
     // A person picked among several of the name is named on the card with what told them apart.
     if (people.some((item) => !item.name)) return stop("read_failed", failedLine);
     const names = Object.fromEntries(people.map((item) => [item.id, item.detail ? (language === "en" ? `${item.name} (${item.detail})` : `${item.name}（${item.detail}）`) : item.name]));
-    const title = body.split(/(?<=[。.!！？?])\s*/u)[0].replace(/[。.!！]+$/u, "").slice(0, 40) || body.slice(0, 40);
+    // The body stays the user's words; the title is code's and names the person where the words used a pronoun.
+    let title = body.split(/(?<=[。.!！？?])\s*/u)[0].replace(/[。.!！]+$/u, "").slice(0, 40) || body.slice(0, 40);
+    for (const person of people) if (person.text && isPronounClue(person.text) && title.includes(person.text)) title = title.replace(person.text, person.name);
     ops.push({
       capability: "memo.create",
       localId: intent.localId,

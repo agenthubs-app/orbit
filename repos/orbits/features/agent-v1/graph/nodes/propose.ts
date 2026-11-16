@@ -68,7 +68,10 @@ function notUnderstood(language: ReplyLanguage, quote: string): string {
 function questionSet(scope: NodeScope, state: AgentGraphState, part: GraphPart, question: WriteQuestion): { set: OptionSetState; labels: Map<string, { label: string; refName?: string }>; line: string } {
   const language = state.language;
   const quote = scope.input.message.slice(part.quote[0], part.quote[1]);
-  const capability = (writesOf(part)[0] ?? "todo.update") as Capability;
+  // The option leads to what the second layer proposes for this part (a to-do question to todo.update), never to
+  // a capability this version cannot do (AE-CTX-005: schedule.create).
+  const proposable = proposableOf(part, quote);
+  const capability = (question.type === "contact" ? proposable.find((item) => item === "memo.create") ?? proposable[0] : "todo.update") as Capability ?? "todo.update";
   const existing = state.optionSets.filter((set) => set.partId === part.localId && set.purpose === "operation").length;
   const clarificationId = `${setIdOf(scope.input.requestId, part.localId, "q")}${existing ? existing + 1 : ""}`;
   const labels = new Map<string, { label: string; refName?: string }>();

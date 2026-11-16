@@ -108,6 +108,8 @@ test("3 AE-XL-003: a contact on a card is named by the contact's name, never by 
   const memo = resumed.actionPreview!.operations.find((op) => op.capability === "memo.create")!;
   assert.match(memo.text, /实际往来对象 小林健，/u);
   assert.doesNotMatch(memo.text, /实际往来对象 他/u);
+  assert.match(memo.text, /^新增往来笔记「小林健今天来过电话」/u, "the title on the card names the person too");
+  assert.equal((memo.after as { body: string }).body, "他今天来过电话", "the body stays the user's words");
 });
 
 test("4 AE-XL-006: after an item is taken off the card, the result document's card description follows the new version", async () => {
@@ -123,7 +125,7 @@ test("4 AE-XL-006: after an item is taken off the card, the result document's ca
   await store.claimNext({ actorId: ACTOR, leaseMs: 60_000, now: NOW, sessionId: "session:a", workerId: "w" });
   const before = await cards.access.freeze({ intents, locale: "zh", requestId, sessionId: "session:a" });
   const oldLine = cardLineOf(before!, "zh");
-  const finished = await store.finish({ actorId: ACTOR, now: NOW, outcome: { actionPreview: before!, answer: { sourceRefs: [], text: `聊了报价初稿。\n\n${oldLine}` }, partResults: [], status: "completed" }, requestId, workerId: "w" });
+  const finished = await store.finish({ actorId: ACTOR, now: NOW, outcome: { actionPreview: before!, answer: { sourceRefs: [], text: `聊了报价初稿。\n\n${oldLine}` }, partResults: [{ operationId: before!.operations[0].operationId, partId: "p2", status: "awaiting_confirmation" }, { operationId: before!.operations[1].operationId, partId: "p3", status: "awaiting_confirmation" }], status: "completed" }, requestId, workerId: "w" });
   assert.equal(finished.delivered, true);
   const record = { requestId };
   const action = (await cards.runtime.getAction(before!.actionId))!;
@@ -136,6 +138,7 @@ test("4 AE-XL-006: after an item is taken off the card, the result document's ca
   assert.match(document.answer!.text, /确认卡（修改 1 项）/u);
   assert.doesNotMatch(document.answer!.text, /新增往来笔记/u, "the removed item is no longer described");
   assert.match(document.answer!.text, /^聊了报价初稿。/u, "the rest of the answer stays");
+  assert.deepEqual(document.partResults.map((item) => [item.partId, item.status, item.reason ?? null]), [["p2", "awaiting_confirmation", null], ["p3", "unfinished", "removed_from_card"]], "the part taken off the card no longer waits for it");
 });
 
 test("5 AE-CTX-005: a to-do word with no time of day is not swallowed by schedule.create; the person's to-do is offered when the words do not match its title", async () => {
@@ -162,6 +165,7 @@ test("5 AE-CTX-005: a to-do word with no time of day is not swallowed by schedul
   const first = await runAgentGraph(kit.deps, input);
   assert.doesNotMatch(first.text, /このバージョンでは/u, "not answered as not in this version");
   assert.deepEqual(first.clarifications[0]?.options.map((option) => option.ref?.id), ["task:t47"], "the person's to-do is offered, not guessed");
+  assert.equal(first.clarifications[0]?.options[0].capability, "todo.update", "the option leads to the to-do change, not to the unsupported schedule entry");
   const resumed = await resumeAgentGraph(kit.deps, input, { clarificationId: first.clarifications[0].clarificationId, kind: "select", optionId: first.clarifications[0].options[0].optionId });
   assert.deepEqual(resumed.actionPreview?.operations[0].after, { plannedDate: "2026-11-20" });
 });

@@ -36,7 +36,8 @@ export async function refreshCardInDocument(input: { store: AgentEntryStore; act
       actionPreview: input.updated,
       ...(answer && text !== null ? { answer: { ...answer, text } } : {}),
       clarifications: record.document.clarifications ?? [],
-      partResults: record.document.partResults,
+      // A part whose item was taken off the card no longer waits for it.
+      partResults: record.document.partResults.map((item) => (item.status === "awaiting_confirmation" && item.operationId && !input.updated.operations.some((op) => op.operationId === item.operationId) ? { ...item, operationId: undefined, reason: "removed_from_card", status: "unfinished" as const } : item)),
       status,
     },
     now: input.now,

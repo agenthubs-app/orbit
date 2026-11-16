@@ -91,7 +91,7 @@ test("小林: one answer, one card of two items — count sentence, values befor
   assert.deepEqual(card.operations.map((op) => op.capability), ["todo.update", "memo.create"]);
   assert.equal(card.operations[0].text, "待办「给小林发修订报价」：计划日 11月18日（周三） → 11月20日（周五）");
   assert.deepEqual(card.operations[0].after, { plannedDate: "2026-11-20" });
-  assert.match(card.operations[1].text, /^新增往来笔记「他今天来过电话」：实际往来对象 小林健，11月15日（周日），对方来电$/u);
+  assert.match(card.operations[1].text, /^新增往来笔记「小林健今天来过电话」：实际往来对象 小林健，11月15日（周日），对方来电$/u);
   assert.deepEqual((card.operations[1].after as Record<string, unknown>).interaction, { actualContactIds: ["contact:c17"], channel: "phone", direction: "incoming", occurredOn: "2026-11-15", precision: "day" });
   assert.match(result.text, /实施费单列/u, "the answer comes first");
   assert.ok(result.text.indexOf("实施费单列") < result.text.indexOf("确认卡（修改 1 项，新增 1 项）"), "then the card line");
