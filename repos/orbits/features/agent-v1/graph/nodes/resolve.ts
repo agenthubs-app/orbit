@@ -419,6 +419,16 @@ export function resolveNode(scope: NodeScope): GraphNode {
         }
       }
 
+      // AG06 repair 1 (AE-SCL-008): words that only name the person or their company ("東都精機" of "東都精機の鈴木健太さん")
+      // are who the records are about, not a topic: they never narrow that person's records.
+      if (text && contacts.length) {
+        const personWords = part.refs.filter((ref) => recordKindOf(ref.entity) === "contact").map((ref) => clueWords(input.message, ref) ?? "");
+        const companies = contacts.map((item) => String(item.view?.fields.company ?? "")).filter(Boolean);
+        if (personWords.some((said) => said.includes(text!)) || companies.some((company) => company.includes(text!) || text!.includes(company))) {
+          emitTrace({ partId: part.localId, type: "resolve.person_words_not_a_topic", words: text });
+          text = undefined;
+        }
+      }
       // 3. What to read.
       const capabilities = part.reading?.capabilities.length ? part.reading.capabilities : part.capabilities;
       const kinds = readKindsOf(capabilities);

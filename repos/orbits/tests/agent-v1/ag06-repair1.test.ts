@@ -183,3 +183,24 @@ test("6 AE-XL-010: a nickname no contact is named by is never said not to exist;
   assert.doesNotMatch(unknown.text, /没有找到|不在你的联系人/u, "never 'not found' for a person");
   assert.match(unknown.text, /不确定你说的是哪一位/u);
 });
+
+test("1b AE-SCL-008 dev3: search words that only name the person or their company (\"東都精機\") do not narrow the person's to-dos", async () => {
+  const records = recordAccessOf(world((list) => {
+    list.push(contact(ACTOR, "contact:suzuki", "鈴木健太", { organization: "東都精機" }));
+    list.push(todo(ACTOR, "task:s1", "見積もりを送る", { relatedContactId: "contact:suzuki" }));
+    list.push(todo(ACTOR, "task:s2", "東都精機の求人票を更新する", { relatedContactId: "contact:suzuki" }));
+  }));
+  let materials = "";
+  const message = "東都精機の鈴木健太さん関連で、まだ終わっていないToDoは全部で何件ありますか。";
+  const model = deepseekStub(byNode({
+    answer: (call) => {
+      materials = call.user;
+      return json({ segments: [{ cites: [], partId: "p1", text: "2件です。" }] });
+    },
+    understand: () => json({ language: "ja", parts: [part({ dataSources: ["orbit_records"], deliverable: "list", objectClues: [{ entity: "contact", text: "東都精機の鈴木健太さん" }, { entity: "todo", text: "ToDo" }], readFilter: { status: "open", text: "東都精機" }, requiredCapabilities: ["contact.read", "todo.read"], sourceQuote: message })], plainChat: false }),
+  }));
+  const kit = graphKit(model.fetchImplementation, { now: NOW, records });
+  const result = await runAgentGraph(kit.deps, kit.input(message, { locale: "ja" }));
+  assert.match(materials, /見積もりを送る/u, "a to-do without the company's name in its title is read too");
+  assert.equal(result.partResults[0].coverage?.find((item) => item.kind === "todo")?.total, 2);
+});
