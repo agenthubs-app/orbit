@@ -13,7 +13,7 @@ import { Avatar, Bone, Icon, Orbit2026Scope, ToastProvider, type IconName } from
 import s from "./AccountLayout.module.css";
 
 export type AccountSection =
-  | "home" | "profile" | "account" | "iorbit" | "integrations"
+  | "home" | "profile" | "account" | "iorbit" | "integrations" | "schedule"
   | "notifications" | "appearance" | "permissions" | "export" | "help";
 
 const menu: readonly { section: Exclude<AccountSection, "home">; href: string; icon: IconName }[] = [
@@ -21,6 +21,8 @@ const menu: readonly { section: Exclude<AccountSection, "home">; href: string; i
   { section: "account", href: "/app/settings/account", icon: "settings" },
   { section: "iorbit", href: "/app/settings/iorbit", icon: "sparkle" },
   { section: "integrations", href: "/app/settings/integrations", icon: "link" },
+  // contact-reach R41 ⑤: 可約時間, next to the calendar connection.
+  { section: "schedule", href: "/app/settings/schedule", icon: "calendar" },
   { section: "notifications", href: "/app/settings/notifications", icon: "bell" },
   { section: "appearance", href: "/app/settings/appearance", icon: "grid" },
   { section: "permissions", href: "/app/settings/permissions", icon: "layers" },

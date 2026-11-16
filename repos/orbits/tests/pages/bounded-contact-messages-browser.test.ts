@@ -68,10 +68,16 @@ test("Web reads previews first, one message window on selection, and retries sen
     await page.getByRole("button", { name: "返回最新消息", exact: true }).click();
     await page.getByText("最新正文", { exact: true }).waitFor();
     await page.getByRole("textbox", { name: "回复消息", exact: true }).fill("真实回复草稿");
-    // 10-27: relationship messages stop at drafts; the page offers no send.
-    assert.equal(await page.getByRole("button", { name: /发送|Send|送信/ }).count(), 0);
-    await page.getByRole("button", { name: "保存草稿", exact: true }).waitFor();
-    assert.equal(await page.evaluate(() => (window as any).calls.filter((c: any) => c.path.endsWith("/messages") && c.method==="POST").length), 0);
+    // contact-reach R41 (U1): replies are sent; a failed send keeps the text and the retry reuses the request identity.
+    await page.getByRole("button", { name: "发送", exact: true }).click();
+    await page.getByRole("button", { name: "重试发送", exact: true }).waitFor();
+    assert.equal(await page.getByRole("textbox", { name: "回复消息", exact: true }).inputValue(), "真实回复草稿");
+    await page.getByRole("button", { name: "重试发送", exact: true }).click();
+    await page.waitForFunction(() => (document.querySelector('textarea[aria-label="回复消息"]') as HTMLTextAreaElement | null)?.value === "");
+    const posts = await page.evaluate(() => (window as any).calls.filter((c: any) => c.path.endsWith("/messages") && c.method==="POST").map((c: any) => JSON.parse(c.body)));
+    assert.equal(posts.length, 2);
+    assert.equal(posts[0].requestId, posts[1].requestId);
+    assert.deepEqual(posts.map((post: any) => [post.body, post.qualificationVersion]), [["真实回复草稿", "v"], ["真实回复草稿", "v"]]);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });

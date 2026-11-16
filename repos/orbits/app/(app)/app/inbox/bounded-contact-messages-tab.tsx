@@ -11,7 +11,8 @@ import ws from "./inbox-workspace.module.css";
 import { inboxListTime } from "./inbox-list-time";
 import { lastAnswer, rememberAnswer } from "../orbit-last-answer";
 import { AREA_FALLBACK_MS, useAreaChanges } from "../orbit-change-watch";
-import { BoundedMessageReadError, filterMessageCards, readMessageCards, readMessageWindow, confirmMessageWindowRead, readReplyDraft, saveReplyDraft, type MessageCardPageView, type MessageWindowView } from "./bounded-contact-messages-view-model";
+import { AppointmentProposalCard } from "../orbit-2026/inbox/AppointmentProposalCard";
+import { BoundedMessageReadError, filterMessageCards, readMessageCards, readMessageWindow, confirmMessageWindowRead, readReplyDraft, saveReplyDraft, sendWindowMessage, type MessageCardPageView, type MessageWindowView } from "./bounded-contact-messages-view-model";
 
 /** List summaries and one selected history window are independent resources. */
 export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { actorId: string; onIdentityChanged: () => void }) {
@@ -29,6 +30,11 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
   const [readError, setReadError] = useState(false);
   const [body, setBody] = useState("");
   const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  // contact-reach R41: replies are sent again. A failed send keeps the text and retries with the same request id.
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<"failed" | "offline" | null>(null);
+  const pending = useRef<{ conversationId: string; body: string; id: string; version: string } | null>(null);
+  const sendLock = useRef(false);
   const bodyEdited = useRef(false);
   // "Saved" is bound to the exact text and conversation of one save request
   // (Sprint 0122, Codex 104-A); one save is in flight at a time.
@@ -135,6 +141,27 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
       });
     return () => { controller.abort(); if (!confirmed && readKey.current === key) readKey.current = ""; };
   }, [actorId, detail, selected, historyCursor]);
+  async function send() {
+    const controller = lifetime.current;
+    if (!detail || detail.id !== selected || sendLock.current || !controller || controller.signal.aborted || !body.trim()) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) { setSendError("offline"); return; }
+    const text = body.trim();
+    // Same text as the unconfirmed attempt → same request id (the server answers with the first delivery).
+    const request = pending.current && pending.current.conversationId === detail.id && pending.current.body === text ? pending.current : { conversationId: detail.id, body: text, id: crypto.randomUUID(), version: detail.version };
+    pending.current = request; sendLock.current = true; setSending(true); setSendError(null);
+    try {
+      await sendWindowMessage(actorId, request, controller.signal);
+      if (controller.signal.aborted) return;
+      pending.current = null;
+      // The delivery retires the saved draft on the server (Sprint 0122); only clear text that was not edited meanwhile.
+      if (currentBody.current.trim() === request.body) setBody("");
+      setDraftState("idle"); setHistoryCursor(null); refreshWindow.current?.(); refreshList.current?.();
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setSendError("failed");
+      if (error instanceof BoundedMessageReadError && [401,403].includes(error.status)) changed.current();
+    } finally { sendLock.current = false; if (!controller.signal.aborted) setSending(false); }
+  }
   const retry = <button className="btn btn-ghost" onClick={() => setAttempt(n => n + 1)}>{t({ zh: "重试", en: "Retry", ja: "再試行" })}</button>;
   const visibleCards = filterMessageCards(cards?.items ?? [], search);
   const card = cards?.items.find(item => item.id === selected) ?? null;
@@ -145,7 +172,7 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
   const today = dayOf(new Date().toISOString());
   const timeOf = (at: string) => new Intl.DateTimeFormat(language, { hour: "numeric", minute: "2-digit" }).format(new Date(at));
   const dayLabel = (at: string) => dayOf(at) === today ? t({ zh: "今天", en: "Today", ja: "今日" }) : new Intl.DateTimeFormat(language, { month: "long", day: "numeric", weekday: "short" }).format(new Date(at));
-  const pick = (id: string) => { setSelected(id); setHistoryCursor(null); setBody(""); readKey.current = ""; };
+  const pick = (id: string) => { if (sendLock.current) return; setSelected(id); setHistoryCursor(null); setBody(""); setSendError(null); pending.current = null; readKey.current = ""; };
   // b5 D05 rail: この相手 for the open thread (only what the conversation itself knows), otherwise メッセージについて.
   const railName = card?.name ?? detail?.name ?? null;
   // Until the threads are read there is no rail of its own (the shell keeps the page's rail skeleton), and
@@ -157,7 +184,7 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
     </> : <>
       <h2 className={ws.railHead}><Icon name="mail" size={16}/>{t({ zh: "关于消息", en: "About messages", ja: "メッセージについて" })}</h2>
       <section className={ws.railCard}><div className={ws.railList}>
-        {([["🤝", "teal", { zh: "只和在 Orbit 上建立联系的人往来", en: "Only with people you are connected to", ja: "つながった人とだけやり取りします" }], ["📝", "lav", { zh: "回复只到草稿，不会发送", en: "Replies stay drafts; nothing is sent", ja: "返信は下書きまで。送信はしません" }], ["🔔", "apricot", { zh: "每个会话可以单独开关通知", en: "Turn notifications on or off per thread", ja: "通知はスレッドごとに切り替えられます" }]] as const).map(([emoji, tone, line]) => <div key={emoji}><MacTile emoji={emoji} tone={tone} size="sm"/><span>{t(line)}</span></div>)}
+        {([["🤝", "teal", { zh: "只和在 Orbit 上建立联系的人往来", en: "Only with people you are connected to", ja: "つながった人とだけやり取りします" }], ["📝", "lav", { zh: "回复会直接发给对方，没写完可以存成草稿", en: "Replies go to them; save a draft if you're not done", ja: "返信は相手に届きます。書きかけは下書きに保存できます" }], ["🔔", "apricot", { zh: "每个会话可以单独开关通知", en: "Turn notifications on or off per thread", ja: "通知はスレッドごとに切り替えられます" }]] as const).map(([emoji, tone, line]) => <div key={emoji}><MacTile emoji={emoji} tone={tone} size="sm"/><span>{t(line)}</span></div>)}
       </div></section>
       {unread > 0 ? <section className={ws.railCard}><div className={ws.lbl}>{t({ zh: "未读", en: "Unread", ja: "未読" })}</div><div className={ws.railNum}><b>{unread}</b><span className={ws.lbl}>{t({ zh: "条 · {n} 个会话", en: "· {n} threads", ja: "件 · {n} スレッド" }).replace("{n}", String(unreadThreads))}</span></div></section> : null}
     </>}</div></Orbit2026Scope>,
@@ -185,7 +212,7 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
         {!selected ? cards && !cards.items.length ? <div className={ws.empty}>
           <span className={ws.emptyTile} style={{background:"var(--mac-teal)"}} aria-hidden>💬</span>
           <h3>{t({ zh: "暂无消息", en: "No messages yet", ja: "メッセージはまだありません" })}</h3>
-          <p>{t({ zh: "在 Orbit 上建立联系的人发来的消息会出现在这里。回复可以先写成草稿。", en: "Messages from people you are connected to on Orbit appear here. You can draft replies.", ja: "Orbit でつながった人から届いたメッセージが、ここに並びます。返信は下書きまで作れます。" })}</p>
+          <p>{t({ zh: "在 Orbit 上建立联系的人发来的消息会出现在这里。", en: "Messages from people you are connected to on Orbit appear here.", ja: "Orbit でつながった人から届いたメッセージが、ここに並びます。" })}</p>
           <a className={`btn ${ws.btn}`} style={{marginTop:20}} href="/app/contacts"><Icon name="users" size={16}/>{t({ zh: "打开人脉", en: "Open network", ja: "人脈を開く" })}</a>
         </div> : <div className={ws.hint}><span className={ws.hintIcon}><Icon name="mail" size={21}/></span><b>{t({ zh: "选择会话，往来消息会显示在这里", en: "Choose a thread to see it here", ja: "スレッドを選ぶと、ここにやり取りが出ます" })}</b>{unread > 0 ? <span>{t({ zh: "未读 {n} 条", en: "{n} unread", ja: "未読 {n}件" }).replace("{n}", String(unread))}</span> : null}</div>
         : detailError ? <p role="alert" className={ws.listNote}>{t({ zh: "对话不可用，请重新加载。", en: "Conversation unavailable. Reload to continue.", ja: "この会話を開けません。再読み込みしてください。" })}{retry}</p> : !detail ? <p role="status" className={ws.listNote}>{t({ zh: "正在读取对话…", en: "Loading conversation…", ja: "会話を読み込み中…" })}</p> : <>
@@ -203,17 +230,20 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
               const day = dayOf(message.at), divider = day !== previousDay; previousDay = day;
               const me = message.authorId === actorId;
               return [divider ? <span key={"d:" + day} className={ws.dateDiv}>{dayLabel(message.at)}</span> : null,
-                <article key={message.id} className={`${ws.msg}${me ? " " + ws.me : ""}`}><p className={ws.bubble} style={{margin:0}}>{message.body}</p><span className={ws.lbl}>{me ? t({ zh: "你", en: "You", ja: "あなた" }) : message.author} · <time dateTime={message.at}>{timeOf(message.at)}</time></span></article>];
+                <article key={message.id} className={`${ws.msg}${me ? " " + ws.me : ""}`}><p className={ws.bubble} style={{margin:0}}>{message.body}</p><span className={ws.lbl}>{me ? t({ zh: "你", en: "You", ja: "あなた" }) : message.author} · <time dateTime={message.at}>{timeOf(message.at)}</time></span>
+                  {message.appointmentId ? <Orbit2026Scope language={language}><AppointmentProposalCard appointmentId={message.appointmentId} peerName={detail.name} /></Orbit2026Scope> : null}</article>];
             })}
           </div>
           <div className={ws.composer}>
-            <div className={ws.composerHead}><Icon name="pen" size={16}/>{t({ zh: "回复草稿", en: "Reply draft", ja: "返信の下書き" })}<span className={ws.lbl}>{t({ zh: "只有你能看到", en: "Only you can see it", ja: "自分だけに表示" })}</span></div>
-            <textarea aria-label={t({ zh: "回复消息", en: "Reply", ja: "返信" })} value={body} onChange={e => { bodyEdited.current = true; setDraftState("idle"); setBody(e.target.value); }} />
+            <div className={ws.composerHead}><Icon name="pen" size={16}/>{t({ zh: "回复", en: "Reply", ja: "返信" })}</div>
+            <textarea aria-label={t({ zh: "回复消息", en: "Reply", ja: "返信" })} value={body} onChange={e => { bodyEdited.current = true; setDraftState("idle"); setSendError(null); setBody(e.target.value); }} disabled={sending} />
             <div className={ws.composerFoot}>
-              {draftState === "saved" ? <p role="status" className={ws.lbl} style={{margin:0}}><Icon name="check" size={13}/>{t({ zh: "草稿已保存，只有你能看到。", en: "Draft saved. Only you can see it.", ja: "下書きを保存しました。自分だけに表示されます。" })}</p>
+              {sendError ? <p role="alert" className={ws.lbl} style={{margin:0}}>{sendError === "offline" ? t({ zh: "离线时不能发送，内容已保留。", en: "You're offline. Your reply is kept.", ja: "オフラインのため送信できません。内容はそのまま残っています。" }) : t({ zh: "没有确认送达，内容已保留；重试不会重复发送。", en: "Not confirmed as sent. Your reply is kept; retrying won't send it twice.", ja: "送信を確認できませんでした。内容は残っています。再試行しても二重には送られません。" })}</p>
+                : draftState === "saved" ? <p role="status" className={ws.lbl} style={{margin:0}}><Icon name="check" size={13}/>{t({ zh: "草稿已保存，只有你能看到。", en: "Draft saved. Only you can see it.", ja: "下書きを保存しました。自分だけに表示されます。" })}</p>
                 : draftState === "error" ? <p role="alert" className={ws.lbl} style={{margin:0}}>{t({ zh: "草稿没有保存，请重试。", en: "Draft was not saved. Try again.", ja: "下書きを保存できませんでした。再試行してください。" })}</p>
-                : <span className={ws.lbl}>{t({ zh: "Orbit 不会替你发出", en: "Orbit does not send it", ja: "Orbit からは送信しません" })}</span>}
-              <button className={`btn ${ws.btn} ${ws.sm} ${ws.primary}`} disabled={draftSaveInFlight} onClick={() => void saveDraft()}>{t({ zh: draftSaveInFlight ? "保存中…" : "保存草稿", en: draftSaveInFlight ? "Saving…" : "Save draft", ja: draftSaveInFlight ? "保存中…" : "下書きを保存" })}</button>
+                : <span className={ws.lbl} />}
+              <button className={`btn ${ws.btn} ${ws.sm}`} disabled={draftSaveInFlight || sending} onClick={() => void saveDraft()}>{t({ zh: draftSaveInFlight ? "保存中…" : "保存草稿", en: draftSaveInFlight ? "Saving…" : "Save draft", ja: draftSaveInFlight ? "保存中…" : "下書きを保存" })}</button>
+              <button className={`btn ${ws.btn} ${ws.sm} ${ws.primary}`} disabled={sending || !body.trim()} onClick={() => void send()} data-inbox-send="">{t({ zh: sending ? "发送中…" : sendError === "failed" ? "重试发送" : "发送", en: sending ? "Sending…" : sendError === "failed" ? "Retry send" : "Send", ja: sending ? "送信中…" : sendError === "failed" ? "送信を再試行" : "送信" })}</button>
             </div>
           </div>
         </>}

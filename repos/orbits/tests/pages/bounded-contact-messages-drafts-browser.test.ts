@@ -56,9 +56,12 @@ test("Web loads the saved reply draft for the opened conversation, saves edits, 
     assert.equal(await page.evaluate(() => (window as any).draft), "改过的草稿", "a failed save leaves the stored draft unchanged");
 
     await page.evaluate(() => { (window as any).failPut = false; });
-    // 10-27: relationship messages stop at drafts; the page offers no send.
-    assert.equal(await page.getByRole("button", { name: /发送|Send|送信/ }).count(), 0);
-    assert.equal(await page.evaluate(() => (window as any).calls.some((call: any) => call.method === "POST" && call.path.endsWith("/messages"))), false);
+    // contact-reach R41 (U1): replies are sent again; a delivered reply clears the composer.
+    await page.getByRole("button", { name: "发送", exact: true }).click();
+    await page.waitForFunction(() => (window as any).calls.some((call: any) => call.method === "POST" && call.path.endsWith("/messages")));
+    await page.waitForFunction(() => (document.querySelector('textarea[aria-label="回复消息"]') as HTMLTextAreaElement | null)?.value === "");
+    const posts = await page.evaluate(() => (window as any).calls.filter((call: any) => call.method === "POST" && call.path.endsWith("/messages")).map((call: any) => JSON.parse(call.body).body));
+    assert.deepEqual(posts, ["保存会失败"]);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });

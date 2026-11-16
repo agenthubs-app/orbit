@@ -1,0 +1,19 @@
+/* contact-reach R41 ⑤ 設定 › 日程: 可約時間 card (kit .setRow) + the calendar connection it relies on. */
+.stack { display: grid; gap: var(--space-12); }
+.card { display: grid; gap: var(--space-4); padding: var(--space-20); border-radius: var(--r-card-web); background: var(--surface); }
+.card h2 { margin: 0; font-size: var(--fs-emph); font-weight: var(--fw-heavy); }
+.desc { margin: 0 0 var(--space-8); color: var(--ink-2); font-size: var(--fs-body-sm); line-height: var(--lh-body); }
+.row { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: var(--space-12); padding: var(--space-12) 0; border-top: 1px solid var(--line); }
+.key { font-size: var(--fs-body-sm); font-weight: var(--fw-bold); color: var(--ink); }
+.value { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); min-width: 0; }
+.days { display: flex; flex-wrap: wrap; gap: var(--space-6); }
+.day:global(.btn) { min-width: 34px; height: 34px; min-height: 0; padding: 0 var(--space-8); border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-meta); font-weight: var(--fw-bold); cursor: pointer; }
+.day[aria-pressed="true"]:global(.btn) { background: var(--ink); color: var(--bg); }
+.day:global(.btn):disabled { cursor: default; }
+.select { height: 34px; padding: 0 var(--space-10); border: 0; border-radius: var(--r-sm); background: var(--surface-2); color: var(--ink); font: inherit; font-size: var(--fs-body-sm); font-family: var(--font-num); }
+.select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hint { font-size: var(--fs-label); color: var(--ink-3-text); }
+.error { margin: 0; font-size: var(--fs-label); color: var(--coral-text); }
+.conn { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8); font-size: var(--fs-body-sm); color: var(--ink-2); }
+.conn a { color: var(--ink); font-weight: var(--fw-bold); text-decoration: none; }
+@media (max-width: 600px) { .row { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); } }

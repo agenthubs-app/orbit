@@ -39,7 +39,8 @@ export function filterMessageCards(items: readonly MessageCardView[], query: str
 }
 export interface MessageWindowView {
   id: string; name: string; version: string; nextCursor: string | null;
-  messages: { id: string; authorId: string; author: string; body: string; at: string }[];
+  /** appointmentId: the meeting sent with this message (contact-reach R39/R41), null otherwise. */
+  messages: { id: string; authorId: string; author: string; body: string; at: string; appointmentId: string | null }[];
 }
 async function read(path: string, actorId: string, signal: AbortSignal) {
   const response = await fetch(path, { signal, cache: "no-store", credentials: "same-origin" });
@@ -70,7 +71,7 @@ export async function readMessageWindow(actorId: string, conversationId: string,
   const peer = page.conversation.participantAccountIds.find(id => id !== actorId);
   if (!peer || !page.conversation.participantAccountIds.includes(actorId) || page.conversation.conversationId !== conversationId || page.items.some(item => item.conversationId !== conversationId || !page.conversation.participantAccountIds.includes(item.senderAccountId))) throw new BoundedMessageReadError(403);
   return { id: conversationId, name: page.conversation.participantDisplayNames[peer] ?? "", version: page.conversation.qualificationVersion,
-    nextCursor: page.nextCursor ?? null, messages: page.items.map(item => ({ id: item.messageId, authorId: item.senderAccountId, author: item.senderDisplayName, body: item.body, at: item.sentAt })) };
+    nextCursor: page.nextCursor ?? null, messages: page.items.map(item => ({ id: item.messageId, authorId: item.senderAccountId, author: item.senderDisplayName, body: item.body, at: item.sentAt, appointmentId: item.appointmentId ?? null })) };
 }
 export async function confirmMessageWindowRead(actorId: string, conversationId: string, messageId: string, signal: AbortSignal) {
   await expectActor(actorId, signal, true);
@@ -81,6 +82,15 @@ export async function confirmMessageWindowRead(actorId: string, conversationId: 
   // The receipt does not name its actor: confirm afterwards (fresh, the barrier cleared the reuse)
   // that the session did not switch while it was being written.
   await expectActor(actorId, signal);
+}
+// contact-reach R41 (DESIGN U1/D6): replies are sent again (8316390c0 had stopped them at drafts). One request
+// identity per message: a retry after an unconfirmed send reuses it, so the server answers with the first delivery.
+export async function sendWindowMessage(actorId: string, request: { conversationId: string; body: string; id: string; version: string }, signal: AbortSignal) {
+  await expectActor(actorId, signal, true);
+  const value = await communicationFetch(`/api/relationship-communication/conversations/${encodeURIComponent(request.conversationId)}/messages`, {
+    signal, method: "POST", headers: { "idempotency-key": request.id }, body: JSON.stringify({ body: request.body, requestId: request.id, qualificationVersion: request.version }),
+  }) as { conversationId?: unknown; deliveryState?: unknown; message?: { body?: unknown; senderAccountId?: unknown } };
+  if (value.conversationId !== request.conversationId || value.deliveryState !== "delivered" || value.message?.body !== request.body || value.message.senderAccountId !== actorId) throw Error("Delivery receipt invalid");
 }
 // Reply drafts (Sprint 0104): the signed-in participant's own unsent reply,
 // stored on the relationship conversation. The server only ever returns the
