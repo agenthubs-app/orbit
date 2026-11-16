@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>联系 TA · 设计稿</title>
+<style>
+:root{
+  --bg:#F7F5F7;--surface:#FFFFFF;--surface-2:#F2EFF3;--ink:#1E1A24;--ink-2:#5E5866;--ink-3:#85808C;
+  --lav:#ECE6F7;--lav-t:#6E5C9A;--teal:#DCF0EA;--teal-t:#387361;--apr:#F7ECDD;--apr-t:#8B602E;--pink:#F8E4EC;
+  --busy:#E4E0E7;--r-card:22px;--r-md:14px;--line:#E6E2E8;
+  font-family:-apple-system,"PingFang SC","Hiragino Sans","Noto Sans JP",sans-serif;color:var(--ink);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#E9E6EB;padding:32px 24px 80px}
+h1{font-size:20px;margin:0 0 6px}
+.lead{color:var(--ink-2);font-size:13px;margin:0 0 28px;max-width:960px;line-height:1.7}
+.board{margin:0 0 48px}
+.board>h2{font-size:15px;margin:0 0 4px}
+.board>.note{font-size:12px;color:var(--ink-2);margin:0 0 14px;line-height:1.7;max-width:960px}
+.boards{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}
+
+.drawer{width:560px;background:var(--bg);border-radius:28px;padding:20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 40px rgba(30,26,36,.12)}
+.head{display:flex;gap:12px;align-items:center}
+.ava{width:52px;height:52px;border-radius:999px;background:var(--teal);color:var(--teal-t);display:grid;place-items:center;font-weight:800;font-size:18px;flex:none}
+.head .nm{font-size:18px;font-weight:800}
+.head .sub{font-size:12px;color:var(--ink-2)}
+.head .tools{margin-left:auto;display:flex;gap:6px}
+.ib{width:36px;height:36px;border-radius:999px;background:var(--surface);display:grid;place-items:center;font-size:15px;color:var(--ink-2)}
+.card{background:var(--surface);border-radius:var(--r-card);padding:20px}
+.cardH{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.cardH h3{margin:0;font-size:14.5px;font-weight:800}
+.emo{width:26px;height:26px;border-radius:9px;background:var(--pink);display:grid;place-items:center;font-size:13px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 16px;border:0;border-radius:999px;background:var(--surface-2);color:var(--ink);font:inherit;font-size:13px;font-weight:700;white-space:nowrap}
+.btn.primary{background:var(--ink);color:var(--bg)}
+.btn.sm{height:32px;padding:0 12px;font-size:12px}
+.btn.ghost{background:transparent;color:var(--ink-2)}
+.btn[disabled]{opacity:.45}
+.lbl{font-size:11.5px;color:var(--ink-3);font-weight:500}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+.tag.orbit{background:var(--lav);color:var(--lav-t)}
+.tag.mail{background:var(--apr);color:var(--apr-t)}
+.tag.ok{background:var(--teal);color:var(--teal-t)}
+.hl{outline:2px dashed #C07A3A;outline-offset:4px;border-radius:999px}
+.hlBox{outline:2px dashed #C07A3A;outline-offset:3px;border-radius:14px}
+
+.scrim{width:600px;background:rgba(30,26,36,.28);border-radius:28px;padding:28px 20px;display:flex;justify-content:center}
+.scrim.wide{width:900px}
+.modal{width:100%;background:var(--surface);border-radius:24px;padding:22px 22px 18px;box-shadow:0 12px 40px rgba(30,26,36,.18)}
+.mH{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.mH b{font-size:16px;font-weight:800}
+.mH .x{margin-left:auto}
+.x{width:32px;height:32px;border-radius:999px;background:var(--surface-2);display:grid;place-items:center;color:var(--ink-2);font-size:16px}
+.fld{margin-bottom:12px}
+.fld>.lbl{display:block;margin-bottom:6px}
+.to{height:40px;border-radius:var(--r-md);background:var(--surface-2);display:flex;align-items:center;gap:8px;padding:0 12px;font-size:13px}
+.to em{font-style:normal;color:var(--ink-3)}
+.inp{height:44px;border-radius:var(--r-md);background:var(--surface-2);display:flex;align-items:center;padding:0 12px;font-size:13px;font-weight:600}
+.ta{border-radius:var(--r-md);background:var(--surface-2);padding:12px;font-size:13px;line-height:1.75;white-space:pre-line}
+.ta mark{background:#FBEBD6;color:inherit;border-radius:4px;padding:0 2px}
+.attach{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.chipBtn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:12px;font-weight:700;color:var(--ink-2)}
+.prop{border:1px solid var(--line);border-radius:16px;padding:12px 14px;background:#FCFBFD}
+.prop .pt{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;margin-bottom:8px}
+.prop .pt .rm{margin-left:auto;font-weight:600;color:var(--ink-3);font-size:12px}
+.slot{display:flex;align-items:center;gap:10px;font-size:12.5px;padding:6px 0;border-top:1px solid #F0EDF2}
+.slot:first-of-type{border-top:0}
+.slot .n{width:20px;height:20px;border-radius:999px;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-size:11px;font-weight:800;flex:none}
+.slot .go{margin-left:auto}
+.mF{display:flex;align-items:center;gap:8px;margin-top:14px}
+.mF .hint{font-size:11.5px;color:var(--ink-3);margin-right:auto}
+
+/* time picker */
+.pick{display:grid;grid-template-columns:1fr 220px;gap:16px}
+.wk{display:grid;grid-template-columns:44px repeat(5,1fr);gap:4px;font-size:11px}
+.wk b{font-size:11px;text-align:center;color:var(--ink-2);padding-bottom:4px}
+.wk time{color:var(--ink-3);text-align:right;padding-right:6px;line-height:22px}
+.c{height:22px;border-radius:6px;background:var(--surface-2)}
+.c.busy{background:repeating-linear-gradient(135deg,var(--busy) 0 4px,#EEEBF0 4px 8px)}
+.c.off{background:transparent;border:1px dashed #E2DEE5}
+.c.sel{background:var(--ink);color:var(--bg);display:grid;place-items:center;font-weight:800;font-size:11px}
+.side{display:flex;flex-direction:column;gap:12px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg span{padding:7px 12px;border-radius:999px;background:var(--surface-2);font-size:12px;font-weight:700;color:var(--ink-2)}
+.seg span.on{background:var(--ink);color:var(--bg)}
+.legendRow{display:flex;gap:12px;font-size:11px;color:var(--ink-3);margin-top:8px;align-items:center}
+.legendRow i{display:inline-block;width:14px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+
+/* settings */
+.page{width:720px;background:var(--bg);border-radius:28px;padding:24px;box-shadow:0 10px 40px rgba(30,26,36,.12)}
+.page h3{margin:0 0 4px;font-size:18px}
+.page .desc{font-size:12.5px;color:var(--ink-2);margin:0 0 16px}
+.setRow{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid #F0EDF2;font-size:13px}
+.setRow:first-child{border-top:0}
+.setRow .k{width:150px;font-weight:700;flex:none}
+.setRow .v{flex:1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.day{width:36px;height:36px;border-radius:999px;background:var(--surface-2);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--ink-3)}
+.day.on{background:var(--ink);color:var(--bg)}
+.time{height:36px;padding:0 12px;border-radius:12px;background:var(--surface-2);display:inline-flex;align-items:center;font-size:13px;font-weight:600}
+.sel{height:36px;padding:0 12px;border-radius:12px;background:var(--surface-2);display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.sel em{font-style:normal;color:var(--ink-3)}
+.nav{display:flex;gap:6px;margin-bottom:16px}
+.nav span{padding:7px 12px;border-radius:999px;font-size:12px;font-weight:700;color:var(--ink-3)}
+.nav span.on{background:var(--surface);color:var(--ink)}
+
+/* inbox */
+.msg{max-width:78%;border-radius:18px;padding:10px 14px;font-size:13px;line-height:1.7}
+.msg.them{background:var(--surface-2)}
+.msgMeta{font-size:11px;color:var(--ink-3);margin:4px 2px 10px}
+
+.phone{width:390px;height:844px;background:var(--bg);border-radius:44px;position:relative;overflow:hidden;box-shadow:0 10px 40px rgba(30,26,36,.14);border:10px solid #111}
+.phone .in{padding:56px 16px 24px;display:flex;flex-direction:column;gap:12px;height:100%}
+.topbar{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:800}
+.topbar .sp{margin-left:auto;display:flex;gap:6px}
+.legend{font-size:12px;color:var(--ink-2);background:var(--surface);border-radius:14px;padding:14px 16px;line-height:1.8;max-width:380px}
+.legend b{color:var(--ink)}
+</style>
+</head>
+<body>
+<h1>联系 TA · 设计稿（2026-11-16）</h1>
+<p class="lead">人脉里「起草」和「提议时间」两个按钮合并为一个主按钮<b>「联系 TA」</b>。对方是 Orbit 用户时走<b>站内信</b>，可以直接发送；对方只有名片时走<b>邮件草稿</b>，Orbit 不代发，由你复制或用邮件 App 发出。写消息时可以<b>「插入候选时间」</b>：对 Orbit 用户，时间以结构化提议随消息发出，对方点一下就能接受并写进双方日历；对名片联系人，时间以文字写进邮件正文。选时间按你的<b>「可约时间」</b>设置（新增）过滤。「添加日程」（只记在自己日历上）挪到抽屉头部的 📅 图标，和 App 一致。橙色虚线框 = 本次新增或改动的位置。</p>
+
+<!-- 1 -->
+<section class="board">
+  <h2>① Web 抽屉 · 合并后的入口（左：Orbit 用户　右：名片联系人）</h2>
+  <p class="note">「为什么是 TA」卡片底部只剩一个主按钮「联系 TA」，按钮右侧一行灰字说明这次会走哪条路，用户点之前就知道是“发站内信”还是“写邮件草稿”。头部右侧新增 📅（添加日程），⋯ 保留原有菜单。</p>
+  <div class="boards">
+    <div class="drawer">
+      <div class="head"><div class="ava">森</div><div><div class="nm">森田 健二</div><div class="sub">モリタロボティクス株式会社 · 営業部長</div></div><div class="tools"><span class="ib hlBox">📅</span><span class="ib">⋯</span><span class="ib">✕</span></div></div>
+      <div class="card">
+        <div class="cardH"><span class="emo">🎯</span><h3>为什么是森田 健二</h3></div>
+        <div style="font-size:14px;line-height:1.7">森田健二在机器人公司从事营业，其人脉可能帮助引荐金融科技伙伴。</div>
+        <div class="row" style="margin-top:14px"><span class="btn primary hl">✉ 联系 TA</span><span class="lbl hl" style="padding:0 6px">站内信 · 对方在 Orbit 上</span></div>
+      </div>
+    </div>
+    <div class="drawer">
+      <div class="head"><div class="ava" style="background:var(--apr);color:var(--apr-t)">安</div><div><div class="nm">安川 高宏</div><div class="sub">株式会社セクションエイト · 代表取締役社長</div></div><div class="tools"><span class="ib hlBox">📅</span><span class="ib">⋯</span><span class="ib">✕</span></div></div>
+      <div class="card">
+        <div class="cardH"><span class="emo">🎯</span><h3>为什么是安川 高宏</h3></div>
+        <div style="font-size:14px;line-height:1.7">安川高宏熟悉质量管理体系，可帮你对接制造业客户。</div>
+        <div class="row" style="margin-top:14px"><span class="btn primary hl">✉ 联系 TA</span><span class="lbl hl" style="padding:0 6px">写邮件草稿 · 由你自己发送</span></div>
+      </div>
+    </div>
+    <div class="legend"><b>怎么判断走哪条路</b>：沿用现有的站内会话资格（邀请码互连、活动上互换过的 Orbit 用户 = 站内信）；其余一律邮件草稿。<br><b>去掉的</b>：「提议时间」按钮、「不会代发 · 由你自己发送」整行（换成按钮旁的路径说明）。<br><b>📅</b>：= 现在的「添加日程」，跳 Task 日历新建并预关联此人。</div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="board">
+  <h2>② 联系 Orbit 用户 · 站内信（刚打开 → 插入时间后）</h2>
+  <p class="note">点「联系 TA」打开写消息弹窗，正文预填模板，可以直接改。下方是附件行「🗓 插入候选时间」。插入后，正文下面出现一张<b>时间提议卡</b>（最多 5 个时段 + 形式地点），可以「修改」或「移除」。底部是真正的「发送」。</p>
+  <div class="boards">
+    <div class="scrim"><div class="modal">
+      <div class="mH"><b>联系 森田 健二</b><span class="tag orbit">站内信</span><span class="x">✕</span></div>
+      <div class="fld"><span class="lbl">消息</span><div class="ta">森田さん、ご無沙汰しております。
+最近「金融科技方向的合作伙伴」を探していて、森田さんのご経験をぜひ伺いたいと思いご連絡しました。
+20 分ほどお時間をいただけないでしょうか。</div>
+        <div class="attach"><span class="chipBtn hl">🗓 插入候选时间</span></div></div>
+      <div class="mF"><span class="hint">发送后对方在 Orbit 收件箱里看到</span><span class="btn">取消</span><span class="btn primary hl">发送</span></div>
+    </div></div>
+    <div class="scrim"><div class="modal">
+      <div class="mH"><b>联系 森田 健二</b><span class="tag orbit">站内信</span><span class="x">✕</span></div>
+      <div class="fld"><span class="lbl">消息</span><div class="ta">森田さん、ご無沙汰しております。
+最近「金融科技方向的合作伙伴」を探していて、森田さんのご経験をぜひ伺いたいと思いご連絡しました。
+以下の候補からご都合のよい時間を選んでいただけますか。</div></div>
+      <div class="prop hlBox">
+        <div class="pt">🗓 候选时间 · 60 分钟 · 线上<span class="rm">修改　移除</span></div>
+        <div class="slot"><span class="n">1</span>11/18（周二）10:00 – 11:00</div>
+        <div class="slot"><span class="n">2</span>11/19（周三）14:00 – 15:00</div>
+        <div class="slot"><span class="n">3</span>11/21（周五）16:00 – 17:00</div>
+      </div>
+      <div class="mF"><span class="hint">对方选一个时间就确定，自动写进双方日历</span><span class="btn">取消</span><span class="btn primary">发送</span></div>
+    </div></div>
+    <div class="legend"><b>发送</b>：真的发出（推翻 10-27 的止于草稿）；不再弹二次确认，发出后在收件箱会话里能看到。<br><b>正文</b>：沿用现有模板（0 次 AI），按界面语言；写过的草稿关掉后保留在会话草稿里。<br><b>提议卡</b>：就是现有的「面談を提案」结构，只是挂在消息下面一起发；没插时间就只发文字。</div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="board">
+  <h2>③ 联系名片联系人 · 邮件草稿（插入时间后）</h2>
+  <p class="note">同一个弹窗，路径标签换成「邮件草稿」。收件人显示名片上的邮箱，正文可改。「插入候选时间」选完后，时段<b>以文字写进正文</b>（下图黄底部分，可继续手改）。底部没有「发送」，只有「复制」和「用邮件 App 打开」（mailto，带主题和正文）。</p>
+  <div class="boards">
+    <div class="scrim"><div class="modal">
+      <div class="mH"><b>联系 安川 高宏</b><span class="tag mail">邮件草稿</span><span class="x">✕</span></div>
+      <div class="fld"><span class="lbl">收件人</span><div class="to">yasukawa@section-8.jp <em>· 名片上的邮箱</em></div></div>
+      <div class="fld"><span class="lbl">主题</span><div class="inp">ご無沙汰しております。近況をお話しできればと思います</div></div>
+      <div class="fld"><span class="lbl">正文</span><div class="ta">安川 高宏様
+
+ご無沙汰しております。お元気でお過ごしでしょうか。
+現在「制造业客户介绍」に取り組んでおり、ぜひご意見を伺いたいと思いご連絡しました。
+<mark>以下の日時のいずれかで、30 分ほどお時間をいただけますでしょうか（オンライン）。
+・11/18（火）10:00–10:30
+・11/19（水）14:00–14:30
+・11/21（金）16:00–16:30</mark>
+
+どうぞよろしくお願いいたします。</div>
+        <div class="attach"><span class="chipBtn">🗓 重新选时间</span></div></div>
+      <div class="mF"><span class="hint">Orbit 不会代发邮件</span><span class="btn">复制</span><span class="btn primary hl">用邮件 App 打开</span></div>
+    </div></div>
+    <div class="legend"><b>没有邮箱时</b>：收件人行显示「名片上没有邮箱」，「用邮件 App 打开」变灰，只能复制。<br><b>时段文字</b>：按草稿语言格式化，带时长和形式；重新选时间会替换这一段，不动其他手改内容。<br><b>不记录发送</b>：邮件发没发 Orbit 不知道，所以不自动记「往来」；用户可在「往来」里自己记一笔。</div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="board">
+  <h2>④ 插入候选时间 · 选时段（按可约时间过滤）</h2>
+  <p class="note">复用现在的选时段网格，只做三处改动：网格范围按「可约时间」画（不可约的格子虚线留空，点不了）；右栏顶部一行「按你的可约时间 · 修改 ›」；底部按钮从三步向导改为一步「插入」。忙碌（已有日程/外部日历）照旧斜纹不可点。</p>
+  <div class="boards">
+    <div class="scrim wide"><div class="modal">
+      <div class="mH"><b>选候选时间 · 最多 5 个</b><span class="x">✕</span></div>
+      <div class="pick">
+        <div>
+          <div class="wk">
+            <span></span><b>周一 11/17</b><b>周二 11/18</b><b>周三 11/19</b><b>周四 11/20</b><b>周五 11/21</b>
+            <time>09:00</time><span class="c off"></span><span class="c off"></span><span class="c off"></span><span class="c off"></span><span class="c off"></span>
+            <time>10:00</time><span class="c"></span><span class="c sel">1</span><span class="c busy"></span><span class="c"></span><span class="c"></span>
+            <time>11:00</time><span class="c busy"></span><span class="c"></span><span class="c busy"></span><span class="c"></span><span class="c"></span>
+            <time>12:00</time><span class="c off"></span><span class="c off"></span><span class="c off"></span><span class="c off"></span><span class="c off"></span>
+            <time>13:00</time><span class="c"></span><span class="c"></span><span class="c"></span><span class="c busy"></span><span class="c"></span>
+            <time>14:00</time><span class="c"></span><span class="c busy"></span><span class="c sel">2</span><span class="c busy"></span><span class="c"></span>
+            <time>15:00</time><span class="c"></span><span class="c"></span><span class="c"></span><span class="c"></span><span class="c busy"></span>
+            <time>16:00</time><span class="c"></span><span class="c"></span><span class="c"></span><span class="c"></span><span class="c sel">3</span>
+            <time>17:00</time><span class="c"></span><span class="c"></span><span class="c"></span><span class="c"></span><span class="c"></span>
+            <time>18:00</time><span class="c off"></span><span class="c off"></span><span class="c off"></span><span class="c off"></span><span class="c off"></span>
+          </div>
+          <div class="legendRow"><span><i style="background:var(--surface-2)"></i>可选</span><span><i style="background:repeating-linear-gradient(135deg,var(--busy) 0 3px,#EEEBF0 3px 6px)"></i>已有安排</span><span><i style="border:1px dashed #CFC9D3"></i>不在可约时间</span><span><i style="background:var(--ink)"></i>已选</span></div>
+        </div>
+        <div class="side">
+          <div class="lbl hlBox" style="padding:8px 10px;line-height:1.6">按你的可约时间：工作日 10:00–18:00 · 至少提前 1 天　<b style="color:var(--ink)">修改 ›</b></div>
+          <div><span class="lbl">时长</span><div class="seg" style="margin-top:6px"><span>30 分</span><span class="on">60 分</span><span>90 分</span></div></div>
+          <div><span class="lbl">形式</span><div class="seg" style="margin-top:6px"><span class="on">线上</span><span>面谈</span><span>电话</span></div></div>
+          <div><span class="lbl">会议链接 / 地点（可不填）</span><div class="inp" style="margin-top:6px;color:var(--ink-3);font-weight:500">https://</div></div>
+        </div>
+      </div>
+      <div class="mF"><span class="hint">打开时已按可约时间预选最近 3 个空档</span><span class="btn">取消</span><span class="btn primary hl">插入 3 个时间</span></div>
+    </div></div>
+    <div class="legend"><b>预选</b>：沿用现在的“找最近 3 个空档”，但规则改读可约时间（不再写死工作日 9–18、提前 15 分钟）。<br><b>没连外部日历</b>：只按 Orbit 里的日程判断忙碌，顶部提示「只看了 Orbit 里的日程」，不阻止选择。<br><b>名片联系人</b>：同一个弹窗；「会议链接 / 地点」会一起写进邮件正文。</div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="board">
+  <h2>⑤ 设置 · 可约时间（新增）</h2>
+  <p class="note">放在「设置 › 日程」下（和日历连接放在一起），④ 选时段右栏的「修改 ›」直达这里。默认值 = 现在写死的规则，用户不改也不影响使用。只用于你自己挑时间，<b>不生成公开预约页</b>。</p>
+  <div class="boards">
+    <div class="page">
+      <div class="nav"><span>账号</span><span>个人资料</span><span class="on">日程</span><span>通知</span><span>语言</span></div>
+      <div class="card hlBox">
+        <h3>可约时间</h3>
+        <p class="desc">向别人提议见面时，只从这些时间里挑；已有安排的时段会自动避开。</p>
+        <div class="setRow"><span class="k">哪几天</span><span class="v"><span class="day on">一</span><span class="day on">二</span><span class="day on">三</span><span class="day on">四</span><span class="day on">五</span><span class="day">六</span><span class="day">日</span></span></div>
+        <div class="setRow"><span class="k">几点到几点</span><span class="v"><span class="time">10:00</span>–<span class="time">18:00</span><span class="lbl" style="margin-left:8px">午休</span><span class="time">12:00</span>–<span class="time">13:00</span></span></div>
+        <div class="setRow"><span class="k">默认时长</span><span class="v"><div class="seg"><span>30 分</span><span class="on">60 分</span><span>90 分</span></div></span></div>
+        <div class="setRow"><span class="k">至少提前</span><span class="v"><span class="sel">1 天 <em>▾</em></span><span class="lbl">（可选：1 小时 / 4 小时 / 1 天 / 2 天）</span></span></div>
+        <div class="setRow"><span class="k">前后留出</span><span class="v"><span class="sel">15 分钟 <em>▾</em></span><span class="lbl">（不提议紧挨着已有安排的时段）</span></span></div>
+        <div class="setRow"><span class="k">时区</span><span class="v"><span class="sel">Asia/Tokyo（跟随设备）</span></span></div>
+      </div>
+      <div class="card" style="margin-top:12px"><h3 style="font-size:15px">日历连接</h3><p class="desc" style="margin:0">Google 日历 · 已连接（用于判断哪些时段已有安排）</p></div>
+    </div>
+    <div class="legend"><b>默认</b>：周一到周五 / 09:00–18:00 / 无午休 / 60 分 / 提前 15 分钟 / 不留间隔（= 现状）。图中是用户改过后的样子。<br><b>午休</b>：可选，一段；不填就没有。<br><b>保存</b>：改动即存（和其他设置项一致），右上 Toast「已保存」。</div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="board">
+  <h2>⑥ 对方收到（站内信 · 收件箱会话）</h2>
+  <p class="note">因为现在真的发出了，补上对方那一侧：消息 + 时间提议卡。每个时段一个「选这个」，点了就确认，自动写进双方日历，会话里出现「已确定：11/19 14:00」。都不合适可以「提议其他时间」（打开同一个选时段弹窗，反向提议）。</p>
+  <div class="boards">
+    <div class="drawer" style="width:520px">
+      <div class="head"><div class="ava" style="background:var(--lav);color:var(--lav-t)">L</div><div><div class="nm" style="font-size:16px">Li</div><div class="sub">Orbit · 中日创业交流会认识</div></div></div>
+      <div class="card">
+        <div class="msg them">森田さん、ご無沙汰しております。最近「金融科技方向的合作伙伴」を探していて…以下の候補からご都合のよい時間を選んでいただけますか。</div>
+        <div class="msgMeta">今天 15:42</div>
+        <div class="prop hlBox" style="max-width:86%">
+          <div class="pt">🗓 Li 提议见面 · 60 分钟 · 线上</div>
+          <div class="slot"><span class="n">1</span>11/18（周二）10:00 – 11:00<span class="go btn sm">选这个</span></div>
+          <div class="slot"><span class="n">2</span>11/19（周三）14:00 – 15:00<span class="go btn sm">选这个</span></div>
+          <div class="slot"><span class="n">3</span>11/21（周五）16:00 – 17:00<span class="go btn sm">选这个</span></div>
+          <div style="margin-top:8px"><span class="btn sm ghost">都不合适，提议其他时间</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legend"><b>确认后</b>：提议卡收起成一行「<span class="tag ok">已确定</span> 11/19（周三）14:00–15:00 · 线上」，双方日历各出现一条会面（现有 appointment 确认流程）。<br><b>过期</b>：候选时间都过了，卡片变灰「已过期」，只剩「提议其他时间」。<br><b>发送方</b>：会话里同样看到这张卡和状态。</div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="board">
+  <h2>⑦ App（iPhone 390）· 联系人页入口 + 写消息</h2>
+  <p class="note">App 联系人页「次の一手」卡片的整宽主按钮改为「联系 TA」，下面一行路径说明。点开是全屏写消息页：结构与 Web 弹窗相同，「插入候选时间」从底部弹出同一套选时段（手机上按天列表，而不是周网格）。📅 已经在 App 头部，不变。</p>
+  <div class="boards">
+    <div class="phone"><div class="in">
+      <div class="topbar">‹<span class="sp"><span class="ib">📅</span><span class="ib">⋯</span></span></div>
+      <div class="head"><div class="ava">森</div><div><div class="nm" style="font-size:17px">森田 健二</div><div class="sub">モリタロボティクス · 営業部長</div></div></div>
+      <div class="card">
+        <div class="lbl">次の一手</div>
+        <div style="font-size:15px;font-weight:800;margin:6px 0 12px">金融科技方向的伙伴引荐，约 20 分钟聊聊</div>
+        <span class="btn primary hl" style="width:100%;justify-content:center;height:46px">✉ 联系 TA</span>
+        <div class="lbl" style="text-align:center;margin-top:8px">站内信 · 对方在 Orbit 上</div>
+      </div>
+    </div></div>
+    <div class="phone"><div class="in">
+      <div class="topbar"><span class="btn sm ghost" style="padding:0">取消</span><span style="margin:0 auto">联系 森田 健二</span><span class="btn sm primary">发送</span></div>
+      <span class="tag orbit" style="align-self:flex-start">站内信</span>
+      <div class="ta" style="min-height:180px">森田さん、ご無沙汰しております。
+最近「金融科技方向的合作伙伴」を探していて…
+以下の候補からご都合のよい時間を選んでいただけますか。</div>
+      <div class="prop hlBox">
+        <div class="pt">🗓 候选时间 · 60 分钟 · 线上<span class="rm">修改</span></div>
+        <div class="slot"><span class="n">1</span>11/18（周二）10:00</div>
+        <div class="slot"><span class="n">2</span>11/19（周三）14:00</div>
+        <div class="slot"><span class="n">3</span>11/21（周五）16:00</div>
+      </div>
+      <div class="lbl" style="text-align:center">对方选一个时间就确定，自动写进双方日历</div>
+    </div></div>
+    <div class="legend"><b>名片联系人</b>：同一页，标签「邮件草稿」，右上「发送」换成「用邮件 App 打开」，下方加「复制」。<br><b>可约时间设置</b>：App 设置 › 日程 里同样一组（星期圆点 + 时间滚轮 + 三个下拉）。<br><b>离线</b>：站内信发送需要联网，离线时「发送」变灰并提示；写好的内容保留。</div>
+  </div>
+</section>
+</body>
+</html>
