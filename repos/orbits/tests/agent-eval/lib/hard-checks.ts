@@ -49,7 +49,6 @@ export const NOT_YET: Record<string, string> = {
   memory_recalled: "AG14",
   memory_state: "AG14",
   model_input_excludes: "AG12",
-  no_auto_extraction: "AG06",
   pages_read: "AG05",
   push_delivery: "AG16",
   push_excludes: "AG16",
@@ -91,6 +90,12 @@ function lookup(set: Record<string, unknown>, key: string): unknown {
   if (dotted !== undefined) return dotted;
   for (const nested of Object.values(set)) {
     if (nested && typeof nested === "object" && !Array.isArray(nested) && key in (nested as Record<string, unknown>)) return (nested as Record<string, unknown>)[key];
+  }
+  // AG06: a dotted key inside a wrapped payload ({ note: { interaction: { actualContactIds } } }).
+  for (const nested of Object.values(set)) {
+    if (!nested || typeof nested !== "object" || Array.isArray(nested)) continue;
+    const value = key.split(".").reduce<unknown>((item, part) => (item && typeof item === "object" ? (item as Record<string, unknown>)[part] : undefined), nested);
+    if (value !== undefined) return value;
   }
   return undefined;
 }
@@ -186,6 +191,25 @@ export const CHECKS: Record<string, CheckFn> = {
       else evidence.push(covering.seq);
     }
     return problems.length ? fail(problems.join(" | "), evidence) : pass(`${businessChanges(obs).length} business write(s), each after a confirm click`, evidence);
+  },
+
+  /**
+   * AG06 (XL.yaml): the memos the Agent wrote are marked so the old extraction never runs on them, no
+   * extraction job was recorded for them, and no contact or contact detail state changed in the run.
+   */
+  no_auto_extraction(_args, obs) {
+    const changes = obs.diff.records.filter((change) => !(obs.businessChanges.find((item) => item.collection === change.collection && item.id === change.id)?.external));
+    const memos = changes.filter((change) => change.collection === "notes" && change.kind === "created");
+    if (!memos.length) return fail("no memo was written in this run, so there is nothing to check");
+    const noteOf = (change: (typeof memos)[number]) => ((change.after as { note?: Record<string, unknown> } | undefined)?.note ?? change.after ?? {}) as Record<string, unknown>;
+    const problems: string[] = [];
+    for (const memo of memos) if (noteOf(memo).autoExtraction !== "suppressed") problems.push(`memo ${memo.id} is not marked autoExtraction: suppressed`);
+    const extractions = changes.filter((change) => change.collection === "memo_extractions");
+    if (extractions.length) problems.push(`${extractions.length} memo extraction record(s) written`);
+    const contactWrites = changes.filter((change) => ["contacts", "contact_detail_states", "contact_facts"].includes(change.collection));
+    if (contactWrites.length) problems.push(`contact data changed: ${contactWrites.map(describeChange).join(" | ")}`);
+    const evidence = memos.flatMap((memo) => seqs(writesFor(obs.events, memo)));
+    return problems.length ? fail(problems.join("; "), evidence) : pass(`${memos.length} memo(s) marked suppressed; no extraction record, no contact data written`, evidence);
   },
 
   no_business_writes(_args, obs) {
