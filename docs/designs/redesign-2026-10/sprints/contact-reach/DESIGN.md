@@ -26,7 +26,7 @@
 - **D3 对方接受**：会话里按 `appointmentId` 渲染提议卡（`GET /api/appointments/{id}` + `commands accept|counter`），两端都做；读取链要带上 `appointmentId`：消息存储、Web 分页读取（`bounded-reader.ts`）、App 离线镜像（`sync/relationship-message-domain-reader.ts` 及本地表）、发送回执校验。App 通知详情的 `?appointmentId=` 定位到对应会话里的卡。
 - **D4 可约时间**：新契约 `scheduling-availability`（星期集合、起止时刻、可选午休一段、默认时长 30/60/90、至少提前 15m/1h/4h/1d/2d、前后留出 0/15/30、`timeZoneMode: "device" | "fixed"` + 固定时区）；LiveRecordStore 新集合按 actor 存；`GET/PUT /api/scheduling/availability`。**默认值 = 现状**（周一至五 9:00–18:00、无午休、60 分、提前 15 分钟、无缓冲、跟随设备时区）。纯函数放 `shared/compute/meeting-slots.ts`，**计算函数总是接收客户端解析好的有效时区**；保留现有忙闲「unknown / complete」语义：日历读取不完整时格子为 unknown，自动预选只用确认空闲的格子。
 - **D5 邮件路径**：沿用 `reconnect-draft` 模板；插入时间 = 客户端用 `meeting-slots` 的格式化函数插入一段文字（重选只替换这一段）；「复制」+「用邮件 App 打开」（`mailto:`；名片无邮箱时禁用）。不记录发送、不自动记往来。
-- **D6 发送**：站内信不弹二次确认；Web 需在线；App 纯文字沿用 outbox，带提议的需在线。去掉两端「Orbit 不会替你发出」类文案。**写了没发的内容按「账号 + 联系人 + 路径」存在本机**（Web localStorage、App AsyncStorage，try/catch），重开恢复，发送成功后清除；换联系人不串。
+- **D6 发送**：站内信不弹二次确认；Web 需在线；App 纯文字沿用 outbox，带提议的需在线。去掉两端「Orbit 不会替你发出」类文案。**写了没发的内容按「账号 + 联系人 + 路径」存在本机**（Web sessionStorage——关标签页即清，同 `orbit-ask-draft.ts` 的共用电脑考虑，R41 收口时协调者改定；App AsyncStorage，try/catch），重开恢复，发送成功后清除；换联系人不串。
 - **D7 入口**：Web 抽屉「为什么是 TA」只留「联系 TA」+ 路径说明；「添加日程」挪到抽屉头部 📅。App「次の一手」整宽按钮改「联系 TA」；**App 的 📅 统一挪进头部 `headerActions`**（现在在资料操作行、且邀请码联系人没有）。读 eligibility 失败按邮件路径，不阻断。
 - **部署提醒**：消息表加列需要生产迁移，部署时按记忆里的「构建内迁移」做法，另等用户授权。
 

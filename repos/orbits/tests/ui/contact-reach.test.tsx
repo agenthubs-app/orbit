@@ -73,7 +73,7 @@ test.before(async () => {
 test.after(async () => { await browser?.close(); });
 
 async function page(t: { after: (fn: () => Promise<void>) => void }, setup: Record<string, unknown> = {}): Promise<Page> {
-  // A real origin: localStorage (the unsent-draft store) is not available on about:blank.
+  // A real origin: sessionStorage (the unsent-draft store) is not available on about:blank.
   const p = await open(browser, code, { origin: "https://orbit.test/" });
   t.after(async () => { assert.deepEqual(errorsOf(p), []); await p.close(); });
   await p.evaluate((value) => { Object.assign((window as any).fx, { rules: value.rules, busy: value.busy ?? [] }, value.extra ?? {}); }, { rules: RULES, ...setup } as any);
@@ -151,7 +151,7 @@ test("② message path: canStart → start, then ONE POST with body + proposal; 
   assert.deepEqual(Object.keys(first!.body.proposal).sort(), ["candidateTimes", "durationMinutes", "medium", "note", "timezone"]);
   assert.equal(first!.body.proposal.timezone, "UTC");
   assert.ok(!(await calls(p)).some((call) => call.url.startsWith("/api/appointments") && call.method === "POST"), "no separate initial-proposal write");
-  assert.equal(await p.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith("orbit.contactReach.draft:")).length), 0, "sent → draft cleared");
+  assert.equal(await p.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith("orbit.contactReach.draft:")).length), 0, "sent → draft cleared");
 });
 
 test("② canProposeMeeting:false hides the insert; the unsent text survives a reopen and stays with its contact", async (t) => {
@@ -168,7 +168,7 @@ test("② canProposeMeeting:false hides the insert; the unsent text survives a r
   await mount(p, "reach", { contactId: "c-other", name: "他の人", eligibility: { ...ORBIT, canSend: true, canStart: false, conversationId: "conv-2", qualificationVersion: "qv" } });
   await p.locator("[data-reach-body]").waitFor();
   assert.notEqual(await p.locator("[data-reach-body]").inputValue(), "まだ送らない文章");
-  assert.deepEqual(await p.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith("orbit.contactReach.draft:")).sort()), ["orbit.contactReach.draft:acct-1:c-mori:orbit", "orbit.contactReach.draft:acct-1:c-other:orbit"]);
+  assert.deepEqual(await p.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith("orbit.contactReach.draft:")).sort()), ["orbit.contactReach.draft:acct-1:c-mori:orbit", "orbit.contactReach.draft:acct-1:c-other:orbit"]);
 });
 
 test("② 409 MEETING_ALREADY_ACTIVE: the times give way to the ongoing meeting with 日程を変更; an active meeting shows instead of the insert", async (t) => {
