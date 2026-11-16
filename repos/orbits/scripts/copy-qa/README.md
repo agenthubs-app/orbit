@@ -24,7 +24,7 @@
 | `kind` | App 键没有登记组件类型 | R03 复核 M1 |
 | `empty` | 某种语言为空 | style-guide §4 |
 | `placeholders` | 三语占位符不一致 | style-guide §4 |
-| `forbidden` | 全局禁用清单：笼统失败句、Orbit 主语的「送信」、私たち、过度敬语、英文 we / Sent / Send；中文「已发送」类只在按钮和 Toast 里查 | glossary 全局禁用清单 |
+| `forbidden` | 全局禁用清单：笼统失败句、Orbit 主语的「送信」、私たち、过度敬语、英文 we / Sent / Send；中文「已发送」类只在按钮和 Toast 里查。例外（2026-11-16 决定 U1）：用户在 App / Web 里亲自发站内信的那几个键（`check.mjs` 的 `USER_SENDS_IN_APP`：連絡する、收件箱回复的「送信 / 送信中 / 送信しました」）可以写发送；「Orbit 替你发 / 代发 / sent by Orbit」对所有键仍然禁止（`BEHALF`，否定式不算） | glossary 全局禁用清单；contact-reach DESIGN.md U1 |
 | `glossary` | 全局禁用清单里的术语写法（コンタクト、受信トレイ、ドラフト、リトライ、ToDo、词尾缺长音等），外部服务名白名单 | glossary 全局禁用清单 |
 | `length` | 按组件类型的长度上限（日 / 中按全角计，半角 0.5、占位符 2、末尾括号补充不计；英文按字符） | style-guide §1.2、§3 |
 | `simplified-in-ja` | 日文里出现简体字形 | style-guide §1.3 |

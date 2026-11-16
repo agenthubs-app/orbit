@@ -75,3 +75,23 @@ test("length counts full-width as 1, half-width as 0.5, a placeholder as 2, and 
   assert.equal(visualLength("あと{count}日"), 5);
   assert.equal(visualLength("再分析する（1回使います）"), 5);
 });
+
+// contact-reach U1 (2026-11-16): a message to an Orbit contact is sent by the user from the app, so that one action's
+// button / state / toast may say 送信 / 发送 / Send / 送信しました; Orbit sending on the user's behalf stays banned everywhere.
+test("U1: the user's own in-app send may say 送信 / 发送 / Send; the same words elsewhere and any 代发 wording are still banned", () => {
+  const userSend = [
+    { id: "web.network.networkCopy.reachSend", kind: "button", ja: "送信", zh: "发送", en: "Send" },
+    { id: "web.network.networkCopy.reachSent", kind: "toast", ja: "送信しました", zh: "已发送", en: "Sent" },
+    { id: "app.network.reach.send", kind: "button", ja: "送信", zh: "发送", en: "Send" },
+    { id: "app.network.reach.sent", kind: "toast", ja: "送信しました", zh: "已发送", en: "Sent" },
+    { id: "app.inbox.send", kind: "button", ja: "送信", zh: "发送", en: "Send" },
+  ];
+  assert.deepEqual(checkCopy(userSend).issues, []);
+  assert.deepEqual(rulesHit({ id: "web.events.eventsCopy.mailDone", kind: "toast", ja: "送信しました", zh: "已发送", en: "Sent" }), ["forbidden"], "other ids keep the old ban");
+  assert.deepEqual(rulesHit({ id: "app.network.reach.sendLater", kind: "button", ja: "送信", zh: "发送", en: "Send" }), ["forbidden"], "only the listed ids are the user's send");
+  assert.deepEqual(rulesHit({ id: "app.network.reach.send", kind: "button", ja: "代わりに送信する", zh: "发送", en: "Send" }), ["forbidden"]);
+  assert.deepEqual(rulesHit({ id: "app.network.reach.sent", kind: "toast", ja: "送信しました", zh: "Orbit 已代发", en: "Sent" }), ["forbidden"]);
+  assert.deepEqual(rulesHit({ id: "app.network.reach.sent", kind: "toast", ja: "送信しました", zh: "已发送", en: "Orbit sent it" }), ["forbidden"]);
+  assert.deepEqual(rulesHit({ id: "x", kind: "label", ja: "Orbit からはメールを送りません", zh: "Orbit 不会代发邮件", en: "Orbit doesn't send email" }), [], "the negative forms stay fine");
+  assert.deepEqual(rulesHit({ id: "y", kind: "label", ja: "Orbit がメールを送信します", zh: "Orbit 替你发邮件", en: "Orbit sends it for you" }), ["forbidden"]);
+});

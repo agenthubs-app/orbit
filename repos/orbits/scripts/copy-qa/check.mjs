@@ -25,10 +25,15 @@ export const LENGTH_LIMITS = { chip: 8, toast: 16, button: 10, fullButton: 16, s
 export const EN_LENGTH_LIMITS = { chip: 20, button: 24, fullButton: 24, swipe: 12, toast: 32, nav: 12, tab: 12 };
 
 // Hard bans (style-guide §1.1, §2, §3; design 01-system.html ⑧ ⑯).
+// A rule marked SEND is the old blanket "Orbit never sends" ban on 送信 / Send / Sent wording. Since the 2026-11-16
+// decision U1 (contact-reach DESIGN.md) a message to an Orbit contact is really sent — by the user, from the app — so
+// the entries of that one action (USER_SENDS_IN_APP) may say it. Orbit sending on someone's behalf (BEHALF) stays
+// banned for every entry, those included.
+const SEND = "send";
 const FORBIDDEN = {
   ja: [
     [/エラーが発生しました/, "笼统的「エラーが発生しました」：写清楚什么失败"],
-    [/送信しました|送信済み|送信する|^送る$|^送信$/, "Orbit 不代发：禁止以 Orbit 为主语的「送信」肯定式（否定式和询问用户式允许）"],
+    [/送信しました|送信済み|送信する|^送る$|^送信$/, "Orbit 不代发：禁止以 Orbit 为主语的「送信」肯定式（否定式和询问用户式允许）", SEND],
     [/私たち/, "不用「私たち」，主语写 Orbit / iOrbit"],
     [/させていただ|でございます|になられ/, "过度敬语"],
   ],
@@ -37,15 +42,27 @@ const FORBIDDEN = {
   ],
   en: [
     [/An error occurred|Something went wrong/i, "Generic error: say what failed"],
-    [/\bsent\b/i, "Orbit never sends on the user's behalf"],
-    [/^Send\b/, "Orbit never sends on the user's behalf"],
+    [/\bsent\b/i, "Orbit never sends on the user's behalf", SEND],
+    [/^Send\b/, "Orbit never sends on the user's behalf", SEND],
     [/\b(?:we|our)\b/i, "No \"we\": say Orbit"],
   ],
 };
 
 // Kind-limited bans: Chinese "sent" wording only on buttons and toasts (glossary L35).
 const FORBIDDEN_BY_KIND = {
-  zh: { kinds: new Set(["button", "fullButton", "swipe", "toast"]), rules: [[/已发送|发送成功|^发送$/, "Orbit 不代发"]] },
+  zh: { kinds: new Set(["button", "fullButton", "swipe", "toast"]), rules: [[/已发送|发送成功|^发送$/, "Orbit 不代发", SEND]] },
+};
+
+// U1: the user's own in-app message send — the 送信 / 发送 / Send button, its 送信中 state and the 送信しました toast
+// (Web 連絡する, App 連絡する and the inbox reply). Ids, not wording, so a new "sent" line elsewhere is still caught.
+const USER_SENDS_IN_APP = /^(?:web\.network\.networkCopy\.reach(?:Send|Sending|Sent)|app\.network\.reach\.(?:send|sending|sent|queued)|app\.inbox\.(?:send|sending))$/;
+
+// Never allowed, U1 included: Orbit as the sender on the user's behalf (positive forms; 「Orbit からは送りません」/
+// 「不会代发」/ "Orbit doesn't send" stay fine).
+const BEHALF = {
+  ja: [[/代わりに送信|代理で?送信|Orbit が(?:メールを|メッセージを)?(?:送信|送り)(?:します|しました|ます|ました)/, "Orbit 不代发：不能写成 Orbit 替你发送"]],
+  zh: [[/(?<!不会|不能|不|没有|无法)(?:代发|代你发|替你发|帮你发)/, "Orbit 不代发：不能写成 Orbit 替你发送"]],
+  en: [[/\b(?:sent|sends|will send) (?:it |this )?(?:by|from) Orbit\b|\bOrbit (?:sends|sent|will send) (?:it|this|your|the|an?)\b|\bsends? (?:it )?for you\b/i, "Orbit never sends on the user's behalf"]],
 };
 
 // External service names may contain otherwise-banned words (glossary L35).
@@ -74,7 +91,8 @@ const SIMPLIFIED_ONLY = new Set([..."关设发录页动过选这还进间问题�
 
 // Same text in ja and zh is fine for these (product names, shared kanji words).
 // 日本語 / 中文: language names are written in their own language in every UI language (endonyms).
-const SAME_OK = new Set(["iOrbit", "Task", "To-do", "保存", "主催", "名刺", "予定", "通知", "編集", "追加", "削除", "公開", "失敗", "管理", "日本語", "中文"]);
+// 日程: the same word for "scheduling" in both (設定 › 日程, contact-reach R41/R42).
+const SAME_OK = new Set(["iOrbit", "Task", "To-do", "保存", "主催", "名刺", "予定", "通知", "編集", "追加", "削除", "公開", "失敗", "管理", "日本語", "中文", "日程"]);
 
 const PLACEHOLDER = /\{([A-Za-z0-9_]+)\}/g;
 // Date patterns made of placeholders and 年 / 月 / 日 only (「{mon}{d}日」「{month}月」) read the same in ja and zh.
@@ -154,9 +172,11 @@ export function checkCopy(entries) {
         add("empty", entry, lang, "空值");
         continue;
       }
-      for (const [pattern, why] of FORBIDDEN[lang]) if (pattern.test(text)) add("forbidden", entry, lang, why);
+      const userSends = USER_SENDS_IN_APP.test(entry.id);
+      for (const [pattern, why, tag] of FORBIDDEN[lang]) if (!(userSends && tag === SEND) && pattern.test(text)) add("forbidden", entry, lang, why);
       const byKind = FORBIDDEN_BY_KIND[lang];
-      if (byKind && byKind.kinds.has(entry.kind)) for (const [pattern, why] of byKind.rules) if (pattern.test(text)) add("forbidden", entry, lang, why);
+      if (byKind && byKind.kinds.has(entry.kind)) for (const [pattern, why, tag] of byKind.rules) if (!(userSends && tag === SEND) && pattern.test(text)) add("forbidden", entry, lang, why);
+      for (const [pattern, why] of BEHALF[lang]) if (pattern.test(text)) add("forbidden", entry, lang, why);
       const glossaryText = text.replace(EXTERNAL_NAMES, "");
       for (const [pattern, why] of GLOSSARY[lang]) if (pattern.test(glossaryText)) add("glossary", entry, lang, why);
       for (const why of widthIssues(lang, text)) add("width", entry, lang, why);
