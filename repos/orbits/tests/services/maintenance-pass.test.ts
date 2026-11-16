@@ -119,3 +119,13 @@ test("maintenance endpoint reports the pass and heartbeat outcome with 503 on an
   assert.equal(unavailable.status, 503);
   assert.deepEqual(await unavailable.json(), { error: { code: "MAINTENANCE_UNAVAILABLE" } });
 });
+
+test("maintenance endpoint parks/repairs the heartbeat before the pass, even when the pass throws", async () => {
+  const order: string[] = [];
+  const response = await handleMaintenanceRequest(request(`Bearer ${secret}`), {
+    run: async () => { order.push("pass"); throw new Error("db down"); },
+    ensureHeartbeat: async () => { order.push("heartbeat"); return null; },
+  }, secret);
+  assert.equal(response.status, 503);
+  assert.deepEqual(order, ["heartbeat", "pass"]);
+});

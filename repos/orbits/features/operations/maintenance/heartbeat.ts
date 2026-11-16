@@ -210,7 +210,8 @@ export async function parkMaintenanceHeartbeat({
 }
 
 export interface ProcessMaintenanceHeartbeatResult {
-  outcome: "ran" | "resent" | "superseded";
+  /** `stopped`: this build has the heartbeat switched off, so the tick parks the chain and is not re-sent. */
+  outcome: "ran" | "resent" | "superseded" | "stopped";
   pass?: MaintenancePassResult;
 }
 
@@ -219,10 +220,15 @@ export interface ProcessMaintenanceHeartbeatResult {
  * whose seq matches the row runs and advances it; a redelivery of the previous
  * seq only re-sends the next tick when that send was never confirmed; anything
  * else belongs to a superseded chain and is dropped without re-enqueueing.
+ *
+ * `switchedOff` (ORBIT_MAINTENANCE_HEARTBEAT=0 in the build consuming the tick): a tick returns to the build that
+ * sent it, so a chain whose build has the switch off would otherwise run and re-send forever — parking it only on
+ * the daily cron is not enough (2026-11-16: the chain kept running every 10 minutes after 10-31 and used up the
+ * Vercel Hobby Active CPU budget). Such a tick parks the chain, runs no pass and sends nothing.
  */
 export async function processMaintenanceHeartbeat(message: MaintenanceHeartbeatMessage, {
   pool, workspaceId, runPass, send, intervalSeconds = DEFAULT_MAINTENANCE_INTERVAL_SECONDS, now = () => new Date(),
-  identity = NO_IDENTITY,
+  identity = NO_IDENTITY, switchedOff = false,
 }: {
   pool: Pick<Pool, "connect" | "query">;
   workspaceId: string;
@@ -231,7 +237,13 @@ export async function processMaintenanceHeartbeat(message: MaintenanceHeartbeatM
   intervalSeconds?: number;
   now?: () => Date;
   identity?: MaintenanceDeploymentIdentity;
+  switchedOff?: boolean;
 }): Promise<ProcessMaintenanceHeartbeatResult> {
+  if (switchedOff) {
+    // Best effort: even when the row cannot be parked (a newer owner, the database down), the tick is not re-sent.
+    await parkMaintenanceHeartbeat({ pool, workspaceId, identity }).catch(() => false);
+    return { outcome: "stopped" };
+  }
   const client = await pool.connect();
   let decision: "run" | "resend" | "superseded";
   let nextSeq = message.seq + 1;

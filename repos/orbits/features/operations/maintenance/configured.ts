@@ -128,6 +128,7 @@ export async function processConfiguredMaintenanceHeartbeat(
     pool: runtime.pool, workspaceId: runtime.workspaceId, send: sendHeartbeat,
     intervalSeconds: resolveMaintenanceIntervalSeconds(),
     identity: currentMaintenanceDeploymentIdentity(),
+    switchedOff: maintenanceHeartbeatSwitchedOff(),
     runPass: () => runConfiguredMaintenancePass(`maintenance-heartbeat:${message.seq}`),
   });
 }

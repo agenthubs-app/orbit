@@ -42,6 +42,37 @@ test("only an explicit ORBIT_MAINTENANCE_HEARTBEAT=0 on Vercel parks a live chai
   assert.equal(maintenanceHeartbeatSwitchedOff({ ORBIT_MAINTENANCE_HEARTBEAT: "0" } as unknown as NodeJS.ProcessEnv), false);
 });
 
+test("a switched-off build stops the chain on its own tick: parks the row, runs no pass, sends nothing", async () => {
+  const queries: string[] = [];
+  let connects = 0;
+  const pool = {
+    connect: async () => { connects++; throw new Error("no transaction expected"); },
+    query: async (sql: string) => { queries.push(sql); return { rowCount: 1, rows: [] }; },
+  } as never;
+  let passes = 0;
+  const sent: unknown[] = [];
+  const message: MaintenanceHeartbeatMessage = { version: 1, kind: "maintenance-heartbeat", chainId: "chain-live", seq: 41 };
+  const result = await processMaintenanceHeartbeat(message, {
+    pool, workspaceId: "workspace:stop", identity: BUILD_B, switchedOff: true,
+    runPass: async () => { passes++; return pass(); }, send: async (next) => { sent.push(next); },
+  });
+  assert.deepEqual(result, { outcome: "stopped" });
+  assert.equal(passes, 0);
+  assert.deepEqual(sent, []);
+  assert.equal(connects, 0);
+  assert.equal(queries.length, 1);
+  assert.match(queries[0], /UPDATE orbit_maintenance_heartbeat SET chain_id/);
+
+  // The database being down does not bring the chain back: still no pass, still nothing sent.
+  const down = { connect: pool.connect, query: async () => { throw new Error("db down"); } } as never;
+  assert.deepEqual(await processMaintenanceHeartbeat(message, {
+    pool: down, workspaceId: "workspace:stop", identity: BUILD_B, switchedOff: true,
+    runPass: async () => { passes++; return pass(); }, send: async (next) => { sent.push(next); },
+  }), { outcome: "stopped" });
+  assert.equal(passes, 0);
+  assert.deepEqual(sent, []);
+});
+
 test("Postgres: a newer build takes the chain over, the older build is superseded and can never take it back", { timeout: 60_000 }, async (t) => {
   const databaseUrl = process.env.ORBIT_MAINTENANCE_TEST_DATABASE_URL;
   if (!databaseUrl) {
