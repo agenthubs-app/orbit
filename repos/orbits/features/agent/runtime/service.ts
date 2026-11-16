@@ -17,9 +17,11 @@ import {
   buildCardOperations,
   cardTexts,
   decideAction,
+  editCard,
   regenerateCard,
   type AgentDecisionInput,
   type AgentDecisionResult,
+  type AgentEditCardResult,
   type AgentRegenerateResult,
   type FrozenCardInput,
 } from "./decision";
@@ -32,6 +34,40 @@ import type { TodoReader } from "./todo-operations";
  */
 export class AgentExecutionOutcomeUnknownError extends Error {
   readonly code = "EXECUTION_OUTCOME_UNKNOWN";
+}
+
+/**
+ * agent-design AG06 (设计稿 §5.2 "永久失败停止该项，跳过依赖项"): a failure that trying again cannot fix — the
+ * domain refused the values, the record is gone or changed since the card was shown. Not retried; items
+ * that depend on it are skipped.
+ */
+export class AgentExecutionPermanentError extends Error {
+  readonly code = "EXECUTION_PERMANENT";
+}
+
+/** Domain error codes that retrying with the same operation key cannot change. */
+const PERMANENT_CODES = new Set([
+  "EXECUTION_PERMANENT",
+  "VALIDATION_ERROR",
+  "NOT_FOUND",
+  "FORBIDDEN",
+  "TASK_NOT_FOUND",
+  "TASK_VERSION_CONFLICT",
+  "TASK_INVALID_TRANSITION",
+  "TASK_INVALID_PLAN_LINK",
+  "NOTE_INVALID_INPUT",
+  "NOTE_NOT_FOUND",
+  "NOTE_IDEMPOTENCY_CONFLICT",
+  "NOTE_VERSION_CONFLICT",
+  "EXECUTOR_NOT_FOUND",
+  "EXECUTOR_RISK_MISMATCH",
+  "EXTERNAL_MESSAGE_SEND_FORBIDDEN",
+]);
+
+export function isPermanentExecutionError(error: unknown): boolean {
+  if (error instanceof AgentExecutionPermanentError) return true;
+  const code = typeof error === "object" && error !== null ? (error as { code?: unknown }).code : undefined;
+  return typeof code === "string" && PERMANENT_CODES.has(code);
 }
 
 function outcomeUnknown(error: unknown): boolean {
@@ -132,6 +168,8 @@ export interface AgentRuntimeService {
   decideAction?: (input: AgentDecisionInput) => Promise<AgentDecisionResult | null>;
   /** Re-issues an expired card from its intents as a new revision; null when it does not exist. */
   regenerateCard?: (input: { actionId: string }) => Promise<AgentRegenerateResult | null>;
+  /** AG06: takes one item off a waiting card (not a decision): the rest is frozen again as revision+1. */
+  editCard?: (input: { actionId: string; revision: number; payloadHash: string; removeOperationId: string }) => Promise<AgentEditCardResult | null>;
 }
 
 const TERMINAL_RUN_STATUSES = new Set<AgentRun["status"]>([
@@ -1009,7 +1047,25 @@ export function createAgentRuntimeService({
     },
     decideAction: (input) => decideAction(cardDependencies(), input),
     regenerateCard: (input) => regenerateCard(cardDependencies(), input),
+    editCard: (input) => editCard(cardDependencies(), input),
     async processOutbox(input = {}) {
+      // AG06: an item waiting for another is put back while that one runs; once a prerequisite settled in a
+      // pass, the waiting items get another pass right away (at most three passes per call).
+      const total = { completed: 0, deadLettered: 0, failed: 0, processed: 0 };
+      for (let pass = 0; pass < 3; pass += 1) {
+        const result = await processOnce(input);
+        total.completed += result.completed;
+        total.deadLettered += result.deadLettered;
+        total.failed += result.failed;
+        total.processed += result.processed;
+        if (!result.waited || !result.settled) break;
+      }
+      return total;
+    },
+  };
+
+  async function processOnce(input: { actionId?: string; limit?: number; workerId?: string }) {
+    {
       const timestamp = now();
       const requestedLimit = input.limit ?? 20;
       const events = await repository.claimReadyOutbox({
@@ -1021,6 +1077,8 @@ export function createAgentRuntimeService({
       let completed = 0;
       let failed = 0;
       let deadLettered = 0;
+      let waited = 0;
+      let skipped = 0;
 
       for (const event of events) {
         const action = await repository.getAction(event.actionId);
@@ -1094,18 +1152,23 @@ export function createAgentRuntimeService({
           await repository.saveReceipt({ receiptId: `receipt:${event.idempotencyKey}:skipped`, outboxId: event.outboxId, actionId: action.actionId, operationId: operation.operationId, runId: action.runId, idempotencyKey: operation.idempotencyKey, executorKey: operation.executorKey, status: "skipped", resultSummary: "Skipped: an item it depends on did not complete.", createdAt: timestamp, updatedAt: timestamp });
           await repository.saveOutbox({ ...event, status: "canceled", processedAt: timestamp, updatedAt: timestamp });
           emitTrace({ type: "exec.receipt", source: "real", actionId: action.actionId, operationId: operation.operationId, status: "skipped" });
+          skipped += 1;
           await refreshActionStatus(action.actionId);
           continue;
         }
         if (prerequisites.some((item) => !item || item.status !== "completed")) {
           await repository.saveOutbox({ ...event, status: "pending", attempt: Math.max(0, event.attempt - 1), leasedAt: undefined, leaseOwner: undefined, updatedAt: timestamp });
+          waited += 1;
           continue;
         }
         const execTrace = { actionId: action.actionId, operationId: operation.operationId, executorKey: operation.executorKey, idempotencyKey: operation.idempotencyKey };
         emitTrace({ type: "exec.call", source: "real", ...execTrace, operation });
         try {
-          const fault = takeEvalFault("executor");
+          // AG06: a fault can be aimed at one operation (fault.where: memo.create) or at any executor.
+          const fault = takeEvalFault(operation.capability ?? operation.executorKey) ?? takeEvalFault("executor");
           if (fault?.kind === "unknown_outcome" && !fault.appliedFlag) throw new AgentExecutionOutcomeUnknownError("agent-eval simulated executor unknown_outcome (nothing written)");
+          // fail_always stands for a failure retrying cannot fix (permanent); fail_once and timeout for a passing one.
+          if (fault?.kind === "fail_always") throw new AgentExecutionPermanentError(`agent-eval simulated executor ${fault.kind}`);
           if (fault && fault.kind !== "unknown_outcome") throw new Error(`agent-eval simulated executor ${fault.kind}`);
           const result = await executors.execute({ ...operation, payload: event.payload }, {
             actionId: action.actionId,
@@ -1165,7 +1228,8 @@ export function createAgentRuntimeService({
           }
           emitTrace({ type: "exec.receipt", source: execError.startsWith("agent-eval simulated") ? "simulated" : "real", ...execTrace, status: "failed", error: execError });
           const attempt = event.attempt;
-          const deadLetter = attempt >= event.maxAttempts;
+          // AG06: a permanent failure is not retried; only a passing one is, with the same operation key.
+          const deadLetter = attempt >= event.maxAttempts || isPermanentExecutionError(error);
           await repository.saveReceipt({
             receiptId: `receipt:${event.idempotencyKey}:attempt:${attempt}`,
             outboxId: event.outboxId,
@@ -1203,8 +1267,10 @@ export function createAgentRuntimeService({
         completed,
         failed,
         deadLettered,
+        waited,
+        settled: completed + deadLettered + skipped,
       };
-    },
-  };
+    }
+  }
   return service;
 }

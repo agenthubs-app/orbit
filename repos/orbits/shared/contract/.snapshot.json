@@ -16249,6 +16249,11 @@
           "optional": true,
           "kind": "text",
           "type": "NoteInteractionContract"
+        },
+        "autoExtraction": {
+          "optional": true,
+          "kind": "text",
+          "type": "'suppressed'"
         }
       }
     },

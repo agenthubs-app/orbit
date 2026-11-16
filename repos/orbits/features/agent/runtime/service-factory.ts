@@ -18,8 +18,10 @@ import { createAgentCalendarExecutorAdapter } from "./calendar-executor-adapter"
 import { createAgentDomainExecutors } from "./domain-executors";
 import { createAgentExecutorRegistry } from "./executor-registry";
 import { createAgentRuntimeService, type AgentRuntimeService } from "./service";
-import { createTodoExecutors, createTodoReader } from "./todo-operations";
+import { createTodoReader } from "./todo-operations";
 import { createConfiguredTaskService } from "../../tasks/service-factory";
+import { createConfiguredNoteService } from "../../notes/service-factory";
+import { cardWriteExecutors } from "../../agent-v1/domains/writes";
 import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/storage/transactional-postgres";
 
 interface OrbitAgentRuntimeGlobal {
@@ -57,6 +59,15 @@ function configuredTasksOrNull(): ReturnType<typeof createConfiguredTaskService>
     return createConfiguredTaskService();
   } catch {
     // Without to-do storage the runtime still serves every other card; to-do cards cannot be made.
+    return null;
+  }
+}
+
+function configuredNotesOrNull(): ReturnType<typeof createConfiguredNoteService> | null {
+  try {
+    return createConfiguredNoteService();
+  } catch {
+    // Without note storage, memo items of a card cannot run (they fail and are reported); nothing else changes.
     return null;
   }
 }
@@ -104,8 +115,11 @@ export function createOrbitAgentRuntimeService(
     mode === "live"
       ? createConfiguredOrbitIntegrationService({ actorId })
       : null;
+  // agent-design AG06: the conversation cards' executors (todo.create, todo.update, memo.create) come from the
+  // agent-v1 domain write adapters; memos are written through the note service with extraction suppressed.
+  const notes = mode === "live" && actorId ? configuredNotesOrNull() : null;
   const executors = createAgentExecutorRegistry([
-    ...(tasks ? createTodoExecutors({ actorId, tasks }) : []),
+    ...cardWriteExecutors({ actorId, notes, tasks }),
     ...createAgentDomainExecutors({
       contacts: createStorageContactArchiveActionWriter({
         store,

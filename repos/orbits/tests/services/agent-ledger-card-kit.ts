@@ -7,6 +7,9 @@ import { createStorageAgentRuntimeRepository } from "../../features/agent/storag
 import { createAgentExecutorRegistry, type AgentActionExecutor } from "../../features/agent/runtime/executor-registry";
 import { createAgentRuntimeService } from "../../features/agent/runtime/service";
 import { createTodoExecutors, createTodoReader } from "../../features/agent/runtime/todo-operations";
+import { cardWriteExecutors } from "../../features/agent-v1/domains/writes";
+import { createNoteRepository } from "../../features/notes/repository";
+import { createNoteService } from "../../features/notes/service";
 import { createTaskRepository } from "../../features/tasks/repository";
 import { createTaskService } from "../../features/tasks/service";
 import { createMemoryLiveRecordStore, type LiveRecordStoreLike } from "../../shared/storage/live-record-store";
@@ -15,7 +18,7 @@ import type { TransactionalPostgresClient } from "../../shared/storage/transacti
 
 export const ACTOR = "user_agent_ledger_a";
 
-export function createCardKit(options: { client?: TransactionalPostgresClient; workspaceId?: string; start?: string; wrapExecutor?: (executor: AgentActionExecutor) => AgentActionExecutor } = {}) {
+export function createCardKit(options: { client?: TransactionalPostgresClient; workspaceId?: string; start?: string; wrapExecutor?: (executor: AgentActionExecutor) => AgentActionExecutor; legacyTodoExecutors?: boolean } = {}) {
   const workspaceId = options.workspaceId ?? "workspace:agent-ledger-test";
   const store = (options.client
     ? createPostgresLiveRecordStore({ client: options.client as never })
@@ -26,8 +29,12 @@ export function createCardKit(options: { client?: TransactionalPostgresClient; w
     return new Date(clock).toISOString();
   };
   const tasks = createTaskService({ repository: createTaskRepository({ store, transactionClient: options.client, workspaceId }) });
+  // AG06: the note service the memo executor writes through (no association reader: every id is accessible).
+  const notes = createNoteService({ repository: createNoteRepository({ store, workspaceId }) });
   const executorCalls: { key: string; idempotencyKey: string }[] = [];
-  const executors = createTodoExecutors({ actorId: ACTOR, tasks }).map((plain) => {
+  // AG06: the product's card executors (features/agent-v1/domains/writes.ts); AG02's to-do executors are kept for the old kit option.
+  const plainExecutors = options.legacyTodoExecutors ? createTodoExecutors({ actorId: ACTOR, tasks }) : cardWriteExecutors({ actorId: ACTOR, notes, tasks });
+  const executors = plainExecutors.map((plain) => {
     const executor = options.wrapExecutor ? options.wrapExecutor(plain) : plain;
     const counted: AgentActionExecutor = {
       ...executor,
@@ -49,6 +56,7 @@ export function createCardKit(options: { client?: TransactionalPostgresClient; w
       clock += ms;
     },
     executorCalls,
+    notes,
     now,
     repository,
     runtime,

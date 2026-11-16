@@ -177,7 +177,8 @@ export interface AgentActionRevisionRecord {
   expiresAt?: string;
   frozenAt: string;
   supersededAt: string;
-  reason: "content_changed" | "regenerated";
+  /** AG06: edited — the user took an item off the card; the rest was frozen again (设计稿 §5.1). */
+  reason: "content_changed" | "regenerated" | "edited";
 }
 
 /** One row of the difference shown when a card is re-issued because its data changed. */

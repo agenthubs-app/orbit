@@ -65,6 +65,7 @@ export const MEMO_RESCAN_SQL = `/* memo-extraction:rescan */
       and r.payload->>'schemaVersion' = '2' and jsonb_typeof(d.note) = 'object'
       and d.note->>'id' = r.record_id and d.note->>'ownerUserId' = r.user_id and d.note->>'accountId' = r.user_id
       and d.note->>'noteKind' = 'meeting' and d.note->'usedForPlan' = 'true'::jsonb
+      and coalesce(d.note->>'autoExtraction', '') <> 'suppressed'
       and jsonb_array_length(case when jsonb_typeof(d.note->'contactIds') = 'array' then d.note->'contactIds' else '[]'::jsonb end) = 1
       and jsonb_typeof(d.note->'contactIds'->0) = 'string'
       and coalesce(trim(d.note->>'body'), '') <> ''
