@@ -40,7 +40,7 @@ export const KEY_KINDS = {
     "badgeChange", "badgeCreate",
     "itemProcessing", "itemChanged", "itemCreated", "itemFailed", "itemSkipped", "itemReview", "itemUndone", "itemMarkedDone", "itemAbandoned",
   ].map((key) => [`aiCard.${key}`, "chip"])),
-  ...Object.fromEntries(["nowIs", "changeTo"].map((key) => [`aiCard.${key}`, "label"])),
+  ...Object.fromEntries(["nowIs", "changeTo", "notesFootnote"].map((key) => [`aiCard.${key}`, "label"])),
   ...Object.fromEntries([
     "changedBanner", "syncFirst", "pendingEditTodo", "pendingEditOther", "offlinePendingOne", "offlinePending", "offlineHint",
     "queued", "progressReading", "progressWeb", "progressComposing", "progressNote",

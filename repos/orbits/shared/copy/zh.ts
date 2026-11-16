@@ -156,6 +156,7 @@ export const zh = {
     progressComposing: "正在整理回答…",
     progressNote: "通常不到一分钟",
     typeToAnswer: "也可以直接打字回答。",
+    notesFootnote: "（以上出自你的笔记。）",
   },
   offline: {
     banner: "离线 · 修改会在联网后同步",

@@ -156,6 +156,7 @@ export const en = {
     progressComposing: "Putting the answer together…",
     progressNote: "Usually under a minute",
     typeToAnswer: "You can also type your answer.",
+    notesFootnote: "(From your notes.)",
   },
   offline: {
     banner: "Offline · Changes will sync when you're online",

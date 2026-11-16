@@ -102,6 +102,14 @@ test("coordinator note: with a basis line the code-written footnote （以上出
   assert.equal(without.basis, null);
 });
 
+test("the footnote the clients drop is the server's own footnote, word for word, in three languages", async () => {
+  const { gapWords } = await import("../../features/agent-v1/answer/gap-copy");
+  const { zh } = await import("../../shared/copy/zh");
+  const { ja } = await import("../../shared/copy/ja");
+  const { en } = await import("../../shared/copy/en");
+  assert.deepEqual([gapWords("zh").fromNotes(), gapWords("ja").fromNotes(), gapWords("en").fromNotes()], [zh.aiCard.notesFootnote, ja.aiCard.notesFootnote, en.aiCard.notesFootnote]);
+});
+
 test("basisOf: one record of each kind, several records, three languages; nothing cited, no basis", () => {
   const sources = new Map([
     ["memo:note:m31", { contactId: "contact:c17", day: "2026-11-12", id: "note:m31", kind: "memo" as const }],

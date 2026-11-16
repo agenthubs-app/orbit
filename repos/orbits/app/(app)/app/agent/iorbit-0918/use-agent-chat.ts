@@ -350,7 +350,7 @@ export function useAgentChat({ history, suggests, agentV1 = false }: { history: 
       ...current,
       receipt
         ? { id: `assistant:${receipt.requestId}`, items: [], kind: "people", panelTitle: "", role: "assistant", text: "", v1RequestId: receipt.requestId }
-        : { items: [], kind: "people", panelTitle: "", retryRequest: query, role: "assistant", text: language === "zh" ? "iOrbit 暂时无法完成这次回复，请稍后再试。" : language === "ja" ? "iOrbit は今回の返信を完了できませんでした。少し待ってからもう一度お試しください。" : "The agent could not complete this reply. Please try again." },
+        : { items: [], kind: "people", panelTitle: "", retryRequest: query, role: "assistant", text: { en: "The agent could not complete this reply. Please try again.", ja: "iOrbit は今回の返信を完了できませんでした。少し待ってからもう一度お試しください。", zh: "iOrbit 暂时无法完成这次回复，请稍后再试。" }[language] },
     ]);
   }, []);
 

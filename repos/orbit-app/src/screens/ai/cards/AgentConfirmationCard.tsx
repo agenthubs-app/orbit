@@ -181,7 +181,7 @@ export function answerTextOf(document: AgentResultDocument, showsCard: boolean):
 }
 
 /** The server's footnote that the answer came from the notes (orbits features/agent-v1/answer/gap-copy.ts fromNotes). */
-const NOTES_FOOTNOTES = ["（以上出自你的笔记。）", "（メモの内容からです。）", "(From your notes.)"];
+const NOTES_FOOTNOTES = (["zh", "ja", "en"] as const).map((language) => standardCopy[language].aiCard.notesFootnote);
 
 const useCardStyles = createThemedStyles((colors) => { const C = paletteOf(colors); return StyleSheet.create({
   actions: { gap: 6 },
