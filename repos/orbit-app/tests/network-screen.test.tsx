@@ -80,7 +80,7 @@ const answers = {
 };
 const client = {
   async get(path) { state.requests.push("get:" + path); if (!state.online) return offlineResult; if (path === "/api/contacts/memo-event-options") return { success: true, status: 200, data: { options: state.eventOptions ?? [] } }; return Object.hasOwn(answers, path) ? { success: true, status: 200, data: answers[path] } : { success: false, status: 404, error: { code: "NOT_FOUND", message: "nope" } }; },
-  async post(path, options) { state.requests.push("post:" + path + (options?.body ? " " + JSON.stringify(options.body) : "")); return state.online ? { success: true, status: 200, data: {} } : offlineResult; },
+  async post(path, options) { state.requests.push("post:" + path + (options?.body ? " " + JSON.stringify(options.body) : "")); return !state.online ? offlineResult : path.endsWith("/reconnect-draft") ? { success: true, status: 200, data: { draft: { subject: "ご無沙汰しております", body: "伊藤 直子様 ご無沙汰しております。", provider: "template" } } } : { success: true, status: 200, data: {} }; },
   async patch(path, options) { state.requests.push("patch:" + path + " " + JSON.stringify(options?.body ?? null)); return state.online ? { success: true, status: 200, data: {} } : offlineResult; },
   async delete(path) { state.requests.push("delete:" + path); return state.online ? { success: true, status: 200, data: {} } : offlineResult; },
 };
@@ -308,11 +308,14 @@ test("detail (app.html #29): head card, the type confirm card, why (value line),
   await page.waitForFunction(() => !document.querySelector("[data-testid='network-fit-card']"));
   assert.ok((await requests(page)).some((path) => path.startsWith("post:/api/agent/plans/v2/p1/types/cfo/candidates/c-ito/decision") && path.includes("\"decision\":\"accept\"")));
   await page.getByRole("button", { name: "下書きを作成" }).click();
-  // UX K4: the draft is a registered template prefill (an id app/ai/[id] can consume), not raw text.
-  const draft = JSON.parse((await navigation(page)).find((href) => href.includes("prefillIntent"))!) as { pathname: string; params: { id: string; prefillIntent: string } };
-  assert.equal(draft.pathname, "/ai/[id]");
-  assert.equal(draft.params.id, "new");
-  assert.match(draft.params.prefillIntent, /^ai-prefill-/);
+  // 起草 writes the template draft on this page (same reconnect-draft endpoint as the Web drawer), never jumps to iOrbit.
+  const result = page.getByTestId("network-draft-result");
+  await result.waitFor();
+  assert.equal(await result.getByLabel("件名").inputValue(), "ご無沙汰しております");
+  assert.match(await result.getByLabel("本文").inputValue(), /^伊藤 直子様/);
+  await result.getByRole("button", { name: "コピー" }).waitFor();
+  assert.ok((await requests(page)).some((path) => path.startsWith("post:/api/contacts/c-ito/reconnect-draft") && path.includes("\"language\":\"ja\"")));
+  assert.equal((await navigation(page)).some((href) => href.includes("prefillIntent")), false, "no hop to the AI screen");
   // UX K6: 📅 opens a new personal schedule with this person linked (no dead-end proposal sheet).
   await page.getByRole("button", { name: "予定を追加" }).click();
   assert.ok((await navigation(page)).includes("/schedule/personal/new?contactId=c-ito"));

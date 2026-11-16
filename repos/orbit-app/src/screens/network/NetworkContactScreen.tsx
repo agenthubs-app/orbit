@@ -6,6 +6,7 @@
 // 「＋ 记一笔交流」（docs/designs/contact-log-2026-11 ⑤）：底部弹层 ContactLogSheet；自己记的前面是方式标签（lav），
 // 名片原文 / 系统说明前面是灰色来源标签。
 // 本机优先：详情读同步镜像，离线照常显示；value-lines / fit / 招待连接是联网增强，失败或「尚未実装」时整块隐藏（G18）。
+import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
@@ -16,9 +17,8 @@ import type { InviteConnectionView } from "../../api/contract/invite-codes";
 import type { PlanContactFit } from "../../api/contract/plan-v2";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
-import { contactFollowupTemplate, registerAiTemplatePrefill } from "../../data/ai-template-prefill";
 import { AppScreen } from "../../components/AppScreen";
-import { ActionSheet, Avatar, Button, Chip, ConfirmDialog, Icon, IconButton, InlineChip, OfflineBar, RetryCard, Skeleton, UiPressable, UiText, useToast } from "../../components/ui";
+import { ActionSheet, Avatar, Button, Chip, ConfirmDialog, Icon, IconButton, InlineChip, OfflineBar, RetryCard, Skeleton, TextField, UiPressable, UiText, useToast } from "../../components/ui";
 import Svg, { Defs, Rect, Stop } from "../../components/ui/svg";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -99,6 +99,8 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const [openHistory, setOpenHistory] = useState<string | null>(null);
   const [deciding, setDeciding] = useState(false);
   const [updateDismissed, setUpdateDismissed] = useState(false);
+  const [draft, setDraft] = useState<{ contactId: string; subject: string; body: string } | null>(null);
+  const [drafting, setDrafting] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -199,11 +201,19 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const linkedNotes = mergeTimelineNotes([...recordNotes, ...justLogged.filter((pending) => !recordNotes.some((note) => note.origin === "user" && note.body === pending.body))], linkedSource.notes ?? []);
   const lastInteraction = hasEvidence ? contact.lastInteraction : null;
   const timeline = withSystemEntries(linkedNotes, lastInteraction, hasEvidence ? contact.generatedInteraction : null);
-  const openDraft = () => {
+  // 「起草」：页内模板草稿（与 Web 抽屉同一接口 reconnect-draft；不保存、不发送、0 次模型调用），可改、可复制。
+  const openDraft = async () => {
+    if (drafting) return;
     if (!auth.actorId || !server.ready) { toast.error(t("network.detail.draftSignIn")); return; }
-    const prefillIntent = registerAiTemplatePrefill({ actorId: auth.actorId, baseUrl: server.baseUrl, ...contactFollowupTemplate({ channel: "email", contactId, contactName: contact.displayName, organization: contact.organization, rationale: valueLine?.relation ?? "", recommendedAction: nextStep }) });
-    router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent } } as unknown as Href);
+    setDrafting(true);
+    const result = await client.post<{ draft?: { subject?: unknown; body?: unknown } }>(`/api/contacts/${encodeURIComponent(contactId)}/reconnect-draft`, { body: { language } });
+    setDrafting(false);
+    const value = result.success ? result.data?.draft : undefined;
+    if (typeof value?.subject === "string" && typeof value.body === "string") setDraft({ contactId, subject: value.subject, body: value.body });
+    else toast.error(t("network.detail.draftFailed"));
   };
+  const shownDraft = draft?.contactId === contactId ? draft : null;
+  const copyDraft = () => { if (shownDraft) void Clipboard.setStringAsync(`${shownDraft.subject}\n\n${shownDraft.body}`).then(() => toast.success(t("network.detail.draftCopied")), () => toast.error(t("network.detail.draftFailed"))); };
   const reach = (value: string, scheme: "mailto" | "tel", missing: "network.detail.noEmail" | "network.detail.noPhone") => { if (value) Linking.openURL(`${scheme}:${value}`).catch(() => toast.info(t("network.detail.openFailed", { value }))); else toast.info(t(missing)); };
   const menuOptions = [
     { key: "edit", label: t("network.detail.edit") },
@@ -338,8 +348,15 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
           <View style={[styles.card, styles.gapTop]} testID="network-next-card">
             <UiText style={styles.lbl}>{t("network.detail.nextTitle")}</UiText>
             <UiText style={styles.cardTitle}>{nextStep}</UiText>
-            <View style={styles.gapSmall}><Button variant="primary" block icon="mail" label={t("network.detail.draft")} onPress={openDraft} /></View>
+            <View style={styles.gapSmall}><Button variant="primary" block icon="mail" label={t(drafting ? "network.detail.drafting" : "network.detail.draft")} loading={drafting} disabled={drafting} onPress={() => void openDraft()} /></View>
             <UiText style={[styles.lbl, styles.center]}>{t("network.detail.noSend")}</UiText>
+            {shownDraft ? (
+              <View style={styles.gapSmall} testID="network-draft-result">
+                <TextField label={t("network.detail.draftSubject")} value={shownDraft.subject} onChangeText={(subject) => setDraft({ ...shownDraft, subject })} />
+                <TextField label={t("network.detail.draftBody")} value={shownDraft.body} multiline scrollEnabled={false} textAlignVertical="top" onChangeText={(body) => setDraft({ ...shownDraft, body })} />
+                <Button size="sm" icon="copy" label={t("network.detail.draftCopy")} onPress={copyDraft} />
+              </View>
+            ) : null}
           </View>
         ) : null}
 
