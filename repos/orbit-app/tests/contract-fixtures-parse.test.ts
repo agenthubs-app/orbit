@@ -89,3 +89,19 @@ test("「尚未実装」 from the server picks a default or hides the entry", ()
   assert.deepEqual(whenNotImplemented(envelope, { use: "default", value: "fallback" }), { show: true, value: "fallback" });
   assert.deepEqual(whenNotImplemented(envelope, { use: "hide" }), { show: false });
 });
+
+// contact-reach R40: the synced 可约时间 schema reads the default, a saved record and a
+// response from a newer server (unknown values fall back), and the PUT schema is strict.
+test("R40 synced scheduling-availability schemas and the shared meeting-slots defaults", async () => {
+  const { schedulingAvailabilitySchema, schedulingAvailabilityUpdateInputSchema } = await import("../src/api/schema/scheduling-availability");
+  const { DEFAULT_SCHEDULING_AVAILABILITY, seedMeetingSlots } = await import("../src/api/compute/meeting-slots");
+  const { schedulingAvailabilityPath } = await import("../src/api/endpoints");
+  assert.equal(schedulingAvailabilityPath(), "/api/scheduling/availability");
+  assert.deepEqual(schedulingAvailabilitySchema.parse({ ...DEFAULT_SCHEDULING_AVAILABILITY, updatedAt: null }), { ...DEFAULT_SCHEDULING_AVAILABILITY, updatedAt: null });
+  const newer = schedulingAvailabilitySchema.parse({ ...DEFAULT_SCHEDULING_AVAILABILITY, weekdays: ["mon", "holiday"], durationMinutes: 45, minimumNotice: "1w", bufferMinutes: 5, timeZoneMode: "auto", updatedAt: "2026-11-17T00:00:00.000Z", future: 1 });
+  assert.deepEqual([newer.weekdays, newer.durationMinutes, newer.minimumNotice, newer.bufferMinutes, newer.timeZoneMode], [["mon"], 60, "15m", 0, "device"]);
+  assert.equal(schedulingAvailabilityUpdateInputSchema.safeParse(DEFAULT_SCHEDULING_AVAILABILITY).success, true);
+  assert.equal(schedulingAvailabilityUpdateInputSchema.safeParse({ ...DEFAULT_SCHEDULING_AVAILABILITY, extra: true }).success, false);
+  const slots = seedMeetingSlots(DEFAULT_SCHEDULING_AVAILABILITY, { timeZone: "Asia/Tokyo", now: Date.UTC(2026, 10, 16), availability: { from: "2026-11-16T15:00:00Z", to: "2026-11-30T15:00:00Z", complete: true, items: [] } });
+  assert.equal(slots[0]?.startsAt, "2026-11-17T00:00:00.000Z");
+});

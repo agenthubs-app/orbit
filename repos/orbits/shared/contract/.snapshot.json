@@ -14170,6 +14170,15 @@
         "ReminderTargetType",
         "SavedPortrait",
         "ScheduleItemContract",
+        "SchedulingAvailabilityContract",
+        "SchedulingAvailabilitySettings",
+        "SchedulingAvailabilityUpdateInput",
+        "SchedulingBufferMinutes",
+        "SchedulingDurationMinutes",
+        "SchedulingMinimumNotice",
+        "SchedulingTimeRange",
+        "SchedulingTimeZoneMode",
+        "SchedulingWeekday",
         "SearchHighlight",
         "SecretaryCardKind",
         "SecretaryPreviewDTO",
@@ -23727,6 +23736,221 @@
         }
       }
     },
+    "scheduling-availability.ts::SchedulingWeekday": {
+      "kind": "enum",
+      "values": [
+        "'fri'",
+        "'mon'",
+        "'sat'",
+        "'sun'",
+        "'thu'",
+        "'tue'",
+        "'wed'"
+      ]
+    },
+    "scheduling-availability.ts::SchedulingDurationMinutes": {
+      "kind": "enum",
+      "values": [
+        "30",
+        "60",
+        "90"
+      ]
+    },
+    "scheduling-availability.ts::SchedulingMinimumNotice": {
+      "kind": "enum",
+      "values": [
+        "'15m'",
+        "'1d'",
+        "'1h'",
+        "'2d'",
+        "'4h'"
+      ]
+    },
+    "scheduling-availability.ts::SchedulingBufferMinutes": {
+      "kind": "enum",
+      "values": [
+        "0",
+        "15",
+        "30"
+      ]
+    },
+    "scheduling-availability.ts::SchedulingTimeZoneMode": {
+      "kind": "enum",
+      "values": [
+        "'device'",
+        "'fixed'"
+      ]
+    },
+    "scheduling-availability.ts::SchedulingTimeRange": {
+      "kind": "object",
+      "members": {
+        "start": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "end": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "scheduling-availability.ts::SchedulingAvailabilitySettings": {
+      "kind": "object",
+      "members": {
+        "weekdays": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingWeekday[]"
+        },
+        "start": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "end": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "lunch": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingTimeRange | null"
+        },
+        "durationMinutes": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingDurationMinutes"
+        },
+        "minimumNotice": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingMinimumNotice"
+        },
+        "bufferMinutes": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingBufferMinutes"
+        },
+        "timeZoneMode": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingTimeZoneMode"
+        },
+        "timeZone": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "scheduling-availability.ts::SchedulingAvailabilityContract": {
+      "kind": "object",
+      "members": {
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "weekdays": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingWeekday[]"
+        },
+        "start": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "end": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "lunch": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingTimeRange | null"
+        },
+        "durationMinutes": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingDurationMinutes"
+        },
+        "minimumNotice": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingMinimumNotice"
+        },
+        "bufferMinutes": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingBufferMinutes"
+        },
+        "timeZoneMode": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingTimeZoneMode"
+        },
+        "timeZone": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "scheduling-availability.ts::SchedulingAvailabilityUpdateInput": {
+      "kind": "object",
+      "members": {
+        "weekdays": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingWeekday[]"
+        },
+        "start": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "end": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "lunch": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingTimeRange | null"
+        },
+        "durationMinutes": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingDurationMinutes"
+        },
+        "minimumNotice": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingMinimumNotice"
+        },
+        "bufferMinutes": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingBufferMinutes"
+        },
+        "timeZoneMode": {
+          "optional": false,
+          "kind": "text",
+          "type": "SchedulingTimeZoneMode"
+        },
+        "timeZone": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
     "secretary-preview.ts::SecretaryCardKind": {
       "kind": "enum",
       "values": [
@@ -24590,7 +24814,7 @@
         "reminderMinutes": {
           "optional": true,
           "kind": "text",
-          "type": "0 | 5 | 15 | 30 | 60 | 1440"
+          "type": "0 | 5 | 30 | 60 | 15 | 1440"
         },
         "seriesId": {
           "optional": true,

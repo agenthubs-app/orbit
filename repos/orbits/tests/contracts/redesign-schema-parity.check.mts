@@ -283,3 +283,7 @@ expectParity<Parity<CalendarExternalEventsContract, typeof calendarExternalEvent
 expectParity<Parity<MeetingProposalDetailsContract, typeof meetingDetailsSchema>>();
 expectParity<Parity<MeetingInitialProposalRequestContract, typeof meetingInitialProposalRequestSchema>>();
 expectParity<Parity<MeetingInitialProposalAvailabilityContract, typeof meetingInitialProposalAvailabilitySchema>>();
+import type { SchedulingAvailabilityContract, SchedulingAvailabilityUpdateInput } from "../../shared/contract/scheduling-availability";
+import type { schedulingAvailabilityObject, schedulingAvailabilityUpdateInputObject } from "../../shared/api-schema/scheduling-availability";
+expectParity<Parity<SchedulingAvailabilityContract, typeof schedulingAvailabilityObject>>();
+expectParity<Parity<SchedulingAvailabilityUpdateInput, typeof schedulingAvailabilityUpdateInputObject>>();

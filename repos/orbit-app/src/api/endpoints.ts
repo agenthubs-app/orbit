@@ -32,6 +32,8 @@ export const ORBIT_API_ENDPOINTS = {
   agentLedger: "/api/agent/ledger",
   agentPreferences: "/api/agent/preferences",
   agentSettings: "/api/agent/settings",
+  // contact-reach R40 可约时间（GET/PUT；读不到时用 DEFAULT_SCHEDULING_AVAILABILITY）。
+  schedulingAvailability: "/api/scheduling/availability",
   connections: "/api/connections",
   contacts: "/api/contacts",
   // R11a 人脈：目標に関係 / 要フォロー 的 id（App 缓存，离线用上次值）、软删除与恢复。
@@ -92,6 +94,11 @@ export const ORBIT_API_ENDPOINTS = {
   networkSnapshot: "/api/network/snapshot",
   networkSnapshotRecompute: "/api/network/snapshot/recompute"
 } as const;
+
+/** contact-reach R40: GET/PUT the signed-in account's 可约时间. */
+export function schedulingAvailabilityPath(): string {
+  return ORBIT_API_ENDPOINTS.schedulingAvailability;
+}
 
 function detailPath(collectionPath: string, id: string): string {
   return `${collectionPath}/${encodeURIComponent(id)}`;

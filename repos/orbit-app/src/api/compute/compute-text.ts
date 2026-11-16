@@ -142,3 +142,30 @@ export function notificationLocalDay(instant: string, timeZone: string): string 
 export function lowerText(value: string): string {
   return value.toLowerCase();
 }
+
+/** contact-reach R40: true when `value` is an IANA zone this runtime knows. */
+export function isValidTimeZone(value: unknown): value is string {
+  if (typeof value !== "string" || !value) return false;
+  try { new Intl.DateTimeFormat("en-US", { timeZone: value }).format(0); return true; }
+  catch { return false; }
+}
+
+const zonedFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * contact-reach R40: the wall clock of an instant (ms) in an IANA zone — date
+ * "YYYY-MM-DD", time "HH:mm" (h23) and second "ss". The zone must be valid.
+ */
+export function zonedWallClock(time: number, timeZone: string): { date: string; time: string; second: string } {
+  let formatter = zonedFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+    });
+    zonedFormatters.set(timeZone, formatter);
+  }
+  const parts = formatter.formatToParts(new Date(time));
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "";
+  return { date: `${part("year")}-${part("month")}-${part("day")}`, time: `${part("hour")}:${part("minute")}`, second: part("second") };
+}
