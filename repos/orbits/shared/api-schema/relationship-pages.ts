@@ -10,6 +10,8 @@ export const relationshipConversationIdentitySchema = z.object({
 export const relationshipMessageSchema = z.object({
   messageId: id, conversationId: id, senderAccountId: id, senderDisplayName: z.string().min(1).max(1024),
   body: z.string().min(1).max(10000), sentAt: at, deliveryState: z.literal("delivered"),
+  // R39: the appointment sent with this message; absent before R39.
+  appointmentId: id.nullable().optional(),
 });
 export const relationshipConversationSummarySchema = relationshipConversationIdentitySchema.extend({
   unreadCount: z.number().int().nonnegative().safe(),

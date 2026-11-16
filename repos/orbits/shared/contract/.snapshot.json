@@ -22250,6 +22250,16 @@
           "kind": "text",
           "type": "boolean"
         },
+        "canProposeMeeting": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "activeAppointmentId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
         "qualificationVersion": {
           "optional": true,
           "kind": "text",
@@ -22339,6 +22349,16 @@
           "optional": true,
           "kind": "text",
           "type": "boolean"
+        },
+        "canProposeMeeting": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "activeAppointmentId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         },
         "qualificationVersion": {
           "optional": true,
@@ -22434,6 +22454,11 @@
           "optional": false,
           "kind": "text",
           "type": "'delivered'"
+        },
+        "appointmentId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },
@@ -22728,6 +22753,72 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        }
+      }
+    },
+    "relationship-communication.ts::RelationshipMessageSendRequestDTO": {
+      "kind": "object",
+      "members": {
+        "body": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "qualificationVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "requestId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "retireDraftThrough": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "proposal": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "candidateTimes": {
+              "optional": false,
+              "kind": "array",
+              "readonly": true,
+              "element": {
+                "kind": "object",
+                "members": {
+                  "startsAtUtc": {
+                    "optional": false,
+                    "kind": "text",
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "durationMinutes": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "medium": {
+              "optional": false,
+              "kind": "text",
+              "type": "{ kind: 'in_person'; location: string; } | { kind: 'video'; provider: 'other' | 'google_meet'; joinUrl: string | null; } | { kind: 'phone'; phoneHint: string | null; }"
+            },
+            "note": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "timezone": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            }
+          }
         }
       }
     },
@@ -24524,7 +24615,7 @@
         "meetingMethod": {
           "optional": true,
           "kind": "text",
-          "type": "'phone' | 'video' | 'in_person' | 'unspecified'"
+          "type": "'phone' | 'in_person' | 'video' | 'unspecified'"
         },
         "meetingUrl": {
           "optional": true,

@@ -1,6 +1,6 @@
 import { AppointmentError, type AppointmentMedium } from "../../../features/appointments/contract";
-import { createAppointmentContactAuthorityReader } from "../../../features/appointments/contact-authority";
-import { createPostgresAppointmentRepository, resolveAcceptedEventContactContext } from "../../../features/appointments/postgres-repository";
+import { createContactAppointmentAuthorityVerifier, createRuntimeAppointmentContactAuthorityReader, type ContactAuthorityContext } from "../../../features/appointments/contact-authority";
+import { createPostgresAppointmentRepository } from "../../../features/appointments/postgres-repository";
 import { createAppointmentService, type AppointmentService } from "../../../features/appointments/service";
 import { createConfiguredEventOperationsPostgresRuntime, type EventOperationsPostgresRuntime } from "../../../features/events/event-operations/storage/postgres-client";
 import { meetingInitialProposalAvailabilityQuerySchema, meetingInitialProposalRequestSchema } from "../../../shared/api-schema/appointment-initial-proposal";
@@ -11,7 +11,7 @@ import { appointmentMutationErrorResponse, publicAppointment } from "./handlers"
 
 interface InitialProposalBoundary {
   service: Pick<AppointmentService, "createDraft">;
-  contactAuthority: { read(actorId: string, contactId: string): Promise<{ eventId: string; authorityReference: string } | null> };
+  contactAuthority: { read(actorId: string, contactId: string): Promise<ContactAuthorityContext | null> };
 }
 interface Dependencies {
   resolveActor: ResolveAuthenticatedApiActor;
@@ -21,15 +21,10 @@ interface Dependencies {
 export function createAppointmentInitialProposalBoundary(runtime: EventOperationsPostgresRuntime, workspaceId: string, contactId: string): InitialProposalBoundary | null {
   if (runtime.workspaceId !== workspaceId) return null;
   return {
-    contactAuthority: createAppointmentContactAuthorityReader({ client: runtime.client, workspaceId, verify: input => resolveAcceptedEventContactContext(input, runtime) }),
-    service: createAppointmentService({ repository: createPostgresAppointmentRepository(runtime), authorityVerifier: {
-      async resolveAcceptedBilateralContact(input) {
-        if (!input.eventId) return null;
-        const authority = await resolveAcceptedEventContactContext({ actorId: input.actorId, eventId: input.eventId, requestId: input.authorityReference }, runtime);
-        // Recheck the requested contact at create time; a changed canonical side must not create for another contact.
-        return authority?.contactIdsByActor[input.actorId] === contactId ? authority : null;
-      },
-    } }),
+    // R39: an accepted event exchange or a live invite-code connection.
+    contactAuthority: createRuntimeAppointmentContactAuthorityReader(runtime),
+    // Recheck the requested contact at create time; a changed canonical side (or an unlinked invite) must not create.
+    service: createAppointmentService({ repository: createPostgresAppointmentRepository(runtime), authorityVerifier: createContactAppointmentAuthorityVerifier(runtime, contactId) }),
   };
 }
 

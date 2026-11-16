@@ -32,6 +32,9 @@ import { SYNC_RELATIONSHIP_OWNER_GUARD_SQL } from "../sync/owner-guard";
  * (SYNC_RELATIONSHIP_OWNER_GUARD_SQL): the message sync domains derive their
  * owner from the member row, so no row may move or come back from 'left'.
  *
+ * R39: relationship_messages.appointment_id (nullable) links a message to the
+ * appointment created in the same transaction (POST messages with a proposal).
+ *
  * Idempotent: every statement is "if not exists" / "or replace".
  */
 export const RELATIONSHIP_MESSAGE_TABLES = {
@@ -99,6 +102,10 @@ create table if not exists relationship_messages (
   unique (workspace_id, message_id),
   foreign key (workspace_id, conversation_id) references relationship_conversations (workspace_id, conversation_id)
 );
+
+-- R39 (contact-reach D2): a message may carry the meeting proposal it was sent
+-- with. Nullable, never backfilled: messages written before R39 have none.
+alter table relationship_messages add column if not exists appointment_id text;
 
 -- Cross-conversation keysets by send time (notification materialization and
 -- discovery scan) stay inside the caller's conversations.

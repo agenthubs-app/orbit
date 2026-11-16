@@ -62,6 +62,8 @@ export interface RelationshipMessageRow {
   sentAt: string;
   qualificationVersion: string;
   requestId: string;
+  /** R39: the appointment created together with this message (POST messages with a proposal); null otherwise. */
+  appointmentId: string | null;
 }
 
 const CONVERSATION_COLUMNS = `c.conversation_id as "conversationId", c.inviter_account_id as "inviterAccountId",
@@ -76,7 +78,8 @@ const CONVERSATION_COLUMNS = `c.conversation_id as "conversationId", c.inviter_a
 
 const MESSAGE_COLUMNS = `conversation_id as "conversationId", seq::text as seq, message_id as "messageId",
   sender_account_id as "senderAccountId", sender_display_name as "senderDisplayName", body,
-  ${isoSql("sent_at")} as "sentAt", qualification_version as "qualificationVersion", request_id as "requestId"`;
+  ${isoSql("sent_at")} as "sentAt", qualification_version as "qualificationVersion", request_id as "requestId",
+  appointment_id as "appointmentId"`;
 
 type RawConversation = Omit<RelationshipConversationRow, "lastMessageSeq" | "members"> & {
   lastMessageSeq: string;
@@ -94,7 +97,7 @@ function conversationFromRow(row: RawConversation | undefined): RelationshipConv
 }
 
 function messageFromRow(row: RawMessage): RelationshipMessageRow {
-  return { ...row, seq: Number(row.seq) };
+  return { ...row, seq: Number(row.seq), appointmentId: row.appointmentId ?? null };
 }
 
 export interface CreateRelationshipConversationInput {
@@ -117,6 +120,19 @@ export interface SendRelationshipStoredMessageInput {
   body: string;
   qualificationVersion: string;
   now: () => string;
+  /**
+   * R39 (contact-reach D2): a message sent with a meeting proposal. `attach`
+   * runs inside the send transaction after the eligibility checks and before
+   * the message insert, and returns the appointment id the message carries;
+   * anything it throws rolls the whole send back (no appointment without its
+   * message, no message without its appointment). `matchesReplay` decides
+   * whether a replayed request id carries the same proposal as the stored
+   * message's appointment.
+   */
+  proposal?: {
+    attach(tx: TransactionalSqlExecutor, conversation: RelationshipConversationRow): Promise<string>;
+    matchesReplay(tx: TransactionalSqlExecutor, appointmentId: string): Promise<boolean>;
+  };
 }
 
 async function conversationBy(executor: TransactionalSqlExecutor, workspaceId: string, where: string, values: unknown[], lock = false) {
@@ -135,6 +151,27 @@ async function messageById(executor: TransactionalSqlExecutor, workspaceId: stri
   return result.rows[0] ? messageFromRow(result.rows[0]) : null;
 }
 
+async function activeConversationForPair(executor: TransactionalSqlExecutor, workspaceId: string, accountId: string, otherAccountId: string) {
+  return conversationBy(executor, workspaceId,
+    `c.status = 'active' and ((c.inviter_account_id = $2 and c.invitee_account_id = $3) or (c.inviter_account_id = $3 and c.invitee_account_id = $2))
+      order by c.created_at asc, c.conversation_id asc limit 1`, [accountId, otherAccountId]);
+}
+
+async function insertConversation(tx: TransactionalSqlExecutor, workspaceId: string, value: CreateRelationshipConversationInput) {
+  await tx.query(
+    `insert into relationship_conversations (workspace_id, conversation_id, inviter_account_id, invitee_account_id, inviter_contact_id,
+       status, qualification_version, last_message_at, created_at, updated_at)
+     values ($1, $2, $3, $4, $5, 'active', $6, $7, $7, $7)`,
+    [workspaceId, value.conversationId, value.inviterAccountId, value.inviteeAccountId, value.inviterContactId, value.qualificationVersion, value.createdAt],
+  );
+  await tx.query(
+    `insert into relationship_conversation_members (workspace_id, conversation_id, account_id, display_name, last_message_at, updated_at)
+     values ($1, $2, $3, $4, $7, $7), ($1, $2, $5, $6, $7, $7)`,
+    [workspaceId, value.conversationId, value.inviterAccountId, value.inviterDisplayName, value.inviteeAccountId, value.inviteeDisplayName, value.createdAt],
+  );
+  return (await conversationBy(tx, workspaceId, "c.conversation_id = $2", [value.conversationId]))!;
+}
+
 /** Point and index-range reads; any SQL executor (pool, transaction). */
 export function createRelationshipMessageReader(input: { client: TransactionalSqlExecutor; workspaceId: string }) {
   const { client, workspaceId } = input;
@@ -147,6 +184,11 @@ export function createRelationshipMessageReader(input: { client: TransactionalSq
 
     conversationForInviterContact(inviterAccountId: string, contactId: string) {
       return conversationBy(client, workspaceId, "c.inviter_account_id = $2 and c.inviter_contact_id = $3", [inviterAccountId, contactId]);
+    },
+
+    /** R39: the active conversation between two accounts, whichever of them opened it (oldest first). */
+    activeConversationForPair(accountId: string, otherAccountId: string) {
+      return activeConversationForPair(client, workspaceId, accountId, otherAccountId);
     },
 
     message(messageId: string) {
@@ -228,18 +270,27 @@ export function createRelationshipMessageStore(input: { client: TransactionalPos
           }
           return existing;
         }
-        await tx.query(
-          `insert into relationship_conversations (workspace_id, conversation_id, inviter_account_id, invitee_account_id, inviter_contact_id,
-             status, qualification_version, last_message_at, created_at, updated_at)
-           values ($1, $2, $3, $4, $5, 'active', $6, $7, $7, $7)`,
-          [workspaceId, value.conversationId, value.inviterAccountId, value.inviteeAccountId, value.inviterContactId, value.qualificationVersion, value.createdAt],
-        );
-        await tx.query(
-          `insert into relationship_conversation_members (workspace_id, conversation_id, account_id, display_name, last_message_at, updated_at)
-           values ($1, $2, $3, $4, $7, $7), ($1, $2, $5, $6, $7, $7)`,
-          [workspaceId, value.conversationId, value.inviterAccountId, value.inviterDisplayName, value.inviteeAccountId, value.inviteeDisplayName, value.createdAt],
-        );
-        return (await conversationBy(tx, workspaceId, "c.conversation_id = $2", [value.conversationId]))!;
+        return insertConversation(tx, workspaceId, value);
+      });
+    },
+
+    /**
+     * R39 (contact-reach D1): one active conversation per pair of accounts. A
+     * transaction-scoped lock on the sorted account pair serializes both people
+     * starting at once; an active conversation between them (any origin: invite
+     * code, email invitation, event exchange) is returned instead of a second
+     * one. A stored conversation for the same (opener, contact) that is no
+     * longer active is a conflict, as for createConversation.
+     */
+    createConversationForPair(value: CreateRelationshipConversationInput): Promise<RelationshipConversationRow> {
+      return write(async (tx) => {
+        const [low, high] = [value.inviterAccountId, value.inviteeAccountId].sort();
+        await tx.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [JSON.stringify(["relationship-pair", workspaceId, low, high])]);
+        const active = await activeConversationForPair(tx, workspaceId, value.inviterAccountId, value.inviteeAccountId);
+        if (active) return active;
+        const existing = await conversationBy(tx, workspaceId, "c.inviter_account_id = $2 and c.inviter_contact_id = $3", [value.inviterAccountId, value.inviterContactId], true);
+        if (existing) throw new RelationshipMessageStoreError("BINDING_CONFLICT", "This contact identity has a conflicting binding.");
+        return insertConversation(tx, workspaceId, value);
       });
     },
 
@@ -262,7 +313,9 @@ export function createRelationshipMessageStore(input: { client: TransactionalPos
           // The qualification version is not part of the fingerprint: an offline
           // replay may carry the version the device saw when it wrote the message.
           if (existing.conversationId !== value.conversationId || existing.body !== value.body
-            || existing.senderAccountId !== value.senderAccountId) {
+            || existing.senderAccountId !== value.senderAccountId
+            || Boolean(existing.appointmentId) !== Boolean(value.proposal)
+            || (existing.appointmentId && value.proposal && !(await value.proposal.matchesReplay(tx, existing.appointmentId)))) {
             throw new RelationshipMessageStoreError("REQUEST_REUSED", "This request id was already used for a different message.");
           }
           return { message: existing, created: false };
@@ -274,6 +327,7 @@ export function createRelationshipMessageStore(input: { client: TransactionalPos
         if (conversation.qualificationVersion !== value.qualificationVersion) {
           throw new RelationshipMessageStoreError("STALE", "Message eligibility is stale; refresh before retrying.");
         }
+        const appointmentId = value.proposal ? await value.proposal.attach(tx, conversation) : null;
         const sentAt = value.now();
         const inserted = await tx.query<RawMessage>(
           `with bumped as (
@@ -281,10 +335,10 @@ export function createRelationshipMessageStore(input: { client: TransactionalPos
              where workspace_id = $1 and conversation_id = $2 returning last_message_seq
            )
            insert into relationship_messages (workspace_id, conversation_id, seq, message_id, sender_account_id, sender_display_name,
-             body, sent_at, qualification_version, request_id)
-           select $1, $2, bumped.last_message_seq, $4, $5, $6, $7, $3::timestamptz, $8, $9 from bumped
+             body, sent_at, qualification_version, request_id, appointment_id)
+           select $1, $2, bumped.last_message_seq, $4, $5, $6, $7, $3::timestamptz, $8, $9, $10 from bumped
            returning ${MESSAGE_COLUMNS}`,
-          [workspaceId, value.conversationId, sentAt, value.messageId, value.senderAccountId, value.senderDisplayName, value.body, value.qualificationVersion, value.requestId],
+          [workspaceId, value.conversationId, sentAt, value.messageId, value.senderAccountId, value.senderDisplayName, value.body, value.qualificationVersion, value.requestId, appointmentId],
         );
         const message = inserted.rows[0] ? messageFromRow(inserted.rows[0]) : null;
         if (!message) throw new Error("The message could not be confirmed as delivered.");

@@ -19,6 +19,19 @@ export interface RelationshipEligibilityDTO {
   canSend: boolean;
   /** QA-C4: connected by invite code and no conversation yet — "Message" opens one (POST /conversations/start). */
   canStart?: boolean;
+  /**
+   * R39 (contact-reach D1): a meeting proposal can be sent to this contact — an
+   * accepted bilateral event exchange or a live invite-code connection. A person
+   * reached only through an email invitation can be messaged but never receives
+   * a proposal (false). Absent in responses from before R39 (read as false).
+   */
+  canProposeMeeting?: boolean;
+  /**
+   * R39 (D2b): the ongoing meeting with this person (not cancelled/completed),
+   * shown instead of new candidate times; null when there is none. Only set
+   * when `canProposeMeeting` is true.
+   */
+  activeAppointmentId?: string | null;
   qualificationVersion?: string;
   expiresAt?: string;
   conversationId?: string;
@@ -53,6 +66,12 @@ export interface RelationshipMessageDTO {
   body: string;
   sentAt: string;
   deliveryState: "delivered";
+  /**
+   * R39 (D2/D3): the appointment created together with this message (a message
+   * sent with a meeting proposal); null otherwise. Absent in responses and
+   * stored rows from before R39 (read as null).
+   */
+  appointmentId?: string | null;
 }
 
 export interface RelationshipConversationDTO {
@@ -103,6 +122,29 @@ export interface RelationshipMessagePageDTO {
   hasMore: boolean;
   direction: "older" | "newer";
   asOf: string;
+}
+
+/**
+ * R39 (D2): POST /api/relationship-communication/conversations/{id}/messages.
+ * `Idempotency-Key` header (preferred) or `requestId`; `proposal` (optional) is
+ * the initial-proposal structure and creates the appointment atomically with
+ * the message.
+ */
+export interface RelationshipMessageSendRequestDTO {
+  body: string;
+  qualificationVersion: string;
+  requestId?: string;
+  retireDraftThrough?: string | null;
+  proposal?: {
+    candidateTimes: readonly { startsAtUtc: string }[];
+    durationMinutes: number;
+    medium:
+      | { kind: "in_person"; location: string }
+      | { kind: "video"; provider: "google_meet" | "other"; joinUrl: string | null }
+      | { kind: "phone"; phoneHint: string | null };
+    note: string;
+    timezone: string;
+  };
 }
 
 export interface RelationshipDeliveryReceiptDTO {

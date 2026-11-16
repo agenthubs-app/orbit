@@ -11,6 +11,10 @@ import {
   createConfiguredRelationshipCommunicationService,
 } from "../../../features/relationship-communication/service-factory";
 import type { RelationshipCommunicationService } from "../../../features/relationship-communication/service";
+import { RelationshipMessageStoreError } from "../../../features/relationship-communication/message-store";
+import { RelationshipMeetingActiveError, RelationshipMeetingUnavailableError } from "../../../features/relationship-communication/meeting-proposals";
+import { AppointmentError, type AppointmentProposalInput } from "../../../features/appointments/contract";
+import { meetingProposalSchema } from "../../../shared/api-schema/appointment-initial-proposal";
 import {
   authenticatedApiActorRequiredResponse,
   resolveAuthenticatedApiActor,
@@ -66,10 +70,33 @@ function errorCode(error: Error): AppErrorCode {
   return "VALIDATION_ERROR";
 }
 
+/**
+ * R39: errors with a stable reason for clients. `reason` (and, for an ongoing
+ * meeting, `appointmentId`) is added to the error context:
+ *   MEETING_ALREADY_ACTIVE  409  the pair already has an ongoing meeting (D2b)
+ *   MEETING_NOT_AVAILABLE   403  no event exchange / live invite connection
+ *   MEETING_INVALID_PROPOSAL 400 the proposal failed validation
+ *   NOT_AVAILABLE/REVOKED/STALE/REQUEST_REUSED/BINDING_CONFLICT  message store codes
+ */
+function classified(error: Error): { code: AppErrorCode; message: string; reason?: string; appointmentId?: string } {
+  if (error instanceof RelationshipMeetingActiveError) {
+    return { code: "CONFLICT", message: error.message, reason: error.code, ...(error.appointmentId ? { appointmentId: error.appointmentId } : {}) };
+  }
+  if (error instanceof RelationshipMeetingUnavailableError) return { code: "FORBIDDEN", message: error.message, reason: error.code };
+  if (error instanceof AppointmentError) {
+    return error.code === "APPOINTMENT_INVALID_PROPOSAL"
+      ? { code: "VALIDATION_ERROR", message: "The meeting proposal is invalid.", reason: "MEETING_INVALID_PROPOSAL" }
+      : { code: "CONFLICT", message: "The meeting proposal could not be created.", reason: error.code };
+  }
+  if (error instanceof RelationshipMessageStoreError) return { code: errorCode(error), message: error.message, reason: error.code };
+  return { code: errorCode(error), message: error.message };
+}
+
 function failureResponse(error: unknown): Response {
   const mode = resolveFeatureMode();
   const normalized = error instanceof Error ? error : new Error("Relationship communication failed.");
-  const appError = new AppError(errorCode(normalized), normalized.message);
+  const { code, message, reason, appointmentId } = classified(normalized);
+  const appError = new AppError(code, message);
   return NextResponse.json(
     failure(appError, {
       boundary: "runtime",
@@ -77,8 +104,10 @@ function failureResponse(error: unknown): Response {
       privacy: "participant-scoped-relationship-communication",
       provenance: "The request was validated by the relationship communication service.",
       service: "relationship-communication",
+      ...(reason ? { reason } : {}),
+      ...(appointmentId ? { appointmentId } : {}),
     }),
-    { headers: runtimeBoundaryHeaders(mode), status: appError.code === "NOT_FOUND" ? 404 : appError.code === "CONFLICT" ? 409 : appError.code === "SERVICE_UNAVAILABLE" ? 503 : 400 },
+    { headers: runtimeBoundaryHeaders(mode), status: appError.code === "NOT_FOUND" ? 404 : appError.code === "CONFLICT" ? 409 : appError.code === "FORBIDDEN" ? 403 : appError.code === "SERVICE_UNAVAILABLE" ? 503 : 400 },
   );
 }
 
@@ -190,21 +219,34 @@ export function createConversationGetHandler(
   };
 }
 
+/** R39: the optional `proposal` of a message, in the initial-proposal structure (medium normalized as there). */
+function messageProposal(body: Record<string, unknown>): AppointmentProposalInput | undefined {
+  if (!("proposal" in body) || body.proposal === undefined || body.proposal === null) return undefined;
+  const parsed = meetingProposalSchema.safeParse(body.proposal);
+  if (!parsed.success) throw new Error("The meeting proposal is invalid.");
+  const { medium } = parsed.data;
+  return { ...parsed.data, medium: medium.kind === "in_person" ? { kind: "in_person", location: medium.location }
+    : medium.kind === "video" ? { kind: "video", provider: medium.provider, joinUrl: medium.joinUrl ?? null }
+    : { kind: "phone", phoneHint: medium.phoneHint ?? null } };
+}
+
 export function createConversationMessagesPostHandler(
   dependencies: RelationshipCommunicationHandlerDependencies = {},
 ) {
   return async (request: Request, context: DynamicContext) => {
     const body = await readBody(request);
     const { id = "" } = await context.params;
-    const response = await withService(request, dependencies, async (service) =>
-      service.sendMessage({
+    const response = await withService(request, dependencies, async (service) => {
+      const proposal = messageProposal(body);
+      return service.sendMessage({
         body: stringField(body, "body"),
         conversationId: id,
         qualificationVersion: stringField(body, "qualificationVersion"),
         requestId: request.headers.get("idempotency-key") ?? stringField(body, "requestId"),
         ...("retireDraftThrough" in body ? { retireDraftThrough: body.retireDraftThrough } : {}),
-      }),
-    );
+        ...(proposal ? { proposal } : {}),
+      });
+    });
     if (response.status !== 200) return response;
     return new Response(response.body, { headers: response.headers, status: 201 });
   };

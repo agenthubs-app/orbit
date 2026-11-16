@@ -14,5 +14,8 @@ export const meetingInitialProposalRequestSchema = z.object({
   }).strict(),
 }).strict();
 
+/** R39: the same proposal structure, sent with a relationship message (POST conversations/{id}/messages). */
+export const meetingProposalSchema = meetingInitialProposalRequestSchema.shape.proposal;
+
 export const meetingInitialProposalAvailabilityQuerySchema = z.object({ contactId: identifier }).strict();
 export const meetingInitialProposalAvailabilitySchema = z.object({ contactId: identifier, available: z.boolean() }).strict();

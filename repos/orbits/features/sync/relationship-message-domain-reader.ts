@@ -80,7 +80,7 @@ const MESSAGES_PAGE_SQL = `
   /* sync:relationship:messages-page */
   with mine as (${ACTIVE_MEMBERSHIPS}
   ), candidates as (
-    select m.conversation_id, m.seq, m.message_id, m.sender_account_id, m.sender_display_name, m.body, m.sent_at, m.sync_revision
+    select m.conversation_id, m.seq, m.message_id, m.sender_account_id, m.sender_display_name, m.body, m.sent_at, m.appointment_id, m.sync_revision
     from mine join relationship_messages m on m.workspace_id = $1 and m.conversation_id = mine.conversation_id
     where m.sync_revision > $3::bigint and m.sync_revision <= $4::bigint
     order by m.sync_revision asc
@@ -91,7 +91,7 @@ const MESSAGES_PAGE_SQL = `
       count(*) over () as candidate_count
     from candidates window w as (order by sync_revision asc)
   )
-  select conversation_id, seq::text as seq, message_id, sender_account_id, sender_display_name, body,
+  select conversation_id, seq::text as seq, message_id, sender_account_id, sender_display_name, body, appointment_id,
     to_char(sent_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as sent_at,
     sync_revision::text as sync_revision, candidate_count::text as candidate_count
   from measured
@@ -152,7 +152,7 @@ async function readConversationsPage(client: Queryable, input: PageInput): Promi
 
 async function readMessagesPage(client: Queryable, input: PageInput): Promise<PageRead> {
   const result = await client.query<{
-    conversation_id: string; seq: string; message_id: string; sender_account_id: string; sender_display_name: string; body: string; sent_at: string; sync_revision: string; candidate_count: string;
+    conversation_id: string; seq: string; message_id: string; sender_account_id: string; sender_display_name: string; body: string; sent_at: string; appointment_id: string | null; sync_revision: string; candidate_count: string;
   }>(MESSAGES_PAGE_SQL, [input.workspaceId, input.actorId, input.afterRevision, input.highWatermark, input.limit, RELATIONSHIP_MESSAGE_PAGE_BYTES]);
   const rows = result.rows;
   const candidates = rows.length ? Number(rows[0]!.candidate_count) : 0;
@@ -164,6 +164,8 @@ async function readMessagesPage(client: Queryable, input: PageInput): Promise<Pa
       payload: {
         conversationId: row.conversation_id, seq: Number(row.seq), messageId: row.message_id, senderAccountId: row.sender_account_id,
         senderDisplayName: row.sender_display_name, body: row.body, sentAt: row.sent_at,
+        // R39: the appointment sent with this message; plain messages keep their pre-R39 shape.
+        ...(row.appointment_id ? { appointmentId: row.appointment_id } : {}),
       },
     })),
     hasMore: candidates > rows.length,

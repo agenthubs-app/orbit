@@ -1,7 +1,10 @@
 import type { AuthenticatedApiActor } from "../../app/api/_shared/authenticated-actor";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import { createConfiguredTransactionalPostgresRuntime } from "../../shared/storage/transactional-postgres";
+import { createConfiguredEventOperationsPostgresRuntime } from "../events/event-operations/storage/postgres-client";
+import { createPostgresRelationshipEventExchanges } from "./event-exchange-link";
 import { createPostgresRelationshipInviteLinks } from "./invite-link";
+import { createPostgresRelationshipMeetingProposals } from "./meeting-proposals";
 import { createRelationshipMessageStore } from "./message-store";
 import {
   createRelationshipCommunicationService,
@@ -43,8 +46,15 @@ export function createConfiguredRelationshipCommunicationService(
   if (!accountId || !displayName || !email) {
     return unavailableService("The signed-in account identity is incomplete.");
   }
+  // R39: appointments live in the same database (same connection configuration);
+  // the proposal is created inside the message transaction, the other reads use this runtime.
+  const appointments = createConfiguredEventOperationsPostgresRuntime();
   return createRelationshipCommunicationService({
     actor: { accountId, displayName, email },
+    eventExchanges: createPostgresRelationshipEventExchanges(transactional.client, transactional.workspaceId),
+    meetings: appointments && appointments.workspaceId === transactional.workspaceId
+      ? createPostgresRelationshipMeetingProposals({ runtime: appointments })
+      : null,
     invitationBaseUrl,
     inviteLinks: createPostgresRelationshipInviteLinks(transactional.client, transactional.workspaceId),
     messages: createRelationshipMessageStore({ client: transactional.client, workspaceId: transactional.workspaceId }),

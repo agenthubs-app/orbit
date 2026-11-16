@@ -86,11 +86,13 @@ function messagesSql(direction: "older" | "newer"): string {
       'messageId',left(message_id,512),'conversationId',left(conversation_id,512),
       'senderAccountId',left(sender_account_id,512),'senderDisplayName',left(sender_display_name,512),
       'body',left(body,10000),'sentAt',${iso("sent_at")},'deliveryState','delivered'
-    ) order by seq asc) from window_messages),'[]'::jsonb) as items,
+    -- R39: only a message sent with a proposal carries its appointment; plain messages keep their shape.
+    ) || case when appointment_id is null then '{}'::jsonb else jsonb_build_object('appointmentId',left(appointment_id,256)) end order by seq asc) from window_messages),'[]'::jsonb) as items,
     (select count(*) from candidates) > (select count(*) from window_messages) as has_more,
     exists(select 1 from window_messages where char_length(body)>10000
       or char_length(message_id)>512 or char_length(conversation_id)>512
-      or char_length(sender_account_id)>512 or char_length(sender_display_name)>512) as invalid_message`;
+      or char_length(sender_account_id)>512 or char_length(sender_display_name)>512
+      or char_length(appointment_id)>256) as invalid_message`;
 }
 
 export function createRelationshipBoundedReader(input: {

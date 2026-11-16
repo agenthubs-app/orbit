@@ -20,7 +20,11 @@ import type {
   RelationshipMessageRow,
   RelationshipMessageStore,
 } from "./message-store";
+import type { AppointmentProposalInput } from "../appointments/contract";
+import type { TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
+import type { RelationshipEventExchanges } from "./event-exchange-link";
 import { withMyContactIds, type RelationshipInviteLinks } from "./invite-link";
+import { relationshipProposalKey, RelationshipMeetingUnavailableError, type RelationshipMeetingProposals } from "./meeting-proposals";
 
 /**
  * Invitations still live in orbit_records. Since sprint 0109 bindings,
@@ -78,6 +82,17 @@ export interface RelationshipCommunicationServiceOptions {
    * invitation. Omitted: only relationship invitations open conversations.
    */
   inviteLinks?: RelationshipInviteLinks | null;
+  /**
+   * R39 (contact-reach D1): accepted bilateral event exchanges. Either side may
+   * start a conversation; one active conversation per pair of accounts.
+   */
+  eventExchanges?: RelationshipEventExchanges | null;
+  /**
+   * R39 (D1/D2/D2b): who can receive a meeting proposal, the ongoing meeting of
+   * a pair, and the proposal created atomically with a message. Omitted:
+   * `canProposeMeeting` is false and a message with a proposal is refused.
+   */
+  meetings?: RelationshipMeetingProposals | null;
 }
 
 export interface CreateRelationshipInvitationInput {
@@ -103,6 +118,12 @@ export interface SendRelationshipMessageInput {
    * by online sends: drafts saved at or before the send are retired (0122).
    */
   retireDraftThrough?: unknown;
+  /**
+   * R39 (D2): a new meeting proposal sent with this message (the initial
+   * proposal structure). The appointment and the message are created in one
+   * transaction; the message carries the appointment id.
+   */
+  proposal?: AppointmentProposalInput;
 }
 
 export interface SaveRelationshipReplyDraftInput {
@@ -277,6 +298,8 @@ function displayNames(conversation: RelationshipConversationRow): Record<string,
 
 function messageDto(message: RelationshipMessageRow): RelationshipMessageDTO {
   return {
+    // R39: only on a message sent with a proposal; plain messages keep their pre-R39 shape.
+    ...(message.appointmentId ? { appointmentId: message.appointmentId } : {}),
     body: message.body,
     conversationId: message.conversationId,
     deliveryState: "delivered",
@@ -295,8 +318,10 @@ function addSevenDays(timestamp: string): string {
 
 export function createRelationshipCommunicationService({
   actor,
+  eventExchanges = null,
   invitationBaseUrl,
   inviteLinks = null,
+  meetings = null,
   messages,
   now = () => new Date().toISOString(),
   randomToken = () => randomBytes(32).toString("base64url"),
@@ -405,6 +430,39 @@ export function createRelationshipCommunicationService({
     return { link, peerAccountId, reverse: reverse && reverse.inviteeAccountId === accountId ? reverse : null };
   }
 
+  /**
+   * R39 (D2/D2b): the proposal half of a send. Before the transaction, a
+   * confirmed meeting of the pair whose time has ended is completed; inside it
+   * (message-store `send`), after the eligibility checks, the appointment is
+   * created for the other member of the conversation from my own contact of
+   * them. A replayed request id compares the stored proposal instead.
+   */
+  async function proposalAttachment(conversationId: string, requestId: string, proposal: AppointmentProposalInput) {
+    if (!meetings) throw new Error("Meeting proposals are unavailable.");
+    const meetingService = meetings;
+    const current = await messages.conversation(conversationId);
+    const peerAccountId = current ? participants(current).find((id) => id !== accountId) ?? null : null;
+    if (current && peerAccountId && participants(current).includes(accountId)) {
+      try {
+        await meetingService.completeEnded({ actorId: accountId, peerAccountId, idempotencyKey: relationshipProposalKey("complete", conversationId, accountId, requestId) });
+      } catch {
+        // A concurrent change: the create step below reports the meeting that is still ongoing.
+      }
+    }
+    return {
+      async attach(tx: TransactionalSqlExecutor, conversation: RelationshipConversationRow) {
+        const peer = participants(conversation).find((id) => id !== accountId)!;
+        const mine = (await (inviteLinks?.myContactIds(accountId, [peer]) ?? Promise.resolve(new Map<string, string>()))).get(peer)
+          ?? (conversation.inviterAccountId === accountId ? conversation.inviterContactId : null);
+        if (!mine) throw new RelationshipMeetingUnavailableError();
+        return meetingService.createWithin(tx, { actorId: accountId, contactId: mine, peerAccountId: peer,
+          idempotencyKey: relationshipProposalKey("create", conversationId, accountId, requestId), proposal });
+      },
+      matchesReplay: (tx: TransactionalSqlExecutor, appointmentId: string) =>
+        meetingService.matchesReplay(tx, { actorId: accountId, appointmentId, proposal }),
+    };
+  }
+
   // A delivered reply is no longer a draft (Sprint 0122, Codex 104-C). The send
   // request itself retires the sender's draft saved up to the delivery time, so a
   // lost client-side clear cannot restore sent text, and text saved after the
@@ -438,62 +496,92 @@ export function createRelationshipCommunicationService({
     });
   }
 
+  /**
+   * R39: the meeting half of eligibility. `canProposeMeeting` needs an accepted
+   * event exchange or a live invite connection behind this contact (an email
+   * invitation alone never qualifies); `activeAppointmentId` is the pair's
+   * ongoing meeting (D2b), which the client shows instead of new times.
+   */
+  async function withMeetings(eligibility: RelationshipEligibilityDTO, peerAccountId: string | null): Promise<RelationshipEligibilityDTO> {
+    // Without the meetings dependency the response keeps its pre-R39 shape (absent reads as false).
+    if (!meetings) return eligibility;
+    const canProposeMeeting = await meetings.canPropose(accountId, eligibility.contactId);
+    const activeAppointmentId = canProposeMeeting && peerAccountId ? await meetings.activeAppointmentId(accountId, peerAccountId) : null;
+    return { ...eligibility, canProposeMeeting, activeAppointmentId };
+  }
+
+  /** R39: the accepted bilateral event exchange behind one of my contacts, and the pair's active conversation. */
+  async function eventExchangeFor(contactId: string) {
+    const exchange = eventExchanges ? await eventExchanges.forContact(accountId, contactId) : null;
+    if (!exchange) return null;
+    return { peerAccountId: exchange.peerAccountId, conversation: await messages.activeConversationForPair(accountId, exchange.peerAccountId) };
+  }
+
+  async function messagingEligibility(contact: RelationshipCommunicationContact): Promise<{ eligibility: RelationshipEligibilityDTO; peerAccountId: string | null }> {
+    const conversation = await messages.conversationForInviterContact(accountId, contact.contactId);
+    if (conversation) {
+      const remote = conversation.members.find((item) => item.accountId === conversation.inviteeAccountId);
+      return { peerAccountId: conversation.inviteeAccountId, eligibility: {
+        canInvite: conversation.status === "revoked",
+        canSend: conversation.status === "active",
+        contactId: contact.contactId,
+        conversationId: conversation.conversationId,
+        qualificationVersion: conversation.qualificationVersion,
+        remoteAccount: {
+          accountId: conversation.inviteeAccountId,
+          displayName: remote?.displayName ?? "",
+        },
+        status: conversation.status === "active" ? "confirmed" : "revoked",
+      } };
+    }
+    const invite = await inviteLinkFor(contact.contactId);
+    if (invite?.reverse) return { peerAccountId: invite.peerAccountId, eligibility: memberEligibility(invite.reverse, contact.contactId) };
+    if (invite) {
+      // Connected by invite code: messaging opens on the first "Message" (startConversation).
+      return { peerAccountId: invite.peerAccountId, eligibility: { canInvite: false, canSend: false, canStart: true, contactId: contact.contactId, status: "unregistered" } };
+    }
+    // R39: exchanged at an event — the pair's active conversation (any origin), or "Message" opens one.
+    const exchange = await eventExchangeFor(contact.contactId);
+    if (exchange?.conversation) return { peerAccountId: exchange.peerAccountId, eligibility: memberEligibility(exchange.conversation, contact.contactId) };
+    if (exchange) return { peerAccountId: exchange.peerAccountId, eligibility: { canInvite: false, canSend: false, canStart: true, contactId: contact.contactId, status: "unregistered" } };
+    // Bounded: this actor's invitations to this one contact, newest first.
+    const invitations = await store.listRecords({
+      limit: INVITATION_LOOKUP_LIMIT,
+      collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.invitations,
+      targetId: contact.contactId,
+      userId: accountId,
+      workspaceId: scopedWorkspaceId,
+    });
+    const pending = invitations
+      .map((item) => invitationFrom(item))
+      .filter(
+        (item): item is InvitationPayload =>
+          Boolean(item && item.contactId === contact.contactId && item.status === "pending"),
+      )
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
+    if (pending) {
+      const expired = Date.parse(pending.expiresAt) <= Date.parse(now());
+      return { peerAccountId: null, eligibility: {
+        canInvite: expired,
+        canSend: false,
+        contactId: contact.contactId,
+        expiresAt: pending.expiresAt,
+        status: expired ? "expired" : "pending",
+      } };
+    }
+    return { peerAccountId: null, eligibility: {
+      canInvite: true,
+      canSend: false,
+      contactId: contact.contactId,
+      status: "unregistered",
+    } };
+  }
+
   return {
     async getEligibility(contactIdInput) {
       const contact = await contactOwnedByActor(contactIdInput);
-      const conversation = await messages.conversationForInviterContact(accountId, contact.contactId);
-      if (conversation) {
-        const remote = conversation.members.find((item) => item.accountId === conversation.inviteeAccountId);
-        return {
-          canInvite: conversation.status === "revoked",
-          canSend: conversation.status === "active",
-          contactId: contact.contactId,
-          conversationId: conversation.conversationId,
-          qualificationVersion: conversation.qualificationVersion,
-          remoteAccount: {
-            accountId: conversation.inviteeAccountId,
-            displayName: remote?.displayName ?? "",
-          },
-          status: conversation.status === "active" ? "confirmed" : "revoked",
-        };
-      }
-      const invite = await inviteLinkFor(contact.contactId);
-      if (invite?.reverse) return memberEligibility(invite.reverse, contact.contactId);
-      if (invite) {
-        // Connected by invite code: messaging opens on the first "Message" (startConversation).
-        return { canInvite: false, canSend: false, canStart: true, contactId: contact.contactId, status: "unregistered" };
-      }
-      // Bounded: this actor's invitations to this one contact, newest first.
-      const invitations = await store.listRecords({
-        limit: INVITATION_LOOKUP_LIMIT,
-        collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.invitations,
-        targetId: contact.contactId,
-        userId: accountId,
-        workspaceId: scopedWorkspaceId,
-      });
-      const pending = invitations
-        .map((item) => invitationFrom(item))
-        .filter(
-          (item): item is InvitationPayload =>
-            Boolean(item && item.contactId === contact.contactId && item.status === "pending"),
-        )
-        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
-      if (pending) {
-        const expired = Date.parse(pending.expiresAt) <= Date.parse(now());
-        return {
-          canInvite: expired,
-          canSend: false,
-          contactId: contact.contactId,
-          expiresAt: pending.expiresAt,
-          status: expired ? "expired" : "pending",
-        };
-      }
-      return {
-        canInvite: true,
-        canSend: false,
-        contactId: contact.contactId,
-        status: "unregistered",
-      };
+      const { eligibility, peerAccountId } = await messagingEligibility(contact);
+      return withMeetings(eligibility, peerAccountId);
     },
 
     async getInvitationPreview(tokenInput) {
@@ -660,11 +748,30 @@ export function createRelationshipCommunicationService({
     async startConversation(contactIdInput) {
       const contact = await contactOwnedByActor(contactIdInput);
       const own = await messages.conversationForInviterContact(accountId, contact.contactId);
-      if (own) return memberEligibility(own, contact.contactId);
+      if (own) return withMeetings(memberEligibility(own, contact.contactId), own.inviteeAccountId);
       const invite = await inviteLinkFor(contact.contactId);
-      // Only people connected by invite code; everyone else still needs an accepted relationship invitation.
-      if (!invite) throw new Error("Messaging is not available for this contact.");
-      if (invite.reverse) return memberEligibility(invite.reverse, contact.contactId);
+      if (!invite) {
+        // R39: exchanged at an event — one active conversation per pair of accounts,
+        // found or created under a pair lock, so both people starting at once (or a
+        // merged contact starting again) end on the same conversation.
+        const exchange = await eventExchangeFor(contact.contactId);
+        // Everyone else still needs an accepted relationship invitation.
+        if (!exchange) throw new Error("Messaging is not available for this contact.");
+        if (exchange.conversation) return withMeetings(memberEligibility(exchange.conversation, contact.contactId), exchange.peerAccountId);
+        const createdAt = now();
+        const conversation = await messages.createConversationForPair({
+          conversationId: conversationRecordId(accountId, exchange.peerAccountId, contact.contactId),
+          createdAt,
+          inviteeAccountId: exchange.peerAccountId,
+          inviteeDisplayName: contact.displayName,
+          inviterAccountId: accountId,
+          inviterContactId: contact.contactId,
+          inviterDisplayName: displayName,
+          qualificationVersion: qualificationVersion(bindingRecordId(accountId, contact.contactId), "confirmed", createdAt),
+        });
+        return withMeetings(memberEligibility(conversation, contact.contactId), exchange.peerAccountId);
+      }
+      if (invite.reverse) return withMeetings(memberEligibility(invite.reverse, contact.contactId), invite.peerAccountId);
       // One conversation per connection, keyed by the code owner's contact, so both
       // people tapping "Message" at once end on the same conversation.
       const { link } = invite;
@@ -680,7 +787,7 @@ export function createRelationshipCommunicationService({
         inviterDisplayName: actorIsInviter ? displayName : contact.displayName,
         qualificationVersion: qualificationVersion(bindingRecordId(link.inviterAccountId, link.inviterContactId), "confirmed", createdAt),
       });
-      return memberEligibility(conversation, contact.contactId);
+      return withMeetings(memberEligibility(conversation, contact.contactId), invite.peerAccountId);
     },
 
     async listConversations(input = {}) {
@@ -733,6 +840,7 @@ export function createRelationshipCommunicationService({
         requestId,
         senderAccountId: accountId,
         senderDisplayName: displayName,
+        ...(input.proposal ? { proposal: await proposalAttachment(conversationId, requestId, input.proposal) } : {}),
       });
       if (draftBound !== null) {
         const through = draftBound === undefined || Date.parse(draftBound) > Date.parse(message.sentAt) ? message.sentAt : draftBound;

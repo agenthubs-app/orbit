@@ -17,10 +17,15 @@ export interface RelationshipInviteLink {
   redeemerContactId: string;
 }
 
+import { createPostgresRelationshipEventExchanges } from "./event-exchange-link";
+
 export interface RelationshipInviteLinks {
   /** The active invite connection that placed `contactId` in `accountId`'s network. */
   forContact(accountId: string, contactId: string): Promise<RelationshipInviteLink | null>;
-  /** For each peer account: my contact id of that person through an active invite connection. */
+  /**
+   * For each peer account: my contact id of that person through an active invite connection,
+   * or (R39) through an accepted bilateral event exchange when no invite connection names them.
+   */
   myContactIds(accountId: string, peerAccountIds: readonly string[]): Promise<Map<string, string>>;
 }
 
@@ -50,6 +55,7 @@ function linkFrom(row: LinkRow): RelationshipInviteLink {
 }
 
 export function createPostgresRelationshipInviteLinks(client: Queryable, workspaceId: string): RelationshipInviteLinks {
+  const exchanges = createPostgresRelationshipEventExchanges(client, workspaceId);
   return {
     async forContact(accountId, contactId) {
       if (!accountId || !contactId || !(await tablePresent(client))) return null;
@@ -65,27 +71,36 @@ export function createPostgresRelationshipInviteLinks(client: Queryable, workspa
     async myContactIds(accountId, peerAccountIds) {
       const peers = [...new Set(peerAccountIds.filter((id) => id && id !== accountId))];
       const mapped = new Map<string, string>();
-      if (!accountId || !peers.length || !(await tablePresent(client))) return mapped;
-      const result = await client.query<LinkRow>(
-        `select inviter_actor_id, inviter_contact_id, redeemer_actor_id, redeemer_contact_id from invite_connections
-          where workspace_id = $1 and unlinked_at is null
-            and ((inviter_actor_id = $2 and redeemer_actor_id = any($3::text[])) or (redeemer_actor_id = $2 and inviter_actor_id = any($3::text[])))`,
-        [workspaceId, accountId, peers],
-      );
-      for (const row of result.rows) {
-        const link = linkFrom(row);
-        if (link.inviterAccountId === accountId) mapped.set(link.redeemerAccountId, link.inviterContactId);
-        else mapped.set(link.inviterAccountId, link.redeemerContactId);
+      if (!accountId || !peers.length) return mapped;
+      if (await tablePresent(client)) await inviteContactIds(accountId, peers, mapped);
+      const unmapped = peers.filter((peer) => !mapped.has(peer));
+      if (unmapped.length) {
+        for (const [peer, contactId] of await exchanges.myContactIds(accountId, unmapped)) mapped.set(peer, contactId);
       }
       return mapped;
     },
   };
+
+  async function inviteContactIds(accountId: string, peers: readonly string[], mapped: Map<string, string>): Promise<void> {
+    const result = await client.query<LinkRow>(
+      `select inviter_actor_id, inviter_contact_id, redeemer_actor_id, redeemer_contact_id from invite_connections
+        where workspace_id = $1 and unlinked_at is null
+          and ((inviter_actor_id = $2 and redeemer_actor_id = any($3::text[])) or (redeemer_actor_id = $2 and inviter_actor_id = any($3::text[])))`,
+      [workspaceId, accountId, peers],
+    );
+    for (const row of result.rows) {
+      const link = linkFrom(row);
+      if (link.inviterAccountId === accountId) mapped.set(link.redeemerAccountId, link.inviterContactId);
+      else mapped.set(link.inviterAccountId, link.redeemerContactId);
+    }
+  }
 }
 
 /**
  * Conversation rows name the inviter's contact. Where I am the invitee and the
  * other person is in my network through an invite code, my own contact id is
- * used instead; otherwise the row is unchanged.
+ * used instead (R39: or, without one, an accepted bilateral event exchange);
+ * otherwise the row is unchanged.
  */
 export async function withMyContactIds<T extends { contactId: string; participantAccountIds?: readonly string[] }>(
   links: RelationshipInviteLinks | null | undefined,
