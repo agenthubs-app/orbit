@@ -285,3 +285,19 @@ test("typed agreement after a closed card: code's sentence only, no model call, 
   assert.match(result.text, /^先ほどのカードは却下済みのため、実行できません。/u);
   assert.doesNotMatch(result.text, /進めます/u);
 });
+
+test("a title that holds the person's name is found by its own words (\"约山本吃饭\"), among the person's to-dos", async () => {
+  const records = recordAccessOf(world((list) => {
+    list.push(contact(ACTOR, "contact:c41", "山本直子", { organization: "山手出版" }));
+    list.push(todo(ACTOR, "task:t47", "约山本吃饭", { relatedContactId: "contact:c41" }));
+  }));
+  const cards = cardsOver(records);
+  const model = deepseekStub(byNode({
+    propose: () => json({ operations: [{ dateText: "11 月 21 日", dependsOn: [], entity: "todo", localId: "w1", partId: "p1", relations: [{ clue: "山本", entity: "contact", role: "about" }], selector: { clues: ["约山本吃饭"] }, verb: "update" }] }),
+    understand: () => json({ parts: [part({ deliverable: "change", objectClues: [{ entity: "todo", text: "约山本吃饭" }], requiredCapabilities: ["todo.update"], sourceQuote: "把约山本吃饭这条待办的计划日定在 11 月 21 日" })], plainChat: false }),
+  }));
+  const kit = graphKit(model.fetchImplementation, { now: NOW, records });
+  kit.deps.cards = cards.access;
+  const result = await runAgentGraph(kit.deps, kit.input("把约山本吃饭这条待办的计划日定在 11 月 21 日。"));
+  assert.equal(result.actionPreview?.operations[0].text, "待办「约山本吃饭」：计划日 未设 → 11月21日（周六）");
+});

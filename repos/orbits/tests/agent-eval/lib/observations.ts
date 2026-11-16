@@ -196,6 +196,10 @@ export function writesFor(events: readonly TraceEvent[], change: Pick<RecordChan
   return events.filter((event) => {
     if (event.type !== "db.write") return false;
     if (Array.isArray(event.records) && (event.records as { id: string; collection: string }[]).some((record) => record.id === change.id && record.collection === change.collection)) return true;
+    // AG06: a write of another record of orbit_records ([workspace, collection, record id, …]) is not this
+    // record's write, even when its payload names the record (a card that targets a to-do mentions its id).
+    const params = Array.isArray(event.params) ? event.params : null;
+    if (params && (event.tables as string[] | undefined)?.includes("orbit_records") && typeof params[1] === "string" && typeof params[2] === "string" && /^[A-Za-z][A-Za-z0-9_]*$/u.test(params[1]) && (params[1] !== change.collection || params[2] !== change.id)) return false;
     const haystack = JSON.stringify([event.params ?? null, event.returned ?? null]);
     return haystack.includes(JSON.stringify(change.id)) && (haystack.includes(JSON.stringify(change.collection)) || String(event.sql ?? "").includes(change.collection) || (event.tables as string[] | undefined)?.includes("orbit_records") === true);
   });

@@ -596,6 +596,27 @@ export const CHECKS: Record<string, CheckFn> = {
   order(args, obs) {
     const entry = obs.entry;
     if (!entry) return cannot("the case did not run on the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)");
+    // AG06 (XL.yaml 约定): elements that name a kind of result — clarification, answer, card. A result counts from
+    // the delivery that first showed it (the entry.finished after it was made); results of one delivery tie.
+    if (Array.isArray(args) && args.every((item) => typeof item === "string")) {
+      const finishes = obs.events.filter((event) => event.type === "entry.finished").map((event) => Number(event.seq));
+      const made: Record<string, (event: TraceEvent) => boolean> = {
+        answer: (event) => event.type === "node.enter" && event.node === "answer",
+        card: (event) => event.type === "card.frozen" && event.origin === "product",
+        clarification: (event) => event.type === "clarify.asked",
+      };
+      const deliveredAt = (kind: string) => {
+        const test = made[kind];
+        const first = test ? obs.events.find(test) : undefined;
+        if (!first) return null;
+        return finishes.find((seq) => seq >= Number(first.seq)) ?? null;
+      };
+      const seen = (args as string[]).map((kind) => ({ at: deliveredAt(kind), kind }));
+      const missing = seen.filter((item) => item.at === null).map((item) => item.kind);
+      if (missing.length) return fail(`never delivered: ${missing.join(", ")}`);
+      const problems = seen.slice(1).filter((item, index) => item.at! < seen[index].at!).map((item, index) => `${item.kind} was delivered before ${seen[index].kind}`);
+      return problems.length ? fail(problems.join("; "), seen.map((item) => item.at!)) : pass(seen.map((item) => `${item.kind} delivered at seq ${item.at}`).join(", "), seen.map((item) => item.at!));
+    }
     let sequence: EntryRequest[];
     if (args === "as_received") {
       sequence = [...entry.requests].sort((left, right) => left.receivedSeq - right.receivedSeq);

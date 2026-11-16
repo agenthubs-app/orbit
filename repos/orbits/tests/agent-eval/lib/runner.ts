@@ -167,7 +167,18 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
       }
     }
     for (const [section, items] of Object.entries(patch.set ?? {})) {
-      for (const item of items as Record<string, unknown>[]) unsupported.push({ reason: `patch ${name}: changing ${section} ${item.id} in place is not supported yet`, step: 0, word: "patch" });
+      for (const item of items as Record<string, unknown>[]) {
+        // AG06 (todo-plan-and-due): a to-do's fields are changed through the to-do service before the case starts.
+        if (section !== "todos") {
+          unsupported.push({ reason: `patch ${name}: changing ${section} ${item.id} in place is not supported yet`, step: 0, word: "patch" });
+          continue;
+        }
+        try {
+          await writer.updateTodo(String(item.id), String(item.account ?? world.mainAccount), item);
+        } catch (error) {
+          unsupported.push({ reason: `patch ${name}: changing ${section} ${item.id} failed: ${error instanceof Error ? error.message : error}`, step: 0, word: "patch" });
+        }
+      }
     }
     for (const [key, value] of Object.entries((patch.settings ?? {}) as Record<string, unknown>)) {
       if (DEPLOYMENT_SETTINGS.has(key)) deploymentSettings[key] = value;

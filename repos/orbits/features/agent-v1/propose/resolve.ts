@@ -176,22 +176,28 @@ async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrit
         if (view) return { kind: "found", todo: todoOf(view) };
       }
     }
-    // Words to look for: the clue's own words without the person's name.
-    let search: string | undefined;
+    // Words to look for, in turn: the clue's own words ("约山本吃饭" is a title with the name in it), then the same
+    // words without the person's name ("给小林寄合同" → "寄合同", "山本さんに原稿" → "原稿"). The first that finds wins.
+    const searches: string[] = [];
     for (const clue of clues) {
+      const whole = clueSearchWords(clue);
       let rest = clue;
       for (const name of personWords.flatMap((item) => nameTokens(item))) rest = rest.split(name).join("");
-      // The small words left around a removed name ("给小林寄合同" → "寄合同", "山本さんに原稿" → "原稿").
       rest = rest.replace(/^[\s给跟和对向为与のにとへ]+|[\s的のにと]+$/gu, "");
-      search = clueSearchWords(rest) ?? search;
-      if (search) break;
+      for (const text of [whole, clueSearchWords(rest)]) if (text && !searches.includes(text)) searches.push(text);
     }
     // What the user called it, for saying it was not found (their words without "那条待办").
     const said = (clues[0] ? clueSearchWords(clues[0]) : undefined) ?? "";
-    if (!search && !personId) return { kind: "none", words: said };
-    const result = await ctx.records.reader.read("todo", ctx.scope, { limit: 10, status: "open", ...(personId ? { contactId: personId } : {}), ...(search ? { text: search } : {}) });
-    const found = result.items.map(todoOf);
-    emitTrace({ found: found.map((item) => item.id), partId: part.localId, search: search ?? null, type: "propose.todo_lookup", withPerson: Boolean(personId) });
+    if (!searches.length && !personId) return { kind: "none", words: said };
+    let found: TodoView[] = [];
+    let search: string | undefined;
+    for (const text of searches.length ? searches : [undefined]) {
+      const result = await ctx.records.reader.read("todo", ctx.scope, { limit: 10, status: "open", ...(personId ? { contactId: personId } : {}), ...(text ? { text } : {}) });
+      found = result.items.map(todoOf);
+      search = text;
+      if (found.length) break;
+    }
+    emitTrace({ found: found.map((item) => item.id), partId: part.localId, search: search ?? null, tried: searches, type: "propose.todo_lookup", withPerson: Boolean(personId) });
     if (!found.length) return { kind: "none", words: said || search || "" };
     if (found.length === 1) return { kind: "found", todo: found[0] };
     const exact = found.filter((item) => clues.includes(item.title));
