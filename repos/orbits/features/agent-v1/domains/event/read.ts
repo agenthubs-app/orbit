@@ -36,7 +36,17 @@ export function eventFactsOf(event: Pick<CanonicalEventRecord, "description" | "
   const kind = host?.feeKind;
   const amount = typeof host?.feeAmountYen === "number" && Number.isFinite(host.feeAmountYen) ? host.feeAmountYen : undefined;
   if (kind === "amount" && amount !== undefined) return { fee: { amountYen: amount, kind: "amount" }, topics };
-  if (kind === "free" || kind === "pay_at_door" || kind === "external_link") return { fee: { kind }, topics };
+  if (kind === "pay_at_door" || kind === "external_link") return { fee: { kind }, topics };
+  // "free" is also what a published event holds when the organizer never filled the fee in (the host payload's default),
+  // so the organizer's own fee line in the description decides when there is one ("费用：未标价" is not free).
+  const said = event.description?.match(/(?:费用|費用|料金|参加费|参加費|门票|fee|price)[：:]\s*([^\n]+)/iu)?.[1]?.trim();
+  if (said) {
+    if (/(免费|無料|\bfree\b)/iu.test(said)) return { fee: { kind: "free" }, topics };
+    const yen = said.match(/(\d[\d,]*)\s*(?:日元|円|JPY|yen)/iu) ?? said.match(/(?:JPY|¥|￥)\s*(\d[\d,]*)/iu);
+    if (yen) return { fee: { amountYen: Number(yen[1].replace(/,/gu, "")), kind: "amount" }, topics };
+    return { fee: { kind: "unstated" }, topics };
+  }
+  if (kind === "free") return { fee: { kind: "free" }, topics };
   return { fee: { kind: "unstated" }, topics };
 }
 

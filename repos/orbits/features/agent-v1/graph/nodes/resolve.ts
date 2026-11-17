@@ -611,7 +611,11 @@ export function resolveNode(scope: NodeScope): GraphNode {
       // AG07 run-02 (AE-RD-008): a part whose every object is an attached record (@, not a person) and that has no
       // words to search by asks about that record: other kinds the first layer added are not searched.
       const attachedOnly = !text && part.refs.length > 0 && part.refs.every((ref) => ref.recordId && recordKindOf(ref.entity) !== "contact" && /^@/u.test(input.message.slice(ref.quote?.[0] ?? 0, ref.quote?.[1] ?? 0).trim()));
-      const searchKinds = attachedOnly ? [] : (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !(kind === "memo" && interactionAnswers));
+      // AG10 (AE-SCL-020): "what's still open" is the to-dos and follow-ups not done; a note that once said "still need to send
+      // the JD" has no status and is not an open item (the to-do may be done since), so notes are not searched for it.
+      const openItems = status === "open" && kinds.has("todo") && !current;
+      if (openItems && kinds.has("memo")) emitTrace({ partId: part.localId, type: "resolve.open_items_from_todos" });
+      const searchKinds = attachedOnly ? [] : (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !(kind === "memo" && interactionAnswers) && !(kind === "memo" && openItems));
       if (current) read.notes.push("This asks how the person stands now: the interactions, their newest notes and the profile are all here; where they differ, the newer dated record is what holds now. Never give as current anything a newer record replaces (a former company, an old role).");
       const subjects = contacts.length ? contacts.map((item) => item.id) : [undefined];
       let unclear = false;

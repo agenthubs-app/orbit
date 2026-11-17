@@ -3,7 +3,34 @@ import test from "node:test";
 
 import { runAgentGraph } from "../../features/agent-v1/graph/build";
 import { captureTrace, deepseekStub, graphKit, json, part, recordAccessOf, type ModelCall } from "./graph-kit";
-import { contact, memo } from "./read-kit";
+import { contact, memo, todo } from "./read-kit";
+
+test("'what's still open with her' reads the open to-dos, not a note that once said something still needed doing (AE-SCL-020)", async () => {
+  const records = [
+    contact(ACTOR, "contact:priya", "Priya Raman", { organization: "Corvid Robotics" }),
+    memo(ACTOR, "note:lm15", "Still need to send Priya the JD for the Aster Motion role.", "2026-10-28T00:00:00.000Z", ["contact:priya"]),
+    todo(ACTOR, "task:lt08", "Send interview panel list to Priya", { dueAt: "2026-11-18T09:00:00.000Z", relatedContactId: "contact:priya" }),
+    todo(ACTOR, "task:lt10", "Send Priya the JD", { completedAt: "2026-11-03T02:00:00.000Z", relatedContactId: "contact:priya", status: "completed" }),
+  ];
+  const message = "I'm meeting Priya Raman tomorrow. What's still open with her?";
+  let materials = "";
+  const model = deepseekStub((call: ModelCall) => {
+    if (call.node === "understand") return json({ language: "en", parts: [part({ dataSources: ["orbit_records"], deliverable: "list", objectClues: [{ entity: "contact", text: "Priya Raman" }], readFilter: { status: "open" }, requiredCapabilities: ["todo.read", "memo.read"], sourceQuote: message })], plainChat: false });
+    materials = call.user;
+    const handle = /(s\d+) — to-do/u.exec(call.user)?.[1] ?? "s1";
+    return json({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: handle }], partId: "p1", text: "Send her the interview panel list." }] });
+  });
+  const kit = graphKit(model.fetchImplementation, { now: "2026-11-15T01:00:00.000Z", records: recordAccessOf({ events: [], records }) });
+  const trace = captureTrace();
+  try {
+    await runAgentGraph(kit.deps, kit.input(message, { locale: "en" }));
+    assert.match(materials, /Send interview panel list to Priya/u);
+    assert.doesNotMatch(materials, /Still need to send Priya the JD/u, "the stale note is not an open item");
+    assert.ok(trace.events.some((event) => event.type === "resolve.open_items_from_todos"));
+  } finally {
+    trace.restore();
+  }
+});
 
 /**
  * agent-design AG10 (AE-SCL-020, 会前回顾): "her current salary expectation" reads the person's newest notes as well as the

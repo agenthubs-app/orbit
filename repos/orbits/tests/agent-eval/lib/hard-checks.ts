@@ -360,7 +360,9 @@ export const CHECKS: Record<string, CheckFn> = {
     }
     const repeated = [...byKey.values()].filter((list) => list.length > 1);
     const created = businessChanges(obs).filter((change) => change.kind === "created");
-    const signature = (change: (typeof created)[number]) => JSON.stringify([change.collection, change.after?.title ?? null, change.after?.body ?? null, change.after?.displayName ?? null]);
+    // AG10 (CHANGES.md 2026-11-18): a stored to-do or note wraps its fields ({ task: { title } }); they are looked up inside it.
+    const field = (change: (typeof created)[number], key: string) => lookup((change.after ?? {}) as Record<string, unknown>, key) ?? null;
+    const signature = (change: (typeof created)[number]) => JSON.stringify([change.collection, field(change, "title"), field(change, "body"), field(change, "displayName")]);
     const counts = new Map<string, number>();
     for (const change of created) counts.set(signature(change), (counts.get(signature(change)) ?? 0) + 1);
     const duplicates = [...counts.entries()].filter(([, n]) => n > 1).length + repeated.length;

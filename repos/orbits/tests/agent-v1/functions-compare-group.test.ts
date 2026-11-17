@@ -14,6 +14,10 @@ test("a fee the organizer did not fill in is 'unstated', not free; the topics co
   assert.deepEqual(eventFactsOf({ description: "主题：定价、SaaS", sourcePayload: { host: {} } }), { fee: { kind: "unstated" }, topics: ["定价", "SaaS"] });
   assert.deepEqual(eventFactsOf({ description: "主题：摄影", sourcePayload: { host: { feeKind: "free" } } }).fee, { kind: "free" });
   assert.deepEqual(eventFactsOf({ description: null, sourcePayload: { host: { feeAmountYen: 3000, feeKind: "amount" } } }).fee, { amountYen: 3000, kind: "amount" });
+  // A published event holds feeKind "free" when the organizer never filled the fee in: the organizer's own fee line decides.
+  assert.deepEqual(eventFactsOf({ description: "主题：定价、SaaS\n费用：未标价", sourcePayload: { host: { feeKind: "free" } } }).fee, { kind: "unstated" });
+  assert.deepEqual(eventFactsOf({ description: "主题：摄影\n费用：免费", sourcePayload: { host: { feeKind: "free" } } }).fee, { kind: "free" });
+  assert.deepEqual(eventFactsOf({ description: "费用：3000 日元", sourcePayload: { host: { feeKind: "free" } } }).fee, { amountYen: 3000, kind: "amount" });
 });
 
 test("group(): a record in several groups is in each, the total counts it once", () => {

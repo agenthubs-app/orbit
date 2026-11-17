@@ -117,6 +117,17 @@ test("AE-FN-003: '这周该跟进谁' — history signals from the user's own re
   assert.match(run.result.text, /想换个依据重新排/u);
 });
 
+test("dev run 1: the first layer's other shapes of the same asks still rank — '跟进谁' with to-do and schedule reads; five @ events with no event read", async () => {
+  const who = "这周该跟进谁？";
+  const people = await runFn(who, [{ dataSources: ["orbit_records"], deliverable: "ranked_list", rank: { basis: "这周该跟进" }, readFilter: { from: "2026-11-15", status: "open", to: "2026-11-21" }, requiredCapabilities: ["contact.read", "todo.read", "schedule.read", "view.recentInteraction", "fn.rank"], sourceQuote: who }]);
+  const listed = fnRank(people.events).at(-1)?.listed as string[] | undefined;
+  assert.ok(listed?.includes("contact:contact:c30") && listed.includes("contact:contact:c31"), String(listed));
+  const message = "从 @东京街头摄影展 @街拍工作坊 @SaaS 定价研讨会 @设计师之夜 @独立出版市集 里挑三场，优先周末上午，最好跟 @兴趣笔记 的主题有关。";
+  const refs = [["event:e101", "东京街头摄影展", "event"], ["event:e102", "街拍工作坊", "event"], ["event:e103", "SaaS 定价研讨会", "event"], ["event:e104", "设计师之夜", "event"], ["event:e105", "独立出版市集", "event"], ["note:m36", "兴趣笔记", "memo"]].map(([id, name, type]) => ({ id, name, type }));
+  const events = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "ranked_list", objectClues: refs.map((ref, index) => ({ entity: ref.type, referenceId: `r${index + 1}`, text: `@${ref.name}` })), rank: { basis: "跟 @兴趣笔记 的主题有关", count: 3, within: "周末上午" }, requiredCapabilities: ["fn.rank", "memo.read"], sourceQuote: message }], { references: refs });
+  assert.deepEqual([...(fnRank(events.events).at(-1)!.listed as string[])].sort(), ["event:event:e101", "event:event:e102", "event:event:e105"]);
+});
+
 test("only listing records is not ranking: natural order, no question (AE-SCL-017 shape: formal follow-ups by due date)", async () => {
   const world = fnWorld();
   world.records.push({ ...world.records.find((record) => record.id === "task:f1")!, id: "task:f2", payload: { task: { accountId: ACTOR, createdAt: "2026-11-01T00:00:00.000Z", dueAt: "2026-11-10T09:00:00.000Z", id: "task:f2", source: "contact", status: "open", title: "跟进南窗茶空间的年度订单", updatedAt: "2026-11-02T00:00:00.000Z" } } });

@@ -26,7 +26,8 @@ export function fnWorld(): { records: MemoryRecord[]; events: CanonicalEventReco
     events: [
       event("e101", "东京街头摄影展", "2026-11-21T01:00:00.000Z", "涩谷", "摄影", { feeKind: "free" }),
       event("e102", "街拍工作坊", "2026-11-22T00:30:00.000Z", "下北泽", "摄影、街拍", { feeAmountYen: 3000, feeKind: "amount" }),
-      event("e103", "SaaS 定价研讨会", "2026-11-19T10:00:00.000Z", "丸之内", "定价、SaaS", {}),
+      // As the seed stores it: published with the host payload's default fee kind, the description saying 未标价.
+      event("e103", "SaaS 定价研讨会", "2026-11-19T10:00:00.000Z", "丸之内", "定价、SaaS\n费用：未标价", { feeKind: "free" }),
       event("e104", "设计师之夜", "2026-11-21T10:00:00.000Z", "中目黑", "设计", { feeAmountYen: 2000, feeKind: "amount" }),
       event("e105", "独立出版市集", "2026-11-22T01:00:00.000Z", "神保町", "出版", { feeKind: "free" }),
       // E106: no start time yet (the account's own draft, so it may see it).

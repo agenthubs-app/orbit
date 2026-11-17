@@ -57,6 +57,7 @@ const MAX_ROWS = 6_000;
  */
 const GENERIC_CONTACT_CLUE = /(?:联系人|聯絡人|人脉|連絡先|コンタクト|\bcontacts\b|\bpeople\b)|^(?:人|persons?|contact)$/iu;
 const RANK_WORDS = /(挑|选出|选几|排序|排一下|排个序|并べ|並べ|選んで|順に|順番|\bpick\b|\bchoose\b|\brank\b|\bsort\b|\border\b|\blist the\b)/iu;
+const WHO_WORDS = /(谁|哪位|哪些人|哪几位|\bwho\b|\bwhom\b|誰|どなた|どの人)/iu;
 const FORMAL_FOLLOW_UP = /(正式跟进|正式的跟进|フォローアップ|formal follow[\s-]?ups?)/iu;
 
 /** The kind of records a part ranks, or null when it is not a ranking this node does. */
@@ -67,15 +68,17 @@ export function rankDomainOf(part: GraphPart, message: string): RankDomain | nul
   const quote = message.slice(part.quote[0], part.quote[1]);
   if (!part.plan.rank && !RANK_WORDS.test(quote) && !PICK_WORDS.test(quote)) return null;
   const contact = part.capabilities.includes("contact.read") || part.capabilities.includes("view.recentInteraction");
-  const event = part.capabilities.includes("event.read");
+  // AG10 (AE-FN-001): two or more events chosen with @ are an event ranking even when the first layer named no event read.
+  const chosenEvents = part.refs.filter((ref) => ref.entity === "event" && ref.recordId).length;
+  const event = part.capabilities.includes("event.read") || chosenEvents >= 2;
   const todo = part.capabilities.includes("todo.read");
+  // AG10 (AE-FN-003): "这周该跟进谁" asks for people — a contact ranking whose to-dos and schedule are only its signals.
+  if (contact && WHO_WORDS.test(quote) && !part.refs.some((ref) => ref.entity === "contact" && ref.recordId)) return "contact";
   // Reading other records is another kind of task — except a memo attached with @ (its topics are the basis).
   const memoBasis = part.refs.filter((ref) => ref.entity === "memo");
   const readsMemoBasis = memoBasis.length > 0 && memoBasis.every((ref) => ref.recordId);
   if (part.capabilities.some((capability) => capability === "schedule.read" || (capability === "memo.read" && !readsMemoBasis))) return null;
   const said = (ref: GraphPart["refs"][number]) => (ref.quote ? message.slice(ref.quote[0], ref.quote[1]) : "").replace(/^@/u, "").trim();
-  // AG10 (AE-FN-001): two or more events chosen with @ are the set to pick from.
-  const chosenEvents = part.refs.filter((ref) => ref.entity === "event" && ref.recordId).length;
   if (event && !contact && !todo) return chosenEvents === 1 ? null : "event";
   // AG10 (AE-SCL-017): to-dos and formal follow-ups, ordered or picked.
   if (todo && !contact && !event) return part.refs.some((ref) => ref.entity === "todo" && ref.recordId) ? null : "todo";
@@ -752,9 +755,11 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   if (history) steps.push(language === "en" ? "follow-ups past due that are not done, then to-dos past their planned day" : language === "ja" ? "期限を過ぎて未完了のフォローアップ、次に予定日を過ぎたタスク" : "已到期没做的跟进、过了计划日的待办");
   if (domain === "todo" && orderField) steps.push(say.fieldOrderWords(orderField, orderDirection, language));
   const memoryWords = recalled.map((item) => item.memory.content);
-  const lead = useNatural && !listing && !todoNatural
+  // AE-FN-006: only the related ones, in the order of the field the user named.
+  const filterLead = topicAsFilter && orderField ? ({ en: `Only the ${NOUN[domain].en} related to "${topic}", ${say.fieldOrderWords(orderField, orderDirection, "en")}.`, ja: `「${topic}」に関連する${NOUN[domain].ja}だけを、${say.fieldOrderWords(orderField, orderDirection, "ja")}に並べました。`, zh: `只列和「${topic}」相关的${NOUN[domain].zh}，${say.fieldOrderWords(orderField, orderDirection, "zh")}排。` } as const)[language] : null;
+  const lead = filterLead ?? (useNatural && !listing && !todoNatural
     ? say.rankLead(language, [say.fieldName(natural.field, language)], { history: false, memory: [], natural: true })
-    : steps.length || memoryWords.length ? say.rankLead(language, steps, { history, memory: memoryWords, natural: false }) : null;
+    : steps.length || memoryWords.length ? say.rankLead(language, steps, { history, memory: memoryWords, natural: false }) : null);
   const written = writeAnswer({ basis: topic && !basisMemo ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
   if (result.semantic && result.matched) run.topicMatched = true;
   run.answers.set(part.localId, written.text);
@@ -915,7 +920,11 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
     return round;
   }
   run.readSources.set(view.ref, readSourceOf(view, timeZone) ?? { id: view.id, kind: "memo" });
-  run.readNames.set(view.id, { name: memo.title || say.dayWordsOf(memoDayOf(memo.createdAt, timeZone), language), type: "memo" });
+  // A memo with no title of its own (the service fills it with the start of the body) is named by its day.
+  const ownTitle = memo.title && !memo.body.startsWith(memo.title.replace(/[…\.]+$/u, "")) && memo.title.length <= 40 ? memo.title : "";
+  const memoDay = memoDayOf(memo.createdAt, timeZone);
+  const memoName = ownTitle || ({ en: `note of ${say.dayWordsOf(memoDay, language)}`, ja: `${say.dayWordsOf(memoDay, language)}のメモ`, zh: `${say.dayWordsOf(memoDay, language)}的笔记` } as const)[language];
+  run.readNames.set(view.id, { name: memoName, type: "memo" });
   for (const contact of contacts) run.readNames.set(contact.id, { name: contact.name, type: "contact" });
   // The people the user asked about ("我和小林的往来"): only these may be written.
   const focus = part.refs.filter((ref) => ref.entity === "contact").map((ref) => (ref.recordId && contacts.some((contact) => contact.id === ref.recordId) ? contacts.find((contact) => contact.id === ref.recordId)! : contactOfClue((clueWords(input.message, ref) ?? "").replace(/^@/u, ""), contacts))).filter((contact): contact is LinkedContact => Boolean(contact)).map((contact) => contact.id);
@@ -931,7 +940,7 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
   }
   const sentenceOf = (ids: readonly number[]) => ids.map((id) => result.sentences.find((sentence) => sentence.id === id)?.text ?? "").join(" ").trim();
   const nameOf = (contact: LinkedContact | null, clue: string) => contact?.name ?? clue;
-  const lines: string[] = [say.memoHead(language, memo.title, memoDayOf(memo.createdAt, timeZone))];
+  const lines: string[] = [say.memoHead(language, ownTitle, memoDay)];
   const intents: (CardOperationIntent & { localId: string })[] = [];
   const extraCites: string[] = [];
 
@@ -941,6 +950,10 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
     const others = result.interactions.filter((item) => !item.writable);
     // Read only: what code read as having happened is listed; one the review was not sure of is marked doubtful (§3.8).
     const doubtfulOnes = others.filter((item) => item.reason === "unsure");
+    // A person the memo shows in real contact is not listed again as "only mentioned" or "only planned" (the promise to send
+    // them something is a follow-up, not a second contact).
+    const inContact = new Set([...happened, ...doubtfulOnes].map((item) => item.contact?.id).filter(Boolean));
+    const repeated = (item: (typeof others)[number]) => Boolean(item.contact && inContact.has(item.contact.id) && (item.reason === "planned" || item.reason === "mentioned_only"));
     if (!task.write || !happened.length) {
       const listed = task.write ? happened : [...happened, ...doubtfulOnes];
       if (listed.length) {
@@ -948,7 +961,7 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
         for (const item of listed) lines.push(`- ${nameOf(item.contact, item.clue)}，${item.occurredOn ? say.dayWordsOf(item.occurredOn, language) : ""}，${say.howWords(item.channel, item.direction, language)}${item.writable ? "" : (language === "en" ? " (doubtful: the review was not sure)" : language === "ja" ? "（要確認：確認で確信が持てませんでした）" : "（存疑：复核没有把握）")} ${say.sentenceQuote(language, sentenceOf(item.sentenceIds))}`.replace(/，/gu, language === "en" ? ", " : "，"));
       }
       if (!happened.length && (task.write || !doubtfulOnes.length)) lines.push(say.noInteractionLine(language));
-      const notCounted = task.write ? others : others.filter((item) => item.reason !== "unsure");
+      const notCounted = (task.write ? others : others.filter((item) => item.reason !== "unsure")).filter((item) => !repeated(item));
       if (notCounted.length) {
         lines.push(`${say.HEADINGS.notInteractions[language]}${language === "en" ? ":" : "："}`);
         for (const item of notCounted) lines.push(`- ${say.quoted(language, sentenceOf(item.sentenceIds))}${language === "en" ? " — " : "——"}${nameOf(item.contact, item.clue)}${language === "en" ? ": " : "："}${say.WHY_NOT[item.reason ?? "unsure"][language]}`);
@@ -964,15 +977,15 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
         const interaction: NoteInteractionContract = { actualContactIds: [item.contact!.id], channel: item.channel, direction: item.direction, occurredOn: item.occurredOn!, precision: "day" } as NoteInteractionContract;
         const link = linkInteraction(memo.interaction as NoteInteractionContract | null, interaction);
         emitTrace({ link: link.kind, memo: memo.ref, partId: part.localId, type: "functions.link_back" });
-        if (link.kind === "recorded") lines.push(say.recordedLine(language, nameOf(item.contact, item.clue), item.occurredOn, say.howWords(item.channel, item.direction, language), memo.title || say.dayWordsOf(memoDayOf(memo.createdAt, timeZone), language)));
+        if (link.kind === "recorded") lines.push(say.recordedLine(language, nameOf(item.contact, item.clue), item.occurredOn, say.howWords(item.channel, item.direction, language), memoName));
         else if (link.kind === "conflict") lines.push(say.conflictLine(language, memo.title, `${link.existing.occurredOn ?? ""} ${say.howWords(link.existing.channel, link.existing.direction, language)}`, `${item.occurredOn ?? ""} ${say.howWords(item.channel, item.direction, language)}`));
         else {
           const names = Object.fromEntries(contacts.map((contact) => [contact.id, contact.name]));
-          intents.push({ capability: "memo.update", expectedVersion: memo.version, localId: `${part.localId}-i1`, partId: part.localId, set: { interaction }, shown: { before: (memo.interaction as NoteInteractionContract | null) ?? null, contactIds: [...memo.contactIds], names, sentence: sentenceOf(item.sentenceIds), title: memo.title || say.dayWordsOf(memoDayOf(memo.createdAt, timeZone), language) }, targetId: memo.id });
+          intents.push({ capability: "memo.update", expectedVersion: memo.version, localId: `${part.localId}-i1`, partId: part.localId, set: { interaction }, shown: { before: (memo.interaction as NoteInteractionContract | null) ?? null, contactIds: [...memo.contactIds], names, sentence: sentenceOf(item.sentenceIds), title: memoName }, targetId: memo.id });
           lines.push(`${say.HEADINGS.interactions[language]}${language === "en" ? ":" : "："} ${nameOf(item.contact, item.clue)}，${item.occurredOn ? say.dayWordsOf(item.occurredOn, language) : ""}，${say.howWords(item.channel, item.direction, language)} ${say.sentenceQuote(language, sentenceOf(item.sentenceIds))}`.replace(/，/gu, language === "en" ? ", " : "，"));
         }
       }
-      const notCounted = others.filter((item) => item.reason !== "not_asked_about");
+      const notCounted = others.filter((item) => item.reason !== "not_asked_about" && !repeated(item));
       if (notCounted.length) {
         lines.push(`${say.HEADINGS.notInteractions[language]}${language === "en" ? ":" : "："}`);
         for (const item of notCounted) lines.push(`- ${nameOf(item.contact, item.clue)}${language === "en" ? ": " : "："}${say.WHY_NOT[item.reason ?? "unsure"][language]}`);
@@ -1035,8 +1048,8 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
           capability: "todo.create",
           localId: `${part.localId}-f${n}`,
           partId: part.localId,
-          set: { dueAt, notes: `${say.quoted(language, sentence)}（${memo.title || say.dayWordsOf(memoDayOf(memo.createdAt, timeZone), language)}）`, plannedDate: item.plannedDate, ...(item.contact ? { relatedContactIds: [item.contact.id] } : {}), sourceNoteId: memo.id, sourceNoteVersion: memo.version, title: item.action },
-          shown: { dueDayOnly: Boolean(item.dueDate && !item.dueTime), names, sentence, sourceTitle: memo.title },
+          set: { dueAt, notes: `${say.quoted(language, sentence)}（${memoName}）`, plannedDate: item.plannedDate, ...(item.contact ? { relatedContactIds: [item.contact.id] } : {}), sourceNoteId: memo.id, sourceNoteVersion: memo.version, title: item.action },
+          shown: { dueDayOnly: Boolean(item.dueDate && !item.dueTime), names, sentence, sourceTitle: memoName },
         });
       }
       if (carded.length) {

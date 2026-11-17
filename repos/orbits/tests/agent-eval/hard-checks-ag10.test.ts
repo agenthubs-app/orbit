@@ -41,6 +41,12 @@ test("listed: the function's list of the last answer's request (not the basis me
   assert.equal(run("listed", { count: 3 }, without).status, "fail", "the citations include M36");
 });
 
+test("duplicate_effects: two different to-dos from one card are not duplicates (their titles are inside the stored task)", () => {
+  const change = (title: string) => ({ after: { task: { title } }, collection: "tasks", external: false, fields: [], fixtureId: null, id: `task:${title}`, kind: "created" });
+  assert.equal(run("duplicate_effects", 0, obs({ businessChanges: [change("把合同草稿发给王强"), change("补齐发票")] as never })).status, "pass");
+  assert.equal(run("duplicate_effects", 0, obs({ businessChanges: [change("补齐发票"), change("补齐发票")] as never })).status, "fail");
+});
+
 test("card values: null matches a field left out; relatedContactIds matches the single relatedContactId", () => {
   const card = { cardId: "c1", frozenSeq: 3, kind: "ledger_action" as const, observedBy: [], ops: [{ op: "todo.create", raw: {}, set: { dueAt: "2026-11-25T14:59:00.000Z", relatedContactIds: ["contact:c46"], title: "补齐发票" }, target: null }], revisions: 1, state: "succeeded" };
   const o = obs({ cards: [card] });
