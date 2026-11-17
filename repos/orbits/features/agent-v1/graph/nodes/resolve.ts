@@ -155,7 +155,10 @@ export async function partialContacts(records: AgentRecordAccess, scope: DomainS
 }
 
 /** AG08 repair 1 (AE-UND-010): the words that ask for a list, not what it is about ("列出", "一覧にして", "list"). */
-const LIST_VERBS = /^(?:请|帮我|麻烦)?(?:列出|列一下|列举|列个|看看|看一下|告诉我|查一下|查查|给我看|一覧にして|一覧を|リストにして|見せて|教えて|list|show me|show)\s*/iu;
+/** AG09 run-04 repair 2: words asking how a person stands now (zh, ja, en). */
+const ASKS_NOW = /(现在|目前|如今|眼下|最近在|今は|今どこ|今の|現在|現職|\bnow\b|\bcurrently\b|these days)/iu;
+
+const LIST_VERBS =/^(?:请|帮我|麻烦)?(?:列出|列一下|列举|列个|看看|看一下|告诉我|查一下|查查|给我看|一覧にして|一覧を|リストにして|見せて|教えて|list|show me|show)\s*/iu;
 
 /**
  * AG08 repair 1 (AE-UND-010): a part that lists the user's notes ("列出我记过的竞品") with no search words from the first
@@ -366,6 +369,12 @@ export function resolveNode(scope: NodeScope): GraphNode {
       }
       // An unbound clue of a kind mentioned last in this session (and no words to search by) means that record.
       let filter = part.plan.readFilter;
+      // AG09 run-04 repair 2 (AE-SCL-007): a part about a person whose own words ask how they stand now ("where is he now",
+      // "他现在在哪", "今はどこ") is the AG05 run-03 `current` read even when the first layer gave no readFilter.
+      if (!filter?.current && part.capabilities.some((capability) => capability === "contact.read" || capability === "view.context") && ASKS_NOW.test(quote)) {
+        filter = { ...(filter ?? {}), current: true };
+        emitTrace({ partId: part.localId, type: "resolve.asks_now" });
+      }
       let text = filter?.text ? input.message.slice(filter.text[0], filter.text[1]) : undefined;
       for (const ref of part.refs) {
         // A clue with words of its own is searched by them (below), not taken for the record mentioned last.

@@ -78,6 +78,11 @@ export function isNegatedOrHypothetical(part: Pick<UnderstandPart, "constraints"
 }
 
 /** "先别改", "don't add" … in the part's constraints (AG04 keeps the two signals apart). */
+/** AG09 run-04 repair 2: the user's own words carry a negation (the same words as negationOf). */
+export function negationIn(text: string): boolean {
+  return NEGATION.test(text);
+}
+
 export function negationOf(part: Pick<UnderstandPart, "constraints">): boolean {
   return part.constraints.some((constraint) => NEGATION.test(constraint));
 }

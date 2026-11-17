@@ -6,7 +6,7 @@
 import { formatWhen } from "../../answer/materials";
 import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
-import { hypothesisOf, negationOf } from "../../route/decide";
+import { hypothesisOf, negationIn, negationOf } from "../../route/decide";
 import { replyLanguageOf } from "../../route/handoff-copy";
 import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_PROMPT_VERSION } from "../../understand/prompt";
 import { coverEverySentence } from "../../understand/cover";
@@ -36,7 +36,9 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
         deliverable: part.deliverable,
         hypothesis: hypothesisOf(part),
         intentBasis: part.intentBasis,
-        negation: negationOf(part),
+        // AG09 run-04 repair 2 (AE-JDG-007): a negation counts only when the user's own message carries one; a note the model
+        // wrote around the user's words ("（假设，先不要真的改）") does not make one.
+        negation: negationOf(part) && negationIn(message),
         persistence: part.persistence,
         readings: (part.readings ?? []).map((reading) => ({ capabilities: [...reading.capabilities], deliverable: reading.deliverable })),
         // The checkpoint keeps the words as offsets into this turn's message, never the words.
