@@ -17,6 +17,7 @@ import { randomUUID } from "node:crypto";
 import type {
   AgentActionPreviewContract,
   AgentAnswerBasisContract,
+  AgentWebResultContract,
   AgentRunStage,
   AgentPartResult,
   AgentCancelResultContract,
@@ -69,6 +70,8 @@ export interface AgentEntryExecuteResult {
   basis?: AgentAnswerBasisContract | null;
   /** AG07: the part of `text` that stands for the card. */
   cardLine?: string;
+  /** AG09: the queries sent and the pages opened in this round. */
+  web?: AgentWebResultContract | null;
   /** AG02: the card of this round, frozen in the action ledger (never a direct write). */
   actionPreview?: AgentActionPreviewContract;
   /** AG03: one result per part the first layer found; without it the round is one part, p1. */
@@ -393,7 +396,7 @@ async function processRequest(deps: AgentEntryDependencies, actorId: string, rec
     const result = await Promise.race([execution, stopped]);
     if (result !== "stopped") {
       outcome = {
-        answer: { sourceRefs: [...result.sourceRefs], text: result.text, ...(result.basis ? { basis: result.basis } : {}), ...(result.cardLine ? { cardLine: result.cardLine } : {}) },
+        answer: { sourceRefs: [...result.sourceRefs], text: result.text, ...(result.basis ? { basis: result.basis } : {}), ...(result.cardLine ? { cardLine: result.cardLine } : {}), ...(result.web && (result.web.queries.length || result.web.pages.length) ? { web: result.web } : {}) },
         partResults: result.partResults?.length ? [...result.partResults] : [result.actionPreview && (result.actionPreview.status === "awaiting_confirmation" || result.actionPreview.status === "deferred")
           ? { operationId: result.actionPreview.operations[0]?.operationId, partId: "p1", status: "awaiting_confirmation" }
           : { partId: "p1", status: "answered" }],

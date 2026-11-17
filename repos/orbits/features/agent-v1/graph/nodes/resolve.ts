@@ -37,6 +37,7 @@ import { localDay, readRecentInteraction } from "../../views/recent-interaction"
 import type { AgentRecordAccess, GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart, PartCoverage } from "../state";
 import { clueWords } from "./clarify";
+import { webPartReads } from "./probe";
 
 type ReadKind = "memo" | "todo" | "schedule" | "event" | "contact" | "interaction";
 
@@ -289,7 +290,8 @@ export function resolveNode(scope: NodeScope): GraphNode {
   return async (state: AgentGraphState) => {
     const resume = state.touched !== null;
     const parts: GraphPart[] = state.parts.map((part) => ({ ...part }));
-    const due = parts.filter((part) => part.route === "read" && part.status === "answered" && (!resume || state.touched!.includes(part.localId)));
+    // AG09: a web part that also reads the user's records reads them here first (webPartReads).
+    const due = parts.filter((part) => (part.route === "read" || webPartReads(part)) && part.status === "answered" && (!resume || state.touched!.includes(part.localId)));
     if (!due.length) return {};
     const words = gapWords(state.language);
     const context = run.context;

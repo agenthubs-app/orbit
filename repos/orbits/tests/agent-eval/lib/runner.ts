@@ -240,6 +240,11 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const replay = replayNames.map((name) => ({ ...world.webReplay[String(name)], name }));
   for (const [key, value] of Object.entries(settings)) {
     if (key === "web_replay") continue;
+    // AG09: the user's own web switch for this case (features/agent-v1/web/settings.ts reads it under ORBIT_AGENT_EVAL=1).
+    if (key === "web") {
+      deploymentSettings.web = value;
+      continue;
+    }
     unsupported.push({ reason: `setting ${key}: ${JSON.stringify(value)} is not supported by the current product`, step: 0, word: "settings" });
   }
 
@@ -286,7 +291,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     }, null, 2));
 
     await serverControl(environment, "context", { account, caseId: testCase.id, clock, replay, runId: ctx.runId, settings: deploymentSettings });
-    if (Object.keys(deploymentSettings).length) transcript.push(`*（部署侧设置：${Object.entries(deploymentSettings).map(([key, value]) => (key === "model_calls_limit" ? `单轮主模型调用上限压到 ${value} 次` : `${key}=${JSON.stringify(value)}`)).join("；")}）*`, "");
+    if (Object.keys(deploymentSettings).length) transcript.push(`*（部署侧设置：${Object.entries(deploymentSettings).map(([key, value]) => (key === "model_calls_limit" ? `单轮主模型调用上限压到 ${value} 次` : key === "web" ? `这个账号自己的联网开关：${value === "off" ? "关" : "开"}` : `${key}=${JSON.stringify(value)}`)).join("；")}）*`, "");
     const traceOffset = traceFileSize(paths.traceDir);
     const secret = environment.env.AUTH_SECRET;
     const cookies = new Map<string, string>();
@@ -1010,7 +1015,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       const SET_KIND: Record<string, string> = { entry: "附带的入口（点了才算提出）", not_understood: "没看懂时给的方向", question: "追问的候选" };
       const SET_STATE: Record<string, string> = { answered: "已回答", open: "还能点", shelved: "已放下（用户没理会）" };
       const setLines = (row.document?.clarifications ?? []).map((set) => `  - ${SET_KIND[set.kind] ?? set.kind}（子目标 ${set.partId}，${SET_STATE[set.state] ?? set.state}${set.selectedOptionId ? `，选了 ${set.selectedOptionId}` : ""}${set.answeredBy ? `，由后面的消息 ${set.answeredBy} 回答` : ""}）：${set.options.map((option) => `${option.optionId}「${option.label}」（${option.capability}${option.ref ? `，指向 ${fixtureIdOf(option.ref.id) ?? option.ref.id}` : ""}）`).join("；") || "没有候选"}`);
-      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, ...(row.document?.answer?.basis ? [`- 回答开头的依据行（两端显示在回答上方，可点开记录）：${row.document.answer.basis.text}（${row.document.answer.basis.links.map((link) => link.label).join("、")}）`] : []), `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, ...(setLines.length ? ["- 可点的方向（结果文档里由服务端代码给出，两端照此显示）：", ...setLines] : []), ...(partLines.length ? ["- 拆出的子目标（结果文档里的服务端记录，不是给用户看的文字）：", ...partLines] : []), ...(row.document?.actionPreview ? ["- 这一轮结果文档里的卡（交付时的状态）：", ...cardText(row.document.actionPreview)] : []), "");
+      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, ...(row.document?.answer?.basis ? [`- 回答开头的依据行（两端显示在回答上方，可点开记录）：${row.document.answer.basis.text}（${row.document.answer.basis.links.map((link) => link.label).join("、")}）`] : []), `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, ...(row.document?.answer?.web ? [`- 结果文档里的联网记录（服务端代码写的；实际发出的检索词和打开的网页）：检索词 ${row.document.answer.web.queries.map((query) => `「${query.text}」`).join("、") || "无"}；网页 ${row.document.answer.web.pages.map((page) => `${page.url}（${page.readStatus}${page.sourceDate ? `，页面日期 ${page.sourceDate}` : ""}）`).join("、") || "无"}`] : []), ...(setLines.length ? ["- 可点的方向（结果文档里由服务端代码给出，两端照此显示）：", ...setLines] : []), ...(partLines.length ? ["- 拆出的子目标（结果文档里的服务端记录，不是给用户看的文字）：", ...partLines] : []), ...(row.document?.actionPreview ? ["- 这一轮结果文档里的卡（交付时的状态）：", ...cardText(row.document.actionPreview)] : []), "");
     }
     const reconnects = events.filter((event) => event.type === "turn.reconnect");
     if (reconnects.length) {

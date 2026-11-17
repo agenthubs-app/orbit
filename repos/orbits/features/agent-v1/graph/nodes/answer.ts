@@ -16,6 +16,7 @@ import { profileCheckNote, profileCheckOf, profileLine, verifyProfileUpdates, ty
 import { groundedAnswerSystemPrompt, groundedAnswerUserText, GROUNDED_ANSWER_PROMPT_VERSION, type GroundedItem } from "../../answer/prompt";
 import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
+import { withoutForeignUrls } from "../../web/answer-urls";
 import { stripCardTalk, stripSaveTalk } from "../../entry/approval-claims";
 import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
@@ -85,19 +86,23 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
     // run-03 repair 1 (AE-SCL-004 R2): a part about how a person stands now, or about their profile, where a
     // profile and a newer dated record were both read, must say in "profile" whether the profile still holds.
     const asksProfile = Boolean(part.plan.readFilter?.current) || part.plan.readFilter?.order === "both" || (part.capabilities.length > 0 && part.capabilities.every((capability) => PROFILE_CAPABILITIES.has(capability)));
-    const contacts = materials.length && asksProfile ? profileCheckOf(materials) : [];
-    if (contacts.length) profileParts.set(part.localId, materials);
+    // AG09: the profile and change checks are about the user's records; a public web page takes part in neither.
+    const recordMaterials = materials.filter((material) => material.kind !== "web");
+    const contacts = recordMaterials.length && asksProfile ? profileCheckOf(recordMaterials) : [];
+    if (contacts.length) profileParts.set(part.localId, recordMaterials);
     // AG07 repair 2 (AE-SCL-006 R2): two dated records read, one speaking of a change: the answer names any
     // replacement in "changes", so code can state the newer record's reason.
-    const changes = changeCheckOf(materials);
-    if (changes) changeParts.set(part.localId, materials);
+    const changes = changeCheckOf(recordMaterials);
+    if (changes) changeParts.set(part.localId, recordMaterials);
     return { constraints: source?.constraints ?? [], goal: source?.goal ?? quote, kind: materials.length ? "records" : "discussion", materials, notes: [...(run.readNotes.get(part.localId) ?? []), ...(contacts.length ? [profileCheckNote(contacts)] : []), ...(changes ? [changeCheckNote()] : [])], partId: part.localId, quote };
   });
   const allMaterials = [...new Map(items.flatMap((item) => item.materials).map((material) => [material.handle, material])).values()];
   const readParts = new Set(items.filter((item) => item.kind === "records").map((item) => item.partId));
   const wanted = new Set(items.map((item) => item.partId));
   const zone = state.timeZone || "Asia/Tokyo";
-  const system = groundedAnswerSystemPrompt(state.language);
+  // AG09: the web rules are added only when a public web page is among the materials (the prompt is unchanged otherwise).
+  const hasWeb = allMaterials.some((material) => material.kind === "web");
+  const system = groundedAnswerSystemPrompt(state.language, { web: hasWeb });
   const conversation = (run.context?.messages ?? []).map((message) => ({ role: message.role, text: message.text }));
   const user = groundedAnswerUserText({ conversation, items, message: input.message, timeZone: zone, today: formatWhen(state.asOf || deps.now(), zone) });
   emitTrace({ materials: allMaterials.map((material) => ({ handle: material.handle, partId: material.partId, ref: material.ref, sentences: material.sentences.length })), promptVersion: GROUNDED_ANSWER_PROMPT_VERSION, type: "answer.prompt" });
@@ -182,9 +187,13 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       const coverage = [part, ...parts.filter((other) => part.dependsOn.includes(other.localId))].flatMap((item) => item.coverage ?? []);
       const seen = withoutWrongSeenCounts(withoutUnsourcedCounts(withoutUnsourcedDates(segment.text, unsourced), uncounted), seenAllowedBy(coverage));
       if (seen.dropped.length) emitTrace({ coverage: coverage.map((item) => ({ kind: item.kind, seen: item.seen, total: item.total })), dropped: seen.dropped, partId: part.localId, type: "answer.seen_counts_dropped" });
-      const delivered = withoutWrongDirection(seen.text, direction);
+      // AG09 (AG09-4): a sentence naming a web address that the user did not give and this request did not search or open is not delivered (a link a page asked to open).
+      const linked = hasWeb ? withoutForeignUrls(seen.text, run.webUrls) : { dropped: [], text: seen.text };
+      if (linked.dropped.length) emitTrace({ dropped: linked.dropped, partId: part.localId, type: "answer.foreign_urls_dropped" });
+      const delivered = withoutWrongDirection(linked.text, direction);
       run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(delivered, state.language) : delivered, state.language));
-      if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref);
+      // AG09: a web page is not a record of the user's: its citations stay out of the records' sourceRefs (the page is listed in the answer's web record).
+      if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref).filter((ref) => !ref.startsWith("web:"));
       if (profileParts.has(part.localId)) {
         const updates = checked?.profiles?.get(part.localId);
         if (!updates) emitTrace({ partId: part.localId, type: "answer.profile_check_missing" });
@@ -234,7 +243,7 @@ export function answerNode(scope: NodeScope): GraphNode {
     const resume = state.touched !== null;
     const parts: GraphPart[] = state.parts.map((part) => ({ ...part }));
     // AG05: parts that read and have something to answer from (a click on a reading resumes into one).
-    const reading = parts.filter((part) => part.route === "read" && part.status === "answered" && (run.materials.get(part.localId)?.length ?? 0) > 0 && (!resume || state.touched!.includes(part.localId)));
+    const reading = parts.filter((part) => (part.route === "read" || part.route === "web_lookup") && part.status === "answered" && (run.materials.get(part.localId)?.length ?? 0) > 0 && (!resume || state.touched!.includes(part.localId)));
     // AG04: resuming a paused request makes no model call (§3.9) unless it now reads; its parts are written by code.
     if (resume && !reading.length) return {};
     const discussion = resume ? [] : parts.filter((part) => part.route === "answer" && part.status === "answered");

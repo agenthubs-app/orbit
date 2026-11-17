@@ -26,6 +26,7 @@ import type { GraphResolution } from "./state";
 import { agentCardPreview } from "../../agent/runtime/card-view";
 import { cardLocale } from "../../agent/runtime/todo-operations";
 import type { AgentCardAccess } from "./deps";
+import { configuredWebAccess } from "../web/factory";
 
 /**
  * AG06: the graph's card is the request's card in the ledger (conversationCardId), frozen through
@@ -158,13 +159,15 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       ...(execution.onStage ? { onStage: execution.onStage } : {}),
       // AG08: the judgment model, through the same stoppable fetch as the main model; no key: unavailable.
       judgment: overrides.judgment ?? { apiKey: process.env.ORBIT_GEMINI_DECISION_API_KEY?.trim() || null, fetchImplementation: overrides.fetchImplementation ?? execution.fetchImplementation },
+      // AG09: the public web, through the same stoppable fetch; switched off or no key: not one web request.
+      web: overrides.web ?? configuredWebAccess(mode, overrides.fetchImplementation ?? execution.fetchImplementation),
     };
     if (execution.resume) {
       // AG04: a click resumes this request's paused thread; no message, no confirmation boundary, no model.
       const resumed = await resumeAgentGraph(deps, graphInputOf(execution.actorId, execution.requestId, execution.sessionId, execution.input, false), { clarificationId: execution.resume.clarificationId, kind: "select", optionId: execution.resume.optionId }, { names: namesIn(execution.document), previousClarifications: execution.document?.clarifications ?? null });
       // AG07 repair 2 (AE-XL-003): the read answered before the pause is still in the answer; its basis line and links stay.
       const kept = keepEarlierBasis(execution.document ?? null, resumed);
-      return { ...(resumed.actionPreview ? { actionPreview: resumed.actionPreview } : {}), basis: kept.basis, ...(resumed.cardLine && resumed.text.includes(resumed.cardLine) ? { cardLine: resumed.cardLine } : {}), clarifications: resumed.clarifications, partResults: resumed.partResults, sourceRefs: kept.sourceRefs, status: resumed.status, text: resumed.text };
+      return { ...(resumed.actionPreview ? { actionPreview: resumed.actionPreview } : {}), basis: kept.basis, ...(resumed.cardLine && resumed.text.includes(resumed.cardLine) ? { cardLine: resumed.cardLine } : {}), clarifications: resumed.clarifications, partResults: resumed.partResults, sourceRefs: kept.sourceRefs, status: resumed.status, text: resumed.text, web: resumed.web };
     }
     const cardPrepared = Boolean(await runtime.getAction(conversationCardId(execution.requestId)).catch(() => null));
     let graph: AgentGraphResult | null = null;
@@ -194,6 +197,7 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       sourceRefs: boundary.sourceRefs,
       status: settled.status,
       text: boundary.text,
+      web: settled.web,
     };
   };
 }

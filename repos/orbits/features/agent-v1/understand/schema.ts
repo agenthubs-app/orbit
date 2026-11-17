@@ -100,6 +100,16 @@ export interface RankSpec {
   direction?: "asc" | "desc";
 }
 
+/**
+ * AG09 (附录 C `webTarget`; 设计稿 §3.4 rule 1): what a web.search part looks up — the words of the CURRENT message that
+ * name the public object (`quote`, checked to be a substring) and qualifier codes of the fixed vocabulary
+ * (web/vocabulary.ts). Code builds the query from these two (web/query.ts); the model never writes a query.
+ */
+export interface WebTargetSpec {
+  quote?: string;
+  qualifiers: string[];
+}
+
 export interface UnderstandPart {
   localId: string;
   sourceQuote: string;
@@ -120,6 +130,8 @@ export interface UnderstandPart {
   readFilter?: ReadFilter;
   /** AG08: picking or ordering records (see RankSpec). */
   rank?: RankSpec;
+  /** AG09: what to look up on the public web (see WebTargetSpec). */
+  webTarget?: WebTargetSpec;
 }
 
 export interface UnderstandOutput {

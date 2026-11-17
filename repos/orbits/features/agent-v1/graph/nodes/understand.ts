@@ -42,6 +42,8 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
         ...(part.readFilter ? { readFilter: { ...part.readFilter, text: part.readFilter.text && message.includes(part.readFilter.text) ? [message.indexOf(part.readFilter.text), message.indexOf(part.readFilter.text) + part.readFilter.text.length] as [number, number] : undefined } } : {}),
         // AG08: the rank words as offsets too.
         ...(part.rank ? { rank: { ...part.rank, basis: spanOf(message, part.rank.basis), within: spanOf(message, part.rank.within) } } : {}),
+        // AG09: what a web.search part looks up, the words as offsets too.
+        ...(part.webTarget ? { webTarget: { qualifiers: [...part.webTarget.qualifiers], quote: spanOf(message, part.webTarget.quote) } } : {}),
       },
       quote: [start, start + part.sourceQuote.length],
       reading: null,

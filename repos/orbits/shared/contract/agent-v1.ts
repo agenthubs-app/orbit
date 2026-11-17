@@ -98,6 +98,27 @@ export interface AgentAnswerContract {
   basis?: AgentAnswerBasisContract | undefined;
   /** AG07：text 里代表确认卡的那一段（代码按冻结的预览写的）。显示卡片的客户端从正文里去掉这一段，只显示卡。 */
   cardLine?: string | undefined;
+  /** AG09：这一轮实际发出的检索词和打开的网页（设计稿 §3.4“实际发出的检索词和打开的网页显示在回答旁边”），由服务端代码写。 */
+  web?: AgentWebResultContract | undefined;
+}
+
+/** AG09：联网的记录。被拦下的检索词不在这里（只按规则编号记在服务端）。 */
+export interface AgentWebResultContract {
+  /** 实际发给搜索供应商的检索词，原样。 */
+  queries: readonly { text: string; sentAt: string; provider: "deepseek" }[];
+  /** 这一轮打开（或试着打开）的网页：sourceRef, url, title, snippet|excerpt, sourceDate?, fetchedAt, readStatus。 */
+  pages: readonly AgentWebPageContract[];
+}
+
+export interface AgentWebPageContract {
+  sourceRef: string;
+  url: string;
+  title: string;
+  /** 正文的开头一段（读到时）；没读到时为搜索结果的摘要或空。 */
+  excerpt: string;
+  sourceDate?: string | undefined;
+  fetchedAt: string;
+  readStatus: "ok" | "empty" | "timeout" | "provider_error";
 }
 
 export interface AgentAnswerBasisContract {

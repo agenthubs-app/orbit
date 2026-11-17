@@ -12,6 +12,7 @@
  */
 import { rejectModelApprovalClaims } from "../entry/approval-claims";
 import { isCapability, type Capability } from "../route/capabilities";
+import { isQualifierCode } from "../web/vocabulary";
 import {
   CLARITIES,
   CONTINUE_KINDS,
@@ -28,6 +29,7 @@ import {
   type ObjectClue,
   type RankSpec,
   type ReadFilter,
+  type WebTargetSpec,
   type UnderstandOutput,
   type UnderstandPart,
   type UnderstandReading,
@@ -158,6 +160,25 @@ function rankOf(raw: unknown, message: string, where: string, dropped: string[])
   return Object.keys(out).length ? out : undefined;
 }
 
+/** AG09: a part's webTarget, keeping a quote copied from the message and known qualifier codes; never a reason to reject. */
+function webTargetOf(raw: unknown, message: string, where: string, dropped: string[]): WebTargetSpec | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!isRecord(raw)) {
+    dropped.push(`${where} (not an object)`);
+    return undefined;
+  }
+  const out: WebTargetSpec = { qualifiers: [] };
+  const text = quoted(raw.quote);
+  if (text && message.includes(text)) out.quote = text.slice(0, 100);
+  else if (text) dropped.push(`${where}.quote (${JSON.stringify(raw.quote).slice(0, 40)} is not words of the message)`);
+  for (const code of Array.isArray(raw.qualifiers) ? raw.qualifiers : []) {
+    if (isQualifierCode(code)) {
+      if (!out.qualifiers.includes(code)) out.qualifiers.push(code);
+    } else dropped.push(`${where}.qualifiers (${JSON.stringify(code).slice(0, 30)} is not a qualifier code)`);
+  }
+  return out.quote || out.qualifiers.length ? out : undefined;
+}
+
 export function validateUnderstandOutput(raw: unknown, input: UnderstandValidationInput): UnderstandValidation {
   const errors: string[] = [];
   const dropped: string[] = [];
@@ -246,6 +267,7 @@ export function validateUnderstandOutput(raw: unknown, input: UnderstandValidati
     });
     const readFilter = readFilterOf(item.readFilter, input.message, `$.${where}.readFilter`, dropped);
     const rank = rankOf(item.rank, input.message, `$.${where}.rank`, dropped);
+    const webTarget = webTargetOf(item.webTarget, input.message, `$.${where}.webTarget`, dropped);
     let continues: UnderstandPart["continues"];
     if (item.continues !== undefined && item.continues !== null) {
       if (!isRecord(item.continues) || !oneOf(CONTINUE_KINDS, item.continues.kind) || typeof item.continues.ref !== "string") errors.push(`${where}.continues must be { kind, ref }`);
@@ -270,6 +292,7 @@ export function validateUnderstandOutput(raw: unknown, input: UnderstandValidati
       ...(readings.length ? { readings } : {}),
       ...(readFilter ? { readFilter } : {}),
       ...(rank ? { rank } : {}),
+      ...(webTarget ? { webTarget } : {}),
     });
   });
   for (const part of parts) {

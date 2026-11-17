@@ -238,6 +238,14 @@ export function applyResolution(state: AgentGraphState, resolution: GraphResolut
     if (option.refType === "contact" && option.refId) for (const other of writeParts) if (other.write?.waitsFor === part.localId) pickFor(other, "contact", option.refId);
     return { optionSets: sets, parts, pausing: false, resumeNext: "route", touched: [part.localId, ...writeParts.map((item) => item.localId)] };
   }
+  // AG09: a web click — the search result picked among same-named objects, or the shown query sent or not. The part is
+  // routed again and the web step goes on from the search it made (no new search), under the same request's budget.
+  if (set.purpose === "web_pick" || set.purpose === "web_send") {
+    const web = set.purpose === "web_pick" ? { pick: Number(option.optionId) - 1 } : option.optionId === "send_query" ? { confirmed: true } : { skipped: true };
+    part.web = { ...(part.web ?? {}), ...web };
+    part.waitReason = null;
+    return { optionSets: sets, parts, pausing: false, resumeNext: "route", touched: [part.localId] };
+  }
   if (set.purpose === "object") {
     bindRef(part);
     part.plan.clarity = "clear";

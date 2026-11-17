@@ -35,7 +35,8 @@ export interface Material {
   handle: string;
   ref: string;
   partId: string;
-  kind: RecordView["kind"];
+  /** AG09: "web" for a public web page fetched in this request (graph/nodes/probe.ts). */
+  kind: RecordView["kind"] | "web";
   header: string;
   sentences: Sentence[];
   version: string;

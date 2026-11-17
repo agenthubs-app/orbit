@@ -150,11 +150,17 @@ export const QUESTIONS: Record<JudgmentQuestionId, JudgmentQuestion> = {
     conservative: "yes",
     enabledBy: "AG09",
     id: "outbound.extra",
-    instructions: (language, subject) => fill(by("这条检索词是否含有查到所问公开信息之外的内容：{x}", "この検索語には、尋ねられた公開情報を調べる以外の内容が含まれていますか：{x}", "Does this search query contain anything beyond what is needed to find the public information asked for: {x}")(language), subject),
+    // AG09:  names what may be in a query and what may not;  was read too broadly (a clean query was judged "yes" when the
+    // message also asked about the user's notes). A new wording is a new version and was calibrated again (judgment-thresholds-v2.md).
+    instructions: (language, subject) => fill(by(
+      "检索词：{x}。除了要查的公开名称（公司、产品、机构或公众人物的名字）和要查的项目（如官网、价格、现任、职务、代表作、简介、新闻）之外，这条检索词里还有没有别的词——例如关于用户或他人的私事、健康、家庭、钱款、打算、谈判条件、内部消息或评价？",
+      "検索語：{x}。調べる公開の名前（会社・製品・組織・公人の名前）と調べる項目（公式サイト、料金、現在、役職、代表作、プロフィール、ニュースなど）以外に、この検索語にほかの言葉が入っていますか。たとえばユーザーや他人の私事、健康、家族、お金、予定や意図、交渉条件、内部情報、評価などです。",
+      "Search query: {x}. Besides the public name to look up (a company, product, organization or public person) and what to look up about it (such as official site, pricing, current, role, works, profile, news), does this query contain any other words — for example about the user's or another person's private matters, health, family, money, plans, negotiating terms, internal information or opinions?",
+    )(language), subject),
     options: ["yes", "no"],
     type: "noul",
     usedIn: "出站把关的第二道闸（§3.4）",
-    version: "outbound.extra@1",
+    version: "outbound.extra@2",
   },
   "intent.explicitWrite": {
     conservative: "no",

@@ -20,7 +20,7 @@ import type { Capability, Route, Verdict, WaitReason } from "../route/capabiliti
 import type { PartStatus } from "../route/decide";
 import type { PartWrite } from "../propose/resolve";
 import type { JudgmentBudget } from "../judgment/ask";
-import type { AgentActionPreviewContract } from "../../../shared/contract/agent-v1";
+import type { AgentActionPreviewContract, AgentWebResultContract } from "../../../shared/contract/agent-v1";
 import type { Clarity, DataOwner, DataSource, Deliverable, IntentBasis, Persistence, RankField, ReadFilter, UnderstandOutput } from "../understand/schema";
 
 export interface GraphPartRef {
@@ -52,6 +52,8 @@ export interface PartPlan {
   readFilter?: Omit<ReadFilter, "text"> & { text?: [number, number] };
   /** AG08: picking or ordering records: the words as [start, end) in this turn's message, a count, a field. */
   rank?: { count?: number; basis?: [number, number]; within?: [number, number]; orderBy?: RankField; direction?: "asc" | "desc" };
+  /** AG09: what a web.search part looks up: the name as [start, end) in this turn's message and qualifier codes. */
+  webTarget?: { quote?: [number, number]; qualifiers: string[] };
 }
 
 /** AG05: what a read part covered, per kind (codes and counts only). */
@@ -72,7 +74,7 @@ export interface OptionSetState {
   kind: "question" | "not_understood" | "entry";
   asks?: "object" | "reading";
   /** AG06: operation — a question before the card (which person, which to-do, which date field). */
-  purpose: "directions" | "readings" | "object" | "other_readings" | "entry" | "alternative" | "operation";
+  purpose: "directions" | "readings" | "object" | "other_readings" | "entry" | "alternative" | "operation" | "web_pick" | "web_send";
   state: "open" | "answered" | "shelved";
   selectedOptionId?: string | null;
   answeredBy?: string | null;
@@ -122,6 +124,17 @@ export interface GraphPart {
   cites?: string[];
   /** AG06: a write part's intents (codes and offsets), the user's picks and its operations on the card. */
   write?: PartWrite;
+  /** AG09: the part's web step across a pause — the search it made (call key), the result picked, the query clicked. Ids and codes only. */
+  web?: PartWeb;
+}
+
+export interface PartWeb {
+  searchKey?: string;
+  /** The search result (0-based, in the search's order) the user picked among same-named objects. */
+  pick?: number;
+  /** The user clicked send_query (rule 4) or skip_query. */
+  confirmed?: boolean;
+  skipped?: boolean;
 }
 
 const replace = <T>(fallback: () => T) => Annotation<T>({ default: fallback, reducer: (_previous, next) => next });
@@ -209,4 +222,12 @@ export interface AgentGraphRun {
   /** AG06: the card of this request as frozen, and code's line for it. */
   actionPreview: AgentActionPreviewContract | null;
   cardLine: string | null;
+  /** AG09: parts whose web step ran in this pass. */
+  webDone: Set<string>;
+  /** AG09: what this request sent and opened (the result document shows it next to the answer). */
+  web: AgentWebResultContract;
+  /** AG09: per part, code's question line before a web click (same-named results, a query to show). */
+  webQuestions: Map<string, string>;
+  /** AG09: URLs the answer may name (the user's, those searched and opened in this request). */
+  webUrls: Set<string>;
 }

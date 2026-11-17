@@ -7,6 +7,7 @@
  * Adding a check: implement it in CHECKS below and drop it from NOT_YET (with the sprint that delivers it).
  */
 import { CAPABILITY_TABLE } from "../../../features/agent-v1/route/capabilities";
+import { VOCABULARY_WORDS } from "../../../features/agent-v1/web/vocabulary";
 import { isBusinessChange, productIdsIn, writesFor, type CardObservation, type NormalizedOp, type Observation } from "./observations";
 import type { TraceEvent } from "./trace-log";
 import { sharedPart } from "./client-views";
@@ -425,8 +426,27 @@ export const CHECKS: Record<string, CheckFn> = {
   },
 
   outbound_traceable(_args, obs) {
+    // AG09 (README §3.2): every word of every query sent goes back to the user's own words in this case, the fixed
+    // vocabulary (features/agent-v1/web/vocabulary.ts), or a clue the user clicked: words shown to the user in an
+    // answer before a click that came before the search. Checked from the trace, independently of the product's own record.
     const queries = obs.events.filter((event) => event.type === "web.search");
-    return queries.length ? cannot("outbound query provenance is recorded from AG09") : pass("no outbound query was sent");
+    if (!queries.length) return pass("no outbound query was sent");
+    const userTexts = obs.events.filter((event) => event.type === "turn.user").map((event) => String(event.text ?? ""));
+    const vocabulary = new Set([...VOCABULARY_WORDS].flatMap((word) => word.split(/\s+/u)));
+    const problems: string[] = [];
+    for (const event of queries) {
+      const query = String(event.query ?? (event.request as { query?: unknown } | undefined)?.query ?? "");
+      if (!query) {
+        problems.push(`seq ${event.seq}: no query recorded`);
+        continue;
+      }
+      const clicked = obs.events.some((other) => other.type === "turn.select" && Number(other.seq) < Number(event.seq));
+      // What the user saw: the delivered answers (a resumed request keeps the question it asked in its text).
+      const shown = clicked ? obs.answers.map((answer) => answer.text) : [];
+      const untraced = query.split(/\s+/u).filter(Boolean).filter((word) => !userTexts.some((text) => text.includes(word)) && !vocabulary.has(word) && !shown.some((text) => text.includes(word)));
+      if (untraced.length) problems.push(`seq ${event.seq} "${query}": ${untraced.join(", ")} traced to nothing`);
+    }
+    return problems.length ? fail(problems.join("; "), seqs(queries)) : pass(`${queries.length} query(ies), every word from the user's words, the vocabulary or a clicked clue`, seqs(queries));
   },
 
   outbound_blocked(args, obs) {
