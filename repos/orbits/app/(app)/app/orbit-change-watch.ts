@@ -1,8 +1,9 @@
 /**
  * The Web's change cursor client (GET /api/changes, shared/storage/change-tokens.ts): instead of every list
  * re-reading itself on a timer, the shell asks one small question — "which of my areas moved?" — while a page
- * is visible (every X-Poll-Interval seconds, default 30), when the tab comes back to the front and when the
- * network returns. Unchanged answers are a 304 the browser revalidates on its own (ETag), so JavaScript just
+ * is visible and the person has used it in the last 5 minutes (every X-Poll-Interval seconds, default 60), when the
+ * tab comes back to the front, when the network returns and on the first input after an idle spell. A tab left open
+ * and untouched stops asking, so the database can go to sleep (Neon suspends after 5 idle minutes). Unchanged answers are a 304 the browser revalidates on its own (ETag), so JavaScript just
  * sees the same tokens. When an area's token moved, only that area's cached answers are marked stale and the
  * mounted readers of it (useAreaChanges) read again behind what they show.
  *
@@ -20,7 +21,9 @@ import { getSharedReadAccount } from "./orbit-shared-read";
 
 type Tokens = Record<ChangeArea, string>;
 
-const DEFAULT_POLL_SECONDS = 30;
+const DEFAULT_POLL_SECONDS = 60;
+/** No pointer / key / scroll / focus for this long → stop background reads until the next input. */
+export const IDLE_AFTER_MS = 5 * 60_000;
 /**
  * A list that can change without any row being written (an inbox reminder that comes due at its time) also reads
  * itself on this slow fallback while visible; everything else comes from the cursor, focus and the page's own writes.
@@ -34,12 +37,22 @@ let baseline: { account: string; tokens: Tokens } | null = null;
 let adoptNext = false;
 let inFlight: Promise<void> | null = null;
 let lastAskedAt = 0;
+let lastInputAt = Date.now();
 let timer: ReturnType<typeof setTimeout> | null = null;
 let pollSeconds = DEFAULT_POLL_SECONDS;
 const listeners = new Set<(areas: readonly ChangeArea[]) => void>();
 
 function visible(): boolean {
   return typeof document === "undefined" || document.visibilityState !== "hidden";
+}
+
+function idle(): boolean {
+  return Date.now() - lastInputAt > IDLE_AFTER_MS;
+}
+
+/** Timers that re-read in the background (inbox fallbacks) check this: visible and used recently. */
+export function shouldRefreshInBackground(): boolean {
+  return visible() && !idle();
 }
 
 async function ask(): Promise<void> {
@@ -71,14 +84,27 @@ function askNow(): Promise<void> {
 
 function schedule(): void {
   if (timer) clearTimeout(timer);
-  timer = setTimeout(() => { void askNow().finally(schedule); }, pollSeconds * 1000);
+  timer = setTimeout(() => {
+    // Idle: stop the loop; the next input (onInput) asks at once and restarts it.
+    if (idle()) { timer = null; return; }
+    void askNow().finally(schedule);
+  }, pollSeconds * 1000);
 }
 
 /** Installed once by the shell for a signed-in person. */
 export function installChangeWatch(): void {
   if (installed || typeof window === "undefined") return;
   installed = true;
-  const onForeground = () => { if (visible() && Date.now() - lastAskedAt > FOREGROUND_THROTTLE_MS) void askNow().finally(schedule); };
+  const onForeground = () => {
+    lastInputAt = Date.now();
+    if (visible() && Date.now() - lastAskedAt > FOREGROUND_THROTTLE_MS) void askNow().finally(schedule);
+  };
+  const onInput = () => {
+    const wasIdle = idle() || timer === null;
+    lastInputAt = Date.now();
+    if (wasIdle) onForeground();
+  };
+  for (const type of ["pointerdown", "keydown", "wheel", "touchstart"] as const) window.addEventListener(type, onInput, { passive: true });
   window.addEventListener("focus", onForeground);
   window.addEventListener("online", onForeground);
   document.addEventListener("visibilitychange", onForeground);
@@ -103,6 +129,7 @@ export function stopChangeWatchForTests(): void {
   if (timer) clearTimeout(timer);
   timer = null;
   installed = false;
+  lastInputAt = Date.now();
   resetChangeWatch();
 }
 

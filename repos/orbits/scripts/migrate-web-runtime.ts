@@ -43,6 +43,10 @@ async function main() {
     await runContactImportMigrations(runtime.client);
     phase = "invite-codes";
     await runInviteCodeMigrations(runtime.client);
+    phase = "retired-tables";
+    // The maintenance heartbeat chain was removed in 0f6139353 (hourly cron instead); nothing reads or writes this
+    // table any more. A rollback to an older build recreates it on first use (it was always created lazily).
+    await recordsClient.query("drop table if exists orbit_maintenance_heartbeat");
     console.info("Web runtime schemas migrated; no demo data seeded.");
   } catch {
     throw new Error(`WEB_MIGRATION_FAILED:${phase}`);

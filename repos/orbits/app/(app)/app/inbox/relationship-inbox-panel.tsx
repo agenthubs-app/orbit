@@ -4,7 +4,7 @@ import { sanitizeInboxComposeSeed, type NewThreadSeed } from './inbox-compose-se
 import { Segmented } from '../orbit-2026/ui';
 import { ScopedBone, ScopedPageSkeleton } from '../orbit-2026/shell/RouteSkeleton';
 import { lastAnswer, rememberAnswer } from '../orbit-last-answer';
-import { AREA_FALLBACK_MS, useAreaChanges } from '../orbit-change-watch';
+import { AREA_FALLBACK_MS, shouldRefreshInBackground, useAreaChanges } from '../orbit-change-watch';
 import { ShellPage } from '../orbit-2026/shell/slots';
 import { readWebInboxSummary } from './inbox-summary-client';
 
@@ -998,7 +998,7 @@ function RelationshipInboxPanel({
     void refreshCounts();
     refreshCountsRef.current = () => void refreshCounts();
     // The change cursor says when the inbox moved (useAreaChanges below); this is only the slow fallback.
-    const timer = setInterval(() => void refreshCounts(), AREA_FALLBACK_MS);
+    const timer = setInterval(() => { if (shouldRefreshInBackground()) void refreshCounts(); }, AREA_FALLBACK_MS);
     return () => { active = false; refreshCountsRef.current = null; clearInterval(timer); };
   }, [actorId, language, tab]);
   useAreaChanges(["inbox"], () => refreshCountsRef.current?.());

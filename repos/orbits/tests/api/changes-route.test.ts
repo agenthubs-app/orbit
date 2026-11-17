@@ -69,7 +69,7 @@ test("route: 401 signed out; 200 with ETag and poll interval; 304 without a body
   assert.equal(first.status, 200);
   assert.equal(first.headers.get("cache-control"), "private, no-cache");
   assert.equal(first.headers.get("vary"), "Cookie");
-  assert.equal(first.headers.get("x-poll-interval"), "30");
+  assert.equal(first.headers.get("x-poll-interval"), "60");
   const etag = first.headers.get("etag")!;
   assert.deepEqual((await first.json()).data.tokens, tokens);
 

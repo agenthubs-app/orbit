@@ -8,7 +8,7 @@ import { CategoryTabs, Icon, MacTile, type IconName } from '../orbit-2026/ui';
 import { ShellPage } from '../orbit-2026/shell/slots';
 import { ScopedPageSkeleton } from '../orbit-2026/shell/RouteSkeleton';
 import { lastAnswer, rememberAnswer } from '../orbit-last-answer';
-import { AREA_FALLBACK_MS, useAreaChanges } from '../orbit-change-watch';
+import { AREA_FALLBACK_MS, shouldRefreshInBackground, useAreaChanges } from '../orbit-change-watch';
 import ws from './inbox-workspace.module.css';
 import {inboxListTime} from './inbox-list-time';
 import {useEffect,useMemo,useRef,useState,type ComponentProps} from 'react';
@@ -142,7 +142,7 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
   }catch{if(!controller.signal.aborted){invalidateInboxActorConfirmation();setData(null);setError(t({zh:'通知读取失败，请重试。',en:'Could not load notifications. Retry.',ja:'通知を読み込めません。再試行してください。'}));}}finally{loading=false;}}
   // New notifications arrive through the change cursor (useAreaChanges below); the timer is only the slow fallback
   // (a reminder that comes due writes nothing the cursor sees).
-  void refresh();refreshList.current=()=>void refresh();const timer=setInterval(()=>void refresh(),AREA_FALLBACK_MS);document.addEventListener('visibilitychange',refresh);return()=>{controller.abort();refreshList.current=null;clearInterval(timer);document.removeEventListener('visibilitychange',refresh);};
+  void refresh();refreshList.current=()=>void refresh();const timer=setInterval(()=>{if(shouldRefreshInBackground())void refresh();},AREA_FALLBACK_MS);document.addEventListener('visibilitychange',refresh);return()=>{controller.abort();refreshList.current=null;clearInterval(timer);document.removeEventListener('visibilitychange',refresh);};
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[actorId,query,filter,attempt]);
  // Chip counts come from a complete 'all' list only; a partial page would undercount, so then there are none.

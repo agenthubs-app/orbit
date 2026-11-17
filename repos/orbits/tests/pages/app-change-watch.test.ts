@@ -65,3 +65,37 @@ test("the cursor marks only the areas that moved, notifies their readers, and ad
   assert.deepEqual(staleAreas, [["inbox"], ["memo"]]);
   stop();
 });
+
+test("idle: background reads stop after 5 minutes without input and the first input asks again", async (t) => {
+  resetSharedReadForTests();
+  resetLastAnswersForTests();
+  let asked = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    asked += 1;
+    return new Response(JSON.stringify({ success: true, data: { tokens: { inbox: "i", contacts: "c", tasks: "t", calendar: "k", memo: "m", agent: "a" } } }), { status: 200, headers: { "x-poll-interval": "60" } });
+  });
+  const listeners = new Map<string, () => void>();
+  (globalThis as { window?: unknown }).window = { addEventListener: (name: string, fn: () => void) => listeners.set(name, fn), location: { href: "https://orbit.test/app/home", origin: "https://orbit.test" } };
+  (globalThis as { document?: unknown }).document = { visibilityState: "visible", addEventListener: (name: string, fn: () => void) => listeners.set(name, fn) };
+  t.after(() => { delete (globalThis as { window?: unknown }).window; delete (globalThis as { document?: unknown }).document; });
+  let now = Date.now();
+  t.mock.method(Date, "now", () => now);
+
+  const watch = await import("../../app/(app)/app/orbit-change-watch");
+  watch.stopChangeWatchForTests();
+  t.after(() => watch.stopChangeWatchForTests());
+  setSharedReadAccount("user-idle");
+  watch.installChangeWatch();
+  const settle = async () => { await new Promise((resolve) => setTimeout(resolve, 0)); await new Promise((resolve) => setTimeout(resolve, 0)); };
+  await settle();
+  assert.equal(asked, 1);
+  assert.equal(watch.shouldRefreshInBackground(), true);
+
+  now += watch.IDLE_AFTER_MS + 1;
+  assert.equal(watch.shouldRefreshInBackground(), false, "idle: inbox fallbacks skip their reads");
+
+  listeners.get("pointerdown")?.();
+  await settle();
+  assert.equal(asked, 2, "the first input after idle asks at once");
+  assert.equal(watch.shouldRefreshInBackground(), true);
+});

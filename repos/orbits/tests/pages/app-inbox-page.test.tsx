@@ -23,7 +23,8 @@ test("the page renders the panel inline: no scrim, focus trap, resize handle or 
 
 test("counts read when the change cursor says the inbox moved, with a slow fallback while visible; the same summary endpoint", () => {
   assert.match(panel, /useAreaChanges\(\["inbox"\], \(\) => refreshCountsRef\.current\?\.\(\)\)/u);
-  assert.equal((panel.match(/setInterval\(\(\) => void refreshCounts\(\), AREA_FALLBACK_MS\)/gu) ?? []).length, 1);
+  // The fallback skips its read while the person is idle (orbit-change-watch shouldRefreshInBackground).
+  assert.equal((panel.match(/setInterval\(\(\) => \{ if \(shouldRefreshInBackground\(\)\) void refreshCounts\(\); \}, AREA_FALLBACK_MS\)/gu) ?? []).length, 1);
   assert.doesNotMatch(panel, /15_000/u, "no 15-second polling any more");
   assert.match(panel, /if \(loading \|\| document\.visibilityState === "hidden"\) return;/u);
   const shell = readFileSync("app/(app)/app/orbit-2026/shell/Orbit2026Shell.tsx", "utf8");

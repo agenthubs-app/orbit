@@ -18,7 +18,7 @@ import { authenticatedApiActorRequiredResponse, resolveAuthenticatedApiActor, ty
  * private + no-cache + Vary: Cookie: only this person's browser keeps it, always revalidated; the sign-out
  * response clears the browser cache (Clear-Site-Data).
  */
-export const CHANGES_POLL_SECONDS = 30;
+export const CHANGES_POLL_SECONDS = 60;
 
 export interface ChangesRouteDependencies {
   resolveActor?: ResolveAuthenticatedApiActor;

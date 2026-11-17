@@ -10,7 +10,7 @@ import shellStyles from "../orbit-2026/shell/shell.module.css";
 import ws from "./inbox-workspace.module.css";
 import { inboxListTime } from "./inbox-list-time";
 import { lastAnswer, rememberAnswer } from "../orbit-last-answer";
-import { AREA_FALLBACK_MS, useAreaChanges } from "../orbit-change-watch";
+import { AREA_FALLBACK_MS, shouldRefreshInBackground, useAreaChanges } from "../orbit-change-watch";
 import { AppointmentProposalCard } from "../orbit-2026/inbox/AppointmentProposalCard";
 import { BoundedMessageReadError, filterMessageCards, readMessageCards, readMessageWindow, confirmMessageWindowRead, readReplyDraft, saveReplyDraft, sendWindowMessage, type MessageCardPageView, type MessageWindowView } from "./bounded-contact-messages-view-model";
 
@@ -66,7 +66,7 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
       } finally { busy = false; }
     };
     // New messages arrive through the change cursor (useAreaChanges below); the timer is only the slow fallback.
-    void refresh(); const timer = setInterval(() => void refresh(), AREA_FALLBACK_MS);
+    void refresh(); const timer = setInterval(() => { if (shouldRefreshInBackground()) void refresh(); }, AREA_FALLBACK_MS);
     refreshList.current = () => void refresh();
     document.addEventListener("visibilitychange", refresh);
     return () => { controller.abort(); clearInterval(timer); refreshList.current = null; document.removeEventListener("visibilitychange", refresh); };
@@ -88,7 +88,7 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
     void refresh();
     // Browsing an older page must not jump to the latest window or mark a
     // backwards read pointer. The latest window reads again when the inbox moves (change cursor) or on the fallback.
-    const timer = historyCursor ? undefined : setInterval(() => void refresh(), AREA_FALLBACK_MS);
+    const timer = historyCursor ? undefined : setInterval(() => { if (shouldRefreshInBackground()) void refresh(); }, AREA_FALLBACK_MS);
     refreshWindow.current = historyCursor ? null : () => void refresh();
     document.addEventListener("visibilitychange", refresh);
     return () => { controller.abort(); clearInterval(timer); refreshWindow.current = null; document.removeEventListener("visibilitychange", refresh); };
