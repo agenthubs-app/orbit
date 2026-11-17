@@ -46,7 +46,7 @@ async function statuses(kit: CardKit, actionId: string) {
 }
 
 test("the card executors are exactly the registered card keys, one adapter each", () => {
-  const keys = cardWriteExecutors({ actorId: ACTOR, notes: { create: async () => { throw new Error("unused"); } }, tasks: { create: async () => { throw new Error("unused"); }, get: async () => null, update: async () => { throw new Error("unused"); } } }).map((executor) => executor.key);
+  const keys = cardWriteExecutors({ actorId: ACTOR, notes: { create: async () => { throw new Error("unused"); }, update: async () => { throw new Error("unused"); } }, tasks: { create: async () => { throw new Error("unused"); }, get: async () => null, update: async () => { throw new Error("unused"); } } }).map((executor) => executor.key);
   assert.deepEqual(keys.sort(), [...AGENT_V1_CARD_EXECUTOR_KEYS].sort());
 });
 

@@ -180,6 +180,11 @@ export function proposeNode(scope: NodeScope): GraphNode {
         part.waitReason = "dependency_pending";
         continue;
       }
+      // AG10: an extraction already made this part's operations (functions node); they are frozen as they are.
+      if (run.presetIntents.has(part.localId)) {
+        work.push(part);
+        continue;
+      }
       if (!proposableOf(part, quoteOf(part)).length) {
         // Accepting an offered alternative (a scheduled check) keeps its own sentence (deliver, AG03).
         if (part.continues?.kind === "alternative") {
@@ -257,7 +262,8 @@ export function proposeNode(scope: NodeScope): GraphNode {
     const duplicates = new Map<string, Exclude<DuplicateDecision, { kind: "new" }>>();
     const active = work.filter((part) => part.write && part.status === "unfinished" && part.reason === "proposing").sort((left, right) => left.quote[0] - right.quote[0]);
     for (const part of active) {
-      const outcome = await resolvePartIntents(ctx, part, part.write!);
+      const preset = run.presetIntents.get(part.localId);
+      const outcome: WriteOutcome = preset ? { kind: "ready", ops: preset } : await resolvePartIntents(ctx, part, part.write!);
       outcomes.set(part.localId, outcome);
       // AG08: a new memo of an interaction that may be one already recorded is checked before it goes on a card.
       if (outcome.kind === "ready" && deps.records && ctx.scope && !part.write!.picks.duplicate) {

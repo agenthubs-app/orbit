@@ -259,7 +259,7 @@ dgram.createSocket = function guardedUdp(...args) {
 
 /* ── faults, replay and model recording on fetch ───────────────────── */
 /** Kinds that rewrite a real response instead of replacing the call (taken after the response). */
-const REWRITE_KINDS = new Set(["inject_approval_flag", "mistag_write", "low_confidence"]);
+const REWRITE_KINDS = new Set(["inject_approval_flag", "mistag_write", "low_confidence", "phantom_candidate"]);
 
 function takeFault(where, options = {}) {
   // AG03: an `understand` fault hits only the understand node's model calls; outside the graph (the old
@@ -429,6 +429,26 @@ function lowConfidenceAnswers(requestBody) {
   return { answers, usage: null };
 }
 
+/**
+ * AG10 (FN.yaml phantom_candidate): the next judgment response gets one more answer, for a candidate E999 that was not
+ * among the ones asked, rated at the top level with full confidence. The product must drop it (it was never asked).
+ */
+function phantomCandidate(body, requestBody) {
+  if (!state.faults.some((armed) => armed.where === "judgment" && armed.kind === "phantom_candidate")) return null;
+  if (!body || typeof body !== "object" || !body.answers || typeof body.answers !== "object") return null;
+  const questions = requestBody && typeof requestBody === "object" && requestBody.questions && typeof requestBody.questions === "object" ? requestBody.questions : {};
+  const graded = Object.entries(questions).find(([, question]) => question && question.type === "score");
+  if (!graded) return null;
+  const fault = takeFault("judgment", { rewrite: true });
+  if (!fault) return null;
+  const prefix = graded[0].split("__")[0];
+  const levels = Array.isArray(graded[1].criteria) ? graded[1].criteria.length : 3;
+  const injected = { type: "score", score: levels - 1, confidence: 1, probabilities: Object.fromEntries(Array.from({ length: levels }, (_value, index) => [String(index), index === levels - 1 ? 1 : 0])) };
+  const answers = { ...body.answers, [`${prefix}__E999`]: injected };
+  emit({ type: "judgment.output_rewritten", source: "simulated", kind: fault.kind, added: `${prefix}__E999`, note: "an answer for a candidate that was not asked (E999), rated at the top level" });
+  return JSON.stringify({ ...body, answers });
+}
+
 const realFetch = globalThis.fetch;
 if (typeof realFetch === "function") {
   globalThis.fetch = async function evalFetch(input, init) {
@@ -511,7 +531,7 @@ if (typeof realFetch === "function") {
     const body = parseMaybeJson(text);
     const usage = body && typeof body === "object" ? body.usage ?? body.usageMetadata ?? null : null;
     emit({ type: `${prefix}.response`, source: "real", provider, status: response.status, headers: safeHeaders(response.headers), body, usage, model: body?.model ?? requestBody?.model ?? null, durationMs: realNow() - started });
-    const rewritten = category === "model" ? mistagWrite(body) ?? injectApprovalFlag(body) : null;
+    const rewritten = category === "model" ? mistagWrite(body) ?? injectApprovalFlag(body) : category === "judgment" ? phantomCandidate(body, requestBody) : null;
     if (rewritten) return new Response(rewritten, { status: response.status, statusText: response.statusText, headers: response.headers });
     return new Response(text, { status: response.status, statusText: response.statusText, headers: response.headers });
   };

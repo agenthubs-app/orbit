@@ -53,7 +53,9 @@ const PRONOUN_WORDS_CJK = [
 ];
 // AG05 run-02 repair 2 (AE-AMB-012): the little words a clue may carry around the pronoun ("给他的", "彼に").
 const GENERIC_WORDS_CJK = ["待办", "笔记", "活动", "日程", "联系人", "事情", "会议", "记录", "东西", "人", "事", "会", "的", "关于", "给", "跟", "和", "对", "向", "为", "与", "メモ", "ToDo", "イベント", "予定", "打ち合わせ", "について", "から", "やつ", "件", "人", "の", "に", "と", "へ"];
-const PRONOUN_WORDS_LATIN = new Set(["he", "she", "him", "her", "his", "hers", "it", "its", "they", "them", "their", "that", "this", "those", "these", "one", "ones", "the", "s"]);
+// AG10 stability run (AE-SCL-020): "when we last actually talked" — "we" (us, our) points at the person named nearby, never at a
+// contact whose name starts with it ("Daniel Wee").
+const PRONOUN_WORDS_LATIN = new Set(["he", "she", "him", "her", "his", "hers", "it", "its", "they", "them", "their", "that", "this", "those", "these", "one", "ones", "the", "s", "we", "us", "our"]);
 const GENERIC_WORDS_LATIN = new Set(["note", "notes", "to-do", "todo", "task", "event", "meeting", "person", "thing", "item", "record", "contact"]);
 
 export function isPronounClue(text: string): boolean {

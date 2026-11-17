@@ -1,6 +1,6 @@
 /**
  * Written by `npm run agent-eval:calibrate -- --write` (scripts/agent-eval/calibrate-judgment.ts). Do not edit
- * by hand: a changed value needs a calibration run and its record (eval/calibration/judgment-thresholds-v2.md; v1 for the cells it carries).
+ * by hand: a changed value needs a calibration run and its record (eval/calibration/judgment-thresholds-v3.md; v1/v2 for the cells it carries).
  * A question or language missing here is not enabled.
  */
 import type { ThresholdConfig } from "./thresholds";
@@ -27,8 +27,18 @@ export const JUDGMENT_THRESHOLDS: ThresholdConfig = {
       zh: 0.901,
       ja: 0.87,
       en: 0.966
+    },
+    "interaction.happened": {
+      zh: 0.836,
+      ja: 0.631,
+      en: 0.891
+    },
+    "followup.owner": {
+      zh: 0.871,
+      ja: 0.846,
+      en: 0.752
     }
   },
   model: "gemini-decision-1",
-  version: "judgment-thresholds@2"
+  version: "judgment-thresholds@3"
 };

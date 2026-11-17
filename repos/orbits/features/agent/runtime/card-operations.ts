@@ -24,6 +24,7 @@ import {
 } from "./todo-operations";
 
 export const MEMO_CREATE = "memo.create";
+export const MEMO_UPDATE = "memo.update";
 
 /** What a new memo with an interaction holds (附录 E). Names are only for the card's text. */
 export interface MemoCreateSet {
@@ -42,7 +43,21 @@ export interface MemoCreateIntent {
   set: MemoCreateSet;
 }
 
-export type CardOperationIntent = (TodoOperationIntent | MemoCreateIntent) & {
+/**
+ * agent-design AG10 (设计稿 §3.5 从笔记到联系人往来, 附录 E): the interaction an existing memo records, set on that memo
+ * after a confirmed card. The memo's text is kept as it is; only the interaction field is written (and the old
+ * automatic extraction stays suppressed). The version the card was frozen from is the precondition.
+ */
+export interface MemoUpdateIntent {
+  capability: typeof MEMO_UPDATE;
+  targetId: string;
+  expectedVersion: number;
+  set: { interaction: NoteInteractionContract };
+  /** What the card shows: the memo's title, its contacts (to say who is only mentioned), names, the supporting sentence. */
+  shown: { title: string; contactIds: string[]; names: Record<string, string>; sentence?: string; before: NoteInteractionContract | null };
+}
+
+export type CardOperationIntent = (TodoOperationIntent | MemoCreateIntent | MemoUpdateIntent) & {
   /** The sub-goal of the request (kept until the receipt). */
   partId?: string;
   /** Positions (0-based) in the same card of the items this one waits for. */
@@ -113,6 +128,41 @@ export function memoCreateDisplay(set: MemoCreateSet, locale: CardLocale): Agent
   return { change: "create", record: words.record(set.title), rows };
 }
 
+const MEMO_UPDATE_WORDS: Record<CardLocale, { line: (title: string, details: string) => string; none: string; sentence: string; quote: (sentence: string) => string }> = {
+  en: { line: (title, details) => `Note "${title}": record the interaction — ${details}`, none: "none recorded", quote: (sentence) => `"${sentence}"`, sentence: "From the note" },
+  ja: { line: (title, details) => `メモ「${title}」にやり取りを記録：${details}`, none: "記録なし", quote: (sentence) => `「${sentence}」`, sentence: "メモの文" },
+  zh: { line: (title, details) => `在笔记「${title}」上补记往来：${details}`, none: "未记录", quote: (sentence) => `「${sentence}」`, sentence: "原句" },
+};
+
+/** AG10: the line and rows a user reads for an interaction written on an existing memo. */
+export function memoUpdateText(intent: MemoUpdateIntent, locale: CardLocale): string {
+  const interaction = intent.set.interaction;
+  const nameOf = (id: string) => intent.shown.names[id] ?? id;
+  const mentioned = intent.shown.contactIds.filter((id) => !interaction.actualContactIds.includes(id)).map(nameOf);
+  const when = interaction.occurredOn ? dayText(interaction.occurredOn, locale) : interaction.occurredAt ?? "";
+  const how = CHANNEL_WORDS[locale][interaction.channel]?.[interaction.direction] ?? CHANNEL_WORDS[locale].other.mutual;
+  const who = interaction.actualContactIds.map(nameOf).join(MEMO_DISPLAY[locale].join);
+  const details = locale === "en" ? `with ${who}, ${when}, ${how}${mentioned.length ? `; ${mentioned.join(", ")} only mentioned` : ""}` : locale === "ja" ? `相手 ${who}、${when}、${how}${mentioned.length ? `（${mentioned.join("、")}は話に出ただけ）` : ""}` : `实际往来对象 ${who}，${when}，${how}${mentioned.length ? `（${mentioned.join("、")}只是提到）` : ""}`;
+  return MEMO_UPDATE_WORDS[locale].line(intent.shown.title, details);
+}
+
+export function memoUpdateDisplay(intent: MemoUpdateIntent, locale: CardLocale): AgentCardOperationDisplayContract {
+  const words = MEMO_DISPLAY[locale];
+  const interaction = intent.set.interaction;
+  const nameOf = (id: string) => intent.shown.names[id] ?? id;
+  const before = intent.shown.before;
+  const none = MEMO_UPDATE_WORDS[locale].none;
+  const rows: AgentCardOperationDisplayContract["rows"][number][] = [
+    { after: interaction.actualContactIds.map(nameOf).join(words.join), before: before ? before.actualContactIds.map(nameOf).join(words.join) : none, field: "interaction.actualContactIds", label: words.with },
+    { after: interaction.occurredOn ? dayText(interaction.occurredOn, locale) : interaction.occurredAt ?? "", before: before?.occurredOn ? dayText(before.occurredOn, locale) : none, field: interaction.occurredOn ? "interaction.occurredOn" : "interaction.occurredAt", label: words.day },
+    { after: CHANNEL_WORDS[locale][interaction.channel]?.[interaction.direction] ?? CHANNEL_WORDS[locale].other.mutual, before: before ? CHANNEL_WORDS[locale][before.channel]?.[before.direction] ?? none : none, field: "interaction.channel", label: words.how },
+  ];
+  const mentioned = intent.shown.contactIds.filter((id) => !interaction.actualContactIds.includes(id)).map(nameOf);
+  if (mentioned.length) rows.push({ after: words.mentioned(mentioned.join(words.join)), field: "contactIds", label: words.also });
+  if (intent.shown.sentence) rows.push({ after: MEMO_UPDATE_WORDS[locale].quote(intent.shown.sentence), field: "interaction.sentence", label: MEMO_UPDATE_WORDS[locale].sentence });
+  return { change: "update", record: words.record(intent.shown.title), rows };
+}
+
 const WAITS_NOTE: Record<CardLocale, (items: number[]) => string> = {
   en: (items) => `Runs only after item ${items.join(" and ")} succeeds`,
   ja: (items) => `${items.join("・")} 件目が成功してから実行`,
@@ -174,6 +224,24 @@ export async function prepareCardOperation(input: {
       shown: { names: { ...set.names } },
     };
   }
+  if (intent.capability === MEMO_UPDATE) {
+    const after = { interaction: { ...intent.set.interaction, actualContactIds: [...intent.set.interaction.actualContactIds] } };
+    return {
+      ...base({ ...input, partId: intent.partId }),
+      after,
+      before: { interaction: intent.shown.before },
+      capability: MEMO_UPDATE,
+      executorKey: MEMO_UPDATE,
+      operationType: "update_memo",
+      // The executor writes the interaction through the note service at this version; extraction stays suppressed.
+      payload: { ...after, expectedVersion: intent.expectedVersion, noteId: intent.targetId },
+      preconditions: { targetExists: true, versionToken: String(intent.expectedVersion) },
+      display: memoUpdateDisplay(intent, input.locale),
+      preview: memoUpdateText(intent, input.locale),
+      shown: { ...intent.shown, names: { ...intent.shown.names }, contactIds: [...intent.shown.contactIds] },
+      targetRef: { collection: "notes", id: intent.targetId },
+    };
+  }
   const op = await prepareTodoOperation({ actionId: input.actionId, index: input.index, intent, locale: input.locale, reader: input.reader, revision: input.revision });
   if (!op) return null;
   const partId = intent.partId ?? "p1";
@@ -190,6 +258,13 @@ export function cardIntentOf(op: AgentActionOperationPayload, operations: readon
     const after = (op.after ?? {}) as Record<string, unknown>;
     const names = ((op.shown as Record<string, unknown> | undefined)?.names ?? {}) as Record<string, string>;
     return { ...extra, capability: MEMO_CREATE, set: { body: String(after.body ?? ""), contactIds: [...((after.contactIds as string[]) ?? [])], ...(after.interaction ? { interaction: after.interaction as NoteInteractionContract } : {}), names: { ...names }, title: String(after.title ?? "") } };
+  }
+  if (op.capability === MEMO_UPDATE && op.targetRef) {
+    const after = (op.after ?? {}) as { interaction?: NoteInteractionContract };
+    const shown = (op.shown ?? {}) as MemoUpdateIntent["shown"];
+    const payload = (op.payload ?? {}) as { expectedVersion?: number };
+    if (!after.interaction) return null;
+    return { ...extra, capability: MEMO_UPDATE, expectedVersion: Number(payload.expectedVersion ?? 0), set: { interaction: after.interaction }, shown: { before: shown.before ?? null, contactIds: [...(shown.contactIds ?? [])], names: { ...(shown.names ?? {}) }, title: String(shown.title ?? ""), ...(shown.sentence ? { sentence: shown.sentence } : {}) }, targetId: op.targetRef.id };
   }
   const todo = todoIntentOf(op);
   return todo ? { ...todo, ...extra } : null;

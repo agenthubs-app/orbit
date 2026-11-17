@@ -26,7 +26,7 @@ PLANNER 是在所有 sprint 动工之前一次写成的，所以后面 sprint �
 | AG07 | 两端的确认卡与对话界面 | 二 | AG06、视觉稿获批 | Web、App | H | UIX ×8 | completed（run-03 门槛 43/43 双评通过；AG03～AG06 复跑通过；run-02/03 为例外重跑） |
 | AG08 | 判断模型接入 | 三 能力补齐 | AG04、AG05、AG06 | 服务端 | H | JDG ×8、SCL ×2 | completed（run-02 门槛双评通过，AE-JDG-003 改正评审项后单独重跑双评通过；AG03～AG07 复跑通过） |
 | AG09 | 基础联网与出站把关 | 三 | AG08 | 服务端 | H | WEB ×12、SCL ×2 | completed（run-04 门槛双评通过；超时用例单例重跑规则；AG03～AG08 复跑通过） |
-| AG10 | 排序、提取与整理 | 三 | AG06、AG08 | 服务端 | H | FN ×13、SCL ×4 | planned |
+| AG10 | 排序、提取与整理 | 三 | AG06、AG08 | 服务端 | H | FN ×13、SCL ×4 | completed（run-03 门槛双评通过；AG03～AG09 复跑通过） |
 | AG11 | 两端用 @ 指定上下文 | 三 | AG05、AG07、AG13 | Web、App | H | REF ×8、SCL ×2 | planned |
 | AG12 | 联系人写入 | 三 | AG06、AG07 | 服务端、两端 | H | CON ×10、SCL ×2 | planned |
 | AG13 | 活动、参会、日程与 Todo 关联 | 三 | AG06、AG07 | 服务端、两端 | H | EVT ×12、SCL ×4 | planned |

@@ -90,6 +90,12 @@ export interface NoteUpdateInput {
   eventIds?: readonly string[];
   noteKind?: "free" | "meeting" | "voice";
   usedForPlan?: boolean;
+  /**
+   * agent-design AG10 (设计稿附录 E, §3.5 从笔记到联系人往来): the actual interaction this memo records, written on an
+   * existing memo after a confirmed card. Its actualContactIds must be among the memo's contactIds (readNoteInteraction).
+   * Writing it also marks the memo `autoExtraction: "suppressed"` (the old automatic extraction must not run on it).
+   */
+  interaction?: NoteInteractionContract;
   expectedVersion: number;
   idempotencyKey: string;
   now: string;
@@ -379,7 +385,7 @@ export function createNoteService(input: { repository: NoteRepository; associati
     },
     async update(updateInput) {
       const body = updateInput.body === undefined ? undefined : normalizedBody(updateInput.body);
-      if (body === undefined && updateInput.title === undefined && updateInput.contactIds === undefined && updateInput.manualContactIds === undefined && updateInput.mentions === undefined && updateInput.eventIds === undefined && updateInput.noteKind === undefined && updateInput.usedForPlan === undefined) throw new NoteServiceError("NOTE_INVALID_INPUT", "At least one note field is required");
+      if (body === undefined && updateInput.title === undefined && updateInput.contactIds === undefined && updateInput.manualContactIds === undefined && updateInput.mentions === undefined && updateInput.eventIds === undefined && updateInput.noteKind === undefined && updateInput.usedForPlan === undefined && updateInput.interaction === undefined) throw new NoteServiceError("NOTE_INVALID_INPUT", "At least one note field is required");
       return withMutationLock(`${updateInput.actorId}\u0000${updateInput.noteId}`, async () => {
         const stored = requirePayload(await input.repository.get(updateInput.actorId, updateInput.noteId), updateInput.noteId);
         const nextBody = body ?? stored.note.body;
@@ -394,7 +400,10 @@ export function createNoteService(input: { repository: NoteRepository; associati
         const contactIds = canonicalContactIds(manualContactIds, mentions);
         const nextNoteKind = noteKind(updateInput.noteKind);
         const nextUsedForPlan = usedForPlan(updateInput.usedForPlan);
-        const operationFingerprint = fingerprint({ title: updateInput.title, body, contactIds: updateInput.contactIds, manualContactIds: updateInput.manualContactIds, mentions: updateInput.mentions, eventIds: updateInput.eventIds, noteKind: nextNoteKind, usedForPlan: nextUsedForPlan, expectedVersion: updateInput.expectedVersion });
+        // AG10: an interaction is kept only when well formed with its actual contacts among the memo's (as for create).
+        const interaction = updateInput.interaction === undefined ? undefined : readNoteInteraction(updateInput.interaction, contactIds);
+        if (updateInput.interaction !== undefined && !interaction) throw new NoteServiceError("NOTE_INVALID_INPUT", "interaction is invalid: actualContactIds must be among the memo's contactIds, with a known channel, direction and date");
+        const operationFingerprint = fingerprint({ title: updateInput.title, body, contactIds: updateInput.contactIds, manualContactIds: updateInput.manualContactIds, mentions: updateInput.mentions, eventIds: updateInput.eventIds, noteKind: nextNoteKind, usedForPlan: nextUsedForPlan, expectedVersion: updateInput.expectedVersion, ...(interaction ? { interaction } : {}) });
         // Sprint 0142: the receipt is checked before access, as for create.
         const replay = checkReplay(stored, { idempotencyKey: updateInput.idempotencyKey, kind: "update", fingerprint: operationFingerprint });
         if (replay) return replay;
@@ -414,6 +423,7 @@ export function createNoteService(input: { repository: NoteRepository; associati
           eventIds,
           ...(nextNoteKind === undefined ? {} : { noteKind: nextNoteKind }),
           ...(nextUsedForPlan === undefined ? {} : { usedForPlan: nextUsedForPlan }),
+          ...(interaction ? { autoExtraction: "suppressed" as const, interaction } : {}),
           version: stored.note.version + 1,
           updatedAt: updateInput.now,
         };

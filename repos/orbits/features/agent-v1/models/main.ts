@@ -42,7 +42,7 @@ export type MainModelResult =
   | { ok: false; reason: "budget" | "model_error"; message: string; retryable?: boolean };
 
 export interface MainModelCall {
-  node: "understand" | "propose" | "answer" | "probe";
+  node: "understand" | "propose" | "answer" | "probe" | "functions";
   /** repair: the previous output was unusable; retry: the previous call failed (timeout, 429, 5xx). */
   purpose: "first" | "repair" | "retry";
   requestId: string;

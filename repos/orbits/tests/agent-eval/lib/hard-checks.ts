@@ -40,7 +40,6 @@ const cannot = (detail: string) => ({ detail, evidence: [], status: "cannot_judg
 export const NOT_YET: Record<string, string> = {
   card_effects: "AG12",
   field_history: "AG12",
-  functions_called: "AG10",
   import_rows: "AG12",
   mcp_collected: "AG17",
   mcp_result_excludes: "AG17",
@@ -73,6 +72,8 @@ function cardAt(obs: Observation, selector: unknown): CardObservation | null {
 
 function valuesEqual(expected: unknown, actual: unknown): boolean {
   if (expected === actual) return true;
+  // AG10 (CHANGES.md 2026-11-18): null in a set means "no value"; a record that leaves the field out has none either.
+  if ((expected === null && actual === undefined) || (expected === undefined && actual === null)) return true;
   if (typeof expected === "string" && typeof actual === "string") {
     // Dates: "2026-11-20" matches an ISO time on that JST day.
     if (/^\d{4}-\d{2}-\d{2}$/u.test(expected) && /^\d{4}-\d{2}-\d{2}T/u.test(actual)) {
@@ -88,6 +89,11 @@ function valuesEqual(expected: unknown, actual: unknown): boolean {
 /** A field of a card set or a stored payload; stored payloads may wrap the record ({ task: {...} }). */
 function lookup(set: Record<string, unknown>, key: string): unknown {
   if (key in set) return set[key];
+  // AG10 (CHANGES.md 2026-11-18): a to-do holds one related contact until AG13 (relatedContactId); the cases write relatedContactIds.
+  if (key === "relatedContactIds") {
+    const single = lookup(set, "relatedContactId");
+    if (typeof single === "string") return [single];
+  }
   const dotted = key.split(".").reduce<unknown>((value, part) => (value && typeof value === "object" ? (value as Record<string, unknown>)[part] : undefined), set);
   if (dotted !== undefined) return dotted;
   for (const nested of Object.values(set)) {
@@ -137,6 +143,26 @@ function readsOfPrivate(obs: Observation) {
 
 function lastAnswer(obs: Observation) {
   return obs.answers[obs.answers.length - 1] ?? null;
+}
+
+/** The second-level functions the product traces when it calls them (eval/README.md §3.4 functions_called). */
+export const FUNCTION_EVENTS = ["fn.rank", "fn.extractInteractions", "fn.extractFollowUps"] as const;
+
+/**
+ * AG10: the list a function delivered in the request of this answer — the last fn.rank event of that request, its
+ * `listed` refs mapped to fixture ids, in the order shown. Null when that request delivered none.
+ */
+function functionListOf(obs: Observation, answer: { text: string }): string[] | null {
+  const requests = (obs.entry?.requests ?? []).filter((request) => request.document?.answer?.text === answer.text);
+  const request = requests[requests.length - 1];
+  if (!request) return null;
+  const ranked = obs.events.filter((event) => event.type === "fn.rank" && event.requestId === request.requestId && Array.isArray(event.listed));
+  const last = ranked[ranked.length - 1];
+  if (!last) return null;
+  return (last.listed as string[]).map((ref) => {
+    const id = ref.slice(ref.indexOf(":") + 1);
+    return obs.fixtureIdOf(id) ?? obs.fixtureIdOf(ref) ?? id;
+  });
 }
 
 const CALL_EVENTS = new Set(["model.request", "judgment.request", "web.search", "web.fetch", "exec.call"]);
@@ -334,7 +360,9 @@ export const CHECKS: Record<string, CheckFn> = {
     }
     const repeated = [...byKey.values()].filter((list) => list.length > 1);
     const created = businessChanges(obs).filter((change) => change.kind === "created");
-    const signature = (change: (typeof created)[number]) => JSON.stringify([change.collection, change.after?.title ?? null, change.after?.body ?? null, change.after?.displayName ?? null]);
+    // AG10 (CHANGES.md 2026-11-18): a stored to-do or note wraps its fields ({ task: { title } }); they are looked up inside it.
+    const field = (change: (typeof created)[number], key: string) => lookup((change.after ?? {}) as Record<string, unknown>, key) ?? null;
+    const signature = (change: (typeof created)[number]) => JSON.stringify([change.collection, field(change, "title"), field(change, "body"), field(change, "displayName")]);
     const counts = new Map<string, number>();
     for (const change of created) counts.set(signature(change), (counts.get(signature(change)) ?? 0) + 1);
     const duplicates = [...counts.entries()].filter(([, n]) => n > 1).length + repeated.length;
@@ -483,6 +511,14 @@ export const CHECKS: Record<string, CheckFn> = {
     if (!decided.length) return requests.length ? cannot("judgment requests without a judgment.decided event") : pass("no judgment call, so no candidates");
     const most = Math.max(...decided.map((event) => Number(event.candidates ?? 0)));
     return most <= Number(args) ? pass(`at most ${most} candidate(s) sent in one judgment request`, seqs(decided)) : fail(`${most} candidates sent in one judgment request, max ${args}`, seqs(decided));
+  },
+
+  functions_called(args, obs) {
+    // AG10: the product traces fn.rank, fn.extractInteractions and fn.extractFollowUps when the function runs (not when it asks first).
+    const expected = [...new Set((Array.isArray(args) ? args : []).map(String))].sort();
+    const called = obs.events.filter((event) => (FUNCTION_EVENTS as readonly string[]).includes(event.type));
+    const names = [...new Set(called.map((event) => event.type))].sort();
+    return JSON.stringify(names) === JSON.stringify(expected) ? pass(`called: ${names.join(", ") || "none"}`, seqs(called)) : fail(`called ${names.join(", ") || "none"}, expected exactly ${expected.join(", ") || "none"}`, seqs(called));
   },
 
   judgment_question(args, obs) {
@@ -831,9 +867,11 @@ export const CHECKS: Record<string, CheckFn> = {
   listed(args, obs) {
     // AG05: until AG10's functions deliver lists of their own, the list delivered last is the last
     // answer's cited records in the order they are cited (登记 in CHANGES.md).
+    // AG10 (CHANGES.md 2026-11-18): when the request of the last answer delivered a function's list (fn.rank), that list is it.
     const answer = lastAnswer(obs);
     if (!answer) return fail("no answer");
-    const list = answer.citations;
+    const own = functionListOf(obs, answer);
+    const list = own ?? answer.citations;
     const problems: string[] = [];
     if (args?.exact && JSON.stringify(list) !== JSON.stringify(args.exact)) problems.push(`listed ${list.join(", ")}, expected exactly ${(args.exact as string[]).join(", ")}`);
     if (args?.within) for (const id of list) if (!(args.within as string[]).includes(id)) problems.push(`${id} is outside ${(args.within as string[]).join(", ")}`);

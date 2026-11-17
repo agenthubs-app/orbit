@@ -263,6 +263,13 @@ export function applyResolution(state: AgentGraphState, resolution: GraphResolut
     part.continues = { kind: "alternative", ref: `alternative:${requestId}:${part.localId}` };
     return { optionSets: sets, parts, pausing: false, resumeNext: "route", touched: [part.localId] };
   }
+  // AG10: a way of ordering picked for a ranking with no basis: the part goes on to rank by it (functions node reads the pick).
+  if (set.purpose === "ranking") {
+    part.status = "answered";
+    part.reason = null;
+    part.waitReason = null;
+    return { optionSets: sets, parts, pausing: false, resumeNext: "route", touched: [part.localId] };
+  }
   if (set.purpose === "readings" || set.purpose === "directions") {
     part.capabilities = [...option.capabilities];
     part.plan = planFor(option.capabilities, part.plan);

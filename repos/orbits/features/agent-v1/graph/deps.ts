@@ -67,6 +67,8 @@ export interface AgentGraphDependencies {
   judgment?: JudgmentAccess;
   /** AG09: the public web (absent, switched off or no key: not one web request is made). */
   web?: AgentWebAccess;
+  /** AG10: the user's saved memories, read only (preferences and constraints a ranking may use; AG14 replaces it with recallFor()). */
+  memories?: { list(actorId: string): Promise<readonly { id: string; category: string; content: string }[]> };
 }
 
 export interface AgentGraphInput {

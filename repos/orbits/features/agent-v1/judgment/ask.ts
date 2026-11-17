@@ -46,7 +46,7 @@ export interface JudgmentItem {
 }
 
 export interface JudgmentAsk {
-  purpose: "rank" | "intent" | "duplicate" | "evidence" | "outbound";
+  purpose: "rank" | "intent" | "duplicate" | "evidence" | "outbound" | "extract";
   language: JudgmentLanguage;
   /** The text all items are judged on: only the fields the question needs (never e-mail or phone). */
   input: readonly string[];

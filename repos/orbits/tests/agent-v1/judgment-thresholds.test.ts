@@ -14,8 +14,9 @@ import { choice, graded, judgeStub, noul } from "./judgment-kit";
  * is not enabled; below the threshold every question falls to its conservative result (§3.8 用途表).
  */
 
-// AG09: v2 calibrated outbound.extra and carries the other cells from v1; a cell's row is in the record that calibrated it.
-const RECORDS = ["judgment-thresholds-v2.md", "judgment-thresholds-v1.md"].map((name) => path.resolve(__dirname, "..", "..", "..", "..", "docs", "epics", "agent-design", "eval", "calibration", name));
+// AG09: v2 calibrated outbound.extra and carries the other cells from v1; AG10: v3 calibrated interaction.happened and
+// followup.owner. A cell's row is in the record that calibrated it (the newest record first).
+const RECORDS = ["judgment-thresholds-v3.md", "judgment-thresholds-v2.md", "judgment-thresholds-v1.md"].map((name) => path.resolve(__dirname, "..", "..", "..", "..", "docs", "epics", "agent-design", "eval", "calibration", name));
 const LANGUAGES: JudgmentLanguage[] = ["zh", "ja", "en"];
 
 test("AG08-3 the eleven questions of 附录 C, each with a type, options, a version and its conservative result", () => {
@@ -57,8 +58,12 @@ test("AG08-3 a missing cell is not enabled; the enabled cells are exactly the ca
       assert.equal(Number(cells[4]), value, `${id}/${language}: the threshold in code is the recorded one`);
     }
   }
-  for (const id of ["evidence.supports", "evidence.sameEntity", "quote.sentence", "interaction.happened", "followup.owner"] as JudgmentQuestionId[]) {
-    for (const language of LANGUAGES) assert.equal(thresholdFor(id, language), null, `${id} is registered but not enabled in AG08`);
+  for (const id of ["evidence.supports", "evidence.sameEntity", "quote.sentence"] as JudgmentQuestionId[]) {
+    for (const language of LANGUAGES) assert.equal(thresholdFor(id, language), null, `${id} is registered but not enabled`);
+  }
+  // AG10: the two extraction reviews are calibrated in v3 and enabled in the three languages.
+  for (const id of ["interaction.happened", "followup.owner"] as JudgmentQuestionId[]) {
+    for (const language of LANGUAGES) assert.notEqual(thresholdFor(id, language), null, `${id}/${language} is enabled from AG10`);
   }
 });
 

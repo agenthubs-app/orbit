@@ -70,6 +70,8 @@ test("operation types cover the design-derived write operations", () => {
       "update_todo",
       // agent-design AG06: a new memo with its interaction (memo.create).
       "create_memo",
+      // agent-design AG10: the interaction written on an existing memo (memo.update).
+      "update_memo",
     ],
   );
 });

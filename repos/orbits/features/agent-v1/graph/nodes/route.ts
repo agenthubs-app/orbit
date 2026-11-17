@@ -19,6 +19,7 @@ import type { AgentGraphState, GraphPart } from "../state";
 import { clueWords, needsDirections, objectOf, pageKindOf } from "./clarify";
 import { clueSearchWords } from "./resolve";
 import { needsIntentReview, reviewWriteIntent } from "../../judgment/intent-review";
+import { organizeMeansSummary } from "./functions";
 import { contactKindOf } from "../../propose/resolve";
 import { capabilityKind, type Capability } from "../../route/capabilities";
 import type { NextStep } from "../../clarify/next-step";
@@ -40,6 +41,10 @@ function reviewedEntry(part: GraphPart, quote: string, clue: (ref: GraphPart["re
   if (part.refs.some((ref) => ref.entity === "contact") && contactKindOf(quote).channel) return { entry: "memo.create", reviewed: { kind: "interaction" } };
   return null;
 }
+
+/** AG10 run-02: words naming a to-do, and words naming a note (a statement about either gets the matching entry). */
+const TODO_WORD = /(待办|(?:设|加|建)个?提醒|ToDo|TODO|タスク|リマインダー|\bto-?dos?\b|\btasks?\b|\ba reminder\b)/iu;
+const RECORD_NOTE_WORD = /(笔记|メモ|\bnotes?\b|往来|来电|电话|電話|\bcall(?:ed)?\b)/iu;
 
 /** AG09 run-02: words that ask to look on the web (zh, ja, en). */
 const EXPLICIT_WEB = /(上网|联网|网上|网络上|搜一下|搜搜|搜索|官网|公开资料|公开职务|公开信息|ネット|ウェブ|検索|公式サイト|公開情報|online|on the web|the internet|web search|search the web|google|look (?:it |them |him |her )?up)/iu;
@@ -77,7 +82,7 @@ export function routeNode(scope: NodeScope): GraphNode {
     const context = run.context;
     run.steps = new Map();
     const attribution = !resume && context
-      ? attributeMessage(state.parts.map((part) => ({ clarity: part.plan.clarity, continues: part.continues, localId: part.localId })), context.openItems)
+      ? attributeMessage(state.parts.map((part) => ({ capabilities: part.capabilities, clarity: part.plan.clarity, continues: part.continues, localId: part.localId })), context.openItems)
       : null;
     let acceptedAlternativeRef: string | null = state.acceptedAlternativeRef;
     const topicKind = context?.shownList.length ? recordKindOf(context.shownList[0].type) : null;
@@ -146,6 +151,12 @@ export function routeNode(scope: NodeScope): GraphNode {
       const reschedule = namesNothing && reschedulesTo(openItem?.quote ?? input.message.slice(part.quote[0], part.quote[1]), state.asOf || deps.now(), state.timeZone || "Asia/Tokyo");
       // AG08: the review found no explicit request: the part is a statement (no card, one entry).
       if (reviewed.has(part.localId)) part.plan = { ...part.plan, clarity: "statement" };
+      // AG10 (AE-FN-008): "@笔记 帮我整理一下" with no product named is a summary of that memo, not readings to choose from.
+      if (!resume && organizeMeansSummary(part, input.message, new Set(run.references.map((reference) => reference.id))) && (part.plan.clarity !== "clear" || part.capabilities.some((capability) => capabilityKind(capability) === "write"))) {
+        part.capabilities = ["memo.read", "fn.summarize"];
+        part.plan = { ...part.plan, clarity: "clear", dataSources: ["orbit_records"], deliverable: "summary", readings: [] };
+        emitTrace({ partId: part.localId, type: "route.organize_is_summary" });
+      }
       const routeOptions = { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind, namedObjectWithDate: namedObjectWithDate(part), reschedule, unboundPronoun: unboundPronoun(part) };
       let decision = decideRoute(routeInputOf(part), routeOptions);
       // AG09 run-02 (AE-CTX-006): a question about one of the user's own contacts (an @ record) is answered from the records;
@@ -160,6 +171,12 @@ export function routeNode(scope: NodeScope): GraphNode {
       if (reviewed.has(part.localId) && decision.step?.kind === "respond" && decision.step.entry) {
         const entry = reviewedEntry(part, input.message.slice(part.quote[0], part.quote[1]), clueText, state.asOf || deps.now(), state.timeZone || "Asia/Tokyo");
         if (entry) decision.step = { ...decision.step, entry: entry.entry, reviewed: entry.reviewed };
+      }
+      // AG10 run-02 (AE-AMB-004): a statement about a to-do ("I should probably add a to-do to chase her") is offered a
+      // to-do, not a note about the person.
+      if (decision.step?.kind === "respond" && decision.step.entry === "memo.create" && !decision.step.reviewed && TODO_WORD.test(partWords) && !RECORD_NOTE_WORD.test(partWords)) {
+        decision.step = { ...decision.step, entry: "todo.create" };
+        emitTrace({ partId: part.localId, type: "route.todo_entry" });
       }
       if (unboundPronoun(part)) emitTrace({ partId: part.localId, reason: "a pronoun with nothing to resolve it from (§3.10): the object is missing", type: "route.unbound_reference" });
       // AG09 (PLANNER 排除范围; AE-UND-010 in one part): a change that saves what a web page says is not offered yet — the part

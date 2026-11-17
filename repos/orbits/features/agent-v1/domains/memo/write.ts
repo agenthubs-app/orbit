@@ -17,12 +17,39 @@ import type { NoteInteractionContract } from "../../../../shared/contract/notes"
 import type { NoteService } from "../../../notes/service";
 import { AgentExecutionPermanentError } from "../../../agent/runtime/service";
 import type { AgentActionExecutor } from "../../../agent/runtime/executor-registry";
-import { MEMO_CREATE } from "../../../agent/runtime/card-operations";
+import { MEMO_CREATE, MEMO_UPDATE } from "../../../agent/runtime/card-operations";
+import { NoteServiceError } from "../../../notes/service";
 
 export { prepareCardOperation as prepare } from "../../../agent/runtime/card-operations";
 
-export function memoWriteExecutors(input: { notes: Pick<NoteService, "create">; actorId: string }): AgentActionExecutor[] {
-  return [{ execute: (payload, context) => applyApprovedMemoCreate(input, payload, context), key: MEMO_CREATE, riskLevel: "write" }];
+export function memoWriteExecutors(input: { notes: Pick<NoteService, "create" | "update">; actorId: string }): AgentActionExecutor[] {
+  return [
+    { execute: (payload, context) => applyApprovedMemoCreate(input, payload, context), key: MEMO_CREATE, riskLevel: "write" },
+    { execute: (payload, context) => applyApprovedMemoUpdate(input, payload, context), key: MEMO_UPDATE, riskLevel: "write" },
+  ];
+}
+
+/**
+ * AG10 applyApproved for memo.update (设计稿 §3.5 从笔记到联系人往来): writes only the interaction field of the memo, at
+ * the version the card was frozen from. The memo changed since → nothing is written (a permanent failure, never retried);
+ * an interaction whose actual contacts are not among the memo's is refused by the note service. A replay of the same key
+ * returns the first result. No onPersisted hook: the old automatic extraction never runs, no contact detail is written.
+ */
+export async function applyApprovedMemoUpdate(
+  input: { notes: Pick<NoteService, "update">; actorId: string },
+  payload: Readonly<Record<string, unknown>>,
+  context: { idempotencyKey: string; now: string },
+): Promise<{ resultRef: string; summary: string }> {
+  const noteId = typeof payload.noteId === "string" ? payload.noteId : "";
+  const expectedVersion = typeof payload.expectedVersion === "number" ? payload.expectedVersion : Number.NaN;
+  if (!noteId || !Number.isInteger(expectedVersion) || !payload.interaction) throw new AgentExecutionPermanentError("noteId, expectedVersion and interaction are required.");
+  try {
+    const note = await input.notes.update({ actorId: input.actorId, expectedVersion, idempotencyKey: context.idempotencyKey, interaction: payload.interaction as NoteInteractionContract, noteId, now: context.now });
+    return { resultRef: `notes:${note.id}`, summary: "Interaction recorded on the memo in Orbit." };
+  } catch (error) {
+    if (error instanceof NoteServiceError && (error.code === "NOTE_VERSION_CONFLICT" || error.code === "NOTE_INVALID_INPUT" || error.code === "NOTE_NOT_FOUND")) throw new AgentExecutionPermanentError(`CARD_CONTENT_CHANGED: ${error.message}; nothing was written.`);
+    throw error;
+  }
 }
 
 export async function applyApprovedMemoCreate(

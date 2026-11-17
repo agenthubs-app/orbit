@@ -129,7 +129,7 @@ export function withoutWrongSeenCounts(text: string, allowed: ReadonlySet<number
  * taken out (zh, ja) or the sentence goes (en). A count equal to a total the read itself gave (coverage.total) stays.
  */
 const ZH_EXACT = [
-  new RegExp(`(只有|仅有|一共有|总共有|共有|就有|一共|总共|只|仅|就|共|有)((?:联系|聊天?|见面?|通话|打电话|往来|沟通)?过?)\\s*${N}\\s*(?:次|条|件|篇|回|通)`, "gu"),
+  new RegExp(`(?<!不)(只有|仅有|一共有|总共有|共有|就有|一共|总共|只|仅|就|共|有)((?:联系|聊天?|见面?|通话|打电话|往来|沟通)?过?)\\s*${N}\\s*(?:次|条|件|篇|回|通)`, "gu"),
   new RegExp(`()((?:联系|聊天?|见面?|通话|打电话|往来|沟通)过)\\s*${N}\\s*(?:次|回)`, "gu"),
 ];
 const JA_EXACT = [
@@ -144,6 +144,14 @@ const EN_EXACT = [
 ];
 const EN_TIMES: Record<string, number> = { "a single": 1, once: 1, twice: 2 };
 
+/**
+ * AG10 run-03 (coordinator, AE-RD-005 at 5c02515): the split forms — "只记到 11 月 10 日这一次", "只有…那一条",
+ * "…だけで、一回です", "only … once", "only have one call" — state the same exact count with words between "only" and it.
+ */
+const ZH_SPLIT = /(?<![不])(只有|仅有|只|仅)([^，,。；;！!？?\n：:]{1,24}?)(这|那)(一|1)\s*(次|条|件|篇|回|通)/gu;
+const JA_SPLIT = [/だけ[^。！？!?\n：:]{0,20}?(一|1)\s*(?:回|件|度)/gu, /(一|1)\s*(?:回|件|度)[^。！？!?\n：:]{1,20}?だけ/gu];
+const EN_SPLIT = /(?<!\bnot )\b(?:only|just)\b[^.!?\n:]{1,40}?\b(once|one (?:time|call|conversation|interaction|record|note|meeting|entry|message))\b/giu;
+
 function exactValue(said: string): number | null {
   return EN_TIMES[said.toLowerCase()] ?? valueOf(said);
 }
@@ -156,6 +164,9 @@ export function exactCountsIn(text: string): number[] {
   for (const pattern of ZH_EXACT) for (const match of text.matchAll(pattern)) note(match, match[3], valueOf(match[3]));
   for (const pattern of JA_EXACT) for (const match of text.matchAll(pattern)) note(match, match[1], valueOf(match[1]));
   for (const pattern of EN_EXACT) for (const match of text.matchAll(pattern)) note(match, match[1], exactValue(match[1]));
+  for (const match of text.matchAll(ZH_SPLIT)) note(match, match[4] + match[5], 1);
+  for (const pattern of JA_SPLIT) for (const match of text.matchAll(pattern)) note(match, match[1], 1);
+  for (const match of text.matchAll(EN_SPLIT)) note(match, match[1], 1);
   return [...found.entries()].sort((left, right) => left[0] - right[0]).map(([, value]) => value).filter((value): value is number => value !== null && Number.isFinite(value));
 }
 
@@ -172,6 +183,9 @@ function neutralized(sentence: string, language: "zh" | "ja" | "en", allowed: Re
   let out = sentence;
   for (const pattern of ZH_EXACT) out = out.replace(pattern, (whole: string, marker: string, verb: string, said: string) => (allowed.has(valueOf(said) ?? -1) ? whole : `${marker.includes("有") && !verb ? "有" : ""}${verb}`));
   for (const pattern of JA_EXACT) out = out.replace(pattern, (whole: string, said: string) => (allowed.has(valueOf(said) ?? -1) ? whole : ""));
+  // AG10 run-03: the split form loses "只" and its count ("只有 11 月 10 日那一条" → "有 11 月 10 日那条"); a Japanese one goes.
+  if (!allowed.has(1)) out = out.replace(ZH_SPLIT, (_whole: string, only: string, between: string, that: string, _one: string, unit: string) => `${only.includes("有") ? "有" : ""}${between}${that}${unit}`);
+  if (!allowed.has(1) && JA_SPLIT.some((pattern) => new RegExp(pattern.source, "u").test(out))) return null;
   out = out.replace(/有([，,。；;！!？?])/gu, "$1");
   return out.replace(/^[\s，、,。]+/u, "").trim() ? out : null;
 }

@@ -9,7 +9,7 @@ import type { TaskService } from "../../tasks/service";
 import { memoWriteExecutors } from "./memo/write";
 import { todoWriteExecutors } from "./todo/write";
 
-export function cardWriteExecutors(input: { actorId: string; tasks?: Pick<TaskService, "create" | "update" | "get"> | null; notes?: Pick<NoteService, "create"> | null }): AgentActionExecutor[] {
+export function cardWriteExecutors(input: { actorId: string; tasks?: Pick<TaskService, "create" | "update" | "get"> | null; notes?: Pick<NoteService, "create" | "update"> | null }): AgentActionExecutor[] {
   return [
     ...(input.tasks ? todoWriteExecutors({ actorId: input.actorId, tasks: input.tasks }) : []),
     ...(input.notes ? memoWriteExecutors({ actorId: input.actorId, notes: input.notes }) : []),
