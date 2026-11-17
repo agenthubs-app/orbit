@@ -130,11 +130,11 @@ test("AG09-2 (WEB-006): a name from a contact record — the full query is shown
     const first = await runAgentGraph(kit.deps, input);
     assert.equal(tools.calls.length, 0, "nothing sent before the click");
     assert.equal(first.status, "waiting_user");
-    assert.match(first.text, /「小林健 现任 职务」/u);
+    assert.match(first.text, /「小林健 最新 职务」/u);
     const set = first.clarifications[0];
     assert.deepEqual(set.options.map((option) => option.optionId), ["send_query", "skip_query"]);
     const resumed = await resumeAgentGraph(kit.deps, input, { clarificationId: set.clarificationId, kind: "select", optionId: "send_query" });
-    assert.deepEqual(tools.calls.map((call) => call.body.query), ["小林健 现任 职务"], "sent exactly as shown");
+    assert.deepEqual(tools.calls.map((call) => call.body.query), ["小林健 最新 职务"], "sent exactly as shown");
     assert.match(resumed.text, /没有找到公开资料/u);
     assert.match(resumed.text, /不代表没有/u);
   } finally {

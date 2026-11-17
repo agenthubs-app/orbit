@@ -10,7 +10,8 @@ export type WebLanguage = "zh" | "ja" | "en";
 export const QUALIFIERS = {
   official: { en: "official site", ja: "公式サイト", zh: "官网" },
   price: { en: "pricing", ja: "料金", zh: "价格" },
-  current: { en: "current", ja: "現在", zh: "现任" },
+  // AG09: zh "最新" rather than "现任" (incumbent), which read as a person's word next to a price ("Acme Cloud 官网 价格 现任").
+  current: { en: "current", ja: "現在", zh: "最新" },
   role: { en: "role", ja: "役職", zh: "职务" },
   works: { en: "works", ja: "代表作", zh: "代表作" },
   profile: { en: "profile", ja: "プロフィール", zh: "简介" },

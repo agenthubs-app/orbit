@@ -25,7 +25,7 @@ export const JUDGMENT_THRESHOLDS: ThresholdConfig = {
     },
     "outbound.extra": {
       zh: 0.901,
-      ja: 0.92,
+      ja: 0.919,
       en: 0.966
     }
   },

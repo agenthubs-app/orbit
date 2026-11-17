@@ -71,13 +71,13 @@ test("rule 4: a name the user typed goes alone; with contact details it is block
   assert.equal(rule4PersonNames(name, context({ message: "小林健现在在哪家公司？", partQuote: "小林健现在在哪家公司？" })).ok, true);
   const message = "上网查查 @小林 现在的公开职务。";
   const fromRecord = built(message, "@小林", ["current", "role"], [{ name: "小林健", quote: "@小林" }]);
-  assert.equal(fromRecord.text, "小林健 现任 职务");
+  assert.equal(fromRecord.text, "小林健 最新 职务");
   assert.equal(fromRecord.needsConfirmation, true);
   const before = rule4PersonNames(fromRecord, context({ message, partQuote: message }));
   assert.equal(before.ok, false);
   assert.equal(before.confirm, true);
   assert.equal(outboundGate(fromRecord, context({ message, partQuote: message })).verdict, "confirm");
-  assert.equal(outboundGate(fromRecord, context({ confirmedText: "小林健 现任 职务", message, partQuote: message })).verdict, "send", "clicked: sent exactly as shown");
+  assert.equal(outboundGate(fromRecord, context({ confirmedText: "小林健 最新 职务", message, partQuote: message })).verdict, "send", "clicked: sent exactly as shown");
   assert.equal(outboundGate(fromRecord, context({ confirmedText: "小林健 职务", message, partQuote: message })).verdict, "confirm", "a click on another text is not a click on this one");
 });
 

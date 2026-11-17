@@ -20,7 +20,7 @@ test("the query is the message's name plus vocabulary words in the message's lan
   assert.equal(ja.ok && ja.candidate.text, "是枝真紀 代表作 現在 役職", "the honorific is not looked up");
   const en = buildQuery({ language: "en", message: "What does Lumen ATS charge?", partId: "p1", target: { qualifiers: ["price"], quote: "Lumen ATS" } });
   assert.equal(en.ok && en.candidate.text, "Lumen ATS pricing");
-  for (const word of ["官网", "料金", "pricing", "现任", "役職"]) assert.equal(isVocabularyWord(word), true, word);
+  for (const word of ["官网", "料金", "pricing", "最新", "役職"]) assert.equal(isVocabularyWord(word), true, word);
   assert.equal(isVocabularyWord("折扣"), false);
 });
 
@@ -37,7 +37,7 @@ test("an @ contact's name comes from the record and makes the query one to show 
   const built = buildQuery({ language: "zh", message: "上网查查 @小林 现在的公开职务。", partId: "p1", references: [{ name: "小林健", quote: "@小林" }], target: { qualifiers: ["current", "role"], quote: "@小林" } });
   assert.equal(built.ok, true);
   if (built.ok) {
-    assert.equal(built.candidate.text, "小林健 现任 职务");
+    assert.equal(built.candidate.text, "小林健 最新 职务");
     assert.deepEqual(built.candidate.tokens[0], { origin: "contact_record", text: "小林健" });
     assert.equal(built.candidate.needsConfirmation, true);
   }

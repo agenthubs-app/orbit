@@ -685,6 +685,9 @@ export const CHECKS: Record<string, CheckFn> = {
         answer: (event) => event.type === "node.enter" && event.node === "answer",
         card: (event) => event.type === "card.frozen" && event.origin === "product",
         clarification: (event) => event.type === "clarify.asked",
+        // AG09 (WEB-006): a web call counts from the delivery after it was made.
+        "web.fetch": (event) => event.type === "web.fetch",
+        "web.search": (event) => event.type === "web.search",
       };
       const deliveredAt = (kind: string) => {
         const test = made[kind];
