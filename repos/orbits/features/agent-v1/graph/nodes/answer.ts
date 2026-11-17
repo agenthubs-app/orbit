@@ -17,6 +17,7 @@ import { groundedAnswerSystemPrompt, groundedAnswerUserText, GROUNDED_ANSWER_PRO
 import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
 import { withoutForeignUrls } from "../../web/answer-urls";
+import { withoutTopicBasisClaims } from "../../answer/claims";
 import { stripCardTalk, stripSaveTalk } from "../../entry/approval-claims";
 import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
@@ -30,6 +31,16 @@ import type { AgentGraphState, GraphPart } from "../state";
 const PROFILE_CAPABILITIES = new Set<string>(["contact.read", "profile.read", "view.context"]);
 
 type Segments ={ ok: true; segments: Map<string, string> } | { ok: false; error: string };
+
+/**
+ * AG10 opening item (AG08 交接 1): a model sentence claiming a topic ranking this turn did not do is not delivered.
+ * Code's own lines say what the ranking used.
+ */
+function withoutFalseClaims(text: string, partIds: readonly string[], topicMatched: boolean): string {
+  const basis = withoutTopicBasisClaims(text, topicMatched);
+  if (basis.dropped.length) emitTrace({ dropped: basis.dropped, note: "a model sentence claiming a topic ranking this turn did not do is not delivered; code says what the ranking used", parts: partIds, type: "answer.basis_claims_dropped" });
+  return basis.text;
+}
 
 /**
  * run-02 repair round 1: with no card in this turn, sentences about a confirmation card are dropped
@@ -198,7 +209,8 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       const knownTotals = new Set(someUnread ? [] : coverage.flatMap((item) => (item.total !== null ? [item.total] : [])));
       const counted = partialRead ? withoutPartialCounts(delivered, state.language, knownTotals) : { changed: [], text: delivered };
       if (counted.changed.length) emitTrace({ changed: counted.changed, partId: part.localId, type: "answer.partial_counts_neutralized" });
-      run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(counted.text, state.language) : counted.text, state.language));
+      const claimed = withoutFalseClaims(counted.text, [part.localId], run.topicMatched);
+      run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(claimed, state.language) : claimed, state.language));
       // AG09: a web page is not a record of the user's: its citations stay out of the records' sourceRefs (the page is listed in the answer's web record).
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref).filter((ref) => !ref.startsWith("web:"));
       if (profileParts.has(part.localId)) {
@@ -264,7 +276,7 @@ export function answerNode(scope: NodeScope): GraphNode {
       // AG08 (AE-UND-006): nothing was read, so a count of the user's records has no source unless the user said it.
       const plainCounts = plain ? unsourcedCounts(plain, numbersIn([input.message, ...(run.context?.messages ?? []).map((message) => message.text)])) : [];
       if (plainCounts.length) emitTrace({ counts: plainCounts, parts: due.map((part) => part.localId), type: "answer.unsourced_counts_dropped" });
-      const reply = plain ? withoutUnsourcedCounts(plain, plainCounts) : plain;
+      const reply = plain ? withoutFalseClaims(withoutUnsourcedCounts(plain, plainCounts), due.map((part) => part.localId), run.topicMatched) : plain;
       if (reply) {
         run.answers.set(due[0].localId, localizeAnswerDates(reply, state.language));
         emitTrace({ note: "plain chat: the first layer's reply is shown, no second call", parts: due.map((part) => part.localId), type: "answer.plain_reply" });
@@ -322,7 +334,7 @@ export function answerNode(scope: NodeScope): GraphNode {
         // AG09 (AG08 交接 2): a discussion read nothing, so no sentence may say how many records it saw.
         const seen = withoutWrongSeenCounts(withoutUnsourcedCounts(withoutUnsourcedDates(text, unsourced), uncounted), new Set());
         if (seen.dropped.length) emitTrace({ coverage: [], dropped: seen.dropped, partId: part.localId, type: "answer.seen_counts_dropped" });
-        run.answers.set(part.localId, localizeAnswerDates(seen.text, state.language));
+        run.answers.set(part.localId, localizeAnswerDates(withoutFalseClaims(seen.text, [part.localId], run.topicMatched), state.language));
         continue;
       }
       const budgetOut = result.ok === false && result.reason === "budget";

@@ -309,12 +309,13 @@ function writeAnswer(input: { domain: Domain; language: Language; basis: string 
         : (language === "en" ? `the overlap of ${topic} with each contact's industry, company, role and notes` : language === "ja" ? `${topic}と連絡先の業種・会社・役職・メモの重なり` : `${topic}和联系人行业、机构、职位、备注的重合`);
     // run-02: the same scope, topic and coverage as a matched answer — what was meant, how many there were, that none
     // was looked at closely — so an answer without the judgment says as much as one with it.
-    const intended = topic ? (language === "en" ? ` by ${topic}` : language === "ja" ? `、${topic}に合うものを` : `，按${topic}这个主题挑`) : "";
+    // AG10 opening item (AG08 交接 1): the lead says what was asked for and that the topic match was not done — never
+    // "picked by the topic" — in the same sentence, so no sentence of it claims a topic ranking.
     lines.push(language === "en"
-      ? `From ${scope}${intended}: this time no topic matching was done (${why}), so none of the ${afterHardConditions} ${noun} was looked at closely; the order below is by record fields only: ${order}. It does not mean nothing fits. ${n} ${unit}:`
+      ? `${topic ? `You asked for ${noun} from ${scope} that fit ${topic}, but no topic matching was done this time` : `From ${scope}: no topic matching was done this time`} (${why}), so none of the ${afterHardConditions} ${noun} was looked at closely; the order below is by record fields only: ${order}. It does not mean nothing fits. ${n} ${unit}:`
       : language === "ja"
-        ? `${scope}（全部で${afterHardConditions}${unit}）${intended ? `${intended}選ぼうとしましたが` : "について"}、今回はテーマとの照合をしていません（${why}）。詳しく見たものはなく、以下は記録の項目だけで並べた順です：${order}。合うものがないという意味ではありません。${n}${unit}：`
-        : `在${scope}里（共${afterHardConditions}${unit}）${intended}。这次没有做主题匹配（${why}），${afterHardConditions}${unit}都没有细看，下面的顺序只按记录里的字段排：${order}。这不代表没有合适的。列出${n}${unit}：`);
+        ? `${scope}（全部で${afterHardConditions}${unit}）${topic ? `から${topic}に合うものを、というご依頼ですが` : "について"}、今回はテーマとの照合をしていません（${why}）。詳しく見たものはなく、以下は記録の項目だけで並べた順です：${order}。合うものがないという意味ではありません。${n}${unit}：`
+        : `在${scope}里（共${afterHardConditions}${unit}）${topic ? `，你要的是和${topic}相关的，但这次没有做主题匹配` : "，这次没有做主题匹配"}（${why}），${afterHardConditions}${unit}都没有细看，下面的顺序只按记录里的字段排：${order}。这不代表没有合适的。列出${n}${unit}：`);
   } else {
     const total = result.coverage.afterHardConditions;
     lines.push(language === "en"
@@ -444,6 +445,7 @@ export function functionsNode(scope: NodeScope): GraphNode {
         });
         const written = writeAnswer({ basis, basisMemo, direction, domain, field, language, period: domain === "event" ? { ...(part.plan.readFilter?.from ? { from: part.plan.readFilter.from } : {}), ...(part.plan.readFilter?.to ? { to: part.plan.readFilter.to } : {}) } : null, result, timeZone, within: withinWords });
         run.answers.set(part.localId, written.text);
+        if (result.semantic && result.matched) run.topicMatched = true;
         part.cites = written.cites;
         part.reads = result.ordered.map((item) => ({ ref: item.candidate.view.ref, version: item.candidate.view.version }));
         part.coverage = [{ complete: result.coverage.truncated === 0, kind: domain, pagesRead: Math.max(1, Math.ceil(result.coverage.total / PAGE)), seen: result.semantic && result.matched ? result.coverage.judged : result.ordered.length, total: result.coverage.afterHardConditions }];

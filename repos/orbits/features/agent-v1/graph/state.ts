@@ -230,4 +230,6 @@ export interface AgentGraphRun {
   webQuestions: Map<string, string>;
   /** AG09: URLs the answer may name (the user's, those searched and opened in this request). */
   webUrls: Set<string>;
+  /** AG10 (AG08 交接 1): a ranking of this turn matched candidates to a topic (the judgment answered); only then may a model sentence say so. */
+  topicMatched: boolean;
 }

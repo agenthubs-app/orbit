@@ -74,7 +74,8 @@ test("AE-JDG-001, judgment unavailable: one main model call, one request of at m
   assert.equal(result.status, "completed");
   assert.match(result.text, /共122位/u, "how many there were");
   assert.match(result.text, /122位都没有细看/u, "how many were not looked at closely");
-  assert.match(result.text, /按「聊独立出版」这个主题挑/u);
+  // AG10 opening item (AG08 交接 1): what was asked for is said, never "picked by the topic" when no match was done.
+  assert.match(result.text, /你要的是和「聊独立出版」相关的，但这次没有做主题匹配/u);
   assert.match(result.text, /这次没有做主题匹配/u);
 });
 

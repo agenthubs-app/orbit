@@ -164,6 +164,7 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     webDone: new Set(),
     webQuestions: new Map(),
     webUrls: new Set(),
+    topicMatched: false,
   };
 }
 
