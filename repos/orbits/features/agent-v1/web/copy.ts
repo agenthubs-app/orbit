@@ -62,6 +62,10 @@ export const WEB_WORDS = {
     `今回は元のページを開いて確かめられませんでした。今回の調査回数（検索2回・ページ2件まで）を使い切ったためです。${found ? `見つかったページは「${found.title}」 ${found.url} です。検索結果の要約は確認済みの内容ではありません。` : ""}`,
     `I could not open the page to check it this time, because this request's lookups are used up (at most 2 searches and 2 pages).${found ? ` The page found is "${found.title}" ${found.url}; a search snippet is not a checked fact.` : ""}`),
   noUrl: (language: WebLanguage, quote: string) => said(language, quote) + pick(language, "这个链接不能打开（只读公开的 http/https 网页，链接要原样来自你这次的话或这次的搜索结果）。", "このリンクは開けません（公開の http/https ページで、今回の発言か今回の検索結果にあるリンクだけを開きます）。", "this link can't be opened (only public http/https pages, exactly as given in your message or found by this search)."),
+  saveNotYet: (language: WebLanguage, quote: string) => said(language, quote) + pick(language,
+    "把网上查到的内容存成记录，目前还做不到，所以没有出卡，也没有改动任何记录。",
+    "ネットで調べた内容を記録として保存することはまだできないため、カードは出しておらず、記録も変えていません。",
+    "saving what was found on the web as a record is not available yet, so no card was made and nothing was changed."),
   sources: (language: WebLanguage, queries: readonly string[], pages: readonly { title: string; url: string; date: string | null }[]) => {
     const q = queries.map((query) => pick(language, `「${query}」`, `「${query}」`, `"${query}"`)).join(pick(language, "、", "、", ", "));
     const p = pages.map((page) => `${page.title ? pick(language, `《${page.title}》`, `『${page.title}』`, `"${page.title}"`) : ""} ${page.url}${page.date ? pick(language, `（页面日期 ${page.date}）`, `（ページの日付 ${page.date}）`, ` (page date ${page.date})`) : ""}`.trim()).join(pick(language, "；", "；", "; "));

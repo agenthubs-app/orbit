@@ -204,3 +204,30 @@ test("AE-SCL-015: notes compared with a web lookup of the same message are searc
     trace.restore();
   }
 });
+
+test("AE-WEB-006 variant: the first layer gave no usable quote — the @ person is still what is looked up, shown before it is sent", async () => {
+  const message = "上网查查 @小林 现在的公开职务。";
+  const { kit, tools } = setup({ understand: () => json({ parts: [part({ dataSources: ["public_web"], requiredCapabilities: ["web.search"], sourceQuote: message, webTarget: { qualifiers: ["current", "role"], quote: "小林健" } })], plainChat: false }) }, { references: [{ id: "contact:c17", name: "小林健", type: "contact" }] });
+  const first = await runAgentGraph(kit.deps, kit.input(message, { references: [{ id: "contact:c17", type: "contact" }] }));
+  assert.equal(tools.calls.length, 0);
+  assert.match(first.text, /「小林健 最新 职务」/u);
+  assert.deepEqual(first.clarifications[0]?.options.map((option) => option.optionId), ["send_query", "skip_query"]);
+});
+
+test("AE-UND-010: a change that needs a web page's result makes no card in this version; code says so", async () => {
+  const message = "再读一下 Acme Cloud 的官网价格页 https://acme-cloud.example.test/pricing ，把它现在的标价和我笔记里的差异存成一条笔记。";
+  const { kit, tools } = setup({
+    answer: (call) => json({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: handle(call, /(w\d+) — public web page/u) }], partId: "p1", text: "标准版每席每月 1,300 日元。" }] }),
+    understand: () => json({ parts: [
+      part({ dataSources: ["public_web"], localId: "p1", requiredCapabilities: ["web.fetch"], sourceQuote: "再读一下 Acme Cloud 的官网价格页 https://acme-cloud.example.test/pricing ，" }),
+      part({ deliverable: "change", dependsOn: ["p1"], localId: "p2", requiredCapabilities: ["memo.create"], sourceQuote: "把它现在的标价和我笔记里的差异存成一条笔记。" }),
+    ], plainChat: false }),
+  });
+  kit.deps.cards = { freeze: async () => { throw new Error("no card may be frozen"); } };
+  const result = await runAgentGraph(kit.deps, kit.input(message));
+  assert.deepEqual(tools.calls.map((call) => call.kind), ["fetch"]);
+  assert.equal(result.actionPreview, null);
+  assert.match(result.text, /1,300/u);
+  assert.match(result.text, /目前还做不到，所以没有出卡/u);
+  assert.equal(result.partResults.find((item) => item.partId === "p2")?.reason, "web_save_not_in_this_version");
+});

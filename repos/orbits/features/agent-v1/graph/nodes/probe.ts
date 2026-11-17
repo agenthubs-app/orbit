@@ -199,7 +199,11 @@ export function probeNode(scope: NodeScope): GraphNode {
         continue;
       }
       const target = part.plan.webTarget;
-      const targetQuote = target?.quote ? message.slice(target.quote[0], target.quote[1]) : "";
+      // AG09 stability run (AE-WEB-006): a web.search part whose words point at a person only with an @ reference ("上网查查
+      // @小林 …") looks up that person when the first layer gave no usable quote; the name comes from the record, so the
+      // query is shown before it is sent (rule 4).
+      const ownMention = mentionsOf(message, run.references).find((mention) => quote.includes(mention.quote));
+      const targetQuote = target?.quote ? message.slice(target.quote[0], target.quote[1]) : part.capabilities.includes("web.search") && ownMention ? ownMention.quote : "";
       if (!targetQuote) {
         // A part that builds on another part of this request that looks up the web (a comparison with the page the user gave)
         // has nothing of its own to look up: it is answered from that part's page, with no line of its own.
@@ -223,7 +227,7 @@ export function probeNode(scope: NodeScope): GraphNode {
       let candidate: QueryCandidate | null = null;
       if (part.web?.confirmed && pending) candidate = { builtBy: "code", needsConfirmation: true, partId: part.localId, text: pending.text, tokens: pending.tokens };
       else {
-        const built = buildQuery({ language, message, partId: part.localId, references: mentions, target: { qualifiers: (qualifiersOf.get(targetOf(part)) ?? target!.qualifiers) as QualifierCode[], quote: atMention ? atMention.quote : targetQuote } satisfies WebTarget });
+        const built = buildQuery({ language, message, partId: part.localId, references: mentions, target: { qualifiers: (qualifiersOf.get(targetOf(part)) ?? target?.qualifiers ?? []) as QualifierCode[], quote: atMention ? atMention.quote : targetQuote } satisfies WebTarget });
         if (built.ok === false) {
           // The object is named only through the user's records: nothing is built from them (rule 2).
           const rules = built.reason === "private_pointer" || built.reason === "not_in_message" ? [2] : [];
@@ -374,6 +378,18 @@ export function probeNode(scope: NodeScope): GraphNode {
         }
         for (const index of pick.open) if ((await openPage(item.part, results[index].url)) === "stop") break;
       }
+    }
+
+    // AG09 (PLANNER 排除范围; AE-UND-010): saving what a web page says as a record is not in this version — a change that
+    // needs a web part's result makes no card; code says so (a later sprint adds the save card with its own check).
+    for (const part of parts) {
+      if (part.route !== "propose_write" || part.reason !== "proposing") continue;
+      // Only when the web part read something: a web part that could not look anything up leaves the change waiting for it.
+      if (!part.dependsOn.some((id) => { const other = parts.find((item) => item.localId === id); return Boolean(other && needsWeb(other) && run.materials.get(other.localId)?.some((material) => material.kind === "web")); })) continue;
+      part.status = "unfinished";
+      part.reason = "web_save_not_in_this_version";
+      run.writeLines.set(part.localId, WEB_WORDS.saveNotYet(language, quoteOf(message, part)));
+      emitTrace({ partId: part.localId, reason: "a change built on a web result: not offered yet", type: "web.save_not_offered" });
     }
 
     // AG09 stability run (AE-WEB-012): a web part that could not look anything up (switched off, blocked, nothing

@@ -336,6 +336,13 @@ outbound.extra:
   - { id: ox-zh-27, language: zh, group: dev, label: no, message: "Borealis 官网现在的起步版价格是多少，和我笔记里记的比一下。", query: "Borealis 官网 价格 最新" }
   - { id: ox-zh-28, language: zh, group: dev, label: no, message: "看看东都映画现在有哪些产品和最新新闻。", query: "东都映画 产品 最新 新闻" }
   - { id: ox-zh-29, language: zh, group: dev, label: no, message: "查查 Cirrus Works 官网上现在的公司简介。", query: "Cirrus Works 官网 简介 最新" }
+  # 2026-11-17 稳定性运行之后补：按代码实际拼出的样子（名称加三四个限定词），名称取夹具里不在门槛检索词中的公司。
+  - { id: ox-zh-30, language: zh, group: dev, label: no, message: "查一下 Kasumi Box 官网上 S 号箱现在卖多少钱。", query: "Kasumi Box 官网 价格 产品" }
+  - { id: ox-zh-31, language: zh, group: dev, label: no, message: "北辰软件官网上现在的产品价格是多少？", query: "北辰软件 官网 价格 产品 最新" }
+  - { id: ox-zh-32, language: zh, group: dev, label: no, message: "远帆物流官网现在的运价怎么收？", query: "远帆物流 官网 价格 最新" }
+  - { id: ox-zh-33, language: zh, group: dev, label: no, message: "山手出版现在的社长是谁，官网上有简介吗？", query: "山手出版 官网 简介 最新 职务" }
+  - { id: ox-zh-34, language: zh, group: dev, label: no, message: "看看白杨出版社官网上最新的产品和价格。", query: "白杨出版社 官网 产品 价格 最新" }
+  - { id: ox-zh-35, language: zh, group: dev, label: no, message: "长桥资本官网有公司简介和新闻吗？", query: "长桥资本 官网 公司 简介 新闻" }
   - { id: ox-zh-23, language: zh, group: val, label: no, message: "查一下 Lumen ATS 官网的 Team 版价格。", query: "Lumen ATS 官网 价格" }
   - { id: ox-zh-24, language: zh, group: val, label: no, message: "雪松学堂现在开哪些课？", query: "雪松学堂 产品" }
   - { id: ox-zh-25, language: zh, group: val, label: yes, message: "冯明轩跟我说他们学堂快撑不下去了，查查雪松学堂最近的新闻。", query: "雪松学堂 撑不下去 新闻" }
@@ -366,6 +373,13 @@ outbound.extra:
   - { id: ox-ja-27, language: ja, group: dev, label: no, message: "Borealis の公式サイトで今の料金を調べて、メモの金額と比べて。", query: "Borealis 公式サイト 料金 現在" }
   - { id: ox-ja-28, language: ja, group: dev, label: no, message: "東都映画の最近のニュースと製品を見たい。", query: "東都映画 製品 ニュース" }
   - { id: ox-ja-29, language: ja, group: dev, label: no, message: "相模メカトロの公式サイトで会社概要を確認して。", query: "相模メカトロ 公式サイト 会社 プロフィール" }
+  # 2026-11-17 稳定性运行之后补（同上）。
+  - { id: ox-ja-30, language: ja, group: dev, label: no, message: "Kasumi Box の公式サイトで S サイズの箱の今の料金を調べて。", query: "Kasumi Box 公式サイト 料金 製品" }
+  - { id: ox-ja-31, language: ja, group: dev, label: no, message: "東都精機の公式サイトで今の製品と料金を確認して。", query: "東都精機 公式サイト 製品 料金 現在" }
+  - { id: ox-ja-32, language: ja, group: dev, label: no, message: "相模メカトロの現在の社長と会社概要を調べて。", query: "相模メカトロ 現在 役職 会社 プロフィール" }
+  - { id: ox-ja-33, language: ja, group: dev, label: no, message: "山手出版の公式サイトの最新ニュースを見たい。", query: "山手出版 公式サイト ニュース 現在" }
+  - { id: ox-ja-34, language: ja, group: dev, label: no, message: "青葉デザインの公式サイトで製品と料金を確認して。", query: "青葉デザイン 公式サイト 製品 料金" }
+  - { id: ox-ja-35, language: ja, group: dev, label: no, message: "東和商事の会社概要と最近のニュースを調べて。", query: "東和商事 会社 プロフィール ニュース" }
   - { id: ox-ja-23, language: ja, group: val, label: no, message: "東和商事の最新ニュースを調べて。", query: "東和商事 ニュース" }
   - { id: ox-ja-24, language: ja, group: val, label: no, message: "青葉デザインの公式サイトはどこ？", query: "青葉デザイン 公式サイト" }
   - { id: ox-ja-25, language: ja, group: val, label: yes, message: "山本直子さんが退職するらしいので、山手出版の現在の編集長を調べて。", query: "山本直子 退職するらしい 山手出版 現在" }
@@ -396,6 +410,13 @@ outbound.extra:
   - { id: ox-en-27, language: en, group: dev, label: no, message: "Check Borealis official pricing now and compare it with my note.", query: "Borealis official site pricing current" }
   - { id: ox-en-28, language: en, group: dev, label: no, message: "Find Straits Silicon products and recent news.", query: "Straits Silicon product news" }
   - { id: ox-en-29, language: en, group: dev, label: no, message: "Look up Harbor Analytics official site and current company profile.", query: "Harbor Analytics official site company profile current" }
+  # 2026-11-17, after the stability runs (as above).
+  - { id: ox-en-30, language: en, group: dev, label: no, message: "What does Kasumi Box charge for its S box on the official site now?", query: "Kasumi Box official site pricing product current" }
+  - { id: ox-en-31, language: en, group: dev, label: no, message: "Check Straits Silicon's official site for current products and pricing.", query: "Straits Silicon official site product pricing current" }
+  - { id: ox-en-32, language: en, group: dev, label: no, message: "Who leads Meridian Power Devices now? Find their company profile.", query: "Meridian Power Devices current role company profile" }
+  - { id: ox-en-33, language: en, group: dev, label: no, message: "Find Lioncity Freight's official site, latest news and pricing.", query: "Lioncity Freight official site news pricing" }
+  - { id: ox-en-34, language: en, group: dev, label: no, message: "What products does Kestrel Microsystems list on its official site?", query: "Kestrel Microsystems official site product" }
+  - { id: ox-en-35, language: en, group: dev, label: no, message: "Look up Harbor Analytics' current pricing and product news.", query: "Harbor Analytics pricing product news current" }
   - { id: ox-en-23, language: en, group: val, label: no, message: "Look up Lioncity Freight's company profile.", query: "Lioncity Freight company profile" }
   - { id: ox-en-24, language: en, group: val, label: no, message: "What is Grace Lim's current role?", query: "Grace Lim current role" }
   - { id: ox-en-25, language: en, group: val, label: yes, message: "Aaron Tang said he hates his boss; find Lioncity Freight's news.", query: "Aaron Tang hates his boss Lioncity Freight news" }
