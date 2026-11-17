@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { exactCountsIn, withoutPartialCounts } from "../../features/agent-v1/answer/counts";
 import { optionsFor } from "../../features/agent-v1/clarify/options";
 import { runAgentGraph } from "../../features/agent-v1/graph/build";
 import { bareNameOf } from "../../features/agent-v1/graph/nodes/understand";
@@ -64,4 +65,26 @@ test("AE-AMB-001: a bare word that is not a name keeps the generic directions", 
   } finally {
     trace.restore();
   }
+});
+
+test("AE-RD-005: split 'only … once' forms are exact counts (zh, ja, en); 'not only' and '不只' are not", () => {
+  assert.deepEqual(exactCountsIn("这个月只记到 11 月 10 日这一次：小林健给你打电话。"), [1]);
+  assert.deepEqual(exactCountsIn("只有 11 月 10 日那一条。"), [1]);
+  assert.deepEqual(exactCountsIn("今月の記録は11月10日だけで、一回です。"), [1]);
+  assert.deepEqual(exactCountsIn("You only spoke on Nov 10, once."), [1]);
+  assert.deepEqual(exactCountsIn("You only have one call this month, on Nov 10."), [1]);
+  assert.deepEqual(exactCountsIn("他不只一次提到报价。"), []);
+  assert.deepEqual(exactCountsIn("Not only did he call once, he also wrote."), []);
+});
+
+test("AE-RD-005: a partial read neutralizes the split forms; the content stays", () => {
+  const lead = withoutPartialCounts("这个月只记到 11 月 10 日这一次：小林健给你打电话，说小陈在审核；你答应 11 月 13 日给小林发报价。", "zh", new Set());
+  assert.equal(lead.text, "读得到的记录里：小林健给你打电话，说小陈在审核；你答应 11 月 13 日给小林发报价。");
+  const plain = withoutPartialCounts("这个月只有 11 月 10 日那一条。", "zh", new Set());
+  assert.doesNotMatch(plain.text, /只|一条/u);
+  assert.match(plain.text, /11 月 10 日/u);
+  assert.equal(exactCountsIn(withoutPartialCounts("今月の記録は11月10日だけで、一回です。電話がありました。", "ja", new Set()).text).length, 0);
+  assert.equal(withoutPartialCounts("You only spoke on Nov 10, once. He called about the quote.", "en", new Set()).text, "He called about the quote.");
+  // A total the read itself gave stays.
+  assert.match(withoutPartialCounts("只有 11 月 10 日那一条。", "zh", new Set([1])).text, /只有 11 月 10 日那一条/u);
 });
