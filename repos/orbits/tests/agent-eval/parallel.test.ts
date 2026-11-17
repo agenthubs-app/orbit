@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { buildEvalEnvironment } from "./lib/env-guard";
 import { CaseQueue, cleanupWorkerSync, inSelectionOrder, prepareWorkerDatabase, rateLimitedResponses, WorkerPool } from "./lib/parallel";
+import { withRestoreLock } from "./lib/snapshot";
 
 /**
  * harness/eval-parallel-workers: `agent-eval:run -- --workers N`. The queue, the merge order, the bounded
@@ -123,6 +126,37 @@ test("the pool runs every case once from one queue, retries a rate-limited case,
     if (workerTwoCases.length) assert.ok(settled.problems.some((problem) => problem.includes("worker 2 had exited")));
   } finally {
     pool.kill();
+    fs.rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("snapshot restores take turns under the restore lock; a lock left by a dead process is taken over; no lock, no waiting", async () => {
+  assert.equal(withRestoreLock(() => 7, undefined), 7);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-eval-restore-lock-"));
+  const lock = path.join(dir, "restore.lock");
+  try {
+    fs.writeFileSync(lock, "999999");
+    assert.equal(withRestoreLock(() => fs.readFileSync(lock, "utf8"), lock), String(process.pid));
+    assert.equal(fs.existsSync(lock), false, "released after use");
+    const snapshotModule = path.join(path.dirname(fileURLToPath(import.meta.url)), "lib", "snapshot.ts");
+    const holder = (index: number) => `
+      import(${JSON.stringify(snapshotModule)}).then((module) => {
+        const withRestoreLock = module.withRestoreLock ?? module.default.withRestoreLock;
+        const fs = require("node:fs");
+        withRestoreLock(() => {
+          const start = Date.now();
+          Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 150);
+          fs.appendFileSync(${JSON.stringify(path.join(dir, "intervals"))}, JSON.stringify([start, Date.now(), ${index}]) + "\\n");
+        }, ${JSON.stringify(lock)});
+      });`;
+    await Promise.all([0, 1, 2].map((index) => new Promise<void>((resolve, reject) => {
+      const child = spawn(process.execPath, ["--import", "tsx", "-e", holder(index)], { stdio: "inherit" });
+      child.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`holder ${index} exited ${code}`))));
+    })));
+    const intervals = fs.readFileSync(path.join(dir, "intervals"), "utf8").trim().split("\n").map((line) => JSON.parse(line) as [number, number, number]).sort((a, b) => a[0] - b[0]);
+    assert.equal(intervals.length, 3);
+    for (let index = 1; index < intervals.length; index += 1) assert.ok(intervals[index][0] >= intervals[index - 1][1], "no two restores at once");
+  } finally {
     fs.rmSync(dir, { force: true, recursive: true });
   }
 });

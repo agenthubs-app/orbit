@@ -24,7 +24,7 @@ import type { CaseOutcome } from "./runner";
 import type { CheckResult } from "./hard-checks";
 import type { SelfCheckResult } from "./selfcheck";
 import { serverControl, startServer } from "./server";
-import { databaseArgs, restoreSnapshot } from "./snapshot";
+import { databaseArgs, RESTORE_LOCK_ENV, restoreSnapshot } from "./snapshot";
 import type { TraceEvent } from "./trace-log";
 
 export const WORKER_SCRIPT = path.join(ORBITS_ROOT, "scripts", "agent-eval", "worker.ts");
@@ -186,6 +186,8 @@ export interface WorkerServer {
  */
 export async function prepareWorkers(main: EvalEnvironment, count: number, snapshotFile: string, log: (line: string) => void): Promise<{ environments: EvalEnvironment[]; servers: WorkerServer[] }> {
   const environments = [main, ...Array.from({ length: count - 1 }, (_, index) => loadEvalEnvironment({ worker: index + 2 }))];
+  // The workers (forked after this, so they inherit it) and this process take turns restoring snapshots.
+  process.env[RESTORE_LOCK_ENV] = path.join(evalPaths(main.env).envDir, "restore.lock");
   const leftovers = new Set(listWorkerDatabases(main).map((name) => Number(name.slice(name.lastIndexOf("_w") + 2))));
   for (let worker = 2; worker <= MAX_EVAL_WORKERS; worker += 1) {
     if (leftovers.has(worker) || fs.existsSync(evalPaths({ ...main.env, ORBIT_AGENT_EVAL_WORKER: String(worker) }).stateFile)) {

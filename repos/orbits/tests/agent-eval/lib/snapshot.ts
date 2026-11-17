@@ -41,11 +41,64 @@ export function dumpSnapshot(url: string, file: string): string {
   return sha256(fs.readFileSync(file));
 }
 
+/**
+ * harness/eval-parallel-workers: with --workers N the parent sets this to a lock file. One restore drops and
+ * recreates every table in a single transaction, and four at once ran the local Postgres out of lock slots
+ * ("out of shared memory", max_locks_per_transaction 64), so the workers' restores take turns. Unset (a
+ * sequential run) nothing changes.
+ */
+export const RESTORE_LOCK_ENV = "ORBIT_AGENT_EVAL_RESTORE_LOCK";
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Run `fn` holding the restore lock named by $ORBIT_AGENT_EVAL_RESTORE_LOCK (a holder that died is taken over). */
+export function withRestoreLock<T>(fn: () => T, lockFile = process.env[RESTORE_LOCK_ENV]): T {
+  if (!lockFile) return fn();
+  const deadline = Date.now() + 180_000;
+  for (;;) {
+    try {
+      fs.writeFileSync(lockFile, String(process.pid), { flag: "wx" });
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      let holder = 0;
+      try {
+        holder = Number(fs.readFileSync(lockFile, "utf8").trim() || 0);
+      } catch {
+        continue; // released in between
+      }
+      if (holder && !alive(holder)) fs.rmSync(lockFile, { force: true });
+      else if (Date.now() > deadline) throw new Error(`waited 180 s for the snapshot restore lock ${lockFile} (held by pid ${holder})`);
+      else sleepSync(25);
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    try {
+      if (fs.readFileSync(lockFile, "utf8").trim() === String(process.pid)) fs.rmSync(lockFile, { force: true });
+    } catch {
+      // already gone
+    }
+  }
+}
+
 /** Restore in place, so a running server keeps its pool; every table is dropped and recreated in one transaction. */
 export function restoreSnapshot(url: string, file: string): void {
   if (!fs.existsSync(file)) throw new Error(`Snapshot ${file} is missing; run npm run agent-eval:seed first.`);
   const { args, name } = databaseArgs(url);
-  run("pg_restore", [...args, "--clean", "--if-exists", "--no-owner", "--single-transaction", "-d", name, file]);
+  withRestoreLock(() => run("pg_restore", [...args, "--clean", "--if-exists", "--no-owner", "--single-transaction", "-d", name, file]));
 }
 
 export interface RecordRow {
