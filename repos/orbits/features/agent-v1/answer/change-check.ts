@@ -24,6 +24,11 @@ const CHANGE_WORDS = /作废|取消|不算了|改为|改成|改到|延后|推迟
 /** Words that cancel or void a value: they say what changed, never why (AE-SCL-006 on 7ab2350). */
 const VOID_WORDS = /作废|作廃|無効|取り消|不算|不作数|\bcancel(?:l?ed)?\b|\bvoid\b|no longer (?:valid|holds|stands)/iu;
 
+/** Words before an earlier value that say it is the earlier one (zh, ja, en). */
+const LEAD_IN = /^(?:之前说的是?|之前说|之前的?|原先说的|原先的?|原来说的|原来的?|以前说的|以前的?|先前的?|前に言っていた|以前は|当初の?|previously(?: said)?|earlier|the earlier|originally|before)\s*[:：]?\s*/iu;
+/** Words after it that cancel it ("作废", "无效"). */
+const TRAIL_OFF = /\s*(?:已?作废|无效|取消了?|は無効|は取り消し|was cancelled|is void)$/iu;
+
 const squash = (text: string) => text.replace(/\s+/gu, "").toLowerCase();
 const textOf = (material: Material) => material.sentences.map((sentence) => sentence.text).join("");
 const dated = (material: Material) => material.kind !== "contact" && Boolean(material.at);
@@ -46,7 +51,8 @@ export function verifyChangeReasons(raw: unknown, materials: readonly Material[]
     const source = typeof entry?.source === "string" ? byHandle.get(entry.source.trim()) : undefined;
     const older = typeof entry?.older === "string" ? byHandle.get(entry.older.trim()) : undefined;
     const reason = typeof entry?.reason === "string" ? entry.reason.trim().replace(/[。.，,、;；]+$/u, "") : "";
-    const before = typeof entry?.before === "string" ? entry.before.trim().replace(/[。.，,、;；]+$/u, "") : "";
+    // Only the value: the words around it ("之前说的", "previously") are code's to say (run-02 gate, 663fa96).
+    const before = typeof entry?.before === "string" ? entry.before.trim().replace(/[。.，,、;；]+$/u, "").replace(LEAD_IN, "").replace(TRAIL_OFF, "").trim() : "";
     if (!source || !older || !dated(source) || !dated(older) || source === older) {
       problems.push(`changes entry ${name}: "source" and "older" must be two dated records of these materials`);
       continue;

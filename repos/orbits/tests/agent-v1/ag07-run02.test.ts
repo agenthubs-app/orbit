@@ -47,6 +47,12 @@ test("1 AE-SCL-006: code's line states the earlier value from the superseding no
   assert.match(changeReasonLine("en", checked.changes, "…", "Asia/Tokyo")!, /earlier: 12 月 1 日|Dec 1|12月1日/u);
   // The earlier value must be the superseding note's own words.
   assert.equal(verifyChangeReasons([{ before: "12 月 15 日", older: "s3", reason: "项目交接延后", source: "s2" }], [LM02, LM01]).changes.length, 0);
+  // run-02 gate (663fa96): the model gave "之前说的 12 月 1 日"; code keeps only the value, never "之前说的是之前说的…".
+  const wordy = verifyChangeReasons([{ before: "之前说的 12 月 1 日", older: "s3", reason: "项目交接延后", source: "s2" }], [LM02, LM01]);
+  const wordyLine = changeReasonLine("zh", wordy.changes, "张伟最快1月5日能到岗。", "Asia/Tokyo")!;
+  assert.match(wordyLine, /（之前说的是12月1日；/u, wordyLine);
+  assert.doesNotMatch(wordyLine, /之前说的是之前/u);
+  assert.equal(verifyChangeReasons([{ before: "previously Dec 1", older: "s3", reason: "", source: "s2" }], [material("s2", "X2", "2026-11-09T09:30:00.000Z", "Emily called: previously Dec 1, now Jan 5 because the handover slipped."), LM01]).changes[0]?.before, "Dec 1");
   // Said in the answer already (value and reason): nothing added.
   assert.equal(changeReasonLine("zh", checked.changes, "之前说的12月1日作废了，因为项目交接延后。", "Asia/Tokyo"), null);
 });
