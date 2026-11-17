@@ -9,7 +9,10 @@
  *   seedMeetingSlots         the first free slot of each of the next days, up to 3
  *                            (only slots confirmed free: availability complete and
  *                            not busy, with the buffer around busy time).
+ *   sliceMeetingCandidates   painted ranges → non-overlapping candidates of one
+ *                            meeting length (R43 D4): sent (≤ max), extra, short.
  *   formatMeetingSlotsText   the paragraph inserted into an e-mail body (ja/zh/en).
+ *   formatMeetingRangesText  the same paragraph written as ranges (R43 D5).
  *   replaceMeetingSlotsText  put that paragraph into a body, replacing the one
  *                            inserted before and leaving everything else untouched.
  *
@@ -348,11 +351,14 @@ const EN_MEETING: Record<MeetingSlotMedium | "none", (minutes: number) => string
   phone: (minutes) => `a ${minutes}-minute phone call`,
   none: (minutes) => `a ${minutes}-minute meeting`,
 };
-/** The first line of an inserted paragraph, in any language (used to find it again). */
+/** The first line of an inserted paragraph, in any language (used to find it again): slots (R40) and ranges (R43). */
 const INTRO_PATTERNS = [
   /^以下の日時のいずれかで、.*お時間をいただけますでしょうか.*$/,
   /^以下时间您是否方便？.*$/,
   /^Would any of these times work for .*\?$/,
+  /^以下の時間帯のうち、.*お時間をいただけますでしょうか.*$/,
+  /^以下时间段里，任选.*您是否方便？.*$/,
+  /^Would any \d+ minutes within these times work for .*\?$/,
 ];
 const SLOT_LINE = /^(?:・|- )/;
 const CLOSING_PATTERNS = [
@@ -400,6 +406,81 @@ export function formatMeetingSlotsText(slots: readonly MeetingSlot[], input: {
   return [introLine(input.language, input.durationMinutes, input.medium ?? null), ...lines].join("\n");
 }
 
+const EN_RANGE_MEETING: Record<MeetingSlotMedium | "none", string> = {
+  video: "an online meeting",
+  in_person: "a meeting in person",
+  phone: "a phone call",
+  none: "a meeting",
+};
+
+function rangesIntroLine(language: MeetingSlotLanguage, minutes: number, medium: MeetingSlotMedium | null): string {
+  if (language === "ja") return `以下の時間帯のうち、${minutes} 分ほどお時間をいただけますでしょうか${medium ? `（${MEDIUM_LABEL.ja[medium]}）` : ""}。`;
+  if (language === "zh") return `以下时间段里，任选 ${minutes} 分钟您是否方便？${medium ? `（${MEDIUM_LABEL.zh[medium]}）` : ""}`;
+  return `Would any ${minutes} minutes within these times work for ${EN_RANGE_MEETING[medium ?? "none"]}?`;
+}
+
+/** A valid slot's [start, end] in milliseconds, or null. */
+function slotSpan(slot: MeetingSlot): [number, number] | null {
+  const start = parseTimestamp(slot.startsAt), end = parseTimestamp(slot.endsAt);
+  return Number.isFinite(start) && Number.isFinite(end) && end > start ? [start, end] : null;
+}
+
+export interface MeetingCandidateSlices {
+  /** The candidates that go out (at most `max`), in time order. */
+  sent: MeetingSlot[];
+  /** Candidates after the first `max`: drawn lighter, not sent. */
+  extra: MeetingSlot[];
+  /** Ranges shorter than one meeting: drawn as an outline, not sent. */
+  short: MeetingSlot[];
+}
+
+/**
+ * Painted ranges → candidates (R43 D4). Each range is cut from its start into
+ * non-overlapping pieces of `durationMinutes` (10:00–12:00 · 60 → 10:00, 11:00);
+ * a tail shorter than one meeting is dropped, a range shorter than one meeting is
+ * `short`. Candidates are numbered in time order across days; the first `max` (5)
+ * are `sent`, the rest `extra`. Invalid ranges are ignored.
+ */
+export function sliceMeetingCandidates(ranges: readonly MeetingSlot[], durationMinutes: number, max = 5): MeetingCandidateSlices {
+  const result: MeetingCandidateSlices = { sent: [], extra: [], short: [] };
+  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) return result;
+  const step = durationMinutes * MINUTE;
+  const spans = ranges.map(slotSpan).filter((span): span is [number, number] => span !== null).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  for (const [start, end] of spans) {
+    if (end - start < step) { result.short.push({ startsAt: isoTimestamp(start)!, endsAt: isoTimestamp(end)! }); continue; }
+    for (let at = start; at + step <= end; at += step) {
+      const slot = { startsAt: isoTimestamp(at)!, endsAt: isoTimestamp(at + step)! };
+      (result.sent.length < max ? result.sent : result.extra).push(slot);
+    }
+  }
+  return result;
+}
+
+/**
+ * The e-mail paragraph written as ranges (R43 D5): no cutting, no limit of 5; only
+ * ranges at least one meeting long are written. e.g.
+ *   以下の時間帯のうち、60 分ほどお時間をいただけますでしょうか（オンライン）。
+ *   ・11/18（水）09:00–11:00
+ * Lines read like formatMeetingSlotsText's. Empty string when nothing can be written.
+ */
+export function formatMeetingRangesText(ranges: readonly MeetingSlot[], input: {
+  language: MeetingSlotLanguage;
+  timeZone: string;
+  durationMinutes: number;
+  medium?: MeetingSlotMedium | null;
+}): string {
+  if (!isValidTimeZone(input.timeZone) || !Number.isFinite(input.durationMinutes) || input.durationMinutes <= 0) return "";
+  const step = input.durationMinutes * MINUTE;
+  const lines = ranges
+    .map((range) => ({ range, span: slotSpan(range) }))
+    .filter((item): item is { range: MeetingSlot; span: [number, number] } => item.span !== null && item.span[1] - item.span[0] >= step)
+    .sort((a, b) => a.span[0] - b.span[0])
+    .map((item) => slotLine(input.language, item.range, input.timeZone))
+    .filter((line): line is string => line !== null);
+  if (!lines.length) return "";
+  return [rangesIntroLine(input.language, input.durationMinutes, input.medium ?? null), ...lines].join("\n");
+}
+
 /** [first line, line after the last] of the inserted paragraph, or null. */
 function findInserted(lines: readonly string[]): [number, number] | null {
   for (let index = 0; index < lines.length; index++) {
@@ -412,7 +493,7 @@ function findInserted(lines: readonly string[]): [number, number] | null {
 }
 
 /**
- * Put `block` (from formatMeetingSlotsText) into an e-mail body:
+ * Put `block` (from formatMeetingSlotsText or formatMeetingRangesText) into an e-mail body:
  *   1. `previous` (the block inserted last time) found verbatim → replaced;
  *   2. otherwise a paragraph this function's format recognises (its first line
  *      followed by "・"/"- " lines) → replaced;

@@ -7,12 +7,14 @@ import {
   DEFAULT_SCHEDULING_AVAILABILITY,
   addLocalDays,
   availabilityGrid,
+  formatMeetingRangesText,
   formatMeetingSlotsText,
   isSlotAllowed,
   localDateOf,
   localWeekday,
   replaceMeetingSlotsText,
   seedMeetingSlots,
+  sliceMeetingCandidates,
   type MeetingBusyAvailability,
 } from "../../shared/compute/meeting-slots";
 
@@ -246,4 +248,94 @@ test("SC-R40-04 replaceMeetingSlotsText replaces only the inserted paragraph and
   assert.equal(replaceMeetingSlotsText("Hi Ken,\n\nGreat to meet you.\n\nBest regards,\nLi", en), `Hi Ken,\n\nGreat to meet you.\n\n${en}\n\nBest regards,\nLi`);
   // "$" in the new block is written literally.
   assert.equal(replaceMeetingSlotsText(`a\n${first}\nb`, "$& $1", { previous: first }), "a\n$& $1\nb");
+});
+
+// ---------- SC-R43-01: painted ranges → candidates, and ranges as e-mail text ----------
+
+const span = (from: string, to: string) => ({ startsAt: `${from}:00.000Z`, endsAt: `${to}:00.000Z` });
+
+test("SC-R43-01 sliceMeetingCandidates: whole pieces from each range start, tails and short ranges are not sent", () => {
+  // 10:00–12:00 · 60 → 10:00, 11:00 (divides evenly).
+  assert.deepEqual(sliceMeetingCandidates([span("2030-04-02T10:00", "2030-04-02T12:00")], 60), {
+    sent: [span("2030-04-02T10:00", "2030-04-02T11:00"), span("2030-04-02T11:00", "2030-04-02T12:00")], extra: [], short: [],
+  });
+  // 10:00–12:30 · 60 → the 30-minute tail is dropped; 10:00–11:30 · 90 → one piece.
+  assert.deepEqual(sliceMeetingCandidates([span("2030-04-02T10:00", "2030-04-02T12:30")], 60).sent.map((slot) => slot.startsAt), ["2030-04-02T10:00:00.000Z", "2030-04-02T11:00:00.000Z"]);
+  assert.deepEqual(sliceMeetingCandidates([span("2030-04-02T10:00", "2030-04-02T11:30")], 90).sent, [span("2030-04-02T10:00", "2030-04-02T11:30")]);
+  // A range shorter than one meeting is short, nothing is cut from it.
+  assert.deepEqual(sliceMeetingCandidates([span("2030-04-02T10:00", "2030-04-02T10:30"), span("2030-04-03T09:00", "2030-04-03T10:00")], 60), {
+    sent: [span("2030-04-03T09:00", "2030-04-03T10:00")], extra: [], short: [span("2030-04-02T10:00", "2030-04-02T10:30")],
+  });
+  // Changing the duration re-cuts the same ranges.
+  const ranges = [span("2030-04-02T10:00", "2030-04-02T12:00")];
+  assert.equal(sliceMeetingCandidates(ranges, 30).sent.length, 4);
+  assert.equal(sliceMeetingCandidates(ranges, 90).sent.length, 1);
+});
+
+test("SC-R43-01 sliceMeetingCandidates: numbered in time order across days, the 6th on is extra; invalid ranges ignored", () => {
+  const result = sliceMeetingCandidates([
+    span("2030-04-04T09:00", "2030-04-04T11:00"),
+    span("2030-04-02T14:00", "2030-04-02T16:00"),
+    { startsAt: "nope", endsAt: "2030-04-02T10:00:00.000Z" },
+    span("2030-04-03T10:00", "2030-04-03T12:00"),
+    span("2030-04-05T10:00", "2030-04-05T09:00"),
+  ], 60);
+  assert.deepEqual(result.sent.map((slot) => slot.startsAt), ["2030-04-02T14:00:00.000Z", "2030-04-02T15:00:00.000Z", "2030-04-03T10:00:00.000Z", "2030-04-03T11:00:00.000Z", "2030-04-04T09:00:00.000Z"]);
+  assert.deepEqual(result.extra, [span("2030-04-04T10:00", "2030-04-04T11:00")]);
+  assert.deepEqual(result.short, []);
+  assert.equal(sliceMeetingCandidates(result.sent, 60, 3).extra.length, 2, "max is a parameter");
+  assert.deepEqual(sliceMeetingCandidates(result.sent, 0), { sent: [], extra: [], short: [] });
+});
+
+const designRanges = [
+  { startsAt: "2026-11-20T05:00:00Z", endsAt: "2026-11-20T06:00:00Z" },
+  { startsAt: "2026-11-18T00:00:00Z", endsAt: "2026-11-18T02:00:00Z" },
+  { startsAt: "2026-11-19T01:00:00Z", endsAt: "2026-11-19T01:30:00Z" }, // shorter than 60 minutes: not written
+];
+
+test("SC-R43-01 formatMeetingRangesText in ja / zh / en: ranges, no cutting, only ranges at least one meeting long", () => {
+  assert.equal(formatMeetingRangesText(designRanges, { language: "ja", timeZone: "Asia/Tokyo", durationMinutes: 60, medium: "video" }), [
+    "以下の時間帯のうち、60 分ほどお時間をいただけますでしょうか（オンライン）。",
+    "・11/18（水）09:00–11:00",
+    "・11/20（金）14:00–15:00",
+  ].join("\n"));
+  assert.equal(formatMeetingRangesText(designRanges, { language: "zh", timeZone: "Asia/Tokyo", durationMinutes: 60, medium: "video" }), [
+    "以下时间段里，任选 60 分钟您是否方便？（线上）",
+    "・11/18（周三）09:00–11:00",
+    "・11/20（周五）14:00–15:00",
+  ].join("\n"));
+  assert.equal(formatMeetingRangesText(designRanges, { language: "en", timeZone: "Asia/Tokyo", durationMinutes: 60, medium: "phone" }), [
+    "Would any 60 minutes within these times work for a phone call?",
+    "- Wed, Nov 18, 09:00–11:00",
+    "- Fri, Nov 20, 14:00–15:00",
+  ].join("\n"));
+  assert.equal(formatMeetingRangesText(designRanges, { language: "en", timeZone: "Asia/Tokyo", durationMinutes: 30, medium: "in_person" }).split("\n")[0], "Would any 30 minutes within these times work for a meeting in person?");
+  assert.equal(formatMeetingRangesText(designRanges, { language: "en", timeZone: "Asia/Tokyo", durationMinutes: 30 }).split("\n").length, 4, "30 minutes: the short range is written too");
+  assert.equal(formatMeetingRangesText(designRanges, { language: "ja", timeZone: "Asia/Tokyo", durationMinutes: 60 }).split("\n")[0], "以下の時間帯のうち、60 分ほどお時間をいただけますでしょうか。");
+  assert.equal(formatMeetingRangesText(designRanges, { language: "zh", timeZone: "Asia/Tokyo", durationMinutes: 60, medium: null }).split("\n")[0], "以下时间段里，任选 60 分钟您是否方便？");
+  // Not cut, not limited to 5.
+  const many = Array.from({ length: 7 }, (_, index) => ({ startsAt: `2026-11-${18 + index}T00:00:00Z`, endsAt: `2026-11-${18 + index}T03:00:00Z` }));
+  assert.equal(formatMeetingRangesText(many, { language: "ja", timeZone: "Asia/Tokyo", durationMinutes: 60 }).split("\n").length, 8);
+  assert.equal(formatMeetingRangesText(designRanges.slice(2), { language: "ja", timeZone: "Asia/Tokyo", durationMinutes: 60 }), "");
+  assert.equal(formatMeetingRangesText(designRanges, { language: "ja", timeZone: "Not/AZone", durationMinutes: 60 }), "");
+});
+
+test("SC-R43-01 replaceMeetingSlotsText finds and replaces both the old slot paragraph and the new range paragraph", () => {
+  const template = "森さん、ご無沙汰しております。\n\nどうぞよろしくお願いいたします。";
+  const oldBlock = formatMeetingSlotsText(designSlots, { language: "ja", timeZone: "Asia/Tokyo", durationMinutes: 30, medium: "video" });
+  const newBlock = formatMeetingRangesText(designRanges, { language: "ja", timeZone: "Asia/Tokyo", durationMinutes: 60, medium: "video" });
+  // Old paragraph → new one (by previous text, and by shape without it).
+  const withOld = replaceMeetingSlotsText(template, oldBlock);
+  assert.equal(replaceMeetingSlotsText(withOld, newBlock, { previous: oldBlock }), withOld.replace(oldBlock, newBlock));
+  assert.equal(replaceMeetingSlotsText(withOld, newBlock), withOld.replace(oldBlock, newBlock));
+  // New paragraph → replaced again, hand edits around it stay; empty removes it.
+  const withNew = `追記です。\n${replaceMeetingSlotsText(template, newBlock)}`;
+  for (const language of ["ja", "zh", "en"] as const) {
+    const block = formatMeetingRangesText(designRanges, { language, timeZone: "Asia/Tokyo", durationMinutes: 60, medium: "phone" });
+    const body = `Hi,\n\n${block}\n\nBest regards,\nLi`;
+    assert.equal(replaceMeetingSlotsText(body, "X"), "Hi,\n\nX\n\nBest regards,\nLi", `${language} range paragraph is recognised by its shape`);
+  }
+  const again = formatMeetingRangesText(designRanges.slice(0, 1), { language: "ja", timeZone: "Asia/Tokyo", durationMinutes: 30 });
+  assert.equal(replaceMeetingSlotsText(withNew, again), withNew.replace(newBlock, again));
+  assert.equal(replaceMeetingSlotsText(withNew, ""), `追記です。\n${template}`);
 });
