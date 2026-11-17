@@ -149,6 +149,13 @@ export function routeNode(scope: NodeScope): GraphNode {
         if (entry) decision.step = { ...decision.step, entry: entry.entry, reviewed: entry.reviewed };
       }
       if (unboundPronoun(part)) emitTrace({ partId: part.localId, reason: "a pronoun with nothing to resolve it from (§3.10): the object is missing", type: "route.unbound_reference" });
+      // AG09 (PLANNER 排除范围; AE-UND-010 in one part): a change that saves what a web page says is not offered yet — the part
+      // reads the page (web_lookup) and code says the save is not available (graph/nodes/probe.ts); no card.
+      if (decision.route === "propose_write" && part.capabilities.some((capability) => capabilityKind(capability) === "web")) {
+        emitTrace({ partId: part.localId, reason: "a change built on a web page: the page is read, the save is not offered yet", type: "route.web_save_not_offered" });
+        decision.route = "web_lookup";
+        decision.reason = "public sources (saving them is not offered yet)";
+      }
       if (accepted && part.continues) acceptedAlternativeRef = part.continues.ref;
       let status = statusForRoute(decision.route);
       let reason: string | null = NOT_YET_ROUTES.has(decision.route) ? "not_in_this_version" : null;

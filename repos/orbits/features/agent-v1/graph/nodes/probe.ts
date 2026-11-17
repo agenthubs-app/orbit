@@ -192,8 +192,17 @@ export function probeNode(scope: NodeScope): GraphNode {
         continue;
       }
       // A URL the user gave in this part's words (or the message's, when no other part holds it): read it, no search.
-      const otherQuotes = parts.filter((other) => other !== part).map((other) => quoteOf(message, other));
-      const urls = urlsIn(quote).length ? urlsIn(quote) : webOnly(part) ? messageUrls.filter((url) => !otherQuotes.some((other) => other.includes(url))) : [];
+      // AG09 stability run (AE-WEB-001): a URL in a part that does not look up the web itself ("这是…的官方简介： <url> ，") is
+      // this part's to read; that other part is only its context and is not answered on its own.
+      const heldByWeb = (url: string) => parts.some((other) => other !== part && needsWeb(other) && quoteOf(message, other).includes(url));
+      const urls = urlsIn(quote).length ? urlsIn(quote) : webOnly(part) ? messageUrls.filter((url) => !heldByWeb(url)) : [];
+      if (urls.length && !urlsIn(quote).length) {
+        for (const other of parts) {
+          if (other === part || other.route !== "answer" || needsWeb(other) || !urls.some((url) => quoteOf(message, other).includes(url))) continue;
+          other.reason = "web_context";
+          emitTrace({ partId: other.localId, reason: `its web address is read by ${part.localId}`, type: "web.context_part" });
+        }
+      }
       if (urls.length) {
         for (const url of urls) if ((await openPage(part, url)) === "stop") break;
         continue;
@@ -204,7 +213,9 @@ export function probeNode(scope: NodeScope): GraphNode {
       // query is shown before it is sent (rule 4).
       const ownMention = mentionsOf(message, run.references).find((mention) => quote.includes(mention.quote));
       const targetQuote = target?.quote ? message.slice(target.quote[0], target.quote[1]) : part.capabilities.includes("web.search") && ownMention ? ownMention.quote : "";
-      if (!targetQuote) {
+      // Resumed after send_query / skip_query: the query shown is in the request's web record (the @ names are not re-read).
+      const answeredShown = (part.web?.confirmed || part.web?.skipped) && web!.ledger().pending.some((item) => item.partId === part.localId);
+      if (!targetQuote && !answeredShown) {
         // A part that builds on another part of this request that looks up the web (a comparison with the page the user gave)
         // has nothing of its own to look up: it is answered from that part's page, with no line of its own.
         const fromDependency = part.dependsOn.some((id) => { const other = parts.find((item) => item.localId === id); return Boolean(other && needsWeb(other)); });
@@ -224,6 +235,11 @@ export function probeNode(scope: NodeScope): GraphNode {
       // "小林" said as "@小林": the mention is what the target stands for.
       const atMention = mentions.find((mention) => mention.quote === `@${targetQuote}` || mention.quote === targetQuote);
       const pending = web!.ledger().pending.find((item) => item.partId === part.localId);
+      if (part.web?.skipped) {
+        lines(part, WEB_WORDS.skipped(language, quote));
+        settle(part, "web_skipped");
+        continue;
+      }
       let candidate: QueryCandidate | null = null;
       if (part.web?.confirmed && pending) candidate = { builtBy: "code", needsConfirmation: true, partId: part.localId, text: pending.text, tokens: pending.tokens };
       else {
@@ -243,11 +259,6 @@ export function probeNode(scope: NodeScope): GraphNode {
           continue;
         }
         candidate = built.candidate;
-      }
-      if (part.web?.skipped) {
-        lines(part, WEB_WORDS.skipped(language, quote));
-        settle(part, "web_skipped");
-        continue;
       }
       const gate = outboundGate(candidate, context(part, { confirmedText: part.web?.confirmed ? pending?.text ?? null : null }));
       emitTrace({ gate: 1, kind: "search", partId: part.localId, rules: gate.rules, tokens: candidate.tokens.map((token) => ({ origin: token.origin, text: token.text })), type: "web.gate", verdict: gate.verdict, why: gate.why });
@@ -382,6 +393,10 @@ export function probeNode(scope: NodeScope): GraphNode {
 
     // AG09 (PLANNER 排除范围; AE-UND-010): saving what a web page says as a record is not in this version — a change that
     // needs a web part's result makes no card; code says so (a later sprint adds the save card with its own check).
+    for (const part of due) {
+      // One part that both reads the page and asks to save from it (route.ts made it a web part): the save is not offered.
+      if (part.capabilities.some((capability) => capabilityKind(capability) === "write")) lines(part, WEB_WORDS.saveNotYet(language, quoteOf(message, part)));
+    }
     for (const part of parts) {
       if (part.route !== "propose_write" || part.reason !== "proposing") continue;
       // Only when the web part read something: a web part that could not look anything up leaves the change waiting for it.

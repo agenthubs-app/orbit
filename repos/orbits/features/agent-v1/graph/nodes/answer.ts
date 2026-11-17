@@ -246,7 +246,8 @@ export function answerNode(scope: NodeScope): GraphNode {
     const reading = parts.filter((part) => (part.route === "read" || part.route === "web_lookup") && part.status === "answered" && (run.materials.get(part.localId)?.length ?? 0) > 0 && (!resume || state.touched!.includes(part.localId)));
     // AG04: resuming a paused request makes no model call (§3.9) unless it now reads; its parts are written by code.
     if (resume && !reading.length) return {};
-    const discussion = resume ? [] : parts.filter((part) => part.route === "answer" && part.status === "answered");
+    // AG09: a part that only gave the web address another part reads (reason web_context) is not answered on its own.
+    const discussion = resume ? [] : parts.filter((part) => part.route === "answer" && part.status === "answered" && part.reason !== "web_context");
     if (reading.length) return groundedAnswer(scope, state, parts, [...discussion, ...reading]);
     const due = discussion;
     if (!due.length) return {};

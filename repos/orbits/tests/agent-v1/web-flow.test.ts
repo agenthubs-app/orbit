@@ -214,6 +214,48 @@ test("AE-WEB-006 variant: the first layer gave no usable quote — the @ person 
   assert.deepEqual(first.clarifications[0]?.options.map((option) => option.optionId), ["send_query", "skip_query"]);
 });
 
+test("AE-WEB-001 variant: the URL sits in a part of its own — the web part reads it, the URL part is not answered on its own", async () => {
+  const message = "这是是枝真纪的官方简介： https://toto-film.example.test/directors/koreeda-maki ，这位导演的代表作和现任职务是什么？";
+  const { kit, tools } = setup({
+    answer: (call) => {
+      assert.doesNotMatch(call.user, /- p1 \[/u, "the URL part is not an item to answer");
+      return json({ segments: [{ cites: [{ sentenceIds: [2, 3], sourceRef: handle(call, /(w\d+) — public web page/u) }], partId: "p2", text: "代表作是《夏之庭》和《北行列车》，现任东都映画创作总监。" }] });
+    },
+    understand: () => json({ parts: [
+      part({ dataSources: ["turn_material"], localId: "p1", sourceQuote: "这是是枝真纪的官方简介： https://toto-film.example.test/directors/koreeda-maki ，" }),
+      part({ dataSources: ["public_web"], localId: "p2", requiredCapabilities: ["web.fetch"], sourceQuote: "这位导演的代表作和现任职务是什么？" }),
+    ], plainChat: false }),
+  });
+  const result = await runAgentGraph(kit.deps, kit.input(message));
+  assert.deepEqual(tools.calls.map((call) => `${call.kind} ${call.body.url}`), ["fetch https://toto-film.example.test/directors/koreeda-maki"]);
+  assert.match(result.text, /北行列车/u);
+  assert.doesNotMatch(result.text, /打不开|没有联网查/u);
+});
+
+test("AE-WEB-006 variant, resumed: the query shown from the @ person is sent after the click", async () => {
+  const message = "上网查查 @小林 现在的公开职务。";
+  const { kit, tools } = setup({ understand: () => json({ parts: [part({ dataSources: ["public_web"], requiredCapabilities: ["web.search"], sourceQuote: message, webTarget: { qualifiers: ["current", "role"], quote: "小林健" } })], plainChat: false }) }, { references: [{ id: "contact:c17", name: "小林健", type: "contact" }] });
+  const input = kit.input(message, { references: [{ id: "contact:c17", type: "contact" }] });
+  const first = await runAgentGraph(kit.deps, input);
+  const resumed = await resumeAgentGraph(kit.deps, input, { clarificationId: first.clarifications[0].clarificationId, kind: "select", optionId: "send_query" });
+  assert.deepEqual(tools.calls.map((call) => call.body.query), ["小林健 最新 职务"]);
+  assert.match(resumed.text, /没有找到公开资料/u);
+});
+
+test("AE-UND-010 in one part: reading the page and saving from it — the page is read, no card, the save is said not to be available", async () => {
+  const message = "读一下 Acme Cloud 的官网价格页 https://acme-cloud.example.test/pricing ，把它现在的标价存成一条笔记。";
+  const { kit, tools } = setup({
+    answer: (call) => json({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: handle(call, /(w\d+) — public web page/u) }], partId: "p1", text: "标准版每席每月 1,300 日元。" }] }),
+    understand: () => json({ parts: [part({ dataSources: ["public_web"], deliverable: "change", requiredCapabilities: ["web.fetch", "memo.create"], sourceQuote: message })], plainChat: false }),
+  });
+  kit.deps.cards = { freeze: async () => { throw new Error("no card may be frozen"); } };
+  const result = await runAgentGraph(kit.deps, kit.input(message));
+  assert.deepEqual(tools.calls.map((call) => call.kind), ["fetch"]);
+  assert.equal(result.actionPreview, null);
+  assert.match(result.text, /1,300/u);
+  assert.match(result.text, /目前还做不到，所以没有出卡/u);
+});
+
 test("AE-UND-010: a change that needs a web page's result makes no card in this version; code says so", async () => {
   const message = "再读一下 Acme Cloud 的官网价格页 https://acme-cloud.example.test/pricing ，把它现在的标价和我笔记里的差异存成一条笔记。";
   const { kit, tools } = setup({
