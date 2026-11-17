@@ -687,6 +687,14 @@ export function resolveNode(scope: NodeScope): GraphNode {
                 });
               }
               for (const view of items) push(view);
+              // AG10 (AE-SCL-020): how a person stands now ("her current salary expectation") reads their newest notes as well,
+              // not only the ones holding the words — a newer note that says it differently ("updated her expectation") wins.
+              if (current && kind === "memo" && contactId && kindText && direction === "newest") {
+                const newest = await readPages(records.reader, kind, accountScope, queryOf(undefined), 1);
+                const added = newest.items.filter((view) => !read.views.some((item) => item.ref === view.ref));
+                for (const view of added) push(view);
+                if (added.length) emitTrace({ added: added.length, partId: part.localId, type: "resolve.current_newest", words: kindText });
+              }
               // run-02 repair 2 (AE-SCL-007): one entry per kind and person; the newest and oldest reads of the same
               // records share one total, and `seen` is set below from what is really given to the answer.
               const key = `${kind}|${contactId ?? ""}`;

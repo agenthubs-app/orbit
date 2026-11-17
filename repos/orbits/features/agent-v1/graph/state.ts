@@ -19,6 +19,7 @@ import type { ReferenceHandle } from "./deps";
 import type { Capability, Route, Verdict, WaitReason } from "../route/capabilities";
 import type { PartStatus } from "../route/decide";
 import type { PartWrite } from "../propose/resolve";
+import type { CardOperationIntent } from "../../agent/runtime/card-operations";
 import type { JudgmentBudget } from "../judgment/ask";
 import type { AgentActionPreviewContract, AgentWebResultContract } from "../../../shared/contract/agent-v1";
 import type { Clarity, DataOwner, DataSource, Deliverable, IntentBasis, Persistence, RankField, ReadFilter, UnderstandOutput } from "../understand/schema";
@@ -54,6 +55,8 @@ export interface PartPlan {
   rank?: { count?: number; basis?: [number, number]; within?: [number, number]; orderBy?: RankField; direction?: "asc" | "desc" };
   /** AG09: what a web.search part looks up: the name as [start, end) in this turn's message and qualifier codes. */
   webTarget?: { quote?: [number, number]; qualifiers: string[] };
+  /** AG10: a ranking that asked "按什么来挑": its domain, dates and count (the reply goes on with them). */
+  rankAsk?: { domain: "event" | "contact" | "todo"; count?: number; from?: string; to?: string };
 }
 
 /** AG05: what a read part covered, per kind (codes and counts only). */
@@ -74,7 +77,7 @@ export interface OptionSetState {
   kind: "question" | "not_understood" | "entry";
   asks?: "object" | "reading";
   /** AG06: operation — a question before the card (which person, which to-do, which date field). */
-  purpose: "directions" | "readings" | "object" | "other_readings" | "entry" | "alternative" | "operation" | "web_pick" | "web_send";
+  purpose: "directions" | "readings" | "object" | "other_readings" | "entry" | "alternative" | "operation" | "web_pick" | "web_send" | "ranking";
   state: "open" | "answered" | "shelved";
   selectedOptionId?: string | null;
   answeredBy?: string | null;
@@ -232,4 +235,12 @@ export interface AgentGraphRun {
   webUrls: Set<string>;
   /** AG10 (AG08 交接 1): a ranking of this turn matched candidates to a topic (the judgment answered); only then may a model sentence say so. */
   topicMatched: boolean;
+  /** AG10: parts a second-level function ran for in this pass. */
+  functionsDone: Set<string>;
+  /** AG10: per part, code's question line (the basis of a ranking). */
+  questionLines: Map<string, string>;
+  /** AG10: per part, code's lines before its answer or card (how "整理一下" was taken; what an extraction found). */
+  leadLines: Map<string, string>;
+  /** AG10: per part, the card operations an extraction made (propose freezes them; no second-layer model call). */
+  presetIntents: Map<string, (CardOperationIntent & { localId: string })[]>;
 }

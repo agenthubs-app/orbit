@@ -27,15 +27,21 @@ export function todoWriteExecutors(input: { tasks: Pick<TaskService, "create" | 
       async execute(payload, context) {
         const title = text(payload, "title");
         if (!title) throw new AgentExecutionPermanentError("title is required.");
+        // AG10: a to-do from a memo keeps the person it is about (one until AG13), the memo, its version and the memo's sentence.
+        const related = Array.isArray(payload.relatedContactIds) ? payload.relatedContactIds.filter((id): id is string => typeof id === "string" && Boolean(id)) : [];
         const result = await input.tasks.create({
           actorId: input.actorId,
-          category: "work",
+          category: related.length ? "relationship" : "work",
           idempotencyKey: context.idempotencyKey,
           now: context.now,
           source: "ai_confirmed",
           title,
           ...(text(payload, "plannedDate") ? { plannedDate: text(payload, "plannedDate") } : {}),
           ...(text(payload, "dueAt") ? { dueAt: text(payload, "dueAt") } : {}),
+          ...(related[0] ? { relatedContactId: related[0] } : {}),
+          ...(text(payload, "sourceNoteId") ? { sourceNoteId: text(payload, "sourceNoteId") } : {}),
+          ...(typeof payload.sourceNoteVersion === "number" ? { sourceNoteVersion: payload.sourceNoteVersion } : {}),
+          ...(text(payload, "notes") ? { notes: text(payload, "notes") } : {}),
         });
         return { resultRef: `tasks:${result.task.id}`, summary: "To-do created in Orbit." };
       },

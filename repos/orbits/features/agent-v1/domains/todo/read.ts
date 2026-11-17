@@ -23,6 +23,8 @@ export const TODO_DOMAIN: RecordDomain = {
       dueAt: str(task.dueAt),
       eventId: str(task.relatedEventId),
       plannedDate: str(task.plannedDate),
+      // AG10: where the to-do came from — "contact" is a formal follow-up (the field list of tasks.query allows it).
+      source: str(task.source),
       status: str(task.status),
       title: task.title,
       updatedAt: str(task.updatedAt),

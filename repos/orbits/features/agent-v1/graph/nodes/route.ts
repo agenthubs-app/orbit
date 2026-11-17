@@ -77,7 +77,7 @@ export function routeNode(scope: NodeScope): GraphNode {
     const context = run.context;
     run.steps = new Map();
     const attribution = !resume && context
-      ? attributeMessage(state.parts.map((part) => ({ clarity: part.plan.clarity, continues: part.continues, localId: part.localId })), context.openItems)
+      ? attributeMessage(state.parts.map((part) => ({ capabilities: part.capabilities, clarity: part.plan.clarity, continues: part.continues, localId: part.localId })), context.openItems)
       : null;
     let acceptedAlternativeRef: string | null = state.acceptedAlternativeRef;
     const topicKind = context?.shownList.length ? recordKindOf(context.shownList[0].type) : null;

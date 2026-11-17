@@ -16,8 +16,31 @@ export const TODO_UPDATE = "todo.update";
 export const TODO_FIELDS = ["title", "plannedDate", "dueAt"] as const;
 export type TodoField = (typeof TODO_FIELDS)[number];
 
+/**
+ * agent-design AG10 (设计稿 §3.5 从同一篇笔记到 Todo): what a to-do made from a memo also holds — the person it is about,
+ * the memo and its version, and the memo's own sentence (kept in the to-do's notes, so the same sentence is found again
+ * when the memo is organized a second time). Display names are frozen with the card.
+ */
+export interface TodoFromMemo {
+  relatedContactIds?: string[];
+  sourceNoteId?: string;
+  sourceNoteVersion?: number;
+  notes?: string;
+}
+
+export interface TodoCreateShown {
+  /** Contact id → name, for the card's "about" row. */
+  names?: Record<string, string>;
+  /** The memo's title, for the card's "from" row. */
+  sourceTitle?: string;
+  /** The memo's sentence the to-do comes from. */
+  sentence?: string;
+  /** The deadline was said as a day only ("最迟 11 月 25 日"): the card shows the day, not a time. */
+  dueDayOnly?: boolean;
+}
+
 export type TodoOperationIntent =
-  | { capability: typeof TODO_CREATE; set: Partial<Record<TodoField, string>> }
+  | { capability: typeof TODO_CREATE; set: Partial<Record<TodoField, string | null>> & TodoFromMemo; shown?: TodoCreateShown }
   | { capability: typeof TODO_UPDATE; targetId: string; set: Partial<Record<TodoField, string | null>> };
 
 export type CardLocale = "zh" | "ja" | "en";
@@ -128,8 +151,9 @@ export function todoOperationText(op: Pick<AgentActionOperationPayload, "capabil
   const words = WORDS[locale];
   const after = (op.after ?? {}) as Record<string, unknown>;
   if (op.capability === TODO_CREATE) {
+    const shown = (op.shown ?? {}) as TodoCreateShown;
     const details = TODO_FIELDS.filter((field) => field !== "title" && after[field])
-      .map((field) => (locale === "en" ? `${words.field[field]} ${valueText(field, after[field], locale, timeZone)}` : `${words.field[field]} ${valueText(field, after[field], locale, timeZone)}`))
+      .map((field) => (field === "dueAt" && shown.dueDayOnly && typeof after.dueAt === "string" ? `${FROM_MEMO[locale].dueBy} ${dayText(localDay(after.dueAt, timeZone), locale)}` : `${words.field[field]} ${valueText(field, after[field], locale, timeZone)}`))
       .join(locale === "en" ? ", " : "，");
     return words.create(String(after.title ?? ""), details);
   }
@@ -156,11 +180,15 @@ export function todoOperationDisplay(op: Pick<AgentActionOperationPayload, "capa
   const after = (op.after ?? {}) as Record<string, unknown>;
   const plain = (field: TodoField, value: unknown) => (field === "title" ? (value === null || value === undefined || value === "" ? WORDS[locale].none : String(value)) : valueText(field, value, locale, timeZone));
   if (op.capability === TODO_CREATE) {
-    return {
-      change: "create",
-      record: words.record(String(after.title ?? "")),
-      rows: TODO_FIELDS.filter((field) => field !== "title" && after[field]).map((field) => ({ after: plain(field, after[field]), field, label: words.label[field] })),
-    };
+    const shown = (op.shown ?? {}) as TodoCreateShown;
+    const rows: AgentCardOperationDisplayContract["rows"][number][] = TODO_FIELDS.filter((field) => field !== "title" && after[field]).map((field) => (field === "dueAt" && shown.dueDayOnly && typeof after.dueAt === "string"
+      ? { after: dayText(localDay(after.dueAt, timeZone), locale), field, label: FROM_MEMO[locale].dueBy }
+      : { after: plain(field, after[field]), field, label: words.label[field] }));
+    // AG10: a to-do from a memo also shows who it is about and the memo's sentence it comes from.
+    const related = Array.isArray(after.relatedContactIds) ? (after.relatedContactIds as string[]) : [];
+    if (related.length) rows.push({ after: related.map((id) => shown.names?.[id] ?? id).join(FROM_MEMO[locale].join), field: "relatedContactIds", label: FROM_MEMO[locale].about });
+    if (shown.sentence) rows.push({ after: FROM_MEMO[locale].from(shown.sourceTitle ?? "", shown.sentence), field: "sourceNoteId", label: FROM_MEMO[locale].fromLabel });
+    return { change: "create", record: words.record(String(after.title ?? "")), rows };
   }
   const before = (op.before ?? {}) as Record<string, unknown>;
   return {
@@ -168,6 +196,17 @@ export function todoOperationDisplay(op: Pick<AgentActionOperationPayload, "capa
     record: words.record(String((op.shown as Record<string, unknown> | undefined)?.title ?? "")),
     rows: TODO_FIELDS.filter((field) => field in after).map((field) => ({ after: plain(field, after[field]), before: plain(field, before[field]), field, label: words.label[field] })),
   };
+}
+
+const FROM_MEMO: Record<CardLocale, { about: string; dueBy: string; fromLabel: string; join: string; from: (title: string, sentence: string) => string }> = {
+  en: { about: "About", dueBy: "Due by", from: (title, sentence) => `${title ? `note "${title}": ` : ""}"${sentence}"`, fromLabel: "From", join: ", " },
+  ja: { about: "関連", dueBy: "期限（この日まで）", from: (title, sentence) => `${title ? `メモ「${title}」：` : ""}「${sentence}」`, fromLabel: "元のメモ", join: "、" },
+  zh: { about: "关联人", dueBy: "最迟", from: (title, sentence) => `${title ? `笔记「${title}」：` : ""}「${sentence}」`, fromLabel: "出自", join: "、" },
+};
+
+function localDay(instant: string, timeZone: string): string {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { day: "2-digit", month: "2-digit", timeZone, year: "numeric" }).formatToParts(new Date(instant)).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 export function todoCardTitle(operations: readonly Pick<AgentActionOperationPayload, "capability">[], locale: CardLocale): string {
@@ -206,7 +245,11 @@ export async function prepareTodoOperation(input: {
     riskLevel: "write" as const,
   };
   if (intent.capability === TODO_CREATE) {
-    const after = clean({ dueAt: intent.set.dueAt, plannedDate: intent.set.plannedDate, title: intent.set.title });
+    // AG10: a to-do from a memo states both dates (null when the memo gives none) and keeps its source and person.
+    const fromMemo = Boolean(intent.set.sourceNoteId);
+    const after = fromMemo
+      ? clean({ dueAt: intent.set.dueAt ?? null, notes: intent.set.notes, plannedDate: intent.set.plannedDate ?? null, relatedContactIds: intent.set.relatedContactIds?.length ? [...intent.set.relatedContactIds] : undefined, sourceNoteId: intent.set.sourceNoteId, sourceNoteVersion: intent.set.sourceNoteVersion, title: intent.set.title })
+      : clean({ dueAt: intent.set.dueAt, plannedDate: intent.set.plannedDate, title: intent.set.title });
     const op: AgentActionOperationPayload = {
       ...base,
       after,
@@ -216,6 +259,7 @@ export async function prepareTodoOperation(input: {
       payload: { ...after },
       preconditions: { targetExists: false },
       preview: "",
+      ...(intent.shown ? { shown: { ...intent.shown } } : {}),
     };
     return { ...op, display: todoOperationDisplay(op, input.locale), preview: todoOperationText(op, input.locale) };
   }
@@ -242,7 +286,7 @@ export async function prepareTodoOperation(input: {
 
 /** The intent an operation was frozen from (regeneration keeps it, 设计稿 §5.2). */
 export function todoIntentOf(op: AgentActionOperationPayload): TodoOperationIntent | null {
-  if (op.capability === TODO_CREATE) return { capability: TODO_CREATE, set: { ...(op.after as Record<string, string>) } };
+  if (op.capability === TODO_CREATE) return { capability: TODO_CREATE, set: { ...(op.after as Record<string, string>) }, ...(op.shown ? { shown: { ...(op.shown as TodoCreateShown) } } : {}) };
   if (op.capability === TODO_UPDATE && op.targetRef) return { capability: TODO_UPDATE, set: { ...(op.after as Record<string, string | null>) }, targetId: op.targetRef.id };
   return null;
 }

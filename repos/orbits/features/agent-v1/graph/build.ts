@@ -89,12 +89,13 @@ export function buildAgentGraph(scope: NodeScope) {
     // AG04: parts that need questions or directions go through clarify's prepare pass.
     // AG06: parts that write go through propose (after the reads, so a person found by a read is known).
     // AG08: parts that pick or order contacts or events go through functions first (code, one judgment at most).
-    .addConditionalEdges("route", (state: AgentGraphState) => (functionsDue(state, scope.input.message) ? "functions" : readDue(state) ? "resolve" : web(state) ? "probe" : proposeDue(state) ? "propose" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["functions", "resolve", "probe", "propose", "clarify", "answer", "deliver"])
+    .addConditionalEdges("route", (state: AgentGraphState) => (functionsDue(state, scope) ? "functions" : readDue(state) ? "resolve" : web(state) ? "probe" : proposeDue(state) ? "propose" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["functions", "resolve", "probe", "propose", "clarify", "answer", "deliver"])
     .addConditionalEdges("functions", (state: AgentGraphState) => (readDue(state) ? "resolve" : web(state) ? "probe" : proposeDue(state) ? "propose" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "verify"), ["resolve", "probe", "propose", "clarify", "answer", "verify"])
     .addConditionalEdges("resolve", (state: AgentGraphState) => (web(state) ? "probe" : proposeDue(state) ? "propose" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["probe", "propose", "clarify", "answer", "deliver"])
     // AG09: the web step, after the record reads and before the card and the answer.
     .addConditionalEdges("probe", (state: AgentGraphState) => (proposeDue(state) ? "propose" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["propose", "clarify", "answer", "deliver"])
-    .addConditionalEdges("propose", (state: AgentGraphState) => (scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["clarify", "answer", "deliver"])
+    // AG10: a card turn that cites a record (an extraction) is verified like an answer (its links, the basis line).
+    .addConditionalEdges("propose", (state: AgentGraphState) => (scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : state.parts.some((part) => part.cites?.length) ? "verify" : "deliver"), ["clarify", "answer", "verify", "deliver"])
     // After prepare: answer or deliver. After a resume: route again (a click to carry out) or deliver (closed from outside).
     .addConditionalEdges("clarify", (state: AgentGraphState) => state.resumeNext ?? (answerDue(state) ? "answer" : "deliver"), ["route", "answer", "deliver"])
     .addEdge("answer", "verify")
@@ -165,6 +166,10 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     webQuestions: new Map(),
     webUrls: new Set(),
     topicMatched: false,
+    functionsDone: new Set(),
+    questionLines: new Map(),
+    leadLines: new Map(),
+    presetIntents: new Map(),
   };
 }
 

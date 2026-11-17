@@ -146,7 +146,8 @@ function understoodLine(scope: NodeScope, part: GraphPart, language: ReplyLangua
 
 /** AG05: a part that read records — how it was understood, the answer, then code's sentences on what was missing. */
 function readLine(scope: NodeScope, part: GraphPart, language: ReplyLanguage, withEntries: (line: string) => string, parts: readonly GraphPart[] = []): string {
-  const lines = [understoodLine(scope, part, language, parts), scope.run.answers.get(part.localId) ?? "", ...(scope.run.gapLines.get(part.localId) ?? [])];
+  // AG10: code's lead (how "整理一下" was taken) comes first.
+  const lines = [scope.run.leadLines.get(part.localId) ?? "", understoodLine(scope, part, language, parts), scope.run.answers.get(part.localId) ?? "", ...(scope.run.gapLines.get(part.localId) ?? [])];
   return withEntries(lines.filter((line) => line.trim()).join("\n"));
 }
 
@@ -157,14 +158,16 @@ function partLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, lan
   const quote = quoteOf(message, part);
   const withEntries = (line: string) => [line, entriesLine(scope, state, part, language)].filter((text) => text.trim()).join("\n");
   // AG09: a web question (same-named results, a query to show before it is sent) is code's line with its options.
-  const webQuestion = scope.run.webQuestions.get(part.localId);
+  const webQuestion = scope.run.webQuestions.get(part.localId) ?? scope.run.questionLines.get(part.localId);
   if (webQuestion && part.status === "awaiting_clarification") return webQuestion;
   if ((part.route === "read" || part.route === "web_lookup") && (part.status === "answered" || part.status === "unfinished") && part.reason !== "budget" && part.reason !== "still_unclear") return readLine(scope, part, language, withEntries, state.parts);
   // AG06: a write part says only code's words: a question, what was not found or cannot be done here. The
   // card itself is one line for the whole request (after the parts); a part waiting for another's question says nothing.
   if (part.route === "propose_write") {
+    // AG10: what an extraction found is said before the card (code's lines).
+    const lead = scope.run.leadLines.get(part.localId);
     const line = scope.run.writeLines.get(part.localId);
-    if (line) return line;
+    if (line || lead) return [lead ?? "", line ?? ""].filter((text) => text.trim()).join("\n");
     if (part.status === "awaiting_confirmation" || (part.status === "waiting_dependency" && (part.reason === "shares_question" || part.reason === "card_waits"))) return "";
   }
   switch (part.status) {
@@ -231,6 +234,8 @@ function summaryOfQuestion(scope: NodeScope, state: AgentGraphState, part: Graph
   const set = setFor(state, part, "q");
   const labels = optionLabels(scope, set, state.language);
   if (set?.kind === "not_understood") return `Orbit could not tell what "${quote}" asks for${labels.length ? `; it offered: ${labels.join(" / ")}` : ""}`;
+  // AG10: the one question of a ranking with no basis; any reply about how to pick (or "随便") answers it.
+  if (part.plan.rankAsk) return `Orbit asked what to pick "${quote}" by (offered: ${labels.join(" / ")}); a reply naming a standard, or "any / 随便", answers it`;
   if (set?.asks === "reading") return `Orbit asked which of these "${quote}" means: ${labels.join(" / ")}`;
   return `Orbit asked what "${quote}" refers to${labels.length ? ` (${labels.join(" / ")})` : ""}`;
 }
@@ -288,7 +293,7 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
       const asks = missingOf(part, set?.kind === "not_understood" || !set ? "intent" : set.asks ?? "object");
       // AG05: the clue words go with the matter, so a reply that continues it ("他") reads the same person.
       const clues = part.refs.map((ref) => ({ entity: ref.entity, text: clueWords(input.message, ref) ?? "" })).filter((clue) => clue.text);
-      kept.push({ asks, createdAt: now, kind: "clarification", partId: part.localId, quote, ref: `clarification:${input.requestId}:${part.localId}`, requestId: input.requestId, summary: summaryOfQuestion(scope, state, part), unrelatedMessages: 0, writes: writesIn(part), ...(clues.length ? { clues } : {}) });
+      kept.push({ asks, createdAt: now, kind: "clarification", partId: part.localId, quote, ref: `clarification:${input.requestId}:${part.localId}`, requestId: input.requestId, summary: summaryOfQuestion(scope, state, part), unrelatedMessages: 0, writes: writesIn(part), ...(clues.length ? { clues } : {}), ...(part.plan.rankAsk ? { rank: { ...part.plan.rankAsk } } : {}) });
     }
   }
   next.openItems = kept;

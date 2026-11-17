@@ -47,6 +47,8 @@ export interface SessionOpenItem {
   writes?: boolean;
   /** AG05: the part's object clues as the user said them (a reply that continues the matter reads the same person). */
   clues?: { entity: string; text: string }[];
+  /** AG10: a ranking that asked "按什么来挑": its domain, dates and count (a reply such as "随便" goes on with them). */
+  rank?: { domain: "event" | "contact" | "todo"; count?: number; from?: string; to?: string };
 }
 
 export interface AgentSessionState {

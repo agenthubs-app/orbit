@@ -21,6 +21,8 @@ export interface AttributionPart {
   clarity: Clarity;
   /** The open item the first layer says this part continues (its stored ref, mapped from the handle). */
   continues?: { kind: string; ref: string } | null;
+  /** AG10: the part's capabilities (a bare reply has none). */
+  capabilities?: readonly string[];
 }
 
 export type Attribution =
@@ -44,6 +46,11 @@ export function attributeMessage(parts: readonly AttributionPart[], openItems: r
   const anyContinued = taken.size > 0;
   if (!anyContinued && justAsked.length === 1 && unreadable.length === 1) {
     result.set(unreadable[0].localId, { fallback: true, item: justAsked[0], kind: "clarification" });
+  }
+  // AG10 (AE-FN-005): right after "按什么来挑", a bare reply with nothing of its own to do ("随便，都行", "按开始时间") answers it.
+  const bare = parts.filter((part) => (part.clarity === "statement" || part.clarity === "none" || part.clarity === "clear") && !(part.capabilities ?? []).some((capability) => /\.(read|create|update|delete|complete|reopen)$|^view\./u.test(capability)) && result.get(part.localId)?.kind === "new");
+  if (!anyContinued && justAsked.length === 1 && justAsked[0].rank && bare.length === 1 && parts.length === 1) {
+    result.set(bare[0].localId, { fallback: true, item: justAsked[0], kind: "clarification" });
   }
   return result;
 }
