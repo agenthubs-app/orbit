@@ -128,8 +128,11 @@ const FIRST_TIME = /(第一次|头一次|初次|最初|最早|初めて|最初�
 const OPEN_WORDS = /(まだ終わっていない|終わっていない|終わってない|未完了|未完成|没做完|没完成|还没做|未处理|还没处理|残っている|\bopen\b|\bnot (yet )?done\b|\bunfinished\b|\boutstanding\b|\bpending\b|\bstill to do\b)/iu;
 const DONE_WORDS = /(已完成|做完了的|做完的|完了した|終わった|済んだ|\bcompleted\b|\bfinished\b|\bdone ones\b)/iu;
 
+/** AG07 run-03 (AE-SCL-008): an overdue to-do is an open one, so "the overdue ones" counts the same to-dos as "the open ones". */
+const OVERDUE_WORDS = /(期限を過ぎ|期限切れ|期限超過|过期|逾期|超期|\boverdue\b|\bpast due\b)/iu;
+
 export function statusSaidIn(words: string): "open" | "completed" | undefined {
-  if (OPEN_WORDS.test(words)) return "open";
+  if (OPEN_WORDS.test(words) || OVERDUE_WORDS.test(words)) return "open";
   if (DONE_WORDS.test(words)) return "completed";
   return undefined;
 }

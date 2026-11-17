@@ -113,6 +113,8 @@ export interface RouteOptions {
   unboundPronoun?: boolean;
   /** AG07: the part names its object in its own words (not a pronoun) and says the new date (route node decides). */
   namedObjectWithDate?: boolean;
+  /** AG07 run-03: a change verb with a new date and no bound object (route node decides from the words). */
+  reschedule?: boolean;
 }
 
 export function decideRoute(part: RouteInput, options: RouteOptions = {}): RouteDecision {
@@ -142,6 +144,7 @@ export function decideRoute(part: RouteInput, options: RouteOptions = {}): Route
     readings: (part.readings ?? []).map((reading) => ({ capabilities: [...reading.capabilities], deliverable: reading.deliverable as Reading["deliverable"] })),
     unboundPronoun: options.unboundPronoun ?? false,
     namedObjectWithDate: options.namedObjectWithDate ?? false,
+    reschedule: options.reschedule ?? false,
   }, { asked: options.asked ?? 0, pageKind: options.pageKind ?? null, topicKind: options.topicKind ?? null });
   switch (step.kind) {
     case "respond":

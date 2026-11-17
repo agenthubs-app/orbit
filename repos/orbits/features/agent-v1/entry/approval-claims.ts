@@ -54,7 +54,13 @@ const CARD_TALK = /(确认卡|確認卡|確認カード|confirmation card|卡片
  * frozen card; a model never says it, so such a sentence never contradicts the card it ships with. Sentences about
  * the user's own records ("You saved the draft on Nov 12", "没有记录显示…") are kept.
  */
-const SAVE_TALK = /(\b(?:I|I've|I have|I'll|I will|I can't|I cannot|we|Orbit)\b[^.!?\n]{0,30}\b(?:save|saved|store|stored|keep a record|log(?:ged)?|note(?:d)? (?:it|that|this|down))\b|\b(?:can't|cannot|won't|will not|isn't|is not|wasn't|was not|nothing (?:is|was|will be))\b[^.!?\n]{0,20}\b(?:saved|stored|save|store)\b|(?:不能|无法|没法|不会|没办法)(?:帮你)?[^。！？\n]{0,6}(?:保存|存下|记下|存储|存起来)|已经?(?:帮你)?(?:保存|记下|存好|记好)|保存(?:でき|し)(?:ません|ない)|保存しました|記録しました|メモしました|メモしておきました)/iu;
+const SAVE_TALK = /(\b(?:I|I've|I have|I'll|I will|I can't|I cannot|we|Orbit)\b[^.!?\n]{0,30}\b(?:save|saved|store|stored|keep a record|log(?:ged)?|note(?:d)? (?:it|that|this|down))\b|\b(?:can't|cannot|won't|will not|isn't|is not|wasn't|was not|nothing (?:is|was|will be))\b[^.!?\n]{0,20}\b(?:saved|stored|save|store)\b|(?:不能|无法|没法|不会|没办法)(?:帮你)?[^。！？\n]{0,6}(?:保存|存下|记下|存储|存起来)|已经?(?:帮你)?(?:保存|记下|存好|记好)|保存(?:でき|し)(?:ません|ない)|保存しました|記録しました|メモしました|メモしておきました|(?:^|[，,、：:；\s])(?:好的|嗯|收到)?[，,]?(?:我)?(?:已经?)?(?:帮你)?(?:记下了|记住了|记好了|已记录|记录下来了)|(?:メモ|記録)して?おきます|控えておきます|覚えておきます|^\s*(?:(?:ok(?:ay)?|got it|sure|alright)[,.!\s—-]*)?noted\b|\bkeep (?:that|this|it) in mind\b)/iu;
+
+/**
+ * AG07 run-03 (AE-CTX-005): a short sentence that only introduces the next one (「お礼の前に一件だけ。」, "One more thing
+ * first."); when the sentence it introduced is dropped, it goes too.
+ */
+const LEAD_IN_ONLY = /^[^。！？!?\n]{0,14}(?:一件だけ|ひとつだけ|一つだけ|一点だけ|その前に|ちなみに|念のため|もう一つ|one more thing|one thing first|before that|quick note|by the way|顺便说一句|先说一句|还有一件事|另外一点|提醒一下)[^。！？!?\n]{0,8}[。.!！:：]?\s*$/iu;
 
 /** The text without its sentences about a confirmation card, and the sentences dropped. */
 export function stripCardTalk(text: string): { text: string; dropped: string[] } {
@@ -74,8 +80,12 @@ function stripSentences(text: string, pattern: RegExp): { text: string; dropped:
     // English sentences end with ". "; split them further so one card sentence does not take its neighbours.
     const parts = /[A-Za-z]/u.test(sentence) ? sentence.split(/(?<=\.)\s+/u) : [sentence];
     for (const piece of parts) {
-      if (pattern.test(piece)) dropped.push(piece.trim());
-      else kept.push(piece);
+      if (pattern.test(piece)) {
+        dropped.push(piece.trim());
+        // Its lead-in goes with it (blank lines between them are kept as they are).
+        const last = kept.length - 1;
+        if (last >= 0 && kept[last].trim().length <= 30 && LEAD_IN_ONLY.test(kept[last].trim())) dropped.push(kept.splice(last, 1)[0].trim());
+      } else kept.push(piece);
     }
   }
   const joined = kept.map((piece, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(piece) ? ` ${piece}` : piece)).join("");

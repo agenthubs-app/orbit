@@ -35,6 +35,14 @@ export function routeInputOf(part: GraphPart): RouteInput {
   };
 }
 
+/** A verb that moves something to another day (zh, ja, en). */
+const CHANGE_TO = /(改到|改成|挪到|推到|延到|移到|调到|提前到|往后推|改期|に変更|へ変更|変更して|にずらし|ずらして|に移して|に延期|move(?:d)?\b[^.!?]{0,20}\bto\b|reschedule|push(?:ed)?\b[^.!?]{0,20}\bto\b|change\b[^.!?]{0,20}\bto\b)/iu;
+
+/** AG07 run-03: the words move something to a new day they name ("改到周五", "金曜に変更", "move it to Friday"). */
+export function reschedulesTo(words: string, asOf: string, timeZone: string): boolean {
+  return CHANGE_TO.test(words) && resolveSaidDate(words, asOf, timeZone) !== null;
+}
+
 export function routeNode(scope: NodeScope): GraphNode {
   const { deps, input, run } = scope;
   return async (state: AgentGraphState) => {
@@ -80,7 +88,11 @@ export function routeNode(scope: NodeScope): GraphNode {
       const accepted = part.continues?.kind === "alternative"
         ? (part.plan.acceptedLeadsTo ? { leadsTo: part.plan.acceptedLeadsTo } : openItem?.kind === "alternative" ? openItem : null)
         : null;
-      const decision = decideRoute(routeInputOf(part), { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind, namedObjectWithDate: namedObjectWithDate(part), unboundPronoun: unboundPronoun(part) });
+      // AG07 run-03 (AE-AMB-007): "把那个改到周五" — a change verb with a new date and no named object is a reschedule
+      // of an unknown item (also when a later message only answers the question about it).
+      const namesNothing = !part.refs.some((ref) => ref.recordId || (clueText(ref) && !isPronounClue(clueText(ref))));
+      const reschedule = namesNothing && reschedulesTo(openItem?.quote ?? input.message.slice(part.quote[0], part.quote[1]), state.asOf || deps.now(), state.timeZone || "Asia/Tokyo");
+      const decision = decideRoute(routeInputOf(part), { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind, namedObjectWithDate: namedObjectWithDate(part), reschedule, unboundPronoun: unboundPronoun(part) });
       if (unboundPronoun(part)) emitTrace({ partId: part.localId, reason: "a pronoun with nothing to resolve it from (§3.10): the object is missing", type: "route.unbound_reference" });
       if (accepted && part.continues) acceptedAlternativeRef = part.continues.ref;
       let status = statusForRoute(decision.route);

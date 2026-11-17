@@ -83,6 +83,17 @@ export function gapWords(language: ReplyLanguage): GapWords {
   return WORDS[language];
 }
 
+/**
+ * AG07 run-03 (AE-RD-005): when some records could not be read, the answer does not say "only" — what was read may
+ * not be all there is. Code takes the word out (zh 只有/仅有, en "only" before a count, ja だけ/しか after a count).
+ */
+export function withoutOnly(text: string, language: ReplyLanguage): string {
+  if (!text) return text;
+  if (language === "zh") return text.replace(/只有|仅有|只剩/gu, "有");
+  if (language === "ja") return text.replace(/((?:\d+|一|二|三)件)だけ/gu, "$1").replace(/しかありません/gu, "があります").replace(/しかない/gu, "がある");
+  return text.replace(/\bonly (?=(?:one|a single|a|an|two|three|\d+)\b)/giu, "");
+}
+
 /** Which end of a person's records a partial read took. */
 export type ReadDirection = "oldest" | "newest";
 

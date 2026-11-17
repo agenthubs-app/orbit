@@ -6,7 +6,7 @@
  * if the round's budget is used up they stay unfinished, saying why.
  */
 import { datesIn, localizeAnswerDates, unsourcedDates, WEEKDAY_WORD, withoutUnsourcedDates } from "../../answer/dates";
-import { withoutWrongDirection } from "../../answer/gap-copy";
+import { withoutOnly, withoutWrongDirection } from "../../answer/gap-copy";
 import { localDayOf } from "../../propose/dates";
 import { gapWords } from "../../answer/gap-copy";
 import { formatWhen } from "../../answer/materials";
@@ -164,7 +164,10 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       if (unsourced.length) emitTrace({ days: unsourced, partId: part.localId, type: "answer.unsourced_dates_dropped" });
       // AG07 run-02 (AE-SCL-007): a partial read from one end; a sentence saying the other end may be missing is not delivered.
       const direction = part.coverage?.find((item) => item.total !== null && item.total > item.seen)?.direction ?? null;
-      run.answers.set(part.localId, localizeAnswerDates(withoutWrongDirection(withoutUnsourcedDates(segment.text, unsourced), direction), state.language));
+      // AG07 run-03 (AE-RD-005): some records could not be read: what was read is not said to be "only" that.
+      const someUnread = (part.gaps ?? []).some((gap) => gap === "partial" || gap === "unreadable" || gap === "service_error");
+      const delivered = withoutWrongDirection(withoutUnsourcedDates(segment.text, unsourced), direction);
+      run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(delivered, state.language) : delivered, state.language));
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref);
       if (profileParts.has(part.localId)) {
         const updates = checked?.profiles?.get(part.localId);
