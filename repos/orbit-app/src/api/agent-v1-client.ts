@@ -16,18 +16,28 @@ export const AGENT_V1_PROTOCOL_PATH = `${ORBIT_API_ENDPOINTS.conversations}/prot
 const cardPath = (actionId: string, action?: string) => `/api/agent/ledger/${encodeURIComponent(actionId)}${action ? `/${action}` : ""}`;
 const randomKey = (kind: string) => `${kind}:${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
 
-let protocol: Promise<2 | 3> | null = null;
+let protocol: Promise<2 | 3 | null> | null = null;
 
-/** The protocol the server speaks (3 when ORBIT_AGENT_V1_MODE=on), asked once per process; 2 when it cannot say. */
-export function agentProtocolVersion(client: OrbitApiClient): Promise<2 | 3> {
+/**
+ * The protocol the server says it speaks (3 when ORBIT_AGENT_V1_MODE=on, 2 when it says otherwise or has no such
+ * route), or null when it could not be asked (offline, a server error). Asked once per process; a null or a 2 is
+ * asked again next time. AG07 repair 2: a send waits for this answer, and on null sends nothing — it never falls
+ * back to protocol 2 because the check was slow or failed.
+ */
+export function agentProtocolForSend(client: OrbitApiClient): Promise<2 | 3 | null> {
   protocol ??= client.get<{ protocolVersion?: number }>(AGENT_V1_PROTOCOL_PATH)
-    .then((result) => (result.success && result.data?.protocolVersion === 3 ? 3 : 2) as 2 | 3)
-    .catch(() => 2 as const)
+    .then((result) => (result.success ? (result.data?.protocolVersion === 3 ? 3 : 2) : result.status === 0 || result.status >= 500 ? null : 2) as 2 | 3 | null)
+    .catch(() => null)
     .then((value) => {
-      if (value === 2) protocol = null; // Asked again next time: the server may have been unreachable.
+      if (value !== 3) protocol = null;
       return value;
     });
   return protocol;
+}
+
+/** The protocol for showing turns: 3, or 2 when the server says so or cannot be asked. */
+export function agentProtocolVersion(client: OrbitApiClient): Promise<2 | 3> {
+  return agentProtocolForSend(client).then((value) => value ?? 2);
 }
 
 /** For tests. */

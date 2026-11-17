@@ -259,6 +259,44 @@ function replyPayload(question = "再想一个方案", answer = "可以先讨论
 async function replyLastWrite(p: Page, data: unknown, status = 200) {
   await p.evaluate(({ data, status }) => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method !== "GET"), status, data); }, { data, status }); await settle(p);
 }
+async function replyProtocol(p: Page, version: number | null) {
+  await p.evaluate(version => { const s = (window as any).fixture; const index = s.requests.findIndex((r: any) => r.path === "/api/ai/conversations/protocol" && !r.replied); if (index >= 0) s.reply(index, version === null ? 503 : 200, version === null ? undefined : { protocolVersion: version }); }, version); await settle(p);
+}
+
+// agent-design AG07 repair 2, item 9: the first message from the iOrbit home waits for the protocol check; a slow
+// check never sends it through the old pipeline, and a check that cannot be answered sends nothing.
+test("AG07 repair 2: the home's first message waits for a slow protocol check and goes out as protocol 3", async t => {
+  const p = await open(t, { screen: "home", followNavigation: true, holdReads: true });
+  await p.getByRole("textbox", { name: "询问 iOrbit", exact: true }).fill("提醒我11月20日给小林健回电话");
+  await press(p, "发送");
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.some((r: any) => r.path === "/api/ai/conversations/protocol")), true, "the check was asked");
+  assert.deepEqual(await writes(p), [], "nothing is sent while the check is pending");
+  await replyProtocol(p, 3);
+  const sent = await writes(p);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].path, "/api/ai/conversations");
+  assert.equal(sent[0].body.protocolVersion, 3, "protocol 3, never the old pipeline");
+  assert.equal(sent[0].body.message, "提醒我11月20日给小林健回电话");
+});
+
+// agent-design AG07 repair 2, item 10 (AG07-3): a server error is not offline, and once reads succeed again the
+// conversation recovers by itself — no restart, no pull to refresh.
+test("AG07 repair 2: a conversation whose read failed with a server error recovers on its own once reads succeed", async t => {
+  const session = { ...aiSession, messages: [{ id: "u:recover", role: "user", text: "恢复前的问题" }, { id: "a:recover", role: "assistant", text: "恢复后的回答。" }] };
+  const p = await open(t, { params: { id: session.id, source: "session" }, failPaths: ["/api/ai/conversations/sessions/session%3A1"], payloads: { ...conversationReadPayloads, "/api/ai/conversations/sessions/session%3A1": { session, storage: aiSessionListPayload.storage } } });
+  assert.equal(await p.getByText("恢复后的回答。", { exact: true }).count(), 0, "the failed read shows nothing of the session");
+  await update(p, { failPaths: [] });
+  await p.getByText("恢复后的回答。", { exact: true }).waitFor({ timeout: 8000 });
+  assert.deepEqual(await writes(p), []);
+});
+
+test("AG07 repair 2: when the protocol check cannot be answered, the first message is not sent through the old pipeline", async t => {
+  const p = await open(t, { screen: "home", followNavigation: true, holdReads: true });
+  await p.getByRole("textbox", { name: "询问 iOrbit", exact: true }).fill("提醒我11月21日给小林健发报价单");
+  await press(p, "发送");
+  await replyProtocol(p, null);
+  assert.deepEqual((await writes(p)).filter((write: any) => write.body?.protocolVersion === 2), [], "no protocol-2 send");
+});
 
 test("AI home click issues a scoped one-use intent and continues without another send", async t => {
   const p = await open(t, { screen: "home", followNavigation: true });

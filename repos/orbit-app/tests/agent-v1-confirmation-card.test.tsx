@@ -23,7 +23,7 @@ const preview = (overrides: Partial<AgentActionPreviewContract> = {}): AgentActi
   revisions: [],
   status: "awaiting_confirmation",
   summary: "s",
-  title: "修改 1 项，新增 1 项",
+  title: "修改1项，新增1项",
   updatedAt: "2026-11-15T01:00:00.000Z",
   ...overrides,
 });
@@ -32,7 +32,7 @@ const card = (overrides: Partial<AgentActionPreviewContract> = {}, extra: { onli
 
 test("the waiting card reads word for word as the preview and the fixed words say", () => {
   const text = card();
-  for (const words of ["等你确认", "修改 1 项，新增 1 项", "改", "待办「给小林发修订报价」", "计划日期", "11月18日（周三）", "11月20日（周五）", "新增", "笔记「小林今天来过电话」", "往来对象", "小林健", "确认以上2项", "不改了", "点确认之前，什么都不会改。"]) assert.ok(text.includes(words), words);
+  for (const words of ["等你确认", "修改1项，新增1项", "改", "待办「给小林发修订报价」", "计划日期", "11月18日（周三）", "11月20日（周五）", "新增", "笔记「小林今天来过电话」", "往来对象", "小林健", "确认以上2项", "不改了", "点确认之前，什么都不会改。"]) assert.ok(text.includes(words), words);
   assert.doesNotMatch(text, /操作|载荷|版本|证据|来源|CARD_|payloadHash/u);
 });
 
@@ -65,7 +65,7 @@ test("the basis line, the options, progress and the answer without its card line
   assert.ok(options.includes("小林健（北辰软件）") && options.includes("也可以直接打字回答。"));
   assert.ok(renderedText(<AgentProgress language="zh" queued />).includes("已收到，等前一条处理完"));
   assert.ok(renderedText(<AgentProgress language="en" queued={false} />).includes("Putting the answer together…"));
-  const document = { answer: { cardLine: "确认卡（修改 1 项）：\n① …", sourceRefs: [], text: "你们聊了报价初稿。\n\n确认卡（修改 1 项）：\n① …" } } as unknown as AgentResultDocument;
+  const document = { answer: { cardLine: "确认卡（修改1项）：\n① …", sourceRefs: [], text: "你们聊了报价初稿。\n\n确认卡（修改1项）：\n① …" } } as unknown as AgentResultDocument;
   assert.equal(answerTextOf(document, true), "你们聊了报价初稿。");
 });
 

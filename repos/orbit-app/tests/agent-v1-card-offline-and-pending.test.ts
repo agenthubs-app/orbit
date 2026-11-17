@@ -25,7 +25,7 @@ const card: AgentActionPreviewContract = {
   revisions: [],
   status: "awaiting_confirmation",
   summary: "s",
-  title: "修改 1 项",
+  title: "修改1项",
   updatedAt: "2026-11-15T01:00:00.000Z",
 };
 

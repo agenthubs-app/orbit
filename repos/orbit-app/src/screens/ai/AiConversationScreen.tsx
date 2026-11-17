@@ -3,6 +3,7 @@ import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { randomUUID } from "expo-crypto";
 import { Fragment, useEffect, useRef, useState } from "react";
 import {
+  AppState,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -78,7 +79,7 @@ import {
 } from "../../view-models/conversations";
 import { noteSourceFromParams } from "../../view-models/note-suggestions";
 import { pendingWriteItems, usePendingWriteCounts } from "../../hooks/usePendingWriteCounts";
-import { agentProtocolVersion, requestIdOfAssistantMessage, sendAgentV1 } from "../../api/agent-v1-client";
+import { agentProtocolForSend, agentProtocolVersion, requestIdOfAssistantMessage, sendAgentV1 } from "../../api/agent-v1-client";
 import { useAgentV1Turns, latestAgentCard, type AgentV1TurnsState } from "../../hooks/useAgentV1Turns";
 import { useCardLocalPendingEdits } from "../../hooks/useCardLocalPendingEdits";
 import { AgentBasisLine, AgentConfirmationCard, AgentProgress, AgentQuestionOptions, answerTextOf } from "./cards/AgentConfirmationCard";
@@ -120,6 +121,8 @@ type ReliableSendAttempt = {
 type SendRequest = { path: string; message: string; history?: { content: string; role: "user" | "assistant" }[] | undefined; reliable?: ReliableSendAttempt; revision: number; sourceNote?: { id: string; version: number }; /** QA-A2: when it was first sent (never sent to the server). */ sentAt?: number };
 /** QA-A2: a reliable send still "pending" this long after it was sent has stopped (the server run timed out). */
 const STALE_PENDING_MS = 5 * 60 * 1000;
+/** AG07-3: how often a failed conversation read is tried again while the screen is open. */
+const READ_RETRY_MS = 3000;
 /** QA-A2: the check found the message never reached the server, or the run stopped; 重试 is safe. */
 const RETRYABLE_SEND_CODES = ["NOT_DELIVERED", "TIMED_OUT"];
 type PendingSessionSave = { session: AiSession; revision: number; canonicalize: boolean; waitForTask: boolean; delta?: AiSession["messages"] };
@@ -326,7 +329,18 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const v1RequestIds = protocolV3 && v1Session ? v1Session.messages.flatMap((message) => (message.role === "assistant" ? [requestIdOfAssistantMessage(message.id)].filter((id): id is string => Boolean(id)) : [])) : [];
   const cardEdits = useCardLocalPendingEdits(protocolV3 && Boolean(auth.signedIn && auth.actorId));
   const v1 = useAgentV1Turns({ client, enabled: protocolV3, pendingTargets: cardEdits.pendingTargets, requestIds: v1RequestIds, sessionId: v1Session?.id ?? null, syncedAt: cardEdits.syncedAt });
-  const v1Online = v1.online && !serverUnreachable;
+  // AG07 repair 2 (item 10): a server error (5xx) is not offline; only a server that cannot be reached is.
+  const v1Online = v1.online && state.kind !== "offline";
+  // AG07-3: a read that failed — the server unreachable or answering with an error — is tried again on its own
+  // while the screen is open and when the App comes back; once one succeeds the conversation shows again, no restart.
+  const retryRead = useRef(state.refresh);
+  retryRead.current = state.refresh;
+  useEffect(() => {
+    if (!serverUnreachable || isDraftConversation) return;
+    const timer = setInterval(() => { if (owns()) retryRead.current(); }, READ_RETRY_MS);
+    const subscription = AppState.addEventListener("change", (next) => { if (next === "active" && owns()) retryRead.current(); });
+    return () => { clearInterval(timer); subscription.remove(); };
+  }, [serverUnreachable, isDraftConversation]);
   // Sprint 0112: the first page comes from the resource; older pages are
   // prepended as the reader asks for them, each with its own turns' cards.
   const firstPage = sessionRead?.success ? sessionRead.data.page : undefined;
@@ -640,9 +654,20 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     if (!owns()) return;
     const message = draftValue.current.trim();
     if (!message) return;
-    if (protocolV3 && (isDraftConversation || isStoredAgentSession || Boolean(previousSession))) {
-      await sendV1(message);
-      return;
+    if (isDraftConversation || isStoredAgentSession || Boolean(previousSession)) {
+      // AG07 repair 2: a send waits for the protocol check; a slow check never sends through protocol 2, and a
+      // check that cannot be answered sends nothing (the draft stays).
+      const version = protocolV3 ? 3 : await agentProtocolForSend(client);
+      if (!owns()) return;
+      if (version === 3) {
+        setProtocolV3(true);
+        await sendV1(message);
+        return;
+      }
+      if (version === null) {
+        setSendError(locale.t("aiConversation.notDelivered"));
+        return;
+      }
     }
     const usesSessionHistory = isDraftConversation || isStoredAgentSession || Boolean(previousSession);
     const history = previousSession ? conversationHistoryForRequest() : undefined;
@@ -686,7 +711,28 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       }
       return;
     }
-    void submitRequest(requestForSend({ path: ORBIT_API_ENDPOINTS.conversations, message: initialPrompt, revision: draftRevision.current, ...(sourceNote ? { sourceNote } : {}) }));
+    const legacy = () => submitRequest(requestForSend({ path: ORBIT_API_ENDPOINTS.conversations, message: initialPrompt, revision: draftRevision.current, ...(sourceNote ? { sourceNote } : {}) }));
+    // A note handed to the conversation ("整理这篇笔记") is the protocol-2 entity-draft flow; it keeps that path.
+    if (sourceNote) {
+      void legacy();
+      return;
+    }
+    // AG07 repair 2 (item 9): the first message from the iOrbit home waits for the protocol check, like any send.
+    void (async () => {
+      const version = await agentProtocolForSend(client);
+      if (!owns()) return;
+      if (version === 3) {
+        setProtocolV3(true);
+        await sendV1(initialPrompt);
+        return;
+      }
+      if (version === null) {
+        draftValue.current = initialPrompt; setDraftMessage(initialPrompt);
+        setSendError(locale.t("aiConversation.notDelivered"));
+        return;
+      }
+      await legacy();
+    })();
   }, [client, initialPrompt, isDraftConversation, sourceNote?.id, sourceNote?.version]);
 
   async function recoverRequest(request: SendRequest) {
