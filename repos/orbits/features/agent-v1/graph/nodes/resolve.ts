@@ -166,6 +166,16 @@ export function listSearchWords(quote: string): string | undefined {
   return clueSearchWords(quote.replace(/[。.!！?？]+$/u, "").replace(LIST_VERBS, "").replace(/(?:を)?(?:一覧にして|リストにして|見せて|教えて)(?:ください)?$/u, ""));
 }
 
+/**
+ * AG09 run-04 (AE-WEB-004): a record clue as the user wrote it, for a title or label search ("我竞品笔记 C 里" → "竞品笔记 C"):
+ * only the "my" before it and the "in / of" after it are taken off. A pronoun names no title.
+ */
+export function clueAsWritten(words: string): string | undefined {
+  const text = words.replace(/^@/u, "").trim().replace(/^(?:我的|我)/u, "").replace(/(?:里|中|上|的|の中|の)$/u, "").trim();
+  if ([...text].length < 2 || isPronounClue(text)) return undefined;
+  return text;
+}
+
 export function clueSearchWords(words: string): string | undefined {
   let rest = words.replace(/^@/u, "").trim();
   if (!rest) return undefined;
@@ -635,6 +645,15 @@ export function resolveNode(scope: NodeScope): GraphNode {
                 pages = await readPages(records.reader, kind, accountScope, queryOf(undefined), order === "both" ? 1 : maxPages);
                 emitTrace({ partId: part.localId, type: "resolve.own_words_unmatched", words: ownWords });
               } else if (ownWords) emitTrace({ partId: part.localId, type: "resolve.own_words", words: ownWords });
+              // AG09 run-04 (AE-WEB-004): a clue that names a record by its title or label ("竞品笔记 C", "笔记 C") lost its
+              // generic word in the search words ("竞品c"); when those find nothing, the clue is searched as the user wrote it.
+              if (clue && !text && !pages.items.length && !pages.withheld) {
+                const asWritten = clueAsWritten(clueWords(input.message, clue) ?? "");
+                if (asWritten && asWritten !== kindText) {
+                  pages = await readPages(records.reader, kind, accountScope, queryOf(asWritten), order === "both" ? 1 : maxPages);
+                  emitTrace({ found: pages.items.length, partId: part.localId, type: "resolve.clue_as_written", words: asWritten });
+                }
+              }
               // AG09 dev run 2 (AE-SCL-015): notes compared with a web lookup of the same message ("和我笔记里他们给我的价格比一下"
               // after "查 Kasane Pack 官网…"): when the part's words find no note, the public name the user typed for that lookup
               // is searched — the user's own words of this message, never a record's.
