@@ -67,7 +67,8 @@ export function rankDomainOf(part: GraphPart, message: string): RankDomain | nul
   // Comparing and grouping are other functions (AE-FN-014: "按免费和收费分个组" is a group, not a pick).
   if (part.capabilities.includes("fn.group") || part.capabilities.includes("fn.compare")) return null;
   const quote = message.slice(part.quote[0], part.quote[1]);
-  if (!part.plan.rank && !RANK_WORDS.test(quote) && !PICK_WORDS.test(quote)) return null;
+  // AG10 stability run d (AE-FN-003): "这周该跟进谁" picks people even with no rank words and no rank from the first layer.
+  if (!part.plan.rank && !RANK_WORDS.test(quote) && !PICK_WORDS.test(quote) && !(WHO_WORDS.test(quote) && FOLLOW_UP_WORDS.test(quote))) return null;
   const contact = part.capabilities.includes("contact.read") || part.capabilities.includes("view.recentInteraction");
   // AG10 (AE-FN-001): two or more events chosen with @ are an event ranking even when the first layer named no event read.
   const chosenEvents = part.refs.filter((ref) => ref.entity === "event" && ref.recordId).length;

@@ -122,6 +122,10 @@ test("dev run 1: the first layer's other shapes of the same asks still rank — 
   const people = await runFn(who, [{ dataSources: ["orbit_records"], deliverable: "ranked_list", rank: { basis: "这周该跟进" }, readFilter: { from: "2026-11-15", status: "open", to: "2026-11-21" }, requiredCapabilities: ["contact.read", "todo.read", "schedule.read", "view.recentInteraction", "fn.rank"], sourceQuote: who }]);
   const listed = fnRank(people.events).at(-1)?.listed as string[] | undefined;
   assert.ok(listed?.includes("contact:contact:c30") && listed.includes("contact:contact:c31"), String(listed));
+  // Stability run d: no rank from the first layer at all (and last week's dates) — the words still ask whom to follow up.
+  const bare = await runFn(who, [{ dataSources: ["orbit_records"], deliverable: "ranked_list", readFilter: { from: "2026-11-09", to: "2026-11-15" }, requiredCapabilities: ["contact.read", "view.recentInteraction", "fn.extractFollowUps", "fn.rank"], sourceQuote: who }]);
+  const bareListed = fnRank(bare.events).at(-1)?.listed as string[] | undefined;
+  assert.ok(bareListed?.includes("contact:contact:c30") && bareListed.includes("contact:contact:c31"), String(bareListed));
   const message = "从 @东京街头摄影展 @街拍工作坊 @SaaS 定价研讨会 @设计师之夜 @独立出版市集 里挑三场，优先周末上午，最好跟 @兴趣笔记 的主题有关。";
   const refs = [["event:e101", "东京街头摄影展", "event"], ["event:e102", "街拍工作坊", "event"], ["event:e103", "SaaS 定价研讨会", "event"], ["event:e104", "设计师之夜", "event"], ["event:e105", "独立出版市集", "event"], ["note:m36", "兴趣笔记", "memo"]].map(([id, name, type]) => ({ id, name, type }));
   const events = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "ranked_list", objectClues: refs.map((ref, index) => ({ entity: ref.type, referenceId: `r${index + 1}`, text: `@${ref.name}` })), rank: { basis: "跟 @兴趣笔记 的主题有关", count: 3, within: "周末上午" }, requiredCapabilities: ["fn.rank", "memo.read"], sourceQuote: message }], { references: refs });
