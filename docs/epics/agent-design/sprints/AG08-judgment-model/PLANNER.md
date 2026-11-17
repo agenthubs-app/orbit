@@ -97,3 +97,16 @@ REPORT 写验收映射、功能 SHA、命令与退出码、运行编号与评审
 - 交接表把 `rankCandidates()` 和 `functions/` 目录给了 AG10，但 AE-JDG-001～005 与 AE-SCL-013/014 要求本 sprint 就能端到端挑选和排序；本页只在 `graph/` 加 `functions` 节点的最小版本调 `funnel()`，不建 `functions/` 目录。
 - `sentences.ts` 不在交接表里，AG10 的提取要复用它；建议协调者把它补进 CONVENTIONS 第 4 节 AG08 一行。
 - 证据核对的四道题没有门槛用例直接检验，只靠单测和已通过的 RD 用例不退步；`interaction.happened`、`followup.owner`、`outbound.extra` 三题本 sprint 只登记、不校准，分别由 AG10、AG09 校准后启用。
+
+## 启动核对（Generator run-01，2026-11-17，追加；上文原样保留）
+
+- 本页开工时 SHA-256 `60279d954764199686f0c3eb68ba735289e12d85caf4826361639efdf29dbaad`；基线 HEAD `d3805e8fe`（AG04～AG07 已合回，评测并行 `--workers N` 与 requestId 归属修正已合回）。run-01。
+- 进入条件：AG04、AG05、AG06 completed 并已合回；`.env.agent-eval` 有 `ORBIT_GEMINI_DECISION_API_KEY` 与 `DEEPSEEK_API_KEY`（只查了长度，未打印）；真实接口 2026-11-17 实测可用。
+- 与前序 REPORT、真实接口对照的更正：
+  1. **AG03 没有交付 `rankingBasis`**：第一层输出里没有这个字段。本 sprint 在 `UnderstandPart` 加可选的 `rank`（`count`、`basis`、`within`、`orderBy`、`direction`），`basis` 即附录 C 的 `rankingBasis`（source 为 turn），代码按原文核对；提示版本升到 `understand@ag08.1`。
+  2. **Gemini Decisions 的实际形状**与上文“已在代码外核实”的描述不同处：题目编号只收 `[A-Za-z0-9_-]{1,64}`（`match.level` 发成 `match_level__c1`）；`choice` 的 `criteria` 是“选项 → 说明”的对象；`score` 的 `criteria` 是 2～255 个等级名的列表，返回期望等级 `score`、按等级序号的 `probabilities` 与 `legend`；`noul` 不收 `criteria`，返回 `noul`（“是”的概率）；每个答案有 `confidence`；用量是 `usage.total_input_tokens`。50 题一次请求约 0.6 秒。
+  3. **`sentences.ts`**：AG05 已在 `features/agent-v1/text/sentences.ts` 交付按句切分，本 sprint 不另建 `judgment/sentences.ts`。
+  4. **事件的筛选读取**：AG05 的事件读取只按编号读；排序要列出全部可见的平台活动，本 sprint 在记录读取里加 `listEvents()`，由 functions 节点按可见性和日期过滤。
+  5. **评测并行**：门槛与复跑一律 `--workers 4`（CONVENTIONS §3），一次一个运行。
+- 门槛：`npm run agent-eval:run -- --gate AG08 --workers 4`（JDG ×8、SCL-013/014 与不变量包）；AG07、AG06、AG05、AG04、AG03 门槛各复跑一次（`AG0x-gate-rerun-at-AG08`）。另修 AG07 交接 (a)：回答里的记录条数必须出自本轮读取，否则删去该句（AE-UND-006）。
+- GitNexus：`npx -y gitnexus@latest analyze --index-only --force` 重建成功；impact 用 `npx -y gitnexus@latest impact`。

@@ -6,6 +6,7 @@
  * if the round's budget is used up they stay unfinished, saying why.
  */
 import { datesIn, localizeAnswerDates, unsourcedDates, WEEKDAY_WORD, withoutUnsourcedDates } from "../../answer/dates";
+import { numbersIn, unsourcedCounts, withoutUnsourcedCounts } from "../../answer/counts";
 import { withoutOnly, withoutWrongDirection } from "../../answer/gap-copy";
 import { localDayOf } from "../../propose/dates";
 import { gapWords } from "../../answer/gap-copy";
@@ -166,7 +167,18 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       const direction = part.coverage?.find((item) => item.total !== null && item.total > item.seen)?.direction ?? null;
       // AG07 run-03 (AE-RD-005): some records could not be read: what was read is not said to be "only" that.
       const someUnread = (part.gaps ?? []).some((gap) => gap === "partial" || gap === "unreadable" || gap === "service_error");
-      const delivered = withoutWrongDirection(withoutUnsourcedDates(segment.text, unsourced), direction);
+      // AG08 (AG07 交接 (a)): a count of records stated in the answer comes from this turn's read, or the sentence goes.
+      const partMaterials = run.materials.get(part.localId) ?? [];
+      const allowed = numbersIn(dateSources);
+      allowed.add(partMaterials.length);
+      for (const kind of new Set(partMaterials.map((material) => material.ref.split(":")[0]))) allowed.add(partMaterials.filter((material) => material.ref.startsWith(`${kind}:`)).length);
+      for (const item of part.coverage ?? []) {
+        allowed.add(item.seen);
+        if (item.total !== null) allowed.add(item.total);
+      }
+      const uncounted = unsourcedCounts(segment.text, allowed);
+      if (uncounted.length) emitTrace({ counts: uncounted, partId: part.localId, type: "answer.unsourced_counts_dropped" });
+      const delivered = withoutWrongDirection(withoutUnsourcedCounts(withoutUnsourcedDates(segment.text, unsourced), uncounted), direction);
       run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(delivered, state.language) : delivered, state.language));
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref);
       if (profileParts.has(part.localId)) {
@@ -227,7 +239,11 @@ export function answerNode(scope: NodeScope): GraphNode {
     if (!due.length) return {};
     const dropCardTalk = !run.cardPrepared;
     if (state.plainChat && run.plainReply && parts.every((part) => part.route === "answer")) {
-      const reply = withoutCardTalk(run.plainReply, due[0].localId, dropCardTalk);
+      const plain = withoutCardTalk(run.plainReply, due[0].localId, dropCardTalk);
+      // AG08 (AE-UND-006): nothing was read, so a count of the user's records has no source unless the user said it.
+      const plainCounts = plain ? unsourcedCounts(plain, numbersIn([input.message, ...(run.context?.messages ?? []).map((message) => message.text)])) : [];
+      if (plainCounts.length) emitTrace({ counts: plainCounts, parts: due.map((part) => part.localId), type: "answer.unsourced_counts_dropped" });
+      const reply = plain ? withoutUnsourcedCounts(plain, plainCounts) : plain;
       if (reply) {
         run.answers.set(due[0].localId, localizeAnswerDates(reply, state.language));
         emitTrace({ note: "plain chat: the first layer's reply is shown, no second call", parts: due.map((part) => part.localId), type: "answer.plain_reply" });
@@ -279,7 +295,10 @@ export function answerNode(scope: NodeScope): GraphNode {
         const text = checked.segments.get(part.localId)!;
         const unsourced = unsourcedDates(text, discussionSources);
         if (unsourced.length) emitTrace({ days: unsourced, partId: part.localId, type: "answer.unsourced_dates_dropped" });
-        run.answers.set(part.localId, localizeAnswerDates(withoutUnsourcedDates(text, unsourced), state.language));
+        // AG08 (AG07 交接 (a), AE-UND-006): a discussion read nothing; a count of the user's records it states has no source.
+        const uncounted = unsourcedCounts(text, numbersIn([input.message, ...conversation.map((message) => message.text)]));
+        if (uncounted.length) emitTrace({ counts: uncounted, partId: part.localId, type: "answer.unsourced_counts_dropped" });
+        run.answers.set(part.localId, localizeAnswerDates(withoutUnsourcedCounts(withoutUnsourcedDates(text, unsourced), uncounted), state.language));
         continue;
       }
       const budgetOut = result.ok === false && result.reason === "budget";

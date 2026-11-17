@@ -40,6 +40,8 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
         readings: (part.readings ?? []).map((reading) => ({ capabilities: [...reading.capabilities], deliverable: reading.deliverable })),
         // The checkpoint keeps the words as offsets into this turn's message, never the words.
         ...(part.readFilter ? { readFilter: { ...part.readFilter, text: part.readFilter.text && message.includes(part.readFilter.text) ? [message.indexOf(part.readFilter.text), message.indexOf(part.readFilter.text) + part.readFilter.text.length] as [number, number] : undefined } } : {}),
+        // AG08: the rank words as offsets too.
+        ...(part.rank ? { rank: { ...part.rank, basis: spanOf(message, part.rank.basis), within: spanOf(message, part.rank.within) } } : {}),
       },
       quote: [start, start + part.sourceQuote.length],
       reading: null,
@@ -55,6 +57,13 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
       waitReason: null,
     } satisfies GraphPart;
   });
+}
+
+/** Words of this turn's message as [start, end), or undefined when they are not in it. */
+function spanOf(message: string, words: string | undefined): [number, number] | undefined {
+  if (!words) return undefined;
+  const at = message.indexOf(words);
+  return at >= 0 ? [at, at + words.length] : undefined;
 }
 
 type Checked = { ok: true; output: UnderstandOutput; dropped: string[] } | { ok: false; errors: string[] };

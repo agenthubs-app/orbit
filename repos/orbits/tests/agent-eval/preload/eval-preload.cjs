@@ -259,7 +259,7 @@ dgram.createSocket = function guardedUdp(...args) {
 
 /* ── faults, replay and model recording on fetch ───────────────────── */
 /** Kinds that rewrite a real response instead of replacing the call (taken after the response). */
-const REWRITE_KINDS = new Set(["inject_approval_flag", "mistag_write"]);
+const REWRITE_KINDS = new Set(["inject_approval_flag", "mistag_write", "low_confidence"]);
 
 function takeFault(where, options = {}) {
   // AG03: an `understand` fault hits only the understand node's model calls; outside the graph (the old
@@ -396,6 +396,29 @@ function mistagWrite(body) {
   return JSON.stringify({ ...body, choices: [{ ...body.choices[0], message: { ...message, content: JSON.stringify(output) } }, ...body.choices.slice(1)] });
 }
 
+/**
+ * AG08 run-02 (CHANGES.md 2026-11-17): low_confidence is answered at the judgment call's boundary, before the network
+ * — a real request that would have timed out can no longer keep the fault from firing (AE-JDG-008 run-01). Every
+ * question of the request gets an answer of its own type whose confidence (and every probability) is 0, so it is below
+ * any threshold: noul 0.5, choice the first option, score the highest level by a hair. Source simulated, no usage.
+ */
+function lowConfidenceAnswers(requestBody) {
+  const questions = requestBody && typeof requestBody === "object" && requestBody.questions && typeof requestBody.questions === "object" ? requestBody.questions : {};
+  const answers = {};
+  for (const [id, question] of Object.entries(questions)) {
+    const type = question && question.type;
+    if (type === "noul") answers[id] = { type: "noul", noul: 0.5, confidence: 0 };
+    else if (type === "choice") {
+      const options = question.criteria && typeof question.criteria === "object" && !Array.isArray(question.criteria) ? Object.keys(question.criteria) : [];
+      answers[id] = { type: "choice", choice: options[0] ?? "", confidence: 0, probabilities: Object.fromEntries(options.map((option) => [option, 0])) };
+    } else if (type === "score") {
+      const levels = Array.isArray(question.criteria) ? question.criteria.length : 2;
+      answers[id] = { type: "score", score: levels - 1, confidence: 0, probabilities: Object.fromEntries(Array.from({ length: levels }, (_value, index) => [String(index), index === levels - 1 ? 0.000001 : 0])) };
+    }
+  }
+  return { answers, usage: null };
+}
+
 const realFetch = globalThis.fetch;
 if (typeof realFetch === "function") {
   globalThis.fetch = async function evalFetch(input, init) {
@@ -422,6 +445,16 @@ if (typeof realFetch === "function") {
     const prefix = category === "web" ? (/\/search/u.test(url.pathname) ? "web.search" : "web.fetch") : category;
     const requestBody = parseMaybeJson(init?.body);
     const started = realNow();
+    // AG08 run-02: an armed low_confidence is answered here, before the network (see lowConfidenceAnswers).
+    if (category === "judgment" && state.faults.some((armed) => armed.where === "judgment" && armed.kind === "low_confidence")) {
+      const low = takeFault("judgment", { rewrite: true });
+      if (low) {
+        emit({ type: "judgment.request", source: "simulated", provider, url: url.href, method: init?.method ?? "GET", headers: safeHeaders(init?.headers), body: requestBody, fault: { where: low.where, kind: low.kind } });
+        const simulated = lowConfidenceAnswers(requestBody);
+        emit({ type: "judgment.response", source: "simulated", provider, status: 200, body: simulated, usage: null, durationMs: realNow() - started });
+        return new Response(JSON.stringify(simulated), { status: 200, headers: { "content-type": "application/json" } });
+      }
+    }
     const fault = takeFault(category === "model" ? "model" : category);
     if (fault) {
       emit({ type: category === "web" ? prefix : `${prefix}.request`, source: "simulated", provider, url: url.href, method: init?.method ?? "GET", headers: safeHeaders(init?.headers), body: requestBody, fault: { where: fault.where, kind: fault.kind } });

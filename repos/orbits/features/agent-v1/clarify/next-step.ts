@@ -60,7 +60,7 @@ export interface StepContext {
 
 export type NextStep =
   | { kind: "not_understood" }
-  | { kind: "respond"; entry: Capability | null; conservative: boolean }
+  | { kind: "respond"; entry: Capability | null; conservative: boolean; /** AG08: the write-intent review made it a statement; the entry's words (route node). */ reviewed?: { kind: "interaction" } | { kind: "reschedule"; date: string; object?: string } }
   | { kind: "most_likely"; reading: Reading; basis: "selection" | "page" | "topic" | "default"; others: Reading[] }
   | { kind: "ask_missing" }
   | { kind: "ask_readings"; readings: Reading[] }

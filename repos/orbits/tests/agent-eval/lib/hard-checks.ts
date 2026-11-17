@@ -41,7 +41,6 @@ export const NOT_YET: Record<string, string> = {
   field_history: "AG12",
   functions_called: "AG10",
   import_rows: "AG12",
-  judgment_question: "AG08",
   mcp_collected: "AG17",
   mcp_result_excludes: "AG17",
   mcp_result_has: "AG17",
@@ -457,8 +456,28 @@ export const CHECKS: Record<string, CheckFn> = {
     return calls.length === Number(args) ? pass(`${calls.length} judgment call(s)`, seqs(calls)) : fail(`${calls.length} judgment call(s), expected ${args}`, seqs(calls));
   },
 
-  judgment_candidates_max(_args, obs) {
-    return obs.events.some((event) => event.type === "judgment.request") ? cannot("candidate counts are recorded from AG08") : pass("no judgment call, so no candidates");
+  judgment_candidates_max(args, obs) {
+    // AG08: the product traces each judgment request as judgment.decided with the number of candidates it sent.
+    const decided = obs.events.filter((event) => event.type === "judgment.decided" && event.sent === true);
+    const requests = obs.events.filter((event) => event.type === "judgment.request");
+    if (!decided.length) return requests.length ? cannot("judgment requests without a judgment.decided event") : pass("no judgment call, so no candidates");
+    const most = Math.max(...decided.map((event) => Number(event.candidates ?? 0)));
+    return most <= Number(args) ? pass(`at most ${most} candidate(s) sent in one judgment request`, seqs(decided)) : fail(`${most} candidates sent in one judgment request, max ${args}`, seqs(decided));
+  },
+
+  judgment_question(args, obs) {
+    // AG08 (JDG.yaml): requests that carried this question (judgment.decided, sent), and how often it fell to its
+    // conservative result (below threshold, unavailable, not enabled, missing).
+    const id = String(args?.id ?? "");
+    const decided = obs.events.filter((event) => event.type === "judgment.decided" && Array.isArray(event.questionIds) && (event.questionIds as string[]).includes(id));
+    const asked = decided.filter((event) => event.sent === true && Array.isArray(event.sentQuestionIds) && (event.sentQuestionIds as string[]).includes(id));
+    const fallbacks = decided.reduce((sum, event) => sum + Number((event.fallbacks as Record<string, number> | undefined)?.[id] ?? 0), 0);
+    const problems: string[] = [];
+    if (args?.asked_min !== undefined && asked.length < Number(args.asked_min)) problems.push(`${id} asked ${asked.length} time(s), at least ${args.asked_min} expected`);
+    if (args?.asked_max !== undefined && asked.length > Number(args.asked_max)) problems.push(`${id} asked ${asked.length} time(s), at most ${args.asked_max} expected`);
+    if (args?.fallback_min !== undefined && fallbacks < Number(args.fallback_min)) problems.push(`${id} fell to its conservative result ${fallbacks} time(s), at least ${args.fallback_min} expected`);
+    const detail = `${id}: asked ${asked.length}, conservative ${fallbacks}`;
+    return problems.length ? fail(`${problems.join(" | ")} (${detail})`, seqs(decided)) : pass(detail, seqs(decided));
   },
 
   clarifications(args, obs) {

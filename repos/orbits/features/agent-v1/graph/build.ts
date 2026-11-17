@@ -16,6 +16,8 @@ import type { AgentGraphDependencies, AgentGraphInput, GraphNode, NodeScope } fr
 import { answerNode } from "./nodes/answer";
 import { clarifyNode } from "./nodes/clarify";
 import { deliverNode } from "./nodes/deliver";
+import { functionsDue, functionsNode } from "./nodes/functions";
+import { newJudgmentBudget } from "../judgment/ask";
 import { intakeNode } from "./nodes/intake";
 import { proposeDue, proposeNode } from "./nodes/propose";
 import { resolveNode } from "./nodes/resolve";
@@ -25,10 +27,10 @@ import { verifyNode } from "./nodes/verify";
 import { AgentGraphAnnotation, type AgentGraphRun, type AgentGraphState, type GraphResolution } from "./state";
 import type { AgentActionPreviewContract, AgentAnswerBasisContract, AgentClarificationContract, AgentPartResult, AgentRunStage } from "../../../shared/contract/agent-v1";
 
-export const GRAPH_NODES = ["intake", "understand", "route", "resolve", "propose", "clarify", "answer", "verify", "deliver"] as const;
+export const GRAPH_NODES = ["intake", "understand", "route", "functions", "resolve", "propose", "clarify", "answer", "verify", "deliver"] as const;
 
 /** AG07: the progress a client shows while a node runs ("正在查你的笔记…", "正在整理回答…"), chosen by code. */
-const STAGE_OF: Partial<Record<(typeof GRAPH_NODES)[number], AgentRunStage>> = { answer: "composing", propose: "composing", resolve: "reading" };
+const STAGE_OF: Partial<Record<(typeof GRAPH_NODES)[number], AgentRunStage>> = { answer: "composing", functions: "reading", propose: "composing", resolve: "reading" };
 
 function traced(name: (typeof GRAPH_NODES)[number], requestId: string, node: GraphNode, onStage?: (stage: AgentRunStage) => void): GraphNode {
   return (state) => runWithTraceContext({ node: name, requestId }, async () => {
@@ -69,6 +71,7 @@ export function buildAgentGraph(scope: NodeScope) {
     .addNode("intake", traced("intake", id, intakeNode(scope)))
     .addNode("understand", traced("understand", id, understandNode(scope)))
     .addNode("route", traced("route", id, routeNode(scope)))
+    .addNode("functions", traced("functions", id, functionsNode(scope), scope.deps.onStage))
     .addNode("resolve", traced("resolve", id, resolveNode(scope), scope.deps.onStage))
     .addNode("propose", traced("propose", id, proposeNode(scope), scope.deps.onStage))
     .addNode("clarify", traced("clarify", id, clarifyNode(scope)))
@@ -81,7 +84,9 @@ export function buildAgentGraph(scope: NodeScope) {
     // AG05: parts that read go through resolve first (it may find several people and need a question).
     // AG04: parts that need questions or directions go through clarify's prepare pass.
     // AG06: parts that write go through propose (after the reads, so a person found by a read is known).
-    .addConditionalEdges("route", (state: AgentGraphState) => (readDue(state) ? "resolve" : proposeDue(state) ? "propose" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["resolve", "propose", "clarify", "answer", "deliver"])
+    // AG08: parts that pick or order contacts or events go through functions first (code, one judgment at most).
+    .addConditionalEdges("route", (state: AgentGraphState) => (functionsDue(state, scope.input.message) ? "functions" : readDue(state) ? "resolve" : proposeDue(state) ? "propose" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["functions", "resolve", "propose", "clarify", "answer", "deliver"])
+    .addConditionalEdges("functions", (state: AgentGraphState) => (readDue(state) ? "resolve" : proposeDue(state) ? "propose" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "verify"), ["resolve", "propose", "clarify", "answer", "verify"])
     .addConditionalEdges("resolve", (state: AgentGraphState) => (proposeDue(state) ? "propose" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["propose", "clarify", "answer", "deliver"])
     .addConditionalEdges("propose", (state: AgentGraphState) => (scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["clarify", "answer", "deliver"])
     // After prepare: answer or deliver. After a resume: route again (a click to carry out) or deliver (closed from outside).
@@ -121,6 +126,7 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     answers: new Map(),
     candidates: new Map(),
     cardPrepared: input.cardPrepared,
+    judgment: newJudgmentBudget(),
     clarifications: [],
     context: null,
     earlier: [],

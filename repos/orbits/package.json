@@ -47,6 +47,7 @@
     "eval:business-card-ocr": "tsx scripts/evaluate-business-card-ocr.ts",
     "ingest-v2:worker": "tsx scripts/run-business-card-ingest-v2-worker.ts",
     "local:stack": "node scripts/local-stack.mjs",
+    "agent-eval:calibrate": "tsx scripts/agent-eval/calibrate-judgment.ts",
     "agent-eval:check": "tsx scripts/agent-eval/check.ts",
     "agent-eval:env": "tsx scripts/agent-eval/env.ts",
     "agent-eval:seed": "tsx scripts/agent-eval/seed.ts",

@@ -9,6 +9,8 @@ import type { AgentSessionStateStore, NamedRecordRef } from "../context/session-
 import type { AgentGraphRun, AgentGraphState } from "./state";
 import type { CardOperationIntent } from "../../agent/runtime/card-operations";
 import type { AgentActionPreviewContract as CardPreview } from "../../../shared/contract/agent-v1";
+import type { CanonicalEventRecord } from "../../events/core/contract";
+import type { JudgmentAccess } from "../judgment/ask";
 
 /**
  * AG06: the request's card in the action ledger (one card per request, conversationCardId). `freeze` is
@@ -30,6 +32,8 @@ export interface AgentRecordAccess {
   visible(actorId: string, refs: readonly string[]): Promise<Set<string>>;
   /** Pages per read of one subgoal. */
   maxPages: number;
+  /** AG08: the events the account may see, for ranking (graph/nodes/functions.ts filters them). */
+  listEvents?(): Promise<readonly CanonicalEventRecord[]>;
 }
 
 /** A reference of this turn as intake keeps it: named when accessible; `accessible: false` when not (AG05). */
@@ -58,6 +62,8 @@ export interface AgentGraphDependencies {
   modelCallLimit?: number;
   /** AG07: told when the round reaches a step a client shows as progress (reading, composing). */
   onStage?: (stage: AgentRunStage) => void;
+  /** AG08: the judgment model (absent, or no key: every judgment is unavailable and conservative). */
+  judgment?: JudgmentAccess;
 }
 
 export interface AgentGraphInput {

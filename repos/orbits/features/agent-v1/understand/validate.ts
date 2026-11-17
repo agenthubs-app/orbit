@@ -22,9 +22,11 @@ import {
   INTENT_BASES,
   MAX_READINGS,
   PERSISTENCES,
+  RANK_FIELDS,
   READ_ORDERS,
   READ_STATUSES,
   type ObjectClue,
+  type RankSpec,
   type ReadFilter,
   type UnderstandOutput,
   type UnderstandPart,
@@ -131,6 +133,31 @@ function readFilterOf(raw: unknown, message: string, where: string, dropped: str
   return Object.keys(out).length ? out : undefined;
 }
 
+const quoted = (value: unknown) => (typeof value === "string" ? value.trim().replace(/^["“「『]|["”」』]$/gu, "") : "");
+
+/** AG08: a part's rank spec, keeping only what is valid (words copied from the message, a known field); never a reason to reject. */
+function rankOf(raw: unknown, message: string, where: string, dropped: string[]): RankSpec | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!isRecord(raw)) {
+    dropped.push(`${where} (not an object)`);
+    return undefined;
+  }
+  const out: RankSpec = {};
+  const count = typeof raw.count === "string" && /^\d+$/u.test(raw.count) ? Number(raw.count) : raw.count;
+  if (typeof count === "number" && Number.isInteger(count) && count >= 1 && count <= 50) out.count = count;
+  else if (raw.count !== undefined && raw.count !== null) dropped.push(`${where}.count (${JSON.stringify(raw.count)})`);
+  for (const key of ["basis", "within"] as const) {
+    const text = quoted(raw[key]);
+    if (text && message.includes(text)) out[key] = text.slice(0, 120);
+    else if (text) dropped.push(`${where}.${key} (${JSON.stringify(raw[key]).slice(0, 40)} is not words of the message)`);
+  }
+  if (oneOf(RANK_FIELDS, raw.orderBy)) out.orderBy = raw.orderBy;
+  else if (raw.orderBy !== undefined && raw.orderBy !== null) dropped.push(`${where}.orderBy (${JSON.stringify(raw.orderBy)})`);
+  if (raw.direction === "asc" || raw.direction === "desc") out.direction = raw.direction;
+  else if (raw.direction !== undefined && raw.direction !== null) dropped.push(`${where}.direction (${JSON.stringify(raw.direction)})`);
+  return Object.keys(out).length ? out : undefined;
+}
+
 export function validateUnderstandOutput(raw: unknown, input: UnderstandValidationInput): UnderstandValidation {
   const errors: string[] = [];
   const dropped: string[] = [];
@@ -218,6 +245,7 @@ export function validateUnderstandOutput(raw: unknown, input: UnderstandValidati
       readings.push({ capabilities: [...new Set(list as Capability[])], deliverable: oneOf(DELIVERABLES, reading.deliverable) ? reading.deliverable : "answer", label: typeof reading.label === "string" ? reading.label.slice(0, 80) : "" });
     });
     const readFilter = readFilterOf(item.readFilter, input.message, `$.${where}.readFilter`, dropped);
+    const rank = rankOf(item.rank, input.message, `$.${where}.rank`, dropped);
     let continues: UnderstandPart["continues"];
     if (item.continues !== undefined && item.continues !== null) {
       if (!isRecord(item.continues) || !oneOf(CONTINUE_KINDS, item.continues.kind) || typeof item.continues.ref !== "string") errors.push(`${where}.continues must be { kind, ref }`);
@@ -241,6 +269,7 @@ export function validateUnderstandOutput(raw: unknown, input: UnderstandValidati
       ...(continues ? { continues } : {}),
       ...(readings.length ? { readings } : {}),
       ...(readFilter ? { readFilter } : {}),
+      ...(rank ? { rank } : {}),
     });
   });
   for (const part of parts) {

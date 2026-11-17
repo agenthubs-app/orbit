@@ -19,8 +19,9 @@ import type { ReferenceHandle } from "./deps";
 import type { Capability, Route, Verdict, WaitReason } from "../route/capabilities";
 import type { PartStatus } from "../route/decide";
 import type { PartWrite } from "../propose/resolve";
+import type { JudgmentBudget } from "../judgment/ask";
 import type { AgentActionPreviewContract } from "../../../shared/contract/agent-v1";
-import type { Clarity, DataOwner, DataSource, Deliverable, IntentBasis, Persistence, ReadFilter, UnderstandOutput } from "../understand/schema";
+import type { Clarity, DataOwner, DataSource, Deliverable, IntentBasis, Persistence, RankField, ReadFilter, UnderstandOutput } from "../understand/schema";
 
 export interface GraphPartRef {
   entity: string;
@@ -49,6 +50,8 @@ export interface PartPlan {
   acceptedLeadsTo?: Capability | null;
   /** AG05: how the part's read is narrowed: the words as [start, end) in this turn's message (the words are not kept), order, status, dates. */
   readFilter?: Omit<ReadFilter, "text"> & { text?: [number, number] };
+  /** AG08: picking or ordering records: the words as [start, end) in this turn's message, a count, a field. */
+  rank?: { count?: number; basis?: [number, number]; within?: [number, number]; orderBy?: RankField; direction?: "asc" | "desc" };
 }
 
 /** AG05: what a read part covered, per kind (codes and counts only). */
@@ -201,6 +204,8 @@ export interface AgentGraphRun {
   basis: AgentAnswerBasisContract | null;
   /** AG06: code's sentences for write parts (not found, a question, cannot be done here). */
   writeLines: Map<string, string>;
+  /** AG08: the round's judgment requests (at most 3, 设计稿 §3.3). */
+  judgment: JudgmentBudget;
   /** AG06: the card of this request as frozen, and code's line for it. */
   actionPreview: AgentActionPreviewContract | null;
   cardLine: string | null;
