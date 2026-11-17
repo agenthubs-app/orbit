@@ -19,6 +19,7 @@ import type { AgentGraphState, GraphPart } from "../state";
 import { clueWords, needsDirections, objectOf, pageKindOf } from "./clarify";
 import { clueSearchWords } from "./resolve";
 import { needsIntentReview, reviewWriteIntent } from "../../judgment/intent-review";
+import { organizeMeansSummary } from "./functions";
 import { contactKindOf } from "../../propose/resolve";
 import { capabilityKind, type Capability } from "../../route/capabilities";
 import type { NextStep } from "../../clarify/next-step";
@@ -146,6 +147,12 @@ export function routeNode(scope: NodeScope): GraphNode {
       const reschedule = namesNothing && reschedulesTo(openItem?.quote ?? input.message.slice(part.quote[0], part.quote[1]), state.asOf || deps.now(), state.timeZone || "Asia/Tokyo");
       // AG08: the review found no explicit request: the part is a statement (no card, one entry).
       if (reviewed.has(part.localId)) part.plan = { ...part.plan, clarity: "statement" };
+      // AG10 (AE-FN-008): "@笔记 帮我整理一下" with no product named is a summary of that memo, not readings to choose from.
+      if (!resume && organizeMeansSummary(part, input.message, new Set(run.references.map((reference) => reference.id))) && (part.plan.clarity !== "clear" || part.capabilities.some((capability) => capabilityKind(capability) === "write"))) {
+        part.capabilities = ["memo.read", "fn.summarize"];
+        part.plan = { ...part.plan, clarity: "clear", dataSources: ["orbit_records"], deliverable: "summary", readings: [] };
+        emitTrace({ partId: part.localId, type: "route.organize_is_summary" });
+      }
       const routeOptions = { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind, namedObjectWithDate: namedObjectWithDate(part), reschedule, unboundPronoun: unboundPronoun(part) };
       let decision = decideRoute(routeInputOf(part), routeOptions);
       // AG09 run-02 (AE-CTX-006): a question about one of the user's own contacts (an @ record) is answered from the records;

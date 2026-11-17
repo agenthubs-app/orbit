@@ -98,6 +98,18 @@ const SUMMARIZE_WORDS = /(整理|总结|归纳|概括|摘要|まとめ|要約|su
 const COMPARE_WORDS = /(对比|比较|比一比|比べ|比較|\bcompare\b|\bversus\b|\bvs\.?\b)/iu;
 const GROUP_WORDS = /(分组|分个组|分成|按.{0,6}分类|归类|グループ|分けて|\bgroup\b|\bsplit into\b)/iu;
 
+/**
+ * AG10 (设计稿 §3.5 "“整理一下”没指定产物时默认只给摘要"; stability run e, AE-FN-008): a part on a memo chosen with @ whose words
+ * only ask to organize it, naming no product (no interactions, no commitments, no change), is a summary — not a choice of
+ * readings to ask about. Code decides it from the words.
+ */
+export function organizeMeansSummary(part: GraphPart, message: string, attached: ReadonlySet<string>): boolean {
+  const quote = message.slice(part.quote[0], part.quote[1]);
+  if (!SUMMARIZE_WORDS.test(quote) || INTERACTION_WORDS.test(quote) || FOLLOW_UP_ASK.test(quote) || WRITE_ASK.test(quote)) return false;
+  const memos = part.refs.filter((ref) => ref.entity === "memo" && ref.recordId && attached.has(ref.recordId));
+  return memos.length > 0 && part.refs.every((ref) => ref.entity === "memo");
+}
+
 export type FunctionTask =
   | { kind: "rank"; domain: RankDomain }
   | { kind: "rank_reply"; item: SessionOpenItem }

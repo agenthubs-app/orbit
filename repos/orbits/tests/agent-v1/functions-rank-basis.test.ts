@@ -162,4 +162,15 @@ test("AE-FN-008: '@笔记 帮我整理一下' — a summary only: code's lead sa
   assert.deepEqual(entries.flatMap((set) => set.options.map((option) => option.capability)), ["fn.extractInteractions", "fn.extractFollowUps"]);
   assert.ok(!run.events.some((event) => ["fn.rank", "fn.extractInteractions", "fn.extractFollowUps"].includes(String(event.type))));
   assert.deepEqual(run.result.sourceRefs, ["memo:note:m32"]);
+  // Stability run e: the first layer offered readings (change the memo / summarize / follow-ups) — still only a summary, no question.
+  const readings = await runFn(message, [{ clarity: "multiple_readings", dataSources: ["orbit_records"], deliverable: "summary", objectClues: [{ entity: "memo", referenceId: "r1", text: "11 月 10 日笔记" }], readings: [{ capabilities: ["memo.update"], deliverable: "change", label: "改" }, { capabilities: ["fn.summarize"], deliverable: "summary", label: "摘要" }, { capabilities: ["fn.extractFollowUps"], deliverable: "list", label: "跟进" }], requiredCapabilities: ["memo.update", "memo.read", "fn.summarize"], sourceQuote: message }], {
+    answer: (call) => {
+      const handle = /(s\d+) — memo/u.exec(call.user)![1];
+      return JSON.stringify({ segments: [{ cites: [{ sentenceIds: [1, 2], sourceRef: handle }], partId: "p1", text: "11 月 10 日小林来电，说小陈在审核；你答应 11 月 13 日给小林发报价。" }] });
+    },
+    references: [{ id: "note:m32", name: "11 月 10 日笔记", type: "memo" }],
+  });
+  assert.equal(readings.result.clarifications.filter((set) => set.kind === "question").length, 0);
+  assert.match(readings.result.text, /^你没说要整理成什么/u);
+  assert.equal(readings.frozen.length, 0);
 });
