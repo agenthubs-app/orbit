@@ -572,7 +572,10 @@ export function resolveNode(scope: NodeScope): GraphNode {
       // older interaction or profile. "The last time" reads as before.
       const current = Boolean(filter?.current) && contacts.length > 0;
       const interactionAnswers = !current && kinds.has("interaction") && !text && order === "newest" && read.views.some((view) => view.kind === "memo");
-      const searchKinds = (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !(kind === "memo" && interactionAnswers));
+      // AG07 run-02 (AE-RD-008): a part whose every object is an attached record (@, not a person) and that has no
+      // words to search by asks about that record: other kinds the first layer added are not searched.
+      const attachedOnly = !text && part.refs.length > 0 && part.refs.every((ref) => ref.recordId && recordKindOf(ref.entity) !== "contact" && /^@/u.test(input.message.slice(ref.quote?.[0] ?? 0, ref.quote?.[1] ?? 0).trim()));
+      const searchKinds = attachedOnly ? [] : (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !(kind === "memo" && interactionAnswers));
       if (current) read.notes.push("This asks how the person stands now: the interactions, their newest notes and the profile are all here; where they differ, the newer dated record is what holds now. Never give as current anything a newer record replaces (a former company, an old role).");
       const subjects = contacts.length ? contacts.map((item) => item.id) : [undefined];
       let unclear = false;

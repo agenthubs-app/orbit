@@ -5,6 +5,9 @@ import { changeReasonLine, verifyChangeReasons } from "../../features/agent-v1/a
 import { unsourcedDates, withoutUnsourcedDates } from "../../features/agent-v1/answer/dates";
 import { gapWords, withoutWrongDirection } from "../../features/agent-v1/answer/gap-copy";
 import type { Material } from "../../features/agent-v1/answer/schema";
+import { runAgentGraph } from "../../features/agent-v1/graph/build";
+import { captureTrace, deepseekStub, graphKit, json, part, recordAccessOf } from "./graph-kit";
+import { schedule, smallWorld, todo } from "./read-kit";
 
 /**
  * agent-design AG07 run-02 (exception under option A), each defect of the judges on b0d77d7, test first.
@@ -12,6 +15,26 @@ import type { Material } from "../../features/agent-v1/answer/schema";
 const material = (handle: string, ref: string, at: string, text: string, header = ""): Material => ({ at, handle, header, kind: "memo", partId: "p1", ref, sentences: [{ id: 1, text }], version: "1" });
 const LM02 = material("s2", "LM02", "2026-11-09T09:30:00.000Z", "张伟来电：项目交接延后，最快 1 月 5 日到岗，之前说的 12 月 1 日作废。");
 const LM01 = material("s3", "LM01", "2026-10-08T10:00:00.000Z", "他说手上的项目 11 月底收尾，最快 12 月 1 日可以到岗。");
+
+test("4 AE-RD-008 (run-02 gate): a question about an attached record reads that record, not other kinds the first layer added", async () => {
+  const base = smallWorld();
+  for (const record of base.records) if (record.userId === "user:a") record.userId = "actor:a";
+  base.records.push(todo("actor:a", "task:t42", "给小林发修订报价", { plannedDate: "2026-11-18" }), schedule("actor:a", "personal:s1", "和田中吃饭", "2026-11-19T10:00:00.000Z"));
+  const message = "@给小林发修订报价 计划哪天做";
+  const model = deepseekStub([
+    (call) => json({ parts: [part({ dataSources: ["orbit_records"], objectClues: [{ entity: "todo", referenceId: /(r\d) todo 给小林发修订报价/u.exec(call.user)![1], text: "@给小林发修订报价" }], requiredCapabilities: ["todo.read", "schedule.read"], sourceQuote: message })], plainChat: false }),
+    (call) => json({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: /(s\d+) — to-do/u.exec(call.user)?.[1] ?? "s1" }], partId: "p1", text: "计划11月18日做。" }] }),
+  ]);
+  const trace = captureTrace();
+  try {
+    const kit = graphKit(model.fetchImplementation, { records: recordAccessOf(base), references: [{ id: "task:t42", name: "给小林发修订报价", type: "todo" }] });
+    await runAgentGraph(kit.deps, kit.input(message, { references: [{ id: "task:t42", type: "todo" }] }));
+    const done = trace.events.find((event) => event.type === "read.done") as { reads?: string[] } | undefined;
+    assert.deepEqual(done?.reads, ["todo:task:t42"], "only the attached to-do is read");
+  } finally {
+    trace.restore();
+  }
+});
 
 test("1 AE-SCL-006: code's line states the earlier value from the superseding note and the reason, in zh/ja/en", () => {
   const checked = verifyChangeReasons([{ before: "12 月 1 日", older: "s3", reason: "项目交接延后", source: "s2" }], [LM02, LM01]);
