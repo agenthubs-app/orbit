@@ -17,7 +17,7 @@ import { groundedAnswerSystemPrompt, groundedAnswerUserText, GROUNDED_ANSWER_PRO
 import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
 import { withoutForeignUrls } from "../../web/answer-urls";
-import { withoutTopicBasisClaims } from "../../answer/claims";
+import { withoutOnlineDenials, withoutTopicBasisClaims } from "../../answer/claims";
 import { stripCardTalk, stripSaveTalk } from "../../entry/approval-claims";
 import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
@@ -33,13 +33,15 @@ const PROFILE_CAPABILITIES = new Set<string>(["contact.read", "profile.read", "v
 type Segments ={ ok: true; segments: Map<string, string> } | { ok: false; error: string };
 
 /**
- * AG10 opening item (AG08 交接 1): a model sentence claiming a topic ranking this turn did not do is not delivered.
- * Code's own lines say what the ranking used.
+ * AG10 opening items: a model sentence claiming a topic ranking this turn did not do (AG08 交接 1), or saying the agent
+ * cannot go online at all (AG09 交接, AE-WEB-004), is not delivered. Code's own lines say what was and was not done.
  */
 function withoutFalseClaims(text: string, partIds: readonly string[], topicMatched: boolean): string {
   const basis = withoutTopicBasisClaims(text, topicMatched);
   if (basis.dropped.length) emitTrace({ dropped: basis.dropped, note: "a model sentence claiming a topic ranking this turn did not do is not delivered; code says what the ranking used", parts: partIds, type: "answer.basis_claims_dropped" });
-  return basis.text;
+  const online = withoutOnlineDenials(basis.text);
+  if (online.dropped.length) emitTrace({ dropped: online.dropped, note: "Orbit can go online; a sentence saying it cannot is not delivered", parts: partIds, type: "answer.online_denial_dropped" });
+  return online.text;
 }
 
 /**
