@@ -24,6 +24,7 @@ function privateAccountHtml(auth: { ready: boolean; signedIn: boolean }): string
     if (name.endsWith("/tokens")) return { spacing: { md: 12, sm: 8 }, typography: { body: 14 } };
     if (name.endsWith("/theme")) return { useOrbitTheme: () => ({ colors }), createThemedStyles: (factory: (value: unknown) => unknown) => () => ({ colors, styles: factory(colors) }) };
     if (name.endsWith("/mobile-route-access")) return { mobileLoginHref };
+    if (name.endsWith("/shell-navigation")) return { rootStackScreenOptions: () => ({}) };
     if (name === "expo-router") return { Stack: div, usePathname: () => "/settings/integrations", useGlobalSearchParams: () => ({}), Redirect: ({ href }: { href: string }) => React.createElement("div", { "data-redirect": href }) };
     throw new Error(`Unexpected boundary dependency ${name}`);
   };

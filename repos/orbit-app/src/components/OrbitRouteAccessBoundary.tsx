@@ -14,10 +14,11 @@ import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { spacing, typography } from "../design/tokens";
 import { createThemedStyles, useOrbitTheme } from "../design/theme";
 import { mobileLoginHref } from "../view-models/mobile-route-access";
+import { rootStackScreenOptions } from "./shell-navigation";
 
 export function OrbitRouteAccessBoundary() {
   const { colors } = useOrbitTheme();
-  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />;
+  return <Stack screenOptions={({ route }) => ({ headerShown: false, contentStyle: { backgroundColor: colors.bg }, ...rootStackScreenOptions(route) })} />;
 }
 
 export function OrbitPrivateRouteBoundary({

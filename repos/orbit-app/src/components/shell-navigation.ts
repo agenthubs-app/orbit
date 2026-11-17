@@ -49,3 +49,61 @@ export function openMainTab(router: ResetRouter, href: string): void {
   resetStackTo(router, href);
 }
 
+type StackRoute = { key?: string; name: string; params?: object | undefined };
+type TabAnimation = "none" | "default" | "slide_from_left";
+export type TabSwipeDirection = "next" | "prev";
+
+/**
+ * Whether a root-stack route is one of the four tab pages. /home and /task are root routes;
+ * /contacts and /events live in the (app) group, whose root route names its page in `screen`.
+ */
+export function isTabPageRoute(route: StackRoute): boolean {
+  if (route.name === "home" || route.name === "task") return true;
+  const screen = (route.params as { screen?: unknown } | undefined)?.screen;
+  return route.name === "(app)" && (screen === "contacts" || screen === "events");
+}
+
+// A swipe asks for the next tab page to slide in; the request is taken by the first tab
+// route the stack renders after it and kept for that route (its options are read again later).
+let pendingSwipe: TabSwipeDirection | null = null;
+const tabAnimations = new Map<string, TabAnimation>();
+
+/**
+ * Tapping a tab switches pages at once, like a native tab bar: a tab page always arrives by
+ * replacing the bottom page (openMainTab), so it gets no push animation. A swipe between tab
+ * pages slides the new page in from the side it came from. Every other page keeps the stack's slide.
+ */
+export function rootStackScreenOptions(route: StackRoute): { animation?: TabAnimation } {
+  if (!isTabPageRoute(route)) return {};
+  const known = route.key ? tabAnimations.get(route.key) : undefined;
+  if (known) return { animation: known };
+  const animation: TabAnimation = pendingSwipe === "next" ? "default" : pendingSwipe === "prev" ? "slide_from_left" : "none";
+  pendingSwipe = null;
+  if (route.key) {
+    if (tabAnimations.size > 50) tabAnimations.clear();
+    tabAnimations.set(route.key, animation);
+  }
+  return { animation };
+}
+
+/** The tab page next to `from` in the bar's order (iOrbit is a full-screen page, not a tab page). */
+export function adjacentTabPath(from: string, direction: TabSwipeDirection): string | null {
+  const index = TAB_PAGE_PATHS.indexOf(from.split(/[?#]/u)[0] ?? "");
+  if (index < 0) return null;
+  return TAB_PAGE_PATHS[index + (direction === "next" ? 1 : -1)] ?? null;
+}
+
+/** A finished sideways pan: far enough (64pt) or fast enough (600pt/s) in one direction picks a neighbour. */
+export function swipeDirection(translationX: number, velocityX: number): TabSwipeDirection | null {
+  if (translationX <= -64 || (translationX < 0 && velocityX <= -600)) return "next";
+  if (translationX >= 64 || (translationX > 0 && velocityX >= 600)) return "prev";
+  return null;
+}
+
+/** Swiping sideways on a tab page opens the neighbouring tab page with a slide. */
+export function swipeToMainTab(router: ResetRouter, from: string, direction: TabSwipeDirection): void {
+  const target = adjacentTabPath(from, direction);
+  if (!target) return;
+  pendingSwipe = direction;
+  openMainTab(router, target);
+}

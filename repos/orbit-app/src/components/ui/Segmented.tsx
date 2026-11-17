@@ -38,7 +38,7 @@ export function Segmented<Key extends string>({ segments, value, onChange, acces
 // kit .tseg (Task 四段) + .tswipe page dots: equal segments over pages the user can
 // also swipe between. Segment positions are frozen (RD-20); the parent owns which
 // page is shown — a value set from outside (a link, restored state) moves the pager.
-export function SwipeSegments<Key extends string>({ segments, value, onChange, accessibilityLabel, renderPage, variant = "tseg", dots = true }: {
+export function SwipeSegments<Key extends string>({ segments, value, onChange, accessibilityLabel, renderPage, variant = "tseg", dots = true, onSwipePastEdge }: {
   segments: Segment<Key>[];
   value: Key;
   onChange: (key: Key) => void;
@@ -47,6 +47,8 @@ export function SwipeSegments<Key extends string>({ segments, value, onChange, a
   /** R26：イベント页用 kit `.seg`（app.html #13–#15），下方无页点、只留 14 的间距。默认同 Task（tseg + 页点）。 */
   variant?: "seg" | "tseg";
   dots?: boolean;
+  /** Pulling past the first page ("prev") or the last one ("next"): a tab page opens its neighbouring tab page. */
+  onSwipePastEdge?: (direction: "next" | "prev") => void;
 }) {
   const { styles } = useStyles();
   const { width } = useWindowDimensions();
@@ -97,6 +99,12 @@ export function SwipeSegments<Key extends string>({ segments, value, onChange, a
         showsHorizontalScrollIndicator={false}
         style={{ flex: 1 }}
         onLayout={(event) => setPageHeight(event.nativeEvent.layout.height || undefined)}
+        onScrollEndDrag={onSwipePastEdge ? (event) => {
+          // iOS bounces past the ends; a pull beyond them leaves this tab page for its neighbour.
+          const x = event.nativeEvent.contentOffset.x;
+          if (x < -PAST_EDGE) onSwipePastEdge("prev");
+          else if (x > (segments.length - 1) * pageWidth + PAST_EDGE) onSwipePastEdge("next");
+        } : undefined}
         onMomentumScrollEnd={(event) => {
           const landed = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
           const segment = segments[landed];
@@ -109,6 +117,9 @@ export function SwipeSegments<Key extends string>({ segments, value, onChange, a
     </View>
   );
 }
+
+/** How far (pt of bounce) the pager must be pulled past its first or last page to leave the tab page. */
+const PAST_EDGE = 40;
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   track: { flexDirection: "row", padding: 3, gap: 2, borderRadius: 999, backgroundColor: colors.surface2, alignSelf: "stretch" },
