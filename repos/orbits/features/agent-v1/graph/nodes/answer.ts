@@ -6,7 +6,7 @@
  * if the round's budget is used up they stay unfinished, saying why.
  */
 import { datesIn, localizeAnswerDates, unsourcedDates, WEEKDAY_WORD, withoutUnsourcedDates } from "../../answer/dates";
-import { numbersIn, seenAllowedBy, unsourcedCounts, withoutUnsourcedCounts, withoutWrongSeenCounts } from "../../answer/counts";
+import { numbersIn, seenAllowedBy, unsourcedCounts, withoutPartialCounts, withoutUnsourcedCounts, withoutWrongSeenCounts } from "../../answer/counts";
 import { withoutOnly, withoutWrongDirection } from "../../answer/gap-copy";
 import { localDayOf } from "../../propose/dates";
 import { gapWords } from "../../answer/gap-copy";
@@ -191,7 +191,14 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       const linked = hasWeb ? withoutForeignUrls(seen.text, run.webUrls) : { dropped: [], text: seen.text };
       if (linked.dropped.length) emitTrace({ dropped: linked.dropped, partId: part.localId, type: "answer.foreign_urls_dropped" });
       const delivered = withoutWrongDirection(linked.text, direction);
-      run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(delivered, state.language) : delivered, state.language));
+      // AG09 run-02 (AE-RD-005): a partial read (records that could not be read, or a page whose total is unknown) does not
+      // state an exact or total count ("有一次", "1回だけ", "only once"); a total the read itself gave may stay.
+      const partialRead = someUnread || coverage.some((item) => !item.complete && item.total === null);
+      // With records that could not be read, the read's own total counts only the readable ones: no total is known then.
+      const knownTotals = new Set(someUnread ? [] : coverage.flatMap((item) => (item.total !== null ? [item.total] : [])));
+      const counted = partialRead ? withoutPartialCounts(delivered, state.language, knownTotals) : { changed: [], text: delivered };
+      if (counted.changed.length) emitTrace({ changed: counted.changed, partId: part.localId, type: "answer.partial_counts_neutralized" });
+      run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(counted.text, state.language) : counted.text, state.language));
       // AG09: a web page is not a record of the user's: its citations stay out of the records' sourceRefs (the page is listed in the answer's web record).
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref).filter((ref) => !ref.startsWith("web:"));
       if (profileParts.has(part.localId)) {

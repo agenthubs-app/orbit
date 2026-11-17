@@ -120,3 +120,75 @@ export function withoutWrongSeenCounts(text: string, allowed: ReadonlySet<number
   }
   return { dropped: wrong, text: kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").trim() };
 }
+
+/**
+ * AG09 run-02 (coordinator, AE-RD-005 at 07381abeb): when this turn's read of the subject is partial — some records could
+ * not be read, or a page whose total is unknown — a sentence stating an exact or total count of records or interactions
+ * ("有一次", "只有一条", "一共3次", "1回だけ", "全部で2件", "only once", "just one") claims to know all of them. Such a count
+ * is not delivered: the lead-in before a colon becomes code's neutral lead ("读得到的记录里：…"), otherwise the count is
+ * taken out (zh, ja) or the sentence goes (en). A count equal to a total the read itself gave (coverage.total) stays.
+ */
+const ZH_EXACT = [
+  new RegExp(`(只有|仅有|一共有|总共有|共有|就有|一共|总共|只|仅|就|共|有)((?:联系|聊天?|见面?|通话|打电话|往来|沟通)?过?)\\s*${N}\\s*(?:次|条|件|篇|回|通)`, "gu"),
+  new RegExp(`()((?:联系|聊天?|见面?|通话|打电话|往来|沟通)过)\\s*${N}\\s*(?:次|回)`, "gu"),
+];
+const JA_EXACT = [
+  new RegExp(`(?:全部で|合計で?|計)\\s*${N}\\s*(?:回|件|度|つ)(?:だけ|のみ|きり)?`, "gu"),
+  new RegExp(`${N}\\s*(?:回|件|度|つ)\\s*(?:だけ|のみ|きり)`, "gu"),
+  new RegExp(`${N}\\s*(?:回|件|度)(?=です|でした|あります|ありました)`, "gu"),
+];
+const EN_EXACT = [
+  /\b(?:only|just)\s+(once|twice|one|a single|\d{1,4}|two|three)\b/giu,
+  /\b(?:a total of|exactly|in total)\s+(\d{1,4}|one|two|three)\b/giu,
+  /\b(once|twice)\s+(?=this\b|in total\b|so far\b)/giu,
+];
+const EN_TIMES: Record<string, number> = { "a single": 1, once: 1, twice: 2 };
+
+function exactValue(said: string): number | null {
+  return EN_TIMES[said.toLowerCase()] ?? valueOf(said);
+}
+
+/** The exact or total counts of records or interactions a text states. */
+export function exactCountsIn(text: string): number[] {
+  // One count per number in the text, however many patterns find it (keyed by where the number stands).
+  const found = new Map<number, number | null>();
+  const note = (match: RegExpMatchArray, said: string, value: number | null) => found.set((match.index ?? 0) + match[0].lastIndexOf(said), value);
+  for (const pattern of ZH_EXACT) for (const match of text.matchAll(pattern)) note(match, match[3], valueOf(match[3]));
+  for (const pattern of JA_EXACT) for (const match of text.matchAll(pattern)) note(match, match[1], valueOf(match[1]));
+  for (const pattern of EN_EXACT) for (const match of text.matchAll(pattern)) note(match, match[1], exactValue(match[1]));
+  return [...found.entries()].sort((left, right) => left[0] - right[0]).map(([, value]) => value).filter((value): value is number => value !== null && Number.isFinite(value));
+}
+
+const NEUTRAL_LEAD: Record<"zh" | "ja" | "en", string> = { en: "In the records that could be read:", ja: "読めた記録では：", zh: "读得到的记录里：" };
+
+function neutralized(sentence: string, language: "zh" | "ja" | "en", allowed: ReadonlySet<number>): string | null {
+  if (!exactCountsIn(sentence).some((value) => !allowed.has(value))) return sentence;
+  const colon = sentence.search(/[：:]/u);
+  if (colon >= 0 && exactCountsIn(sentence.slice(0, colon)).some((value) => !allowed.has(value))) {
+    const rest = sentence.slice(colon + 1).replace(/^\s+/u, "");
+    return language === "en" ? `${NEUTRAL_LEAD.en} ${rest}` : `${NEUTRAL_LEAD[language]}${rest}`;
+  }
+  if (language === "en") return null;
+  let out = sentence;
+  for (const pattern of ZH_EXACT) out = out.replace(pattern, (whole: string, marker: string, verb: string, said: string) => (allowed.has(valueOf(said) ?? -1) ? whole : `${marker.includes("有") && !verb ? "有" : ""}${verb}`));
+  for (const pattern of JA_EXACT) out = out.replace(pattern, (whole: string, said: string) => (allowed.has(valueOf(said) ?? -1) ? whole : ""));
+  out = out.replace(/有([，,。；;！!？?])/gu, "$1");
+  return out.replace(/^[\s，、,。]+/u, "").trim() ? out : null;
+}
+
+/** The answer with every exact count neutralized (a partial read); `changed` lists the sentences touched. */
+export function withoutPartialCounts(text: string, language: "zh" | "ja" | "en", allowed: ReadonlySet<number>): { text: string; changed: string[] } {
+  if (!exactCountsIn(text).some((value) => !allowed.has(value))) return { changed: [], text };
+  const pieces = text.match(/[^。！？!?\n]+(?:[。！？!?]+|\n+|$)|\n+/gu) ?? [text];
+  const kept: string[] = [];
+  const changed: string[] = [];
+  for (const piece of pieces) {
+    const parts = language === "en" && /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)\s+/u) : [piece];
+    for (const part of parts) {
+      const next = neutralized(part, language, allowed);
+      if (next !== part) changed.push(part.trim());
+      if (next !== null && next.trim()) kept.push(next);
+    }
+  }
+  return { changed, text: kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").trim() };
+}
