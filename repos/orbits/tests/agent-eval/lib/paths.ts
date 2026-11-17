@@ -21,20 +21,26 @@ export function evalHome(env: Record<string, string | undefined> = process.env):
   return env.ORBIT_AGENT_EVAL_HOME?.trim() || path.join(os.homedir(), "orbit-sprint-evidence", "agent-eval");
 }
 
+/** harness/eval-parallel-workers: worker k ≥ 2 of `agent-eval:run -- --workers N` (unset for worker 1). */
+export const WORKER_ENV_KEY = "ORBIT_AGENT_EVAL_WORKER";
+
 export function evalPaths(env: Record<string, string | undefined> = process.env) {
   const home = evalHome(env);
   const envDir = path.join(home, "env");
+  // Worker k ≥ 2 has its own trace, storage and server state; snapshots, runs and logs are shared.
+  const worker = env[WORKER_ENV_KEY]?.trim() ? `w${env[WORKER_ENV_KEY]!.trim()}` : null;
+  const storageDir = worker ? path.join(envDir, "storage", worker) : path.join(envDir, "storage");
   return {
     home,
     runs: path.join(home, "runs"),
     envDir,
     storage: path.join(envDir, "storage"),
-    exportsDir: path.join(envDir, "storage", "exports"),
-    batchUploads: path.join(envDir, "storage", "batch-uploads"),
+    exportsDir: path.join(storageDir, "exports"),
+    batchUploads: path.join(storageDir, "batch-uploads"),
     snapshots: path.join(envDir, "snapshots"),
     serverLogs: path.join(envDir, "logs"),
-    traceDir: path.join(envDir, "trace"),
-    stateFile: path.join(envDir, "server.json"),
+    traceDir: worker ? path.join(envDir, "trace", worker) : path.join(envDir, "trace"),
+    stateFile: path.join(envDir, worker ? `server-${worker}.json` : "server.json"),
     idMap: path.join(envDir, "snapshots", "id-map.json"),
   };
 }

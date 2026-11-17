@@ -59,6 +59,17 @@ export function summarizeCase(outcome: CaseOutcome, meta: { gate: string; invari
   };
 }
 
+/** A runner failure fails this case (cannot_judge) and the run goes on (moved here from run.ts for the workers). */
+export function crashedOutcome(testCase: { id: string }, area: string, runDir: string, error: unknown): CaseOutcome {
+  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  const dir = path.join(runDir, "cases", testCase.id);
+  fs.mkdirSync(dir, { recursive: true });
+  const checks = [{ args: null, check: "runner", detail: `the runner failed on this case: ${message.split("\n")[0]}`, evidence: [], status: "cannot_judge" as const }];
+  fs.writeFileSync(path.join(dir, "hard-checks.json"), JSON.stringify({ caseId: testCase.id, checks, hardPass: false, runnerError: message }, null, 2));
+  const observation = { account: "", accounts: {}, answers: [], businessChanges: [], cards: [], caseId: testCase.id, clarifications: 0, clicks: [], decisions: [], diff: { records: [], tables: [] }, events: [], fake: false, fixtureIdOf: () => null, idMap: {}, reads: [], requests: [], unsupported: [] };
+  return { account: "", area, caseId: testCase.id, checks, dir, durationMs: 0, error: message, events: [], fake: false, hardPass: false, observation, simulated: false, unsupported: [] };
+}
+
 /** Problems that make costs.json incomplete or inconsistent with the traces (H.yaml costs_complete). */
 export function costsProblems(costs: CostSummary, outcomes: readonly CaseOutcome[]): string[] {
   const problems: string[] = [];

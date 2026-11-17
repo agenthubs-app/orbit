@@ -1,10 +1,15 @@
 /**
- * npm run agent-eval:run -- --gate AGnn | --all | --case AE-H-006[,AE-…] [--label <text>] [--seed-cards] [--sealed]
+ * npm run agent-eval:run -- --gate AGnn | --all | --case AE-H-006[,AE-…] [--label <text>] [--seed-cards] [--sealed] [--workers N]
  *
  * Needs the eval server (npm run agent-eval:env). Writes ~/orbit-sprint-evidence/agent-eval/runs/<run id>/:
  * manifest.json, env.json, summary.json, report.md, costs.json, bundle.sha256 and cases/<id>/… (README §4).
  * Cases with an `egress_probe` step void their run, so they only run when named with --case.
  * Judging is separate: npm run agent-eval:judge-pack -- --run <run id>.
+ *
+ * --workers N (default 1: one case after another on the eval server, as before): N worker processes take cases
+ * from one queue. Worker 1 uses the eval server and orbit_agent_eval; worker k ≥ 2 gets its own database
+ * orbit_agent_eval_w<k> (from the same snapshots) and its own server on port 3110 + k − 1 (from the same
+ * build), both removed when the run ends, fails or is interrupted (tests/agent-eval/lib/parallel.ts).
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -14,7 +19,9 @@ import { gateOf, loadAreaFiles, selectCases, type EvalCase } from "../../tests/a
 import { finishCosts, readDeepSeekBalance, tallyCosts } from "../../tests/agent-eval/lib/costs";
 import { applyEvalEnvironment, loadEvalEnvironment, processAlive, readServerState } from "../../tests/agent-eval/lib/eval-env";
 import { evalPaths, JUDGE_PROMPT, ORBITS_ROOT } from "../../tests/agent-eval/lib/paths";
-import { costsProblems, settleRunLevelChecks, summarizeCase, writeBundleSha } from "../../tests/agent-eval/lib/run-files";
+import { MAX_EVAL_WORKERS } from "../../tests/agent-eval/lib/env-guard";
+import { cleanupWorkerSync, installCleanup, prepareWorkers, WorkerPool, type PoolResult, type WorkerServer } from "../../tests/agent-eval/lib/parallel";
+import { costsProblems, crashedOutcome, settleRunLevelChecks, summarizeCase, writeBundleSha } from "../../tests/agent-eval/lib/run-files";
 import { gitInfo, runCase, type CaseOutcome, type RunnerContext } from "../../tests/agent-eval/lib/runner";
 import { runSelfCheck } from "../../tests/agent-eval/lib/selfcheck";
 import { serverControl } from "../../tests/agent-eval/lib/server";
@@ -27,22 +34,15 @@ function flag(argv: readonly string[], name: string): string | null {
   return index >= 0 ? argv[index + 1] ?? null : null;
 }
 
-function crashedOutcome(testCase: EvalCase, area: string, runDir: string, error: unknown): CaseOutcome {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error);
-  const dir = path.join(runDir, "cases", testCase.id);
-  fs.mkdirSync(dir, { recursive: true });
-  const checks = [{ args: null, check: "runner", detail: `the runner failed on this case: ${message.split("\n")[0]}`, evidence: [], status: "cannot_judge" as const }];
-  fs.writeFileSync(path.join(dir, "hard-checks.json"), JSON.stringify({ caseId: testCase.id, checks, hardPass: false, runnerError: message }, null, 2));
-  const observation = { account: "", accounts: {}, answers: [], businessChanges: [], cards: [], caseId: testCase.id, clarifications: 0, clicks: [], decisions: [], diff: { records: [], tables: [] }, events: [], fake: false, fixtureIdOf: () => null, idMap: {}, reads: [], requests: [], unsupported: [] };
-  return { account: "", area, caseId: testCase.id, checks, dir, durationMs: 0, error: message, events: [], fake: false, hardPass: false, observation, simulated: false, unsupported: [] };
-}
-
 function runIdFor(short: string, label: string): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
   return `${stamp}-${short}-${label.replace(/[^A-Za-z0-9_-]+/gu, "-")}`;
 }
+
+/** Set when --workers N > 1 installed its cleanup (runs once, from here or from a signal or exit handler). */
+let cleanupNow: (() => void) | null = null;
 
 async function main(argv: readonly string[]): Promise<void> {
   const environment = loadEvalEnvironment();
@@ -66,6 +66,38 @@ async function main(argv: readonly string[]): Promise<void> {
   if (gate) {
     const problems = checkGateIdentity({ build, dirty: tree.dirty, head: tree.head });
     if (problems.length) throw new Error(`A gate run does not start: ${problems.join("; ")}.`);
+  }
+  const workerCount = Number(flag(argv, "--workers") ?? 1);
+  if (!Number.isInteger(workerCount) || workerCount < 1 || workerCount > MAX_EVAL_WORKERS) throw new Error(`--workers takes 1–${MAX_EVAL_WORKERS}.`);
+  let workers: { environments: Awaited<ReturnType<typeof prepareWorkers>>["environments"]; servers: WorkerServer[]; pool: WorkerPool | null } | null = null;
+  if (workerCount > 1) {
+    // harness/eval-parallel-workers: worker k ≥ 2's database and server are removed on every way out.
+    const workerEnvironments = Array.from({ length: workerCount - 1 }, (_, index) => loadEvalEnvironment({ worker: index + 2 }));
+    cleanupNow = installCleanup(() => {
+      workers?.pool?.kill();
+      for (const workerEnvironment of workerEnvironments) {
+        try {
+          const done = cleanupWorkerSync(workerEnvironment);
+          if (done.length) console.log(`  worker ${workerEnvironment.worker}: ${done.join("; ")}`);
+        } catch (cleanupError) {
+          console.error(`  worker ${workerEnvironment.worker}: cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : cleanupError}`);
+        }
+      }
+    });
+    const firstWorld = selection.cases[0].world;
+    const snapshot = JSON.parse(fs.readFileSync(path.join(evalPaths(environment.env).snapshots, `${firstWorld}.seed.json`), "utf8")).snapshot.file as string;
+    console.log(`agent-eval:run: preparing ${workerCount - 1} more worker(s): databases from the ${firstWorld} snapshot, servers from build ${state.buildId}`);
+    const prepared = await prepareWorkers(environment, workerCount, snapshot, (line) => console.log(line));
+    workers = { ...prepared, pool: null };
+    // The --build / stale-build / dirty-tree guards cover every worker: each server must serve the build the eval server serves.
+    const mismatched = prepared.servers.filter((server) => server.buildId !== state.buildId || server.build?.commit !== build?.commit || server.build?.nextBuildId !== build?.nextBuildId);
+    if (mismatched.length) throw new Error(`The workers do not all serve the eval server's build: ${mismatched.map((server) => `worker ${server.worker} serves ${server.buildId} (${server.build?.commit?.slice(0, 10) ?? "no identity"})`).join("; ")}.`);
+    if (gate) {
+      for (const server of prepared.servers) {
+        const problems = checkGateIdentity({ build: server.build, dirty: tree.dirty, head: tree.head });
+        if (problems.length) throw new Error(`A gate run does not start: worker ${server.worker}: ${problems.join("; ")}.`);
+      }
+    }
   }
   const runId = runIdFor(git.short, label);
   const paths = evalPaths(environment.env);
@@ -99,12 +131,26 @@ async function main(argv: readonly string[]): Promise<void> {
     soloExcluded: selection.solo.map((testCase) => testCase.id),
     startedAt,
     thresholds: "none before AG08",
+    // harness/eval-parallel-workers: only with --workers N > 1 (a sequential run's manifest is unchanged).
+    ...(workers ? { workers: { count: workerCount, queue: "one queue in selection order; each worker takes the next case when it is free", servers: workers.servers } } : {}),
   };
   fs.writeFileSync(path.join(runDir, "manifest.json"), JSON.stringify(manifest, null, 2));
-  console.log(`agent-eval:run ${runId}: ${selection.cases.length} case(s)${selection.solo.length ? `; run alone with --case: ${selection.solo.map((c) => c.id).join(", ")}` : ""}`);
+  console.log(`agent-eval:run ${runId}: ${selection.cases.length} case(s)${workers ? ` on ${workerCount} workers` : ""}${selection.solo.length ? `; run alone with --case: ${selection.solo.map((c) => c.id).join(", ")}` : ""}`);
 
-  const selfCheck = await runSelfCheck(environment, worlds);
-  fs.writeFileSync(path.join(runDir, "env.json"), JSON.stringify(selfCheck, null, 2));
+  let selfCheck: Awaited<ReturnType<typeof runSelfCheck>>;
+  if (workers) {
+    // Each worker self-checks its own database and server (README §10); env.json is worker 1's, with the others under `workers`.
+    workers.pool = new WorkerPool(workers.environments, { runDir, runId, sealed, seedCards, worlds });
+    const ready = await workers.pool.start();
+    const first = ready.get(1)!.selfCheck;
+    const others = [...ready.entries()].filter(([worker]) => worker !== 1);
+    const failedOthers = others.flatMap(([worker, item]) => item.failed.map((name) => `worker ${worker}: ${name}`));
+    selfCheck = { ...first, ok: first.ok && failedOthers.length === 0, checks: [...first.checks, ...others.flatMap(([worker, item]) => item.selfCheck.checks.map((check) => ({ ...check, name: `worker ${worker}: ${check.name}` })))] };
+    fs.writeFileSync(path.join(runDir, "env.json"), JSON.stringify({ ...selfCheck, checks: first.checks, ok: selfCheck.ok, workers: Object.fromEntries(others.map(([worker, item]) => [worker, item.selfCheck])) }, null, 2));
+  } else {
+    selfCheck = await runSelfCheck(environment, worlds);
+    fs.writeFileSync(path.join(runDir, "env.json"), JSON.stringify(selfCheck, null, 2));
+  }
   if (!selfCheck.ok) {
     const failed = selfCheck.checks.filter((check) => !check.ok).map((check) => check.name);
     fs.writeFileSync(path.join(runDir, "summary.json"), JSON.stringify({ aborted: true, reason: `self-check failed: ${failed.join("; ")}`, runId, voided: true }, null, 2));
@@ -115,22 +161,35 @@ async function main(argv: readonly string[]): Promise<void> {
   const balanceBefore = await readDeepSeekBalance(environment.env.DEEPSEEK_API_KEY);
   const ctx: RunnerContext = { areaCases: Object.fromEntries(areaFiles.map((file) => [file.area, file.cases as EvalCase[]])), currentWorld: null, environment, runDir, runId, seedCards, writer: null };
   const outcomes: CaseOutcome[] = [];
-  for (const [index, testCase] of selection.cases.entries()) {
-    const file = fileOf.get(testCase.id)!;
-    let outcome: CaseOutcome;
-    try {
-      outcome = await runCase(testCase as EvalCase, file.new_patches ?? {}, file.area, ctx);
-    } catch (caseError) {
-      // A runner failure fails this case and the run goes on.
-      outcome = crashedOutcome(testCase as EvalCase, file.area, runDir, caseError);
+  let pooled: PoolResult | null = null;
+  if (workers?.pool) {
+    // One queue; the worker processes run runCase exactly as the loop below does, each on its own database and server.
+    const ids = selection.cases.map((testCase) => testCase.id);
+    pooled = await workers.pool.run(ids, (id) => fileOf.get(id)?.area ?? "", (outcome, finished) => {
+      const failed = outcome.checks.filter((check) => (check.status === "fail" || check.status === "cannot_judge") && !check.expectedToFail).map((check) => check.check);
+      console.log(`  [${finished}/${ids.length}] ${outcome.caseId} hard ${outcome.hardPass ? "pass" : `FAIL (${failed.join(", ")})`} ${Math.round(outcome.durationMs / 100) / 10}s (worker ${outcome.worker})`);
+    });
+    // The observation stays in the worker that ran the case; the run-level checks are settled there (below).
+    for (const outcome of pooled.outcomes) outcomes.push({ ...outcome, observation: {} as CaseOutcome["observation"] });
+    for (const problem of pooled.problems) console.error(`  WORKER PROBLEM: ${problem}`);
+  } else {
+    for (const [index, testCase] of selection.cases.entries()) {
+      const file = fileOf.get(testCase.id)!;
+      let outcome: CaseOutcome;
+      try {
+        outcome = await runCase(testCase as EvalCase, file.new_patches ?? {}, file.area, ctx);
+      } catch (caseError) {
+        // A runner failure fails this case and the run goes on.
+        outcome = crashedOutcome(testCase as EvalCase, file.area, runDir, caseError);
+      }
+      outcomes.push(outcome);
+      const failed = outcome.checks.filter((check) => (check.status === "fail" || check.status === "cannot_judge") && !check.expectedToFail).map((check) => check.check);
+      console.log(`  [${index + 1}/${selection.cases.length}] ${testCase.id} hard ${outcome.hardPass ? "pass" : `FAIL (${failed.join(", ")})`} ${Math.round(outcome.durationMs / 100) / 10}s`);
     }
-    outcomes.push(outcome);
-    const failed = outcome.checks.filter((check) => (check.status === "fail" || check.status === "cannot_judge") && !check.expectedToFail).map((check) => check.check);
-    console.log(`  [${index + 1}/${selection.cases.length}] ${testCase.id} hard ${outcome.hardPass ? "pass" : `FAIL (${failed.join(", ")})`} ${Math.round(outcome.durationMs / 100) / 10}s`);
+    await ctx.writer?.close();
+    // Back to idle: no case context, real time. A block from now on is attributed to no case.
+    await serverControl(environment, "context", { caseId: null, clock: new Date().toISOString(), runId: null });
   }
-  await ctx.writer?.close();
-  // Back to idle: no case context, real time. A block from now on is attributed to no case.
-  await serverControl(environment, "context", { caseId: null, clock: new Date().toISOString(), runId: null });
   // Billing lags; give the balance a moment before the second reading.
   await new Promise((resolve) => setTimeout(resolve, 5000));
   const balanceAfter = await readDeepSeekBalance(environment.env.DEEPSEEK_API_KEY);
@@ -141,7 +200,19 @@ async function main(argv: readonly string[]): Promise<void> {
   const voidReasons = blocked.map((item) => `outbound connection to ${item.host} blocked in ${item.caseId} (seq ${item.seq})`);
   const simulatedCases = outcomes.filter((outcome) => outcome.simulated).map((outcome) => outcome.caseId);
   const run = { costsProblems: costsProblems(costs, outcomes), simulatedCases, summarySeparates: true, voidReasons, voided: voidReasons.length > 0 };
-  settleRunLevelChecks(outcomes, run);
+  const workerProblems = [...(pooled?.problems ?? [])];
+  if (workers?.pool && pooled) {
+    const owner = new Map(pooled.outcomes.map((outcome) => [outcome.caseId, outcome.worker]));
+    const settled = await workers.pool.settle(run, owner);
+    for (const outcome of outcomes) {
+      const result = settled.results.get(outcome.caseId);
+      if (result) Object.assign(outcome, { checks: result.checks, hardPass: result.hardPass });
+    }
+    workerProblems.push(...settled.problems);
+    for (const problem of settled.problems) console.error(`  WORKER PROBLEM: ${problem}`);
+  } else {
+    settleRunLevelChecks(outcomes, run);
+  }
   const meta = new Map(selection.cases.map((testCase) => [testCase.id, { gate: gateOf(testCase), invariant: testCase.invariant }]));
   const cases = outcomes.map((outcome) => summarizeCase(outcome, meta.get(outcome.caseId)!, costs.perCase[outcome.caseId]));
   const summary = {
@@ -160,6 +231,9 @@ async function main(argv: readonly string[]): Promise<void> {
     total: cases.length,
     voidReasons,
     voided: run.voided,
+    // harness/eval-parallel-workers: only with --workers N > 1. `retried`: attempts the provider rate-limited
+    // (429), kept under retried/ and run again from a fresh world; their calls are outside costs.json's per-case tally.
+    ...(pooled ? { workers: { count: workerCount, perCase: Object.fromEntries(pooled.outcomes.map((outcome) => [outcome.caseId, outcome.worker])), problems: workerProblems, retried: pooled.retried } } : {}),
   };
   fs.writeFileSync(path.join(runDir, "summary.json"), JSON.stringify(summary, null, 2));
   fs.writeFileSync(path.join(runDir, "report.md"), renderRunReport(summary, costs, null));
@@ -168,7 +242,10 @@ async function main(argv: readonly string[]): Promise<void> {
   console.log(`  ${runDir}`);
 }
 
-main(process.argv.slice(2)).catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+main(process.argv.slice(2))
+  .catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  })
+  // With --workers N > 1: stop the worker processes and remove worker k ≥ 2's servers and databases, on success and on failure.
+  .finally(() => cleanupNow?.());

@@ -76,7 +76,7 @@
 | `npm run agent-eval:check` | 校验用例和夹具。 |
 | `npm run agent-eval:env` | 建本机专用库、起服务、做开始前的自检。`--build` 先停掉正在跑的服务再构建并重启（AG04 起），服务在评测模式下报出自己的构建 SHA，每次运行都记下。 |
 | `npm run agent-eval:seed` | 经产品写入链路生成三个账号的数据并存快照。 |
-| `npm run agent-eval:run -- --gate AGnn` | 跑某个 sprint 的门槛：按 `gate`（没有就按 `sprint`）归到它的用例，加上顺延之后不晚于它的不变量用例。`--seed-cards` 从 AG02 用到 AG05（AG06 之前新入口不从对话出卡，门槛里的 BND 区含不变量包只能靠预置卡），AG06 起不再用，见第 8 节。`--all` 跑全部可见用例，`--sealed` 跑封存集。AG04 起，服务的构建 SHA 与 HEAD 不一致或工作区不干净时，`--gate` 拒绝开始（只有构建改写的 `next-env.d.ts` 路由引用行不算不干净）。 |
+| `npm run agent-eval:run -- --gate AGnn` | 跑某个 sprint 的门槛：按 `gate`（没有就按 `sprint`）归到它的用例，加上顺延之后不晚于它的不变量用例。`--seed-cards` 从 AG02 用到 AG05（AG06 之前新入口不从对话出卡，门槛里的 BND 区含不变量包只能靠预置卡），AG06 起不再用，见第 8 节。`--all` 跑全部可见用例，`--sealed` 跑封存集。AG04 起，服务的构建 SHA 与 HEAD 不一致或工作区不干净时，`--gate` 拒绝开始（只有构建改写的 `next-env.d.ts` 路由引用行不算不干净）。2026-11-17 起加 `--workers N` 并行跑（评测规范 §4）：门槛运行和回归重跑都用 `--workers 4`，一次 AG06 门槛由约 6 分钟降到约 2 分钟；结果目录格式不变，`judge-pack`、`report` 照常用。本机 Postgres 的 `max_connections` 为 100，4 是上限，再多运行会拒绝开始；不加 `--workers` 仍是一例接一例。几次运行要一个接一个跑，不要同时开两个。 |
 | `npm run agent-eval:judge-pack -- --run <运行编号>` | 生成评审材料。评审由新开的 Claude 会话完成。 |
 | `npm run agent-eval:report -- --run <运行编号>` | 汇总评审结果，算出通过与否，给出要登记进 `RUNS.md` 的一行。 |
 

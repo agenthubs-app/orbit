@@ -7,8 +7,8 @@ export const PRELOAD = path.join(ORBITS_ROOT, "tests", "agent-eval", "preload", 
 export const PAID_KEYS = ["DEEPSEEK_API_KEY", "ORBIT_GEMINI_DECISION_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY"];
 
 /** The checked eval environment; throws before anything starts when it is not the local eval database. */
-export function loadEvalEnvironment(): EvalEnvironment {
-  return buildEvalEnvironment(process.env, readEvalEnvFile());
+export function loadEvalEnvironment(options: { worker?: number } = {}): EvalEnvironment {
+  return buildEvalEnvironment(process.env, readEvalEnvFile(), options);
 }
 
 /** Apply the eval environment to this process (seeders and the runner), optionally without paid keys. */
