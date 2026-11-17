@@ -192,7 +192,7 @@ function PickerSession({ onClose, onInsert, minimum = 3, requirePlace = false, i
           <>
             <View style={styles.legend}>
               <View style={styles.legendItem}><View style={[styles.cell, styles.swatch]} /><UiText style={styles.legendText}>{t("calendar.pick.open")}</UiText></View>
-              <View style={styles.legendItem}><View style={[styles.cellBusy, styles.swatch]} /><UiText style={styles.legendText}>{t("calendar.pick.busy")}</UiText></View>
+              <View style={styles.legendItem}><View style={[styles.cellBusy, styles.swatch, styles.swatchBusy]}><View style={styles.swatchStrike} /></View><UiText style={styles.legendText}>{t("calendar.pick.busy")}</UiText></View>
               {anyUnknown ? <View style={styles.legendItem}><View style={[styles.cellUnknown, styles.swatch]} /><UiText style={styles.legendText}>{t("calendar.pick.unknown")}</UiText></View> : null}
               <View style={styles.legendItem}><View style={[styles.cellPicked, styles.swatch]} /><UiText style={styles.legendText}>{t("calendar.pick.picked")}</UiText></View>
             </View>
@@ -228,6 +228,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   legendText: { color: colors.ink3Text, fontSize: 12 },
   swatch: { width: 14, height: 10, minWidth: 14, minHeight: 10, paddingHorizontal: 0, paddingVertical: 0, borderRadius: 3 },
+  // Busy cells are told apart by their struck-through time; the swatch carries the same line (a flat grey alone reads as 「空き」).
+  swatchBusy: { justifyContent: "center", opacity: 1 },
+  swatchStrike: { height: 1, marginHorizontal: 2, backgroundColor: colors.ink3Text },
   day: { gap: 8 },
   dayHead: { color: colors.ink, fontSize: 14, fontWeight: "800" },
   cells: { flexDirection: "row", flexWrap: "wrap", gap: 6 },

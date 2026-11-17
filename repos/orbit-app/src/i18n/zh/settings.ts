@@ -68,7 +68,7 @@ export const settings = {
   "settings.schedule.duration": "默认时长",
   "settings.schedule.notice": "至少提前",
   "settings.schedule.buffer": "前后留出",
-  "settings.schedule.bufferHint": "不提议紧挨着已有安排的时段",
+  "settings.schedule.bufferHint": "已有安排前后{minutes}分钟内不提议",
   "settings.schedule.bufferNone": "不留",
   "settings.schedule.bufferMinutes": "{minutes}分钟",
   "settings.schedule.zone": "时区",

@@ -68,7 +68,7 @@ export const settings = {
   "settings.schedule.duration": "Default length",
   "settings.schedule.notice": "Minimum notice",
   "settings.schedule.buffer": "Buffer",
-  "settings.schedule.bufferHint": "Times right next to busy ones are skipped",
+  "settings.schedule.bufferHint": "No times within {minutes} min of a busy slot",
   "settings.schedule.bufferNone": "None",
   "settings.schedule.bufferMinutes": "{minutes} min",
   "settings.schedule.zone": "Time zone",

@@ -314,6 +314,9 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
           </View>
         ) : null}
 
+        {/* contact-reach: the invite card arrives with its own read; keep it below 「連絡する」 (same order as the Web drawer) so the button never moves. */}
+        {reachCard}
+
         {connection ? (
           <View style={[styles.card, styles.gapTop]} testID="network-invite-fields">
             {(["organization", "role", "email", "offering", "seeking"] as const).map((field) => {
@@ -337,9 +340,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
           </View>
         ) : null}
 
-        {reachCard}
-
-        {!connection && (contact.offering.length || contact.seeking.length) ? (
+        {!connection &&(contact.offering.length || contact.seeking.length) ? (
           <View style={[styles.grid2, styles.gapTop]}>
             {(["offering", "seeking"] as const).map((field) => (
               <View key={field} style={[styles.card, styles.grow]}>

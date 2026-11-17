@@ -166,7 +166,7 @@ export function ScheduleAvailabilityScreen() {
                 <UiPressable accessibilityRole="button" accessibilityLabel={`${t("settings.schedule.buffer")} ${bufferLabel(settings.bufferMinutes)}`} disabled={offline} onPress={() => setMenu("buffer")} style={styles.select} testID="schedule-buffer">
                   <UiText style={styles.timeText}>{bufferLabel(settings.bufferMinutes)}</UiText><UiText style={styles.caret}>▾</UiText>
                 </UiPressable>
-                <UiText style={styles.desc}>{t("settings.schedule.bufferHint")}</UiText>
+                {settings.bufferMinutes ? <UiText style={styles.desc}>{t("settings.schedule.bufferHint", { minutes: settings.bufferMinutes })}</UiText> : null}
               </View>
               <View style={styles.row}>
                 <UiText style={styles.k}>{t("settings.schedule.zone")}</UiText>

@@ -397,7 +397,7 @@ export const taskCopy = {
   rowDuration: { ja: "標準の長さ", zh: "默认时长", en: "Default length", kind: "label" },
   rowNotice: { ja: "最短の事前時間", zh: "至少提前", en: "Minimum notice", kind: "label" },
   rowBuffer: { ja: "前後の余裕", zh: "前后留出", en: "Buffer", kind: "label" },
-  rowBufferHint: { ja: "予定の直前・直後は提案しません", zh: "不提议紧挨着已有安排的时段", en: "Times right next to busy ones are skipped", kind: "label" },
+  rowBufferHint: { ja: "予定の前後{minutes}分は提案しません", zh: "已有安排前后{minutes}分钟内不提议", en: "No times within {minutes} min of a busy slot", kind: "label" },
   rowZone: { ja: "タイムゾーン", zh: "时区", en: "Time zone", kind: "label" },
   bufferNone: { ja: "なし", zh: "不留", en: "None", kind: "label" },
   zoneDevice: { ja: "{zone}（端末に合わせる）", zh: "{zone}（跟随设备）", en: "{zone} (this device)", kind: "label" },

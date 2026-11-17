@@ -68,7 +68,7 @@ export const settings = {
   "settings.schedule.duration": "標準の長さ",
   "settings.schedule.notice": "最短の事前時間",
   "settings.schedule.buffer": "前後の余裕",
-  "settings.schedule.bufferHint": "予定の直前・直後は提案しません",
+  "settings.schedule.bufferHint": "予定の前後{minutes}分は提案しません",
   "settings.schedule.bufferNone": "なし",
   "settings.schedule.bufferMinutes": "{minutes}分",
   "settings.schedule.zone": "タイムゾーン",

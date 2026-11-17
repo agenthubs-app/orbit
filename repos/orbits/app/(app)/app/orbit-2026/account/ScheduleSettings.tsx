@@ -131,7 +131,7 @@ export function ScheduleSettings() {
       <div className={styles.row}><span className={styles.key}>{t("rowBuffer")}</span>
         <div className={styles.value}><select className={styles.select} aria-label={t("rowBuffer")} value={String(shown.bufferMinutes)} onChange={(event) => set({ bufferMinutes: Number(event.target.value) as SchedulingBufferMinutes })}>
           {SCHEDULING_BUFFERS.map((value) => <option key={value} value={value}>{value ? t("proposalMinutes", { minutes: value }) : t("bufferNone")}</option>)}</select>
-          <span className={styles.hint}>{t("rowBufferHint")}</span></div></div>
+          {shown.bufferMinutes ? <span className={styles.hint}>{t("rowBufferHint", { minutes: shown.bufferMinutes })}</span> : null}</div></div>
       <div className={styles.row}><span className={styles.key}>{t("rowZone")}</span>
         <div className={styles.value}><select className={styles.select} aria-label={t("rowZone")} value={zone} onChange={(event) => set(event.target.value === "device" ? { timeZoneMode: "device", timeZone: null } : { timeZoneMode: "fixed", timeZone: event.target.value })}>
           <option value="device">{t("zoneDevice", { zone: deviceZone() })}</option>
