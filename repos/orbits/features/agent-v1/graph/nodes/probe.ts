@@ -41,7 +41,9 @@ export function needsWeb(part: GraphPart): boolean {
 
 /** A web part that also reads the user's records (it goes through resolve first). */
 export function webPartReads(part: GraphPart): boolean {
-  return part.route === "web_lookup" && part.capabilities.some((capability) => ["read", "function"].includes(capabilityKind(capability)));
+  // AG10 run-02 (AE-WEB-007): a function on a page alone ("what does this review say": web.fetch + fn.summarize, data from
+  // the public web only) works over the page; it reads the user's records only when the part says it uses them.
+  return part.route === "web_lookup" && part.capabilities.some((capability) => capabilityKind(capability) === "read" || (capabilityKind(capability) === "function" && part.plan.dataSources.includes("orbit_records")));
 }
 
 const touchedBy = (state: AgentGraphState, part: GraphPart) => state.touched === null || state.touched.includes(part.localId);

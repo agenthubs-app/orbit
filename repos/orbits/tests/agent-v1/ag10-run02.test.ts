@@ -96,3 +96,12 @@ test("AE-AMB-004: a conditional plan to add a to-do offers a to-do, not a note",
     trace.restore();
   }
 });
+
+test("AE-WEB-007 (run-02 gate): 'what does this review say' read from a page only — a summary of the page reads none of the user's records", async () => {
+  const { webPartReads } = await import("../../features/agent-v1/graph/nodes/probe");
+  const web = (capabilities: string[], dataSources: string[]) => ({ capabilities, plan: { dataSources }, route: "web_lookup" }) as never;
+  assert.equal(webPartReads(web(["web.fetch", "fn.summarize"], ["public_web"])), false);
+  assert.equal(webPartReads(web(["web.fetch", "fn.compare"], ["public_web", "orbit_records"])), true);
+  assert.equal(webPartReads(web(["web.search", "memo.read"], ["public_web"])), true);
+  assert.equal(webPartReads(web(["web.search", "contact.read"], ["public_web", "orbit_records"])), true);
+});
