@@ -273,3 +273,21 @@ test("AE-UND-010: a change that needs a web page's result makes no card in this 
   assert.match(result.text, /目前还做不到，所以没有出卡/u);
   assert.equal(result.partResults.find((item) => item.partId === "p2")?.reason, "web_save_not_in_this_version");
 });
+
+test("AE-CTX-006 (run-02): a question about an @ contact, not asked to look online, is read from the records — no query shown, no web", async () => {
+  const message = "@小林健 是北辰软件的销售总监吧？";
+  const trace = captureTrace();
+  try {
+    const { kit, tools } = setup({
+      answer: (call) => json({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: handle(call, /(s\d+) — contact/u) }], partId: "p1", text: "按你的联系人资料，小林健在北辰软件。" }] }),
+      understand: () => json({ parts: [part({ dataSources: ["public_web"], objectClues: [{ entity: "contact", referenceId: "r1", text: "@小林健" }], requiredCapabilities: ["web.search"], sourceQuote: message, webTarget: { qualifiers: ["current", "role", "company"], quote: "@小林健" } })], plainChat: false }),
+    }, { references: [{ id: "contact:c17", name: "小林健", type: "contact" }] });
+    const result = await runAgentGraph(kit.deps, kit.input(message, { references: [{ id: "contact:c17", type: "contact" }] }));
+    assert.equal(tools.calls.length, 0);
+    assert.equal(result.clarifications.length, 0, "no query shown to send");
+    assert.ok(trace.events.some((event) => event.type === "route.contact_not_looked_up_online"));
+    assert.equal(result.partResults[0].route, "read");
+  } finally {
+    trace.restore();
+  }
+});

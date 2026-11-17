@@ -41,6 +41,9 @@ function reviewedEntry(part: GraphPart, quote: string, clue: (ref: GraphPart["re
   return null;
 }
 
+/** AG09 run-02: words that ask to look on the web (zh, ja, en). */
+const EXPLICIT_WEB = /(上网|联网|网上|网络上|搜一下|搜搜|搜索|官网|公开资料|公开职务|公开信息|ネット|ウェブ|検索|公式サイト|公開情報|online|on the web|the internet|web search|search the web|google|look (?:it |them |him |her )?up)/iu;
+
 export function routeInputOf(part: GraphPart): RouteInput {
   return {
     clarity: part.plan.clarity,
@@ -143,7 +146,17 @@ export function routeNode(scope: NodeScope): GraphNode {
       const reschedule = namesNothing && reschedulesTo(openItem?.quote ?? input.message.slice(part.quote[0], part.quote[1]), state.asOf || deps.now(), state.timeZone || "Asia/Tokyo");
       // AG08: the review found no explicit request: the part is a statement (no card, one entry).
       if (reviewed.has(part.localId)) part.plan = { ...part.plan, clarity: "statement" };
-      const decision = decideRoute(routeInputOf(part), { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind, namedObjectWithDate: namedObjectWithDate(part), reschedule, unboundPronoun: unboundPronoun(part) });
+      const routeOptions = { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind, namedObjectWithDate: namedObjectWithDate(part), reschedule, unboundPronoun: unboundPronoun(part) };
+      let decision = decideRoute(routeInputOf(part), routeOptions);
+      // AG09 run-02 (AE-CTX-006): a question about one of the user's own contacts (an @ record) is answered from the records;
+      // the web is looked up about a contact only when the user asks for it ("上网查", "ネットで", "online").
+      const partWords = input.message.slice(part.quote[0], part.quote[1]);
+      if (!resume && decision.route === "web_lookup" && part.refs.some((ref) => ref.entity === "contact" && ref.recordId) && !EXPLICIT_WEB.test(partWords)) {
+        part.capabilities = [...new Set([...part.capabilities.filter((capability) => capabilityKind(capability) !== "web"), "contact.read" as Capability])];
+        part.plan = { ...part.plan, dataSources: ["orbit_records"] };
+        decision = decideRoute(routeInputOf(part), routeOptions);
+        emitTrace({ partId: part.localId, reason: "a question about the user's own contact, not asked to look online: read from the records", route: decision.route, type: "route.contact_not_looked_up_online" });
+      }
       if (reviewed.has(part.localId) && decision.step?.kind === "respond" && decision.step.entry) {
         const entry = reviewedEntry(part, input.message.slice(part.quote[0], part.quote[1]), clueText, state.asOf || deps.now(), state.timeZone || "Asia/Tokyo");
         if (entry) decision.step = { ...decision.step, entry: entry.entry, reviewed: entry.reviewed };
