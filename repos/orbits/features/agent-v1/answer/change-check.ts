@@ -1,3 +1,4 @@
+import { localizeAnswerDates } from "./dates";
 import type { Material } from "./schema";
 
 /**
@@ -13,6 +14,8 @@ export interface ChangeReason {
   older: Material;
   /** The newer record's own words for why; "" when it gives none. */
   reason: string;
+  /** AG07 run-02: the newer record's own words for the value it replaces ("12 月 1 日"); "" when it does not name it. */
+  before: string;
 }
 
 /** Words a record uses when it changes or cancels what was said before (zh, ja, en). */
@@ -31,7 +34,7 @@ export function changeCheckOf(materials: readonly Material[]): boolean {
 }
 
 export function changeCheckNote(): string {
-  return 'Change check — answer it in "changes", not in text: does your answer say that a newer material replaces, cancels or moves what an older one said? If not, give "changes": []. Otherwise one entry per change: {"source": the newer material\'s handle, "older": the older material\'s handle, "reason": the words of the newer material that say why it changed — the cause, not the words that say the old value is cancelled or replaced — copied exactly, or "" if it gives no cause}. Code writes the sentence with the reason; do not add it yourself.';
+  return 'Change check — answer it in "changes", not in text: does your answer say that a newer material replaces, cancels or moves what an older one said? If not, give "changes": []. Otherwise one entry per change: {"source": the newer material\'s handle, "older": the older material\'s handle, "before": the words of the newer material that name the earlier value it replaces (e.g. a date), copied exactly, or "" if it does not name it, "reason": the words of the newer material that say why it changed — the cause, not the words that say the old value is cancelled or replaced — copied exactly, or "" if it gives no cause}. Code writes the sentence with the earlier value and the reason; do not add it yourself.';
 }
 
 export function verifyChangeReasons(raw: unknown, materials: readonly Material[]): { changes: ChangeReason[]; problems: string[] } {
@@ -43,6 +46,7 @@ export function verifyChangeReasons(raw: unknown, materials: readonly Material[]
     const source = typeof entry?.source === "string" ? byHandle.get(entry.source.trim()) : undefined;
     const older = typeof entry?.older === "string" ? byHandle.get(entry.older.trim()) : undefined;
     const reason = typeof entry?.reason === "string" ? entry.reason.trim().replace(/[。.，,、;；]+$/u, "") : "";
+    const before = typeof entry?.before === "string" ? entry.before.trim().replace(/[。.，,、;；]+$/u, "") : "";
     if (!source || !older || !dated(source) || !dated(older) || source === older) {
       problems.push(`changes entry ${name}: "source" and "older" must be two dated records of these materials`);
       continue;
@@ -59,8 +63,12 @@ export function verifyChangeReasons(raw: unknown, materials: readonly Material[]
       problems.push(`changes entry ${name}: "reason" must be words copied from ${source.handle}, or ""`);
       continue;
     }
+    if (before && (before.length > 40 || !squash(textOf(source)).includes(squash(before)))) {
+      problems.push(`changes entry ${name}: "before" must be words copied from ${source.handle} that name the earlier value, or ""`);
+      continue;
+    }
     if (changes.some((item) => item.source === source && item.older === older)) continue;
-    changes.push({ older, reason, source });
+    changes.push({ before, older, reason, source });
   }
   return { changes, problems };
 }
@@ -72,16 +80,29 @@ function dayOf(value: string, timeZone: string): { month: number; day: number } 
   return { day: Number(parts.day), month: Number(parts.month) };
 }
 
-/** Code's sentence: why the newer record changed it, in its own words. Nothing when the answer already says it or no reason is given. */
+/**
+ * Code's sentence: what the newer record replaced and why, in its own words (AG07 run-02: the earlier value too, so
+ * the model need not remember it). Nothing when the answer already says both, or the record names neither.
+ */
 export function changeReasonLine(language: "zh" | "ja" | "en", changes: readonly ChangeReason[], answer: string, timeZone: string): string | null {
   const said = squash(answer);
   const lines: string[] = [];
   for (const change of changes) {
-    if (!change.reason || said.includes(squash(change.reason))) continue;
+    const before = language === "en" ? localizeAnswerDates(change.before, "en") : change.before.replace(/\s+/gu, "");
+    const reasonSaid = !change.reason || said.includes(squash(change.reason));
+    const beforeSaid = !before || said.includes(squash(before));
+    if (reasonSaid && beforeSaid) continue;
     const { day, month } = dayOf(change.source.at!, timeZone);
-    if (language === "zh") lines.push(`（改动的原因，${month}月${day}日的记录里写的是：${change.reason}。）`);
-    else if (language === "ja") lines.push(`（変更の理由は、${month}月${day}日の記録によると「${change.reason}」です。）`);
-    else lines.push(`(Why it changed, per the record of ${MONTHS[month - 1]} ${day}: ${change.reason}.)`);
+    if (language === "zh") {
+      const was = before ? `之前说的是${before}` : "";
+      lines.push(change.reason ? `（${was ? `${was}；` : ""}改动的原因，${month}月${day}日的记录里写的是：${change.reason}。）` : `（${was}，${month}月${day}日的记录把它改了。）`);
+    } else if (language === "ja") {
+      const was = before ? `以前は「${before}」でした。` : "";
+      lines.push(change.reason ? `（${was}変更の理由は、${month}月${day}日の記録によると「${change.reason}」です。）` : `（${was}${month}月${day}日の記録で変更されています。）`);
+    } else {
+      const was = before ? `Earlier it was ${before}. ` : "";
+      lines.push(change.reason ? `(${was}Why it changed, per the record of ${MONTHS[month - 1]} ${day}: ${change.reason}.)` : `(${was}The record of ${MONTHS[month - 1]} ${day} changed it.)`);
+    }
   }
   return lines.length ? [...new Set(lines)].join("\n") : null;
 }

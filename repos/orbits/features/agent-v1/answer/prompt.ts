@@ -7,7 +7,7 @@
 import type { Material } from "./schema";
 import { materialsText } from "./materials";
 
-export const GROUNDED_ANSWER_PROMPT_VERSION = "answer-grounded@ag07.3";
+export const GROUNDED_ANSWER_PROMPT_VERSION = "answer-grounded@ag07.4";
 
 export function groundedAnswerSystemPrompt(language: "zh" | "ja" | "en"): string {
   const name = language === "zh" ? "Chinese" : language === "ja" ? "Japanese" : "English";

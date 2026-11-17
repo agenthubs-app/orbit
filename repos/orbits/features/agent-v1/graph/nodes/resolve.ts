@@ -576,7 +576,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
       if (current) read.notes.push("This asks how the person stands now: the interactions, their newest notes and the profile are all here; where they differ, the newer dated record is what holds now. Never give as current anything a newer record replaces (a former company, an old role).");
       const subjects = contacts.length ? contacts.map((item) => item.id) : [undefined];
       let unclear = false;
-      const reads = new Map<string, { complete: boolean; kind: string; pagesRead: number; total: number | null }>();
+      const reads = new Map<string, { complete: boolean; kind: string; pagesRead: number; total: number | null; directions: Set<"oldest" | "newest"> }>();
       for (const kind of searchKinds) {
         // run-02: a read never gets wider because a field was left out. Without the first layer's words, the
         // record clue's own words are the search; a clue of only a pronoun with no person to read for points
@@ -627,10 +627,10 @@ export function resolveNode(scope: NodeScope): GraphNode {
               // records share one total, and `seen` is set below from what is really given to the answer.
               const key = `${kind}|${contactId ?? ""}`;
               const prior = reads.get(key);
-              reads.set(key, { complete: (prior?.complete ?? true) && pages.complete, kind, pagesRead: (prior?.pagesRead ?? 0) + pages.pagesRead, total: prior?.total ?? pages.total });
+              reads.set(key, { complete: (prior?.complete ?? true) && pages.complete, directions: new Set([...(prior?.directions ?? []), ...(kind === "todo" ? [] : [direction])]), kind, pagesRead: (prior?.pagesRead ?? 0) + pages.pagesRead, total: prior?.total ?? pages.total });
               if (!pages.complete || (pages.total !== null && pages.total > pages.items.length)) {
                 read.notes.push(pages.total !== null
-                  ? `${kind}: ${pages.total} match in all (an exact count); the ${pages.items.length} listed here are the ${kind === "todo" ? "soonest due" : direction === "oldest" ? "oldest" : "newest"} of them. Give the total as ${pages.total}; do not present the listed ones as all.`
+                  ? `${kind}: ${pages.total} match in all (an exact count); the ${pages.items.length} listed here are the ${kind === "todo" ? "soonest due" : direction === "oldest" ? "oldest" : "newest"} of them${kind === "todo" ? "" : direction === "oldest" ? ", so it is newer ones that may be missing, never older ones" : ", so it is older ones that may be missing, never newer ones"}. Give the total as ${pages.total}; do not present the listed ones as all.`
                   : `${kind}: ${pages.items.length} listed; there are more. Do not present them as all.`);
               }
             } catch (error) {
@@ -645,7 +645,10 @@ export function resolveNode(scope: NodeScope): GraphNode {
         if (!entries.length) continue;
         const seen = read.views.filter((view) => view.kind === kind).length;
         const total = entries.every((item) => item.total !== null) ? entries.reduce((sum, item) => sum + (item.total ?? 0), 0) : null;
-        read.coverage.push({ complete: entries.every((item) => item.complete) || (total !== null && seen >= total), kind, pagesRead: entries.reduce((sum, item) => sum + item.pagesRead, 0), seen, total });
+        // AG07 run-02 (AE-SCL-007): which end was read, when only one was (the notice says which ones may be missing).
+        const directions = new Set(entries.flatMap((item) => [...item.directions]));
+        const direction = directions.size === 1 ? [...directions][0] : null;
+        read.coverage.push({ complete: entries.every((item) => item.complete) || (total !== null && seen >= total), kind, pagesRead: entries.reduce((sum, item) => sum + item.pagesRead, 0), seen, total, ...(direction ? { direction } : {}) });
       }
       if (kinds.has("event") && !boundIds.has("event")) read.notes.push("Events are read when the user attaches one; none was attached.");
 
@@ -670,7 +673,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
         read.lines.push(words.noRecord(quote));
       }
       const coverageLine = read.coverage.find((item) => item.total !== null && item.total > item.seen);
-      if (coverageLine && LIST_DELIVERABLES.has(part.plan.deliverable)) read.lines.push(words.coverage(coverageLine.seen, coverageLine.total));
+      if (coverageLine && LIST_DELIVERABLES.has(part.plan.deliverable)) read.lines.push(words.coverage(coverageLine.seen, coverageLine.total, coverageLine.direction ?? null));
 
       // 5. Materials for the answer step (only when there is something to answer from).
       const usable = read.wantsRecords ? recordViews.length > 0 : read.views.length > 0;

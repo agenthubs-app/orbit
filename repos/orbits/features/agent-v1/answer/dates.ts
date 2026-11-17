@@ -40,3 +40,45 @@ export function localizeAnswerDates(text: string, language: ReplyLanguage): stri
     return `${plain}（${ZH_WEEKDAY[index]}）`;
   });
 }
+
+const EN_MONTH_WORD = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})(?!\d)/giu;
+const CJK_MONTH_DAY = /(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]/gu;
+const ISO_DAY = /\b\d{4}-(\d{2})-(\d{2})\b/gu;
+const MONTH_INDEX: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
+
+/** The calendar days ("11-13") a text names: "Nov 13", "11月13日", "2026-11-13". */
+export function datesIn(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const match of text.matchAll(EN_MONTH_WORD)) out.add(`${MONTH_INDEX[match[1].toLowerCase()]}-${Number(match[2])}`);
+  for (const match of text.matchAll(CJK_MONTH_DAY)) out.add(`${Number(match[1])}-${Number(match[2])}`);
+  for (const match of text.matchAll(ISO_DAY)) out.add(`${Number(match[1])}-${Number(match[2])}`);
+  return out;
+}
+
+/** A weekday said without a date ("by Friday", "周五前", "金曜までに"). */
+export const WEEKDAY_WORD = /\b(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day\b|(?:周|星期|礼拜)[一二三四五六日天]|[月火水木金土日]曜/u;
+
+/**
+ * AG07 run-02 (AE-CTX-003): every calendar day in a model's answer must come from this turn — the user's message,
+ * the conversation it saw, today, or a record read now (its words or its own date). A note that says only
+ * "by Friday" is not where a date comes from: its own date is not a source for that Friday (`weekdayNotes`, the
+ * headers of such notes, are left out). Returns the days with no source.
+ */
+export function unsourcedDates(answer: string, sources: readonly string[], options: { weekdayNotes?: readonly string[] } = {}): string[] {
+  const withheld = new Set(options.weekdayNotes ?? []);
+  const known = new Set(sources.filter((source) => !withheld.has(source)).flatMap((source) => [...datesIn(source)]));
+  return [...datesIn(answer)].filter((day) => !known.has(day));
+}
+
+/** The answer without the sentences that name a day with no source (what is left after the one repair). */
+export function withoutUnsourcedDates(text: string, days: readonly string[]): string {
+  if (!days.length) return text;
+  const bad = new Set(days);
+  const pieces = text.match(/[^。！？!?\n]+(?:[。！？!?]+|\n+|$)|\n+/gu) ?? [text];
+  const kept: string[] = [];
+  for (const piece of pieces) {
+    const parts = /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)\s+/u) : [piece];
+    for (const part of parts) if (![...datesIn(part)].some((day) => bad.has(day))) kept.push(part);
+  }
+  return kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").trim();
+}

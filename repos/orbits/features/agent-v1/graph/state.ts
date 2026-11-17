@@ -58,6 +58,8 @@ export interface PartCoverage {
   seen: number;
   total: number | null;
   complete: boolean;
+  /** AG07 run-02: the end of the records read, when only one was ("oldest" first meetings, "newest" otherwise). */
+  direction?: "oldest" | "newest";
 }
 
 /** AG04: a set of clickable directions as the checkpoint keeps it (ids and codes; the labels are in the result document). */
