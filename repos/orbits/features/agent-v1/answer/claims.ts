@@ -77,3 +77,21 @@ export function onlineDenialsIn(text: string): string[] {
 export function withoutOnlineDenials(text: string): { text: string; dropped: string[] } {
   return without(text, (piece) => ONLINE_DENIAL.some((pattern) => pattern.test(piece)));
 }
+
+/**
+ * AG10 run-03 (AE-CTX-005): a zh/ja/en reply holds no stray words in another script (「 кратко? 」). A sentence with a run of
+ * Cyrillic, Arabic, Thai, Hebrew, Devanagari, Hangul or a like script that neither the user wrote nor a read record or web page
+ * holds (`materials`: the text the answer was made from) is not delivered. Sentences end at 。！!？ and line breaks (an ASCII
+ * "?" inside the stray words does not end one); a Latin-only line splits at ". ".
+ */
+const STRAY_SCRIPT = /[\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Thai}\p{Script=Hebrew}\p{Script=Devanagari}\p{Script=Hangul}\p{Script=Armenian}\p{Script=Georgian}\p{Script=Bengali}\p{Script=Tamil}\p{Script=Lao}\p{Script=Khmer}]+(?:[\s'’-]+[\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Thai}\p{Script=Hebrew}\p{Script=Devanagari}\p{Script=Hangul}\p{Script=Armenian}\p{Script=Georgian}\p{Script=Bengali}\p{Script=Tamil}\p{Script=Lao}\p{Script=Khmer}]+)*/gu;
+
+export function withoutStrayScripts(text: string, materials: string): { text: string; dropped: string[] } {
+  if (!new RegExp(STRAY_SCRIPT.source, "u").test(text)) return { dropped: [], text };
+  const stray = (piece: string) => [...piece.matchAll(STRAY_SCRIPT)].some((match) => !materials.includes(match[0]));
+  const pieces = (text.match(/[^。！!？\n]+(?:[。！!？]+|\n+|$)|\n+/gu) ?? [text]).flatMap((piece) => (/[A-Za-z]/u.test(piece) && !/[぀-ヿ一-鿿]/u.test(piece) ? piece.split(/(?<=[.?])\s+/u) : [piece]));
+  const kept: string[] = [];
+  const dropped: string[] = [];
+  for (const piece of pieces) (stray(piece) ? dropped : kept).push(piece);
+  return { dropped: dropped.map((piece) => piece.trim()), text: joined(kept).replace(/[ \t]+\n/gu, "\n") };
+}

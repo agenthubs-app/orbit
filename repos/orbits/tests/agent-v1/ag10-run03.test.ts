@@ -88,3 +88,17 @@ test("AE-RD-005: a partial read neutralizes the split forms; the content stays",
   // A total the read itself gave stays.
   assert.match(withoutPartialCounts("只有 11 月 10 日那一条。", "zh", new Set([1])).text, /只有 11 月 10 日那一条/u);
 });
+
+test("AE-CTX-005: a sentence with a stray script (Cyrillic, Arabic, Thai …) that no material holds is not delivered", async () => {
+  const { withoutStrayScripts } = await import("../../features/agent-v1/answer/claims");
+  const said = "どういたしまして。初めての編集者さんへのメールは、少し丁寧めで十分です。ポイントは「 кратко? 」——失礼しました、以下です。\n- 件名で用件を伝える";
+  const cleaned = withoutStrayScripts(said, "初めてやり取りする編集者さんへのメール");
+  assert.equal(cleaned.text, "どういたしまして。初めての編集者さんへのメールは、少し丁寧めで十分です。\n- 件名で用件を伝える");
+  assert.equal(cleaned.dropped.length, 1);
+  assert.equal(withoutStrayScripts("Keep it short. مرحبا is how to open. Sign with your name.", "").text, "Keep it short. Sign with your name.");
+  assert.equal(withoutStrayScripts("小林说 สวัสดี 之后就挂了。报价周三发。", "").text, "报价周三发。");
+  // Words a record or page holds, or the user wrote, stay.
+  assert.equal(withoutStrayScripts("笔记里记着他的俄文名 Иван Петров。", "note: Иван Петров, 出版社").dropped.length, 0);
+  assert.equal(withoutStrayScripts("名片上写的是 김민수。", "card: 김민수").dropped.length, 0);
+  assert.equal(withoutStrayScripts("没有别的文字。Plain English, 日本語も。", "").dropped.length, 0);
+});
