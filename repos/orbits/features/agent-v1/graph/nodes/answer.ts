@@ -6,7 +6,7 @@
  * if the round's budget is used up they stay unfinished, saying why.
  */
 import { datesIn, localizeAnswerDates, unsourcedDates, WEEKDAY_WORD, withoutUnsourcedDates } from "../../answer/dates";
-import { numbersIn, unsourcedCounts, withoutUnsourcedCounts } from "../../answer/counts";
+import { numbersIn, seenAllowedBy, unsourcedCounts, withoutUnsourcedCounts, withoutWrongSeenCounts } from "../../answer/counts";
 import { withoutOnly, withoutWrongDirection } from "../../answer/gap-copy";
 import { localDayOf } from "../../propose/dates";
 import { gapWords } from "../../answer/gap-copy";
@@ -178,7 +178,11 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       }
       const uncounted = unsourcedCounts(segment.text, allowed);
       if (uncounted.length) emitTrace({ counts: uncounted, partId: part.localId, type: "answer.unsourced_counts_dropped" });
-      const delivered = withoutWrongDirection(withoutUnsourcedCounts(withoutUnsourcedDates(segment.text, unsourced), uncounted), direction);
+      // AG09 (AG08 交接 2, AE-SCL-008): a sentence saying how many were seen must agree with this turn's coverage record.
+      const coverage = [part, ...parts.filter((other) => part.dependsOn.includes(other.localId))].flatMap((item) => item.coverage ?? []);
+      const seen = withoutWrongSeenCounts(withoutUnsourcedCounts(withoutUnsourcedDates(segment.text, unsourced), uncounted), seenAllowedBy(coverage));
+      if (seen.dropped.length) emitTrace({ coverage: coverage.map((item) => ({ kind: item.kind, seen: item.seen, total: item.total })), dropped: seen.dropped, partId: part.localId, type: "answer.seen_counts_dropped" });
+      const delivered = withoutWrongDirection(seen.text, direction);
       run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(delivered, state.language) : delivered, state.language));
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref);
       if (profileParts.has(part.localId)) {
@@ -298,7 +302,10 @@ export function answerNode(scope: NodeScope): GraphNode {
         // AG08 (AG07 交接 (a), AE-UND-006): a discussion read nothing; a count of the user's records it states has no source.
         const uncounted = unsourcedCounts(text, numbersIn([input.message, ...conversation.map((message) => message.text)]));
         if (uncounted.length) emitTrace({ counts: uncounted, partId: part.localId, type: "answer.unsourced_counts_dropped" });
-        run.answers.set(part.localId, localizeAnswerDates(withoutUnsourcedCounts(withoutUnsourcedDates(text, unsourced), uncounted), state.language));
+        // AG09 (AG08 交接 2): a discussion read nothing, so no sentence may say how many records it saw.
+        const seen = withoutWrongSeenCounts(withoutUnsourcedCounts(withoutUnsourcedDates(text, unsourced), uncounted), new Set());
+        if (seen.dropped.length) emitTrace({ coverage: [], dropped: seen.dropped, partId: part.localId, type: "answer.seen_counts_dropped" });
+        run.answers.set(part.localId, localizeAnswerDates(seen.text, state.language));
         continue;
       }
       const budgetOut = result.ok === false && result.reason === "budget";

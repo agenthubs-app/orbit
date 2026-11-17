@@ -71,3 +71,52 @@ export function withoutUnsourcedCounts(text: string, counts: readonly number[]):
   }
   return kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").trim();
 }
+
+/**
+ * AG09 (AG08 协调者复核 交接 2, AE-SCL-008): a sentence saying how many records were seen or looked at this turn
+ * ("只看到 10 条", "10件しか見えていない", "I looked at 10 notes") must agree with this turn's coverage record (how
+ * many the read actually went through). The answer of AE-SCL-008 said 「10件しか見えていない」 while code's coverage
+ * said 50 of 64 were seen; such a sentence is not delivered — code's own coverage line says the right numbers.
+ * Only verbs of seeing or reading count; "列出 3 条过期的" (listing) and "確認" (checking) are not coverage.
+ */
+const SEEN_PATTERNS: RegExp[] = [
+  // zh: 只看到 10 条, 看了其中 50 条, 读了前 20 篇, 翻了 30 项
+  new RegExp(`(?:看到了?|看了|看过|读了|读到了?|读过|查看了|翻了|浏览了)\\s*(?:其中的?|前|最近的?|最早的?|最新的?)?\\s*${N}\\s*(?:条|件|篇|项)`, "gu"),
+  // ja: 10件しか見えていない, 50件を見ただけ, 20件に目を通し, うち50件を見ました
+  new RegExp(`${N}\\s*件\\s*(?:しか|だけ|のみ)?\\s*(?:を|が)?\\s*(?:見え|見て|見た|見まし|見る|読ん|読み|目を通)`, "gu"),
+  // en: I looked at 10 notes, only saw the first 20 to-dos, went through 50 of them
+  new RegExp(`\\b(?:saw|seen|see|looked at|look at|read|reviewed|went through|gone through|go through)\\s+(?:only\\s+)?(?:the\\s+)?(?:first\\s+|latest\\s+|nearest\\s+|most recent\\s+|top\\s+|oldest\\s+|newest\\s+)?${EN_N}\\b`, "giu"),
+];
+
+/** The numbers of records a text says were seen or looked at. */
+export function seenCountsIn(text: string): number[] {
+  const found = new Map<number, number>();
+  for (const pattern of SEEN_PATTERNS) {
+    for (const match of text.matchAll(pattern)) {
+      const value = valueOf(match[1]);
+      if (value !== null) found.set((match.index ?? 0) + match[0].indexOf(match[1]), value);
+    }
+  }
+  return [...found.entries()].sort((left, right) => left[0] - right[0]).map(([, value]) => value);
+}
+
+/** The "seen" numbers a coverage record allows: each kind's seen count, and their sum. */
+export function seenAllowedBy(coverage: readonly { seen: number }[]): Set<number> {
+  const out = new Set(coverage.map((item) => item.seen));
+  if (coverage.length > 1) out.add(coverage.reduce((sum, item) => sum + item.seen, 0));
+  return out;
+}
+
+/** The answer without the sentences whose "seen" number disagrees with the coverage record (dropped numbers listed). */
+export function withoutWrongSeenCounts(text: string, allowed: ReadonlySet<number>): { text: string; dropped: number[] } {
+  const wrong = [...new Set(seenCountsIn(text))].filter((value) => !allowed.has(value));
+  if (!wrong.length) return { dropped: [], text };
+  const bad = new Set(wrong);
+  const pieces = text.match(/[^。！？!?\n]+(?:[。！？!?]+|\n+|$)|\n+/gu) ?? [text];
+  const kept: string[] = [];
+  for (const piece of pieces) {
+    const parts = /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)\s+/u) : [piece];
+    for (const part of parts) if (!seenCountsIn(part).some((value) => bad.has(value))) kept.push(part);
+  }
+  return { dropped: wrong, text: kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").trim() };
+}
