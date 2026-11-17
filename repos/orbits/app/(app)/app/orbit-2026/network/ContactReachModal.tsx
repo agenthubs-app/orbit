@@ -6,12 +6,12 @@
 //     content reuses it). canStart only: POST conversations/start first. 409 MEETING_ALREADY_ACTIVE: the inserted
 //     times give way to that meeting + 日程を変更 (the existing reschedule flow).
 //   e-mail draft (anything else, read failures included): to / subject / body, inserted times are a paragraph of
-//     text (R40 formatMeetingSlotsText; picking again replaces only that paragraph), 「コピー」 and
+//     text written as ranges (R43 formatMeetingRangesText; picking again replaces only that paragraph), 「コピー」 and
 //     「メールアプリで開く」 (mailto, disabled without an address). No relationship request is made on this path.
 // Unsent text is kept per account + contact + path on this browser (contact-reach-draft.ts) and cleared on send.
 import { useEffect, useRef, useState } from "react";
 
-import { formatMeetingSlotsText, replaceMeetingSlotsText } from "../../../../../shared/compute/meeting-slots";
+import { formatMeetingRangesText, replaceMeetingSlotsText } from "../../../../../shared/compute/meeting-slots";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { MeetingProposalModal } from "../calendar/MeetingProposalModal";
 import type { MeetingSlotSelection } from "../calendar/MeetingSlotPicker";
@@ -104,7 +104,7 @@ function ReachSession({ contactId, name, email, eligibility, onClose, onSent }: 
 
   const insertEmailTimes = (selection: MeetingSlotSelection) => {
     const lineKey = selection.format === "in_person" ? "reachLinePlace" : selection.format === "video" ? "reachLineLink" : "reachLinePhone";
-    const paragraph = formatMeetingSlotsText(selection.slots, { language, timeZone: selection.timeZone, durationMinutes: selection.durationMinutes, medium: selection.format });
+    const paragraph = formatMeetingRangesText(selection.ranges ?? selection.slots, { language, timeZone: selection.timeZone, durationMinutes: selection.durationMinutes, medium: selection.format });
     const block = paragraph && selection.place ? `${paragraph}\n${n(lineKey, { value: selection.place })}` : paragraph;
     setBody((current) => replaceMeetingSlotsText(current ?? "", block, { previous: insertedBlock }));
     setInsertedBlock(block || null); setPicked(selection);

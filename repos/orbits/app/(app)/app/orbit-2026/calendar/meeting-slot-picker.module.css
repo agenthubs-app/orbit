@@ -1,26 +1,49 @@
-/* contact-reach R41 ④ 候補の時間を選ぶ: the week grid reads the person's 可約時間 (R40 availabilityGrid). */
-.pick { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: var(--space-18); margin-top: var(--space-12); }
+/* contact-reach R41 ④ / R43 ⑨ 候補の時間を選ぶ: one week of 30-minute cells read from the person's 可約時間 (R40 availabilityGrid). */
+.pick { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: var(--space-18); margin-top: var(--space-12); --slot-row: 20px; --slot-gap: 3px; }
 .weekBar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
 .weekBar b { font-size: var(--fs-body-sm); font-family: var(--font-num); }
-.grid { display: grid; gap: var(--space-3); margin-top: var(--space-10); }
-.dayHead { text-align: center; font-size: var(--fs-caption); font-weight: var(--fw-bold); padding-bottom: var(--space-4); white-space: nowrap; }
-.hour { font-size: var(--fs-micro); color: var(--ink-3-text); font-family: var(--font-num); text-align: right; padding-right: var(--space-4); align-self: center; }
-.cell:global(.btn) { width: 100%; height: 24px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-tag); background: var(--surface-2); color: var(--ink); cursor: pointer; font-size: var(--fs-micro); font-weight: var(--fw-heavy); }
-.cell:global(.btn):disabled { cursor: not-allowed; }
+.head { display: grid; column-gap: var(--slot-gap); margin-top: var(--space-10); }
+.dayHead { text-align: center; font-size: var(--fs-caption); font-weight: var(--fw-bold); color: var(--ink-2); padding-bottom: var(--space-4); white-space: nowrap; }
+.dayHead em { display: block; font-style: normal; font-size: var(--fs-micro); color: var(--accent-text); }
+.today { color: var(--ink); }
+.body { display: grid; }
+.times { display: grid; grid-auto-rows: var(--slot-row); row-gap: var(--slot-gap); }
+.hour { font-size: var(--fs-micro); color: var(--ink-3-text); font-family: var(--font-num); text-align: right; padding-right: var(--space-4); transform: translateY(-6px); }
+.half { visibility: hidden; }
+/* The grid owns the pointer: no scrolling or text selection starts inside it (D3). */
+.grid { display: grid; gap: var(--slot-gap); touch-action: none; user-select: none; -webkit-user-select: none; }
+.cell:global(.btn) { position: relative; width: 100%; height: var(--slot-row); min-height: 0; padding: 0; border: 0; border-radius: var(--r-dot); background: var(--surface-2); color: var(--ink); cursor: pointer; }
+.cell.hourLine:global(.btn) { box-shadow: inset 0 1px 0 var(--surface-3); }
 .cell.unknown:global(.btn) { background: var(--surface); box-shadow: inset 0 0 0 1px var(--surface-3); }
-.cell.busy:global(.btn) { background: repeating-linear-gradient(135deg, var(--surface-3) 0 3px, var(--surface-2) 3px 6px); }
-.cell.off:global(.btn) { background: transparent; border: 1px dashed var(--ink-4); opacity: 0.6; }
-.cell.picked:global(.btn) { background: var(--ink); color: var(--bg); box-shadow: none; }
+.cell.busy:global(.btn) { background: repeating-linear-gradient(135deg, var(--surface-3) 0 3px, var(--surface-2) 3px 6px); box-shadow: none; cursor: not-allowed; }
+.cell.off:global(.btn) { background: transparent; border: 1px dashed var(--ink-4); box-shadow: none; opacity: 0.6; cursor: not-allowed; }
+/* A painted range is one block: square joins (the gap is filled downwards), rounded at its first and last cell. */
+.cell.on:global(.btn) { background: var(--ink); border-radius: var(--r-none); box-shadow: 0 var(--slot-gap) 0 0 var(--ink); }
+.cell.on.top:global(.btn) { border-top-left-radius: var(--r-tag); border-top-right-radius: var(--r-tag); }
+.cell.on.bottom:global(.btn) { border-bottom-left-radius: var(--r-tag); border-bottom-right-radius: var(--r-tag); box-shadow: none; }
+.cell.on.extra:global(.btn) { background: var(--ink-4); box-shadow: 0 var(--slot-gap) 0 0 var(--ink-4); }
+.cell.on.extra.bottom:global(.btn) { box-shadow: none; }
+.cell.on.short:global(.btn) { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.cell.cut::before { content: ""; position: absolute; left: 4px; right: 4px; top: -2px; height: 1px; background: var(--bg); }
+.cell.preview:global(.btn) { background: var(--ink-2); box-shadow: none; }
+.cell.previewErase:global(.btn) { background: var(--surface-3); box-shadow: none; }
 .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.n { position: absolute; left: 3px; top: 1px; font-size: var(--fs-micro); font-weight: var(--fw-heavy); line-height: 1; color: var(--bg); }
+.extra .n { color: var(--ink-2); }
 .legend { display: flex; flex-wrap: wrap; gap: var(--space-12); margin-top: var(--space-10); font-size: var(--fs-caption); color: var(--ink-3-text); }
 .legend span { display: inline-flex; align-items: center; gap: var(--space-6); }
-.legend i { width: 14px; height: 10px; border-radius: var(--r-tag); display: inline-block; }
+.legend i { width: 14px; height: 10px; border-radius: var(--r-bar); display: inline-block; }
 .swOpen { background: var(--surface-2); }
 .swBusy { background: repeating-linear-gradient(135deg, var(--surface-3) 0 3px, var(--surface-2) 3px 6px); }
 .swOff { border: 1px dashed var(--ink-4); box-sizing: border-box; }
 .swUnknown { background: var(--surface); box-shadow: inset 0 0 0 1px var(--surface-3); }
 .swPicked { background: var(--ink); }
+.swExtra { background: var(--ink-4); }
+.out { display: grid; gap: var(--space-4); font-size: var(--fs-label); line-height: var(--lh-body); }
+.outHead { font-weight: var(--fw-heavy); color: var(--ink); }
 .chosen { display: grid; gap: var(--space-4); margin: 0; padding: 0; list-style: none; font-size: var(--fs-label); color: var(--ink-2); font-family: var(--font-num); }
+.warn { margin: 0; color: var(--coral-text); font-size: var(--fs-label); }
+.muted { margin: 0; color: var(--ink-3-text); font-size: var(--fs-label); }
 .side { display: flex; flex-direction: column; gap: var(--space-14); }
 .rules { padding: var(--space-8) var(--space-10); border-radius: var(--r-md); background: var(--surface-2); font-size: var(--fs-label); color: var(--ink-3-text); line-height: var(--lh-body); }
 .rules a { color: var(--ink); font-weight: var(--fw-bold); text-decoration: none; margin-left: var(--space-6); white-space: nowrap; }

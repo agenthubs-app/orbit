@@ -10,7 +10,8 @@ import { bundle, errorsOf, launch, open } from "./support/orbit-2026-harness";
 //      canStart → conversations/start first, canProposeMeeting:false hides the insert, 409 → the ongoing meeting,
 //      unsent text kept per account + contact + path and cleared after sending
 //   ③ e-mail path: inserted paragraph, re-pick replaces it, mailto encoding, no address → disabled, 0 relationship calls
-//   ④ picker: 可約時間 grid (busy / off / picked), 3 preselected, insert in one step, incomplete calendars → none
+//   ④ picker (R43): week of 30-minute cells — click / drag paint and erase, ranges cut into ≤ 5 candidates, 3 preselected,
+//      incomplete calendars → none; e-mail gets the ranges as text
 //   ⑤ 設定 › 日程: read + save on change, invalid combinations are not offered, failed save reverts
 //   ⑥ proposal card: これにする → accept, own proposal / expired states, 409 → reread + notice
 const NOW = Date.parse("2030-04-01T00:00:00.000Z"); // a Monday, 09:00 in Tokyo
@@ -84,43 +85,107 @@ const reply = (p: Page, pattern: string, value: unknown) => p.evaluate(([pattern
 const mount = (p: Page, kind: string, props: Record<string, unknown> = {}) => p.evaluate(([kind, props]) => (window as any).mount(kind, props), [kind, props] as const);
 const ORBIT = { canSend: false, canStart: true, canProposeMeeting: true, activeAppointmentId: null, conversationId: null, qualificationVersion: null };
 
-test("④ picker: 可約時間 grid, busy / off cells, 3 preselected, insert in one step", async (t) => {
+const cell = (p: Page, at: string) => p.locator(`[data-slot="${at}:00.000Z"]`);
+const onCells = (p: Page) => p.locator("[data-slot-on]").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-slot")!.slice(0, 16)).sort());
+const summary = (p: Page) => p.locator("[data-slot-summary]").innerText();
+/** Press on one cell, move to another (through the cells between), release: a drag (D3). */
+async function drag(p: Page, from: string, to: string) {
+  const a = (await cell(p, from).boundingBox())!, b = (await cell(p, to).boundingBox())!;
+  await p.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await p.mouse.down();
+  await p.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 6 });
+  await p.mouse.up();
+}
+
+test("④ picker (R43): week of 30-minute cells, 3 ranges preselected; click paints one meeting, click on paint erases it, drags paint / erase, 6th light, insert", async (t) => {
   const p = await page(t, { busy: [{ id: "personal:busy", sourceId: "personal:busy", accountId: "acct-1", ownerUserId: "acct-1", kind: "personal", category: "personal", state: "upcoming", title: "予定",
     startsAt: "2030-04-02T09:00:00.000Z", endsAt: "2030-04-02T10:00:00.000Z", createdAt: "2030-03-01T00:00:00.000Z", updatedAt: "2030-03-01T00:00:00.000Z" }] });
   await mount(p, "picker");
   await p.locator("[data-slot-picker]").waitFor();
   assert.match(await p.locator("[data-slot-rules]").innerText(), /平日 09:00–18:00 · 15分前まで/);
-  assert.equal(await p.locator('[data-slot-rules] a').getAttribute("href"), "/app/settings/schedule");
-  const picked = (await p.locator('button[aria-pressed="true"]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-slot")))).sort();
-  assert.deepEqual(picked, ["2030-04-02T10:00:00.000Z", "2030-04-03T09:00:00.000Z", "2030-04-04T09:00:00.000Z"], "next free slot per day, busy 09:00 on 4/2 skipped");
-  const busy = p.locator('[data-slot="2030-04-02T09:00:00.000Z"]');
-  assert.equal(await busy.getAttribute("data-slot-state"), "busy"); assert.equal(await busy.isDisabled(), true);
-  const lunch = p.locator('[data-slot="2030-04-03T12:00:00.000Z"]');
-  assert.equal(await lunch.getAttribute("data-slot-state"), "off"); assert.equal(await lunch.isDisabled(), true);
+  assert.equal(await p.locator("[data-slot-rules] a").getAttribute("href"), "/app/settings/schedule");
+  assert.equal(await p.locator("[data-slot-grid] [data-slot]").count(), 5 * 18, "Mon–Fri × 09:00–18:00 every 30 minutes");
+  assert.deepEqual(await onCells(p), ["2030-04-02T10:00", "2030-04-02T10:30", "2030-04-03T09:00", "2030-04-03T09:30", "2030-04-04T09:00", "2030-04-04T09:30"], "next free hour per day, painted as 3 ranges; busy 09:00 on 4/2 skipped");
+  assert.equal(await cell(p, "2030-04-02T09:00").getAttribute("data-slot-state"), "busy");
+  assert.equal(await cell(p, "2030-04-02T09:00").getAttribute("aria-disabled"), "true");
+  assert.equal(await cell(p, "2030-04-03T12:00").getAttribute("data-slot-state"), "off", "lunch");
   assert.equal(await p.locator("[data-slot-hint]").innerText(), "Orbit の予定だけで判断しています");
-  await p.locator('[data-slot="2030-04-05T15:00:00.000Z"]').click();
-  await p.getByRole("button", { name: "4 件を挿入" }).click();
+  assert.match(await summary(p), /送る時間 3 件 · 各 60 分\s*1\. 4\/2（火）10:00 – 11:00\s*2\. 4\/3（水）09:00 – 10:00\s*3\. 4\/4（木）09:00 – 10:00/);
+  // Click = one meeting length down from the cell; click on paint = erase that range.
+  await cell(p, "2030-04-05T15:00").click();
+  assert.equal(await cell(p, "2030-04-05T15:30").getAttribute("data-slot-on"), "");
+  assert.equal(await cell(p, "2030-04-05T15:00").getAttribute("data-slot-n"), "4");
+  await cell(p, "2030-04-02T10:30").click();
+  assert.equal(await cell(p, "2030-04-02T10:00").getAttribute("data-slot-on"), null, "the whole range went");
+  // Drag down 09:00–11:30 on Monday: one range, cut into 3 candidates → 6 in all, the last one is light and not sent.
+  await drag(p, "2030-04-01T09:00", "2030-04-01T11:30");
+  assert.equal(await p.locator("[data-slot-on]").count(), 6 + 6);
+  assert.match(await summary(p), /送る時間 5 件/);
+  assert.equal(await p.locator("[data-slot-over]").innerText(), "送れるのは 5 件まで。薄い色の 1 件は送られません");
+  assert.equal(await cell(p, "2030-04-05T15:00").getAttribute("data-slot-extra"), "", "the 6th in time order");
+  assert.equal(await cell(p, "2030-04-01T10:00").getAttribute("data-slot-n"), "2");
+  assert.equal(await p.getByRole("button", { name: "5 件を挿入" }).isDisabled(), false);
+  // A drag that starts on paint erases; a diagonal drag spans days and skips busy cells.
+  await drag(p, "2030-04-01T10:00", "2030-04-01T11:30");
+  assert.equal(await cell(p, "2030-04-01T10:00").getAttribute("data-slot-on"), null);
+  assert.equal(await cell(p, "2030-04-01T09:30").getAttribute("data-slot-on"), "");
+  await drag(p, "2030-04-03T14:00", "2030-04-02T14:30");
+  assert.deepEqual((await onCells(p)).filter((at) => at.endsWith("T14:00") || at.endsWith("T14:30")), ["2030-04-02T14:00", "2030-04-02T14:30", "2030-04-03T14:00", "2030-04-03T14:30"]);
+  await drag(p, "2030-04-02T10:00", "2030-04-02T09:00");
+  assert.equal(await cell(p, "2030-04-02T09:00").getAttribute("data-slot-on"), null, "busy is never painted");
+  assert.equal(await cell(p, "2030-04-02T10:00").getAttribute("data-slot-short"), "", "30 minutes: shorter than a meeting");
+  // A new duration re-cuts the same paint (30 minutes: every cell is a candidate).
+  await p.getByRole("tab", { name: "30分" }).click();
+  assert.match(await summary(p), /送る時間 5 件 · 各 30 分/);
+  await p.getByRole("tab", { name: "60分" }).click();
+  await p.getByRole("button", { name: "5 件を挿入" }).click();
   const inserted = await p.evaluate(() => (window as any).fx.inserted);
-  assert.equal(inserted.slots.length, 4); assert.equal(inserted.durationMinutes, 60); assert.equal(inserted.timeZone, "UTC");
+  assert.equal(inserted.slots.length, 5); assert.equal(inserted.durationMinutes, 60); assert.equal(inserted.timeZone, "UTC");
+  assert.deepEqual(inserted.slots.map((slot: { startsAt: string }) => slot.startsAt.slice(0, 16)), ["2030-04-01T09:00", "2030-04-02T14:00", "2030-04-03T09:00", "2030-04-03T14:00", "2030-04-04T09:00"]);
+  assert.deepEqual(inserted.ranges.map((range: { startsAt: string; endsAt: string }) => `${range.startsAt.slice(5, 16)}–${range.endsAt.slice(11, 16)}`),
+    ["04-01T09:00–10:00", "04-02T10:00–10:30", "04-02T14:00–15:00", "04-03T09:00–10:00", "04-03T14:00–15:00", "04-04T09:00–10:00", "04-05T15:00–16:00"]);
   assert.deepEqual(inserted.medium, { kind: "video", provider: "other", joinUrl: null });
   assert.ok(!(await calls(p)).some((call) => call.method !== "GET"), "the picker never writes");
 });
 
-test("④ picker: incomplete calendars preselect nothing and need 3 for a proposal; in person needs a place", async (t) => {
+test("④ picker (R43): incomplete calendars paint nothing; fewer than 3 disables 挿入; short ranges are outlined; keyboard Enter paints; in person needs a place", async (t) => {
   const p = await page(t);
   await reply(p, "GET /api/calendar/external-events", { status: 503, body: { success: false } });
   await mount(p, "picker");
   await p.locator("[data-slot-picker]").waitFor();
-  assert.equal(await p.locator('button[aria-pressed="true"]').count(), 0);
-  assert.equal(await p.locator('[data-slot="2030-04-02T10:00:00.000Z"]').getAttribute("data-slot-state"), "unknown");
-  for (const at of ["2030-04-02T10:00:00.000Z", "2030-04-03T10:00:00.000Z"]) await p.locator(`[data-slot="${at}"]`).click();
-  assert.equal(await p.locator("[data-slot-hint]").innerText(), "3〜5 件選んでください");
-  assert.equal(await p.getByRole("button", { name: "2 件を挿入" }).isDisabled(), true);
-  await p.locator('[data-slot="2030-04-04T10:00:00.000Z"]').click();
+  assert.equal(await p.locator("[data-slot-on]").count(), 0);
+  assert.equal(await cell(p, "2030-04-02T10:00").getAttribute("data-slot-state"), "unknown");
+  await cell(p, "2030-04-02T10:00").click();
+  assert.equal(await p.locator("[data-slot-need]").innerText(), "候補は 3 件以上必要です。もう一つ時間帯を塗ってください");
+  assert.equal(await p.getByRole("button", { name: "1 件を挿入" }).isDisabled(), true);
+  await cell(p, "2030-04-03T10:00").press("Enter");
+  assert.equal(await cell(p, "2030-04-03T10:30").getAttribute("data-slot-on"), "", "Enter on a cell = a click");
+  await drag(p, "2030-04-04T10:00", "2030-04-04T11:30");
+  assert.equal(await p.locator("[data-slot-need]").count(), 0);
+  assert.equal(await p.getByRole("button", { name: "4 件を挿入" }).isDisabled(), false);
+  // 90 minutes: the 60-minute ranges are short (outlined, not sent), 4/4 10:00–12:00 gives one.
+  await p.getByRole("tab", { name: "90分" }).click();
+  assert.equal(await cell(p, "2030-04-02T10:00").getAttribute("data-slot-short"), "");
+  assert.equal(await p.locator("[data-slot-short-hint]").innerText(), "白抜きの時間帯は 90 分に満たないため使われません");
+  assert.equal(await p.getByRole("button", { name: "1 件を挿入" }).isDisabled(), true);
+  await p.getByRole("tab", { name: "60分" }).click();
   await p.getByRole("tab", { name: "対面" }).click();
-  assert.equal(await p.getByRole("button", { name: "3 件を挿入" }).isDisabled(), true, "in person without a place");
+  assert.equal(await p.getByRole("button", { name: "4 件を挿入" }).isDisabled(), true, "in person without a place");
   await p.getByLabel("場所", { exact: true }).fill("渋谷オフィス");
-  assert.equal(await p.getByRole("button", { name: "3 件を挿入" }).isDisabled(), false);
+  assert.equal(await p.getByRole("button", { name: "4 件を挿入" }).isDisabled(), false);
+});
+
+test("④ picker (R43): ‹ › moves a week, up to today + 14 days; a kept selection without ranges reopens from its slots", async (t) => {
+  const p = await page(t);
+  await mount(p, "picker", { initial: { slots: [{ startsAt: "2030-04-09T10:00:00.000Z", endsAt: "2030-04-09T11:00:00.000Z" }], durationMinutes: 60, format: "video", place: "", medium: { kind: "video", provider: "other", joinUrl: null }, timeZone: "UTC" } });
+  await p.locator("[data-slot-picker]").waitFor();
+  assert.equal(await p.locator("[data-slot-on]").count(), 0, "week 1 has none of it");
+  assert.equal(await p.getByRole("button", { name: "前の期間" }).isDisabled(), true);
+  await p.getByRole("button", { name: "次の期間" }).click();
+  assert.deepEqual(await onCells(p), ["2030-04-09T10:00", "2030-04-09T10:30"]);
+  await p.getByRole("button", { name: "次の期間" }).click();
+  assert.equal(await p.locator("[data-slot-grid] [data-slot]").count(), 18, "4/15 (Mon) is the last day: the third week shows only it");
+  assert.equal(await p.getByRole("button", { name: "次の期間" }).isDisabled(), true);
 });
 
 test("② message path: canStart → start, then ONE POST with body + proposal; retry reuses the key; draft cleared", async (t) => {
@@ -189,24 +254,30 @@ test("② 409 MEETING_ALREADY_ACTIVE: the times give way to the ongoing meeting 
   assert.equal(await p.locator("[data-reach-insert]").count(), 0, "D2b: no new times while a meeting is ongoing");
 });
 
-test("③ e-mail path: paragraph inserted and replaced, mailto encoded, no address → disabled, no relationship request", async (t) => {
+test("③ e-mail path: ranges as a paragraph (not cut, short ones left out), re-pick restores the paint and replaces it, mailto, no address → disabled", async (t) => {
   const p = await page(t);
   await mount(p, "reach", { email: "mori@example.test" });
   await p.locator('[data-reach-path="email"]').waitFor();
   await p.locator("[data-reach-body]").waitFor();
   assert.match(await p.locator("[data-reach-to]").innerText(), /mori@example\.test · 名刺のアドレス/);
   await p.locator("[data-reach-insert]").click();
-  await p.locator('[data-slot="2030-04-02T09:00:00.000Z"]').waitFor();
-  await p.getByRole("button", { name: "3 件を挿入" }).click();
+  await cell(p, "2030-04-02T09:00").waitFor();
+  assert.match(await summary(p), /本文に書く時間帯/);
+  assert.equal(await p.locator("[data-slot-over]").count(), 0);
+  await drag(p, "2030-04-02T10:00", "2030-04-02T11:30"); // joins 09:00–10:00 → 09:00–12:00
+  await cell(p, "2030-04-05T17:30").click(); // only half an hour left in the day: a short range
+  await p.getByRole("button", { name: "時間帯を 3 つ挿入" }).click();
   const first = await p.locator("[data-reach-body]").inputValue();
-  assert.match(first, /以下の日時のいずれかで、60 分ほどお時間をいただけますでしょうか（オンライン）。\n・4\/2（火）09:00–10:00\n・4\/3（水）09:00–10:00\n・4\/4（木）09:00–10:00\n\nどうぞよろしくお願いいたします。$/);
+  assert.match(first, /以下の時間帯のうち、60 分ほどお時間をいただけますでしょうか（オンライン）。\n・4\/2（火）09:00–12:00\n・4\/3（水）09:00–10:00\n・4\/4（木）09:00–10:00\n\nどうぞよろしくお願いいたします。$/);
   await p.locator("[data-reach-body]").fill(`追記：資料も添えます。\n${first}`);
   await p.getByRole("button", { name: "時間を選び直す" }).click();
-  await p.locator('[data-slot="2030-04-04T09:00:00.000Z"]').click();
-  await p.getByRole("button", { name: "2 件を挿入" }).click();
+  await cell(p, "2030-04-04T09:00").waitFor();
+  assert.deepEqual(await onCells(p), ["2030-04-02T09:00", "2030-04-02T09:30", "2030-04-02T10:00", "2030-04-02T10:30", "2030-04-02T11:00", "2030-04-02T11:30", "2030-04-03T09:00", "2030-04-03T09:30", "2030-04-04T09:00", "2030-04-04T09:30", "2030-04-05T17:30"], "the ranges come back, the short one too");
+  await cell(p, "2030-04-04T09:00").click();
+  await p.getByRole("button", { name: "時間帯を 2 つ挿入" }).click();
   const second = await p.locator("[data-reach-body]").inputValue();
   assert.ok(second.startsWith("追記：資料も添えます。\n"), "hand edits stay");
-  assert.equal((second.match(/以下の日時のいずれかで/g) ?? []).length, 1, "only the inserted paragraph is replaced");
+  assert.equal((second.match(/以下の時間帯のうち/g) ?? []).length, 1, "only the inserted paragraph is replaced");
   assert.ok(!second.includes("4/4（木）"));
   const href = await p.locator("a[data-reach-mailto]").getAttribute("href");
   assert.ok(href!.startsWith("mailto:mori@example.test?subject=%E3%81%94"));
@@ -218,6 +289,19 @@ test("③ e-mail path: paragraph inserted and replaced, mailto encoded, no addre
   assert.equal(await p.locator("button[data-reach-mailto]").isDisabled(), true);
   assert.equal(await p.locator("[data-reach-send]").count(), 0);
   assert.ok(!(await calls(p)).some((call) => call.url.includes("/relationship-communication/") || call.url.startsWith("/api/appointments")), "0 relationship / appointment requests");
+});
+
+test("③ e-mail path: an older kept draft (picked without ranges) still reopens and re-inserts", async (t) => {
+  const p = await page(t);
+  const old = { slots: [{ startsAt: "2030-04-03T09:00:00.000Z", endsAt: "2030-04-03T10:00:00.000Z" }], durationMinutes: 60, format: "video", place: "", medium: { kind: "video", provider: "other", joinUrl: null }, timeZone: "UTC" };
+  await p.evaluate((picked) => sessionStorage.setItem("orbit.contactReach.draft:acct-1:c-mori:email", JSON.stringify({ body: "本文", subject: "件名", picked, insertedBlock: null })), old);
+  await mount(p, "reach", { email: "mori@example.test" });
+  await p.locator("[data-reach-body]").waitFor();
+  await p.locator("[data-reach-insert]").click();
+  await cell(p, "2030-04-03T09:00").waitFor();
+  assert.deepEqual(await onCells(p), ["2030-04-03T09:00", "2030-04-03T09:30"]);
+  await p.getByRole("button", { name: "時間帯を 1 つ挿入" }).click();
+  assert.equal(await p.locator("[data-reach-body]").inputValue(), "本文\n\n以下の時間帯のうち、60 分ほどお時間をいただけますでしょうか（オンライン）。\n・4/3（水）09:00–10:00");
 });
 
 test("① drawer: bone while reading, then 連絡する with the path line; 📅 in the head; no 下書きを作成 / 予定を追加 buttons", async (t) => {
