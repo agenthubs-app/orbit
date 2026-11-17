@@ -24,7 +24,7 @@ PLANNER 是在所有 sprint 动工之前一次写成的，所以后面 sprint �
 | AG05 | 读取与带出处的回答 | 二 | AG03 | 服务端 | H | RD ×10、SCL ×5 | completed via run-03（run-01 failed：模型没给搜索词时读宽了，且最终 SHA 不在门槛里；run-02 failed：AG04 复跑 36/37，另有漏读较新笔记的已知缺陷；run-03 修复轮 1 后门槛 43/43 双评通过，AG03、AG04 复跑通过，--seed-cards） |
 | AG06 | 小林切片：一张卡改待办、记往来 | 二 | AG04、AG05 | 服务端 | H | XL ×12、SCL ×2、BND ×12 完整对话版、UND ×2（回答语言，用例级 gate） | completed（run-01 修复轮 1 后门槛 47/47 双评通过，不带 --seed-cards；AG03～AG05 复跑通过） |
 | AG07 | 两端的确认卡与对话界面 | 二 | AG06、视觉稿获批 | Web、App | H | UIX ×8 | completed（run-03 门槛 43/43 双评通过；AG03～AG06 复跑通过；run-02/03 为例外重跑） |
-| AG08 | 判断模型接入 | 三 能力补齐 | AG04、AG05、AG06 | 服务端 | H | JDG ×8、SCL ×2 | planned |
+| AG08 | 判断模型接入 | 三 能力补齐 | AG04、AG05、AG06 | 服务端 | H | JDG ×8、SCL ×2 | completed（run-02 门槛双评通过，AE-JDG-003 改正评审项后单独重跑双评通过；AG03～AG07 复跑通过） |
 | AG09 | 基础联网与出站把关 | 三 | AG08 | 服务端 | H | WEB ×12、SCL ×2 | planned |
 | AG10 | 排序、提取与整理 | 三 | AG06、AG08 | 服务端 | H | FN ×13、SCL ×4 | planned |
 | AG11 | 两端用 @ 指定上下文 | 三 | AG05、AG07、AG13 | Web、App | H | REF ×8、SCL ×2 | planned |
