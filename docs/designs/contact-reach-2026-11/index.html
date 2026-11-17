@@ -115,6 +115,51 @@ h1{font-size:20px;margin:0 0 6px}
 .topbar .sp{margin-left:auto;display:flex;gap:6px}
 .legend{font-size:12px;color:var(--ink-2);background:var(--surface);border-radius:14px;padding:14px 16px;line-height:1.8;max-width:380px}
 .legend b{color:var(--ink)}
+
+/* ⑧⑨ week grid · drag to paint (2026-11-17) */
+.wg{user-select:none;-webkit-user-select:none}
+.wgNav{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;margin-bottom:8px}
+.wgNav .ar{width:28px;height:28px;border-radius:999px;background:var(--surface-2);display:grid;place-items:center;color:var(--ink-2);font-weight:700}
+.wgNav .ar.dis{opacity:.35}
+.wgNav .wkLbl{flex:1;text-align:center}
+.wgGrid{display:grid;gap:3px 3px;touch-action:none}
+.wgGrid .dh{font-size:11px;font-weight:700;color:var(--ink-2);text-align:center;line-height:1.25;padding-bottom:4px}
+.wgGrid .dh em{display:block;font-style:normal;font-size:10.5px;color:var(--ink-3);font-weight:600}
+.wgGrid .dh.today em{color:var(--lav-t)}
+.wgGrid .tl{font-size:10px;color:var(--ink-3);text-align:right;padding-right:4px;transform:translateY(-6px)}
+.wgGrid .tl.half{visibility:hidden}
+.g{border-radius:4px;background:var(--surface-2);position:relative}
+.g.hr{box-shadow:inset 0 1px 0 #E2DEE5}
+.g.busy{background:repeating-linear-gradient(135deg,var(--busy) 0 3px,#EEEBF0 3px 6px)}
+.g.off{background:transparent;box-shadow:none;border:1px dashed #E6E2E8}
+.g.on{background:var(--ink);border-radius:0}
+.g.on.top{border-top-left-radius:6px;border-top-right-radius:6px}
+.g.on.bot{border-bottom-left-radius:6px;border-bottom-right-radius:6px}
+.g.on:not(.bot){box-shadow:0 3px 0 0 var(--ink)}
+.g.on.extra{background:#B9B3C0}
+.g.on.extra:not(.bot){box-shadow:0 3px 0 0 #B9B3C0}
+.g.on.cut::before{content:'';position:absolute;left:4px;right:4px;top:-2px;height:1px;background:rgba(255,255,255,.75)}
+.g.on.short{box-shadow:inset 1.5px 0 0 var(--ink),inset -1.5px 0 0 var(--ink)}
+.g.on.short.top{box-shadow:inset 1.5px 0 0 var(--ink),inset -1.5px 0 0 var(--ink),inset 0 1.5px 0 var(--ink)}
+.g.on.short.bot{box-shadow:inset 1.5px 0 0 var(--ink),inset -1.5px 0 0 var(--ink),inset 0 -1.5px 0 var(--ink)}
+.g.on.short.top.bot{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.g.on.short{background:#fff;box-shadow:inset 0 0 0 1.5px var(--ink)}
+.g.prev{background:#6E6878}
+.g.prevErase{background:#D9D4DD}
+.g .nb{position:absolute;left:3px;top:1px;font-size:9.5px;font-weight:800;color:var(--bg);line-height:1}
+.g.extra .nb,.g.short .nb{color:var(--ink-2)}
+.wgLegend{display:flex;flex-wrap:wrap;gap:10px;font-size:10.5px;color:var(--ink-3);margin-top:8px;align-items:center}
+.wgLegend i{display:inline-block;width:14px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.wgOut{margin-top:10px;font-size:12px;line-height:1.7}
+.wgOut .h{font-weight:800;font-size:12.5px;margin-bottom:2px}
+.wgOut .w{color:#A0522D;font-size:11.5px}
+.wgOut .m{color:var(--ink-3);font-size:11.5px}
+.pillSel{display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 10px;border-radius:999px;background:var(--surface-2);font-size:12px;font-weight:700;color:var(--ink)}
+.pillSel em{font-style:normal;color:var(--ink-3);font-size:10px}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:52px;background:var(--surface);border-radius:26px 26px 0 0;padding:10px 14px 16px;box-shadow:0 -8px 30px rgba(30,26,36,.12);display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.sheet .grab{width:38px;height:5px;border-radius:9px;background:#DDD8E0;align-self:center}
+.dim{position:absolute;inset:0;background:rgba(30,26,36,.28)}
+.try{display:inline-block;font-size:11px;font-weight:800;color:#fff;background:#C07A3A;border-radius:999px;padding:2px 8px;margin-left:6px;vertical-align:1px}
 </style>
 </head>
 <body>
@@ -317,5 +362,110 @@ h1{font-size:20px;margin:0 0 6px}
     <div class="legend"><b>名片联系人</b>：同一页，标签「邮件草稿」，右上「发送」换成「用邮件 App 打开」，下方加「复制」。<br><b>可约时间设置</b>：App 设置 › 日程 里同样一组（星期圆点 + 时间滚轮 + 三个下拉）。<br><b>离线</b>：站内信发送需要联网，离线时「发送」变灰并提示；写好的内容保留。</div>
   </div>
 </section>
+
+<!-- 8 -->
+<section class="board">
+  <h2>⑧ App · 选可约时间 = 一周 30 分钟格子，按住拖动涂选<span class="try">可以直接拖</span></h2>
+  <p class="note">替换 ⑦ 里「按天列表」。格子 = 30 分钟；行只画「可约时间」的起止（默认 9:00–18:00），列只画可约的星期，‹ › 翻周（最远 +14 天）。
+  <b>点一格</b> = 从这格起圈出一段「会面时长」（60 分钟 = 两格）；<b>按住往下拖</b> = 涂出一段可约时间，斜着拖可跨几天同一时段；从已涂的格子开始拖 = 擦掉。已有安排（斜纹）、已过去 / 不可约（虚线）涂不上，拖过去会自动断开。
+  站内信：每段按会面时长切成不重叠的候选（编号），最多 5 个发出，多出的格子变浅；比时长短的段画空心框、不会发出。打开时沿用现在的「最近 3 个空档」预涂 3 段。</p>
+  <div class="boards">
+    <div class="phone"><div class="in" style="padding:0">
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="row" style="justify-content:space-between"><b style="font-size:15px">选可约时间</b><span class="btn sm primary" data-ins="app">插入 3 个时间</span></div>
+        <div class="lbl" style="line-height:1.5">按你的可约时间：工作日 09:00–18:00 · 至少提前 15 分钟　<b style="color:var(--ink)">修改 ›</b></div>
+        <div class="row"><span class="pillSel" data-dur="app">60 分钟 <em>▾</em></span><span class="pillSel">线上 <em>▾</em></span><span class="lbl" style="margin-left:auto">只看了 Orbit 里的日程</span></div>
+        <div class="wg" id="wgApp"></div>
+      </div>
+    </div></div>
+    <div class="legend"><b>手势</b>：格子区域关闭滚动，按下即开始涂（不需要长按）；整张表在一屏内放得下（18 行 × 20pt），所以不和页面滚动抢手势。左右翻周用 ‹ ›。<br>
+    <b>时长</b>：改时长会重新切候选，已涂的格子不动。<br>
+    <b>邮件（名片联系人）</b>：同一张表；插进正文时按「段」写，不切候选、不限 5 个：<br><span style="font-family:inherit;color:var(--ink)">以下时间段里，任选 60 分钟您是否方便？<br>・11/18（周三）09:00–11:00<br>・11/20（周五）14:00–15:00</span><br>
+    <b>对方收到（站内信）</b>：仍是 ⑥ 的提议卡，列出编号的候选，点一个就确定。</div>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="board">
+  <h2>⑨ Web · 同一套周格子，鼠标按住拖动涂选<span class="try">可以直接拖</span></h2>
+  <p class="note">替换 ④ 左侧的 1 小时网格：改为 30 分钟格子 + 同样的点选 / 拖选规则。右栏保留时长、形式、地点，并在下面实时列出「会发出的时间」，按钮显示个数。</p>
+  <div class="boards">
+    <div class="scrim wide"><div class="modal">
+      <div class="mH"><b>选可约时间</b><span class="x">✕</span></div>
+      <div class="pick" style="grid-template-columns:1fr 250px">
+        <div class="wg" id="wgWeb"></div>
+        <div class="side">
+          <div class="lbl" style="padding:8px 10px;line-height:1.6;background:var(--surface-2);border-radius:12px">按你的可约时间：工作日 09:00–18:00 · 至少提前 15 分钟　<b style="color:var(--ink)">修改 ›</b></div>
+          <div><span class="lbl">时长</span><div class="seg" style="margin-top:6px" id="durWeb"><span data-d="1">30 分</span><span class="on" data-d="2">60 分</span><span data-d="3">90 分</span></div></div>
+          <div><span class="lbl">形式</span><div class="seg" style="margin-top:6px"><span class="on">线上</span><span>面谈</span><span>电话</span></div></div>
+          <div><span class="lbl">会议链接 / 地点（可不填）</span><div class="inp" style="margin-top:6px;color:var(--ink-3);font-weight:500">https://</div></div>
+          <div class="wgOut" id="outWeb"></div>
+        </div>
+      </div>
+      <div class="mF"><span class="hint">点一格 = 一段会面时长；按住拖动 = 涂一段可约时间</span><span class="btn">取消</span><span class="btn primary" data-ins="web">插入 3 个时间</span></div>
+    </div></div>
+  </div>
+</section>
+
+<script>
+(function(){
+  const DAYS=[{d:'11/16',w:'周一'},{d:'11/17',w:'周二',today:true},{d:'11/18',w:'周三'},{d:'11/19',w:'周四'},{d:'11/20',w:'周五'}];
+  const ROWS=18; // 09:00–18:00 by 30 min
+  const t=r=>{const m=540+r*30;return String(Math.floor(m/60)).padStart(2,'0')+':'+(m%60?'30':'00')};
+  const off=(c,r)=>c===0||(c===1&&r<7); // Mon past; today before 12:30
+  const BUSY={2:[1],3:[10,11,12],4:[4,5]};
+  const busy=(c,r)=>(BUSY[c]||[]).includes(r);
+  const ok=(c,r)=>!off(c,r)&&!busy(c,r);
+  function make(rootId,opt){
+    const root=document.getElementById(rootId);
+    const st={dur:2,on:DAYS.map(()=>new Set())};
+    // preseed: next 3 free slots from tomorrow, one per day
+    [2,3,4].forEach(c=>{for(let r=0;r+st.dur<=ROWS;r++){let f=true;for(let k=0;k<st.dur;k++)if(!ok(c,r+k))f=false;if(f){for(let k=0;k<st.dur;k++)st.on[c].add(r+k);break;}}});
+    root.innerHTML='<div class="wgNav"><span class="ar dis">‹</span><span class="wkLbl">11/16 – 11/20</span><span class="ar">›</span></div><div class="wgGrid"></div><div class="wgLegend"><span><i style="background:var(--surface-2)"></i>可约</span><span><i style="background:repeating-linear-gradient(135deg,var(--busy) 0 3px,#EEEBF0 3px 6px)"></i>已有安排</span><span><i style="border:1px dashed #CFC9D3"></i>已过 / 不可约</span><span><i style="background:var(--ink)"></i>已选</span><span><i style="background:#B9B3C0"></i>超出 5 个</span></div>'+(opt.out?'':'<div class="wgOut"></div>');
+    const grid=root.querySelector('.wgGrid');
+    const out=opt.out?document.getElementById(opt.out):root.querySelector('.wgOut');
+    grid.style.gridTemplateColumns=opt.tw+'px repeat('+DAYS.length+',1fr)';
+    grid.style.gridAutoRows='auto';
+    let html='<span></span>'+DAYS.map(x=>'<span class="dh'+(x.today?' today':'')+'">'+x.w+'<em>'+x.d+(x.today?' 今天':'')+'</em></span>').join('');
+    for(let r=0;r<ROWS;r++){html+='<span class="tl'+(r%2?' half':'')+'" style="height:'+opt.h+'px">'+t(r)+'</span>';for(let c=0;c<DAYS.length;c++)html+='<span class="g'+(r%2===0?' hr':'')+(off(c,r)?' off':busy(c,r)?' busy':'')+'" data-c="'+c+'" data-r="'+r+'" style="height:'+opt.h+'px"></span>';}
+    grid.innerHTML=html;
+    const cell=(c,r)=>grid.querySelector('[data-c="'+c+'"][data-r="'+r+'"]');
+    function blocks(){const b=[];st.on.forEach((set,c)=>{let s=-1;for(let r=0;r<=ROWS;r++){if(set.has(r)){if(s<0)s=r}else if(s>=0){b.push({c,s,e:r});s=-1}}});return b}
+    function render(prev){
+      const bl=blocks();let n=0;const cands=[];
+      grid.querySelectorAll('.g').forEach(g=>{g.className=g.className.replace(/ (on|top|bot|extra|short|prev|prevErase|cut)/g,'');g.innerHTML=''});
+      bl.forEach(b=>{const len=b.e-b.s;const short=len<st.dur;for(let r=b.s;r<b.e;r++){const g=cell(b.c,r);g.classList.add('on');if(r===b.s)g.classList.add('top');if(r===b.e-1)g.classList.add('bot');if(short)g.classList.add('short')}
+        if(!short){for(let r=b.s;r+st.dur<=b.e;r+=st.dur){n++;const ex=n>5;cands.push({c:b.c,r,n,ex});for(let k=0;k<st.dur;k++){const g=cell(b.c,r+k);if(ex)g.classList.add('extra')}cell(b.c,r).innerHTML='<span class="nb">'+n+'</span>';if(r>b.s)cell(b.c,r).classList.add('cut');}}});
+      if(prev)prev.cells.forEach(([c,r])=>cell(c,r).classList.add(prev.erase?'prevErase':'prev'));
+      const sent=cands.filter(x=>!x.ex);const shorts=bl.filter(b=>b.e-b.s<st.dur).length;
+      const mins=st.dur*30;
+      let o=opt.compact?'<div><b>会发出 '+sent.length+' 个 · 各 '+mins+' 分钟</b>　<span class="m">'+sent.map(x=>x.n+' '+DAYS[x.c].w+' '+t(x.r)).join('　')+'</span></div>'
+        :'<div class="h">会发出 '+sent.length+' 个时间 · 各 '+mins+' 分钟</div>'+sent.map(x=>'<div>'+x.n+'. '+DAYS[x.c].d+'（'+DAYS[x.c].w+'）'+t(x.r)+'–'+t(x.r+st.dur)+'</div>').join('');
+      if(sent.length<3)o+='<div class="w">站内信至少要 3 个时间，再涂一段</div>';
+      if(cands.length>5)o+='<div class="w">最多 5 个，浅色的 '+(cands.length-5)+' 个不会发出</div>';
+      if(shorts)o+='<div class="m">空心框的段比 '+mins+' 分钟短，不会发出</div>';
+      out.innerHTML=o;
+      document.querySelectorAll('[data-ins="'+opt.key+'"]').forEach(btn=>{btn.textContent='插入 '+sent.length+' 个时间';btn.toggleAttribute('disabled',sent.length<3)});
+    }
+    let drag=null;
+    const at=e=>{const el=document.elementFromPoint(e.clientX,e.clientY);return el&&el.classList&&el.classList.contains('g')&&grid.contains(el)?[+el.dataset.c,+el.dataset.r]:null};
+    function rect(a,b){const out=[];for(let c=Math.min(a[0],b[0]);c<=Math.max(a[0],b[0]);c++)for(let r=Math.min(a[1],b[1]);r<=Math.max(a[1],b[1]);r++)if(ok(c,r))out.push([c,r]);return out}
+    grid.addEventListener('pointerdown',e=>{const p=at(e);if(!p||!ok(p[0],p[1]))return;e.preventDefault();grid.setPointerCapture(e.pointerId);drag={a:p,b:p,erase:st.on[p[0]].has(p[1]),moved:false};render({cells:[p],erase:drag.erase})});
+    grid.addEventListener('pointermove',e=>{if(!drag)return;const p=at(e);if(!p)return;if(p[0]!==drag.b[0]||p[1]!==drag.b[1]){drag.b=p;drag.moved=true;render({cells:rect(drag.a,drag.b),erase:drag.erase})}});
+    const end=()=>{if(!drag)return;const d=drag;drag=null;const [c,r]=d.a;
+      if(!d.moved){if(d.erase){const b=blocks().find(b=>b.c===c&&r>=b.s&&r<b.e);for(let k=b.s;k<b.e;k++)st.on[c].delete(k)}else{for(let k=0;k<st.dur&&r+k<ROWS&&ok(c,r+k);k++)st.on[c].add(r+k)}}
+      else rect(d.a,d.b).forEach(([cc,rr])=>d.erase?st.on[cc].delete(rr):st.on[cc].add(rr));
+      render()};
+    grid.addEventListener('pointerup',end);grid.addEventListener('pointercancel',end);
+    if(opt.durSeg)document.getElementById(opt.durSeg).addEventListener('click',e=>{const s=e.target.closest('[data-d]');if(!s)return;st.dur=+s.dataset.d;s.parentNode.querySelectorAll('span').forEach(x=>x.classList.toggle('on',x===s));render()});
+    document.querySelectorAll('[data-dur="'+opt.key+'"]').forEach(p=>p.addEventListener('click',()=>{st.dur=st.dur%3+1;p.innerHTML=(st.dur*30)+' 分钟 <em>▾</em>';render()}));
+    render();
+  }
+  make('wgApp',{key:'app',h:20,tw:38,compact:true});
+  make('wgWeb',{key:'web',h:20,tw:44,out:'outWeb',durSeg:'durWeb'});
+})();
+</script>
 </body>
 </html>
