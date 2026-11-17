@@ -78,6 +78,11 @@ export function isNegatedOrHypothetical(part: Pick<UnderstandPart, "constraints"
 }
 
 /** "先别改", "don't add" … in the part's constraints (AG04 keeps the two signals apart). */
+/** AG09 run-04 repair 2: the user's own words carry a negation (the same words as negationOf). */
+export function negationIn(text: string): boolean {
+  return NEGATION.test(text);
+}
+
 export function negationOf(part: Pick<UnderstandPart, "constraints">): boolean {
   return part.constraints.some((constraint) => NEGATION.test(constraint));
 }
@@ -170,10 +175,10 @@ export function decideRoute(part: RouteInput, options: RouteOptions = {}): Route
 export type PartStatus = "answered" | "awaiting_clarification" | "awaiting_confirmation" | "awaiting_acceptance" | "suggested_external" | "waiting_dependency" | "declined" | "unfinished" | "failed";
 
 /**
- * Routes this version delivers no result for (web AG09): reported as not done. Reads work from AG05; writes
+ * Routes this version delivers no result for (probe as a route of its own): reported as not done. The web (web_lookup) works from AG09. Reads work from AG05; writes
  * are proposed on a card from AG06 (graph/nodes/propose.ts).
  */
-export const NOT_YET_ROUTES: ReadonlySet<Route> = new Set(["probe", "web_lookup"]);
+export const NOT_YET_ROUTES: ReadonlySet<Route> = new Set(["probe"]);
 
 /**
  * The status a route leaves a part in before dependencies are settled. An `answer` part is counted
@@ -194,6 +199,9 @@ export function statusForRoute(route: Route): PartStatus {
       return "answered";
     case "read":
       // AG05: answered unless resolve finds it could not read (it sets the gap and the status).
+      return "answered";
+    case "web_lookup":
+      // AG09: answered unless the web step (graph/nodes/probe.ts) could not look it up (it says why and sets the status).
       return "answered";
     default:
       return "unfinished";

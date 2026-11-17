@@ -11,6 +11,7 @@ import type { CardOperationIntent } from "../../agent/runtime/card-operations";
 import type { AgentActionPreviewContract as CardPreview } from "../../../shared/contract/agent-v1";
 import type { CanonicalEventRecord } from "../../events/core/contract";
 import type { JudgmentAccess } from "../judgment/ask";
+import type { AgentWebAccess } from "../web/service";
 
 /**
  * AG06: the request's card in the action ledger (one card per request, conversationCardId). `freeze` is
@@ -64,6 +65,8 @@ export interface AgentGraphDependencies {
   onStage?: (stage: AgentRunStage) => void;
   /** AG08: the judgment model (absent, or no key: every judgment is unavailable and conservative). */
   judgment?: JudgmentAccess;
+  /** AG09: the public web (absent, switched off or no key: not one web request is made). */
+  web?: AgentWebAccess;
 }
 
 export interface AgentGraphInput {

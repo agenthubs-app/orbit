@@ -14,7 +14,8 @@ import { choice, graded, judgeStub, noul } from "./judgment-kit";
  * is not enabled; below the threshold every question falls to its conservative result (§3.8 用途表).
  */
 
-const RECORD = path.resolve(__dirname, "..", "..", "..", "..", "docs", "epics", "agent-design", "eval", "calibration", "judgment-thresholds-v1.md");
+// AG09: v2 calibrated outbound.extra and carries the other cells from v1; a cell's row is in the record that calibrated it.
+const RECORDS = ["judgment-thresholds-v2.md", "judgment-thresholds-v1.md"].map((name) => path.resolve(__dirname, "..", "..", "..", "..", "docs", "epics", "agent-design", "eval", "calibration", name));
 const LANGUAGES: JudgmentLanguage[] = ["zh", "ja", "en"];
 
 test("AG08-3 the eleven questions of 附录 C, each with a type, options, a version and its conservative result", () => {
@@ -41,11 +42,11 @@ test("AG08-3 the eleven questions of 附录 C, each with a type, options, a vers
 
 test("AG08-3 a missing cell is not enabled; the enabled cells are exactly the calibrated ones, each in the record with ≥20 dev samples", () => {
   assert.match(JUDGMENT_THRESHOLDS.version, /^judgment-thresholds@\d+$/u);
-  const record = fs.readFileSync(RECORD, "utf8");
+  const lines = RECORDS.flatMap((file) => fs.readFileSync(file, "utf8").split("\n"));
   for (const id of QUESTION_IDS) {
     for (const language of LANGUAGES) {
       const value = thresholdFor(id, language);
-      const row = record.split("\n").find((line) => line.startsWith(`| \`${id}\` | ${language} |`));
+      const row = lines.find((line) => line.startsWith(`| \`${id}\` | ${language} |`) && /^\| [^|]+ \| [a-z]+ \| \d+ /u.test(line)) ?? lines.find((line) => line.startsWith(`| \`${id}\` | ${language} |`));
       if (value === null) {
         if (row) assert.match(row, /未启用/u, `${id}/${language} is not enabled, and the record says so`);
         continue;
@@ -56,7 +57,7 @@ test("AG08-3 a missing cell is not enabled; the enabled cells are exactly the ca
       assert.equal(Number(cells[4]), value, `${id}/${language}: the threshold in code is the recorded one`);
     }
   }
-  for (const id of ["evidence.supports", "evidence.sameEntity", "quote.sentence", "interaction.happened", "followup.owner", "outbound.extra"] as JudgmentQuestionId[]) {
+  for (const id of ["evidence.supports", "evidence.sameEntity", "quote.sentence", "interaction.happened", "followup.owner"] as JudgmentQuestionId[]) {
     for (const language of LANGUAGES) assert.equal(thresholdFor(id, language), null, `${id} is registered but not enabled in AG08`);
   }
 });

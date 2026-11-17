@@ -443,6 +443,86 @@
           "optional": true,
           "kind": "text",
           "type": "string"
+        },
+        "web": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentWebResultContract"
+        }
+      }
+    },
+    "agent-v1.ts::AgentWebResultContract": {
+      "kind": "object",
+      "members": {
+        "queries": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "text": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "sentAt": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "provider": {
+                "optional": false,
+                "kind": "text",
+                "type": "'deepseek'"
+              }
+            }
+          }
+        },
+        "pages": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentWebPageContract[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentWebPageContract": {
+      "kind": "object",
+      "members": {
+        "sourceRef": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "url": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "excerpt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sourceDate": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "fetchedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "readStatus": {
+          "optional": false,
+          "kind": "text",
+          "type": "'ok' | 'empty' | 'timeout' | 'provider_error'"
         }
       }
     },
@@ -25998,52 +26078,52 @@
             "agent_action": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "task": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "task_suggestion": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "plan_pending": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "entity_draft": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "contact_draft": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "completion_question": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "agent_signal": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "plan_today_chance": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "relationship_task": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             }
           }
         }

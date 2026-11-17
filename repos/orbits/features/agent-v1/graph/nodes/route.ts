@@ -41,6 +41,9 @@ function reviewedEntry(part: GraphPart, quote: string, clue: (ref: GraphPart["re
   return null;
 }
 
+/** AG09 run-02: words that ask to look on the web (zh, ja, en). */
+const EXPLICIT_WEB = /(上网|联网|网上|网络上|搜一下|搜搜|搜索|官网|公开资料|公开职务|公开信息|ネット|ウェブ|検索|公式サイト|公開情報|online|on the web|the internet|web search|search the web|google|look (?:it |them |him |her )?up)/iu;
+
 export function routeInputOf(part: GraphPart): RouteInput {
   return {
     clarity: part.plan.clarity,
@@ -84,7 +87,10 @@ export function routeNode(scope: NodeScope): GraphNode {
     // Open items are context too: a part answering one points at that matter's object.
     const nothingToResolveFrom = !resume && Boolean(context) && context!.openItems.length === 0 && (context!.idle || (context!.messages.length === 0 && context!.shownList.length === 0 && context!.lastMentioned.length === 0));
     const clueText = (ref: GraphPart["refs"][number]) => clueWords(input.message, ref) ?? "";
-    const namedInMessage = (context?.references.length ?? 0) > 0 || state.parts.some((part) => part.refs.some((ref) => ref.recordId || (clueText(ref) && !isPronounClue(clueText(ref)))));
+    // AG09 stability run (AE-SCL-016): a public name to look up or a web page the user gave names something too — "the
+    // latest quote they gave me" after "Here is Lumen ATS's pricing page: …" has its "they" in the same message.
+    const namesPublicObject = state.parts.some((part) => Boolean(part.plan.webTarget?.quote) || /https?:\/\//u.test(input.message.slice(part.quote[0], part.quote[1])));
+    const namedInMessage = namesPublicObject || (context?.references.length ?? 0) > 0 || state.parts.some((part) => part.refs.some((ref) => ref.recordId || (clueText(ref) && !isPronounClue(clueText(ref)))));
     const unboundPronoun = (part: GraphPart) => nothingToResolveFrom && !namedInMessage && !part.refs.some((ref) => ref.recordId) && part.refs.some((ref) => isPronounClue(clueText(ref)));
     // AG07 gate (AE-XL-005): the first layer called "把报价待办改到周五" missing one item although the to-do is named in
     // its own words and the new day is said; code then looks it up instead of asking without candidates.
@@ -110,6 +116,15 @@ export function routeNode(scope: NodeScope): GraphNode {
     const parts: GraphPart[] = state.parts.map((original) => {
       if (resume && !state.touched!.includes(original.localId)) return original;
       const part: GraphPart = { ...original };
+      // AG09 stability run (AE-SCL-016): with a public object named in this message (a name to look up, a web page), a
+      // contact clue that is only a pronoun ("they") stands for that company or person, not for one of the user's contacts.
+      if (!resume && namesPublicObject) {
+        const kept = part.refs.filter((ref) => !(ref.entity === "contact" && !ref.recordId && isPronounClue(clueText(ref))));
+        if (kept.length !== part.refs.length) {
+          emitTrace({ dropped: part.refs.length - kept.length, partId: part.localId, reason: "a pronoun for the public object this message names", type: "route.pronoun_for_public_object" });
+          part.refs = kept;
+        }
+      }
       if (attribution) {
         const found = attribution.get(part.localId);
         if (found && found.kind !== "new") {
@@ -131,12 +146,29 @@ export function routeNode(scope: NodeScope): GraphNode {
       const reschedule = namesNothing && reschedulesTo(openItem?.quote ?? input.message.slice(part.quote[0], part.quote[1]), state.asOf || deps.now(), state.timeZone || "Asia/Tokyo");
       // AG08: the review found no explicit request: the part is a statement (no card, one entry).
       if (reviewed.has(part.localId)) part.plan = { ...part.plan, clarity: "statement" };
-      const decision = decideRoute(routeInputOf(part), { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind, namedObjectWithDate: namedObjectWithDate(part), reschedule, unboundPronoun: unboundPronoun(part) });
+      const routeOptions = { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind, namedObjectWithDate: namedObjectWithDate(part), reschedule, unboundPronoun: unboundPronoun(part) };
+      let decision = decideRoute(routeInputOf(part), routeOptions);
+      // AG09 run-02 (AE-CTX-006): a question about one of the user's own contacts (an @ record) is answered from the records;
+      // the web is looked up about a contact only when the user asks for it ("上网查", "ネットで", "online").
+      const partWords = input.message.slice(part.quote[0], part.quote[1]);
+      if (!resume && decision.route === "web_lookup" && part.refs.some((ref) => ref.entity === "contact" && ref.recordId) && !EXPLICIT_WEB.test(partWords)) {
+        part.capabilities = [...new Set([...part.capabilities.filter((capability) => capabilityKind(capability) !== "web"), "contact.read" as Capability])];
+        part.plan = { ...part.plan, dataSources: ["orbit_records"] };
+        decision = decideRoute(routeInputOf(part), routeOptions);
+        emitTrace({ partId: part.localId, reason: "a question about the user's own contact, not asked to look online: read from the records", route: decision.route, type: "route.contact_not_looked_up_online" });
+      }
       if (reviewed.has(part.localId) && decision.step?.kind === "respond" && decision.step.entry) {
         const entry = reviewedEntry(part, input.message.slice(part.quote[0], part.quote[1]), clueText, state.asOf || deps.now(), state.timeZone || "Asia/Tokyo");
         if (entry) decision.step = { ...decision.step, entry: entry.entry, reviewed: entry.reviewed };
       }
       if (unboundPronoun(part)) emitTrace({ partId: part.localId, reason: "a pronoun with nothing to resolve it from (§3.10): the object is missing", type: "route.unbound_reference" });
+      // AG09 (PLANNER 排除范围; AE-UND-010 in one part): a change that saves what a web page says is not offered yet — the part
+      // reads the page (web_lookup) and code says the save is not available (graph/nodes/probe.ts); no card.
+      if (decision.route === "propose_write" && part.capabilities.some((capability) => capabilityKind(capability) === "web")) {
+        emitTrace({ partId: part.localId, reason: "a change built on a web page: the page is read, the save is not offered yet", type: "route.web_save_not_offered" });
+        decision.route = "web_lookup";
+        decision.reason = "public sources (saving them is not offered yet)";
+      }
       if (accepted && part.continues) acceptedAlternativeRef = part.continues.ref;
       let status = statusForRoute(decision.route);
       let reason: string | null = NOT_YET_ROUTES.has(decision.route) ? "not_in_this_version" : null;

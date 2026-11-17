@@ -37,6 +37,7 @@ import { localDay, readRecentInteraction } from "../../views/recent-interaction"
 import type { AgentRecordAccess, GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart, PartCoverage } from "../state";
 import { clueWords } from "./clarify";
+import { webPartReads } from "./probe";
 
 type ReadKind = "memo" | "todo" | "schedule" | "event" | "contact" | "interaction";
 
@@ -154,7 +155,10 @@ export async function partialContacts(records: AgentRecordAccess, scope: DomainS
 }
 
 /** AG08 repair 1 (AE-UND-010): the words that ask for a list, not what it is about ("列出", "一覧にして", "list"). */
-const LIST_VERBS = /^(?:请|帮我|麻烦)?(?:列出|列一下|列举|列个|看看|看一下|告诉我|查一下|查查|给我看|一覧にして|一覧を|リストにして|見せて|教えて|list|show me|show)\s*/iu;
+/** AG09 run-04 repair 2: words asking how a person stands now (zh, ja, en). */
+const ASKS_NOW = /(现在|目前|如今|眼下|最近在|今は|今どこ|今の|現在|現職|\bnow\b|\bcurrently\b|these days)/iu;
+
+const LIST_VERBS =/^(?:请|帮我|麻烦)?(?:列出|列一下|列举|列个|看看|看一下|告诉我|查一下|查查|给我看|一覧にして|一覧を|リストにして|見せて|教えて|list|show me|show)\s*/iu;
 
 /**
  * AG08 repair 1 (AE-UND-010): a part that lists the user's notes ("列出我记过的竞品") with no search words from the first
@@ -163,6 +167,16 @@ const LIST_VERBS = /^(?:请|帮我|麻烦)?(?:列出|列一下|列举|列个|看
  */
 export function listSearchWords(quote: string): string | undefined {
   return clueSearchWords(quote.replace(/[。.!！?？]+$/u, "").replace(LIST_VERBS, "").replace(/(?:を)?(?:一覧にして|リストにして|見せて|教えて)(?:ください)?$/u, ""));
+}
+
+/**
+ * AG09 run-04 (AE-WEB-004): a record clue as the user wrote it, for a title or label search ("我竞品笔记 C 里" → "竞品笔记 C"):
+ * only the "my" before it and the "in / of" after it are taken off. A pronoun names no title.
+ */
+export function clueAsWritten(words: string): string | undefined {
+  const text = words.replace(/^@/u, "").trim().replace(/^(?:我的|我)/u, "").replace(/(?:里|中|上|的|の中|の)$/u, "").trim();
+  if ([...text].length < 2 || isPronounClue(text)) return undefined;
+  return text;
 }
 
 export function clueSearchWords(words: string): string | undefined {
@@ -289,7 +303,8 @@ export function resolveNode(scope: NodeScope): GraphNode {
   return async (state: AgentGraphState) => {
     const resume = state.touched !== null;
     const parts: GraphPart[] = state.parts.map((part) => ({ ...part }));
-    const due = parts.filter((part) => part.route === "read" && part.status === "answered" && (!resume || state.touched!.includes(part.localId)));
+    // AG09: a web part that also reads the user's records reads them here first (webPartReads).
+    const due = parts.filter((part) => (part.route === "read" || webPartReads(part)) && part.status === "answered" && (!resume || state.touched!.includes(part.localId)));
     if (!due.length) return {};
     const words = gapWords(state.language);
     const context = run.context;
@@ -354,6 +369,12 @@ export function resolveNode(scope: NodeScope): GraphNode {
       }
       // An unbound clue of a kind mentioned last in this session (and no words to search by) means that record.
       let filter = part.plan.readFilter;
+      // AG09 run-04 repair 2 (AE-SCL-007): a part about a person whose own words ask how they stand now ("where is he now",
+      // "他现在在哪", "今はどこ") is the AG05 run-03 `current` read even when the first layer gave no readFilter.
+      if (!filter?.current && part.capabilities.some((capability) => capability === "contact.read" || capability === "view.context") && ASKS_NOW.test(quote)) {
+        filter = { ...(filter ?? {}), current: true };
+        emitTrace({ partId: part.localId, type: "resolve.asks_now" });
+      }
       let text = filter?.text ? input.message.slice(filter.text[0], filter.text[1]) : undefined;
       for (const ref of part.refs) {
         // A clue with words of its own is searched by them (below), not taken for the record mentioned last.
@@ -633,6 +654,25 @@ export function resolveNode(scope: NodeScope): GraphNode {
                 pages = await readPages(records.reader, kind, accountScope, queryOf(undefined), order === "both" ? 1 : maxPages);
                 emitTrace({ partId: part.localId, type: "resolve.own_words_unmatched", words: ownWords });
               } else if (ownWords) emitTrace({ partId: part.localId, type: "resolve.own_words", words: ownWords });
+              // AG09 run-04 (AE-WEB-004): a clue that names a record by its title or label ("竞品笔记 C", "笔记 C") lost its
+              // generic word in the search words ("竞品c"); when those find nothing, the clue is searched as the user wrote it.
+              if (clue && !text && !pages.items.length && !pages.withheld) {
+                const asWritten = clueAsWritten(clueWords(input.message, clue) ?? "");
+                if (asWritten && asWritten !== kindText) {
+                  pages = await readPages(records.reader, kind, accountScope, queryOf(asWritten), order === "both" ? 1 : maxPages);
+                  emitTrace({ found: pages.items.length, partId: part.localId, type: "resolve.clue_as_written", words: asWritten });
+                }
+              }
+              // AG09 dev run 2 (AE-SCL-015): notes compared with a web lookup of the same message ("和我笔记里他们给我的价格比一下"
+              // after "查 Kasane Pack 官网…"): when the part's words find no note, the public name the user typed for that lookup
+              // is searched — the user's own words of this message, never a record's.
+              if (kind === "memo" && !contactId && !pages.items.length && !pages.withheld) {
+                const webName = [...parts.filter((other) => part.dependsOn.includes(other.localId)), ...parts.filter((other) => other !== part)].map((other) => (other.plan.webTarget?.quote ? input.message.slice(other.plan.webTarget.quote[0], other.plan.webTarget.quote[1]).replace(/^@/u, "").trim() : "")).find((name) => name && name !== kindText);
+                if (webName) {
+                  pages = await readPages(records.reader, kind, accountScope, queryOf(webName), order === "both" ? 1 : maxPages);
+                  emitTrace({ found: pages.items.length, partId: part.localId, type: "resolve.web_name", words: webName });
+                }
+              }
               if (kindText && contactId && !pages.items.length && !pages.withheld) {
                 pages = await readPages(records.reader, kind, accountScope, queryOf(undefined), order === "both" ? 1 : maxPages);
                 if (pages.items.length) read.notes.push(`No note of theirs contains "${kindText}"; these are their ${kind === "memo" ? "notes" : "records"} without that filter.`);

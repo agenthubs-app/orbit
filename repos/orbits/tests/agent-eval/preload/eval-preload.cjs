@@ -300,9 +300,19 @@ function categoryOf(url) {
   return { category: "model", provider };
 }
 
+/** AG09: the DeepSeek Search/Fetch tool endpoints (`/v1/tools/search`, `/v1/tools/fetch`); the page is in the body. */
+function toolKindOf(url) {
+  if (MODEL_HOSTS[url.hostname] !== "deepseek") return null;
+  const match = /^\/v1\/tools\/(search|fetch)\/?$/u.exec(url.pathname);
+  return match ? match[1] : null;
+}
+
 function replayFor(url, init) {
+  // AG09: a tool fetch names its page in the body ({ url }); the replay is matched on that page, as written.
+  const tool = toolKindOf(url);
+  const requested = tool === "fetch" ? String(parseMaybeJson(init?.body)?.url ?? "") : url.href;
   for (const replay of state.replay) {
-    if (replay.kind === "fetch" && replay.url && url.href.replace(/\/$/u, "") === String(replay.url).replace(/\/$/u, "")) return replay;
+    if (replay.kind === "fetch" && replay.url && (tool === null || tool === "fetch") && requested.replace(/\/$/u, "") === String(replay.url).replace(/\/$/u, "")) return replay;
   }
   if (/\/search(\/|$)/u.test(url.pathname)) {
     const body = typeof init?.body === "string" ? init.body : "";
@@ -425,9 +435,13 @@ if (typeof realFetch === "function") {
     const url = urlOf(input);
     if (!url || hostAllowed(url.hostname) && !MODEL_HOSTS[url.hostname]) return realFetch(input, init);
     const replay = replayFor(url, init);
+    const tool = toolKindOf(url);
     if (replay) {
       const kind = replay.kind === "search" ? "web.search" : "web.fetch";
-      emit({ type: kind, source: "replay", url: url.href, replay: replay.name ?? null, request: parseMaybeJson(init?.body) });
+      // AG09: through the tool endpoints the event names the page fetched (url) or the query sent, as the provider would get them.
+      const request = parseMaybeJson(init?.body);
+      const body = replay.kind === "search" ? { results: replay.results ?? [] } : { title: replay.title ?? null, content: replay.text ?? "", updated: replay.updated ?? null };
+      emit({ type: kind, source: "replay", url: tool === "fetch" ? String(request?.url ?? "") : url.href, ...(tool ? { endpoint: url.href } : {}), ...(tool === "search" ? { query: String(request?.query ?? "") } : {}), replay: replay.name ?? null, request, ...(replay.behavior === "timeout" ? { behavior: "timeout" } : { response: body }) });
       if (replay.behavior === "timeout") {
         await new Promise((resolve, reject) => {
           const timer = setTimeout(resolve, 120_000);
@@ -437,7 +451,6 @@ if (typeof realFetch === "function") {
           });
         });
       }
-      const body = replay.kind === "search" ? { results: replay.results ?? [] } : { title: replay.title ?? null, content: replay.text ?? "", updated: replay.updated ?? null };
       return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
     }
     if (!MODEL_HOSTS[url.hostname]) throw blocked(url.hostname, url.port || null, "fetch");
@@ -475,6 +488,9 @@ if (typeof realFetch === "function") {
       emit({ type: `${prefix}.response`, source: "simulated", provider, status: response.status, body: parseMaybeJson(await response.clone().text()), usage: null, durationMs: realNow() - started });
       return response;
     }
+    // AG09 (PLANNER 易错边界 8): during a run every web search or fetch is a replay (or a simulated fault above); one with
+    // no recording never reaches the provider — it is refused as an outbound connection (egress.blocked), which voids the run.
+    if (tool) throw blocked(`${url.hostname}${url.pathname} (no recorded replay for this ${tool})`, url.port || null, "fetch:web-tool");
     if (category !== "web") emit({ type: `${prefix}.request`, source: "real", provider, url: url.href, method: init?.method ?? "GET", headers: safeHeaders(init?.headers), body: requestBody });
     else emit({ type: prefix, source: "real", provider, url: url.href, request: requestBody });
     let response;

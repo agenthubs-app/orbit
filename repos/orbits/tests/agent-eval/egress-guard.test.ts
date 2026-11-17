@@ -108,3 +108,31 @@ test("the anchored clock starts at the case clock and advance_clock moves it", (
   assert.ok(Math.abs(Date.parse(out.first) - Date.parse("2026-11-15T01:00:00Z")) < 5_000, out.first);
   assert.equal(out.delta, 70);
 });
+
+test("AG09: a tool fetch is answered from its replay by the page in the body; a web call with no replay is refused (egress.blocked)", () => {
+  const { events, result } = runWithPreload(`
+    const http = require("node:http");
+    const server = http.createServer((req, res) => res.end("ok")).listen(0, "127.0.0.1", async () => {
+      const base = "http://127.0.0.1:" + server.address().port;
+      const replay = [{ kind: "fetch", name: "director-bio", url: "https://toto-film.example.test/directors/koreeda-maki", title: "简介", text: "现任东都映画创作总监。" }];
+      await fetch(base + "/__agent-eval/context", { method: "POST", body: JSON.stringify({ caseId: "AE-WEB-T", clock: "2026-11-15T10:00:00+09:00", replay }) });
+      const page = await (await fetch("https://api.deepseek.com/v1/tools/fetch", { method: "POST", body: JSON.stringify({ url: "https://toto-film.example.test/directors/koreeda-maki" }) })).json();
+      let refused = null;
+      try {
+        await fetch("https://api.deepseek.com/v1/tools/search", { method: "POST", body: JSON.stringify({ query: "Acme Cloud 官网 价格", count: 3 }) });
+      } catch (error) {
+        refused = error.code;
+      }
+      console.log(JSON.stringify({ content: page.content, refused }));
+      server.close();
+    });`);
+  assert.equal(result.status, 0, result.stderr);
+  const out = JSON.parse(result.stdout.trim());
+  assert.equal(out.content, "现任东都映画创作总监。");
+  assert.equal(out.refused, "ORBIT_AGENT_EVAL_EGRESS_BLOCKED");
+  const fetched = events.find((event) => event.type === "web.fetch");
+  assert.equal(fetched?.source, "replay");
+  assert.equal(fetched?.url, "https://toto-film.example.test/directors/koreeda-maki", "the event names the page, not the endpoint");
+  assert.ok(events.some((event) => event.type === "egress.blocked" && String(event.host).includes("/v1/tools/search")));
+  assert.equal(events.filter((event) => event.type === "web.search").length, 0, "nothing was searched");
+});

@@ -6,10 +6,11 @@
 import { formatWhen } from "../../answer/materials";
 import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
-import { hypothesisOf, negationOf } from "../../route/decide";
+import { hypothesisOf, negationIn, negationOf } from "../../route/decide";
 import { replyLanguageOf } from "../../route/handoff-copy";
 import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_PROMPT_VERSION } from "../../understand/prompt";
 import { coverEverySentence } from "../../understand/cover";
+import { describedObjectSpan } from "../../understand/described-clue";
 import type { UnderstandOutput } from "../../understand/schema";
 import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInput } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
@@ -35,20 +36,29 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
         deliverable: part.deliverable,
         hypothesis: hypothesisOf(part),
         intentBasis: part.intentBasis,
-        negation: negationOf(part),
+        // AG09 run-04 repair 2 (AE-JDG-007): a negation counts only when the user's own message carries one; a note the model
+        // wrote around the user's words ("（假设，先不要真的改）") does not make one.
+        negation: negationOf(part) && negationIn(message),
         persistence: part.persistence,
         readings: (part.readings ?? []).map((reading) => ({ capabilities: [...reading.capabilities], deliverable: reading.deliverable })),
         // The checkpoint keeps the words as offsets into this turn's message, never the words.
         ...(part.readFilter ? { readFilter: { ...part.readFilter, text: part.readFilter.text && message.includes(part.readFilter.text) ? [message.indexOf(part.readFilter.text), message.indexOf(part.readFilter.text) + part.readFilter.text.length] as [number, number] : undefined } } : {}),
         // AG08: the rank words as offsets too.
         ...(part.rank ? { rank: { ...part.rank, basis: spanOf(message, part.rank.basis), within: spanOf(message, part.rank.within) } } : {}),
+        // AG09: what a web.search part looks up, the words as offsets too.
+        ...(part.webTarget ? { webTarget: { qualifiers: [...part.webTarget.qualifiers], quote: spanOf(message, part.webTarget.quote) } } : {}),
       },
       quote: [start, start + part.sourceQuote.length],
       reading: null,
       reason: null,
       refs: part.objectClues.map((clue) => {
         const at = message.indexOf(clue.text);
-        return { entity: clue.entity, quote: at >= 0 ? [at, at + clue.text.length] as [number, number] : null, recordId: clue.referenceId ? context.handles.get(clue.referenceId)?.id ?? null : null };
+        const own: [number, number] | null = at >= 0 ? [at, at + clue.text.length] : null;
+        // AG09 run-03 (AE-BND-006): a demonstrative the user described just before ("约山本吃饭这条待办") is looked up by
+        // those words; the clue then names the record and is not a missing object.
+        const described = clue.referenceId ? null : describedObjectSpan(message, own, [start, start + part.sourceQuote.length], clue.text);
+        if (described) emitTrace({ clue: clue.text, described: message.slice(described[0], described[1]), entity: clue.entity, partId: part.localId, type: "understand.described_clue" });
+        return { entity: clue.entity, quote: described ?? own, recordId: clue.referenceId ? context.handles.get(clue.referenceId)?.id ?? null : null };
       }),
       route: null,
       status: "unfinished",

@@ -7,7 +7,7 @@
  * non-conservative answer of the dev samples is wrong. A cell with fewer than 20 dev samples, or with no correct
  * non-conservative answer above the highest wrong one, is not enabled. The val samples are only checked.
  *
- * Writes the record (eval/calibration/judgment-thresholds-v1.md) and the raw answers (evidence directory); with
+ * Writes the record (eval/calibration/judgment-thresholds-v2.md) and the raw answers (evidence directory); with
  * --write also features/agent-v1/judgment/thresholds-config.ts. The key is read from the environment or the eval
  * env file and never printed. Paid calls: one per sample (match.level: one per set), input tokens only.
  */
@@ -26,14 +26,18 @@ import { intentJudgmentInput, intentSubject } from "../../features/agent-v1/judg
 import { questionOf, QUESTION_IDS, type JudgmentLanguage, type JudgmentQuestionId } from "../../features/agent-v1/judgment/questions";
 import type { ThresholdConfig } from "../../features/agent-v1/judgment/thresholds";
 import { JUDGMENT_MODEL } from "../../features/agent-v1/judgment/gemini-decision";
+import { JUDGMENT_THRESHOLDS } from "../../features/agent-v1/judgment/thresholds-config";
+import { outboundJudgmentInput, outboundSubject } from "../../features/agent-v1/web/second-gate";
 
 const ORBITS = path.resolve(__dirname, "..", "..");
 const ROOT = path.resolve(ORBITS, "..", "..");
-const SAMPLES = path.join(ROOT, "docs", "epics", "agent-design", "eval", "calibration", "judgment-samples-v1.yaml");
-const RECORD = path.join(ROOT, "docs", "epics", "agent-design", "eval", "calibration", "judgment-thresholds-v1.md");
+const SAMPLES = path.join(ROOT, "docs", "epics", "agent-design", "eval", "calibration", "judgment-samples-v2.yaml");
+const RECORD = path.join(ROOT, "docs", "epics", "agent-design", "eval", "calibration", "judgment-thresholds-v2.md");
 const CONFIG = path.join(ORBITS, "features", "agent-v1", "judgment", "thresholds-config.ts");
-const EVIDENCE = path.join(os.homedir(), "orbit-sprint-evidence", "agent-design", "sprint-AG08", "run-01", "calibration");
+const EVIDENCE = path.join(os.homedir(), "orbit-sprint-evidence", "agent-design", "sprint-AG09", "run-01", "calibration");
 export const MIN_SAMPLES = 20;
+/** The questions this command calibrates (AG08: the first three; AG09: outbound.extra). */
+const CALIBRATED: JudgmentQuestionId[] = ["match.level", "intent.explicitWrite", "duplicate.same", "outbound.extra"];
 const LANGUAGES: JudgmentLanguage[] = ["zh", "ja", "en"];
 
 interface Result {
@@ -90,19 +94,22 @@ const OPEN: ThresholdConfig = { calibratedOn: null, cells: Object.fromEntries(QU
 
 async function main(): Promise<void> {
   const write = process.argv.includes("--write");
+  // AG09: --only <ids> calibrates those questions and carries every other cell over from the current configuration.
+  const onlyAt = process.argv.indexOf("--only");
+  const wanted = new Set<JudgmentQuestionId>(onlyAt > 0 ? (process.argv[onlyAt + 1] ?? "").split(",").filter((id): id is JudgmentQuestionId => (QUESTION_IDS as readonly string[]).includes(id)) : CALIBRATED);
   const samples = yaml.load(fs.readFileSync(SAMPLES, "utf8")) as Record<string, any>;
   const access = { apiKey: apiKey(), thresholds: OPEN, timeoutMs: 15_000 };
   const results: Result[] = [];
   let requests = 0;
   let inputTokens = 0;
-  const ask = async (language: JudgmentLanguage, input: string[], items: JudgmentItem[], purpose: "rank" | "intent" | "duplicate") => {
+  const ask = async (language: JudgmentLanguage, input: string[], items: JudgmentItem[], purpose: "rank" | "intent" | "duplicate" | "outbound") => {
     const outcome = await askJudgment(access, newJudgmentBudget(), { input, items, language, purpose });
     requests += 1;
     inputTokens += outcome.inputTokens ?? 0;
     if (outcome.unavailable) throw new Error(`a calibration request failed (${outcome.unavailable}); stopping, nothing was written`);
     return outcome;
   };
-  for (const set of samples["match.level"] as any[]) {
+  for (const set of (wanted.has("match.level") ? samples["match.level"] : []) as any[]) {
     const candidates = set.candidates as { key: string; text: string; label: string }[];
     // The raw graded answers (probabilities by level), built exactly as askJudgment builds the request.
     const question = questionOf("match.level");
@@ -120,23 +127,31 @@ async function main(): Promise<void> {
       results.push({ ...(cumulative ? { atLeast: cumulative } : {}), confidence: cumulative?.[1] ?? null, group: set.group, id: `${set.set}:${candidate.key}`, label: candidate.label, language: set.language, question: "match.level", raw: cumulative ? "taken" : null });
     }
   }
-  for (const sample of samples["intent.explicitWrite"] as any[]) {
+  for (const sample of (wanted.has("intent.explicitWrite") ? samples["intent.explicitWrite"] : []) as any[]) {
     const outcome = await ask(sample.language, intentJudgmentInput(sample.language, sample.message), [{ key: "m", question: "intent.explicitWrite", subject: intentSubject(sample.quote ?? sample.message) }], "intent");
     const verdict = outcome.verdicts.get("m");
     results.push({ confidence: verdict?.confidence ?? null, group: sample.group, id: sample.id, label: sample.label, language: sample.language, question: "intent.explicitWrite", raw: verdict?.raw ?? null });
   }
-  for (const sample of samples["duplicate.same"] as any[]) {
+  for (const sample of (wanted.has("duplicate.same") ? samples["duplicate.same"] : []) as any[]) {
     const outcome = await ask(sample.language, duplicateJudgmentInput(sample.language, sample.fresh, [{ ...sample.existing, key: "d1" }]), [{ key: "d1", question: "duplicate.same", subject: "d1" }], "duplicate");
     const verdict = outcome.verdicts.get("d1");
     results.push({ confidence: verdict?.confidence ?? null, group: sample.group, id: sample.id, label: sample.label, language: sample.language, question: "duplicate.same", raw: verdict?.raw ?? null });
+  }
+  // AG09: the second gate of the outbound check, built exactly as web/second-gate.ts builds it.
+  for (const sample of (wanted.has("outbound.extra") ? samples["outbound.extra"] ?? [] : []) as any[]) {
+    const outcome = await ask(sample.language, outboundJudgmentInput(sample.language, sample.message), [{ key: "q", question: "outbound.extra", subject: outboundSubject(sample.query) }], "outbound");
+    const verdict = outcome.verdicts.get("q");
+    results.push({ confidence: verdict?.confidence ?? null, group: sample.group, id: sample.id, label: sample.label, language: sample.language, question: "outbound.extra", raw: verdict?.raw ?? null });
   }
   fs.mkdirSync(EVIDENCE, { recursive: true });
   const at = new Date().toISOString();
   fs.writeFileSync(path.join(EVIDENCE, `raw-${at.replace(/[:.]/gu, "-")}.json`), JSON.stringify({ at, inputTokens, model: JUDGMENT_MODEL, requests, results }, null, 2));
 
-  const cells: ThresholdConfig["cells"] = {};
+  // AG09: the cells of questions not calibrated in this run are carried over from the current configuration, unchanged.
+  const carried = CALIBRATED.filter((id) => !wanted.has(id));
+  const cells: ThresholdConfig["cells"] = Object.fromEntries(carried.filter((id) => JUDGMENT_THRESHOLDS.cells[id]).map((id) => [id, { ...JUDGMENT_THRESHOLDS.cells[id] }]));
   const rows: string[] = [];
-  for (const question of ["match.level", "intent.explicitWrite", "duplicate.same"] as const) {
+  for (const question of CALIBRATED.filter((id) => wanted.has(id))) {
     for (const language of LANGUAGES) {
       const dev = results.filter((result) => result.question === question && result.language === language && result.group === "dev");
       const val = results.filter((result) => result.question === question && result.language === language && result.group === "val");
@@ -150,11 +165,12 @@ async function main(): Promise<void> {
       rows.push(`| \`${question}\` | ${language} | ${dev.length} | ${threshold === null ? "未启用" : threshold.toFixed(3)} | ${threshold === null ? "—" : `${acted(dev).length}/${dev.length}`} | ${threshold === null ? "—" : wrongAt(dev).length} | ${val.length} | ${threshold === null ? "—" : `${acted(val).length}/${val.length}，误判 ${wrongAt(val).length}`} |`);
     }
   }
-  const notCalibrated = QUESTION_IDS.filter((id) => !["match.level", "intent.explicitWrite", "duplicate.same"].includes(id));
+  const notCalibrated = QUESTION_IDS.filter((id) => !(CALIBRATED as readonly string[]).includes(id));
+  for (const id of carried) for (const language of LANGUAGES) rows.push(`| \`${id}\` | ${language} | — | ${JUDGMENT_THRESHOLDS.cells[id]?.[language]?.toFixed(3) ?? "未启用"} | 沿用 v1（本次未重跑） | — | — | — |`);
   const record = [
-    "# 判断题门槛的校准记录 v1",
+    "# 判断题门槛的校准记录 v2",
     "",
-    `由 \`npm run agent-eval:calibrate\` 写出（scripts/agent-eval/calibrate-judgment.ts），最近一次：${at}。模型 \`${JUDGMENT_MODEL}\`，真实调用 ${requests} 次，输入 ${inputTokens} token。样本：[judgment-samples-v1.yaml](judgment-samples-v1.yaml)；原始返回在 \`~/orbit-sprint-evidence/agent-design/sprint-AG08/run-01/calibration/\`。`,
+    `由 \`npm run agent-eval:calibrate\` 写出（scripts/agent-eval/calibrate-judgment.ts），最近一次：${at}。模型 \`${JUDGMENT_MODEL}\`，真实调用 ${requests} 次，输入 ${inputTokens} token。样本：[judgment-samples-v2.yaml](judgment-samples-v2.yaml)；本次只校准 ${[...wanted].map((id) => `\`${id}\``).join("、")}，其余格子沿用 [v1 记录](judgment-thresholds-v1.md) 的值；原始返回在 \`~/orbit-sprint-evidence/agent-design/sprint-AG09/run-01/calibration/\`。`,
     "",
     "门槛的定法（PLANNER 执行顺序 5）：只看 dev 样本，取“非保守答案零误判”的最低置信度——比最高的一个误判还高的正确非保守答案里，置信度最低的那个；dev 样本不足 20 条，或者没有这样的答案，这一格不启用。val 只用来核对。门槛向下取到千分位。",
     "",
@@ -164,16 +180,16 @@ async function main(): Promise<void> {
     "|---|---|---|---|---|---|---|---|",
     ...rows,
     "",
-    `未校准、不启用（本 sprint 不发这些题，按“判断不可用”处理）：${notCalibrated.map((id) => `\`${id}\``).join("、")}。其中 \`interaction.happened\`、\`followup.owner\` 由 AG10、\`outbound.extra\` 由 AG09 校准；证据核对的四题与 \`quote.sentence\` 本 sprint 没有样本。`,
+    `未校准、不启用（本 sprint 不发这些题，按“判断不可用”处理）：${notCalibrated.map((id) => `\`${id}\``).join("、")}。其中 \`interaction.happened\`、\`followup.owner\` 由 AG10 校准；证据核对的四题与 \`quote.sentence\` 还没有样本。\`outbound.extra\` 的标注口径：no = 只含查所问公开信息需要的内容；误判 = 答“否”（可发）而标注是 yes。`,
     "",
   ].join("\n");
   fs.writeFileSync(RECORD, record);
-  const config: ThresholdConfig = { calibratedOn: at.slice(0, 10), cells, model: JUDGMENT_MODEL, version: "judgment-thresholds@1" };
+  const config: ThresholdConfig = { calibratedOn: at.slice(0, 10), cells, model: JUDGMENT_MODEL, version: "judgment-thresholds@2" };
   if (write) {
     fs.writeFileSync(CONFIG, [
       "/**",
       " * Written by `npm run agent-eval:calibrate -- --write` (scripts/agent-eval/calibrate-judgment.ts). Do not edit",
-      " * by hand: a changed value needs a calibration run and its record (eval/calibration/judgment-thresholds-v1.md).",
+      " * by hand: a changed value needs a calibration run and its record (eval/calibration/judgment-thresholds-v2.md; v1 for the cells it carries).",
       " * A question or language missing here is not enabled.",
       " */",
       'import type { ThresholdConfig } from "./thresholds";',

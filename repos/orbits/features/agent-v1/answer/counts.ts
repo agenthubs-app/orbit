@@ -71,3 +71,124 @@ export function withoutUnsourcedCounts(text: string, counts: readonly number[]):
   }
   return kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").trim();
 }
+
+/**
+ * AG09 (AG08 协调者复核 交接 2, AE-SCL-008): a sentence saying how many records were seen or looked at this turn
+ * ("只看到 10 条", "10件しか見えていない", "I looked at 10 notes") must agree with this turn's coverage record (how
+ * many the read actually went through). The answer of AE-SCL-008 said 「10件しか見えていない」 while code's coverage
+ * said 50 of 64 were seen; such a sentence is not delivered — code's own coverage line says the right numbers.
+ * Only verbs of seeing or reading count; "列出 3 条过期的" (listing) and "確認" (checking) are not coverage.
+ */
+const SEEN_PATTERNS: RegExp[] = [
+  // zh: 只看到 10 条, 看了其中 50 条, 读了前 20 篇, 翻了 30 项
+  new RegExp(`(?:看到了?|看了|看过|读了|读到了?|读过|查看了|翻了|浏览了)\\s*(?:其中的?|前|最近的?|最早的?|最新的?)?\\s*${N}\\s*(?:条|件|篇|项)`, "gu"),
+  // ja: 10件しか見えていない, 50件を見ただけ, 20件に目を通し, うち50件を見ました
+  new RegExp(`${N}\\s*件\\s*(?:しか|だけ|のみ)?\\s*(?:を|が)?\\s*(?:見え|見て|見た|見まし|見る|読ん|読み|目を通)`, "gu"),
+  // en: I looked at 10 notes, only saw the first 20 to-dos, went through 50 of them
+  new RegExp(`\\b(?:saw|seen|see|looked at|look at|read|reviewed|went through|gone through|go through)\\s+(?:only\\s+)?(?:the\\s+)?(?:first\\s+|latest\\s+|nearest\\s+|most recent\\s+|top\\s+|oldest\\s+|newest\\s+)?${EN_N}\\b`, "giu"),
+];
+
+/** The numbers of records a text says were seen or looked at. */
+export function seenCountsIn(text: string): number[] {
+  const found = new Map<number, number>();
+  for (const pattern of SEEN_PATTERNS) {
+    for (const match of text.matchAll(pattern)) {
+      const value = valueOf(match[1]);
+      if (value !== null) found.set((match.index ?? 0) + match[0].indexOf(match[1]), value);
+    }
+  }
+  return [...found.entries()].sort((left, right) => left[0] - right[0]).map(([, value]) => value);
+}
+
+/** The "seen" numbers a coverage record allows: each kind's seen count, and their sum. */
+export function seenAllowedBy(coverage: readonly { seen: number }[]): Set<number> {
+  const out = new Set(coverage.map((item) => item.seen));
+  if (coverage.length > 1) out.add(coverage.reduce((sum, item) => sum + item.seen, 0));
+  return out;
+}
+
+/** The answer without the sentences whose "seen" number disagrees with the coverage record (dropped numbers listed). */
+export function withoutWrongSeenCounts(text: string, allowed: ReadonlySet<number>): { text: string; dropped: number[] } {
+  const wrong = [...new Set(seenCountsIn(text))].filter((value) => !allowed.has(value));
+  if (!wrong.length) return { dropped: [], text };
+  const bad = new Set(wrong);
+  const pieces = text.match(/[^。！？!?\n]+(?:[。！？!?]+|\n+|$)|\n+/gu) ?? [text];
+  const kept: string[] = [];
+  for (const piece of pieces) {
+    const parts = /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)\s+/u) : [piece];
+    for (const part of parts) if (!seenCountsIn(part).some((value) => bad.has(value))) kept.push(part);
+  }
+  return { dropped: wrong, text: kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").trim() };
+}
+
+/**
+ * AG09 run-02 (coordinator, AE-RD-005 at 07381abeb): when this turn's read of the subject is partial — some records could
+ * not be read, or a page whose total is unknown — a sentence stating an exact or total count of records or interactions
+ * ("有一次", "只有一条", "一共3次", "1回だけ", "全部で2件", "only once", "just one") claims to know all of them. Such a count
+ * is not delivered: the lead-in before a colon becomes code's neutral lead ("读得到的记录里：…"), otherwise the count is
+ * taken out (zh, ja) or the sentence goes (en). A count equal to a total the read itself gave (coverage.total) stays.
+ */
+const ZH_EXACT = [
+  new RegExp(`(只有|仅有|一共有|总共有|共有|就有|一共|总共|只|仅|就|共|有)((?:联系|聊天?|见面?|通话|打电话|往来|沟通)?过?)\\s*${N}\\s*(?:次|条|件|篇|回|通)`, "gu"),
+  new RegExp(`()((?:联系|聊天?|见面?|通话|打电话|往来|沟通)过)\\s*${N}\\s*(?:次|回)`, "gu"),
+];
+const JA_EXACT = [
+  new RegExp(`(?:全部で|合計で?|計)\\s*${N}\\s*(?:回|件|度|つ)(?:だけ|のみ|きり)?`, "gu"),
+  new RegExp(`${N}\\s*(?:回|件|度|つ)\\s*(?:だけ|のみ|きり)`, "gu"),
+  new RegExp(`${N}\\s*(?:回|件|度)(?=です|でした|あります|ありました)`, "gu"),
+];
+const EN_EXACT = [
+  /\b(?:only|just)\s+(once|twice|one|a single|\d{1,4}|two|three)\b/giu,
+  /\b(?:a total of|exactly|in total)\s+(\d{1,4}|one|two|three)\b/giu,
+  /\b(once|twice)\s+(?=this\b|in total\b|so far\b)/giu,
+];
+const EN_TIMES: Record<string, number> = { "a single": 1, once: 1, twice: 2 };
+
+function exactValue(said: string): number | null {
+  return EN_TIMES[said.toLowerCase()] ?? valueOf(said);
+}
+
+/** The exact or total counts of records or interactions a text states. */
+export function exactCountsIn(text: string): number[] {
+  // One count per number in the text, however many patterns find it (keyed by where the number stands).
+  const found = new Map<number, number | null>();
+  const note = (match: RegExpMatchArray, said: string, value: number | null) => found.set((match.index ?? 0) + match[0].lastIndexOf(said), value);
+  for (const pattern of ZH_EXACT) for (const match of text.matchAll(pattern)) note(match, match[3], valueOf(match[3]));
+  for (const pattern of JA_EXACT) for (const match of text.matchAll(pattern)) note(match, match[1], valueOf(match[1]));
+  for (const pattern of EN_EXACT) for (const match of text.matchAll(pattern)) note(match, match[1], exactValue(match[1]));
+  return [...found.entries()].sort((left, right) => left[0] - right[0]).map(([, value]) => value).filter((value): value is number => value !== null && Number.isFinite(value));
+}
+
+const NEUTRAL_LEAD: Record<"zh" | "ja" | "en", string> = { en: "In the records that could be read:", ja: "読めた記録では：", zh: "读得到的记录里：" };
+
+function neutralized(sentence: string, language: "zh" | "ja" | "en", allowed: ReadonlySet<number>): string | null {
+  if (!exactCountsIn(sentence).some((value) => !allowed.has(value))) return sentence;
+  const colon = sentence.search(/[：:]/u);
+  if (colon >= 0 && exactCountsIn(sentence.slice(0, colon)).some((value) => !allowed.has(value))) {
+    const rest = sentence.slice(colon + 1).replace(/^\s+/u, "");
+    return language === "en" ? `${NEUTRAL_LEAD.en} ${rest}` : `${NEUTRAL_LEAD[language]}${rest}`;
+  }
+  if (language === "en") return null;
+  let out = sentence;
+  for (const pattern of ZH_EXACT) out = out.replace(pattern, (whole: string, marker: string, verb: string, said: string) => (allowed.has(valueOf(said) ?? -1) ? whole : `${marker.includes("有") && !verb ? "有" : ""}${verb}`));
+  for (const pattern of JA_EXACT) out = out.replace(pattern, (whole: string, said: string) => (allowed.has(valueOf(said) ?? -1) ? whole : ""));
+  out = out.replace(/有([，,。；;！!？?])/gu, "$1");
+  return out.replace(/^[\s，、,。]+/u, "").trim() ? out : null;
+}
+
+/** The answer with every exact count neutralized (a partial read); `changed` lists the sentences touched. */
+export function withoutPartialCounts(text: string, language: "zh" | "ja" | "en", allowed: ReadonlySet<number>): { text: string; changed: string[] } {
+  if (!exactCountsIn(text).some((value) => !allowed.has(value))) return { changed: [], text };
+  const pieces = text.match(/[^。！？!?\n]+(?:[。！？!?]+|\n+|$)|\n+/gu) ?? [text];
+  const kept: string[] = [];
+  const changed: string[] = [];
+  for (const piece of pieces) {
+    const parts = language === "en" && /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)\s+/u) : [piece];
+    for (const part of parts) {
+      const next = neutralized(part, language, allowed);
+      if (next !== part) changed.push(part.trim());
+      if (next !== null && next.trim()) kept.push(next);
+    }
+  }
+  return { changed, text: kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").trim() };
+}

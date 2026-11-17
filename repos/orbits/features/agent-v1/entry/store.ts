@@ -141,11 +141,15 @@ export interface AgentEntryStore {
 export function resumedAnswer(previous: AgentAnswerContract, next: AgentAnswerContract | null): AgentAnswerContract {
   if (!next) return previous;
   const basis = next.basis ?? previous.basis;
+  // AG09: what was sent and opened before the pause stays next to the joined answer, with the continuation's own after it.
+  const queries = [...(previous.web?.queries ?? []), ...(next.web?.queries ?? [])].filter((query, index, all) => all.findIndex((other) => other.text === query.text) === index);
+  const pages = [...(previous.web?.pages ?? []), ...(next.web?.pages ?? [])].filter((page, index, all) => all.findIndex((other) => other.sourceRef === page.sourceRef) === index);
   return {
     sourceRefs: [...new Set([...previous.sourceRefs, ...next.sourceRefs])],
     text: [previous.text, next.text].filter((text) => text.trim()).join("\n\n"),
     ...(basis ? { basis } : {}),
     ...(next.cardLine ? { cardLine: next.cardLine } : {}),
+    ...(queries.length || pages.length ? { web: { pages, queries } } : {}),
   };
 }
 

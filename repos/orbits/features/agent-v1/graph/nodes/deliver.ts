@@ -156,7 +156,10 @@ function partLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, lan
   const message = scope.input.message;
   const quote = quoteOf(message, part);
   const withEntries = (line: string) => [line, entriesLine(scope, state, part, language)].filter((text) => text.trim()).join("\n");
-  if (part.route === "read" && (part.status === "answered" || part.status === "unfinished") && part.reason !== "budget" && part.reason !== "still_unclear") return readLine(scope, part, language, withEntries, state.parts);
+  // AG09: a web question (same-named results, a query to show before it is sent) is code's line with its options.
+  const webQuestion = scope.run.webQuestions.get(part.localId);
+  if (webQuestion && part.status === "awaiting_clarification") return webQuestion;
+  if ((part.route === "read" || part.route === "web_lookup") && (part.status === "answered" || part.status === "unfinished") && part.reason !== "budget" && part.reason !== "still_unclear") return readLine(scope, part, language, withEntries, state.parts);
   // AG06: a write part says only code's words: a question, what was not found or cannot be done here. The
   // card itself is one line for the whole request (after the parts); a part waiting for another's question says nothing.
   if (part.route === "propose_write") {
@@ -184,6 +187,8 @@ function partLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, lan
     case "awaiting_clarification":
       return clarifyLine(scope, state, part, language);
     case "waiting_dependency": {
+      // AG09: a web part that shares another part's question about same-named results says nothing until the click.
+      if (part.reason === "web_shares_question") return "";
       // run-03 repair 1 (AE-UND-010): the prerequisite that is not done is what it waits for, not the first one listed.
       const prerequisites = parts.filter((other) => part.dependsOn.includes(other.localId));
       const dependency = prerequisites.find((other) => other.status !== "answered") ?? prerequisites[0];

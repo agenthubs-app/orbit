@@ -45,6 +45,20 @@ export function verifyNode({ deps, input, run }: NodeScope): GraphNode {
       }
     }
     if (dropped.length) emitTrace({ dropped, note: "cited records that no longer open are not delivered", type: "verify.cites_dropped" });
+    // AG09 run-04 (AE-WEB-004): a read part whose search came back empty does not say "nothing found" when another part of
+    // the same turn whose words hold it (or that it holds) read and cited the record it refers to.
+    const quoteOf = (part: GraphPart) => input.message.slice(part.quote[0], part.quote[1]);
+    for (const part of parts) {
+      if (!(part.gaps ?? []).includes("no_record") || part.cites?.length) continue;
+      const own = quoteOf(part);
+      const covering = parts.find((other) => other !== part && (other.cites?.length ?? 0) > 0 && (quoteOf(other).includes(own) || own.includes(quoteOf(other))));
+      if (!covering) continue;
+      const line = words.noRecord(own);
+      const lines = run.gapLines.get(part.localId) ?? [];
+      if (!lines.includes(line)) continue;
+      run.gapLines.set(part.localId, lines.filter((item) => item !== line));
+      emitTrace({ coveredBy: covering.localId, partId: part.localId, type: "verify.no_record_covered" });
+    }
     const ordered = [...parts].sort((left, right) => left.quote[0] - right.quote[0]);
     run.sourceRefs = [...new Set(ordered.flatMap((part) => part.cites ?? []))];
     // AG07: the basis line and one link per cited record that was read in this request.

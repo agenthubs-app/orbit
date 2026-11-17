@@ -147,6 +147,11 @@ export const agentResultDocumentSchema: z.ZodType<AgentResultDocument> = z.objec
     cardLine: z.string().optional(),
     sourceRefs: z.array(z.string()),
     text: z.string(),
+    // AG09: the queries sent and the pages opened (code's).
+    web: z.object({
+      pages: z.array(z.object({ excerpt: z.string(), fetchedAt: z.string(), readStatus: z.enum(["ok", "empty", "timeout", "provider_error"]), sourceDate: z.string().optional(), sourceRef: z.string(), title: z.string(), url: z.string() })),
+      queries: z.array(z.object({ provider: z.literal("deepseek"), sentAt: z.string(), text: z.string() })),
+    }).optional(),
   }).nullable(),
   clarifications: z.array(agentClarificationSchema).optional(),
   ending: z.object({
