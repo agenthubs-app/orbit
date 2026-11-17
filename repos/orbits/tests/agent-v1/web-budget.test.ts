@@ -93,7 +93,7 @@ test("WEB-008: same-named results — ask first, then open the picked page witho
   const input = kit.input(message, { locale: "ja" });
   const first = await runAgentGraph(kit.deps, input);
   assert.deepEqual(tools.calls.map((call) => call.kind), ["search"]);
-  assert.equal(tools.calls[0].body.query, "是枝真紀 代表作 現在 役職");
+  assert.equal(tools.calls[0].body.query, "是枝真紀 代表作 現在");
   assert.match(first.text, /どちらのことですか/u);
   assert.match(first.text, /建筑师/u);
   const set = first.clarifications[0];
@@ -124,7 +124,7 @@ test("WEB-008 split in two parts: the same name is searched once, asked once, an
   kit.deps.judgment = judgmentAccess(outboundJudge(0.03).fetchImplementation);
   const input = kit.input(message, { locale: "ja" });
   const first = await runAgentGraph(kit.deps, input);
-  assert.deepEqual(tools.calls.map((call) => `${call.kind} ${call.body.query ?? call.body.url}`), ["search 是枝真紀 代表作 現在 役職"], "one query with both parts' qualifiers");
+  assert.deepEqual(tools.calls.map((call) => `${call.kind} ${call.body.query ?? call.body.url}`), ["search 是枝真紀 代表作 現在"], "one query for both parts (at most two qualifiers)");
   assert.equal(first.clarifications.length, 1, "one question");
   assert.equal((first.text.match(/どちらのことですか/gu) ?? []).length, 1);
   const resumed = await resumeAgentGraph(kit.deps, input, { clarificationId: first.clarifications[0].clarificationId, kind: "select", optionId: "1" });

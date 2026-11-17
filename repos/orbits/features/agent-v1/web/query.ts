@@ -35,7 +35,10 @@ export interface WebTarget {
 export const MAX_QUERY_LENGTH = 100;
 
 /** Honorifics typed after a name: not part of what is looked up ("是枝真紀さん" → "是枝真紀"). */
-const HONORIFIC = /(さん|様|さま|氏|先生|老师|女士|先生们)$/u;
+/** Qualifier words a query carries at most (AG09 run-02 repair 2). */
+export const MAX_QUALIFIERS = 2;
+
+const HONORIFIC =/(さん|様|さま|氏|先生|老师|女士|先生们)$/u;
 
 /**
  * Words that point at the user's own records or at something only the context names: a target made of them names
@@ -74,7 +77,8 @@ export function buildQuery(input: {
   const own = tokens.filter((token) => token.origin === "message").map((token) => token.text).join(" ");
   if (own && namesPrivatePointer(own)) return { ok: false, reason: "private_pointer" };
   if (!tokens.length) return { ok: false, reason: "no_target" };
-  for (const code of [...new Set(target.qualifiers.filter(isQualifierCode))]) {
+  // AG09 run-02 repair 2 (AE-SCL-015; 设计稿 §3.4 "只发几个词"): at most two qualifier words, the first two given.
+  for (const code of [...new Set(target.qualifiers.filter(isQualifierCode))].slice(0, MAX_QUALIFIERS)) {
     const words = qualifierWords(code, input.language);
     if (!tokens.some((token) => token.text === words)) tokens.push({ origin: "vocabulary", text: words });
   }

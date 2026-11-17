@@ -17,11 +17,18 @@ test("the query is the message's name plus vocabulary words in the message's lan
     assert.equal(zh.candidate.needsConfirmation, false);
   }
   const ja = buildQuery({ language: "ja", message: "是枝真紀さんの代表作と現在の役職を調べてください。", partId: "p1", target: { qualifiers: ["works", "current", "role"], quote: "是枝真紀さん" } });
-  assert.equal(ja.ok && ja.candidate.text, "是枝真紀 代表作 現在 役職", "the honorific is not looked up");
+  assert.equal(ja.ok && ja.candidate.text, "是枝真紀 代表作 現在", "the honorific is not looked up");
   const en = buildQuery({ language: "en", message: "What does Lumen ATS charge?", partId: "p1", target: { qualifiers: ["price"], quote: "Lumen ATS" } });
   assert.equal(en.ok && en.candidate.text, "Lumen ATS pricing");
   for (const word of ["官网", "料金", "pricing", "最新", "役職"]) assert.equal(isVocabularyWord(word), true, word);
   assert.equal(isVocabularyWord("折扣"), false);
+});
+
+test("run-02 repair 2 (AE-SCL-015): a query carries at most two qualifier words, the first two the first layer gave", () => {
+  const built = buildQuery({ language: "zh", message: "查一下 Kasane Pack 官网上 S 号缓冲箱现在卖多少钱", partId: "p1", target: { qualifiers: ["official", "price", "product"], quote: "Kasane Pack" } });
+  assert.equal(built.ok && built.candidate.text, "Kasane Pack 官网 价格");
+  const person = buildQuery({ language: "ja", message: "是枝真紀さんの代表作と現在の役職を調べてください。", partId: "p1", target: { qualifiers: ["works", "current", "role"], quote: "是枝真紀" } });
+  assert.equal(person.ok && person.candidate.text, "是枝真紀 代表作 現在");
 });
 
 test("an unknown qualifier is dropped; a quote not in the message, or one pointing at private records, builds nothing", () => {
