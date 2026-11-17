@@ -41,6 +41,13 @@ export interface StepInput {
    * that nothing could resolve (no conversation to read, nothing else named in the message, nothing bound).
    */
   unboundPronoun?: boolean;
+  /**
+   * AG07 gate (AE-XL-005): a write that names its object in its own words ("报价待办") and says the new date ("周五"):
+   * nothing is missing for code to look the record up (several that fit are asked about with candidates there).
+   */
+  namedObjectWithDate?: boolean;
+  /** AG07 run-03 (AE-AMB-007): a change verb with a new date ("改到周五") and no bound object: a reschedule of an unknown item. */
+  reschedule?: boolean;
 }
 
 export interface StepContext {
@@ -75,9 +82,11 @@ export function decideNextStep(part: StepInput, context: StepContext): NextStep 
   // run-02: the object is missing whatever clarity the model gave (§3.10 系统不猜, §3.11 row 4); reads ask too.
   const needsObject = part.capabilities.some((capability) => ["read", "write"].includes(capabilityKind(capability)));
   if (part.unboundPronoun && needsObject && part.clarity !== "none") return asked ? { kind: "still_unclear", missing: "object" } : { kind: "ask_missing" };
+  // AG07 run-03 (AE-AMB-007): the action is known (a reschedule); what is missing is which item, not what to do.
+  if (part.reschedule && part.clarity === "none") return asked ? { kind: "still_unclear", missing: "object" } : { kind: "ask_missing" };
   if (part.clarity === "none") return asked ? { kind: "still_unclear", missing: "intent" } : { kind: "not_understood" };
   if (part.clarity === "missing_one") {
-    if (!writes.length) return { kind: "proceed" };
+    if (!writes.length || part.namedObjectWithDate) return { kind: "proceed" };
     return asked ? { kind: "still_unclear", missing: "object" } : { kind: "ask_missing" };
   }
   if (part.clarity === "multiple_readings") {

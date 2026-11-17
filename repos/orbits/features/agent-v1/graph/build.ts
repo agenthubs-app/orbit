@@ -23,13 +23,24 @@ import { routeNode } from "./nodes/route";
 import { understandNode } from "./nodes/understand";
 import { verifyNode } from "./nodes/verify";
 import { AgentGraphAnnotation, type AgentGraphRun, type AgentGraphState, type GraphResolution } from "./state";
-import type { AgentActionPreviewContract, AgentClarificationContract, AgentPartResult } from "../../../shared/contract/agent-v1";
+import type { AgentActionPreviewContract, AgentAnswerBasisContract, AgentClarificationContract, AgentPartResult, AgentRunStage } from "../../../shared/contract/agent-v1";
 
 export const GRAPH_NODES = ["intake", "understand", "route", "resolve", "propose", "clarify", "answer", "verify", "deliver"] as const;
 
-function traced(name: string, requestId: string, node: GraphNode): GraphNode {
+/** AG07: the progress a client shows while a node runs ("正在查你的笔记…", "正在整理回答…"), chosen by code. */
+const STAGE_OF: Partial<Record<(typeof GRAPH_NODES)[number], AgentRunStage>> = { answer: "composing", propose: "composing", resolve: "reading" };
+
+function traced(name: (typeof GRAPH_NODES)[number], requestId: string, node: GraphNode, onStage?: (stage: AgentRunStage) => void): GraphNode {
   return (state) => runWithTraceContext({ node: name, requestId }, async () => {
     emitTrace({ budget: state.budget, node: name, parts: state.parts.length, type: "node.enter" });
+    const stage = STAGE_OF[name];
+    if (stage && onStage) {
+      try {
+        onStage(stage);
+      } catch (error) {
+        emitTrace({ error: error instanceof Error ? error.message : String(error), type: "error", where: "graph.stage" });
+      }
+    }
     const update = await node(state);
     emitTrace({
       node: name,
@@ -58,10 +69,10 @@ export function buildAgentGraph(scope: NodeScope) {
     .addNode("intake", traced("intake", id, intakeNode(scope)))
     .addNode("understand", traced("understand", id, understandNode(scope)))
     .addNode("route", traced("route", id, routeNode(scope)))
-    .addNode("resolve", traced("resolve", id, resolveNode(scope)))
-    .addNode("propose", traced("propose", id, proposeNode(scope)))
+    .addNode("resolve", traced("resolve", id, resolveNode(scope), scope.deps.onStage))
+    .addNode("propose", traced("propose", id, proposeNode(scope), scope.deps.onStage))
     .addNode("clarify", traced("clarify", id, clarifyNode(scope)))
-    .addNode("answer", traced("answer", id, answerNode(scope)))
+    .addNode("answer", traced("answer", id, answerNode(scope), scope.deps.onStage))
     .addNode("verify", traced("verify", id, verifyNode(scope)))
     .addNode("deliver", traced("deliver", id, deliverNode(scope)))
     .addEdge(START, "intake")
@@ -96,6 +107,10 @@ export interface AgentGraphResult {
   earlier: AgentGraphRun["earlier"];
   /** AG05: the records the answer cites (verified, openable now), as typed refs. */
   sourceRefs: string[];
+  /** AG07: the basis line and record links of the answer (from sourceRefs), written by code. */
+  basis: AgentAnswerBasisContract | null;
+  /** AG07: the part of `text` that stands for the card (clients that show the card leave it out). */
+  cardLine: string | null;
   /** AG06: the card this request froze (this pass), from the ledger's one preview. */
   actionPreview: AgentActionPreviewContract | null;
 }
@@ -122,6 +137,8 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     readNames: new Map(),
     readNotes: new Map(),
     references: [],
+    readSources: new Map(),
+    basis: null,
     sourceRefs: [],
     steps: new Map(),
     text: "",
@@ -144,6 +161,8 @@ async function resultOf(graph: ReturnType<typeof buildAgentGraph>, run: AgentGra
     partResults: run.partResults,
     paused: snapshot.next.includes(PAUSED_AT),
     sourceRefs: run.sourceRefs,
+    basis: run.basis,
+    cardLine: run.cardLine,
     state,
     status: state.requestStatus ?? "completed",
     text: run.text,

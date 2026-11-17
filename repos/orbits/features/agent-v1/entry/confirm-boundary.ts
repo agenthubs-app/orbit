@@ -23,6 +23,7 @@ import { cardLocale, TODO_CREATE, type CardLocale, type TodoOperationIntent } fr
 import type { AgentNaturalLanguageActionRequest } from "../../agent/natural-language-actions/contract";
 import { readEntityDraftIntent } from "../../orbit-ai/entity-drafts/contract";
 import { emitTrace } from "../observability/trace";
+import { cardConfirmLabel } from "../propose/copy";
 import { rejectModelApprovalClaims } from "./approval-claims";
 
 /** The ledger id of the card a conversation request produces: one card per request. */
@@ -69,48 +70,49 @@ export function mentionsConfirmation(message: string): boolean {
   return CONFIRMATION_WORD.test(message);
 }
 
-const TEXTS: Record<CardLocale, { reminder: string; card: (summary: string) => string; unsupported: (kind: string) => string; kinds: Record<string, string>; closed: Record<"rejected" | "canceled" | "expired", string> }> = {
+const TEXTS: Record<CardLocale, { reminder: (label: string) => string; card: (summary: string, label: string) => string; unsupported: (kind: string) => string; kinds: Record<string, string>; closed: Record<"rejected" | "canceled" | "expired", string> }> = {
   en: {
-    card: (summary) => `Confirmation card: ${summary}. Nothing happens until you press Confirm on the card.`,
+    card: (summary, label) => `Confirmation card: ${summary}. Nothing happens until you press "${label}" on the card.`,
     closed: {
       canceled: "The earlier card was canceled and can no longer be carried out. If you still want this change, say it again and Orbit will offer a new card.",
       expired: "The earlier card was left too long and has expired; it can no longer be carried out. Regenerate it on the card, or say it again.",
       rejected: "The earlier card was rejected and can no longer be carried out. If you still want this change, say it again and Orbit will offer a new card.",
     },
     kinds: { contact: "contacts", event: "events", note: "notes", schedule: "schedule items" },
-    reminder: "The card is still waiting for you. A typed reply does not carry out any change; press Confirm on the card.",
+    reminder: (label) => `The card is still waiting for you. A typed reply does not carry out any change; press "${label}" on the card.`,
     unsupported: (kind) => `Orbit cannot save ${kind} from here yet; nothing was saved.`,
   },
   ja: {
-    card: (summary) => `確認カード：${summary}。カードの「確認」を押すまで実行しません。`,
+    card: (summary, label) => `確認カード：${summary}。カードの「${label}」を押すまで実行しません。`,
     closed: {
       canceled: "先ほどのカードは取り消し済みのため、実行できません。同じ内容で進める場合は、もう一度お伝えください。新しいカードをお出しします。",
       expired: "先ほどのカードは時間が経って無効になったため、実行できません。カードで作り直すか、もう一度お伝えください。",
       rejected: "先ほどのカードは却下済みのため、実行できません。同じ内容で進める場合は、もう一度お伝えください。新しいカードをお出しします。",
     },
     kinds: { contact: "連絡先", event: "イベント", note: "メモ", schedule: "予定" },
-    reminder: "カードはまだ確認待ちです。メッセージで返信しても変更は実行されません。カードの「確認」ボタンを押してください。",
+    reminder: (label) => `カードはまだ確認待ちです。メッセージで返信しても変更は実行されません。カードの「${label}」を押してください。`,
     unsupported: (kind) => `${kind}はここではまだ保存できません。何も保存していません。`,
   },
   zh: {
-    card: (summary) => `确认卡：${summary}。点卡上的「确认」后才会执行。`,
+    card: (summary, label) => `确认卡：${summary}。点卡上的「${label}」后才会执行。`,
     closed: {
       canceled: "上一张卡已经取消了，不能再执行。如果还要这样改，请再说一次，我会出一张新卡。",
       expired: "上一张卡放太久已经失效，不能再执行。可以在卡上点重新生成，或者再说一次。",
       rejected: "上一张卡已经否决了，不能再执行。如果还要这样改，请再说一次，我会出一张新卡。",
     },
     kinds: { contact: "联系人", event: "活动", note: "笔记", schedule: "日程" },
-    reminder: "卡片还在等你确认。打字回复不会执行任何修改，请点卡上的「确认」按钮。",
+    reminder: (label) => `卡片还在等你确认。打字回复不会执行任何修改，请点卡上的「${label}」。`,
     unsupported: (kind) => `这类记录（${kind}）现在还不能在这里保存，什么都没有保存。`,
   },
 };
 
-export function typedConfirmationReminder(locale: string): string {
-  return TEXTS[cardLocale(locale)].reminder;
+/** The card is named by its confirm button's own label (shared copy), for a card with `count` items. */
+export function typedConfirmationReminder(locale: string, count: number): string {
+  return TEXTS[cardLocale(locale)].reminder(cardConfirmLabel(cardLocale(locale), count));
 }
 
 export function cardLine(preview: AgentActionPreviewContract, locale: string): string {
-  return TEXTS[cardLocale(locale)].card(preview.operations.map((op) => op.text).join(cardLocale(locale) === "en" ? "; " : "；"));
+  return TEXTS[cardLocale(locale)].card(preview.operations.map((op) => op.text).join(cardLocale(locale) === "en" ? "; " : "；"), cardConfirmLabel(cardLocale(locale), preview.operations.length));
 }
 
 export { rejectModelApprovalClaims, stripApprovalClaims } from "./approval-claims";
@@ -210,7 +212,7 @@ export async function runWithConfirmBoundary(
       actionPreview: agentCardPreview(latest, await deps.runtime.getRun(latest.runId), now()),
       modelCalled: false,
       sourceRefs: [],
-      text: typedConfirmationReminder(locale),
+      text: typedConfirmationReminder(locale, latest.operations?.length ?? 1),
     };
   }
   // AG06 (AE-BND-008): agreeing in words while the latest card is closed: code's sentence only, no model call.
@@ -245,7 +247,7 @@ export async function runWithConfirmBoundary(
     turn.extraText ?? "",
     actionPreview && !turn.cardShown ? cardLine(actionPreview, locale) : "",
     ...unsupportedKinds.map((kind) => words.unsupported(words.kinds[kind] ?? kind)),
-    open.length && !actionPreview && mentionsConfirmation(input.message) ? words.reminder : "",
+    open.length && !actionPreview && mentionsConfirmation(input.message) ? words.reminder(cardConfirmLabel(locale, open.at(-1)?.operations?.length ?? 1)) : "",
     closed ? words.closed[closed.status] : "",
   ].filter((line) => line.trim());
   if (unsupportedKinds.length) emitTrace({ kinds: unsupportedKinds, type: "entry.proposal_without_card" });

@@ -5,13 +5,17 @@
  * the discussion parts (one repair if its output is unusable and the round has not repaired yet);
  * if the round's budget is used up they stay unfinished, saying why.
  */
+import { datesIn, localizeAnswerDates, unsourcedDates, WEEKDAY_WORD, withoutUnsourcedDates } from "../../answer/dates";
+import { withoutOnly, withoutWrongDirection } from "../../answer/gap-copy";
+import { localDayOf } from "../../propose/dates";
 import { gapWords } from "../../answer/gap-copy";
 import { formatWhen } from "../../answer/materials";
+import { changeCheckNote, changeCheckOf, changeReasonLine, verifyChangeReasons, type ChangeReason } from "../../answer/change-check";
 import { profileCheckNote, profileCheckOf, profileLine, verifyProfileUpdates, type ProfileUpdate } from "../../answer/profile-check";
 import { groundedAnswerSystemPrompt, groundedAnswerUserText, GROUNDED_ANSWER_PROMPT_VERSION, type GroundedItem } from "../../answer/prompt";
 import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
-import { stripCardTalk } from "../../entry/approval-claims";
+import { stripCardTalk, stripSaveTalk } from "../../entry/approval-claims";
 import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
 import { settleDependencies } from "../../route/decide";
@@ -31,8 +35,11 @@ type Segments ={ ok: true; segments: Map<string, string> } | { ok: false; error:
  * the round's one repair like any other unusable output.
  */
 function withoutCardTalk(text: string, partId: string, enabled: boolean): string {
-  if (!enabled) return text;
-  const { dropped, text: kept } = stripCardTalk(text);
+  // AG07 repair 2 (AE-XL-011): what is or is not saved is said by code from the card, never by a model sentence.
+  const saved = stripSaveTalk(text);
+  if (saved.dropped.length) emitTrace({ dropped: saved.dropped, note: "a model sentence about what is or is not saved is not delivered; code says it from the card", partId, type: "model.save_talk_dropped" });
+  if (!enabled) return saved.text;
+  const { dropped, text: kept } = stripCardTalk(saved.text);
   if (dropped.length) emitTrace({ dropped, note: "this turn shows no card; a model sentence about a confirmation card is not delivered", partId, type: "model.card_talk_dropped" });
   return kept;
 }
@@ -69,6 +76,7 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   const dropCardTalk = !run.cardPrepared;
   const understood = run.understood;
   const profileParts = new Map<string, GroundedItem["materials"]>();
+  const changeParts = new Map<string, GroundedItem["materials"]>();
   const items: GroundedItem[] = [...due].sort((left, right) => left.quote[0] - right.quote[0]).map((part) => {
     const source = understood?.parts.find((item) => item.localId === part.localId);
     const quote = input.message.slice(part.quote[0], part.quote[1]);
@@ -78,7 +86,11 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
     const asksProfile = Boolean(part.plan.readFilter?.current) || part.plan.readFilter?.order === "both" || (part.capabilities.length > 0 && part.capabilities.every((capability) => PROFILE_CAPABILITIES.has(capability)));
     const contacts = materials.length && asksProfile ? profileCheckOf(materials) : [];
     if (contacts.length) profileParts.set(part.localId, materials);
-    return { constraints: source?.constraints ?? [], goal: source?.goal ?? quote, kind: materials.length ? "records" : "discussion", materials, notes: [...(run.readNotes.get(part.localId) ?? []), ...(contacts.length ? [profileCheckNote(contacts)] : [])], partId: part.localId, quote };
+    // AG07 repair 2 (AE-SCL-006 R2): two dated records read, one speaking of a change: the answer names any
+    // replacement in "changes", so code can state the newer record's reason.
+    const changes = changeCheckOf(materials);
+    if (changes) changeParts.set(part.localId, materials);
+    return { constraints: source?.constraints ?? [], goal: source?.goal ?? quote, kind: materials.length ? "records" : "discussion", materials, notes: [...(run.readNotes.get(part.localId) ?? []), ...(contacts.length ? [profileCheckNote(contacts)] : []), ...(changes ? [changeCheckNote()] : [])], partId: part.localId, quote };
   });
   const allMaterials = [...new Map(items.flatMap((item) => item.materials).map((material) => [material.handle, material])).values()];
   const readParts = new Set(items.filter((item) => item.kind === "records").map((item) => item.partId));
@@ -88,9 +100,11 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   const conversation = (run.context?.messages ?? []).map((message) => ({ role: message.role, text: message.text }));
   const user = groundedAnswerUserText({ conversation, items, message: input.message, timeZone: zone, today: formatWhen(state.asOf || deps.now(), zone) });
   emitTrace({ materials: allMaterials.map((material) => ({ handle: material.handle, partId: material.partId, ref: material.ref, sentences: material.sentences.length })), promptVersion: GROUNDED_ANSWER_PROMPT_VERSION, type: "answer.prompt" });
+  const dateSources = [input.message, ...conversation.map((message) => message.text), ...dayWindow(state.asOf || deps.now(), zone), ...allMaterials.flatMap((material) => [material.header, ...material.sentences.map((sentence) => sentence.text)])];
+  const weekdayNotes = allMaterials.filter((material) => material.sentences.some((sentence) => WEEKDAY_WORD.test(sentence.text)) && !material.sentences.some((sentence) => datesIn(sentence.text).size)).map((material) => material.header);
   const check = (text: string) => {
     const parsed = parseAnswerOutput(text);
-    if (parsed.ok === false) return { error: parsed.error, profiles: null, verification: null };
+    if (parsed.ok === false) return { changes: null, error: parsed.error, profiles: null, verification: null };
     const cleaned = { ...parsed.value, segments: parsed.value.segments.map((segment) => ({ ...segment, text: withoutCardTalk(segment.text, segment.partId, dropCardTalk) })) };
     const verification = verifyCitations(cleaned, { materials: allMaterials, readParts, wanted });
     const profiles = new Map<string, ProfileUpdate[]>();
@@ -105,7 +119,25 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       verification.problems.push(...checkedProfile.problems.map((problem) => `${partId}: ${problem}`));
       profiles.set(partId, checkedProfile.updates);
     }
-    return { error: null, profiles, verification };
+    const changes = new Map<string, ChangeReason[]>();
+    for (const [partId, materials] of changeParts) {
+      const segment = cleaned.segments.find((item) => item.partId === partId);
+      if (!segment || !verification.segments.has(partId)) continue;
+      if (!segment.changes) {
+        verification.problems.push(`${partId}: give "changes" — [] if your answer says no newer material replaces an older one, otherwise the entries the Change check under ${partId} asks for`);
+        continue;
+      }
+      const checkedChanges = verifyChangeReasons(segment.changes, materials);
+      verification.problems.push(...checkedChanges.problems.map((problem) => `${partId}: ${problem}`));
+      changes.set(partId, checkedChanges.changes);
+    }
+    // AG07 run-02 (AE-CTX-003): a calendar day the answer names must come from this turn; a note that says only
+    // "by Friday" is not a source for a date. One repair; what still has no source is not delivered.
+    for (const [partId, segment] of verification.segments) {
+      const days = unsourcedDates(segment.text, dateSources, { weekdayNotes });
+      if (days.length) verification.problems.push(`${partId}: the answer names ${days.join(", ")} (month-day), but no material, message or today's date gives it; say a day the way the material says it (e.g. "by Friday"), never as a date you worked out`);
+    }
+    return { changes, error: null, profiles, verification };
   };
   let repairs = state.repairs;
   let result: MainModelResult = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "first", requestId: input.requestId, system, user });
@@ -128,7 +160,14 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   for (const part of due) {
     const segment = verification?.segments.get(part.localId);
     if (segment) {
-      run.answers.set(part.localId, segment.text);
+      const unsourced = unsourcedDates(segment.text, dateSources, { weekdayNotes });
+      if (unsourced.length) emitTrace({ days: unsourced, partId: part.localId, type: "answer.unsourced_dates_dropped" });
+      // AG07 run-02 (AE-SCL-007): a partial read from one end; a sentence saying the other end may be missing is not delivered.
+      const direction = part.coverage?.find((item) => item.total !== null && item.total > item.seen)?.direction ?? null;
+      // AG07 run-03 (AE-RD-005): some records could not be read: what was read is not said to be "only" that.
+      const someUnread = (part.gaps ?? []).some((gap) => gap === "partial" || gap === "unreadable" || gap === "service_error");
+      const delivered = withoutWrongDirection(withoutUnsourcedDates(segment.text, unsourced), direction);
+      run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(delivered, state.language) : delivered, state.language));
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref);
       if (profileParts.has(part.localId)) {
         const updates = checked?.profiles?.get(part.localId);
@@ -138,6 +177,16 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
           run.gapLines.set(part.localId, [line, ...(run.gapLines.get(part.localId) ?? [])]);
           part.cites = [...new Set([...(part.cites ?? []), ...updates.map((item) => item.source.ref)])];
           emitTrace({ fields: updates.map((item) => ({ contact: item.contact.ref, field: item.field, source: item.source.ref })), partId: part.localId, type: "answer.profile_outdated" });
+        }
+      }
+      if (changeParts.has(part.localId)) {
+        const changes = checked?.changes?.get(part.localId);
+        if (!changes) emitTrace({ partId: part.localId, type: "answer.change_check_missing" });
+        const line = changes ? changeReasonLine(state.language, changes, segment.text, zone) : null;
+        if (line && changes) {
+          run.gapLines.set(part.localId, [...(run.gapLines.get(part.localId) ?? []), line]);
+          part.cites = [...new Set([...(part.cites ?? []), ...changes.filter((item) => item.reason).map((item) => item.source.ref)])];
+          emitTrace({ changes: changes.map((item) => ({ older: item.older.ref, reason: Boolean(item.reason), source: item.source.ref })), partId: part.localId, type: "answer.change_reason" });
         }
       }
       continue;
@@ -157,6 +206,12 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   return { budget, parts, repairs };
 }
 
+/** AG07 run-02: the days around today an answer may name without a record ("yesterday", "this Friday"), as "YYYY-MM-DD". */
+function dayWindow(asOf: string, timeZone: string): string[] {
+  const today = Date.parse(`${localDayOf(asOf, timeZone)}T00:00:00.000Z`);
+  return Array.from({ length: 9 }, (_, index) => new Date(today + (index - 1) * 86_400_000).toISOString().slice(0, 10));
+}
+
 export function answerNode(scope: NodeScope): GraphNode {
   const { deps, input, run } = scope;
   return async (state: AgentGraphState) => {
@@ -174,7 +229,7 @@ export function answerNode(scope: NodeScope): GraphNode {
     if (state.plainChat && run.plainReply && parts.every((part) => part.route === "answer")) {
       const reply = withoutCardTalk(run.plainReply, due[0].localId, dropCardTalk);
       if (reply) {
-        run.answers.set(due[0].localId, reply);
+        run.answers.set(due[0].localId, localizeAnswerDates(reply, state.language));
         emitTrace({ note: "plain chat: the first layer's reply is shown, no second call", parts: due.map((part) => part.localId), type: "answer.plain_reply" });
         return {};
       }
@@ -200,9 +255,31 @@ export function answerNode(scope: NodeScope): GraphNode {
       result = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "repair", requestId: input.requestId, system, user: `${user}\n\nYour previous output could not be used (${checked.error}). Output the corrected JSON object only.` });
       checked = result.ok === true ? answerSegments(result.text, wanted, dropCardTalk) : null;
     }
+    // AG07 run-02 (AE-CTX-003): a discussion answer has no records; a calendar day it names must come from the
+    // message, the conversation or today. One repair; a sentence still naming a day with no source is not delivered.
+    const discussionSources = [input.message, ...conversation.map((message) => message.text), ...dayWindow(state.asOf || deps.now(), state.timeZone || "Asia/Tokyo")];
+    const datesProblem = (value: Segments | null): string | null => {
+      if (!value || value.ok === false) return null;
+      const days = [...new Set([...value.segments.values()].flatMap((text) => unsourcedDates(text, discussionSources)))];
+      return days.length ? `the answer names ${days.join(", ")} (month-day), but nothing in the message, the conversation or today's date gives it; do not work out dates — say them as they were said` : null;
+    };
+    const undated = datesProblem(checked);
+    if (undated && repairs < 1) {
+      repairs += 1;
+      emitTrace({ error: undated, type: "answer.invalid" });
+      const retry = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "repair", requestId: input.requestId, system, user: `${user}\n\nYour previous output could not be used (${undated}). Output the corrected JSON object only.` });
+      const second = retry.ok === true ? answerSegments(retry.text, wanted, dropCardTalk) : null;
+      if (retry.ok === true && second?.ok === true) {
+        checked = second;
+        result = retry;
+      }
+    }
     for (const part of due) {
       if (checked && checked.ok === true) {
-        run.answers.set(part.localId, checked.segments.get(part.localId)!);
+        const text = checked.segments.get(part.localId)!;
+        const unsourced = unsourcedDates(text, discussionSources);
+        if (unsourced.length) emitTrace({ days: unsourced, partId: part.localId, type: "answer.unsourced_dates_dropped" });
+        run.answers.set(part.localId, localizeAnswerDates(withoutUnsourcedDates(text, unsourced), state.language));
         continue;
       }
       const budgetOut = result.ok === false && result.reason === "budget";

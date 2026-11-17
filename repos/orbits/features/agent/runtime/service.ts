@@ -18,8 +18,10 @@ import {
   cardTexts,
   decideAction,
   editCard,
+  recheckCard,
   regenerateCard,
   type AgentDecisionInput,
+  type AgentRecheckResult,
   type AgentDecisionResult,
   type AgentEditCardResult,
   type AgentRegenerateResult,
@@ -170,6 +172,8 @@ export interface AgentRuntimeService {
   regenerateCard?: (input: { actionId: string }) => Promise<AgentRegenerateResult | null>;
   /** AG06: takes one item off a waiting card (not a decision): the rest is frozen again as revision+1. */
   editCard?: (input: { actionId: string; revision: number; payloadHash: string; removeOperationId: string }) => Promise<AgentEditCardResult | null>;
+  /** AG07: looks at a waiting card again after a client synced (not a decision): a changed value re-freezes it as revision+1. */
+  recheckCard?: (input: { actionId: string }) => Promise<AgentRecheckResult | null>;
 }
 
 const TERMINAL_RUN_STATUSES = new Set<AgentRun["status"]>([
@@ -1048,6 +1052,7 @@ export function createAgentRuntimeService({
     decideAction: (input) => decideAction(cardDependencies(), input),
     regenerateCard: (input) => regenerateCard(cardDependencies(), input),
     editCard: (input) => editCard(cardDependencies(), input),
+    recheckCard: (input) => recheckCard(cardDependencies(), input),
     async processOutbox(input = {}) {
       // AG06: an item waiting for another is put back while that one runs; once a prerequisite settled in a
       // pass, the waiting items get another pass right away (at most three passes per call).

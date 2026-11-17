@@ -9,6 +9,7 @@
 import { CAPABILITY_TABLE } from "../../../features/agent-v1/route/capabilities";
 import { isBusinessChange, productIdsIn, writesFor, type CardObservation, type NormalizedOp, type Observation } from "./observations";
 import type { TraceEvent } from "./trace-log";
+import { sharedPart } from "./client-views";
 
 export type CheckStatus = "pass" | "fail" | "cannot_judge" | "deferred";
 
@@ -37,7 +38,6 @@ const cannot = (detail: string) => ({ detail, evidence: [], status: "cannot_judg
 /** Words with no evidence in the current system, and the sprint that is expected to provide it. */
 export const NOT_YET: Record<string, string> = {
   card_effects: "AG12",
-  client_view: "AG07",
   field_history: "AG12",
   functions_called: "AG10",
   import_rows: "AG12",
@@ -54,7 +54,6 @@ export const NOT_YET: Record<string, string> = {
   push_excludes: "AG16",
   rule_runs: "AG15",
   rule_state: "AG15",
-  same_card_on: "AG07",
   settings_memory_list: "AG14",
   shadow_report: "AG18",
 };
@@ -79,6 +78,9 @@ function valuesEqual(expected: unknown, actual: unknown): boolean {
     if (/^\d{4}-\d{2}-\d{2}$/u.test(expected) && /^\d{4}-\d{2}-\d{2}T/u.test(actual)) {
       return new Date(Date.parse(actual) + 9 * 3_600_000).toISOString().slice(0, 10) === expected;
     }
+    // AG07 (AE-UIX-002): two instants written in different offsets ("…T18:00:00+09:00" and "…T09:00:00.000Z") are the same time.
+    const instant = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/u;
+    if (instant.test(expected) && instant.test(actual)) return Date.parse(expected) === Date.parse(actual);
   }
   return JSON.stringify(expected) === JSON.stringify(actual);
 }
@@ -249,6 +251,46 @@ export const CHECKS: Record<string, CheckFn> = {
     const card = cardAt(obs, args?.card);
     if (!card) return fail("no such card");
     return card.state === args?.state ? pass(`card ${card.cardId} is ${card.state}`) : fail(`card ${card.cardId} is ${card.state}, expected ${args?.state}`);
+  },
+
+  /** AG07 (UIX.yaml client_view): what a client showed after step n — pending count, card content, the confirm button. */
+  client_view(args, obs) {
+    const expected = (Array.isArray(args) ? args : [args]) as { client: string; after_step: number; pending_count?: number; card_content?: string; confirm?: string }[];
+    const records = obs.clientViews ?? [];
+    if (!records.length) return fail("no client view was recorded (the protocol-3 entry and a card are needed)");
+    const problems: string[] = [];
+    const seen: string[] = [];
+    for (const want of expected) {
+      const record = records.find((item) => item.client === want.client && item.step === Number(want.after_step));
+      if (!record) {
+        problems.push(`${want.client} after step ${want.after_step}: not recorded`);
+        continue;
+      }
+      const view = record.view;
+      const got = { card_content: view?.cardContent ?? "hidden", confirm: view?.confirmEnabled ? "enabled" : "disabled", pending_count: view?.pendingCount ?? 0 };
+      seen.push(`${want.client}@${want.after_step}: ${got.pending_count}/${got.card_content}/${got.confirm}${view?.kind === "card" ? ` (${view.status} r${record.revision})` : view ? " (offline)" : " (no card)"}`);
+      for (const key of ["pending_count", "card_content", "confirm"] as const) {
+        if (want[key] === undefined) continue;
+        if (String(got[key]) !== String(want[key])) problems.push(`${want.client} after step ${want.after_step}: ${key} ${got[key]}, expected ${want[key]}`);
+      }
+    }
+    const evidence = seqs(obs.events.filter((event) => event.type === "client.view"));
+    return problems.length ? fail(problems.join("; "), evidence) : pass(seen.join("; "), evidence);
+  },
+
+  /** AG07 (UIX.yaml same_card_on): the last card each client shows is item for item the same, from the same server preview. */
+  same_card_on(args, obs) {
+    const names = (Array.isArray(args) ? args : [args]).map(String);
+    const records = obs.clientViews ?? [];
+    const lastStep = Math.max(0, ...records.map((item) => item.step));
+    const finals = names.map((name) => records.find((item) => item.client === name && item.step === lastStep) ?? null);
+    const evidence = seqs(obs.events.filter((event) => event.type === "client.view"));
+    const missing = names.filter((_, index) => !finals[index] || finals[index]!.view?.kind !== "card");
+    if (missing.length) return fail(`${missing.join(", ")} showed no card content at the end (step ${lastStep})`, evidence);
+    const shared = finals.map((record) => JSON.stringify(sharedPart(record!)));
+    if (shared.some((value) => value !== shared[0])) return fail(`the clients show different cards: ${finals.map((record, index) => `${names[index]} r${record!.revision} ${record!.view?.kind === "card" ? record!.view.status : ""}`).join(" vs ")}`, evidence);
+    const first = finals[0]!;
+    return pass(`${names.join(" and ")} show the same card ${first.cardId} r${first.revision} (${first.view?.kind === "card" ? first.view.status : ""}), every field from the same preview (hash ${String(first.payloadHash).slice(0, 12)})`, evidence);
   },
 
   card_revision(args, obs) {

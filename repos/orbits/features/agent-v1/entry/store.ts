@@ -23,6 +23,7 @@ import type {
   AgentResultDocument,
   AgentSendInputContract,
   AgentSessionEventContract,
+  AgentRunStage,
   AgentSessionEventKind,
 } from "../../../shared/contract/agent-v1";
 import { attributeSelection } from "../clarify/attribution";
@@ -124,12 +125,30 @@ export interface AgentEntryStore {
   acceptSelection(input: { actorId: string; sessionId: string; requestId: string; clientSelectionId: string; clarificationId: string; optionId: string; now: string; workerId: string; leaseMs: number }): Promise<{ record: AgentEntryRequestRecord; replayed: boolean; claimed: boolean }>;
   /** AG04: writes back an earlier request that a later message answered or shelved (only while it is not running). */
   amend(input: { actorId: string; requestId: string; now: string; amendment: AgentEntryAmendment }): Promise<AgentEntryRequestRecord | null>;
+  /** AG07: a progress event (status running with a stage) while this worker still runs the request; no document change. */
+  markStage?(input: { actorId: string; sessionId: string; requestId: string; workerId: string; stage: AgentRunStage; now: string }): Promise<boolean>;
   get(actorId: string, requestId: string): Promise<AgentEntryRequestRecord | null>;
   lane(actorId: string, sessionId: string): Promise<AgentSessionLane | null>;
   listEvents(actorId: string, sessionId: string, afterSeq: number, limit: number): Promise<AgentSessionEventContract[]>;
 }
 
 /** The requestId of a message: one per (account, session, client message key). */
+/**
+ * AG04: a resumed request keeps what it delivered before and the continuation follows it. AG07 repair 2 (AE-XL-003):
+ * the joined answer keeps the basis line of the read it still carries (the continuation's own, when it wrote one)
+ * and the continuation's card line.
+ */
+export function resumedAnswer(previous: AgentAnswerContract, next: AgentAnswerContract | null): AgentAnswerContract {
+  if (!next) return previous;
+  const basis = next.basis ?? previous.basis;
+  return {
+    sourceRefs: [...new Set([...previous.sourceRefs, ...next.sourceRefs])],
+    text: [previous.text, next.text].filter((text) => text.trim()).join("\n\n"),
+    ...(basis ? { basis } : {}),
+    ...(next.cardLine ? { cardLine: next.cardLine } : {}),
+  };
+}
+
 export function agentRequestIdFor(actorId: string, sessionId: string, clientMessageId: string): string {
   return `agreq_${createHash("sha256").update(JSON.stringify(["agent-v1-request", actorId, sessionId, clientMessageId])).digest("hex").slice(0, 32)}`;
 }
@@ -197,6 +216,15 @@ function startRunning(record: AgentEntryRequestRecord, lane: AgentSessionLane, w
 
 function createOperations(withLane: WithLane, read: (actorId: string, requestId: string) => Promise<AgentEntryRequestRecord | null>): Omit<AgentEntryStore, "get" | "lane" | "listEvents"> {
   return {
+    markStage: (input) => withLane(input.actorId, input.sessionId, async (unit) => {
+      const record = await unit.getRequest(input.requestId);
+      if (!record || record.status !== "running" || record.workerId !== input.workerId) return false;
+      const lane = await unit.getLane();
+      lane.eventSeq += 1;
+      await unit.addEvent({ at: input.now, kind: "status", requestId: record.requestId, seq: lane.eventSeq, sessionId: record.sessionId, stage: input.stage, status: record.status });
+      await unit.putLane(lane);
+      return true;
+    }),
     accept: (input) => withLane(input.actorId, input.sessionId, async (unit) => {
       const existing = await unit.getRequest(input.requestId);
       if (existing) {
@@ -295,9 +323,7 @@ function createOperations(withLane: WithLane, read: (actorId: string, requestId:
         // AG04: a resumed request keeps what it delivered before; the continuation follows it.
         const resumed = Boolean(record.pendingResume);
         const previous = record.document.answer;
-        const answer = resumed && previous && input.outcome.answer
-          ? { sourceRefs: [...new Set([...previous.sourceRefs, ...input.outcome.answer.sourceRefs])], text: [previous.text, input.outcome.answer.text].filter((text) => text.trim()).join("\n\n") }
-          : resumed && !input.outcome.answer ? previous : input.outcome.answer;
+        const answer = resumed && previous ? resumedAnswer(previous, input.outcome.answer) : input.outcome.answer;
         record.pendingResume = null;
         record.document = nextDocument(record, input.now, {
           answer,

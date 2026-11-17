@@ -27,6 +27,7 @@ import { CaseLog, mergeTrace, readServerEvents, scrubSecrets, traceFileSize, typ
 import type { AgentActionPreviewContract } from "../../../shared/contract/agent-v1";
 import { agentRequestIdFor } from "../../../features/agent-v1/entry/store";
 import { CARD_STATUS_LABEL, cardText, decisionRecord, intentsFor, seedCard, seedSpecFor, type CardOpSpec } from "./cards";
+import { ClientViews, viewText } from "./client-views";
 import { DEFAULT_CLOCK } from "./vocabulary";
 import { loadWorld, patchRecords, type FixtureRecord, type WorldFixture } from "./world";
 import { createWorldWriter, type WorldWriter } from "./seed";
@@ -68,7 +69,7 @@ const EXECUTOR_FAULT_POINTS: readonly string[] = ["todo.create", "todo.update", 
 const STEP_SUPPORT_NOTE: Record<string, string> = {
   disconnect: "the real-time channel needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   legacy_update: "old-client compatibility arrives in AG18",
-  local_pending_edit: "unsynced App edits are simulated from AG07",
+  local_pending_edit: "unsynced App edits need the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)",
   mcp: "MCP access arrives in AG17",
   mcp_paginate: "MCP access arrives in AG17",
   open_link: "confirmation links arrive in AG17",
@@ -78,7 +79,7 @@ const STEP_SUPPORT_NOTE: Record<string, string> = {
   rollback: "rollback arrives in AG18",
   scheduler_tick: "scheduled dispatch driven by the runner arrives in AG15",
   stop: "stopping a running turn needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
-  sync: "App sync simulation arrives in AG07",
+  sync: "App sync needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)",
 };
 
 interface ConversationState {
@@ -260,6 +261,9 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   let entry: EntryHarness | null = null;
   let entryRows: EntryRequestRow[] = [];
   const onlineAtEnd = new Set<string>();
+  // AG07 (UIX.yaml): what each client shows of the cards, through the clients' own card rule.
+  const views = new ClientViews(testCase.locale);
+  const tracksViews = (testCase.hard ?? []).some((entryCheck) => "client_view" in (entryCheck as object) || "same_card_on" in (entryCheck as object));
   try {
     const before = await readDatabaseState(db);
     const beforePayloads = await readAllPayloads(db);
@@ -300,6 +304,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     const cardHashes = new Map<string, Map<number, string>>();
     const noteCard = (card: AgentActionPreviewContract | null | undefined, by?: string) => {
       if (!card?.actionId) return;
+      if (by) views.note(by, card);
       const seen = cardsSeen.get(card.actionId) ?? { kind: "ledger_action" as const, observedBy: new Set<string>() };
       if (by) seen.observedBy.add(by);
       cardsSeen.set(card.actionId, seen);
@@ -500,6 +505,9 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
             }
             log.push({ client: name, lastSeq: entry.channel(name).lastSeq, step: index, type: "turn.disconnect" });
             entry.disconnect(name);
+            // AG07: offline the client keeps what it had; it reads nothing and sends nothing until it reconnects.
+            views.noteDocuments(name, entry.channel(name).docs.values());
+            views.setOnline(name, false);
             transcript.push(`*（${name} 断开实时通道；断开前最后收到的序号 ${entry.channel(name).lastSeq}）*`, "");
             return;
           }
@@ -510,6 +518,12 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
             await entry.waitCaughtUp(name);
             const client = await clientFor(name);
             const read = await entry.readBack(name, (requestPath, purpose) => client.request("GET", requestPath, undefined, { purpose }));
+            views.setOnline(name, true);
+            views.noteDocuments(name, entry.channel(name).docs.values());
+            // AG07 (设计稿 §7): back online, the client reads the card again before it shows its items and buttons.
+            await refreshDeliveredCards();
+            const lastCard = [...cardsSeen.keys()].at(-1);
+            if (lastCard && tracksViews) await readCardAs(name, lastCard, "reconnected: read the card again before showing it");
             transcript.push(`*（${name} 重新连上，带上序号 ${after}，从它之后接着收；再按 requestId 读回 ${read} 条结果）*`, "");
             return;
           }
@@ -615,6 +629,18 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           const decision = word === "review" ? String(spec.action) : String(spec.decision);
           const clientName = step.client ?? "web";
           const kindOfCard = cardId ? cardsSeen.get(cardId)!.kind : null;
+          // AG07 (UIX 约定四): offline, or with an unsynced edit of a record on the card, the client's own card rule
+          // decides whether the button can be pressed; a press it does not allow sends nothing (not queued either).
+          if (tracksViews && cardId && kindOfCard === "ledger_action" && word === "click") {
+            const view = views.view(clientName, cardId);
+            const allowed = views.online(clientName) && view?.kind === "card" && (decision === "reject" ? Boolean(view.buttons?.dismissEnabled) : decision === "confirm" ? view.confirmEnabled || !view.buttons : true);
+            const why = !views.online(clientName) ? "offline" : view?.kind === "card" && view.blocked ? "unsynced_edit" : null;
+            if (!allowed && why) {
+              log.push({ cardId, client: clientName, decision, reason: why, step: index, type: "turn.click_blocked" });
+              transcript.push(`**用户点击**（${clientName}）：${decision}（${cardId}）`, `- ${clientName} 的界面没有让它生效：${why === "offline" ? "离线时卡上的按钮点不了，这一下没有排进离线队列" : "确认按钮不可用（先同步你的修改）"}；什么都没有发出去`, "");
+              return;
+            }
+          }
           // AG02: a ledger card is decided with what this client shows (revision and hash), or with an older revision.
           const shown = cardId && kindOfCard === "ledger_action" ? await readCardAs(clientName, cardId, word === "review" ? "show the card before reviewing an item" : "show the card before the click") : null;
           if (shown?.origin) {
@@ -749,6 +775,52 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           if (result.status !== 200) unsupported.push({ reason: `external change of ${change.target} failed (HTTP ${result.status})`, step: index, word });
           return;
         }
+        case "local_pending_edit": {
+          // AG07 (UIX 约定三): the user edits a record in the App and it is not synced yet. Nothing reaches the server;
+          // the App's outbox holds it, so its card rule sees an unsynced edit of that record.
+          const spec = (step.local_pending_edit ?? {}) as { client?: string; target?: string; set?: Record<string, unknown> };
+          const name = String(spec.client ?? step.client ?? "app");
+          const productId = spec.target ? idMap[spec.target] : undefined;
+          log.push({ client: name, set: spec.set ?? {}, step: index, target: spec.target ?? null, type: "turn.local_pending_edit" });
+          if (!entry || !productId || !productId.startsWith("task:")) {
+            unsupported.push({ reason: !entry ? STEP_SUPPORT_NOTE.local_pending_edit : `local edit of ${spec.target}: only to-dos are simulated`, step: index, word });
+            return;
+          }
+          views.addPending(name, { collection: "tasks", fixture: spec.target!, productId, set: spec.set ?? {} });
+          transcript.push(`*（用户在 ${name} 上改了 ${spec.target}：${JSON.stringify(spec.set ?? {})}，还没同步到服务端）*`, "");
+          return;
+        }
+        case "sync": {
+          // AG07: the App syncs its own edits through the product's normal update endpoint (not the tested system's
+          // write, UIX 约定三), then asks the server to look at its waiting card again (POST …/recheck).
+          const name = String((step.sync as { client?: string } | undefined)?.client ?? step.client ?? "app");
+          log.push({ client: name, step: index, type: "turn.sync" });
+          if (!entry) {
+            unsupported.push({ reason: STEP_SUPPORT_NOTE.sync, step: index, word });
+            return;
+          }
+          const device = new EvalClient(baseUrl(environment), log, await cookieFor(account), "app");
+          for (const edit of views.takePending(name)) {
+            const current = await device.request("GET", `/api/tasks/${encodeURIComponent(edit.productId)}`, undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: "sync: read the to-do before writing the local edit" });
+            const result = await device.request("PATCH", `/api/tasks/${encodeURIComponent(edit.productId)}`, { action: "update", expectedUpdatedAt: current.body?.data?.task?.updatedAt, idempotencyKey: `agent-eval:sync:${testCase.id}:${index}:${edit.fixture}`, patch: edit.set }, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: "sync: write the App's local edit" });
+            externalSets.set(`tasks\u0000${edit.productId}`, { ...(externalSets.get(`tasks\u0000${edit.productId}`) ?? {}), ...edit.set });
+            transcript.push(`*（${name} 把本机对 ${edit.fixture} 的修改同步到服务端：${JSON.stringify(edit.set)}，经待办的正常更新接口，HTTP ${result.status}）*`);
+            if (result.status !== 200) unsupported.push({ reason: `sync of ${edit.fixture} failed (HTTP ${result.status})`, step: index, word });
+          }
+          await refreshDeliveredCards();
+          const client = await clientFor(name);
+          for (const cardId of [...cardsSeen.keys()].filter((id) => cardsSeen.get(id)!.kind === "ledger_action")) {
+            const shown = views.card(name, cardId);
+            if (!shown || !["awaiting_confirmation", "deferred"].includes(shown.status)) continue;
+            const result = await client.request("POST", `/api/agent/ledger/${encodeURIComponent(cardId)}/recheck`, {}, { purpose: "after sync: look at the waiting card again" });
+            const card = result.body?.data?.card as AgentActionPreviewContract | undefined;
+            noteCard(card, name);
+            log.push({ cardId, outcome: result.body?.data?.recheck?.outcome ?? null, revision: card?.revision ?? null, status: result.status, type: "card.recheck" });
+            transcript.push(`- 服务端（HTTP ${result.status}）：${result.body?.data?.recheck?.outcome === "revised" ? `卡按现在的数据出了第 ${card?.revision} 版` : "卡上的内容没有变"}`, ...cardText(card));
+          }
+          transcript.push("");
+          return;
+        }
         case "revoke": {
           // AG05 (PLANNER 出入 4): the product has no per-record read permission yet; the eval's deny list,
           // checked by every read, stands for it. `read: "memo:M31"` withdraws the read of that record.
@@ -801,6 +873,20 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         }
         const armedBefore = executorFaultArmed;
         await runStep(step, index);
+        if (tracksViews && entry && !fake) {
+          // AG07 (UIX 约定一、二): after each step, what each client shows of the last card, through its own card rule.
+          if ("user" in step || "select" in step) await entry.waitIdle();
+          await refreshDeliveredCards();
+          const lastCard = [...cardsSeen.keys()].filter((id) => cardsSeen.get(id)!.kind === "ledger_action").at(-1) ?? null;
+          for (const name of ["web", "app"]) {
+            if (!views.online(name)) continue;
+            await entry.waitCaughtUp(name);
+            views.noteDocuments(name, entry.channel(name).docs.values());
+          }
+          const recorded = views.record(index + 1, ["web", "app"], lastCard);
+          for (const item of recorded) log.push({ afterStep: index + 1, cardContent: item.view?.cardContent ?? null, cardId: item.cardId, client: item.client, confirm: item.view?.confirmEnabled ? "enabled" : "disabled", online: views.online(item.client), pendingCount: item.view?.pendingCount ?? 0, revision: item.revision, status: item.view?.kind === "card" ? item.view.status : null, type: "client.view" });
+          transcript.push(`*（第 ${index + 1} 步之后，两端看到的卡）*`, ...recorded.flatMap((item) => [`- ${item.client}${views.online(item.client) ? "" : "（离线）"}：`, ...viewText(item.view).map((line) => `  ${line}`)]), "");
+        }
         // AG06 (XL.yaml notes: "故障只作用在第一次确认触发的执行上"): an executor fault covers the next step that runs
         // an execution; an "always" one ends after it, so a later card is not hit by it.
         if (armedBefore && !("fault" in step) && ("click" in step || "review" in step)) {
@@ -917,7 +1003,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       const SET_KIND: Record<string, string> = { entry: "附带的入口（点了才算提出）", not_understood: "没看懂时给的方向", question: "追问的候选" };
       const SET_STATE: Record<string, string> = { answered: "已回答", open: "还能点", shelved: "已放下（用户没理会）" };
       const setLines = (row.document?.clarifications ?? []).map((set) => `  - ${SET_KIND[set.kind] ?? set.kind}（子目标 ${set.partId}，${SET_STATE[set.state] ?? set.state}${set.selectedOptionId ? `，选了 ${set.selectedOptionId}` : ""}${set.answeredBy ? `，由后面的消息 ${set.answeredBy} 回答` : ""}）：${set.options.map((option) => `${option.optionId}「${option.label}」（${option.capability}${option.ref ? `，指向 ${fixtureIdOf(option.ref.id) ?? option.ref.id}` : ""}）`).join("；") || "没有候选"}`);
-      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, ...(setLines.length ? ["- 可点的方向（结果文档里由服务端代码给出，两端照此显示）：", ...setLines] : []), ...(partLines.length ? ["- 拆出的子目标（结果文档里的服务端记录，不是给用户看的文字）：", ...partLines] : []), ...(row.document?.actionPreview ? ["- 这一轮结果文档里的卡（交付时的状态）：", ...cardText(row.document.actionPreview)] : []), "");
+      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, ...(row.document?.answer?.basis ? [`- 回答开头的依据行（两端显示在回答上方，可点开记录）：${row.document.answer.basis.text}（${row.document.answer.basis.links.map((link) => link.label).join("、")}）`] : []), `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, ...(setLines.length ? ["- 可点的方向（结果文档里由服务端代码给出，两端照此显示）：", ...setLines] : []), ...(partLines.length ? ["- 拆出的子目标（结果文档里的服务端记录，不是给用户看的文字）：", ...partLines] : []), ...(row.document?.actionPreview ? ["- 这一轮结果文档里的卡（交付时的状态）：", ...cardText(row.document.actionPreview)] : []), "");
     }
     const reconnects = events.filter((event) => event.type === "turn.reconnect");
     if (reconnects.length) {
@@ -1036,6 +1122,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     ...(Object.keys(recentInteractions).length ? { recentInteractions } : {}),
     requests,
     unsupported,
+    ...(views.records.length ? { clientViews: views.records } : {}),
   };
   const otherAccountRecords = loadWorldRecordsForIsolation(world, idMap, observation.account);
   const context: CheckContext = { otherAccountRecords, rawTrace, secrets };

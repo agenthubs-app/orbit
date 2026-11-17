@@ -52,7 +52,7 @@ const interaction = { actualContactIds: ["contact:c17"], channel: "phone" as con
 test("after the click: one memo with the user's words, both people linked, only the caller as the actual contact, extraction suppressed", { skip, timeout: 60_000 }, async () => {
   const kit = createCardKit({ client, workspaceId });
   const card = await freeze(kit, [{ capability: "memo.create", partId: "p1", set: { body: "小林今天来电话了，说小陈还在审合同", contactIds: ["contact:c17", "contact:c21"], interaction, names: { "contact:c17": "小林健", "contact:c21": "陈立" }, title: "小林今天来电话了，说小陈还在审合同" } }]);
-  assert.equal(card.title, "新增 1 项");
+  assert.equal(card.title, "新增1项");
   assert.match(card.operations[0].preview, /实际往来对象 小林健，11月15日（周日），对方来电；另关联 陈立（只是提到）/u);
   assert.equal((await notes()).length, 0, "nothing before the click");
   assert.equal((await decide(kit, card, "confirm", "decision:1"))?.accepted, true);

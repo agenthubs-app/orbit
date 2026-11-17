@@ -94,6 +94,26 @@ export type AgentReferenceContract = AiSessionReferenceContract;
 export interface AgentAnswerContract {
   text: string;
   sourceRefs: readonly string[];
+  /** AG07：回答开头的依据行和可点开的记录（获批视觉稿「按你 11 月 12 日记的笔记回答 打开 ›」），由服务端代码写。 */
+  basis?: AgentAnswerBasisContract | undefined;
+  /** AG07：text 里代表确认卡的那一段（代码按冻结的预览写的）。显示卡片的客户端从正文里去掉这一段，只显示卡。 */
+  cardLine?: string | undefined;
+}
+
+export interface AgentAnswerBasisContract {
+  /** 一句话说按什么答的，按回答的语言。 */
+  text: string;
+  /** 回答引用的记录，每条一个可点的入口；只列这一轮读到、核对过的记录。 */
+  links: readonly AgentAnswerLinkContract[];
+}
+
+export interface AgentAnswerLinkContract {
+  type: "memo" | "todo" | "schedule" | "contact" | "event";
+  id: string;
+  /** 入口上的字，如「11 月 12 日的笔记」。 */
+  label: string;
+  /** 笔记的第一位相关联系人（网页在联系人页上打开笔记）。 */
+  contactId?: string | undefined;
 }
 
 /** 这一轮怎么结束的：用户停止，或处理失败的原因（错误码沿用 shared/errors，细分原因在 reason）。 */
@@ -226,6 +246,28 @@ export interface AgentCardOperationPreviewContract {
   /** 用户读到的一行字，按卡片的语言，日期带星期。 */
   text: string;
   status: AgentCardOperationStatus;
+  /** AG07：卡上这一项怎么显示（获批视觉稿）。全部由服务端代码按卡片语言写好并冻结；AG07 之前冻结的卡没有它。 */
+  display?: AgentCardOperationDisplayContract | undefined;
+}
+
+/** AG07：卡上一项的显示内容。两端照它显示，只按 change 选「改」「新增」这类固定词，不自己拼日期和差异。 */
+export interface AgentCardOperationDisplayContract {
+  /** update：改一条已有记录；create：新增一条。 */
+  change: "update" | "create";
+  /** 记录的叫法加名字，如 待办「给小林发修订报价」。 */
+  record: string;
+  rows: readonly AgentCardDisplayRowContract[];
+  /** 这一项要等前面某项成功才执行时的说明，如「第 1 项成功后才执行」。 */
+  note?: string | undefined;
+}
+
+export interface AgentCardDisplayRowContract {
+  /** 字段名（plannedDate、interaction.occurredOn…），只用来和 changes 对上，不显示。 */
+  field: string;
+  label: string;
+  /** 原值，只有改已有记录时才有。 */
+  before?: string | undefined;
+  after: string;
 }
 
 /** 一张卡的当前版（GET /api/agent/ledger/[id] 与结果文档的 actionPreview 同一形状）。 */
@@ -242,6 +284,8 @@ export interface AgentActionPreviewContract {
     | { kind: "connection"; connectionId: string; externalRequestKey: string }
     | undefined;
   title: string;
+  /** AG07：卡片冻结时用的语言；卡上的固定词（按钮、状态）也用它，两端因此逐字相同。 */
+  locale?: "zh" | "ja" | "en" | undefined;
   /** 每项一行，合起来就是卡上的文字。 */
   summary: string;
   operations: readonly AgentCardOperationPreviewContract[];
@@ -311,6 +355,9 @@ export interface AgentSendReceiptContract {
 
 export type AgentSessionEventKind = "accepted" | "status" | "document";
 
+/** AG07：处理中走到哪一步（获批视觉稿「正在查你的笔记 → 正在读网页 → 正在整理回答」），由代码按步骤给出。 */
+export type AgentRunStage = "reading" | "web" | "composing";
+
 /** 实时通道的一条事件。seq 在会话内递增；重连带上最后收到的 seq，服务端只推其后的。 */
 export interface AgentSessionEventContract {
   seq: number;
@@ -321,6 +368,8 @@ export interface AgentSessionEventContract {
   at: string;
   /** kind 为 document 时带上这一版结果文档。 */
   document?: AgentResultDocument | undefined;
+  /** AG07：处理中的一步（kind 为 status、status 为 running 时可有）。只是进度，不算交付。 */
+  stage?: AgentRunStage | undefined;
 }
 
 /** GET /api/ai/conversations/sessions/[id]/events 的 JSON 读法（不用事件流时）。 */

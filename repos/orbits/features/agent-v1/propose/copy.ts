@@ -3,7 +3,11 @@
  * done in the conversation yet, the questions before a card, and the card line itself (from the frozen
  * payload). No model writes any of them; they never mention a card unless the turn shows one.
  */
+import { confirmButtonLabel } from "../../../shared/compute/agent-card-view";
 import type { AgentActionPreviewContract } from "../../../shared/contract/agent-v1";
+import { en } from "../../../shared/copy/en";
+import { ja } from "../../../shared/copy/ja";
+import { zh } from "../../../shared/copy/zh";
 import type { ReplyLanguage } from "../route/handoff-copy";
 
 const CIRCLED = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"];
@@ -44,9 +48,9 @@ export const WRITE_WORDS = {
   },
   /** A write this version does not do in the conversation (contacts, events, schedule, rules, memories …). */
   unsupported(language: ReplyLanguage, quote: string, names: string): string {
-    if (language === "zh") return `「${quote}」${names}：这一版还不能在对话里改这类记录，所以这次什么都没有改。`;
-    if (language === "ja") return `「${quote}」${names}：このバージョンでは、この種類の記録はまだ会話から変更できないため、今回は何も変更していません。`;
-    return `"${quote}"${names}: this version cannot change this kind of record from the conversation yet, so nothing was changed.`;
+    if (language === "zh") return `「${quote}」${names}：现在还不能在对话里改这类记录，所以这次什么都没有改。`;
+    if (language === "ja") return `「${quote}」${names}：この種類の記録は、今はまだ会話から変更できないため、今回は何も変更していません。`;
+    return `"${quote}"${names}: this kind of record can't be changed from the conversation yet, so nothing was changed.`;
   },
   askPerson(language: ReplyLanguage, quote: string, clue: string, labels: readonly string[]): string {
     if (language === "zh") return `「${quote}」里的「${clue}」有几位同名的联系人，是${or(language, labels)}？`;
@@ -70,8 +74,8 @@ export const WRITE_WORDS = {
     return `"${quote}": this to-do has both a planned date and a due time. Which one should change: ${or(language, labels)}?`;
   },
   fieldLabel(language: ReplyLanguage, field: "plannedDate" | "dueAt", current: string): string {
-    if (field === "plannedDate") return language === "zh" ? `改计划日期（现在是 ${current}）` : language === "ja" ? `予定日を変更（現在は ${current}）` : `Change the planned date (now ${current})`;
-    return language === "zh" ? `改截止时间（现在是 ${current}）` : language === "ja" ? `期限を変更（現在は ${current}）` : `Change the due time (now ${current})`;
+    if (field === "plannedDate") return language === "zh" ? `改计划日期（现在是${current}）` : language === "ja" ? `予定日を変更（現在は ${current}）` : `Change the planned date (now ${current})`;
+    return language === "zh" ? `改截止时间（现在是${current}）` : language === "ja" ? `期限を変更（現在は ${current}）` : `Change the due time (now ${current})`;
   },
   todoLabel(language: ReplyLanguage, title: string, when: string | null): string {
     if (language === "en") return `"${title}"${when ? ` (${when})` : ""}`;
@@ -82,7 +86,13 @@ export const WRITE_WORDS = {
 /** The card line of a turn, from the frozen preview only: the count sentence, each item, how it runs. */
 export function cardLineOf(preview: AgentActionPreviewContract, language: ReplyLanguage): string {
   const items = preview.operations.map((op, index) => `${CIRCLED[index] ?? `${index + 1}.`} ${op.text}`);
-  if (language === "en") return `Confirmation card — ${preview.title}:\n${items.join("\n")}\nNothing is changed until you press Confirm on the card.`;
-  if (language === "ja") return `確認カード（${preview.title}）：\n${items.join("\n")}\nカードの「確認」を押すまで何も変更しません。`;
-  return `确认卡（${preview.title}）：\n${items.join("\n")}\n点卡上的「确认」之前，什么都不会改。`;
+  const label = cardConfirmLabel(language, preview.operations.length);
+  if (language === "en") return `Confirmation card — ${preview.title}:\n${items.join("\n")}\nNothing is changed until you press "${label}" on the card.`;
+  if (language === "ja") return `確認カード（${preview.title}）：\n${items.join("\n")}\nカードの「${label}」を押すまで何も変更しません。`;
+  return `确认卡（${preview.title}）：\n${items.join("\n")}\n点卡上的「${label}」之前，什么都不会改。`;
+}
+
+/** The confirm button's label exactly as both clients show it (shared copy `aiCard`), for any code text that names the button. */
+export function cardConfirmLabel(language: ReplyLanguage, count: number): string {
+  return confirmButtonLabel((language === "en" ? en : language === "ja" ? ja : zh).aiCard, Math.max(1, count));
 }

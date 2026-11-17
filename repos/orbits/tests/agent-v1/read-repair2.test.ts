@@ -98,7 +98,7 @@ test("then and now: the coverage footnote counts the records read and given to t
   const result = await runAgentGraph(kit.deps, kit.input("第一次见面时小林健在哪家公司，现在在哪家？"));
   const coverage = result.partResults[0].coverage ?? [];
   assert.deepEqual(coverage.map((item) => [item.kind, item.seen, item.total]), [["memo", 20, 122]]);
-  assert.match(result.text, /共 122 条，这次看了其中 20 条/u);
+  assert.match(result.text, /共122条，这次看了其中20条/u);
 });
 
 test("a pronoun clue with the little word around it (给他的, 彼に, 跟她) is still a pronoun; a name is not (AE-AMB-012 dev3)", async () => {

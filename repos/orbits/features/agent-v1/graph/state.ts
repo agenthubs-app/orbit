@@ -9,7 +9,8 @@
  */
 import { Annotation } from "@langchain/langgraph";
 
-import type { AgentClarificationContract, AgentPartResult } from "../../../shared/contract/agent-v1";
+import type { AgentAnswerBasisContract, AgentClarificationContract, AgentPartResult } from "../../../shared/contract/agent-v1";
+import type { ReadSource } from "../answer/basis";
 import type { Material } from "../answer/schema";
 import type { NextStep } from "../clarify/next-step";
 import type { FirstLayerContext } from "../context/build";
@@ -57,6 +58,8 @@ export interface PartCoverage {
   seen: number;
   total: number | null;
   complete: boolean;
+  /** AG07 run-02: the end of the records read, when only one was ("oldest" first meetings, "newest" otherwise). */
+  direction?: "oldest" | "newest";
 }
 
 /** AG04: a set of clickable directions as the checkpoint keeps it (ids and codes; the labels are in the result document). */
@@ -193,6 +196,9 @@ export interface AgentGraphRun {
   candidates: Map<string, NamedRecordRef[]>;
   /** AG05: the delivered answer's verified source refs (filled by verify). */
   sourceRefs: string[];
+  /** AG07: what a link needs of each record read in this request (ref → kind, id, title, day), and the basis line verify writes. */
+  readSources: Map<string, ReadSource>;
+  basis: AgentAnswerBasisContract | null;
   /** AG06: code's sentences for write parts (not found, a question, cannot be done here). */
   writeLines: Map<string, string>;
   /** AG06: the card of this request as frozen, and code's line for it. */

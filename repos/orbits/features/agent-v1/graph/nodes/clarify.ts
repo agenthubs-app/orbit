@@ -43,13 +43,33 @@ export function nameOf(scope: NodeScope, recordId: string | null | undefined): s
   return handle?.name || scope.run.names.get(recordId) || scope.run.readNames.get(recordId)?.name || null;
 }
 
-export function objectOf(scope: NodeScope, part: GraphPart): OptionObject {
+export function objectOf(scope: NodeScope, part: GraphPart, parts: readonly GraphPart[] = []): OptionObject {
   const bound = part.refs.find((ref) => ref.recordId);
   const first = bound ?? part.refs[0];
   const referenced = scope.run.context?.references ?? [];
   const kind = recordKindOf(first?.entity) ?? (referenced.length === 1 ? recordKindOf(referenced[0].type) : null);
   const name = bound ? nameOf(scope, bound.recordId) : null;
-  return { kind, name, text: clueWords(scope.input.message, first) };
+  const text = clueWords(scope.input.message, first);
+  // AG07 repair 2 (AE-XL-011): a person said only by a pronoun ("She") is named by the person it stands for, never
+  // by the pronoun; with nobody to stand for, the label goes without a name.
+  if (!bound && text && PRONOUN_ONLY.test(text)) return { kind, name: personForPronoun(scope, part, parts), text: null };
+  return { kind, name, text };
+}
+
+const PRONOUN_ONLY = /^(?:他|她|彼女|彼|あの人|その人|he|she|him|her|his)$/iu;
+
+/** The person a pronoun stands for: one bound in an earlier sentence of this request, else the person mentioned last. */
+function personForPronoun(scope: NodeScope, part: GraphPart, parts: readonly GraphPart[]): string | null {
+  const earlier = parts.filter((other) => other !== part && other.quote[0] <= part.quote[0]).sort((left, right) => right.quote[0] - left.quote[0]);
+  for (const other of earlier) {
+    for (const ref of other.refs) {
+      if (recordKindOf(ref.entity) !== "contact" || !ref.recordId) continue;
+      const name = nameOf(scope, ref.recordId);
+      if (name) return name;
+    }
+  }
+  const last = scope.run.context?.lastMentionedForCode.find((item) => recordKindOf(item.type) === "contact" && item.name);
+  return last?.name ?? null;
 }
 
 /** Pronouns for a person (zh, ja, en). */
@@ -79,10 +99,10 @@ function candidatesFor(scope: NodeScope, part: GraphPart): { clue: number; candi
 
 const firstWrite = (capabilities: readonly Capability[]) => capabilities.find((capability) => capabilityKind(capability) === "write");
 
-function setOf(scope: NodeScope, language: ReplyLanguage, part: GraphPart, step: NextStep | undefined): { set: Omit<OptionSetState, "options">; options: ClarifyOption[] } | null {
+function setOf(scope: NodeScope, language: ReplyLanguage, part: GraphPart, step: NextStep | undefined, parts: readonly GraphPart[] = []): { set: Omit<OptionSetState, "options">; options: ClarifyOption[] } | null {
   const { input, run } = scope;
   const words = { language };
-  const object = objectOf(scope, part);
+  const object = objectOf(scope, part, parts);
   const subgoal = part.continues?.kind === "clarification" ? part.continues.ref : `clarification:${input.requestId}:${part.localId}`;
   const base = (slot: "q" | "e" | "a", kind: OptionSetState["kind"], purpose: OptionSetState["purpose"], asks?: OptionSetState["asks"]) => ({ clarificationId: setIdOf(input.requestId, part.localId, slot), kind, partId: part.localId, purpose, state: "open" as const, subgoal, ...(asks ? { asks } : {}) });
   if (part.status === "awaiting_acceptance") {
@@ -134,7 +154,7 @@ function prepare(scope: NodeScope, state: AgentGraphState): Partial<AgentGraphSt
     if (state.touched && !state.touched.includes(part.localId)) continue;
     const step = scope.run.steps.get(part.localId);
     if (!needsDirections(part, step, sets)) continue;
-    const made = setOf(scope, state.language, part, step);
+    const made = setOf(scope, state.language, part, step, state.parts);
     if (!made || !made.options.length && made.set.kind !== "question") continue;
     const labels = new Map(made.options.map((option) => [option.optionId, { label: option.label, ...(option.ref ? { refName: option.ref.name } : {}) }]));
     scope.run.optionLabels.set(made.set.clarificationId, labels);

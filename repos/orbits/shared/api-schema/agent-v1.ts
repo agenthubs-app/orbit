@@ -54,11 +54,19 @@ export const agentActionPreviewSchema: z.ZodType<AgentActionPreviewContract> = z
   actionId: identifier,
   changes: z.array(cardChangeSchema).optional(),
   expiresAt: z.string().optional(),
+  locale: z.enum(["zh", "ja", "en"]).optional(),
   operations: z.array(z.object({
     after: z.record(z.string(), z.unknown()),
     before: z.record(z.string(), z.unknown()).optional(),
     capability: z.string(),
     dependsOn: z.array(z.string()).optional(),
+    // AG07: how the card shows the item (written by the server in the card's language).
+    display: z.object({
+      change: z.enum(["update", "create"]),
+      note: z.string().optional(),
+      record: z.string(),
+      rows: z.array(z.object({ after: z.string(), before: z.string().optional(), field: z.string(), label: z.string() })),
+    }).optional(),
     operationId: z.string(),
     partId: z.string().optional(),
     shown: z.record(z.string(), z.unknown()).optional(),
@@ -130,7 +138,16 @@ export const agentSelectionReceiptSchema: z.ZodType<AgentSelectionReceiptContrac
 
 export const agentResultDocumentSchema: z.ZodType<AgentResultDocument> = z.object({
   actionPreview: agentActionPreviewSchema.optional(),
-  answer: z.object({ sourceRefs: z.array(z.string()), text: z.string() }).nullable(),
+  answer: z.object({
+    // AG07: the basis line and the record links (code's).
+    basis: z.object({
+      links: z.array(z.object({ contactId: z.string().optional(), id: z.string(), label: z.string(), type: z.enum(["memo", "todo", "schedule", "contact", "event"]) })),
+      text: z.string(),
+    }).optional(),
+    cardLine: z.string().optional(),
+    sourceRefs: z.array(z.string()),
+    text: z.string(),
+  }).nullable(),
   clarifications: z.array(agentClarificationSchema).optional(),
   ending: z.object({
     at: z.string(),
@@ -175,6 +192,7 @@ export const agentSessionEventSchema: z.ZodType<AgentSessionEventContract> = z.o
   requestId: identifier,
   seq: z.number().int().positive(),
   sessionId: identifier,
+  stage: z.enum(["reading", "web", "composing"]).optional(),
   status: agentRequestStatusSchema,
 });
 

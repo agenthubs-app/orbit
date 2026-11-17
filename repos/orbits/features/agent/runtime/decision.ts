@@ -100,7 +100,7 @@ const MESSAGES: Record<CardLocale, {
   confirmed: string;
   rejected: string;
   alreadyDecided: string;
-  revisionChanged: (revision: number) => string;
+  revisionChanged: string;
   contentChanged: string;
   expired: string;
   closedRejected: string;
@@ -121,10 +121,10 @@ const MESSAGES: Record<CardLocale, {
     expired: "This card was left too long. Generate a new one?",
     markDone: "Marked as done on your word. Nothing was written again.",
     notInReview: "This item does not need review.",
-    regenerated: "A new version of the card was made from the current data. Nothing is done until you click confirm.",
+    regenerated: "The card was made again from the current data. Nothing is done until you click confirm.",
     rejected: "Rejected. Nothing was changed.",
-    retry: "Retrying this item with its original operation key, so it is not created twice.",
-    revisionChanged: (revision) => `The card has been updated to version ${revision}. Please look at the latest version before confirming.`,
+    retry: "Retrying this item. It will not be created twice.",
+    revisionChanged: "What this card shows has changed. Please look at it again before confirming.",
   },
   ja: {
     abandon: "この項目は取りやめました。データは変わっていません。",
@@ -138,8 +138,8 @@ const MESSAGES: Record<CardLocale, {
     notInReview: "この項目は確認の必要がありません。",
     regenerated: "現在のデータでカードを作り直しました。確認を押すまで何も実行しません。",
     rejected: "却下しました。何も変更していません。",
-    retry: "元の操作キーのまま再試行します。重複して作成されることはありません。",
-    revisionChanged: (revision) => `カードは第${revision}版に更新されています。最新の版を見てから確認してください。`,
+    retry: "この項目を再試行します。重複して作成されることはありません。",
+    revisionChanged: "カードの内容が変わりました。もう一度内容を見てから確定してください。",
   },
   zh: {
     abandon: "已放弃这一项，数据没有变化。",
@@ -153,8 +153,8 @@ const MESSAGES: Record<CardLocale, {
     notInReview: "这一项现在不需要核对。",
     regenerated: "已按现在的数据重新生成这张卡，点确认之前不会执行。",
     rejected: "已否决，没有做任何修改。",
-    retry: "正在重试这一项，沿用原来的操作键，不会重复新建。",
-    revisionChanged: (revision) => `卡片已经更新到第 ${revision} 版，请看最新一版再确认。`,
+    retry: "正在重试这一项，不会重复新建。",
+    revisionChanged: "卡片的内容有变化，请再看一遍再确认。",
   },
 };
 
@@ -175,6 +175,8 @@ export function cardHashInput(card: {
       before: op.before ?? null,
       capability: op.capability ?? op.operationType,
       dependsOn: op.dependsOn ?? [],
+      // AG07: what the card shows of the item; absent on cards frozen before it, whose hash stays as it was.
+      ...(op.display ? { display: op.display } : {}),
       effects: op.effects ?? [],
       executorKey: op.executorKey,
       idempotencyKey: op.idempotencyKey,
@@ -241,7 +243,7 @@ export async function buildCardOperations(reader: TodoReader | null, input: { ac
   return buildCardOperationList(reader, input);
 }
 
-/** Title (AG06: the count sentence, "修改 1 项，新增 1 项"), preview and hash of a revision. */
+/** Title (AG06: the count sentence, "修改1项，新增1项"), preview and hash of a revision. */
 export function cardTexts(operations: readonly AgentActionOperationPayload[], locale: string, revision: number) {
   const title = cardCountTitle(operations, cardLocale(locale));
   const preview = operations.map((op) => op.preview).join("\n");
@@ -389,7 +391,7 @@ async function decideOnce(
     return refuse("CARD_CLOSED", action.status === "rejected" ? messages.closedRejected : messages.closedCanceled);
   }
   if (input.revision !== revision || input.payloadHash !== action.payloadHash) {
-    return refuse("CARD_REVISION_CHANGED", messages.revisionChanged(revision));
+    return refuse("CARD_REVISION_CHANGED", messages.revisionChanged);
   }
 
   if (input.decision === "confirm" || input.decision === "reject") {
@@ -524,7 +526,7 @@ export async function regenerateCard(deps: AgentCardDependencies, input: { actio
     const messages = cardMessages(action.locale);
     const past = isPastExpiry(action, now);
     if (!past && action.status !== "expired") {
-      return { message: messages.revisionChanged(action.revision ?? 1), outcome: "refused", reason: "CARD_NOT_EXPIRED", revision: action.revision ?? 1 };
+      return { message: messages.revisionChanged, outcome: "refused", reason: "CARD_NOT_EXPIRED", revision: action.revision ?? 1 };
     }
     const next = await nextRevision(deps, action, "regenerated", now);
     const committed = await repository.commitCardChange({ actionId: action.actionId, expect: { revision: action.revision ?? 1, statuses: [action.status], updatedAt: action.updatedAt }, next });
@@ -537,6 +539,48 @@ export async function regenerateCard(deps: AgentCardDependencies, input: { actio
   throw new Error(`Agent action ${input.actionId} kept changing while it was being regenerated.`);
 }
 
+export interface AgentRecheckResult {
+  outcome: "revised" | "unchanged" | "refused";
+  reason?: "CARD_CLOSED" | "CARD_EXPIRED";
+  message: string;
+  revision: number;
+  changes?: readonly AgentCardChange[];
+}
+
+/**
+ * agent-design AG07 (设计稿 §7 "同步后按最新数据重出差异", AE-UIX-006): a client that has just synced its own edits asks
+ * the server to look at a waiting card again. Not a decision and no business write: the values the card showed are
+ * read again (as at a click); when one changed, the card is frozen anew from the current data as revision+1 with the
+ * changed rows marked, and still needs a click. Nothing changed: the card stays as it is.
+ */
+export async function recheckCard(deps: AgentCardDependencies, input: { actionId: string }): Promise<AgentRecheckResult | null> {
+  const repository = requireCardRepository(deps.repository);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const action = await deps.repository.getAction(input.actionId);
+    if (!action) return null;
+    const now = deps.now();
+    const messages = cardMessages(action.locale);
+    const revision = action.revision ?? 1;
+    if (isPastExpiry(action, now) || action.status === "expired") return { message: messages.expired, outcome: "refused", reason: "CARD_EXPIRED", revision };
+    if (action.status !== "awaiting_confirmation" && action.status !== "deferred") return { message: messages.alreadyDecided, outcome: "refused", reason: "CARD_CLOSED", revision };
+    const changes: AgentCardChange[] = [];
+    for (const op of action.operations) {
+      if (!deps.reader) break;
+      const check = await checkTodoTarget(op, deps.reader);
+      for (const row of check.rows) changes.push({ operationId: op.operationId, ...row });
+    }
+    if (!changes.length) return { message: "", outcome: "unchanged", revision };
+    const next = { ...(await nextRevision(deps, action, "content_changed", now)), contentChanges: changes };
+    const committed = await repository.commitCardChange({ actionId: action.actionId, expect: { revision, statuses: [action.status], updatedAt: action.updatedAt }, next });
+    if (!committed.committed) continue;
+    await deps.afterChange?.(next);
+    emitCard(next, "content_changed");
+    emitTrace({ cardId: action.actionId, from: action.status, revision: next.revision ?? revision + 1, to: next.status, type: "card.state", via: "recheck" });
+    return { changes, message: messages.contentChanged, outcome: "revised", revision: next.revision ?? revision + 1 };
+  }
+  throw new Error(`Agent action ${input.actionId} kept changing while it was being checked again.`);
+}
+
 export interface AgentEditCardResult {
   outcome: "edited" | "refused";
   reason?: "CARD_REVISION_CHANGED" | "CARD_CLOSED" | "CARD_EXPIRED" | "OPERATION_NOT_ON_CARD" | "LAST_OPERATION";
@@ -545,9 +589,9 @@ export interface AgentEditCardResult {
 }
 
 const EDIT_MESSAGES: Record<CardLocale, { edited: string; last: string; notOnCard: string }> = {
-  en: { edited: "The item was taken off. The card now lists only the rest and still needs your click.", last: "This is the only item on the card; reject the card instead.", notOnCard: "That item is not on this version of the card." },
-  ja: { edited: "その項目を外しました。カードには残りの項目だけが載っています。確認を押すまで実行しません。", last: "カードに残っている項目はこれだけです。カードごと却下してください。", notOnCard: "その項目はこの版のカードにありません。" },
-  zh: { edited: "已去掉这一项，卡上只剩其余的项，点确认之前不会执行。", last: "卡上只剩这一项了，要不做的话请否决整张卡。", notOnCard: "这一版的卡上没有这一项。" },
+  en: { edited: "The item was taken off. The card now lists only the rest and still needs your click.", last: "This is the only item on the card; reject the card instead.", notOnCard: "That item is no longer on this card." },
+  ja: { edited: "その項目を外しました。カードには残りの項目だけが載っています。確認を押すまで実行しません。", last: "カードに残っている項目はこれだけです。カードごと却下してください。", notOnCard: "その項目は今のカードにありません。" },
+  zh: { edited: "已去掉这一项，卡上只剩其余的项，点确认之前不会执行。", last: "卡上只剩这一项了，要不做的话请否决整张卡。", notOnCard: "现在的卡上没有这一项。" },
 };
 
 /**
@@ -567,7 +611,7 @@ export async function editCard(deps: AgentCardDependencies, input: { actionId: s
     const revision = action.revision ?? 1;
     if (isPastExpiry(action, now) || action.status === "expired") return { message: messages.expired, outcome: "refused", reason: "CARD_EXPIRED", revision };
     if (action.status !== "awaiting_confirmation" && action.status !== "deferred") return { message: action.status === "canceled" ? messages.closedCanceled : messages.closedRejected, outcome: "refused", reason: "CARD_CLOSED", revision };
-    if (input.revision !== revision || input.payloadHash !== action.payloadHash) return { message: messages.revisionChanged(revision), outcome: "refused", reason: "CARD_REVISION_CHANGED", revision };
+    if (input.revision !== revision || input.payloadHash !== action.payloadHash) return { message: messages.revisionChanged, outcome: "refused", reason: "CARD_REVISION_CHANGED", revision };
     if (!action.operations.some((op) => op.operationId === input.removeOperationId)) return { message: EDIT_MESSAGES[locale].notOnCard, outcome: "refused", reason: "OPERATION_NOT_ON_CARD", revision };
     if (action.operations.length === 1) return { message: EDIT_MESSAGES[locale].last, outcome: "refused", reason: "LAST_OPERATION", revision };
     const next = await nextRevision(deps, action, "edited", now, (op) => op.operationId !== input.removeOperationId);

@@ -19,6 +19,9 @@
  * Record content stays in the run (the answer step's materials); the checkpoint gets refs, versions,
  * gaps and counts only.
  */
+import { pinyin } from "pinyin-pro";
+
+import { readSourceOf } from "../../answer/basis";
 import { gapWords } from "../../answer/gap-copy";
 import { materialOf } from "../../answer/materials";
 import type { GapReason, Material } from "../../answer/schema";
@@ -125,8 +128,11 @@ const FIRST_TIME = /(第一次|头一次|初次|最初|最早|初めて|最初�
 const OPEN_WORDS = /(まだ終わっていない|終わっていない|終わってない|未完了|未完成|没做完|没完成|还没做|未处理|还没处理|残っている|\bopen\b|\bnot (yet )?done\b|\bunfinished\b|\boutstanding\b|\bpending\b|\bstill to do\b)/iu;
 const DONE_WORDS = /(已完成|做完了的|做完的|完了した|終わった|済んだ|\bcompleted\b|\bfinished\b|\bdone ones\b)/iu;
 
+/** AG07 run-03 (AE-SCL-008): an overdue to-do is an open one, so "the overdue ones" counts the same to-dos as "the open ones". */
+const OVERDUE_WORDS = /(期限を過ぎ|期限切れ|期限超過|过期|逾期|超期|\boverdue\b|\bpast due\b)/iu;
+
 export function statusSaidIn(words: string): "open" | "completed" | undefined {
-  if (OPEN_WORDS.test(words)) return "open";
+  if (OPEN_WORDS.test(words) || OVERDUE_WORDS.test(words)) return "open";
   if (DONE_WORDS.test(words)) return "completed";
   return undefined;
 }
@@ -190,6 +196,41 @@ export function contactDetail(view: RecordView | null): string | undefined {
   return parts.length ? parts.join(" · ") : undefined;
 }
 
+const ROMANIZED_PAGES = 10;
+
+/**
+ * AG07 (AE-UIX-008): a name in Latin letters ("Li Wei", "Wei Li") that names no contact as written, against the
+ * account's contacts whose names are Chinese characters, read in pinyin without tones (either name order). Only the
+ * account's own contacts are read (a few pages); several of the same reading are all returned (the caller asks).
+ */
+export async function romanizedContacts(records: AgentRecordAccess, scope: DomainScope, words: string): Promise<RecordView[]> {
+  const clean = words.replace(/^@/u, "").replace(LATIN_TITLE, "").trim().toLowerCase();
+  if (!/^[a-z][a-z\s'’.-]*$/u.test(clean)) return [];
+  const syllables = clean.split(/[\s'’.-]+/u).filter(Boolean);
+  const said = syllables.join("");
+  if (said.length < 3) return [];
+  const reversed = [...syllables].reverse().join("");
+  const out: RecordView[] = [];
+  let cursor: string | undefined;
+  try {
+    for (let page = 0; page < ROMANIZED_PAGES; page += 1) {
+      const result = await records.reader.read("contact", scope, { limit: 10, ...(cursor ? { cursor } : {}) });
+      for (const view of result.items) {
+        const name = String(view.fields.displayName ?? "").replace(/\s+/gu, "");
+        if (!name || !/^\p{Script=Han}+$/u.test(name)) continue;
+        const reading = pinyin(name, { surname: "head", toneType: "none", type: "array" }).join("").toLowerCase();
+        if (reading === said || reading === reversed) out.push(view);
+      }
+      if (!result.nextCursor) break;
+      cursor = result.nextCursor;
+    }
+  } catch (error) {
+    emitTrace({ error: error instanceof Error ? error.message : String(error), type: "read.error", where: "resolve.contact_romanized" });
+  }
+  if (out.length) emitTrace({ found: out.map((view) => view.id), said: clean, type: "resolve.contact_romanized" });
+  return out;
+}
+
 /** Looks a person up by name in the account (never elsewhere) and narrows by the company the user named. */
 export async function findContacts(records: AgentRecordAccess, scope: DomainScope, words: string, quote: string, message: string): Promise<{ matches: ContactMatch[]; failed: boolean }> {
   const tokens = nameTokens(words);
@@ -205,6 +246,8 @@ export async function findContacts(records: AgentRecordAccess, scope: DomainScop
     emitTrace({ error: error instanceof Error ? error.message : String(error), type: "read.error", where: "resolve.contact_search" });
     failed = true;
   }
+  // AG07 (AE-UIX-008): "Li Wei" written in Latin letters names 李薇; the contacts' Chinese names are read in pinyin.
+  if (!found.length && !failed) found = await romanizedContacts(records, scope, words);
   let matches = found;
   if (matches.length > 1) {
     const named = matches.filter((view) => typeof view.fields.company === "string" && view.fields.company && (quote.includes(String(view.fields.company)) || message.includes(String(view.fields.company))));
@@ -276,6 +319,17 @@ export function resolveNode(scope: NodeScope): GraphNode {
         continue;
       }
       const accountScope = records.scope(input.actorId);
+
+      // AG07 (AE-CTX-003): a clue bound to a record of another kind (the first layer gave a memo clue the contact's
+      // handle) does not point at that record; it is read as an unbound clue of its own kind, never as "unreadable".
+      for (const ref of part.refs) {
+        if (!ref.recordId) continue;
+        const known = recordKindOf(handleOf(ref.recordId)?.type ?? run.references.find((item) => item.id === ref.recordId)?.type ?? ref.recordId);
+        const wanted = recordKindOf(ref.entity);
+        if (!known || !wanted || known === wanted) continue;
+        emitTrace({ clue: ref.entity, partId: part.localId, recordId: ref.recordId, recordKind: known, type: "resolve.ref_kind_mismatch" });
+        ref.recordId = null;
+      }
 
       // 1. A record the part points at that cannot be opened: say so, read nothing else for it.
       const closed = part.refs.find((ref) => ref.recordId && (handleOf(ref.recordId)?.accessible === false || run.references.some((item) => item.id === ref.recordId && item.accessible === false)));
@@ -521,11 +575,14 @@ export function resolveNode(scope: NodeScope): GraphNode {
       // older interaction or profile. "The last time" reads as before.
       const current = Boolean(filter?.current) && contacts.length > 0;
       const interactionAnswers = !current && kinds.has("interaction") && !text && order === "newest" && read.views.some((view) => view.kind === "memo");
-      const searchKinds = (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !(kind === "memo" && interactionAnswers));
+      // AG07 run-02 (AE-RD-008): a part whose every object is an attached record (@, not a person) and that has no
+      // words to search by asks about that record: other kinds the first layer added are not searched.
+      const attachedOnly = !text && part.refs.length > 0 && part.refs.every((ref) => ref.recordId && recordKindOf(ref.entity) !== "contact" && /^@/u.test(input.message.slice(ref.quote?.[0] ?? 0, ref.quote?.[1] ?? 0).trim()));
+      const searchKinds = attachedOnly ? [] : (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !(kind === "memo" && interactionAnswers));
       if (current) read.notes.push("This asks how the person stands now: the interactions, their newest notes and the profile are all here; where they differ, the newer dated record is what holds now. Never give as current anything a newer record replaces (a former company, an old role).");
       const subjects = contacts.length ? contacts.map((item) => item.id) : [undefined];
       let unclear = false;
-      const reads = new Map<string, { complete: boolean; kind: string; pagesRead: number; total: number | null }>();
+      const reads = new Map<string, { complete: boolean; kind: string; pagesRead: number; total: number | null; directions: Set<"oldest" | "newest"> }>();
       for (const kind of searchKinds) {
         // run-02: a read never gets wider because a field was left out. Without the first layer's words, the
         // record clue's own words are the search; a clue of only a pronoun with no person to read for points
@@ -576,10 +633,10 @@ export function resolveNode(scope: NodeScope): GraphNode {
               // records share one total, and `seen` is set below from what is really given to the answer.
               const key = `${kind}|${contactId ?? ""}`;
               const prior = reads.get(key);
-              reads.set(key, { complete: (prior?.complete ?? true) && pages.complete, kind, pagesRead: (prior?.pagesRead ?? 0) + pages.pagesRead, total: prior?.total ?? pages.total });
+              reads.set(key, { complete: (prior?.complete ?? true) && pages.complete, directions: new Set([...(prior?.directions ?? []), ...(kind === "todo" ? [] : [direction])]), kind, pagesRead: (prior?.pagesRead ?? 0) + pages.pagesRead, total: prior?.total ?? pages.total });
               if (!pages.complete || (pages.total !== null && pages.total > pages.items.length)) {
                 read.notes.push(pages.total !== null
-                  ? `${kind}: ${pages.total} match in all (an exact count); the ${pages.items.length} listed here are the ${kind === "todo" ? "soonest due" : direction === "oldest" ? "oldest" : "newest"} of them. Give the total as ${pages.total}; do not present the listed ones as all.`
+                  ? `${kind}: ${pages.total} match in all (an exact count); the ${pages.items.length} listed here are the ${kind === "todo" ? "soonest due" : direction === "oldest" ? "oldest" : "newest"} of them${kind === "todo" ? "" : direction === "oldest" ? ", so it is newer ones that may be missing, never older ones" : ", so it is older ones that may be missing, never newer ones"}. Give the total as ${pages.total}; do not present the listed ones as all.`
                   : `${kind}: ${pages.items.length} listed; there are more. Do not present them as all.`);
               }
             } catch (error) {
@@ -594,7 +651,10 @@ export function resolveNode(scope: NodeScope): GraphNode {
         if (!entries.length) continue;
         const seen = read.views.filter((view) => view.kind === kind).length;
         const total = entries.every((item) => item.total !== null) ? entries.reduce((sum, item) => sum + (item.total ?? 0), 0) : null;
-        read.coverage.push({ complete: entries.every((item) => item.complete) || (total !== null && seen >= total), kind, pagesRead: entries.reduce((sum, item) => sum + item.pagesRead, 0), seen, total });
+        // AG07 run-02 (AE-SCL-007): which end was read, when only one was (the notice says which ones may be missing).
+        const directions = new Set(entries.flatMap((item) => [...item.directions]));
+        const direction = directions.size === 1 ? [...directions][0] : null;
+        read.coverage.push({ complete: entries.every((item) => item.complete) || (total !== null && seen >= total), kind, pagesRead: entries.reduce((sum, item) => sum + item.pagesRead, 0), seen, total, ...(direction ? { direction } : {}) });
       }
       if (kinds.has("event") && !boundIds.has("event")) read.notes.push("Events are read when the user attaches one; none was attached.");
 
@@ -619,7 +679,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
         read.lines.push(words.noRecord(quote));
       }
       const coverageLine = read.coverage.find((item) => item.total !== null && item.total > item.seen);
-      if (coverageLine && LIST_DELIVERABLES.has(part.plan.deliverable)) read.lines.push(words.coverage(coverageLine.seen, coverageLine.total));
+      if (coverageLine && LIST_DELIVERABLES.has(part.plan.deliverable)) read.lines.push(words.coverage(coverageLine.seen, coverageLine.total, coverageLine.direction ?? null));
 
       // 5. Materials for the answer step (only when there is something to answer from).
       const usable = read.wantsRecords ? recordViews.length > 0 : read.views.length > 0;
@@ -630,6 +690,11 @@ export function resolveNode(scope: NodeScope): GraphNode {
         run.materials.set(part.localId, materials);
         run.readNotes.set(part.localId, read.notes);
         for (const view of read.views) if (!run.readNames.has(view.id)) run.readNames.set(view.id, { name: nameOf(view, zone), type: view.kind });
+        // AG07: what the answer's links need of each record read (the basis line is written from the citations).
+        for (const view of read.views) {
+          const source = readSourceOf(view, zone);
+          if (source) run.readSources.set(view.ref, source);
+        }
         finish("answered", null);
       } else if (read.gaps.has("service_error")) {
         finish("unfinished", "read_failed");

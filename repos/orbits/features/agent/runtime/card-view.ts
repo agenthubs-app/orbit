@@ -12,11 +12,13 @@ export function agentCardPreview(action: AgentActionRecord, detail: AgentRunDeta
     actionId: action.actionId,
     ...(action.contentChanges?.length ? { changes: action.contentChanges.map((change) => ({ ...change })) } : {}),
     ...(action.expiresAt ? { expiresAt: action.expiresAt } : {}),
+    ...(action.locale === "zh" || action.locale === "ja" || action.locale === "en" ? { locale: action.locale } : {}),
     operations: action.operations.map((op) => ({
       after: { ...(op.after ?? op.payload) },
       ...(op.before ? { before: { ...op.before } } : {}),
       capability: op.capability ?? op.operationType,
       ...(op.dependsOn?.length ? { dependsOn: [...op.dependsOn] } : {}),
+      ...(op.display ? { display: { ...op.display, rows: op.display.rows.map((row) => ({ ...row })) } } : {}),
       operationId: op.operationId,
       ...(op.partId ? { partId: op.partId } : {}),
       ...(op.shown ? { shown: { ...op.shown } } : {}),

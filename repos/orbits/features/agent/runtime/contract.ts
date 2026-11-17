@@ -3,6 +3,7 @@ import type {
   AgentLedgerOperationType,
 } from "../ledger/contract";
 import type { AgentActionSourceReference } from "../contract";
+import type { AgentCardOperationDisplayContract } from "../../../shared/contract/agent-v1";
 
 export const AGENT_RUN_STATUSES = [
   "queued",
@@ -154,6 +155,8 @@ export interface AgentActionOperationPayload {
   };
   dependsOn?: readonly string[];
   effects?: readonly string[];
+  /** agent-design AG07: how the card shows this item (written by code in the card's language, frozen, hashed). */
+  display?: AgentCardOperationDisplayContract;
 }
 
 export interface AgentActionTargetRef {

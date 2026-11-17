@@ -56,8 +56,8 @@ test("the second item waits for the first: the first fails for good, the second 
   const todo = await kit.todo("给小林发修订报价", "2026-11-18");
   const card = await freeze(kit, [memoIntent(), { capability: "todo.update", dependsOn: [0], partId: "p2", set: { plannedDate: "2026-11-20" }, targetId: todo.id }]);
   assert.deepEqual(card.operations[1].dependsOn, [card.operations[0].operationId]);
-  assert.match(card.operations[1].preview, /第 1 项成功后才执行/u, "the card says the second item waits for the first");
-  assert.equal(card.title, "修改 1 项，新增 1 项");
+  assert.match(card.operations[1].preview, /第1项成功后才执行/u, "the card says the second item waits for the first");
+  assert.equal(card.title, "修改1项，新增1项");
   const decision = await decide(kit, card, "confirm", "decision:1");
   assert.equal(decision?.accepted, true);
   await kit.runtime.processOutbox({ actionId: card.actionId });
@@ -138,7 +138,7 @@ test("taking an item off the card freezes the rest again (revision 2, the count 
   assert.equal(edited?.outcome, "edited");
   const latest = (await kit.runtime.getAction(card.actionId))!;
   assert.equal(latest.revision, 2);
-  assert.equal(latest.title, "修改 1 项");
+  assert.equal(latest.title, "修改1项");
   assert.deepEqual(latest.operations.map((op) => op.capability), ["todo.update"]);
   const stale = await kit.runtime.editCard!({ actionId: card.actionId, payloadHash: card.payloadHash!, removeOperationId: card.operations[0].operationId, revision: 1 });
   assert.equal(stale?.reason, "CARD_REVISION_CHANGED", "an edit from the old version is refused");

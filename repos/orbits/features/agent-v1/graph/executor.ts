@@ -14,6 +14,7 @@ import { configuredAgentSessionStateStore } from "../context/session-state";
 import { configuredRecordAccess } from "../domains/configured";
 import { configuredAgentEntryStore } from "../entry/configured-store";
 import { conversationCardId, runWithConfirmBoundary } from "../entry/confirm-boundary";
+import { keepEarlierBasis } from "../entry/resume-basis";
 import type { AgentEntryExecuteInput, AgentEntryExecutor } from "../entry/service";
 import { authorizeReferences } from "../references/authorize";
 import type { AgentEntryAmendment, AgentEntryStore } from "../entry/store";
@@ -154,11 +155,14 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       sessionState: overrides.sessionState ?? configuredAgentSessionStateStore(mode),
       timeZone: overrides.timeZone ?? process.env.ORBIT_DEFAULT_TIME_ZONE ?? "Asia/Tokyo",
       ...(overrides.modelCallLimit !== undefined ? { modelCallLimit: overrides.modelCallLimit } : {}),
+      ...(execution.onStage ? { onStage: execution.onStage } : {}),
     };
     if (execution.resume) {
       // AG04: a click resumes this request's paused thread; no message, no confirmation boundary, no model.
       const resumed = await resumeAgentGraph(deps, graphInputOf(execution.actorId, execution.requestId, execution.sessionId, execution.input, false), { clarificationId: execution.resume.clarificationId, kind: "select", optionId: execution.resume.optionId }, { names: namesIn(execution.document), previousClarifications: execution.document?.clarifications ?? null });
-      return { ...(resumed.actionPreview ? { actionPreview: resumed.actionPreview } : {}), clarifications: resumed.clarifications, partResults: resumed.partResults, sourceRefs: resumed.sourceRefs, status: resumed.status, text: resumed.text };
+      // AG07 repair 2 (AE-XL-003): the read answered before the pause is still in the answer; its basis line and links stay.
+      const kept = keepEarlierBasis(execution.document ?? null, resumed);
+      return { ...(resumed.actionPreview ? { actionPreview: resumed.actionPreview } : {}), basis: kept.basis, ...(resumed.cardLine && resumed.text.includes(resumed.cardLine) ? { cardLine: resumed.cardLine } : {}), clarifications: resumed.clarifications, partResults: resumed.partResults, sourceRefs: kept.sourceRefs, status: resumed.status, text: resumed.text };
     }
     const cardPrepared = Boolean(await runtime.getAction(conversationCardId(execution.requestId)).catch(() => null));
     let graph: AgentGraphResult | null = null;
@@ -181,6 +185,9 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
     return {
       ...(boundary.actionPreview ? { actionPreview: boundary.actionPreview } : {}),
       ...(settled.clarifications.length ? { clarifications: settled.clarifications } : {}),
+      // AG07: the basis follows the delivered citations (the boundary keeps the graph's sourceRefs as they are).
+      ...(settled.basis ? { basis: settled.basis } : {}),
+      ...(settled.cardLine && boundary.text.includes(settled.cardLine) ? { cardLine: settled.cardLine } : {}),
       partResults,
       sourceRefs: boundary.sourceRefs,
       status: settled.status,

@@ -155,7 +155,35 @@ function whenText(todo: TodoView, locale: CardLocale, timeZone: string): string 
   return null;
 }
 
-type TodoResult = { kind: "found"; todo: TodoView } | { kind: "ask"; clue: string; candidates: Candidate[]; notFound?: string } | { kind: "none"; words: string } | { kind: "failed" };
+/**
+ * AG07: the user's words are the title's characters in order with only a few left out ("回复田中询价" in
+ * 「回复田中的询价」): at least four characters said, and at most a quarter of the title missing.
+ */
+export function fitsInOrder(words: string, title: string): boolean {
+  const said = [...words.replace(/[\s、，。・,.!?！？「」『』"“”]/gu, "")];
+  const chars = [...title.replace(/\s+/gu, "")];
+  if (said.length < 4 || said.length > chars.length || chars.length - said.length > Math.max(1, Math.floor(chars.length / 4))) return false;
+  let at = 0;
+  for (const char of chars) if (at < said.length && char === said[at]) at += 1;
+  return at === said.length;
+}
+
+type Script = "latin" | "kana" | "han";
+
+function scriptOf(text: string): Script | null {
+  if (/[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text)) return "kana";
+  if (/\p{Script=Han}/u.test(text)) return "han";
+  return /[A-Za-z]/u.test(text) ? "latin" : null;
+}
+
+/** AG07: words and a title written in different scripts (English or Japanese words, a Chinese title …). */
+export function otherScript(words: string, title: string): boolean {
+  const left = scriptOf(words);
+  const right = scriptOf(title);
+  return Boolean(left && right && left !== right);
+}
+
+type TodoResult ={ kind: "found"; todo: TodoView } | { kind: "ask"; clue: string; candidates: Candidate[]; notFound?: string } | { kind: "none"; words: string } | { kind: "failed" };
 
 async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrite, intent: StoredIntent, personId: string | null, personWords: string[], inherited = false): Promise<TodoResult> {
   if (!ctx.records || !ctx.scope) return { kind: "failed" };
@@ -205,10 +233,40 @@ async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrit
       if (found.length) break;
     }
     emitTrace({ found: found.map((item) => item.id), partId: part.localId, search: search ?? null, tried: searches, type: "propose.todo_lookup", withPerson: Boolean(personId) });
+    // AG07 stab2 (AE-UIX-002): the words are a title with a few characters left out ("回复田中询价" for 「回复田中的询价」),
+    // whether or not a person was given: the open to-dos that start like the words are checked character by character,
+    // and only a single one that fits is taken.
+    if (!found.length) {
+      const fitting = new Map<string, TodoView>();
+      for (const text of searches) {
+        const head = [...text].slice(0, 2).join("");
+        if ([...text].length < 4 || !head) continue;
+        const near = (await ctx.records.reader.read("todo", ctx.scope, { limit: 10, status: "open", text: head })).items.map(todoOf);
+        for (const item of near) if (fitsInOrder(text, item.title)) fitting.set(item.id, item);
+      }
+      if (fitting.size === 1) {
+        const [only] = fitting.values();
+        emitTrace({ partId: part.localId, recordId: only.id, rule: "title_in_order", type: "propose.todo_matched" });
+        return { kind: "found", todo: only };
+      }
+    }
     if (!found.length && personId && searches.length) {
       // AG06 repair 1 (AE-CTX-005, AE-XL-009 "可以问是不是指这一条"): the words match none of the person's open to-dos
       // (a title written in another language, other words): their to-dos are offered in a question, never picked.
       const theirs = (await ctx.records.reader.read("todo", ctx.scope, { contactId: personId, limit: 10, status: "open" })).items.map(todoOf);
+      // AG07 (AE-UIX-002): the words are the title with a few characters left out ("回复田中询价" → 「回复田中的询价」).
+      const inOrder = theirs.filter((item) => searches.some((text) => fitsInOrder(text, item.title)));
+      if (inOrder.length === 1) {
+        emitTrace({ partId: part.localId, recordId: inOrder[0].id, rule: "title_in_order", type: "propose.todo_matched" });
+        return { kind: "found", todo: inOrder[0] };
+      }
+      // AG07 (AE-UIX-007, AE-UIX-008): words in another script than the title cannot be compared with it; the person's
+      // one open to-do is the one meant (the card names it by its title and still needs a click).
+      const names = personWords.flatMap((item) => nameTokens(item));
+      if (theirs.length === 1 && clues.length && clues.every((clue) => otherScript(names.reduce((rest, name) => rest.split(name).join(""), clue), theirs[0].title))) {
+        emitTrace({ partId: part.localId, recordId: theirs[0].id, rule: "only_open_todo_other_script", type: "propose.todo_matched" });
+        return { kind: "found", todo: theirs[0] };
+      }
       emitTrace({ offered: theirs.map((item) => item.id), partId: part.localId, type: "propose.todo_offered" });
       if (theirs.length) return { candidates: theirs.slice(0, 3).map((item) => ({ detail: whenText(item, ctx.language, ctx.timeZone) ?? undefined, id: item.id, name: item.title, type: "todo" })), clue: clues[0] ?? "", kind: "ask", notFound: said || search || "" };
     }
