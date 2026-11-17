@@ -374,10 +374,13 @@ export function createWorldWriter(world: string, clock: string) {
     const amount = Number(fee.match(/(\d[\d,]*)\s*日元/u)?.[1]?.replace(/,/gu, "") ?? Number.NaN);
     const startsAt = iso(data.startsAt);
     const description = [topics ? `主题：${topics}` : "", fee ? `费用：${fee}` : "", data.note && !startsAt ? String(data.note) : ""].filter(Boolean).join("\n");
+    // AG10 (CHANGES.md 2026-11-18, AE-FN-014): only "免费" is free; a fee the fixture leaves unstated ("未标价") is stored
+    // without a fee kind, as an organizer who did not fill it in — never as free.
+    const feeKind = Number.isFinite(amount) ? "amount" : /免费|無料|free/iu.test(fee) ? "free" : undefined;
     const created = await hostLifecycle.create(organizerActor, {
       description,
       endsAt: startsAt ? new Date(Date.parse(startsAt) + 3 * 3_600_000).toISOString() : "2027-12-31T12:00:00.000Z",
-      feeKind: Number.isFinite(amount) ? "amount" : "free",
+      feeKind: feeKind as "free" | "amount",
       ...(Number.isFinite(amount) ? { feeAmountYen: amount } : {}),
       organizerProfileId: profileId,
       startsAt: startsAt ?? "2027-12-31T09:00:00.000Z",
