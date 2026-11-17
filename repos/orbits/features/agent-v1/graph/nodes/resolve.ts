@@ -153,6 +153,18 @@ export async function partialContacts(records: AgentRecordAccess, scope: DomainS
   }
 }
 
+/** AG08 repair 1 (AE-UND-010): the words that ask for a list, not what it is about ("列出", "一覧にして", "list"). */
+const LIST_VERBS = /^(?:请|帮我|麻烦)?(?:列出|列一下|列举|列个|看看|看一下|告诉我|查一下|查查|给我看|一覧にして|一覧を|リストにして|見せて|教えて|list|show me|show)\s*/iu;
+
+/**
+ * AG08 repair 1 (AE-UND-010): a part that lists the user's notes ("列出我记过的竞品") with no search words from the first
+ * layer and no record clue: the part's own words, without the list verb, are the search (the same rule as a clue's own
+ * words, AG05 run-02). The caller reads without them when they find nothing.
+ */
+export function listSearchWords(quote: string): string | undefined {
+  return clueSearchWords(quote.replace(/[。.!！?？]+$/u, "").replace(LIST_VERBS, "").replace(/(?:を)?(?:一覧にして|リストにして|見せて|教えて)(?:ください)?$/u, ""));
+}
+
 export function clueSearchWords(words: string): string | undefined {
   let rest = words.replace(/^@/u, "").trim();
   if (!rest) return undefined;
@@ -589,7 +601,9 @@ export function resolveNode(scope: NodeScope): GraphNode {
         // at nothing code can find — it says so instead of reading the newest page.
         const clue = part.refs.find((ref) => !ref.recordId && recordKindOf(ref.entity) === kind);
         const clueText = clue ? clueSearchWords(clueWords(input.message, clue) ?? "") : undefined;
-        const kindText = text ?? clueText;
+        // AG08 repair 1 (AE-UND-010): a list of notes with nothing to search by searches by its own words.
+        const ownWords = !text && !clueText && !clue && kind === "memo" && !contacts.length && part.plan.deliverable === "list" ? listSearchWords(quote) : undefined;
+        const kindText = text ?? clueText ?? ownWords;
         if (clue && !kindText && !contacts.length && cluePointsAtOne(clueWords(input.message, clue) ?? "")) {
           unclear = true;
           continue;
@@ -615,6 +629,10 @@ export function resolveNode(scope: NodeScope): GraphNode {
               let pages = await readPages(records.reader, kind, accountScope, queryOf(kindText), order === "both" ? 1 : maxPages);
               // The words were a narrowing: when none of the person's records has them, read the person's records
               // without them and say so. With no person, nothing found stays nothing found (no newest page instead).
+              if (ownWords && !pages.items.length && !pages.withheld) {
+                pages = await readPages(records.reader, kind, accountScope, queryOf(undefined), order === "both" ? 1 : maxPages);
+                emitTrace({ partId: part.localId, type: "resolve.own_words_unmatched", words: ownWords });
+              } else if (ownWords) emitTrace({ partId: part.localId, type: "resolve.own_words", words: ownWords });
               if (kindText && contactId && !pages.items.length && !pages.withheld) {
                 pages = await readPages(records.reader, kind, accountScope, queryOf(undefined), order === "both" ? 1 : maxPages);
                 if (pages.items.length) read.notes.push(`No note of theirs contains "${kindText}"; these are their ${kind === "memo" ? "notes" : "records"} without that filter.`);
