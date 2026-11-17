@@ -143,3 +143,31 @@ test("AE-SCL-018: one sentence split into two parts (往来 / 答应的事) over
   assert.equal(run.events.filter((event) => event.type === "fn.extractInteractions").length, 1);
   assert.ok(run.result.state.parts.every((part) => part.status === "answered"), "both parts are answered");
 });
+
+test("run-03 gate (AE-FN-011): 'それをToDoに追加して' bound to the memo under another entity name is still the memo's commitments as to-dos", async () => {
+  const { fnWorld, NOW: FN_NOW, runFn } = await import("./functions-kit");
+  const { choice } = await import("./judgment-kit");
+  const world = fnWorld();
+  const session = graphKit(fetch, { now: FN_NOW, records: recordAccessOf(world) });
+  const M38 = { id: "note:m38", name: "山本さんの打ち合わせメモ", type: "memo" };
+  const owner = (id: string) => (id.split("__")[1] === "f1" ? choice("me", 0.95) : undefined);
+  const first = "@山本さん打ち合わせメモ の中で、私が約束したことは何ですか？";
+  const extract = { followUps: [{ aboutClue: "山本", action: "原稿を山本さんに送る", dueDateText: "12月5日までに", owner: "me", sentenceIds: [2] }] };
+  await runFn(first, [{ dataSources: ["orbit_records"], objectClues: [{ entity: "memo", referenceId: "r1", text: "@山本さん打ち合わせメモ" }], requiredCapabilities: ["memo.read"], sourceQuote: first }], { extract, judge: owner, language: "ja", references: [M38], session, world });
+  const second = "それをToDoに追加してください。";
+  // As the gate's first layer gave it: "それ" bound to the memo's handle but called a to-do, and "それ" also as a person.
+  const run = await runFn(second, [{ deliverable: "change", objectClues: [{ entity: "todo", referenceId: "r1", text: "それ" }, { entity: "contact", text: "それ" }], requiredCapabilities: ["todo.create"], sourceQuote: second }], { extract, judge: owner, language: "ja", session, world });
+  assert.equal(run.frozen.length, 1, run.result.text);
+  const [intent] = run.frozen[0].intents as { capability: string; set: Record<string, unknown> }[];
+  assert.equal(intent.capability, "todo.create");
+  assert.equal(intent.set.sourceNoteId, "note:m38");
+});
+
+test("run-03 gate (AE-SCL-017): formal follow-ups ranked with no to-do read from the first layer (a note read and an extraction instead) are still the to-do ranking", async () => {
+  const { fnWorld, runFn } = await import("./functions-kit");
+  const message = "列出已经过期、或者 11 月 22 日之前到期的正式跟进，过期最久的排前面，只要前三条。";
+  const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "ranked_list", objectClues: [], rank: { count: 3, direction: "asc", orderBy: "dueAt" }, readFilter: { to: "2026-11-22" }, requiredCapabilities: ["memo.read", "fn.extractFollowUps", "fn.rank"], sourceQuote: message }], { world: fnWorld() });
+  const ranks = run.events.filter((event) => event.type === "fn.rank");
+  assert.equal(ranks.length, 1, run.result.text);
+  assert.ok((ranks[0].listed as string[]).every((ref) => ref.startsWith("todo:")), JSON.stringify(ranks[0].listed));
+});

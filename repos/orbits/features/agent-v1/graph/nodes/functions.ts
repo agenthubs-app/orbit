@@ -78,7 +78,9 @@ export function rankDomainOf(part: GraphPart, message: string): RankDomain | nul
   if (contact && WHO_WORDS.test(quote) && !part.refs.some((ref) => ref.entity === "contact" && ref.recordId)) return "contact";
   // AG10 (AE-SCL-017, dev run 2): to-dos or follow-ups named in the words, ordered or picked, with no memo chosen, are a to-do
   // ranking — the note reads the first layer may add are not what is listed.
-  if (todo && TODO_LIST_WORDS.test(quote) && !part.refs.some((ref) => ref.recordId && (ref.entity === "memo" || ref.entity === "todo"))) return "todo";
+  // AG10 run-03 repair 1 (AE-SCL-017): "正式跟进" (formal follow-ups) ranked are to-dos even when the first layer named a note read
+  // and an extraction instead of a to-do read.
+  if ((todo || FORMAL_FOLLOW_UP.test(quote)) && TODO_LIST_WORDS.test(quote) && !part.refs.some((ref) => ref.recordId && (ref.entity === "memo" || ref.entity === "todo"))) return "todo";
   // Reading other records is another kind of task — except a memo attached with @ (its topics are the basis).
   const memoBasis = part.refs.filter((ref) => ref.entity === "memo");
   const readsMemoBasis = memoBasis.length > 0 && memoBasis.every((ref) => ref.recordId);
@@ -124,7 +126,9 @@ const isMemoType = (type: string) => type === "memo" || type === "note";
 
 /** The memo a part works on: its own bound memo, this turn's @ memo, or (a reply that points back, "それ") the last one. */
 function memoOf(scope: NodeScope, part: GraphPart, allowSession: boolean): string | null {
-  const bound = part.refs.find((ref) => ref.entity === "memo" && ref.recordId);
+  // AG10 run-03 repair 1 (AE-FN-011): a clue bound to a memo is the memo whatever entity the first layer called it ("それ" as a to-do).
+  const memoIds = new Set([...(scope.run.context?.handles.values() ?? [])].filter((handle) => isMemoType(handle.type)).map((handle) => handle.id));
+  const bound = part.refs.find((ref) => ref.recordId && (ref.entity === "memo" || memoIds.has(ref.recordId)));
   // AG10 run-02: a memo chosen with @ that cannot be opened now is no memo to work on.
   if (bound && scope.run.references.some((reference) => reference.id === bound.recordId && reference.accessible === false)) return null;
   if (bound) return bound.recordId!;
