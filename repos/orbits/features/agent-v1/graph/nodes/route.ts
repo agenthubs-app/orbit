@@ -84,7 +84,10 @@ export function routeNode(scope: NodeScope): GraphNode {
     // Open items are context too: a part answering one points at that matter's object.
     const nothingToResolveFrom = !resume && Boolean(context) && context!.openItems.length === 0 && (context!.idle || (context!.messages.length === 0 && context!.shownList.length === 0 && context!.lastMentioned.length === 0));
     const clueText = (ref: GraphPart["refs"][number]) => clueWords(input.message, ref) ?? "";
-    const namedInMessage = (context?.references.length ?? 0) > 0 || state.parts.some((part) => part.refs.some((ref) => ref.recordId || (clueText(ref) && !isPronounClue(clueText(ref)))));
+    // AG09 stability run (AE-SCL-016): a public name to look up or a web page the user gave names something too — "the
+    // latest quote they gave me" after "Here is Lumen ATS's pricing page: …" has its "they" in the same message.
+    const namesPublicObject = state.parts.some((part) => Boolean(part.plan.webTarget?.quote) || /https?:\/\//u.test(input.message.slice(part.quote[0], part.quote[1])));
+    const namedInMessage = namesPublicObject || (context?.references.length ?? 0) > 0 || state.parts.some((part) => part.refs.some((ref) => ref.recordId || (clueText(ref) && !isPronounClue(clueText(ref)))));
     const unboundPronoun = (part: GraphPart) => nothingToResolveFrom && !namedInMessage && !part.refs.some((ref) => ref.recordId) && part.refs.some((ref) => isPronounClue(clueText(ref)));
     // AG07 gate (AE-XL-005): the first layer called "把报价待办改到周五" missing one item although the to-do is named in
     // its own words and the new day is said; code then looks it up instead of asking without candidates.
@@ -110,6 +113,15 @@ export function routeNode(scope: NodeScope): GraphNode {
     const parts: GraphPart[] = state.parts.map((original) => {
       if (resume && !state.touched!.includes(original.localId)) return original;
       const part: GraphPart = { ...original };
+      // AG09 stability run (AE-SCL-016): with a public object named in this message (a name to look up, a web page), a
+      // contact clue that is only a pronoun ("they") stands for that company or person, not for one of the user's contacts.
+      if (!resume && namesPublicObject) {
+        const kept = part.refs.filter((ref) => !(ref.entity === "contact" && !ref.recordId && isPronounClue(clueText(ref))));
+        if (kept.length !== part.refs.length) {
+          emitTrace({ dropped: part.refs.length - kept.length, partId: part.localId, reason: "a pronoun for the public object this message names", type: "route.pronoun_for_public_object" });
+          part.refs = kept;
+        }
+      }
       if (attribution) {
         const found = attribution.get(part.localId);
         if (found && found.kind !== "new") {

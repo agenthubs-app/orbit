@@ -35,3 +35,25 @@ export async function secondGate(access: JudgmentAccess | null | undefined, budg
   const send = verdict?.answer === "no" && !verdict.fallback;
   return { reason: send ? null : outcome.unavailable ?? (verdict?.fallback ? verdict.reason ?? "fallback" : verdict ? `answered_${verdict.answer}` : "missing"), send, verdict };
 }
+
+/**
+ * AG09 stability runs: the second gate for every query of one pass in ONE judgment request (one item per query), so a
+ * request with several searches makes one call instead of one per query. Each query is judged on its own item.
+ */
+export async function secondGateMany(access: JudgmentAccess | null | undefined, budget: JudgmentBudget, input: { language: JudgmentLanguage; message: string; queries: readonly { key: string; query: string }[]; requestId?: string }, options: { signal?: AbortSignal } = {}): Promise<Map<string, SecondGateResult>> {
+  const out = new Map<string, SecondGateResult>();
+  if (!input.queries.length) return out;
+  const outcome = await askJudgment(access, budget, {
+    input: outboundJudgmentInput(input.language, input.message),
+    items: input.queries.map((item) => ({ key: item.key, question: "outbound.extra" as const, subject: outboundSubject(item.query) })),
+    language: input.language,
+    purpose: "outbound",
+    ...(input.requestId ? { requestId: input.requestId } : {}),
+  }, options);
+  for (const item of input.queries) {
+    const verdict = outcome.verdicts.get(item.key) ?? null;
+    const send = verdict?.answer === "no" && !verdict.fallback;
+    out.set(item.key, { reason: send ? null : outcome.unavailable ?? (verdict?.fallback ? verdict.reason ?? "fallback" : verdict ? `answered_${verdict.answer}` : "missing"), send, verdict });
+  }
+  return out;
+}

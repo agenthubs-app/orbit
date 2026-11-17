@@ -26,7 +26,7 @@ import type { SearchResultItem } from "../../web/deepseek-tools";
 import type { WebCall } from "../../web/evidence";
 import { fetchGate, outboundGate, urlsIn, type GateContext } from "../../web/outbound-gate";
 import { buildQuery, type QueryCandidate, type WebTarget } from "../../web/query";
-import { secondGate } from "../../web/second-gate";
+import { secondGateMany } from "../../web/second-gate";
 import { openRequestWeb, type RequestWeb } from "../../web/service";
 import { parseSelectPicks, webSelectSystemPrompt, webSelectUserText, WEB_SELECT_PROMPT_VERSION, type SelectItem } from "../../web/select";
 import type { QualifierCode, WebLanguage } from "../../web/vocabulary";
@@ -171,6 +171,8 @@ export function probeNode(scope: NodeScope): GraphNode {
       qualifiersOf.set(key, [...new Set([...(qualifiersOf.get(key) ?? []), ...(part.plan.webTarget?.qualifiers ?? [])])]);
     }
     const followers: { part: GraphPart; leader: GraphPart }[] = [];
+    // Queries that passed gate 1, waiting for gate 2.
+    const cleared: { part: GraphPart; candidate: QueryCandidate; quote: string }[] = [];
     for (const part of due) {
       const quote = quoteOf(message, part);
       if (!switches.global || !switches.user) {
@@ -199,7 +201,10 @@ export function probeNode(scope: NodeScope): GraphNode {
       const target = part.plan.webTarget;
       const targetQuote = target?.quote ? message.slice(target.quote[0], target.quote[1]) : "";
       if (!targetQuote) {
-        if (webOnly(part)) {
+        // A part that builds on another part of this request that looks up the web (a comparison with the page the user gave)
+        // has nothing of its own to look up: it is answered from that part's page, with no line of its own.
+        const fromDependency = part.dependsOn.some((id) => { const other = parts.find((item) => item.localId === id); return Boolean(other && needsWeb(other)); });
+        if (webOnly(part) && !fromDependency) {
           lines(part, WEB_WORDS.noPublicName(language, quote));
           emitTrace({ partId: part.localId, reason: "no public name in the user's words to look up", type: "web.no_target" });
           settle(part, "web_no_public_name");
@@ -269,8 +274,13 @@ export function probeNode(scope: NodeScope): GraphNode {
         part.waitReason = "object_ambiguous";
         continue;
       }
+      // Gate 2 comes after every part's gate 1: one judgment request for all the queries of this pass.
+      cleared.push({ candidate, part, quote });
+    }
+    const verdicts = await secondGateMany(deps.judgment, run.judgment, { language, message, queries: cleared.map((item, index) => ({ key: `q${index + 1}`, query: item.candidate.text })), requestId: input.requestId });
+    for (const [index, { candidate, part, quote }] of cleared.entries()) {
       // Gate 2: only a sure "no" from outbound.extra sends it.
-      const second = await secondGate(deps.judgment, run.judgment, { language, message, query: candidate.text, requestId: input.requestId });
+      const second = verdicts.get(`q${index + 1}`) ?? { reason: "missing", send: false, verdict: null };
       emitTrace({ confidence: second.verdict?.confidence ?? null, gate: 2, kind: "search", partId: part.localId, reason: second.reason, threshold: second.verdict?.threshold ?? null, type: "web.gate", verdict: second.send ? "send" : "block" });
       if (!second.send) {
         await web!.block(part.localId, ["judgment"], now());
@@ -363,6 +373,18 @@ export function probeNode(scope: NodeScope): GraphNode {
           continue;
         }
         for (const index of pick.open) if ((await openPage(item.part, results[index].url)) === "stop") break;
+      }
+    }
+
+    // AG09 stability run (AE-WEB-012): a web part that could not look anything up (switched off, blocked, nothing
+    // found …) says so itself; a part that leans on it goes on with what the user's records give and does not wait.
+    for (const part of due) {
+      if (part.status !== "unfinished" || !part.reason?.startsWith("web_")) continue;
+      for (const other of parts) {
+        // A change that needs what the page says still waits for it (no card from a page that was not read).
+        if (!other.dependsOn.includes(part.localId) || other.capabilities.some((capability) => capabilityKind(capability) === "write")) continue;
+        other.dependsOn = other.dependsOn.filter((id) => id !== part.localId);
+        emitTrace({ dependency: part.localId, partId: other.localId, reason: part.reason, type: "web.dependency_released" });
       }
     }
 

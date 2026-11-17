@@ -70,7 +70,7 @@ for (const [name, options] of [["the deployment switch", { enabled: false }], ["
     const message = "查一下 Acme Cloud 官网现在的标准版价格，再告诉我竞品笔记 A 里记的是多少。";
     const { kit, tools } = setup({
       answer: (call) => json({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: handle(call, /(s\d+) — memo/u) }], partId: "p2", text: "笔记 A 记的是每席每月 1200 日元，年付九折，可以谈到 1000。" }] }),
-      understand: () => json({ parts: [part({ dataSources: ["public_web"], localId: "p1", requiredCapabilities: ["web.search"], sourceQuote: "查一下 Acme Cloud 官网现在的标准版价格", webTarget: { qualifiers: ["official", "price"], quote: "Acme Cloud" } }), part({ dataSources: ["orbit_records"], localId: "p2", readFilter: { text: "竞品笔记 A" }, requiredCapabilities: ["memo.read"], sourceQuote: "竞品笔记 A 里记的是多少" })], plainChat: false }),
+      understand: () => json({ parts: [part({ dataSources: ["public_web"], localId: "p1", requiredCapabilities: ["web.search"], sourceQuote: "查一下 Acme Cloud 官网现在的标准版价格", webTarget: { qualifiers: ["official", "price"], quote: "Acme Cloud" } }), part({ dataSources: ["orbit_records"], dependsOn: ["p1"], localId: "p2", readFilter: { text: "竞品笔记 A" }, requiredCapabilities: ["memo.read"], sourceQuote: "竞品笔记 A 里记的是多少" })], plainChat: false }),
     }, options);
     const result = await runAgentGraph(kit.deps, kit.input(message));
     assert.equal(tools.calls.length, 0);
@@ -157,6 +157,31 @@ test("AG09-2 (WEB-003): official price and the user's note in one part — the n
   assert.match(result.text, /发出的检索词：「Acme Cloud 官网 价格」/u);
   assert.deepEqual(result.sourceRefs, ["memo:note:m33"]);
   assert.deepEqual(result.web.queries.map((query) => query.text), ["Acme Cloud 官网 价格"]);
+});
+
+test("AE-SCL-016: \"they\" in a part stands for what the web page of the same message names — the notes are read, not asked about", async () => {
+  const message = "Here is Acme Cloud's pricing page: https://acme-cloud.example.test/pricing. How does the standard plan price compare with the latest quote they gave me?";
+  const world = notesWorld();
+  world.records.push(memo(ACTOR, "note:m50", "Acme Cloud quote: standard plan JPY 1,200 per seat per month.", "2026-11-02T01:00:00.000Z"));
+  const records = recordAccessOf(world);
+  const { kit } = setup({
+    answer: (call) => json({ segments: [
+      { cites: [{ sentenceIds: [1], sourceRef: handle(call, /(w\d+) — public web page/u) }], partId: "p1", text: "The page lists JPY 1,300." },
+      { cites: [{ sentenceIds: [1], sourceRef: handle(call, /(s\d+) — memo[^\n]*\n\s+1\. Acme Cloud quote/u) }], partId: "p2", text: "Their latest quote was JPY 1,200." },
+      { cites: [{ sentenceIds: [1], sourceRef: handle(call, /(s\d+) — memo/u) }], partId: "p3", text: "The list price is JPY 100 higher than the quote." },
+    ] }),
+    understand: () => json({ language: "en", parts: [
+      part({ dataSources: ["public_web"], localId: "p1", requiredCapabilities: ["web.fetch"], sourceQuote: "Here is Acme Cloud's pricing page: https://acme-cloud.example.test/pricing." }),
+      part({ dataSources: ["orbit_records"], localId: "p2", objectClues: [{ entity: "contact", text: "they" }], readFilter: { order: "newest", text: "quote" }, requiredCapabilities: ["memo.read"], sourceQuote: "the latest quote they gave me" }),
+      part({ dataSources: ["orbit_records", "public_web"], dependsOn: ["p1", "p2"], localId: "p3", requiredCapabilities: ["fn.compare"], sourceQuote: "How does the standard plan price compare with the latest quote they gave me?" }),
+    ], plainChat: false }),
+  }, { records });
+  const trace = captureTrace();
+  const result = await runAgentGraph(kit.deps, kit.input(message, { locale: "en" })).finally(() => trace.restore());
+  const debug = trace.events.filter((event) => String(event.type).startsWith("answer.") || event.type === "verify.done" || event.type === "model.card_talk_dropped").map((event) => JSON.stringify(event).slice(0, 400)).join("\n");
+  assert.equal(result.clarifications.length, 0, "not asked who 'they' are");
+  assert.ok(result.sourceRefs.includes("memo:note:m50"), `${debug}\n${result.text}`);
+  assert.match(result.text, /1,200/u);
 });
 
 test("AE-SCL-015: notes compared with a web lookup of the same message are searched by the public name the user typed when their own words find none", async () => {
