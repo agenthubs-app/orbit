@@ -53,8 +53,10 @@ const CARD_TALK = /(确认卡|確認卡|確認カード|confirmation card|卡片
  * here, so this won't be saved", "已经帮你记下了", "保存できません"). What is written is said by code from the
  * frozen card; a model never says it, so such a sentence never contradicts the card it ships with. Sentences about
  * the user's own records ("You saved the draft on Nov 12", "没有记录显示…") are kept.
+ * AG10 run-02 (AE-AMB-012): first-person claims anywhere in the sentence ("这件事我记下了", "帮你记了", "存好了") too — a card
+ * offer or an entry is not a write.
  */
-const SAVE_TALK = /(\b(?:I|I've|I have|I'll|I will|I can't|I cannot|we|Orbit)\b[^.!?\n]{0,30}\b(?:save|saved|store|stored|keep a record|log(?:ged)?|note(?:d)? (?:it|that|this|down))\b|\b(?:can't|cannot|won't|will not|isn't|is not|wasn't|was not|nothing (?:is|was|will be))\b[^.!?\n]{0,20}\b(?:saved|stored|save|store)\b|(?:不能|无法|没法|不会|没办法)(?:帮你)?[^。！？\n]{0,6}(?:保存|存下|记下|存储|存起来)|已经?(?:帮你)?(?:保存|记下|存好|记好)|保存(?:でき|し)(?:ません|ない)|保存しました|記録しました|メモしました|メモしておきました|(?:^|[，,、：:；\s])(?:好的|嗯|收到)?[，,]?(?:我)?(?:已经?)?(?:帮你)?(?:记下了|记住了|记好了|已记录|记录下来了)|(?:メモ|記録)して?おきます|控えておきます|覚えておきます|^\s*(?:(?:ok(?:ay)?|got it|sure|alright)[,.!\s—-]*)?noted\b|\bkeep (?:that|this|it) in mind\b)/iu;
+const SAVE_TALK = /(\b(?:I|I've|I have|I'll|I will|I can't|I cannot|we|Orbit)\b[^.!?\n]{0,30}\b(?:save|saved|store|stored|keep a record|log(?:ged)?|recorded|record (?:it|that|this|the)|note(?:d)? (?:it|that|this|down))\b|\b(?:can't|cannot|won't|will not|isn't|is not|wasn't|was not|nothing (?:is|was|will be))\b[^.!?\n]{0,20}\b(?:saved|stored|save|store)\b|(?:不能|无法|没法|不会|没办法)(?:帮你)?[^。！？\n]{0,6}(?:保存|存下|记下|存储|存起来)|已经?(?:帮你)?(?:保存|记下|存好|记好)|保存(?:でき|し)(?:ません|ない)|保存しました|記録しました|メモしました|メモしておきました|(?:^|[，,、：:；\s])(?:好的|嗯|收到)?[，,]?(?:我)?(?:已经?)?(?:帮你)?(?:记下了|记住了|记好了|已记录|记录下来了|存好了)|(?:我|俺)(?:已经?)?(?:帮你|替你|给你)?(?:记下了|记住了|记好了|记了|存好了|存下了|保存了|记录下来了)|(?:帮你|替你)(?:记了|记下了|记好了|存了|保存了)|(?:メモ|記録)して?おきます|控えておきます|覚えておきます|^\s*(?:(?:ok(?:ay)?|got it|sure|alright)[,.!\s—-]*)?noted\b|\bkeep (?:that|this|it) in mind\b)/iu;
 
 /**
  * AG07 run-03 (AE-CTX-005): a short sentence that only introduces the next one (「お礼の前に一件だけ。」, "One more thing
