@@ -69,6 +69,24 @@ test("AE-FN-009: '更新我和小林的往来' — one card setting the interact
   assert.ok(Object.keys(run.judgeCalls[0].body.questions).every((id) => id.startsWith("interaction_happened")));
 });
 
+test("stability run: the first layer left the write capability out ('更新…往来', deliverable change) — the user's words still make the card", async () => {
+  const message = "用 @11 月 10 日笔记 更新我和小林的往来。";
+  const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "change", objectClues: [{ entity: "memo", referenceId: "r1", text: "@11 月 10 日笔记" }, { entity: "contact", text: "小林" }], requiredCapabilities: ["memo.read", "contact.read", "fn.extractInteractions"], sourceQuote: message }], {
+    extract: { interactions: [{ channel: "phone", contactClue: "小林", dateText: "11 月 10 日", direction: "incoming", kind: "happened", precision: "day", sentenceIds: [1] }] },
+    judge: () => noul(0.95),
+    references: [M32],
+  });
+  assert.equal(cards(run), 1);
+  assert.equal(run.frozen[0].intents[0].capability, "memo.update");
+  // Only reading ("里面有哪些往来") never writes.
+  const read = await runFn("@11 月 10 日笔记 里有哪些往来？", [{ dataSources: ["orbit_records"], deliverable: "list", objectClues: [{ entity: "memo", referenceId: "r1", text: "@11 月 10 日笔记" }], requiredCapabilities: ["memo.read", "fn.extractInteractions"], sourceQuote: "@11 月 10 日笔记 里有哪些往来？" }], {
+    extract: { interactions: [{ channel: "phone", contactClue: "小林", dateText: "11 月 10 日", direction: "incoming", kind: "happened", precision: "day", sentenceIds: [1] }] },
+    judge: () => noul(0.95),
+    references: [M32],
+  });
+  assert.equal(cards(read), 0);
+});
+
 test("a review that is not sure (it does not answer in time): the interaction is only listed, as doubtful — no card", async () => {
   const message = "用 @11 月 10 日笔记 更新我和小林的往来。";
   const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "change", objectClues: [{ entity: "memo", referenceId: "r1", text: "@11 月 10 日笔记" }, { entity: "contact", text: "小林" }], requiredCapabilities: ["memo.read", "fn.extractInteractions", "memo.create"], sourceQuote: message }], {

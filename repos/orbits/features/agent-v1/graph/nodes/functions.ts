@@ -92,6 +92,7 @@ export function rankDomainOf(part: GraphPart, message: string): RankDomain | nul
 
 const INTERACTION_WORDS = /(往来|互动|来往|联系记录|通话记录|来电|やり取り|やりとり|接触|interactions?|contact log)/iu;
 const FOLLOW_UP_ASK = /(答应|承诺|约好|说好|約束|やること|待办|ToDo|TODO|タスク|\bto-?dos?\b|\btasks?\b|跟进事项|要做的事|\bpromise[sd]?\b|\bcommit(?:ted|ments?)?\b|supposed to do|follow[\s-]?ups?)/iu;
+const WRITE_ASK = /(更新|记到|记下|记上|补记|登记|记录到|记进|加到|加进|添加到|放进|建成|update|record|\blog\b|add (?:it |them |these |this )?to|put (?:it |them )?(?:in|on)|追加|記録|登録|入れて)/iu;
 const SUMMARIZE_WORDS = /(整理|总结|归纳|概括|摘要|まとめ|要約|summari[sz]e|sum up|tidy up)/iu;
 const COMPARE_WORDS = /(对比|比较|比一比|比べ|比較|\bcompare\b|\bversus\b|\bvs\.?\b)/iu;
 const GROUP_WORDS = /(分组|分个组|分成|按.{0,6}分类|归类|グループ|分けて|\bgroup\b|\bsplit into\b)/iu;
@@ -134,7 +135,9 @@ export function functionOf(scope: NodeScope, part: GraphPart): FunctionTask | nu
     if (aboutEvents && (part.capabilities.includes("fn.group") || GROUP_WORDS.test(quote))) return { kind: "group" };
     if ((aboutEvents || events >= 2) && events >= 2 && (part.capabilities.includes("fn.compare") || COMPARE_WORDS.test(quote))) return { kind: "compare" };
   }
-  const write = part.route === "propose_write";
+  // AG10 stability run (AE-FN-009): "用这篇笔记更新我和小林的往来" asks for a change in its own words; when the first layer left
+  // the write capability out (deliverable change, no write), the extraction still makes the card — never a write without the words.
+  const write = part.route === "propose_write" || (part.route === "read" && part.plan.deliverable === "change" && WRITE_ASK.test(quote) && !part.plan.negation && !part.plan.hypothesis);
   if (part.route === "read" || write) {
     const interactions = part.capabilities.includes("fn.extractInteractions") || INTERACTION_WORDS.test(quote);
     const followUps = part.capabilities.includes("fn.extractFollowUps") || FOLLOW_UP_ASK.test(quote);
@@ -1078,6 +1081,8 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
     part.reason = null;
     return { budget, repairs: result.repairs };
   }
+  // A write the first layer routed as a read (deliverable change, the words ask for it) goes to the card step like any write.
+  part.route = "propose_write";
   if (intents.length) {
     // The card is frozen by propose (one card per request); what was found is said before it (code's lines).
     run.presetIntents.set(part.localId, intents);

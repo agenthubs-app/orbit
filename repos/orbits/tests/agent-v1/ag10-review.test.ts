@@ -34,6 +34,32 @@ test("dev run 2 (one part for the whole review): 'her current salary expectation
   }
 });
 
+test("stability run: 'when we last actually talked' — 'we' is the person named before it (Priya), never a contact called Wee", async () => {
+  const records = [
+    contact(ACTOR, "contact:priya", "Priya Raman", { organization: "Corvid Robotics" }),
+    contact(ACTOR, "contact:wee", "Daniel Wee", { organization: "Meridian Power Devices" }),
+    memo(ACTOR, "note:lm16", "Called Priya. She can do the on-site on November 24 or November 25.", "2026-11-10T08:00:00.000Z", ["contact:priya"], { interaction: { actualContactIds: ["contact:priya"], channel: "phone", direction: "outgoing", occurredOn: "2026-11-10", precision: "day" } }),
+    memo(ACTOR, "note:wee1", "Brief call with Daniel Wee.", "2026-09-28T08:00:00.000Z", ["contact:wee"], { interaction: { actualContactIds: ["contact:wee"], channel: "phone", direction: "outgoing", occurredOn: "2026-09-28", precision: "day" } }),
+  ];
+  const message = "I'm meeting Priya Raman tomorrow. Give me a quick review: when we last actually talked";
+  let materials = "";
+  const model = deepseekStub((call: ModelCall) => {
+    if (call.node === "understand") return json({ language: "en", parts: [part({ clarity: "statement", localId: "p1", objectClues: [{ entity: "contact", text: "Priya Raman" }], sourceQuote: "I'm meeting Priya Raman tomorrow" }), part({ dataSources: ["orbit_records"], localId: "p2", objectClues: [{ entity: "contact", text: "we" }], readFilter: { order: "newest" }, requiredCapabilities: ["view.recentInteraction", "contact.read"], sourceQuote: "Give me a quick review: when we last actually talked" })], plainChat: false });
+    materials = call.user;
+    const handle = /(s\d+) — memo/u.exec(call.user)?.[1] ?? "s1";
+    return json({ segments: [{ partId: "p1", text: "OK." }, { cites: [{ sentenceIds: [1], sourceRef: handle }], partId: "p2", profile: [], text: "Nov 10, a phone call." }] });
+  });
+  const kit = graphKit(model.fetchImplementation, { now: "2026-11-15T01:00:00.000Z", records: recordAccessOf({ events: [], records }) });
+  const trace = captureTrace();
+  try {
+    await runAgentGraph(kit.deps, kit.input(message, { locale: "en" }));
+    assert.match(materials, /Called Priya/u);
+    assert.doesNotMatch(materials, /Daniel Wee/u);
+  } finally {
+    trace.restore();
+  }
+});
+
 test("'what's still open with her' reads the open to-dos, not a note that once said something still needed doing (AE-SCL-020)", async () => {
   const records = [
     contact(ACTOR, "contact:priya", "Priya Raman", { organization: "Corvid Robotics" }),
