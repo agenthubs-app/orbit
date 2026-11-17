@@ -1,8 +1,10 @@
 # Sprint AG08 — 执行总结（判断模型接入，H）
 
-改了哪些文件看 git diff（`d3805e8fe..68d64e778`），这里不逐文件复述。
+改了哪些文件看 git diff（`d3805e8fe..a628a1c84`），这里不逐文件复述。
 
 ## 结果
+
+**run-02（协调者按做法 A 批准的例外重跑）：最终 SHA `a628a1c84` 上 AG08 门槛代码判定 50/50，AG07～AG03 五个复跑全过；全量 24 失败，与基线逐条相同。待评审（每次运行都已做 judge-pack）。** run-01 的经过保留在下文。
 
 **run-01 已结束，两轮修复用完；最终 SHA `68d64e778` 上 AG08 门槛代码判定 48/50，五个复跑全过。没有交评审，待协调者决定是否开 run-02。**
 
@@ -151,3 +153,35 @@ dev 与 val 上都是零误判；采纳率（dev 上非保守且过门槛）见�
 - trace：`judgment.decided`（每次请求）、`functions.hard_conditions`、`functions.ranked`、`route.intent_review`、`judgment.duplicate`、`answer.unsourced_counts_dropped`、`resolve.own_words`。
 - 回退：不合并，或 revert 合并提交；`ORBIT_AGENT_V1_MODE=off`。去掉密钥则所有判断按不可用（保守）。
 - 需要协调者决定：是否开 run-02（见“结果”开头的两点做法）。留给后续：证据核对四题的样本与启用；`match.level` ja 门槛 0.932 偏高，采纳率 10/22，可在 AG10 加样本后重校。
+
+## run-02（2026-11-17，协调者批准的例外重跑）
+
+协调者的四项决定与处理：
+
+1. **判断超时不重试**，照设计按不可用；规则顺序本身要给出对的结果。没有加重试。
+2. **AE-SCL-014 的粗排**：职位、行业、标签、备注的命中算 2，名字、地区、公司名里的命中算 1（`FIELD_WEIGHT`，`ruleScore` 按字段取最高权重）。测试用 run-01 的原样：判断不可用（请求不返回、到时中止），Daniel Wee（HR Business Partner，Meridian Power Devices）不在前三，前三是 LC17～LC19。权重改回 1 时这个测试不过（`run-02/red-weights.txt`）。没有判断时的回答也写出范围、原本要按的主题、共几位、都没有细看。
+3. **`fault_not_fired` 是运行器的问题**：评测预载在判断请求的出口、联网之前就应答 `low_confidence`（每道题置信度和各级概率都是 0，`source: simulated`），不再等真实返回；`timeout`、`fail_always` 本来就在联网前。测试 `tests/agent-eval/judgment-faults.test.ts`（三种故障都不发真实请求、故障记为已生效）；登记 `eval/CHANGES.md` 2026-11-17 一行。
+4. **判断不可用时逐例跑一遍**：`tests/agent-v1/judgment-unavailable-gate.test.ts`，JDG-001～008 与 SCL-013/014 的判断路径都在判断不可用下跑，代码判定对应的结果（条数、范围内、候选上限、判断次数、保守次数、零卡、一个入口、等用户）全部成立；另有一条证明模拟的 `low_confidence` 答案对三种题型都落到保守结果。
+
+判断不可用时与评审项不一致的地方（用例不改，报协调者）：
+
+- **AE-JDG-001 R1、AE-SCL-014 R1**：“细看了多少位、还有多少位没有细看”——判断不可用时一位也没有细看，回答写成“共 N 位……都没有细看”，没有“细看了 50 位”这个数。
+- **AE-SCL-014 R2**：“说的是在新加坡、细看过的范围内”——不可用时说的是“只按记录字段排”，没有细看过的范围。
+- **AE-SCL-013 R1、AE-JDG-001 R4**：会写“按「…」这个主题挑”，但紧接着说这次没有做主题匹配；评审可能认为不算“按主题挑的”。
+- 其余（JDG-002～008、SCL-013 的 R2、R3）不受影响：JDG-004、005、007 本来就是不可用的情形，JDG-006、008 不可用时走的是同一个保守结果。
+
+提交：`a628a1c84`（粗排权重、预载、两份测试、CHANGES.md）与本 REPORT 更新。impact 是改后跑的（`run-02/impact.txt`）：`contactCandidates`、`writeAnswer` HIGH，`ruleScore`、`funnel` UNKNOWN（文本搜索：只有 `funnel.ts`、`functions.ts` 与测试调用）；detect-changes low、受影响流程 0。
+
+| 运行 | 代码判定 | 真实调用（主模型） | 费用（元） |
+|---|---|---|---|
+| `20261117-192252-a628a1c-AG08-gate-run-02` | 50/50 | 88 | 0.177 |
+| `20261117-192518-a628a1c-AG07-gate-rerun-at-AG08-run-02` | 43/43 | 82 | 0.154 |
+| `20261117-192731-a628a1c-AG06-gate-rerun-at-AG08-run-02` | 47/47 | 95 | 0.186 |
+| `20261117-192941-a628a1c-AG05-gate-rerun-at-AG08-run-02` | 43/43 | 78 | 0.169 |
+| `20261117-193142-a628a1c-AG04-gate-rerun-at-AG08-run-02` | 37/37 | 68 | 0.144 |
+| `20261117-193334-a628a1c-AG03-gate-rerun-at-AG08-run-02` | 39/39 | 75（模拟 3） | 0.142 |
+
+- 每次运行都做了 judge-pack；没有自评。
+- 收口集 445/445，0 skip（本机 Postgres 测试库）；`tsc` 新增 0；全量 8729 例 24 失败，与基线名字逐条相同（`run-02/full-orbits.log`）。
+- run-02 付费：DeepSeek 486 次、Gemini 9 次（16,639 token），约 0.97 元；本 sprint 合计约 7.5 元。
+- 证据：`~/orbit-sprint-evidence/agent-design/sprint-AG08/run-02/`。
