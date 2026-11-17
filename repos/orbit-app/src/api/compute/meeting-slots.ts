@@ -9,6 +9,9 @@
  *   seedMeetingSlots         the first free slot of each of the next days, up to 3
  *                            (only slots confirmed free: availability complete and
  *                            not busy, with the buffer around busy time).
+ *   paintedRanges / paintTap / paintRect / cellsInRanges
+ *                            the week grid's paint rules (R43 D2/D3): cells are
+ *                            30-minute grid cells keyed by startsAt.
  *   sliceMeetingCandidates   painted ranges → non-overlapping candidates of one
  *                            meeting length (R43 D4): sent (≤ max), extra, short.
  *   formatMeetingSlotsText   the paragraph inserted into an e-mail body (ja/zh/en).
@@ -423,6 +426,80 @@ function rangesIntroLine(language: MeetingSlotLanguage, minutes: number, medium:
 function slotSpan(slot: MeetingSlot): [number, number] | null {
   const start = parseTimestamp(slot.startsAt), end = parseTimestamp(slot.endsAt);
   return Number.isFinite(start) && Number.isFinite(end) && end > start ? [start, end] : null;
+}
+
+// ---- painting the week grid (R43 D2/D3) ----
+
+/** Can the cell be painted? allowed or unknown, with a real start (off / busy cannot). */
+export function isCellPaintable(cell: MeetingSlotCell): boolean {
+  return (cell.state === "allowed" || cell.state === "unknown") && cell.startsAt !== null && cell.endsAt !== null;
+}
+
+/** Painted cells → ranges: consecutive painted cells of one day (each ending where the next starts), in time order. */
+export function paintedRanges(days: readonly MeetingSlotGridDay[], painted: ReadonlySet<string>): MeetingSlot[] {
+  const ranges: MeetingSlot[] = [];
+  for (const day of days) {
+    let open: MeetingSlot | null = null;
+    for (const cell of day.cells) {
+      const on = cell.startsAt !== null && cell.endsAt !== null && painted.has(cell.startsAt);
+      if (on && open && open.endsAt === cell.startsAt) { open.endsAt = cell.endsAt!; continue; }
+      if (open) { ranges.push(open); open = null; }
+      if (on) open = { startsAt: cell.startsAt!, endsAt: cell.endsAt! };
+    }
+    if (open) ranges.push(open);
+  }
+  return ranges.sort((a, b) => parseTimestamp(a.startsAt) - parseTimestamp(b.startsAt));
+}
+
+/** The paintable cells covered by ranges (reopening the picker, preselected slots). */
+export function cellsInRanges(days: readonly MeetingSlotGridDay[], ranges: readonly MeetingSlot[]): Set<string> {
+  const spans = ranges.map(slotSpan).filter((span): span is [number, number] => span !== null);
+  const cells = new Set<string>();
+  for (const day of days) for (const cell of day.cells) {
+    if (!isCellPaintable(cell)) continue;
+    const start = parseTimestamp(cell.startsAt!), end = parseTimestamp(cell.endsAt!);
+    if (spans.some(([from, to]) => start >= from && end <= to)) cells.add(cell.startsAt!);
+  }
+  return cells;
+}
+
+/**
+ * A tap (R43 D2) on `days[day].cells[row]`: on an unpainted cell, paint `length` cells
+ * down from it, stopping at the first cell that cannot be painted or at the end of the
+ * day; on a painted cell, erase the whole range it belongs to. A cell that cannot be
+ * painted changes nothing.
+ */
+export function paintTap(days: readonly MeetingSlotGridDay[], painted: ReadonlySet<string>, day: number, row: number, length: number): Set<string> {
+  const next = new Set(painted);
+  const cells = days[day]?.cells ?? [];
+  const cell = cells[row];
+  if (!cell || !isCellPaintable(cell)) return next;
+  if (painted.has(cell.startsAt!)) {
+    for (const range of paintedRanges([days[day]!], painted)) {
+      if (parseTimestamp(range.startsAt) > parseTimestamp(cell.startsAt!) || parseTimestamp(range.endsAt) <= parseTimestamp(cell.startsAt!)) continue;
+      for (const key of cellsInRanges([days[day]!], [range])) next.delete(key);
+    }
+    return next;
+  }
+  for (let index = row; index < cells.length && index < row + Math.max(1, length); index++) {
+    const target = cells[index]!;
+    if (!isCellPaintable(target)) break;
+    next.add(target.startsAt!);
+  }
+  return next;
+}
+
+/** The paintable cells of the rectangle with corners [day, row] a and b (R43 D3; may span days). */
+export function paintRect(days: readonly MeetingSlotGridDay[], a: readonly [number, number], b: readonly [number, number]): string[] {
+  const cells: string[] = [];
+  for (let day = Math.min(a[0], b[0]); day <= Math.max(a[0], b[0]); day++) {
+    const column = days[day]?.cells ?? [];
+    for (let row = Math.min(a[1], b[1]); row <= Math.max(a[1], b[1]); row++) {
+      const cell = column[row];
+      if (cell && isCellPaintable(cell)) cells.push(cell.startsAt!);
+    }
+  }
+  return cells;
 }
 
 export interface MeetingCandidateSlices {

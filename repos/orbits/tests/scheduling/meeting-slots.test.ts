@@ -7,11 +7,15 @@ import {
   DEFAULT_SCHEDULING_AVAILABILITY,
   addLocalDays,
   availabilityGrid,
+  cellsInRanges,
   formatMeetingRangesText,
   formatMeetingSlotsText,
   isSlotAllowed,
   localDateOf,
   localWeekday,
+  paintRect,
+  paintTap,
+  paintedRanges,
   replaceMeetingSlotsText,
   seedMeetingSlots,
   sliceMeetingCandidates,
@@ -338,4 +342,30 @@ test("SC-R43-01 replaceMeetingSlotsText finds and replaces both the old slot par
   const again = formatMeetingRangesText(designRanges.slice(0, 1), { language: "ja", timeZone: "Asia/Tokyo", durationMinutes: 30 });
   assert.equal(replaceMeetingSlotsText(withNew, again), withNew.replace(newBlock, again));
   assert.equal(replaceMeetingSlotsText(withNew, ""), `追記です。\n${template}`);
+});
+
+test("SC-R43-01 paint rules: tap paints one meeting length (stops at busy / end of day), tap on paint erases its range, rect skips busy, ranges per day", () => {
+  const settings: SchedulingAvailabilitySettings = { ...D, start: "09:00", end: "12:00", lunch: null, durationMinutes: 60 };
+  const availability: MeetingBusyAvailability = { from: "2030-04-02T00:00:00Z", to: "2030-04-04T00:00:00Z", complete: true, items: [{ startsAt: "2030-04-02T10:00:00Z", endsAt: "2030-04-02T10:30:00Z" }] };
+  const grid = availabilityGrid(settings, { timeZone: "UTC", now: Date.parse("2030-04-01T00:00:00Z"), days: ["2030-04-02", "2030-04-03"], availability, durationMinutes: 30 });
+  const key = (day: number, row: number) => grid.days[day]!.cells[row]!.startsAt!;
+  assert.deepEqual(grid.days[0]!.cells.map((cell) => cell.state), ["allowed", "allowed", "busy", "allowed", "allowed", "allowed"]);
+  // Tap 09:30 with 2 cells → stops before the busy 10:00 (a short range).
+  let painted = paintTap(grid.days, new Set(), 0, 1, 2);
+  assert.deepEqual(paintedRanges(grid.days, painted), [span("2030-04-02T09:30", "2030-04-02T10:00")]);
+  // Tap 11:30 with 3 cells → stops at the end of the day.
+  painted = paintTap(grid.days, painted, 0, 5, 3);
+  assert.deepEqual(paintedRanges(grid.days, painted).map((range) => range.endsAt), ["2030-04-02T10:00:00.000Z", "2030-04-02T12:00:00.000Z"]);
+  // A busy cell does nothing; a painted cell erases its whole range.
+  assert.deepEqual(paintTap(grid.days, painted, 0, 2, 2), painted);
+  painted = paintTap(grid.days, paintTap(grid.days, painted, 0, 4, 1), 0, 5, 2);
+  assert.deepEqual(paintedRanges(grid.days, painted), [span("2030-04-02T09:30", "2030-04-02T10:00")], "11:00–12:00 joined one range and was erased together");
+  // A rectangle over two days skips the busy cell, so the first day splits into two ranges.
+  const rect = paintRect(grid.days, [1, 3], [0, 0]);
+  assert.equal(rect.length, 7, "8 cells minus the busy one");
+  assert.ok(!rect.includes(key(0, 2)));
+  const all = new Set([...painted, ...rect]);
+  assert.deepEqual(paintedRanges(grid.days, all), [span("2030-04-02T09:00", "2030-04-02T10:00"), span("2030-04-02T10:30", "2030-04-02T11:00"), span("2030-04-03T09:00", "2030-04-03T11:00")]);
+  // Ranges back to cells (reopening): only cells that can be painted.
+  assert.deepEqual([...cellsInRanges(grid.days, [span("2030-04-02T09:00", "2030-04-02T11:00")])].sort(), [key(0, 0), key(0, 1), key(0, 3)]);
 });
