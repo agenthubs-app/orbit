@@ -1,24 +1,34 @@
-// contact-reach R42 ④⑦ 候補の時間を選ぶ (App). The same picker as Web R41's insert mode, drawn as a list by day for the
-// phone: the cells follow the person's 可約時間 (R40 availabilityGrid — "off" cells are left out, busy ones are shown but
-// cannot be picked, unknown ones can be picked); on open the next 3 confirmed-free slots are preselected (seedMeetingSlots,
-// none when the calendars were not read completely); 「N 件を挿入」 hands the selection back without any write.
+// contact-reach R42 ④⑦ / R43 ⑧ 候補の時間を選ぶ (App). The same picker as Web's insert mode: one week of 30-minute cells
+// (R40 availabilityGrid at 30 minutes: off / past cells are dashed, busy is shaded and struck, unknown can be painted),
+// ‹ › moves a week up to today + 14 days. The shared paint rules (meeting-slots paintTap / paintRect): a tap paints one
+// meeting length, a tap on paint erases its range, press-and-drag paints (or, started on paint, erases) a rectangle that
+// may span days. The grid owns the touch from the first press (PanResponder; the sheet stops scrolling meanwhile).
+// Painted ranges are cut into ≤ 5 candidates for a proposal (sliceMeetingCandidates); an e-mail draft (minimum 1) gets
+// the ranges themselves. On open the next 3 confirmed-free slots are painted (seedMeetingSlots); 「挿入」 hands the
+// selection back without any write.
 import { useRouter, type Href } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { PanResponder, Platform, StyleSheet, View, type GestureResponderEvent, type LayoutChangeEvent, type PanResponderGestureState } from "react-native";
 
 import type { MeetingDetailsMedium } from "../../api/contract/appointments";
 import type { SchedulingAvailabilitySettings } from "../../api/contract/scheduling-availability";
-import { addLocalDays, availabilityGrid, isSlotAllowed, localDateOf, localWeekday, seedMeetingSlots, type MeetingSlot, type MeetingSlotCell } from "../../api/compute/meeting-slots";
-import { BottomSheet, Button, Segmented, Skeleton, TextField, UiPressable, UiText } from "../../components/ui";
+import {
+  addLocalDays, availabilityGrid, cellsInRanges, isCellPaintable, localDateOf, localWeekday, paintRect, paintTap, paintedRanges, seedMeetingSlots, sliceMeetingCandidates,
+  type MeetingSlot, type MeetingSlotGridDay,
+} from "../../api/compute/meeting-slots";
+import { BottomSheet, Button, IconButton, Segmented, Skeleton, TextField, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
-import { dayLabel, rulesSummary, slotLabel } from "./meeting-slot-text";
+import { dayLabel, rulesSummary, slotLabel, wallClock, weekdayLabel } from "./meeting-slot-text";
 import { SCHEDULING_SETTINGS_HREF, effectiveTimeZone, loadMeetingBusy, schedulingRulesFor, type MeetingBusyRead } from "./scheduling-availability-client";
 
 export type MeetingFormat = MeetingDetailsMedium["kind"];
 export interface MeetingSlotSelection {
+  /** The candidates sent with a proposal (≤ 5, in time order). */
   slots: MeetingSlot[];
+  /** R43: the painted ranges (time order, short ones included so a reopen draws them again). Older kept drafts have none. */
+  ranges?: MeetingSlot[];
   durationMinutes: number;
   format: MeetingFormat;
   /** What was typed under 会議リンク / 場所 / 電話 (may be empty). */
@@ -32,7 +42,7 @@ export interface MeetingSlotPickerSheetProps {
   open: boolean;
   onClose: () => void;
   onInsert: (selection: MeetingSlotSelection) => void;
-  /** 3 for an Orbit proposal (the server takes 3–5), 1 for an e-mail draft. */
+  /** 3 for an Orbit proposal (the server takes 3–5); 1 for an e-mail draft, which gets the ranges as text. */
   minimum?: 1 | 3;
   /** In person needs a place for an Orbit proposal (the appointment requires it). */
   requirePlace?: boolean;
@@ -44,6 +54,12 @@ export interface MeetingSlotPickerSheetProps {
 const MAX = 5;
 const DURATIONS = [30, 60, 90] as const;
 const HORIZON_DAYS = 14;
+const CELL_MINUTES = 30;
+const MINUTE = 60_000;
+/** Row height and gap (pt): 18 rows of 09:00–18:00 fit on one screen (design ⑧). */
+const ROW = 20;
+const GAP = 3;
+const TIME_COLUMN = 38;
 
 /** The medium sent with a proposal (video links must be https; a Meet link is marked google_meet). null = invalid link. */
 export function mediumOf(format: MeetingFormat, place: string): MeetingDetailsMedium | null {
@@ -58,25 +74,42 @@ export function mediumOf(format: MeetingFormat, place: string): MeetingDetailsMe
   } catch { return null; }
 }
 
+/** Monday of the week that holds `date`. */
+function weekStart(date: string): string {
+  const order = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+  const weekday = localWeekday(date);
+  return addLocalDays(date, -(weekday ? order.indexOf(weekday) : 0)) ?? date;
+}
+
+const spanOf = (slot: MeetingSlot) => Date.parse(slot.endsAt) - Date.parse(slot.startsAt);
+
 export function MeetingSlotPickerSheet(props: MeetingSlotPickerSheetProps) {
   if (!props.open) return null;
   return <PickerSession {...props} />;
 }
+
+type Drag = { anchor: [number, number]; current: [number, number]; erase: boolean; moved: boolean };
 
 function PickerSession({ onClose, onInsert, minimum = 3, requirePlace = false, initial = null, now: clock = Date.now }: MeetingSlotPickerSheetProps) {
   const { t, language } = useOrbitLocale();
   const { styles } = useStyles();
   const router = useRouter();
   const client = useOrbitApiClient();
+  const email = minimum === 1;
   const [rules, setRules] = useState<SchedulingAvailabilitySettings | null>(null);
   const [zone, setZone] = useState<string | null>(null);
   // undefined: still reading; null: could not be read (every allowed cell is then unknown).
   const [busy, setBusy] = useState<MeetingBusyRead | null | undefined>(undefined);
-  const [slots, setSlots] = useState<MeetingSlot[]>(() => initial?.slots.map((slot) => ({ ...slot })) ?? []);
+  // The ranges to paint once the grid is known: the reopened selection, else the preselected slots.
+  const [start, setStart] = useState<MeetingSlot[] | null>(() => initial ? (initial.ranges ?? initial.slots).map((slot) => ({ ...slot })) : null);
+  const [painted, setPainted] = useState<Set<string> | null>(null);
   const [duration, setDuration] = useState<number>(initial?.durationMinutes ?? 60);
   const [format, setFormat] = useState<MeetingFormat>(initial?.format ?? "video");
   const [place, setPlace] = useState(initial?.place ?? "");
+  const [week, setWeek] = useState(0);
   const [seeded, setSeeded] = useState(false);
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const [gridWidth, setGridWidth] = useState(0);
   const started = useRef(clock());
 
   useEffect(() => {
@@ -90,9 +123,9 @@ function PickerSession({ onClose, onInsert, minimum = 3, requirePlace = false, i
       const read = await loadMeetingBusy(client, resolved, clock(), language, controller.signal).catch(() => null);
       if (controller.signal.aborted) return;
       setBusy(read);
-      if (!initial && read) {
-        const seed = seedMeetingSlots(settings, { timeZone: resolved, now: clock(), availability: read, durationMinutes: settings.durationMinutes });
-        if (seed.length) { setSlots(seed); setSeeded(true); }
+      if (!initial) {
+        const seed = read ? seedMeetingSlots(settings, { timeZone: resolved, now: clock(), availability: read, durationMinutes: settings.durationMinutes }) : [];
+        setStart(seed); setSeeded(seed.length > 0);
       }
     })();
     return () => controller.abort();
@@ -101,73 +134,127 @@ function PickerSession({ onClose, onInsert, minimum = 3, requirePlace = false, i
   }, []);
 
   const today = zone ? localDateOf(started.current, zone) : null;
-  const days = useMemo(() => {
-    if (!today || !rules) return [];
+  const firstMonday = today ? weekStart(today) : null;
+  const lastDay = today ? addLocalDays(today, HORIZON_DAYS) : null;
+  // Every day that can be shown (this week's Monday up to today + 14), one grid of 30-minute cells.
+  const allDays = useMemo(() => {
+    if (!firstMonday || !rules || !lastDay) return [];
     const weekdays = new Set(rules.weekdays);
-    return Array.from({ length: HORIZON_DAYS + 1 }, (_, offset) => addLocalDays(today, offset)!).filter((date) => weekdays.has(localWeekday(date)!));
-  }, [today, rules]);
-  const grid = useMemo(() => rules && zone ? availabilityGrid(rules, { timeZone: zone, now: clock(), days, availability: busy ?? null, durationMinutes: duration }) : null,
+    const days: string[] = [];
+    for (let date: string | null = firstMonday; date && date <= lastDay; date = addLocalDays(date, 1)) if (weekdays.has(localWeekday(date)!)) days.push(date);
+    return days;
+  }, [firstMonday, rules, lastDay]);
+  const grid = useMemo(() => rules && zone && busy !== undefined ? availabilityGrid(rules, { timeZone: zone, now: clock(), days: allDays, availability: busy, durationMinutes: CELL_MINUTES }) : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rules, zone, days, busy, duration]);
+    [rules, zone, allDays, busy]);
+  useEffect(() => {
+    if (grid && start && !painted) setPainted(cellsInRanges(grid.days, start));
+  }, [grid, start, painted]);
+
+  const shownMonday = firstMonday ? addLocalDays(firstMonday, week * 7) : null;
+  const weekEnd = shownMonday ? addLocalDays(shownMonday, 6) : null;
+  const weekDays = useMemo<MeetingSlotGridDay[]>(() => grid && shownMonday && weekEnd ? grid.days.filter((day) => day.date >= shownMonday && day.date <= weekEnd) : [], [grid, shownMonday, weekEnd]);
+  const cellsPerMeeting = Math.max(1, Math.round(duration / CELL_MINUTES));
+  const rows = grid?.rows ?? [];
+
+  const current = useMemo(() => painted ?? new Set<string>(), [painted]);
+  const ranges = useMemo(() => grid ? paintedRanges(grid.days, current) : [], [grid, current]);
+  const slices = useMemo(() => sliceMeetingCandidates(ranges, duration, MAX), [ranges, duration]);
+  const longRanges = ranges.filter((range) => spanOf(range) >= duration * MINUTE);
+  const shortCount = ranges.length - longRanges.length;
+  const marks = useMemo(() => {
+    const number = new Map<string, number>();
+    if (!email) [...slices.sent, ...slices.extra].forEach((slot, index) => number.set(slot.startsAt, index + 1));
+    return {
+      number,
+      extra: grid && !email ? cellsInRanges(grid.days, slices.extra) : new Set<string>(),
+      short: grid ? cellsInRanges(grid.days, slices.short) : new Set<string>(),
+      starts: new Set(ranges.map((range) => range.startsAt)),
+      ends: new Set(ranges.map((range) => range.endsAt)),
+    };
+  }, [grid, slices, ranges, email]);
+  const preview = useMemo(() => {
+    if (!drag) return null;
+    const cells = drag.moved ? paintRect(weekDays, drag.anchor, drag.current) : [weekDays[drag.anchor[0]]?.cells[drag.anchor[1]]?.startsAt ?? ""];
+    return { cells: new Set(cells), erase: drag.erase };
+  }, [drag, weekDays]);
 
   const medium = mediumOf(format, place);
   const placeMissing = format === "in_person" && requirePlace && !place.trim();
   const linkInvalid = format === "video" && medium === null;
-  const countOk = slots.length >= minimum && slots.length <= MAX;
-  const canInsert = Boolean(rules && zone && countOk && medium && !placeMissing);
-  const insert = () => { if (canInsert && zone && medium) onInsert({ slots: [...slots].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)), durationMinutes: duration, format, place: place.trim(), medium, timeZone: zone }); };
-  const toggle = (slot: MeetingSlot) => {
-    setSeeded(false);
-    setSlots((current) => {
-      const index = current.findIndex((item) => Date.parse(item.startsAt) === Date.parse(slot.startsAt));
-      if (index >= 0) return current.filter((_, position) => position !== index);
-      if (current.length >= MAX) return current;
-      return [...current, slot].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
-    });
+  const count = email ? longRanges.length : slices.sent.length;
+  const countOk = count >= minimum;
+  const canInsert = Boolean(grid && painted && zone && countOk && medium && !placeMissing);
+  const insert = () => { if (canInsert && zone && medium) onInsert({ slots: slices.sent, ranges, durationMinutes: duration, format, place: place.trim(), medium, timeZone: zone }); };
+
+  // ---- the paint gesture: the grid is the touch target (its cells do not take touches), positions map to cells ----
+  const latest = useRef({ weekDays, current, cellsPerMeeting, gridWidth, drag });
+  latest.current = { weekDays, current, cellsPerMeeting, gridWidth, drag };
+  const origin = useRef<{ x: number; y: number } | null>(null);
+  const cellAt = (x: number, y: number): [number, number] | null => {
+    const { weekDays: days, gridWidth: width } = latest.current;
+    const rowCount = days[0]?.cells.length ?? 0;
+    if (!days.length || !rowCount || width <= 0) return null;
+    const column = Math.floor(x / ((width + GAP) / days.length)), row = Math.floor(y / (ROW + GAP));
+    return [Math.min(days.length - 1, Math.max(0, column)), Math.min(rowCount - 1, Math.max(0, row))];
   };
-  const changeDuration = (minutes: number) => {
-    setDuration(minutes); setSeeded(false);
-    setSlots((current) => current.map((slot) => ({ startsAt: slot.startsAt, endsAt: new Date(Date.parse(slot.startsAt) + minutes * 60_000).toISOString() }))
-      .filter((slot) => !rules || !zone || isSlotAllowed(rules, slot, { timeZone: zone, now: clock() })));
-  };
-  const ordinal = (startsAt: string | null) => startsAt ? slots.findIndex((slot) => Date.parse(slot.startsAt) === Date.parse(startsAt)) : -1;
-  const collides = (cell: MeetingSlot) => slots.some((slot) => Date.parse(slot.startsAt) !== Date.parse(cell.startsAt) && Date.parse(slot.startsAt) < Date.parse(cell.endsAt) && Date.parse(slot.endsAt) > Date.parse(cell.startsAt));
-  const reading = !grid || busy === undefined;
+  const commit = (next: Set<string>) => { setSeeded(false); setPainted(next); };
+  const responder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderTerminationRequest: () => false,
+    onShouldBlockNativeResponder: () => true,
+    onPanResponderGrant: (event: GestureResponderEvent) => {
+      const x = event.nativeEvent.locationX, y = event.nativeEvent.locationY;
+      const at = cellAt(x, y);
+      const cell = at ? latest.current.weekDays[at[0]]?.cells[at[1]] : undefined;
+      if (!at || !cell || !isCellPaintable(cell)) { origin.current = null; return; }
+      origin.current = { x, y };
+      setDrag({ anchor: at, current: at, erase: latest.current.current.has(cell.startsAt!), moved: false });
+    },
+    onPanResponderMove: (_event: GestureResponderEvent, gesture: PanResponderGestureState) => {
+      const from = origin.current, active = latest.current.drag;
+      if (!from || !active) return;
+      const at = cellAt(from.x + gesture.dx, from.y + gesture.dy);
+      if (!at || (at[0] === active.current[0] && at[1] === active.current[1])) return;
+      setDrag({ ...active, current: at, moved: true });
+    },
+    onPanResponderRelease: () => {
+      const { drag: active, weekDays: days, current: on, cellsPerMeeting: length } = latest.current;
+      origin.current = null;
+      setDrag(null);
+      if (!active) return;
+      if (!active.moved) { commit(paintTap(days, on, active.anchor[0], active.anchor[1], length)); return; }
+      const next = new Set(on);
+      for (const key of paintRect(days, active.anchor, active.current)) { if (active.erase) next.delete(key); else next.add(key); }
+      commit(next);
+    },
+    onPanResponderTerminate: () => { origin.current = null; setDrag(null); },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), []);
+  const tapCell = (day: number, row: number) => commit(paintTap(weekDays, current, day, row, cellsPerMeeting));
+
+  const reading = !grid || !painted;
   // What the calendar read allows, and (separately) what is still missing before 挿入.
-  const hint = reading ? "" : busy === null ? t("calendar.pick.loadFailed") : !busy.complete ? t("calendar.pick.hintUnverified") : busy.orbitOnly ? t("calendar.pick.hintOrbitOnly") : seeded ? t("calendar.pick.hintSeeded") : "";
-  const countHint = !reading && !countOk && minimum === 3 ? t("calendar.pick.needThree") : "";
+  const hint = reading ? "" : !busy ? t("calendar.pick.loadFailed") : !busy.complete ? t("calendar.pick.hintUnverified") : busy.orbitOnly ? t("calendar.pick.hintOrbitOnly") : seeded ? t("calendar.pick.hintSeeded") : "";
   const summary = rules ? rulesSummary(rules, t) : null;
   const placeLabel = format === "in_person" ? (requirePlace ? t("calendar.pick.place") : t("calendar.pick.optional", { label: t("calendar.pick.place") }))
     : t("calendar.pick.optional", { label: t(format === "video" ? "calendar.pick.videoUrl" : "calendar.pick.phoneHint") });
   const stateLabel = { allowed: t("calendar.pick.open"), busy: t("calendar.pick.busy"), off: t("calendar.pick.off"), unknown: t("calendar.pick.unknown") } as const;
-  const shownDays = grid ? grid.days.filter((day) => day.cells.some((cell) => cell.state !== "off")) : [];
-  const anyUnknown = shownDays.some((day) => day.cells.some((cell) => cell.state === "unknown"));
-
-  const cellView = (date: string, cell: MeetingSlotCell) => {
-    if (cell.state === "off" || !cell.startsAt || !cell.endsAt) return null;
-    const slot = { startsAt: cell.startsAt, endsAt: cell.endsAt };
-    const index = ordinal(cell.startsAt);
-    const pickable = cell.state === "allowed" || cell.state === "unknown";
-    const disabled = index < 0 && (!pickable || slots.length >= MAX || collides(slot));
-    return (
-      <UiPressable key={cell.startsAt} accessibilityRole="button" accessibilityState={{ selected: index >= 0, disabled }} aria-selected={index >= 0} disabled={disabled}
-        accessibilityLabel={`${dayLabel(date, t)} ${cell.time} · ${index >= 0 ? t("calendar.pick.picked") : stateLabel[cell.state]}`}
-        onPress={() => toggle(slot)} testID={`slot-cell-${cell.startsAt}`}
-        style={[styles.cell, cell.state === "busy" && styles.cellBusy, cell.state === "unknown" && styles.cellUnknown, index >= 0 && styles.cellPicked, disabled && cell.state !== "busy" && styles.cellDisabled]}>
-        <UiText style={[styles.cellText, cell.state === "busy" && styles.cellTextBusy, index >= 0 && styles.cellTextPicked]}>{index >= 0 ? `${index + 1} · ${cell.time}` : cell.time}</UiText>
-      </UiPressable>
-    );
+  const anyUnknown = weekDays.some((day) => day.cells.some((cell) => cell.state === "unknown"));
+  const candidateLabel = (slot: MeetingSlot) => {
+    const at = zone ? wallClock(slot.startsAt, zone) : null;
+    const weekday = at ? localWeekday(at.date) : null;
+    return at && weekday ? `${weekdayLabel(weekday, t)} ${at.time}` : "";
   };
 
   return (
-    <BottomSheet visible onClose={onClose} accessibilityLabel={t("calendar.pick.title")}>
+    <BottomSheet visible onClose={onClose} accessibilityLabel={t("calendar.pick.title")} scrollEnabled={!drag}>
       <View style={styles.body} testID="slot-picker">
         <View style={styles.titleRow}>
           <UiText accessibilityRole="header" style={styles.title}>{t("calendar.pick.title")}</UiText>
-          <Button size="sm" variant="primary" label={t("calendar.pick.insert", { count: slots.length })} disabled={!canInsert} onPress={insert} />
+          <Button size="sm" variant="primary" label={email ? t("calendar.pick.insertRanges", { count }) : t("calendar.pick.insert", { count })} disabled={!canInsert} onPress={insert} />
         </View>
-        {hint ? <UiText style={styles.hint} testID="slot-hint">{hint}</UiText> : null}
-        {countHint ? <UiText style={styles.hint} testID="slot-count-hint">{countHint}</UiText> : null}
         {summary ? (
           <UiPressable accessibilityRole="link" accessibilityLabel={`${t("calendar.pick.rules", summary)} ${t("calendar.pick.rulesEdit")}`} style={styles.rules} testID="slot-rules"
             onPress={() => { onClose(); router.push(SCHEDULING_SETTINGS_HREF as Href); }}>
@@ -176,7 +263,7 @@ function PickerSession({ onClose, onInsert, minimum = 3, requirePlace = false, i
         ) : null}
         <View style={styles.field}>
           <UiText style={styles.label}>{t("calendar.pick.duration")}</UiText>
-          <Segmented accessibilityLabel={t("calendar.pick.duration")} value={String(duration)} onChange={(value) => changeDuration(Number(value))}
+          <Segmented accessibilityLabel={t("calendar.pick.duration")} value={String(duration)} onChange={(value) => { setDuration(Number(value)); setSeeded(false); }}
             segments={[...new Set<number>([...DURATIONS, duration])].map((value) => ({ key: String(value), label: t("calendar.pick.minutes", { minutes: value }) }))} />
         </View>
         <View style={styles.field}>
@@ -188,26 +275,85 @@ function PickerSession({ onClose, onInsert, minimum = 3, requirePlace = false, i
           autoCapitalize="none" {...(format === "video" ? { placeholder: "https://", keyboardType: "url" as const } : format === "phone" ? { keyboardType: "phone-pad" as const } : {})}
           {...(linkInvalid ? { error: t("calendar.pick.linkInvalid") } : {})} />
         {placeMissing ? <UiText style={styles.hint}>{t("calendar.pick.placeRequired")}</UiText> : null}
+        {hint ? <UiText style={styles.hint} testID="slot-hint">{hint}</UiText> : null}
         {reading ? <Skeleton lines={5} /> : (
-          <>
-            <View style={styles.legend}>
-              <View style={styles.legendItem}><View style={[styles.cell, styles.swatch]} /><UiText style={styles.legendText}>{t("calendar.pick.open")}</UiText></View>
-              <View style={styles.legendItem}><View style={[styles.cellBusy, styles.swatch, styles.swatchBusy]}><View style={styles.swatchStrike} /></View><UiText style={styles.legendText}>{t("calendar.pick.busy")}</UiText></View>
-              {anyUnknown ? <View style={styles.legendItem}><View style={[styles.cellUnknown, styles.swatch]} /><UiText style={styles.legendText}>{t("calendar.pick.unknown")}</UiText></View> : null}
-              <View style={styles.legendItem}><View style={[styles.cellPicked, styles.swatch]} /><UiText style={styles.legendText}>{t("calendar.pick.picked")}</UiText></View>
+          <View style={styles.week}>
+            <View style={styles.weekBar}>
+              <IconButton icon="left" size={34} soft accessibilityLabel={t("calendar.pick.prevWeek")} disabled={week === 0} onPress={() => setWeek((value) => value - 1)} />
+              <UiText style={styles.weekLabel} testID="slot-week">{shownMonday && weekEnd ? `${dayLabel(shownMonday, t)} – ${dayLabel(weekEnd, t)}` : ""}</UiText>
+              <IconButton icon="right" size={34} soft accessibilityLabel={t("calendar.pick.nextWeek")} disabled={!weekEnd || !lastDay || weekEnd >= lastDay} onPress={() => setWeek((value) => value + 1)} />
             </View>
-            {shownDays.map((day) => (
-              <View key={day.date} style={styles.day} testID={`slot-day-${day.date}`}>
-                <UiText style={styles.dayHead}>{dayLabel(day.date, t)}</UiText>
-                <View style={styles.cells}>{day.cells.map((cell) => cellView(day.date, cell))}</View>
+            <View style={styles.headRow}>
+              <View style={styles.timeColumn} />
+              {weekDays.map((day) => {
+                const weekday = localWeekday(day.date);
+                return (
+                  <View key={day.date} style={styles.dayHead}>
+                    <UiText style={styles.dayHeadDay}>{weekday ? weekdayLabel(weekday, t) : ""}</UiText>
+                    <UiText style={[styles.dayHeadDate, day.date === today && styles.today]}>{`${Number(day.date.slice(5, 7))}/${Number(day.date.slice(8, 10))}${day.date === today ? ` ${t("calendar.pick.today")}` : ""}`}</UiText>
+                  </View>
+                );
+              })}
+            </View>
+            <View style={styles.gridRow}>
+              <View style={styles.timeColumn} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                {rows.map((time, row) => <UiText key={time} style={[styles.time, row % 2 === 1 && styles.timeHidden]}>{time}</UiText>)}
               </View>
-            ))}
-            {slots.length ? (
-              <View style={styles.chosen} accessibilityLabel={t("calendar.pick.picked")}>
-                {slots.map((slot, index) => <UiText key={slot.startsAt} style={styles.chosenText}>{`${index + 1}. ${zone ? slotLabel(slot, zone, t) : ""}`}</UiText>)}
+              <View style={styles.grid} pointerEvents="box-only" testID="slot-grid" onLayout={(event: LayoutChangeEvent) => setGridWidth(event.nativeEvent.layout.width)} {...responder.panHandlers}>
+                {weekDays.map((day, dayIndex) => (
+                  <View key={day.date} style={styles.column} testID={`slot-day-${day.date}`}>
+                    {day.cells.map((cell, row) => {
+                      const key = cell.startsAt ?? "";
+                      const paintable = isCellPaintable(cell);
+                      const on = paintable && current.has(key);
+                      const top = on && marks.starts.has(key), bottom = on && Boolean(cell.endsAt && marks.ends.has(cell.endsAt));
+                      const extra = on && marks.extra.has(key), short = on && marks.short.has(key);
+                      const n = on ? marks.number.get(key) : undefined;
+                      const previewing = Boolean(preview && key && preview.cells.has(key));
+                      return (
+                        <View key={`${day.date}:${cell.time}`} testID={key ? `slot-cell-${key}` : undefined} accessible accessibilityRole="button"
+                          accessibilityLabel={`${dayLabel(day.date, t)} ${cell.time} · ${on ? t("calendar.pick.picked") : stateLabel[cell.state]}`}
+                          accessibilityState={{ selected: on, disabled: !paintable }} aria-selected={on} aria-disabled={!paintable} accessibilityActions={paintable ? [{ name: "activate" }] : []}
+                          onAccessibilityAction={() => { if (paintable) tapCell(dayIndex, row); }}
+                          {...(Platform.OS === "web" ? { dataSet: { slotState: cell.state, ...(on ? { slotOn: "" } : {}), ...(n !== undefined ? { slotN: String(n) } : {}), ...(extra ? { slotExtra: "" } : {}), ...(short ? { slotShort: "" } : {}) } } : {})}
+                          style={[styles.cell, row % 2 === 0 && styles.cellHour, cell.state === "busy" && styles.cellBusy, cell.state === "unknown" && styles.cellUnknown, cell.state === "off" && styles.cellOff,
+                            on && styles.cellOn, on && !bottom && styles.cellJoin, top && styles.cellTop, bottom && styles.cellBottom, extra && styles.cellExtra, short && styles.cellShort,
+                            previewing && (preview!.erase ? styles.cellPreviewErase : styles.cellPreview)]}>
+                          {cell.state === "busy" ? <View style={styles.strike} /> : null}
+                          {n !== undefined && !top ? <View style={styles.cut} /> : null}
+                          {n !== undefined ? <UiText style={[styles.n, (extra || short) && styles.nLight]}>{String(n)}</UiText> : null}
+                        </View>
+                      );
+                    })}
+                  </View>
+                ))}
               </View>
-            ) : null}
-          </>
+            </View>
+            <View style={styles.legend}>
+              <View style={styles.legendItem}><View style={[styles.swatch, styles.swOpen]} /><UiText style={styles.legendText}>{t("calendar.pick.open")}</UiText></View>
+              <View style={styles.legendItem}><View style={[styles.swatch, styles.cellBusy]}><View style={styles.strike} /></View><UiText style={styles.legendText}>{t("calendar.pick.busy")}</UiText></View>
+              <View style={styles.legendItem}><View style={[styles.swatch, styles.cellOff]} /><UiText style={styles.legendText}>{t("calendar.pick.off")}</UiText></View>
+              {anyUnknown ? <View style={styles.legendItem}><View style={[styles.swatch, styles.cellUnknown]} /><UiText style={styles.legendText}>{t("calendar.pick.unknown")}</UiText></View> : null}
+              <View style={styles.legendItem}><View style={[styles.swatch, styles.cellOn]} /><UiText style={styles.legendText}>{t("calendar.pick.picked")}</UiText></View>
+              {email ? null : <View style={styles.legendItem}><View style={[styles.swatch, styles.cellExtra]} /><UiText style={styles.legendText}>{t("calendar.pick.legendExtra", { max: MAX })}</UiText></View>}
+            </View>
+            <View style={styles.out} testID="slot-summary" accessibilityLiveRegion="polite">
+              {email ? (
+                <>
+                  <UiText style={styles.outHead}>{t("calendar.pick.summaryEmail")}</UiText>
+                  {longRanges.map((range) => <UiText key={range.startsAt} style={styles.outText}>{zone ? slotLabel(range, zone, t) : ""}</UiText>)}
+                </>
+              ) : (
+                <UiText style={styles.outText}>
+                  <UiText style={styles.outHead}>{t("calendar.pick.summary", { count, minutes: duration })}</UiText>
+                  {slices.sent.map((slot, index) => `　${index + 1} ${candidateLabel(slot)}`).join("")}
+                </UiText>
+              )}
+              {!email && count < minimum ? <UiText style={styles.warn} testID="slot-count-hint">{t("calendar.pick.needThree", { count: minimum })}</UiText> : null}
+              {!email && slices.extra.length ? <UiText style={styles.warn} testID="slot-over">{t("calendar.pick.overMax", { max: MAX, count: slices.extra.length })}</UiText> : null}
+              {shortCount ? <UiText style={styles.muted} testID="slot-short">{t("calendar.pick.short", { minutes: duration })}</UiText> : null}
+            </View>
+          </View>
         )}
       </View>
     </BottomSheet>
@@ -224,24 +370,46 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   rulesEdit: { color: colors.ink, fontWeight: "700" },
   field: { gap: 6 },
   label: { color: colors.ink3Text, fontSize: 13, fontWeight: "500" },
-  legend: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  week: { gap: 8 },
+  weekBar: { flexDirection: "row", alignItems: "center", gap: 8 },
+  weekLabel: { flex: 1, textAlign: "center", color: colors.ink, fontSize: 13, fontWeight: "800" },
+  headRow: { flexDirection: "row", gap: GAP },
+  dayHead: { flex: 1, alignItems: "center", paddingBottom: 4 },
+  dayHeadDay: { color: colors.ink2, fontSize: 11, fontWeight: "700" },
+  dayHeadDate: { color: colors.ink3Text, fontSize: 10, fontWeight: "600" },
+  today: { color: colors.accentText },
+  gridRow: { flexDirection: "row", gap: GAP },
+  timeColumn: { width: TIME_COLUMN - GAP },
+  time: { height: ROW + GAP, color: colors.ink3Text, fontSize: 10, textAlign: "right", paddingRight: 4, transform: [{ translateY: -6 }] },
+  timeHidden: { opacity: 0 },
+  grid: { flex: 1, flexDirection: "row", gap: GAP },
+  column: { flex: 1 },
+  cell: { height: ROW, marginBottom: GAP, borderRadius: 4, backgroundColor: colors.surface2, overflow: "visible" },
+  cellHour: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.surface3 },
+  cellBusy: { backgroundColor: colors.surface3, justifyContent: "center" },
+  cellUnknown: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.surface3 },
+  cellOff: { backgroundColor: "transparent", borderWidth: 1, borderStyle: "dashed", borderColor: colors.ink4, opacity: 0.6 },
+  // A painted range is one block: square joins (the gap below is filled), rounded at its first and last cell.
+  cellOn: { backgroundColor: colors.ink, borderRadius: 0, borderWidth: 0 },
+  cellJoin: { height: ROW + GAP, marginBottom: 0 },
+  cellTop: { borderTopLeftRadius: 6, borderTopRightRadius: 6 },
+  cellBottom: { borderBottomLeftRadius: 6, borderBottomRightRadius: 6 },
+  cellExtra: { backgroundColor: colors.ink4 },
+  cellShort: { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.ink },
+  cellPreview: { backgroundColor: colors.ink2, borderWidth: 0 },
+  cellPreviewErase: { backgroundColor: colors.surface3, borderWidth: 0 },
+  strike: { height: 1, marginHorizontal: 3, backgroundColor: colors.ink4 },
+  cut: { position: "absolute", left: 4, right: 4, top: -2, height: 1, backgroundColor: colors.bg },
+  n: { position: "absolute", left: 3, top: 2, color: colors.bg, fontSize: 9, fontWeight: "800", lineHeight: 10 },
+  nLight: { color: colors.ink2 },
+  legend: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
-  legendText: { color: colors.ink3Text, fontSize: 12 },
-  swatch: { width: 14, height: 10, minWidth: 14, minHeight: 10, paddingHorizontal: 0, paddingVertical: 0, borderRadius: 3 },
-  // Busy cells are told apart by their struck-through time; the swatch carries the same line (a flat grey alone reads as 「空き」).
-  swatchBusy: { justifyContent: "center", opacity: 1 },
-  swatchStrike: { height: 1, marginHorizontal: 2, backgroundColor: colors.ink3Text },
-  day: { gap: 8 },
-  dayHead: { color: colors.ink, fontSize: 14, fontWeight: "800" },
-  cells: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  cell: { minWidth: 64, minHeight: 36, paddingHorizontal: 10, borderRadius: 10, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
-  cellBusy: { backgroundColor: colors.surface3, opacity: 0.7 },
-  cellUnknown: { backgroundColor: colors.surface, borderWidth: 1, borderStyle: "dashed", borderColor: colors.line },
-  cellPicked: { backgroundColor: colors.ink, borderWidth: 0 },
-  cellDisabled: { opacity: 0.4 },
-  cellText: { color: colors.ink, fontSize: 13, fontWeight: "600" },
-  cellTextBusy: { color: colors.ink3Text, textDecorationLine: "line-through" },
-  cellTextPicked: { color: colors.bg, fontWeight: "800" },
-  chosen: { gap: 4, paddingTop: 4 },
-  chosenText: { color: colors.ink2, fontSize: 13 },
+  legendText: { color: colors.ink3Text, fontSize: 11 },
+  swatch: { width: 14, height: 10, borderRadius: 3 },
+  swOpen: { backgroundColor: colors.surface2 },
+  out: { gap: 2 },
+  outHead: { color: colors.ink, fontSize: 13, fontWeight: "800" },
+  outText: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
+  warn: { color: colors.coralText, fontSize: 12 },
+  muted: { color: colors.ink3Text, fontSize: 12 },
 }));

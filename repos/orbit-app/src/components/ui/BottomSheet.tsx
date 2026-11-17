@@ -20,7 +20,8 @@ import { useBackHandler } from "./useBackHandler";
 // R31a (G23, R15 review m4 / :78): it closes itself when its page loses focus (route change, app to background), except
 // while the keyboard is up. `dismissOnBackdrop={false}`: a backdrop tap does nothing (Android back and the VoiceOver escape
 // gesture still close it). `draggable={false}`: the handle stays drawn but a drag does not close it (confirm sheets).
-export function BottomSheet({ visible, onClose, children, accessibilityLabel, dismissOnBackdrop = true, draggable = true, returnFocusTo }: { visible: boolean; onClose: () => void; children: ReactNode; accessibilityLabel?: string; dismissOnBackdrop?: boolean; draggable?: boolean; returnFocusTo?: RefObject<View | null> | undefined }) {
+// R43: `scrollEnabled={false}` holds the content still while a child owns a drag (the slot picker's paint grid).
+export function BottomSheet({ visible, onClose, children, accessibilityLabel, dismissOnBackdrop = true, draggable = true, returnFocusTo, scrollEnabled = true }: { visible: boolean; onClose: () => void; children: ReactNode; accessibilityLabel?: string; dismissOnBackdrop?: boolean; draggable?: boolean; returnFocusTo?: RefObject<View | null> | undefined; scrollEnabled?: boolean }) {
   const { styles } = useStyles();
   const reduced = useReducedMotion();
   const { height } = useWindowDimensions();
@@ -72,7 +73,7 @@ export function BottomSheet({ visible, onClose, children, accessibilityLabel, di
             <GestureDetector gesture={drag}>
               <View accessibilityRole="adjustable" accessibilityLabel={accessibilityLabel} style={styles.grabArea}><View style={styles.grab} /></View>
             </GestureDetector>
-            <ScrollView bounces={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">{children}</ScrollView>
+            <ScrollView bounces={false} scrollEnabled={scrollEnabled} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">{children}</ScrollView>
           </Animated.View>
         </KeyboardAvoidingView>
       </View>

@@ -5,7 +5,7 @@ import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
 
 // contact-reach R42 (App): the NATIVE screens (no .web) rendered with react-native-web against a recording API client.
-//   SC-02 連絡する · message: times from the day-list picker (可約時間, preselect 3, none when the calendar read is
+//   SC-02 連絡する · message: times from the week-grid picker (R43: tap / drag paint, ranges cut into ≤ 5) (可約時間, preselect 3, none when the calendar read is
 //         incomplete) → ONE POST …/messages { body, qualificationVersion, proposal }; offline with times waits; plain
 //         text offline goes to the device outbox; 409 shows the ongoing meeting + 日程を変更; drafts per account + contact + path.
 //   SC-03 連絡する · e-mail draft: the paragraph of times, picking again replaces it, copy, mailto, no address → disabled,
@@ -165,6 +165,20 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
 const requests = (page: Page) => page.evaluate(() => (window as any).fixture.requests as Request[]);
 const answers = (page: Page, source: string) => page.evaluate((code) => { const s = (window as any).fixture; s.answers = { ...(s.answers ?? {}), ...(0, eval)(`(${code})`) }; }, source);
 const bodyValue = (page: Page) => page.getByTestId("contact-reach-body").inputValue();
+const cellId = (at: string) => `slot-cell-${at}:00.000Z`;
+/** Center of a grid cell (the grid takes the touches, its cells do not). */
+async function center(page: Page, at: string) {
+  // The whole grid in view (it fits on one screen), so a drag can reach any of its cells.
+  await page.getByTestId("slot-grid").evaluate((node) => node.scrollIntoView({ block: "end" }));
+  const box = (await page.getByTestId(cellId(at)).boundingBox())!; return { x: box.x + box.width / 2, y: box.y + box.height / 2 }; }
+const settle = (page: Page) => page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+async function tap(page: Page, at: string) { const p = await center(page, at); await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.mouse.up(); await settle(page); }
+async function drag(page: Page, from: string, to: string) {
+  const a = await center(page, from), b = await center(page, to);
+  await page.mouse.move(a.x, a.y); await page.mouse.down(); await page.mouse.move(b.x, b.y, { steps: 8 }); await page.mouse.up(); await settle(page);
+}
+const painted = (page: Page) => page.locator("[data-slot-on]").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-testid")!.slice(10, 26)).sort());
+const attr = (page: Page, at: string, name: string) => page.getByTestId(cellId(at)).getAttribute(name);
 
 async function openOrbit(t: { after(fn: () => Promise<void>): void }, eligibility: Record<string, unknown> = {}, patch: Record<string, unknown> = {}) {
   const page = await open(t, { contactId: "c-suzuki", answers: { [ELIGIBILITY_PATH]: ORBIT_ELIGIBILITY(eligibility) }, ...patch });
@@ -291,17 +305,67 @@ test("SC-02: the unsent text is kept per account + contact + path — restored o
   assert.notEqual(await bodyValue(page), "書きかけのメッセージ", "another person never sees it");
 });
 
-test("SC-02: an incomplete calendar read picks nothing, says so, and unknown times can still be picked by hand", async (t) => {
+test("SC-02: an incomplete calendar read picks nothing, says so, and unknown times can still be painted by hand", async (t) => {
   const page = await openOrbit(t, {}, { calendar: "unavailable" });
   await page.getByTestId("contact-reach-insert").click();
   await page.getByTestId("slot-hint").getByText("予定を確認しきれていないため、自動では選んでいません", { exact: true }).waitFor();
-  await page.getByTestId("slot-count-hint").getByText("3〜5 件選んでください", { exact: true }).waitFor();
-  assert.equal(await page.getByText("0 件を挿入", { exact: true }).count(), 1);
-  await page.getByRole("button", { name: "11/18（水） 10:00 · 未確認" }).click();
-  await page.getByRole("button", { name: "11/19（木） 10:00 · 未確認" }).click();
-  await page.getByRole("button", { name: "11/20（金） 10:00 · 未確認" }).click();
+  assert.deepEqual(await painted(page), []);
+  assert.equal(await attr(page, "2026-11-18T01:00", "data-slot-state"), "unknown");
+  await tap(page, "2026-11-18T01:00");
+  await page.getByTestId("slot-count-hint").getByText("候補は 3 件以上必要です。もう一つ時間帯を塗ってください", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "1 件を挿入" }).getAttribute("aria-disabled"), "true");
+  await drag(page, "2026-11-19T01:00", "2026-11-19T02:30");
   await page.getByText("3 件を挿入", { exact: true }).click();
   await page.getByTestId("contact-reach-proposal").getByText("11/18（水）10:00 – 11:00", { exact: true }).waitFor();
+  await page.getByTestId("contact-reach-proposal").getByText("11/19（木）11:00 – 12:00", { exact: true }).waitFor();
+});
+
+test("SC-03 (R43): the week grid — 20pt rows on one screen; tap paints one meeting, tap on paint erases, drags paint and erase across days, busy is skipped, 6th light, re-cut by duration", async (t) => {
+  const page = await openOrbit(t, {}, { scheduleItems: [{ id: "s1", sourceId: "s1", title: "会議", kind: "personal", category: "work", state: "upcoming", startsAt: "2026-11-19T06:00:00.000Z", endsAt: "2026-11-19T07:00:00.000Z" }] });
+  await page.getByTestId("contact-reach-insert").click();
+  await page.getByTestId("slot-grid").waitFor();
+  assert.deepEqual(await painted(page), ["2026-11-18T00:00", "2026-11-18T00:30", "2026-11-19T00:00", "2026-11-19T00:30", "2026-11-20T00:00", "2026-11-20T00:30"], "3 ranges preselected");
+  assert.equal((await page.getByTestId(cellId("2026-11-18T03:00")).boundingBox())!.height, 20, "20pt rows");
+  const grid = (await page.getByTestId("slot-grid").boundingBox())!;
+  assert.ok(grid.height <= 18 * 23 && grid.height < 844, `the 18 rows fit on one screen (${grid.height})`);
+  assert.equal(await attr(page, "2026-11-17T00:00", "data-slot-state"), "off", "today 09:00 is too soon");
+  await page.getByTestId("slot-summary").getByText("送る時間 3 件 · 各 60 分", { exact: true }).waitFor();
+  // Tap = one meeting length (two cells); tap on paint = erase that range.
+  await tap(page, "2026-11-17T01:00");
+  assert.equal(await attr(page, "2026-11-17T01:30", "data-slot-on"), "");
+  assert.equal(await attr(page, "2026-11-17T01:00", "data-slot-n"), "1");
+  await tap(page, "2026-11-17T01:30");
+  assert.equal(await attr(page, "2026-11-17T01:00", "data-slot-on"), null);
+  // Diagonal drag over two days, 13:00–14:30: two ranges, 7 candidates → the last 2 are light.
+  await drag(page, "2026-11-17T04:00", "2026-11-18T05:30");
+  await page.getByTestId("slot-over").getByText("送れるのは 5 件まで。薄い色の 2 件は送られません", { exact: true }).waitFor();
+  assert.equal(await attr(page, "2026-11-20T00:00", "data-slot-extra"), "");
+  // A drag that starts on paint erases (14:00–14:30 on both days).
+  await drag(page, "2026-11-18T05:00", "2026-11-17T05:30");
+  assert.equal(await attr(page, "2026-11-17T05:00", "data-slot-on"), null);
+  assert.equal(await attr(page, "2026-11-18T04:30", "data-slot-on"), "");
+  assert.equal(await page.getByTestId("slot-over").count(), 0);
+  // Busy 15:00–16:00 on 11/19 is skipped: 14:30 alone is short (outlined), 16:00–17:00 is a candidate.
+  await drag(page, "2026-11-19T05:30", "2026-11-19T07:30");
+  assert.equal(await attr(page, "2026-11-19T06:00", "data-slot-on"), null);
+  assert.equal(await attr(page, "2026-11-19T05:30", "data-slot-short"), "");
+  await page.getByTestId("slot-short").getByText("白抜きの時間帯は 60 分に満たないため使われません", { exact: true }).waitFor();
+  await page.getByTestId("slot-over").getByText("送れるのは 5 件まで。薄い色の 1 件は送られません", { exact: true }).waitFor();
+  // A new duration re-cuts the same paint.
+  await page.getByRole("tab", { name: "30分" }).click();
+  await page.getByTestId("slot-summary").getByText("送る時間 5 件 · 各 30 分", { exact: true }).waitFor();
+  assert.equal(await attr(page, "2026-11-19T05:30", "data-slot-short"), null, "30 minutes is long enough now");
+  await page.getByRole("tab", { name: "60分" }).click();
+  await page.getByText("5 件を挿入", { exact: true }).click();
+  const proposal = page.getByTestId("contact-reach-proposal");
+  await proposal.getByText("11/17（火）13:00 – 14:00", { exact: true }).waitFor();
+  await proposal.getByText("11/19（木）16:00 – 17:00", { exact: true }).waitFor();
+  assert.equal(await proposal.getByText("11/20（金）09:00 – 10:00", { exact: true }).count(), 0, "the 6th is not sent");
+  // Reopening draws the ranges again, the short one too.
+  await page.getByRole("button", { name: "修正" }).click();
+  await page.getByTestId("slot-grid").waitFor();
+  assert.equal(await attr(page, "2026-11-19T05:30", "data-slot-short"), "");
+  assert.equal(await attr(page, "2026-11-20T00:00", "data-slot-extra"), "");
 });
 
 test("SC-02: busy times from Orbit's schedule are shown struck and cannot be picked; in person needs a place", async (t) => {
@@ -309,9 +373,9 @@ test("SC-02: busy times from Orbit's schedule are shown struck and cannot be pic
   await page.getByTestId("contact-reach-insert").click();
   const busy = page.getByRole("button", { name: "11/18（水） 09:00 · 予定あり" });
   await busy.waitFor();
-  assert.equal(await busy.getAttribute("aria-disabled"), "true");
+  assert.equal(await busy.isDisabled(), true);
   await page.getByRole("tab", { name: "対面" }).click();
-  assert.equal(await page.getByRole("button", { name: /件を挿入/ }).getAttribute("aria-disabled"), "true");
+  await page.getByRole("button", { name: /件を挿入/, disabled: true }).waitFor();
   await page.getByText("会う場所を入れてください", { exact: true }).waitFor();
 });
 
@@ -323,19 +387,23 @@ test("SC-03: e-mail path — recipient from the card, the paragraph of times, pi
   assert.equal(await page.getByTestId("contact-reach-subject").inputValue(), "ご無沙汰しております");
   await page.getByText("Orbit からはメールを送りません", { exact: true }).waitFor();
   await page.getByTestId("contact-reach-insert").click();
-  await page.getByText("3 件を挿入", { exact: true }).click();
-  await page.waitForFunction(() => (document.querySelector('[data-testid="contact-reach-body"]') as HTMLTextAreaElement | null)?.value.includes("以下の日時"));
+  await page.getByTestId("slot-summary").getByText("本文に書く時間帯", { exact: true }).waitFor();
+  await page.getByText("時間帯を 3 つ挿入", { exact: true }).click();
+  await page.waitForFunction(() => (document.querySelector('[data-testid="contact-reach-body"]') as HTMLTextAreaElement | null)?.value.includes("以下の時間帯"));
   const first = await bodyValue(page);
-  assert.match(first, /以下の日時のいずれかで、60 分ほどお時間をいただけますでしょうか（オンライン）。\n・11\/18（水）09:00–10:00\n・11\/19（木）09:00–10:00\n・11\/20（金）09:00–10:00/);
-  assert.ok(first.indexOf("以下の日時") < first.indexOf("どうぞよろしくお願いいたします。"), "the paragraph goes before the closing line");
+  assert.match(first, /以下の時間帯のうち、60 分ほどお時間をいただけますでしょうか（オンライン）。\n・11\/18（水）09:00–10:00\n・11\/19（木）09:00–10:00\n・11\/20（金）09:00–10:00/);
+  assert.ok(first.indexOf("以下の時間帯") < first.indexOf("どうぞよろしくお願いいたします。"), "the paragraph goes before the closing line");
   await page.getByTestId("contact-reach-body").fill(first.replace("近況をお話しできればと思います。", "手で書き足した一文。"));
   await page.getByRole("button", { name: "時間を選び直す" }).click();
-  await page.getByRole("button", { name: "11/18（水） 09:00 · 選択中" }).click();
-  await page.getByText("2 件を挿入", { exact: true }).click();
-  await page.waitForFunction(() => !(document.querySelector('[data-testid="contact-reach-body"]') as HTMLTextAreaElement).value.includes("11/18（水）09:00"));
+  await page.getByTestId("slot-grid").waitFor();
+  await drag(page, "2026-11-18T01:00", "2026-11-18T02:30"); // joins 09:00–10:00 → 09:00–12:00, written as one range
+  await tap(page, "2026-11-20T00:00"); // erase
+  await page.getByText("時間帯を 2 つ挿入", { exact: true }).click();
+  await page.waitForFunction(() => !(document.querySelector('[data-testid="contact-reach-body"]') as HTMLTextAreaElement).value.includes("11/20（金）"));
   const second = await bodyValue(page);
+  assert.match(second, /・11\/18（水）09:00–12:00\n・11\/19（木）09:00–10:00/, "a range is not cut into meetings");
   assert.match(second, /手で書き足した一文。/, "the hand-edited text stays");
-  assert.equal((second.match(/以下の日時/g) ?? []).length, 1, "the paragraph is replaced, not added twice");
+  assert.equal((second.match(/以下の時間帯/g) ?? []).length, 1, "the paragraph is replaced, not added twice");
   await page.getByRole("button", { name: "コピー", exact: true }).click();
   await page.waitForFunction(() => (window as any).fixture.copied.length === 1);
   assert.match((await page.evaluate(() => (window as any).fixture.copied[0])) as string, /^ご無沙汰しております\n\n/);

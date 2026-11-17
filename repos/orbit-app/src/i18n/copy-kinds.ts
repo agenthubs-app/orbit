@@ -128,6 +128,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["network.reach.*", "label"],
   ["calendar.pick.title", "dialogTitle"],
   ["calendar.pick.insert", "button"],
+  ["calendar.pick.insertRanges", "button"],
   ["calendar.pick.rulesEdit", "button"],
   ["calendar.pick.loadFailed", "sentence"],
   ["calendar.pick.*", "label"],

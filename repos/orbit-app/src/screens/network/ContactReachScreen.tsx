@@ -4,7 +4,7 @@
 //     opening. canStart only: POST conversations/start first. Times need the network (offline 送信 waits, the text stays);
 //     plain text offline goes through the device outbox. 409 MEETING_ALREADY_ACTIVE: that meeting + 日程を変更.
 //   e-mail draft (anything else, read failures included): to / subject / body; inserted times are a paragraph of text
-//     (R40 formatMeetingSlotsText; picking again replaces only it); 「コピー」 and 「メールアプリで開く」 (mailto, disabled
+//     (R43 formatMeetingRangesText: the painted ranges; picking again replaces only it); 「コピー」 and 「メールアプリで開く」 (mailto, disabled
 //     without an address). No relationship request is made on this path.
 // Unsent text stays on this device (contact-reach-model, AsyncStorage) per account + contact + path; a send clears it.
 import * as Clipboard from "expo-clipboard";
@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
-import { formatMeetingSlotsText, replaceMeetingSlotsText } from "../../api/compute/meeting-slots";
+import { formatMeetingRangesText, replaceMeetingSlotsText } from "../../api/compute/meeting-slots";
 import { AppScreen } from "../../components/AppScreen";
 import { Button, Chip, Icon, RetryCard, Skeleton, TextField, UiPressable, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
@@ -136,7 +136,7 @@ function ReachSession({ contactId, account, name, email, eligibility, path, titl
 
   const insertEmailTimes = (selection: MeetingSlotSelection) => {
     const lineKey = selection.format === "in_person" ? "network.reach.linePlace" : selection.format === "video" ? "network.reach.lineLink" : "network.reach.linePhone";
-    const paragraph = formatMeetingSlotsText(selection.slots, { language, timeZone: selection.timeZone, durationMinutes: selection.durationMinutes, medium: selection.format });
+    const paragraph = formatMeetingRangesText(selection.ranges ?? selection.slots, { language, timeZone: selection.timeZone, durationMinutes: selection.durationMinutes, medium: selection.format });
     const block = paragraph && selection.place ? `${paragraph}\n${t(lineKey, { value: selection.place })}` : paragraph;
     setBody((current) => replaceMeetingSlotsText(current ?? "", block, { previous: insertedBlock }));
     setInsertedBlock(block || null); setPicked(selection);
