@@ -34,8 +34,11 @@ export const FIELD_LIST_LIMIT = 20;
 const PAGE = 500;
 const MAX_ROWS = 6_000;
 
-/** A contact clue that names the whole set, not a person ("联系人", "东京做零售的联系人", "my contacts", "連絡先"). */
-const GENERIC_CONTACT_CLUE = /(?:联系人|聯絡人|人脉|連絡先|コンタクト|\bcontacts\b|\bpeople\b)$|^(?:人|people|persons?|contacts?|my contacts)$/iu;
+/**
+ * A contact clue that names the set to pick from, not a person ("联系人", "东京做零售的联系人", "my contacts based in
+ * Singapore", "連絡先"): it holds a word for contacts in general (stab2: "my contacts based in Singapore").
+ */
+const GENERIC_CONTACT_CLUE = /(?:联系人|聯絡人|人脉|連絡先|コンタクト|\bcontacts\b|\bpeople\b)|^(?:人|persons?|contact)$/iu;
 const RANK_WORDS = /(挑|选出|选几|排序|排一下|排个序|并べ|並べ|選んで|順に|順番|\bpick\b|\bchoose\b|\brank\b|\bsort\b|\border\b|\blist the\b)/iu;
 
 /** The kind of records a part ranks, or null when it is not a ranking this node does. */

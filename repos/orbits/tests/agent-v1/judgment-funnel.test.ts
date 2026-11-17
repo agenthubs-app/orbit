@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { runAgentGraph } from "../../features/agent-v1/graph/build";
+import { rankDomainOf } from "../../features/agent-v1/graph/nodes/functions";
 import { askJudgment, newJudgmentBudget } from "../../features/agent-v1/judgment/ask";
 import { basisTokens, CONVERSATION_CANDIDATE_LIMIT, funnel, needsUnderstanding, SCHEDULED_CANDIDATE_LIMIT, type FunnelCandidate } from "../../features/agent-v1/judgment/funnel";
 import { captureTrace, deepseekStub, graphKit, json, part, recordAccessOf } from "./graph-kit";
@@ -129,6 +130,15 @@ test("AG08-1 a graded answer split between partial and match is at least partial
     mode: "conversation",
   });
   assert.deepEqual(result.ordered.map((item) => [item.candidate.id, item.level]), [["aaron", "match"], ["rajesh", "partial"]]);
+});
+
+test("AG08-1 which parts the functions node ranks: contacts or events as a set, never a named person (stab2: 'my contacts based in Singapore')", () => {
+  const message = "From my contacts based in Singapore, pick the three best fits for a power-semiconductor packaging process lead role. 帮我挑小林的三篇笔记。";
+  const at = (words: string): [number, number] => [message.indexOf(words), message.indexOf(words) + words.length];
+  const rankPart = (refs: { entity: string; quote: [number, number]; recordId: string | null }[], capabilities = ["contact.read", "fn.rank"]) => ({ capabilities, plan: {}, quote: [0, message.length], refs, route: "read" }) as never;
+  assert.equal(rankDomainOf(rankPart([{ entity: "contact", quote: at("my contacts based in Singapore"), recordId: null }]), message), "contact");
+  assert.equal(rankDomainOf(rankPart([{ entity: "contact", quote: at("小林"), recordId: null }]), message), null, "a named person is not a set to rank");
+  assert.equal(rankDomainOf(rankPart([{ entity: "contact", quote: at("小林"), recordId: null }], ["memo.read", "fn.rank"]), message), null, "ranking notes is AG10's");
 });
 
 /* ── through the graph ─────────────────────────────────────────────── */
