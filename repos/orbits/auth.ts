@@ -2,13 +2,20 @@
 // 会话用 JWT 策略,不引数据库 adapter——用户记录走 features/auth 的
 // live-record-store,和全仓库其余数据同一存储模式。
 import NextAuth from "next-auth";
+import { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 
+import { authClientIp, getAuthRateLimiter } from "./features/auth/auth-rate-limit";
 import { enabledOAuthProviders } from "./features/auth/oauth-providers";
 import { resolveAuthUserService } from "./features/auth/service-factory";
 import { isAuthSessionCurrent } from "./features/auth/session-revocation";
 import { cacheForRequest } from "./shared/performance/request-cache";
+
+// 限流命中：前端 signIn 结果里 code === "rate_limited"，显示「尝试次数过多」而不是「密码错误」。
+class RateLimitedSignin extends CredentialsSignin {
+  code = "rate_limited";
+}
 
 function authUserService() {
   return resolveAuthUserService(
@@ -33,10 +40,14 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const authenticatedAt = Date.now();
+        const email = typeof credentials?.email === "string" ? credentials.email : "";
+        const limiter = await getAuthRateLimiter();
+        const gate = await limiter.checkLogin({ ip: authClientIp(request.headers), email });
+        if (gate.allowed === false) throw new RateLimitedSignin();
         const result = await authUserService().verifyCredentials({
-          email: typeof credentials?.email === "string" ? credentials.email : "",
+          email,
           password:
             typeof credentials?.password === "string"
               ? credentials.password
@@ -44,6 +55,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         });
 
         if (result.state !== "success") {
+          if (result.error.code !== "AUTH_LIVE_STORE_UNCONFIGURED") await limiter.recordLoginFailure({ email });
           // authorize 返回 null 即 401;具体原因不外泄,防账号枚举。
           return null;
         }

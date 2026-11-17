@@ -22,6 +22,7 @@ export const AUTH_ERROR_COPY = {
   /** 设计 526：邮箱格式。 */
   invalidEmail: { en: "Please enter a valid email address.", ja: "有効なメールアドレスを入力してください。", zh: "请输入有效的邮箱地址。" },
   /** 设计 526：登录失败。 */
+  rateLimited: { en: "Too many attempts. Please wait a few minutes and try again.", ja: "試行回数が多すぎます。数分後にもう一度お試しください。", zh: "尝试次数过多，请过几分钟再试。" },
   loginFailed: { en: "Email or password is incorrect. Please try again.", ja: "メールアドレスまたはパスワードが正しくありません。", zh: "邮箱或密码不正确，请重试。" },
   /** 设计 529：两次不一致。 */
   passwordMismatch: { en: "The two passwords do not match.", ja: "パスワードが一致しません。", zh: "两次输入的密码不一致。" },

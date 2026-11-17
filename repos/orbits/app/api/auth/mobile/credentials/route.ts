@@ -1,3 +1,4 @@
+import { authClientIp, authRateLimitedResponse, getAuthRateLimiter } from "../../../../../features/auth/auth-rate-limit";
 import { resolveMobileAuthService } from "../../../../../features/auth/mobile-service-factory";
 import { resolveFeatureMode } from "../../../../../shared/config/feature-mode";
 import {
@@ -16,12 +17,17 @@ export async function POST(request: Request): Promise<Response> {
     email?: unknown;
     password?: unknown;
   };
+  const email = typeof body.email === "string" ? body.email : "";
+  const limiter = await getAuthRateLimiter();
+  const gate = await limiter.checkLogin({ ip: authClientIp(request.headers), email });
+  if (gate.allowed === false) return authRateLimitedResponse(gate.retryAfterSeconds);
   const result = await service.issueCredentialsSession({
-    email: typeof body.email === "string" ? body.email : "",
+    email,
     password: typeof body.password === "string" ? body.password : "",
   });
 
   if (result.success === false) {
+    if (result.error.appCode === "UNAUTHORIZED") await limiter.recordLoginFailure({ email });
     return mobileAuthFailureResponse(result, mode);
   }
 

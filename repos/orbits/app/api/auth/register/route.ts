@@ -4,6 +4,7 @@ import {
   authUserFailureContext,
   authUserFailureToAppError,
 } from "../../../../features/auth/service";
+import { authClientIp, authRateLimitedResponse, getAuthRateLimiter } from "../../../../features/auth/auth-rate-limit";
 import { resolveAuthUserService } from "../../../../features/auth/service-factory";
 import {
   failure,
@@ -21,6 +22,8 @@ export async function POST(request: Request): Promise<Response> {
   const mode = resolveFeatureMode(
     process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
   );
+  const gate = await (await getAuthRateLimiter()).checkRegister({ ip: authClientIp(request.headers) });
+  if (gate.allowed === false) return authRateLimitedResponse(gate.retryAfterSeconds);
   const authService = resolveAuthUserService(mode);
   const body = (await request.json().catch(() => ({}))) as {
     displayName?: unknown;

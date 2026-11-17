@@ -173,7 +173,7 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
           method: "POST",
         });
         const payload = (await response.json().catch(() => null)) as {
-          error?: { message?: string };
+          error?: { code?: string; message?: string };
           success?: boolean;
         } | null;
 
@@ -182,7 +182,9 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
           setError(
             response.status === 409
               ? t(AUTH_ERROR_COPY.emailTaken)
-              : payload?.error?.message ??
+              : payload?.error?.code === "RATE_LIMITED"
+                ? t(AUTH_ERROR_COPY.rateLimited)
+                : payload?.error?.message ??
                   t({ en: "Sign-up failed. Please try again.", ja: "登録できませんでした。もう一度お試しください。", zh: "注册失败,请稍后再试。" }),
           );
           return;
@@ -211,9 +213,9 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
         const response = await fetch("/api/auth/password-reset/request", {
           method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email }),
         });
-        const payload = await response.json().catch(() => null) as { success?: boolean; error?: { message?: string } } | null;
+        const payload = await response.json().catch(() => null) as { success?: boolean; error?: { code?: string; message?: string } } | null;
         if (!response.ok || !payload?.success) {
-          setError(payload?.error?.message ?? t({ en: "Password recovery is temporarily unavailable. Please try again later.", ja: "現在パスワードを再設定できません。しばらくしてからお試しください。", zh: "密码恢复暂不可用，请稍后重试。" }));
+          setError(payload?.error?.code === "RATE_LIMITED" ? t(AUTH_ERROR_COPY.rateLimited) : payload?.error?.message ?? t({ en: "Password recovery is temporarily unavailable. Please try again later.", ja: "現在パスワードを再設定できません。しばらくしてからお試しください。", zh: "密码恢复暂不可用，请稍后重试。" }));
           return;
         }
         // 受理 ≠ 送达：只置位，文案由找回屏给出（设计 401–404 + 「如果该邮箱支持密码恢复，链接会很快送达。」）。
@@ -228,7 +230,7 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
       });
 
       if (!result || result.error) {
-        setError(t(AUTH_ERROR_COPY.loginFailed));
+        setError(t(result?.code === "rate_limited" ? AUTH_ERROR_COPY.rateLimited : AUTH_ERROR_COPY.loginFailed));
         return;
       }
 
