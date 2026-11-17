@@ -57,6 +57,7 @@ const MAX_ROWS = 6_000;
  */
 const GENERIC_CONTACT_CLUE = /(?:联系人|聯絡人|人脉|連絡先|コンタクト|\bcontacts\b|\bpeople\b)|^(?:人|persons?|contact)$/iu;
 const RANK_WORDS = /(挑|选出|选几|排序|排一下|排个序|并べ|並べ|選んで|順に|順番|\bpick\b|\bchoose\b|\brank\b|\bsort\b|\border\b|\blist the\b)/iu;
+const TODO_LIST_WORDS = /(待办|跟进|タスク|ToDo|フォローアップ|\bto-?dos?\b|\bfollow[\s-]?ups?\b|\btasks?\b)/iu;
 const WHO_WORDS = /(谁|哪位|哪些人|哪几位|\bwho\b|\bwhom\b|誰|どなた|どの人)/iu;
 const FORMAL_FOLLOW_UP = /(正式跟进|正式的跟进|フォローアップ|formal follow[\s-]?ups?)/iu;
 
@@ -74,6 +75,9 @@ export function rankDomainOf(part: GraphPart, message: string): RankDomain | nul
   const todo = part.capabilities.includes("todo.read");
   // AG10 (AE-FN-003): "这周该跟进谁" asks for people — a contact ranking whose to-dos and schedule are only its signals.
   if (contact && WHO_WORDS.test(quote) && !part.refs.some((ref) => ref.entity === "contact" && ref.recordId)) return "contact";
+  // AG10 (AE-SCL-017, dev run 2): to-dos or follow-ups named in the words, ordered or picked, with no memo chosen, are a to-do
+  // ranking — the note reads the first layer may add are not what is listed.
+  if (todo && TODO_LIST_WORDS.test(quote) && !part.refs.some((ref) => ref.recordId && (ref.entity === "memo" || ref.entity === "todo"))) return "todo";
   // Reading other records is another kind of task — except a memo attached with @ (its topics are the basis).
   const memoBasis = part.refs.filter((ref) => ref.entity === "memo");
   const readsMemoBasis = memoBasis.length > 0 && memoBasis.every((ref) => ref.recordId);

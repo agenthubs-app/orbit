@@ -38,6 +38,7 @@ import type { AgentRecordAccess, GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart, PartCoverage } from "../state";
 import { clueWords } from "./clarify";
 import { webPartReads } from "./probe";
+import { SIMILAR_TITLE, similarity } from "../../functions/link-back";
 
 type ReadKind = "memo" | "todo" | "schedule" | "event" | "contact" | "interaction";
 
@@ -157,6 +158,10 @@ export async function partialContacts(records: AgentRecordAccess, scope: DomainS
 /** AG08 repair 1 (AE-UND-010): the words that ask for a list, not what it is about ("列出", "一覧にして", "list"). */
 /** AG09 run-04 repair 2: words asking how a person stands now (zh, ja, en). */
 const ASKS_NOW = /(现在|目前|如今|眼下|最近在|今は|今どこ|今の|現在|現職|\bnow\b|\bcurrently\b|these days)/iu;
+/** AG10 (AE-SCL-020): words asking for the value that holds now ("her current salary expectation", "最新的报价", "今の希望"). */
+/** AG10: words of something still to be done in a note ("still need to", "还没", "まだ…ていない"). */
+const PENDING = /(still need to|still have to|still to do|haven'?t (?:yet )?sent|还要|还没|尚未|仍需|まだ[^。]{0,12}(?:ていない|していない|送っていない)|しなければ)/iu;
+const CURRENT_VALUE = /(\bcurrent\b|现在的|目前的|今の|現在の)/iu;
 
 const LIST_VERBS =/^(?:请|帮我|麻烦)?(?:列出|列一下|列举|列个|看看|看一下|告诉我|查一下|查查|给我看|一覧にして|一覧を|リストにして|見せて|教えて|list|show me|show)\s*/iu;
 
@@ -371,7 +376,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
       let filter = part.plan.readFilter;
       // AG09 run-04 repair 2 (AE-SCL-007): a part about a person whose own words ask how they stand now ("where is he now",
       // "他现在在哪", "今はどこ") is the AG05 run-03 `current` read even when the first layer gave no readFilter.
-      if (!filter?.current && part.capabilities.some((capability) => capability === "contact.read" || capability === "view.context") && ASKS_NOW.test(quote)) {
+      if (!filter?.current && ((part.capabilities.some((capability) => capability === "contact.read" || capability === "view.context") && ASKS_NOW.test(quote)) || (part.capabilities.some((capability) => capability === "memo.read" || capability === "profile.read" || capability === "view.timeline") && part.refs.some((ref) => ref.entity === "contact") && CURRENT_VALUE.test(quote)))) {
         filter = { ...(filter ?? {}), current: true };
         emitTrace({ partId: part.localId, type: "resolve.asks_now" });
       }
@@ -727,6 +732,20 @@ export function resolveNode(scope: NodeScope): GraphNode {
         read.coverage.push({ complete: entries.every((item) => item.complete) || (total !== null && seen >= total), kind, pagesRead: entries.reduce((sum, item) => sum + item.pagesRead, 0), seen, total, ...(direction ? { direction } : {}) });
       }
       if (kinds.has("event") && !boundIds.has("event")) read.notes.push("Events are read when the user attaches one; none was attached.");
+
+      // AG10 (AE-SCL-020): how a person stands now — a note saying something still needs doing ("Still need to send Priya the
+      // JD") is not given when the person's to-do for it was completed after the note: it no longer holds (设计稿 §4 新的为准).
+      if (current && read.views.some((view) => view.kind === "memo" && PENDING.test(String(view.fields.body ?? "")))) {
+        for (const contact of contacts) {
+          const done = await records.reader.read("todo", accountScope, { contactId: contact.id, limit: 20, status: "completed" }).then((result) => result.items).catch(() => [] as RecordView[]);
+          const stale = read.views.filter((view) => view.kind === "memo" && Array.isArray(view.fields.contactIds) && (view.fields.contactIds as string[]).includes(contact.id) && PENDING.test(String(view.fields.body ?? ""))
+            && done.some((todo) => similarity(String(todo.fields.title ?? ""), String(view.fields.body ?? "")) >= SIMILAR_TITLE && String(todo.fields.completedAt ?? "") > String(view.fields.createdAt ?? "")));
+          if (!stale.length) continue;
+          read.views = read.views.filter((view) => !stale.includes(view));
+          read.notes.push(`Left out ${stale.length} older note(s) about ${contact.name || "this person"} that said something still needed doing: the matching to-do has been completed since.`);
+          emitTrace({ notes: stale.map((view) => view.ref), partId: part.localId, type: "resolve.pending_note_done" });
+        }
+      }
 
       // 4. Gaps (code decides; the model never does).
       const recordViews = read.views.filter((view) => view.kind !== "contact");

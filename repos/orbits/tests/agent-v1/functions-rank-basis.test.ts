@@ -134,6 +134,9 @@ test("only listing records is not ranking: natural order, no question (AE-SCL-01
   const message = "列出已经过期、或者 11 月 22 日之前到期的正式跟进，过期最久的排前面，只要前三条。";
   const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "ranked_list", rank: { basis: "正式跟进", count: 3, direction: "asc", orderBy: "dueAt" }, readFilter: { status: "open", text: "正式跟进", to: "2026-11-22" }, requiredCapabilities: ["todo.read", "fn.rank"], sourceQuote: message }], { world });
   assert.deepEqual(fnRank(run.events).at(-1)!.listed, ["todo:task:f2", "todo:task:f1"], "formal follow-ups only, the most overdue first");
+  // Dev run 2: the first layer added a note read and an extraction; the words name follow-ups, so it is the same ranking.
+  const other = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "ranked_list", rank: { count: 3, direction: "asc", orderBy: "dueAt" }, readFilter: { status: "open", to: "2026-11-22" }, requiredCapabilities: ["memo.read", "todo.read", "fn.extractFollowUps", "fn.rank"], sourceQuote: message }], { world });
+  assert.deepEqual(fnRank(other.events).at(-1)!.listed, ["todo:task:f2", "todo:task:f1"]);
   assert.equal(run.result.clarifications.length, 0);
   assert.equal(run.judgeCalls.length, 0);
   assert.match(run.result.text, /按截止时间，过期最久的排前面/u);
