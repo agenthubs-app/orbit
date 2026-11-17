@@ -158,7 +158,19 @@ export function probeNode(scope: NodeScope): GraphNode {
     };
 
     // Searches waiting for a choice of result.
-    const toPick: { part: GraphPart; call: WebCall; name: string }[] = [];
+    const toPick: { part: GraphPart; call: WebCall; name: string; follows?: GraphPart }[] = [];
+    // AG09 dev run 2 (AE-WEB-008): parts of one request that look up the same name share one search — one query with all
+    // their qualifiers, one choice of result, one question — instead of a search and a question each.
+    const targetOf = (part: GraphPart) => (part.plan.webTarget?.quote ? message.slice(part.plan.webTarget.quote[0], part.plan.webTarget.quote[1]).replace(/^@/u, "").replace(/(さん|様|さま|氏|先生|老师)$/u, "").trim() : "");
+    const leaders = new Map<string, GraphPart>();
+    const qualifiersOf = new Map<string, string[]>();
+    for (const part of due) {
+      const key = targetOf(part);
+      if (!key || part.web?.searchKey || urlsIn(quoteOf(message, part)).length) continue;
+      if (!leaders.has(key)) leaders.set(key, part);
+      qualifiersOf.set(key, [...new Set([...(qualifiersOf.get(key) ?? []), ...(part.plan.webTarget?.qualifiers ?? [])])]);
+    }
+    const followers: { part: GraphPart; leader: GraphPart }[] = [];
     for (const part of due) {
       const quote = quoteOf(message, part);
       if (!switches.global || !switches.user) {
@@ -194,6 +206,11 @@ export function probeNode(scope: NodeScope): GraphNode {
         }
         continue;
       }
+      const leader = leaders.get(targetOf(part));
+      if (leader && leader !== part) {
+        followers.push({ leader, part });
+        continue;
+      }
       const mentions = mentionsOf(message, run.references);
       // "小林" said as "@小林": the mention is what the target stands for.
       const atMention = mentions.find((mention) => mention.quote === `@${targetQuote}` || mention.quote === targetQuote);
@@ -201,7 +218,7 @@ export function probeNode(scope: NodeScope): GraphNode {
       let candidate: QueryCandidate | null = null;
       if (part.web?.confirmed && pending) candidate = { builtBy: "code", needsConfirmation: true, partId: part.localId, text: pending.text, tokens: pending.tokens };
       else {
-        const built = buildQuery({ language, message, partId: part.localId, references: mentions, target: { qualifiers: target!.qualifiers as QualifierCode[], quote: atMention ? atMention.quote : targetQuote } satisfies WebTarget });
+        const built = buildQuery({ language, message, partId: part.localId, references: mentions, target: { qualifiers: (qualifiersOf.get(targetOf(part)) ?? target!.qualifiers) as QualifierCode[], quote: atMention ? atMention.quote : targetQuote } satisfies WebTarget });
         if (built.ok === false) {
           // The object is named only through the user's records: nothing is built from them (rule 2).
           const rules = built.reason === "private_pointer" || built.reason === "not_in_message" ? [2] : [];
@@ -286,9 +303,23 @@ export function probeNode(scope: NodeScope): GraphNode {
       toPick.push({ call, name: candidate.tokens.filter((token) => token.origin !== "vocabulary").map((token) => token.text).join(" "), part });
     }
 
+    // A part that looks up the same name as an earlier one goes with that part's search: its result, or what stopped it.
+    for (const { leader, part } of followers) {
+      const led = toPick.find((item) => item.part === leader);
+      if (led) {
+        part.web = { ...(part.web ?? {}), searchKey: led.call.key };
+        toPick.push({ call: led.call, follows: leader, name: led.name, part });
+        continue;
+      }
+      for (const line of run.gapLines.get(leader.localId) ?? []) lines(part, line);
+      if (webOnly(part) && !(run.materials.get(part.localId)?.length)) {
+        part.status = leader.status === "awaiting_clarification" ? "waiting_dependency" : "unfinished";
+        part.reason = leader.status === "awaiting_clarification" ? "web_shares_question" : leader.reason;
+      }
+    }
     // Which result to open: one result is opened as it is; several, one model call for all parts at once.
     if (toPick.length) {
-      const several = toPick.filter((item) => (item.call.results?.length ?? 0) > 1);
+      const several = toPick.filter((item) => !item.follows && (item.call.results?.length ?? 0) > 1);
       const items: SelectItem[] = several.map((item) => ({ goal: run.understood?.parts.find((source) => source.localId === item.part.localId)?.goal ?? quoteOf(message, item.part), name: item.name, partId: item.part.localId, results: item.call.results ?? [] }));
       let picks: ReturnType<typeof parseSelectPicks> = new Map();
       if (items.length) {
@@ -300,7 +331,7 @@ export function probeNode(scope: NodeScope): GraphNode {
       }
       for (const item of toPick) {
         const results = item.call.results ?? [];
-        const pick = results.length === 1 ? { open: [0], sameName: [] } : picks?.get(item.part.localId);
+        const pick = results.length === 1 ? { open: [0], sameName: [] } : picks?.get((item.follows ?? item.part).localId);
         if (!pick) {
           // No usable choice: nothing is opened; the snippets are not taken as an answer.
           lines(item.part, WEB_WORDS.noRelevant(language, item.call.query ?? ""));
@@ -308,6 +339,13 @@ export function probeNode(scope: NodeScope): GraphNode {
           continue;
         }
         if (pick.sameName.length >= 2) {
+          if (item.follows) {
+            // The question is asked once, under the part it follows; the click answers both.
+            item.part.status = "waiting_dependency";
+            item.part.reason = "web_shares_question";
+            item.part.waitReason = "dependency_pending";
+            continue;
+          }
           const clarificationId = setIdOf(input.requestId, item.part.localId, "q");
           const order = pick.sameName.slice(0, 3);
           sets.push({ clarificationId, kind: "question", options: order.map((index) => ({ capabilities: ["web.fetch"], capability: "web.fetch", optionId: String(index + 1) })), partId: item.part.localId, purpose: "web_pick", state: "open", subgoal: `clarification:${input.requestId}:${item.part.localId}` });

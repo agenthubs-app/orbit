@@ -103,3 +103,33 @@ test("WEB-008: same-named results — ask first, then open the picked page witho
   assert.match(resumed.text, /北行列車/u);
   assert.equal(model.calls.filter((call) => call.node === "probe").length, 1, "the choice is not asked again on resume");
 });
+
+test("WEB-008 split in two parts: the same name is searched once, asked once, and the click answers both", async () => {
+  const message = "是枝真紀さんの代表作と現在の役職を調べてください。";
+  const replies: Record<string, (call: ModelCall) => string> = {
+    answer: (call) => {
+      const pages = [...call.user.matchAll(/(w\d+) — public web page/gu)].map((match) => match[1]);
+      return json({ segments: [{ cites: [{ sentenceIds: [2], sourceRef: pages[0] }], partId: "p1", text: "代表作は『夏之庭』と『北行列車』です。" }, { cites: [{ sentenceIds: [3], sourceRef: pages[pages.length - 1] }], partId: "p2", text: "現在は東都映画のクリエイティブディレクターです。" }] });
+    },
+    probe: () => json({ picks: [{ open: [1], partId: "p1", sameName: [1, 2] }] }),
+    understand: () => json({ language: "ja", parts: [
+      part({ dataSources: ["public_web"], localId: "p1", requiredCapabilities: ["web.search"], sourceQuote: "是枝真紀さんの代表作", webTarget: { qualifiers: ["works"], quote: "是枝真紀" } }),
+      part({ dataSources: ["public_web"], localId: "p2", requiredCapabilities: ["web.search"], sourceQuote: "現在の役職を調べてください", webTarget: { qualifiers: ["current", "role"], quote: "是枝真紀さん" } }),
+    ], plainChat: false }),
+  };
+  const model = deepseekStub((call) => replies[call.node ?? ""](call));
+  const tools = toolsStub();
+  const kit = graphKit(model.fetchImplementation);
+  kit.deps.web = webAccess(tools);
+  kit.deps.judgment = judgmentAccess(outboundJudge(0.03).fetchImplementation);
+  const input = kit.input(message, { locale: "ja" });
+  const first = await runAgentGraph(kit.deps, input);
+  assert.deepEqual(tools.calls.map((call) => `${call.kind} ${call.body.query ?? call.body.url}`), ["search 是枝真紀 代表作 現在 役職"], "one query with both parts' qualifiers");
+  assert.equal(first.clarifications.length, 1, "one question");
+  assert.equal((first.text.match(/どちらのことですか/gu) ?? []).length, 1);
+  const resumed = await resumeAgentGraph(kit.deps, input, { clarificationId: first.clarifications[0].clarificationId, kind: "select", optionId: "1" });
+  assert.deepEqual(tools.calls.map((call) => call.kind), ["search", "fetch"], "the page is fetched once for both");
+  assert.match(resumed.text, /北行列車/u);
+  assert.match(resumed.text, /クリエイティブディレクター/u);
+  assert.deepEqual(resumed.partResults.map((item) => item.status), ["answered", "answered"]);
+});

@@ -635,6 +635,16 @@ export function resolveNode(scope: NodeScope): GraphNode {
                 pages = await readPages(records.reader, kind, accountScope, queryOf(undefined), order === "both" ? 1 : maxPages);
                 emitTrace({ partId: part.localId, type: "resolve.own_words_unmatched", words: ownWords });
               } else if (ownWords) emitTrace({ partId: part.localId, type: "resolve.own_words", words: ownWords });
+              // AG09 dev run 2 (AE-SCL-015): notes compared with a web lookup of the same message ("和我笔记里他们给我的价格比一下"
+              // after "查 Kasane Pack 官网…"): when the part's words find no note, the public name the user typed for that lookup
+              // is searched — the user's own words of this message, never a record's.
+              if (kind === "memo" && !contactId && !pages.items.length && !pages.withheld) {
+                const webName = [...parts.filter((other) => part.dependsOn.includes(other.localId)), ...parts.filter((other) => other !== part)].map((other) => (other.plan.webTarget?.quote ? input.message.slice(other.plan.webTarget.quote[0], other.plan.webTarget.quote[1]).replace(/^@/u, "").trim() : "")).find((name) => name && name !== kindText);
+                if (webName) {
+                  pages = await readPages(records.reader, kind, accountScope, queryOf(webName), order === "both" ? 1 : maxPages);
+                  emitTrace({ found: pages.items.length, partId: part.localId, type: "resolve.web_name", words: webName });
+                }
+              }
               if (kindText && contactId && !pages.items.length && !pages.withheld) {
                 pages = await readPages(records.reader, kind, accountScope, queryOf(undefined), order === "both" ? 1 : maxPages);
                 if (pages.items.length) read.notes.push(`No note of theirs contains "${kindText}"; these are their ${kind === "memo" ? "notes" : "records"} without that filter.`);

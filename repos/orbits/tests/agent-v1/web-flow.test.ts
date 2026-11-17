@@ -158,3 +158,24 @@ test("AG09-2 (WEB-003): official price and the user's note in one part — the n
   assert.deepEqual(result.sourceRefs, ["memo:note:m33"]);
   assert.deepEqual(result.web.queries.map((query) => query.text), ["Acme Cloud 官网 价格"]);
 });
+
+test("AE-SCL-015: notes compared with a web lookup of the same message are searched by the public name the user typed when their own words find none", async () => {
+  const message = "查一下 Acme Cloud 官网现在的价格，和我笔记里他们给我的优惠比一下。";
+  const trace = captureTrace();
+  try {
+    const { kit } = setup({
+      answer: (call) => json({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: handle(call, /(w\d+) — public web page/u) }], partId: "p1", text: "官网标准版每席每月 1,300 日元。" }, { cites: [{ sentenceIds: [1], sourceRef: handle(call, /(s\d+) — memo/u) }], partId: "p2", text: "你的笔记记的是 1200 日元。" }] }),
+      probe: () => json({ picks: [{ open: [1], partId: "p1", sameName: [] }] }),
+      understand: () => json({ parts: [
+        part({ dataSources: ["public_web"], localId: "p1", requiredCapabilities: ["web.search"], sourceQuote: "查一下 Acme Cloud 官网现在的价格", webTarget: { qualifiers: ["official", "price"], quote: "Acme Cloud" } }),
+        part({ dataSources: ["orbit_records"], dependsOn: ["p1"], localId: "p2", readFilter: { text: "优惠" }, requiredCapabilities: ["memo.read", "fn.compare"], sourceQuote: "和我笔记里他们给我的优惠比一下" }),
+      ], plainChat: false }),
+    });
+    const result = await runAgentGraph(kit.deps, kit.input(message));
+    assert.ok(trace.events.some((event) => event.type === "resolve.web_name" && event.words === "Acme Cloud" && Number(event.found) > 0));
+    assert.deepEqual(result.sourceRefs, ["memo:note:m33"]);
+    assert.match(result.text, /1200/u);
+  } finally {
+    trace.restore();
+  }
+});

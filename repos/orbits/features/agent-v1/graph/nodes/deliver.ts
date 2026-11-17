@@ -187,6 +187,8 @@ function partLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, lan
     case "awaiting_clarification":
       return clarifyLine(scope, state, part, language);
     case "waiting_dependency": {
+      // AG09: a web part that shares another part's question about same-named results says nothing until the click.
+      if (part.reason === "web_shares_question") return "";
       // run-03 repair 1 (AE-UND-010): the prerequisite that is not done is what it waits for, not the first one listed.
       const prerequisites = parts.filter((other) => part.dependsOn.includes(other.localId));
       const dependency = prerequisites.find((other) => other.status !== "answered") ?? prerequisites[0];

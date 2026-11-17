@@ -244,7 +244,13 @@ export function applyResolution(state: AgentGraphState, resolution: GraphResolut
     const web = set.purpose === "web_pick" ? { pick: Number(option.optionId) - 1 } : option.optionId === "send_query" ? { confirmed: true } : { skipped: true };
     part.web = { ...(part.web ?? {}), ...web };
     part.waitReason = null;
-    return { optionSets: sets, parts, pausing: false, resumeNext: "route", touched: [part.localId] };
+    // Parts that looked up the same name went with this part's search: the pick answers them too (probe.ts).
+    const sharing = set.purpose === "web_pick" && part.web.searchKey ? parts.filter((other) => other !== part && other.web?.searchKey === part.web!.searchKey) : [];
+    for (const other of sharing) {
+      other.web = { ...(other.web ?? {}), ...web };
+      other.waitReason = null;
+    }
+    return { optionSets: sets, parts, pausing: false, resumeNext: "route", touched: [part.localId, ...sharing.map((other) => other.localId)] };
   }
   if (set.purpose === "object") {
     bindRef(part);
