@@ -86,6 +86,44 @@ function check(text: string, input: UnderstandValidationInput): Checked {
 
 const failedUnderstanding = (result: Extract<MainModelResult, { ok: false }>) => (result.reason === "budget" ? "budget" as const : "model_error" as const);
 
+/** Family names (zh, ja) and name prefixes: a bare word that starts so, or ends with an honorific, reads as a person. */
+const ZH_SURNAME = "王李张刘陈杨黄赵吴周徐孙马朱胡郭何林罗郑梁谢宋唐许韩冯邓曹彭曾肖董袁潘蒋蔡余杜叶程苏魏吕丁任沈姚卢姜崔钟谭陆汪范廖贾夏韦邹孟熊秦邱尹薛闫段雷侯史陶黎贺顾毛郝龚邵钱严覃戴莫孔汤";
+const JA_SURNAME = /^(佐藤|鈴木|高橋|田中|伊藤|渡辺|渡边|山本|中村|小林|加藤|吉田|山田|佐々木|山口|松本|井上|木村|斎藤|清水|山崎|池田|橋本|阿部|石川|山下|中島|石井|小川|前田|岡田|長谷川|藤田|後藤|近藤|村上|遠藤|青木|坂本|福田|太田|西村|藤井|岡本|藤原|中野|三浦|原田|中川|松田|竹内|小野|田村|中山|和田|石田|森田|上田|柴田|酒井|工藤|横山|宮崎|宮本|内田|高木|安藤|島田|谷口|大野|高田|丸山|今井|河野|藤本|村田|武田|上野|杉山|増田|小山|大塚|平野|是枝)/u;
+const HONORIFIC_END = /(さん|さま|様|くん|君|ちゃん|先生|氏|老师|女士|总监|经理|总)$/u;
+const NOT_A_NAME = /^(今天|明天|昨天|后天|前天|今日|明日|昨日|早上|晚上|上午|下午|中午|周末|你好|您好|谢谢|好的|收到|嗯嗯|哈哈|在吗|帮忙|帮我|这个|那个|什么|为什么|怎么|是的|不是|没有|可以|不行|行吗|对的|继续|取消|算了|随便|好吧)$/u;
+const EN_NOT_A_NAME = /^(hi|hello|hey|thanks|thank you|yes|no|ok|okay|sure|help|today|tomorrow|yesterday|please|continue|cancel|never mind|what|why|how|good|great|fine)$/iu;
+
+/** True when a word on its own reads as a person's name (code's rule: no record is looked up). */
+export function bareNameOf(words: string): string | null {
+  const said = words.replace(/[\s。．.!！?？、，,…~～]+$/u, "").replace(/^[\s@]+/u, "").trim();
+  if (!said) return null;
+  if (/^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー々]{2,8}$/u.test(said)) {
+    const core = said.replace(HONORIFIC_END, "");
+    if (NOT_A_NAME.test(said) || NOT_A_NAME.test(core) || core.length < 1) return null;
+    if (HONORIFIC_END.test(said) && core.length >= 1) return said;
+    if (/^[\p{Script=Han}]{2,4}$/u.test(core) && (/^[小老阿]/u.test(core) || ZH_SURNAME.includes(core[0]) || JA_SURNAME.test(core))) return said;
+    return null;
+  }
+  if (/^[A-Z][a-z'-]+(?: [A-Z][a-z'-]+){0,2}$/u.test(said) && !EN_NOT_A_NAME.test(said)) return said;
+  return null;
+}
+
+/**
+ * AG10 run-03 (AE-AMB-001): a part that is only a name ("小林") and got no object clue from the first layer names a person,
+ * as the first layer gives it (a contact clue, no record bound). Code decides from the words alone — nothing is looked up,
+ * so the question that follows still reads none of the user's records.
+ */
+function nameBareContacts(output: UnderstandOutput): void {
+  if (output.plainChat) return;
+  for (const part of output.parts) {
+    if (part.objectClues.length || part.clarity !== "none" || part.requiredCapabilities.length) continue;
+    const name = bareNameOf(part.sourceQuote);
+    if (!name) continue;
+    part.objectClues = [{ entity: "contact", text: name }];
+    emitTrace({ type: "understand.bare_name_contact", words: name.length });
+  }
+}
+
 export function understandNode(scope: NodeScope): GraphNode {
   const { deps, input, run } = scope;
   return async (state: AgentGraphState) => {
@@ -123,6 +161,7 @@ export function understandNode(scope: NodeScope): GraphNode {
     // run-03: a sentence of the message no part holds becomes a statement part (code's, not the model's).
     const covered = coverEverySentence(checked.output, input.message);
     if (covered.added.length) emitTrace({ quotes: covered.added.map((words) => [input.message.indexOf(words), input.message.indexOf(words) + words.length]), type: "understand.sentence_covered" });
+    nameBareContacts(covered.output);
     run.understood = covered.output;
     run.plainReply = covered.output.plainChat ? covered.output.reply ?? null : null;
     // AG06: the reply language — the first layer's report, checked against the text (intake's rule is the fallback).
