@@ -10,6 +10,7 @@ import { hypothesisOf, negationOf } from "../../route/decide";
 import { replyLanguageOf } from "../../route/handoff-copy";
 import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_PROMPT_VERSION } from "../../understand/prompt";
 import { coverEverySentence } from "../../understand/cover";
+import { describedObjectSpan } from "../../understand/described-clue";
 import type { UnderstandOutput } from "../../understand/schema";
 import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInput } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
@@ -50,7 +51,12 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
       reason: null,
       refs: part.objectClues.map((clue) => {
         const at = message.indexOf(clue.text);
-        return { entity: clue.entity, quote: at >= 0 ? [at, at + clue.text.length] as [number, number] : null, recordId: clue.referenceId ? context.handles.get(clue.referenceId)?.id ?? null : null };
+        const own: [number, number] | null = at >= 0 ? [at, at + clue.text.length] : null;
+        // AG09 run-03 (AE-BND-006): a demonstrative the user described just before ("约山本吃饭这条待办") is looked up by
+        // those words; the clue then names the record and is not a missing object.
+        const described = clue.referenceId ? null : describedObjectSpan(message, own, [start, start + part.sourceQuote.length], clue.text);
+        if (described) emitTrace({ clue: clue.text, described: message.slice(described[0], described[1]), entity: clue.entity, partId: part.localId, type: "understand.described_clue" });
+        return { entity: clue.entity, quote: described ?? own, recordId: clue.referenceId ? context.handles.get(clue.referenceId)?.id ?? null : null };
       }),
       route: null,
       status: "unfinished",
