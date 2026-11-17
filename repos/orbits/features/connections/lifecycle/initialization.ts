@@ -7,6 +7,7 @@ import { RelationshipLifecycleError } from "./contract";
 import { createPostgresRelationshipLifecycleRepository } from "./postgres-repository";
 import { normalizeRelationshipLifecycleInstant } from "./transition";
 import { acquireSyncCommitOrderLock, isSyncCollection } from "../../sync/commit-order-lock";
+import { nextContactVersion } from "../../contacts/contact-version";
 
 interface Row { record_id: string; collection_name: string; user_id: string; payload: Record<string, unknown> }
 interface Acquisition { connection: Row; contact: Row; connectionId: string; pending: boolean; revision: string }
@@ -147,7 +148,8 @@ export function createRelationshipInitializationService({ client, workspaceId, n
         // Both owner-scoped projections advance in the same transaction. All
         // private profile data and event evidence remain untouched.
         for (const row of [connection, contact]) {
-          const patch = { stage: choice.stage, version: version(row.payload.version) + 1, lifecycleInitialization: "ready", updatedAt: timestamp,
+          // AG12: the contact's version is the one every contact write moves (contact-version.ts); the same +1 here.
+          const patch = { stage: choice.stage, version: row === contact ? nextContactVersion(row.payload) : version(row.payload.version) + 1, lifecycleInitialization: "ready", updatedAt: timestamp,
             ...(row === connection ? { activeGoal: snapshot.connection.activeGoal } : {}) };
           const updated = await sql.query(`update orbit_records set payload = payload || $5::jsonb, updated_at = $6
             where workspace_id = $1 and user_id = $2 and collection_name = $3 and record_id = $4 and lifecycle_state <> 'deleted' returning record_id`,
