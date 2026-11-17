@@ -42,6 +42,10 @@ function reviewedEntry(part: GraphPart, quote: string, clue: (ref: GraphPart["re
   return null;
 }
 
+/** AG10 run-02: words naming a to-do, and words naming a note (a statement about either gets the matching entry). */
+const TODO_WORD = /(待办|(?:设|加|建)个?提醒|ToDo|TODO|タスク|リマインダー|\bto-?dos?\b|\btasks?\b|\ba reminder\b)/iu;
+const RECORD_NOTE_WORD = /(笔记|メモ|\bnotes?\b|往来|来电|电话|電話|\bcall(?:ed)?\b)/iu;
+
 /** AG09 run-02: words that ask to look on the web (zh, ja, en). */
 const EXPLICIT_WEB = /(上网|联网|网上|网络上|搜一下|搜搜|搜索|官网|公开资料|公开职务|公开信息|ネット|ウェブ|検索|公式サイト|公開情報|online|on the web|the internet|web search|search the web|google|look (?:it |them |him |her )?up)/iu;
 
@@ -167,6 +171,12 @@ export function routeNode(scope: NodeScope): GraphNode {
       if (reviewed.has(part.localId) && decision.step?.kind === "respond" && decision.step.entry) {
         const entry = reviewedEntry(part, input.message.slice(part.quote[0], part.quote[1]), clueText, state.asOf || deps.now(), state.timeZone || "Asia/Tokyo");
         if (entry) decision.step = { ...decision.step, entry: entry.entry, reviewed: entry.reviewed };
+      }
+      // AG10 run-02 (AE-AMB-004): a statement about a to-do ("I should probably add a to-do to chase her") is offered a
+      // to-do, not a note about the person.
+      if (decision.step?.kind === "respond" && decision.step.entry === "memo.create" && !decision.step.reviewed && TODO_WORD.test(partWords) && !RECORD_NOTE_WORD.test(partWords)) {
+        decision.step = { ...decision.step, entry: "todo.create" };
+        emitTrace({ partId: part.localId, type: "route.todo_entry" });
       }
       if (unboundPronoun(part)) emitTrace({ partId: part.localId, reason: "a pronoun with nothing to resolve it from (§3.10): the object is missing", type: "route.unbound_reference" });
       // AG09 (PLANNER 排除范围; AE-UND-010 in one part): a change that saves what a web page says is not offered yet — the part

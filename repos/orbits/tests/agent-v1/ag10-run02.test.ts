@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { stripSaveTalk } from "../../features/agent-v1/entry/approval-claims";
 import { runAgentGraph } from "../../features/agent-v1/graph/build";
-import { captureTrace, deepseekStub, graphKit, json, part, type ModelCall } from "./graph-kit";
+import { captureTrace, deepseekStub, graphKit, json, part, recordAccessOf, type ModelCall } from "./graph-kit";
 import { runFn } from "./functions-kit";
 
 /**
@@ -79,4 +79,20 @@ test("AE-RD-008 (a): a summary asked for in words ('总结一下') needs no lead
   assert.doesNotMatch(summarize.result.text, /整理一下|理解成/u);
   const organize = await runFn("@11 月 10 日笔记 帮我整理整理。", [{ dataSources: ["orbit_records"], deliverable: "summary", objectClues: [{ entity: "memo", referenceId: "r1", text: "@11 月 10 日笔记" }], requiredCapabilities: ["memo.read", "fn.summarize"], sourceQuote: "@11 月 10 日笔记 帮我整理整理。" }], { answer, references });
   assert.match(organize.result.text, /我把“整理整理”理解成给这篇笔记写一段摘要/u);
+});
+
+test("AE-AMB-004: a conditional plan to add a to-do offers a to-do, not a note", async () => {
+  const message = "If Emily doesn't send the dashboard spec by Friday, I should probably add a to-do to chase her.";
+  const model = deepseekStub((call: ModelCall) => (call.node === "understand"
+    ? json({ language: "en", parts: [part({ clarity: "statement", objectClues: [{ entity: "contact", text: "Emily" }], sourceQuote: message })], plainChat: false })
+    : json({ segments: [{ partId: "p1", text: "That sounds reasonable; wait until Friday." }] })));
+  const kit = graphKit(model.fetchImplementation, { now: "2026-11-15T01:00:00.000Z", records: recordAccessOf() });
+  const trace = captureTrace();
+  try {
+    const result = await runAgentGraph(kit.deps, kit.input(message, { locale: "en" }));
+    const entries = result.clarifications.filter((set) => set.kind === "entry").flatMap((set) => set.options.map((option) => option.capability));
+    assert.deepEqual(entries, ["todo.create"]);
+  } finally {
+    trace.restore();
+  }
 });
