@@ -121,13 +121,13 @@ export type FunctionTask =
 const isMemoType = (type: string) => type === "memo" || type === "note";
 
 /** The memo a part works on: its own bound memo, this turn's @ memo, or (a reply that points back, "それ") the last one. */
-function memoOf(scope: NodeScope, part: GraphPart): string | null {
+function memoOf(scope: NodeScope, part: GraphPart, allowSession: boolean): string | null {
   const bound = part.refs.find((ref) => ref.entity === "memo" && ref.recordId);
   if (bound) return bound.recordId!;
   const attached = scope.run.references.filter((reference) => isMemoType(reference.type) && reference.accessible !== false);
   if (attached.length === 1) return attached[0].id;
   // A memo clue with no record ("それ", "約束したこと") goes back to the memo of the conversation, when there is one.
-  if (part.refs.some((ref) => ref.entity === "memo" && !ref.recordId)) {
+  if (allowSession && part.refs.some((ref) => ref.entity === "memo" && !ref.recordId)) {
     const last = scope.run.context?.lastMentionedForCode.find((item) => isMemoType(item.type));
     if (last) return last.id;
   }
@@ -154,7 +154,12 @@ export function functionOf(scope: NodeScope, part: GraphPart): FunctionTask | nu
   if (part.route === "read" || write) {
     const interactions = part.capabilities.includes("fn.extractInteractions") || INTERACTION_WORDS.test(quote);
     const followUps = part.capabilities.includes("fn.extractFollowUps") || FOLLOW_UP_ASK.test(quote);
-    const memoId = memoOf(scope, part);
+    // Gate run 1 (AE-XL-007): "刚才那条来电记录没存上，再记一次：小林今天来过电话" dictates a new memo (memo.create) — it is not an
+    // extraction from the memo talked about before. The memo of the conversation is taken only for its commitments as to-dos
+    // ("それをToDoに追加して"); a new memo from the user's words never comes from one.
+    const dictates = part.capabilities.includes("memo.create") && !part.capabilities.some((capability) => capability === "fn.extractInteractions" || capability === "fn.extractFollowUps");
+    const toTodos = part.capabilities.some((capability) => capability.startsWith("todo.")) && followUps;
+    const memoId = dictates && !scope.run.references.some((reference) => isMemoType(reference.type)) ? null : memoOf(scope, part, toTodos && !dictates);
     if (memoId && (interactions || followUps)) {
       // A write asks for one kind: to-dos are follow-ups; anything else written from a memo is its interaction.
       const writesTodo = part.capabilities.some((capability) => capability.startsWith("todo."));

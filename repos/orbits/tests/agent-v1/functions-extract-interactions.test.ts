@@ -7,7 +7,8 @@ import { applyApprovedMemoUpdate } from "../../features/agent-v1/domains/memo/wr
 import { AgentExecutionPermanentError } from "../../features/agent/runtime/service";
 import { NoteServiceError } from "../../features/notes/service";
 import { noul } from "./judgment-kit";
-import { runFn } from "./functions-kit";
+import { fnWorld, NOW, runFn } from "./functions-kit";
+import { graphKit, recordAccessOf } from "./graph-kit";
 
 /**
  * agent-design AG10-3: only an interaction that actually happened between the author and one of the memo's contacts can
@@ -85,6 +86,16 @@ test("stability run: the first layer left the write capability out ('更新…�
     references: [M32],
   });
   assert.equal(cards(read), 0);
+});
+
+test("gate run 1 (AE-XL-007): dictating a new memo ('再记一次：小林今天来过电话') after a note was talked about is not an extraction from that note", async () => {
+  const world = fnWorld();
+  const session = graphKit(fetch, { now: NOW, records: recordAccessOf(world) });
+  await session.sessionState.put("actor:a", { lastMentioned: [{ at: NOW, id: "note:m32", name: "11 月 10 日笔记", type: "memo" }], openItems: [], sessionId: "session:a", shownList: null, updatedAt: NOW });
+  const message = "刚才那条来电记录没存上，再记一次：小林今天来过电话。";
+  const run = await runFn(message, [{ deliverable: "change", objectClues: [{ entity: "memo", text: "那条来电记录" }, { entity: "contact", text: "小林" }], requiredCapabilities: ["memo.create"], sourceQuote: message }], { session, world });
+  assert.ok(!run.events.some((event) => event.type === "fn.extractInteractions" || event.type === "fn.extractFollowUps"), "not an extraction");
+  assert.ok(!run.modelCalls.some((call) => call.node === "functions"));
 });
 
 test("a review that is not sure (it does not answer in time): the interaction is only listed, as doubtful — no card", async () => {
