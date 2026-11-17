@@ -34,7 +34,7 @@ import type { StoredIntent } from "./schema";
 export interface PartWrite {
   intents: StoredIntent[];
   /** What the user picked in a question of this request (ids and a field name only). */
-  picks: { contact?: string; todo?: string; field?: "plannedDate" | "dueAt" };
+  picks: { contact?: string; todo?: string; field?: "plannedDate" | "dueAt"; /** AG08: the answer to "is it the same occasion": "new", or the existing memo's id. */ duplicate?: string };
   /** This part waits for the question another part asks (the same person), and goes on when it is answered. */
   waitsFor?: string | null;
   /** The operations of this part on the card, once frozen. */

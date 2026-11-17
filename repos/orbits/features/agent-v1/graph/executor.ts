@@ -156,6 +156,8 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       timeZone: overrides.timeZone ?? process.env.ORBIT_DEFAULT_TIME_ZONE ?? "Asia/Tokyo",
       ...(overrides.modelCallLimit !== undefined ? { modelCallLimit: overrides.modelCallLimit } : {}),
       ...(execution.onStage ? { onStage: execution.onStage } : {}),
+      // AG08: the judgment model, through the same stoppable fetch as the main model; no key: unavailable.
+      judgment: overrides.judgment ?? { apiKey: process.env.ORBIT_GEMINI_DECISION_API_KEY?.trim() || null, fetchImplementation: overrides.fetchImplementation ?? execution.fetchImplementation },
     };
     if (execution.resume) {
       // AG04: a click resumes this request's paused thread; no message, no confirmation boundary, no model.

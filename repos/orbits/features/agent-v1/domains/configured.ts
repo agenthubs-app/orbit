@@ -60,6 +60,8 @@ export function configuredRecordAccess(): AgentRecordAccess | null {
   const reader = createDomainRegistry({ cursorKey: cursorKeyOf(secret), denied: evalDeniedReads, events, now: () => new Date().toISOString(), source });
   const workspaceId = configured.workspaceId;
   return {
+    // AG08: the events of the deployment for ranking (functions node keeps those the account may see).
+    listEvents: async () => (repository ? repository.listEvents() : []),
     maxPages: readMaxPages(),
     reader,
     scope: (actorId) => ({ accountId: actorId, authorizationEpoch: AUTHORIZATION_EPOCH, workspaceId }),

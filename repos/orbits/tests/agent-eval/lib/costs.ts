@@ -5,8 +5,8 @@
 import type { TraceEvent } from "./trace-log";
 
 export const PRICE_TABLE = {
-  version: "2026-11-15.1",
-  retrievedAt: "2026-11-15",
+  version: "2026-11-17.1",
+  retrievedAt: "2026-11-17",
   source: "https://api-docs.deepseek.com/zh-cn/quick_start/pricing",
   currency: "CNY",
   notes:
@@ -16,8 +16,12 @@ export const PRICE_TABLE = {
     "deepseek-v4-pro": { peak: { cacheHit: 0.3, cacheMiss: 9, output: 27 }, offPeak: { cacheHit: 0.15, cacheMiss: 4.5, output: 13.5 } },
   },
   aliases: { "deepseek-v4-flash": "deepseek-flash", "deepseek-chat": "deepseek-flash" } as Record<string, string>,
-  /** Gemini Decision bills input tokens only; the price is not yet verified (no calls before AG08). */
-  gemini: { "gemini-decision-1": { input: null as number | null, verified: false } },
+  /**
+   * Gemini Decision bills input tokens only (usage.total_input_tokens; output is 0). AG08: 0.10 USD per million input
+   * tokens as 设计稿 §3.8 quotes the official announcement (blog.google … gemini-decisions-api), at 7.2 CNY/USD.
+   * Not checked against a billing page (none is reachable from the eval); `verified` stays false.
+   */
+  gemini: { "gemini-decision-1": { input: 0.72 as number | null, usdPerMillion: 0.1, cnyPerUsd: 7.2, verified: false } },
   /** DeepSeek Search/Fetch: only 200 responses with results are billed; price to be filled by AG09. */
   web: { search: null as number | null, fetch: null as number | null },
 } as const;
@@ -108,15 +112,16 @@ export function tallyCosts(eventsByCase: Record<string, readonly TraceEvent[]>):
         }
       }
       if (event.type === "judgment.response" && event.source === "real" && event.usage) {
-        const u = event.usage as { promptTokenCount?: number; inputTokens?: number };
-        usage.judgment.inputTokens += u.promptTokenCount ?? u.inputTokens ?? 0;
+        const u = event.usage as { total_input_tokens?: number; promptTokenCount?: number; inputTokens?: number };
+        usage.judgment.inputTokens += u.total_input_tokens ?? u.promptTokenCount ?? u.inputTokens ?? 0;
         usage.judgment.raw.push({ caseId, seq: event.seq, usage: u });
       }
     }
     perCase[caseId] = mine;
   }
-  const judgmentCost = calls.judgment.real === 0 ? 0 : null;
-  if (calls.judgment.real > 0) unpriced.push("gemini-decision-1 (price not verified)");
+  const judgmentPrice = PRICE_TABLE.gemini["gemini-decision-1"].input;
+  const judgmentCost = calls.judgment.real === 0 ? 0 : judgmentPrice === null ? null : (usage.judgment.inputTokens * judgmentPrice) / 1_000_000;
+  if (calls.judgment.real > 0 && judgmentPrice === null) unpriced.push("gemini-decision-1 (price not set)");
   const webCost = calls.search.real + calls.fetch.real === 0 ? 0 : null;
   if (webCost === null) unpriced.push("deepseek web search/fetch (price not set)");
   return {

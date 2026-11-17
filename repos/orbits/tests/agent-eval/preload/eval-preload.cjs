@@ -259,7 +259,7 @@ dgram.createSocket = function guardedUdp(...args) {
 
 /* ── faults, replay and model recording on fetch ───────────────────── */
 /** Kinds that rewrite a real response instead of replacing the call (taken after the response). */
-const REWRITE_KINDS = new Set(["inject_approval_flag", "mistag_write"]);
+const REWRITE_KINDS = new Set(["inject_approval_flag", "mistag_write", "low_confidence"]);
 
 function takeFault(where, options = {}) {
   // AG03: an `understand` fault hits only the understand node's model calls; outside the graph (the old
@@ -396,6 +396,22 @@ function mistagWrite(body) {
   return JSON.stringify({ ...body, choices: [{ ...body.choices[0], message: { ...message, content: JSON.stringify(output) } }, ...body.choices.slice(1)] });
 }
 
+/**
+ * AG08 (JDG.yaml low_confidence): the next judgment response keeps its answers, but every answer's confidence is
+ * pressed to 0 — below any question's threshold. The original and the rewrite are both traced.
+ */
+function lowConfidence(body) {
+  if (!state.faults.some((fault) => fault.where === "judgment" && fault.kind === "low_confidence")) return null;
+  if (!body || typeof body !== "object" || !body.answers || typeof body.answers !== "object") return null;
+  const fault = takeFault("judgment", { rewrite: true });
+  if (!fault) return null;
+  // The answer stays the model's; its confidence (and, for graded and choice answers, every probability) is 0.
+  const answers = Object.fromEntries(Object.entries(body.answers).map(([id, answer]) => [id, answer && typeof answer === "object" ? { ...answer, confidence: 0, ...(answer.probabilities && typeof answer.probabilities === "object" ? { probabilities: Object.fromEntries(Object.keys(answer.probabilities).map((key) => [key, 0])) } : {}) } : answer]));
+  const after = { ...body, answers };
+  emit({ type: "judgment.output_rewritten", source: "simulated", kind: fault.kind, before: body, after, note: "every answer's confidence (and probabilities) is now 0, below every threshold; the answers themselves are the model's" });
+  return JSON.stringify(after);
+}
+
 const realFetch = globalThis.fetch;
 if (typeof realFetch === "function") {
   globalThis.fetch = async function evalFetch(input, init) {
@@ -462,7 +478,7 @@ if (typeof realFetch === "function") {
     const body = parseMaybeJson(text);
     const usage = body && typeof body === "object" ? body.usage ?? body.usageMetadata ?? null : null;
     emit({ type: `${prefix}.response`, source: "real", provider, status: response.status, headers: safeHeaders(response.headers), body, usage, model: body?.model ?? requestBody?.model ?? null, durationMs: realNow() - started });
-    const rewritten = category === "model" ? mistagWrite(body) ?? injectApprovalFlag(body) : null;
+    const rewritten = category === "model" ? mistagWrite(body) ?? injectApprovalFlag(body) : category === "judgment" ? lowConfidence(body) : null;
     if (rewritten) return new Response(rewritten, { status: response.status, statusText: response.statusText, headers: response.headers });
     return new Response(text, { status: response.status, statusText: response.statusText, headers: response.headers });
   };

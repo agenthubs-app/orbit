@@ -26,6 +26,54 @@ import type { CardOperationIntent } from "../../../agent/runtime/card-operations
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart, OptionSetState } from "../state";
 import { nameOf as boundName, setIdOf } from "./clarify";
+import { judgeDuplicate, possibleDuplicates, type DuplicateDecision } from "../../judgment/duplicate";
+import { localDay } from "../../views/recent-interaction";
+import type { RecordView } from "../../domains/types";
+
+const DAY_OF = (view: RecordView, timeZone: string) => {
+  const fields = view.fields as { interaction?: { occurredOn?: string }; createdAt?: string };
+  return fields.interaction?.occurredOn ?? (fields.createdAt ? localDay(fields.createdAt, timeZone) : "");
+};
+
+const shortDay = (day: string, language: ReplyLanguage) => {
+  const [, month, date] = day.split("-").map(Number);
+  if (!month) return day;
+  return language === "en" ? `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][month - 1]} ${date}` : `${month}月${date}日`;
+};
+
+/**
+ * AG08 (§3.8 重复判断, AG08-3): the user's choice when a new memo may be one already recorded — the existing memo
+ * ("是同一次") or "不是同一次，仍然新增" — as a question (not sure) or an entry (sure it is the same). Never merged.
+ */
+function duplicateSet(scope: NodeScope, state: AgentGraphState, part: GraphPart, decision: Exclude<DuplicateDecision, { kind: "new" }>): { set: OptionSetState; labels: Map<string, { label: string; refName?: string }>; line: string } {
+  const language = state.language;
+  const zone = state.timeZone || "Asia/Tokyo";
+  const quote = scope.input.message.slice(part.quote[0], part.quote[1]).replace(/^(?:记一下|记下|メモ|Note)[：:\s]*/iu, "").replace(/[。.!！]+$/u, "");
+  const existing = decision.kind === "same" ? [decision.existing] : decision.existing;
+  const labels = new Map<string, { label: string; refName?: string }>();
+  const options: OptionSetState["options"] = [];
+  const snippet = (view: RecordView) => String((view.fields as { body?: string }).body ?? "").slice(0, 40).replace(/[。.!！]+$/u, "");
+  existing.forEach((view, index) => {
+    const day = shortDay(DAY_OF(view, zone), language);
+    labels.set(`o${index + 1}`, { label: language === "zh" ? `是同一次（${day}的笔记）` : language === "ja" ? `同じ件です（${day}のメモ）` : `Same occasion (note of ${day})`, refName: snippet(view) });
+    options.push({ capabilities: ["memo.create"], capability: "memo.create", optionId: `o${index + 1}`, refId: view.id, refType: "memo" });
+  });
+  const fresh = `o${existing.length + 1}`;
+  labels.set(fresh, { label: language === "zh" ? "不是同一次，仍然新增" : language === "ja" ? "別の件なので、新しく記録する" : "Not the same, add it anyway" });
+  options.push({ capabilities: ["memo.create"], capability: "memo.create", optionId: fresh, refId: "new", refType: "duplicate" });
+  const first = existing[0];
+  const day = shortDay(DAY_OF(first, zone), language);
+  const line = decision.kind === "same"
+    ? (language === "zh" ? `你${day}已经记过一条：「${snippet(first)}」。看起来是同一次，所以这次没有另外新增；如果不是同一次，可以点「不是同一次，仍然新增」。` : language === "ja" ? `${day}にすでに「${snippet(first)}」と記録されています。同じ件のようなので、今回は新しく記録していません。別の件なら「別の件なので、新しく記録する」を押してください。` : `You already noted on ${day}: "${snippet(first)}". It looks like the same occasion, so nothing new was added; if it is not, tap "Not the same, add it anyway".`)
+    : (language === "zh" ? `你${day}已经记过一条：「${snippet(first)}」。这次的「${quote}」和它是同一次吗？` : language === "ja" ? `${day}にすでに「${snippet(first)}」と記録されています。今回の「${quote}」は同じ件ですか？` : `You already noted on ${day}: "${snippet(first)}". Is "${quote}" the same occasion?`);
+  const existingSets = state.optionSets.filter((set) => set.partId === part.localId && set.purpose === "operation").length;
+  const clarificationId = `${setIdOf(scope.input.requestId, part.localId, decision.kind === "same" ? "e" : "q")}${existingSets ? existingSets + 1 : ""}`;
+  return {
+    labels,
+    line,
+    set: { ...(decision.kind === "same" ? {} : { asks: "reading" as const }), clarificationId, kind: decision.kind === "same" ? "entry" : "question", options, partId: part.localId, purpose: "operation", state: "open", subgoal: `clarification:${scope.input.requestId}:${part.localId}` },
+  };
+}
 
 const writesOf = (part: GraphPart) => part.capabilities.filter((capability) => capabilityKind(capability) === "write");
 const supported = (capability: Capability) => (PROPOSED_CAPABILITIES as readonly string[]).includes(capability);
@@ -206,10 +254,31 @@ export function proposeNode(scope: NodeScope): GraphNode {
       timeZone: state.timeZone || "Asia/Tokyo",
     };
     const outcomes = new Map<string, WriteOutcome>();
+    const duplicates = new Map<string, Exclude<DuplicateDecision, { kind: "new" }>>();
     const active = work.filter((part) => part.write && part.status === "unfinished" && part.reason === "proposing").sort((left, right) => left.quote[0] - right.quote[0]);
     for (const part of active) {
       const outcome = await resolvePartIntents(ctx, part, part.write!);
       outcomes.set(part.localId, outcome);
+      // AG08: a new memo of an interaction that may be one already recorded is checked before it goes on a card.
+      if (outcome.kind === "ready" && deps.records && ctx.scope && !part.write!.picks.duplicate) {
+        for (const op of outcome.ops) {
+          const set = op.set as { body?: string; contactIds?: string[]; interaction?: { actualContactIds: string[]; channel: string; occurredOn: string } } | undefined;
+          if (op.capability !== "memo.create" || !set?.interaction) continue;
+          const entry = { body: String(set.body ?? ""), contactIds: set.contactIds ?? [], interaction: set.interaction };
+          const existing = await possibleDuplicates(deps.records, ctx.scope, entry, ctx.timeZone).catch((error: unknown) => {
+            emitTrace({ error: error instanceof Error ? error.message : String(error), partId: part.localId, type: "read.error", where: "propose.duplicates" });
+            return [];
+          });
+          if (!existing.length) continue;
+          const decision = await judgeDuplicate(deps.judgment, run.judgment, { entry, existing, language, requestId: input.requestId });
+          if (decision.kind !== "new") duplicates.set(part.localId, decision);
+          break;
+        }
+      } else if (outcome.kind === "ready" && part.write!.picks.duplicate && part.write!.picks.duplicate !== "new") {
+        // The user said it is the same occasion: nothing is added (the existing memo stays as it is).
+        duplicates.delete(part.localId);
+        outcomes.set(part.localId, { kind: "stop", line: language === "zh" ? "好的，当作同一次，没有另外新增。" : language === "ja" ? "同じ件として扱い、新しくは記録していません。" : "Got it — the same occasion, so nothing new was added.", reason: "already_recorded" });
+      }
       if (outcome.kind === "ask" && outcome.question.type === "contact") asked.set(part.localId, outcome.question.candidates.map((item) => item.id));
       emitTrace({ kind: outcome.kind, partId: part.localId, ...(outcome.kind === "ask" ? { question: outcome.question.type } : {}), ...(outcome.kind === "stop" ? { reason: outcome.reason } : {}), type: "propose.resolved" });
     }
@@ -220,6 +289,19 @@ export function proposeNode(scope: NodeScope): GraphNode {
       const outcome = outcomes.get(part.localId)!;
       const write = part.write as PartWrite;
       write.waitsFor = null;
+      const duplicate = duplicates.get(part.localId);
+      if (duplicate) {
+        // AG08: not merged, not added: the user checks (a question), or the existing memo is pointed at (an entry).
+        const made = duplicateSet(scope, { ...state, optionSets }, part, duplicate);
+        optionSets.push(made.set);
+        run.optionLabels.set(made.set.clarificationId, made.labels);
+        if (duplicate.kind === "ask") {
+          settle(part, "awaiting_clarification", null, made.line);
+          part.waitReason = "object_ambiguous";
+          emitTrace({ clarificationId: made.set.clarificationId, kind: "question", options: made.set.options.length, partId: part.localId, question: "duplicate", subgoal: made.set.subgoal, type: "clarify.asked" });
+        } else settle(part, "unfinished", "already_recorded", made.line);
+        continue;
+      }
       if (outcome.kind === "stop") settle(part, "unfinished", outcome.reason, outcome.line);
       else if (outcome.kind === "ask") {
         const made = questionSet(scope, { ...state, optionSets }, part, outcome.question);
@@ -238,7 +320,7 @@ export function proposeNode(scope: NodeScope): GraphNode {
     // no card is frozen — the answer may change what the card says; the click resumes every write part.
     const askingElsewhere = parts.find((part) => !active.includes(part) && part.status === "awaiting_clarification");
     const waiting = Boolean(askingElsewhere) || active.some((part) => part.status === "awaiting_clarification" || part.status === "waiting_dependency");
-    const ready = active.filter((part) => outcomes.get(part.localId)?.kind === "ready");
+    const ready = active.filter((part) => outcomes.get(part.localId)?.kind === "ready" && !duplicates.has(part.localId));
     if (waiting) {
       // One card per request: the items already settled wait for the open question and go on with it.
       for (const part of ready) {

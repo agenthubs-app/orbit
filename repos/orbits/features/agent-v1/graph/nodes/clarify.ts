@@ -99,6 +99,12 @@ function candidatesFor(scope: NodeScope, part: GraphPart): { clue: number; candi
 
 const firstWrite = (capabilities: readonly Capability[]) => capabilities.find((capability) => capabilityKind(capability) === "write");
 
+/** AG08: a reschedule entry names the record by its own words ("给小林发修订报价那条待办" → 给小林发修订报价, route node). */
+function entryObject(step: Extract<NextStep, { kind: "respond" }>, object: ReturnType<typeof objectOf>): ReturnType<typeof objectOf> {
+  if (step.reviewed?.kind !== "reschedule" || object.name || !step.reviewed.object) return object;
+  return { ...object, text: step.reviewed.object };
+}
+
 function setOf(scope: NodeScope, language: ReplyLanguage, part: GraphPart, step: NextStep | undefined, parts: readonly GraphPart[] = []): { set: Omit<OptionSetState, "options">; options: ClarifyOption[] } | null {
   const { input, run } = scope;
   const words = { language };
@@ -122,7 +128,7 @@ function setOf(scope: NodeScope, language: ReplyLanguage, part: GraphPart, step:
       return options.length ? { options, set: base("e", "entry", "other_readings") } : null;
     }
     case "respond":
-      return step.entry ? { options: optionsFor({ capability: step.entry, language: words.language, object, purpose: "entry" }), set: base("e", "entry", "entry") } : null;
+      return step.entry ? { options: optionsFor({ capability: step.entry, language: words.language, object: entryObject(step, object), purpose: "entry", ...(step.reviewed ? { entryWording: step.reviewed } : {}) }), set: base("e", "entry", "entry") } : null;
     default:
       return null;
   }
@@ -225,7 +231,7 @@ export function applyResolution(state: AgentGraphState, resolution: GraphResolut
   const writeParts = parts.filter((item) => item !== part && item.route === "propose_write" && item.write);
   const pickFor = (target: GraphPart, type: string | undefined, id: string) => {
     if (!target.write) return;
-    target.write = { ...target.write, picks: { ...target.write.picks, ...(type === "contact" ? { contact: id } : type === "todo" ? { todo: id } : type === "field" && (id === "plannedDate" || id === "dueAt") ? { field: id } : {}) } };
+    target.write = { ...target.write, picks: { ...target.write.picks, ...(type === "contact" ? { contact: id } : type === "todo" ? { todo: id } : type === "field" && (id === "plannedDate" || id === "dueAt") ? { field: id } : type === "duplicate" || type === "memo" ? { duplicate: id } : {}) } };
   };
   if (set.purpose === "operation") {
     if (option.refId) pickFor(part, option.refType, option.refId);

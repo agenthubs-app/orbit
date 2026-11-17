@@ -25,6 +25,8 @@ const SCANNED_FILES = ["features/agent/ledger/card-routes.ts", "shared/compute/a
 const MODEL_ONLY = [
   /\/prompt\.ts$/u, /\/schema\.ts$/u, /answer\/materials\.ts$/u, /\/context\//u, /\/understand\//u, /\/models\//u,
   /\/observability\//u, /\/views\//u, /graph\/nodes\/understand\.ts$/u, /graph\/checkpointer\.ts$/u,
+  // AG08: the judgment questions' wording goes to the judgment model only.
+  /judgment\/questions\.ts$/u,
 ];
 
 const FORBIDDEN: { name: string; pattern: RegExp }[] = [

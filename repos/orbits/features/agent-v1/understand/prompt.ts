@@ -5,7 +5,7 @@
 import { CAPABILITIES } from "../route/capabilities";
 import { CLARITIES, DATA_SOURCES, DELIVERABLES, ENTITIES } from "./schema";
 
-export const UNDERSTAND_PROMPT_VERSION = "understand@ag06.2";
+export const UNDERSTAND_PROMPT_VERSION = "understand@ag08.1";
 
 const CAPABILITY_NOTES = [
   "contact.read, event.read, attendance.read, todo.read, memo.read, schedule.read, profile.read: read the user's own Orbit records (contacts, events in Orbit's event directory, attendance notes, to-dos, memos/notes, schedule, own profile).",
@@ -41,6 +41,7 @@ export function understandSystemPrompt(): string {
     '  "persistence": "this_turn" | "until_satisfied" (until_satisfied when the user asks Orbit to keep going without an end, e.g. keep searching until satisfied),',
     '  "continues": {"kind": "alternative" | "clarification" | "card" | "pending_external", "ref": an open item handle o1, o2 …} — only when the CURRENT message answers or accepts that open item,',
     '  "readFilter": only for a part that reads the user\'s records, and only what the message says: {"text": a topic or title words to look for, copied from the CURRENT message (e.g. "灰釉", "询价", "竞品笔记"; not a person\'s name, not a whole question), "order": "newest" (the latest, last time — the default) | "oldest" (the first time, the earliest) | "both" (then and now, how something changed), "status": "open" (not done yet) | "completed", "from" / "to": a date range as YYYY-MM-DD (inclusive) worked out from the message and today\'s date (e.g. tomorrow, this month), "current": true (how the person stands now — where they are, what they do now, how they are lately — rather than what happened last time)} — leave out what the message does not say, except that a part that asks about the first time or the earliest always gives "order": "oldest" (also when "and now" is its own part)',
+    '  "rank": only for a part that picks or orders several records (fn.rank): {"count": how many the user wants, as a number (leave out when the user wants them all), "basis": what makes a record fit, copied from the CURRENT message — the topic or purpose (e.g. "聊独立出版", "认识独立创作者", "a power-semiconductor packaging process lead role", "跟 @兴趣笔记 的主题有关"); leave it out when the order is only by a date or a time, "within": words of the CURRENT message that limit which records count, such as a place or an industry (e.g. "东京做零售的", "based in Singapore"); dates go in readFilter, "orderBy": "startsAt" (events by start time) | "lastInteraction" (contacts by the last recorded interaction) | "dueAt" | "plannedDate" — only when the user orders by that field, "direction": "asc" (earliest or longest ago first) | "desc"}',
     "}",
     "",
     "Capabilities (use these names only):",

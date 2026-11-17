@@ -81,6 +81,25 @@ export interface ReadFilter {
   current?: true;
 }
 
+/**
+ * AG08 (附录 C `rankingBasis`, with what code needs to rank by itself; 登记 in the AG08 REPORT): a part that picks
+ * or orders records. Words are copied from the CURRENT message; code checks them and decides from them whether
+ * the order needs the judgment model (a basis to understand) or only a field (no judgment, AG08-2).
+ * - `count`: how many the user wants (absent: all, up to code's list limit).
+ * - `basis`: what makes one fit (a topic, a purpose) — 附录 C rankingBasis with source "turn".
+ * - `within`: words that limit which records count (a place, an industry); dates stay in readFilter.
+ * - `orderBy` / `direction`: a record field the user orders by.
+ */
+export const RANK_FIELDS = ["startsAt", "lastInteraction", "dueAt", "plannedDate"] as const;
+export type RankField = (typeof RANK_FIELDS)[number];
+export interface RankSpec {
+  count?: number;
+  basis?: string;
+  within?: string;
+  orderBy?: RankField;
+  direction?: "asc" | "desc";
+}
+
 export interface UnderstandPart {
   localId: string;
   sourceQuote: string;
@@ -99,6 +118,8 @@ export interface UnderstandPart {
   persistence: Persistence;
   /** AG05: the read's narrowing (see ReadFilter). */
   readFilter?: ReadFilter;
+  /** AG08: picking or ordering records (see RankSpec). */
+  rank?: RankSpec;
 }
 
 export interface UnderstandOutput {

@@ -18,6 +18,28 @@ import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
 import { clueWords, needsDirections, objectOf, pageKindOf } from "./clarify";
 import { clueSearchWords } from "./resolve";
+import { needsIntentReview, reviewWriteIntent } from "../../judgment/intent-review";
+import { contactKindOf } from "../../propose/resolve";
+import { capabilityKind, type Capability } from "../../route/capabilities";
+import type { NextStep } from "../../clarify/next-step";
+
+/** The words of a day said in the message ("周五", "金曜日", "Friday", "11月20日"), for an entry's label. */
+const DAY_WORDS = /(下(?:个)?(?:周|星期|礼拜)[一二三四五六日天]|(?:周|星期|礼拜)[一二三四五六日天]|明天|后天|\d{1,2}\s*月\s*\d{1,2}\s*日|来週の?[月火水木金土日]曜日?|[月火水木金土日]曜日|明日|明後日|(?:next\s+)?(?:mon|tues|wednes|thurs|fri|satur|sun)day|tomorrow)/iu;
+
+/**
+ * AG08 (§3.11 "可以附一个入口"): the entry offered after the write-intent review turned a write tag into a statement,
+ * chosen by code from the words — moving the named record to the day it names, or logging the contact it reports.
+ */
+function reviewedEntry(part: GraphPart, quote: string, clue: (ref: GraphPart["refs"][number]) => string, asOf: string, timeZone: string): { entry: Capability; reviewed: NonNullable<Extract<NextStep, { kind: "respond" }>["reviewed"]> } | null {
+  const record = part.refs.find((ref) => ref.entity === "todo" || ref.entity === "schedule");
+  const day = quote.match(DAY_WORDS)?.[1];
+  if (record && day && reschedulesTo(quote, asOf, timeZone)) {
+    const words = clueSearchWords(clue(record));
+    return { entry: record.entity === "schedule" ? "schedule.update" : "todo.update", reviewed: { date: day.replace(/\s+/gu, ""), kind: "reschedule", ...(words ? { object: words } : {}) } };
+  }
+  if (part.refs.some((ref) => ref.entity === "contact") && contactKindOf(quote).channel) return { entry: "memo.create", reviewed: { kind: "interaction" } };
+  return null;
+}
 
 export function routeInputOf(part: GraphPart): RouteInput {
   return {
@@ -70,6 +92,21 @@ export function routeNode(scope: NodeScope): GraphNode {
       const named = part.refs.some((ref) => ref.entity !== "contact" && !ref.recordId && Boolean(clueSearchWords(clueText(ref))) && !isPronounClue(clueText(ref)));
       return named && resolveSaidDate(input.message.slice(part.quote[0], part.quote[1]), state.asOf || deps.now(), state.timeZone || "Asia/Tokyo") !== null;
     };
+    // AG08 (§3.11, §3.8): a write tag on words that read like a statement, a question or a hypothesis, or with no
+    // registered write verb, is checked once by the judgment model. Anything but a sure "yes" makes it a statement.
+    const reviewed = new Set<string>();
+    if (!resume) {
+      for (const original of state.parts) {
+        const found = attribution?.get(original.localId);
+        const quote = input.message.slice(original.quote[0], original.quote[1]);
+        const followsWrite = original.dependsOn.some((id) => state.parts.find((other) => other.localId === id)?.capabilities.some((capability) => capabilityKind(capability) === "write"));
+        const review = { capabilities: original.capabilities, clarity: original.plan.clarity, continues: Boolean(found && found.kind !== "new"), followsWrite, hypothesis: original.plan.hypothesis, intentBasis: original.plan.intentBasis, negation: original.plan.negation, quote };
+        if (!needsIntentReview(review)) continue;
+        const result = await reviewWriteIntent(deps.judgment, run.judgment, { language: state.language, message: input.message, quote, requestId: input.requestId });
+        emitTrace({ explicit: result.explicit, partId: original.localId, type: "route.intent_review", verdict: result.verdict ? { answer: result.verdict.answer, confidence: result.verdict.confidence, fallback: result.verdict.fallback, reason: result.verdict.reason } : null });
+        if (!result.explicit) reviewed.add(original.localId);
+      }
+    }
     const parts: GraphPart[] = state.parts.map((original) => {
       if (resume && !state.touched!.includes(original.localId)) return original;
       const part: GraphPart = { ...original };
@@ -92,7 +129,13 @@ export function routeNode(scope: NodeScope): GraphNode {
       // of an unknown item (also when a later message only answers the question about it).
       const namesNothing = !part.refs.some((ref) => ref.recordId || (clueText(ref) && !isPronounClue(clueText(ref))));
       const reschedule = namesNothing && reschedulesTo(openItem?.quote ?? input.message.slice(part.quote[0], part.quote[1]), state.asOf || deps.now(), state.timeZone || "Asia/Tokyo");
+      // AG08: the review found no explicit request: the part is a statement (no card, one entry).
+      if (reviewed.has(part.localId)) part.plan = { ...part.plan, clarity: "statement" };
       const decision = decideRoute(routeInputOf(part), { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind, namedObjectWithDate: namedObjectWithDate(part), reschedule, unboundPronoun: unboundPronoun(part) });
+      if (reviewed.has(part.localId) && decision.step?.kind === "respond" && decision.step.entry) {
+        const entry = reviewedEntry(part, input.message.slice(part.quote[0], part.quote[1]), clueText, state.asOf || deps.now(), state.timeZone || "Asia/Tokyo");
+        if (entry) decision.step = { ...decision.step, entry: entry.entry, reviewed: entry.reviewed };
+      }
       if (unboundPronoun(part)) emitTrace({ partId: part.localId, reason: "a pronoun with nothing to resolve it from (§3.10): the object is missing", type: "route.unbound_reference" });
       if (accepted && part.continues) acceptedAlternativeRef = part.continues.ref;
       let status = statusForRoute(decision.route);

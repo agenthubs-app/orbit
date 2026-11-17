@@ -31,6 +31,7 @@ import { ClientViews, viewText } from "./client-views";
 import { DEFAULT_CLOCK } from "./vocabulary";
 import { loadWorld, patchRecords, type FixtureRecord, type WorldFixture } from "./world";
 import { createWorldWriter, type WorldWriter } from "./seed";
+import { generatePatchContacts, type ContactsGeneration } from "./patch-generator";
 import { configuredRecordAccess } from "../../../features/agent-v1/domains/configured";
 import { readRecentInteraction } from "../../../features/agent-v1/views/recent-interaction";
 import { stableStringify } from "./yaml";
@@ -131,7 +132,7 @@ function stripLifecycle(payload: Record<string, unknown> | null | undefined): Re
 }
 
 /** Deployment settings a patch may set for one case (AG03: model-budget-1); the eval preload hands them to the server. */
-const DEPLOYMENT_SETTINGS = new Set(["model_calls_limit"]);
+const DEPLOYMENT_SETTINGS = new Set(["model_calls_limit", "judgment_uncalibrated"]);
 
 async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches: Record<string, any>, writer: WorldWriter, report: SeedReportFile, unsupported: Observation["unsupported"], fixtureCards: FixtureRecord[] = [], deploymentSettings: Record<string, unknown> = {}, conversations: string[] = []): Promise<Record<string, string>> {
   const extraIds: Record<string, string> = {};
@@ -139,6 +140,12 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
     const patch = world.patches[name] ?? filePatches[name];
     if (!patch) continue;
     const records = patchRecords(patch, world.mainAccount);
+    // AG08 (base-v1 contacts-2000): generated contacts, each with one recorded interaction, through the same write path.
+    const generated = (patch.generate ?? {}) as Record<string, unknown>;
+    if (generated.contacts) {
+      const anchorNames = new Set(world.anchors.filter((record) => record.kind === "contact").map((record) => String(record.data.name)));
+      records.push(...generatePatchContacts(generated.contacts as ContactsGeneration, { account: world.mainAccount, anchorNames, clock: world.clock }));
+    }
     for (const record of records) {
       try {
         const before = new Set(Object.keys(writer.report.ids));
@@ -185,7 +192,7 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
       if (DEPLOYMENT_SETTINGS.has(key)) deploymentSettings[key] = value;
       else unsupported.push({ reason: `patch ${name}: setting ${key}: ${JSON.stringify(value)} is not supported by the current product`, step: 0, word: "patch" });
     }
-    if (patch.generate) unsupported.push({ reason: `patch ${name}: generated records arrive with the sprint that needs them (AG08)`, step: 0, word: "patch" });
+    for (const kind of Object.keys(generated)) if (kind !== "contacts") unsupported.push({ reason: `patch ${name}: generated ${kind} are not supported yet`, step: 0, word: "patch" });
   }
   void report;
   return extraIds;
@@ -583,7 +590,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         case "fault": {
           log.push({ fault: step.fault, source: "simulated", step: index, type: "turn.fault" });
           // AG05: the read adapters are fault points too (<kind>.read). AG06: one card operation (memo.create …).
-          if (!["model", "understand", "executor", "memo.read", "todo.read", "contact.read", "schedule.read", "event.read", ...EXECUTOR_FAULT_POINTS].includes(step.fault?.where)) unsupported.push({ reason: `fault point "${step.fault?.where}" has no consumer in the current product`, step: index, word });
+          if (!["model", "understand", "judgment", "executor", "memo.read", "todo.read", "contact.read", "schedule.read", "event.read", ...EXECUTOR_FAULT_POINTS].includes(step.fault?.where)) unsupported.push({ reason: `fault point "${step.fault?.where}" has no consumer in the current product`, step: index, word });
           if (EXECUTOR_FAULT_POINTS.includes(step.fault?.where) || step.fault?.where === "executor") executorFaultArmed = String(step.fault?.where);
           await serverControl(environment, "fault", step.fault);
           return;

@@ -47,6 +47,11 @@ export interface OptionsInput {
   capability?: Capability;
   /** A reading already chosen (other_readings leaves it out). */
   exclude?: Reading;
+  /**
+   * AG08: an entry offered after the write-intent review turned a write tag into a statement, in code's words for
+   * what the sentence was about: logging the contact it reports, or moving a record to the day it names.
+   */
+  entryWording?: { kind: "interaction" } | { kind: "reschedule"; date: string };
 }
 
 export const MAX_OPTIONS = 3;
@@ -232,11 +237,22 @@ export function optionsFor(input: OptionsInput): ClarifyOption[] {
     case "entry":
     case "alternative": {
       const capability = input.capability && isCapability(input.capability) ? input.capability : input.purpose === "alternative" ? "rule.create" : "memo.create";
+      if (input.purpose === "entry" && input.entryWording) return [option(0, [capability], entryLabel(input.entryWording, language, object, objectKind))];
       return [option(0, [capability], label(capability, input.purpose === "alternative" ? null : object))];
     }
     default:
       return [];
   }
+}
+
+/** AG08: the words of an entry after the write-intent review ("把这件事记到小林的往来里", "把这条待办改到周五"). */
+export function entryLabel(wording: NonNullable<OptionsInput["entryWording"]>, language: ReplyLanguage, object: string | null, kind: RecordKind | null): string {
+  if (wording.kind === "interaction") {
+    const who = object ?? defaultObjectWords("contact", language);
+    return language === "zh" ? `把这件事记到${who}的往来里` : language === "ja" ? `${who}とのやり取りとして記録する` : `Log this as an interaction with ${who}`;
+  }
+  const what = object ? (language === "en" ? `"${object}"` : `「${object}」`) : defaultObjectWords(kind ?? "todo", language);
+  return language === "zh" ? `把${what}改到${wording.date}` : language === "ja" ? `${what}を${wording.date}に変更する` : `Move ${what} to ${wording.date}`;
 }
 
 /** A generic phrase for an object of a kind when there is no name or clue ("这篇笔记"). */
