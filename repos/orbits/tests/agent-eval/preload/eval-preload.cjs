@@ -397,19 +397,26 @@ function mistagWrite(body) {
 }
 
 /**
- * AG08 (JDG.yaml low_confidence): the next judgment response keeps its answers, but every answer's confidence is
- * pressed to 0 — below any question's threshold. The original and the rewrite are both traced.
+ * AG08 run-02 (CHANGES.md 2026-11-17): low_confidence is answered at the judgment call's boundary, before the network
+ * — a real request that would have timed out can no longer keep the fault from firing (AE-JDG-008 run-01). Every
+ * question of the request gets an answer of its own type whose confidence (and every probability) is 0, so it is below
+ * any threshold: noul 0.5, choice the first option, score the highest level by a hair. Source simulated, no usage.
  */
-function lowConfidence(body) {
-  if (!state.faults.some((fault) => fault.where === "judgment" && fault.kind === "low_confidence")) return null;
-  if (!body || typeof body !== "object" || !body.answers || typeof body.answers !== "object") return null;
-  const fault = takeFault("judgment", { rewrite: true });
-  if (!fault) return null;
-  // The answer stays the model's; its confidence (and, for graded and choice answers, every probability) is 0.
-  const answers = Object.fromEntries(Object.entries(body.answers).map(([id, answer]) => [id, answer && typeof answer === "object" ? { ...answer, confidence: 0, ...(answer.probabilities && typeof answer.probabilities === "object" ? { probabilities: Object.fromEntries(Object.keys(answer.probabilities).map((key) => [key, 0])) } : {}) } : answer]));
-  const after = { ...body, answers };
-  emit({ type: "judgment.output_rewritten", source: "simulated", kind: fault.kind, before: body, after, note: "every answer's confidence (and probabilities) is now 0, below every threshold; the answers themselves are the model's" });
-  return JSON.stringify(after);
+function lowConfidenceAnswers(requestBody) {
+  const questions = requestBody && typeof requestBody === "object" && requestBody.questions && typeof requestBody.questions === "object" ? requestBody.questions : {};
+  const answers = {};
+  for (const [id, question] of Object.entries(questions)) {
+    const type = question && question.type;
+    if (type === "noul") answers[id] = { type: "noul", noul: 0.5, confidence: 0 };
+    else if (type === "choice") {
+      const options = question.criteria && typeof question.criteria === "object" && !Array.isArray(question.criteria) ? Object.keys(question.criteria) : [];
+      answers[id] = { type: "choice", choice: options[0] ?? "", confidence: 0, probabilities: Object.fromEntries(options.map((option) => [option, 0])) };
+    } else if (type === "score") {
+      const levels = Array.isArray(question.criteria) ? question.criteria.length : 2;
+      answers[id] = { type: "score", score: levels - 1, confidence: 0, probabilities: Object.fromEntries(Array.from({ length: levels }, (_value, index) => [String(index), index === levels - 1 ? 0.000001 : 0])) };
+    }
+  }
+  return { answers, usage: null };
 }
 
 const realFetch = globalThis.fetch;
@@ -438,6 +445,16 @@ if (typeof realFetch === "function") {
     const prefix = category === "web" ? (/\/search/u.test(url.pathname) ? "web.search" : "web.fetch") : category;
     const requestBody = parseMaybeJson(init?.body);
     const started = realNow();
+    // AG08 run-02: an armed low_confidence is answered here, before the network (see lowConfidenceAnswers).
+    if (category === "judgment" && state.faults.some((armed) => armed.where === "judgment" && armed.kind === "low_confidence")) {
+      const low = takeFault("judgment", { rewrite: true });
+      if (low) {
+        emit({ type: "judgment.request", source: "simulated", provider, url: url.href, method: init?.method ?? "GET", headers: safeHeaders(init?.headers), body: requestBody, fault: { where: low.where, kind: low.kind } });
+        const simulated = lowConfidenceAnswers(requestBody);
+        emit({ type: "judgment.response", source: "simulated", provider, status: 200, body: simulated, usage: null, durationMs: realNow() - started });
+        return new Response(JSON.stringify(simulated), { status: 200, headers: { "content-type": "application/json" } });
+      }
+    }
     const fault = takeFault(category === "model" ? "model" : category);
     if (fault) {
       emit({ type: category === "web" ? prefix : `${prefix}.request`, source: "simulated", provider, url: url.href, method: init?.method ?? "GET", headers: safeHeaders(init?.headers), body: requestBody, fault: { where: fault.where, kind: fault.kind } });
@@ -478,7 +495,7 @@ if (typeof realFetch === "function") {
     const body = parseMaybeJson(text);
     const usage = body && typeof body === "object" ? body.usage ?? body.usageMetadata ?? null : null;
     emit({ type: `${prefix}.response`, source: "real", provider, status: response.status, headers: safeHeaders(response.headers), body, usage, model: body?.model ?? requestBody?.model ?? null, durationMs: realNow() - started });
-    const rewritten = category === "model" ? mistagWrite(body) ?? injectApprovalFlag(body) : category === "judgment" ? lowConfidence(body) : null;
+    const rewritten = category === "model" ? mistagWrite(body) ?? injectApprovalFlag(body) : null;
     if (rewritten) return new Response(rewritten, { status: response.status, statusText: response.statusText, headers: response.headers });
     return new Response(text, { status: response.status, statusText: response.statusText, headers: response.headers });
   };

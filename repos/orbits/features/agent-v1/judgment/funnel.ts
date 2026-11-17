@@ -26,7 +26,16 @@ export interface FunnelCandidate {
   id: string;
   /** The candidate's own words the rule ranking reads (name, company, role, tags, notes; title, topics). */
   words: string;
+  /**
+   * run-02 (AE-SCL-014): the same words by field with a weight — what the record says the person does (role, industry,
+   * tags, notes) counts more than a word that only appears inside a company's name ("Meridian Power Devices").
+   * Without it every word of `words` weighs 1.
+   */
+  fields?: readonly { text: string; weight: number }[];
 }
+
+/** run-02: weights of the rule ranking by field (functions node). */
+export const FIELD_WEIGHT = { company: 1, describes: 2, name: 1, place: 1 } as const;
 
 export interface FunnelCoverage {
   total: number;
@@ -89,12 +98,13 @@ export function basisTokens(basis: string): { pieces: string[]; words: string[] 
   return { pieces: [...pieces], words: [...words] };
 }
 
-/** How many of the basis's pieces and words the candidate's own words contain. */
-export function ruleScore(tokens: { pieces: readonly string[]; words: readonly string[] }, words: string): number {
-  const lower = words.toLowerCase();
+/** How many of the basis's pieces and words the candidate's own words contain; with fields, each counts its field's weight (the highest where it appears). */
+export function ruleScore(tokens: { pieces: readonly string[]; words: readonly string[] }, words: string, fields?: readonly { text: string; weight: number }[]): number {
+  const list = fields?.length ? fields : [{ text: words, weight: 1 }];
+  const hasWord = (text: string, word: string) => new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}`, "u").test(text.toLowerCase());
   let score = 0;
-  for (const piece of tokens.pieces) if (words.includes(piece)) score += 1;
-  for (const word of tokens.words) if (new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}`, "u").test(lower)) score += 1;
+  for (const piece of tokens.pieces) score += Math.max(0, ...list.filter((field) => field.text.includes(piece)).map((field) => field.weight));
+  for (const word of tokens.words) score += Math.max(0, ...list.filter((field) => hasWord(field.text, word)).map((field) => field.weight));
   return score;
 }
 
@@ -134,7 +144,7 @@ export async function funnel<T extends FunnelCandidate>(input: FunnelInput<T>): 
   };
   const stable = (left: T, right: T) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
   // 2. Rule ranking.
-  const scored = kept.map((candidate) => ({ candidate, ruleScore: semantic ? ruleScore(tokens, candidate.words) : 0 }));
+  const scored = kept.map((candidate) => ({ candidate, ruleScore: semantic ? ruleScore(tokens, candidate.words, candidate.fields) : 0 }));
   scored.sort((left, right) => right.ruleScore - left.ruleScore || compareField(left.candidate, right.candidate) || stable(left.candidate, right.candidate));
   const coverageOf = (judged: number): FunnelCoverage => ({ afterHardConditions: kept.length, judged, total, truncated: Math.max(0, kept.length - judged) });
   const count = Math.max(0, input.count);

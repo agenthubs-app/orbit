@@ -16,7 +16,7 @@
 import { readSourceOf } from "../../answer/basis";
 import type { RecordView } from "../../domains/types";
 import { askJudgment } from "../../judgment/ask";
-import { funnel, rankJudgmentInput, type FunnelCandidate, type FunnelResult } from "../../judgment/funnel";
+import { FIELD_WEIGHT, funnel, rankJudgmentInput, type FunnelCandidate, type FunnelResult } from "../../judgment/funnel";
 import { gapWords } from "../../answer/gap-copy";
 import { emitTrace, evalDeniedReads } from "../../observability/trace";
 import { localDay } from "../../views/recent-interaction";
@@ -151,6 +151,13 @@ async function contactCandidates(records: AgentRecordAccess, actorId: string, ti
       words: "",
     };
     candidate.words = [name, candidate.company, candidate.role, candidate.place, candidate.city, industry, ...(industry ? INDUSTRY_WORDS[industry] ?? [] : []), ...plainTags, candidate.notes].filter(Boolean).join(" ");
+    // run-02 (AE-SCL-014): what the record says the person does weighs more than a word inside a company's name.
+    candidate.fields = [
+      { text: name, weight: FIELD_WEIGHT.name },
+      ...(candidate.company ? [{ text: candidate.company, weight: FIELD_WEIGHT.company }] : []),
+      ...[candidate.place, candidate.city].filter((text): text is string => Boolean(text)).map((text) => ({ text, weight: FIELD_WEIGHT.place })),
+      ...[candidate.role, industry, ...(industry ? INDUSTRY_WORDS[industry] ?? [] : []), ...plainTags, candidate.notes].filter((text): text is string => Boolean(text)).map((text) => ({ text, weight: FIELD_WEIGHT.describes })),
+    ];
     out.push(candidate);
   }
   void timeZone;
@@ -300,11 +307,14 @@ function writeAnswer(input: { domain: Domain; language: Language; basis: string 
       : domain === "event"
         ? (language === "en" ? `the overlap of ${topic} with each event's title and topics, then start time` : language === "ja" ? `${topic}とイベントのタイトル・テーマの重なり、その次に開始時間` : `${topic}和活动标题、标签的重合，再按开始时间`)
         : (language === "en" ? `the overlap of ${topic} with each contact's industry, company, role and notes` : language === "ja" ? `${topic}と連絡先の業種・会社・役職・メモの重なり` : `${topic}和联系人行业、机构、职位、备注的重合`);
+    // run-02: the same scope, topic and coverage as a matched answer — what was meant, how many there were, that none
+    // was looked at closely — so an answer without the judgment says as much as one with it.
+    const intended = topic ? (language === "en" ? ` by ${topic}` : language === "ja" ? `、${topic}に合うものを` : `，按${topic}这个主题挑`) : "";
     lines.push(language === "en"
-      ? `This time no topic matching was done (${why}); the order below is by record fields only: ${order}. It does not mean nothing fits. ${n} ${unit} from ${scope}:`
+      ? `From ${scope}${intended}: this time no topic matching was done (${why}), so none of the ${afterHardConditions} ${noun} was looked at closely; the order below is by record fields only: ${order}. It does not mean nothing fits. ${n} ${unit}:`
       : language === "ja"
-        ? `今回はテーマとの照合をしていません（${why}）。以下は記録の項目だけで並べた順です：${order}。合うものがないという意味ではありません。${scope}から${n}${unit}：`
-        : `这次没有做主题匹配（${why}），下面的顺序只按记录里的字段排：${order}。这不代表没有合适的。从${scope}里列出${n}${unit}：`);
+        ? `${scope}（全部で${afterHardConditions}${unit}）${intended ? `${intended}選ぼうとしましたが` : "について"}、今回はテーマとの照合をしていません（${why}）。詳しく見たものはなく、以下は記録の項目だけで並べた順です：${order}。合うものがないという意味ではありません。${n}${unit}：`
+        : `在${scope}里（共${afterHardConditions}${unit}）${intended}。这次没有做主题匹配（${why}），${afterHardConditions}${unit}都没有细看，下面的顺序只按记录里的字段排：${order}。这不代表没有合适的。列出${n}${unit}：`);
   } else {
     const total = result.coverage.afterHardConditions;
     lines.push(language === "en"
