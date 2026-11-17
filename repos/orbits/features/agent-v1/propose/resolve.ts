@@ -263,7 +263,10 @@ async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrit
       // AG07 (AE-UIX-007, AE-UIX-008): words in another script than the title cannot be compared with it; the person's
       // one open to-do is the one meant (the card names it by its title and still needs a click).
       const names = personWords.flatMap((item) => nameTokens(item));
-      if (theirs.length === 1 && clues.length && clues.every((clue) => otherScript(names.reduce((rest, name) => rest.split(name).join(""), clue), theirs[0].title))) {
+      // AG08 repair 2 (AE-UIX-008): a clue that is only the person's name ("Li Wei") says nothing about which to-do; the
+      // clues that are left decide.
+      const about = clues.map((clue) => names.reduce((rest, name) => rest.split(name).join(""), clue).trim()).filter((rest) => /[\p{L}\p{N}]/u.test(rest));
+      if (theirs.length === 1 && about.length && about.every((rest) => otherScript(rest, theirs[0].title))) {
         emitTrace({ partId: part.localId, recordId: theirs[0].id, rule: "only_open_todo_other_script", type: "propose.todo_matched" });
         return { kind: "found", todo: theirs[0] };
       }
