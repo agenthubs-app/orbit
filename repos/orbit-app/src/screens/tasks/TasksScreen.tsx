@@ -4,16 +4,18 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Crypto from "expo-crypto";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Platform, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, RefreshControl, StyleSheet, View } from "react-native";
 
 import { taskPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { Icon } from "../../components/ui/Icon";
+import { Chip, type ChipTone } from "../../components/ui/Chip";
+import { UiText as Text } from "../../components/ui/Text";
 import { EmptyState } from "../../components/EmptyState";
 import { OfflineNotice } from "../../components/OfflineNotice";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { layout } from "../../design/tokens";
+import { layout, radius } from "../../design/tokens";
 import { createThemedStyles } from "../../design/theme";
 import { useContactLabels } from "../../hooks/useContactLabels";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -260,12 +262,17 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
             onPress={() => { setFold({ scope: foldScope, expanded: !completedExpanded }); if (completedExpanded) setCompletedPosition({ scope: foldScope, cursor: null }); }}
             style={[styles.groupHeading, styles.foldHeading]}
           >
-            <Text style={[styles.groupTitle, styles.muted]}>{group.label}</Text>
+            <Text style={styles.groupTitle}>{group.label}</Text>
             <Text style={styles.groupCount}>{source.counts?.completed ?? 0}</Text>
-            <Icon name={completedExpanded ? "up" : "down"} size={16} color={colors.ink3Text} />
+            <View style={styles.headMore}>
+              <Text style={styles.headMoreText}>{locale.t(completedExpanded ? "tasks.hideCompleted" : "tasks.showCompleted")}</Text>
+              <Icon name={completedExpanded ? "up" : "down"} size={13} color={colors.ink3Text} />
+            </View>
           </Pressable> : <View accessibilityRole="header" accessibilityLabel={`${group.label} ${total}${moreIn(fullGroup) ? "+" : ""}`} style={styles.groupHeading}>
-            <Text style={[styles.groupTitle, group.tone === "danger" && styles.danger, group.tone === "today" && styles.todayCount]}>{group.label}</Text>
-            <Text style={styles.groupCount}>{total}{moreIn(fullGroup) ? "+" : ""}</Text>
+            <Text style={styles.groupTitle}>{group.label}</Text>
+            {group.tone === "danger"
+              ? <Chip tone="coral" label={`${total}${moreIn(fullGroup) ? "+" : ""}`} />
+              : <Text style={styles.groupCount}>{total}{moreIn(fullGroup) ? "+" : ""}</Text>}
           </View>}
           {group.fold && completedExpanded && source.completedSection?.loading ? <LoadingState /> : null}
           {group.fold && completedExpanded && source.completedSection?.failure ? <ErrorState title={locale.t(source.completedSection.unconfirmed ? "tasks.dataUnavailable" : "tasks.unavailable")} message={locale.t(source.completedSection.unconfirmed ? "tasks.dataUnavailableBody" : "tasks.readFailed")} /> : null}
@@ -277,7 +284,7 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
             // UX T2: under 今天 the day is implied; show only the time (when there is one). Other groups keep their dates.
             const when = group.id === "today" ? item.dueAt && Number.isFinite(Date.parse(item.dueAt)) ? timeOfDay(item.dueAt, timeZone) : "" : item.dateLabel;
             const offlineBlocked = Boolean(source.offline && !isOfflineTaskCategory(item.category));
-            return <View key={item.id} style={styles.row}>
+            return <View key={item.id} style={[styles.row, index > 0 && styles.rowLine]}>
               <Pressable
                 accessibilityLabel={locale.t(item.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: item.title }) + (offlineBlocked ? " · " + locale.t("sync.needsNetwork") : "")}
                 accessibilityRole="checkbox"
@@ -289,41 +296,44 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
                 style={styles.checkButton}
               >
                 <View style={[styles.checkbox, completedItem && styles.checkboxCompleted, updatingId === item.id && styles.checkboxBusy]}>
-                  {completedItem ? <Ionicons color={colors.onAccent} name="checkmark" size={15} /> : null}
+                  {completedItem ? <Ionicons color={colors.surface} name="checkmark" size={12} /> : null}
                 </View>
               </Pressable>
               <Pressable
                 accessibilityLabel={[item.title, when, contact?.name].filter(Boolean).join("，")}
                 accessibilityRole="button"
                 onPress={() => router.push(`/tasks/${encodeURIComponent(item.id)}` as Href)}
-                style={({ pressed }) => [styles.rowBody, index > 0 && styles.rowLine, pressed ? styles.pressed : null]}
+                style={({ pressed }) => [styles.rowBody, pressed ? styles.pressed : null]}
               >
-                <Text style={[styles.rowTitle, completedItem ? styles.completedTitle : null]}>{item.title}</Text>
-                {when || contact || item.location ? <Text numberOfLines={1} style={styles.rowDetail}>
-                  {when ? <Text style={group.tone === "danger" ? styles.danger : group.tone === "today" ? styles.todayCount : null}>{when}</Text> : null}
-                  {[contact?.name, item.location].filter(Boolean).map((part, index) => `${when || index > 0 ? "  ·  " : ""}${part}`).join("")}
-                </Text> : null}
-                {item.localMutationState ? <Text style={styles.rowDetail}>{locale.t(item.localMutationState === "conflict" ? "tasks.outboxConflict" : item.localMutationState === "failed" ? "tasks.outboxFailed" : "tasks.outboxQueued")}</Text> : null}
+                <View style={styles.rowText}>
+                  <Text style={[styles.rowTitle, completedItem ? styles.completedTitle : null]}>{item.title}</Text>
+                  {(completedItem && when) || contact || item.location ? <Text numberOfLines={1} style={styles.rowDetail}>
+                    {[completedItem ? when : "", contact?.name, item.location].filter(Boolean).join(" · ")}
+                  </Text> : null}
+                  {item.localMutationState ? <Text style={styles.rowDetail}>{locale.t(item.localMutationState === "conflict" ? "tasks.outboxConflict" : item.localMutationState === "failed" ? "tasks.outboxFailed" : "tasks.outboxQueued")}</Text> : null}
+                </View>
+                {/* 未安排 组的标题已说「未安排」，chip 不再重复。 */}
+                {when && !completedItem && group.id !== "unscheduled" ? <Chip tone={dueTone(group.tone)} label={when} /> : null}
               </Pressable>
             </View>;
-          })}{group.followUps.map((item, index) => { const due = group.id === "today" ? "" : followUpDate(item.dueAt); return <View key={item.key} style={styles.row}>
+          })}{group.followUps.map((item, index) => { const due = group.id === "today" ? "" : followUpDate(item.dueAt); return <View key={item.key} style={[styles.row, (group.items.length > 0 || index > 0) && styles.rowLine]}>
             <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: false }} accessibilityLabel={locale.t("tasks.completeNamed", { title: item.title })} hitSlop={8}
               onPress={() => router.push(followUpHref(item))} style={styles.checkButton}>
               <View style={styles.checkbox} />
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={[item.title, due, item.contactName].filter(Boolean).join("，")}
               onPress={() => router.push(followUpHref(item))}
-              style={({ pressed }) => [styles.rowBody, (group.items.length > 0 || index > 0) && styles.rowLine, pressed ? styles.pressed : null]}>
-              <Text style={styles.rowTitle}>{item.title}</Text>
-              {due || item.contactName ? <Text numberOfLines={1} style={styles.rowDetail}>
-                {due ? <Text style={group.tone === "danger" ? styles.danger : group.tone === "today" ? styles.todayCount : null}>{due}</Text> : null}
-                {item.contactName ? `${due ? "  ·  " : ""}${item.contactName}` : ""}
-              </Text> : null}
+              style={({ pressed }) => [styles.rowBody, pressed ? styles.pressed : null]}>
+              <View style={styles.rowText}>
+                <Text style={styles.rowTitle}>{item.title}</Text>
+                {item.contactName ? <Text numberOfLines={1} style={styles.rowDetail}>{item.contactName}</Text> : null}
+              </View>
+              {due ? <Chip tone={dueTone(group.tone)} label={due} /> : null}
             </Pressable>
           </View>; })}</View> : null}
           {capped ? <Pressable accessibilityRole="button" onPress={() => setOverdueExpanded(true)} style={[styles.contactLink, styles.moreRow]}>
             <Text style={styles.contactText}>{locale.t("tasks.showAllOverdue", { count: total })}</Text>
-            <Icon name="down" size={15} color={colors.accentText} />
+            <Icon name="down" size={13} color={colors.ink3Text} />
           </Pressable> : null}
           {group.fold && completedExpanded && source.completedSection?.nextCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("tasks.completedNextPage")} onPress={() => setCompletedPosition({ scope: foldScope, cursor: source.completedSection?.nextCursor ?? null })} style={styles.contactLink}><Text style={styles.contactText}>{locale.t("tasks.completedNextPage")}</Text></Pressable> : null}
           {group.fold && completedExpanded && completedCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("tasks.completedFirstPage")} onPress={() => setCompletedPosition({ scope: foldScope, cursor: null })} style={styles.contactLink}><Text style={styles.contactText}>{locale.t("tasks.completedFirstPage")}</Text></Pressable> : null}
@@ -336,11 +346,16 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
       {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
       {mode === "open" && followUps.hasMore && !moreFollowUps ? <Pressable accessibilityRole="button" onPress={() => setMoreFollowUps(true)} style={[styles.contactLink, styles.moreRow]}>
         <Text style={styles.contactText}>{locale.t("tasks.moreFollowUps", { count: followUps.total - (followUps.items?.length ?? 0) })}</Text>
-        <Icon name="down" size={15} color={colors.accentText} />
+        <Icon name="down" size={13} color={colors.ink3Text} />
       </Pressable> : null}
       {moreFollowUps ? <RelationshipLifecycleList key={`lifecycle:${scopeKey}`} scopeKey={scopeKey} ready={ready} mode={mode} /> : null}
     </AppScreen>
   );
+}
+
+/** kit tdRow：期限 chip — 已逾期 coral、今天 apricot、其余中性。 */
+function dueTone(tone: TaskGroup["tone"]): ChipTone {
+  return tone === "danger" ? "coral" : tone === "today" ? "apricot" : "neutral";
 }
 
 function tokyoDateKey(date: Date, timeZone: string): string {
@@ -358,27 +373,33 @@ function taskDateKey(item: TaskListRowView, timeZone: string): string | undefine
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   addButton: { alignItems: "center", justifyContent: "center", minWidth: layout.control, minHeight: layout.control },
-  checkButton: { alignItems: "center", justifyContent: "center", width: 40, minHeight: 52 },
-  contactLink: { minHeight: layout.control, justifyContent: "center", paddingLeft: layout.control },
-  contactText: { color: colors.accentText, fontSize: 15, lineHeight: 23 },
-  moreRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-start", gap: 4 },
-  checkbox: { alignItems: "center", justifyContent: "center", borderColor: colors.ink4, borderWidth: 1.6, borderRadius: 12, width: 24, height: 24 },
+  // kit .td-ck 20px 圆圈；点按区仍为 40×52。
+  checkButton: { alignItems: "center", justifyContent: "center", width: 40, minHeight: 52, marginLeft: -10 },
+  contactLink: { minHeight: layout.control, justifyContent: "center", paddingHorizontal: 2 },
+  // kit .td-h .more：11.5 → 13，ink-3，700。
+  contactText: { color: colors.ink3Text, fontSize: 13, fontWeight: "700", lineHeight: 20 },
+  moreRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-start", gap: 2 },
+  checkbox: { alignItems: "center", justifyContent: "center", borderColor: colors.ink4, borderWidth: 1.6, borderRadius: 10, width: 20, height: 20 },
   checkboxBusy: { opacity: 0.5 },
-  checkboxCompleted: { backgroundColor: colors.accentText, borderColor: colors.accentText },
+  checkboxCompleted: { backgroundColor: colors.ink3, borderColor: colors.ink3 },
   completedTitle: { color: colors.ink3Text, textDecorationLine: "line-through" },
-  danger: { color: colors.coralText },
   errorText: { color: colors.coralText, fontSize: 15 },
-  groupCount: { color: colors.ink3Text, fontSize: 17, fontWeight: "600", marginLeft: "auto" },
-  groupHeading: { alignItems: "center", flexDirection: "row", gap: 8, paddingHorizontal: 4, paddingBottom: 6 },
-  groupTitle: { color: colors.ink, fontSize: 20, fontWeight: "700" },
-  groups: { gap: 22 }, section: { gap: 0 }, foldHeading: { minHeight: layout.control },
-  card: { backgroundColor: colors.surface, borderRadius: 14, paddingLeft: 6, overflow: "hidden" },
-  muted: { color: colors.ink3Text },
+  // kit .td-h：13/800 → 15；.td-h .lbl 11.5/600 → 13；margin 16 2 8。
+  groupCount: { color: colors.ink3Text, fontSize: 13, fontWeight: "600", lineHeight: 20 },
+  groupHeading: { alignItems: "center", flexDirection: "row", gap: 8, marginHorizontal: 2, marginBottom: 8 },
+  groupTitle: { color: colors.ink, fontSize: 15, fontWeight: "800", lineHeight: 22 },
+  headMore: { alignItems: "center", flexDirection: "row", gap: 2, marginLeft: "auto" },
+  headMoreText: { color: colors.ink3Text, fontSize: 13, fontWeight: "700", lineHeight: 20 },
+  groups: { gap: 16 }, section: { gap: 0 }, foldHeading: { minHeight: layout.control, marginBottom: 0 },
+  // kit .card（padding 2px 14px）+ tdRow。
+  card: { backgroundColor: colors.surface, borderRadius: radius.xl, paddingHorizontal: 14, paddingVertical: 2, overflow: "hidden" },
   pressed: { opacity: 0.65 },
   row: { alignItems: "stretch", flexDirection: "row" },
-  rowLine: { borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth },
-  rowBody: { flex: 1, gap: 2, justifyContent: "center", minHeight: 52, minWidth: 0, paddingVertical: 10, paddingRight: 14 },
-  rowDetail: { color: colors.ink3Text, fontSize: 15, lineHeight: 20 },
-  rowTitle: { color: colors.ink, fontSize: 17, lineHeight: 22 },
-  todayCount: { color: colors.accentText },
+  rowLine: { borderTopColor: colors.line, borderTopWidth: 1 },
+  // kit .hw-row（padding 10 0，gap 9）。
+  rowBody: { alignItems: "center", flex: 1, flexDirection: "row", gap: 9, minHeight: 52, minWidth: 0, paddingVertical: 10 },
+  rowText: { flex: 1, minWidth: 0 },
+  // kit .hw-row .hmt b 12.5/700 → 15；span 11/500 ink-3 → 13。
+  rowDetail: { color: colors.ink3Text, fontSize: 13, fontWeight: "500", lineHeight: 19 },
+  rowTitle: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 22 },
 }));

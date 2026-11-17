@@ -10,6 +10,8 @@ export const tasks = {
   "tasks.groupCompleted": "Completed",
   "tasks.expandCompleted": "Show completed tasks",
   "tasks.collapseCompleted": "Hide completed tasks",
+  "tasks.showCompleted": "Show",
+  "tasks.hideCompleted": "Hide",
   "tasks.completedNextPage": "Next completed-task page",
   "tasks.completedFirstPage": "First completed-task page",
   "tasks.operationUnconfirmed": "The result could not be confirmed. Refresh to check or try again.",

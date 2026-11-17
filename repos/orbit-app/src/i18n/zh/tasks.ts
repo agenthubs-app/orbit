@@ -10,6 +10,8 @@ export const tasks = {
   "tasks.groupCompleted": "已完成",
   "tasks.expandCompleted": "展开已完成任务",
   "tasks.collapseCompleted": "收起已完成任务",
+  "tasks.showCompleted": "显示",
+  "tasks.hideCompleted": "收起",
   "tasks.completedNextPage": "下一页已完成任务",
   "tasks.completedFirstPage": "返回已完成任务第一页",
   "tasks.operationUnconfirmed": "未能确认操作结果，请刷新核对或重试。",

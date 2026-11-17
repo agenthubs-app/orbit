@@ -10,6 +10,8 @@ export const tasks = {
   "tasks.groupCompleted": "完了済み",
   "tasks.expandCompleted": "完了したタスクを開く",
   "tasks.collapseCompleted": "完了したタスクを閉じる",
+  "tasks.showCompleted": "表示",
+  "tasks.hideCompleted": "閉じる",
   "tasks.completedNextPage": "完了したタスクの次のページ",
   "tasks.completedFirstPage": "完了したタスクの最初のページ",
   "tasks.operationUnconfirmed": "操作結果を確認できません。更新して確認するか、もう一度お試しください。",

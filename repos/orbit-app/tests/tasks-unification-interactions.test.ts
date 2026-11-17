@@ -157,26 +157,26 @@ test("one list keeps 61 task IDs: 31 open across pages and 30 completed in the f
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
 });
 
-test("an overdue task row colors its group title and date without coloring ordinary rows", async t => {
+test("an overdue task row shows its date in a coral chip; the title and ordinary rows stay ink", async t => {
   const page = await open(t, { overdueTask: true });
   await page.getByRole("checkbox", { name: "完成：事项 0", exact: true }).waitFor();
-  await page.getByRole("heading", { name: "已逾期 1", exact: true }).waitFor();
-  const warningColor = await page.getByText("已逾期", { exact: true }).evaluate(element => getComputedStyle(element).color);
+  const heading = page.getByRole("heading", { name: "已逾期 1", exact: true });
+  await heading.waitFor();
+  // kit .td-h: the heading is ink; the count is a coral chip (判断待ち <chip coral>).
+  const warningColor = await heading.getByText("1", { exact: true }).evaluate(element => getComputedStyle(element).color);
+  const headingColor = await page.getByText("已逾期", { exact: true }).evaluate(element => getComputedStyle(element).color);
   const overdueTitleColor = await page.getByText("事项 0", { exact: true }).evaluate(element => getComputedStyle(element).color);
   const ordinaryTitleColor = await page.getByText("事项 2", { exact: true }).evaluate(element => getComputedStyle(element).color);
-  const overdueDetail = page.getByText("事项 0", { exact: true }).locator("..").locator(":scope > *").nth(1);
-  const ordinaryDetail = page.getByText("事项 2", { exact: true }).locator("..").locator(":scope > *").nth(1);
-  assert.match((await overdueDetail.textContent()) ?? "", /1月1日/);
-  assert.ok((await ordinaryDetail.textContent())?.trim());
-  const overdueDateColor = await overdueDetail.getByText(/1月1日/).evaluate(element => getComputedStyle(element).color);
-  const ordinaryDetailColor = await ordinaryDetail.evaluate(element => getComputedStyle(element).color);
-  const ordinaryDateColor = await ordinaryDetail.locator(":scope > *").first().evaluate(element => getComputedStyle(element).color);
+  const overdueRow = page.getByRole("button", { name: /^事项 0，/ });
+  const overdueDateColor = await overdueRow.getByText(/1月1日/).evaluate(element => getComputedStyle(element).color);
   assert.equal(overdueDateColor, warningColor);
-  // Only the date carries the warning; the title stays ordinary ink like other rows.
+  assert.equal(headingColor, overdueTitleColor);
+  // Only the date chip carries the warning; the title stays ordinary ink like other rows.
   assert.equal(overdueTitleColor, ordinaryTitleColor);
   assert.notEqual(overdueTitleColor, warningColor);
-  assert.notEqual(ordinaryDetailColor, warningColor);
-  assert.notEqual(ordinaryDateColor, warningColor);
+  for (const text of await page.getByRole("button", { name: /^事项 2(，|$)/ }).locator('[dir="auto"]').all()) {
+    assert.notEqual(await text.evaluate(element => getComputedStyle(element).color), warningColor);
+  }
 });
 
 test("route scope/view parameters cannot narrow the one list or open completed history", async t => {
@@ -208,7 +208,9 @@ test("a linked contact's name is the row's one detail line and accessible label,
   const page = await open(t);
   const body = page.getByRole("button", { name: "事项 22，未安排日期，真实联系人", exact: true });
   await body.waitFor(); assert.ok((await body.boundingBox())!.height >= 44);
-  await page.getByText("未安排日期  ·  真实联系人", { exact: true }).waitFor();
+  // 未安排 group: the heading already says so; the one detail line is the contact.
+  await body.getByText("真实联系人", { exact: true }).waitFor();
+  assert.equal(await body.getByText("未安排日期", { exact: true }).count(), 0);
   // The separate contact link row and the category label are gone.
   assert.equal(await page.getByRole("button", { name: /^查看人脉：/ }).count(), 0);
   assert.equal(await page.getByText("真实联系人 · 真实机构", { exact: true }).count(), 0);
@@ -240,8 +242,8 @@ test("relationship follow-ups sit in the date groups, open their own page from e
     assert.deepEqual(navigation, [href, href]);
   }
   assert.ok(await page.getByRole("button", { name: /^跟进逾期，.+，联系人a$/ }).count());
-  const warningColor = await page.getByText("已逾期", { exact: true }).evaluate(element => getComputedStyle(element).color);
-  const overdueDate = page.getByText("跟进逾期", { exact: true }).locator("..").locator(":scope > *").nth(1).locator(":scope > *").first();
+  const warningColor = await page.getByRole("heading", { name: "已逾期 1", exact: true }).getByText("1", { exact: true }).evaluate(element => getComputedStyle(element).color);
+  const overdueDate = page.getByRole("button", { name: /^跟进逾期，/ }).locator('[dir="auto"]').last();
   assert.equal(await overdueDate.evaluate(element => getComputedStyle(element).color), warningColor);
   // The first page holds 3 of 5; the rest stay behind an explicit link to the old list.
   assert.equal(await page.getByRole("heading", { name: "人脉跟进", exact: true }).count(), 0);
