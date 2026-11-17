@@ -18,6 +18,9 @@ export interface ChangeReason {
 /** Words a record uses when it changes or cancels what was said before (zh, ja, en). */
 const CHANGE_WORDS = /作废|取消|不算了|改为|改成|改到|延后|推迟|延期|提前到|不再|無効|取り消|中止|変更|前倒し|cancel|postpone|delay|no longer|instead|moved to|changed to|\bvoid\b/iu;
 
+/** Words that cancel or void a value: they say what changed, never why (AE-SCL-006 on 7ab2350). */
+const VOID_WORDS = /作废|作廃|無効|取り消|不算|不作数|\bcancel(?:l?ed)?\b|\bvoid\b|no longer (?:valid|holds|stands)/iu;
+
 const squash = (text: string) => text.replace(/\s+/gu, "").toLowerCase();
 const textOf = (material: Material) => material.sentences.map((sentence) => sentence.text).join("");
 const dated = (material: Material) => material.kind !== "contact" && Boolean(material.at);
@@ -28,7 +31,7 @@ export function changeCheckOf(materials: readonly Material[]): boolean {
 }
 
 export function changeCheckNote(): string {
-  return 'Change check — answer it in "changes", not in text: does your answer say that a newer material replaces, cancels or moves what an older one said? If not, give "changes": []. Otherwise one entry per change: {"source": the newer material\'s handle, "older": the older material\'s handle, "reason": the words of the newer material that say why, copied exactly, or "" if it gives no reason}. Code writes the sentence with the reason; do not add it yourself.';
+  return 'Change check — answer it in "changes", not in text: does your answer say that a newer material replaces, cancels or moves what an older one said? If not, give "changes": []. Otherwise one entry per change: {"source": the newer material\'s handle, "older": the older material\'s handle, "reason": the words of the newer material that say why it changed — the cause, not the words that say the old value is cancelled or replaced — copied exactly, or "" if it gives no cause}. Code writes the sentence with the reason; do not add it yourself.';
 }
 
 export function verifyChangeReasons(raw: unknown, materials: readonly Material[]): { changes: ChangeReason[]; problems: string[] } {
@@ -46,6 +49,10 @@ export function verifyChangeReasons(raw: unknown, materials: readonly Material[]
     }
     if (!(Date.parse(source.at!) > Date.parse(older.at!))) {
       problems.push(`changes entry ${name}: "source" must be the newer of the two`);
+      continue;
+    }
+    if (reason && VOID_WORDS.test(reason)) {
+      problems.push(`changes entry ${name}: "reason" must say why it changed (the cause), not the words that cancel the old value; give "" if ${source.handle} gives no cause`);
       continue;
     }
     if (reason && (reason.length > 60 || !squash(textOf(source)).includes(squash(reason)))) {

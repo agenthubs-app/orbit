@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { keepEarlierBasis } from "../../features/agent-v1/entry/resume-basis";
+import { resumedAnswer } from "../../features/agent-v1/entry/store";
 import type { AgentResultDocument } from "../../shared/contract/agent-v1";
 
 /**
@@ -33,6 +34,17 @@ test("item 6: nothing is carried over when the read is no longer answered in the
   const kept = keepEarlierBasis(paused, { basis: null, partResults: [{ partId: "p1", route: "read", status: "unfinished" }], sourceRefs: [] } as never);
   assert.equal(kept.basis, null);
   assert.deepEqual(kept.sourceRefs, []);
+});
+
+test("item 6: the stored document of a resumed request keeps the basis line (and the new card line) when its answers are joined", () => {
+  const joined = resumedAnswer(paused.answer!, { cardLine: "确认卡（修改1项）：\n① …", sourceRefs: [], text: "确认卡（修改1项）：\n① …" });
+  assert.deepEqual(joined?.basis, basis, "the basis of the read the answer rests on stays");
+  assert.deepEqual(joined?.sourceRefs, ["M31"]);
+  assert.equal(joined?.cardLine, "确认卡（修改1项）：\n① …");
+  assert.match(joined?.text ?? "", /^上次聊了报价初稿。[\s\S]*确认卡（修改1项）/u);
+  const own = { links: [{ id: "M40", label: "11月14日的笔记", type: "memo" as const }], text: "按你11月14日记的笔记回答" };
+  assert.deepEqual(resumedAnswer(paused.answer!, { basis: own, sourceRefs: ["M40"], text: "又读了一条。" })?.basis, own, "a resume with its own basis keeps its own");
+  assert.equal(resumedAnswer(paused.answer!, null), paused.answer, "nothing new: the earlier answer stays");
 });
 
 test("item 6: no earlier document, nothing to keep", () => {

@@ -36,6 +36,10 @@ test("item 7: a reason that is not the newer record's own words, or an 'older' t
   assert.equal(verifyChangeReasons([{ older: "s2", reason: "项目交接延后", source: "s3" }], [LM02, LM01]).changes.length, 0);
   assert.ok(verifyChangeReasons([{ older: "s3", reason: "项目交接延后", source: "s9" }], [LM02, LM01]).problems.length > 0);
   assert.deepEqual(verifyChangeReasons([], [LM02, LM01]), { changes: [], problems: [] }, "[] says nothing was replaced");
+  // AG06 rerun on 7ab2350: the model gave the words that cancel ("之前说的 12 月 1 日作废") as the reason.
+  const cancelWords = verifyChangeReasons([{ older: "s3", reason: "之前说的 12 月 1 日作废", source: "s2" }], [LM02, LM01]);
+  assert.equal(cancelWords.changes.length, 0, "the words that cancel the old value are not a reason");
+  assert.ok(cancelWords.problems.some((problem) => /why/u.test(problem)));
 });
 
 test("item 7: code states the reason in the answer's language, unless the answer already says it", () => {

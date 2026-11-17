@@ -133,6 +133,22 @@ export interface AgentEntryStore {
 }
 
 /** The requestId of a message: one per (account, session, client message key). */
+/**
+ * AG04: a resumed request keeps what it delivered before and the continuation follows it. AG07 repair 2 (AE-XL-003):
+ * the joined answer keeps the basis line of the read it still carries (the continuation's own, when it wrote one)
+ * and the continuation's card line.
+ */
+export function resumedAnswer(previous: AgentAnswerContract, next: AgentAnswerContract | null): AgentAnswerContract {
+  if (!next) return previous;
+  const basis = next.basis ?? previous.basis;
+  return {
+    sourceRefs: [...new Set([...previous.sourceRefs, ...next.sourceRefs])],
+    text: [previous.text, next.text].filter((text) => text.trim()).join("\n\n"),
+    ...(basis ? { basis } : {}),
+    ...(next.cardLine ? { cardLine: next.cardLine } : {}),
+  };
+}
+
 export function agentRequestIdFor(actorId: string, sessionId: string, clientMessageId: string): string {
   return `agreq_${createHash("sha256").update(JSON.stringify(["agent-v1-request", actorId, sessionId, clientMessageId])).digest("hex").slice(0, 32)}`;
 }
@@ -307,9 +323,7 @@ function createOperations(withLane: WithLane, read: (actorId: string, requestId:
         // AG04: a resumed request keeps what it delivered before; the continuation follows it.
         const resumed = Boolean(record.pendingResume);
         const previous = record.document.answer;
-        const answer = resumed && previous && input.outcome.answer
-          ? { sourceRefs: [...new Set([...previous.sourceRefs, ...input.outcome.answer.sourceRefs])], text: [previous.text, input.outcome.answer.text].filter((text) => text.trim()).join("\n\n") }
-          : resumed && !input.outcome.answer ? previous : input.outcome.answer;
+        const answer = resumed && previous ? resumedAnswer(previous, input.outcome.answer) : input.outcome.answer;
         record.pendingResume = null;
         record.document = nextDocument(record, input.now, {
           answer,
