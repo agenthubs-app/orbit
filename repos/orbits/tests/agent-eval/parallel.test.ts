@@ -7,7 +7,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { buildEvalEnvironment } from "./lib/env-guard";
-import { CaseQueue, cleanupWorkerSync, inSelectionOrder, prepareWorkerDatabase, rateLimitedResponses, WorkerPool } from "./lib/parallel";
+import { CaseQueue, cleanupWorkerSync, CONNECTIONS_PER_WORKER, inSelectionOrder, maxWorkersFor, prepareWorkerDatabase, rateLimitedResponses, WorkerPool } from "./lib/parallel";
 import { withRestoreLock } from "./lib/snapshot";
 
 /**
@@ -73,6 +73,12 @@ process.on("message", (message) => {
     if (message.caseId === "CRASH" && worker === 2) process.exit(3);
     const dir = path.join(runDir, "cases", message.caseId);
     fs.mkdirSync(dir, { recursive: true });
+    if (process.env.FAKE_SICK_WORKER === String(worker)) {
+      // The runner fails before the case runs (as with "sorry, too many clients already").
+      const checks = [{ check: "runner", status: "cannot_judge", args: null, detail: "the runner failed on this case: Error: sorry, too many clients already", evidence: [] }];
+      setTimeout(() => process.send({ type: "done", worker, caseId: message.caseId, attempt: message.attempt, outcome: { caseId: message.caseId, area: "T", account: "", hardPass: false, checks, unsupported: [], simulated: false, fake: false, events: [], durationMs: 0, dir, error: "Error: sorry, too many clients already" } }), 5);
+      return;
+    }
     fs.writeFileSync(path.join(dir, "trace.jsonl"), JSON.stringify({ seq: 1, attempt: message.attempt, worker }) + "\\n");
     const rateLimited = message.caseId === "RATE" && message.attempt === 1;
     const events = rateLimited ? [{ seq: 1, type: "model.response", status: 429, source: "real" }] : [{ seq: 1, type: "model.request", source: "real" }];
@@ -128,6 +134,38 @@ test("the pool runs every case once from one queue, retries a rate-limited case,
     pool.kill();
     fs.rmSync(dir, { force: true, recursive: true });
   }
+});
+
+test("a worker whose runner keeps failing is retired after two in a row, and its cases run once more on the others", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-eval-pool-sick-"));
+  const script = path.join(dir, "fake-worker.cjs");
+  fs.writeFileSync(script, FAKE_WORKER);
+  const runDir = path.join(dir, "run");
+  fs.mkdirSync(path.join(runDir, "cases"), { recursive: true });
+  process.env.FAKE_SICK_WORKER = "2";
+  const pool = new WorkerPool([{ worker: 1 }, { worker: 2 }], { runDir, runId: "test-run", script, sealed: false, seedCards: false, worlds: [] });
+  try {
+    await pool.start();
+    const ids = ["SLOW", "A", "B", "C", "D", "E"];
+    const result = await pool.run(ids, () => "T", () => undefined);
+    assert.deepEqual(result.outcomes.map((outcome) => outcome.caseId), ids);
+    assert.ok(result.outcomes.every((outcome) => outcome.hardPass), "every case ran on the healthy worker in the end");
+    assert.ok(result.outcomes.every((outcome) => outcome.worker === 1));
+    assert.equal(result.retried.filter((item) => item.reason === "runner_crash").length, 2, "only the two failures before retirement were run again");
+    assert.ok(result.problems.some((problem) => /worker 2 retired after 2 runner failures/u.test(problem)));
+  } finally {
+    delete process.env.FAKE_SICK_WORKER;
+    pool.kill();
+    fs.rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("the connection budget: about 20 connections per worker beside what other databases hold", () => {
+  assert.equal(CONNECTIONS_PER_WORKER, 20);
+  // The machine on 2026-11-17: max_connections 100, 3 reserved, ~10 held by other databases.
+  assert.equal(maxWorkersFor({ maxConnections: 100, otherConnections: 10, reserved: 3 }), 4);
+  assert.equal(maxWorkersFor({ maxConnections: 200, otherConnections: 10, reserved: 3 }), 9);
+  assert.equal(maxWorkersFor({ maxConnections: 20, otherConnections: 10, reserved: 3 }), 1, "never below one");
 });
 
 test("snapshot restores take turns under the restore lock; a lock left by a dead process is taken over; no lock, no waiting", async () => {

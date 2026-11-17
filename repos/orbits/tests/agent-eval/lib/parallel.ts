@@ -160,14 +160,45 @@ export function cleanupWorkerSync(environment: EvalEnvironment): string[] {
   }
   fs.rmSync(paths.stateFile, { force: true });
   const { args, name } = databaseArgs(environment.database.url);
-  const dropped = spawnSync(bin("dropdb"), [...args, "--if-exists", "--force", name], { encoding: "utf8" });
-  done.push(dropped.status === 0 ? `dropped ${name}` : `could not drop ${name}: ${(dropped.stderr || "").trim()}`);
+  if (listWorkerDatabases(environment).includes(name)) {
+    const dropped = spawnSync(bin("dropdb"), [...args, "--if-exists", "--force", name], { encoding: "utf8" });
+    done.push(dropped.status === 0 ? `dropped ${name}` : `could not drop ${name}: ${(dropped.stderr || "").trim()}`);
+  }
   // Only the worker's own directories (…/trace/w<k>, …/storage/w<k>); the shared ones are never removed.
   for (const dir of [paths.traceDir, path.dirname(paths.exportsDir)]) {
     if (path.basename(dir) === `w${environment.worker}`) fs.rmSync(dir, { force: true, recursive: true });
   }
   return done;
 }
+
+/**
+ * Postgres connections one worker (its server's pools plus its runner) uses at its peak. Measured on the AG06
+ * gate with --workers 4 (2026-11-17): 18–20 per eval database, 78 in all with the rest of the machine. A
+ * --workers 6 run went past max_connections 100 ("sorry, too many clients already") and failed most cases.
+ */
+export const CONNECTIONS_PER_WORKER = 20;
+
+/** How many workers fit in this Postgres's connection limit, beside the connections other databases hold now. */
+export function maxWorkersFor(input: { maxConnections: number; reserved: number; otherConnections: number }): number {
+  return Math.max(1, Math.floor((input.maxConnections - input.reserved - input.otherConnections) / CONNECTIONS_PER_WORKER));
+}
+
+/** The local Postgres's connection limit and what databases other than the eval ones hold now. */
+export function readConnectionBudget(environment: EvalEnvironment): { maxConnections: number; reserved: number; otherConnections: number } | null {
+  const { args } = databaseArgs(environment.database.url);
+  const result = spawnSync(bin("psql"), [...args, "-d", "postgres", "-AtF", " ", "-c", "select current_setting('max_connections'), current_setting('superuser_reserved_connections'), (select count(*) from pg_stat_activity where datname is null or datname not like 'orbit\\_agent\\_eval%')"], { encoding: "utf8" });
+  if (result.status !== 0) return null;
+  const [maxConnections, reserved, otherConnections] = result.stdout.trim().split(/\s+/u).map(Number);
+  return [maxConnections, reserved, otherConnections].every(Number.isFinite) ? { maxConnections, otherConnections, reserved } : null;
+}
+
+/** A crashed outcome made by the runner itself (the case never ran): a sign of a sick worker, not of the case. */
+export function isRunnerCrash(outcome: Pick<WorkerOutcome, "checks" | "error">): boolean {
+  return Boolean(outcome.error) && outcome.checks.length === 1 && outcome.checks[0].check === "runner";
+}
+
+/** A worker whose cases crash in the runner this many times in a row gets no more cases; those cases go to the others once. */
+export const MAX_CONSECUTIVE_RUNNER_CRASHES = 2;
 
 export interface WorkerServer {
   worker: number;
@@ -185,6 +216,11 @@ export interface WorkerServer {
  * its server from the same build. Returns every worker's environment and what its server reports it serves.
  */
 export async function prepareWorkers(main: EvalEnvironment, count: number, snapshotFile: string, log: (line: string) => void): Promise<{ environments: EvalEnvironment[]; servers: WorkerServer[] }> {
+  const budget = readConnectionBudget(main);
+  if (!budget) log("  could not read the Postgres connection limit; not checking that the workers fit in it");
+  else if (count > maxWorkersFor(budget)) {
+    throw new Error(`--workers ${count} needs about ${count * CONNECTIONS_PER_WORKER} Postgres connections, but this Postgres allows ${budget.maxConnections} (${budget.reserved} reserved, ${budget.otherConnections} held by other databases now); use --workers ${maxWorkersFor(budget)} or raise max_connections.`);
+  }
   const environments = [main, ...Array.from({ length: count - 1 }, (_, index) => loadEvalEnvironment({ worker: index + 2 }))];
   // The workers (forked after this, so they inherit it) and this process take turns restoring snapshots.
   process.env[RESTORE_LOCK_ENV] = path.join(evalPaths(main.env).envDir, "restore.lock");
@@ -209,6 +245,8 @@ export interface RetriedAttempt {
   caseId: string;
   attempt: number;
   worker: number;
+  /** rate_limited: a model or judgment call got 429; runner_crash: the runner failed before the case ran (a sick worker). */
+  reason: "rate_limited" | "runner_crash";
   rateLimited: number;
   realModelCalls: number;
   movedTo: string;
@@ -225,6 +263,9 @@ interface Slot {
   child: ChildProcess;
   alive: boolean;
   busy: { caseId: string; attempt: number } | null;
+  /** Runner crashes in a row; at MAX_CONSECUTIVE_RUNNER_CRASHES the worker is retired (gets no more cases). */
+  crashes: number;
+  retired: boolean;
 }
 
 type Listener = (slot: Slot, message: FromWorker | null, code?: number | null) => void;
@@ -246,7 +287,7 @@ export class WorkerPool {
       for (const environment of this.environments) {
         const args = ["--worker", String(environment.worker), "--run-id", this.options.runId, "--run-dir", this.options.runDir, "--worlds", this.options.worlds.join(","), ...(this.options.seedCards ? ["--seed-cards"] : []), ...(this.options.sealed ? ["--sealed"] : [])];
         const child = fork(this.options.script ?? WORKER_SCRIPT, args, { cwd: ORBITS_ROOT, execArgv: ["--import", "tsx"], stdio: ["ignore", "inherit", "inherit", "ipc"] });
-        const slot: Slot = { alive: true, busy: null, child, worker: environment.worker };
+        const slot: Slot = { alive: true, busy: null, child, crashes: 0, retired: false, worker: environment.worker };
         this.slots.push(slot);
         child.on("message", (message: FromWorker) => {
           if (message.type === "ready") {
@@ -273,6 +314,7 @@ export class WorkerPool {
     const outcomes = new Map<string, WorkerOutcome & { worker: number }>();
     const retried: RetriedAttempt[] = [];
     const problems: string[] = [];
+    const crashRequeued = new Set<string>();
     let timer: NodeJS.Timeout | null = null;
     return new Promise<PoolResult>((resolve) => {
       const finish = (caseId: string, outcome: WorkerOutcome & { worker: number }) => {
@@ -283,18 +325,18 @@ export class WorkerPool {
         if (timer) clearTimeout(timer);
         timer = null;
         for (const slot of this.slots) {
-          if (!slot.alive || slot.busy) continue;
+          if (!slot.alive || slot.retired || slot.busy) continue;
           const item = queue.take();
           if (!item) break;
           slot.busy = item;
           slot.child.send({ attempt: item.attempt, caseId: item.caseId, type: "case" } satisfies ToWorker);
         }
-        if (!this.slots.some((slot) => slot.alive) && queue.size) {
+        if (!this.slots.some((slot) => slot.alive && !slot.retired) && queue.size) {
           // Fail visibly: no worker is left to run the rest.
           for (let item = queue.take(Number.POSITIVE_INFINITY); item; item = queue.take(Number.POSITIVE_INFINITY)) {
             finish(item.caseId, { ...crashedOutcome({ id: item.caseId }, areaOf(item.caseId), this.options.runDir, new Error("no worker was left to run this case")), worker: 0 });
           }
-          problems.push("every worker exited before the queue was empty");
+          problems.push("every worker exited or was retired before the queue was empty");
         }
         if (!queue.size && !this.slots.some((slot) => slot.busy)) {
           this.listeners.delete(listener);
@@ -309,12 +351,28 @@ export class WorkerPool {
           slot.busy = null;
           const outcome = { ...message.outcome, worker: slot.worker };
           const rateLimited = rateLimitedResponses(outcome.events);
-          if (rateLimited > 0 && message.attempt <= MAX_RATE_LIMIT_RETRIES) {
-            // Harness-side bounded retry (the agent is not changed): keep this attempt's files apart and run the case again from a fresh world.
+          const keepApart = (reason: RetriedAttempt["reason"]) => {
             const movedTo = path.join(this.options.runDir, "retried", `${message.caseId}-attempt-${message.attempt}`);
             fs.mkdirSync(path.dirname(movedTo), { recursive: true });
             fs.renameSync(outcome.dir, movedTo);
-            retried.push({ attempt: message.attempt, caseId: message.caseId, movedTo, rateLimited, realModelCalls: outcome.events.filter((event) => event.type === "model.request" && event.source === "real").length, worker: slot.worker });
+            retried.push({ attempt: message.attempt, caseId: message.caseId, movedTo, rateLimited, realModelCalls: outcome.events.filter((event) => event.type === "model.request" && event.source === "real").length, reason, worker: slot.worker });
+          };
+          const crashed = isRunnerCrash(outcome);
+          slot.crashes = crashed ? slot.crashes + 1 : 0;
+          if (crashed && slot.crashes >= MAX_CONSECUTIVE_RUNNER_CRASHES && !slot.retired) {
+            // A sick worker (its database refused connections in the --workers 6 run) must not run through the queue failing every case.
+            slot.retired = true;
+            problems.push(`worker ${slot.worker} retired after ${slot.crashes} runner failures in a row (last: ${String(outcome.error).split("\n")[0]})`);
+            console.error(`  WORKER PROBLEM: worker ${slot.worker} retired after ${slot.crashes} runner failures in a row`);
+          }
+          if (crashed && !crashRequeued.has(message.caseId) && this.slots.some((other) => other !== slot && other.alive && !other.retired)) {
+            // The runner failed before the case ran: give it once to another worker (it could not run on this one).
+            crashRequeued.add(message.caseId);
+            keepApart("runner_crash");
+            queue.retry(message.caseId, message.attempt + 1, Date.now());
+          } else if (rateLimited > 0 && message.attempt <= MAX_RATE_LIMIT_RETRIES) {
+            // Harness-side bounded retry (the agent is not changed): keep this attempt's files apart and run the case again from a fresh world.
+            keepApart("rate_limited");
             const backoff = (this.options.backoffMs ?? rateLimitBackoffMs)(message.attempt);
             console.log(`  ${message.caseId}: ${rateLimited} rate-limited (429) response(s) on worker ${slot.worker}; attempt ${message.attempt} kept in retried/, again in ${backoff / 1000}s`);
             queue.retry(message.caseId, message.attempt + 1, Date.now() + backoff);
