@@ -105,12 +105,19 @@ function currentDevice() {
   }
 }
 
-function emit(event) {
+/** The request, node and device of the async context running now (taken where an event's cause happens). */
+function currentAttribution() {
+  return { device: currentDevice(), node: currentNode(), requestId: currentRequestId() };
+}
+
+/**
+ * `attribution`: the context the event belongs to, when it is emitted from another one (a pg result arrives on
+ * its socket's callbacks, in the context the pooled connection was opened in). Without it, the current context.
+ */
+function emit(event, attribution) {
   if (!traceFile) return;
   localSeq += 1;
-  const requestId = currentRequestId();
-  const node = currentNode();
-  const device = currentDevice();
+  const { requestId, node, device } = attribution ?? currentAttribution();
   const line = {
     ...(device ? { device } : {}),
     at: new RealDate(realNow() + state.offsetMs).toISOString(),
@@ -515,10 +522,11 @@ function observePg() {
     const params = (Array.isArray(values) ? values : Array.isArray(config?.values) ? config.values : []).map(shortParam);
     const queryId = `${process.pid}:${(sqlSeq += 1)}`;
     // AG05 run-02: pg answers on its socket's callbacks, outside the request's async context; the device is
-    // taken when the query is made and carried to the result.
-    const device = currentDevice();
-    const tag = device ? { device } : {};
-    if (kind === "read") emit({ type: "read.query", queryId, tables, sql: text.slice(0, 3000), params });
+    // taken when the query is made and carried to the result. harness/eval-parallel-workers: so are the
+    // requestId and node — a pooled socket keeps the context of the request that opened it, and reading them
+    // when the result arrived tagged later requests' results with that first request (AG07 run-03, AE-AMB-004).
+    const attribution = currentAttribution();
+    if (kind === "read") emit({ type: "read.query", queryId, tables, sql: text.slice(0, 3000), params }, attribution);
     const finish = (error, result) => {
       if (kind === "read") {
         const rows = Array.isArray(result?.rows) ? result.rows : [];
@@ -529,9 +537,9 @@ function observePg() {
           workspace: row.workspace_id ?? null,
         }));
         const fields = rows.slice(0, 40).map((row) => row.payload ?? row);
-        emit({ type: "read.result", ...tag, queryId, tables, rowCount: rows.length, records, sample: fields, error: error ? String(error.message ?? error) : null });
+        emit({ type: "read.result", queryId, tables, rowCount: rows.length, records, sample: fields, error: error ? String(error.message ?? error) : null }, attribution);
       } else if (!error && (result?.rowCount ?? 0) > 0) {
-        emit({ type: "db.write", ...tag, source: "real", queryId, tables, rowCount: result.rowCount, sql: text.slice(0, 3000), params, returned: Array.isArray(result?.rows) ? result.rows.slice(0, 20) : [] });
+        emit({ type: "db.write", source: "real", queryId, tables, rowCount: result.rowCount, sql: text.slice(0, 3000), params, returned: Array.isArray(result?.rows) ? result.rows.slice(0, 20) : [] }, attribution);
       }
     };
     const args = [...arguments];
