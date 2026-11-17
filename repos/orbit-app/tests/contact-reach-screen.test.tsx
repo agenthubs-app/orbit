@@ -352,10 +352,10 @@ test("SC-03 (R43): the week grid — 20pt rows on one screen; tap paints one mee
   await page.getByTestId("slot-short").getByText("白抜きの時間帯は 60 分に満たないため使われません", { exact: true }).waitFor();
   await page.getByTestId("slot-over").getByText("送れるのは 5 件まで。薄い色の 1 件は送られません", { exact: true }).waitFor();
   // A new duration re-cuts the same paint.
-  await page.getByRole("tab", { name: "30分" }).click();
+  await page.getByTestId("slot-duration").click(); await page.getByRole("button", { name: "30分", exact: true }).click();
   await page.getByTestId("slot-summary").getByText("送る時間 5 件 · 各 30 分", { exact: true }).waitFor();
   assert.equal(await attr(page, "2026-11-19T05:30", "data-slot-short"), null, "30 minutes is long enough now");
-  await page.getByRole("tab", { name: "60分" }).click();
+  await page.getByTestId("slot-duration").click(); await page.getByRole("button", { name: "60分", exact: true }).click();
   await page.getByText("5 件を挿入", { exact: true }).click();
   const proposal = page.getByTestId("contact-reach-proposal");
   await proposal.getByText("11/17（火）13:00 – 14:00", { exact: true }).waitFor();
@@ -374,7 +374,7 @@ test("SC-02: busy times from Orbit's schedule are shown struck and cannot be pic
   const busy = page.getByRole("button", { name: "11/18（水） 09:00 · 予定あり" });
   await busy.waitFor();
   assert.equal(await busy.isDisabled(), true);
-  await page.getByRole("tab", { name: "対面" }).click();
+  await page.getByTestId("slot-format").click(); await page.getByRole("button", { name: "対面", exact: true }).click();
   await page.getByRole("button", { name: /件を挿入/, disabled: true }).waitFor();
   await page.getByText("会う場所を入れてください", { exact: true }).waitFor();
 });

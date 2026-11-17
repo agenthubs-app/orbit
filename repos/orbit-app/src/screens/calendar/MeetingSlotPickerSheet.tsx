@@ -16,7 +16,7 @@ import {
   addLocalDays, availabilityGrid, cellsInRanges, isCellPaintable, localDateOf, localWeekday, paintRect, paintTap, paintedRanges, seedMeetingSlots, sliceMeetingCandidates,
   type MeetingSlot, type MeetingSlotGridDay,
 } from "../../api/compute/meeting-slots";
-import { BottomSheet, Button, IconButton, Segmented, Skeleton, TextField, UiPressable, UiText } from "../../components/ui";
+import { ActionSheet, BottomSheet, Button, IconButton, Skeleton, TextField, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -53,6 +53,7 @@ export interface MeetingSlotPickerSheetProps {
 
 const MAX = 5;
 const DURATIONS = [30, 60, 90] as const;
+const FORMATS: readonly MeetingFormat[] = ["video", "in_person", "phone"];
 const HORIZON_DAYS = 14;
 const CELL_MINUTES = 30;
 const MINUTE = 60_000;
@@ -110,6 +111,8 @@ function PickerSession({ onClose, onInsert, minimum = 3, requirePlace = false, i
   const [seeded, setSeeded] = useState(false);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [gridWidth, setGridWidth] = useState(0);
+  // Duration and format sit in one compact row (two pills → ActionSheet) so the week fits on one screen (R43 ⑧).
+  const [menu, setMenu] = useState<"duration" | "format" | null>(null);
   const started = useRef(clock());
 
   useEffect(() => {
@@ -191,6 +194,9 @@ function PickerSession({ onClose, onInsert, minimum = 3, requirePlace = false, i
   const latest = useRef({ weekDays, current, cellsPerMeeting, gridWidth, drag });
   latest.current = { weekDays, current, cellsPerMeeting, gridWidth, drag };
   const origin = useRef<{ x: number; y: number } | null>(null);
+  // The live gesture, written synchronously: a quick tap releases before React re-renders, so release must not read state.
+  const gestureRef = useRef<Drag | null>(null);
+  const track = (next: Drag | null) => { gestureRef.current = next; setDrag(next); };
   const cellAt = (x: number, y: number): [number, number] | null => {
     const { weekDays: days, gridWidth: width } = latest.current;
     const rowCount = days[0]?.cells.length ?? 0;
@@ -208,28 +214,29 @@ function PickerSession({ onClose, onInsert, minimum = 3, requirePlace = false, i
       const x = event.nativeEvent.locationX, y = event.nativeEvent.locationY;
       const at = cellAt(x, y);
       const cell = at ? latest.current.weekDays[at[0]]?.cells[at[1]] : undefined;
-      if (!at || !cell || !isCellPaintable(cell)) { origin.current = null; return; }
+      if (!at || !cell || !isCellPaintable(cell)) { origin.current = null; track(null); return; }
       origin.current = { x, y };
-      setDrag({ anchor: at, current: at, erase: latest.current.current.has(cell.startsAt!), moved: false });
+      track({ anchor: at, current: at, erase: latest.current.current.has(cell.startsAt!), moved: false });
     },
     onPanResponderMove: (_event: GestureResponderEvent, gesture: PanResponderGestureState) => {
-      const from = origin.current, active = latest.current.drag;
+      const from = origin.current, active = gestureRef.current;
       if (!from || !active) return;
       const at = cellAt(from.x + gesture.dx, from.y + gesture.dy);
       if (!at || (at[0] === active.current[0] && at[1] === active.current[1])) return;
-      setDrag({ ...active, current: at, moved: true });
+      track({ ...active, current: at, moved: true });
     },
     onPanResponderRelease: () => {
-      const { drag: active, weekDays: days, current: on, cellsPerMeeting: length } = latest.current;
+      const { weekDays: days, current: on, cellsPerMeeting: length } = latest.current;
+      const active = gestureRef.current;
       origin.current = null;
-      setDrag(null);
+      track(null);
       if (!active) return;
       if (!active.moved) { commit(paintTap(days, on, active.anchor[0], active.anchor[1], length)); return; }
       const next = new Set(on);
       for (const key of paintRect(days, active.anchor, active.current)) { if (active.erase) next.delete(key); else next.add(key); }
       commit(next);
     },
-    onPanResponderTerminate: () => { origin.current = null; setDrag(null); },
+    onPanResponderTerminate: () => { origin.current = null; track(null); },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   const tapCell = (day: number, row: number) => commit(paintTap(weekDays, current, day, row, cellsPerMeeting));
@@ -241,6 +248,7 @@ function PickerSession({ onClose, onInsert, minimum = 3, requirePlace = false, i
   const placeLabel = format === "in_person" ? (requirePlace ? t("calendar.pick.place") : t("calendar.pick.optional", { label: t("calendar.pick.place") }))
     : t("calendar.pick.optional", { label: t(format === "video" ? "calendar.pick.videoUrl" : "calendar.pick.phoneHint") });
   const stateLabel = { allowed: t("calendar.pick.open"), busy: t("calendar.pick.busy"), off: t("calendar.pick.off"), unknown: t("calendar.pick.unknown") } as const;
+  const formatLabel = (value: MeetingFormat) => t(value === "video" ? "calendar.slot.video" : value === "in_person" ? "calendar.slot.inPerson" : "calendar.slot.phone");
   const anyUnknown = weekDays.some((day) => day.cells.some((cell) => cell.state === "unknown"));
   const candidateLabel = (slot: MeetingSlot) => {
     const at = zone ? wallClock(slot.startsAt, zone) : null;
@@ -261,20 +269,14 @@ function PickerSession({ onClose, onInsert, minimum = 3, requirePlace = false, i
             <UiText style={styles.rulesText}>{t("calendar.pick.rules", summary)}<UiText style={styles.rulesEdit}>{`  ${t("calendar.pick.rulesEdit")}`}</UiText></UiText>
           </UiPressable>
         ) : null}
-        <View style={styles.field}>
-          <UiText style={styles.label}>{t("calendar.pick.duration")}</UiText>
-          <Segmented accessibilityLabel={t("calendar.pick.duration")} value={String(duration)} onChange={(value) => { setDuration(Number(value)); setSeeded(false); }}
-            segments={[...new Set<number>([...DURATIONS, duration])].map((value) => ({ key: String(value), label: t("calendar.pick.minutes", { minutes: value }) }))} />
+        <View style={styles.pills}>
+          <UiPressable accessibilityRole="button" accessibilityLabel={`${t("calendar.pick.duration")} ${t("calendar.pick.minutes", { minutes: duration })}`} onPress={() => setMenu("duration")} style={styles.pill} testID="slot-duration">
+            <UiText style={styles.pillText}>{t("calendar.pick.minutes", { minutes: duration })}</UiText><UiText style={styles.caret}>▾</UiText>
+          </UiPressable>
+          <UiPressable accessibilityRole="button" accessibilityLabel={`${t("calendar.pick.format")} ${formatLabel(format)}`} onPress={() => setMenu("format")} style={styles.pill} testID="slot-format">
+            <UiText style={styles.pillText}>{formatLabel(format)}</UiText><UiText style={styles.caret}>▾</UiText>
+          </UiPressable>
         </View>
-        <View style={styles.field}>
-          <UiText style={styles.label}>{t("calendar.pick.format")}</UiText>
-          <Segmented<MeetingFormat> accessibilityLabel={t("calendar.pick.format")} value={format} onChange={(value) => { setFormat(value); setPlace(""); }}
-            segments={[{ key: "video", label: t("calendar.slot.video") }, { key: "in_person", label: t("calendar.slot.inPerson") }, { key: "phone", label: t("calendar.slot.phone") }]} />
-        </View>
-        <TextField label={placeLabel} value={place} onChangeText={setPlace} maxLength={format === "in_person" ? 500 : format === "video" ? 2048 : 128}
-          autoCapitalize="none" {...(format === "video" ? { placeholder: "https://", keyboardType: "url" as const } : format === "phone" ? { keyboardType: "phone-pad" as const } : {})}
-          {...(linkInvalid ? { error: t("calendar.pick.linkInvalid") } : {})} />
-        {placeMissing ? <UiText style={styles.hint}>{t("calendar.pick.placeRequired")}</UiText> : null}
         {hint ? <UiText style={styles.hint} testID="slot-hint">{hint}</UiText> : null}
         {reading ? <Skeleton lines={5} /> : (
           <View style={styles.week}>
@@ -316,7 +318,7 @@ function PickerSession({ onClose, onInsert, minimum = 3, requirePlace = false, i
                           accessibilityState={{ selected: on, disabled: !paintable }} aria-selected={on} aria-disabled={!paintable} accessibilityActions={paintable ? [{ name: "activate" }] : []}
                           onAccessibilityAction={() => { if (paintable) tapCell(dayIndex, row); }}
                           {...(Platform.OS === "web" ? { dataSet: { slotState: cell.state, ...(on ? { slotOn: "" } : {}), ...(n !== undefined ? { slotN: String(n) } : {}), ...(extra ? { slotExtra: "" } : {}), ...(short ? { slotShort: "" } : {}) } } : {})}
-                          style={[styles.cell, row % 2 === 0 && styles.cellHour, cell.state === "busy" && styles.cellBusy, cell.state === "unknown" && styles.cellUnknown, cell.state === "off" && styles.cellOff,
+                          style={[styles.cell, row % 2 === 0 && paintable && !on && styles.cellHour, cell.state === "busy" && styles.cellBusy, cell.state === "unknown" && styles.cellUnknown, cell.state === "off" && styles.cellOff,
                             on && styles.cellOn, on && !bottom && styles.cellJoin, top && styles.cellTop, bottom && styles.cellBottom, extra && styles.cellExtra, short && styles.cellShort,
                             previewing && (preview!.erase ? styles.cellPreviewErase : styles.cellPreview)]}>
                           {cell.state === "busy" ? <View style={styles.strike} /> : null}
@@ -355,7 +357,17 @@ function PickerSession({ onClose, onInsert, minimum = 3, requirePlace = false, i
             </View>
           </View>
         )}
+        <TextField label={placeLabel} value={place} onChangeText={setPlace} maxLength={format === "in_person" ? 500 : format === "video" ? 2048 : 128}
+          autoCapitalize="none" {...(format === "video" ? { placeholder: "https://", keyboardType: "url" as const } : format === "phone" ? { keyboardType: "phone-pad" as const } : {})}
+          {...(linkInvalid ? { error: t("calendar.pick.linkInvalid") } : {})} />
+        {placeMissing ? <UiText style={styles.hint}>{t("calendar.pick.placeRequired")}</UiText> : null}
       </View>
+      <ActionSheet visible={menu === "duration"} title={t("calendar.pick.duration")} onClose={() => setMenu(null)} defaultFocusKey={String(duration)}
+        options={[...new Set<number>([...DURATIONS, duration])].map((value) => ({ key: String(value), label: t("calendar.pick.minutes", { minutes: value }) }))}
+        onSelect={(key) => { setMenu(null); setDuration(Number(key)); setSeeded(false); }} />
+      <ActionSheet visible={menu === "format"} title={t("calendar.pick.format")} onClose={() => setMenu(null)} defaultFocusKey={format}
+        options={FORMATS.map((key) => ({ key, label: formatLabel(key) }))}
+        onSelect={(key) => { setMenu(null); setFormat(key as MeetingFormat); setPlace(""); }} />
     </BottomSheet>
   );
 }
@@ -369,6 +381,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   rulesText: { color: colors.ink2, fontSize: 13, lineHeight: 19 },
   rulesEdit: { color: colors.ink, fontWeight: "700" },
   field: { gap: 6 },
+  pills: { flexDirection: "row", gap: 8 },
+  pill: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 34, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.surface2 },
+  pillText: { color: colors.ink, fontSize: 13, fontWeight: "700" },
+  caret: { color: colors.ink3Text, fontSize: 11 },
   label: { color: colors.ink3Text, fontSize: 13, fontWeight: "500" },
   week: { gap: 8 },
   weekBar: { flexDirection: "row", alignItems: "center", gap: 8 },
