@@ -213,8 +213,9 @@ export function noMemoLine(language: Language, quote: string): string {
 
 /* ── summary ─────────────────────────────────────────────────────────── */
 
-export function summaryLead(language: Language): string {
-  return { en: "You didn't say what to make of it, so here is a short summary of the note (nothing was changed):", ja: "何を作るかの指定がなかったので、「整理」をメモの要約と受け取りました（何も変更していません）：", zh: "你没说要整理成什么，我把“整理一下”理解成给这篇笔记写一段摘要（没有改任何记录）：" }[language];
+/** The lead when "整理一下" named no product: the user's own word is restated (AG10 run-02, AE-RD-008 a). */
+export function summaryLead(language: Language, word: string): string {
+  return { en: `You didn't say what to make of it, so I took "${word}" as a short summary of the note (nothing was changed):`, ja: `何を作るかの指定がなかったので、「${word}」をメモの要約と受け取りました（何も変更していません）：`, zh: `你没说要整理成什么，我把“${word}”理解成给这篇笔记写一段摘要（没有改任何记录）：` }[language];
 }
 
 export function summaryEntryLabel(kind: "interactions" | "followUps", language: Language): string {

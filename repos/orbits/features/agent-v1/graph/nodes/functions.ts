@@ -94,6 +94,8 @@ export function rankDomainOf(part: GraphPart, message: string): RankDomain | nul
 const INTERACTION_WORDS = /(往来|互动|来往|联系记录|通话记录|来电|やり取り|やりとり|接触|interactions?|contact log)/iu;
 const FOLLOW_UP_ASK = /(答应|承诺|约好|说好|約束|やること|待办|ToDo|TODO|タスク|\bto-?dos?\b|\btasks?\b|跟进事项|要做的事|\bpromise[sd]?\b|\bcommit(?:ted|ments?)?\b|supposed to do|follow[\s-]?ups?)/iu;
 const WRITE_ASK = /(更新|记到|记下|记上|补记|登记|记录到|记进|加到|加进|添加到|放进|建成|update|record|\blog\b|add (?:it |them |these |this )?to|put (?:it |them )?(?:in|on)|追加|記録|登録|入れて)/iu;
+const ORGANIZE_WORDS = /(整理(?:一下|整理|下)?|まとめて|まとめ|tidy (?:it |this )?up|organi[sz]e(?: (?:it|this))?)/iu;
+const SUMMARY_ASKED = /(总结|归纳|概括|摘要|要約|summari[sz]e|sum (?:it )?up)/iu;
 const SUMMARIZE_WORDS = /(整理|总结|归纳|概括|摘要|まとめ|要約|summari[sz]e|sum up|tidy up)/iu;
 const COMPARE_WORDS = /(对比|比较|比一比|比べ|比較|\bcompare\b|\bversus\b|\bvs\.?\b)/iu;
 const GROUP_WORDS = /(分组|分个组|分成|按.{0,6}分类|归类|グループ|分けて|\bgroup\b|\bsplit into\b)/iu;
@@ -123,6 +125,8 @@ const isMemoType = (type: string) => type === "memo" || type === "note";
 /** The memo a part works on: its own bound memo, this turn's @ memo, or (a reply that points back, "それ") the last one. */
 function memoOf(scope: NodeScope, part: GraphPart, allowSession: boolean): string | null {
   const bound = part.refs.find((ref) => ref.entity === "memo" && ref.recordId);
+  // AG10 run-02: a memo chosen with @ that cannot be opened now is no memo to work on.
+  if (bound && scope.run.references.some((reference) => reference.id === bound.recordId && reference.accessible === false)) return null;
   if (bound) return bound.recordId!;
   const attached = scope.run.references.filter((reference) => isMemoType(reference.type) && reference.accessible !== false);
   if (attached.length === 1) return attached[0].id;
@@ -166,7 +170,8 @@ export function functionOf(scope: NodeScope, part: GraphPart): FunctionTask | nu
       const want = write ? { followUps: writesTodo || (followUps && !interactions), interactions: !writesTodo && interactions } : { followUps, interactions };
       if (want.followUps || want.interactions) return { kind: "extract", memoId, want, write };
     }
-    if (!write && memoId && scope.run.references.some((reference) => isMemoType(reference.type) && reference.id === memoId) && (part.capabilities.includes("fn.summarize") || part.plan.deliverable === "summary" || SUMMARIZE_WORDS.test(quote))) return { kind: "summary", memoId };
+    // AG10 run-02 (AE-RD-008 b): a memo that cannot be opened this turn gets no summary lead and no offers on its content.
+    if (!write && memoId && scope.run.references.some((reference) => isMemoType(reference.type) && reference.id === memoId && reference.accessible !== false) && (part.capabilities.includes("fn.summarize") || part.plan.deliverable === "summary" || SUMMARIZE_WORDS.test(quote))) return { kind: "summary", memoId };
   }
   const domain = rankDomainOf(part, message);
   return domain ? { domain, kind: "rank" } : null;
@@ -839,7 +844,10 @@ function summaryPart(scope: NodeScope, state: AgentGraphState, part: GraphPart, 
   const { input, run } = scope;
   const language = state.language;
   // The read and the grounded answer run as before (resolve, answer); code says how "整理一下" was taken and offers two entries.
-  run.leadLines.set(part.localId, say.summaryLead(language));
+  // AG10 run-02 (AE-RD-008 a): only an ambiguous "整理" is restated, in the user's own words; "总结/summarize" asked for a summary.
+  const quote = input.message.slice(part.quote[0], part.quote[1]);
+  const organized = quote.match(ORGANIZE_WORDS)?.[0];
+  if (organized && !SUMMARY_ASKED.test(quote)) run.leadLines.set(part.localId, say.summaryLead(language, organized));
   const clarificationId = setIdOf(input.requestId, part.localId, "e");
   if (optionSets.some((set) => set.clarificationId === clarificationId)) return;
   const options: OptionSetState["options"] = [

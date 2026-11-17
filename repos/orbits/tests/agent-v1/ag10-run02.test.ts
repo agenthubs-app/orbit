@@ -3,7 +3,8 @@ import test from "node:test";
 
 import { stripSaveTalk } from "../../features/agent-v1/entry/approval-claims";
 import { runAgentGraph } from "../../features/agent-v1/graph/build";
-import { captureTrace, deepseekStub, graphKit, json, part, recordAccessOf, type ModelCall } from "./graph-kit";
+import { captureTrace, deepseekStub, graphKit, json, part, type ModelCall } from "./graph-kit";
+import { runFn } from "./functions-kit";
 
 /**
  * agent-design AG10 run-02 (coordinator, after the run-01 judging), each a code rule:
@@ -49,4 +50,33 @@ test("AE-AMB-012 shape: a statement answered beside an offer does not say it was
   } finally {
     trace.restore();
   }
+});
+
+test("AE-RD-008: '总结一下 @一篇打不开的笔记' — no '整理一下' lead, no offers on its content; the readable part is answered", async () => {
+  const message = "总结一下 @客户笔记，再告诉我 @给小林发修订报价 计划哪天做。";
+  const run = await runFn(message, [
+    { dataSources: ["orbit_records"], deliverable: "summary", objectClues: [{ entity: "memo", referenceId: "r1", text: "@客户笔记" }], requiredCapabilities: ["memo.read", "fn.summarize"], sourceQuote: "总结一下 @客户笔记" },
+    { dataSources: ["orbit_records"], objectClues: [{ entity: "todo", referenceId: "r2", text: "@给小林发修订报价" }], requiredCapabilities: ["todo.read"], sourceQuote: "@给小林发修订报价 计划哪天做" },
+  ], {
+    answer: (call) => {
+      const handle = /(s\d+) — to-do/u.exec(call.user)?.[1] ?? "s1";
+      return JSON.stringify({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: handle }], partId: "p2", text: "计划在 11 月 18 日做。" }] });
+    },
+    references: [{ accessible: false, id: "note:mb1", name: "", type: "memo" } as never, { id: "task:t42", name: "给小林发修订报价", type: "todo" }],
+  });
+  assert.doesNotMatch(run.result.text, /整理一下/u);
+  assert.doesNotMatch(run.result.text, /整理这篇笔记里的往来|列出我的待办候选/u);
+  assert.equal(run.result.clarifications.filter((set) => set.kind === "entry").length, 0);
+});
+
+test("AE-RD-008 (a): a summary asked for in words ('总结一下') needs no lead; only '整理一下' is restated, in the user's own words", async () => {
+  const references = [{ id: "note:m32", name: "11 月 10 日笔记", type: "memo" }];
+  const answer = (call: ModelCall) => {
+    const handle = /(s\d+) — memo/u.exec(call.user)![1];
+    return JSON.stringify({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: handle }], partId: "p1", text: "小林来电，说小陈在审核。" }] });
+  };
+  const summarize = await runFn("@11 月 10 日笔记 总结一下。", [{ dataSources: ["orbit_records"], deliverable: "summary", objectClues: [{ entity: "memo", referenceId: "r1", text: "@11 月 10 日笔记" }], requiredCapabilities: ["memo.read", "fn.summarize"], sourceQuote: "@11 月 10 日笔记 总结一下。" }], { answer, references });
+  assert.doesNotMatch(summarize.result.text, /整理一下|理解成/u);
+  const organize = await runFn("@11 月 10 日笔记 帮我整理整理。", [{ dataSources: ["orbit_records"], deliverable: "summary", objectClues: [{ entity: "memo", referenceId: "r1", text: "@11 月 10 日笔记" }], requiredCapabilities: ["memo.read", "fn.summarize"], sourceQuote: "@11 月 10 日笔记 帮我整理整理。" }], { answer, references });
+  assert.match(organize.result.text, /我把“整理整理”理解成给这篇笔记写一段摘要/u);
 });
