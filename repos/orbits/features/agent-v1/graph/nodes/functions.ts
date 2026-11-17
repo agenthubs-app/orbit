@@ -233,6 +233,16 @@ interface TodoCandidate extends RankCandidate {
   source: string | null;
 }
 
+/** AG12 opening (AE-FN-003 ja/en): the question words around "follow up" ("誰をフォローすべき", "who … with") are not a topic. */
+const FOLLOW_UP_QUESTION_WORDS = /(すべきな?|べき|だれ|誰|\bwhom?\b|\bwith\b|\bshould\b|\bi\b|\s)/giu;
+
+const MEETS_HISTORY: ReadonlySet<ContactSignal["kind"]> = new Set(["overdue_followup", "overdue_todo", "past_planned"]);
+
+/** AE-FN-003: the history criteria hold for a contact only with a follow-up or to-do past due, or a to-do past its planned day. */
+export function meetsHistory(contact: { signals: readonly { kind: ContactSignal["kind"] }[] }): boolean {
+  return contact.signals.some((item) => MEETS_HISTORY.has(item.kind));
+}
+
 /** AG10 history signals of a contact (code, from the user's own to-dos): a formal follow-up past due, a to-do past its planned day, … */
 interface ContactSignal {
   kind: "overdue_followup" | "overdue_todo" | "past_planned" | "due_in_period" | "planned_in_period";
@@ -438,7 +448,7 @@ interface Written {
 }
 
 /** The AG08 answer of a ranking (scope, topic, coverage; the reason of each by the record's own fields). */
-function writeAnswer(input: { domain: RankDomain; language: Language; basis: string | null; basisMemo: string | null; within: string | null; period: { from?: string; to?: string } | null; field: RankField | null; direction: "asc" | "desc"; result: RankResult<Candidate>; timeZone: string; now: string; lead: string | null; reasons: Map<string, string> }): Written {
+function writeAnswer(input: { apart?: string | null; domain: RankDomain; language: Language; basis: string | null; basisMemo: string | null; within: string | null; period: { from?: string; to?: string } | null; field: RankField | null; direction: "asc" | "desc"; result: RankResult<Candidate>; timeZone: string; now: string; lead: string | null; reasons: Map<string, string> }): Written {
   const { domain, language, result } = input;
   const unit = UNIT[domain][language];
   const noun = NOUN[domain][language];
@@ -499,6 +509,7 @@ function writeAnswer(input: { domain: RankDomain; language: Language; basis: str
     lines.push(`${index + 1}. ${line}`);
   });
   if (result.untimed.length && domain === "event") lines.push(say.untimedLine(language, result.untimed.map((item) => (item as EventCandidate).title)));
+  if (input.apart) lines.push(input.apart);
   if (input.lead) lines.push(say.changeBasisLine(language));
   return { cites: [...result.ordered.map((item) => item.candidate.ref), ...(domain === "event" ? result.untimed.map((item) => item.ref) : [])], text: lines.join("\n") };
 }
@@ -651,7 +662,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     }
   }
   const topicWords = basisMemo ? basis : topicWordsOf(basis ?? (reply ? replyWords : original));
-  const followUpAsk = domain === "contact" && FOLLOW_UP_WORDS.test(words) && !basisMemo && !topicWordsOf(basis ?? "").replace(FOLLOW_UP_WORDS, "").trim();
+  const followUpAsk = domain === "contact" && FOLLOW_UP_WORDS.test(words) && !basisMemo && !topicWordsOf(basis ?? "").replace(FOLLOW_UP_WORDS, "").replace(FOLLOW_UP_QUESTION_WORDS, "").trim();
   let topic: string | null = basisMemo ? basis : topicWords && !followUpAsk ? (basis && topicWordsOf(basis) ? basis : reply ? replyWords : null) : null;
   // A ranking with neither a basis nor a field, in AG08's words of the part itself ("最适合聊…"): kept when words remain.
   if (!topic && !field && !reply && domain !== "todo" && topicWordsOf(original) && !followUpAsk) topic = original;
@@ -699,6 +710,8 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   let hard: (candidate: Candidate) => boolean = () => true;
   let signal: ((candidate: Candidate) => number[]) | undefined;
   let timeOf: ((candidate: Candidate) => string | null) | undefined;
+  // AG12 opening (AE-FN-003): people with only a to-do due or planned later in the period do not meet the history criteria.
+  let upcoming: ContactCandidate[] = [];
   const fromDay = plan.from ? localMidnight(plan.from, timeZone) : null;
   const toDay = plan.to ? localMidnight(new Date(Date.parse(`${plan.to}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10), timeZone) : null;
   if (domain === "contact") {
@@ -726,6 +739,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
         reasons.set(contact.id, contact.signals.map((item) => signalWords(item, language, timeZone)).join(language === "en" ? "; " : "；"));
         for (const item of contact.signals) run.readSources.set(item.todo.ref, { id: item.todo.ref.slice(5), kind: "todo", title: item.todo.title } as never);
       }
+      upcoming = list.filter((contact) => contact.signals.length > 0 && !meetsHistory(contact)).sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
       signal = (candidate) => {
         const kinds = (candidate as ContactCandidate).signals.map((item) => item.kind);
         return [kinds.filter((kind) => kind === "overdue_followup").length, kinds.filter((kind) => kind === "overdue_todo" || kind === "past_planned").length, kinds.filter((kind) => kind === "due_in_period").length, kinds.length];
@@ -736,7 +750,8 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
       if (places.size && !(item.place && places.has(item.place)) && !(item.city && [...places].some((place) => PLACE_WORDS[place]?.includes(item.city!.toLowerCase())))) return false;
       if (industries.size && !(item.industry && industries.has(item.industry))) return false;
       if (orderField === "lastInteraction" && !history && !item.lastInteraction) return false;
-      if (history && !item.signals.length) return false;
+      // Code owns who meets the criteria the lead names (AE-FN-003): a follow-up or to-do past due, a to-do past its planned day.
+      if (history && !meetsHistory(item)) return false;
       return true;
     };
     candidates = list;
@@ -818,25 +833,27 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const lead = filterLead ?? (useNatural && !listing && !todoNatural
     ? say.rankLead(language, [say.fieldName(natural.field, language)], { history: false, memory: [], natural: true })
     : steps.length || memoryWords.length ? say.rankLead(language, steps, { history, memory: memoryWords, natural: false }) : null);
-  const written = writeAnswer({ basis: topic && !basisMemo ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
+  const apart = history && upcoming.length ? say.upcomingApartLine(language, upcoming.map((contact) => `${contact.name}${language === "en" ? " — " : "——"}${contact.signals.map((item) => signalWords(item, language, timeZone)).join(language === "en" ? "; " : "；")}`)) : null;
+  const written = writeAnswer({ apart, basis: topic && !basisMemo ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
   if (result.semantic && result.matched) run.topicMatched = true;
   run.answers.set(part.localId, written.text);
   part.route = "read";
   part.status = "answered";
   part.reason = null;
   part.waitReason = null;
-  const signalRefs = history ? [...new Set(result.ordered.flatMap((item) => (item.candidate as ContactCandidate).signals.map((signalItem) => signalItem.todo.ref)))] : [];
-  part.cites = [...written.cites, ...signalRefs];
-  part.reads = [...result.ordered.map((item) => ({ ref: item.candidate.view.ref, version: item.candidate.view.version })), ...signalRefs.map((ref) => ({ ref, version: "" }))];
+  const said = history ? [...result.ordered.map((item) => item.candidate as ContactCandidate), ...upcoming] : [];
+  const signalRefs = history ? [...new Set(said.flatMap((item) => item.signals.map((signalItem) => signalItem.todo.ref)))] : [];
+  part.cites = [...written.cites, ...upcoming.map((item) => item.ref), ...signalRefs];
+  part.reads = [...result.ordered.map((item) => ({ ref: item.candidate.view.ref, version: item.candidate.view.version })), ...upcoming.map((item) => ({ ref: item.view.ref, version: item.view.version })), ...signalRefs.map((ref) => ({ ref, version: "" }))];
   part.coverage = [{ complete: result.coverage.truncated === 0, kind: domain, pagesRead: Math.max(1, Math.ceil(result.coverage.total / PAGE)), seen: result.semantic && result.matched ? result.coverage.judged : result.ordered.length, total: result.matching }];
   part.gaps = [];
-  for (const item of [...result.ordered.map((entry) => entry.candidate), ...(domain === "event" ? result.untimed : [])]) {
+  for (const item of [...result.ordered.map((entry) => entry.candidate), ...(domain === "event" ? result.untimed : []), ...upcoming]) {
     const source = readSourceOf(item.view, timeZone);
     if (source) run.readSources.set(item.view.ref, source);
     run.readNames.set(item.view.id, { name: domain === "contact" ? (item as ContactCandidate).name : domain === "event" ? (item as EventCandidate).title : (item as TodoCandidate).title, type: domain });
   }
   emitTrace({ coverage: result.coverage, domain, listed: result.ordered.map((item) => item.candidate.ref), matched: result.matched, partId: part.localId, semantic: result.semantic, type: "functions.ranked", unmatchedReason: result.unmatchedReason, untimed: result.untimed.map((item) => item.ref) });
-  emitTrace({ basis: { field: orderField, history, memory: recalled.map((item) => item.memory.id), natural: useNatural, time: time.length, topic: Boolean(topic) }, listed: result.ordered.map((item) => item.candidate.ref), partId: part.localId, rejected: result.rejected, type: "fn.rank", untimed: result.untimed.map((item) => item.ref) });
+  emitTrace({ basis: { field: orderField, history, memory: recalled.map((item) => item.memory.id), natural: useNatural, time: time.length, topic: Boolean(topic) }, listed: result.ordered.map((item) => item.candidate.ref), partId: part.localId, rejected: result.rejected, type: "fn.rank", ...(history ? { upcoming: upcoming.map((item) => item.ref) } : {}), untimed: result.untimed.map((item) => item.ref) });
 }
 
 function preferenceMet(preference: TimePreference, startsAt: string, timeZone: string): boolean {
