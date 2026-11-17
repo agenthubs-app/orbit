@@ -71,7 +71,9 @@ export async function runSelfCheck(environment: EvalEnvironment, worlds: readonl
   const checks: SelfCheckItem[] = [];
   const push = (name: string, ok: boolean, detail: unknown) => checks.push({ detail, name, ok });
   const paths = evalPaths(environment.env);
-  push("database is local orbit_agent_eval", ["127.0.0.1", "localhost", "::1"].includes(environment.database.host) && environment.database.name === "orbit_agent_eval", environment.database);
+  // harness/eval-parallel-workers: worker k ≥ 2 runs on its own orbit_agent_eval_w<k>, and only on that one.
+  const expectedName = environment.worker > 1 ? `orbit_agent_eval_w${environment.worker}` : "orbit_agent_eval";
+  push("database is local orbit_agent_eval", ["127.0.0.1", "localhost", "::1"].includes(environment.database.host) && environment.database.name === expectedName, environment.database);
   let serverEnvironment: Record<string, any> | null = null;
   let blocked: unknown[] = [];
   try {
@@ -83,7 +85,7 @@ export async function runSelfCheck(environment: EvalEnvironment, worlds: readonl
   }
   if (serverEnvironment) {
     const env = serverEnvironment;
-    push("server database is the local eval database", env.database?.name === "orbit_agent_eval" && ["127.0.0.1", "localhost", "::1"].includes(env.database?.host), env.database);
+    push("server database is the local eval database", env.database?.name === expectedName &&["127.0.0.1", "localhost", "::1"].includes(env.database?.host), env.database);
     push("no database variable points off this machine", (env.remoteDatabaseVariables ?? []).every((item: { host: string | null }) => !item.host || ["127.0.0.1", "localhost", "::1"].includes(item.host)), env.remoteDatabaseVariables);
     push("not a Vercel process", env.vercel === false && !env.vercelEnv, { vercel: env.vercel, vercelEnv: env.vercelEnv });
     push("Next telemetry disabled", env.telemetryDisabled === true, env.telemetryDisabled);

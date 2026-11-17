@@ -29,7 +29,7 @@ export async function startServer(environment: EvalEnvironment): Promise<ServerS
   if (!fs.existsSync(buildIdFile)) throw new Error("No production build; run npm run agent-eval:env -- --build.");
   const paths = evalPaths(environment.env);
   fs.mkdirSync(paths.serverLogs, { recursive: true });
-  const logFile = path.join(paths.serverLogs, `server-${new Date().toISOString().replace(/[:.]/gu, "-")}.log`);
+  const logFile = path.join(paths.serverLogs, `server-${environment.worker > 1 ? `w${environment.worker}-` : ""}${new Date().toISOString().replace(/[:.]/gu, "-")}.log`);
   const log = fs.openSync(logFile, "a");
   const child = spawn(path.join(ORBITS_ROOT, "node_modules", ".bin", "next"), ["start", "-p", String(environment.port), "-H", "127.0.0.1"], {
     cwd: ORBITS_ROOT,
