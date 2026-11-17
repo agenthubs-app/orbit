@@ -174,7 +174,7 @@ function AssessmentMoreButton({ item }: { item: EventAssessmentContract }) {
     const result = await api.remove(item.id);
     if (!result.ok) { toast.error(t("eventsV2.genericError")); return; }
     toast.success(t("eventsV2.assessmentDeleted"));
-    if (router.canGoBack()) router.back(); else router.replace("/events" as Href);
+    if (router.canGoBack()) router.back(); else router.replace("/events?tab=assess" as Href);
   };
   return (
     <>

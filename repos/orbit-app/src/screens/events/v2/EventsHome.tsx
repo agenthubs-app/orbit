@@ -41,7 +41,7 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
   // 探す 的条件也走路由参数（可分享；门禁用来打开筛选弹层 / 搜索中）。
   const discoverQuery = useMemo(() => discoverQueryFromParams(params), [params.period, params.areas, params.themes]); // eslint-disable-line react-hooks/exhaustive-deps
   const topGap = useShellTopGap();
-  const [tab, setTab] = useState<Tab>(params.tab === "going" || params.tab === "discover" ? params.tab : "assess");
+  const [tab, setTab] = useState<Tab>(params.tab === "going" || params.tab === "assess" ? params.tab : "discover");
   const [discoverSubtitle, setDiscoverSubtitle] = useState<string | null>(null);
   // LF2: the three lists are page copies — shown at once, re-read after their fresh window or a write (switching
   // tabs no longer re-reads them), and kept with 「截至」 when the server cannot be reached (not an empty list).
@@ -89,9 +89,9 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
   // app.html #13 空：判定说明；b12 画板 308 有评估但没参加予定：「参加予定はまだありません」。
   const subtitle = tab === "discover" && discoverSubtitle ? discoverSubtitle : empty ? t("eventsV2.subtitleEmpty") : goingCount === 0 ? t("eventsV2.goingEmptyTitle") : t("eventsV2.subtitleGoing", { going: goingCount, month });
   const segments = useMemo(() => [
-    { key: "assess" as const, label: t("eventsV2.tabAssess") },
-    { key: "going" as const, label: goingCount > 0 && tab !== "discover" ? t("eventsV2.tabGoingCount", { n: goingCount }) : t("eventsV2.tabGoing") },
     { key: "discover" as const, label: t("eventsV2.tabDiscover") },
+    { key: "going" as const, label: goingCount > 0 && tab !== "discover" ? t("eventsV2.tabGoingCount", { n: goingCount }) : t("eventsV2.tabGoing") },
+    { key: "assess" as const, label: t("eventsV2.tabAssess") },
   ], [t, goingCount, tab]);
 
   return (

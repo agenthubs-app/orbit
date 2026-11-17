@@ -14,7 +14,7 @@ export default function EventsRoute() {
   const latest = useRef(scope);
   latest.current = scope;
   const isScopeCurrent = useCallback(() => latest.current === scope && scope.enabled, [scope]);
-  // R26: the new イベント page (評価 / 参加予定 / 探す); 探す still shows the existing list until R27.
+  // R26: the new イベント page (探す / 参加予定 / 評価); 探す is the default tab.
   void isScopeCurrent;
   return enabled ? <EventsHome key={scope.key} scopeKey={scope.key} /> : null;
 }
