@@ -203,6 +203,12 @@ export function nothingToAddLine(language: Language): string {
   return { en: "There is no commitment of yours in this note to add as a to-do.", ja: "このメモには、タスクとして追加できるあなた自身の約束がありません。", zh: "这篇笔记里没有可以加成待办的、你本人答应的事。" }[language];
 }
 
+/** AG10 run-03 (AE-FN-009 R3): the extraction failed, but the memo already holds the interaction. */
+export function recordedButFailedLine(language: Language, who: string, day: string | null, how: string, title: string): string {
+  const when = day ? dayWordsOf(day, language) : "";
+  return { en: `The note "${title}" already records this interaction (${who}, ${when}, ${how}); going through it again did not work this time, and nothing was changed. You can open the note to see it.`, ja: `メモ「${title}」には、このやり取り（${who}、${when}、${how}）がすでに記録されています。今回は読み取り直せなかったため、何も変更していません。メモを開いて確認できます。`, zh: `这次往来（${who}，${when}，${how}）已经记在笔记「${title}」上了；这次没能再整理，什么都没有改，可以打开这篇笔记查看。` }[language];
+}
+
 export function extractFailedLine(language: Language, quote: string): string {
   return { en: `"${quote}": the note could not be gone through this time; nothing was changed. Please try again.`, ja: `「${quote}」：今回はメモを読み取れなかったため、何も変更していません。もう一度お試しください。`, zh: `「${quote}」这次没能整理这篇笔记，什么都没有改，可以再试一次。` }[language];
 }

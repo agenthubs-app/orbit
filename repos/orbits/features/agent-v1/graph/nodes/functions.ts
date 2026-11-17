@@ -519,8 +519,24 @@ export function functionsNode(scope: NodeScope): GraphNode {
   const { deps, input, run } = scope;
   return async (state: AgentGraphState) => {
     const parts: GraphPart[] = state.parts.map((part) => ({ ...part, plan: { ...part.plan } }));
-    const tasks = parts.map((part) => ({ part, task: due(state, part) && !run.functionsDone.has(part.localId) ? functionOf(scope, part) : null })).filter((item): item is { part: GraphPart; task: FunctionTask } => item.task !== null);
-    if (!tasks.length) return {};
+    const found = parts.map((part) => ({ part, task: due(state, part) && !run.functionsDone.has(part.localId) ? functionOf(scope, part) : null })).filter((item): item is { part: GraphPart; task: FunctionTask } => item.task !== null);
+    if (!found.length) return {};
+    // AG10 run-03 (AE-SCL-018): one sentence the first layer split into parts over the same memo ("实际有过的往来和我答应的事"
+    // as an interactions part and a follow-ups part) is one extraction, said once; the other part is answered by it.
+    const tasks: { part: GraphPart; task: FunctionTask }[] = [];
+    const mergedInto = new Map<GraphPart, GraphPart>();
+    for (const item of found) {
+      const { part, task } = item;
+      const first = task.kind === "extract" && !task.write ? tasks.find((other) => other.task.kind === "extract" && !other.task.write && other.task.memoId === task.memoId && other.part.quote[0] === part.quote[0] && other.part.quote[1] === part.quote[1]) : undefined;
+      if (first && first.task.kind === "extract" && task.kind === "extract") {
+        first.task = { ...first.task, want: { followUps: first.task.want.followUps || task.want.followUps, interactions: first.task.want.interactions || task.want.interactions } };
+        mergedInto.set(part, first.part);
+        run.functionsDone.add(part.localId);
+        emitTrace({ into: first.part.localId, partId: part.localId, type: "functions.same_sentence_merged" });
+        continue;
+      }
+      tasks.push(item);
+    }
     const optionSets = [...state.optionSets];
     let budget = { ...state.budget };
     let repairs = state.repairs;
@@ -549,6 +565,14 @@ export function functionsNode(scope: NodeScope): GraphNode {
         part.gaps = ["service_error"];
         run.gapLines.set(part.localId, [gapWords(state.language).serviceError(quote)]);
       }
+    }
+    for (const [part, first] of mergedInto) {
+      part.status = first.status;
+      part.reason = first.reason;
+      part.route = first.route;
+      part.reads = first.reads;
+      part.cites = first.cites;
+      part.gaps = first.gaps;
     }
     const ordered = [...parts].sort((left, right) => left.quote[0] - right.quote[0]);
     run.sourceRefs = [...new Set(ordered.flatMap((part) => part.cites ?? []))];
@@ -968,6 +992,15 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
   part.coverage = [{ complete: true, kind: "memo", pagesRead: 1, seen: 1, total: 1 }];
   part.gaps = [];
   if (!result.ok) {
+    // AG10 run-03 (AE-FN-009 R3): the memo already holds an interaction with the people asked about (an earlier card wrote
+    // it): the failure line says where it is recorded; the memo stays cited so it can be opened.
+    const held = memo.interaction as NoteInteractionContract | null;
+    const heldWith = held?.occurredOn ? (held.actualContactIds ?? []).filter((id) => !focus.length || focus.includes(id)) : [];
+    if (task.want.interactions && held && heldWith.length) {
+      const who = heldWith.map((id) => contacts.find((contact) => contact.id === id)?.name ?? "").filter(Boolean).join(language === "en" ? ", " : "、");
+      settle("unfinished", result.failure === "budget" ? "budget" : "model_error", say.recordedButFailedLine(language, who, held.occurredOn, say.howWords(held.channel, held.direction, language), memoName));
+      return { budget, repairs: result.repairs };
+    }
     settle("unfinished", result.failure === "budget" ? "budget" : "model_error", say.extractFailedLine(language, quote));
     return { budget, repairs: result.repairs };
   }

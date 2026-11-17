@@ -102,3 +102,44 @@ test("AE-CTX-005: a sentence with a stray script (Cyrillic, Arabic, Thai …) th
   assert.equal(withoutStrayScripts("名片上写的是 김민수。", "card: 김민수").dropped.length, 0);
   assert.equal(withoutStrayScripts("没有别的文字。Plain English, 日本語も。", "").dropped.length, 0);
 });
+
+test("AE-FN-009 R3: an extraction that fails over a memo already holding that interaction says it is recorded there; with none, the plain failure line", async () => {
+  const { fnWorld, runFn } = await import("./functions-kit");
+  const message = "再用 @11 月 10 日笔记 更新一次我和小林的往来。";
+  const understood = [{ dataSources: ["orbit_records"], deliverable: "change", objectClues: [{ entity: "memo", referenceId: "r1", text: "@11 月 10 日笔记" }, { entity: "contact", text: "小林" }], requiredCapabilities: ["memo.read", "contact.read", "fn.extractInteractions", "memo.update"], sourceQuote: message }];
+  const references = [{ id: "note:m32", name: "11 月 10 日笔记", type: "memo" }];
+  const world = fnWorld();
+  const m32 = world.records.find((record) => record.id === "note:m32")!;
+  (m32.payload as { note: Record<string, unknown> }).note.interaction = { actualContactIds: ["contact:c17"], channel: "phone", direction: "incoming", occurredOn: "2026-11-10", precision: "day" };
+  // The extraction's model output is unusable twice (as a timeout leaves it): the extraction fails.
+  const failed = await runFn(message, understood, { extract: "not an extraction", references, world });
+  assert.match(failed.result.text, /已经记在笔记「11 月 10 日笔记」上/u);
+  assert.match(failed.result.text, /小林健/u);
+  assert.match(failed.result.text, /这次没能再整理/u);
+  assert.ok(failed.result.sourceRefs.includes("memo:note:m32"), "the note can be opened");
+  const plain = await runFn(message, understood, { extract: "not an extraction", references });
+  assert.match(plain.result.text, /这次没能整理这篇笔记，什么都没有改/u);
+  assert.doesNotMatch(plain.result.text, /已经记在/u);
+});
+
+test("AE-SCL-018: one sentence split into two parts (往来 / 答应的事) over the same memo is extracted once and said once", async () => {
+  const { runFn } = await import("./functions-kit");
+  const { noul } = await import("./judgment-kit");
+  const message = "@11 月 10 日笔记 里实际有过的往来和我答应的事，帮我整理一下。";
+  const clue = { entity: "memo", referenceId: "r1", text: "@11 月 10 日笔记" };
+  const run = await runFn(message, [
+    { dataSources: ["orbit_records"], deliverable: "list", objectClues: [clue], requiredCapabilities: ["memo.read", "fn.extractInteractions"], sourceQuote: message },
+    { dataSources: ["orbit_records"], deliverable: "list", objectClues: [clue], requiredCapabilities: ["memo.read", "fn.extractFollowUps"], sourceQuote: message },
+  ], {
+    extract: { followUps: [], interactions: [{ channel: "phone", contactClue: "小林", dateText: "11 月 10 日", direction: "incoming", kind: "happened", precision: "day", sentenceIds: [1] }] },
+    judge: () => noul(0.95),
+    references: [{ id: "note:m32", name: "11 月 10 日笔记", type: "memo" }],
+  });
+  assert.equal(run.modelCalls.filter((call) => call.node === "functions").length, 1, "one extraction for the sentence");
+  const text = run.result.text;
+  const heading = text.split("\n")[0];
+  assert.ok(heading.trim(), "a heading line");
+  assert.equal(text.split("\n").filter((line) => line === heading).length, 1, `the block is said once:\n${text}`);
+  assert.equal(run.events.filter((event) => event.type === "fn.extractInteractions").length, 1);
+  assert.ok(run.result.state.parts.every((part) => part.status === "answered"), "both parts are answered");
+});
