@@ -774,6 +774,25 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
             if (result.status !== 200) unsupported.push({ reason: `external delete of ${change.target} failed (HTTP ${result.status})`, step: index, word });
             return;
           }
+          if (productId && productId.startsWith("contact:")) {
+            // AG12: another device edits the contact's fields through the field endpoint, or deletes it (soft delete).
+            const device = new EvalClient(baseUrl(environment), log, await cookieFor(account), "web");
+            if (change.delete) {
+              const result = await device.request("DELETE", `/api/contacts/${encodeURIComponent(productId)}`, undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: "external change: delete the contact on another device" });
+              externalDeletes.add(`contacts\u0000${productId}`);
+              transcript.push(`*（别处删除了 ${change.target}，经联系人的正常删除接口，HTTP ${result.status}）*`, "");
+              if (result.status !== 200) unsupported.push({ reason: `external delete of ${change.target} failed (HTTP ${result.status})`, step: index, word });
+              return;
+            }
+            const FIELD: Record<string, string> = { email: "email", name: "displayName", org: "organization", phone: "phone", role: "role" };
+            const STORED: Record<string, string> = { email: "primaryEmail", name: "displayName", org: "organization", phone: "primaryPhone", role: "role" };
+            const values = Object.fromEntries(Object.entries(change.set ?? {}).filter(([key]) => key in FIELD).map(([key, value]) => [FIELD[key], value]));
+            const result = await device.request("PATCH", `/api/contacts/${encodeURIComponent(productId)}/fields`, { values }, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: "external change: edit the contact on another device" });
+            externalSets.set(`contacts\u0000${productId}`, { ...(externalSets.get(`contacts\u0000${productId}`) ?? {}), ...Object.fromEntries(Object.entries(change.set ?? {}).filter(([key]) => key in STORED).map(([key, value]) => [STORED[key], value])) });
+            transcript.push(`*（别处改了 ${change.target}：${JSON.stringify(change.set ?? {})}，经联系人的字段修改接口，HTTP ${result.status}）*`, "");
+            if (result.status !== 200 || Object.keys(values).length !== Object.keys(change.set ?? {}).length) unsupported.push({ reason: `external change of ${change.target} failed (HTTP ${result.status})`, step: index, word });
+            return;
+          }
           if (!productId || change.delete || !productId.startsWith("task:")) {
             unsupported.push({ reason: `external change of ${change.target}: updating a to-do and deleting a note are simulated (AG02, AG05)`, step: index, word });
             return;
@@ -1096,10 +1115,12 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   // AG02 (BND 约定一): a change is external when it is exactly what an external_change step set:
   // every changed field (bookkeeping aside) is one it set, with the value it set.
   const isExternal = (change: (typeof diff.records)[number]) => {
-    if (externalDeletes.has(`${change.collection}\u0000${change.id}`) && (change.kind === "deleted" || change.kind === "updated")) return true;
+    // AG12: a record deleted elsewhere and restored by the tested system afterwards (active at the end) is the system's write.
+    if (externalDeletes.has(`${change.collection}\u0000${change.id}`) && (change.kind === "deleted" || (change.kind === "updated" && (change.after as Record<string, unknown> | null)?.__lifecycleState === "deleted"))) return true;
     const set = externalSets.get(`${change.collection}\u0000${change.id}`);
     if (!set || change.kind !== "updated") return false;
-    const fields = change.fields.filter((field) => !/(^|\.)(updatedAt|__lifecycleState|version|revision|activities|deferralCount)(\.|$|\[)/u.test(field.field));
+    // AG12: a contact edited elsewhere through the field endpoint also records the old value in its field history.
+    const fields = change.fields.filter((field) => !/(^|\.)(updatedAt|__lifecycleState|version|revision|activities|deferralCount|fieldHistory)(\.|$|\[)/u.test(field.field));
     return fields.every((field) => {
       const name = field.field.split(".").pop() ?? field.field;
       return name in set && JSON.stringify(set[name]) === JSON.stringify(field.to);
