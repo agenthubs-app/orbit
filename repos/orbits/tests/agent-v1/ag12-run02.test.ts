@@ -26,6 +26,9 @@ test("1 AE-WEB-004 R3: only the clause denying the web goes; the note's sourced 
   assert.equal(jaInline.text, "メモでは1席900円です。");
   const en = withoutOnlineDenials("Your note says they don't publish prices and a friend paid JPY 900 per seat last year; as for the current list price, I can't browse the web, so I have no official figure.");
   assert.equal(en.text, "Your note says they don't publish prices and a friend paid JPY 900 per seat last year.");
+  // Stability run 2: "我也无法替你上网查询" (替你 between the words).
+  const zh2 = withoutOnlineDenials("笔记里写着它不公开报价，只有朋友提到去年签约价是每席 900 日元——官网上的现行报价，笔记里没有，我也无法替你上网查询。");
+  assert.equal(zh2.text, "笔记里写着它不公开报价，只有朋友提到去年签约价是每席 900 日元——官网上的现行报价，笔记里没有。");
   // A sentence that is only the denial still goes whole; nothing else changes.
   assert.equal(withoutOnlineDenials("我无法上网。笔记 C 里写的是 Cirrus Works。").text, "笔记 C 里写的是 Cirrus Works。");
   assert.equal(withoutOnlineDenials("笔记里写的是 900 日元。").text, "笔记里写的是 900 日元。");
