@@ -11,7 +11,7 @@ import { hypothesisOf, negationIn, negationOf } from "../../route/decide";
 import { replyLanguageOf } from "../../route/handoff-copy";
 import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_PROMPT_VERSION } from "../../understand/prompt";
 import { coverEverySentence } from "../../understand/cover";
-import { describedObjectSpan, subjectInsideRecord } from "../../understand/described-clue";
+import { describedObjectSpan, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
 import type { UnderstandOutput } from "../../understand/schema";
 import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInput } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
@@ -20,7 +20,10 @@ import type { AgentGraphState, GraphPart } from "../state";
 function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
   const context = scope.run.context!;
   const message = scope.input.message;
-  return output.parts.map((part) => {
+  // AG13 opening 3 (AE-RD-003): parts whose only contact clue is a word of time ("当时说了什么？"); they take the object of the
+  // part before them in the same message.
+  const timeClued = new Set<string>();
+  const parts = output.parts.map((part) => {
     const start = message.indexOf(part.sourceQuote);
     const continued = part.continues ? context.openItemHandles.get(part.continues.ref) ?? null : null;
     return {
@@ -54,6 +57,11 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
       reason: null,
       // AG12 run-03 (AE-WEB-004): an unnamed "那家公司" beside a clue naming a record is the subject inside that record.
       refs: part.objectClues.filter((clue) => {
+        if (!clue.referenceId && timeWordClue(clue)) {
+          timeClued.add(part.localId);
+          emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.time_word_clue" });
+          return false;
+        }
         if (clue.referenceId || !subjectInsideRecord(clue, part.objectClues, part.requiredCapabilities.some((capability) => capabilityKind(capability) === "write"))) return true;
         emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.subject_in_record" });
         return false;
@@ -73,6 +81,15 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
       waitReason: null,
     } satisfies GraphPart;
   });
+  for (const part of parts) {
+    if (!timeClued.has(part.localId) || part.refs.some((ref) => ref.entity === "contact")) continue;
+    const earlier = parts.filter((other) => other !== part && other.quote[0] >= 0 && other.quote[0] < part.quote[0] && other.refs.some((ref) => ref.entity === "contact"));
+    const before = earlier.find((other) => part.dependsOn.includes(other.localId)) ?? earlier.sort((left, right) => right.quote[0] - left.quote[0])[0];
+    if (!before) continue;
+    part.refs = [...part.refs, ...before.refs.filter((ref) => ref.entity === "contact").map((ref) => ({ ...ref }))];
+    emitTrace({ from: before.localId, partId: part.localId, type: "understand.time_word_clue_attached" });
+  }
+  return parts;
 }
 
 /** Words of this turn's message as [start, end), or undefined when they are not in it. */

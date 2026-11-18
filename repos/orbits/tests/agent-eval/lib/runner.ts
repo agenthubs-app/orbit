@@ -20,7 +20,7 @@ import { fakeTurn, FAKE_DEFECTS, type FakeDefect } from "./fake-agent";
 import { hardChecksPass, runHardChecks, type CheckContext, type CheckResult } from "./hard-checks";
 import { BUSINESS_COLLECTIONS, normalizeDraftOps, normalizeLedgerOps, PRIVATE_READ_COLLECTIONS, productIdsIn, type CardObservation, type EntryObservation, type FirstLayerObservation, type HandoffPart, type Observation, type ReadObservation } from "./observations";
 import { evalPaths } from "./paths";
-import { serverControl } from "./server";
+import { drainServer, serverControl } from "./server";
 import { readSeedReport, type SeedReportFile } from "./selfcheck";
 import { diffStates, readAllPayloads, readDatabaseState, recordKey, restoreSnapshot, type DatabaseDiff } from "./snapshot";
 import { CaseLog, mergeTrace, readServerEvents, scrubSecrets, traceFileSize, type TraceEvent } from "./trace-log";
@@ -214,6 +214,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const clockNow = () => new Date(Date.now() + clockOffsetMs).toISOString();
   const log = new CaseLog(testCase.id, clockNow);
 
+  // AG13 opening 4: nothing from an earlier case may still be running when the snapshot is restored.
+  await drainServer(environment);
   restoreSnapshot(environment.database.url, report.snapshot.file);
   if (!ctx.writer || ctx.currentWorld !== testCase.world) {
     // Do not close the previous writer: the configured stores and pools are cached per process and shared.
@@ -956,6 +958,10 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     }
     const after = await readDatabaseState(db);
     diff = await diffStates(db, before, beforePayloads, after);
+    // AG13 opening 4 (AE-BND-001): background work this case started (a contact import's industry layers call) ends in this
+    // case's trace, never in the next case's; the server is idle before the next case restores the snapshot.
+    const drained = await drainServer(environment);
+    if (drained && !drained.drained) unsupported.push({ reason: `background work was still running ${drained.waitedMs} ms after the case (${drained.inFlight} model call(s) in flight)`, step: -1, word: "isolation" });
     const serverEvents = readServerEvents(paths.traceDir, traceOffset, testCase.id);
     mergedEvents = mergeTrace(log.events, serverEvents);
     fs.writeFileSync(path.join(dir, "world-after.json"), JSON.stringify({ changed: diff.records.map((change) => ({ collection: change.collection, id: change.id, kind: change.kind, after: stripLifecycle(change.after) })), digest: after.digest, tables: diff.tables.map((table) => ({ added: table.added, removed: table.removed, table: table.table })) }, null, 2));

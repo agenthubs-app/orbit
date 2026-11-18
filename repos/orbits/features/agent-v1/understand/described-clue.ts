@@ -82,6 +82,21 @@ function namesANote(other: { entity: string; text: string }): boolean {
   return other.text.replace(GENERIC_RECORD_WORDS, "").replace(/[\s@「」"“”]/gu, "").length >= 2;
 }
 
+/**
+ * AG13 opening 3 (AE-RD-003): a contact clue that is only a word of when or a demonstrative of time ("当时", "那时", "今天",
+ * "その時", "あの時", "then", "that time") names no person. The part it came in ("当时说了什么？") is about the object of the
+ * part before it in the same message, not a contact to look up.
+ */
+const CJK_TIME_CLUE = /^(?:当时|那时|那时候|那会儿|当时候|彼时|这时|这时候|那次|这次|那天|这天|当天|那一次|这一次|那回)$/u;
+const JA_TIME_CLUE = /^(?:その時|そのとき|あの時|あのとき|その際|当時|その日|あの日|その場|今回|前回|この時|このとき)$/u;
+const EN_TIME_CLUE = /^(?:then|back then|at that time|that time|this time|that day|the time|at the time|that|this)$/iu;
+
+export function timeWordClue(clue: { entity: string; text: string }): boolean {
+  if (clue.entity !== "contact") return false;
+  const words = clue.text.trim().replace(/[。.?？!！、，,]+$/u, "");
+  return CJK_TIME_CLUE.test(words) || JA_TIME_CLUE.test(words) || EN_TIME_CLUE.test(words) || TIME_ONLY.test(words);
+}
+
 /** Only parts that read: in a change ("把她的待办改到周五") the person is who the record is about. */
 export function subjectInsideRecord(clue: { entity: string; text: string }, others: readonly { entity: string; text: string }[], writes = false): boolean {
   if (writes || clue.entity !== "contact" || !unnamedSubject(clue.text)) return false;

@@ -114,7 +114,30 @@ function currentAttribution() {
  * `attribution`: the context the event belongs to, when it is emitted from another one (a pg result arrives on
  * its socket's callbacks, in the context the pooled connection was opened in). Without it, the current context.
  */
+/**
+ * AG13 opening 4 (AE-BND-001): work a case started in the background (contact import → industry layers, a model call) must
+ * end inside that case. Model-host calls in flight are counted; `drain` waits until none is in flight and nothing has been
+ * traced for a quiet spell, so the runner can close a case only when its server is idle.
+ */
+let modelCallsInFlight = 0;
+let lastActivityAt = realNow();
+
+async function drain(options = {}) {
+  const quietMs = Number.isFinite(options.quietMs) ? options.quietMs : 500;
+  const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : 30_000;
+  const started = realNow();
+  const inFlightAtStart = modelCallsInFlight;
+  while (modelCallsInFlight > 0 || realNow() - lastActivityAt < quietMs) {
+    if (realNow() - started >= timeoutMs) break;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  const result = { drained: modelCallsInFlight === 0, inFlight: modelCallsInFlight, inFlightAtStart, waitedMs: realNow() - started };
+  if (inFlightAtStart > 0 || !result.drained) emit({ type: "eval.drained", ...result, note: "background work this case started was waited for before the case ended" });
+  return result;
+}
+
 function emit(event, attribution) {
+  lastActivityAt = realNow();
   if (!traceFile) return;
   localSeq += 1;
   const { requestId, node, device } = attribution ?? currentAttribution();
@@ -454,6 +477,18 @@ if (typeof realFetch === "function") {
   globalThis.fetch = async function evalFetch(input, init) {
     const url = urlOf(input);
     if (!url || hostAllowed(url.hostname) && !MODEL_HOSTS[url.hostname]) return realFetch(input, init);
+    modelCallsInFlight += 1;
+    try {
+      return await outboundFetch(input, init, url);
+    } finally {
+      modelCallsInFlight -= 1;
+      lastActivityAt = realNow();
+    }
+  };
+}
+
+async function outboundFetch(input, init, url) {
+  {
     const replay = replayFor(url, init);
     const tool = toolKindOf(url);
     if (replay) {
@@ -534,7 +569,7 @@ if (typeof realFetch === "function") {
     const rewritten = category === "model" ? mistagWrite(body) ?? injectApprovalFlag(body) : category === "judgment" ? phantomCandidate(body, requestBody) : null;
     if (rewritten) return new Response(rewritten, { status: response.status, statusText: response.statusText, headers: response.headers });
     return new Response(text, { status: response.status, statusText: response.statusText, headers: response.headers });
-  };
+  }
 }
 
 /* ── SQL observation on pg ──────────────────────────────────────────── */
@@ -761,6 +796,9 @@ async function handleControl(req, res) {
       emit({ type: "eval.context", runId: state.context.runId, account: state.context.account, clock: body.clock ?? null, replay: state.replay.map((item) => item.name ?? item.url ?? item.match), settings: state.settings });
       return reply(res, 200, { ok: true, now: new RealDate(realNow() + state.offsetMs).toISOString() });
     }
+    if (route === "drain") {
+      return reply(res, 200, { ok: true, ...(await drain(body)) });
+    }
     if (route === "clock") {
       if (body.to) setClock(body.to);
       else if (Number.isFinite(body.advanceMinutes)) state.offsetMs += body.advanceMinutes * 60_000;
@@ -857,4 +895,6 @@ globalThis.__orbitAgentEval = {
   },
   traceWriteFailures: () => writeFailures,
   hostAllowed,
+  drain,
+  modelCallsInFlight: () => modelCallsInFlight,
 };
