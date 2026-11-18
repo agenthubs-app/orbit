@@ -210,13 +210,15 @@ export const CHECKS: Record<string, CheckFn> = {
         problems.push(`${describeChange(change)} changed with no db.write event and no confirm click covering it`);
         continue;
       }
-      const firstWrite = Math.min(...seqs(writes));
+      // AG12: a write made by another device in an external_change step (device "other") is not the system's write.
+      const own = writes.filter((event) => event.device !== "other");
+      const firstWrite = Math.min(...seqs(own.length ? own : writes));
       evidence.push(firstWrite);
       const covering = confirms.find((decision) => {
         if (decision.seq >= firstWrite) return false;
         const card = obs.cards.find((item) => item.cardId === decision.cardId);
         if (!card) return false;
-        return change.kind === "created" ? card.ops.some((op) => op.op.endsWith(".create") || op.op.endsWith(".save")) : card.ops.some((op) => op.target === change.fixtureId || op.target === change.id);
+        return change.kind === "created" ? card.ops.some((op) => op.op.endsWith(".create") || op.op.endsWith(".save") || op.op.endsWith(".import")) : card.ops.some((op) => op.target === change.fixtureId || op.target === change.id);
       });
       if (!covering) problems.push(`${describeChange(change)} written at seq ${firstWrite} with no prior confirm click on a card for it`);
       else evidence.push(covering.seq);

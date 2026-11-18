@@ -70,7 +70,9 @@ export function duplicateCandidates(records: readonly LiveRecord<Record<string, 
       // The same name at the same company (one the existing rules leave out when both sides have details), or one
       // or two letters off.
       const gap = distance(theirName, name);
-      if (gap <= 2 && gap < Math.max(theirName.length, name.length)) near.push({ basis: "near", id: record.recordId, name: text(record.payload.displayName)!, organization: text(record.payload.organization), role: text(record.payload.role) });
+      // Short CJK names (张伟 / 张卫东) are one character apart at most; Latin names one or two letters.
+      const cjk = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(name + theirName);
+      if (gap <= (cjk ? 1 : 2) && gap < Math.max([...theirName].length, [...name].length)) near.push({ basis: "near", id: record.recordId, name: text(record.payload.displayName)!, organization: text(record.payload.organization), role: text(record.payload.role) });
     }
   }
   near.sort((left, right) => left.id.localeCompare(right.id));

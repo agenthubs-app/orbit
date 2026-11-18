@@ -93,7 +93,9 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
     case "contact":
     default: {
       header = `contact profile, last updated ${formatWhen(text(f.updatedAt), context.timeZone, false)}`;
-      sentences = numbered([`Name: ${text(f.displayName) ?? "—"}`, text(f.company) ? `Organization: ${text(f.company)}` : null, text(f.headline) ? `Role: ${text(f.headline)}` : null, Array.isArray(f.tags) && f.tags.length ? `Tags: ${f.tags.join(", ")}` : null]);
+      sentences = numbered([`Name: ${text(f.displayName) ?? "—"}`, text(f.company) ? `Organization: ${text(f.company)}` : null, text(f.headline) ? `Role: ${text(f.headline)}` : null, Array.isArray(f.tags) && f.tags.length ? `Tags: ${f.tags.join(", ")}` : null,
+        // AG12-5: on file but not shared with the model (a separate permission); the values never reach here.
+        Array.isArray(f.contactMethods) && f.contactMethods.length ? `Contact details: ${(f.contactMethods as string[]).map((item) => (item === "email" ? "e-mail" : item)).join(", ")} on file, not shared with you (they need a separate permission). If asked, say they are kept on the contact's page and not shown to you here; never say there are none.` : null]);
       profile = { organization: text(f.company), role: text(f.headline), updatedAt: text(f.updatedAt) };
       break;
     }

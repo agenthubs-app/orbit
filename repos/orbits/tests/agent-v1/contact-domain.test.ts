@@ -57,7 +57,7 @@ test("AE-CON-007 shape: a waiting import card, then '第一行的王强不是同
   assert.ok(revised);
   assert.equal(revised!.actionPreview!.revision, 2);
   assert.equal(revised!.actionPreview!.title, "导入联系人：新增3行、疑似重复0行、跳过1行");
-  assert.match(revised!.text, /^好的，第1行改为新建。卡片已更新：新增3行、疑似重复0行、跳过1行，点确认之前不会导入。/u);
+  assert.match(revised!.text, /^好的，第1行改为新建。卡片已从「新增2行、疑似重复1行、跳过1行」更新为「新增3行、疑似重复0行、跳过1行」，点确认之前不会导入。/u);
   const stale = await runtime.decideAction!({ actionId: "card:imp", clientDecisionId: "d-old", decision: "confirm", payloadHash: frozen.action!.payloadHash!, revision: 1 });
   assert.equal(stale?.reason, "CARD_REVISION_CHANGED");
 });
@@ -86,6 +86,9 @@ test("AG12-1 duplicates by code: the same name and company first, a near name at
     assert.ok(!candidates.some((item) => item.id === "contact:cb1"), "another account's contact is never a candidate");
     assert.ok(candidates.every((item) => !("email" in item) && !("phone" in item)), "no contact methods");
     assert.deepEqual(duplicateCandidates(records, ACTOR, { displayName: "Hannah Brooks", organization: "Fernway Goods" }), []);
+    // AE-SCL-024: 张卫东 at the same company is not "only a character off" 张伟.
+    const zhang = [...records, { ...records[0], payload: { displayName: "张卫东", organization: "曜石半导体" }, recordId: "contact:lc05" }, { ...records[0], payload: { displayName: "张玮", organization: "曜石半导体" }, recordId: "contact:lc06" }];
+    assert.deepEqual(duplicateCandidates(zhang as never, ACTOR, { displayName: "张伟", organization: "曜石半导体" }).map((item) => item.id), ["contact:lc06"]);
   });
 });
 
@@ -230,5 +233,7 @@ test("AE-CON-008 shape: a question about phone and e-mail — the read gives the
   });
   assert.ok(run.modelCalls.length >= 1);
   sentNothingOf(run.modelCalls);
+  const answer = run.modelCalls.find((call) => call.node === "answer")!;
+  assert.match(answer.user, /Contact details: e-mail, phone on file, not shared with you/u, "the answer step knows they exist but are withheld");
   assert.equal(run.frozen.length, 0);
 });

@@ -3,12 +3,20 @@ import test from "node:test";
 
 import { allowContactMethodsFrom, CONTACT_METHOD_PLACEHOLDER, contactMethodsIn, scrubModelInput, withoutContactMethods } from "../../features/agent-v1/domains/contact/field-grants";
 import { callMainModel } from "../../features/agent-v1/models/main";
+import { CONTACT_DOMAIN } from "../../features/agent-v1/domains/contact/read";
 
 /**
  * agent-design AG12-5: contact methods (e-mail, phone, WeChat, address) have no grant in the first version, so they go
  * into no model input. Records lose the fields before code hands them on; every request to the main model and the
  * judgment model passes one exit that withholds any e-mail or phone the user did not type in this request.
  */
+
+test("a contact read says which methods are on file (names only, never values), so an answer never says there are none", () => {
+  const fields = CONTACT_DOMAIN.fieldsOf({ id: "contact:c17", payload: { displayName: "小林健", organization: "北辰软件", primaryEmail: "kobayashi@hokushin.example.test", primaryPhone: "+81-90-0000-0017", role: "销售总监" }, updatedAt: "x" } as never)!;
+  assert.deepEqual(fields.contactMethods, ["email", "phone"]);
+  assert.ok(!JSON.stringify(fields).includes("kobayashi@") && !JSON.stringify(fields).includes("0000-0017"));
+  assert.equal(CONTACT_DOMAIN.fieldsOf({ id: "contact:c31", payload: { displayName: "李薇" }, updatedAt: "x" } as never)!.contactMethods, undefined);
+});
 
 test("records: the contact-method fields are dropped at any depth; other fields stay", () => {
   const out = withoutContactMethods({ candidates: [{ address: "东京都", contactId: "c1", displayName: "王强", email: "wang@yuanfan.example.test", organization: "远帆物流", phone: "+81-90-0000-0001" }], primaryEmail: "x@y.example.test", primaryPhone: "090-1111-2222", role: "运营经理" });

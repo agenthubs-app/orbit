@@ -30,6 +30,8 @@ export async function reviseImportByWords(input: { runtime: AgentRuntimeService;
   const intents = card.operations.map((op) => cardIntentOf(op, card.operations)).filter((intent): intent is CardOperationIntent => intent !== null)
     .map((intent) => (intent.capability === CONTACT_IMPORT ? { ...intent, overrides: { ...(intent as ContactImportIntent).overrides, ...overrides } } : intent));
   const before = agentCardPreview(card, await input.runtime.getRun(card.runId), input.now());
+  const countsOf = (ops: readonly { capability?: string; shown?: unknown }[]) => ((ops.find((item) => item.capability === CONTACT_IMPORT)?.shown ?? {}) as { counts?: ImportPreview["counts"] }).counts ?? { create: 0, duplicate: 0, skip: 0 };
+  const beforeCounts = countsOf(card.operations);
   const revised = await input.runtime.reviseCard({ actionId: card.actionId, intents });
   if (!revised || revised.outcome !== "revised") return null;
   const action = await input.runtime.getAction(card.actionId);
@@ -37,10 +39,9 @@ export async function reviseImportByWords(input: { runtime: AgentRuntimeService;
   const preview: AgentActionPreviewContract = agentCardPreview(action, await input.runtime.getRun(action.runId), input.now());
   if (input.store) await refreshCardInDocument({ actorId: input.actorId, now: input.now(), previous: before, store: input.store, updated: preview }).catch(() => false);
   const language = cardLocale(action.locale);
-  const op = action.operations.find((item) => item.capability === CONTACT_IMPORT);
-  const counts = ((op?.shown ?? {}) as { counts?: ImportPreview["counts"] }).counts ?? { create: 0, duplicate: 0, skip: 0 };
+  const counts = countsOf(action.operations);
   const rows = Object.keys(overrides).map(Number).sort((left, right) => left - right);
-  const lead = Object.values(overrides).every((decision) => decision === "skip") ? CONTACT_WORDS.importRevisedSkip(language, rows, counts) : CONTACT_WORDS.importRevised(language, rows, counts);
+  const lead = Object.values(overrides).every((decision) => decision === "skip") ? CONTACT_WORDS.importRevisedSkip(language, rows, beforeCounts, counts) : CONTACT_WORDS.importRevised(language, rows, beforeCounts, counts);
   const cardLine = cardLineOf(preview, language);
   emitTrace({ cardId: card.actionId, overrides, revision: preview.revision, type: "contact.import_revised" });
   return {

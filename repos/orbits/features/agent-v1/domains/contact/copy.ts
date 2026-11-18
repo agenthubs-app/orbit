@@ -7,6 +7,13 @@ import type { ReplyLanguage } from "../../route/handoff-copy";
 import type { ImportPreview } from "./import-preview";
 
 type Lines = Record<ReplyLanguage, string>;
+
+/** "新增2行、疑似重复1行、跳过1行" (R03: no space between Chinese and a number). */
+function countWords(language: ReplyLanguage, counts: ImportPreview["counts"]): string {
+  if (language === "en") return `${counts.create} new, ${counts.duplicate} possible duplicate${counts.duplicate === 1 ? "" : "s"}, ${counts.skip} skipped`;
+  if (language === "ja") return `新規 ${counts.create} 行、重複の可能性 ${counts.duplicate} 行、スキップ ${counts.skip} 行`;
+  return `新增${counts.create}行、疑似重复${counts.duplicate}行、跳过${counts.skip}行`;
+}
 const pick = (language: ReplyLanguage, lines: Lines) => lines[language];
 const detailOf = (language: ReplyLanguage, organization: string | null, role: string | null) => [organization, role].filter(Boolean).join(" · ") || (language === "en" ? "no company" : language === "ja" ? "会社なし" : "没写公司");
 
@@ -30,15 +37,15 @@ export const CONTACT_WORDS = {
     zh: `好的，就是联系人里已有的${name}（${detailOf(language, organization, role)}），没有新建联系人。${differs ? `如果${differs}，告诉我就帮你准备修改。` : ""}`,
   }),
   differs: (language: ReplyLanguage, fields: { label: string; value: string }[]) => (fields.length ? pick(language, { en: fields.map((field) => `the ${field.label} should be "${field.value}"`).join(" and "), ja: fields.map((field) => `${field.label}を「${field.value}」に変える`).join("、"), zh: fields.map((field) => `要把${field.label}改成「${field.value}」`).join("、") }) : null),
-  importRevised: (language: ReplyLanguage, rows: readonly number[], counts: ImportPreview["counts"]) => pick(language, {
-    en: `OK — row ${rows.join(" and ")} is now a new contact. The card is updated: ${counts.create} new, ${counts.duplicate} possible duplicate${counts.duplicate === 1 ? "" : "s"}, ${counts.skip} skipped. Nothing is imported until you confirm.`,
-    ja: `承知しました。${rows.join("・")}行目を新規にしました。カードを更新しました：新規 ${counts.create} 行、重複の可能性 ${counts.duplicate} 行、スキップ ${counts.skip} 行。確定するまで取り込みません。`,
-    zh: `好的，第${rows.join("、")}行改为新建。卡片已更新：新增${counts.create}行、疑似重复${counts.duplicate}行、跳过${counts.skip}行，点确认之前不会导入。`,
+  importRevised: (language: ReplyLanguage, rows: readonly number[], before: ImportPreview["counts"], counts: ImportPreview["counts"]) => pick(language, {
+    en: `OK — row ${rows.join(" and ")} is now a new contact. The card is updated from ${countWords("en", before)} to ${countWords("en", counts)}. Nothing is imported until you confirm.`,
+    ja: `承知しました。${rows.join("・")}行目を新規にしました。カードを「${countWords("ja", before)}」から「${countWords("ja", counts)}」に更新しました。確定するまで取り込みません。`,
+    zh: `好的，第${rows.join("、")}行改为新建。卡片已从「${countWords("zh", before)}」更新为「${countWords("zh", counts)}」，点确认之前不会导入。`,
   }),
-  importRevisedSkip: (language: ReplyLanguage, rows: readonly number[], counts: ImportPreview["counts"]) => pick(language, {
-    en: `OK — row ${rows.join(" and ")} is left out. The card is updated: ${counts.create} new, ${counts.duplicate} possible duplicate${counts.duplicate === 1 ? "" : "s"}, ${counts.skip} skipped. Nothing is imported until you confirm.`,
-    ja: `承知しました。${rows.join("・")}行目は取り込みません。カードを更新しました：新規 ${counts.create} 行、重複の可能性 ${counts.duplicate} 行、スキップ ${counts.skip} 行。確定するまで取り込みません。`,
-    zh: `好的，第${rows.join("、")}行不导入。卡片已更新：新增${counts.create}行、疑似重复${counts.duplicate}行、跳过${counts.skip}行，点确认之前不会导入。`,
+  importRevisedSkip: (language: ReplyLanguage, rows: readonly number[], before: ImportPreview["counts"], counts: ImportPreview["counts"]) => pick(language, {
+    en: `OK — row ${rows.join(" and ")} is left out. The card is updated from ${countWords("en", before)} to ${countWords("en", counts)}. Nothing is imported until you confirm.`,
+    ja: `承知しました。${rows.join("・")}行目は取り込みません。カードを「${countWords("ja", before)}」から「${countWords("ja", counts)}」に更新しました。確定するまで取り込みません。`,
+    zh: `好的，第${rows.join("、")}行不导入。卡片已从「${countWords("zh", before)}」更新为「${countWords("zh", counts)}」，点确认之前不会导入。`,
   }),
   label: (language: ReplyLanguage, field: "organization" | "role") => pick(language, field === "organization" ? { en: "company", ja: "会社", zh: "公司" } : { en: "title", ja: "役職", zh: "职位" }),
 };

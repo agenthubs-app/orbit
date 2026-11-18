@@ -71,3 +71,16 @@ test("contact fields as the cases name them: name/org on a card's after and on t
   const stored = obs({ businessChanges: [{ after: { displayName: "王强", organization: "远帆物流", primaryEmail: undefined, role: "仓储主管", version: 1 }, collection: "contacts", external: false, fields: [], fixtureId: null, id: "contact:new", kind: "created" }] as never, cards: [card] });
   assert.equal(run("writes_exact", "same_as_card", stored).status, "pass");
 });
+
+test("no_write_before_click: an import card covers the contacts it creates; another device's write (device other) is not the system's first write", () => {
+  const card = { cardId: "c1", frozenSeq: 3, kind: "ledger_action" as const, observedBy: [], ops: [{ op: "contact.import", raw: {}, set: {}, target: null }], revisions: 2, state: "completed" };
+  const created = { after: { displayName: "森田葵" }, collection: "contacts", external: false, fields: [], fixtureId: null, id: "contact:import:1", kind: "created" };
+  const events = [{ params: ["w", "contacts", "contact:import:1"], seq: 50, tables: ["orbit_records"], type: "db.write" }];
+  const decisions = [{ accepted: true, cardId: "c1", decision: "confirm", reason: null, seq: 40, status: 200, via: "click" as const }];
+  assert.equal(run("no_write_before_click", true, obs({ businessChanges: [created] as never, cards: [card], decisions, events: events as never })).status, "pass");
+  const restore = { ...card, ops: [{ op: "contact.restore", raw: {}, set: {}, target: "C31" }] };
+  const restored = { after: { displayName: "李薇" }, collection: "contacts", external: false, fields: [], fixtureId: "C31", id: "contact:c31", kind: "updated" };
+  const writes = [{ device: "other", params: ["w", "contacts", "contact:c31"], seq: 10, tables: ["orbit_records"], type: "db.write" }, { params: ["w", "contacts", "contact:c31"], seq: 50, tables: ["orbit_records"], type: "db.write" }];
+  assert.equal(run("no_write_before_click", true, obs({ businessChanges: [restored] as never, cards: [restore], decisions, events: writes as never })).status, "pass");
+  assert.equal(run("no_write_before_click", true, obs({ businessChanges: [restored] as never, cards: [restore], decisions, events: [{ ...writes[1], seq: 30 }] as never })).status, "fail", "a write of the system before the click");
+});
