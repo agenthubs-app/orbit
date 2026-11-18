@@ -18,6 +18,11 @@ export interface NoteContract {
   mentions: readonly NoteMentionContract[];
   contactIds: readonly string[];
   eventIds: readonly string[];
+  /**
+   * agent-design AG13 (附录 E): the events this memo is linked to, typed (platform or the user's own private event).
+   * Absent on memos written before AG13: read as the platform events of `eventIds`. `eventIds` mirrors the platform ones.
+   */
+  eventRefs?: readonly { kind: "platform" | "private"; id: string }[];
   /** R08 (R20 owns, Task notes / plan use): free text, a meeting note or a voice memo. */
   noteKind?: "free" | "meeting" | "voice";
   /** R08 (R20): the note fed the plan analysis. */

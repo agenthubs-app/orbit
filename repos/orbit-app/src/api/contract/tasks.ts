@@ -23,6 +23,13 @@ export interface TaskItemContract {
   source: "manual" | "ai_confirmed" | "contact" | "event" | "inbox";
   relatedContactId?: string;
   relatedEventId?: string;
+  /**
+   * agent-design AG13 (附录 E): every person and event the to-do is linked to. Absent on to-dos written before AG13:
+   * read as the single fields (zero or one item each). `relatedContactId` mirrors the first person, `relatedEventId`
+   * the first platform event; an old client that changes a single field replaces only that mirrored item.
+   */
+  relatedContactIds?: readonly string[];
+  relatedEventRefs?: readonly { kind: "platform" | "private"; id: string }[];
   relatedMeetingId?: string;
   relatedConversationId?: string;
   suggestionId?: string;
@@ -90,6 +97,8 @@ export interface PersonalScheduleContract extends ScheduleItemContract {
   meetingUrl?: string;
   contactIds?: string[];
   noteIds?: string[];
+  /** agent-design AG13: the events this schedule item is for (a platform event or the user's own private event). */
+  eventRefs?: { kind: "platform" | "private"; id: string }[];
   kind: "personal";
   category: "personal";
   accountId: string;
