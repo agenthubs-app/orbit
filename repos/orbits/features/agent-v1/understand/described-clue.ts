@@ -97,6 +97,18 @@ export function timeWordClue(clue: { entity: string; text: string }): boolean {
   return CJK_TIME_CLUE.test(words) || JA_TIME_CLUE.test(words) || EN_TIME_CLUE.test(words) || TIME_ONLY.test(words);
 }
 
+// A described group of contacts ("东京做零售的联系人", "東京で小売をしている連絡先", "contacts in retail in Tokyo") is a
+// filter on the contacts, not one person to look up (AG13 rerun of AG08, AE-SCL-013).
+const CJK_GROUP = /^.{2,}(?:的|の)(?:联系人|人脉|人們|人们|那些人|几位|朋友们|客户们|連絡先|人たち|方々)$/u;
+const JA_GROUP = /^.{2,}(?:いる|てる|した|する|だった)(?:連絡先|人たち|方々)$/u;
+const EN_GROUP = /^(?:my\s+|the\s+)?contacts?\s+(?:who|in|at|from|that|with)\b/iu;
+
+export function groupClue(clue: { entity: string; text: string }): boolean {
+  if (clue.entity !== "contact") return false;
+  const words = clue.text.trim().replace(/[。.?？!！、，,]+$/u, "");
+  return CJK_GROUP.test(words) || JA_GROUP.test(words) || EN_GROUP.test(words);
+}
+
 /** Only parts that read: in a change ("把她的待办改到周五") the person is who the record is about. */
 export function subjectInsideRecord(clue: { entity: string; text: string }, others: readonly { entity: string; text: string }[], writes = false): boolean {
   if (writes || clue.entity !== "contact" || !unnamedSubject(clue.text)) return false;

@@ -401,7 +401,23 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
     const dateWords = words(ctx.message, intent.date);
     const date = dateWords ? resolveSaidDate(dateWords, ctx.asOf, ctx.timeZone) : null;
     if (intent.capability === "todo.update") {
-      const person = people.find((item) => item.role !== "mentioned") ?? null;
+      let person: (typeof people)[number] | null = people.find((item) => item.role !== "mentioned") ?? null;
+      // AG13 regression rerun (AE-UIX-008): the first layer left out the contact clue, but the to-do words name a person
+      // in Latin letters ("the to-do about sending Li Wei the sample prints"): a name that is surely a contact is the person.
+      if (!person && !people.length) {
+        for (const span of intent.selector) {
+          const clue = words(ctx.message, span);
+          const name = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/u.exec(clue)?.[0];
+          if (!name || !span) continue;
+          const at = ctx.message.indexOf(name, span[0]);
+          const found = await resolvePerson(ctx, part, write, { quote: at >= 0 ? [at, at + name.length] : null, text: name });
+          if (found.kind !== "found") continue;
+          emitTrace({ name, partId: part.localId, recordId: found.id, type: "propose.person_in_todo_words" });
+          person = { id: found.id, name: await nameOfContact(found.id, found.name), role: "about", text: name };
+          people.push(person);
+          break;
+        }
+      }
       // No person named for the to-do: the one this message is about (picked in its question, or named before it).
       const inheritedId = person ? null : write.picks.contact ?? [...ctx.people].filter((known) => known.at <= part.quote[0]).sort((left, right) => right.at - left.at)[0]?.id ?? null;
       const todo = await resolveTodo(ctx, part, write, intent, person?.id ?? inheritedId, people.map((item) => item.text), Boolean(inheritedId));

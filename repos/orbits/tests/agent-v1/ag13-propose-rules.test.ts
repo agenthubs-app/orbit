@@ -5,6 +5,7 @@ import { proposableOf } from "../../features/agent-v1/graph/nodes/propose";
 import { fitsWithoutKana } from "../../features/agent-v1/propose/resolve";
 import { CHECKIN, clauseAround, isEventIntent, withoutWhenWords } from "../../features/agent-v1/propose/events-resolve";
 import { replyLanguageOf } from "../../features/agent-v1/route/handoff-copy";
+import { groupClue } from "../../features/agent-v1/understand/described-clue";
 import { ACTOR, contactWorld, json, runContact } from "./contact-kit";
 import { memo, todo } from "./read-kit";
 
@@ -50,6 +51,15 @@ test("a to-do update that links people or events is an event-family intent; a da
   assert.equal(clauseAround(message, [at, at + "半導体キャリアフォーラム".length]), "另外把 11 月 19 日那场「半導体キャリアフォーラム」也关联上", "the day said next to a title-only event clue (AE-SCL-026, stab-3)");
   assert.ok(CHECKIN.test("我忘了扫码签到，你帮我把签到补上"));
   assert.ok(!CHECKIN.test("帮我记上我参加过"));
+});
+
+test("a described group of contacts is a filter, a name is a person (AG13 rerun of AG08, AE-SCL-013)", async () => {
+  for (const text of ["东京做零售的联系人", "做设计的那些人", "東京で小売をしている連絡先", "contacts in retail in Tokyo"]) assert.equal(groupClue({ entity: "contact", text }), true, text);
+  for (const text of ["小林", "山本さん", "Emily Carter", "联系人", "老周的朋友"]) assert.equal(groupClue({ entity: "contact", text }), false, text);
+  const message = "想找人聊柴烧器物，从东京做零售的联系人里挑三位，说说为什么。";
+  const run = await runContact(message, [{ dataSources: ["orbit_records"], objectClues: [{ entity: "contact", text: "东京做零售的联系人" }], requiredCapabilities: ["contact.read", "fn.rank"], sourceQuote: message }], [], { answer: () => json({ segments: [] }) });
+  assert.ok(run.events.some((event) => event.type === "understand.group_clue"));
+  assert.doesNotMatch(run.result.text, /哪一位联系人/u, run.result.text);
 });
 
 test("graph: a contact clue inside a quoted to-do title is read as the title; in plain words it is the person", async () => {
