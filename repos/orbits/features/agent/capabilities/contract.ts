@@ -82,7 +82,7 @@ export const AGENT_RUNTIME_EXECUTOR_KEYS = [
 export const AGENT_V1_CARD_EXECUTOR_KEYS = ["todo.create", "todo.update", "memo.create", "memo.update", "contact.create", "contact.update", "contact.delete", "contact.restore", "contact.import"] as const;
 export type AgentV1CardExecutorKey = (typeof AGENT_V1_CARD_EXECUTOR_KEYS)[number];
 /** The ledger operation types those cards carry (features/agent/ledger/contract.ts). */
-export const AGENT_V1_CARD_OPERATION_TYPES: readonly string[] = ["create_todo", "update_todo", "create_memo", "update_memo"];
+export const AGENT_V1_CARD_OPERATION_TYPES: readonly string[] = ["create_todo", "update_todo", "create_memo", "update_memo", "create_contact", "update_contact", "delete_contact", "restore_contact", "import_contacts"];
 
 export type AgentCapabilityKind =
   (typeof AGENT_CAPABILITY_KINDS)[number];
