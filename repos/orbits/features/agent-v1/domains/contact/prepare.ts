@@ -163,7 +163,7 @@ const WORDS: Record<CardLocale, Words> = {
     noName: "（没有姓名）",
     quote: (title) => `「${title}」`,
     restore: (name, facts) => `恢复联系人「${name}」${facts ? `（${facts}）` : ""}，恢复的是原来这一位`,
-    restoreNote: "恢复的是原来这一位，她或他名下的笔记和待办照旧",
+    restoreNote: "恢复的是原来这一位，名下的笔记和待办照旧",
     row: (row, name) => `第${row}行 ${name}`,
     rowCreate: (facts) => `新增${facts ? `（${facts}）` : ""}`,
     rowDuplicate: (match) => `可能和已有的${match}重复；确认时跳过，要新建请告诉我`,

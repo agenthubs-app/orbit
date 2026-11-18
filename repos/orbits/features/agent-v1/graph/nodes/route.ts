@@ -8,6 +8,7 @@
  * the parts the resume touched are routed again, from the plan kept in the checkpoint; nothing else
  * changes and no model is called.
  */
+import { importTableOf } from "../../domains/contact/import-preview";
 import { attributeMessage } from "../../clarify/attribution";
 import { recordKindOf } from "../../clarify/default-readings";
 import { resolveSaidDate } from "../../propose/dates";
@@ -96,7 +97,9 @@ export function routeNode(scope: NodeScope): GraphNode {
     // latest quote they gave me" after "Here is Lumen ATS's pricing page: …" has its "they" in the same message.
     const namesPublicObject = state.parts.some((part) => Boolean(part.plan.webTarget?.quote) || /https?:\/\//u.test(input.message.slice(part.quote[0], part.quote[1])));
     const namedInMessage = namesPublicObject || (context?.references.length ?? 0) > 0 || state.parts.some((part) => part.refs.some((ref) => ref.recordId || (clueText(ref) && !isPronounClue(clueText(ref)))));
-    const unboundPronoun = (part: GraphPart) => nothingToResolveFrom && !namedInMessage && !part.refs.some((ref) => ref.recordId) && part.refs.some((ref) => isPronounClue(clueText(ref)));
+    // AG12 stability run (AE-CON-010): "import these" with a table pasted in the same message — the pronoun is the table.
+    const pastedTable = importTableOf(input.message) !== null;
+    const unboundPronoun = (part: GraphPart) => nothingToResolveFrom && !namedInMessage && !(pastedTable && part.capabilities.includes("contact.import")) && !part.refs.some((ref) => ref.recordId) && part.refs.some((ref) => isPronounClue(clueText(ref)));
     // AG07 gate (AE-XL-005): the first layer called "把报价待办改到周五" missing one item although the to-do is named in
     // its own words and the new day is said; code then looks it up instead of asking without candidates.
     const namedObjectWithDate = (part: GraphPart) => {

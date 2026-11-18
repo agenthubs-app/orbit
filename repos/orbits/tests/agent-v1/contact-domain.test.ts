@@ -223,6 +223,13 @@ test("AG12-4 import: rows by code — new, possible duplicate (never merged), sk
   assert.match(JSON.stringify(en.display?.rows), /Skipped: missing name/u);
 });
 
+test("AE-CON-010 stability run 3: 'import these' with the table pasted below — 'these' is the table, not a missing object; the card is made", async () => {
+  const message = "Please import these into my contacts:\nName,Company,Title\n王强,远帆物流,运营经理\nRyo Takahashi,Yamate Publishing,Sales\n,Aoba Design,Intern\nAoi Morita,Towa Trading,Purchasing";
+  const run = await runContact(message, [{ dataSources: ["turn_material"], clarity: "clear", deliverable: "change", intentBasis: "instruction", objectClues: [{ entity: "contact", text: "these" }], requiredCapabilities: ["contact.import"], sourceQuote: message }], [{ dependsOn: [], entity: "contact", localId: "w1", partId: "p1", verb: "import" }], { language: "en" });
+  assert.equal(run.result.clarifications.length, 0, run.result.text);
+  assert.equal(run.result.actionPreview?.operations[0].capability, "contact.import");
+});
+
 test("AE-CON-008 shape: a question about phone and e-mail — the read gives the company and role, no model input holds the methods", async () => {
   const message = "小林健的电话和邮箱是多少？另外他在哪家公司、什么职位？";
   const run = await runContact(message, [{ dataSources: ["orbit_records"], objectClues: [{ entity: "contact", text: "小林健" }], requiredCapabilities: ["contact.read"], sourceQuote: message }], [], {
