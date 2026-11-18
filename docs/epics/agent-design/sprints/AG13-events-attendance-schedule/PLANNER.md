@@ -108,3 +108,21 @@
 
 外部条件缺失（AG07 未合回、视觉稿未批准、本机库或评测自检不过）先不启动。run 已开始，按 eval README 第 6 节最多两个修复轮次，每次整套门槛重跑；仍不过就如实结束为 failed，不为通过改用例，用例确实写错按第 7 节记进 `eval/CHANGES.md`。
 REPORT 含验收映射、功能 SHA／文件／理由、迁移文件与本机两次执行的输出、旧客户端兼容规则、命令与退出码、门槛运行编号与评审结论、费用、未提交与下一步。分支 `sprint/AG13-events-attendance-schedule` 从 `orbit-agent-claude` 建；固定最终 SHA 交协调者以 `--no-ff` 合回 `orbit-agent-claude`，合并树跑受影响测试与两端 typecheck 后才登记 completed。
+
+## 开工更正记录（Generator 追加，2026-11-18；原文与原哈希 34b8b810… 保留）
+
+- **视觉稿已批准**：用户 2026-11-18 批准 https://claude.ai/artifact/RQ3Z1dNxbAvm9sPpfstDDY ，D1–D7 全选推荐（A）：
+  - D1：「我去过（自己记的）」在活动名下单独一行；右边标签只放主办方的状态；有这一行时不显示「未签到」。
+  - D2：私人活动标「🔒 私人」。
+  - D3：将来的私人活动放进「接下来」，按钮「查看」，算进「计划参加 N 场」。
+  - D4：点私人活动不开新页面：网页宽屏在右栏显示，手机网页和 App 从底部弹出。
+  - D5：详情只能看；「在 iOrbit 里改」打开对话并带上这场活动。
+  - D6：重复日程的卡写明「只改这一次」或「整个系列」，不放切换。
+  - D7：删被引用的私人活动，先在对话里逐项列出并给可选的处理方式，选定后才出卡。
+  - 只加可选字段、不加新的状态值（旧版 App 不跳行）。
+- **进入条件**：AG06 completed、AG07 已合回（协调者确认）；基线 HEAD `5137eae77`（AG12 合回）。
+- **以 brief 为准的出入**：全量对照不用 stash（brief 禁止），按协调者给的 24 条基线失败名单对照；App 端另跑一次 `npm test` 报失败名。
+- **门槛**：按 `SPRINT_EXECUTION_ORDER`，AG13 门槛 72 例 = EVT ×12 + SCL-010、SCL-012（`gate: AG13`）、SCL-025、SCL-026 + 不变量 56 例；`sprint: AG11` 的 REF 不变量不在内（AG11 排在 AG13 之后）。SPRINTS.md 登记的「SCL ×4」即这四例，本页「SCL-025、026」少写了两例，以 SPRINTS.md 为准。
+- **开场项**（协调者 AG12 复核，先于本 sprint 改动、单独提交）：AE-SCL-004 单位与职位同时过时时连成「拾野选物店店长」；AE-FN-008 摘要里的状态词须有读到的记录支持；AE-RD-003 只是时间词或指代的联系人线索不当联系人；AE-BND-001 用例之间等后台工作结束（评测侧）。
+- **回归重跑**：门槛后依次跑 AG12、AG10、AG09、AG08、AG07、AG06、AG05、AG04、AG03，命名 `AGxx-gate-rerun-at-AG13`，`--workers 4`，一个接一个；超时规则按协调者说明。
+- **文件**：PLANNER 列的三个适配器目录合在 `features/agent-v1/domains/private-event/`（`ops.ts` 卡片项、`apply.ts` 执行器），第二层的解析在 `propose/events-resolve.ts`；「我的活动」详情是新文件 `app/(app)/app/orbit-2026/events/PrivateEventPanel.tsx`；新文案放 `shared/copy`（经同步脚本到 App）。
