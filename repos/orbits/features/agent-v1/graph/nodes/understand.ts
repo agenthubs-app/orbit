@@ -11,7 +11,7 @@ import { hypothesisOf, negationIn, negationOf } from "../../route/decide";
 import { replyLanguageOf } from "../../route/handoff-copy";
 import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_PROMPT_VERSION } from "../../understand/prompt";
 import { coverEverySentence } from "../../understand/cover";
-import { describedObjectSpan, groupClue, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
+import { describedObjectSpan, groupClue, questionWordClue, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
 import type { UnderstandOutput } from "../../understand/schema";
 import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInput } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
@@ -72,6 +72,11 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
         // AG13 (AE-EVT-010): "老周" inside 「联系老周聊独立出版」这条待办 is words of the to-do's title, not a person to look up.
         const writes = part.requiredCapabilities.some((capability) => capabilityKind(capability) === "write");
         // AG13 rerun of AG08 (AE-SCL-013): "东京做零售的联系人" describes the contacts to choose among, not one person.
+        // AG13 gate run-04 (AE-SCL-025): "哪些人" is what the question asks for, not a person to look up.
+        if (!clue.referenceId && !writes && questionWordClue(clue)) {
+          emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.question_word_clue" });
+          return false;
+        }
         if (!clue.referenceId && !writes && groupClue(clue)) {
           emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.group_clue" });
           return false;

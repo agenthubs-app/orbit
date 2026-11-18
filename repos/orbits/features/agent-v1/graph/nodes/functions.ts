@@ -1060,7 +1060,11 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
         lines.push(`${say.HEADINGS.interactions[language]}${language === "en" ? ":" : "："}`);
         for (const item of listed) lines.push(`- ${nameOf(item.contact, item.clue)}，${item.occurredOn ? say.dayWordsOf(item.occurredOn, language) : ""}，${say.howWords(item.channel, item.direction, language)}${item.writable ? "" : (language === "en" ? " (doubtful: the review was not sure)" : language === "ja" ? "（要確認：確認で確信が持てませんでした）" : "（存疑：复核没有把握）")} ${say.sentenceQuote(language, sentenceOf(item.sentenceIds))}`.replace(/，/gu, language === "en" ? ", " : "，"));
       }
-      if (!happened.length && (task.write || !doubtfulOnes.length)) lines.push(say.noInteractionLine(language));
+      // AG13 rerun of AG10 (AE-FN-009): with the review unavailable (timeout) a doubtful contact is not "no interaction".
+      if (!happened.length && doubtfulOnes.length && result.judgment?.unavailable) {
+        emitTrace({ type: "functions.review_unavailable_said", unavailable: result.judgment.unavailable });
+        lines.push(say.reviewUnavailableLine(language));
+      } else if (!happened.length && (task.write || !doubtfulOnes.length)) lines.push(say.noInteractionLine(language));
       const notCounted = (task.write ? others : others.filter((item) => item.reason !== "unsure")).filter((item) => !repeated(item));
       if (notCounted.length) {
         lines.push(`${say.HEADINGS.notInteractions[language]}${language === "en" ? ":" : "："}`);

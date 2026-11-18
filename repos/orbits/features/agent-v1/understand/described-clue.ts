@@ -103,6 +103,16 @@ const CJK_GROUP = /^.{2,}(?:的|の)(?:联系人|人脉|人們|人们|那些人|
 const JA_GROUP = /^.{2,}(?:いる|てる|した|する|だった)(?:連絡先|人たち|方々)$/u;
 const EN_GROUP = /^(?:my\s+|the\s+)?contacts?\s+(?:who|in|at|from|that|with)\b/iu;
 
+/**
+ * AG13 gate run-04 (AE-SCL-025): "明天这场周会关联了哪些人" — "哪些人" came tagged as a contact. A question word ("哪些人",
+ * "谁", "誰", "who") is what the question asks for, not a person to look up.
+ */
+const QUESTION_PERSON = /^(?:哪些人|哪些联系人|哪几位|哪几个人|哪位|哪个人|哪一位|谁|是谁|都有谁|有谁|哪些|誰|誰が|どなた|どの人|どの方|who|whom|which (?:people|persons?|contacts?|ones?))$/iu;
+
+export function questionWordClue(clue: { entity: string; text: string }): boolean {
+  return clue.entity === "contact" && QUESTION_PERSON.test(clue.text.trim().replace(/[?？。.]+$/u, ""));
+}
+
 export function groupClue(clue: { entity: string; text: string }): boolean {
   if (clue.entity !== "contact") return false;
   const words = clue.text.trim().replace(/[。.?？!！、，,]+$/u, "");

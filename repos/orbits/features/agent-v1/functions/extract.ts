@@ -223,9 +223,14 @@ export const CONSIDER = /(考虑|想想|也许|可能|不妨|打算|思う|か�
  * Code's own reading of an interaction the model said happened: hearsay without the author in it, or an intention
  * without any contact having taken place, is not an interaction (the model's "happened" is overruled).
  */
-export function guardInteraction(candidate: InteractionCandidate, sentence: string): InteractionKind {
+export function guardInteraction(candidate: InteractionCandidate, cited: string | readonly string[]): InteractionKind {
   if (candidate.kind !== "happened") return candidate.kind;
-  if (HEARSAY.test(sentence) && !FIRST_PERSON.test(sentence.replace(HEARSAY, ""))) return "between_others";
+  const sentences = typeof cited === "string" ? [cited] : cited;
+  const sentence = sentences.join(" ");
+  // AG13 run-04 (AE-SCL-018): "11月12日、中村さんから電話。…松本彩さんの隣になるとのこと。" — the hearsay is what was said on
+  // the call; one cited sentence that records the contact itself, with no hearsay in it, makes it the author's own.
+  const ownContact = sentences.some((one) => TOOK_PLACE.test(one) && !HEARSAY.test(one));
+  if (!ownContact && HEARSAY.test(sentence) && !FIRST_PERSON.test(sentence.replace(HEARSAY, ""))) return "between_others";
   if (LATER.test(sentence) && !TOOK_PLACE.test(sentence)) return "planned";
   return "happened";
 }

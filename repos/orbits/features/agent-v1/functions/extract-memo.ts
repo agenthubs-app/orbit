@@ -60,6 +60,13 @@ export async function extractFromMemo(request: ExtractRequest): Promise<ExtractR
   emitTrace({ memo: memo.ref, promptVersion: EXTRACT_PROMPT_VERSION, sentences: sentences.length, type: "functions.extract_prompt", version: memo.version, want: request.want });
   let repairs = request.repairs;
   let result = await callMainModel({ budget: request.budget, fetchImplementation: request.fetchImplementation, node: "functions", purpose: "first", requestId: request.requestId, system, user });
+  // AG13 run-04 (AE-SCL-018): the prompt is small (~850 tokens in) but the model's reasoning sometimes runs past the 15 s
+  // limit (6–9 s typical, measured over nine runs); a call that failed in a retryable way (timeout, 429, 5xx) is sent once more.
+  if (result.ok === false && result.reason === "model_error" && result.retryable && repairs < 1) {
+    repairs += 1;
+    emitTrace({ type: "functions.extract_retry" });
+    result = await callMainModel({ budget: request.budget, fetchImplementation: request.fetchImplementation, node: "functions", purpose: "retry", requestId: request.requestId, system, user });
+  }
   let checked = result.ok ? checkExtractOutput(result.text, sentences, request.want) : null;
   if (result.ok && checked && checked.ok === false && repairs < 1) {
     repairs += 1;
@@ -74,7 +81,7 @@ export async function extractFromMemo(request: ExtractRequest): Promise<ExtractR
   }
   if (checked.value.dropped.length) emitTrace({ dropped: checked.value.dropped, type: "functions.extract_dropped" });
   const interactions = request.want.interactions ? extractInteractions(checked.value.interactions, { contacts: request.contacts, focus: request.focus, language: memoLanguage, memo, sentences, timeZone: request.timeZone }) : { items: [], results: [] };
-  const followUps = request.want.followUps ? extractFollowUps(checked.value.followUps, { contacts: request.contacts, language: memoLanguage, memo, sentences, timeZone: request.timeZone }) : { items: [], results: [] };
+  const followUps = request.want.followUps ? extractFollowUps(checked.value.followUps, { contacts: request.contacts, language: memoLanguage, memo, message: request.quote, sentences, timeZone: request.timeZone }) : { items: [], results: [] };
   const items = [...interactions.items, ...followUps.items];
   const outcome = items.length
     ? await askJudgment(request.judgment, request.judgmentBudget, { input: extractJudgmentInput(memoLanguage, { day: memoDay, title: memo.title }, sentences), items, language: memoLanguage, purpose: "extract", requestId: request.requestId })
