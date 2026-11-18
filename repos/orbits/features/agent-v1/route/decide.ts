@@ -139,6 +139,9 @@ export function decideRoute(part: RouteInput, options: RouteOptions = {}): Route
       : decision("accept", "answer", "accepts the alternative offered earlier");
   }
   if (part.persistence === "until_satisfied") return decision("convert", "offer_alternative", "an open-ended request; offer a bounded alternative first", "awaiting_acceptance");
+  // AG12 run-02 stability (AE-SCL-016): a link the user hands over to read ("Here is their pricing page: https://…") is a
+  // request to open it, whatever clarity the first layer gave the sentence; saying not to open it is a negation.
+  if (part.requiredCapabilities.includes("web.fetch") && /https?:\/\/\S+/u.test(part.sourceQuote ?? "") && !part.negation && !part.hypothesis && writes.length === 0) return decision("accept", "web_lookup", "the user gave a link to read");
   // AG04: an unclear part's next step comes from the six rows of §3.11 (clarify/next-step.ts).
   const step = decideNextStep({
     capabilities: part.requiredCapabilities,

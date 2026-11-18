@@ -5,6 +5,7 @@ import { withoutOnlineDenials, withoutQuoteResidue } from "../../features/agent-
 import { expiryLine } from "../../features/agent-v1/answer/change-check";
 import type { Material } from "../../features/agent-v1/answer/schema";
 import { stripCardTalk } from "../../features/agent-v1/entry/approval-claims";
+import { decideRoute } from "../../features/agent-v1/route/decide";
 import { ACTOR, contactWorld, json, runContact } from "./contact-kit";
 import { memo } from "./read-kit";
 
@@ -73,6 +74,14 @@ test("3 wiring: a grounded answer citing such a record carries the code-written 
     world,
   });
   assert.match(run.result.text, /also says: "The September quote of JPY 1,900 has expired\."/u, run.result.text);
+});
+
+test("stability run (AE-SCL-016): a part that hands over a link to read is a web lookup even when the first layer calls it a statement", () => {
+  const part = { clarity: "statement", constraints: [], dataOwner: "self", dataSources: ["public_web"], intentBasis: "instruction", persistence: "this_turn", requiredCapabilities: ["web.fetch"], sourceQuote: "Here is Lumen ATS's pricing page: https://lumen-ats.example.test/pricing." } as never;
+  assert.equal(decideRoute(part).route, "web_lookup");
+  // Saying not to open it, or no link at all: as before.
+  assert.notEqual(decideRoute({ ...(part as object), negation: true } as never).route, "web_lookup");
+  assert.equal(decideRoute({ ...(part as object), requiredCapabilities: ["memo.read"], dataSources: ["orbit_records"], sourceQuote: "Here is my note." } as never).route, "answer");
 });
 
 test("4 AE-AMB-011: an empty or unbalanced quote left by a strip rule is cleaned; whole quotes stay", () => {
