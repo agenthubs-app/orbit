@@ -838,11 +838,15 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   // AG12 run-03 (AE-FN-003 R4): beside a ranking that says its basis, the ways of ordering it again as clickable entries (the
   // same options as the basis question; the clients show entries already). A click ranks again by it; it asks nothing.
   if (lead && !optionSets.some((set) => set.partId === part.localId && set.purpose === "ranking" && set.kind === "entry")) {
-    const keys = orderingsOf(domain);
-    const clarificationId = setIdOf(input.requestId, part.localId, "e");
-    optionSets.push({ clarificationId, kind: "entry", options: keys.map((key, index) => ({ capabilities: [...part.capabilities], capability: "fn.rank", optionId: `o${index + 1}`, refId: key, refType: "ranking" })), partId: part.localId, purpose: "ranking", state: "open", subgoal: `entry:${input.requestId}:${part.localId}` });
-    run.optionLabels.set(clarificationId, new Map(keys.map((key, index) => [`o${index + 1}`, { label: say.orderingLabel(key, language) }])));
-    emitTrace({ clarificationId, options: keys.length, partId: part.localId, purpose: "ranking", type: "clarify.entry_offered" });
+    // run-03 repair 2: not the ordering this answer already applied.
+    const applied = new Set<string>([...(history ? ["overdue"] : []), ...(orderField ? [orderField] : []), ...(time.length ? ["weekend"] : []), ...(topic ? ["topic"] : [])]);
+    const keys = orderingsOf(domain).filter((key) => !applied.has(key));
+    if (keys.length) {
+      const clarificationId = setIdOf(input.requestId, part.localId, "e");
+      optionSets.push({ clarificationId, kind: "entry", options: keys.map((key, index) => ({ capabilities: [...part.capabilities], capability: "fn.rank", optionId: `o${index + 1}`, refId: key, refType: "ranking" })), partId: part.localId, purpose: "ranking", state: "open", subgoal: `entry:${input.requestId}:${part.localId}` });
+      run.optionLabels.set(clarificationId, new Map(keys.map((key, index) => [`o${index + 1}`, { label: say.orderingLabel(key, language) }])));
+      emitTrace({ clarificationId, options: keys.length, partId: part.localId, purpose: "ranking", type: "clarify.entry_offered" });
+    }
   }
   if (result.semantic && result.matched) run.topicMatched = true;
   run.answers.set(part.localId, written.text);

@@ -91,7 +91,9 @@ test("5 AE-FN-003 R4: the ranking with its basis line has the entries to rank an
   assert.match(run.result.text, /想换个依据重新排/u);
   const entries = run.result.clarifications.filter((set) => set.kind === "entry");
   assert.equal(entries.length, 1);
-  assert.ok(entries[0].options.length >= 2 && entries[0].options.every((option) => option.capability === "fn.rank"));
+  assert.ok(entries[0].options.length >= 1 && entries[0].options.every((option) => option.capability === "fn.rank"));
+  // run-03 repair 2: the ordering already applied (overdue follow-ups, from the history signals) is not offered again.
+  assert.ok(entries[0].options.every((option) => (option as { ref?: { id: string } }).ref?.id !== "overdue"), JSON.stringify(entries[0].options));
   assert.equal(run.result.clarifications.filter((set) => set.kind === "question").length, 0);
   assert.equal(run.result.status, "completed");
 });
