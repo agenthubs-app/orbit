@@ -22,6 +22,8 @@ import {
   type TodoOperationIntent,
   type TodoReader,
 } from "./todo-operations";
+import { CONTACT_CREATE, CONTACT_DELETE, CONTACT_IMPORT, CONTACT_RESTORE, isContactCapability, type ContactOperationIntent } from "../../agent-v1/domains/contact/types";
+import { contactIntentOf, importCountTitle, prepareContactOperation } from "../../agent-v1/domains/contact/prepare";
 
 export const MEMO_CREATE = "memo.create";
 export const MEMO_UPDATE = "memo.update";
@@ -57,7 +59,7 @@ export interface MemoUpdateIntent {
   shown: { title: string; contactIds: string[]; names: Record<string, string>; sentence?: string; before: NoteInteractionContract | null };
 }
 
-export type CardOperationIntent = (TodoOperationIntent | MemoCreateIntent | MemoUpdateIntent) & {
+export type CardOperationIntent = (TodoOperationIntent | MemoCreateIntent | MemoUpdateIntent | ContactOperationIntent) & {
   /** The sub-goal of the request (kept until the receipt). */
   partId?: string;
   /** Positions (0-based) in the same card of the items this one waits for. */
@@ -176,12 +178,18 @@ const WAITS: Record<CardLocale, (items: number[]) => string> = {
 };
 
 /** The count sentence of a card: how many changes and how many additions ("修改1项，新增1项"; R03: no space between Chinese and a number). */
-export function cardCountTitle(operations: readonly Pick<AgentActionOperationPayload, "capability">[], locale: CardLocale): string {
-  const added = operations.filter((op) => op.capability === TODO_CREATE || op.capability === MEMO_CREATE).length;
-  const changed = operations.length - added;
-  if (locale === "en") return [changed ? `${changed} change${changed > 1 ? "s" : ""}` : "", added ? `${added} addition${added > 1 ? "s" : ""}` : ""].filter(Boolean).join(", ");
-  if (locale === "ja") return [changed ? `変更 ${changed} 件` : "", added ? `追加 ${added} 件` : ""].filter(Boolean).join("、");
-  return [changed ? `修改${changed}项` : "", added ? `新增${added}项` : ""].filter(Boolean).join("，");
+export function cardCountTitle(operations: readonly (Pick<AgentActionOperationPayload, "capability"> & Partial<Pick<AgentActionOperationPayload, "shown">>)[], locale: CardLocale): string {
+  // AG12-4: a card that is one import counts its rows.
+  const rows = importCountTitle(operations, locale);
+  if (rows) return rows;
+  const added = operations.filter((op) => op.capability === TODO_CREATE || op.capability === MEMO_CREATE || op.capability === CONTACT_CREATE || op.capability === CONTACT_IMPORT).length;
+  // AG12 (设计稿 §10「写“改”“新增”“删除”」): deletions and restores are counted as what they are.
+  const deleted = operations.filter((op) => op.capability === CONTACT_DELETE).length;
+  const restored = operations.filter((op) => op.capability === CONTACT_RESTORE).length;
+  const changed = operations.length - added - deleted - restored;
+  if (locale === "en") return [changed ? `${changed} change${changed > 1 ? "s" : ""}` : "", added ? `${added} addition${added > 1 ? "s" : ""}` : "", deleted ? `${deleted} deletion${deleted > 1 ? "s" : ""}` : "", restored ? `${restored} restore${restored > 1 ? "s" : ""}` : ""].filter(Boolean).join(", ");
+  if (locale === "ja") return [changed ? `変更 ${changed} 件` : "", added ? `追加 ${added} 件` : "", deleted ? `削除 ${deleted} 件` : "", restored ? `復元 ${restored} 件` : ""].filter(Boolean).join("、");
+  return [changed ? `修改${changed}项` : "", added ? `新增${added}项` : "", deleted ? `删除${deleted}项` : "", restored ? `恢复${restored}项` : ""].filter(Boolean).join("，");
 }
 
 function base(input: { actionId: string; revision: number; index: number; partId?: string }) {
@@ -207,6 +215,8 @@ export async function prepareCardOperation(input: {
   locale: CardLocale;
 }): Promise<AgentActionOperationPayload | null> {
   const { intent } = input;
+  // AG12: contact items (domains/contact/prepare.ts).
+  if (isContactCapability(intent.capability)) return prepareContactOperation({ actionId: input.actionId, index: input.index, intent: intent as ContactOperationIntent & { partId?: string }, locale: input.locale, reader: input.reader.contacts, revision: input.revision });
   if (intent.capability === MEMO_CREATE) {
     const set = intent.set;
     const after = { body: set.body, contactIds: [...set.contactIds], ...(set.interaction ? { interaction: { ...set.interaction, actualContactIds: [...set.interaction.actualContactIds] } } : {}), title: set.title };
@@ -242,7 +252,7 @@ export async function prepareCardOperation(input: {
       targetRef: { collection: "notes", id: intent.targetId },
     };
   }
-  const op = await prepareTodoOperation({ actionId: input.actionId, index: input.index, intent, locale: input.locale, reader: input.reader, revision: input.revision });
+  const op = await prepareTodoOperation({ actionId: input.actionId, index: input.index, intent: intent as TodoOperationIntent, locale: input.locale, reader: input.reader, revision: input.revision });
   if (!op) return null;
   const partId = intent.partId ?? "p1";
   // AG06: the update's executor re-reads the record and checks what the card showed before it writes.
@@ -254,6 +264,10 @@ export async function prepareCardOperation(input: {
 export function cardIntentOf(op: AgentActionOperationPayload, operations: readonly AgentActionOperationPayload[] = []): CardOperationIntent | null {
   const dependsOn = (op.dependsOn ?? []).map((id) => operations.findIndex((other) => other.operationId === id)).filter((index) => index >= 0);
   const extra = { ...(op.partId ? { partId: op.partId } : {}), ...(dependsOn.length ? { dependsOn } : {}) };
+  if (isContactCapability(op.capability)) {
+    const contact = contactIntentOf(op);
+    return contact ? { ...contact, ...extra } : null;
+  }
   if (op.capability === MEMO_CREATE) {
     const after = (op.after ?? {}) as Record<string, unknown>;
     const names = ((op.shown as Record<string, unknown> | undefined)?.names ?? {}) as Record<string, string>;
@@ -280,6 +294,7 @@ export async function buildCardOperationList(reader: TodoReader | null, input: {
     const op = await prepareCardOperation({ actionId: input.actionId, index: prepared.filter(Boolean).length, intent, locale, reader: reader ?? { read: async () => null }, revision: input.revision });
     prepared.push(op);
     if (!op && intent.capability === TODO_UPDATE) missing.push(intent.targetId);
+    if (!op && "targetId" in intent && isContactCapability(intent.capability)) missing.push(intent.targetId);
   }
   const operations: AgentActionOperationPayload[] = [];
   for (const [index, op] of prepared.entries()) {

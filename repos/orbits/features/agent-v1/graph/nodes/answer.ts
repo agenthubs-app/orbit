@@ -17,7 +17,8 @@ import { groundedAnswerSystemPrompt, groundedAnswerUserText, GROUNDED_ANSWER_PRO
 import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
 import { withoutForeignUrls } from "../../web/answer-urls";
-import { withoutOnlineDenials, withoutTopicBasisClaims, withoutStrayScripts } from "../../answer/claims";
+import { withoutOnlineDenials, withoutQuoteResidue, withoutTopicBasisClaims, withoutStrayScripts } from "../../answer/claims";
+import { expiryLine } from "../../answer/change-check";
 import { stripCardTalk, stripSaveTalk } from "../../entry/approval-claims";
 import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
@@ -44,7 +45,10 @@ function withoutFalseClaims(text: string, partIds: readonly string[], topicMatch
   // AG10 run-03 (AE-CTX-005): words in a script the user did not write and no material holds.
   const scripts = withoutStrayScripts(online.text, materials);
   if (scripts.dropped.length) emitTrace({ dropped: scripts.dropped, note: "a sentence with words in a stray script that no record, page or message holds is not delivered", parts: partIds, type: "answer.stray_script_dropped" });
-  return scripts.text;
+  // AG12 run-02 (AE-AMB-011): no empty or unbalanced quote is left on screen by the rules before.
+  const quotes = withoutQuoteResidue(scripts.text);
+  if (quotes !== scripts.text) emitTrace({ parts: partIds, type: "answer.quote_residue_cleaned" });
+  return quotes;
 }
 
 /**
@@ -60,6 +64,23 @@ function withoutCardTalk(text: string, partId: string, enabled: boolean): string
   const { dropped, text: kept } = stripCardTalk(saved.text);
   if (dropped.length) emitTrace({ dropped, note: "this turn shows no card; a model sentence about a confirmation card is not delivered", partId, type: "model.card_talk_dropped" });
   return kept;
+}
+
+/**
+ * AG12 run-03 (coordinator, AE-FN-008): no strip rule leaves a part that cited this turn's records with nothing sourced. When
+ * the rules took every sentence of an answer that cited records, the cited sentences themselves are given, under code's
+ * plain lead-in (zh/ja/en) — never the model's words that were not delivered.
+ */
+export function citedFallback(language: "zh" | "ja" | "en", materials: readonly { handle: string; ref: string; sentences: readonly { id: number; text: string }[] }[], cites: readonly { sourceRef?: string; ref?: string; sentenceIds: readonly number[] }[]): string | null {
+  const sentences = cites.flatMap((cite) => {
+    const material = materials.find((item) => item.handle === cite.sourceRef || item.ref === cite.ref || item.ref === cite.sourceRef);
+    return material ? material.sentences.filter((sentence) => cite.sentenceIds.includes(sentence.id)).map((sentence) => sentence.text.trim()) : [];
+  }).filter(Boolean);
+  const unique = [...new Set(sentences)];
+  if (!unique.length) return null;
+  if (language === "en") return `The record says: ${unique.join(" ")}`;
+  if (language === "ja") return `記録にはこう書かれています：${unique.join("")}`;
+  return `记录里写的是：${unique.join("")}`;
 }
 
 export function answerSegments(text: string, wanted: ReadonlySet<string>, dropCardTalk = false): Segments {
@@ -127,7 +148,13 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   const check = (text: string) => {
     const parsed = parseAnswerOutput(text);
     if (parsed.ok === false) return { changes: null, error: parsed.error, profiles: null, verification: null };
-    const cleaned = { ...parsed.value, segments: parsed.value.segments.map((segment) => ({ ...segment, text: withoutCardTalk(segment.text, segment.partId, dropCardTalk) })) };
+    const cleaned = { ...parsed.value, segments: parsed.value.segments.map((segment) => {
+      const kept = withoutCardTalk(segment.text, segment.partId, dropCardTalk);
+      // AG12 run-03: a cited answer the card-talk rule emptied gives its cited sentences instead.
+      const fallback = !kept.trim() && segment.text.trim() && segment.cites.length ? citedFallback(state.language, allMaterials, segment.cites) : null;
+      if (fallback) emitTrace({ partId: segment.partId, type: "answer.cited_fallback", where: "card_talk" });
+      return { ...segment, text: fallback ?? kept };
+    }) };
     const verification = verifyCitations(cleaned, { materials: allMaterials, readParts, wanted });
     const profiles = new Map<string, ProfileUpdate[]>();
     for (const [partId, materials] of profileParts) {
@@ -214,7 +241,15 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       const knownTotals = new Set(someUnread ? [] : coverage.flatMap((item) => (item.total !== null ? [item.total] : [])));
       const counted = partialRead ? withoutPartialCounts(delivered, state.language, knownTotals) : { changed: [], text: delivered };
       if (counted.changed.length) emitTrace({ changed: counted.changed, partId: part.localId, type: "answer.partial_counts_neutralized" });
-      const claimed = withoutFalseClaims(counted.text, [part.localId], run.topicMatched, user);
+      let claimed = withoutFalseClaims(counted.text, [part.localId], run.topicMatched, user);
+      // AG12 run-03 (AE-FN-008): the rules above left nothing of an answer that cited records: its cited sentences instead.
+      if (!claimed.replace(/[\s。.、，,：:]/gu, "") && segment.text.trim() && segment.cites.length) {
+        const fallback = citedFallback(state.language, allMaterials, segment.cites);
+        if (fallback) {
+          claimed = fallback;
+          emitTrace({ partId: part.localId, type: "answer.cited_fallback", where: "delivery" });
+        }
+      }
       run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(claimed, state.language) : claimed, state.language));
       // AG09: a web page is not a record of the user's: its citations stay out of the records' sourceRefs (the page is listed in the answer's web record).
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref).filter((ref) => !ref.startsWith("web:"));
@@ -227,6 +262,13 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
           part.cites = [...new Set([...(part.cites ?? []), ...updates.map((item) => item.source.ref)])];
           emitTrace({ fields: updates.map((item) => ({ contact: item.contact.ref, field: item.field, source: item.source.ref })), partId: part.localId, type: "answer.profile_outdated" });
         }
+      }
+      // AG12 run-02 (AE-SCL-016 R2): a cited record that says an earlier value has expired — said by code when the answer does not.
+      const cited = allMaterials.filter((material) => segment.cites.some((cite) => cite.ref === material.ref));
+      const expired = expiryLine(state.language, cited, `${run.answers.get(part.localId) ?? ""}\n${(run.gapLines.get(part.localId) ?? []).join("\n")}`, zone);
+      if (expired) {
+        run.gapLines.set(part.localId, [...(run.gapLines.get(part.localId) ?? []), expired]);
+        emitTrace({ partId: part.localId, records: cited.map((material) => material.ref), type: "answer.expiry_said" });
       }
       if (changeParts.has(part.localId)) {
         const changes = checked?.changes?.get(part.localId);
@@ -283,7 +325,7 @@ export function answerNode(scope: NodeScope): GraphNode {
       if (plainCounts.length) emitTrace({ counts: plainCounts, parts: due.map((part) => part.localId), type: "answer.unsourced_counts_dropped" });
       const reply = plain ? withoutFalseClaims(withoutUnsourcedCounts(plain, plainCounts), due.map((part) => part.localId), run.topicMatched, [input.message, ...(run.context?.messages ?? []).map((message) => message.text)].join("\n")) : plain;
       if (reply) {
-        run.answers.set(due[0].localId, localizeAnswerDates(reply, state.language));
+        run.answers.set(due[0].localId, localizeAnswerDates(withoutQuoteResidue(reply), state.language));
         emitTrace({ note: "plain chat: the first layer's reply is shown, no second call", parts: due.map((part) => part.localId), type: "answer.plain_reply" });
         return {};
       }

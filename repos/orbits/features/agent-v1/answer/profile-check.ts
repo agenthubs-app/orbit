@@ -88,9 +88,15 @@ export function profileLine(language: "zh" | "ja" | "en", updates: readonly Prof
     const own = updates.filter((item) => item.contact === contact).sort((left, right) => PROFILE_FIELDS.indexOf(left.field) - PROFILE_FIELDS.indexOf(right.field));
     const newest = own.map((item) => item.source.at!).sort().at(-1)!;
     const { day, month } = dayOf(newest, timeZone);
-    if (language === "zh") lines.push(`（联系人资料里写的还是${own.map((item) => `「${item.profileValue}」`).join("")}，和${month}月${day}日的记录不一致，这份资料已经过时了。）`);
-    else if (language === "ja") lines.push(`（連絡先にはまだ${own.map((item) => `「${item.profileValue}」`).join("")}とあり、${month}月${day}日の記録と食い違っています。連絡先の情報が古くなっています。）`);
-    else lines.push(`(The contact profile still says ${own.map((item) => `"${item.profileValue}"`).join(", ")}, which differs from the record of ${MONTHS[month - 1]} ${day}; the profile is out of date.)`);
+    // AG12 run-03 (AE-SCL-004 R2): an outdated organization is said with the title the profile holds there ("拾野选物店店长").
+    const organization = own.find((item) => item.field === "organization");
+    const role = (contact as { profile?: { role: string | null } }).profile?.role ?? null;
+    const values = organization && role && !own.some((item) => item.field === "role")
+      ? [language === "en" ? `${role} at ${organization.profileValue}` : language === "ja" ? `${organization.profileValue}の${role}` : `${organization.profileValue}${role}`]
+      : own.map((item) => item.profileValue);
+    if (language === "zh") lines.push(`（联系人资料里写的还是${values.map((value) => `「${value}」`).join("")}，和${month}月${day}日的记录不一致，这份资料已经过时了。）`);
+    else if (language === "ja") lines.push(`（連絡先にはまだ${values.map((value) => `「${value}」`).join("")}とあり、${month}月${day}日の記録と食い違っています。連絡先の情報が古くなっています。）`);
+    else lines.push(`(The contact profile still says ${values.map((value) => `"${value}"`).join(", ")}, which differs from the record of ${MONTHS[month - 1]} ${day}; the profile is out of date.)`);
   }
   return lines.join("\n");
 }

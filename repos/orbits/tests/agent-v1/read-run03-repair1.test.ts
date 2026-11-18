@@ -100,7 +100,7 @@ test("the profile entry is required for such a part: left out, the one repair as
   const kit = graphKit(model.fetchImplementation, { records: recordAccessOf(shopWorld()) });
   const result = await runAgentGraph(kit.deps, kit.input("吴晓彤现在在哪家店、做什么？"));
   assert.equal(model.calls.length, 3);
-  assert.match(result.text, /联系人资料里写的还是「拾野选物店」/u);
+  assert.match(result.text, /联系人资料里写的还是「拾野选物店店长」/u, "AG12 run-03 (AE-SCL-004 R2): with the title held there");
 });
 
 test("'profile': [] (the profile still holds) adds nothing", async () => {

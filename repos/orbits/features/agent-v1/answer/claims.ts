@@ -57,7 +57,7 @@ export function withoutTopicBasisClaims(text: string, topicMatched: boolean): { 
 
 const ONLINE_DENIAL: RegExp[] = [
   // zh: 我无法上网, 我目前不能联网, 没法访问互联网, 无法浏览网页, 不具备联网功能, 没有联网能力
-  /(?:无法|不能|没法|没有办法|没办法|不可以|不会)(?:直接)?(?:上网|联网|连网|访问(?:互联网|网络|网页|外部网站)|浏览(?:网页|网站|互联网)|连接(?:到)?(?:互联网|网络)|(?:在)?网上(?:搜索|查)|搜索(?:网络|互联网))/u,
+  /(?:无法|不能|没法|没有办法|没办法|不可以|不会)(?:直接)?(?:替你|帮你|为你|给你)?(?:直接)?(?:上网|联网|连网|访问(?:互联网|网络|网页|外部网站)|浏览(?:网页|网站|互联网)|连接(?:到)?(?:互联网|网络)|(?:在)?网上(?:搜索|查)|搜索(?:网络|互联网))/u,
   /(?:不具备|没有|不支持)(?:实时)?(?:联网|上网)(?:的)?(?:功能|能力|权限)/u,
   // ja: ネットに接続できません, インターネットにアクセスできません, ウェブを閲覧できません, ネット検索はできません
   /(?:インターネット|ネット|ウェブ|Web)(?:に|へ|を|で)?(?:接続|アクセス|閲覧|検索)(?:は|が)?(?:でき(?:ません|ない)|することはでき(?:ません|ない)|不可)/iu,
@@ -73,9 +73,106 @@ export function onlineDenialsIn(text: string): string[] {
   return piecesOf(text).filter((piece) => ONLINE_DENIAL.some((pattern) => pattern.test(piece))).map((piece) => piece.trim());
 }
 
-/** The text without sentences that say the agent cannot go online. */
+const denies = (piece: string) => ONLINE_DENIAL.some((pattern) => pattern.test(piece));
+/** A clause that only introduces what the denial is about ("至于它现在的官网报价", "現在の公式価格については", "as for the list price"). */
+const TOPIC_LEAD = /^\s*(?:至于|关于|对于|而|那么)|(?:については|に関しては|なら)\s*$|^\s*(?:as for|regarding|about)\b/iu;
+const END_MARK = /[。！？!?.]+\s*$/u;
+/**
+ * AG12 run-03 (AE-WEB-004): words left at the start of what remains that only led on from the denial ("只能据笔记 C 说明：",
+ * "所以", "但", "ただ", "メモによると、", "but going by note C,") — dropped; the sourced content after them stays.
+ */
+const DANGLING_LEAD = /^(?:(?:只能|只好|仅能|就)?(?:据|根据|按照?|依据|从)[^：:，,。]{0,20}?(?:说明|来看|来说|回答|看)?[：:，,]\s*|(?:所以|因此|因而|但是?|不过|只是|而且|ただし?|でも|しかし|そのため|なので|ですので)[，,、\s]*|(?:[^、。]{0,12}(?:によると|によれば|では|から見ると))[、，,]\s*|(?:but|so|however|instead|and)\b[,\s]*|(?:only\s+)?(?:from|based on|going by|according to)\s+[^,:]{0,40}[,:]\s*)/iu;
+
+function withoutDanglingLead(text: string): string {
+  let out = text.trim();
+  for (let index = 0; index < 3; index += 1) {
+    const next = out.replace(DANGLING_LEAD, "");
+    if (next === out) break;
+    out = next.trim();
+  }
+  return out.replace(/^[a-z]/u, (letter) => letter.toUpperCase());
+}
+
+/**
+ * AG12 run-02 (AE-WEB-004 R3): one sentence that says it cannot go online loses only that part. At a strong boundary
+ * (；;) the clauses holding the denial go; otherwise the clause with the denial and what follows it in the sentence go,
+ * with the topic lead-in right before it. What is left stays when it stands on its own (a few words at least), ended as
+ * the sentence was; a sentence that is only the denial goes whole.
+ */
+function withoutDenialClauses(sentence: string): { kept: string | null; dropped: string } {
+  const end = sentence.match(END_MARK)?.[0]?.trim() ?? "";
+  const body = sentence.replace(END_MARK, "");
+  const latin = /[A-Za-z]/u.test(body) && !/[぀-ヿ一-鿿]/u.test(body);
+  const finish = (rest: string) => {
+    const clean = rest.replace(/[，,、；;:：\s]+$/u, "").replace(/(です|でした|ます)が$/u, "$1").replace(/\s+(?:but|and|so)$/iu, "");
+    const stop = end || (latin ? "." : "。");
+    return clean.replace(/\s/gu, "").length >= 6 ? `${clean}${/[。.!?！？]$/u.test(clean) ? "" : stop}` : null;
+  };
+  const strong = body.split(/(?<=[；;])/u);
+  if (strong.length > 1) {
+    const keep = strong.filter((part) => !denies(part));
+    const gone = strong.filter((part) => denies(part));
+    const kept = finish(keep.join("").trim());
+    return { dropped: `${gone.join("").replace(/^[\s；;]+/u, "").trim()}${end}`.trim(), kept };
+  }
+  const clauses = body.split(/(?<=[，,、]|が、|ため、)/u);
+  const at = clauses.findIndex((clause) => denies(clause));
+  if (at < 0) return { dropped: sentence.trim(), kept: null };
+  if (at === 0) {
+    // The denial leads the sentence: what follows it stays, without the words that only led on from it.
+    const kept = finish(withoutDanglingLead(clauses.slice(1).join("")));
+    return { dropped: kept ? clauses[0].trim() : sentence.trim(), kept };
+  }
+  let cut = at;
+  if (cut > 0 && TOPIC_LEAD.test(clauses[cut - 1].replace(/[，,、]\s*$/u, ""))) cut -= 1;
+  const kept = finish(clauses.slice(0, cut).join("").trim());
+  return { dropped: kept ? `${clauses.slice(cut).join("").trim()}${end}` : sentence.trim(), kept };
+}
+
+/** The text without what says the agent cannot go online (the whole sentence, or only its denial clause). */
 export function withoutOnlineDenials(text: string): { text: string; dropped: string[] } {
-  return without(text, (piece) => ONLINE_DENIAL.some((pattern) => pattern.test(piece)));
+  const kept: string[] = [];
+  const dropped: string[] = [];
+  let lastWasDenial = false;
+  for (const piece of piecesOf(text)) {
+    if (!denies(piece)) {
+      // A sentence right after a dropped denial that only led on from it ("所以…"): its connective goes.
+      kept.push(lastWasDenial ? piece.replace(/^\s*(?:所以|因此|因而|だから|そのため|so,?|therefore,?)[，,、\s]*/iu, "") : piece);
+      lastWasDenial = false;
+      continue;
+    }
+    lastWasDenial = true;
+    const trailing = piece.match(/\n+$/u)?.[0] ?? "";
+    const result = withoutDenialClauses(piece.replace(/\n+$/u, ""));
+    dropped.push(result.dropped);
+    if (result.kept) kept.push(`${result.kept}${trailing}`);
+  }
+  if (!dropped.length) return { dropped, text };
+  return { dropped: dropped.filter(Boolean), text: joined(kept) };
+}
+
+/**
+ * AG12 run-02 (AE-AMB-011): a strip rule that drops a sentence ending inside a quote leaves the quote's other half on
+ * screen (a line holding only 「」」). Empty pairs, lines of bare quote marks and a closing mark with no opener before it
+ * on its line are taken out; whole quotes stay.
+ */
+const CLOSERS = "」』”）)】";
+const OPENERS = "「『“（(【";
+export function withoutQuoteResidue(text: string): string {
+  const lines = text.replace(/\s*(?:「\s*」|『\s*』|“\s*”|"\s*"|（\s*）|\(\s*\)|【\s*】)/gu, "").replace(/[：:]\s*(?=[。！？.!?])/gu, "").split("\n");
+  const out: string[] = [];
+  for (const line of lines) {
+    if (line.trim() && /^[\s」』”）)】「『“（(【"'。，、.,]+$/u.test(line)) continue;
+    let fixed = line;
+    const lead = fixed.match(/^(\s*)([」』”）)】]+)\s*/u);
+    if (lead) {
+      const opened = [...fixed].filter((char) => OPENERS.includes(char)).length;
+      const closed = [...fixed].filter((char) => CLOSERS.includes(char)).length;
+      if (closed > opened) fixed = `${lead[1]}${fixed.slice(lead[0].length)}`;
+    }
+    out.push(fixed);
+  }
+  return out.join("\n").replace(/\n{3,}/gu, "\n\n").trim();
 }
 
 /**

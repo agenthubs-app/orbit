@@ -65,8 +65,18 @@ const SAVE_TALK = /(\b(?:I|I've|I have|I'll|I will|I can't|I cannot|we|Orbit)\b[
 const LEAD_IN_ONLY = /^[^。！？!?\n]{0,14}(?:一件だけ|ひとつだけ|一つだけ|一点だけ|その前に|ちなみに|念のため|もう一つ|one more thing|one thing first|before that|quick note|by the way|顺便说一句|先说一句|还有一件事|另外一点|提醒一下)[^。！？!?\n]{0,8}[。.!！:：]?\s*$/iu;
 
 /** The text without its sentences about a confirmation card, and the sentences dropped. */
+/**
+ * AG12 run-02 (AE-CTX-005 R1): a request to confirm or say OK ("確定してよければ教えてください。", "确认的话告诉我一声。",
+ * "Let me know if you want to confirm it.") refers to the card a dropped sentence spoke of; when one is dropped, these go
+ * too. Without a dropped card sentence they are kept.
+ */
+const CONFIRM_REQUEST = /((?:确认|確定|确定|执行|没问题|可以)的话[^。！？!?\n]{0,10}(?:告诉我|说一声|跟我说|回复我|回我)|要不要(?:我)?(?:帮你)?确认|(?:確定|確認|実行)して(?:も)?(?:よければ|よろしければ|いい(?:か|場合|なら))|(?:よろしければ|よければ)[^。！？!?\n]{0,12}(?:教えて|お知らせ|お伝え)|\blet me know if (?:you(?:'d| would)? (?:want|like) (?:me )?to (?:confirm|go ahead|proceed)|(?:it's|that's|this is) (?:ok|okay|fine))|\bshall i (?:confirm|go ahead|proceed)\b|\bsay (?:the word|ok|yes) (?:and|if)\b)/iu;
+
 export function stripCardTalk(text: string): { text: string; dropped: string[] } {
-  return stripSentences(text, CARD_TALK);
+  const first = stripSentences(text, CARD_TALK);
+  if (!first.dropped.length) return first;
+  const second = stripSentences(first.text, CONFIRM_REQUEST);
+  return { dropped: [...first.dropped, ...second.dropped], text: second.text };
 }
 
 /** The text without its sentences about what was or was not saved (AG07 repair 2), and the sentences dropped. */

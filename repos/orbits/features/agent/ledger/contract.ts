@@ -57,6 +57,12 @@ export const AGENT_LEDGER_OPERATION_TYPES = [
   "create_memo",
   // agent-design AG10: the interaction written on an existing memo (memo.update), after a card.
   "update_memo",
+  // agent-design AG12: the five contact operations (contact.create, update, delete, restore, import), after a card.
+  "create_contact",
+  "update_contact",
+  "delete_contact",
+  "restore_contact",
+  "import_contacts",
 ] as const;
 
 // 语音只允许保存“用户编辑确认后的转写文本”；原始音频永不进入 evidence。

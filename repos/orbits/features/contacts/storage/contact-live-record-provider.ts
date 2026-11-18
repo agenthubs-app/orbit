@@ -43,6 +43,7 @@ import type {
 import type { LocalRemoteContactGraph } from "../contact-graph-provider";
 import type { ContactsFacetCounts } from "../contact-graph-query";
 import { createPostgresContactScopeRecordReader, type ContactScopeRecordReader } from "./contact-scope-postgres-reader";
+import { nextContactVersion } from "../contact-version";
 import {
   createPostgresContactListPageReader,
   type ContactListSortKey,
@@ -878,6 +879,7 @@ export function createStorageContactGraphProvider({
       if (!written.length) return [];
       const updatedAt = new Date(Math.max(Date.now(), Date.parse(contactRecord.updatedAt) + 1)).toISOString();
       nextPayload.updatedAt = updatedAt;
+      nextPayload.version = nextContactVersion(contactRecord.payload);
       const record = await store.updateRecordIfCurrent({ ...contactRecord, updatedAt, payload: nextPayload }, {
         userId: contactRecord.userId ?? null,
         updatedAt: contactRecord.updatedAt,
@@ -1063,6 +1065,7 @@ export function createStorageContactGraphProvider({
       }
       const updatedAt = new Date(Math.max(Date.now(), Date.parse(contactRecord.updatedAt) + 1)).toISOString();
       nextPayload.updatedAt = updatedAt;
+      nextPayload.version = nextContactVersion(contactRecord.payload);
       // W0045：联系人编辑里改（含清空）行业 = 用户值，补全不再覆盖。
       nextPayload.enrichment = withEnrichmentProvenance(readStoredEnrichment(nextPayload.enrichment), "industry", {
         origin: "user",
@@ -1147,6 +1150,7 @@ export function createStorageContactGraphProvider({
       }
       if (enrichment) nextPayload.enrichment = enrichment;
       nextPayload.updatedAt = updatedAt;
+      nextPayload.version = nextContactVersion(contactRecord.payload);
       if (!store.updateRecordIfCurrent) {
         throw new AppError("SERVICE_UNAVAILABLE", "Contact storage requires conditional update support.");
       }

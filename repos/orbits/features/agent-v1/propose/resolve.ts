@@ -30,6 +30,9 @@ import type { CardOperationIntent } from "../../agent/runtime/card-operations";
 import { instantOf, localDayOf, localTimeOf, resolveSaidDate } from "./dates";
 import { WRITE_WORDS } from "./copy";
 import type { StoredIntent } from "./schema";
+import { CONTACT_WORDS } from "../domains/contact/copy";
+import { importTableOf, ImportTableRejected, previewImport } from "../domains/contact/import-preview";
+import type { ContactEffect, ContactFieldName } from "../domains/contact/types";
 
 export interface PartWrite {
   intents: StoredIntent[];
@@ -109,7 +112,7 @@ export function contactKindOf(text: string): { channel?: "phone" | "meeting" | "
 
 type PersonResult = { kind: "found"; id: string; name: string; detail?: string } | { kind: "ask"; clue: string; candidates: Candidate[] } | { kind: "shares"; with: string } | { kind: "none" } | { kind: "missing" } | { kind: "failed" };
 
-async function resolvePerson(ctx: ResolveContext, part: GraphPart, write: PartWrite, clue: { quote: [number, number] | null; text: string }): Promise<PersonResult> {
+export async function resolvePerson(ctx: ResolveContext, part: GraphPart, write: PartWrite, clue: { quote: [number, number] | null; text: string }): Promise<PersonResult> {
   // A clue the first layer bound (a handle of the context, an @ reference, a click).
   const bound = part.refs.find((ref) => ref.entity === "contact" && ref.recordId && (!clue.quote || !ref.quote || (ref.quote[0] < clue.quote[1] && clue.quote[0] < ref.quote[1])));
   if (bound?.recordId) return { id: bound.recordId, kind: "found", name: ctx.nameOf(bound.recordId) ?? "" };
@@ -293,6 +296,13 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
   const stop = (reason: string, line: string): WriteOutcome => ({ kind: "stop", line, reason });
   const failedLine = language === "zh" ? `「${quote}」这次没能读到你的记录，所以没有改。并不代表没有这条记录，可以稍后再试。` : language === "ja" ? `「${quote}」は今回記録を読めなかったため、変更していません。記録がないという意味ではありません。少し後でもう一度お試しください。` : `"${quote}": your records could not be read this time, so nothing was changed. That does not mean the record is missing; please try again later.`;
   for (const intent of write.intents) {
+    // AG12: contact writes (create, update, delete, restore, import).
+    if (intent.capability.startsWith("contact.")) {
+      const outcome = await resolveContactIntent(ctx, part, write, intent, failedLine);
+      if (outcome.kind !== "ready") return outcome;
+      ops.push(...outcome.ops);
+      continue;
+    }
     // The people of this item: the model's relations, else the first layer's person clues.
     const relationClues = intent.relations.map((relation) => ({ quote: relation.quote, role: relation.role, text: words(ctx.message, relation.quote) }));
     const refClues = part.refs.filter((ref) => ref.entity === "contact").map((ref) => ({ quote: ref.quote ?? null, role: (intent.capability === "memo.create" ? "actual_contact" : "about") as StoredIntent["relations"][number]["role"], text: words(ctx.message, ref.quote) || (ref.recordId ? ctx.nameOf(ref.recordId) ?? "" : "") }));
@@ -392,4 +402,88 @@ const WAIT_WORDS = /(成功了?(以后|之后|后)?[，,、\s]*(再|才)|记成�
 
 export function waitsForPrevious(message: string, previousEnd: number, part: GraphPart): boolean {
   return WAIT_WORDS.test(message.slice(previousEnd, part.quote[1]));
+}
+
+const CONTACT_FIELD_OF: Record<string, ContactFieldName> = { company: "organization", email: "email", name: "displayName", phone: "phone", role: "role" };
+
+/**
+ * AG12 (设计稿附录 B「联系人」; PLANNER 易错边界 1–7): a contact intent of the second layer, by code. The person to change,
+ * delete or restore is found in the account only (restore: among those deleted within 30 days); several of the name
+ * is one question. A new contact's possible duplicates are checked by the propose node (a question before the card).
+ * A pasted table is parsed by code; nothing is written here.
+ */
+async function resolveContactIntent(ctx: ResolveContext, part: GraphPart, write: PartWrite, intent: StoredIntent, failedLine: string): Promise<WriteOutcome> {
+  const language = ctx.language;
+  const quote = words(ctx.message, part.quote);
+  const stop = (reason: string, line: string): WriteOutcome => ({ kind: "stop", line, reason });
+  const values: Partial<Record<ContactFieldName, string>> = {};
+  for (const [name, span] of Object.entries(intent.values ?? {})) {
+    const field = CONTACT_FIELD_OF[name];
+    const value = words(ctx.message, span);
+    if (field && value) values[field] = value;
+  }
+  const base = { localId: intent.localId, partId: part.localId };
+  if (intent.capability === "contact.create") {
+    if (!values.displayName) return stop("name_missing", CONTACT_WORDS.noName(language, quote));
+    return { kind: "ready", ops: [{ ...base, capability: "contact.create", set: { ...values, displayName: values.displayName } }] };
+  }
+  if (intent.capability === "contact.import") {
+    const text = importTableOf(ctx.message);
+    if (!text || !ctx.records?.contacts || !ctx.scope) return text ? stop("read_failed", failedLine) : stop("table_missing", CONTACT_WORDS.noTable(language));
+    try {
+      previewImport(text, [], ctx.scope.accountId);
+    } catch (error) {
+      if (error instanceof ImportTableRejected) return stop("table_missing", CONTACT_WORDS.noTable(language));
+      throw error;
+    }
+    return { kind: "ready", ops: [{ ...base, capability: "contact.import", overrides: {}, text }] };
+  }
+  // The person: the selector's words, the model's relation, or the first layer's person clue.
+  const clueSpan = intent.selector[0] ?? intent.relations[0]?.quote ?? part.refs.find((ref) => ref.entity === "contact")?.quote ?? null;
+  const boundRef = part.refs.find((ref) => ref.entity === "contact" && ref.recordId);
+  const clueText = clueSpan ? words(ctx.message, clueSpan) : boundRef?.recordId ? ctx.nameOf(boundRef.recordId) ?? "" : "";
+  if (intent.capability === "contact.restore") {
+    if (!ctx.records?.contacts || !ctx.scope) return stop("read_failed", failedLine);
+    if (!clueText) return stop("object_unclear", WRITE_WORDS.notWho(language, quote));
+    const deleted = await ctx.records.contacts.findDeleted(ctx.scope.accountId, clueText).catch(() => null);
+    if (!deleted) return stop("read_failed", failedLine);
+    const picked = write.picks.contact ? deleted.find((item) => item.id === write.picks.contact) : undefined;
+    if (picked || deleted.length === 1) return { kind: "ready", ops: [{ ...base, capability: "contact.restore", targetId: (picked ?? deleted[0]).id }] };
+    if (deleted.length > 1) {
+      return { kind: "ask", question: { candidates: deleted.slice(0, 3).map((item) => ({ id: item.id, name: item.displayName, type: "contact", ...([item.organization, item.role].some(Boolean) ? { detail: [item.organization, item.role].filter(Boolean).join(" · ") } : {}) })), clue: clueText, type: "contact" } };
+    }
+    const active = await findContacts(ctx.records, ctx.scope, clueText, quote, ctx.message).catch(() => null);
+    if (active?.matches.length) return stop("not_deleted", CONTACT_WORDS.stillThere(language, active.matches[0].name));
+    return stop("object_not_found", CONTACT_WORDS.noDeleted(language, clueText));
+  }
+  const found = await resolvePerson(ctx, part, write, { quote: clueSpan, text: clueText });
+  if (found.kind === "ask") return { kind: "ask", question: { candidates: found.candidates, clue: found.clue, type: "contact" } };
+  if (found.kind === "shares") return { kind: "shares", with: found.with };
+  if (found.kind === "failed") return stop("read_failed", failedLine);
+  if (found.kind === "missing") return stop("object_unclear", WRITE_WORDS.notWho(language, quote));
+  if (found.kind === "none") return stop("person_not_found", WRITE_WORDS.notFoundPerson(language, quote));
+  ctx.people.push(...(ctx.people.some((known) => known.id === found.id) ? [] : [{ at: part.quote[0], id: found.id, name: found.name }]));
+  if (intent.capability === "contact.update") {
+    if (!Object.keys(values).length) return stop("field_missing", CONTACT_WORDS.noFields(language, quote));
+    const current = ctx.records?.contacts && ctx.scope ? await ctx.records.contacts.read(ctx.scope.accountId, found.id).catch(() => null) : null;
+    if (current) {
+      const same = (Object.entries(values) as [ContactFieldName, string][]).every(([field, value]) => (field === "displayName" ? current.displayName : current[field]) === value);
+      if (same) return stop("no_change", CONTACT_WORDS.noChange(language, current.displayName));
+    }
+    return { kind: "ready", ops: [{ ...base, capability: "contact.update", set: { ...values }, targetId: found.id }] };
+  }
+  // delete: the notes and to-dos linked to the person are listed as kept.
+  if (!ctx.records || !ctx.scope) return stop("read_failed", failedLine);
+  const effects: ContactEffect[] = [];
+  let more = 0;
+  for (const kind of ["memo", "todo"] as const) {
+    const read = await ctx.records.reader.read(kind, ctx.scope, { contactId: found.id, limit: 10 }).catch(() => null);
+    if (!read) return stop("read_failed", failedLine);
+    for (const item of read.items) {
+      const title = String(item.fields.title ?? "").trim() || String(item.fields.body ?? "").slice(0, 30);
+      effects.push({ kind, ref: item.id, title });
+    }
+    if (read.nextCursor) more += Math.max(0, (read.total ?? read.items.length + 1) - read.items.length);
+  }
+  return { kind: "ready", ops: [{ ...base, capability: "contact.delete", effects, ...(more ? { moreEffects: more } : {}), targetId: found.id }] };
 }

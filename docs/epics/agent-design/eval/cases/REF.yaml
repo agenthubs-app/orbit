@@ -30,6 +30,7 @@ cases:
   - id: AE-REF-001
     title: "网页端 @ 笔记、联系人、待办：先给建议，要改时才出卡，不点不写"
     sprint: AG11
+    gate: AG14
     split: dev
     invariant: true
     requirement: [AG-R11]
@@ -180,6 +181,7 @@ cases:
   - id: AE-REF-005
     title: "@ 平台活动并要求改它的时间：引用不授予修改权"
     sprint: AG11
+    gate: AG14
     split: val
     invariant: true
     requirement: [AG-R11]
@@ -242,6 +244,7 @@ cases:
   - id: AE-REF-007
     title: "日文：网页端 @ 笔记、联系人、待办：先给建议，要改时才出卡，不点不写"
     sprint: AG11
+    gate: AG14
     split: dev
     invariant: true
     requirement: [AG-R11]

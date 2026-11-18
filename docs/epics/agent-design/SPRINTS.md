@@ -27,10 +27,10 @@ PLANNER 是在所有 sprint 动工之前一次写成的，所以后面 sprint �
 | AG08 | 判断模型接入 | 三 能力补齐 | AG04、AG05、AG06 | 服务端 | H | JDG ×8、SCL ×2 | completed（run-02 门槛双评通过，AE-JDG-003 改正评审项后单独重跑双评通过；AG03～AG07 复跑通过） |
 | AG09 | 基础联网与出站把关 | 三 | AG08 | 服务端 | H | WEB ×12、SCL ×2 | completed（run-04 门槛双评通过；超时用例单例重跑规则；AG03～AG08 复跑通过） |
 | AG10 | 排序、提取与整理 | 三 | AG06、AG08 | 服务端 | H | FN ×13、SCL ×4 | completed（run-03 门槛双评通过；AG03～AG09 复跑通过） |
-| AG11 | 两端用 @ 指定上下文 | 三 | AG05、AG07、AG13 | Web、App | H | REF ×8、SCL ×2 | planned |
-| AG12 | 联系人写入 | 三 | AG06、AG07 | 服务端、两端 | H | CON ×10、SCL ×2 | planned |
+| AG11 | 两端用 @ 指定上下文 | 三 | AG05、AG07、AG13 | Web、App | H | REF ×5、SCL ×2 | planned |
+| AG12 | 联系人写入 | 三 | AG06、AG07 | 服务端、两端 | H | CON ×10、SCL ×2 | completed（run-03 门槛双评通过；AG03～AG10 复跑通过） |
 | AG13 | 活动、参会、日程与 Todo 关联 | 三 | AG06、AG07 | 服务端、两端 | H | EVT ×12、SCL ×4 | planned |
-| AG14 | 个人记忆 | 四 记忆与持续任务 | AG06、AG08 | 服务端、两端 | H | MEM ×12、FN ×1、SCL ×2 | planned |
+| AG14 | 个人记忆 | 四 记忆与持续任务 | AG06、AG08 | 服务端、两端 | H | MEM ×12、FN ×1、REF ×3、SCL ×2 | planned |
 | AG15 | 定时任务与站内收件箱 | 四 | AG02、AG10、AG14 | 服务端、两端 | H | SCH ×12、SCL ×2 | planned |
 | AG16 | 推送提醒 | 四 | AG15 | 服务端、两端 | H | PSH ×5 | planned |
 | AG17 | 外部 Agent 接入（MCP） | 五 接入与放量 | AG02、AG05、AG06、AG07、AG15 | 服务端、Web | H | MCP ×8、SCL ×2 | planned |
@@ -40,7 +40,7 @@ PLANNER 是在所有 sprint 动工之前一次写成的，所以后面 sprint �
 
 可以并行的组合：AG07 与 AG08；AG12 与 AG13；AG16 与 AG17。AG04 与 AG05 都要改流程图和路由的同一批文件，不并行。并行的第二条线按根目录规则在外接盘另建 worktree。
 
-**门槛归属。** 用例的 `sprint` 字段写的是它检验哪个 sprint 的验收项；带 `gate` 字段的用例要用到更晚才交付的能力，门槛顺延到 `gate` 所写的 sprint。上表的门槛数按顺延之后计。不变量包在 AGnn 的门槛里只包含顺延之后不晚于 AGnn 的不变量用例。
+**门槛归属。** 用例的 `sprint` 字段写的是它检验哪个 sprint 的验收项；带 `gate` 字段的用例要用到更晚才交付的能力，门槛顺延到 `gate` 所写的 sprint。上表的门槛数按顺延之后计。不变量包在 AGnn 的门槛里只包含顺延之后不晚于 AGnn 的不变量用例。“早晚”按执行顺序算，不按编号：各 sprint 排在它依赖的 sprint 之后，AG11 依赖 AG13，所以顺序是 … AG10、AG12、AG13、AG11、AG14 …（评测代码的 `SPRINT_EXECUTION_ORDER`，测试按本表的依赖列核对；2026-11-18 AG12 run-02 起）。
 
 **AG02 用预置的卡。** 确认边界的 12 例都要先由 Agent 从一句话出卡，这要到 AG06 才有。AG02 的门槛运行加 `--seed-cards`：运行器把用例里 `card_ops` 描述的那张卡以“来自对话”的出处直接预置进账本，后面的点击、重发、文字“确认”、过期等步骤照常从正常入口执行。AG06 起这 12 例按完整对话重跑，并列入 AG06 的门槛。
 

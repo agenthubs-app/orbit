@@ -985,7 +985,7 @@
         "change": {
           "optional": false,
           "kind": "text",
-          "type": "'update' | 'create'"
+          "type": "'update' | 'create' | 'delete' | 'restore'"
         },
         "record": {
           "optional": false,
@@ -4488,6 +4488,11 @@
               "type": "string | null | undefined"
             }
           }
+        },
+        "expectedVersion": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
         }
       }
     },
@@ -4508,6 +4513,11 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "version": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
         }
       }
     },

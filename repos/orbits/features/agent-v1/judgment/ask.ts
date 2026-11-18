@@ -14,6 +14,7 @@
  *   candidate counts, input tokens, time, the share below threshold and every verdict. The raw HTTP request and
  *   response (with source real / simulated) are the eval preload's `judgment.request` / `judgment.response`.
  */
+import { scrubModelInput } from "../domains/contact/field-grants";
 import { emitTrace } from "../observability/trace";
 import { JudgmentRequestError, requestDecisions, wireIdOf, type DecisionAnswer, type DecisionQuestion } from "./gemini-decision";
 import { questionOf, type JudgmentLanguage, type JudgmentQuestionId } from "./questions";
@@ -146,7 +147,8 @@ export async function askJudgment(access: JudgmentAccess | null | undefined, bud
       try {
         const result = await requestDecisions({
           apiKey: access!.apiKey!,
-          input: ask.input,
+          // AG12-5: the same exit as the main model — contact methods the user did not type are withheld.
+          input: ask.input.map((text) => scrubModelInput(text, ask.requestId ?? null).text),
           questions: Object.fromEntries(enabled.map(({ item, wire }) => [wire, wireQuestion(item, ask.language)])),
           ...(access!.fetchImplementation ? { fetchImplementation: access!.fetchImplementation } : {}),
           ...(options.signal ? { signal: options.signal } : {}),

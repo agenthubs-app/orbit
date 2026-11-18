@@ -12,8 +12,11 @@ export const CONTACT_DOMAIN: RecordDomain = {
   fieldsOf(row) {
     const contact = row.payload;
     if (typeof contact.displayName !== "string") return null;
+    // AG12-5: which contact methods are on file — their names only, never a value (an answer must not say there are none).
+    const methods = [str(contact.primaryEmail) ? "email" : null, str(contact.primaryPhone) ? "phone" : null].filter((item): item is string => item !== null);
     return defined({
       company: str(contact.organization) ?? str(contact.company),
+      contactMethods: methods.length ? methods : undefined,
       displayName: contact.displayName,
       headline: str(contact.role) ?? str(contact.headline),
       status: str(contact.stage),

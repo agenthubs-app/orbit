@@ -58,3 +58,32 @@ export function describedObjectSpan(message: string, clue: [number, number] | nu
   const start = part[0] + match.index + match[0].indexOf(match[1]);
   return trimmed(message, start, start + match[1].length);
 }
+
+/**
+ * AG12 run-03 (coordinator, AE-WEB-004): a person or company clue that names nobody — a demonstrative with a person or
+ * company word ("那家公司", "这个人", "那位", "その会社", "あの人", "that company") or a personal pronoun ("他", "彼", "he") —
+ * in a part where another clue names a record in its own words ("竞品笔记 C"): it is the subject inside that record, not a
+ * contact to look up (the same family as demonstrativeOnly: a clue that names nothing by itself).
+ */
+const CJK_UNNAMED_SUBJECT = /^(?:(?:这|那)(?:家|个|位|间|名|一家|一位)?(?:公司|企业|厂商|店|人|客户|对方|品牌|供应商)?|(?:この|その|あの)(?:会社|企業|人|方|お店|店|取引先|相手|ブランド))$/u;
+const LATIN_UNNAMED_SUBJECT = /^(?:(?:this|that|the|these|those)\s+(?:company|firm|vendor|supplier|brand|person|guy|client|customer|one|people)|it|they|them)$/iu;
+
+export function unnamedSubject(text: string): boolean {
+  const words = text.trim();
+  return CJK_UNNAMED_SUBJECT.test(words) || LATIN_UNNAMED_SUBJECT.test(words) || isPronounClue(words);
+}
+
+/** Record words that name no particular record ("待办", "笔记", "the note"): what is left after them must name it. */
+const GENERIC_RECORD_WORDS = /(?:这|那)?(?:条|篇|个|份)?(?:待办|笔记|备忘|记录|任务|日程|活动|メモ|タスク|予定|記録|ノート|\b(?:the|this|that|my)\b|\bnotes?\b|\bmemos?\b|\btasks?\b|\bto-?dos?\b|\brecords?\b)/giu;
+
+/** A note clue that names a particular note in its own words ("竞品笔记 C", "the Nov 10 note"), not just "笔记" or "这篇笔记". */
+function namesANote(other: { entity: string; text: string }): boolean {
+  if (other.entity !== "memo" || demonstrativeOnly(other.text) || isPronounClue(other.text) || unnamedSubject(other.text)) return false;
+  return other.text.replace(GENERIC_RECORD_WORDS, "").replace(/[\s@「」"“”]/gu, "").length >= 2;
+}
+
+/** Only parts that read: in a change ("把她的待办改到周五") the person is who the record is about. */
+export function subjectInsideRecord(clue: { entity: string; text: string }, others: readonly { entity: string; text: string }[], writes = false): boolean {
+  if (writes || clue.entity !== "contact" || !unnamedSubject(clue.text)) return false;
+  return others.some((other) => other !== clue && namesANote(other));
+}

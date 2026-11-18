@@ -1,4 +1,5 @@
 import type { LiveRecordStoreLike } from "../../shared/storage/live-record-store";
+import { withNextContactVersion } from "./contact-version";
 
 export interface ContactArchiveActionWriter {
   archiveContacts: (input: {
@@ -24,6 +25,8 @@ export function createStorageContactArchiveActionWriter(input: {
   return {
     async archiveContacts(batch) {
       for (const contact of batch.contacts) {
+        // AG12: a stored contact of the id goes on to its next version; a new one starts at 1.
+        const stored = await input.store.getRecord({ collectionName: "contacts", includeDeleted: true, recordId: contact.id, workspaceId: input.workspaceId });
         await input.store.upsertRecord({
           workspaceId: input.workspaceId,
           collectionName: "contacts",
@@ -37,7 +40,7 @@ export function createStorageContactArchiveActionWriter(input: {
           occurredAt: batch.now,
           lifecycleState: "active",
           searchText: `${contact.displayName} ${contact.organization ?? ""}`,
-          payload: {
+          payload: withNextContactVersion(stored?.payload ?? null, {
             id: contact.id,
             displayName: contact.displayName,
             organization: contact.organization,
@@ -50,7 +53,7 @@ export function createStorageContactArchiveActionWriter(input: {
             evidenceIds: batch.evidenceIds,
             createdAt: batch.now,
             updatedAt: batch.now,
-          },
+          }),
           createdAt: batch.now,
           updatedAt: batch.now,
         });

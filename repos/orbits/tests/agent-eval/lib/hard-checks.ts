@@ -38,16 +38,12 @@ const cannot = (detail: string) => ({ detail, evidence: [], status: "cannot_judg
 
 /** Words with no evidence in the current system, and the sprint that is expected to provide it. */
 export const NOT_YET: Record<string, string> = {
-  card_effects: "AG12",
-  field_history: "AG12",
-  import_rows: "AG12",
   mcp_collected: "AG17",
   mcp_result_excludes: "AG17",
   mcp_result_has: "AG17",
   mcp_tool_list: "AG17",
   memory_recalled: "AG14",
   memory_state: "AG14",
-  model_input_excludes: "AG12",
   pages_read: "AG05",
   push_delivery: "AG16",
   push_excludes: "AG16",
@@ -86,9 +82,16 @@ function valuesEqual(expected: unknown, actual: unknown): boolean {
   return JSON.stringify(expected) === JSON.stringify(actual);
 }
 
+/**
+ * AG12 (CHANGES.md 2026-11-18): the CON cases name a contact's fields as the fixtures do (name, org, email, phone); a card
+ * and the stored contact use the product's names (displayName, organization, email / primaryEmail, phone / primaryPhone).
+ */
+const CONTACT_FIELD_ALIASES: Record<string, readonly string[]> = { email: ["primaryEmail"], name: ["displayName"], org: ["organization"], phone: ["primaryPhone"] };
+
 /** A field of a card set or a stored payload; stored payloads may wrap the record ({ task: {...} }). */
 function lookup(set: Record<string, unknown>, key: string): unknown {
   if (key in set) return set[key];
+  for (const alias of CONTACT_FIELD_ALIASES[key] ?? []) if (alias in set) return set[alias];
   // AG10 (CHANGES.md 2026-11-18): a to-do holds one related contact until AG13 (relatedContactId); the cases write relatedContactIds.
   if (key === "relatedContactIds") {
     const single = lookup(set, "relatedContactId");
@@ -207,13 +210,15 @@ export const CHECKS: Record<string, CheckFn> = {
         problems.push(`${describeChange(change)} changed with no db.write event and no confirm click covering it`);
         continue;
       }
-      const firstWrite = Math.min(...seqs(writes));
+      // AG12: a write made by another device in an external_change step (device "other") is not the system's write.
+      const own = writes.filter((event) => event.device !== "other");
+      const firstWrite = Math.min(...seqs(own.length ? own : writes));
       evidence.push(firstWrite);
       const covering = confirms.find((decision) => {
         if (decision.seq >= firstWrite) return false;
         const card = obs.cards.find((item) => item.cardId === decision.cardId);
         if (!card) return false;
-        return change.kind === "created" ? card.ops.some((op) => op.op.endsWith(".create") || op.op.endsWith(".save")) : card.ops.some((op) => op.target === change.fixtureId || op.target === change.id);
+        return change.kind === "created" ? card.ops.some((op) => op.op.endsWith(".create") || op.op.endsWith(".save") || op.op.endsWith(".import")) : card.ops.some((op) => op.target === change.fixtureId || op.target === change.id);
       });
       if (!covering) problems.push(`${describeChange(change)} written at seq ${firstWrite} with no prior confirm click on a card for it`);
       else evidence.push(covering.seq);
@@ -367,6 +372,63 @@ export const CHECKS: Record<string, CheckFn> = {
     for (const change of created) counts.set(signature(change), (counts.get(signature(change)) ?? 0) + 1);
     const duplicates = [...counts.entries()].filter(([, n]) => n > 1).length + repeated.length;
     return duplicates <= Number(args ?? 0) ? pass(`${duplicates} duplicate effect(s)`) : fail(`${duplicates} duplicate effect(s): ${[...counts.entries()].filter(([, n]) => n > 1).map(([key, n]) => `${key}×${n}`).join(", ")}`, repeated.flatMap(seqs));
+  },
+
+  /** AG12 (CON.yaml model_input_excludes): no request to the main or the judgment model holds these strings. */
+  model_input_excludes(args, obs) {
+    const fragments = (Array.isArray(args) ? args : [args]).map(String);
+    const calls = obs.events.filter((event) => event.type === "model.request" || event.type === "judgment.request");
+    const found = calls.flatMap((event) => {
+      const text = JSON.stringify(event.body ?? event);
+      return fragments.filter((fragment) => text.includes(fragment)).map((fragment) => ({ fragment, seq: Number(event.seq) }));
+    });
+    if (!calls.length) return pass("no model request was made");
+    return found.length ? fail(`model input held ${[...new Set(found.map((item) => item.fragment))].join(", ")}`, found.map((item) => item.seq)) : pass(`none of ${fragments.length} string(s) in ${calls.length} model request(s)`, seqs(calls).slice(0, 20));
+  },
+
+  /** AG12 (CON.yaml card_effects): the n-th item of the last card lists at least these records among its effects. */
+  card_effects(args, obs) {
+    const card = cardAt(obs, "last");
+    if (!card) return fail("no card");
+    const problems: string[] = [];
+    for (const expected of Array.isArray(args) ? args : []) {
+      const op = card.ops[Number(expected.op) - 1];
+      const effects = (((op?.raw as Record<string, unknown> | undefined)?.effects ?? []) as string[]).map((id) => obs.fixtureIdOf(id) ?? id);
+      const missing = ((expected.includes ?? []) as string[]).filter((fixture) => !effects.includes(fixture));
+      if (!op) problems.push(`no op ${expected.op}`);
+      else if (missing.length) problems.push(`op ${expected.op} lists ${effects.join(", ") || "nothing"}; missing ${missing.join(", ")}`);
+    }
+    return problems.length ? fail(problems.join("; "), card.frozenSeq ? [card.frozenSeq] : []) : pass("the effects are listed", card.frozenSeq ? [card.frozenSeq] : []);
+  },
+
+  /** AG12 (CON.yaml field_history): at the end the record's field history holds this entry (the old value can be found). */
+  field_history(args, obs) {
+    const product = obs.idMap[String(args?.target)];
+    if (!product) return cannot(`no product id for ${args?.target}`);
+    const change = [...obs.diff.records].reverse().find((item) => item.id === product && item.after);
+    const history = ((change?.after as Record<string, unknown> | undefined)?.fieldHistory ?? []) as { field?: string; previous?: unknown; next?: unknown }[];
+    const field = String(args?.field);
+    const names = [field, ...(CONTACT_FIELD_ALIASES[field] ?? [])];
+    const hit = history.find((entry) => names.includes(String(entry.field)) && entry.previous === args?.from && entry.next === args?.to);
+    const evidence = change ? seqs(writesFor(obs.events, change)) : [];
+    if (!change) return fail(`${args?.target} did not change`);
+    return hit ? pass(`${args?.target} ${field}: ${args?.from} → ${args?.to} is in its history`, evidence) : fail(`${args?.target} history ${JSON.stringify(history.map((entry) => [entry.field, entry.previous, entry.next]))} has no ${field} ${args?.from} → ${args?.to}`, evidence);
+  },
+
+  /** AG12 (CON.yaml import_rows): the import item of one revision of the last card classifies the rows exactly so. */
+  import_rows(args, obs) {
+    const card = cardAt(obs, "last");
+    if (!card) return fail("no card");
+    const frozen = obs.events.filter((event) => event.type === "card.frozen" && event.cardId === card.cardId);
+    const revisionOf = (event: TraceEvent) => Number(event.revision ?? (event.card as Record<string, unknown> | undefined)?.revision ?? 1);
+    const wanted = args?.revision === undefined ? Math.max(0, ...frozen.map(revisionOf)) : Number(args.revision);
+    const event = [...frozen].reverse().find((item) => revisionOf(item) === wanted);
+    if (!event) return fail(`no revision ${wanted} of the card was frozen (revisions ${frozen.map(revisionOf).join(", ") || "none"})`);
+    const op = (((event.card as Record<string, unknown> | undefined)?.operations ?? []) as Record<string, any>[]).find((item) => item.capability === "contact.import");
+    const rows = ((op?.shown?.rows ?? []) as { row: number; decision: string; match?: string }[]).map((row) => ({ decision: row.decision, row: row.row, ...(row.decision === "duplicate" && row.match ? { match: obs.fixtureIdOf(row.match) ?? row.match } : {}) }));
+    const expected = ((args?.rows ?? []) as { row: number; decision: string; match?: string }[]).map((row) => ({ decision: row.decision, row: Number(row.row), ...(row.match ? { match: row.match } : {}) }));
+    const same = JSON.stringify(rows) === JSON.stringify(expected);
+    return same ? pass(`revision ${wanted}: ${rows.map((row) => `${row.row} ${row.decision}${row.match ? ` ${row.match}` : ""}`).join(", ")}`, [Number(event.seq)]) : fail(`revision ${wanted}: ${JSON.stringify(rows)}, expected ${JSON.stringify(expected)}`, [Number(event.seq)]);
   },
 
   no_private_reads(_args, obs) {

@@ -9,6 +9,7 @@
  * write; parts that need them are routed and reported as not done yet. Nodes run inside the trace
  * context with their name, and each emits node.enter / node.exit.
  */
+import { allowContactMethodsFrom } from "../domains/contact/field-grants";
 import { Command, END, START, StateGraph } from "@langchain/langgraph";
 
 import { emitTrace, runWithTraceContext } from "../observability/trace";
@@ -195,6 +196,8 @@ async function resultOf(graph: ReturnType<typeof buildAgentGraph>, run: AgentGra
 }
 
 export async function runAgentGraph(deps: AgentGraphDependencies, input: AgentGraphInput): Promise<AgentGraphResult> {
+  // AG12-5: contact methods the user typed in this message may go to the model; no other.
+  allowContactMethodsFrom(input.requestId, input.message);
   const run = newRun(input);
   const graph = buildAgentGraph({ deps, input, run });
   const state = (await graph.invoke({ requestId: input.requestId, sessionId: input.sessionId }, { configurable: { thread_id: input.requestId } })) as AgentGraphState;
@@ -219,6 +222,7 @@ export class GraphNotPausedError extends Error {
  * resolution of ids only. understand is not run again and no model is called.
  */
 export async function resumeAgentGraph(deps: AgentGraphDependencies, input: AgentGraphInput, resolution: GraphResolution, extras: ResumeExtras = {}): Promise<AgentGraphResult> {
+  allowContactMethodsFrom(input.requestId, input.message);
   const run = newRun(input, extras);
   const graph = buildAgentGraph({ deps, input, run });
   const config = { configurable: { thread_id: input.requestId } };

@@ -110,8 +110,14 @@ export function untimedLine(language: Language, names: readonly string[]): strin
 }
 
 export function coverageLine(language: Language, listed: number, total: number, unit: { zh: string; ja: string; en: string }): string {
+  if (total === 0) return { en: "None match these criteria right now.", ja: "今のところ、この基準に該当するものはありません。", zh: "按这些条件，现在没有符合的。" }[language];
   if (listed >= total) return { en: `${total} in all match.`, ja: `該当は全部で${total}${unit.ja}です。`, zh: `符合条件的一共${total}${unit.zh}。` }[language];
   return { en: `${total} in all match; these are the first ${listed}.`, ja: `該当は全部で${total}${unit.ja}、ここでは最初の${listed}${unit.ja}を挙げます。`, zh: `符合条件的一共${total}${unit.zh}，这里列的是前${listed}${unit.zh}。` }[language];
+}
+
+/** AE-FN-003: the ones with something due or planned later in the period, said apart from those that meet the criteria. */
+export function upcomingApartLine(language: Language, items: readonly string[]): string {
+  return { en: `Also coming up in this period, not overdue yet (not counted above): ${items.join("; ")}.`, ja: `このほか、期間内に期限や予定日があり、まだ過ぎていないもの（上の件数には含めていません）：${items.join("、")}。`, zh: `另外，这段时间里还有到期或计划要做、但还没过期的（不算在上面）：${items.join("；")}。` }[language];
 }
 
 /* ── extraction ──────────────────────────────────────────────────────── */

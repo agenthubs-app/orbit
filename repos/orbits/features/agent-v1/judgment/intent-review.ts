@@ -23,7 +23,8 @@ const QUESTION_OR_HYPOTHESIS = /[?？]|(?:谁|什么|是否|能否|能不能|可
 const POLITE_REQUEST = /^\s*(?:(?:can|could|would|will) you|please|请|麻烦|帮我|能不能帮我|能帮我|お願い|してもらえ|していただけ)/iu;
 
 /** The registered ways of asking Orbit to add or change a record (zh, ja, en). */
-const WRITE_VERBS = /(记一下|记下|记一笔|记到|记上|记录|帮我记|加到|加一条|加个|添加|新建|新增|创建|建一个|建个|改到|改成|改为|修改|更新|挪到|推到|延到|移到|调到|提前到|删掉|删除|去掉|标记|设为|设成|完成了|安排|写进|存进|存一下|登记|定在|定到|放到|排到|改在|关联|關聯|存成|保存|取消|勾掉|メモして|メモしておいて|記録して|記録しておいて|登録|追加|作成|変更|に変えて|ずらして|移して|延期|削除|消して|完了に|入れて|書いて|残して|紐づけ|キャンセル|にしてください|にしておいて|\b(?:add|create|make|log|record|note down|jot|change|move|push|update|delete|remove|mark|set|schedule|reschedule|put|save|write|link|cancel|complete)\b)/iu;
+// AG12: importing, restoring (导入、恢复、取り込む、復元、import, restore) are registered write verbs too.
+const WRITE_VERBS = /(记一下|记下|记一笔|记到|记上|记录|帮我记|加到|加一条|加个|添加|新建|新增|创建|建一个|建个|改到|改成|改为|修改|更新|挪到|推到|延到|移到|调到|提前到|删掉|删除|去掉|标记|设为|设成|完成了|安排|写进|存进|存一下|登记|定在|定到|放到|排到|改在|关联|關聯|存成|保存|取消|勾掉|导入|导进|恢复|还原|取り込|インポート|復元|元に戻|メモして|メモしておいて|記録して|記録しておいて|登録|追加|作成|変更|に変えて|ずらして|移して|延期|削除|消して|完了に|入れて|書いて|残して|紐づけ|キャンセル|にしてください|にしておいて|\b(?:add|create|make|log|record|note down|jot|change|move|push|update|delete|remove|mark|set|schedule|reschedule|put|save|write|link|cancel|complete|import|restore|bring back)\b)/iu;
 
 export interface ReviewInput {
   capabilities: readonly Capability[];

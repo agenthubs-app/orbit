@@ -8,10 +8,13 @@ import type { NoteService } from "../../notes/service";
 import type { TaskService } from "../../tasks/service";
 import { memoWriteExecutors } from "./memo/write";
 import { todoWriteExecutors } from "./todo/write";
+import { contactWriteExecutors, type ContactWriteDeps } from "./contact/apply";
 
-export function cardWriteExecutors(input: { actorId: string; tasks?: Pick<TaskService, "create" | "update" | "get"> | null; notes?: Pick<NoteService, "create" | "update"> | null }): AgentActionExecutor[] {
+export function cardWriteExecutors(input: { actorId: string; tasks?: Pick<TaskService, "create" | "update" | "get"> | null; notes?: Pick<NoteService, "create" | "update"> | null; contacts?: Omit<ContactWriteDeps, "actorId"> | null }): AgentActionExecutor[] {
   return [
     ...(input.tasks ? todoWriteExecutors({ actorId: input.actorId, tasks: input.tasks }) : []),
     ...(input.notes ? memoWriteExecutors({ actorId: input.actorId, notes: input.notes }) : []),
+    // AG12: contact.create, update, delete, restore, import (domains/contact/apply.ts).
+    ...(input.contacts ? contactWriteExecutors({ ...input.contacts, actorId: input.actorId }) : []),
   ];
 }

@@ -15,7 +15,8 @@ const fieldsByTool = {
   "followups.query": ["title", "status", "contactId", "connectionId", "dueAt", "source", "evidenceSummary", "createdAt"],
   "schedule.query": ["title", "kind", "category", "startsAt", "endsAt", "allDay", "timeZone", "location", "meetingMethod", "contactId", "contactIds", "eventId", "meetingId", "details", "missingFields", "recurrence", "updatedAt"],
   "aiHistory.query": ["sessionId", "groupId", "title", "pinned", "role", "content", "visibleRunStatus", "visibleOutput"],
-  "contacts.query": ["displayName", "headline", "company", "relationship", "status", "tags", "updatedAt"],
+  // agent-design AG12-5: contactMethods holds only which methods are on file ("email", "phone"), never a value.
+  "contacts.query": ["displayName", "headline", "company", "relationship", "status", "tags", "updatedAt", "contactMethods"],
   "relationshipEvidence.query": ["contactId", "kind", "summary", "occurredAt", "sourceId", "sourceRevision"],
   "messages.query": ["conversationId", "contactId", "direction", "content", "sentAt", "readAt", "visibleExtraction", "privacyState"],
   "notifications.query": ["kind", "title", "reason", "occurredAt", "readAt", "disposition", "targetStatus", "sourceIds"],
@@ -57,7 +58,7 @@ const fieldSchemas = {
   "followups.query": z.object({ title: optional(text), status: optional(text), contactId: optional(text), connectionId: optional(text), dueAt: optional(text), source: optional(textOrTexts), evidenceSummary: optional(text), createdAt: optional(text) }).strict(),
   "schedule.query": z.object({ title: optional(text), kind: optional(text), category: optional(text), startsAt: optional(text), endsAt: optional(text), allDay: optional(z.boolean()), timeZone: optional(text), location: optional(text), meetingMethod: optional(text), contactId: optional(text), contactIds: optional(texts), eventId: optional(text), meetingId: optional(text), details: optional(text), missingFields: optional(texts), recurrence: optional(text), updatedAt: optional(text) }).strict(),
   "aiHistory.query": z.object({ sessionId: optional(text), groupId: optional(text), title: optional(text), pinned: optional(z.boolean()), role: optional(text), content: optional(text), visibleRunStatus: optional(text), visibleOutput: optional(textOrTexts) }).strict(),
-  "contacts.query": z.object({ displayName: optional(text), headline: optional(text), company: optional(text), relationship: optional(text), status: optional(text), tags: optional(texts), updatedAt: optional(text) }).strict(),
+  "contacts.query": z.object({ displayName: optional(text), headline: optional(text), company: optional(text), relationship: optional(text), status: optional(text), tags: optional(texts), updatedAt: optional(text), contactMethods: optional(z.array(z.enum(["email", "phone"]))) }).strict(),
   "relationshipEvidence.query": z.object({ contactId: optional(text), kind: optional(text), summary: optional(text), occurredAt: optional(text), sourceId: optional(text), sourceRevision: optional(text) }).strict(),
   "messages.query": z.object({ conversationId: optional(text), contactId: optional(text), direction: optional(text), content: optional(text), sentAt: optional(text), readAt: optional(text), visibleExtraction: optional(textOrTexts), privacyState: optional(text) }).strict(),
   "notifications.query": z.object({ kind: optional(text), title: optional(text), reason: optional(text), occurredAt: optional(text), readAt: optional(text), disposition: optional(text), targetStatus: optional(text), sourceIds: optional(texts) }).strict(),

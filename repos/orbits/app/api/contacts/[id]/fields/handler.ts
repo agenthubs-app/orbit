@@ -15,8 +15,8 @@ const configuredUpdate: Update = async (actorId, contactId, input) => {
   if (resolveModuleMode() !== "live") throw new AppError("SERVICE_UNAVAILABLE", "Contact editing requires a live provider.");
   const runtime = createConfiguredPostgresLiveRecordStore();
   if (!runtime) throw new AppError("SERVICE_UNAVAILABLE", "Contact storage is unavailable.");
-  const result = await applyContactFieldValues({ actorId, contactId, source: "manual", store: runtime.store, values: input.values, workspaceId: runtime.workspaceId });
-  return { changed: result.changed, contactId: result.contactId, updatedAt: result.updatedAt };
+  const result = await applyContactFieldValues({ actorId, contactId, ...(input.expectedVersion !== undefined ? { expectedVersion: input.expectedVersion } : {}), source: "manual", store: runtime.store, values: input.values, workspaceId: runtime.workspaceId });
+  return { changed: result.changed, contactId: result.contactId, updatedAt: result.updatedAt, ...(result.version >= 1 ? { version: result.version } : {}) };
 };
 
 /** R11a：PATCH /api/contacts/:id/fields（連絡先の編集：氏名・会社・役職・メール・電話）。 */

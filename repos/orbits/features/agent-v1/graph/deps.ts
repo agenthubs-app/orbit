@@ -12,6 +12,7 @@ import type { AgentActionPreviewContract as CardPreview } from "../../../shared/
 import type { CanonicalEventRecord } from "../../events/core/contract";
 import type { JudgmentAccess } from "../judgment/ask";
 import type { AgentWebAccess } from "../web/service";
+import type { ContactAccess } from "../domains/contact/types";
 
 /**
  * AG06: the request's card in the action ledger (one card per request, conversationCardId). `freeze` is
@@ -35,6 +36,8 @@ export interface AgentRecordAccess {
   maxPages: number;
   /** AG08: the events the account may see, for ranking (graph/nodes/functions.ts filters them). */
   listEvents?(): Promise<readonly CanonicalEventRecord[]>;
+  /** AG12: the account's contacts for contact writes — duplicates, restore, import review (code only, never a model). */
+  contacts?: ContactAccess;
 }
 
 /** A reference of this turn as intake keeps it: named when accessible; `accessible: false` when not (AG05). */

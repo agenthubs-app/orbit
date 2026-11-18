@@ -14,7 +14,7 @@ import { emitTrace } from "../observability/trace";
 import { parseModelJson } from "../understand/validate";
 import { MEMO_CHANNELS, MEMO_DIRECTIONS, PROPOSE_ENTITIES, PROPOSE_VERBS, RELATION_ROLES, VALUE_FIELDS, type StoredIntent } from "./schema";
 
-export const PROPOSED_CAPABILITIES = ["todo.create", "todo.update", "memo.create"] as const;
+export const PROPOSED_CAPABILITIES = ["todo.create", "todo.update", "memo.create", "contact.create", "contact.update", "contact.delete", "contact.restore", "contact.import"] as const;
 const OPERATION_KEYS = new Set(["localId", "partId", "entity", "verb", "selector", "fields", "dateText", "relations", "channel", "direction", "dependsOn"]);
 
 export interface ProposeValidationInput {
@@ -74,12 +74,12 @@ export function validateProposeOutput(value: unknown, input: ProposeValidationIn
       continue;
     }
     if (!(PROPOSE_ENTITIES as readonly unknown[]).includes(raw.entity) || !(PROPOSE_VERBS as readonly unknown[]).includes(raw.verb)) {
-      errors.push(`${where}: entity must be todo or memo and verb create or update`);
+      errors.push(`${where}: entity must be todo, memo or contact and verb create, update, delete, restore or import`);
       continue;
     }
     const capability = `${raw.entity}.${raw.verb}` as StoredIntent["capability"];
     if (!(PROPOSED_CAPABILITIES as readonly string[]).includes(capability)) {
-      errors.push(`${where}: ${capability} is not an operation this step proposes (use todo create/update or memo create)`);
+      errors.push(`${where}: ${capability} is not an operation this step proposes (use todo create/update, memo create, or contact create/update/delete/restore/import)`);
       continue;
     }
     if (!partCapabilities.includes(capability)) {
@@ -102,7 +102,8 @@ export function validateProposeOutput(value: unknown, input: ProposeValidationIn
         continue;
       }
       const found = span((field as Record<string, unknown>).valueText, `${where}.fields[${at}].valueText`);
-      if (found) stored[name === "body" ? "body" : "title"] = found;
+      if (found && capability.startsWith("contact.")) stored.values = { ...(stored.values ?? {}), [name]: found };
+      else if (found) stored[name === "body" ? "body" : "title"] = found;
     }
     if (raw.dateText !== undefined && raw.dateText !== null && raw.dateText !== "") {
       const found = span(raw.dateText, `${where}.dateText`);

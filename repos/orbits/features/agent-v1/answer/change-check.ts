@@ -112,3 +112,27 @@ export function changeReasonLine(language: "zh" | "ja" | "en", changes: readonly
   }
   return lines.length ? [...new Set(lines)].join("\n") : null;
 }
+
+/**
+ * AG12 run-02 (AE-SCL-016 R2): a record the answer cites that itself says an earlier value has expired or no longer holds
+ * ("The September quote of JPY 1,900 has expired.") — the answer uses the newer value; code says the record's own sentence
+ * when the answer does not, copied as the record has it (zh/ja/en). Deterministic: the sentence is the record's, the
+ * record is one the answer cites.
+ */
+const EXPIRY_WORDS = /\bhas expired\b|\bhave expired\b|\bis expired\b|\bexpired\b|\bno longer (?:valid|stands|applies|holds)\b|\bis void\b|已经?过期|已失效|失效了|已作废|作废了|不再有效|期限切れ|有効期限が切れ|失効|無効になり/iu;
+
+export function expiryLine(language: "zh" | "ja" | "en", cited: readonly Material[], answer: string, timeZone: string): string | null {
+  if (EXPIRY_WORDS.test(answer)) return null;
+  const said = squash(answer);
+  const lines: string[] = [];
+  for (const material of cited) {
+    if (material.kind === "web" || material.kind === "contact" || !material.at) continue;
+    for (const sentence of material.sentences) {
+      if (!EXPIRY_WORDS.test(sentence.text) || said.includes(squash(sentence.text))) continue;
+      const { day, month } = dayOf(material.at, timeZone);
+      const text = sentence.text.trim();
+      lines.push(language === "zh" ? `（${month}月${day}日的记录里还写着：「${text}」）` : language === "ja" ? `（${month}月${day}日の記録には「${text}」とも書かれています。）` : `(The record of ${MONTHS[month - 1]} ${day} also says: "${text}")`);
+    }
+  }
+  return lines.length ? [...new Set(lines)].join("\n") : null;
+}

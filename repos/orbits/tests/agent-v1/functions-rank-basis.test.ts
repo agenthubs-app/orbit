@@ -67,7 +67,7 @@ test("AE-FN-005: the question, then '随便，都行' — the natural order (sta
   assert.equal(first.result.clarifications.length, 1, "asked once (the model's start-time order is not the user's)");
   const reply = "随便，都行。";
   const second = await runFn(reply, [{ clarity: "statement", sourceQuote: reply }], { session });
-  assert.equal(second.result.clarifications.length, 0, "not asked again");
+  assert.equal(second.result.clarifications.filter((set) => set.kind !== "entry").length, 0, "not asked again (AG12 run-03: the ranking entries are not questions)");
   assert.deepEqual(second.result.sourceRefs.slice(0, 2), ["event:event:e103", "event:event:e101"]);
   assert.match(second.result.text, /因为没有指定标准，这次是按开始时间先后给的/u);
   assert.equal(fnRank(second.events).length, 1);
@@ -84,7 +84,7 @@ test("AE-FN-001: this turn's words stack — weekend morning first, then the @ n
   assert.match(run.result.text, /^先看是不是周末上午，再看和你的笔记「兴趣笔记」的主题有多相关/u);
   assert.ok(run.judgeCalls.length <= 1);
   assert.ok((run.judgeCalls[0]?.body ? Object.keys(run.judgeCalls[0].body.questions).length : 0) <= 5, "at most the five chosen events judged");
-  assert.equal(run.result.clarifications.length, 0);
+  assert.equal(run.result.clarifications.filter((set) => set.kind !== "entry").length, 0, "no question (AG12 run-03: the ranking entries beside the answer are not questions)");
 });
 
 test("saved memory: the constraint removes evenings, the preference ranks weekend mornings first; the lead names both and the entry to change them", async () => {
@@ -108,7 +108,7 @@ test("AE-FN-003: '这周该跟进谁' — history signals from the user's own re
   const listed = fnRank(run.events).at(-1)!.listed as string[];
   assert.ok(listed.includes("contact:contact:c30") && listed.includes("contact:contact:c31"), listed.join(","));
   assert.equal(run.judgeCalls.length, 0);
-  assert.equal(run.result.clarifications.length, 0);
+  assert.equal(run.result.clarifications.filter((set) => set.kind !== "entry").length, 0, "no question (AG12 run-03: the ranking entries beside the answer are not questions)");
   assert.ok(!run.events.some((event) => event.type === "fn.extractFollowUps"), "no memo: no extraction");
   assert.match(run.result.text, /^依据来自你自己的记录：已到期没做的跟进、过了计划日的待办/u);
   assert.match(run.result.text, /跟进「跟进田中的分期方案」在11月14日（周六）到期，还没完成/u);
@@ -141,7 +141,7 @@ test("only listing records is not ranking: natural order, no question (AE-SCL-01
   // Dev run 2: the first layer added a note read and an extraction; the words name follow-ups, so it is the same ranking.
   const other = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "ranked_list", rank: { count: 3, direction: "asc", orderBy: "dueAt" }, readFilter: { status: "open", to: "2026-11-22" }, requiredCapabilities: ["memo.read", "todo.read", "fn.extractFollowUps", "fn.rank"], sourceQuote: message }], { world });
   assert.deepEqual(fnRank(other.events).at(-1)!.listed, ["todo:task:f2", "todo:task:f1"]);
-  assert.equal(run.result.clarifications.length, 0);
+  assert.equal(run.result.clarifications.filter((set) => set.kind !== "entry").length, 0, "no question (AG12 run-03: the ranking entries beside the answer are not questions)");
   assert.equal(run.judgeCalls.length, 0);
   assert.match(run.result.text, /按截止时间，过期最久的排前面/u);
   assert.match(run.result.text, /符合条件的一共2条/u);

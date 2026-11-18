@@ -1,5 +1,5 @@
 import path from "node:path";
-import { caseArea, readGateAreas, type AreaFile, type EvalCase } from "./cases";
+import { caseArea, readGateAreas, sprintOrder, type AreaFile, type EvalCase } from "./cases";
 import {
   ACCOUNTS,
   CHECK_WORDS,
@@ -43,6 +43,16 @@ export interface CheckerContext {
   worlds: Map<string, WorldFixture>;
   gateAreas: Map<string, Set<string>>;
 }
+
+/** AG12 run-02: "later" is in the execution order (cases.ts SPRINT_EXECUTION_ORDER), not by sprint number. */
+const sprintOrderSafe = (sprint: string) => {
+  try {
+    return sprintOrder(sprint);
+  } catch {
+    return Number(sprint.slice(2));
+  }
+};
+const laterOrSame = (left: string, right: string) => sprintOrderSafe(right) <= sprintOrderSafe(left);
 
 export function createCheckerContext(options: { worlds?: Map<string, WorldFixture>; gateAreas?: Map<string, Set<string>> } = {}): CheckerContext {
   return {
@@ -146,7 +156,7 @@ export function checkCase(testCase: EvalCase, areaFile: AreaFile, context: Check
   if (typeof testCase.sprint === "string" && !sprintPattern.test(testCase.sprint)) push("sprint", `unknown sprint "${testCase.sprint}"`);
   if (testCase.gate !== undefined) {
     if (typeof testCase.gate !== "string" || !sprintPattern.test(testCase.gate)) push("gate", `unknown sprint "${testCase.gate}"`);
-    else if (typeof testCase.sprint === "string" && testCase.gate <= testCase.sprint) push("gate", "gate must be later than sprint");
+    else if (typeof testCase.sprint === "string" && sprintPattern.test(testCase.sprint) && laterOrSame(testCase.sprint, testCase.gate)) push("gate", "gate must be later than sprint (in the execution order)");
   }
   const owningSprint = testCase.gate ?? testCase.sprint;
   if (!areaFile.sealed && typeof owningSprint === "string" && sprintPattern.test(owningSprint)) {
@@ -225,7 +235,7 @@ export function checkCase(testCase: EvalCase, areaFile: AreaFile, context: Check
       // README §3.3: an item may count only from a later sprint, never before the case's own gate.
       if (isRecord(item) && item.gate !== undefined) {
         if (typeof item.gate !== "string" || !sprintPattern.test(item.gate)) push(`rubric[${index}].gate`, `unknown sprint "${String(item.gate)}"`);
-        else if (typeof owningSprint === "string" && sprintPattern.test(owningSprint) && item.gate < owningSprint) {
+        else if (typeof owningSprint === "string" && sprintPattern.test(owningSprint) && sprintOrderSafe(item.gate) < sprintOrderSafe(owningSprint)) {
           push(`rubric[${index}].gate`, `${item.gate} is earlier than the case's ${testCase.gate ? "gate" : "sprint"} ${owningSprint}`);
         }
       }
