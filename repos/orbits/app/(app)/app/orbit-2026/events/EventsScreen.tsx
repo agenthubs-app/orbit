@@ -260,7 +260,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
       {tab === "going" ? (upcoming === null || past === null ? <GoingSkeleton /> : <MyEvents language={language} upcoming={upcoming} past={past} now={now} t={t} selectedPrivate={tier === "wide" ? privateOpen : null} onOpenPrivate={openPrivate} />) : null}
       {privateItem && tier !== "wide" ? (
         <Drawer open onClose={() => openPrivate(null)} title={privateItem.title} size="lg">
-          <PrivateEventPanel item={privateItem} language={language} />
+          <PrivateEventPanel item={privateItem} language={language} titled />
         </Drawer>
       ) : null}
       {tab === "assess" && !overviewLoaded ? <AssessSkeleton tier={tier} /> : null}

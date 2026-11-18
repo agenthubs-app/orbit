@@ -25,7 +25,8 @@ export function prefillOf(item: MyEventItem, language: OrbitLanguage, template: 
   return template.replace("{title}", item.title).replace("{day}", eventWhen(item.startsAt, language));
 }
 
-export function PrivateEventPanel({ item, language }: { item: MyEventItem; language: OrbitLanguage }) {
+// `titled`: the drawer (phone) already shows the title in its own header, so the panel leaves it out.
+export function PrivateEventPanel({ item, language, titled = false }: { item: MyEventItem; language: OrbitLanguage; titled?: boolean }) {
   const std = useStandardCopy();
   const words = std.myEvents as Record<string, string>;
   const hrefOf = (kind: string, id: string) => (kind === "memo" ? `/app/notes/${encodeURIComponent(id)}` : kind === "todo" ? `/app/task?seg=todo&task=${encodeURIComponent(id)}` : "/app/task?seg=calendar");
@@ -34,7 +35,7 @@ export function PrivateEventPanel({ item, language }: { item: MyEventItem; langu
       <div className={styles.row} style={{ gap: 10, alignItems: "flex-start" }}>
         <span className={`${styles.emo} ${styles.t_lav}`} aria-hidden>{item.emoji}</span>
         <div className={styles.grow}>
-          <b className={styles.privateTitle}>{item.title}</b>
+          {titled ? null : <b className={styles.privateTitle}>{item.title}</b>}
           <div className={styles.lbl}>{[eventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</div>
         </div>
         <span className={`${styles.chip} ${styles.c_lav}`}><Icon name="lock" size={12} />{words.privateChip}</span>

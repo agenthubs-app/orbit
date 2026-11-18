@@ -13,7 +13,7 @@ import type { EventRefContract, PrivateEventContract } from "../../../shared/con
 import type { LiveRecord, LiveRecordStoreLike } from "../../../shared/storage/live-record-store";
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../../shared/storage/transactional-postgres";
 import { createPostgresLiveRecordStore } from "../../../shared/storage/postgres-live-record-store";
-import { ATTENDANCE_COLLECTION, eventRefLockKey, liveRecordOf, PRIVATE_EVENT_COLLECTION, readAttendance, readPrivateEvent, scheduleLockKey, taskLockKey } from "./records";
+import { ATTENDANCE_COLLECTION, eventRefLockKey, liveRecordOf, PRIVATE_EVENT_COLLECTION, readAttendance, readPrivateEvent, scheduleLockKey, taskLockKey, EVENT_RECORDS_LIST_LIMIT } from "./records";
 
 export class PrivateEventError extends Error {
   constructor(readonly code: "NOT_FOUND" | "VERSION_CONFLICT" | "INVALID" | "STILL_REFERENCED", message: string, readonly detail?: { references: PrivateEventReference[] }) {
@@ -111,7 +111,7 @@ export function createPrivateEventService(input: { store: LiveRecordStoreLike<Re
       return out;
     }
     // No database (tests, memory store): the same rule over the account's records.
-    const list = async (collectionName: string) => store.listRecords({ collectionName, limit: "unbounded", userId: actorId, workspaceId });
+    const list = async (collectionName: string) => store.listRecords({ collectionName, limit: EVENT_RECORDS_LIST_LIMIT, userId: actorId, workspaceId });
     for (const record of await list(ATTENDANCE_COLLECTION)) {
       const note = readAttendance(record, actorId);
       if (note && note.eventRef.kind === "private" && note.eventRef.id === id) out.push({ id: record.recordId, kind: "attendance", label: note.attendedOn, version: String(note.version) });
@@ -153,7 +153,7 @@ export function createPrivateEventService(input: { store: LiveRecordStoreLike<Re
     },
 
     async list(actorId: string): Promise<PrivateEventContract[]> {
-      const records = await input.store.listRecords({ collectionName: PRIVATE_EVENT_COLLECTION, limit: "unbounded", userId: actorId, workspaceId });
+      const records = await input.store.listRecords({ collectionName: PRIVATE_EVENT_COLLECTION, limit: EVENT_RECORDS_LIST_LIMIT, userId: actorId, workspaceId });
       return records.map((record) => readPrivateEvent(record, actorId)).filter((event): event is PrivateEventContract => Boolean(event)).sort((left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt));
     },
 

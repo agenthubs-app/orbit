@@ -8,6 +8,8 @@ import type { LiveRecord } from "../../../shared/storage/live-record-store";
 
 export const PRIVATE_EVENT_COLLECTION = "private_events";
 export const ATTENDANCE_COLLECTION = "event_attendance_notes";
+/** One account's private events or «我去过» rows read at once (bounded, like CONTACT_FACTS_LIST_LIMIT; not an unbounded read). */
+export const EVENT_RECORDS_LIST_LIMIT = 500;
 
 /** Lock keys every write that adds or removes a link to a private event shares with its deletion (PLANNER 易错边界 4). */
 export const eventRefLockKey = (workspaceId: string, actorId: string) => JSON.stringify(["event-refs", workspaceId, actorId]);

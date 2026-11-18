@@ -12,7 +12,7 @@ import type { AttendanceDayPart, AttendanceNoteContract, EventRefContract } from
 import type { LiveRecordStoreLike } from "../../../shared/storage/live-record-store";
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../../shared/storage/transactional-postgres";
 import { createPostgresLiveRecordStore } from "../../../shared/storage/postgres-live-record-store";
-import { ATTENDANCE_COLLECTION, DAY_PARTS, eventRefLockKey, isEventRef, liveRecordOf, PRIVATE_EVENT_COLLECTION, readAttendance, readPrivateEvent, sameRef } from "../private-events/records";
+import { ATTENDANCE_COLLECTION, DAY_PARTS, eventRefLockKey, isEventRef, liveRecordOf, PRIVATE_EVENT_COLLECTION, readAttendance, readPrivateEvent, sameRef, EVENT_RECORDS_LIST_LIMIT } from "../private-events/records";
 
 export class AttendanceError extends Error {
   constructor(readonly code: "NOT_FOUND" | "VERSION_CONFLICT" | "INVALID" | "DUPLICATE" | "EVENT_UNAVAILABLE", message: string) {
@@ -47,7 +47,7 @@ export function createAttendanceService(input: { store: LiveRecordStoreLike<Reco
   const workspaceId = input.workspaceId;
 
   async function listAll(store: LiveRecordStoreLike<Record<string, unknown>>, actorId: string): Promise<AttendanceNoteContract[]> {
-    const records = await store.listRecords({ collectionName: ATTENDANCE_COLLECTION, limit: "unbounded", userId: actorId, workspaceId });
+    const records = await store.listRecords({ collectionName: ATTENDANCE_COLLECTION, limit: EVENT_RECORDS_LIST_LIMIT, userId: actorId, workspaceId });
     return records.filter((record) => record.lifecycleState !== "deleted").map((record) => readAttendance(record, actorId)).filter((note): note is AttendanceNoteContract => Boolean(note));
   }
 
