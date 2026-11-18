@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { proposableOf } from "../../features/agent-v1/graph/nodes/propose";
-import { fitsWithoutKana } from "../../features/agent-v1/propose/resolve";
+import { fitsWithoutKana, foldIntoCreates } from "../../features/agent-v1/propose/resolve";
 import { CHECKIN, clauseAround, isEventIntent, withoutWhenWords } from "../../features/agent-v1/propose/events-resolve";
 import { replyLanguageOf } from "../../features/agent-v1/route/handoff-copy";
 import { groupClue } from "../../features/agent-v1/understand/described-clue";
@@ -26,6 +26,24 @@ test("which operations a sentence may become", () => {
   assert.ok(proposableOf(part(["attendance.create"]), "昨晚的 SaaS 定价研讨会我去了，帮我记上我参加过。").includes("attendance.create"));
   assert.deepEqual(proposableOf(part(["schedule.create"]), "山本さんとの食事のToDo、11月20日に予定を入れて").sort(), ["todo.create", "todo.update"]);
   assert.ok(proposableOf(part(["privateEvent.create"]), "帮我建成一场私人活动，并记上我参加了").includes("attendance.create"), "the event writes go together");
+});
+
+test("a to-do update that only adds people to the to-do created in the same part goes on the create (AE-EVT-012, gate run-02)", () => {
+  const message = "新建一条待办「给王强回电话」，把「给李薇寄样片」标成完成。";
+  const span = (words: string): [number, number] => { const at = message.indexOf(words); return [at, at + words.length]; };
+  const folded = foldIntoCreates([
+    { capability: "todo.create", localId: "w1", relations: [], selector: [], title: span("给王强回电话") },
+    { capability: "todo.update", localId: "w2", relations: [{ quote: span("王强"), role: "about" }], selector: [span("给王强回电话")] },
+    { capability: "todo.complete", localId: "w3", relations: [], selector: [span("给李薇寄样片")] },
+  ], message);
+  assert.deepEqual(folded.map((intent) => intent.localId), ["w1", "w3"]);
+  assert.deepEqual(folded[0].relations, [{ quote: span("王强"), role: "about" }]);
+  // An update that changes the date of another to-do is left as written.
+  const kept = foldIntoCreates([
+    { capability: "todo.create", localId: "w1", relations: [], selector: [], title: span("给王强回电话") },
+    { capability: "todo.update", date: span("给李薇寄样片"), localId: "w2", relations: [{ quote: span("王强"), role: "about" }], selector: [span("给王强回电话")] },
+  ], message);
+  assert.equal(kept.length, 2);
 });
 
 test("words of when are not part of a name; kana left out still fits a Japanese title", () => {

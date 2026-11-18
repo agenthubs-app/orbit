@@ -218,6 +218,26 @@ function scriptOf(text: string): Script | null {
 }
 
 /**
+ * AG13 gate run-02 (AE-EVT-012): the second layer wrote a new to-do as a create plus an update of that same to-do
+ * ("给王强回电话": create, then link 王强). A to-do update in the same part whose words are the new to-do's title, and
+ * that only adds people, is folded into the create (its people go on the new to-do); the rest stay as written.
+ */
+export function foldIntoCreates(intents: readonly StoredIntent[], message: string, partId?: string): StoredIntent[] {
+  const text = (span: [number, number] | undefined) => (span ? message.slice(span[0], span[1]).trim() : "");
+  const out = intents.map((intent) => ({ ...intent, relations: [...intent.relations] }));
+  const dropped = new Set<StoredIntent>();
+  for (const update of out) {
+    if (update.capability !== "todo.update" || update.date || update.title || update.events?.length || !update.relations.length) continue;
+    const create = out.find((other) => other.capability === "todo.create" && !dropped.has(other) && text(other.title) && update.selector.some((span) => text(span) === text(other.title)));
+    if (!create) continue;
+    for (const relation of update.relations) if (!create.relations.some((known) => known.quote[0] === relation.quote[0] && known.quote[1] === relation.quote[1])) create.relations.push(relation);
+    dropped.add(update);
+    emitTrace({ into: create.localId, localId: update.localId, partId: partId ?? null, type: "propose.update_folded_into_create" });
+  }
+  return out.filter((intent) => !dropped.has(intent));
+}
+
+/**
  * AG13 (AE-SCL-010): Japanese words that leave out the kana of a title ("益子陶器市搬入手配" for 「益子陶器市の搬入を手配する」):
  * the title's kanji and katakana hold the words' kanji and katakana in order (at least four of them).
  */
@@ -351,7 +371,7 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
   const stop = (reason: string, line: string): WriteOutcome => ({ kind: "stop", line, reason });
   const failedLine = language === "zh" ? `「${quote}」这次没能读到你的记录，所以没有改。并不代表没有这条记录，可以稍后再试。` : language === "ja" ? `「${quote}」は今回記録を読めなかったため、変更していません。記録がないという意味ではありません。少し後でもう一度お試しください。` : `"${quote}": your records could not be read this time, so nothing was changed. That does not mean the record is missing; please try again later.`;
   let covered = false;
-  for (const given of write.intents) {
+  for (const given of foldIntoCreates(write.intents, ctx.message, part.localId)) {
     let intent = given;
     // AG13: private events, «我去过», schedule items, the other to-do verbs and to-do links (propose/events-resolve.ts).
     if (isEventIntent(intent, quote)) {
