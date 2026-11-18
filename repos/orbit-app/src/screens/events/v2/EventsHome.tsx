@@ -24,6 +24,9 @@ import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { DiscoverPage, discoverQueryFromParams } from "./DiscoverPage";
 import { eventAssessmentListSchema, useEventsApi } from "./events-api";
 import { myEventsResponseSchema } from "../../../api/schema/events-mine";
+import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
+import { useOrbitApiBaseUrl } from "../../../api/ApiBaseUrlProvider";
+import { registerAiTemplatePrefill } from "../../../data/ai-template-prefill";
 import { EventsOfflineNotice } from "./EventsOfflineNotice";
 import { usePageCopyResource } from "../../../hooks/usePageCopyResource";
 import { EVENTS_COPY_FRESH_MS, EVENTS_MINE_UPCOMING_PATH } from "./events-copies";
@@ -245,11 +248,19 @@ function PrivateEventSheet({ item, language, onClose }: { item: MyEventItem | nu
   const { styles, colors } = useStyles();
   const copy = useStandardCopy();
   const router = useRouter();
+  const auth = useOrbitAuthSession(), server = useOrbitApiBaseUrl();
   const words = copy.myEvents as Record<string, string>;
   if (!item) return null;
   const self = item.selfAttendance;
   const parts = (self?.dayParts ?? []).map((part) => words[part]).filter(Boolean);
-  const prefillIntent = copy.myEvents.prefill.replace("{title}", item.title).replace("{day}", appEventWhen(item.startsAt, language));
+  const message = copy.myEvents.prefill.replace("{title}", item.title).replace("{day}", appEventWhen(item.startsAt, language));
+  // The AI page takes a registered prefill's id (as the to-do tools do), not the words themselves.
+  const openIorbit = () => {
+    onClose();
+    if (!auth.actorId || !server.ready) { router.push({ pathname: "/ai/[id]", params: { id: "new" } } as Href); return; }
+    const prefillIntent = registerAiTemplatePrefill({ actorId: auth.actorId, baseUrl: server.baseUrl, entryPointId: "ai.new_chat", message, references: [], template: { id: "events.private_event_edit", version: 1 } });
+    router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent } } as Href);
+  };
   return (
     <BottomSheet visible onClose={onClose} accessibilityLabel={item.title}>
       <View style={{ gap: 14, paddingBottom: 8 }} testID={`events-private-sheet-${item.eventId}`}>
@@ -271,7 +282,7 @@ function PrivateEventSheet({ item, language, onClose }: { item: MyEventItem | nu
             <View key={`${record.kind}:${record.id}`} style={[styles.row, { gap: 8 }]}><UiText style={styles.lbl}>{words[record.kind]}</UiText><UiText style={[styles.metaSub, { flex: 1, color: colors.ink }]} numberOfLines={1}>{record.label}</UiText></View>
           )) : <UiText style={styles.lbl}>{copy.myEvents.relatedNone}</UiText>}
         </View>
-        <UiPressable accessibilityRole="button" accessibilityLabel={copy.myEvents.editInIorbit} onPress={() => { onClose(); router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent } } as Href); }} style={styles.btnBlock} testID="events-private-edit"><UiText style={styles.btnBlockText}>{copy.myEvents.editInIorbit}</UiText></UiPressable>
+        <UiPressable accessibilityRole="button" accessibilityLabel={copy.myEvents.editInIorbit} onPress={openIorbit} style={styles.btnBlock} testID="events-private-edit"><UiText style={styles.btnBlockText}>{copy.myEvents.editInIorbit}</UiText></UiPressable>
       </View>
     </BottomSheet>
   );
