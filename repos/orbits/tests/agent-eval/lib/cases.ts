@@ -91,6 +91,20 @@ export function sprintNumber(sprint: string): number {
   return Number(match[1]);
 }
 
+/**
+ * AG12 run-02 (coordinator, eval README §6, §3.3): the order the sprints run in — each after the sprints it depends on
+ * (SPRINTS.md 登记表). AG11 depends on AG13, so it runs after AG12 and AG13. "Not later than" a sprint (the invariant
+ * pack, a case's `gate`, a rubric item's `gate`) compares positions here, never sprint numbers.
+ * tests/agent-eval/sprint-order.test.ts checks it against the registry's dependencies.
+ */
+export const SPRINT_EXECUTION_ORDER = ["AG00", "AG01", "AG02", "AG03", "AG04", "AG05", "AG06", "AG07", "AG08", "AG09", "AG10", "AG12", "AG13", "AG11", "AG14", "AG15", "AG16", "AG17", "AG18"] as const;
+
+export function sprintOrder(sprint: string): number {
+  const at = (SPRINT_EXECUTION_ORDER as readonly string[]).indexOf(sprint);
+  if (at < 0) throw new Error(`Not a sprint of the execution order: ${sprint}`);
+  return at;
+}
+
 /** Cases that probe the outbound guard void their run, so they run alone (H.yaml AE-H-006 notes). */
 export function requiresSoloRun(testCase: EvalCase): boolean {
   return testCase.steps.some((step) => step && typeof step === "object" && "egress_probe" in step);
@@ -106,7 +120,7 @@ export interface Selection {
 /**
  * --gate AGnn: cases whose gate is AGnn, cases with a rubric item gated to AGnn (README §3.3; their
  * items gated later stay excluded when the run is judged), plus the invariant pack (from AG02 on)
- * with gate not later than AGnn.
+ * with gate not later than AGnn in the execution order (SPRINT_EXECUTION_ORDER).
  * --all: every visible case. --case: exactly the named cases (solo cases are allowed only this way).
  */
 export function selectCases(
@@ -124,12 +138,12 @@ export function selectCases(
     return { cases: chosen, invariants, solo: [] };
   }
   if (options.gate) {
-    const gate = sprintNumber(options.gate);
+    const gate = sprintOrder(options.gate);
     // README §3.3: a case with a rubric item gated to this sprint runs in its gate as well (AG03).
     chosen = all.filter((testCase) => gateOf(testCase) === options.gate || (testCase.rubric ?? []).some((item) => item.gate === options.gate));
-    if (gate >= 2) {
+    if (gate >= sprintOrder("AG02")) {
       invariants = all.filter(
-        (testCase) => testCase.invariant && !chosen.includes(testCase) && sprintNumber(gateOf(testCase)) <= gate,
+        (testCase) => testCase.invariant && !chosen.includes(testCase) && sprintOrder(gateOf(testCase)) <= gate,
       );
     }
     chosen = [...chosen, ...invariants];

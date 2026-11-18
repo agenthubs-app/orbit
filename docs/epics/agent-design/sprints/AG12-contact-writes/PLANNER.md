@@ -115,3 +115,14 @@ REPORT 含验收映射、功能 SHA／文件／理由、写入方清单与各自
 - **执行器登记：** 按 AG06 的写法登记在 `domains/writes.ts`（`registry.ts` 是读取侧，联系人读取 AG05 已登记）。
 - **修改的范围：** 首版只改五个基本字段（姓名、公司、职位、邮箱、电话，经字段写入接口与期望版本）。行业、职级、地区、标签、状态、备注在对话里说“这一版改不了”，仍在联系人页面改；它们不在门槛用例里。
 - **写入方清单：** 上文列的 `completion/repository.ts`、`confirmed-followup/service.ts`、`postgres-repository.ts` 读查后不写联系人；另有 `storage/contact-live-record-provider.ts`（行业、补全、画像写回）写联系人，已纳入。清单与理由见 REPORT 与 `tests/architecture/contact-version-writers.test.ts`。
+
+## run-02 更正记录（协调者批准的例外，2026-11-18）
+
+run-01 评审后协调者开 run-02（最多两个修复轮次，先写测试，规则写在代码里）。范围：
+1. AE-WEB-004 R3：“不能上网”只删那一个分句，有出处的其余部分留下（中日英）。
+2. AE-CTX-005 R1：删卡片句时，一并删请用户确认的那句（中日英）。
+3. AE-SCL-016 R2：读到的记录自己写了旧报价已过期、回答用了新的，由代码补一句；做不到确定性就在 REPORT 说明。
+4. AE-AMB-011：任何删句规则之后，清掉空的或不成对的引号残留。
+5. REF ×5：不变量包的“早晚”改按执行顺序（AG11 在 AG13 之后），REF-001／005／007 加用例级 `gate: AG14`。
+留到交接：AG03 CTX-005 的「お礼をどうぞ。」开头、AMB-008 卡上方残留的「是李薇吗？」。
+门槛 `AG12-gate-run-02`，回归 AG10～AG03 标为 `-gate-rerun-at-AG12-run-02`。
