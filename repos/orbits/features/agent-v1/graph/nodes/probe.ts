@@ -196,7 +196,9 @@ export function probeNode(scope: NodeScope): GraphNode {
       // A URL the user gave in this part's words (or the message's, when no other part holds it): read it, no search.
       // AG09 stability run (AE-WEB-001): a URL in a part that does not look up the web itself ("这是…的官方简介： <url> ，") is
       // this part's to read; that other part is only its context and is not answered on its own.
-      const heldByWeb = (url: string) => parts.some((other) => other !== part && needsWeb(other) && quoteOf(message, other).includes(url));
+      // AG13 repair round 8 (AE-SCL-016 run-08, AE-WEB-009 run-06): only a part that is itself read by this probe holds its
+      // URL; one routed elsewhere ("Here is their pricing page: <url>." answered as a statement) leaves the URL to this part.
+      const heldByWeb = (url: string) => due.some((other) => other !== part && quoteOf(message, other).includes(url));
       const urls = urlsIn(quote).length ? urlsIn(quote) : webOnly(part) ? messageUrls.filter((url) => !heldByWeb(url)) : [];
       if (urls.length && !urlsIn(quote).length) {
         for (const other of parts) {

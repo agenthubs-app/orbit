@@ -51,8 +51,11 @@ const RECORD_NOTE_WORD = /(笔记|メモ|\bnotes?\b|往来|来电|电话|電話|
 /** AG09 run-02: words that ask to look on the web (zh, ja, en). */
 const EXPLICIT_WEB = /(上网|联网|网上|网络上|搜一下|搜搜|搜索|官网|公开资料|公开职务|公开信息|ネット|ウェブ|検索|公式サイト|公開情報|online|on the web|the internet|web search|search the web|google|look (?:it |them |him |her )?up)/iu;
 
-export function routeInputOf(part: GraphPart): RouteInput {
+export function routeInputOf(part: GraphPart, message?: string): RouteInput {
   return {
+    // AG13 repair round 8 (AE-SCL-016 run-08): the part's own words, so AG12's rule "a link handed over is read" sees the
+    // link in the graph too (it only did in unit tests).
+    ...(message !== undefined ? { sourceQuote: message.slice(part.quote[0], part.quote[1]) } : {}),
     clarity: part.plan.clarity,
     ...(part.continues ? { continues: { kind: part.continues.kind as ContinueKind, ref: part.continues.ref } } : {}),
     dataOwner: part.plan.dataOwner,
@@ -156,20 +159,22 @@ export function routeNode(scope: NodeScope): GraphNode {
       // AG08: the review found no explicit request: the part is a statement (no card, one entry).
       if (reviewed.has(part.localId)) part.plan = { ...part.plan, clarity: "statement" };
       // AG10 (AE-FN-008): "@笔记 帮我整理一下" with no product named is a summary of that memo, not readings to choose from.
-      if (!resume && organizeMeansSummary(part, input.message, new Set(run.references.map((reference) => reference.id))) && (part.plan.clarity !== "clear" || part.capabilities.some((capability) => capabilityKind(capability) === "write"))) {
+      // AG13 repair round 8 (AE-FN-008, run-08): also when the first layer added an extraction the words do not ask for
+      // ("帮我整理一下" tagged fn.extractFollowUps); organizeMeansSummary already refuses words that ask for one.
+      if (!resume && organizeMeansSummary(part, input.message, new Set(run.references.map((reference) => reference.id))) && (part.plan.clarity !== "clear" || part.capabilities.some((capability) => capabilityKind(capability) === "write" || capability.startsWith("fn.extract")))) {
         part.capabilities = ["memo.read", "fn.summarize"];
         part.plan = { ...part.plan, clarity: "clear", dataSources: ["orbit_records"], deliverable: "summary", readings: [] };
         emitTrace({ partId: part.localId, type: "route.organize_is_summary" });
       }
       const routeOptions = { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind, namedObjectWithDate: namedObjectWithDate(part), reschedule, unboundPronoun: unboundPronoun(part) };
-      let decision = decideRoute(routeInputOf(part), routeOptions);
+      let decision = decideRoute(routeInputOf(part, input.message), routeOptions);
       // AG09 run-02 (AE-CTX-006): a question about one of the user's own contacts (an @ record) is answered from the records;
       // the web is looked up about a contact only when the user asks for it ("上网查", "ネットで", "online").
       const partWords = input.message.slice(part.quote[0], part.quote[1]);
       if (!resume && decision.route === "web_lookup" && part.refs.some((ref) => ref.entity === "contact" && ref.recordId) && !EXPLICIT_WEB.test(partWords)) {
         part.capabilities = [...new Set([...part.capabilities.filter((capability) => capabilityKind(capability) !== "web"), "contact.read" as Capability])];
         part.plan = { ...part.plan, dataSources: ["orbit_records"] };
-        decision = decideRoute(routeInputOf(part), routeOptions);
+        decision = decideRoute(routeInputOf(part, input.message), routeOptions);
         emitTrace({ partId: part.localId, reason: "a question about the user's own contact, not asked to look online: read from the records", route: decision.route, type: "route.contact_not_looked_up_online" });
       }
       if (reviewed.has(part.localId) && decision.step?.kind === "respond" && decision.step.entry) {

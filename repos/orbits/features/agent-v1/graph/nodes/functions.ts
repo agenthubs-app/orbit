@@ -56,6 +56,8 @@ const MAX_ROWS = 6_000;
  * Singapore", "連絡先"): it holds a word for contacts in general (stab2: "my contacts based in Singapore").
  */
 const GENERIC_CONTACT_CLUE = /(?:联系人|聯絡人|人脉|連絡先|コンタクト|\bcontacts\b|\bpeople\b)|^(?:人|persons?|contact)$/iu;
+/** Words that name the user's contacts as a set (inside a sentence): 联系人, 連絡先, my contacts. */
+const CONTACT_SET_WORDS = /(?:联系人|聯絡人|人脉|連絡先|コンタクト|\bcontacts\b)/iu;
 const RANK_WORDS = /(挑|选出|选几|排序|排一下|排个序|并べ|並べ|選んで|順に|順番|\bpick\b|\bchoose\b|\brank\b|\bsort\b|\border\b|\blist the\b)/iu;
 const TODO_LIST_WORDS = /(待办|跟进|タスク|ToDo|フォローアップ|\bto-?dos?\b|\bfollow[\s-]?ups?\b|\btasks?\b)/iu;
 const WHO_WORDS = /(谁|哪位|哪些人|哪几位|\bwho\b|\bwhom\b|誰|どなた|どの人)/iu;
@@ -84,6 +86,10 @@ export function rankDomainOf(part: GraphPart, message: string): RankDomain | nul
   // Reading other records is another kind of task — except a memo attached with @ (its topics are the basis).
   const memoBasis = part.refs.filter((ref) => ref.entity === "memo");
   const readsMemoBasis = memoBasis.length > 0 && memoBasis.every((ref) => ref.recordId);
+  // AG13 repair round 8 (AE-SCL-013, AG08 rerun run-08): "东京做零售的联系人里，挑三个最适合聊柴烧器物的人" — the words name
+  // the contacts as the set to pick from; a note read the first layer added (memo.read) does not make it another task.
+  const namesPerson = part.refs.some((ref) => ref.entity === "contact" && (() => { const words = ref.quote ? message.slice(ref.quote[0], ref.quote[1]).replace(/^@/u, "").trim() : ""; return Boolean(words) && !GENERIC_CONTACT_CLUE.test(words); })());
+  if (contact && !event && !todo && CONTACT_SET_WORDS.test(quote) && !memoBasis.length && !namesPerson && !part.refs.some((ref) => ref.recordId) && !part.capabilities.includes("schedule.read")) return "contact";
   if (part.capabilities.some((capability) => capability === "schedule.read" || (capability === "memo.read" && !readsMemoBasis))) return null;
   const said = (ref: GraphPart["refs"][number]) => (ref.quote ? message.slice(ref.quote[0], ref.quote[1]) : "").replace(/^@/u, "").trim();
   if (event && !contact && !todo) return chosenEvents === 1 ? null : "event";
