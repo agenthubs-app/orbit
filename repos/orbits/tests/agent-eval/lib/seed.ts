@@ -15,6 +15,8 @@ import { createConfiguredNoteService } from "../../../features/notes/service-fac
 import { readNoteInteraction } from "../../../features/notes/interaction";
 import { createNoteRepository } from "../../../features/notes/repository";
 import { createConfiguredTaskService } from "../../../features/tasks/service-factory";
+import { createPrivateEventService } from "../../../features/events/private-events/service";
+import { createAttendanceService } from "../../../features/events/attendance-notes/service";
 import { createPersonalScheduleService } from "../../../features/personal-schedule/service";
 import { createPersonalScheduleAssociationReader } from "../../../features/personal-schedule/association-reader";
 import { createStorageAgentMemoryService } from "../../../features/agent/memory/service";
@@ -161,6 +163,14 @@ export function createWorldWriter(world: string, clock: string) {
     workspaceId,
   });
   const contactWriter = createStorageBusinessCardContactWriteProvider({ recordProvider: "orbit-agent-eval-seed", store, workspaceId });
+  // AG13: private events and «我去过» through their services (the same store).
+  let privateNow = new Date().toISOString();
+  const privateEvents = createPrivateEventService({ client: runtime.client, now: () => privateNow, store, workspaceId });
+  const attendanceNotes = createAttendanceService({ client: runtime.client, now: () => privateNow, store, workspaceId });
+  /** AG13: a fixture's event links ({ kind, id: fixture }) as product refs; links to records not seeded are dropped. */
+  const eventRefsOf = (value: unknown) => ((value as { kind: string; id: string }[] | undefined) ?? [])
+    .filter((ref) => (ref.kind === "platform" || ref.kind === "private") && idOf(ref.id))
+    .map((ref) => ({ id: idOf(ref.id), kind: ref.kind as "platform" | "private" }));
   const hostLifecycle = createHostLifecycle({ client: events.client, workspaceId });
   const hostProfiles = createHostProfiles({ client: events.client, workspaceId });
   const eventRepository = createPostgresEventOperationsRepository({ client: events.client, workspaceId });
@@ -279,7 +289,13 @@ export function createWorldWriter(world: string, clock: string) {
       if (!saved) gap(report, record.id, "interaction", "the interaction could not be stored (not well formed, or the note changed)");
     }
     if (data.locale) gap(report, record.id, "locale", "notes have no locale field");
-    if ((data.eventRefs as { kind: string }[] | undefined)?.some((ref) => ref.kind === "private")) gap(report, record.id, "eventRefs.private", "private events arrive in AG13");
+    // AG13: the typed event links (a private one cannot be added through the note service; the fixture stores it as is).
+    const refs = eventRefsOf(data.eventRefs);
+    if (refs.some((ref) => ref.kind === "private")) {
+      const stored = await noteRepository.get(actorId, note.id);
+      const saved = stored ? await noteRepository.saveIfVersion({ ...stored, note: { ...stored.note, eventRefs: refs } }, { updatedAt: stored.note.updatedAt, version: stored.note.version }) : null;
+      if (!saved) gap(report, record.id, "eventRefs", "the event links could not be stored");
+    }
   }
 
   async function writeTodo(record: FixtureRecord, formal: boolean): Promise<void> {
@@ -288,6 +304,9 @@ export function createWorldWriter(world: string, clock: string) {
     const related = formal ? [data.contactId as string] : ((data.relatedContactIds as string[] | undefined) ?? (data.contactId ? [data.contactId as string] : []));
     const contactIds = related.filter(Boolean).map(idOf).filter(Boolean);
     const eventRef = ((data.relatedEventRefs as { kind: string; id: string }[] | undefined) ?? []).find((ref) => ref.kind === "platform" && idOf(ref.id));
+    // AG13: every person and event (T48 writes its events as eventRefs).
+    const eventRefs = eventRefsOf(data.relatedEventRefs ?? data.eventRefs);
+    const multi = contactIds.length > 1 || eventRefs.some((ref) => ref.kind === "private") || eventRefs.length > 1;
     const completedAt = iso(data.completedAt);
     const updatedAt = iso(data.updatedAt) ?? completedAt ?? new Date(Date.parse(clock) - 3 * 86_400_000).toISOString();
     const createdAt = completedAt && Date.parse(completedAt) < Date.parse(updatedAt) ? new Date(Date.parse(completedAt) - 3_600_000).toISOString() : completedAt ? new Date(Date.parse(completedAt) - 3_600_000).toISOString() : updatedAt;
@@ -301,8 +320,9 @@ export function createWorldWriter(world: string, clock: string) {
       title: String(data.title),
       ...(data.plannedDate ? { plannedDate: String(data.plannedDate) } : {}),
       ...(data.dueAt ? { dueAt: iso(data.dueAt) } : {}),
-      ...(contactIds[0] ? { relatedContactId: contactIds[0] } : {}),
-      ...(eventRef ? { relatedEventId: idOf(eventRef.id) } : {}),
+      ...(multi ? { relatedContactIds: contactIds, relatedEventRefs: eventRefs } : {}),
+      ...(!multi && contactIds[0] ? { relatedContactId: contactIds[0] } : {}),
+      ...(!multi && eventRef ? { relatedEventId: idOf(eventRef.id) } : {}),
       ...(source?.memoId && idOf(source.memoId) ? { sourceNoteId: idOf(source.memoId), sourceNoteVersion: Number(source.memoVersion ?? 1) } : {}),
       ...(data.note ? { notes: String(data.note) } : {}),
     });
@@ -313,8 +333,7 @@ export function createWorldWriter(world: string, clock: string) {
     }
     count(report, record.account, formal ? "formal_followups" : "todos");
     if (formal) gap(report, record.id, "formal", "seeded as a relationship task; the relationship-lifecycle follow-up stage needs a connection command (kept for later sprints)");
-    if (contactIds.length > 1) gap(report, record.id, "relatedContactIds", "Todo has one related contact until AG13; extra links dropped");
-    if ((data.relatedEventRefs as { kind: string }[] | undefined)?.some((ref) => ref.kind === "private")) gap(report, record.id, "relatedEventRefs.private", "private events arrive in AG13");
+
   }
 
   /** AG06 (a patch's `set`, e.g. todo-plan-and-due): change fields of a seeded to-do through the to-do service. */
@@ -347,11 +366,39 @@ export function createWorldWriter(world: string, clock: string) {
       ...(data.timeZone ? { timeZone: String(data.timeZone) } : {}),
       ...(contactIds.length ? { contactIds } : {}),
       ...(noteIds.length ? { noteIds } : {}),
+      ...(eventRefsOf(data.eventRefs).length ? { eventRefs: eventRefsOf(data.eventRefs) } : {}),
       ...(data.recurrence ? { recurrence: { frequency: "weekly" } } : {}),
     } as never);
-    const item = (created as { item?: { id: string } }).item ?? (created as unknown as { id: string });
+    // AG13: the service answers { scheduleItem } (the id was not recorded before, so S10 had no product id).
+    const item = (created as { scheduleItem?: { id: string } }).scheduleItem ?? (created as { item?: { id: string } }).item ?? (created as unknown as { id: string });
     report.ids[record.id] = item.id;
     count(report, record.account, "schedule");
+  }
+
+  /** AG13: a private event of the account, through its service (version as the fixture says, raised by edits). */
+  async function writePrivateEvent(record: FixtureRecord): Promise<void> {
+    const actorId = actorOf(record.account);
+    const data = record.data;
+    privateNow = new Date(Math.min(Date.parse(String(data.startsAt)) - 86_400_000, Date.parse(clock) - 86_400_000)).toISOString();
+    const event = await privateEvents.create(actorId, { idempotencyKey: `agent-eval:${world}:${record.id}`, startsAt: iso(data.startsAt)!, title: String(data.title), ...(data.endsAt ? { endsAt: iso(data.endsAt) } : {}), ...(data.venue ? { venue: String(data.venue) } : {}) });
+    report.ids[record.id] = event.id;
+    count(report, record.account, "private_events");
+  }
+
+  /** AG13: «我去过» (the user's own note), through its service. */
+  async function writeAttendance(record: FixtureRecord): Promise<void> {
+    const actorId = actorOf(record.account);
+    const data = record.data;
+    const ref = data.eventRef as { kind: "platform" | "private"; id: string } | undefined;
+    const eventId = ref ? idOf(ref.id) : undefined;
+    if (!ref || !eventId) {
+      gap(report, record.id, "eventRef", "the event of this note was not seeded");
+      return;
+    }
+    privateNow = new Date(Date.parse(`${String(data.attendedOn)}T23:00:00+09:00`)).toISOString();
+    const note = await attendanceNotes.create(actorId, { attendedOn: String(data.attendedOn), eventRef: { id: eventId, kind: ref.kind }, idempotencyKey: `agent-eval:${world}:${record.id}`, ...(Array.isArray(data.dayParts) ? { dayParts: data.dayParts as never } : {}), ...(data.selfNote ? { selfNote: String(data.selfNote) } : {}) });
+    report.ids[record.id] = note.id;
+    count(report, record.account, "attendance");
   }
 
   let organizerPromise: Promise<string> | null = null;
@@ -533,6 +580,9 @@ export function createWorldWriter(world: string, clock: string) {
     await step("contact", 8, writeContact);
     await step("platform_event", 1, writePlatformEvent);
     await step("my_event", 1, writeMyEvent);
+    // AG13: private events and «我去过» before the records that link to them.
+    await step("private_event", 4, writePrivateEvent);
+    await step("attendance", 4, writeAttendance);
     await step("memo", 8, writeMemo);
     await step("todo", 8, (record) => writeTodo(record, false));
     await step("followup", 8, (record) => writeTodo(record, true));
@@ -540,7 +590,7 @@ export function createWorldWriter(world: string, clock: string) {
     await step("memory", 1, writeMemory);
     await step("rule", 1, writeRule);
     await step("conversation", 4, writeConversation);
-    for (const kind of ["private_event", "attendance", "connection", "card", "push_device"] as const) {
+    for (const kind of ["connection", "card", "push_device"] as const) {
       for (const record of byKind(kind)) gap(report, record.id, kind, `${kind} cannot be written by the current product; arrives in a later sprint`);
       if (byKind(kind).length) count(report, byKind(kind)[0].account, `${kind}_not_seeded`, byKind(kind).length);
     }
@@ -551,7 +601,7 @@ export function createWorldWriter(world: string, clock: string) {
     await Promise.allSettled([configured.client.close(), runtime.client.close(), events.client.close()]);
   }
 
-  return { actorOf, close, ensureAccount, report, updateTodo, writeAll, writeContact, writeConversation, writeMemo, writeMemory, writeRule, writeSchedule, writeTodo };
+  return { actorOf, close, ensureAccount, report, updateTodo, writeAll, writeAttendance, writeContact, writeConversation, writeMemo, writeMemory, writePrivateEvent, writeRule, writeSchedule, writeTodo };
 }
 
 export type WorldWriter = ReturnType<typeof createWorldWriter>;

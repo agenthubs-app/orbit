@@ -92,15 +92,20 @@ const CONTACT_FIELD_ALIASES: Record<string, readonly string[]> = { email: ["prim
 function lookup(set: Record<string, unknown>, key: string): unknown {
   if (key in set) return set[key];
   for (const alias of CONTACT_FIELD_ALIASES[key] ?? []) if (alias in set) return set[alias];
-  // AG10 (CHANGES.md 2026-11-18): a to-do holds one related contact until AG13 (relatedContactId); the cases write relatedContactIds.
-  if (key === "relatedContactIds") {
-    const single = lookup(set, "relatedContactId");
-    if (typeof single === "string") return [single];
-  }
   const dotted = key.split(".").reduce<unknown>((value, part) => (value && typeof value === "object" ? (value as Record<string, unknown>)[part] : undefined), set);
   if (dotted !== undefined) return dotted;
   for (const nested of Object.values(set)) {
     if (nested && typeof nested === "object" && !Array.isArray(nested) && key in (nested as Record<string, unknown>)) return (nested as Record<string, unknown>)[key];
+  }
+  // AG10 (CHANGES.md 2026-11-18): a to-do held one related contact until AG13 (relatedContactId); the cases write
+  // relatedContactIds. AG13: a to-do that holds the list is read by the list (above); an older one by its single field.
+  if (key === "relatedContactIds") {
+    const single = lookup(set, "relatedContactId");
+    if (typeof single === "string") return [single];
+  }
+  if (key === "relatedEventRefs") {
+    const single = lookup(set, "relatedEventId");
+    if (typeof single === "string") return [{ id: single, kind: "platform" }];
   }
   // AG06: a dotted key inside a wrapped payload ({ note: { interaction: { actualContactIds } } }).
   for (const nested of Object.values(set)) {
@@ -114,6 +119,8 @@ function lookup(set: Record<string, unknown>, key: string): unknown {
 function mapFixture(value: unknown, obs: Observation): unknown {
   if (typeof value === "string") return obs.fixtureIdOf(value) ?? value;
   if (Array.isArray(value)) return value.map((item) => mapFixture(item, obs));
+  // AG13: an event reference ({ kind, id }) names its record by id too.
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value as Record<string, unknown>).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)).map(([key, item]) => [key, key === "kind" ? item : mapFixture(item, obs)]));
   return value;
 }
 
@@ -218,6 +225,8 @@ export const CHECKS: Record<string, CheckFn> = {
         if (decision.seq >= firstWrite) return false;
         const card = obs.cards.find((item) => item.cardId === decision.cardId);
         if (!card) return false;
+        // AG13: one time of a repeating schedule item changed by a card that targets its series (an exception record).
+        if (change.collection === "personal_schedule_occurrence_exceptions") return card.ops.some((op) => op.op.startsWith("schedule.") && op.target !== null && change.id.startsWith(`${obs.idMap[op.target] ?? op.target}:occurrence:`));
         return change.kind === "created" ? card.ops.some((op) => op.op.endsWith(".create") || op.op.endsWith(".save") || op.op.endsWith(".import")) : card.ops.some((op) => op.target === change.fixtureId || op.target === change.id);
       });
       if (!covering) problems.push(`${describeChange(change)} written at seq ${firstWrite} with no prior confirm click on a card for it`);
@@ -253,13 +262,38 @@ export const CHECKS: Record<string, CheckFn> = {
   },
 
   writes_exact(args, obs) {
-    const changes = businessChanges(obs);
+    // AG13 (EVT.yaml notes): a list given in the case is every change at the end against the starting world, an
+    // external_change's included; same_as_card is the system's own writes only.
+    const changes = args === "same_as_card" ? businessChanges(obs) : obs.businessChanges;
     const card = cardAt(obs, "last");
-    const expected: { op: string; target?: string; set?: Record<string, unknown> }[] =
+    const expected: { op?: string; target?: string; set?: Record<string, unknown>; delete?: boolean }[] =
       args === "same_as_card" ? (card?.ops ?? []).map((op) => ({ op: op.op, set: op.set, target: op.target ?? undefined })) : Array.isArray(args) ? args : [];
     if (args === "same_as_card" && !card) return changes.length ? fail("no card, but data changed") : pass("no card and no change");
-    const unexplained = changes.filter((change) => !expected.some((op) => (op.target ? op.target === change.fixtureId : change.kind === "created")));
-    const unapplied = expected.filter((op) => !changes.some((change) => (op.target ? op.target === change.fixtureId : change.kind === "created") && Object.entries(op.set ?? {}).every(([key, value]) => change.kind === "deleted" || valuesEqual(mapFixture(value, obs), mapFixture(lookup(change.after ?? {}, key), obs)))));
+    // AG13: changing one time of a repeating schedule item writes that time's exception record (personal_schedule_occurrence_exceptions,
+    // id "<series>:occurrence:<day>"); the series itself only changes its updatedAt.
+    const occurrenceOf = (op: (typeof expected)[number]) => (op.set && op.set.scope === "this_occurrence" && typeof op.set.occurrenceDate === "string" && op.target ? `${obs.idMap[op.target] ?? op.target}:occurrence:${op.set.occurrenceDate}` : null);
+    const covers = (op: (typeof expected)[number], change: (typeof changes)[number]) => (op.target ? op.target === change.fixtureId || (occurrenceOf(op) !== null && change.collection === "personal_schedule_occurrence_exceptions" && change.id === occurrenceOf(op)) : change.kind === "created");
+    const createdRefs = changes.filter((change) => change.kind === "created");
+    const valueMatches = (op: (typeof expected)[number], change: (typeof changes)[number], key: string, value: unknown) => {
+      if (change.kind === "deleted") return true;
+      // AG13: a card item that deletes (its set says deleted: true) matches a record deleted or soft-deleted.
+      if (key === "deleted" && value === true) return (change.after as Record<string, unknown> | null)?.__lifecycleState === "deleted";
+      if (occurrenceOf(op)) {
+        if (key === "scope" || key === "occurrenceDate") return true;
+        if (change.collection !== "personal_schedule_occurrence_exceptions") return false;
+        return valuesEqual(mapFixture(value, obs), mapFixture(lookup(((change.after ?? {}) as { patch?: Record<string, unknown> }).patch ?? {}, key), obs));
+      }
+      if (op.set?.scope === "whole_series" && key === "scope") return true;
+      // AG13: an event the same card created ({ kind: private, localCreateRef: n }) is the record that item created.
+      const local = value && typeof value === "object" && typeof (value as { localCreateRef?: unknown }).localCreateRef === "number" ? (value as { kind?: string; localCreateRef: number }) : null;
+      if (local) {
+        const actual = lookup(change.after ?? {}, key) as { kind?: string; id?: string } | undefined;
+        return Boolean(actual && actual.kind === local.kind && createdRefs.some((created) => created.collection === "private_events" && created.id === actual.id));
+      }
+      return valuesEqual(mapFixture(value, obs), mapFixture(lookup(change.after ?? {}, key), obs));
+    };
+    const unexplained = changes.filter((change) => !expected.some((op) => covers(op, change)));
+    const unapplied = expected.filter((op) => !changes.some((change) => covers(op, change) && (!op.delete || change.kind === "deleted" || (change.after as Record<string, unknown> | null)?.__lifecycleState === "deleted") && (!occurrenceOf(op) || change.collection === "personal_schedule_occurrence_exceptions" || !Object.keys(op.set ?? {}).some((key) => key !== "scope" && key !== "occurrenceDate")) && Object.entries(op.set ?? {}).every(([key, value]) => valueMatches(op, change, key, value))));
     if (!unexplained.length && !unapplied.length) return pass(`${changes.length} change(s) match the card`);
     return fail([unexplained.length ? `changes not on the card: ${unexplained.map(describeChange).join(" | ")}` : "", unapplied.length ? `card items not applied: ${JSON.stringify(unapplied)}` : ""].filter(Boolean).join("; "), changes.flatMap((change) => seqs(writesFor(obs.events, change))));
   },
@@ -773,6 +807,27 @@ export const CHECKS: Record<string, CheckFn> = {
   },
 
   order(args, obs) {
+    // AG13 (EVT.yaml): [{ op: 1 }, { op: 2 }] — the card items ran in that order: each later item's executor call starts
+    // after the earlier item's receipt (the last card; items counted from 1).
+    if (Array.isArray(args) && args.length && args.every((item) => item && typeof item === "object" && typeof (item as { op?: unknown }).op === "number")) {
+      const card = cardAt(obs, "last");
+      if (!card) return fail("no card");
+      const ids = (args as { op: number }[]).map((item) => (card.ops[item.op - 1]?.raw as { operationId?: string } | undefined)?.operationId);
+      if (ids.some((id) => !id)) return fail(`the card has no item ${(args as { op: number }[]).map((item) => item.op).join(" / ")}`);
+      const call = (id: string) => obs.events.find((event) => event.type === "exec.call" && event.operationId === id);
+      const receipt = (id: string) => obs.events.filter((event) => event.type === "exec.receipt" && event.operationId === id && event.status === "completed").at(-1);
+      const problems: string[] = [];
+      const evidence: number[] = [];
+      for (let index = 1; index < ids.length; index += 1) {
+        const before = receipt(ids[index - 1]!);
+        const later = call(ids[index]!);
+        if (!before) problems.push(`item ${(args as { op: number }[])[index - 1].op} has no completed receipt`);
+        else if (!later) problems.push(`item ${(args as { op: number }[])[index].op} never ran`);
+        else if (Number(later.seq) <= Number(before.seq)) problems.push(`item ${(args as { op: number }[])[index].op} ran at seq ${later.seq}, before item ${(args as { op: number }[])[index - 1].op}'s receipt at seq ${before.seq}`);
+        else evidence.push(Number(before.seq), Number(later.seq));
+      }
+      return problems.length ? fail(problems.join("; "), evidence) : pass(`items ran in order ${(args as { op: number }[]).map((item) => item.op).join(" → ")}`, evidence);
+    }
     const entry = obs.entry;
     if (!entry) return cannot("the case did not run on the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)");
     // AG06 (XL.yaml 约定): elements that name a kind of result — clarification, answer, card. A result counts from
