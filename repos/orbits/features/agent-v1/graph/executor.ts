@@ -27,6 +27,7 @@ import { agentCardPreview } from "../../agent/runtime/card-view";
 import { cardLocale } from "../../agent/runtime/todo-operations";
 import type { AgentCardAccess } from "./deps";
 import { configuredWebAccess } from "../web/factory";
+import { reviseImportByWords } from "../entry/import-revision";
 
 /**
  * AG06: the graph's card is the request's card in the ledger (conversationCardId), frozen through
@@ -169,6 +170,9 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       const kept = keepEarlierBasis(execution.document ?? null, resumed);
       return { ...(resumed.actionPreview ? { actionPreview: resumed.actionPreview } : {}), basis: kept.basis, ...(resumed.cardLine && resumed.text.includes(resumed.cardLine) ? { cardLine: resumed.cardLine } : {}), clarifications: resumed.clarifications, partResults: resumed.partResults, sourceRefs: kept.sourceRefs, status: resumed.status, text: resumed.text, web: resumed.web };
     }
+    // AG12-4: words about the rows of this conversation's waiting import card give its next revision (code, no model).
+    const importRevision = await reviseImportByWords({ actorId: execution.actorId, message: execution.input.message, now: deps.now, runtime, sessionId: execution.sessionId, store: entryStore ?? null });
+    if (importRevision) return importRevision;
     const cardPrepared = Boolean(await runtime.getAction(conversationCardId(execution.requestId)).catch(() => null));
     let graph: AgentGraphResult | null = null;
     const boundary = await runWithConfirmBoundary({ now: deps.now, runtime }, {

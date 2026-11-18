@@ -273,8 +273,8 @@ export interface AgentCardOperationPreviewContract {
 
 /** AG07：卡上一项的显示内容。两端照它显示，只按 change 选「改」「新增」这类固定词，不自己拼日期和差异。 */
 export interface AgentCardOperationDisplayContract {
-  /** update：改一条已有记录；create：新增一条。 */
-  change: "update" | "create";
+  /** update：改一条已有记录；create：新增一条；AG12：delete 删除一条（可恢复的写在 note）、restore 恢复原来那一条。 */
+  change: "update" | "create" | "delete" | "restore";
   /** 记录的叫法加名字，如 待办「给小林发修订报价」。 */
   record: string;
   rows: readonly AgentCardDisplayRowContract[];

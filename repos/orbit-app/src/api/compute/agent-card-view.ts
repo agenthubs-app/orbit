@@ -27,6 +27,9 @@ export interface AgentCardWords {
   statusUndone: string;
   badgeChange: string;
   badgeCreate: string;
+  /** AG12: a contact deleted (restorable) or restored. */
+  badgeDelete: string;
+  badgeRestore: string;
   confirmAll: string;
   confirmOne: string;
   dismiss: string;
@@ -43,6 +46,8 @@ export interface AgentCardWords {
   itemProcessing: string;
   itemChanged: string;
   itemCreated: string;
+  itemDeleted: string;
+  itemRestored: string;
   itemFailed: string;
   itemSkipped: string;
   itemReview: string;
@@ -85,7 +90,7 @@ export interface AgentCardRowView {
 export interface AgentCardItemView {
   operationId: string;
   badge: string;
-  change: "update" | "create";
+  change: "update" | "create" | "delete" | "restore";
   record: string;
   rows: AgentCardRowView[];
   status: { label: string; tone: AgentCardItemTone } | null;
@@ -158,11 +163,11 @@ function chipOf(status: AgentCardStatus, review: boolean, words: AgentCardWords)
   }
 }
 
-function itemStatusOf(status: AgentCardStatus, op: AgentCardOperationStatus, change: "update" | "create", words: AgentCardWords): AgentCardItemView["status"] {
+function itemStatusOf(status: AgentCardStatus, op: AgentCardOperationStatus, change: AgentCardItemView["change"], words: AgentCardWords): AgentCardItemView["status"] {
   if (WAITING.includes(status) || status === "expired" || status === "rejected" || status === "canceled") return null;
   switch (op) {
     case "succeeded":
-      return { label: change === "create" ? words.itemCreated : words.itemChanged, tone: "teal" };
+      return { label: change === "create" ? words.itemCreated : change === "delete" ? words.itemDeleted : change === "restore" ? words.itemRestored : words.itemChanged, tone: "teal" };
     case "failed":
       return { label: words.itemFailed, tone: "coral" };
     case "skipped":
@@ -216,7 +221,8 @@ export function agentCardView(preview: AgentActionPreviewContract, client: Agent
     const targetKey = op.target ? `${op.target.collection}:${op.target.id}` : null;
     const pendingEdit = waiting && targetKey && pending.has(targetKey) ? (op.capability.startsWith("todo.") ? words.pendingEditTodo : words.pendingEditOther) : null;
     return {
-      badge: change === "create" ? words.badgeCreate : words.badgeChange,
+      // AG12 (设计稿 §10「写“改”“新增”“删除”」): the badge says what the item does; clients show the word in their existing badge.
+      badge: change === "create" ? words.badgeCreate : change === "delete" ? words.badgeDelete : change === "restore" ? words.badgeRestore : words.badgeChange,
       change,
       note: display?.note ?? null,
       openable: preview.status === "completed" || op.status === "succeeded",

@@ -14,6 +14,7 @@ import { evalDeniedReads } from "../observability/trace";
 import { createDomainRegistry, readMaxPages } from "./registry";
 import { createPostgresRecordSource, type RecordSource } from "./source";
 import { parseRef, type DomainKind } from "./types";
+import { createStoreContactAccess } from "./contact/access";
 
 export const AUTHORIZATION_EPOCH = "agent-v1:1";
 
@@ -60,6 +61,8 @@ export function configuredRecordAccess(): AgentRecordAccess | null {
   const reader = createDomainRegistry({ cursorKey: cursorKeyOf(secret), denied: evalDeniedReads, events, now: () => new Date().toISOString(), source });
   const workspaceId = configured.workspaceId;
   return {
+    // AG12: contact writes read the account's contacts from the same store (duplicates, restore, import review).
+    contacts: createStoreContactAccess({ store: configured.store, workspaceId }),
     // AG08: the events of the deployment for ranking (functions node keeps those the account may see).
     listEvents: async () => (repository ? repository.listEvents() : []),
     maxPages: readMaxPages(),

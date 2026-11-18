@@ -72,6 +72,12 @@ test("operation types cover the design-derived write operations", () => {
       "create_memo",
       // agent-design AG10: the interaction written on an existing memo (memo.update).
       "update_memo",
+      // agent-design AG12: the five contact operations.
+      "create_contact",
+      "update_contact",
+      "delete_contact",
+      "restore_contact",
+      "import_contacts",
     ],
   );
 });

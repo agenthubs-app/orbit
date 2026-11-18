@@ -41,6 +41,13 @@ import {
   type TodoReader,
 } from "./todo-operations";
 import { buildCardOperationList, cardCountTitle, cardIntentOf, type CardOperationIntent } from "./card-operations";
+import { checkContactTarget } from "../../agent-v1/domains/contact/prepare";
+import { isContactCapability } from "../../agent-v1/domains/contact/types";
+
+/** At the click and at a recheck: what the card showed against now (to-dos; AG12: contacts). */
+async function checkCardTarget(op: AgentActionOperationPayload, reader: TodoReader) {
+  return isContactCapability(op.capability) ? checkContactTarget(op, reader.contacts) : checkTodoTarget(op, reader);
+}
 
 /** Conversation cards expire after 7 days (设计稿 §5.2). */
 export const AGENT_CARD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -274,11 +281,12 @@ function requireCardRepository(repository: AgentRuntimeRepository): Required<Pic
 }
 
 /** A new revision of the card from its intents and the current data (content change or regeneration). */
-async function nextRevision(deps: AgentCardDependencies, action: AgentActionRecord, reason: AgentActionRevisionRecord["reason"], now: string, keep?: (op: AgentActionOperationPayload) => boolean): Promise<AgentActionRecord> {
+async function nextRevision(deps: AgentCardDependencies, action: AgentActionRecord, reason: AgentActionRevisionRecord["reason"], now: string, keep?: (op: AgentActionOperationPayload) => boolean, replaced?: readonly CardOperationIntent[]): Promise<AgentActionRecord> {
   const revision = (action.revision ?? 1) + 1;
   // AG06: an edit keeps only some items; a kept item that waited for a removed one no longer waits.
   const kept = keep ? action.operations.filter(keep) : action.operations;
-  const intents = kept.map((op) => cardIntentOf(op, kept)).filter((intent): intent is CardOperationIntent => intent !== null);
+  // AG12: the user changed an item in words (an import row's decision): its new intents.
+  const intents = replaced ? [...replaced] : kept.map((op) => cardIntentOf(op, kept)).filter((intent): intent is CardOperationIntent => intent !== null);
   const { operations } = await buildCardOperations(deps.reader, { actionId: action.actionId, intents, locale: action.locale ?? "zh", revision });
   const texts = cardTexts(operations, action.locale ?? "zh", revision);
   const previous: AgentActionRevisionRecord = {
@@ -408,7 +416,7 @@ async function decideOnce(
     const versionTokens = new Map<string, string>();
     for (const op of action.operations) {
       if (!deps.reader) break;
-      const check = await checkTodoTarget(op, deps.reader);
+      const check = await checkCardTarget(op, deps.reader);
       if (check.versionToken) versionTokens.set(op.operationId, check.versionToken);
       for (const row of check.rows) changes.push({ operationId: op.operationId, ...row });
     }
@@ -439,7 +447,8 @@ async function decideOnce(
       operationId: op.operationId,
       outboxId: `outbox:${action.actionId}:${op.operationId}`,
       // An update executes against the version read at this click; the domain re-checks it.
-      payload: versionTokens.has(op.operationId) ? { ...op.payload, expectedUpdatedAt: versionTokens.get(op.operationId) } : op.payload,
+      // AG12: a contact item executes against the contact version read at this click.
+      payload: versionTokens.has(op.operationId) ? (isContactCapability(op.capability) ? { ...op.payload, expectedVersion: Number(versionTokens.get(op.operationId)) } : { ...op.payload, expectedUpdatedAt: versionTokens.get(op.operationId) }) : op.payload,
       payloadVersion: op.payloadVersion,
       runId: action.runId,
       status: "pending",
@@ -566,7 +575,7 @@ export async function recheckCard(deps: AgentCardDependencies, input: { actionId
     const changes: AgentCardChange[] = [];
     for (const op of action.operations) {
       if (!deps.reader) break;
-      const check = await checkTodoTarget(op, deps.reader);
+      const check = await checkCardTarget(op, deps.reader);
       for (const row of check.rows) changes.push({ operationId: op.operationId, ...row });
     }
     if (!changes.length) return { message: "", outcome: "unchanged", revision };
@@ -623,4 +632,38 @@ export async function editCard(deps: AgentCardDependencies, input: { actionId: s
     return { message: EDIT_MESSAGES[locale].edited, outcome: "edited", revision: next.revision ?? 1 };
   }
   throw new Error(`Agent action ${input.actionId} kept changing while it was being edited.`);
+}
+
+export interface AgentReviseCardResult {
+  outcome: "revised" | "refused";
+  reason?: "CARD_CLOSED" | "CARD_EXPIRED";
+  message: string;
+  revision: number;
+}
+
+/**
+ * agent-design AG12 (设计稿 §5.1 "改内容…只生成新版本，走普通消息或点选"): the user changed an item in words — an import
+ * row to create after all. Not a decision: the card, still waiting, is frozen again from the new intents and the current
+ * data as revision+1; the earlier revision can no longer be confirmed (its revision and hash are stale).
+ */
+export async function reviseCard(deps: AgentCardDependencies, input: { actionId: string; intents: readonly CardOperationIntent[] }): Promise<AgentReviseCardResult | null> {
+  const repository = requireCardRepository(deps.repository);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const action = await deps.repository.getAction(input.actionId);
+    if (!action) return null;
+    const now = deps.now();
+    const messages = cardMessages(action.locale);
+    const revision = action.revision ?? 1;
+    if (isPastExpiry(action, now) || action.status === "expired") return { message: messages.expired, outcome: "refused", reason: "CARD_EXPIRED", revision };
+    if (action.status !== "awaiting_confirmation" && action.status !== "deferred") return { message: messages.alreadyDecided, outcome: "refused", reason: "CARD_CLOSED", revision };
+    const next = await nextRevision(deps, action, "edited", now, undefined, input.intents);
+    if (!next.operations.length) return { message: messages.revisionChanged, outcome: "refused", reason: "CARD_CLOSED", revision };
+    const committed = await repository.commitCardChange({ actionId: action.actionId, expect: { revision, statuses: [action.status], updatedAt: action.updatedAt }, next });
+    if (!committed.committed) continue;
+    await deps.afterChange?.(next);
+    emitCard(next, "edited");
+    emitTrace({ cardId: action.actionId, revision: next.revision ?? 1, type: "card.revised", via: "message" });
+    return { message: "", outcome: "revised", revision: next.revision ?? 1 };
+  }
+  throw new Error(`Agent action ${input.actionId} kept changing while it was being revised.`);
 }

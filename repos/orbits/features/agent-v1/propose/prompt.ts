@@ -3,7 +3,7 @@
  * parts the first layer handed over as writes (their words and goals) and the field list of 附录 B; no
  * records, no conversation. Code finds the records, works out dates and builds the card.
  */
-export const PROPOSE_PROMPT_VERSION = "propose@ag06.1";
+export const PROPOSE_PROMPT_VERSION = "propose@ag12.1";
 
 export function proposeSystemPrompt(): string {
   return [
@@ -13,10 +13,11 @@ export function proposeSystemPrompt(): string {
     "Operation = {",
     '  "localId": "w1", "w2", …,',
     '  "partId": the id of the part it belongs to (from the list below),',
-    '  "entity": "todo" | "memo",',
-    '  "verb": "create" | "update" — update an existing to-do ("把…改到周五", "move … to Friday", "…を金曜日に変更"); create a new to-do ("新建一条待办…", "add a to-do …"); create a memo that records a contact with a person ("记下他今天来过电话", "log that Emily called me", "電話があったことを記録"),',
-    '  "selector": {"clues": [words of the CURRENT message that name the existing record, e.g. "报价待办", "给小林发修订报价", "原稿を送るToDo", "第二条", "his reference check"]} — update only,',
-    '  "fields": [{"name": "title" | "body", "valueText": words copied from the CURRENT message}] — title: the to-do\'s title for a new to-do (the words the user gave as its name, without quotes) or a new title the user gives; body: for a memo, the part of the message that says what happened, copied as is (e.g. "他今天来过电话", "小林今天来电话了，说小陈还在审合同", "Emily called me today. She said she\'s moving to the Tokyo office in January."), without the instruction words around it ("记一下", "log that", "記録しておいて"); never add or reword anything,',
+    '  "entity": "todo" | "memo" | "contact",',
+    '  "verb": "create" | "update" | "delete" | "restore" | "import" (the last three for contacts only) — for to-dos and memos: update an existing to-do ("把…改到周五", "move … to Friday", "…を金曜日に変更"); create a new to-do ("新建一条待办…", "add a to-do …"); create a memo that records a contact with a person ("记下他今天来过电话", "log that Emily called me", "電話があったことを記録"),',
+    '  "selector": {"clues": [words of the CURRENT message that name the existing record, e.g. "报价待办", "给小林发修订报价", "原稿を送るToDo", "第二条", "his reference check"; for a contact the person\'s name, e.g. "田中浩", "李薇"]} — update, delete and restore,',
+    '  contact verbs (entity "contact"): "create" adds a person to the user\'s contacts ("新增一位联系人：…", "add a contact …"); "update" changes a field of an existing contact ("把田中浩的职位改成采购部长", "…の役職を…に更新"); "delete" removes a contact ("把李薇从联系人里删掉"); "restore" brings back a contact deleted earlier ("把前几天删的李薇恢复"); "import" adds the rows of a table the user pasted ("把下面这几位导入联系人：…") — import has no fields: code reads the table,',
+    '  "fields": [{"name": "title" | "body" | "name" | "company" | "role" | "email" | "phone", "valueText": words copied from the CURRENT message}] — title: the to-do\'s title for a new to-do (the words the user gave as its name, without quotes) or a new title the user gives; body: for a memo, the part of the message that says what happened, copied as is (e.g. "他今天来过电话", "小林今天来电话了，说小陈还在审合同", "Emily called me today. She said she\'s moving to the Tokyo office in January."), without the instruction words around it ("记一下", "log that", "記録しておいて"); never add or reword anything; for a contact: name, company, role (job title), email, phone — for create the new person\'s values, for update only the new value of each field the user asked to change (e.g. "采购部长", "購買部長", "青叶设计事务所"),',
     '  "dateText": the words of the date the user gave, copied (e.g. "周五", "11 月 30 日", "金曜日", "Thursday", "今天", "today") — for a to-do the new or planned date, for a memo when the contact happened; leave it out when none was said,',
     '  "relations": [{"entity": "contact", "clue": the words naming the person (a name or a pronoun, e.g. "小林", "他", "Emily", "山本さん"), "role": "actual_contact" (the person the user actually talked to, called, met, or who called them) | "mentioned" (only talked about, e.g. "说小陈还在审合同": 小陈 is mentioned) | "about" (the person a to-do is about)}],',
     '  "channel": memo only — "phone" | "meeting" | "message" | "email" | "other",',

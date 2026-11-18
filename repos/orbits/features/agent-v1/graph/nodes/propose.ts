@@ -29,6 +29,8 @@ import { nameOf as boundName, setIdOf } from "./clarify";
 import { judgeDuplicate, possibleDuplicates, type DuplicateDecision } from "../../judgment/duplicate";
 import { localDay } from "../../views/recent-interaction";
 import type { RecordView } from "../../domains/types";
+import { duplicateCandidates, nothingToChange, type DuplicateCandidate } from "../../domains/contact/duplicates";
+import { CONTACT_WORDS } from "../../domains/contact/copy";
 
 const DAY_OF = (view: RecordView, timeZone: string) => {
   const fields = view.fields as { interaction?: { occurredOn?: string }; createdAt?: string };
@@ -72,6 +74,30 @@ function duplicateSet(scope: NodeScope, state: AgentGraphState, part: GraphPart,
     labels,
     line,
     set: { ...(decision.kind === "same" ? {} : { asks: "reading" as const }), clarificationId, kind: decision.kind === "same" ? "entry" : "question", options, partId: part.localId, purpose: "operation", state: "open", subgoal: `clarification:${scope.input.requestId}:${part.localId}` },
+  };
+}
+
+/**
+ * AG12-1 (设计稿 §3.2, §3.8; PLANNER 易错边界 1): a new contact that may be one already in the account is a question
+ * before any card — the possible ones (name, company, role; no contact methods) and "都不是，另建一位". Never merged,
+ * never decided for the user.
+ */
+function contactDuplicateSet(scope: NodeScope, state: AgentGraphState, part: GraphPart, name: string, candidates: readonly DuplicateCandidate[]): { set: OptionSetState; labels: Map<string, { label: string; refName?: string }>; line: string } {
+  const language = state.language;
+  const labels = new Map<string, { label: string; refName?: string }>();
+  const options: OptionSetState["options"] = [];
+  candidates.forEach((candidate, index) => {
+    labels.set(`o${index + 1}`, { label: CONTACT_WORDS.candidateLabel(language, candidate.name, candidate.organization, candidate.role), refName: candidate.name });
+    options.push({ capabilities: ["contact.create"], capability: "contact.create", optionId: `o${index + 1}`, refId: candidate.id, refType: "contact" });
+  });
+  labels.set("create_new", { label: CONTACT_WORDS.createNew(language) });
+  options.push({ capabilities: ["contact.create"], capability: "contact.create", optionId: "create_new", refId: "new", refType: "duplicate" });
+  const existing = state.optionSets.filter((set) => set.partId === part.localId && set.purpose === "operation").length;
+  const clarificationId = `${setIdOf(scope.input.requestId, part.localId, "q")}${existing ? existing + 1 : ""}`;
+  return {
+    labels,
+    line: CONTACT_WORDS.askDuplicate(language, name, candidates.map((candidate) => CONTACT_WORDS.candidateLabel(language, candidate.name, candidate.organization, candidate.role))),
+    set: { asks: "object", clarificationId, kind: "question", options, partId: part.localId, purpose: "operation", state: "open", subgoal: `clarification:${scope.input.requestId}:${part.localId}` },
   };
 }
 
@@ -260,6 +286,7 @@ export function proposeNode(scope: NodeScope): GraphNode {
     };
     const outcomes = new Map<string, WriteOutcome>();
     const duplicates = new Map<string, Exclude<DuplicateDecision, { kind: "new" }>>();
+    const contactDuplicates = new Map<string, { name: string; candidates: DuplicateCandidate[] }>();
     const active = work.filter((part) => part.write && part.status === "unfinished" && part.reason === "proposing").sort((left, right) => left.quote[0] - right.quote[0]);
     for (const part of active) {
       const preset = run.presetIntents.get(part.localId);
@@ -268,7 +295,7 @@ export function proposeNode(scope: NodeScope): GraphNode {
       // AG08: a new memo of an interaction that may be one already recorded is checked before it goes on a card.
       if (outcome.kind === "ready" && deps.records && ctx.scope && !part.write!.picks.duplicate) {
         for (const op of outcome.ops) {
-          const set = op.set as { body?: string; contactIds?: string[]; interaction?: { actualContactIds: string[]; channel: string; occurredOn: string } } | undefined;
+          const set = (op as { set?: unknown }).set as { body?: string; contactIds?: string[]; interaction?: { actualContactIds: string[]; channel: string; occurredOn: string } } | undefined;
           if (op.capability !== "memo.create" || !set?.interaction) continue;
           const entry = { body: String(set.body ?? ""), contactIds: set.contactIds ?? [], interaction: set.interaction };
           const existing = await possibleDuplicates(deps.records, ctx.scope, entry, ctx.timeZone).catch((error: unknown) => {
@@ -285,6 +312,29 @@ export function proposeNode(scope: NodeScope): GraphNode {
         duplicates.delete(part.localId);
         outcomes.set(part.localId, { kind: "stop", line: language === "zh" ? "好的，当作同一次，没有另外新增。" : language === "ja" ? "同じ件として扱い、新しくは記録していません。" : "Got it — the same occasion, so nothing new was added.", reason: "already_recorded" });
       }
+      // AG12-1: a new contact is checked against the account's contacts first (code rules, no model).
+      const newContact = outcome.kind === "ready" ? outcome.ops.find((op) => op.capability === "contact.create") as { set: { displayName: string; organization?: string; role?: string; email?: string; phone?: string } } | undefined : undefined;
+      if (newContact && part.write!.picks.duplicate !== "new") {
+        const picked = part.write!.picks.contact;
+        const access = deps.records?.contacts;
+        if (picked && access && ctx.scope) {
+          // The user said it is one of them: nothing is added and nothing merged.
+          const existing = await access.read(ctx.scope.accountId, picked).catch(() => null);
+          const differs = existing && !nothingToChange(existing, newContact.set)
+            ? CONTACT_WORDS.differs(language, (["organization", "role"] as const).filter((field) => newContact.set[field] && newContact.set[field] !== existing[field]).map((field) => ({ label: CONTACT_WORDS.label(language, field), value: newContact.set[field]! })))
+            : null;
+          outcomes.set(part.localId, { kind: "stop", line: CONTACT_WORDS.sameAsExisting(language, existing?.displayName ?? newContact.set.displayName, existing?.organization ?? null, existing?.role ?? null, differs), reason: "already_exists" });
+          emitTrace({ existing: picked, partId: part.localId, type: "contact.duplicate_chosen" });
+        } else if (access && ctx.scope) {
+          const records = await access.listActive(ctx.scope.accountId).catch((error: unknown) => {
+            emitTrace({ error: error instanceof Error ? error.message : String(error), partId: part.localId, type: "read.error", where: "propose.contact_duplicates" });
+            return null;
+          });
+          const candidates = records ? duplicateCandidates(records, ctx.scope.accountId, newContact.set) : [];
+          emitTrace({ candidates: candidates.map((item) => ({ basis: item.basis, id: item.id })), partId: part.localId, type: "contact.duplicates" });
+          if (candidates.length) contactDuplicates.set(part.localId, { candidates, name: newContact.set.displayName });
+        }
+      }
       if (outcome.kind === "ask" && outcome.question.type === "contact") asked.set(part.localId, outcome.question.candidates.map((item) => item.id));
       emitTrace({ kind: outcome.kind, partId: part.localId, ...(outcome.kind === "ask" ? { question: outcome.question.type } : {}), ...(outcome.kind === "stop" ? { reason: outcome.reason } : {}), type: "propose.resolved" });
     }
@@ -295,6 +345,16 @@ export function proposeNode(scope: NodeScope): GraphNode {
       const outcome = outcomes.get(part.localId)!;
       const write = part.write as PartWrite;
       write.waitsFor = null;
+      const contactDuplicate = contactDuplicates.get(part.localId);
+      if (contactDuplicate) {
+        const made = contactDuplicateSet(scope, { ...state, optionSets }, part, contactDuplicate.name, contactDuplicate.candidates);
+        optionSets.push(made.set);
+        run.optionLabels.set(made.set.clarificationId, made.labels);
+        settle(part, "awaiting_clarification", null, made.line);
+        part.waitReason = "object_ambiguous";
+        emitTrace({ clarificationId: made.set.clarificationId, kind: "question", options: made.set.options.length, partId: part.localId, question: "contact_duplicate", subgoal: made.set.subgoal, type: "clarify.asked" });
+        continue;
+      }
       const duplicate = duplicates.get(part.localId);
       if (duplicate) {
         // AG08: not merged, not added: the user checks (a question), or the existing memo is pointed at (an entry).
@@ -326,7 +386,7 @@ export function proposeNode(scope: NodeScope): GraphNode {
     // no card is frozen — the answer may change what the card says; the click resumes every write part.
     const askingElsewhere = parts.find((part) => !active.includes(part) && part.status === "awaiting_clarification");
     const waiting = Boolean(askingElsewhere) || active.some((part) => part.status === "awaiting_clarification" || part.status === "waiting_dependency");
-    const ready = active.filter((part) => outcomes.get(part.localId)?.kind === "ready" && !duplicates.has(part.localId));
+    const ready = active.filter((part) => outcomes.get(part.localId)?.kind === "ready" && !duplicates.has(part.localId) && !contactDuplicates.has(part.localId));
     if (waiting) {
       // One card per request: the items already settled wait for the open question and go on with it.
       for (const part of ready) {

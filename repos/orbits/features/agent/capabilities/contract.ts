@@ -79,7 +79,7 @@ export const AGENT_RUNTIME_EXECUTOR_KEYS = [
  * from AGENT_RUNTIME_EXECUTOR_KEYS because that registry also feeds the old planner's capability list.
  * Each key is a capability of 附录 A with a domain write adapter (features/agent-v1/domains/writes.ts).
  */
-export const AGENT_V1_CARD_EXECUTOR_KEYS = ["todo.create", "todo.update", "memo.create", "memo.update"] as const;
+export const AGENT_V1_CARD_EXECUTOR_KEYS = ["todo.create", "todo.update", "memo.create", "memo.update", "contact.create", "contact.update", "contact.delete", "contact.restore", "contact.import"] as const;
 export type AgentV1CardExecutorKey = (typeof AGENT_V1_CARD_EXECUTOR_KEYS)[number];
 /** The ledger operation types those cards carry (features/agent/ledger/contract.ts). */
 export const AGENT_V1_CARD_OPERATION_TYPES: readonly string[] = ["create_todo", "update_todo", "create_memo", "update_memo"];

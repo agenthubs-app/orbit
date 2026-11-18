@@ -62,7 +62,7 @@ export const agentActionPreviewSchema: z.ZodType<AgentActionPreviewContract> = z
     dependsOn: z.array(z.string()).optional(),
     // AG07: how the card shows the item (written by the server in the card's language).
     display: z.object({
-      change: z.enum(["update", "create"]),
+      change: z.enum(["update", "create", "delete", "restore"]),
       note: z.string().optional(),
       record: z.string(),
       rows: z.array(z.object({ after: z.string(), before: z.string().optional(), field: z.string(), label: z.string() })),

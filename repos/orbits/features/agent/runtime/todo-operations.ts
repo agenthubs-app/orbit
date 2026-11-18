@@ -5,6 +5,7 @@
  * executors that apply an approved operation through the to-do service (its own idempotency key
  * and, for an update, the record's updatedAt as the expected version).
  */
+import type { ContactCardReader } from "../../agent-v1/domains/contact/types";
 import type { TaskItemDTO } from "../../tasks/contract";
 import type { TaskService } from "../../tasks/service";
 import type { AgentCardOperationDisplayContract } from "../../../shared/contract/agent-v1";
@@ -60,6 +61,8 @@ export interface TodoSnapshot {
 
 export interface TodoReader {
   read(taskId: string): Promise<TodoSnapshot | null>;
+  /** agent-design AG12: the contact items of a card read through this (absent: contact items cannot be prepared). */
+  contacts?: ContactCardReader | null;
 }
 
 export function createTodoReader(tasks: Pick<TaskService, "get">, actorId: string): TodoReader {

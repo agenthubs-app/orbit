@@ -985,7 +985,7 @@
         "change": {
           "optional": false,
           "kind": "text",
-          "type": "'update' | 'create'"
+          "type": "'update' | 'create' | 'delete' | 'restore'"
         },
         "record": {
           "optional": false,

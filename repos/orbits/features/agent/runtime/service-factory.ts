@@ -23,6 +23,12 @@ import { createConfiguredTaskService } from "../../tasks/service-factory";
 import { createConfiguredNoteService } from "../../notes/service-factory";
 import { cardWriteExecutors } from "../../agent-v1/domains/writes";
 import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/storage/transactional-postgres";
+import { createStoreContactAccess } from "../../agent-v1/domains/contact/access";
+import type { ContactWriteDeps } from "../../agent-v1/domains/contact/apply";
+import { boundContactReader } from "../../agent-v1/domains/contact/types";
+import { createContactDeleteService } from "../../contacts/delete/service";
+import { createConfiguredManualContactV2Service } from "../../contacts/manual-contact-v2/configured";
+import { getConfiguredContactImportService } from "../../contacts/import/runtime";
 
 interface OrbitAgentRuntimeGlobal {
   __orbitAgentRuntimeServices?: Map<string, AgentRuntimeService>;
@@ -68,6 +74,15 @@ function configuredNotesOrNull(): ReturnType<typeof createConfiguredNoteService>
     return createConfiguredNoteService();
   } catch {
     // Without note storage, memo items of a card cannot run (they fail and are reported); nothing else changes.
+    return null;
+  }
+}
+
+function configuredOrNull<T>(make: () => T | null): T | null {
+  try {
+    return make();
+  } catch {
+    // Without that storage the runtime serves every other card; those contact items fail and are reported.
     return null;
   }
 }
@@ -118,8 +133,20 @@ export function createOrbitAgentRuntimeService(
   // agent-design AG06: the conversation cards' executors (todo.create, todo.update, memo.create) come from the
   // agent-v1 domain write adapters; memos are written through the note service with extraction suppressed.
   const notes = mode === "live" && actorId ? configuredNotesOrNull() : null;
+  // agent-design AG12: the contact items of a card — read for freezing and at the click, written by the contact services.
+  const contactAccess = configured && actorId ? createStoreContactAccess({ store: configured.store, workspaceId: configured.workspaceId }) : null;
+  const contacts: Omit<ContactWriteDeps, "actorId"> | null = configured && contactAccess && actorId
+    ? {
+      access: contactAccess,
+      deletes: createContactDeleteService({ client: configured.client, workspaceId: configured.workspaceId }),
+      imports: configuredOrNull(() => getConfiguredContactImportService({ schedule: (task) => { void task().catch(() => undefined); } })),
+      manual: configuredOrNull(() => createConfiguredManualContactV2Service()),
+      store: configured.store,
+      workspaceId: configured.workspaceId,
+    }
+    : null;
   const executors = createAgentExecutorRegistry([
-    ...cardWriteExecutors({ actorId, notes, tasks }),
+    ...cardWriteExecutors({ actorId, contacts, notes, tasks }),
     ...createAgentDomainExecutors({
       contacts: createStorageContactArchiveActionWriter({
         store,
@@ -150,7 +177,10 @@ export function createOrbitAgentRuntimeService(
         : undefined,
     }),
   ]);
-  const base = createAgentRuntimeService({ cardReader: tasks ? createTodoReader(tasks, actorId) : null, executors, repository });
+  const todoReader = tasks ? createTodoReader(tasks, actorId) : null;
+  const contactReader = contactAccess ? boundContactReader(contactAccess, actorId) : null;
+  const cardReader = todoReader || contactReader ? { ...(todoReader ?? { read: async () => null }), contacts: contactReader } : null;
+  const base = createAgentRuntimeService({ cardReader, executors, repository });
   const service = mode === "live" && process.env.VERCEL === "1"
     ? withAgentBackgroundDispatch(base, actorId, enqueueAgentAction)
     : base;
