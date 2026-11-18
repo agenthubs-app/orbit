@@ -20,7 +20,7 @@ import { fakeTurn, FAKE_DEFECTS, type FakeDefect } from "./fake-agent";
 import { hardChecksPass, runHardChecks, type CheckContext, type CheckResult } from "./hard-checks";
 import { BUSINESS_COLLECTIONS, normalizeDraftOps, normalizeLedgerOps, PRIVATE_READ_COLLECTIONS, productIdsIn, type CardObservation, type EntryObservation, type FirstLayerObservation, type HandoffPart, type Observation, type ReadObservation } from "./observations";
 import { evalPaths } from "./paths";
-import { serverControl } from "./server";
+import { drainServer, serverControl } from "./server";
 import { readSeedReport, type SeedReportFile } from "./selfcheck";
 import { diffStates, readAllPayloads, readDatabaseState, recordKey, restoreSnapshot, type DatabaseDiff } from "./snapshot";
 import { CaseLog, mergeTrace, readServerEvents, scrubSecrets, traceFileSize, type TraceEvent } from "./trace-log";
@@ -65,11 +65,12 @@ export function readsOfTestedSystem(events: readonly TraceEvent[]): TraceEvent[]
 }
 
 /** AG06: card operations a fault can be aimed at (fault.where), besides "executor" for any. */
-const EXECUTOR_FAULT_POINTS: readonly string[] = ["todo.create", "todo.update", "memo.create"];
+// AG13: the private-event, «我去过», schedule and to-do items of a card too.
+const EXECUTOR_FAULT_POINTS: readonly string[] = ["todo.create", "todo.update", "memo.create", "privateEvent.create", "privateEvent.delete", "attendance.create", "attendance.delete", "schedule.create", "schedule.update", "todo.complete", "todo.reopen", "todo.delete"];
 
 const STEP_SUPPORT_NOTE: Record<string, string> = {
   disconnect: "the real-time channel needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
-  legacy_update: "old-client compatibility arrives in AG18",
+  legacy_update: "only a to-do's fields can be sent the way an old client does (AG13); other records arrive in AG18",
   local_pending_edit: "unsynced App edits need the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)",
   mcp: "MCP access arrives in AG17",
   mcp_paginate: "MCP access arrives in AG17",
@@ -161,6 +162,9 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
         else if (record.kind === "memory") await writer.writeMemory(record);
         else if (record.kind === "rule") await writer.writeRule(record);
         else if (record.kind === "schedule") await writer.writeSchedule(record);
+        // AG13: private events and «我去过».
+        else if (record.kind === "private_event") await writer.writePrivateEvent(record);
+        else if (record.kind === "attendance") await writer.writeAttendance(record);
         else if (record.kind === "conversation") {
           // AG03 (CTX conv-prior-turns): the messages and the session state; the case continues this conversation.
           await writer.writeConversation(record);
@@ -198,6 +202,20 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
   return extraIds;
 }
 
+/** AG13: JSON with every object's keys in order (a fixture writes { kind, id }, the product stores { id, kind }). */
+function sortedJson(value: unknown): string {
+  const sort = (item: unknown): unknown => (Array.isArray(item) ? item.map(sort) : item && typeof item === "object" ? Object.fromEntries(Object.entries(item as Record<string, unknown>).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)).map(([key, inner]) => [key, sort(inner)])) : item);
+  return JSON.stringify(sort(value));
+}
+
+/** AG13: fixture ids anywhere in a value (strings, lists, { kind, id } refs) replaced by the product's ids. */
+function productIdsOfFixture(value: unknown, idMap: Record<string, string>): unknown {
+  if (typeof value === "string") return idMap[value] ?? value;
+  if (Array.isArray(value)) return value.map((item) => productIdsOfFixture(item, idMap));
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, key === "kind" ? item : productIdsOfFixture(item, idMap)]));
+  return value;
+}
+
 /** Per-case files and checks. */
 export async function runCase(testCase: EvalCase, filePatches: Record<string, any>, area: string, ctx: RunnerContext): Promise<CaseOutcome> {
   const started = Date.now();
@@ -214,6 +232,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const clockNow = () => new Date(Date.now() + clockOffsetMs).toISOString();
   const log = new CaseLog(testCase.id, clockNow);
 
+  // AG13 opening 4: nothing from an earlier case may still be running when the snapshot is restored.
+  await drainServer(environment);
   restoreSnapshot(environment.database.url, report.snapshot.file);
   if (!ctx.writer || ctx.currentWorld !== testCase.world) {
     // Do not close the previous writer: the configured stores and pools are cached per process and shared.
@@ -800,10 +820,35 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           const other = new EvalClient(baseUrl(environment), log, await cookieFor(account), "web");
           const current = await other.request("GET", `/api/tasks/${encodeURIComponent(productId)}`, undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: "external change: read the to-do on another device" });
           const updatedAt = current.body?.data?.task?.updatedAt;
-          const result = await other.request("PATCH", `/api/tasks/${encodeURIComponent(productId)}`, { action: "update", expectedUpdatedAt: updatedAt, idempotencyKey: `agent-eval:external:${testCase.id}:${index}`, patch: change.set ?? {} }, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: "external change: edit the to-do on another device" });
-          externalSets.set(`tasks\u0000${productId}`, { ...(externalSets.get(`tasks\u0000${productId}`) ?? {}), ...(change.set ?? {}) });
+          // AG13: fixture ids inside the set ({ kind: private, id: P1 }) are sent as the product's ids.
+          const productSet = productIdsOfFixture(change.set ?? {}, idMap) as Record<string, unknown>;
+          const result = await other.request("PATCH", `/api/tasks/${encodeURIComponent(productId)}`, { action: "update", expectedUpdatedAt: updatedAt, idempotencyKey: `agent-eval:external:${testCase.id}:${index}`, patch: productSet }, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: "external change: edit the to-do on another device" });
+          externalSets.set(`tasks\u0000${productId}`, { ...(externalSets.get(`tasks\u0000${productId}`) ?? {}), ...productSet });
           transcript.push(`*（别处改了 ${change.target}：${JSON.stringify(change.set ?? {})}，经待办的正常更新接口，HTTP ${result.status}）*`, "");
           if (result.status !== 200) unsupported.push({ reason: `external change of ${change.target} failed (HTTP ${result.status})`, step: index, word });
+          return;
+        }
+        case "legacy_update": {
+          // AG13 (EVT, CMP 提出的步骤): an old client's partial edit through its old endpoint — only the fields in `set`, none of
+          // the new link fields; with full_object it sends every field it knows (the old ones) as it read them. Not the tested
+          // system's write; its changes still count in the end-of-run data difference.
+          const spec = (step.legacy_update ?? {}) as { target?: string; set?: Record<string, unknown>; full_object?: boolean; client?: string };
+          log.push({ legacy: spec, step: index, type: "turn.legacy_update" });
+          const productId = spec.target ? idMap[spec.target] : undefined;
+          if (!productId || !productId.startsWith("task:")) {
+            unsupported.push({ reason: STEP_SUPPORT_NOTE.legacy_update, step: index, word });
+            return;
+          }
+          const device = new EvalClient(baseUrl(environment), log, await cookieFor(account), "app");
+          const current = await device.request("GET", `/api/tasks/${encodeURIComponent(productId)}`, undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: "old client: read the to-do" });
+          const task = (current.body?.data?.task ?? {}) as Record<string, unknown>;
+          const LEGACY_FIELDS = ["title", "notes", "location", "category", "plannedDate", "dueAt", "priority", "relatedContactId", "relatedEventId", "relatedMeetingId", "relatedConversationId"];
+          const set = productIdsOfFixture(spec.set ?? {}, idMap) as Record<string, unknown>;
+          const patch = spec.full_object ? { ...Object.fromEntries(LEGACY_FIELDS.filter((field) => task[field] !== undefined).map((field) => [field, task[field]])), ...set } : set;
+          const result = await device.request("PATCH", `/api/tasks/${encodeURIComponent(productId)}`, { action: "update", expectedUpdatedAt: task.updatedAt, idempotencyKey: `agent-eval:legacy:${testCase.id}:${index}`, patch }, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: "old client: edit the to-do with its old fields only" });
+          externalSets.set(`tasks\u0000${productId}`, { ...(externalSets.get(`tasks\u0000${productId}`) ?? {}), ...set });
+          transcript.push(`*（旧版客户端经旧接口改了 ${spec.target}：${JSON.stringify(spec.set ?? {})}${spec.full_object ? "（整条提交它认得的字段）" : "（只提交这几个字段）"}，HTTP ${result.status}）*`, "");
+          if (result.status !== 200) unsupported.push({ reason: `legacy update of ${spec.target} failed (HTTP ${result.status})`, step: index, word });
           return;
         }
         case "local_pending_edit": {
@@ -956,6 +1001,10 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     }
     const after = await readDatabaseState(db);
     diff = await diffStates(db, before, beforePayloads, after);
+    // AG13 opening 4 (AE-BND-001): background work this case started (a contact import's industry layers call) ends in this
+    // case's trace, never in the next case's; the server is idle before the next case restores the snapshot.
+    const drained = await drainServer(environment);
+    if (drained && !drained.drained) unsupported.push({ reason: `background work was still running ${drained.waitedMs} ms after the case (${drained.inFlight} model call(s) in flight)`, step: -1, word: "isolation" });
     const serverEvents = readServerEvents(paths.traceDir, traceOffset, testCase.id);
     mergedEvents = mergeTrace(log.events, serverEvents);
     fs.writeFileSync(path.join(dir, "world-after.json"), JSON.stringify({ changed: diff.records.map((change) => ({ collection: change.collection, id: change.id, kind: change.kind, after: stripLifecycle(change.after) })), digest: after.digest, tables: diff.tables.map((table) => ({ added: table.added, removed: table.removed, table: table.table })) }, null, 2));
@@ -1123,7 +1172,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     const fields = change.fields.filter((field) => !/(^|\.)(updatedAt|__lifecycleState|version|revision|activities|deferralCount|fieldHistory)(\.|$|\[)/u.test(field.field));
     return fields.every((field) => {
       const name = field.field.split(".").pop() ?? field.field;
-      return name in set && JSON.stringify(set[name]) === JSON.stringify(field.to);
+      // AG13: lists of { kind, id } compare whatever order their keys are written in.
+      return name in set && sortedJson(set[name]) === sortedJson(field.to);
     });
   };
   const businessChanges = diff.records

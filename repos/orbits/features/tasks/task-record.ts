@@ -89,6 +89,16 @@ function isTaskPlanLink(value: unknown): boolean {
   );
 }
 
+/** agent-design AG13: the people of a to-do (absent on older records). */
+function isOptionalLinkIds(value: unknown): boolean {
+  return value === undefined || (Array.isArray(value) && value.every(isNonEmptyString));
+}
+
+/** agent-design AG13: the typed events of a to-do (absent on older records). */
+function isOptionalEventRefs(value: unknown): boolean {
+  return value === undefined || (Array.isArray(value) && value.every((ref) => isRecord(ref) && (ref.kind === "platform" || ref.kind === "private") && isNonEmptyString(ref.id)));
+}
+
 function readTask(value: unknown, actorId: string): TaskItemDTO | null {
   if (!isRecord(value)) {
     return null;
@@ -120,6 +130,8 @@ function readTask(value: unknown, actorId: string): TaskItemDTO | null {
     (value.dueAt !== undefined && !isIsoDateTime(value.dueAt)) ||
     !isOptionalString(value.relatedContactId) ||
     !isOptionalString(value.relatedEventId) ||
+    !isOptionalLinkIds(value.relatedContactIds) ||
+    !isOptionalEventRefs(value.relatedEventRefs) ||
     !isOptionalString(value.relatedMeetingId) ||
     !isOptionalString(value.relatedConversationId) ||
     !isOptionalString(value.suggestionId) ||

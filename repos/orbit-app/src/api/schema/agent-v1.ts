@@ -68,6 +68,8 @@ export const agentActionPreviewSchema: z.ZodType<AgentActionPreviewContract> = z
       rows: z.array(z.object({ after: z.string(), before: z.string().optional(), field: z.string(), label: z.string() })),
     }).optional(),
     operationId: z.string(),
+    // AG13: why an item that ran was not done (written by the server in the card's language).
+    outcome: z.string().optional(),
     partId: z.string().optional(),
     shown: z.record(z.string(), z.unknown()).optional(),
     status: cardOperationStatusSchema,
@@ -200,6 +202,21 @@ export const agentSessionEventSchema: z.ZodType<AgentSessionEventContract> = z.o
   stage: z.enum(["reading", "web", "composing"]).optional(),
   status: agentRequestStatusSchema,
 });
+
+/** AG13：一条活动引用。私人活动的归属由服务端逐项核对，这里只看形状。 */
+export const eventRefSchema = z.object({ id: z.string().trim().min(1).max(300), kind: z.enum(["platform", "private"]) }).strict();
+export const eventRefsSchema = z.array(eventRefSchema).max(50);
+
+/** 一组活动引用去重（同一 kind 加 id 只留第一条，顺序不变）。 */
+export function uniqueEventRefs<T extends { kind: string; id: string }>(refs: readonly T[]): T[] {
+  const seen = new Set<string>();
+  return refs.filter((ref) => {
+    const key = `${ref.kind}\u0000${ref.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 /** 实时通道续传的序号：查询参数 after 或 Last-Event-ID。 */
 export const agentEventsAfterSchema = z.coerce.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);

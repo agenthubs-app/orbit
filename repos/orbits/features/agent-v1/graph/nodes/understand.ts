@@ -11,7 +11,8 @@ import { hypothesisOf, negationIn, negationOf } from "../../route/decide";
 import { replyLanguageOf } from "../../route/handoff-copy";
 import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_PROMPT_VERSION } from "../../understand/prompt";
 import { coverEverySentence } from "../../understand/cover";
-import { describedObjectSpan, subjectInsideRecord } from "../../understand/described-clue";
+import { describedObjectSpan, groupClue, questionWordClue, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
+import { refusedCreates } from "../../understand/negated-writes";
 import type { UnderstandOutput } from "../../understand/schema";
 import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInput } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
@@ -20,12 +21,26 @@ import type { AgentGraphState, GraphPart } from "../state";
 function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
   const context = scope.run.context!;
   const message = scope.input.message;
-  return output.parts.map((part) => {
+  // AG13 opening 3 (AE-RD-003): parts whose only contact clue is a word of time ("当时说了什么？"); they take the object of the
+  // part before them in the same message.
+  const timeClued = new Set<string>();
+  const parts = output.parts.map((part) => {
     const start = message.indexOf(part.sourceQuote);
     const continued = part.continues ? context.openItemHandles.get(part.continues.ref) ?? null : null;
+    // AG13 (AE-SCL-025): a part that only reads and names a schedule item reads schedule items too
+    // ("明天这场周会关联了哪些人" tagged event.read only).
+    const readsOnly = part.requiredCapabilities.length > 0 && part.requiredCapabilities.every((capability) => capabilityKind(capability) !== "write");
+    // A meeting the user calls an event ("明天这场周会" tagged event) is one of their own schedule items too.
+    const MEETING = /(周会|例会|会议|开会|定例|打ち合わせ|ミーティング|\bmeeting\b|\bstand-?up\b)/iu;
+    const implied = readsOnly ? part.objectClues.flatMap((clue) => ((clue.entity === "schedule" || (clue.entity === "event" && MEETING.test(clue.text))) && !part.requiredCapabilities.includes("schedule.read" as never) ? ["schedule.read"] : [])) : [];
+    if (implied.length) emitTrace({ added: [...new Set(implied)], partId: part.localId, type: "understand.read_implied_by_clue" });
+    // AG13 repair round 7 (AE-UND-003): a create the user refuses in the same clause ("don't add anything to my to-dos")
+    // is dropped before routing, so the refused part never proposes it.
+    const refused = refusedCreates(part.sourceQuote, part.requiredCapabilities);
+    if (refused.length) emitTrace({ dropped: refused, partId: part.localId, type: "understand.refused_create" });
     return {
       asked: 0,
-      capabilities: [...part.requiredCapabilities],
+      capabilities: [...new Set([...part.requiredCapabilities, ...implied])].filter((capability) => !refused.includes(capability)) as typeof part.requiredCapabilities,
       continues: part.continues && continued ? { kind: part.continues.kind, ref: continued.ref } : null,
       dependsOn: [...part.dependsOn],
       localId: part.localId,
@@ -54,7 +69,30 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
       reason: null,
       // AG12 run-03 (AE-WEB-004): an unnamed "那家公司" beside a clue naming a record is the subject inside that record.
       refs: part.objectClues.filter((clue) => {
-        if (clue.referenceId || !subjectInsideRecord(clue, part.objectClues, part.requiredCapabilities.some((capability) => capabilityKind(capability) === "write"))) return true;
+        if (!clue.referenceId && timeWordClue(clue)) {
+          timeClued.add(part.localId);
+          emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.time_word_clue" });
+          return false;
+        }
+        // AG13 (AE-EVT-010): "老周" inside 「联系老周聊独立出版」这条待办 is words of the to-do's title, not a person to look up.
+        const writes = part.requiredCapabilities.some((capability) => capabilityKind(capability) === "write");
+        // AG13 rerun of AG08 (AE-SCL-013): "东京做零售的联系人" describes the contacts to choose among, not one person.
+        // AG13 gate run-04 (AE-SCL-025): "哪些人" is what the question asks for, not a person to look up.
+        if (!clue.referenceId && !writes && questionWordClue(clue)) {
+          emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.question_word_clue" });
+          return false;
+        }
+        if (!clue.referenceId && !writes && groupClue(clue)) {
+          emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.group_clue" });
+          return false;
+        }
+        // Only a title the user quoted counts ("「联系老周聊独立出版」这条待办"); "上次和小林聊了什么" names 小林 the person.
+        const quotedTitles = (text: string) => [...text.matchAll(/[「『"“]([^」』"”]+)[」』"”]/gu)].map((match) => match[1]);
+        if (!clue.referenceId && !writes && clue.entity === "contact" && part.objectClues.some((other) => other !== clue && other.entity !== "contact" && quotedTitles(other.text).some((title) => title.includes(clue.text) && title !== clue.text))) {
+          emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.name_inside_title" });
+          return false;
+        }
+        if (clue.referenceId || !subjectInsideRecord(clue, part.objectClues, writes)) return true;
         emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.subject_in_record" });
         return false;
       }).map((clue) => {
@@ -73,6 +111,15 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
       waitReason: null,
     } satisfies GraphPart;
   });
+  for (const part of parts) {
+    if (!timeClued.has(part.localId) || part.refs.some((ref) => ref.entity === "contact")) continue;
+    const earlier = parts.filter((other) => other !== part && other.quote[0] >= 0 && other.quote[0] < part.quote[0] && other.refs.some((ref) => ref.entity === "contact"));
+    const before = earlier.find((other) => part.dependsOn.includes(other.localId)) ?? earlier.sort((left, right) => right.quote[0] - left.quote[0])[0];
+    if (!before) continue;
+    part.refs = [...part.refs, ...before.refs.filter((ref) => ref.entity === "contact").map((ref) => ({ ...ref }))];
+    emitTrace({ from: before.localId, partId: part.localId, type: "understand.time_word_clue_attached" });
+  }
+  return parts;
 }
 
 /** Words of this turn's message as [start, end), or undefined when they are not in it. */

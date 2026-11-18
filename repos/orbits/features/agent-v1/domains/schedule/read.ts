@@ -4,7 +4,7 @@
  * read too and kept only when one of its occurrences falls inside (occurrenceIn). Earliest first.
  */
 import type { ReadInput } from "../../../orbit-ai/data-query/read-contract";
-import { defined, str, strs, type RecordDomain } from "../record-adapter";
+import { defined, refsOf, str, strs, type RecordDomain } from "../record-adapter";
 import type { RecordSpec } from "../source";
 
 export const SCHEDULE_DOMAIN: RecordDomain = {
@@ -16,6 +16,9 @@ export const SCHEDULE_DOMAIN: RecordDomain = {
       allDay: typeof item.allDay === "boolean" ? item.allDay : undefined,
       category: str(item.category),
       contactIds: strs(item.contactIds),
+      // AG13: the notes and events the item is linked to.
+      noteIds: strs(item.noteIds),
+      eventRefs: refsOf(item.eventRefs),
       details: str(item.notes) ?? str(item.details),
       endsAt: str(item.endsAt),
       kind: str(item.kind),

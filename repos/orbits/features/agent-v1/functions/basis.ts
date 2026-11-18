@@ -59,8 +59,15 @@ export function leavesItToAgent(words: string): boolean {
 }
 
 /** What remains of the words once the act, the set, the count and "the best" are taken out; empty: no basis. */
+/**
+ * AG13 rerun of AG08 (AE-JDG-002): "at least one recorded interaction (with)" is a hard condition code already holds
+ * (ordered by the last interaction, a contact without one is left out), not a topic for the judgment.
+ */
+const HAS_INTERACTION = /((?:of the contacts |contacts )?(?:I have |I've |with )?at least one (?:recorded )?(?:interaction|contact|conversation)s?(?: with)?|(?:至少)?有过?(?:至少)?一次(?:以上)?(?:记录的)?往来(?:的)?|有往来记录(?:的)?|やり取りが(?:1|一)回以上(?:ある)?|やり取りの記録がある)/giu;
+
 export function topicWordsOf(words: string): string {
   return words
+    .replace(HAS_INTERACTION, " ")
     .replace(/@\S+/gu, " ")
     .replace(/\d{4}\s*年|\d{1,2}\s*月\s*\d{1,2}\s*[日号]?|\d{1,2}\s*[日号]|\d{4}-\d{2}-\d{2}/gu, " ")
     .replace(QUALITY_WORDS, " ")

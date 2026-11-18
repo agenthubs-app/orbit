@@ -10,10 +10,12 @@ export const AI_READ_TOOLS = [
 const fieldsByTool = {
   // agent-design AG05: a memo's updatedAt, version and interaction; a to-do's planned date and times; a
   // schedule item's linked contacts and repetition; a contact's updatedAt. Contact methods stay out.
-  "notes.query": ["title", "snippet", "body", "bodyTruncated", "contactIds", "eventIds", "createdAt", "updatedAt", "version", "interaction"],
-  "tasks.query": ["title", "description", "status", "category", "dueAt", "plannedDate", "completedAt", "contactId", "eventId", "scheduleId", "source", "createdAt", "updatedAt"],
+  // agent-design AG13: the typed event links ("platform:<id>", "private:<id>") of memos, to-dos and schedule items; a to-do's
+  // people as a list; a schedule item's notes.
+  "notes.query": ["title", "snippet", "body", "bodyTruncated", "contactIds", "eventIds", "eventRefs", "createdAt", "updatedAt", "version", "interaction"],
+  "tasks.query": ["title", "description", "status", "category", "dueAt", "plannedDate", "completedAt", "contactId", "contactIds", "eventId", "eventRefs", "scheduleId", "source", "createdAt", "updatedAt"],
   "followups.query": ["title", "status", "contactId", "connectionId", "dueAt", "source", "evidenceSummary", "createdAt"],
-  "schedule.query": ["title", "kind", "category", "startsAt", "endsAt", "allDay", "timeZone", "location", "meetingMethod", "contactId", "contactIds", "eventId", "meetingId", "details", "missingFields", "recurrence", "updatedAt"],
+  "schedule.query": ["title", "kind", "category", "startsAt", "endsAt", "allDay", "timeZone", "location", "meetingMethod", "contactId", "contactIds", "noteIds", "eventId", "eventRefs", "meetingId", "details", "missingFields", "recurrence", "updatedAt"],
   "aiHistory.query": ["sessionId", "groupId", "title", "pinned", "role", "content", "visibleRunStatus", "visibleOutput"],
   // agent-design AG12-5: contactMethods holds only which methods are on file ("email", "phone"), never a value.
   "contacts.query": ["displayName", "headline", "company", "relationship", "status", "tags", "updatedAt", "contactMethods"],
@@ -53,10 +55,10 @@ const interaction = z.object({
 }).strict();
 
 const fieldSchemas = {
-  "notes.query": z.object({ title: optional(text), snippet: optional(text), body: optional(text), bodyTruncated: optional(z.boolean()), contactIds: optional(texts), eventIds: optional(texts), createdAt: optional(text), updatedAt: optional(text), version: optional(z.number()), interaction: optional(interaction) }).strict(),
-  "tasks.query": z.object({ title: optional(text), description: optional(text), status: optional(text), category: optional(text), dueAt: optional(text), plannedDate: optional(text), completedAt: optional(text), contactId: optional(text), eventId: optional(text), scheduleId: optional(text), source: optional(textOrTexts), createdAt: optional(text), updatedAt: optional(text) }).strict(),
+  "notes.query": z.object({ title: optional(text), snippet: optional(text), body: optional(text), bodyTruncated: optional(z.boolean()), contactIds: optional(texts), eventIds: optional(texts), eventRefs: optional(texts), createdAt: optional(text), updatedAt: optional(text), version: optional(z.number()), interaction: optional(interaction) }).strict(),
+  "tasks.query": z.object({ title: optional(text), description: optional(text), status: optional(text), category: optional(text), dueAt: optional(text), plannedDate: optional(text), completedAt: optional(text), contactId: optional(text), contactIds: optional(texts), eventId: optional(text), eventRefs: optional(texts), scheduleId: optional(text), source: optional(textOrTexts), createdAt: optional(text), updatedAt: optional(text) }).strict(),
   "followups.query": z.object({ title: optional(text), status: optional(text), contactId: optional(text), connectionId: optional(text), dueAt: optional(text), source: optional(textOrTexts), evidenceSummary: optional(text), createdAt: optional(text) }).strict(),
-  "schedule.query": z.object({ title: optional(text), kind: optional(text), category: optional(text), startsAt: optional(text), endsAt: optional(text), allDay: optional(z.boolean()), timeZone: optional(text), location: optional(text), meetingMethod: optional(text), contactId: optional(text), contactIds: optional(texts), eventId: optional(text), meetingId: optional(text), details: optional(text), missingFields: optional(texts), recurrence: optional(text), updatedAt: optional(text) }).strict(),
+  "schedule.query": z.object({ title: optional(text), kind: optional(text), category: optional(text), startsAt: optional(text), endsAt: optional(text), allDay: optional(z.boolean()), timeZone: optional(text), location: optional(text), meetingMethod: optional(text), contactId: optional(text), contactIds: optional(texts), noteIds: optional(texts), eventId: optional(text), eventRefs: optional(texts), meetingId: optional(text), details: optional(text), missingFields: optional(texts), recurrence: optional(text), updatedAt: optional(text) }).strict(),
   "aiHistory.query": z.object({ sessionId: optional(text), groupId: optional(text), title: optional(text), pinned: optional(z.boolean()), role: optional(text), content: optional(text), visibleRunStatus: optional(text), visibleOutput: optional(textOrTexts) }).strict(),
   "contacts.query": z.object({ displayName: optional(text), headline: optional(text), company: optional(text), relationship: optional(text), status: optional(text), tags: optional(texts), updatedAt: optional(text), contactMethods: optional(z.array(z.enum(["email", "phone"]))) }).strict(),
   "relationshipEvidence.query": z.object({ contactId: optional(text), kind: optional(text), summary: optional(text), occurredAt: optional(text), sourceId: optional(text), sourceRevision: optional(text) }).strict(),

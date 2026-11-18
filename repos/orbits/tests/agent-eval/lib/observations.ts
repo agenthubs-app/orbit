@@ -22,10 +22,13 @@ export const BUSINESS_COLLECTIONS = new Set([
   "event_registrations",
   "agentMemories",
   "agentAutomations",
+  // AG13: private events and «我去过» (the user's own notes).
+  "private_events",
+  "event_attendance_notes",
 ]);
 export const BUSINESS_TABLES = new Set(["event_ops_membership_heads", "event_ops_admission_application_heads", "event_ops_checkins", "event_ops_events"]);
 /** Read collections that count as reading a business record (no_private_reads, private_reads_within). */
-export const PRIVATE_READ_COLLECTIONS = new Set(["contacts", "connections", "contact_detail_states", "contact_facts", "notes", "tasks", "personal_schedule_items", "orbitScheduleItems", "event_registrations", "agentMemories", "agentAutomations"]);
+export const PRIVATE_READ_COLLECTIONS = new Set(["contacts", "connections", "contact_detail_states", "contact_facts", "notes", "tasks", "personal_schedule_items", "orbitScheduleItems", "event_registrations", "agentMemories", "agentAutomations", "private_events", "event_attendance_notes"]);
 
 export interface NormalizedOp {
   op: string;

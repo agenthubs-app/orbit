@@ -52,7 +52,11 @@ function ambiguousLanguage(reported: string | null | undefined, fallback: string
   return { language: "zh", source: "rule" };
 }
 
-export function replyLanguageOf(message: string, reported: string | null | undefined, fallback?: string, earlier: readonly string[] = []): { language: ReplyLanguage; source: "reported" | "rule" | "session" | "locale"; rejected?: string } {
+export function replyLanguageOf(said: string, reported: string | null | undefined, fallback?: string, earlier: readonly string[] = []): { language: ReplyLanguage; source: "reported" | "rule" | "session" | "locale"; rejected?: string } {
+  // AG13 (AE-SCL-026): a name quoted in another language (「半導体キャリアフォーラム」 in a Chinese message) is not the
+  // language the user writes in; only the words outside the quotes decide (a message that is all quote keeps it).
+  const outside = said.replace(/「[^」]*」|『[^』]*』|“[^”]*”/gu, " ");
+  const message = /[぀-ゟ゠-ヿｦ-ﾟ㐀-䶿一-鿿A-Za-z]/u.test(outside) ? outside : said;
   const han = (message.match(/[㐀-䶿一-鿿]/gu) ?? []).length;
   const kana = (message.match(/[぀-ゟ゠-ヿｦ-ﾟ]/gu) ?? []).length;
   const latinWords = (message.match(/[A-Za-z]+(?:['’-][A-Za-z]+)*/gu) ?? []).length;

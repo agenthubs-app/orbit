@@ -15,6 +15,9 @@ import { createDomainRegistry, readMaxPages } from "./registry";
 import { createPostgresRecordSource, type RecordSource } from "./source";
 import { parseRef, type DomainKind } from "./types";
 import { createStoreContactAccess } from "./contact/access";
+import { createPrivateEventService } from "../../events/private-events/service";
+import { createAttendanceService } from "../../events/attendance-notes/service";
+import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/storage/transactional-postgres";
 
 export const AUTHORIZATION_EPOCH = "agent-v1:1";
 
@@ -63,6 +66,9 @@ export function configuredRecordAccess(): AgentRecordAccess | null {
   return {
     // AG12: contact writes read the account's contacts from the same store (duplicates, restore, import review).
     contacts: createStoreContactAccess({ store: configured.store, workspaceId }),
+    // AG13: private events, «我去过» and the records linking to an event (the reverse lookups go by index).
+    attendance: createAttendanceService({ store: configured.store, workspaceId }),
+    privateEvents: createPrivateEventService({ client: createConfiguredTransactionalPostgresRuntime()?.client ?? null, store: configured.store, workspaceId }),
     // AG08: the events of the deployment for ranking (functions node keeps those the account may see).
     listEvents: async () => (repository ? repository.listEvents() : []),
     maxPages: readMaxPages(),

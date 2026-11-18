@@ -976,6 +976,11 @@
           "optional": true,
           "kind": "text",
           "type": "AgentCardOperationDisplayContract"
+        },
+        "outcome": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
         }
       }
     },
@@ -1402,6 +1407,125 @@
           "optional": false,
           "kind": "text",
           "type": "AgentResultDocument"
+        }
+      }
+    },
+    "agent-v1.ts::EventRefContract": {
+      "kind": "alias",
+      "type": "EventRefContract"
+    },
+    "agent-v1.ts::PrivateEventContract": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "accountId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "endsAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "venue": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "notes": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "version": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "createdAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AttendanceDayPart": {
+      "kind": "enum",
+      "values": [
+        "'afternoon'",
+        "'evening'",
+        "'morning'",
+        "'night'",
+        "'noon'"
+      ]
+    },
+    "agent-v1.ts::AttendanceNoteContract": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "accountId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventRef": {
+          "optional": false,
+          "kind": "text",
+          "type": "EventRefContract"
+        },
+        "attendedOn": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "dayParts": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AttendanceDayPart[]"
+        },
+        "selfNote": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "version": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "createdAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
         }
       }
     },
@@ -9591,6 +9715,61 @@
           "optional": true,
           "kind": "text",
           "type": "true"
+        },
+        "selfAttendance": {
+          "optional": true,
+          "kind": "text",
+          "type": "MyEventSelfAttendance | null"
+        },
+        "privateEvent": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        },
+        "related": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly MyEventRelatedRecord[]"
+        }
+      }
+    },
+    "events-mine.ts::MyEventSelfAttendance": {
+      "kind": "object",
+      "members": {
+        "attendedOn": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "dayParts": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "selfNote": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "events-mine.ts::MyEventRelatedRecord": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'memo' | 'todo' | 'schedule'"
+        },
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
         }
       }
     },
@@ -16427,6 +16606,26 @@
           "optional": false,
           "kind": "text",
           "type": "readonly string[]"
+        },
+        "eventRefs": {
+          "optional": true,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "kind": {
+                "optional": false,
+                "kind": "text",
+                "type": "'private' | 'platform'"
+              },
+              "id": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
         },
         "noteKind": {
           "optional": true,
@@ -25072,6 +25271,31 @@
           "kind": "text",
           "type": "string"
         },
+        "relatedContactIds": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "relatedEventRefs": {
+          "optional": true,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "kind": {
+                "optional": false,
+                "kind": "text",
+                "type": "'private' | 'platform'"
+              },
+              "id": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
+        },
         "relatedMeetingId": {
           "optional": true,
           "kind": "text",
@@ -25347,6 +25571,26 @@
           "optional": true,
           "kind": "text",
           "type": "string[]"
+        },
+        "eventRefs": {
+          "optional": true,
+          "kind": "array",
+          "readonly": false,
+          "element": {
+            "kind": "object",
+            "members": {
+              "kind": {
+                "optional": false,
+                "kind": "text",
+                "type": "'private' | 'platform'"
+              },
+              "id": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
         },
         "kind": {
           "optional": false,

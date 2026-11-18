@@ -24,6 +24,7 @@ import {
 } from "./todo-operations";
 import { CONTACT_CREATE, CONTACT_DELETE, CONTACT_IMPORT, CONTACT_RESTORE, isContactCapability, type ContactOperationIntent } from "../../agent-v1/domains/contact/types";
 import { contactIntentOf, importCountTitle, prepareContactOperation } from "../../agent-v1/domains/contact/prepare";
+import { ATTENDANCE_CREATE, ATTENDANCE_DELETE, isEventCardCapability, linkChangeDisplay, linkChangeText, prepareEventOperation, PRIVATE_EVENT_CREATE, PRIVATE_EVENT_DELETE, SCHEDULE_CREATE, SCHEDULE_DELETE, TODO_DELETE, type EventCardIntent, type LinkChangeShown } from "../../agent-v1/domains/private-event/ops";
 
 export const MEMO_CREATE = "memo.create";
 export const MEMO_UPDATE = "memo.update";
@@ -59,7 +60,30 @@ export interface MemoUpdateIntent {
   shown: { title: string; contactIds: string[]; names: Record<string, string>; sentence?: string; before: NoteInteractionContract | null };
 }
 
-export type CardOperationIntent = (TodoOperationIntent | MemoCreateIntent | MemoUpdateIntent | ContactOperationIntent) & {
+/**
+ * agent-design AG13 (附录 E): a to-do's people and events as whole lists after the change (todo.update), and a memo's
+ * event links (memo.update). The card shows before → after of each list; the executor checks the lists read then.
+ */
+export interface TodoLinkIntent {
+  capability: typeof TODO_UPDATE;
+  links: true;
+  targetId: string;
+  set: { relatedContactIds?: string[]; relatedEventRefs?: { kind: "platform" | "private"; id: string }[] };
+  before: { relatedContactIds?: string[]; relatedEventRefs?: { kind: "platform" | "private"; id: string }[] };
+  shown: LinkChangeShown & { status?: string };
+}
+
+export interface MemoLinkIntent {
+  capability: typeof MEMO_UPDATE;
+  links: true;
+  targetId: string;
+  expectedVersion: number;
+  set: { eventRefs: { kind: "platform" | "private"; id: string }[] };
+  before: { eventRefs: { kind: "platform" | "private"; id: string }[] };
+  shown: LinkChangeShown;
+}
+
+export type CardOperationIntent = (TodoOperationIntent | MemoCreateIntent | MemoUpdateIntent | ContactOperationIntent | EventCardIntent | TodoLinkIntent | MemoLinkIntent) & {
   /** The sub-goal of the request (kept until the receipt). */
   partId?: string;
   /** Positions (0-based) in the same card of the items this one waits for. */
@@ -182,9 +206,10 @@ export function cardCountTitle(operations: readonly (Pick<AgentActionOperationPa
   // AG12-4: a card that is one import counts its rows.
   const rows = importCountTitle(operations, locale);
   if (rows) return rows;
-  const added = operations.filter((op) => op.capability === TODO_CREATE || op.capability === MEMO_CREATE || op.capability === CONTACT_CREATE || op.capability === CONTACT_IMPORT).length;
-  // AG12 (设计稿 §10「写“改”“新增”“删除”」): deletions and restores are counted as what they are.
-  const deleted = operations.filter((op) => op.capability === CONTACT_DELETE).length;
+  const added = operations.filter((op) => op.capability === TODO_CREATE || op.capability === MEMO_CREATE || op.capability === CONTACT_CREATE || op.capability === CONTACT_IMPORT || op.capability === PRIVATE_EVENT_CREATE || op.capability === ATTENDANCE_CREATE || op.capability === SCHEDULE_CREATE).length;
+  // AG12 (设计稿 §10「写“改”“新增”“删除”」): deletions and restores are counted as what they are. AG13: private events,
+  // «我去过», schedule items and to-dos too.
+  const deleted = operations.filter((op) => op.capability === CONTACT_DELETE || op.capability === PRIVATE_EVENT_DELETE || op.capability === ATTENDANCE_DELETE || op.capability === SCHEDULE_DELETE || op.capability === TODO_DELETE).length;
   const restored = operations.filter((op) => op.capability === CONTACT_RESTORE).length;
   const changed = operations.length - added - deleted - restored;
   if (locale === "en") return [changed ? `${changed} change${changed > 1 ? "s" : ""}` : "", added ? `${added} addition${added > 1 ? "s" : ""}` : "", deleted ? `${deleted} deletion${deleted > 1 ? "s" : ""}` : "", restored ? `${restored} restore${restored > 1 ? "s" : ""}` : ""].filter(Boolean).join(", ");
@@ -215,6 +240,9 @@ export async function prepareCardOperation(input: {
   locale: CardLocale;
 }): Promise<AgentActionOperationPayload | null> {
   const { intent } = input;
+  // AG13: private events, «我去过», schedule items, the other to-do verbs (domains/private-event/ops.ts).
+  if (isEventCardCapability(intent.capability)) return { ...prepareEventOperation({ actionId: input.actionId, index: input.index, intent: intent as EventCardIntent & { partId?: string }, locale: input.locale, revision: input.revision }), payload: { ...prepareEventOperation({ actionId: input.actionId, index: input.index, intent: intent as EventCardIntent & { partId?: string }, locale: input.locale, revision: input.revision }).payload, cardIntent: stripPositions(intent) } };
+  if ("links" in intent && intent.links) return prepareLinkOperation({ ...input, intent: intent as (TodoLinkIntent | MemoLinkIntent) & { partId?: string } });
   // AG12: contact items (domains/contact/prepare.ts).
   if (isContactCapability(intent.capability)) return prepareContactOperation({ actionId: input.actionId, index: input.index, intent: intent as ContactOperationIntent & { partId?: string }, locale: input.locale, reader: input.reader.contacts, revision: input.revision });
   if (intent.capability === MEMO_CREATE) {
@@ -234,7 +262,7 @@ export async function prepareCardOperation(input: {
       shown: { names: { ...set.names } },
     };
   }
-  if (intent.capability === MEMO_UPDATE) {
+  if (intent.capability === MEMO_UPDATE && !("links" in intent)) {
     const after = { interaction: { ...intent.set.interaction, actualContactIds: [...intent.set.interaction.actualContactIds] } };
     return {
       ...base({ ...input, partId: intent.partId }),
@@ -260,10 +288,42 @@ export async function prepareCardOperation(input: {
   return { ...op, partId, payload };
 }
 
+/** The intent as kept in an item's payload (without its card positions, which the list rebuilds). */
+function stripPositions(intent: CardOperationIntent): Record<string, unknown> {
+  const { dependsOn: _dependsOn, partId: _partId, ...rest } = intent as CardOperationIntent & Record<string, unknown>;
+  return JSON.parse(JSON.stringify(rest)) as Record<string, unknown>;
+}
+
+/** AG13: a to-do's or memo's link lists, before → after, frozen as one item. */
+async function prepareLinkOperation(input: { intent: (TodoLinkIntent | MemoLinkIntent) & { partId?: string }; actionId: string; revision: number; index: number; reader: TodoReader; locale: CardLocale }): Promise<AgentActionOperationPayload | null> {
+  const { intent } = input;
+  const common = { ...base({ ...input, partId: intent.partId }) };
+  if (intent.capability === TODO_UPDATE) {
+    const current = await input.reader.read(intent.targetId);
+    if (!current) return null;
+    const before = Object.fromEntries(Object.keys(intent.set).map((field) => [field, (current as unknown as Record<string, unknown>)[field] ?? []]));
+    const display = linkChangeDisplay("todo", intent.shown, input.locale, current.status);
+    return {
+      ...common, after: { ...intent.set }, before, capability: TODO_UPDATE, display, executorKey: TODO_UPDATE, operationType: "update_todo",
+      payload: { before, cardIntent: stripPositions(intent), patch: { ...intent.set }, shown: { title: current.title }, taskId: intent.targetId },
+      preconditions: { targetExists: true, versionToken: current.updatedAt }, preview: linkChangeText(display, input.locale), shown: { title: current.title }, targetRef: { collection: "tasks", id: intent.targetId },
+    };
+  }
+  const display = linkChangeDisplay("memo", intent.shown, input.locale);
+  return {
+    ...common, after: { ...intent.set }, before: { ...intent.before }, capability: MEMO_UPDATE, display, executorKey: MEMO_UPDATE, operationType: "update_memo",
+    payload: { cardIntent: stripPositions(intent), eventRefs: intent.set.eventRefs.map((ref) => ({ ...ref })), expectedVersion: intent.expectedVersion, noteId: intent.targetId },
+    preconditions: { targetExists: true, versionToken: String(intent.expectedVersion) }, preview: linkChangeText(display, input.locale), shown: { title: intent.shown.title }, targetRef: { collection: "notes", id: intent.targetId },
+  };
+}
+
 /** The intent an operation was frozen from (regeneration and editing keep it, 设计稿 §5.2). */
 export function cardIntentOf(op: AgentActionOperationPayload, operations: readonly AgentActionOperationPayload[] = []): CardOperationIntent | null {
   const dependsOn = (op.dependsOn ?? []).map((id) => operations.findIndex((other) => other.operationId === id)).filter((index) => index >= 0);
   const extra = { ...(op.partId ? { partId: op.partId } : {}), ...(dependsOn.length ? { dependsOn } : {}) };
+  // AG13: the items that keep their intent in the payload.
+  const kept = (op.payload as { cardIntent?: Record<string, unknown> } | undefined)?.cardIntent;
+  if (kept && (isEventCardCapability(op.capability) || (kept as { links?: unknown }).links)) return { ...(kept as unknown as CardOperationIntent), ...extra };
   if (isContactCapability(op.capability)) {
     const contact = contactIntentOf(op);
     return contact ? { ...contact, ...extra } : null;
@@ -295,6 +355,7 @@ export async function buildCardOperationList(reader: TodoReader | null, input: {
     prepared.push(op);
     if (!op && intent.capability === TODO_UPDATE) missing.push(intent.targetId);
     if (!op && "targetId" in intent && isContactCapability(intent.capability)) missing.push(intent.targetId);
+    if (!op && "links" in intent && intent.links) missing.push(intent.targetId);
   }
   const operations: AgentActionOperationPayload[] = [];
   for (const [index, op] of prepared.entries()) {
@@ -305,7 +366,9 @@ export async function buildCardOperationList(reader: TodoReader | null, input: {
       continue;
     }
     const positions = waits.map((item) => prepared.filter(Boolean).indexOf(item) + 1);
-    operations.push({ ...op, dependsOn: waits.map((item) => item.operationId), ...(op.display ? { display: { ...op.display, note: WAITS_NOTE[locale](positions) } } : {}), preview: `${op.preview}${WAITS[locale](positions)}` });
+    // AG13: an item that already says what it waits for (an attendance note on the event item n creates) keeps its note.
+    const ownNote = isEventCardCapability(op.capability) && op.display?.note && (op.payload as { eventRef?: { localCreateRef?: unknown } }).eventRef?.localCreateRef !== undefined;
+    operations.push({ ...op, dependsOn: waits.map((item) => item.operationId), ...(op.display && !ownNote ? { display: { ...op.display, note: WAITS_NOTE[locale](positions) } } : {}), preview: ownNote ? op.preview : `${op.preview}${WAITS[locale](positions)}` });
   }
   return { missing, operations };
 }

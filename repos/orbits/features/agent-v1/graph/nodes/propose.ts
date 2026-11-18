@@ -31,6 +31,8 @@ import { localDay } from "../../views/recent-interaction";
 import type { RecordView } from "../../domains/types";
 import { duplicateCandidates, nothingToChange, type DuplicateCandidate } from "../../domains/contact/duplicates";
 import { CONTACT_WORDS } from "../../domains/contact/copy";
+import { EVENT_WORDS } from "../../propose/events-copy";
+import { CHECKIN, unsupportedRepeatLine } from "../../propose/events-resolve";
 
 const DAY_OF = (view: RecordView, timeZone: string) => {
   const fields = view.fields as { interaction?: { occurredOn?: string }; createdAt?: string };
@@ -115,7 +117,23 @@ const RECORD_WORDS = /(记|記録|記入|メモ|写下|存一下|\blog\b|\bnote\
 export function proposableOf(part: GraphPart, quote: string): string[] {
   const named = writesOf(part).filter(supported) as string[];
   if (!writesOf(part).length) return named;
+  // AG06 repair 1 (AE-CTX-005): "山本さんとの食事のToDo、11月20日に予定を入れて" — a to-do word and no time of day is a
+  // to-do's date, not a schedule entry (AG13: also now that schedule items can be written).
+  if (TODO_WORD.test(quote) && !TIME_OF_DAY.test(quote) && writesOf(part).some((capability) => capability.startsWith("schedule.")) && !SCHEDULE_WORD.test(quote)) {
+    return [...new Set([...named.filter((capability) => !capability.startsWith("schedule.")), "todo.update", "todo.create"])];
+  }
+  // stab1 (AE-XL-011), kept in AG13: "log that Emily called me" tagged attendance.create records a contact, not an event
+  // attended — no event word, a kind of contact said: the memo, never «我去过».
+  if (contactKindOf(quote).channel && RECORD_WORDS.test(quote) && !EVENT_WORD.test(quote) && writesOf(part).every((capability) => capability.startsWith("attendance.") || capabilityKind(capability) !== "write" || capability === "memo.create")) {
+    return [...new Set([...named.filter((capability) => !capability.startsWith("attendance.")), "memo.create"])];
+  }
   const out = [...named];
+  // AG13: events, «我去过», schedule items and to-do verbs go together — which of them a sentence is, is the second
+  // layer's call ("建成私人活动并记上我参加了" may come tagged with one of them only).
+  if (writesOf(part).some((capability) => AG13_FAMILY.has(capability)) || (TODO_WORD.test(quote) && writesOf(part).some((capability) => capability.startsWith("todo.")))) {
+    for (const capability of AG13_FAMILY) if (!out.includes(capability)) out.push(capability);
+    if (TODO_WORD.test(quote)) for (const capability of ["todo.update", "todo.create"]) if (!out.includes(capability)) out.push(capability);
+  }
   if (!out.includes("memo.create") && contactKindOf(quote).channel && RECORD_WORDS.test(quote)) out.push("memo.create");
   // AG06 repair 1 (AE-CTX-005): "山本さんとの食事のToDo、11月20日に予定を入れて" — a to-do word and no time of day is a
   // to-do's date, not a schedule entry. A write this version cannot do never swallows one it can.
@@ -126,6 +144,11 @@ export function proposableOf(part: GraphPart, quote: string): string[] {
 }
 
 const TODO_WORD = /(待办|提醒|ToDo|TODO|タスク|\bto-?dos?\b|\btasks?\b)/iu;
+/** AG13: words of an event attended ("聚会", "研讨会", "meetup", "イベント"). */
+const EVENT_WORD = /(活动|聚会|研讨会|讲座|展览|摄影展|市集|论坛|沙龙|工作坊|发布会|读书会|同学会|イベント|セミナー|勉強会|交流会|フォーラム|展示会|\bevent\b|\bmeetup\b|\bseminar\b|\bworkshop\b|\bconference\b|\bforum\b|\bparty\b|\bwalk\b)/iu;
+/** "加进我的日程", "カレンダー": the user does mean a schedule item. */
+const SCHEDULE_WORD = /(日程|日历|行程|カレンダー|スケジュール|\bschedule\b|\bcalendar\b)/iu;
+const AG13_FAMILY = new Set<string>(["privateEvent.create", "privateEvent.update", "privateEvent.delete", "attendance.create", "attendance.delete", "attendance.update", "schedule.create", "schedule.update", "schedule.delete", "todo.complete", "todo.reopen", "todo.delete", "memo.update"]);
 const TIME_OF_DAY = /(\d{1,2}\s*[:：]\s*\d{2}|\d{1,2}\s*(?:時|时|点)|\b\d{1,2}\s*(?:am|pm)\b|上午|下午|晚上|中午|午前|午後|夕方|\bmorning\b|\bafternoon\b|\bevening\b)/iu;
 
 /** Parts this pass proposes for. */
@@ -139,6 +162,16 @@ function notUnderstood(language: ReplyLanguage, quote: string): string {
   return `I couldn't tell what to change in "${quote}", so nothing was changed.`;
 }
 
+/**
+ * AG13 gate run-03 (AE-EVT-004): the second layer proposed nothing for "帮我把签到补上" (a check-in is not a write it has).
+ * Words that ask for a check-in get code's sentence (the organizer's record, what the user can do instead), never
+ * "I couldn't tell what to change".
+ */
+export function unproposedOutcome(language: ReplyLanguage, quote: string): { reason: string; line: string } {
+  if (CHECKIN.test(quote)) return { line: EVENT_WORDS.checkIn(language, null), reason: "organizer_record" };
+  return { line: notUnderstood(language, quote), reason: "not_understood" };
+}
+
 function questionSet(scope: NodeScope, state: AgentGraphState, part: GraphPart, question: WriteQuestion): { set: OptionSetState; labels: Map<string, { label: string; refName?: string }>; line: string } {
   const language = state.language;
   const quote = scope.input.message.slice(part.quote[0], part.quote[1]);
@@ -150,6 +183,21 @@ function questionSet(scope: NodeScope, state: AgentGraphState, part: GraphPart, 
   const clarificationId = `${setIdOf(scope.input.requestId, part.localId, "q")}${existing ? existing + 1 : ""}`;
   const labels = new Map<string, { label: string; refName?: string }>();
   const options: OptionSetState["options"] = [];
+  if (question.type === "event_plan") {
+    // AG13 (D7): what to do with a private event's links before it is deleted; the pick goes back to the same part.
+    for (const option of question.options) {
+      labels.set(option.id, { label: option.label });
+      options.push({ capabilities: ["privateEvent.delete"], capability: "privateEvent.delete", optionId: option.id, refId: option.id, refType: "event_plan" });
+    }
+    return { labels, line: question.line, set: { asks: "reading", clarificationId, kind: "question", options, partId: part.localId, purpose: "operation", state: "open", subgoal: `clarification:${scope.input.requestId}:${part.localId}` } };
+  }
+  if (question.type === "event") {
+    question.candidates.forEach((candidate, index) => {
+      labels.set(`o${index + 1}`, { label: candidate.detail ? (language === "en" ? `${candidate.name} (${candidate.detail})` : `${candidate.name}（${candidate.detail}）`) : candidate.name, refName: candidate.name });
+      options.push({ capabilities: [proposable[0] as Capability], capability: proposable[0] as Capability, optionId: `o${index + 1}`, refId: candidate.id, refType: "event" });
+    });
+    return { labels, line: EVENT_WORDS.whichEvent(language, quote, [...labels.values()].map((item) => item.label)), set: { asks: "object", clarificationId, kind: "question", options, partId: part.localId, purpose: "operation", state: "open", subgoal: `clarification:${scope.input.requestId}:${part.localId}` } };
+  }
   if (question.type === "field") {
     for (const option of question.options) {
       labels.set(option.field, { label: WRITE_WORDS.fieldLabel(language, option.field, option.current) });
@@ -165,7 +213,7 @@ function questionSet(scope: NodeScope, state: AgentGraphState, part: GraphPart, 
     });
   }
   const shown = [...labels.values()].map((item) => item.label);
-  const line = question.type === "field" ? WRITE_WORDS.askField(language, quote, shown) : question.type === "todo" ? (question.notFound !== undefined ? WRITE_WORDS.askTodoNotFound(language, quote, question.notFound, shown) : WRITE_WORDS.askTodo(language, quote, shown)) : WRITE_WORDS.askPerson(language, quote, question.clue, shown);
+  const line = question.type === "field" ? WRITE_WORDS.askField(language, quote, shown) : question.type !== "contact" && question.type !== "todo" ? "" : question.type === "todo" ? (question.notFound !== undefined ? WRITE_WORDS.askTodoNotFound(language, quote, question.notFound, shown) : WRITE_WORDS.askTodo(language, quote, shown)) : WRITE_WORDS.askPerson(language, quote, question.clue, shown);
   return {
     labels,
     line,
@@ -209,6 +257,14 @@ export function proposeNode(scope: NodeScope): GraphNode {
       // AG10: an extraction already made this part's operations (functions node); they are frozen as they are.
       if (run.presetIntents.has(part.localId)) {
         work.push(part);
+        continue;
+      }
+      // AG13 gate run-03 (AE-EVT-007): a repetition the schedule cannot store ("隔周", "每月第二个周二") is said so by code,
+      // with a few one-off dates offered instead, whatever capability the first layer gave (rule.create, schedule.*).
+      const repeatLine = part.capabilities.some((capability) => /^(?:schedule|rule)\./u.test(capability)) ? unsupportedRepeatLine(quoteOf(part), { asOf: state.asOf || deps.now(), language, timeZone: state.timeZone || "Asia/Tokyo" }) : null;
+      if (repeatLine) {
+        settle(part, "unfinished", "repeat_unsupported", repeatLine);
+        emitTrace({ partId: part.localId, type: "propose.repeat_unsupported" });
         continue;
       }
       if (!proposableOf(part, quoteOf(part)).length) {
@@ -259,7 +315,7 @@ export function proposeNode(scope: NodeScope): GraphNode {
         for (const part of fresh) {
           const intents = checked.intents.get(part.localId) ?? [];
           part.write = { intents, picks: {} };
-          if (!intents.length) settle(part, "unfinished", "not_understood", notUnderstood(language, quoteOf(part)));
+          if (!intents.length) { const unproposed = unproposedOutcome(language, quoteOf(part)); settle(part, "unfinished", unproposed.reason, unproposed.line); }
         }
       }
     }
@@ -283,6 +339,10 @@ export function proposeNode(scope: NodeScope): GraphNode {
       records: deps.records,
       scope: deps.records ? deps.records.scope(input.actorId) : null,
       timeZone: state.timeZone || "Asia/Tokyo",
+      // AG13: names this request binds (the next turn's "这场活动"), the private events it creates, and whether it deletes one.
+      createdEvents: [] as { localId: string; title: string; day: string }[],
+      deleting: work.some((part) => part.write?.intents.some((intent) => intent.capability === "privateEvent.delete")),
+      names: run.names,
     };
     const outcomes = new Map<string, WriteOutcome>();
     const duplicates = new Map<string, Exclude<DuplicateDecision, { kind: "new" }>>();
@@ -339,6 +399,26 @@ export function proposeNode(scope: NodeScope): GraphNode {
       emitTrace({ kind: outcome.kind, partId: part.localId, ...(outcome.kind === "ask" ? { question: outcome.question.type } : {}), ...(outcome.kind === "stop" ? { reason: outcome.reason } : {}), type: "propose.resolved" });
     }
 
+    // AG13: the same «我去过» said by two sentences ("建成私人活动，并记上我参加了" both carrying it) is one item; the later
+    // sentence's copy goes, and that sentence is part of the card.
+    const seenAttendance = new Set<string>();
+    for (const part of active) {
+      const outcome = outcomes.get(part.localId);
+      if (outcome?.kind !== "ready") continue;
+      const kept = outcome.ops.filter((op) => {
+        if (op.capability !== "attendance.create") return true;
+        const ref = (op as { set?: { eventRef?: { kind?: string; id?: string; localCreateRef?: unknown } } }).set?.eventRef;
+        const key = ref ? `${ref.kind}:${ref.id ?? `local:${String(ref.localCreateRef)}`}` : "";
+        if (seenAttendance.has(key)) return false;
+        seenAttendance.add(key);
+        return true;
+      });
+      if (kept.length !== outcome.ops.length) {
+        emitTrace({ dropped: outcome.ops.length - kept.length, partId: part.localId, type: "propose.attendance_deduplicated" });
+        outcomes.set(part.localId, kept.length ? { kind: "ready", ops: kept } : { kind: "covered" });
+      }
+    }
+
     // 4. Questions, waits, stops; then one card when nothing is left open.
     const firstAsking = [...outcomes.entries()].find(([, outcome]) => outcome.kind === "ask")?.[0] ?? null;
     for (const part of active) {
@@ -387,16 +467,21 @@ export function proposeNode(scope: NodeScope): GraphNode {
     const askingElsewhere = parts.find((part) => !active.includes(part) && part.status === "awaiting_clarification");
     const waiting = Boolean(askingElsewhere) || active.some((part) => part.status === "awaiting_clarification" || part.status === "waiting_dependency");
     const ready = active.filter((part) => outcomes.get(part.localId)?.kind === "ready" && !duplicates.has(part.localId) && !contactDuplicates.has(part.localId));
+    // AG13: parts whose items another part's plan makes (deleting a private event) go with that card.
+    const covered = active.filter((part) => outcomes.get(part.localId)?.kind === "covered");
     if (waiting) {
       // One card per request: the items already settled wait for the open question and go on with it.
-      for (const part of ready) {
+      for (const part of [...ready, ...covered]) {
         part.write!.waitsFor = firstAsking ?? active.find((other) => other.write?.waitsFor)?.write?.waitsFor ?? askingElsewhere?.localId ?? null;
         settle(part, "waiting_dependency", "card_waits", null);
         part.waitReason = "dependency_pending";
       }
       return { budget, optionSets, parts, repairs };
     }
-    if (!ready.length) return { budget, optionSets, parts, repairs };
+    if (!ready.length) {
+      for (const part of covered) { const unproposed = unproposedOutcome(language, quoteOf(part)); settle(part, "unfinished", unproposed.reason, unproposed.line); }
+      return { budget, optionSets, parts, repairs };
+    }
     const intents: CardOperationIntent[] = [];
     const owners: GraphPart[] = [];
     let previous: GraphPart | null = null;
@@ -405,12 +490,13 @@ export function proposeNode(scope: NodeScope): GraphNode {
       // The user made this part wait for the part before ("这条记成功了，再…"): code reads it from the words.
       const waits = previous && waitsForPrevious(message, previous.quote[1], part) ? [intents.length - 1] : [];
       ops.forEach((op, index) => {
-        const { localId: _local, ...intent } = op;
-        intents.push({ ...intent, ...(index === 0 && waits.length ? { dependsOn: waits } : {}) } as CardOperationIntent);
+        const { localId, ...intent } = op;
+        intents.push({ ...intent, localIdOfItem: localId, ...(index === 0 && waits.length ? { dependsOn: waits } : {}) } as unknown as CardOperationIntent);
         owners.push(part);
       });
       previous = part;
     }
+    arrangeEventItems(intents, owners);
     const preview = deps.cards ? await deps.cards.freeze({ intents, locale: language, requestId: input.requestId, sessionId: input.sessionId }).catch((error: unknown) => {
       emitTrace({ error: error instanceof Error ? error.message : String(error), type: "error", where: "propose.freeze" });
       return null;
@@ -426,6 +512,10 @@ export function proposeNode(scope: NodeScope): GraphNode {
     }
     // AG07 repair 2 (AE-BND-008, AE-XL-011): a sentence whose words went into the card (its date, a note's body) is
     // part of the card: it is not "not understood", not answered beside the card, and offers nothing of its own.
+    for (const part of covered) {
+      settle(part, "awaiting_confirmation", "in_card", null);
+      part.waitReason = null;
+    }
     const inCard = usedByCard(parts, ready);
     for (const part of inCard) {
       settle(part, "awaiting_confirmation", "in_card", null);
@@ -438,6 +528,34 @@ export function proposeNode(scope: NodeScope): GraphNode {
     emitTrace({ cardId: preview.actionId, operations: preview.operations.map((op) => ({ capability: op.capability, operationId: op.operationId, partId: op.partId ?? null })), revision: preview.revision, type: "propose.card" });
     return { budget, optionSets: keptSets, parts, repairs };
   };
+}
+
+/**
+ * AG13: the card's order and links for private events — a private event's deletion goes after every other item (its
+ * links are removed first); «我去过» on a private event the card creates points at that item (`localCreateRef`, from 1)
+ * and waits for it. The model's item ids are dropped here.
+ */
+export function arrangeEventItems(intents: CardOperationIntent[], owners: GraphPart[]): void {
+  const order = intents.map((intent, index) => ({ index, intent, last: intent.capability === "privateEvent.delete", owner: owners[index] }));
+  order.sort((left, right) => Number(left.last) - Number(right.last) || left.index - right.index);
+  const moved = order.map((item) => item.index);
+  const positionOf = (old: number) => moved.indexOf(old);
+  const localIds = order.map((item) => (item.intent as unknown as { localIdOfItem?: string }).localIdOfItem);
+  intents.splice(0, intents.length, ...order.map((item) => {
+    const intent = { ...item.intent } as CardOperationIntent & { localIdOfItem?: string; dependsOn?: number[] };
+    delete intent.localIdOfItem;
+    if (intent.dependsOn) intent.dependsOn = intent.dependsOn.map(positionOf).filter((at) => at >= 0);
+    const ref = (intent as { set?: { eventRef?: { localCreateRef?: unknown } } }).set?.eventRef;
+    if (ref && typeof ref.localCreateRef === "string") {
+      const at = localIds.indexOf(ref.localCreateRef);
+      if (at >= 0) {
+        (intent as { set: { eventRef: unknown } }).set = { ...(intent as { set: Record<string, unknown> }).set, eventRef: { kind: "private", localCreateRef: at + 1 } };
+        intent.dependsOn = [...new Set([...(intent.dependsOn ?? []), at])];
+      }
+    }
+    return intent as CardOperationIntent;
+  }));
+  owners.splice(0, owners.length, ...order.map((item) => item.owner));
 }
 
 /**

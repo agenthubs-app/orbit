@@ -6,6 +6,14 @@
 import type { AgentActionPreviewContract } from "../../../shared/contract/agent-v1";
 import type { AgentActionRecord, AgentRunDetail } from "./contract";
 import { cardOperationStatus, effectiveCardStatus } from "./decision";
+import { outcomeOf } from "../../agent-v1/domains/private-event/ops";
+import { cardLocale } from "./todo-operations";
+
+/** AG13: the reason an item that ran was not done, from its latest failed receipt (null when there is none to say). */
+function outcomeOfItem(action: AgentActionRecord, detail: AgentRunDetail | null, operationId: string): string | null {
+  const failed = (detail?.receipts ?? []).filter((receipt) => receipt.actionId === action.actionId && receipt.operationId === operationId && receipt.status === "failed").sort((left, right) => left.updatedAt.localeCompare(right.updatedAt)).at(-1);
+  return failed ? outcomeOf(failed.resultSummary, cardLocale(action.locale)) : null;
+}
 
 export function agentCardPreview(action: AgentActionRecord, detail: AgentRunDetail | null, now: string): AgentActionPreviewContract {
   return {
@@ -14,6 +22,7 @@ export function agentCardPreview(action: AgentActionRecord, detail: AgentRunDeta
     ...(action.expiresAt ? { expiresAt: action.expiresAt } : {}),
     ...(action.locale === "zh" || action.locale === "ja" || action.locale === "en" ? { locale: action.locale } : {}),
     operations: action.operations.map((op) => ({
+      ...(outcomeOfItem(action, detail, op.operationId) ? { outcome: outcomeOfItem(action, detail, op.operationId)! } : {}),
       after: { ...(op.after ?? op.payload) },
       ...(op.before ? { before: { ...op.before } } : {}),
       capability: op.capability ?? op.operationType,

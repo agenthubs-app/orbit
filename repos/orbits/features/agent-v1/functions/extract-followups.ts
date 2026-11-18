@@ -14,6 +14,7 @@
  */
 import type { JudgmentItem, JudgmentOutcome } from "../judgment/ask";
 import type { Sentence } from "../text/sentences";
+import { emitTrace } from "../observability/trace";
 import { dateWordsIn, isDeadline, memoDateOf } from "./dates";
 import { contactOfClue, guardOwner, type FollowUpCandidate, type LinkedContact, type MemoForExtraction, type Owner } from "./extract";
 
@@ -49,6 +50,28 @@ export interface FollowUpContext {
   contacts: readonly LinkedContact[];
   timeZone: string;
   language: "zh" | "ja" | "en";
+  /** The user's own words this turn (a title may use them too). */
+  message?: string;
+}
+
+// Han characters only: kana are grammar a title may phrase differently (「原稿を…送る」 from 「原稿は…送る」).
+const CJK_CHAR = /\p{Script=Han}/gu;
+const DEADLINE_WORDS = /\s*(?:最迟|最晚|之前|以前|までに|まで)?\s*\d{1,2}\s*月\s*\d{1,2}\s*[日号]?\s*(?:之前|以前|前|までに|まで)?\s*/gu;
+
+/**
+ * AG13 rerun of AG10 (AE-FN-013): the model titled a to-do 「补齐鲁发票」 from "发票最迟 11 月 25 日补齐" — 鲁 is in neither the
+ * note nor the message. A title with CJK characters found in none of the note, the people linked to it and the user's
+ * words is not used: the cited sentence's clause that shares the most characters with it is, without its date words.
+ */
+export function groundedAction(action: string, cited: string, allowed: string): string {
+  const foreign = [...action.matchAll(CJK_CHAR)].map((match) => match[0]).filter((char) => !allowed.includes(char));
+  if (!foreign.length) return action;
+  const clauses = cited.split(/[，,。；;！!？?\n]/u).map((clause) => clause.replace(/^\s*(?:\[\d+\]\s*)?/u, "").trim()).filter(Boolean);
+  const own = [...new Set([...action.matchAll(CJK_CHAR)].map((match) => match[0]))];
+  const overlap = (clause: string) => own.filter((char) => clause.includes(char)).length;
+  const best = [...clauses].sort((left, right) => overlap(right) - overlap(left))[0];
+  const phrase = best ? best.replace(DEADLINE_WORDS, "").trim() : "";
+  return phrase || action;
 }
 
 /** extractFollowUps — step 1 (code): owners guarded, dates worked out and split, the person found; the review items. */
@@ -71,9 +94,12 @@ export function extractFollowUps(candidates: readonly FollowUpCandidate[], conte
     const dueDate = memoDateOf(due ? dateWordsIn(due) ?? due : null, context.memo.createdAt, context.timeZone);
     const about = candidate.aboutClue ? contactOfClue(candidate.aboutClue, context.contacts) : null;
     const contact = about ?? (!candidate.aboutClue && context.contacts.length === 1 ? context.contacts[0] : null);
+    const allowed = [context.memo.title, context.memo.body, context.message ?? "", ...context.contacts.map((item) => item.name)].join("\n");
+    const action = groundedAction(candidate.action, text, allowed);
+    if (action !== candidate.action) emitTrace({ from: candidate.action, key, to: action, type: "fn.followup_title_grounded" });
     results.push({
       aboutClue: candidate.aboutClue ?? null,
-      action: candidate.action,
+      action,
       contact,
       dueDate: dueDate.day,
       dueText: due,
@@ -85,7 +111,7 @@ export function extractFollowUps(candidates: readonly FollowUpCandidate[], conte
       sentenceIds: candidate.sentenceIds,
       writable: false,
     });
-    items.push({ key, question: "followup.owner", subject: followUpSubject(context.language, candidate.action, candidate.sentenceIds) });
+    items.push({ key, question: "followup.owner", subject: followUpSubject(context.language, action, candidate.sentenceIds) });
   });
   return { items, results };
 }

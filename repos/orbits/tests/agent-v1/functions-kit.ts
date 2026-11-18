@@ -98,6 +98,8 @@ export async function runFn(message: string, understood: Record<string, unknown>
   language?: "zh" | "ja" | "en";
   references?: { id: string; name: string; type: string }[];
   extract?: unknown;
+  /** A reply of its own for the extraction call (AG13: a first call that fails, then one that answers). */
+  extractReply?: (call: ModelCall) => string;
   answer?: (call: ModelCall) => string;
   judge?: Answerer;
   judgeOptions?: { hang?: boolean; extra?: Record<string, unknown> };
@@ -110,6 +112,7 @@ export async function runFn(message: string, understood: Record<string, unknown>
   const model = deepseekStub(byNode({
     ...(options.answer ? { answer: options.answer } : {}),
     ...(options.extract !== undefined ? { functions: () => json(options.extract) } : {}),
+    ...(options.extractReply ? { functions: options.extractReply } : {}),
     understand: () => json({ language: options.language ?? "zh", parts: understood.map((item, index) => part({ localId: `p${index + 1}`, ...item })), plainChat: false }),
   }));
   const judgment = judgeStub(options.judge ?? (() => undefined), options.judgeOptions ?? {});

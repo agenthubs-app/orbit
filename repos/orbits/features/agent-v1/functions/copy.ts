@@ -109,6 +109,16 @@ export function untimedLine(language: Language, names: readonly string[]): strin
   return { en: `Time not announced yet (left out of the order): ${names.join(", ")}.`, ja: `開始時間が未公開のもの（順番には入れていません）：${names.join("、")}。`, zh: `时间未公布（没有排进先后）：${names.join("、")}。` }[language];
 }
 
+/**
+ * AG13 rerun of AG10 (AE-FN-001): the topic check did not finish, so nothing is said to "match"; the list is in the order
+ * code could test (the time preferences, the start times), and the user is told the topic was not checked.
+ */
+export function uncheckedCoverageLine(language: Language, listed: number, topic: string | null, unit: { zh: string; ja: string; en: string }): string {
+  if (language === "en") return `${topic ? `Whether they fit ${topic} could not be checked this time (the review was unavailable), so` : "The review was unavailable this time, so"} these ${listed} ${unit.en} are only in the order of what could be checked from their dates and times.`;
+  if (language === "ja") return `${topic ? `${topic}に合うかどうかは今回確認できませんでした（確認が一時的に使えませんでした）。` : "今回は確認が一時的に使えませんでした。"}ここに挙げた${listed}${unit.ja}は、日時から確認できる条件の順に並べただけです。`;
+  return `${topic ? `和${topic}的相关性这次没能核对（复核暂时不可用），` : "这次复核暂时不可用，"}下面这${listed}${unit.zh}只是按日期和时间能核对的条件排的，没有按主题筛过。`;
+}
+
 export function coverageLine(language: Language, listed: number, total: number, unit: { zh: string; ja: string; en: string }): string {
   if (total === 0) return { en: "None match these criteria right now.", ja: "今のところ、この基準に該当するものはありません。", zh: "按这些条件，现在没有符合的。" }[language];
   if (listed >= total) return { en: `${total} in all match.`, ja: `該当は全部で${total}${unit.ja}です。`, zh: `符合条件的一共${total}${unit.zh}。` }[language];
@@ -242,4 +252,12 @@ export function feeWords(fee: { kind: string; amountYen?: number }, language: La
   if (fee.kind === "pay_at_door") return { en: "paid at the door (amount not stated)", ja: "当日払い（金額未記載）", zh: "现场付费（未写金额）" }[language];
   if (fee.kind === "external_link") return { en: "see the organizer's page (amount not stated)", ja: "主催者ページ参照（金額未記載）", zh: "见主办方链接（未写金额）" }[language];
   return { en: "no price listed (not free)", ja: "料金未記載（無料ではありません）", zh: "未标价（不等于免费）" }[language];
+}
+
+/**
+ * AG13 rerun of AG10 (AE-FN-009): the review did not answer (timeout), so code cannot say the note has no interaction;
+ * it says the check did not finish and nothing was changed.
+ */
+export function reviewUnavailableLine(language: Language): string {
+  return { en: "This time the check of this note's interactions did not finish (the review was unavailable), so I can't say whether there is one to record, and nothing was changed. Please try again.", ja: "今回はメモのやり取りの確認が終わりませんでした（確認が一時的に使えませんでした）。記録すべきやり取りがあるかどうか言えないため、何も変更していません。もう一度お試しください。", zh: "这次没能核对完这篇笔记里的往来（复核暂时不可用），所以说不准有没有该记的，也没有改动。可以再试一次。" }[language];
 }

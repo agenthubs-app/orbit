@@ -42,9 +42,12 @@ export async function applyApprovedMemoUpdate(
 ): Promise<{ resultRef: string; summary: string }> {
   const noteId = typeof payload.noteId === "string" ? payload.noteId : "";
   const expectedVersion = typeof payload.expectedVersion === "number" ? payload.expectedVersion : Number.NaN;
-  if (!noteId || !Number.isInteger(expectedVersion) || !payload.interaction) throw new AgentExecutionPermanentError("noteId, expectedVersion and interaction are required.");
+  // AG13: a memo's event links (unlinking a private event before it is deleted); its text is not touched.
+  const eventRefs = Array.isArray(payload.eventRefs) ? (payload.eventRefs as { kind: "platform" | "private"; id: string }[]) : null;
+  if (!noteId || !Number.isInteger(expectedVersion) || (!payload.interaction && !eventRefs)) throw new AgentExecutionPermanentError("noteId, expectedVersion and interaction or eventRefs are required.");
   try {
-    const note = await input.notes.update({ actorId: input.actorId, expectedVersion, idempotencyKey: context.idempotencyKey, interaction: payload.interaction as NoteInteractionContract, noteId, now: context.now });
+    const note = await input.notes.update({ actorId: input.actorId, expectedVersion, idempotencyKey: context.idempotencyKey, ...(payload.interaction ? { interaction: payload.interaction as NoteInteractionContract } : {}), ...(eventRefs ? { eventRefs } : {}), noteId, now: context.now });
+    if (eventRefs) return { resultRef: `notes:${note.id}`, summary: "Memo's event links changed in Orbit." };
     return { resultRef: `notes:${note.id}`, summary: "Interaction recorded on the memo in Orbit." };
   } catch (error) {
     if (error instanceof NoteServiceError && (error.code === "NOTE_VERSION_CONFLICT" || error.code === "NOTE_INVALID_INPUT" || error.code === "NOTE_NOT_FOUND")) throw new AgentExecutionPermanentError(`CARD_CONTENT_CHANGED: ${error.message}; nothing was written.`);

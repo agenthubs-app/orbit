@@ -98,6 +98,13 @@ export const str = (value: unknown): string | undefined => (typeof value === "st
 export const strs = (value: unknown): string[] | undefined => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : undefined);
 
 /** Drops undefined values (the field schemas are strict about types, not about absence). */
+/** agent-design AG13: typed event links as the read fields carry them ("platform:<id>", "private:<id>"); undefined when none. */
+export function refsOf(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const out = value.flatMap((ref) => (ref && typeof ref === "object" && ((ref as { kind?: unknown }).kind === "platform" || (ref as { kind?: unknown }).kind === "private") && typeof (ref as { id?: unknown }).id === "string" ? [`${(ref as { kind: string }).kind}:${(ref as { id: string }).id}`] : []));
+  return out.length ? out : undefined;
+}
+
 export function defined(fields: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined));
 }

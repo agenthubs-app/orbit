@@ -20,6 +20,7 @@ import { AssessmentPage, AssessmentRail, ScoreRing, translator, verdictLabel, ty
 import { DiscoverHelpRail, DiscoverRail, DiscoverTab, type DiscoverRailState } from "./DiscoverTab";
 import { eventsApi, newIdempotencyKey, pollAssessment } from "./events-api";
 import { cardLine, eventWhen, isShownInGrid, meetCount, monthOf, orderAssessed, relativeDay, tabOf, verdictTone } from "./events-model";
+import { PrivateEventPanel } from "./PrivateEventPanel";
 import styles from "./events.module.css";
 
 type Tab = "assess" | "going" | "discover";
@@ -80,6 +81,9 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   // undefined = not read yet; null = the read failed (the card then shows as with the AI on, as before).
   const [availability, setAvailability] = useState<EventAssessmentAvailability | null | undefined>(opening ? opening.availability : undefined);
   const [selected, setSelected] = useState<string | null>(initialAssessmentId ?? null);
+  // agent-design AG13 (D4): the private event opened in place — right rail when wide, bottom sheet otherwise; no page of its own.
+  const [privateOpen, setPrivateOpen] = useState<string | null>(params?.get("privateEvent") ?? null);
+  useEffect(() => { setPrivateOpen(params?.get("privateEvent") ?? null); }, [params]);
   const [flow, setFlow] = useState<Flow>(null);
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -217,10 +221,18 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   // 参加予定页签（b12 #310）：右栏是下一场（有评估记录的）参加予定的「評価の詳細」。
   const goingRailItem = tab === "going" ? (upcoming ?? []).map((event) => (items ?? []).find((item) => item.id === event.assessmentId)).find((item) => item?.status === "ready") ?? null : null;
   const shownRailItem = tab === "assess" && !empty ? railItem : goingRailItem;
+  const privateItem = tab === "going" && privateOpen ? [...(upcoming ?? []), ...(past ?? [])].find((item) => item.eventId === privateOpen && item.privateEvent) ?? null : null;
+  const openPrivate = (id: string | null) => {
+    setPrivateOpen(id);
+    const search = new URLSearchParams(params?.toString() ?? "");
+    if (id) search.set("privateEvent", id); else search.delete("privateEvent");
+    router.replace(`/app/events${search.toString() ? `?${search.toString()}` : ""}`, { scroll: false });
+  };
   // Until the rail's data is in, undefined: the shell keeps its rail skeleton (no-flash rule 3).
   const rail = tier !== "wide" ? false : tab === "discover"
     ? (!discover && !discoverRail.loaded ? undefined : discoverRail.row ? <DiscoverRail row={discoverRail.row} language={language} /> : <DiscoverHelpRail language={language} />)
     : !overviewLoaded ? undefined
+    : privateItem ? <PrivateEventPanel item={privateItem} language={language} />
     : shownRailItem
     ? <AssessmentRail item={shownRailItem} language={language} busy={busy} onAdd={() => void decide(shownRailItem, "add")} onSkip={() => void decide(shownRailItem, "skip")} />
     : true;
@@ -245,7 +257,12 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
         </>
       ) : !inShell ? <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 12px" }}>{segment}</div> : null}
       {tab === "discover" ? <div data-events-discover="">{discover ?? <DiscoverTab language={language} tier={tier} signedIn onRail={setDiscoverRail} onSubtitle={setDiscoverSubtitle} />}</div> : null}
-      {tab === "going" ? (upcoming === null || past === null ? <GoingSkeleton /> : <MyEvents language={language} upcoming={upcoming} past={past} now={now} t={t} />) : null}
+      {tab === "going" ? (upcoming === null || past === null ? <GoingSkeleton /> : <MyEvents language={language} upcoming={upcoming} past={past} now={now} t={t} selectedPrivate={tier === "wide" ? privateOpen : null} onOpenPrivate={openPrivate} />) : null}
+      {privateItem && tier !== "wide" ? (
+        <Drawer open onClose={() => openPrivate(null)} title={privateItem.title} size="lg">
+          <PrivateEventPanel item={privateItem} language={language} titled />
+        </Drawer>
+      ) : null}
       {tab === "assess" && !overviewLoaded ? <AssessSkeleton tier={tier} /> : null}
       {tab === "assess" && overviewLoaded ? (
         <div className={tier === "narrow" ? styles.stack : styles.wgrid} data-events-assess="">
@@ -484,8 +501,12 @@ function emojiOf(item: EventAssessmentContract): string {
   return eventEmoji({ title: item.facts.title ?? "" });
 }
 
-function MyEvents({ language, upcoming, past, now, t }: { language: OrbitLanguage; upcoming: MyEventItem[]; past: MyEventItem[]; now: Date; t: Translate }) {
+function MyEvents({ language, upcoming, past, now, t, selectedPrivate, onOpenPrivate }: { language: OrbitLanguage; upcoming: MyEventItem[]; past: MyEventItem[]; now: Date; t: Translate; selectedPrivate: string | null; onOpenPrivate: (id: string) => void }) {
+  const std = useStandardCopy();
   const coming = upcoming.filter((item) => item.status !== "cancelled" && item.status !== "rejected");
+  // AG13 (D2): a private event's chip; (D1) «我去过（自己记的）» on its own line, the right chip only the organizer's status.
+  const privateChip = <span className={`${styles.chip} ${styles.c_lav}`} data-events-private-chip=""><Icon name="lock" size={12} />{std.myEvents.privateChip}</span>;
+  const selfLine = (item: MyEventItem) => (item.selfAttendance ? <span className={styles.selfLine} data-events-self-attended=""><Icon name="check" size={13} />{std.myEvents.selfAttended}</span> : null);
   if (coming.length === 0 && past.length === 0) {
     return (
       <div className={styles.wgrid} data-events-going="empty">
@@ -506,24 +527,35 @@ function MyEvents({ language, upcoming, past, now, t }: { language: OrbitLanguag
       <div className={`${styles.span12} ${styles.cardH}`} style={{ margin: "0 0 -6px" }}><h3>{t("upcoming")}</h3><span className={styles.more}>{t("countItems", { n: coming.length })}</span></div>
       {coming.map((item) => (
         <div key={item.eventId} className={`${styles.card} ${styles.span4} ${styles.nextCard}`}>
-          <div className={`${styles.row} ${styles.between}`}><span className={styles.lbl}>{eventWhen(item.startsAt, language)}</span>{dayChip(item.startsAt, now, t)}</div>
+          <div className={`${styles.row} ${styles.between}`}><span className={styles.lbl}>{eventWhen(item.startsAt, language)}</span><span className={styles.row} style={{ gap: 6 }}>{dayChip(item.startsAt, now, t)}{item.privateEvent ? privateChip : null}</span></div>
           <b className={styles.nextName}>{item.title}</b>
           <div className={styles.lbl}>{item.venue ?? ""}</div>
           {item.meetCount ? <div className={`${styles.row} ${styles.nextMeet}`}><Avatars initials={item.meetInitials ?? []} /><span className={styles.lbl}>{t("meetCount", { n: item.meetCount })}</span></div> : null}
-          <a className={`${styles.btn} ${styles.sm} ${styles.primary} ${styles.nextBtn}`} href={item.href}>{t("prepare")}</a>
+          {item.privateEvent
+            ? <button type="button" className={`btn ${styles.btn} ${styles.sm} ${styles.primary} ${styles.nextBtn}`} onClick={() => onOpenPrivate(item.eventId)} data-events-private-open={item.eventId}>{std.myEvents.view}</button>
+            : <a className={`${styles.btn} ${styles.sm} ${styles.primary} ${styles.nextBtn}`} href={item.href}>{t("prepare")}</a>}
         </div>
       ))}
       {past.length ? (
         <div className={`${styles.card} ${styles.span12} ${styles.pastCard}`}>
           <div className={styles.cardH} style={{ margin: "8px 0 0" }}><h3>{t("past")}</h3><span className={styles.more}>{t("countItems", { n: past.length })}</span></div>
           <div className={styles.list}>
-            {past.map((item) => (
-              <a key={item.eventId} className={styles.li} href={item.href} style={{ color: "inherit", textDecoration: "none" }}>
-                <span className={`${styles.emo} ${styles.emoSm} ${item.status === "attended" ? styles.t_teal : styles.t_lav}`}>{item.emoji}</span>
-                <div className={styles.meta}><b>{item.title}</b><span>{[eventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</span></div>
-                <span className={`${styles.chip} ${item.status === "attended" ? styles.c_teal : ""}`}>{item.status === "attended" ? t("attended") : item.status === "cancelled" ? t("statusCancelled") : t("notCheckedIn")}</span>
-              </a>
-            ))}
+            {past.map((item) => {
+              const body = (
+                <>
+                  <span className={`${styles.emo} ${styles.emoSm} ${item.status === "attended" ? styles.t_teal : styles.t_lav}`}>{item.emoji}</span>
+                  <div className={styles.meta}><b>{item.title}</b><span>{[eventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</span>{selfLine(item)}</div>
+                  {item.privateEvent ? privateChip
+                    : item.status === "attended" ? <span className={`${styles.chip} ${styles.c_teal}`}>{t("attended")}</span>
+                    : item.status === "cancelled" ? <span className={styles.chip}>{t("statusCancelled")}</span>
+                    : item.selfAttendance ? null
+                    : <span className={styles.chip}>{t("notCheckedIn")}</span>}
+                </>
+              );
+              return item.privateEvent
+                ? <button key={item.eventId} type="button" className={`btn ${styles.li} ${selectedPrivate === item.eventId ? styles.liSel : ""}`} onClick={() => onOpenPrivate(item.eventId)} data-events-private-open={item.eventId}>{body}</button>
+                : <a key={item.eventId} className={styles.li} href={item.href} style={{ color: "inherit", textDecoration: "none" }}>{body}</a>;
+            })}
           </div>
         </div>
       ) : null}

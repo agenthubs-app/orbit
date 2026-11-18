@@ -15,6 +15,9 @@ import { createTaskService } from "../../features/tasks/service";
 import { createMemoryLiveRecordStore, type LiveRecordStoreLike } from "../../shared/storage/live-record-store";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 import type { TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
+import { createPrivateEventService } from "../../features/events/private-events/service";
+import { createAttendanceService } from "../../features/events/attendance-notes/service";
+import { createPersonalScheduleService } from "../../features/personal-schedule/service";
 
 export const ACTOR = "user_agent_ledger_a";
 
@@ -31,9 +34,13 @@ export function createCardKit(options: { client?: TransactionalPostgresClient; w
   const tasks = createTaskService({ repository: createTaskRepository({ store, transactionClient: options.client, workspaceId }) });
   // AG06: the note service the memo executor writes through (no association reader: every id is accessible).
   const notes = createNoteService({ repository: createNoteRepository({ store, workspaceId }) });
+  // AG13: private events, «我去过» and schedule items over the same store.
+  const privateEvents = createPrivateEventService({ client: options.client ?? null, now, store, workspaceId });
+  const attendance = createAttendanceService({ client: options.client ?? null, now, store, workspaceId });
+  const schedule = createPersonalScheduleService({ ...(options.client ? { client: options.client } : {}), now, store, workspaceId });
   const executorCalls: { key: string; idempotencyKey: string }[] = [];
   // AG06: the product's card executors (features/agent-v1/domains/writes.ts); AG02's to-do executors are kept for the old kit option.
-  const plainExecutors = options.legacyTodoExecutors ? createTodoExecutors({ actorId: ACTOR, tasks }) : cardWriteExecutors({ actorId: ACTOR, notes, tasks });
+  const plainExecutors = options.legacyTodoExecutors ? createTodoExecutors({ actorId: ACTOR, tasks }) : cardWriteExecutors({ actorId: ACTOR, events: { attendance, privateEvents, schedule }, notes, tasks });
   const executors = plainExecutors.map((plain) => {
     const executor = options.wrapExecutor ? options.wrapExecutor(plain) : plain;
     const counted: AgentActionExecutor = {
@@ -55,9 +62,12 @@ export function createCardKit(options: { client?: TransactionalPostgresClient; w
     advance(ms: number) {
       clock += ms;
     },
+    attendance,
     executorCalls,
     notes,
     now,
+    privateEvents,
+    schedule,
     repository,
     runtime,
     store,

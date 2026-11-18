@@ -192,3 +192,93 @@ export function withoutStrayScripts(text: string, materials: string): { text: st
   for (const piece of pieces) (stray(piece) ? dropped : kept).push(piece);
   return { dropped: dropped.map((piece) => piece.trim()), text: joined(kept).replace(/[ \t]+\n/gu, "\n") };
 }
+
+/* ── 4. status words a read record does not support (AG13 opening 2, AE-FN-008) ───────────────── */
+
+export type StatusKind = "open" | "done" | "cancelled";
+
+/** A sentence saying something is still to do, done, or cancelled (zh / ja / en). */
+const STATUS_CLAIM: Record<StatusKind, RegExp[]> = {
+  open: [
+    /(?:还|仍|仍然|尚|依然)(?:是|在|属于)?(?:待办|待处理|未完成|没完成|没做|未做|未处理|没处理|没办|没发|未发|悬而未决)/u,
+    /(?:还|仍|尚)(?:没有|没|未)(?:做|完成|办|处理|弄|落实|发出?|跟进)/u,
+    /(?:尚未|仍未|还未)(?:完成|处理|落实|办理|发出?)/u,
+    /(?:是|属于|算)(?:一?(?:件|条|项))?(?:未完成|待办|待处理)(?:的)?(?:事|事项|任务)/u,
+    /まだ(?:済んで|終わって|完了して|対応して|送って|やって)いない|(?:未完了|未対応|未処理|対応待ち|やり残し)(?:です|のまま|になって)/u,
+    /\b(?:is|are|remains?|still)\s+(?:still\s+)?(?:open|pending|outstanding|to[- ]do|unfinished|not (?:yet )?(?:done|completed|finished|sent))\b/iu,
+    /\bstill (?:needs to be|has to be|to be) (?:done|sent|completed)\b/iu,
+    /\bhas(?:n't| not) (?:yet )?been (?:done|completed|finished|sent)\b/iu,
+  ],
+  done: [
+    /(?:已经|已|早已)(?:完成|做完|办完|办好|处理完|落实)/u,
+    /(?:做完了|办完了|完成了|搞定了|处理好了)/u,
+    /(?:完了しました|完了済み|完了しています|済みです|済ませました|終わりました|終わっています)/u,
+    /\b(?:is|are|was|were|has been|have been)\s+(?:already\s+)?(?:done|completed|finished|taken care of)\b/iu,
+    /\balready (?:done|completed|finished)\b/iu,
+  ],
+  cancelled: [
+    /(?:取消了|被取消|已取消|作废了|不做了|撤销了)/u,
+    /(?:キャンセルされ|キャンセルしました|キャンセル済み|中止になり|中止されました|取り消され)/u,
+    /\b(?:is|are|was|were|has been|have been)\s+(?:cancell?ed|called off|dropped)\b/iu,
+  ],
+};
+
+/** What a read record must hold for a claim of that kind: its status field, or words of that kind in its own text. */
+const STATUS_SUPPORT: Record<StatusKind, RegExp> = {
+  open: /Status: (?:open|pending)|overdue|待办|待处理|未完成|没完成|还没|尚未|未処理|未対応|未完了|まだ|\bopen\b|\bpending\b|\bnot (?:yet )?(?:done|sent|completed)\b|\bstill\b|\bto[- ]do\b/iu,
+  done: /Status: (?:completed|done)|\(completed |已完成|完成了|做完|办完|完了|済み|\bdone\b|\bcompleted\b|\bfinished\b/iu,
+  cancelled: /Status: (?:cancell?ed|archived)|取消|作废|キャンセル|中止|\bcancell?ed\b|\bcalled off\b/iu,
+};
+
+/** The status kinds a sentence claims. */
+export function statusClaimsIn(sentence: string): StatusKind[] {
+  return (Object.keys(STATUS_CLAIM) as StatusKind[]).filter((kind) => STATUS_CLAIM[kind].some((pattern) => pattern.test(sentence)));
+}
+
+/**
+ * A sentence of the answer that says something is still to do, done or cancelled is delivered only when a record read this
+ * turn supports that status (its status field, or its own words of that kind). `sources` are the read records' lines.
+ */
+export function withoutUnsupportedStatus(text: string, sources: readonly string[]): { text: string; dropped: string[] } {
+  const supported = (kind: StatusKind) => sources.some((line) => STATUS_SUPPORT[kind].test(line));
+  return without(text, (piece) => statusClaimsIn(piece).some((kind) => !supported(kind)));
+}
+
+/**
+ * AG13 rerun of AG09 (AE-SCL-016): the fetched page says "effective October 1, 2026" and the answer wrote "(dated Oct 1,
+ * 2026)". A date the sources give as the day something takes effect is said as that ("effective …", "…起生效"), never as
+ * the date of the page.
+ */
+const EN_DATE = String.raw`(?:[A-Z][a-z]{2,8}\.?\s+\d{1,2},\s*\d{4}|\d{4}-\d{2}-\d{2})`;
+const SOURCE_EFFECTIVE_EN = new RegExp(String.raw`\b(?:effective|valid|applies|applicable|starting|in effect)\s+(?:from\s+|as of\s+|on\s+)?(${EN_DATE})`, "giu");
+const SOURCE_EFFECTIVE_CJK = /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*(?:起|から|より)\s*(?:生效|适用|適用|有效|実施)?/gu;
+const ANSWER_DATED_EN = new RegExp(String.raw`\b(dated|as of|updated(?:\s+on)?|last updated(?:\s+on)?|published(?:\s+on)?)\s+(${EN_DATE})`, "giu");
+const ANSWER_DATED_ZH = /(?:更新于|日期为|发布于|截至)\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/gu;
+
+const dayOf = (text: string): string | null => {
+  const ms = Date.parse(/^\d{4}-\d{2}-\d{2}$/u.test(text) ? `${text}T00:00:00Z` : `${text.replace(/\./gu, "")} 00:00 UTC`);
+  return Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : null;
+};
+const cjkDay = (year: string, month: string, day: string) => `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+
+export function withEffectiveDates(text: string, sources: readonly string[]): { text: string; changed: string[] } {
+  const effective = new Set<string>();
+  for (const line of sources) {
+    for (const match of line.matchAll(SOURCE_EFFECTIVE_EN)) { const day = dayOf(match[1]); if (day) effective.add(day); }
+    for (const match of line.matchAll(SOURCE_EFFECTIVE_CJK)) effective.add(cjkDay(match[1], match[2], match[3]));
+  }
+  if (!effective.size) return { changed: [], text };
+  const changed: string[] = [];
+  let out = text.replace(ANSWER_DATED_EN, (whole, _verb: string, date: string) => {
+    const day = dayOf(date);
+    if (!day || !effective.has(day)) return whole;
+    changed.push(whole);
+    return `effective ${date}`;
+  });
+  out = out.replace(ANSWER_DATED_ZH, (whole, year: string, month: string, day: string) => {
+    if (!effective.has(cjkDay(year, month, day))) return whole;
+    changed.push(whole);
+    return `${year}年${Number(month)}月${Number(day)}日起生效`;
+  });
+  return { changed, text: out };
+}

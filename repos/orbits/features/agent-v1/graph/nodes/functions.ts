@@ -56,6 +56,8 @@ const MAX_ROWS = 6_000;
  * Singapore", "連絡先"): it holds a word for contacts in general (stab2: "my contacts based in Singapore").
  */
 const GENERIC_CONTACT_CLUE = /(?:联系人|聯絡人|人脉|連絡先|コンタクト|\bcontacts\b|\bpeople\b)|^(?:人|persons?|contact)$/iu;
+/** Words that name the user's contacts as a set (inside a sentence): 联系人, 連絡先, my contacts. */
+const CONTACT_SET_WORDS = /(?:联系人|聯絡人|人脉|連絡先|コンタクト|\bcontacts\b)/iu;
 const RANK_WORDS = /(挑|选出|选几|排序|排一下|排个序|并べ|並べ|選んで|順に|順番|\bpick\b|\bchoose\b|\brank\b|\bsort\b|\border\b|\blist the\b)/iu;
 const TODO_LIST_WORDS = /(待办|跟进|タスク|ToDo|フォローアップ|\bto-?dos?\b|\bfollow[\s-]?ups?\b|\btasks?\b)/iu;
 const WHO_WORDS = /(谁|哪位|哪些人|哪几位|\bwho\b|\bwhom\b|誰|どなた|どの人)/iu;
@@ -84,6 +86,10 @@ export function rankDomainOf(part: GraphPart, message: string): RankDomain | nul
   // Reading other records is another kind of task — except a memo attached with @ (its topics are the basis).
   const memoBasis = part.refs.filter((ref) => ref.entity === "memo");
   const readsMemoBasis = memoBasis.length > 0 && memoBasis.every((ref) => ref.recordId);
+  // AG13 repair round 8 (AE-SCL-013, AG08 rerun run-08): "东京做零售的联系人里，挑三个最适合聊柴烧器物的人" — the words name
+  // the contacts as the set to pick from; a note read the first layer added (memo.read) does not make it another task.
+  const namesPerson = part.refs.some((ref) => ref.entity === "contact" && (() => { const words = ref.quote ? message.slice(ref.quote[0], ref.quote[1]).replace(/^@/u, "").trim() : ""; return Boolean(words) && !GENERIC_CONTACT_CLUE.test(words); })());
+  if (contact && !event && !todo && CONTACT_SET_WORDS.test(quote) && !memoBasis.length && !namesPerson && !part.refs.some((ref) => ref.recordId) && !part.capabilities.includes("schedule.read")) return "contact";
   if (part.capabilities.some((capability) => capability === "schedule.read" || (capability === "memo.read" && !readsMemoBasis))) return null;
   const said = (ref: GraphPart["refs"][number]) => (ref.quote ? message.slice(ref.quote[0], ref.quote[1]) : "").replace(/^@/u, "").trim();
   if (event && !contact && !todo) return chosenEvents === 1 ? null : "event";
@@ -464,7 +470,12 @@ function writeAnswer(input: { apart?: string | null; domain: RankDomain; languag
       : language === "en" ? `your ${noun}` : language === "ja" ? `あなたの${noun}` : `你的${noun}`;
   const topic = input.basisMemo ? (language === "en" ? `the topics of your note "${input.basisMemo}"` : language === "ja" ? `メモ「${input.basisMemo}」のテーマ` : `你的笔记「${input.basisMemo}」的主题`) : input.basis ? (language === "en" ? `"${input.basis}"` : `「${input.basis}」`) : null;
   const { afterHardConditions, judged, truncated } = result.coverage;
-  if (input.lead) {
+  if (input.lead && result.semantic && !result.matched && result.unmatchedReason) {
+    // AG13 rerun of AG10 (AE-FN-001): the topic check did not finish (the review timed out); the candidates left were not
+    // checked against it, so they are not said to meet the criteria — the order shown is by what code could test.
+    emitTrace({ listed: n, reason: result.unmatchedReason, type: "functions.coverage_unchecked" });
+    lines.push(say.uncheckedCoverageLine(language, n, topic, { en: unit, ja: UNIT[domain].ja, zh: UNIT[domain].zh }));
+  } else if (input.lead) {
     // AG10: the lead said the basis; the coverage follows.
     lines.push(say.coverageLine(language, n, result.matching, { en: unit, ja: UNIT[domain].ja, zh: UNIT[domain].zh }));
   } else if (result.semantic && result.matched) {
@@ -1060,7 +1071,11 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
         lines.push(`${say.HEADINGS.interactions[language]}${language === "en" ? ":" : "："}`);
         for (const item of listed) lines.push(`- ${nameOf(item.contact, item.clue)}，${item.occurredOn ? say.dayWordsOf(item.occurredOn, language) : ""}，${say.howWords(item.channel, item.direction, language)}${item.writable ? "" : (language === "en" ? " (doubtful: the review was not sure)" : language === "ja" ? "（要確認：確認で確信が持てませんでした）" : "（存疑：复核没有把握）")} ${say.sentenceQuote(language, sentenceOf(item.sentenceIds))}`.replace(/，/gu, language === "en" ? ", " : "，"));
       }
-      if (!happened.length && (task.write || !doubtfulOnes.length)) lines.push(say.noInteractionLine(language));
+      // AG13 rerun of AG10 (AE-FN-009): with the review unavailable (timeout) a doubtful contact is not "no interaction".
+      if (!happened.length && doubtfulOnes.length && result.judgment?.unavailable) {
+        emitTrace({ type: "functions.review_unavailable_said", unavailable: result.judgment.unavailable });
+        lines.push(say.reviewUnavailableLine(language));
+      } else if (!happened.length && (task.write || !doubtfulOnes.length)) lines.push(say.noInteractionLine(language));
       const notCounted = (task.write ? others : others.filter((item) => item.reason !== "unsure")).filter((item) => !repeated(item));
       if (notCounted.length) {
         lines.push(`${say.HEADINGS.notInteractions[language]}${language === "en" ? ":" : "："}`);

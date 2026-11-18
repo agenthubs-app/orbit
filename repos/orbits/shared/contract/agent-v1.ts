@@ -269,6 +269,8 @@ export interface AgentCardOperationPreviewContract {
   status: AgentCardOperationStatus;
   /** AG07：卡上这一项怎么显示（获批视觉稿）。全部由服务端代码按卡片语言写好并冻结；AG07 之前冻结的卡没有它。 */
   display?: AgentCardOperationDisplayContract | undefined;
+  /** AG13：这一项执行后没做成时服务端写的原因（按卡片语言），如「活动没有删：待办「约山本吃饭」还关联着它」。 */
+  outcome?: string | undefined;
 }
 
 /** AG07：卡上一项的显示内容。两端照它显示，只按 change 选「改」「新增」这类固定词，不自己拼日期和差异。 */
@@ -407,4 +409,46 @@ export interface AgentCancelResultContract {
   /** 这次请求是否改变了状态；已结束的委托返回 false 和它原来的结果。 */
   changed: boolean;
   document: AgentResultDocument;
+}
+
+/* ── AG13：私人活动、我去过（参会自述）、活动引用 ─────────────────────────── */
+
+/**
+ * AG13（设计稿附录 E「活动引用」）：指向一场活动。platform 是平台活动（普通用户不可改），private 是用户自己建的私人活动，
+ * 只有本人能看到。卡上引用本卡第 n 项新建的活动时先写 localCreateRef: n（从 1 起），执行到它时由服务端换成正式编号。
+ */
+export type EventRefContract =
+  | { kind: "platform"; id: string }
+  | { kind: "private"; id: string };
+
+export interface PrivateEventContract {
+  id: string;
+  accountId: string;
+  title: string;
+  startsAt: string;
+  endsAt?: string | undefined;
+  venue?: string | undefined;
+  notes?: string | undefined;
+  /** 每次写入加一。 */
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 一天里的时段（「晚上」「下午」），只用来显示用户自己说的时间。 */
+export type AttendanceDayPart = "morning" | "noon" | "afternoon" | "evening" | "night";
+
+/** AG13：用户自己记的「我去过」。和主办方的签到、报名分开存，谁也不替谁写；同一账号同一场活动只有一条。 */
+export interface AttendanceNoteContract {
+  id: string;
+  accountId: string;
+  eventRef: EventRefContract;
+  /** 本地日期 YYYY-MM-DD。 */
+  attendedOn: string;
+  dayParts?: readonly AttendanceDayPart[] | undefined;
+  /** 用户自己的一句话。 */
+  selfNote?: string | undefined;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
 }

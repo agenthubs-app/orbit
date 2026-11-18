@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { uniqueRefs } from "../tasks/task-links";
 import { isDeepStrictEqual } from "node:util";
 
 import type { NoteInteractionContract, NoteMentionContract } from "../../shared/contract/notes";
@@ -88,6 +89,11 @@ export interface NoteUpdateInput {
   manualContactIds?: readonly string[];
   mentions?: readonly NoteMentionContract[];
   eventIds?: readonly string[];
+  /**
+   * agent-design AG13: the memo's typed event links as a whole. A private event may only be removed here (unlinking a
+   * deleted or to-be-deleted event); `eventIds` follows the platform ones.
+   */
+  eventRefs?: readonly { kind: "platform" | "private"; id: string }[];
   noteKind?: "free" | "meeting" | "voice";
   usedForPlan?: boolean;
   /**
@@ -385,7 +391,7 @@ export function createNoteService(input: { repository: NoteRepository; associati
     },
     async update(updateInput) {
       const body = updateInput.body === undefined ? undefined : normalizedBody(updateInput.body);
-      if (body === undefined && updateInput.title === undefined && updateInput.contactIds === undefined && updateInput.manualContactIds === undefined && updateInput.mentions === undefined && updateInput.eventIds === undefined && updateInput.noteKind === undefined && updateInput.usedForPlan === undefined && updateInput.interaction === undefined) throw new NoteServiceError("NOTE_INVALID_INPUT", "At least one note field is required");
+      if (body === undefined && updateInput.title === undefined && updateInput.contactIds === undefined && updateInput.manualContactIds === undefined && updateInput.mentions === undefined && updateInput.eventIds === undefined && updateInput.eventRefs === undefined && updateInput.noteKind === undefined && updateInput.usedForPlan === undefined && updateInput.interaction === undefined) throw new NoteServiceError("NOTE_INVALID_INPUT", "At least one note field is required");
       return withMutationLock(`${updateInput.actorId}\u0000${updateInput.noteId}`, async () => {
         const stored = requirePayload(await input.repository.get(updateInput.actorId, updateInput.noteId), updateInput.noteId);
         const nextBody = body ?? stored.note.body;
@@ -396,14 +402,22 @@ export function createNoteService(input: { repository: NoteRepository; associati
             ? normalizedIds(updateInput.contactIds)
             : [...stored.note.manualContactIds];
         const mentions = normalizedMentions(updateInput.mentions ?? stored.note.mentions, nextBody, stored.note.mentions);
-        const eventIds = canonicalEventIds(updateInput.eventIds === undefined ? stored.note.eventIds : normalizedIds(updateInput.eventIds), mentions);
+        // AG13: typed links. Given as a whole, the platform ones become eventIds; a private one can only be removed.
+        const storedRefs = stored.note.eventRefs ?? stored.note.eventIds.map((id) => ({ id, kind: "platform" as const }));
+        if (updateInput.eventRefs?.some((ref) => ref.kind === "private" && !storedRefs.some((old) => old.kind === "private" && old.id === ref.id))) throw new NoteServiceError("NOTE_INVALID_INPUT", "A private event can be linked to a memo only by the Agent's card; it can be removed here");
+        const eventRefs = updateInput.eventRefs !== undefined
+          ? uniqueRefs(updateInput.eventRefs)
+          : stored.note.eventRefs && updateInput.eventIds !== undefined
+            ? [...stored.note.eventRefs.filter((ref) => ref.kind === "private"), ...normalizedIds(updateInput.eventIds).map((id) => ({ id, kind: "platform" as const }))]
+            : stored.note.eventRefs;
+        const eventIds = canonicalEventIds(updateInput.eventRefs !== undefined ? eventRefs!.filter((ref) => ref.kind === "platform").map((ref) => ref.id) : updateInput.eventIds === undefined ? stored.note.eventIds : normalizedIds(updateInput.eventIds), mentions);
         const contactIds = canonicalContactIds(manualContactIds, mentions);
         const nextNoteKind = noteKind(updateInput.noteKind);
         const nextUsedForPlan = usedForPlan(updateInput.usedForPlan);
         // AG10: an interaction is kept only when well formed with its actual contacts among the memo's (as for create).
         const interaction = updateInput.interaction === undefined ? undefined : readNoteInteraction(updateInput.interaction, contactIds);
         if (updateInput.interaction !== undefined && !interaction) throw new NoteServiceError("NOTE_INVALID_INPUT", "interaction is invalid: actualContactIds must be among the memo's contactIds, with a known channel, direction and date");
-        const operationFingerprint = fingerprint({ title: updateInput.title, body, contactIds: updateInput.contactIds, manualContactIds: updateInput.manualContactIds, mentions: updateInput.mentions, eventIds: updateInput.eventIds, noteKind: nextNoteKind, usedForPlan: nextUsedForPlan, expectedVersion: updateInput.expectedVersion, ...(interaction ? { interaction } : {}) });
+        const operationFingerprint = fingerprint({ title: updateInput.title, body, contactIds: updateInput.contactIds, manualContactIds: updateInput.manualContactIds, mentions: updateInput.mentions, eventIds: updateInput.eventIds, ...(updateInput.eventRefs !== undefined ? { eventRefs: updateInput.eventRefs } : {}), noteKind: nextNoteKind, usedForPlan: nextUsedForPlan, expectedVersion: updateInput.expectedVersion, ...(interaction ? { interaction } : {}) });
         // Sprint 0142: the receipt is checked before access, as for create.
         const replay = checkReplay(stored, { idempotencyKey: updateInput.idempotencyKey, kind: "update", fingerprint: operationFingerprint });
         if (replay) return replay;
@@ -421,6 +435,7 @@ export function createNoteService(input: { repository: NoteRepository; associati
           mentions,
           contactIds,
           eventIds,
+          ...(eventRefs ? { eventRefs } : {}),
           ...(nextNoteKind === undefined ? {} : { noteKind: nextNoteKind }),
           ...(nextUsedForPlan === undefined ? {} : { usedForPlan: nextUsedForPlan }),
           ...(interaction ? { autoExtraction: "suppressed" as const, interaction } : {}),

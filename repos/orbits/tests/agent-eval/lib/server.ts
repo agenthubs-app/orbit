@@ -82,6 +82,18 @@ export async function serverControl<T = Record<string, unknown>>(environment: Ev
   return json;
 }
 
+/**
+ * AG13 opening 4: waits until the eval server has no model call in flight and nothing traced for a quiet spell (the
+ * preload's `drain`). Null when the server does not answer the control route.
+ */
+export async function drainServer(environment: EvalEnvironment, options: { quietMs?: number; timeoutMs?: number } = {}): Promise<{ drained: boolean; inFlight: number; inFlightAtStart: number; waitedMs: number } | null> {
+  try {
+    return await serverControl(environment, "drain", { quietMs: options.quietMs ?? 500, timeoutMs: options.timeoutMs ?? 30_000 });
+  } catch {
+    return null;
+  }
+}
+
 /** Per account and kind, the rows the product holds now (owner = account actor). */
 export async function countWorldRows(url: string, actors: Record<string, string>): Promise<Record<string, Record<string, number>>> {
   const client = new pg.Client({ connectionString: url });

@@ -76,7 +76,7 @@ export function extractInteractions(candidates: readonly InteractionCandidate[],
     const key = `i${index + 1}`;
     const text = candidate.sentenceIds.map((id) => context.sentences.find((sentence) => sentence.id === id)?.text ?? "").join(" ");
     const contact = contactOfClue(candidate.contactClue, context.contacts);
-    const kind = guardInteraction(candidate, text);
+    const kind = guardInteraction(candidate, candidate.sentenceIds.map((id) => context.sentences.find((sentence) => sentence.id === id)?.text ?? ""));
     const date = memoDateOf(candidate.dateText, context.memo.createdAt, context.timeZone);
     const reason: NotAnInteraction | null = kind !== "happened" ? kind : !contact ? "not_linked" : context.focus.length && !context.focus.includes(contact.id) ? "not_asked_about" : null;
     results.push({ channel: candidate.channel, clue: candidate.contactClue, contact, direction: candidate.direction, key, occurredOn: date.day, precision: date.day ? date.precision : "unknown", reason, sentenceIds: candidate.sentenceIds, writable: false });

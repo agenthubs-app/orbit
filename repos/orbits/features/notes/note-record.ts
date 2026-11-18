@@ -80,7 +80,9 @@ function readNote(value: unknown, actorId: string, schemaVersion: 1 | 2): NoteDT
     !Array.isArray(value.manualContactIds) ||
     !value.manualContactIds.every(nonEmpty) ||
     !Array.isArray(value.eventIds) ||
-    !value.eventIds.every(nonEmpty)
+    !value.eventIds.every(nonEmpty) ||
+    // agent-design AG13: the typed event links, when the memo has them.
+    (value.eventRefs !== undefined && (!Array.isArray(value.eventRefs) || !value.eventRefs.every((ref) => isRecord(ref) && (ref.kind === "platform" || ref.kind === "private") && nonEmpty(ref.id))))
   ) return null;
   const body = value.body as string;
   const mentions = readMentions(value.mentions, body);

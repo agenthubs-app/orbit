@@ -78,6 +78,19 @@ test("operation types cover the design-derived write operations", () => {
       "delete_contact",
       "restore_contact",
       "import_contacts",
+      // agent-design AG13: private events, «我去过», schedule items, and the other to-do verbs.
+      "create_private_event",
+      "update_private_event",
+      "delete_private_event",
+      "create_attendance",
+      "update_attendance",
+      "delete_attendance",
+      "create_schedule",
+      "update_schedule",
+      "delete_schedule",
+      "complete_todo",
+      "reopen_todo",
+      "delete_todo",
     ],
   );
 });

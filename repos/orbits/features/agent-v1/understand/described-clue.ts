@@ -82,8 +82,49 @@ function namesANote(other: { entity: string; text: string }): boolean {
   return other.text.replace(GENERIC_RECORD_WORDS, "").replace(/[\s@「」"“”]/gu, "").length >= 2;
 }
 
+/**
+ * AG13 opening 3 (AE-RD-003): a contact clue that is only a word of when or a demonstrative of time ("当时", "那时", "今天",
+ * "その時", "あの時", "then", "that time") names no person. The part it came in ("当时说了什么？") is about the object of the
+ * part before it in the same message, not a contact to look up.
+ */
+const CJK_TIME_CLUE = /^(?:当时|那时|那时候|那会儿|当时候|彼时|这时|这时候|那次|这次|那天|这天|当天|那一次|这一次|那回)$/u;
+const JA_TIME_CLUE = /^(?:その時|そのとき|あの時|あのとき|その際|当時|その日|あの日|その場|今回|前回|この時|このとき)$/u;
+const EN_TIME_CLUE = /^(?:then|back then|at that time|that time|this time|that day|the time|at the time|that|this)$/iu;
+
+export function timeWordClue(clue: { entity: string; text: string }): boolean {
+  if (clue.entity !== "contact") return false;
+  const words = clue.text.trim().replace(/[。.?？!！、，,]+$/u, "");
+  return CJK_TIME_CLUE.test(words) || JA_TIME_CLUE.test(words) || EN_TIME_CLUE.test(words) || TIME_ONLY.test(words);
+}
+
+// A described group of contacts ("东京做零售的联系人", "東京で小売をしている連絡先", "contacts in retail in Tokyo") is a
+// filter on the contacts, not one person to look up (AG13 rerun of AG08, AE-SCL-013).
+const CJK_GROUP = /^.{2,}(?:的|の)(?:联系人|人脉|人們|人们|那些人|几位|朋友们|客户们|連絡先|人たち|方々)$/u;
+const JA_GROUP = /^.{2,}(?:いる|てる|した|する|だった)(?:連絡先|人たち|方々)$/u;
+const EN_GROUP = /^(?:my\s+|the\s+)?contacts?\s+(?:who|in|at|from|that|with)\b/iu;
+
+/**
+ * AG13 gate run-04 (AE-SCL-025): "明天这场周会关联了哪些人" — "哪些人" came tagged as a contact. A question word ("哪些人",
+ * "谁", "誰", "who") is what the question asks for, not a person to look up.
+ */
+const QUESTION_PERSON = /^(?:哪些人|哪些联系人|哪几位|哪几个人|哪位|哪个人|哪一位|谁|是谁|都有谁|有谁|哪些|誰|誰が|どなた|どの人|どの方|who|whom|which (?:people|persons?|contacts?|ones?))$/iu;
+
+export function questionWordClue(clue: { entity: string; text: string }): boolean {
+  return clue.entity === "contact" && QUESTION_PERSON.test(clue.text.trim().replace(/[?？。.]+$/u, ""));
+}
+
+export function groupClue(clue: { entity: string; text: string }): boolean {
+  if (clue.entity !== "contact") return false;
+  const words = clue.text.trim().replace(/[。.?？!！、，,]+$/u, "");
+  return CJK_GROUP.test(words) || JA_GROUP.test(words) || EN_GROUP.test(words);
+}
+
 /** Only parts that read: in a change ("把她的待办改到周五") the person is who the record is about. */
 export function subjectInsideRecord(clue: { entity: string; text: string }, others: readonly { entity: string; text: string }[], writes = false): boolean {
   if (writes || clue.entity !== "contact" || !unnamedSubject(clue.text)) return false;
-  return others.some((other) => other !== clue && namesANote(other));
+  // AG13 rerun of AG04 (AE-AMB-009): "我和他最近聊了什么" describes the notes by the person (他, named earlier in the
+  // conversation); the pronoun is that person, not a subject inside a named note.
+  const own = clue.text.trim();
+  const inside = (text: string) => (/^[A-Za-z\s'-]+$/u.test(own) ? new RegExp(String.raw`\b${own.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}\b`, "iu").test(text) : text.includes(own));
+  return others.some((other) => other !== clue && namesANote(other) && !inside(other.text));
 }

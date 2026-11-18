@@ -29,6 +29,9 @@ import { boundContactReader } from "../../agent-v1/domains/contact/types";
 import { createContactDeleteService } from "../../contacts/delete/service";
 import { createConfiguredManualContactV2Service } from "../../contacts/manual-contact-v2/configured";
 import { getConfiguredContactImportService } from "../../contacts/import/runtime";
+import { createPrivateEventService } from "../../events/private-events/service";
+import { createAttendanceService } from "../../events/attendance-notes/service";
+import { createConfiguredPersonalScheduleService } from "../../personal-schedule/service-factory";
 
 interface OrbitAgentRuntimeGlobal {
   __orbitAgentRuntimeServices?: Map<string, AgentRuntimeService>;
@@ -145,8 +148,17 @@ export function createOrbitAgentRuntimeService(
       workspaceId: configured.workspaceId,
     }
     : null;
+  // agent-design AG13: private events, «我去过» and schedule items of a card (the same store; link writers lock together).
+  const transactional = configured && actorId ? createConfiguredTransactionalPostgresRuntime()?.client ?? null : null;
+  const events = configured && actorId
+    ? {
+      attendance: createAttendanceService({ client: transactional, store: configured.store, workspaceId: configured.workspaceId }),
+      privateEvents: createPrivateEventService({ client: transactional, store: configured.store, workspaceId: configured.workspaceId }),
+      schedule: configuredOrNull(() => createConfiguredPersonalScheduleService()),
+    }
+    : null;
   const executors = createAgentExecutorRegistry([
-    ...cardWriteExecutors({ actorId, contacts, notes, tasks }),
+    ...cardWriteExecutors({ actorId, contacts, events, notes, tasks }),
     ...createAgentDomainExecutors({
       contacts: createStorageContactArchiveActionWriter({
         store,

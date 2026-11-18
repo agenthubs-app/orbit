@@ -14,6 +14,7 @@ import type { TaskService } from "../../../tasks/service";
 import { AgentExecutionPermanentError } from "../../../agent/runtime/service";
 import type { AgentActionExecutor } from "../../../agent/runtime/executor-registry";
 import { TODO_CREATE, TODO_UPDATE } from "../../../agent/runtime/todo-operations";
+import { taskLinksOf } from "../../../tasks/task-links";
 
 export { prepareCardOperation as prepare } from "../../../agent/runtime/card-operations";
 
@@ -38,7 +39,8 @@ export function todoWriteExecutors(input: { tasks: Pick<TaskService, "create" | 
           title,
           ...(text(payload, "plannedDate") ? { plannedDate: text(payload, "plannedDate") } : {}),
           ...(text(payload, "dueAt") ? { dueAt: text(payload, "dueAt") } : {}),
-          ...(related[0] ? { relatedContactId: related[0] } : {}),
+          ...(related.length > 1 ? { relatedContactIds: related } : related[0] ? { relatedContactId: related[0] } : {}),
+          ...(Array.isArray(payload.relatedEventRefs) && payload.relatedEventRefs.length ? { relatedEventRefs: payload.relatedEventRefs as { kind: "platform" | "private"; id: string }[] } : {}),
           ...(text(payload, "sourceNoteId") ? { sourceNoteId: text(payload, "sourceNoteId") } : {}),
           ...(typeof payload.sourceNoteVersion === "number" ? { sourceNoteVersion: payload.sourceNoteVersion } : {}),
           ...(text(payload, "notes") ? { notes: text(payload, "notes") } : {}),
@@ -62,25 +64,28 @@ export async function applyApprovedTodoUpdate(
 ): Promise<{ resultRef: string; summary: string }> {
   const taskId = text(payload, "taskId");
   if (!taskId) throw new AgentExecutionPermanentError("taskId is required.");
-  const patch = (payload.patch ?? {}) as Record<string, string | null>;
+  const patch = (payload.patch ?? {}) as Record<string, unknown>;
   const before = (payload.before ?? {}) as Record<string, unknown>;
   const shown = (payload.shown ?? {}) as Record<string, unknown>;
   const current = await input.tasks.get({ actorId: input.actorId, taskId });
   if (!current || current.status === "cancelled") throw new AgentExecutionPermanentError("CARD_CONTENT_CHANGED: the to-do is no longer there; nothing was written.");
   if (typeof shown.title === "string" && shown.title !== current.title) throw new AgentExecutionPermanentError("CARD_CONTENT_CHANGED: the to-do was renamed since the card was shown; nothing was written.");
   const fields = Object.entries(before);
-  const valueOf = (field: string) => (current as unknown as Record<string, unknown>)[field] ?? null;
+  // AG13: the people and events as lists (an older to-do's single fields read as zero or one), compared by value.
+  const links = taskLinksOf(current);
+  const valueOf = (field: string) => (field === "relatedContactIds" ? links.contactIds : field === "relatedEventRefs" ? links.eventRefs : (current as unknown as Record<string, unknown>)[field] ?? null);
+  const same = (left: unknown, right: unknown) => JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
   for (const [field, shownValue] of fields) {
     const now = valueOf(field);
     // Our own earlier write (a replay of this key) shows the new value already; anything else is a change.
-    if (now !== (shownValue ?? null) && now !== (patch[field] ?? null)) throw new AgentExecutionPermanentError(`CARD_CONTENT_CHANGED: ${field} changed since the card was shown; nothing was written.`);
+    if (!same(now, shownValue) && !same(now, patch[field])) throw new AgentExecutionPermanentError(`CARD_CONTENT_CHANGED: ${field} changed since the card was shown; nothing was written.`);
   }
   // A replay after a lost receipt: every value is already the new one, so the first attempt wrote it. The
   // to-do service answers the same key with its first result only for the same expected version — the one
   // read at the click. Otherwise the version read now is the precondition.
   const clicked = text(payload, "expectedUpdatedAt");
-  const ownWrite = fields.length > 0 && fields.every(([field, shownValue]) => valueOf(field) === (patch[field] ?? null) && valueOf(field) !== (shownValue ?? null));
+  const ownWrite = fields.length > 0 && fields.every(([field, shownValue]) => same(valueOf(field), patch[field]) && !same(valueOf(field), shownValue));
   const expectedUpdatedAt = ownWrite && clicked ? clicked : current.updatedAt;
-  const result = await input.tasks.update({ actorId: input.actorId, expectedUpdatedAt, idempotencyKey: context.idempotencyKey, now: context.now, patch, taskId });
+  const result = await input.tasks.update({ actorId: input.actorId, expectedUpdatedAt, idempotencyKey: context.idempotencyKey, now: context.now, patch: patch as never, taskId });
   return { resultRef: `tasks:${result.task.id}`, summary: "To-do updated in Orbit." };
 }

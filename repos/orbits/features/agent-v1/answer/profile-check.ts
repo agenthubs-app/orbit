@@ -89,9 +89,10 @@ export function profileLine(language: "zh" | "ja" | "en", updates: readonly Prof
     const newest = own.map((item) => item.source.at!).sort().at(-1)!;
     const { day, month } = dayOf(newest, timeZone);
     // AG12 run-03 (AE-SCL-004 R2): an outdated organization is said with the title the profile holds there ("拾野选物店店长").
+    // AG13 opening 1: also when the title is flagged outdated with it — one value, the title as the profile holds it.
     const organization = own.find((item) => item.field === "organization");
-    const role = (contact as { profile?: { role: string | null } }).profile?.role ?? null;
-    const values = organization && role && !own.some((item) => item.field === "role")
+    const role = own.find((item) => item.field === "role")?.profileValue ?? (contact as { profile?: { role: string | null } }).profile?.role ?? null;
+    const values = organization && role
       ? [language === "en" ? `${role} at ${organization.profileValue}` : language === "ja" ? `${organization.profileValue}の${role}` : `${organization.profileValue}${role}`]
       : own.map((item) => item.profileValue);
     if (language === "zh") lines.push(`（联系人资料里写的还是${values.map((value) => `「${value}」`).join("")}，和${month}月${day}日的记录不一致，这份资料已经过时了。）`);

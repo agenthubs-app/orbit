@@ -9,12 +9,15 @@ import type { TaskService } from "../../tasks/service";
 import { memoWriteExecutors } from "./memo/write";
 import { todoWriteExecutors } from "./todo/write";
 import { contactWriteExecutors, type ContactWriteDeps } from "./contact/apply";
+import { eventWriteExecutors, type EventWriteDeps } from "./private-event/apply";
 
-export function cardWriteExecutors(input: { actorId: string; tasks?: Pick<TaskService, "create" | "update" | "get"> | null; notes?: Pick<NoteService, "create" | "update"> | null; contacts?: Omit<ContactWriteDeps, "actorId"> | null }): AgentActionExecutor[] {
+export function cardWriteExecutors(input: { actorId: string; tasks?: (Pick<TaskService, "create" | "update" | "get"> & Partial<Pick<TaskService, "complete" | "reopen" | "delete">>) | null; notes?: Pick<NoteService, "create" | "update"> | null; contacts?: Omit<ContactWriteDeps, "actorId"> | null; events?: Omit<EventWriteDeps, "actorId" | "tasks"> | null }): AgentActionExecutor[] {
   return [
     ...(input.tasks ? todoWriteExecutors({ actorId: input.actorId, tasks: input.tasks }) : []),
     ...(input.notes ? memoWriteExecutors({ actorId: input.actorId, notes: input.notes }) : []),
     // AG12: contact.create, update, delete, restore, import (domains/contact/apply.ts).
     ...(input.contacts ? contactWriteExecutors({ ...input.contacts, actorId: input.actorId }) : []),
+    // AG13: private events, «我去过», schedule items, and to-do complete / reopen / delete (domains/private-event/apply.ts).
+    ...eventWriteExecutors({ ...(input.events ?? {}), actorId: input.actorId, tasks: input.tasks?.complete && input.tasks.reopen && input.tasks.delete ? (input.tasks as Pick<TaskService, "get" | "complete" | "reopen" | "delete">) : null }),
   ];
 }

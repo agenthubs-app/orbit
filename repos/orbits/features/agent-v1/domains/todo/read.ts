@@ -5,7 +5,7 @@
  * last updated first.
  */
 import type { ReadInput } from "../../../orbit-ai/data-query/read-contract";
-import { defined, objectAt, str, type RecordDomain } from "../record-adapter";
+import { defined, objectAt, refsOf, str, strs, type RecordDomain } from "../record-adapter";
 import type { RecordSpec } from "../source";
 
 const TASK = (field: string) => ["task", field] as const;
@@ -18,6 +18,9 @@ export const TODO_DOMAIN: RecordDomain = {
       category: str(task.category),
       completedAt: str(task.completedAt),
       contactId: str(task.relatedContactId),
+      // AG13: every person and event (an older to-do's single fields read as one).
+      contactIds: Array.isArray(task.relatedContactIds) ? strs(task.relatedContactIds) : str(task.relatedContactId) ? [str(task.relatedContactId)!] : undefined,
+      eventRefs: refsOf(Array.isArray(task.relatedEventRefs) ? task.relatedEventRefs : str(task.relatedEventId) ? [{ id: task.relatedEventId, kind: "platform" }] : undefined),
       createdAt: str(task.createdAt),
       description: str(task.notes) ?? str(task.description),
       dueAt: str(task.dueAt),
