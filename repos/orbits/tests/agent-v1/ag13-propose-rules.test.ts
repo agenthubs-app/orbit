@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { proposableOf } from "../../features/agent-v1/graph/nodes/propose";
 import { fitsWithoutKana } from "../../features/agent-v1/propose/resolve";
-import { CHECKIN, isEventIntent, withoutWhenWords } from "../../features/agent-v1/propose/events-resolve";
+import { CHECKIN, clauseAround, isEventIntent, withoutWhenWords } from "../../features/agent-v1/propose/events-resolve";
 import { replyLanguageOf } from "../../features/agent-v1/route/handoff-copy";
 import { ACTOR, contactWorld, json, runContact } from "./contact-kit";
 import { memo, todo } from "./read-kit";
@@ -45,6 +45,9 @@ test("a to-do update that links people or events is an event-family intent; a da
   assert.equal(isEventIntent({ ...base, capability: "todo.update", events: [[0, 2]] }, "把独立出版市集也关联上"), true);
   assert.equal(isEventIntent({ ...base, capability: "todo.update" }, "给小林发修订报价这条待办，再关联上陈一鸣"), true);
   assert.equal(isEventIntent({ ...base, capability: "todo.update", date: [0, 2] }, "把报价待办改到周五"), false);
+  const message = "给「准备曜石终面的候选人材料」这条待办再关联上张蔚然，另外把 11 月 19 日那场「半導体キャリアフォーラム」也关联上。";
+  const at = message.indexOf("半導体");
+  assert.equal(clauseAround(message, [at, at + "半導体キャリアフォーラム".length]), "另外把 11 月 19 日那场「半導体キャリアフォーラム」也关联上", "the day said next to a title-only event clue (AE-SCL-026, stab-3)");
   assert.ok(CHECKIN.test("我忘了扫码签到，你帮我把签到补上"));
   assert.ok(!CHECKIN.test("帮我记上我参加过"));
 });

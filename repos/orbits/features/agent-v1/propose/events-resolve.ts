@@ -45,6 +45,16 @@ type Ctx = ResolveContext & EventResolveExtras;
 
 const words = (message: string, span: [number, number] | null | undefined) => (span ? message.slice(span[0], span[1]).trim() : "");
 
+/** The clause of the message a span sits in (between sentence or clause marks), for a day said next to a name. */
+export function clauseAround(message: string, span: [number, number]): string {
+  const marks = /[，,。；;！!？?\n]/u;
+  let start = span[0];
+  while (start > 0 && !marks.test(message[start - 1])) start -= 1;
+  let end = span[1];
+  while (end < message.length && !marks.test(message[end])) end += 1;
+  return message.slice(start, end);
+}
+
 /** True for an intent this module resolves: the AG13 verbs, and a to-do update that links people or events. */
 export function isEventIntent(intent: StoredIntent, quote: string): boolean {
   if (EVENT_INTENT_CAPABILITIES.has(intent.capability)) return true;
@@ -354,12 +364,14 @@ async function resolveTodoVerb(ctx: Ctx, part: GraphPart, write: PartWrite, inte
     if (person.kind === "failed") return stop("read_failed", failedLine);
     return stop("person_not_found", language === "zh" ? `联系人里没找到「${text}」，所以这次没有关联。` : language === "ja" ? `連絡先に「${text}」が見つからなかったため、今回は紐づけていません。` : `I could not find "${text}" in your contacts, so nothing was linked.`);
   }
-  const eventClues = (intent.events ?? []).map((span) => words(ctx.message, span)).filter(Boolean);
+  const eventSpans = (intent.events ?? []).filter((span) => words(ctx.message, span));
+  const eventClues = eventSpans.map((span) => words(ctx.message, span));
   const addedEvents: { ref: { kind: "platform" | "private"; id: string }; label: string }[] = [];
   if (eventClues.length) {
     const all = await eventCandidates(ctx);
-    for (const clue of eventClues) {
-      const day = resolveSaidDate(clue, ctx.asOf, zone)?.day ?? null;
+    for (const [index, clue] of eventClues.entries()) {
+      // A day said with the event ("11 月 19 日那场「…」") narrows same-named events even when the clue is the title alone.
+      const day = resolveSaidDate(clue, ctx.asOf, zone)?.day ?? resolveSaidDate(clauseAround(ctx.message, eventSpans[index]), ctx.asOf, zone)?.day ?? null;
       const matched = matchEvents(all, [clue.replace(/\d{1,2}\s*月\s*\d{1,2}\s*[日号]?\s*(?:那场|那一场|的)?/u, "")], clue, day, zone);
       const picked = (write.picks as { event?: string }).event ? matched.find((event) => refKey(event.ref) === (write.picks as { event?: string }).event) : undefined;
       if (!matched.length) return stop("event_not_found", EVENT_WORDS.eventNotFound(language, clue));
