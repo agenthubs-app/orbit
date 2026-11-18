@@ -79,6 +79,8 @@ test("3 wiring: a grounded answer citing such a record carries the code-written 
 test("stability run (AE-SCL-016): a part that hands over a link to read is a web lookup even when the first layer calls it a statement", () => {
   const part = { clarity: "statement", constraints: [], dataOwner: "self", dataSources: ["public_web"], intentBasis: "instruction", persistence: "this_turn", requiredCapabilities: ["web.fetch"], sourceQuote: "Here is Lumen ATS's pricing page: https://lumen-ats.example.test/pricing." } as never;
   assert.equal(decideRoute(part).route, "web_lookup");
+  // The rule is for a part that only opens the page; a part that also reads records keeps its usual route ("a statement" is not overridden).
+  assert.equal(decideRoute({ ...(part as object), dataSources: ["orbit_records", "public_web"], requiredCapabilities: ["web.fetch", "memo.read"] } as never).route, "answer");
   // Saying not to open it, or no link at all: as before.
   assert.notEqual(decideRoute({ ...(part as object), negation: true } as never).route, "web_lookup");
   assert.equal(decideRoute({ ...(part as object), requiredCapabilities: ["memo.read"], dataSources: ["orbit_records"], sourceQuote: "Here is my note." } as never).route, "answer");
