@@ -12,6 +12,7 @@ import { replyLanguageOf } from "../../route/handoff-copy";
 import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_PROMPT_VERSION } from "../../understand/prompt";
 import { coverEverySentence } from "../../understand/cover";
 import { describedObjectSpan, groupClue, questionWordClue, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
+import { refusedCreates } from "../../understand/negated-writes";
 import type { UnderstandOutput } from "../../understand/schema";
 import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInput } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
@@ -33,9 +34,13 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
     const MEETING = /(周会|例会|会议|开会|定例|打ち合わせ|ミーティング|\bmeeting\b|\bstand-?up\b)/iu;
     const implied = readsOnly ? part.objectClues.flatMap((clue) => ((clue.entity === "schedule" || (clue.entity === "event" && MEETING.test(clue.text))) && !part.requiredCapabilities.includes("schedule.read" as never) ? ["schedule.read"] : [])) : [];
     if (implied.length) emitTrace({ added: [...new Set(implied)], partId: part.localId, type: "understand.read_implied_by_clue" });
+    // AG13 repair round 7 (AE-UND-003): a create the user refuses in the same clause ("don't add anything to my to-dos")
+    // is dropped before routing, so the refused part never proposes it.
+    const refused = refusedCreates(part.sourceQuote, part.requiredCapabilities);
+    if (refused.length) emitTrace({ dropped: refused, partId: part.localId, type: "understand.refused_create" });
     return {
       asked: 0,
-      capabilities: [...new Set([...part.requiredCapabilities, ...implied])] as typeof part.requiredCapabilities,
+      capabilities: [...new Set([...part.requiredCapabilities, ...implied])].filter((capability) => !refused.includes(capability)) as typeof part.requiredCapabilities,
       continues: part.continues && continued ? { kind: part.continues.kind, ref: continued.ref } : null,
       dependsOn: [...part.dependsOn],
       localId: part.localId,

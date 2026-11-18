@@ -292,7 +292,10 @@ function takeFault(where, options = {}) {
   const index = state.faults.findIndex((fault) => (fault.where === where || (where === "model" && modelFault(fault))) && (options.rewrite ? REWRITE_KINDS.has(fault.kind) : !REWRITE_KINDS.has(fault.kind)));
   if (index < 0) return null;
   const fault = state.faults[index];
-  if (fault.kind !== "fail_always" && fault.kind !== "malformed_always") state.faults.splice(index, 1);
+  // AG13 repair round 7 (AE-JDG-004): the judgment client sends a hung call once more at once; one injected judgment
+  // timeout covers that retry too, so it still means "the judgment was unavailable" for the call.
+  const coversRetry = fault.where === "judgment" && fault.kind === "timeout" && !fault.applied;
+  if (fault.kind !== "fail_always" && fault.kind !== "malformed_always" && !coversRetry) state.faults.splice(index, 1);
   fault.applied = (fault.applied ?? 0) + 1;
   emit({ type: "fault.applied", where: fault.where, kind: fault.kind, source: "simulated" });
   return fault;

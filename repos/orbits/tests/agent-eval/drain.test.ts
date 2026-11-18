@@ -83,3 +83,23 @@ test("drain gives up after its timeout and says the work is still running", () =
   assert.equal(out.drained, false);
   assert.equal(out.inFlight, 1);
 });
+
+test("AG13 repair round 7 (AE-JDG-004): one injected judgment timeout covers the client's immediate retry, then is spent", () => {
+  const { result } = runWithPreload(`${CONTROL}
+    const server = http.createServer((req, res) => res.end("ok")).listen(0, "127.0.0.1", async () => {
+      const port = server.address().port;
+      await control(port, "fault", { where: "judgment", kind: "timeout" });
+      const take = () => globalThis.__orbitAgentEval.takeFault("judgment");
+      const out = { first: take()?.kind ?? null, retry: take()?.kind ?? null, next: take()?.kind ?? null };
+      await control(port, "fault", { where: "model", kind: "timeout" });
+      const model = { first: globalThis.__orbitAgentEval.takeFault("model")?.kind ?? null, second: globalThis.__orbitAgentEval.takeFault("model")?.kind ?? null };
+      server.close();
+      console.log(JSON.stringify({ ...out, model }));
+    });`);
+  assert.equal(result.status, 0, result.stderr);
+  const out = JSON.parse(result.stdout.trim());
+  assert.equal(out.first, "timeout");
+  assert.equal(out.retry, "timeout", "the client's retry of the same call times out too");
+  assert.equal(out.next, null, "the next call is not affected");
+  assert.deepEqual(out.model, { first: "timeout", second: null }, "a model timeout stays one-shot");
+});
