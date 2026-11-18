@@ -77,6 +77,21 @@ const denies = (piece: string) => ONLINE_DENIAL.some((pattern) => pattern.test(p
 /** A clause that only introduces what the denial is about ("至于它现在的官网报价", "現在の公式価格については", "as for the list price"). */
 const TOPIC_LEAD = /^\s*(?:至于|关于|对于|而|那么)|(?:については|に関しては|なら)\s*$|^\s*(?:as for|regarding|about)\b/iu;
 const END_MARK = /[。！？!?.]+\s*$/u;
+/**
+ * AG12 run-03 (AE-WEB-004): words left at the start of what remains that only led on from the denial ("只能据笔记 C 说明：",
+ * "所以", "但", "ただ", "メモによると、", "but going by note C,") — dropped; the sourced content after them stays.
+ */
+const DANGLING_LEAD = /^(?:(?:只能|只好|仅能|就)?(?:据|根据|按照?|依据|从)[^：:，,。]{0,20}?(?:说明|来看|来说|回答|看)?[：:，,]\s*|(?:所以|因此|因而|但是?|不过|只是|而且|ただし?|でも|しかし|そのため|なので|ですので)[，,、\s]*|(?:[^、。]{0,12}(?:によると|によれば|では|から見ると))[、，,]\s*|(?:but|so|however|instead|and)\b[,\s]*|(?:only\s+)?(?:from|based on|going by|according to)\s+[^,:]{0,40}[,:]\s*)/iu;
+
+function withoutDanglingLead(text: string): string {
+  let out = text.trim();
+  for (let index = 0; index < 3; index += 1) {
+    const next = out.replace(DANGLING_LEAD, "");
+    if (next === out) break;
+    out = next.trim();
+  }
+  return out.replace(/^[a-z]/u, (letter) => letter.toUpperCase());
+}
 
 /**
  * AG12 run-02 (AE-WEB-004 R3): one sentence that says it cannot go online loses only that part. At a strong boundary
@@ -102,7 +117,12 @@ function withoutDenialClauses(sentence: string): { kept: string | null; dropped:
   }
   const clauses = body.split(/(?<=[，,、]|が、|ため、)/u);
   const at = clauses.findIndex((clause) => denies(clause));
-  if (at <= 0) return { dropped: sentence.trim(), kept: null };
+  if (at < 0) return { dropped: sentence.trim(), kept: null };
+  if (at === 0) {
+    // The denial leads the sentence: what follows it stays, without the words that only led on from it.
+    const kept = finish(withoutDanglingLead(clauses.slice(1).join("")));
+    return { dropped: kept ? clauses[0].trim() : sentence.trim(), kept };
+  }
   let cut = at;
   if (cut > 0 && TOPIC_LEAD.test(clauses[cut - 1].replace(/[，,、]\s*$/u, ""))) cut -= 1;
   const kept = finish(clauses.slice(0, cut).join("").trim());
@@ -113,11 +133,15 @@ function withoutDenialClauses(sentence: string): { kept: string | null; dropped:
 export function withoutOnlineDenials(text: string): { text: string; dropped: string[] } {
   const kept: string[] = [];
   const dropped: string[] = [];
+  let lastWasDenial = false;
   for (const piece of piecesOf(text)) {
     if (!denies(piece)) {
-      kept.push(piece);
+      // A sentence right after a dropped denial that only led on from it ("所以…"): its connective goes.
+      kept.push(lastWasDenial ? piece.replace(/^\s*(?:所以|因此|因而|だから|そのため|so,?|therefore,?)[，,、\s]*/iu, "") : piece);
+      lastWasDenial = false;
       continue;
     }
+    lastWasDenial = true;
     const trailing = piece.match(/\n+$/u)?.[0] ?? "";
     const result = withoutDenialClauses(piece.replace(/\n+$/u, ""));
     dropped.push(result.dropped);

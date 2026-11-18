@@ -3,6 +3,7 @@
  * checks, one repair call that is told what was wrong (§3.3). Each call first checks the round's
  * budget (models/main.ts). Still invalid after the repair: nothing is made up, deliver says so.
  */
+import { capabilityKind } from "../../route/capabilities";
 import { formatWhen } from "../../answer/materials";
 import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
@@ -10,7 +11,7 @@ import { hypothesisOf, negationIn, negationOf } from "../../route/decide";
 import { replyLanguageOf } from "../../route/handoff-copy";
 import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_PROMPT_VERSION } from "../../understand/prompt";
 import { coverEverySentence } from "../../understand/cover";
-import { describedObjectSpan } from "../../understand/described-clue";
+import { describedObjectSpan, subjectInsideRecord } from "../../understand/described-clue";
 import type { UnderstandOutput } from "../../understand/schema";
 import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInput } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
@@ -51,7 +52,12 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
       quote: [start, start + part.sourceQuote.length],
       reading: null,
       reason: null,
-      refs: part.objectClues.map((clue) => {
+      // AG12 run-03 (AE-WEB-004): an unnamed "那家公司" beside a clue naming a record is the subject inside that record.
+      refs: part.objectClues.filter((clue) => {
+        if (clue.referenceId || !subjectInsideRecord(clue, part.objectClues, part.requiredCapabilities.some((capability) => capabilityKind(capability) === "write"))) return true;
+        emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.subject_in_record" });
+        return false;
+      }).map((clue) => {
         const at = message.indexOf(clue.text);
         const own: [number, number] | null = at >= 0 ? [at, at + clue.text.length] : null;
         // AG09 run-03 (AE-BND-006): a demonstrative the user described just before ("约山本吃饭这条待办") is looked up by

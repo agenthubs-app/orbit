@@ -66,6 +66,23 @@ function withoutCardTalk(text: string, partId: string, enabled: boolean): string
   return kept;
 }
 
+/**
+ * AG12 run-03 (coordinator, AE-FN-008): no strip rule leaves a part that cited this turn's records with nothing sourced. When
+ * the rules took every sentence of an answer that cited records, the cited sentences themselves are given, under code's
+ * plain lead-in (zh/ja/en) — never the model's words that were not delivered.
+ */
+export function citedFallback(language: "zh" | "ja" | "en", materials: readonly { handle: string; ref: string; sentences: readonly { id: number; text: string }[] }[], cites: readonly { sourceRef?: string; ref?: string; sentenceIds: readonly number[] }[]): string | null {
+  const sentences = cites.flatMap((cite) => {
+    const material = materials.find((item) => item.handle === cite.sourceRef || item.ref === cite.ref || item.ref === cite.sourceRef);
+    return material ? material.sentences.filter((sentence) => cite.sentenceIds.includes(sentence.id)).map((sentence) => sentence.text.trim()) : [];
+  }).filter(Boolean);
+  const unique = [...new Set(sentences)];
+  if (!unique.length) return null;
+  if (language === "en") return `The record says: ${unique.join(" ")}`;
+  if (language === "ja") return `記録にはこう書かれています：${unique.join("")}`;
+  return `记录里写的是：${unique.join("")}`;
+}
+
 export function answerSegments(text: string, wanted: ReadonlySet<string>, dropCardTalk = false): Segments {
   const parsed = parseModelJson(text);
   if (parsed.ok === false) return { error: parsed.error, ok: false };
@@ -131,7 +148,13 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   const check = (text: string) => {
     const parsed = parseAnswerOutput(text);
     if (parsed.ok === false) return { changes: null, error: parsed.error, profiles: null, verification: null };
-    const cleaned = { ...parsed.value, segments: parsed.value.segments.map((segment) => ({ ...segment, text: withoutCardTalk(segment.text, segment.partId, dropCardTalk) })) };
+    const cleaned = { ...parsed.value, segments: parsed.value.segments.map((segment) => {
+      const kept = withoutCardTalk(segment.text, segment.partId, dropCardTalk);
+      // AG12 run-03: a cited answer the card-talk rule emptied gives its cited sentences instead.
+      const fallback = !kept.trim() && segment.text.trim() && segment.cites.length ? citedFallback(state.language, allMaterials, segment.cites) : null;
+      if (fallback) emitTrace({ partId: segment.partId, type: "answer.cited_fallback", where: "card_talk" });
+      return { ...segment, text: fallback ?? kept };
+    }) };
     const verification = verifyCitations(cleaned, { materials: allMaterials, readParts, wanted });
     const profiles = new Map<string, ProfileUpdate[]>();
     for (const [partId, materials] of profileParts) {
@@ -218,7 +241,15 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       const knownTotals = new Set(someUnread ? [] : coverage.flatMap((item) => (item.total !== null ? [item.total] : [])));
       const counted = partialRead ? withoutPartialCounts(delivered, state.language, knownTotals) : { changed: [], text: delivered };
       if (counted.changed.length) emitTrace({ changed: counted.changed, partId: part.localId, type: "answer.partial_counts_neutralized" });
-      const claimed = withoutFalseClaims(counted.text, [part.localId], run.topicMatched, user);
+      let claimed = withoutFalseClaims(counted.text, [part.localId], run.topicMatched, user);
+      // AG12 run-03 (AE-FN-008): the rules above left nothing of an answer that cited records: its cited sentences instead.
+      if (!claimed.replace(/[\s。.、，,：:]/gu, "") && segment.text.trim() && segment.cites.length) {
+        const fallback = citedFallback(state.language, allMaterials, segment.cites);
+        if (fallback) {
+          claimed = fallback;
+          emitTrace({ partId: part.localId, type: "answer.cited_fallback", where: "delivery" });
+        }
+      }
       run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(claimed, state.language) : claimed, state.language));
       // AG09: a web page is not a record of the user's: its citations stay out of the records' sourceRefs (the page is listed in the answer's web record).
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref).filter((ref) => !ref.startsWith("web:"));

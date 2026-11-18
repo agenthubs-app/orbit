@@ -59,7 +59,25 @@ export function unsourcedCounts(answer: string, allowed: ReadonlySet<number>): n
   return [...new Set(countsIn(answer))].filter((value) => !allowed.has(value));
 }
 
-/** The answer without the sentences that state a count with no source. */
+/**
+ * AG12 run-03 (AE-FN-008): an unsourced count that only introduces a list ("这篇笔记有三件事：…", "3件あります：…", "There are
+ * three things in this note: …") loses the count, not the list: the words before the colon become a neutral lead-in.
+ */
+const LIST_COUNT: { pattern: RegExp; to: string }[] = [
+  { pattern: new RegExp(`(?:里|中)?(?:有|共有|一共有?|总共有?|合计|共)\\s*${N}\\s*(?:条|件|篇|项|个|点|方面)(?:事情?|内容|要点|事项|重点)?\\s*[：:]`, "u"), to: "写了：" },
+  { pattern: new RegExp(`には\\s*${N}\\s*(?:件|つ|個|点)(?:の(?:こと|内容|ポイント))?\\s*(?:あります|ありました|が書かれています)?\\s*[：:]`, "u"), to: "には次のことが書かれています：" },
+  { pattern: new RegExp(`${N}\\s*(?:件|つ|個|点)(?:の(?:こと|内容|ポイント))?\\s*(?:あります|ありました)\\s*[：:]`, "u"), to: "次のことが書かれています：" },
+];
+const EN_LIST_COUNT = new RegExp(`^\\s*there (?:are|were) ${EN_N} (?:things|points|items|parts|notes?|records?) in (this|the|that) (note|memo|record)\\s*:`, "iu");
+
+function neutralizedListCount(part: string): string | null {
+  const en = EN_LIST_COUNT.exec(part);
+  if (en) return part.replace(EN_LIST_COUNT, `${en[2][0].toUpperCase()}${en[2].slice(1)} ${en[3]} says:`);
+  for (const { pattern, to } of LIST_COUNT) if (pattern.test(part)) return part.replace(pattern, to);
+  return null;
+}
+
+/** The answer without the sentences that state a count with no source (a count introducing a list is neutralized instead). */
 export function withoutUnsourcedCounts(text: string, counts: readonly number[]): string {
   if (!counts.length) return text;
   const bad = new Set(counts);
@@ -67,7 +85,14 @@ export function withoutUnsourcedCounts(text: string, counts: readonly number[]):
   const kept: string[] = [];
   for (const piece of pieces) {
     const parts = /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)\s+/u) : [piece];
-    for (const part of parts) if (!countsIn(part).some((value) => bad.has(value))) kept.push(part);
+    for (const part of parts) {
+      if (!countsIn(part).some((value) => bad.has(value))) {
+        kept.push(part);
+        continue;
+      }
+      const neutral = neutralizedListCount(part);
+      if (neutral !== null && !countsIn(neutral).some((value) => bad.has(value))) kept.push(neutral);
+    }
   }
   return kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").trim();
 }
