@@ -464,7 +464,12 @@ function writeAnswer(input: { apart?: string | null; domain: RankDomain; languag
       : language === "en" ? `your ${noun}` : language === "ja" ? `あなたの${noun}` : `你的${noun}`;
   const topic = input.basisMemo ? (language === "en" ? `the topics of your note "${input.basisMemo}"` : language === "ja" ? `メモ「${input.basisMemo}」のテーマ` : `你的笔记「${input.basisMemo}」的主题`) : input.basis ? (language === "en" ? `"${input.basis}"` : `「${input.basis}」`) : null;
   const { afterHardConditions, judged, truncated } = result.coverage;
-  if (input.lead) {
+  if (input.lead && result.semantic && !result.matched && result.unmatchedReason) {
+    // AG13 rerun of AG10 (AE-FN-001): the topic check did not finish (the review timed out); the candidates left were not
+    // checked against it, so they are not said to meet the criteria — the order shown is by what code could test.
+    emitTrace({ listed: n, reason: result.unmatchedReason, type: "functions.coverage_unchecked" });
+    lines.push(say.uncheckedCoverageLine(language, n, topic, { en: unit, ja: UNIT[domain].ja, zh: UNIT[domain].zh }));
+  } else if (input.lead) {
     // AG10: the lead said the basis; the coverage follows.
     lines.push(say.coverageLine(language, n, result.matching, { en: unit, ja: UNIT[domain].ja, zh: UNIT[domain].zh }));
   } else if (result.semantic && result.matched) {

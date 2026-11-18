@@ -15,6 +15,8 @@
  */
 export const GEMINI_DECISIONS_URL = "https://generativelanguage.googleapis.com/v1beta/decisions";
 export const JUDGMENT_MODEL = "gemini-decision-1";
+import { emitTrace } from "../observability/trace";
+
 export const JUDGMENT_TIMEOUT_MS = 3_000;
 
 const QUESTION_ID = /^[A-Za-z0-9_-]{1,64}$/u;
@@ -101,7 +103,37 @@ export interface DecisionRequest {
   now?: () => number;
 }
 
+/**
+ * AG13 run-06 (judged): about 40% of judgment calls hung until the 3 s abort while the rest answered in ~0.5 s — hangs on
+ * the service's side, not slow calls. A call that timed out, failed to connect or got a 5xx is sent once more at once with
+ * a fresh 3 s limit; a 4xx, an unreadable body or the caller's own stop is not retried. Both attempts are traced.
+ */
+export function retryableJudgmentFailure(error: unknown): boolean {
+  if (!(error instanceof JudgmentRequestError)) return false;
+  if (error.code === "timeout" || error.code === "network") return true;
+  return error.code === "http_error" && error.status !== null && error.status >= 500;
+}
+
 export async function requestDecisions(request: DecisionRequest): Promise<DecisionResult> {
+  try {
+    const result = await requestDecisionsOnce(request);
+    return result;
+  } catch (error) {
+    if (!retryableJudgmentFailure(error) || request.signal?.aborted) throw error;
+    const first = error as JudgmentRequestError;
+    emitTrace({ attempt: 1, attempts: 2, code: first.code, status: first.status, type: "judgment.attempt_failed" });
+    try {
+      const result = await requestDecisionsOnce(request);
+      emitTrace({ attempt: 2, attempts: 2, outcome: "answered", type: "judgment.retry" });
+      return result;
+    } catch (second) {
+      emitTrace({ attempt: 2, attempts: 2, code: second instanceof JudgmentRequestError ? second.code : "network", outcome: "failed", type: "judgment.retry" });
+      throw second;
+    }
+  }
+}
+
+async function requestDecisionsOnce(request: DecisionRequest): Promise<DecisionResult> {
   const ids = Object.keys(request.questions);
   if (!ids.length) throw new Error("a judgment request needs at least one question");
   for (const id of ids) if (!QUESTION_ID.test(id)) throw new Error(`judgment question id ${id} is not accepted by the endpoint`);

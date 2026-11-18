@@ -12,6 +12,17 @@ import { isBusinessChange, productIdsIn, writesFor, type CardObservation, type N
 import type { TraceEvent } from "./trace-log";
 import { sharedPart } from "./client-views";
 
+
+/**
+ * AG13 repair round 6: the judgment client retries a call that hung or failed to connect once (product trace
+ * judgment.attempt_failed, then a second request). A retry is the same call: each attempt_failed takes one request away.
+ */
+function logicalJudgmentCalls(obs: Observation): { count: number; retried: number; requests: TraceEvent[] } {
+  const requests = obs.events.filter((event) => event.type === "judgment.request");
+  const retried = obs.events.filter((event) => event.type === "judgment.attempt_failed").length;
+  return { count: Math.max(0, requests.length - retried), requests, retried };
+}
+
 export type CheckStatus = "pass" | "fail" | "cannot_judge" | "deferred";
 
 export interface CheckResult {
@@ -591,13 +602,13 @@ export const CHECKS: Record<string, CheckFn> = {
   },
 
   judgment_calls_max(args, obs) {
-    const calls = obs.events.filter((event) => event.type === "judgment.request");
-    return calls.length <= Number(args) ? pass(`${calls.length} judgment call(s)`, seqs(calls)) : fail(`${calls.length} judgment call(s), max ${args}`, seqs(calls));
+    const calls = logicalJudgmentCalls(obs);
+    return calls.count <= Number(args) ? pass(`${calls.count} judgment call(s)${calls.retried ? ` (+${calls.retried} retry)` : ""}`, seqs(calls.requests)) : fail(`${calls.count} judgment call(s), max ${args}`, seqs(calls.requests));
   },
 
   judgment_calls(args, obs) {
-    const calls = obs.events.filter((event) => event.type === "judgment.request");
-    return calls.length === Number(args) ? pass(`${calls.length} judgment call(s)`, seqs(calls)) : fail(`${calls.length} judgment call(s), expected ${args}`, seqs(calls));
+    const calls = logicalJudgmentCalls(obs);
+    return calls.count === Number(args) ? pass(`${calls.count} judgment call(s)${calls.retried ? ` (+${calls.retried} retry)` : ""}`, seqs(calls.requests)) : fail(`${calls.count} judgment call(s), expected ${args}`, seqs(calls.requests));
   },
 
   judgment_candidates_max(args, obs) {
