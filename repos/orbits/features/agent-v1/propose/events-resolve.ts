@@ -76,7 +76,7 @@ export function withoutWhenWords(text: string): string {
   return text.replace(WHEN_WORDS, "").trim();
 }
 
-const UNSUPPORTED_REPEAT = /(隔周|隔週|每两周|每隔一周|双周|隔一周|2週間ごと|隔週ごと|每月第\s*[一二三四五1-5]\s*个?\s*(?:周|星期|礼拜)[一二三四五六日天]|毎月第\s*[1-5一二三四五]\s*[月火水木金土日]曜|\bbi-?weekly\b|\bevery other week\b|\bevery two weeks\b|\b(?:first|second|third|fourth|last) (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday) of (?:each|every|the) month\b|共\s*\d+\s*次|\d+\s*回(?:まで|だけ)|\bfor \d+ (?:weeks|times|sessions)\b)/iu;
+export const UNSUPPORTED_REPEAT = /(隔周|隔週|每两周|每隔一周|双周|隔一周|2週間ごと|隔週ごと|每月第\s*[一二三四五1-5]\s*个?\s*(?:周|星期|礼拜)[一二三四五六日天]|毎月第\s*[1-5一二三四五]\s*[月火水木金土日]曜|\bbi-?weekly\b|\bevery other week\b|\bevery two weeks\b|\b(?:first|second|third|fourth|last) (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday) of (?:each|every|the) month\b|共\s*\d+\s*次|\d+\s*回(?:まで|だけ)|\bfor \d+ (?:weeks|times|sessions)\b)/iu;
 const REPEAT_WORDS = /(每天|每日|每周|每星期|每月|毎日|毎週|毎月|\bevery (?:day|week|month)\b|\bdaily\b|\bweekly\b|\bmonthly\b)/iu;
 const ATTEND_DELETE = /(一起删|也删|一并删|删掉|删了|删除|一緒に削除|削除して|\bdelete\b|\bremove\b)/iu;
 const ATTEND_MOVE = /(转到|移到|改到另一场|挪到|別のイベントに移|\bmove (?:it )?to\b)/iu;
@@ -135,8 +135,17 @@ const refsFrom = (value: unknown): { kind: "platform" | "private"; id: string }[
   return at > 0 && (kind === "platform" || kind === "private") ? [{ id: text.slice(at + 1), kind: kind as "platform" | "private" }] : [];
 }) : []);
 
+/**
+ * AG13 gate run-03 (AE-EVT-007): code's sentence for a repetition the schedule cannot store, with a few one-off dates
+ * offered instead; null when the words name no such repetition.
+ */
+export function unsupportedRepeatLine(quote: string, ctx: { asOf: string; language: ResolveContext["language"]; timeZone: string }): string | null {
+  const unsupported = UNSUPPORTED_REPEAT.exec(quote);
+  return unsupported ? EVENT_WORDS.repeatUnsupported(ctx.language, unsupported[0].trim(), alternativeDates(quote, ctx)) : null;
+}
+
 /** The next few one-off dates for a repetition the product cannot store (offered instead, never made without a yes). */
-function alternativeDates(said: string, ctx: Ctx): string[] {
+function alternativeDates(said: string, ctx: Pick<Ctx, "asOf" | "language" | "timeZone">): string[] {
   const today = localDayOf(ctx.asOf, ctx.timeZone);
   const weekdays: Record<string, number> = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 日: 0, 天: 0, 月: 1, 火: 2, 水: 3, 木: 4, 金: 5, 土: 6, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 0 };
   const weekday = /(?:周|星期|礼拜)([一二三四五六日天])/u.exec(said)?.[1] ?? /([月火水木金土日])曜/u.exec(said)?.[1] ?? /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/iu.exec(said)?.[1]?.toLowerCase();

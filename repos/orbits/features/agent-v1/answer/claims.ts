@@ -243,3 +243,42 @@ export function withoutUnsupportedStatus(text: string, sources: readonly string[
   const supported = (kind: StatusKind) => sources.some((line) => STATUS_SUPPORT[kind].test(line));
   return without(text, (piece) => statusClaimsIn(piece).some((kind) => !supported(kind)));
 }
+
+/**
+ * AG13 rerun of AG09 (AE-SCL-016): the fetched page says "effective October 1, 2026" and the answer wrote "(dated Oct 1,
+ * 2026)". A date the sources give as the day something takes effect is said as that ("effective …", "…起生效"), never as
+ * the date of the page.
+ */
+const EN_DATE = String.raw`(?:[A-Z][a-z]{2,8}\.?\s+\d{1,2},\s*\d{4}|\d{4}-\d{2}-\d{2})`;
+const SOURCE_EFFECTIVE_EN = new RegExp(String.raw`\b(?:effective|valid|applies|applicable|starting|in effect)\s+(?:from\s+|as of\s+|on\s+)?(${EN_DATE})`, "giu");
+const SOURCE_EFFECTIVE_CJK = /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*(?:起|から|より)\s*(?:生效|适用|適用|有效|実施)?/gu;
+const ANSWER_DATED_EN = new RegExp(String.raw`\b(dated|as of|updated(?:\s+on)?|last updated(?:\s+on)?|published(?:\s+on)?)\s+(${EN_DATE})`, "giu");
+const ANSWER_DATED_ZH = /(?:更新于|日期为|发布于|截至)\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/gu;
+
+const dayOf = (text: string): string | null => {
+  const ms = Date.parse(/^\d{4}-\d{2}-\d{2}$/u.test(text) ? `${text}T00:00:00Z` : `${text.replace(/\./gu, "")} 00:00 UTC`);
+  return Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : null;
+};
+const cjkDay = (year: string, month: string, day: string) => `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+
+export function withEffectiveDates(text: string, sources: readonly string[]): { text: string; changed: string[] } {
+  const effective = new Set<string>();
+  for (const line of sources) {
+    for (const match of line.matchAll(SOURCE_EFFECTIVE_EN)) { const day = dayOf(match[1]); if (day) effective.add(day); }
+    for (const match of line.matchAll(SOURCE_EFFECTIVE_CJK)) effective.add(cjkDay(match[1], match[2], match[3]));
+  }
+  if (!effective.size) return { changed: [], text };
+  const changed: string[] = [];
+  let out = text.replace(ANSWER_DATED_EN, (whole, _verb: string, date: string) => {
+    const day = dayOf(date);
+    if (!day || !effective.has(day)) return whole;
+    changed.push(whole);
+    return `effective ${date}`;
+  });
+  out = out.replace(ANSWER_DATED_ZH, (whole, year: string, month: string, day: string) => {
+    if (!effective.has(cjkDay(year, month, day))) return whole;
+    changed.push(whole);
+    return `${year}年${Number(month)}月${Number(day)}日起生效`;
+  });
+  return { changed, text: out };
+}

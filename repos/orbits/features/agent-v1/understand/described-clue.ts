@@ -112,5 +112,9 @@ export function groupClue(clue: { entity: string; text: string }): boolean {
 /** Only parts that read: in a change ("把她的待办改到周五") the person is who the record is about. */
 export function subjectInsideRecord(clue: { entity: string; text: string }, others: readonly { entity: string; text: string }[], writes = false): boolean {
   if (writes || clue.entity !== "contact" || !unnamedSubject(clue.text)) return false;
-  return others.some((other) => other !== clue && namesANote(other));
+  // AG13 rerun of AG04 (AE-AMB-009): "我和他最近聊了什么" describes the notes by the person (他, named earlier in the
+  // conversation); the pronoun is that person, not a subject inside a named note.
+  const own = clue.text.trim();
+  const inside = (text: string) => (/^[A-Za-z\s'-]+$/u.test(own) ? new RegExp(String.raw`\b${own.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}\b`, "iu").test(text) : text.includes(own));
+  return others.some((other) => other !== clue && namesANote(other) && !inside(other.text));
 }

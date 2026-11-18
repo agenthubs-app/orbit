@@ -8,7 +8,7 @@
  * the parts the resume touched are routed again, from the plan kept in the checkpoint; nothing else
  * changes and no model is called.
  */
-import { CHECKIN as CHECKIN_WORDS } from "../../propose/events-resolve";
+import { CHECKIN as CHECKIN_WORDS, UNSUPPORTED_REPEAT } from "../../propose/events-resolve";
 import { importTableOf } from "../../domains/contact/import-preview";
 import { attributeMessage } from "../../clarify/attribution";
 import { recordKindOf } from "../../clarify/default-readings";
@@ -202,6 +202,12 @@ export function routeNode(scope: NodeScope): GraphNode {
       if (!resume && CHECKIN_WORDS.test(input.message.slice(part.quote[0], part.quote[1])) && part.capabilities.some((capability) => capability.startsWith("attendance.")) && decision.route !== "propose_write") {
         emitTrace({ partId: part.localId, reason: "a check-in is the organizer's record", type: "route.organizer_record" });
         decision = { ...decision, reason: "a check-in is the organizer's record (code says so)", route: "propose_write", step: undefined, waitReason: null };
+      }
+      // AG13 gate run-03 (AE-EVT-007): "那改成每月第二个周二…呢？" about a schedule item names a repetition the schedule cannot
+      // store; code says so and offers one-off dates (propose), never an answer that tells the user to set that rule.
+      if (!resume && UNSUPPORTED_REPEAT.test(input.message.slice(part.quote[0], part.quote[1])) && part.capabilities.some((capability) => /^(?:schedule|rule)\./u.test(capability) && capabilityKind(capability) === "write") && decision.route !== "propose_write") {
+        emitTrace({ partId: part.localId, reason: "a repetition the schedule cannot store", type: "route.repeat_unsupported" });
+        decision = { ...decision, reason: "a repetition the schedule cannot store (code says so)", route: "propose_write", step: undefined, waitReason: null };
       }
       if (accepted && part.continues) acceptedAlternativeRef = part.continues.ref;
       let status = statusForRoute(decision.route);

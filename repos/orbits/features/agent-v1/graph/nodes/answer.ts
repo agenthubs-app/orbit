@@ -17,7 +17,7 @@ import { groundedAnswerSystemPrompt, groundedAnswerUserText, GROUNDED_ANSWER_PRO
 import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
 import { withoutForeignUrls } from "../../web/answer-urls";
-import { withoutOnlineDenials, withoutQuoteResidue, withoutTopicBasisClaims, withoutStrayScripts, withoutUnsupportedStatus } from "../../answer/claims";
+import { withoutOnlineDenials, withoutQuoteResidue, withoutTopicBasisClaims, withoutStrayScripts, withoutUnsupportedStatus, withEffectiveDates } from "../../answer/claims";
 import { expiryLine } from "../../answer/change-check";
 import { stripCardTalk, stripSaveTalk } from "../../entry/approval-claims";
 import { callMainModel, type MainModelResult } from "../../models/main";
@@ -245,7 +245,9 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       const statusSources = allMaterials.flatMap((material) => material.sentences.map((sentence) => sentence.text));
       const statused = withoutUnsupportedStatus(counted.text, statusSources);
       if (statused.dropped.length) emitTrace({ dropped: statused.dropped, note: "a status no record read this turn supports is not delivered", partId: part.localId, type: "answer.unsupported_status_dropped" });
-      let claimed = withoutFalseClaims(statused.text, [part.localId], run.topicMatched, user);
+      const dated = withEffectiveDates(statused.text, statusSources);
+      if (dated.changed.length) emitTrace({ changed: dated.changed, partId: part.localId, type: "answer.effective_date" });
+      let claimed = withoutFalseClaims(dated.text, [part.localId], run.topicMatched, user);
       // AG12 run-03 (AE-FN-008): the rules above left nothing of an answer that cited records: its cited sentences instead.
       if (!claimed.replace(/[\s。.、，,：:]/gu, "") && segment.text.trim() && segment.cites.length) {
         const fallback = citedFallback(state.language, allMaterials, segment.cites);

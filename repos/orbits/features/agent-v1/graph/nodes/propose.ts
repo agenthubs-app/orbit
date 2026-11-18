@@ -32,6 +32,7 @@ import type { RecordView } from "../../domains/types";
 import { duplicateCandidates, nothingToChange, type DuplicateCandidate } from "../../domains/contact/duplicates";
 import { CONTACT_WORDS } from "../../domains/contact/copy";
 import { EVENT_WORDS } from "../../propose/events-copy";
+import { CHECKIN, unsupportedRepeatLine } from "../../propose/events-resolve";
 
 const DAY_OF = (view: RecordView, timeZone: string) => {
   const fields = view.fields as { interaction?: { occurredOn?: string }; createdAt?: string };
@@ -161,6 +162,16 @@ function notUnderstood(language: ReplyLanguage, quote: string): string {
   return `I couldn't tell what to change in "${quote}", so nothing was changed.`;
 }
 
+/**
+ * AG13 gate run-03 (AE-EVT-004): the second layer proposed nothing for "帮我把签到补上" (a check-in is not a write it has).
+ * Words that ask for a check-in get code's sentence (the organizer's record, what the user can do instead), never
+ * "I couldn't tell what to change".
+ */
+export function unproposedOutcome(language: ReplyLanguage, quote: string): { reason: string; line: string } {
+  if (CHECKIN.test(quote)) return { line: EVENT_WORDS.checkIn(language, null), reason: "organizer_record" };
+  return { line: notUnderstood(language, quote), reason: "not_understood" };
+}
+
 function questionSet(scope: NodeScope, state: AgentGraphState, part: GraphPart, question: WriteQuestion): { set: OptionSetState; labels: Map<string, { label: string; refName?: string }>; line: string } {
   const language = state.language;
   const quote = scope.input.message.slice(part.quote[0], part.quote[1]);
@@ -248,6 +259,14 @@ export function proposeNode(scope: NodeScope): GraphNode {
         work.push(part);
         continue;
       }
+      // AG13 gate run-03 (AE-EVT-007): a repetition the schedule cannot store ("隔周", "每月第二个周二") is said so by code,
+      // with a few one-off dates offered instead, whatever capability the first layer gave (rule.create, schedule.*).
+      const repeatLine = part.capabilities.some((capability) => /^(?:schedule|rule)\./u.test(capability)) ? unsupportedRepeatLine(quoteOf(part), { asOf: state.asOf || deps.now(), language, timeZone: state.timeZone || "Asia/Tokyo" }) : null;
+      if (repeatLine) {
+        settle(part, "unfinished", "repeat_unsupported", repeatLine);
+        emitTrace({ partId: part.localId, type: "propose.repeat_unsupported" });
+        continue;
+      }
       if (!proposableOf(part, quoteOf(part)).length) {
         // Accepting an offered alternative (a scheduled check) keeps its own sentence (deliver, AG03).
         if (part.continues?.kind === "alternative") {
@@ -296,7 +315,7 @@ export function proposeNode(scope: NodeScope): GraphNode {
         for (const part of fresh) {
           const intents = checked.intents.get(part.localId) ?? [];
           part.write = { intents, picks: {} };
-          if (!intents.length) settle(part, "unfinished", "not_understood", notUnderstood(language, quoteOf(part)));
+          if (!intents.length) { const unproposed = unproposedOutcome(language, quoteOf(part)); settle(part, "unfinished", unproposed.reason, unproposed.line); }
         }
       }
     }
@@ -460,7 +479,7 @@ export function proposeNode(scope: NodeScope): GraphNode {
       return { budget, optionSets, parts, repairs };
     }
     if (!ready.length) {
-      for (const part of covered) settle(part, "unfinished", "not_understood", notUnderstood(language, quoteOf(part)));
+      for (const part of covered) { const unproposed = unproposedOutcome(language, quoteOf(part)); settle(part, "unfinished", unproposed.reason, unproposed.line); }
       return { budget, optionSets, parts, repairs };
     }
     const intents: CardOperationIntent[] = [];
