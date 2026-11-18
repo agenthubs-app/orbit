@@ -17,7 +17,8 @@ import { groundedAnswerSystemPrompt, groundedAnswerUserText, GROUNDED_ANSWER_PRO
 import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
 import { withoutForeignUrls } from "../../web/answer-urls";
-import { withoutOnlineDenials, withoutTopicBasisClaims, withoutStrayScripts } from "../../answer/claims";
+import { withoutOnlineDenials, withoutQuoteResidue, withoutTopicBasisClaims, withoutStrayScripts } from "../../answer/claims";
+import { expiryLine } from "../../answer/change-check";
 import { stripCardTalk, stripSaveTalk } from "../../entry/approval-claims";
 import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
@@ -44,7 +45,10 @@ function withoutFalseClaims(text: string, partIds: readonly string[], topicMatch
   // AG10 run-03 (AE-CTX-005): words in a script the user did not write and no material holds.
   const scripts = withoutStrayScripts(online.text, materials);
   if (scripts.dropped.length) emitTrace({ dropped: scripts.dropped, note: "a sentence with words in a stray script that no record, page or message holds is not delivered", parts: partIds, type: "answer.stray_script_dropped" });
-  return scripts.text;
+  // AG12 run-02 (AE-AMB-011): no empty or unbalanced quote is left on screen by the rules before.
+  const quotes = withoutQuoteResidue(scripts.text);
+  if (quotes !== scripts.text) emitTrace({ parts: partIds, type: "answer.quote_residue_cleaned" });
+  return quotes;
 }
 
 /**
@@ -228,6 +232,13 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
           emitTrace({ fields: updates.map((item) => ({ contact: item.contact.ref, field: item.field, source: item.source.ref })), partId: part.localId, type: "answer.profile_outdated" });
         }
       }
+      // AG12 run-02 (AE-SCL-016 R2): a cited record that says an earlier value has expired — said by code when the answer does not.
+      const cited = allMaterials.filter((material) => segment.cites.some((cite) => cite.ref === material.ref));
+      const expired = expiryLine(state.language, cited, `${run.answers.get(part.localId) ?? ""}\n${(run.gapLines.get(part.localId) ?? []).join("\n")}`, zone);
+      if (expired) {
+        run.gapLines.set(part.localId, [...(run.gapLines.get(part.localId) ?? []), expired]);
+        emitTrace({ partId: part.localId, records: cited.map((material) => material.ref), type: "answer.expiry_said" });
+      }
       if (changeParts.has(part.localId)) {
         const changes = checked?.changes?.get(part.localId);
         if (!changes) emitTrace({ partId: part.localId, type: "answer.change_check_missing" });
@@ -283,7 +294,7 @@ export function answerNode(scope: NodeScope): GraphNode {
       if (plainCounts.length) emitTrace({ counts: plainCounts, parts: due.map((part) => part.localId), type: "answer.unsourced_counts_dropped" });
       const reply = plain ? withoutFalseClaims(withoutUnsourcedCounts(plain, plainCounts), due.map((part) => part.localId), run.topicMatched, [input.message, ...(run.context?.messages ?? []).map((message) => message.text)].join("\n")) : plain;
       if (reply) {
-        run.answers.set(due[0].localId, localizeAnswerDates(reply, state.language));
+        run.answers.set(due[0].localId, localizeAnswerDates(withoutQuoteResidue(reply), state.language));
         emitTrace({ note: "plain chat: the first layer's reply is shown, no second call", parts: due.map((part) => part.localId), type: "answer.plain_reply" });
         return {};
       }

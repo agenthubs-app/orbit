@@ -73,9 +73,82 @@ export function onlineDenialsIn(text: string): string[] {
   return piecesOf(text).filter((piece) => ONLINE_DENIAL.some((pattern) => pattern.test(piece))).map((piece) => piece.trim());
 }
 
-/** The text without sentences that say the agent cannot go online. */
+const denies = (piece: string) => ONLINE_DENIAL.some((pattern) => pattern.test(piece));
+/** A clause that only introduces what the denial is about ("至于它现在的官网报价", "現在の公式価格については", "as for the list price"). */
+const TOPIC_LEAD = /^\s*(?:至于|关于|对于|而|那么)|(?:については|に関しては|なら)\s*$|^\s*(?:as for|regarding|about)\b/iu;
+const END_MARK = /[。！？!?.]+\s*$/u;
+
+/**
+ * AG12 run-02 (AE-WEB-004 R3): one sentence that says it cannot go online loses only that part. At a strong boundary
+ * (；;) the clauses holding the denial go; otherwise the clause with the denial and what follows it in the sentence go,
+ * with the topic lead-in right before it. What is left stays when it stands on its own (a few words at least), ended as
+ * the sentence was; a sentence that is only the denial goes whole.
+ */
+function withoutDenialClauses(sentence: string): { kept: string | null; dropped: string } {
+  const end = sentence.match(END_MARK)?.[0]?.trim() ?? "";
+  const body = sentence.replace(END_MARK, "");
+  const latin = /[A-Za-z]/u.test(body) && !/[぀-ヿ一-鿿]/u.test(body);
+  const finish = (rest: string) => {
+    const clean = rest.replace(/[，,、；;:：\s]+$/u, "").replace(/(です|でした|ます)が$/u, "$1").replace(/\s+(?:but|and|so)$/iu, "");
+    const stop = end || (latin ? "." : "。");
+    return clean.replace(/\s/gu, "").length >= 6 ? `${clean}${/[。.!?！？]$/u.test(clean) ? "" : stop}` : null;
+  };
+  const strong = body.split(/(?<=[；;])/u);
+  if (strong.length > 1) {
+    const keep = strong.filter((part) => !denies(part));
+    const gone = strong.filter((part) => denies(part));
+    const kept = finish(keep.join("").trim());
+    return { dropped: `${gone.join("").replace(/^[\s；;]+/u, "").trim()}${end}`.trim(), kept };
+  }
+  const clauses = body.split(/(?<=[，,、]|が、|ため、)/u);
+  const at = clauses.findIndex((clause) => denies(clause));
+  if (at <= 0) return { dropped: sentence.trim(), kept: null };
+  let cut = at;
+  if (cut > 0 && TOPIC_LEAD.test(clauses[cut - 1].replace(/[，,、]\s*$/u, ""))) cut -= 1;
+  const kept = finish(clauses.slice(0, cut).join("").trim());
+  return { dropped: kept ? `${clauses.slice(cut).join("").trim()}${end}` : sentence.trim(), kept };
+}
+
+/** The text without what says the agent cannot go online (the whole sentence, or only its denial clause). */
 export function withoutOnlineDenials(text: string): { text: string; dropped: string[] } {
-  return without(text, (piece) => ONLINE_DENIAL.some((pattern) => pattern.test(piece)));
+  const kept: string[] = [];
+  const dropped: string[] = [];
+  for (const piece of piecesOf(text)) {
+    if (!denies(piece)) {
+      kept.push(piece);
+      continue;
+    }
+    const trailing = piece.match(/\n+$/u)?.[0] ?? "";
+    const result = withoutDenialClauses(piece.replace(/\n+$/u, ""));
+    dropped.push(result.dropped);
+    if (result.kept) kept.push(`${result.kept}${trailing}`);
+  }
+  if (!dropped.length) return { dropped, text };
+  return { dropped: dropped.filter(Boolean), text: joined(kept) };
+}
+
+/**
+ * AG12 run-02 (AE-AMB-011): a strip rule that drops a sentence ending inside a quote leaves the quote's other half on
+ * screen (a line holding only 「」」). Empty pairs, lines of bare quote marks and a closing mark with no opener before it
+ * on its line are taken out; whole quotes stay.
+ */
+const CLOSERS = "」』”）)】";
+const OPENERS = "「『“（(【";
+export function withoutQuoteResidue(text: string): string {
+  const lines = text.replace(/\s*(?:「\s*」|『\s*』|“\s*”|"\s*"|（\s*）|\(\s*\)|【\s*】)/gu, "").replace(/[：:]\s*(?=[。！？.!?])/gu, "").split("\n");
+  const out: string[] = [];
+  for (const line of lines) {
+    if (line.trim() && /^[\s」』”）)】「『“（(【"'。，、.,]+$/u.test(line)) continue;
+    let fixed = line;
+    const lead = fixed.match(/^(\s*)([」』”）)】]+)\s*/u);
+    if (lead) {
+      const opened = [...fixed].filter((char) => OPENERS.includes(char)).length;
+      const closed = [...fixed].filter((char) => CLOSERS.includes(char)).length;
+      if (closed > opened) fixed = `${lead[1]}${fixed.slice(lead[0].length)}`;
+    }
+    out.push(fixed);
+  }
+  return out.join("\n").replace(/\n{3,}/gu, "\n\n").trim();
 }
 
 /**
