@@ -107,3 +107,11 @@
 
 外部条件缺失（AG07 未合回、需要视觉稿而未批准、评测自检不过）先不启动。run 已开始，按 eval README 第 6 节最多两个修复轮次，每次整套门槛重跑；仍不过就如实结束为 failed，不为通过改用例，用例确实写错按第 7 节记进 `eval/CHANGES.md`。
 REPORT 含验收映射、功能 SHA／文件／理由、写入方清单与各自的版本处理、生命周期的行为变化、命令与退出码、门槛运行编号与评审结论、费用、未提交与下一步。分支 `sprint/AG12-contact-writes` 从 `orbit-agent-claude` 建；固定最终 SHA 交协调者以 `--no-ff` 合回 `orbit-agent-claude`，合并树跑受影响测试与 typecheck 后才登记 completed。
+
+## 开工更正记录（Generator 追加，2026-11-18；原文与原哈希 dc91d29a… 保留）
+
+- **进入条件 3：** AG07 的卡（`display.record`、`rows[{label, before?, after}]`、`note`）能逐行显示导入归类和删除影响，两端界面代码不改。只缺“删除”“恢复”两个徽章词（设计稿 §10 要求写“删除”）：加在共享的 `shared/compute/agent-card-view.ts` 与 `shared/copy`（经同步脚本到 App），两端用原有徽章样式显示这个词。
+- **全量对照：** 本页写 stash 取回；按 Generator 说明不用 git stash，改为把失败名字与协调者给的 24 条基线逐条比较。
+- **执行器登记：** 按 AG06 的写法登记在 `domains/writes.ts`（`registry.ts` 是读取侧，联系人读取 AG05 已登记）。
+- **修改的范围：** 首版只改五个基本字段（姓名、公司、职位、邮箱、电话，经字段写入接口与期望版本）。行业、职级、地区、标签、状态、备注在对话里说“这一版改不了”，仍在联系人页面改；它们不在门槛用例里。
+- **写入方清单：** 上文列的 `completion/repository.ts`、`confirmed-followup/service.ts`、`postgres-repository.ts` 读查后不写联系人；另有 `storage/contact-live-record-provider.ts`（行业、补全、画像写回）写联系人，已纳入。清单与理由见 REPORT 与 `tests/architecture/contact-version-writers.test.ts`。
