@@ -7,6 +7,7 @@
  */
 import type { ContactCardReader } from "../../agent-v1/domains/contact/types";
 import type { TaskItemDTO } from "../../tasks/contract";
+import { taskLinksOf } from "../../tasks/task-links";
 import type { TaskService } from "../../tasks/service";
 import type { AgentCardOperationDisplayContract } from "../../../shared/contract/agent-v1";
 import type { AgentActionOperationPayload } from "./contract";
@@ -57,6 +58,9 @@ export interface TodoSnapshot {
   dueAt: string | null;
   updatedAt: string;
   status: string;
+  /** agent-design AG13: the people and events, read as lists (an older to-do's single fields become zero or one). */
+  relatedContactIds?: string[];
+  relatedEventRefs?: { kind: "platform" | "private"; id: string }[];
 }
 
 export interface TodoReader {
@@ -70,7 +74,8 @@ export function createTodoReader(tasks: Pick<TaskService, "get">, actorId: strin
     async read(taskId) {
       const task: TaskItemDTO | null = await tasks.get({ actorId, taskId });
       if (!task || task.status === "cancelled") return null;
-      return { dueAt: task.dueAt ?? null, plannedDate: task.plannedDate ?? null, status: task.status, title: task.title, updatedAt: task.updatedAt };
+      const links = taskLinksOf(task);
+      return { dueAt: task.dueAt ?? null, plannedDate: task.plannedDate ?? null, relatedContactIds: links.contactIds, relatedEventRefs: links.eventRefs, status: task.status, title: task.title, updatedAt: task.updatedAt };
     },
   };
 }
@@ -252,7 +257,7 @@ export async function prepareTodoOperation(input: {
     const fromMemo = Boolean(intent.set.sourceNoteId);
     const after = fromMemo
       ? clean({ dueAt: intent.set.dueAt ?? null, notes: intent.set.notes, plannedDate: intent.set.plannedDate ?? null, relatedContactIds: intent.set.relatedContactIds?.length ? [...intent.set.relatedContactIds] : undefined, sourceNoteId: intent.set.sourceNoteId, sourceNoteVersion: intent.set.sourceNoteVersion, title: intent.set.title })
-      : clean({ dueAt: intent.set.dueAt, plannedDate: intent.set.plannedDate, title: intent.set.title });
+      : clean({ dueAt: intent.set.dueAt, plannedDate: intent.set.plannedDate, relatedContactIds: intent.set.relatedContactIds?.length ? [...intent.set.relatedContactIds] : undefined, title: intent.set.title });
     const op: AgentActionOperationPayload = {
       ...base,
       after,
@@ -312,8 +317,9 @@ export async function checkTodoTarget(op: AgentActionOperationPayload, reader: T
   const shownTitle = (op.shown as Record<string, unknown> | undefined)?.title;
   if (shownTitle !== undefined && shownTitle !== current.title) rows.push({ field: "title", now: current.title, shownBefore: shownTitle });
   for (const [field, value] of Object.entries(op.before ?? {})) {
-    const now = current[field as TodoField] ?? null;
-    if ((value ?? null) !== now) rows.push({ field, now, shownBefore: value ?? null, to: (op.after as Record<string, unknown> | undefined)?.[field] });
+    const now = (current as unknown as Record<string, unknown>)[field] ?? null;
+    // AG13: the link lists compare by value.
+    if (JSON.stringify(value ?? null) !== JSON.stringify(now)) rows.push({ field, now, shownBefore: value ?? null, to: (op.after as Record<string, unknown> | undefined)?.[field] });
   }
   return { changed: rows.length > 0, rows, versionToken: current.updatedAt };
 }

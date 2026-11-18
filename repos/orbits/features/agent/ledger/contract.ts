@@ -63,6 +63,19 @@ export const AGENT_LEDGER_OPERATION_TYPES = [
   "delete_contact",
   "restore_contact",
   "import_contacts",
+  // agent-design AG13: private events, «我去过» (attendance notes), schedule items, and the other to-do verbs, after a card.
+  "create_private_event",
+  "update_private_event",
+  "delete_private_event",
+  "create_attendance",
+  "update_attendance",
+  "delete_attendance",
+  "create_schedule",
+  "update_schedule",
+  "delete_schedule",
+  "complete_todo",
+  "reopen_todo",
+  "delete_todo",
 ] as const;
 
 // 语音只允许保存“用户编辑确认后的转写文本”；原始音频永不进入 evidence。

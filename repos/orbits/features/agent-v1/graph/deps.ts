@@ -1,3 +1,5 @@
+import type { PrivateEventService } from "../../events/private-events/service";
+import type { AttendanceService } from "../../events/attendance-notes/service";
 import type { BaseCheckpointSaver } from "@langchain/langgraph";
 
 import type { AiPageContextContract } from "../../../shared/contract/ai-sessions";
@@ -38,6 +40,9 @@ export interface AgentRecordAccess {
   listEvents?(): Promise<readonly CanonicalEventRecord[]>;
   /** AG12: the account's contacts for contact writes — duplicates, restore, import review (code only, never a model). */
   contacts?: ContactAccess;
+  /** AG13: the account's private events, «我去过» notes and the records linking to an event (code only, never a model). */
+  privateEvents?: Pick<PrivateEventService, "list" | "get" | "references">;
+  attendance?: Pick<AttendanceService, "list">;
 }
 
 /** A reference of this turn as intake keeps it: named when accessible; `accessible: false` when not (AG05). */

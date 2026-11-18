@@ -38,6 +38,8 @@ const numbered = (lines: (string | null)[]): Sentence[] => lines.filter((line): 
 export function materialOf(view: RecordView, partId: string, handle: string, context: MaterialContext): Material {
   const f = view.fields as Record<string, unknown>;
   const names = (ids: unknown) => (Array.isArray(ids) ? ids.map((id) => context.names.get(String(id))).filter(Boolean).join(", ") : "");
+  // AG13: linked events by their titles ("platform:<id>" / "private:<id>"); a private one is marked as the user's own.
+  const eventNames = (refs: unknown) => (Array.isArray(refs) ? refs.map((ref) => { const title = context.names.get(String(ref)); return title ? (String(ref).startsWith("private:") ? `${title} (your own private event)` : title) : null; }).filter(Boolean).join(", ") : "");
   let header: string;
   let sentences: Sentence[];
   let at: string | null = null;
@@ -50,6 +52,7 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
       header = [
         `memo${text(f.title) ? ` "${text(f.title)}"` : ""}, written ${formatWhen(text(f.createdAt), context.timeZone)}`,
         about ? `linked to ${about}` : null,
+        eventNames(f.eventRefs) ? `linked to the events ${eventNames(f.eventRefs)}` : null,
         interaction ? `records an actual ${interaction.channel} (${interaction.direction}) with ${names(interaction.actualContactIds) || "a linked contact"} on ${formatWhen(interaction.occurredAt ?? interaction.occurredOn, context.timeZone, Boolean(interaction.occurredAt))}` : null,
         Number(f.version) > 1 ? `version ${f.version}, last edited ${formatWhen(text(f.updatedAt), context.timeZone)}` : null,
       ].filter(Boolean).join("; ");
@@ -67,7 +70,9 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
         `Status: ${text(f.status) ?? "—"}${f.completedAt ? ` (completed ${formatWhen(text(f.completedAt), context.timeZone)})` : ""}`,
         text(f.plannedDate) ? `Planned date: ${formatWhen(text(f.plannedDate), context.timeZone)}` : "Planned date: none",
         due ? `Due: ${formatWhen(due, context.timeZone)}${overdue}` : "Due: none",
-        f.contactId ? `Linked contact: ${context.names.get(String(f.contactId)) ?? "a contact"}` : null,
+        // AG13: every linked person and event (an older to-do's single person reads as one).
+        Array.isArray(f.contactIds) && f.contactIds.length ? `Linked contacts: ${(f.contactIds as string[]).map((id) => context.names.get(id) ?? "a contact").join(", ")}` : f.contactId ? `Linked contact: ${context.names.get(String(f.contactId)) ?? "a contact"}` : null,
+        Array.isArray(f.eventRefs) && f.eventRefs.length ? `Linked events: ${(f.eventRefs as string[]).map((ref) => (context.names.get(ref) ? (ref.startsWith("private:") ? `${context.names.get(ref)} (your own private event)` : context.names.get(ref)) : "an event")).join(", ")}` : null,
         text(f.description) ? `Notes: ${text(f.description)}` : null,
       ]);
       break;
@@ -78,10 +83,13 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
       sentences = numbered([
         `Title: ${text(f.title) ?? "—"}`,
         `Starts: ${formatWhen(start, text(f.timeZone) ?? context.timeZone)}`,
-        text(f.endsAt) && !context.occurrence ? `Ends: ${formatWhen(text(f.endsAt), text(f.timeZone) ?? context.timeZone)}` : null,
+        // AG13: an occurrence of a series ends as long after its start as the series does.
+        text(f.endsAt) && !context.occurrence ? `Ends: ${formatWhen(text(f.endsAt), text(f.timeZone) ?? context.timeZone)}` : text(f.endsAt) && context.occurrence && text(f.startsAt) ? `Ends: ${formatWhen(new Date(Date.parse(context.occurrence) + Date.parse(text(f.endsAt)!) - Date.parse(text(f.startsAt)!)).toISOString(), text(f.timeZone) ?? context.timeZone)}` : null,
         text(f.recurrence) ? `Repeats: ${text(f.recurrence)}` : null,
         text(f.location) ? `Place: ${text(f.location)}` : null,
         names(f.contactIds) ? `With: ${names(f.contactIds)}` : null,
+        names(f.noteIds) ? `Linked notes: ${names(f.noteIds)}` : null,
+        eventNames(f.eventRefs) ? `For the events: ${eventNames(f.eventRefs)}` : null,
       ]);
       break;
     }

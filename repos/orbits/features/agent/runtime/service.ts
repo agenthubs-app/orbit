@@ -12,6 +12,7 @@ import type {
 import type { AgentExecutorRegistry } from "./executor-registry";
 import { stablePayloadHash } from "./hash";
 import { emitTrace, takeEvalFault } from "../../agent-v1/observability/trace";
+import { resolveLocalCreateRefs } from "../../agent-v1/domains/private-event/ops";
 import type { AgentRuntimeRepository } from "./repository";
 import {
   AGENT_CARD_TTL_MS,
@@ -50,6 +51,14 @@ export class AgentExecutionPermanentError extends Error {
   readonly code = "EXECUTION_PERMANENT";
 }
 
+/** agent-design AG13: a payload's `localCreateRef: n` replaced by the id item n's receipt holds (null: it has none). */
+async function resolveCardLocalRefs(payload: Readonly<Record<string, unknown>>, createdIdOf: (position: number) => Promise<string | null>): Promise<Readonly<Record<string, unknown>> | null> {
+  const ref = payload.eventRef as { localCreateRef?: unknown } | undefined;
+  if (!ref || typeof ref.localCreateRef !== "number") return payload;
+  const id = await createdIdOf(ref.localCreateRef);
+  return resolveLocalCreateRefs(payload, () => id);
+}
+
 /** Domain error codes that retrying with the same operation key cannot change. */
 const PERMANENT_CODES = new Set([
   "EXECUTION_PERMANENT",
@@ -60,6 +69,7 @@ const PERMANENT_CODES = new Set([
   "TASK_VERSION_CONFLICT",
   "TASK_INVALID_TRANSITION",
   "TASK_INVALID_PLAN_LINK",
+  "TASK_INVALID_LINK",
   "NOTE_INVALID_INPUT",
   "NOTE_NOT_FOUND",
   "NOTE_IDEMPOTENCY_CONFLICT",
@@ -1181,7 +1191,17 @@ export function createAgentRuntimeService({
           // fail_always stands for a failure retrying cannot fix (permanent); fail_once and timeout for a passing one.
           if (fault?.kind === "fail_always") throw new AgentExecutionPermanentError(`agent-eval simulated executor ${fault.kind}`);
           if (fault && fault.kind !== "unknown_outcome") throw new Error(`agent-eval simulated executor ${fault.kind}`);
-          const result = await executors.execute({ ...operation, payload: event.payload }, {
+          // AG13: an item that points at the private event an earlier item of this card created (localCreateRef: n) gets
+          // that event's id from the n-th item's receipt; it waited for it (dependsOn), so the receipt is there.
+          const payload = await resolveCardLocalRefs(event.payload, async (position) => {
+            const source = action.operations[position - 1];
+            if (!source) return null;
+            const receipt = await repository.getReceiptByIdempotencyKey(source.idempotencyKey, action.runId);
+            const ref = receipt?.status === "completed" ? receipt.resultRef ?? "" : "";
+            return ref.startsWith("private_events:") ? ref.slice("private_events:".length) : null;
+          });
+          if (!payload) throw new AgentExecutionPermanentError("The event this item records was not created; nothing was written.");
+          const result = await executors.execute({ ...operation, payload }, {
             actionId: action.actionId,
             runId: action.runId,
             operationId: operation.operationId,

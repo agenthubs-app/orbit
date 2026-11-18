@@ -156,7 +156,7 @@ test("stab1 shape (AE-XL-011): \"log that Emily called me\" tagged attendance.cr
   const model = deepseekStub(byNode({
     answer: () => json({ segments: [{ partId: "p2", text: "That's a big move." }] }),
     propose: (call) => {
-      assert.match(call.user, /capabilities: memo\.create/u, "the second layer may make it a memo");
+      assert.match(call.user, /capabilities: [^)]*memo\.create/u, "the second layer may make it a memo (AG13: among the event writes)");
       return json({ operations: [{ channel: "phone", dateText: "today", dependsOn: [], direction: "incoming", entity: "memo", fields: [{ name: "body", valueText: "Emily called me today. She said she's moving to the Tokyo office in January." }], localId: "w1", partId: "p1", relations: [{ clue: "Emily", entity: "contact", role: "actual_contact" }], verb: "create" }] });
     },
     understand: () => json({ language: "en", parts: [

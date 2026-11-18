@@ -73,7 +73,9 @@ export function receiptSummary(card: AgentActionPreviewContract, locale: string 
   const words = RECEIPT_WORDS[locale === "ja" || locale === "en" ? locale : "zh"];
   const items = card.operations.map((op, index) => {
     const state = words[op.status] ?? op.status;
-    return locale === "en" ? `item ${index + 1} ${state}` : locale === "ja" ? `${index + 1} 件目は${state}` : `第 ${index + 1} 项${state}`;
+    // AG13: an item that was not done says why when the server knows (a private event kept because something links to it).
+    const why = op.outcome ? (locale === "en" ? ` — ${op.outcome.replace(/[.]$/u, "")}` : `（${op.outcome.replace(/[。]$/u, "")}）`) : "";
+    return locale === "en" ? `item ${index + 1} ${state}${why}` : locale === "ja" ? `${index + 1} 件目は${state}${why}` : `第 ${index + 1} 项${state}${why}`;
   });
   return `${words.lead}${items.join(words.join)}${locale === "en" ? "." : "。"}`;
 }

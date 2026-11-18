@@ -26,9 +26,16 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
   const parts = output.parts.map((part) => {
     const start = message.indexOf(part.sourceQuote);
     const continued = part.continues ? context.openItemHandles.get(part.continues.ref) ?? null : null;
+    // AG13 (AE-SCL-025): a part that only reads and names a schedule item reads schedule items too
+    // ("明天这场周会关联了哪些人" tagged event.read only).
+    const readsOnly = part.requiredCapabilities.length > 0 && part.requiredCapabilities.every((capability) => capabilityKind(capability) !== "write");
+    // A meeting the user calls an event ("明天这场周会" tagged event) is one of their own schedule items too.
+    const MEETING = /(周会|例会|会议|开会|定例|打ち合わせ|ミーティング|\bmeeting\b|\bstand-?up\b)/iu;
+    const implied = readsOnly ? part.objectClues.flatMap((clue) => ((clue.entity === "schedule" || (clue.entity === "event" && MEETING.test(clue.text))) && !part.requiredCapabilities.includes("schedule.read" as never) ? ["schedule.read"] : [])) : [];
+    if (implied.length) emitTrace({ added: [...new Set(implied)], partId: part.localId, type: "understand.read_implied_by_clue" });
     return {
       asked: 0,
-      capabilities: [...part.requiredCapabilities],
+      capabilities: [...new Set([...part.requiredCapabilities, ...implied])] as typeof part.requiredCapabilities,
       continues: part.continues && continued ? { kind: part.continues.kind, ref: continued.ref } : null,
       dependsOn: [...part.dependsOn],
       localId: part.localId,
@@ -62,7 +69,15 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
           emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.time_word_clue" });
           return false;
         }
-        if (clue.referenceId || !subjectInsideRecord(clue, part.objectClues, part.requiredCapabilities.some((capability) => capabilityKind(capability) === "write"))) return true;
+        // AG13 (AE-EVT-010): "老周" inside 「联系老周聊独立出版」这条待办 is words of the to-do's title, not a person to look up.
+        const writes = part.requiredCapabilities.some((capability) => capabilityKind(capability) === "write");
+        // Only a title the user quoted counts ("「联系老周聊独立出版」这条待办"); "上次和小林聊了什么" names 小林 the person.
+        const quotedTitles = (text: string) => [...text.matchAll(/[「『"“]([^」』"”]+)[」』"”]/gu)].map((match) => match[1]);
+        if (!clue.referenceId && !writes && clue.entity === "contact" && part.objectClues.some((other) => other !== clue && other.entity !== "contact" && quotedTitles(other.text).some((title) => title.includes(clue.text) && title !== clue.text))) {
+          emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.name_inside_title" });
+          return false;
+        }
+        if (clue.referenceId || !subjectInsideRecord(clue, part.objectClues, writes)) return true;
         emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.subject_in_record" });
         return false;
       }).map((clue) => {

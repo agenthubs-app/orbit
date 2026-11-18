@@ -231,7 +231,7 @@ export function applyResolution(state: AgentGraphState, resolution: GraphResolut
   const writeParts = parts.filter((item) => item !== part && item.route === "propose_write" && item.write);
   const pickFor = (target: GraphPart, type: string | undefined, id: string) => {
     if (!target.write) return;
-    target.write = { ...target.write, picks: { ...target.write.picks, ...(type === "contact" ? { contact: id } : type === "todo" ? { todo: id } : type === "field" && (id === "plannedDate" || id === "dueAt") ? { field: id } : type === "duplicate" || type === "memo" ? { duplicate: id } : {}) } };
+    target.write = { ...target.write, picks: { ...target.write.picks, ...(type === "contact" ? { contact: id } : type === "todo" ? { todo: id } : type === "field" && (id === "plannedDate" || id === "dueAt") ? { field: id } : type === "duplicate" || type === "memo" ? { duplicate: id } : type === "event" ? { event: id } : type === "event_plan" ? { eventPlan: id } : {}) } };
   };
   if (set.purpose === "operation") {
     if (option.refId) pickFor(part, option.refType, option.refId);

@@ -19,6 +19,7 @@
  * Record content stays in the run (the answer step's materials); the checkpoint gets refs, versions,
  * gaps and counts only.
  */
+import { addLinkNames } from "../../answer/link-names";
 import { pinyin } from "pinyin-pro";
 
 import { readSourceOf } from "../../answer/basis";
@@ -773,6 +774,8 @@ export function resolveNode(scope: NodeScope): GraphNode {
       // 5. Materials for the answer step (only when there is something to answer from).
       const usable = read.wantsRecords ? recordViews.length > 0 : read.views.length > 0;
       if (usable) {
+        // AG13: the names of the people, notes and events these records link to.
+        await addLinkNames(records, accountScope, read.views, names);
         let n = [...run.materials.values()].reduce((sum, list) => sum + list.length, 0);
         const materials: Material[] = [...read.views.filter((view) => view.kind === "contact"), ...read.views.filter((view) => view.kind !== "contact")]
           .map((view) => materialOf(view, part.localId, `s${(n += 1)}`, { names, now, occurrence: read.occurrences.get(view.ref) ?? null, timeZone: zone }));

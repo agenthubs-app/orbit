@@ -145,7 +145,9 @@ test("5 AE-CTX-005: a to-do word with no time of day is not swallowed by schedul
   assert.deepEqual(proposableOf({ capabilities: [], refs: [] } as never, "x"), [], "guard: nothing to propose without a write");
   const toDoPart = { capabilities: ["todo.read", "schedule.create"], refs: [] } as never;
   assert.deepEqual(proposableOf(toDoPart, "山本さんとの食事のToDo、11月20日（金）に予定を入れておいて。").sort(), ["todo.create", "todo.update"]);
-  assert.deepEqual(proposableOf(toDoPart, "11月20日の14時に山本さんとの食事の予定を入れておいて。"), [], "a time of day and no to-do word: a schedule entry (not in this version)");
+  // AG13: schedule items can be written now; a time of day and no to-do word is a schedule entry (never a to-do).
+  const scheduled = proposableOf(toDoPart, "11月20日の14時に山本さんとの食事の予定を入れておいて。");
+  assert.ok(scheduled.includes("schedule.create") && !scheduled.includes("todo.create"), "a time of day and no to-do word: a schedule entry");
   const records = recordAccessOf(world((list) => {
     list.push(contact(ACTOR, "contact:c41", "山本直子", { organization: "山手出版" }));
     list.push(todo(ACTOR, "task:t47", "约山本吃饭", { relatedContactId: "contact:c41" }));

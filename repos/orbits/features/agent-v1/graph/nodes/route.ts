@@ -8,6 +8,7 @@
  * the parts the resume touched are routed again, from the plan kept in the checkpoint; nothing else
  * changes and no model is called.
  */
+import { CHECKIN as CHECKIN_WORDS } from "../../propose/events-resolve";
 import { importTableOf } from "../../domains/contact/import-preview";
 import { attributeMessage } from "../../clarify/attribution";
 import { recordKindOf } from "../../clarify/default-readings";
@@ -188,6 +189,19 @@ export function routeNode(scope: NodeScope): GraphNode {
         emitTrace({ partId: part.localId, reason: "a change built on a web page: the page is read, the save is not offered yet", type: "route.web_save_not_offered" });
         decision.route = "web_lookup";
         decision.reason = "public sources (saving them is not offered yet)";
+      }
+      // AG13 (AE-EVT-001): "建成私人活动，并记上我参加了" — the second sentence's object is what the first creates in this very
+      // message; it is not missing. The two go to the second layer together (one card; «我去过» waits for the event).
+      const createsFirst = (other: GraphPart | undefined) => Boolean(other && other.capabilities.some((capability) => capabilityKind(capability) === "write" && capability.endsWith(".create")));
+      if (!resume && decision.route === "clarify" && decision.waitReason === "object_ambiguous" && part.capabilities.some((capability) => capabilityKind(capability) === "write") && part.dependsOn.some((id) => createsFirst(state.parts.find((other) => other.localId === id)))) {
+        emitTrace({ partId: part.localId, reason: "its object is created by the part it depends on, in this message", type: "route.object_created_before" });
+        decision = { ...decision, reason: "an explicit request to change a record (its object is created first, in this message)", route: "propose_write", step: undefined, waitReason: null };
+      }
+      // AG13 (AE-EVT-004): "帮我把签到补上" — the organizer's check-in is never written; code says so, whatever route the words
+      // got (the second step's code line, no card).
+      if (!resume && CHECKIN_WORDS.test(input.message.slice(part.quote[0], part.quote[1])) && part.capabilities.some((capability) => capability.startsWith("attendance.")) && decision.route !== "propose_write") {
+        emitTrace({ partId: part.localId, reason: "a check-in is the organizer's record", type: "route.organizer_record" });
+        decision = { ...decision, reason: "a check-in is the organizer's record (code says so)", route: "propose_write", step: undefined, waitReason: null };
       }
       if (accepted && part.continues) acceptedAlternativeRef = part.continues.ref;
       let status = statusForRoute(decision.route);

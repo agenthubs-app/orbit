@@ -8,9 +8,9 @@
  * account, telling apart several matches, working out dates, building the change and the card.
  */
 
-export const PROPOSE_ENTITIES = ["todo", "memo", "contact"] as const;
-/** AG12: delete, restore and import are contact verbs only. */
-export const PROPOSE_VERBS = ["create", "update", "delete", "restore", "import"] as const;
+export const PROPOSE_ENTITIES = ["todo", "memo", "contact", "privateEvent", "attendance", "schedule"] as const;
+/** AG12: restore and import are contact verbs only. AG13: delete for private events, «我去过», schedule items and to-dos; complete and reopen for to-dos. */
+export const PROPOSE_VERBS = ["create", "update", "delete", "restore", "import", "complete", "reopen"] as const;
 /** AG12: the contact fields a value may be given for (the field writer's five; others stay on the contact's page). */
 export const CONTACT_VALUE_FIELDS = ["name", "company", "role", "email", "phone"] as const;
 export type ContactValueField = (typeof CONTACT_VALUE_FIELDS)[number];
@@ -25,6 +25,12 @@ export const VALUE_FIELDS: Record<string, readonly string[]> = {
   "memo.create": ["body"],
   "todo.create": ["title"],
   "todo.update": ["title"],
+  // AG13: a private event's name and place; a schedule item's title; the user's own line on «我去过».
+  "privateEvent.create": ["title", "venue"],
+  "privateEvent.update": ["title", "venue"],
+  "schedule.create": ["title"],
+  "schedule.update": ["title"],
+  "attendance.create": ["note"],
 };
 
 export interface OperationIntent {
@@ -40,6 +46,10 @@ export interface OperationIntent {
   /** memo.create only. */
   channel?: (typeof MEMO_CHANNELS)[number];
   direction?: (typeof MEMO_DIRECTIONS)[number];
+  /** AG13: the words of the time of day ("晚上七点", "下午两点到三点", "2pm", "11時から12時"), worked out by code. */
+  timeText?: string;
+  /** AG13: words naming events (the event attended, the event a schedule item is for, events to link to a to-do). */
+  eventClues?: string[];
   dependsOn: string[];
 }
 
@@ -50,7 +60,8 @@ export interface ProposeOutput {
 /** An intent as the checkpoint keeps it: codes and [start, end) offsets into this turn's message. */
 export interface StoredIntent {
   localId: string;
-  capability: "todo.create" | "todo.update" | "memo.create" | "contact.create" | "contact.update" | "contact.delete" | "contact.restore" | "contact.import";
+  capability: "todo.create" | "todo.update" | "memo.create" | "contact.create" | "contact.update" | "contact.delete" | "contact.restore" | "contact.import"
+    | "privateEvent.create" | "privateEvent.update" | "privateEvent.delete" | "attendance.create" | "attendance.delete" | "schedule.create" | "schedule.update" | "schedule.delete" | "todo.complete" | "todo.reopen" | "todo.delete" | "memo.update";
   /** AG12: a contact's values, as offsets into the message. */
   values?: Partial<Record<ContactValueField, [number, number]>>;
   selector: [number, number][];
@@ -60,4 +71,11 @@ export interface StoredIntent {
   relations: { quote: [number, number]; role: (typeof RELATION_ROLES)[number] }[];
   channel?: (typeof MEMO_CHANNELS)[number];
   direction?: (typeof MEMO_DIRECTIONS)[number];
+  /** AG13: offsets of the time words, the event clues, a private event's place, the user's own line. */
+  time?: [number, number];
+  events?: [number, number][];
+  venue?: [number, number];
+  note?: [number, number];
+  /** AG13: the model's localId of the operation this one depends on (an attendance note on the event created before it). */
+  after?: string;
 }

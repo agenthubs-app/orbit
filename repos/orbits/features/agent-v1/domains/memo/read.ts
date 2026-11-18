@@ -6,7 +6,7 @@
  */
 import type { ReadInput } from "../../../orbit-ai/data-query/read-contract";
 import { readNoteInteraction } from "../../../notes/interaction";
-import { defined, objectAt, str, strs, type RecordDomain } from "../record-adapter";
+import { defined, objectAt, refsOf, str, strs, type RecordDomain } from "../record-adapter";
 import type { RecordSpec } from "../source";
 
 const NOTE = (field: string) => ["note", field] as const;
@@ -22,6 +22,8 @@ export const MEMO_DOMAIN: RecordDomain = {
       contactIds,
       createdAt: str(note.createdAt),
       eventIds: strs(note.eventIds) ?? [],
+      // AG13: the typed event links (platform and private).
+      eventRefs: refsOf(note.eventRefs),
       interaction: interaction ? { ...interaction, actualContactIds: [...interaction.actualContactIds] } : undefined,
       title: str(note.title),
       updatedAt: str(note.updatedAt),

@@ -32,12 +32,13 @@ import { WRITE_WORDS } from "./copy";
 import type { StoredIntent } from "./schema";
 import { CONTACT_WORDS } from "../domains/contact/copy";
 import { importTableOf, ImportTableRejected, previewImport } from "../domains/contact/import-preview";
+import { isEventIntent, resolveEventIntent, type EventResolveExtras } from "./events-resolve";
 import type { ContactEffect, ContactFieldName } from "../domains/contact/types";
 
 export interface PartWrite {
   intents: StoredIntent[];
   /** What the user picked in a question of this request (ids and a field name only). */
-  picks: { contact?: string; todo?: string; field?: "plannedDate" | "dueAt"; /** AG08: the answer to "is it the same occasion": "new", or the existing memo's id. */ duplicate?: string };
+  picks: { contact?: string; todo?: string; field?: "plannedDate" | "dueAt"; /** AG08: the answer to "is it the same occasion": "new", or the existing memo's id. */ duplicate?: string; /** AG13: the event picked ("platform:<id>" / "private:<id>"), and what to do with a private event's links before deleting it. */ event?: string; eventPlan?: string };
   /** This part waits for the question another part asks (the same person), and goes on when it is answered. */
   waitsFor?: string | null;
   /** The operations of this part on the card, once frozen. */
@@ -49,13 +50,19 @@ export type Candidate = NamedRecordRef & { detail?: string };
 export type WriteQuestion =
   | { type: "contact"; clue: string; candidates: Candidate[] }
   | { type: "todo"; clue: string; candidates: Candidate[]; /** AG06 repair 1: none matched the words; these are the person's. */ notFound?: string }
-  | { type: "field"; options: { field: "plannedDate" | "dueAt"; current: string }[] };
+  | { type: "field"; options: { field: "plannedDate" | "dueAt"; current: string }[] }
+  /** AG13: which event the words mean. */
+  | { type: "event"; clue: string; candidates: Candidate[] }
+  /** AG13 (D7): a private event still linked to — list the links, offer what to do. */
+  | { type: "event_plan"; line: string; hasAttendance: boolean; options: { id: string; label: string }[] };
 
 export type WriteOutcome =
   | { kind: "ready"; ops: (CardOperationIntent & { localId: string })[] }
   | { kind: "ask"; question: WriteQuestion }
   | { kind: "shares"; with: string }
-  | { kind: "stop"; reason: string; line: string };
+  | { kind: "stop"; reason: string; line: string }
+  /** AG13: an item of this part is made by another part's plan (deleting a private event): nothing of its own. */
+  | { kind: "covered" };
 
 export interface ResolveContext {
   records: AgentRecordAccess | undefined;
@@ -71,6 +78,10 @@ export interface ResolveContext {
   asked: Map<string, string[]>;
   /** Names known to the run (records read this turn, the context). */
   nameOf(id: string): string | null;
+  /** AG13: the extras of the event resolver (propose/events-resolve.ts). */
+  names?: EventResolveExtras["names"];
+  createdEvents?: EventResolveExtras["createdEvents"];
+  deleting?: boolean;
 }
 
 const words = (message: string, span: [number, number] | null | undefined) => (span ? message.slice(span[0], span[1]).trim() : "");
@@ -110,6 +121,29 @@ export function contactKindOf(text: string): { channel?: "phone" | "meeting" | "
   return { ...(channel ? { channel } : {}), ...(direction ? { direction } : {}) };
 }
 
+/** The people a pronoun may mean after a pause: the contact mentioned last (first), then the people of the to-dos named. */
+async function pronounCandidates(ctx: ResolveContext, part: GraphPart): Promise<Candidate[]> {
+  if (!ctx.context?.idle || !ctx.records || !ctx.scope) return [];
+  const out: Candidate[] = [];
+  const add = (id: string, name: string) => {
+    if (id && name && !out.some((item) => item.id === id)) out.push({ id, name, type: "contact" });
+  };
+  for (const item of ctx.context.lastMentionedForCode.filter((entry) => entry.type === "contact")) add(item.id, item.name);
+  const todoWords = part.refs.filter((ref) => ref.entity === "todo").map((ref) => words(ctx.message, ref.quote)).map((text) => text.replace(/^(?:his|her|their|my|the)\s+/iu, "").replace(/^[他她]的/u, "")).filter((text) => text.length >= 3);
+  for (const text of todoWords.slice(0, 2)) {
+    const found = await ctx.records.reader.read("todo", ctx.scope, { limit: 10, status: "open", text }).catch(() => null);
+    for (const view of found?.items ?? []) {
+      const ids = Array.isArray(view.fields.contactIds) ? (view.fields.contactIds as string[]) : typeof view.fields.contactId === "string" ? [view.fields.contactId] : [];
+      const first = ids[0];
+      if (!first || out.some((item) => item.id === first)) continue;
+      const contact = (await ctx.records.reader.read("contact", ctx.scope, { id: first }).catch(() => null))?.items[0];
+      if (contact) add(first, String(contact.fields.displayName ?? ""));
+    }
+  }
+  if (out.length) emitTrace({ candidates: out.map((item) => item.id), partId: part.localId, type: "propose.pronoun_candidates" });
+  return out.slice(0, 3);
+}
+
 type PersonResult = { kind: "found"; id: string; name: string; detail?: string } | { kind: "ask"; clue: string; candidates: Candidate[] } | { kind: "shares"; with: string } | { kind: "none" } | { kind: "missing" } | { kind: "failed" };
 
 export async function resolvePerson(ctx: ResolveContext, part: GraphPart, write: PartWrite, clue: { quote: [number, number] | null; text: string }): Promise<PersonResult> {
@@ -129,6 +163,10 @@ export async function resolvePerson(ctx: ResolveContext, part: GraphPart, write:
     if (asking) return { kind: "shares", with: asking };
     const last = ctx.context && !ctx.context.idle ? ctx.context.lastMentioned.find((item) => item.type === "contact" && item.accessible !== false) : undefined;
     if (last) return { id: last.id, kind: "found", name: last.name ?? "" };
+    // AG13 (AE-SCL-012, §3.10): after a long pause the person mentioned last is not taken — but offered first, with the
+    // people of the to-dos the words name ("his reference check"), in one question. Never picked by code.
+    const offered = await pronounCandidates(ctx, part);
+    if (offered.length) return { candidates: offered, clue: clue.text, kind: "ask" };
     return { kind: "missing" };
   }
   if (!ctx.records || !ctx.scope) return { kind: "failed" };
@@ -177,6 +215,17 @@ function scriptOf(text: string): Script | null {
   if (/[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text)) return "kana";
   if (/\p{Script=Han}/u.test(text)) return "han";
   return /[A-Za-z]/u.test(text) ? "latin" : null;
+}
+
+/**
+ * AG13 (AE-SCL-010): Japanese words that leave out the kana of a title ("益子陶器市搬入手配" for 「益子陶器市の搬入を手配する」):
+ * the title's kanji and katakana hold the words' kanji and katakana in order (at least four of them).
+ */
+export function fitsWithoutKana(words: string, title: string): boolean {
+  const strip = (text: string) => text.replace(/[\p{Script=Hiragana}\s、，。・,.!?！？「」『』（）()"“”]/gu, "");
+  const said = strip(words);
+  if ([...said].length < 4 || !/[\p{Script=Hiragana}]/u.test(title)) return false;
+  return strip(title).includes(said);
 }
 
 /** AG07: words and a title written in different scripts (English or Japanese words, a Chinese title …). */
@@ -245,7 +294,13 @@ async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrit
         const head = [...text].slice(0, 2).join("");
         if ([...text].length < 4 || !head) continue;
         const near = (await ctx.records.reader.read("todo", ctx.scope, { limit: 10, status: "open", text: head })).items.map(todoOf);
-        for (const item of near) if (fitsInOrder(text, item.title)) fitting.set(item.id, item);
+        // AG13 (AE-SCL-010): several fit without their kana ("益子陶器市搬入手配" fits both 搬入 to-dos): ask which.
+        const kanaFits = near.filter((item) => fitsWithoutKana(text, item.title));
+        if (kanaFits.length > 1) {
+          emitTrace({ found: kanaFits.map((item) => item.id), partId: part.localId, rule: "title_without_kana", type: "propose.todo_lookup" });
+          return { candidates: kanaFits.slice(0, 3).map((item) => ({ detail: whenText(item, ctx.language, ctx.timeZone) ?? undefined, id: item.id, name: item.title, type: "todo" })), clue: clues[0] ?? "", kind: "ask" };
+        }
+        for (const item of near) if (fitsInOrder(text, item.title) || fitsWithoutKana(text, item.title)) fitting.set(item.id, item);
       }
       if (fitting.size === 1) {
         const [only] = fitting.values();
@@ -295,7 +350,27 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
   const ops: (CardOperationIntent & { localId: string })[] = [];
   const stop = (reason: string, line: string): WriteOutcome => ({ kind: "stop", line, reason });
   const failedLine = language === "zh" ? `「${quote}」这次没能读到你的记录，所以没有改。并不代表没有这条记录，可以稍后再试。` : language === "ja" ? `「${quote}」は今回記録を読めなかったため、変更していません。記録がないという意味ではありません。少し後でもう一度お試しください。` : `"${quote}": your records could not be read this time, so nothing was changed. That does not mean the record is missing; please try again later.`;
-  for (const intent of write.intents) {
+  let covered = false;
+  for (const given of write.intents) {
+    let intent = given;
+    // AG13: private events, «我去过», schedule items, the other to-do verbs and to-do links (propose/events-resolve.ts).
+    if (isEventIntent(intent, quote)) {
+      const outcome = await resolveEventIntent(ctx, part, write, intent);
+      if (outcome.kind === "covered") {
+        covered = true;
+        continue;
+      }
+      // AG13 (AE-SCL-012): "move his reference check to Thursday" read as a schedule item: none is named so, so it is the
+      // to-do the words name (a to-do's date), never "not in your schedule" when a to-do is meant.
+      if (outcome.kind === "stop" && outcome.reason === "object_not_found" && intent.capability === "schedule.update" && intent.date) {
+        emitTrace({ partId: part.localId, type: "propose.schedule_as_todo" });
+        intent = { ...intent, capability: "todo.update" };
+      } else {
+        if (outcome.kind !== "ready") return outcome;
+        ops.push(...outcome.ops);
+        continue;
+      }
+    }
     // AG12: contact writes (create, update, delete, restore, import).
     if (intent.capability.startsWith("contact.")) {
       const outcome = await resolveContactIntent(ctx, part, write, intent, failedLine);
@@ -363,7 +438,9 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
         if (DUE_WORDS.test(quote)) set.dueAt = instantOf(date.day, date.time ?? "23:59", ctx.timeZone);
         else set.plannedDate = date.day;
       }
-      ops.push({ capability: "todo.create", localId: intent.localId, partId: part.localId, set });
+      // AG13: a new to-do linked to the people it is about ("关联王强"), named on the card.
+      const about = people.filter((item) => item.role !== "mentioned");
+      ops.push({ capability: "todo.create", localId: intent.localId, partId: part.localId, set: { ...set, ...(about.length ? { relatedContactIds: about.map((item) => item.id) } : {}) }, ...(about.length ? { shown: { names: Object.fromEntries(about.map((item) => [item.id, item.name])) } } : {}) } as CardOperationIntent & { localId: string });
       continue;
     }
     // memo.create: the user's words, the people, the day and the kind of contact.
@@ -394,6 +471,7 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
     });
     ctx.people.push(...people.filter((item) => !ctx.people.some((known) => known.id === item.id)).map((item) => ({ at: part.quote[0], id: item.id, name: item.name })));
   }
+  if (covered && !ops.length) return { kind: "covered" };
   return { kind: "ready", ops };
 }
 
