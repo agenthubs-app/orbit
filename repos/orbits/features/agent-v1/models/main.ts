@@ -9,6 +9,7 @@
  * - The call runs inside the trace context with its node, so the eval preload records the raw
  *   model.request / model.response (with source) under that node and can inject faults there.
  */
+import { scrubModelInput } from "../domains/contact/field-grants";
 import { runOrbitAgentModelText } from "../../orbit-ai/gemini-provider";
 import { emitTrace, evalSetting, runWithTraceContext } from "../observability/trace";
 
@@ -59,6 +60,10 @@ export async function callMainModel(call: MainModelCall): Promise<MainModelResul
   }
   call.budget.used += 1;
   emitTrace({ limit: call.budget.limit, node: call.node, purpose: call.purpose, requestId: call.requestId, type: "budget", used: call.budget.used, what: "model_calls" });
+  // AG12-5: the one exit for contact methods — what the user did not type in this request never reaches the model.
+  const system = scrubModelInput(call.system, call.requestId);
+  const user = scrubModelInput(call.user, call.requestId);
+  if (system.withheld + user.withheld) emitTrace({ node: call.node, requestId: call.requestId, type: "model.contact_methods_withheld", withheld: system.withheld + user.withheld });
   const result = await runWithTraceContext({ node: call.node, requestId: call.requestId }, () => runOrbitAgentModelText({
     config: {
       fetchImplementation: call.fetchImplementation,
@@ -67,8 +72,8 @@ export async function callMainModel(call: MainModelCall): Promise<MainModelResul
       provider: "deepseek",
       requestTimeoutMs: MODEL_NODE_TIMEOUT_MS,
     },
-    systemInstruction: call.system,
-    userText: call.user,
+    systemInstruction: system.text,
+    userText: user.text,
   }));
   if (result.success === false) {
     emitTrace({ error: result.error.code, message: result.error.message, node: call.node, purpose: call.purpose, requestId: call.requestId, type: "model.failed" });
