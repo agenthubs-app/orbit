@@ -589,9 +589,18 @@ export const CHECKS: Record<string, CheckFn> = {
     if (args?.shown_first !== undefined && groups[0].shown !== Number(args.shown_first)) problems.push(`the first group shows ${groups[0].shown} first, expected ${args.shown_first}`);
     if (args?.more !== undefined && Boolean(groups[0].moreLabel) !== Boolean(args.more)) problems.push(args.more ? "no 还有 N 条 line" : `an unexpected line ${groups[0].moreLabel}`);
     if (args?.text_order) {
-      const at = cards.map((card) => found.text.indexOf(card.title));
-      if (at.some((index) => index < 0)) problems.push(`not in the text: ${cards.filter((_, index) => at[index] < 0).map((card) => card.title).join(", ")}`);
-      else if (at.some((index, position) => position > 0 && index < at[position - 1])) problems.push("the text names them in another order");
+      // Each title is looked for after the one before it (titles repeat, and one may be the start of another), so the
+      // text names every card in the cards' order; a title named earlier as well (in the lead) does not matter.
+      const missing = cards.filter((card) => !found.text.includes(card.title));
+      if (missing.length) problems.push(`not in the text: ${missing.map((card) => card.title).join(", ")}`);
+      else {
+        let cursor = 0;
+        for (const card of cards) {
+          const at = found.text.indexOf(card.title, cursor);
+          if (at < 0) { problems.push(`the text names them in another order (${card.title} does not come after the card before it)`); break; }
+          cursor = at + card.title.length;
+        }
+      }
     }
     return problems.length ? fail(`${problems.join(" | ")} (cards: ${list.join(", ")})`, [found.seq]) : pass(`cards ${list.join(", ")}${groups[0].moreLabel ? ` (${groups[0].shown} shown first, then ${groups[0].moreLabel})` : ""}`, [found.seq]);
   },

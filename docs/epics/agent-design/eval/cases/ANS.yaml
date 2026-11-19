@@ -18,18 +18,19 @@ proposed_checks:
 
 cases:
   - id: AE-ANS-001
-    title: 问最近有哪些活动：一句导语加每场一张卡片，六场先放五张
+    title: 问最近有哪些活动：一句导语加每场一张能点开的卡片
     sprint: AG19
     split: dev
     invariant: false
     requirement: [AG-R19]
-    design: ["视觉稿第 1 组", "视觉稿第 3 组", "D1", "D2"]
+    design: ["视觉稿第 1 组", "D1"]
     locale: zh
     world: base-v1
     steps:
       - user: "最近有哪些活动适合我？"
     hard:
-      - answer_cards: { kinds: [event], exact: [E103, E101, E104, E102, E105, E107], shown_first: 5, more: true, text_order: true }
+      - answer_cards: { kinds: [event], min: 3, sequence: [E103, E101, E104], within: [E103, E101, E104, E102, E105, E107], text_order: true }
+      - listed: { sequence: [E103, E101, E104], excludes: [E106] }
       - answer_blocks: { first: paragraph, has: [records], lacks: [note, conclusion] }
       - answer_text_plain: true
       - clarifications: { count: 0 }
@@ -40,12 +41,12 @@ cases:
       - no_web_calls: true
     rubric:
       - id: R1
-        text: "导语用一句平常的话说了一共几场、按开始时间从早到晚；没有出现括号套括号的说法。"
+        text: "导语用一句平常的话说了还没开始的活动一共几场、按开始时间从早到晚、这次先列几场；没有出现括号套括号的说法。"
       - id: R2
-        text: "每张卡片上有类型、带星期的开始时间、活动名称和地点，六张的先后就是开始时间的先后。"
+        text: "每张卡片上有类型、带星期的开始时间、活动名称和地点，卡片的先后就是开始时间的先后。"
       - id: R3
-        text: "时间未公布的那场（AI 产品沙龙）没有被排进先后，而是另外说明时间未公布。"
-    notes: "用户 2026-11-19 的原话。小账号的七场平台活动里六场有开始时间，都在时钟（11 月 15 日）之后；E106 没有开始时间。「适合我」不是主题，按开始时间列出即可，不追问。六张卡片先显示五张，剩下一张收在「还有 1 场」里。"
+        text: "时间未公布的那场（AI 产品沙龙）没有被排进先后；提到它时说明了时间未公布。"
+    notes: "用户 2026-11-19 的原话。小账号的七场平台活动里六场有开始时间，都在时钟（11 月 15 日）之后；E106 没有开始时间。「适合我」不是主题，按开始时间列出即可，不追问。没说要几场时默认先列 3 场（视觉稿 D2「平时默认只列 3 条」），列得更多也可以，但先后不能错。超过 5 张的折叠见 AE-ANS-009、AE-ANS-010。"
 
   - id: AE-ANS-002
     title: 常规账号问最近有哪些活动：只列还没开始的，最近的在前，办完的不列
@@ -60,7 +61,7 @@ cases:
     steps:
       - user: "最近有哪些活动适合我？"
     hard:
-      - answer_cards: { kinds: [event], min: 6, excludes: [RE06, RE08], sequence: [RE03, RE05, RE04, RE01, RE07], shown_first: 5, more: true, text_order: true }
+      - answer_cards: { kinds: [event], min: 3, includes: [RE03], excludes: [RE06, RE08], text_order: true }
       - answer_blocks: { has: [records], lacks: [note] }
       - answer_text_plain: true
       - clarifications: { count: 0 }
@@ -72,9 +73,9 @@ cases:
       - id: R1
         text: "卡片上的活动全部在 11 月 15 日之后开始，没有任何一场已经办完的活动；最早开始的排在最前面。"
       - id: R2
-        text: "导语说了还没开始的活动一共多少场，卡片的张数不超过 20，超过 5 张的部分收在「还有 N 场」里。"
+        text: "导语说了还没开始的活动一共多少场、这次先列几场。"
     interference: [similar_records, cross_page]
-    notes: "常规账号有 60 场平台活动，开始时间从 2026 年 9 月到 2027 年 3 月，一半以上已经办完；RE06 是同名的上一期（10 月 17 日）。用户报告的问题就是「最近」列出了三场已经办完的活动。RE08 时间未公布，不排进先后。锚点里还没开始的依次是 RE03（11-21 10:00）、RE05（11-21 14:00）、RE04（11-22 13:00）、RE01（11-23）、RE07（12-12）。"
+    notes: "常规账号有 60 场平台活动，开始时间从 2026 年 9 月到 2027 年 3 月，一半已经办完；RE06 是同名的上一期（10 月 17 日）。用户报告的问题就是「最近」列出了三场已经办完的活动。RE08 时间未公布，不排进先后。还没开始的活动里最早的是 RE03（11 月 21 日 10:00）。"
 
   - id: AE-ANS-003
     title: 列表之后紧跟着问哪些值得去、为什么：接着刚才那份列表回答
@@ -163,7 +164,7 @@ cases:
     notes: "T42、T44、T45、T47 没完成，T46 已完成。正式跟进 F1 出不出现都可以。卡片点开的是这一条待办（D3），由两端的链接表保证，这里只判卡片本身。"
 
   - id: AE-ANS-006
-    title: 问这周有哪些安排：日程卡片
+    title: 问下周有哪些日程：日程卡片
     sprint: AG19
     split: val
     invariant: false
@@ -172,9 +173,9 @@ cases:
     locale: zh
     world: base-v1
     steps:
-      - user: "这周我有哪些安排？"
+      - user: "下周我有哪些日程？"
     hard:
-      - answer_cards: { size: any, kinds: [schedule, event, todo], includes: [S11], text_order: true }
+      - answer_cards: { size: any, kinds: [schedule, event, todo], includes: [S11] }
       - answer_text_plain: true
       - cites_within_reads: true
       - request_status: completed
@@ -185,8 +186,8 @@ cases:
       - id: R1
         text: "「和田中午餐」有一张日程卡片，上面有带星期的日期和时间（11 月 19 日周四 12:00）。"
       - id: R2
-        text: "回答里说到的每条安排都对得上夹具里这一周（11 月 15 日到 21 日）的记录，没有多出不存在的安排。"
-    notes: "时钟是 11 月 15 日周日。这一周有日程 S10（团队周会，11 月 16 日，每周重复）和 S11（和田中午餐，11 月 19 日）；把这周的活动或到期的待办一并列出也可以。今天两端的回答里日程都点不了，卡片把入口补上。"
+        text: "回答里说到的每条日程都对得上夹具里下一周（11 月 16 日到 22 日）的记录，没有多出不存在的安排。"
+    notes: "时钟是 11 月 15 日周日，下周是 11 月 16 日到 22 日：日程 S10（团队周会，11 月 16 日，每周重复）和 S11（和田中午餐，11 月 19 日）。把那一周的活动或到期的待办一并列出也可以。第 18 版里两端的回答都点不开日程，卡片把入口补上。"
 
   - id: AE-ANS-007
     title: 讨论类的问题：结论一句，后面分点，由程序排版，不出现星号井号
@@ -273,3 +274,31 @@ cases:
         text: "导语说了还没开始的活动一共多少场、这次先列多少场；卡片不超过 20 张，第 6 张起收在「还有 N 场」里。"
     interference: [cross_page]
     notes: "较大账号有 600 场平台活动。问法换成「接下来」，没有「适合我」。一次最多列 20 场，剩下的在导语里说总数。"
+
+  - id: AE-ANS-010
+    title: 让它把接下来的活动都列出来：六张卡片先放五张，剩下一张收在「还有 1 场」里
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 3 组", "D2"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把接下来的活动按开始时间都列出来。"
+    hard:
+      - answer_cards: { kinds: [event], exact: [E103, E101, E104, E102, E105, E107], shown_first: 5, more: true, text_order: true }
+      - answer_blocks: { first: paragraph, has: [records], lacks: [note, conclusion] }
+      - answer_text_plain: true
+      - clarifications: { count: 0 }
+      - request_status: completed
+      - judgment_calls: 0
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "六场有开始时间的活动各有一张卡片，按开始时间从早到晚；前五张直接显示，第六张收在「还有 1 场」里。"
+      - id: R2
+        text: "时间未公布的那场没有被排进先后；提到它时说明了时间未公布。"
+    notes: "视觉稿 D2：先放 5 张，多的收进「还有 N 条」，点一下原地展开（展开不重新请求，由两端的测试保证）。小账号六场有开始时间的活动都在时钟之后。"

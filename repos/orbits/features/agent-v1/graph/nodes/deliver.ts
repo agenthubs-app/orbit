@@ -12,7 +12,7 @@
  * messages, are handed to the executor to write back into that earlier request.
  */
 import type { AgentAnswerNoteItemContract, AgentAnswerRecordContract, AgentClarificationContract, AgentPartGap, AgentPartResult } from "../../../../shared/contract/agent-v1";
-import { cardedIn, noteBlock, noteItemOf, recordsBlock, textBlocks, type AnswerBlock } from "../../answer/blocks";
+import { cardedIn, noteBlock, noteItemOf, recordsBlock, textBlocks, withoutListedPoints, type AnswerBlock } from "../../answer/blocks";
 import { CLARIFY_WORDS, type MissingItem } from "../../clarify/copy";
 import { readingLabel, recordKindOf, type Reading } from "../../clarify/default-readings";
 import { capabilityLabel } from "../../clarify/options";
@@ -277,7 +277,8 @@ function blocksOf(scope: NodeScope, state: AgentGraphState, written: readonly Gr
     // Board 4 (last example): an answer that rests on one record is opened from its basis line ("按你11月10日记的笔记回答 打开 ›").
     const byBasisLine = !listed && cited.length === 1 && run.basis?.links.length === 1 && run.basis.links[0].id === cited[0].id;
     const cards = byBasisLine ? null : recordsBlock(cited, language, { size: listed ? "full" : "mini" });
-    blocks.push(...mine, ...(cards ? [cards] : []));
+    // D1: in a list a model answered, points that only name the listed records again are not shown beside their cards.
+    blocks.push(...(listed && cards ? withoutListedPoints(mine, cited) : mine), ...(cards ? [cards] : []));
   }
   const note = noteBlock(notes, language);
   if (note) blocks.push(note);

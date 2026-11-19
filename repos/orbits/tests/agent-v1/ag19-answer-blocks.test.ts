@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { composeStructured, hasMarkdownSymbols, joinBlocks, needsLayout, noteItemOf, recordOfView, recordsBlock, stripMarkdown, textBlocks, type AnswerBlock } from "../../features/agent-v1/answer/blocks";
+import { composeStructured, hasMarkdownSymbols, joinBlocks, needsLayout, noteItemOf, withoutListedPoints, recordOfView, recordsBlock, stripMarkdown, textBlocks, type AnswerBlock } from "../../features/agent-v1/answer/blocks";
 import { gapWords } from "../../features/agent-v1/answer/gap-copy";
 import { resumedAnswer } from "../../features/agent-v1/entry/store";
 import { asksUpcomingEvents } from "../../features/agent-v1/functions/basis";
@@ -253,4 +253,13 @@ test("D4: a plain-chat reply of one or two sentences is shown as it is; a longer
   const shortKit = graphKit(short.fetchImplementation, { now: NOW });
   const third = await runAgentGraph(shortKit.deps, shortKit.input(message));
   assert.deepEqual(third.blocks, [{ text: "可以，周五前发就行。", type: "paragraph" }]);
+});
+
+test("D1: in a list a model answered, points that only name the listed records again leave the blocks; other points stay", () => {
+  const cards: AgentAnswerRecordContract[] = [{ id: "schedule:s10", kind: "schedule", title: "团队周会" }, { id: "schedule:s11", kind: "schedule", title: "和田中午餐" }];
+  const list: AnswerBlock[] = [{ text: "下周有两项日程。", type: "conclusion" }, { items: [{ head: "团队周会", text: "11月16日（周一）10:00 开始。" }, { head: "和田中午餐", text: "11月19日（周四）12:00 开始。" }], type: "points" }];
+  assert.deepEqual(withoutListedPoints(list, cards), [{ text: "下周有两项日程。", type: "paragraph" }], "the lead alone, in the body's weight");
+  const advice: AnswerBlock[] = [{ text: "建议先准备周会。", type: "conclusion" }, { items: [{ head: "先做", text: "把议程发出去。" }, { head: "再做", text: "订午餐的位子。" }], type: "points" }];
+  assert.deepEqual(withoutListedPoints(advice, cards), advice, "points that say something else stay");
+  assert.deepEqual(withoutListedPoints(list, []), list);
 });

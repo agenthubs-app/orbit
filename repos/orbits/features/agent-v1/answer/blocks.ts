@@ -402,3 +402,17 @@ export function needsLayout(text: string, language: Language): boolean {
   const sentences = flat.split(language === "en" ? /(?<=[.!?])\s+/u : /(?<=[。！？!?])/u).filter((piece) => piece.trim());
   return sentences.length > 2;
 }
+
+/**
+ * D1 ("每一项就是一张卡片，不再另写一遍文字") for a list a model answered: its points that only name the listed records
+ * again (each point's head is a card's title) are left out of the blocks — the cards say it; the text version keeps them.
+ * A conclusion left alone above the cards is the list's lead, in the body's weight.
+ */
+export function withoutListedPoints(blocks: readonly AnswerBlock[], cards: readonly AgentAnswerRecordContract[]): AnswerBlock[] {
+  if (!cards.length) return [...blocks];
+  const names = (head: string) => cards.some((card) => card.title && (card.title.includes(head) || head.includes(card.title)));
+  const kept = blocks.filter((block) => !(block.type === "points" && block.items.every((item) => Boolean(item.head) && names(item.head!.trim()))));
+  if (kept.length === blocks.length) return kept;
+  const texts = kept.filter((block) => block.type === "conclusion" || block.type === "paragraph" || block.type === "points");
+  return kept.map((block) => (block.type === "conclusion" && texts.length === 1 ? { text: block.text, type: "paragraph" as const } : block));
+}
