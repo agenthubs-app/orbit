@@ -48,3 +48,19 @@ export function processAlive(pid: number): boolean {
 export function baseUrl(environment: EvalEnvironment): string {
   return `http://127.0.0.1:${environment.port}`;
 }
+
+/**
+ * Paths for the commands that only read finished runs (judge-pack, report). They do not start the eval
+ * environment, so they take the home directory from the eval env file themselves: a second checkout (a line)
+ * keeps its runs in its own home, and without this they looked in the default folder. The shell wins when it
+ * names a home explicitly; a missing env file falls back to the default.
+ */
+export function evalPathsForRuns(processEnv: Record<string, string | undefined> = process.env, readFile: () => Record<string, string> = readEvalEnvFile) {
+  let fileHome: string | undefined;
+  try {
+    fileHome = readFile().ORBIT_AGENT_EVAL_HOME;
+  } catch {
+    fileHome = undefined;
+  }
+  return evalPaths({ ...processEnv, ORBIT_AGENT_EVAL_HOME: processEnv.ORBIT_AGENT_EVAL_HOME?.trim() || fileHome });
+}
