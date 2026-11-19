@@ -172,7 +172,7 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
 
   // 3. Saved memory that applies with nobody present (constraints are hard conditions; preferences only rank).
   const domain = rule.scope.domain as "event" | "contact";
-  const memories = deps.recall ? await deps.recall({ actorId: ownerId, domain, now: deps.now(), workspaceId: deps.workspaceId }).catch(() => []) : [];
+  const memories = deps.recall ? await deps.recall({ actorId: ownerId, domain, now: deps.now(), timeZone, workspaceId: deps.workspaceId }).catch(() => []) : [];
   const recalled = memoriesFor(domain, memories);
   if (recalled.length) emitTrace({ automationId: automation.automationId, memories: recalled.map((item) => item.memory.id), type: "memory.recall", where: "rule" });
   const time: TimePreference[] = domain === "event" ? recalled.flatMap((item) => (item.time ? [item.time] : [])) : [];
