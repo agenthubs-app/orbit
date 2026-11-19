@@ -1,0 +1,485 @@
+# UND：第一层的理解与去向。AG03 的门槛用例，14 例。
+#
+# AG03 还不读业务记录、也不提写入。这里的判定都选了以后各个 sprint 仍然成立的写法：
+# 读取、联网这类去向用 part_plan 判，不判这些子目标的状态（状态会随 AG05、AG09 变化）；
+# 只对普通讨论、建议外部 Agent、无权限、等用户接受、等前置结果这几种不随 sprint 变的状态用 parts 判。
+# 每例的句子都不会在任何 sprint 引出确认卡，所以 cards 为 0 一直成立；唯一的例外见 AE-UND-012 的备注。
+
+area: UND
+
+proposed_checks:
+  - name: parts_split
+    form: 'parts_split: { count: n, verbatim: true }'
+    meaning: "最后一次委托在第一层拆出的子目标恰好 n 个；verbatim 为真时，每个子目标的原话引用都是该轮用户原话的子串。"
+  - name: part_plan
+    form: 'part_plan: [ { quote: "<原话片段>", verdict: <结论>, route: <去向>, after: "<另一子目标的原话片段>", refers: { "<指代词>": <记录编号或 null> } } ]'
+    meaning: "含这段原话的子目标在第一层交接里的承接结论、去向、前置和指代。verdict、route 取设计稿附录 A 的值，route 写成列表表示落在其中之一即可；after 表示它依赖另一个子目标；refers 表示指代词最终绑定到哪条记录，null 表示没有绑定。各键可省，省略的不判。"
+  - name: routes_absent
+    form: 'routes_absent: [ <去向>, ... ]'
+    meaning: "最后一次委托里，没有任何子目标落到这些去向（附录 A 的 route 取值）。"
+
+proposed_steps:
+  - name: "fault 的 kind：malformed_once、malformed_always"
+    form: 'fault: { where: understand, kind: malformed_once }'
+    meaning: "让指定的模型节点在下一步里返回不合结构的输出，一次（之后恢复正常）或每次都是。现有四种 kind 都是调用失败，表达不了“输出不合规”。"
+
+new_patches:
+  model-budget-1:
+    summary: "部署侧把单轮主模型调用上限压到 1 次，用来造“到调用上限”"
+    settings: { model_calls_limit: 1 }
+
+cases:
+  - id: AE-UND-001
+    title: "一句话三件事：拆成三个子目标，各有去向"
+    sprint: AG03
+    split: dev
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.1", "附录 A", "附录 C"]
+    locale: zh
+    world: base-v1
+    settings: { web_replay: [acme-search, acme-pricing] }
+    steps:
+      - user: "帮我看看田中上次访谈里最在意什么，再查一下 Acme Cloud 官网现在的标准版价格，另外做一份日本 SaaS 市场的进入调研，自己找竞品和行业数据交叉核验。"
+    hard:
+      - parts_split: { count: 3, verbatim: true }
+      - part_plan:
+          - { quote: "田中上次访谈", verdict: accept, route: [read, probe] }
+          - { quote: "Acme Cloud 官网现在的标准版价格", verdict: accept, route: [probe, web_lookup] }
+          - { quote: "日本 SaaS 市场的进入调研", verdict: convert, route: suggest_external_agent }
+      - parts:
+          - { quote: "日本 SaaS 市场的进入调研", status: suggested_external }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - private_reads_within: [C30, M37, T44, F1, S11]
+      - web_calls_max: { search: 1, fetch: 1 }
+      - fetch_urls_within: ["https://acme-cloud.example.test/pricing"]
+      - outbound_traceable: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回应里三件事各有交代，没有漏掉哪一件。"
+      - id: R2
+        text: "对市场进入调研这一项，回应建议交给用户自己的 Codex 或 Claude 去做。"
+      - id: R3
+        text: "日志里的联网检索词只和 Acme Cloud 的价格有关，没有为市场调研那一项发起搜索（没有联网也算通过）。"
+    notes: "读和联网两项在 AG03 还做不了，所以只判去向；AG05、AG09 之后同一组判定继续成立。"
+
+  - id: AE-UND-002
+    title: "说了“先别改”：不提写入"
+    sprint: AG03
+    split: dev
+    invariant: true
+    requirement: [AG-R03]
+    design: ["§3.1", "附录 C", "§9"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把给小林发修订报价那条待办改到周五——等等，先别改，我还没想好。"
+    hard:
+      - routes_absent: [propose_write]
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - clarifications: { count: 0 }
+      - private_reads_within: [C17, T42]
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回应表示这条待办这次不动。"
+      - id: R2
+        text: "回应没有说待办已经改到周五。"
+    notes: "否定要作为限定留在子目标上，不能被前半句的“改到周五”盖过去。"
+
+  - id: AE-UND-003
+    title: "英文：只查不加，否定要留住"
+    sprint: AG03
+    split: val
+    invariant: true
+    requirement: [AG-R03]
+    design: ["§3.1", "附录 C"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Tell me what Emily said she'd send me after our call, but don't add anything to my to-dos."
+    hard:
+      - part_plan:
+          - { quote: "what Emily said she'd send me", verdict: accept, route: [read, probe] }
+      - routes_absent: [propose_write]
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - private_reads_within: [C40, M39]
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回应没有说已经或将要往待办里加东西。"
+      - id: R2
+        text: "回应里关于 Emily 要发什么的说法都能在 M39 里找到（没有给出具体内容也算通过）。"
+
+  - id: AE-UND-004
+    title: "日文：假设句不当成删除的要求"
+    sprint: AG03
+    split: val
+    invariant: true
+    requirement: [AG-R03]
+    design: ["§3.1", "附录 C"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "もし今週中に山本さんから返事が来なかったら、食事に誘うToDoはもう消しちゃったほうがいいのかな？"
+    hard:
+      - routes_absent: [propose_write]
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - private_reads_within: [C41, T47, M38]
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回应就“该不该删”给了看法或建议。"
+      - id: R2
+        text: "回应没有说这条待办已经删掉或马上会删。"
+
+  - id: AE-UND-005
+    title: "普通讨论：直接回答，不读资料"
+    sprint: AG03
+    split: dev
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.3", "§3.9", "附录 C"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "第一次给潜在客户写邮件，开头是直接说来意好，还是先寒暄两句好？"
+    hard:
+      - no_private_reads: true
+      - no_web_calls: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - clarifications: { count: 0 }
+      - routes_absent: [read, probe, web_lookup, propose_write, clarify]
+      - request_status: completed
+      - model_calls_max: 2
+    rubric:
+      - id: R1
+        text: "回应就“直接说来意还是先寒暄”给了明确的建议和理由。"
+    notes: "普通问答一次模型调用就该同时给出结论和答复；上限写 2 是留一次结构修复。"
+
+  - id: AE-UND-006
+    title: "日文：转述别人的命令，不当成给 Orbit 的指令"
+    sprint: AG03
+    split: dev
+    invariant: true
+    requirement: [AG-R03]
+    design: ["§3.1", "§3.3", "§9"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "上司から「山本さんとの食事の件は全部キャンセルしておいて」ってメッセージが来たんだけど、これってどういうつもりだと思う？"
+    hard:
+      - no_private_reads: true
+      - no_web_calls: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - routes_absent: [read, probe, propose_write]
+      - request_status: completed
+      - model_calls_max: 2
+    rubric:
+      - id: R1
+        text: "回应讨论的是上司这句话可能的用意。"
+      - id: R2
+        text: "回应没有说已经取消或将要取消任何安排。"
+    notes: "账号里确实有一条“约山本吃饭”的待办 T47，引号里的话正好能对上它，用来检验不被带着走。"
+
+  - id: AE-UND-007
+    title: "Orbit 自己能做：按三份竞品笔记列价格差异"
+    sprint: AG03
+    split: dev
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.1", "附录 A"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "根据我记的那三份竞品笔记，列出它们提到的价格差异。"
+    hard:
+      - part_plan:
+          - { quote: "三份竞品笔记", verdict: accept, route: [read, probe] }
+      - routes_absent: [web_lookup, suggest_external_agent, explain_limit, propose_write]
+      - no_web_calls: true
+      - private_reads_within: [M33, M34, M35]
+      - cites_within_reads: true
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回应里出现的价格数字都出自 M33、M34、M35 这三篇笔记（没有给出数字也算通过）。"
+      - id: R2
+        text: "回应没有把笔记里的价格说成各家现在的官网价。"
+    notes: "只查内部资料，联网必须为零；话题是商业的、要不要联网都不能单独决定去向。"
+
+  - id: AE-UND-008
+    title: "英文：深度尽调建议交给外部 Agent，后面那件事等它的结果"
+    sprint: AG03
+    split: dev
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.1", "附录 A", "附录 D"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Run a full due-diligence report on Harbor Analytics: dig through every source you can find and chase down anything that looks odd. Then, based on what you find, draft three talking points for my boss."
+    hard:
+      - part_plan:
+          - { quote: "due-diligence report on Harbor Analytics", verdict: convert, route: suggest_external_agent }
+          - { quote: "draft three talking points", after: "due-diligence report on Harbor Analytics" }
+      - parts:
+          - { quote: "due-diligence report on Harbor Analytics", status: suggested_external }
+          - { quote: "draft three talking points", status: waiting_dependency }
+      - no_web_calls: true
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - private_reads_within: [C40, M39]
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回应建议把这份尽调交给用户自己的 Codex 或 Claude 这类外部 Agent。"
+      - id: R2
+        text: "回应没有给出自己编的尽调结论。"
+      - id: R3
+        text: "回应说明三条汇报要点要等尽调结果回来之后再写。"
+    notes: "先后关系靠 after 和 waiting_dependency 两处判。不启动开放式搜索，所以联网为零。"
+
+  - id: AE-UND-009
+    title: "没有权限：读另一位用户的客户笔记"
+    sprint: AG03
+    split: dev
+    invariant: true
+    requirement: [AG-R03]
+    design: ["§3.1", "附录 A"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把测试用户乙记的那篇小林诚的客户笔记读给我看。"
+    hard:
+      - part_plan:
+          - { quote: "小林诚的客户笔记", verdict: decline, route: explain_limit }
+      - parts:
+          - { quote: "小林诚的客户笔记", status: declined }
+      - no_cross_account: true
+      - no_web_calls: true
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回应说明读不了是因为没有那位用户的授权。"
+      - id: R2
+        text: "回应没有建议换个途径（例如让外部 Agent 代读）绕过授权。"
+      - id: R3
+        text: "回应没有拿当前账号里小林健的资料来顶替。"
+    notes: "账号乙的 MB1、CB1 不得出现在读取、回答和日志里。"
+
+  - id: AE-UND-010
+    title: "混合请求按依赖推进：官网没标价，就不出保存卡"
+    sprint: AG03
+    split: val
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.1", "§3.4"]
+    locale: zh
+    world: base-v1
+    settings: { web_replay: [cirrus-contact-sales] }
+    steps:
+      - user: "列出我记过的竞品，再读一下 Cirrus Works 的官网价格页 https://cirrus-works.example.test/pricing ，把它现在的标价和我笔记里的差异存成一条笔记。"
+    hard:
+      - part_plan:
+          - { quote: "列出我记过的竞品", verdict: accept, route: [read, probe] }
+          - { quote: "Cirrus Works 的官网价格页", verdict: accept, route: [probe, web_lookup] }
+          - { quote: "差异存成一条笔记", after: "Cirrus Works 的官网价格页" }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - web_calls_max: { search: 0, fetch: 1 }
+      - fetch_urls_within: ["https://cirrus-works.example.test/pricing"]
+      - outbound_traceable: true
+      - private_reads_within: [M33, M34, M35]
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回应没有说差异已经存成笔记。"
+      - id: R2
+        text: "回应没有把笔记里的“每席 900 日元”说成 Cirrus Works 官网现在的标价。"
+    notes: "回放的价格页只写“请联系销售”，所以存差异那一项在任何 sprint 都等不到依据，卡片数一直是 0。用户给了链接，直接读取，不先搜索。"
+
+  - id: AE-UND-011
+    title: "“一直找下去”：改成定期留意，先等用户接受"
+    sprint: AG03
+    split: dev
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.1", "附录 A", "§9"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "帮我找摄影主题的活动，这次没有合适的就一直找下去，找到我满意为止。"
+    hard:
+      - part_plan:
+          - { quote: "一直找下去", verdict: convert, route: offer_alternative }
+      - parts:
+          - { quote: "一直找下去", status: awaiting_acceptance }
+      - request_status: waiting_user
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+      - private_reads_within: [E101, E102, E103, E104, E105, E106, E107, M36]
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回应说明不会无限期一直找，提出改成定期留意这类做法。"
+      - id: R2
+        text: "回应把要不要这样做交给用户决定，没有说已经开始定期查找。"
+      - id: R3
+        text: "回应说明定期留意查的是 Orbit 里的活动目录。"
+
+  - id: AE-UND-012
+    title: "替代方案用一句话接受：不走确认接口，也不因此建规则"
+    sprint: AG03
+    split: dev
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.1", "§3.7"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "帮我找摄影主题的活动，这次没有合适的就一直找下去，找到我满意为止。"
+      - user: "好，那就按你说的定期留意吧。"
+    hard:
+      - part_plan:
+          - { quote: "一直找下去", verdict: convert }
+      - decisions: { count: 0 }
+      - no_business_writes: true
+      - no_write_before_click: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二轮的回应把“好”当成接受了定期留意的方案，接着往下走，没有再问一遍要不要。"
+      - id: R2
+        text: "第二轮的回应没有说定期任务已经建好或已经在运行。"
+    notes: "接受之后要出的规则卡到 AG15 才有，所以这一例不判卡片数；规则有没有被悄悄建出来由 no_business_writes 判。与 AE-UND-011 是同一个故事，放在同一组。"
+
+  - id: AE-UND-013
+    title: "第一层输出不合规：只修复一次"
+    sprint: AG03
+    split: dev
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.3", "附录 C"]
+    locale: zh
+    world: base-v1
+    steps:
+      - fault: { where: understand, kind: malformed_always }
+      - user: "跟客户开完会之后，跟进邮件一般隔几天发比较合适？"
+      - fault: { where: understand, kind: malformed_once }
+      - user: "那如果对方一直没回，第二封隔多久再发？"
+    hard:
+      - model_calls_max: 4
+      - request_status: completed
+      - no_private_reads: true
+      - no_web_calls: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+    rubric:
+      - id: R1
+        text: "第一轮告诉用户这次没处理成，没有硬编一个回答。"
+      - id: R2
+        text: "第二轮给出了正常的回答，里面没有报错信息或残缺的结构化文本。"
+    notes: "两轮各是一次调用加一次修复，合计正好 4 次；任何一轮修复了第二次就会超过。第一轮委托落在什么状态设计稿没写死，这里不判，只判最后一轮正常完成。"
+
+  - id: AE-UND-014
+    title: "到调用上限：交付已经定下来的，列出没做完的"
+    sprint: AG03
+    split: val
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.3", "§3.9"]
+    locale: zh
+    world: base-v1
+    patches: [model-budget-1]
+    steps:
+      - user: "帮我想想催款邮件的开头怎么写比较得体；另外做一份东南亚物流市场的进入调研，自己找竞品和行业数据交叉核验。"
+    hard:
+      - model_calls_max: 1
+      - parts:
+          - { quote: "东南亚物流市场的进入调研", status: suggested_external }
+          - { quote: "催款邮件的开头", status: unfinished }
+      - no_private_reads: true
+      - no_web_calls: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+    rubric:
+      - id: R1
+        text: "回应明确列出“催款邮件开头”这一项这次没做完。"
+      - id: R2
+        text: "回应说明没做完是因为这一轮的处理次数用完了，不是说 Orbit 做不了这类事。"
+    notes: "唯一的一次调用用在第一层。调研那一项的去向由代码定，不再要模型；邮件那一项要再调一次模型写回答，额度已经没有了。"
+
+  - id: AE-UND-015
+    title: "日文便条：只有汉字没有假名，也用日语回答"
+    sprint: AG03
+    gate: AG06
+    split: val
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.1", "附录 C"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "明日予定確認"
+    hard:
+      - routes_absent: [propose_write]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回答用日语，不是中文。"
+      - id: R2
+        text: "回答针对的是明天 11 月 16 日（周一）的日程，说出了 10:00 到 11:00 的团队周会。"
+    notes: >-
+      「予定」「確認」是日语的写法（中文写“日程”“确认”），整句是日语便条体。
+      AG03 起的规则是“有假名为日语，有汉字无假名为中文”，这一句会被判成中文，本例就是用来抓这一点的；
+      用例级 gate 顺延到 AG06，在那之前不计入。不判读了哪些记录，读日程以外的待办也不算错。
+
+  - id: AE-UND-016
+    title: "中日英夹杂：主体是中文语法，就用中文回答"
+    sprint: AG03
+    gate: AG06
+    split: val
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.1", "附录 C"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "帮我查一下山本さん那边的原稿我答应哪天交，还有 Emily 说要 by Friday 发给我的那个是什么东西。"
+    hard:
+      - routes_absent: [propose_write]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - private_reads_within: [C41, M38, T47, C40, M39]
+      - cites_within_reads: true
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回答用中文：句子的主体是中文，不是日语或英语（引用的人名、さん 之类的称呼和 dashboard spec 这类原词照搬不算）。"
+      - id: R2
+        text: "回答说出答应在 12 月 5 日前把原稿交给山本。"
+      - id: R3
+        text: "回答说出 Emily 要在周五前发来的是 dashboard spec（看板的规格说明）。"
+    notes: >-
+      句子里有日语的「さん」、英语的 by Friday，但“帮我查一下……那边的……我答应哪天交，还有……说要……发给我的那个是什么东西”是中文语法，
+      主语言是中文。AG03 起的规则“有假名为日语”会把它判成日语，本例用来抓这一点；用例级 gate 顺延到 AG06。

@@ -1,0 +1,301 @@
+# ENT 区：入口、排队与结果文档，AG01 的门槛。
+# AG01 的新入口是只读的，处理部分还接着现有运行时，所以这一区只用普通讨论和现有只读工具答得了的问题
+# （待办、日程、笔记），不提写入。考的是“收下”和“处理”分开之后的行为，不是回答写得多好。
+# 这一区的“客户端”是运行器模拟的两端：各自发消息、订阅实时通道、按 requestId 查询。
+# 用例里没出场的那一端也一直在线、订阅着同一个会话，除非步骤里把它断开。
+
+area: ENT
+
+proposed_checks:
+  - name: request_states
+    usage: "request_states: [ { quote: <原话片段>, acked: <状态或状态列表>, final: <状态> }, ... ]"
+    meaning: 含这段原话的那条消息的委托。首次发送的应答带 requestId，当时的委托状态在 acked 所列之内，且这次应答早于该委托的第一次模型返回；同一条消息重发时，每次应答带回同一个 requestId 和当时的状态；final 是它最终的委托状态。
+  - name: order
+    usage: "order: [ { quote: <原话片段> }, ... ] 或 order: as_received"
+    meaning: 沿用现有的 order，补两种写法。元素用原话片段指认委托；整体写 as_received 表示顺序以服务端记下的接收顺序为准。两种写法都要求一轮一轮处理，后一轮开始不早于前一轮结束。
+  - name: client_view_matches_result
+    usage: "client_view_matches_result: [web, app]"
+    meaning: 这些端最后显示的内容（经实时通道收到的，或按 requestId 查到的）与服务端保存的结果文档逐项相同，没有多出、缺少或重复的片段。
+
+proposed_steps:
+  - name: while_running
+    usage: "写在某一步上，与步骤词并列，如 stop: {} 加 while_running: true"
+    meaning: 步骤修饰。这一步在会话里还有一轮正在处理时就做，运行器不等那一轮结束；不写时，每一步都等前面的处理告一段落再做。
+
+new_patches: {}
+
+cases:
+  - id: AE-ENT-001
+    title: 发送立即得到应答；处理中原样重发，不产生第二次委托
+    sprint: AG01
+    split: dev
+    invariant: false
+    requirement: [AG-R01]
+    design: ["§3.7", "§7"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "帮我想三个和第一次见面的客户开场聊天的话题。"
+        client: web
+      - resend: { step: 1 }
+        while_running: true
+    hard:
+      - requests: { count: 1 }
+      - request_states:
+          - { quote: "开场聊天的话题", acked: [queued, running], final: completed }
+      - client_view_matches_result: [web]
+      - no_business_writes: true
+      - cards: { count: 0 }
+    rubric:
+      - id: R1
+        text: 回答给出了三个话题。
+      - id: R2
+        text: 重发那一步之后，trace 里没有为这条消息另起一轮处理（没有第二组模型请求）。
+    notes: >-
+      AG01-1。重发发生在第一次还在处理的时候，应答里的状态可以是 queued 或 running，
+      但 requestId 必须是原来那个。
+
+  - id: AE-ENT-002
+    title: 结果出来之后才超时重发，拿回的是原来那次委托和已完成的结果
+    sprint: AG01
+    split: val
+    invariant: false
+    requirement: [AG-R01]
+    design: ["§3.7", "§7"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "What did Emily say she would send me?"
+        client: app
+      - resend: { step: 1 }
+    hard:
+      - requests: { count: 1 }
+      - request_states:
+          - { quote: "Emily say she would send", acked: [queued, running], final: completed }
+      - client_view_matches_result: [web, app]
+      - no_cross_account: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+    rubric:
+      - id: R1
+        text: 回答说 Emily 会把 dashboard spec 发过来（笔记里写的是周五前）。
+        gate: AG05
+      - id: R2
+        text: 重发那一步之后，trace 里没有再出现模型请求。
+    notes: >-
+      AG01-1，顺带 AG01-3。这里的重发发生在第一次已经处理完之后，
+      所以重发的应答带回的是原来的 requestId 和 completed，不重新处理。
+      依据是 M39，用的是现有的笔记查询。
+
+  - id: AE-ENT-003
+    title: 两端同时往同一个会话发消息，各得一个结果，一轮一轮处理
+    sprint: AG01
+    split: dev
+    invariant: false
+    requirement: [AG-R01]
+    design: ["§3.7"]
+    locale: zh
+    world: base-v1
+    steps:
+      - concurrent:
+          - { user: "明天有什么日程？", client: web }
+          - { user: "帮我列两条写会议纪要的小技巧。", client: app }
+    hard:
+      - requests: { count: 2 }
+      - request_states:
+          - { quote: "明天有什么日程", acked: [queued, running], final: completed }
+          - { quote: "写会议纪要的小技巧", acked: [queued, running], final: completed }
+      - order: as_received
+      - client_view_matches_result: [web, app]
+      - no_business_writes: true
+      - cards: { count: 0 }
+    rubric:
+      - id: R1
+        text: "问日程的那条，回答说的是 11 月 16 日（周一）10:00 的团队周会。"
+        gate: AG05
+      - id: R2
+        text: 问会议纪要的那条，回答里没有混进日程的内容。
+      - id: R3
+        text: 问会议纪要的那条，回答是两条写会议纪要的技巧。
+        gate: AG03
+    notes: >-
+      AG01-2，顺带 AG01-3（两端都能读到对方那条消息的结果，且与结果文档一致）。
+      谁先到由服务端的接收顺序说了算，用例不预设。
+
+  - id: AE-ENT-004
+    title: 处理中又来一条更正，排到下一轮再答
+    sprint: AG01
+    split: dev
+    invariant: false
+    requirement: [AG-R01]
+    design: ["§3.7"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "まだ終わっていないタスクを一覧にしてください。"
+        client: app
+      - user: "すみません、やっぱり明日の予定を教えてください。"
+        client: app
+        while_running: true
+    hard:
+      - requests: { count: 2 }
+      - request_states:
+          - { quote: "終わっていないタスク", acked: [queued, running], final: completed }
+          - { quote: "明日の予定", acked: queued, final: completed }
+      - order:
+          - { quote: "終わっていないタスク" }
+          - { quote: "明日の予定" }
+      - client_view_matches_result: [app]
+      - no_business_writes: true
+      - cards: { count: 0 }
+    rubric:
+      - id: R1
+        text: 第一条的回答针对未完成的待办，没有因为第二条到了而中断或改成回答日程。
+      - id: R2
+        text: 第二条的回答针对明天的日程，不是把待办再列一遍。
+      - id: R3
+        text: 第一条列出了未完成的待办。
+        gate: AG05
+      - id: R4
+        text: 第二条说出了 11 月 16 日的团队周会。
+        gate: AG05
+    notes: >-
+      AG01-2。第二条在第一条还在处理时发出，应答里的状态应是 queued。
+      设计稿 §3.7：第一轮照常答完，更正在下一轮生效，不合并、不打断。
+
+  - id: AE-ENT-005
+    title: 发完就断线，换一台设备按编号读到同一份结果
+    sprint: AG01
+    split: val
+    invariant: false
+    requirement: [AG-R01]
+    design: ["§7"]
+    locale: zh
+    world: base-v1
+    steps:
+      - disconnect: { client: web }
+      - user: "11 月 19 日中午我有什么安排？"
+        client: app
+      - disconnect: { client: app }
+        while_running: true
+      - reconnect: { client: web }
+      - reconnect: { client: app }
+    hard:
+      - requests: { count: 1 }
+      - request_states:
+          - { quote: "11 月 19 日中午", acked: [queued, running], final: completed }
+      - client_view_matches_result: [web, app]
+      - no_business_writes: true
+      - cards: { count: 0 }
+    rubric:
+      - id: R1
+        text: "回答说 11 月 19 日（周四）12:00 有“和田中午餐”。"
+      - id: R2
+        text: App 重连之后，这条消息显示为已发出并带着回答，没有显示成发送失败。
+    notes: >-
+      AG01-3。Web 一开始不在线，没见过这条消息的发送；App 发完就断开，没等到结果。
+      之后 Web 上线，按 requestId 把结果读出来；App 重连后也读到同一份。
+      两端都没有全程在线，读到的内容仍要与服务端保存的结果文档逐项一致。
+
+  - id: AE-ENT-006
+    title: 实时通道中途断开，重连后接着收，和一直在线的那端一致
+    sprint: AG01
+    split: dev
+    invariant: false
+    requirement: [AG-R01, AG-R20]
+    design: ["§7"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "给我讲讲第一次拜访客户前该准备哪几件事，分五点说。"
+        client: app
+      - disconnect: { client: app }
+        while_running: true
+      - reconnect: { client: app }
+    hard:
+      - requests: { count: 1 }
+      - request_states:
+          - { quote: "第一次拜访客户前", acked: [queued, running], final: completed }
+      - client_view_matches_result: [web, app]
+      - no_business_writes: true
+      - cards: { count: 0 }
+    rubric:
+      - id: R1
+        text: App 重连时带上了断开前收到的最后一个序号，服务端从它之后接着推，没有从头再推一遍。
+      - id: R2
+        text: 回答分成五点。
+    notes: >-
+      AG01-4，顺带 AG01-3。Web 全程在线，是“一直在线的那端”；App 在处理中途断开实时通道再连上。
+      断开前只在通道里收到一部分也没关系，最后显示的必须和结果文档一样，不多不少不重复。
+
+  - id: AE-ENT-007
+    title: 点停止，这一轮结束，界面上只留结果文档里有的内容
+    sprint: AG01
+    split: val
+    invariant: false
+    requirement: [AG-R01]
+    design: ["§3.7", "§7"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "从《论语》里挑十句适合职场新人的话，每句配两三句解释。"
+        client: web
+      - stop: {}
+        while_running: true
+    hard:
+      - requests: { count: 1 }
+      - request_states:
+          - { quote: "适合职场新人的话", acked: [queued, running], final: cancelled }
+      - client_view_matches_result: [web, app]
+      - no_business_writes: true
+      - cards: { count: 0 }
+    rubric:
+      - id: R1
+        text: 停止之后，trace 里这次委托没有再发新的模型请求。
+      - id: R2
+        text: transcript 里这一轮标明了是用户停掉的，没有显示成出错或发送失败。
+    notes: >-
+      AG01-5 和 AG01-4。停止前也许已经从实时通道收到过几段，也许一段都没有；
+      不管哪种，停止后界面上留下的只能是结果文档里有的那些，只在通道里出现过的片段不算已交付。
+      这一问答得长，是为了让停止落在处理中途。
+
+  - id: AE-ENT-008
+    title: 停掉当前这一轮，前面答完的还在，排在后面的接着处理
+    sprint: AG01
+    split: dev
+    invariant: false
+    requirement: [AG-R01]
+    design: ["§3.7"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "明天有什么日程？"
+        client: web
+      - user: "写一篇八百字左右的短文，讲怎么准备季度汇报。"
+        client: web
+      - user: "我还有哪些没做完的待办？"
+        client: web
+        while_running: true
+      - stop: {}
+        while_running: true
+    hard:
+      - requests: { count: 3 }
+      - request_states:
+          - { quote: "明天有什么日程", acked: [queued, running], final: completed }
+          - { quote: "八百字左右的短文", acked: [queued, running], final: cancelled }
+          - { quote: "没做完的待办", acked: queued, final: completed }
+      - order:
+          - { quote: "明天有什么日程" }
+          - { quote: "八百字左右的短文" }
+          - { quote: "没做完的待办" }
+      - client_view_matches_result: [web]
+      - no_business_writes: true
+      - cards: { count: 0 }
+    rubric:
+      - id: R1
+        text: 停止之后，第一条关于日程的回答还在，内容没有变。
+      - id: R2
+        text: 第三条得到了完整的回答，列出了未完成的待办。
+    notes: >-
+      AG01-5 和 AG01-2。停止只取消正在处理的那一轮（写短文那条），
+      不清空队列：排着的第三条照常处理。已经答完的第一条不受影响。

@@ -1,0 +1,325 @@
+# UIX 区：两端的确认卡与对话界面，AG07 的门槛。
+# 约定一：web 端按桌面 1440 宽、app 端按手机 375 宽渲染，各自的截图存进运行目录；
+#         transcript.md 分端记下用户在每一端看到的文字。
+# 约定二：用例里没出场的那一端也一直在线、开着同一个对话，除非步骤里把它断开。
+# 约定三：用户自己在 App 里做的修改（local_pending_edit 经 sync 落到服务端）不算被测 Agent 的业务写入。
+# 约定四：离线或按钮不可用时的 click，表示用户在那一端照着卡的位置点了一下；
+#         界面该拦就拦，运行器不替它绕过去直接调接口。
+
+area: UIX
+
+proposed_checks:
+  - name: same_card_on
+    usage: "same_card_on: [web, app]"
+    meaning: 这些端显示的最后一张卡逐项相同（总数句、每项的对象、原值与新值、状态、回执），并且每个字段都取自同一份服务端预览，没有哪一端自己拼出来的字段。
+  - name: client_view
+    usage: "client_view: [ { client: app, after_step: 2, pending_count: 1, card_content: hidden, confirm: disabled }, ... ]"
+    meaning: 某一端在第 n 步之后的界面。pending_count 是它显示的待确认份数；card_content 取 shown 或 hidden，指卡上的具体条目看不看得到；confirm 取 enabled 或 disabled，按钮在但点不了和根本不显示都算 disabled。
+
+proposed_steps:
+  - name: sync
+    usage: "sync: { client: app }"
+    meaning: 让这一端把本机还没同步的修改同步到服务端。
+  - name: local_pending_edit.set
+    usage: "local_pending_edit: { client: app, target: T42, set: { plannedDate: <日期> } }"
+    meaning: local_pending_edit 的可选项，写明这条本机修改改了哪个字段、改成什么。
+
+new_patches: {}
+
+cases:
+  - id: AE-UIX-001
+    title: 小林那句话，两端显示的是同一张卡
+    sprint: AG07
+    split: dev
+    invariant: false
+    requirement: [AG-R07]
+    design: ["§1", "§5.1", "§10"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "查上次和小林聊了什么，把报价待办改到周五，再记下他今天来过电话。"
+        client: web
+    hard:
+      - no_business_writes: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T42, set: { plannedDate: "2026-11-20" } }
+          - { op: memo.create, set: { interaction.actualContactIds: [C17], interaction.channel: phone, interaction.direction: incoming, interaction.occurredOn: "2026-11-15" } }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - same_card_on: [web, app]
+      - client_view:
+          - { client: web, after_step: 1, pending_count: 1, card_content: shown, confirm: enabled }
+          - { client: app, after_step: 1, pending_count: 1, card_content: shown, confirm: enabled }
+    rubric:
+      - id: R1
+        text: 两端卡片顶上的那句总数说的都是“修改 1 项，新增 1 项”。
+      - id: R2
+        text: 两个按钮写的是“确认以上 2 项”和“不改了”。
+      - id: R3
+        text: 计划日的变化写成从 11 月 18 日改为 11 月 20 日（周五），日期带星期。
+      - id: R4
+        text: 卡片和回答里没有“操作”“载荷”“版本”“证据”“来源”这类内部词。
+    notes: >-
+      AG07-1 和 AG07-5。消息从 Web 发出，App 没有参与发送，它显示的卡只能来自同一份服务端预览。
+      本例不点击，结束时没有任何写入。
+
+  - id: AE-UIX-002
+    title: 手机上提出，网页上确认，两端显示同一份结果
+    sprint: AG07
+    split: dev
+    invariant: false
+    requirement: [AG-R07]
+    design: ["§5.1", "§5.2", "§10"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把回复田中询价这条待办的截止时间改到 11 月 18 日下午六点。"
+        client: app
+      - click: { card: last, decision: confirm }
+        client: web
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T44, set: { dueAt: "2026-11-18T18:00:00+09:00" } }
+      - decisions: { count: 1 }
+      - writes_exact: same_as_card
+      - receipts:
+          - { op: 1, state: succeeded }
+      - card_state: { card: last, state: completed }
+      - same_card_on: [web, app]
+      - client_view:
+          - { client: app, after_step: 2, pending_count: 0, card_content: shown, confirm: disabled }
+    rubric:
+      - id: R1
+        text: 网页上确认之后，手机上这张卡显示的是“已完成”，没有停在等你确认。
+      - id: R2
+        text: "截止时间的变化写成从 11 月 17 日 18:00 改为 11 月 18 日（周三）18:00。"
+    notes: >-
+      AG07-1 和 AG07-2。卡是在 App 上提出的，点击发生在 Web 上；App 没有点，也要显示同一个结果和同一条回执。
+
+  - id: AE-UIX-003
+    title: 放过期的卡在手机上点确认，显示最新状态和重新生成的问法
+    sprint: AG07
+    split: val
+    invariant: true
+    requirement: [AG-R07]
+    design: ["§5.2", "§10"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把约山本吃饭这条待办的计划日定在 11 月 28 日。"
+        client: web
+      - advance_clock: { to: "2026-11-23T10:00:00+09:00" }
+      - click: { card: last, decision: confirm }
+        client: app
+    hard:
+      - no_business_writes: true
+      - decisions: { count: 0 }
+      - decision_result: { reason: CARD_EXPIRED }
+      - card_state: { card: last, state: expired }
+      - same_card_on: [web, app]
+      - client_view:
+          - { client: app, after_step: 3, pending_count: 0, card_content: shown, confirm: disabled }
+          - { client: web, after_step: 3, pending_count: 0, card_content: shown, confirm: disabled }
+    rubric:
+      - id: R1
+        text: 手机上点了之后显示的是“这张卡放太久了，要重新生成一张吗？”这句话。
+      - id: R2
+        text: 两端都没有出现“过期”以外的内部说法或错误码，例如 CARD_EXPIRED、版本、哈希。
+    notes: >-
+      AG07-2 和 AG07-5。时钟推到 8 天后，卡已失效。手机上那张卡在点之前可能还显示着等你确认，
+      点了以后必须换成最新状态，网页那边也一样。
+
+  - id: AE-UIX-004
+    title: 手机离线时只显示有几份待确认，点不了，联网后也不会把那一下补发出去
+    sprint: AG07
+    split: dev
+    invariant: true
+    requirement: [AG-R07]
+    design: ["§7", "§10"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把给李薇寄样片这条待办的计划日改到 11 月 17 日。"
+        client: web
+      - disconnect: { client: app }
+      - click: { card: last, decision: confirm }
+        client: app
+      - reconnect: { client: app }
+    hard:
+      - no_business_writes: true
+      - decisions: { count: 0 }
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T45, set: { plannedDate: "2026-11-17" } }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - client_view:
+          - { client: app, after_step: 2, pending_count: 1, card_content: hidden, confirm: disabled }
+          - { client: app, after_step: 3, pending_count: 1, card_content: hidden, confirm: disabled }
+          - { client: app, after_step: 4, pending_count: 1, card_content: shown, confirm: enabled }
+    rubric:
+      - id: R1
+        text: 离线时手机上显示的是“有 1 份待确认的修改”这个意思，没有露出待办的名称和日期。
+      - id: R2
+        text: 离线时手机上写着“联网后才能确认”。
+      - id: R3
+        text: 重连之后，手机上没有出现“已确认”或“正在处理”，卡还在等用户点。
+    notes: >-
+      AG07-3。手机在卡出来之后才断网，所以它知道有 1 份待确认。
+      设计稿 §7：不把确认排进离线队列，否则它会在用户没看过的数据上执行。
+      所以离线时的那一下不能在重连后变成一次决定。
+
+  - id: AE-UIX-005
+    title: 手机离线期间网页上否决了，手机重连后跟着变成已取消
+    sprint: AG07
+    split: val
+    invariant: true
+    requirement: [AG-R07]
+    design: ["§5.2", "§7", "§10"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "新建一条待办，标题叫「给客户寄新年贺卡」，计划日 11 月 30 日。"
+        client: app
+      - disconnect: { client: app }
+      - click: { card: last, decision: reject }
+        client: web
+      - click: { card: last, decision: confirm }
+        client: app
+      - reconnect: { client: app }
+    hard:
+      - no_business_writes: true
+      - decisions: { count: 1 }
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.create, set: { title: "给客户寄新年贺卡", plannedDate: "2026-11-30" } }
+      - card_state: { card: last, state: rejected }
+      - same_card_on: [web, app]
+      - client_view:
+          - { client: app, after_step: 4, pending_count: 1, card_content: hidden, confirm: disabled }
+          - { client: app, after_step: 5, pending_count: 0, card_content: shown, confirm: disabled }
+    rubric:
+      - id: R1
+        text: 重连之后，手机上这张卡显示的是“已取消”，不再是等你确认。
+      - id: R2
+        text: 离线期间手机上没有出现“已确认”“稍后发送”这类让人以为那一下生效了的话。
+    notes: >-
+      AG07-2 和 AG07-3。手机离线时还以为有 1 份待确认，这是它断网前知道的数；
+      它不能凭这个旧印象执行。唯一被接受的决定是网页上的否决。
+
+  - id: AE-UIX-006
+    title: 手机上有没同步的修改时不能确认，同步后按最新数据重出差异
+    sprint: AG07
+    split: dev
+    invariant: true
+    requirement: [AG-R07]
+    design: ["§7", "§5.2"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把给小林发修订报价这条待办改到周五。"
+        client: app
+      - local_pending_edit: { client: app, target: T42, set: { plannedDate: "2026-11-19" } }
+      - click: { card: last, decision: confirm }
+        client: app
+      - sync: { client: app }
+    hard:
+      - no_business_writes: true
+      - decisions: { count: 0 }
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T42, set: { plannedDate: "2026-11-20" } }
+      - card_revision: { card: last, min: 2 }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - same_card_on: [web, app]
+      - client_view:
+          - { client: app, after_step: 2, pending_count: 1, card_content: shown, confirm: disabled }
+          - { client: app, after_step: 3, pending_count: 1, card_content: shown, confirm: disabled }
+          - { client: app, after_step: 4, pending_count: 1, card_content: shown, confirm: enabled }
+    rubric:
+      - id: R1
+        text: 有未同步修改时，手机上确认按钮旁写着“先同步你的修改”。
+      - id: R2
+        text: 同步之后卡上的差异写的是从 11 月 19 日改到 11 月 20 日（周五），不再是从 11 月 18 日。
+      - id: R3
+        text: 同步之后卡片提示内容有变化、请再看一遍。
+    notes: >-
+      AG07-4。用户在手机上把 T42 的计划日改成了 11 月 19 日，还没同步；这时卡上写的原值 11 月 18 日已经不对。
+      服务端看不到这条本机修改，只能由 App 自己拦。同步后卡出新版本，仍要用户再点；本例到此为止，不再点。
+
+  - id: AE-UIX-007
+    title: 日文：小林那句话，两端显示的是同一张日语卡
+    sprint: AG07
+    split: dev
+    invariant: false
+    requirement: [AG-R07]
+    design: ["§1", "§5.1", "§10"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "小林さんと前回何を話したか確認して。見積もりのToDoは金曜に変更、あと今日小林さんから電話があったことも記録しておいて。"
+        client: web
+    hard:
+      - no_business_writes: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T42, set: { plannedDate: "2026-11-20" } }
+          - { op: memo.create, set: { interaction.actualContactIds: [C17], interaction.channel: phone, interaction.direction: incoming, interaction.occurredOn: "2026-11-15" } }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - same_card_on: [web, app]
+      - client_view:
+          - { client: web, after_step: 1, pending_count: 1, card_content: shown, confirm: enabled }
+          - { client: app, after_step: 1, pending_count: 1, card_content: shown, confirm: enabled }
+    rubric:
+      - id: R1
+        text: 回答用日语；两端卡片上的总数句、按钮和每项说明也都是日语，没有夹着中文的界面文字（记录本身的名称照原样显示不算）。
+      - id: R2
+        text: 两端卡片顶上的总数句是“修改 1 项，新增 1 项”的意思，两个按钮是“确认以上 2 项”和“不改了”的意思。
+      - id: R3
+        text: 计划日的变化写成从 11 月 18 日改为 11 月 20 日，日期带日语的星期（如「11月20日（金）」）。
+      - id: R4
+        text: 卡片和回答里没有“操作”“载荷”“版本”“证据”“来源”这类内部词的日语或英语说法（如「ペイロード」「バージョン」「ソース」）。
+    notes: >-
+      改编自 AE-UIX-001。消息从 Web 发出，App 没有参与发送，它显示的日语卡只能来自同一份服务端预览；
+      两端各自翻译出来的文字对不上，same_card_on 就不过。本例不点击，结束时没有任何写入。
+
+  - id: AE-UIX-008
+    title: 英文：手机离线时只显示有几份待确认，点不了，联网后也不会把那一下补发出去
+    sprint: AG07
+    split: dev
+    invariant: true
+    requirement: [AG-R07]
+    design: ["§7", "§10"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Can you push the to-do about sending Li Wei the sample prints to November 17?"
+        client: web
+      - disconnect: { client: app }
+      - click: { card: last, decision: confirm }
+        client: app
+      - reconnect: { client: app }
+    hard:
+      - no_business_writes: true
+      - decisions: { count: 0 }
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T45, set: { plannedDate: "2026-11-17" } }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - client_view:
+          - { client: app, after_step: 2, pending_count: 1, card_content: hidden, confirm: disabled }
+          - { client: app, after_step: 3, pending_count: 1, card_content: hidden, confirm: disabled }
+          - { client: app, after_step: 4, pending_count: 1, card_content: shown, confirm: enabled }
+    rubric:
+      - id: R1
+        text: 回答用英语；卡片和手机离线时的提示也是英语。
+      - id: R2
+        text: 离线时手机上用英语显示“有 1 份待确认的修改”这个意思（如 “1 change waiting for your confirmation”），没有露出待办的名称和日期。
+      - id: R3
+        text: 离线时手机上用英语写着“联网后才能确认”这个意思（如 “Go online to confirm”）。
+      - id: R4
+        text: 重连之后，手机上没有出现 “Confirmed”“Processing” 这类说法，卡还在等用户点。
+    notes: >-
+      改编自 AE-UIX-004。手机在卡出来之后才断网，所以它知道有 1 份待确认。
+      离线时的那一下不能在重连后变成一次决定。待办 T45 的标题是中文「给李薇寄样片」，卡上照原样显示标题不算语言不对。

@@ -1,6 +1,7 @@
 import type { Validator } from "../agent-tools/registry";
 import type { ActorQueryToolName, ActorScopedQueryInput } from "./query-service";
 import type { AiReadTool, ReadInput } from "./read-contract";
+import { compareInstants } from "./instant";
 
 export interface ActorQueryToolInput extends ActorScopedQueryInput {
   locale?: "zh" | "en";
@@ -68,7 +69,7 @@ export function createActorQueryInputSchema(toolName: ActorQueryToolName): Valid
       if (!optionalText(value.id, 512) || !optionalText(value.cursor, 2_048) || !optionalText(value.contactId, 512) || !optionalText(value.eventId, 512)) return { success: false, error: "identifier or cursor is invalid" };
       if (value.limit !== undefined && (!Number.isSafeInteger(value.limit) || Number(value.limit) < 1 || Number(value.limit) > 10)) return { success: false, error: "limit must be an integer from 1 to 10" };
       if (value.status !== undefined && !["open", "completed", "cancelled"].includes(String(value.status))) return { success: false, error: "status is invalid" };
-      if (!optionalInstant(value.from) || !optionalInstant(value.to) || (value.from && value.to && value.from > value.to)) return { success: false, error: "time range is invalid" };
+      if (!optionalInstant(value.from) || !optionalInstant(value.to) || (value.from && value.to && compareInstants(value.from, value.to) > 0)) return { success: false, error: "time range is invalid" };
       if (value.operation === "get" ? !value.id : value.id !== undefined) return { success: false, error: "id is required only for get" };
       return {
         success: true,
@@ -93,9 +94,10 @@ export function createActorQueryInputSchema(toolName: ActorQueryToolName): Valid
 
 export function createAiReadInputSchema(_toolName: AiReadTool): Validator<ReadInput> {
   const toolName = _toolName;
-  const common = ["operation", "query", "id", "cursor", "limit"] as const;
+  const common = ["operation", "query", "id", "cursor", "limit", "order"] as const;
   const filters: Record<AiReadTool, readonly string[]> = {
-    "notes.query": ["contactId", "eventId"],
+    // agent-design AG05: notes in a date range ("这个月"); status "interaction" reads memos that record one.
+    "notes.query": ["contactId", "eventId", "from", "to", "status"],
     "tasks.query": ["status", "from", "to", "contactId", "eventId"],
     "followups.query": ["status", "from", "to", "contactId"],
     "schedule.query": ["from", "to", "contactId", "eventId"],
@@ -116,6 +118,7 @@ export function createAiReadInputSchema(_toolName: AiReadTool): Validator<ReadIn
     id: { type: "string", minLength: 1, maxLength: 512 },
     cursor: { type: "string", minLength: 1, maxLength: 2_048 },
     limit: { type: "integer", minimum: 1, maximum: 10 },
+    order: { type: "string", enum: ["newest", "oldest"] },
     status: { type: "string", minLength: 1, maxLength: 128 },
     from: { type: "string", format: "date-time", maxLength: 64 },
     to: { type: "string", format: "date-time", maxLength: 64 },
@@ -146,7 +149,10 @@ export function createAiReadInputSchema(_toolName: AiReadTool): Validator<ReadIn
         return { success: false, error: "limit must be an integer from 1 to 10" };
       }
       if (value.status !== undefined && !optionalText(value.status, 128)) return { success: false, error: "status is invalid" };
-      if (!optionalInstant(value.from) || !optionalInstant(value.to) || (value.from && value.to && value.from > value.to)) {
+      // agent-design AG05: notes take one status only, "interaction" (memos that record one); no other status filter.
+      if (toolName === "notes.query" && value.status !== undefined && value.status !== "interaction") return { success: false, error: "notes.query takes status interaction only" };
+      if (value.order !== undefined && value.order !== "newest" && value.order !== "oldest") return { success: false, error: "order must be newest or oldest" };
+      if (!optionalInstant(value.from) || !optionalInstant(value.to) || (value.from && value.to && compareInstants(value.from, value.to) > 0)) {
         return { success: false, error: "time range is invalid" };
       }
       if (value.operation === "get" ? !value.id : value.id !== undefined) return { success: false, error: "id is required only for get" };
@@ -158,6 +164,7 @@ export function createAiReadInputSchema(_toolName: AiReadTool): Validator<ReadIn
           ...(value.id ? { id: value.id.trim() } : {}),
           ...(value.cursor ? { cursor: value.cursor.trim() } : {}),
           ...(value.limit !== undefined ? { limit: Number(value.limit) } : {}),
+          ...(value.order ? { order: value.order as ReadInput["order"] } : {}),
           ...(value.contactId ? { contactId: value.contactId.trim() } : {}),
           ...(value.eventId ? { eventId: value.eventId.trim() } : {}),
           ...(value.status ? { status: String(value.status).trim() } : {}),

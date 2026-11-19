@@ -8,10 +8,17 @@ export type ContactEditableField = "displayName" | "organization" | "role" | "em
 export interface ContactFieldsUpdateInput {
   /** null clears the field; displayName cannot be cleared. */
   values: Partial<Record<ContactEditableField, string | null>>;
+  /**
+   * agent-design AG12：可选的期望版本（联系人每次写入加一的修改次数记号）。带了就不自动重试，与当前版本不符返回 409 CONFLICT；
+   * 不带的旧客户端行为不变。
+   */
+  expectedVersion?: number;
 }
 
 export interface ContactFieldsUpdateResult {
   contactId: string;
   changed: ContactEditableField[];
   updatedAt: string;
+  /** AG12：写入后的版本（旧服务端不返回）。 */
+  version?: number;
 }

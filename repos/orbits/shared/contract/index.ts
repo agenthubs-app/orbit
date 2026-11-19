@@ -116,6 +116,22 @@ export type {
   StoredAiSessionOriginContract
 } from "./ai-sessions";
 export type { AiSessionSummaryItemContract, AiSessionSummaryPageContract } from "./ai-session-page";
+// agent-design AG01：协议版本 3 的入口、结果文档与实时通道
+export type {
+  AgentAnswerContract,
+  AgentCancelResultContract,
+  AgentPartResult,
+  AgentPartStatus,
+  AgentProtocolVersion,
+  AgentRequestEndingContract,
+  AgentRequestStatus,
+  AgentResultDocument,
+  AgentSendInputContract,
+  AgentSendReceiptContract,
+  AgentSessionEventContract,
+  AgentSessionEventKind,
+  AgentSessionEventsPageContract
+} from "./agent-v1";
 
 export type {
   ContactEvidenceContract,

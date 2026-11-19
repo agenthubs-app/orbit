@@ -11,13 +11,14 @@ import {
   type AgentNaturalLanguageActionRequest,
 } from "../agent/natural-language-actions/contract";
 import { AGENT_MEMORY_CATEGORIES } from "../agent/memory/contract";
+import { rejectModelApprovalClaims } from "../agent-v1/entry/approval-claims";
 import {
   ENTITY_DRAFT_KINDS,
   parseEntityDraftProposal,
   type EntityDraftProposal,
 } from "./entity-drafts/contract";
 export const DEFAULT_GEMINI_ORBIT_AGENT_MODEL = "gemini-3.5-flash" as const;
-export const DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL = "deepseek-v4-flash" as const;
+export const DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL = "deepseek-flash" as const;
 export const DEFAULT_OPENAI_ORBIT_AGENT_MODEL = "gpt-4.1" as const;
 export const GEMINI_INTERACTIONS_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/interactions" as const;
@@ -634,8 +635,11 @@ function parseJsonFromText(value: string): unknown {
 // - general_chat 不能带 tool；
 // - 非 general intent 必须且只能带一个匹配工具。
 export function validateGeminiOrbitAgentPlannerOutput(
-  value: unknown,
+  raw: unknown,
 ): GeminiOrbitAgentPlannerOutput | null {
+  // agent-design AG02: approval flags and account ids in a model's output are removed and reported;
+  // only the user's click approves a card and only the server's authentication names its owner.
+  const value = rejectModelApprovalClaims(raw, "planner");
   if (!isRecord(value)) {
     return null;
   }

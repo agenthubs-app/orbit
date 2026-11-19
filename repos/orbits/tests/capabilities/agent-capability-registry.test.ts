@@ -5,6 +5,7 @@ import {
 } from "../../features/agent/ledger/contract";
 import {
   AGENT_READ_TOOL_NAMES,
+  AGENT_V1_CARD_OPERATION_TYPES,
   AGENT_WORKFLOW_KEYS,
 } from "../../features/agent/capabilities/contract";
 import {
@@ -37,7 +38,12 @@ test("agent capability registry covers every current tool, workflow, and ledger 
         .list()
         .flatMap((capability) => capability.operationTypes),
     )].sort(),
-    [...AGENT_LEDGER_OPERATION_TYPES].sort(),
+    // agent-design AG02: create_todo and update_todo are card-only operations of the new entry's
+    // ledger cards (features/agent/runtime/todo-operations.ts). They are deliberately not in this
+    // registry, which also feeds the old planner's capability list; AG06 registers them (domains/).
+    // AG06: create_memo likewise; the new entry's card executors are registered in AGENT_V1_CARD_EXECUTOR_KEYS
+    // and matched one to one with the domain write adapters (tests/capabilities/agent-v1-receipts.test.ts).
+    [...AGENT_LEDGER_OPERATION_TYPES].filter((type) => !AGENT_V1_CARD_OPERATION_TYPES.includes(type)).sort(),
   );
 });
 

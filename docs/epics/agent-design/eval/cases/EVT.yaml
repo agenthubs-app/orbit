@@ -1,0 +1,399 @@
+# EVT 区：私有活动、参会自述、个人日程、Todo 多值关联。AG13 的门槛用例。
+# 字段名约定：Todo 的多值关联按设计稿附录 E 写作 relatedContactIds、relatedEventRefs
+# （夹具里 T48 写作 eventRefs，指同一字段）；Memo 和日程的活动关联写作 eventRefs。
+
+area: EVT
+
+proposed_checks: []
+
+proposed_steps:
+  - name: legacy_update
+    form: "legacy_update: { target: <记录>, set: {...} }"
+    meaning: "模拟旧版客户端经旧接口提交一次局部修改：请求里只带 set 里的字段，不带多值关联这些新字段。它不算 Agent 的业务写入，但它造成的数据变化计入结束时的数据差异。"
+
+new_patches: {}
+
+cases:
+  - id: AE-EVT-001
+    title: "一张卡先建私人活动，再记我去过"
+    sprint: AG13
+    split: dev
+    invariant: false
+    requirement: [AG-R13]
+    design: ["§4", "§5.1", "附录 B", "附录 E"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "11 月 14 日晚上七点我去了新宿的大学同学聚会，Orbit 里还没有这场活动。帮我建成一场私人活动，并记上我参加了。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: privateEvent.create, set: { title: 大学同学聚会, startsAt: "2026-11-14T19:00:00+09:00", venue: 新宿 } }
+          - { op: attendance.create, set: { eventRef: { kind: private, localCreateRef: 1 }, attendedOn: "2026-11-14", dayParts: [evening] } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded }, { op: 2, state: succeeded } ]
+      - order: [ { op: 1 }, { op: 2 } ]
+      - duplicate_effects: 0
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "卡上第二项写明记的是第一项新建的那场活动。"
+      - id: R2
+        text: "卡片和回答没有把这次参加说成官方签到或报名。"
+      - id: R3
+        text: "卡上的日期带星期：11 月 14 日（周六）。"
+    notes: "验收项 AG13-1。localCreateRef: 1 表示活动引用指向本卡第 1 项新建的活动，确认前它没有正式编号。"
+
+  - id: AE-EVT-002
+    title: "私人活动没建成，依赖它的参会记录跳过"
+    sprint: AG13
+    split: val
+    invariant: false
+    requirement: [AG-R13]
+    design: ["§4", "§5.1", "§5.2", "附录 D"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "On Saturday, Nov 14, I went to a private meetup called \"Ebisu Photo Walk\". It started at 2pm in Ebisu and isn't in Orbit yet. Please add it as my own private event and log that I attended."
+      - fault: { where: privateEvent.create, kind: fail_always }
+      - click: { card: last, decision: confirm }
+    hard:
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: privateEvent.create, set: { title: "Ebisu Photo Walk", startsAt: "2026-11-14T14:00:00+09:00", venue: Ebisu } }
+          - { op: attendance.create, set: { eventRef: { kind: private, localCreateRef: 1 }, attendedOn: "2026-11-14", dayParts: [afternoon] } }
+      - decisions: { count: 1 }
+      - receipts: [ { op: 1, state: failed }, { op: 2, state: skipped } ]
+      - card_state: { card: last, state: failed }
+      - writes_exact: []
+      - duplicate_effects: 0
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回执写明活动没有建成，参会记录因为依赖它而没有保存。"
+      - id: R2
+        text: "回答里没有“已记录”“已保存”这类说成功的话。"
+      - id: R3
+        text: "回答用英语。"
+    notes: "验收项 AG13-1。故障注在点击这一步：建活动的执行器永久失败。writes_exact 为空表示结束时没有任何数据变化。"
+
+  - id: AE-EVT-003
+    title: "记我去过和加日程同卡两项，互不代写"
+    sprint: AG13
+    split: dev
+    invariant: false
+    requirement: [AG-R13]
+    design: ["§4", "附录 B", "附录 E"]
+    locale: zh
+    world: base-v1
+    clock: "2026-11-20T10:00:00+09:00"
+    steps:
+      - user: "昨晚的 SaaS 定价研讨会我去了，帮我记上我参加过。另外把明天上午十点到十二点的东京街头摄影展加进我的日程。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: attendance.create, set: { eventRef: { kind: platform, id: E103 }, attendedOn: "2026-11-19", dayParts: [evening] } }
+          - { op: schedule.create, set: { startsAt: "2026-11-21T10:00:00+09:00", endsAt: "2026-11-21T12:00:00+09:00", timeZone: Asia/Tokyo, eventRefs: [ { kind: platform, id: E101 } ] } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded }, { op: 2, state: succeeded } ]
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "卡上第一项写的是我自己记的“去过”，没有写成“已签到”或官方的“已参加”。"
+      - id: R2
+        text: "回答和卡片都没有说已替用户报名摄影展。"
+      - id: R3
+        text: "卡上两个日期都带星期：11 月 19 日（周四）、11 月 21 日（周六）。"
+    notes: "验收项 AG13-2。时钟是 11 月 20 日周五。卡上只应有这两项：没有给摄影展记参会，没有给研讨会加日程，E103 的报名状态不变，这三点由 card_ops 和 writes_exact 判定。日程标题不作硬性要求。"
+
+  - id: AE-EVT-004
+    title: "官方签到和平台活动，普通用户改不了"
+    sprint: AG13
+    split: val
+    invariant: false
+    requirement: [AG-R13]
+    design: ["§4", "附录 B"]
+    locale: zh
+    world: base-v1
+    clock: "2026-11-20T10:00:00+09:00"
+    steps:
+      - user: "昨晚的 SaaS 定价研讨会我忘了扫码签到，你帮我把签到补上。"
+      - user: "那把街拍工作坊的开始时间改成上午十点。"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - decisions: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮说明签到是主办方的记录，Orbit 替用户改不了。"
+      - id: R2
+        text: "第一轮没有出现“已签到”“已补签”这类说法。"
+      - id: R3
+        text: "第二轮说明平台活动的时间普通用户改不了。"
+    notes: "验收项 AG13-2。附录 B：平台活动及其报名、审核、签到，普通用户都不可改。第一轮可以附一个“记一条我去过”的入口，但不点就不出卡。"
+
+  - id: AE-EVT-005
+    title: "重复日程只改这一次，系列不动"
+    sprint: AG13
+    split: dev
+    invariant: false
+    requirement: [AG-R13]
+    design: ["§4", "§5.1", "附录 B"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "明天的团队周会改到下午两点到三点，只改这一次，以后的照旧。"
+      - click: { card: last, decision: confirm }
+      - user: "11 月 30 日的团队周会是几点？"
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: schedule.update, target: S10, set: { scope: this_occurrence, occurrenceDate: "2026-11-16", startsAt: "2026-11-16T14:00:00+09:00", endsAt: "2026-11-16T15:00:00+09:00" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - clarifications: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡上写明只改 11 月 16 日（周一）这一次，以后的周会不变。"
+      - id: R2
+        text: "最后一轮回答 11 月 30 日（周一）的周会仍是 10:00 到 11:00。"
+    notes: "验收项 AG13-3。scope 取 this_occurrence 或 whole_series，表示卡上选的是“仅本次”还是“整个系列”。"
+
+  - id: AE-EVT-006
+    title: "重复日程改整个系列"
+    sprint: AG13
+    split: dev
+    invariant: false
+    requirement: [AG-R13]
+    design: ["§4", "§5.1", "附录 B"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "毎週月曜の定例「团队周会」を、これからはずっと11時から12時に変更して。今回だけじゃなくてシリーズ全体でお願い。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: schedule.update, target: S10, set: { scope: whole_series, startsAt: "2026-11-16T11:00:00+09:00", endsAt: "2026-11-16T12:00:00+09:00" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - clarifications: { count: 0 }
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "卡上写明改的是整个系列（每周一）。"
+      - id: R2
+        text: "卡上显示时间从 10:00–11:00 改为 11:00–12:00。"
+      - id: R3
+        text: "回答用日语。"
+    notes: "验收项 AG13-3。与 AE-EVT-005 成对：同一条 S10，这里改的是系列本身，每周重复的规则不变。"
+
+  - id: AE-EVT-007
+    title: "“隔周”“每月第二个周二”如实说不支持"
+    sprint: AG13
+    split: val
+    invariant: false
+    requirement: [AG-R13]
+    design: ["附录 B", "§3.1"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "帮我建一个隔周周三下午三点到四点的例会，叫产品同步。"
+      - user: "那改成每月第二个周二下午三点到四点呢？"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮明说不支持“隔周”这种重复方式。"
+      - id: R2
+        text: "第二轮明说不支持“每月第二个周二”这种重复方式。"
+      - id: R3
+        text: "至少有一轮给出了能做的替代办法，例如列出有限的几条单次日程，并等用户决定。"
+    notes: "附录 B 的边界：现有重复规则只有每天、每周、每月加截止日。替代办法要用户接受后才出卡，所以全程零卡。"
+
+  - id: AE-EVT-008
+    title: "删被引用的私人活动：逐项列出，按用户选的处理后删除"
+    sprint: AG13
+    split: dev
+    invariant: false
+    requirement: [AG-R13]
+    design: ["§4", "§5.1", "附录 B"]
+    locale: zh
+    world: base-v1
+    patches: [private-event-reunion]
+    steps:
+      - user: "把大学同学聚会这场活动删掉。"
+      - user: "参会自述一起删掉；笔记和待办留着，只解除它们和这场活动的关联。然后把活动删了。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - card_ops:
+          - { op: attendance.delete, target: A1 }
+          - { op: memo.update, target: M42, set: { eventRefs: [] } }
+          - { op: todo.update, target: T48, set: { relatedEventRefs: [] } }
+          - { op: privateEvent.delete, target: P1 }
+      - writes_exact: same_as_card
+      - decisions: { count: 1 }
+      - receipts: [ { op: 1, state: succeeded }, { op: 2, state: succeeded }, { op: 3, state: succeeded }, { op: 4, state: succeeded } ]
+      - order: [ { op: 1 }, { op: 4 } ]
+      - order: [ { op: 2 }, { op: 4 } ]
+      - order: [ { op: 3 }, { op: 4 } ]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮逐项列出了三处引用：11 月 8 日的参会自述、笔记 M42、待办「联系老周」。"
+      - id: R2
+        text: "第一轮给出了几种处理方式并等用户选，没有替用户定。"
+      - id: R3
+        text: "最后的卡写明笔记原文和待办本身都保留，只是不再关联这场活动。"
+    notes: "验收项 AG13-4。order 只要求删除活动排在前三项之后，前三项之间先后不限。解除笔记与活动的关联按 memo.update 改 eventRefs 记。第一轮是追问还是带选项的卡，设计稿没定死，所以不判卡片总数。"
+
+  - id: AE-EVT-009
+    title: "删活动时又多出一处引用：活动保留，说明原因"
+    sprint: AG13
+    split: dev
+    invariant: false
+    requirement: [AG-R13]
+    design: ["§4", "§5.2", "附录 D"]
+    locale: zh
+    world: base-v1
+    patches: [private-event-reunion]
+    steps:
+      - user: "把大学同学聚会这场活动删掉。"
+      - user: "参会自述一起删掉；笔记和待办留着，只解除它们和这场活动的关联。然后把活动删了。"
+      - external_change: { target: T47, set: { relatedEventRefs: [ { kind: private, id: P1 } ] } }
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - card_ops:
+          - { op: attendance.delete, target: A1 }
+          - { op: memo.update, target: M42, set: { eventRefs: [] } }
+          - { op: todo.update, target: T48, set: { relatedEventRefs: [] } }
+          - { op: privateEvent.delete, target: P1 }
+      - decisions: { count: 1 }
+      - receipts: [ { op: 1, state: succeeded }, { op: 2, state: succeeded }, { op: 3, state: succeeded }, { op: 4, state: failed } ]
+      - card_state: { card: last, state: partially_failed }
+      - writes_exact:
+          - { target: A1, delete: true }
+          - { target: M42, set: { eventRefs: [] } }
+          - { target: T48, set: { relatedEventRefs: [] } }
+          - { target: T47, set: { relatedEventRefs: [ { kind: private, id: P1 } ] } }
+      - duplicate_effects: 0
+    rubric:
+      - id: R1
+        text: "回执说明活动没有删，原因是待办「约山本吃饭」新关联了这场活动。"
+      - id: R2
+        text: "回执逐项列出已经改了的三条：参会自述已删，笔记和待办已解除关联。"
+      - id: R3
+        text: "回答没有把结果说成“活动已删除”。"
+    notes: "验收项 AG13-4。出卡之后、点击之前，别处给 T47 加了对 P1 的关联。按 §5.2，卡上展示过的原值、名称、对象都没变，所以照常执行；按 §4，删活动那一项在执行时再查一次引用，发现新增的就保留活动。writes_exact 列的是结束时相对初始世界的全部变化，含 external_change 改的 T47；P1 不在其中，即活动还在。"
+
+  - id: AE-EVT-010
+    title: "一条待办关联多个人和多场活动，旧客户端改标题后都还在"
+    sprint: AG13
+    split: dev
+    invariant: false
+    requirement: [AG-R13]
+    design: ["§4", "附录 B", "附录 E"]
+    locale: zh
+    world: base-v1
+    patches: [private-event-reunion]
+    steps:
+      - user: "给「联系老周」这条待办关联上李薇和山本直子，另外把独立出版市集也关联上。"
+      - click: { card: last, decision: confirm }
+      - legacy_update: { target: T48, set: { title: 联系老周聊独立出版 } }
+      - user: "「联系老周聊独立出版」这条待办现在关联了哪些人和活动？"
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T48, set: { relatedContactIds: [C31, C41], relatedEventRefs: [ { kind: private, id: P1 }, { kind: platform, id: E105 } ] } }
+      - receipts: [ { op: 1, state: succeeded } ]
+      - writes_exact:
+          - { target: T48, set: { title: 联系老周聊独立出版, relatedContactIds: [C31, C41], relatedEventRefs: [ { kind: private, id: P1 }, { kind: platform, id: E105 } ] } }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡上写明原有的大学同学聚会关联保留，新加的是两个人和一场活动。"
+      - id: R2
+        text: "最后一轮回答列出李薇、山本直子两个人。"
+      - id: R3
+        text: "最后一轮回答列出大学同学聚会、独立出版市集两场活动。"
+    notes: "验收项 AG13-5。writes_exact 列的是结束时相对初始世界的全部变化：标题由旧客户端改，两组关联由卡片改，旧客户端那次提交之后两组关联一项不少。"
+
+  - id: AE-EVT-011
+    title: "旧的单个关联人读成数组，加一位后旧客户端改标题不丢人"
+    sprint: AG13
+    split: dev
+    invariant: false
+    requirement: [AG-R13]
+    design: ["§4", "附录 E"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "给小林发修订报价这条待办，再关联上陈一鸣。"
+      - click: { card: last, decision: confirm }
+      - legacy_update: { target: T42, set: { title: "给小林发修订报价（实施费单列）" } }
+      - user: "「给小林发修订报价（实施费单列）」这条待办关联了谁？"
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T42, set: { relatedContactIds: [C17, C21] } }
+      - receipts: [ { op: 1, state: succeeded } ]
+      - writes_exact:
+          - { target: T42, set: { title: "给小林发修订报价（实施费单列）", relatedContactIds: [C17, C21] } }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡上显示关联的人从小林健一位变成小林健、陈一鸣两位，原来的小林健没有被换掉。"
+      - id: R2
+        text: "最后一轮回答说这条待办关联了小林健和陈一鸣两个人。"
+    notes: "验收项 AG13-5。T42 原来只有旧的单值 contactId: C17，按附录 E 读成只有一项的数组。writes_exact 列的是结束时相对初始世界的全部变化。"
+
+  - id: AE-EVT-012
+    title: "待办的新增、完成、重开、删除同卡四项，删除写明找不回"
+    sprint: AG13
+    split: val
+    invariant: false
+    requirement: [AG-R13]
+    design: ["§4", "附录 A", "附录 B"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "帮我处理四件事：加一条待办「给王强回电话」，关联王强；把「给李薇寄样片」标成完成；「整理十月发票」其实没弄完，重新打开；「约山本吃饭」那条删掉。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.create, set: { title: 给王强回电话, relatedContactIds: [C46] } }
+          - { op: todo.complete, target: T45 }
+          - { op: todo.reopen, target: T46 }
+          - { op: todo.delete, target: T47 }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded }, { op: 2, state: succeeded }, { op: 3, state: succeeded }, { op: 4, state: succeeded } ]
+      - duplicate_effects: 0
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "卡上删除「约山本吃饭」那一项写明删了找不回。"
+      - id: R2
+        text: "卡上「给李薇寄样片」和「整理十月发票」两项显示为对原待办的修改，带状态的前后值，不是新增。"
+      - id: R3
+        text: "卡顶的总数与内容一致：新增 1 项、修改 2 项、删除 1 项。"
+    notes: "附录 A：完成和重开在卡上显示为修改。附录 B：Todo 删除是软删除，没有恢复。"

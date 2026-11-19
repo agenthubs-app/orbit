@@ -234,6 +234,1463 @@
         }
       }
     },
+    "agent-v1.ts::AgentProtocolVersion": {
+      "kind": "enum",
+      "values": [
+        "3"
+      ]
+    },
+    "agent-v1.ts::AgentRequestStatus": {
+      "kind": "enum",
+      "values": [
+        "'cancelled'",
+        "'completed'",
+        "'failed'",
+        "'queued'",
+        "'running'",
+        "'waiting_user'"
+      ]
+    },
+    "agent-v1.ts::AgentPartStatus": {
+      "kind": "enum",
+      "values": [
+        "'answered'",
+        "'awaiting_acceptance'",
+        "'awaiting_clarification'",
+        "'awaiting_confirmation'",
+        "'declined'",
+        "'failed'",
+        "'suggested_external'",
+        "'unfinished'",
+        "'waiting_dependency'"
+      ]
+    },
+    "agent-v1.ts::AgentPartVerdict": {
+      "kind": "enum",
+      "values": [
+        "'accept'",
+        "'convert'",
+        "'decline'"
+      ]
+    },
+    "agent-v1.ts::AgentPartRoute": {
+      "kind": "enum",
+      "values": [
+        "'answer'",
+        "'clarify'",
+        "'explain_limit'",
+        "'offer_alternative'",
+        "'probe'",
+        "'propose_write'",
+        "'read'",
+        "'suggest_external_agent'",
+        "'web_lookup'"
+      ]
+    },
+    "agent-v1.ts::AgentPartWaitReason": {
+      "kind": "enum",
+      "values": [
+        "'awaiting_acceptance'",
+        "'awaiting_external_result'",
+        "'dependency_pending'",
+        "'object_ambiguous'",
+        "'permission_missing'",
+        "'service_unavailable'"
+      ]
+    },
+    "agent-v1.ts::AgentPartResult": {
+      "kind": "object",
+      "members": {
+        "partId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentPartStatus"
+        },
+        "operationId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "sourceQuote": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "verdict": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentPartVerdict | undefined"
+        },
+        "route": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentPartRoute | undefined"
+        },
+        "waitReason": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentPartWaitReason | undefined"
+        },
+        "reason": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "gaps": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentPartGap[]"
+        },
+        "coverage": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentPartCoverage[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentPartGap": {
+      "kind": "enum",
+      "values": [
+        "'budget'",
+        "'conflict'",
+        "'no_record'",
+        "'partial'",
+        "'service_error'",
+        "'unreadable'"
+      ]
+    },
+    "agent-v1.ts::AgentPartCoverage": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "pagesRead": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "seen": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "total": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "complete": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "agent-v1.ts::AgentReferenceType": {
+      "kind": "enum",
+      "values": [
+        "'attendance'",
+        "'contact'",
+        "'event'",
+        "'memo'",
+        "'note'",
+        "'schedule'",
+        "'todo'"
+      ]
+    },
+    "agent-v1.ts::AgentReferenceContract": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "type": {
+          "optional": false,
+          "kind": "text",
+          "type": "AiSessionReferenceType"
+        },
+        "start": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "end": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "eventKind": {
+          "optional": true,
+          "kind": "text",
+          "type": "'platform' | 'private' | undefined"
+        }
+      }
+    },
+    "agent-v1.ts::AgentReferenceSearchKind": {
+      "kind": "enum",
+      "values": [
+        "'attendance'",
+        "'contact'",
+        "'event'",
+        "'memo'",
+        "'schedule'",
+        "'todo'"
+      ]
+    },
+    "agent-v1.ts::AgentReferenceCandidateContract": {
+      "kind": "object",
+      "members": {
+        "type": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentReferenceSearchKind"
+        },
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventKind": {
+          "optional": true,
+          "kind": "text",
+          "type": "'platform' | 'private' | undefined"
+        },
+        "detail": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "company": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "role": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "people": {
+              "optional": true,
+              "kind": "text",
+              "type": "readonly string[]"
+            },
+            "date": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "dateKind": {
+              "optional": true,
+              "kind": "text",
+              "type": "'due' | 'at' | 'on' | 'written' | undefined"
+            },
+            "place": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "agent-v1.ts::AgentReferenceSearchResultContract": {
+      "kind": "object",
+      "members": {
+        "query": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "groups": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "type": {
+                "optional": false,
+                "kind": "text",
+                "type": "AgentReferenceSearchKind"
+              },
+              "items": {
+                "optional": false,
+                "kind": "text",
+                "type": "readonly AgentReferenceCandidateContract[]"
+              },
+              "more": {
+                "optional": false,
+                "kind": "text",
+                "type": "boolean"
+              },
+              "unavailable": {
+                "optional": true,
+                "kind": "text",
+                "type": "boolean | undefined"
+              }
+            }
+          }
+        }
+      }
+    },
+    "agent-v1.ts::AgentReferenceCheckResultContract": {
+      "kind": "object",
+      "members": {
+        "references": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "type": {
+                "optional": false,
+                "kind": "text",
+                "type": "AgentReferenceSearchKind"
+              },
+              "id": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "accessible": {
+                "optional": false,
+                "kind": "text",
+                "type": "boolean"
+              },
+              "name": {
+                "optional": false,
+                "kind": "text",
+                "type": "string | null"
+              }
+            }
+          }
+        }
+      }
+    },
+    "agent-v1.ts::AgentAnswerContract": {
+      "kind": "object",
+      "members": {
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sourceRefs": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "basis": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentAnswerBasisContract"
+        },
+        "cardLine": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "web": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentWebResultContract"
+        }
+      }
+    },
+    "agent-v1.ts::AgentWebResultContract": {
+      "kind": "object",
+      "members": {
+        "queries": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "text": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "sentAt": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "provider": {
+                "optional": false,
+                "kind": "text",
+                "type": "'deepseek'"
+              }
+            }
+          }
+        },
+        "pages": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentWebPageContract[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentWebPageContract": {
+      "kind": "object",
+      "members": {
+        "sourceRef": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "url": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "excerpt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sourceDate": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "fetchedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "readStatus": {
+          "optional": false,
+          "kind": "text",
+          "type": "'ok' | 'empty' | 'timeout' | 'provider_error'"
+        }
+      }
+    },
+    "agent-v1.ts::AgentAnswerBasisContract": {
+      "kind": "object",
+      "members": {
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "links": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentAnswerLinkContract[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentAnswerLinkContract": {
+      "kind": "object",
+      "members": {
+        "type": {
+          "optional": false,
+          "kind": "text",
+          "type": "'contact' | 'event' | 'memo' | 'todo' | 'schedule'"
+        },
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentRequestEndingContract": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'failed' | 'stopped_by_user'"
+        },
+        "at": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "reason": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentResultDocument": {
+      "kind": "object",
+      "members": {
+        "schemaVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "1"
+        },
+        "requestId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sessionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentRequestStatus"
+        },
+        "revision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "answer": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentAnswerContract | null"
+        },
+        "partResults": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentPartResult[]"
+        },
+        "ending": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentRequestEndingContract"
+        },
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "actionPreview": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentActionPreviewContract"
+        },
+        "clarifications": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentClarificationContract[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentClarificationOptionContract": {
+      "kind": "object",
+      "members": {
+        "optionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "capability": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "ref": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "type": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "id": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "name": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "agent-v1.ts::AgentClarificationKind": {
+      "kind": "enum",
+      "values": [
+        "'entry'",
+        "'not_understood'",
+        "'question'"
+      ]
+    },
+    "agent-v1.ts::AgentClarificationContract": {
+      "kind": "object",
+      "members": {
+        "clarificationId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "partId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentClarificationKind"
+        },
+        "asks": {
+          "optional": true,
+          "kind": "text",
+          "type": "'object' | 'reading' | undefined"
+        },
+        "options": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentClarificationOptionContract[]"
+        },
+        "state": {
+          "optional": false,
+          "kind": "text",
+          "type": "'answered' | 'open' | 'shelved'"
+        },
+        "selectedOptionId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "answeredBy": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentSelectionInputContract": {
+      "kind": "object",
+      "members": {
+        "protocolVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "3"
+        },
+        "sessionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientSelectionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "selection": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "requestId": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "clarificationId": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "optionId": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "agent-v1.ts::AgentSelectionReceiptContract": {
+      "kind": "object",
+      "members": {
+        "protocolVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "3"
+        },
+        "requestId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sessionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientSelectionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clarificationId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "optionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentRequestStatus"
+        },
+        "replayed": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "acceptedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentCardStatus": {
+      "kind": "enum",
+      "values": [
+        "'approved'",
+        "'awaiting_confirmation'",
+        "'canceled'",
+        "'completed'",
+        "'deferred'",
+        "'executing'",
+        "'expired'",
+        "'failed'",
+        "'partially_failed'",
+        "'rejected'",
+        "'undone'"
+      ]
+    },
+    "agent-v1.ts::AgentCardOperationStatus": {
+      "kind": "enum",
+      "values": [
+        "'abandoned'",
+        "'failed'",
+        "'needs_review'",
+        "'pending'",
+        "'skipped'",
+        "'succeeded'",
+        "'undone'",
+        "'user_confirmed'"
+      ]
+    },
+    "agent-v1.ts::AgentCardChangeContract": {
+      "kind": "object",
+      "members": {
+        "operationId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "field": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "shownBefore": {
+          "optional": false,
+          "kind": "text",
+          "type": "unknown"
+        },
+        "now": {
+          "optional": false,
+          "kind": "text",
+          "type": "unknown"
+        },
+        "to": {
+          "optional": true,
+          "kind": "text",
+          "type": "unknown"
+        }
+      }
+    },
+    "agent-v1.ts::AgentCardOperationPreviewContract": {
+      "kind": "object",
+      "members": {
+        "operationId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "partId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "capability": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "target": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "collection": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "id": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        },
+        "before": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "[string]": {
+              "optional": false,
+              "kind": "text",
+              "type": "unknown"
+            }
+          }
+        },
+        "after": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "[string]": {
+              "optional": false,
+              "kind": "text",
+              "type": "unknown"
+            }
+          }
+        },
+        "shown": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "[string]": {
+              "optional": false,
+              "kind": "text",
+              "type": "unknown"
+            }
+          }
+        },
+        "dependsOn": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentCardOperationStatus"
+        },
+        "display": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentCardOperationDisplayContract"
+        },
+        "outcome": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentCardOperationDisplayContract": {
+      "kind": "object",
+      "members": {
+        "change": {
+          "optional": false,
+          "kind": "text",
+          "type": "'update' | 'create' | 'delete' | 'restore'"
+        },
+        "record": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "rows": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentCardDisplayRowContract[]"
+        },
+        "note": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentCardDisplayRowContract": {
+      "kind": "object",
+      "members": {
+        "field": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "before": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "after": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentActionPreviewContract": {
+      "kind": "object",
+      "members": {
+        "actionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "revision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "payloadHash": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentCardStatus"
+        },
+        "expiresAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "origin": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ kind: 'conversation'; conversationId: string; requestId: string; } | { kind: 'automation'; ruleId: string; firedAt: string; } | { kind: 'connection'; connectionId: string; externalRequestKey: string; } | undefined"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "locale": {
+          "optional": true,
+          "kind": "text",
+          "type": "'zh' | 'en' | 'ja' | undefined"
+        },
+        "summary": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "operations": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentCardOperationPreviewContract[]"
+        },
+        "changes": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentCardChangeContract[]"
+        },
+        "revisions": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "revision": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              },
+              "payloadHash": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentCardDecisionInputContract": {
+      "kind": "object",
+      "members": {
+        "transition": {
+          "optional": false,
+          "kind": "text",
+          "type": "'confirm' | 'reject' | 'retry' | 'mark_done' | 'abandon'"
+        },
+        "revision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "payloadHash": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientDecisionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "operationId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentCardDecisionResultContract": {
+      "kind": "object",
+      "members": {
+        "decisionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientDecisionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "actionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "decision": {
+          "optional": false,
+          "kind": "text",
+          "type": "'confirm' | 'reject' | 'retry' | 'mark_done' | 'abandon'"
+        },
+        "operationId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "outcome": {
+          "optional": false,
+          "kind": "text",
+          "type": "'accepted' | 'already_decided' | 'refused'"
+        },
+        "accepted": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "replayed": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "reason": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "message": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "revision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "changes": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentCardChangeContract[]"
+        },
+        "decidedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentSendInputContract": {
+      "kind": "object",
+      "members": {
+        "protocolVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "3"
+        },
+        "sessionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientMessageId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "locale": {
+          "optional": false,
+          "kind": "text",
+          "type": "'zh' | 'en' | 'ja'"
+        },
+        "message": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "references": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AiSessionReferenceContract[]"
+        },
+        "origin": {
+          "optional": true,
+          "kind": "text",
+          "type": "AiSessionOriginInputContract"
+        },
+        "pageContext": {
+          "optional": true,
+          "kind": "text",
+          "type": "AiPageContextContract"
+        }
+      }
+    },
+    "agent-v1.ts::AgentSendReceiptContract": {
+      "kind": "object",
+      "members": {
+        "protocolVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "3"
+        },
+        "requestId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sessionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientMessageId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentRequestStatus"
+        },
+        "receivedSeq": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "replayed": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "acceptedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentSessionEventKind": {
+      "kind": "enum",
+      "values": [
+        "'accepted'",
+        "'document'",
+        "'status'"
+      ]
+    },
+    "agent-v1.ts::AgentRunStage": {
+      "kind": "enum",
+      "values": [
+        "'composing'",
+        "'reading'",
+        "'web'"
+      ]
+    },
+    "agent-v1.ts::AgentSessionEventContract": {
+      "kind": "object",
+      "members": {
+        "seq": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "sessionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "requestId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentSessionEventKind"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentRequestStatus"
+        },
+        "at": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "document": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentResultDocument"
+        },
+        "stage": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentRunStage | undefined"
+        }
+      }
+    },
+    "agent-v1.ts::AgentSessionEventsPageContract": {
+      "kind": "object",
+      "members": {
+        "sessionId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "events": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentSessionEventContract[]"
+        },
+        "lastSeq": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "agent-v1.ts::AgentCancelResultContract": {
+      "kind": "object",
+      "members": {
+        "requestId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "changed": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "document": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentResultDocument"
+        }
+      }
+    },
+    "agent-v1.ts::EventRefContract": {
+      "kind": "alias",
+      "type": "EventRefContract"
+    },
+    "agent-v1.ts::PrivateEventContract": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "accountId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "endsAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "venue": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "notes": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "version": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "createdAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AttendanceDayPart": {
+      "kind": "enum",
+      "values": [
+        "'afternoon'",
+        "'evening'",
+        "'morning'",
+        "'night'",
+        "'noon'"
+      ]
+    },
+    "agent-v1.ts::AttendanceNoteContract": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "accountId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventRef": {
+          "optional": false,
+          "kind": "text",
+          "type": "EventRefContract"
+        },
+        "attendedOn": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "dayParts": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AttendanceDayPart[]"
+        },
+        "selfNote": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "version": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "createdAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
     "ai-artifacts.ts::AiContactArtifactStatus": {
       "kind": "enum",
       "values": [
@@ -552,9 +2009,13 @@
     "ai-sessions.ts::AiSessionReferenceType": {
       "kind": "enum",
       "values": [
+        "'attendance'",
         "'contact'",
         "'event'",
-        "'note'"
+        "'memo'",
+        "'note'",
+        "'schedule'",
+        "'todo'"
       ]
     },
     "ai-sessions.ts::AiSessionReferenceContract": {
@@ -569,6 +2030,21 @@
           "optional": false,
           "kind": "text",
           "type": "AiSessionReferenceType"
+        },
+        "start": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "end": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "eventKind": {
+          "optional": true,
+          "kind": "text",
+          "type": "'platform' | 'private' | undefined"
         }
       }
     },
@@ -595,7 +2071,7 @@
         "entryClient": {
           "optional": false,
           "kind": "text",
-          "type": "'app' | 'web'"
+          "type": "'web' | 'app'"
         },
         "entryPointId": {
           "optional": false,
@@ -676,7 +2152,7 @@
         "entryClient": {
           "optional": false,
           "kind": "text",
-          "type": "'app' | 'web'"
+          "type": "'web' | 'app'"
         },
         "entryPointId": {
           "optional": false,
@@ -1187,7 +2663,7 @@
         "visibility": {
           "optional": false,
           "kind": "text",
-          "type": "'participants' | 'private'"
+          "type": "'private' | 'participants'"
         }
       }
     },
@@ -1327,7 +2803,7 @@
         "visibility": {
           "optional": false,
           "kind": "text",
-          "type": "'participants' | 'private'"
+          "type": "'private' | 'participants'"
         }
       }
     },
@@ -1462,7 +2938,7 @@
         "visibility": {
           "optional": false,
           "kind": "text",
-          "type": "'participants' | 'private'"
+          "type": "'private' | 'participants'"
         }
       }
     },
@@ -2884,7 +4360,7 @@
         "density": {
           "optional": true,
           "kind": "text",
-          "type": "1 | 2 | 3 | undefined"
+          "type": "3 | 1 | 2 | undefined"
         },
         "sourceChip": {
           "optional": true,
@@ -3191,7 +4667,7 @@
         "densityIfAnswered": {
           "optional": true,
           "kind": "text",
-          "type": "1 | 2 | 3"
+          "type": "3 | 1 | 2"
         }
       }
     },
@@ -3221,7 +4697,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'skipped' | 'answered'"
+          "type": "'answered' | 'skipped'"
         },
         "next": {
           "optional": false,
@@ -3231,7 +4707,7 @@
         "densityAfter": {
           "optional": true,
           "kind": "text",
-          "type": "1 | 2 | 3"
+          "type": "3 | 1 | 2"
         }
       }
     },
@@ -3313,6 +4789,11 @@
               "type": "string | null | undefined"
             }
           }
+        },
+        "expectedVersion": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
         }
       }
     },
@@ -3333,6 +4814,11 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "version": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
         }
       }
     },
@@ -4633,7 +6119,7 @@
         "density": {
           "optional": true,
           "kind": "text",
-          "type": "1 | 2 | 3"
+          "type": "3 | 1 | 2"
         },
         "sourceChip": {
           "optional": true,
@@ -8538,6 +10024,61 @@
           "optional": true,
           "kind": "text",
           "type": "true"
+        },
+        "selfAttendance": {
+          "optional": true,
+          "kind": "text",
+          "type": "MyEventSelfAttendance | null"
+        },
+        "privateEvent": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        },
+        "related": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly MyEventRelatedRecord[]"
+        }
+      }
+    },
+    "events-mine.ts::MyEventSelfAttendance": {
+      "kind": "object",
+      "members": {
+        "attendedOn": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "dayParts": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "selfNote": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "events-mine.ts::MyEventRelatedRecord": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'memo' | 'todo' | 'schedule'"
+        },
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
         }
       }
     },
@@ -9443,7 +10984,7 @@
         "currentStep": {
           "optional": false,
           "kind": "text",
-          "type": "1 | 2 | 3 | null"
+          "type": "3 | 1 | 2 | null"
         },
         "grandfathered": {
           "optional": false,
@@ -13148,7 +14689,7 @@
         "kind": {
           "optional": false,
           "kind": "text",
-          "type": "'event' | 'schedule' | 'task' | 'appointment' | 'batch' | 'conversation' | 'source'"
+          "type": "'event' | 'schedule' | 'conversation' | 'task' | 'appointment' | 'batch' | 'source'"
         },
         "id": {
           "optional": false,
@@ -13494,7 +15035,20 @@
         "AccountExportScope",
         "AccountLanguagePreferenceSaveContract",
         "AccountLanguagePreferenceSaveReceiptContract",
+        "AgentAnswerContract",
+        "AgentCancelResultContract",
+        "AgentPartResult",
+        "AgentPartStatus",
+        "AgentProtocolVersion",
         "AgentReminderPreferencesContract",
+        "AgentRequestEndingContract",
+        "AgentRequestStatus",
+        "AgentResultDocument",
+        "AgentSendInputContract",
+        "AgentSendReceiptContract",
+        "AgentSessionEventContract",
+        "AgentSessionEventKind",
+        "AgentSessionEventsPageContract",
         "AiContactArtifactContract",
         "AiContactArtifactItemContract",
         "AiContactArtifactStatus",
@@ -15686,6 +17240,26 @@
           "kind": "text",
           "type": "readonly string[]"
         },
+        "eventRefs": {
+          "optional": true,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "kind": {
+                "optional": false,
+                "kind": "text",
+                "type": "'platform' | 'private'"
+              },
+              "id": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
+        },
         "noteKind": {
           "optional": true,
           "kind": "text",
@@ -15715,6 +17289,67 @@
           "optional": true,
           "kind": "text",
           "type": "true"
+        },
+        "interaction": {
+          "optional": true,
+          "kind": "text",
+          "type": "NoteInteractionContract"
+        },
+        "autoExtraction": {
+          "optional": true,
+          "kind": "text",
+          "type": "'suppressed'"
+        }
+      }
+    },
+    "notes.ts::NoteInteractionContract": {
+      "kind": "object",
+      "members": {
+        "actualContactIds": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "channel": {
+          "optional": false,
+          "kind": "text",
+          "type": "'other' | 'phone' | 'email' | 'message' | 'meeting'"
+        },
+        "direction": {
+          "optional": false,
+          "kind": "text",
+          "type": "'incoming' | 'outgoing' | 'mutual'"
+        },
+        "occurredOn": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "occurredAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "precision": {
+          "optional": false,
+          "kind": "text",
+          "type": "'day' | 'instant'"
+        },
+        "sentence": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "start": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "end": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
         }
       }
     },
@@ -15814,7 +17449,7 @@
         "dailyCap": {
           "optional": true,
           "kind": "text",
-          "type": "1 | 2 | 3"
+          "type": "3 | 1 | 2"
         },
         "secretaryMail": {
           "optional": true,
@@ -15905,7 +17540,7 @@
         "dailyCap": {
           "optional": true,
           "kind": "text",
-          "type": "1 | 2 | 3"
+          "type": "3 | 1 | 2"
         },
         "secretaryMail": {
           "optional": true,
@@ -17491,7 +19126,7 @@
         "schemaVersion": {
           "optional": true,
           "kind": "text",
-          "type": "2 | 3"
+          "type": "3 | 2"
         },
         "outcome": {
           "optional": true,
@@ -18743,7 +20378,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'confirmed' | 'open' | 'discarded'"
+          "type": "'open' | 'confirmed' | 'discarded'"
         },
         "intakeId": {
           "optional": false,
@@ -19372,7 +21007,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'confirmed' | 'open' | 'discarded'"
+          "type": "'open' | 'confirmed' | 'discarded'"
         },
         "intakeId": {
           "optional": false,
@@ -19755,7 +21390,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'dismissed' | 'accepted'"
+          "type": "'accepted' | 'dismissed'"
         },
         "award": {
           "optional": true,
@@ -20171,7 +21806,7 @@
         "decision": {
           "optional": false,
           "kind": "text",
-          "type": "'dismiss' | 'accept'"
+          "type": "'accept' | 'dismiss'"
         },
         "idempotencyKey": {
           "optional": false,
@@ -20191,7 +21826,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'dismissed' | 'accepted'"
+          "type": "'accepted' | 'dismissed'"
         },
         "replayed": {
           "optional": false,
@@ -21282,7 +22917,7 @@
         "schemaVersion": {
           "optional": true,
           "kind": "text",
-          "type": "2 | 3"
+          "type": "3 | 2"
         },
         "outcome": {
           "optional": true,
@@ -21775,12 +23410,12 @@
         "currentScreen": {
           "optional": false,
           "kind": "text",
-          "type": "1 | 2 | 3 | 4 | 5 | null"
+          "type": "3 | 1 | 2 | 4 | 5 | null"
         },
         "lastConfirmedScreen": {
           "optional": false,
           "kind": "text",
-          "type": "0 | 1 | 2 | 3 | 4 | 5"
+          "type": "0 | 3 | 1 | 2 | 4 | 5"
         },
         "finishedAt": {
           "optional": false,
@@ -22417,7 +24052,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'expired' | 'pending' | 'revoked' | 'accepted'"
+          "type": "'expired' | 'pending' | 'accepted' | 'revoked'"
         },
         "canAccept": {
           "optional": false,
@@ -22989,7 +24624,7 @@
               "status": {
                 "optional": false,
                 "kind": "text",
-                "type": "'completed' | 'dismissed' | 'open' | 'scheduled'"
+                "type": "'completed' | 'open' | 'dismissed' | 'scheduled'"
               },
               "purpose": {
                 "optional": false,
@@ -23086,7 +24721,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'completed' | 'dismissed' | 'open' | 'scheduled'"
+          "type": "'completed' | 'open' | 'dismissed' | 'scheduled'"
         },
         "dueAt": {
           "optional": false,
@@ -23148,7 +24783,7 @@
               "status": {
                 "optional": false,
                 "kind": "text",
-                "type": "'completed' | 'dismissed' | 'open' | 'scheduled'"
+                "type": "'completed' | 'open' | 'dismissed' | 'scheduled'"
               },
               "dueAt": {
                 "optional": false,
@@ -24580,6 +26215,31 @@
           "kind": "text",
           "type": "string"
         },
+        "relatedContactIds": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "relatedEventRefs": {
+          "optional": true,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "kind": {
+                "optional": false,
+                "kind": "text",
+                "type": "'platform' | 'private'"
+              },
+              "id": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
+        },
         "relatedMeetingId": {
           "optional": true,
           "kind": "text",
@@ -24688,7 +26348,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'expired' | 'pending' | 'dismissed' | 'accepted' | 'snoozed'"
+          "type": "'expired' | 'pending' | 'accepted' | 'dismissed' | 'snoozed'"
         },
         "suggestedPlannedDate": {
           "optional": true,
@@ -24855,6 +26515,26 @@
           "optional": true,
           "kind": "text",
           "type": "string[]"
+        },
+        "eventRefs": {
+          "optional": true,
+          "kind": "array",
+          "readonly": false,
+          "element": {
+            "kind": "object",
+            "members": {
+              "kind": {
+                "optional": false,
+                "kind": "text",
+                "type": "'platform' | 'private'"
+              },
+              "id": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
         },
         "kind": {
           "optional": false,
@@ -25596,52 +27276,52 @@
             "agent_action": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "task": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "task_suggestion": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "plan_pending": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "entity_draft": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "contact_draft": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "completion_question": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "agent_signal": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "plan_today_chance": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             },
             "relationship_task": {
               "optional": true,
               "kind": "text",
-              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+              "type": "'ok' | 'unavailable' | 'not_implemented' | undefined"
             }
           }
         }

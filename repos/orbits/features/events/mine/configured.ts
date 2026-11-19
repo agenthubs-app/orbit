@@ -17,6 +17,9 @@ import { redesignContractMode } from "../../redesign-contracts/route";
 import { getConfiguredEventAssessmentRuntime, type ConfiguredEventAssessmentRuntime } from "../assessment/configured";
 import { designFixtureNow } from "../dev-clock";
 import { createMyEventsService, createPostgresMyEventsReader, type MyEventSourceRow, type MyEventsReader } from "./service";
+import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
+import { createPrivateEventService } from "../private-events/service";
+import { createAttendanceService } from "../attendance-notes/service";
 
 const holder = globalThis as typeof globalThis & { __orbitMyEventsMockRows?: MyEventSourceRow[] | null };
 
@@ -62,7 +65,19 @@ function liveReader(): MyEventsReader | null {
   if (!runtime) return null;
   const query = (sql: string, values?: readonly unknown[]) => runtime.client.query(sql, values as unknown[]) as Promise<{ rows: Array<Record<string, unknown>> }>;
   const base = createPostgresMyEventsReader({ query, workspaceId: runtime.workspaceId });
+  // agent-design AG13: the user's own private events and «我去过» (the same record store; read only here).
+  const configured = createConfiguredPostgresLiveRecordStore();
+  const privateEvents = configured ? createPrivateEventService({ client: runtime.client, store: configured.store, workspaceId: configured.workspaceId }) : null;
+  const attendance = configured ? createAttendanceService({ store: configured.store, workspaceId: configured.workspaceId }) : null;
   return {
+    async selfRecords(actorId) {
+      if (!privateEvents || !attendance) return { attendance: [], privateEvents: [] };
+      return {
+        attendance: await attendance.list(actorId),
+        privateEvents: await privateEvents.list(actorId),
+        related: async (id) => (await privateEvents.references(actorId, id)).filter((ref) => ref.kind !== "attendance").map((ref) => ({ id: ref.id, kind: ref.kind as "memo" | "todo" | "schedule", label: ref.label })),
+      };
+    },
     async rows(actorId, window) {
       const assessment = getConfiguredEventAssessmentRuntime();
       const rows = await base.rows(actorId, window);

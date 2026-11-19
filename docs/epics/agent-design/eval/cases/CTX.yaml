@@ -1,0 +1,281 @@
+# CTX：上文取多少（设计稿 §3.10）。AG03 的门槛用例，8 例。
+#
+# AG03 还不读业务记录，所以“他”“第二个”这类指代在 AG03 只能从第一层的交接里看：
+# 用 part_plan 的 refers 判它绑到了哪条记录；AG05 之后 private_reads_within 接着把关。
+# “上一份展示过的清单”在 AG03 没法靠真实的查询产生，所以用一份预置的会话状态（见 new_patches）。
+# 10 条消息和 60 分钟都是设计稿的建议值；调了数值要同步改 AE-CTX-003、006、007。
+
+area: CTX
+
+proposed_checks:
+  - name: part_plan
+    form: 'part_plan: [ { quote: "<原话片段>", verdict: <结论>, route: <去向>, after: "<另一子目标的原话片段>", refers: { "<指代词>": <记录编号或 null> } } ]'
+    meaning: "含这段原话的子目标在第一层交接里的承接结论、去向、前置和指代。verdict、route 取设计稿附录 A 的值，route 写成列表表示落在其中之一即可；after 表示它依赖另一个子目标；refers 表示指代词最终绑定到哪条记录，null 表示没有绑定。各键可省，省略的不判。"
+  - name: routes_absent
+    form: 'routes_absent: [ <去向>, ... ]'
+    meaning: "最后一次委托里，没有任何子目标落到这些去向（附录 A 的 route 取值）。"
+  - name: first_layer_context
+    form: 'first_layer_context: { messages_max: n, excludes: [ "<原文片段>", ... ] }'
+    meaning: "最后一次委托里，发给第一层模型的对话原文不超过 n 条（不算本轮这条）；发给它的全部内容里不含这些片段。两个键可只写一个。"
+
+proposed_steps: []
+
+new_patches:
+  conv-prior-turns:
+    summary: "用例所在的会话里已经有过两轮：先查过小林 11 月 12 日那篇笔记，再列过四条没做完的待办。会话状态只存编号和名称，不存正文。用例从这个会话接着发消息"
+    add:
+      conversations:
+        - id: V1
+          lastActivityAt: "2026-11-15T09:58:00+09:00"
+          messages:
+            - { role: user, at: "2026-11-15T09:50:00+09:00", text: "上次和小林聊的那篇笔记还在吗？" }
+            - { role: assistant, at: "2026-11-15T09:50:20+09:00", text: "在，是 11 月 12 日那篇，讲的是报价初稿。", recordRefs: ["memo:M31"] }
+            - { role: user, at: "2026-11-15T09:57:00+09:00", text: "列一下我还没做完的待办。" }
+            - { role: assistant, at: "2026-11-15T09:57:40+09:00", text: "一共四条，按时间排好了。", recordRefs: ["todo:T44", "todo:T45", "todo:T42", "todo:T47"] }
+          shownList:
+            - { type: todo, id: T44, name: 回复田中的询价 }
+            - { type: todo, id: T45, name: 给李薇寄样片 }
+            - { type: todo, id: T42, name: 给小林发修订报价 }
+            - { type: todo, id: T47, name: 约山本吃饭 }
+          lastMentioned:
+            - { type: contact, id: C17, name: 小林健 }
+            - { type: memo, id: M31, name: 11 月 12 日的笔记 }
+          openItems: []
+
+cases:
+  - id: AE-CTX-001
+    title: "“他”：按最近提到的联系人解析"
+    sprint: AG03
+    split: val
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.10"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "@田中浩 是东和商事的采购主管吧？"
+        refs:
+          - { type: contact, id: C30, quote: "@田中浩" }
+      - user: "他那条询价的待办是哪天截止？"
+    hard:
+      - part_plan:
+          - { quote: "他那条询价的待办", route: [read, probe], refers: { "他": C30 } }
+      - routes_absent: [propose_write, clarify]
+      - clarifications: { count: 0 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - private_reads_within: [C30, T44, F1, M37, S11]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二轮的回应说的是田中浩的待办。"
+      - id: R2
+        text: "回应没有给出 11 月 17 日（周二）以外的截止日期。"
+
+  - id: AE-CTX-002
+    title: "“第二个”：按上一份展示过的清单解析"
+    sprint: AG03
+    split: dev
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.10"]
+    locale: zh
+    world: base-v1
+    patches: [conv-prior-turns]
+    steps:
+      - user: "第二个现在是什么状态？"
+    hard:
+      - part_plan:
+          - { quote: "第二个", route: [read, probe], refers: { "第二个": T45 } }
+      - routes_absent: [propose_write, clarify]
+      - clarifications: { count: 0 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - private_reads_within: [T45, C31]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应说的是“给李薇寄样片”这条待办。"
+      - id: R2
+        text: "回应没有把这条待办说成已完成。"
+    notes: "清单按展示顺序是 T44、T45、T42、T47，第二个是 T45。"
+
+  - id: AE-CTX-003
+    title: "英文：聊过 10 条以后，仍能按最近提到的人解析"
+    sprint: AG03
+    split: val
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.10"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Quick check on @Emily Carter: she's the product manager at Harbor Analytics, right?"
+        refs:
+          - { type: contact, id: C40, quote: "@Emily Carter" }
+      - user: "Unrelated: what's a polite way to open a follow-up email?"
+      - user: "And how long should a subject line be?"
+      - user: "Is it okay to follow up twice in the same week?"
+      - user: "What's a good sign-off for a first email?"
+      - user: "Should I attach a deck on first contact, or wait?"
+      - user: "Any tips for keeping emails short?"
+      - user: "One more thing — what did she say she'd send me after our call?"
+    hard:
+      - first_layer_context: { messages_max: 10 }
+      - part_plan:
+          - { quote: "what did she say she'd send me", route: [read, probe], refers: { "she": C40 } }
+      - clarifications: { count: 0 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - private_reads_within: [C40, M39]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "最后一轮的回应说的是 Emily Carter。"
+      - id: R2
+        text: "回应没有给出 M39 里没有的承诺内容（没有给出具体内容也算通过）。"
+    notes: "到最后一轮时前面已有 14 条消息，提到 Emily 的那一来回已经在 10 条之外。会话没有空闲，所以“最近提到的联系人”这一项结构化状态仍然可用。"
+
+  - id: AE-CTX-004
+    title: "旧结果只留编号：正文不进上文，要用就重新读"
+    sprint: AG03
+    split: dev
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.10", "§3.9"]
+    locale: zh
+    world: base-v1
+    patches: [conv-prior-turns]
+    steps:
+      - user: "那篇笔记里他具体是怎么说的？"
+    hard:
+      - first_layer_context: { excludes: ["实施费单列", "下周再对一次"] }
+      - part_plan:
+          - { quote: "那篇笔记", route: [read, probe], refers: { "那篇笔记": M31, "他": C17 } }
+      - clarifications: { count: 0 }
+      - private_reads_within: [M31, C17]
+      - cites_within_reads: true
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应里关于笔记内容的说法都出自本轮重新读到的 M31（没有给出内容也算通过）。"
+    notes: "预置的对话里助手只说过“讲的是报价初稿”，没有出现 excludes 里的两句；它们只存在于 M31 的正文里。"
+
+  - id: AE-CTX-005
+    title: "日文：旧消息里的请求不再执行一遍"
+    sprint: AG03
+    split: val
+    invariant: true
+    requirement: [AG-R03]
+    design: ["§3.10"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "山本さんとの食事のToDo、11月20日（金）に予定を入れておいて。"
+      - user: "ありがとう。ところで、初めてやり取りする編集者さんへのメールって、どのくらい丁寧に書けばいいと思う？"
+    hard:
+      - routes_absent: [propose_write, read, probe]
+      - no_business_writes: true
+      - no_write_before_click: true
+      - decisions: { count: 0 }
+      - private_reads_within: [T47, C41]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二轮的回应只谈邮件该写得多客气，没有再提改待办的事。"
+      - id: R2
+        text: "第二轮的回应没有说待办已经改好。"
+    notes: "第一轮的卡要到 AG06 才有，所以不判卡片数。第二轮有没有把旧请求再提一遍，由 routes_absent 判：最后一次委托里不能再有写入去向。"
+
+  - id: AE-CTX-006
+    title: "空闲超过 60 分钟：不猜“他”是谁，先问，把上次提到的排第一"
+    sprint: AG03
+    gate: AG04          # 该用例要用到 AG04 才交付的能力，门槛顺延到 AG04
+    split: dev
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.10"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "@小林健 是北辰软件的销售总监吧？"
+        refs:
+          - { type: contact, id: C17, quote: "@小林健" }
+      - advance_clock: { minutes: 70 }
+      - user: "把他的待办改到周五。"
+    hard:
+      - part_plan:
+          - { quote: "把他的待办改到周五", refers: { "他": null } }
+      - parts:
+          - { quote: "把他的待办改到周五", status: awaiting_clarification }
+      - clarifications: { count: 1 }
+      - request_status: waiting_user
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应问的是“他”指哪一位。"
+      - id: R2
+        text: "列出的人选里，小林健排在第一个。"
+    notes: "设计稿 §3.10 的原例。问到这里就停，所以任何 sprint 都不会出卡。"
+
+  - id: AE-CTX-007
+    title: "日文：空闲 45 分钟，仍按最近提到的人解析"
+    sprint: AG03
+    split: dev
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.10"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "@山本直子 さんって、山手出版の編集の方だったよね？"
+        refs:
+          - { type: contact, id: C41, quote: "@山本直子" }
+      - advance_clock: { minutes: 45 }
+      - user: "彼女との打ち合わせメモ、私は何を約束したんだっけ？"
+    hard:
+      - part_plan:
+          - { quote: "彼女との打ち合わせメモ", route: [read, probe], refers: { "彼女": C41 } }
+      - routes_absent: [propose_write, clarify]
+      - clarifications: { count: 0 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - private_reads_within: [C41, M38, T47]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "最后一轮的回应说的是山本直子。"
+      - id: R2
+        text: "回应没有给出 M38 里没有的约定（没有给出具体内容也算通过）。"
+    notes: "和 AE-CTX-006 配成一对，卡住 60 分钟这条线的两侧。"
+
+  - id: AE-CTX-008
+    title: "英文：没回答的追问，隔两条无关消息后搁置"
+    sprint: AG03
+    gate: AG04          # 该用例要用到 AG04 才交付的能力，门槛顺延到 AG04
+    split: dev
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.10", "§3.7"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Move it to Friday."
+      - user: "Actually, unrelated: what's a polite way to turn down a meeting invite?"
+      - user: "And how early is too early to send a calendar invite?"
+    hard:
+      - clarifications: { count: 1 }
+      - parts:
+          - { quote: "Move it to Friday", status: unfinished }
+      - request_status: completed
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二、三轮各自得到了正常的回答，没有被第一轮的追问卡住。"
+    notes: "只用到“发出追问”和“两条无关消息后搁置”，不涉及点选和恢复（那是 AG04 的事）。如果 AG03 的范围里连追问都发不出，这一例要改挂到 AG04。"

@@ -1,8 +1,21 @@
-export type AiSessionReferenceType = "contact" | "event" | "note";
+/**
+ * contact、event、note（旧的三类，协议 2 只收这三类）。agent-design AG05：协议 3 另收 memo、todo、schedule、
+ * attendance（设计稿附录 E 消息引用六类；note 视同 memo），服务端逐条授权；协议 2 与存进会话的引用仍只有旧三类。
+ */
+export type AiSessionReferenceType = "contact" | "event" | "note" | "memo" | "todo" | "schedule" | "attendance";
 
 export interface AiSessionReferenceContract {
   id: string;
   type: AiSessionReferenceType;
+  /**
+   * agent-design AG11（只随协议 3 发送；协议 2 和存进会话的引用不带，校验时丢掉）：标记「@名字」在这条消息里的位置，
+   * 按 JS 字符串下标（UTF-16），左闭右开，对应去掉首尾空白之后的 message；两个文字相同的标记按出现先后各自对应。
+   * 名称只供显示，服务端只认类型加编号。
+   */
+  start?: number | undefined;
+  end?: number | undefined;
+  /** AG11：event 引用是平台活动还是自己的私人活动（设计稿附录 E「活动引用」）。 */
+  eventKind?: "platform" | "private" | undefined;
 }
 
 export type AiSessionEntryPointId =

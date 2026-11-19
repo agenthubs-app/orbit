@@ -28,6 +28,27 @@ export interface MyEventItem {
   score?: number | null;
   href: string;
   sample?: true;
+  /**
+   * agent-design AG13（只加，可选）：用户自己记的「我去过」（不是主办方签到，不改变 status）。旧版 App 读不懂就当没有。
+   */
+  selfAttendance?: MyEventSelfAttendance | null;
+  /** AG13（只加，可选）：这是用户自己建的私人活动，只有本人能看到；status 用已有的值（planned）。 */
+  privateEvent?: true;
+  /** AG13（只加，可选）：私人活动的详情（D4：宽屏右栏 / 手机底部弹出，不开新页面）——关联到它的笔记、待办、日程。 */
+  related?: readonly MyEventRelatedRecord[];
+}
+
+export interface MyEventSelfAttendance {
+  /** 本地日期 YYYY-MM-DD。 */
+  attendedOn: string;
+  dayParts?: readonly string[];
+  selfNote?: string | null;
+}
+
+export interface MyEventRelatedRecord {
+  kind: "memo" | "todo" | "schedule";
+  id: string;
+  label: string;
 }
 
 /** `GET /api/events/mine?range=upcoming|past&limit=` — upcoming ascending by start, past descending. */

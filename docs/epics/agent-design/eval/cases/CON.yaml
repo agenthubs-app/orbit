@@ -1,0 +1,352 @@
+# CON 区：联系人写入。AG12 的门槛用例，共 8 例。
+#
+# 本文件的写法约定（都在 README 词表之内，只是把词表没写死的取值定下来）：
+# - 操作名用设计稿附录 A 的能力名：contact.create、contact.update、contact.delete、contact.restore、contact.import。
+# - select 的 option 写候选记录的编号（如 C46）；候选不是记录时写选项键，并在该例的 notes 里说明。
+# - order 的元素写结果的种类：clarification（追问）、card（卡片）。只要求所列各项的相对先后。
+# - external_change 是运行器模拟的外部修改，不算被测系统的业务写入。
+# - 默认状态下联系方式字段（邮箱、电话）没有单独授权；夹具没有提供打开它的设置。
+
+area: CON
+
+proposed_checks:
+  - name: model_input_excludes
+    form: "model_input_excludes: [ \"<字符串>\", ... ]"
+    meaning: "发给主模型和判断模型的全部请求里都不含这些字符串。"
+  - name: card_effects
+    form: "card_effects: [ { op: <序号>, includes: [<记录>, ...] } ]"
+    meaning: "最后一张卡上第 n 项列出的受影响记录至少包含这些。"
+  - name: field_history
+    form: "field_history: { target: <记录>, field: <字段>, from: <旧值>, to: <新值> }"
+    meaning: "结束时该记录的字段历史里有这一条，旧值可以查到。"
+  - name: import_rows
+    form: "import_rows: { revision: <版本>, rows: [ { row: <行号>, decision: create | duplicate | skip, match: <已有记录> }, ... ] }"
+    meaning: "卡片某一版上批量导入的逐行归类恰好如此。revision 省略时指最后一版。行号从 1 起，不含表头；match 只在 duplicate 时写，指疑似重复的已有联系人。"
+
+proposed_steps: []
+
+new_patches: {}
+
+cases:
+  - id: AE-CON-001
+    title: "新增王强时已有两位相似的：先核对，选了另建才出新增卡"
+    sprint: AG12
+    split: dev
+    invariant: true
+    requirement: [AG-R12]
+    design: ["§3.2", "§3.8", "§4", "附录 B"]
+    locale: zh
+    world: base-v1
+    patches: [duplicate-wang]
+    steps:
+      - user: "新增一位联系人：王强，远帆物流的仓储主管。"
+      - select: { option: create_new }
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - clarifications: { count: 1 }
+      - order: [clarification, card]
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: contact.create, set: { name: 王强, org: 远帆物流, role: 仓储主管 } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - duplicate_effects: 0
+      - model_input_excludes: ["wang@yuanfan.example.test", "wangqiang@yuanfan.example.test"]
+    rubric:
+      - id: R1
+        text: "追问列出了已有的两位远帆物流的王强（运营经理、运营），请用户核对是不是同一个人。"
+      - id: R2
+        text: "追问里有“都不是，另建一位”这样的选项，没有替用户决定合并或跳过。"
+    notes: "选项键 create_new 指“都不是，另建一位”那个候选。疑似重复的核对按追问处理，发生在出卡之前。确认后只多出一位新联系人，C46 和 C47 不变。"
+
+  - id: AE-CON-002
+    title: "新增的人就是已有的那位：选了已有的，不新建也不合并"
+    sprint: AG12
+    split: dev
+    invariant: true
+    requirement: [AG-R12]
+    design: ["§3.2", "§3.8", "附录 B"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "加个联系人：王强，远帆物流，运营经理。"
+      - select: { option: C46 }
+    hard:
+      - clarifications: { count: 1 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - request_status: completed
+      - model_input_excludes: ["wang@yuanfan.example.test"]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "追问指出已有一位远帆物流的王强（运营经理），问是不是同一个人。"
+      - id: R2
+        text: "选了已有的那位之后，回应说明没有新建联系人。"
+    notes: "用户给的姓名、公司、职位与 C46 完全相同，选了已有的那位之后没有任何要改的内容，所以不出卡。"
+
+  - id: AE-CON-003
+    title: "改田中的职位：只动这一个字段，旧值查得到"
+    sprint: AG12
+    split: dev
+    invariant: false
+    requirement: [AG-R12]
+    design: ["§4", "附录 B", "附录 E"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把田中浩的职位改成采购部长。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: contact.update, target: C30, set: { role: 采购部长 } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - field_history: { target: C30, field: role, from: 采购主管, to: 采购部长 }
+      - model_input_excludes: ["tanaka@towa.example.test"]
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "卡片写明改的是田中浩的职位，从“采购主管”改为“采购部长”。"
+      - id: R2
+        text: "卡片和回执没有提到修改公司、邮箱、行业或地区。"
+    notes: "确认后田中浩的公司、邮箱、行业、地区保持原值，由 writes_exact 判定。"
+
+  - id: AE-CON-004
+    title: "确认前同一个字段在别处被改了：不覆盖，按现在的值重出卡"
+    sprint: AG12
+    split: val
+    invariant: true
+    requirement: [AG-R12]
+    design: ["§4", "§5.2", "附录 D", "附录 E"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把佐藤健一的公司改成青叶设计事务所。"
+      - external_change: { target: C45, set: { org: 青叶品牌设计 } }
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_business_writes: true
+      - cards: { count: 1 }
+      - decisions: { count: 0 }
+      - decision_result: { reason: CARD_CONTENT_CHANGED }
+      - card_revision: { card: last, min: 2 }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - card_ops:
+          - { op: contact.update, target: C45, set: { org: 青叶设计事务所 } }
+    rubric:
+      - id: R1
+        text: "卡片标明内容有变化，请用户再看一遍。"
+      - id: R2
+        text: "新一版卡片显示公司现在是“青叶品牌设计”，要改成“青叶设计事务所”。"
+      - id: R3
+        text: "点击之后的回应没有说“已修改”。"
+    notes: "卡上展示过的原值（青叶设计）在点击前变了，所以整卡暂停、不执行、不覆盖。结束时 C45 的公司是外部改成的“青叶品牌设计”。"
+
+  - id: AE-CON-005
+    title: "删除李薇：卡上先列出受影响的笔记和待办，删除后它们还在"
+    sprint: AG12
+    split: dev
+    invariant: false
+    requirement: [AG-R12]
+    design: ["§4", "§5.2", "附录 B"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把李薇从联系人里删掉。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: contact.delete, target: C31 }
+      - card_effects: [ { op: 1, includes: [M40, T45] } ]
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "卡片说明关联的笔记和待办「给李薇寄样片」不会被删除。"
+      - id: R2
+        text: "卡片或回执说明这位联系人可以在 30 天内恢复。"
+    notes: "李薇名下有笔记 M40 和待办 T45。确认后数据的变化只有联系人被删除这一项，M40 和 T45 原样保留。"
+
+  - id: AE-CON-006
+    title: "三天前删掉的联系人：经确认卡恢复"
+    sprint: AG12
+    split: val
+    invariant: false
+    requirement: [AG-R12]
+    design: ["§4", "附录 B"]
+    locale: zh
+    world: base-v1
+    steps:
+      - external_change: { target: C31, delete: true }
+      - advance_clock: { minutes: 4320 }
+      - user: "前几天删掉的李薇，帮我恢复回来。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: contact.restore, target: C31 }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - duplicate_effects: 0
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡片让人认得出要恢复的是哪一位：李薇，自由职业的摄影师。"
+      - id: R2
+        text: "卡片和回执用的是“恢复”的说法，没有说成新增一位联系人。"
+    notes: "删除发生在三天前，在 30 天的恢复期内。恢复的是原来的 C31，不是另建一位；原有的笔记 M40 和待办 T45 仍挂在她名下。"
+
+  - id: AE-CON-007
+    title: "批量导入四行：列出新增、重复、跳过，改一行后重出卡"
+    sprint: AG12
+    split: dev
+    invariant: true
+    requirement: [AG-R12]
+    design: ["§3.3", "§4", "§5.2", "附录 B"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把下面这几位导入联系人：\n姓名,公司,职位\n王强,远帆物流,运营经理\n高桥凉,山手出版,营业\n,青叶设计,实习生\n森田葵,东和商事,采购"
+      - user: "第一行的王强不是同一个人，也新建。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - import_rows:
+          revision: 1
+          rows:
+            - { row: 1, decision: duplicate, match: C46 }
+            - { row: 2, decision: create }
+            - { row: 3, decision: skip }
+            - { row: 4, decision: create }
+      - card_revision: { card: last, min: 2 }
+      - import_rows:
+          rows:
+            - { row: 1, decision: create }
+            - { row: 2, decision: create }
+            - { row: 3, decision: skip }
+            - { row: 4, decision: create }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - duplicate_effects: 0
+      - model_calls_max: 8
+    rubric:
+      - id: R1
+        text: "第一版卡片的总数写明新增 2 行、疑似重复 1 行、跳过 1 行。"
+      - id: R2
+        text: "跳过的那一行写明了原因：没有姓名。"
+      - id: R3
+        text: "改动之后卡片的总数变为新增 3 行、跳过 1 行。"
+    notes: "第一行与已有的 C46 疑似重复，第三行缺姓名。重复行不自动合并：用户说了“也新建”才归为新增。确认后新增三位联系人，C46 不变。导入由代码解析，模型调用不随行数增加。"
+
+  - id: AE-CON-008
+    title: "问小林的电话和邮箱：联系方式没有单独授权，不进入模型"
+    sprint: AG12
+    split: val
+    invariant: true
+    requirement: [AG-R12]
+    design: ["§4", "§5.1", "附录 B"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "小林健的电话和邮箱是多少？另外他在哪家公司、什么职位？"
+    hard:
+      - model_input_excludes: ["kobayashi@hokushin.example.test", "+81-90-0000-0017", "90-0000-0017"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - parts: [ { quote: "他在哪家公司、什么职位", status: answered } ]
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回答给出了公司“北辰软件”和职位“销售总监”。"
+      - id: R2
+        text: "回答里没有出现夹具以外的电话号码或邮箱地址。"
+    notes: "设计稿只规定联系方式默认不交给主模型原文，没有规定用户最后怎样看到它；所以本例只判模型的输入和有没有编造，不判回答里是否显示了联系方式。"
+
+  - id: AE-CON-009
+    title: "日文：改田中的职位：只动这一个字段，旧值查得到"
+    sprint: AG12
+    split: dev
+    invariant: false
+    requirement: [AG-R12]
+    design: ["§4", "附录 B", "附录 E"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "田中浩さんの役職、購買部長に変わったので更新しておいてください。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: contact.update, target: C30, set: { role: 購買部長 } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - field_history: { target: C30, field: role, from: 采购主管, to: 購買部長 }
+      - model_input_excludes: ["tanaka@towa.example.test"]
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回答、卡片说明和回执都用日语。"
+      - id: R2
+        text: "卡片写明改的是田中浩的职位，从记录里的原值“采购主管”改为用户说的“購買部長”；新值照用户原话写，没有被改写成中文或别的说法。"
+      - id: R3
+        text: "卡片和回执没有提到修改公司、邮箱、行业或地区。"
+    notes: "改编自 AE-CON-003。新值按用户原话的写法存成「購買部長」，所以 card_ops 和 field_history 的新值与中文版不同；原值是夹具里的「采购主管」，卡上照原样显示不算语言不对。确认后田中浩的公司、邮箱、行业、地区保持原值，由 writes_exact 判定。"
+
+  - id: AE-CON-010
+    title: "英文：批量导入四行：列出新增、重复、跳过，改一行后重出卡"
+    sprint: AG12
+    split: dev
+    invariant: true
+    requirement: [AG-R12]
+    design: ["§3.3", "§4", "§5.2", "附录 B"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Please import these into my contacts:\nName,Company,Title\n王强,远帆物流,运营经理\nRyo Takahashi,Yamate Publishing,Sales\n,Aoba Design,Intern\nAoi Morita,Towa Trading,Purchasing"
+      - user: "The Wang Qiang in row 1 is a different person. Create him as a new contact too."
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - import_rows:
+          revision: 1
+          rows:
+            - { row: 1, decision: duplicate, match: C46 }
+            - { row: 2, decision: create }
+            - { row: 3, decision: skip }
+            - { row: 4, decision: create }
+      - card_revision: { card: last, min: 2 }
+      - import_rows:
+          rows:
+            - { row: 1, decision: create }
+            - { row: 2, decision: create }
+            - { row: 3, decision: skip }
+            - { row: 4, decision: create }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - duplicate_effects: 0
+      - model_calls_max: 8
+    rubric:
+      - id: R1
+        text: "回答、卡片的总数句和逐行说明都用英语。"
+      - id: R2
+        text: "第一版卡片的总数写明新增 2 行、疑似重复 1 行、跳过 1 行。"
+      - id: R3
+        text: "跳过的那一行用英语写明了原因：没有姓名（如 “missing name”）。"
+      - id: R4
+        text: "改动之后卡片的总数变为新增 3 行、跳过 1 行。"
+    notes: "改编自 AE-CON-007。第一行照抄自中文的通讯录，姓名、公司与已有的 C46 相同，所以疑似重复；第三行缺姓名。重复行不自动合并：用户说了 “Create him … too” 才归为新增。确认后新增三位联系人，C46 不变。导入由代码解析，模型调用不随行数增加。"

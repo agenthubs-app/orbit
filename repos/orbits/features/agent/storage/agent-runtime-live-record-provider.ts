@@ -5,7 +5,10 @@ import type {
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
 import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
+import { createPostgresLiveRecordStore } from "../../../shared/storage/postgres-live-record-store";
+import type { TransactionalPostgresClient } from "../../../shared/storage/transactional-postgres";
 import type {
+  AgentActionDecisionRecord,
   AgentActionRecord,
   AgentExecutionReceipt,
   AgentOutboxEvent,
@@ -16,6 +19,10 @@ import type {
 import {
   AGENT_ACTION_PAGE_MAX,
   agentActionPageLimit,
+  agentDecisionRecordId,
+  cardChangeBlocked,
+  type AgentCardChangeInput,
+  type AgentCardChangeResult,
   decodeAgentActionCursor,
   encodeAgentActionCursor,
   matchesAgentActionFilter,
@@ -82,6 +89,8 @@ export const AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS = {
   receipts: "agentExecutionReceipts",
   /** Legacy rows only: nothing writes or reads this since 0110; 0111 removes them. */
   analytics: "agentAnalyticsEvents",
+  /** agent-design AG02: button decisions, one per card and client decision key. */
+  decisions: "agentActionDecisions",
 } as const;
 
 /** Collections that make up a run detail; only these carry the run target. */
@@ -100,6 +109,11 @@ export interface StorageAgentRuntimeRepositoryOptions {
   store: LiveRecordStoreLike<AgentRuntimePayload>;
   workspaceId: string;
   sqlClient?: LiveRecordSqlClient;
+  /**
+   * agent-design AG02: card changes (approval with its outbox, decisions, new revisions) run in
+   * one Postgres transaction on this client. Without it they are written one after another.
+   */
+  transactionClient?: TransactionalPostgresClient;
 }
 
 export interface ConfiguredAgentRuntimeRepositoryOptions {
@@ -259,15 +273,19 @@ export function createStorageAgentRuntimeRepository({
   store,
   workspaceId,
   sqlClient,
+  transactionClient,
 }: StorageAgentRuntimeRepositoryOptions): AgentRuntimeRepository {
   let claimQueue: Promise<void> = Promise.resolve();
+  /** Store-only path: card changes of this process run one after another. */
+  let cardQueue: Promise<unknown> = Promise.resolve();
 
-  async function save(
+  async function saveTo(
+    target: LiveRecordStoreLike<AgentRuntimePayload>,
     collectionName: string,
     recordId: string,
     entity: Record<string, unknown>,
   ): Promise<void> {
-    await store.upsertRecord(
+    await target.upsertRecord(
       recordFor(
         workspaceId,
         collectionName,
@@ -276,6 +294,36 @@ export function createStorageAgentRuntimeRepository({
         new Date().toISOString(),
       ),
     );
+  }
+
+  async function save(
+    collectionName: string,
+    recordId: string,
+    entity: Record<string, unknown>,
+  ): Promise<void> {
+    await saveTo(store, collectionName, recordId, entity);
+  }
+
+  /** Runs `work` with a store inside one transaction that holds the card's lock (or serialized, store-only). */
+  async function withCardLock<T>(actionId: string, work: (target: LiveRecordStoreLike<AgentRuntimePayload>) => Promise<T>): Promise<T> {
+    if (transactionClient) {
+      return transactionClient.transaction(async (tx) => {
+        await tx.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [JSON.stringify(["agent-card", workspaceId, actionId])]);
+        return work(createPostgresLiveRecordStore<AgentRuntimePayload>({ client: tx as never }));
+      }, { isolation: "read committed" });
+    }
+    const run = cardQueue.then(() => work(store), () => work(store));
+    cardQueue = run.catch(() => undefined);
+    return run;
+  }
+
+  async function writeCardChange(target: LiveRecordStoreLike<AgentRuntimePayload>, input: Pick<AgentCardChangeInput, "next" | "outbox" | "receipts" | "decision">): Promise<void> {
+    // Outbox events first: even without a transaction an interrupted write can only leave orphan
+    // events, which the worker cancels because their card is not approved.
+    for (const event of input.outbox ?? []) await saveTo(target, AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.outbox, event.outboxId, event as unknown as Record<string, unknown>);
+    for (const receipt of input.receipts ?? []) await saveTo(target, AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.receipts, receipt.receiptId, receipt as unknown as Record<string, unknown>);
+    if (input.decision) await saveTo(target, AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.decisions, input.decision.decisionId, input.decision as unknown as Record<string, unknown>);
+    if (input.next) await saveTo(target, AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.actions, input.next.actionId, input.next as unknown as Record<string, unknown>);
   }
 
   async function listActionPage(
@@ -438,6 +486,11 @@ export function createStorageAgentRuntimeRepository({
       // Persist intent events first. The worker requires the action itself to be
       // approved, so an interrupted write can leave only harmless orphan events;
       // it can never execute an unconfirmed action.
+      // agent-design AG02: with a transaction client the approval and its events are one transaction.
+      if (transactionClient) {
+        await withCardLock(action.actionId, (target) => writeCardChange(target, { next: action, outbox: events }));
+        return;
+      }
       for (const event of events) {
         await save(
           AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.outbox,
@@ -450,6 +503,21 @@ export function createStorageAgentRuntimeRepository({
         action.actionId,
         action as unknown as Record<string, unknown>,
       );
+    },
+    async getDecision(actionId, clientDecisionId) {
+      return get<AgentActionDecisionRecord>(store, workspaceId, AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.decisions, agentDecisionRecordId(actionId, clientDecisionId), "decisionId");
+    },
+    async commitCardChange(input): Promise<AgentCardChangeResult> {
+      return withCardLock(input.actionId, async (target) => {
+        const current = await get<AgentActionRecord>(target, workspaceId, AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.actions, input.actionId, "actionId");
+        const existing = input.decision
+          ? await get<AgentActionDecisionRecord>(target, workspaceId, AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.decisions, input.decision.decisionId, "decisionId")
+          : null;
+        const blocked = cardChangeBlocked(current, existing, input);
+        if (blocked) return blocked;
+        await writeCardChange(target, input);
+        return { committed: true } as const;
+      });
     },
     saveOutbox: (event) =>
       save(

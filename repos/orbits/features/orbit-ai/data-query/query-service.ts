@@ -4,6 +4,7 @@ import { noteRecordFromLiveRecord } from "../../notes/note-record";
 import { taskRecordFromLiveRecord } from "../../tasks/task-record";
 import type { TaskItemDTO } from "../../tasks/contract";
 import { canonicalScheduleItemSchema, type CanonicalScheduleItem } from "../../personal-schedule/authority-contract";
+import { compareInstantsForSort, instantAtOrAfter, instantAtOrBefore } from "./instant";
 
 export const ACTOR_QUERY_TOOL_NAMES = [
   "notes.query",
@@ -121,7 +122,7 @@ async function queryNotes(input: {
       const parsed = record.userId === input.actorId ? noteRecordFromLiveRecord(record, input.actorId) : null;
       return parsed ? [parsed.note] : [];
     })
-    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || left.id.localeCompare(right.id));
+    .sort((left, right) => compareInstantsForSort(right.updatedAt, left.updatedAt) || left.id.localeCompare(right.id));
   if (input.query.operation === "get") {
     const id = assertGetIsAuthorized(input.query);
     const note = notes.find((candidate) => candidate.id === id);
@@ -214,7 +215,7 @@ async function ownedTasks(input: {
     const canonical = taskRecordFromLiveRecord(record, input.actorId)?.task;
     const task = canonical ?? legacyTask(record, input.actorId);
     return task ? [{ evidenceIds: record.evidenceIds, task }] : [];
-  }).sort((left, right) => right.task.updatedAt.localeCompare(left.task.updatedAt) || left.task.id.localeCompare(right.task.id));
+  }).sort((left, right) => compareInstantsForSort(right.task.updatedAt, left.task.updatedAt) || left.task.id.localeCompare(right.task.id));
 }
 
 function taskView(task: TaskItemDTO, evidenceIds: readonly string[]): Record<string, unknown> {
@@ -252,8 +253,8 @@ async function queryTasks(input: {
     (!input.query.status || task.status === input.query.status) &&
     (!input.query.contactId || task.relatedContactId === input.query.contactId) &&
     (!input.query.eventId || task.relatedEventId === input.query.eventId) &&
-    (!input.query.from || Boolean(task.dueAt && task.dueAt >= input.query.from)) &&
-    (!input.query.to || Boolean(task.dueAt && task.dueAt <= input.query.to)) &&
+    (!input.query.from || Boolean(task.dueAt && instantAtOrAfter(task.dueAt, input.query.from))) &&
+    (!input.query.to || Boolean(task.dueAt && instantAtOrBefore(task.dueAt, input.query.to))) &&
     (!search || `${task.title}\n${task.notes ?? ""}`.toLocaleLowerCase().includes(search)),
   );
   const limit = Math.min(10, Math.max(1, input.query.limit ?? 10));
@@ -320,7 +321,7 @@ async function queryFollowups(input: {
       updatedAt: task.updatedAt,
       evidenceIds: [...record.evidenceIds],
     }];
-  }).sort((left, right) => String(right.updatedAt).localeCompare(String(left.updatedAt)) || String(left.id).localeCompare(String(right.id)));
+  }).sort((left, right) => compareInstantsForSort(String(right.updatedAt), String(left.updatedAt)) || String(left.id).localeCompare(String(right.id)));
   if (input.query.operation === "get") {
     const id = assertGetIsAuthorized(input.query);
     const found = candidates.find((candidate) => candidate.id === id);
@@ -330,8 +331,8 @@ async function queryFollowups(input: {
   const matched = candidates.filter((candidate) =>
     (!input.query.status || candidate.status === input.query.status) &&
     (!input.query.contactId || candidate.contactId === input.query.contactId) &&
-    (!input.query.from || Boolean(candidate.dueAt && String(candidate.dueAt) >= input.query.from)) &&
-    (!input.query.to || Boolean(candidate.dueAt && String(candidate.dueAt) <= input.query.to)) &&
+    (!input.query.from || Boolean(candidate.dueAt && instantAtOrAfter(String(candidate.dueAt), input.query.from))) &&
+    (!input.query.to || Boolean(candidate.dueAt && instantAtOrBefore(String(candidate.dueAt), input.query.to))) &&
     (!search || `${candidate.title}\n${candidate.evidenceSummary ?? ""}`.toLocaleLowerCase().includes(search)),
   );
   const limit = Math.min(10, Math.max(1, input.query.limit ?? 10));
@@ -390,7 +391,7 @@ async function querySchedule(input: {
     return parsed.success && parsed.data.accountId === input.actorId && parsed.data.ownerUserId === input.actorId && parsed.data.state !== "cancelled"
       ? [parsed.data]
       : [];
-  }).sort((left, right) => left.startsAt.localeCompare(right.startsAt) || left.id.localeCompare(right.id));
+  }).sort((left, right) => compareInstantsForSort(left.startsAt, right.startsAt) || left.id.localeCompare(right.id));
   if (input.query.operation === "get") {
     const id = assertGetIsAuthorized(input.query);
     const found = items.find((item) => item.id === id);
@@ -400,8 +401,8 @@ async function querySchedule(input: {
   const matched = items.filter((item) =>
     (!input.query.contactId || item.contactId === input.query.contactId) &&
     (!input.query.eventId || item.eventId === input.query.eventId) &&
-    (!input.query.from || (item.endsAt ?? item.startsAt) >= input.query.from) &&
-    (!input.query.to || item.startsAt <= input.query.to) &&
+    (!input.query.from || instantAtOrAfter(item.endsAt ?? item.startsAt, input.query.from)) &&
+    (!input.query.to || instantAtOrBefore(item.startsAt, input.query.to)) &&
     (!search || `${item.title}\n${item.details ?? ""}\n${item.location ?? ""}`.toLocaleLowerCase().includes(search)),
   );
   const limit = Math.min(10, Math.max(1, input.query.limit ?? 10));

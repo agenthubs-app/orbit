@@ -9,6 +9,7 @@ import type { IndustrySelectionContract } from "../../shared/contract/industries
 import { sanitizeIndustryPair } from "../../shared/domain/industries";
 import type { LiveRecord, LiveRecordStoreLike } from "../../shared/storage/live-record-store";
 import { applyEnrichedValues, type EnrichedValue } from "./enrichment/apply-enrichment";
+import { nextContactVersion } from "./contact-version";
 
 export interface CardContactFields {
   displayName: string;
@@ -267,6 +268,7 @@ export async function mergeCardIntoContact(input: {
   payload.evidenceIds = evidenceIds;
   const updatedAt = new Date(Math.max(now.getTime(), Date.parse(record.updatedAt) + 1)).toISOString();
   payload.updatedAt = updatedAt;
+  payload.version = nextContactVersion(record.payload);
   const merged = contactFields(payload);
   const updated = await input.store.updateRecordIfCurrent(
     {

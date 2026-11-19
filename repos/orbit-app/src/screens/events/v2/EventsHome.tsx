@@ -15,7 +15,8 @@ import { ShellBackground } from "../../../components/ShellBackground";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../../components/ShellTopBar";
 import { TabPageBar } from "../../../components/TabPageBar";
 import { swipeToMainTab } from "../../../components/shell-navigation";
-import { ConfirmDialog, Icon, IconButton, SwipeRow, UiPressable, UiText, useToast } from "../../../components/ui";
+import { BottomSheet, ConfirmDialog, Icon, IconButton, SwipeRow, UiPressable, UiText, useToast } from "../../../components/ui";
+import { useStandardCopy } from "../../../i18n/standard-copy";
 import { SwipeSegments } from "../../../components/ui/Segmented";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
 import { createThemedStyles } from "../../../design/theme";
@@ -24,6 +25,9 @@ import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { DiscoverPage, discoverQueryFromParams } from "./DiscoverPage";
 import { eventAssessmentListSchema, useEventsApi } from "./events-api";
 import { myEventsResponseSchema } from "../../../api/schema/events-mine";
+import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
+import { useOrbitApiBaseUrl } from "../../../api/ApiBaseUrlProvider";
+import { registerAiTemplatePrefill } from "../../../data/ai-template-prefill";
 import { EventsOfflineNotice } from "./EventsOfflineNotice";
 import { usePageCopyResource } from "../../../hooks/usePageCopyResource";
 import { EVENTS_COPY_FRESH_MS, EVENTS_MINE_UPCOMING_PATH } from "./events-copies";
@@ -228,10 +232,63 @@ function EmptyExtras() {
   );
 }
 
-function Chip({ label, tone }: { label: string; tone: "teal" | "apricot" | "pink" | "neutral" }) {
+function Chip({ label, tone, icon }: { label: string; tone: "teal" | "apricot" | "pink" | "neutral" | "lav"; icon?: "lock" }) {
   const { styles, colors } = useStyles();
-  const palette = tone === "teal" ? [colors.macTeal, colors.macTealInk] : tone === "apricot" ? [colors.macApricot, colors.macApricotInk] : [colors.surface2, colors.ink2];
-  return <View style={[styles.chip, { backgroundColor: palette[0] }]}><UiText style={[styles.chipText, { color: palette[1] }]} numberOfLines={1}>{label}</UiText></View>;
+  const palette: [string, string] = tone === "teal" ? [colors.macTeal, colors.macTealInk] : tone === "apricot" ? [colors.macApricot, colors.macApricotInk] : tone === "lav" ? [colors.macLav, colors.macLavInk] : [colors.surface2, colors.ink2];
+  return <View style={[styles.chip, { backgroundColor: palette[0] }, icon ? { alignItems: "center", flexDirection: "row", gap: 4 } : null]}>{icon ? <Icon name={icon} size={12} color={palette[1]} /> : null}<UiText style={[styles.chipText, { color: palette[1] }]} numberOfLines={1}>{label}</UiText></View>;
+}
+
+// agent-design AG13 (approved visual draft 2026-11-18, D1–D5): «我去过（自己记的）» on its own line under the name; a private
+// event's 「私人」 chip; a private event opens in a bottom sheet (no screen of its own), read only — 「在 iOrbit 里改」.
+function SelfAttendedLine({ item }: { item: MyEventItem }) {
+  const { colors } = useStyles();
+  const copy = useStandardCopy();
+  if (!item.selfAttendance) return null;
+  return <View style={{ alignItems: "center", flexDirection: "row", gap: 4, marginTop: 2 }} testID={`events-self-attended-${item.eventId}`}><Icon name="check" size={13} color={colors.macLavInk} /><UiText style={{ color: colors.macLavInk, fontSize: 13, fontWeight: "700", lineHeight: 20 }}>{copy.myEvents.selfAttended}</UiText></View>;
+}
+
+function PrivateEventSheet({ item, language, onClose }: { item: MyEventItem | null; language: string; onClose: () => void }) {
+  const { styles, colors } = useStyles();
+  const copy = useStandardCopy();
+  const router = useRouter();
+  const auth = useOrbitAuthSession(), server = useOrbitApiBaseUrl();
+  const words = copy.myEvents as Record<string, string>;
+  if (!item) return null;
+  const self = item.selfAttendance;
+  const parts = (self?.dayParts ?? []).map((part) => words[part]).filter(Boolean);
+  const message = copy.myEvents.prefill.replace("{title}", item.title).replace("{day}", appEventWhen(item.startsAt, language));
+  // The AI page takes a registered prefill's id (as the to-do tools do), not the words themselves.
+  const openIorbit = () => {
+    onClose();
+    if (!auth.actorId || !server.ready) { router.push({ pathname: "/ai/[id]", params: { id: "new" } } as Href); return; }
+    const prefillIntent = registerAiTemplatePrefill({ actorId: auth.actorId, baseUrl: server.baseUrl, entryPointId: "ai.new_chat", message, references: [], template: { id: "events.private_event_edit", version: 1 } });
+    router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent } } as Href);
+  };
+  return (
+    <BottomSheet visible onClose={onClose} accessibilityLabel={item.title}>
+      <View style={{ gap: 14, paddingBottom: 8 }} testID={`events-private-sheet-${item.eventId}`}>
+        <View style={[styles.row, { alignItems: "flex-start", gap: 10 }]}>
+          <View style={[styles.emo, styles.emoSm, { backgroundColor: colors.macLav }]}><UiText style={styles.emoTextSm}>{item.emoji || eventEmoji({ title: item.title })}</UiText></View>
+          <View style={styles.meta}><UiText style={styles.metaTitle}>{item.title}</UiText><UiText style={styles.metaSub}>{[appEventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</UiText></View>
+          <Chip label={copy.myEvents.privateChip} tone="lav" icon="lock" />
+        </View>
+        <UiText style={styles.lbl}>{copy.myEvents.onlyYou}</UiText>
+        {self ? (
+          <View style={{ gap: 4 }}>
+            <UiText style={[styles.lbl, { color: colors.ink2, fontWeight: "700" }]}>{copy.myEvents.attendedTitle}</UiText>
+            <UiText style={styles.metaSub}>{[`${appEventWhen(self.attendedOn, language)}${parts.length ? ` ${parts.join("、")}` : ""}`, self.selfNote].filter(Boolean).join(" · ")}</UiText>
+          </View>
+        ) : null}
+        <View style={{ gap: 4 }}>
+          <UiText style={[styles.lbl, { color: colors.ink2, fontWeight: "700" }]}>{copy.myEvents.relatedTitle}</UiText>
+          {(item.related ?? []).length ? (item.related ?? []).map((record) => (
+            <View key={`${record.kind}:${record.id}`} style={[styles.row, { gap: 8 }]}><UiText style={styles.lbl}>{words[record.kind]}</UiText><UiText style={[styles.metaSub, { flex: 1, color: colors.ink }]} numberOfLines={1}>{record.label}</UiText></View>
+          )) : <UiText style={styles.lbl}>{copy.myEvents.relatedNone}</UiText>}
+        </View>
+        <UiPressable accessibilityRole="button" accessibilityLabel={copy.myEvents.editInIorbit} onPress={openIorbit} style={styles.btnBlock} testID="events-private-edit"><UiText style={styles.btnBlockText}>{copy.myEvents.editInIorbit}</UiText></UiPressable>
+      </View>
+    </BottomSheet>
+  );
 }
 
 // .ev-card：一张时占满内容宽（390 屏 = 354），多张时 300 宽横滑；背景 linear-gradient(160deg, mac-lav, surface 60%)。
@@ -239,9 +296,10 @@ function useFullCardWidth(): number {
   return useWindowDimensions().width - 2 * SHELL_GUTTER;
 }
 
-function GoingCard({ item, now, language, width, style, gradientKey }: { item: MyEventItem; now: Date; language: string; width?: number; style?: object; gradientKey: string }) {
+function GoingCard({ item, now, language, width, style, gradientKey, onOpenPrivate }: { item: MyEventItem; now: Date; language: string; width?: number; style?: object; gradientKey: string; onOpenPrivate?: (item: MyEventItem) => void }) {
   const { styles, colors } = useStyles();
   const { t } = useOrbitLocale();
+  const copy = useStandardCopy();
   const router = useRouter();
   const day = relativeDay(item.startsAt, now);
   return (
@@ -249,7 +307,7 @@ function GoingCard({ item, now, language, width, style, gradientKey }: { item: M
       <KitGradient id={`events-going-bg-${gradientKey}-${item.eventId}`} from={colors.macLav} to={colors.surface} stop={0.6} angle={160} />
       <View style={[styles.row, { justifyContent: "space-between" }]}>
         <Chip label={appEventWhen(item.startsAt, language)} tone="neutral" />
-        {day ? <Chip label={t(`eventsV2.${day}`)} tone="apricot" /> : null}
+        <View style={[styles.row, { gap: 6 }]}>{day ? <Chip label={t(`eventsV2.${day}`)} tone="apricot" /> : null}{item.privateEvent ? <Chip label={copy.myEvents.privateChip} tone="lav" icon="lock" /> : null}</View>
       </View>
       <UiText style={styles.evName}>{item.title}</UiText>
       <UiText style={styles.lbl}>{item.venue ?? ""}</UiText>
@@ -259,7 +317,9 @@ function GoingCard({ item, now, language, width, style, gradientKey }: { item: M
           <UiText style={styles.lbl}>{t("eventsV2.meetCount", { n: item.meetCount })}</UiText>
         </View>
       ) : null}
-      <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.prepare")} onPress={() => router.push(item.href as Href)} style={[styles.btnBlock]}><UiText style={styles.btnBlockText}>{t("eventsV2.prepare")}</UiText></UiPressable>
+      {item.privateEvent && onOpenPrivate
+        ? <UiPressable accessibilityRole="button" accessibilityLabel={copy.myEvents.view} onPress={() => onOpenPrivate(item)} style={[styles.btnBlock]} testID={`events-private-open-${item.eventId}`}><UiText style={styles.btnBlockText}>{copy.myEvents.view}</UiText></UiPressable>
+        : <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.prepare")} onPress={() => router.push(item.href as Href)} style={[styles.btnBlock]}><UiText style={styles.btnBlockText}>{t("eventsV2.prepare")}</UiText></UiPressable>}
     </View>
   );
 }
@@ -274,7 +334,9 @@ function avInk(index: number, styles: ReturnType<typeof useStyles>["styles"]) {
 function GoingPage({ upcoming, past, now, language, onDiscover }: { upcoming: MyEventItem[]; past: MyEventItem[]; now: Date; language: string; onDiscover: () => void }) {
   const { styles, colors } = useStyles();
   const { t } = useOrbitLocale();
+  const copy = useStandardCopy();
   const router = useRouter();
+  const [privateOpen, setPrivateOpen] = useState<MyEventItem | null>(null);
   const coming = upcoming.filter((item) => item.status !== "cancelled" && item.status !== "rejected");
   if (coming.length === 0 && past.length === 0) {
     return (
@@ -298,20 +360,22 @@ function GoingPage({ upcoming, past, now, language, onDiscover }: { upcoming: My
           <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.searchEvents")} onPress={onDiscover} style={styles.btnSm} testID="events-going-find"><UiText style={styles.btnSmText}>{t("eventsV2.searchEvents")}</UiText></UiPressable>
         </View>
       ) : null}
-      {coming.map((item) => <GoingCard key={item.eventId} item={item} now={now} language={language} style={{ marginBottom: 12 }} gradientKey="list" />)}
+      {coming.map((item) => <GoingCard key={item.eventId} item={item} now={now} language={language} style={{ marginBottom: 12 }} gradientKey="list" onOpenPrivate={setPrivateOpen} />)}
       {past.length ? (
         <View style={[styles.card, { marginTop: 6, paddingHorizontal: 16, paddingVertical: 8 }]}>
           <View style={[styles.cardH, { marginBottom: 0, marginTop: 8 }]}><UiText style={styles.h3}>{t("eventsV2.past")}</UiText><UiText style={styles.more}>{t("eventsV2.countItems", { n: past.length })}</UiText></View>
           {past.map((item, index) => (
-            <UiPressable key={item.eventId} accessibilityRole="button" accessibilityLabel={item.title} onPress={() => router.push(item.href as Href)} style={styles.li}>
+            <UiPressable key={item.eventId} accessibilityRole="button" accessibilityLabel={item.title} onPress={() => (item.privateEvent ? setPrivateOpen(item) : router.push(item.href as Href))} style={styles.li} testID={`events-past-${item.eventId}`}>
               {index > 0 ? <View style={styles.liLine} /> : null}
               <View style={[styles.emo, styles.emoSm, { backgroundColor: item.status === "attended" ? colors.macTeal : colors.macLav }]}><UiText style={styles.emoTextSm}>{item.emoji || eventEmoji({ title: item.title })}</UiText></View>
-              <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{item.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[appEventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</UiText></View>
-              {item.status === "attended" || item.status === "cancelled" ? <Chip label={item.status === "attended" ? t("eventsV2.attended") : t("eventsV2.statusCancelled")} tone={item.status === "attended" ? "teal" : "neutral"} /> : null}
+              <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{item.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[appEventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</UiText><SelfAttendedLine item={item} /></View>
+              {item.privateEvent ? <Chip label={copy.myEvents.privateChip} tone="lav" icon="lock" />
+                : item.status === "attended" || item.status === "cancelled" ? <Chip label={item.status === "attended" ? t("eventsV2.attended") : t("eventsV2.statusCancelled")} tone={item.status === "attended" ? "teal" : "neutral"} /> : null}
             </UiPressable>
           ))}
         </View>
       ) : null}
+      <PrivateEventSheet item={privateOpen} language={language} onClose={() => setPrivateOpen(null)} />
     </ScrollView>
   );
 }
