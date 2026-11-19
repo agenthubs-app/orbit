@@ -16,6 +16,7 @@ import { profileCheckNote, profileCheckOf, profileLine, verifyProfileUpdates, ty
 import { groundedAnswerSystemPrompt, groundedAnswerUserText, GROUNDED_ANSWER_PROMPT_VERSION, type GroundedItem } from "../../answer/prompt";
 import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
+import { composeStructured, stripMarkdown } from "../../answer/blocks";
 import { withoutForeignUrls } from "../../web/answer-urls";
 import { withoutOnlineDenials, withoutQuoteResidue, withoutTopicBasisClaims, withoutStrayScripts, withoutUnsupportedStatus, withEffectiveDates } from "../../answer/claims";
 import { expiryLine } from "../../answer/change-check";
@@ -83,7 +84,7 @@ export function citedFallback(language: "zh" | "ja" | "en", materials: readonly 
   return `记录里写的是：${unique.join("")}`;
 }
 
-export function answerSegments(text: string, wanted: ReadonlySet<string>, dropCardTalk = false): Segments {
+export function answerSegments(text: string, wanted: ReadonlySet<string>, dropCardTalk = false, language: "zh" | "ja" | "en" = "zh"): Segments {
   const parsed = parseModelJson(text);
   if (parsed.ok === false) return { error: parsed.error, ok: false };
   const segments = (parsed.value as { segments?: unknown } | null)?.segments;
@@ -92,7 +93,8 @@ export function answerSegments(text: string, wanted: ReadonlySet<string>, dropCa
   const onlyCardTalk: string[] = [];
   for (const segment of segments) {
     const partId = typeof segment?.partId === "string" ? segment.partId : "";
-    const raw = typeof segment?.text === "string" ? segment.text.trim() : "";
+    // AG19 (D4): lead and body in code's line convention; an answer given as one text is kept whole, symbols out.
+    const raw = segment && typeof segment === "object" ? composeStructured(segment as Record<string, unknown>, language) ?? "" : "";
     const answer = raw ? withoutCardTalk(raw, partId, dropCardTalk) : "";
     if (raw && !answer) onlyCardTalk.push(partId);
     if (wanted.has(partId) && answer) out.set(partId, answer);
@@ -146,7 +148,7 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   const dateSources = [input.message, ...conversation.map((message) => message.text), ...dayWindow(state.asOf || deps.now(), zone), ...allMaterials.flatMap((material) => [material.header, ...material.sentences.map((sentence) => sentence.text)])];
   const weekdayNotes = allMaterials.filter((material) => material.sentences.some((sentence) => WEEKDAY_WORD.test(sentence.text)) && !material.sentences.some((sentence) => datesIn(sentence.text).size)).map((material) => material.header);
   const check = (text: string) => {
-    const parsed = parseAnswerOutput(text);
+    const parsed = parseAnswerOutput(text, state.language);
     if (parsed.ok === false) return { changes: null, error: parsed.error, profiles: null, verification: null };
     const cleaned = { ...parsed.value, segments: parsed.value.segments.map((segment) => {
       const kept = withoutCardTalk(segment.text, segment.partId, dropCardTalk);
@@ -257,6 +259,7 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
         }
       }
       run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(claimed, state.language) : claimed, state.language));
+      run.modelAnswers.add(part.localId);
       // AG09: a web page is not a record of the user's: its citations stay out of the records' sourceRefs (the page is listed in the answer's web record).
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref).filter((ref) => !ref.startsWith("web:"));
       if (profileParts.has(part.localId)) {
@@ -331,7 +334,9 @@ export function answerNode(scope: NodeScope): GraphNode {
       if (plainCounts.length) emitTrace({ counts: plainCounts, parts: due.map((part) => part.localId), type: "answer.unsourced_counts_dropped" });
       const reply = plain ? withoutFalseClaims(withoutUnsourcedCounts(plain, plainCounts), due.map((part) => part.localId), run.topicMatched, [input.message, ...(run.context?.messages ?? []).map((message) => message.text)].join("\n")) : plain;
       if (reply) {
-        run.answers.set(due[0].localId, localizeAnswerDates(withoutQuoteResidue(reply), state.language));
+        // AG19 (D4): the first layer's reply is a model's text too: its Markdown symbols are taken out.
+        run.answers.set(due[0].localId, stripMarkdown(localizeAnswerDates(withoutQuoteResidue(reply), state.language), state.language));
+        run.modelAnswers.add(due[0].localId);
         emitTrace({ note: "plain chat: the first layer's reply is shown, no second call", parts: due.map((part) => part.localId), type: "answer.plain_reply" });
         return {};
       }
@@ -350,12 +355,12 @@ export function answerNode(scope: NodeScope): GraphNode {
     const user = answerUserText({ conversation, items, message: input.message });
     let repairs = state.repairs;
     let result: MainModelResult = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "first", requestId: input.requestId, system, user });
-    let checked: Segments | null = result.ok === true ? answerSegments(result.text, wanted, dropCardTalk) : null;
+    let checked: Segments | null = result.ok === true ? answerSegments(result.text, wanted, dropCardTalk, state.language) : null;
     if (checked && checked.ok === false && repairs < 1) {
       repairs += 1;
       emitTrace({ error: checked.error, type: "answer.invalid" });
       result = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "repair", requestId: input.requestId, system, user: `${user}\n\nYour previous output could not be used (${checked.error}). Output the corrected JSON object only.` });
-      checked = result.ok === true ? answerSegments(result.text, wanted, dropCardTalk) : null;
+      checked = result.ok === true ? answerSegments(result.text, wanted, dropCardTalk, state.language) : null;
     }
     // AG07 run-02 (AE-CTX-003): a discussion answer has no records; a calendar day it names must come from the
     // message, the conversation or today. One repair; a sentence still naming a day with no source is not delivered.
@@ -370,7 +375,7 @@ export function answerNode(scope: NodeScope): GraphNode {
       repairs += 1;
       emitTrace({ error: undated, type: "answer.invalid" });
       const retry = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "repair", requestId: input.requestId, system, user: `${user}\n\nYour previous output could not be used (${undated}). Output the corrected JSON object only.` });
-      const second = retry.ok === true ? answerSegments(retry.text, wanted, dropCardTalk) : null;
+      const second = retry.ok === true ? answerSegments(retry.text, wanted, dropCardTalk, state.language) : null;
       if (retry.ok === true && second?.ok === true) {
         checked = second;
         result = retry;
@@ -388,6 +393,7 @@ export function answerNode(scope: NodeScope): GraphNode {
         const seen = withoutWrongSeenCounts(withoutUnsourcedCounts(withoutUnsourcedDates(text, unsourced), uncounted), new Set());
         if (seen.dropped.length) emitTrace({ coverage: [], dropped: seen.dropped, partId: part.localId, type: "answer.seen_counts_dropped" });
         run.answers.set(part.localId, localizeAnswerDates(withoutFalseClaims(seen.text, [part.localId], run.topicMatched, user), state.language));
+        run.modelAnswers.add(part.localId);
         continue;
       }
       const budgetOut = result.ok === false && result.reason === "budget";

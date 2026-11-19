@@ -27,7 +27,7 @@ import { routeNode } from "./nodes/route";
 import { understandNode } from "./nodes/understand";
 import { verifyNode } from "./nodes/verify";
 import { AgentGraphAnnotation, type AgentGraphRun, type AgentGraphState, type GraphResolution } from "./state";
-import type { AgentActionPreviewContract, AgentAnswerBasisContract, AgentWebResultContract, AgentClarificationContract, AgentPartResult, AgentRunStage } from "../../../shared/contract/agent-v1";
+import type { AgentActionPreviewContract, AgentAnswerBasisContract, AgentAnswerBlockContract, AgentClarificationContract, AgentPartResult, AgentRunStage, AgentWebResultContract } from "../../../shared/contract/agent-v1";
 
 export const GRAPH_NODES = ["intake", "understand", "route", "functions", "resolve", "probe", "propose", "clarify", "answer", "verify", "deliver"] as const;
 
@@ -128,6 +128,8 @@ export interface AgentGraphResult {
   actionPreview: AgentActionPreviewContract | null;
   /** AG09: the queries sent and the pages opened in this pass. */
   web: AgentWebResultContract;
+  /** AG19: the answer laid out in blocks (paragraphs, points, record cards, the note of what was not done). */
+  blocks: AgentAnswerBlockContract[];
 }
 
 function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRun {
@@ -172,6 +174,10 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     questionLines: new Map(),
     leadLines: new Map(),
     presetIntents: new Map(),
+    answerBlocks: new Map(),
+    modelAnswers: new Set(),
+    recordCards: new Map(),
+    blocks: [],
   };
 }
 
@@ -188,6 +194,7 @@ async function resultOf(graph: ReturnType<typeof buildAgentGraph>, run: AgentGra
     paused: snapshot.next.includes(PAUSED_AT),
     sourceRefs: run.sourceRefs,
     basis: run.basis,
+    blocks: run.blocks,
     cardLine: run.cardLine,
     state,
     status: state.requestStatus ?? "completed",

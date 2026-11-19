@@ -9,7 +9,7 @@
  */
 import { Annotation } from "@langchain/langgraph";
 
-import type { AgentAnswerBasisContract, AgentClarificationContract, AgentPartResult } from "../../../shared/contract/agent-v1";
+import type { AgentAnswerBasisContract, AgentAnswerBlockContract, AgentAnswerRecordContract, AgentClarificationContract, AgentPartResult } from "../../../shared/contract/agent-v1";
 import type { ReadSource } from "../answer/basis";
 import type { Material } from "../answer/schema";
 import type { NextStep } from "../clarify/next-step";
@@ -245,4 +245,12 @@ export interface AgentGraphRun {
   leadLines: Map<string, string>;
   /** AG10: per part, the card operations an extraction made (propose freezes them; no second-layer model call). */
   presetIntents: Map<string, (CardOperationIntent & { localId: string })[]>;
+  /** AG19: per part, its answer as blocks (the same words as `answers`, with the listed records as cards). */
+  answerBlocks: Map<string, AgentAnswerBlockContract[]>;
+  /** AG19: parts whose answer a model wrote (its first line is the conclusion when more follows). */
+  modelAnswers: Set<string>;
+  /** AG19: the card of each record read in this request (ref → the three lines, written by code). */
+  recordCards: Map<string, AgentAnswerRecordContract>;
+  /** AG19: the delivered answer as blocks (filled by deliver). */
+  blocks: AgentAnswerBlockContract[];
 }

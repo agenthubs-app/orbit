@@ -26,6 +26,8 @@ export interface OwnEventRecord {
   attendedOn?: string | undefined;
   dayParts?: readonly string[] | undefined;
   selfNote?: string | undefined;
+  /** AG19: «我去过»: the event the note is about (kind and id only), so its card opens that event. */
+  eventRef?: { kind: "platform" | "private"; id: string } | undefined;
   version: number;
   updatedAt: string;
 }
@@ -67,6 +69,7 @@ export function ownEventsOf(input: {
       attendedOn: note.attendedOn,
       dayParts: note.dayParts,
       endsAt: about?.endsAt,
+      eventRef: { id: note.eventRef.id, kind: note.eventRef.kind },
       id: note.id,
       kind: "attendance",
       location: about?.location,
@@ -86,6 +89,8 @@ function ownRow(record: OwnEventRecord): CanonicalRow {
       attendedOn: record.attendedOn,
       dayParts: record.dayParts?.length ? [...record.dayParts] : undefined,
       endsAt: record.endsAt,
+      eventRefId: record.eventRef?.id,
+      eventRefKind: record.eventRef?.kind,
       kind: record.kind,
       location: record.location,
       selfNote: record.selfNote,

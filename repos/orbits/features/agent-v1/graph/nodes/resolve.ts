@@ -23,6 +23,7 @@ import { addLinkNames } from "../../answer/link-names";
 import { pinyin } from "pinyin-pro";
 
 import { readSourceOf } from "../../answer/basis";
+import { recordOfView } from "../../answer/blocks";
 import { gapWords } from "../../answer/gap-copy";
 import { materialOf } from "../../answer/materials";
 import type { GapReason, Material } from "../../answer/schema";
@@ -827,6 +828,8 @@ export function resolveNode(scope: NodeScope): GraphNode {
         for (const view of read.views) {
           const source = readSourceOf(view, zone);
           if (source) run.readSources.set(view.ref, source);
+          // AG19: its card (the three lines are code's), for the list or the small cards under the answer.
+          run.recordCards.set(view.ref, recordOfView(view, { language: state.language, nameOf: (id) => names.get(id) ?? run.readNames.get(id)?.name, now, timeZone: zone }));
         }
         finish("answered", null);
       } else if (read.gaps.has("service_error")) {
