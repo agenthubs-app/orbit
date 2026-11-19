@@ -71,7 +71,8 @@ const HEAD_MAX: Record<Language, number> = { en: 48, ja: 18, zh: 18 };
 /** "第1回：先去能判断质量" → head 第1回. Only a short label with no sentence punctuation counts as a head. */
 export function pointOf(line: string, language: Language): AgentAnswerPointContract {
   const text = line.replace(POINT_LINE, "").trim();
-  const at = language === "en" ? text.search(/:\s/u) : text.search(/[：:]/u);
+  // The label ends at a full-width colon, or at a colon followed by a space — never at the colon of a time ("10:00").
+  const at = text.search(/：|:\s/u);
   if (at > 0 && at <= HEAD_MAX[language]) {
     const head = text.slice(0, at).trim();
     const rest = text.slice(at + 1).trim();

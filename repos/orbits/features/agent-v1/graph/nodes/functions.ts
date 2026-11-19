@@ -66,7 +66,9 @@ const WHO_WORDS = /(谁|哪位|哪些人|哪几位|\bwho\b|\bwhom\b|誰|どな�
 const FORMAL_FOLLOW_UP = /(正式跟进|正式的跟进|フォローアップ|formal follow[\s-]?ups?)/iu;
 
 const EVENT_NOUN = /(活动|活動|イベント|\bevents?\b)/iu;
-const OTHER_READS = new Set<string>(["memo.read", "todo.read", "contact.read", "schedule.read", "view.recentInteraction", "view.timeline", "view.context"]);
+const OTHER_READS = new Set<string>(["memo.read", "todo.read", "contact.read", "view.recentInteraction", "view.timeline", "view.context"]);
+/** Words for the user's own schedule and other records: with one of them, "活动" is not the only thing asked about. */
+const OTHER_RECORD_NOUN = /(日程|安排|行程|会议|开会|待办|笔记|联系人|予定|スケジュール|会議|タスク|メモ|\bschedule\b|\bcalendar\b|\bmeetings?\b|\bto-?dos?\b|\bnotes?\b|\bappointments?\b)/iu;
 
 /**
  * AG19-6: "最近有哪些活动适合我？" is a list of the events that have not started, whatever the first layer tagged (the user's
@@ -77,7 +79,13 @@ export function listsUpcomingEvents(part: GraphPart, message: string): boolean {
   if (part.route !== "read") return false;
   const quote = message.slice(part.quote[0], part.quote[1]);
   if (!EVENT_NOUN.test(quote) || !asksUpcomingEvents(quote)) return false;
-  if (!part.capabilities.includes("event.read") || part.capabilities.some((capability) => OTHER_READS.has(capability) || capability === "fn.group" || capability === "fn.compare")) return false;
+  if (part.capabilities.some((capability) => OTHER_READS.has(capability) || capability === "fn.group" || capability === "fn.compare")) return false;
+  // AG19 stability run 1 (AE-ANS-010): "把接下来的活动都列出来" tagged as a schedule read listed the user's own schedule
+  // items. In Orbit 活动 are events: with no word for the schedule or another kind of record, the event list it is.
+  const event = part.capabilities.includes("event.read");
+  const schedule = part.capabilities.includes("schedule.read");
+  if (!event && !schedule) return false;
+  if (schedule && OTHER_RECORD_NOUN.test(quote)) return false;
   return !part.refs.some((ref) => ref.recordId || ref.entity === "contact" || ref.entity === "memo" || ref.entity === "todo" || ref.entity === "schedule");
 }
 

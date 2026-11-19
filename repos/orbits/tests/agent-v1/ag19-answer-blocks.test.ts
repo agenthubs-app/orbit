@@ -150,6 +150,21 @@ test("AG19-1, AG19-6: 「最近有哪些活动适合我？」 → a lead and one
   assert.deepEqual(mini?.items.map((item) => [item.id, item.top]), [["event:e106", "时间未公布"]]);
 });
 
+test("AG19-6: 活动 asked about as coming up is the event list, also when the first layer tagged a schedule read", async () => {
+  const message = "把接下来的活动按开始时间都列出来。";
+  const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", requiredCapabilities: ["schedule.read"], sourceQuote: message }], { world: fnWorld() });
+  assert.deepEqual(records(run.result.blocks)[0]?.items.map((item) => item.id), ["event:e103", "event:e101", "event:e104", "event:e102", "event:e105", "event:e107"]);
+  // With a word for the schedule beside it, the read the first layer named stands (no event list is forced).
+  const both = "接下来的活动和日程安排都列出来。";
+  const mixed = await runFn(both, [{ dataSources: ["orbit_records"], deliverable: "list", requiredCapabilities: ["schedule.read"], sourceQuote: both }], { answer: () => json({ segments: [{ lead: "接下来没有日程。", partId: "p1" }] }), world: fnWorld() });
+  assert.equal(mixed.events.some((event) => event.type === "functions.upcoming_only"), false);
+});
+
+test("a point's label ends at a full-width colon or a colon and a space, never inside a time", () => {
+  assert.deepEqual(textBlocks("・11月16日（周一）10:00：团队周会，每周重复。\n・11月19日（周四）12:00：和田中午餐。", "zh"), [{ items: [{ head: "11月16日（周一）10:00", text: "团队周会，每周重复。" }, { head: "11月19日（周四）12:00", text: "和田中午餐。" }], type: "points" }]);
+  assert.deepEqual(textBlocks("- Mon 10:00 weekly meeting\n- First: prepare the quote", "en"), [{ items: [{ text: "Mon 10:00 weekly meeting" }, { head: "First", text: "prepare the quote" }], type: "points" }]);
+});
+
 test("AG19-6: a past period in the words keeps the past events", async () => {
   const world = fnWorld();
   world.events.push(platformEvent("event:e090", "十月摄影散步", "2026-10-20T01:00:00.000Z", "上野"));

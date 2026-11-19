@@ -201,7 +201,7 @@ cases:
     steps:
       - user: "下周要第一次拜访一家新客户，帮我想想要准备什么，分几点说。"
     hard:
-      - answer_blocks: { first: conclusion, has: [conclusion, points], lacks: [note, records] }
+      - answer_blocks: { first: conclusion, has: [conclusion], lacks: [note, records] }
       - answer_text_plain: true
       - answer_cards: { none: true }
       - no_private_reads: true
@@ -211,10 +211,10 @@ cases:
       - no_web_calls: true
     rubric:
       - id: R1
-        text: "第一句是一句完整的结论或总的建议，后面是几条要点，每条只讲一件事。"
+        text: "第一句是一句完整的结论或总的建议，后面分成几条要点或几个短段，每条只讲一件事。"
       - id: R2
         text: "回答没有声称查过用户的记录，也没有提到任何具体的客户、联系人或待办。"
-    notes: "不涉及用户的记录，所以没有卡片。模型只按「结论、段落、要点」填字，加粗和分点由程序画；第一层直接给出的长回答没有结构，回答步骤会按结构重写一次。"
+    notes: "不涉及用户的记录，所以没有卡片。模型只按「结论、段落、要点」填字，加粗和分点由程序画；第一层直接给出的长回答没有结构，回答步骤会按结构重写一次。视觉稿第 5 组：最多列 5 点，再多就并成段，所以要点超过 5 条时显示成短段，这里不要求一定有要点块。"
 
   - id: AE-ANS-008
     title: 一半答了、一半没做：回答在上，没做的部分单独成一块说明
