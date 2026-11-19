@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { z } from "zod";
 import { contactDetailPath } from "../../api/endpoints";
-import type { ReferenceBinding, ReferenceLanguage } from "../../api/compute/agent-references";
+import { markedSegments, type ReferenceBinding, type ReferenceLanguage } from "../../api/compute/agent-references";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useLocalContacts } from "../../hooks/useLocalContacts";
 import { localContactLabel } from "../../view-models/contacts-local";
@@ -49,7 +49,18 @@ export function ReferenceChip({ binding, showHint, onRemove }: { binding: Refere
   </View>;
 }
 
+/**
+ * AG11 (D1, D2, D7): the draft as nested Text children of the composer's TextInput — the picked 「@名字」 tinted as on Web
+ * (plum, semibold), one that cannot be opened struck through; words that no longer match a mark are plain text.
+ */
+export function MarkedDraft({ text, bindings }: { text: string; bindings: readonly ReferenceBinding[] }) {
+  const { styles } = useStyles();
+  return <>{markedSegments(text, bindings).map((segment, index) => <Text key={index} style={segment.binding ? (segment.binding.gone ? styles.markGone : styles.mark) : null} testID={segment.binding ? `reference-mark-${segment.binding.type}:${segment.binding.id}` : undefined}>{segment.text}</Text>)}</>;
+}
+
 const useStyles = createThemedStyles(colors => StyleSheet.create({
+  mark: { color: colors.plum700, fontWeight: "600" },
+  markGone: { color: colors.ink3, textDecorationLine: "line-through" },
   chip: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 999, flexDirection: "row", gap: 4, maxWidth: "100%", paddingHorizontal: 6, paddingVertical: 3 },
   chipGone: { backgroundColor: colors.surface, borderColor: colors.ink3, borderStyle: "dashed", borderWidth: 1 },
   name: { color: colors.ink, flexShrink: 1, fontSize: 13, fontWeight: "600" },

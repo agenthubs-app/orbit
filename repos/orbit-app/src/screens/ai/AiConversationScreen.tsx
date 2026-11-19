@@ -58,7 +58,7 @@ import type { AiSessionOriginInputContract, AiSessionReferenceContract } from ".
 import { updateAiSessionOrganization } from "../../api/ai-session-management";
 import { useMobileViewport } from "../../platform/use-mobile-viewport";
 import { atPickerQuery, ContactMentionPicker, referenceKey, useGoneReferences } from "./ContactMentionPicker";
-import { ContactReferenceChip, ReferenceChip } from "./ContactReferenceChip";
+import { ContactReferenceChip, MarkedDraft, ReferenceChip } from "./ContactReferenceChip";
 import { bindingHolds, insertReference, reconcileBindings, referenceChipHint, referencesForSend, removeBinding, sameNamedKeys, type ReferenceBinding, type ReferenceLanguage } from "../../api/compute/agent-references";
 import type { AgentReferenceCandidateContract } from "../../api/contract/agent-v1";
 import { AiEntityCardList } from "./cards/AiEntityCard";
@@ -1079,6 +1079,8 @@ function ConversationThread({
   const selection = useRef(draftMessage.length);
   const shownBindings = referenceBindings.filter((binding) => bindingHolds(draftMessage, binding));
   const sameNamed = sameNamedKeys(shownBindings);
+  // D1: the picked 「@名字」 tinted inside the input (nested Text children; react-native-web's input cannot hold styled runs, the chips show the picks there).
+  const tintMarks = Platform.OS !== "web" && shownBindings.length > 0;
   // D7: a restored draft's records are checked once; one that cannot be opened shows 「打不开了」 and can still be sent.
   useGoneReferences(shownBindings, referencesOnline, scopeKey, onGoneReferences);
   const pickerQuery = picker?.kind === "at" ? draftMessage.slice(picker.start + 1, Math.max(picker.start + 1, selection.current)) : plusQuery;
@@ -1236,7 +1238,7 @@ function ConversationThread({
           {shownBindings.map((binding) => <ReferenceChip key={`${referenceKey(binding)}@${binding.start}`} binding={binding} showHint={sameNamed.has(`${binding.type}:${binding.name}`)} onRemove={() => onRemoveBinding(binding)} />)}
         </View> : null}
         {shownBindings.some((binding) => binding.gone) ? <UiText style={styles.r21Muted}>{locale.t("aiMention.goneHint")}</UiText> : null}
-        <View style={styles.r21ComposerLine}><UiIconButton icon="plus" accessibilityLabel={locale.t("aiMention.add")} onPress={() => { if (picker) { setPicker(null); return; } setPlusQuery(""); setPicker({ caret: selection.current, kind: "plus" }); }} /><TextInput accessibilityLabel={locale.t("ai.message")} multiline={false} onChangeText={typeDraft} onSelectionChange={(event) => { selection.current = event.nativeEvent.selection.start; }} onSubmitEditing={() => { followNewMessages.current = true; setPicker(null); onSend(); }} placeholder={locale.t("aiConversation.continuePlaceholder")} placeholderTextColor={colors.ink3Text} returnKeyType="send" style={styles.r21Input} value={draftMessage} /><UiIconButton icon="send" accessibilityLabel={locale.t("aiConversation.sendMessage")} onPress={() => { followNewMessages.current = true; setPicker(null); onSend(); }} disabled={sending || writingBlocked || !draftMessage.trim()} solid /></View>
+        <View style={styles.r21ComposerLine}><UiIconButton icon="plus" accessibilityLabel={locale.t("aiMention.add")} onPress={() => { if (picker) { setPicker(null); return; } setPlusQuery(""); setPicker({ caret: selection.current, kind: "plus" }); }} /><TextInput accessibilityLabel={locale.t("ai.message")} multiline={false} onChangeText={typeDraft} onSelectionChange={(event) => { selection.current = event.nativeEvent.selection.start; }} onSubmitEditing={() => { followNewMessages.current = true; setPicker(null); onSend(); }} placeholder={locale.t("aiConversation.continuePlaceholder")} placeholderTextColor={colors.ink3Text} returnKeyType="send" style={styles.r21Input} {...(tintMarks ? {} : { value: draftMessage })}>{tintMarks ? <MarkedDraft text={draftMessage} bindings={shownBindings} /> : null}</TextInput><UiIconButton icon="send" accessibilityLabel={locale.t("aiConversation.sendMessage")} onPress={() => { followNewMessages.current = true; setPicker(null); onSend(); }} disabled={sending || writingBlocked || !draftMessage.trim()} solid /></View>
       </View>
       <ActionSheet visible={routesOpen} title={locale.t("aiConversation.commonEntries")} onClose={() => setRoutesOpen(false)} options={conversationQuickRoutes(locale.language).map((route) => ({ key: route.href, label: route.title }))} onSelect={(key) => { setRoutesOpen(false); onOpenHref(key); }} />
     </AppScreen>

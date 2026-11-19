@@ -6,7 +6,7 @@ import React from "react";
 
 import { insertReference, reconcileBindings, referencesForSend, removeBinding, type ReferenceBinding } from "../src/api/compute/agent-references";
 import type { AgentReferenceSearchResultContract } from "../src/api/contract/agent-v1";
-import { renderedText } from "./helpers/render";
+import { renderedText, renderToHtml } from "./helpers/render";
 
 /**
  * agent-design AG11-1/AG11-3 (获批视觉稿 D1–D8), the App side: the 「添加上下文」 picker lists six kinds grouped with their
@@ -94,4 +94,25 @@ test("the screen keeps the marks in the draft journal and sends them with their 
   const sent = referencesForSend(removed.text, journal.referenceBindings);
   assert.deepEqual(sent.references, [{ end: 16, eventKind: "platform", id: "event:e103", start: 5, type: "event" }]);
   assert.deepEqual(reconcileBindings(removed.text, removed.text.replace("定价", "价"), journal.referenceBindings), [], "editing the words of a mark drops it");
+});
+
+test("the picked 「@名字」 is tinted inside the composer; an edited mark goes back to plain text (D1, D2)", () => {
+  const text = "@和田中午餐 和 @SaaS 定价研讨会 是同一天吗？";
+  const bindings: ReferenceBinding[] = [
+    { end: 6, id: "personal:s11", name: "和田中午餐", start: 0, type: "schedule" },
+    { end: 20, eventKind: "platform", id: "event:e103", name: "SaaS 定价研讨会", start: 9, type: "event" },
+  ];
+  const tinted = /r-color-\w+ r-fontWeight-/u; // react-native-web renders the style as atomic classes
+  const marksOf = (html: string) => [...html.matchAll(/<[^>]*data-testid="reference-mark-([^"]+)"[^>]*>([^<]*)</gu)].map((match) => [match[1], match[2], tinted.test(match[0])]);
+  const html = renderToHtml(<chips.MarkedDraft text={text} bindings={bindings} />);
+  assert.deepEqual(marksOf(html), [["schedule:personal:s11", "@和田中午餐", true], ["event:event:e103", "@SaaS 定价研讨会", true]]);
+  assert.equal(renderedText(<chips.MarkedDraft text={text} bindings={bindings} />).replace(/\s+/gu, ""), text.replace(/\s+/gu, ""));
+  // D2: one character of 「@和田中午餐」 deleted — that mark is plain text again, the other stays tinted.
+  const edited = text.replace("和田中午餐", "和田中午");
+  const kept = reconcileBindings(text, edited, bindings);
+  assert.deepEqual(marksOf(renderToHtml(<chips.MarkedDraft text={edited} bindings={kept} />)).map((mark) => mark[0]), ["event:event:e103"]);
+  // D7: a record that cannot be opened is struck through.
+  assert.match(renderToHtml(<chips.MarkedDraft text={text} bindings={[{ ...bindings[0]!, gone: true }]} />), /r-textDecorationLine-/u);
+  const source = readFileSync(new URL("../src/screens/ai/AiConversationScreen.tsx", import.meta.url), "utf8");
+  assert.match(source, /\{tintMarks \? <MarkedDraft text=\{draftMessage\} bindings=\{shownBindings\} \/> : null\}<\/TextInput>/u, "the composer's TextInput holds the tinted runs");
 });
