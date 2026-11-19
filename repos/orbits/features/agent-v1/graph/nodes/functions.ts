@@ -28,7 +28,9 @@ import { localDay } from "../../views/recent-interaction";
 import type { CanonicalEventRecord } from "../../../events/core/contract";
 import type { NoteInteractionContract } from "../../../../shared/contract/notes";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
-import { directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, memoriesFor, naturalField, PICK_WORDS, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
+import { directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, naturalField, PICK_WORDS, sentenceTopicOf, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
+import { MEMORY_WORDS } from "../../domains/memory/copy";
+import { ensureTurnMemory, rankMemoryOf } from "../../domains/memory/turn";
 import { compare, dimensionsIn, type ComparedEvent } from "../../functions/compare";
 import * as say from "../../functions/copy";
 import { memoDayOf } from "../../functions/dates";
@@ -648,7 +650,10 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const leftToAgent = reply && leavesItToAgent(replyWords);
 
   // 1. The basis (functions/basis.ts): now → memory → history; none → one question.
-  const words = `${original} ${replyWords}`;
+  // AG14: words of this very message the user asked to remember ("记住，以后……优先周末上午。先按这个推荐……") count as this
+  // turn's own basis, whether or not they are saved.
+  const rememberedNow = run.memory.turnWords.join("，");
+  const words = `${original} ${replyWords}${rememberedNow ? ` ${rememberedNow}` : ""}`;
   const fieldFromWords = groundedField(rank.orderBy, words) ?? (domain === "contact" && LAST_INTERACTION_WORDS.test(words) ? "lastInteraction" : domain === "event" && START_WORDS.test(words) ? "startsAt" : null) ?? (chosen === "startsAt" || chosen === "dueAt" || chosen === "plannedDate" || chosen === "lastInteraction" ? chosen : null);
   const field: RankField | null = fieldFromWords;
   const direction: "asc" | "desc" = field ? (rank.direction && groundedField(rank.orderBy, words) ? rank.direction : directionSaidIn(words, field === "lastInteraction" ? "asc" : "asc")) : "asc";
@@ -677,16 +682,30 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   }
   const topicWords = basisMemo ? basis : topicWordsOf(basis ?? (reply ? replyWords : original));
   const followUpAsk = domain === "contact" && FOLLOW_UP_WORDS.test(words) && !basisMemo && !topicWordsOf(basis ?? "").replace(FOLLOW_UP_WORDS, "").replace(FOLLOW_UP_QUESTION_WORDS, "").trim();
-  let topic: string | null = basisMemo ? basis : topicWords && !followUpAsk ? (basis && topicWordsOf(basis) ? basis : reply ? replyWords : null) : null;
+  // AG14 dev run 2 (AE-SCL-027): basis words that only say "worth going" ("行く価値がありそう", "值得去的") name no topic,
+  // whoever copied them out — the first layer's basis is held to the same test as the sentence itself.
+  let topic: string | null = basisMemo ? basis : topicWords && !followUpAsk ? (basis && sentenceTopicOf(basis) ? basis : reply ? replyWords : null) : null;
   // A ranking with neither a basis nor a field, in AG08's words of the part itself ("最适合聊…"): kept when words remain.
-  if (!topic && !field && !reply && domain !== "todo" && topicWordsOf(original) && !followUpAsk) topic = original;
+  // AG14: a topic that is only the sentence itself (no basis words from the first layer) is a weak one.
+  let topicIsSentence = false;
+  if (!topic && !field && !reply && domain !== "todo" && sentenceTopicOf(original) && !followUpAsk) {
+    topic = original;
+    topicIsSentence = true;
+  }
   // "随便" leaves it to the agent: no topic, the natural order.
   if (leftToAgent) topic = null;
-  // Saved memory (read only until AG14): preferences rank, constraints are hard conditions.
-  const memories = deps.memories ? await deps.memories.list(input.actorId).catch(() => []) : [];
-  const recalled = memoriesFor(domain, memories);
-  for (const item of recalled) if (item.time && domain === "event") time.push(item.time);
-  if (recalled.length) emitTrace({ memories: recalled.map((item) => item.memory.id), partId: part.localId, type: "memory.recall" });
+  // AG14 (设计稿 §6; replaces AG10's read-only list): the saved entries for this task. Rules are hard conditions and
+  // preferences rank; what this turn's own words say wins over a saved preference ("这次看周四晚上").
+  const saved = rankMemoryOf(await ensureTurnMemory(scope, now, timeZone), domain, { now, partId: part.localId, timeZone, turnHasTopic: Boolean(topic) && !topicIsSentence, turnTime: domain === "event" ? turnTime : null });
+  for (const item of saved.time) time.push(item.preference);
+  let topicFromMemory = false;
+  if (saved.topic && (!topic || topicIsSentence) && !basisMemo) {
+    topic = saved.topic;
+    topicFromMemory = true;
+  } else if (topicIsSentence && saved.used.length) {
+    // "值得去的" with saved entries for this task: the entries are the basis, not the sentence.
+    topic = null;
+  }
   const listing = !PICK_WORDS.test(original) && (part.plan.deliverable === "list" || /(列出|列一下|列个|\blist\b|一覧|並べて)/iu.test(original));
   const history = !topic && !field && !time.length && domain === "contact" && (followUpAsk || chosen === "overdue");
   const todoNatural = domain === "todo";
@@ -787,7 +806,9 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     };
     for (const candidate of candidates) {
       const item = candidate as EventCandidate;
-      if (item.startsAt && time.length) reasons.set(item.id, time.map((preference) => (preferenceMet(preference, item.startsAt!, timeZone) ? say.timeWords(preference, language) : null)).filter(Boolean).join("、"));
+      // AG14: a time that is left out ("不要晚上的") removes candidates; it is not a reason said next to the ones kept
+      // (a morning event was labelled "晚上" because it met the exclusion).
+      if (item.startsAt && time.length) reasons.set(item.id, time.filter((preference) => !preference.exclude).map((preference) => (preferenceMet(preference, item.startsAt!, timeZone) ? say.timeWords(preference, language) : null)).filter(Boolean).join("、"));
     }
     emitTrace({ chosen: chosenIds.length >= 2 ? chosenIds.length : 0, hard: { from: fromDay, to: toDay }, partId: part.localId, time: time.map((item) => ({ days: item.days ?? null, hard: item.hard, part: item.part ?? null, source: item.source })), type: "functions.hard_conditions" });
   } else {
@@ -838,17 +859,23 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   // The lead: what the ranking used (code). AG08's shapes stay for a topic or a field alone.
   const steps: string[] = [];
   for (const preference of time.filter((item) => item.source === "turn")) steps.push(language === "en" ? `whether it is ${say.timeWords(preference, language)}` : language === "ja" ? `${say.timeWords(preference, language)}かどうか` : `是不是${say.timeWords(preference, language)}`);
-  if (topic && time.length) steps.push(basisMemo ? (language === "en" ? `how closely it relates to the topics of your note "${basisMemo}"` : language === "ja" ? `メモ「${basisMemo}」のテーマにどれだけ合うか` : `和你的笔记「${basisMemo}」的主题有多相关`) : (language === "en" ? `how closely it relates to "${topic}"` : language === "ja" ? `「${topic}」にどれだけ合うか` : `和「${topic}」有多相关`));
+  // AG14: a topic that came from a saved entry is named with that entry (below), not as a step of its own.
+  if (topic && time.length && !topicFromMemory) steps.push(basisMemo ? (language === "en" ? `how closely it relates to the topics of your note "${basisMemo}"` : language === "ja" ? `メモ「${basisMemo}」のテーマにどれだけ合うか` : `和你的笔记「${basisMemo}」的主题有多相关`) : (language === "en" ? `how closely it relates to "${topic}"` : language === "ja" ? `「${topic}」にどれだけ合うか` : `和「${topic}」有多相关`));
   if (history) steps.push(language === "en" ? "follow-ups past due that are not done, then to-dos past their planned day" : language === "ja" ? "期限を過ぎて未完了のフォローアップ、次に予定日を過ぎたタスク" : "已到期没做的跟进、过了计划日的待办");
   if (domain === "todo" && orderField) steps.push(say.fieldOrderWords(orderField, orderDirection, language));
-  const memoryWords = recalled.map((item) => item.memory.content);
+  const memoryWords = saved.used.map((item) => item.content);
   // AE-FN-006: only the related ones, in the order of the field the user named.
   const filterLead = topicAsFilter && orderField ? ({ en: `Only the ${NOUN[domain].en} related to "${topic}", ${say.fieldOrderWords(orderField, orderDirection, "en")}.`, ja: `「${topic}」に関連する${NOUN[domain].ja}だけを、${say.fieldOrderWords(orderField, orderDirection, "ja")}に並べました。`, zh: `只列和「${topic}」相关的${NOUN[domain].zh}，${say.fieldOrderWords(orderField, orderDirection, "zh")}排。` } as const)[language] : null;
-  const lead = filterLead ?? (useNatural && !listing && !todoNatural
+  const basisLead = filterLead ?? (useNatural && !listing && !todoNatural
     ? say.rankLead(language, [say.fieldName(natural.field, language)], { history: false, memory: [], natural: true })
     : steps.length || memoryWords.length ? say.rankLead(language, steps, { history, memory: memoryWords, natural: false }) : null);
+  // AG14 dev run 2 (AE-MEM-007): a time that is only preferred ("优先周末下午") and that none of the events listed meets is
+  // said so right after the basis — the list below is then the other times, never events "that match" the preference.
+  const preferred = time.filter((item) => !item.hard && !item.exclude);
+  const unmet = domain === "event" && !topic && preferred.length > 0 && result.ordered.length > 0 && !result.ordered.some((item) => item.meetsTime);
+  const lead = basisLead && unmet ? `${basisLead}\n${MEMORY_WORDS.noneAtPreferredTime(language, say.timeWords(preferred[0], language))}` : basisLead;
   const apart = history && upcoming.length ? say.upcomingApartLine(language, upcoming.map((contact) => `${contact.name}${language === "en" ? " — " : "——"}${contact.signals.map((item) => signalWords(item, language, timeZone)).join(language === "en" ? "; " : "；")}`)) : null;
-  const written = writeAnswer({ apart, basis: topic && !basisMemo ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
+  const written = writeAnswer({ apart, basis: topic && !basisMemo && !topicFromMemory ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
   // AG12 run-03 (AE-FN-003 R4): beside a ranking that says its basis, the ways of ordering it again as clickable entries (the
   // same options as the basis question; the clients show entries already). A click ranks again by it; it asks nothing.
   if (lead && !optionSets.some((set) => set.partId === part.localId && set.purpose === "ranking" && set.kind === "entry")) {
@@ -863,7 +890,25 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     }
   }
   if (result.semantic && result.matched) run.topicMatched = true;
-  run.answers.set(part.localId, written.text);
+  // AG14 (设计稿 §6 "旁边可改"): an answer that used saved entries says where they can be changed.
+  // When none meets the preferred time, the count line says how many there are in the period, not how many "match".
+  const answerText = unmet
+    ? written.text.replace(say.coverageLine(language, result.ordered.length, result.matching, { en: UNIT[domain].en, ja: UNIT[domain].ja, zh: UNIT[domain].zh }), MEMORY_WORDS.periodCount(language, result.ordered.length, result.matching, UNIT[domain][language]))
+    : written.text;
+  run.answers.set(part.localId, saved.used.length && lead ? `${answerText}\n${MEMORY_WORDS.manageLine(language, saved.used.length)}` : answerText);
+  // AG14: what this ranking used, by reference, for the session ("为什么排第一", "这次看……").
+  run.memory.ranking = {
+    at: now,
+    domain,
+    listed: result.ordered.slice(0, 10).map((item) => item.candidate.ref),
+    memories: saved.used.map((item) => ({ memoryId: item.memoryId, revision: item.revision })),
+    requestId: input.requestId,
+    topic: Boolean(topic),
+    turnBasis: Boolean(turnTime) || (Boolean(topic) && !topicFromMemory),
+    ...(plan.count ?? rank.count ? { count: plan.count ?? rank.count } : {}),
+    ...(plan.from ? { from: plan.from } : {}),
+    ...(plan.to ? { to: plan.to } : {}),
+  };
   part.route = "read";
   part.status = "answered";
   part.reason = null;
@@ -880,7 +925,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     run.readNames.set(item.view.id, { name: domain === "contact" ? (item as ContactCandidate).name : domain === "event" ? (item as EventCandidate).title : (item as TodoCandidate).title, type: domain });
   }
   emitTrace({ coverage: result.coverage, domain, listed: result.ordered.map((item) => item.candidate.ref), matched: result.matched, partId: part.localId, semantic: result.semantic, type: "functions.ranked", unmatchedReason: result.unmatchedReason, untimed: result.untimed.map((item) => item.ref) });
-  emitTrace({ basis: { field: orderField, history, memory: recalled.map((item) => item.memory.id), natural: useNatural, time: time.length, topic: Boolean(topic) }, listed: result.ordered.map((item) => item.candidate.ref), partId: part.localId, rejected: result.rejected, type: "fn.rank", ...(history ? { upcoming: upcoming.map((item) => item.ref) } : {}), untimed: result.untimed.map((item) => item.ref) });
+  emitTrace({ basis: { field: orderField, history, memory: saved.used.map((item) => item.memoryId), natural: useNatural, time: time.length, topic: Boolean(topic) }, listed: result.ordered.map((item) => item.candidate.ref), partId: part.localId, rejected: result.rejected, type: "fn.rank", ...(history ? { upcoming: upcoming.map((item) => item.ref) } : {}), untimed: result.untimed.map((item) => item.ref) });
 }
 
 function preferenceMet(preference: TimePreference, startsAt: string, timeZone: string): boolean {

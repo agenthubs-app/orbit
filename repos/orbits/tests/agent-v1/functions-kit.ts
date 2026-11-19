@@ -7,6 +7,8 @@ import { MemorySaver } from "@langchain/langgraph";
 
 import { runAgentGraph, type AgentGraphResult } from "../../features/agent-v1/graph/build";
 import type { AgentCardAccess } from "../../features/agent-v1/graph/deps";
+import type { AgentMemory, AgentMemorySnapshot } from "../../features/agent/memory/contract";
+import { normalizeAgentMemory } from "../../features/agent/memory/service";
 import { buildCardOperationList, type CardOperationIntent } from "../../features/agent/runtime/card-operations";
 import type { MemoryRecord } from "../../features/agent-v1/domains/source";
 import type { CanonicalEventRecord } from "../../features/events/core/contract";
@@ -93,6 +95,14 @@ export interface FnRun {
 }
 
 /** One turn: the first layer's parts, the extraction's output (node "functions"), the judgment's answers. */
+/** A saved entry as a test writes it (the rest gets the stored defaults). */
+export type TestMemory = { id: string; category: string; content: string } & Partial<Pick<AgentMemory, "appliesTo" | "structured" | "revision" | "validFrom" | "validUntil" | "sourceMessageRef">>;
+
+export function memorySnapshotOf(memories: readonly TestMemory[], settings: Partial<AgentMemorySnapshot["settings"]> = {}, marks: AgentMemorySnapshot["marks"] = []): AgentMemorySnapshot {
+  const entries = memories.map((item, index) => normalizeAgentMemory({ ...item, category: item.category as AgentMemory["category"], createdAt: "2026-11-01T00:00:00.000Z", memoryId: item.id, updatedAt: new Date(Date.parse("2026-11-05T00:00:00.000Z") - index * 1000).toISOString() }));
+  return { entries, marks: [...marks], settings: { allowConversationLearning: false, enabled: true, updatedAt: "2026-11-01T00:00:00.000Z", ...settings }, version: entries.reduce((sum, entry) => sum + entry.revision, 0) + marks.reduce((sum, mark) => sum + mark.revision, 0) };
+}
+
 export async function runFn(message: string, understood: Record<string, unknown>[], options: {
   world?: ReturnType<typeof fnWorld>;
   language?: "zh" | "ja" | "en";
@@ -103,7 +113,12 @@ export async function runFn(message: string, understood: Record<string, unknown>
   answer?: (call: ModelCall) => string;
   judge?: Answerer;
   judgeOptions?: { hang?: boolean; extra?: Record<string, unknown> };
-  memories?: { id: string; category: string; content: string }[];
+  memories?: TestMemory[];
+  memorySettings?: Partial<AgentMemorySnapshot["settings"]>;
+  memoryMarks?: AgentMemorySnapshot["marks"];
+  /** The session's stored messages the turn is given (a resumed conversation). */
+  messages?: Parameters<typeof graphKit>[1]["messages"];
+  requestId?: string;
   thresholds?: typeof TEST_THRESHOLDS;
   state?: Parameters<typeof graphKit>[1]["state"];
   session?: ReturnType<typeof graphKit>;
@@ -116,18 +131,20 @@ export async function runFn(message: string, understood: Record<string, unknown>
     understand: () => json({ language: options.language ?? "zh", parts: understood.map((item, index) => part({ localId: `p${index + 1}`, ...item })), plainChat: false }),
   }));
   const judgment = judgeStub(options.judge ?? (() => undefined), options.judgeOptions ?? {});
-  const kit = options.session ?? graphKit(model.fetchImplementation, { now: NOW, records: recordAccessOf(world), ...(options.references ? { references: options.references } : {}), ...(options.state ? { state: options.state } : {}) });
+  const kit = options.session ?? graphKit(model.fetchImplementation, { now: NOW, records: recordAccessOf(world), ...(options.references ? { references: options.references } : {}), ...(options.state ? { state: options.state } : {}), ...(options.messages ? { messages: options.messages } : {}) });
   kit.deps.fetchImplementation = model.fetchImplementation;
   // This turn's @ references (a shared session kit gets them per turn).
   kit.deps.authorizeReferences = async () => options.references ?? [];
   kit.deps.judgment = access(judgment.fetchImplementation, { thresholds: options.thresholds ?? FN_THRESHOLDS, timeoutMs: options.judgeOptions?.hang ? 30 : 3000 });
   const card = cardKit(world);
   kit.deps.cards = card.cards;
-  if (options.memories) kit.deps.memories = { list: async () => options.memories! };
+  // AG14: the saved entries as the turn reads them (one snapshot of the scope); entries given without tasks are not
+  // classified and apply where their own words name the task, as entries stored before AG14 do.
+  if (options.memories) kit.deps.memory = { snapshot: async () => memorySnapshotOf(options.memories!, options.memorySettings, options.memoryMarks) };
   await kit.seeded;
   const trace = captureTrace();
   try {
-    const result = await runAgentGraph(kit.deps, kit.input(message, { locale: options.language ?? "zh", ...(options.references ? { references: options.references.map((item) => ({ id: item.id, type: item.type as never })) } : {}) }));
+    const result = await runAgentGraph(kit.deps, kit.input(message, { locale: options.language ?? "zh", ...(options.requestId ? { requestId: options.requestId } : {}), ...(options.references ? { references: options.references.map((item) => ({ id: item.id, type: item.type as never })) } : {}) }));
     return { events: trace.events, frozen: card.frozen, judgeCalls: judgment.calls, modelCalls: model.calls, result };
   } finally {
     trace.restore();

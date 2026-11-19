@@ -25,6 +25,7 @@ import { organizeMeansSummary } from "./functions";
 import { contactKindOf } from "../../propose/resolve";
 import { capabilityKind, type Capability } from "../../route/capabilities";
 import type { NextStep } from "../../clarify/next-step";
+import { isMemoryAsk, memoryRouteStep } from "../../domains/memory/turn";
 
 /** The words of a day said in the message ("周五", "金曜日", "Friday", "11月20日"), for an entry's label. */
 const DAY_WORDS = /(下(?:个)?(?:周|星期|礼拜)[一二三四五六日天]|(?:周|星期|礼拜)[一二三四五六日天]|明天|后天|\d{1,2}\s*月\s*\d{1,2}\s*日|来週の?[月火水木金土日]曜日?|[月火水木金土日]曜日|明日|明後日|(?:next\s+)?(?:mon|tues|wednes|thurs|fri|satur|sun)day|tomorrow)/iu;
@@ -119,6 +120,8 @@ export function routeNode(scope: NodeScope): GraphNode {
         const quote = input.message.slice(original.quote[0], original.quote[1]);
         const followsWrite = original.dependsOn.some((id) => state.parts.find((other) => other.localId === id)?.capabilities.some((capability) => capabilityKind(capability) === "write"));
         const review = { capabilities: original.capabilities, clarity: original.plan.clarity, continues: Boolean(found && found.kind !== "new"), followsWrite, hypothesis: original.plan.hypothesis, intentBasis: original.plan.intentBasis, negation: original.plan.negation, quote };
+        // AG14: an ask about saved memory is read from the words by code (memoryRouteStep); it needs no review.
+        if (isMemoryAsk(quote, original.capabilities)) continue;
         if (!needsIntentReview(review)) continue;
         const result = await reviewWriteIntent(deps.judgment, run.judgment, { language: state.language, message: input.message, quote, requestId: input.requestId });
         emitTrace({ explicit: result.explicit, partId: original.localId, type: "route.intent_review", verdict: result.verdict ? { answer: result.verdict.answer, confidence: result.verdict.confidence, fallback: result.verdict.fallback, reason: result.verdict.reason } : null });
@@ -244,6 +247,9 @@ export function routeNode(scope: NodeScope): GraphNode {
       };
     });
     if (!resume) {
+      // AG14: the parts about saved memory ("记住……", "这次……", "忘掉……", what is saved, why the list was ordered so) are
+      // settled by code before dependencies are (domains/memory/turn.ts).
+      await memoryRouteStep(scope, state, parts);
       settleDependencies(parts);
       for (const part of parts) if (part.status === "waiting_dependency") part.reason = "dependency_pending";
     }

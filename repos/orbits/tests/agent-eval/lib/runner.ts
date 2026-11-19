@@ -18,7 +18,7 @@ import type { EvalEnvironment } from "./env-guard";
 import { baseUrl } from "./eval-env";
 import { fakeTurn, FAKE_DEFECTS, type FakeDefect } from "./fake-agent";
 import { hardChecksPass, runHardChecks, type CheckContext, type CheckResult } from "./hard-checks";
-import { BUSINESS_COLLECTIONS, normalizeDraftOps, normalizeLedgerOps, PRIVATE_READ_COLLECTIONS, productIdsIn, type CardObservation, type EntryObservation, type FirstLayerObservation, type HandoffPart, type Observation, type ReadObservation } from "./observations";
+import { BUSINESS_COLLECTIONS, normalizeDraftOps, normalizeLedgerOps, PRIVATE_READ_COLLECTIONS, productIdsIn, type MemoryEntryObservation, type CardObservation, type EntryObservation, type FirstLayerObservation, type HandoffPart, type Observation, type ReadObservation } from "./observations";
 import { evalPaths } from "./paths";
 import { drainServer, serverControl } from "./server";
 import { readSeedReport, type SeedReportFile } from "./selfcheck";
@@ -134,8 +134,11 @@ function stripLifecycle(payload: Record<string, unknown> | null | undefined): Re
 
 /** Deployment settings a patch may set for one case (AG03: model-budget-1); the eval preload hands them to the server. */
 const DEPLOYMENT_SETTINGS = new Set(["model_calls_limit", "judgment_uncalibrated"]);
+/** AG14: the account's own memory switches (「回答时参考这些」, 「从对话里记住新的」). */
+const MEMORY_SETTINGS = new Set(["memory_use", "memory_learn"]);
+const MEMORY_SETTING_LABEL: Record<string, string> = { memory_learn: "从对话里记住新的", memory_use: "回答时参考这些" };
 
-async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches: Record<string, any>, writer: WorldWriter, report: SeedReportFile, unsupported: Observation["unsupported"], fixtureCards: FixtureRecord[] = [], deploymentSettings: Record<string, unknown> = {}, conversations: string[] = []): Promise<Record<string, string>> {
+async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches: Record<string, any>, writer: WorldWriter, report: SeedReportFile, unsupported: Observation["unsupported"], fixtureCards: FixtureRecord[] = [], deploymentSettings: Record<string, unknown> = {}, conversations: string[] = [], memoryWritten: FixtureRecord[] = []): Promise<Record<string, string>> {
   const extraIds: Record<string, string> = {};
   for (const name of testCase.patches ?? []) {
     const patch = world.patches[name] ?? filePatches[name];
@@ -159,8 +162,11 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
         else if (record.kind === "memo") await writer.writeMemo(record);
         else if (record.kind === "todo") await writer.writeTodo(record, false);
         else if (record.kind === "followup") await writer.writeTodo(record, true);
-        else if (record.kind === "memory") await writer.writeMemory(record);
-        else if (record.kind === "rule") await writer.writeRule(record);
+        else if (record.kind === "memory") {
+          await writer.writeMemory(record);
+          // AG14: a patch's memory entry belongs to its account alone (no_cross_account looks for its words elsewhere).
+          memoryWritten.push(record);
+        } else if (record.kind === "rule") await writer.writeRule(record);
         else if (record.kind === "schedule") await writer.writeSchedule(record);
         // AG13: private events and «我去过».
         else if (record.kind === "private_event") await writer.writePrivateEvent(record);
@@ -194,6 +200,8 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
     }
     for (const [key, value] of Object.entries((patch.settings ?? {}) as Record<string, unknown>)) {
       if (DEPLOYMENT_SETTINGS.has(key)) deploymentSettings[key] = value;
+      // AG14 (mem-learn-on): the account's own memory switches, set through the memory service before the case starts.
+      else if (MEMORY_SETTINGS.has(key)) await writer.setMemorySettings(world.mainAccount, { [key]: value });
       else unsupported.push({ reason: `patch ${name}: setting ${key}: ${JSON.stringify(value)} is not supported by the current product`, step: 0, word: "patch" });
     }
     for (const kind of Object.keys(generated)) if (kind !== "contacts") unsupported.push({ reason: `patch ${name}: generated ${kind} are not supported yet`, step: 0, word: "patch" });
@@ -247,7 +255,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const fixtureCards: FixtureRecord[] = [];
   const deploymentSettings: Record<string, unknown> = {};
   const patchConversations: string[] = [];
-  const extraIds = await applyPatches(testCase, world, filePatches, ctx.writer, report, unsupported, fixtureCards, deploymentSettings, patchConversations);
+  const patchMemory: FixtureRecord[] = [];
+  const extraIds = await applyPatches(testCase, world, filePatches, ctx.writer, report, unsupported, fixtureCards, deploymentSettings, patchConversations, patchMemory);
   const idMap: Record<string, string> = { ...report.ids, ...extraIds };
   const reverse = new Map(Object.entries(idMap).map(([fixture, product]) => [product, fixture]));
   const fixtureIdOf = (productId: string | null | undefined) => (productId ? reverse.get(productId) ?? null : null);
@@ -265,6 +274,11 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       deploymentSettings.web = value;
       continue;
     }
+    // AG14: a case that starts with a memory switch other than the default.
+    if (MEMORY_SETTINGS.has(key)) {
+      await ctx.writer!.setMemorySettings(account, { [key]: value });
+      continue;
+    }
     unsupported.push({ reason: `setting ${key}: ${JSON.stringify(value)} is not supported by the current product`, step: 0, word: "settings" });
   }
 
@@ -272,6 +286,10 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   await db.connect();
   let diff: DatabaseDiff = { records: [], tables: [] };
   let memoryAfter: { id: string }[] | undefined;
+  // AG14: every memory entry at the end, the settings lists read with each account's own sign-in, the setting steps.
+  let memoryEntries: MemoryEntryObservation[] | undefined;
+  const settingsMemory: Record<string, { status: number; ids: string[] }> = {};
+  let userChangedMemorySettings = false;
   let mergedEvents: TraceEvent[] = [];
   let error: string | undefined;
   const transcript: string[] = [`# ${testCase.id} ${testCase.title}`, "", `- 账号：${account}（${world.accounts[account]?.name ?? ""}） · 世界：${testCase.world} · 时钟：${clock}`, ""];
@@ -325,6 +343,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     const continuedSession = continued ? idMap[continued] : undefined;
     if (continued && !continuedSession) unsupported.push({ reason: `conversation ${continued} is not in the seeded world (re-run agent-eval:seed)`, step: 0, word: "conversation" });
     let conversation: ConversationState = { history: [], messageRevision: 0, sessionId: continuedSession ?? `session_${randomUUID()}`, started: Boolean(continuedSession) };
+    // AG14 (resume_conversation): the conversations of this case in the order they were opened.
+    const opened: ConversationState[] = [conversation];
     if (continuedSession) transcript.push(`*（接着已有的对话 ${continued} 说；会话里存的上文和状态见 trace 的 context.built）*`, "");
     const sentBodies = new Map<number, unknown>();
     const clientFor = async (name: string) => new EvalClient(baseUrl(environment), log, await cookieFor(account), (name as "web" | "app") ?? "web");
@@ -650,10 +670,30 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         }
         case "new_conversation":
           conversation = { history: [], messageRevision: 0, sessionId: `session_${randomUUID()}`, started: false };
+          opened.push(conversation);
           await entry?.switchSession(conversation.sessionId);
           log.push({ sessionId: conversation.sessionId, step: index, type: "turn.new_conversation" });
           transcript.push("*（新开对话）*", "");
           return;
+        case "resume_conversation": {
+          // AG14 (MEM.yaml): back to the n-th conversation of this case (from 1). The client opens the stored session
+          // again, as it does from the conversation list, and the next message is sent in it.
+          const at = Number((step.resume_conversation as { index?: number } | undefined)?.index ?? 0);
+          const target = opened[at - 1];
+          if (!target) {
+            unsupported.push({ reason: `this case has no conversation number ${at} (it opened ${opened.length})`, step: index, word });
+            return;
+          }
+          conversation = target;
+          await entry?.switchSession(conversation.sessionId);
+          const client = await clientFor(String(step.client ?? "web"));
+          const session = await client.request("GET", `/api/ai/conversations/sessions/${encodeURIComponent(conversation.sessionId)}`, undefined, { purpose: "reopen a stored conversation" });
+          const revision = session.body?.data?.session?.messageRevision;
+          if (typeof revision === "number") conversation.messageRevision = revision;
+          log.push({ index: at, sessionId: conversation.sessionId, status: session.status, step: index, type: "turn.resume_conversation" });
+          transcript.push(`*（回到本用例的第 ${at} 个对话，接着说）*`, "");
+          return;
+        }
         case "switch_account": {
           const label = String(step.switch_account);
           if (!accounts[label]) {
@@ -662,6 +702,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           }
           account = label;
           conversation = { history: [], messageRevision: 0, sessionId: `session_${randomUUID()}`, started: false };
+          opened.push(conversation);
           await entry?.switchSession(conversation.sessionId);
           log.push({ account: label, step: index, type: "turn.switch_account" });
           transcript.push(`*（换成账号 ${label}）*`, "");
@@ -928,9 +969,24 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           transcript.push(`*（撤回了对 ${target} 的读取权限：评测环境的拒读名单，之后的每次读取都会核对）*`, "");
           return;
         }
-        case "setting":
-          unsupported.push({ reason: `setting ${JSON.stringify(step.setting)} is not supported by the current product`, step: index, word });
+        case "setting": {
+          // AG14: the user flips one of the two memory switches on the settings page (the settings API, with the account's
+          // own sign-in). It is the user's own action, not a write of the tested system.
+          const setting = (step.setting ?? {}) as Record<string, unknown>;
+          const other = Object.keys(setting).filter((key) => !MEMORY_SETTINGS.has(key));
+          if (other.length || !Object.keys(setting).length) {
+            unsupported.push({ reason: `setting ${JSON.stringify(step.setting)} is not supported by the current product`, step: index, word });
+            return;
+          }
+          const body = { ...(setting.memory_use !== undefined ? { enabled: setting.memory_use === "on" || setting.memory_use === true } : {}), ...(setting.memory_learn !== undefined ? { allowConversationLearning: setting.memory_learn === "on" || setting.memory_learn === true } : {}) };
+          const device = new EvalClient(baseUrl(environment), log, await cookieFor(account), "web");
+          log.push({ account, setting, step: index, type: "turn.setting" });
+          const result = await device.request("PATCH", "/api/agent/memory/settings", body, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: "the user changes a memory switch on the settings page" });
+          userChangedMemorySettings = true;
+          if (result.status !== 200) unsupported.push({ reason: `changing the memory setting failed (HTTP ${result.status})`, step: index, word });
+          transcript.push(`*（用户在设置页把${Object.entries(setting).map(([key, value]) => `「${MEMORY_SETTING_LABEL[key] ?? key}」${value === "on" || value === true ? "打开" : "关掉"}`).join("、")}）*`, "");
           return;
+        }
         default:
           log.push({ step: index, type: `turn.${word}`, value: step[word] });
           unsupported.push({ reason: STEP_SUPPORT_NOTE[word] ?? "step not supported by the current product", step: index, word });
@@ -1018,12 +1074,29 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     const after = await readDatabaseState(db);
     diff = await diffStates(db, before, beforePayloads, after);
     // AG11 (memory_state, first used by AE-REF-002's gate): the account's memory entries at the end of the case.
-    const memoryKeys = [...after.records.values()].filter((row) => row.collection === "agentMemories" && row.owner === accounts[account]);
-    const memoryPayloads = await readPayloads(db, memoryKeys);
-    memoryAfter = memoryKeys.flatMap((row) => {
-      const payload = memoryPayloads.get(recordKey(row));
-      return payload && payload.kind === "memory" && payload.__lifecycleState !== "deleted" ? [{ id: row.id }] : [];
+    // AG14: an entry is the account's when its partition is the account's (entries stored before AG14 carry no owner
+    // column); a deleted entry stays as a mark (status deleted, no words) and is not an entry in use.
+    const ownerOfMemory = (row: { owner: string | null; workspace: string }) => row.owner ?? row.workspace.slice(row.workspace.indexOf(":agent-actor:") + ":agent-actor:".length);
+    const allMemoryKeys = [...after.records.values()].filter((row) => row.collection === "agentMemories");
+    const allMemoryPayloads = await readPayloads(db, allMemoryKeys);
+    memoryEntries = allMemoryKeys.flatMap((row) => {
+      const payload = allMemoryPayloads.get(recordKey(row)) as { kind?: string; __lifecycleState?: string; memory?: { status?: string; revision?: number; category?: string; appliesTo?: string[] } } | undefined;
+      if (!payload || payload.kind !== "memory" || payload.__lifecycleState === "deleted") return [];
+      const memory = payload.memory ?? {};
+      return [{ account: accountByActor.get(ownerOfMemory(row)) ?? null, appliesTo: Array.isArray(memory.appliesTo) ? memory.appliesTo : [], category: String(memory.category ?? ""), fixtureId: fixtureIdOf(row.id), id: row.id, revision: Number(memory.revision ?? 1), status: memory.status === "deleted" ? "deleted" as const : "active" as const }];
     });
+    memoryAfter = memoryEntries.filter((entry) => entry.status === "active" && entry.account === account).map((entry) => ({ id: entry.id }));
+    // AG14 (settings_memory_list): what the settings API lists for each account named, with that account's own sign-in.
+    for (const check of testCase.hard) {
+      const wanted = (check as { settings_memory_list?: { account?: string } }).settings_memory_list;
+      const label = wanted?.account ? String(wanted.account) : null;
+      if (!label || settingsMemory[label] || !accounts[label]) continue;
+      const device = new EvalClient(baseUrl(environment), log, await cookieFor(label), "web");
+      const listedNow = await device.request("GET", "/api/agent/memory", undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: `the settings page of account ${label} lists its memory` });
+      const memories = (listedNow.body?.data?.memories ?? []) as { memoryId?: string }[];
+      settingsMemory[label] = { ids: memories.map((item) => fixtureIdOf(String(item.memoryId)) ?? String(item.memoryId)), status: listedNow.status };
+      transcript.push(`*（结束时用账号 ${label} 的登录身份打开设置页的记忆管理接口：HTTP ${listedNow.status}，列出 ${settingsMemory[label].ids.join("、") || "0 条"}）*`, "");
+    }
     // AG13 opening 4 (AE-BND-001): background work this case started (a contact import's industry layers call) ends in this
     // case's trace, never in the next case's; the server is idle before the next case restores the snapshot.
     const drained = await drainServer(environment);
@@ -1187,6 +1260,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   // AG02 (BND 约定一): a change is external when it is exactly what an external_change step set:
   // every changed field (bookkeeping aside) is one it set, with the value it set.
   const isExternal = (change: (typeof diff.records)[number]) => {
+    // AG14: the two memory switches flipped by a `setting` step are the user's own action on the settings page.
+    if (userChangedMemorySettings && change.collection === "agentMemories" && change.id === "settings") return true;
     // AG12: a record deleted elsewhere and restored by the tested system afterwards (active at the end) is the system's write.
     if (externalDeletes.has(`${change.collection}\u0000${change.id}`) && (change.kind === "deleted" || (change.kind === "updated" && (change.after as Record<string, unknown> | null)?.__lifecycleState === "deleted"))) return true;
     const set = externalSets.get(`${change.collection}\u0000${change.id}`);
@@ -1225,13 +1300,15 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     fixtureIdOf,
     idMap,
     ...(memoryAfter ? { memoryAfter } : {}),
+    ...(memoryEntries ? { memoryEntries, memoryRecalled: memoryRecalledIn(events, fixtureIdOf) } : {}),
+    ...(Object.keys(settingsMemory).length ? { settingsMemory } : {}),
     reads,
     ...(Object.keys(recentInteractions).length ? { recentInteractions } : {}),
     requests,
     unsupported,
     ...(views.records.length ? { clientViews: views.records } : {}),
   };
-  const otherAccountRecords = loadWorldRecordsForIsolation(world, idMap, observation.account);
+  const otherAccountRecords = loadWorldRecordsForIsolation(world, idMap, observation.account, patchMemory);
   const context: CheckContext = { otherAccountRecords, rawTrace, secrets };
   const checks = runHardChecks(testCase as never, observation, context);
   fs.writeFileSync(path.join(dir, "hard-checks.json"), JSON.stringify({ caseId: testCase.id, checks, hardPass: hardChecksPass(checks), unsupported }, null, 2));
@@ -1242,16 +1319,33 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   return { account, area, checks, caseId: testCase.id, dir, durationMs: Date.now() - started, error, events, fake: fake !== null, hardPass: hardChecksPass(checks), observation, simulated, unsupported };
 }
 
+/**
+ * AG14 (memory_recalled): the saved entries the last turn used — the product's memory.recall events after the last
+ * message the user sent (a click or a setting change after it is still that turn's aftermath, not a new turn).
+ */
+export function memoryRecalledIn(events: readonly TraceEvent[], fixtureIdOf: (id: string | null | undefined) => string | null): { id: string; fixtureId: string | null }[] {
+  const lastUser = [...events].reverse().find((event) => event.type === "turn.user");
+  const from = lastUser ? Number(lastUser.seq) : -1;
+  const ids = new Set<string>();
+  for (const event of events) {
+    if (event.type !== "memory.recall" || event.origin === "runner" || Number(event.seq) <= from) continue;
+    for (const id of (event.memories ?? []) as unknown[]) if (typeof id === "string") ids.add(id);
+  }
+  return [...ids].map((id) => ({ fixtureId: fixtureIdOf(id), id }));
+}
+
 /** Records of the other accounts in this world (for no_cross_account): their ids and distinctive strings. */
-function loadWorldRecordsForIsolation(world: WorldFixture, idMap: Record<string, string>, account: string): CheckContext["otherAccountRecords"] {
+function loadWorldRecordsForIsolation(world: WorldFixture, idMap: Record<string, string>, account: string, patched: readonly FixtureRecord[] = []): CheckContext["otherAccountRecords"] {
   // AG05: a name or sentence the case's own account also has (account B's 松本彩 next to A's 松本彩) is not
   // evidence of a leak when the answer says it; only what is the other account's alone counts.
   const own = world.anchors.filter((record: FixtureRecord) => record.account === account).flatMap((record) => [record.data.name, record.data.title, record.data.body].filter((value): value is string => typeof value === "string"));
   const ownToo = (text: string) => own.some((value) => value === text || value.includes(text));
-  return world.anchors
+  // AG14: a memory entry a patch gave another account (its words must not show up in this account's answers).
+  return [...world.anchors, ...patched]
     .filter((record: FixtureRecord) => record.account !== account && record.account !== "platform")
     .map((record) => {
       const texts: string[] = [];
+      if (record.kind === "memory" && typeof record.data.content === "string") texts.push(record.data.content);
       if (typeof record.data.name === "string") texts.push(record.data.name);
       if (typeof record.data.body === "string") {
         for (const sentence of String(record.data.body).split(/[。.!?！？]/u)) {

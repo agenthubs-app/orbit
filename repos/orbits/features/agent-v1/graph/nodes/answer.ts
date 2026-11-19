@@ -27,6 +27,7 @@ import { answerSystemPrompt, answerUserText } from "../../understand/prompt";
 import { parseModelJson } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
+import { withStandingRules } from "../../domains/memory/turn";
 
 /** run-03 repair 1: the reads that make a part a question about the person's profile. */
 const PROFILE_CAPABILITIES = new Set<string>(["contact.read", "profile.read", "view.context"]);
@@ -141,7 +142,8 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   const hasWeb = allMaterials.some((material) => material.kind === "web");
   const system = groundedAnswerSystemPrompt(state.language, { web: hasWeb });
   const conversation = (run.context?.messages ?? []).map((message) => ({ role: message.role, text: message.text }));
-  const user = groundedAnswerUserText({ conversation, items, message: input.message, timeZone: zone, today: formatWhen(state.asOf || deps.now(), zone) });
+  // AG14: the user's saved rules for every answer go with the request (a block after it; nothing else changes).
+  const user = withStandingRules(groundedAnswerUserText({ conversation, items, message: input.message, timeZone: zone, today: formatWhen(state.asOf || deps.now(), zone) }), run.memory);
   emitTrace({ materials: allMaterials.map((material) => ({ handle: material.handle, partId: material.partId, ref: material.ref, sentences: material.sentences.length })), promptVersion: GROUNDED_ANSWER_PROMPT_VERSION, type: "answer.prompt" });
   const dateSources = [input.message, ...conversation.map((message) => message.text), ...dayWindow(state.asOf || deps.now(), zone), ...allMaterials.flatMap((material) => [material.header, ...material.sentences.map((sentence) => sentence.text)])];
   const weekdayNotes = allMaterials.filter((material) => material.sentences.some((sentence) => WEEKDAY_WORD.test(sentence.text)) && !material.sentences.some((sentence) => datesIn(sentence.text).size)).map((material) => material.header);
@@ -347,7 +349,8 @@ export function answerNode(scope: NodeScope): GraphNode {
     const system = answerSystemPrompt(state.language);
     // §3.10: the same window the first layer saw — recent messages as text, long replies cut, none when idle.
     const conversation = (run.context?.messages ?? []).map((message) => ({ role: message.role, text: message.text }));
-    const user = answerUserText({ conversation, items, message: input.message });
+    // AG14: the user's saved rules for every answer go with the request (a block after it; nothing else changes).
+    const user = withStandingRules(answerUserText({ conversation, items, message: input.message }), run.memory);
     let repairs = state.repairs;
     let result: MainModelResult = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "first", requestId: input.requestId, system, user });
     let checked: Segments | null = result.ok === true ? answerSegments(result.text, wanted, dropCardTalk) : null;

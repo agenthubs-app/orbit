@@ -19,6 +19,8 @@ import type { UnderstandOutput } from "../../understand/schema";
 import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInput } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
+import { standingRuleNotes } from "../../domains/memory/turn";
+import { mergePickIntoQuestion, recommendIsRanking } from "../../understand/merge-pick";
 
 function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
   const context = scope.run.context!;
@@ -149,7 +151,12 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
       emitTrace({ capabilities: reads, partId: part.localId, type: "understand.asks_again_about_picked" });
     }
   }
-  return parts;
+  // AG14 dev run 1 (AE-FN-002): a pick with no set of its own ("帮我挑两场") is one ranking with the question before it.
+  const picks = mergePickIntoQuestion(parts, message);
+  for (const item of picks.merged) emitTrace({ into: item.into, partId: item.pick, type: "understand.pick_merged_into_question" });
+  // AG14 dev run 2 (AE-MEM-002): asking which events are recommended is a ranking, also when it came tagged as a plain read.
+  for (const partId of recommendIsRanking(picks.parts, message)) emitTrace({ partId, type: "understand.recommend_is_ranking" });
+  return picks.parts;
 }
 
 /** Words of this turn's message as [start, end), or undefined when they are not in it. */
@@ -217,8 +224,10 @@ export function understandNode(scope: NodeScope): GraphNode {
     // AG05: today (with its weekday, in the user's time zone) lets the first layer give a date range.
     const zone = state.timeZone || "Asia/Tokyo";
     const today = `${formatWhen(state.asOf || deps.now(), zone, false)}, ${zone}`;
-    const user = understandUserText({ contextText: context.promptText, message: input.message, today });
-    emitTrace({ contextMessages: context.messages.length, promptVersion: UNDERSTAND_PROMPT_VERSION, type: "understand.prompt" });
+    // AG14: the user's saved rules for every answer matter here only for a plain-chat reply this step writes itself.
+    const contextText = [context.promptText, ...standingRuleNotes(run.memory)].join("\n");
+    const user = understandUserText({ contextText, message: input.message, today });
+    emitTrace({ contextMessages: context.messages.length, promptVersion: UNDERSTAND_PROMPT_VERSION, ...(run.memory.rules.length ? { standingRules: run.memory.rules.length } : {}), type: "understand.prompt" });
     let repairs = state.repairs;
     let first = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "understand", purpose: "first", requestId: input.requestId, system, user });
     if (first.ok === false && first.reason === "model_error" && first.retryable && repairs < 1) {
@@ -232,7 +241,7 @@ export function understandNode(scope: NodeScope): GraphNode {
       emitTrace({ errors: checked.errors, purpose: "first", type: "understand.invalid" });
       if (repairs >= 1) return { budget, repairs, understanding: "invalid" };
       repairs += 1;
-      const repair = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "understand", purpose: "repair", requestId: input.requestId, system, user: repairUserText({ contextText: context.promptText, errors: checked.errors, message: input.message, previousOutput: first.text, today }) });
+      const repair = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "understand", purpose: "repair", requestId: input.requestId, system, user: repairUserText({ contextText, errors: checked.errors, message: input.message, previousOutput: first.text, today }) });
       if (repair.ok === false) return { budget, repairs, understanding: failedUnderstanding(repair) };
       checked = check(repair.text, validation);
       if (checked.ok === false) {
@@ -251,7 +260,15 @@ export function understandNode(scope: NodeScope): GraphNode {
     // AG06 repair 1: a Han-only message is decided by the user's earlier messages of this session, else the locale.
     const earlier = (run.context?.messages ?? []).filter((item) => item.role === "user").map((item) => item.text);
     const chosen = replyLanguageOf(input.message, covered.output.language, input.locale, earlier);
-    emitTrace({ language: chosen.language, reported: covered.output.language ?? null, decidedBy: chosen.source, ...(chosen.rejected ? { rejected: chosen.rejected } : {}), type: "understand.language" });
-    return { budget, language: chosen.language, parts: graphPartsOf(covered.output, scope), plainChat: covered.output.plainChat, repairs, understanding: "understood" };
+    // AG14: a saved rule for every answer ("回答用日语") decides the reply language, whatever the message is written in.
+    const ruled = run.memory.replyLanguage;
+    // A plain-chat reply this step wrote in another language than the rule asks for is not delivered: the answer step
+    // writes it again in the ruled language.
+    if (ruled && run.plainReply && replyLanguageOf(run.plainReply, null, ruled).language !== ruled) {
+      emitTrace({ ruled, type: "understand.plain_reply_not_in_ruled_language" });
+      run.plainReply = null;
+    }
+    emitTrace({ language: ruled ?? chosen.language, reported: covered.output.language ?? null, decidedBy: ruled ? "saved_rule" : chosen.source, ...(chosen.rejected ? { rejected: chosen.rejected } : {}), type: "understand.language" });
+    return { budget, language: ruled ?? chosen.language, parts: graphPartsOf(covered.output, scope), plainChat: covered.output.plainChat, repairs, understanding: "understood" };
   };
 }

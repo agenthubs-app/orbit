@@ -82,6 +82,8 @@ export interface ResolveContext {
   names?: EventResolveExtras["names"];
   createdEvents?: EventResolveExtras["createdEvents"];
   deleting?: boolean;
+  /** AG14 (AG11 交接): the events picked with @ in this turn, looked at before the whole directory. */
+  pickedEvents?: EventResolveExtras["pickedEvents"];
 }
 
 const words = (message: string, span: [number, number] | null | undefined) => (span ? message.slice(span[0], span[1]).trim() : "");

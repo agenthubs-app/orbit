@@ -470,11 +470,30 @@ export function createWorldWriter(world: string, clock: string) {
     const actorId = actorOf(record.account);
     const data = record.data;
     const service = createStorageAgentMemoryService({ actorId, now: () => new Date(Date.parse(clock) - 10 * 86_400_000).toISOString(), store: store as never, workspaceId });
-    const memory = await service.create({ category: data.category as never, content: String(data.content), memoryId: productId("memory", world, record.id), source: "manual" as never });
-    report.ids[record.id] = (memory as { memoryId?: string; id?: string }).memoryId ?? (memory as unknown as { id: string }).id;
+    // AG14: the entry as the fixture writes it — its tasks, its values and its validity — through the memory service.
+    const memory = await service.create({
+      category: data.category as never,
+      content: String(data.content),
+      memoryId: productId("memory", world, record.id),
+      source: "manual" as never,
+      ...(Array.isArray(data.appliesTo) ? { appliesTo: data.appliesTo as never } : {}),
+      ...(data.structured && typeof data.structured === "object" ? { structured: data.structured as never } : {}),
+      ...(typeof data.validFrom === "string" ? { validFrom: data.validFrom } : {}),
+      ...(typeof data.validUntil === "string" ? { validUntil: data.validUntil } : {}),
+    });
+    // A fixture at revision n was changed n − 1 times: the same words written again move the revision on.
+    for (let revision = 1; revision < Number(data.revision ?? 1); revision += 1) await service.update(memory.memoryId, { content: memory.content, expectedRevision: revision });
+    report.ids[record.id] = memory.memoryId;
     count(report, record.account, "memory");
-    for (const field of ["appliesTo", "structured", "validUntil"]) if (data[field] !== undefined) gap(report, record.id, field, "memory scope fields arrive in AG14");
-    if (Number(data.revision ?? 1) > 1) gap(report, record.id, "revision", "memory has no revision yet (AG14)");
+  }
+
+  /** AG14: the account's two memory switches as a case starts with them (`memory_use`, `memory_learn`). */
+  async function setMemorySettings(account: string, settings: { memory_use?: unknown; memory_learn?: unknown }): Promise<void> {
+    const service = createStorageAgentMemoryService({ actorId: actorOf(account), now: () => new Date(Date.parse(clock) - 10 * 86_400_000).toISOString(), store: store as never, workspaceId });
+    await service.updateSettings({
+      ...(settings.memory_use !== undefined ? { enabled: settings.memory_use === "on" || settings.memory_use === true } : {}),
+      ...(settings.memory_learn !== undefined ? { allowConversationLearning: settings.memory_learn === "on" || settings.memory_learn === true } : {}),
+    });
   }
 
   async function writeRule(record: FixtureRecord): Promise<void> {
@@ -601,7 +620,7 @@ export function createWorldWriter(world: string, clock: string) {
     await Promise.allSettled([configured.client.close(), runtime.client.close(), events.client.close()]);
   }
 
-  return { actorOf, close, ensureAccount, report, updateTodo, writeAll, writeAttendance, writeContact, writeConversation, writeMemo, writeMemory, writePrivateEvent, writeRule, writeSchedule, writeTodo };
+  return { actorOf, close, ensureAccount, report, setMemorySettings, updateTodo, writeAll, writeAttendance, writeContact, writeConversation, writeMemo, writeMemory, writePrivateEvent, writeRule, writeSchedule, writeTodo };
 }
 
 export type WorldWriter = ReturnType<typeof createWorldWriter>;

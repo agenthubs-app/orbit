@@ -19,6 +19,7 @@ import { clarifyNode } from "./nodes/clarify";
 import { deliverNode } from "./nodes/deliver";
 import { functionsDue, functionsNode } from "./nodes/functions";
 import { newJudgmentBudget } from "../judgment/ask";
+import { emptyTurnMemory } from "../domains/memory/turn";
 import { intakeNode } from "./nodes/intake";
 import { proposeDue, proposeNode } from "./nodes/propose";
 import { probeNode, webDue, webPartReads } from "./nodes/probe";
@@ -172,6 +173,8 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     questionLines: new Map(),
     leadLines: new Map(),
     presetIntents: new Map(),
+    memory: emptyTurnMemory(),
+    sessionState: null,
   };
 }
 

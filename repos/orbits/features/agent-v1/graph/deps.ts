@@ -15,6 +15,7 @@ import type { CanonicalEventRecord } from "../../events/core/contract";
 import type { JudgmentAccess } from "../judgment/ask";
 import type { AgentWebAccess } from "../web/service";
 import type { ContactAccess } from "../domains/contact/types";
+import type { AgentMemoryAccess } from "../domains/memory/turn";
 
 /**
  * AG06: the request's card in the action ledger (one card per request, conversationCardId). `freeze` is
@@ -81,8 +82,11 @@ export interface AgentGraphDependencies {
   judgment?: JudgmentAccess;
   /** AG09: the public web (absent, switched off or no key: not one web request is made). */
   web?: AgentWebAccess;
-  /** AG10: the user's saved memories, read only (preferences and constraints a ranking may use; AG14 replaces it with recallFor()). */
-  memories?: { list(actorId: string): Promise<readonly { id: string; category: string; content: string }[]> };
+  /**
+   * AG14 (replaces AG10's read-only `memories`): the account's saved memory, read once per turn — the two switches, the
+   * entries in use, the deletion marks and the version (absent: the turn uses no memory and proposes no memory change).
+   */
+  memory?: AgentMemoryAccess;
 }
 
 export interface AgentGraphInput {

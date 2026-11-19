@@ -76,6 +76,10 @@ export const AGENT_LEDGER_OPERATION_TYPES = [
   "complete_todo",
   "reopen_todo",
   "delete_todo",
+  // agent-design AG14: personal memory — a new entry, a change of one, forgetting one — after a card.
+  "create_memory",
+  "update_memory",
+  "delete_memory",
 ] as const;
 
 // 语音只允许保存“用户编辑确认后的转写文本”；原始音频永不进入 evidence。

@@ -39,6 +39,8 @@ export interface EventResolveExtras {
   /** The to-do this message named last, and its link item (a later sentence of the message adds to the same item). */
   lastTodo?: { id: string };
   linkOps?: Map<string, { set: Record<string, unknown>; before: Record<string, unknown>; shown: Record<string, unknown> }>;
+  /** AG14 (AG11 交接): ids of the events the user picked with @ in this turn that can be opened now. */
+  pickedEvents?: readonly string[];
 }
 
 type Ctx = ResolveContext & EventResolveExtras;
@@ -87,8 +89,22 @@ const squash = (text: string) => text.toLowerCase().replace(NOISE, "");
 
 interface EventCandidate { ref: { kind: "platform" | "private"; id: string }; title: string; startsAt: string | null }
 
-async function eventCandidates(ctx: Ctx): Promise<EventCandidate[]> {
+async function eventCandidates(ctx: Ctx, hint?: { clues: readonly string[]; quote: string }): Promise<EventCandidate[]> {
   const out: EventCandidate[] = [];
+  // AG14 (AG11 交接, AE-REF-005): the events the user picked with @ in this turn are looked at first. When the words
+  // name one of them, only those are read — the whole directory is not listed to find an event already chosen.
+  const picked = (ctx.pickedEvents ?? []).filter((id) => !id.startsWith("private_event:") && !id.startsWith("attendance:"));
+  if (hint && picked.length && ctx.records?.eventsByIds) {
+    const chosen: EventCandidate[] = [];
+    for (const event of await ctx.records.eventsByIds(picked).catch(() => [])) {
+      if (event.archivedAt || (event.lifecycleState !== "published" && event.organizerActorId !== ctx.scope?.accountId) || !event.title) continue;
+      chosen.push({ ref: { id: event.eventId, kind: "platform" }, startsAt: event.startsAt ?? null, title: event.title });
+    }
+    if (matchEvents(chosen, hint.clues, hint.quote, null, ctx.timeZone).length) {
+      emitTrace({ picked: chosen.length, type: "propose.picked_events_first" });
+      return chosen;
+    }
+  }
   if (ctx.records?.listEvents) {
     for (const event of await ctx.records.listEvents().catch(() => [])) {
       if (event.archivedAt || (event.lifecycleState !== "published" && event.organizerActorId !== ctx.scope?.accountId) || !event.title) continue;
@@ -192,7 +208,7 @@ export async function resolveEventIntent(ctx: Ctx, part: GraphPart, write: PartW
 
   // The organizer's records are never written: a check-in asked for is code's sentence (one entry, no card).
   if (CHECKIN.test(quote) && (intent.capability.startsWith("attendance.") || intent.capability.startsWith("privateEvent."))) {
-    const event = matchEvents(await eventCandidates(ctx), clueTexts, quote, said?.day ?? null, zone)[0] ?? null;
+    const event = matchEvents(await eventCandidates(ctx, { clues: clueTexts, quote }), clueTexts, quote, said?.day ?? null, zone)[0] ?? null;
     emitTrace({ partId: part.localId, type: "propose.organizer_record" });
     return stop("organizer_record", EVENT_WORDS.checkIn(language, event?.title ?? null));
   }
@@ -236,7 +252,7 @@ export async function resolveEventIntent(ctx: Ctx, part: GraphPart, write: PartW
       return { kind: "ready", ops: [{ ...base, capability: "attendance.create", set: { attendedOn: day, eventRef: { ...event.ref }, ...(parts.length || fromEvent.length ? { dayParts: parts.length ? parts : fromEvent } : {}), ...(note ? { selfNote: note } : {}) }, shown: { event: { kind: event.ref.kind, startsAt: event.startsAt, title: event.title } } } as CardOperationIntent & { localId: string }] };
     }
     case "privateEvent.update": {
-      const matched = matchEvents(await eventCandidates(ctx), clueTexts, quote, said?.day ?? null, zone);
+      const matched = matchEvents(await eventCandidates(ctx, { clues: clueTexts, quote }), clueTexts, quote, said?.day ?? null, zone);
       const target = matched.find((event) => event.ref.kind === "private") ?? null;
       if (!target && matched[0]?.ref.kind === "platform") return stop("platform_event", EVENT_WORDS.platformLocked(language, matched[0].title));
       if (!target) return stop("event_not_found", EVENT_WORDS.privateNotFound(language, clueTexts[0] ?? quote));
@@ -263,7 +279,7 @@ export async function resolveEventIntent(ctx: Ctx, part: GraphPart, write: PartW
       // Part of deleting a private event in this message: the plan makes these items (and keeps their order).
       if (ctx.deleting) return { kind: "covered" } as unknown as WriteOutcome;
       if (intent.capability === "memo.update") return stop("not_in_this_version", language === "zh" ? `「${quote}」这次在对话里只能解除笔记和活动的关联，改笔记内容请到笔记页。这次没有改。` : language === "ja" ? `「${quote}」：会話からはメモとイベントの紐づけを外すことだけができます。本文の変更はメモの画面でお願いします。今回は変更していません。` : `"${quote}": in the chat a memo can only be unlinked from an event; edit its text on the note's page. Nothing was changed.`);
-      const all = await eventCandidates(ctx);
+      const all = await eventCandidates(ctx, { clues: clueTexts, quote });
       const matched = matchEvents(all, clueTexts, quote, said?.day ?? null, zone);
       const notes = await ctx.records.attendance?.list(scope.accountId).catch(() => null);
       if (!notes) return stop("read_failed", failedLine);
@@ -474,7 +490,7 @@ async function resolveSchedule(ctx: Ctx, part: GraphPart, write: PartWrite, inte
   }
   if (!found.length) {
     // A platform event's time is the organizer's, never the user's to change.
-    const event = matchEvents(await eventCandidates(ctx), clues, quote, day, zone).find((item) => item.ref.kind === "platform");
+    const event = matchEvents(await eventCandidates(ctx, { clues, quote }), clues, quote, day, zone).find((item) => item.ref.kind === "platform");
     if (event) return stop("platform_event", EVENT_WORDS.platformLocked(language, event.title));
     return stop("object_not_found", EVENT_WORDS.scheduleNotFound(language, clues[0] ?? quote));
   }

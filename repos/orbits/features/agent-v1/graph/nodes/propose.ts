@@ -343,6 +343,8 @@ export function proposeNode(scope: NodeScope): GraphNode {
       createdEvents: [] as { localId: string; title: string; day: string }[],
       deleting: work.some((part) => part.write?.intents.some((intent) => intent.capability === "privateEvent.delete")),
       names: run.names,
+      // AG14 (AG11 交接, AE-REF-005): the events the user picked with @, so the one to change is not searched for by name.
+      pickedEvents: run.references.filter((reference) => reference.type === "event" && reference.accessible !== false).map((reference) => reference.id),
     };
     const outcomes = new Map<string, WriteOutcome>();
     const duplicates = new Map<string, Exclude<DuplicateDecision, { kind: "new" }>>();

@@ -25,6 +25,7 @@ import {
 import { CONTACT_CREATE, CONTACT_DELETE, CONTACT_IMPORT, CONTACT_RESTORE, isContactCapability, type ContactOperationIntent } from "../../agent-v1/domains/contact/types";
 import { contactIntentOf, importCountTitle, prepareContactOperation } from "../../agent-v1/domains/contact/prepare";
 import { ATTENDANCE_CREATE, ATTENDANCE_DELETE, isEventCardCapability, linkChangeDisplay, linkChangeText, prepareEventOperation, PRIVATE_EVENT_CREATE, PRIVATE_EVENT_DELETE, SCHEDULE_CREATE, SCHEDULE_DELETE, TODO_DELETE, type EventCardIntent, type LinkChangeShown } from "../../agent-v1/domains/private-event/ops";
+import { isMemoryCardCapability, MEMORY_CREATE, MEMORY_DELETE, memoryIntentOf, prepareMemoryOperation, type MemoryCardIntent } from "../../agent-v1/domains/memory/ops";
 
 export const MEMO_CREATE = "memo.create";
 export const MEMO_UPDATE = "memo.update";
@@ -83,7 +84,7 @@ export interface MemoLinkIntent {
   shown: LinkChangeShown;
 }
 
-export type CardOperationIntent = (TodoOperationIntent | MemoCreateIntent | MemoUpdateIntent | ContactOperationIntent | EventCardIntent | TodoLinkIntent | MemoLinkIntent) & {
+export type CardOperationIntent = (TodoOperationIntent | MemoCreateIntent | MemoUpdateIntent | ContactOperationIntent | EventCardIntent | TodoLinkIntent | MemoLinkIntent | MemoryCardIntent) & {
   /** The sub-goal of the request (kept until the receipt). */
   partId?: string;
   /** Positions (0-based) in the same card of the items this one waits for. */
@@ -206,10 +207,11 @@ export function cardCountTitle(operations: readonly (Pick<AgentActionOperationPa
   // AG12-4: a card that is one import counts its rows.
   const rows = importCountTitle(operations, locale);
   if (rows) return rows;
-  const added = operations.filter((op) => op.capability === TODO_CREATE || op.capability === MEMO_CREATE || op.capability === CONTACT_CREATE || op.capability === CONTACT_IMPORT || op.capability === PRIVATE_EVENT_CREATE || op.capability === ATTENDANCE_CREATE || op.capability === SCHEDULE_CREATE).length;
+  // AG14: a new memory entry is an addition, a forgotten one a deletion.
+  const added = operations.filter((op) => op.capability === TODO_CREATE || op.capability === MEMO_CREATE || op.capability === CONTACT_CREATE || op.capability === CONTACT_IMPORT || op.capability === PRIVATE_EVENT_CREATE || op.capability === ATTENDANCE_CREATE || op.capability === SCHEDULE_CREATE || op.capability === MEMORY_CREATE).length;
   // AG12 (设计稿 §10「写“改”“新增”“删除”」): deletions and restores are counted as what they are. AG13: private events,
   // «我去过», schedule items and to-dos too.
-  const deleted = operations.filter((op) => op.capability === CONTACT_DELETE || op.capability === PRIVATE_EVENT_DELETE || op.capability === ATTENDANCE_DELETE || op.capability === SCHEDULE_DELETE || op.capability === TODO_DELETE).length;
+  const deleted = operations.filter((op) => op.capability === CONTACT_DELETE || op.capability === PRIVATE_EVENT_DELETE || op.capability === ATTENDANCE_DELETE || op.capability === SCHEDULE_DELETE || op.capability === TODO_DELETE || op.capability === MEMORY_DELETE).length;
   const restored = operations.filter((op) => op.capability === CONTACT_RESTORE).length;
   const changed = operations.length - added - deleted - restored;
   if (locale === "en") return [changed ? `${changed} change${changed > 1 ? "s" : ""}` : "", added ? `${added} addition${added > 1 ? "s" : ""}` : "", deleted ? `${deleted} deletion${deleted > 1 ? "s" : ""}` : "", restored ? `${restored} restore${restored > 1 ? "s" : ""}` : ""].filter(Boolean).join(", ");
@@ -240,6 +242,8 @@ export async function prepareCardOperation(input: {
   locale: CardLocale;
 }): Promise<AgentActionOperationPayload | null> {
   const { intent } = input;
+  // AG14: memory items (domains/memory/ops.ts).
+  if (isMemoryCardCapability(intent.capability)) return prepareMemoryOperation({ actionId: input.actionId, index: input.index, intent: intent as MemoryCardIntent & { partId?: string }, locale: input.locale, revision: input.revision });
   // AG13: private events, «我去过», schedule items, the other to-do verbs (domains/private-event/ops.ts).
   if (isEventCardCapability(intent.capability)) return { ...prepareEventOperation({ actionId: input.actionId, index: input.index, intent: intent as EventCardIntent & { partId?: string }, locale: input.locale, revision: input.revision }), payload: { ...prepareEventOperation({ actionId: input.actionId, index: input.index, intent: intent as EventCardIntent & { partId?: string }, locale: input.locale, revision: input.revision }).payload, cardIntent: stripPositions(intent) } };
   if ("links" in intent && intent.links) return prepareLinkOperation({ ...input, intent: intent as (TodoLinkIntent | MemoLinkIntent) & { partId?: string } });
@@ -321,6 +325,11 @@ async function prepareLinkOperation(input: { intent: (TodoLinkIntent | MemoLinkI
 export function cardIntentOf(op: AgentActionOperationPayload, operations: readonly AgentActionOperationPayload[] = []): CardOperationIntent | null {
   const dependsOn = (op.dependsOn ?? []).map((id) => operations.findIndex((other) => other.operationId === id)).filter((index) => index >= 0);
   const extra = { ...(op.partId ? { partId: op.partId } : {}), ...(dependsOn.length ? { dependsOn } : {}) };
+  // AG14: memory items.
+  if (isMemoryCardCapability(op.capability)) {
+    const memory = memoryIntentOf(op);
+    return memory ? { ...memory, ...extra } : null;
+  }
   // AG13: the items that keep their intent in the payload.
   const kept = (op.payload as { cardIntent?: Record<string, unknown> } | undefined)?.cardIntent;
   if (kept && (isEventCardCapability(op.capability) || (kept as { links?: unknown }).links)) return { ...(kept as unknown as CardOperationIntent), ...extra };

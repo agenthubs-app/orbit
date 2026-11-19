@@ -14,7 +14,8 @@ import type { ReadSource } from "../answer/basis";
 import type { Material } from "../answer/schema";
 import type { NextStep } from "../clarify/next-step";
 import type { FirstLayerContext } from "../context/build";
-import type { NamedRecordRef } from "../context/session-state";
+import type { AgentSessionState, NamedRecordRef } from "../context/session-state";
+import type { TurnMemory } from "../domains/memory/turn";
 import type { ReferenceHandle } from "./deps";
 import type { Capability, Route, Verdict, WaitReason } from "../route/capabilities";
 import type { PartStatus } from "../route/decide";
@@ -245,4 +246,8 @@ export interface AgentGraphRun {
   leadLines: Map<string, string>;
   /** AG10: per part, the card operations an extraction made (propose freezes them; no second-layer model call). */
   presetIntents: Map<string, (CardOperationIntent & { localId: string })[]>;
+  /** AG14: the turn's saved memory — the scope as read at intake, the rules in force, what was used (never checkpointed). */
+  memory: TurnMemory;
+  /** AG14: the session state as intake read it (the last ranking's codes, the memory uses of earlier answers). */
+  sessionState: AgentSessionState | null;
 }

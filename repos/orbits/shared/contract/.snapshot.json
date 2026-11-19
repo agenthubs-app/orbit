@@ -1691,6 +1691,266 @@
         }
       }
     },
+    "agent-v1.ts::AgentMemoryCategoryContract": {
+      "kind": "enum",
+      "values": [
+        "'constraint'",
+        "'goal'",
+        "'identity'",
+        "'preference'"
+      ]
+    },
+    "agent-v1.ts::AgentMemoryTaskContract": {
+      "kind": "enum",
+      "values": [
+        "'all'",
+        "'contact.recommend'",
+        "'event.recommend'",
+        "'memo.summarize'",
+        "'schedule.plan'",
+        "'todo.plan'"
+      ]
+    },
+    "agent-v1.ts::AgentMemoryStructuredContract": {
+      "kind": "object",
+      "members": {
+        "preferredDays": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly ('Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun')[]"
+        },
+        "dayPart": {
+          "optional": true,
+          "kind": "text",
+          "type": "'morning' | 'afternoon' | 'evening' | undefined"
+        },
+        "strength": {
+          "optional": true,
+          "kind": "text",
+          "type": "'prefer' | 'only' | 'avoid' | undefined"
+        },
+        "topics": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "replyLanguage": {
+          "optional": true,
+          "kind": "text",
+          "type": "'zh' | 'en' | 'ja' | undefined"
+        }
+      }
+    },
+    "agent-v1.ts::AgentMemoryEntryContract": {
+      "kind": "object",
+      "members": {
+        "memoryId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "category": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentMemoryCategoryContract"
+        },
+        "content": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "source": {
+          "optional": false,
+          "kind": "text",
+          "type": "'manual' | 'conversation'"
+        },
+        "createdAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "revision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "'deleted' | 'active'"
+        },
+        "appliesTo": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentMemoryTaskContract[]"
+        },
+        "structured": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentMemoryStructuredContract | null"
+        },
+        "validFrom": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "validUntil": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "sourceMessageRef": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "deletedAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null | undefined"
+        }
+      }
+    },
+    "agent-v1.ts::AgentMemorySettingsContract": {
+      "kind": "object",
+      "members": {
+        "enabled": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "allowConversationLearning": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentMemoryListContract": {
+      "kind": "object",
+      "members": {
+        "memories": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentMemoryEntryContract[]"
+        },
+        "settings": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentMemorySettingsContract"
+        },
+        "memoryVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "ruleLimit": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "agent-v1.ts::AgentMemoryCreateInputContract": {
+      "kind": "object",
+      "members": {
+        "category": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentMemoryCategoryContract"
+        },
+        "content": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "appliesTo": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentMemoryTaskContract[]"
+        },
+        "structured": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentMemoryStructuredContract | null | undefined"
+        },
+        "validFrom": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null | undefined"
+        },
+        "validUntil": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null | undefined"
+        }
+      }
+    },
+    "agent-v1.ts::AgentMemoryUpdateInputContract": {
+      "kind": "object",
+      "members": {
+        "category": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentMemoryCategoryContract | undefined"
+        },
+        "content": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "appliesTo": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentMemoryTaskContract[]"
+        },
+        "structured": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentMemoryStructuredContract | null | undefined"
+        },
+        "validFrom": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null | undefined"
+        },
+        "validUntil": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null | undefined"
+        },
+        "expectedRevision": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "agent-v1.ts::AgentMemorySettingsInputContract": {
+      "kind": "object",
+      "members": {
+        "enabled": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean | undefined"
+        },
+        "allowConversationLearning": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean | undefined"
+        }
+      }
+    },
     "ai-artifacts.ts::AiContactArtifactStatus": {
       "kind": "enum",
       "values": [
@@ -19976,7 +20236,7 @@
         "kind": {
           "optional": false,
           "kind": "text",
-          "type": "'profile' | 'network' | 'goal' | 'capabilities'"
+          "type": "'goal' | 'profile' | 'network' | 'capabilities'"
         },
         "detail": {
           "optional": false,

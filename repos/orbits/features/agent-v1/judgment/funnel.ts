@@ -165,7 +165,16 @@ export async function funnel<T extends FunnelCandidate>(input: FunnelInput<T>): 
     return (["insufficient", "partial", "match"] as const).find((level) => level === verdict.answer) ?? "insufficient";
   };
   const ranked: RankedCandidate<T>[] = sent.map((item) => ({ ...item, level: levelOf(item.key) }));
-  if (answered) ranked.sort((left, right) => LEVEL_RANK[right.level ?? "insufficient"] - LEVEL_RANK[left.level ?? "insufficient"] || (left.level && left.level !== "insufficient" ? expectedOf(right.key) - expectedOf(left.key) : 0) || right.ruleScore - left.ruleScore || compareField(left.candidate, right.candidate) || stable(left.candidate, right.candidate));
+  // AG14 (AE-SCL-027): among candidates that stay "not established", one the model found more likely related than not
+  // — but under the calibrated threshold, so it keeps the conservative label and is never said to fit — comes before the
+  // ones it found unrelated. Only a tie that the start time used to break; a rule hit still goes first.
+  const leaningOf = (key: string): number => {
+    const verdict = outcome?.verdicts.get(key);
+    if (!verdict || verdict.reason !== "below_threshold" || verdict.confidence === null) return 0;
+    const related = 1 - verdict.confidence;
+    return related >= 0.5 ? related : 0;
+  };
+  if (answered) ranked.sort((left, right) => LEVEL_RANK[right.level ?? "insufficient"] - LEVEL_RANK[left.level ?? "insufficient"] || (left.level && left.level !== "insufficient" ? expectedOf(right.key) - expectedOf(left.key) : 0) || right.ruleScore - left.ruleScore || leaningOf(right.key) - leaningOf(left.key) || compareField(left.candidate, right.candidate) || stable(left.candidate, right.candidate));
   const unmatchedReason = answered ? null : !input.judge ? "no_judgment" : outcome?.unavailable ?? ([...(outcome?.verdicts.values() ?? [])][0]?.reason ?? "unavailable");
   return { coverage: coverageOf(answered ? sent.length : 0), matched: answered, ordered: ranked.slice(0, count), semantic: true, unmatchedReason };
 }

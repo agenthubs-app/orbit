@@ -147,6 +147,23 @@ export interface Observation {
   clientViews?: ClientViewRecord[];
   /** AG11: the account's memory entries (not settings, not deleted) when the case ended, read by the runner. */
   memoryAfter?: { id: string }[];
+  /** AG14: every memory entry at the end (any account, deleted ones with their mark), as stored. */
+  memoryEntries?: MemoryEntryObservation[];
+  /** AG14: the entries the last turn used (the product's memory.recall events after the last user message). */
+  memoryRecalled?: { id: string; fixtureId: string | null }[];
+  /** AG14: per account label, the entries the settings API listed for that account's own sign-in at the end. */
+  settingsMemory?: Record<string, { status: number; ids: string[] }>;
+}
+
+export interface MemoryEntryObservation {
+  id: string;
+  fixtureId: string | null;
+  /** The account label of the owner (null: not one of the case's accounts). */
+  account: string | null;
+  status: "active" | "deleted";
+  revision: number;
+  category: string;
+  appliesTo: string[];
 }
 
 export interface RecentInteractionObservation {

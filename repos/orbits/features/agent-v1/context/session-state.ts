@@ -57,6 +57,26 @@ export interface AgentSessionState {
   lastMentioned: NamedRecordRef[];
   openItems: SessionOpenItem[];
   updatedAt: string;
+  /**
+   * AG14 (设计稿 §6 "恢复的旧会话须按最新版本重建"): the memory version this session's last turn saw, and the saved
+   * entries its answers used (ids and revisions only, never their words). A turn that finds an entry changed or
+   * deleted since leaves the answers made with it out of the model's context.
+   */
+  memoryVersion?: number;
+  memoryUses?: { requestId: string; memories: { memoryId: string; revision: number }[] }[];
+  /** AG14: what the last ranking of this session used (ids and codes), for "为什么排第一" and "这次看……". */
+  lastRanking?: {
+    requestId: string;
+    domain: "event" | "contact" | "todo";
+    at: string;
+    from?: string;
+    to?: string;
+    count?: number;
+    listed: string[];
+    memories: { memoryId: string; revision: number }[];
+    turnBasis: boolean;
+    topic: boolean;
+  };
 }
 
 export function emptySessionState(sessionId: string, now: string): AgentSessionState {
@@ -81,6 +101,10 @@ function normalizeState(sessionId: string, value: unknown): AgentSessionState | 
     sessionId,
     shownList: raw.shownList && Array.isArray(raw.shownList.items) ? { items: raw.shownList.items, shownAt: String(raw.shownList.shownAt ?? "") } : null,
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : "",
+    // AG14: references to saved entries (ids and revisions) and the last ranking's codes.
+    ...(typeof raw.memoryVersion === "number" ? { memoryVersion: raw.memoryVersion } : {}),
+    ...(Array.isArray(raw.memoryUses) ? { memoryUses: raw.memoryUses.filter((use) => use && typeof use.requestId === "string" && Array.isArray(use.memories)).map((use) => ({ memories: use.memories.filter((item) => item && typeof item.memoryId === "string" && typeof item.revision === "number").map((item) => ({ memoryId: item.memoryId, revision: item.revision })), requestId: use.requestId })) } : {}),
+    ...(raw.lastRanking && typeof raw.lastRanking.requestId === "string" && Array.isArray(raw.lastRanking.listed) && Array.isArray(raw.lastRanking.memories) ? { lastRanking: { ...raw.lastRanking, listed: raw.lastRanking.listed.filter((ref) => typeof ref === "string"), memories: raw.lastRanking.memories.filter((item) => item && typeof item.memoryId === "string" && typeof item.revision === "number") } } : {}),
   };
 }
 
