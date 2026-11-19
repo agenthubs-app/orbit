@@ -127,3 +127,75 @@
 AE-MCP-002、AE-MCP-008 三遍的代码判定和评审要点一致。门槛日志包校验值前缀 `f1e99d8c57a8`。
 
 本报告由 Generator 起草、协调者代为写入（Generator 会话的写文件工具拒绝写报告文件）。
+
+## 追加：合并 AG15、接上收件箱与到期定时器（Generator，2026-11-20）
+
+协调者 2026-11-20 的指示：把 `sprint/AG15-scheduled-tasks-inbox`（`002c63eb7`）合进本分支，接上两处接缝，重跑 AE-MCP-003、AE-MCP-005 和整套门槛。视觉稿仍未批准，页面和四项依赖视觉稿的服务端改动都没有做。
+
+### 做了什么
+
+- **合并**：`dd3af6860`（`--no-ff`）。冲突处两边都保留：
+  - `features/agent/runtime/decision.ts`：两个 sprint 的卡片文字并存；已过期的卡，被下一期取代的说「已被取代」（AG15），其余按出处取文字（外部提议说「请让提出它的那个助手重新提一次」）。
+  - `shared/contract/agent-v1.ts`、`shared/api-schema/agent-v1.ts`：AG17、AG15 两块前后相接。
+  - `shared/contract/.snapshot.json` 与 App 的两份同步副本：重新生成（857 个契约类型），四个同步测试通过。
+  - `runner.ts`、`hard-checks.ts`、`seed.ts`、评测预载、`eval/CHANGES.md`、`eval/README.md`、`service.ts` 自动合并，没有冲突。
+- **收件箱**（`8789c2065`）：新提议第一次生成时写一条收件箱记录，来源 `external_proposal`，标题写明是哪个客户端提的（「Claude 提了一项修改，等你确认」，日、英各一句），正文是卡片自己的摘要，指向这张卡，随卡到期。内容在 `features/agent-v1/mcp/inbox.ts`，接线在 `configured.ts` 的 `PROPOSAL_SEAMS.notifyProposed`。同一个键重复提不会再写。收件箱写失败时提议照样成立、链接照样能用，失败记进追踪（`notify.inbox`，`outcome: failed`）。
+- **到期定时器：没有按指示另设一个 `wake` 定时器，原因如下。** AG15 给每个账号的账本都包了一层（`withCardExpiryTimers`）：账本每冻结一张卡就自己设一个 `card_expiry` 定时器，外部提议的卡也经这个账本冻结，所以定时器已经有了。再设一个 `wake` 定时器只会多出一个到点什么都不做的定时器（AG15 的 `wake` 处理现在只记一条追踪）。因此删掉了原来留的 `scheduleExpiry` 接缝。证据见 AE-MCP-005 的 trace：冻结时 `timer.set`（`card_expiry`），`scheduler_tick` 之后 `timer.fired`（`card_expired`）和 `card.state`（`to: expired`，`via: timer`），之后点击得到 `CARD_EXPIRED`。撤销连接时卡已变为已取消，定时器到点时不再改它。
+- **评测快照重建**：合并后第一次重跑时，派发入口回 503、定时器设不上（`relation "agent_automation_due" does not exist`）——本线的三个世界快照是合并前种的，没有 AG15 的到期索引表。停服务、重新 `agent-eval:seed`、再起服务后正常。**别的线合并 AG15 之后也要重新种一次。**
+- `eval/CHANGES.md` 加一行：`mcp_result_has` 的 120 秒容差已由协调者确认保留。
+
+### 运行（都在 `/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-eval-lines/ag17/runs/`，构建自 `8789c2065`）
+
+| 运行 | 用途 | 代码判定 | 主模型／判断 | 费用（元） |
+|---|---|---|---|---|
+| `20261120-081359-8789c20-AG17-dev-6-after-ag15` | 合并后第一次重跑（快照还是旧的）：AE-MCP-003 过；AE-MCP-005、AE-SCH-004 因缺表不过 | 1/3 | 0／0 | 0 |
+| `20261120-081643-8789c20-AG17-dev-7-after-reseed` | 重新种库后：AE-MCP-003、005、007、AE-SCH-004 | 4/4 | 0／1 | 0.0004 |
+| `20261120-081733-8789c20-AG17-gate-run-01b-with-AG15` | **AG17 门槛（合并 AG15 后）** | 69/75 | 143／21 | 0.2725 |
+| `20261120-082438-…-AG17-rerun-1-web006-ref006` | AE-WEB-006、AE-REF-006 单独重跑第 1 次 | 2/2 | 3／1 | 0.0066 |
+| `20261120-082507-…-AG17-rerun-2-web006-ref006` | 同上第 2 次 | 2/2 | 3／1 | 0.0067 |
+| `20261120-082537-…-AG17-rerun-3-web006-ref006` | 同上第 3 次 | 2/2 | 3／1 | 0.0071 |
+
+门槛 `…-gate-run-01b-with-AG15`：75 例，69 例代码判定通过；判定项 493 过、18 不过、9 看不出。评审材料已生成（`judging.md`，每例两份），没有评审。日志包校验值前缀 `56db3b5145d5`。
+
+- **本 sprint 的 10 例（MCP ×8、SCL ×2）全部通过**，包括 AE-MCP-003（收件箱 1 条）和 AE-MCP-005（定时器到点标过期）。AE-SCH-004（AG15）也通过。
+- 不过的 6 例：
+  - AE-MEM-008、009、012，AE-REF-005：等 AG14，预期之内。
+  - **AE-WEB-006**：判断模型（Gemini）两次调用在 3 秒被中止，按超时规则单独重跑 3 次，3 次都过。
+  - **AE-REF-006**（AG11 的不变量用例）：这一次第一层把「看看 @回复田中的询价 的截止时间」拆成依赖「根据 @客户访谈」的子目标，打不开的那条挡住了能读的那条，回答没有引用 T44。没有超时。run-01 的门槛里它是过的，单独重跑 3 次也都过（5 次里 1 次不过）。这是 AG11 那条规则「有一条打不开时其余照常读」在拆分方式变化时不稳，不在本 sprint 的改动范围里，没有修，报给协调者。
+
+### 全量测试（`8789c2065`）
+
+服务端 9292 条，22 条失败，名字与基线清单完全相同（`full-fail-names-after-ag15.txt`）。App：四个同步测试通过；typecheck 仍只有 `tests/ios-scene-lifecycle-config.test.ts` 那一处（本 sprint 没碰过这个文件）；App 全量在合并前的 `60d2c4d6d` 上跑过一次，合并后没有再跑（App 里的变化只有两份同步副本）。
+
+### 费用（累计）
+
+本次追加：主模型 152 次、判断 25 次，提示 365,297、生成 61,754、判断输入 7,544 token，0.2932 元。整个 sprint 累计：主模型 310 次、判断 41 次，0.5964 元（上限 150 元）。
+
+### 验收结果更新
+
+| 验收 | 结果 |
+|---|---|
+| AG17-1 | 服务端 pass（不变） |
+| AG17-2 | pass，AE-MCP-003 现在全过 |
+| AG17-3 | 服务端 pass，AE-MCP-005 现在全过；页面仍 blocked（视觉稿） |
+| AG17-4 | pass（不变） |
+| AG17-5 | 模拟客户端 pass；连接管理页 blocked；两项真实联调未做 |
+
+状态仍是 blocked：只差三张网页（及其测试、截图、不闪动测量）和两项真实联调。
+
+### 证据（追加到 `/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-design/sprint-AG17/run-01/`）
+
+`gate-run-01b.log`、`build-3.log`、`reseed-after-ag15.log`、`full-orbits-after-ag15.log`、`full-fail-names-after-ag15.txt`。
+
+### 交接更新
+
+- 「AG15 合并后要接的两处」已完成：收件箱接在 `PROPOSAL_SEAMS.notifyProposed`；到期定时器由账本自己设，`ProposalSeams` 里不再有 `scheduleExpiry`。
+- 收件箱里这条记录的目标是卡（`target.kind: "card"`，`href: null`，照 AG15 的写法）。AG15 的收件箱界面做出来时，点这一条应当打开确认链接页还是直接显示卡，要在界面稿里定；确认链接页的地址需要提议编号，现在记录里只有卡的编号。
+- 撤销连接、提议过期之后，收件箱里那条记录不会被本 sprint 主动改写；它是否还显示，由 AG15 的可见性规则（卡在读者自己的账本里就可见）和记录自己的到期时间决定。
+- 本线的评测快照已在合并后的表结构上重建。
+
+### 协调者对新提出的两项的答复（2026-11-20）
+
+- **AE-REF-006 那一次不通过**（AG11 的用例；第一层让能读的记录等那条打不开的）：按波动规则记录——同一例单独重跑三次都通过，不在本 sprint 修。「互不相干的两部分不该互相等」这条规则放进第三方用例集之后的修复线（AG20）。
+- **收件箱条目点开去哪：** 视觉稿（未批准）画的是手机上点这一行打开确认页，电脑上右栏直接显示同一张卡。等稿子获批后随页面一起做。
+
