@@ -49,7 +49,9 @@ export type ProposeOutcome =
   /** A record to change does not exist (or is not this account's); nothing was made. */
   | { kind: "missing"; targets: readonly string[] }
   /** The connection was revoked while this was running; the card was voided. */
-  | { kind: "revoked" };
+  | { kind: "revoked" }
+  /** The connection already made as many proposals in the last 24 hours as one connection may. */
+  | { kind: "too_many"; limit: number };
 
 export interface ProposalReceipt {
   proposal: StoredProposal;
@@ -71,6 +73,14 @@ export interface ProposalService {
 
 const OPEN: readonly AgentActionRecord["status"][] = ["awaiting_confirmation", "deferred"];
 
+/**
+ * How many new proposals one connection may make in 24 hours. An agent cannot fill the user's Orbit with cards, and
+ * because a proposal lives 24 hours, every proposal that can still be confirmed is among the latest PROPOSAL_LIST_LIMIT
+ * rows a revocation looks at (the cap is far below that limit).
+ */
+export const MAX_PROPOSALS_PER_DAY = 100;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /** Key order does not change what was proposed. */
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
@@ -85,7 +95,9 @@ export function createProposalService(deps: {
   runtimeFor: (accountId: string) => AgentRuntimeService;
   now: () => string;
   seams?: ProposalSeams;
+  maxProposalsPerDay?: number;
 }): ProposalService {
+  const dailyLimit = deps.maxProposalsPerDay ?? MAX_PROPOSALS_PER_DAY;
   const idKey = derivedKey(deps.secret, "proposal-id");
   const cardKey = derivedKey(deps.secret, "proposal-card");
   const proposalIdOf = (connectionId: string, idempotencyKey: string) => `prop_${hmac(idKey, `${connectionId}\u0000${idempotencyKey}`)}`;
@@ -119,6 +131,11 @@ export function createProposalService(deps: {
         if (existing.requestHash !== requestHash) return { kind: "conflict" };
         const action = await runtime.getAction(existing.actionId);
         if (action) return { action, created: false, kind: "proposed", proposal: existing };
+      } else {
+        // A new proposal: counted against the connection's last 24 hours before anything is frozen.
+        const since = Date.parse(deps.now()) - DAY_MS;
+        const recent = (await deps.records.list<StoredProposal>(PROPOSAL_COLLECTION, connection.accountId, { limit: PROPOSAL_LIST_LIMIT, sourceId: connection.id })).filter((item) => item.connectionId === connection.id && Date.parse(item.createdAt) > since);
+        if (recent.length >= dailyLimit) return { kind: "too_many", limit: dailyLimit };
       }
       const actionId = actionIdOf(id);
       // The server reads the records itself and freezes what it found; nothing the agent says about old values is used.

@@ -169,3 +169,11 @@ test("the proxy does not stand in front of the MCP endpoints, and opens nothing 
   assert.doesNotMatch(proxy, /\/api\/agent/u);
   assert.doesNotMatch(proxy, /mcp|oauth\//iu);
 });
+
+test("a request body larger than the endpoint takes is refused before it is parsed", async () => {
+  const kit = mcpKit();
+  const tokens = await kit.connect({ scopes: ["todos:read"] });
+  const huge = await kit.call(tokens.accessToken, "search_records", { domain: "todos", query: "x".repeat(300_000) });
+  assert.equal(huge.status, 413);
+  assert.equal(huge.body?.error.code, -32600);
+});

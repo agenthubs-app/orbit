@@ -30,6 +30,8 @@ const SERVER_INFO = { name: "Orbit", title: "Orbit", version: "1.0.0" };
 const INSTRUCTIONS = "Orbit holds the user's contacts, memos, to-dos and schedule. You can read the kinds of record the user allowed and propose changes. A proposed change is never applied by you: Orbit returns a confirm_url, and the user confirms in Orbit.";
 
 const JSON_HEADERS = { "cache-control": "no-store", "content-type": "application/json" };
+/** The largest request body the endpoint reads (a proposal of ten operations with long memo texts fits well inside). */
+export const MAX_REQUEST_BYTES = 256 * 1024;
 
 export interface McpEndpointDeps {
   addresses: (request: Request) => McpAddresses | null;
@@ -110,8 +112,11 @@ export function createMcpEndpoint(deps: McpEndpointDeps) {
       if (!(await deps.accountOpen(connection))) return unauthorized(addresses, "invalid");
 
       let message: { jsonrpc?: unknown; method?: unknown; params?: unknown; id?: unknown };
+      if (Number(request.headers.get("content-length") ?? 0) > MAX_REQUEST_BYTES) return json(413, rpcError(null, -32600, "The request is too large."));
       try {
-        message = (await request.json()) as typeof message;
+        const raw = await request.text();
+        if (Buffer.byteLength(raw) > MAX_REQUEST_BYTES) return json(413, rpcError(null, -32600, "The request is too large."));
+        message = JSON.parse(raw) as typeof message;
       } catch {
         return json(400, rpcError(null, -32700, "The request body is not JSON."));
       }

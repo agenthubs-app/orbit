@@ -232,3 +232,23 @@ test("the two parts that wait for AG15 sit behind seams: called once per new pro
   assert.deepEqual(notified, [`${first.data!.proposal_id}:Claude`]);
   assert.deepEqual(scheduled, [first.data!.expires_at]);
 });
+
+test("a connection cannot pile up proposals: past the daily number a new one is refused, a repeat of an old one is not, and a day later it may propose again", async () => {
+  const kit = mcpKit({ maxProposalsPerDay: 3 });
+  const tokens = await kit.connect({ scopes: SCOPES });
+  const create = (key: string) => kit.call(tokens.accessToken, "propose_change", { idempotencyKey: key, operations: [{ op: "todo.create", set: { title: `待办 ${key}` } }] });
+  for (const key of ["a", "b", "c"]) assert.equal((await create(key)).isError, false, key);
+  const fourth = await create("d");
+  assert.equal(fourth.status, 200);
+  assert.equal(fourth.isError, true);
+  assert.equal(fourth.data!.error.code, "too_many_proposals");
+  assert.equal((await cardsOf(kit)).length, 3, "the refused one made no card");
+  assert.equal((await create("a")).isError, false, "asking again about an existing proposal still works");
+  // Another connection of the same account has its own count.
+  const other = await kit.connect({ scopes: SCOPES });
+  assert.equal((await kit.call(other.accessToken, "propose_change", { idempotencyKey: "x", operations: [{ op: "todo.create", set: { title: "另一条连接" } }] })).isError, false);
+  kit.cards.advance(DAY + 60_000);
+  const refreshed = await kit.auth.token(new URLSearchParams({ grant_type: "refresh_token", refresh_token: tokens.refreshToken }), ADDRESSES);
+  tokens.accessToken = String(refreshed.body.access_token);
+  assert.equal((await create("d")).isError, false);
+});

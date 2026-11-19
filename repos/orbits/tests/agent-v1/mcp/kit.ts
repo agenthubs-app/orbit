@@ -60,7 +60,7 @@ export interface Tokens {
 
 const s256 = (value: string) => createHash("sha256").update(value).digest("base64url");
 
-export function mcpKit(options: { records?: MemoryRecord[]; seams?: ProposalSeams; start?: string } = {}) {
+export function mcpKit(options: { records?: MemoryRecord[]; seams?: ProposalSeams; start?: string; maxProposalsPerDay?: number } = {}) {
   const cards = createCardKit({ start: options.start ?? "2026-11-15T01:00:00.000Z" });
   const now = cards.now;
   const source = createMemoryRecordSource(options.records ?? world());
@@ -70,7 +70,7 @@ export function mcpKit(options: { records?: MemoryRecord[]; seams?: ProposalSeam
   // Each account has its own ledger (the product keys the ledger by account); B's holds nothing.
   const runtimeB = createAgentRuntimeService({ cardReader: null, executors: createAgentExecutorRegistry([]), now, repository: createStorageAgentRuntimeRepository({ store: cards.store as never, workspaceId: `${cards.workspaceId}:agent-actor:${B}` }) });
   const runtimeFor = (accountId: string) => (accountId === A ? cards.runtime : runtimeB);
-  const proposals = createProposalService({ connections, now, records, runtimeFor, secret: SECRET, ...(options.seams ? { seams: options.seams } : {}) });
+  const proposals = createProposalService({ connections, now, records, runtimeFor, secret: SECRET, ...(options.seams ? { seams: options.seams } : {}), ...(options.maxProposalsPerDay ? { maxProposalsPerDay: options.maxProposalsPerDay } : {}) });
   const documentLoads: string[] = [];
   const clients = createClientRegistry({ load: async (clientId) => { documentLoads.push(clientId); return CLIENT_DOCUMENTS[clientId]; } });
   const auth = createAuthorizationServer({ clients, connections, now, onRevoked: async (connection) => void (await proposals.voidOpen(connection)), records, secret: SECRET });
