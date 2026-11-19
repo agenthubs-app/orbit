@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { resolveAgentRequestContext } from "../../../app/api/_shared/agent-request-context";
 import { handleCardDecision, handleCardRegenerate, readCard } from "../../../features/agent/ledger/card-routes";
+import { externalProposalInboxEntry } from "../../../features/agent-v1/mcp/inbox";
 import { TOOL_DEFINITIONS } from "../../../features/agent-v1/mcp/tools/definitions";
 import { TOOL_NAMES } from "../../../features/agent-v1/mcp/scopes";
 import { proposalView } from "../../../features/agent-v1/mcp/views";
@@ -220,17 +221,45 @@ test("a record that is not this account's, or does not exist, cannot be proposed
   assert.equal(ok.isError, false);
 });
 
-test("the two parts that wait for AG15 sit behind seams: called once per new proposal, absent by default", async () => {
+test("a new proposal is announced once (the inbox seam); a repeat of the same key is not; a failed announcement does not undo the proposal", async () => {
   const notified: string[] = [];
-  const scheduled: string[] = [];
-  const kit = mcpKit({ seams: { notifyProposed: async ({ proposal, connection }) => void notified.push(`${proposal.id}:${connection.clientName}`), scheduleExpiry: async ({ expiresAt }) => void scheduled.push(expiresAt) } });
+  const kit = mcpKit({ seams: { notifyProposed: async ({ proposal, connection }) => void notified.push(`${proposal.id}:${connection.clientName}`) } });
   const task = await kit.cards.todo("给小林发修订报价", "2026-11-18");
   const tokens = await kit.connect({ scopes: SCOPES });
   const args = { idempotencyKey: "ext-001", operations: [{ op: "todo.update", set: { plannedDate: "2026-11-20" }, target: task.id }] };
   const first = await kit.call(tokens.accessToken, "propose_change", args);
   await kit.call(tokens.accessToken, "propose_change", args);
   assert.deepEqual(notified, [`${first.data!.proposal_id}:Claude`]);
-  assert.deepEqual(scheduled, [first.data!.expires_at]);
+
+  const failing = mcpKit({ seams: { notifyProposed: async () => { throw new Error("inbox is down"); } } });
+  const other = await failing.cards.todo("另一条", "2026-11-18");
+  const theirs = await failing.connect({ scopes: SCOPES });
+  const proposed = await failing.call(theirs.accessToken, "propose_change", { idempotencyKey: "k", operations: [{ op: "todo.update", set: { plannedDate: "2026-11-20" }, target: other.id }] });
+  assert.equal(proposed.status, 200);
+  assert.equal(proposed.isError, false, "the proposal stands; the link still works");
+  assert.equal((await cardsOf(failing)).length, 1);
+});
+
+test("the inbox entry of an external proposal: source «外部提议», names the client, points at the card, ends with the card", async () => {
+  const { kit, propose, tokens } = await setup();
+  await propose("ext-001");
+  const [action] = await cardsOf(kit);
+  const connection = (await kit.connections.get(tokens.connectionId))!;
+  const entry = externalProposalInboxEntry({ action, connection, now: "2026-11-15T01:00:05.000Z" });
+  assert.equal(entry.actorId, kit.A);
+  assert.equal(entry.title, "Claude 提了一项修改，等你确认");
+  assert.equal(entry.reason, action.preview);
+  assert.equal(entry.expiresAt, action.expiresAt);
+  assert.deepEqual(entry.target, { href: null, id: action.actionId, kind: "card", status: "available" });
+  assert.equal(entry.sources.length, 1);
+  assert.equal(entry.sources[0].sourceKind, "external_proposal");
+  assert.equal(entry.sources[0].sourceId, action.actionId);
+  assert.equal(entry.semanticKey, `agent-external-proposal:${action.actionId}`);
+  assert.deepEqual(entry.object, { id: connection.id, name: "Claude" });
+  // Plain words, in the connection's language; no token, no scope name.
+  assert.doesNotMatch(JSON.stringify(entry), /todos:propose|Bearer|授权|范围|来源|证据/u);
+  assert.equal(externalProposalInboxEntry({ action, connection: { ...connection, locale: "ja" }, now: "2026-11-15T01:00:05.000Z" }).title, "Claude から変更の提案があります。確認をお待ちしています");
+  assert.equal(externalProposalInboxEntry({ action, connection: { ...connection, locale: "en" }, now: "2026-11-15T01:00:05.000Z" }).title, "Claude proposed a change for you to confirm");
 });
 
 test("a connection cannot pile up proposals: past the daily number a new one is refused, a repeat of an old one is not, and a day later it may propose again", async () => {

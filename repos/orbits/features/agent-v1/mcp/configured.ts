@@ -9,7 +9,10 @@ import { readAccountRightsGateState } from "../../account/data-rights/access-pol
 import type { AgentRuntimeService } from "../../agent/runtime/service";
 import { createOrbitAgentRuntimeService } from "../../agent/runtime/service-factory";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
+import { createConfiguredInboxRuntime } from "../../notifications/inbox-record-service-factory";
 import { configuredRecordAccess } from "../domains/configured";
+import { emitTrace } from "../observability/trace";
+import { externalProposalInboxEntry } from "./inbox";
 import { createClientRegistry } from "./auth/clients";
 import { mcpAddresses, mcpSecret, type McpAddresses } from "./auth/config";
 import { createAuthorizationServer, type AuthorizationServer } from "./auth/server";
@@ -35,11 +38,17 @@ export interface ConfiguredMcpOptions {
 }
 
 /**
- * AG15 connects the inbox entry «外部提议» and the one-off expiry timer here (confirm-link.ts ProposalSeams). Until
- * then both are absent: a proposal writes no inbox entry, and a card past its time is judged expired when it is read
- * or decided (the ledger checks expiresAt both times).
+ * A new proposal writes one inbox entry with source «外部提议» (AG15's inbox). The one-off timer that marks the card
+ * expired at its time needs nothing here: the account's ledger sets it for every card it freezes.
  */
-export const PROPOSAL_SEAMS: ProposalSeams = {};
+export const PROPOSAL_SEAMS: ProposalSeams = {
+  async notifyProposed({ action, connection }) {
+    const inbox = createConfiguredInboxRuntime();
+    if (!inbox) throw new Error("The inbox is not configured.");
+    const written = await inbox.service.upsert(externalProposalInboxEntry({ action, connection, now: new Date().toISOString() }));
+    emitTrace({ cardId: action.actionId, connectionId: connection.id, inboxId: written.id, outcome: "written", sourceKind: "external_proposal", type: "notify.inbox" });
+  },
+};
 
 const globalCache = globalThis as typeof globalThis & { __orbitMcpServices?: McpServices | null };
 

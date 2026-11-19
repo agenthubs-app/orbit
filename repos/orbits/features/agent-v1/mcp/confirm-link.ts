@@ -10,13 +10,14 @@
  * The card's own id is derived separately and is never given to the agent; the page shows the card only to the account
  * the proposal belongs to. Nothing here can confirm a card: that is the signed-in user's click on the decision interface.
  *
- * Two parts wait for AG15 behind `ProposalSeams`: the inbox entry «外部提议» and the one-off timer that marks the card
- * expired at its time. Without the timer nothing is unsafe: reading and deciding both judge expiry from expiresAt.
+ * A new proposal also writes one inbox entry «外部提议» (`ProposalSeams`, mcp/inbox.ts). The one-off timer that marks
+ * the card expired at its time is the ledger's own (AG15); reading and deciding judge expiry from expiresAt as well.
  */
 import type { AgentActionRecord } from "../../agent/runtime/contract";
 import type { CardOperationIntent } from "../../agent/runtime/card-operations";
 import { cardOperationStatus, effectiveCardStatus } from "../../agent/runtime/decision";
 import type { AgentRuntimeService } from "../../agent/runtime/service";
+import { emitTrace } from "../observability/trace";
 import { derivedKey, hmac, PROPOSAL_PAGE_PATH, sha256, type McpAddresses } from "./auth/config";
 import { isActive, type AgentConnection, type ConnectionService } from "./connections";
 import { PROPOSAL_COLLECTION, PROPOSAL_LIST_LIMIT, type McpRecords } from "./records";
@@ -34,12 +35,13 @@ export interface StoredProposal {
   version: number;
 }
 
-/** AG15 connects these two; until then they do nothing (see the file comment). */
+/**
+ * What is done besides the card when a new proposal is made. The expiry timer is not here: the account's ledger sets
+ * one for every card it freezes (AG15 `withCardExpiryTimers`), an external proposal's card included.
+ */
 export interface ProposalSeams {
-  /** Writes the inbox entry with source «外部提议», saying which client proposed it. */
+  /** Writes the inbox entry with source «外部提议», saying which client proposed it (mcp/inbox.ts). */
   notifyProposed?: (input: { proposal: StoredProposal; action: AgentActionRecord; connection: AgentConnection }) => Promise<void>;
-  /** Asks the one-off timer to mark the card expired at `expiresAt`. */
-  scheduleExpiry?: (input: { proposal: StoredProposal; actionId: string; accountId: string; expiresAt: string }) => Promise<void>;
 }
 
 export type ProposeOutcome =
@@ -153,8 +155,12 @@ export function createProposalService(deps: {
         return { kind: "revoked" };
       }
       if (inserted && frozen.created) {
-        await deps.seams?.notifyProposed?.({ action: frozen.action, connection, proposal: stored });
-        if (frozen.action.expiresAt) await deps.seams?.scheduleExpiry?.({ accountId: connection.accountId, actionId, expiresAt: frozen.action.expiresAt, proposal: stored });
+        try {
+          await deps.seams?.notifyProposed?.({ action: frozen.action, connection, proposal: stored });
+        } catch (error) {
+          // The proposal stands and its link works; only the inbox line is missing, and that is said in the trace.
+          emitTrace({ cardId: actionId, error: error instanceof Error ? error.message : String(error), outcome: "failed", sourceKind: "external_proposal", type: "notify.inbox" });
+        }
       }
       return { action: frozen.action, created: inserted, kind: "proposed", proposal: stored };
     },
