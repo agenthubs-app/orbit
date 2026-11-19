@@ -1,0 +1,275 @@
+# ANS 区：回答排版与记录卡片。AG19 的门槛用例。
+# 依据：2026-11-19 获批视觉稿（D1–D6）；SPRINTS.md 的 AG19-1 到 AG19-8；用户当天在正式站的三轮对话。
+# 前面各 sprint 的用例只看回答文字；这一区看结果文档里的分块：列出的记录是不是每条一张能点开的卡片、顺序对不对、
+# 文字版是不是说的同一份内容、没做的部分有没有和回答分开。
+
+area: ANS
+
+proposed_checks:
+  - name: answer_cards
+    form: "answer_cards: { kinds: [...], exact: [...], within: [...], includes: [...], excludes: [...], sequence: [...], count: n, min: n, shown_first: n, more: true, text_order: true, size: full ／ mini ／ any, none: true }"
+    meaning: "最后一次回答的结果文档里的记录卡片，按显示顺序取夹具编号。默认只看正常大小的卡片（列表本身），size 写 mini 看文字下面「提到的记录」小卡片，写 any 两种都看。kinds 表示每张卡的类型都在其中；exact、within、includes、excludes、sequence、count 与 listed 同义，min 表示至少几张；shown_first 是第一组卡片先显示的张数；more 表示有没有「还有 N 条」这一行；text_order 表示每张卡的名称都出现在回答的文字版里且先后一致；none 表示一张卡片都没有。同一条记录出现在两张卡上、卡片没有名称或记录编号，都判不通过。各键都可省。"
+  - name: answer_blocks
+    form: "answer_blocks: { has: [conclusion, points, records, note], lacks: [note], first: paragraph }"
+    meaning: "最后一次回答的结果文档里分块的类型。has 里的类型都要有，lacks 里的都不能有，first 是第一块的类型。类型取 conclusion（结论）、paragraph（段落）、points（要点）、records（卡片组）、note（这次没做的部分）。"
+  - name: answer_text_plain
+    form: "answer_text_plain: true"
+    meaning: "最后一次回答的文字版和各分块的文字里都没有星号、反引号和行首的井号。"
+
+cases:
+  - id: AE-ANS-001
+    title: 问最近有哪些活动：一句导语加每场一张卡片，六场先放五张
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 1 组", "视觉稿第 3 组", "D1", "D2"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "最近有哪些活动适合我？"
+    hard:
+      - answer_cards: { kinds: [event], exact: [E103, E101, E104, E102, E105, E107], shown_first: 5, more: true, text_order: true }
+      - answer_blocks: { first: paragraph, has: [records], lacks: [note, conclusion] }
+      - answer_text_plain: true
+      - clarifications: { count: 0 }
+      - request_status: completed
+      - judgment_calls: 0
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "导语用一句平常的话说了一共几场、按开始时间从早到晚；没有出现括号套括号的说法。"
+      - id: R2
+        text: "每张卡片上有类型、带星期的开始时间、活动名称和地点，六张的先后就是开始时间的先后。"
+      - id: R3
+        text: "时间未公布的那场（AI 产品沙龙）没有被排进先后，而是另外说明时间未公布。"
+    notes: "用户 2026-11-19 的原话。小账号的七场平台活动里六场有开始时间，都在时钟（11 月 15 日）之后；E106 没有开始时间。「适合我」不是主题，按开始时间列出即可，不追问。六张卡片先显示五张，剩下一张收在「还有 1 场」里。"
+
+  - id: AE-ANS-002
+    title: 常规账号问最近有哪些活动：只列还没开始的，最近的在前，办完的不列
+    sprint: AG19
+    split: val
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 1 组", "D2", "AG19-6"]
+    locale: zh
+    account: regular
+    world: regular-v1
+    steps:
+      - user: "最近有哪些活动适合我？"
+    hard:
+      - answer_cards: { kinds: [event], min: 6, excludes: [RE06, RE08], sequence: [RE03, RE05, RE04, RE01, RE07], shown_first: 5, more: true, text_order: true }
+      - answer_blocks: { has: [records], lacks: [note] }
+      - answer_text_plain: true
+      - clarifications: { count: 0 }
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡片上的活动全部在 11 月 15 日之后开始，没有任何一场已经办完的活动；最早开始的排在最前面。"
+      - id: R2
+        text: "导语说了还没开始的活动一共多少场，卡片的张数不超过 20，超过 5 张的部分收在「还有 N 场」里。"
+    interference: [similar_records, cross_page]
+    notes: "常规账号有 60 场平台活动，开始时间从 2026 年 9 月到 2027 年 3 月，一半以上已经办完；RE06 是同名的上一期（10 月 17 日）。用户报告的问题就是「最近」列出了三场已经办完的活动。RE08 时间未公布，不排进先后。锚点里还没开始的依次是 RE03（11-21 10:00）、RE05（11-21 14:00）、RE04（11-22 13:00）、RE01（11-23）、RE07（12-12）。"
+
+  - id: AE-ANS-003
+    title: 列表之后紧跟着问哪些值得去、为什么：接着刚才那份列表回答
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 4 组", "视觉稿第 5 组", "AG19-6"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "最近有哪些活动适合我？"
+      - user: "哪些活动？你觉得有必要参加？为什么？"
+    hard:
+      - parts: [ { quote: "哪些活动？你觉得有必要参加？为什么？", status: answered } ]
+      - routes_absent: [explain_limit, clarify, suggest_external_agent, offer_alternative]
+      - answer_blocks: { lacks: [note] }
+      - answer_text_plain: true
+      - clarifications: { count: 0 }
+      - cites_within_reads: true
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二轮接着第一轮列出的活动回答：说了哪几场值得去，并给了理由。"
+      - id: R2
+        text: "第二轮没有说现在还不能按条件找活动，没有说要等前一段有结果，也没有反问指的是哪一位。"
+      - id: R3
+        text: "理由只用了这些活动自己的时间、地点、主题和费用，没有编造议程、嘉宾或用户的偏好。"
+    notes: "用户 2026-11-19 的第二问。当时被按问号拆成三段：第一段当成按条件找活动而拒绝，后两段等它。现在由代码规则把整句当成对刚才那份列表的一个追问，重新按编号读那几场活动再回答。"
+
+  - id: AE-ANS-004
+    title: 问这周该跟进谁：每位一张联系人卡片，卡片下面有一句理由
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 2 组", "D1"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "这周该跟进谁？"
+    hard:
+      - answer_cards: { kinds: [contact], includes: [C30, C31], excludes: [C46, C40], text_order: true }
+      - answer_blocks: { has: [records], lacks: [note] }
+      - answer_text_plain: true
+      - cites_within_reads: true
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "田中浩和李薇各有一张联系人卡片，卡片上有公司和职位，下面有一句为什么该跟进（哪条待办或跟进到期、过了计划日）。"
+      - id: R2
+        text: "开头写明了这次是按什么挑的（已到期没做的跟进、过了计划日的待办），没有说成是模型觉得重要。"
+    notes: "沿用 AE-FN-003 的数据：田中有逾期的正式跟进 F1，李薇的待办 T45 过了计划日。卡片下面的理由来自这些待办；待办本身在文字下面另有小卡片，同一条记录不出现两次。"
+
+  - id: AE-ANS-005
+    title: 问还没完成的待办：每条一张待办卡片，已完成的不在里面
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 2 组", "D3"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "我有哪些还没完成的待办？"
+    hard:
+      - answer_cards: { size: any, kinds: [todo], includes: [T42, T44, T45, T47], excludes: [T46], text_order: true }
+      - answer_blocks: { has: [records], lacks: [note] }
+      - answer_text_plain: true
+      - cites_within_reads: true
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "四条没完成的待办各有一张卡片，卡片上有待办的名称和它的截止时间或计划日（有的话），日期带星期。"
+      - id: R2
+        text: "已完成的「整理十月发票」没有出现在卡片里，回答也没有把它说成没完成。"
+    notes: "T42、T44、T45、T47 没完成，T46 已完成。正式跟进 F1 出不出现都可以。卡片点开的是这一条待办（D3），由两端的链接表保证，这里只判卡片本身。"
+
+  - id: AE-ANS-006
+    title: 问这周有哪些安排：日程卡片
+    sprint: AG19
+    split: val
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 2 组"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "这周我有哪些安排？"
+    hard:
+      - answer_cards: { size: any, kinds: [schedule, event, todo], includes: [S11], text_order: true }
+      - answer_text_plain: true
+      - cites_within_reads: true
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "「和田中午餐」有一张日程卡片，上面有带星期的日期和时间（11 月 19 日周四 12:00）。"
+      - id: R2
+        text: "回答里说到的每条安排都对得上夹具里这一周（11 月 15 日到 21 日）的记录，没有多出不存在的安排。"
+    notes: "时钟是 11 月 15 日周日。这一周有日程 S10（团队周会，11 月 16 日，每周重复）和 S11（和田中午餐，11 月 19 日）；把这周的活动或到期的待办一并列出也可以。今天两端的回答里日程都点不了，卡片把入口补上。"
+
+  - id: AE-ANS-007
+    title: 讨论类的问题：结论一句，后面分点，由程序排版，不出现星号井号
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 5 组", "D4"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "下周要第一次拜访一家新客户，帮我想想要准备什么，分几点说。"
+    hard:
+      - answer_blocks: { first: conclusion, has: [conclusion, points], lacks: [note, records] }
+      - answer_text_plain: true
+      - answer_cards: { none: true }
+      - no_private_reads: true
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一句是一句完整的结论或总的建议，后面是几条要点，每条只讲一件事。"
+      - id: R2
+        text: "回答没有声称查过用户的记录，也没有提到任何具体的客户、联系人或待办。"
+    notes: "不涉及用户的记录，所以没有卡片。模型只按「结论、段落、要点」填字，加粗和分点由程序画；第一层直接给出的长回答没有结构，回答步骤会按结构重写一次。"
+
+  - id: AE-ANS-008
+    title: 一半答了、一半没做：回答在上，没做的部分单独成一块说明
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 4 组"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "田中上次说了什么？另外帮我做一份东南亚物流市场的进入调研，自己找竞品和行业数据交叉核验。"
+    hard:
+      - parts: [ { quote: "田中上次说了什么", status: answered }, { quote: "东南亚物流市场", status: suggested_external } ]
+      - answer_blocks: { has: [note] }
+      - answer_text_plain: true
+      - cites: { include: [M37] }
+      - cites_within_reads: true
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "关于田中的回答在前面，用正文的样子；调研那一段在后面的「这次没做的部分」说明条里，两者分开。"
+      - id: R2
+        text: "说明条里先写了用户原话里调研的那一段，再写为什么这次没做、建议怎么办，没有假装做了调研。"
+      - id: R3
+        text: "关于田中的回答说出了 11 月 11 日那篇笔记的要点（最在意交付周期、报价可分两期、月底前看修订版），没有编造。"
+    notes: "前半句读笔记 M37 回答；后半句超出 Orbit 现在能做的范围，建议交给通用 Agent。只引用了一篇笔记时，依据行本身能点开它，不另放小卡片。"
+
+  - id: AE-ANS-009
+    title: 较大账号问最近有哪些活动：只列还没开始的，卡片不超过二十张
+    sprint: AG19
+    split: val
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 3 组", "D2", "AG19-6"]
+    locale: zh
+    account: large
+    world: large-v1
+    steps:
+      - user: "接下来有哪些活动？"
+    hard:
+      - answer_cards: { kinds: [event], min: 6, shown_first: 5, more: true, text_order: true }
+      - answer_blocks: { has: [records], lacks: [note] }
+      - answer_text_plain: true
+      - clarifications: { count: 0 }
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡片上的活动全部在 11 月 15 日之后开始，最早开始的排在最前面，没有已经办完的活动。"
+      - id: R2
+        text: "导语说了还没开始的活动一共多少场、这次先列多少场；卡片不超过 20 张，第 6 张起收在「还有 N 场」里。"
+    interference: [cross_page]
+    notes: "较大账号有 600 场平台活动。问法换成「接下来」，没有「适合我」。一次最多列 20 场，剩下的在导语里说总数。"

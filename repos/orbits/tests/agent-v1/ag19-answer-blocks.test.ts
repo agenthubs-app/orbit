@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { composeStructured, hasMarkdownSymbols, joinBlocks, noteItemOf, recordOfView, recordsBlock, stripMarkdown, textBlocks, type AnswerBlock } from "../../features/agent-v1/answer/blocks";
+import { composeStructured, hasMarkdownSymbols, joinBlocks, needsLayout, noteItemOf, recordOfView, recordsBlock, stripMarkdown, textBlocks, type AnswerBlock } from "../../features/agent-v1/answer/blocks";
 import { gapWords } from "../../features/agent-v1/answer/gap-copy";
 import { resumedAnswer } from "../../features/agent-v1/entry/store";
 import { asksUpcomingEvents } from "../../features/agent-v1/functions/basis";
@@ -225,4 +225,32 @@ test("AG19-7: the document schema — a client skips a block type it does not kn
   const parsed = agentResultDocumentSchema.parse({ ...base, answer: { blocks: [{ text: "导语", type: "paragraph" }, { type: "chart", values: [1, 2] }, { items: [{ id: "event:e1", kind: "event", title: "A", top: "11月19日（周四）19:00" }], shown: 1, type: "records" }, { items: [{ id: "x", kind: "spaceship", title: "?" }], shown: 1, type: "records" }], sourceRefs: [], text: "导语\n1. A" } });
   assert.deepEqual(parsed.answer?.blocks?.map((block) => block.type), ["paragraph", "records"]);
   assert.equal(parsed.answer?.text, "导语\n1. A");
+});
+
+test("D4: a plain-chat reply of one or two sentences is shown as it is; a longer one is written again in the plain fields", async () => {
+  assert.equal(needsLayout("可以，周五前发就行。", "zh"), false);
+  assert.equal(needsLayout("可以。周五前发就行。", "zh"), false);
+  assert.equal(needsLayout("先准备报价。再准备案例。最后确认时间。", "zh"), true);
+  assert.equal(needsLayout("第一行\n第二行", "zh"), true);
+  assert.equal(needsLayout("Sure. Friday works.", "en"), false);
+  const message = "第一次拜访客户要准备什么？";
+  const long = "建议先把对方的业务和最近的动态看一遍。**然后**准备一页自己的介绍，带上两个相近的案例。最后想好这次拜访想拿到的下一步，比如约下一次演示。";
+  const understood = () => json({ language: "zh", parts: [part({ sourceQuote: message })], plainChat: true, reply: long });
+  // The answer step writes it in the structure: one more call, the layout is code's.
+  const laid = deepseekStub(byNode({ answer: () => json({ segments: [{ body: [{ points: [{ head: "了解对方", text: "把业务和最近的动态看一遍。" }, { head: "自己的介绍", text: "一页纸，带两个相近的案例。" }] }], lead: "先了解对方，再准备介绍和想要的下一步。", partId: "p1" }] }), understand: understood }));
+  const first = await runAgentGraph(graphKit(laid.fetchImplementation, { now: NOW }).deps, graphKit(laid.fetchImplementation, { now: NOW }).input(message));
+  assert.deepEqual(first.blocks.map((block) => block.type), ["conclusion", "points"]);
+  assert.equal(laid.calls.filter((call) => call.node === "answer").length, 1);
+  // That call fails: the reply itself is delivered as a paragraph, symbols out — never lost, never a failure.
+  const failing = deepseekStub(byNode({ answer: () => "not json", understand: understood }));
+  const kit = graphKit(failing.fetchImplementation, { now: NOW });
+  const second = await runAgentGraph(kit.deps, kit.input(message));
+  assert.deepEqual(second.partResults.map((item) => item.status), ["answered"]);
+  assert.equal(second.text, long.replace(/\*\*/gu, ""));
+  assert.deepEqual(second.blocks.map((block) => block.type), ["paragraph"]);
+  // A short reply: no second call.
+  const short = deepseekStub(byNode({ understand: () => json({ language: "zh", parts: [part({ sourceQuote: message })], plainChat: true, reply: "可以，周五前发就行。" }) }));
+  const shortKit = graphKit(short.fetchImplementation, { now: NOW });
+  const third = await runAgentGraph(shortKit.deps, shortKit.input(message));
+  assert.deepEqual(third.blocks, [{ text: "可以，周五前发就行。", type: "paragraph" }]);
 });

@@ -387,3 +387,18 @@ export const ANSWER_LAYOUT_RULES: readonly string[] = [
 ];
 
 export const ANSWER_SEGMENT_SHAPE = '"lead": "<the answer itself, one sentence>", "body": [{"p": "<paragraph>"}, {"points": [{"head": "<label>", "text": "<sentence>"}]}]';
+
+const PLAIN_MAX: Record<Language, number> = { en: 280, ja: 90, zh: 90 };
+
+/**
+ * D4, board 5 note 5: "只有一两句的回答不硬拆". A free-text reply (the first layer's plain-chat reply) of one or two
+ * sentences is shown as it is; a longer one has no structure for code to lay out, so the answer step writes it again in
+ * the plain fields (conclusion, paragraphs, points). Code decides it from the text alone.
+ */
+export function needsLayout(text: string, language: Language): boolean {
+  const flat = text.trim();
+  if (!flat) return false;
+  if (/\n/u.test(flat) || flat.length > PLAIN_MAX[language]) return true;
+  const sentences = flat.split(language === "en" ? /(?<=[.!?])\s+/u : /(?<=[。！？!?])/u).filter((piece) => piece.trim());
+  return sentences.length > 2;
+}

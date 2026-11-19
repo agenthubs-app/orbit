@@ -6,6 +6,7 @@
  * produces no evidence for it yet. `deferred` checks are run-level and settled by `settleRunLevelChecks`.
  * Adding a check: implement it in CHECKS below and drop it from NOT_YET (with the sprint that delivers it).
  */
+import type { AgentAnswerBlockContract } from "../../../shared/contract/agent-v1";
 import { CAPABILITY_TABLE } from "../../../features/agent-v1/route/capabilities";
 import { VOCABULARY_WORDS } from "../../../features/agent-v1/web/vocabulary";
 import { isBusinessChange, productIdsIn, writesFor, type CardObservation, type NormalizedOp, type Observation } from "./observations";
@@ -183,6 +184,16 @@ function functionListOf(obs: Observation, answer: { text: string }): string[] | 
     const id = ref.slice(ref.indexOf(":") + 1);
     return obs.fixtureIdOf(id) ?? obs.fixtureIdOf(ref) ?? id;
   });
+}
+
+/** AG19: the blocks of the last answer's result document (null when it has none). */
+function lastAnswerBlocks(obs: Observation): { blocks: readonly AgentAnswerBlockContract[]; text: string; seq: number } | null {
+  const answer = lastAnswer(obs);
+  if (!answer) return null;
+  const requests = (obs.entry?.requests ?? []).filter((request) => request.document?.answer?.text === answer.text);
+  const document = requests[requests.length - 1]?.document;
+  const blocks = document?.answer?.blocks;
+  return blocks?.length ? { blocks, seq: answer.seq, text: answer.text } : null;
 }
 
 const CALL_EVENTS = new Set(["model.request", "judgment.request", "web.search", "web.fetch", "exec.call"]);
@@ -527,6 +538,72 @@ export const CHECKS: Record<string, CheckFn> = {
     const present = exclude.filter((id) => answer.citations.includes(id));
     if (!answer.citations.length && include.length) return fail(`the answer carries no citations (needed ${include.join(", ")})`, [answer.seq]);
     return !missing.length && !present.length ? pass(`citations ${answer.citations.join(", ")}`, [answer.seq]) : fail(`missing ${missing.join(", ") || "-"}; should not cite ${present.join(", ") || "-"}`, [answer.seq]);
+  },
+
+  /**
+   * AG19 (ANS.yaml): the block types of the last answer's result document. `has`: each of these types is there;
+   * `lacks`: none of these is; `first`: the type of the first block.
+   */
+  answer_blocks(args, obs) {
+    const found = lastAnswerBlocks(obs);
+    if (!found) return fail("the last answer carries no blocks");
+    const types = found.blocks.map((block) => block.type);
+    const problems: string[] = [];
+    for (const type of (args?.has ?? []) as string[]) if (!types.includes(type as never)) problems.push(`no ${type} block`);
+    for (const type of (args?.lacks ?? []) as string[]) if (types.includes(type as never)) problems.push(`a ${type} block is there`);
+    if (args?.first && types[0] !== args.first) problems.push(`the first block is ${types[0] ?? "none"}, expected ${args.first}`);
+    return problems.length ? fail(`${problems.join(" | ")} (blocks: ${types.join(", ") || "none"})`, [found.seq]) : pass(`blocks: ${types.join(", ")}`, [found.seq]);
+  },
+
+  /**
+   * AG19 (ANS.yaml): the record cards of the last answer, in display order, by fixture id. By default the full-size cards
+   * (the list); `size: mini` looks at the small "mentioned" cards instead, `size: any` at both. `kinds`: every card is of
+   * one of these kinds; exact / within / includes / excludes / sequence / count / min as in `listed`; `shown_first`: how
+   * many the first group shows before "还有 N 条"; `more`: whether such a line is there; `text_order`: every card's title
+   * is in `answer.text`, in the same order (the text version says the same); `none: true`: there is no card at all.
+   */
+  answer_cards(args, obs) {
+    const found = lastAnswerBlocks(obs);
+    if (!found) return args?.none ? pass("no blocks, so no card") : fail("the last answer carries no blocks");
+    const size = (args?.size as string | undefined) ?? "full";
+    const groups = found.blocks.filter((block): block is Extract<typeof block, { type: "records" }> => block.type === "records" && (size === "any" || (block.size ?? "full") === size));
+    const cards = groups.flatMap((block) => [...block.items]);
+    if (args?.none) return cards.length ? fail(`${cards.length} card(s): ${cards.map((card) => card.title).join(", ")}`, [found.seq]) : pass("no card", [found.seq]);
+    if (!cards.length) return fail(`no ${size === "any" ? "" : `${size} `}record cards in the last answer`, [found.seq]);
+    const idOf = (card: { kind: string; id: string }) => obs.fixtureIdOf(card.id) ?? obs.fixtureIdOf(`${card.kind}:${card.id}`) ?? obs.fixtureIdOf(card.id.replace(/^[a-z_]+:/u, "")) ?? card.id;
+    const list = cards.map(idOf);
+    const problems: string[] = [];
+    if (args?.kinds) for (const card of cards) if (!(args.kinds as string[]).includes(card.kind)) problems.push(`${idOf(card)} is a ${card.kind} card`);
+    if (args?.exact && JSON.stringify(list) !== JSON.stringify(args.exact)) problems.push(`cards ${list.join(", ")}, expected exactly ${(args.exact as string[]).join(", ")}`);
+    if (args?.within) for (const id of list) if (!(args.within as string[]).includes(id)) problems.push(`${id} is outside ${(args.within as string[]).join(", ")}`);
+    if (args?.includes) for (const id of args.includes as string[]) if (!list.includes(id)) problems.push(`${id} has no card`);
+    if (args?.excludes) for (const id of args.excludes as string[]) if (list.includes(id)) problems.push(`${id} should have no card`);
+    if (args?.sequence) {
+      const positions = (args.sequence as string[]).map((id) => list.indexOf(id));
+      if (positions.some((at) => at < 0) || positions.some((at, index) => index > 0 && at < positions[index - 1])) problems.push(`not in the order ${(args.sequence as string[]).join(" → ")}`);
+    }
+    if (args?.count !== undefined && list.length !== Number(args.count)) problems.push(`${list.length} cards, expected ${args.count}`);
+    if (args?.min !== undefined && list.length < Number(args.min)) problems.push(`${list.length} cards, expected at least ${args.min}`);
+    if (new Set(cards.map((card) => `${card.kind}:${card.id}`)).size !== cards.length) problems.push("a record is on more than one card");
+    for (const card of cards) if (!card.title.trim() || !card.id) problems.push(`a card without a ${card.id ? "title" : "record id"}`);
+    if (args?.shown_first !== undefined && groups[0].shown !== Number(args.shown_first)) problems.push(`the first group shows ${groups[0].shown} first, expected ${args.shown_first}`);
+    if (args?.more !== undefined && Boolean(groups[0].moreLabel) !== Boolean(args.more)) problems.push(args.more ? "no 还有 N 条 line" : `an unexpected line ${groups[0].moreLabel}`);
+    if (args?.text_order) {
+      const at = cards.map((card) => found.text.indexOf(card.title));
+      if (at.some((index) => index < 0)) problems.push(`not in the text: ${cards.filter((_, index) => at[index] < 0).map((card) => card.title).join(", ")}`);
+      else if (at.some((index, position) => position > 0 && index < at[position - 1])) problems.push("the text names them in another order");
+    }
+    return problems.length ? fail(`${problems.join(" | ")} (cards: ${list.join(", ")})`, [found.seq]) : pass(`cards ${list.join(", ")}${groups[0].moreLabel ? ` (${groups[0].shown} shown first, then ${groups[0].moreLabel})` : ""}`, [found.seq]);
+  },
+
+  /** AG19 (ANS.yaml): the last answer's text and blocks show no Markdown symbol (`*`, a backtick, a heading `#`). */
+  answer_text_plain(_args, obs) {
+    const answer = lastAnswer(obs);
+    if (!answer) return fail("no answer");
+    const found = lastAnswerBlocks(obs);
+    const texts = [answer.text, ...(found?.blocks ?? []).flatMap((block) => (block.type === "conclusion" || block.type === "paragraph" ? [block.text] : block.type === "points" ? block.items.flatMap((item) => [item.head ?? "", item.text]) : block.type === "note" ? block.items.flatMap((item) => [item.text, item.action ?? ""]) : []))];
+    const bad = texts.filter((text) => /\*|`|^\s{0,3}#{1,6}\s/mu.test(text));
+    return bad.length ? fail(`a Markdown symbol is shown: ${bad[0].slice(0, 80)}`, [answer.seq]) : pass("no Markdown symbol in the text or the blocks", [answer.seq]);
   },
 
   answer_excludes(args, obs) {

@@ -4,6 +4,7 @@
  * and writes the per-case files. Steps not yet supported by the product are recorded as
  * "step not supported" and fail the case; the run continues (PLANNER 易错边界 9).
  */
+import type { AgentAnswerBlockContract } from "../../../shared/contract/agent-v1";
 import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -217,6 +218,26 @@ function productIdsOfFixture(value: unknown, idMap: Record<string, string>): unk
 }
 
 /** Per-case files and checks. */
+/**
+ * AG19: the answer's blocks as the two clients lay them out (written by server code; the text above is the same answer as
+ * plain text for older clients). Each record card is one line: kind, upper line, name, lower line, the reason if any.
+ */
+export function blockLines(blocks: readonly AgentAnswerBlockContract[] | undefined, fixtureIdOf: (id: string | null | undefined) => string | null): string[] {
+  if (!blocks?.length) return [];
+  const KIND: Record<string, string> = { attendance: "我去过", contact: "联系人", event: "活动", memo: "笔记", schedule: "日程", todo: "待办" };
+  const lines: string[] = ["- 两端实际显示的排版（结果文档的 blocks，服务端代码写的；卡片整张可点，进那条记录的页面）："];
+  for (const block of blocks) {
+    if (block.type === "conclusion") lines.push(`  - 【结论，加粗】${block.text}`);
+    else if (block.type === "paragraph") lines.push(`  - 【段落】${block.text}`);
+    else if (block.type === "points") lines.push("  - 【要点】", ...block.items.map((item) => `    - ${item.head ? `〔${item.head}〕` : ""}${item.text}`));
+    else if (block.type === "records") {
+      lines.push(`  - 【${block.size === "mini" ? "小卡片" : "卡片"}${block.caption ? `，上方小字「${block.caption}」` : ""}，共 ${block.items.length} 张${block.moreLabel ? `，先显示 ${block.shown} 张，其余收在「${block.moreLabel}」里，点一下原地展开` : ""}】`);
+      block.items.forEach((item, index) => lines.push(`    - ${index + 1}. [${KIND[item.kind] ?? item.kind}] ${item.top ?? ""}｜${item.title}｜${item.sub ?? ""}${item.why ? `｜理由：${item.why}` : ""}（${fixtureIdOf(item.id) ?? item.id}${item.gone ? "，已不在" : ""}）`));
+    } else if (block.type === "note") lines.push(`  - 【灰底说明条「${block.title}」】`, ...block.items.map((item) => `    - ${item.quote ? `「${item.quote}」` : ""}${item.text}${item.action ? `〔可以马上做：${item.action}〕` : ""}`));
+  }
+  return lines;
+}
+
 export async function runCase(testCase: EvalCase, filePatches: Record<string, any>, area: string, ctx: RunnerContext): Promise<CaseOutcome> {
   const started = Date.now();
   const { environment } = ctx;
@@ -1106,7 +1127,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       const SET_KIND: Record<string, string> = { entry: "附带的入口（点了才算提出）", not_understood: "没看懂时给的方向", question: "追问的候选" };
       const SET_STATE: Record<string, string> = { answered: "已回答", open: "还能点", shelved: "已放下（用户没理会）" };
       const setLines = (row.document?.clarifications ?? []).map((set) => `  - ${SET_KIND[set.kind] ?? set.kind}（子目标 ${set.partId}，${SET_STATE[set.state] ?? set.state}${set.selectedOptionId ? `，选了 ${set.selectedOptionId}` : ""}${set.answeredBy ? `，由后面的消息 ${set.answeredBy} 回答` : ""}）：${set.options.map((option) => `${option.optionId}「${option.label}」（${option.capability}${option.ref ? `，指向 ${fixtureIdOf(option.ref.id) ?? option.ref.id}` : ""}）`).join("；") || "没有候选"}`);
-      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, ...(row.document?.answer?.basis ? [`- 回答开头的依据行（两端显示在回答上方，可点开记录）：${row.document.answer.basis.text}（${row.document.answer.basis.links.map((link) => link.label).join("、")}）`] : []), `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, ...(row.document?.answer?.web ? [`- 结果文档里的联网记录（服务端代码写的；实际发出的检索词和打开的网页）：检索词 ${row.document.answer.web.queries.map((query) => `「${query.text}」`).join("、") || "无"}；网页 ${row.document.answer.web.pages.map((page) => `${page.url}（${page.readStatus}${page.sourceDate ? `，页面日期 ${page.sourceDate}` : ""}）`).join("、") || "无"}`] : []), ...(setLines.length ? ["- 可点的方向（结果文档里由服务端代码给出，两端照此显示）：", ...setLines] : []), ...(partLines.length ? ["- 拆出的子目标（结果文档里的服务端记录，不是给用户看的文字）：", ...partLines] : []), ...(row.document?.actionPreview ? ["- 这一轮结果文档里的卡（交付时的状态）：", ...cardText(row.document.actionPreview)] : []), "");
+      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, ...(row.document?.answer?.basis ? [`- 回答开头的依据行（两端显示在回答上方，可点开记录）：${row.document.answer.basis.text}（${row.document.answer.basis.links.map((link) => link.label).join("、")}）`] : []), `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, ...blockLines(row.document?.answer?.blocks, fixtureIdOf), ...(row.document?.answer?.web ? [`- 结果文档里的联网记录（服务端代码写的；实际发出的检索词和打开的网页）：检索词 ${row.document.answer.web.queries.map((query) => `「${query.text}」`).join("、") || "无"}；网页 ${row.document.answer.web.pages.map((page) => `${page.url}（${page.readStatus}${page.sourceDate ? `，页面日期 ${page.sourceDate}` : ""}）`).join("、") || "无"}`] : []), ...(setLines.length ? ["- 可点的方向（结果文档里由服务端代码给出，两端照此显示）：", ...setLines] : []), ...(partLines.length ? ["- 拆出的子目标（结果文档里的服务端记录，不是给用户看的文字）：", ...partLines] : []), ...(row.document?.actionPreview ? ["- 这一轮结果文档里的卡（交付时的状态）：", ...cardText(row.document.actionPreview)] : []), "");
     }
     const reconnects = events.filter((event) => event.type === "turn.reconnect");
     if (reconnects.length) {

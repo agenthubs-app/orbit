@@ -245,7 +245,10 @@ cases:
 
 | 词 | 写法 | 含义 | 提出的区 |
 |---|---|---|---|
+| `answer_blocks` | `answer_blocks: { has: [conclusion, points, records, note], lacks: [note], first: paragraph }` | 最后一次回答的结果文档里分块的类型。has 里的类型都要有，lacks 里的都不能有，first 是第一块的类型。类型取 conclusion（结论）、paragraph（段落）、points（要点）、records（卡片组）、note（这次没做的部分）。 | ANS |
+| `answer_cards` | `answer_cards: { kinds: [...], exact: [...], within: [...], includes: [...], excludes: [...], sequence: [...], count: n, min: n, shown_first: n, more: true, text_order: true, size: full ／ mini ／ any, none: true }` | 最后一次回答的结果文档里的记录卡片，按显示顺序取夹具编号。默认只看正常大小的卡片（列表本身），size 写 mini 看文字下面「提到的记录」小卡片，写 any 两种都看。kinds 表示每张卡的类型都在其中；exact、within、includes、excludes、sequence、count 与 listed 同义，min 表示至少几张；shown_first 是第一组卡片先显示的张数；more 表示有没有「还有 N 条」这一行；text_order 表示每张卡的名称都出现在回答的文字版里且先后一致；none 表示一张卡片都没有。同一条记录出现在两张卡上、卡片没有名称或记录编号，都判不通过。各键都可省。 | ANS |
 | `answer_excludes` | `` | 最后一轮的回应（回答文字和卡片上的可见文字）里不含列出的任何一个片段。写法：answer_excludes: [片段, ...] | SEALED |
+| `answer_text_plain` | `answer_text_plain: true` | 最后一次回答的文字版和各分块的文字里都没有星号、反引号和行首的井号。 | ANS |
 | `card_effects` | `card_effects: [ { op: <序号>, includes: [<记录>, ...] } ]` | 最后一张卡上第 n 项列出的受影响记录至少包含这些。 | CON |
 | `cites` | `cites: { include: [<记录>, ...], exclude: [<记录>, ...] }` | 最后一次回答的引用必须包含 include 里的每条记录，并且不含 exclude 里的任何一条。两项可以只写一项。 | RD、REF、SCL、XL |
 | `client_view` | `client_view: [ { client: app, after_step: 2, pending_count: 1, card_content: hidden, confirm: disabled }, ... ]` | 某一端在第 n 步之后的界面。pending_count 是它显示的待确认份数；card_content 取 shown 或 hidden，指卡上的具体条目看不看得到；confirm 取 enabled 或 disabled，按钮在但点不了和根本不显示都算 disabled。 | UIX |

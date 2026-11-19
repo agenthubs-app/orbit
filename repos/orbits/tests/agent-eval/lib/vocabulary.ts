@@ -112,7 +112,10 @@ export const BASE_CHECK_WORDS = [
 
 /** §3.4 checks. */
 export const EXTRA_CHECK_WORDS = [
+  "answer_blocks",
+  "answer_cards",
   "answer_excludes",
+  "answer_text_plain",
   "card_effects",
   "cites",
   "client_view",
