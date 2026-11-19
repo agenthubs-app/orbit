@@ -66,14 +66,18 @@ export async function sendAgentV1(client: OrbitApiClient, input: { sessionId: st
 export const AGENT_REFERENCES_SEARCH_PATH = "/api/agent/references/search";
 export const AGENT_REFERENCES_CHECK_PATH = "/api/agent/references/check";
 
-/** The account's own records of six kinds by name; null when the server could not be reached or answered wrongly. */
-export async function searchAgentReferences(client: OrbitApiClient, query: string, kind: AgentReferenceSearchKind | null): Promise<AgentReferenceSearchResultContract | null> {
+/**
+ * The account's own records of six kinds by name. "offline" when the server could not be reached (the picker then lists
+ * the phone's contacts, D8); "error" when it answered with an error or a wrong shape.
+ */
+export async function searchAgentReferences(client: OrbitApiClient, query: string, kind: AgentReferenceSearchKind | null): Promise<{ kind: "ok"; value: AgentReferenceSearchResultContract } | { kind: "offline" } | { kind: "error" }> {
   const params = new URLSearchParams({ q: query.trim() });
   if (kind) params.set("kind", kind);
   const result = await client.get<unknown>(`${AGENT_REFERENCES_SEARCH_PATH}?${params}`).catch(() => null);
-  if (!result?.success) return null;
+  if (!result) return { kind: "offline" };
+  if (!result.success) return result.status === 0 || offlineCode(result.error?.code) ? { kind: "offline" } : { kind: "error" };
   const parsed = agentReferenceSearchResultSchema.safeParse(result.data);
-  return parsed.success ? parsed.data : null;
+  return parsed.success ? { kind: "ok", value: parsed.data } : { kind: "error" };
 }
 
 /** D7: the picked records that cannot be opened now ("type:id"); empty when the check could not be made. */

@@ -92,15 +92,19 @@ export function ContactMentionPicker({ mode, query, onQuery, onPick, onDone, onC
   const { height } = useWindowDimensions();
   const [kind, setKind] = useState<AgentReferenceSearchKind | null>(null);
   const [chosen, setChosen] = useState<AgentReferenceCandidateContract[]>([]);
-  const [result, setResult] = useState<{ status: "loading" | "ready" | "unreachable"; data: AgentReferenceSearchResultContract | null }>({ data: null, status: "loading" });
+  const [result, setResult] = useState<{ status: "loading" | "ready" | "unreachable" | "error"; data: AgentReferenceSearchResultContract | null; client: unknown }>({ client, data: null, status: "loading" });
   const deviceOffline = offline || (local.available && local.freshness.offline);
   const isOffline = deviceOffline || result.status === "unreachable";
   useEffect(() => {
     if (deviceOffline) return undefined;
     let current = true;
-    setResult((previous) => ({ data: previous.data, status: "loading" }));
+    // Another account (a new client): its rows are never shown; an older search's answer is dropped.
+    setResult((previous) => ({ client, data: previous.client === client ? previous.data : null, status: "loading" }));
     const timer = setTimeout(() => {
-      void searchAgentReferences(client, query, kind).then((data) => { if (current) setResult(data ? { data, status: "ready" } : { data: null, status: "unreachable" }); });
+      void searchAgentReferences(client, query, kind).then((answer) => {
+        if (!current) return;
+        setResult(answer.kind === "ok" ? { client, data: answer.value, status: "ready" } : { client, data: null, status: answer.kind === "offline" ? "unreachable" : "error" });
+      });
     }, 150);
     return () => { current = false; clearTimeout(timer); };
   }, [client, query, kind, deviceOffline]);
@@ -111,12 +115,12 @@ export function ContactMentionPicker({ mode, query, onQuery, onPick, onDone, onC
     if (mode.kind === "at") onPick(candidate);
     else setChosen((current) => (current.some((item) => referenceKey(item) === referenceKey(candidate)) ? current.filter((item) => referenceKey(item) !== referenceKey(candidate)) : [...current, candidate]));
   };
-  return <View style={styles.panel} testID="reference-picker" accessibilityLabel={locale.t("aiMention.title")}>
+  return <View style={styles.panel} testID="reference-picker" accessibilityLabel={locale.t("aiMention.pickerTitle")}>
     <View style={styles.head}>
-      <Text accessibilityRole="header" style={styles.title}>{locale.t("aiMention.title")}</Text>
+      <Text accessibilityRole="header" style={styles.title}>{locale.t("aiMention.pickerTitle")}</Text>
       <Pressable accessibilityLabel={locale.t("aiMention.close")} accessibilityRole="button" hitSlop={10} onPress={onClose}><Text style={styles.close}>×</Text></Pressable>
     </View>
-    <TextInput accessibilityLabel={locale.t("aiMention.searchLabel")} editable={mode.kind === "plus"} onChangeText={onQuery} placeholder={locale.t("aiMention.searchPlaceholder")} style={styles.input} value={query} />
+    <TextInput accessibilityLabel={locale.t("aiMention.recordSearch")} editable={mode.kind === "plus"} onChangeText={onQuery} placeholder={locale.t("aiMention.recordSearch")} style={styles.input} value={query} />
     {isOffline ? null : <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" accessibilityLabel={locale.t("aiMention.kinds")} contentContainerStyle={styles.filters}>
       {([null, ...REFERENCE_KINDS] as const).map((item) => <Pressable key={item ?? "all"} accessibilityRole="button" accessibilityState={{ selected: kind === item }} onPress={() => setKind(item)} style={[styles.filter, kind === item ? styles.filterOn : null]}>
         <Text style={[styles.filterText, kind === item ? styles.filterTextOn : null]}>{item ? referenceKindLabel(item, language) : locale.t("aiMention.all")}</Text>
@@ -130,7 +134,7 @@ export function ContactMentionPicker({ mode, query, onQuery, onPick, onDone, onC
           const detail = referenceDetailLine(item, language);
           const selected = chosen.some((entry) => referenceKey(entry) === referenceKey(item));
           return <Pressable key={referenceKey(item)} testID={`reference-option-${referenceKey(item)}`}
-            accessibilityLabel={locale.t("aiMention.selectContact", { detail: locale.t.literal(detail || locale.t("aiMention.detailsMissing")), kind: locale.t.literal(referenceKindLabel(item.type, language)), name: locale.t.literal(item.name) })}
+            accessibilityLabel={locale.t("aiMention.selectRecord", { detail: locale.t.literal(detail || locale.t("aiMention.detailsMissing")), kind: locale.t.literal(referenceKindLabel(item.type, language)), name: locale.t.literal(item.name) })}
             accessibilityRole="button" accessibilityState={{ selected }} onPress={() => choose(item)} style={[styles.row, selected ? styles.rowOn : null]}>
             <View style={styles.rowText}><Text numberOfLines={1} style={styles.name}>{item.name}</Text>{detail ? <Text numberOfLines={1} style={styles.detail}>{detail}</Text> : null}</View>
             <KindBadge kind={item.type} language={language} />
@@ -138,7 +142,8 @@ export function ContactMentionPicker({ mode, query, onQuery, onPick, onDone, onC
         })}
       </View>)}
       {!isOffline && result.status === "loading" && !any ? <Text style={styles.empty}>{locale.t("aiMention.loading")}</Text> : null}
-      {(isOffline || result.status === "ready") && !any ? <Text style={styles.empty}>{locale.t("aiMention.empty")}</Text> : null}
+      {(isOffline || result.status === "ready") && !any ? <Text style={styles.empty}>{locale.t("aiMention.noRecord")}</Text> : null}
+      {!isOffline && result.status === "error" ? <Text accessibilityRole="alert" style={styles.empty}>{locale.t("aiMention.unavailable")}</Text> : null}
       {isOffline ? <Text style={styles.empty}>{locale.t("aiMention.offlineOthers")}</Text> : null}
     </ScrollView>
     {mode.kind === "plus" ? <Pressable accessibilityRole="button" accessibilityState={{ disabled: !chosen.length }} disabled={!chosen.length} onPress={() => onDone(chosen)} style={[styles.done, chosen.length ? null : styles.doneOff]}>
