@@ -207,6 +207,8 @@ export interface AgentGraphRun {
   materials: Map<string, Material[]>;
   /** AG05: per part, code's notes to the answer step (who was found, coverage, what could not be read). */
   readNotes: Map<string, string[]>;
+  /** AG11 (AE-SCL-021): per part, the previous question a 「那 @X 呢？」 asks again about the record picked now. */
+  carriedQuestions: Map<string, string>;
   /** AG05: per part, code's sentences after the answer (no record, partial, failed, choose again). */
   gapLines: Map<string, string[]>;
   /** AG05: names of records read in this request (id → name), for the answer and the session state. */

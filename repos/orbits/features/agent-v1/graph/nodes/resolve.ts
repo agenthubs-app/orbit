@@ -335,6 +335,9 @@ export function resolveNode(scope: NodeScope): GraphNode {
     for (const part of [...due].sort((left, right) => left.quote[0] - right.quote[0])) {
       const quote = input.message.slice(part.quote[0], part.quote[1]);
       const read: PartRead = { coverage: [], gaps: new Set(), lines: [], notes: [], occurrences: new Map(), views: [], wantsRecords: false };
+      // AG11 (AE-SCL-021): 「那 @X 呢？」 — the previous question, asked again about the record picked now.
+      const carried = run.carriedQuestions.get(part.localId);
+      if (carried) read.notes.push(`This message asks the user's previous question again, about the record they picked now: "${carried}". Answer that question from this record only, not from the earlier record.`);
       const finish = (status: GraphPart["status"], reason: string | null) => {
         part.status = status;
         part.reason = reason;

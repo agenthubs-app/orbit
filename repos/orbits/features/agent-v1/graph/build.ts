@@ -152,6 +152,7 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     previousClarifications: extras.previousClarifications ?? null,
     readNames: new Map(),
     readNotes: new Map(),
+    carriedQuestions: new Map(),
     references: [],
     readSources: new Map(),
     basis: null,

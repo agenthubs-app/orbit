@@ -13,7 +13,8 @@ import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_
 import { coverEverySentence } from "../../understand/cover";
 import { describedObjectSpan, groupClue, questionWordClue, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
 import { refusedCreates } from "../../understand/negated-writes";
-import { bindMarkedReferences } from "../../references/marks";
+import { asksAgainAbout, bindMarkedReferences } from "../../references/marks";
+import { recordKindOf } from "../../clarify/default-readings";
 import type { UnderstandOutput } from "../../understand/schema";
 import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInput } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
@@ -132,6 +133,21 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
     if (!bound.length) continue;
     part.refs = refs as typeof part.refs;
     emitTrace({ bound, partId: part.localId, type: "understand.marked_reference_bound" });
+  }
+  // AG11 (AE-SCL-021): 「那 @X 呢？」 asks the previous question again about the record picked now — read that record and
+  // answer that question (code carries the question to the answer step), never a guessed other reading.
+  const marks = scope.run.references.flatMap((reference) => reference.marks ?? []);
+  const previous = [...context.messages].reverse().find((item) => item.role === "user")?.text;
+  if (parts.length === 1 && previous && asksAgainAbout(message, marks)) {
+    const [part] = parts;
+    const kinds = [...new Set(scope.run.references.filter((reference) => reference.marks?.length && reference.accessible !== false).map((reference) => recordKindOf(reference.type)).filter(Boolean))];
+    const reads = kinds.map((kind) => `${kind}.read`) as typeof part.capabilities;
+    if (reads.length) {
+      part.plan = { ...part.plan, clarity: "clear", deliverable: "answer", readings: [] };
+      part.capabilities = reads;
+      scope.run.carriedQuestions.set(part.localId, previous);
+      emitTrace({ capabilities: reads, partId: part.localId, type: "understand.asks_again_about_picked" });
+    }
   }
   return parts;
 }

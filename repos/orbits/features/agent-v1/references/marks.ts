@@ -21,6 +21,26 @@ export interface MarkableRef {
   quote?: [number, number] | null;
 }
 
+/**
+ * AG11 (AE-SCL-021): a message that is only a picked record and "what about it" — 「那 @选品方向 这一篇呢？」, 「@X は？」,
+ * "what about @X?" — asks the previous question again, about this record. True when, with every marker taken out, nothing
+ * is left but those words.
+ */
+export function asksAgainAbout(message: string, marks: readonly (readonly [number, number])[]): boolean {
+  if (!marks.length) return false;
+  let shell = "";
+  let at = 0;
+  for (const [start, end] of [...marks].sort((left, right) => left[0] - right[0])) {
+    shell += `${message.slice(at, start)}\u0001`;
+    at = end;
+  }
+  shell = `${shell}${message.slice(at)}`.trim();
+  const zh = /^(?:那|那么|还有|再看看?)?\s*(?:\u0001\s*(?:和|跟|、)?\s*)+(?:这一?篇|这一?个|这一?条|这一?位|这一?场|这一?次|那一?篇|那一?个)?\s*呢\s*[？?]?$/u;
+  const ja = /^(?:じゃあ|では|それでは|なら)?\s*(?:\u0001\s*(?:と|、)?\s*)+(?:の方|のほう)?\s*は\s*[？?]?$/u;
+  const en = /^(?:and|then|so|ok,?)?\s*(?:what|how)\s+about\s+(?:\u0001\s*(?:and|,)?\s*)+[?？]?$/iu;
+  return zh.test(shell) || ja.test(shell) || en.test(shell);
+}
+
 /** The clue entity of a reference type ("note" is a memo; «我去过» is attendance). */
 export function entityOfReferenceType(type: string): string {
   if (type === "note") return "memo";
