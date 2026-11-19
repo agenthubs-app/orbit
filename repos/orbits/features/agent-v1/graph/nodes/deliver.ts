@@ -274,7 +274,9 @@ function blocksOf(scope: NodeScope, state: AgentGraphState, written: readonly Gr
     const carded = new Set([...cardedIn(blocks), ...cardedIn(mine)]);
     const cited = (part.cites ?? []).map((ref) => run.recordCards.get(ref)).filter((card): card is AgentAnswerRecordContract => Boolean(card)).filter((card) => !carded.has(`${card.kind}:${card.id}`));
     const listed = !own && model && LIST_DELIVERABLES.has(part.plan.deliverable) && cited.length >= 2;
-    const cards = recordsBlock(cited, language, { size: listed ? "full" : "mini" });
+    // Board 4 (last example): an answer that rests on one record is opened from its basis line ("按你11月10日记的笔记回答 打开 ›").
+    const byBasisLine = !listed && cited.length === 1 && run.basis?.links.length === 1 && run.basis.links[0].id === cited[0].id;
+    const cards = byBasisLine ? null : recordsBlock(cited, language, { size: listed ? "full" : "mini" });
     blocks.push(...mine, ...(cards ? [cards] : []));
   }
   const note = noteBlock(notes, language);
