@@ -357,9 +357,19 @@ export function settleForget(input: { words: string; language: MemoryLanguage; s
 const writesOf = (part: Pick<GraphPart, "capabilities">) => part.capabilities.filter((capability) => capabilityKind(capability) === "write");
 const isMemoryWrite = (capability: Capability) => capability.startsWith("memory.");
 
+/** Words of a task that runs later or again ("每周", "提醒我", "remind me", "毎週"): a scheduled rule, not a saved memory. */
+const SCHEDULE_WORDS = /(每天|每日|每周|每星期|每月|每隔|每到|定期|定时|按时|到时候?提醒|提醒我|通知我|留意|盯着|帮我盯|毎日|毎週|毎月|定期的|知らせて|リマインド|通知して|\bevery (?:day|week|month|morning|evening|night|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bdaily\b|\bweekly\b|\bmonthly\b|\bremind me\b|\bnotify me\b|\blet me know\b|\bkeep an eye\b|\bwatch for\b|\bcheck (?:for|every)\b)/iu;
+
+/**
+ * A capability that does not stand in the way of a memory ask: a memory change, or — dev run 1 (AE-MEM-001, 002, 003,
+ * 007, 008): the first layer calls "记住，以后……优先周末上午" a rule (`rule.create`, sometimes "keep going without an
+ * end") — a rule tag on words that name no schedule. A standing instruction with no time to run at is a memory.
+ */
+const memoryLike = (capability: Capability, words: string) => isMemoryWrite(capability) || (capability.startsWith("rule.") && !SCHEDULE_WORDS.test(words));
+
 /** The words are an ask about saved memory that code settles (no other change is asked for in the same part). */
 export function isMemoryAsk(words: string, capabilities: readonly Capability[]): boolean {
-  const otherWrites = capabilities.some((capability) => capabilityKind(capability) === "write" && !isMemoryWrite(capability));
+  const otherWrites = capabilities.some((capability) => capabilityKind(capability) === "write" && !memoryLike(capability, words));
   return !otherWrites && memoryAskOf(words, capabilities.some(isMemoryWrite)) !== null;
 }
 
@@ -465,7 +475,8 @@ export async function memoryRouteStep(scope: NodeScope, state: AgentGraphState, 
   for (const part of parts) {
     const quote = input.message.slice(part.quote[0], part.quote[1]);
     const tagged = part.capabilities.some(isMemoryWrite);
-    const otherWrites = writesOf(part).some((capability) => !isMemoryWrite(capability));
+    // A rule tag on words with no schedule does not make it another kind of change (see memoryLike).
+    const otherWrites = writesOf(part).some((capability) => !memoryLike(capability, quote));
     const ask = memoryAskOf(quote, tagged);
     // A statement, a negation or a hypothesis is not an ask to change memory (route already answers it as such).
     const refused = part.plan.negation || part.plan.hypothesis;

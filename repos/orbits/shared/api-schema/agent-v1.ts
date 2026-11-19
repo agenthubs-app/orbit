@@ -343,6 +343,7 @@ export const agentMemorySettingsSchema = z.object({
 export const agentMemoryListSchema: z.ZodType<AgentMemoryListContract> = z.object({
   memories: z.array(agentMemoryEntrySchema),
   memoryVersion: z.number().int().min(0),
+  ruleLimit: z.number().int().min(1).optional(),
   settings: agentMemorySettingsSchema,
 }) as unknown as z.ZodType<AgentMemoryListContract>;
 

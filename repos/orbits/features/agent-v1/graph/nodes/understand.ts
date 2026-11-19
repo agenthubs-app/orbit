@@ -20,6 +20,7 @@ import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInpu
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
 import { standingRuleNotes } from "../../domains/memory/turn";
+import { mergePickIntoQuestion } from "../../understand/merge-pick";
 
 function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
   const context = scope.run.context!;
@@ -150,7 +151,10 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
       emitTrace({ capabilities: reads, partId: part.localId, type: "understand.asks_again_about_picked" });
     }
   }
-  return parts;
+  // AG14 dev run 1 (AE-FN-002): a pick with no set of its own ("帮我挑两场") is one ranking with the question before it.
+  const picks = mergePickIntoQuestion(parts, message);
+  for (const item of picks.merged) emitTrace({ into: item.into, partId: item.pick, type: "understand.pick_merged_into_question" });
+  return picks.parts;
 }
 
 /** Words of this turn's message as [start, end), or undefined when they are not in it. */

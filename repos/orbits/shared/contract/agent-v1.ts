@@ -539,6 +539,8 @@ export interface AgentMemoryListContract {
   memories: readonly AgentMemoryEntryContract[];
   settings: AgentMemorySettingsContract;
   memoryVersion: number;
+  /** 「一直遵守的」每次最多加载多少条（20）；超过时管理页提示合并，多出的不会被用到。 */
+  ruleLimit?: number | undefined;
 }
 
 /** POST /api/agent/memory 的请求体（设置页上用户自己添加，不出卡）。 */

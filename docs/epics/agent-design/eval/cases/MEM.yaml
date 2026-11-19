@@ -162,7 +162,7 @@ cases:
       - user: "我还有哪些待办没做完？"
     hard:
       - memory_recalled: [MM3]
-      - private_reads_within: [T42, T44, T45, T46, T47, F1]
+      - private_reads_within: [T42, T44, T45, T46, T47, F1, C17, C30, C31, C41]
       - cards: { count: 0 }
       - no_business_writes: true
       - no_web_calls: true

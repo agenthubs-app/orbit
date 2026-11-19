@@ -7,6 +7,7 @@
  */
 import { NextResponse } from "next/server";
 import type { AgentMemoryService } from "../../../../features/agent/memory/contract";
+import { RECALL_CONSTRAINT_LIMIT } from "../../../../features/agent/memory/recall";
 import {
   agentMemoryErrorResponse,
   agentMemoryUnauthorizedResponse,
@@ -27,7 +28,7 @@ export function createAgentMemoryRouteHandlers({ resolve = resolveAgentMemoryReq
       if (!context) return agentMemoryUnauthorizedResponse();
       try {
         const snapshot = await context.service.snapshot();
-        return NextResponse.json({ data: { memories: snapshot.entries, memoryVersion: snapshot.version, settings: snapshot.settings } });
+        return NextResponse.json({ data: { memories: snapshot.entries, memoryVersion: snapshot.version, ruleLimit: RECALL_CONSTRAINT_LIMIT, settings: snapshot.settings } });
       } catch (error) {
         return agentMemoryErrorResponse(error, 503);
       }

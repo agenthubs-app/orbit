@@ -108,6 +108,46 @@ test("AG14-3 「这次看周四晚上的」: no card and no change; this turn's 
   assert.deepEqual(of(run.events, "memory.recall").flatMap((event) => (event.overruled ?? []) as string[]), ["MM1"]);
   assert.deepEqual(recalled(run.events), []);
   assert.equal(of(run.events, "memory.this_time").length, 1);
+  // The sentence itself is not a topic to match events against (dev run 1): no judgment, no "和「这次看……」有多相关".
+  assert.equal(run.judgeCalls.length, 0);
+  assert.doesNotMatch(run.result.text, /有多相关|这次看周四晚上的/u);
+});
+
+test("dev run 1: 「记住，以后……」 tagged as a rule (even 'keep going without an end') is a memory card; a rule with a schedule is not taken", async () => {
+  const message = "记住，以后给我推荐活动时优先周末上午。";
+  const run = await runFn(message, [{ clarity: "statement", dataSources: ["turn_material"], deliverable: "rule", persistence: "until_satisfied", requiredCapabilities: ["rule.create"], sourceQuote: message }], { memories: [], memorySettings: { allowConversationLearning: true } });
+  assert.equal(run.frozen.length, 1);
+  assert.equal((run.frozen[0].preview.operations[0] as unknown as { capability: string }).capability, "memory.create");
+  assert.equal(run.result.partResults[0].status, "awaiting_confirmation");
+  assert.equal(run.result.clarifications.length, 0, "no alternative is offered for it");
+  // Learning off with the pick in the same message, the first part tagged the same way: used this turn, said so.
+  const second = "先按这个给我推荐几场下周的活动。";
+  const off = await runFn(`${message}${second}`, [{ clarity: "statement", deliverable: "rule", persistence: "until_satisfied", requiredCapabilities: ["rule.create"], sourceQuote: message }, { ...EVENT_RANK(second, NEXT_WEEK), dependsOn: ["p1"], localId: "p2" }], { memories: [] });
+  assert.equal(off.frozen.length, 0);
+  assert.match(off.result.text, /没有保存，只在这一次的回答里用/u);
+  assert.deepEqual(listed(off.events).slice(0, 3).sort(), MORNINGS);
+  // A task to run later is a rule, not a memory: the memory rules leave it alone.
+  const scheduled = "记住，以后每周一提醒我看有没有新的摄影活动。";
+  const rule = await runFn(scheduled, [{ deliverable: "rule", requiredCapabilities: ["rule.create"], sourceQuote: scheduled }], { memories: [], memorySettings: { allowConversationLearning: true } });
+  assert.equal(of(rule.events, "memory.remember").length, 0);
+  assert.equal(rule.frozen.length, 0);
+});
+
+test("dev run 1 (AE-FN-002): a question about events and a bare pick after it are one ranking", async () => {
+  const question = "11 月 21 日和 22 日有哪些活动值得去？";
+  const pick = "帮我挑两场。";
+  const run = await runFn(`${question}${pick}`, [
+    { dataSources: ["orbit_records"], deliverable: "list", readFilter: { from: "2026-11-21", to: "2026-11-22" }, requiredCapabilities: ["event.read"], sourceQuote: question },
+    { deliverable: "ranked_list", dependsOn: ["p1"], localId: "p2", requiredCapabilities: ["fn.rank"], sourceQuote: pick },
+  ], { memories: [MM1, MM2] });
+  assert.equal(run.result.partResults.length, 1);
+  assert.equal(listed(run.events).length, 2);
+  for (const ref of listed(run.events)) assert.ok(MORNINGS.includes(ref), ref);
+  assert.match(run.result.text, /你存过的「推荐活动时优先周末上午」和「不要推荐晚上的活动」/u);
+  // A time that is left out is not said as a reason next to the events kept.
+  assert.doesNotMatch(run.result.text, /——周末上午、晚上/u);
+  assert.match(run.result.text, /——周末上午/u);
+  assert.deepEqual(of(run.events, "understand.pick_merged_into_question").map((event) => [event.partId, event.into]), [["p2", "p1"]]);
 });
 
 test("AG14-3 what this turn says against what is saved: a preference gives way to any time named; a rule only to the very slot it leaves out", async () => {
@@ -195,7 +235,7 @@ test("AG14-5 what is saved: the two groups in plain words; nothing saved is said
 });
 
 test("a sentence that only asks names no topic; one that names something does", () => {
-  for (const words of ["给我推荐几场下周的活动。", "再给我推荐一次下周的活动。", "Which events would you recommend for next week?", "来週のおすすめイベントを教えて。", "下周（11 月 16 日到 22 日）有什么值得去的活动？挑三场。", "11月21日（土）と22日（日）のイベントから、行く価値がありそうなものを3つ選んでください。", "11 月 21 日和 22 日有哪些活动值得去？帮我挑两场。"]) {
+  for (const words of ["这次看周四晚上的。", "今回は木曜の夜のを見せて", "Just this once, show me Thursday evening.", "给我推荐几场下周的活动。", "再给我推荐一次下周的活动。", "Which events would you recommend for next week?", "来週のおすすめイベントを教えて。", "下周（11 月 16 日到 22 日）有什么值得去的活动？挑三场。", "11月21日（土）と22日（日）のイベントから、行く価値がありそうなものを3つ選んでください。", "11 月 21 日和 22 日有哪些活动值得去？帮我挑两场。"]) {
     assert.equal(sentenceTopicOf(words), "", words);
   }
   assert.notEqual(sentenceTopicOf("给我推荐几场和独立出版有关的活动"), "");

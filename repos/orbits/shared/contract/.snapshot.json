@@ -1853,6 +1853,11 @@
           "optional": false,
           "kind": "text",
           "type": "number"
+        },
+        "ruleLimit": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
         }
       }
     },

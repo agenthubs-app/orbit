@@ -804,7 +804,9 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     };
     for (const candidate of candidates) {
       const item = candidate as EventCandidate;
-      if (item.startsAt && time.length) reasons.set(item.id, time.map((preference) => (preferenceMet(preference, item.startsAt!, timeZone) ? say.timeWords(preference, language) : null)).filter(Boolean).join("、"));
+      // AG14: a time that is left out ("不要晚上的") removes candidates; it is not a reason said next to the ones kept
+      // (a morning event was labelled "晚上" because it met the exclusion).
+      if (item.startsAt && time.length) reasons.set(item.id, time.filter((preference) => !preference.exclude).map((preference) => (preferenceMet(preference, item.startsAt!, timeZone) ? say.timeWords(preference, language) : null)).filter(Boolean).join("、"));
     }
     emitTrace({ chosen: chosenIds.length >= 2 ? chosenIds.length : 0, hard: { from: fromDay, to: toDay }, partId: part.localId, time: time.map((item) => ({ days: item.days ?? null, hard: item.hard, part: item.part ?? null, source: item.source })), type: "functions.hard_conditions" });
   } else {
