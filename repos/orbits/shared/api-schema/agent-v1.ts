@@ -319,7 +319,7 @@ export const agentScheduledTaskRunSchema: z.ZodType<AgentScheduledTaskRunContrac
   items: z.array(z.object({ id: z.string(), kind: z.enum(["event", "contact", "todo"]), line: z.string(), ref: z.string(), title: z.string() })),
   line: z.string(),
   outcome: scheduledRunOutcome,
-  push: z.object({ attempts: z.number().int().nonnegative(), deliveredAt: z.string().optional(), state: z.enum(["not_requested", "pending", "delivered", "failed"]) }),
+  push: z.lazy(() => agentScheduledTaskRunPushSchema),
   runId: identifier,
   scheduledAt: z.string(),
   skipped: z.number().int().nonnegative(),
@@ -345,3 +345,39 @@ export const agentScheduledTaskSchema: z.ZodType<AgentScheduledTaskContract> = z
 export const agentScheduledTaskListSchema: z.ZodType<AgentScheduledTaskListContract> = z.object({ tasks: z.array(agentScheduledTaskSchema) }) as unknown as z.ZodType<AgentScheduledTaskListContract>;
 
 export const agentScheduledTaskHistorySchema: z.ZodType<AgentScheduledTaskHistoryContract> = z.object({ runs: z.array(agentScheduledTaskRunSchema), task: agentScheduledTaskSchema }) as unknown as z.ZodType<AgentScheduledTaskHistoryContract>;
+
+// ── AG16：定时任务的提醒 ──
+// (Its own import, kept with the block so that sprints working in parallel do not meet in the list at the top.)
+import type { AgentPushDeviceStateContract, AgentScheduledTaskReminderInputContract, AgentScheduledTaskRunPushContract, AgentWebPushConfigContract } from "../contract/agent-v1";
+
+export const agentScheduledTaskPushReasonSchema = z.enum([
+  "quiet_hours", "daily_cap", "notifications_off",
+  "reminder_off", "rule_paused", "rule_removed", "result_not_sent",
+  "no_device", "permission_revoked", "provider_rejected", "outcome_unknown", "not_configured",
+]);
+
+export const agentScheduledTaskRunPushSchema: z.ZodType<AgentScheduledTaskRunPushContract> = z.object({
+  attempts: z.number().int().nonnegative(),
+  deliveredAt: z.string().optional(),
+  lastAttemptAt: z.string().optional(),
+  line: z.string().nullable().optional(),
+  reason: agentScheduledTaskPushReasonSchema.optional(),
+  state: z.enum(["not_requested", "pending", "delivered", "failed", "skipped"]),
+  targets: z.array(z.object({ deviceId: z.string(), platform: z.enum(["ios", "android", "web"]), state: z.enum(["delivered", "retry", "revoked", "rejected", "unknown"]) })).optional(),
+}) as unknown as z.ZodType<AgentScheduledTaskRunPushContract>;
+
+export const agentScheduledTaskReminderInputSchema: z.ZodType<AgentScheduledTaskReminderInputContract> = z.object({
+  locale: z.enum(["zh", "en", "ja"]).optional(),
+  push: z.boolean(),
+}).strict();
+
+export const agentPushDeviceStateSchema: z.ZodType<AgentPushDeviceStateContract> = z.object({
+  active: z.boolean(),
+  deviceId: z.string(),
+  permission: z.enum(["granted", "provisional", "denied", "undetermined"]),
+  platform: z.enum(["ios", "android", "web"]),
+  revokedAt: z.string().optional(),
+  revokedReason: z.enum(["user", "provider_rejected"]).optional(),
+});
+
+export const agentWebPushConfigSchema: z.ZodType<AgentWebPushConfigContract> = z.object({ publicKey: z.string().nullable() }) as unknown as z.ZodType<AgentWebPushConfigContract>;

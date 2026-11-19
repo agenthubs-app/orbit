@@ -60,8 +60,13 @@ export type AgentAutomationTrigger =
  */
 export interface AgentRuleNotify {
   inApp: boolean;
-  /** Stored only in AG15 (nothing is pushed for these sources); AG16 sends when it is true. */
+  /** The task's own reminder switch (AG16): a period with a result also sends one reminder to the owner's phone and browser. */
   push: boolean;
+  /**
+   * AG16: the language of the reminder's one sentence — the language the owner used when turning the reminder on
+   * (the task runs with nobody there). Not set: the rule's own language.
+   */
+  pushLocale?: "zh" | "en" | "ja";
 }
 
 export interface AgentRuleReference {
@@ -105,6 +110,11 @@ export interface AgentRuleSpec {
   validUntil: string | null;
   notify: AgentRuleNotify;
   locale: "zh" | "en" | "ja";
+  /**
+   * AG16: the earliest version whose periods still count as "already told". A change of the reminder switch alone makes
+   * a new version but does not change what the task picks, so what it told before is not told again. Not set: this version.
+   */
+  toldFromVersion?: number;
 }
 
 export const AGENT_RULE_MAX_ITEMS = 20;

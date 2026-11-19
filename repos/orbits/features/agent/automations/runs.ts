@@ -41,13 +41,84 @@ export interface AgentAutomationInboxDelivery {
   inboxId?: string;
 }
 
-/** AG16 fills this in; AG15 only records whether the rule asked for a push at this version. */
+/**
+ * Why a period's reminder was not sent, or did not arrive (agent-design AG16; 设计稿 §5.3「什么时候不打扰」).
+ * Not sent on purpose (`skipped`): quiet_hours, daily_cap, notifications_off (the owner's own notification settings);
+ * reminder_off, rule_paused, rule_removed (the task changed before the reminder went out); result_not_sent (the result
+ * itself was called off, so there is nothing to point at).
+ * Wanted but not arrived (`failed`): no_device (no phone or browser of the owner allows notifications),
+ * permission_revoked (the push service refused the device: notifications were turned off there), provider_rejected
+ * (refused for another reason, every retry used up), outcome_unknown (the push service did not answer; never re-sent),
+ * not_configured (this deployment has no push channel for the owner's devices).
+ */
+export type AgentAutomationPushReason =
+  | "quiet_hours" | "daily_cap" | "notifications_off"
+  | "reminder_off" | "rule_paused" | "rule_removed" | "result_not_sent"
+  | "no_device" | "permission_revoked" | "provider_rejected" | "outcome_unknown" | "not_configured";
+
+/** One device a period's reminder went to (a phone through Expo, a browser through Web Push). No token is kept here. */
+export interface AgentAutomationPushTarget {
+  deviceId: string;
+  platform: "ios" | "android" | "web";
+  /**
+   * delivered: the push service accepted it. retry: explicitly refused, sent again at the next pass. revoked: the push
+   * service says this device no longer takes notifications (the device registration was revoked). rejected: refused and
+   * not retried any more. unknown: no answer from the push service — never re-sent.
+   */
+  state: "delivered" | "retry" | "revoked" | "rejected" | "unknown";
+  attempts: number;
+  lastAttemptAt?: string;
+  deliveredAt?: string;
+  /** The push service's ticket; `receipt` says whether its receipt was checked afterwards. */
+  receiptId?: string;
+  receipt?: "pending" | "verified";
+  error?: string;
+}
+
+/**
+ * The reminder of one period (AG16). AG15 records whether the rule asked for one (`pending` or `not_requested`); AG16
+ * sends. Kept apart from `computedAt`: sending again changes only this block — the result is never worked out again.
+ */
 export interface AgentAutomationPushDelivery {
-  state: "not_requested" | "pending" | "delivered" | "failed";
+  /** skipped: not sent on purpose (see `reason`). failed: wanted, but it did not arrive. */
+  state: "not_requested" | "pending" | "delivered" | "failed" | "skipped";
+  /** Rounds in which at least one send was tried. */
   attempts: number;
   lastAttemptAt?: string;
   deliveredAt?: string;
   lastError?: string;
+  reason?: AgentAutomationPushReason;
+  /** The opaque id a reminder carries as its only data; it names this period's inbox entry to its signed-in owner. */
+  deliveryId?: string;
+  targets?: readonly AgentAutomationPushTarget[];
+}
+
+const RUN_ID_PREFIX = "autorun:";
+const PUSH_DELIVERY_PREFIX = "rule-push:";
+const PUSH_DUE_PREFIX = "push:";
+
+/** The reminder's opaque id: the run id's own hash under another prefix. It holds no title, time, place or name. */
+export function pushDeliveryIdOf(runId: string): string {
+  return `${PUSH_DELIVERY_PREFIX}${runId.startsWith(RUN_ID_PREFIX) ? runId.slice(RUN_ID_PREFIX.length) : runId}`;
+}
+
+/** The run a reminder's id names; null when the id is not a scheduled task's reminder. */
+export function runIdOfPushDelivery(deliveryId: string): string | null {
+  return /^rule-push:[0-9a-f]{32}$/u.test(deliveryId) ? `${RUN_ID_PREFIX}${deliveryId.slice(PUSH_DELIVERY_PREFIX.length)}` : null;
+}
+
+/** A run's reminder row in the due index: kind `delivery`, this key (the inbox delivery's row is keyed by the run id itself). */
+export function pushDueKeyOf(runId: string): string {
+  return `${PUSH_DUE_PREFIX}${runId}`;
+}
+
+export function runIdOfPushDueKey(key: string): string | null {
+  return key.startsWith(PUSH_DUE_PREFIX) ? key.slice(PUSH_DUE_PREFIX.length) : null;
+}
+
+/** A reminder still waiting when its result was called off is called off with it. */
+export function pushCalledOff(push: AgentAutomationPushDelivery, now: string): AgentAutomationPushDelivery {
+  return push.state === "pending" ? { ...push, lastAttemptAt: now, reason: "result_not_sent", state: "skipped" } : push;
 }
 
 export interface AgentAutomationRunRecord {
@@ -104,7 +175,7 @@ function recordOf(workspaceId: string, run: AgentAutomationRunRecord): LiveRecor
     sourceId: run.automationId,
     sourceLabel: "Orbit scheduled rule run",
     sourceType: "system",
-    updatedAt: run.delivery.inbox.lastAttemptAt ?? run.computedAt,
+    updatedAt: [run.computedAt, run.delivery.inbox.lastAttemptAt, run.delivery.push.lastAttemptAt].filter((at): at is string => Boolean(at)).sort().pop()!,
     userId: run.ownerId,
     workspaceId: automationPartition(workspaceId, run.ownerId),
   };
@@ -199,3 +270,69 @@ const UNDELIVERED: Record<"pending" | NonNullable<AgentAutomationInboxDelivery["
   rule_paused: { en: "Worked out, not sent: you paused the task before it went out", ja: "結果は出ましたが、届ける前に停止されたため届けていません", zh: "已算出，没有送出：送出前你暂停了这条任务" },
   rule_removed: { en: "Worked out, not sent: you deleted the task before it went out", ja: "結果は出ましたが、届ける前にタスクが削除されたため届けていません", zh: "已算出，没有送出：送出前你删除了这条任务" },
 };
+
+type PushLineRun = Pick<AgentAutomationRunRecord, "outcome" | "delivery">;
+
+const DEVICE_WORDS: Record<"phone" | "browser" | "both", Record<"zh" | "en" | "ja", string>> = {
+  both: { en: "notifications were turned off on your phone and in your browser", ja: "スマホとブラウザの通知がオフになっていました", zh: "手机和浏览器的通知都被关了" },
+  browser: { en: "notifications were turned off in your browser", ja: "ブラウザの通知がオフになっていました", zh: "浏览器的通知被关了" },
+  phone: { en: "notifications were turned off on your phone", ja: "スマホの通知がオフになっていました", zh: "手机的通知被关了" },
+};
+
+const IN_INBOX: Record<"zh" | "en" | "ja", string> = { en: " The result is in your inbox.", ja: "結果は受信箱にあります。", zh: "结果在收件箱里。" };
+
+type SkipReason = "quiet_hours" | "daily_cap" | "notifications_off" | "reminder_off" | "rule_paused" | "rule_removed" | "result_not_sent";
+
+const PUSH_SKIPPED: Record<SkipReason, Record<"zh" | "en" | "ja", string>> = {
+  daily_cap: { en: "No reminder: the day's reminder limit was reached.", ja: "お知らせなし：1日の上限に達していました。", zh: "没有提醒：当天的提醒已到每日上限。" },
+  notifications_off: { en: "No reminder: this kind of notification is turned off in your notification settings.", ja: "お知らせなし：通知設定でこの種類の通知がオフになっています。", zh: "没有提醒：通知设置里关掉了这类提醒。" },
+  quiet_hours: { en: "No reminder: it was during your quiet hours.", ja: "お知らせなし：おやすみ時間帯でした。", zh: "没有提醒：当时是免打扰时段。" },
+  reminder_off: { en: "No reminder: you turned this task's reminder off before it went out.", ja: "お知らせなし：送る前にこのタスクのお知らせがオフになりました。", zh: "没有提醒：送出前你关掉了这条任务的提醒。" },
+  result_not_sent: { en: "No reminder: the result itself was not sent.", ja: "お知らせなし：結果そのものを届けていません。", zh: "没有提醒：这一期的结果没有送出。" },
+  rule_paused: { en: "No reminder: you paused the task before it went out.", ja: "お知らせなし：送る前にタスクが停止されました。", zh: "没有提醒：送出前你暂停了这条任务。" },
+  rule_removed: { en: "No reminder: you deleted the task before it went out.", ja: "お知らせなし：送る前にタスクが削除されました。", zh: "没有提醒：送出前你删除了这条任务。" },
+};
+
+/**
+ * The second history line of a period (AG16; 视觉稿 16-4): whether the reminder arrived — apart from the first line,
+ * which says when the result was worked out. A reminder that did not arrive is said as such and never as a failed task.
+ * Null: nothing to say (the period made no result to remind about and the first line says why).
+ */
+export function pushHistoryLine(run: PushLineRun, locale: "zh" | "en" | "ja"): string | null {
+  const push = run.delivery.push;
+  const inbox = run.delivery.inbox.state === "delivered" ? IN_INBOX[locale] : "";
+  if (push.state === "not_requested") {
+    if (run.outcome === "no_match") return ({ en: "Nothing new, so no reminder", ja: "新しいものがないため、お知らせはありません", zh: "没有新的，所以不提醒" } as const)[locale];
+    if (run.outcome === "delivered" || run.outcome === "undelivered") return ({ en: "The reminder was not turned on then", ja: "このときはお知らせがオフでした", zh: "当时没开提醒" } as const)[locale];
+    return null;
+  }
+  if (push.state === "delivered") {
+    return push.attempts > 1
+      ? ({ en: "The reminder did not go out at first and was sent again. Nothing was worked out a second time.", ja: "お知らせは最初は送れず、送り直して届きました。結果の計算はやり直していません。", zh: "第一次没送出去，后来补送到了。没有重新算。" } as const)[locale]
+      : ({ en: "Reminder delivered", ja: "お知らせを届けました", zh: "提醒已送到" } as const)[locale];
+  }
+  if (push.state === "pending") {
+    return push.attempts > 0
+      ? ({ en: "The reminder did not go out at first; it will be sent again. Nothing is worked out a second time.", ja: "お知らせは最初は送れませんでした。もう一度送ります。結果の計算はやり直しません。", zh: "提醒第一次没送出去，会再送一次；不会重新算。" } as const)[locale]
+      : ({ en: "The reminder has not gone out yet", ja: "お知らせはまだ送っていません", zh: "提醒还没送出" } as const)[locale];
+  }
+  if (push.state === "skipped") {
+    const reason: SkipReason = push.reason && push.reason in PUSH_SKIPPED ? (push.reason as SkipReason) : "result_not_sent";
+    return `${PUSH_SKIPPED[reason][locale]}${reason === "result_not_sent" ? "" : inbox}`;
+  }
+  // failed: wanted, did not arrive.
+  const head = ({ en: "The reminder did not arrive", ja: "お知らせは届きませんでした", zh: "提醒没送到" } as const)[locale];
+  const stop = locale === "en" ? "." : "。";
+  const colon = locale === "en" ? ": " : "：";
+  if (push.reason === "permission_revoked") {
+    const revoked = (push.targets ?? []).filter((target) => target.state === "revoked");
+    const phone = revoked.some((target) => target.platform !== "web");
+    const browser = revoked.some((target) => target.platform === "web");
+    const which = DEVICE_WORDS[phone && browser ? "both" : browser ? "browser" : "phone"][locale];
+    return `${head}${colon}${which}${stop}${inbox}`;
+  }
+  if (push.reason === "no_device") {
+    return `${head}${colon}${({ en: "no phone or browser of yours allows Orbit to send notifications", ja: "Orbit の通知を許可している端末がありません", zh: "没有设备允许 Orbit 发通知" } as const)[locale]}${stop}${inbox}`;
+  }
+  return `${head}${stop}${inbox}`;
+}

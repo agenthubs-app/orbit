@@ -10,6 +10,7 @@
 import { createHash } from "node:crypto";
 
 import type { AgentAutomationService, AgentRuleSpec } from "../../../agent/automations/contract";
+import { ruleWithReminder } from "../../../agent/automations/reminder";
 import type { AgentActionExecutor } from "../../../agent/runtime/executor-registry";
 import { AgentExecutionPermanentError } from "../../../agent/runtime/service";
 import { RULE_CANCEL, RULE_CREATE, RULE_PAUSE, RULE_RESUME, RULE_UPDATE, type RuleSchedule, type RuleSnapshot } from "./ops";
@@ -75,8 +76,13 @@ export function ruleWriteExecutors(deps: RuleWriteDeps): AgentActionExecutor[] {
       async execute(payload) {
         const automation = await current(deps, payload);
         if (!automation.rule) throw new AgentExecutionPermanentError("This task has no parameters that can be changed here.");
-        const set = (payload.set ?? {}) as { schedule?: RuleSchedule; maxItems?: number; validUntil?: string | null; notify?: { inApp: true; push: boolean } };
-        const rule: AgentRuleSpec = { ...automation.rule, ...(set.maxItems !== undefined ? { maxItems: set.maxItems } : {}), ...(set.validUntil !== undefined ? { validUntil: set.validUntil } : {}), ...(set.notify ? { notify: set.notify } : {}) };
+        const set = (payload.set ?? {}) as { schedule?: RuleSchedule; maxItems?: number; validUntil?: string | null; notify?: { inApp: true; push: boolean; pushLocale?: "zh" | "en" | "ja" } };
+        // AG16: the reminder switch is written the same way as from the task's own page (the sentence's language; a
+        // change of the switch alone keeps what the task already told). Any other change starts the task's memory anew.
+        const reminderOnly = Boolean(set.notify) && set.schedule === undefined && set.maxItems === undefined && set.validUntil === undefined;
+        const switched = set.notify ? ruleWithReminder({ rule: automation.rule, version: automation.version }, { locale: set.notify.pushLocale, push: set.notify.push === true }) : automation.rule;
+        const { toldFromVersion: _toldFromVersion, ...fresh } = switched;
+        const rule: AgentRuleSpec = { ...(reminderOnly ? switched : fresh), ...(set.maxItems !== undefined ? { maxItems: set.maxItems } : {}), ...(set.validUntil !== undefined ? { validUntil: set.validUntil } : {}) };
         const updated = await deps.automations.update(automation.automationId, { changeNote: "Changed on a confirmation card.", delivery: rule.notify.push ? "push" : "in_app", rule, source: "natural_language", ...(set.schedule ? { trigger: { kind: "schedule", schedule: set.schedule } } : {}) });
         return { resultRef: updated.automationId, summary: `Scheduled task "${updated.title}" was changed.` };
       },

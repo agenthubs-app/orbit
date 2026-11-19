@@ -190,7 +190,7 @@ test("pause, resume and removal cards say which task, and that it will not run u
   assert.equal(cardCountTitle([pause], "zh"), "修改1项");
   assert.equal(cardCountTitle([cancel], "en"), "1 deletion");
   const update = prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push: true } }, shown, targetId: "rule:1" }, locale: "zh", revision: 1 });
-  assert.deepEqual(update.display?.rows.map((row) => [row.label, row.before, row.after]), [["提醒方式", "只放进站内收件箱，不推送", "放进站内收件箱，并推送提醒"]]);
+  assert.deepEqual(update.display?.rows.map((row) => [row.label, row.before, row.after]), [["提醒方式", "只放进站内收件箱，不推送", "放进站内收件箱，并在手机和浏览器上提醒"]]);
   assert.deepEqual(update.after, { notify: { inApp: true, push: true } });
 });
 

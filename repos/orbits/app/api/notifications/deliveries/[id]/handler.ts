@@ -3,6 +3,7 @@ import {createConfiguredDeliveryPolicyRuntime} from '../../../../../features/not
 import type {TypedDeliveryContent} from '../../../../../features/notifications/typed-delivery-worker';
 import type {NotificationDelivery} from '../../../../../features/notifications/delivery-service';
 
+import { resolveRuleReminderTarget } from "../../../../../features/agent/automations/reminder-target";
 import {
   createNotificationDeliveryService,
   type NotificationDeliveryService,
@@ -17,6 +18,8 @@ export interface NotificationDeliveryRouteDependencies {
   resolveTyped?: (actorId:string, delivery:NotificationDelivery)=>Promise<TypedDeliveryContent|null>;
   resolveActor?: ResolveAuthenticatedApiActor;
   serviceForActor?: (actorId: string) => NotificationDeliveryService;
+  /** agent-design AG16: null when the id is not one of this account's scheduled-task reminders. */
+  resolveRuleReminder?: typeof resolveRuleReminderTarget;
 }
 
 export function createNotificationDeliveryRouteHandler(
@@ -33,6 +36,12 @@ export function createNotificationDeliveryRouteHandler(
     const actor = await resolveActor();
     if (!actor) return authenticatedApiActorRequiredResponse("live");
     const { id } = await context.params;
+    // agent-design AG16: a scheduled task's reminder. Its id names a run in the signed-in account's own history; the
+    // answer points at that period's inbox entry and says nothing of its content (the inbox page reads it).
+    const reminder = await (dependencies.resolveRuleReminder ?? resolveRuleReminderTarget)(actor.id, id);
+    if (reminder) {
+      return NextResponse.json({ data: { body: reminder.body, data: { deliveryId: id }, deliveryId: id, status: reminder.status, target: { deliveryId: id, kind: "inbox", status: reminder.href ? "available" : "unavailable", ...(reminder.href ? { href: reminder.href } : {}) }, title: reminder.title } }, { headers: { "Cache-Control": "no-store" } });
+    }
     const delivery = await serviceForActor(actor.id).get(id);
     if (!delivery || delivery.actorId !== actor.id) {
       return NextResponse.json(

@@ -96,6 +96,7 @@
     "react-dom": "18.3.1",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "web-push": "3.6.7",
     "zod": "^4.5.4"
   },
   "devDependencies": {
@@ -106,6 +107,7 @@
     "@types/react": "18.3.18",
     "@types/react-dom": "18.3.5",
     "@types/react-test-renderer": "^18.3.1",
+    "@types/web-push": "3.6.4",
     "eslint": "8.57.1",
     "js-yaml": "4.2.0",
     "playwright": "^1.51.1",

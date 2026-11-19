@@ -25,6 +25,7 @@ import { unsupportedRepeatLine } from "../../propose/events-resolve";
 import { handoffWords } from "../../route/handoff-copy";
 import { domainSaidIn, pushSaidIn, recurrenceSaidIn, replanSaidIn, RULE_NOUN, scheduleSaidIn, SCOPE_ONLY_WORDS, scopeSaidIn, stateVerbSaidIn, untilSaidIn, type RuleDomain } from "../../rule/parse";
 import { checkRuleDraft, ruleRepairText, ruleSystemPrompt, ruleUserText, RULE_PROMPT_VERSION, type RuleModelDraft } from "../../rule/prompt";
+import { checkRuleChoice, reminderSaidIn, reminderSpanIn, ruleChoiceSystemPrompt, ruleChoiceUserText, RULE_CHOICE_PROMPT_VERSION, withoutReminderWords } from "../../rule/reminder";
 import type { RuleAskState } from "../../rule/state";
 import { localDay } from "../../views/recent-interaction";
 import type { NodeScope } from "../deps";
@@ -66,6 +67,12 @@ const WORDS = {
     en: "To pick by a note's topics, send the task again and choose the note with @ in the same message.",
     ja: "メモのテーマで選ぶ場合は、同じメッセージで @ からメモを選んで、もう一度送ってください。",
     zh: "要按某篇笔记的主题来挑，请把这条任务再发一次，并在同一条消息里用 @ 选上那篇笔记。",
+  })[language],
+  // AG16: asked to turn the reminder to the state it is already in.
+  reminderAlready: (language: Language, title: string, push: boolean) => ({
+    en: push ? `The scheduled task "${title}" already sends a reminder when it has a new result, so nothing was changed.` : `The scheduled task "${title}" already sends no reminder — its results only go to your inbox — so nothing was changed.`,
+    ja: push ? `定期タスク「${title}」は、すでに新しい結果が出たときにお知らせする設定のため、何も変更していません。` : `定期タスク「${title}」は、すでにお知らせなし（受信箱のみ）の設定のため、何も変更していません。`,
+    zh: push ? `定时任务「${title}」已经是有新结果就提醒，所以这次没有改。` : `定时任务「${title}」本来就不提醒、只放进收件箱，所以这次没有改。`,
   })[language],
   noChange: (language: Language, title: string) => ({
     en: `I couldn't tell what to change on the scheduled task "${title}", so nothing was changed. You can change how many it lists, until when it runs, when it checks, or whether it pushes a reminder.`,
@@ -310,11 +317,21 @@ export async function rulePart(scope: NodeScope, state: AgentGraphState, part: G
   const piece = (span: [number, number] | null) => (span ? message.slice(span[0], span[1]) : null);
 
   // 4. The verb, by code: a recurrence said with no "pause / resume / delete" is a new task.
-  const stateVerb = stateVerbSaidIn(quote);
+  // AG16: words that turn a reminder on or off ("turn off notifications for …", "关掉这条任务的提醒") are about the
+  // reminder, not about pausing the task: the pause / resume / delete verbs are read from the words without them. And
+  // a message that asks for a reminder and names no time to run at is a change of a task that exists, never a new one.
+  const aloneForReminder = !state.parts.some((other) => other.localId !== part.localId && (other.route === "propose_write" || other.route === "read" || other.route === "web_lookup" || other.route === "probe"));
+  const reminderWords = aloneForReminder ? message : quote;
+  const reminderAsk = pushSaidIn(reminderWords) ?? reminderSaidIn(reminderWords);
+  const stateVerb = stateVerbSaidIn(reminderAsk === null ? quote : withoutReminderWords(quote));
   const recurring = scheduleSaidIn(piece(draft.scheduleText) ?? quote, timeZone) ?? scheduleSaidIn(quote, timeZone);
   const namesTask = RULE_NOUN.test(quote) || part.capabilities.some((capability) => capability === RULE_PAUSE || capability === RULE_RESUME || capability === RULE_CANCEL || capability === RULE_UPDATE);
-  const verb: RuleModelDraft["verb"] = stateVerb && namesTask ? (stateVerb === "cancel" ? "delete" : stateVerb) : recurring && draft.verb !== "update" ? "create" : draft.verb;
-  emitTrace({ byCode: { recurring: Boolean(recurring), stateVerb }, model: draft.verb, partId: part.localId, type: "rule.verb", verb });
+  // A new task may also say "推送提醒我" and leave the time out ("每周五给我挑三场活动，提醒我"): that stays a new task
+  // unless the words speak of a task as something that already exists.
+  const speaksOfTask = RULE_NOUN.test(reminderWords) || /(任务|タスク|\btasks?\b)/iu.test(reminderWords);
+  const reminderChange = reminderAsk !== null && !stateVerb && !recurring && (draft.verb !== "create" || speaksOfTask);
+  const verb: RuleModelDraft["verb"] = stateVerb && namesTask ? (stateVerb === "cancel" ? "delete" : stateVerb) : reminderChange ? "update" : recurring && draft.verb !== "update" ? "create" : draft.verb;
+  emitTrace({ byCode: { recurring: Boolean(recurring), reminder: reminderAsk, stateVerb }, model: draft.verb, partId: part.localId, type: "rule.verb", verb });
 
   if (verb !== "create") {
     if (!deps.rules) {
@@ -322,7 +339,17 @@ export async function rulePart(scope: NodeScope, state: AgentGraphState, part: G
       return { budget, repairs };
     }
     const mine = await deps.rules.list(input.actorId);
-    const found = matchRule(piece(draft.target) ?? quote, mine) ?? matchRule(quote, mine);
+    let found = matchRule(piece(draft.target) ?? quote, mine) ?? matchRule(quote, mine) ?? (aloneForReminder ? matchRule(message, mine) : null);
+    if (!found && mine.length > 1) {
+      // AG16: the task is described, not named ("the Friday one that goes off my interests note, not the design one").
+      // The model is shown the tasks' titles and card rows and answers with a number; code checks it against the list.
+      const options = mine.map((rule, index) => ({ checks: scheduleWords(rule.schedule, "en"), number: index + 1, pickedBy: rule.rule.rankingBasis, picksFrom: rule.rule.scopeText, title: rule.title }));
+      emitTrace({ candidates: mine.length, partId: part.localId, promptVersion: RULE_CHOICE_PROMPT_VERSION, type: "rule.choice_prompt" });
+      const choice = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "functions", purpose: "first", requestId: input.requestId, system: ruleChoiceSystemPrompt(), user: ruleChoiceUserText({ message, options }) });
+      const chosen = choice.ok ? checkRuleChoice(choice.text, mine.length) : null;
+      emitTrace({ chosen: chosen ? mine[chosen - 1].automationId : null, ok: choice.ok, partId: part.localId, type: "rule.choice" });
+      found = chosen ? mine[chosen - 1] : null;
+    }
     if (!found) {
       settle(scope, part, "unfinished", "rule_not_found", WORDS.notFound(language, quote, mine.map((rule) => rule.title)));
       emitTrace({ candidates: mine.length, partId: part.localId, type: "rule.not_found" });
@@ -344,21 +371,24 @@ export async function rulePart(scope: NodeScope, state: AgentGraphState, part: G
     }
     // update: only what the words name.
     const rest = piece(draft.target) ? quote.replace(piece(draft.target)!, " ") : quote;
-    const push = pushSaidIn(rest);
+    // AG16: the reminder switch — "推送" as before, and the plain ways of asking for a reminder on a device. The
+    // sentence's language is the one this message was written in.
+    const restWords = aloneForReminder ? (piece(draft.target) ? message.replace(piece(draft.target)!, " ") : message) : rest;
+    const push = pushSaidIn(rest) ?? reminderSaidIn(rest) ?? (aloneForReminder ? pushSaidIn(restWords) ?? reminderSaidIn(restWords) : null);
     const until = untilSaidIn(piece(draft.untilText) ?? rest, localDay(now, timeZone));
     const count = draft.count ?? countSaidIn(rest.replace(piece(draft.scheduleText) ?? "\u0000", " ").replace(piece(draft.untilText) ?? "\u0000", " "));
     const schedule = scheduleSaidIn(piece(draft.scheduleText) ?? rest, timeZone);
     const set: Extract<RuleOperationIntent, { capability: typeof RULE_UPDATE }>["set"] = {
-      ...(push !== null && push !== found.rule.notify.push ? { notify: { inApp: true as const, push } } : {}),
+      ...(push !== null && push !== found.rule.notify.push ? { notify: { inApp: true as const, push, ...(push ? { pushLocale: language } : {}) } } : {}),
       ...(until && until !== found.rule.validUntil ? { validUntil: until } : {}),
       ...(count && count !== found.rule.maxItems && draft.count ? { maxItems: Math.min(count, MAX_COUNT) } : {}),
       ...(schedule && JSON.stringify(schedule) !== JSON.stringify(found.schedule) ? { schedule } : {}),
     };
     if (!Object.keys(set).length) {
-      settle(scope, part, "unfinished", "rule_no_change", WORDS.noChange(language, found.title));
+      settle(scope, part, "unfinished", "rule_no_change", push !== null && push === found.rule.notify.push ? WORDS.reminderAlready(language, found.title, push) : WORDS.noChange(language, found.title));
       return { budget, repairs };
     }
-    ready(scope, part, { capability: RULE_UPDATE, expectedVersion: found.version, set, shown: found, targetId: found.automationId });
+    ready(scope, part, { capability: RULE_UPDATE, expectedVersion: found.version, set, shown: found, targetId: found.automationId }, set.notify && aloneForReminder ? [reminderSpanIn(message), spanOfMatch(message, PUSH_SPAN)] : []);
     return { budget, repairs };
   }
 

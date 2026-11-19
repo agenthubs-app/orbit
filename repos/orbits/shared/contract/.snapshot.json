@@ -1853,7 +1853,7 @@
             "state": {
               "optional": false,
               "kind": "text",
-              "type": "'failed' | 'pending' | 'delivered' | 'not_requested'"
+              "type": "'failed' | 'pending' | 'skipped' | 'delivered' | 'not_requested'"
             },
             "attempts": {
               "optional": false,
@@ -1864,6 +1864,26 @@
               "optional": true,
               "kind": "text",
               "type": "string"
+            },
+            "lastAttemptAt": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "reason": {
+              "optional": true,
+              "kind": "text",
+              "type": "AgentScheduledTaskPushReason | undefined"
+            },
+            "line": {
+              "optional": true,
+              "kind": "text",
+              "type": "string | null | undefined"
+            },
+            "targets": {
+              "optional": true,
+              "kind": "text",
+              "type": "readonly AgentScheduledTaskPushTargetContract[]"
             }
           }
         }
@@ -1982,6 +2002,143 @@
           "optional": false,
           "kind": "text",
           "type": "readonly AgentScheduledTaskRunContract[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentScheduledTaskPushReason": {
+      "kind": "enum",
+      "values": [
+        "'daily_cap'",
+        "'no_device'",
+        "'not_configured'",
+        "'notifications_off'",
+        "'outcome_unknown'",
+        "'permission_revoked'",
+        "'provider_rejected'",
+        "'quiet_hours'",
+        "'reminder_off'",
+        "'result_not_sent'",
+        "'rule_paused'",
+        "'rule_removed'"
+      ]
+    },
+    "agent-v1.ts::AgentScheduledTaskPushTargetContract": {
+      "kind": "object",
+      "members": {
+        "deviceId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "platform": {
+          "optional": false,
+          "kind": "text",
+          "type": "'web' | 'ios' | 'android'"
+        },
+        "state": {
+          "optional": false,
+          "kind": "text",
+          "type": "'rejected' | 'retry' | 'delivered' | 'revoked' | 'unknown'"
+        }
+      }
+    },
+    "agent-v1.ts::AgentScheduledTaskRunPushContract": {
+      "kind": "object",
+      "members": {
+        "state": {
+          "optional": false,
+          "kind": "text",
+          "type": "'failed' | 'pending' | 'skipped' | 'delivered' | 'not_requested'"
+        },
+        "attempts": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "deliveredAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "lastAttemptAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "reason": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentScheduledTaskPushReason | undefined"
+        },
+        "line": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null | undefined"
+        },
+        "targets": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentScheduledTaskPushTargetContract[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentScheduledTaskReminderInputContract": {
+      "kind": "object",
+      "members": {
+        "push": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "locale": {
+          "optional": true,
+          "kind": "text",
+          "type": "'zh' | 'en' | 'ja' | undefined"
+        }
+      }
+    },
+    "agent-v1.ts::AgentPushDeviceStateContract": {
+      "kind": "object",
+      "members": {
+        "deviceId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "platform": {
+          "optional": false,
+          "kind": "text",
+          "type": "'web' | 'ios' | 'android'"
+        },
+        "permission": {
+          "optional": false,
+          "kind": "text",
+          "type": "'granted' | 'provisional' | 'denied' | 'undetermined'"
+        },
+        "active": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "revokedAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "revokedReason": {
+          "optional": true,
+          "kind": "text",
+          "type": "'provider_rejected' | 'user' | undefined"
+        }
+      }
+    },
+    "agent-v1.ts::AgentWebPushConfigContract": {
+      "kind": "object",
+      "members": {
+        "publicKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },
@@ -11542,7 +11699,7 @@
         "action": {
           "optional": false,
           "kind": "text",
-          "type": "'granted' | 'changed' | 'revoked' | 'invited'"
+          "type": "'revoked' | 'granted' | 'changed' | 'invited'"
         },
         "role": {
           "optional": false,

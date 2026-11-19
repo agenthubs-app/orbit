@@ -227,7 +227,9 @@ test("the new inbox sources are the agent's own, never push candidates; a run on
   await kit.dispatch("2026-11-20T09:10:00+09:00");
   assert.equal((await kit.runs("user:a", quiet.automationId))[0].delivery.push.state, "not_requested");
   const [run] = await kit.runs("user:b", loud.automationId);
-  assert.deepEqual([run.notify.push, run.delivery.push.state, run.delivery.push.attempts], [true, "pending", 0], "stored for AG16; nothing is sent here");
+  // AG16 sends now: this kit has no device and no push channel, so the wanted reminder is recorded as not arrived —
+  // and the result is in the inbox all the same (tests/services/agent-rule-push-delivery.test.ts covers the sending).
+  assert.deepEqual([run.notify.push, run.delivery.push.state, run.delivery.push.reason, run.delivery.push.attempts, run.outcome], [true, "failed", "no_device", 0, "delivered"]);
 });
 
 test("a waiting delivery backs off between attempts and never past six hours", () => {
