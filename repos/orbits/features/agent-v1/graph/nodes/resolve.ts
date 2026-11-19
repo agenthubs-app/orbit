@@ -373,6 +373,8 @@ export function resolveNode(scope: NodeScope): GraphNode {
       // AG11 (§3.6, AE-REF-006): the other records the part points at are still read and answered; the closed one is
       // said and asked again, and nothing of it is used.
       const partial = closedRefs.length > 0 && part.refs.some((ref) => ref.recordId && !isClosed(ref));
+      // AG11 (AE-REF-008): the kind of a picked record that cannot be opened is not searched instead — never read wider.
+      const closedKinds = new Set(closedRefs.map((ref) => recordKindOf(ref.entity)));
       if (closedRefs.length) {
         read.gaps.add("unreadable");
         for (const closed of closedRefs) {
@@ -636,7 +638,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
       // the JD" has no status and is not an open item (the to-do may be done since), so notes are not searched for it.
       const openItems = status === "open" && kinds.has("todo") && !current;
       if (openItems && kinds.has("memo")) emitTrace({ partId: part.localId, type: "resolve.open_items_from_todos" });
-      const searchKinds = attachedOnly ? [] : (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !(kind === "memo" && interactionAnswers) && !(kind === "memo" && openItems));
+      const searchKinds = attachedOnly ? [] : (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !closedKinds.has(kind) && !(kind === "memo" && interactionAnswers) && !(kind === "memo" && openItems));
       if (current) read.notes.push("This asks how the person stands now: the interactions, their newest notes and the profile are all here; where they differ, the newer dated record is what holds now. Never give as current anything a newer record replaces (a former company, an old role).");
       const subjects = contacts.length ? contacts.map((item) => item.id) : [undefined];
       let unclear = false;

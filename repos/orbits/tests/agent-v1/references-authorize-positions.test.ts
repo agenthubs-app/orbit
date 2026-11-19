@@ -138,7 +138,7 @@ test("one attached record cannot be opened: the other is still read and answered
   const noteAt = message.indexOf("@客户笔记");
   const todoAt = message.indexOf("@回复田中的询价");
   const model = deepseekStub([
-    () => json({ parts: [part({ dataSources: ["orbit_records"], objectClues: [{ entity: "memo", text: "@客户笔记" }, { entity: "todo", text: "@回复田中的询价" }], requiredCapabilities: ["memo.read", "todo.read"], sourceQuote: message })], plainChat: false }),
+    () => json({ parts: [part({ dataSources: ["orbit_records"], objectClues: [{ entity: "memo", text: "@客户笔记" }, { entity: "todo", text: "@回复田中的询价" }, { entity: "todo", text: "截止时间" }], requiredCapabilities: ["memo.read", "todo.read"], sourceQuote: message })], plainChat: false }),
     (call) => {
       assert.doesNotMatch(call.user, /降价/u);
       assert.match(call.user, /cannot be opened now/u);
@@ -155,6 +155,7 @@ test("one attached record cannot be opened: the other is still read and answered
   assert.match(result.text, /「@客户笔记」打不开/u);
   assert.match(result.text, /11 月 17 日/u);
   assert.equal(records.source.reads.includes("note:mb1"), false, "the other account's note is never read");
+  assert.deepEqual(records.source.reads.filter((id) => id.startsWith("note:")), [], "no other note is searched in place of the closed one (AE-REF-008)");
 });
 
 test("comparing the events the user picked reads those events by id, not every event of the deployment (AE-REF-002)", async () => {
