@@ -417,3 +417,12 @@ export function withoutListedPoints(blocks: readonly AnswerBlock[], cards: reado
   const texts = kept.filter((block) => block.type === "conclusion" || block.type === "paragraph" || block.type === "points");
   return kept.map((block) => (block.type === "conclusion" && texts.length === 1 ? { text: block.text, type: "paragraph" as const } : block));
 }
+
+/**
+ * AG19-1 ("顺序与用户看到的一致") for a list a model answered: its cards follow the order in which the text names the
+ * records, not the order of its citations. A record the text does not name by its title keeps its place after the others.
+ */
+export function inTextOrder(cards: readonly AgentAnswerRecordContract[], text: string): AgentAnswerRecordContract[] {
+  const at = (card: AgentAnswerRecordContract) => { const index = card.title ? text.indexOf(card.title) : -1; return index < 0 ? Number.MAX_SAFE_INTEGER : index; };
+  return cards.map((card, index) => ({ card, index, position: at(card) })).sort((left, right) => left.position - right.position || left.index - right.index).map((item) => item.card);
+}

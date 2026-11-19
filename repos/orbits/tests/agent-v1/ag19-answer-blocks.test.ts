@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { composeStructured, hasMarkdownSymbols, joinBlocks, needsLayout, noteItemOf, withoutListedPoints, recordOfView, recordsBlock, stripMarkdown, textBlocks, type AnswerBlock } from "../../features/agent-v1/answer/blocks";
+import { composeStructured, hasMarkdownSymbols, inTextOrder, joinBlocks, needsLayout, noteItemOf, withoutListedPoints, recordOfView, recordsBlock, stripMarkdown, textBlocks, type AnswerBlock } from "../../features/agent-v1/answer/blocks";
 import { gapWords } from "../../features/agent-v1/answer/gap-copy";
 import { resumedAnswer } from "../../features/agent-v1/entry/store";
 import { asksUpcomingEvents } from "../../features/agent-v1/functions/basis";
@@ -277,4 +277,10 @@ test("D1: in a list a model answered, points that only name the listed records a
   const advice: AnswerBlock[] = [{ text: "建议先准备周会。", type: "conclusion" }, { items: [{ head: "先做", text: "把议程发出去。" }, { head: "再做", text: "订午餐的位子。" }], type: "points" }];
   assert.deepEqual(withoutListedPoints(advice, cards), advice, "points that say something else stay");
   assert.deepEqual(withoutListedPoints(list, []), list);
+});
+
+test("AG19-1: the cards of a list a model answered follow the order the text names them in", () => {
+  const cards: AgentAnswerRecordContract[] = [{ id: "task:t45", kind: "todo", title: "给李薇寄样片" }, { id: "task:f1", kind: "todo", title: "跟进田中的分期方案" }, { id: "task:t9", kind: "todo", title: "文字里没提的一条" }, { id: "task:t44", kind: "todo", title: "回复田中的询价" }];
+  const text = "你有 3 项待办。\n・跟进田中的分期方案：已逾期。\n・给李薇寄样片：已过计划日。\n・回复田中的询价：11月17日截止。";
+  assert.deepEqual(inTextOrder(cards, text).map((card) => card.id), ["task:f1", "task:t45", "task:t44", "task:t9"]);
 });
