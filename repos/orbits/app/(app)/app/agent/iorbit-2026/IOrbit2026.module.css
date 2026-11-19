@@ -72,7 +72,7 @@
 .answer > b { font-size: var(--fs-body-sm); }
 .answer p { margin: 0; }
 /* agent-design AG19 (board 6): an answer with no blocks (an older conversation) is still text, in the new size. */
-.answerText { max-width: 36em; font-size: 15px; line-height: 1.75; }
+.answerText { max-width: 36em; font-size: var(--fs-emph); line-height: 1.75; }
 .sources { font-size: var(--fs-label); color: var(--ink-3-text); }
 .followups { display: flex; justify-content: flex-end; }
 .contextCard { display: flex; align-items: center; gap: var(--space-14); justify-content: space-between; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card-web); padding: var(--space-12) var(--space-18); max-width: 760px; width: 100%; margin: var(--space-12) auto; }
