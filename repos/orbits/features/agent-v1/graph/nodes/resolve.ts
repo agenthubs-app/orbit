@@ -561,6 +561,13 @@ export function resolveNode(scope: NodeScope): GraphNode {
       const capabilities = part.reading?.capabilities.length ? part.reading.capabilities : part.capabilities;
       const kinds = readKindsOf(capabilities);
       // Finding events by conditions is not a read of this version (an attached event is read by id).
+      if (kinds.has("event") && !part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event") && ![...kinds].some((kind) => kind !== "event" && kind !== "contact") && contacts.length && (text || part.refs.some((ref) => recordKindOf(ref.entity) === "event" && clueSearchWords(clueWords(input.message, ref) ?? "")))) {
+        // AG11 run-02 (AE-RD-009): "田中在客户访谈里最在意什么" tagged as an event of a named person: a meeting or interview with
+        // someone is in the user's notes about them — those are read by the words, not the event directory.
+        kinds.add("memo");
+        if (!text) text = part.refs.map((ref) => (recordKindOf(ref.entity) === "event" ? clueSearchWords(clueWords(input.message, ref) ?? "") : undefined)).find(Boolean);
+        emitTrace({ partId: part.localId, type: "resolve.person_event_in_notes", words: text ?? null });
+      }
       if (kinds.has("event") && !part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event") && ![...kinds].some((kind) => kind !== "event" && kind !== "contact")) {
         read.lines.push(words.eventSearch(quote));
         finish("unfinished", "not_in_this_version");

@@ -105,6 +105,29 @@ test("AE-WEB-001: a second web part about the same page is answered from it — 
 });
 
 /**
+ * AE-RD-009 (AG10 rerun run-02): 「田中在客户访谈里最在意什么？」 was tagged as an event (and «我去过») of 田中 — and answered "finding
+ * events by conditions is not in this version". A meeting or interview with a named person is in the user's notes about them.
+ */
+test("AE-RD-009: an 'event' of a named person is read from that person's notes by its words, not refused as an event search", async () => {
+  const message = "田中在客户访谈里最在意什么？";
+  const world = smallWorld();
+  for (const record of world.records) if (record.userId === "user:a") record.userId = "actor:a";
+  for (const record of world.records) if (record.collection === "notes") (record.payload.note as Record<string, unknown>).accountId = record.userId;
+  const records = recordAccessOf(world);
+  const model = deepseekStub([
+    json({ parts: [part({ dataSources: ["orbit_records"], objectClues: [{ entity: "contact", text: "田中" }, { entity: "event", text: "客户访谈" }, { entity: "attendance", text: "客户访谈" }], readFilter: { order: "newest", text: "客户访谈" }, requiredCapabilities: ["event.read", "attendance.read"], sourceQuote: message })], plainChat: false }),
+    (call) => {
+      const memo = /(s\d+) — memo "客户访谈"/u.exec(call.user)![1];
+      return json({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: memo }], partId: "p1", text: "田中最在意交付周期。" }] });
+    },
+  ]);
+  const kit = graphKit(model.fetchImplementation, { records });
+  const result = await runAgentGraph(kit.deps, kit.input(message));
+  assert.doesNotMatch(result.text, /活动目录|还不能这样找/u);
+  assert.deepEqual(result.sourceRefs, ["memo:note:m37"]);
+});
+
+/**
  * AE-JDG-007 (AG08): 「要是把给小林发修订报价那条待办改到周五，会不会来不及？」 — the to-do described before 「那条待办」 was taken as
  * 「要是把给小林发修订报价」, so the entry read 「把「要是把给小林发修订报价」改到周五」 and its words did not match T42. The conditional
  * lead-in and its 把 are not the record's words; the record's own words (「给小林发修订报价」) stay.
