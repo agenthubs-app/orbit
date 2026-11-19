@@ -8,6 +8,10 @@ import type {
   AgentReferenceCheckResultContract,
   AgentReferenceSearchResultContract,
   AgentResultDocument,
+  AgentScheduledTaskContract,
+  AgentScheduledTaskHistoryContract,
+  AgentScheduledTaskListContract,
+  AgentScheduledTaskRunContract,
   AgentSelectionInputContract,
   AgentSelectionReceiptContract,
   AgentSendInputContract,
@@ -370,3 +374,43 @@ export const agentMemorySettingsInputSchema = z.object({
   allowConversationLearning: z.boolean().optional(),
   enabled: z.boolean().optional(),
 }) satisfies z.ZodType<AgentMemorySettingsInputContract>;
+
+// ── agent-design AG15：定时任务与运行历史（本块由 AG15 追加）。读取时放宽：不认识的结果当作 failed，不认识的状态当作 paused。 ──
+
+const scheduledRunOutcome = z.string().transform((value): AgentScheduledTaskRunContract["outcome"] => (["delivered", "no_match", "undelivered", "failed", "needs_attention"].includes(value) ? (value as AgentScheduledTaskRunContract["outcome"]) : "failed"));
+
+export const agentScheduledTaskRunSchema: z.ZodType<AgentScheduledTaskRunContract> = z.object({
+  attention: z.object({ message: z.string(), reason: z.literal("reference_unreadable"), referenceTitle: z.string().optional() }).optional(),
+  cardId: z.string().optional(),
+  computeAttempts: z.number().int().positive(),
+  computedAt: z.string(),
+  delivery: z.object({ attempts: z.number().int().nonnegative(), cancelReason: z.enum(["rule_paused", "rule_changed", "rule_removed", "reference_unreadable"]).optional(), deliveredAt: z.string().optional(), state: z.enum(["none", "pending", "delivered", "cancelled"]) }),
+  items: z.array(z.object({ id: z.string(), kind: z.enum(["event", "contact", "todo"]), line: z.string(), ref: z.string(), title: z.string() })),
+  line: z.string(),
+  outcome: scheduledRunOutcome,
+  push: z.object({ attempts: z.number().int().nonnegative(), deliveredAt: z.string().optional(), state: z.enum(["not_requested", "pending", "delivered", "failed"]) }),
+  runId: identifier,
+  scheduledAt: z.string(),
+  skipped: z.number().int().nonnegative(),
+  skippedDays: z.array(z.string()),
+  taskId: identifier,
+  text: z.string(),
+}) as unknown as z.ZodType<AgentScheduledTaskRunContract>;
+
+export const agentScheduledTaskSchema: z.ZodType<AgentScheduledTaskContract> = z.object({
+  createdAt: z.string(),
+  id: identifier,
+  lastRun: agentScheduledTaskRunSchema.nullable(),
+  nextRunAt: z.string().nullable(),
+  notify: z.object({ inApp: z.boolean(), push: z.boolean() }),
+  rows: z.array(z.object({ field: z.string(), label: z.string(), value: z.string() })),
+  status: z.string().transform((value): AgentScheduledTaskContract["status"] => (value === "active" || value === "completed" ? value : "paused")),
+  timeZone: z.string().nullable(),
+  title: z.string(),
+  updatedAt: z.string(),
+  version: z.number().int().positive(),
+}) as unknown as z.ZodType<AgentScheduledTaskContract>;
+
+export const agentScheduledTaskListSchema: z.ZodType<AgentScheduledTaskListContract> = z.object({ tasks: z.array(agentScheduledTaskSchema) }) as unknown as z.ZodType<AgentScheduledTaskListContract>;
+
+export const agentScheduledTaskHistorySchema: z.ZodType<AgentScheduledTaskHistoryContract> = z.object({ runs: z.array(agentScheduledTaskRunSchema), task: agentScheduledTaskSchema }) as unknown as z.ZodType<AgentScheduledTaskHistoryContract>;

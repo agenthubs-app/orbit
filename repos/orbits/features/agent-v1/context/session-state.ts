@@ -13,6 +13,7 @@
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import type { LiveRecord } from "../../../shared/storage/live-record-store";
 import type { FeatureMode } from "../../../shared/config/feature-mode";
+import type { RuleAskState } from "../rule/state";
 
 export const SESSION_STATE_COLLECTION = "agent_v1_session_states";
 
@@ -49,6 +50,8 @@ export interface SessionOpenItem {
   clues?: { entity: string; text: string }[];
   /** AG10: a ranking that asked "按什么来挑": its domain, dates and count (a reply such as "随便" goes on with them). */
   rank?: { domain: "event" | "contact" | "todo"; count?: number; from?: string; to?: string };
+  /** AG15: a scheduled task that asked "按什么来挑": its schedule, scope, count and end day (codes, ids and names only). */
+  rule?: RuleAskState;
 }
 
 export interface AgentSessionState {

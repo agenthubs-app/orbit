@@ -80,6 +80,12 @@ export const AGENT_LEDGER_OPERATION_TYPES = [
   "create_memory",
   "update_memory",
   "delete_memory",
+  // agent-design AG15: scheduled rules (rule.create, update, pause, resume, cancel), after a card.
+  "create_rule",
+  "update_rule",
+  "pause_rule",
+  "resume_rule",
+  "cancel_rule",
 ] as const;
 
 // 语音只允许保存“用户编辑确认后的转写文本”；原始音频永不进入 evidence。

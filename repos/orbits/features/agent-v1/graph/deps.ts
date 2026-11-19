@@ -16,6 +16,7 @@ import type { JudgmentAccess } from "../judgment/ask";
 import type { AgentWebAccess } from "../web/service";
 import type { ContactAccess } from "../domains/contact/types";
 import type { AgentMemoryAccess } from "../domains/memory/turn";
+import type { RuleSnapshot } from "../domains/rule/ops";
 
 /**
  * AG06: the request's card in the action ledger (one card per request, conversationCardId). `freeze` is
@@ -87,6 +88,8 @@ export interface AgentGraphDependencies {
    * entries in use, the deletion marks and the version (absent: the turn uses no memory and proposes no memory change).
    */
   memory?: AgentMemoryAccess;
+  /** AG15: the account's own scheduled tasks (to pause, resume, change or remove one by its name; absent: said as unavailable). */
+  rules?: { list(actorId: string): Promise<readonly RuleSnapshot[]> };
 }
 
 export interface AgentGraphInput {

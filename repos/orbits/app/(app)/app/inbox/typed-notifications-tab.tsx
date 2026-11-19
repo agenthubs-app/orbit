@@ -64,6 +64,8 @@ const sourceLabels:Record<string,{zh:string;en:string;ja:string}>={
  batch:{zh:'名片导入',en:'Card import',ja:'名刺の取り込み'},connection:{zh:'联系',en:'Connection',ja:'つながり'},note:{zh:'笔记',en:'Note',ja:'メモ'},message:{zh:'消息',en:'Message',ja:'メッセージ'},
  contact:{zh:'联系人',en:'Contact',ja:'連絡先'},goal:{zh:'目标',en:'Goal',ja:'目標'},read_cost_alert:{zh:'用量',en:'Usage',ja:'利用量'},event_contact_request:{zh:'活动联系请求',en:'Event contact request',ja:'イベントの連絡先リクエスト'},
  event_deadline:{zh:'报名截止',en:'Registration deadline',ja:'申込の期限'},event_prep:{zh:'活动准备',en:'Event prep',ja:'イベントの準備'},event_pick:{zh:'推荐活动',en:'Event pick',ja:'おすすめイベント'},mail_summary:{zh:'邮件',en:'Mail',ja:'メール'},event_host_notice:{zh:'主办方通知',en:'Host notice',ja:'主催者からのお知らせ'},
+ // agent-design AG15: plain names for the agent's own entries (the rows themselves follow the approved draft later).
+ automation_result:{zh:'定时任务',en:'Scheduled task',ja:'定期タスク'},agent_card:{zh:'等你确认的修改',en:'Change waiting for you',ja:'確認待ちの変更'},external_proposal:{zh:'外部提议',en:'External proposal',ja:'外部からの提案'},
 };
 const sourceIcons:Record<string,IconName>={schedule:'calendar',appointment:'calendar',event_deadline:'ticket',event_prep:'ticket',event_pick:'ticket',event_host_notice:'ticket',event_contact_request:'users',task:'task',contact:'user',connection:'users',note:'note',message:'mail',mail_summary:'mail',goal:'target',batch:'layers',reminder_plan:'clock'};
 const targetLabels:Record<string,{zh:string;en:string;ja:string}>={

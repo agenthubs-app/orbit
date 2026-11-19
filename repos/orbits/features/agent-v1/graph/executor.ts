@@ -29,6 +29,9 @@ import type { AgentCardAccess } from "./deps";
 import { configuredWebAccess } from "../web/factory";
 import { reviseImportByWords } from "../entry/import-revision";
 import { createAgentMemoryService } from "../../agent/memory/service-factory";
+import { createAgentAutomationService } from "../../agent/automations/service-factory";
+import { ruleSnapshotOf } from "../domains/rule/apply";
+import type { RuleSnapshot } from "../domains/rule/ops";
 
 /**
  * AG06: the graph's card is the request's card in the ledger (conversationCardId), frozen through
@@ -167,6 +170,8 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       web: overrides.web ?? configuredWebAccess(mode, overrides.fetchImplementation ?? execution.fetchImplementation),
       // AG14: the account's saved memory (the same canonical account as the settings page; one read per turn).
       memory: overrides.memory ?? { snapshot: (actorId) => createAgentMemoryService({ actorId, mode }).snapshot() },
+      // AG15: the account's own scheduled tasks, read through the automation service (the next period comes from the due index).
+      rules: overrides.rules ?? { list: async (actorId) => (await createAgentAutomationService({ actorId, mode }).list()).map(ruleSnapshotOf).filter((rule): rule is RuleSnapshot => rule !== null) },
     };
     if (execution.resume) {
       // AG04: a click resumes this request's paused thread; no message, no confirmation boundary, no model.

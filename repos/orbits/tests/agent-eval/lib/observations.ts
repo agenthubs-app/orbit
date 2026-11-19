@@ -153,6 +153,10 @@ export interface Observation {
   memoryRecalled?: { id: string; fixtureId: string | null }[];
   /** AG14: per account label, the entries the settings API listed for that account's own sign-in at the end. */
   settingsMemory?: Record<string, { status: number; ids: string[] }>;
+  /** AG15: every scheduled rule of the world's accounts when the case ended (state as its owner's list shows it). */
+  rulesAfter?: { id: string; fixtureId: string | null; account: string | null; state: string; version: number }[];
+  /** AG15: the run history written during the case, in the order the periods were planned (from the database difference). */
+  ruleRuns?: { rule: string; fixtureRule: string | null; account: string | null; scheduledAt: string; outcome: string; skipped: number; listed: string[]; cardId: string | null; delivery: string }[];
 }
 
 export interface MemoryEntryObservation {

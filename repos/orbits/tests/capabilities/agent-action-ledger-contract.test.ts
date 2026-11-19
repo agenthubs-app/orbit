@@ -95,6 +95,12 @@ test("operation types cover the design-derived write operations", () => {
       "create_memory",
       "update_memory",
       "delete_memory",
+      // agent-design AG15: scheduled rules, after a card.
+      "create_rule",
+      "update_rule",
+      "pause_rule",
+      "resume_rule",
+      "cancel_rule",
     ],
   );
 });

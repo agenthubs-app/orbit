@@ -6,17 +6,22 @@ import { createAgentCapabilityRegistry } from "../capabilities/registry";
 import {
   type AgentAutomation,
   type AgentAutomationRevision,
+  agentAutomationNotify,
   AGENT_AUTOMATION_LEASE_TIMEOUT_MS,
   type AgentAutomationRecordPayload,
   type AgentAutomationService,
   type AgentAutomationSchedule,
   type AgentAutomationTrigger,
+  type AgentRuleSpec,
   type CreateAgentAutomationInput,
   nextAgentAutomationRunAt,
+  nextAgentRulePeriod,
   type UpdateAgentAutomationInput,
   validateAgentAutomationSchedule,
   validateAgentAutomationTrigger,
+  validateAgentRuleSpec,
 } from "./contract";
+import type { AutomationStorage, AutomationTx } from "./due-index";
 
 export const AGENT_AUTOMATION_COLLECTION = "agentAutomations" as const;
 
@@ -24,6 +29,13 @@ export interface StorageAgentAutomationServiceOptions {
   actorId: string;
   store: LiveRecordStoreLike<AgentAutomationRecordPayload>;
   workspaceId: string;
+  /**
+   * agent-design AG15: the due index. With it, a rule (an automation with the `rule` fields) and its index row are
+   * written in one transaction, its next period lives in the index (list/get read it from there), and its periods are
+   * claimed only by the cross-account dispatcher (dispatcher.ts). Older playbooks without the rule fields are not
+   * indexed and keep the per-account claim below — so no period can be claimed by both.
+   */
+  storage?: AutomationStorage;
   now?: () => string;
   id?: () => string;
   leaseId?: () => string;
@@ -88,10 +100,19 @@ function triggerFor(input: AgentAutomationTrigger): AgentAutomationTrigger {
 function nextRunFor(
   trigger: AgentAutomationTrigger,
   after: string,
+  rule?: AgentRuleSpec,
 ): string | null {
-  return trigger.kind === "schedule"
-    ? nextAgentAutomationRunAt(trigger.schedule, after)
-    : null;
+  if (trigger.kind !== "schedule") return null;
+  // AG15: a rule's periods stop after its last valid day.
+  return rule
+    ? nextAgentRulePeriod(trigger.schedule, rule.validUntil, after)
+    : nextAgentAutomationRunAt(trigger.schedule, after);
+}
+
+function ruleFor(input: AgentRuleSpec | undefined): AgentRuleSpec | undefined {
+  if (!input) return undefined;
+  validateAgentRuleSpec(input);
+  return JSON.parse(JSON.stringify(input)) as AgentRuleSpec;
 }
 
 function revisionFor(input: {
@@ -100,6 +121,7 @@ function revisionFor(input: {
     | "capabilityId"
     | "delivery"
     | "instruction"
+    | "rule"
     | "title"
     | "trigger"
     | "version"
@@ -114,6 +136,7 @@ function revisionFor(input: {
     createdAt: input.createdAt,
     delivery: input.automation.delivery,
     instruction: input.automation.instruction,
+    ...(input.automation.rule ? { rule: input.automation.rule } : {}),
     source: input.source,
     title: input.automation.title,
     trigger: input.automation.trigger,
@@ -168,10 +191,11 @@ function configurationChanged(
   existing: AgentAutomation,
   candidate: Pick<
     AgentAutomation,
-    "capabilityId" | "delivery" | "instruction" | "title" | "trigger"
+    "capabilityId" | "delivery" | "instruction" | "rule" | "title" | "trigger"
   >,
 ): boolean {
   return (
+    JSON.stringify(existing.rule ?? null) !== JSON.stringify(candidate.rule ?? null) ||
     existing.capabilityId !== candidate.capabilityId ||
     existing.delivery !== candidate.delivery ||
     existing.instruction !== candidate.instruction ||
@@ -233,14 +257,57 @@ function hasExpiredLease(
 
 export function createStorageAgentAutomationService({
   actorId,
-  store,
+  store: plainStore,
+  storage,
   workspaceId,
   now = () => new Date().toISOString(),
   id = () => crypto.randomUUID(),
   leaseId = () => crypto.randomUUID(),
 }: StorageAgentAutomationServiceOptions): AgentAutomationService {
   const scopedWorkspaceId = actorWorkspaceId(workspaceId, actorId);
+  const ownerId = actorId.trim();
+  // AG15: reads stay on the given store (its read budget applies); rule writes run inside the index's transaction.
+  const store = plainStore;
   let mutationQueue: Promise<void> = Promise.resolve();
+
+  /** The index's view of a rule: its next period, and "completed" once a schedule has run out. */
+  async function withIndex(automations: AgentAutomation[]): Promise<AgentAutomation[]> {
+    if (!storage || automations.length === 0) return automations;
+    const rows = new Map((await storage.listOwned(ownerId, "rule")).map((row) => [row.key, row]));
+    return automations.map((automation) => {
+      const row = rows.get(automation.automationId);
+      if (!row || automation.trigger.kind !== "schedule") return automation;
+      const ranOut = automation.status === "active" && row.status === "active" && row.nextRunAt === null;
+      return { ...automation, nextRunAt: row.status === "active" ? row.nextRunAt : null, status: ranOut ? "completed" : automation.status };
+    });
+  }
+
+  /** Writes the rule and, in the same transaction, its row of the due index. */
+  async function saveIndexed(automation: AgentAutomation, index: { nextRunAt: string | null }): Promise<AgentAutomation> {
+    if (!storage) {
+      await plainStore.upsertRecord(recordFor(scopedWorkspaceId, automation));
+      return automation;
+    }
+    await storage.transaction(async (tx: AutomationTx) => {
+      await (tx.store as unknown as LiveRecordStoreLike<AgentAutomationRecordPayload>).upsertRecord(recordFor(scopedWorkspaceId, automation));
+      if (automation.trigger.kind !== "schedule" || !automation.rule) {
+        await tx.due.remove({ key: automation.automationId, kind: "rule", ownerId });
+        return;
+      }
+      await tx.due.put({
+        // The frozen rule the dispatcher runs: definition and parameters only, no run state.
+        definition: { ...automation, lastRun: null, lease: undefined, notify: agentAutomationNotify(automation), revisions: [] } as unknown as Record<string, unknown>,
+        key: automation.automationId,
+        kind: "rule",
+        nextRunAt: automation.status === "active" || automation.status === "running" ? index.nextRunAt : null,
+        ownerId,
+        status: automation.status === "paused" ? "paused" : "active",
+        updatedAt: automation.updatedAt,
+        version: automation.version,
+      });
+    });
+    return automation;
+  }
 
   async function serial<T>(operation: () => Promise<T>): Promise<T> {
     const previous = mutationQueue;
@@ -262,10 +329,10 @@ export function createStorageAgentAutomationService({
       workspaceId: scopedWorkspaceId,
       collectionName: AGENT_AUTOMATION_COLLECTION,
     });
-    return records
+    return (await withIndex(records
       .map((record) =>
         normalizeStoredAutomation(record.payload.automation),
-      )
+      )))
       .sort((left, right) => {
         if (!left.nextRunAt && !right.nextRunAt) {
           return right.updatedAt.localeCompare(left.updatedAt);
@@ -305,24 +372,30 @@ export function createStorageAgentAutomationService({
         recordId: normalizedId,
       });
       return record
-        ? normalizeStoredAutomation(record.payload.automation)
+        ? (await withIndex([normalizeStoredAutomation(record.payload.automation)]))[0]
         : null;
     },
     async create(input: CreateAgentAutomationInput) {
       return serial(async () => {
+        if (input.automationId?.trim()) {
+          const existing = await store.getRecord({ collectionName: AGENT_AUTOMATION_COLLECTION, recordId: input.automationId.trim(), workspaceId: scopedWorkspaceId });
+          if (existing) return normalizeStoredAutomation(existing.payload.automation);
+        }
         const createdAt = now();
         const trigger = triggerFor(input.trigger);
-        const nextRunAt = nextRunFor(trigger, createdAt);
+        const rule = ruleFor(input.rule);
+        const nextRunAt = nextRunFor(trigger, createdAt, rule);
         if (trigger.kind === "schedule" && !nextRunAt) {
           throw new Error("Automation schedule must have a future run time.");
         }
         const base: Omit<AgentAutomation, "revisions"> = {
-          automationId: id(),
+          automationId: input.automationId?.trim() || id(),
           capabilityId: requireAutomationCapability(input.capabilityId),
           title: text(input.title, "Automation title", 120),
           instruction: text(input.instruction, "Automation instruction", 4_000),
           trigger,
           delivery: requireDelivery(input.delivery),
+          ...(rule ? { rule } : {}),
           status: "active",
           nextRunAt,
           lastRun: null,
@@ -343,7 +416,7 @@ export function createStorageAgentAutomationService({
             }),
           ],
         };
-        return save(automation);
+        return saveIndexed(automation, { nextRunAt });
       });
     },
     async update(automationId, input: UpdateAgentAutomationInput) {
@@ -366,10 +439,11 @@ export function createStorageAgentAutomationService({
             ? "active"
             : existing.status
         );
+        const rule = input.rule === undefined ? existing.rule : ruleFor(input.rule);
         const nextRunAt =
           status === "paused"
             ? null
-            : nextRunFor(trigger, updatedAt);
+            : nextRunFor(trigger, updatedAt, rule);
         if (
           status === "active" &&
           trigger.kind === "schedule" &&
@@ -400,13 +474,18 @@ export function createStorageAgentAutomationService({
             input.delivery === undefined
               ? existing.delivery
               : requireDelivery(input.delivery),
+          ...(rule ? { rule } : {}),
           status,
           nextRunAt,
           lease: undefined,
           updatedAt,
         };
         if (!configurationChanged(existing, candidate)) {
-          return save(candidate);
+          // AG15: an active rule written again with nothing changed keeps the period it is waiting for.
+          const waiting = storage && existing.status === "active" && status === "active"
+            ? (await storage.direct.due.get({ key: existing.automationId, kind: "rule", ownerId }))?.nextRunAt
+            : undefined;
+          return saveIndexed(candidate, { nextRunAt: waiting === undefined ? nextRunAt : waiting });
         }
         const versioned: AgentAutomation = {
           ...candidate,
@@ -428,7 +507,8 @@ export function createStorageAgentAutomationService({
             }),
           ].slice(-20),
         };
-        return save(versioned);
+        // AG15: a new version starts from its next period; periods of the old version that did not run are void.
+        return saveIndexed(versioned, { nextRunAt });
       });
     },
     async remove(automationId) {
@@ -439,17 +519,28 @@ export function createStorageAgentAutomationService({
             "A running automation cannot be deleted until its current run finishes.",
           );
         }
-        await store.deleteRecord({
+        const deletion = {
           workspaceId: scopedWorkspaceId,
           collectionName: AGENT_AUTOMATION_COLLECTION,
           recordId: existing.automationId,
           deletedAt: now(),
+        };
+        if (!storage) {
+          await store.deleteRecord(deletion);
+          return;
+        }
+        await storage.transaction(async (tx) => {
+          await tx.store.deleteRecord(deletion);
+          await tx.due.remove({ key: existing.automationId, kind: "rule", ownerId });
         });
       });
     },
     async claimDue(input) {
       return serial(async () => {
         const due = (await listRecords())
+          // AG15: a rule in the due index is claimed across accounts by the dispatcher only; this per-account claim
+          // never takes one of its periods.
+          .filter((automation) => !(storage && automation.rule))
           .filter(
             (automation) =>
               (automation.trigger.kind === "schedule" &&
@@ -592,7 +683,10 @@ export function createStorageAgentAutomationService({
           nextRunAt: recurring
             ? resumeStatus === "paused"
               ? null
-              : nextRunFor(existing.trigger, input.completedAt)
+              // AG15: with the due index a manual run does not move the schedule (no period is dropped by when a run ended).
+              : storage && existing.rule
+                ? existing.nextRunAt
+                : nextRunFor(existing.trigger, input.completedAt, existing.rule)
             : null,
           lastRun: {
             ...input.outcome,

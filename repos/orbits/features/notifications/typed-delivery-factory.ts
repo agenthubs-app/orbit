@@ -9,6 +9,7 @@ import {createDeliveryPolicyRepository,readHistoricalNotificationSuppressions} f
 import {createTypedDeliverySources} from './typed-delivery-source';
 import {createTypedDeliveryWorker} from './typed-delivery-worker';
 import {createInboxRuntime} from './inbox-record-service-factory';
+import {isAgentInboxSourceKind} from './agent-inbox-source';
 export function createTypedDeliveryRuntime(input:{actorId:string;client:TransactionalPostgresClient;workspaceId:string;now?:()=>string;devices?:PushDeviceService;push?:OrbitPushAdapter|null}) {
  const repository=createDeliveryPolicyRepository(input),devices=input.devices??createPushDeviceService({actorId:input.actorId}),sources=createTypedDeliverySources({...input,repository}),ledger=createStorageNotificationDeliveryService({...input,store:createPostgresLiveRecordStore({client:input.client}) as never,sqlClient:input.client,devices});
  return {...input,repository,devices,sources,ledger,worker:createTypedDeliveryWorker({...input,repository,devices,sources,ledger,push:input.push===undefined?createConfiguredExpoPushAdapter():input.push}),
@@ -24,6 +25,9 @@ export function createTypedDeliveryRuntime(input:{actorId:string;client:Transact
     const candidates=list.items.flatMap(n=>{
      const scheduled=n.scheduledFor??n.occurredAt;
      const scheduledAt=Date.parse(scheduled);
+     // agent-design AG15 (易错边界 6): entries the agent writes (scheduled-task results, cards, external proposals) are
+     // never push candidates here; a task's own push switch is AG16's.
+     if(n.sources.some(source=>isAgentInboxSourceKind(source.sourceKind)))return [];
      return !Number.isFinite(scheduledAt)||scheduledAt<since||n.readAt||n.disposition!=='open'?[]:[{n,scheduled,eventKey:n.id+':'+scheduled}];
     });
     const historical=await readHistoricalNotificationSuppressions({executor:input.client,workspaceId:input.workspaceId,actorId:input.actorId,eventKeys:candidates.map(item=>item.eventKey)});

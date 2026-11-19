@@ -22,6 +22,7 @@ import type { PartStatus } from "../route/decide";
 import type { PartWrite } from "../propose/resolve";
 import type { CardOperationIntent } from "../../agent/runtime/card-operations";
 import type { JudgmentBudget } from "../judgment/ask";
+import type { RuleAskState } from "../rule/state";
 import type { AgentActionPreviewContract, AgentWebResultContract } from "../../../shared/contract/agent-v1";
 import type { Clarity, DataOwner, DataSource, Deliverable, IntentBasis, Persistence, RankField, ReadFilter, UnderstandOutput } from "../understand/schema";
 
@@ -58,6 +59,8 @@ export interface PartPlan {
   webTarget?: { quote?: [number, number]; qualifiers: string[] };
   /** AG10: a ranking that asked "按什么来挑": its domain, dates and count (the reply goes on with them). */
   rankAsk?: { domain: "event" | "contact" | "todo"; count?: number; from?: string; to?: string };
+  /** AG15: a scheduled task that asked "按什么来挑": what was read of it so far (the reply goes on to the card). */
+  ruleAsk?: RuleAskState;
 }
 
 /** AG05: what a read part covered, per kind (codes and counts only). */
