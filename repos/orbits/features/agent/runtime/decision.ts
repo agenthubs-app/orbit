@@ -110,6 +110,8 @@ const MESSAGES: Record<CardLocale, {
   revisionChanged: string;
   contentChanged: string;
   expired: string;
+  /** AG15: the next period of the same scheduled task made a new card. */
+  superseded: string;
   closedRejected: string;
   closedCanceled: string;
   retry: string;
@@ -126,6 +128,7 @@ const MESSAGES: Record<CardLocale, {
     confirmed: "Confirmed. Carrying it out now.",
     contentChanged: "Something on this card changed. Please look at it again: it now shows the current data and needs another click.",
     expired: "This card was left too long. Generate a new one?",
+    superseded: "A newer card from the same scheduled task took this one's place. Use the newer card.",
     markDone: "Marked as done on your word. Nothing was written again.",
     notInReview: "This item does not need review.",
     regenerated: "The card was made again from the current data. Nothing is done until you click confirm.",
@@ -141,6 +144,7 @@ const MESSAGES: Record<CardLocale, {
     confirmed: "確認しました。実行しています。",
     contentChanged: "カードの内容に変更があります。もう一度ご確認ください。現在のデータで更新しました。もう一度押すまで実行しません。",
     expired: "このカードは時間が経ちすぎました。作り直しますか？",
+    superseded: "同じ定期タスクの新しいカードに置き換わりました。新しいカードをお使いください。",
     markDone: "ご判断のとおり完了にしました。もう一度書き込むことはしていません。",
     notInReview: "この項目は確認の必要がありません。",
     regenerated: "現在のデータでカードを作り直しました。確認を押すまで何も実行しません。",
@@ -156,6 +160,7 @@ const MESSAGES: Record<CardLocale, {
     confirmed: "已确认，正在执行。",
     contentChanged: "内容有变化，请再看一遍。卡片已按现在的数据更新，再点一次确认才会执行。",
     expired: "这张卡放太久了，要重新生成一张吗？",
+    superseded: "同一条定时任务的下一期出了新卡，这张已经被取代。请用新的那张。",
     markDone: "已按你的判断标为已完成，没有再写一次。",
     notInReview: "这一项现在不需要核对。",
     regenerated: "已按现在的数据重新生成这张卡，点确认之前不会执行。",
@@ -394,7 +399,7 @@ async function decideOnce(
     const expired: AgentActionRecord = { ...action, expiredAt: now, status: "expired", updatedAt: now };
     return commit(record("refused", messages.expired, { reason: "CARD_EXPIRED" }), { next: expired });
   }
-  if (action.status === "expired") return refuse("CARD_EXPIRED", messages.expired);
+  if (action.status === "expired") return refuse("CARD_EXPIRED", action.expiredReason === "superseded" ? messages.superseded : messages.expired);
   if (action.status === "rejected" || action.status === "canceled") {
     return refuse("CARD_CLOSED", action.status === "rejected" ? messages.closedRejected : messages.closedCanceled);
   }
@@ -546,6 +551,37 @@ export async function regenerateCard(deps: AgentCardDependencies, input: { actio
     return { message: messages.regenerated, outcome: "regenerated", revision: next.revision ?? 1 };
   }
   throw new Error(`Agent action ${input.actionId} kept changing while it was being regenerated.`);
+}
+
+export interface AgentExpireCardResult {
+  outcome: "expired" | "unchanged";
+  revision: number;
+}
+
+/**
+ * agent-design AG15 (设计稿 §5.2, §5.3; PLANNER 易错边界 9): a card left waiting is closed without a click — by its
+ * one-off timer once its expiry has passed (only the revision the timer was set for), or because the next period of the
+ * same scheduled task made a new card. It becomes `expired`: never executed, a click on it is refused with
+ * CARD_EXPIRED, and regenerating it gives a new revision that still needs a click. Not a decision; no model is called.
+ */
+export async function expireCard(deps: AgentCardDependencies, input: { actionId: string; revision?: number; reason: "timer" | "superseded" }): Promise<AgentExpireCardResult | null> {
+  const repository = requireCardRepository(deps.repository);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const action = await deps.repository.getAction(input.actionId);
+    if (!action) return null;
+    const now = deps.now();
+    const revision = action.revision ?? 1;
+    const waiting = action.status === "awaiting_confirmation" || action.status === "deferred";
+    if (!waiting || (input.revision !== undefined && input.revision !== revision)) return { outcome: "unchanged", revision };
+    if (input.reason === "timer" && !isPastExpiry(action, now)) return { outcome: "unchanged", revision };
+    const next: AgentActionRecord = { ...action, expiredAt: now, status: "expired", updatedAt: now, ...(input.reason === "superseded" ? { expiredReason: "superseded" as const } : {}) };
+    const committed = await repository.commitCardChange({ actionId: action.actionId, expect: { revision, statuses: [action.status], updatedAt: action.updatedAt }, next });
+    if (!committed.committed) continue;
+    await deps.afterChange?.(next);
+    emitTrace({ cardId: action.actionId, from: action.status, revision, to: "expired", type: "card.state", via: input.reason === "timer" ? "timer" : "superseded" });
+    return { outcome: "expired", revision };
+  }
+  throw new Error(`Agent action ${input.actionId} kept changing while it was being closed.`);
 }
 
 export interface AgentRecheckResult {

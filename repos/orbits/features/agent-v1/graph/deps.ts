@@ -15,6 +15,7 @@ import type { CanonicalEventRecord } from "../../events/core/contract";
 import type { JudgmentAccess } from "../judgment/ask";
 import type { AgentWebAccess } from "../web/service";
 import type { ContactAccess } from "../domains/contact/types";
+import type { RuleSnapshot } from "../domains/rule/ops";
 
 /**
  * AG06: the request's card in the action ledger (one card per request, conversationCardId). `freeze` is
@@ -83,6 +84,8 @@ export interface AgentGraphDependencies {
   web?: AgentWebAccess;
   /** AG10: the user's saved memories, read only (preferences and constraints a ranking may use; AG14 replaces it with recallFor()). */
   memories?: { list(actorId: string): Promise<readonly { id: string; category: string; content: string }[]> };
+  /** AG15: the account's own scheduled tasks (to pause, resume, change or remove one by its name; absent: said as unavailable). */
+  rules?: { list(actorId: string): Promise<readonly RuleSnapshot[]> };
 }
 
 export interface AgentGraphInput {

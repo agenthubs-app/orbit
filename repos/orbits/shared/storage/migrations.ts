@@ -2,6 +2,7 @@ import { runEventOperationsMigrations } from "../../features/events/event-operat
 import { runEventSyncRevisionMigration } from "../../features/events/event-operations/storage/sync-revision";
 import { runRelationshipLifecycleMigrations } from "../../features/connections/lifecycle/migrations";
 import { runRelationshipMessageMigrations } from "../../features/relationship-communication/message-tables";
+import { AGENT_AUTOMATION_DUE_SCHEMA_SQL } from "../../features/agent/automations/due-index";
 
 export const ORBIT_RECORDS_SCHEMA_SQL = `
 create table if not exists orbit_records (
@@ -242,4 +243,6 @@ export async function runOrbitRecordsMigration(
   await runEventSyncRevisionMigration(client);
   // agent-design AG13: the private-event and attendance indexes (repeatable). Last, so the earlier steps keep their order.
   await client.query(ORBIT_AGENT_V1_EVENTS_SCHEMA_SQL);
+  // agent-design AG15: the cross-account due index of scheduled rules, deliveries and one-off timers (repeatable).
+  await client.query(AGENT_AUTOMATION_DUE_SCHEMA_SQL);
 }

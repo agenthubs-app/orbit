@@ -20,6 +20,7 @@ export function agentCardPreview(action: AgentActionRecord, detail: AgentRunDeta
     actionId: action.actionId,
     ...(action.contentChanges?.length ? { changes: action.contentChanges.map((change) => ({ ...change })) } : {}),
     ...(action.expiresAt ? { expiresAt: action.expiresAt } : {}),
+    ...(action.status === "expired" && action.expiredReason ? { expiredReason: action.expiredReason } : {}),
     ...(action.locale === "zh" || action.locale === "ja" || action.locale === "en" ? { locale: action.locale } : {}),
     operations: action.operations.map((op) => ({
       ...(outcomeOfItem(action, detail, op.operationId) ? { outcome: outcomeOfItem(action, detail, op.operationId)! } : {}),

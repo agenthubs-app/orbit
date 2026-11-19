@@ -48,7 +48,7 @@ async function statuses(kit: CardKit, actionId: string) {
 test("the card executors are exactly the registered card keys, one adapter each", () => {
   const unused = async () => { throw new Error("unused"); };
   // AG13: with the private-event, «我去过» and schedule services and the to-do verbs, every registered key has its adapter.
-  const keys = cardWriteExecutors({ actorId: ACTOR, events: { attendance: {} as never, privateEvents: {} as never, schedule: {} as never }, notes: { create: unused, update: unused }, tasks: { complete: unused, create: unused, delete: unused, get: async () => null, reopen: unused, update: unused }, contacts: { access: { findDeleted: async () => [], listActive: async () => [], read: async () => null }, deletes: null, imports: null, manual: null, store: { getRecord: async () => null }, workspaceId: "w" } }).map((executor) => executor.key);
+  const keys = cardWriteExecutors({ actorId: ACTOR, events: { attendance: {} as never, privateEvents: {} as never, schedule: {} as never }, notes: { create: unused, update: unused }, tasks: { complete: unused, create: unused, delete: unused, get: async () => null, reopen: unused, update: unused }, contacts: { access: { findDeleted: async () => [], listActive: async () => [], read: async () => null }, deletes: null, imports: null, manual: null, store: { getRecord: async () => null }, workspaceId: "w" }, rules: { automations: { create: unused, get: async () => null, remove: unused, update: unused } } }).map((executor) => executor.key);
   assert.deepEqual(keys.sort(), [...AGENT_V1_CARD_EXECUTOR_KEYS].sort());
 });
 

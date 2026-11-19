@@ -253,6 +253,8 @@ export interface AgentActionRecord {
   payloadHash?: string;
   expiresAt?: string;
   expiredAt?: string;
+  /** agent-design AG15: why it expired — the next period of the same scheduled task made a new card. Absent: left too long. */
+  expiredReason?: "superseded";
   /** The card's language (zh, ja, en) for its own texts. */
   locale?: string;
   revisions?: readonly AgentActionRevisionRecord[];
