@@ -156,7 +156,10 @@ export function functionOf(scope: NodeScope, part: GraphPart): FunctionTask | nu
   const item = part.continues?.kind === "clarification" ? scope.run.context?.openItems.find((open) => open.ref === part.continues!.ref) : undefined;
   if (item?.rank) return { item, kind: "rank_reply" };
   if (part.route === "read" || part.route === "answer") {
-    const events = part.refs.filter((ref) => ref.entity === "event" && ref.recordId).length + scope.run.references.filter((reference) => reference.type === "event" && reference.accessible !== false).length;
+    // AG11 (App check): an event that is both a clue of the part and an @ reference is one event, not two; and a part that
+    // also points at a record of another kind (a schedule item) is not an event comparison — it goes on to the read.
+    const otherKind = part.refs.some((ref) => ref.recordId && ref.entity !== "event" && ref.entity !== "contact");
+    const events = otherKind ? 0 : new Set([...part.refs.filter((ref) => ref.entity === "event" && ref.recordId).map((ref) => ref.recordId!), ...scope.run.references.filter((reference) => reference.type === "event" && reference.accessible !== false).map((reference) => reference.id)]).size;
     // Comparing and grouping are done here for events (their fee, time and topics); other records go on to the read and the answer.
     const aboutEvents = part.capabilities.includes("event.read") && !part.capabilities.some((capability) => capability === "memo.read" || capability === "todo.read" || capability === "contact.read");
     if (aboutEvents && (part.capabilities.includes("fn.group") || GROUP_WORDS.test(quote))) return { kind: "group" };

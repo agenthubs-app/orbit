@@ -176,6 +176,27 @@ test("comparing the events the user picked reads those events by id, not every e
   assert.deepEqual(asked, [["event:e102", "event:e103"]]);
 });
 
+test("one picked event and one picked schedule item are not an event comparison: both are read and answered (App check)", async () => {
+  const { fnWorld, runFn } = await import("./functions-kit");
+  const { schedule } = await import("./read-kit");
+  const world = fnWorld();
+  world.records.push(schedule("actor:a", "personal:s11", "和田中午餐", "2026-11-19T03:00:00.000Z"));
+  const message = "@和田中午餐 和 @SaaS 定价研讨会 是同一天吗？";
+  // The event is both a clue of the part and an @ reference: one event, not two.
+  const references = [{ id: "personal:s11", name: "和田中午餐", type: "schedule" }, { id: "event:e103", name: "SaaS 定价研讨会", type: "event" }];
+  const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "comparison", objectClues: [{ entity: "schedule", referenceId: "r1", text: "@和田中午餐" }, { entity: "event", referenceId: "r2", text: "@SaaS 定价研讨会" }], requiredCapabilities: ["schedule.read", "event.read", "fn.compare"], sourceQuote: message }], {
+    answer: (call) => {
+      const lunch = /(s\d+) — personal schedule item/u.exec(call.user)![1];
+      const seminar = /(s\d+) — platform event/u.exec(call.user)![1];
+      return json({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: lunch }, { sentenceIds: [1], sourceRef: seminar }], partId: "p1", text: "是同一天，都在 11 月 19 日。" }] });
+    },
+    references,
+    world,
+  });
+  assert.equal(run.events.some((event) => event.type === "functions.compared"), false, "no event comparison of a single event");
+  assert.deepEqual([...run.result.sourceRefs].sort(), ["event:event:e103", "schedule:personal:s11"]);
+});
+
 test("an @ «我去过» is read by its id and its own sentence reaches the answer (AE-REF-002)", async () => {
   const message = "@大学同学聚会 那次我自己记了什么？";
   const { byIds, own, world } = ownWorld();
