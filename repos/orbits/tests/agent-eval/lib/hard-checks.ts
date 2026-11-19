@@ -54,7 +54,6 @@ export const NOT_YET: Record<string, string> = {
   mcp_result_has: "AG17",
   mcp_tool_list: "AG17",
   memory_recalled: "AG14",
-  memory_state: "AG14",
   pages_read: "AG05",
   push_delivery: "AG16",
   push_excludes: "AG16",
@@ -536,6 +535,17 @@ export const CHECKS: Record<string, CheckFn> = {
     const text = `${answer?.text ?? ""}\n${card ? JSON.stringify(card.ops.map((op) => op.set)) : ""}`;
     const found = (Array.isArray(args) ? args : []).filter((fragment: string) => text.includes(fragment));
     return found.length ? fail(`contains ${found.join(", ")}`, answer ? [answer.seq] : []) : pass("none of the fragments appear", answer ? [answer.seq] : []);
+  },
+
+  /**
+   * AG11 (first gate use: AE-REF-002): `memory_state: []` — the account has no memory entry when the case ends (the runner
+   * reads them after the steps). The forms that name entries (`{ id, status, revision }`, `{ category, appliesTo }`) need
+   * AG14's memory fields and stay cannot_judge until then.
+   */
+  memory_state(args, obs) {
+    if (!Array.isArray(args) || args.length) return cannot("no evidence for this check until AG14 (only the empty form is checked before it)");
+    if (!obs.memoryAfter) return cannot("the runner did not read the memory entries");
+    return obs.memoryAfter.length ? fail(`${obs.memoryAfter.length} memory entr${obs.memoryAfter.length === 1 ? "y" : "ies"} at the end: ${obs.memoryAfter.map((item) => item.id).join(", ")}`) : pass("no memory entry at the end");
   },
 
   no_web_calls(_args, obs) {

@@ -4,6 +4,9 @@ import type {
   AgentActionPreviewContract,
   AgentCardDecisionInputContract,
   AgentClarificationContract,
+  AgentReferenceCandidateContract,
+  AgentReferenceCheckResultContract,
+  AgentReferenceSearchResultContract,
   AgentResultDocument,
   AgentSelectionInputContract,
   AgentSelectionReceiptContract,
@@ -29,7 +32,39 @@ const partStatusSchema = z.enum([
   "failed",
 ]);
 
-/** 协议版本 3 的发送。AG05：引用类型扩到六类（旧的 note 仍收）；句中位置在 AG11。 */
+/**
+ * AG11：一条引用的句中位置有什么问题（没有问题返回 null）。位置对去掉首尾空白之后的 message 算，左闭右开；
+ * 标记必须以 @ 开头、至少有一个字，各标记不能重叠；start、end 要么都有，要么都没有（旧端不带位置）。
+ */
+export function referencePositionProblem(message: string, references: readonly { start?: number | undefined; end?: number | undefined }[]): { index: number; problem: string } | null {
+  const spans: { index: number; start: number; end: number }[] = [];
+  for (const [index, reference] of references.entries()) {
+    const hasStart = reference.start !== undefined;
+    const hasEnd = reference.end !== undefined;
+    if (!hasStart && !hasEnd) continue;
+    if (hasStart !== hasEnd) return { index, problem: "start and end come together" };
+    const start = reference.start!;
+    const end = reference.end!;
+    if (!(start >= 0 && end <= message.length && start + 1 < end)) return { index, problem: "the marker is outside the message" };
+    if (message[start] !== "@") return { index, problem: "the marker does not start with @" };
+    spans.push({ end, index, start });
+  }
+  spans.sort((left, right) => left.start - right.start);
+  for (let at = 1; at < spans.length; at += 1) {
+    if (spans[at].start < spans[at - 1].end) return { index: spans[at].index, problem: "two markers overlap" };
+  }
+  return null;
+}
+
+const agentReferenceSchema = z.object({
+  end: z.number().int().nonnegative().max(12000).optional(),
+  eventKind: z.enum(["platform", "private"]).optional(),
+  id: identifier,
+  start: z.number().int().nonnegative().max(12000).optional(),
+  type: z.enum(["contact", "event", "note", "memo", "todo", "schedule", "attendance"]),
+});
+
+/** 协议版本 3 的发送。AG05：引用类型扩到六类（旧的 note 仍收）；AG11：每条引用可带句中位置和活动的种类。 */
 export const agentSendInputSchema: z.ZodType<AgentSendInputContract> = z.object({
   clientMessageId: identifier,
   locale: z.enum(["zh", "en", "ja"]),
@@ -41,9 +76,15 @@ export const agentSendInputSchema: z.ZodType<AgentSendInputContract> = z.object(
     route: z.string().min(1).max(160),
   }).optional(),
   protocolVersion: z.literal(3),
-  references: z.array(z.object({ id: identifier, type: z.enum(["contact", "event", "note", "memo", "todo", "schedule", "attendance"]) })).max(20),
+  references: z.array(agentReferenceSchema).max(20),
   sessionId: identifier,
-});
+}).superRefine((value, context) => {
+  const found = referencePositionProblem(value.message, value.references);
+  if (found) context.addIssue({ code: z.ZodIssueCode.custom, message: found.problem, path: ["references", found.index] });
+  for (const [index, reference] of value.references.entries()) {
+    if (reference.eventKind && reference.type !== "event") context.addIssue({ code: z.ZodIssueCode.custom, message: "eventKind is for event references", path: ["references", index, "eventKind"] });
+  }
+}) as unknown as z.ZodType<AgentSendInputContract>;
 
 const cardStatusSchema = z.enum(["awaiting_confirmation", "deferred", "approved", "executing", "completed", "partially_failed", "failed", "rejected", "canceled", "undone", "expired"]);
 const cardOperationStatusSchema = z.enum(["pending", "succeeded", "failed", "skipped", "undone", "needs_review", "user_confirmed", "abandoned"]);
@@ -220,3 +261,42 @@ export function uniqueEventRefs<T extends { kind: string; id: string }>(refs: re
 
 /** 实时通道续传的序号：查询参数 after 或 Last-Event-ID。 */
 export const agentEventsAfterSchema = z.coerce.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
+
+/* ── AG11：@ 选择器 ─────────────────────────────────────────────────────── */
+
+export const agentReferenceSearchKindSchema = z.enum(["contact", "memo", "todo", "schedule", "event", "attendance"]);
+
+/** GET /api/agent/references/search 的查询参数。 */
+export const agentReferenceSearchQuerySchema = z.object({
+  kind: agentReferenceSearchKindSchema.optional(),
+  q: z.string().max(80).default(""),
+});
+
+export const agentReferenceCandidateSchema: z.ZodType<AgentReferenceCandidateContract> = z.object({
+  detail: z.object({
+    company: z.string().optional(),
+    date: z.string().optional(),
+    dateKind: z.enum(["due", "at", "on", "written"]).optional(),
+    people: z.array(z.string()).optional(),
+    place: z.string().optional(),
+    role: z.string().optional(),
+  }),
+  eventKind: z.enum(["platform", "private"]).optional(),
+  id: identifier,
+  name: z.string(),
+  type: agentReferenceSearchKindSchema,
+});
+
+export const agentReferenceSearchResultSchema: z.ZodType<AgentReferenceSearchResultContract> = z.object({
+  groups: z.array(z.object({ items: z.array(agentReferenceCandidateSchema), more: z.boolean(), type: agentReferenceSearchKindSchema, unavailable: z.boolean().optional() })),
+  query: z.string(),
+});
+
+/** POST /api/agent/references/check 的请求体。 */
+export const agentReferenceCheckInputSchema = z.object({
+  references: z.array(z.object({ eventKind: z.enum(["platform", "private"]).optional(), id: identifier, type: agentReferenceSearchKindSchema })).min(1).max(20),
+});
+
+export const agentReferenceCheckResultSchema: z.ZodType<AgentReferenceCheckResultContract> = z.object({
+  references: z.array(z.object({ accessible: z.boolean(), id: identifier, name: z.string().nullable(), type: agentReferenceSearchKindSchema })),
+}) as unknown as z.ZodType<AgentReferenceCheckResultContract>;

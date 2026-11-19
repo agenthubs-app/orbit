@@ -12,6 +12,7 @@ import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage
 import type { AgentRecordAccess } from "../graph/deps";
 import { evalDeniedReads } from "../observability/trace";
 import { createDomainRegistry, readMaxPages } from "./registry";
+import { ownEventsOf } from "./event/read";
 import { createPostgresRecordSource, type RecordSource } from "./source";
 import { parseRef, type DomainKind } from "./types";
 import { createStoreContactAccess } from "./contact/access";
@@ -41,7 +42,10 @@ export async function visibleRefs(source: RecordSource, scope: { accountId: stri
     const parsed = parseRef(ref);
     if (!parsed || denied.has(parsed.id)) continue;
     if (parsed.kind === "event") {
-      out.add(ref);
+      // AG11: the account's own «我去过» notes and private events are checked like their other records.
+      if (parsed.id.startsWith("attendance:")) checks.push({ collection: "event_attendance_notes", id: parsed.id, ref });
+      else if (parsed.id.startsWith("private_event:")) checks.push({ collection: "private_events", id: parsed.id, ref });
+      else out.add(ref);
       continue;
     }
     checks.push({ collection: COLLECTION_OF[parsed.kind], id: parsed.id, ref });
@@ -59,18 +63,23 @@ export function configuredRecordAccess(): AgentRecordAccess | null {
   const source = createPostgresRecordSource(configured.client);
   const runtime = createConfiguredEventOperationsPostgresRuntime();
   const repository = runtime ? createPostgresEventCoreRepositoryFromRuntime(runtime) : null;
-  const events = { async byIds(ids: readonly string[]) { return repository?.listEventsByIds ? repository.listEventsByIds(ids) : []; } };
+  const byIds = async (ids: readonly string[]) => (repository?.listEventsByIds ? repository.listEventsByIds(ids) : []);
+  const workspaceId = configured.workspaceId;
+  // AG13: private events, «我去过» and the records linking to an event (the reverse lookups go by index).
+  const attendance = createAttendanceService({ store: configured.store, workspaceId });
+  const privateEvents = createPrivateEventService({ client: createConfiguredTransactionalPostgresRuntime()?.client ?? null, store: configured.store, workspaceId });
+  // AG11: an @ of a private event or a «我去过» note is read by its id (the account's own only).
+  const events = { byIds, own: ownEventsOf({ attendance, byIds, privateEvents }) };
   const secret = process.env.ORBIT_READ_CURSOR_SECRET ?? process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "";
   const reader = createDomainRegistry({ cursorKey: cursorKeyOf(secret), denied: evalDeniedReads, events, now: () => new Date().toISOString(), source });
-  const workspaceId = configured.workspaceId;
   return {
     // AG12: contact writes read the account's contacts from the same store (duplicates, restore, import review).
     contacts: createStoreContactAccess({ store: configured.store, workspaceId }),
-    // AG13: private events, «我去过» and the records linking to an event (the reverse lookups go by index).
-    attendance: createAttendanceService({ store: configured.store, workspaceId }),
-    privateEvents: createPrivateEventService({ client: createConfiguredTransactionalPostgresRuntime()?.client ?? null, store: configured.store, workspaceId }),
+    attendance,
+    privateEvents,
     // AG08: the events of the deployment for ranking (functions node keeps those the account may see).
     listEvents: async () => (repository ? repository.listEvents() : []),
+    eventsByIds: byIds,
     maxPages: readMaxPages(),
     reader,
     scope: (actorId) => ({ accountId: actorId, authorizationEpoch: AUTHORIZATION_EPOCH, workspaceId }),

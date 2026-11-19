@@ -22,7 +22,7 @@ import { BUSINESS_COLLECTIONS, normalizeDraftOps, normalizeLedgerOps, PRIVATE_RE
 import { evalPaths } from "./paths";
 import { drainServer, serverControl } from "./server";
 import { readSeedReport, type SeedReportFile } from "./selfcheck";
-import { diffStates, readAllPayloads, readDatabaseState, recordKey, restoreSnapshot, type DatabaseDiff } from "./snapshot";
+import { diffStates, readAllPayloads, readDatabaseState, readPayloads, recordKey, restoreSnapshot, type DatabaseDiff } from "./snapshot";
 import { CaseLog, mergeTrace, readServerEvents, scrubSecrets, traceFileSize, type TraceEvent } from "./trace-log";
 import type { AgentActionPreviewContract } from "../../../shared/contract/agent-v1";
 import { agentRequestIdFor } from "../../../features/agent-v1/entry/store";
@@ -271,6 +271,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const db = new pg.Client({ connectionString: environment.database.url });
   await db.connect();
   let diff: DatabaseDiff = { records: [], tables: [] };
+  let memoryAfter: { id: string }[] | undefined;
   let mergedEvents: TraceEvent[] = [];
   let error: string | undefined;
   const transcript: string[] = [`# ${testCase.id} ${testCase.title}`, "", `- 账号：${account}（${world.accounts[account]?.name ?? ""}） · 世界：${testCase.world} · 时钟：${clock}`, ""];
@@ -414,11 +415,26 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         return;
       }
       const clientName = step.client ?? "web";
-      // AG05: protocol 3 carries the six kinds of @ reference (positions in the sentence arrive in AG11); the
-      // server authorizes each one. A record of another account is sent by its id as a client would.
-      const refs = (step.refs ?? []) as { type: string; id: string }[];
+      // AG05: protocol 3 carries the six kinds of @ reference; the server authorizes each one. A record of another
+      // account is sent by its id as a client would. AG11: each carries its marker's place in the sentence, as the two
+      // clients send it (markers with the same words in the order they appear, REF.yaml), and an event its EventRef kind.
+      const refs = (step.refs ?? []) as { type: string; id: string; quote?: string }[];
       const SENT_KIND: Record<string, string> = { attendance: "attendance", contact: "contact", event: "event", memo: "memo", note: "note", schedule: "schedule", todo: "todo" };
-      const contactRefs = entry && clientName !== "app_old" ? refs.filter((ref) => SENT_KIND[ref.type] && idMap[ref.id]).map((ref) => ({ id: idMap[ref.id], type: SENT_KIND[ref.type] })) : [];
+      const sentText = text.trim();
+      const searchFrom = new Map<string, number>();
+      const placeOf = (quote: string | undefined): { start: number; end: number } | Record<string, never> => {
+        if (!quote) return {};
+        const at = sentText.indexOf(quote, searchFrom.get(quote) ?? 0);
+        if (at < 0) return {};
+        searchFrom.set(quote, at + quote.length);
+        return { end: at + quote.length, start: at };
+      };
+      const contactRefs = entry && clientName !== "app_old" ? refs.filter((ref) => SENT_KIND[ref.type] && idMap[ref.id]).map((ref) => ({
+        id: idMap[ref.id],
+        type: SENT_KIND[ref.type],
+        ...placeOf(ref.quote),
+        ...(ref.type === "event" ? { eventKind: idMap[ref.id].startsWith("private_event:") ? "private" : "platform" } : {}),
+      })) : [];
       if (refs.length > contactRefs.length) unsupported.push({ reason: `@ references not sent (unknown kind or record): ${refs.filter((ref) => !contactRefs.some((sent) => sent.id === idMap[ref.id])).map((ref) => `${ref.type} ${ref.id}`).join(", ")}`, step: index, word: "user.refs" });
       if (entry && clientName !== "app_old") {
         // Protocol 3: one POST that is only acknowledged; the result arrives on the channel / by requestId.
@@ -1001,6 +1017,13 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     }
     const after = await readDatabaseState(db);
     diff = await diffStates(db, before, beforePayloads, after);
+    // AG11 (memory_state, first used by AE-REF-002's gate): the account's memory entries at the end of the case.
+    const memoryKeys = [...after.records.values()].filter((row) => row.collection === "agentMemories" && row.owner === accounts[account]);
+    const memoryPayloads = await readPayloads(db, memoryKeys);
+    memoryAfter = memoryKeys.flatMap((row) => {
+      const payload = memoryPayloads.get(recordKey(row));
+      return payload && payload.kind === "memory" && payload.__lifecycleState !== "deleted" ? [{ id: row.id }] : [];
+    });
     // AG13 opening 4 (AE-BND-001): background work this case started (a contact import's industry layers call) ends in this
     // case's trace, never in the next case's; the server is idle before the next case restores the snapshot.
     const drained = await drainServer(environment);
@@ -1201,6 +1224,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     fake: fake !== null,
     fixtureIdOf,
     idMap,
+    ...(memoryAfter ? { memoryAfter } : {}),
     reads,
     ...(Object.keys(recentInteractions).length ? { recentInteractions } : {}),
     requests,

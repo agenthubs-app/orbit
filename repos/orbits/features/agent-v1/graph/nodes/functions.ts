@@ -936,13 +936,14 @@ async function eventsPart(scope: NodeScope, state: AgentGraphState, part: GraphP
   const language = state.language;
   const timeZone = state.timeZone || "Asia/Tokyo";
   const quote = input.message.slice(part.quote[0], part.quote[1]);
-  const all = deps.records!.listEvents ? await deps.records!.listEvents() : [];
+  // The records chosen for a comparison: this part's bound events, else this turn's @ events.
+  const ids = kind === "compare" ? [...new Set([...part.refs.filter((ref) => ref.entity === "event" && ref.recordId).map((ref) => ref.recordId!), ...run.references.filter((reference) => reference.type === "event" && reference.accessible !== false).map((reference) => reference.id)])] : [];
+  // AG11 (AE-REF-002): events the user picked are read by their ids, not by listing every event of the deployment.
+  const all = ids.length && deps.records!.eventsByIds ? await deps.records!.eventsByIds(ids) : deps.records!.listEvents ? await deps.records!.listEvents() : [];
   const visible = all.filter((event) => visibleEvent(event, input.actorId) && !evalDeniedReads().has(event.eventId)).map(eventCandidate);
   let written: { text: string; cites: string[] };
   let shown: EventCandidate[];
   if (kind === "compare") {
-    // The records chosen: this part's bound events, else this turn's @ events.
-    const ids = [...new Set([...part.refs.filter((ref) => ref.entity === "event" && ref.recordId).map((ref) => ref.recordId!), ...run.references.filter((reference) => reference.type === "event" && reference.accessible !== false).map((reference) => reference.id)])];
     shown = ids.map((id) => visible.find((event) => event.id === id)).filter((event): event is EventCandidate => Boolean(event));
     written = compare(shown.map((event) => event.event), dimensionsIn(quote), language, timeZone);
   } else {

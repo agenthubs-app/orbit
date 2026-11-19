@@ -365,13 +365,25 @@ export function resolveNode(scope: NodeScope): GraphNode {
       }
 
       // 1. A record the part points at that cannot be opened: say so, read nothing else for it.
-      const closed = part.refs.find((ref) => ref.recordId && (handleOf(ref.recordId)?.accessible === false || run.references.some((item) => item.id === ref.recordId && item.accessible === false)));
-      if (closed) {
-        const handle = handleOf(closed.recordId);
+      const isClosed = (ref: GraphPart["refs"][number]) => Boolean(ref.recordId && (handleOf(ref.recordId)?.accessible === false || run.references.some((item) => item.id === ref.recordId && item.accessible === false)));
+      const closedRefs = part.refs.filter(isClosed);
+      // AG11 (§3.6, AE-REF-006): the other records the part points at are still read and answered; the closed one is
+      // said and asked again, and nothing of it is used.
+      const partial = closedRefs.length > 0 && part.refs.some((ref) => ref.recordId && !isClosed(ref));
+      if (closedRefs.length) {
         read.gaps.add("unreadable");
-        read.lines.push(handle?.source === "reference" || run.references.some((item) => item.id === closed.recordId) ? words.unreadableReference(clueWords(input.message, closed)) : words.unreadableEarlier());
-        finish("unfinished", "reference_not_accessible");
-        continue;
+        for (const closed of closedRefs) {
+          const handle = handleOf(closed.recordId);
+          const line = handle?.source === "reference" || run.references.some((item) => item.id === closed.recordId) ? words.unreadableReference(clueWords(input.message, closed)) : words.unreadableEarlier();
+          if (!read.lines.includes(line)) read.lines.push(line);
+        }
+        if (!partial) {
+          finish("unfinished", "reference_not_accessible");
+          continue;
+        }
+        part.refs = part.refs.filter((ref) => !isClosed(ref));
+        read.notes.push(`${closedRefs.map((ref) => `"${clueWords(input.message, ref) ?? "a record"}"`).join(", ")} cannot be opened now: code tells the user to choose it again. Do not guess what it says and do not judge anything that would need it; answer from the records given.`);
+        emitTrace({ closed: closedRefs.map((ref) => ref.recordId), partId: part.localId, type: "resolve.partly_unreadable" });
       }
       // An unbound clue of a kind mentioned last in this session (and no words to search by) means that record.
       let filter = part.plan.readFilter;
@@ -397,7 +409,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
           }
         }
       }
-      if (read.gaps.has("unreadable")) {
+      if (read.gaps.has("unreadable") && !partial) {
         finish("unfinished", "reference_not_accessible");
         continue;
       }

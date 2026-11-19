@@ -89,7 +89,43 @@ export interface AgentPartCoverage {
  */
 export type AgentReferenceType = AiSessionReferenceContract["type"];
 
+/** AG11：句中位置（start、end）与活动种类（eventKind）作为可选字段加在 AiSessionReferenceContract 上，只随协议 3 发送。 */
 export type AgentReferenceContract = AiSessionReferenceContract;
+
+/** AG11：选择器的六类（「我去过」即 attendance）。 */
+export type AgentReferenceSearchKind = "contact" | "memo" | "todo" | "schedule" | "event" | "attendance";
+
+/**
+ * AG11：选择器里的一条记录。detail 是同名时用来区分的信息，由两端按 shared/compute/agent-references.ts 写成一行：
+ * 联系人写公司和职位，笔记写相关的人和日期，待办写截止日，日程和活动写时间（活动加地点），我去过写日期。
+ */
+export interface AgentReferenceCandidateContract {
+  type: AgentReferenceSearchKind;
+  id: string;
+  name: string;
+  eventKind?: "platform" | "private" | undefined;
+  detail: {
+    company?: string | undefined;
+    role?: string | undefined;
+    people?: readonly string[] | undefined;
+    /** ISO 时刻或 YYYY-MM-DD。 */
+    date?: string | undefined;
+    dateKind?: "due" | "at" | "on" | "written" | undefined;
+    place?: string | undefined;
+  };
+}
+
+/** AG11：GET /api/agent/references/search 的结果。只查本人的记录；每类最多 limit 条，more 表示还有。 */
+export interface AgentReferenceSearchResultContract {
+  query: string;
+  /** unavailable：这一类这次没读成（不是没有），两端照实说。 */
+  groups: readonly { type: AgentReferenceSearchKind; items: readonly AgentReferenceCandidateContract[]; more: boolean; unavailable?: boolean | undefined }[];
+}
+
+/** AG11：POST /api/agent/references/check：已选的引用现在还打不打得开（草稿恢复、发送前用）。 */
+export interface AgentReferenceCheckResultContract {
+  references: readonly { type: AgentReferenceSearchKind; id: string; accessible: boolean; name: string | null }[];
+}
 
 export interface AgentAnswerContract {
   text: string;

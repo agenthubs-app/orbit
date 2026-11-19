@@ -13,6 +13,7 @@ import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_
 import { coverEverySentence } from "../../understand/cover";
 import { describedObjectSpan, groupClue, questionWordClue, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
 import { refusedCreates } from "../../understand/negated-writes";
+import { bindMarkedReferences } from "../../references/marks";
 import type { UnderstandOutput } from "../../understand/schema";
 import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInput } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
@@ -118,6 +119,19 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
     if (!before) continue;
     part.refs = [...part.refs, ...before.refs.filter((ref) => ref.entity === "contact").map((ref) => ({ ...ref }))];
     emitTrace({ from: before.localId, partId: part.localId, type: "understand.time_word_clue_attached" });
+  }
+  // AG11 (§3.6, AG11-2): a marker the user picked is that record, bound by code where it sits (references/marks.ts).
+  for (const part of parts) {
+    const { bound, refs } = bindMarkedReferences({
+      make: (entity, recordId, quote) => ({ entity, quote, recordId }),
+      message,
+      part: part.quote,
+      references: scope.run.references,
+      refs: part.refs,
+    });
+    if (!bound.length) continue;
+    part.refs = refs as typeof part.refs;
+    emitTrace({ bound, partId: part.localId, type: "understand.marked_reference_bound" });
   }
   return parts;
 }

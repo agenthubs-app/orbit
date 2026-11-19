@@ -58,8 +58,8 @@ export function referenceAuthorizer(records: AgentRecordAccess | null): AgentGra
   return async (actorId, references) => {
     if (!records) return references.map((reference) => ({ accessible: false, id: reference.id, name: "", type: reference.type === "note" ? "memo" : reference.type }));
     const authorized = await authorizeReferences(records.reader, records.scope(actorId), references);
-    emitTrace({ references: authorized.map((item) => ({ accessible: item.accessible, id: item.id, reason: item.reason ?? null, type: item.type })), type: "references.authorized" });
-    return authorized.map((item): ReferenceHandle => ({ id: item.id, name: item.name ?? "", type: item.type, ...(item.accessible ? {} : { accessible: false }) }));
+    emitTrace({ references: authorized.map((item) => ({ accessible: item.accessible, id: item.id, reason: item.reason ?? null, type: item.type, ...(item.marks ? { marks: item.marks } : {}) })), type: "references.authorized" });
+    return authorized.map((item): ReferenceHandle => ({ id: item.id, name: item.name ?? "", type: item.type, ...(item.accessible ? {} : { accessible: false }), ...(item.marks ? { marks: item.marks } : {}) }));
   };
 }
 
