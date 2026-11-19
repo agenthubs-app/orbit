@@ -81,7 +81,7 @@ export function topicWordsOf(words: string): string {
 }
 
 /** Words of asking, counting and repeating that name no topic ("几场", "再……一次", "有什么", "would you", "もの"). */
-const ASK_WORDS = /(几\s*(?:场|个|位|条|件|项|人)|[场个位条件项]|这一次|这次|这回|本次|今回は?|(?:周|星期|礼拜)[一二三四五六日天]|[月火水木金土日]曜日?|\b(?:mon|tues|wednes|thurs|fri|satur|sun)days?\b|\b(?:this|time|once|just|show|see|look|at|only)\b|見せて|見たい|夜|看|再|一次|一遍|一回|什么|哪些|有没有|看看|想去|可以|能不能|到|至|[（(][月火水木金土日一二三四五六天][）)]|[（()）~～—\-–「」『』"“”'’]|\b(?:would|you|can|could|do|does|did|next|some|any|are|is|was|there|what|what's|whats|please|have|has|on|again|few|worth|going|about|happening|coming|up|it|them|these|those|that|that's|will|be)\b|もう一度|もう一回|何か|ありますか|あります|ある|どんな|行く価値(?:が|の)?(?:ありそうな|ある|高い)?|価値|行く|ありそう|もの|こと|と|も|な|ら|\d+)/giu;
+const ASK_WORDS = /(几\s*(?:场|个|位|条|件|项|人)|[场个位条件项]|这一次|这次|这回|本次|今回は?|(?:周|星期|礼拜)[一二三四五六日天]|[月火水木金土日]曜日?|\b(?:mon|tues|wednes|thurs|fri|satur|sun)days?\b|\b(?:this|time|once|just|show|see|look|at|only)\b|見せて|見たい|夜|看|先|这个|那个|这些|那些|就|再|一次|一遍|一回|什么|哪些|有没有|看看|想去|可以|能不能|到|至|[（(][月火水木金土日一二三四五六天][）)]|[（()）~～—\-–「」『』"“”'’]|\b(?:would|you|can|could|do|does|did|next|some|any|are|is|was|there|what|what's|whats|please|have|has|on|again|few|worth|going|about|happening|coming|up|it|them|these|those|that|that's|will|be)\b|もう一度|もう一回|何か|ありますか|あります|ある|どんな|行く価値(?:が|の)?(?:ありそうな|ある|高い)?|価値|行く|ありそう|もの|こと|と|も|な|ら|\d+)/giu;
 
 /**
  * AG14: what is left of a whole sentence as a topic when the first layer gave no basis words. A sentence that only

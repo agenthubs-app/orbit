@@ -148,6 +148,18 @@ test("dev run 1 (AE-FN-002): a question about events and a bare pick after it ar
   assert.doesNotMatch(run.result.text, /——周末上午、晚上/u);
   assert.match(run.result.text, /——周末上午/u);
   assert.deepEqual(of(run.events, "understand.pick_merged_into_question").map((event) => [event.partId, event.into]), [["p2", "p1"]]);
+  // Dev run 2: the pick came tagged with the same read as the question it depends on — still one ranking.
+  const again = await runFn(`${question}${pick}`, [
+    { dataSources: ["orbit_records"], deliverable: "list", readFilter: { from: "2026-11-21", to: "2026-11-22" }, requiredCapabilities: ["event.read"], sourceQuote: question },
+    { deliverable: "ranked_list", dependsOn: ["p1"], localId: "p2", requiredCapabilities: ["fn.rank", "event.read"], sourceQuote: pick },
+  ], { memories: [MM1, MM2] });
+  assert.equal(again.result.partResults.length, 1);
+  assert.deepEqual(listed(again.events), listed(run.events));
+  // Two rankings of their own (each names its set and does not depend on the other) stay two parts.
+  const first = "11 月 21 日有哪些活动值得去？";
+  const other = "再从 22 日的活动里挑一场。";
+  const two = await runFn(`${first}${other}`, [EVENT_RANK(first, { readFilter: { from: "2026-11-21", to: "2026-11-21" } }), { ...EVENT_RANK(other, { readFilter: { from: "2026-11-22", to: "2026-11-22" } }), localId: "p2" }], { memories: [MM1] });
+  assert.equal(two.result.partResults.length, 2);
 });
 
 test("AG14-3 what this turn says against what is saved: a preference gives way to any time named; a rule only to the very slot it leaves out", async () => {
@@ -232,6 +244,42 @@ test("AG14-5 what is saved: the two groups in plain words; nothing saved is said
   assert.deepEqual(run.modelCalls.map((call) => call.node), ["understand"]);
   const none = await runFn("你记着我哪些偏好？", [{ clarity: "clear", sourceQuote: "你记着我哪些偏好？" }], { memories: [] });
   assert.equal(none.result.text, "你现在没有保存任何记忆。");
+});
+
+test("dev run 2 (AE-MEM-002): asking which events are recommended is a ranking, also when it came tagged as a plain read", async () => {
+  const message = "来週のおすすめイベントを教えて。";
+  const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", readFilter: { from: "2026-11-16", to: "2026-11-22" }, requiredCapabilities: ["event.read"], sourceQuote: message }], { language: "ja", memories: [MM1] });
+  assert.deepEqual(of(run.events, "understand.recommend_is_ranking").map((event) => event.partId), ["p1"]);
+  assert.deepEqual(listed(run.events).sort(), MORNINGS);
+  // With nothing saved it is asked about once — never "the directory cannot be searched".
+  const none = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", readFilter: { from: "2026-11-16", to: "2026-11-22" }, requiredCapabilities: ["event.read"], sourceQuote: message }], { language: "ja", memories: [] });
+  assert.equal(none.result.clarifications.filter((set) => set.kind === "question").length, 1);
+  // A read that asks for no recommendation stays what it was.
+  const plain = "来週のイベントを一覧で見せて。";
+  const listing = await runFn(plain, [{ dataSources: ["orbit_records"], deliverable: "list", requiredCapabilities: ["event.read"], sourceQuote: plain }], { answer: () => JSON.stringify({ segments: [] }), language: "ja", memories: [MM1] });
+  assert.equal(of(listing.events, "understand.recommend_is_ranking").length, 0);
+});
+
+test("dev run 2 (AE-MEM-007): a preferred time none of the events meets is said so; nothing is called a match", async () => {
+  const afternoons: TestMemory = { appliesTo: ["event.recommend"], category: "preference", content: "When recommending events, prefer weekend afternoons", id: "MM1", revision: 2, structured: { dayPart: "afternoon", preferredDays: ["Sat", "Sun"], strength: "prefer" } };
+  const message = "Which events would you recommend for next week?";
+  const run = await runFn(message, [EVENT_RANK(message, NEXT_WEEK)], { language: "en", memories: [afternoons] });
+  assert.match(run.result.text, /^Picked by your saved preference "When recommending events, prefer weekend afternoons"\.\nNone of the events in this period is on a weekend in the afternoon, so none below meets that preference/u);
+  assert.match(run.result.text, /There are 5 in this period; these are the first 3\./u);
+  assert.doesNotMatch(run.result.text, /in all match/u);
+  assert.equal(run.judgeCalls.length, 0);
+  assert.deepEqual(recalled(run.events), ["MM1"]);
+});
+
+test("dev run 2 (AE-SCL-027): basis words that only say 'worth going' do not overrule the saved topics", async () => {
+  const message = "11月21日（土）と22日（日）のイベントから、行く価値がありそうなものを3つ選んでください。";
+  const topics: TestMemory = { appliesTo: ["event.recommend"], category: "preference", content: "推荐活动时优先和摄影有关的", id: "TOPIC", structured: { strength: "prefer", topics: ["摄影"] } };
+  const run = await runFn(message, [EVENT_RANK(message, { rank: { basis: "行く価値がありそう", count: 3 }, readFilter: { from: "2026-11-21", to: "2026-11-22" } })], { judge: () => undefined, language: "ja", memories: [topics, MM2] });
+  assert.deepEqual(recalled(run.events), ["MM2", "TOPIC"]);
+  assert.deepEqual(of(run.events, "memory.recall").flatMap((event) => (event.overruled ?? []) as string[]), []);
+  assert.doesNotMatch(run.result.text, /行く価値がありそう」にどれだけ合うか/u);
+  // The judgment is asked about the saved topics, not about the user's "worth going".
+  assert.match(String(run.judgeCalls[0]?.body.input[0]?.text ?? ""), /摄影/u);
 });
 
 test("a sentence that only asks names no topic; one that names something does", () => {

@@ -67,6 +67,18 @@ export const MEMORY_WORDS = {
     if (language === "ja") return `${count > 1 ? "これらは" : "これは"}保存済みのメモリーです。変更したいときは「これからは…」「…を忘れて」と伝えるか、${MANAGE.ja}で変更できます。`;
     return `${count > 1 ? `这${count}条` : "这条"}来自你存的记忆；想改的话直接跟我说「以后改成……」「忘掉……」，或者到${MANAGE.zh}改。`;
   },
+  /** A preferred time that none of the events listed meets: said after the basis, before the list. */
+  noneAtPreferredTime(language: MemoryLanguage, time: string): string {
+    if (language === "en") return `None of the events in this period is ${time}, so none below meets that preference; they are at other times, in order of start time.`;
+    if (language === "ja") return `ただ、この期間に${time}のイベントはありません。以下はほかの時間帯のもので、開始時間の順です。`;
+    return `不过这段时间里没有在${time}的活动，下面列的都是其他时段的，按开始时间先后。`;
+  },
+  /** How many there are in the period when none meets the preferred time (never "N match"). */
+  periodCount(language: MemoryLanguage, listed: number, total: number, unit: string): string {
+    if (language === "en") return listed >= total ? `There ${total === 1 ? "is" : "are"} ${total} in this period.` : `There are ${total} in this period; these are the first ${listed}.`;
+    if (language === "ja") return listed >= total ? `この期間のものは全部で${total}${unit}です。` : `この期間のものは全部で${total}${unit}、ここでは最初の${listed}${unit}を挙げます。`;
+    return listed >= total ? `这段时间一共${total}${unit}。` : `这段时间一共${total}${unit}，这里列的是前${listed}${unit}。`;
+  },
   /** Why the first item of the last list came first. */
   whyFirst(language: MemoryLanguage, input: { title: string; when: string | null; used: { content: string; meets: string | null }[]; changedSince: boolean; tieBreak: boolean; turnBasis: boolean }): string {
     const lines: string[] = [];

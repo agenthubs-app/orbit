@@ -682,7 +682,9 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   }
   const topicWords = basisMemo ? basis : topicWordsOf(basis ?? (reply ? replyWords : original));
   const followUpAsk = domain === "contact" && FOLLOW_UP_WORDS.test(words) && !basisMemo && !topicWordsOf(basis ?? "").replace(FOLLOW_UP_WORDS, "").replace(FOLLOW_UP_QUESTION_WORDS, "").trim();
-  let topic: string | null = basisMemo ? basis : topicWords && !followUpAsk ? (basis && topicWordsOf(basis) ? basis : reply ? replyWords : null) : null;
+  // AG14 dev run 2 (AE-SCL-027): basis words that only say "worth going" ("行く価値がありそう", "值得去的") name no topic,
+  // whoever copied them out — the first layer's basis is held to the same test as the sentence itself.
+  let topic: string | null = basisMemo ? basis : topicWords && !followUpAsk ? (basis && sentenceTopicOf(basis) ? basis : reply ? replyWords : null) : null;
   // A ranking with neither a basis nor a field, in AG08's words of the part itself ("最适合聊…"): kept when words remain.
   // AG14: a topic that is only the sentence itself (no basis words from the first layer) is a weak one.
   let topicIsSentence = false;
@@ -864,9 +866,14 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const memoryWords = saved.used.map((item) => item.content);
   // AE-FN-006: only the related ones, in the order of the field the user named.
   const filterLead = topicAsFilter && orderField ? ({ en: `Only the ${NOUN[domain].en} related to "${topic}", ${say.fieldOrderWords(orderField, orderDirection, "en")}.`, ja: `「${topic}」に関連する${NOUN[domain].ja}だけを、${say.fieldOrderWords(orderField, orderDirection, "ja")}に並べました。`, zh: `只列和「${topic}」相关的${NOUN[domain].zh}，${say.fieldOrderWords(orderField, orderDirection, "zh")}排。` } as const)[language] : null;
-  const lead = filterLead ?? (useNatural && !listing && !todoNatural
+  const basisLead = filterLead ?? (useNatural && !listing && !todoNatural
     ? say.rankLead(language, [say.fieldName(natural.field, language)], { history: false, memory: [], natural: true })
     : steps.length || memoryWords.length ? say.rankLead(language, steps, { history, memory: memoryWords, natural: false }) : null);
+  // AG14 dev run 2 (AE-MEM-007): a time that is only preferred ("优先周末下午") and that none of the events listed meets is
+  // said so right after the basis — the list below is then the other times, never events "that match" the preference.
+  const preferred = time.filter((item) => !item.hard && !item.exclude);
+  const unmet = domain === "event" && !topic && preferred.length > 0 && result.ordered.length > 0 && !result.ordered.some((item) => item.meetsTime);
+  const lead = basisLead && unmet ? `${basisLead}\n${MEMORY_WORDS.noneAtPreferredTime(language, say.timeWords(preferred[0], language))}` : basisLead;
   const apart = history && upcoming.length ? say.upcomingApartLine(language, upcoming.map((contact) => `${contact.name}${language === "en" ? " — " : "——"}${contact.signals.map((item) => signalWords(item, language, timeZone)).join(language === "en" ? "; " : "；")}`)) : null;
   const written = writeAnswer({ apart, basis: topic && !basisMemo && !topicFromMemory ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
   // AG12 run-03 (AE-FN-003 R4): beside a ranking that says its basis, the ways of ordering it again as clickable entries (the
@@ -884,7 +891,11 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   }
   if (result.semantic && result.matched) run.topicMatched = true;
   // AG14 (设计稿 §6 "旁边可改"): an answer that used saved entries says where they can be changed.
-  run.answers.set(part.localId, saved.used.length && lead ? `${written.text}\n${MEMORY_WORDS.manageLine(language, saved.used.length)}` : written.text);
+  // When none meets the preferred time, the count line says how many there are in the period, not how many "match".
+  const answerText = unmet
+    ? written.text.replace(say.coverageLine(language, result.ordered.length, result.matching, { en: UNIT[domain].en, ja: UNIT[domain].ja, zh: UNIT[domain].zh }), MEMORY_WORDS.periodCount(language, result.ordered.length, result.matching, UNIT[domain][language]))
+    : written.text;
+  run.answers.set(part.localId, saved.used.length && lead ? `${answerText}\n${MEMORY_WORDS.manageLine(language, saved.used.length)}` : answerText);
   // AG14: what this ranking used, by reference, for the session ("为什么排第一", "这次看……").
   run.memory.ranking = {
     at: now,
