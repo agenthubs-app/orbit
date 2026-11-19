@@ -13,6 +13,7 @@ import type { ProposalService } from "../confirm-link";
 import type { AgentConnection } from "../connections";
 import { domainOf, KIND_OF_DOMAIN, PROPOSABLE_OPERATIONS, PROPOSALS_READ, readScopeOf, TOOL_NAMES, type McpDomain, type McpScope, type McpToolName } from "../scopes";
 import { getProposalInput, getRecordInput, inputProblem, proposeChangeInput, searchRecordsInput, type ProposedOperation } from "./definitions";
+import type { CursorSealer } from "./cursor";
 import { projectRecord, USER_DATA_NOTICE } from "./projection";
 
 export type ToolOutcome =
@@ -30,6 +31,8 @@ export interface ToolDeps {
   /** The read adapters and the scope of one account (the server's own; a caller never supplies an account). */
   records: (accountId: string) => { reader: DomainReader; scope: DomainScope } | null;
   proposals: ProposalService;
+  /** Seals the adapters' paging cursor for the outside (tools/cursor.ts); required — there is no plain cursor. */
+  cursors: CursorSealer;
   now: () => string;
 }
 
@@ -50,6 +53,8 @@ const STATUS_WORDS: Record<string, string> = {
   rejected: "rejected by the user; nothing was changed",
   undone: "undone by the user",
 };
+
+const BAD_CURSOR = "The cursor is not valid for this connection and query (or it has expired). Start again without a cursor.";
 
 const lacks = (connection: AgentConnection, scope: McpScope) => !connection.scopes.includes(scope);
 
@@ -101,17 +106,22 @@ export async function runTool(deps: ToolDeps, input: { connection: AgentConnecti
       }
       const { query, cursor, limit } = parsed.data as { query?: string; cursor?: string; limit?: number };
       if (domain === "attendance" || domain === "events") return { code: "not_searchable", kind: "tool_error", message: "These records can be read by id with get_record; they cannot be listed or searched here." };
-      const page = await access.reader.read(KIND_OF_DOMAIN[domain], access.scope, { ...(query?.trim() ? { text: query.trim() } : {}), ...(cursor ? { cursor } : {}), ...(limit ? { limit } : {}) });
+      // The client's cursor is opened for this connection, this kind of record and this query only; what it holds
+      // (the adapters' own cursor) is then checked again by the adapters against the connection's account.
+      const binding = { connectionId: connection.id, domain, query: query?.trim() ?? "" };
+      const inner = cursor ? deps.cursors.open(cursor, binding) : null;
+      if (cursor && !inner) return { code: "invalid_arguments", kind: "tool_error", message: BAD_CURSOR };
+      const page = await access.reader.read(KIND_OF_DOMAIN[domain], access.scope, { ...(query?.trim() ? { text: query.trim() } : {}), ...(inner ? { cursor: inner } : {}), ...(limit ? { limit } : {}) });
       const records = page.items.map((record) => projectRecord(domain, record));
       return {
         count: records.length,
         kind: "result",
-        payload: { data_notice: USER_DATA_NOTICE, records, ...(page.nextCursor ? { next_cursor: page.nextCursor } : {}), ...(page.total !== undefined ? { total: page.total } : {}) },
+        payload: { data_notice: USER_DATA_NOTICE, records, ...(page.nextCursor ? { next_cursor: deps.cursors.seal(page.nextCursor, binding) } : {}), ...(page.total !== undefined ? { total: page.total } : {}) },
       };
     } catch (error) {
       const code = error instanceof Error ? error.message : String(error);
       if (code === "READ_NOT_FOUND") return { code: "not_found", kind: "tool_error", message: "No such record." };
-      if (code === "INVALID_READ_INPUT" || /CURSOR/u.test(code)) return { code: "invalid_arguments", kind: "tool_error", message: "The cursor or the query is not valid. Start again without a cursor." };
+      if (code === "INVALID_READ_INPUT" || /CURSOR/u.test(code)) return { code: "invalid_arguments", kind: "tool_error", message: BAD_CURSOR };
       return { code: "unavailable", kind: "tool_error", message: "Records cannot be read right now." };
     }
   }

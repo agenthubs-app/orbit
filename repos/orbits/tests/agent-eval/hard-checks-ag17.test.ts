@@ -17,7 +17,7 @@ let seq = 0;
 const event = (type: string, extra: Record<string, unknown>): TraceEvent => ({ at: "2026-11-15T01:00:00.000Z", caseId: "AE-MCP-T", origin: "runner", realAt: "2026-11-19T00:00:00.000Z", seq: (seq += 1), type, ...extra }) as TraceEvent;
 const response = (status: number, result: Record<string, unknown> | null, extra: Record<string, unknown> = {}) => event("mcp.response", { as: "conn-claude", error: null, isError: result ? false : null, result, status, tool: "search_records", ...extra });
 const obs = (events: TraceEvent[]): Observation => ({
-  account: "A", accounts: { A: "user_a" }, answers: [], businessChanges: [], cards: [], caseId: "AE-MCP-T", clarifications: 0, clicks: [], decisions: [], diff: { records: [], tables: [] }, events, fake: false,
+  account: "A", accounts: { A: "user_a", B: "user_b" }, answers: [], businessChanges: [], cards: [], caseId: "AE-MCP-T", clarifications: 0, clicks: [], decisions: [], diff: { records: [], tables: [] }, events, fake: false,
   fixtureIdOf: (id) => Object.entries(IDS).find(([, product]) => product === id)?.[0] ?? null, idMap: IDS, reads: [], requests: [], unsupported: [],
 });
 
@@ -87,4 +87,20 @@ test("mcp_collected and pages_read judge the latest paging: how many, how many t
   assert.equal(CHECKS.pages_read({ min: 3 }, obs(events), context).status, "fail");
   assert.equal(CHECKS.pages_read({ min: 2 }, obs([]), context).status, "cannot_judge");
   assert.equal(CHECKS.mcp_collected({ count: 0, duplicates: 0 }, obs([]), context).status, "cannot_judge");
+});
+
+test("mcp_result_excludes also reads every cursor the way a client could: decoded, it must not hold an account, a workspace or a record of the fixture", () => {
+  const b64 = (value: unknown) => Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
+  const withCursor = (cursor: string) => obs([response(200, { next_cursor: cursor, records: [{ id: "task:t42" }] })]);
+  // The shape the read adapters use inside Orbit: readable claims and a signature.
+  const leaking = CHECKS.mcp_result_excludes(["TB1"], withCursor(`${b64({ position: "[\"2026-11-12\",\"note:m32\"]", scope: { actorId: "user_a", workspaceId: "workspace:agent-eval" } })}.c2lnbmF0dXJl`), context);
+  assert.equal(leaking.status, "fail");
+  assert.match(leaking.detail, /cursor/u);
+  assert.match(leaking.detail, /user_a/u);
+  // A record id alone, or the workspace alone, is enough.
+  assert.equal(CHECKS.mcp_result_excludes([], withCursor(b64({ after: "task:t42" })), context).status, "fail");
+  assert.equal(CHECKS.mcp_result_excludes([], withCursor(b64({ w: "workspace:agent-eval" })), context).status, "fail");
+  assert.equal(CHECKS.mcp_result_excludes([], withCursor(b64({ at: "2026-11-12T09:40:00.000Z" })), context).status, "fail", "a readable time is a position");
+  // Opaque bytes say nothing.
+  assert.equal(CHECKS.mcp_result_excludes(["TB1"], withCursor("AfQ3k9ZxT0mVb2c8Jw1hYpLr7uNs5eKd4gHa6iOqPzXyWvUtSr"), context).status, "pass");
 });

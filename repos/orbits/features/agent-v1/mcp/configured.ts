@@ -19,6 +19,7 @@ import { createAuthorizationServer, type AuthorizationServer } from "./auth/serv
 import { createProposalService, type ProposalSeams, type ProposalService } from "./confirm-link";
 import { createConnectionService, type AgentConnection, type ConnectionService } from "./connections";
 import { createMcpRecords } from "./records";
+import { createCursorSealer } from "./tools/cursor";
 import { createMcpEndpoint } from "./transport";
 
 export interface McpServices {
@@ -74,7 +75,7 @@ export function configuredMcp(options: ConfiguredMcpOptions): McpServices | null
     addresses: (request) => mcpAddresses(request),
     auth,
     connections,
-    tools: { now, proposals, records: (accountId) => (access ? { reader: access.reader, scope: access.scope(accountId) } : null) },
+    tools: { cursors: createCursorSealer(secret), now, proposals, records: (accountId) => (access ? { reader: access.reader, scope: access.scope(accountId) } : null) },
   });
   const services: McpServices = {
     addresses: (request) => mcpAddresses(request),

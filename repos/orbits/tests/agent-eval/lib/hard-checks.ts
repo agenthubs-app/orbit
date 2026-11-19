@@ -995,7 +995,21 @@ export const CHECKS: Record<string, CheckFn> = {
         }
       }
     }
-    return found.length ? fail(`found ${[...new Set(found)].slice(0, 12).join(" | ")}`, [...new Set(evidence)].slice(0, 30)) : pass(`none of the ${fragments.length} fragment(s) in ${answers.length} tool answer(s)`, seqs(answers).slice(-30));
+    // Every paging cursor, read the way a client could read it (as it is, base64-decoded, and each dot-separated part
+    // decoded): no account id, no workspace, no record of the fixture and no readable time may be in it.
+    const cursors = answers.filter((answer) => typeof (answer.result as Record<string, unknown> | null)?.next_cursor === "string");
+    const secrets = [...new Set([...Object.values(obs.accounts), ...Object.values(obs.idMap)])].filter((value) => typeof value === "string" && value.length >= 5);
+    for (const answer of cursors) {
+      const cursor = String((answer.result as Record<string, unknown>).next_cursor);
+      const decode = (value: string) => Buffer.from(value, "base64url").toString("latin1");
+      const readings = [cursor, decode(cursor), ...cursor.split(".").map(decode)].join("\n");
+      const seen = secrets.find((value) => readings.includes(value)) ?? (/workspace:|"actorId"|"workspaceId"/u.test(readings) ? "the workspace or account field" : /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/u.test(readings) ? "a readable time" : null);
+      if (seen) {
+        found.push(`the cursor of ${answer.tool}${answer.page ? ` (page ${answer.page})` : ""} at seq ${answer.seq} can be read: it holds ${obs.fixtureIdOf(seen) ?? seen}`);
+        evidence.push(Number(answer.seq));
+      }
+    }
+    return found.length ? fail(`found ${[...new Set(found)].slice(0, 12).join(" | ")}`, [...new Set(evidence)].slice(0, 30)) : pass(`none of the ${fragments.length} fragment(s) in ${answers.length} tool answer(s); ${cursors.length} cursor(s) unreadable`, seqs(answers).slice(-30));
   },
 
   /** The last tool answer has these fields: `present` means there and not empty; a value must be equal (a time as an instant). */

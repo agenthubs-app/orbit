@@ -17,6 +17,7 @@ import { createAuthorizationServer } from "../../../features/agent-v1/mcp/auth/s
 import { createProposalService, type ProposalSeams } from "../../../features/agent-v1/mcp/confirm-link";
 import { createConnectionService } from "../../../features/agent-v1/mcp/connections";
 import { createMcpRecords } from "../../../features/agent-v1/mcp/records";
+import { createCursorSealer } from "../../../features/agent-v1/mcp/tools/cursor";
 import { createMcpEndpoint } from "../../../features/agent-v1/mcp/transport";
 import { ACTOR, createCardKit } from "../../services/agent-ledger-card-kit";
 import { contact, CURSOR_KEY, memo, schedule, todo, WORKSPACE } from "../read-kit";
@@ -80,7 +81,7 @@ export function mcpKit(options: { records?: MemoryRecord[]; seams?: ProposalSeam
     addresses: () => ADDRESSES,
     auth,
     connections,
-    tools: { now, proposals, records: (accountId) => ({ reader: registry, scope: { accountId, authorizationEpoch: "agent-v1", workspaceId: WORKSPACE } }) },
+    tools: { cursors: createCursorSealer(SECRET), now, proposals, records: (accountId) => ({ reader: registry, scope: { accountId, authorizationEpoch: "agent-v1", workspaceId: WORKSPACE } }) },
   });
 
   const authorizeParams = (input: { clientId?: string; redirectUri?: string; scope?: string; challenge?: string; state?: string; resource?: string | null; method?: string | null }) => {
