@@ -21,6 +21,11 @@ import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInpu
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
 
+/** "你", "我", "you", "me": the two people talking, never a contact to look up. */
+const SPEAKER_WORDS = /^(?:你|您|我|咱们?|我们|你们|あなた|私|僕|you|me|i|we|us)$/iu;
+/** The user alone ("我", "me", "myself"): never a contact to look up. "we" is not here — it can stand for a person named before it. */
+const SELF_WORDS = /^(?:我|我自己|自己|本人|私|僕|自分|me|myself|i)$/iu;
+
 function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
   const context = scope.run.context!;
   const message = scope.input.message;
@@ -72,6 +77,12 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
       reason: null,
       // AG12 run-03 (AE-WEB-004): an unnamed "那家公司" beside a clue naming a record is the subject inside that record.
       refs: part.objectClues.filter((clue) => {
+        // AG19 repair round 1 (stability run, AE-ANS-002): "最近有哪些活动适合我" came back with a contact clue "我" and
+        // was answered "我不确定你说的是哪一位联系人". The user alone (我、me、myself) is never a contact to look up.
+        if (!clue.referenceId && clue.entity === "contact" && SELF_WORDS.test(clue.text.trim())) {
+          emitTrace({ clue: clue.text, partId: part.localId, type: "understand.speaker_clue" });
+          return false;
+        }
         if (!clue.referenceId && timeWordClue(clue)) {
           timeClued.add(part.localId);
           emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.time_word_clue" });
@@ -159,9 +170,6 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
  * are replaced by one part over the whole message that reads the listed records again by id; the answer step answers
  * from them. Returns the new part and first-layer output, or null when the rule does not hold.
  */
-/** "你", "我", "you", "me": the two people talking, never a contact to look up. */
-const SPEAKER_WORDS = /^(?:你|您|我|咱们?|我们|你们|あなた|私|僕|you|me|i|we|us)$/iu;
-
 export function continueShownList(output: UnderstandOutput, parts: GraphPart[], scope: NodeScope): { output: UnderstandOutput; parts: GraphPart[] } | null {
   const context = scope.run.context;
   const message = scope.input.message;

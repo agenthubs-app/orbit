@@ -255,3 +255,12 @@ test("a list code writes is in reading order: schedule and events by time, to-do
   assert.deepEqual(inListOrder([item("contact", "b", {}, 0), item("contact", "a", {}, 1)]).map((entry) => entry.id), ["b", "a"]);
   assert.deepEqual(inListOrder([item("schedule", "s", { startsAt: "2026-11-19T03:00:00.000Z" }, 0), item("todo", "t", { dueAt: "2026-11-01T00:00:00.000Z" }, 1)]).map((entry) => entry.id), ["s", "t"]);
 });
+
+test("the speaker is never a contact to look up: 「最近有哪些活动适合我？」 tagged with a contact clue 我 still lists the events", async () => {
+  const message = "最近有哪些活动适合我？";
+  // As the first layer once gave it: an event read, a profile read, and "我" as a contact clue.
+  const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", objectClues: [{ entity: "contact", text: "我" }], requiredCapabilities: ["event.read", "profile.read"], sourceQuote: message }], { world: fnWorld() });
+  assert.ok(run.events.some((event) => event.type === "understand.speaker_clue"));
+  assert.deepEqual(records(run.result.blocks)[0]?.items.map((item) => item.id).slice(0, 3), ["event:e103", "event:e101", "event:e104"]);
+  assert.doesNotMatch(run.result.text, /哪一位联系人/u);
+});
