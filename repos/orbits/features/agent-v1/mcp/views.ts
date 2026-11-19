@@ -30,7 +30,9 @@ export function connectionView(connection: AgentConnection & { lastUsedAt: strin
 /** The consent page names the host the client's document lives on (the document's own name is self-asserted) and where the browser goes back to. */
 export function consentView(request: AuthorizationRequest): AgentConnectionConsentContract {
   const redirectHost = hostOf(request.redirectUri);
-  return { clientHost: hostOf(request.clientId), clientName: request.clientName, options: scopeOptions(), redirectHost, redirectIsLoopback: LOOPBACK.has(redirectHost), requestedScopes: [...request.scopes] };
+  // Reading may come pre-selected when the client asked for it; «可以提修改» never is — that tick is the user's own.
+  const preselectedScopes = request.scopes.filter((scope) => !scope.endsWith(":propose"));
+  return { clientHost: hostOf(request.clientId), clientName: request.clientName, options: scopeOptions(), preselectedScopes, redirectHost, redirectIsLoopback: LOOPBACK.has(redirectHost), requestedScopes: [...request.scopes] };
 }
 
 /**

@@ -306,9 +306,15 @@ export function authorizationServerMetadata(addresses: McpAddresses): Record<str
   };
 }
 
-/** The 401 challenge (MCP authorization spec): where to find the resource metadata; `invalid_token` when a token was sent. */
+/** What a client is told to ask for (设计稿 §5.4「默认只请求只读」): reading, and looking at its own proposals. Proposing is the user's tick on the consent page. */
+export const DEFAULT_REQUEST_SCOPES: readonly string[] = MCP_SCOPES.filter((scope) => !scope.endsWith(":propose"));
+
+/**
+ * The 401 challenge (MCP authorization spec): where to find the resource metadata, and the scopes to ask for (without
+ * it a client asks for everything in scopes_supported); `invalid_token` when a token was sent.
+ */
 export function unauthorizedChallenge(addresses: McpAddresses, reason: "missing" | "invalid"): string {
-  return `Bearer ${reason === "invalid" ? 'error="invalid_token", error_description="The access token is missing, expired or revoked", ' : ""}resource_metadata="${addresses.resourceMetadataUrl}"`;
+  return `Bearer ${reason === "invalid" ? 'error="invalid_token", error_description="The access token is missing, expired or revoked", ' : ""}resource_metadata="${addresses.resourceMetadataUrl}", scope="${DEFAULT_REQUEST_SCOPES.join(" ")}"`;
 }
 
 /** The 403 challenge: the scopes this one operation needs, all at once. */

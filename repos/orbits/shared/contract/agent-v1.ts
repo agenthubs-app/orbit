@@ -523,6 +523,8 @@ export interface AgentConnectionConsentContract {
   redirectHost: string;
   redirectIsLoopback: boolean;
   requestedScopes: readonly string[];
+  /** 页面一开始勾上的：客户端请求里的只读项。「可以提修改」从不预先勾上，要用户自己勾。 */
+  preselectedScopes: readonly string[];
   options: readonly AgentConnectionScopeOptionContract[];
 }
 

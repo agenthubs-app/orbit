@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { domainOf, MCP_SCOPES, scopeCatalogue, toolsFor } from "../../../features/agent-v1/mcp/scopes";
+import { consentView } from "../../../features/agent-v1/mcp/views";
 import { memo } from "../read-kit";
 import { A, mcpKit, world } from "./kit";
 
@@ -139,4 +140,15 @@ test("the consent page offers «可以提修改» only where a proposal can be p
   const catalogue = Object.fromEntries(scopeCatalogue().map((option) => [option.domain, option.propose]));
   assert.deepEqual(catalogue, { attendance: null, contacts: null, events: null, memos: "memos:propose", schedule: null, todos: "todos:propose" });
   assert.ok(MCP_SCOPES.includes("proposals:read"));
+});
+
+test("the consent page pre-selects read scopes only: «可以提修改» is always the user's own tick, even when the client asked for it", () => {
+  const view = consentView({ clientId: "https://claude.ai/oauth/claude-code-client-metadata", clientName: "Claude Code", codeChallenge: "x", redirectUri: "http://127.0.0.1:53111/callback", scopes: ["todos:read", "todos:propose", "memos:propose", "proposals:read"] });
+  assert.deepEqual(view.requestedScopes, ["todos:read", "todos:propose", "memos:propose", "proposals:read"]);
+  assert.deepEqual(view.preselectedScopes, ["todos:read", "proposals:read"]);
+  // The page names the host the client's document lives on, and warns when the browser goes back to this machine.
+  assert.equal(view.clientHost, "claude.ai");
+  assert.equal(view.redirectHost, "127.0.0.1");
+  assert.equal(view.redirectIsLoopback, true);
+  assert.equal(consentView({ clientId: "https://claude.ai/oauth/mcp-oauth-client-metadata", clientName: "Claude", codeChallenge: "x", redirectUri: "https://claude.ai/api/mcp/auth_callback", scopes: [] }).redirectIsLoopback, false);
 });

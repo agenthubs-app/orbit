@@ -1789,6 +1789,11 @@
           "kind": "text",
           "type": "readonly string[]"
         },
+        "preselectedScopes": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
         "options": {
           "optional": false,
           "kind": "text",

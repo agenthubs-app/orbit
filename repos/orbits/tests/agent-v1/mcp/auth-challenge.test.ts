@@ -177,3 +177,13 @@ test("a request body larger than the endpoint takes is refused before it is pars
   assert.equal(huge.status, 413);
   assert.equal(huge.body?.error.code, -32600);
 });
+
+test("the challenge asks for read scopes only: a client that follows it requests no «可以提修改» on its own", async () => {
+  const kit = mcpKit();
+  const response = await kit.rpc(null, "tools/list");
+  const scope = /scope="([^"]+)"/u.exec(response.headers.get("www-authenticate") ?? "")?.[1] ?? "";
+  const asked = scope.split(" ");
+  assert.ok(asked.includes("todos:read") && asked.includes("memos:read") && asked.includes("proposals:read"), scope);
+  assert.ok(!asked.some((item) => item.endsWith(":propose")), "no propose scope is suggested");
+  assert.ok(!asked.includes("offline_access"));
+});
