@@ -17,6 +17,10 @@ import { groundedAnswerSystemPrompt, groundedAnswerUserText, GROUNDED_ANSWER_PRO
 import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
 import { composeStructured, needsLayout, stripMarkdown } from "../../answer/blocks";
+import { listAnswer } from "../../answer/list-answer";
+import { withoutUnsupportedEventClaims, type EventClaimFacts } from "../../answer/event-claims";
+import type { AgentAnswerRecordContract } from "../../../../shared/contract/agent-v1";
+import { statusSaidIn } from "./resolve";
 import { withoutForeignUrls } from "../../web/answer-urls";
 import { withoutOnlineDenials, withoutQuoteResidue, withoutTopicBasisClaims, withoutStrayScripts, withoutUnsupportedStatus, withEffectiveDates } from "../../answer/claims";
 import { expiryLine } from "../../answer/change-check";
@@ -28,6 +32,9 @@ import { answerSystemPrompt, answerUserText } from "../../understand/prompt";
 import { parseModelJson } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
+
+/** AG19 repair round 1: deliverables whose answer is the list of records itself (a comparison is a discussion of them). */
+const LIST_READS = new Set<string>(["list", "ranked_list"]);
 
 /** run-03 repair 1: the reads that make a part a question about the person's profile. */
 const PROFILE_CAPABILITIES = new Set<string>(["contact.read", "profile.read", "view.context"]);
@@ -249,7 +256,12 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       if (statused.dropped.length) emitTrace({ dropped: statused.dropped, note: "a status no record read this turn supports is not delivered", partId: part.localId, type: "answer.unsupported_status_dropped" });
       const dated = withEffectiveDates(statused.text, statusSources);
       if (dated.changed.length) emitTrace({ changed: dated.changed, partId: part.localId, type: "answer.effective_date" });
-      let claimed = withoutFalseClaims(dated.text, [part.localId], run.topicMatched, user);
+      // AG19 repair round 1 (judges, AE-ANS-003 R3): a comparative claim about the events read (shortest, cheapest, the
+      // only one …) or "no price is given" must follow from their fields, or the sentence is not delivered.
+      const eventsRead = [...new Set([...partMaterials, ...part.dependsOn.flatMap((id) => run.materials.get(id) ?? [])].map((material) => material.ref))].map((ref) => run.eventFacts.get(ref)).filter((facts): facts is EventClaimFacts => Boolean(facts));
+      const eventChecked = withoutUnsupportedEventClaims(dated.text, eventsRead, zone);
+      if (eventChecked.dropped.length) emitTrace({ dropped: eventChecked.dropped, events: eventsRead.length, note: "a statement about the events read that their fields do not support is not delivered", partId: part.localId, type: "answer.event_claims_dropped" });
+      let claimed = withoutFalseClaims(eventChecked.text, [part.localId], run.topicMatched, user);
       // AG12 run-03 (AE-FN-008): the rules above left nothing of an answer that cited records: its cited sentences instead.
       if (!claimed.replace(/[\s。.、，,：:]/gu, "") && segment.text.trim() && segment.cites.length) {
         const fallback = citedFallback(state.language, allMaterials, segment.cites);
@@ -262,6 +274,21 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       run.modelAnswers.add(part.localId);
       // AG09: a web page is not a record of the user's: its citations stay out of the records' sourceRefs (the page is listed in the answer's web record).
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref).filter((ref) => !ref.startsWith("web:"));
+      // AG19 repair round 1 (decision 1, D1): a list-type read is written by code from the records the answer picked —
+      // the lead says how many, of what kind and for which window, each record is its card and is not written out again.
+      // The order is the read's own (each kind's default order: to-dos by deadline then planned day, schedule by start,
+      // notes newest first) — code's, not the order the model happened to cite them in.
+      const readOrder = (part.reads ?? []).map((read) => read.ref);
+      const inReadOrder = [...new Set(part.cites ?? [])].sort((left, right) => (readOrder.indexOf(left) < 0 ? Number.MAX_SAFE_INTEGER : readOrder.indexOf(left)) - (readOrder.indexOf(right) < 0 ? Number.MAX_SAFE_INTEGER : readOrder.indexOf(right)));
+      const listed = LIST_READS.has(part.plan.deliverable) && part.route === "read" ? inReadOrder.map((ref) => run.recordCards.get(ref)).filter((card): card is AgentAnswerRecordContract => Boolean(card)) : [];
+      if (listed.length && listed.length === new Set(part.cites ?? []).size) {
+        const quote = input.message.slice(part.quote[0], part.quote[1]);
+        const written = listAnswer({ cards: listed, from: part.plan.readFilter?.from, language: state.language, quote, status: part.plan.readFilter?.status === "open" || part.plan.readFilter?.status === "completed" ? part.plan.readFilter.status : statusSaidIn(quote), to: part.plan.readFilter?.to });
+        run.answers.set(part.localId, written.text);
+        run.answerBlocks.set(part.localId, written.blocks);
+        run.modelAnswers.delete(part.localId);
+        emitTrace({ cards: listed.length, partId: part.localId, type: "answer.list_by_code" });
+      }
       if (profileParts.has(part.localId)) {
         const updates = checked?.profiles?.get(part.localId);
         if (!updates) emitTrace({ partId: part.localId, type: "answer.profile_check_missing" });

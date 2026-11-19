@@ -106,7 +106,8 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
         break;
       }
       header = "platform event";
-      sentences = numbered([`Title: ${text(f.title) ?? "—"}`, `Starts: ${formatWhen(text(f.startsAt), context.timeZone)}`, text(f.endsAt) ? `Ends: ${formatWhen(text(f.endsAt), context.timeZone)}` : null, `Place: ${text(f.location) ?? "not given"}`]);
+      // AG19 repair round 1: the topics and the fee as the organizer stated them (appended, so earlier sentence numbers hold).
+      sentences = numbered([`Title: ${text(f.title) ?? "—"}`, `Starts: ${formatWhen(text(f.startsAt), context.timeZone)}`, text(f.endsAt) ? `Ends: ${formatWhen(text(f.endsAt), context.timeZone)}` : null, `Place: ${text(f.location) ?? "not given"}`, Array.isArray(f.topics) && f.topics.length ? `Topics: ${(f.topics as string[]).join(", ")}` : null, text(f.feeKind) ? `Fee: ${feeSentence(text(f.feeKind)!, text(f.feeAmountYen))}` : null]);
       break;
     }
     case "contact":
@@ -120,6 +121,15 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
     }
   }
   return { at, handle, header, kind: view.kind, partId, ref: view.ref, sentences, version: view.version, ...(profile ? { profile } : {}) };
+}
+
+/** The fee of an event as its material says it (the organizer's own statement; "not stated" is never "free"). */
+export function feeSentence(kind: string, amountYen: string | null | undefined): string {
+  if (kind === "free") return "free";
+  if (kind === "amount" && amountYen) return `JPY ${Number(amountYen).toLocaleString("en-US")}`;
+  if (kind === "pay_at_door") return "paid at the door (the amount is not stated)";
+  if (kind === "external_link") return "see the organizer's page (the amount is not stated)";
+  return "not stated (this does not mean free)";
 }
 
 /** The materials block of the answer prompt. */

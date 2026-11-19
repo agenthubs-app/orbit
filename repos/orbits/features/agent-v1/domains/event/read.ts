@@ -141,9 +141,12 @@ export function eventFactsOf(event: Pick<CanonicalEventRecord, "description" | "
 }
 
 function canonical(event: CanonicalEventRecord): CanonicalRow {
+  // AG19 repair round 1 (judges, AE-ANS-003): an event is read with its topics and its fee too — the same facts the
+  // ranking uses — so an answer about events read by id is not written from the title, time and place alone.
+  const facts = eventFactsOf(event);
   return {
     evidenceIds: [],
-    fields: defined({ endsAt: event.endsAt ?? undefined, location: event.venue ?? undefined, startsAt: event.startsAt ?? undefined, title: event.title ?? undefined }),
+    fields: defined({ endsAt: event.endsAt ?? undefined, feeAmountYen: facts.fee.amountYen !== undefined ? String(facts.fee.amountYen) : undefined, feeKind: facts.fee.kind, location: event.venue ?? undefined, startsAt: event.startsAt ?? undefined, title: event.title ?? undefined, topics: facts.topics.length ? facts.topics : undefined }),
     id: event.eventId,
     position: JSON.stringify([event.startsAt ?? "", event.eventId]),
     revision: String(event.eventVersion),

@@ -30,7 +30,7 @@ import { localDay } from "../../views/recent-interaction";
 import type { CanonicalEventRecord } from "../../../events/core/contract";
 import type { NoteInteractionContract } from "../../../../shared/contract/notes";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
-import { asksUpcomingEvents, upcomingTopicOf, directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, memoriesFor, naturalField, PICK_WORDS, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
+import { asksEventsToGoTo, pointsAtPast, writesADate, upcomingTopicOf, directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, memoriesFor, naturalField, PICK_WORDS, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
 import { compare, dimensionsIn, type ComparedEvent } from "../../functions/compare";
 import * as say from "../../functions/copy";
 import { memoDayOf } from "../../functions/dates";
@@ -78,7 +78,8 @@ const OTHER_RECORD_NOUN = /(日程|安排|行程|会议|开会|待办|笔记|联
 export function listsUpcomingEvents(part: GraphPart, message: string): boolean {
   if (part.route !== "read") return false;
   const quote = message.slice(part.quote[0], part.quote[1]);
-  if (!EVENT_NOUN.test(quote) || !asksUpcomingEvents(quote)) return false;
+  // Repair round 1 (decision 3): with or without "最近" — any asking which events there are or to recommend some.
+  if (!EVENT_NOUN.test(quote) || !asksEventsToGoTo(quote)) return false;
   if (part.capabilities.some((capability) => OTHER_READS.has(capability) || capability === "fn.group" || capability === "fn.compare")) return false;
   // AG19 stability run 1 (AE-ANS-010): "把接下来的活动都列出来" tagged as a schedule read listed the user's own schedule
   // items. In Orbit 活动 are events: with no word for the schedule or another kind of record, the event list it is.
@@ -513,7 +514,10 @@ function writeAnswer(input: { upcoming?: boolean; apart?: string | null; domain:
   const scope = input.within
     ? (language === "en" ? `your ${noun} ${input.within}` : language === "ja" ? `${input.within}${noun}` : `${input.within.replace(/的$/u, "")}的${noun}`)
     : domain === "event"
-      ? (language === "en" ? `the public events${period ? ` ${period}` : ""}` : language === "ja" ? `${period ?? "公開中の"}イベント` : `${period ?? "公开的"}活动`)
+      ? input.upcoming && !period
+        // Repair round 1 (decision 3): the lead says the list holds only events that have not started.
+        ? (language === "en" ? "the events that have not started yet" : language === "ja" ? "これから開催されるイベント" : "还没开始的活动")
+        : (language === "en" ? `the public events${period ? ` ${period}` : ""}` : language === "ja" ? `${period ?? "公開中の"}イベント` : `${period ?? "公开的"}活动`)
       : language === "en" ? `your ${noun}` : language === "ja" ? `あなたの${noun}` : `你的${noun}`;
   const topic = input.basisMemo ? (language === "en" ? `the topics of your note "${input.basisMemo}"` : language === "ja" ? `メモ「${input.basisMemo}」のテーマ` : `你的笔记「${input.basisMemo}」的主题`) : input.basis ? (language === "en" ? `"${input.basis}"` : `「${input.basis}」`) : null;
   const { afterHardConditions, judged, truncated } = result.coverage;
@@ -752,7 +756,8 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   for (const item of recalled) if (item.time && domain === "event") time.push(item.time);
   if (recalled.length) emitTrace({ memories: recalled.map((item) => item.memory.id), partId: part.localId, type: "memory.recall" });
   // AG19-6: "最近有哪些活动适合我" names no standard to pick by; it is a list of what is coming up, never a question back.
-  const listing = (!PICK_WORDS.test(original) && (part.plan.deliverable === "list" || /(列出|列一下|列个|\blist\b|一覧|並べて)/iu.test(original))) || (!reply && listsUpcomingEvents(part, message));
+  // A pick ("哪两场最值得去") still asks what to pick by, once (AG10-1): only the time filter is the default there.
+  const listing = (!PICK_WORDS.test(original) && (part.plan.deliverable === "list" || /(列出|列一下|列个|\blist\b|一覧|並べて)/iu.test(original))) || (!reply && !PICK_WORDS.test(original) && listsUpcomingEvents(part, message));
   const history = !topic && !field && !time.length && domain === "contact" && (followUpAsk || chosen === "overdue");
   const todoNatural = domain === "todo";
   const haveBasis = Boolean(topic || field || time.length || history || leftToAgent || listing || todoNatural || chosen);
@@ -780,7 +785,10 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const order = useNatural || (!field && domain === "todo") ? naturalField(domain) : null;
   const orderField: RankField | null = field ?? order?.field ?? null;
   // AG19-6: events asked for as "最近／接下来" are given the nearest first ("最近" is not "latest first" here).
-  const orderDirection = domain === "event" && asksUpcomingEvents(words) && (orderField ?? "startsAt") === "startsAt" ? "asc" : field ? direction : order?.direction ?? "asc";
+  // Repair round 1: for events the nearest comes first unless the words point at the past or say another order outright
+  // ("最近" is not "latest first" here, so it is taken out before the direction is read).
+  const eventDirection = directionSaidIn(words.replace(/最近|近期|近来|recent(?:ly)?/giu, " "), "asc");
+  const orderDirection = domain === "event" && !pointsAtPast(words) && (orderField ?? "startsAt") === "startsAt" ? eventDirection : field ? direction : order?.direction ?? "asc";
   const count = plan.count ?? rank.count ?? countSaidIn(original) ?? (orderField && !topic && !time.length ? FIELD_LIST_LIMIT : 3);
 
   // 3. Candidates and hard conditions (code), read under the account's scope.
@@ -847,7 +855,10 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     timeOf = (candidate) => (candidate as EventCandidate).startsAt;
     // AG19-6: "最近／近期／接下来有哪些活动" with no past period said: only events that have not started, whatever dates
     // the first layer read into "最近" (a range that ends before now is not kept; one that starts earlier starts now).
-    upcomingOnly = chosenIds.length < 2 && asksUpcomingEvents(words);
+    // Repair round 1 (decision 3): the default for every event ranking, with or without "最近". Past events are read only
+    // when the user points at the past — in words (去过、之前、上个月) or by writing out a date that has passed.
+    const pastDate = writesADate(words) && Boolean(toDay && toDay <= now);
+    upcomingOnly = chosenIds.length < 2 && !pointsAtPast(words) && !pastDate;
     const from = upcomingOnly ? (fromDay && fromDay > now ? fromDay : now) : fromDay;
     const to = upcomingOnly && toDay && toDay <= now ? null : toDay;
     if (upcomingOnly) emitTrace({ from, partId: part.localId, to, type: "functions.upcoming_only" });

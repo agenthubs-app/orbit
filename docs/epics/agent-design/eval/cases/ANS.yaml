@@ -7,8 +7,8 @@ area: ANS
 
 proposed_checks:
   - name: answer_cards
-    form: "answer_cards: { kinds: [...], exact: [...], within: [...], includes: [...], excludes: [...], sequence: [...], count: n, min: n, shown_first: n, more: true, text_order: true, size: full ／ mini ／ any, none: true }"
-    meaning: "最后一次回答的结果文档里的记录卡片，按显示顺序取夹具编号。默认只看正常大小的卡片（列表本身），size 写 mini 看文字下面「提到的记录」小卡片，写 any 两种都看。kinds 表示每张卡的类型都在其中；exact、within、includes、excludes、sequence、count 与 listed 同义，min 表示至少几张；shown_first 是第一组卡片先显示的张数；more 表示有没有「还有 N 条」这一行；text_order 表示每张卡的名称都出现在回答的文字版里且先后一致；none 表示一张卡片都没有。同一条记录出现在两张卡上、卡片没有名称或记录编号，都判不通过。各键都可省。"
+    form: "answer_cards: { kinds: [...], exact: [...], within: [...], includes: [...], excludes: [...], sequence: [...], count: n, min: n, shown_first: n, more: true, text_order: true, lead_plain: true, size: full ／ mini ／ any, none: true }"
+    meaning: "最后一次回答的结果文档里的记录卡片，按显示顺序取夹具编号。默认只看正常大小的卡片（列表本身），size 写 mini 看文字下面「提到的记录」小卡片，写 any 两种都看。kinds 表示每张卡的类型都在其中；exact、within、includes、excludes、sequence、count 与 listed 同义，min 表示至少几张；shown_first 是第一组卡片先显示的张数；more 表示有没有「还有 N 条」这一行；text_order 表示每张卡的名称都出现在回答的文字版里且先后一致；none 表示一张卡片都没有；lead_plain 表示第一组卡片上面的文字（导语、段落、要点）里不出现这组卡片里任何一条记录的名称——列出的每一项就是它的卡片，不再另写一遍。同一条记录出现在两张卡上、卡片没有名称或记录编号，都判不通过。各键都可省。"
   - name: answer_blocks
     form: "answer_blocks: { has: [conclusion, points, records, note], lacks: [note], first: paragraph }"
     meaning: "最后一次回答的结果文档里分块的类型。has 里的类型都要有，lacks 里的都不能有，first 是第一块的类型。类型取 conclusion（结论）、paragraph（段落）、points（要点）、records（卡片组）、note（这次没做的部分）。"
@@ -29,7 +29,7 @@ cases:
     steps:
       - user: "最近有哪些活动适合我？"
     hard:
-      - answer_cards: { kinds: [event], min: 3, sequence: [E103, E101, E104], within: [E103, E101, E104, E102, E105, E107], text_order: true }
+      - answer_cards: { kinds: [event], min: 3, sequence: [E103, E101, E104], within: [E103, E101, E104, E102, E105, E107], text_order: true, lead_plain: true }
       - listed: { sequence: [E103, E101, E104], excludes: [E106] }
       - answer_blocks: { first: paragraph, has: [records], lacks: [note, conclusion] }
       - answer_text_plain: true
@@ -148,8 +148,8 @@ cases:
     steps:
       - user: "我有哪些还没完成的待办？"
     hard:
-      - answer_cards: { size: any, kinds: [todo], includes: [T42, T44, T45, T47], excludes: [T46], text_order: true }
-      - answer_blocks: { has: [records], lacks: [note] }
+      - answer_cards: { kinds: [todo], includes: [T42, T44, T45, T47, F1], excludes: [T46], text_order: true, lead_plain: true }
+      - answer_blocks: { first: paragraph, has: [records], lacks: [note, conclusion, points] }
       - answer_text_plain: true
       - cites_within_reads: true
       - request_status: completed
@@ -158,10 +158,12 @@ cases:
       - no_web_calls: true
     rubric:
       - id: R1
-        text: "四条没完成的待办各有一张卡片，卡片上有待办的名称和它的截止时间或计划日（有的话），日期带星期。"
+        text: "五条没完成的待办各有一张卡片，卡片上有待办的名称和它的截止时间或计划日（有的话），日期带星期。"
       - id: R2
         text: "已完成的「整理十月发票」没有出现在卡片里，回答也没有把它说成没完成。"
-    notes: "T42、T44、T45、T47 没完成，T46 已完成。正式跟进 F1 出不出现都可以。卡片点开的是这一条待办（D3），由两端的链接表保证，这里只判卡片本身。"
+      - id: R3
+        text: "卡片上面只有一句导语，说了一共几项待办、其中几项已过期或过了计划日；导语里没有把任何一条待办的名称再写一遍。"
+    notes: "没完成的是五条：T42、T44、T45、T47 和正式跟进 F1；T46 已完成（run-01 评审指出评审项原来写成了四条）。卡片点开的是这一条待办（D3），由两端的链接表保证，这里只判卡片本身。修复第 1 轮（协调者决定 1）：列表类的读取，导语由代码按数量、类型、时间范围写，不再由模型写、也不列举记录；给旧端的文字版是导语加每条记录一行。T45 没有截止时间、计划日 11 月 10 日已过，卡片下行写「计划日已过」（用普通的灰色：视觉稿的提醒色只画了过了截止时间的情况）。"
 
   - id: AE-ANS-006
     title: 问下周有哪些日程：日程卡片
@@ -175,7 +177,8 @@ cases:
     steps:
       - user: "下周我有哪些日程？"
     hard:
-      - answer_cards: { size: any, kinds: [schedule, event, todo], includes: [S11] }
+      - answer_cards: { kinds: [schedule, event, todo], includes: [S11], text_order: true, lead_plain: true }
+      - answer_blocks: { first: paragraph, has: [records], lacks: [note, conclusion, points] }
       - answer_text_plain: true
       - cites_within_reads: true
       - request_status: completed
@@ -187,6 +190,8 @@ cases:
         text: "「和田中午餐」有一张日程卡片，上面有带星期的日期和时间（11 月 19 日周四 12:00）。"
       - id: R2
         text: "回答里说到的每条日程都对得上夹具里下一周（11 月 16 日到 22 日）的记录，没有多出不存在的安排。"
+      - id: R3
+        text: "卡片上面只有一句导语，说了时间范围和一共几个日程；导语里没有把任何一条日程的名称或时间再写一遍。"
     notes: "时钟是 11 月 15 日周日，下周是 11 月 16 日到 22 日：日程 S10（团队周会，11 月 16 日，每周重复）和 S11（和田中午餐，11 月 19 日）。把那一周的活动或到期的待办一并列出也可以。第 18 版里两端的回答都点不开日程，卡片把入口补上。"
 
   - id: AE-ANS-007
@@ -287,7 +292,7 @@ cases:
     steps:
       - user: "把接下来的活动按开始时间都列出来。"
     hard:
-      - answer_cards: { kinds: [event], exact: [E103, E101, E104, E102, E105, E107], shown_first: 5, more: true, text_order: true }
+      - answer_cards: { kinds: [event], exact: [E103, E101, E104, E102, E105, E107], shown_first: 5, more: true, text_order: true, lead_plain: true }
       - answer_blocks: { first: paragraph, has: [records], lacks: [note, conclusion] }
       - answer_text_plain: true
       - clarifications: { count: 0 }
@@ -302,3 +307,32 @@ cases:
       - id: R2
         text: "时间未公布的那场没有被排进先后；提到它时说明了时间未公布。"
     notes: "视觉稿 D2：先放 5 张，多的收进「还有 N 条」，点一下原地展开（展开不重新请求，由两端的测试保证）。小账号六场有开始时间的活动都在时钟之后。"
+
+  - id: AE-ANS-011
+    title: 不说「最近」，只问有哪些活动适合我：也只列还没开始的，最近的在前
+    sprint: AG19
+    split: val
+    invariant: false
+    requirement: [AG-R19]
+    design: ["AG19-6", "协调者决定 3（2026-11-20）"]
+    locale: zh
+    account: regular
+    world: regular-v1
+    steps:
+      - user: "有哪些活动适合我？"
+    hard:
+      - answer_cards: { kinds: [event], min: 3, includes: [RE03], excludes: [RE06, RE08], text_order: true, lead_plain: true }
+      - answer_blocks: { has: [records], lacks: [note] }
+      - answer_text_plain: true
+      - clarifications: { count: 0 }
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡片上的活动全部在 11 月 15 日之后开始，没有任何一场已经办完的活动；最早开始的排在最前面。"
+      - id: R2
+        text: "导语写明列的是还没开始的活动，并说了一共多少场、这次先列几场。"
+    interference: [similar_records, cross_page]
+    notes: "修复第 1 轮（协调者决定 3）：凡是让推荐或列出可以去的活动，只要用户的话没有指向过去（去过、之前、上个月、一个已经过去的日期），就只取还没开始的活动、最近的在前，并在导语里说明。常规账号的 60 场平台活动里一半已经办完；RE06 是 10 月 17 日那一期，RE08 时间未公布。还没开始的里最早的是 RE03（11 月 21 日 10:00）。"

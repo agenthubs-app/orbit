@@ -119,7 +119,7 @@ test("all visible area files pass the checker", () => {
   const cases = files.flatMap((file) => file.cases);
   // AG19 added the ANS area (answer layout and record cards).
   assert.equal(files.length, 22);
-  assert.equal(cases.length, 242);
+  assert.equal(cases.length, 243);
   assert.deepEqual(checkAreaFiles(files, context), []);
 });
 

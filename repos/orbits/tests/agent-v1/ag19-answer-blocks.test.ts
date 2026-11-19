@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { composeStructured, hasMarkdownSymbols, inTextOrder, joinBlocks, needsLayout, noteItemOf, withoutListedPoints, recordOfView, recordsBlock, stripMarkdown, textBlocks, type AnswerBlock } from "../../features/agent-v1/answer/blocks";
+import { composeStructured, hasMarkdownSymbols, joinBlocks, needsLayout, noteItemOf, replaceInBlocks, recordOfView, recordsBlock, stripMarkdown, textBlocks, type AnswerBlock } from "../../features/agent-v1/answer/blocks";
 import { gapWords } from "../../features/agent-v1/answer/gap-copy";
 import { resumedAnswer } from "../../features/agent-v1/entry/store";
 import { asksUpcomingEvents } from "../../features/agent-v1/functions/basis";
@@ -270,17 +270,10 @@ test("D4: a plain-chat reply of one or two sentences is shown as it is; a longer
   assert.deepEqual(third.blocks, [{ text: "可以，周五前发就行。", type: "paragraph" }]);
 });
 
-test("D1: in a list a model answered, points that only name the listed records again leave the blocks; other points stay", () => {
-  const cards: AgentAnswerRecordContract[] = [{ id: "schedule:s10", kind: "schedule", title: "团队周会" }, { id: "schedule:s11", kind: "schedule", title: "和田中午餐" }];
-  const list: AnswerBlock[] = [{ text: "下周有两项日程。", type: "conclusion" }, { items: [{ head: "团队周会", text: "11月16日（周一）10:00 开始。" }, { head: "和田中午餐", text: "11月19日（周四）12:00 开始。" }], type: "points" }];
-  assert.deepEqual(withoutListedPoints(list, cards), [{ text: "下周有两项日程。", type: "paragraph" }], "the lead alone, in the body's weight");
-  const advice: AnswerBlock[] = [{ text: "建议先准备周会。", type: "conclusion" }, { items: [{ head: "先做", text: "把议程发出去。" }, { head: "再做", text: "订午餐的位子。" }], type: "points" }];
-  assert.deepEqual(withoutListedPoints(advice, cards), advice, "points that say something else stay");
-  assert.deepEqual(withoutListedPoints(list, []), list);
-});
-
-test("AG19-1: the cards of a list a model answered follow the order the text names them in", () => {
-  const cards: AgentAnswerRecordContract[] = [{ id: "task:t45", kind: "todo", title: "给李薇寄样片" }, { id: "task:f1", kind: "todo", title: "跟进田中的分期方案" }, { id: "task:t9", kind: "todo", title: "文字里没提的一条" }, { id: "task:t44", kind: "todo", title: "回复田中的询价" }];
-  const text = "你有 3 项待办。\n・跟进田中的分期方案：已逾期。\n・给李薇寄样片：已过计划日。\n・回复田中的询价：11月17日截止。";
-  assert.deepEqual(inTextOrder(cards, text).map((card) => card.id), ["task:f1", "task:t45", "task:t44", "task:t9"]);
+test("repair round 1: when a card is frozen again, its line changes in the text and in the blocks together", async () => {
+  const blocks: AnswerBlock[] = [{ text: "查到了。", type: "paragraph" }, { text: "下面这张卡等你确认：把待办改到11月20日（周五）。", type: "paragraph" }];
+  assert.deepEqual(replaceInBlocks(blocks, "下面这张卡等你确认：把待办改到11月20日（周五）。", "下面这张卡等你确认：把待办改到11月21日（周六）。")[1], { text: "下面这张卡等你确认：把待办改到11月21日（周六）。", type: "paragraph" });
+  assert.deepEqual(replaceInBlocks(blocks, "", "x"), blocks);
+  const note: AnswerBlock[] = [{ items: [{ action: "旧的一句。", text: "旧的一句。原因。" }], title: "这次没做的部分", type: "note" }, { items: [{ head: "旧的一句。", text: "x" }, { text: "y" }], type: "points" }];
+  assert.deepEqual(replaceInBlocks(note, "旧的一句。", "新的一句。"), [{ items: [{ action: "新的一句。", text: "新的一句。原因。" }], title: "这次没做的部分", type: "note" }, { items: [{ head: "新的一句。", text: "x" }, { text: "y" }], type: "points" }]);
 });

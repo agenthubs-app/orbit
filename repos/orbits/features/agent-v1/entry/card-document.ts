@@ -8,6 +8,7 @@ import type { AgentActionPreviewContract } from "../../../shared/contract/agent-
 import { cardLocale } from "../../agent/runtime/todo-operations";
 import { emitTrace } from "../observability/trace";
 import { cardLineOf } from "../propose/copy";
+import { replaceInBlocks } from "../answer/blocks";
 import type { FeatureMode } from "../../../shared/config/feature-mode";
 import { configuredAgentEntryStore } from "./configured-store";
 import type { AgentEntryStore } from "./store";
@@ -26,9 +27,11 @@ export async function refreshCardInDocument(input: { store: AgentEntryStore; act
   const languages = input.locale ? [cardLocale(input.locale)] : (["zh", "ja", "en"] as const);
   let text = answer?.text ?? null;
   let cardLine: string | undefined;
+  let oldCardLine: string | undefined;
   for (const language of languages) {
     const oldLine = cardLineOf(previous, language);
     if (text && text.includes(oldLine)) {
+      oldCardLine = oldLine;
       cardLine = cardLineOf(input.updated, language);
       text = text.replace(oldLine, cardLine);
       break;
@@ -40,7 +43,8 @@ export async function refreshCardInDocument(input: { store: AgentEntryStore; act
     amendment: {
       actionPreview: input.updated,
       // AG07: the answer's card line follows the new revision, so clients that show the card still find it.
-      ...(answer && text !== null ? { answer: { ...answer, text, ...(cardLine ? { cardLine } : {}) } } : {}),
+      // AG19 repair round 1: the blocks follow the text — the old card line is replaced in both, never in one only.
+      ...(answer && text !== null ? { answer: { ...answer, text, ...(cardLine ? { cardLine } : {}), ...(answer.blocks && cardLine && oldCardLine ? { blocks: replaceInBlocks(answer.blocks, oldCardLine, cardLine) } : {}) } } : {}),
       clarifications: record.document.clarifications ?? [],
       // A part whose item was taken off the card no longer waits for it.
       partResults: record.document.partResults.map((item) => (item.status === "awaiting_confirmation" && item.operationId && !input.updated.operations.some((op) => op.operationId === item.operationId) ? { ...item, operationId: undefined, reason: "removed_from_card", status: "unfinished" as const } : item)),

@@ -164,6 +164,13 @@ function whenOnCard(iso: string, timeZone: string, language: Language): string {
   return language === "en" ? words : words.replace(/）\s+/u, "）");
 }
 
+/**
+ * Repair round 1: a to-do with no deadline whose planned day has passed says so on its lower line. The draft draws the
+ * late style (the alert colour) only for a passed deadline ("已过期2天") and is silent on planned days, so this line keeps
+ * the ordinary colour; the list's lead counts it with the overdue ones.
+ */
+export const PLANNED_PASSED: Record<Language, string> = { en: "Planned day has passed", ja: "予定日を過ぎています", zh: "计划日已过" };
+
 const str = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : undefined);
 const strs = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && Boolean(item)) : []);
 
@@ -219,7 +226,8 @@ export function recordOfView(view: RecordView, context: CardContext): AgentAnswe
     const done = fields.status === "completed";
     const top = dueAt ? `${WORDS.due[language]} ${whenOnCard(dueAt, timeZone, language)}` : planned ? `${WORDS.planned[language]} ${dayWordsOf(planned, language)}` : undefined;
     const late = Boolean(dueAt && !done && dueAt < now);
-    const sub = done ? WORDS.done[language] : late ? overdueWords(language, dueAt!, now) : dueAt && planned ? `${WORDS.planned[language]} ${dayWordsOf(planned, language)}` : undefined;
+    const plannedPassed = Boolean(!dueAt && planned && !done && planned < localParts(now, timeZone).day);
+    const sub = done ? WORDS.done[language] : late ? overdueWords(language, dueAt!, now) : plannedPassed ? PLANNED_PASSED[language] : dueAt && planned ? `${WORDS.planned[language]} ${dayWordsOf(planned, language)}` : undefined;
     const contactId = strs(fields.contactIds)[0] ?? str(fields.contactId);
     return { id: view.id, kind: "todo", title, ...(top ? { top } : {}), ...(sub ? { sub } : {}), ...(late ? { subTone: "late" as const } : {}), ...(contactId ? { contactId } : {}) };
   }
@@ -404,25 +412,20 @@ export function needsLayout(text: string, language: Language): boolean {
   return sentences.length > 2;
 }
 
-/**
- * D1 ("每一项就是一张卡片，不再另写一遍文字") for a list a model answered: its points that only name the listed records
- * again (each point's head is a card's title) are left out of the blocks — the cards say it; the text version keeps them.
- * A conclusion left alone above the cards is the list's lead, in the body's weight.
- */
-export function withoutListedPoints(blocks: readonly AnswerBlock[], cards: readonly AgentAnswerRecordContract[]): AnswerBlock[] {
-  if (!cards.length) return [...blocks];
-  const names = (head: string) => cards.some((card) => card.title && (card.title.includes(head) || head.includes(card.title)));
-  const kept = blocks.filter((block) => !(block.type === "points" && block.items.every((item) => Boolean(item.head) && names(item.head!.trim()))));
-  if (kept.length === blocks.length) return kept;
-  const texts = kept.filter((block) => block.type === "conclusion" || block.type === "paragraph" || block.type === "points");
-  return kept.map((block) => (block.type === "conclusion" && texts.length === 1 ? { text: block.text, type: "paragraph" as const } : block));
-}
+
 
 /**
- * AG19-1 ("顺序与用户看到的一致") for a list a model answered: its cards follow the order in which the text names the
- * records, not the order of its citations. A record the text does not name by its title keeps its place after the others.
+ * Repair round 1 (judges, AE-BND-005 / AE-CON-004 / AE-XL-006): whenever a stored answer's text is rewritten (a card
+ * frozen again changes its line), the same words are rewritten in its blocks — the two never disagree. Every text a
+ * block shows is covered: paragraphs, the conclusion, points, the note.
  */
-export function inTextOrder(cards: readonly AgentAnswerRecordContract[], text: string): AgentAnswerRecordContract[] {
-  const at = (card: AgentAnswerRecordContract) => { const index = card.title ? text.indexOf(card.title) : -1; return index < 0 ? Number.MAX_SAFE_INTEGER : index; };
-  return cards.map((card, index) => ({ card, index, position: at(card) })).sort((left, right) => left.position - right.position || left.index - right.index).map((item) => item.card);
+export function replaceInBlocks(blocks: readonly AnswerBlock[], from: string, to: string): AnswerBlock[] {
+  if (!from || from === to) return [...blocks];
+  const swap = (text: string) => text.split(from).join(to);
+  return blocks.map((block): AnswerBlock => {
+    if (block.type === "conclusion" || block.type === "paragraph") return { ...block, text: swap(block.text) };
+    if (block.type === "points") return { ...block, items: block.items.map((item) => ({ ...item, ...(item.head ? { head: swap(item.head) } : {}), text: swap(item.text) })) };
+    if (block.type === "note") return { ...block, items: block.items.map((item) => ({ ...item, text: swap(item.text), ...(item.action ? { action: swap(item.action) } : {}) })) };
+    return block;
+  });
 }

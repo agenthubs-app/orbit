@@ -64,6 +64,9 @@ export const NOT_YET: Record<string, string> = {
   shadow_report: "AG18",
 };
 
+/** AG19 repair round 1: the one check the runner adds to every case (README §3.4 `answer_blocks_in_sync`). */
+export const ALWAYS_CHECK = "answer_blocks_in_sync";
+
 export const RUN_LEVEL_CHECKS = new Set(["costs_complete", "summary_separates_simulated", "expect_judge_verdicts"]);
 
 function seqs(events: readonly TraceEvent[]): number[] {
@@ -560,7 +563,9 @@ export const CHECKS: Record<string, CheckFn> = {
    * (the list); `size: mini` looks at the small "mentioned" cards instead, `size: any` at both. `kinds`: every card is of
    * one of these kinds; exact / within / includes / excludes / sequence / count / min as in `listed`; `shown_first`: how
    * many the first group shows before "还有 N 条"; `more`: whether such a line is there; `text_order`: every card's title
-   * is in `answer.text`, in the same order (the text version says the same); `none: true`: there is no card at all.
+   * is in `answer.text`, in the same order (the text version says the same); `none: true`: there is no card at all;
+   * `lead_plain: true` (repair round 1, D1): the text blocks above the first group of cards name none of its records —
+   * each listed record is its card and is not written out a second time.
    */
   answer_cards(args, obs) {
     const found = lastAnswerBlocks(obs);
@@ -588,6 +593,12 @@ export const CHECKS: Record<string, CheckFn> = {
     for (const card of cards) if (!card.title.trim() || !card.id) problems.push(`a card without a ${card.id ? "title" : "record id"}`);
     if (args?.shown_first !== undefined && groups[0].shown !== Number(args.shown_first)) problems.push(`the first group shows ${groups[0].shown} first, expected ${args.shown_first}`);
     if (args?.more !== undefined && Boolean(groups[0].moreLabel) !== Boolean(args.more)) problems.push(args.more ? "no 还有 N 条 line" : `an unexpected line ${groups[0].moreLabel}`);
+    if (args?.lead_plain) {
+      const at = found.blocks.indexOf(groups[0]);
+      const above = found.blocks.slice(0, at).flatMap((block) => (block.type === "conclusion" || block.type === "paragraph" ? [block.text] : block.type === "points" ? block.items.flatMap((item) => [item.head ?? "", item.text]) : []));
+      const named = groups[0].items.filter((card) => card.title.trim() && above.some((text) => text.includes(card.title)));
+      if (named.length) problems.push(`the lead above the cards names ${named.map((card) => card.title).join(", ")}`);
+    }
     if (args?.text_order) {
       // Each title is looked for after the one before it (titles repeat, and one may be the start of another), so the
       // text names every card in the cards' order; a title named earlier as well (in the lead) does not matter.
@@ -603,6 +614,50 @@ export const CHECKS: Record<string, CheckFn> = {
       }
     }
     return problems.length ? fail(`${problems.join(" | ")} (cards: ${list.join(", ")})`, [found.seq]) : pass(`cards ${list.join(", ")}${groups[0].moreLabel ? ` (${groups[0].shown} shown first, then ${groups[0].moreLabel})` : ""}`, [found.seq]);
+  },
+
+  /**
+   * AG19 repair round 1 (judges: a paragraph block kept a card's old value after the card changed): run on EVERY case, for
+   * every result document of the case that carries blocks. The blocks and `answer.text` say the same:
+   *  - every text a block shows (conclusion, paragraph, each point, each entry of the note) is in `answer.text`;
+   *  - every full-size record card's name is in `answer.text` (the text version lists the same records);
+   *  - every line of `answer.text` is shown by some block (a text block, a card, an entry of the note);
+   *  - a document with a card line shows it in a paragraph, and no block shows another revision's line: with the card in
+   *    the document, a paragraph that is not in the text is exactly the stale value the judges saw.
+   * A document without blocks (an older client path, a fake agent) has nothing to compare and passes.
+   */
+  answer_blocks_in_sync(_args, obs) {
+    const flat = (text: string) => text.replace(/\s+/gu, " ").trim();
+    const problems: string[] = [];
+    let compared = 0;
+    for (const request of obs.entry?.requests ?? []) {
+      const answer = request.document?.answer;
+      if (!answer?.blocks?.length) continue;
+      compared += 1;
+      const text = flat(answer.text);
+      const shown: string[] = [];
+      for (const block of answer.blocks) {
+        if (block.type === "conclusion" || block.type === "paragraph") shown.push(block.text);
+        else if (block.type === "points") for (const item of block.items) shown.push(...(item.head ? [item.head] : []), item.text);
+        else if (block.type === "note") for (const item of block.items) shown.push(item.text, ...(item.action ? [item.action] : []));
+      }
+      for (const piece of shown) if (flat(piece) && !text.includes(flat(piece))) problems.push(`${request.requestId}: a block shows words that are not in answer.text: ${flat(piece).slice(0, 60)}`);
+      const titles: string[] = [];
+      for (const block of answer.blocks) {
+        if (block.type !== "records") continue;
+        for (const card of block.items) {
+          titles.push(card.title);
+          if ((block.size ?? "full") === "full" && card.title.trim() && !text.includes(flat(card.title))) problems.push(`${request.requestId}: the card ${card.title} is not in answer.text`);
+        }
+      }
+      const covers = [...shown, ...titles].map(flat).filter((piece) => piece.length >= 2);
+      for (const line of answer.text.split("\n").map(flat).filter(Boolean)) {
+        if (!covers.some((piece) => line.includes(piece) || piece.includes(line))) problems.push(`${request.requestId}: a line of answer.text is shown by no block: ${line.slice(0, 60)}`);
+      }
+      const cardLine = answer.cardLine ? flat(answer.cardLine) : "";
+      if (cardLine && !answer.blocks.some((block) => block.type === "paragraph" && flat(block.text) === cardLine)) problems.push(`${request.requestId}: the card line of the current card is not shown by a paragraph block`);
+    }
+    return problems.length ? fail(problems.slice(0, 4).join(" | ")) : pass(compared ? `blocks and text agree in ${compared} result document(s)` : "no result document carries blocks");
   },
 
   /** AG19 (ANS.yaml): the last answer's text and blocks show no Markdown symbol (`*`, a backtick, a heading `#`). */
@@ -1226,6 +1281,14 @@ export function runHardChecks(testCase: { hard: Record<string, unknown>[] }, obs
     // run-03: a planned fault that never fired means the case did not test what it plans — said as such.
     if (step.word === "fault") results.push({ args: { step: step.step }, check: "fault_not_fired", detail: `fault not fired: ${step.reason}`, evidence: [], status: "fail" });
     else results.push({ args: { step: step.step }, check: `step:${step.word}`, detail: step.reason, evidence: [], status: "cannot_judge" });
+  }
+  // AG19 repair round 1: on every case, whatever its own list says — the blocks and the text of each result document agree.
+  if (!testCase.hard.some((entry) => Object.keys(entry)[0] === ALWAYS_CHECK)) {
+    try {
+      results.push({ args: true, check: ALWAYS_CHECK, ...CHECKS[ALWAYS_CHECK](true, obs, context) });
+    } catch (error) {
+      results.push({ args: true, check: ALWAYS_CHECK, ...cannot(`check crashed: ${error instanceof Error ? error.message : String(error)}`) });
+    }
   }
   if (expectFail) {
     const expected = new Set(expectFail);

@@ -12,7 +12,7 @@
  * messages, are handed to the executor to write back into that earlier request.
  */
 import type { AgentAnswerNoteItemContract, AgentAnswerRecordContract, AgentClarificationContract, AgentPartGap, AgentPartResult } from "../../../../shared/contract/agent-v1";
-import { cardedIn, inTextOrder, noteBlock, noteItemOf, recordsBlock, textBlocks, withoutListedPoints, type AnswerBlock } from "../../answer/blocks";
+import { cardedIn, noteBlock, noteItemOf, recordsBlock, textBlocks, type AnswerBlock } from "../../answer/blocks";
 import { CLARIFY_WORDS, type MissingItem } from "../../clarify/copy";
 import { readingLabel, recordKindOf, type Reading } from "../../clarify/default-readings";
 import { capabilityLabel } from "../../clarify/options";
@@ -226,9 +226,6 @@ function partLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, lan
 
 /* ── AG19: the answer as blocks ────────────────────────────────────── */
 
-/** Deliverables whose cited records are the answer itself: each one a full card (D1). */
-const LIST_DELIVERABLES = new Set<string>(["list", "ranked_list", "comparison"]);
-
 /**
  * AG19-4 (board 4): a part that was not done — refused, failed, left unfinished, waiting for another part, or handed to
  * an external agent — goes into the grey note, apart from the answer. A question (still unclear, a clarification, an
@@ -273,13 +270,12 @@ function blocksOf(scope: NodeScope, state: AgentGraphState, written: readonly Gr
     // The records this part cites that no card shows yet (verified by now: a citation that no longer opens was dropped).
     const carded = new Set([...cardedIn(blocks), ...cardedIn(mine)]);
     const cited = (part.cites ?? []).map((ref) => run.recordCards.get(ref)).filter((card): card is AgentAnswerRecordContract => Boolean(card)).filter((card) => !carded.has(`${card.kind}:${card.id}`));
-    const listed = !own && model && LIST_DELIVERABLES.has(part.plan.deliverable) && cited.length >= 1;
+    // Repair round 1: full-size cards are the lists code wrote (a ranking; a list-type read, answer/list-answer.ts) and
+    // arrive in `own`. What an answer written by a model cites is "mentioned": small cards under its text.
     // Board 4 (last example): an answer that rests on one record is opened from its basis line ("按你11月10日记的笔记回答 打开 ›").
-    const byBasisLine = !listed && cited.length === 1 && run.basis?.links.length === 1 && run.basis.links[0].id === cited[0].id;
-    // AG19 stability run 2 (AE-ANS-005): a list's cards follow the order the text names them in, not the citations'.
-    const cards = byBasisLine ? null : recordsBlock(listed ? inTextOrder(cited, answer) : cited, language, { size: listed ? "full" : "mini" });
-    // D1: in a list a model answered, points that only name the listed records again are not shown beside their cards.
-    blocks.push(...(listed && cards ? withoutListedPoints(mine, cited) : mine), ...(cards ? [cards] : []));
+    const byBasisLine = cited.length === 1 && run.basis?.links.length === 1 && run.basis.links[0].id === cited[0].id;
+    const cards = byBasisLine ? null : recordsBlock(cited, language, { size: "mini" });
+    blocks.push(...mine, ...(cards ? [cards] : []));
   }
   const note = noteBlock(notes, language);
   if (note) blocks.push(note);

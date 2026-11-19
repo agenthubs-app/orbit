@@ -178,6 +178,7 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     modelAnswers: new Set(),
     recordCards: new Map(),
     blocks: [],
+    eventFacts: new Map(),
   };
 }
 

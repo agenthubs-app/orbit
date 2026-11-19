@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { CHECKS, NOT_YET, type CheckContext } from "./lib/hard-checks";
+import { ALWAYS_CHECK, CHECKS, NOT_YET, runHardChecks, type CheckContext } from "./lib/hard-checks";
 import type { Observation } from "./lib/observations";
 import { blockLines } from "./lib/runner";
 import { CHECK_WORDS } from "./lib/vocabulary";
@@ -86,4 +86,44 @@ test("the transcript shows the blocks as the clients lay them out", () => {
   assert.ok(lines.some((line) => line.includes("【小卡片，上方小字「提到的活动」，共 1 张】")));
   assert.ok(lines.some((line) => line.includes("「顺便找几场」这次没有找。〔可以马上做：用 @ 选一场活动。〕")));
   assert.deepEqual(blockLines(undefined, () => null), []);
+});
+
+test("answer_cards lead_plain: the text above the cards names none of the listed records (D1)", () => {
+  assert.equal(run("answer_cards", { lead_plain: true }, obs(LIST, TEXT)).status, "pass");
+  const named: AgentAnswerBlockContract[] = [{ text: "下周有两项日程：团队周会和和田中午餐。", type: "conclusion" }, { items: [{ id: "contact:c30", kind: "contact", title: "团队周会" }], shown: 1, type: "records" }];
+  const result = run("answer_cards", { lead_plain: true }, obs(named, "下周有两项日程：团队周会和和田中午餐。\n1. 团队周会"));
+  assert.deepEqual([result.status, /the lead above the cards names 团队周会/u.test(result.detail)], ["fail", true]);
+  // A points block above the cards that names them counts too; text after the cards does not.
+  const points: AgentAnswerBlockContract[] = [{ text: "两项：", type: "paragraph" }, { items: [{ head: "SaaS 定价研讨会", text: "周四晚上。" }, { text: "另一场。" }], type: "points" }, LIST[1]];
+  assert.equal(run("answer_cards", { lead_plain: true }, obs(points, TEXT)).status, "fail");
+  const after: AgentAnswerBlockContract[] = [LIST[0], LIST[1], { text: "SaaS 定价研讨会离现在最近。", type: "paragraph" }];
+  assert.equal(run("answer_cards", { lead_plain: true }, obs(after, TEXT)).status, "pass");
+});
+
+test("answer_blocks_in_sync runs on every case: the blocks and the text of each result document say the same", () => {
+  const docs = (...answers: { text: string; blocks?: AgentAnswerBlockContract[]; cardLine?: string }[]): Observation => ({
+    ...obs(undefined, "x"),
+    answers: answers.map((answer, index) => ({ citations: [], seq: index + 1, text: answer.text })),
+    entry: { acks: [], clients: {}, requests: answers.map((answer, index) => ({ document: { answer: { sourceRefs: [], ...answer } }, requestId: `agreq_${index + 1}` })) } as never,
+  });
+  assert.equal(run(ALWAYS_CHECK, true, obs(LIST, TEXT)).status, "pass");
+  assert.equal(run(ALWAYS_CHECK, true, obs(undefined, TEXT)).status, "pass", "no blocks: nothing to compare");
+  // The judges' finding: the card changed, the text and the card line follow, a paragraph block keeps the old value.
+  const stale = docs({ blocks: [{ text: "好的。", type: "paragraph" }, { text: "等你确认：改到11月20日（周五）。", type: "paragraph" }], cardLine: "等你确认：改到11月21日（周六）。", text: "好的。\n\n等你确认：改到11月21日（周六）。" });
+  const result = run(ALWAYS_CHECK, true, stale);
+  assert.equal(result.status, "fail");
+  assert.match(result.detail, /a block shows words that are not in answer\.text: 等你确认：改到11月20日/u);
+  assert.match(result.detail, /the card line of the current card is not shown/u);
+  assert.equal(run(ALWAYS_CHECK, true, docs({ blocks: [{ text: "好的。", type: "paragraph" }, { text: "等你确认：改到11月21日（周六）。", type: "paragraph" }], cardLine: "等你确认：改到11月21日（周六）。", text: "好的。\n\n等你确认：改到11月21日（周六）。" })).status, "pass");
+  // A line of the text no block shows; a full card whose record the text does not list; an earlier document of the case counts too.
+  assert.match(run(ALWAYS_CHECK, true, docs({ blocks: [{ text: "第一句。", type: "paragraph" }], text: "第一句。\n第二句没有块。" })).detail, /shown by no block: 第二句没有块/u);
+  assert.match(run(ALWAYS_CHECK, true, docs({ blocks: [{ text: "共1场：", type: "paragraph" }, { items: [{ id: "event:e101", kind: "event", title: "东京街头摄影展" }], shown: 1, type: "records" }], text: "共1场：\n1. 另一场活动" })).detail, /the card 东京街头摄影展 is not in answer\.text/u);
+  assert.equal(run(ALWAYS_CHECK, true, docs({ blocks: [{ text: "旧值。", type: "paragraph" }], text: "新值。" }, { text: "后一轮没有块。" })).status, "fail");
+  // Small "mentioned" cards have no line of their own in the text; a note's entry is the text's sentence without the quote.
+  const note = docs({ blocks: [{ text: "答了一半。", type: "paragraph" }, { caption: "提到的活动", items: [{ id: "event:e101", kind: "event", title: "不在文字里的名字" }], shown: 1, size: "mini", type: "records" }, { items: [{ action: "用 @ 选一场活动。", quote: "顺便找几场", text: "这次没有找。" }], title: "这次没做的部分", type: "note" }], text: "答了一半。\n\n「顺便找几场」：这次没有找。用 @ 选一场活动。" });
+  assert.equal(run(ALWAYS_CHECK, true, note).status, "pass");
+  // The runner adds it to every case, once, after the case's own checks.
+  const results = runHardChecks({ hard: [{ answer_text_plain: true }] }, stale, context);
+  assert.deepEqual(results.map((item) => [item.check, item.status]), [["answer_text_plain", "pass"], [ALWAYS_CHECK, "fail"]]);
+  assert.equal(runHardChecks({ hard: [{ [ALWAYS_CHECK]: true }] }, obs(LIST, TEXT), context).filter((item) => item.check === ALWAYS_CHECK).length, 1);
 });

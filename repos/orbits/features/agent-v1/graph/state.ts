@@ -12,6 +12,7 @@ import { Annotation } from "@langchain/langgraph";
 import type { AgentAnswerBasisContract, AgentAnswerBlockContract, AgentAnswerRecordContract, AgentClarificationContract, AgentPartResult } from "../../../shared/contract/agent-v1";
 import type { ReadSource } from "../answer/basis";
 import type { Material } from "../answer/schema";
+import type { EventClaimFacts } from "../answer/event-claims";
 import type { NextStep } from "../clarify/next-step";
 import type { FirstLayerContext } from "../context/build";
 import type { NamedRecordRef } from "../context/session-state";
@@ -253,4 +254,6 @@ export interface AgentGraphRun {
   recordCards: Map<string, AgentAnswerRecordContract>;
   /** AG19: the delivered answer as blocks (filled by deliver). */
   blocks: AgentAnswerBlockContract[];
+  /** AG19 repair round 1: the start, end and fee of each event read in this request (ref → facts), for answer/event-claims.ts. */
+  eventFacts: Map<string, EventClaimFacts>;
 }
