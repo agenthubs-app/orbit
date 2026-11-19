@@ -15,7 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { agentActionPreviewSchema, agentResultDocumentSchema, agentSendReceiptSchema, agentSessionEventSchema } from "../../../../../shared/api-schema/agent-v1";
 import type { AgentActionPreviewContract, AgentAnswerLinkContract, AgentResultDocument, AgentRunStage, AgentSendReceiptContract } from "../../../../../shared/contract/agent-v1";
-import type { AiSessionOriginInputContract, AiPageContextContract } from "../../../../../shared/contract/ai-sessions";
+import type { AiSessionOriginInputContract, AiSessionReferenceContract, AiPageContextContract } from "../../../../../shared/contract/ai-sessions";
 
 const json = { "content-type": "application/json" };
 
@@ -32,11 +32,13 @@ export interface AgentV1SendInput {
   message: string;
   origin?: AiSessionOriginInputContract;
   pageContext?: AiPageContextContract;
+  /** AG11: the records picked with @, each with its marker's place in the (trimmed) message. */
+  references?: readonly AiSessionReferenceContract[];
 }
 
 export async function sendAgentV1(input: AgentV1SendInput, signal?: AbortSignal): Promise<AgentSendReceiptContract | null> {
   const response = await fetch("/api/ai/conversations", {
-    body: JSON.stringify({ clientMessageId: input.clientMessageId, locale: input.locale, message: input.message, protocolVersion: 3, references: [], sessionId: input.sessionId, ...(input.origin ? { origin: input.origin } : {}), ...(input.pageContext ? { pageContext: input.pageContext } : {}) }),
+    body: JSON.stringify({ clientMessageId: input.clientMessageId, locale: input.locale, message: input.message, protocolVersion: 3, references: input.references ?? [], sessionId: input.sessionId, ...(input.origin ? { origin: input.origin } : {}), ...(input.pageContext ? { pageContext: input.pageContext } : {}) }),
     credentials: "same-origin",
     headers: json,
     method: "POST",

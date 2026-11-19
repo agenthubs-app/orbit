@@ -14,6 +14,8 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/guide/')) return 'guide';
   if (path.startsWith('/api/integrations')) return 'integrations';
   if (path.startsWith('/api/agent/memory')) return 'agent-memory';
+  // agent-design AG11: the @ picker's search and the check of picked records (online-only, never kept on the device).
+  if (path.startsWith('/api/agent/references')) return 'agent-references';
   if (path.startsWith('/api/notes')) return 'notes';
   if (path.startsWith('/api/task-suggestions')) return 'task-suggestions';
   if (path.startsWith('/api/tasks')) return 'tasks';
@@ -117,6 +119,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     // Push preferences are live account/device state; the settings screen does not read a device mirror.
     || endpointTemplate === '/api/inbox/delivery/preferences'
     || endpointTemplate.startsWith('/api/integrations') || endpointTemplate.startsWith('/api/agent/memory')
+    // agent-design AG11: what the @ picker searched and found is never kept on the device (like global search).
+    || endpointTemplate.startsWith('/api/agent/references')
     || (consumerFile.startsWith('src/screens/me/') && ['/api/events/center', '/api/search/global', '/api/agent/plans/v2/summary'].includes(endpointTemplate))
     || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/')
     // Private portraits remain network-only until trusted grant/epoch invalidation is available.
@@ -772,7 +776,8 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/api/agent-v1-client.ts","GET","/api/ai/conversations/sessions/:id"],
   ["src/api/agent-v1-client.ts","GET","/api/agent/ledger/:id"],
   ["src/api/agent-v1-client.ts","POST","/api/agent/ledger/:id"],
-  ["src/screens/ai/ContactMentionPicker.tsx","GET","/api/contacts/page"],
+  ["src/api/agent-v1-client.ts","GET","/api/agent/references/search"],
+  ["src/api/agent-v1-client.ts","POST","/api/agent/references/check"],
   ["src/screens/ai/ContactReferenceChip.tsx","GET","/api/contacts/:id"],
   ["src/screens/ai/AiConversationScreen.tsx","POST","/api/task-suggestions/:id/accept"],
   ["src/screens/ai/AiConversationScreen.tsx","POST","/api/task-suggestions/:id/dismiss"],

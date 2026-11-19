@@ -24,6 +24,8 @@ import { cancelAgentV1, decideAgentCard, latestCard, regenerateAgentCard, remove
 import { answerTextOf, BasisLine, ConfirmationCard, ProgressLine, QuestionOptions, QueuedNote } from "../../orbit-2026/iorbit/confirmation-card";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import styles from "./IOrbit2026.module.css";
+import { checkPickedReferences, MarkedMirror, ReferenceChips, ReferencePicker, useReferenceComposer, type PickerKeys } from "./ReferencePicker";
+import { markedSegments, type ReferenceLanguage } from "../../../../../shared/compute/agent-references";
 
 const AgentMarkdown = dynamic(() => import("../agent-markdown"), {
   loading: () => <div aria-hidden className="orbit-agent-markdown" />,
@@ -213,6 +215,12 @@ function V1Turn({ requestId, sessionId, session, language, navigate }: { request
   );
 }
 
+/** AG11 (视觉稿第 5 组): the user's message with the picked 「@名字」 coloured. */
+function UserText({ text, marks }: { text: string; marks: readonly { start: number; end: number }[] }) {
+  const segments = markedSegments(text, marks.map((mark) => ({ end: mark.end, id: `${mark.start}`, name: text.slice(mark.start + 1, mark.end), start: mark.start, type: "memo" as const })));
+  return <>{segments.map((segment, index) => (segment.binding ? <span key={index} className={styles.mark}>{segment.text}</span> : <span key={index}>{segment.text}</span>))}</>;
+}
+
 export function IOrbit2026({ accountName, initialHistoryOpen = false, agentV1 = false }: {
   /** The greeting's name (the profile display name); null greets without one. */
   accountName: string | null;
@@ -269,6 +277,22 @@ export function IOrbit2026({ accountName, initialHistoryOpen = false, agentV1 = 
   const [source, setSource] = useState<string[] | null>(null);
   const [prefillOrigin, setPrefillOrigin] = useState<NonNullable<typeof chat.agentPrefill>["origin"]>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // AG11: the records picked with @ or 「＋」 (protocol 3 only), their marks in the sentence and the open picker.
+  const refLanguage: ReferenceLanguage = language === "ja" || language === "en" ? language : "zh";
+  const refs = useReferenceComposer(chat.chatDraft, chat.setChatDraft, refLanguage);
+  const pickerKeys = useRef<PickerKeys | null>(null);
+  const mirrorRef = useRef<HTMLDivElement | null>(null);
+  const placeCaret = (result: { caret: number }) => requestAnimationFrame(() => { const input = inputRef.current; if (!input) return; input.focus(); input.setSelectionRange(result.caret, result.caret); });
+  const refBindings = refs.bindings;
+  const markGone = refs.markGone;
+  useEffect(() => {
+    // D7: a record picked a while ago may have been deleted or hidden since; checked when the page comes back.
+    if (!agentV1 || !refBindings.length) return;
+    const check = () => { if (document.visibilityState === "visible") void checkPickedReferences(refBindings).then((gone) => { if (gone.size) markGone(gone); }).catch(() => undefined); };
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("focus", check);
+    return () => { document.removeEventListener("visibilitychange", check); window.removeEventListener("focus", check); };
+  }, [agentV1, refBindings, markGone]);
   const oncePrefill = useRef(false);
   useEffect(() => {
     const media = window.matchMedia("(max-width: 767px)");
@@ -354,11 +378,14 @@ export function IOrbit2026({ accountName, initialHistoryOpen = false, agentV1 = 
   };
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
-    const query = chat.chatDraft.trim();
+    // AG11: the picked records go with the sentence, each with its marker's place in the trimmed message (protocol 3).
+    const sent = refs.forSend(chat.chatDraft);
+    const query = sent.message;
     if (!query || chat.thinking || (contextEnabled && !pageContext)) return;
     chat.setChatDraft("");
+    refs.clear();
     chat.setAgentPrefill(null);
-    void chat.ask(query, undefined, prefillOrigin ?? undefined, contextEnabled ? pageContext ?? undefined : undefined);
+    void chat.ask(query, undefined, prefillOrigin ?? undefined, contextEnabled ? pageContext ?? undefined : undefined, agentV1 ? sent.references : undefined);
     setPrefillOrigin(null);
     resetContext();
   };
@@ -369,8 +396,8 @@ export function IOrbit2026({ accountName, initialHistoryOpen = false, agentV1 = 
     void chat.ask(query, undefined, undefined, contextEnabled ? pageContext ?? undefined : undefined);
     resetContext();
   };
-  const startNew = () => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.newChat(); setHistoryOpen(false); closeRail(); resetContext(); setSource(null); setRequestedDraftId(null); };
-  const pick = (item: OrbitAgentHistoryView) => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.pickHistory(item); setHistoryOpen(false); closeRail(); resetContext(); setSource(null); setRequestedDraftId(null); };
+  const startNew = () => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.newChat(); refs.clear(); setHistoryOpen(false); closeRail(); resetContext(); setSource(null); setRequestedDraftId(null); };
+  const pick = (item: OrbitAgentHistoryView) => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.pickHistory(item); refs.clear(); setHistoryOpen(false); closeRail(); resetContext(); setSource(null); setRequestedDraftId(null); };
   const inConversation = chat.messages.length > 0 || chat.thinking;
   const activeTitle = history.storedHistory.find((item) => item.sessionId === chat.activeSessionId)?.title;
   // An open conversation whose title is not read yet holds the line with a blank instead of 「会話中」 → title.
@@ -411,7 +438,7 @@ export function IOrbit2026({ accountName, initialHistoryOpen = false, agentV1 = 
           </section> : <section className={styles.thread} aria-label={t(iorbitCopy.conversation)} data-orbit-iorbit-thread>
             {chat.earlier.hasMore || chat.earlier.status === "error" ? <Button label={t(chat.earlier.status === "error" ? iorbitCopy.earlierRetry : iorbitCopy.earlier)} variant="ghost" onClick={() => void chat.loadEarlier()} disabled={chat.earlier.status === "loading"} /> : null}
             {chat.messages.map((message, index) => message.role === "user" ?
-              <div className={styles.userRow} key={message.id ?? `u${index}`} data-orbit-iorbit-message><span className={styles.userBubble}>{message.text}{message.supplement ? <small>{message.supplement}</small> : null}</span><AgentMessageCopyButton text={message.text} />{(() => { const next = v1Of(chat.messages[index + 1]); return next && v1.documents.get(next)?.status === "queued" ? <QueuedNote language={language} /> : null; })()}</div> :
+              <div className={styles.userRow} key={message.id ?? `u${index}`} data-orbit-iorbit-message><span className={styles.userBubble}>{message.marks?.length ? <UserText text={message.text} marks={message.marks} /> : message.text}{message.supplement ? <small>{message.supplement}</small> : null}</span><AgentMessageCopyButton text={message.text} />{(() => { const next = v1Of(chat.messages[index + 1]); return next && v1.documents.get(next)?.status === "queued" ? <QueuedNote language={language} /> : null; })()}</div> :
               v1Of(message) ? <V1Turn key={message.id ?? `a${index}`} requestId={v1Of(message)!} sessionId={chat.activeSessionId} session={v1} language={language} navigate={chat.navigate} /> :
               <div className={styles.assistantRow} key={message.id ?? `a${index}`} data-orbit-iorbit-message><span className={styles.assistantIcon} aria-hidden><Icon name="sparkle" size={16} /></span><div className={styles.answer}>
                 <b>iOrbit</b>{message.note ? <p>{message.note}</p> : null}<AgentMarkdown text={message.text} />
@@ -434,9 +461,24 @@ export function IOrbit2026({ accountName, initialHistoryOpen = false, agentV1 = 
           </section>}
           {source ? <div className={styles.contextCard}><div><b>{t(iorbitCopy.pageContext)}</b><p>{contextEnabled && pageContext ? `${pageContext.route} · ${source.length ? fill(t(iorbitCopy.industry), { value: source.join(", ") }) : ""}${fill(t(iorbitCopy.peopleUnit), { n: pageContext.count })}` : t(iorbitCopy.contextOff)}</p></div><Toggle checked={contextEnabled} onChange={(next) => void enableContext(next)} label={t(iorbitCopy.pageContext)} /></div> : null}
           {contextError ? <p className={styles.error} role="alert">{contextError}</p> : null}
-          <form className={styles.composer} onSubmit={submit} data-orbit-agent-chat-composer>
-            <span className={styles.composerPlus} aria-hidden><Icon name="plus" size={16} /></span>
-            <textarea ref={inputRef} rows={1} aria-label={t(iorbitCopy.ask)} placeholder={t(iorbitCopy.composerPlaceholder)} value={chat.chatDraft} onChange={(event) => chat.setChatDraft(event.target.value)} disabled={chat.thinking} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); } }} />
+          <form className={`${styles.composer} ${agentV1 ? styles.composerWithRefs : ""}`} onSubmit={submit} data-orbit-agent-chat-composer>
+            {agentV1 && refs.picker ? <ReferencePicker composer={refs} language={refLanguage} t={t} keysRef={pickerKeys} onPicked={placeCaret} /> : null}
+            {agentV1 && refs.bindings.length ? <ReferenceChips composer={refs} language={refLanguage} t={t} onRemoved={() => inputRef.current?.focus()} /> : null}
+            {agentV1
+              ? <button type="button" className={`btn ${styles.composerButton}`} aria-label={t(iorbitCopy.addContext)} title={t(iorbitCopy.addContext)} aria-expanded={refs.picker?.mode === "plus"} disabled={chat.thinking} data-orbit-reference-add
+                  onClick={() => (refs.picker ? refs.close() : refs.openPlus(inputRef.current?.selectionStart ?? chat.chatDraft.length))}><Icon name="plus" size={16} /></button>
+              : <span className={styles.composerPlus} aria-hidden><Icon name="plus" size={16} /></span>}
+            <div className={`${styles.field} ${refs.bindings.length ? styles.fieldMarked : ""}`}>
+              {agentV1 && refs.bindings.length ? <MarkedMirror text={chat.chatDraft} bindings={refs.bindings} mirrorRef={mirrorRef} /> : null}
+              <textarea ref={inputRef} rows={1} aria-label={t(iorbitCopy.ask)} placeholder={t(iorbitCopy.composerPlaceholder)} value={chat.chatDraft} disabled={chat.thinking}
+                onChange={(event) => (agentV1 ? refs.onTextChange(event.target.value, event.target.selectionStart ?? event.target.value.length) : chat.setChatDraft(event.target.value))}
+                onScroll={(event) => { if (mirrorRef.current) mirrorRef.current.scrollTop = event.currentTarget.scrollTop; }}
+                onKeyDown={(event) => {
+                  if (agentV1 && refs.picker?.mode === "at" && pickerKeys.current?.onKeyDown(event)) return;
+                  if (agentV1 && (event.metaKey || event.ctrlKey) && event.key === "z" && !event.shiftKey && refs.undo(chat.chatDraft)) { event.preventDefault(); return; }
+                  if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); }
+                }} />
+            </div>
             {dictation.supported === null ? <span className={`btn ${styles.composerButton}`} style={{ visibility: "hidden" }} aria-hidden data-orbit-iorbit-mic-slot><Icon name="mic" size={16} /></span> : null}
             {dictation.supported ? <button type="button" className={`btn ${styles.composerButton}`} aria-label={t(dictation.listening ? iorbitCopy.dictating : iorbitCopy.dictate)} aria-pressed={dictation.listening} onClick={dictation.toggle} disabled={chat.thinking}><Icon name="mic" size={16} /></button> : null}
             <button type="submit" className={`btn ${styles.composerButton} ${styles.composerSend}`} aria-label={t(iorbitCopy.send)} disabled={chat.thinking || !chat.chatDraft.trim()} data-orbit-agent-submit="true"><Icon name="send" size={16} /></button>

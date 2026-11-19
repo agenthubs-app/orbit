@@ -51,7 +51,8 @@ export function referencePositionProblem(message: string, references: readonly {
   }
   spans.sort((left, right) => left.start - right.start);
   for (let at = 1; at < spans.length; at += 1) {
-    if (spans[at].start < spans[at - 1].end) return { index: spans[at].index, problem: "two markers overlap" };
+    const current = spans[at]!;
+    if (current.start < spans[at - 1]!.end) return { index: current.index, problem: "two markers overlap" };
   }
   return null;
 }

@@ -21,6 +21,7 @@ import type {
   AiSessionGroupContract,
   AiSessionOrganizationContract,
   AiSessionOriginInputContract,
+  AiSessionReferenceContract,
   AiPageContextContract,
 } from "../../../../../shared/contract/ai-sessions";
 import { reliableAiSendReceiptSchema } from "../../../../../shared/api-schema/ai-sessions";
@@ -328,19 +329,22 @@ export function useAgentChat({ history, suggests, agentV1 = false }: { history: 
   // agent-design AG07: protocol 3. The send is only acknowledged; the turn shows the request's result document
   // (it arrives on the session channel). The composer stays open: a message sent while another runs waits its turn
   // ("已收到，等前一条处理完"). The server writes the session's messages; this page does not persist them.
-  const askV1 = useCallback(async (query: string, originOverride?: AiSessionOriginInputContract, pageContext?: AiPageContextContract) => {
+  // AG11: the @ references picked in the composer go with the message (protocol 3 only), each with its marker's place.
+  const askV1 = useCallback(async (query: string, originOverride?: AiSessionOriginInputContract, pageContext?: AiPageContextContract, references: readonly AiSessionReferenceContract[] = []) => {
     const sessionId = activeSessionIdRef.current ?? createAgentSessionId();
     const clientMessageId = `message:${globalThis.crypto?.randomUUID?.() ?? createAgentSessionId()}`;
     const started = messagesRef.current.some((message) => message.role === "user");
     suppressReliableSessionPersistenceRef.current = true;
     activeSessionIdRef.current = sessionId;
     setActiveSessionId(sessionId);
-    setMessages((current) => [...current, { id: clientMessageId, role: "user", text: query }]);
+    const marks = references.flatMap((reference) => (typeof reference.start === "number" && typeof reference.end === "number" ? [{ end: reference.end, start: reference.start }] : []));
+    setMessages((current) => [...current, { id: clientMessageId, role: "user", text: query, ...(marks.length ? { marks } : {}) }]);
     const language = languageRef.current === "ja" || languageRef.current === "zh" ? languageRef.current : "en";
     const receipt = await sendAgentV1({
       clientMessageId,
       locale: language,
       message: query,
+      references,
       sessionId,
       ...(started ? {} : { origin: originOverride ?? { entryClient: "web", entryPointId: "ai.new_chat", initialGroupId: initialGroupIdRef.current, kind: "manual", template: null } }),
       ...(pageContext ? { pageContext } : {}),
@@ -361,8 +365,9 @@ export function useAgentChat({ history, suggests, agentV1 = false }: { history: 
     retryAssistantIndex?: number,
     originOverride?: AiSessionOriginInputContract,
     pageContext?: AiPageContextContract,
+    references?: readonly AiSessionReferenceContract[],
   ) => {
-    if (agentV1) return askV1(query, originOverride, pageContext);
+    if (agentV1) return askV1(query, originOverride, pageContext, references);
     // A second click can arrive before React paints `thinking`. Keep the
     // reliable request and its billable execution single-flight per screen.
     if (requestInFlightRef.current) return;

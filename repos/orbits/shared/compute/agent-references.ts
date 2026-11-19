@@ -172,7 +172,7 @@ export function atTriggerOf(text: string, caret: number, bindings: readonly Pick
   if (at < 0) return null;
   const query = before.slice(at + 1);
   if (/\s/u.test(query) || query.length > 40) return null;
-  if (at > 0 && !/[\s\p{P}\p{S}]/u.test(before[at - 1])) return null;
+  if (at > 0 && !/[\s\p{P}\p{S}]/u.test(before[at - 1] ?? "")) return null;
   if (bindings.some((binding) => at >= binding.start && at < binding.end)) return null;
   return { query, start: at };
 }

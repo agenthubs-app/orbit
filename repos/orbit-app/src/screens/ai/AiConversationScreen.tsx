@@ -57,8 +57,10 @@ import { aiConversationListSchema, aiSessionReadSchema, aiSessionReceiptMatches,
 import type { AiSessionOriginInputContract, AiSessionReferenceContract } from "../../api/contract/ai-sessions";
 import { updateAiSessionOrganization } from "../../api/ai-session-management";
 import { useMobileViewport } from "../../platform/use-mobile-viewport";
-import { ContactMentionPicker, type MentionContact } from "./ContactMentionPicker";
-import { ContactReferenceChip } from "./ContactReferenceChip";
+import { atPickerQuery, ContactMentionPicker, referenceKey, useGoneReferences } from "./ContactMentionPicker";
+import { ContactReferenceChip, ReferenceChip } from "./ContactReferenceChip";
+import { bindingHolds, insertReference, reconcileBindings, referenceChipHint, referencesForSend, removeBinding, sameNamedKeys, type ReferenceBinding, type ReferenceLanguage } from "../../api/compute/agent-references";
+import type { AgentReferenceCandidateContract } from "../../api/contract/agent-v1";
 import { AiEntityCardList } from "./cards/AiEntityCard";
 import { sessionContactArtifacts, sessionEntityCardTurns } from "../../view-models/ai-artifacts";
 import { aiSessionArtifactRecoverySchema } from "../../api/schema/ai-artifacts";
@@ -155,6 +157,8 @@ type ConversationJournalState = {
   saveError: string | null; saveNotice: string | null; sendError: string | null; sendCode: string | null; failedRequest: SendRequest | null;
   actionError: string | null; acceptedTaskId: string | null; taskInteractionResolution: "accepted" | "dismissed" | null;
   selectedReferences: AiSessionReferenceContract[];
+  /** AG11: the records picked with @ or 「＋」 and where their marks sit in the draft (restored with it; a removed one stays removed). */
+  referenceBindings: ReferenceBinding[];
 };
 export type AiConversationJournal = Partial<ConversationJournalState> & { draftRevision?: number; interruptedRequest?: SendRequest };
 
@@ -249,6 +253,9 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const [failedRequest, setFailedRequest] = useJournalState(journal, "failedRequest", null);
   const [actionError, setActionError] = useJournalState(journal, "actionError", null);
   const [selectedReferences, setSelectedReferences] = useJournalState(journal, "selectedReferences", initialReferences.map(reference => ({ ...reference })));
+  const [referenceBindings, setReferenceBindings] = useJournalState(journal, "referenceBindings", []);
+  const bindingsRef = useRef(referenceBindings);
+  bindingsRef.current = referenceBindings;
   const [sending, setSending] = useState(false);
   const [saving, setSaving] = useState(false);
   const [taskInteractionBusy, setTaskInteractionBusy] = useState(false);
@@ -395,6 +402,9 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
 
   function changeDraft(value: string) {
     if (!owns()) return;
+    // AG11: the marks move with the edit; a mark whose words were edited is no longer sent.
+    const kept = reconcileBindings(draftValue.current, value, bindingsRef.current);
+    if (kept.length !== bindingsRef.current.length || kept.some((binding, index) => binding !== bindingsRef.current[index])) { bindingsRef.current = kept; setReferenceBindings(kept); }
     draftValue.current = value;
     draftRevision.current++;
     journal.draftRevision = draftRevision.current;
@@ -475,7 +485,11 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
           }
         } : {}),
         requestId: randomUUID(),
-        references: selectedReferences,
+        // AG11: protocol 2 knows contact, event and note; a picked record of those kinds goes too (without its place).
+        references: [...selectedReferences, ...bindingsRef.current.flatMap((binding): AiSessionReferenceContract[] => {
+          const type = binding.type === "memo" ? "note" : binding.type;
+          return (type === "contact" || type === "event" || type === "note") && bindingHolds(draftValue.current, binding) && !selectedReferences.some((item) => item.id === binding.id) ? [{ id: binding.id, type }] : [];
+        })],
         sessionId,
       },
     };
@@ -618,18 +632,22 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
    * AG07: protocol 3. The send is only acknowledged; the turn shows its result document. Another message can be sent
    * while one runs (it waits its turn). Offline nothing is sent: the composer says it needs the network.
    */
-  async function sendV1(message: string) {
+  async function sendV1(message: string, marked: readonly AiSessionReferenceContract[] = []) {
     if (!owns() || sendOperation.current) return;
     const controller = new AbortController();
     sendOperation.current = controller; requests.current.add(controller);
     setSendError(null); setSendCode(null);
+    // AG11: the picked records go with this message (each with its mark's place); the draft's marks go with it.
+    const picked = bindingsRef.current;
     draftValue.current = ""; setDraftMessage("");
+    bindingsRef.current = []; setReferenceBindings([]);
     const sessionId = previousSession?.id ?? `session_${randomUUID()}`;
     const clientMessageId = `message:${randomUUID()}`;
     const receipt = await sendAgentV1(client, {
       clientMessageId,
       locale: locale.language,
       message,
+      references: [...selectedReferences, ...marked],
       sessionId,
       ...(previousSession ? {} : { origin: sessionOrigin ?? { entryClient: "app", entryPointId: "ai.new_chat", initialGroupId: null, kind: "manual", template: null } }),
     }).catch(() => null);
@@ -637,7 +655,13 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     if (!owns()) return;
     if (!receipt) {
       setSendError(locale.t("aiConversation.incomplete"));
+      // The draft comes back trimmed; its marks come back with it.
+      const restored = picked.flatMap((binding) => {
+        const at = marked.find((item) => item.id === binding.id && item.type === binding.type && typeof item.start === "number" && message.slice(item.start, item.end) === `@${binding.name}`);
+        return at ? [{ ...binding, end: at.end!, start: at.start! }] : [];
+      });
       draftValue.current = message; setDraftMessage(message);
+      bindingsRef.current = restored; setReferenceBindings(restored);
       return;
     }
     const now = new Date().toISOString();
@@ -652,7 +676,9 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
 
   async function sendMessage() {
     if (!owns()) return;
-    const message = draftValue.current.trim();
+    // AG11: the trimmed message and the places of the marks that still hold in it.
+    const sent = referencesForSend(draftValue.current, bindingsRef.current);
+    const message = sent.message;
     if (!message) return;
     if (isDraftConversation || isStoredAgentSession || Boolean(previousSession)) {
       // AG07 repair 2: a send waits for the protocol check; a slow check never sends through protocol 2, and a
@@ -661,7 +687,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       if (!owns()) return;
       if (version === 3) {
         setProtocolV3(true);
-        await sendV1(message);
+        await sendV1(message, sent.references);
         return;
       }
       if (version === null) {
@@ -690,10 +716,37 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     setSending(false);
   }
 
-  function addMention(contact: MentionContact) {
-    if (!owns() || selectedReferences.some(reference => reference.type === "contact" && reference.id === contact.id)) return;
-    setSelectedReferences([...selectedReferences, { id: contact.id, type: "contact" }]);
-    if (!draftValue.current.includes(`@${contact.name}`)) changeDraft(`${draftValue.current}${draftValue.current && !/\s$/u.test(draftValue.current) ? " " : ""}@${contact.name} `);
+  /**
+   * AG11 (D6): put picked records in the sentence — over the typed 「@words」 [from, to) when the @ opened the picker, at
+   * the caret (from = to) when 「＋」 did — each as 「@名字 」 with its mark. Returns the new caret.
+   */
+  function pickReferences(candidates: readonly AgentReferenceCandidateContract[], from: number, to: number): number {
+    if (!owns() || !candidates.length) return to;
+    let state = { bindings: bindingsRef.current, caret: from, text: draftValue.current };
+    let end = to;
+    for (const candidate of candidates) {
+      const hint = referenceChipHint(candidate, locale.language as ReferenceLanguage);
+      const out = insertReference(state.text, state.caret, end, state.bindings, { id: candidate.id, name: candidate.name, type: candidate.type, ...(candidate.eventKind ? { eventKind: candidate.eventKind } : {}), ...(hint ? { hint } : {}) });
+      state = out;
+      end = out.caret;
+    }
+    bindingsRef.current = state.bindings; setReferenceBindings(state.bindings);
+    draftValue.current = state.text; draftRevision.current++; journal.draftRevision = draftRevision.current; setDraftMessage(state.text);
+    return state.caret;
+  }
+
+  /** AG11 (D2): × keeps the words and drops the @; the record is no longer sent. */
+  function removeBindingChip(binding: ReferenceBinding) {
+    if (!owns()) return;
+    const out = removeBinding(draftValue.current, bindingsRef.current, binding);
+    bindingsRef.current = out.bindings; setReferenceBindings(out.bindings);
+    draftValue.current = out.text; draftRevision.current++; journal.draftRevision = draftRevision.current; setDraftMessage(out.text);
+  }
+
+  function markGoneReferences(keys: Set<string>) {
+    if (!owns()) return;
+    const next = bindingsRef.current.map((binding) => (keys.has(`${binding.type}:${binding.id}`) ? { ...binding, gone: true } : binding));
+    bindingsRef.current = next; setReferenceBindings(next);
   }
 
   function removeReference(reference: AiSessionReferenceContract) {
@@ -866,9 +919,13 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       scopeKey={scopeKey}
       draftMessage={draftMessage}
       selectedReferences={selectedReferences}
+      referenceBindings={referenceBindings}
+      onPickReferences={pickReferences}
+      onRemoveBinding={removeBindingChip}
+      onGoneReferences={markGoneReferences}
+      referencesOnline={!conversationOffline && state.kind !== "offline"}
       onBack={() => openHref("/ai")}
       onChangeDraft={changeDraft}
-      onAddMention={addMention}
       onRemoveReference={removeReference}
       onOpenHref={openHref}
       onResolveTaskSuggestion={resolveTaskSuggestion}
@@ -919,7 +976,11 @@ function ConversationThread({
   selectedReferences,
   onBack,
   onChangeDraft,
-  onAddMention,
+  referenceBindings,
+  onPickReferences,
+  onRemoveBinding,
+  onGoneReferences,
+  referencesOnline,
   onRemoveReference,
   onOpenHref,
   onResolveTaskSuggestion,
@@ -963,7 +1024,12 @@ function ConversationThread({
   selectedReferences: readonly AiSessionReferenceContract[];
   onBack: () => void;
   onChangeDraft: (value: string) => void;
-  onAddMention: (contact: MentionContact) => void;
+  referenceBindings: readonly ReferenceBinding[];
+  onPickReferences: (candidates: readonly AgentReferenceCandidateContract[], from: number, to: number) => number;
+  onRemoveBinding: (binding: ReferenceBinding) => void;
+  onGoneReferences: (keys: Set<string>) => void;
+  /** AG11: the server can be reached (the picker searches, picked records are checked); offline the picker lists the phone's contacts only. */
+  referencesOnline: boolean;
   onRemoveReference: (reference: AiSessionReferenceContract) => void;
   onOpenHref: (href: string) => void;
   onResolveTaskSuggestion: (action: "accept" | "dismiss") => void;
@@ -1007,8 +1073,29 @@ function ConversationThread({
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const [routesOpen, setRoutesOpen] = useState(false);
-  const [mentionsOpen, setMentionsOpen] = useState(false);
-  const [referenceNames, setReferenceNames] = useState<Record<string, string>>({});
+  // AG11 (D5, D6): the 「添加上下文」 picker — opened by 「＋」 (pick several) or by typing @ (pick one).
+  const [picker, setPicker] = useState<null | { kind: "at"; start: number } | { kind: "plus"; caret: number }>(null);
+  const [plusQuery, setPlusQuery] = useState("");
+  const selection = useRef(draftMessage.length);
+  const shownBindings = referenceBindings.filter((binding) => bindingHolds(draftMessage, binding));
+  const sameNamed = sameNamedKeys(shownBindings);
+  // D7: a restored draft's records are checked once; one that cannot be opened shows 「打不开了」 and can still be sent.
+  useGoneReferences(shownBindings, referencesOnline, scopeKey, onGoneReferences);
+  const pickerQuery = picker?.kind === "at" ? draftMessage.slice(picker.start + 1, Math.max(picker.start + 1, selection.current)) : plusQuery;
+  const typeDraft = (next: string) => {
+    const previous = draftMessage;
+    let suffix = 0;
+    while (suffix < Math.min(previous.length, next.length) && previous[previous.length - 1 - suffix] === next[next.length - 1 - suffix]) suffix += 1;
+    const caret = Math.max(0, next.length - suffix);
+    selection.current = caret;
+    onChangeDraft(next);
+    setPicker((current) => {
+      if (current?.kind === "plus") return current;
+      const trigger = atPickerQuery(next, caret, referenceBindings);
+      if (current?.kind === "at") return trigger && trigger.start === current.start ? current : null;
+      return next.length > previous.length && next[caret - 1] === "@" && trigger ? { kind: "at", start: trigger.start } : null;
+    });
+  };
   const { fontScale, height: windowHeight } = useWindowDimensions();
   const safeInsets = useSafeAreaInsets();
   const minimumInputHeight = Math.max(44, Math.ceil(22 * fontScale + 12));
@@ -1139,9 +1226,17 @@ function ConversationThread({
       <View testID="conversation-composer" onLayout={(event) => { const extra = Math.max(0, Math.round(event.nativeEvent.layout.height - (minimumInputHeight + 18))); setComposerExtra((current) => (current === extra ? current : extra)); }} style={styles.r21Composer}>
         {sendLabelSuffix ? <UiText style={styles.r21Muted}>{locale.t("aiConversation.sendMessage") + " · " + sendLabelSuffix}</UiText> : null}
         {pendingNoteChanges ? <UiText style={styles.r21Muted}>{locale.t("aiConversation.pendingChanges", { items: pendingNoteChanges })}</UiText> : null}
-        {selectedReferences.length ? <View style={styles.referenceRow}>{selectedReferences.map((reference) => <ContactReferenceChip key={reference.type + ":" + reference.id} id={reference.id} knownName={referenceNames[reference.id]} scopeKey={scopeKey} onRemove={() => onRemoveReference(reference)} style={styles.referenceChip} textStyle={styles.referenceChipText} />)}</View> : null}
-        {mentionsOpen ? <ContactMentionPicker scopeKey={scopeKey} onSelect={(contact) => { setReferenceNames((names) => ({ ...names, [contact.id]: contact.name })); onAddMention(contact); setMentionsOpen(false); }} selectedIds={selectedReferences.filter((reference) => reference.type === "contact").map((reference) => reference.id)} /> : null}
-        <View style={styles.r21ComposerLine}><UiButton label="@" size="sm" variant="ghost" onPress={() => setMentionsOpen((open) => !open)} /><TextInput accessibilityLabel={locale.t("ai.message")} multiline={false} onChangeText={onChangeDraft} onSubmitEditing={() => { followNewMessages.current = true; onSend(); }} placeholder={locale.t("aiConversation.continuePlaceholder")} placeholderTextColor={colors.ink3Text} returnKeyType="send" style={styles.r21Input} value={draftMessage} /><UiIconButton icon="send" accessibilityLabel={locale.t("aiConversation.sendMessage")} onPress={() => { followNewMessages.current = true; onSend(); }} disabled={sending || writingBlocked || !draftMessage.trim()} solid /></View>
+        {picker ? <ContactMentionPicker scopeKey={scopeKey} mode={{ kind: picker.kind }} query={pickerQuery} onQuery={setPlusQuery} offline={!referencesOnline}
+          pickedKeys={new Set([...shownBindings.map(referenceKey), ...selectedReferences.map(referenceKey)])}
+          onClose={() => { setPicker(null); setPlusQuery(""); }}
+          onPick={(candidate) => { if (picker.kind === "at") selection.current = onPickReferences([candidate], picker.start, Math.max(selection.current, picker.start + 1)); setPicker(null); }}
+          onDone={(candidates) => { selection.current = onPickReferences(candidates, picker.kind === "plus" ? picker.caret : selection.current, picker.kind === "plus" ? picker.caret : selection.current); setPicker(null); setPlusQuery(""); }} /> : null}
+        {selectedReferences.length || shownBindings.length ? <View style={styles.referenceRow}>
+          {selectedReferences.map((reference) => <ContactReferenceChip key={reference.type + ":" + reference.id} id={reference.id} scopeKey={scopeKey} onRemove={() => onRemoveReference(reference)} style={styles.referenceChip} textStyle={styles.referenceChipText} />)}
+          {shownBindings.map((binding) => <ReferenceChip key={`${referenceKey(binding)}@${binding.start}`} binding={binding} showHint={sameNamed.has(`${binding.type}:${binding.name}`)} onRemove={() => onRemoveBinding(binding)} />)}
+        </View> : null}
+        {shownBindings.some((binding) => binding.gone) ? <UiText style={styles.r21Muted}>{locale.t("aiMention.goneHint")}</UiText> : null}
+        <View style={styles.r21ComposerLine}><UiIconButton icon="plus" accessibilityLabel={locale.t("aiMention.add")} onPress={() => { if (picker) { setPicker(null); return; } setPlusQuery(""); setPicker({ caret: selection.current, kind: "plus" }); }} /><TextInput accessibilityLabel={locale.t("ai.message")} multiline={false} onChangeText={typeDraft} onSelectionChange={(event) => { selection.current = event.nativeEvent.selection.start; }} onSubmitEditing={() => { followNewMessages.current = true; setPicker(null); onSend(); }} placeholder={locale.t("aiConversation.continuePlaceholder")} placeholderTextColor={colors.ink3Text} returnKeyType="send" style={styles.r21Input} value={draftMessage} /><UiIconButton icon="send" accessibilityLabel={locale.t("aiConversation.sendMessage")} onPress={() => { followNewMessages.current = true; setPicker(null); onSend(); }} disabled={sending || writingBlocked || !draftMessage.trim()} solid /></View>
       </View>
       <ActionSheet visible={routesOpen} title={locale.t("aiConversation.commonEntries")} onClose={() => setRoutesOpen(false)} options={conversationQuickRoutes(locale.language).map((route) => ({ key: route.href, label: route.title }))} onSelect={(key) => { setRoutesOpen(false); onOpenHref(key); }} />
     </AppScreen>
