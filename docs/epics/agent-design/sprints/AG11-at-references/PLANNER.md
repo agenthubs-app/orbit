@@ -122,3 +122,13 @@
 
 外部条件缺失（AG13 未合回、视觉稿未批准、评测自检不过）先不启动。run 已开始，按 eval README 第 6 节最多两个修复轮次，每次整套门槛重跑；仍不过就如实结束为 failed，不为通过改用例，用例确实写错按第 7 节记进 `eval/CHANGES.md`。
 REPORT 含验收映射、功能 SHA／文件／理由、命令与退出码、门槛运行编号与评审结论、费用、未提交与下一步。分支 `sprint/AG11-at-references` 从 `orbit-agent-claude` 建；固定最终 SHA 交协调者以 `--no-ff` 合回 `orbit-agent-claude`，合并树跑受影响测试和两端 typecheck 后才登记 completed。
+
+## 追加记录：开工核对的更正（Generator，2026-11-19，run-01）
+
+原文和开工时的 SHA-256（`efc07dbd…a6329`）不变，以下是按前序 REPORT 与代码核对后的出入：
+
+1. **AG13 没有交出 `privateEvent`、`attendance` 的 `read` 适配器。** CONVENTIONS 第 4 节和本页上下文包都写了，代码里 `references/authorize.ts` 仍把 attendance 一律判为打不开，`DomainKind` 也没有这两类。本 sprint 在活动适配器里按编号补读（`private_event:…`、`attendance:…`，只读本人的），见 REPORT。
+2. **门槛里 REF 区是 5 例，不是 6 例**：AE-REF-002、003、004、006、008。AE-REF-001、005、007 带 `gate: AG14`，不在本门槛（与 SPRINTS.md 登记表的「REF ×5」一致）。验收映射里引用 AE-REF-001、005 的地方，以开发运行代替门槛证据。
+3. **`memory_state` 第一次在门槛里用到（AE-REF-002）**，运行器原把它标为 AG14 才有证据。本 sprint 实现了它的空列表形式（结束时账号没有记忆条目），带条目的形式仍等 AG14（CONVENTIONS 第 7 节）。
+4. **契约快照只允许加字段**：位置与 `eventKind` 作为可选字段加在 `AiSessionReferenceContract` 上（协议 2 校验时丢掉），没有另起 `AgentReferenceContract` 接口。
+5. **档位按 H**（登记表已是 H）。
