@@ -4,6 +4,7 @@ import type {
   AgentActionPreviewContract,
   AgentCardDecisionInputContract,
   AgentClarificationContract,
+  AgentConnectionConsentInputContract,
   AgentReferenceCandidateContract,
   AgentReferenceCheckResultContract,
   AgentReferenceSearchResultContract,
@@ -301,3 +302,12 @@ export const agentReferenceCheckInputSchema = z.object({
 export const agentReferenceCheckResultSchema: z.ZodType<AgentReferenceCheckResultContract> = z.object({
   references: z.array(z.object({ accessible: z.boolean(), id: identifier, name: z.string().nullable(), type: agentReferenceSearchKindSchema })),
 }) as unknown as z.ZodType<AgentReferenceCheckResultContract>;
+
+/* ── AG17：外部连接 ─────────────────────────────────────────────────────── */
+
+/** POST /api/agent/connections/authorize 的请求体：用户在同意页上的选择。 */
+export const agentConnectionConsentInputSchema: z.ZodType<AgentConnectionConsentInputContract> = z.object({
+  decision: z.enum(["allow", "deny"]),
+  request: z.string().min(1).max(8000),
+  scopes: z.array(z.string().min(1).max(60)).max(40),
+}).strict();

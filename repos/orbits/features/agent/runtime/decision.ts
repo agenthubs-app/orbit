@@ -51,6 +51,13 @@ async function checkCardTarget(op: AgentActionOperationPayload, reader: TodoRead
 
 /** Conversation cards expire after 7 days (设计稿 §5.2). */
 export const AGENT_CARD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+/** agent-design AG17 (设计稿 §5.2, §5.4): what an external agent proposed waits 24 hours, then the agent has to propose again. */
+export const AGENT_EXTERNAL_CARD_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** How long a card of this origin waits for a decision. */
+export function cardTtlMs(origin: AgentActionOrigin | undefined): number {
+  return origin?.kind === "connection" ? AGENT_EXTERNAL_CARD_TTL_MS : AGENT_CARD_TTL_MS;
+}
 const MAX_OUTBOX_ATTEMPTS = 5;
 
 export const AGENT_DECISIONS = ["confirm", "reject", "retry", "mark_done", "abandon"] as const;
@@ -110,6 +117,8 @@ const MESSAGES: Record<CardLocale, {
   revisionChanged: string;
   contentChanged: string;
   expired: string;
+  /** AG17: an external proposal past its 24 hours; it is not made again in Orbit. */
+  expiredExternal: string;
   closedRejected: string;
   closedCanceled: string;
   retry: string;
@@ -126,6 +135,7 @@ const MESSAGES: Record<CardLocale, {
     confirmed: "Confirmed. Carrying it out now.",
     contentChanged: "Something on this card changed. Please look at it again: it now shows the current data and needs another click.",
     expired: "This card was left too long. Generate a new one?",
+    expiredExternal: "This proposal is more than 24 hours old and no longer works. If you still want the change, ask the assistant that proposed it to propose it again.",
     markDone: "Marked as done on your word. Nothing was written again.",
     notInReview: "This item does not need review.",
     regenerated: "The card was made again from the current data. Nothing is done until you click confirm.",
@@ -141,6 +151,7 @@ const MESSAGES: Record<CardLocale, {
     confirmed: "確認しました。実行しています。",
     contentChanged: "カードの内容に変更があります。もう一度ご確認ください。現在のデータで更新しました。もう一度押すまで実行しません。",
     expired: "このカードは時間が経ちすぎました。作り直しますか？",
+    expiredExternal: "この提案は 24 時間を過ぎたため、もう使えません。必要な場合は、提案したアシスタントにもう一度提案させてください。",
     markDone: "ご判断のとおり完了にしました。もう一度書き込むことはしていません。",
     notInReview: "この項目は確認の必要がありません。",
     regenerated: "現在のデータでカードを作り直しました。確認を押すまで何も実行しません。",
@@ -156,6 +167,7 @@ const MESSAGES: Record<CardLocale, {
     confirmed: "已确认，正在执行。",
     contentChanged: "内容有变化，请再看一遍。卡片已按现在的数据更新，再点一次确认才会执行。",
     expired: "这张卡放太久了，要重新生成一张吗？",
+    expiredExternal: "这条提议已经超过 24 小时，失效了。还需要的话，请让提出它的那个助手重新提一次。",
     markDone: "已按你的判断标为已完成，没有再写一次。",
     notInReview: "这一项现在不需要核对。",
     regenerated: "已按现在的数据重新生成这张卡，点确认之前不会执行。",
@@ -167,6 +179,12 @@ const MESSAGES: Record<CardLocale, {
 
 export function cardMessages(locale: string | undefined) {
   return MESSAGES[cardLocale(locale)];
+}
+
+/** What a card past its time says: a conversation card can be made again; an external proposal has to be proposed again. */
+export function expiredMessage(action: Pick<AgentActionRecord, "locale" | "origin">): string {
+  const messages = cardMessages(action.locale);
+  return action.origin?.kind === "connection" ? messages.expiredExternal : messages.expired;
 }
 
 /** The visible and executable content the SHA-256 card hash covers (设计稿 §5.1). */
@@ -303,7 +321,7 @@ async function nextRevision(deps: AgentCardDependencies, action: AgentActionReco
   return {
     ...action,
     contentChanges: undefined,
-    expiresAt: reason === "regenerated" ? new Date(Date.parse(now) + AGENT_CARD_TTL_MS).toISOString() : action.expiresAt,
+    expiresAt: reason === "regenerated" ? new Date(Date.parse(now) + cardTtlMs(action.origin)).toISOString() : action.expiresAt,
     expiredAt: undefined,
     operations,
     payloadHash: texts.payloadHash,
@@ -392,9 +410,9 @@ async function decideOnce(
   // Expiry is judged from expiresAt at the click (no timer before AG15).
   if (isPastExpiry(action, now)) {
     const expired: AgentActionRecord = { ...action, expiredAt: now, status: "expired", updatedAt: now };
-    return commit(record("refused", messages.expired, { reason: "CARD_EXPIRED" }), { next: expired });
+    return commit(record("refused", expiredMessage(action), { reason: "CARD_EXPIRED" }), { next: expired });
   }
-  if (action.status === "expired") return refuse("CARD_EXPIRED", messages.expired);
+  if (action.status === "expired") return refuse("CARD_EXPIRED", expiredMessage(action));
   if (action.status === "rejected" || action.status === "canceled") {
     return refuse("CARD_CLOSED", action.status === "rejected" ? messages.closedRejected : messages.closedCanceled);
   }
@@ -516,7 +534,7 @@ async function decideOnce(
 
 export interface AgentRegenerateResult {
   outcome: "regenerated" | "refused";
-  reason?: "CARD_NOT_EXPIRED" | "CARD_REVISION_CHANGED";
+  reason?: "CARD_NOT_EXPIRED" | "CARD_REVISION_CHANGED" | "CARD_EXPIRED";
   message: string;
   revision: number;
 }
@@ -536,6 +554,10 @@ export async function regenerateCard(deps: AgentCardDependencies, input: { actio
     const past = isPastExpiry(action, now);
     if (!past && action.status !== "expired") {
       return { message: messages.revisionChanged, outcome: "refused", reason: "CARD_NOT_EXPIRED", revision: action.revision ?? 1 };
+    }
+    // AG17 (设计稿 §5.4): an external proposal that ran out is not made again here; the agent proposes again.
+    if (action.origin?.kind === "connection") {
+      return { message: expiredMessage(action), outcome: "refused", reason: "CARD_EXPIRED", revision: action.revision ?? 1 };
     }
     const next = await nextRevision(deps, action, "regenerated", now);
     const committed = await repository.commitCardChange({ actionId: action.actionId, expect: { revision: action.revision ?? 1, statuses: [action.status], updatedAt: action.updatedAt }, next });

@@ -488,3 +488,60 @@ export interface AttendanceNoteContract {
   createdAt: string;
   updatedAt: string;
 }
+
+/* ── AG17：外部连接（用户自己的 Claude、Codex 经 MCP 接入）────────────────── */
+
+/** 一个领域能勾什么：只读，以及（有的领域）可以提修改。 */
+export interface AgentConnectionScopeOptionContract {
+  domain: "contacts" | "events" | "attendance" | "todos" | "memos" | "schedule";
+  read: string;
+  /** 这个领域还不能由外部提修改时为 null。 */
+  propose: string | null;
+}
+
+/** 设置里的一条连接：哪个客户端、能读什么、能改什么、上次什么时候用过。 */
+export interface AgentConnectionContract {
+  id: string;
+  clientName: string;
+  /** 客户端身份文档所在的主机名（如 claude.ai），和名字一起显示。 */
+  clientHost: string;
+  scopes: readonly string[];
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+export interface AgentConnectionListContract {
+  connections: readonly AgentConnectionContract[];
+  options: readonly AgentConnectionScopeOptionContract[];
+}
+
+/** 同意页要显示的内容：谁在请求、请求了什么、同意后会跳回哪里。 */
+export interface AgentConnectionConsentContract {
+  clientName: string;
+  clientHost: string;
+  /** 同意后浏览器跳回的地址的主机名；本机回调（localhost、127.0.0.1）时页面要多提醒一句。 */
+  redirectHost: string;
+  redirectIsLoopback: boolean;
+  requestedScopes: readonly string[];
+  options: readonly AgentConnectionScopeOptionContract[];
+}
+
+export interface AgentConnectionConsentInputContract {
+  /** 授权请求的凭条（地址栏里的 request 参数）。 */
+  request: string;
+  decision: "allow" | "deny";
+  scopes: readonly string[];
+}
+
+export interface AgentConnectionConsentResultContract {
+  /** 浏览器接下来要去的地址（客户端登记的回调地址）。 */
+  redirectTo: string;
+}
+
+/** 确认链接页：这条外部提议现在的样子。卡片本身沿用 AgentActionPreviewContract。 */
+export interface AgentProposalViewContract {
+  proposalId: string;
+  clientName: string;
+  createdAt: string;
+  card: AgentActionPreviewContract;
+}
