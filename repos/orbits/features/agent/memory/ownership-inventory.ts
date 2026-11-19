@@ -75,6 +75,9 @@ export function redactedId(id: string): string {
   return `${head}#${hash.toString(16).padStart(8, "0")}`;
 }
 
+/** At most this many records of one partition are moved in one go (a bounded read; see tests/audits/unbounded-list-reads). */
+export const MOVE_LIMIT = 2000;
+
 export interface MoveResult {
   from: string;
   toAccountId: string;
@@ -99,7 +102,9 @@ export async function moveMemoryPartition(input: {
   const { store } = input;
   const from = agentMemoryScopeId(input.workspaceId, input.partitionId);
   const to = agentMemoryScopeId(input.workspaceId, input.verdict.accountId);
-  const records = await store.listRecords({ collectionName: AGENT_MEMORY_COLLECTION, limit: "unbounded", workspaceId: from });
+  // One account's entries are few; a partition at the limit is not moved in part: the move stops with an error.
+  const records = await store.listRecords({ collectionName: AGENT_MEMORY_COLLECTION, limit: MOVE_LIMIT, workspaceId: from });
+  if (records.length >= MOVE_LIMIT) throw new Error(`The partition holds ${MOVE_LIMIT} records or more; it is left where it is to be checked by hand.`);
   const result: MoveResult = { from: input.partitionId, keptForCheck: [], moved: 0, settingsMoved: false, toAccountId: input.verdict.accountId };
   for (const record of records) {
     const existing = await store.getRecord({ collectionName: AGENT_MEMORY_COLLECTION, includeDeleted: true, recordId: record.recordId, workspaceId: to });

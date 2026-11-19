@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import type { AgentMemoryRecordPayload } from "../../features/agent/memory/contract";
-import { classifyMemoryPartition, inventoryMemoryOwnership, moveMemoryPartition, redactedId, type IdentityRows } from "../../features/agent/memory/ownership-inventory";
+import { MOVE_LIMIT, classifyMemoryPartition, inventoryMemoryOwnership, moveMemoryPartition, redactedId, type IdentityRows } from "../../features/agent/memory/ownership-inventory";
 import { AGENT_MEMORY_COLLECTION, agentMemoryScopeId, createStorageAgentMemoryService } from "../../features/agent/memory/service";
 
 const IDENTITY: IdentityRows = {
@@ -102,4 +102,17 @@ test("a partition that is not proven is refused; two people with the same name a
   assert.deepEqual(classifyMemoryPartition("authjs-user-9", sameLooking), { kind: "unresolved", reason: "unknown_id" });
   assert.deepEqual(await of("account:alice").list(), []);
   assert.deepEqual(await of("account:bob").list(), []);
+});
+
+test("a partition at the read limit is not moved in part: it stays whole where it is", async () => {
+  const { of, store } = await seeded();
+  const old = of("profile:alice");
+  const first = await old.create({ category: "preference", content: "Keep replies short." });
+  const [record] = await store.listRecords({ collectionName: AGENT_MEMORY_COLLECTION, limit: 1, workspaceId: agentMemoryScopeId("workspace:one", "profile:alice") });
+  let asked: unknown = null;
+  const full = { ...store, listRecords: async (query: Parameters<typeof store.listRecords>[0]) => { asked = query.limit; return Array.from({ length: MOVE_LIMIT }, () => record); } };
+  await assert.rejects(moveMemoryPartition({ now: "2026-11-19T00:00:00.000Z", partitionId: "profile:alice", store: full, verdict: classifyMemoryPartition("profile:alice", IDENTITY), workspaceId: "workspace:one" }), /left where it is/u);
+  assert.equal(asked, MOVE_LIMIT);
+  assert.equal((await old.get(first.memoryId))?.content, "Keep replies short.");
+  assert.deepEqual(await of("account:alice").list(), []);
 });
