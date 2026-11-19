@@ -22,6 +22,9 @@ import { createPersonalScheduleAssociationReader } from "../../../features/perso
 import { createStorageAgentMemoryService } from "../../../features/agent/memory/service";
 import { createStorageAgentAutomationService } from "../../../features/agent/automations/service";
 import { createPostgresAutomationStorage } from "../../../features/agent/automations/due-index";
+import { setTaskReminder } from "../../../features/agent/automations/reminder";
+import { createPushDeviceService } from "../../../features/notifications/push-device-service";
+import { webPushTokenOf } from "../../../features/notifications/web-push-adapter";
 import { RULE_CAPABILITY_OF } from "../../../features/agent-v1/domains/rule/apply";
 import { domainSaidIn, replanSaidIn, scopeSaidIn } from "../../../features/agent-v1/rule/parse";
 import { fieldSaidIn } from "../../../features/agent-v1/functions/basis";
@@ -658,18 +661,50 @@ export function createWorldWriter(world: string, clock: string) {
     await step("memory", 1, writeMemory);
     await step("rule", 1, writeRule);
     await step("conversation", 4, writeConversation);
-    for (const kind of ["connection", "card", "push_device"] as const) {
+    for (const kind of ["connection", "card"] as const) {
       for (const record of byKind(kind)) gap(report, record.id, kind, `${kind} cannot be written by the current product; arrives in a later sprint`);
       if (byKind(kind).length) count(report, byKind(kind)[0].account, `${kind}_not_seeded`, byKind(kind).length);
     }
     return report;
   }
 
+  /**
+   * AG16 (PSH.yaml push-device-app): a device registration through the product's device service. `client: app` is a
+   * phone with an Expo token; `client: web` is a browser whose subscription points at this server's local simulator
+   * (its keys are derived from the device id — tests/agent-eval/preload/web-push-sim.cjs). `permission` is stored as
+   * the fixture says: a browser that said no is on record as denied, and the product must not send to it.
+   */
+  async function writePushDevice(record: FixtureRecord, port: number): Promise<void> {
+    const actorId = actorOf(record.account);
+    const client = String(record.data.client ?? "app");
+    const permission = String(record.data.permission ?? "granted") as "granted" | "provisional" | "denied" | "undetermined";
+    const deviceId = productId("push-device", world, record.id);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { evalWebPushSubscription } = require("../preload/web-push-sim.cjs") as { evalWebPushSubscription(deviceId: string, port: number): { endpoint: string; keys: { p256dh: string; auth: string } } };
+    const token = client === "web" ? webPushTokenOf(evalWebPushSubscription(deviceId, port)) : `ExponentPushToken[agent-eval-${record.id}]`;
+    await createPushDeviceService({ actorId }).register({ deviceId, permission, platform: client === "web" ? "web" : "ios", token });
+    report.ids[record.id] = deviceId;
+    count(report, record.account, "push_devices");
+  }
+
+  /** AG16 (PSH.yaml rule-push-on): a rule's reminder switch, set the way the task's own page sets it. */
+  async function updateRule(fixtureId: string, account: string, set: Record<string, unknown>): Promise<void> {
+    const actorId = actorOf(account);
+    const automationId = idOf(fixtureId);
+    if (!automationId) throw new Error(`${fixtureId} was not seeded`);
+    const other = Object.keys(set).filter((key) => key !== "id" && key !== "account" && key !== "notify");
+    if (other.length) throw new Error(`only a rule's notify can be changed in place (got ${other.join(", ")})`);
+    const storage = createPostgresAutomationStorage({ client: runtime.client, workspaceId });
+    const service = createStorageAgentAutomationService({ actorId, now: () => new Date(Date.parse(clock) - 30_000).toISOString(), storage, store: store as never, workspaceId });
+    const updated = await setTaskReminder(service, automationId, { push: (set.notify as { push?: boolean } | undefined)?.push === true });
+    if (!updated) throw new Error(`${fixtureId} is not a scheduled task`);
+  }
+
   async function close(): Promise<void> {
     await Promise.allSettled([configured.client.close(), runtime.client.close(), events.client.close()]);
   }
 
-  return { actorOf, close, ensureAccount, report, updatePlatformEvent, updateTodo, writeAll, writeAttendance, writeContact, writeConversation, writeMemo, writeMemory, writePrivateEvent, writeRule, writeSchedule, writeTodo };
+  return { actorOf, close, ensureAccount, report, updatePlatformEvent, updateRule, updateTodo, writePushDevice, writeAll, writeAttendance, writeContact, writeConversation, writeMemo, writeMemory, writePrivateEvent, writeRule, writeSchedule, writeTodo };
 }
 
 export type WorldWriter = ReturnType<typeof createWorldWriter>;

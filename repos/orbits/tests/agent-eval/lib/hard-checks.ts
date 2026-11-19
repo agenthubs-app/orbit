@@ -55,8 +55,6 @@ export const NOT_YET: Record<string, string> = {
   mcp_tool_list: "AG17",
   memory_recalled: "AG14",
   pages_read: "AG05",
-  push_delivery: "AG16",
-  push_excludes: "AG16",
   settings_memory_list: "AG14",
   shadow_report: "AG18",
 };
@@ -938,8 +936,81 @@ export const CHECKS: Record<string, CheckFn> = {
   },
 
   push(args, obs) {
+    // AG16: "发出的提醒数" — reminders the (simulated) push service took. One it refused or did not answer is not a
+    // reminder that went out; those are counted by push_delivery's attempts.
+    const pushes = obs.events.filter((event) => event.type === "notify.push" && (event.outcome === undefined || event.outcome === "accepted"));
+    const refused = obs.events.filter((event) => event.type === "notify.push" && event.outcome !== undefined && event.outcome !== "accepted").length;
+    const shown = `${pushes.length} push(es)${refused ? ` (and ${refused} the push service refused or did not answer)` : ""}`;
+    return pushes.length === Number(args?.count) ? pass(shown, seqs(pushes)) : fail(`${shown}, expected ${args?.count}`, seqs(pushes));
+  },
+
+  /**
+   * AG16 (PSH.yaml proposed_checks): nothing of these is on any reminder — title, body or attached data — whether the
+   * push service took it or refused it. Read from what the simulated push service was handed, not from the product.
+   */
+  push_excludes(args, obs) {
+    const words = (Array.isArray(args) ? args : []).map(String);
     const pushes = obs.events.filter((event) => event.type === "notify.push");
-    return pushes.length === Number(args?.count) ? pass(`${pushes.length} push(es)`, seqs(pushes)) : fail(`${pushes.length} push(es), expected ${args?.count}`, seqs(pushes));
+    const found: string[] = [];
+    for (const event of pushes) {
+      const written = JSON.stringify({ body: event.body ?? null, data: event.data ?? null, title: event.title ?? null });
+      for (const word of words) if (written.includes(word)) found.push(`"${word}" in reminder #${event.seq}`);
+    }
+    if (found.length) return fail(found.join(" | "), seqs(pushes));
+    return pass(pushes.length ? `${pushes.length} reminder(s) handed to the push service; none holds any of the ${words.length} words` : "no reminder was handed to the push service", seqs(pushes));
+  },
+
+  /**
+   * AG16 (PSH.yaml proposed_checks): one period of one rule — how many results it put in the inbox, how many times the
+   * result was worked out, how many rounds the reminder took, and whether it arrived. Fields not written are not
+   * checked. The run record comes from the database difference; what the simulated push service was handed and how
+   * often the period ran come from the trace, and must agree with the record.
+   */
+  push_delivery(args, obs) {
+    const expected = (Array.isArray(args) ? args : []) as { rule: string; at: string; inbox?: number; computed?: number; attempts?: number; delivered?: boolean }[];
+    const runs = obs.ruleRuns;
+    if (!runs) return cannot("the run history was not read");
+    const problems: string[] = [];
+    const shown: string[] = [];
+    const evidence: number[] = [];
+    for (const want of expected) {
+      const product = obs.idMap[want.rule] ?? want.rule;
+      const run = runs.find((item) => (item.fixtureRule === want.rule || item.rule === product) && Date.parse(item.scheduledAt) === Date.parse(want.at));
+      if (!run) {
+        problems.push(`no run of ${want.rule} planned for ${want.at}`);
+        continue;
+      }
+      const runId = run.runId ?? "";
+      const deliveryId = run.push?.deliveryId ?? (runId.startsWith("autorun:") ? `rule-push:${runId.slice("autorun:".length)}` : "");
+      const handed = obs.events.filter((event) => event.type === "notify.push" && (event.data as { deliveryId?: string } | null)?.deliveryId === deliveryId);
+      const accepted = handed.filter((event) => event.outcome === undefined || event.outcome === "accepted");
+      const computedEvents = obs.events.filter((event) => event.type === "rule.run" && event.runId === runId);
+      const failedTries = obs.events.filter((event) => event.type === "rule.period_failed" && event.automationId === run.rule && Date.parse(String(event.scheduledAt)) === Date.parse(run.scheduledAt));
+      const computed = Math.max(computedEvents.length + failedTries.length, Number(run.computeAttempts ?? 1));
+      const inbox = obs.diff.records.filter((change) => change.collection === "inboxNotifications" && change.kind === "created" && runId && JSON.stringify(change.after ?? {}).includes(runId)).length;
+      const attempts = Number(run.push?.attempts ?? 0);
+      const delivered = run.push?.state === "delivered";
+      evidence.push(...seqs(handed), ...seqs(computedEvents));
+      shown.push(`${want.rule} ${want.at}: inbox ${inbox}, computed ${computed}, attempts ${attempts}, delivered ${delivered} (reminder ${run.push?.state ?? "none"}${run.push?.reason ? `/${run.push.reason}` : ""}; result worked out at ${run.computedAt ?? "?"}${run.push?.deliveredAt ? `, reminder delivered at ${run.push.deliveredAt}` : ""})`);
+      if (want.inbox !== undefined && inbox !== Number(want.inbox)) problems.push(`${want.rule}: ${inbox} inbox entr${inbox === 1 ? "y" : "ies"}, expected ${want.inbox}`);
+      if (want.computed !== undefined && computed !== Number(want.computed)) problems.push(`${want.rule}: worked out ${computed} time(s), expected ${want.computed}`);
+      if (want.attempts !== undefined && attempts !== Number(want.attempts)) problems.push(`${want.rule}: ${attempts} reminder attempt(s), expected ${want.attempts}`);
+      if (want.delivered !== undefined && delivered !== Boolean(want.delivered)) problems.push(`${want.rule}: reminder ${delivered ? "delivered" : "not delivered"}, expected ${want.delivered ? "delivered" : "not delivered"}`);
+      // The record and what the push service saw must tell the same story.
+      if (attempts === 0 && handed.length) problems.push(`${want.rule}: the record says no attempt, but ${handed.length} reminder(s) were handed to the push service`);
+      if (attempts > 0 && handed.length < attempts) problems.push(`${want.rule}: the record says ${attempts} attempt(s), the push service was handed ${handed.length}`);
+      if (delivered !== accepted.length > 0) problems.push(`${want.rule}: the record says ${delivered ? "delivered" : "not delivered"}, the push service took ${accepted.length}`);
+      // Completion time and reminder state are two fields: a delivered reminder has its own time, never earlier than the result's.
+      if (delivered && (!run.push?.deliveredAt || !run.computedAt || Date.parse(run.push.deliveredAt) < Date.parse(run.computedAt))) problems.push(`${want.rule}: the reminder's delivery time (${run.push?.deliveredAt ?? "none"}) and the result's completion time (${run.computedAt ?? "none"}) are not kept as two separate times`);
+      // Sending again is only sending: nothing of this period is read or computed after its first reminder attempt.
+      const firstHanded = handed.length ? Math.min(...handed.map((event) => Number(event.seq))) : null;
+      if (firstHanded !== null) {
+        const again = obs.events.filter((event) => Number(event.seq) > firstHanded && event.requestId === `rule-run:${runId}` && (event.type === "model.request" || event.type === "judgment.request"));
+        if (again.length) problems.push(`${want.rule}: ${again.length} model or judgment request(s) for this period after its first reminder attempt`);
+      }
+    }
+    const unique = [...new Set(evidence)].sort((left, right) => left - right);
+    return problems.length ? fail(`${problems.join(" | ")} (${shown.join("; ") || "no run found"})`, unique) : pass(shown.join("; "), unique);
   },
 
   http_status(args, obs) {
