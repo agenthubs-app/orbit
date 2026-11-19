@@ -274,11 +274,11 @@ for (const scheme of ["light", "dark"] as const) {
   });
 }
 
-test("iOrbit conversation keeps its draft when opening and closing mentions", async t => {
+test("iOrbit conversation keeps its draft when opening and closing the 添加上下文 picker", async t => {
   const page = await open(t, "conversation"); const reply = page.getByRole("textbox", { name: "消息", exact: true }); await reply.fill("先核对资料");
   await page.getByTestId("conversation-history").waitFor();
-  await page.getByRole("button", { name: "@", exact: true }).click();
-  await page.getByRole("button", { name: "@", exact: true }).click();
+  await page.getByRole("button", { name: "添加上下文", exact: true }).click();
+  await page.getByRole("button", { name: "添加上下文", exact: true }).click();
   assert.equal(await reply.inputValue(), "先核对资料"); await noWrites(page);
 });
 test("chat list and detail retain navigation and messages; the detail offers no send", async t => {

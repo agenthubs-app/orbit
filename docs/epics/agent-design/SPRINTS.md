@@ -27,7 +27,7 @@ PLANNER 是在所有 sprint 动工之前一次写成的，所以后面 sprint �
 | AG08 | 判断模型接入 | 三 能力补齐 | AG04、AG05、AG06 | 服务端 | H | JDG ×8、SCL ×2 | completed（run-02 门槛双评通过，AE-JDG-003 改正评审项后单独重跑双评通过；AG03～AG07 复跑通过） |
 | AG09 | 基础联网与出站把关 | 三 | AG08 | 服务端 | H | WEB ×12、SCL ×2 | completed（run-04 门槛双评通过；超时用例单例重跑规则；AG03～AG08 复跑通过） |
 | AG10 | 排序、提取与整理 | 三 | AG06、AG08 | 服务端 | H | FN ×13、SCL ×4 | completed（run-03 门槛双评通过；AG03～AG09 复跑通过） |
-| AG11 | 两端用 @ 指定上下文 | 三 | AG05、AG07、AG13 | Web、App | H | REF ×5、SCL ×2 | planned |
+| AG11 | 两端用 @ 指定上下文 | 三 | AG05、AG07、AG13 | Web、App | H | REF ×5、SCL ×2 | completed（run-03 门槛双评通过；AG03～AG13 复跑通过，两例经单例重跑） |
 | AG12 | 联系人写入 | 三 | AG06、AG07 | 服务端、两端 | H | CON ×10、SCL ×2 | completed（run-03 门槛双评通过；AG03～AG10 复跑通过） |
 | AG13 | 活动、参会、日程与 Todo 关联 | 三 | AG06、AG07 | 服务端、两端 | H | EVT ×12、SCL ×4 | completed（run-09 门槛双评通过，两例超时经单例重跑通过；AG03～AG12 复跑通过） |
 | AG14 | 个人记忆 | 四 记忆与持续任务 | AG06、AG08 | 服务端、两端 | H | MEM ×12、FN ×1、REF ×3、SCL ×2 | planned |

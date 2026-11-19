@@ -11,6 +11,8 @@ import { isPronounClue } from "../route/decide";
 const BOUNDARY = /[\s、，。,.!?！？「」『』（）()：:；;"“”]/u;
 /** Words that lead into the object without describing it ("把…", "将…", "帮我…"). */
 const LEADING = /^(?:请|麻烦|帮我|帮忙|看看|看一下|查查|查一下|把|将|给|对|和|跟|关于)+/u;
+/** AG11 run-02 (AE-JDG-007): a conditional lead-in ("要是把…", "如果将…", "もし…") — only it and one 把／将 go, so the record's own words ("给小林发修订报价") stay. */
+const CONDITIONAL = /^(?:要是|如果|假如|假设|万一|若是|倘若|もしも?)\s*(?:把|将)?/u;
 /** The particle tying the description to the demonstrative ("…的这条", "…のこの"). */
 const TRAILING = /(?:的|の)+$/u;
 /** "这条待办", "那篇笔记", "このタスク", "その予定": a demonstrative and a record word, nothing else. */
@@ -29,7 +31,8 @@ export function demonstrativeOnly(text: string): boolean {
 function trimmed(message: string, start: number, end: number): [number, number] | null {
   let s = start;
   let e = end;
-  const lead = LEADING.exec(message.slice(s, e));
+  const conditional = CONDITIONAL.exec(message.slice(s, e));
+  const lead = conditional ?? LEADING.exec(message.slice(s, e));
   if (lead) s += lead[0].length;
   const tail = TRAILING.exec(message.slice(s, e));
   if (tail) e -= tail[0].length;

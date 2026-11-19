@@ -23,7 +23,9 @@ const fieldsByTool = {
   "messages.query": ["conversationId", "contactId", "direction", "content", "sentAt", "readAt", "visibleExtraction", "privacyState"],
   "notifications.query": ["kind", "title", "reason", "occurredAt", "readAt", "disposition", "targetStatus", "sourceIds"],
   "meetings.query": ["title", "startsAt", "endsAt", "timeZone", "location", "meetingMethod", "status", "participantLabels", "eventId", "details"],
-  "events.query": ["title", "startsAt", "endsAt", "location", "organizerName", "registrationStatus", "visibleAnswers", "membershipStatus"],
+  // agent-design AG11: a private event or a «我去过» note read by id (kind private_event / attendance); «我去过» carries the
+  // user's own day, parts of the day and sentence.
+  "events.query": ["title", "startsAt", "endsAt", "location", "organizerName", "registrationStatus", "visibleAnswers", "membershipStatus", "kind", "attendedOn", "dayParts", "selfNote"],
   "goals.query": ["eventId", "title", "status", "progress", "readiness", "updatedAt"],
   "agentData.query": ["kind", "title", "status", "summary", "preferenceKey", "preferenceValue", "occurredAt", "visibleReceipt"],
 } as const satisfies Record<AiReadTool, readonly string[]>;
@@ -65,7 +67,7 @@ const fieldSchemas = {
   "messages.query": z.object({ conversationId: optional(text), contactId: optional(text), direction: optional(text), content: optional(text), sentAt: optional(text), readAt: optional(text), visibleExtraction: optional(textOrTexts), privacyState: optional(text) }).strict(),
   "notifications.query": z.object({ kind: optional(text), title: optional(text), reason: optional(text), occurredAt: optional(text), readAt: optional(text), disposition: optional(text), targetStatus: optional(text), sourceIds: optional(texts) }).strict(),
   "meetings.query": z.object({ title: optional(text), startsAt: optional(text), endsAt: optional(text), timeZone: optional(text), location: optional(text), meetingMethod: optional(text), status: optional(text), participantLabels: optional(texts), eventId: optional(text), details: optional(text) }).strict(),
-  "events.query": z.object({ title: optional(text), startsAt: optional(text), endsAt: optional(text), location: optional(text), organizerName: optional(text), registrationStatus: optional(text), visibleAnswers: optional(textOrTexts), membershipStatus: optional(text) }).strict(),
+  "events.query": z.object({ title: optional(text), startsAt: optional(text), endsAt: optional(text), location: optional(text), organizerName: optional(text), registrationStatus: optional(text), visibleAnswers: optional(textOrTexts), membershipStatus: optional(text), kind: optional(text), attendedOn: optional(text), dayParts: optional(texts), selfNote: optional(text) }).strict(),
   "goals.query": z.object({ eventId: optional(text), title: optional(text), status: optional(text), progress: optional(z.union([text, z.number()])), readiness: optional(z.union([text, z.number()])), updatedAt: optional(text) }).strict(),
   "agentData.query": z.object({ kind: optional(text), title: optional(text), status: optional(text), summary: optional(text), preferenceKey: optional(text), preferenceValue: optional(scalarOrTexts), occurredAt: optional(text), visibleReceipt: optional(textOrTexts) }).strict(),
 } satisfies Record<AiReadTool, z.ZodType<Readonly<Record<string, unknown>>>>;

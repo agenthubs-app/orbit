@@ -5,9 +5,9 @@
  * Nothing here formats what the user reads: the card is shown through api/compute/agent-card-view.ts.
  * A decision is never queued offline (设计稿 §7): every call needs the network, and a failed one is not retried.
  */
-import { agentActionPreviewSchema, agentResultDocumentSchema, agentSendReceiptSchema } from "./schema/agent-v1";
-import type { AgentActionPreviewContract, AgentAnswerLinkContract, AgentResultDocument, AgentSendReceiptContract } from "./contract/agent-v1";
-import type { AiSessionOriginInputContract } from "./contract/ai-sessions";
+import { agentActionPreviewSchema, agentReferenceCheckResultSchema, agentReferenceSearchResultSchema, agentResultDocumentSchema, agentSendReceiptSchema } from "./schema/agent-v1";
+import type { AgentActionPreviewContract, AgentAnswerLinkContract, AgentReferenceSearchKind, AgentReferenceSearchResultContract, AgentResultDocument, AgentSendReceiptContract } from "./contract/agent-v1";
+import type { AiSessionOriginInputContract, AiSessionReferenceContract } from "./contract/ai-sessions";
 import type { OrbitApiClient } from "./client";
 import { ORBIT_API_ENDPOINTS } from "./endpoints";
 
@@ -51,13 +51,42 @@ export function requestIdOfAssistantMessage(id: string | null | undefined): stri
   return match?.[1] ?? null;
 }
 
-export async function sendAgentV1(client: OrbitApiClient, input: { sessionId: string; clientMessageId: string; locale: "zh" | "ja" | "en"; message: string; origin?: AiSessionOriginInputContract }): Promise<AgentSendReceiptContract | null> {
+export async function sendAgentV1(client: OrbitApiClient, input: { sessionId: string; clientMessageId: string; locale: "zh" | "ja" | "en"; message: string; origin?: AiSessionOriginInputContract; references?: readonly AiSessionReferenceContract[] }): Promise<AgentSendReceiptContract | null> {
   const result = await client.post<{ agentRequest?: unknown }>(ORBIT_API_ENDPOINTS.conversations, {
-    body: { clientMessageId: input.clientMessageId, locale: input.locale, message: input.message, protocolVersion: 3, references: [], sessionId: input.sessionId, ...(input.origin ? { origin: input.origin } : {}) },
+    // AG11: the records picked with @, each with its marker's place in the (trimmed) message.
+    body: { clientMessageId: input.clientMessageId, locale: input.locale, message: input.message, protocolVersion: 3, references: input.references ?? [], sessionId: input.sessionId, ...(input.origin ? { origin: input.origin } : {}) },
   });
   if (!result.success) return null;
   const parsed = agentSendReceiptSchema.safeParse(result.data?.agentRequest);
   return parsed.success ? parsed.data : null;
+}
+
+/* ── AG11: the @ picker (online only; nothing is kept on the device) ───────────────────── */
+
+export const AGENT_REFERENCES_SEARCH_PATH = "/api/agent/references/search";
+export const AGENT_REFERENCES_CHECK_PATH = "/api/agent/references/check";
+
+/**
+ * The account's own records of six kinds by name. "offline" when the server could not be reached (the picker then lists
+ * the phone's contacts, D8); "error" when it answered with an error or a wrong shape.
+ */
+export async function searchAgentReferences(client: OrbitApiClient, query: string, kind: AgentReferenceSearchKind | null): Promise<{ kind: "ok"; value: AgentReferenceSearchResultContract } | { kind: "offline" } | { kind: "error" }> {
+  const params = new URLSearchParams({ q: query.trim() });
+  if (kind) params.set("kind", kind);
+  const result = await client.get<unknown>(`${AGENT_REFERENCES_SEARCH_PATH}?${params}`).catch(() => null);
+  if (!result) return { kind: "offline" };
+  if (!result.success) return result.status === 0 || offlineCode(result.error?.code) ? { kind: "offline" } : { kind: "error" };
+  const parsed = agentReferenceSearchResultSchema.safeParse(result.data);
+  return parsed.success ? { kind: "ok", value: parsed.data } : { kind: "error" };
+}
+
+/** D7: the picked records that cannot be opened now ("type:id"); empty when the check could not be made. */
+export async function checkAgentReferences(client: OrbitApiClient, references: readonly { type: AgentReferenceSearchKind; id: string; eventKind?: "platform" | "private" | undefined }[]): Promise<Set<string>> {
+  if (!references.length) return new Set();
+  const result = await client.post<unknown>(AGENT_REFERENCES_CHECK_PATH, { body: { references: references.map((reference) => ({ id: reference.id, type: reference.type, ...(reference.eventKind ? { eventKind: reference.eventKind } : {}) })) } }).catch(() => null);
+  if (!result?.success) return new Set();
+  const parsed = agentReferenceCheckResultSchema.safeParse(result.data);
+  return parsed.success ? new Set(parsed.data.references.filter((item) => !item.accessible).map((item) => `${item.type}:${item.id}`)) : new Set();
 }
 
 export type AgentV1Read<T> = { kind: "ok"; value: T } | { kind: "offline" } | { kind: "missing" };

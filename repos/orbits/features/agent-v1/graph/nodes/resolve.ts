@@ -45,6 +45,22 @@ type ReadKind = "memo" | "todo" | "schedule" | "event" | "contact" | "interactio
 
 const LIST_DELIVERABLES = new Set(["list", "ranked_list", "comparison"]);
 
+const PERSON_PRONOUN = /^(?:他|她|TA|对方|彼女|彼|あの人|その人|him|her|he|she)$/iu;
+
+/**
+ * AG11 run-02 (AE-AMB-009): a clue that is a person pronoun once the user's own words around it are taken off
+ * (「我和他」「我跟她」「她和我」「彼と私」"me and him"). Only used in a turn that answers an open question, where it means
+ * that question's person.
+ */
+export function personPronounInReply(said: string): boolean {
+  const rest = said.replace(/^@/u, "").trim()
+    .replace(/^(?:我们|我)\s*(?:和|跟|与|同)\s*/u, "").replace(/\s*(?:和|跟|与|同)\s*(?:我们|我)$/u, "")
+    .replace(/^(?:私|僕|俺)\s*と\s*/u, "").replace(/\s*と\s*(?:私|僕|俺)$/u, "")
+    .replace(/^(?:me|i)\s+and\s+/iu, "").replace(/\s+and\s+(?:me|i)$/iu, "")
+    .trim();
+  return PERSON_PRONOUN.test(rest);
+}
+
 /** The kinds a part's capabilities read (functions work over memos). */
 export function readKindsOf(capabilities: readonly Capability[]): Set<ReadKind> {
   const kinds = new Set<ReadKind>();
@@ -335,6 +351,9 @@ export function resolveNode(scope: NodeScope): GraphNode {
     for (const part of [...due].sort((left, right) => left.quote[0] - right.quote[0])) {
       const quote = input.message.slice(part.quote[0], part.quote[1]);
       const read: PartRead = { coverage: [], gaps: new Set(), lines: [], notes: [], occurrences: new Map(), views: [], wantsRecords: false };
+      // AG11 (AE-SCL-021): 「那 @X 呢？」 — the previous question, asked again about the record picked now.
+      const carried = run.carriedQuestions.get(part.localId);
+      if (carried) read.notes.push(`This message asks the user's previous question again, about the record they picked now: "${carried}". Answer that question from this record only, not from the earlier record.`);
       const finish = (status: GraphPart["status"], reason: string | null) => {
         part.status = status;
         part.reason = reason;
@@ -365,13 +384,27 @@ export function resolveNode(scope: NodeScope): GraphNode {
       }
 
       // 1. A record the part points at that cannot be opened: say so, read nothing else for it.
-      const closed = part.refs.find((ref) => ref.recordId && (handleOf(ref.recordId)?.accessible === false || run.references.some((item) => item.id === ref.recordId && item.accessible === false)));
-      if (closed) {
-        const handle = handleOf(closed.recordId);
+      const isClosed = (ref: GraphPart["refs"][number]) => Boolean(ref.recordId && (handleOf(ref.recordId)?.accessible === false || run.references.some((item) => item.id === ref.recordId && item.accessible === false)));
+      const closedRefs = part.refs.filter(isClosed);
+      // AG11 (§3.6, AE-REF-006): the other records the part points at are still read and answered; the closed one is
+      // said and asked again, and nothing of it is used.
+      const partial = closedRefs.length > 0 && part.refs.some((ref) => ref.recordId && !isClosed(ref));
+      // AG11 (AE-REF-008): the kind of a picked record that cannot be opened is not searched instead — never read wider.
+      const closedKinds = new Set(closedRefs.map((ref) => recordKindOf(ref.entity)));
+      if (closedRefs.length) {
         read.gaps.add("unreadable");
-        read.lines.push(handle?.source === "reference" || run.references.some((item) => item.id === closed.recordId) ? words.unreadableReference(clueWords(input.message, closed)) : words.unreadableEarlier());
-        finish("unfinished", "reference_not_accessible");
-        continue;
+        for (const closed of closedRefs) {
+          const handle = handleOf(closed.recordId);
+          const line = handle?.source === "reference" || run.references.some((item) => item.id === closed.recordId) ? words.unreadableReference(clueWords(input.message, closed)) : words.unreadableEarlier();
+          if (!read.lines.includes(line)) read.lines.push(line);
+        }
+        if (!partial) {
+          finish("unfinished", "reference_not_accessible");
+          continue;
+        }
+        part.refs = part.refs.filter((ref) => !isClosed(ref));
+        read.notes.push(`${closedRefs.map((ref) => `"${clueWords(input.message, ref) ?? "a record"}"`).join(", ")} cannot be opened now: code tells the user to choose it again. Do not guess what it says and do not judge anything that would need it; answer from the records given.`);
+        emitTrace({ closed: closedRefs.map((ref) => ref.recordId), partId: part.localId, type: "resolve.partly_unreadable" });
       }
       // An unbound clue of a kind mentioned last in this session (and no words to search by) means that record.
       let filter = part.plan.readFilter;
@@ -397,7 +430,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
           }
         }
       }
-      if (read.gaps.has("unreadable")) {
+      if (read.gaps.has("unreadable") && !partial) {
         finish("unfinished", "reference_not_accessible");
         continue;
       }
@@ -412,7 +445,8 @@ export function resolveNode(scope: NodeScope): GraphNode {
           continue;
         }
         let said = clueWords(input.message, ref);
-        if (said && isPronounClue(said)) {
+        // AG11 run-02 (AE-AMB-009): in a turn answering an open question, 「我和他」 is the pronoun 他 with the user's own words around it.
+        if (said && (isPronounClue(said) || (part.continues?.kind === "clarification" && personPronounInReply(said)))) {
           // A reply that continues an earlier matter is about that matter's person (AG05: open item clues).
           const item = part.continues ? context?.openItems.find((open) => open.ref === part.continues!.ref) : undefined;
           said = item?.clues?.find((clue) => clue.entity === "contact" && !isPronounClue(clue.text))?.text ?? null;
@@ -527,6 +561,13 @@ export function resolveNode(scope: NodeScope): GraphNode {
       const capabilities = part.reading?.capabilities.length ? part.reading.capabilities : part.capabilities;
       const kinds = readKindsOf(capabilities);
       // Finding events by conditions is not a read of this version (an attached event is read by id).
+      if (kinds.has("event") && !part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event") && ![...kinds].some((kind) => kind !== "event" && kind !== "contact") && contacts.length && (text || part.refs.some((ref) => recordKindOf(ref.entity) === "event" && clueSearchWords(clueWords(input.message, ref) ?? "")))) {
+        // AG11 run-02 (AE-RD-009): "田中在客户访谈里最在意什么" tagged as an event of a named person: a meeting or interview with
+        // someone is in the user's notes about them — those are read by the words, not the event directory.
+        kinds.add("memo");
+        if (!text) text = part.refs.map((ref) => (recordKindOf(ref.entity) === "event" ? clueSearchWords(clueWords(input.message, ref) ?? "") : undefined)).find(Boolean);
+        emitTrace({ partId: part.localId, type: "resolve.person_event_in_notes", words: text ?? null });
+      }
       if (kinds.has("event") && !part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event") && ![...kinds].some((kind) => kind !== "event" && kind !== "contact")) {
         read.lines.push(words.eventSearch(quote));
         finish("unfinished", "not_in_this_version");
@@ -621,7 +662,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
       // the JD" has no status and is not an open item (the to-do may be done since), so notes are not searched for it.
       const openItems = status === "open" && kinds.has("todo") && !current;
       if (openItems && kinds.has("memo")) emitTrace({ partId: part.localId, type: "resolve.open_items_from_todos" });
-      const searchKinds = attachedOnly ? [] : (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !(kind === "memo" && interactionAnswers) && !(kind === "memo" && openItems));
+      const searchKinds = attachedOnly ? [] : (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !closedKinds.has(kind) && !(kind === "memo" && interactionAnswers) && !(kind === "memo" && openItems));
       if (current) read.notes.push("This asks how the person stands now: the interactions, their newest notes and the profile are all here; where they differ, the newer dated record is what holds now. Never give as current anything a newer record replaces (a former company, an old role).");
       const subjects = contacts.length ? contacts.map((item) => item.id) : [undefined];
       let unclear = false;

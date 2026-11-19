@@ -418,6 +418,168 @@
           "optional": false,
           "kind": "text",
           "type": "AiSessionReferenceType"
+        },
+        "start": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "end": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "eventKind": {
+          "optional": true,
+          "kind": "text",
+          "type": "'platform' | 'private' | undefined"
+        }
+      }
+    },
+    "agent-v1.ts::AgentReferenceSearchKind": {
+      "kind": "enum",
+      "values": [
+        "'attendance'",
+        "'contact'",
+        "'event'",
+        "'memo'",
+        "'schedule'",
+        "'todo'"
+      ]
+    },
+    "agent-v1.ts::AgentReferenceCandidateContract": {
+      "kind": "object",
+      "members": {
+        "type": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentReferenceSearchKind"
+        },
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventKind": {
+          "optional": true,
+          "kind": "text",
+          "type": "'platform' | 'private' | undefined"
+        },
+        "detail": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "company": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "role": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "people": {
+              "optional": true,
+              "kind": "text",
+              "type": "readonly string[]"
+            },
+            "date": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "dateKind": {
+              "optional": true,
+              "kind": "text",
+              "type": "'due' | 'at' | 'on' | 'written' | undefined"
+            },
+            "place": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "agent-v1.ts::AgentReferenceSearchResultContract": {
+      "kind": "object",
+      "members": {
+        "query": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "groups": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "type": {
+                "optional": false,
+                "kind": "text",
+                "type": "AgentReferenceSearchKind"
+              },
+              "items": {
+                "optional": false,
+                "kind": "text",
+                "type": "readonly AgentReferenceCandidateContract[]"
+              },
+              "more": {
+                "optional": false,
+                "kind": "text",
+                "type": "boolean"
+              },
+              "unavailable": {
+                "optional": true,
+                "kind": "text",
+                "type": "boolean | undefined"
+              }
+            }
+          }
+        }
+      }
+    },
+    "agent-v1.ts::AgentReferenceCheckResultContract": {
+      "kind": "object",
+      "members": {
+        "references": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "type": {
+                "optional": false,
+                "kind": "text",
+                "type": "AgentReferenceSearchKind"
+              },
+              "id": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "accessible": {
+                "optional": false,
+                "kind": "text",
+                "type": "boolean"
+              },
+              "name": {
+                "optional": false,
+                "kind": "text",
+                "type": "string | null"
+              }
+            }
+          }
         }
       }
     },
@@ -1868,6 +2030,21 @@
           "optional": false,
           "kind": "text",
           "type": "AiSessionReferenceType"
+        },
+        "start": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "end": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "eventKind": {
+          "optional": true,
+          "kind": "text",
+          "type": "'platform' | 'private' | undefined"
         }
       }
     },
@@ -2486,7 +2663,7 @@
         "visibility": {
           "optional": false,
           "kind": "text",
-          "type": "'participants' | 'private'"
+          "type": "'private' | 'participants'"
         }
       }
     },
@@ -2626,7 +2803,7 @@
         "visibility": {
           "optional": false,
           "kind": "text",
-          "type": "'participants' | 'private'"
+          "type": "'private' | 'participants'"
         }
       }
     },
@@ -2761,7 +2938,7 @@
         "visibility": {
           "optional": false,
           "kind": "text",
-          "type": "'participants' | 'private'"
+          "type": "'private' | 'participants'"
         }
       }
     },
@@ -16617,7 +16794,7 @@
               "kind": {
                 "optional": false,
                 "kind": "text",
-                "type": "'private' | 'platform'"
+                "type": "'platform' | 'private'"
               },
               "id": {
                 "optional": false,
@@ -25286,7 +25463,7 @@
               "kind": {
                 "optional": false,
                 "kind": "text",
-                "type": "'private' | 'platform'"
+                "type": "'platform' | 'private'"
               },
               "id": {
                 "optional": false,
@@ -25582,7 +25759,7 @@
               "kind": {
                 "optional": false,
                 "kind": "text",
-                "type": "'private' | 'platform'"
+                "type": "'platform' | 'private'"
               },
               "id": {
                 "optional": false,

@@ -38,6 +38,8 @@ export interface AgentRecordAccess {
   maxPages: number;
   /** AG08: the events the account may see, for ranking (graph/nodes/functions.ts filters them). */
   listEvents?(): Promise<readonly CanonicalEventRecord[]>;
+  /** AG11: only the events with these ids (the ones the user picked); the caller still keeps those the account may see. */
+  eventsByIds?(ids: readonly string[]): Promise<readonly CanonicalEventRecord[]>;
   /** AG12: the account's contacts for contact writes — duplicates, restore, import review (code only, never a model). */
   contacts?: ContactAccess;
   /** AG13: the account's private events, «我去过» notes and the records linking to an event (code only, never a model). */
@@ -46,7 +48,11 @@ export interface AgentRecordAccess {
 }
 
 /** A reference of this turn as intake keeps it: named when accessible; `accessible: false` when not (AG05). */
-export type ReferenceHandle = NamedRecordRef & { accessible?: boolean };
+export type ReferenceHandle = NamedRecordRef & {
+  accessible?: boolean;
+  /** AG11: where the user's markers for this record sit in this turn's message, [start, end) each (the client's positions). */
+  marks?: [number, number][];
+};
 
 /** What the graph needs from the outside; every one is replaceable in tests. */
 export interface AgentGraphDependencies {
@@ -93,7 +99,7 @@ export interface AgentGraphInput {
 }
 
 /** A reference as the protocol sends it (AG05: six kinds; "note" is the old name of a memo). */
-export type AgentReferenceInput = Pick<AgentReferenceContract, "id" | "type">;
+export type AgentReferenceInput = Pick<AgentReferenceContract, "id" | "type" | "start" | "end" | "eventKind">;
 
 export type GraphNode =(state: AgentGraphState) => Promise<Partial<AgentGraphState>>;
 

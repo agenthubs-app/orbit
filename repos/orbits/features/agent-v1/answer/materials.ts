@@ -94,6 +94,17 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
       break;
     }
     case "event": {
+      // AG11: an @ of the user's own «我去过» note or private event (read by id); a platform event as before.
+      if (f.kind === "attendance") {
+        header = "«I went» — the user's own note of having been at an event (not a check-in or registration)";
+        sentences = numbered([`Event: ${text(f.title) ?? "not readable now"}`, text(f.startsAt) ? `Event starts: ${formatWhen(text(f.startsAt), context.timeZone)}` : null, `Went on: ${text(f.attendedOn) ?? "—"}${Array.isArray(f.dayParts) && f.dayParts.length ? ` (${f.dayParts.join(", ")})` : ""}`, text(f.selfNote) ? `The user wrote: ${text(f.selfNote)}` : "The user wrote nothing about it."]);
+        break;
+      }
+      if (f.kind === "private_event") {
+        header = "the user's own private event";
+        sentences = numbered([`Title: ${text(f.title) ?? "—"}`, `Starts: ${formatWhen(text(f.startsAt), context.timeZone)}`, text(f.endsAt) ? `Ends: ${formatWhen(text(f.endsAt), context.timeZone)}` : null, `Place: ${text(f.location) ?? "not given"}`]);
+        break;
+      }
       header = "platform event";
       sentences = numbered([`Title: ${text(f.title) ?? "—"}`, `Starts: ${formatWhen(text(f.startsAt), context.timeZone)}`, text(f.endsAt) ? `Ends: ${formatWhen(text(f.endsAt), context.timeZone)}` : null, `Place: ${text(f.location) ?? "not given"}`]);
       break;

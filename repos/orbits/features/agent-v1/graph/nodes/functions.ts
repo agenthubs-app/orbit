@@ -156,7 +156,10 @@ export function functionOf(scope: NodeScope, part: GraphPart): FunctionTask | nu
   const item = part.continues?.kind === "clarification" ? scope.run.context?.openItems.find((open) => open.ref === part.continues!.ref) : undefined;
   if (item?.rank) return { item, kind: "rank_reply" };
   if (part.route === "read" || part.route === "answer") {
-    const events = part.refs.filter((ref) => ref.entity === "event" && ref.recordId).length + scope.run.references.filter((reference) => reference.type === "event" && reference.accessible !== false).length;
+    // AG11 (App check): an event that is both a clue of the part and an @ reference is one event, not two; and a part that
+    // also points at a record of another kind (a schedule item) is not an event comparison — it goes on to the read.
+    const otherKind = part.refs.some((ref) => ref.recordId && ref.entity !== "event" && ref.entity !== "contact");
+    const events = otherKind ? 0 : new Set([...part.refs.filter((ref) => ref.entity === "event" && ref.recordId).map((ref) => ref.recordId!), ...scope.run.references.filter((reference) => reference.type === "event" && reference.accessible !== false).map((reference) => reference.id)]).size;
     // Comparing and grouping are done here for events (their fee, time and topics); other records go on to the read and the answer.
     const aboutEvents = part.capabilities.includes("event.read") && !part.capabilities.some((capability) => capability === "memo.read" || capability === "todo.read" || capability === "contact.read");
     if (aboutEvents && (part.capabilities.includes("fn.group") || GROUP_WORDS.test(quote))) return { kind: "group" };
@@ -936,13 +939,14 @@ async function eventsPart(scope: NodeScope, state: AgentGraphState, part: GraphP
   const language = state.language;
   const timeZone = state.timeZone || "Asia/Tokyo";
   const quote = input.message.slice(part.quote[0], part.quote[1]);
-  const all = deps.records!.listEvents ? await deps.records!.listEvents() : [];
+  // The records chosen for a comparison: this part's bound events, else this turn's @ events.
+  const ids = kind === "compare" ? [...new Set([...part.refs.filter((ref) => ref.entity === "event" && ref.recordId).map((ref) => ref.recordId!), ...run.references.filter((reference) => reference.type === "event" && reference.accessible !== false).map((reference) => reference.id)])] : [];
+  // AG11 (AE-REF-002): events the user picked are read by their ids, not by listing every event of the deployment.
+  const all = ids.length && deps.records!.eventsByIds ? await deps.records!.eventsByIds(ids) : deps.records!.listEvents ? await deps.records!.listEvents() : [];
   const visible = all.filter((event) => visibleEvent(event, input.actorId) && !evalDeniedReads().has(event.eventId)).map(eventCandidate);
   let written: { text: string; cites: string[] };
   let shown: EventCandidate[];
   if (kind === "compare") {
-    // The records chosen: this part's bound events, else this turn's @ events.
-    const ids = [...new Set([...part.refs.filter((ref) => ref.entity === "event" && ref.recordId).map((ref) => ref.recordId!), ...run.references.filter((reference) => reference.type === "event" && reference.accessible !== false).map((reference) => reference.id)])];
     shown = ids.map((id) => visible.find((event) => event.id === id)).filter((event): event is EventCandidate => Boolean(event));
     written = compare(shown.map((event) => event.event), dimensionsIn(quote), language, timeZone);
   } else {

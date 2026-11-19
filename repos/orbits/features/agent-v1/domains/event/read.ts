@@ -1,7 +1,11 @@
 /**
  * Event reads (设计稿 §4 活动, 附录 B; agent-design AG05): platform events by id, as the canonical event
  * table holds them. An event is readable when it is published on the platform or the account organizes
- * it. Private events arrive in AG13. Only the time, place and title fields are given.
+ * it. Only the time, place and title fields are given.
+ *
+ * AG11 (§3.6 @ references): the account's own private events (`private_event:…`) and «我去过» notes (`attendance:…`,
+ * the user's own words about having been there, with the event it is about) are read by id through `own` — only the
+ * account's own, never searched.
  */
 import { createHash } from "node:crypto";
 
@@ -10,8 +14,89 @@ import type { CanonicalRow, ReadAdapter } from "../../../orbit-ai/data-query/rea
 import { emitTrace, takeEvalFault } from "../../observability/trace";
 import { defined } from "../record-adapter";
 
+/** AG11: one of the account's own event records as the Agent may read it. */
+export interface OwnEventRecord {
+  id: string;
+  kind: "private_event" | "attendance";
+  title: string;
+  startsAt?: string | undefined;
+  endsAt?: string | undefined;
+  location?: string | undefined;
+  /** «我去过»: the local day, the parts of the day and the user's own sentence. */
+  attendedOn?: string | undefined;
+  dayParts?: readonly string[] | undefined;
+  selfNote?: string | undefined;
+  version: number;
+  updatedAt: string;
+}
+
 export interface EventSource {
   byIds(ids: readonly string[]): Promise<readonly CanonicalEventRecord[]>;
+  /** AG11: the account's own private event or «我去过» note by id; null when it is not theirs or is gone. */
+  own?(actorId: string, id: string): Promise<OwnEventRecord | null>;
+}
+
+const OWN_ID = /^(attendance|private_event):/u;
+
+/**
+ * AG11: `own` over the AG13 services. A «我去过» note is shown with the event it is about (its title and time come from
+ * the private event or the platform event, read under the same rules); a note whose event cannot be read keeps its own
+ * day and sentence.
+ */
+export function ownEventsOf(input: {
+  attendance: { get(actorId: string, id: string): Promise<{ id: string; attendedOn: string; dayParts?: readonly string[] | undefined; selfNote?: string | undefined; eventRef: { kind: "platform" | "private"; id: string }; version: number; updatedAt: string } | null> };
+  privateEvents: { get(actorId: string, id: string): Promise<{ id: string; title: string; startsAt: string; endsAt?: string | undefined; venue?: string | undefined; version: number; updatedAt: string } | null> };
+  byIds(ids: readonly string[]): Promise<readonly CanonicalEventRecord[]>;
+}): NonNullable<EventSource["own"]> {
+  return async (actorId, id) => {
+    if (id.startsWith("private_event:")) {
+      const event = await input.privateEvents.get(actorId, id);
+      return event ? { endsAt: event.endsAt, id: event.id, kind: "private_event", location: event.venue, startsAt: event.startsAt, title: event.title, updatedAt: event.updatedAt, version: event.version } : null;
+    }
+    const note = await input.attendance.get(actorId, id);
+    if (!note) return null;
+    let about: { title: string; startsAt?: string | undefined; endsAt?: string | undefined; location?: string | undefined } | null = null;
+    if (note.eventRef.kind === "private") {
+      const event = await input.privateEvents.get(actorId, note.eventRef.id).catch(() => null);
+      if (event) about = { endsAt: event.endsAt, location: event.venue, startsAt: event.startsAt, title: event.title };
+    } else {
+      const [event] = (await input.byIds([note.eventRef.id]).catch(() => [])).filter((item) => visible(item, actorId));
+      if (event) about = { endsAt: event.endsAt ?? undefined, location: event.venue ?? undefined, startsAt: event.startsAt ?? undefined, title: event.title ?? "" };
+    }
+    return {
+      attendedOn: note.attendedOn,
+      dayParts: note.dayParts,
+      endsAt: about?.endsAt,
+      id: note.id,
+      kind: "attendance",
+      location: about?.location,
+      selfNote: note.selfNote,
+      startsAt: about?.startsAt,
+      title: about?.title ?? "",
+      updatedAt: note.updatedAt,
+      version: note.version,
+    };
+  };
+}
+
+function ownRow(record: OwnEventRecord): CanonicalRow {
+  return {
+    evidenceIds: [],
+    fields: defined({
+      attendedOn: record.attendedOn,
+      dayParts: record.dayParts?.length ? [...record.dayParts] : undefined,
+      endsAt: record.endsAt,
+      kind: record.kind,
+      location: record.location,
+      selfNote: record.selfNote,
+      startsAt: record.startsAt,
+      title: record.title,
+    }),
+    id: record.id,
+    position: JSON.stringify([record.startsAt ?? record.attendedOn ?? "", record.id]),
+    revision: String(record.version),
+    updatedAt: record.updatedAt,
+  };
 }
 
 function visible(event: CanonicalEventRecord, actorId: string): boolean {
@@ -81,6 +166,10 @@ export function createEventAdapter(options: { source: EventSource; denied?: () =
       // Only reads by id: searching the whole directory is not a read the Agent does in this version.
       if (!id) return { partialReasons: [], rows: [], snapshot: snap, total: 0 };
       try {
+        if (OWN_ID.test(id)) {
+          const own = options.denied?.().has(id) || !options.source.own ? null : await options.source.own(scope.actorId, id);
+          return { partialReasons: [], rows: own ? [ownRow(own)] : [], snapshot: snap, total: own ? 1 : 0 };
+        }
         const events = (await options.source.byIds([id])).filter((event) => allowed(event, scope.actorId));
         return { partialReasons: [], rows: events.map(canonical), snapshot: snap, total: events.length };
       } catch (error) {
@@ -89,8 +178,15 @@ export function createEventAdapter(options: { source: EventSource; denied?: () =
       }
     },
     async readCurrentAtRevision(scope, expected) {
-      const events = (await options.source.byIds(expected.map((item) => item.id))).filter((event) => allowed(event, scope.actorId));
-      return events.map(canonical).filter((row) => expected.some((item) => item.id === row.id && item.revision === row.revision));
+      const ownIds = expected.filter((item) => OWN_ID.test(item.id));
+      const own: CanonicalRow[] = [];
+      for (const item of ownIds) {
+        const record = options.denied?.().has(item.id) || !options.source.own ? null : await options.source.own(scope.actorId, item.id);
+        if (record) own.push(ownRow(record));
+      }
+      const others = expected.filter((item) => !OWN_ID.test(item.id));
+      const events = others.length ? (await options.source.byIds(others.map((item) => item.id))).filter((event) => allowed(event, scope.actorId)) : [];
+      return [...own, ...events.map(canonical)].filter((row) => expected.some((item) => item.id === row.id && item.revision === row.revision));
     },
   };
 }

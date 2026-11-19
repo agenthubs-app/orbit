@@ -173,6 +173,7 @@ export function probeNode(scope: NodeScope): GraphNode {
       qualifiersOf.set(key, [...new Set([...(qualifiersOf.get(key) ?? []), ...(part.plan.webTarget?.qualifiers ?? [])])]);
     }
     const followers: { part: GraphPart; leader: GraphPart }[] = [];
+    const samePage: { part: GraphPart; holder: GraphPart }[] = [];
     // Queries that passed gate 1, waiting for gate 2.
     const cleared: { part: GraphPart; candidate: QueryCandidate; quote: string }[] = [];
     for (const part of due) {
@@ -223,6 +224,15 @@ export function probeNode(scope: NodeScope): GraphNode {
         // A part that builds on another part of this request that looks up the web (a comparison with the page the user gave)
         // has nothing of its own to look up: it is answered from that part's page, with no line of its own.
         const fromDependency = part.dependsOn.some((id) => { const other = parts.find((item) => item.localId === id); return Boolean(other && needsWeb(other)); });
+        // AG11 run-02 (AE-WEB-001): 「…<url> ，这位导演的代表作和现任职务是什么？」 split into two parts: the second asks about the
+        // same page the first reads (the message's URL is held by it) — it is answered from that page, not "no public name".
+        const holder = !fromDependency && part.capabilities.includes("web.fetch") && !part.capabilities.includes("web.search")
+          ? due.find((other) => other !== part && messageUrls.some((url) => quoteOf(message, other).includes(url))) : undefined;
+        if (holder) {
+          samePage.push({ holder, part });
+          emitTrace({ holder: holder.localId, partId: part.localId, type: "web.same_page" });
+          continue;
+        }
         if (webOnly(part) && !fromDependency) {
           lines(part, WEB_WORDS.noPublicName(language, quote));
           emitTrace({ partId: part.localId, reason: "no public name in the user's words to look up", type: "web.no_target" });
@@ -392,6 +402,25 @@ export function probeNode(scope: NodeScope): GraphNode {
           continue;
         }
         for (const index of pick.open) if ((await openPage(item.part, results[index].url)) === "stop") break;
+      }
+    }
+
+    // AG11 run-02 (AE-WEB-001): a part about the page another part opened is answered from that page (no second fetch);
+    // when that page could not be read, it says what the holder says.
+    for (const { holder, part } of samePage) {
+      const pages = (run.materials.get(holder.localId) ?? []).filter((material) => material.kind === "web");
+      if (pages.length) {
+        run.materials.set(part.localId, [...(run.materials.get(part.localId) ?? []), ...pages]);
+        if (part.status === "unfinished") {
+          part.status = "answered";
+          part.reason = null;
+        }
+        continue;
+      }
+      for (const line of run.gapLines.get(holder.localId) ?? []) lines(part, line);
+      if (webOnly(part)) {
+        part.status = holder.status === "awaiting_clarification" ? "waiting_dependency" : "unfinished";
+        part.reason = holder.reason;
       }
     }
 

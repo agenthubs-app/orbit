@@ -145,6 +145,8 @@ export interface Observation {
   recentInteractions?: Record<string, { before: RecentInteractionObservation | null; after: RecentInteractionObservation | null }>;
   /** AG07: what each client showed of the last card after each step (client_view, same_card_on). */
   clientViews?: ClientViewRecord[];
+  /** AG11: the account's memory entries (not settings, not deleted) when the case ended, read by the runner. */
+  memoryAfter?: { id: string }[];
 }
 
 export interface RecentInteractionObservation {
