@@ -46,7 +46,7 @@ export function stripApprovalClaims(value: unknown, path = "$"): { value: unknow
  * button on a card. "生日卡片上写什么", "在报名页点确认", "确认邮件", "click Confirm on the RSVP page" are
  * ordinary discussion and are kept.
  */
-const CARD_TALK = /(确认卡|確認卡|確認カード|confirmation card|卡片?上的?[^。！？!?\n]{0,6}确认|カード[^。！？!?\n]{0,6}(確認|Confirm)|confirm(ation)? button on (the|this|a|your) card|(the|this|your) card'?s confirm)/iu;
+const CARD_TALK = /(确认卡|確認卡|確認カード|confirmation card|卡片?上的?[^。！？!?\n]{0,6}确认|カード[^。！？!?\n]{0,6}(確認|確定|Confirm)|confirm(ation)? button on (the|this|a|your) card|(the|this|your) card'?s confirm)/iu;
 
 /**
  * AG07 repair 2 (AE-XL-011): a model sentence about what Orbit saved, will save or cannot save ("I can't store notes

@@ -45,6 +45,22 @@ type ReadKind = "memo" | "todo" | "schedule" | "event" | "contact" | "interactio
 
 const LIST_DELIVERABLES = new Set(["list", "ranked_list", "comparison"]);
 
+const PERSON_PRONOUN = /^(?:他|她|TA|对方|彼女|彼|あの人|その人|him|her|he|she)$/iu;
+
+/**
+ * AG11 run-02 (AE-AMB-009): a clue that is a person pronoun once the user's own words around it are taken off
+ * (「我和他」「我跟她」「她和我」「彼と私」"me and him"). Only used in a turn that answers an open question, where it means
+ * that question's person.
+ */
+export function personPronounInReply(said: string): boolean {
+  const rest = said.replace(/^@/u, "").trim()
+    .replace(/^(?:我们|我)\s*(?:和|跟|与|同)\s*/u, "").replace(/\s*(?:和|跟|与|同)\s*(?:我们|我)$/u, "")
+    .replace(/^(?:私|僕|俺)\s*と\s*/u, "").replace(/\s*と\s*(?:私|僕|俺)$/u, "")
+    .replace(/^(?:me|i)\s+and\s+/iu, "").replace(/\s+and\s+(?:me|i)$/iu, "")
+    .trim();
+  return PERSON_PRONOUN.test(rest);
+}
+
 /** The kinds a part's capabilities read (functions work over memos). */
 export function readKindsOf(capabilities: readonly Capability[]): Set<ReadKind> {
   const kinds = new Set<ReadKind>();
@@ -429,7 +445,8 @@ export function resolveNode(scope: NodeScope): GraphNode {
           continue;
         }
         let said = clueWords(input.message, ref);
-        if (said && isPronounClue(said)) {
+        // AG11 run-02 (AE-AMB-009): in a turn answering an open question, 「我和他」 is the pronoun 他 with the user's own words around it.
+        if (said && (isPronounClue(said) || (part.continues?.kind === "clarification" && personPronounInReply(said)))) {
           // A reply that continues an earlier matter is about that matter's person (AG05: open item clues).
           const item = part.continues ? context?.openItems.find((open) => open.ref === part.continues!.ref) : undefined;
           said = item?.clues?.find((clue) => clue.entity === "contact" && !isPronounClue(clue.text))?.text ?? null;
