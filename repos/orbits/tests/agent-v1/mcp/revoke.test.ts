@@ -45,9 +45,11 @@ test("after revoking: the next call is 401, the refresh token is dead, and the u
   // The owner opens the link: the page shows the card as canceled; a click is refused and nothing is written.
   const view = await proposalView({ now: kit.now, proposals: kit.proposals, runtime: kit.runtimeFor(kit.A) }, { accountId: kit.A, proposalId: proposed.data!.proposal_id });
   assert.equal(view!.card.status, "canceled");
+  assert.match(view!.notice ?? "", /作废.*撤销/u, "the page says why nothing can be confirmed");
   const click = await confirm(kit, view!.card, "late");
   assert.equal(click.status, 409);
   assert.equal((click.body.error as { reason: string }).reason, "CARD_CLOSED");
+  assert.match((click.body.error as { message: string }).message, /作废.*撤销/u);
   assert.equal((await kit.cards.listTasks()).find((item) => item.id === task.id)?.plannedDate, "2026-11-18");
   assert.equal(kit.cards.executorCalls.length, 0);
 });

@@ -1848,6 +1848,11 @@
           "optional": false,
           "kind": "text",
           "type": "AgentActionPreviewContract"
+        },
+        "notice": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
         }
       }
     },

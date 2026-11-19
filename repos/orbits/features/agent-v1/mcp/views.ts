@@ -4,6 +4,7 @@
  */
 import type { AgentConnectionConsentContract, AgentConnectionContract, AgentConnectionScopeOptionContract, AgentProposalViewContract } from "../../../shared/contract/agent-v1";
 import { agentCardPreview } from "../../agent/runtime/card-view";
+import { canceledMessage, cardMessages, expiredMessage } from "../../agent/runtime/decision";
 import type { AgentRuntimeService } from "../../agent/runtime/service";
 import type { AuthorizationRequest } from "./auth/server";
 import type { ProposalService } from "./confirm-link";
@@ -43,5 +44,7 @@ export async function proposalView(deps: { proposals: ProposalService; runtime: 
   if (!action) return null;
   // The card as stored now, with its differences made again from the stored state; expiry judged from expiresAt at this read.
   const card = agentCardPreview(action, await deps.runtime.getRun(action.runId), deps.now());
-  return { card, clientName: proposal.clientName, createdAt: proposal.createdAt, proposalId: proposal.id };
+  // What the page says when nothing can be confirmed any more, in the card's language (written here, not by the page).
+  const notice = card.status === "expired" ? expiredMessage(action) : card.status === "canceled" ? canceledMessage(action) : card.status === "rejected" ? cardMessages(action.locale).closedRejected : null;
+  return { card, clientName: proposal.clientName, createdAt: proposal.createdAt, ...(notice ? { notice } : {}), proposalId: proposal.id };
 }

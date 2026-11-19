@@ -544,4 +544,6 @@ export interface AgentProposalViewContract {
   clientName: string;
   createdAt: string;
   card: AgentActionPreviewContract;
+  /** 不能再确认时页面显示的一句话（已失效要重新提、已作废、已否决），由服务端按卡的语言写好。 */
+  notice?: string | undefined;
 }

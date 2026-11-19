@@ -27,6 +27,9 @@ const MODEL_ONLY = [
   /\/observability\//u, /\/views\//u, /graph\/nodes\/understand\.ts$/u, /graph\/checkpointer\.ts$/u,
   // AG08: the judgment questions' wording goes to the judgment model only.
   /judgment\/questions\.ts$/u,
+  // AG17: JSON-RPC protocol errors of the MCP endpoint ("Unsupported protocol version" is the MCP spec's own wording);
+  // an external client's software reads them, an Orbit user never does. The rest of mcp/ stays scanned.
+  /mcp\/transport\.ts$/u,
 ];
 
 const FORBIDDEN: { name: string; pattern: RegExp }[] = [

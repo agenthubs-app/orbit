@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 import { MCP_DOMAINS, MCP_SCOPES } from "../../../features/agent-v1/mcp/scopes";
@@ -90,6 +91,23 @@ test("the read path of every tool goes through the record adapters only: nothing
   const tokens = await kit.connect({ scopes: EVERYTHING });
   for (const domain of ["todos", "memos", "contacts", "schedule", "memory", "conversations"]) await kit.call(tokens.accessToken, "search_records", { domain });
   assert.deepEqual([...new Set(kinds)].sort(), ["contact", "memo", "schedule", "todo"]);
+});
+
+test("no file of the MCP module imports the memory, conversation or chat stores (this fails the day one does)", () => {
+  const files: string[] = [];
+  const walk = (dir: URL) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) walk(new URL(`${entry.name}/`, dir));
+      else if (entry.name.endsWith(".ts")) files.push(new URL(entry.name, dir).pathname);
+    }
+  };
+  walk(new URL("../../../features/agent-v1/mcp/", import.meta.url));
+  assert.ok(files.length >= 10);
+  for (const file of files) {
+    const source = readFileSync(file, "utf8");
+    for (const [, path] of source.matchAll(/from\s+"([^"]+)"/gu)) assert.doesNotMatch(path, /memory|conversation|orbit-ai|ai-session|chat|entry\/store/iu, `${file} imports ${path}`);
+    assert.doesNotMatch(source, /agentMemories|orbit_agent_chat/u, `${file} names a memory or chat collection`);
+  }
 });
 
 test("what the user wrote is returned as data: under user_data, with a notice, and instructions inside it are not acted on", async () => {
