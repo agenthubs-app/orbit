@@ -15,6 +15,8 @@ import type {
   AgentSessionEventContract,
 } from "../contract/agent-v1";
 import { aiSessionOriginInputSchema } from "./ai-sessions";
+// AG14: the memory contracts (kept as an import of their own).
+import type { AgentMemoryCreateInputContract, AgentMemoryEntryContract, AgentMemoryListContract, AgentMemorySettingsContract, AgentMemorySettingsInputContract, AgentMemoryUpdateInputContract } from "../contract/agent-v1";
 
 const identifier = z.string().trim().min(1).max(160);
 
@@ -301,3 +303,69 @@ export const agentReferenceCheckInputSchema = z.object({
 export const agentReferenceCheckResultSchema: z.ZodType<AgentReferenceCheckResultContract> = z.object({
   references: z.array(z.object({ accessible: z.boolean(), id: identifier, name: z.string().nullable(), type: agentReferenceSearchKindSchema })),
 }) as unknown as z.ZodType<AgentReferenceCheckResultContract>;
+
+/* ── AG14：个人记忆（/api/agent/memory、/[id]、/settings） ── */
+
+const memoryCategorySchema = z.enum(["identity", "goal", "preference", "constraint"]);
+const memoryTaskSchema = z.enum(["all", "event.recommend", "contact.recommend", "memo.summarize", "todo.plan", "schedule.plan"]);
+const memoryDaySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u);
+const memoryStructuredSchema = z.object({
+  dayPart: z.enum(["morning", "afternoon", "evening"]).optional(),
+  preferredDays: z.array(z.enum(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])).optional(),
+  replyLanguage: z.enum(["zh", "ja", "en"]).optional(),
+  strength: z.enum(["prefer", "only", "avoid"]).optional(),
+  topics: z.array(z.string()).optional(),
+});
+
+export const agentMemoryEntrySchema: z.ZodType<AgentMemoryEntryContract> = z.object({
+  appliesTo: z.array(memoryTaskSchema),
+  category: memoryCategorySchema,
+  content: z.string(),
+  createdAt: z.string(),
+  deletedAt: z.string().nullable().optional(),
+  memoryId: identifier.max(180),
+  revision: z.number().int().min(1),
+  source: z.enum(["manual", "conversation"]),
+  sourceMessageRef: z.string().nullable(),
+  status: z.enum(["active", "deleted"]),
+  structured: memoryStructuredSchema.nullable(),
+  updatedAt: z.string(),
+  validFrom: memoryDaySchema.nullable(),
+  validUntil: memoryDaySchema.nullable(),
+}) as unknown as z.ZodType<AgentMemoryEntryContract>;
+
+export const agentMemorySettingsSchema = z.object({
+  allowConversationLearning: z.boolean(),
+  enabled: z.boolean(),
+  updatedAt: z.string(),
+}) satisfies z.ZodType<AgentMemorySettingsContract>;
+
+export const agentMemoryListSchema: z.ZodType<AgentMemoryListContract> = z.object({
+  memories: z.array(agentMemoryEntrySchema),
+  memoryVersion: z.number().int().min(0),
+  settings: agentMemorySettingsSchema,
+}) as unknown as z.ZodType<AgentMemoryListContract>;
+
+export const agentMemoryCreateInputSchema = z.object({
+  appliesTo: z.array(memoryTaskSchema).max(6).optional(),
+  category: memoryCategorySchema,
+  content: z.string().trim().min(1).max(600),
+  structured: memoryStructuredSchema.nullable().optional(),
+  validFrom: memoryDaySchema.nullable().optional(),
+  validUntil: memoryDaySchema.nullable().optional(),
+}) satisfies z.ZodType<AgentMemoryCreateInputContract>;
+
+export const agentMemoryUpdateInputSchema = z.object({
+  appliesTo: z.array(memoryTaskSchema).max(6).optional(),
+  category: memoryCategorySchema.optional(),
+  content: z.string().trim().min(1).max(600).optional(),
+  expectedRevision: z.number().int().min(1).optional(),
+  structured: memoryStructuredSchema.nullable().optional(),
+  validFrom: memoryDaySchema.nullable().optional(),
+  validUntil: memoryDaySchema.nullable().optional(),
+}) satisfies z.ZodType<AgentMemoryUpdateInputContract>;
+
+export const agentMemorySettingsInputSchema = z.object({
+  allowConversationLearning: z.boolean().optional(),
+  enabled: z.boolean().optional(),
+}) satisfies z.ZodType<AgentMemorySettingsInputContract>;

@@ -433,7 +433,11 @@ export function createStorageAgentMemoryService({
     async context(limit = 20) {
       const settings = await settingsRecord();
       if (!settings.enabled) return [];
+      // The older entry (no task of its own) gets the entries in use that are inside their validity days; deleted
+      // entries are never listed, and an expired one is not handed over either.
+      const today = now().slice(0, 10);
       return (await list())
+        .filter((memory) => (!memory.validFrom || today >= memory.validFrom) && (!memory.validUntil || today <= memory.validUntil))
         .slice(0, Math.max(0, Math.min(50, Math.floor(limit))))
         .map((memory) => ({
           category: memory.category,

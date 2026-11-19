@@ -694,7 +694,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   if (leftToAgent) topic = null;
   // AG14 (设计稿 §6; replaces AG10's read-only list): the saved entries for this task. Rules are hard conditions and
   // preferences rank; what this turn's own words say wins over a saved preference ("这次看周四晚上").
-  const saved = rankMemoryOf(await ensureTurnMemory(scope, now, timeZone), domain, { now, partId: part.localId, timeZone, turnHasTime: Boolean(turnTime) && domain === "event", turnHasTopic: Boolean(topic) && !topicIsSentence });
+  const saved = rankMemoryOf(await ensureTurnMemory(scope, now, timeZone), domain, { now, partId: part.localId, timeZone, turnHasTopic: Boolean(topic) && !topicIsSentence, turnTime: domain === "event" ? turnTime : null });
   for (const item of saved.time) time.push(item.preference);
   let topicFromMemory = false;
   if (saved.topic && (!topic || topicIsSentence) && !basisMemo) {

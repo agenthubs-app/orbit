@@ -488,3 +488,82 @@ export interface AttendanceNoteContract {
   createdAt: string;
   updatedAt: string;
 }
+
+/* ── AG14：个人记忆（设计稿 §6、附录 E）。设置页与对话读写的是同一批条目：规范账号加工作区。 ── */
+
+/** 约束（constraint）是「一直遵守的」，其余三类是「酌情参考的」。 */
+export type AgentMemoryCategoryContract = "identity" | "goal" | "preference" | "constraint";
+
+/** 条目用在哪类任务上；`all` 是所有回答。没有任何一项的旧条目是「还没归类」。 */
+export type AgentMemoryTaskContract = "all" | "event.recommend" | "contact.recommend" | "memo.summarize" | "todo.plan" | "schedule.plan";
+
+/** 代码可以拿来排序或筛选的值；和正文出自同一份冻结的卡片载荷。 */
+export interface AgentMemoryStructuredContract {
+  preferredDays?: readonly ("Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun")[] | undefined;
+  dayPart?: "morning" | "afternoon" | "evening" | undefined;
+  strength?: "prefer" | "only" | "avoid" | undefined;
+  topics?: readonly string[] | undefined;
+  replyLanguage?: "zh" | "ja" | "en" | undefined;
+}
+
+/** 一条在用的记忆。删掉的条目不在任何列表里（只留删除标记，没有正文）。 */
+export interface AgentMemoryEntryContract {
+  memoryId: string;
+  category: AgentMemoryCategoryContract;
+  content: string;
+  /** manual：用户在设置页自己写的；conversation：对话里出卡、点了确认才保存的。 */
+  source: "manual" | "conversation";
+  createdAt: string;
+  updatedAt: string;
+  /** 新建为 1，每改一次加一；修改和删除带上它，条目已经变了就返回 409。 */
+  revision: number;
+  status: "active" | "deleted";
+  appliesTo: readonly AgentMemoryTaskContract[];
+  structured: AgentMemoryStructuredContract | null;
+  /** 本地日期 YYYY-MM-DD，含当天；null 表示不限。到期日是 validUntil。 */
+  validFrom: string | null;
+  validUntil: string | null;
+  sourceMessageRef: string | null;
+  deletedAt?: string | null | undefined;
+}
+
+/** 两个开关：enabled 是「回答时参考这些」，allowConversationLearning 是「从对话里记住新的（会先问你）」。 */
+export interface AgentMemorySettingsContract {
+  enabled: boolean;
+  allowConversationLearning: boolean;
+  updatedAt: string;
+}
+
+/** GET /api/agent/memory。memoryVersion 随每次新增、修改、删除前进。 */
+export interface AgentMemoryListContract {
+  memories: readonly AgentMemoryEntryContract[];
+  settings: AgentMemorySettingsContract;
+  memoryVersion: number;
+}
+
+/** POST /api/agent/memory 的请求体（设置页上用户自己添加，不出卡）。 */
+export interface AgentMemoryCreateInputContract {
+  category: AgentMemoryCategoryContract;
+  content: string;
+  appliesTo?: readonly AgentMemoryTaskContract[] | undefined;
+  structured?: AgentMemoryStructuredContract | null | undefined;
+  validFrom?: string | null | undefined;
+  validUntil?: string | null | undefined;
+}
+
+/** PATCH /api/agent/memory/[id] 的请求体；至少改一项。删除是 DELETE /api/agent/memory/[id]?expectedRevision=n。 */
+export interface AgentMemoryUpdateInputContract {
+  category?: AgentMemoryCategoryContract | undefined;
+  content?: string | undefined;
+  appliesTo?: readonly AgentMemoryTaskContract[] | undefined;
+  structured?: AgentMemoryStructuredContract | null | undefined;
+  validFrom?: string | null | undefined;
+  validUntil?: string | null | undefined;
+  expectedRevision?: number | undefined;
+}
+
+/** PATCH /api/agent/memory/settings 的请求体。 */
+export interface AgentMemorySettingsInputContract {
+  enabled?: boolean | undefined;
+  allowConversationLearning?: boolean | undefined;
+}

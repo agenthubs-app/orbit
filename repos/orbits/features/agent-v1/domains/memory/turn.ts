@@ -209,6 +209,20 @@ export function topicOfEntry(entry: Pick<RecalledMemory, "structured" | "content
   return topicWordsOf(entry.content.replace(TASK_WORDS_IN_ENTRY, " ")) || null;
 }
 
+/**
+ * Whether this turn's own time words overrule a saved time condition (设计稿 §6 "记忆不会取代用户当前的明确要求"):
+ * a preference gives way to any time the turn names; a rule (a hard condition) only when the turn asks for exactly
+ * what it leaves out ("这次看周四晚上" against "不要晚上的") or for another slot than the only one it allows.
+ */
+export function overruledByTurn(saved: Pick<TimePreference, "days" | "part" | "exclude" | "hard">, turn: Pick<TimePreference, "days" | "part" | "exclude"> | null): boolean {
+  if (!turn) return false;
+  if (!saved.hard) return true;
+  if (turn.exclude) return false;
+  const sameSlot = (!saved.part || saved.part === turn.part) && (!saved.days || saved.days === turn.days);
+  const namesSlot = Boolean((saved.part && turn.part) || (saved.days && turn.days));
+  return saved.exclude ? sameSlot && namesSlot : namesSlot && !sameSlot;
+}
+
 export interface RankMemory {
   /** The entries the ranking uses (their words are named in the lead). */
   used: RecalledMemory[];
@@ -223,7 +237,7 @@ export interface RankMemory {
  * turn's own words name a time ("这次看周四晚上"), saved time conditions are not applied; when they name a topic, saved
  * topics are not. Rules for every task (the reply language …) are not ranking conditions and stay out of the lead.
  */
-export function rankMemoryOf(turn: TurnMemory, domain: RankDomain, input: { now: string; timeZone: string; turnHasTime: boolean; turnHasTopic: boolean; partId: string }): RankMemory {
+export function rankMemoryOf(turn: TurnMemory, domain: RankDomain, input: { now: string; timeZone: string; turnTime: Pick<TimePreference, "days" | "part" | "exclude"> | null; turnHasTopic: boolean; partId: string }): RankMemory {
   const out: RankMemory = { overruled: [], time: [], topic: null, used: [] };
   if (!turn.snapshot) return out;
   const recall = recallFrom(turn.snapshot, { now: input.now, task: TASK_OF[domain], timeZone: input.timeZone });
@@ -233,7 +247,7 @@ export function rankMemoryOf(turn: TurnMemory, domain: RankDomain, input: { now:
     const preference = domain === "event" ? timePreferenceOfEntry(entry) : null;
     const topic = topicOfEntry(entry);
     if (preference) {
-      if (input.turnHasTime) out.overruled.push(entry);
+      if (overruledByTurn(preference, input.turnTime)) out.overruled.push(entry);
       else {
         out.time.push({ entry, preference });
         out.used.push(entry);
@@ -359,6 +373,8 @@ function answerByCode(scope: NodeScope, part: GraphPart, text: string, cites: st
   part.waitReason = null;
   part.step = null;
   part.reading = null;
+  // A matter of its own: it does not answer a question left open earlier in the conversation.
+  part.continues = null;
   part.reads = cites.map((ref) => ({ ref, version: "" }));
   part.cites = cites;
   part.gaps = [];
@@ -372,6 +388,7 @@ function settleWrite(scope: NodeScope, part: GraphPart, settled: Settled, capabi
   part.waitReason = null;
   part.step = null;
   part.reading = null;
+  part.continues = null;
   part.capabilities = [capability];
   if (settled.kind === "line") {
     part.status = "unfinished";
@@ -486,6 +503,7 @@ export async function memoryRouteStep(scope: NodeScope, state: AgentGraphState, 
         part.waitReason = null;
         part.step = null;
         part.reading = null;
+        part.continues = null;
         settledIds.add(part.localId);
       } else if (tagged && !part.capabilities.length) {
         part.route = "answer";

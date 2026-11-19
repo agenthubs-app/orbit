@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { resolveAuthenticatedApiActor } from "../../_shared/authenticated-actor";
+import { resolveAuthenticatedApiActor, type AuthenticatedApiActor } from "../../_shared/authenticated-actor";
 import {
   AGENT_MEMORY_CATEGORIES,
   AGENT_MEMORY_TASKS,
@@ -129,17 +129,18 @@ export function parseUpdateAgentMemoryInput(
  * conversation — the canonical account and its workspace, through the one identity resolver. The Auth.js user id of
  * the session is never the partition key.
  */
-export async function resolveAgentMemoryRequest(): Promise<AgentMemoryRequestContext | null> {
-  const actor = await resolveAuthenticatedApiActor();
+export async function resolveAgentMemoryRequest(dependencies: {
+  /** The one identity resolver of API routes (a test passes a resolver over its own identity records). */
+  resolveActor?: () => Promise<Pick<AuthenticatedApiActor, "id" | "workspaceId"> | null>;
+  serviceFor?: (scope: { actorId: string; workspaceId: string }) => AgentMemoryService;
+} = {}): Promise<AgentMemoryRequestContext | null> {
+  const actor = await (dependencies.resolveActor ?? resolveAuthenticatedApiActor)();
   const actorId = actor?.id?.trim();
   if (!actor || !actorId) return null;
+  const serviceFor = dependencies.serviceFor ?? ((scope) => createAgentMemoryService({ actorId: scope.actorId, mode: resolveModuleMode(), workspaceId: scope.workspaceId }));
   return {
     actorId,
-    service: createAgentMemoryService({
-      actorId,
-      mode: resolveModuleMode(),
-      workspaceId: actor.workspaceId,
-    }),
+    service: serviceFor({ actorId, workspaceId: actor.workspaceId }),
     workspaceId: actor.workspaceId,
   };
 }

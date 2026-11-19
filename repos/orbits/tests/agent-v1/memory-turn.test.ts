@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { FORGOTTEN_SOURCE, STALE_MEMORY_ANSWER, withholdForgotten } from "../../features/agent-v1/domains/memory/turn";
+import { FORGOTTEN_SOURCE, overruledByTurn, STALE_MEMORY_ANSWER, withholdForgotten } from "../../features/agent-v1/domains/memory/turn";
 import { sentenceTopicOf } from "../../features/agent-v1/functions/basis";
 import { memorySnapshotOf, runFn, type TestMemory } from "./functions-kit";
 
@@ -108,6 +108,23 @@ test("AG14-3 「这次看周四晚上的」: no card and no change; this turn's 
   assert.deepEqual(of(run.events, "memory.recall").flatMap((event) => (event.overruled ?? []) as string[]), ["MM1"]);
   assert.deepEqual(recalled(run.events), []);
   assert.equal(of(run.events, "memory.this_time").length, 1);
+});
+
+test("AG14-3 what this turn says against what is saved: a preference gives way to any time named; a rule only to the very slot it leaves out", async () => {
+  const prefer = { days: "weekend" as const, exclude: false, hard: false, part: "morning" as const };
+  const noEvening = { exclude: true, hard: true, part: "evening" as const };
+  assert.equal(overruledByTurn(prefer, null), false);
+  assert.equal(overruledByTurn(prefer, { exclude: false, part: "evening" }), true);
+  assert.equal(overruledByTurn(noEvening, null), false);
+  // "优先周末上午" in this turn does not lift "不要晚上的"; "这次看周四晚上" does, for this turn.
+  assert.equal(overruledByTurn(noEvening, { days: "weekend", exclude: false, part: "morning" }), false);
+  assert.equal(overruledByTurn(noEvening, { exclude: false, part: "evening" }), true);
+  assert.equal(overruledByTurn(noEvening, { exclude: true, part: "evening" }), false);
+  // In the graph: the rule stays while the turn names another time.
+  const message = "给我推荐几场下周的活动，优先周末上午。";
+  const run = await runFn(message, [EVENT_RANK(message, NEXT_WEEK)], { memories: [MM2] });
+  assert.deepEqual(recalled(run.events), ["MM2"]);
+  assert.ok(!listed(run.events).includes("event:event:e103") && !listed(run.events).includes("event:event:e104"));
 });
 
 test("AG14-3 「以后……」 on an entry already saved: one card with the same entry before and after, at its revision; learning off does not stand in the way", async () => {

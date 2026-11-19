@@ -256,6 +256,12 @@ export function understandNode(scope: NodeScope): GraphNode {
     const chosen = replyLanguageOf(input.message, covered.output.language, input.locale, earlier);
     // AG14: a saved rule for every answer ("回答用日语") decides the reply language, whatever the message is written in.
     const ruled = run.memory.replyLanguage;
+    // A plain-chat reply this step wrote in another language than the rule asks for is not delivered: the answer step
+    // writes it again in the ruled language.
+    if (ruled && run.plainReply && replyLanguageOf(run.plainReply, null, ruled).language !== ruled) {
+      emitTrace({ ruled, type: "understand.plain_reply_not_in_ruled_language" });
+      run.plainReply = null;
+    }
     emitTrace({ language: ruled ?? chosen.language, reported: covered.output.language ?? null, decidedBy: ruled ? "saved_rule" : chosen.source, ...(chosen.rejected ? { rejected: chosen.rejected } : {}), type: "understand.language" });
     return { budget, language: ruled ?? chosen.language, parts: graphPartsOf(covered.output, scope), plainChat: covered.output.plainChat, repairs, understanding: "understood" };
   };
