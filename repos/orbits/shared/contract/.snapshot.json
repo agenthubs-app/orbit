@@ -1224,6 +1224,11 @@
           "kind": "text",
           "type": "string"
         },
+        "expiredReason": {
+          "optional": true,
+          "kind": "text",
+          "type": "'superseded'"
+        },
         "origin": {
           "optional": true,
           "kind": "text",
@@ -1858,6 +1863,295 @@
           "optional": true,
           "kind": "text",
           "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentScheduledTaskRunOutcome": {
+      "kind": "enum",
+      "values": [
+        "'delivered'",
+        "'failed'",
+        "'needs_attention'",
+        "'no_match'",
+        "'undelivered'"
+      ]
+    },
+    "agent-v1.ts::AgentScheduledTaskRunContract": {
+      "kind": "object",
+      "members": {
+        "runId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "taskId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "scheduledAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "computedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "outcome": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentScheduledTaskRunOutcome"
+        },
+        "skipped": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "line": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "items": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "ref": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "kind": {
+                "optional": false,
+                "kind": "text",
+                "type": "'contact' | 'event' | 'todo'"
+              },
+              "id": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "title": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "line": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "cardId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "computeAttempts": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "delivery": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "state": {
+              "optional": false,
+              "kind": "text",
+              "type": "'pending' | 'cancelled' | 'delivered' | 'none'"
+            },
+            "attempts": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "deliveredAt": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "cancelReason": {
+              "optional": true,
+              "kind": "text",
+              "type": "'rule_paused' | 'rule_changed' | 'rule_removed' | 'reference_unreadable' | undefined"
+            }
+          }
+        },
+        "skippedDays": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "attention": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "reason": {
+              "optional": false,
+              "kind": "text",
+              "type": "'reference_unreadable'"
+            },
+            "message": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "referenceTitle": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        },
+        "push": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "state": {
+              "optional": false,
+              "kind": "text",
+              "type": "'failed' | 'pending' | 'delivered' | 'not_requested'"
+            },
+            "attempts": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "deliveredAt": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "agent-v1.ts::AgentScheduledTaskContract": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "'completed' | 'active' | 'paused'"
+        },
+        "version": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "nextRunAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "timeZone": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "rows": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "field": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "label": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "value": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "notify": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "inApp": {
+              "optional": false,
+              "kind": "text",
+              "type": "boolean"
+            },
+            "push": {
+              "optional": false,
+              "kind": "text",
+              "type": "boolean"
+            }
+          }
+        },
+        "lastRun": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentScheduledTaskRunContract | null"
+        },
+        "createdAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentScheduledTaskListContract": {
+      "kind": "object",
+      "members": {
+        "tasks": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentScheduledTaskContract[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentScheduledTaskHistoryContract": {
+      "kind": "object",
+      "members": {
+        "task": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentScheduledTaskContract"
+        },
+        "runs": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentScheduledTaskRunContract[]"
         }
       }
     },
@@ -14789,7 +15083,9 @@
     "inbox-notifications.ts::InboxSourceKind": {
       "kind": "enum",
       "values": [
+        "'agent_card'",
         "'appointment'",
+        "'automation_result'",
         "'batch'",
         "'connection'",
         "'contact'",
@@ -14798,6 +15094,7 @@
         "'event_host_notice'",
         "'event_pick'",
         "'event_prep'",
+        "'external_proposal'",
         "'goal'",
         "'mail_summary'",
         "'message'",
@@ -14859,7 +15156,7 @@
         "kind": {
           "optional": false,
           "kind": "text",
-          "type": "'event' | 'schedule' | 'conversation' | 'task' | 'appointment' | 'batch' | 'source'"
+          "type": "'event' | 'schedule' | 'conversation' | 'automation' | 'task' | 'appointment' | 'batch' | 'source' | 'card'"
         },
         "id": {
           "optional": false,
@@ -25447,7 +25744,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'failed' | 'cancelled' | 'scheduled' | 'delivered'"
+          "type": "'failed' | 'cancelled' | 'delivered' | 'scheduled'"
         },
         "channels": {
           "optional": false,

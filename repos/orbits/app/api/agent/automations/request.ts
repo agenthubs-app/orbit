@@ -1,23 +1,32 @@
 import { NextResponse } from "next/server";
-import { auth } from "../../../../auth";
+import { resolveAuthenticatedApiActor } from "../../_shared/authenticated-actor";
 import type {
   AgentAutomationDeliveryChannel,
   AgentAutomationSchedule,
   AgentAutomationSignalType,
   AgentAutomationService,
   AgentAutomationTrigger,
+  AgentRuleSpec,
   CreateAgentAutomationInput,
   UpdateAgentAutomationInput,
 } from "../../../../features/agent/automations/contract";
 import {
   AGENT_AUTOMATION_SIGNAL_TYPES,
 } from "../../../../features/agent/automations/contract";
-import { createAgentAutomationService } from "../../../../features/agent/automations/service-factory";
+import type { AutomationStorage } from "../../../../features/agent/automations/due-index";
+import { configuredAutomationStorage, createAgentAutomationService } from "../../../../features/agent/automations/service-factory";
 import { resolveModuleMode } from "../../../../shared/services/module-mode";
 
 interface AgentAutomationRequestContext {
   actorId: string;
   service: AgentAutomationService;
+  /** AG15: the run history and the due index (null when no database is configured). */
+  storage: AutomationStorage | null;
+}
+
+/** AG15: the rule fields of a form (the service validates them; an id is never taken from a request). */
+function ruleFrom(value: unknown): AgentRuleSpec | undefined {
+  return isRecord(value) && isRecord(value.scope) && isRecord(value.notify) && isRecord(value.ranking) ? (value as unknown as AgentRuleSpec) : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -124,6 +133,7 @@ export function parseCreateAgentAutomationInput(
     capabilityId: value.capabilityId,
     title: value.title,
     instruction: value.instruction,
+    ...(ruleFrom(value.rule) ? { rule: ruleFrom(value.rule) } : {}),
     source: sourceFrom(value.source),
     trigger,
     delivery,
@@ -167,6 +177,7 @@ export function parseUpdateAgentAutomationInput(
     trigger,
     delivery,
     status,
+    ...(ruleFrom(value.rule) ? { rule: ruleFrom(value.rule) } : {}),
     source: sourceFrom(value.source),
     changeNote:
       typeof value.changeNote === "string"
@@ -175,16 +186,22 @@ export function parseUpdateAgentAutomationInput(
   };
 }
 
+/**
+ * agent-design AG15 (易错边界 2): a rule's owner is the canonical account — the same identity the conversation, the
+ * card ledger and the dispatcher use — never the raw sign-in subject.
+ */
 export async function resolveAgentAutomationRequest(): Promise<AgentAutomationRequestContext | null> {
-  const session = await auth();
-  const actorId = session?.user?.id?.trim();
+  const actor = await resolveAuthenticatedApiActor();
+  const actorId = actor?.id?.trim();
   if (!actorId) return null;
+  const mode = resolveModuleMode();
   return {
     actorId,
     service: createAgentAutomationService({
       actorId,
-      mode: resolveModuleMode(),
+      mode,
     }),
+    storage: configuredAutomationStorage(mode),
   };
 }
 

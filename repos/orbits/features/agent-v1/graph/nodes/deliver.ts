@@ -235,6 +235,8 @@ function summaryOfQuestion(scope: NodeScope, state: AgentGraphState, part: Graph
   const labels = optionLabels(scope, set, state.language);
   if (set?.kind === "not_understood") return `Orbit could not tell what "${quote}" asks for${labels.length ? `; it offered: ${labels.join(" / ")}` : ""}`;
   // AG10: the one question of a ranking with no basis; any reply about how to pick (or "随便") answers it.
+  // AG15: the one question of a scheduled task with no ranking basis; a reply naming a standard answers it.
+  if (part.plan.ruleAsk) return `Orbit asked what the scheduled task "${quote}" should pick by each time (offered: ${labels.join(" / ")}); a reply naming a standard, a note chosen with @, or "any / 随便", answers it`;
   if (part.plan.rankAsk) return `Orbit asked what to pick "${quote}" by (offered: ${labels.join(" / ")}); a reply naming a standard, or "any / 随便", answers it`;
   if (set?.asks === "reading") return `Orbit asked which of these "${quote}" means: ${labels.join(" / ")}`;
   return `Orbit asked what "${quote}" refers to${labels.length ? ` (${labels.join(" / ")})` : ""}`;
@@ -293,7 +295,7 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
       const asks = missingOf(part, set?.kind === "not_understood" || !set ? "intent" : set.asks ?? "object");
       // AG05: the clue words go with the matter, so a reply that continues it ("他") reads the same person.
       const clues = part.refs.map((ref) => ({ entity: ref.entity, text: clueWords(input.message, ref) ?? "" })).filter((clue) => clue.text);
-      kept.push({ asks, createdAt: now, kind: "clarification", partId: part.localId, quote, ref: `clarification:${input.requestId}:${part.localId}`, requestId: input.requestId, summary: summaryOfQuestion(scope, state, part), unrelatedMessages: 0, writes: writesIn(part), ...(clues.length ? { clues } : {}), ...(part.plan.rankAsk ? { rank: { ...part.plan.rankAsk } } : {}) });
+      kept.push({ asks, createdAt: now, kind: "clarification", partId: part.localId, quote, ref: `clarification:${input.requestId}:${part.localId}`, requestId: input.requestId, summary: summaryOfQuestion(scope, state, part), unrelatedMessages: 0, writes: writesIn(part), ...(clues.length ? { clues } : {}), ...(part.plan.rankAsk ? { rank: { ...part.plan.rankAsk } } : {}), ...(part.plan.ruleAsk ? { rule: JSON.parse(JSON.stringify(part.plan.ruleAsk)) } : {}) });
     }
   }
   next.openItems = kept;

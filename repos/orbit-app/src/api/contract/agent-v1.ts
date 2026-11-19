@@ -337,6 +337,8 @@ export interface AgentActionPreviewContract {
   payloadHash: string;
   status: AgentCardStatus;
   expiresAt?: string | undefined;
+  /** AG15：卡片过期的原因。superseded 表示同一条定时任务的下一期出了新卡，这张被取代；不写表示放得太久。 */
+  expiredReason?: "superseded" | undefined;
   origin?:
     | { kind: "conversation"; conversationId: string; requestId: string }
     | { kind: "automation"; ruleId: string; firedAt: string }
@@ -548,4 +550,73 @@ export interface AgentProposalViewContract {
   card: AgentActionPreviewContract;
   /** 不能再确认时页面显示的一句话（已失效要重新提、已作废、已否决），由服务端按卡的语言写好。 */
   notice?: string | undefined;
+}
+
+// ── agent-design AG15：定时任务与它的运行历史（设计稿 §5.3、§10「我的定时任务」）。本块由 AG15 追加。 ──
+
+/** 一期运行的结果：已送达 / 没有新的 / 已算出未送出 / 失败 / 需处理。 */
+export type AgentScheduledTaskRunOutcome = "delivered" | "no_match" | "undelivered" | "failed" | "needs_attention";
+
+/** 一期运行。算出结果的时刻（computedAt）和结果送到用户手里的情况（delivery、push）分开记。 */
+export interface AgentScheduledTaskRunContract {
+  runId: string;
+  taskId: string;
+  /** 这一期计划触发的时刻（不是实际跑的时刻）。 */
+  scheduledAt: string;
+  computedAt: string;
+  outcome: AgentScheduledTaskRunOutcome;
+  /** 中断恢复时在这一期之前跳过的期数（只补最近一期）。 */
+  skipped: number;
+  /** 历史里的一行说明，服务端写好，两端照着显示。 */
+  line: string;
+  /** 这一期的完整内容（收件箱里那一段）；没有要送的内容时是空串。 */
+  text: string;
+  /** 这一期列出的记录，可以点进各自的页面。 */
+  items: readonly { ref: string; kind: "event" | "contact" | "todo"; id: string; title: string; line: string }[];
+  /** 这一期产生的待确认的卡（在收件箱里确认）。 */
+  cardId?: string | undefined;
+  /** 算了几次才算成（1 是一次算成；大于 1 是先失败、用同一期再试成功的）。 */
+  computeAttempts: number;
+  /**
+   * 站内收件箱的投递。attempts 大于 1 是补送过（补送不重新算）。cancelled 时 cancelReason 说明为什么没送：
+   * rule_paused 送出前暂停了；rule_changed 送出前改了任务；rule_removed 送出前删了任务；reference_unreadable 用来挑的笔记打不开了。
+   */
+  delivery: { state: "none" | "pending" | "delivered" | "cancelled"; attempts: number; deliveredAt?: string | undefined; cancelReason?: "rule_paused" | "rule_changed" | "rule_removed" | "reference_unreadable" | undefined };
+  /** 中断恢复时跳过的那几期的本地日期（YYYY-MM-DD，最早的在前，最多 12 个）。 */
+  skippedDays: readonly string[];
+  /** 需处理时的原因说明（服务端写好），例如引用的笔记读不到了。 */
+  attention?: { reason: "reference_unreadable"; message: string; referenceTitle?: string | undefined } | undefined;
+  /** 推送提醒的投递（AG16 起使用；AG15 只记这条任务有没有开提醒）。 */
+  push: { state: "not_requested" | "pending" | "delivered" | "failed"; attempts: number; deliveredAt?: string | undefined };
+}
+
+/** 「我的定时任务」里的一条任务。每一行的文字由服务端写好，和确认卡上的一致。 */
+export interface AgentScheduledTaskContract {
+  id: string;
+  title: string;
+  /** active 运行中；paused 已暂停；completed 已结束（过了有效期，或一次性的已经跑完）。 */
+  status: "active" | "paused" | "completed";
+  version: number;
+  /** 下次预计运行的时刻；暂停或已结束时为 null。到点后约 10 分钟内运行。 */
+  nextRunAt: string | null;
+  /** 检查时间所用的时区（IANA 名称）；显示下次日期时一并写明。 */
+  timeZone: string | null;
+  /** 检查时间、候选范围、排序依据、条数、有效期、提醒方式、下次预计运行，各一行。 */
+  rows: readonly { field: string; label: string; value: string }[];
+  notify: { inApp: boolean; push: boolean };
+  lastRun: AgentScheduledTaskRunContract | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** GET /api/agent/automations 里的 tasks。 */
+export interface AgentScheduledTaskListContract {
+  tasks: readonly AgentScheduledTaskContract[];
+}
+
+/** GET /api/agent/automations/[id]/runs。 */
+export interface AgentScheduledTaskHistoryContract {
+  task: AgentScheduledTaskContract;
+  /** 最近的在前。 */
+  runs: readonly AgentScheduledTaskRunContract[];
 }

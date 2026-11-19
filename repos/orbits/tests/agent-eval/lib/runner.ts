@@ -77,7 +77,6 @@ const STEP_SUPPORT_NOTE: Record<string, string> = {
   resume_conversation: "resuming a saved conversation with its progress arrives in AG14",
   revoke: "revoking a push permission is simulated from AG16 (a read permission from AG05, a connection from AG17)",
   rollback: "rollback arrives in AG18",
-  scheduler_tick: "scheduled dispatch driven by the runner arrives in AG15",
   stop: "stopping a running turn needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   sync: "App sync needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)",
 };
@@ -276,6 +275,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   await db.connect();
   let diff: DatabaseDiff = { records: [], tables: [] };
   let memoryAfter: { id: string }[] | undefined;
+  let rulesAfter: NonNullable<Observation["rulesAfter"]> | undefined;
+  const ruleEndLines: string[] = [];
   let mergedEvents: TraceEvent[] = [];
   let error: string | undefined;
   const transcript: string[] = [`# ${testCase.id} ${testCase.title}`, "", `- 账号：${account}（${world.accounts[account]?.name ?? ""}） · 世界：${testCase.world} · 时钟：${clock}`, ""];
@@ -571,6 +572,31 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       transcript.push(`**Agent**${result.status !== 200 ? `（HTTP ${result.status}）` : ""}：${assistantText || "（无文字回应）"}`, ...cardLines, "");
     };
 
+    // ── AG15: the inbox, read as each account's own client; a card an entry points at is a card the user can click. ──
+    const platformEvents = new Set(world.anchors.filter((record) => record.kind === "platform_event").map((record) => record.id));
+    /** "2026-11-20 09:00（Asia/Tokyo）": a period's planned time as the account's own clock shows it. */
+    const localTime = (instant: string) => `${new Intl.DateTimeFormat("sv-SE", { dateStyle: "short", timeStyle: "short", timeZone: world.timezone ?? "Asia/Tokyo" }).format(new Date(instant))}（${world.timezone ?? "Asia/Tokyo"}）`;
+    let inboxFaultArmed = false;
+    const inboxSeen = new Set<string>();
+    const readInboxes = async (index: number) => {
+      for (const label of Object.keys(accounts)) {
+        const client = new EvalClient(baseUrl(environment), log, await cookieFor(label), "web");
+        // The runner's own look at each account's inbox (not the tested system's read): tagged like the other device's.
+        const result = await client.request("GET", "/api/inbox/notifications?limit=50", undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: `inbox of account ${label}` });
+        const items = ((result.body?.data?.items ?? []) as { id: string; title: string; reason: string; kind: string; sources: { sourceKind: string; sourceId: string }[]; target: { kind: string; id: string } }[]).filter((item) => item.sources.some((source) => ["automation_result", "agent_card", "external_proposal"].includes(source.sourceKind)));
+        for (const item of items) {
+          if (inboxSeen.has(`${label}:${item.id}`)) continue;
+          inboxSeen.add(`${label}:${item.id}`);
+          log.push({ account: label, inboxId: item.id, kind: item.kind, sourceKind: item.sources[0]?.sourceKind ?? null, step: index, target: item.target, title: item.title, type: "client.inbox_entry" });
+          transcript.push(`**站内收件箱**（账号 ${label}，新条目）：${item.title}`, ...String(item.reason).split("\n").map((line) => `> ${line}`), "");
+          if (item.target.kind === "card" && label === account) {
+            const card = await readCardAs("web", item.target.id, "inbox: open the card this entry points at");
+            transcript.push(`*（这条收件箱条目指向一张待确认的卡，不挂在任何对话下；出处：${card?.origin?.kind === "automation" ? `定时任务 ${fixtureIdOf(card.origin.ruleId) ?? card.origin.ruleId}，触发时刻 ${card.origin.firedAt}` : card?.origin?.kind ?? "未知"}）*`, ...cardText(card), "");
+          }
+        }
+      }
+    };
+
     const runStep = async (step: Step, index: number): Promise<void> => {
       const word = Object.keys(step).find((key) => !["client", "refs", "while_running"].includes(key)) ?? "unknown";
       stepRecords.push({ index, word });
@@ -677,7 +703,10 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         case "fault": {
           log.push({ fault: step.fault, source: "simulated", step: index, type: "turn.fault" });
           // AG05: the read adapters are fault points too (<kind>.read). AG06: one card operation (memo.create …).
-          if (!["model", "understand", "judgment", "executor", "memo.read", "todo.read", "contact.read", "schedule.read", "event.read", ...EXECUTOR_FAULT_POINTS].includes(step.fault?.where)) unsupported.push({ reason: `fault point "${step.fault?.where}" has no consumer in the current product`, step: index, word });
+          // AG15: writing a scheduled run's result to the inbox is a fault point too (notify.inbox); it covers the next
+          // scheduler_tick (SCH.yaml notes: "故障只作用于第一次派发") and ends after it.
+          if (step.fault?.where === "notify.inbox") inboxFaultArmed = true;
+          if (!["model", "understand", "judgment", "executor", "notify.inbox", "memo.read", "todo.read", "contact.read", "schedule.read", "event.read", ...EXECUTOR_FAULT_POINTS].includes(step.fault?.where)) unsupported.push({ reason: `fault point "${step.fault?.where}" has no consumer in the current product`, step: index, word });
           if (EXECUTOR_FAULT_POINTS.includes(step.fault?.where) || step.fault?.where === "executor") executorFaultArmed = String(step.fault?.where);
           await serverControl(environment, "fault", step.fault);
           return;
@@ -692,6 +721,27 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           clockOffsetMs = Date.parse(result.now) - Date.now();
           log.push({ now: result.now, step: index, type: "turn.advance_clock", ...body });
           transcript.push(`*（时钟推进到 ${result.now}）*`, "");
+          return;
+        }
+        case "scheduler_tick": {
+          // AG15 (eval/README.md §10): the runner drives the dispatch. The clock moves to the tick's time and the
+          // product's own dispatch entry is called as a scheduler calls it: no account, no client, only its secret.
+          const at = String((step.scheduler_tick as { at?: string } | undefined)?.at ?? "");
+          const moved = await serverControl<{ now: string }>(environment, "clock", { to: at });
+          clockOffsetMs = Date.parse(moved.now) - Date.now();
+          log.push({ at, now: moved.now, step: index, type: "turn.scheduler_tick" });
+          const response = await fetch(`${baseUrl(environment)}/api/internal/agent/automations`, { headers: { authorization: `Bearer ${environment.env.CRON_SECRET ?? ""}` }, method: "POST" });
+          const body = (await response.json().catch(() => null)) as { data?: { dispatch?: Record<string, number> } } | null;
+          const dispatch = body?.data?.dispatch ?? null;
+          log.push({ dispatch, status: response.status, step: index, type: "scheduler.dispatch" });
+          transcript.push(`*（定时派发推进到 ${at}：没有任何客户端在线，由运行器像定时器那样调用派发入口，HTTP ${response.status}${dispatch ? `；这一次处理了 ${dispatch.periods ?? 0} 期规则、补送 ${dispatch.deliveriesRetried ?? 0} 条待送通知、触发 ${dispatch.timersFired ?? 0} 个一次性定时器${dispatch.undelivered ? `；其中 ${dispatch.undelivered} 期的结果算出来了，但没能写进收件箱，留作待送` : ""}` : ""}）*`, "");
+          if (response.status !== 200) unsupported.push({ reason: `the dispatch entry answered HTTP ${response.status}`, step: index, word });
+          if (inboxFaultArmed) {
+            await serverControl(environment, "fault_end", { where: "notify.inbox" });
+            log.push({ step: index, type: "turn.fault_end", where: "notify.inbox" });
+            inboxFaultArmed = false;
+          }
+          await readInboxes(index);
           return;
         }
         case "new_conversation":
@@ -847,6 +897,17 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           const change = (step.external_change ?? {}) as { target?: string; set?: Record<string, unknown>; delete?: boolean };
           log.push({ change, step: index, type: "turn.external_change" });
           const productId = change.target ? idMap[change.target] : undefined;
+          if (change.target && platformEvents.has(change.target) && !change.delete) {
+            // AG15 (SCH.yaml): the organizer announces an event's time, place and topics through the host's own
+            // update and publish. Not the tested system's write.
+            try {
+              await ctx.writer!.updatePlatformEvent(change.target, change.set ?? {});
+              transcript.push(`*（主办方更新了平台活动 ${change.target}：${JSON.stringify(change.set ?? {})}，经主办方自己的修改与发布流程）*`, "");
+            } catch (changeError) {
+              unsupported.push({ reason: `external change of ${change.target} failed: ${changeError instanceof Error ? changeError.message : changeError}`, step: index, word });
+            }
+            return;
+          }
           if (productId && change.delete && productId.startsWith("note:")) {
             // AG05: the note is deleted on another device through the product's normal delete endpoint.
             const device = new EvalClient(baseUrl(environment), log, await cookieFor(account), "web");
@@ -1143,6 +1204,25 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     for (const fault of serverState.faults ?? []) {
       if (!fault.applied) unsupported.push({ reason: `${fault.where}/${fault.kind} was armed but never reached, so this case did not test what it plans`, step: -1, word: "fault" });
     }
+    // AG15: what each account's "my scheduled tasks" shows at the end (through the product's own endpoints, as that
+    // account), for rule_state and for the judges: the task, its next run and its history lines.
+    if (!fake && (testCase.steps.some((step) => "scheduler_tick" in step) || (testCase.hard ?? []).some((check) => "rule_state" in (check as object) || "rule_runs" in (check as object)))) {
+      rulesAfter = [];
+      const historyLines: string[] = [];
+      for (const label of Object.keys(accounts)) {
+        const client = new EvalClient(baseUrl(environment), log, await cookieFor(label), "web");
+        const list = await client.request("GET", "/api/agent/automations", undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: `runner: scheduled tasks of account ${label}` });
+        const tasks = (list.body?.data?.tasks ?? []) as { id: string; title: string; status: string; version: number; rows: { label: string; value: string }[] }[];
+        for (const task of tasks) {
+          rulesAfter.push({ account: label, fixtureId: fixtureIdOf(task.id), id: task.id, state: task.status, version: task.version });
+          const history = await client.request("GET", `/api/agent/automations/${encodeURIComponent(task.id)}/runs`, undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: `runner: history of scheduled task ${fixtureIdOf(task.id) ?? task.id}` });
+          const runs = (history.body?.data?.runs ?? []) as { scheduledAt: string; line: string; outcome: string; skipped: number }[];
+          historyLines.push(`### 账号 ${label}：${task.title}（${fixtureIdOf(task.id) ?? "本用例新建"}，${({ active: "运行中", completed: "已结束", paused: "已暂停" } as Record<string, string>)[task.status] ?? task.status}）`, ...task.rows.map((row) => `- ${row.label}：${row.value}`), runs.length ? "- 历史（最近的在前）：" : "- 历史：还没有运行过", ...runs.map((run) => `  - ${localTime(run.scheduledAt)} 这一期：${run.line}`), "");
+        }
+      }
+      if (historyLines.length) ruleEndLines.push("## 「我的定时任务」接口最后返回的内容（任务、下次运行、运行历史）", "", ...historyLines);
+      await readInboxes(-1);
+    }
     const after = await readDatabaseState(db);
     diff = await diffStates(db, before, beforePayloads, after);
     // AG11 (memory_state, first used by AE-REF-002's gate): the account's memory entries at the end of the case.
@@ -1353,6 +1433,12 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     fixtureIdOf,
     idMap,
     ...(memoryAfter ? { memoryAfter } : {}),
+    ...(rulesAfter ? { rulesAfter } : {}),
+    // AG15: the run history written in this case, from the database difference (never from the product's own report).
+    ruleRuns: diff.records.filter((change) => change.collection === "agentAutomationRuns" && change.kind !== "deleted" && change.after?.run).map((change) => {
+      const run = change.after!.run as { automationId: string; scheduledAt: string; outcome: string; skipped?: number; items?: { ref: string; id: string }[]; cardId?: string; ownerId: string; delivery?: { inbox?: { state?: string } } };
+      return { account: accountByActor.get(run.ownerId) ?? null, cardId: run.cardId ?? null, delivery: run.delivery?.inbox?.state ?? "none", fixtureRule: fixtureIdOf(run.automationId), listed: (run.items ?? []).map((item) => fixtureIdOf(item.id) ?? fixtureIdOf(item.ref) ?? item.id), outcome: run.outcome, rule: run.automationId, scheduledAt: run.scheduledAt, skipped: Number(run.skipped ?? 0) };
+    }).sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt) || left.rule.localeCompare(right.rule)),
     reads,
     ...(Object.keys(recentInteractions).length ? { recentInteractions } : {}),
     requests,
@@ -1364,6 +1450,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const checks = runHardChecks(testCase as never, observation, context);
   fs.writeFileSync(path.join(dir, "hard-checks.json"), JSON.stringify({ caseId: testCase.id, checks, hardPass: hardChecksPass(checks), unsupported }, null, 2));
   if (cardEndLines.length) transcript.push("", ...cardEndLines);
+  if (ruleEndLines.length) transcript.push("", ...ruleEndLines);
   transcript.push("", "---", "", `数据变化（业务）：${businessChanges.length ? businessChanges.map((change) => `${change.fixtureId ?? change.id} ${change.kind}${change.external ? "（别处的修改，不算被测系统写入）" : ""}`).join("、") : "无"}`);
   fs.writeFileSync(path.join(dir, "transcript.md"), `${transcript.join("\n")}\n`);
   const simulated = events.some((event) => ["model.request", "judgment.request", "web.search", "web.fetch", "exec.call"].includes(event.type) && (event.source === "simulated" || event.source === "replay")) || testCase.steps.some((step) => "fault" in step) || replay.length > 0;

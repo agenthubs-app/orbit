@@ -40,6 +40,7 @@ import { rankCandidates, type RankCandidate, type RankResult } from "../../funct
 import type { AgentRecordAccess, GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart, OptionSetState } from "../state";
 import { clueWords, setIdOf } from "./clarify";
+import { rulePart, ruleTaskOf, type RuleTask } from "./rule";
 import { localMidnight } from "./resolve";
 
 type Language = "zh" | "ja" | "en";
@@ -126,7 +127,9 @@ export type FunctionTask =
   | { kind: "extract"; memoId: string; want: { interactions: boolean; followUps: boolean }; write: boolean }
   | { kind: "summary"; memoId: string }
   | { kind: "compare" }
-  | { kind: "group" };
+  | { kind: "group" }
+  // AG15: a scheduled task to set up, change, pause, resume or remove (graph/nodes/rule.ts).
+  | RuleTask;
 
 const isMemoType = (type: string) => type === "memo" || type === "note";
 
@@ -154,6 +157,9 @@ export function functionOf(scope: NodeScope, part: GraphPart): FunctionTask | nu
   const quote = message.slice(part.quote[0], part.quote[1]);
   // A reply to "按什么来挑" (AG10-1): the ranking asked about goes on with this answer.
   const item = part.continues?.kind === "clarification" ? scope.run.context?.openItems.find((open) => open.ref === part.continues!.ref) : undefined;
+  // AG15: scheduled tasks (also the reply to a task's "按什么来挑").
+  const rule = ruleTaskOf(scope, part, item);
+  if (rule) return rule;
   if (item?.rank) return { item, kind: "rank_reply" };
   if (part.route === "read" || part.route === "answer") {
     // AG11 (App check): an event that is both a clue of the part and an @ reference is one event, not two; and a part that
@@ -584,6 +590,10 @@ export function functionsNode(scope: NodeScope): GraphNode {
         else if (task.kind === "compare" || task.kind === "group") await eventsPart(scope, state, part, task.kind);
         else if (task.kind === "extract") {
           const done = await extractPart(scope, state, part, task, { budget, repairs });
+          budget = done.budget;
+          repairs = done.repairs;
+        } else if (task.kind === "rule") {
+          const done = await rulePart(scope, state, part, task, optionSets, { budget, repairs });
           budget = done.budget;
           repairs = done.repairs;
         } else await rankPart(scope, state, part, task, optionSets);
@@ -1218,3 +1228,5 @@ function instantAt(day: string, time: string, timeZone: string): string {
 }
 
 export type { FunnelCandidate };
+// agent-design AG15: a scheduled rule's period reads and words its candidates exactly as a conversation's ranking does.
+export { contactCandidates, contactLine, eventCandidate, eventLine, INDUSTRY_WORDS, openTodos, PLACE_WORDS, visibleEvent };

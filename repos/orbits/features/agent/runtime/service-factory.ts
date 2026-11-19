@@ -32,6 +32,8 @@ import { getConfiguredContactImportService } from "../../contacts/import/runtime
 import { createPrivateEventService } from "../../events/private-events/service";
 import { createAttendanceService } from "../../events/attendance-notes/service";
 import { createConfiguredPersonalScheduleService } from "../../personal-schedule/service-factory";
+import { withCardExpiryTimers } from "../automations/card-expiry";
+import { configuredAutomationStorage, createAgentAutomationService } from "../automations/service-factory";
 
 interface OrbitAgentRuntimeGlobal {
   __orbitAgentRuntimeServices?: Map<string, AgentRuntimeService>;
@@ -157,8 +159,12 @@ export function createOrbitAgentRuntimeService(
       schedule: configuredOrNull(() => createConfiguredPersonalScheduleService()),
     }
     : null;
+  // agent-design AG15: scheduled rules are written by the automation service (the rule and its due-index row together);
+  // a card frozen or regenerated here gets its one-off expiry timer in the same index.
+  const rules = actorId ? configuredOrNull(() => ({ automations: createAgentAutomationService({ actorId, mode }) })) : null;
+  const automationStorage = mode === "live" && actorId ? configuredOrNull(() => configuredAutomationStorage(mode)) : null;
   const executors = createAgentExecutorRegistry([
-    ...cardWriteExecutors({ actorId, contacts, events, notes, tasks }),
+    ...cardWriteExecutors({ actorId, contacts, events, notes, rules, tasks }),
     ...createAgentDomainExecutors({
       contacts: createStorageContactArchiveActionWriter({
         store,
@@ -193,9 +199,10 @@ export function createOrbitAgentRuntimeService(
   const contactReader = contactAccess ? boundContactReader(contactAccess, actorId) : null;
   const cardReader = todoReader || contactReader ? { ...(todoReader ?? { read: async () => null }), contacts: contactReader } : null;
   const base = createAgentRuntimeService({ cardReader, executors, repository });
+  const timed = automationStorage ? withCardExpiryTimers(base, { ownerId: actorId, storage: automationStorage }) : base;
   const service = mode === "live" && process.env.VERCEL === "1"
-    ? withAgentBackgroundDispatch(base, actorId, enqueueAgentAction)
-    : base;
+    ? withAgentBackgroundDispatch(timed, actorId, enqueueAgentAction)
+    : timed;
   cachedServices.set(cacheKey, service);
   return service;
 }

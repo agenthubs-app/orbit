@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { listScheduledTasks } from "../../../../features/agent/automations/task-view";
 import {
   agentAutomationErrorResponse,
   agentAutomationUnauthorizedResponse,
@@ -12,9 +13,12 @@ export async function GET(): Promise<Response> {
   try {
     const context = await resolveAgentAutomationRequest();
     if (!context) return agentAutomationUnauthorizedResponse();
-    return NextResponse.json({
-      data: { automations: await context.service.list() },
-    });
+    // AG15: `tasks` is what "my scheduled tasks" shows (the card's rows, the next expected run, the latest run).
+    const [automations, tasks] = await Promise.all([
+      context.service.list(),
+      listScheduledTasks({ now: new Date().toISOString(), ownerId: context.actorId, service: context.service, storage: context.storage }),
+    ]);
+    return NextResponse.json({ data: { automations, tasks } }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     return agentAutomationErrorResponse(error, {
       code: "AGENT_AUTOMATIONS_UNAVAILABLE",

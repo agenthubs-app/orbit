@@ -20,9 +20,11 @@ import {
   cardTexts,
   decideAction,
   editCard,
+  expireCard,
   recheckCard,
   regenerateCard,
   reviseCard,
+  type AgentExpireCardResult,
   type AgentReviseCardResult,
   type AgentDecisionInput,
   type AgentRecheckResult,
@@ -189,6 +191,8 @@ export interface AgentRuntimeService {
   recheckCard?: (input: { actionId: string }) => Promise<AgentRecheckResult | null>;
   /** AG12: the user changed an item in words (an import row): the card is frozen again from the new intents as revision+1. */
   reviseCard?: (input: { actionId: string; intents: readonly CardOperationIntent[] }) => Promise<AgentReviseCardResult | null>;
+  /** AG15: closes a waiting card without a click (its expiry timer, or the next period's card took its place). */
+  expireCard?: (input: { actionId: string; revision?: number; reason: "timer" | "superseded" }) => Promise<AgentExpireCardResult | null>;
 }
 
 const TERMINAL_RUN_STATUSES = new Set<AgentRun["status"]>([
@@ -1067,6 +1071,7 @@ export function createAgentRuntimeService({
     },
     decideAction: (input) => decideAction(cardDependencies(), input),
     regenerateCard: (input) => regenerateCard(cardDependencies(), input),
+    expireCard: (input) => expireCard(cardDependencies(), input),
     editCard: (input) => editCard(cardDependencies(), input),
     recheckCard: (input) => recheckCard(cardDependencies(), input),
     reviseCard: (input) => reviseCard(cardDependencies(), input),

@@ -28,6 +28,9 @@ import { cardLocale } from "../../agent/runtime/todo-operations";
 import type { AgentCardAccess } from "./deps";
 import { configuredWebAccess } from "../web/factory";
 import { reviseImportByWords } from "../entry/import-revision";
+import { createAgentAutomationService } from "../../agent/automations/service-factory";
+import { ruleSnapshotOf } from "../domains/rule/apply";
+import type { RuleSnapshot } from "../domains/rule/ops";
 
 /**
  * AG06: the graph's card is the request's card in the ledger (conversationCardId), frozen through
@@ -162,6 +165,8 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       judgment: overrides.judgment ?? { apiKey: process.env.ORBIT_GEMINI_DECISION_API_KEY?.trim() || null, fetchImplementation: overrides.fetchImplementation ?? execution.fetchImplementation },
       // AG09: the public web, through the same stoppable fetch; switched off or no key: not one web request.
       web: overrides.web ?? configuredWebAccess(mode, overrides.fetchImplementation ?? execution.fetchImplementation),
+      // AG15: the account's own scheduled tasks, read through the automation service (the next period comes from the due index).
+      rules: overrides.rules ?? { list: async (actorId) => (await createAgentAutomationService({ actorId, mode }).list()).map(ruleSnapshotOf).filter((rule): rule is RuleSnapshot => rule !== null) },
     };
     if (execution.resume) {
       // AG04: a click resumes this request's paused thread; no message, no confirmation boundary, no model.

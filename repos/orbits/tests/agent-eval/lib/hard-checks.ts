@@ -52,8 +52,6 @@ export const NOT_YET: Record<string, string> = {
   memory_recalled: "AG14",
   push_delivery: "AG16",
   push_excludes: "AG16",
-  rule_runs: "AG15",
-  rule_state: "AG15",
   settings_memory_list: "AG14",
   shadow_report: "AG18",
 };
@@ -1099,11 +1097,53 @@ export const CHECKS: Record<string, CheckFn> = {
     return problems.length ? fail(problems.join(" | ")) : pass(shown.join("; "));
   },
 
+  /**
+   * AG15 (eval/README.md §3.4): the run history of the whole case is exactly these — rule, planned time, outcome and
+   * the periods skipped (not written: 0). `rule: new` is the rule this case's conversation made.
+   */
+  rule_runs(args, obs) {
+    const expected = (Array.isArray(args) ? args : []) as { rule: string; scheduledAt: string; outcome: string; skipped?: number }[];
+    const runs = obs.ruleRuns;
+    if (!runs) return cannot("the run history was not read");
+    const fixtureRules = new Set(Object.keys(obs.idMap));
+    const nameOf = (run: NonNullable<Observation["ruleRuns"]>[number]) => run.fixtureRule ?? (fixtureRules.has(run.rule) ? run.rule : "new");
+    const shown = runs.map((run) => `${nameOf(run)} ${run.scheduledAt} ${run.outcome}${run.skipped ? ` skipped ${run.skipped}` : ""}`);
+    const rest = [...runs];
+    const problems: string[] = [];
+    for (const want of expected) {
+      const at = rest.findIndex((run) => nameOf(run) === want.rule && Date.parse(run.scheduledAt) === Date.parse(want.scheduledAt));
+      if (at < 0) {
+        problems.push(`no run of ${want.rule} planned for ${want.scheduledAt}`);
+        continue;
+      }
+      const [run] = rest.splice(at, 1);
+      if (run.outcome !== want.outcome) problems.push(`${want.rule} ${want.scheduledAt}: ${run.outcome}, expected ${want.outcome}`);
+      if (run.skipped !== Number(want.skipped ?? 0)) problems.push(`${want.rule} ${want.scheduledAt}: skipped ${run.skipped}, expected ${want.skipped ?? 0}`);
+    }
+    for (const run of rest) problems.push(`unexpected run: ${nameOf(run)} ${run.scheduledAt} ${run.outcome}`);
+    const evidence = seqs(obs.events.filter((event) => event.type === "rule.run"));
+    return problems.length ? fail(`${problems.join(" | ")} (history: ${shown.join("; ") || "empty"})`, evidence) : pass(`history: ${shown.join("; ") || "empty"}`, evidence);
+  },
+
+  /** AG15: the state of a scheduled rule when the case ended (active, paused, completed; removed when it is gone). */
+  rule_state(args, obs) {
+    const rules = obs.rulesAfter;
+    if (!rules) return cannot("the rules were not read");
+    const product = obs.idMap[String(args?.rule)] ?? String(args?.rule);
+    const found = rules.find((rule) => rule.fixtureId === args?.rule || rule.id === product);
+    const state = found?.state ?? "removed";
+    return state === args?.state ? pass(`rule ${args?.rule} is ${state}`) : fail(`rule ${args?.rule} is ${state}, expected ${args?.state}`);
+  },
+
   listed(args, obs) {
     // AG05: until AG10's functions deliver lists of their own, the list delivered last is the last
     // answer's cited records in the order they are cited (登记 in CHANGES.md).
     // AG10 (CHANGES.md 2026-11-18): when the request of the last answer delivered a function's list (fn.rank), that list is it.
-    const answer = lastAnswer(obs);
+    // AG15 (SCL.yaml AE-SCL-029 notes: "listed 判的是最后一份交付的清单"): with no conversation, the list delivered last is
+    // the last scheduled run that reached the inbox — its items in the order shown.
+    const delivered = (obs.ruleRuns ?? []).filter((run) => run.delivery === "delivered" && run.listed.length > 0);
+    const scheduled = delivered[delivered.length - 1];
+    const answer = lastAnswer(obs) ?? (scheduled ? { citations: scheduled.listed, seq: Number(obs.events.filter((event) => event.type === "notify.inbox" && event.outcome === "written").pop()?.seq ?? -1), text: "" } : null);
     if (!answer) return fail("no answer");
     const own = functionListOf(obs, answer);
     const list = own ?? answer.citations;

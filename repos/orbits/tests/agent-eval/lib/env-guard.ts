@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { parseEnv } from "node:util";
@@ -145,6 +146,9 @@ export function buildEvalEnvironment(processEnv: Record<string, string | undefin
     ORBIT_BATCH_UPLOAD_DIR: paths.batchUploads,
     ORBIT_EXPO_PUSH_ENDPOINT: `http://127.0.0.1:${port}/__agent-eval/push/expo/send`,
     ORBIT_EXPO_PUSH_RECEIPT_ENDPOINT: `http://127.0.0.1:${port}/__agent-eval/push/expo/receipts`,
+    // AG15: scheduler_tick calls the product's dispatch entry as a scheduler would; the entry needs its bearer secret.
+    // Derived from the eval's own auth secret (the env file may set one); the runner and the eval server share it.
+    CRON_SECRET: fileEnv.CRON_SECRET?.trim() || createHash("sha256").update(`agent-eval-dispatch\u0000${fileEnv.AUTH_SECRET ?? ""}`).digest("hex"),
   };
   for (const key of DATABASE_URL_KEYS) env[key] = databaseUrl;
   for (const key of HOSTED_SERVICE_KEYS) delete env[key];
