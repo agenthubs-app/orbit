@@ -16,7 +16,7 @@ import path from "node:path";
 
 import type { BuildIdentity } from "./build-identity";
 import type { EvalEnvironment } from "./env-guard";
-import { isWorkerDatabaseName, MAX_EVAL_WORKERS } from "./env-guard";
+import { evalDatabaseName, isWorkerDatabaseName, MAX_EVAL_WORKERS } from "./env-guard";
 import { loadEvalEnvironment, processAlive, readServerState, type ServerState } from "./eval-env";
 import { evalPaths, ORBITS_ROOT } from "./paths";
 import { crashedOutcome } from "./run-files";
@@ -91,7 +91,7 @@ export function inSelectionOrder<T extends { caseId: string }>(outcomes: readonl
 }
 
 function assertWorkerDatabase(environment: EvalEnvironment): void {
-  if (environment.worker < 2 || !isWorkerDatabaseName(environment.database.name) || !["127.0.0.1", "localhost", "::1"].includes(environment.database.host)) {
+  if (environment.worker < 2 || !isWorkerDatabaseName(environment.database.name, environment.line) || !["127.0.0.1", "localhost", "::1"].includes(environment.database.host)) {
     throw new Error(`Refusing to create or drop ${environment.database.name} on ${environment.database.host}: only a parallel worker's local database is managed here.`);
   }
 }
@@ -110,11 +110,15 @@ export function prepareWorkerDatabase(environment: EvalEnvironment, snapshotFile
   restoreSnapshot(environment.database.url, snapshotFile);
 }
 
-/** Leftover worker databases on this Postgres (from a run that was killed with SIGKILL). */
+/**
+ * Leftover worker databases of this line on this Postgres (from a run that was killed with SIGKILL). Another
+ * line's workers (harness/eval-lines) are never listed, so a run never drops a database it does not own.
+ */
 export function listWorkerDatabases(environment: EvalEnvironment): string[] {
   const { args } = databaseArgs(environment.database.url);
-  const result = spawnSync(bin("psql"), [...args, "-d", "postgres", "-Atc", "select datname from pg_database where datname like 'orbit\\_agent\\_eval\\_w%'"], { encoding: "utf8" });
-  return result.status === 0 ? result.stdout.split("\n").map((line) => line.trim()).filter(isWorkerDatabaseName) : [];
+  const pattern = `${evalDatabaseName(environment.line).replace(/_/gu, "\\_")}\\_w%`;
+  const result = spawnSync(bin("psql"), [...args, "-d", "postgres", "-Atc", `select datname from pg_database where datname like '${pattern}'`], { encoding: "utf8" });
+  return result.status === 0 ? result.stdout.split("\n").map((line) => line.trim()).filter((name) => isWorkerDatabaseName(name, environment.line)) : [];
 }
 
 function sleepSync(ms: number): void {

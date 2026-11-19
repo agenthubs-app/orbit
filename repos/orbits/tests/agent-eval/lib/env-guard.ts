@@ -12,14 +12,39 @@ export const FORBIDDEN_EVAL_PORTS = new Set([3000, 3100]);
 /** harness/eval-parallel-workers: at most this many workers (`agent-eval:run -- --workers N`). */
 export const MAX_EVAL_WORKERS = 16;
 
-/** orbit_agent_eval, or a parallel worker's orbit_agent_eval_w<k>. */
-export function isEvalDatabaseName(name: string): boolean {
-  return name === EVAL_DATABASE_NAME || isWorkerDatabaseName(name);
+/**
+ * harness/eval-lines: a second checkout of the repository (another sprint worked on at the same time) runs its
+ * own eval next to the main one when its env file names a line, e.g. `ORBIT_AGENT_EVAL_LINE=ag14`. A line has
+ * its own database `orbit_agent_eval_<line>` (workers: `orbit_agent_eval_<line>_w<k>`) and must set its own
+ * `ORBIT_AGENT_EVAL_PORT` and `ORBIT_AGENT_EVAL_HOME`, so two lines never share a database, a port or a snapshot.
+ */
+export const LINE_ENV_KEY = "ORBIT_AGENT_EVAL_LINE";
+/** Lower-case letters and digits; never the shape of a worker suffix (`w3`), so the two cannot be confused. */
+export function isEvalLineName(line: string): boolean {
+  return /^[a-z][a-z0-9]{1,11}$/u.test(line) && !/^w\d+$/u.test(line);
 }
 
-/** A parallel worker's own database (k ≥ 2): the only eval databases the runner creates and drops. */
-export function isWorkerDatabaseName(name: string): boolean {
-  return new RegExp(`^${EVAL_DATABASE_NAME}_w([2-9]|1[0-6])$`, "u").test(name);
+/** The line named in an eval env file, or null for the main eval. Throws on a name that is not a line name. */
+export function evalLine(fileEnv: Record<string, string | undefined>): string | null {
+  const line = fileEnv[LINE_ENV_KEY]?.trim() ?? "";
+  if (!line) return null;
+  if (!isEvalLineName(line)) throw new EvalEnvironmentError(`${LINE_ENV_KEY} must be 2–12 lower-case letters or digits starting with a letter (and not w<number>), not ${line}.`);
+  return line;
+}
+
+/** orbit_agent_eval for the main eval, orbit_agent_eval_<line> for a line. */
+export function evalDatabaseName(line: string | null = null): string {
+  return line ? `${EVAL_DATABASE_NAME}_${line}` : EVAL_DATABASE_NAME;
+}
+
+/** orbit_agent_eval[_<line>], or a parallel worker's orbit_agent_eval[_<line>]_w<k>. */
+export function isEvalDatabaseName(name: string, line: string | null = null): boolean {
+  return name === evalDatabaseName(line) || isWorkerDatabaseName(name, line);
+}
+
+/** A parallel worker's own database (k ≥ 2) of this line: the only eval databases the runner creates and drops. */
+export function isWorkerDatabaseName(name: string, line: string | null = null): boolean {
+  return new RegExp(`^${evalDatabaseName(line)}_w([2-9]|1[0-6])$`, "u").test(name);
 }
 const DATABASE_URL_KEYS = ["ORBIT_LOCAL_DATABASE_URL", "ORBIT_EVENT_DATABASE_URL", "ORBIT_LIVE_DATABASE_URL", "ORBIT_DATABASE_URL"];
 /** Variables that would send traffic or files to hosted services; the eval server never gets them. */
@@ -51,6 +76,8 @@ export interface EvalEnvironment {
   workspaceId: string;
   /** 1 for the plain eval environment; k ≥ 2 for a parallel worker's own database, port, trace and storage. */
   worker: number;
+  /** harness/eval-lines: null for the main eval; the line's name when the env file sets ORBIT_AGENT_EVAL_LINE. */
+  line: string | null;
 }
 
 /**
@@ -64,7 +91,12 @@ export function buildEvalEnvironment(processEnv: Record<string, string | undefin
   if (!isLocalDatabaseUrl(url)) throw new EvalEnvironmentError("ORBIT_LOCAL_DATABASE_URL must point at a Postgres on this machine; refusing to start.");
   const parsed = new URL(url);
   const name = parsed.pathname.replace(/^\//u, "");
-  if (name !== EVAL_DATABASE_NAME) throw new EvalEnvironmentError(`The eval database must be ${EVAL_DATABASE_NAME}, not ${name || "(none)"}; refusing to start.`);
+  const line = evalLine(fileEnv);
+  const baseName = evalDatabaseName(line);
+  if (name !== baseName) throw new EvalEnvironmentError(`The eval database must be ${baseName}, not ${name || "(none)"}; refusing to start.`);
+  if (line && (!fileEnv.ORBIT_AGENT_EVAL_PORT?.trim() || !fileEnv.ORBIT_AGENT_EVAL_HOME?.trim())) {
+    throw new EvalEnvironmentError(`Line ${line} must set its own ORBIT_AGENT_EVAL_PORT and ORBIT_AGENT_EVAL_HOME, so it never shares the main eval's port, snapshots or runs.`);
+  }
   for (const key of DATABASE_URL_KEYS.slice(1)) {
     const value = fileEnv[key]?.trim();
     if (value && !isLocalDatabaseUrl(value)) throw new EvalEnvironmentError(`${key} in the eval env file points off this machine; refusing to start.`);
@@ -83,10 +115,10 @@ export function buildEvalEnvironment(processEnv: Record<string, string | undefin
   const workerFileEnv: Record<string, string> = worker > 1 ? { ...fileEnv, [WORKER_ENV_KEY]: String(worker) } : { ...fileEnv };
   if (worker === 1) delete workerFileEnv[WORKER_ENV_KEY];
   const workerUrl = new URL(url);
-  if (worker > 1) workerUrl.pathname = `/${EVAL_DATABASE_NAME}_w${worker}`;
+  if (worker > 1) workerUrl.pathname = `/${baseName}_w${worker}`;
   const databaseUrl = worker > 1 ? workerUrl.toString() : url;
-  const databaseName = worker > 1 ? `${EVAL_DATABASE_NAME}_w${worker}` : name;
-  if (!isLocalDatabaseUrl(databaseUrl) || !isEvalDatabaseName(databaseName)) throw new EvalEnvironmentError(`Worker ${worker}'s database ${databaseName} is not a local eval database; refusing to start.`);
+  const databaseName = worker > 1 ? `${baseName}_w${worker}` : name;
+  if (!isLocalDatabaseUrl(databaseUrl) || !isEvalDatabaseName(databaseName, line)) throw new EvalEnvironmentError(`Worker ${worker}'s database ${databaseName} is not a local eval database; refusing to start.`);
   const paths = evalPaths(workerFileEnv);
   // Start from a minimal process env (PATH, HOME …), never the developer shell's provider keys or remote URLs.
   const base: Record<string, string> = {};
@@ -116,5 +148,5 @@ export function buildEvalEnvironment(processEnv: Record<string, string | undefin
   };
   for (const key of DATABASE_URL_KEYS) env[key] = databaseUrl;
   for (const key of HOSTED_SERVICE_KEYS) delete env[key];
-  return { database: { host: parsed.hostname, name: databaseName, url: databaseUrl }, env, port, workspaceId, worker };
+  return { database: { host: parsed.hostname, name: databaseName, url: databaseUrl }, env, line, port, workspaceId, worker };
 }

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { worldRecords } from "./bulk-generator";
-import type { EvalEnvironment } from "./env-guard";
+import { evalDatabaseName, type EvalEnvironment } from "./env-guard";
 import { baseUrl } from "./eval-env";
 import { evalPaths } from "./paths";
 import { countWorldRows, serverControl } from "./server";
@@ -72,7 +72,7 @@ export async function runSelfCheck(environment: EvalEnvironment, worlds: readonl
   const push = (name: string, ok: boolean, detail: unknown) => checks.push({ detail, name, ok });
   const paths = evalPaths(environment.env);
   // harness/eval-parallel-workers: worker k ≥ 2 runs on its own orbit_agent_eval_w<k>, and only on that one.
-  const expectedName = environment.worker > 1 ? `orbit_agent_eval_w${environment.worker}` : "orbit_agent_eval";
+  const expectedName = environment.worker > 1 ? `${evalDatabaseName(environment.line)}_w${environment.worker}` : evalDatabaseName(environment.line);
   push("database is local orbit_agent_eval", ["127.0.0.1", "localhost", "::1"].includes(environment.database.host) && environment.database.name === expectedName, environment.database);
   let serverEnvironment: Record<string, any> | null = null;
   let blocked: unknown[] = [];

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { buildEvalEnvironment, EvalEnvironmentError, isEvalDatabaseName, isWorkerDatabaseName } from "./lib/env-guard";
+import { buildEvalEnvironment, EvalEnvironmentError, isEvalDatabaseName, isEvalLineName, isWorkerDatabaseName } from "./lib/env-guard";
 import { evalPaths } from "./lib/paths";
 
 const good = {
@@ -93,4 +93,50 @@ test("only orbit_agent_eval and orbit_agent_eval_w<k> are eval database names", 
   assert.equal(isEvalDatabaseName("orbit_agent_eval_w2x"), false);
   assert.equal(isWorkerDatabaseName("orbit_agent_eval"), false, "the main eval database is never a worker's (never dropped by cleanup)");
   assert.equal(isWorkerDatabaseName("orbit_agent_eval_w4"), true);
+});
+
+/**
+ * harness/eval-lines: a second checkout runs its own eval at the same time. Its env file names a line; the line
+ * has its own database (and worker databases), and must bring its own port and home directory.
+ */
+const lineEnv = { ...good, ORBIT_AGENT_EVAL_LINE: "ag14", ORBIT_LOCAL_DATABASE_URL: "postgresql://eval@127.0.0.1:5432/orbit_agent_eval_ag14", ORBIT_AGENT_EVAL_PORT: "3130", ORBIT_AGENT_EVAL_HOME: "/tmp/agent-eval-test-home-ag14" };
+
+test("a line runs on its own database, port and home; its workers get the line's own worker databases", () => {
+  const main = buildEvalEnvironment({ PATH: "/usr/bin" }, good);
+  assert.equal(main.line, null);
+  const line = buildEvalEnvironment({ PATH: "/usr/bin" }, lineEnv);
+  assert.equal(line.line, "ag14");
+  assert.equal(line.database.name, "orbit_agent_eval_ag14");
+  assert.equal(line.port, 3130);
+  assert.notEqual(evalPaths(line.env).snapshots, evalPaths(main.env).snapshots, "a line restores its own snapshots");
+  assert.notEqual(evalPaths(line.env).runs, evalPaths(main.env).runs);
+  const w2 = buildEvalEnvironment({ PATH: "/usr/bin" }, lineEnv, { worker: 2 });
+  assert.equal(w2.database.name, "orbit_agent_eval_ag14_w2");
+  assert.equal(w2.port, 3131);
+  for (const key of ["ORBIT_LOCAL_DATABASE_URL", "ORBIT_EVENT_DATABASE_URL", "ORBIT_LIVE_DATABASE_URL", "ORBIT_DATABASE_URL"]) {
+    assert.equal(w2.env[key], "postgresql://eval@127.0.0.1:5432/orbit_agent_eval_ag14_w2", key);
+  }
+});
+
+test("a line is refused on the main database, without its own port or home, or with a name that is not a line name", () => {
+  assert.throws(() => buildEvalEnvironment({}, { ...lineEnv, ORBIT_LOCAL_DATABASE_URL: good.ORBIT_LOCAL_DATABASE_URL }), /must be orbit_agent_eval_ag14/u);
+  assert.throws(() => buildEvalEnvironment({}, { ...good, ORBIT_LOCAL_DATABASE_URL: lineEnv.ORBIT_LOCAL_DATABASE_URL }), /must be orbit_agent_eval,/u, "the main eval never runs on a line's database");
+  const { ORBIT_AGENT_EVAL_PORT: _port, ...noPort } = lineEnv;
+  assert.throws(() => buildEvalEnvironment({}, noPort), /its own ORBIT_AGENT_EVAL_PORT/u);
+  const { ORBIT_AGENT_EVAL_HOME: _home, ...noHome } = lineEnv;
+  assert.throws(() => buildEvalEnvironment({}, noHome), /its own ORBIT_AGENT_EVAL_PORT and ORBIT_AGENT_EVAL_HOME/u);
+  for (const bad of ["w3", "AG14", "a", "ag-14", "ag14; drop", "orbit_events"]) {
+    assert.equal(isEvalLineName(bad), false, bad);
+    assert.throws(() => buildEvalEnvironment({}, { ...lineEnv, ORBIT_AGENT_EVAL_LINE: bad }), EvalEnvironmentError, bad);
+  }
+});
+
+test("a line's worker databases are only its own: the main eval and other lines never match", () => {
+  assert.equal(isWorkerDatabaseName("orbit_agent_eval_ag14_w2", "ag14"), true);
+  assert.equal(isWorkerDatabaseName("orbit_agent_eval_ag14", "ag14"), false, "a line's main database is never dropped by cleanup");
+  assert.equal(isWorkerDatabaseName("orbit_agent_eval_w2", "ag14"), false);
+  assert.equal(isWorkerDatabaseName("orbit_agent_eval_ag15_w2", "ag14"), false);
+  assert.equal(isWorkerDatabaseName("orbit_agent_eval_ag14_w2"), false, "the main eval never manages a line's worker");
+  assert.equal(isEvalDatabaseName("orbit_agent_eval_ag14", "ag14"), true);
+  assert.equal(isEvalDatabaseName("orbit_agent_eval_ag14"), false);
 });
