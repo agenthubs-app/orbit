@@ -70,6 +70,9 @@ const OTHER_READS = new Set<string>(["memo.read", "todo.read", "contact.read", "
 /** Words for the user's own schedule and other records: with one of them, "活动" is not the only thing asked about. */
 const OTHER_RECORD_NOUN = /(日程|安排|行程|会议|开会|待办|笔记|联系人|予定|スケジュール|会議|タスク|メモ|\bschedule\b|\bcalendar\b|\bmeetings?\b|\bto-?dos?\b|\bnotes?\b|\bappointments?\b)/iu;
 
+/** Words that name something else to go by than the events themselves: the history with people, records, "根据…". */
+const OTHER_BASIS_WORDS = /(根据|按照|依据|结合|参考|基于|往来|互动|来往|聊过|谈过|见过|记录|记过|认识的|に基づ|をもとに|やり取り|やりとり|based on|according to|going by|interactions?|history)/iu;
+
 /**
  * AG19-6: "最近有哪些活动适合我？" is a list of the events that have not started, whatever the first layer tagged (the user's
  * report, 2026-11-19: asked again as "哪些活动？" it was turned down as a search by conditions). Code decides from the words:
@@ -80,7 +83,11 @@ export function listsUpcomingEvents(part: GraphPart, message: string): boolean {
   const quote = message.slice(part.quote[0], part.quote[1]);
   // Repair round 1 (decision 3): with or without "最近" — any asking which events there are or to recommend some.
   if (!EVENT_NOUN.test(quote) || !asksEventsToGoTo(quote)) return false;
-  if (part.capabilities.some((capability) => OTHER_READS.has(capability) || capability === "fn.group" || capability === "fn.compare")) return false;
+  if (part.capabilities.some((capability) => capability === "fn.group" || capability === "fn.compare")) return false;
+  // Repair round 1, stability run (AE-ANS-011): "有哪些活动适合我？" came back tagged with a contact read as well, went down
+  // the ordinary read path and was answered with one note. Another read the first layer adds counts only when the words
+  // name something else to go by (a kind of record, the history with someone, "根据…"); otherwise the words ask for events.
+  if (part.capabilities.some((capability) => OTHER_READS.has(capability)) && (OTHER_RECORD_NOUN.test(quote) || OTHER_BASIS_WORDS.test(quote))) return false;
   // AG19 stability run 1 (AE-ANS-010): "把接下来的活动都列出来" tagged as a schedule read listed the user's own schedule
   // items. In Orbit 活动 are events: with no word for the schedule or another kind of record, the event list it is.
   const event = part.capabilities.includes("event.read");

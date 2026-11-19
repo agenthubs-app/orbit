@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { hasMarkdownSymbols, inListOrder, listSortKey, recordOfView, type AnswerBlock } from "../../features/agent-v1/answer/blocks";
-import { unsupportedEventClaim, withoutUnsupportedEventClaims, type EventClaimFacts } from "../../features/agent-v1/answer/event-claims";
+import { eventsNamedIn, unsupportedEventClaim, withoutUnsupportedEventClaims, type EventClaimFacts } from "../../features/agent-v1/answer/event-claims";
 import { listAnswer, listLead, recordLine, windowWords } from "../../features/agent-v1/answer/list-answer";
+import { listsUpcomingEvents } from "../../features/agent-v1/graph/nodes/functions";
 import { feeSentence } from "../../features/agent-v1/answer/materials";
 import { asksEventsToGoTo, pointsAtPast, writesADate } from "../../features/agent-v1/functions/basis";
 import type { AgentAnswerRecordContract } from "../../shared/contract/agent-v1";
@@ -180,7 +181,7 @@ test("judges (b): 'no ticket price is given' is not delivered when the events re
 });
 
 test("other comparatives are held to the fields the same way: cheapest, the only one that …, earliest", () => {
-  assert.match(String(unsupportedEventClaim("东京街头摄影展最便宜。", [E101], THREE, "Asia/Tokyo")), /cheapest.*cannot be derived/u, "one fee is not stated");
+  assert.match(String(unsupportedEventClaim("设计师之夜最便宜。", [E104], THREE, "Asia/Tokyo")), /cheapest.*cannot be derived/u, "one fee is not stated");
   const priced = [{ ...E103, fee: { amountYen: 5000, kind: "amount" } }, E101, E104];
   assert.equal(unsupportedEventClaim("东京街头摄影展最便宜。", [E101], priced, "Asia/Tokyo"), null);
   assert.match(String(unsupportedEventClaim("设计师之夜最便宜。", [E104], priced, "Asia/Tokyo")), /is 东京街头摄影展/u);
@@ -263,4 +264,32 @@ test("the speaker is never a contact to look up: 「最近有哪些活动适合�
   assert.ok(run.events.some((event) => event.type === "understand.speaker_clue"));
   assert.deepEqual(records(run.result.blocks)[0]?.items.map((item) => item.id).slice(0, 3), ["event:e103", "event:e101", "event:e104"]);
   assert.doesNotMatch(run.result.text, /哪一位联系人/u);
+});
+
+test("stability run: a statement is held to the event its own clause names, short forms of a title count, and free is never undercut", () => {
+  // Delivered by the model on the repaired build and dropped by mistake: the unpriced event is named by a short form, in
+  // its own clause; the sentence also names the priced one.
+  const said = "所以理由是：摄影展免费，又是周末上午；设计师之夜是当天晚上，可以连着去；定价研讨会是工作日晚上，费用还没写明，需要你确认后再定。";
+  assert.deepEqual(check(said), { dropped: [], text: said });
+  assert.deepEqual(eventsNamedIn("定价研讨会是工作日晚上", THREE).map((event) => event.title), ["SaaS 定价研讨会"]);
+  assert.deepEqual(eventsNamedIn("摄影展免费", THREE).map((event) => event.title), ["东京街头摄影展"]);
+  assert.deepEqual(eventsNamedIn("这场研讨会不错", [E103, { ...E101, title: "摄影研讨会" }]), [], "a short form two events share names neither");
+  assert.equal(check("摄影展免费；设计师之夜的票价没有写。").dropped.length, 1, "the clause's own event states 2000 日元");
+  assert.equal(check("・SaaS 定价研讨会：主题是定价；费用没有注明，这不代表免费。").dropped.length, 0, "a clause that names none speaks of its sentence's event");
+  // Free is the floor: said of the free event it stands even though one fee is not stated; said of a priced one it does not.
+  assert.equal(check("东京街头摄影展免费，是三场里成本最低、最容易安排的一场。").dropped.length, 0);
+  assert.equal(check("设计师之夜是三场里成本最低的。").dropped.length, 1);
+  // "夜" in a title is not a statement about the evening.
+  assert.match(String(unsupportedEventClaim("设计师之夜是唯一讲设计的一场。", [E104], THREE, "Asia/Tokyo")), /nothing that the fields read can show/u);
+});
+
+test("stability run: 「有哪些活动适合我？」 tagged with a contact read too is still the list of events not yet started; words that name another basis keep the old path", async () => {
+  const message = "有哪些活动适合我？";
+  const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "ranked_list", requiredCapabilities: ["profile.read", "event.read", "contact.read", "fn.rank"], sourceQuote: message }], { world: fnWorld() });
+  assert.ok(run.events.some((event) => event.type === "functions.upcoming_only"));
+  const kinds = records(run.result.blocks)[0]?.items.map((item) => item.kind) ?? [];
+  assert.ok(kinds.length >= 3 && kinds.every((kind) => kind === "event"), kinds.join(","));
+  const part = (quote: string, capabilities: string[]) => ({ capabilities, plan: {}, quote: [0, quote.length], refs: [], route: "read" }) as never;
+  assert.equal(listsUpcomingEvents(part(message, ["event.read", "contact.read", "memo.read"]), message), true);
+  for (const words of ["根据我的笔记，有哪些活动适合我？", "按我和田中的往来，推荐几场活动", "有哪些活动适合我认识的联系人？"]) assert.equal(listsUpcomingEvents(part(words, ["event.read", "contact.read", "memo.read"]), words), false, words);
 });

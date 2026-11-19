@@ -20,7 +20,7 @@ export interface EventClaimFacts {
 
 const SHORTEST = /(最短|shortest|一番短|最も短)/iu;
 const LONGEST = /(时长最长|时间最长|历时最长|持续最久|最长的|longest|一番長|最も長)/iu;
-const CHEAPEST = /(最便宜|最低价|票价最低|费用最低|价格最低|cheapest|least expensive|lowest (?:price|fee|cost)|一番安|最も安)/iu;
+const CHEAPEST = /(最便宜|最低价|票价最低|费用最低|价格最低|成本最低|花费最少|花钱最少|最省钱|cheapest|least expensive|lowest (?:price|fee|cost)|一番安|最も安)/iu;
 const PRICIEST = /(最贵|票价最高|费用最高|价格最高|most expensive|priciest|highest (?:price|fee|cost)|一番高い|最も高い)/iu;
 const EARLIEST = /(最早|earliest|一番早|最も早)/iu;
 const LATEST = /(最晚|最迟|一番遅|最も遅)/iu;
@@ -52,6 +52,30 @@ const durationOf = (event: EventClaimFacts) => (event.startsAt && event.endsAt &
 const priceOf = (event: EventClaimFacts) => (event.fee?.kind === "free" ? 0 : event.fee?.kind === "amount" && typeof event.fee.amountYen === "number" ? event.fee.amountYen : null);
 const startOf = (event: EventClaimFacts) => (event.startsAt && Number.isFinite(Date.parse(event.startsAt)) ? Date.parse(event.startsAt) : null);
 
+/** The longest run of characters two texts share. */
+function sharedRun(left: string, right: string): string {
+  let best = "";
+  for (let start = 0; start < left.length; start += 1) {
+    for (let end = left.length; end - start > best.length; end -= 1) {
+      if (right.includes(left.slice(start, end))) best = left.slice(start, end);
+    }
+  }
+  return best;
+}
+
+/**
+ * The events these words name: by the full title, or by a short form of it ("摄影展" for "东京街头摄影展", "定价研讨会" for
+ * "SaaS 定价研讨会") — three characters or more of the title (five in Latin letters) that no other event read has.
+ */
+export function eventsNamedIn(words: string, events: readonly EventClaimFacts[]): EventClaimFacts[] {
+  return events.filter((event) => {
+    if (words.includes(event.title)) return true;
+    const run = sharedRun(event.title, words).trim();
+    const longEnough = /^[\x00-\x7f]+$/u.test(run) ? run.length >= 5 : run.length >= 3;
+    return longEnough && !events.some((other) => other !== event && other.title.includes(run));
+  });
+}
+
 /** The one event with the smallest (or largest) value; null when a value is unknown or the extreme is shared. */
 function uniqueExtreme(events: readonly EventClaimFacts[], valueOf: (event: EventClaimFacts) => number | null, pick: "min" | "max"): EventClaimFacts | null {
   const values = events.map(valueOf);
@@ -69,6 +93,8 @@ export function unsupportedEventClaim(sentence: string, named: readonly EventCla
   ];
   for (const [words, valueOf, pick, name] of superlatives) {
     if (!words.test(sentence)) continue;
+    // A free event is never undercut, whatever the others cost: "the cheapest" said of free events stands.
+    if (name === "cheapest" && named.length && named.every((event) => priceOf(event) === 0)) continue;
     const holder = uniqueExtreme(events, valueOf, pick);
     if (!holder) return `"${name}" cannot be derived: a value is not stated, or several events share it`;
     if (named.length && !named.includes(holder)) return `"${name}" is ${holder.title}, not the event named`;
@@ -81,7 +107,9 @@ export function unsupportedEventClaim(sentence: string, named: readonly EventCla
     if (!named.includes(holder)) return `"${name}" is ${holder.title}, not the event named`;
   }
   if (ONLY.test(sentence)) {
-    const kind = ONLY_KINDS.find((item) => item.words.test(sentence));
+    // The kind is looked for outside the titles ("设计师之夜" is not a statement about the evening).
+    const bare = events.reduce((words, event) => words.split(event.title).join(" "), sentence);
+    const kind = ONLY_KINDS.find((item) => item.words.test(bare));
     if (!kind) return `"the only one" names nothing that the fields read can show`;
     const verdicts = events.map((event) => kind.holds(event, timeZone));
     if (verdicts.some((verdict) => verdict === null)) return `"the only one" cannot be derived: a field is not stated`;
@@ -89,8 +117,12 @@ export function unsupportedEventClaim(sentence: string, named: readonly EventCla
     if (holders.length !== 1) return `"the only one" does not hold: ${holders.length} of the events read are so`;
     if (named.length && !named.includes(holders[0])) return `"the only one" is ${holders[0].title}, not the event named`;
   }
-  if (NO_FEE.test(sentence)) {
-    const about = named.length ? named : events;
+  // "No price is given" is about the events its own clause names (clauses end at ；); a clause that names none speaks of
+  // the sentence's events, and a sentence that names none speaks of all the events read.
+  for (const clause of sentence.split(/[；;]/u)) {
+    if (!NO_FEE.test(clause)) continue;
+    const own = eventsNamedIn(clause, events);
+    const about = own.length ? own : named.length ? named : events;
     const stated = about.filter((event) => event.fee && (event.fee.kind === "free" || event.fee.kind === "amount" || event.fee.kind === "pay_at_door"));
     if (stated.length) return `a fee is stated for ${stated.map((event) => event.title).join(", ")}`;
   }
@@ -105,7 +137,7 @@ export function withoutUnsupportedEventClaims(text: string, events: readonly Eve
   const known = events.filter((event) => event.title.trim());
   if (!text || !known.length) return { dropped: [], text };
   const dropped: { sentence: string; reason: string }[] = [];
-  const namedIn = (words: string) => known.filter((event) => words.includes(event.title));
+  const namedIn = (words: string) => eventsNamedIn(words, known);
   const lines = text.split("\n").map((line) => {
     if (!line.trim()) return line;
     const onLine = namedIn(line);
