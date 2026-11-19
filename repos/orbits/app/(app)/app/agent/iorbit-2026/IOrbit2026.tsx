@@ -218,7 +218,7 @@ function V1Turn({ requestId, sessionId, session, language, navigate }: { request
 /** AG11 (视觉稿第 5 组): the user's message with the picked 「@名字」 coloured. */
 function UserText({ text, marks }: { text: string; marks: readonly { start: number; end: number }[] }) {
   const segments = markedSegments(text, marks.map((mark) => ({ end: mark.end, id: `${mark.start}`, name: text.slice(mark.start + 1, mark.end), start: mark.start, type: "memo" as const })));
-  return <>{segments.map((segment, index) => (segment.binding ? <span key={index} className={styles.mark}>{segment.text}</span> : <span key={index}>{segment.text}</span>))}</>;
+  return <span>{segments.map((segment, index) => (segment.binding ? <span key={index} className={styles.mark}>{segment.text}</span> : <span key={index}>{segment.text}</span>))}</span>;
 }
 
 export function IOrbit2026({ accountName, initialHistoryOpen = false, agentV1 = false }: {

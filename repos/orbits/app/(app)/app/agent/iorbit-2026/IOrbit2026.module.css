@@ -117,7 +117,7 @@
 .kindWent { background: var(--accent-soft); color: var(--accent-text); }
 .picker { position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: var(--z-popover, 30); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card-web); box-shadow: var(--shadow-float); padding: 10px; display: flex; flex-direction: column; gap: 8px; color: var(--ink); max-height: min(560px, 62dvh); }
 .pickerSearch { display: flex; align-items: center; gap: 8px; height: 40px; border-radius: 12px; background: var(--surface-2); padding: 0 12px; }
-.pickerSearchIcon { color: var(--ink-3); font-size: 16px; }
+.pickerSearchIcon { color: var(--ink-3); display: grid; place-items: center; }
 .pickerSearch input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; color: var(--ink); outline: 0; }
 .pickerKinds { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex: none; }
 .pickerKinds::-webkit-scrollbar { display: none; }

@@ -35,6 +35,7 @@ import {
   type ReferenceLanguage,
 } from "../../../../../shared/compute/agent-references";
 import { iorbitCopy } from "../../orbit-2026/copy/iorbit";
+import { Icon } from "../../orbit-2026/ui";
 import styles from "./IOrbit2026.module.css";
 
 type Copy = { ja: string; zh: string; en: string };
@@ -284,7 +285,7 @@ export function ReferencePicker({ composer, language, t, request = fetch, keysRe
   return (
     <div className={styles.picker} role="dialog" aria-label={title} data-orbit-reference-picker={picker.mode}>
       <div className={styles.pickerSearch}>
-        <span aria-hidden className={styles.pickerSearchIcon}>⌕</span>
+        <span aria-hidden className={styles.pickerSearchIcon}><Icon name="search" size={15} /></span>
         <input ref={searchRef} aria-label={t(iorbitCopy.refSearch)} placeholder={t(iorbitCopy.refSearch)} value={composer.query} readOnly={picker.mode === "at"}
           onChange={(event) => composer.setPlusQuery(event.target.value)} onKeyDown={(event) => { keys(event); }} />
       </div>
