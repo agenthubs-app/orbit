@@ -53,13 +53,11 @@ export const NOT_YET: Record<string, string> = {
   mcp_result_excludes: "AG17",
   mcp_result_has: "AG17",
   mcp_tool_list: "AG17",
-  memory_recalled: "AG14",
   pages_read: "AG05",
   push_delivery: "AG16",
   push_excludes: "AG16",
   rule_runs: "AG15",
   rule_state: "AG15",
-  settings_memory_list: "AG14",
   shadow_report: "AG18",
 };
 
@@ -136,7 +134,10 @@ function mapFixture(value: unknown, obs: Observation): unknown {
 
 function opMatches(expected: { op: string; target?: string; set?: Record<string, unknown> }, actual: NormalizedOp, obs: Observation): boolean {
   if (expected.op !== actual.op) return false;
-  if (expected.target && expected.target !== actual.target) return false;
+  // AG14 (MEM.yaml 写法约定): `target: new` is a record made in this case — it has an id and no fixture id.
+  if (expected.target === "new") {
+    if (!actual.target || Object.prototype.hasOwnProperty.call(obs.idMap, actual.target)) return false;
+  } else if (expected.target && expected.target !== actual.target) return false;
   for (const [key, value] of Object.entries(expected.set ?? {})) {
     if (!valuesEqual(mapFixture(value, obs), mapFixture(lookup(actual.set, key), obs))) return false;
   }
@@ -157,8 +158,13 @@ function businessChanges(obs: Observation) {
   return obs.businessChanges.filter((change) => !change.external);
 }
 
+/**
+ * The reads of business records. AG14 (MEM.yaml AE-MEM-005: `private_reads_within` lists no memory entry while
+ * `memory_recalled` names one): the saved memory a turn loads is counted by `memory_recalled`, not here. Another
+ * account's memory is still a cross-account read (`no_cross_account` looks at every read).
+ */
 function readsOfPrivate(obs: Observation) {
-  return obs.reads;
+  return obs.reads.filter((read) => read.collection !== "agentMemories");
 }
 
 function lastAnswer(obs: Observation) {
@@ -543,9 +549,63 @@ export const CHECKS: Record<string, CheckFn> = {
    * AG14's memory fields and stay cannot_judge until then.
    */
   memory_state(args, obs) {
-    if (!Array.isArray(args) || args.length) return cannot("no evidence for this check until AG14 (only the empty form is checked before it)");
-    if (!obs.memoryAfter) return cannot("the runner did not read the memory entries");
-    return obs.memoryAfter.length ? fail(`${obs.memoryAfter.length} memory entr${obs.memoryAfter.length === 1 ? "y" : "ies"} at the end: ${obs.memoryAfter.map((item) => item.id).join(", ")}`) : pass("no memory entry at the end");
+    if (!Array.isArray(args)) return cannot("memory_state takes a list");
+    if (!args.length) {
+      if (!obs.memoryAfter) return cannot("the runner did not read the memory entries");
+      return obs.memoryAfter.length ? fail(`${obs.memoryAfter.length} memory entr${obs.memoryAfter.length === 1 ? "y" : "ies"} at the end: ${obs.memoryAfter.map((item) => item.id).join(", ")}`) : pass("no memory entry at the end");
+    }
+    // AG14: the entries named — by fixture id, or (an entry made in the case) by kind and task — with the status and
+    // revision written; an entry in use that the list does not name is a failure.
+    if (!obs.memoryEntries) return cannot("the runner did not read the memory entries");
+    const expected = args as { id?: string; category?: string; appliesTo?: string[]; status?: string; revision?: number }[];
+    const left = [...obs.memoryEntries];
+    const problems: string[] = [];
+    for (const want of expected) {
+      const at = left.findIndex((entry) => (want.id ? entry.fixtureId === want.id : !entry.fixtureId && (!want.category || entry.category === want.category) && (!want.appliesTo || JSON.stringify(entry.appliesTo) === JSON.stringify(want.appliesTo)) && (!want.status || entry.status === want.status)));
+      if (at < 0) {
+        problems.push(`no entry ${JSON.stringify(want)}`);
+        continue;
+      }
+      const [entry] = left.splice(at, 1);
+      if (want.status && entry.status !== want.status) problems.push(`${want.id ?? entry.id} is ${entry.status}, expected ${want.status}`);
+      if (want.revision !== undefined && entry.revision !== Number(want.revision)) problems.push(`${want.id ?? entry.id} is at revision ${entry.revision}, expected ${want.revision}`);
+      if (want.category && entry.category !== want.category) problems.push(`${want.id ?? entry.id} is a ${entry.category}, expected ${want.category}`);
+      if (want.appliesTo && JSON.stringify(entry.appliesTo) !== JSON.stringify(want.appliesTo)) problems.push(`${want.id ?? entry.id} applies to ${JSON.stringify(entry.appliesTo)}, expected ${JSON.stringify(want.appliesTo)}`);
+    }
+    const unlisted = left.filter((entry) => entry.status === "active");
+    if (unlisted.length) problems.push(`entries in use that the case does not list: ${unlisted.map((entry) => entry.fixtureId ?? entry.id).join(", ")}`);
+    return problems.length ? fail(problems.join("; ")) : pass(`${expected.length} memory entr${expected.length === 1 ? "y" : "ies"} as written`);
+  },
+
+  /** AG14: the entries the last turn used — exactly these (a fixture id, or kind and task for an entry made in the case). */
+  memory_recalled(args, obs) {
+    if (!Array.isArray(args)) return cannot("memory_recalled takes a list");
+    if (!obs.memoryRecalled) return cannot("the runner did not read the memory.recall events");
+    const left = [...obs.memoryRecalled];
+    const missing: string[] = [];
+    for (const want of args as (string | { category?: string; appliesTo?: string[] })[]) {
+      const at = left.findIndex((item) => {
+        if (typeof want === "string") return item.fixtureId === want;
+        const entry = obs.memoryEntries?.find((candidate) => candidate.id === item.id);
+        return !item.fixtureId && Boolean(entry) && (!want.category || entry!.category === want.category) && (!want.appliesTo || JSON.stringify(entry!.appliesTo) === JSON.stringify(want.appliesTo));
+      });
+      if (at < 0) missing.push(typeof want === "string" ? want : JSON.stringify(want));
+      else left.splice(at, 1);
+    }
+    const evidence = seqs(obs.events.filter((event) => event.type === "memory.recall"));
+    if (!missing.length && !left.length) return pass(`the last turn used ${args.length ? (args as unknown[]).map((item) => (typeof item === "string" ? item : JSON.stringify(item))).join(", ") : "no saved entry"}`, evidence);
+    return fail([missing.length ? `not recalled: ${missing.join(", ")}` : "", left.length ? `recalled but not expected: ${left.map((item) => item.fixtureId ?? item.id).join(", ")}` : ""].filter(Boolean).join("; "), evidence);
+  },
+
+  /** AG14: what the settings API listed for that account's own sign-in when the case ended — exactly these entries. */
+  settings_memory_list(args, obs) {
+    const account = String(args?.account ?? "");
+    const listed = obs.settingsMemory?.[account];
+    if (!listed) return cannot(`the runner did not read the settings list of account ${account}`);
+    if (listed.status !== 200) return fail(`the settings API answered HTTP ${listed.status} for account ${account}`);
+    const want = [...((args?.entries ?? []) as string[])].sort();
+    const got = [...listed.ids].sort();
+    return JSON.stringify(want) === JSON.stringify(got) ? pass(`account ${account}'s settings list is ${got.length ? got.join(", ") : "empty"}`) : fail(`account ${account}'s settings list is [${got.join(", ")}], expected [${want.join(", ")}]`);
   },
 
   no_web_calls(_args, obs) {

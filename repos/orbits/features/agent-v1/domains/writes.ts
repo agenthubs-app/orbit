@@ -10,9 +10,12 @@ import { memoWriteExecutors } from "./memo/write";
 import { todoWriteExecutors } from "./todo/write";
 import { contactWriteExecutors, type ContactWriteDeps } from "./contact/apply";
 import { eventWriteExecutors, type EventWriteDeps } from "./private-event/apply";
+import { memoryWriteExecutors, type MemoryWriteDeps } from "./memory/apply";
 
-export function cardWriteExecutors(input: { actorId: string; tasks?: (Pick<TaskService, "create" | "update" | "get"> & Partial<Pick<TaskService, "complete" | "reopen" | "delete">>) | null; notes?: Pick<NoteService, "create" | "update"> | null; contacts?: Omit<ContactWriteDeps, "actorId"> | null; events?: Omit<EventWriteDeps, "actorId" | "tasks"> | null }): AgentActionExecutor[] {
+export function cardWriteExecutors(input: { actorId: string; tasks?: (Pick<TaskService, "create" | "update" | "get"> & Partial<Pick<TaskService, "complete" | "reopen" | "delete">>) | null; notes?: Pick<NoteService, "create" | "update"> | null; contacts?: Omit<ContactWriteDeps, "actorId"> | null; events?: Omit<EventWriteDeps, "actorId" | "tasks"> | null; memory?: MemoryWriteDeps["memory"] | null }): AgentActionExecutor[] {
   return [
+    // AG14: memory.create, update, delete (domains/memory/apply.ts).
+    ...(input.memory ? memoryWriteExecutors({ memory: input.memory }) : []),
     ...(input.tasks ? todoWriteExecutors({ actorId: input.actorId, tasks: input.tasks }) : []),
     ...(input.notes ? memoWriteExecutors({ actorId: input.actorId, notes: input.notes }) : []),
     // AG12: contact.create, update, delete, restore, import (domains/contact/apply.ts).

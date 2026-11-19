@@ -28,6 +28,7 @@ import { cardLocale } from "../../agent/runtime/todo-operations";
 import type { AgentCardAccess } from "./deps";
 import { configuredWebAccess } from "../web/factory";
 import { reviseImportByWords } from "../entry/import-revision";
+import { createAgentMemoryService } from "../../agent/memory/service-factory";
 
 /**
  * AG06: the graph's card is the request's card in the ledger (conversationCardId), frozen through
@@ -128,6 +129,8 @@ function sessionMessagesLoader(mode: FeatureMode, actorId: string): AgentGraphDe
       text: message.text,
       ...(typeof message.createdAt === "string" ? { createdAt: message.createdAt } : {}),
       ...(Array.isArray(message.recordRefs) ? { recordRefs: message.recordRefs.filter((ref): ref is string => typeof ref === "string") } : {}),
+      // AG14: the message's own id, so an answer made with a memory entry changed or deleted since can be told apart.
+      ...(typeof message.id === "string" ? { id: message.id } : {}),
     }));
   };
 }
@@ -162,6 +165,8 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       judgment: overrides.judgment ?? { apiKey: process.env.ORBIT_GEMINI_DECISION_API_KEY?.trim() || null, fetchImplementation: overrides.fetchImplementation ?? execution.fetchImplementation },
       // AG09: the public web, through the same stoppable fetch; switched off or no key: not one web request.
       web: overrides.web ?? configuredWebAccess(mode, overrides.fetchImplementation ?? execution.fetchImplementation),
+      // AG14: the account's saved memory (the same canonical account as the settings page; one read per turn).
+      memory: overrides.memory ?? { snapshot: (actorId) => createAgentMemoryService({ actorId, mode }).snapshot() },
     };
     if (execution.resume) {
       // AG04: a click resumes this request's paused thread; no message, no confirmation boundary, no model.

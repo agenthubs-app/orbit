@@ -23,6 +23,7 @@ import { handoffWords, notYetText, type ReplyLanguage } from "../../route/handof
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart, OptionSetState } from "../state";
 import { clueWords, nameOf, objectOf, setIdOf } from "./clarify";
+import { memoryOfSession } from "../../domains/memory/turn";
 
 export const OPEN_ITEM_SHELF_AFTER = 2;
 
@@ -298,6 +299,14 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
   }
   next.openItems = kept;
   next.updatedAt = now;
+  // AG14: the saved entries this turn's answer used (ids and revisions) and its ranking's codes; never an entry's words.
+  if (run.memory.loaded && run.memory.snapshot) {
+    const kept = memoryOfSession(previous, run.memory, input.requestId);
+    if (kept.memoryUses) next.memoryUses = kept.memoryUses;
+    else delete next.memoryUses;
+    if (kept.lastRanking) next.lastRanking = kept.lastRanking;
+    if (kept.memoryVersion !== undefined) next.memoryVersion = kept.memoryVersion;
+  }
   return next;
 }
 

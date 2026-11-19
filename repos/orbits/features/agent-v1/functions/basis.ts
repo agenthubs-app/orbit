@@ -80,6 +80,19 @@ export function topicWordsOf(words: string): string {
     .trim();
 }
 
+/** Words of asking, counting and repeating that name no topic ("几场", "再……一次", "有什么", "would you", "もの"). */
+const ASK_WORDS = /(几\s*(?:场|个|位|条|件|项|人)|[场个位条件项]|再|一次|一遍|一回|什么|哪些|有没有|看看|想去|可以|能不能|到|至|[（(][月火水木金土日一二三四五六天][）)]|[（()）~～—\-–「」『』"“”'’]|\b(?:would|you|can|could|do|does|did|next|some|any|are|is|was|there|what|what's|whats|please|have|has|on|again|few|worth|going|about|happening|coming|up|it|them|these|those|that|that's|will|be)\b|もう一度|もう一回|何か|ありますか|あります|ある|どんな|行く価値(?:が|の)?(?:ありそうな|ある|高い)?|価値|行く|ありそう|もの|こと|と|も|な|ら|\d+)/giu;
+
+/**
+ * AG14: what is left of a whole sentence as a topic when the first layer gave no basis words. A sentence that only
+ * asks ("给我推荐几场下周的活动", "Which events would you recommend for next week?", "来週のおすすめイベントを教えて") names
+ * no topic: it is ranked by what is saved, or — with nothing saved — asked about once (设计稿 §3.5), never matched
+ * against its own words.
+ */
+export function sentenceTopicOf(words: string): string {
+  return topicWordsOf(words).replace(ASK_WORDS, " ").replace(/\s+/gu, " ").trim();
+}
+
 const WEEKEND = /(周末|週末|礼拜六日|土日|土曜|日曜|weekend|saturday|sunday)/iu;
 const WEEKDAY = /(工作日|平日|weekday)/iu;
 const MORNING = /(上午|早上|早晨|午前|朝|morning)/iu;

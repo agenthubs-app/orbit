@@ -158,7 +158,8 @@ export function createOrbitAgentRuntimeService(
     }
     : null;
   const executors = createAgentExecutorRegistry([
-    ...cardWriteExecutors({ actorId, contacts, events, notes, tasks }),
+    // agent-design AG14: the memory items of a card write through the memory service of this account and workspace.
+    ...cardWriteExecutors({ actorId, contacts, events, memory: actorId ? createAgentMemoryService({ actorId, mode }) : null, notes, tasks }),
     ...createAgentDomainExecutors({
       contacts: createStorageContactArchiveActionWriter({
         store,

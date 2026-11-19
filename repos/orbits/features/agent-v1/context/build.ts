@@ -27,6 +27,8 @@ export interface ContextMessage {
   createdAt?: string;
   /** Product refs ("todo:task:…" or "task:…") the message pointed at. */
   recordRefs?: readonly string[];
+  /** AG14: the session's own id of the message (an answer is `assistant:<requestId>[:…]`); never shown to a model. */
+  id?: string;
 }
 
 export interface ContextHandle {

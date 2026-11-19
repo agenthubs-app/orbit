@@ -114,3 +114,27 @@
 外部条件缺失（前序未完成、视觉稿未批准、密钥缺失）先不启动，或只做不受影响的部分并把受影响的证据记 blocked；run 已开始则按规则产出 failed 或 blocked 报告，不开第二次 Generator。
 报告包含：验收项与证据的对应、功能 SHA、命令与退出码、门槛运行编号与 `RUNS.md` 一行、双评不一致清单、盘点结果（可搬与待核对的条数）、费用、未提交与失败项、下一步。给 AG15 的交接写明 `recallFor()` 的签名和无会话调用方式。
 分支：从 `orbit-agent-claude` 建 `sprint/AG14-memory`；只暂存本 sprint 的文件，禁止 `git add .`；提交前跑 `node .gitnexus/run.cjs detect-changes --scope staged --repo .`，`partial` 或 `truncated` 要重跑。由协调者 `git merge --no-ff` 合回 `orbit-agent-claude`，在合并树跑收口集与 typecheck 后才登记 completed。push 需要用户授权。
+
+---
+
+## 追加记录（run-01 开工时；原文不改）
+
+原文 SHA-256（追加前）：`600a315586a7dfce33f86da968c962f3e2dc0c5365e7f0641a227716e163441d`。基线 HEAD：`98869bb4c36cc05ef30f034e6260091b028783e0`（集成线 `agent-v1-integration`，上文写的 `orbit-agent-claude` 一律读作它）。执行分支 `sprint/AG14-memory`，检出在 `.worktrees/ag14`，并行线 `ag14`。
+
+### 进入条件核对（协调者 2026-11-19）
+
+1. AG06、AG08 已 completed 并合并，AG09–AG13 也是；集成线 `agent-v1-integration` @ `98869bb4c`。满足。
+2. 产品批准（§6 与“2026-11-15 已定的事项”）：满足。
+3. 付费模型调用：允许，每次完整门槛 30 元、本 sprint 150 元以内。
+4. 环境：本线用自己的库 `orbit_agent_eval_ag14`、端口 3150–3165、证据目录 `/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-eval-lines/ag14`。满足。
+5. **视觉稿未批准**（另一个 agent 在画）。按协调者的安排：不依赖它的部分先做完——按账号＋工作区存取、召回、记忆卡的内容与三个执行器、“这次／以后”的规则、忘掉（含恢复旧会话、不从旧聊天重新提取）、设置接口、契约、评测运行器补的词、单测、旧数据盘点（只读，只在本机测试库）。对话里的卡沿用现有确认卡组件。Web 与 App 设置页和任何新的可见元素，等协调者送来获批的稿子再做；先到那一步就跑不需要页面的门槛用例、报告、等待。
+6. 生产库上的盘点与迁移不在授权内：不做。
+
+### 开工时对上下文包的校正
+
+- **分区写法不变，换的是填进去的编号。** 原文写“分区改为规范账号＋工作区”。`<工作区>:agent-actor:<编号>` 这个写法被账号数据清除、运行留存、评测运行器的归属判断等十几处共用（`features/account/data-rights/purge/agent.ts` 等），另起一个前缀会让它们漏掉记忆。所以保留写法，所有入口填规范账号编号：对话、恢复会话、后台运行本来就是，只有设置接口原来填的是登录会话的用户编号，现在改走同一个身份解析器。旧分区里填着非规范编号的，由盘点脚本列出，只搬能唯一解析的。
+- **记忆版本不另存一条记录。** 原文写“工作区另存记忆版本号”。版本号取该账号在该工作区全部条目（含已删除的标记）的 `revision` 之和：新增、修改、删除各加一，只增不减，不需要第二条记录，也就没有两处不一致的可能。删除标记就是那条记录本身：状态改为已删除，正文、结构化值、检索文本清空，留编号、类别、适用场景、`sourceMessageRef`。
+- **工作区。** CONVENTIONS §1：第一版的“当前工作区”就是部署的工作区编号。`AuthenticatedApiActor.workspaceId` 读的是同一份配置。服务工厂收下它并核对与库的配置一致（不一致拒绝），后台调用方没有请求身份时不传。
+- **GitNexus。** 本检出的索引已建；`createStorageAgentMemoryService`（CRITICAL，29）、`cardWriteExecutors`（CRITICAL，48）、`memoriesFor`／`routeNode`／`intakeNode`／`understandNode`／`buildFirstLayerContext`／`cardIntentOf`（HIGH）等见 REPORT「影响分析」。
+- **AG10 的只读 `deps.memories`** 生产执行器从未接上（AG10 REPORT 第 67 行）；本 sprint 换成 `deps.memory`（一轮读一次该账号的记忆），排序里的 `memoriesFor()` 不再使用。
+- **评测运行器要补的词**：`resume_conversation`、`setting: { memory_use | memory_learn }`、`settings_memory_list`、`memory_recalled`、带条目的 `memory_state`、卡片项的 `target: new`；补丁与用例的 `settings: { memory_learn }`。另：评测把读 `agentMemories` 记成“读业务记录”，而 AE-MEM-005 的 `private_reads_within` 不含记忆条目、`memory_recalled` 才列它——本账号读自己的记忆不再算进 `no_private_reads`／`private_reads_within`，跨账号读仍由 `no_cross_account` 判（登记在评测 CHANGES.md）。

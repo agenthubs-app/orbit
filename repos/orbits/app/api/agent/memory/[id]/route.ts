@@ -32,14 +32,20 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const requestContext = await resolveAgentMemoryRequest();
   if (!requestContext) return agentMemoryUnauthorizedResponse();
+  // AG14: `?expectedRevision=n` deletes only the revision the page showed; without it the entry is deleted as it is.
+  const said = new URL(request.url).searchParams.get("expectedRevision");
+  const expectedRevision = said === null ? undefined : Number(said);
+  if (expectedRevision !== undefined && (!Number.isInteger(expectedRevision) || expectedRevision < 1)) {
+    return agentMemoryErrorResponse(new Error("expectedRevision must be a positive whole number."));
+  }
   try {
     const { id } = await context.params;
-    await requestContext.service.remove(id);
+    await requestContext.service.remove(id, expectedRevision !== undefined ? { expectedRevision } : {});
     return new Response(null, { status: 204 });
   } catch (error) {
     return agentMemoryErrorResponse(error);
