@@ -254,6 +254,8 @@ export interface AgentGraphRun {
   recordCards: Map<string, AgentAnswerRecordContract>;
   /** AG19: the delivered answer as blocks (filled by deliver). */
   blocks: AgentAnswerBlockContract[];
+  /** AG19 repair round 1: where each record read stands in a list code writes (ref → sort key, answer/blocks.ts listSortKey). */
+  recordSort: Map<string, string>;
   /** AG19 repair round 1: the start, end and fee of each event read in this request (ref → facts), for answer/event-claims.ts. */
   eventFacts: Map<string, EventClaimFacts>;
 }

@@ -16,7 +16,7 @@ import { profileCheckNote, profileCheckOf, profileLine, verifyProfileUpdates, ty
 import { groundedAnswerSystemPrompt, groundedAnswerUserText, GROUNDED_ANSWER_PROMPT_VERSION, type GroundedItem } from "../../answer/prompt";
 import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
-import { composeStructured, needsLayout, stripMarkdown } from "../../answer/blocks";
+import { composeStructured, inListOrder, needsLayout, stripMarkdown } from "../../answer/blocks";
 import { listAnswer } from "../../answer/list-answer";
 import { withoutUnsupportedEventClaims, type EventClaimFacts } from "../../answer/event-claims";
 import type { AgentAnswerRecordContract } from "../../../../shared/contract/agent-v1";
@@ -199,6 +199,13 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   };
   let repairs = state.repairs;
   let result: MainModelResult = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "first", requestId: input.requestId, system, user });
+  // AG19 repair round 1 (stability run: a connection cut off mid-answer failed the whole follow-up): a failed call
+  // (connection cut, timeout, 429, 5xx) gets the round's one second chance, inside the same budget — as understand's does.
+  if (result.ok === false && result.reason === "model_error" && result.retryable && repairs < 1) {
+    repairs += 1;
+    emitTrace({ note: "the answer call failed in transit; one retry", requestId: input.requestId, type: "answer.retry" });
+    result = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "retry", requestId: input.requestId, system, user });
+  }
   let checked = result.ok === true ? check(result.text) : null;
   const problemsOf = (value: typeof checked) => (value?.error ? [value.error] : value?.verification?.problems ?? []);
   if (checked && problemsOf(checked).length && repairs < 1) {
@@ -276,11 +283,11 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref).filter((ref) => !ref.startsWith("web:"));
       // AG19 repair round 1 (decision 1, D1): a list-type read is written by code from the records the answer picked —
       // the lead says how many, of what kind and for which window, each record is its card and is not written out again.
-      // The order is the read's own (each kind's default order: to-dos by deadline then planned day, schedule by start,
-      // notes newest first) — code's, not the order the model happened to cite them in.
+      // The order is code's, not the one the model happened to cite them in: schedule items and events by their time,
+      // to-dos by deadline then planned day, notes newest first (answer/blocks.ts inListOrder); otherwise the read's own.
       const readOrder = (part.reads ?? []).map((read) => read.ref);
-      const inReadOrder = [...new Set(part.cites ?? [])].sort((left, right) => (readOrder.indexOf(left) < 0 ? Number.MAX_SAFE_INTEGER : readOrder.indexOf(left)) - (readOrder.indexOf(right) < 0 ? Number.MAX_SAFE_INTEGER : readOrder.indexOf(right)));
-      const listed = LIST_READS.has(part.plan.deliverable) && part.route === "read" ? inReadOrder.map((ref) => run.recordCards.get(ref)).filter((card): card is AgentAnswerRecordContract => Boolean(card)) : [];
+      const inOrder = inListOrder([...new Set(part.cites ?? [])].map((ref) => ({ index: readOrder.indexOf(ref) < 0 ? Number.MAX_SAFE_INTEGER : readOrder.indexOf(ref), key: run.recordSort.get(ref) ?? "", kind: ref.slice(0, ref.indexOf(":")), ref }))).map((item) => item.ref);
+      const listed = LIST_READS.has(part.plan.deliverable) && part.route === "read" ? inOrder.map((ref) => run.recordCards.get(ref)).filter((card): card is AgentAnswerRecordContract => Boolean(card)) : [];
       if (listed.length && listed.length === new Set(part.cites ?? []).size) {
         const quote = input.message.slice(part.quote[0], part.quote[1]);
         const written = listAnswer({ cards: listed, from: part.plan.readFilter?.from, language: state.language, quote, status: part.plan.readFilter?.status === "open" || part.plan.readFilter?.status === "completed" ? part.plan.readFilter.status : statusSaidIn(quote), to: part.plan.readFilter?.to });
@@ -390,6 +397,12 @@ export function answerNode(scope: NodeScope): GraphNode {
     const user = answerUserText({ conversation, items, message: input.message });
     let repairs = state.repairs;
     let result: MainModelResult = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "first", requestId: input.requestId, system, user });
+    // AG19 repair round 1: the same one second chance for a call that failed in transit.
+    if (result.ok === false && result.reason === "model_error" && result.retryable && repairs < 1) {
+      repairs += 1;
+      emitTrace({ note: "the answer call failed in transit; one retry", requestId: input.requestId, type: "answer.retry" });
+      result = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "retry", requestId: input.requestId, system, user });
+    }
     let checked: Segments | null = result.ok === true ? answerSegments(result.text, wanted, dropCardTalk, state.language) : null;
     if (checked && checked.ok === false && repairs < 1) {
       repairs += 1;

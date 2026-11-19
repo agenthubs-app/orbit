@@ -429,3 +429,27 @@ export function replaceInBlocks(blocks: readonly AnswerBlock[], from: string, to
     return block;
   });
 }
+
+/**
+ * Repair round 1: where a record stands in a list code writes — schedule items, events and «我去过» by their time, to-dos
+ * by deadline then planned day (none last), notes by their day. The list is then in the order a person reads a calendar
+ * or a to-do list, whatever order the read returned the records in.
+ */
+export function listSortKey(view: RecordView): string {
+  const fields = view.fields as Record<string, unknown>;
+  if (view.kind === "schedule" || view.kind === "event") return str(fields.startsAt) ?? str(fields.attendedOn) ?? "9999";
+  if (view.kind === "todo") return str(fields.dueAt) ?? (str(fields.plannedDate) ? `${str(fields.plannedDate)}T23:59` : "9999");
+  if (view.kind === "memo") {
+    const interaction = fields.interaction as { occurredOn?: unknown; occurredAt?: unknown } | undefined;
+    return str(interaction?.occurredOn) ?? str(interaction?.occurredAt) ?? str(fields.createdAt) ?? "";
+  }
+  return "";
+}
+
+/** Notes are listed newest first; everything else earliest first. A record with no key keeps the place the read gave it. */
+export function inListOrder<T extends { kind: string; key: string; index: number }>(items: readonly T[]): T[] {
+  const kinds = new Set(items.map((item) => item.kind));
+  if (kinds.size !== 1 || items.some((item) => !item.key)) return [...items].sort((left, right) => left.index - right.index);
+  const newestFirst = kinds.has("memo");
+  return [...items].sort((left, right) => (left.key === right.key ? left.index - right.index : (left.key < right.key ? -1 : 1) * (newestFirst ? -1 : 1)));
+}

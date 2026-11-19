@@ -23,7 +23,7 @@ import { addLinkNames } from "../../answer/link-names";
 import { pinyin } from "pinyin-pro";
 
 import { readSourceOf } from "../../answer/basis";
-import { recordOfView } from "../../answer/blocks";
+import { listSortKey, recordOfView } from "../../answer/blocks";
 import { gapWords } from "../../answer/gap-copy";
 import { materialOf } from "../../answer/materials";
 import type { GapReason, Material } from "../../answer/schema";
@@ -830,6 +830,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
           if (source) run.readSources.set(view.ref, source);
           // AG19: its card (the three lines are code's), for the list or the small cards under the answer.
           run.recordCards.set(view.ref, recordOfView(view, { language: state.language, nameOf: (id) => names.get(id) ?? run.readNames.get(id)?.name, now, timeZone: zone }));
+          run.recordSort.set(view.ref, listSortKey(view));
           // AG19 repair round 1: what a statement about this event can be checked against (start, end, fee).
           if (view.kind === "event" && typeof view.fields.title === "string") {
             const kind = typeof view.fields.feeKind === "string" ? view.fields.feeKind : null;

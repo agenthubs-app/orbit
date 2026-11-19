@@ -179,6 +179,7 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     recordCards: new Map(),
     blocks: [],
     eventFacts: new Map(),
+    recordSort: new Map(),
   };
 }
 

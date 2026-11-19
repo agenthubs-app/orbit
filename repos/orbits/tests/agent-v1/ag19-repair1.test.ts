@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { hasMarkdownSymbols, recordOfView, type AnswerBlock } from "../../features/agent-v1/answer/blocks";
+import { hasMarkdownSymbols, inListOrder, listSortKey, recordOfView, type AnswerBlock } from "../../features/agent-v1/answer/blocks";
 import { unsupportedEventClaim, withoutUnsupportedEventClaims, type EventClaimFacts } from "../../features/agent-v1/answer/event-claims";
 import { listAnswer, listLead, recordLine, windowWords } from "../../features/agent-v1/answer/list-answer";
 import { feeSentence } from "../../features/agent-v1/answer/materials";
@@ -218,4 +218,40 @@ test("an event is read in full: the follow-up after a list gets each event's top
   assert.equal(run.result.text, "建议先去 SaaS 定价研讨会。\n三场时间不冲突。");
   const dropped = run.events.find((event) => event.type === "answer.event_claims_dropped") as { dropped?: { sentence: string }[] } | undefined;
   assert.deepEqual(dropped?.dropped?.map((item) => item.sentence), ["东京街头摄影展是三场里时长最短的。", "这些活动的信息里没有票价。"]);
+});
+
+test("an answer call that fails in transit gets one second chance (records and discussion alike); a second failure still says so", async () => {
+  const message = "我有哪些还没完成的待办？";
+  let calls = 0;
+  const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", readFilter: { status: "open" }, requiredCapabilities: ["todo.read"], sourceQuote: message }], {
+    answer: (call) => {
+      calls += 1;
+      if (calls === 1) throw new Error("terminated");
+      return citeAll({ body: [], lead: "你有几项待办。" })(call);
+    },
+    world: fnWorld(),
+  });
+  assert.equal(calls, 2);
+  assert.equal(run.result.partResults[0].status, "answered");
+  assert.ok(run.events.some((event) => event.type === "answer.retry"));
+  let failures = 0;
+  const failed = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", readFilter: { status: "open" }, requiredCapabilities: ["todo.read"], sourceQuote: message }], { answer: () => { failures += 1; throw new Error("terminated"); }, world: fnWorld() });
+  assert.equal(failures, 2, "one retry, not more");
+  assert.equal(failed.result.partResults[0].status, "failed");
+  const talk = "第一次拜访客户要准备什么？";
+  let talks = 0;
+  const discussed = await runFn(talk, [{ sourceQuote: talk }], { answer: () => { talks += 1; if (talks === 1) throw new Error("terminated"); return json({ segments: [{ body: [], lead: "先了解对方的业务。", partId: "p1" }] }); }, world: fnWorld() });
+  assert.equal(discussed.result.text, "先了解对方的业务。");
+});
+
+test("a list code writes is in reading order: schedule and events by time, to-dos by deadline then planned day, notes newest first", () => {
+  const view = (kind: string, id: string, fields: Record<string, unknown>) => ({ fields, id, kind, ref: `${kind}:${id}`, updatedAt: "", version: "1" }) as never;
+  const item = (kind: string, id: string, fields: Record<string, unknown>, index: number) => ({ id, index, key: listSortKey(view(kind, id, fields)), kind });
+  // The read returned the lunch (Nov 19) before the weekly meeting (Nov 16): the list shows the calendar's order.
+  assert.deepEqual(inListOrder([item("schedule", "s11", { startsAt: "2026-11-19T03:00:00.000Z" }, 0), item("schedule", "s10", { startsAt: "2026-11-16T01:00:00.000Z" }, 1)]).map((entry) => entry.id), ["s10", "s11"]);
+  assert.deepEqual(inListOrder([item("todo", "none", {}, 0), item("todo", "planned", { plannedDate: "2026-11-18" }, 1), item("todo", "due", { dueAt: "2026-11-17T09:00:00.000Z" }, 2), item("todo", "old", { plannedDate: "2026-11-10" }, 3)]).map((entry) => entry.id), ["old", "due", "planned", "none"]);
+  assert.deepEqual(inListOrder([item("memo", "older", { createdAt: "2026-11-01T00:00:00.000Z" }, 0), item("memo", "newer", { interaction: { occurredOn: "2026-11-12" } }, 1)]).map((entry) => entry.id), ["newer", "older"]);
+  // Mixed kinds, or a record with no key (a contact): the read's own order stays.
+  assert.deepEqual(inListOrder([item("contact", "b", {}, 0), item("contact", "a", {}, 1)]).map((entry) => entry.id), ["b", "a"]);
+  assert.deepEqual(inListOrder([item("schedule", "s", { startsAt: "2026-11-19T03:00:00.000Z" }, 0), item("todo", "t", { dueAt: "2026-11-01T00:00:00.000Z" }, 1)]).map((entry) => entry.id), ["s", "t"]);
 });
