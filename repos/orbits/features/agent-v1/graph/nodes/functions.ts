@@ -76,6 +76,12 @@ const CONTACT_SET_WORDS = /(?:联系人|聯絡人|人脉|連絡先|コンタク�
 const RANK_WORDS = /(挑|选出|选几|排序|排一下|排个序|并べ|並べ|選んで|順に|順番|\bpick\b|\bchoose\b|\brank\b|\bsort\b|\border\b|\blist the\b)/iu;
 const TODO_LIST_WORDS = /(待办|代办|跟进|タスク|ToDo|フォローアップ|\bto-?dos?\b|\bfollow[\s-]?ups?\b|\btasks?\b)/iu;
 const WHO_WORDS = /(谁|哪位|哪些人|哪几位|\bwho\b|\bwhom\b|誰|どなた|どの人)/iu;
+/** The part of the day a clock bound on the start falls in: before 12:00 → morning, from 17:00 on → evening. */
+function partOfClock(clock: NonNullable<TimePreference["clock"]>): TimePreference["part"] {
+  if (clock.side === "before") return clock.minutes <= 12 * 60 ? "morning" : undefined;
+  return clock.minutes >= 17 * 60 ? "evening" : clock.minutes >= 12 * 60 ? "afternoon" : undefined;
+}
+
 /** Words that ask for one person only (the singular "who" alone does not). */
 const JUST_ONE_WORDS = /((?<!哪)一个人|(?<!哪)一位|只要一个|就一个|只联系一个|一人だけ|1人だけ|ひとりだけ|一人に絞|\bjust one\b|\bonly one\b|\bone person\b|\bsingle person\b)/iu;
 const FORMAL_FOLLOW_UP = /(正式跟进|正式的跟进|フォローアップ|formal follow[\s-]?ups?)/iu;
@@ -980,7 +986,10 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     const liftedTopic = liftTime ? "" : realTopicOf(lifted.words.replace(/的$/u, ""));
     const lifts = (entry: RecalledMemory) => {
       const preference = timePreferenceOfEntry(entry);
-      if (liftTime) return Boolean(preference?.exclude) && overruledByTurn({ ...preference!, hard: true }, liftTime);
+      // Integration (coordinator, 2026-11-21; AG21a's lift × AG21b's clock rules): a clock rule ("不要早上八点以前开始的",
+      // "只推荐 19 点以后开始的") is about the part of the day its bound falls in, so 「这次早上的也算上」 lifts it.
+      const slot = preference && !preference.part && preference.clock ? { ...preference, part: partOfClock(preference.clock) } : preference;
+      if (liftTime) return Boolean(slot && (slot.exclude || slot.hard)) && overruledByTurn({ ...slot!, hard: true }, liftTime);
       return Boolean(liftedTopic) && !preference && /(不要|别|除了|排除|避开|以外|は除いて|\bnot\b|\bno\b|\bavoid\b|\bexcept\b|\bwithout\b)/iu.test(entry.content) && liftedTopic.split(" ").some((word) => entry.content.includes(word));
     };
     const gone = saved.used.filter(lifts);

@@ -158,17 +158,29 @@ const CJK_NUMBER: Record<string, number> = { 零: 0, 一: 1, 二: 2, 两: 2, 三
 const PM_WORDS = /(下午|晚上|傍晚|夜里|夜间|夜|午後|夕方|pm|p\.m\.)/iu;
 const AM_WORDS = /(早上|上午|早晨|凌晨|午前|朝|am|a\.m\.)/iu;
 const ZH_JA_CLOCK = /(早上|上午|早晨|凌晨|中午|下午|傍晚|晚上|夜里|夜间|午前|午後|夕方|夜|朝)?\s*(\d{1,2}|十[一二]?|[零一二两三四五六七八九])\s*(?:[点點時时])\s*(半|\d{1,2}\s*分?)?\s*(以后|之后|以後|过后|后|後|以降|から|起|以前|之前|前|より前|まで)/u;
+const COLON_CLOCK = /(早上|上午|早晨|凌晨|中午|下午|傍晚|晚上|夜里|夜间|午前|午後|夕方|夜|朝)?\s*(\d{1,2})[:：](\d{2})\s*(?:[点點時时])?\s*(?:开始|開始|スタート)?(?:的)?\s*(以后|之后|以後|过后|后|後|以降|から|起|以前|之前|前|より前|まで)/u;
 const EN_CLOCK = /\b(after|from|at or after|before|earlier than|later than)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?|\b(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s+or\s+(later|after|earlier|before)\b/iu;
 
 /** AG21b (R33): the clock boundary the words put on a start time; null when they name none. */
 export function clockBoundIn(words: string): TimePreference["clock"] | null {
+  // Integration (coordinator, 2026-11-21): 「推荐晚上的活动，只要七点以后开始的」 — the evening said elsewhere in the words makes a
+  // bare 七点 seven in the evening (only when nothing in them says morning).
+  const pmElsewhere = /(下午|晚上|傍晚|夜里|夜间|夜|午後|夕方|\bpm\b|p\.m\.|\bevenings?\b|\bnights?\b|\bafternoons?\b)/iu.test(words) && !/(早上|上午|早晨|凌晨|午前|朝|\bam\b|a\.m\.|\bmornings?\b)/iu.test(words);
   const hourOf = (raw: string, qualifier: string): number | null => {
     let hour = /^\d+$/u.test(raw) ? Number(raw) : CJK_NUMBER[raw] ?? NaN;
     if (!Number.isFinite(hour) || hour > 24) return null;
-    if (PM_WORDS.test(qualifier) && hour < 12) hour += 12;
+    if ((PM_WORDS.test(qualifier) || (!qualifier && pmElsewhere)) && hour < 12) hour += 12;
     else if (AM_WORDS.test(qualifier) && hour === 12) hour = 0;
     return hour % 24;
   };
+  // Integration (coordinator, 2026-11-21): a clock written with a colon ("19:00 以后开始的", "19:00以降") is the same bound.
+  const colon = COLON_CLOCK.exec(words);
+  if (colon) {
+    const hour = hourOf(colon[2], colon[1] ?? "");
+    if (hour === null) return null;
+    const side = /(以前|之前|前|より前|まで)/u.test(colon[4]) ? "before" : "from";
+    return { minutes: hour * 60 + Math.min(Number(colon[3]), 59), side };
+  }
   const zh = ZH_JA_CLOCK.exec(words);
   if (zh) {
     const hour = hourOf(zh[2], zh[1] ?? "");
