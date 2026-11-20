@@ -7,7 +7,9 @@ import { importTableOf, ImportTableRejected, previewImport, withHeader } from ".
 import { boundContactReader } from "../../features/agent-v1/domains/contact/types";
 import { reviseImportByWords } from "../../features/agent-v1/entry/import-revision";
 import { runAgentGraph } from "../../features/agent-v1/graph/build";
-import { companyNamedIn, findContacts } from "../../features/agent-v1/graph/nodes/resolve";
+import { companyNamedIn, findContacts, oneCharOff, partialContacts } from "../../features/agent-v1/graph/nodes/resolve";
+import { newJudgmentBudget } from "../../features/agent-v1/judgment/ask";
+import { access, graded, judgeStub } from "./judgment-kit";
 import { resolvePartIntents } from "../../features/agent-v1/propose/resolve";
 import type { StoredIntent } from "../../features/agent-v1/propose/schema";
 import { createAgentExecutorRegistry } from "../../features/agent/runtime/executor-registry";
@@ -131,6 +133,50 @@ test("R13 'フォローを完了にして' after '白石さんの件…' goes on
   // Without the question it is still asked which (no guess).
   const fresh = await resolvePartIntents(ctxOf(records, message, "ja"), partOf(message, message, { capabilities: ["todo.complete"] }), { intents: [intent], picks: {} });
   assert.equal(fresh.kind, "ask");
+});
+
+/* ── owner decision 4: a name one character off ── */
+
+test("decision 4: a name one character off two real contacts offers both to pick; a name with no close one is still not found", async () => {
+  const world = peopleWorld();
+  world.records.push(contact(ACTOR, "contact:jh1", "林嘉禾", { organization: "南岸印刷" }), contact(ACTOR, "contact:jh2", "林佳禾", { organization: "北岸纸业" }));
+  const records = recordAccessOf(world);
+  const scope = records.scope(ACTOR);
+  assert.deepEqual((await partialContacts(records, scope, "林家禾")).map((item) => [item.id, item.partial]).sort(), [["contact:jh1", true], ["contact:jh2", true]]);
+  assert.deepEqual(await partialContacts(records, scope, "王大锤"), []);
+  assert.equal(oneCharOff("林家禾", "林嘉禾"), true);
+  assert.equal(oneCharOff("林家禾", "林嘉和"), false);
+  // A write never picks: both are offered, nothing is logged on a guessed person.
+  const message = "记一下：今天和林家禾通了电话";
+  const intent: StoredIntent = { body: span(message, "今天和林家禾通了电话"), capability: "memo.create", localId: "o1", relations: [{ quote: span(message, "林家禾"), role: "actual_contact" }], selector: [] };
+  const outcome = await resolvePartIntents(ctxOf(records, message), partOf(message, message, { capabilities: ["memo.create"] }), { intents: [intent], picks: {} });
+  assert.equal(outcome.kind, "ask", JSON.stringify(outcome));
+  assert.deepEqual(outcome.kind === "ask" && outcome.question.type === "contact" ? outcome.question.candidates.map((item) => item.id).sort() : [], ["contact:jh1", "contact:jh2"]);
+});
+
+/* ── owner decision 6: a to-do named in another language ── */
+
+test("decision 6: 'NDA' against 「签署供应商保密协议」 offers that to-do (done) as a candidate to click, never a match", async () => {
+  const world = peopleWorld();
+  world.records.push(todo(ACTOR, "task:nda", "签署供应商保密协议", { completedAt: "2026-11-10T01:00:00.000Z", status: "completed" }), todo(ACTOR, "task:photos", "整理样品照片"));
+  const records = recordAccessOf(world);
+  const judge = judgeStub((id, _question, call) => {
+    const key = /t\d+/u.exec(id)?.[0] ?? "";
+    const line = call.body.input.map((item) => item.text).join("\n").split("\n").find((text) => text.startsWith(`[${key}]`)) ?? "";
+    return line.includes("保密协议") ? graded(0.02, 0.05, 0.93) : graded(0.9, 0.08, 0.02);
+  });
+  const message = "把 supplier NDA 那条改到周五";
+  const intent: StoredIntent = { capability: "todo.update", date: span(message, "周五"), localId: "o1", relations: [], selector: [span(message, "supplier NDA 那条")] };
+  const ctx = { ...ctxOf(records, message), judgment: access(judge.fetchImplementation), judgmentBudget: newJudgmentBudget() };
+  const outcome = await resolvePartIntents(ctx, partOf(message, message), { intents: [intent], picks: {} });
+  assert.equal(outcome.kind, "ask", JSON.stringify(outcome));
+  const question = outcome.kind === "ask" && outcome.question.type === "todo" ? outcome.question : null;
+  assert.deepEqual(question?.candidates.map((item) => [item.id, item.detail]), [["task:nda", "已完成"]]);
+  assert.ok(question?.notFound !== undefined, "said as not found by the words");
+  assert.equal(judge.calls.length, 1, "one judgment request");
+  // No judgment available: still "not found", nothing offered.
+  const plain = await resolvePartIntents(ctxOf(records, message), partOf(message, message), { intents: [intent], picks: {} });
+  assert.equal(plain.kind, "stop");
 });
 
 /* ── R12 ── */

@@ -202,7 +202,13 @@ const isMemoType = (type: string) => type === "memo" || type === "note";
 function memoOf(scope: NodeScope, part: GraphPart, allowSession: boolean): string | null {
   // AG10 run-03 repair 1 (AE-FN-011): a clue bound to a memo is the memo whatever entity the first layer called it ("それ" as a to-do).
   const memoIds = new Set([...(scope.run.context?.handles.values() ?? [])].filter((handle) => isMemoType(handle.type)).map((handle) => handle.id));
-  const bound = part.refs.find((ref) => ref.recordId && (ref.entity === "memo" || memoIds.has(ref.recordId)));
+  // AG20b (AE-EVT-009 in the run-01 run): a memo clue the first layer bound to a record of another kind (the private event
+  // being deleted) is not a memo to work on.
+  const otherKind = (id: string) => {
+    const type = scope.run.references.find((reference) => reference.id === id)?.type ?? [...(scope.run.context?.handles.values() ?? [])].find((handle) => handle.id === id)?.type;
+    return Boolean(type && !isMemoType(type));
+  };
+  const bound = part.refs.find((ref) => ref.recordId && (ref.entity === "memo" || memoIds.has(ref.recordId)) && !otherKind(ref.recordId));
   // AG10 run-02: a memo chosen with @ that cannot be opened now is no memo to work on.
   if (bound && scope.run.references.some((reference) => reference.id === bound.recordId && reference.accessible === false)) return null;
   if (bound) return bound.recordId!;

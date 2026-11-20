@@ -26,6 +26,7 @@ import { dayPartsOf, onlyStartSaid, resolveSaidTimes } from "./times";
 import type { PartWrite, ResolveContext, WriteOutcome } from "./resolve";
 import type { StoredIntent } from "./schema";
 import { askedPerson } from "./asked";
+import { todosByMeaning } from "./meaning";
 
 export const EVENT_INTENT_CAPABILITIES = new Set(["privateEvent.create", "privateEvent.update", "privateEvent.delete", "attendance.create", "attendance.delete", "schedule.create", "schedule.update", "schedule.delete", "todo.complete", "todo.reopen", "todo.delete", "memo.update"]);
 
@@ -347,6 +348,11 @@ async function resolveTodoVerb(ctx: Ctx, part: GraphPart, write: PartWrite, inte
     return stop("read_failed", failedLine);
   }
   if (found.kind === "ask") return { kind: "ask", question: { candidates: found.views.map((view) => ({ id: view.id, name: String(view.fields.title ?? ""), type: "todo" })), clue: todoClues[0] ?? quote, type: "todo" } };
+  if (found.kind === "none" && todoClues.length) {
+    // AG20b (owner decision 6): "nda" against 「保密协议」 — the to-dos whose meaning matches are offered to click, never taken.
+    const meant = await todosByMeaning(ctx, todoClues[0], intent.capability === "todo.delete" ? statuses : ["open", "completed"], part.localId).catch(() => []);
+    if (meant.length) return { kind: "ask", question: { candidates: meant, clue: todoClues[0], notFound: todoClues[0], type: "todo" } };
+  }
   if (found.kind === "none") return stop("object_not_found", EVENT_WORDS.todoNotFound(language, todoClues[0] ?? quote));
   const view = found.view;
   const title = String(view.fields.title ?? "");

@@ -26,6 +26,8 @@ import { emitTrace } from "../observability/trace";
 import { isPronounClue } from "../route/decide";
 import { optionNamedIn } from "../clarify/attribution";
 import { askedPerson, continuedItem } from "./asked";
+import { todosByMeaning } from "./meaning";
+import type { JudgmentAccess, JudgmentBudget } from "../judgment/ask";
 import type { ReplyLanguage } from "../route/handoff-copy";
 import { dayText, type CardLocale } from "../../agent/runtime/todo-operations";
 import type { CardOperationIntent } from "../../agent/runtime/card-operations";
@@ -84,6 +86,10 @@ export interface ResolveContext {
   names?: EventResolveExtras["names"];
   createdEvents?: EventResolveExtras["createdEvents"];
   deleting?: boolean;
+  /** AG20b (owner decision 6): the judgment step and this round's budget, for to-dos named in another language. */
+  judgment?: JudgmentAccess | null;
+  judgmentBudget?: JudgmentBudget;
+  requestId?: string;
 }
 
 const words = (message: string, span: [number, number] | null | undefined) => (span ? message.slice(span[0], span[1]).trim() : "");
@@ -365,7 +371,12 @@ async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrit
       emitTrace({ offered: theirs.map((item) => item.id), partId: part.localId, type: "propose.todo_offered" });
       if (theirs.length) return { candidates: theirs.slice(0, 3).map((item) => ({ detail: whenText(item, ctx.language, ctx.timeZone) ?? undefined, id: item.id, name: item.title, type: "todo" })), clue: clues[0] ?? "", kind: "ask", notFound: said || search || "" };
     }
-    if (!found.length) return { kind: "none", words: said || search || "" };
+    if (!found.length) {
+      // AG20b (owner decision 6): words in another language than the titles — the to-dos whose meaning matches, to click.
+      const meant = searches[0] ? await todosByMeaning(ctx, clues[0] ?? searches[0], ["open", "completed"], part.localId) : [];
+      if (meant.length) return { candidates: meant, clue: clues[0] ?? "", kind: "ask", notFound: said || search || "" };
+      return { kind: "none", words: said || search || "" };
+    }
     if (found.length === 1) return { kind: "found", todo: found[0] };
     const exact = found.filter((item) => clues.includes(item.title));
     if (exact.length === 1) return { kind: "found", todo: exact[0] };

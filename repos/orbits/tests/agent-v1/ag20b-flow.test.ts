@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { runAgentGraph } from "../../features/agent-v1/graph/build";
 import { settleDependencies } from "../../features/agent-v1/route/decide";
+import { functionOf } from "../../features/agent-v1/graph/nodes/functions";
 import { graphKit, recordAccessOf, captureTrace, deepseekStub, json, part, type ModelCall } from "./graph-kit";
 import { choice } from "./judgment-kit";
 import { fnWorld, NOW, runFn } from "./functions-kit";
@@ -55,6 +56,14 @@ test("R17 '下一篇笔记我只要我答应的事' is kept; the next '整理一
   // Used up: a third "整理一下" is the summary again.
   const state = await session.sessionState.get("actor:a", "session:a");
   assert.equal(state?.noteGoal ?? null, null);
+});
+
+test("AE-EVT-009 (run-01): a note clue bound to the private event being deleted is no note to extract from", () => {
+  const message = "参会自述一起删掉；笔记和待办留着，只解除它们和这场活动的关联。然后把活动删了。";
+  const bound = { entity: "memo", quote: [message.indexOf("笔记"), message.indexOf("笔记") + 2] as [number, number], recordId: "private_event:p1" };
+  const part = { asked: 0, capabilities: ["attendance.delete", "todo.update", "privateEvent.delete"], continues: null, dependsOn: [], localId: "p1", origin: null, plan: { clarity: "clear", dataOwner: "self", dataSources: ["orbit_records"], deliverable: "change", hypothesis: false, intentBasis: "selection", negation: false, persistence: "this_turn", readings: [] }, quote: [0, message.length], reading: null, reason: "proposing", refs: [bound], route: "propose_write", status: "unfinished", step: null, verdict: "accept", waitReason: null } as never;
+  const scope = { input: { message }, run: { context: null, references: [{ accessible: true, id: "private_event:p1", name: "同学会", type: "event" }] } } as never;
+  assert.equal(functionOf(scope, part), null);
 });
 
 /* ── R9 second half ── */

@@ -165,13 +165,57 @@ export function statusSaidIn(words: string): "open" | "completed" | undefined {
 export async function partialContacts(records: AgentRecordAccess, scope: DomainScope, words: string): Promise<ContactMatch[]> {
   const clean = words.replace(/^@/u, "").replace(HONORIFIC, "").trim();
   const core = clean.replace(/^(小|老|阿|大)/u, "");
-  if (core === clean || core.length < 1 || core.length > 2) return [];
+  // AG20b (owner decision 4, 2026-11-20): a name one character off ("贺兰清" between 贺兰青 and 贺岚清) offers the close ones.
+  if (core === clean) return nearNames(records, scope, clean);
+  if (core.length < 1 || core.length > 2) return [];
   try {
     const found = (await records.reader.read("contact", scope, { limit: 10, text: core })).items;
     return found.slice(0, 3).map((view) => ({ detail: contactDetail(view), id: view.id, name: String(view.fields.displayName ?? ""), partial: true, view }));
   } catch {
     return [];
   }
+}
+
+/** One character replaced, added or left out (Levenshtein distance at most 1), on characters, not bytes. */
+export function oneCharOff(left: string, right: string): boolean {
+  const a = [...left];
+  const b = [...right];
+  if (Math.abs(a.length - b.length) > 1 || left === right) return false;
+  let i = 0;
+  let j = 0;
+  let edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { i += 1; j += 1; continue; }
+    edits += 1;
+    if (edits > 1) return false;
+    if (a.length > b.length) i += 1;
+    else if (b.length > a.length) j += 1;
+    else { i += 1; j += 1; }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1;
+}
+
+/**
+ * AG20b (owner decision 4, 2026-11-20): a full name that names no contact but is one character off the names of contacts
+ * of the account ("贺兰清" → 贺兰青, 贺岚清): those are offered as candidates — never taken, never written on. A CJK name of
+ * three or more characters, or a Latin name of five letters or more; the account's contacts sharing a character (CJK) or
+ * the first three letters (Latin) are compared. None that close: still "not found".
+ */
+async function nearNames(records: AgentRecordAccess, scope: DomainScope, name: string): Promise<ContactMatch[]> {
+  const chars = [...name.replace(/\s+/gu, " ")];
+  const cjk = /^\p{Script=Han}+$/u.test(name) && chars.length >= 3;
+  const latin = /^[A-Za-z][A-Za-z\s'’.-]+$/u.test(name) && name.replace(/[^A-Za-z]/gu, "").length >= 5;
+  if (!cjk && !latin) return [];
+  const probes = cjk ? [...new Set([chars[0], chars[chars.length - 1], ...chars.slice(1, -1)])] : [name.slice(0, 3)];
+  const seen = new Map<string, RecordView>();
+  try {
+    for (const probe of probes.slice(0, 4)) for (const view of (await records.reader.read("contact", scope, { limit: 10, text: probe })).items) seen.set(view.id, view);
+  } catch {
+    return [];
+  }
+  const near = [...seen.values()].filter((view) => oneCharOff(name.toLowerCase(), String(view.fields.displayName ?? "").replace(/\s+/gu, " ").trim().toLowerCase()));
+  if (near.length) emitTrace({ found: near.map((view) => view.id), type: "resolve.contact_near_name" });
+  return near.slice(0, 3).map((view) => ({ detail: contactDetail(view), id: view.id, name: String(view.fields.displayName ?? ""), partial: true, view }));
 }
 
 /** AG08 repair 1 (AE-UND-010): the words that ask for a list, not what it is about ("列出", "一覧にして", "list"). */

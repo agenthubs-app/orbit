@@ -343,6 +343,10 @@ export function proposeNode(scope: NodeScope): GraphNode {
       createdEvents: [] as { localId: string; title: string; day: string }[],
       deleting: work.some((part) => part.write?.intents.some((intent) => intent.capability === "privateEvent.delete")),
       names: run.names,
+      // AG20b (owner decision 6): to-dos named in another language are offered by meaning (one judgment request).
+      judgment: deps.judgment ?? null,
+      judgmentBudget: run.judgment,
+      requestId: input.requestId,
     };
     const outcomes = new Map<string, WriteOutcome>();
     const duplicates = new Map<string, Exclude<DuplicateDecision, { kind: "new" }>>();
