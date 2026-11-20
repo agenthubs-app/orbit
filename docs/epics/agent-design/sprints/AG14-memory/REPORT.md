@@ -1,8 +1,45 @@
 # Sprint AG14 — 执行总结（个人记忆，H）
 
-改了哪些文件看 git diff（`98869bb4c..ca9940102`，分支 `sprint/AG14-memory`），这里不逐文件复述。证据目录：`/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-design/sprint-AG14/run-01/`；评测运行在 `/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-eval-lines/ag14/runs/`。
+改了哪些文件看 git diff（服务端那一轮 `98869bb4c..ca9940102`，界面续做 `985720c90..121d32a27`，分支 `sprint/AG14-memory`，最终 SHA `121d32a27`），这里不逐文件复述。证据目录：`/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-design/sprint-AG14/run-01/`；评测运行在 `/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-eval-lines/ag14/runs/`。
 
-**状态：服务端、契约、评测与单测做完，门槛的代码判定 76/76；两端设置页等视觉稿获批后再做（见「仍未实现」）。评审由协调者派，本报告不含评审结论。**
+**状态（2026-11-20 界面续做之后）：服务端、两端界面、契约、评测与单测做完；最终提交 `121d32a27` 上门槛 `20261120-131420-121d32a-AG14-gate-run-03` 代码判定 76/76，评审材料已生成；全量测试只有已知失败（服务端 22、App 3）。评审由协调者派，本报告不含评审结论。**
+
+## 界面续做（2026-11-20，Generator 换为 Opus 5.5）
+
+视觉稿 2026-11-20 获批（`../draft/APPROVAL.md`，D1–D10 全取 A）。这一段写界面续做做了什么；下面「结果」以后的内容是服务端那一轮的原文，有变化的地方就地改过并注明。
+
+### 做了什么
+
+- **合并 AG19**（`sprint/AG19-answer-cards`，先合 `0592169b6`，后合最终的 `917148533`）。冲突都保留两边：`graph/state.ts`、`build.ts`、共享契约和评测 CHANGES 两边都加；`understand.ts` 里 AG14 的「回答用日语」规矩照样定语言，AG19 的列表追问照样跑；`functions.ts` 里先跑 AG19 的「最近有哪些活动适合我」规则，再取记忆（替掉 AG10 只读的 `memoriesFor`），AG14 改条数那句同时改 `answer.text` 和 `answer.blocks`。快照重新生成，App 重新同步。
+- **三种记忆卡**（就是现在的确认卡，只换中间那一块，`domains/memory/ops.ts`）：
+  - 新增：「新增」＋记忆「推荐活动时优先周末上午」，下面「用在」「归到」；原话带期限（这个月、这周、今年、到 12 月 31 日）才多一行「到期」（D2；`expiryIn()`，期限的字不留在条目里，`withoutExpiryWords()`；执行器把到期日写进条目）。
+  - 改：「改」＋「记忆」，原来的和改成的左右两栏并排，原来的划掉、改成的加粗（D1；显示行新字段 `sideBySide`）；「用在」没变照写一行，变了也进两栏。
+  - 删：珊瑚色「删除」小标签（新的第三种，网页和 App 都加了），写明删哪条和「删掉以后，新对话和以前的对话都不再用它。」
+  - 不出卡的回答：「这条已经记着了：……」；「没有找到这样一条记忆」改成灰底说明条，末尾「去设置 ›」。
+- **开关关着时说「记住」**（D3）：回答下面一块灰底说明条「只用在这一次，没有存下来」，两个办法（能照着做的半句深色）和「去设置 ›」；文字版是同样的字，`answer_blocks_in_sync` 照过。说明条块加了可选的 `go`（`{ label, to: "memory_settings", memoryId? }`）。
+- **回答开头的记忆小标签**（D4–D6，`answer.memoryUse`，`domains/memory/chips.ts`）：紧跟「按你的 N 条记录回答」，「按你存的偏好「周末上午」挑的　修改 ›」，点「修改」到设置页那一条并直接打开编辑（D5，`?memory=<编号>`）；说「这次……」时同一个位置写「只这一次：没按你存的「周末上午」」，没有「修改」；一直遵守的只在它让结果少了东西时写（「按你定的规矩，没放晚上的」）。原来回答末尾那句「这条来自你存的记忆；想改……到设置里改」不再写（小标签上就有「修改」）。评测 transcript 把小标签和「去设置」写给评审看。
+- **设置页记忆区，两端同一套规则**（`shared/compute/agent-memory-view.ts`，同步到 App）：两个开关在最上面，各有一行说明，关着时改成「现在关着：……」；「一直遵守的」「酌情参考的」「还没说用在哪的」三组，每组先放 5 条，其余收进「还有 N 条」原地展开（D7）；每条只写「用在：……」和到期日（D8，不再写「笔记 11/5」）；网页每行右边「改」「删」，改在原地展开（输入框、用在、归到、到期日：不设／一个月后／三个月后／选日期…），App 点一行从底部弹出面板，改和删都在面板里（D9）；「回答时参考这些」关着时整体变淡，照样能改能删（D10）。到期的条目变淡、排在组末、写「……已到期」，可延期可删；两条说法相反的放在一起问「留哪一条？」，每条「只留这条」；以前存的没有「用在」的单独一组，「补上」；一直遵守的满 20 条时组里一句提醒，新的只能归到酌情参考的；没存上时面板不关、字留着、上面一行红字；App 离线时只看上次联网读到的列表，一行灰字，开关、添加、每一行都按不了。
+- **用词**：`shared/copy` 新增 `memorySettings`（中、日、英）和 `aiCard.memoryWas／memoryNow／memoryEdit`。界面上没有「类别」「学习」「工作区」、版本号或来源这类词（第 8 组）。
+
+### 早期评审的三条发现（门槛 run-01b）
+
+| 发现 | 原因 | 处理 |
+|---|---|---|
+| AE-REF-007 R2：日语转述里留着「交付周期」「报价」「修订版」 | 回答模型转述中文笔记时照抄原词，没有任何检查 | 代码规则：日语或英语回答里，引号和名称以外、一字不差出现在中文材料句子里、又不是普通日语的汉字串（含日语不用的简体字，或三个字以上）算没翻过来，回答步骤唯一的一次修正把这些词点名要求改写（`answer/source-words.ts`，接在 `graph/nodes/answer.ts` 的 `check()` 里）；测试 `tests/agent-v1/ag14-source-words.test.ts` |
+| AE-MEM-003、008，AE-FN-002：「新开对话」之前那一轮没送到两端 | **运行器的问题，不是产品漏发**：请求记录先写「已完成」，结果文档稍后才推到对话的通道；运行器在这一刻切到新对话，两端关掉了旧对话的通道。产品照常存下并推送（重开旧对话能读到） | `new_conversation`、`resume_conversation`、`switch_account` 之前先等两端在线的客户端都收到这个对话已结束各轮的结果文档（`entry-client.ts` 的 `sessionDelivered`／`settleSession`）；测试 `tests/agent-eval/entry-client.test.ts`。界面续做的开发运行里 AE-MEM-003 的两轮两端都显示了 |
+| 用例说明（不改用例，供协调者决定） | — | 见「需要决定」 |
+
+### 界面续做里查出并改掉的（都是代码规则加测试）
+
+| 在哪查出 | 问题 | 规则 |
+|---|---|---|
+| 本机截第 2 组 | 「以后推荐活动时改成优先周末下午」的新内容成了「推荐活动时改成优先周末下午」 | 用在哪（……时／……的时候）后面紧跟的「改成／改为／换成」不算条目的字（`replacementOf()`；`memory-words.test.ts`） |
+| 本机截第 1 组 | 「记住，这个月整理笔记时……」条目里留着「这个月」，同时又有到期日 | 期限的字只做到期日，不留在条目里（`withoutExpiryWords()`；`memory-domain.test.ts`） |
+| 稳定性运行 1、2（AE-SCL-028，合并 AG19 之后） | 「下周（11 月 16 日到 22 日）有什么值得去的活动？挑三场。」被 AG19 的「列表之后的追问」规则当成对上一个列表的追问，按会话里旧列表的两场回答，排序和记忆都没跑 | 话里自己点明时段（下周、这个周末、11月16日、来週、next week……）又没有指回列表的词，就是在这个时段里重新找（`understand/follow-list.ts`；`ag19-follow-list.test.ts`）。**改的是 AG19 的文件**，合并时留意 |
+
+### 与视觉稿不同的地方
+
+逐块对照见 `compare.md`（网页 1440／375、App 模拟器）。不同之处：① 第 4、5 组的导语是 AG10／AG19 代码写的导语，不是稿里画的那句（稿里写明导语是借用）；② 说明条一条只有一段深色，所以「或者」也是深色；③ 数字前后不空格（「12条」「还有7条」，仓库用词规则）；④ 两条都像时没有做成可点的选项（仍是文字列出，见「需要决定」⑦）；⑤ App 离线状态没有模拟器截图，由渲染测试证明。
 
 ## 结果
 
@@ -36,7 +73,9 @@
   - **AG11 交接的两项**：评测 `memory_state` 带条目的写法；AE-REF-005 的读取范围（用 @ 选中的活动先看，原话对得上就不再列全部活动）。
   - **评测运行器**补了 MEM 区的词（见「与 PLANNER 不同」之后的「运行器」）。
 - 仍未实现或未验证：
-  - **Web 与 App 的记忆管理页**（两个开关、分两组、每条可改可删可设到期日、空状态与“还没归类”）：视觉稿未获批，按进入条件第 5 条没有动。现有页面照旧能列出和删除（接口向后兼容）。AG14-5 的“Web 1440/375 截图”“App 连同一本机服务读到同一批条目”两项证据记 **blocked**。
+  - ~~Web 与 App 的记忆管理页~~：界面续做已做完（见文首「界面续做」），AG14-5 的页面证据在 `compare.md`、`ui/web/`、`ui/app/`。
+  - 两条都像时可点的选项（视觉稿第 3 组）：仍是文字列出两条（「需要决定」⑦）。
+  - App 离线状态没有模拟器截图（渲染测试证明）。
   - **旧入口**（协议 2、`ORBIT_AGENT_V1_MODE=off` 的管线）学习开关关着时仍回原来那句固定文字；它取记忆仍用 `context()`，只是不再包含已删除和过期的条目。新入口已按本 sprint 的规则处理。见「与 PLANNER 不同」第 3 条。
   - **生产库**的盘点与迁移：不在授权内，没做。上线前要先在生产库跑一次只读盘点（见「交接」）。
   - 记忆的“重复判断”没有接判断模型（设计稿 §3.8 一行）：相同或同类条目由代码按适用场景和值的种类判断；对得上不止一条时请用户说明是哪一条，不出卡。
@@ -60,6 +99,14 @@
 | `d88a18764` | 开发运行 2 的修复（五条规则，见下） |
 | `ca9940102` | 全量测试查出的一处：搬迁旧分区时的读取加上限（只动迁移辅助函数和它的测试，服务端运行时不加载这个文件） |
 | （协调者提交） | 本报告：Generator 的会话写不了报告文件，正文交给协调者提交 |
+| `985720c90` | 中期报告（协调者提交） |
+| `9b08ad9bf` | 合并 AG19（`0592169b6`），冲突两边都保留 |
+| `1643befb6` | 早期评审的发现：日语回答里没翻的中文原词（代码规则）；运行器离开对话前先等两端收到回答 |
+| `8a0bdb003` | 合并 AG19 最终提交 `917148533`（只多了 AG19 的 REPORT） |
+| `969934c18` | 界面：三种记忆卡、回答开头的记忆小标签、开关关着时的说明条、两端设置页记忆区；共享契约、用词、快照、App 同步 |
+| `a9b055e3e` | 本机截图时查出：改成的动词、期限的字不进条目 |
+| `c661305c2` | 稳定性运行查出（合并 AG19 之后）：自己点明时段的话是重新找，不是追问上一个列表 |
+| `121d32a27` | 全量测试查出：设置页用词按用词规则（中文和数字之间不空格等），CSS 只用字号变量 |
 
 ### 评测运行（都在 `/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-eval-lines/ag14/runs/`）
 
@@ -73,7 +120,26 @@
 | `20261120-044147-d88a187-AG14-gate-run-01` | `d88a18764` | 76/76 | 主模型 161、判断 9，0.3323 元 | 第一次门槛运行。之后多了一个提交（`ca9940102`），构建不再等于最终提交，所以**不送评审**，由下一行取代；评审材料已生成但不用 |
 | `20261120-052512-ca99401-AG14-gate-run-01b` | `ca9940102` | **76/76** | 主模型 161、判断 9，联网回放 5，0.3208 元 | **门槛**（`--gate AG14 --workers 3`，从最终提交重新构建）。没有重试的用例；评审材料已生成（76 包，每包 2 份评审，`judging.md`） |
 
-**三次稳定性运行里结果不同的用例：没有**（18 例三次都通过）。走法不同但结果相同的三例：AE-MEM-007 第二轮有一次第一层只标了读活动、没标排序，代码规则把它当成排序，列表与另两次相同；AE-REF-001、AE-REF-007 第一层有时多标一个 `contact.read`，出卡和回答相同。
+**界面续做的运行**（`a9b055e3e`、`c661305c2` 等构建；开发运行未评；run-01b 的早期评审结论由协调者转来）：
+
+| 运行 | 构建 | 代码判定 | 调用／费用 | 说明 |
+| --- | --- | --- | --- | --- |
+| `20261120-111616-8a0bdb0-AG14-ui-shots-mem003` | 工作树（`8a0bdb0` 之后未提交） | 1/1 | 主模型 2，0.0101 元 | 为截第 4 组留下对话；同时验证运行器修复：两个对话两端都显示了 |
+| `20261120-111803-8a0bdb0-AG14-ui-shots-mem006` | 同上 | 1/1 | 主模型 3，0.0161 元 | 为截第 5 组留下对话 |
+| `20261120-115930-a9b055e-AG14-ui-stab-1` | `a9b055e3e` | 17/18 | 主模型 45、判断 1，0.2222 元 | AE-SCL-028 失败：AG19 的列表追问规则抢走了排序（见上表），改成 `c661305c2` |
+| `20261120-120123-a9b055e-AG14-ui-stab-2` | `a9b055e3e` | 17/18 | 主模型 45、判断 1，0.2229 元 | 同上，同一原因 |
+| `20261120-120331-a9b055e-AG14-ui-stab-3` | `a9b055e3e` | 作废 | — | 构建已过时，中途停掉（三个 worker 退出，没有 summary） |
+| `20261120-120914-c661305-AG14-ui-stab-1` | `c661305c2` | 18/18 | 主模型 43、判断 2，0.2254 元 | 稳定性第 1 次 |
+| `20261120-121130-c661305-AG14-ui-stab-2` | `c661305c2` | 18/18 | 主模型 43、判断 2，0.2175 元 | 稳定性第 2 次 |
+| `20261120-121337-c661305-AG14-ui-stab-3` | `c661305c2` | 18/18 | 主模型 43、判断 2，0.2192 元 | 稳定性第 3 次 |
+| `20261120-121543-c661305-AG14-gate-run-02` | `c661305c2` | **76/76** | 主模型 164、判断 9、联网回放 5，0.7066 元 | 门槛；之后全量测试查出用词和 CSS 两处（`121d32a27`，只动设置页的字和一行 CSS），所以从最终提交再构建、再跑一次，这一次不送评审（评审材料已生成） |
+| `20261120-122425-c661305-AG14-ui-shots-mem006b` | `c661305c2` | 1/1 | 主模型 3，0.0181 元 | 截图前重建对话 |
+| `20261120-131420-121d32a-AG14-gate-run-03` | `121d32a27` | **76/76** | 主模型 167、判断 9、联网回放 5，0.3462 元 | **门槛（最终提交）**，送评审；评审材料 76 包，每包 2 份（`judging.md`） |
+| `20261120-132141-121d32a-AG14-ui-shots-app` | `121d32a27` | 1/1 | 主模型 3，0.0089 元 | 为 App 截图留下对话 |
+
+稳定性三次（`c661305c2`）结果不同的用例：**没有**（18 例三次都通过）。
+
+服务端那一轮（下面原文）：**三次稳定性运行里结果不同的用例：没有**（18 例三次都通过）。走法不同但结果相同的三例：AE-MEM-007 第二轮有一次第一层只标了读活动、没标排序，代码规则把它当成排序，列表与另两次相同；AE-REF-001、AE-REF-007 第一层有时多标一个 `contact.read`，出卡和回答相同。
 
 两次门槛运行（不同构建，运行时代码相同）76 例的代码判定全部一致。
 
@@ -94,10 +160,20 @@
 
 ### 费用
 
+- **界面续做**：开发运行（截图用 3 次、稳定性 5 次有结果）主模型 227 次、判断 8 次，1.1515 元；门槛 run-02 0.7066 元，run-03 0.3462 元；截 App 用的开发运行 0.0089 元。界面续做合计约 **2.21 元**（加服务端那一轮 1.1879 元，本 sprint 约 3.4 元）。另有**评测运行之外**在本机服务上从网页发的 9 句话（为了截等你确认的卡和 App 的说明条，见 `compare.md` 末尾），约 0.03 元；见「与 PLANNER 不同」第 12 条。没有真实联网调用。
+- 服务端那一轮（原文）：
+
 - 开发运行 5 次：主模型 216 次、判断 17 次，0.5348 元。门槛两次：主模型 322 次、判断 18 次，0.6531 元。合计 **1.1879 元**，远低于每次 30 元、本 sprint 150 元的上限。没有真实联网调用（搜索与抓取都是回放）。
 - 逐次的调用数、token 与余额差在各运行目录的 `costs.json`。
 
 ### 全量测试
+
+- **界面续做，最终提交 `121d32a27`**（`LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 npm test`，`repos/orbits`；App `npm test`；都在 heavy 槽里）：
+  - 服务端 9327 条，通过 8150，失败 **22**，跳过 1155。22 条的名字与 `integration-20261119/full-fail-names.txt` 完全相同：没有新增，已知的也没有少。输出 `full-orbits-ui.log`，名单 `full-orbits-ui-fail-names.txt`。
+  - App 3588 条，通过 3583，失败 **3**，就是已知的三条（路由对照、硬编码文字额度、版本化策略）。输出 `full-app-ui.log`、`full-app-ui-fail-names.txt`。
+  - 之前在 `c661305c2` 上跑的一次查出两条新的（`copy-qa` 的中文与数字之间不空格、日语同字、`To-do`；CSS 只能用 `var(--fs-*)`），都是界面续做引入的，`121d32a27` 改掉；App 那次多一条 `task-date-interactions` 的超时，单独重跑通过，最终一次也通过。
+  - 类型检查：服务端只剩基线的 8 处，App 只剩基线的 1 处。
+- 服务端那一轮（原文）：
 
 - **服务端**（`LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 npm test`，`repos/orbits`）：
   - 最终提交 `ca9940102`：9255 条，通过 8078，失败 **22**，跳过 1155。22 条失败的名字全部在 `integration-20261119/full-fail-names.txt` 里，**没有新增**，已知的 22 条也没有少。输出 `full-orbits-final.log`，失败名单 `full-orbits-final-fail-names.txt`。
@@ -109,6 +185,10 @@
 - 本 sprint 新增的 11 个测试文件共 80 条，全部通过。
 
 ### 影响分析（GitNexus，本检出自己的索引）
+
+界面续做（改之前跑的 upstream impact）：`groundedAnswer` **HIGH**（4，所有有材料的回答都经过它；只在 `check()` 里多一条修正理由）；`blocksOf` **HIGH**（4，交付时的分块；只多了记忆说明条那一支）；`settleRemember` **HIGH**（3；到期日、说明条）；`followsShownList` **HIGH**（3，understand 节点；多一条提前返回）；`prepareMemoryOperation` LOW；`IorbitSettings` LOW；`agentCardView` **UNKNOWN**——文本搜索：网页确认卡、App 确认卡、评测的 client view 三处用它，改动只是行上多一个字段 `sideBySide`。提交前的 `detect-changes --scope staged`：界面那次 high（58 个文件、170 个符号、6 条流程，全是 App 的 iOrbit 设置页 `AccountIorbitScreen` 的流程），其余几次 low、0 条流程；都没有 `partial`／`truncated`。合并 AG19 那次提交前没有跑（索引当时在重建），之后的每次都跑了。
+
+服务端那一轮（原文）：
 
 | 符号 | 风险 | 说明 |
 | --- | --- | --- |
@@ -127,7 +207,7 @@
 | AG14-2 只在相关任务上用，开头写明；约束每次加载 | 代码判定 pass，待评审 | `tests/capabilities/agent-memory-recall.test.ts`（约束不占名额、过期不取、无匹配为空、开关关时为空、20 条上限、按时区的有效期）；`memory.recall` 事件；AE-MEM-001、004、005、011，AE-SCL-027、028，AE-FN-002 |
 | AG14-3 “这次……”只改本次，“以后……”前后值并确认后更新 | 代码判定 pass，待评审 | `memory-domain.test.ts`（update 按 `revision` 条件写、旧版本的卡不写）；`memory-turn.test.ts`（这次：零卡、零写、偏好让路）；AE-MEM-006、007，AE-SCL-028 |
 | AG14-4 忘掉之后新对话、旧对话都不用，也不重新提取 | 代码判定 pass，待评审 | `tests/capabilities/agent-memory-forget.test.ts`（删除标记不含正文、版本只增、来源消息不再是来源、用过它的回答过期）；`memory-turn.test.ts`（恢复时不把那两条交给模型）；AE-MEM-008、009 |
-| AG14-5 设置页与对话同一批条目；另一个账号全程看不到 | 服务端 pass；**页面证据 blocked** | `tests/api/agent-memory-routes.test.ts`（设置接口与对话同一规范账号，乙读、改、删均为 0，未登录 401）；`tests/services/agent-memory-ownership-inventory.test.ts`；本机库盘点输出 `memory-ownership/`；AE-MEM-010、012。Web 截图与 App 回读等视觉稿获批后补 |
+| AG14-5 设置页与对话同一批条目；另一个账号全程看不到 | 服务端 pass；页面：网页 1440／375 截图与稿逐块对照，App 模拟器连本线服务读到同一批条目（`compare.md`、`ui/web/`、`ui/app/`）；待评审 | `tests/api/agent-memory-routes.test.ts`（设置接口与对话同一规范账号，乙读、改、删均为 0，未登录 401）；`tests/services/agent-memory-ownership-inventory.test.ts`；本机库盘点输出 `memory-ownership/`；AE-MEM-010、012。Web 截图与 App 回读等视觉稿获批后补 |
 
 ### 证据（`/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-design/sprint-AG14/run-01/`）
 
@@ -147,6 +227,10 @@
 9. **动了 AG08、AG10 的三处排序细则**（都在上面修复表里）：`funnel()` 里“看不出相关”这一档的先后；排除掉的时段不写成理由；只说“值得去”的依据词不算主题。协调者合并后重跑 AG08、AG10 时请留意。
 10. **基线全量没有另跑**：按 brief，对照 `integration-20261119/full-fail-names.txt`（App 的 3 条不在这份名单里，对照的是同目录的 `full-app.log`）。
 11. **门槛跑了两次**：第一次通过之后，全量测试查出读取上限那条，多了一个提交。为了让送评审的运行与最终提交是同一个构建，从最终提交重新构建、重跑了一次（`…-gate-run-01b`）。这不是失败后的例外运行，两次都是 76/76；第一次不送评审。
+12. **评测运行之外的模型调用（界面续做）**：brief 规定付费调用只在评测运行和点名的测试里。为了截第 1–3 组「等你确认」的卡（评测用例里的卡都被点了确认，留不下等确认的样子），在本机服务上从网页发了 9 句话（每句一次第一层调用，约 0.03 元，合成账号、本机库）。下次可以给运行器加一个「停在第 n 步」的开关，从评测运行里留下等确认的卡。
+13. **界面续做的门槛也跑了两次**（run-02、run-03），原因同第 11 条：run-02 之后全量测试查出用词和 CSS 两处。
+14. **用词与稿不同的一处**：稿里「12 条」「还有 7 条」数字前后有空格；仓库的用词检查（`copy-qa`）规定中文和数字之间不空格，按规则写成「12条」「还有7条」。日语「内容」改成「覚えておく内容」（与中文同字会被当成没翻译）。
+15. **改了 AG19 的文件**：`understand/follow-list.ts`（自己点明时段的话不算追问上一个列表），AG19 合并后在 AE-SCL-028 上暴露；`answer/blocks.ts` 的 `joinBlocks()`（带「去设置」的记忆说明条不和「这次没做的部分」合并）。
 
 ### 运行器（CONVENTIONS §7）
 
@@ -181,7 +265,8 @@
   - 已经读过一次的可用 `recallFrom(snapshot, { task, now, timeZone })`；`recallRefs()` 取编号和版本。
   - 规则运行如果走流程图里的排序，图自己会经 `deps.memory` 取，不用另接；把条目变成时段条件和主题的函数是 `domains/memory/turn.ts` 的 `timePreferenceOfEntry()`、`topicOfEntry()`、`rankMemoryOf()`。
 - **AG17（MCP）不能暴露的**：记忆的任何内容和存在与否——条目正文、结构化值、适用场景、有效期、删除标记、两个开关、记忆版本、`memory.recall` 事件里的编号。现在没有任何读取适配器、引用类型或工具暴露记忆；`deps.memory` 只在图内使用。MCP 的工具不要接 `features/agent/memory/`、`features/agent-v1/domains/memory/`，也不要转发 `/api/agent/memory*`；三种记忆卡（`create_memory`、`update_memory`、`delete_memory`）不要做成可由 MCP 提议或确认的操作。
-- **AG19（回答排版）要留意的两处**：
+- **回答开头的记忆小标签和记忆说明条（界面续做）**：结果文档 `answer.memoryUse: { kind: "used" | "skipped" | "rule"; memoryId; text }[]`（整句服务端按回答语言写好，两端照样显示；`used`、`rule` 带「修改 ›」到 `设置 › iOrbit 使用的信息?memory=<编号>`）；说明条块可带 `go: { label, to: "memory_settings", memoryId? }`。任何新的回答路径想说「用了哪条记忆」，往 `run.memoryUse` 放即可，不要再往正文里写「来自你存的记忆……」。设置页两端都用 `shared/compute/agent-memory-view.ts` 的 `memorySettingsView()`、`memoryEditorInput()`。
+- **AG19（回答排版）要留意的两处**（服务端那一轮写的，合并时已处理）：
   - `graph/nodes/answer.ts`：两处请求文字外面包了 `withStandingRules(…, run.memory)`（加一行 import），别的没动。
   - `graph/nodes/functions.ts` 的 `rankPart`：依据那一句后面可能多一行“这段时间没有在某时段的活动”；回答末尾可能多一行“这几条来自你存的记忆……”（`MEMORY_WORDS.manageLine`）；条数那句在没有一场符合偏好时段时被替换。若 AG19 把排序回答改成块，这三句要一起带过去。
 - **契约**（`shared/contract/agent-v1.ts` 末尾的 AG14 一段，已同步到 App）：`AgentMemoryEntryContract`、`AgentMemorySettingsContract`、`AgentMemoryListContract`（含 `memoryVersion`、`ruleLimit`）、三个输入结构；校验在 `shared/api-schema/agent-v1.ts` 末尾。
@@ -193,7 +278,12 @@
   - 旧入口的学习开关文字（上面第 3 条）。
   - `tests/api/event-registration-plan-sync.test.ts` 时好时坏（与本 sprint 无关），值得单独看一次。
 - **其他线可能冲突的文件**：`shared/contract/agent-v1.ts`、`shared/api-schema/agent-v1.ts`（都在文件末尾加段）、`shared/contract/.snapshot.json`（合并后重新生成）、`features/agent/capabilities/contract.ts` 与 `features/agent/ledger/contract.ts`（卡片执行器与操作类型的列表，各加三项）、`features/agent/runtime/card-operations.ts`、`features/agent-v1/domains/writes.ts`、`features/agent/runtime/service-factory.ts`、`features/agent-v1/graph/{deps,state,build,executor}.ts`、`graph/nodes/{intake,understand,route,functions,answer,deliver,propose}.ts`、`context/session-state.ts`、`functions/basis.ts`、`judgment/funnel.ts`、评测的 `tests/agent-eval/lib/{runner,hard-checks,observations,seed,judging}.ts`、`docs/epics/agent-design/eval/CHANGES.md`、`eval/cases/MEM.yaml`、`tests/capabilities/agent-action-ledger-contract.test.ts`、`agent-v1-receipts.test.ts`，以及 App 的 `src/api/contract/agent-v1.ts`、`src/api/schema/agent-v1.ts`。
-- **需要决定**：① AE-MEM-005 的用例改动是否确认；② 旧入口学习开关的文字放在哪个 sprint；③ `funnel()` 排序细则的改动是否保留（影响 AG08、AG10 的重跑）；④ 生产库盘点的授权与时间。
+- **需要决定**（服务端那一轮的四项协调者已答，见文末）：
+  - ⑤ **AE-FN-002、AE-SCL-027 R3 的「入口」**：以前回答里的「到设置里改」只是文字；现在回答开头有带「修改 ›」的记忆小标签（点了打开设置页那一条），transcript 里写明。建议评审项写成「回答开头有可点的入口到设置页的那一条」，或保持现状、由评审看 transcript 的那一行。
+  - ⑥ **AE-MEM-005 R2 写「四条待办」，回答正确地列了五条**（四条待办加一条正式跟进 F1，与 AE-ANS-005 同一种情况，那边已改成五条）。建议同样改成五条。
+  - ⑦ **两条都像时的选择**（稿：「先问一句，把这两条列出来让你点」）：这次没有做成可点的选项，仍是文字列出两条、请用户说是哪一条（服务端那一轮的样子）。要做成选项，需要一条新的「点了选项就删／改那一条」的恢复路径，建议放进 AG20 或单独一个小 sprint。
+  - ⑧ 运行器加「停在第 n 步」（见「与 PLANNER 不同」第 12 条），以后截等确认的卡不必在评测之外发消息。
+- **AG19 之后会冲突的文件（界面续做新增）**：`shared/contract/agent-v1.ts`（AG14 界面一段在文件末尾；另在 `AgentAnswerContract` 加 `memoryUse`、在说明条块加 `go`、在卡片显示行加 `sideBySide`）、`shared/api-schema/agent-v1.ts`、`shared/copy/{zh,ja,en}.ts`（末尾 `memorySettings` 一段、`aiCard` 三个键）、`shared/compute/agent-card-view.ts`、新文件 `shared/compute/agent-memory-view.ts`、网页 `confirmation-card.tsx/.module.css`、`answer-blocks.tsx/.module.css`、`IOrbit2026.tsx`、`action-preview-client.ts`、`IorbitSettings.tsx`、App `AgentConfirmationCard.tsx`、`AgentAnswerBlocks.tsx`、`AiConversationScreen.tsx`、`agent-v1-client.ts`、`me/AccountIorbit*.tsx`、`settings-api.ts`，服务端 `graph/{state,build,executor}.ts`、`graph/nodes/{answer,deliver,functions}.ts`、`entry/{service,store}.ts`、`answer/blocks.ts`、`understand/follow-list.ts`，评测 `tests/agent-eval/lib/{runner,entry-client}.ts`。
 - **回退**：不合并，或在集成线上 revert 合并提交。没有数据库迁移文件；新字段都是可选的，旧条目读出来补默认值；本 sprint 没有在任何远程库上写入。
 
 ## 待登记的运行
@@ -209,6 +299,18 @@
 | 20261120-043620-d88a187-AG14-dev-5 | 2026-11-20 | d88a187 | AG14 AG14-dev-5（稳定性第 3 次，未评；代码判定 18/18） | 18 | 0 | 0 | 18 | 0 | 真实 43 / 模拟 0 | 真实 2 / 模拟 0 | 真实 0 / 模拟或回放 0 | 0.1104 | 未评 | ca807a990af88c9996bdad96b6859b44f15614a3e3f36e5b7c3b2aa1fa289cd2 |
 | 20261120-044147-d88a187-AG14-gate-run-01 | 2026-11-20 | d88a187 | AG14 门槛（被 run-01b 取代：之后多了一个提交；未评；代码判定 76/76） | 76 | 0 | 0 | 76 | 0 | 真实 161 / 模拟 0 | 真实 9 / 模拟 0 | 真实 0 / 模拟或回放 5 | 0.3323 | 未评 | d99f27f8703003373e1f5be588f02689b659c79b9d29426aa117cb828346eb99 |
 | 20261120-052512-ca99401-AG14-gate-run-01b | 2026-11-20 | ca99401 | AG14 门槛（最终提交；代码判定 76/76，待评审） | 76 | （评审后填） | （评审后填） | （评审后填） | 0 | 真实 161 / 模拟 0 | 真实 9 / 模拟 0 | 真实 0 / 模拟或回放 5 | 0.3208 | （评审后填） | 7ac73e50e3982d43ec2dded823a0efffce08f158250f62733adb58e3576eb078 |
+| 20261120-111616-8a0bdb0-AG14-ui-shots-mem003 | 2026-11-20 | 8a0bdb0 | AG14 界面截图用（未评；代码判定 1/1） | 1 | 0 | 0 | 1 | 0 | 真实 2 / 模拟 0 | 真实 0 / 模拟 0 | 真实 0 / 模拟或回放 0 | 0.0101 | 未评 | bcbc1b70974a31a2b80b7f0b3d1f692bef32382169edb1b4610878d87d5667f8 |
+| 20261120-111803-8a0bdb0-AG14-ui-shots-mem006 | 2026-11-20 | 8a0bdb0 | AG14 界面截图用（未评；代码判定 1/1） | 1 | 0 | 0 | 1 | 0 | 真实 3 / 模拟 0 | 真实 0 / 模拟 0 | 真实 0 / 模拟或回放 0 | 0.0161 | 未评 | b1af633e80455028c87eaf0366357cd0d05b1b2b25b038209306aa771267dfd0 |
+| 20261120-115930-a9b055e-AG14-ui-stab-1 | 2026-11-20 | a9b055e | AG14 界面稳定性（构建过时；未评；代码判定 17/18） | 18 | 0 | 0 | 18 | 0 | 真实 45 / 模拟 0 | 真实 1 / 模拟 0 | 真实 0 / 模拟或回放 0 | 0.2222 | 未评 | 61ca31133721563b4e8842bb78fa6d167266953243c28c96ce99fc6122a23f5c |
+| 20261120-120123-a9b055e-AG14-ui-stab-2 | 2026-11-20 | a9b055e | AG14 界面稳定性（构建过时；未评；代码判定 17/18） | 18 | 0 | 0 | 18 | 0 | 真实 45 / 模拟 0 | 真实 1 / 模拟 0 | 真实 0 / 模拟或回放 0 | 0.2229 | 未评 | 04dde3bbd017a01d725a3dcea7e498988aa7c4c46ba44420886dad60b895f1ec |
+| 20261120-120914-c661305-AG14-ui-stab-1 | 2026-11-20 | c661305 | AG14 界面稳定性第 1 次（未评；代码判定 18/18） | 18 | 0 | 0 | 18 | 0 | 真实 43 / 模拟 0 | 真实 2 / 模拟 0 | 真实 0 / 模拟或回放 0 | 0.2254 | 未评 | 6dcae5791e788e21e4aae12dd48e233f9e7a504bf3fe13e2f33937070ca21eb6 |
+| 20261120-121130-c661305-AG14-ui-stab-2 | 2026-11-20 | c661305 | AG14 界面稳定性第 2 次（未评；代码判定 18/18） | 18 | 0 | 0 | 18 | 0 | 真实 43 / 模拟 0 | 真实 2 / 模拟 0 | 真实 0 / 模拟或回放 0 | 0.2175 | 未评 | d6d1b68021ff55efd82ea588544dd94aa7428d83a8ace5cc2913e4dce6268f8c |
+| 20261120-121337-c661305-AG14-ui-stab-3 | 2026-11-20 | c661305 | AG14 界面稳定性第 3 次（未评；代码判定 18/18） | 18 | 0 | 0 | 18 | 0 | 真实 43 / 模拟 0 | 真实 2 / 模拟 0 | 真实 0 / 模拟或回放 0 | 0.2192 | 未评 | 36f2fd6fc7d74d679374b5ae2494e70e588b6188bf93d89cd78006c6ce59b7ee |
+| 20261120-121543-c661305-AG14-gate-run-02 | 2026-11-20 | c661305 | AG14 门槛（被 run-03 取代：之后多了一个提交；未评；代码判定 76/76） | 76 | 0 | 0 | 76 | 0 | 真实 164 / 模拟 0 | 真实 9 / 模拟 0 | 真实 0 / 模拟或回放 5 | 0.7066 | 未评 | 0116b0e600ac22dc3d8ad51693c0faee5078bd66852f8dde50077fc96ad32a55 |
+| 20261120-122425-c661305-AG14-ui-shots-mem006b | 2026-11-20 | c661305 | AG14 界面截图用（未评；代码判定 1/1） | 1 | 0 | 0 | 1 | 0 | 真实 3 / 模拟 0 | 真实 0 / 模拟 0 | 真实 0 / 模拟或回放 0 | 0.0181 | 未评 | e66a9e5e67ab74e6689a66db0caef2c667cfecff755527b473ce5bac77270797 |
+| 20261120-131420-121d32a-AG14-gate-run-03 | 2026-11-20 | 121d32a | AG14 门槛（最终提交；代码判定 76/76，待评审） | 76 | （评审后填） | （评审后填） | （评审后填） | 0 | 真实 167 / 模拟 0 | 真实 9 / 模拟 0 | 真实 0 / 模拟或回放 5 | 0.3462 | （评审后填） | 28fe2c23c43803066dd7accffb32dec46df4333f77cf9dae0d97a1cef3828d00 |
+| 20261120-132141-121d32a-AG14-ui-shots-app | 2026-11-20 | 121d32a | AG14 App 截图用（未评；代码判定 1/1） | 1 | 0 | 0 | 1 | 0 | 真实 3 / 模拟 0 | 真实 0 / 模拟 0 | 真实 0 / 模拟或回放 0 | 0.0089 | 未评 | 5aa93aa97340201b02004e146fbc318d3076af7d16ce7aafdb93d2f4c9e4c216 |
+| 20261120-120331-a9b055e-AG14-ui-stab-3 | 2026-11-20 | a9b055e | 作废（构建过时，中途停掉，没有 summary；不登记亦可） | — | — | — | — | — | — | — | — | — | — | — |
 
 ## 协调者对四项待决定的答复（2026-11-20）
 
