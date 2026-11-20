@@ -22,7 +22,7 @@ import { recallDay, recallFrom, type MemoryRecall, type MemoryRecallTask, type R
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
 import type { ContextMessage } from "../../context/build";
 import type { AgentSessionState } from "../../context/session-state";
-import { timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
+import { clockBoundIn, meetsTime, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
 import * as say from "../../functions/copy";
 import type { NodeScope } from "../../graph/deps";
 import type { AgentGraphState, GraphPart } from "../../graph/state";
@@ -197,6 +197,12 @@ function daysOf(structured: AgentMemoryStructured): "weekend" | "weekday" | unde
 /** The time condition an entry holds: from its stored values, else from its own words. A rule is a hard condition. */
 export function timePreferenceOfEntry(entry: Pick<RecalledMemory, "structured" | "content" | "category">): TimePreference | null {
   const structured = entry.structured;
+  // AG21b (R33): an entry whose words hold a clock boundary ("不要早上八点以前的") is read from its words — the stored part
+  // of the day (older entries kept "avoid morning" for it) would widen it to the whole morning.
+  if (clockBoundIn(entry.content)) {
+    const said = timePreferenceIn(entry.content, "memory");
+    if (said) return { ...said, hard: said.hard || entry.category === "constraint" || structured?.strength === "avoid" || structured?.strength === "only" };
+  }
   if (structured && (structured.dayPart || structured.preferredDays?.length)) {
     const days = daysOf(structured);
     if (!days && !structured.dayPart) return null;
@@ -301,13 +307,10 @@ export function rankMemoryFrom(recall: Pick<MemoryRecall, "rules" | "relevant">,
 }
 
 /** Whether an event starting then meets a stored time condition (the same hours as functions/basis.ts). */
-function meets(preference: Pick<TimePreference, "days" | "part" | "exclude">, startsAt: string, timeZone: string): boolean {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hourCycle: "h23", timeZone, weekday: "short" }).formatToParts(new Date(startsAt)).map((part) => [part.type, part.value]));
-  const weekend = parts.weekday === "Sat" || parts.weekday === "Sun";
-  const hour = Number(parts.hour);
-  const days = !preference.days || (preference.days === "weekend" ? weekend : !weekend);
-  const part = !preference.part || (preference.part === "morning" ? hour < 12 : preference.part === "afternoon" ? hour >= 12 && hour < 17 : hour >= 17);
-  return preference.exclude ? !(days && part) : days && part;
+function meets(preference: Pick<TimePreference, "days" | "part" | "exclude" | "clock">, startsAt: string, timeZone: string): boolean {
+  // AG21b (R33): the same test as the ranking (meetsTime), clock boundaries included.
+  const inside = meetsTime(preference, startsAt, timeZone);
+  return preference.exclude ? !inside : inside;
 }
 
 /* ── the parts of a message that are about memory ──────────────────── */

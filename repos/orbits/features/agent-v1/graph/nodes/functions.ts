@@ -1127,7 +1127,13 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   if (topic && time.length && !topicFromMemory) steps.push(basisMemo ? (language === "en" ? `how closely it relates to the topics of your note "${basisMemo}"` : language === "ja" ? `メモ「${basisMemo}」のテーマにどれだけ合うか` : `和你的笔记「${basisMemo}」的主题有多相关`) : (language === "en" ? `how closely it relates to "${topic}"` : language === "ja" ? `「${topic}」にどれだけ合うか` : `和「${topic}」有多相关`));
   if (history) steps.push(language === "en" ? "follow-ups past due that are not done, then to-dos past their planned day" : language === "ja" ? "期限を過ぎて未完了のフォローアップ、次に予定日を過ぎたタスク" : "已到期没做的跟进、过了计划日的待办");
   if (domain === "todo" && orderField) steps.push(say.fieldOrderWords(orderField, orderDirection, language));
-  const memoryWords = saved.used.map((item) => item.content);
+  const removedBy = (preference: TimePreference) => (domain !== "event" ? 0 : candidates.filter((candidate) => hard(candidate)).filter((candidate) => {
+    const startsAt = (candidate as EventCandidate).startsAt;
+    return Boolean(startsAt) && (preference.exclude ? meetsTime(preference, startsAt!, timeZone) : !meetsTime(preference, startsAt!, timeZone));
+  }).length);
+  // AG21b (R33): a saved rule (a hard time condition) is named in the lead only when it took something away.
+  const idle = new Set(saved.time.filter((item) => item.preference.hard && removedBy(item.preference) === 0).map((item) => item.entry.memoryId));
+  const memoryWords = saved.used.filter((item) => !idle.has(item.memoryId)).map((item) => item.content);
   // AE-FN-006: only the related ones, in the order of the field the user named.
   const filterLead = topicAsFilter && orderField ? ({ en: `Only the ${NOUN[domain].en} related to "${topic}", ${say.fieldOrderWords(orderField, orderDirection, "en")}.`, ja: `「${topic}」に関連する${NOUN[domain].ja}だけを、${say.fieldOrderWords(orderField, orderDirection, "ja")}に並べました。`, zh: `只列和「${topic}」相关的${NOUN[domain].zh}，${say.fieldOrderWords(orderField, orderDirection, "zh")}排。` } as const)[language] : null;
   const basisLead = filterLead ?? (useNatural && !listing && !todoNatural
@@ -1191,10 +1197,6 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   // AG14 UI (approved draft board 5, D4–D6; 设计稿 §6 "旁边可改"): the entries this ranking used are named in chips at the
   // start of the answer, each with 「修改 ›」 to the entry in settings — they replace the old "where to change" line. A
   // saved rule is named only when it took candidates away; an entry this turn's words overruled reads "只这一次".
-  const removedBy = (preference: TimePreference) => (domain !== "event" ? 0 : candidates.filter((candidate) => hard(candidate)).filter((candidate) => {
-    const startsAt = (candidate as EventCandidate).startsAt;
-    return Boolean(startsAt) && (preference.exclude ? meetsTime(preference, startsAt!, timeZone) : !meetsTime(preference, startsAt!, timeZone));
-  }).length);
   const timeIds = new Set(saved.time.map((item) => item.entry.memoryId));
   const topicOf = (entry: RecalledMemory) => (timeIds.has(entry.memoryId) ? null : topicOfEntry(entry));
   run.memoryUse.push(...memoryChipsOf({

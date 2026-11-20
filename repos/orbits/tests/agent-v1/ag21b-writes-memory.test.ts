@@ -9,6 +9,10 @@ import { createAgentRuntimeService } from "../../features/agent/runtime/service"
 import { createStorageAgentRuntimeRepository } from "../../features/agent/storage/agent-runtime-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { usesPromisedDate } from "../../features/agent-v1/graph/nodes/functions";
+import { clockBoundIn, meetsTime, timePreferenceIn } from "../../features/agent-v1/functions/basis";
+import { timeWords } from "../../features/agent-v1/functions/copy";
+import { timePreferenceOfEntry } from "../../features/agent-v1/domains/memory/turn";
+import { readMemoryWords } from "../../features/agent-v1/domains/memory/words";
 import { applyResolution } from "../../features/agent-v1/graph/nodes/clarify";
 import { groupInteractions, interactionNamedIn } from "../../features/agent-v1/functions/extract-interactions";
 import { fnWorld, NOW as FN_NOW, runFn } from "./functions-kit";
@@ -27,6 +31,8 @@ import { contact, memo } from "./read-kit";
  */
 
 const ACTOR = "actor:a";
+const EVENT_RANK = (quote: string, extra: Record<string, unknown> = {}) => ({ dataSources: ["orbit_records"], deliverable: "ranked_list", requiredCapabilities: ["event.read", "fn.rank"], sourceQuote: quote, ...extra });
+const fnRankOf = (events: Record<string, unknown>[]) => events.filter((event) => event.type === "fn.rank");
 const NOW = "2026-11-20T01:00:00.000Z";
 
 function withShinan() {
@@ -240,4 +246,42 @@ test("R31 two occasions: a registered question with one option each; '工地那�
   const optionSet = { asks: "object", clarificationId: "c.q", kind: "question", options: [{ capabilities: [], capability: "memo.update", optionId: "o1", refId: "interaction|note:site|2026-11-10|meeting|mutual|contact:sn,contact:jl|1", refType: "interaction" }], partId: "p1", purpose: "interaction", state: "open", subgoal: "s" };
   const resumed = applyResolution({ optionSets: [optionSet], parts: [{ localId: "p1", plan: {}, reads: [{ ref: "memo:note:site", version: "1" }], refs: [], route: "propose_write", status: "awaiting_clarification" }] } as never, { clarificationId: "c.q", kind: "select", optionId: "o1" }, "req");
   assert.deepEqual([resumed.parts![0].status, resumed.parts![0].reason, resumed.parts![0].reads, resumed.optionSets![0].selectedOptionId], ["unfinished", "proposing", undefined, "o1"]);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// R33: a saved rule with a clock time is a start-time bound with its own inclusiveness, applied as a hard condition.
+
+test("R33 clock boundaries in the words (zh, ja, en): 以后/以降/after include the minute, 以前/前/before leave it out; no part of the day", () => {
+  assert.deepEqual(clockBoundIn("不要晚上八点以后开始的"), { minutes: 20 * 60, side: "from" });
+  assert.deepEqual(clockBoundIn("不要早上八点以前的"), { minutes: 8 * 60, side: "before" });
+  assert.deepEqual(clockBoundIn("下午两点半以后的才行"), { minutes: 14 * 60 + 30, side: "from" });
+  assert.deepEqual(clockBoundIn("20時以降に始まるイベントは避けて"), { minutes: 20 * 60, side: "from" });
+  assert.deepEqual(clockBoundIn("Don't recommend events that start after 8 pm"), { minutes: 20 * 60, side: "from" });
+  assert.deepEqual(clockBoundIn("nothing before 9:30 am"), { minutes: 9 * 60 + 30, side: "before" });
+  assert.equal(clockBoundIn("不要晚上的活动"), null);
+  const late = timePreferenceIn("不要晚上八点以后开始的", "memory")!;
+  assert.deepEqual([late.exclude, late.hard, late.part, late.clock], [true, true, undefined, { minutes: 1200, side: "from" }]);
+  // Tokyo: 20:00 is in "after 8 pm" (removed by the rule), 19:59 is not.
+  assert.equal(meetsTime(late, "2026-11-21T11:00:00.000Z", "Asia/Tokyo"), true);
+  assert.equal(meetsTime(late, "2026-11-21T10:59:00.000Z", "Asia/Tokyo"), false);
+  // An entry stored by an older reader as "avoid morning" is read from its words: only before 08:00 is left out.
+  const early = timePreferenceOfEntry({ category: "constraint", content: "推荐活动时不要早上八点以前的", structured: { dayPart: "morning", strength: "avoid" } })!;
+  assert.deepEqual([early.part, early.clock, early.hard], [undefined, { minutes: 480, side: "before" }, true]);
+  assert.deepEqual(readMemoryWords("推荐活动时不要早上八点以前的").structured, { strength: "avoid" }, "no part of the day is stored for a clock time");
+  assert.match(timeWords(late, "zh"), /20:00以后开始/u);
+});
+
+test("R33 a ranking with a saved clock rule removes only what the bound says; the entry is named only when it removed something", async () => {
+  const message = "11 月 21 日和 22 日有哪些活动值得去？帮我挑三场。";
+  const ask = (content: string) => runFn(message, [EVENT_RANK(message, { rank: { count: 3 }, readFilter: { from: "2026-11-21", to: "2026-11-22" } })], { memories: [{ category: "constraint", content, id: "MC1" }] });
+  // 09:30 (e102) starts before 10:00; 10:00 itself is not "before ten" — the morning events at ten stay.
+  const early = await ask("推荐活动时不要早上十点以前开始的");
+  const listed = fnRankOf(early.events).at(-1)!.listed as string[];
+  assert.ok(!listed.includes("event:event:e102"), listed.join(","));
+  assert.ok(listed.includes("event:event:e101") && listed.includes("event:event:e105"), listed.join(","));
+  assert.match(early.result.text, /不要早上十点以前开始的/u);
+  // "晚上七点半以后" leaves the 19:00 event in: nothing removed, so the rule is not named as used.
+  const late = await ask("推荐活动时不要晚上七点半以后开始的");
+  assert.ok((fnRankOf(late.events).at(-1)!.listed as string[]).includes("event:event:e104"), "19:00 is before 19:30");
+  assert.doesNotMatch(late.result.text, /七点半以后/u);
 });
