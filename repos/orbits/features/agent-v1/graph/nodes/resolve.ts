@@ -452,6 +452,26 @@ export function companyNamedIn(company: string, text: string): boolean {
   return false;
 }
 
+/**
+ * AG21a (R40): with two or more people bound in one part, each record clue (a note, to-do or schedule item named without an
+ * id) belongs to the person named last before it — the one whose half of the sentence it is in. Returns, per kind, the
+ * people it is read for, only where that is fewer than all of them; empty when the clues cannot all be placed.
+ */
+export function governedSubjects(part: Pick<GraphPart, "refs">, contacts: readonly Pick<ContactMatch, "id">[]): Map<string, string[]> {
+  const people = part.refs.filter((ref) => recordKindOf(ref.entity) === "contact" && ref.recordId && ref.quote && contacts.some((item) => item.id === ref.recordId)).sort((left, right) => left.quote![0] - right.quote![0]);
+  const distinct = new Set(people.map((ref) => ref.recordId!));
+  if (distinct.size < 2) return new Map();
+  const byKind = new Map<string, Set<string>>();
+  for (const ref of part.refs) {
+    const kind = recordKindOf(ref.entity);
+    if (!kind || !["memo", "todo", "schedule"].includes(kind) || ref.recordId || !ref.quote) continue;
+    const governor = [...people].reverse().find((person) => person.quote![1] <= ref.quote![0]);
+    if (!governor) return new Map();
+    byKind.set(kind, new Set([...(byKind.get(kind) ?? []), governor.recordId!]));
+  }
+  return new Map([...byKind].filter(([, ids]) => ids.size < distinct.size).map(([kind, ids]) => [kind, [...ids]]));
+}
+
 interface PartRead {
   views: RecordView[];
   /** A schedule item's occurrence inside the asked range, by ref. */
@@ -793,6 +813,22 @@ export function resolveNode(scope: NodeScope): GraphNode {
           else read.gaps.add("unreadable");
         }
       }
+      // AG21a (R40): people of the same name read together are told apart in the materials by their company or title
+      // ("季朗（白鹭印务）", "季朗（柏舟设计）"), so one is never described as the other.
+      const sameName = new Map<string, string[]>();
+      for (const contact of contacts) {
+        const name = names.get(contact.id);
+        if (name) sameName.set(name, [...new Set([...(sameName.get(name) ?? []), contact.id])]);
+      }
+      for (const [name, ids] of sameName) {
+        if (ids.length < 2) continue;
+        for (const id of ids) {
+          const view = read.views.find((item) => item.kind === "contact" && item.id === id) ?? contacts.find((item) => item.id === id)?.view ?? null;
+          const label = contactDetail(view)?.split(" · ")[0];
+          if (label) names.set(id, `${name}（${label}）`);
+        }
+        read.notes.push(`${ids.map((id) => names.get(id)).join(" and ")} are different people with the same name; keep what each record says with its own person.`);
+      }
       // Records the part points at by id.
       for (const [kind, ids] of boundIds) {
         read.wantsRecords = true;
@@ -897,6 +933,13 @@ export function resolveNode(scope: NodeScope): GraphNode {
       const searchKinds = attachedOnly ? [] : (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !closedKinds.has(kind) && !(kind === "memo" && interactionAnswers) && !(kind === "memo" && openItems && !notesToo));
       if (current) read.notes.push("This asks how the person stands now: the interactions, their newest notes and the profile are all here; where they differ, the newer dated record is what holds now. Never give as current anything a newer record replaces (a former company, an old role).");
       const subjects = contacts.length ? contacts.map((item) => item.id) : [undefined];
+      // AG21a (R40): two people in one part, each object clue in the half of the sentence its person governs ("把 @季朗 的待办和
+      // @季朗 的笔记对一下"): a kind named in one person's half is read for that person only.
+      const governed = governedSubjects(part, contacts);
+      if (governed.size) {
+        read.notes.push(`Each kind of record here is read for the person the sentence puts it with: ${[...governed].map(([kind, ids]) => `${kind === "memo" ? "notes" : kind === "todo" ? "to-dos" : "schedule items"} of ${ids.map((id) => names.get(id) ?? id).join(", ")}`).join("; ")}. Keep each record with its own person.`);
+        emitTrace({ governed: Object.fromEntries(governed), partId: part.localId, type: "resolve.clues_governed" });
+      }
       const asked: AskedRead[] = [];
       let unclear = false;
       const reads = new Map<string, { complete: boolean; kind: string; pagesRead: number; total: number | null; directions: Set<"oldest" | "newest"> }>();
@@ -939,7 +982,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
         }
         if (kind === "todo" || kind === "schedule") asked.push({ ...(contacts.length === 1 ? { person: { id: contacts[0].id, name: names.get(contacts[0].id) || contacts[0].name } } : {}), defaultFrom: kind === "schedule" && kindFrom === now && !from, from: kindFrom, fromDay: plate ? (kind === "schedule" ? today : undefined) : filter?.from, kind, status: kindStatus, statusSaid: Boolean(status), text: askedText, to, toDay: filter?.to });
         if (!(kind === "memo" && notesBesideProfile && contacts.length)) read.wantsRecords = true;
-        for (const contactId of subjects) {
+        for (const contactId of governed.get(kind) ?? subjects) {
           const orders: ("newest" | "oldest")[] = order === "both" ? ["newest", "oldest"] : [order];
           for (const direction of orders) {
             try {

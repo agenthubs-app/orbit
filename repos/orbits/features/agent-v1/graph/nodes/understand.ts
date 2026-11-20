@@ -150,8 +150,16 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope, today: string)
         if (clue.referenceId || !subjectInsideRecord(clue, part.objectClues, writes)) return true;
         emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.subject_in_record" });
         return false;
-      }).map((clue) => {
-        const at = message.indexOf(clue.text);
+      }).map((clue, _index, kept) => {
+        // AG21a (R40): the same words twice ("把 @季朗 的待办和 @季朗 的笔记对一下") are two places of the message: the second
+        // clue with those words is the second occurrence, so each keeps its own half of the sentence.
+        const before = kept.slice(0, kept.indexOf(clue)).filter((other) => other.text === clue.text).length;
+        let at = message.indexOf(clue.text);
+        for (let count = 0; count < before && at >= 0; count += 1) {
+          const next = message.indexOf(clue.text, at + clue.text.length);
+          if (next < 0) break;
+          at = next;
+        }
         const own: [number, number] | null = at >= 0 ? [at, at + clue.text.length] : null;
         // AG09 run-03 (AE-BND-006): a demonstrative the user described just before ("约山本吃饭这条待办") is looked up by
         // those words; the clue then names the record and is not a missing object.
