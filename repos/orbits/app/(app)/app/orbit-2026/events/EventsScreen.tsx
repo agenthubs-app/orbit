@@ -2,7 +2,7 @@
 
 // R26 イベント (events DESIGN §2.1): the 評価 / 参加予定 / 探す page in the shell. 評価: the input card, 次の参加予定,
 // 調べたイベント (newest first; 2026-11-15 no scores) and the selected one in the rail (1440) / a drawer (1024) / its own screen (390).
-// 参加予定: events/mine upcoming + past. 探す: R27 `DiscoverTab`（コミュニティ / プランに効く / すべて，右栏「選択中のイベント」）。
+// 参加イベント（2026-11-21 由「参加予定」改名）：events/mine upcoming + past，これから / 過去 二选一。 探す: R27 `DiscoverTab`（コミュニティ / プランに効く / すべて，右栏「選択中のイベント」）。
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -490,47 +490,50 @@ function emojiOf(item: EventAssessmentContract): string {
 
 function MyEvents({ language, upcoming, past, now, t }: { language: OrbitLanguage; upcoming: MyEventItem[]; past: MyEventItem[]; now: Date; t: Translate }) {
   const coming = upcoming.filter((item) => item.status !== "cancelled" && item.status !== "rejected");
-  if (coming.length === 0 && past.length === 0) {
-    return (
-      <div className={styles.wgrid} data-events-going="empty">
-        {/* b12 #312 W-R26-30e：大 emoji · 22px 标题 + 副文 · 右侧「探す」主按钮（高 46）。 */}
-        <div className={`${styles.card} ${styles.span12} ${styles.guide} ${styles.goingEmpty}`}>
-          <div className={styles.goingEmptyEmoji} aria-hidden>🗓️</div>
-          <div className={styles.grow}>
-            <div className={styles.goingEmptyTitle}>{t("goingEmptyTitle")}</div>
-            <div className={styles.sub} style={{ marginTop: 4 }}>{t("goingEmptySub")}</div>
-          </div>
-          <Link className={`${styles.btn} ${styles.primary} ${styles.goingEmptyBtn}`} href="/app/events?tab=discover"><Icon name="search" size={16} />{t("goingEmptyCta")}</Link>
-        </div>
+  // 2026-11-21 参加イベント：これから / 過去 是同级的二选一（之前「過去」挂在「これから」标题下面，像它的下级）；
+  // 默认これから，0 件也停在这边显示空状态。对标 Luma Upcoming / Past、Peatix 今後 / 過去、Meetup Your events。
+  const [when, setWhen] = useState<"upcoming" | "past">("upcoming");
+  const empty = (
+    <div className={`${styles.card} ${styles.span12} ${styles.guide} ${styles.goingEmpty}`} data-events-going-empty="">
+      {/* b12 #312 W-R26-30e：大 emoji · 22px 标题 + 副文 · 右侧「探す」主按钮（高 46）。 */}
+      <div className={styles.goingEmptyEmoji} aria-hidden>🗓️</div>
+      <div className={styles.grow}>
+        <div className={styles.goingEmptyTitle}>{t("goingEmptyTitle")}</div>
+        <div className={styles.sub} style={{ marginTop: 4 }}>{t("goingEmptySub")}</div>
       </div>
-    );
-  }
+      <Link className={`${styles.btn} ${styles.primary} ${styles.goingEmptyBtn}`} href="/app/events?tab=discover"><Icon name="search" size={16} />{t("goingEmptyCta")}</Link>
+    </div>
+  );
+  if (coming.length === 0 && past.length === 0) return <div className={styles.wgrid} data-events-going="empty">{empty}</div>;
   return (
     <div className={styles.wgrid} data-events-going="">
-      <div className={`${styles.span12} ${styles.cardH}`} style={{ margin: "0 0 -6px" }}><h3>{t("upcoming")}</h3><span className={styles.more}>{t("countItems", { n: coming.length })}</span></div>
-      {coming.map((item) => (
+      <div className={styles.span12}>
+        <Segmented<"upcoming" | "past"> variant="seg" label={t("goingWhenLabel")} data-events-going-when="" value={when} onChange={setWhen}
+          segments={[{ key: "upcoming", label: t("goingUpcomingN", { n: coming.length }) }, { key: "past", label: t("goingPastN", { n: past.length }) }]} />
+      </div>
+      {when === "upcoming" ? (coming.length === 0 ? empty : coming.map((item) => (
         <div key={item.eventId} className={`${styles.card} ${styles.span4} ${styles.nextCard}`}>
           <div className={`${styles.row} ${styles.between}`}><span className={styles.lbl}>{eventWhen(item.startsAt, language)}</span>{dayChip(item.startsAt, now, t)}</div>
           <b className={styles.nextName}>{item.title}</b>
           <div className={styles.lbl}>{item.venue ?? ""}</div>
           {item.meetCount ? <div className={`${styles.row} ${styles.nextMeet}`}><Avatars initials={item.meetInitials ?? []} /><span className={styles.lbl}>{t("meetCount", { n: item.meetCount })}</span></div> : null}
-          <a className={`${styles.btn} ${styles.sm} ${styles.primary} ${styles.nextBtn}`} href={item.href}>{t("prepare")}</a>
+          <Link className={`${styles.btn} ${styles.sm} ${styles.primary} ${styles.nextBtn}`} href={item.href}>{t("prepare")}</Link>
         </div>
-      ))}
-      {past.length ? (
-        <div className={`${styles.card} ${styles.span12} ${styles.pastCard}`}>
-          <div className={styles.cardH} style={{ margin: "8px 0 0" }}><h3>{t("past")}</h3><span className={styles.more}>{t("countItems", { n: past.length })}</span></div>
+      ))) : past.length === 0 ? (
+        <div className={`${styles.card} ${styles.span12} ${styles.lbl}`} data-events-going-past-empty="">{t("goingPastEmpty")}</div>
+      ) : (
+        <div className={`${styles.card} ${styles.span12} ${styles.pastCard}`} data-events-going-past="">
           <div className={styles.list}>
             {past.map((item) => (
-              <a key={item.eventId} className={styles.li} href={item.href} style={{ color: "inherit", textDecoration: "none" }}>
+              <Link key={item.eventId} className={styles.li} href={item.href} style={{ color: "inherit", textDecoration: "none" }}>
                 <span className={`${styles.emo} ${styles.emoSm} ${item.status === "attended" ? styles.t_teal : styles.t_lav}`}>{item.emoji}</span>
                 <div className={styles.meta}><b>{item.title}</b><span>{[eventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</span></div>
                 <span className={`${styles.chip} ${item.status === "attended" ? styles.c_teal : ""}`}>{item.status === "attended" ? t("attended") : item.status === "cancelled" ? t("statusCancelled") : t("notCheckedIn")}</span>
-              </a>
+              </Link>
             ))}
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

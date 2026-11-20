@@ -9,7 +9,7 @@ export const eventsCopy = {
   subtitleGoing: { ja: "{month}月 · 参加予定 {going}件", zh: "{month}月 · 计划参加{going}场", en: "{month}/ · {going} upcoming", kind: "label" },
   subtitleEmpty: { ja: "誰に会えるかを調べる", zh: "查一查能见到谁", en: "See who you could meet", kind: "label" },
   tabAssess: { ja: "評価", zh: "评估", en: "Assess", kind: "tab" },
-  tabGoing: { ja: "参加予定", zh: "计划参加", en: "Going", kind: "tab" },
+  tabGoing: { ja: "参加イベント", zh: "参加的活动", en: "My events", kind: "tab" },
   tabDiscover: { ja: "探す", zh: "发现", en: "Discover", kind: "tab" },
   tabsLabel: { ja: "イベントの表示", zh: "活动视图", en: "Events view", kind: "label" },
   // 評価カード
@@ -22,7 +22,7 @@ export const eventsCopy = {
   fromPhotos: { ja: "写真から", zh: "从相册", en: "From photos", kind: "button" },
   prepareShort: { ja: "準備", zh: "准备", en: "Prepare", kind: "button" },
   assessedCount: { ja: "評価済み {n}件", zh: "已评估{n}场", en: "{n} assessed", kind: "label" },
-  tabGoingCount: { ja: "参加予定 {n}", zh: "计划参加{n}", en: "Going {n}", kind: "label" },
+  tabGoingCount: { ja: "参加イベント {n}", zh: "参加的活动 {n}", en: "My events {n}", kind: "label" },
   urlPlaceholder: { ja: "https://", zh: "https://…", en: "https://…", kind: "placeholder" },
   urlLabel: { ja: "イベントページの URL", zh: "活动页面的网址", en: "Event page link", kind: "label" },
   judge: { ja: "調べる", zh: "查看", en: "Check", kind: "button" },
@@ -163,7 +163,12 @@ export const eventsCopy = {
   statusWaitlisted: { ja: "キャンセル待ち", zh: "候补", en: "Waitlisted", kind: "chip" },
   statusPlanned: { ja: "プランに追加", zh: "已加入计划", en: "In your plan", kind: "chip" },
   statusCancelled: { ja: "取り消し", zh: "已取消", en: "Cancelled", kind: "chip" },
-  goingEmptyTitle: { ja: "参加予定はまだありません", zh: "还没有计划参加的活动", en: "Nothing planned yet", kind: "cardTitle" },
+  goingEmptyTitle: { ja: "これからの参加予定はありません", zh: "接下来没有要参加的活动", en: "Nothing coming up", kind: "cardTitle" },
+  // 2026-11-21 参加イベント：これから / 過去 二选一（对标 Luma Upcoming / Past、Peatix 今後 / 過去）。
+  goingWhenLabel: { ja: "これから / 過去", zh: "接下来 / 过去", en: "Upcoming / Past", kind: "label" },
+  goingUpcomingN: { ja: "これから {n}", zh: "接下来 {n}", en: "Upcoming {n}", kind: "tab" },
+  goingPastN: { ja: "過去 {n}", zh: "过去 {n}", en: "Past {n}", kind: "tab" },
+  goingPastEmpty: { ja: "まだ参加したイベントはありません", zh: "还没有参加过的活动", en: "No past events yet", kind: "label" },
   goingEmptySub: { ja: "探すでイベントを見つける", zh: "去「发现」找活动", en: "Find events under Discover", kind: "label" },
   goingEmptyCta: { ja: "探す", zh: "发现", en: "Discover", kind: "button" },
   // 参加コード
