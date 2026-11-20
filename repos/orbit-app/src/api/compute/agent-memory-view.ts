@@ -52,12 +52,12 @@ const MONTH_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep",
 
 // Calendar arithmetic only (no Date: shared compute runs the same on every runtime).
 const leap = (year: number) => (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-const daysIn = (year: number, month: number) => [31, leap(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+const daysIn = (year: number, month: number): number => [31, leap(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1] ?? 31;
 /** 0 = Sunday (Sakamoto's method). */
 const weekdayOf = (year: number, month: number, day: number) => {
   const offsets = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
   const y = month < 3 ? year - 1 : year;
-  return (y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) + offsets[month - 1] + day) % 7;
+  return (y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) + (offsets[month - 1] ?? 0) + day) % 7;
 };
 const dayParts = (day: string) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(day);
