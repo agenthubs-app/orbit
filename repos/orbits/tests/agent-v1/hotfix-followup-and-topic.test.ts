@@ -27,7 +27,7 @@ test("who to follow up with, in the App's three languages and plain variants; a 
 });
 
 test("rule 3: question words, kind words and the whole question are never a topic; real words stay", () => {
-  for (const words of ["值得先跟进", "哪些人值得先跟进？", "该先跟进谁", "接下来的会面或活动，该准备什么？", "What should I prepare for upcoming meetings or events?", "次の面会やイベントに何を準備しますか？", "誰を優先してフォローしますか？", "Who should I follow up with first?", "告诉我现在该联系谁、原因和下一步。"]) assert.equal(realTopicOf(words), "", words);
+  for (const words of ["值得先跟进", "哪些人值得先跟进？", "该先跟进谁", "接下来的会面或活动，该准备什么？", "What should I prepare for upcoming meetings or events?", "次の面会やイベントに何を準備しますか？", "誰を優先してフォローしますか？", "Who should I follow up with first?", "告诉我现在该联系谁、原因和下一步。", "推荐值得参加的活动并说明原因。", "参加する価値があるイベントを、理由とともに教えて。", "Suggest events worth attending and explain why.", "最近おすすめのイベントは？", "Which recent events are a good fit for me?"]) assert.equal(realTopicOf(words), "", words);
   assert.equal(realTopicOf("聊独立出版"), "聊独立出版");
   assert.equal(realTopicOf("SaaS 定价"), "SaaS 定价");
   assert.equal(realTopicOf("a power-semiconductor packaging process lead role"), "power-semiconductor packaging process lead role");
