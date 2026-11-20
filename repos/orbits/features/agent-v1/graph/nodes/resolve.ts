@@ -371,6 +371,11 @@ export async function romanizedContacts(records: AgentRecordAccess, scope: Domai
   return out;
 }
 
+/** Words that only point at a company's side ("Fjord 那边", "青柠那个", "東山さん側", "海桐的人"). */
+const COMPANY_SIDE_WORDS = /(?:那边|这边|那里|这里|那儿|那头|那家|这家|那个|这个|那位|这位|方面|一方|的人|那些人|のほう|の方|さん側|側|の人|の皆さん)$/u;
+/** AG21a (R38): at most this many people of a company named in a read are read together. */
+const COMPANY_PEOPLE = 5;
+
 /** Looks a person up by name in the account (never elsewhere) and narrows by the company the user named. */
 export async function findContacts(records: AgentRecordAccess, scope: DomainScope, words: string, quote: string, message: string): Promise<{ matches: ContactMatch[]; failed: boolean }> {
   const tokens = nameTokens(words);
@@ -393,7 +398,7 @@ export async function findContacts(records: AgentRecordAccess, scope: DomainScop
   let byCompany = false;
   if (!found.length && !failed) {
     // The words without what only points at the side ("Fjord 那边", "青柠那个", "東山さん側", "海桐的人").
-    const bare = words.replace(/^@/u, "").trim().replace(/(?:那边|这边|那里|这里|那儿|那头|那家|这家|那个|这个|那位|这位|方面|一方|的人|那些人|のほう|の方|さん側|側|の人|の皆さん)$/u, "").replace(/[\s的の]+$/u, "").trim();
+    const bare = words.replace(/^@/u, "").trim().replace(COMPANY_SIDE_WORDS, "").replace(/[\s的の]+$/u, "").trim();
     const companyWords = [...new Set([bare, clueSearchWords(bare), bare.split(/[の的之]/u)[0]?.trim()].filter((item): item is string => Boolean(item) && [...item!].length >= 2))];
     try {
       for (const text of companyWords) {
@@ -605,6 +610,8 @@ export function resolveNode(scope: NodeScope): GraphNode {
 
       // 2. The people: bound, or looked up by name in the account.
       const contacts: ContactMatch[] = [];
+      // AG21a (R38): a company the words name (no person of that name): its words, for a search of the notes as well.
+      const companyWords: string[] = [];
       const unmatched: string[] = [];
       let stop = false;
       for (const ref of part.refs.filter((item) => recordKindOf(item.entity) === "contact")) {
@@ -661,6 +668,18 @@ export function resolveNode(scope: NodeScope): GraphNode {
         if (!matches.length) {
           // run-03 repair 1 (AE-CTX-007): decided after all clues — "not found" only when nobody was found.
           unmatched.push(said.replace(/^@/u, ""));
+          continue;
+        }
+        // AG21a (R38): words found only as a company ("我给白鹭印务报的价是多少") in a read: that company's people are read
+        // together, and the notes holding the company's words too (below) — a read never dead-ends on "which person". The
+        // answer tells the people apart where their records differ.
+        if (matches.length > 1 && matches.every((match) => match.byCompany && !match.partial)) {
+          const people = matches.slice(0, COMPANY_PEOPLE);
+          contacts.push(...people);
+          const bare = said.replace(/^@/u, "").trim().replace(COMPANY_SIDE_WORDS, "").replace(/[\s的の]+$/u, "").trim();
+          if ([...bare].length >= 2) companyWords.push(bare);
+          read.notes.push(`No contact is called "${said.replace(/^@/u, "")}"; it is the company of ${people.map((item) => item.name).join(", ")}, so this reads their records together and the notes that mention "${bare}". Where their records differ in a way that changes the answer, say whose is whose.`);
+          emitTrace({ people: people.map((item) => item.id), partId: part.localId, type: "resolve.company_people_read", words: bare });
           continue;
         }
         if (matches.length > 1 || matches[0].partial) {
@@ -1118,6 +1137,23 @@ export function resolveNode(scope: NodeScope): GraphNode {
               failures.push(kind);
               emitTrace({ error: error instanceof Error ? error.message : String(error), kind, partId: part.localId, type: "read.failed" });
             }
+          }
+        }
+      }
+      // AG21a (R38): the notes that mention the company named in the words, whoever they are linked to (a note about the
+      // company may name none of its people). Under the part's period; one page per word at most a page of the part.
+      if (companyWords.length && searchKinds.includes("memo")) {
+        for (const word of companyWords) {
+          try {
+            const pages = await readPages(records.reader, "memo", accountScope, { order: "newest", text: word, ...(from ? { from } : {}), ...(to ? { to } : {}) }, maxPages);
+            withheld += pages.withheld;
+            for (const view of pages.items) push(view);
+            read.wantsRecords = true;
+            reads.set(`memo|company:${word}`, { complete: pages.complete, directions: new Set(["newest"]), kind: "memo", pagesRead: pages.pagesRead, total: null });
+            emitTrace({ found: pages.items.length, partId: part.localId, type: "resolve.company_notes", words: word });
+          } catch (error) {
+            failures.push("memo");
+            emitTrace({ error: error instanceof Error ? error.message : String(error), partId: part.localId, type: "read.failed", where: "resolve.company_notes" });
           }
         }
       }
