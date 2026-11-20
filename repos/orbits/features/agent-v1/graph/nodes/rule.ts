@@ -35,13 +35,19 @@ import { countSaidIn, INDUSTRY_WORDS, PLACE_WORDS } from "./functions";
 
 type Language = "zh" | "en" | "ja";
 
-export type RuleTask = { kind: "rule"; reply?: SessionOpenItem };
+/** `alternative`: the "定期留意" Orbit offered for a request it cannot keep doing, now accepted (its words are the request's). */
+export type RuleTask = { kind: "rule"; reply?: SessionOpenItem; alternative?: SessionOpenItem };
 
 /** The scheduled-task work this part needs, or null. */
 export function ruleTaskOf(scope: NodeScope, part: GraphPart, openItem: SessionOpenItem | undefined): RuleTask | null {
   if (part.route !== "propose_write" || part.reason !== "proposing" || part.write) return null;
-  // Accepting an alternative Orbit offered earlier ("好，那就按你说的定期留意吧") keeps its own sentence (deliver, AG03).
-  if (part.continues?.kind === "alternative") return null;
+  // Release-2 gate 2 (AE-UND-011/012): accepting the "定期留意" Orbit offered earlier ("好，那就按你说的定期留意吧") asks for a
+  // scheduled task made of the words it was offered for — the card a direct request makes, or AG15's own question for what
+  // is missing. Accepting any other alternative keeps its own sentence (deliver, AG03).
+  if (part.continues?.kind === "alternative") {
+    const offered = scope.run.context?.openItems.find((open) => open.ref === part.continues!.ref);
+    return (part.plan?.acceptedLeadsTo ?? offered?.leadsTo) === RULE_CREATE && offered?.quote ? { alternative: offered, kind: "rule" } : null;
+  }
   // A repeating calendar entry stays with the schedule writes (AG13), whatever else the first layer named.
   if (!openItem?.rule && part.capabilities.some((capability) => capability.startsWith("schedule."))) return null;
   // A reply to "按什么来挑" about a task (AG15-1): the task asked about goes on with this answer.
@@ -258,8 +264,10 @@ export async function rulePart(scope: NodeScope, state: AgentGraphState, part: G
   const language = state.language as Language;
   const timeZone = state.timeZone || "Asia/Tokyo";
   const now = state.asOf || deps.now();
-  const message = input.message;
-  const quote = message.slice(part.quote[0], part.quote[1]);
+  // An accepted "定期留意": the words of the request it was offered for, then this message ("好，……"); what the card takes is
+  // not marked in this message (its pieces are in the earlier one).
+  const message = task.alternative ? `${task.alternative.quote}\n${input.message}` : input.message;
+  const quote = task.alternative ? task.alternative.quote! : message.slice(part.quote[0], part.quote[1]);
   const budget = { ...round.budget };
   let repairs = round.repairs;
   const turnNotes: AgentRuleReference[] = run.references.filter((reference) => (reference.type === "memo" || reference.type === "note") && reference.accessible !== false).map((reference) => ({ id: reference.id, title: reference.name ?? "", type: "memo" as const }));
@@ -429,7 +437,8 @@ export async function rulePart(scope: NodeScope, state: AgentGraphState, part: G
   const validUntil = untilSaidIn(untilWords ?? said, today) ?? (untilWords && draft.until && draft.until >= today ? draft.until : null);
   const countWords = [piece(draft.scheduleText), untilWords].filter((text): text is string => Boolean(text)).reduce((text, cut) => text.replace(cut, " "), quote);
   const maxItems = Math.min(Math.max(1, countSaidIn(countWords) ?? draft.count ?? DEFAULT_COUNT), MAX_COUNT);
-  const scopeSpan: [number, number] | null = draft.scopeText && draft.scopeText[0] >= part.quote[0] && draft.scopeText[1] <= part.quote[1] ? [draft.scopeText[0] - part.quote[0], draft.scopeText[1] - part.quote[0]] : null;
+  const [quoteStart, quoteEnd] = task.alternative ? [0, quote.length] : part.quote;
+  const scopeSpan: [number, number] | null = draft.scopeText && draft.scopeText[0] >= quoteStart && draft.scopeText[1] <= quoteEnd ? [draft.scopeText[0] - quoteStart, draft.scopeText[1] - quoteStart] : null;
   const ask: RuleAskState = { maxItems, push: pushSaidIn(said) ?? false, references: turnNotes, schedule, scope: ruleScope, scopeSpan, validUntil };
   const used = [draft.scheduleText, draft.scopeText, draft.basisText, draft.untilText ?? (alone ? spanOfMatch(message, UNTIL_SPAN) : null), alone ? spanOfMatch(message, PUSH_SPAN) : null];
   // The basis: a note chosen with @, a field named in the words, or a topic of the user's own (outside the scope words).
@@ -454,6 +463,6 @@ export async function rulePart(scope: NodeScope, state: AgentGraphState, part: G
     emitTrace({ clarificationId, domain, kind: "question", options: options.length, partId: part.localId, question: "rule_ranking_basis", subgoal: `clarification:${input.requestId}:${part.localId}`, type: "clarify.asked" });
     return { budget, repairs };
   }
-  ready(scope, part, createIntent({ ask, basis, language, scopeSaid }), used);
+  ready(scope, part, createIntent({ ask, basis, language, scopeSaid }), task.alternative ? [] : used);
   return { budget, repairs };
 }
