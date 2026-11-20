@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>活动页改版提案 · Web</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<script src="kit/data.js"></script>
+<style>
+  .doc { min-width: 2080px; }
+  .web .main { position: relative; }
+  .web.w2000 { width: 2000px; }
+  .cap { max-width: 928px; margin: 0 auto; }
+  .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .chip svg.i { width: 12px; height: 12px; }
+  .rbtn { width: 40px; height: 40px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; color: var(--ink-2); border: 0; }
+  .accentbtn { background: var(--accent); color: var(--on-accent); }
+  /* 详情 cover */
+  .cv { padding: 0 !important; overflow: hidden; }
+  .cv .band { height: 110px; background: linear-gradient(135deg, var(--mac-lav), var(--mac-pink) 70%, var(--mac-apricot)); display: flex; align-items: flex-end; padding: 0 16px 12px; }
+  .cv .band .emo { background: var(--surface); }
+  .cv .photo { aspect-ratio: 2 / 1; width: 100%; object-fit: cover; display: block; }
+  .cv .body { padding: 18px 20px; }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 6px; }
+  .facts b { font-size: 14px; }
+  .utabs { display: flex; gap: 22px; border-bottom: 1px solid var(--line); margin-top: 14px; font-size: 13px; font-weight: 700; color: var(--ink-3); }
+  .utabs span { padding: 8px 0; } .utabs .on { color: var(--ink); box-shadow: inset 0 -2.5px 0 var(--ink); }
+  .intro { font-size: 13px; color: var(--ink-2); line-height: 1.8; margin-top: 12px; }
+  .ag { display: grid; grid-template-columns: 52px 1fr; gap: 6px 12px; font-size: 13px; }
+  .ag time { font-family: var(--font-num); font-weight: 800; }
+  .pgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .pmini { background: var(--surface-2); border-radius: 18px; padding: 12px; display: flex; gap: 10px; align-items: center; min-width: 0; cursor: pointer; transition: box-shadow .15s; }
+  .pmini:hover { box-shadow: 0 0 0 1.5px var(--plum-300); }
+  .pmini.sel { box-shadow: 0 0 0 2px var(--plum-500); background: var(--surface); }
+  .pmini b { display: block; font-size: 13px; } .pmini span { display: block; font-size: 11.5px; color: var(--ink-3); }
+  .pmini .chev { margin-left: auto; color: var(--ink-4); }
+  /* 记录页 */
+  .seg2 { display: inline-flex; background: var(--surface-2); border-radius: 999px; padding: 4px; gap: 2px; }
+  .seg2 button { border: 0; background: transparent; border-radius: 999px; padding: 7px 16px; font-weight: 700; font-size: 13px; color: var(--ink-3); }
+  .seg2 .on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .rnd { background: linear-gradient(150deg, var(--mac-lav), var(--surface) 60%); }
+  .rnd .tb { font-family: var(--font-num); font-size: 40px; font-weight: 900; line-height: 1; }
+  .mate { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); cursor: pointer; }
+  .mate:first-of-type { border-top: 0; }
+  .mate .m { flex: 1; min-width: 0; } .mate b { display: block; font-size: 13px; } .mate span { display: block; font-size: 11.5px; color: var(--ink-3); }
+  .mate.sel { background: var(--surface-2); border-radius: 12px; padding-left: 8px; margin: 0 -8px; padding-right: 8px; }
+  .why-line { display: flex; gap: 6px; align-items: flex-start; font-size: 12.5px; color: var(--ink-2); margin-top: 10px; }
+  .othert { display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .othert:first-of-type { border-top: 0; }
+  .othert b { font-family: var(--font-num); }
+  .ended-strip { display: flex; align-items: center; gap: 10px; background: var(--surface-2); border-radius: 14px; padding: 10px 14px; font-size: 12.5px; color: var(--ink-2); }
+  /* 参加者详情右栏 */
+  .ph { display: flex; gap: 12px; align-items: center; }
+  .qa { font-size: 12.5px; } .qa + .qa { margin-top: 10px; } .qa .lbl { display: block; margin-bottom: 2px; }
+  .tog { display: grid; gap: 8px; }
+  .tog .r { display: flex; gap: 8px; align-items: center; font-size: 12.5px; }
+  /* 卡片封面 */
+  .evc { background: var(--surface); border-radius: 22px; padding: 18px; position: relative; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  .evc .ph2 { margin: -18px -18px 4px; aspect-ratio: 2 / 1; overflow: hidden; }
+  .evc .ph2 img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .evc .ttl { font-size: 15px; font-weight: 800; line-height: 1.4; }
+  .evc .foot { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 6px; }
+  .regchip { font-size: 11px; }
+  .onimg { position: absolute; top: 12px; right: 12px; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(8px); }
+  /* 主办表单 */
+  .fld { display: grid; gap: 6px; } .fld + .fld { margin-top: 14px; }
+  .fld > .lbl { font-weight: 700; color: var(--ink-2); }
+  .drop2 { border: 1.6px dashed var(--plum-300); border-radius: 18px; aspect-ratio: 2 / 1; display: grid; place-items: center; text-align: center; color: var(--ink-2); font-size: 12.5px; background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
+  .cropbox { position: relative; border-radius: 18px; overflow: hidden; aspect-ratio: 2 / 1; }
+  .cropbox img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cropbox .hint { position: absolute; left: 12px; bottom: 12px; background: rgba(20,14,28,.62); color: #fff; border-radius: 999px; padding: 4px 10px; font-size: 11.5px; }
+  .cropbox .acts { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; }
+  .note-big { max-width: 1440px; font-size: 13px; color: var(--ink-2); line-height: 1.8; background: var(--surface); border-radius: 18px; padding: 18px 22px; margin-bottom: 18px; }
+  .note-big h3 { font-size: 15px; margin: 0 0 6px; }
+  .note-big table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 12.5px; }
+  .note-big td, .note-big th { border-top: 1px solid var(--line); padding: 7px 8px; text-align: left; vertical-align: top; }
+  .note-big th { color: var(--ink-3); font-weight: 600; }
+  .dec { background: var(--mac-apricot); color: var(--mac-apricot-ink); border-radius: 6px; padding: 1px 6px; font-weight: 700; font-size: 11.5px; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <div>
+      <div class="doc-kicker">Orbit · 活动页改版提案 · Web · 2026-11-20 · 待用户确认（未并入画板）</div>
+      <h1>活动页 Web：会后回看 · 参加者详情 · 活动图片 · 内容限宽</h1>
+      <p>需求 1（结束后能回看会场的分组/推荐/理由，参加者 profile 能点开）、需求 2（主办方给活动加图片，显示在卡片顶部）、需求 4（宽屏太空）。App 端由 events-app 会话按同一套交互另出稿。</p>
+    </div>
+    <div class="doc-tools">
+      <div class="seg" data-ctl="theme"><button data-v="light">ライト</button><button data-v="dark">ダーク</button></div>
+      <div class="seg" data-ctl="pins"><button data-v="on" class="on">标注 ON</button><button data-v="off">OFF</button></div>
+    </div>
+  </div>
+  <div id="out"></div>
+</div>
+
+<script>
+const EVT = { n: '第1回 中日创业交流会', host: '日中创新创业协会', d: '3/22（日）18:00–21:00', place: 'ザ 東京タワーズ シータワー', fee: '¥4,500', cap: '—' };
+const PP = [
+  { n: '李 明', i: '李', c: 'c1', co: '合同会社ミライブリッジ', r: '代表', tb: 'A-2' },
+  { n: '佐々木 優', i: '佐', c: 'c2', co: 'Sakura Ventures', r: 'アソシエイト', tb: 'A-2' },
+  { n: '王 芳', i: '王', c: 'c3', co: '越境EC スタートアップ', r: 'COO', tb: 'C-1' },
+  { n: '田中 健', i: '田', c: 'c4', co: '個人', r: '副業でSaaS開発', tb: 'C-1' },
+  { n: '陳 浩', i: '陳', c: 'c5', co: 'Hikari Robotics', r: 'CTO', tb: 'B-3' },
+  { n: '山本 彩', i: '山', c: 'c1', co: '税理士法人みなと', r: 'パートナー', tb: 'B-3' },
+  { n: '趙 雪', i: '趙', c: 'c2', co: '北京駐在 → 東京で起業準備', r: '', tb: 'D-4' },
+  { n: '小林 翔', i: '小', c: 'c3', co: 'フィンテック企業', r: 'PdM', tb: 'D-4' },
+];
+const back = `<button class="rbtn">${ic('left', 'sm')}</button>`;
+const share = `<button class="rbtn">${ic('share', 'sm')}</button>`;
+const avh = (p, sz = '') => `<div class="av ${sz} ${p.c}">${p.i}</div>`;
+
+/* ---------- 共用：活动详情正文 ---------- */
+const coverCard = (photo) => `<div class="card span12 cv p-cover">${photo ? `<img class="photo" src="proposal-assets/${photo}" alt="">` : `<div class="band"><span class="emo">🥂</span></div>`}
+  <div class="body"><span class="chip">イベントは終了しました</span>
+    <div class="facts"><div><div class="lbl">日時</div><b>${EVT.d}</b></div><div><div class="lbl">場所</div><b>${EVT.place}</b></div><div><div class="lbl">参加費</div><b>${EVT.fee}</b></div><div><div class="lbl">定員</div><b>${EVT.cap}</b></div></div>
+    <div class="utabs"><span class="on">紹介</span><span>アジェンダ</span><span>主催</span><span>参加者 <small>92</small></span></div>
+    <div class="intro">🌏 中日创业交流会｜参加者募集<br>如果你正在创业 / 准备创业 / 想做副业，想认识不同背景的人，聊点真实的创业经历，欢迎来参加这场轻松、跨文化的交流会。</div>
+    <button class="btn sm" style="margin-top:10px">続きを読む</button></div></div>`;
+const agendaCard = `<div class="card span12"><div class="card-h"><h3>アジェンダ</h3><span class="lbl">18:00–21:00</span></div><div class="ag">${[['18:00', '签到・入场'], ['18:15', '开场・活动说明'], ['18:30', '自我介绍（中日双语）'], ['19:00', '小主题讨论'], ['20:00', '自由交流'], ['21:00', '结束']].map(([t, x]) => `<time>${t}</time><span>${x}</span>`).join('')}</div></div>`;
+const peopleCard = (sel = -1, cls = '') => `<div class="card span12 ${cls}"><div class="card-h"><h3>参加者 · 92名</h3><span class="lbl">プロフィールを公開している人のみ表示</span></div>
+  <div class="pgrid">${PP.map((p, k) => `<div class="pmini ${k === sel ? 'sel' : ''} ${k === sel ? 'p-psel' : ''}">${avh(p)}<div class="m" style="min-width:0"><b class="ell">${p.n}</b><span class="ell">${p.co}</span></div><span class="chev">${ic('right', 'sm')}</span></div>`).join('')}</div>
+  <button class="btn sm" style="margin-top:12px">すべて見る（92名）</button></div>`;
+const relRail = `<h4>あなたに関係すること</h4><div class="card" style="padding:14px"><div class="row" style="gap:10px"><span class="emo sm lav">👥</span><div><b style="font-size:13px">会いたい人 · 融过资的创业者 19名</b><div class="lbl">申込者より</div></div></div></div>
+  <div class="card" style="padding:14px"><div class="row between"><b style="font-size:13px">主催</b><button class="btn sm">フォロー中</button></div><div class="lbl" style="margin-top:6px">${EVT.host} · 開催 5回</div></div>`;
+
+/* ---------- 参加者详情右栏（详情页 / 记录页共用） ---------- */
+const personRail = (p, opt = {}) => `<div class="row between p-rhead"><h4>${ic('user', 'sm')}参加者の詳細</h4><button class="rbtn" style="width:32px;height:32px">${ic('x', 'sm')}</button></div>
+  <div class="ph">${avh(p, 'lg')}<div><b style="font-size:16px">${p.n}</b><div class="lbl">${[p.co, p.r].filter(Boolean).join(' · ')}</div></div></div>
+  <div class="card p-tog" style="padding:14px"><div class="lbl" style="margin-bottom:8px">このイベントでの接点</div><div class="tog">
+    <div class="r"><span class="chip lav">${ic('pin', 'sm')}R1 · テーブル A-2</span><span class="lbl">同じテーブル</span></div>
+    <div class="r" data-why-box><span class="chip teal">おすすめ</span><span style="flex:1">日中の越境ビジネスで起業済み。あなたの「会いたい人：融資経験のある起業家」に一致</span><span class="why">?</span></div>
+    <div class="why-body" hidden>申込内容「資金調達：シード 3,000万円」と、あなたの参加用プロフィール「会いたい人」が一致。主催者のマッチング結果より。</div></div></div>
+  <div class="card" style="padding:14px"><div class="lbl" style="margin-bottom:8px">自己紹介（参加用プロフィール）</div><div class="sub" style="line-height:1.7">大連出身、東京で 6年。日中間の越境ECを支援する会社を経営しています。次は物流領域で一緒にやれる人を探しています。</div>
+    <div style="margin-top:12px"><div class="qa"><span class="lbl">今日話したいこと</span>日本での法人設立と銀行口座</div><div class="qa"><span class="lbl">提供できること</span>中国側のサプライヤー紹介</div></div></div>
+  <div class="card p-memo" style="padding:14px"><div class="lbl" style="margin-bottom:6px">メモ（自分だけ）</div><div class="row" style="gap:8px"><div class="input" style="flex:1">物流の件、来月もう一度</div><button class="lbtn">${ic('mic', 'sm')}</button></div></div>
+  ${opt.exchanged ? `<div class="card" style="padding:14px"><div class="row" style="gap:8px"><span class="chip teal">交換済み</span><a class="lbl" style="margin-left:auto">人脈で開く ›</a></div></div>`
+    : `<div class="p-xchg" style="display:grid;gap:8px"><button class="btn primary">${ic('link', 'sm')}交換を申請</button><div class="lbl" style="text-align:center">終了後 30日まで申請できます（4/21 まで）</div></div>`}`;
+
+/* ---------- 需求 4：宽屏 ---------- */
+const detailMain = (capped, photo) => `${mainhead(EVT.n, EVT.host, back, `${share}<span class="chip">イベントは終了しました</span>`)}<div class="${capped ? 'cap p-cap' : ''}"><div class="wgrid">${coverCard(photo)}${agendaCard}${peopleCard()}</div></div>`;
+
+/* ---------- 需求 1：已结束详情（报名者） ---------- */
+const endedHead = (sub = EVT.host) => mainhead(EVT.n, sub, back, `${share}<button class="btn accentbtn p-record">${ic('layers', 'sm')}会場の記録</button>`);
+const endedDetail = () => `${endedHead()}<div class="cap"><div class="wgrid">${coverCard()}${agendaCard}${peopleCard(0, 'p-people')}</div></div>`;
+
+/* ---------- 需求 1：会場の記録（只读回看） ---------- */
+const recHead = mainhead('会場の記録', `${EVT.n} · 3/22（日）· 終了`, back, share);
+const recTabs = (on) => `<div class="span12 row between"><div class="seg2 p-tabs">${['グループ', 'おすすめ', '参加者', 'アジェンダ'].map((t, i) => `<button class="${i === on ? 'on' : ''}">${t}</button>`).join('')}</div><span class="lbl">${ic('clock', 'sm')} 当日の記録 · 閲覧のみ</span></div>`;
+const statsCard = `<div class="card span12 p-stats"><div class="row" style="gap:28px"><div><span class="lbl">交換</span><b class="big" style="font-size:26px;display:block">${num(4)}</b></div><div><span class="lbl">会いたい人</span><b class="big" style="font-size:26px;display:block">${num(2)}<small class="lbl">/5</small></b></div><div><span class="lbl">同じテーブル</span><b class="big" style="font-size:26px;display:block">${num(9)}<small class="lbl">名</small></b></div><a class="btn sm" style="margin-left:auto">今日のふりかえりへ ›</a></div></div>`;
+const roundCard = (r, title, tb, theme, why, mates, selIdx = -1) => `<div class="card span4 rnd ${r === 1 ? 'p-round' : ''}" data-why-box><div class="row between"><span class="lbl">R${r} · ${title}</span><span class="chip">${theme}</span></div>
+  <div class="tb" style="margin-top:6px">${tb}</div>
+  <div class="why-line"><span style="flex:1">${why}</span><span class="why">?</span></div><div class="why-body" hidden>主催者のマッチング結果（3/21 公開）。申込時の回答から算出。</div>
+  <div style="margin-top:12px">${mates.map((p, k) => `<div class="mate ${k === selIdx ? 'sel' : ''}">${avh(p, 'sm')}<div class="m"><b>${p.n}</b><span class="ell">${[p.co, p.r].filter(Boolean).join(' · ')}</span></div><span class="lbl">${ic('right', 'sm')}</span></div>`).join('')}</div></div>`;
+const recGroups = () => `${recHead}<div class="cap"><div class="wgrid">${recTabs(0)}${statsCard}
+  ${roundCard(1, '自己紹介', 'A-2', '越境ビジネス', '同じ「日中間ビジネス」に関心がある 3名と同席', [PP[0], PP[1], PP[3]], 0)}
+  ${roundCard(2, '小主題討論', 'C-1', '資金調達', '「シード調達」の経験者と、準備中の人の組み合わせ', [PP[2], PP[5], PP[7]])}
+  ${roundCard(3, '自由交流', 'D-4', '副業から起業', '副業で事業を始めた 2名と同席', [PP[6], PP[4]])}
+  <div class="card span12 p-other"><div class="card-h"><h3>ほかのテーブル · R1</h3><div class="seg2" style="transform:scale(.9);transform-origin:right"><button class="on">R1</button><button>R2</button><button>R3</button></div></div>
+    ${[['A-1', 'AI・SaaS', 6], ['A-3', '飲食・小売', 5], ['B-1', '投資家と話す', 7], ['B-2', '日本での法人設立', 6]].map(([t, th, n]) => `<div class="othert"><b>${t}</b><span>${th}</span><span class="lbl">${n}名 ›</span></div>`).join('')}</div>
+</div></div>`;
+const recRecs = () => `${recHead}<div class="cap"><div class="wgrid">${recTabs(1)}
+  <div class="span12 card-h" style="margin:0 0 -6px"><h3>あなたへのおすすめ · 5名</h3><span class="lbl">当日の推薦と理由 · クリックで右に詳細</span></div>
+  ${[[PP[0], 'done', '日中の越境ビジネスで起業済み。あなたの「会いたい人」に一致'], [PP[4], 'none', 'ロボティクスで 2回の資金調達。CTO 採用の話ができる'], [PP[5], 'none', '創業期の税務・会計。日本での法人設立の相談先に']].map(([p, st, w], k) => `<div class="evc span4 ${k === 0 ? 'p-rec' : ''}" style="${k === 0 ? 'box-shadow:0 0 0 2px var(--plum-500)' : ''}"><div class="row" style="gap:12px">${avh(p)}<div style="min-width:0"><b>${p.n}</b><div class="lbl ell">${p.co} · ${p.r}</div></div></div><div class="sub">${w}</div><div class="foot"><span class="chip lav">${ic('pin', 'sm')}テーブル ${p.tb}</span>${st === 'done' ? '<span class="chip teal">交換済み</span>' : '<span class="chip">話していない</span>'}</div></div>`).join('')}
+  <div class="card span12"><div class="card-h"><h3>次に話すと良かった順</h3><span class="lbl">当日の表示のまま</span></div>${[PP[6], PP[7]].map(p => `<div class="mate">${avh(p, 'sm')}<div class="m"><b>${p.n}</b><span>${p.co}</span></div><span class="lbl">${ic('right', 'sm')}</span></div>`).join('')}</div>
+</div></div>`;
+const recEmpty = () => `${recHead}<div class="cap"><div class="wgrid">
+  <div class="card span12 guide p-empty" style="padding:28px"><div class="lbl">この回の記録</div><div style="font-size:20px;font-weight:800;margin:4px 0">あなたはグループ分けに入っていませんでした</div><div class="sub">当日受付がなかった、または主催者がグループを公開しなかった回です。参加者一覧とアジェンダは見られます。</div>
+    <div class="row" style="gap:8px;margin-top:16px"><button class="btn primary">${ic('users', 'sm')}参加者一覧</button><button class="btn">アジェンダ</button></div></div></div></div>`;
+
+/* ---------- 需求 2：卡片封面 ---------- */
+const card = (photo, emo, tone, title, meta, chips, reg, fee, cls = '') => `<div class="evc span4 ${cls}">${photo ? `<div class="ph2"><img src="proposal-assets/${photo}" alt=""></div>${reg ? `<span class="chip onimg regchip">${reg}</span>` : ''}` : `<div class="row between"><span class="emo ${tone}">${emo}</span>${reg ? `<span class="chip regchip">${reg}</span>` : ''}</div>`}
+  <div class="ttl">${title}</div><div class="lbl">${meta}</div><div class="row" style="gap:6px">${chips}</div>
+  <div class="foot"><b>${fee}</b><button class="btn sm">詳細</button></div></div>`;
+const discover = () => `${mainhead('イベント', '', '', `<button class="rbtn">${ic('search', 'sm')}</button>`)}<div class="wgrid">
+  <div class="span12 row" style="gap:10px"><div class="seg2"><button class="on">探す</button><button>参加予定</button><button>評価</button></div><span class="lbl" style="margin-left:auto">これから · 場所指定なし</span></div>
+  ${card('investor-founder-salon.jpg', '', '', '投資家×起業家 ナイトサロン vol.7', '11/28（土）19:00 · 渋谷', '<span class="chip lav">会いたい人 6名</span>', '申込 24名', '¥3,000', 'p-card')}
+  ${card('chinese-business-community-salon.jpg', '', '', '第六期 中日创业交流会', '11/28（土）14:00 · 東京タワーズ', '<span class="chip lav">会いたい人 19名</span><span class="chip">フォロー中の主催</span>', '申込 41名', '¥4,500')}
+  ${card('', '🚀', 'blue', 'SaaS 創業者もくもく会', '12/3（水）19:30 · オンライン', '<span class="chip">同業 3名</span>', '', '無料', 'p-noimg')}
+</div>`;
+const hostForm = () => `${mainhead('イベントを編集', '第六期 中日创业交流会', back, '<button class="btn primary">保存</button>')}<div class="wgrid">
+  <div class="card span7"><div class="fld p-up"><span class="lbl">カバー画像 <small>（任意 · 2:1 · 推奨 1600×800）</small></span>
+    <div class="cropbox"><img src="proposal-assets/chinese-business-community-salon.jpg" alt=""><span class="hint">ドラッグで位置を調整</span><div class="acts"><button class="btn sm">変更</button><button class="btn sm">${ic('x', 'sm')}削除</button></div></div></div>
+    <div class="fld"><span class="lbl">イベント名</span><div class="input">第六期 中日创业交流会</div></div>
+    <div class="fld"><span class="lbl">日時</span><div class="input">2026/11/28（土）14:00 – 17:00</div></div>
+    <div class="fld"><span class="lbl">会場</span><div class="input">ザ 東京タワーズ シータワー</div></div></div>
+  <div class="card span5 p-prev"><div class="lbl" style="margin-bottom:10px">プレビュー · 探す のカード</div>
+    <div style="display:flex">${card('chinese-business-community-salon.jpg', '', '', '第六期 中日创业交流会', '11/28（土）14:00 · 東京タワーズ', '<span class="chip lav">会いたい人 19名</span>', '申込 41名', '¥4,500').replace('span4', '').replace('class="evc', 'class="evc" style="box-shadow:0 0 0 1px var(--line);flex:1"')}</div>
+    <div class="lbl" style="margin-top:12px">未設定のときは今の絵文字カードのまま表示されます</div></div>
+</div>`;
+
+/* ---------- 输出 ---------- */
+const notesHTML = (notes) => notes && notes.length ? `<ul class="note-list" style="max-width:1440px;grid-template-columns:repeat(3,1fr);display:grid">${notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : '';
+const wb = (label, html, notes) => `<div class="board" style="margin-bottom:34px"><div class="board-label">${label}</div>${html}${notesHTML(notes)}</div>`;
+const sec = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+
+let h = '';
+h += `<div class="note-big"><h3>需要你拍板的点</h3><table>
+<tr><th style="width:44px"></th><th style="width:300px">问题</th><th>推荐（对标）</th></tr>
+<tr><td><span class="dec">P1</span></td><td>活动结束后还能不能「交換を申請」</td><td>推荐：结束后 30 天内可以申请，之后只能看（与 App 会话对齐）。对标 Brella / Swapcard 活动结束后社交区仍开放一段时间；期限防止长期骚扰。</td></tr>
+<tr><td><span class="dec">P2</span></td><td>内容限宽是全站统一做，还是只改活动页</td><td>推荐：全站统一（壳层 <code>.content</code> 限宽 = 1440 设计稿时的宽度：有右栏 928px、无右栏 1288px，居中）。1440 及以下画面一个像素都不变，只有更宽的屏幕两侧出现留白。对标 GitHub / Notion / Linear 的内容区限宽。只改活动页的话其他一级页在宽屏上同样空。</td></tr>
+<tr><td><span class="dec">P3</span></td><td>App 的主办方能否上传活动图片</td><td>推荐：这次只做 Web 主办表单上传；App 只显示。主办方编辑活动目前只在 Web。</td></tr>
+<tr><td><span class="dec">P4</span></td><td>报名了但当天没签到的人，结束后算不算「参加过」</td><td>推荐：只要出现在主催者公开的分组结果里就能看「会場の記录」（不要求签到）；没进分组的报名者只能看参加者一覧与议程。导入的中日创业交流会参加者多数没有签到记录，按签到算的话他们什么都看不到。</td></tr>
+<tr><td><span class="dec">D2</span></td><td>同一排卡片有图没图混排时，没图的卡要不要补成同样的 2:1 顶部</td><td>两端共同推荐：补齐——没图的卡用自己的 emoji + 色带画成 2:1 顶部，保证同排卡片对齐；整排都没图时保持现样（本稿第 7 张画的是「不补」，选推荐则按补齐实现）。对标 Peatix / Luma 列表无图时用占位色块保持网格整齐。</td></tr>
+</table>
+<h3 style="margin-top:16px">已按推荐直接定（不需要拍板）</h3>
+<ul style="margin:0;padding-left:18px">
+<li>回看入口：已结束活动详情页右上「会場の記録」（取代灰色「イベントは終了しました」chip）；签到过的人同时保留「今日のふりかえり」入口（在记录页统计卡里）。App 端入口是封面卡下方的「会場の記録」入口卡，去向与条件相同。对标 Zoom / Teams 会议结束后「録画・チャットを見る」入口放在原会议页。</li>
+<li>回看页 = 会場モード同一页面的只读状态：保留 グループ / おすすめ / 参加者 / アジェンダ；去掉「現場」（倒计时、话题刷新）和「マップ」（只在当天有意义）；所有写操作隐藏，只剩自己的メモ可写。对标 Slack 归档频道「閲覧のみ」。</li>
+<li>参加者点开 = 右栏主从（同 b2 Web 会場モードの右栏），不弹窗；内容：此活动里的接点（同桌轮次、推荐理由「?」）、参加用プロフィール自己介绍与公开问答、メモ、交换。联系方式不在这里出现，交换后去人脈看。</li>
+<li>活动图片：比例 2:1（对标 Eventbrite 2160×1080）；卡片顶部出血满宽，图上只叠「申込 N名」chip；没有图时卡片保持现状，不放占位图。详情页顶部用同一张图满宽 2:1 取代渐变带。</li>
+<li>宽屏（需求 4）：你的理解对一半——根因是内容区没有最大宽度，在 2000px 屏上中间栏被拉到约 1490px（设计稿 1440 时是 928px），所以各模块看起来空。模块本身在 928px 下就是设计稿比例，因此不再拆列，只限宽居中。</li>
+</ul></div>`;
+
+h += sec('需求 4 · 宽屏留白', '左：现状（2000px 屏，内容拉满）；右：限宽居中后（同一屏）。1440 画面不变');
+h += wb('现状 · 2000px', webFrame({ nav: 3, head: '', body: detailMain(false), rail: relRail }).replace('class="web ', 'class="web w2000 '), ['中间栏 = 屏宽 − 左栏 84 − 右栏 360，2000px 时约 1490px', '日時/場所/参加費/定員 四等分，每格约 370px；议程卡右侧大片空白', '参加者 4 列每格约 360px，名字很短']);
+h += wb('改后 · 2000px（内容限宽 928px 居中）', webFrame({ nav: 3, head: '', body: detailMain(true), rail: relRail, pins: pin(1, '.p-cap') }).replace('class="web ', 'class="web w2000 '), ['内容区最大宽度 = 1440 设计稿下的宽度（有右栏 928 / 无右栏 1288），水平居中；标题栏一起居中', '屏幕 ≤ 1440 时与现在完全一样（像素门禁不受影响）', '影响范围（如果全站做）：ホーム、人脈、iOrbit、イベント、Task、受信箱、設定、主催；已有自己限宽的计划页等不变']);
+
+h += sec('需求 1 · 结束后回看 + 参加者详情', '报名者在活动结束后：详情页 → 会場の記録（只读）；任何人名 → 右栏参加者详情');
+h += wb('已结束活动详情 · 报名者 · 点开参加者', webFrame({ nav: 3, head: '', body: endedDetail(), rail: personRail(PP[0]), pins: pin(1, '.p-record') + pin(2, '.p-psel') + pin(3, '.p-tog') + pin(4, '.p-xchg') }), ['右上主按钮「会場の記録」：报名者且在分组结果里才出现（P4）', '参加者卡变成可点（hover 描边 + ›）；点了右栏切到参加者详情，✕ 回到「あなたに関係すること」', '接点：同桌轮次 + 推荐理由（「?」看依据）；自己介绍与公开问答来自参加用プロフィール', '交換を申請：结束后 30 天内（P1）；已交换则显示「人脈で開く」']);
+h += wb('会場の記録 · グループ', webFrame({ nav: 3, head: '', body: recGroups(), rail: personRail(PP[0], { exchanged: true }), pins: pin(1, '.p-tabs') + pin(2, '.p-stats') + pin(3, '.p-round') + pin(4, '.p-other') }), ['与会場モード同一套 tab，去掉「現場」「マップ」；右侧标「閲覧のみ」', '统计卡：交換 / 会いたい人 / 同桌人数；签到过的人才有「今日のふりかえりへ」', '每一轮一张卡：桌号大字 + 主题 + 为什么这桌（?）+ 同桌名单，名字可点', '「ほかのテーブル」按轮切换，只列桌号/主题/人数，点开看该桌公开参加者']);
+h += wb('会場の記録 · おすすめ', webFrame({ nav: 3, head: '', body: recRecs(), rail: personRail(PP[0], { exchanged: true }), pins: pin(1, '.p-rec') }), ['当天的推荐卡原样保留（理由文案不重算），状态 chip 改为「交換済み / 話していない」，交换按钮移到右栏']);
+h += wb('会場の記録 · 没进分组的报名者', webFrame({ nav: 3, head: '', body: recEmpty(), rail: relRail, pins: pin(1, '.p-empty') }), ['不是错误页：说明原因 + 两个还能看的入口']);
+
+h += sec('需求 2 · 活动图片', '主办方可选上传；卡片顶部 2:1 出血，没图保持现状');
+h += wb('探す · 有图 / 没图混排', webFrame({ nav: 3, head: '', body: discover(), rail: relRail, pins: pin(1, '.p-card') + pin(2, '.p-noimg') }), ['有图：图片满宽贴卡片上沿（2:1），「申込 N名」chip 叠在图右上（毛玻璃底）；不再显示 emoji 方块', '没图：与现在完全相同', '参加予定 的大卡同样规则：顶部 2:1 图，下面是现有内容']);
+h += wb('活动详情 · 有图', webFrame({ nav: 3, head: '', body: `${endedHead()}<div class="cap"><div class="wgrid">${coverCard('chinese-business-community-salon.jpg')}${agendaCard}</div></div>`, rail: relRail, pins: pin(1, '.p-cover') }), ['图片取代渐变带，满宽 2:1；没图时保持渐变 + emoji']);
+h += wb('主办 · 编辑活动 · 上传图片', webFrame({ nav: 'host', head: '', body: hostForm(), rail: '' , pins: pin(1, '.p-up') + pin(2, '.p-prev') }), ['表单第一项「カバー画像」（任意）：未设置时是 2:1 虚线拖放框（JPG/PNG/WebP/HEIC，8MB 内）；设置后在 2:1 框内拖动调整位置 → 保存时服务端裁切','右侧实时预览 探す 卡片；可删除恢复成 emoji 卡片']);
+
+document.getElementById('out').innerHTML = h;
+document.addEventListener('click', e => { const w = e.target.closest('.why'); if (w) { const b = w.closest('[data-why-box]'); const body = b && (b.querySelector('.why-body') || b.nextElementSibling); if (body) body.hidden = !body.hidden; } });
+orbitChrome();
+</script>
+</body>
+</html>

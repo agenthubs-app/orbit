@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Web 宽屏布局方案</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<script src="kit/data.js"></script>
+<style>
+  .doc { min-width: 2080px; }
+  .web.w2000 { width: 2000px; height: 1000px; }
+  .web .main { position: relative; }
+  .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .rbtn { width: 40px; height: 40px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; color: var(--ink-2); border: 0; }
+  /* 方案 A：内容限宽 928 */
+  .capA { max-width: 928px; margin: 0 auto; }
+  /* 方案 B：整壳居中 */
+  .stage { width: 2000px; height: 1000px; border-radius: 18px; overflow: hidden; background: color-mix(in srgb, var(--plum-100) 45%, var(--bg)); display: grid; place-items: start center; box-shadow: 0 0 0 1px var(--line), 0 30px 70px -30px rgba(40, 20, 70, .35); }
+  .stage > .web { width: 1600px; height: 1000px; border-radius: 0; box-shadow: 0 0 0 1px var(--line), 0 0 60px -20px rgba(40,20,70,.25); }
+  /* 方案 C：右栏加宽 */
+  .web.railC { grid-template-columns: 84px 1fr 480px; }
+  /* 方案 D：宽屏档 */
+  .web.wideD { grid-template-columns: 84px 1fr 420px; }
+  .capD { max-width: 1400px; margin: 0 auto; }
+  /* 详情页零件 */
+  .cv { padding: 0 !important; overflow: hidden; }
+  .cv .band { height: 110px; background: linear-gradient(135deg, var(--mac-lav), var(--mac-pink) 70%, var(--mac-apricot)); display: flex; align-items: flex-end; padding: 0 16px 12px; }
+  .cv .band .emo { background: var(--surface); }
+  .cv .body { padding: 18px 20px; }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 6px; }
+  .facts b { font-size: 14px; }
+  .facts.f2 { grid-template-columns: 1fr 1fr; gap: 14px; }
+  .utabs { display: flex; gap: 22px; border-bottom: 1px solid var(--line); margin-top: 14px; font-size: 13px; font-weight: 700; color: var(--ink-3); }
+  .utabs span { padding: 8px 0; } .utabs .on { color: var(--ink); box-shadow: inset 0 -2.5px 0 var(--ink); }
+  .intro { font-size: 13px; color: var(--ink-2); line-height: 1.8; margin-top: 12px; }
+  .ag { display: grid; grid-template-columns: 52px 1fr; gap: 6px 12px; font-size: 13px; }
+  .ag time { font-family: var(--font-num); font-weight: 800; }
+  .pgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .pgrid.p5 { grid-template-columns: repeat(5, 1fr); }
+  .pmini { background: var(--surface-2); border-radius: 18px; padding: 12px; display: flex; gap: 10px; align-items: center; min-width: 0; }
+  .pmini b { display: block; font-size: 13px; } .pmini span { display: block; font-size: 11.5px; color: var(--ink-3); }
+  .col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  .orgrow { display: flex; gap: 10px; align-items: center; }
+  /* 人脈 */
+  .ccard { background: var(--surface); border-radius: 22px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .ccard .r { display: flex; gap: 10px; align-items: center; }
+  .ccard b { font-size: 14px; } .ccard .lbl { font-size: 11.5px; }
+  .cgrid { display: grid; gap: 18px; }
+  .seg2 { display: inline-flex; background: var(--surface-2); border-radius: 999px; padding: 4px; gap: 2px; }
+  .seg2 button { border: 0; background: transparent; border-radius: 999px; padding: 7px 16px; font-weight: 700; font-size: 13px; color: var(--ink-3); }
+  .seg2 .on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  /* ホーム */
+  .wgt { background: var(--surface); border-radius: 22px; padding: 18px; min-height: 180px; display: flex; flex-direction: column; gap: 10px; }
+  .wgt h3 { margin: 0; font-size: 15px; }
+  .ghost { height: 12px; border-radius: 6px; background: var(--surface-2); }
+  /* 设定 */
+  .setnav { display: grid; gap: 4px; align-content: start; }
+  .setnav a { padding: 9px 12px; border-radius: 12px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+  .setnav a.on { background: var(--surface); color: var(--ink); }
+  .fld { display: grid; gap: 6px; } .fld + .fld { margin-top: 14px; }
+  .fld > .lbl { font-weight: 700; color: var(--ink-2); }
+  /* 说明 */
+  .note-big { max-width: 1600px; font-size: 13px; color: var(--ink-2); line-height: 1.8; background: var(--surface); border-radius: 18px; padding: 18px 22px; margin-bottom: 18px; }
+  .note-big h3 { font-size: 15px; margin: 0 0 6px; }
+  .note-big table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 12.5px; }
+  .note-big td, .note-big th { border-top: 1px solid var(--line); padding: 7px 8px; text-align: left; vertical-align: top; }
+  .note-big th { color: var(--ink-3); font-weight: 600; }
+  .rec { background: var(--mac-teal); color: var(--mac-teal-ink); border-radius: 6px; padding: 1px 6px; font-weight: 700; font-size: 11.5px; }
+  .ruler { position: absolute; left: 0; right: 0; top: 0; height: 0; pointer-events: none; }
+  .ws { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--rose-500) 10%, transparent) 0 6px, transparent 6px 12px); pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <div>
+      <div class="doc-kicker">Orbit · Web 宽屏布局方案 · 2026-11-20 · 待用户选择（未并入画板）</div>
+      <h1>宽屏（&gt;1440）怎么摆：4 种方案对比 + 推荐方案落到各类页面</h1>
+      <p>所有画框都是 2000px 宽屏（你截图时的宽度）。≤1440 的画面在所有方案下都与现在一样，像素门禁不受影响。斜线阴影 = 空白区。</p>
+    </div>
+    <div class="doc-tools">
+      <div class="seg" data-ctl="theme"><button data-v="light">ライト</button><button data-v="dark">ダーク</button></div>
+      <div class="seg" data-ctl="pins"><button data-v="on" class="on">标注 ON</button><button data-v="off">OFF</button></div>
+    </div>
+  </div>
+  <div id="out"></div>
+</div>
+<script>
+const EVT = { n: '第1回 中日创业交流会', host: '日中创新创业协会', d: '3/22（日）18:00–21:00', place: 'ザ 東京タワーズ シータワー', fee: '¥4,500', cap: '—' };
+const PP = [['李 明', '李', 'c1', '合同会社ミライブリッジ'], ['佐々木 優', '佐', 'c2', 'Sakura Ventures'], ['王 芳', '王', 'c3', '越境EC スタートアップ'], ['田中 健', '田', 'c4', '個人'], ['陳 浩', '陳', 'c5', 'Hikari Robotics'], ['山本 彩', '山', 'c1', '税理士法人みなと'], ['趙 雪', '趙', 'c2', '起業準備中'], ['小林 翔', '小', 'c3', 'フィンテック企業'], ['林 美咲', '林', 'c4', 'D2C ブランド'], ['周 杰', '周', 'c5', '物流スタートアップ']];
+const back = `<button class="rbtn">${ic('left', 'sm')}</button>`;
+const head = mainhead(EVT.n, EVT.host, back, `<button class="rbtn">${ic('share', 'sm')}</button><button class="btn" style="background:var(--accent);color:var(--on-accent)">${ic('layers', 'sm')}会場の記録</button>`);
+const cover = (facts2 = false, cls = 'span12') => `<div class="card ${cls} cv"><div class="band"><span class="emo">🥂</span></div><div class="body"><span class="chip">イベントは終了しました</span>
+  <div class="facts ${facts2 ? 'f2' : ''}"><div><div class="lbl">日時</div><b>${EVT.d}</b></div><div><div class="lbl">場所</div><b>${EVT.place}</b></div><div><div class="lbl">参加費</div><b>${EVT.fee}</b></div><div><div class="lbl">定員</div><b>${EVT.cap}</b></div></div>
+  <div class="utabs"><span class="on">紹介</span><span>アジェンダ</span><span>主催</span><span>参加者 <small>92</small></span></div>
+  <div class="intro">🌏 中日创业交流会｜参加者募集<br>如果你正在创业 / 准备创业 / 想做副业，想认识不同背景的人，聊点真实的创业经历，欢迎来参加这场轻松、跨文化的交流会。</div><button class="btn sm" style="margin-top:10px;align-self:flex-start">続きを読む</button></div></div>`;
+const agenda = (cls = 'span12') => `<div class="card ${cls}"><div class="card-h"><h3>アジェンダ</h3><span class="lbl">18:00–21:00</span></div><div class="ag">${[['18:00', '签到・入场'], ['18:15', '开场・活动说明'], ['18:30', '自我介绍（中日双语）'], ['19:00', '小主题讨论'], ['20:00', '自由交流'], ['21:00', '结束']].map(([t, x]) => `<time>${t}</time><span>${x}</span>`).join('')}</div></div>`;
+const people = (n = 8, cols = '', cls = 'span12') => `<div class="card ${cls}"><div class="card-h"><h3>参加者 · 92名</h3><span class="lbl">プロフィールを公開している人のみ表示</span></div><div class="pgrid ${cols}">${PP.slice(0, n).map(([nm, i, c, co]) => `<div class="pmini"><div class="av ${c}">${i}</div><div style="min-width:0"><b class="ell">${nm}</b><span class="ell">${co}</span></div></div>`).join('')}</div></div>`;
+const hostCard = (cls = '') => `<div class="card ${cls}"><div class="card-h"><h3>主催</h3><button class="btn sm">フォロー中</button></div><div class="orgrow"><span class="emo lav">🥂</span><div><b>${EVT.host}</b><div class="lbl">開催 5回 · 平均 30人参加</div></div></div>
+  <div class="lbl" style="margin-top:12px">過去のイベント</div>${[['06/21', '第4回 中日创业交流会', '20名'], ['05/24', '第3回 中日创业交流会', '4名']].map(([d, t, n]) => `<div class="row" style="gap:10px;font-size:13px;margin-top:6px"><b style="font-family:var(--font-num)">${d}</b><span style="flex:1">${t}</span><span class="lbl">${n}</span></div>`).join('')}</div>`;
+const rail = (wide) => `<h4>あなたに関係すること</h4><div class="card" style="padding:14px"><div class="row" style="gap:10px"><span class="emo sm lav">👥</span><div><b style="font-size:13px">会いたい人 · 融过资的创业者 19名</b><div class="lbl">申込者より</div></div></div></div>
+  <div class="row between"><span class="lbl">会えそうな人</span><span class="lbl">すべて92 ›</span></div>${PP.slice(0, wide ? 6 : 4).map(([nm, i, c, co]) => `<div class="row" style="gap:10px"><div class="av sm ${c}">${i}</div><div style="flex:1;min-width:0"><b style="font-size:13px">${nm}</b><div class="lbl ell">${co}</div></div><span class="chip lav">会いたい</span></div>`).join('')}
+  <div class="card" style="padding:14px"><b style="font-size:13px">主催者の連絡先</b><div class="lbl" style="margin-top:4px">まだありません</div></div>`;
+const ws = (left, width) => `<div class="ws" style="left:${left}px;width:${width}px"></div>`;
+
+/* 方案 A：内容限宽 928 居中（上一版） */
+const optA = () => webFrame({ nav: 3, head: '', body: `${head}<div class="capA"><div class="wgrid">${cover()}${agenda()}${people()}</div></div>${ws(0, 280)}${ws(1236, 280)}`, rail: rail() }).replace('class="web ', 'class="web w2000 ');
+/* 方案 B：整个应用壳限宽 1600 居中 */
+const optB = () => `<div class="stage">${webFrame({ nav: 3, head: '', body: `${head}<div class="wgrid">${cover()}${agenda()}${people()}</div>`, rail: rail() })}</div>`;
+/* 方案 C：内容不限宽，右栏加宽到 480 */
+const optC = () => webFrame({ nav: 3, head: '', body: `${head}<div class="wgrid">${cover()}${agenda()}${people(10, 'p5')}</div>`, rail: rail(true) }).replace('class="web ', 'class="web w2000 railC ');
+/* 方案 D：宽屏档重排（推荐） */
+const detailD = () => `${head}<div class="capD"><div class="wgrid"><div class="span8 col">${cover()}${people(8)}</div><div class="span4 col p-side">${agenda('')}${hostCard()}</div></div></div>`;
+const optD = () => webFrame({ nav: 3, head: '', body: detailD(), rail: rail(true), pins: pin(1, '.p-side') }).replace('class="web ', 'class="web w2000 wideD ');
+
+/* 推荐方案落到其他页面 */
+const contact = ([nm, i, c, co], k) => `<div class="ccard"><div class="r"><div class="av ${c}">${i}</div><div style="min-width:0"><b class="ell">${nm}</b><div class="lbl ell">${co}</div></div></div><div class="lbl">最後の接点 · ${['3日前', '先週', '10/12', '9/28', '昨日'][k % 5]}</div><div class="row" style="gap:6px"><span class="chip ${['lav', 'teal', '', 'lav', 'teal'][k % 5]}">${['会いたい', '交換済み', 'イベント', 'フォロー', '紹介'][k % 5]}</span></div></div>`;
+const networkD = () => `${mainhead('人脈', '128名', '', `<button class="btn primary">${ic('plus', 'sm')}追加</button>`)}<div class="capD"><div class="wgrid"><div class="span12 row between"><div class="seg2"><button class="on">すべて</button><button>会いたい</button><button>最近</button></div><span class="lbl">並び順 · 最近の接点</span></div>
+  <div class="span12 cgrid p-cg" style="grid-template-columns:repeat(5,1fr)">${[...PP, ...PP].slice(0, 15).map(contact).join('')}</div></div></div>`;
+const homeD = () => `${mainhead('11月', '11/16 – 11/22', '', `<button class="btn sm">編集</button>`)}<div class="capD"><div class="wgrid p-hg" style="grid-template-columns:repeat(16,1fr)">
+  ${[['今日やること', 8], ['プラン スコア', 4], ['次のイベント', 4], ['人脈', 8], ['秘書から', 8], ['今週', 4], ['メモ', 4], ['イベント推薦', 8]].map(([t, s]) => `<div class="wgt" style="grid-column:span ${s}"><h3>${t}</h3><div class="ghost" style="width:80%"></div><div class="ghost" style="width:60%"></div><div class="ghost" style="width:70%"></div></div>`).join('')}</div></div>`;
+const settingsD = () => `${mainhead('設定', '', '', '')}<div class="capD" style="max-width:1600px"><div class="wgrid"><div class="span3 setnav">${['プロフィール', 'アカウント', '通知', '言語と外観', 'カレンダー連携', 'データとプライバシー'].map((t, k) => `<a class="${k === 2 ? 'on' : ''}">${t}</a>`).join('')}</div>
+  <div class="card span6 p-form"><h3 style="margin:0 0 14px">通知</h3>${['プッシュ通知', 'メール通知', '1日の上限', '静かな時間帯'].map(t => `<div class="fld"><span class="lbl">${t}</span><div class="input">設定値</div></div>`).join('')}</div>
+  <div class="span3 col p-help"><div class="card"><b style="font-size:13px">この設定について</b><div class="lbl" style="margin-top:6px;line-height:1.7">上限を超えた通知は受信箱にだけ届きます。静かな時間帯は面談 30分前の通知だけ例外にできます。</div></div></div></div></div>`;
+
+const notesHTML = (notes) => notes && notes.length ? `<ul class="note-list" style="max-width:1600px;grid-template-columns:repeat(3,1fr);display:grid">${notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : '';
+const wb = (label, html, notes) => `<div class="board" style="margin-bottom:34px"><div class="board-label">${label}</div>${html}${notesHTML(notes)}</div>`;
+const sec = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+
+let h = `<div class="note-big"><h3>结论先说</h3>
+<p style="margin:0">推荐 <span class="rec">方案 D · 宽屏档</span>：在现有三档（≥1280 / 768–1279 / &lt;768）之上加一档 <b>≥1600 宽屏</b>。宽屏档里右栏随屏宽加宽（360 → 最多 420），内容区上限从 928 提到 1400（没有右栏的页面 1600），<b>各页按页面类型重排</b>把多出来的宽度用掉（详情页主副两列、卡片网格加列、首页组件网格加列、表单加说明列），而不是拉伸或留白。2000px 屏两侧只剩约 30px，2400px 以上才出现可见留白。对标：Gmail / Linear / Notion 数据库视图的「流式 + 宽屏加列」，GitHub 仓库页的「主列 + 侧列」。</p>
+<table><tr><th style="width:130px">方案</th><th>做法</th><th style="width:260px">2000px 屏效果</th><th style="width:300px">代价</th></tr>
+<tr><td>A 内容限宽居中</td><td>上一版：内容最大 928 居中</td><td>两侧各约 280px 空白，最明显</td><td>改一处 CSS；你已否决</td></tr>
+<tr><td>B 整壳居中</td><td>左导航 + 内容 + 右栏作为一个整体限宽 1600 居中，外侧用浅底色（X / LinkedIn 做法）</td><td>空白跑到屏幕最外侧，看起来像「窗口」，但两侧仍各 200px</td><td>改壳层一处；左导航离屏幕边缘，不贴边</td></tr>
+<tr><td>C 只加宽右栏</td><td>内容不限宽，右栏 360 → 480，网格加一列</td><td>不留白，但详情页卡片仍被拉得很宽（议程卡空）</td><td>改壳层 + 少量网格；没解决模块过宽</td></tr>
+<tr><td><span class="rec">D 宽屏档重排</span></td><td>≥1600：右栏最多 420；内容上限 1400；按页面类型重排（见下方规则表）</td><td>几乎不留白，模块按内容量分栏</td><td>每类页面加一套宽屏 CSS（不改结构与数据）；≤1440 不变</td></tr></table>
+<h3 style="margin-top:16px">方案 D：各类页面的宽屏规则</h3>
+<table><tr><th style="width:170px">页面类型</th><th style="width:330px">页面</th><th>≥1600 时</th></tr>
+<tr><td>详情页</td><td>活动详情、联系人详情、会場の記録、会後</td><td>主列 span8（封面/正文/参加者）+ 副列 span4（议程、主催、连络先等短卡），短卡不再横跨全宽</td></tr>
+<tr><td>卡片网格</td><td>イベント 探す / 参加予定、人脈、主催 活动一覧</td><td>每行卡片数 3 → 4–5（卡片宽度保持 260–320px，不拉伸）</td></tr>
+<tr><td>组件网格</td><td>ホーム</td><td>网格 12 → 16 列；小组件 4 列 / 中组件 8 列不变 → 一行能多放一张</td></tr>
+<tr><td>列表 + 阅读</td><td>受信箱、Task</td><td>列表列固定 420–480，阅读区上限 760 居中（阅读宽度保持舒适）</td></tr>
+<tr><td>对话</td><td>iOrbit</td><td>保持现有 680–760 对话列（已有规则），不变</td></tr>
+<tr><td>表单 / 设定</td><td>設定各页、主催 编辑活动、报名</td><td>左：分区导航 span3；中：表单 span6（阅读宽度）；右：说明或预览 span3</td></tr>
+<tr><td>已限宽页</td><td>プラン 系（760–1240 已限宽）</td><td>不变</td></tr></table></div>`;
+
+h += sec('四种方案 · 活动详情 · 2000px', '斜线 = 空白');
+h += wb('A · 内容限宽 928 居中（上一版）', optA(), ['两侧空白最明显']);
+h += wb('B · 整个应用壳限宽 1600 居中', optB(), ['导航和右栏都跟着居中，屏幕最外侧是浅底色', '内容区仍然是 1440 时的宽度，模块不拉伸', '左导航不贴屏幕边，和其他桌面 App 习惯不同']);
+h += wb('C · 右栏加宽到 480，内容不限宽', optC(), ['参加者网格 4 → 5 列', '封面和议程卡依然横跨约 1350px，议程卡右侧仍空']);
+h += wb('D · 宽屏档重排（推荐）', optD(), ['右栏 420；内容上限 1400', '主列 span8：封面 + 介绍 + 参加者；副列 span4：议程 + 主催——短内容的卡不再横跨全宽', '屏宽 1440–1599 时仍是现在的单列布局']);
+
+h += sec('方案 D 落到其他页面 · 2000px', '页面内容为示意，只看分栏');
+h += wb('人脈 · 卡片网格加列', webFrame({ nav: 1, head: '', body: networkD(), rail: rail(true), pins: pin(1, '.p-cg') }).replace('class="web ', 'class="web w2000 wideD '), ['每行 5 张（1440 时 3 张），卡片宽度不拉伸', 'イベント 探す / 参加予定、主催 活动一覧同一规则']);
+h += wb('ホーム · 组件网格 16 列', webFrame({ nav: 0, head: '', body: homeD(), rail: rail(true), pins: pin(1, '.p-hg') }).replace('class="web ', 'class="web w2000 wideD '), ['小组件仍占 4 列、中组件 8 列，一行能多放一张', '用户自定义的排列顺序不变，只是换行位置变化']);
+h += wb('設定 · 表单加说明列', webFrame({ nav: 'settings', head: '', body: settingsD(), rail: '', pins: pin(1, '.p-form') + pin(2, '.p-help') }).replace('class="web ', 'class="web w2000 '), ['没有右栏的页面内容上限 1600，2000 屏两侧各约 120px', '表单保持阅读宽度（span6），不拉伸输入框', '右侧说明列放这页设置的解释；主催 编辑活动的右列是卡片预览']);
+
+document.getElementById('out').innerHTML = h;
+orbitChrome();
+</script>
+</body>
+</html>
