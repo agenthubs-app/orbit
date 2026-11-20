@@ -180,6 +180,10 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/me/settings-api.ts","DELETE","/api/agent/memory/:id"],
   ["src/screens/me/settings-api.ts","DELETE","/api/integrations/:id"],
   ["src/screens/me/settings-api.ts","GET","/api/agent/memory"],
+  // agent-design AG14: adding, changing and switching memory are online-only writes (the /api/agent/memory rule above).
+  ["src/screens/me/settings-api.ts","PATCH","/api/agent/memory/:id"],
+  ["src/screens/me/settings-api.ts","PATCH","/api/agent/memory/settings"],
+  ["src/screens/me/settings-api.ts","POST","/api/agent/memory"],
   ["src/screens/me/settings-api.ts","GET","/api/agent/plans/v2/summary"],
   ["src/screens/me/settings-api.ts","GET","/api/integrations"],
   ["src/screens/me/settings-api.ts","GET","/api/search/global"],
