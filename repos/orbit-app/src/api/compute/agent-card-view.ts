@@ -254,7 +254,9 @@ export function agentCardView(preview: AgentActionPreviewContract, client: Agent
     items,
     kind: "card",
     pendingCount,
-    regenerate: preview.status === "expired" ? { label: words.regenerate, question: words.expiredQuestion } : null,
+    // AG17 (approved draft, board 6): what an outside agent proposed cannot be made again in Orbit (the server refuses
+    // it too); that agent has to propose it again, so its expired card offers no «重新生成».
+    regenerate: preview.status === "expired" && preview.origin?.kind !== "connection" ? { label: words.regenerate, question: words.expiredQuestion } : null,
     reviewButtons: review ? { abandon: words.abandon, markDone: words.markDone, retry: words.retry } : null,
     revision: preview.revision,
     status: preview.status,

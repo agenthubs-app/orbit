@@ -150,13 +150,17 @@ export function createAuthorizationServer(deps: AuthorizationServerDeps): Author
     if (Date.parse(deps.now()) >= Date.parse(grant.expiresAt)) return oauthError(400, "invalid_grant", "The authorization code has expired.");
     if (form.get("client_id") !== grant.clientId || form.get("redirect_uri") !== grant.redirectUri) return oauthError(400, "invalid_grant", "client_id and redirect_uri must be the ones the code was issued for.");
     if (!sameText(sha256(verifier), grant.codeChallenge)) return oauthError(400, "invalid_grant", "code_verifier does not match the code_challenge.");
-    const connection = await connections.create({ accountId: grant.accountId, clientId: grant.clientId, clientName: grant.clientName, locale: grant.locale, scopes: grant.scopes, userId: grant.userId });
-    const redeemed: CodeGrant = { ...grant, connectionId: connection.id, status: "redeemed", version: grant.version + 1 };
-    if (!(await records.replace(GRANT_COLLECTION, id, grant.accountId, current, redeemed, deps.now()))) {
-      // Two exchanges of one code at the same moment: this one lost; its connection never gets a token.
-      await connections.revoke({ connectionId: connection.id, reason: "code_reuse" });
-      return oauthError(400, "invalid_grant", "The authorization code was already used.");
-    }
+    // The code is spent first: of two exchanges of one code at the same moment only one gets this far.
+    const redeemed: CodeGrant = { ...grant, status: "redeemed", version: grant.version + 1 };
+    if (!(await records.replace(GRANT_COLLECTION, id, grant.accountId, current, redeemed, deps.now()))) return oauthError(400, "invalid_grant", "The authorization code was already used.");
+    // One connection per client per account (approved draft, board 3): the same client authorised again changes the
+    // connection it has — what the user picked this time replaces what it had, lower as well as higher.
+    const existing = await connections.findActive(grant.accountId, grant.clientId);
+    const changed = existing ? await connections.regrant({ connectionId: existing.id, locale: grant.locale, scopes: grant.scopes, userId: grant.userId }) : null;
+    const connection = changed ?? (await connections.create({ accountId: grant.accountId, clientId: grant.clientId, clientName: grant.clientName, locale: grant.locale, scopes: grant.scopes, userId: grant.userId }));
+    // Which connection the code stood for, so that presenting it again ends that connection.
+    const spent = await records.get<CodeGrant>(GRANT_COLLECTION, id);
+    if (spent) await records.replace(GRANT_COLLECTION, id, grant.accountId, spent, { ...spent.value, connectionId: connection.id, version: spent.value.version + 1 }, deps.now());
     return issue(connection, addresses);
   }
 

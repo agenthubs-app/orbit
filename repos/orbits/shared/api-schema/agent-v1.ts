@@ -6,7 +6,10 @@ import type {
   AgentAnswerRecordContract,
   AgentCardDecisionInputContract,
   AgentClarificationContract,
+  AgentConnectionConsentContract,
   AgentConnectionConsentInputContract,
+  AgentConnectionListContract,
+  AgentProposalViewContract,
   AgentReferenceCandidateContract,
   AgentReferenceCheckResultContract,
   AgentReferenceSearchResultContract,
@@ -419,7 +422,37 @@ export const agentConnectionConsentInputSchema: z.ZodType<AgentConnectionConsent
   decision: z.enum(["allow", "deny"]),
   request: z.string().min(1).max(8000),
   scopes: z.array(z.string().min(1).max(60)).max(40),
+  accountKey: z.string().max(80).optional(),
 }).strict();
+
+// AG17 页面读取用（视觉稿批准后加）：同意页、设置里的连接列表、确认链接页。读取时放宽：多出来的字段不拒。
+const agentConnectionScopeOptionSchema = z.object({ domain: z.enum(["contacts", "events", "attendance", "todos", "memos", "schedule"]), propose: z.string().nullable(), read: z.string() });
+
+export const agentConnectionListSchema: z.ZodType<AgentConnectionListContract> = z.object({
+  connectAddress: z.string().nullable().optional(),
+  connections: z.array(z.object({ clientHost: z.string(), clientName: z.string(), createdAt: z.string(), id: z.string(), lastUsedAt: z.string().nullable(), scopes: z.array(z.string()), waitingProposals: z.number().int().nonnegative().optional() })),
+  options: z.array(agentConnectionScopeOptionSchema),
+}) as unknown as z.ZodType<AgentConnectionListContract>;
+
+export const agentConnectionConsentSchema: z.ZodType<AgentConnectionConsentContract> = z.object({
+  account: z.object({ email: z.string().nullable(), key: z.string(), name: z.string().nullable() }).optional(),
+  clientHost: z.string(),
+  clientName: z.string(),
+  current: z.object({ connectedAt: z.string(), scopes: z.array(z.string()) }).nullable().optional(),
+  options: z.array(agentConnectionScopeOptionSchema),
+  preselectedScopes: z.array(z.string()),
+  redirectHost: z.string(),
+  redirectIsLoopback: z.boolean(),
+  requestedScopes: z.array(z.string()),
+}) as unknown as z.ZodType<AgentConnectionConsentContract>;
+
+export const agentProposalViewSchema: z.ZodType<AgentProposalViewContract> = z.object({
+  card: agentActionPreviewSchema,
+  clientName: z.string(),
+  createdAt: z.string(),
+  notice: z.string().optional(),
+  proposalId: z.string(),
+}) as unknown as z.ZodType<AgentProposalViewContract>;
 
 // ── agent-design AG15：定时任务与运行历史（本块由 AG15 追加）。读取时放宽：不认识的结果当作 failed，不认识的状态当作 paused。 ──
 

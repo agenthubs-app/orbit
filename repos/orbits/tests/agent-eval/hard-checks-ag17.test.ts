@@ -104,3 +104,19 @@ test("mcp_result_excludes also reads every cursor the way a client could: decode
   // Opaque bytes say nothing.
   assert.equal(CHECKS.mcp_result_excludes(["TB1"], withCursor("AfQ3k9ZxT0mVb2c8Jw1hYpLr7uNs5eKd4gHa6iOqPzXyWvUtSr"), context).status, "pass");
 });
+
+test("mcp_result_excludes: a connection's answers carry no id of a kind it was not granted (relations included)", () => {
+  const connect = (granted: string[]) => event("mcp.connect", { as: "conn-claude", steps: [{ granted, step: "consent (the signed-in user)" }] });
+  const memo = { records: [{ contact_ids: ["contact:c17"], event_refs: ["private_event:p1"], id: "note:m32", type: "memo", user_data: { body: "b" } }] };
+  // Notes only: a contact id and an event id in a note are ids of kinds it may not read.
+  const narrow = CHECKS.mcp_result_excludes([], obs([connect(["memos:read"]), response(200, memo)]), context);
+  assert.equal(narrow.status, "fail");
+  assert.match(narrow.detail, /contacts/u);
+  assert.match(narrow.detail, /events/u);
+  // Granted, the same answer is fine.
+  assert.equal(CHECKS.mcp_result_excludes([], obs([connect(["memos:read", "contacts:read", "events:read"]), response(200, memo)]), context).status, "pass");
+  // A relation field to an ungranted kind fails even when its value is not in a known id form.
+  assert.equal(CHECKS.mcp_result_excludes([], obs([connect(["memos:read"]), response(200, { records: [{ contact_ids: ["x1"], id: "note:m32" }] })]), context).status, "fail");
+  // The connection's own kind is never flagged.
+  assert.equal(CHECKS.mcp_result_excludes([], obs([connect(["memos:read"]), response(200, { records: [{ id: "note:m32" }] })]), context).status, "pass");
+});

@@ -5,7 +5,7 @@ import test from "node:test";
 import { createCursorSealer } from "../../../features/agent-v1/mcp/tools/cursor";
 import { contact, CURSOR_KEY, memo, WORKSPACE } from "../read-kit";
 import { SECRET } from "./kit";
-import { A, B, mcpKit, world } from "./kit";
+import { A, B, CLAUDE_CODE, mcpKit, world } from "./kit";
 
 /**
  * agent-design AG17 (设计稿 §5.4「工具结果里不放什么」; coordinator's review of run 01b): the paging cursor.
@@ -90,7 +90,8 @@ test("part 2: what the client gets is opaque — no account, workspace, record i
 test("part 2: a cursor works only for the connection, the kind of record and the query it was issued for; altered, it is refused", async () => {
   const kit = mcpKit({ records: bigWorld() });
   const mine = await kit.connect({ scopes: ["memos:read", "todos:read"] });
-  const sameAccount = await kit.connect({ scopes: ["memos:read", "todos:read"] });
+  // One connection per client per account: the account's other connection is another client's.
+  const sameAccount = await kit.connect({ clientId: CLAUDE_CODE, scopes: ["memos:read", "todos:read"] });
   const otherAccount = await kit.connect({ account: B, scopes: ["memos:read"] });
   const first = await kit.call(mine.accessToken, "search_records", { domain: "memos" });
   const cursor = first.data!.next_cursor as string;

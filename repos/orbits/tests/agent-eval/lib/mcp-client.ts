@@ -51,8 +51,9 @@ export class ExternalAgent {
 
   constructor(private readonly options: { baseUrl: string; log: CaseLog; name: string; clientId: string; redirectUri: string; era: "modern" | "legacy" }) {}
 
+  /** The address a user pastes into Claude or Codex (approved draft D11): the endpoint itself, `/connect`. */
   private get mcpUrl(): string {
-    return `${this.options.baseUrl}/mcp`;
+    return `${this.options.baseUrl}/connect`;
   }
 
   /** The whole product flow. `sessionCookie` is the fixture account's web session (the user signing in to Orbit to agree). */

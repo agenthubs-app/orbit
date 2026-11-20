@@ -2,16 +2,23 @@
  * agent-design AG17 (设计稿 §5.4「传输与授权」; CONVENTIONS §2 `ORBIT_MCP_BASE_URL`): where the MCP endpoint and Orbit's own
  * authorization server live, and the keys they sign with.
  *
- * The endpoints are outside `/api/` (`/mcp`, `/oauth/authorize`, `/oauth/token`, `/.well-known/…`): the proxy's session
+ * The endpoints are outside `/api/` (`/connect`, `/oauth/authorize`, `/oauth/token`, `/.well-known/…`): the proxy's session
  * check covers `/api/` and `/app/` only, so a client without a browser session reaches the handler, which answers with
  * the challenge the MCP authorization spec asks for instead of the proxy's plain 401.
  *
  * The public address comes from configuration, never from the request, in production: tokens are bound to it as their
  * audience. Under the agent eval (and local development) the request's own origin stands in when nothing is configured.
+ *
+ * The short address (approved draft D11): the address the user pastes into Claude or Codex — `<origin>/connect` — is the
+ * MCP endpoint itself, not an alias of another one. A client takes the address it was given as the resource, checks that
+ * the resource metadata names the same address, and asks for tokens for it (RFC 9728 §3.3, RFC 8707); an alias would
+ * be a second resource with tokens of its own. So there is one endpoint, `/connect`, and every token's audience is it.
  */
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
-export const MCP_PATH = "/mcp";
+export const MCP_PATH = "/connect";
+/** What settings › 外部 AI 助手 shows for the user to copy: the endpoint above. */
+export const CONNECT_PATH = MCP_PATH;
 export const AUTHORIZE_PATH = "/oauth/authorize";
 export const TOKEN_PATH = "/oauth/token";
 export const RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource";
@@ -66,8 +73,19 @@ export function addressesFor(origin: string): McpAddresses {
 export function mcpAddresses(request: Request, env: Env = process.env): McpAddresses | null {
   const configured = configuredOrigin(env);
   if (configured) return addressesFor(configured);
-  if (env.ORBIT_AGENT_EVAL === "1" || env.NODE_ENV !== "production") return addressesFor(new URL(request.url).origin);
+  if (env.ORBIT_AGENT_EVAL === "1" || env.NODE_ENV !== "production") return addressesFor(requestOriginOf(request));
   return null;
+}
+
+/**
+ * The origin the browser or client used (eval and local development only). Next gives a route handler `request.url`
+ * on its own host name (localhost) and a page only the Host header; both go by the Host header, so a request ticket
+ * signed by the authorize route is readable by the consent page however the address was written.
+ */
+function requestOriginOf(request: Request): string {
+  const url = new URL(request.url);
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  return host && /^[A-Za-z0-9.\-[\]:]+$/u.test(host) ? `${url.protocol}//${host}` : url.origin;
 }
 
 /** The deployment secret the keys below are derived from; null when none is set (then nothing is issued or accepted). */

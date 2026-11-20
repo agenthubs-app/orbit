@@ -13,7 +13,7 @@ import { Avatar, Bone, Icon, Orbit2026Scope, ToastProvider, type IconName } from
 import s from "./AccountLayout.module.css";
 
 export type AccountSection =
-  | "home" | "profile" | "account" | "iorbit" | "integrations" | "schedule"
+  | "home" | "profile" | "account" | "iorbit" | "integrations" | "agentConnections" | "schedule"
   | "notifications" | "appearance" | "permissions" | "export" | "help";
 
 const menu: readonly { section: Exclude<AccountSection, "home">; href: string; icon: IconName }[] = [
@@ -21,6 +21,8 @@ const menu: readonly { section: Exclude<AccountSection, "home">; href: string; i
   { section: "account", href: "/app/settings/account", icon: "settings" },
   { section: "iorbit", href: "/app/settings/iorbit", icon: "sparkle" },
   { section: "integrations", href: "/app/settings/integrations", icon: "link" },
+  // agent-design AG17 (approved draft D3): under 「连接」; the draft's plug is not in the icon set, so the chat bubble.
+  { section: "agentConnections", href: "/app/settings/agent-connections", icon: "chat" },
   // contact-reach R41 ⑤: 可約時間, next to the calendar connection.
   { section: "schedule", href: "/app/settings/schedule", icon: "calendar" },
   { section: "notifications", href: "/app/settings/notifications", icon: "bell" },

@@ -18,7 +18,7 @@ function assertChallenge(response: { status: number; headers: Headers; text: str
   assert.equal(response.status, 401);
   const challenge = response.headers.get("www-authenticate") ?? "";
   assert.match(challenge, /^Bearer /u);
-  assert.ok(challenge.includes(`resource_metadata="${ORIGIN}/.well-known/oauth-protected-resource/mcp"`), challenge);
+  assert.ok(challenge.includes(`resource_metadata="${ORIGIN}/.well-known/oauth-protected-resource/connect"`), challenge);
   for (const word of RECORD_WORDS) assert.ok(!response.text.includes(word), `a 401 carries no record content (${word})`);
 }
 
@@ -149,7 +149,7 @@ test("every tool call is recorded with the connection, the tool, the scopes, the
 
 test("the metadata documents name this endpoint, this issuer, S256 only, public clients and client-id documents", () => {
   const resource = protectedResourceMetadata(ADDRESSES);
-  assert.equal(resource.resource, `${ORIGIN}/mcp`);
+  assert.equal(resource.resource, `${ORIGIN}/connect`);
   assert.deepEqual(resource.authorization_servers, [ORIGIN]);
   assert.ok((resource.scopes_supported as string[]).includes("todos:propose"));
   assert.ok(!(resource.scopes_supported as string[]).some((scope) => /memory|conversation|email|phone/u.test(scope)), "no scope for memory, conversations or contact methods");
@@ -163,11 +163,11 @@ test("the metadata documents name this endpoint, this issuer, S256 only, public 
 
 test("the proxy does not stand in front of the MCP endpoints, and opens nothing under /api/ for them", () => {
   const proxy = readFileSync(new URL("../../../proxy.ts", import.meta.url), "utf8");
-  // The session check covers /app and /api only: /mcp, /oauth and /.well-known reach their handlers, which answer with the challenge.
+  // The session check covers /app and /api only: /connect, /oauth and /.well-known reach their handlers, which answer with the challenge.
   assert.match(proxy, /matcher:\s*\["\/app\/:path\*",\s*"\/api\/:path\*"\]/u);
   // Nothing under /api/agent became public: the connection list, the consent decision and the card decision need a session.
   assert.doesNotMatch(proxy, /\/api\/agent/u);
-  assert.doesNotMatch(proxy, /mcp|oauth\//iu);
+  assert.doesNotMatch(proxy, /mcp|oauth\/|["'`]\/connect/iu);
 });
 
 test("a request body larger than the endpoint takes is refused before it is parsed", async () => {

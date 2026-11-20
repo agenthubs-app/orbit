@@ -1,6 +1,7 @@
 /**
  * agent-design AG17 (设计稿 §5.4「用户怎样管理连接」, 附录 E「外部连接」): the connections of an account — one per
- * authorisation of a client — with their scopes, when they were last used and when they were revoked; and the record
+ * client: a later authorisation by the same client changes the connection it already has (视觉稿第 3 组; the user may
+ * lower a level there too) — with their scopes, when they were last used and when they were revoked; and the record
  * of every tool call (connection, tool, scopes, how many records went back).
  *
  * Revoking marks the connection first; every call reads the connection, so the next call is refused whatever its token
@@ -49,6 +50,10 @@ export interface AgentConnectionCall {
 export interface ConnectionService {
   create(input: Pick<AgentConnection, "accountId" | "userId" | "clientId" | "clientName" | "scopes" | "locale">): Promise<AgentConnection>;
   get(connectionId: string): Promise<AgentConnection | null>;
+  /** The account's active connection of this client (the newest, should there ever be two), or null. */
+  findActive(accountId: string, clientId: string): Promise<AgentConnection | null>;
+  /** Replaces what an active connection may do (the same client authorised again). Null when it is gone or revoked. */
+  regrant(input: { connectionId: string; scopes: readonly McpScope[]; locale: AgentConnection["locale"]; userId: string }): Promise<AgentConnection | null>;
   /** The account's connections, newest first, with their last use. Revoked ones are left out unless asked for. */
   list(accountId: string, options?: { includeRevoked?: boolean }): Promise<(AgentConnection & { lastUsedAt: string | null })[]>;
   /** Marks the connection revoked (idempotent). Null when it is not this account's; `changed` is false when it already was. */
@@ -70,6 +75,20 @@ export function createConnectionService(deps: { records: McpRecords; workspaceId
     },
     async get(connectionId) {
       return (await read(connectionId))?.value ?? null;
+    },
+    async findActive(accountId, clientId) {
+      const connections = await records.list<AgentConnection>(CONNECTION_COLLECTION, accountId, { limit: CONNECTION_LIST_LIMIT });
+      return connections.filter((connection) => connection.accountId === accountId && connection.clientId === clientId && !connection.revokedAt).sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0] ?? null;
+    },
+    async regrant(input) {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const current: StoredRow<AgentConnection> | null = await read(input.connectionId);
+        if (!current || current.value.revokedAt) return null;
+        const at = deps.now();
+        const next: AgentConnection = { ...current.value, locale: input.locale, scopes: [...input.scopes], updatedAt: at, userId: input.userId, version: current.value.version + 1 };
+        if (await records.replace(CONNECTION_COLLECTION, next.id, next.accountId, current, next, at)) return next;
+      }
+      throw new Error("The connection kept changing while what it may do was being changed.");
     },
     async list(accountId, options = {}) {
       const connections = (await records.list<AgentConnection>(CONNECTION_COLLECTION, accountId, { limit: CONNECTION_LIST_LIMIT }))

@@ -32,7 +32,7 @@ test("each kind of record has a fixed list of output fields, with no place for a
 
 test("a field the adapter returns but the list does not name never goes out", () => {
   const record = { fields: { company: "北辰软件", contactMethods: ["email", "phone"], displayName: "小林健", headline: "销售总监", internalScore: 0.93, primaryEmail: "kobayashi@hokushin.example.test", primaryPhone: "+81-90-0000-0017", updatedAt: "2026-06-10T05:00:00.000Z" }, id: "contact:c17", kind: "contact" as const, ref: "contact:contact:c17", updatedAt: "2026-06-10T05:00:00.000Z", version: "1" };
-  const out = projectRecord("contacts", record);
+  const out = projectRecord("contacts", record, new Set(["contacts"] as const));
   assert.deepEqual(out, { id: "contact:c17", type: "contact", updated_at: "2026-06-10T05:00:00.000Z", user_data: { company: "北辰软件", name: "小林健", role: "销售总监" } });
   assert.ok(!JSON.stringify(out).includes("@"));
 });
@@ -51,11 +51,12 @@ test("contacts come back with name, company, role and tags; no contact method, n
   }
 });
 
-test("a memo about a contact carries the contact's id, not the contact's name, company or contact methods", async () => {
+test("a memo about a contact carries no contact id without contacts:read, and never the contact's name, company or contact methods", async () => {
   const kit = mcpKit();
   const tokens = await kit.connect({ scopes: ["memos:read", "todos:read"] });
   const memo = await kit.call(tokens.accessToken, "get_record", { id: "note:m32", type: "memo" });
-  assert.deepEqual(memo.data!.record.contact_ids, ["contact:c17"]);
+  // Coordinator, after the final gate's judges: a relation goes out only to a connection that may read its kind.
+  assert.equal(memo.data!.record.contact_ids, undefined);
   assert.equal(memo.data!.record.user_data.body, "11 月 10 日小林给我打电话，说小陈在审核。");
   const todos = await kit.call(tokens.accessToken, "search_records", { domain: "todos", query: "小林" });
   for (const text of [memo.text, todos.text]) for (const word of ["小林健", "北辰软件", "销售总监", "example.test", "+81-90"]) assert.ok(!text.includes(word), `without contacts:read, ${word} does not appear`);

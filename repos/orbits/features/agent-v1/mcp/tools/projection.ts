@@ -3,6 +3,9 @@
  * list of fields; a field that is not listed does not go out, whatever the read adapter returned. There is no field
  * for an e-mail address, a phone number or any other contact method, and linked records appear as ids only (a memo
  * about a contact does not carry the contact's name unless the connection may read contacts and asks for the contact).
+ * A relation to another kind of record (`contact_ids`, `event_refs`, `memo_ids`, a memo's interaction people) goes out
+ * only when the connection may read that kind; otherwise the field is absent — not empty, not a count — so a narrow
+ * grant does not learn that linked records exist in areas the user did not allow.
  *
  * Text the user wrote (titles, bodies, names) goes under `user_data`: it may contain sentences that read like
  * instructions; the result says they are data.
@@ -59,6 +62,16 @@ const PROJECTIONS: Record<McpDomain, Projection> = {
   },
 };
 
+/** Every output field that points at another kind of record, with the kind it points at. */
+export const RELATION_FIELDS: Readonly<Record<McpDomain, Readonly<Record<string, McpDomain>>>> = {
+  attendance: {},
+  contacts: {},
+  events: {},
+  memos: { contact_ids: "contacts", event_refs: "events" },
+  schedule: { contact_ids: "contacts", event_refs: "events", memo_ids: "memos" },
+  todos: { contact_ids: "contacts", event_refs: "events" },
+};
+
 function pick(fields: Fields, map: Record<string, string>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [from, to] of Object.entries(map)) {
@@ -70,21 +83,33 @@ function pick(fields: Fields, map: Record<string, string>): Record<string, unkno
 }
 
 /** A memo's recorded interaction: when, how and with whom (ids), without the position of its sentence. */
-function interactionOf(value: unknown): Record<string, unknown> | undefined {
+function interactionOf(value: unknown, people: boolean): Record<string, unknown> | undefined {
   if (typeof value !== "object" || value === null) return undefined;
   const interaction = value as Record<string, unknown>;
-  const out = pick(interaction, { actualContactIds: "contact_ids", channel: "channel", direction: "direction", occurredAt: "occurred_at", occurredOn: "occurred_on" });
+  const out = pick(interaction, { ...(people ? { actualContactIds: "contact_ids" } : {}), channel: "channel", direction: "direction", occurredAt: "occurred_at", occurredOn: "occurred_on" });
   return Object.keys(out).length ? out : undefined;
 }
 
-export function projectRecord(domain: McpDomain, record: RecordView): ProjectedRecord {
+/**
+ * An event relation as the id `get_record` takes (`evt_…`, `private_event:…`): the adapters write «platform:» /
+ * «private:» in front (or `{ kind, id }`), a marker of their own that is not the record's id; it is left off.
+ */
+function eventIdsOf(value: unknown): unknown {
+  if (!Array.isArray(value)) return value;
+  return value.map((ref) => (typeof ref === "string" ? ref.replace(/^(platform|private):/u, "") : ref && typeof ref === "object" && typeof (ref as { id?: unknown }).id === "string" ? (ref as { id: string }).id : ref));
+}
+
+/** `readable`: the kinds this connection may read; a relation to any other kind is left out of the result. */
+export function projectRecord(domain: McpDomain, record: RecordView, readable: ReadonlySet<McpDomain>): ProjectedRecord {
   const projection = PROJECTIONS[domain];
-  const interaction = domain === "memos" ? interactionOf(record.fields.interaction) : undefined;
+  const relations = RELATION_FIELDS[domain];
+  const plain = Object.fromEntries(Object.entries(projection.plain).filter(([, out]) => !relations[out] || readable.has(relations[out])));
+  const interaction = domain === "memos" ? interactionOf(record.fields.interaction, readable.has("contacts")) : undefined;
   return {
     id: record.id,
     type: TYPE_OF_DOMAIN[domain],
     ...(record.updatedAt ? { updated_at: record.updatedAt } : {}),
-    ...pick(record.fields, projection.plain),
+    ...pick(record.fields.eventRefs === undefined ? record.fields : { ...record.fields, eventRefs: eventIdsOf(record.fields.eventRefs) }, plain),
     ...(interaction ? { interaction } : {}),
     user_data: pick(record.fields, projection.text),
   };

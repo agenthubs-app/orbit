@@ -394,7 +394,9 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     // with the fixture's scopes, the code and the tokens. A patch's connections are made before the first step; a
     // world's own (regular-v1, large-v1) when a step first uses them.
     const agents = new Map<string, ExternalAgent>();
-    const lastProposal: { id: string | null; url: string | null } = { id: null, url: null };
+    const lastProposal: { id: string | null; url: string | null; owner?: string } = { id: null, url: null };
+    /** AG17: the account whose latest open_link was refused (another account's link); its next click is a direct post. */
+    let refusedLinkAs: string | null = null;
     const connectAgent = async (record: FixtureRecord): Promise<ExternalAgent> => {
       const data = record.data as { client?: string; scopes?: string[] };
       const profile = clientProfileFor(String(data.client ?? "Claude"));
@@ -880,6 +882,27 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
             await sendDecision(index, clientName, cardId!, body, false);
             return;
           }
+          if (!cardId && word === "click" && refusedLinkAs === account && lastProposal.id && lastProposal.owner && lastProposal.owner !== account) {
+            // AG17 (coordinator, after the final gate's judges): this account's page showed no card, but a hostile client
+            // could still post the decision. The runner looks up the card behind the proposal as its owner (a housekeeping
+            // read nobody is shown) and posts the confirm transition with this account's session, with the card's own
+            // revision and hash: the server must refuse it, and nothing may be written.
+            const owner = new EvalClient(baseUrl(environment), log, await cookieFor(lastProposal.owner), "web");
+            const looked = await owner.request("GET", `/api/agent/proposals/${encodeURIComponent(lastProposal.id)}`, undefined, { purpose: `the runner looks up the card behind the proposal as its owner ${lastProposal.owner} (not shown to anyone)` });
+            const target = looked.body?.data?.card as AgentActionPreviewContract | undefined;
+            if (!target) {
+              unsupported.push({ reason: "the owner could not read the proposal's card", step: index, word });
+              return;
+            }
+            log.push({ as: account, cardId: target.actionId, client: clientName, decision, foreign: true, step: index, type: "turn.click" });
+            transcript.push(`**账号 ${account} 直接发出决定**：${decision}（${target.actionId}，它自己的页面上没有这张卡；运行器按卡的版本和哈希代发，模拟绕过页面的客户端）`, "");
+            const intruder = await clientFor(clientName);
+            const result = await intruder.request("POST", `/api/agent/ledger/${encodeURIComponent(target.actionId)}/transition`, { clientDecisionId: `decision:${randomUUID()}`, payloadHash: target.payloadHash, revision: target.revision, transition: decision }, { purpose: `account ${account} posts the decision for another account's card` });
+            const accepted = result.status >= 200 && result.status < 300;
+            log.push({ accepted, cardId: target.actionId, decision, reason: accepted ? null : result.body?.error?.code ?? `HTTP_${result.status}`, status: result.status, type: "card.decision", via: "click" });
+            transcript.push(`- 服务端：${accepted ? "已接受" : `拒绝（HTTP ${result.status}，${result.body?.error?.code ?? "没有代码"}）`}`, "");
+            return;
+          }
           log.push({ cardId: cardId ?? null, client: clientName, decision, step: index, type: "turn.click" });
           transcript.push(`**用户点击**：${decision}${cardId ? `（${cardId}）` : "（没有可点的卡）"}`, "");
           if (word === "review") {
@@ -1117,6 +1140,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
             if (typeof answer.result?.proposal_id === "string") {
               lastProposal.id = answer.result.proposal_id;
               lastProposal.url = typeof answer.result.confirm_url === "string" ? answer.result.confirm_url : null;
+              lastProposal.owner = [...fixtureConnections, ...world.anchors].find((item) => item.kind === "connection" && item.id === spec.as)?.account ?? account;
             }
             transcript.push(...mcpAnswerLines(answer), "");
             return;
@@ -1154,6 +1178,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           const opened = await opener.request("GET", `/api/agent/proposals/${encodeURIComponent(lastProposal.id)}`, undefined, { purpose: `account ${label} opens the confirm link` });
           const view = opened.body?.data as { card?: AgentActionPreviewContract; clientName?: string; notice?: string } | undefined;
           transcript.push(`**账号 ${label} 登录后打开确认链接** ${lastProposal.url ?? ""}`, "");
+          refusedLinkAs = opened.status === 200 && view?.card ? null : label;
           if (opened.status === 200 && view?.card) {
             noteCard(view.card, "web");
             log.push({ as: label, cardId: view.card.actionId, clientName: view.clientName ?? null, status: view.card.status, step: index, type: "link.opened" });

@@ -16,6 +16,8 @@ import {useOrbitLanguage} from '../orbit-language-context';
 import {communicationRequest,invalidateInboxActorConfirmation,readContactMessageActor,readContactMessageActorForWrite} from './inbox-request';
 import {notificationInboxView,notificationDetailView,type NotificationRow,type NotificationCategory,type NotificationList} from './notification-inbox-view-model';
 import {NotificationStatusRail,type WeekCounts} from './notification-status-rail';
+// agent-design AG17 (board 9): an outside assistant's proposal has its own line and right column.
+import {ExternalProposalPane,ExternalProposalRow,isExternalProposal} from './external-proposal-entry';
 
 const categories={all:{zh:'全部',en:'All',ja:'すべて'},secretary:{zh:'秘书',en:'Secretary',ja:'秘書'},reminder:{zh:'提醒',en:'Reminders',ja:'リマインダー'},suggestion:{zh:'建议',en:'Suggestions',ja:'提案'},update:{zh:'动态',en:'Updates',ja:'更新'},history:{zh:'历史记录',en:'History',ja:'履歴'}};
 // b5 #6 row actions: 既読 / タスクに追加 / 1時間後.
@@ -241,7 +243,8 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
       {data.items.map(n=>{
        const group=notificationDayGroup(n.occurredAt,now,timeZone),heading=group!==previousGroup;previousGroup=group;
        return [heading?<div key={'g:'+group} className={ws.day}>{t(days[group])}</div>:null,
-        <NotificationRecordCard key={n.id} notification={n} timeZone={timeZone} now={now} selected={n.id===selected} onSelect={()=>select(n)}/>];
+        isExternalProposal(n)?<ExternalProposalRow key={n.id} notification={n} zone={notificationDisplayZone(timeZone)} now={now} selected={n.id===selected} onSelect={()=>select(n)}/>
+        :<NotificationRecordCard key={n.id} notification={n} timeZone={timeZone} now={now} selected={n.id===selected} onSelect={()=>select(n)}/>];
       })}
       {data.nextCursor?<button type="button" className={`btn ${ws.btn} ${ws.sm} ${ws.more}`} disabled={busy} onClick={()=>void more()}>{t({zh:'加载更多',en:'Load more',ja:'さらに読み込む'})}</button>:null}
      </div>:<p className={ws.listNote}>{t({zh:'暂无通知',en:'No notifications',ja:'通知はありません'})}</p>}
@@ -249,7 +252,7 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
    <div className={ws.pane}>
     {chosen?<>
      <button type="button" className={`btn ${ws.btn} ${ws.sm} ${ws.back}`} style={{margin:'12px 16px 0',alignSelf:'flex-start'}} onClick={()=>setSelected(null)}><Icon name="left" size={16}/>{t({zh:'返回通知',en:'Back to notifications',ja:'通知に戻る'})}</button>
-     <NotificationDetail notification={chosen} now={now} timeZone={timeZone} disabled={busy} onAction={action=>void actFor(chosen,action)}/>
+     {isExternalProposal(chosen)?<ExternalProposalPane notification={chosen}/>:<NotificationDetail notification={chosen} now={now} timeZone={timeZone} disabled={busy} onAction={action=>void actFor(chosen,action)}/>}
     </>:data&&!data.items.length&&filter==='all'?<div className={ws.empty}>
      <span className={ws.emptyTile} style={{background:'var(--mac-lav)'}} aria-hidden>🔔</span>
      <h3>{t({zh:'还没有通知',en:'No notifications yet',ja:'通知はまだありません'})}</h3>

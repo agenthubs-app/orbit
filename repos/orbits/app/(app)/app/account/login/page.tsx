@@ -5,6 +5,7 @@
  */
 import { StateView } from "../../../../../shared/ui/state-view";
 import { redirect } from "next/navigation";
+import { requestOrigin, signInNoteFor, type SignInNote } from "../../../../api/_shared/mcp-access";
 import { auth } from "../../../../../auth";
 import { normalizeOrbitAuthReturnPath } from "../../../../../features/auth/app-auth-routing";
 import type { OrbitLanguage } from "../../orbit-language-core";
@@ -61,6 +62,16 @@ function AccountLoginRouteStateBoundary({
   );
 }
 
+async function loginSignInNote(next: string | string[] | undefined): Promise<SignInNote | null> {
+  try {
+    const origin = await requestOrigin();
+    return origin ? await signInNoteFor(Array.isArray(next) ? next[0] : next, origin) : null;
+  } catch {
+    // Outside a request (static checks) or the services are not set up: the dialog stays as it is.
+    return null;
+  }
+}
+
 export default async function AppAccountLoginPage({
   searchParams,
 }: {
@@ -78,6 +89,8 @@ export default async function AppAccountLoginPage({
   });
   const language =
     routeModel.state === "success" ? await getAccountLoginPageLanguage() : "zh";
+  // agent-design AG17（视觉稿 D8）：在同意页、确认链接前面时，登录框多一行，说为什么突然要登录。
+  const signInNote = routeModel.state === "success" ? await loginSignInNote(resolvedSearchParams?.next) : null;
 
   return (
     <>
@@ -88,6 +101,7 @@ export default async function AppAccountLoginPage({
           <AuthModal
             defaultNext={localizeOrbitTree(routeModel.auth, language).defaultNext}
             oauthProviders={enabledOAuthProviders()}
+            signInNote={signInNote}
             view="login"
           />
         </div>
