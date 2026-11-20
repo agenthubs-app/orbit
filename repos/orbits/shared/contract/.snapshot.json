@@ -1609,6 +1609,11 @@
           "kind": "text",
           "type": "string"
         },
+        "allDay": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean | undefined"
+        },
         "venue": {
           "optional": true,
           "kind": "text",

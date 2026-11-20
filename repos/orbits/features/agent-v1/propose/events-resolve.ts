@@ -22,7 +22,7 @@ import type { GraphPart } from "../graph/state";
 import { isPronounClue } from "../route/decide";
 import { EVENT_WORDS } from "./events-copy";
 import { instantOf, localDayOf, localTimeOf, resolveSaidDate } from "./dates";
-import { dayPartsOf, onlyStartSaid, resolveSaidTimes } from "./times";
+import { dayPartsOf, durationPhraseOf, onlyStartSaid, resolveSaidTimes, timeZonePhraseOf, titleWithoutWhen } from "./times";
 import type { PartWrite, ResolveContext, WriteOutcome } from "./resolve";
 import type { StoredIntent } from "./schema";
 
@@ -68,8 +68,12 @@ const UNLINK_WORDS = /(解除|取消关联|不再关联|去掉关联|只解除|�
 export const CHECKIN = /(签到|簽到|补签|扫码|打卡|チェックイン|\bcheck[- ]?in\b|\bchecked in\b)/iu;
 const THIS_TIME = /(只改这一次|只改这次|仅本次|只这一次|就这一次|这一次|今回だけ|この回だけ|今回のみ|\bonly this (?:time|once|one)\b|\bjust this (?:time|once|one)\b|\bthis occurrence\b)/iu;
 const SERIES = /(整个系列|整個系列|全部都|以后都|以后的都|从此|往后都|每次都|每周都|ずっと|シリーズ全体|全ての回|毎回|\bwhole series\b|\ball of them\b|\bfrom now on\b|\bgoing forward\b|\bevery week\b)/iu;
+/** AG20a R1: the same words, for a message that switches a waiting card between this time and the series. */
+export const THIS_TIME_WORDS = THIS_TIME;
+export const SERIES_WORDS = SERIES;
 /** "今回だけじゃなくて", "不是只改这一次", "not just this time": the series, said in the negative. */
 const NOT_ONLY_THIS = /(今回だけ(?:じゃなく|ではなく)|不是只改这一?次|不只这一?次|\bnot (?:just|only) this (?:time|once|one)\b)/iu;
+export const NOT_ONLY_THIS_WORDS = NOT_ONLY_THIS;
 /** Words of when ("明天的", "11 月 19 日那场", "next Monday's") are not part of a record's name. */
 const WHEN_WORDS = /(今天|明天|后天|昨天|前天|今晚|昨晚|明晚|今日|明日|昨日|明後日|下周[一二三四五六日天]?|这周[一二三四五六日天]?|本周[一二三四五六日天]?|周[一二三四五六日天]|星期[一二三四五六日天]|\d{1,2}\s*月\s*\d{1,2}\s*[日号]?|[月火水木金土日]曜日?|\btoday'?s?\b|\btomorrow'?s?\b|\byesterday'?s?\b|\bnext (?:mon|tues|wednes|thurs|fri|satur|sun)day'?s?\b)(?:的|那场|那一场|の)?/giu;
 export function withoutWhenWords(text: string): string {
@@ -85,20 +89,65 @@ const ATTEND_WORD = /(自述|我去过|去过|参会|参加记录|参加了的�
 const NOISE = /[\s「」『』"“”'’()（）,，。.、!！?？:：·•@]|这场|那场|这次|那次|这个|那个|私人活动|私人|活动|日程|待办|的|イベント|予定|タスク|\bthe\b|\bevent\b|\bmy\b/giu;
 const squash = (text: string) => text.toLowerCase().replace(NOISE, "");
 
-interface EventCandidate { ref: { kind: "platform" | "private"; id: string }; title: string; startsAt: string | null }
+interface EventCandidate { ref: { kind: "platform" | "private"; id: string }; title: string; startsAt: string | null; endsAt?: string | null }
 
 async function eventCandidates(ctx: Ctx): Promise<EventCandidate[]> {
   const out: EventCandidate[] = [];
   if (ctx.records?.listEvents) {
     for (const event of await ctx.records.listEvents().catch(() => [])) {
       if (event.archivedAt || (event.lifecycleState !== "published" && event.organizerActorId !== ctx.scope?.accountId) || !event.title) continue;
-      out.push({ ref: { id: event.eventId, kind: "platform" }, startsAt: event.startsAt ?? null, title: event.title });
+      out.push({ endsAt: event.endsAt ?? null, ref: { id: event.eventId, kind: "platform" }, startsAt: event.startsAt ?? null, title: event.title });
     }
   }
   if (ctx.records?.privateEvents && ctx.scope) {
-    for (const event of await ctx.records.privateEvents.list(ctx.scope.accountId).catch(() => [])) out.push({ ref: { id: event.id, kind: "private" }, startsAt: event.startsAt, title: event.title });
+    for (const event of await ctx.records.privateEvents.list(ctx.scope.accountId).catch(() => [])) out.push({ endsAt: event.endsAt ?? null, ref: { id: event.id, kind: "private" }, startsAt: event.startsAt, title: event.title });
   }
   return out;
+}
+
+/** AG20a R5/R14: words of having gone ("我去了", "去过", "行った", "I went"): the event is not in the future. */
+export const WENT_WORDS = /(去了|去过|去過|参加了|参加过|参加過|到场了|行った|行きました|参加した|参加しました|\bi went\b|\bwent to\b|\battended\b|\bi was at\b)/iu;
+
+const CJK_MONTH: Record<string, number> = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10, 十一: 11, 十二: 12 };
+const EN_MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+
+/** AG20a R14: a month said without a day ("一月那场", "1月の", "the January one"); null when none, or a full date is said. */
+export function monthSaid(text: string): number | null {
+  if (/\d{1,2}\s*月\s*\d{1,2}\s*[日号]/u.test(text)) return null;
+  const cjk = /(十[一二]?|[一二三四五六七八九]|1[0-2]|0?[1-9])\s*月(?:份)?(?![\d一二三四五六七八九十])/u.exec(text);
+  if (cjk) return /^\d+$/u.test(cjk[1]) ? Number(cjk[1]) : CJK_MONTH[cjk[1]] ?? null;
+  const lower = text.toLowerCase();
+  const index = EN_MONTHS.findIndex((name) => new RegExp(`\\b${name}\\b(?!\\s+\\d)`, "u").test(lower));
+  return index >= 0 ? index + 1 : null;
+}
+
+/**
+ * AG20a R14 (TP-EVT-002): between events that share a name, the month the user said and "我去了" (never an event still to
+ * come) decide before any question. Each narrows only when something is left; with nothing left the question stays.
+ */
+function narrowByWhen(found: EventCandidate[], quote: string, ctx: { asOf: string; timeZone: string }): EventCandidate[] {
+  if (found.length < 2) return found;
+  let out = found;
+  const month = monthSaid(quote);
+  if (month !== null) {
+    const inMonth = out.filter((event) => event.startsAt && Number(localDayOf(event.startsAt, ctx.timeZone).slice(5, 7)) === month);
+    if (inMonth.length) out = inMonth;
+  }
+  if (out.length > 1 && WENT_WORDS.test(quote)) {
+    const past = out.filter((event) => event.startsAt && Date.parse(event.startsAt) <= Date.parse(ctx.asOf));
+    if (past.length) out = past;
+  }
+  return out;
+}
+
+/**
+ * AG20a R5: "周六我去了…" said on a Wednesday is the Saturday that has passed, not the coming one. Only a bare weekday moves
+ * (a week back); "下周六", "这周六", "next Saturday" and full dates stay as said.
+ */
+function pastDayIfWent(day: string, dateWords: string, quote: string, ctx: { asOf: string; timeZone: string }): string {
+  if (!WENT_WORDS.test(quote) || day <= localDayOf(ctx.asOf, ctx.timeZone)) return day;
+  const bareWeekday = /(?:周|星期|礼拜)[一二三四五六日天]|[月火水木金土日]曜|\b(?:mon|tues|wednes|thurs|fri|satur|sun)day\b/iu.test(dateWords) && !/(下|这|本|来週|今週|再来週|next|this|coming)/iu.test(dateWords);
+  return bareWeekday ? new Date(Date.parse(`${day}T00:00:00Z`) - 7 * 86_400_000).toISOString().slice(0, 10) : day;
 }
 
 /** The events the words name: a title inside the words or the words inside a title; a day said narrows them. */
@@ -202,17 +251,23 @@ export async function resolveEventIntent(ctx: Ctx, part: GraphPart, write: PartW
       const title = words(ctx.message, intent.title);
       if (!title) return stop("title_missing", EVENT_WORDS.needTitle(language, quote));
       if (!said) return stop("date_unclear", EVENT_WORDS.needDay(language, quote));
-      if (!times) return stop("time_unclear", EVENT_WORDS.needTime(language, quote));
+      const day = pastDayIfWent(said.day, dateWords || quote, quote, ctx);
       const venue = words(ctx.message, intent.venue);
-      const startsAt = instantOf(said.day, times.start, zone);
-      ctx.createdEvents?.push({ day: said.day, localId: intent.localId, time: times.start, title });
-      return { kind: "ready", ops: [{ ...base, capability: "privateEvent.create", set: { startsAt, title, ...(times.end ? { endsAt: instantOf(said.day, times.end, zone) } : {}), ...(venue ? { venue } : {}) } } as CardOperationIntent & { localId: string }] };
+      // AG20a R5 (设计稿 §4 "可选的时间／地点", 附录 E `allDay?`): a day without a clock time is an all-day event of that day.
+      if (!times) {
+        ctx.createdEvents?.push({ day, localId: intent.localId, title });
+        emitTrace({ partId: part.localId, type: "propose.private_event_all_day" });
+        return { kind: "ready", ops: [{ ...base, capability: "privateEvent.create", set: { allDay: true, startsAt: instantOf(day, "00:00", zone), title, ...(venue ? { venue } : {}) } } as CardOperationIntent & { localId: string }] };
+      }
+      const startsAt = instantOf(day, times.start, zone);
+      ctx.createdEvents?.push({ day, localId: intent.localId, time: times.start, title });
+      return { kind: "ready", ops: [{ ...base, capability: "privateEvent.create", set: { startsAt, title, ...(times.end ? { endsAt: instantOf(day, times.end, zone) } : {}), ...(venue ? { venue } : {}) } } as CardOperationIntent & { localId: string }] };
     }
     case "attendance.create": {
       // On the private event this request creates: when the model said so, or the words name no other event.
       const created = ctx.createdEvents ?? [];
       const all = await eventCandidates(ctx);
-      const matched = matchEvents(all, clueTexts, quote, said?.day ?? null, zone);
+      const matched = narrowByWhen(matchEvents(all, clueTexts, quote, said?.day ?? null, zone), quote, ctx);
       const fresh = created.find((item) => item.localId === intent.after) ?? (created.length && (!matched.length || clueTexts.some((clue) => created.some((item) => squash(item.title) === squash(clue)))) ? created[created.length - 1] : undefined);
       if (fresh) {
         const day = said && intent.date ? said.day : fresh.day;
@@ -228,7 +283,7 @@ export async function resolveEventIntent(ctx: Ctx, part: GraphPart, write: PartW
       const event = options[0];
       const existing = (await ctx.records.attendance?.list(scope.accountId).catch(() => []) ?? []).find((note) => note.eventRef.kind === event.ref.kind && note.eventRef.id === event.ref.id);
       if (existing) return stop("already_recorded", EVENT_WORDS.alreadyAttended(language, event.title, dayText(existing.attendedOn, language)));
-      const day = said?.day ?? (event.startsAt ? localDayOf(event.startsAt, zone) : null);
+      const day = (said ? pastDayIfWent(said.day, dateWords || quote, quote, ctx) : null) ?? (event.startsAt ? localDayOf(event.startsAt, zone) : null);
       if (!day) return stop("date_unclear", EVENT_WORDS.needDay(language, quote));
       const parts = dayPartsOf(`${timeWords} ${dateWords} ${quote}`);
       const fromEvent = !parts.length && event.startsAt ? dayPartsOf(localTimeOf(event.startsAt, zone)) : [];
@@ -440,11 +495,40 @@ async function resolveSchedule(ctx: Ctx, part: GraphPart, write: PartWrite, inte
     const eventClues = (intent.events ?? []).map((span) => words(ctx.message, span)).filter(Boolean);
     const named = words(ctx.message, intent.title);
     const events = matchEvents(all, [...eventClues, ...(named ? [named] : [])].map(withoutWhenWords), quote, said?.day ?? null, zone).filter((event) => !said || !event.startsAt || localDayOf(event.startsAt, zone) === said.day || eventClues.length > 0).slice(0, 1);
-    const title = words(ctx.message, intent.title) || events[0]?.title || "";
+    // AG20a R6 (附录 B 个人日程 "起止、时区……关联的人"): the zone the user named ("伦敦时间"), the length said ("45 分钟"),
+    // the people; the title is the user's words without the words of when.
+    const zoneSaid = timeZonePhraseOf(words(ctx.message, intent.zone) || timeWords || quote);
+    const itemZone = zoneSaid?.zone ?? zone;
+    const lengthSaid = durationPhraseOf(words(ctx.message, intent.duration) || quote);
+    const title = titleWithoutWhen(named, [dateWords, timeWords, zoneSaid?.words ?? "", lengthSaid?.words ?? "", words(ctx.message, intent.zone), words(ctx.message, intent.duration)]) || events[0]?.title || "";
     if (!title) return stop("title_missing", EVENT_WORDS.needTitle(language, quote));
-    if (!said) return stop("date_unclear", EVENT_WORDS.needDay(language, quote));
-    if (!times) return stop("time_unclear", EVENT_WORDS.needTime(language, quote));
-    return { kind: "ready", ops: [{ ...base, capability: "schedule.create", set: { startsAt: instantOf(said.day, times.start, zone), timeZone: zone, title, ...(times.end ? { endsAt: instantOf(said.day, times.end, zone) } : {}), ...(events.length ? { eventRefs: events.map((event) => ({ ...event.ref })) } : {}) }, shown: { events: events.map((event) => ({ kind: event.ref.kind, startsAt: event.startsAt, title: event.title })) } } as CardOperationIntent & { localId: string }] };
+    const event = events[0];
+    // AG20a R5 (设计稿 §4): an item made from an event with no time said takes the event's own start (and end).
+    const fromEvent = !times && event?.startsAt && (!said || localDayOf(event.startsAt, zone) === said.day) ? event : null;
+    if (!said && !fromEvent) return stop("date_unclear", EVENT_WORDS.needDay(language, quote));
+    if (!times && !fromEvent) return stop("time_unclear", EVENT_WORDS.needTime(language, quote));
+    const startsAt = fromEvent ? fromEvent.startsAt! : instantOf(said!.day, times!.start, itemZone);
+    const endsAt = fromEvent ? fromEvent.endsAt ?? (lengthSaid ? new Date(Date.parse(startsAt) + lengthSaid.minutes * 60_000).toISOString() : undefined)
+      : times!.end ? instantOf(said!.day, times!.end, itemZone) : lengthSaid ? new Date(Date.parse(startsAt) + lengthSaid.minutes * 60_000).toISOString() : undefined;
+    if (fromEvent) emitTrace({ partId: part.localId, type: "propose.schedule_time_from_event" });
+    const people: { id: string; name: string }[] = [];
+    if (intent.relations.length) {
+      const { resolvePerson } = await import("./resolve");
+      for (const relation of intent.relations) {
+        const person = await resolvePerson(ctx, part, write, { quote: relation.quote, text: words(ctx.message, relation.quote) });
+        if (person.kind === "found") {
+          if (!people.some((item) => item.id === person.id)) people.push({ id: person.id, name: person.name || ctx.nameOf(person.id) || String((await ctx.records!.reader.read("contact", ctx.scope!, { id: person.id }).catch(() => null))?.items[0]?.fields.displayName ?? "") });
+          continue;
+        }
+        if (person.kind === "ask") return { kind: "ask", question: { candidates: person.candidates, clue: person.clue, type: "contact" } };
+        if (person.kind === "shares") return { kind: "shares", with: person.with };
+        if (person.kind === "failed") return stop("read_failed", failedLine);
+        // Not among the contacts: the item is made without a person (the card then shows no one), never with a guess.
+      }
+      ctx.people.push(...people.filter((item) => !ctx.people.some((known) => known.id === item.id)).map((item) => ({ at: part.quote[0], id: item.id, name: item.name })));
+    }
+    if (zoneSaid || lengthSaid || people.length) emitTrace({ length: lengthSaid?.minutes ?? null, partId: part.localId, people: people.map((item) => item.id), type: "propose.schedule_said", zone: zoneSaid?.zone ?? null });
+    return { kind: "ready", ops: [{ ...base, capability: "schedule.create", set: { startsAt, timeZone: itemZone, title, ...(endsAt ? { endsAt } : {}), ...(events.length ? { eventRefs: events.map((item) => ({ ...item.ref })) } : {}), ...(people.length ? { contactIds: people.map((item) => item.id) } : {}) }, shown: { events: events.map((item) => ({ kind: item.ref.kind, startsAt: item.startsAt, title: item.title })), ...(people.length ? { names: Object.fromEntries(people.map((item) => [item.id, item.name])) } : {}), ...(zoneSaid && zoneSaid.zone !== zone ? { zoneLabel: zoneSaid.words } : {}) } } as CardOperationIntent & { localId: string }] };
   }
   // update / delete: the user's own schedule item the words name (its name without the words of when: "明天的选品周会").
   const clues = clueTexts.map(withoutWhenWords).filter((clue) => squash(clue).length >= 2);

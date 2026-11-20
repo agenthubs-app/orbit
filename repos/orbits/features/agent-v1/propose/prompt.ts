@@ -3,7 +3,7 @@
  * parts the first layer handed over as writes (their words and goals) and the field list of 附录 B; no
  * records, no conversation. Code finds the records, works out dates and builds the card.
  */
-export const PROPOSE_PROMPT_VERSION = "propose@ag13.1";
+export const PROPOSE_PROMPT_VERSION = "propose@ag20a.1";
 
 export function proposeSystemPrompt(): string {
   return [
@@ -22,6 +22,8 @@ export function proposeSystemPrompt(): string {
     '  "timeText": the words of the time of day, copied (e.g. "晚上七点", "下午两点到三点", "上午十点到十二点", "2pm", "11時から12時", "下午三点开始") — for a private event or a schedule item; leave it out when none was said,',
     '  "fields": [{"name": "title" | "body" | "name" | "company" | "role" | "email" | "phone" | "venue" | "note", "valueText": words copied from the CURRENT message}] — venue: a private event\'s place ("新宿", "Ebisu"); title also names a new private event or schedule item ("大学同学聚会", "Ebisu Photo Walk", "产品同步"); note: the user\'s own line on «I went» when they gave one; — title: the to-do\'s title for a new to-do (the words the user gave as its name, without quotes) or a new title the user gives; body: for a memo, the part of the message that says what happened, copied as is (e.g. "他今天来过电话", "小林今天来电话了，说小陈还在审合同", "Emily called me today. She said she\'s moving to the Tokyo office in January."), without the instruction words around it ("记一下", "log that", "記録しておいて"); never add or reword anything; for a contact: name, company, role (job title), email, phone — for create the new person\'s values, for update only the new value of each field the user asked to change (e.g. "采购部长", "購買部長", "青叶设计事务所"),',
     '  "dateText": the words of the date the user gave, copied (e.g. "周五", "11 月 30 日", "金曜日", "Thursday", "今天", "today") — for a to-do the new or planned date, for a memo when the contact happened; leave it out when none was said,',
+    '  "dueText": a new to-do only, when the user gives both a day to do it and a deadline: the deadline words, copied (e.g. "最迟周五中午", "金曜の昼までに", "due Friday noon"); dateText is then the day to do it,',
+    '  "timeZoneText": a schedule item only, the time-zone words when the user names one (e.g. "伦敦时间", "ロンドン時間", "New York time", "JST"); "durationText": its length when said (e.g. "45 分钟", "1時間", "for 30 minutes"),',
     '  "relations": [{"entity": "contact", "clue": the words naming the person (a name or a pronoun, e.g. "小林", "他", "Emily", "山本さん"), "role": "actual_contact" (the person the user actually talked to, called, met, or who called them) | "mentioned" (only talked about, e.g. "说小陈还在审合同": 小陈 is mentioned) | "about" (the person a to-do is about)}],',
     '  "channel": memo only — "phone" | "meeting" | "message" | "email" | "other",',
     '  "direction": memo only — "incoming" (they called, came, wrote) | "outgoing" (the user called or wrote) | "mutual",',

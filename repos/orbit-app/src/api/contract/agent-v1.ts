@@ -465,6 +465,8 @@ export interface PrivateEventContract {
   title: string;
   startsAt: string;
   endsAt?: string | undefined;
+  /** AG20a（设计稿附录 E `allDay?`）：只说了哪天、没说几点；startsAt 是那天 0 点（按用户时区），显示时只写日期。 */
+  allDay?: boolean | undefined;
   venue?: string | undefined;
   notes?: string | undefined;
   /** 每次写入加一。 */

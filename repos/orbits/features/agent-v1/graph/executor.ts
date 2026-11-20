@@ -29,6 +29,7 @@ import { cardLocale } from "../../agent/runtime/todo-operations";
 import type { AgentCardAccess } from "./deps";
 import { configuredWebAccess } from "../web/factory";
 import { reviseImportByWords } from "../entry/import-revision";
+import { reviseCardByWords } from "../entry/card-revision";
 
 /**
  * AG06: the graph's card is the request's card in the ledger (conversationCardId), frozen through
@@ -180,6 +181,22 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
     // AG12-4: words about the rows of this conversation's waiting import card give its next revision (code, no model).
     const importRevision = await reviseImportByWords({ actorId: execution.actorId, message: execution.input.message, now: deps.now, runtime, sessionId: execution.sessionId, store: entryStore ?? null });
     if (importRevision) return importRevision;
+    // AG20a R1 (§5.1, §5.2): words about the items of this conversation's waiting card (drop one, a new day or time, this
+    // time or the series) give its next revision (code, no model); the earlier revision can no longer be confirmed.
+    const cardRevision = await reviseCardByWords({
+      actorId: execution.actorId,
+      message: execution.input.message,
+      now: deps.now,
+      ...(records ? { readSchedule: async (id: string) => { const view = (await records.reader.read("schedule", records.scope(execution.actorId), { id })).items[0]; return view && typeof view.fields.startsAt === "string" ? { endsAt: typeof view.fields.endsAt === "string" ? view.fields.endsAt : null, recurrence: typeof view.fields.recurrence === "string" ? view.fields.recurrence : null, startsAt: view.fields.startsAt, timeZone: typeof view.fields.timeZone === "string" ? view.fields.timeZone : null } : null; } } : {}),
+      runtime,
+      sessionId: execution.sessionId,
+      store: entryStore ?? null,
+      timeZone: deps.timeZone ?? "Asia/Tokyo",
+    }).catch((error: unknown) => {
+      emitTrace({ error: error instanceof Error ? error.message : String(error), type: "error", where: "executor.card_revision" });
+      return null;
+    });
+    if (cardRevision) return cardRevision;
     const cardPrepared = Boolean(await runtime.getAction(conversationCardId(execution.requestId)).catch(() => null));
     let graph: AgentGraphResult | null = null;
     const boundary = await runWithConfirmBoundary({ now: deps.now, runtime }, {

@@ -12,7 +12,7 @@ import { replyLanguageOf } from "../../route/handoff-copy";
 import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_PROMPT_VERSION } from "../../understand/prompt";
 import { coverEverySentence } from "../../understand/cover";
 import { describedObjectSpan, groupClue, questionWordClue, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
-import { refusedCreates } from "../../understand/negated-writes";
+import { refusedCreates, retractedWrites } from "../../understand/negated-writes";
 import { followsShownList } from "../../understand/follow-list";
 import { asksAgainAbout, bindMarkedReferences } from "../../references/marks";
 import { recordKindOf } from "../../clarify/default-readings";
@@ -44,8 +44,12 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
     if (implied.length) emitTrace({ added: [...new Set(implied)], partId: part.localId, type: "understand.read_implied_by_clue" });
     // AG13 repair round 7 (AE-UND-003): a create the user refuses in the same clause ("don't add anything to my to-dos")
     // is dropped before routing, so the refused part never proposes it.
-    const refused = refusedCreates(part.sourceQuote, part.requiredCapabilities);
-    if (refused.length) emitTrace({ dropped: refused, partId: part.localId, type: "understand.refused_create" });
+    // AG20a R16 (TP-UND-005): a change taken back later in the same sentence ("…改到周五——算了不改了") is dropped the same way.
+    const retracted = retractedWrites(part.sourceQuote, part.requiredCapabilities);
+    if (retracted.length) emitTrace({ dropped: retracted, partId: part.localId, type: "understand.retracted_write" });
+    const refusedCreate = refusedCreates(part.sourceQuote, part.requiredCapabilities);
+    if (refusedCreate.length) emitTrace({ dropped: refusedCreate, partId: part.localId, type: "understand.refused_create" });
+    const refused = [...refusedCreate, ...retracted];
     return {
       asked: 0,
       capabilities: [...new Set([...part.requiredCapabilities, ...implied])].filter((capability) => !refused.includes(capability)) as typeof part.requiredCapabilities,
@@ -62,7 +66,7 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
         intentBasis: part.intentBasis,
         // AG09 run-04 repair 2 (AE-JDG-007): a negation counts only when the user's own message carries one; a note the model
         // wrote around the user's words ("（假设，先不要真的改）") does not make one.
-        negation: negationOf(part) && negationIn(message),
+        negation: (negationOf(part) && negationIn(message)) || retracted.length > 0,
         persistence: part.persistence,
         readings: (part.readings ?? []).map((reading) => ({ capabilities: [...reading.capabilities], deliverable: reading.deliverable })),
         // The checkpoint keeps the words as offsets into this turn's message, never the words.

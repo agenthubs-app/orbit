@@ -26,6 +26,25 @@ function refusals(record: { zh: string; en: string; ja: string }): RegExp[] {
   ];
 }
 
+/**
+ * AG20a R16 (设计稿 §3.1; TP-UND-005): "……改到周五——算了不改了" — a change taken back later in the same sentence. Words of
+ * taking it back that come after the change ("算了不改了", "还是别改了", "never mind", "やっぱりいい") drop the part's writes
+ * before routing, so nothing is sent to the write step. A retraction before the change it keeps ("算了不改周四了，改到周五吧")
+ * is not one: something is still asked after it.
+ */
+const RETRACT = /(算了[，,、\s]*(?:还是)?(?:不|别|不用)(?:改|加|建|记|删|动|弄)?了?|还是(?:不|别)(?:改|加|建|记|删|动)了|(?:不|别)(?:改|加|建|记|删)了(?:吧)?$|就当我没说|当我没说|\bnever ?mind\b|\bforget (?:it|that)\b|\bscratch that\b|\bactually,? (?:don'?t|no)\b|やっぱり(?:いい|いいや|やめ|変えない|変更しない|なし)|やめておく|なしで)/iu;
+const ASK_AFTER = /(改到|改成|换成|加上|建一|记上|删掉|\bmove\b|\bchange\b|\badd\b|に変更|にして|追加して)/iu;
+
+export function retractedWrites(quote: string, capabilities: readonly string[]): string[] {
+  const writes = capabilities.filter((capability) => /\.(create|update|delete|complete|reopen|restore|import)$/u.test(capability));
+  if (!writes.length) return [];
+  const match = RETRACT.exec(quote);
+  if (!match) return [];
+  // Something asked after the retraction ("算了不改周四了，改到周五吧") keeps the write.
+  if (ASK_AFTER.test(quote.slice(match.index + match[0].length))) return [];
+  return writes;
+}
+
 /** The create capabilities this part's own words refuse. */
 export function refusedCreates(quote: string, capabilities: readonly string[]): string[] {
   return (Object.keys(RECORD_WORDS) as (keyof typeof RECORD_WORDS)[])

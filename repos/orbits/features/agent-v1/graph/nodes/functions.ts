@@ -34,6 +34,7 @@ import { asksEventsToGoTo, pointsAtPast, writesADate, upcomingTopicOf, direction
 import { compare, dimensionsIn, type ComparedEvent } from "../../functions/compare";
 import * as say from "../../functions/copy";
 import { memoDayOf } from "../../functions/dates";
+import { resolveSaidDate } from "../../propose/dates";
 import { contactOfClue, type LinkedContact, type MemoForExtraction } from "../../functions/extract";
 import { extractFromMemo } from "../../functions/extract-memo";
 import { groupEventsByFee } from "../../functions/group";
@@ -1091,12 +1092,44 @@ async function memoAndContacts(records: AgentRecordAccess, scope: DomainScope, m
   return { contacts, memo, view };
 }
 
-async function existingTodosFrom(records: AgentRecordAccess, scope: DomainScope, memoId: string): Promise<ExistingTodo[]> {
-  const rows = await readAll(records, { accountId: scope.accountId, workspaceId: scope.workspaceId }, { collection: "tasks", denied: [...evalDeniedReads()], equals: [{ paths: [["task", "sourceNoteId"]], value: memoId }], excludes: [{ path: ["task", "status"], values: ["deleted", "cancelled"] }], order: { direction: "asc", paths: [["task", "createdAt"]] } });
-  return rows.map((row) => {
+async function existingTodosFrom(records: AgentRecordAccess, scope: DomainScope, memoId: string, contactIds: readonly string[] = []): Promise<ExistingTodo[]> {
+  const of = (row: { id: string; payload: Record<string, unknown> }): ExistingTodo => {
     const task = row.payload.task as Record<string, unknown>;
-    return { dueAt: str(task.dueAt), id: row.id, notes: str(task.notes), plannedDate: str(task.plannedDate), ref: `todo:${row.id}`, sourceNoteId: str(task.sourceNoteId), status: str(task.status) ?? "open", title: String(task.title ?? "") };
-  });
+    return { contactId: str(task.relatedContactId), dueAt: str(task.dueAt), id: row.id, notes: str(task.notes), plannedDate: str(task.plannedDate), ref: `todo:${row.id}`, sourceNoteId: str(task.sourceNoteId), status: str(task.status) ?? "open", title: String(task.title ?? "") };
+  };
+  const base = { accountId: scope.accountId, workspaceId: scope.workspaceId };
+  const excludes = [{ path: ["task", "status"], values: ["deleted", "cancelled"] }];
+  const rows = await readAll(records, base, { collection: "tasks", denied: [...evalDeniedReads()], equals: [{ paths: [["task", "sourceNoteId"]], value: memoId }], excludes, order: { direction: "asc", paths: [["task", "createdAt"]] } });
+  const out = rows.map(of);
+  // AG20a R11 (§3.5 "代码查当前 Todo 和来源关联"): the to-dos about the note's people, made by hand or from elsewhere, too.
+  for (const contactId of contactIds.slice(0, 5)) {
+    const about = await readAll(records, base, { collection: "tasks", denied: [...evalDeniedReads()], equals: [{ paths: [["task", "relatedContactId"]], value: contactId }], excludes, order: { direction: "asc", paths: [["task", "createdAt"]] } }).catch(() => []);
+    for (const row of about) if (!out.some((todo) => todo.id === row.id)) out.push(of(row));
+  }
+  return out;
+}
+
+/** AG20a R18: an explicit request for a to-do ("建一条待办", "add a to-do", "ToDoに追加"). */
+const CREATE_TODO_ASK = /((?:建|新建|加|添加|创建|记)(?:一?[条个])?(?:待办|提醒|任务)|(?:待办|任务)(?:里|中)?(?:加|添)|\b(?:add|create|make|set up)\b[^.?!]{0,20}\b(?:to-?do|task|reminder)\b|(?:ToDo|TODO|タスク|リマインダー)(?:に|を)?(?:追加|作成|作って|入れて))/iu;
+/** AG20a R18: words of following up on what someone else said they would do. */
+const CHASE_WORDS = /(跟进|催|追一下|追问|确认一下|提醒我|问问|\bchase\b|\bfollow(?:\s|-)?up\b|\bcheck (?:in|on|back)\b|\bremind me\b|\bnudge\b|フォロー|催促|確認|リマインド)/iu;
+const OTHER_PROMISE = /(答应|承诺|说好|说会|保证|约定|promised|said (?:she|he|they)(?:'d| would)|will send|約束|送ると)/iu;
+
+/**
+ * AG20a R18 (设计稿 §3.2, §3.5; TP-FN-003): a to-do about what the other person promised, asked for in so many words
+ * ("帮我建一条待办，周二跟进 Dana 答应的报价单"). The design separates whose promise it is; it does not forbid a to-do about the
+ * other side's. Code writes the title ("跟进 <name>：<their action>"); the day is the one the user said this turn.
+ */
+const SELF_PROMISE = /(?:我|自己|\bI\b|私が?)\s*(?:答应|承诺|说好|保证|promised|約束)/iu;
+
+export function asksTodoAboutOthersPromise(quote: string): boolean {
+  return CREATE_TODO_ASK.test(quote) && !SELF_PROMISE.test(quote) && (CHASE_WORDS.test(quote) || OTHER_PROMISE.test(quote));
+}
+
+function chaseTitle(language: "zh" | "ja" | "en", name: string | null, action: string): string {
+  if (language === "en") return `Follow up${name ? ` with ${name}` : ""}: ${action}`;
+  if (language === "ja") return `${name ? `${name}さんに` : ""}フォロー：${action}`;
+  return `跟进${name ? ` ${name}` : ""}：${action}`;
 }
 
 async function extractPart(scope: NodeScope, state: AgentGraphState, part: GraphPart, task: Extract<FunctionTask, { kind: "extract" }>, round: { budget: AgentGraphState["budget"]; repairs: number }): Promise<{ budget: AgentGraphState["budget"]; repairs: number }> {
@@ -1227,7 +1260,9 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
       }
     } else {
       const writable = mine.filter((item) => item.writable);
-      const existing = writable.length ? await existingTodosFrom(records, accountScope, memo.id) : [];
+      // AG20a R18: no promise of the user's, and the words ask for a to-do about the other side's: those become the items.
+      const theirs = !writable.length && asksTodoAboutOthersPromise(quote) ? result.followUps.filter((item) => item.owner === "other" && (!focus.length || !item.contact || focus.includes(item.contact.id))) : [];
+      const existing = writable.length ? await existingTodosFrom(records, accountScope, memo.id, contacts.map((contact) => contact.id)) : [];
       for (const todo of existing) {
         extraCites.push(todo.ref);
         run.readSources.set(todo.ref, { id: todo.id, kind: "todo", title: todo.title } as never);
@@ -1237,7 +1272,7 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
       const carded: (typeof result.followUps)[number][] = [];
       for (const item of writable) {
         const sentence = sentenceOf(item.sentenceIds);
-        const link = linkFollowUp({ action: item.action, dueDate: item.dueDate, plannedDate: item.plannedDate, sentence }, existing, (instant) => localDay(instant, timeZone));
+        const link = linkFollowUp({ action: item.action, contactId: item.contact?.id ?? null, dueDate: item.dueDate, plannedDate: item.plannedDate, sentence }, existing, (instant) => localDay(instant, timeZone));
         emitTrace({ action: item.action, link: link.kind, partId: part.localId, todo: link.kind === "new" ? null : link.todo.ref, type: "functions.link_back" });
         if (link.kind === "same") {
           const when = link.todo.dueAt ? say.dueWords(language, localDay(link.todo.dueAt, timeZone), null) : link.todo.plannedDate ? say.plannedWords(language, link.todo.plannedDate, null) : null;
@@ -1246,7 +1281,7 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
         }
         if (link.kind === "differs") {
           const changes = link.differences.map((what) => (what === "dueDate" ? ({ en: `the note says ${say.dueWords(language, item.dueDate, item.dueText)}`, ja: `メモでは${say.dueWords(language, item.dueDate, item.dueText)}`, zh: `笔记里写的是${say.dueWords(language, item.dueDate, item.dueText)}` } as const)[language] : ({ en: `the note says ${say.plannedWords(language, item.plannedDate, item.plannedText)}`, ja: `メモでは${say.plannedWords(language, item.plannedDate, item.plannedText)}`, zh: `笔记里写的是${say.plannedWords(language, item.plannedDate, item.plannedText)}` } as const)[language]));
-          lines.push(say.differsLine(language, link.todo.title, changes));
+          lines.push(say.differsLine(language, link.todo.title, changes, link.todo.sourceNoteId === memo.id ? undefined : { status: link.todo.status }));
           continue;
         }
         if (link.kind === "unsure") {
@@ -1269,12 +1304,32 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
         lines.push(`${say.HEADINGS.myPromises[language]}${language === "en" ? ":" : "："}`);
         for (const item of carded) lines.push(describe(item));
       }
+      if (theirs.length) {
+        // The day the user said for following up (this turn's words); none said: no day, never their deadline guessed as one.
+        const said = part.refs.reduce((text, ref) => { const named = ref.entity === "memo" ? clueWords(input.message, ref) : null; return named ? text.split(named).join(" ") : text; }, quote);
+        const day = resolveSaidDate(said, state.asOf || deps.now(), timeZone)?.day ?? null;
+        for (const item of theirs) {
+          n += 1;
+          const sentence = sentenceOf(item.sentenceIds);
+          const names = item.contact ? { [item.contact.id]: item.contact.name } : {};
+          intents.push({
+            capability: "todo.create",
+            localId: `${part.localId}-f${n}`,
+            partId: part.localId,
+            set: { dueAt: null, notes: `${say.quoted(language, sentence)}（${memoName}）`, plannedDate: day, ...(item.contact ? { relatedContactIds: [item.contact.id] } : {}), sourceNoteId: memo.id, sourceNoteVersion: memo.version, title: chaseTitle(language, item.contact?.name ?? item.aboutClue, item.action) },
+            shown: { names, sentence, sourceTitle: memoName },
+          });
+        }
+        emitTrace({ items: theirs.map((item) => item.key), partId: part.localId, type: "functions.todo_for_others_promise" });
+        lines.push(`${say.HEADINGS.otherPromises[language]}${language === "en" ? ":" : "："}`);
+        for (const item of theirs) lines.push(describe(item));
+      }
       const doubtful = result.followUps.filter((item) => item.owner === "doubtful");
       if (doubtful.length) {
         lines.push(`${say.HEADINGS.doubtfulPromise[language]}${language === "en" ? ":" : "："}`);
         for (const item of doubtful) lines.push(describe(item));
       }
-      if (!writable.length && !doubtful.length) lines.push(say.nothingToAddLine(language));
+      if (!writable.length && !doubtful.length && !theirs.length) lines.push(say.nothingToAddLine(language));
     }
   }
 
