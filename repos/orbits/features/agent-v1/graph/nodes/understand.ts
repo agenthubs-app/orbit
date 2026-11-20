@@ -7,12 +7,13 @@ import { capabilityKind } from "../../route/capabilities";
 import { formatWhen } from "../../answer/materials";
 import { callMainModel, type MainModelResult } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
-import { hypothesisOf, negationIn, negationOf } from "../../route/decide";
+import { hypothesisOf, isPronounClue, negationIn, negationOf } from "../../route/decide";
 import { replyLanguageOf } from "../../route/handoff-copy";
 import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_PROMPT_VERSION } from "../../understand/prompt";
 import { coverEverySentence } from "../../understand/cover";
 import { describedObjectSpan, groupClue, questionWordClue, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
 import { refusedCreates } from "../../understand/negated-writes";
+import { followsShownList } from "../../understand/follow-list";
 import { asksAgainAbout, bindMarkedReferences } from "../../references/marks";
 import { recordKindOf } from "../../clarify/default-readings";
 import type { UnderstandOutput } from "../../understand/schema";
@@ -21,6 +22,11 @@ import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
 import { standingRuleNotes } from "../../domains/memory/turn";
 import { mergePickIntoQuestion, recommendIsRanking } from "../../understand/merge-pick";
+
+/** "你", "我", "you", "me": the two people talking, never a contact to look up. */
+const SPEAKER_WORDS = /^(?:你|您|我|咱们?|我们|你们|あなた|私|僕|you|me|i|we|us)$/iu;
+/** The user alone ("我", "me", "myself"): never a contact to look up. "we" is not here — it can stand for a person named before it. */
+const SELF_WORDS = /^(?:我|我自己|自己|本人|私|僕|自分|me|myself|i)$/iu;
 
 function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
   const context = scope.run.context!;
@@ -73,6 +79,12 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
       reason: null,
       // AG12 run-03 (AE-WEB-004): an unnamed "那家公司" beside a clue naming a record is the subject inside that record.
       refs: part.objectClues.filter((clue) => {
+        // AG19 repair round 1 (stability run, AE-ANS-002): "最近有哪些活动适合我" came back with a contact clue "我" and
+        // was answered "我不确定你说的是哪一位联系人". The user alone (我、me、myself) is never a contact to look up.
+        if (!clue.referenceId && clue.entity === "contact" && SELF_WORDS.test(clue.text.trim())) {
+          emitTrace({ clue: clue.text, partId: part.localId, type: "understand.speaker_clue" });
+          return false;
+        }
         if (!clue.referenceId && timeWordClue(clue)) {
           timeClued.add(part.localId);
           emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.time_word_clue" });
@@ -157,6 +169,51 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
   // AG14 dev run 2 (AE-MEM-002): asking which events are recommended is a ranking, also when it came tagged as a plain read.
   for (const partId of recommendIsRanking(picks.parts, message)) emitTrace({ partId, type: "understand.recommend_is_ranking" });
   return picks.parts;
+}
+
+/**
+ * AG19-6 (understand/follow-list.ts): a question right after a list is one question about that list. The parts the first
+ * layer made of it (split at the question marks, one a search of the directory, one waiting for it, one a person to find)
+ * are replaced by one part over the whole message that reads the listed records again by id; the answer step answers
+ * from them. Returns the new part and first-layer output, or null when the rule does not hold.
+ */
+export function continueShownList(output: UnderstandOutput, parts: GraphPart[], scope: NodeScope): { output: UnderstandOutput; parts: GraphPart[] } | null {
+  const context = scope.run.context;
+  const message = scope.input.message;
+  if (!context || output.plainChat && !parts.length) return null;
+  const shown = context.shownList.filter((item) => item.accessible !== false);
+  const listIds = new Set(shown.map((item) => item.id));
+  const writesOrContinues = parts.some((item) => item.continues !== null || item.capabilities.some((capability) => capabilityKind(capability) === "write"));
+  const namesPerson = output.parts.some((item) => item.objectClues.some((clue) => clue.entity === "contact" && !clue.referenceId && !questionWordClue(clue) && !groupClue(clue) && !isPronounClue(clue.text) && !SPEAKER_WORDS.test(clue.text.trim())));
+  const kind = followsShownList({ hasReferences: scope.run.references.length > 0, message, namesPerson, shown, writesOrContinues });
+  if (!kind) return null;
+  // One part that already points at the list's records (the first layer read it that way) is left as it is.
+  if (parts.length === 1 && parts[0].refs.some((ref) => ref.recordId && listIds.has(ref.recordId))) return null;
+  const template = parts[0];
+  if (!template) return null;
+  const start = message.length - message.trimStart().length;
+  const quote: [number, number] = [start, message.trimEnd().length];
+  const words = message.slice(quote[0], quote[1]);
+  const read = `${kind}.read` as GraphPart["capabilities"][number];
+  const part: GraphPart = {
+    ...template,
+    asked: 0,
+    capabilities: [read],
+    continues: null,
+    dependsOn: [],
+    localId: "p1",
+    plan: { ...template.plan, clarity: "clear", deliverable: "answer", hypothesis: false, negation: false, readFilter: undefined, readings: [], rank: undefined, rankAsk: undefined, webTarget: undefined },
+    quote,
+    refs: shown.map((item) => ({ entity: kind, quote: null, recordId: item.id })),
+  };
+  const first = output.parts[0];
+  const understood: UnderstandOutput = {
+    ...output,
+    parts: [{ ...first, constraints: [], continues: null, dependsOn: [], deliverable: "answer", goal: `Answer the user's follow-up about the list shown last (the ${shown.length} records under this item): ${words}`, localId: "p1", objectClues: [], readFilter: undefined, readings: [], rank: undefined, requiredCapabilities: [read], sourceQuote: words, webTarget: undefined } as UnderstandOutput["parts"][number]],
+    plainChat: false,
+  };
+  emitTrace({ kind, parts: parts.length, records: shown.length, type: "understand.follows_shown_list" });
+  return { output: understood, parts: [part] };
 }
 
 /** Words of this turn's message as [start, end), or undefined when they are not in it. */
@@ -269,6 +326,13 @@ export function understandNode(scope: NodeScope): GraphNode {
       run.plainReply = null;
     }
     emitTrace({ language: ruled ?? chosen.language, reported: covered.output.language ?? null, decidedBy: ruled ? "saved_rule" : chosen.source, ...(chosen.rejected ? { rejected: chosen.rejected } : {}), type: "understand.language" });
-    return { budget, language: ruled ?? chosen.language, parts: graphPartsOf(covered.output, scope), plainChat: covered.output.plainChat, repairs, understanding: "understood" };
+    const made = graphPartsOf(covered.output, scope);
+    // AG19-6: a question right after a list goes on from that list (code's rule).
+    const followed = continueShownList(covered.output, made, scope);
+    if (followed) {
+      run.understood = followed.output;
+      run.plainReply = null;
+    }
+    return { budget, language: ruled ?? chosen.language, parts: followed?.parts ?? made, plainChat: followed ? false : covered.output.plainChat, repairs, understanding: "understood" };
   };
 }

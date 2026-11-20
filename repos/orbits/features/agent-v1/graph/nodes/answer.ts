@@ -16,6 +16,11 @@ import { profileCheckNote, profileCheckOf, profileLine, verifyProfileUpdates, ty
 import { groundedAnswerSystemPrompt, groundedAnswerUserText, GROUNDED_ANSWER_PROMPT_VERSION, type GroundedItem } from "../../answer/prompt";
 import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
+import { composeStructured, inListOrder, needsLayout, stripMarkdown } from "../../answer/blocks";
+import { listAnswer } from "../../answer/list-answer";
+import { withoutUnsupportedEventClaims, type EventClaimFacts } from "../../answer/event-claims";
+import type { AgentAnswerRecordContract } from "../../../../shared/contract/agent-v1";
+import { statusSaidIn } from "./resolve";
 import { withoutForeignUrls } from "../../web/answer-urls";
 import { withoutOnlineDenials, withoutQuoteResidue, withoutTopicBasisClaims, withoutStrayScripts, withoutUnsupportedStatus, withEffectiveDates } from "../../answer/claims";
 import { expiryLine } from "../../answer/change-check";
@@ -28,6 +33,9 @@ import { parseModelJson } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
 import { withStandingRules } from "../../domains/memory/turn";
+
+/** AG19 repair round 1: deliverables whose answer is the list of records itself (a comparison is a discussion of them). */
+const LIST_READS = new Set<string>(["list", "ranked_list"]);
 
 /** run-03 repair 1: the reads that make a part a question about the person's profile. */
 const PROFILE_CAPABILITIES = new Set<string>(["contact.read", "profile.read", "view.context"]);
@@ -84,7 +92,7 @@ export function citedFallback(language: "zh" | "ja" | "en", materials: readonly 
   return `记录里写的是：${unique.join("")}`;
 }
 
-export function answerSegments(text: string, wanted: ReadonlySet<string>, dropCardTalk = false): Segments {
+export function answerSegments(text: string, wanted: ReadonlySet<string>, dropCardTalk = false, language: "zh" | "ja" | "en" = "zh"): Segments {
   const parsed = parseModelJson(text);
   if (parsed.ok === false) return { error: parsed.error, ok: false };
   const segments = (parsed.value as { segments?: unknown } | null)?.segments;
@@ -93,7 +101,8 @@ export function answerSegments(text: string, wanted: ReadonlySet<string>, dropCa
   const onlyCardTalk: string[] = [];
   for (const segment of segments) {
     const partId = typeof segment?.partId === "string" ? segment.partId : "";
-    const raw = typeof segment?.text === "string" ? segment.text.trim() : "";
+    // AG19 (D4): lead and body in code's line convention; an answer given as one text is kept whole, symbols out.
+    const raw = segment && typeof segment === "object" ? composeStructured(segment as Record<string, unknown>, language) ?? "" : "";
     const answer = raw ? withoutCardTalk(raw, partId, dropCardTalk) : "";
     if (raw && !answer) onlyCardTalk.push(partId);
     if (wanted.has(partId) && answer) out.set(partId, answer);
@@ -148,7 +157,7 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   const dateSources = [input.message, ...conversation.map((message) => message.text), ...dayWindow(state.asOf || deps.now(), zone), ...allMaterials.flatMap((material) => [material.header, ...material.sentences.map((sentence) => sentence.text)])];
   const weekdayNotes = allMaterials.filter((material) => material.sentences.some((sentence) => WEEKDAY_WORD.test(sentence.text)) && !material.sentences.some((sentence) => datesIn(sentence.text).size)).map((material) => material.header);
   const check = (text: string) => {
-    const parsed = parseAnswerOutput(text);
+    const parsed = parseAnswerOutput(text, state.language);
     if (parsed.ok === false) return { changes: null, error: parsed.error, profiles: null, verification: null };
     const cleaned = { ...parsed.value, segments: parsed.value.segments.map((segment) => {
       const kept = withoutCardTalk(segment.text, segment.partId, dropCardTalk);
@@ -192,6 +201,13 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   };
   let repairs = state.repairs;
   let result: MainModelResult = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "first", requestId: input.requestId, system, user });
+  // AG19 repair round 1 (stability run: a connection cut off mid-answer failed the whole follow-up): a failed call
+  // (connection cut, timeout, 429, 5xx) gets the round's one second chance, inside the same budget — as understand's does.
+  if (result.ok === false && result.reason === "model_error" && result.retryable && repairs < 1) {
+    repairs += 1;
+    emitTrace({ note: "the answer call failed in transit; one retry", requestId: input.requestId, type: "answer.retry" });
+    result = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "retry", requestId: input.requestId, system, user });
+  }
   let checked = result.ok === true ? check(result.text) : null;
   const problemsOf = (value: typeof checked) => (value?.error ? [value.error] : value?.verification?.problems ?? []);
   if (checked && problemsOf(checked).length && repairs < 1) {
@@ -249,7 +265,12 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       if (statused.dropped.length) emitTrace({ dropped: statused.dropped, note: "a status no record read this turn supports is not delivered", partId: part.localId, type: "answer.unsupported_status_dropped" });
       const dated = withEffectiveDates(statused.text, statusSources);
       if (dated.changed.length) emitTrace({ changed: dated.changed, partId: part.localId, type: "answer.effective_date" });
-      let claimed = withoutFalseClaims(dated.text, [part.localId], run.topicMatched, user);
+      // AG19 repair round 1 (judges, AE-ANS-003 R3): a comparative claim about the events read (shortest, cheapest, the
+      // only one …) or "no price is given" must follow from their fields, or the sentence is not delivered.
+      const eventsRead = [...new Set([...partMaterials, ...part.dependsOn.flatMap((id) => run.materials.get(id) ?? [])].map((material) => material.ref))].map((ref) => run.eventFacts.get(ref)).filter((facts): facts is EventClaimFacts => Boolean(facts));
+      const eventChecked = withoutUnsupportedEventClaims(dated.text, eventsRead, zone);
+      if (eventChecked.dropped.length) emitTrace({ dropped: eventChecked.dropped, events: eventsRead.length, note: "a statement about the events read that their fields do not support is not delivered", partId: part.localId, type: "answer.event_claims_dropped" });
+      let claimed = withoutFalseClaims(eventChecked.text, [part.localId], run.topicMatched, user);
       // AG12 run-03 (AE-FN-008): the rules above left nothing of an answer that cited records: its cited sentences instead.
       if (!claimed.replace(/[\s。.、，,：:]/gu, "") && segment.text.trim() && segment.cites.length) {
         const fallback = citedFallback(state.language, allMaterials, segment.cites);
@@ -259,8 +280,24 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
         }
       }
       run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(claimed, state.language) : claimed, state.language));
+      run.modelAnswers.add(part.localId);
       // AG09: a web page is not a record of the user's: its citations stay out of the records' sourceRefs (the page is listed in the answer's web record).
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref).filter((ref) => !ref.startsWith("web:"));
+      // AG19 repair round 1 (decision 1, D1): a list-type read is written by code from the records the answer picked —
+      // the lead says how many, of what kind and for which window, each record is its card and is not written out again.
+      // The order is code's, not the one the model happened to cite them in: schedule items and events by their time,
+      // to-dos by deadline then planned day, notes newest first (answer/blocks.ts inListOrder); otherwise the read's own.
+      const readOrder = (part.reads ?? []).map((read) => read.ref);
+      const inOrder = inListOrder([...new Set(part.cites ?? [])].map((ref) => ({ index: readOrder.indexOf(ref) < 0 ? Number.MAX_SAFE_INTEGER : readOrder.indexOf(ref), key: run.recordSort.get(ref) ?? "", kind: ref.slice(0, ref.indexOf(":")), ref }))).map((item) => item.ref);
+      const listed = LIST_READS.has(part.plan.deliverable) && part.route === "read" ? inOrder.map((ref) => run.recordCards.get(ref)).filter((card): card is AgentAnswerRecordContract => Boolean(card)) : [];
+      if (listed.length && listed.length === new Set(part.cites ?? []).size) {
+        const quote = input.message.slice(part.quote[0], part.quote[1]);
+        const written = listAnswer({ cards: listed, from: part.plan.readFilter?.from, language: state.language, quote, status: part.plan.readFilter?.status === "open" || part.plan.readFilter?.status === "completed" ? part.plan.readFilter.status : statusSaidIn(quote), to: part.plan.readFilter?.to });
+        run.answers.set(part.localId, written.text);
+        run.answerBlocks.set(part.localId, written.blocks);
+        run.modelAnswers.delete(part.localId);
+        emitTrace({ cards: listed.length, partId: part.localId, type: "answer.list_by_code" });
+      }
       if (profileParts.has(part.localId)) {
         const updates = checked?.profiles?.get(part.localId);
         if (!updates) emitTrace({ partId: part.localId, type: "answer.profile_check_missing" });
@@ -326,16 +363,26 @@ export function answerNode(scope: NodeScope): GraphNode {
     const due = discussion;
     if (!due.length) return {};
     const dropCardTalk = !run.cardPrepared;
+    let plainFallback: string | null = null;
     if (state.plainChat && run.plainReply && parts.every((part) => part.route === "answer")) {
       const plain = withoutCardTalk(run.plainReply, due[0].localId, dropCardTalk);
       // AG08 (AE-UND-006): nothing was read, so a count of the user's records has no source unless the user said it.
       const plainCounts = plain ? unsourcedCounts(plain, numbersIn([input.message, ...(run.context?.messages ?? []).map((message) => message.text)])) : [];
       if (plainCounts.length) emitTrace({ counts: plainCounts, parts: due.map((part) => part.localId), type: "answer.unsourced_counts_dropped" });
       const reply = plain ? withoutFalseClaims(withoutUnsourcedCounts(plain, plainCounts), due.map((part) => part.localId), run.topicMatched, [input.message, ...(run.context?.messages ?? []).map((message) => message.text)].join("\n")) : plain;
-      if (reply) {
-        run.answers.set(due[0].localId, localizeAnswerDates(withoutQuoteResidue(reply), state.language));
+      // AG19 (D4): the first layer's reply is a model's text too: its Markdown symbols are taken out.
+      const shown = reply ? stripMarkdown(localizeAnswerDates(withoutQuoteResidue(reply), state.language), state.language) : "";
+      if (shown && !(due.length === 1 && needsLayout(shown, state.language))) {
+        run.answers.set(due[0].localId, shown);
+        run.modelAnswers.add(due[0].localId);
         emitTrace({ note: "plain chat: the first layer's reply is shown, no second call", parts: due.map((part) => part.localId), type: "answer.plain_reply" });
         return {};
+      }
+      // AG19 (D4): a reply of more than two sentences has no structure to lay out: the answer step writes it in the plain
+      // fields (one call, inside the round's budget). If that call fails, the reply itself is still delivered, as paragraphs.
+      if (shown) {
+        plainFallback = shown;
+        emitTrace({ length: shown.length, parts: due.map((part) => part.localId), type: "answer.plain_reply_needs_layout" });
       }
       // Nothing left but card talk: the answer step writes it instead.
     }
@@ -353,12 +400,18 @@ export function answerNode(scope: NodeScope): GraphNode {
     const user = withStandingRules(answerUserText({ conversation, items, message: input.message }), run.memory);
     let repairs = state.repairs;
     let result: MainModelResult = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "first", requestId: input.requestId, system, user });
-    let checked: Segments | null = result.ok === true ? answerSegments(result.text, wanted, dropCardTalk) : null;
+    // AG19 repair round 1: the same one second chance for a call that failed in transit.
+    if (result.ok === false && result.reason === "model_error" && result.retryable && repairs < 1) {
+      repairs += 1;
+      emitTrace({ note: "the answer call failed in transit; one retry", requestId: input.requestId, type: "answer.retry" });
+      result = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "retry", requestId: input.requestId, system, user });
+    }
+    let checked: Segments | null = result.ok === true ? answerSegments(result.text, wanted, dropCardTalk, state.language) : null;
     if (checked && checked.ok === false && repairs < 1) {
       repairs += 1;
       emitTrace({ error: checked.error, type: "answer.invalid" });
       result = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "repair", requestId: input.requestId, system, user: `${user}\n\nYour previous output could not be used (${checked.error}). Output the corrected JSON object only.` });
-      checked = result.ok === true ? answerSegments(result.text, wanted, dropCardTalk) : null;
+      checked = result.ok === true ? answerSegments(result.text, wanted, dropCardTalk, state.language) : null;
     }
     // AG07 run-02 (AE-CTX-003): a discussion answer has no records; a calendar day it names must come from the
     // message, the conversation or today. One repair; a sentence still naming a day with no source is not delivered.
@@ -373,7 +426,7 @@ export function answerNode(scope: NodeScope): GraphNode {
       repairs += 1;
       emitTrace({ error: undated, type: "answer.invalid" });
       const retry = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "repair", requestId: input.requestId, system, user: `${user}\n\nYour previous output could not be used (${undated}). Output the corrected JSON object only.` });
-      const second = retry.ok === true ? answerSegments(retry.text, wanted, dropCardTalk) : null;
+      const second = retry.ok === true ? answerSegments(retry.text, wanted, dropCardTalk, state.language) : null;
       if (retry.ok === true && second?.ok === true) {
         checked = second;
         result = retry;
@@ -391,6 +444,14 @@ export function answerNode(scope: NodeScope): GraphNode {
         const seen = withoutWrongSeenCounts(withoutUnsourcedCounts(withoutUnsourcedDates(text, unsourced), uncounted), new Set());
         if (seen.dropped.length) emitTrace({ coverage: [], dropped: seen.dropped, partId: part.localId, type: "answer.seen_counts_dropped" });
         run.answers.set(part.localId, localizeAnswerDates(withoutFalseClaims(seen.text, [part.localId], run.topicMatched, user), state.language));
+        run.modelAnswers.add(part.localId);
+        continue;
+      }
+      // AG19: the layout call did not give an answer: the first layer's reply is delivered as it was (never lost).
+      if (plainFallback && part === due[0]) {
+        run.answers.set(part.localId, plainFallback);
+        run.modelAnswers.add(part.localId);
+        emitTrace({ partId: part.localId, type: "answer.plain_reply_fallback" });
         continue;
       }
       const budgetOut = result.ok === false && result.reason === "budget";

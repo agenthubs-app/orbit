@@ -3,7 +3,7 @@
 // (newest first, the facts as chips — 2026-11-15 no scores); empty: the three angles, a sample and the 参加コード card.
 // 参加予定: events/mine. 探す: R27 DiscoverPage (b2 #8). Nothing here calls AI.
 import { useFocusEffect, useGlobalSearchParams, useRouter, type Href } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -41,12 +41,14 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
   const { styles } = useStyles();
   const { t, language } = useOrbitLocale();
   const router = useRouter();
-  const params = useGlobalSearchParams<{ tab?: string; period?: string; areas?: string; themes?: string; q?: string; filters?: string }>();
+  const params = useGlobalSearchParams<{ tab?: string; period?: string; areas?: string; themes?: string; q?: string; filters?: string; privateEvent?: string }>();
   // 探す 的条件也走路由参数（可分享；门禁用来打开筛选弹层 / 搜索中）。
   const discoverQuery = useMemo(() => discoverQueryFromParams(params), [params.period, params.areas, params.themes]); // eslint-disable-line react-hooks/exhaustive-deps
   const topGap = useShellTopGap();
   const [tab, setTab] = useState<Tab>(params.tab === "going" || params.tab === "discover" ? params.tab : "assess");
   const [discoverSubtitle, setDiscoverSubtitle] = useState<string | null>(null);
+  // AG19: a card of an answer opens one private event: the page turns to 参加予定 even when it is already mounted.
+  useEffect(() => { if (typeof params.privateEvent === "string" && params.privateEvent) setTab("going"); }, [params.privateEvent]);
   // LF2: the three lists are page copies — shown at once, re-read after their fresh window or a write (switching
   // tabs no longer re-reads them), and kept with 「截至」 when the server cannot be reached (not an empty list).
   const listCopy = usePageCopyResource<unknown>("/api/events/assessments", () => false, { copy: { id: "event-assessments" },
@@ -117,7 +119,7 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
         onSwipePastEdge={(direction) => swipeToMainTab(router, "/events", direction)}
         renderPage={(key) => key === "assess"
           ? <AssessPage items={ordered} upcoming={upcoming} empty={empty} now={now} language={language} onDelete={setConfirmDelete} />
-          : key === "going" ? <GoingPage upcoming={upcoming} past={past} now={now} language={language} onDiscover={() => setTab("discover")} />
+          : key === "going" ? <GoingPage upcoming={upcoming} past={past} now={now} language={language} onDiscover={() => setTab("discover")} openPrivateId={typeof params.privateEvent === "string" ? params.privateEvent : undefined} />
             : <DiscoverPage onSubtitle={setDiscoverSubtitle} initialQuery={discoverQuery} initialSearch={typeof params.q === "string" ? params.q : ""} openFilters={params.filters === "1"} />}
       />
       <TabPageBar tab="events" />
@@ -331,12 +333,20 @@ function avInk(index: number, styles: ReturnType<typeof useStyles>["styles"]) {
   return [styles.avInk0, styles.avInk1, styles.avInk2, styles.avInk3][index % 4];
 }
 
-function GoingPage({ upcoming, past, now, language, onDiscover }: { upcoming: MyEventItem[]; past: MyEventItem[]; now: Date; language: string; onDiscover: () => void }) {
+function GoingPage({ upcoming, past, now, language, onDiscover, openPrivateId }: { upcoming: MyEventItem[]; past: MyEventItem[]; now: Date; language: string; onDiscover: () => void; /** AG19: a link asks for this private event (an answer's card): its sheet opens once it is in the list. */ openPrivateId?: string | undefined }) {
   const { styles, colors } = useStyles();
   const { t } = useOrbitLocale();
   const copy = useStandardCopy();
   const router = useRouter();
   const [privateOpen, setPrivateOpen] = useState<MyEventItem | null>(null);
+  const openedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!openPrivateId || openedFor.current === openPrivateId) return;
+    const item = [...upcoming, ...past].find((candidate) => candidate.privateEvent && candidate.eventId === openPrivateId);
+    if (!item) return;
+    openedFor.current = openPrivateId;
+    setPrivateOpen(item);
+  }, [openPrivateId, upcoming, past]);
   const coming = upcoming.filter((item) => item.status !== "cancelled" && item.status !== "rejected");
   if (coming.length === 0 && past.length === 0) {
     return (

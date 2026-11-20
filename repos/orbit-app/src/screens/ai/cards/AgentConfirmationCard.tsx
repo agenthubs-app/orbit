@@ -125,9 +125,10 @@ function SmallButton({ label, primary = false, disabled, onPress }: { label: str
 }
 
 /** Small change 2: the basis line at the top of the answer, opening the record it rests on. */
-export function AgentBasisLine({ basis, language, onOpenHref }: { basis: AgentAnswerBasisContract; language: Language; onOpenHref(href: string): void }) {
+export function AgentBasisLine({ basis, language, onOpenHref, cardsBelow = false }: { basis: AgentAnswerBasisContract; language: Language; onOpenHref(href: string): void; /** AG19: the answer shows these records as cards, so the row of small labels is not repeated. */ cardsBelow?: boolean }) {
   const { styles } = useCardStyles();
   const ui = standardCopy[language].aiCard;
+  if (cardsBelow && basis.links.length !== 1) return <View style={styles.basisRow} testID="agent-basis"><View style={styles.basis}><Text style={styles.basisText}>{basis.text}</Text></View></View>;
   const links = basis.links.map((link) => ({ href: agentLinkHref(link), link }));
   if (links.length === 1) {
     const href = links[0]?.href ?? null;

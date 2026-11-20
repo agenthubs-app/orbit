@@ -96,7 +96,8 @@ test("the basis line links the cited note; one link reads 打开 ›; the 来源
   assert.match(html, /href="\/app\/contacts\/contact%3Ac17"/u);
   assert.equal(textOf(html), "按你11月12日记的笔记回答 打开 ›");
   assert.doesNotMatch(html, /来源/u);
-  assert.equal(agentLinkHref({ id: "task:t42", label: "x", type: "todo" }), "/app/tasks");
+  // AG19 (D3): a to-do link opens that one to-do, not the list.
+  assert.equal(agentLinkHref({ id: "task:t42", label: "x", type: "todo" }), "/app/tasks/task%3At42");
 });
 
 test("options under a question are buttons; the card line leaves the text; queued and progress notes", () => {

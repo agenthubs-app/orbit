@@ -161,6 +161,7 @@ export const ja = {
     progressNote: "通常 1 分以内です",
     typeToAnswer: "そのまま入力して答えることもできます。",
     notesFootnote: "（メモの内容からです。）",
+    recordGone: "開けなくなりました",
   },
   offline: {
     banner: "オフライン · 変更は接続後に同期されます",
