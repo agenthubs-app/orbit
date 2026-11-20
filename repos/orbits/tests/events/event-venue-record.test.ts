@@ -251,3 +251,25 @@ test("attendee profile reads the id from ?attendeeId= so ids that contain % are 
   assert.equal(res.status, 200);
   assert.deepEqual(seen, [odd]);
 });
+
+test("venue ?view=record (2026-11-21): the ended read-only record drops live-only fields and per-person details; live venues are unchanged", async () => {
+  const { venueRecordView } = await import("../../features/events/journey/venue-core");
+  const service = venueRecordService();
+  const full = await service.venue("actor:me", VENUE_RECORD_EVENT_ID);
+  assert.ok(full && full.readOnly);
+  const slim = venueRecordView(full!);
+  for (const key of ["checkIn", "round", "seats", "mySeat", "nextRound", "groups", "mutualHint", "agendaTip", "meetingSlots"] as const) assert.equal(key in slim, false, key);
+  assert.deepEqual(slim.openers, []);
+  assert.deepEqual(slim.rounds, full!.rounds);
+  assert.deepEqual(slim.roundTables, full!.roundTables);
+  assert.equal(slim.attendees.length, full!.attendees.length);
+  assert.ok(slim.attendees.every((p) => !("memo" in p) && !("whyDetail" in p)));
+  assert.ok(JSON.stringify(slim).length < JSON.stringify(full).length);
+  const { eventVenueResponseSchema } = await import("../../shared/api-schema/event-venue");
+  assert.equal(eventVenueResponseSchema.safeParse(JSON.parse(JSON.stringify(slim))).success, true);
+  const res = await routes(service).venue(get(`/api/events/${VENUE_RECORD_EVENT_ID}/venue?view=record`), params({ id: VENUE_RECORD_EVENT_ID }));
+  const body = await res.json() as { data: Record<string, unknown> };
+  assert.equal("mySeat" in body.data, false);
+  const live = { ...full!, readOnly: false };
+  assert.equal(venueRecordView(live), live);
+});

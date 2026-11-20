@@ -49,7 +49,8 @@ export const journeyApi = {
   overview: (eventId: string, allAttendees = false) => call(`/api/events/${id(eventId)}/overview${allAttendees ? "?attendees=all" : ""}`, undefined, eventOverviewResponseSchema as ZodType<EventOverviewResponse>),
   prep: (eventId: string) => call(`/api/events/${id(eventId)}/prep`, undefined, eventPrepResponseSchema as ZodType<EventPrepResponse>),
   checklist: (eventId: string, items: readonly EventPrepChecklistItem[]) => call(`/api/events/${id(eventId)}/prep/checklist`, { body: JSON.stringify({ items }), method: "PATCH" }, eventPrepResponseSchema as ZodType<EventPrepResponse>),
-  venue: (eventId: string) => call(`/api/events/${id(eventId)}/venue`, undefined, eventVenueResponseSchema as ZodType<EventVenueResponse>),
+  // view=record：结束后的只读回看只回回看用得上的字段；活动中服务端照常给完整内容。
+  venue: (eventId: string) => call(`/api/events/${id(eventId)}/venue?view=record`, undefined, eventVenueResponseSchema as ZodType<EventVenueResponse>),
   after: (eventId: string) => call(`/api/events/${id(eventId)}/after`, undefined, eventAfterResponseSchema as ZodType<EventAfterResponse>),
   confirmAfter: (eventId: string, items: EventAfterConfirmInput["items"]) => call(`/api/events/${id(eventId)}/after/confirm`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey(), items }), method: "POST" }, eventAfterConfirmResultSchema as ZodType<EventAfterConfirmResult>),
   dismiss: (eventId: string, reason: EventRecommendationDismissReason) => call(`/api/recommendations/events/${id(eventId)}/dismiss`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey(), reason }), method: "POST" }, eventRecommendationDismissResultSchema as ZodType<EventRecommendationDismissResult>),

@@ -30,6 +30,7 @@ import { createPostgresActorRecordStore } from "../actor-records/store";
 import { createEventFeedbackService, createOrganizerFollowService, createPrepChecklistService, createVenueMemoService } from "./attendee-records";
 import { createJourneyMockService } from "./mock";
 import type { JourneyLanguage } from "./prep-core";
+import { venueRecordView } from "./venue-core";
 import { createJourneyService, type JourneyService } from "./service";
 import { createJoinService, type JoinService } from "./join";
 import { createJoinMockPorts } from "./join-mock";
@@ -145,7 +146,11 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       await service.patchChecklist(actorId!, eventId(params), parsed.value.items);
       return service.prep(actorId!, eventId(params), language);
     }, deps),
-    venue: journeyRoute({ auth: "required", schema: eventVenueResponseSchema }, async ({ actorId, params, platform, service }) => service.venue(actorId!, eventId(params), platform), deps),
+    // 2026-11-21 `?view=record`：结束后的只读回看只回回看用得上的字段（venueRecordView）；活动中照常返回完整内容。
+    venue: journeyRoute({ auth: "required", schema: eventVenueResponseSchema }, async ({ actorId, params, platform, request, service }) => {
+      const venue = await service.venue(actorId!, eventId(params), platform);
+      return venue && new URL(request.url).searchParams.get("view") === "record" ? venueRecordView(venue) : venue;
+    }, deps),
     venueMemo: journeyRoute({ auth: "required", schema: eventVenueMemoResultSchema, write: true }, async ({ actorId, params, request, service }) => {
       const parsed = await body(request, eventVenueMemoInputObject);
       if (parsed.ok === false) return parsed.reply;

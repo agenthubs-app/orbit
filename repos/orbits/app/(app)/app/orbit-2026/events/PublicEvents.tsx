@@ -9,13 +9,14 @@ import type { EventOverviewResponse } from "../../../../../shared/contract/event
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { Icon, Orbit2026Scope, ToastProvider } from "../ui";
 import { translator as assessTranslator } from "./AssessmentDetail";
-import { DEFAULT_DISCOVER_QUERY, discoverWhen, journeyTranslator, rowTone, type JourneyT } from "./DiscoverTab";
+import { DEFAULT_DISCOVER_QUERY, coverBands, discoverWhen, journeyTranslator, rowTone, type JourneyT } from "./DiscoverTab";
 import { EventDetailBody, PhoneDetailBody, hostName, monthDaySlash, usePhone } from "./EventDetail";
 import { journeyApi } from "./journey-api";
 import { useDetailTiming } from "./detail-timing";
 import styles from "./events.module.css";
 import x from "./detail.module.css";
 import p from "./public.module.css";
+import r from "./record.module.css";
 
 const LOGIN = "/app/account/login";
 
@@ -61,13 +62,31 @@ function ListInner({ language, nowIso }: { language: OrbitLanguage; nowIso: stri
         <div className={`${styles.cardH} ${p.head}`}><h3 className={p.headTitle}>{t("pubTitle")}</h3><span className={styles.lbl}>{t("pubSub", { month })}</span></div>
         <div className={styles.wgrid}>
           <LoginAssessCard t={t} language={language} />
-          {(data?.all ?? []).map((row, index) => (
+          {(data?.all ?? []).map((row, index, rows) => {
+            // 2026-11-21 与登录后的探す卡同一规则：有图 = 2:1 出血图 + 角标在图上；同排（4 张一排）有图时没图的卡画色带，整排没图保持原样。
+            const tone = rowTone({ verdict: "recommend" }, index).emo;
+            const band = coverBands(rows, 4)[index];
+            return (
             <a key={row.eventId} href={`/app${row.href}`} className={`${styles.evc} ${styles.span3} ${p.evc}`} data-public-card={row.eventId}>
-              <div className={`${styles.row} ${styles.between}`}><span className={`${styles.emo} ${styles[`t_${rowTone({ verdict: "recommend" }, index).emo}`]}`}>{row.emoji}</span><span className={styles.chip}>{t("loginChip")}</span></div>
+              {row.coverUrl ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- 主办方上传的图（站内路径），服务端已裁成 2:1 */}
+                  <div className={r.cardCover} data-public-cover=""><img src={row.coverUrl} alt="" loading="lazy" /></div>
+                  <span className={`${styles.chip} ${r.onImg}`}>{t("loginChip")}</span>
+                </>
+              ) : band ? (
+                <>
+                  <div className={`${r.cardBand} ${r[`band_${tone}`]}`} data-public-band=""><span className={`${styles.emo} ${r.bandEmo}`}>{row.emoji}</span></div>
+                  <span className={`${styles.chip} ${r.onImg}`}>{t("loginChip")}</span>
+                </>
+              ) : (
+                <div className={`${styles.row} ${styles.between}`}><span className={`${styles.emo} ${styles[`t_${tone}`]}`}>{row.emoji}</span><span className={styles.chip}>{t("loginChip")}</span></div>
+              )}
               <b className={p.evcTitle}>{row.title}</b>
               <div className={styles.lbl}>{[discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ")}</div>
             </a>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

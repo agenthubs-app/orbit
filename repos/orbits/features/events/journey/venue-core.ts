@@ -265,3 +265,21 @@ export function buildVenue(input: VenueInput): EventVenueResponse {
     stats: { exchanged: people.filter((person) => person.exchange === "exchanged").length, incoming: people.filter((person) => person.exchange === "incoming").length, wantedMet, wantedTotal },
   };
 }
+
+/**
+ * 2026-11-21 `GET /venue?view=record`：结束后的会場の記録只回回看用得上的字段（实测完整返回约 86KB）。
+ * 去掉实时用的（受付 QR、当前轮、座位、下一轮、开场白、分组概览、共同熟人提示、议程提示、可约时间），
+ * 人只留卡片要显示的（姓名 / 公司 / 职位 / 桌 / 一句理由 / 交换状态与申请 id）；详细理由与メモ由参加者の詳細按需读。
+ * 不是只读回看（活动中）时原样返回。
+ */
+export function venueRecordView(venue: EventVenueResponse): EventVenueResponse {
+  if (!venue.readOnly) return venue;
+  const person = (p: EventVenuePerson): EventVenuePerson => ({
+    attendeeId: p.attendeeId, exchange: p.exchange, initial: p.initial, name: p.name, participantId: p.participantId, relation: p.relation, wanted: p.wanted,
+    ...(p.org ? { org: p.org } : {}), ...(p.role ? { role: p.role } : {}), ...(p.table ? { table: p.table } : {}), ...(p.why ? { why: p.why } : {}),
+    ...(p.requestId ? { requestId: p.requestId, requestRevision: p.requestRevision ?? null } : {}),
+    ...(p.contactId ? { contactId: p.contactId } : {}),
+  });
+  const { checkIn: _checkIn, round: _round, seats: _seats, mySeat: _mySeat, nextRound: _nextRound, groups: _groups, mutualHint: _mutualHint, agendaTip: _agendaTip, meetingSlots: _meetingSlots, ...rest } = venue;
+  return { ...rest, attendees: venue.attendees.map(person), nextOrder: venue.nextOrder.map(person), openers: [], recommendations: venue.recommendations.map(person) };
+}
