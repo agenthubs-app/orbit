@@ -19,8 +19,10 @@ import { readMemoryWords } from "../../features/agent-v1/domains/memory/words";
 import { applyResolution } from "../../features/agent-v1/graph/nodes/clarify";
 import { groupInteractions, interactionNamedIn } from "../../features/agent-v1/functions/extract-interactions";
 import { fnWorld, NOW as FN_NOW, runFn } from "./functions-kit";
-import { choice, noul } from "./judgment-kit";
-import { graphKit } from "./graph-kit";
+import { access, choice, judgeStub, noul } from "./judgment-kit";
+import { deepseekStub, graphKit, json, part, type ModelCall } from "./graph-kit";
+import { runAgentGraph } from "../../features/agent-v1/graph/build";
+import type { AgentCardAccess } from "../../features/agent-v1/graph/deps";
 import { endsInActionVerb, needsIntentReview, readsAsWriteRequest } from "../../features/agent-v1/judgment/intent-review";
 import { resolveEventIntent } from "../../features/agent-v1/propose/events-resolve";
 import type { ResolveContext } from "../../features/agent-v1/propose/resolve";
@@ -317,6 +319,27 @@ test("R34 '改成优先版画相关的' updates the saved topic preference (befo
   const added = settleRemember({ language: "zh", requestId: "req-t4", snapshot, today: "2026-11-20", words: "记住，推荐展览时也优先摄影相关的" });
   assert.equal(((added as { intent: { capability: string } }).intent).capability, MEMORY_CREATE);
   assert.deepEqual(topicKeyOf("展览 时候陶艺相关"), ["陶艺"]);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// R41: the note code quotes in its duplicate sentence is among the answer's sources.
+
+test("R41 a new note that may be one already recorded: the existing note quoted is a source the basis line opens", async () => {
+  const message = "记一下：今天下午在印厂和石楠看了打样。";
+  const existing = memo(ACTOR, "note:proof-visit", "下午去印厂和石楠一起看了打样，颜色偏暖。", "2026-11-20T06:00:00.000Z", ["contact:sn"], { interaction: { actualContactIds: ["contact:sn"], channel: "meeting", direction: "mutual", occurredOn: "2026-11-20", precision: "day" }, title: "印厂看样" });
+  const model = deepseekStub((call: ModelCall) => {
+    if (call.node === "understand") return json({ language: "zh", parts: [part({ deliverable: "change", objectClues: [{ entity: "contact", text: "石楠" }], requiredCapabilities: ["memo.create"], sourceQuote: message })], plainChat: false });
+    if (call.node === "propose") return json({ operations: [{ channel: "meeting", dateText: "今天", dependsOn: [], direction: "mutual", entity: "memo", fields: [{ name: "body", valueText: "今天下午在印厂和石楠看了打样" }], localId: "w1", partId: "p1", relations: [{ clue: "石楠", entity: "contact", role: "actual_contact" }], verb: "create" }] });
+    throw new Error(`unexpected model call in ${call.node}`);
+  });
+  const kit = graphKit(model.fetchImplementation, { now: "2026-11-20T09:00:00.000Z", records: recordAccessOf({ events: [], records: [contact(ACTOR, "contact:sn", "石楠", { organization: "白鹭印务" }), existing] }) });
+  const frozen: unknown[] = [];
+  kit.deps.cards = { async freeze(input) { frozen.push(input); return { actionId: "card:1", operations: [], payloadHash: "h", revision: 1 } as never; } } as AgentCardAccess;
+  kit.deps.judgment = access(judgeStub(() => choice("same", 0.4)).fetchImplementation);
+  const result = await runAgentGraph(kit.deps, kit.input(message));
+  assert.equal(frozen.length, 0, "nothing written while it asks");
+  assert.match(result.text, /颜色偏暖/u, "the existing note is quoted");
+  assert.ok(result.sourceRefs.includes("memo:note:proof-visit"), JSON.stringify(result.sourceRefs));
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
