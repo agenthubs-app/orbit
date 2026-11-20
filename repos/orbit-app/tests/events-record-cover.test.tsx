@@ -1,0 +1,103 @@
+import assert from "node:assert/strict";
+import { after, before, test } from "node:test";
+
+import type { EventAttendeeProfile } from "../src/api/contract/event-attendee-profile";
+import type { EventVenueRound } from "../src/api/contract/event-venue";
+import { journeyOverview, journeyVenue } from "../../orbits/shared/mock/demo-world/events-journey";
+import { startOfflinePageHarness } from "./helpers/offline-page-harness";
+
+// 2026-11-20 (events-replay-cover-app-proposal): 会場の記録 after the event, the shared attendee sheet, the detail page's
+// record entry / status row / cover image, and the discover row's 2:1 band (D2: a row with any image bands every card).
+let harness: Awaited<ReturnType<typeof startOfflinePageHarness>>;
+before(async () => {
+  harness = await startOfflinePageHarness([
+    { name: "detail", importPath: "./src/screens/events/v2/EventDetailPage", exportName: "EventDetailPage" },
+    { name: "venue", importPath: "./src/screens/events/v2/VenuePage", exportName: "VenuePage" },
+    { name: "discover", importPath: "./src/screens/events/v2/DiscoverPage", exportName: "DiscoverPage" },
+  ]);
+});
+after(async () => { await harness.close(); });
+
+const overview = journeyOverview("many", "app");
+const eventId = overview.eventId;
+const path = `/api/events/${encodeURIComponent(eventId)}`;
+const ended = { ...journeyVenue("ended", "app"), readOnly: true, checkedIn: true };
+const mate = ended.attendees[1]!;
+const rounds: EventVenueRound[] = [
+  { round: 1, table: "A-2", theme: "IPO 準備の実務", why: "同じ関心の 3名と同席", tablemates: [{ attendeeId: ended.attendees[4]!.attendeeId, initial: ended.attendees[4]!.initial, name: ended.attendees[4]!.name }] },
+  { round: 2, table: "B-4", theme: "シリーズAの資本政策", tablemates: [{ attendeeId: mate.attendeeId, initial: mate.initial, name: mate.name, org: mate.org ?? null }] },
+];
+const profile = (patch: Partial<EventAttendeeProfile> = {}): EventAttendeeProfile => ({
+  answers: [{ a: "シリーズA 前後の起業家", q: "このイベントで会いたい人" }], attendeeId: mate.attendeeId, canRequestExchange: true, exchange: "none",
+  exchangeUntil: "2026-11-06T12:30:00.000Z", initial: mate.initial, intro: "資本政策の相談歓迎です。", name: mate.name, participantId: "p-1",
+  together: { recommended: true, sharedRounds: [{ round: 2, table: "B-4" }], why: "昨年シリーズAを調達" }, ...patch,
+});
+
+test("会場の記録: an ended event opens on グループ (every round), without 現場; a name opens the attendee sheet", async (t) => {
+  const page = await harness.open(t, { screen: "venue", params: { id: eventId }, responses: {
+    [`${path}/venue`]: { ...ended, rounds },
+    [`${path}/attendees/`]: profile(),
+  } });
+  await page.getByTestId("events-venue-round-1").waitFor();
+  await page.getByTestId("events-venue-round-2").waitFor();
+  assert.equal(await page.getByTestId("events-venue-tab-now").count(), 0, "no 現場 tab after the event");
+  await page.getByTestId("events-venue-tab-groups").waitFor();
+  await page.getByRole("button", { name: mate.name }).first().click();
+  await page.getByTestId("events-attendee-sheet").waitFor();
+  await page.getByText("这场活动里的交集", { exact: true }).waitFor();
+  await page.getByText("R2 同桌 B-4", { exact: true }).waitFor();
+  await page.getByText("資本政策の相談歓迎です。", { exact: true }).waitFor();
+  await page.getByTestId("events-attendee-request").waitFor();
+  await page.getByText("活动结束后 30 天内可以申请（截至 11/6）", { exact: true }).waitFor();
+});
+
+test("attendee sheet: exchanged opens the contact; past the window the request button says it has closed", async (t) => {
+  const exchanged = await harness.open(t, { screen: "venue", params: { id: eventId }, responses: {
+    [`${path}/venue`]: { ...ended, rounds },
+    [`${path}/attendees/`]: profile({ contactId: "c-9", exchange: "exchanged" }),
+  } });
+  await exchanged.getByRole("button", { name: mate.name }).first().click();
+  await exchanged.getByTestId("events-attendee-open-contact").waitFor();
+  const closed = await harness.open(t, { screen: "venue", params: { id: eventId }, responses: {
+    [`${path}/venue`]: { ...ended, rounds },
+    [`${path}/attendees/`]: profile({ canRequestExchange: false, exchangeUntil: null }),
+  } });
+  await closed.getByRole("button", { name: mate.name }).first().click();
+  await closed.getByText("申请期已结束", { exact: true }).waitFor();
+  assert.equal(await closed.getByTestId("events-attendee-request").count(), 0);
+});
+
+test("会場の記録 recs: no exchange / dismiss buttons, only 已交换 / 没聊过", async (t) => {
+  const page = await harness.open(t, { screen: "venue", params: { id: eventId, tab: "recs" }, responses: { [`${path}/venue`]: { ...ended, rounds } } });
+  await page.getByTestId("events-venue-recs").waitFor();
+  await page.getByText("没聊过").first().waitFor();
+  assert.equal(await page.getByRole("button", { name: "申请交换" }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "从推荐中移除" }).count(), 0);
+});
+
+test("event detail (ended, in the results): the record card opens 会場の記録; the status sits under the title; the cover image replaces the band", async (t) => {
+  const endedOverview = { ...overview, coverUrl: "https://example.com/cover.webp", endsAt: "2026-10-07T21:30:00+09:00", registration: { ...overview.registration, status: "attended" as const },
+    startsAt: "2026-10-07T19:00:00+09:00", venueRecord: { checkedIn: true, exchanged: 3, recommended: 6, tablemates: 14 } };
+  const page = await harness.open(t, { screen: "detail", params: { id: eventId }, responses: { [`${path}/overview`]: endedOverview } });
+  await page.getByTestId("events-detail-record").waitFor();
+  await page.getByText("会场记录", { exact: true }).waitFor();
+  await page.getByTestId("events-detail-cover-image").waitFor();
+  assert.equal(await page.getByTestId("events-detail-status").innerText(), "已结束");
+  await page.getByTestId("events-detail-record-open").click();
+  assert.ok((await page.evaluate(() => JSON.stringify((window as unknown as { fixture: { navigation: unknown[] } }).fixture.navigation))).includes(`/events/${encodeURIComponent(eventId)}/live`));
+});
+
+test("event detail: no venueRecord → no record card (not in the published results, or not over yet)", async (t) => {
+  const page = await harness.open(t, { screen: "detail", params: { id: eventId }, responses: { [`${path}/overview`]: { ...overview, venueRecord: null } } });
+  await page.getByText(overview.title).first().waitFor();
+  assert.equal(await page.getByTestId("events-detail-record").count(), 0);
+});
+
+test("discover D2: one card with an image → every card in that row gets the 2:1 top (the others their emoji band)", async (t) => {
+  const row = (eventId: string, coverUrl: string | null) => ({ emoji: "🎤", eventId, href: `/events/${eventId}`, priceYen: 3000, registrationCount: 24, relevance: null, startsAt: "2026-11-28T10:00:00.000Z", title: `Event ${eventId}`, venue: "渋谷", ...(coverUrl ? { coverUrl } : {}) });
+  const discover = { all: [], community: [], planFit: [row("a", "https://example.com/a.webp"), row("b", null)], planFitTotal: 2, popularityFallback: false, total: 12 };
+  const page = await harness.open(t, { screen: "discover", responses: { "/api/events/discover": discover } });
+  await page.getByTestId("events-discover-cover-a").waitFor();
+  assert.equal(await page.getByTestId("events-discover-cover-b").count(), 0);
+  await page.getByTestId("events-discover-card-b").getByText("🎤").waitFor();
+});

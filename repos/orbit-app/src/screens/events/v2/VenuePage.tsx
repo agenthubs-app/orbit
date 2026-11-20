@@ -4,6 +4,9 @@
 // 名刺交換走现有 /operations/contact-requests*，メモ走 /venue/memo。示例世界（sample）只改本地状态。
 // 链接参数 `?tab=now|recs|people|groups|agenda&view=map&person=<id>`（旧 attendees / participants / party 跳转也用）；
 // 门禁开发开关 open-path 下另有 `meet=1`（面談シート）、`approve=<id>`（交換 toast 常驻）。
+// 2026-11-20 会場の記録（events-replay-cover-app-proposal ②–⑦）：结束后（state ended）同一页面的只读版——顶栏「終了」+ 当天时间，
+// 底栏去掉「現場」只留 おすすめ / 参加者 / グループ / 予定（默认グループ = 各轮同桌 rounds），名字都打开 AttendeeSheet；
+// 没进公开分组（rounds 与推荐都空）→ 说明卡 + 参加者一覧 / アジェンダ。
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -24,10 +27,11 @@ import { useOrbitApiClient } from "../../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { addDesignMock } from "../../add/add-design-mock";
 import { useJourneyApi } from "./journey-api";
-import { hm, tokyo, weekday, type JourneyT } from "./journey-model";
+import { eventRange, hm, tokyo, weekday, type JourneyT } from "./journey-model";
+import { AttendeeSheet, type AttendeeSheetPerson } from "./AttendeeSheet";
 import { JourneyPage } from "./JourneyPage";
 import { useJourneyT } from "./useJourneyT";
-import { AgendaTab, CheckInView, GroupsTab, NowTab, PeopleTab, RecsTab } from "./VenueTabs";
+import { AgendaTab, CheckInView, GroupsTab, NowTab, PeopleTab, RecsTab, RoundsTab } from "./VenueTabs";
 import { Avatar, Chip, personTones, shortTitle, surname, useVenueStyles, Why, WhyBody } from "./venue-ui";
 
 type Tab = "now" | "recs" | "people" | "groups" | "agenda";
@@ -39,6 +43,8 @@ const TABS: readonly { key: Tab; icon: IconName; label: string }[] = [
   { icon: "clock", key: "agenda", label: "vTabAgenda" },
 ];
 const isTab = (value: string | undefined): value is Tab => TABS.some((tab) => tab.key === value);
+/** 会場の記録：「現場」只在当天有。 */
+const RECORD_TABS = TABS.filter((tab) => tab.key !== "now");
 
 /** kit .topbar（会場モード）：✕ · 标题 + 「● LIVE 20:22 · ラウンド 2 / 3」· 受付 QR。Before the start (check-in opens an hour early) it reads 「19:00 开始」 without the LIVE mark. */
 function LiveTopBar({ title, line, started, onClose, onQr, t }: { title: string; line: string; started: boolean; onClose: () => void; onQr: () => void; t: JourneyT }) {
@@ -58,8 +64,23 @@ function LiveTopBar({ title, line, started, onClose, onQr, t }: { title: string;
 }
 
 /** kit .tabbar.livebar（b2 #27–#35）：R31a 起用组件库 TabBar variant="live"（left 14 / right 16，5 等分玻璃胶囊）。 */
-function LiveTabBar({ tab, onTab, t }: { tab: Tab; onTab: (tab: Tab) => void; t: JourneyT }) {
-  return <TabBar variant="live" value={tab} onChange={onTab} testIDPrefix="events-venue-tab-" items={TABS.map((item) => ({ key: item.key, icon: item.icon, label: t(item.label) }))} />;
+function LiveTabBar({ tab, onTab, t, record = false }: { tab: Tab; onTab: (tab: Tab) => void; t: JourneyT; record?: boolean }) {
+  return <TabBar variant="live" value={tab} onChange={onTab} testIDPrefix="events-venue-tab-" items={(record ? RECORD_TABS : TABS).map((item) => ({ key: item.key, icon: item.icon, label: t(item.label) }))} />;
+}
+
+/** 会場の記録 顶栏：‹ · 标题 + 「終了」灰标 · 当天时间；右侧不放受付 QR。 */
+function RecordTopBar({ title, line, onBack, t }: { title: string; line: string; onBack: () => void; t: JourneyT }) {
+  const { styles } = useStyles();
+  return (
+    <View style={styles.bar}>
+      <IconButton icon="left" accessibilityLabel={t("back")} onPress={onBack} />
+      <View style={styles.center}>
+        <UiText accessibilityRole="header" style={styles.title} numberOfLines={1}>{title}</UiText>
+        <View style={styles.subRow}><View style={styles.endChip}><UiText style={styles.endChipText}>{t("statusEnded")}</UiText></View><UiText style={styles.subtitle}>{line}</UiText></View>
+      </View>
+      <View style={styles.barSpacer} />
+    </View>
+  );
 }
 
 export function VenuePage() {
@@ -85,7 +106,8 @@ export function VenuePage() {
   const copy = useKeyedPageCopy<EventVenueResponse>("event-venue", eventId, (value) => eventVenueResponseSchema.safeParse(value).success);
   const [offlineAt, setOfflineAt] = useState<string | null>(null);
   const savedAt = useRef<string | null>(null);
-  const [tab, setTab] = useState<Tab>(isTab(params.tab) ? params.tab : "now");
+  const [tab, setTab] = useState<Tab | null>(isTab(params.tab) ? params.tab : null);
+  const [sheetPerson, setSheetPerson] = useState<AttendeeSheetPerson | null>(null);
   const [view, setView] = useState<"list" | "map">(params.view === "map" ? "map" : "list");
   const [selectedId, setSelectedId] = useState<string | null>(params.person ?? null);
   const [meeting, setMeeting] = useState(dev && params.meet === "1");
@@ -209,16 +231,53 @@ export function VenuePage() {
   if (data.state === "before_check_in") {
     return <JourneyPage title={t("checkIn")} subtitle={data.title} {...back} testID="events-venue">{notice}<CheckInView data={data} t={t} /></JourneyPage>;
   }
+  const openSheet = (person: { attendeeId: string; name: string; initial: string; org?: string | null; role?: string | null }) =>
+    setSheetPerson({ attendeeId: person.attendeeId, initial: person.initial, name: person.name, org: person.org ?? null, role: person.role ?? null, tone: toneOf(person) });
+  if (data.state === "ended" && ((data.rounds?.length ?? 0) > 0 || data.recommendations.length > 0)) {
+    const recordTab: Tab = tab && tab !== "now" ? tab : "groups";
+    const goBack = () => (router.canGoBack() ? router.back() : router.replace(base as Href));
+    return (
+      <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="events-venue-record">
+        <ShellBackground />
+        <ScrollView contentContainerStyle={styles.pad} keyboardShouldPersistTaps="handled">
+          {notice}
+          <RecordTopBar title={shortTitle(data.title)} line={eventRange(data.startsAt, data.endsAt, language)} onBack={goBack} t={t} />
+          {recordTab === "groups" ? <RoundsTab data={data} t={t} toneOf={toneOf} onOpen={openSheet} /> : null}
+          {recordTab === "recs" ? <RecsTab data={data} t={t} toneOf={toneOf} readOnly onRequest={() => undefined} onDismiss={() => undefined} onOpen={openSheet} /> : null}
+          {recordTab === "people" ? <PeopleTab data={data} t={t} toneOf={toneOf} view="list" onView={() => undefined} readOnly onOpen={openSheet} /> : null}
+          {recordTab === "agenda" ? <AgendaTab data={data} t={t} /> : null}
+        </ScrollView>
+        <LiveTabBar tab={recordTab} onTab={setTab} t={t} record />
+        <AttendeeSheet eventId={eventId} person={sheetPerson} onClose={() => setSheetPerson(null)} onChanged={() => void load()} />
+      </SafeAreaView>
+    );
+  }
+  if (data.state === "ended") {
+    return (
+      <JourneyPage title={t("recordTitle")} subtitle={data.title} {...back} testID="events-venue">
+        {notice}
+        <View style={[vs.card, styles.noGroup]} testID="events-venue-record-empty">
+          <UiText style={styles.noGroupEmoji}>🗂️</UiText>
+          <UiText style={styles.noGroupTitle}>{t("recordNoGroupTitle")}</UiText>
+          <UiText style={styles.noGroupSub}>{t("recordNoGroupBody")}</UiText>
+          <View style={[vs.row, { gap: 8, alignSelf: "stretch" }]}>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("recordPeopleList")} onPress={() => router.replace(`${base}?tab=people` as Href)} style={[vs.btnSm, vs.grow]}><UiText style={vs.btnSmText}>{t("recordPeopleList")}</UiText></UiPressable>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("tabAgenda")} onPress={() => router.replace(`${base}?tab=agenda` as Href)} style={[vs.btnSm, vs.grow]}><UiText style={vs.btnSmText}>{t("tabAgenda")}</UiText></UiPressable>
+          </View>
+        </View>
+      </JourneyPage>
+    );
+  }
   if (data.state !== "checked_in") {
     return (
       <JourneyPage title={t("liveTitle")} subtitle={data.title} {...back} testID="events-venue">
         {notice}
-        <View style={vs.card}><UiText style={vs.sub}>{data.state === "ended" ? t("liveEnded") : t("liveNotRegistered")}</UiText></View>
-        {data.state === "ended" ? <UiPressable accessibilityRole="button" accessibilityLabel={t("goAfter")} onPress={toAfter} style={[vs.btnSm, vs.primary, vs.gap]}><UiText style={[vs.btnSmText, { color: colors.bg }]}>{t("goAfter")}</UiText></UiPressable> : null}
+        <View style={vs.card}><UiText style={vs.sub}>{t("liveNotRegistered")}</UiText></View>
       </JourneyPage>
     );
   }
 
+  const liveTab: Tab = tab ?? "now";
   const nowMs = Date.parse(data.now);
   const started = !(Math.max(nowMs, Date.now()) < startsMs);
   const line = !started ? t("liveStartsAt", { time: hm(data.startsAt) })
@@ -233,14 +292,14 @@ export function VenuePage() {
       <ScrollView contentContainerStyle={styles.pad} keyboardShouldPersistTaps="handled">
         {notice}
         <LiveTopBar title={shortTitle(data.title)} line={line} started={started} onClose={toAfter} onQr={() => toast.info(data.checkIn?.receptionNumber ? t("vReception", { n: data.checkIn.receptionNumber }) : t("checkInQr"))} t={t} />
-        {tab === "now" ? <NowTab data={shown} t={t} toneOf={toneOf} onRecap={toAfter} onMoreOpeners={() => setOpenerShift((value) => value + 1)} /> : null}
-        {tab === "recs" ? <RecsTab data={data} t={t} toneOf={toneOf} onRequest={(person) => void requestSwap(person)} onOpen={(person) => setSelectedId(person.attendeeId)}
+        {liveTab === "now" ? <NowTab data={shown} t={t} toneOf={toneOf} onRecap={toAfter} onMoreOpeners={() => setOpenerShift((value) => value + 1)} /> : null}
+        {liveTab === "recs" ? <RecsTab data={data} t={t} toneOf={toneOf} onRequest={(person) => void requestSwap(person)} onOpen={(person) => setSelectedId(person.attendeeId)}
           onDismiss={(person) => setData((current) => (current ? { ...current, recommendations: current.recommendations.filter((item) => item.attendeeId !== person.attendeeId) } : current))} /> : null}
-        {tab === "people" ? <PeopleTab data={data} t={t} toneOf={toneOf} view={view} onView={setView} onOpen={(person) => setSelectedId(person.attendeeId)} /> : null}
-        {tab === "groups" ? <GroupsTab data={data} t={t} toneOf={toneOf} /> : null}
-        {tab === "agenda" ? <AgendaTab data={data} t={t} /> : null}
+        {liveTab === "people" ? <PeopleTab data={data} t={t} toneOf={toneOf} view={view} onView={setView} onOpen={(person) => setSelectedId(person.attendeeId)} /> : null}
+        {liveTab === "groups" ? <GroupsTab data={data} t={t} toneOf={toneOf} /> : null}
+        {liveTab === "agenda" ? <AgendaTab data={data} t={t} /> : null}
       </ScrollView>
-      <LiveTabBar tab={tab} onTab={setTab} t={t} />
+      <LiveTabBar tab={liveTab} onTab={setTab} t={t} />
       <BottomSheet visible={Boolean(selected) && !meeting} onClose={() => { void saveMemo(); setSelectedId(null); }} accessibilityLabel={selected?.name ?? ""}>
         {selected ? (
           <View testID="events-venue-person-sheet">
@@ -335,6 +394,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   liveDot: { backgroundColor: colors.coral, borderRadius: 3.5, height: 7, marginRight: 4, width: 7 },
   live: { color: colors.coral, fontSize: 13, fontWeight: "800", lineHeight: 20 },
   subtitle: { color: colors.ink3, fontSize: 13, fontWeight: "500", lineHeight: 20 },
+  // 会場の記録：「終了」灰标（提案 .endchip 10.5/800 · surface-3 · 1/7）；右侧空位与左侧 ‹ 同宽，标题居中。
+  endChip: { backgroundColor: colors.surface3, borderRadius: 999, marginRight: 4, paddingHorizontal: 7, paddingVertical: 1 },
+  endChipText: { color: colors.ink2, fontSize: 11, fontWeight: "800", lineHeight: 15 },
+  barSpacer: { height: 40, width: 40 },
+  noGroup: { alignItems: "center", paddingHorizontal: 20, paddingVertical: 26 },
+  noGroupEmoji: { fontSize: 44, lineHeight: 48 },
+  noGroupTitle: { color: colors.ink, fontSize: 19, fontWeight: "700", lineHeight: 29, marginTop: 8, textAlign: "center" },
+  noGroupSub: { color: colors.ink2, fontSize: 15, lineHeight: 23, marginBottom: 14, marginTop: 6, textAlign: "center" },
   sheetName: { color: colors.ink, fontSize: 19, fontWeight: "700", lineHeight: 29 },
   req: { marginTop: 14, padding: 14 },
   whyChip: { borderRadius: 999, flex: 1, paddingHorizontal: 9, paddingVertical: 3 },

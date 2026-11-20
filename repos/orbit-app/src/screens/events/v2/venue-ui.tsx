@@ -48,11 +48,18 @@ export function Avatar({ initial, tone, size = "md" }: { initial: string; tone: 
 }
 
 /** kit .avs：30 的小头像叠放（2px surface 描边，-8 重叠）。 */
-export function AvatarStack({ people, toneOf }: { people: readonly { attendeeId?: string; initial: string }[]; toneOf: (person: { attendeeId?: string; initial: string }) => Tone }) {
+/** onPress（2026-11-20 会後「今日会った人」）：每个头像可点（打开参加者の詳細）；点击区上下左右各扩 7。 */
+export function AvatarStack<P extends { attendeeId?: string; initial: string; name?: string }>({ people, toneOf, onPress }: { people: readonly P[]; toneOf: (person: P) => Tone; onPress?: (person: P) => void }) {
   const { styles } = useVenueStyles();
   return (
     <View style={styles.avs}>
-      {people.map((person, index) => <View key={`${person.attendeeId ?? person.initial}-${index}`} style={[styles.avsItem, index ? { marginLeft: -8 } : null]}><Avatar initial={person.initial} tone={toneOf(person)} size="stack" /></View>)}
+      {people.map((person, index) => {
+        const key = `${person.attendeeId ?? person.initial}-${index}`;
+        const avatar = <Avatar initial={person.initial} tone={toneOf(person)} size="stack" />;
+        return onPress
+          ? <UiPressable key={key} accessibilityRole="button" accessibilityLabel={person.name ?? person.initial} hitSlop={7} onPress={() => onPress(person)} style={[styles.avsItem, index ? { marginLeft: -8 } : null]}>{avatar}</UiPressable>
+          : <View key={key} style={[styles.avsItem, index ? { marginLeft: -8 } : null]}>{avatar}</View>;
+      })}
     </View>
   );
 }

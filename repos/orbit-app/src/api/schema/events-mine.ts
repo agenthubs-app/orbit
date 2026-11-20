@@ -12,6 +12,7 @@ export const myEventItemObject = z.object({
   endsAt: z.string().nullable().optional(),
   venue: z.string().nullable().optional(),
   emoji: z.string().max(16),
+  coverUrl: z.string().min(1).nullable().optional().catch(null),
   status: z.enum(STATUSES),
   meetCount: z.number().int().min(0).nullable().optional().catch(null),
   meetInitials: z.array(z.string().max(4)).max(4).optional().catch(undefined),

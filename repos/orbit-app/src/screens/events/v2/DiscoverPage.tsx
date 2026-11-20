@@ -1,10 +1,12 @@
 // R27 イベント › 探す（App；b2 #8 大量）：搜索 + 筛选按钮（件数）· 已选 chip（今月 ✕ / 東京 ✕ / テーマ ▾ / 参加費 ▾）·
 // 📌 あなたのコミュニティ · 会いたい人が来る（横滑卡 + 页点）· すべて（日付順）。2026-11-15 去分数：卡片 / 行只出「跟你有关」的标签，
 // 报名 ≥10 时卡片右上出「申込 N名」。数据：GET /api/events/discover（规则，不调 AI）。
+// 2026-11-20（events-replay-cover-app-proposal ⑧ ⑧b，D2）：有 coverUrl 的卡顶部 2:1 图（260×130），「申込 N名」毛玻璃叠在图右上；
+// 同一排里只要有一张有图，没图的卡用自己的 emoji + 色带补成同高；整排都没图保持原样。「すべて」/ コミュニティ行不放图。
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ScrollView, StyleSheet, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { Image, ScrollView, StyleSheet, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 
 import type { EventDiscoverArea, EventDiscoverFormat, EventDiscoverPeriod, EventDiscoverQuery, EventDiscoverResponse, EventDiscoverRow, EventDiscoverTheme } from "../../../api/contract/event-discover";
 import type { EventSearchResponse } from "../../../api/contract/event-search";
@@ -239,21 +241,33 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
       {!flat && data && data.planFit.length ? (
         <View style={styles.section} testID="events-discover-planfit">
           <View style={styles.cardH}><UiText style={styles.h3}>{rt("eventsV2.relDiscoverPeople")}</UiText><UiText style={styles.more}>{t("countN", { n: data.planFitTotal })}</UiText></View>
+          {/* D2：这一排有任何一张有图 → 每张卡都出 2:1 顶部（没图的用 emoji 色带）。 */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToOffsets={data.planFit.map((_row, index) => SHELL_GUTTER + index * (CARD + 12))} contentOffset={{ x: SHELL_GUTTER, y: 0 }} decelerationRate="fast" onScroll={onScroll} scrollEventThrottle={32} style={styles.carousel} contentContainerStyle={styles.carouselInner}>
             {data.planFit.map((row, index) => {
               const registered = registrationChipLabel(row.registrationCount, rt);
+              const banded = data.planFit.some((item) => item.coverUrl);
               return (
-                <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={styles.evCard}>
-                  <View style={[styles.row, { justifyContent: "space-between" }]}>
-                    <View style={[styles.emo, { backgroundColor: toneBg(rowTone(index)) }]}><UiText style={styles.emoText}>{row.emoji}</UiText></View>
-                    {registered ? <View style={styles.chip}><UiText style={styles.chipText}>{registered}</UiText></View> : null}
-                  </View>
-                  <UiText style={styles.evTitle}>{row.title}</UiText>
+                <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={[styles.evCard, banded ? styles.evCardBand : null]} testID={`events-discover-card-${row.eventId}`}>
+                  {banded ? (
+                    <View>
+                      {row.coverUrl ? <Image source={{ uri: row.coverUrl }} resizeMode="cover" style={styles.band} accessibilityIgnoresInvertColors testID={`events-discover-cover-${row.eventId}`} />
+                        : <View style={[styles.band, styles.bandEmoji, { backgroundColor: toneBg(rowTone(index)) }]}><UiText style={styles.bandEmojiText}>{row.emoji}</UiText></View>}
+                      {registered ? <View style={[styles.chip, styles.bandChip]}><UiText style={[styles.chipText, { color: "#1E1A24" }]}>{registered}</UiText></View> : null}
+                    </View>
+                  ) : (
+                    <View style={[styles.row, { justifyContent: "space-between" }]}>
+                      <View style={[styles.emo, { backgroundColor: toneBg(rowTone(index)) }]}><UiText style={styles.emoText}>{row.emoji}</UiText></View>
+                      {registered ? <View style={styles.chip}><UiText style={styles.chipText}>{registered}</UiText></View> : null}
+                    </View>
+                  )}
+                  <View style={banded ? styles.bandBody : styles.plainBody}>
+                  <UiText style={[styles.evTitle, banded ? { marginTop: 0 } : null]}>{row.title}</UiText>
                   <UiText style={[styles.lbl, { marginTop: 3 }]}>{[discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ")}</UiText>
                   <RelevanceChips style={{ marginTop: 10 }} chips={relevanceChips(row.relevance, rt)} />
                   <View style={[styles.row, styles.cardFoot]}>
                     {feeText(row.priceYen, t) ? <View style={styles.chip}><UiText style={styles.chipText}>{feeText(row.priceYen, t)}</UiText></View> : null}
                     <UiPressable accessibilityRole="button" accessibilityLabel={t("detailsBtn")} onPress={() => open(row)} style={styles.btnSm}><UiText style={styles.btnSmText}>{t("detailsBtn")}</UiText></UiPressable>
+                  </View>
                   </View>
                 </UiPressable>
               );
@@ -411,6 +425,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   carousel: { marginHorizontal: -SHELL_GUTTER },
   carouselInner: { gap: 12, paddingBottom: 4, paddingHorizontal: SHELL_GUTTER, paddingTop: 2 },
   evCard: { backgroundColor: colors.surface, borderRadius: 22, padding: 16, width: CARD },
+  // 有图的一排：卡片不留内边距，图满宽贴上沿（圆角跟卡片），正文 14 / 16 / 16。
+  evCardBand: { overflow: "hidden", padding: 0 },
+  band: { height: CARD / 2, width: CARD },
+  bandEmoji: { alignItems: "center", justifyContent: "center" },
+  bandEmojiText: { fontSize: 46, lineHeight: 54 },
+  // 毛玻璃 chip：rgba(255,255,255,.78)，深浅模式同一个（叠在照片上）。
+  bandChip: { backgroundColor: "rgba(255,255,255,0.78)", position: "absolute", right: 10, top: 10 },
+  bandBody: { flex: 1, paddingBottom: 16, paddingHorizontal: 16, paddingTop: 14 },
+  plainBody: { flex: 1 },
   emo: { alignItems: "center", borderRadius: 13, height: 40, justifyContent: "center", width: 40 },
   emoText: { fontSize: 23, lineHeight: 28 },
   evTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 23, marginTop: 12 },

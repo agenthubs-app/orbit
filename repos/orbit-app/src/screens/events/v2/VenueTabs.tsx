@@ -163,7 +163,7 @@ function nearNext(person: EventVenuePerson, data: EventVenueResponse): number | 
   return Math.abs(a - b) === 1 ? next.round : null;
 }
 
-export function RecsTab({ data, t, toneOf, onRequest, onDismiss, onOpen }: { data: EventVenueResponse; t: JourneyT; toneOf: ToneOf; onRequest: (person: EventVenuePerson) => void; onDismiss: (person: EventVenuePerson) => void; onOpen: (person: EventVenuePerson) => void }) {
+export function RecsTab({ data, t, toneOf, onRequest, onDismiss, onOpen, readOnly = false }: { data: EventVenueResponse; t: JourneyT; toneOf: ToneOf; onRequest: (person: EventVenuePerson) => void; onDismiss: (person: EventVenuePerson) => void; onOpen: (person: EventVenuePerson) => void; readOnly?: boolean }) {
   const { styles, colors } = useVenueStyles();
   const v = useStyles().styles;
   const [page, setPage] = useState(0);
@@ -185,7 +185,8 @@ export function RecsTab({ data, t, toneOf, onRequest, onDismiss, onOpen }: { dat
               </UiPressable>
               <View style={[styles.row, { gap: 6 }]}>
                 {person.table ? <Chip label={t("tableChip", { t: person.table })} tone="lav"><Icon name="pin" size={16} color={colors.macLavInk} /></Chip> : null}
-                {near ? <Chip label={t("vNearNext", { n: near })} tone="teal" /> : null}
+                {near && !readOnly ? <Chip label={t("vNearNext", { n: near })} tone="teal" /> : null}
+                {readOnly ? (person.exchange === "exchanged" ? <Chip label={t("exExchanged")} tone="teal" /> : <Chip label={t("recNotTalked")} />) : null}
               </View>
               {person.why ? (
                 <View>
@@ -196,11 +197,11 @@ export function RecsTab({ data, t, toneOf, onRequest, onDismiss, onOpen }: { dat
                   {why === person.attendeeId && person.whyDetail ? <WhyBody text={person.whyDetail} /> : null}
                 </View>
               ) : null}
-              <View style={[styles.row, { gap: 8, marginTop: "auto" }]}>
+              {readOnly ? null : <View style={[styles.row, { gap: 8, marginTop: "auto" }]}>
                 {person.exchange === "none" ? <UiPressable accessibilityRole="button" accessibilityLabel={t("requestExchange")} onPress={() => onRequest(person)} style={[styles.btnSm, styles.primary, styles.grow]}><UiText style={[styles.btnSmText, { color: colors.bg }]}>{t("requestExchange")}</UiText></UiPressable>
                   : <View style={styles.grow}>{exchangeChip(person, t)}</View>}
                 <UiPressable accessibilityRole="button" accessibilityLabel={t("vDismissRec")} onPress={() => onDismiss(person)} style={styles.lbtn}><Icon name="x" size={16} color={colors.ink2} /></UiPressable>
-              </View>
+              </View>}
             </View>
           );
         })}
@@ -208,7 +209,7 @@ export function RecsTab({ data, t, toneOf, onRequest, onDismiss, onOpen }: { dat
       {recs.length > 1 ? <View style={v.dots}>{recs.map((person, index) => <View key={person.attendeeId} style={[v.dot, index === page ? v.dotOn : null]} />)}</View> : null}
       {data.nextOrder.length ? (
         <View style={[styles.card, v.orderCard]}>
-          <View style={[styles.cardH, { marginBottom: 0, marginTop: 8 }]}><UiText style={styles.h3}>{t("vNextOrder")}</UiText></View>
+          <View style={[styles.cardH, { marginBottom: 0, marginTop: 8 }]}><UiText style={styles.h3}>{t(readOnly ? "vNextOrderPast" : "vNextOrder")}</UiText></View>
           {data.nextOrder.map((person, index) => (
             <UiPressable key={person.attendeeId} accessibilityRole="button" accessibilityLabel={person.name} onPress={() => onOpen(person)} style={styles.li}>
               {index ? <View style={styles.liLine} /> : null}
@@ -225,8 +226,12 @@ export function RecsTab({ data, t, toneOf, onRequest, onDismiss, onOpen }: { dat
 }
 
 // ---------- ④ 参加者 一覧（b2 #29）/ ⑥ 関係マップ（#31） ----------
-type PeopleFilter = "all" | "wanted" | "exchanged" | "requests";
-export function PeopleTab({ data, t, toneOf, view, onView, onOpen }: { data: EventVenueResponse; t: JourneyT; toneOf: ToneOf; view: "list" | "map"; onView: (view: "list" | "map") => void; onOpen: (person: EventVenuePerson) => void }) {
+type PeopleFilter = "all" | "wanted" | "exchanged" | "requests" | "table" | "recs";
+/** 会場の記録：同桌过的人（各轮去重）。 */
+export function tablemateIds(data: EventVenueResponse): ReadonlySet<string> {
+  return new Set((data.rounds ?? []).flatMap((round) => round.tablemates.map((mate) => mate.attendeeId)));
+}
+export function PeopleTab({ data, t, toneOf, view, onView, onOpen, readOnly = false }: { data: EventVenueResponse; t: JourneyT; toneOf: ToneOf; view: "list" | "map"; onView: (view: "list" | "map") => void; onOpen: (person: EventVenuePerson) => void; readOnly?: boolean }) {
   const { styles, colors } = useVenueStyles();
   const v = useStyles().styles;
   const [q, setQ] = useState("");
@@ -238,19 +243,24 @@ export function PeopleTab({ data, t, toneOf, view, onView, onOpen }: { data: Eve
     requests: data.attendees.filter((person) => person.exchange === "incoming" || person.exchange === "requested").length,
     wanted: data.stats.wantedTotal,
   };
+  const mates = tablemateIds(data);
+  const recIds = new Set(data.recommendations.map((person) => person.attendeeId));
   const needle = q.trim().toLowerCase();
-  const shown = data.attendees.filter((person) => (filter === "wanted" ? person.wanted : filter === "exchanged" ? person.exchange === "exchanged" : filter === "requests" ? person.exchange === "incoming" || person.exchange === "requested" : true)
+  const shown = data.attendees.filter((person) => (filter === "wanted" ? person.wanted : filter === "exchanged" ? person.exchange === "exchanged" : filter === "requests" ? person.exchange === "incoming" || person.exchange === "requested"
+    : filter === "table" ? mates.has(person.attendeeId) : filter === "recs" ? recIds.has(person.attendeeId) : true)
     && (!needle || [person.name, person.org, person.role, person.why].some((value) => value?.toLowerCase().includes(needle))));
   return (
     <View testID="events-venue-people">
-      <View style={{ marginBottom: view === "map" ? 12 : 10 }}>
+      {readOnly ? null : <View style={{ marginBottom: view === "map" ? 12 : 10 }}>
         <Segmented<"list" | "map"> accessibilityLabel={t("tabPeople")} value={view} onChange={onView} segments={[{ key: "list", label: t("vList") }, { key: "map", label: t("mapTitle") }]} />
-      </View>
-      {view === "list" ? (
+      </View>}
+      {view === "list" || readOnly ? (
         <>
           <View style={v.search}><Icon name="search" size={16} color={colors.ink3} /><TextInput value={q} onChangeText={setQ} placeholder={t("vSearchPh")} placeholderTextColor={colors.ink3} accessibilityLabel={t("vSearchPh")} style={v.searchInput} /></View>
           <View style={v.filters}>
-            {([["all", t("vAllN", { n: counts.all })], ["wanted", t("vWantedN", { n: counts.wanted })], ["exchanged", t("vExchangedN", { n: counts.exchanged })], ["requests", t("vRequestsN", { n: counts.requests })]] as const).map(([key, label]) => (
+            {(readOnly
+              ? [["all", t("vAllN", { n: counts.all })], ["table", t("vSameTableN", { n: mates.size })], ["recs", `${t("segRecs")} ${recIds.size}`], ["exchanged", t("vExchangedN", { n: counts.exchanged })]] as const
+              : [["all", t("vAllN", { n: counts.all })], ["wanted", t("vWantedN", { n: counts.wanted })], ["exchanged", t("vExchangedN", { n: counts.exchanged })], ["requests", t("vRequestsN", { n: counts.requests })]] as const).map(([key, label]) => (
               <UiPressable key={key} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: filter === key }} onPress={() => setFilter(key)}><Chip label={label} {...(filter === key ? { tone: "lav" as const } : {})} /></UiPressable>
             ))}
           </View>
@@ -262,6 +272,7 @@ export function PeopleTab({ data, t, toneOf, view, onView, onOpen }: { data: Eve
                 <Avatar initial={person.initial} tone={toneOf(person)} />
                 <View style={styles.grow}><UiText style={styles.metaTitle} numberOfLines={1}>{person.name}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[person.org, person.role].filter(Boolean).join(" · ")}</UiText></View>
                 {person.exchange !== "none" ? <View style={v.peopleStatus}>{exchangeChip(person, t)}</View> : null}
+                {readOnly ? <Icon name="right" size={16} color={colors.ink4} /> : null}
               </UiPressable>
             ))}
           </View>
@@ -343,6 +354,49 @@ export function RelationMap({ data, t, width = 338 }: { data: EventVenueResponse
 
 // ---------- ⑤ グループ（b2 #30） ----------
 const TABLE_TONES: readonly Tone[] = ["apricot", "blue", "teal", "pink"];
+/** 会場の記録 · グループ：每一轮一行（轮次 · 桌号大字 · 主题 · 为什么这桌 ? · 同桌名单，名字可点）。 */
+export function RoundsTab({ data, t, toneOf, onOpen }: { data: EventVenueResponse; t: JourneyT; toneOf: ToneOf; onOpen: (mate: { attendeeId: string; name: string; initial: string; org?: string | null; role?: string | null }) => void }) {
+  const { styles, colors } = useVenueStyles();
+  const v = useStyles().styles;
+  const [why, setWhy] = useState<number | null>(null);
+  const rounds = data.rounds ?? [];
+  const exchanged = new Set(data.attendees.filter((person) => person.exchange === "exchanged").map((person) => person.attendeeId));
+  return (
+    <View testID="events-venue-rounds">
+      <View style={[styles.card, v.roundsCard]}>
+        <View style={[styles.cardH, { marginBottom: 0, marginTop: 10 }]}><UiText style={styles.h3}>{t("vMyTables")}</UiText><UiText style={styles.lbl}>{t("vRoundsN", { n: rounds.length })}</UiText></View>
+        {rounds.map((round, index) => {
+          const reason = round.whyDetail ?? round.why;
+          return (
+            <View key={round.round} style={[v.round, index ? v.roundLine : null]} testID={`events-venue-round-${round.round}`}>
+              <View style={[styles.row, { gap: 12 }]}>
+                <View style={v.roundLeft}><UiText style={styles.lbl}>{t("vRoundShort", { n: round.round })}</UiText><UiText style={[styles.big, v.roundTable]}>{round.table}</UiText></View>
+                <View style={styles.grow}>
+                  <UiText style={styles.title13} numberOfLines={2}>{round.theme ? t("themeLine", { theme: round.theme }) : round.title ?? round.table}</UiText>
+                  <UiText style={styles.lbl}>{t("vSameTableCount", { n: round.tablemates.length })}</UiText>
+                </View>
+                {reason ? <Why label={t("why")} open={why === round.round} onToggle={() => setWhy((value) => (value === round.round ? null : round.round))} /> : null}
+              </View>
+              {why === round.round && reason ? <WhyBody text={reason} /> : null}
+              <View style={{ marginTop: 6 }}>
+                {round.tablemates.map((mate) => (
+                  <UiPressable key={mate.attendeeId} accessibilityRole="button" accessibilityLabel={mate.name} onPress={() => onOpen(mate)} style={[styles.li, v.mateRow]}>
+                    <Avatar initial={mate.initial} tone={toneOf(mate)} size="sm" />
+                    <View style={styles.grow}><UiText style={styles.title13} numberOfLines={1}>{mate.name}</UiText>{mate.org || mate.role ? <UiText style={styles.metaSub} numberOfLines={1}>{[mate.org, mate.role].filter(Boolean).join(" · ")}</UiText> : null}</View>
+                    {exchanged.has(mate.attendeeId) ? <Chip label={t("exExchanged")} tone="teal" /> : null}
+                    <Icon name="right" size={16} color={colors.ink4} />
+                  </UiPressable>
+                ))}
+              </View>
+            </View>
+          );
+        })}
+      </View>
+      <UiText style={[styles.lbl, { marginTop: 14, textAlign: "center" }]}>{t("vSeatsByOrganizer")}</UiText>
+    </View>
+  );
+}
+
 export function GroupsTab({ data, t, toneOf }: { data: EventVenueResponse; t: JourneyT; toneOf: ToneOf }) {
   const { styles, colors } = useVenueStyles();
   const v = useStyles().styles;
@@ -456,6 +510,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   grid2Cell: { flex: 1 },
   carousel: { marginHorizontal: -SHELL_GUTTER },
   carouselInner: { gap: 12, paddingBottom: 4, paddingHorizontal: SHELL_GUTTER, paddingTop: 2 },
+  roundsCard: { paddingHorizontal: 18, paddingVertical: 6 },
+  round: { paddingVertical: 12 },
+  roundLine: { borderTopColor: colors.line, borderTopWidth: 1 },
+  roundLeft: { width: 56 },
+  roundTable: { fontSize: 22, letterSpacing: -0.44, lineHeight: 26 },
+  mateRow: { gap: 10, paddingVertical: 7 },
   pcard: { backgroundColor: colors.surface, borderRadius: radius.xl, gap: 10, padding: 18, width: PCARD },
   name16: { color: colors.ink, fontSize: 18, fontWeight: "700", lineHeight: 27 },
   dots: { flexDirection: "row", gap: 5, justifyContent: "center", marginTop: 10 },

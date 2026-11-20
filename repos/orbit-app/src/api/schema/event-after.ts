@@ -22,7 +22,7 @@ export const eventAfterResponseObject = z.object({
   eventId: z.string().min(1),
   title: z.string(),
   date,
-  met: z.object({ count: z.number().int().min(0), initials: z.array(z.string().max(4)).max(10), exchanged: z.number().int().min(0), wantedMet: z.number().int().min(0), wantedTotal: z.number().int().min(0), meetings: z.number().int().min(0) }),
+  met: z.object({ count: z.number().int().min(0), initials: z.array(z.string().max(4)).max(10), exchanged: z.number().int().min(0), wantedMet: z.number().int().min(0), wantedTotal: z.number().int().min(0), meetings: z.number().int().min(0), people: readableItems(z.object({ attendeeId: z.string().min(1), name: z.string(), initial: z.string().max(4), org: z.string().nullable().optional() })).optional().catch(undefined) }),
   highlights: readableItems(z.object({ emoji: z.string().max(16), title: z.string(), detail: z.string(), evidence: z.string() })).optional().catch(undefined),
   summary: z.string().nullable().optional(),
   aiDraft: z.boolean(),

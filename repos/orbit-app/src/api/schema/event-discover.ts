@@ -20,6 +20,7 @@ export const eventDiscoverRowObject = z.object({
   area: nullableEnum(EVENT_DISCOVER_AREAS),
   priceYen: z.number().int().min(0).nullable().optional().catch(null),
   emoji: z.string().max(16),
+  coverUrl: z.string().min(1).nullable().optional().catch(null),
   organizerId: z.string().nullable().optional(),
   organizerName: z.string().nullable().optional(),
   score: z.number().int().min(0).max(100).nullable().optional().catch(null),

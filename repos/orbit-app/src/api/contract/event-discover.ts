@@ -25,6 +25,8 @@ export interface EventDiscoverRow {
   /** 0 = free; missing = unknown. */
   priceYen?: number | null;
   emoji: string;
+  /** 2026-11-20 主办方上传的活动图片（2:1）；null / 缺省 = 没有图，保持 emoji 卡片。 */
+  coverUrl?: string | null;
   organizerId?: string | null;
   organizerName?: string | null;
   /** Same `scoreEvent` total as the plan page; omitted when signed out or without a plan. */

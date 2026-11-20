@@ -2,9 +2,10 @@
 // 評価 / 参加予定 N / 探す. 評価: 「このイベントで、誰に会える？」 (URL / poster), the 参加予定 carousel and 調べたイベント
 // (newest first, the facts as chips — 2026-11-15 no scores); empty: the three angles, a sample and the 参加コード card.
 // 参加予定: events/mine. 探す: R27 DiscoverPage (b2 #8). Nothing here calls AI.
+// 2026-11-20（events-replay-cover-app-proposal ⑨，D2）：参加予定卡有 coverUrl 时顶部 2:1 图；評価 顶部的横滑一排里有图时，没图的卡用 emoji 色带补齐。
 import { useFocusEffect, useGlobalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Image, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { KitGradient } from "../../plan/plan-kit";
@@ -169,7 +170,7 @@ function AssessPage({ items, upcoming, empty, now, language, onDelete }: { items
           {/* .carousel scroll-snap-type: x mandatory · snap-align start：多张时首张贴左缘（同 kit 在 Chrome 的落点）。 */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carousel} contentContainerStyle={styles.carouselInner} testID="events-going-carousel"
             {...(coming.length > 1 ? { contentOffset: { x: SHELL_GUTTER, y: 0 }, decelerationRate: "fast" as const, snapToOffsets: coming.map((_, index) => SHELL_GUTTER + index * (300 + 12)) } : {})}>
-            {coming.map((item) => <GoingCard key={item.eventId} item={item} now={now} language={language} width={coming.length > 1 ? 300 : fullCard} gradientKey="carousel" />)}
+            {coming.map((item) => <GoingCard key={item.eventId} item={item} now={now} language={language} width={coming.length > 1 ? 300 : fullCard} gradientKey="carousel" band={coming.some((other) => other.coverUrl) ? (item.coverUrl ? "image" : "emoji") : null} />)}
           </ScrollView>
           {coming.length > 1 ? <View style={styles.dots}>{coming.map((item, index) => <View key={item.eventId} style={[styles.dot, index === 0 ? styles.dotOn : null]} />)}</View> : null}
         </View>
@@ -237,14 +238,21 @@ function useFullCardWidth(): number {
   return useWindowDimensions().width - 2 * SHELL_GUTTER;
 }
 
-function GoingCard({ item, now, language, width, style, gradientKey }: { item: MyEventItem; now: Date; language: string; width?: number; style?: object; gradientKey: string }) {
+/** band：顶部 2:1 图（image）/ 用 emoji 色带补齐（emoji，同一排里别的卡有图时）/ 不出（null）。 */
+function GoingCard({ item, now, language, width, style, gradientKey, band = null }: { item: MyEventItem; now: Date; language: string; width?: number; style?: object; gradientKey: string; band?: "image" | "emoji" | null }) {
   const { styles, colors } = useStyles();
   const { t } = useOrbitLocale();
   const router = useRouter();
   const day = relativeDay(item.startsAt, now);
+  const fullWidth = useFullCardWidth();
+  const bandWidth = width ?? fullWidth;
   return (
-    <View style={[styles.evCard, width ? { width } : null, style]} testID={`events-going-${item.eventId}`}>
-      <KitGradient id={`events-going-bg-${gradientKey}-${item.eventId}`} from={colors.macLav} to={colors.surface} stop={0.6} angle={160} />
+    <View style={[styles.evCard, width ? { width } : null, band ? styles.evCardBand : null, style]} testID={`events-going-${item.eventId}`}>
+      {band === "image" && item.coverUrl ? <Image source={{ uri: item.coverUrl }} resizeMode="cover" style={{ height: bandWidth / 2, width: bandWidth }} accessibilityIgnoresInvertColors testID={`events-going-cover-${item.eventId}`} />
+        : band === "emoji" ? <View style={[styles.bandEmoji, { height: bandWidth / 2, width: bandWidth }]}><UiText style={styles.bandEmojiText}>{item.emoji || eventEmoji({ title: item.title })}</UiText></View> : null}
+      {band ? null : <KitGradient id={`events-going-bg-${gradientKey}-${item.eventId}`} from={colors.macLav} to={colors.surface} stop={0.6} angle={160} />}
+      <View style={band ? styles.bandBody : null}>
+      {band ? <KitGradient id={`events-going-bg-${gradientKey}-${item.eventId}`} from={colors.macLav} to={colors.surface} stop={0.6} angle={160} /> : null}
       <View style={[styles.row, { justifyContent: "space-between" }]}>
         <Chip label={appEventWhen(item.startsAt, language)} tone="neutral" />
         {day ? <Chip label={t(`eventsV2.${day}`)} tone="apricot" /> : null}
@@ -258,6 +266,7 @@ function GoingCard({ item, now, language, width, style, gradientKey }: { item: M
         </View>
       ) : null}
       <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.prepare")} onPress={() => router.push(item.href as Href)} style={[styles.btnBlock]}><UiText style={styles.btnBlockText}>{t("eventsV2.prepare")}</UiText></UiPressable>
+      </View>
     </View>
   );
 }
@@ -296,7 +305,7 @@ function GoingPage({ upcoming, past, now, language, onDiscover }: { upcoming: My
           <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.searchEvents")} onPress={onDiscover} style={styles.btnSm} testID="events-going-find"><UiText style={styles.btnSmText}>{t("eventsV2.searchEvents")}</UiText></UiPressable>
         </View>
       ) : null}
-      {coming.map((item) => <GoingCard key={item.eventId} item={item} now={now} language={language} style={{ marginBottom: 12 }} gradientKey="list" />)}
+      {coming.map((item) => <GoingCard key={item.eventId} item={item} now={now} language={language} style={{ marginBottom: 12 }} gradientKey="list" band={item.coverUrl ? "image" : null} />)}
       {past.length ? (
         <View style={[styles.card, { marginTop: 6, paddingHorizontal: 16, paddingVertical: 8 }]}>
           <View style={[styles.cardH, { marginBottom: 0, marginTop: 8 }]}><UiText style={styles.h3}>{t("eventsV2.past")}</UiText><UiText style={styles.more}>{t("eventsV2.countItems", { n: past.length })}</UiText></View>
@@ -362,6 +371,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     carousel: { marginHorizontal: -SHELL_GUTTER },
     carouselInner: { gap: 12, paddingBottom: 4, paddingHorizontal: SHELL_GUTTER, paddingTop: 2 },
     evCard: { borderRadius: 22, overflow: "hidden", padding: 16 },
+    // 有图：卡片不留内边距，图满宽贴上沿；下面的淡紫渐变与正文照旧（16）。
+    evCardBand: { padding: 0 },
+    bandBody: { overflow: "hidden", padding: 16 },
+    bandEmoji: { alignItems: "center", backgroundColor: colors.macLav, justifyContent: "center" },
+    bandEmojiText: { fontSize: 46, lineHeight: 54 },
     evName: { color: colors.ink, fontSize: 18, fontWeight: "700", lineHeight: 27, marginTop: 10 },
     avs: { flexDirection: "row" },
     av: { alignItems: "center", borderColor: colors.surface, borderRadius: radius.pill, borderWidth: 2, height: 30, justifyContent: "center", width: 30 },

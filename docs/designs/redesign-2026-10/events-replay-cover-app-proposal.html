@@ -239,9 +239,10 @@ function detailEnded() {
   return topbar('', '', back, shareB) + hero('', '終了') + `
   <div class="card p-rec" style="background:linear-gradient(150deg,var(--mac-lav),var(--surface) 65%)"><div class="card-h"><h3>会場の記録</h3><span class="lbl">閲覧のみ</span></div>
     <div class="mini3" style="margin-top:2px"><div><span class="lbl">同じテーブル</span><b>14<small class="lbl">人</small></b></div><div><span class="lbl">おすすめ</span><b>6<small class="lbl">人</small></b></div><div><span class="lbl">交換</span><b>3<small class="lbl">人</small></b></div></div>
-    <div class="row" style="gap:8px;margin-top:14px"><button class="btn primary sm p-open" style="flex:1">記録を見る</button><button class="btn sm p-after" style="flex:1">ふりかえり</button></div></div>
+    <button class="btn primary block p-open" style="margin-top:14px;height:40px">記録を見る</button></div>
   ${tabs(0)}
-  <div class="card"><div class="sub" style="line-height:1.75">上場を目指すスタートアップの CFO・経営陣と、投資家・金融機関が本音で話す夜。キーノートのあと、テーブルトークを 3ラウンド。</div></div>`;
+  <div class="card"><div class="sub" style="line-height:1.75">上場を目指すスタートアップの CFO・経営陣と、投資家・金融機関が本音で話す夜。キーノートのあと、テーブルトークを 3ラウンド。</div></div>
+  <div class="ctabar p-after"><button class="btn primary" style="flex:1;height:46px">ふりかえり</button></div>`;
 }
 const pcardEnd = (p, k) => `<div class="pcard"><div class="row" style="gap:12px"><div class="av lg ${p.c}">${p.i}</div><div style="min-width:0"><b style="font-size:16px;display:block">${p.n}</b><div class="lbl ell">${p.co} · ${p.role}</div></div></div>
   <div class="row" style="gap:6px"><span class="chip lav">${ic('pin', 'sm')}テーブル ${p.tb}</span>${p.st === 'done' ? stChip.done : '<span class="chip">話していない</span>'}</div>
@@ -334,7 +335,7 @@ const sec = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span>
 let h = '';
 h += sec('需求 1 · 结束后回看当天会场', '入口在活动详情（已结束）→ 会场页只读版：おすすめ / 参加者 / グループ / 予定；去掉「現場」');
 h += boards([
-  ['① 詳細（終了）· 会場の記録', '新增', phone({ body: detailEnded(), tab: -1, pins: pin(1, '.p-status') + pin(2, '.p-rec') + pin(3, '.p-open') + pin(4, '.p-after') }), ['封面色带上原来的「残り N枠」改为标题下状态行，结束后显示灰色「終了」', '报名者且在主办方公开的分组结果里就出这张卡（不要求签到，见 Web P4）；三格 = 同桌过的人 / 你的おすすめ / 交换过的人', '「記録を見る」→ ② 会場の記録，进去默认停在グループ（与 Web 相同）', '「ふりかえり」→ 现有会后页（b2 #37–39），只给签到过的人；没签到的人这里只有「記録を見る」一个按钮']],
+  ['① 詳細（終了）· 会場の記録', '新增', phone({ body: detailEnded(), tab: -1, pins: pin(1, '.p-status') + pin(2, '.p-rec') + pin(3, '.p-open') + pin(4, '.p-after') }), ['封面色带上原来的「残り N枠」改为标题下状态行，结束后显示灰色「終了」', '报名者且在主办方公开的分组结果里就出这张卡（不要求签到，见 Web P4）；三格 = 同桌过的人 / 你的おすすめ / 交换过的人', '「記録を見る」→ ② 会場の記録，进去默认停在グループ（与 Web 相同）', '「ふりかえり」仍是底部主按钮（已有，去会后页 b2 #37–39）；入口卡里不再重复放（同屏不放两个同样的按钮）']],
   ['② 会場の記録 · グループ', '回看', phone({ body: replayGroups(), tab: -1, overlay: endBar(2), pins: pin(1, '.p-rounds') + pin(2, '.p-why') + pin(3, '.p-grps') }), ['当天只看「现在这一轮」；回看时 3 轮都列出：轮次 · 桌号 · 主题 · 同桌名单', '「?」= 主办方写的这一桌为什么这样排（数据约定 rounds.why / whyDetail），没有就不出', '其他桌按轮次切换（R1/R2/R3），名单每一行都能点开资料']],
   ['③ 会場の記録 · おすすめ', '回看', phone({ body: replayRecs(), tab: -1, overlay: endBar(0), pins: pin(1, '.topbar') + pin(2, '.p-pc') + pin(3, '.p-ebar') }), ['顶栏 LIVE 红点换成灰色「終了」+ 当天时间；右上扫码按钮去掉', '推荐卡与当天同一张，理由文案不重算、「?」照旧可展开；状态 chip 改为「交換済み / 話していない」；卡上不再放按钮（交换和「おすすめから外す」都去掉），点卡打开 ⑤ 弹层，交换在弹层里做', '底栏 4 个：おすすめ / 参加者 / グループ / 予定（「現場」只在当天有）；位置与当天会场一致，进来默认选中グループ']],
   ['④ 会場の記録 · 参加者', '回看', phone({ body: replayList(), tab: -1, overlay: endBar(1), pins: pin(1, '.p-list') }), ['与当天的参加者一览相同；筛选 chip 加「同じテーブル」（回看时最常用）。「関係マップ」切换只在当天有（与 Web 相同）', '每行右侧小箭头 = 能点开资料（⑤）']],

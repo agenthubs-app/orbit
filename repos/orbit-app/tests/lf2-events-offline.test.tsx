@@ -77,9 +77,16 @@ test("server 9683ee88f: registered but outside the host's results — before the
   const numbered = await harness.open(t, { screen: "venue", online: false, params: { id: eventId },
     copies: { [`event-venue|${eventId}`]: { data: { ...outside, checkIn: { ...outside.checkIn, receptionNumber: "12" } }, syncedAt } } });
   await numbered.getByText("签到后就能使用 · 签到号12", { exact: true }).waitFor();
+  // 2026-11-20 会場の記録: ended and in the published results → the read-only record (default グループ); outside them → the
+  // explanation with the roster / agenda ways out. Never 「registered only」.
+  const record = await harness.open(t, { screen: "venue", online: false, params: { id: eventId },
+    copies: { [`event-venue|${eventId}`]: { data: { ...journeyVenue("ended", "app"), readOnly: true }, syncedAt } } });
+  await record.getByTestId("events-venue-record").waitFor();
+  await record.getByText("已结束", { exact: true }).waitFor();
+  assert.equal(await record.getByText("只有已报名的人可以使用会场模式").count(), 0);
   const ended = await harness.open(t, { screen: "venue", online: false, params: { id: eventId },
-    copies: { [`event-venue|${eventId}`]: { data: { ...journeyVenue("ended", "app") }, syncedAt } } });
-  await ended.getByText("活动已结束", { exact: true }).waitFor();
+    copies: { [`event-venue|${eventId}`]: { data: { ...journeyVenue("ended", "app"), readOnly: true, recommendations: [], rounds: [] }, syncedAt } } });
+  await ended.getByText("你不在这场的分组里", { exact: true }).waitFor();
   assert.equal(await ended.getByText("只有已报名的人可以使用会场模式").count(), 0);
 });
 

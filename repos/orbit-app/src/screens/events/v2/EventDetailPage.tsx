@@ -2,9 +2,11 @@
 // 紹介（会えそうな人：未公开时按登壇者推定）/ 参加者（プランに合う / 知り合い / 全員）· 底部 CTA。
 // 已报名时 CTA 位置换成 ⋯（カレンダーに追加 / 参加用プロフィールを編集 / 参加を取り消す，与 Web b12 378–381 §31 同位置）+ 会う準備へ。
 // 数据：GET /api/events/[id]/overview（规则评估，不调 AI）。
+// 2026-11-20（events-replay-cover-app-proposal ① ⑥ ⑩）：主办方的活动图片（coverUrl，2:1）取代色带；状态 chip 挪到标题下；
+// 已结束且在公开分组里（venueRecord）→ 封面卡下「会場の記録」入口卡；参加者行点开 AttendeeSheet。
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Platform, ScrollView, Share, StyleSheet, View } from "react-native";
+import { Image, Platform, ScrollView, Share, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { EventOverviewResponse } from "../../../api/contract/event-overview";
@@ -22,6 +24,8 @@ import { LinearGradient } from "../../plan/plan-svg";
 import { createThemedStyles, useOrbitTheme } from "../../../design/theme";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { radius, shadows } from "../../../design/tokens";
+import { AttendeeSheet, type AttendeeSheetPerson } from "./AttendeeSheet";
+import { GradientCard } from "./venue-ui";
 import { CancelSheet } from "./CancelSheet";
 import { HostContactCard, showHostContact } from "./HostContact";
 import { newIdempotencyKey, useEventsApi } from "./events-api";
@@ -93,6 +97,7 @@ export function EventDetailPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [sheetPerson, setSheetPerson] = useState<AttendeeSheetPerson | null>(null);
   // ★: saved = an assessment of this event exists (the overview's assessmentId), or saved just now.
   const [savedId, setSavedId] = useState<string | null>(null);
   // Host of this event: the overview says so (hosting); an older server without the field is asked through the host API.
@@ -191,7 +196,7 @@ export function EventDetailPage() {
   const saved = Boolean(savedId ?? assessment?.assessmentId);
   // Someone who is already in sees where they stand, not 即将截止 · 剩N个名额.
   const holdingChip = { attended: "stCheckedIn", pending_review: "stPending", registered: "stRegistered", waitlisted: "stWaitlisted" } as const;
-  const remainingChip = ended ? t("liveEnded") : holding && !hosting ? t(holdingChip[status as keyof typeof holdingChip]) : typeof data.remaining === "number" ? t(data.deadlineSoon ? "deadlineChip" : "openChip", { n: data.remaining }) : null;
+  const remainingChip = ended ? t("statusEnded") : holding && !hosting ? t(holdingChip[status as keyof typeof holdingChip]) : typeof data.remaining === "number" ? t(data.deadlineSoon ? "deadlineChip" : "openChip", { n: data.remaining }) : null;
   // Opens on 符合计划 when someone fits the plan, otherwise on 全部 (never on an empty list by default).
   const shown: Filter = filter ?? (data.attendeeCounts.planFit > 0 ? "planFit" : "all");
   const people = data.attendees.filter((person) => (shown === "planFit" ? person.planFit : shown === "known" ? person.known : true));
@@ -199,6 +204,11 @@ export function EventDetailPage() {
   const known = data.knownAttendees;
   const knownLine = known.map((person) => `${t("honorific", { name: person.name.split(/\s+/)[0] ?? person.name })}${person.speaker ? t("speakerTag") : ""}`)
     .reduce((line, item) => (line ? `${line}${/[）)]$/.test(line) ? "· " : " · "}${item}` : item), "");
+  // 资料只给报名者看（服务端对其他人 404）：名单解锁 = 已报名，主办方看的是运营页名单。
+  const canOpenPeople = holding && !hosting;
+  const openPerson = (person: { attendeeId: string; name: string; initial: string; org?: string | null; role?: string | null }, index: number) =>
+    setSheetPerson({ attendeeId: person.attendeeId, initial: person.initial, name: person.name, org: person.org ?? null, role: person.role ?? null, tone: AV_TONES[index % AV_TONES.length]! });
+  const record = ended ? data.venueRecord ?? null : null;
   const Avatar = ({ initial, index, small, tones = AV_TONES }: { initial: string; index: number; small?: boolean; tones?: readonly Tone[] }) => {
     const [bg, ink] = tone(tones[index % tones.length]!);
     return <View style={[small ? styles.avSm : styles.av, { backgroundColor: bg }]}><UiText style={[small ? styles.avSmText : styles.avText, { color: ink }]}>{initial}</UiText></View>;
@@ -243,16 +253,29 @@ export function EventDetailPage() {
         {header}
         {offlineAt ? <EventsOfflineNotice lastSyncedAt={offlineAt} /> : null}
         <View style={[styles.card, styles.coverCard]}>
-          <Cover style={styles.cover}>
-            <View style={[styles.emo, { backgroundColor: colors.surface }]}><UiText style={styles.coverEmo}>{data.emoji}</UiText></View>
-            {remainingChip ? <View style={[styles.chip, styles.coverChip]}><UiText style={styles.chipText} numberOfLines={1}>{remainingChip}</UiText></View> : null}
-          </Cover>
+          {data.coverUrl ? <Image source={{ uri: data.coverUrl }} resizeMode="cover" style={styles.coverImage} accessibilityIgnoresInvertColors testID="events-detail-cover-image" /> : (
+            <Cover style={styles.cover}>
+              <View style={[styles.emo, { backgroundColor: colors.surface }]}><UiText style={styles.coverEmo}>{data.emoji}</UiText></View>
+            </Cover>
+          )}
           <View style={styles.coverBody}>
             {publicOrganizerName(data.organizer.name) ? <UiText style={styles.lbl}>{publicOrganizerName(data.organizer.name)}</UiText> : null}
             <UiText style={styles.title}>{data.title}</UiText>
+            {remainingChip ? <View style={[styles.chip, styles.statusChip, ended || holding ? null : { backgroundColor: colors.macApricot }]} testID="events-detail-status"><UiText style={[styles.chipText, ended || holding ? null : { color: colors.macApricotInk }]} numberOfLines={1}>{remainingChip}</UiText></View> : null}
             <View style={styles.facts}>{facts.map((fact) => <View key={fact.icon} style={styles.fact}><Icon name={fact.icon} size={16} color={colors.ink3} /><UiText style={styles.factText}>{fact.text}</UiText></View>)}</View>
           </View>
         </View>
+        {record ? (
+          <GradientCard from={colors.macLav} style={styles.gap} testID="events-detail-record">
+            <View style={styles.cardH}><UiText style={styles.h3}>{t("recordTitle")}</UiText><UiText style={styles.lbl}>{t("recordReadOnly")}</UiText></View>
+            <View style={styles.mini3}>
+              {([["recordTablemates", record.tablemates], ["recordRecommended", record.recommended], ["recordExchanged", record.exchanged]] as const).map(([label, n]) => (
+                <View key={label} style={styles.miniCell}><UiText style={styles.lbl}>{t(label)}</UiText><UiText style={styles.miniNum}>{n}<UiText style={styles.lbl}>{t("recordPeopleUnit")}</UiText></UiText></View>
+              ))}
+            </View>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("recordOpen")} onPress={() => router.push(`${base}/live` as Href)} style={styles.recordBtn} testID="events-detail-record-open"><UiText style={styles.ctaMainText}>{t("recordOpen")}</UiText></UiPressable>
+          </GradientCard>
+        ) : null}
         {/* 一行一件事实；「会いたい人」点进去 = 参加者 tab 的「プランに合う」。原来评分条打开的「判定の内訳」不再从这里进。 */}
         <RelevanceCard relevance={relevance} t={rt} style={styles.gap}
           onPeople={() => { setTab("people"); if (data.attendeeCounts.planFit > 0) setFilter("planFit"); }} />
@@ -280,11 +303,12 @@ export function EventDetailPage() {
               <View style={[styles.card, styles.gap]} testID="events-detail-meet">
                 <View style={styles.cardH}><UiText style={styles.h3}>{t("meetTitle")}</UiText><UiText style={styles.lbl}>{t("meetFromAttendees", { n: data.attendeeCounts.all })}</UiText></View>
                 {fit.map((person, index) => (
-                  <View key={person.attendeeId} style={styles.li}>
+                  <UiPressable key={person.attendeeId} accessibilityRole={canOpenPeople ? "button" : undefined} accessibilityLabel={person.name} disabled={!canOpenPeople} onPress={() => openPerson(person, index)} style={styles.li}>
                     {index ? <View style={styles.liLine} /> : null}
                     <Avatar initial={person.initial} index={index} />
                     <View style={styles.grow}><UiText style={styles.metaTitle} numberOfLines={1}>{[person.name, person.org].filter(Boolean).join(" · ")}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{person.note ?? ""}</UiText></View>
-                  </View>
+                    {canOpenPeople ? <Icon name="right" size={16} color={colors.ink4} /> : null}
+                  </UiPressable>
                 ))}
               </View>
             ) : null}
@@ -318,7 +342,7 @@ export function EventDetailPage() {
             {people.length ? (
               <View style={[styles.card, styles.peopleCard]} testID="events-detail-people">
                 {people.map((person, index) => (
-                  <View key={person.attendeeId} style={styles.li}>
+                  <UiPressable key={person.attendeeId} accessibilityRole={canOpenPeople ? "button" : undefined} accessibilityLabel={person.name} disabled={!canOpenPeople} onPress={() => openPerson(person, index)} style={styles.li} testID={`events-detail-person-${person.attendeeId}`}>
                     {index ? <View style={styles.liLine} /> : null}
                     <Avatar initial={person.initial} index={index} />
                     <View style={styles.grow}>
@@ -327,7 +351,8 @@ export function EventDetailPage() {
                       {person.note ? <UiText style={[styles.metaSub, { color: colors.ink2 }]} numberOfLines={1}>{person.note}</UiText> : null}
                     </View>
                     {person.wanted ? <View style={[styles.chip, { alignSelf: "center", backgroundColor: colors.macLav }]}><UiText style={[styles.chipText, { color: colors.macLavInk }]}>{t("legendWanted")}</UiText></View> : null}
-                  </View>
+                    {canOpenPeople ? <Icon name="right" size={16} color={colors.ink4} /> : null}
+                  </UiPressable>
                 ))}
               </View>
             ) : <View style={[styles.card, styles.gap]}><UiText style={[styles.sub, { color: colors.ink3 }]}>{holding && data.attendees.length === 0 && data.attendeeCounts.all === 1 ? t("onlyYou") : t("noPeopleHere")}</UiText></View>}
@@ -362,6 +387,7 @@ export function EventDetailPage() {
       ) : null}
       <ActionSheet visible={menuOpen} title={data.title} onClose={() => setMenuOpen(false)} onSelect={(key) => void menu(key)}
         options={[{ key: "calendar", label: t("addToCalendar") }, { key: "profile", label: t("editJoinProfile") }, { key: "cancel", label: t("cancelDo"), destructive: true }]} />
+      <AttendeeSheet eventId={eventId} person={sheetPerson} onClose={() => setSheetPerson(null)} />
       <CancelSheet visible={cancelOpen} event={data} t={t} language={language} busy={busy} onKeep={() => setCancelOpen(false)} onCancel={() => void confirmCancel()} />
     </SafeAreaView>
   );
@@ -381,7 +407,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   emo: { alignItems: "center", borderRadius: 13, height: 40, justifyContent: "center", width: 40 },
   emoText: { fontSize: 23, lineHeight: 28 },
   coverEmo: { fontSize: 28, lineHeight: 35 },
-  coverChip: { backgroundColor: colors.surface, position: "absolute", right: 12, top: 12 },
+  // 2:1 图片（主办方上传）：卡片满宽，上角跟卡片圆角（coverCard overflow hidden）。
+  coverImage: { aspectRatio: 2, backgroundColor: colors.surface2, width: "100%" },
+  statusChip: { marginTop: 8 },
+  // 会場の記録 入口卡（提案 ①）：linear-gradient(150deg, mac-lav, surface 65%) · .mini3 三格 surface-2 r14 10/11 · 主按钮 40。
+  mini3: { flexDirection: "row", gap: 8 },
+  miniCell: { backgroundColor: colors.surface2, borderRadius: 14, flex: 1, paddingHorizontal: 11, paddingVertical: 10 },
+  miniNum: { color: colors.ink, fontSize: 19, fontWeight: "800", lineHeight: 23 },
+  recordBtn: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, height: 40, justifyContent: "center", marginTop: 14 },
   coverBody: { paddingBottom: 16, paddingHorizontal: 16, paddingTop: 14 },
   title: { color: colors.ink, fontSize: 21, fontWeight: "700", lineHeight: 28, marginTop: 2 },
   facts: { gap: 6, marginTop: 10 },

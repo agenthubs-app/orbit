@@ -1,6 +1,7 @@
 // R27 会後のふりかえり（App；b2 #37 新用户空状态 · #38 少量 · #39 大量，深 #46）：会った人 hero（头像叠 · mini3）· ✨ 今日のまとめ（依据 ?）·
 // 次の一手（逐人 ✓ / ✕ + お礼の下書き / フォロー日 / 🎯 计划类型）· プラン スコア预览（与 Web 同一纯函数 nextAward，同人同类型只计一次）。
 // 数据：GET /api/events/[id]/after，确定：POST /after/confirm（只确定勾选的行）。お礼只是下书き，这里不发送任何东西。
+// 2026-11-20：「今日会った人」的头像（met.people）和次の一手 每行的名字都打开参加者の詳細（AttendeeSheet）。
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -17,6 +18,7 @@ import { useJourneyApi } from "./journey-api";
 import { tokyo, weekday } from "./journey-model";
 import { JourneyPage } from "./JourneyPage";
 import { useJourneyT } from "./useJourneyT";
+import { AttendeeSheet, type AttendeeSheetPerson } from "./AttendeeSheet";
 import { Avatar, AvatarStack, useVenueStyles, Why, WhyBody, type Tone } from "./venue-ui";
 
 /** 同 Web after-core previewAfterScore：勾选的行按顺序走 nextAward，返回每行加分与合计。 */
@@ -56,6 +58,7 @@ export function AfterPage() {
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [unlinked, setUnlinked] = useState<Set<string>>(new Set());
   const [why, setWhy] = useState<Record<string, boolean>>({});
+  const [sheetPerson, setSheetPerson] = useState<AttendeeSheetPerson | null>(null);
   const [draftFor, setDraftFor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -98,6 +101,7 @@ export function AfterPage() {
   const title = data.date === new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date()) ? t("afterTitle") : t("goAfter");
   const subtitle = `${data.title} · ${d ? `${d.month}/${d.day}` : data.date}`;
   const empty = data.met.count === 0 && steps.length === 0;
+  const heroTone = (() => { let position = 0; return (person: { initial: string }) => { const row = steps.findIndex((step) => step.initial === person.initial); const tone = row >= 0 ? ROW_TONES[row % ROW_TONES.length]! : HERO_TONES[position % HERO_TONES.length]!; position += 1; return tone; }; })();
   const right = <IconButton icon="share" accessibilityLabel={t("share")} onPress={shareRecap} />;
   const draftStep = steps.find((step) => step.attendeeId === draftFor) ?? null;
 
@@ -142,7 +146,9 @@ export function AfterPage() {
       <View style={vs.card}>
         <View style={styles.heroRow}>
           <View><UiText style={vs.lbl}>{t("metToday")}</UiText><UiText style={[vs.big, styles.big52]}>{data.met.count}<UiText style={styles.bigUnit}>{` ${t("metUnit")}`}</UiText></UiText></View>
-          <AvatarStack people={data.met.initials.slice(0, 5).map((initial) => ({ initial }))} toneOf={(() => { let position = 0; return (person: { initial: string }) => { const row = steps.findIndex((step) => step.initial === person.initial); const tone = row >= 0 ? ROW_TONES[row % ROW_TONES.length]! : HERO_TONES[position % HERO_TONES.length]!; position += 1; return tone; }; })()} />
+          {data.met.people?.length
+            ? <AvatarStack people={data.met.people.slice(0, 5)} toneOf={heroTone} onPress={(person) => setSheetPerson({ attendeeId: person.attendeeId, initial: person.initial, name: person.name, org: person.org ?? null })} />
+            : <AvatarStack people={data.met.initials.slice(0, 5).map((initial) => ({ initial }))} toneOf={heroTone} />}
         </View>
         <View style={styles.mini3}>
           {([[t("statExchanged"), data.met.exchanged, null], [t("itemTarget"), data.met.wantedMet, data.met.wantedTotal], [t("meetingsSet"), data.met.meetings, null]] as const).map(([label, value, of]) => (
@@ -174,8 +180,10 @@ export function AfterPage() {
             return (
               <View key={step.attendeeId} style={[styles.nx, index ? styles.line : null, on ? null : { opacity: 0.45 }]}>
                 <View style={vs.row}>
-                  <Avatar initial={step.initial} tone={ROW_TONES[index % ROW_TONES.length]!} size="sm" />
-                  <View style={vs.grow}><UiText style={styles.nxName}>{step.name}</UiText>{step.org ? <UiText style={vs.lbl} numberOfLines={1}>{step.org}</UiText> : null}</View>
+                  <UiPressable accessibilityRole="button" accessibilityLabel={step.name} onPress={() => setSheetPerson({ attendeeId: step.attendeeId, initial: step.initial, name: step.name, org: step.org ?? null, tone: ROW_TONES[index % ROW_TONES.length]! })} style={[vs.row, vs.grow]} testID={`events-after-person-${step.attendeeId}`}>
+                    <Avatar initial={step.initial} tone={ROW_TONES[index % ROW_TONES.length]!} size="sm" />
+                    <View style={vs.grow}><UiText style={styles.nxName}>{step.name}</UiText>{step.org ? <UiText style={vs.lbl} numberOfLines={1}>{step.org}</UiText> : null}</View>
+                  </UiPressable>
                   <UiPressable accessibilityRole="button" accessibilityLabel="✓" accessibilityState={{ selected: on }} onPress={() => toggle(setExcluded, step.attendeeId, false)} style={[styles.yn, on ? styles.ynOn : null]}><UiText style={[styles.ynText, on ? { color: colors.bg } : null]}>✓</UiText></UiPressable>
                   <UiPressable accessibilityRole="button" accessibilityLabel="✕" accessibilityState={{ selected: !on }} onPress={() => toggle(setExcluded, step.attendeeId, true)} style={[styles.yn, on ? null : styles.ynOn]}><UiText style={[styles.ynText, on ? null : { color: colors.bg }]}>✕</UiText></UiPressable>
                 </View>
@@ -237,6 +245,7 @@ export function AfterPage() {
           </View>
         ) : null}
       </BottomSheet>
+      <AttendeeSheet eventId={eventId} person={sheetPerson} onClose={() => setSheetPerson(null)} />
     </JourneyPage>
   );
 }
