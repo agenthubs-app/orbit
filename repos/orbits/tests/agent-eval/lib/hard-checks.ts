@@ -49,11 +49,6 @@ const cannot = (detail: string) => ({ detail, evidence: [], status: "cannot_judg
 
 /** Words with no evidence in the current system, and the sprint that is expected to provide it. */
 export const NOT_YET: Record<string, string> = {
-  mcp_collected: "AG17",
-  mcp_result_excludes: "AG17",
-  mcp_result_has: "AG17",
-  mcp_tool_list: "AG17",
-  pages_read: "AG05",
   push_delivery: "AG16",
   push_excludes: "AG16",
   shadow_report: "AG18",
@@ -218,6 +213,34 @@ function handoffPartFor(obs: Observation, fragment: string) {
     if (part) return { layer, part };
   }
   return null;
+}
+
+/** AG17: the answers the simulated external agent got to its tool calls, in order. */
+function mcpAnswers(obs: Observation): TraceEvent[] {
+  return obs.events.filter((event) => event.type === "mcp.response");
+}
+
+/** AG17: a tool answer without its opaque values (a paging cursor, a proposal id, the link that carries it): random characters are not record content. */
+function withoutOpaque(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutOpaque);
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value as Record<string, unknown>).filter(([key]) => key !== "next_cursor" && key !== "proposal_id" && key !== "confirm_url").map(([key, item]) => [key, withoutOpaque(item)]));
+  return value;
+}
+
+/**
+ * AG17: the eval clock starts at the case's time and then moves with real time, so a time the product computes from
+ * "now" (a proposal's expiry) lands some seconds after the instant the case writes. Two instants within this many
+ * milliseconds are the same instant for `mcp_result_has`.
+ */
+export const MOVING_CLOCK_TOLERANCE_MS = 120_000;
+
+function sameValueOrInstant(expected: unknown, actual: unknown): boolean {
+  const instant = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/u;
+  if (typeof expected === "string" && typeof actual === "string" && instant.test(expected) && instant.test(actual)) {
+    const drift = Date.parse(actual) - Date.parse(expected);
+    return drift >= 0 && drift <= MOVING_CLOCK_TOLERANCE_MS;
+  }
+  return valuesEqual(expected, actual);
 }
 
 export const CHECKS: Record<string, CheckFn> = {
@@ -1003,8 +1026,96 @@ export const CHECKS: Record<string, CheckFn> = {
   },
 
   http_status(args, obs) {
-    const last = [...obs.events].reverse().find((event) => event.type === "http.response");
+    // AG17 (MCP.yaml: "http_status 判的是最后一步那次调用"): with an external agent in the case, the last tool call it
+    // made — after its one token refresh, when there was one; the runner's own reads afterwards (a card's final state
+    // for the transcript) are not the call. Without one, the last HTTP response, as before.
+    const last = mcpAnswers(obs).at(-1) ?? [...obs.events].reverse().find((event) => event.type === "http.response");
     return last && Number(last.status) === Number(args) ? pass(`last status ${last.status}`, seqs([last])) : fail(`last status ${last?.status ?? "none"}, expected ${args}`, last ? seqs([last]) : []);
+  },
+
+  // ── AG17: what the simulated external agent got back (MCP.yaml, SCL.yaml proposed_checks) ──
+
+  /** Every tool answer of the case (results and error bodies): none carries the fragments. A fixture id means that record. */
+  mcp_result_excludes(args, obs) {
+    const answers = mcpAnswers(obs);
+    if (!answers.length) return cannot("the external agent made no tool call in this case");
+    const fragments = (Array.isArray(args) ? args : []).map(String);
+    const found: string[] = [];
+    const evidence: number[] = [];
+    for (const answer of answers) {
+      const text = JSON.stringify(withoutOpaque({ error: answer.error ?? null, result: answer.result ?? null }));
+      for (const fragment of fragments) {
+        const productId = obs.idMap[fragment];
+        const isId = Boolean(productId) || /^[A-Z]{1,4}\d+$/u.test(fragment);
+        // A fixture id stands for the record: its product id anywhere, or the id itself as a whole value. Anything else is text.
+        const hit = isId ? (productId ? text.includes(JSON.stringify(productId).slice(1, -1)) : false) || text.includes(`"${fragment}"`) : text.includes(JSON.stringify(fragment).slice(1, -1));
+        if (hit) {
+          found.push(`${fragment} in the answer to ${answer.tool}${answer.page ? ` (page ${answer.page})` : ""} at seq ${answer.seq}`);
+          evidence.push(Number(answer.seq));
+        }
+      }
+    }
+    // Every paging cursor, read the way a client could read it (as it is, base64-decoded, and each dot-separated part
+    // decoded): no account id, no workspace, no record of the fixture and no readable time may be in it.
+    const cursors = answers.filter((answer) => typeof (answer.result as Record<string, unknown> | null)?.next_cursor === "string");
+    const secrets = [...new Set([...Object.values(obs.accounts), ...Object.values(obs.idMap)])].filter((value) => typeof value === "string" && value.length >= 5);
+    for (const answer of cursors) {
+      const cursor = String((answer.result as Record<string, unknown>).next_cursor);
+      const decode = (value: string) => Buffer.from(value, "base64url").toString("latin1");
+      const readings = [cursor, decode(cursor), ...cursor.split(".").map(decode)].join("\n");
+      const seen = secrets.find((value) => readings.includes(value)) ?? (/workspace:|"actorId"|"workspaceId"/u.test(readings) ? "the workspace or account field" : /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/u.test(readings) ? "a readable time" : null);
+      if (seen) {
+        found.push(`the cursor of ${answer.tool}${answer.page ? ` (page ${answer.page})` : ""} at seq ${answer.seq} can be read: it holds ${obs.fixtureIdOf(seen) ?? seen}`);
+        evidence.push(Number(answer.seq));
+      }
+    }
+    return found.length ? fail(`found ${[...new Set(found)].slice(0, 12).join(" | ")}`, [...new Set(evidence)].slice(0, 30)) : pass(`none of the ${fragments.length} fragment(s) in ${answers.length} tool answer(s); ${cursors.length} cursor(s) unreadable`, seqs(answers).slice(-30));
+  },
+
+  /** The last tool answer has these fields: `present` means there and not empty; a value must be equal (a time as an instant). */
+  mcp_result_has(args, obs) {
+    const last = mcpAnswers(obs).at(-1);
+    if (!last) return cannot("the external agent made no tool call in this case");
+    const result = (last.result ?? {}) as Record<string, unknown>;
+    const problems: string[] = [];
+    for (const [field, expected] of Object.entries((args ?? {}) as Record<string, unknown>)) {
+      const actual = result[field];
+      if (expected === "present") {
+        if (actual === undefined || actual === null || actual === "") problems.push(`${field} is missing or empty`);
+      } else if (!sameValueOrInstant(expected, actual)) problems.push(`${field} is ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`);
+    }
+    return problems.length ? fail(problems.join("; "), seqs([last])) : pass(`the last tool answer (${last.tool}, HTTP ${last.status}) has ${Object.keys(args ?? {}).join(", ")}`, seqs([last]));
+  },
+
+  /** The tool list the connection saw when it listed tools is exactly the named ones. */
+  mcp_tool_list(args, obs) {
+    const listed = [...obs.events].reverse().find((event) => event.type === "mcp.tools" && event.as === args?.as);
+    if (!listed) return cannot(`connection ${args?.as} never listed its tools in this case`);
+    const actual = ((listed.tools ?? []) as { name: string }[]).map((tool) => tool.name).sort();
+    const expected = [...((args?.tools ?? []) as string[])].sort();
+    return JSON.stringify(actual) === JSON.stringify(expected) ? pass(`${args.as} sees ${actual.join(", ") || "no tool"}`, seqs([listed])) : fail(`${args.as} sees ${actual.join(", ") || "no tool"}, expected ${expected.join(", ")}`, seqs([listed]));
+  },
+
+  /** The records of the latest mcp_paginate, all pages together: how many, how many more than once, which must be there. */
+  mcp_collected(args, obs) {
+    const paging = [...obs.events].reverse().find((event) => event.type === "mcp.paginate");
+    if (!paging) return cannot("no mcp_paginate step ran in this case");
+    const ids = (paging.ids ?? []) as string[];
+    const unique = new Set(ids);
+    const problems: string[] = [];
+    if (paging.complete !== true) problems.push("the paging stopped before the last page");
+    if (args?.count !== undefined && unique.size !== Number(args.count)) problems.push(`${unique.size} different record(s), expected ${args.count}`);
+    if (args?.duplicates !== undefined && ids.length - unique.size !== Number(args.duplicates)) problems.push(`${ids.length - unique.size} record(s) came back more than once, expected ${args.duplicates}`);
+    const missing = ((args?.includes ?? []) as string[]).filter((fixtureId) => !unique.has(obs.idMap[fixtureId] ?? fixtureId));
+    if (missing.length) problems.push(`not among them: ${missing.join(", ")}`);
+    return problems.length ? fail(problems.join("; "), seqs([paging])) : pass(`${unique.size} record(s) over ${paging.pages} page(s), none twice`, seqs([paging]));
+  },
+
+  /** README §3.2 "某次检索至少翻了几页": the pages of the latest paged retrieval (AG17: the external agent's mcp_paginate). */
+  pages_read(args, obs) {
+    const paging = [...obs.events].reverse().find((event) => event.type === "mcp.paginate");
+    if (!paging) return cannot("no paged retrieval was recorded in this case");
+    return Number(paging.pages) >= Number(args?.min ?? 1) ? pass(`${paging.pages} page(s)`, seqs([paging])) : fail(`${paging.pages} page(s), expected at least ${args?.min}`, seqs([paging]));
   },
 
   reads_include(args, obs) {

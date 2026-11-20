@@ -108,3 +108,22 @@
 
 外部条件缺失（前序未完成、视觉稿未批准）先不启动或只暂停对应部分。run 开始后门槛不过，修复后整套重跑，最多两个修复轮次，仍不过如实结束为 failed，不降低验收条件。人工联调缺授权时，离线部分照常收口、提交、写 REPORT，状态记 blocked（只差两项人工联调）；授权到位后在同一 run 里补做并追加记录，不开第二个 Generator。
 分支：从 `orbit-agent-claude` 建 `sprint/AG17-mcp-access`，路径限定提交（禁止 `git add .`／`git add -A`），提交前 `node .gitnexus/run.cjs detect-changes --scope staged --repo .`。交接列本线分支和固定最终 SHA，由协调者 `--no-ff` 合回 `orbit-agent-claude`，在合并树跑收口集与 typecheck 后才登记 completed。REPORT 含验收映射、SHA、命令与退出码、RUNS.md 行、费用、两份人工联调记录、未完成项。push、部署、开隧道都需要用户单独授权。
+
+## 进入条件核对（2026-11-19，追加记录；原文不改，原文 SHA-256 `0a70ea00f9d41ec9c63759486431cef6d65b6236d4142abb9d02e1017f8f2b6f`）
+
+协调者 2026-11-19 核对并交给本 run（run-01，线 `ag17`，分支 `sprint/AG17-mcp-access`，基线 HEAD `98869bb4c`，集成线 `agent-v1-integration`）：
+
+1. AG02、AG05、AG06、AG07 已完成并合并，AG08～AG13 也是。
+2. **AG15（定时任务、一次性定时器、收件箱）与本 sprint 并行，不在前面。** 本 PLANNER 用它两处：收件箱里来源为「外部提议」的一条（AE-MCP-003 判 `inbox`）、由一次性定时器到点标过期（AE-MCP-005 用 `scheduler_tick`）。这两处做成小接缝（`features/agent-v1/mcp/confirm-link.ts` 的 `ProposalSeams`，接线处 `configured.ts` 的 `PROPOSAL_SEAMS`）；过期在打开链接和点击确认时都按存储的 `expiresAt` 判，没有定时器也不会执行过期的卡。AE-MCP-003、AE-MCP-005 在协调者合并 AG15、接上接缝之前保持不过，不为它们开修复轮。
+3. **三张网页（同意页、确认链接页、设置里的连接管理）的视觉稿还没批准。** 先做服务端和不需要页面的测试；确认链接页的卡片沿用 Web 确认卡组件；页面布局等协调者送来批准的视觉稿。
+4. 与 Claude、Codex 的真实联调需要用户另外授权并本人登录，本 run 不做，记为未完成。
+5. 并行的其他线：AG14 记忆（MCP 不得返回记忆，加一条记忆出现后仍能抓住的测试）、AG15、AG19。
+
+### 上下文包更正（按前序 REPORT 与实际代码）
+
+- 「本 worktree 没有 GitNexus 索引」：已用 `gnx.sh ag17 analyze --index-only` 建好，影响分析结果见 REPORT。
+- `freezeCard()` 在 `features/agent/runtime/service.ts`（AG02），不在 `propose/`；它固定给 7 天有效期，本 sprint 加了按出处取有效期（外部连接 24 小时）。
+- 账本按账号分库（`<工作区>:agent-actor:<账号>`），所以别的账号即使拿到卡的编号也读不到这张卡；确认链接页另用提议编号核对账号。
+- 评测端口与库：本线用 3190 起的端口和 `orbit_agent_eval_ag17`（line-brief），不是 3100／3110 和 `orbit_agent_eval`。
+- MCP 规范 2026-07-28 版已发布，启动时读了传输、版本、授权、客户端登记四页：没有 `initialize` 握手，每个请求在 `_meta` 和 `MCP-Protocol-Version` 头里带版本，另有 `Mcp-Method`、`Mcp-Name` 两个镜像头，头与正文不一致回 400（`-32020`），版本不支持回 400（`-32022`）并列出支持的版本，必须实现 `server/discover`，GET／DELETE 回 405。端点按此实现，并照旧应答 2025-11-25 版的 `initialize`。
+- 客户端身份文档：Claude 是 `https://claude.ai/oauth/mcp-oauth-client-metadata`（回调 `https://claude.ai/api/mcp/auth_callback`），Claude Code 是 `https://claude.ai/oauth/claude-code-client-metadata`（本机回调，端口任意）。ChatGPT、Codex 的登记方式没有查到可核实的文档地址，留到真实联调时核实后再加进名单。

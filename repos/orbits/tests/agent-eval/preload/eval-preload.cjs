@@ -888,9 +888,27 @@ http.Server.prototype.emit = function evalServerEmit(event, req, res, ...rest) {
   return Reflect.apply(originalEmit, this, [event, req, res, ...rest]);
 };
 
+// AG17: the recorded copies of the external clients' identity documents (Client ID Metadata Documents). The product's
+// authorization server asks this hook instead of fetching; a client_id with no recorded copy gets nothing (and is refused).
+const CLIENT_DOCUMENTS_FILE = path.join(__dirname, "..", "..", "..", "..", "..", "docs", "epics", "agent-design", "eval", "world", "mcp-client-documents.json");
+let clientDocuments = null;
+function clientDocument(clientId) {
+  if (clientDocuments === null) {
+    try {
+      clientDocuments = JSON.parse(fs.readFileSync(CLIENT_DOCUMENTS_FILE, "utf8")).documents || {};
+    } catch {
+      clientDocuments = {};
+    }
+  }
+  const found = Object.prototype.hasOwnProperty.call(clientDocuments, clientId) ? clientDocuments[clientId] : null;
+  emit({ type: "mcp.client_document", clientId, source: found ? "replay" : "simulated", found: Boolean(found) });
+  return found;
+}
+
 globalThis.__orbitAgentEval = {
   emit,
   takeFault,
+  clientDocument,
   setting: (name) => (state.settings && Object.prototype.hasOwnProperty.call(state.settings, name) ? state.settings[name] : null),
   deniedReads: () => [...state.denied],
   get context() {

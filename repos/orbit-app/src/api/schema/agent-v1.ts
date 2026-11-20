@@ -4,6 +4,7 @@ import type {
   AgentActionPreviewContract,
   AgentCardDecisionInputContract,
   AgentClarificationContract,
+  AgentConnectionConsentInputContract,
   AgentReferenceCandidateContract,
   AgentReferenceCheckResultContract,
   AgentReferenceSearchResultContract,
@@ -374,6 +375,15 @@ export const agentMemorySettingsInputSchema = z.object({
   allowConversationLearning: z.boolean().optional(),
   enabled: z.boolean().optional(),
 }) satisfies z.ZodType<AgentMemorySettingsInputContract>;
+
+/* ── AG17：外部连接 ─────────────────────────────────────────────────────── */
+
+/** POST /api/agent/connections/authorize 的请求体：用户在同意页上的选择。 */
+export const agentConnectionConsentInputSchema: z.ZodType<AgentConnectionConsentInputContract> = z.object({
+  decision: z.enum(["allow", "deny"]),
+  request: z.string().min(1).max(8000),
+  scopes: z.array(z.string().min(1).max(60)).max(40),
+}).strict();
 
 // ── agent-design AG15：定时任务与运行历史（本块由 AG15 追加）。读取时放宽：不认识的结果当作 failed，不认识的状态当作 paused。 ──
 

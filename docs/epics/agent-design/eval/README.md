@@ -344,6 +344,8 @@ cases:
 | `db.write` | 每次业务写入的集合、记录、前值、后值。 |
 | `memory.recall` | 本轮用到的记忆条目和版本。 |
 | `notify.inbox`、`notify.push` | 写入收件箱和发出提醒。 |
+| `mcp.connect`、`mcp.tools`、`mcp.request`、`mcp.response`、`mcp.paginate` | 模拟的外部 Agent（AG17）：建立连接走过的每一步、它列出的工具、每次工具调用的参数、状态码、质询头、结果或错误体、翻页的页数与收到的记录编号。服务端另记 `mcp.call`（连接、工具、范围、返回条数、协议版本）。都不含令牌和授权码。 |
+| `link.opened`、`link.refused` | 某个账号登录后打开确认链接读到了什么（AG17）。 |
 | `budget` | 各项额度的变化。 |
 | `error` | 任何异常。 |
 

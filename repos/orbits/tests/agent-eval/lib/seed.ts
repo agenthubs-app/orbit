@@ -678,7 +678,8 @@ export function createWorldWriter(world: string, clock: string) {
     await step("rule", 1, writeRule);
     await step("conversation", 4, writeConversation);
     for (const kind of ["connection", "card", "push_device"] as const) {
-      for (const record of byKind(kind)) gap(report, record.id, kind, `${kind} cannot be written by the current product; arrives in a later sprint`);
+      // AG17: an external connection is not seeded; the runner makes it through the product's authorization flow when a case uses it.
+      for (const record of byKind(kind)) gap(report, record.id, kind, kind === "connection" ? "made by the runner through the product's authorization flow when a case uses it (AG17), not by the seed" : `${kind} cannot be written by the current product; arrives in a later sprint`);
       if (byKind(kind).length) count(report, byKind(kind)[0].account, `${kind}_not_seeded`, byKind(kind).length);
     }
     return report;

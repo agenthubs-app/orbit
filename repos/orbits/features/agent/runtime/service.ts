@@ -15,7 +15,7 @@ import { emitTrace, takeEvalFault } from "../../agent-v1/observability/trace";
 import { resolveLocalCreateRefs } from "../../agent-v1/domains/private-event/ops";
 import type { AgentRuntimeRepository } from "./repository";
 import {
-  AGENT_CARD_TTL_MS,
+  cardTtlMs,
   buildCardOperations,
   cardTexts,
   decideAction,
@@ -1050,7 +1050,8 @@ export function createAgentRuntimeService({
         createdAt,
         evidenceChips: [],
         evidenceIds: [],
-        expiresAt: new Date(Date.parse(createdAt) + AGENT_CARD_TTL_MS).toISOString(),
+        // AG17: 7 days for a conversation's card, 24 hours for an external agent's proposal (设计稿 §5.2).
+        expiresAt: new Date(Date.parse(createdAt) + cardTtlMs(input.origin)).toISOString(),
         locale: input.locale,
         operations,
         origin: input.origin,

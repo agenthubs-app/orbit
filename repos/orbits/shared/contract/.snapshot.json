@@ -1956,6 +1956,176 @@
         }
       }
     },
+    "agent-v1.ts::AgentConnectionScopeOptionContract": {
+      "kind": "object",
+      "members": {
+        "domain": {
+          "optional": false,
+          "kind": "text",
+          "type": "'contacts' | 'events' | 'schedule' | 'attendance' | 'todos' | 'memos'"
+        },
+        "read": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "propose": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "agent-v1.ts::AgentConnectionContract": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientHost": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "scopes": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "createdAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "lastUsedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "agent-v1.ts::AgentConnectionListContract": {
+      "kind": "object",
+      "members": {
+        "connections": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentConnectionContract[]"
+        },
+        "options": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentConnectionScopeOptionContract[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentConnectionConsentContract": {
+      "kind": "object",
+      "members": {
+        "clientName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientHost": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "redirectHost": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "redirectIsLoopback": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "requestedScopes": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "preselectedScopes": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "options": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly AgentConnectionScopeOptionContract[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentConnectionConsentInputContract": {
+      "kind": "object",
+      "members": {
+        "request": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "decision": {
+          "optional": false,
+          "kind": "text",
+          "type": "'allow' | 'deny'"
+        },
+        "scopes": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentConnectionConsentResultContract": {
+      "kind": "object",
+      "members": {
+        "redirectTo": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentProposalViewContract": {
+      "kind": "object",
+      "members": {
+        "proposalId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "clientName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "createdAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "card": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentActionPreviewContract"
+        },
+        "notice": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
     "agent-v1.ts::AgentScheduledTaskRunOutcome": {
       "kind": "enum",
       "values": [

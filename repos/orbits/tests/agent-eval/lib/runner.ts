@@ -28,6 +28,7 @@ import type { AgentActionPreviewContract } from "../../../shared/contract/agent-
 import { agentRequestIdFor } from "../../../features/agent-v1/entry/store";
 import { CARD_STATUS_LABEL, cardText, decisionRecord, intentsFor, seedCard, seedSpecFor, type CardOpSpec } from "./cards";
 import { ClientViews, viewText } from "./client-views";
+import { clientProfileFor, ExternalAgent, type McpCallResult } from "./mcp-client";
 import { DEFAULT_CLOCK } from "./vocabulary";
 import { loadWorld, patchRecords, type FixtureRecord, type WorldFixture } from "./world";
 import { createWorldWriter, type WorldWriter } from "./seed";
@@ -72,12 +73,9 @@ const STEP_SUPPORT_NOTE: Record<string, string> = {
   disconnect: "the real-time channel needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   legacy_update: "only a to-do's fields can be sent the way an old client does (AG13); other records arrive in AG18",
   local_pending_edit: "unsynced App edits need the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)",
-  mcp: "MCP access arrives in AG17",
-  mcp_paginate: "MCP access arrives in AG17",
-  open_link: "confirmation links arrive in AG17",
   reconnect: "the real-time channel needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   resume_conversation: "resuming a saved conversation with its progress arrives in AG14",
-  revoke: "revoking a connection or a push permission is simulated from AG16/AG17 (a read permission from AG05)",
+  revoke: "revoking a push permission is simulated from AG16 (a read permission from AG05, a connection from AG17)",
   rollback: "rollback arrives in AG18",
   stop: "stopping a running turn needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   sync: "App sync needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)",
@@ -137,7 +135,7 @@ const DEPLOYMENT_SETTINGS = new Set(["model_calls_limit", "judgment_uncalibrated
 const MEMORY_SETTINGS = new Set(["memory_use", "memory_learn"]);
 const MEMORY_SETTING_LABEL: Record<string, string> = { memory_learn: "从对话里记住新的", memory_use: "回答时参考这些" };
 
-async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches: Record<string, any>, writer: WorldWriter, report: SeedReportFile, unsupported: Observation["unsupported"], fixtureCards: FixtureRecord[] = [], deploymentSettings: Record<string, unknown> = {}, conversations: string[] = [], memoryWritten: FixtureRecord[] = []): Promise<Record<string, string>> {
+async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches: Record<string, any>, writer: WorldWriter, report: SeedReportFile, unsupported: Observation["unsupported"], fixtureCards: FixtureRecord[] = [], deploymentSettings: Record<string, unknown> = {}, conversations: string[] = [], memoryWritten: FixtureRecord[] = [], fixtureConnections: FixtureRecord[] = []): Promise<Record<string, string>> {
   const extraIds: Record<string, string> = {};
   for (const name of testCase.patches ?? []) {
     const patch = world.patches[name] ?? filePatches[name];
@@ -155,6 +153,11 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
         // AG02: fixture cards go into the ledger once the case's conversation exists (runCase).
         if (record.kind === "card") {
           fixtureCards.push(record);
+          continue;
+        }
+        // AG17: a fixture connection is made through the product flow once the server knows the case (runCase).
+        if (record.kind === "connection") {
+          fixtureConnections.push(record);
           continue;
         }
         if (record.kind === "contact") await writer.writeContact(record);
@@ -254,8 +257,9 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const fixtureCards: FixtureRecord[] = [];
   const deploymentSettings: Record<string, unknown> = {};
   const patchConversations: string[] = [];
+  const fixtureConnections: FixtureRecord[] = [];
   const patchMemory: FixtureRecord[] = [];
-  const extraIds = await applyPatches(testCase, world, filePatches, ctx.writer, report, unsupported, fixtureCards, deploymentSettings, patchConversations, patchMemory);
+  const extraIds = await applyPatches(testCase, world, filePatches, ctx.writer, report, unsupported, fixtureCards, deploymentSettings, patchConversations, patchMemory, fixtureConnections);
   const idMap: Record<string, string> = { ...report.ids, ...extraIds };
   const reverse = new Map(Object.entries(idMap).map(([fixture, product]) => [product, fixture]));
   const fixtureIdOf = (productId: string | null | undefined) => (productId ? reverse.get(productId) ?? null : null);
@@ -353,6 +357,48 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       entry = new EntryHarness({ actorId: () => accounts[account], baseUrl: baseUrl(environment), cookie: () => cookieFor(account), db, log, sessionId: conversation.sessionId });
       await entry.start(["web", "app"]);
     }
+
+    // ── AG17: external connections. Each is made through the product flow by the simulated external client: the 401
+    // challenge, the metadata, the authorization request, the fixture account agreeing on Orbit's consent interface
+    // with the fixture's scopes, the code and the tokens. A patch's connections are made before the first step; a
+    // world's own (regular-v1, large-v1) when a step first uses them.
+    const agents = new Map<string, ExternalAgent>();
+    const lastProposal: { id: string | null; url: string | null } = { id: null, url: null };
+    const connectAgent = async (record: FixtureRecord): Promise<ExternalAgent> => {
+      const data = record.data as { client?: string; scopes?: string[] };
+      const profile = clientProfileFor(String(data.client ?? "Claude"));
+      const agent = new ExternalAgent({ baseUrl: baseUrl(environment), log, name: record.id, ...profile });
+      await agent.connect(await cookieFor(record.account), data.scopes ?? []);
+      agents.set(record.id, agent);
+      transcript.push(`*（外部连接 ${record.id}：模拟的外部客户端（夹具写作 ${data.client ?? "Claude"}，用录好的 ${profile.clientId === "https://claude.ai/oauth/mcp-oauth-client-metadata" ? "Claude" : "Claude Code"} 身份文档，${profile.era === "modern" ? "按 2026-07-28 版逐次请求" : "先做 2025-11-25 版握手"}）走完授权流程：未带令牌的调用得到 401 质询 → 读元数据 → 带 PKCE 的授权请求 → 账号 ${record.account} 在 Orbit 的同意接口上勾选 ${(data.scopes ?? []).join("、")} → 用授权码换令牌。它列出的工具：${agent.tools.join("、") || "（无）"}）*`, "");
+      return agent;
+    };
+    const agentFor = async (name: string): Promise<ExternalAgent | null> => {
+      const known = agents.get(name);
+      if (known) return known;
+      const record = world.anchors.find((item) => item.kind === "connection" && item.id === name);
+      return record ? connectAgent(record) : null;
+    };
+    for (const record of fixtureConnections) {
+      try {
+        await connectAgent(record);
+      } catch (connectError) {
+        unsupported.push({ reason: `connection ${record.id} could not be made through the product flow: ${connectError instanceof Error ? connectError.message : connectError}`, step: 0, word: "patch" });
+      }
+    }
+    /** Records in a tool result, named by their fixture ids where they have one (for the transcript). */
+    const recordNames = (result: Record<string, any> | null): string[] => (Array.isArray(result?.records) ? result!.records : result?.record ? [result.record] : []).map((item: { id?: string }) => fixtureIdOf(item.id) ?? String(item.id));
+    const mcpAnswerLines = (answer: McpCallResult): string[] => {
+      const lines = [`- Orbit（HTTP ${answer.status}${answer.refreshed ? "，客户端先刷新了一次令牌" : ""}）：${answer.result ? (answer.isError ? "工具结果（isError）" : "工具结果") : "没有工具结果"}`];
+      if (answer.wwwAuthenticate) lines.push(`  - WWW-Authenticate：${answer.wwwAuthenticate}`);
+      if (answer.error) lines.push(`  - 错误体：${JSON.stringify(answer.error).slice(0, 1200)}`);
+      if (answer.result) {
+        const named = recordNames(answer.result);
+        if (named.length) lines.push(`  - 返回的记录（夹具编号）：${named.join("、")}`);
+        lines.push("  ```json", ...JSON.stringify(answer.result, null, 2).slice(0, 6000).split("\n").map((line) => `  ${line}`), "  ```");
+      }
+      return lines;
+    };
 
     // ── AG02: cards. Hashes per revision as the clients saw them (click.revision), seeding. ──
     const cardHashes = new Map<string, Map<number, string>>();
@@ -1015,7 +1061,89 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           transcript.push("");
           return;
         }
+        case "mcp":
+        case "mcp_paginate": {
+          // AG17 (README §3.1, §3.4): one tool call of the simulated external agent; or the same call page after page.
+          const spec = (step[word] ?? {}) as { as?: string; tool?: string; args?: Record<string, unknown>; pages?: number | "all" };
+          const agent = await agentFor(String(spec.as));
+          log.push({ args: spec.args ?? {}, as: spec.as, ...(word === "mcp_paginate" ? { pages: spec.pages ?? "all" } : {}), step: index, tool: spec.tool, type: `turn.${word}` });
+          if (!agent) {
+            unsupported.push({ reason: `connection ${spec.as} is not in this case's patches or world`, step: index, word });
+            return;
+          }
+          // Fixture ids in the arguments become the product's ids; `proposal: last` is the latest proposal's id.
+          const args = productIdsOfFixture(spec.args ?? {}, idMap) as Record<string, unknown>;
+          if (args.proposal === "last") args.proposal = lastProposal.id ?? "none";
+          transcript.push(`**外部 Agent（${spec.as}）调用** \`${spec.tool}\`：\`${JSON.stringify(spec.args ?? {})}\`${word === "mcp_paginate" ? `（从第一页起，每次带上一页的游标再调，${spec.pages === undefined || spec.pages === "all" ? "直到没有下一页" : `翻满 ${spec.pages} 页`}）` : ""}`, "");
+          if (word === "mcp") {
+            const answer = await agent.call(String(spec.tool), args, { shownArgs: spec.args ?? {}, step: index });
+            if (typeof answer.result?.proposal_id === "string") {
+              lastProposal.id = answer.result.proposal_id;
+              lastProposal.url = typeof answer.result.confirm_url === "string" ? answer.result.confirm_url : null;
+            }
+            transcript.push(...mcpAnswerLines(answer), "");
+            return;
+          }
+          const limit = spec.pages === undefined || spec.pages === "all" ? 2000 : Number(spec.pages);
+          const ids: string[] = [];
+          let cursor: string | undefined;
+          let pages = 0;
+          let lastAnswer: McpCallResult | null = null;
+          let firstAnswer: McpCallResult | null = null;
+          do {
+            pages += 1;
+            lastAnswer = await agent.call(String(spec.tool), { ...args, ...(cursor ? { cursor } : {}) }, { page: pages, shownArgs: spec.args ?? {}, step: index });
+            firstAnswer ??= lastAnswer;
+            if (lastAnswer.status !== 200 || lastAnswer.isError || !Array.isArray(lastAnswer.result?.records)) break;
+            ids.push(...(lastAnswer.result!.records as { id: string }[]).map((record) => String(record.id)));
+            cursor = typeof lastAnswer.result!.next_cursor === "string" ? lastAnswer.result!.next_cursor : undefined;
+          } while (cursor && pages < limit);
+          const unique = new Set(ids);
+          log.push({ as: spec.as, complete: !cursor, duplicates: ids.length - unique.size, ids, pages, step: index, tool: spec.tool, type: "mcp.paginate" });
+          transcript.push(`- 共翻了 ${pages} 页（每页一次真实调用），收到 ${ids.length} 条记录，重复 ${ids.length - unique.size} 条，${cursor ? "还有下一页（按页数停下）" : "没有下一页了"}。第一页和最后一页如下，其余各页的逐条内容在 trace.jsonl 的 mcp.response 里。`, "- 第一页：", ...(firstAnswer ? mcpAnswerLines(firstAnswer) : []), ...(pages > 1 && lastAnswer ? ["- 最后一页：", ...mcpAnswerLines(lastAnswer)] : []), "");
+          return;
+        }
+        case "open_link": {
+          // AG17 (README §3.1): an account, signed in to Orbit, opens the confirm link. The page reads this interface;
+          // what it answers is what that account can see (the page itself is drawn once its visual draft is approved).
+          const spec = (step.open_link ?? {}) as { proposal?: string; as?: string };
+          const label = String(spec.as ?? account);
+          log.push({ as: label, proposal: spec.proposal ?? "last", step: index, type: "turn.open_link", url: lastProposal.url });
+          if (!lastProposal.id || !accounts[label]) {
+            unsupported.push({ reason: !lastProposal.id ? "no proposal was returned before this step" : `account ${label} does not exist in ${testCase.world}`, step: index, word });
+            return;
+          }
+          const opener = new EvalClient(baseUrl(environment), log, await cookieFor(label), "web");
+          const opened = await opener.request("GET", `/api/agent/proposals/${encodeURIComponent(lastProposal.id)}`, undefined, { purpose: `account ${label} opens the confirm link` });
+          const view = opened.body?.data as { card?: AgentActionPreviewContract; clientName?: string; notice?: string } | undefined;
+          transcript.push(`**账号 ${label} 登录后打开确认链接** ${lastProposal.url ?? ""}`, "");
+          if (opened.status === 200 && view?.card) {
+            noteCard(view.card, "web");
+            log.push({ as: label, cardId: view.card.actionId, clientName: view.clientName ?? null, status: view.card.status, step: index, type: "link.opened" });
+            transcript.push(`- 页面读到的内容（HTTP 200）：${view.clientName ?? "外部助手"} 提的修改`, ...cardText(view.card), ...view.card.operations.flatMap((op) => (op.display?.rows ?? []).map((row) => `    - ${row.label}：${row.before ?? "（空）"} → ${row.after ?? "（空）"}`)), ...(view.notice ? [`  - 页面上的说明（服务端给的文字）：${view.notice}`] : []), "");
+          } else {
+            log.push({ as: label, reason: opened.body?.error?.context?.reason ?? null, status: opened.status, step: index, type: "link.refused" });
+            transcript.push(`- 页面读到的内容（HTTP ${opened.status}）：${opened.body?.error?.message ?? "（没有内容）"}`, `- 响应全文：\`${JSON.stringify(opened.body ?? null).slice(0, 800)}\``, "- 页面上没有卡，也没有可点的按钮。", "");
+          }
+          return;
+        }
         case "revoke": {
+          // AG17: `connection: <name>` — the owner revokes the connection in Orbit's settings (the session interface).
+          const connectionName = (step.revoke as { connection?: string } | undefined)?.connection;
+          if (connectionName) {
+            const agent = await agentFor(connectionName);
+            const owner = [...fixtureConnections, ...world.anchors].find((item) => item.kind === "connection" && item.id === connectionName)?.account ?? account;
+            log.push({ revoke: { connection: connectionName }, step: index, type: "turn.revoke" });
+            if (!agent?.connectionId) {
+              unsupported.push({ reason: `connection ${connectionName} was never made, so it cannot be revoked`, step: index, word });
+              return;
+            }
+            const settings = new EvalClient(baseUrl(environment), log, await cookieFor(owner), "web");
+            const revoked = await settings.request("DELETE", `/api/agent/connections/${encodeURIComponent(agent.connectionId)}`, undefined, { purpose: `account ${owner} revokes the connection in settings` });
+            transcript.push(`*（账号 ${owner} 在设置里撤销了连接 ${connectionName}：HTTP ${revoked.status}${revoked.body?.data ? `，作废了 ${revoked.body.data.voidedProposals} 条还没确认的提议` : ""}）*`, "");
+            if (revoked.status !== 200) unsupported.push({ reason: `revoking ${connectionName} answered ${revoked.status}`, step: index, word });
+            return;
+          }
           // AG05 (PLANNER 出入 4): the product has no per-record read permission yet; the eval's deny list,
           // checked by every read, stands for it. `read: "memo:M31"` withdraws the read of that record.
           const spec = (step.revoke ?? {}) as { read?: string };
