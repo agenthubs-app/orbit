@@ -29,6 +29,7 @@ import { materialOf } from "../../answer/materials";
 import type { GapReason, Material } from "../../answer/schema";
 import { recordKindOf } from "../../clarify/default-readings";
 import { optionNamedIn } from "../../clarify/attribution";
+import { emptyKindsLine } from "../../answer/empty-kinds-copy";
 import type { NamedRecordRef } from "../../context/session-state";
 import { gapOfReadError, readPages } from "../../domains/registry";
 import { occurrenceIn } from "../../domains/schedule/read";
@@ -937,7 +938,23 @@ export function resolveNode(scope: NodeScope): GraphNode {
         finish("unfinished", "object_unclear");
         continue;
       }
-      if (!recordViews.length && !failures.length && !withheld && (read.wantsRecords || !contacts.length) && !read.gaps.has("unreadable")) {
+      // AG20b (R25, AE-REF-004): a resolved person whose profile was read is a record of this part. When the related kinds
+      // it also asked for came back empty, the profile is answered from and the empty kinds are said as what they are —
+      // "nothing found" only when nothing that can answer the part was read. The coverage shows the profile too.
+      const profiles = read.views.filter((view) => view.kind === "contact");
+      // Only when the part asks about the person (their profile, their context), not for a list of one kind ("Do I have open
+      // to-dos for Emily?": the profile cannot answer that; nothing found stays nothing found).
+      const asksAboutPerson = capabilities.some((capability) => capability === "contact.read" || capability === "profile.read" || capability === "view.context");
+      const profileAnswers = asksAboutPerson && !recordViews.length && profiles.length > 0 && read.wantsRecords && !failures.length && !withheld && !read.gaps.has("unreadable");
+      if (profileAnswers) {
+        const empty = searchKinds.filter((kind) => read.coverage.some((item) => item.kind === kind && item.seen === 0));
+        const who = profiles.map((view) => String(view.fields.displayName ?? "")).filter(Boolean).join(state.language === "en" ? ", " : "、");
+        if (empty.length) read.lines.push(emptyKindsLine(state.language, who, empty));
+        read.notes.push(`No ${empty.length ? empty.map((kind) => (kind === "memo" ? "notes" : kind === "todo" ? "to-dos" : "schedule items")).join(" or ") : "other records"} about ${who || "this person"} were found; the material is their contact profile. Answer from it (cite it); code tells the user the rest is empty.`);
+        read.coverage.push({ complete: true, kind: "contact", pagesRead: 1, seen: profiles.length, total: profiles.length });
+        emitTrace({ empty, partId: part.localId, profiles: profiles.map((view) => view.ref), type: "resolve.profile_answers" });
+      }
+      if (!profileAnswers && !recordViews.length && !failures.length && !withheld && (read.wantsRecords || !contacts.length) && !read.gaps.has("unreadable")) {
         read.gaps.add("no_record");
         read.lines.push(words.noRecord(quote));
       }
@@ -945,7 +962,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
       if (coverageLine && LIST_DELIVERABLES.has(part.plan.deliverable)) read.lines.push(words.coverage(coverageLine.seen, coverageLine.total, coverageLine.direction ?? null));
 
       // 5. Materials for the answer step (only when there is something to answer from).
-      const usable = read.wantsRecords ? recordViews.length > 0 : read.views.length > 0;
+      const usable = read.wantsRecords ? recordViews.length > 0 || profileAnswers : read.views.length > 0;
       if (usable) {
         // AG13: the names of the people, notes and events these records link to.
         await addLinkNames(records, accountScope, read.views, names);

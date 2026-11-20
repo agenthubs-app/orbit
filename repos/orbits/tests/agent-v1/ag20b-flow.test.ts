@@ -129,6 +129,32 @@ for (const quote of ["What is Mira Okafor's salary expectation?", "her current s
   });
 }
 
+/* ── R25 ── */
+
+test("R25 'what does she do now' about a contact with a role and no notes: the profile is answered from and cited, never 'nothing found'", async () => {
+  const world = smallWorld();
+  for (const record of world.records) if (record.userId === "user:a") record.userId = "actor:a";
+  world.records.push(contact("actor:a", "contact:ines", "Inès Moreau", { organization: "Atelier Lune", role: "Head of Partnerships" }));
+  const message = "@Inès Moreau 现在是什么职位？";
+  let materials = "";
+  const model = deepseekStub((call: ModelCall) => {
+    if (call.node === "understand") return json({ language: "zh", parts: [part({ dataSources: ["orbit_records"], localId: "p1", objectClues: [{ entity: "contact", referenceId: "r1", text: "@Inès Moreau" }], readFilter: { current: true }, requiredCapabilities: ["contact.read", "view.context"], sourceQuote: message })], plainChat: false });
+    materials = call.user;
+    const handle = /(s\d+) — contact/u.exec(call.user)?.[1];
+    return json({ profile: [], segments: [{ cites: handle ? [{ sentenceIds: [1], sourceRef: handle }] : [], partId: "p1", profile: [], text: "她现在是 Atelier Lune 的 Head of Partnerships。" }] });
+  });
+  const kit = graphKit(model.fetchImplementation, { now: "2026-11-15T01:00:00.000Z", records: recordAccessOf(world), references: [{ id: "contact:ines", name: "Inès Moreau", type: "contact" }] as never });
+  const result = await runAgentGraph(kit.deps, kit.input(message, { references: [{ id: "contact:ines", type: "contact" }] as never }));
+  assert.match(materials, /Head of Partnerships/u, "the profile is material");
+  assert.ok(result.sourceRefs.includes("contact:contact:ines"), `${result.text} ${result.sourceRefs.join(", ")}`);
+  assert.doesNotMatch(result.text, /没有找到相关的内容/u);
+  assert.match(result.text, /没有关于Inès Moreau的笔记或待办/u, "the empty kinds are said as what they are");
+  const p1 = result.partResults[0];
+  assert.ok(!(p1.gaps ?? []).includes("no_record"), JSON.stringify(p1));
+  assert.ok(p1.coverage?.some((item) => item.kind === "contact" && item.seen === 1), "the coverage shows the profile read");
+  assert.ok(p1.coverage?.some((item) => item.kind === "memo" && item.seen === 0), "and the empty kind");
+});
+
 /* ── R20 ── */
 
 test("R20 a part that depends on a read whose record cannot be opened is not held back", () => {
