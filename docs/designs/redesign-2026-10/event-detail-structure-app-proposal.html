@@ -117,10 +117,10 @@ const cta = (label, star) => `<div class="ctabar">${star ? `<button class="lbtn"
 const utabs = (k) => `<div class="utabs">${['紹介', 'アジェンダ', '主催', '参加者<small>128</small>'].map((t, i) => `<button class="${i === k ? 'on' : ''}">${t}</button>`).join('')}</div>`;
 
 function nowIntro() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + utabs(0) + `<div class="card"><div class="sub" style="line-height:1.75">${DESC}</div></div>
-  <div class="card" style="margin-top:12px"><div class="card-h"><h3>会いたい人</h3><span class="lbl">参加者 128名から</span></div><div class="list">${P.slice(0, 3).map(p => `<div class="li"><div class="av ${p.c}">${p.i}</div><div class="meta"><b>${p.n} · ${p.co}</b><span>${p.note}</span></div></div>`).join('')}</div></div>` + cta('AI と参加登録', true); }
-function nowHost() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + utabs(2) + `<div class="card"><div class="row" style="gap:12px"><span class="emo" style="background:var(--mac-lav)">🥂</span><div style="flex:1"><b style="font-size:14px">${EV.host}</b><div class="lbl">これまで 17回開催</div></div></div></div>` + cta('AI と参加登録', true); }
-function newTop() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + intro(false) + people(false) + cta('AI と参加登録', true); }
-function newTopGate() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + intro(false) + peopleGate + cta('AI と参加登録', true); }
+  <div class="card" style="margin-top:12px"><div class="card-h"><h3>会いたい人</h3><span class="lbl">参加者 128名から</span></div><div class="list">${P.slice(0, 3).map(p => `<div class="li"><div class="av ${p.c}">${p.i}</div><div class="meta"><b>${p.n} · ${p.co}</b><span>${p.note}</span></div></div>`).join('')}</div></div>` + cta('参加登録', true); }
+function nowHost() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + utabs(2) + `<div class="card"><div class="row" style="gap:12px"><span class="emo" style="background:var(--mac-lav)">🥂</span><div style="flex:1"><b style="font-size:14px">${EV.host}</b><div class="lbl">これまで 17回開催</div></div></div></div>` + cta('参加登録', true); }
+function newTop() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + intro(false) + people(false) + cta('参加登録', true); }
+function newTopGate() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + intro(false) + peopleGate + cta('参加登録', true); }
 function newBottom() { return `<div style="margin-top:-8px"></div>` + people(true).replace('<div class="sec-h">', '<div class="sec-h" style="margin-top:6px">') + agenda(false) + host + cta('会う準備', false); }
 function endedPage() { return topbar('', '', back, shareB) + hero('終了', true) + recCard + intro(false) + people(true) + cta('ふりかえり', false); }
 function rosterPage() {
@@ -142,7 +142,7 @@ h += boards([
 h += sec('提案 · 一页从上往下读（S1 推荐 A，S2 推荐顺序）', '封面 → 关联 → 紹介 → 参加者 → アジェンダ → 主催；全名单另开一页');
 h += boards([
   ['① 詳細 · 上半', '提案', phone({ body: newTop(), tab: -1, pins: pin(1, '.p-intro') + pin(2, '.p-ppl') + pin(3, '.p-all') }), ['紹介：超过 6 行渐隐折叠，「続きを読む」原地展开', '参加者：人数 + 头像 + プランに合う / 知り合い 人数 + 最多 3 位和计划相关的人（原「会いたい人」卡并进来）；已报名时每行能点开参加者シート', '「全員を見る」进 ③ 全名单页']],
-  ['② 詳細 · 往下滚', '提案', phone({ body: newBottom(), tab: -1, pins: pin(1, '.p-ag') + pin(2, '.p-host') }), ['アジェンダ：时间线，超过 5 项折叠「すべて見る」；没有议程时整块不出', '主催：一行卡，有主办方页才有箭头；底部主按钮照旧（报名前「AI と参加登録」、报名后「会う準備」）']],
+  ['② 詳細 · 往下滚', '提案', phone({ body: newBottom(), tab: -1, pins: pin(1, '.p-ag') + pin(2, '.p-host') }), ['アジェンダ：时间线，超过 5 项折叠「すべて見る」；没有议程时整块不出', '主催：一行卡，有主办方页才有箭头；底部主按钮照旧（报名前「参加登録」、报名后「会う準備」）']],
   ['③ 参加者 · 全名单页', '新页', phone({ body: rosterPage(), tab: -1, pins: pin(1, '.p-seg') + pin(2, '.p-roster') }), ['段控件 プランに合う / 知り合い / 全員（从详情页挪过来）+ 搜索', '按页读取：当前段前 30 人，滚到底再取；点人打开参加者シート']],
   ['④ 詳細 · 名单锁着（报名前）', '状态', phone({ body: newTopGate(), tab: -1, pins: pin(1, '.p-gate') }), ['规则不变（roster-policy A）：只给人数和知り合い人数，按钮去报名；主办方看到「運営ページで見る」']],
   ['⑤ 詳細 · 已结束', '状态', phone({ body: endedPage(), tab: -1 }), ['会場の記録 卡在封面卡下面（已上线的样子）；下面同样是 紹介 → 参加者 → アジェンダ → 主催']],
