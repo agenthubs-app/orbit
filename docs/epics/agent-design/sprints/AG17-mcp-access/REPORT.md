@@ -267,3 +267,156 @@ AG05 的读取游标密钥在 `features/agent-v1/domains/configured.ts` 里是 `
 
 - **AG05 读取适配器的游标密钥**（没配置时退回空密钥，不会直接报错）：现在从 MCP 走不到它，伪造的游标也只能在自己的记录里挪位置。记为修复线（AG20）的一项：没有密钥就拒绝，不用空密钥。
 
+
+## 追加 3：网页与视觉稿要的四处服务端改动（Generator，Opus 5.5，2026-11-20）
+
+视觉稿 2026-11-20 获批（`/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-design/sprint-AG17/draft/APPROVAL.md`，D1–D11 全取 A）。本段做了三张网页、收件箱里的这一条、登录框多的一行，以及稿子要的四处服务端改动。只有网页，App 没有界面改动（App 里只有同步副本变化）。开工时 PLANNER 文件 SHA-256 `899d090413fa3a2f7f117d34ec423c6e9899e5016c106930b3f6e3901c755c65`（含 2026-11-19 的追加记录），基线 HEAD `1a558c9d1`。
+
+### 做了什么
+
+**服务端（先写测试：`tests/agent-v1/mcp/consent-upgrade.test.ts`，8 条）**
+
+1. **每类三档。** 「可以提修改」仍只有待办和笔记；其余四类在同意页上第三档是灰的，多一句「这一类暂时只能看，还不能提修改」。没有给外部客户端开新的写入路径。
+2. **同一客户端对同一账号只有一条连接，原地改。** 换授权码时先把授权码标为已用（两次同时换只有一次能过），再找这个账号下这个客户端还在用的连接：有就把它能做的事换成这次用户选的（可以调高，也可以调低），没有才新建。连接的「连上」日期不变；改动对已发出的令牌立即生效（每次调用都读连接）。断开过的连接不会被改回来，再授权是新的一条。同意页的接口带上现在登录的账号（名字、邮箱，和一个由账号派生的 key，不是账号编号）和这个客户端现在能做什么；预选规则：已有的原样、这次新要的「只读」预选、「可以提修改」只标出来。页面提交时带回 key，和现在登录的不一致就不执行，回 409 和新账号的页面内容。
+3. **连接列表带「几项等你确认」**（`waitingProposals`：这条连接 24 小时内提的、还在等确认、没过期的卡）和要抄的地址（`connectAddress`）。断开时作废的就是这几项（测试核对两个数相同）。
+4. **短地址。** MCP 端点从 `/mcp` 改为 `/connect`，见下「短地址」。
+5. 另：外部助手提的卡过期后不出「重新生成」（`shared/compute/agent-card-view.ts`，两端同一条规则；服务端本来就拒绝）。收件箱这一条改为「Claude 想改 N 项，等你确认」，正文是卡上那句数，目标指向这条提议的确认页地址（只有不透明编号）。浏览器带着名单外的客户端或没登记的回调地址来授权时，`/oauth/authorize` 把它带到同意页的「这个应用现在连不了 Orbit」（地址里没有请求内容）；非浏览器的调用方照旧拿 400。
+6. 契约只加不改：新字段（`waitingProposals`、`connectAddress`、同意页的 `account`、`current`、提交里的 `accountKey`）都是可选的，快照重新生成（857 个类型），App 副本同步，四个同步测试通过。
+
+**网页**
+
+- 同意页 `/app/settings/agent-connections/authorize`（第 1–4 组）：没有导航（壳不套这一页）；内容在服务端读好再出页。状态：第一次连接、已经连着想多要（保持原样／允许这些改动）、中途换了账号、连好了、没有连接、连不了、请求过期、没保存成功。
+- 确认页 `/app/agent/proposals/<编号>`（第 5–6 组）：带 Orbit 的导航（iOrbit 高亮，D6），手机上「‹ 确认修改」回收件箱；卡片是 AG07 的组件，没改。状态：等确认、过期（没有重新生成）、已确认、连接已断开、点了不改了、别的账号／打错的链接（同一页，D7）。内容在服务端读好再出页。
+- 设置 › 外部 AI 助手 `/app/settings/agent-connections`（第 7–8 组）：菜单在「连接」下面（D3）；每个连接一张卡（能看、能提修改、连上日期、上次使用、「它提的 N 项修改等你确认 · 去看」→ 收件箱，D10）；「断开连接」（D4）和三行确认框（没有等确认的就只有两行）；只能断开（D5）；没有连接时三步、地址和复制（D11）。
+- 收件箱（第 9 组）：这一条有自己的行（C 方块、标题、「修改1项，新增1项 · 明天 10:40 前有效」）；电脑上右栏是谁提的、有效期和同一张卡，可以直接确认；手机上点这一行打开确认页。
+- 登录框（D8）：前面是同意页时多一行「Claude 想连接你的 Orbit · 先登录，再决定给它看什么。」（应用名取自服务端签过的请求凭条，伪造的链接不出名字）；前面是确认链接时「有一条修改等你确认 · 登录后才能看到内容。」。
+- 所有固定文字按第 10 组逐字写（`app/(app)/app/orbit-2026/agent-connections/copy.ts`，中文照稿，日文、英文照着译）。测试核对三种语言里都没有 授权、范围、令牌、scope、token、MCP。
+
+### 短地址：是什么、绑在哪、上线前要配什么
+
+- **地址**：`<部署的公开地址>/connect`，正式站就是 `https://orbitailink.com/connect`。设置页显示去掉 `https://` 的 `orbitailink.com/connect`，「复制」复制带 `https://` 的完整地址。
+- **它就是 MCP 端点本身，不是别名。** 客户端拿用户给的地址当资源，读 `/.well-known/oauth-protected-resource/connect`，核对里面的 `resource` 和它连的地址相同（RFC 9728 §3.3），再按这个资源要令牌（RFC 8707）。别名会变成第二个资源、要有自己的令牌，所以只留一个端点。所有访问令牌的受众（`aud`）都是 `<公开地址>/connect`；授权请求和换令牌时 `resource` 必须是它（`/mcp` 现在得 `invalid_target`，测试覆盖）。
+- **`/mcp` 已删除。** 模拟的外部客户端改从 `/connect` 起走全流程（`tests/agent-eval/lib/mcp-client.ts`），和真实用户抄的地址相同；`eval/CHANGES.md` 登记了一行，用例没改。
+- **上线前要配的**：`ORBIT_MCP_BASE_URL=https://orbitailink.com`（或至少 `AUTH_URL` 是这个地址；生产上两者都没有时端点回 503，什么都不发）；`AUTH_SECRET` 已有（令牌、凭条、提议编号、游标都由它派生）；确认部署的路由能到 `/connect`、`/oauth/authorize`、`/oauth/token`、`/.well-known/oauth-protected-resource/connect`、`/.well-known/oauth-authorization-server`（都在 `/api/`、`/app/` 之外，proxy 不拦）。客户端名单现在只有 Claude 和 Claude Code；Codex 的登记方式要在真实联调时核实后加进名单。
+
+### 与稿不同，以及原因（逐组对照见 `run-01/compare.md`）
+
+1. 联系人、活动、我去过、日程四类第三档是灰的（外部能提的修改只有待办、笔记；稿里 1440 大图六行都画成可选，手机说明和 `mini-row.jpg` 画了灰的样子）。
+2. 每类一句按 MCP 实际给出的字段写（稿：多给的不写少，少给的不写多）：联系人「姓名、公司、职位、你加的标签和跟进阶段。不含电话和邮箱」（不给行业、地区）；活动「活动的名称、时间和地点」；待办「标题、备注、计划日和截止时间、做完没有」；笔记「标题、正文和日期」；日程「标题、时间、地点和备注」。
+3. 「保持原样」：连接不变，浏览器回到客户端并告诉它没同意这次多要的（`access_denied`），客户端原来的令牌照常能用。结果卡写「保持原样 · 正在回到 Claude…」（第 10 组没有这一格）。
+4. 请求过期又读不出应用名时写「回到你的 AI 助手，重新点一次连接就行。」
+5. 确认卡上没有「详情 ›」（去掉其中一项）：外部提议这次不开放改卡，可以整张「不改了」。卡片组件没改。
+6. 评测里写作 Codex 的连接用的是 Claude Code 的文档，设置里显示「Claude Code」；同意页「目前能连的只有 Claude 和 Codex」照稿写，但名单里实际是 Claude 和 Claude Code（见「需要决定」）。
+7. 菜单图标用对话气泡（图标库没有插头）。
+8. 带时间的几处（「今天 10:40 提的」等）在服务端出页时是同宽骨架，浏览器接上后写入（服务端不知道读者时区）；位置不动（`no-flash.md`）。
+9. 收件箱里这一条确认或过期后没有改成「已处理」：它随卡到期（`expiresAt`），确认后右栏显示「已完成」的卡；行本身的状态由 AG15 的收件箱规则管。
+10. 产品的资料引导门禁：没填完资料的账号打开同意页、确认页也会先被带去资料引导（现有的 proxy 规则，没有改）。截图前在引导第一步给两个评测账号填了名字和行业。
+
+### 中途发现并修掉的一处（提交 `c3d59b8ed`）
+
+没有配公开地址时（评测、本机开发），Next 给路由处理器的 `request.url` 用它自己的主机名（localhost），页面只能读到 Host 头（127.0.0.1）：授权端点签的凭条，同意页按另一个地址核对，读不出来，页面显示「这次连接请求已经过期」。现在两边都按 Host 头算；生产照旧必须有配置的地址，请求不参与。先写的测试在 `consent-upgrade.test.ts`。
+
+### 影响分析（本段）
+
+| 符号 | 结果 | 处理 |
+|---|---|---|
+| `AccountSection` | HIGH，45 处 | 只在联合类型里加一项；菜单多一行；`account-overview` 等页面测试通过 |
+| `createAuthorizationServer` | HIGH，11 处（都在 MCP 模块和它的测试里） | 改换授权码的顺序与原地改连接；MCP 测试 71 条全过 |
+| `createConnectionService` | HIGH，11 处（同上） | 加 `findActive`、`regrant` |
+| `createProposalService` | HIGH，11 处（同上） | 加 `waitingCount` |
+| `mcpAddresses` | CRITICAL，4320 处（经共享的服务对象扩散） | 只改没配公开地址时的那一支（评测、本机）；生产路径不变，测试覆盖两种 |
+| `shellFrameFor`、`shellAppliesTo`、`RouteSkeleton`、`consentView`、`externalProposalInboxEntry`、`addressesFor`、`AuthLogin`、`TypedNotificationsTab` | LOW | — |
+| `AuthModal` | MEDIUM | 加一个可选参数 |
+| `agentCardView` | UNKNOWN（两个同名，各 LOW） | 只改 `regenerate` 一处；App 副本同步 |
+| `connectionView`、`AppAccountLoginPage` | UNKNOWN，文本搜索确认只有本 sprint 的调用方 | — |
+
+`detect-changes --scope staged`：第一个提交 52 个文件、116 个符号、9 条流程，high（都是新加的同意接口 POST 经过的流程）。
+
+### 测试
+
+- 新增：`tests/agent-v1/mcp/consent-upgrade.test.ts`（9 条）、`tests/pages/agent-connection-consent-page.test.tsx`（8）、`tests/pages/agent-proposal-confirm-page.test.tsx`（5）、`tests/pages/agent-connections-settings.test.tsx`（6）。
+- 调整：`tools.test.ts`、`cursor.test.ts`、`propose-confirm.test.ts` 里原来假设「同一客户端第二次授权是另一条连接」的地方，改用另一个客户端或在每次授权后立刻核对；`auth-challenge.test.ts`、`token-audience.test.ts` 的地址改为 `/connect`，并加一条 `/mcp` 得 `invalid_target`。
+- 相邻测试（壳、设置、收件箱、登录框、AG07 卡片、proxy 边界、agent-v1 全部）：914 条全过。
+- `tsc --noEmit`：本 sprint 的文件零错误；剩下的两处（`tests/scripts/redesign-pixel-lib.test.ts`、`tests/services/contact-profile-inference-postgres.test.ts`）不是本 sprint 碰的文件。App：四个同步测试通过；typecheck 只有已知的 `tests/ios-scene-lifecycle-config.test.ts` 一处。
+
+### 证据（`/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-design/sprint-AG17/run-01/`）
+
+- `compare.md`：截图与稿逐组对照；`draft-boards/`：稿里抽出的 38 张图；`ui/`：46 张截图（1440 与 375）；`ui/shots.log`、`ui-shots-run.log`：截图时的数据怎么来的。
+- `no-flash.md`：三张页面在 1440、375 整页打开和从「连接」点菜单进入（客户端跳转）时，标题、菜单、页名、主卡片出现后变化 0 次；同意页、确认页打开后对 `/api/agent/` 零读取，设置页读一次连接列表。
+- `tools/`：截图脚本 `shoot.mts`、测量脚本 `flicker.mts`、抽图脚本。
+- `build-ui-*.log`、`impact-upstream-ui.txt`、`detect-changes-staged-ui-1.txt`。
+
+### 门槛（构建自 `c3d59b8ed`，重启之后从干净的树重建）
+
+运行 `20261120-122509-c3d59b8-AG17-gate-run-01c-ui`，目录 `/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-eval-lines/ag17/runs/20261120-122509-c3d59b8-AG17-gate-run-01c-ui`，日志 `run-01/gate-run-01c.log`，日志包校验值前缀 `d8401b61e1a2`。
+
+- 75 例，70 例代码判定通过；判定项 492 过、19 不过、9 看不出。
+- **本 sprint 的 10 例（AE-MCP-001～008、AE-SCL-031、AE-SCL-032）全部通过**，模拟客户端走的是新地址 `/connect`、新的「同一客户端一条连接」规则。
+- 不过的 5 例：AE-MEM-008、009、012，AE-REF-005（要 AG14，预期之内）；**AE-CON-007**（AG12 的批量导入用例）：这一次第一层把粘贴的四行当成指代不明，先问「这几位」指谁，没有出导入卡；没有超时。单独重跑 3 次都通过（`…-AG17-rerun-1/2/3-con007`），属于模型波动，不在本 sprint 改动范围（本段没有碰理解和导入的代码），报协调者。
+- 评审材料已生成（`judging.md`，75 例各两份），没有评审。
+
+### 费用
+
+本段：门槛主模型 146 次、判断 17 次，0.5576 元；AE-CON-007 单独重跑 3 次，主模型 9 次，0.0223 元。截图和不闪动测量只走 MCP 和页面，没有模型调用。整个 sprint 累计约 1.18 元（上限 150 元）。
+
+### 待登记的运行（本段）
+
+| 运行编号 | 提交 | 用途 | 用例 | 代码判定通过 | 主模型／判断 | 费用（元） |
+|---|---|---|---|---|---|---|
+| `20261120-122509-c3d59b8-AG17-gate-run-01c-ui` | c3d59b8 | AG17 门槛（网页与四处服务端改动之后） | 75 | 70 | 146／17 | 0.5576 |
+| `20261120-123220-c3d59b8-AG17-rerun-1-con007` | c3d59b8 | AE-CON-007 单独重跑第 1 次 | 1 | 1 | 3／0 | 0.0077 |
+| `20261120-123235-c3d59b8-AG17-rerun-2-con007` | c3d59b8 | 同上第 2 次 | 1 | 1 | 3／0 | 0.0077 |
+| `20261120-123300-c3d59b8-AG17-rerun-3-con007` | c3d59b8 | 同上第 3 次 | 1 | 1 | 3／0 | 0.0069 |
+
+### 验收结果更新
+
+| 验收 | 结果 |
+|---|---|
+| AG17-1 | pass（不变；地址换成 `/connect`，质询、受众、清单过滤的测试全过） |
+| AG17-2 | pass（同一客户端原地改连接后，四个工具与按范围拒绝照旧） |
+| AG17-3 | pass：确认链接页（等确认、过期、已确认、已断开、不改了、别的账号／打错的链接），1440／375 截图与稿对照，不闪动测量 0 移动；`agent-proposal-confirm-page.test.tsx` |
+| AG17-4 | pass（不变） |
+| AG17-5 | 模拟客户端与连接管理页 pass（`agent-connections-settings.test.tsx`、截图、不闪动）；**人工联调·Claude、人工联调·Codex 仍未做**（要用户本人登录与另行同意） |
+
+状态：除两项真实客户端联调以外都已完成；按 PLANNER 记 blocked（只差两项人工联调）。
+
+### 交接更新
+
+- 页面地址：同意页 `/app/settings/agent-connections/authorize`、确认页 `/app/agent/proposals/<编号>`、设置 `/app/settings/agent-connections`；MCP 端点 `/connect`（`/mcp` 已删除）。
+- 页面接口新增的字段都是可选的：`GET /api/agent/connections` 多 `connectAddress`、每条连接多 `waitingProposals`；`GET /api/agent/connections/authorize` 多 `account`、`current`；`POST` 可带 `accountKey`，不一致回 409（`ACCOUNT_CHANGED`）。
+- 收件箱这一条的目标地址是确认页（`target.href`），来源 `external_proposal`。收件箱里本 sprint 只动了 `typed-notifications-tab.tsx` 的两处（这一种条目用自己的行和右栏）和新文件 `inbox/external-proposal-entry.tsx`；AG15 的界面线改同一个文件时，两处都是一行三元判断，合并时保留即可。
+- **容易和别的线冲突的文件（本段新增）**：`app/(app)/app/inbox/typed-notifications-tab.tsx`（AG15）；`app/(app)/app/orbit-2026/shell/shell-routes.ts`、`Orbit2026Shell.tsx`、`RouteSkeleton.tsx`；`app/(app)/app/orbit-2026/account/AccountLayout.tsx`、`copy/account.ts`；`app/(app)/app/orbit-2026/auth-public/auth-login.tsx`、`auth-modal.tsx`、`app/(app)/app/account/login/page.tsx`；`shared/compute/agent-card-view.ts` 及 App 副本；`shared/contract/agent-v1.ts`、`shared/api-schema/agent-v1.ts`、`.snapshot.json` 及 App 副本。
+- 上线前：设 `ORBIT_MCP_BASE_URL=https://orbitailink.com`（见「短地址」）。
+
+### 需要决定
+
+1. **同意页写「目前能连的只有 Claude 和 Codex」，但客户端名单里现在是 Claude 和 Claude Code**（Codex 的登记方式还没核实）。是先把这句改成「Claude 和 Claude Code」，还是等真实联调把 Codex 加进名单后保持原句？
+2. AE-CON-007 那一次不通过（AG12 用例，第一层把粘贴的表格当指代不明）：要不要放进修复线。
+3. 两项真实客户端联调：需要用户另外授权一个外网地址并本人登录同意。
+
+### 全量测试与最后一处修正
+
+- 第一次全量（`c3d59b8ed`）：9325 条，23 条失败；和已知的 22 条相比多一条 `orbit-2026 CSS Modules use only design tokens for colour, stacking, radius and type size`：本段新写的两个样式文件用了裸的圆角、字号和阴影。已改成产品的令牌（`--r-*`、`--fs-*`、`--shadow-float`、`--shadow-seg`，取最接近的一档；只有品牌小方块圆角 10→11、卡片阴影略有不同），提交 `3b594f450`，这条测试通过。
+- 因此门槛、评审材料、截图、不闪动测量和全量都在最后的提交 `3b594f450` 上重做了一遍（见下「最后一遍」）；上面 `…-gate-run-01c-ui` 那一节是 `c3d59b8ed` 上的结果，留作记录。
+
+### 最后一遍（全部在最终提交 `3b594f450` 上，构建 `build-ui-5.log`）
+
+- **截图与不闪动**：重拍 45 张（`ui/`），`no-flash.md` 重测：三张页面在 1440、375 整页打开和客户端跳转时，所有测量项出现后变化 0 次；同意页、确认页打开后对 `/api/agent/` 零读取，设置页读一次。`compare.md` 已按这一遍的截图核对（第 8 组：列表第一张是 Claude Code，没有等确认的修改，所以它的确认框只有两行；三行的样子见 `settings-dialog-one-waiting-1440.png`）。截图脚本把评测服务时钟拨后了 25 小时，所以之后截的图里「上次使用」会写「明天」。
+- **门槛** `20261120-133314-3b594f4-AG17-gate-run-01d-final`，目录 `/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-eval-lines/ag17/runs/20261120-133314-3b594f4-AG17-gate-run-01d-final`，日志 `run-01/gate-run-01d.log`，日志包 `832157c6f855`：75 例 71 例代码判定通过（判定项 497 过、14 不过、9 看不出）；本 sprint 10 例全过；不过的只有要 AG14 的 AE-MEM-008、009、012、AE-REF-005。AE-CON-007 这一次通过。主模型 144 次、判断 16 次，0.2781 元。
+- **评审材料**：`…-gate-run-01d-final/judging.md`，75 例各两份，没有评审。
+
+| 运行编号 | 提交 | 用途 | 用例 | 代码判定通过 | 主模型／判断 | 费用（元） |
+|---|---|---|---|---|---|---|
+| `20261120-133314-3b594f4-AG17-gate-run-01d-final` | 3b594f4 | AG17 门槛（最终提交） | 75 | 71 | 144／16 | 0.2781 |
+
+费用累计（整个 sprint）：约 1.46 元。
+- **全量**（`3b594f450`，`LANG=en_US.UTF-8`）：服务端 9325 条，22 条失败，名字与已知清单完全相同（`run-01/full-orbits-ui.log`、`full-fail-names-ui.txt`）。App：只有三份同步副本变化；四个同步测试、App 的两个 agent-v1 卡片测试（9 条）通过，typecheck 只有已知的 `tests/ios-scene-lifecycle-config.test.ts` 一处；App 全量没有跑（PLANNER「不运行」一节：App 只有同步副本变化）。
+
+### 运行记录（本段）
+
+- Generator：Claude Opus 5.5，2026-11-20。最终 SHA `3b594f450`（分支 `sprint/AG17-mcp-access`）；本段提交：`3ae345379` 网页与四处服务端改动、`c07b1db69` 确认页细节、`c3d59b8ed` 未配公开地址时地址一致、`3b594f450` 样式改用令牌。没有 push，没有合并。
+- 2026-11-20 11:43 机器重启，之前在跑的构建和截图作废，已在最终提交上重做；12:35 前后因账号用量上限停了约半小时。
+
+### 状态
+
+blocked：除两项真实客户端联调（Claude、Codex，要用户另行授权外网地址并本人登录同意）以外，网页、四处服务端改动、截图对照、不闪动测量、门槛和全量都已完成。
