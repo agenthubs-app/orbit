@@ -31,6 +31,7 @@ import type { CanonicalEventRecord } from "../../../events/core/contract";
 import type { NoteInteractionContract } from "../../../../shared/contract/notes";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
 import { asksWhoToFollowUp, isWholeQuote, realTopicOf } from "../../functions/basis";
+import { asksWhatToPrepare, preparePart } from "./prepare";
 import { asksEventsToGoTo, pointsAtPast, writesADate, upcomingTopicOf, directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, memoriesFor, naturalField, PICK_WORDS, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
 import { compare, dimensionsIn, type ComparedEvent } from "../../functions/compare";
 import * as say from "../../functions/copy";
@@ -166,7 +167,8 @@ export type FunctionTask =
   | { kind: "extract"; memoId: string; want: { interactions: boolean; followUps: boolean }; write: boolean }
   | { kind: "summary"; memoId: string }
   | { kind: "compare" }
-  | { kind: "group" };
+  | { kind: "group" }
+  | { kind: "prepare" };
 
 const isMemoType = (type: string) => type === "memo" || type === "note";
 
@@ -195,6 +197,9 @@ export function functionOf(scope: NodeScope, part: GraphPart): FunctionTask | nu
   // A reply to "按什么来挑" (AG10-1): the ranking asked about goes on with this answer.
   const item = part.continues?.kind === "clarification" ? scope.run.context?.openItems.find((open) => open.ref === part.continues!.ref) : undefined;
   if (item?.rank) return { item, kind: "rank_reply" };
+  // Hotfix 2026-11-20 part 2 (the App's 「接下来的会面或活动，该准备什么？」): what to prepare for the next meetings or events is
+  // code's answer (graph/nodes/prepare.ts), never a topic ranking — unless a person or a record is named (then it is about that).
+  if ((part.route === "read" || part.route === "answer") && asksWhatToPrepare(quote) && !part.refs.some((ref) => ref.recordId || (ref.entity === "contact" && ref.quote && !GENERIC_CONTACT_CLUE.test(message.slice(ref.quote[0], ref.quote[1]))))) return { kind: "prepare" };
   if (part.route === "read" || part.route === "answer") {
     // AG11 (App check): an event that is both a clue of the part and an @ reference is one event, not two; and a part that
     // also points at a record of another kind (a schedule item) is not an event comparison — it goes on to the read.
@@ -655,7 +660,8 @@ export function functionsNode(scope: NodeScope): GraphNode {
         continue;
       }
       try {
-        if (task.kind === "summary") summaryPart(scope, state, part, optionSets);
+        if (task.kind === "prepare") await preparePart(scope, state, part);
+        else if (task.kind === "summary") summaryPart(scope, state, part, optionSets);
         else if (task.kind === "compare" || task.kind === "group") await eventsPart(scope, state, part, task.kind);
         else if (task.kind === "extract") {
           const done = await extractPart(scope, state, part, task, { budget, repairs });
