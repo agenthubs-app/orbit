@@ -391,12 +391,12 @@ export async function findContacts(records: AgentRecordAccess, scope: DomainScop
     emitTrace({ error: error instanceof Error ? error.message : String(error), type: "read.error", where: "resolve.contact_search" });
     failed = true;
   }
-  // AG07 (AE-UIX-008): "Li Wei" written in Latin letters names 李薇; the contacts' Chinese names are read in pinyin.
-  if (!found.length && !failed) found = await romanizedContacts(records, scope, words);
   // AG20b (TRIAGE R10): no one of that name — the words may name a company ("海桐的…", "蒲公英那个"): the account's contacts at
   // a company holding them. Marked as found by company: a write offers them in a question, never picks one.
   let byCompany = false;
-  if (!found.length && !failed) {
+  let companyTried = false;
+  const tryCompany = async () => {
+    companyTried = true;
     // The words without what only points at the side ("Fjord 那边", "青柠那个", "東山さん側", "海桐的人").
     const bare = words.replace(/^@/u, "").trim().replace(COMPANY_SIDE_WORDS, "").replace(/[\s的の]+$/u, "").trim();
     const companyWords = [...new Set([bare, clueSearchWords(bare), bare.split(/[の的之]/u)[0]?.trim()].filter((item): item is string => Boolean(item) && [...item!].length >= 2))];
@@ -410,7 +410,13 @@ export async function findContacts(records: AgentRecordAccess, scope: DomainScop
     }
     byCompany = found.length > 0;
     if (byCompany) emitTrace({ found: found.map((view) => view.id), type: "resolve.contact_by_company" });
-  }
+  };
+  // Integration after AG21a (AE-CTX-003 in its run: 「Harbor Analytics 的人」): words in Latin letters that name no one are tried
+  // as a company first — the romanized-name pass below reads the account's contacts page by page.
+  if (!found.length && !failed && /[A-Za-z]/u.test(words)) await tryCompany();
+  // AG07 (AE-UIX-008): "Li Wei" written in Latin letters names 李薇; the contacts' Chinese names are read in pinyin.
+  if (!found.length && !failed) found = await romanizedContacts(records, scope, words);
+  if (!found.length && !failed && !companyTried) await tryCompany();
   let matches = found;
   // AG20b (TRIAGE R10): a company or a role said in the sentence tells people of the same name apart before any question —
   // the company's distinctive words count ("蒲公英那个" for 蒲公英童书), not only its full name.
