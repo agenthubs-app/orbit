@@ -21,7 +21,7 @@ import { networkCopy } from "../copy/network";
 import { eventsCopy } from "../copy/events";
 import { iorbitCopy } from "../copy/iorbit";
 import { accountCopy } from "../copy/account";
-import { agentConnectionsCopy } from "../agent-connections/copy";
+import { agentConnectionsCopy } from "../copy/agent-connections";
 import { monthHeading } from "./month-heading";
 import { standardCopyFor } from "../copy/standard";
 import { useOrbitAsk } from "../../orbit-global-ask/orbit-ask-context";

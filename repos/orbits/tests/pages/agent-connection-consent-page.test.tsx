@@ -10,7 +10,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { ConsentPage } from "../../app/(app)/app/orbit-2026/agent-connections/ConsentPage";
-import { agentConnectionsCopy } from "../../app/(app)/app/orbit-2026/agent-connections/copy";
+import { agentConnectionsCopy } from "../../app/(app)/app/orbit-2026/copy/agent-connections";
 import { shellAppliesTo, shellFrameFor } from "../../app/(app)/app/orbit-2026/shell/shell-routes";
 import type { AgentConnectionConsentContract } from "../../shared/contract/agent-v1";
 

@@ -16,7 +16,7 @@ import { agentConnectionListSchema } from "../../../../../shared/api-schema/agen
 import type { AgentConnectionContract, AgentConnectionListContract } from "../../../../../shared/contract/agent-v1";
 import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { agentConnectionsWords } from "../agent-connections/copy";
+import { agentConnectionsWords } from "../copy/agent-connections";
 import { ClientTile, dateText, domainNames, LocalTime, whenText } from "../agent-connections/parts";
 import { Bone, Button, Chip, Icon, Kbd, Modal, ModalIcon, useToast } from "../ui";
 import s from "../agent-connections/agent-connections.module.css";
@@ -96,7 +96,7 @@ export function AgentConnectionsSettings() {
 
   if (!list) {
     return <>
-      {failed ? <p role="alert" style={{ margin: 0 }}>{t("loadFailed")} <button type="button" className={s.linkButton} onClick={() => void reload()}>{t("retry")}</button></p> : null}
+      {failed ? <p role="alert" style={{ margin: 0 }}>{t("loadFailed")} <button type="button" className={`btn ${s.linkButton}`} onClick={() => void reload()}>{t("retry")}</button></p> : null}
       <div className={s.connGrid} aria-busy="true">
         {[0, 1].map((index) => (
           <section key={index} className={s.connCard}>

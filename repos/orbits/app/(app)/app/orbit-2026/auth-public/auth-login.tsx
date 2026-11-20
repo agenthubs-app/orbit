@@ -8,7 +8,7 @@ import { authRoutePath, authTitleId } from "./auth-model";
 import { useAccountAuth } from "./use-account-auth";
 import type { SignInNote } from "../../../../api/_shared/mcp-access";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
-import { agentConnectionsWords } from "../agent-connections/copy";
+import { agentConnectionsWords } from "../copy/agent-connections";
 import { ClientTile } from "../agent-connections/parts";
 import note from "../agent-connections/sign-in-note.module.css";
 

@@ -10,7 +10,7 @@ import { useSyncExternalStore, type ReactNode } from "react";
 import type { AgentConnectionScopeOptionContract } from "../../../../../shared/contract/agent-v1";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { Bone, MacTile } from "../ui";
-import { agentConnectionsWords, type ConnectionDomain } from "./copy";
+import { agentConnectionsWords, type ConnectionDomain } from "../copy/agent-connections";
 
 const subscribeNever = () => () => undefined;
 
@@ -64,8 +64,9 @@ export function dateText(iso: string, language: OrbitLanguage, zone: string = zo
     const label = new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", timeZone: zone, ...(weekday ? { weekday: "short" as const } : {}) }).format(at);
     return label;
   }
-  const names = language === "ja" ? ["日", "月", "火", "水", "木", "金", "土"] : ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-  const base = `${month}月${dayOfMonth}日`;
+  const t = agentConnectionsWords(language);
+  const names = t("weekdayNames").split(",");
+  const base = t("monthDay", { d: dayOfMonth, m: month });
   if (!weekday || index < 0) return base;
   return language === "ja" ? `${base}(${names[index]})` : `${base}（${names[index]}）`;
 }

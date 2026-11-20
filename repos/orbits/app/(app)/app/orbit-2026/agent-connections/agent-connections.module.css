@@ -136,6 +136,11 @@
 @media (max-width: 1279px) { .connGrid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 767px) { .sameGrid { grid-template-columns: minmax(0, 1fr); } .connGrid { gap: var(--space-14); } }
 
+/* ── 收件箱这一行 (board 9): the inbox is an old page whose unscoped `.btn` (44 high, padding 0 20, centred, nowrap)
+   would reshape the row; three classes restate the row's own values (as ListRow and Button do over the legacy .btn). ── */
+.inboxRow.inboxRow:global(.btn) { display: grid; gap: var(--space-11); align-items: start; justify-content: normal; height: auto; padding: var(--space-11) var(--space-10); border: 0; border-radius: var(--r-md); font: inherit; letter-spacing: normal; white-space: normal; text-align: left; user-select: auto; transition: none; }
+.inboxRow.inboxRow:global(.btn):active { transform: none; }
+
 /* ── 收件箱右栏 (board 9) ── */
 .inboxPane { padding: 18px 22px 0; display: grid; gap: 10px; align-content: start; }
 .inboxTop { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--ink-2); font-size: var(--fs-meta); }

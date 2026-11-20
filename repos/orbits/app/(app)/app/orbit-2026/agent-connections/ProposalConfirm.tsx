@@ -18,7 +18,7 @@ import { decideAgentCard } from "../iorbit/action-preview-client";
 import { ConfirmationCard } from "../iorbit/confirmation-card";
 import { ShellPage } from "../shell/slots";
 import { Icon, Orbit2026Scope } from "../ui";
-import { agentConnectionsWords } from "./copy";
+import { agentConnectionsWords } from "../copy/agent-connections";
 import { ClientTile, LocalTime, whenText } from "./parts";
 import s from "./agent-connections.module.css";
 
@@ -114,12 +114,12 @@ export function ProposalConfirmPage({ initial }: { initial: ProposalPageInitial 
               <h2>{t("otherAccountTitle")}</h2>
               <p>{t("otherAccountLine", { b: signedInAs })}</p>
               <div className={s.lockButtons}>
-                <button type="button" className={`${s.pill} ${s.pillDark}`} onClick={() => void signOutAndForget(`/app/account/login?next=${encodeURIComponent(window.location.pathname)}`)}>{t("switchAccount")}</button>
+                <button type="button" className={`btn ${s.pill} ${s.pillDark}`} onClick={() => void signOutAndForget(`/app/account/login?next=${encodeURIComponent(window.location.pathname)}`)}>{t("switchAccount")}</button>
                 <Link className={`${s.pill} ${s.pillLight}`} href="/app/home">{t("goHome")}</Link>
               </div>
             </section>
           ) : (
-            <section className={s.lockCard}><h2>{t("loadFailed")}</h2><div className={s.lockButtons}><button type="button" className={`${s.pill} ${s.pillDark}`} onClick={() => window.location.reload()}>{t("retry")}</button></div></section>
+            <section className={s.lockCard}><h2>{t("loadFailed")}</h2><div className={s.lockButtons}><button type="button" className={`btn ${s.pill} ${s.pillDark}`} onClick={() => window.location.reload()}>{t("retry")}</button></div></section>
           )}
       </div>
     </Orbit2026Scope>

@@ -12,12 +12,13 @@ import { useEffect, useState } from 'react';
 import { agentProposalViewSchema } from '../../../../shared/api-schema/agent-v1';
 import type { AgentProposalViewContract } from '../../../../shared/contract/agent-v1';
 import { useOrbitLanguage } from '../orbit-language-context';
-import { agentConnectionsWords } from '../orbit-2026/agent-connections/copy';
+import { agentConnectionsWords } from '../orbit-2026/copy/agent-connections';
 import { ClientTile, LocalTime, whenText } from '../orbit-2026/agent-connections/parts';
 import { ProposalBody } from '../orbit-2026/agent-connections/ProposalConfirm';
 import { ConfirmPageSkeleton } from '../orbit-2026/agent-connections/skeletons';
 import { inboxListTime } from './inbox-list-time';
 import ws from './inbox-workspace.module.css';
+import s from '../orbit-2026/agent-connections/agent-connections.module.css';
 import type { NotificationRow } from './notification-inbox-view-model';
 
 const PROPOSAL_HREF = /^\/app\/agent\/proposals\/(prop_[A-Za-z0-9_-]{16,80})$/u;
@@ -42,7 +43,8 @@ export function ExternalProposalRow({ notification: n, onSelect, selected, now, 
     // A phone has no right column: the line opens the confirm page.
     if (phoneWidth() && n.target.href) router.push(n.target.href);
   };
-  return <button type="button" aria-pressed={selected} className={`${ws.row}${unread ? ' ' + ws.unread : ''}${selected ? ' ' + ws.sel : ''}`} onClick={open} data-orbit-inbox-external-proposal="">
+  // The shared `btn` class; the inbox sits in an old page whose unscoped `.btn` is restated back to the row (`inboxRow`).
+  return <button type="button" aria-pressed={selected} className={`btn ${ws.row} ${s.inboxRow}${unread ? ' ' + ws.unread : ''}${selected ? ' ' + ws.sel : ''}`} onClick={open} data-orbit-inbox-external-proposal="">
     <ClientTile name={client} size="sm" />
     <span style={{ minWidth: 0 }}><span className={ws.rowTitle}>{n.title}</span><span className={`${ws.lbl} ${ws.rowSub}`}>{n.expiresAt ? <LocalTime width={160} render={() => t('inboxLine', { summary: n.reason, time: whenText(n.expiresAt!, language) })} /> : n.reason}</span></span>
     <span className={ws.rowEnd}><span className={ws.lbl}>{inboxListTime(n.occurredAt, now, zone, language, t('yesterday'))}</span>{unread ? <i className={ws.dot} aria-label={t('waitingChip')} /> : null}</span>
