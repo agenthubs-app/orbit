@@ -31,6 +31,7 @@ import type { CanonicalEventRecord } from "../../../events/core/contract";
 import type { NoteInteractionContract } from "../../../../shared/contract/notes";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
 import { asksForRecommendation, asksWhoToFollowUp, isWholeQuote, liftedIn, realTopicOf } from "../../functions/basis";
+import { holdsRole, rolesIn, roleWordsIn } from "../../understand/role-words";
 import { asksWhatToPrepare, preparePart } from "./prepare";
 import { asksForNextStep, asksForReasons, asksWhichAreWorthIt, eventReason, fitLine, nextStepWords, themeLinks, themesOf } from "./reasons";
 import { onlyWindowWords, withoutWindowWords } from "../../understand/read-window";
@@ -940,6 +941,18 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     topic = null;
     topicIsSentence = false;
   }
+  // Integration (coordinator, 2026-11-21): 「帮我挑两位最值得联系的摄影师」 — the profession names the set to pick from (the
+  // contacts whose role, tags or notes say it, below), not the standard: with nothing else to go by, the saved entries for
+  // picking contacts apply, as for any pick without a standard of its own.
+  const roles = domain === "contact" && !basisMemo ? rolesIn(original) : [];
+  if (roles.length && topic) {
+    const rest = roleWordsIn(original).reduce((text, word) => text.split(word).join(" "), topic);
+    if (!realTopicOf(rest) || !sentenceTopicOf(rest)) {
+      emitTrace({ partId: part.localId, roles: roles.map((row) => row[0]), type: "functions.role_is_the_set" });
+      topic = null;
+      topicIsSentence = false;
+    }
+  }
   // AG19-6: "最近有哪些活动适合我" names no topic ("适合我" is not one): the list of what is coming up, by start time.
   if (topic && !basisMemo && !basisSpan && !reply && listsUpcomingEvents(part, message) && !upcomingTopicOf(original)) {
     emitTrace({ partId: part.localId, type: "functions.upcoming_no_topic" });
@@ -1036,7 +1049,8 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const count = (whoIsNoCount ? null : plan.count ?? rank.count) ?? saidCount ?? (orderField && !topic && !time.length ? FIELD_LIST_LIMIT : 3);
 
   // 3. Candidates and hard conditions (code), read under the account's scope.
-  const freeWords = (withinWords ?? "") + " " + outside(quote, basisSpan ? [Math.max(0, basisSpan[0] - part.quote[0]), Math.max(0, basisSpan[1] - part.quote[0])] : undefined);
+  // A profession named as the set (above) is matched on the contacts' own words; it is not also an industry ("摄影" of 摄影师).
+  const freeWords = roleWordsIn(original).filter(() => roles.length > 0).reduce((text, word) => text.split(word).join(" "), (withinWords ?? "") + " " + outside(quote, basisSpan ? [Math.max(0, basisSpan[0] - part.quote[0]), Math.max(0, basisSpan[1] - part.quote[0])] : undefined));
   const reasons = new Map<string, string>();
   let candidates: Candidate[] = [];
   let hard: (candidate: Candidate) => boolean = () => true;
@@ -1049,6 +1063,10 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const toDay = plan.to ? localMidnight(new Date(Date.parse(`${plan.to}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10), timeZone) : null;
   if (domain === "contact") {
     const list = await contactCandidates(records, input.actorId, orderField === "lastInteraction" || history);
+    // The profession named as the set: the contacts whose own words say it; none does — the words narrow nothing (traced).
+    const holding = roles.length ? list.filter((item) => holdsRole([item.role, item.notes, item.industry, ...item.tags], roles)) : [];
+    const roleSet = holding.length ? new Set(holding.map((item) => item.id)) : null;
+    if (roles.length) emitTrace({ holding: holding.length, partId: part.localId, roles: roles.map((row) => row[0]), type: "functions.role_set" });
     const places = new Set(Object.entries(PLACE_WORDS).filter(([place, others]) => saidIn(freeWords, place) || others.some((other) => saidIn(freeWords, other))).map(([place]) => place));
     const industries = new Set(Object.entries(INDUSTRY_WORDS).filter(([industry, others]) => saidIn(freeWords, industry) || others.some((other) => saidIn(freeWords, other))).map(([industry]) => industry));
     if (history) {
@@ -1082,6 +1100,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
       const item = candidate as ContactCandidate;
       if (places.size && !(item.place && places.has(item.place)) && !(item.city && [...places].some((place) => PLACE_WORDS[place]?.includes(item.city!.toLowerCase())))) return false;
       if (industries.size && !(item.industry && industries.has(item.industry))) return false;
+      if (roleSet && !roleSet.has(item.id)) return false;
       if (orderField === "lastInteraction" && !history && !item.lastInteraction) return false;
       // Code owns who meets the criteria the lead names (AE-FN-003): a follow-up or to-do past due, a to-do past its planned day.
       if (history && !meetsHistory(item)) return false;

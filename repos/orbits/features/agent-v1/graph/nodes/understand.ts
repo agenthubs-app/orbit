@@ -25,6 +25,8 @@ import type { AgentGraphState, GraphPart } from "../state";
 import { standingRuleNotes } from "../../domains/memory/turn";
 import { mergePickIntoQuestion, recommendIsRanking } from "../../understand/merge-pick";
 import { keepsLookingAt, keepsLookingIn } from "../../rule/parse";
+import { PICK_WORDS } from "../../functions/basis";
+import { roleGroupClue } from "../../understand/role-words";
 
 /** "你", "我", "you", "me": the two people talking, never a contact to look up. */
 const SPEAKER_WORDS = /^(?:你|您|我|咱们?|我们|你们|あなた|私|僕|you|me|i|we|us)$/iu;
@@ -140,6 +142,12 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope, today: string)
         }
         if (!clue.referenceId && !writes && groupClue(clue)) {
           emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.group_clue" });
+          return false;
+        }
+        // Integration (coordinator, 2026-11-21): in a pick ("帮我挑两位最值得联系的摄影师"), people described by their profession
+        // or role are the set to pick from — a ranking over the contacts — never one person to look up.
+        if (!clue.referenceId && !writes && clue.entity === "contact" && roleGroupClue(clue.text) && (part.requiredCapabilities.includes("fn.rank" as never) || PICK_WORDS.test(part.sourceQuote))) {
+          emitTrace({ clue: clue.text, partId: part.localId, type: "understand.role_clue" });
           return false;
         }
         // Only a title the user quoted counts ("「联系老周聊独立出版」这条待办"); "上次和小林聊了什么" names 小林 the person.
