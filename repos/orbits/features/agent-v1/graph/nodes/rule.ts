@@ -361,9 +361,11 @@ export async function rulePart(scope: NodeScope, state: AgentGraphState, part: G
     }
     const mine = await deps.rules.list(input.actorId);
     let found = matchRule(piece(draft.target) ?? quote, mine) ?? matchRule(quote, mine) ?? (aloneForReminder ? matchRule(message, mine) : null);
-    if (!found && mine.length > 1) {
+    if (!found && mine.length >= 1) {
       // AG16: the task is described, not named ("the Friday one that goes off my interests note, not the design one").
       // The model is shown the tasks' titles and card rows and answers with a number; code checks it against the list.
+      // AG21a (R37): also when the user has only one task — words that describe it without its title ("周一挑人的那个") are
+      // checked the same way (the model may answer null), and the result still goes through a card.
       const options = mine.map((rule, index) => ({ checks: scheduleWords(rule.schedule, "en"), number: index + 1, pickedBy: rule.rule.rankingBasis, picksFrom: rule.rule.scopeText, title: rule.title }));
       emitTrace({ candidates: mine.length, partId: part.localId, promptVersion: RULE_CHOICE_PROMPT_VERSION, type: "rule.choice_prompt" });
       const choice = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "functions", purpose: "first", requestId: input.requestId, system: ruleChoiceSystemPrompt(), user: ruleChoiceUserText({ message, options }) });

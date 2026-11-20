@@ -25,7 +25,7 @@ import type { GraphPart } from "../graph/state";
 import { emitTrace } from "../observability/trace";
 import { isPronounClue } from "../route/decide";
 import { optionNamedIn } from "../clarify/attribution";
-import { askedPerson, continuedItem } from "./asked";
+import { askedPerson, continuedItem, type AskedResume } from "./asked";
 import { todosByMeaning } from "./meaning";
 import type { JudgmentAccess, JudgmentBudget } from "../judgment/ask";
 import type { ReplyLanguage } from "../route/handoff-copy";
@@ -48,6 +48,8 @@ export interface PartWrite {
   waitsFor?: string | null;
   /** The operations of this part on the card, once frozen. */
   operationIds?: string[];
+  /** AG21a (R26): this part answers a write question by naming an option: the asked part, resolved again with the pick. */
+  resume?: AskedResume;
 }
 
 export type Candidate = NamedRecordRef & { detail?: string };

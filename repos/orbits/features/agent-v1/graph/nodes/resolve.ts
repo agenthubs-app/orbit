@@ -32,6 +32,7 @@ import { optionNamedIn } from "../../clarify/attribution";
 import { emptyKindsLine } from "../../answer/empty-kinds-copy";
 import type { NamedRecordRef } from "../../context/session-state";
 import { gapOfReadError, readPages } from "../../domains/registry";
+import { matchText } from "../../domains/source";
 import { occurrenceIn } from "../../domains/schedule/read";
 import type { DomainKind, DomainScope, RecordView } from "../../domains/types";
 import { emitTrace } from "../../observability/trace";
@@ -49,7 +50,16 @@ import { widerThanAsked, type AskedRead, type Widened } from "./wider-read";
 import { occurrenceViews } from "../../domains/schedule/occurrences";
 import { comesUp } from "./prepare";
 
-type ReadKind = "memo" | "todo" | "schedule" | "event" | "contact" | "interaction";
+type ReadKind = "memo" | "todo" | "schedule" | "event" | "contact" | "interaction" | "attendance";
+
+/**
+ * AG21a (R35): words saying the user went to events ("我上个月去过哪些活动", "行ったイベント", "events I went to") — their
+ * own «我去过» records, not the event directory.
+ */
+const WENT_WORDS = /(去过|参加过|我去了的|我参加了的|行った|参加した|\bwent to\b|\battended\b|\bbeen to\b)/iu;
+export function asksWhereIWent(words: string): boolean {
+  return WENT_WORDS.test(words);
+}
 
 const LIST_DELIVERABLES = new Set(["list", "ranked_list", "comparison"]);
 
@@ -85,6 +95,10 @@ export function readKindsOf(capabilities: readonly Capability[]): Set<ReadKind> 
         break;
       case "event.read":
         kinds.add("event");
+        break;
+      // AG21a (R35): the user's own «我去过» records (the list the write path uses), never a directory search.
+      case "attendance.read":
+        kinds.add("attendance");
         break;
       case "contact.read":
       case "profile.read":
@@ -269,6 +283,28 @@ export function clueSearchWords(words: string): string | undefined {
   return rest.length >= 2 ? rest : undefined;
 }
 
+/**
+ * AG21a (R44): the distinctive words of a search phrase, each on its own ("Corvid 的订阅" → corvid, 订阅; "白鹭印务 报价单" →
+ * 白鹭印务, 报价单): split at spaces, punctuation, the particles 的/の/之 and where Latin letters meet CJK, and each piece held
+ * to the same noise rules as a clue's words. One piece or none: the phrase is searched whole only.
+ */
+export function searchTokensOf(phrase: string): string[] {
+  const pieces = phrase.normalize("NFKC")
+    .replace(/([A-Za-z0-9])(?=[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])|([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])(?=[A-Za-z0-9])/gu, "$1$2 ")
+    .split(/[\s、，。・,.!?！？「」『』"“”'’()（）【】:：;；/]+|[的の之]/u);
+  const out: string[] = [];
+  for (const piece of pieces) {
+    const word = clueSearchWords(piece);
+    if (word && !out.includes(word)) out.push(word);
+  }
+  return out;
+}
+
+/** The text of a record view a word search looks in (its string fields), folded as the search folds it. */
+function viewText(view: RecordView): string {
+  return matchText(Object.values(view.fields).filter((value): value is string => typeof value === "string").join(" "));
+}
+
 /** "2026-11-16" at 00:00 in the time zone, as a UTC instant. */
 export function localMidnight(day: string, timeZone: string): string {
   const guess = new Date(`${day}T00:00:00Z`);
@@ -335,6 +371,11 @@ export async function romanizedContacts(records: AgentRecordAccess, scope: Domai
   return out;
 }
 
+/** Words that only point at a company's side ("Fjord 那边", "青柠那个", "東山さん側", "海桐的人"). */
+const COMPANY_SIDE_WORDS = /(?:那边|这边|那里|这里|那儿|那头|那家|这家|那个|这个|那位|这位|方面|一方|的人|那些人|のほう|の方|さん側|側|の人|の皆さん)$/u;
+/** AG21a (R38): at most this many people of a company named in a read are read together. */
+const COMPANY_PEOPLE = 5;
+
 /** Looks a person up by name in the account (never elsewhere) and narrows by the company the user named. */
 export async function findContacts(records: AgentRecordAccess, scope: DomainScope, words: string, quote: string, message: string): Promise<{ matches: ContactMatch[]; failed: boolean }> {
   const tokens = nameTokens(words);
@@ -357,7 +398,7 @@ export async function findContacts(records: AgentRecordAccess, scope: DomainScop
   let byCompany = false;
   if (!found.length && !failed) {
     // The words without what only points at the side ("Fjord 那边", "青柠那个", "東山さん側", "海桐的人").
-    const bare = words.replace(/^@/u, "").trim().replace(/(?:那边|这边|那里|这里|那儿|那头|那家|这家|那个|这个|那位|这位|方面|一方|的人|那些人|のほう|の方|さん側|側|の人|の皆さん)$/u, "").replace(/[\s的の]+$/u, "").trim();
+    const bare = words.replace(/^@/u, "").trim().replace(COMPANY_SIDE_WORDS, "").replace(/[\s的の]+$/u, "").trim();
     const companyWords = [...new Set([bare, clueSearchWords(bare), bare.split(/[の的之]/u)[0]?.trim()].filter((item): item is string => Boolean(item) && [...item!].length >= 2))];
     try {
       for (const text of companyWords) {
@@ -375,8 +416,14 @@ export async function findContacts(records: AgentRecordAccess, scope: DomainScop
   // the company's distinctive words count ("蒲公英那个" for 蒲公英童书), not only its full name.
   if (matches.length > 1) {
     // The person's own name is not a company word ("小林健" does not name 小林设计).
+    // AG21a (R39): only the name is taken out, not the whole clue — the words in it that tell two people of the name apart
+    // stay for the company and role tests ("季朗（柏舟那个）" keeps 柏舟). A clue that holds none of the found names as
+    // written (a romanized or partial name) is taken out whole, as before.
     const clue = words.replace(/^@/u, "").trim();
-    const besides = (text: string) => [clue, ...tokens].filter(Boolean).reduce((rest, name) => rest.split(name).join(" "), text);
+    const shownNames = matches.map((view) => String(view.fields.displayName ?? "").trim()).filter(Boolean);
+    const namesInClue = shownNames.filter((name) => clue.includes(name));
+    const nameWords = namesInClue.length ? [...namesInClue, ...tokens.filter((token) => shownNames.some((name) => name.includes(token)))] : [clue, ...tokens];
+    const besides = (text: string) => [...new Set(nameWords.filter(Boolean))].sort((left, right) => right.length - left.length).reduce((rest, name) => rest.split(name).join(" "), text);
     const named = matches.filter((view) => typeof view.fields.company === "string" && view.fields.company && (quote.includes(String(view.fields.company)) || message.includes(String(view.fields.company)) || companyNamedIn(String(view.fields.company), besides(quote)) || companyNamedIn(String(view.fields.company), besides(message))));
     if (named.length) matches = named;
   }
@@ -408,6 +455,26 @@ export function companyNamedIn(company: string, text: string): boolean {
   const head = [...core.replace(/[^\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}ー]/gu, "")];
   for (let length = head.length; length >= 2; length -= 1) if (text.includes(head.slice(0, length).join(""))) return true;
   return false;
+}
+
+/**
+ * AG21a (R40): with two or more people bound in one part, each record clue (a note, to-do or schedule item named without an
+ * id) belongs to the person named last before it — the one whose half of the sentence it is in. Returns, per kind, the
+ * people it is read for, only where that is fewer than all of them; empty when the clues cannot all be placed.
+ */
+export function governedSubjects(part: Pick<GraphPart, "refs">, contacts: readonly Pick<ContactMatch, "id">[]): Map<string, string[]> {
+  const people = part.refs.filter((ref) => recordKindOf(ref.entity) === "contact" && ref.recordId && ref.quote && contacts.some((item) => item.id === ref.recordId)).sort((left, right) => left.quote![0] - right.quote![0]);
+  const distinct = new Set(people.map((ref) => ref.recordId!));
+  if (distinct.size < 2) return new Map();
+  const byKind = new Map<string, Set<string>>();
+  for (const ref of part.refs) {
+    const kind = recordKindOf(ref.entity);
+    if (!kind || !["memo", "todo", "schedule"].includes(kind) || ref.recordId || !ref.quote) continue;
+    const governor = [...people].reverse().find((person) => person.quote![1] <= ref.quote![0]);
+    if (!governor) return new Map();
+    byKind.set(kind, new Set([...(byKind.get(kind) ?? []), governor.recordId!]));
+  }
+  return new Map([...byKind].filter(([, ids]) => ids.size < distinct.size).map(([kind, ids]) => [kind, [...ids]]));
 }
 
 interface PartRead {
@@ -543,6 +610,8 @@ export function resolveNode(scope: NodeScope): GraphNode {
 
       // 2. The people: bound, or looked up by name in the account.
       const contacts: ContactMatch[] = [];
+      // AG21a (R38): a company the words name (no person of that name): its words, for a search of the notes as well.
+      const companyWords: string[] = [];
       const unmatched: string[] = [];
       let stop = false;
       for (const ref of part.refs.filter((item) => recordKindOf(item.entity) === "contact")) {
@@ -599,6 +668,18 @@ export function resolveNode(scope: NodeScope): GraphNode {
         if (!matches.length) {
           // run-03 repair 1 (AE-CTX-007): decided after all clues — "not found" only when nobody was found.
           unmatched.push(said.replace(/^@/u, ""));
+          continue;
+        }
+        // AG21a (R38): words found only as a company ("我给白鹭印务报的价是多少") in a read: that company's people are read
+        // together, and the notes holding the company's words too (below) — a read never dead-ends on "which person". The
+        // answer tells the people apart where their records differ.
+        if (matches.length > 1 && matches.every((match) => match.byCompany && !match.partial)) {
+          const people = matches.slice(0, COMPANY_PEOPLE);
+          contacts.push(...people);
+          const bare = said.replace(/^@/u, "").trim().replace(COMPANY_SIDE_WORDS, "").replace(/[\s的の]+$/u, "").trim();
+          if ([...bare].length >= 2) companyWords.push(bare);
+          read.notes.push(`No contact is called "${said.replace(/^@/u, "")}"; it is the company of ${people.map((item) => item.name).join(", ")}, so this reads their records together and the notes that mention "${bare}". Where their records differ in a way that changes the answer, say whose is whose.`);
+          emitTrace({ people: people.map((item) => item.id), partId: part.localId, type: "resolve.company_people_read", words: bare });
           continue;
         }
         if (matches.length > 1 || matches[0].partial) {
@@ -690,15 +771,24 @@ export function resolveNode(scope: NodeScope): GraphNode {
         emitTrace({ partId: part.localId, today, type: "resolve.todays_plate" });
         run.showAllRead.add(part.localId);
       }
+      // AG21a (R35): "which events did I go to" lists the account's own «我去过» records (attendance.read, or an event read
+      // whose words say the user went), in the period said — not a search of the event directory. A part that points at an
+      // event by id reads that event as before.
+      const pointsAtEvent = part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event");
+      // With a person named and no words of going (「田中在客户访谈里最在意什么」 tagged attendance.read), it is about that person's
+      // notes, as AG11 run-02 reads it (below).
+      const listsAttendance = !pointsAtEvent && ((kinds.has("attendance") && (!contacts.length || asksWhereIWent(quote))) || (kinds.has("event") && asksWhereIWent(quote)));
+      if (listsAttendance) kinds.add("attendance");
+      else kinds.delete("attendance");
       // Finding events by conditions is not a read of this version (an attached event is read by id).
-      if (kinds.has("event") && !part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event") && ![...kinds].some((kind) => kind !== "event" && kind !== "contact") && contacts.length && (text || part.refs.some((ref) => recordKindOf(ref.entity) === "event" && clueSearchWords(clueWords(input.message, ref) ?? "")))) {
+      if (!listsAttendance && kinds.has("event") && !part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event") && ![...kinds].some((kind) => kind !== "event" && kind !== "contact") && contacts.length && (text || part.refs.some((ref) => recordKindOf(ref.entity) === "event" && clueSearchWords(clueWords(input.message, ref) ?? "")))) {
         // AG11 run-02 (AE-RD-009): "田中在客户访谈里最在意什么" tagged as an event of a named person: a meeting or interview with
         // someone is in the user's notes about them — those are read by the words, not the event directory.
         kinds.add("memo");
         if (!text) text = part.refs.map((ref) => (recordKindOf(ref.entity) === "event" ? clueSearchWords(clueWords(input.message, ref) ?? "") : undefined)).find(Boolean);
         emitTrace({ partId: part.localId, type: "resolve.person_event_in_notes", words: text ?? null });
       }
-      if (kinds.has("event") && !part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event") && ![...kinds].some((kind) => kind !== "event" && kind !== "contact")) {
+      if (!listsAttendance && kinds.has("event") && !part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event") && ![...kinds].some((kind) => kind !== "event" && kind !== "contact")) {
         read.lines.push(words.eventSearch(quote));
         finish("unfinished", "not_in_this_version");
         continue;
@@ -742,6 +832,22 @@ export function resolveNode(scope: NodeScope): GraphNode {
           else read.gaps.add("unreadable");
         }
       }
+      // AG21a (R40): people of the same name read together are told apart in the materials by their company or title
+      // ("季朗（白鹭印务）", "季朗（柏舟设计）"), so one is never described as the other.
+      const sameName = new Map<string, string[]>();
+      for (const contact of contacts) {
+        const name = names.get(contact.id);
+        if (name) sameName.set(name, [...new Set([...(sameName.get(name) ?? []), contact.id])]);
+      }
+      for (const [name, ids] of sameName) {
+        if (ids.length < 2) continue;
+        for (const id of ids) {
+          const view = read.views.find((item) => item.kind === "contact" && item.id === id) ?? contacts.find((item) => item.id === id)?.view ?? null;
+          const label = contactDetail(view)?.split(" · ")[0];
+          if (label) names.set(id, `${name}（${label}）`);
+        }
+        read.notes.push(`${ids.map((id) => names.get(id)).join(" and ")} are different people with the same name; keep what each record says with its own person.`);
+      }
       // Records the part points at by id.
       for (const [kind, ids] of boundIds) {
         read.wantsRecords = true;
@@ -771,6 +877,37 @@ export function resolveNode(scope: NodeScope): GraphNode {
               if (!read.lines.includes(line)) read.lines.push(line);
             }
           }
+        }
+      }
+      // AG21a (R35): the account's own «我去过» records in the period said, the latest first, each read by id (with the event
+      // it is about) — the same records the write path lists. Only these count as "went": an event the user only
+      // registered for is not one.
+      if (listsAttendance) {
+        read.wantsRecords = true;
+        try {
+          const all = records.attendance ? await records.attendance.list(input.actorId) : null;
+          if (!all) throw new Error("attendance notes are not available");
+          const inPeriod = all.filter((note) => (!filter?.from || note.attendedOn >= filter.from) && (!filter?.to || note.attendedOn <= filter.to))
+            .sort((left, right) => (left.attendedOn === right.attendedOn ? (left.id < right.id ? -1 : 1) : left.attendedOn < right.attendedOn ? 1 : -1));
+          const limit = Math.max(1, records.maxPages) * 10;
+          // An event named in words ("校友茶会那次我是哪天去的") keeps the records of events of that title only.
+          const eventWords = part.refs.filter((ref) => !ref.recordId && recordKindOf(ref.entity) === "event").map((ref) => { const said = (clueWords(input.message, ref) ?? "").replace(/(哪些|哪几场|哪几个|哪个|哪场|哪|什么|啥|どの|どれ|どんな|\bwhich\b|\bwhat\b|\bany\b)/giu, " ").replace(new RegExp(WENT_WORDS.source, "giu"), " "); return onlyWindowWords(said) ? undefined : clueSearchWords(said); }).find(Boolean);
+          let seen = 0;
+          let total = eventWords ? 0 : inPeriod.length;
+          for (const note of inPeriod.slice(0, limit)) {
+            const view = (await records.reader.read("event", accountScope, { id: note.id }).catch(() => ({ items: [] as RecordView[] }))).items[0];
+            if (!view) continue;
+            if (eventWords && !matchText(String(view.fields.title ?? "")).includes(matchText(eventWords))) continue;
+            push(view);
+            seen += 1;
+            if (eventWords) total += 1;
+          }
+          read.coverage.push({ complete: inPeriod.length <= limit, kind: "attendance", pagesRead: 1, seen, total });
+          read.notes.push(`These are the user's own «I went» records${filter?.from || filter?.to ? ` from ${filter?.from ?? "the start"} to ${filter?.to ?? "now"}` : ""}, the latest first: only these are events the user went to (an event only registered for is not one).`);
+          emitTrace({ found: inPeriod.length, from: filter?.from ?? null, partId: part.localId, to: filter?.to ?? null, type: "resolve.attendance_read" });
+        } catch (error) {
+          failures.push("attendance");
+          emitTrace({ error: error instanceof Error ? error.message : String(error), partId: part.localId, type: "read.failed", where: "resolve.attendance" });
         }
       }
       // The last interaction (structured only), or the person's notes as old material.
@@ -815,6 +952,13 @@ export function resolveNode(scope: NodeScope): GraphNode {
       const searchKinds = attachedOnly ? [] : (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !closedKinds.has(kind) && !(kind === "memo" && interactionAnswers) && !(kind === "memo" && openItems && !notesToo));
       if (current) read.notes.push("This asks how the person stands now: the interactions, their newest notes and the profile are all here; where they differ, the newer dated record is what holds now. Never give as current anything a newer record replaces (a former company, an old role).");
       const subjects = contacts.length ? contacts.map((item) => item.id) : [undefined];
+      // AG21a (R40): two people in one part, each object clue in the half of the sentence its person governs ("把 @季朗 的待办和
+      // @季朗 的笔记对一下"): a kind named in one person's half is read for that person only.
+      const governed = governedSubjects(part, contacts);
+      if (governed.size) {
+        read.notes.push(`Each kind of record here is read for the person the sentence puts it with: ${[...governed].map(([kind, ids]) => `${kind === "memo" ? "notes" : kind === "todo" ? "to-dos" : "schedule items"} of ${ids.map((id) => names.get(id) ?? id).join(", ")}`).join("; ")}. Keep each record with its own person.`);
+        emitTrace({ governed: Object.fromEntries(governed), partId: part.localId, type: "resolve.clues_governed" });
+      }
       const asked: AskedRead[] = [];
       let unclear = false;
       const reads = new Map<string, { complete: boolean; kind: string; pagesRead: number; total: number | null; directions: Set<"oldest" | "newest"> }>();
@@ -857,7 +1001,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
         }
         if (kind === "todo" || kind === "schedule") asked.push({ ...(contacts.length === 1 ? { person: { id: contacts[0].id, name: names.get(contacts[0].id) || contacts[0].name } } : {}), defaultFrom: kind === "schedule" && kindFrom === now && !from, from: kindFrom, fromDay: plate ? (kind === "schedule" ? today : undefined) : filter?.from, kind, status: kindStatus, statusSaid: Boolean(status), text: askedText, to, toDay: filter?.to });
         if (!(kind === "memo" && notesBesideProfile && contacts.length)) read.wantsRecords = true;
-        for (const contactId of subjects) {
+        for (const contactId of governed.get(kind) ?? subjects) {
           const orders: ("newest" | "oldest")[] = order === "both" ? ["newest", "oldest"] : [order];
           for (const direction of orders) {
             try {
@@ -870,6 +1014,26 @@ export function resolveNode(scope: NodeScope): GraphNode {
                 ...(kind === "todo" && !filter?.order ? {} : { order: direction }),
               });
               let pages = await readPages(records.reader, kind, accountScope, queryOf(kindText), order === "both" ? 1 : maxPages);
+              // AG21a (R44): a phrase of several distinctive words found as one piece nowhere ("Corvid 的订阅" for a note on
+              // "Corvid Analytics 的年度订阅") — the records holding every one of its words, in any order and distance; only when
+              // none holds them all, the records holding its rarest word. The other narrowings (the person, status, period) stay.
+              const tokens = kindText && !pages.items.length && !pages.withheld ? searchTokensOf(kindText) : [];
+              if (tokens.length >= 2) {
+                const counted = await Promise.all(tokens.map(async (token) => ({ first: await readPages(records.reader, kind, accountScope, queryOf(token), 1), token })));
+                const rarest = counted.filter((item) => item.first.items.length || item.first.withheld).sort((left, right) => (left.first.total ?? Number.MAX_SAFE_INTEGER) - (right.first.total ?? Number.MAX_SAFE_INTEGER) || right.token.length - left.token.length)[0];
+                if (rarest) {
+                  const all = await readPages(records.reader, kind, accountScope, queryOf(rarest.token), Math.max(maxPages, records.maxPages));
+                  const holding = all.items.filter((view) => tokens.every((token) => viewText(view).includes(matchText(token))));
+                  if (holding.length) {
+                    pages = { ...all, complete: all.complete, items: holding, total: all.complete ? holding.length : null };
+                    emitTrace({ found: holding.length, kind, partId: part.localId, tokens, type: "resolve.text_all_words" });
+                  } else {
+                    pages = rarest.first.items.length && maxPages > 1 ? await readPages(records.reader, kind, accountScope, queryOf(rarest.token), order === "both" ? 1 : maxPages) : rarest.first;
+                    read.notes.push(`No ${kind === "memo" ? "note" : "record"} holds all of ${tokens.map((token) => `"${token}"`).join(", ")}; these hold "${rarest.token}" only. Say so; do not present them as holding the rest.`);
+                    emitTrace({ found: pages.items.length, kind, partId: part.localId, tokens, type: "resolve.text_rarest_word", word: rarest.token });
+                  }
+                }
+              }
               // The words were a narrowing: when none of the person's records has them, read the person's records
               // without them and say so. With no person, nothing found stays nothing found (no newest page instead).
               if (ownWords && !pages.items.length && !pages.withheld) {
@@ -976,6 +1140,23 @@ export function resolveNode(scope: NodeScope): GraphNode {
           }
         }
       }
+      // AG21a (R38): the notes that mention the company named in the words, whoever they are linked to (a note about the
+      // company may name none of its people). Under the part's period; one page per word at most a page of the part.
+      if (companyWords.length && searchKinds.includes("memo")) {
+        for (const word of companyWords) {
+          try {
+            const pages = await readPages(records.reader, "memo", accountScope, { order: "newest", text: word, ...(from ? { from } : {}), ...(to ? { to } : {}) }, maxPages);
+            withheld += pages.withheld;
+            for (const view of pages.items) push(view);
+            read.wantsRecords = true;
+            reads.set(`memo|company:${word}`, { complete: pages.complete, directions: new Set(["newest"]), kind: "memo", pagesRead: pages.pagesRead, total: null });
+            emitTrace({ found: pages.items.length, partId: part.localId, type: "resolve.company_notes", words: word });
+          } catch (error) {
+            failures.push("memo");
+            emitTrace({ error: error instanceof Error ? error.message : String(error), partId: part.localId, type: "read.failed", where: "resolve.company_notes" });
+          }
+        }
+      }
       for (const kind of searchKinds) {
         const entries = [...reads.values()].filter((item) => item.kind === kind);
         if (!entries.length) continue;
@@ -986,7 +1167,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
         const direction = directions.size === 1 ? [...directions][0] : null;
         read.coverage.push({ complete: entries.every((item) => item.complete) || (total !== null && seen >= total), kind, pagesRead: entries.reduce((sum, item) => sum + item.pagesRead, 0), seen, total, ...(direction ? { direction } : {}) });
       }
-      if (kinds.has("event") && !boundIds.has("event")) read.notes.push("Events are read when the user attaches one; none was attached.");
+      if (kinds.has("event") && !boundIds.has("event") && !listsAttendance) read.notes.push("Events are read when the user attaches one; none was attached.");
 
       // AG10 (AE-SCL-020): how a person stands now — a note saying something still needs doing ("Still need to send Priya the
       // JD") is not given when the person's to-do for it was completed after the note: it no longer holds (设计稿 §4 新的为准).

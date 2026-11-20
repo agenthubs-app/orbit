@@ -24,6 +24,7 @@ import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
 import { standingRuleNotes } from "../../domains/memory/turn";
 import { mergePickIntoQuestion, recommendIsRanking } from "../../understand/merge-pick";
+import { keepsLookingAt, keepsLookingIn } from "../../rule/parse";
 
 /** "你", "我", "you", "me": the two people talking, never a contact to look up. */
 const SPEAKER_WORDS = /^(?:你|您|我|咱们?|我们|你们|あなた|私|僕|you|me|i|we|us)$/iu;
@@ -150,8 +151,16 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope, today: string)
         if (clue.referenceId || !subjectInsideRecord(clue, part.objectClues, writes)) return true;
         emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.subject_in_record" });
         return false;
-      }).map((clue) => {
-        const at = message.indexOf(clue.text);
+      }).map((clue, _index, kept) => {
+        // AG21a (R40): the same words twice ("把 @季朗 的待办和 @季朗 的笔记对一下") are two places of the message: the second
+        // clue with those words is the second occurrence, so each keeps its own half of the sentence.
+        const before = kept.slice(0, kept.indexOf(clue)).filter((other) => other.text === clue.text).length;
+        let at = message.indexOf(clue.text);
+        for (let count = 0; count < before && at >= 0; count += 1) {
+          const next = message.indexOf(clue.text, at + clue.text.length);
+          if (next < 0) break;
+          at = next;
+        }
         const own: [number, number] | null = at >= 0 ? [at, at + clue.text.length] : null;
         // AG09 run-03 (AE-BND-006): a demonstrative the user described just before ("约山本吃饭这条待办") is looked up by
         // those words; the clue then names the record and is not a missing object.
@@ -200,6 +209,33 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope, today: string)
       part.capabilities = reads;
       scope.run.carriedQuestions.set(part.localId, previous);
       emitTrace({ capabilities: reads, partId: part.localId, type: "understand.asks_again_about_picked" });
+    }
+  }
+  // AG21a (coordinator's decision 2): "先帮我找…，再一直帮我留意…" asks for both. The search is answered now (the part keeps
+  // its reads, for this turn only); the keep-looking words go to the scheduled-task path as a part of their own (rule.create:
+  // AG15's card, or its question for when to run) — never only an offer to be accepted first.
+  for (let index = 0; index < parts.length; index += 1) {
+    const part = parts[index];
+    if (part.plan.negation || part.plan.hypothesis || part.capabilities.some((capability) => capabilityKind(capability) === "write" && !capability.startsWith("rule."))) continue;
+    const quote = message.slice(part.quote[0], part.quote[1]);
+    const at = keepsLookingAt(quote);
+    const reads = part.capabilities.filter((capability) => !capability.startsWith("rule."));
+    if (at !== null) {
+      const splitAt = part.quote[0] + at;
+      let end = splitAt;
+      while (end > part.quote[0] && /[\s，,。；;、]/u.test(message[end - 1])) end -= 1;
+      const now: GraphPart = { ...part, capabilities: reads, plan: { ...part.plan, persistence: "this_turn" }, quote: [part.quote[0], end], refs: part.refs.filter((ref) => !ref.quote || ref.quote[0] < splitAt) };
+      const keep: GraphPart = { ...part, capabilities: [...new Set([...reads, "rule.create"])] as GraphPart["capabilities"], dependsOn: [], localId: `${part.localId}k`, plan: { ...part.plan, persistence: "this_turn", readings: [] }, quote: [splitAt, part.quote[1]], refs: part.refs.map((ref) => ({ ...ref })) };
+      (parts as GraphPart[]).splice(index, 1, now, keep);
+      index += 1;
+      emitTrace({ keep: keep.localId, now: [now.quote[0], now.quote[1]], partId: part.localId, type: "understand.find_now_and_keep_looking" });
+      continue;
+    }
+    const findsBefore = parts.some((other) => other !== part && other.quote[1] <= part.quote[0] && other.capabilities.some((capability) => capabilityKind(capability) !== "write"));
+    if (findsBefore && keepsLookingIn(quote) && (part.plan.persistence === "until_satisfied" || part.capabilities.some((capability) => capability.startsWith("rule.")))) {
+      part.plan = { ...part.plan, persistence: "this_turn", readings: [] };
+      part.capabilities = [...new Set([...reads, "rule.create"])] as GraphPart["capabilities"];
+      emitTrace({ partId: part.localId, type: "understand.keep_looking_is_a_task" });
     }
   }
   // AG14 dev run 1 (AE-FN-002): a pick with no set of its own ("帮我挑两场") is one ranking with the question before it.
