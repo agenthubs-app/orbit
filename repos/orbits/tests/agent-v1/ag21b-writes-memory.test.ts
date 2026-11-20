@@ -8,6 +8,7 @@ import { createAgentExecutorRegistry } from "../../features/agent/runtime/execut
 import { createAgentRuntimeService } from "../../features/agent/runtime/service";
 import { createStorageAgentRuntimeRepository } from "../../features/agent/storage/agent-runtime-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+import { endsInActionVerb, needsIntentReview, readsAsWriteRequest } from "../../features/agent-v1/judgment/intent-review";
 import { resolveEventIntent } from "../../features/agent-v1/propose/events-resolve";
 import type { ResolveContext } from "../../features/agent-v1/propose/resolve";
 import type { StoredIntent } from "../../features/agent-v1/propose/schema";
@@ -117,4 +118,25 @@ test("R28 a change tagged as a schedule item goes to the private event; a note u
   const unlink = await resolveEventIntent(eventCtx(unlinkSaid), eventPart(unlinkSaid), { intents: [], picks: {} }, { capability: "memo.update", events: [span(unlinkSaid, "校友茶会")], localId: "w2", relations: [], selector: [span(unlinkSaid, "茶会纪要")] }) as unknown as { kind: string; ops: { capability: string; targetId: string; set: { eventRefs: unknown[] } }[] };
   assert.equal(unlink.kind, "ready", JSON.stringify(unlink));
   assert.deepEqual([unlink.ops[0].capability, unlink.ops[0].targetId, unlink.ops[0].set.eventRefs], ["memo.update", "note:tea", []]);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// R29: a clause ending in a bare action verb, next to a write or continuing one, is an instruction without review.
+
+test("R29 '那条也删' / '备注也改' with another write in the message or right after one is not reviewed; alone or as a report it is", () => {
+  const base = { capabilities: ["todo.delete"] as never, clarity: "clear" as const, hypothesis: false, intentBasis: "instruction" as const, negation: false };
+  const asks = (quote: string, withWrite: boolean) => needsIntentReview({ ...base, quote, withWrite });
+  assert.equal(asks("寄样书那条也删", true), false);
+  assert.equal(asks("和石楠的那两条一起删", true), false);
+  assert.equal(asks("备注也改", true), false);
+  assert.equal(asks("それも消して", true), false);
+  assert.equal(asks("that one too, delete it", true), false);
+  // Without a write around it, the bare verb is still reviewed (as before); a report or a question always is.
+  assert.equal(asks("寄样书那条也删", false), true);
+  assert.equal(asks("我昨天已经删了", true), true);
+  assert.equal(asks("那条也删吗？", true), true);
+  assert.equal(endsInActionVerb("季朗的报价也挪一下"), true);
+  assert.equal(endsInActionVerb("今天和季朗聊了报价"), false);
+  assert.equal(readsAsWriteRequest("把给石楠寄样书的待办删掉"), true);
+  assert.equal(readsAsWriteRequest("石楠下周来东京吗？"), false);
 });

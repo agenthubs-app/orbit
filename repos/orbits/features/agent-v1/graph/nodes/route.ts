@@ -20,7 +20,7 @@ import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
 import { clueWords, needsDirections, objectOf, pageKindOf } from "./clarify";
 import { clueSearchWords } from "./resolve";
-import { needsIntentReview, readsAsQuestion, reviewWriteIntent } from "../../judgment/intent-review";
+import { needsIntentReview, readsAsQuestion, readsAsWriteRequest, reviewWriteIntent } from "../../judgment/intent-review";
 import { CLARIFY_WORDS } from "../../clarify/copy";
 import { nextNoteGoalIn, organizeMeansSummary, updatesInteractionsFromMemo } from "./functions";
 import { pushSaidIn, RECURRING_ASK, recurrenceSaidIn, RULE_NOUN, RULE_QUALIFIER, stateVerbSaidIn } from "../../rule/parse";
@@ -157,12 +157,16 @@ export function routeNode(scope: NodeScope): GraphNode {
     // registered write verb, is checked once by the judgment model. Anything but a sure "yes" makes it a statement.
     const reviewed = new Set<string>();
     const ruleQuotes = state.parts.map((part) => ({ part, quote: input.message.slice(part.quote[0], part.quote[1]) }));
+    // AG21b (R29): the turn continues a write in progress — an open question of a write, or the last request asked for one.
+    const lastUserText = context && !context.idle ? [...context.messages].reverse().find((message) => message.role === "user")?.text ?? "" : "";
+    const writeInProgress = Boolean(context && !context.idle && (context.openItems.some((item) => item.writes) || (lastUserText && readsAsWriteRequest(lastUserText))));
     if (!resume) {
       for (const original of state.parts) {
         const found = attribution?.get(original.localId);
         const quote = input.message.slice(original.quote[0], original.quote[1]);
         const followsWrite = original.dependsOn.some((id) => state.parts.find((other) => other.localId === id)?.capabilities.some((capability) => capabilityKind(capability) === "write"));
-        const review = { capabilities: original.capabilities, clarity: original.plan.clarity, continues: Boolean(found && found.kind !== "new"), followsWrite, hypothesis: original.plan.hypothesis, intentBasis: original.plan.intentBasis, negation: original.plan.negation, quote };
+        const withWrite = writeInProgress || state.parts.some((other) => other.localId !== original.localId && other.capabilities.some((capability) => capabilityKind(capability) === "write"));
+        const review = { capabilities: original.capabilities, clarity: original.plan.clarity, continues: Boolean(found && found.kind !== "new"), followsWrite, hypothesis: original.plan.hypothesis, intentBasis: original.plan.intentBasis, negation: original.plan.negation, quote, withWrite };
         // AG14: an ask about saved memory is read from the words by code (memoryRouteStep); it needs no review.
         if (isMemoryAsk(quote, original.capabilities)) continue;
         // AG15: a recurrence with a pick or tell verb, or a named task with pause / resume / delete, is an explicit
