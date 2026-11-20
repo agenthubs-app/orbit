@@ -30,9 +30,9 @@ export async function GET(
       storage: requestContext.storage,
     });
     if (!history) {
-      return NextResponse.json({ error: { code: "NOT_FOUND", message: "No scheduled task matches that id." } }, { status: 404 });
+      return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "No scheduled task matches that id." } }, { status: 404 });
     }
-    return NextResponse.json({ data: history }, { headers: { "cache-control": "no-store" } });
+    return NextResponse.json({ success: true, data: history }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     return agentAutomationErrorResponse(error, {
       code: "AGENT_AUTOMATIONS_UNAVAILABLE",

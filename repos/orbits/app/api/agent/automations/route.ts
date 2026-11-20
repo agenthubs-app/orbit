@@ -22,7 +22,7 @@ export async function GET(request?: Request): Promise<Response> {
       context.service.list(),
       listScheduledTasks({ now: new Date().toISOString(), ownerId: context.actorId, service: context.service, storage: context.storage, ...languageOf(request) }),
     ]);
-    return NextResponse.json({ data: { automations, tasks } }, { headers: { "cache-control": "no-store" } });
+    return NextResponse.json({ success: true, data: { automations, tasks } }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     return agentAutomationErrorResponse(error, {
       code: "AGENT_AUTOMATIONS_UNAVAILABLE",
@@ -42,7 +42,7 @@ export async function POST(request: Request): Promise<Response> {
   if (fromForm && "form" in fromForm) {
     try {
       const automation = await context.service.create(createInputFromForm(fromForm.form, fromForm.language));
-      return NextResponse.json({ data: { automation, task: scheduledTaskView(automation, null, new Date().toISOString(), fromForm.language) } }, { status: 201 });
+      return NextResponse.json({ success: true, data: { automation, task: scheduledTaskView(automation, null, new Date().toISOString(), fromForm.language) } }, { status: 201 });
     } catch (error) {
       return agentAutomationErrorResponse(error);
     }
@@ -51,6 +51,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!input) {
     return NextResponse.json(
       {
+        success: false,
         error: {
           code: "VALIDATION_ERROR",
           message:
@@ -62,7 +63,7 @@ export async function POST(request: Request): Promise<Response> {
   }
   try {
     const automation = await context.service.create(input);
-    return NextResponse.json({ data: { automation } }, { status: 201 });
+    return NextResponse.json({ success: true, data: { automation } }, { status: 201 });
   } catch (error) {
     return agentAutomationErrorResponse(error);
   }

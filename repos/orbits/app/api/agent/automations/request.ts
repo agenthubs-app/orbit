@@ -214,7 +214,7 @@ export function languageOf(request: Request | undefined): { locale?: "zh" | "en"
 }
 
 export function taskFormErrorResponse(error: "invalid" | "note_unreadable"): Response {
-  return NextResponse.json({ error: error === "invalid" ? { code: "VALIDATION_ERROR", message: "The task form is incomplete." } : { code: "NOTE_UNREADABLE", message: "The note chosen to pick by cannot be opened." } }, { status: 400 });
+  return NextResponse.json({ success: false, error: error === "invalid" ? { code: "VALIDATION_ERROR", message: "The task form is incomplete." } : { code: "NOTE_UNREADABLE", message: "The note chosen to pick by cannot be opened." } }, { status: 400 });
 }
 
 /**
@@ -239,6 +239,7 @@ export async function resolveAgentAutomationRequest(): Promise<AgentAutomationRe
 export function agentAutomationUnauthorizedResponse(): Response {
   return NextResponse.json(
     {
+      success: false,
       error: {
         code: "UNAUTHORIZED",
         message: "Sign in is required for Agent automations.",
@@ -260,6 +261,7 @@ export function agentAutomationErrorResponse(
     error instanceof Error && error.message.includes("was not found");
   return NextResponse.json(
     {
+      success: false,
       error: {
         code: notFound
           ? "NOT_FOUND"

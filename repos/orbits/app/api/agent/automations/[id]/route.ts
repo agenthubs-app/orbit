@@ -27,7 +27,7 @@ export async function PATCH(
       const before = await requestContext.service.get(id);
       if (!before?.rule) return agentAutomationErrorResponse(new Error(`Automation ${id} was not found.`));
       const automation = await requestContext.service.update(id, updateInputFromForm(fromForm.form, fromForm.language, before));
-      return NextResponse.json({ data: { automation } });
+      return NextResponse.json({ success: true, data: { automation } });
     } catch (error) {
       return agentAutomationErrorResponse(error);
     }
@@ -41,7 +41,7 @@ export async function PATCH(
   try {
     const { id } = await context.params;
     const automation = await requestContext.service.update(id, input);
-    return NextResponse.json({ data: { automation } });
+    return NextResponse.json({ success: true, data: { automation } });
   } catch (error) {
     return agentAutomationErrorResponse(error);
   }

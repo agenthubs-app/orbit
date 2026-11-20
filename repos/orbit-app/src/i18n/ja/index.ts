@@ -32,6 +32,7 @@ import { schedule } from "./schedule";
 import { meetingDetails } from "./meetingDetails";
 import { inboxVm } from "./inboxVm";
 import { agentActions } from "./agentActions";
+import { scheduledTasks } from "./scheduledTasks";
 import { aiOrganization } from "./aiOrganization";
 import { aiMention } from "./aiMention";
 import { todayActions } from "./todayActions";
@@ -99,6 +100,7 @@ export const ja = {
   ...meetingDetails,
   ...inboxVm,
   ...agentActions,
+  ...scheduledTasks,
   ...aiOrganization,
   ...aiMention,
   ...todayActions,
