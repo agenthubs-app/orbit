@@ -883,7 +883,17 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   }
   // AG14 (设计稿 §6; replaces AG10's read-only list): the saved entries for this task. Rules are hard conditions and
   // preferences rank; what this turn's own words say wins over a saved preference ("这次看周四晚上").
-  const saved = rankMemoryOf(await ensureTurnMemory(scope, now, timeZone), domain, { now, partId: part.localId, timeZone, turnHasTopic: Boolean(topic) && !topicIsSentence, turnTime: domain === "event" ? turnTime : null });
+  // Release-2 gate (AE-ANS-009, AE-SCL-017; coordinator, 2026-11-20): saved entries are a basis only for a request to
+  // recommend or pick (a pick or recommend word, or 「适合我」) that gives no standard of its own. A plain listing
+  // (「接下来有哪些活动？」) is never turned into a ranking by memory, nor does a saved time rule hide records from it; an
+  // order, a filter or a topic in the sentence (「过期最久的排前面」, 正式跟进, an @ note, a clicked ordering, who to follow up)
+  // is the standard and nothing saved is added to it. A count or a period alone says how many and when, not by what
+  // (AE-SCL-027/028, AE-FN-002, AE-MEM-*: 「挑三场」 with saved entries ranks by them).
+  const recommendsOrPicks = run.memory.reranks.includes(part.localId) || PICK_WORDS.test(original) || /(适合我|合适我|适合自己|对我来说|私に合う|自分に合う|\bfor me\b|\bsuits? me\b)/iu.test(original);
+  const ownStandard = Boolean(field || basisMemo || chosen || followUpAsk || (topic && !topicIsSentence) || (domain === "todo" && (FORMAL_FOLLOW_UP.test(words) || /(过期|逾期|期限切れ|期限を過ぎ|overdue)/iu.test(words))));
+  const memoryApplies = recommendsOrPicks && !ownStandard;
+  if (!memoryApplies) emitTrace({ ownStandard, partId: part.localId, recommendsOrPicks, type: "functions.memory_not_a_basis" });
+  const saved = memoryApplies ? rankMemoryOf(await ensureTurnMemory(scope, now, timeZone), domain, { now, partId: part.localId, timeZone, turnHasTopic: Boolean(topic) && !topicIsSentence, turnTime: domain === "event" ? turnTime : null }) : { overruled: [], time: [], topic: null, used: [] };
   for (const item of saved.time) time.push(item.preference);
   let topicFromMemory = false;
   if (saved.topic && (!topic || topicIsSentence) && !basisMemo) {

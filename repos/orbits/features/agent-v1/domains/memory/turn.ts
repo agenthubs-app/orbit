@@ -69,10 +69,12 @@ export interface TurnMemory {
   ranking: LastRanking | null;
   /** The scope was read for this pass (a pass resumed by a click reads it when it first needs it). */
   loaded: boolean;
+  /** Parts that rank the last recommendation again this time (「这次看周四晚上的」): the saved entries are weighed there. */
+  reranks: string[];
 }
 
 export function emptyTurnMemory(): TurnMemory {
-  return { loaded: false, ranking: null, replyLanguage: null, rules: [], snapshot: null, turnWords: [], used: new Map() };
+  return { loaded: false, ranking: null, replyLanguage: null, reranks: [], rules: [], snapshot: null, turnWords: [], used: new Map() };
 }
 
 /** The turn's memory, read once per pass: at intake, or — after a click resumed the request — where it is first needed. */
@@ -275,6 +277,9 @@ export function rankMemoryFrom(recall: Pick<MemoryRecall, "rules" | "relevant">,
   const topics: string[] = [];
   // What to weigh first, then the rules (the order the lead names them in).
   for (const entry of [...recall.relevant, ...recall.rules.filter((rule) => input.everyTaskRules || !rule.everyTask)]) {
+    // Release-2 gate (AE-SCL-017; coordinator, 2026-11-20): a goal or who the user is (「年底前把包材成本降一成」) is no
+    // standard for ranking to-dos or follow-ups unless the user says so; only what is saved about to-dos themselves is.
+    if (domain === "todo" && (entry.category === "goal" || entry.category === "identity")) continue;
     const preference = domain === "event" ? timePreferenceOfEntry(entry) : null;
     const topic = topicOfEntry(entry);
     if (preference) {
@@ -547,6 +552,7 @@ export async function memoryRouteStep(scope: NodeScope, state: AgentGraphState, 
         part.reading = null;
         part.continues = null;
         settledIds.add(part.localId);
+        turn.reranks.push(part.localId);
       } else if (tagged && !part.capabilities.length) {
         part.route = "answer";
         part.status = "answered";
