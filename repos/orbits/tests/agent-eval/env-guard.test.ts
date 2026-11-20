@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { buildEvalEnvironment, EvalEnvironmentError, isEvalDatabaseName, isEvalLineName, isWorkerDatabaseName } from "./lib/env-guard";
+import { evalPathsForRuns } from "./lib/eval-env";
 import { evalPaths } from "./lib/paths";
 
 const good = {
@@ -139,4 +140,15 @@ test("a line's worker databases are only its own: the main eval and other lines 
   assert.equal(isWorkerDatabaseName("orbit_agent_eval_ag14_w2"), false, "the main eval never manages a line's worker");
   assert.equal(isEvalDatabaseName("orbit_agent_eval_ag14", "ag14"), true);
   assert.equal(isEvalDatabaseName("orbit_agent_eval_ag14"), false);
+});
+
+test("judge-pack and report find a line's runs: the env file's home is used unless the shell names one", () => {
+  const fromFile = evalPathsForRuns({}, () => ({ ORBIT_AGENT_EVAL_HOME: "/tmp/agent-eval-test-home-ag14" }));
+  assert.equal(fromFile.runs, "/tmp/agent-eval-test-home-ag14/runs");
+  const shellWins = evalPathsForRuns({ ORBIT_AGENT_EVAL_HOME: "/tmp/elsewhere" }, () => ({ ORBIT_AGENT_EVAL_HOME: "/tmp/agent-eval-test-home-ag14" }));
+  assert.equal(shellWins.runs, "/tmp/elsewhere/runs");
+  const noFile = evalPathsForRuns({ HOME: "/Users/someone" }, () => {
+    throw new Error("no env file");
+  });
+  assert.match(noFile.runs, /orbit-sprint-evidence\/agent-eval\/runs$/u);
 });

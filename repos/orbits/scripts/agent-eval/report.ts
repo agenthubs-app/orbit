@@ -10,8 +10,9 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { CostSummary } from "../../tests/agent-eval/lib/costs";
+import { evalPathsForRuns } from "../../tests/agent-eval/lib/eval-env";
 import { countedRubric, decideCase, readCaseYaml, validateJudgeFile, type CaseVerdict } from "../../tests/agent-eval/lib/judging";
-import { evalPaths, RUNS_MD } from "../../tests/agent-eval/lib/paths";
+import { RUNS_MD } from "../../tests/agent-eval/lib/paths";
 import { renderRunReport, type JudgedCase } from "../../tests/agent-eval/lib/report-md";
 import { writeBundleSha } from "../../tests/agent-eval/lib/run-files";
 
@@ -51,7 +52,7 @@ export function judgeRun(runDir: string, required: number): { verdicts: CaseVerd
 function main(argv: readonly string[]): void {
   const runId = flag(argv, "--run");
   if (!runId) throw new Error("--run <run id> is required");
-  const runs = evalPaths().runs;
+  const runs = evalPathsForRuns().runs;
   const runDir = path.join(runs, runId);
   const firstSummary = JSON.parse(fs.readFileSync(path.join(runDir, "summary.json"), "utf8"));
   const required = Number(flag(argv, "--judges") ?? (firstSummary.gate || /gate|AE-H-006/u.test(firstSummary.label) ? 2 : 1));

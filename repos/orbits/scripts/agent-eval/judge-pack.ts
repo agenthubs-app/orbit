@@ -8,8 +8,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { evalPathsForRuns } from "../../tests/agent-eval/lib/eval-env";
 import { readCaseYaml, renderJudgePacket } from "../../tests/agent-eval/lib/judging";
-import { evalPaths, JUDGE_PROMPT } from "../../tests/agent-eval/lib/paths";
+import { JUDGE_PROMPT } from "../../tests/agent-eval/lib/paths";
 import type { TraceEvent } from "../../tests/agent-eval/lib/trace-log";
 
 function flag(argv: readonly string[], name: string): string | null {
@@ -20,7 +21,7 @@ function flag(argv: readonly string[], name: string): string | null {
 function main(argv: readonly string[]): void {
   const runId = flag(argv, "--run");
   if (!runId) throw new Error("--run <run id> is required");
-  const runDir = path.join(evalPaths().runs, runId);
+  const runDir = path.join(evalPathsForRuns().runs, runId);
   const summary = JSON.parse(fs.readFileSync(path.join(runDir, "summary.json"), "utf8"));
   const judgePrompt = fs.readFileSync(JUDGE_PROMPT, "utf8");
   const only = flag(argv, "--cases")?.split(",").map((id) => id.trim());
