@@ -6,7 +6,7 @@
  * A decision is never queued offline (设计稿 §7): every call needs the network, and a failed one is not retried.
  */
 import { agentActionPreviewSchema, agentReferenceCheckResultSchema, agentReferenceSearchResultSchema, agentResultDocumentSchema, agentSendReceiptSchema } from "./schema/agent-v1";
-import type { AgentActionPreviewContract, AgentAnswerLinkContract, AgentReferenceSearchKind, AgentReferenceSearchResultContract, AgentResultDocument, AgentSendReceiptContract } from "./contract/agent-v1";
+import type { AgentActionPreviewContract, AgentAnswerLinkContract, AgentAnswerRecordContract, AgentReferenceSearchKind, AgentReferenceSearchResultContract, AgentResultDocument, AgentSendReceiptContract } from "./contract/agent-v1";
 import type { AiSessionOriginInputContract, AiSessionReferenceContract } from "./contract/ai-sessions";
 import type { OrbitApiClient } from "./client";
 import { ORBIT_API_ENDPOINTS } from "./endpoints";
@@ -138,16 +138,34 @@ export async function selectAgentOption(client: OrbitApiClient, input: { session
   return Boolean(result?.success);
 }
 
-/** Where a record link of the answer opens in the App. */
-export function agentLinkHref(link: AgentAnswerLinkContract): string | null {
-  switch (link.type) {
+/**
+ * AG19: where a record card of the answer opens in the App — every one of the six kinds has a page. 待办 opens that one
+ * to-do (D3); 日程 opens that schedule item; 我去过 opens the event it is about (a private one in the events page's sheet,
+ * as AG13 shows it: read only).
+ */
+export function agentRecordHref(record: Pick<AgentAnswerRecordContract, "kind" | "id" | "eventKind" | "eventId">): string | null {
+  const id = encodeURIComponent(record.id);
+  const privateEvent = (eventId: string) => `/events?${new URLSearchParams({ privateEvent: eventId, tab: "going" })}`;
+  switch (record.kind) {
     case "memo":
-      return `/notes/${encodeURIComponent(link.id)}`;
+      return `/notes/${id}`;
     case "contact":
-      return `/contacts/${encodeURIComponent(link.id)}`;
+      return `/contacts/${id}`;
     case "todo":
-      return "/tasks";
+      return `/tasks/${id}`;
+    case "schedule":
+      return `/schedule/personal/${id}`;
+    case "event":
+      return record.eventKind === "private" || record.id.startsWith("private_event:") ? privateEvent(record.id) : `/events/${id}`;
+    case "attendance":
+      if (!record.eventId) return "/events?tab=going";
+      return record.eventKind === "private" ? privateEvent(record.eventId) : `/events/${encodeURIComponent(record.eventId)}`;
     default:
       return null;
   }
+}
+
+/** Where a record link of the answer's basis line opens in the App (the same table as the cards). */
+export function agentLinkHref(link: AgentAnswerLinkContract): string | null {
+  return agentRecordHref({ id: link.id, kind: link.type });
 }

@@ -117,8 +117,9 @@ test("the sealed set is not read unless asked for", () => {
 test("all visible area files pass the checker", () => {
   const files = loadAreaFiles();
   const cases = files.flatMap((file) => file.cases);
-  assert.equal(files.length, 21);
-  assert.equal(cases.length, 232);
+  // AG19 added the ANS area (answer layout and record cards).
+  assert.equal(files.length, 22);
+  assert.equal(cases.length, 243);
   assert.deepEqual(checkAreaFiles(files, context), []);
 });
 

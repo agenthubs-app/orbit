@@ -11,7 +11,8 @@
  * twice. A part that answered an earlier question, and a question shelved after two unrelated
  * messages, are handed to the executor to write back into that earlier request.
  */
-import type { AgentClarificationContract, AgentPartGap, AgentPartResult } from "../../../../shared/contract/agent-v1";
+import type { AgentAnswerNoteItemContract, AgentAnswerRecordContract, AgentClarificationContract, AgentPartGap, AgentPartResult } from "../../../../shared/contract/agent-v1";
+import { cardedIn, noteBlock, noteItemOf, recordsBlock, textBlocks, type AnswerBlock } from "../../answer/blocks";
 import { CLARIFY_WORDS, type MissingItem } from "../../clarify/copy";
 import { readingLabel, recordKindOf, type Reading } from "../../clarify/default-readings";
 import { capabilityLabel } from "../../clarify/options";
@@ -223,6 +224,66 @@ function partLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, lan
   }
 }
 
+/* ── AG19: the answer as blocks ────────────────────────────────────── */
+
+/**
+ * AG19-4 (board 4): a part that was not done — refused, failed, left unfinished, waiting for another part, or handed to
+ * an external agent — goes into the grey note, apart from the answer. A question (still unclear, a clarification, an
+ * alternative to accept) is not "not done": it stays in the answer where the user is asked. A write part that says code's
+ * own line about the record (already recorded, not found) stays in the answer too.
+ */
+export function isNotDone(part: Pick<GraphPart, "status" | "reason" | "route">, hasWriteLine = false): boolean {
+  if (part.status === "declined" || part.status === "failed" || part.status === "suggested_external" || part.status === "waiting_dependency") return true;
+  if (part.status !== "unfinished") return false;
+  if (part.reason === "still_unclear" || part.reason === "shelved") return false;
+  return !(part.route === "propose_write" && hasWriteLine);
+}
+
+/** The typed ref of a card ("event:attendance:…" for «我去过»), as the citations name it. */
+const refOfCard = (card: AgentAnswerRecordContract) => `${card.kind === "attendance" ? "event" : card.kind}:${card.id}`;
+
+/**
+ * The blocks of the parts written in this pass, in the order they were said: each part's words (its list as cards when
+ * code wrote one), then the records it cites that are on no card yet — full cards under a list, small "mentioned" cards
+ * under a discussion — and one note at the end for everything that was not done. A record is on one card only.
+ */
+function blocksOf(scope: NodeScope, state: AgentGraphState, written: readonly GraphPart[], language: ReplyLanguage): AnswerBlock[] {
+  const { run } = scope;
+  const blocks: AnswerBlock[] = [];
+  const notes: AgentAnswerNoteItemContract[] = [];
+  for (const part of written) {
+    const line = lineFor(scope, state, part, language);
+    if (!line.trim()) continue;
+    const quote = quoteOf(scope.input.message, part);
+    if (isNotDone(part, run.writeLines.has(part.localId))) {
+      // Each sentence of code's is one entry; the first carries the user's words.
+      line.split("\n").map((text) => text.trim()).filter(Boolean).forEach((text, index) => notes.push(noteItemOf(text, index === 0 ? quote : null, language)));
+      continue;
+    }
+    const answer = run.answers.get(part.localId) ?? "";
+    const own = run.answerBlocks.get(part.localId);
+    const at = answer ? line.indexOf(answer) : -1;
+    const model = run.modelAnswers.has(part.localId);
+    const mine: AnswerBlock[] = at >= 0 && (own || model)
+      ? [...textBlocks(line.slice(0, at), language), ...(own ?? textBlocks(answer, language, { conclusion: true })), ...textBlocks(line.slice(at + answer.length), language)]
+      : textBlocks(line, language);
+    // The records this part cites that no card shows yet (verified by now: a citation that no longer opens was dropped).
+    const carded = new Set([...cardedIn(blocks), ...cardedIn(mine)]);
+    const cited = (part.cites ?? []).map((ref) => run.recordCards.get(ref)).filter((card): card is AgentAnswerRecordContract => Boolean(card)).filter((card) => !carded.has(`${card.kind}:${card.id}`));
+    // Repair round 1: full-size cards are the lists code wrote (a ranking; a list-type read, answer/list-answer.ts) and
+    // arrive in `own`. What an answer written by a model cites is "mentioned": small cards under its text.
+    // Board 4 (last example): an answer that rests on one record is opened from its basis line ("按你11月10日记的笔记回答 打开 ›").
+    const byBasisLine = cited.length === 1 && run.basis?.links.length === 1 && run.basis.links[0].id === cited[0].id;
+    const cards = byBasisLine ? null : recordsBlock(cited, language, { size: "mini" });
+    blocks.push(...mine, ...(cards ? [cards] : []));
+  }
+  const note = noteBlock(notes, language);
+  if (note) blocks.push(note);
+  if (run.cardLine?.trim()) blocks.push({ text: run.cardLine, type: "paragraph" });
+  emitTrace({ blocks: blocks.map((block) => (block.type === "records" ? { cards: block.items.map(refOfCard), shown: block.shown, size: block.size ?? "full", type: block.type } : block.type === "note" ? { items: block.items.length, type: block.type } : { type: block.type })), type: "deliver.blocks" });
+  return blocks;
+}
+
 function summaryOfAlternative(language: ReplyLanguage, topic: string, where: "events" | "records"): string {
   if (language === "en") return `Orbit offered to check ${where === "events" ? "Orbit's event directory" : "the user's Orbit records"} regularly for new ${topic}; waiting for the user to accept`;
   if (language === "ja") return `Orbit から、${where === "events" ? "Orbit のイベント一覧" : "Orbit の記録"}で${topic}を定期的にチェックする方法を提案済み（ユーザーの承諾待ち）`;
@@ -326,13 +387,18 @@ export function deliverNode(scope: NodeScope): GraphNode {
     const resume = state.touched !== null;
     let partResults: AgentPartResult[];
     let text: string;
+    let blocks: AnswerBlock[] = [];
     if (state.understanding !== "understood") {
       text = state.understanding === "budget" ? words.budgetBeforeUnderstanding : words.notUnderstood;
+      // AG19-4: nothing was done this round: the note alone.
+      const note = noteBlock([noteItemOf(text, null, language)], language);
+      blocks = note ? [note] : [];
       partResults = [{ partId: "p1", reason: state.understanding === "invalid" ? "model_output_invalid" : state.understanding, status: state.understanding === "budget" ? "unfinished" : "failed" }];
     } else {
       const ordered = [...state.parts].sort((left, right) => left.quote[0] - right.quote[0] || left.localId.localeCompare(right.localId));
       const written = resume ? ordered.filter((part) => state.touched!.includes(part.localId)) : ordered;
       text = [...written.map((part) => lineFor(scope, state, part, language)), run.cardLine ?? ""].filter((line) => line.trim()).join("\n\n");
+      blocks = blocksOf(scope, state, written, language);
       partResults = state.parts.map((part) => ({
         partId: part.localId,
         // AG05: what the read did not give, and how much of it was read.
@@ -349,6 +415,7 @@ export function deliverNode(scope: NodeScope): GraphNode {
       }));
     }
     run.text = text;
+    run.blocks = blocks;
     run.partResults = partResults;
     run.clarifications = state.optionSets.map((set) => contractOf(scope, set, language));
     if (!resume) {

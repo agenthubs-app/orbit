@@ -161,6 +161,7 @@ export const en = {
     progressNote: "Usually under a minute",
     typeToAnswer: "You can also type your answer.",
     notesFootnote: "(From your notes.)",
+    recordGone: "No longer available",
   },
   offline: {
     banner: "Offline · Changes will sync when you're online",

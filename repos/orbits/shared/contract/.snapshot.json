@@ -610,6 +610,11 @@
           "optional": true,
           "kind": "text",
           "type": "AgentWebResultContract"
+        },
+        "blocks": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentAnswerBlockContract[]"
         }
       }
     },
@@ -1690,6 +1695,121 @@
           "type": "string"
         }
       }
+    },
+    "agent-v1.ts::AgentAnswerRecordKind": {
+      "kind": "enum",
+      "values": [
+        "'attendance'",
+        "'contact'",
+        "'event'",
+        "'memo'",
+        "'schedule'",
+        "'todo'"
+      ]
+    },
+    "agent-v1.ts::AgentAnswerRecordContract": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "AgentAnswerRecordKind"
+        },
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "top": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "sub": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "subTone": {
+          "optional": true,
+          "kind": "text",
+          "type": "'late'"
+        },
+        "why": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "gone": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean | undefined"
+        },
+        "contactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventKind": {
+          "optional": true,
+          "kind": "text",
+          "type": "'platform' | 'private' | undefined"
+        },
+        "eventId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "day": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentAnswerPointContract": {
+      "kind": "object",
+      "members": {
+        "head": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentAnswerNoteItemContract": {
+      "kind": "object",
+      "members": {
+        "quote": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "action": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentAnswerBlockContract": {
+      "kind": "alias",
+      "type": "AgentAnswerBlockContract"
     },
     "ai-artifacts.ts::AiContactArtifactStatus": {
       "kind": "enum",

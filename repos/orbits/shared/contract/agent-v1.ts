@@ -136,6 +136,8 @@ export interface AgentAnswerContract {
   cardLine?: string | undefined;
   /** AG09：这一轮实际发出的检索词和打开的网页（设计稿 §3.4“实际发出的检索词和打开的网页显示在回答旁边”），由服务端代码写。 */
   web?: AgentWebResultContract | undefined;
+  /** AG19：回答按块排好的版本（段落、要点、记录卡片、说明条），由服务端代码写；text 仍是完整的文字版，旧端只读 text。 */
+  blocks?: readonly AgentAnswerBlockContract[] | undefined;
 }
 
 /** AG09：联网的记录。被拦下的检索词不在这里（只按规则编号记在服务端）。 */
@@ -488,3 +490,65 @@ export interface AttendanceNoteContract {
   createdAt: string;
   updatedAt: string;
 }
+
+/* ── AG19：回答排版与记录卡片（获批视觉稿 2026-11-19，D1–D6）──────────────── */
+
+/** AG19：回答里一条记录的种类（「我去过」即 attendance）。 */
+export type AgentAnswerRecordKind = "event" | "contact" | "todo" | "memo" | "schedule" | "attendance";
+
+/**
+ * AG19：回答里的一张记录卡片。上行、名字、下行都由服务端按回答的语言写好（日期带星期）；
+ * 两端只按 kind 选图标和去处，不自己拼日期，也不另读记录。
+ */
+export interface AgentAnswerRecordContract {
+  kind: AgentAnswerRecordKind;
+  /** 记录编号（活动为活动编号；我去过为那条自述的编号）。 */
+  id: string;
+  title: string;
+  /** 上行：类型标签后面的那一句（时间、公司和职位、截止时间…）。 */
+  top?: string | undefined;
+  /** 下行：地点、最近一次往来、已过期几天… */
+  sub?: string | undefined;
+  /** late：下行用提醒色（已过期的待办）。 */
+  subTone?: "late" | undefined;
+  /** 按主题挑出来时的一句理由。 */
+  why?: string | undefined;
+  /** 记录已删除或现在看不到：虚线卡，不可点。 */
+  gone?: boolean | undefined;
+  /** 笔记的第一位相关联系人（网页在联系人页上打开笔记，D5）。 */
+  contactId?: string | undefined;
+  /** 活动、我去过：平台活动还是用户自己建的私人活动。 */
+  eventKind?: "platform" | "private" | undefined;
+  /** 我去过：这条自述说的那场活动的编号（平台活动进它的详情页，私人活动在活动页里打开）。 */
+  eventId?: string | undefined;
+  /** 日程、我去过：所在的那一天 YYYY-MM-DD（网页日历停在这一天）。 */
+  day?: string | undefined;
+}
+
+/** AG19：要点里的一点。head 是开头加粗的几个字（可没有）。 */
+export interface AgentAnswerPointContract {
+  head?: string | undefined;
+  text: string;
+}
+
+/** AG19：「这次没做的部分」里的一条：用户原话里的那一段、为什么没做、能马上照着做的那一句。 */
+export interface AgentAnswerNoteItemContract {
+  quote?: string | undefined;
+  text: string;
+  action?: string | undefined;
+}
+
+/**
+ * AG19：回答的一块，按显示顺序排。
+ * conclusion：讨论类回答的第一句（加粗）；paragraph：一段正文；points：要点；
+ * records：一组记录卡片，先显示 shown 张，其余收在 moreLabel（「还有 3 位」）下面，点一下原地展开；
+ *   size 为 mini 时是文字下面「提到的记录」那种两行小卡，caption 是它上面的小字；
+ * note：灰底的说明条（这次没做的部分），title 是开头那行小字。
+ * 两端遇到不认识的 type 就跳过那一块。
+ */
+export type AgentAnswerBlockContract =
+  | { type: "conclusion"; text: string }
+  | { type: "paragraph"; text: string }
+  | { type: "points"; items: readonly AgentAnswerPointContract[] }
+  | { type: "records"; items: readonly AgentAnswerRecordContract[]; shown: number; size?: "full" | "mini" | undefined; caption?: string | undefined; moreLabel?: string | undefined; lessLabel?: string | undefined }
+  | { type: "note"; title: string; items: readonly AgentAnswerNoteItemContract[] };

@@ -16,6 +16,8 @@
  * Every function that runs is traced (fn.rank with the list it delivered, fn.extractInteractions, fn.extractFollowUps).
  */
 import { readSourceOf } from "../../answer/basis";
+import { lastInteractionWords, recordOfView, recordsBlock, type AnswerBlock } from "../../answer/blocks";
+import type { AgentAnswerRecordContract } from "../../../../shared/contract/agent-v1";
 import { gapWords } from "../../answer/gap-copy";
 import type { SessionOpenItem } from "../../context/session-state";
 import { eventFactsOf } from "../../domains/event/read";
@@ -28,7 +30,7 @@ import { localDay } from "../../views/recent-interaction";
 import type { CanonicalEventRecord } from "../../../events/core/contract";
 import type { NoteInteractionContract } from "../../../../shared/contract/notes";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
-import { directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, memoriesFor, naturalField, PICK_WORDS, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
+import { asksEventsToGoTo, pointsAtPast, writesADate, upcomingTopicOf, directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, memoriesFor, naturalField, PICK_WORDS, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
 import { compare, dimensionsIn, type ComparedEvent } from "../../functions/compare";
 import * as say from "../../functions/copy";
 import { memoDayOf } from "../../functions/dates";
@@ -63,8 +65,41 @@ const TODO_LIST_WORDS = /(待办|跟进|タスク|ToDo|フォローアップ|\bt
 const WHO_WORDS = /(谁|哪位|哪些人|哪几位|\bwho\b|\bwhom\b|誰|どなた|どの人)/iu;
 const FORMAL_FOLLOW_UP = /(正式跟进|正式的跟进|フォローアップ|formal follow[\s-]?ups?)/iu;
 
+const EVENT_NOUN = /(活动|活動|イベント|\bevents?\b)/iu;
+const OTHER_READS = new Set<string>(["memo.read", "todo.read", "contact.read", "view.recentInteraction", "view.timeline", "view.context"]);
+/** Words for the user's own schedule and other records: with one of them, "活动" is not the only thing asked about. */
+const OTHER_RECORD_NOUN = /(日程|安排|行程|会议|开会|待办|笔记|联系人|予定|スケジュール|会議|タスク|メモ|\bschedule\b|\bcalendar\b|\bmeetings?\b|\bto-?dos?\b|\bnotes?\b|\bappointments?\b)/iu;
+
+/** Words that name something else to go by than the events themselves: the history with people, records, "根据…". */
+const OTHER_BASIS_WORDS = /(根据|按照|依据|结合|参考|基于|往来|互动|来往|聊过|谈过|见过|记录|记过|认识的|に基づ|をもとに|やり取り|やりとり|based on|according to|going by|interactions?|history)/iu;
+
+/**
+ * AG19-6: "最近有哪些活动适合我？" is a list of the events that have not started, whatever the first layer tagged (the user's
+ * report, 2026-11-19: asked again as "哪些活动？" it was turned down as a search by conditions). Code decides from the words:
+ * events asked about as coming up, no person named, no record picked, nothing else to read.
+ */
+export function listsUpcomingEvents(part: GraphPart, message: string): boolean {
+  if (part.route !== "read") return false;
+  const quote = message.slice(part.quote[0], part.quote[1]);
+  // Repair round 1 (decision 3): with or without "最近" — any asking which events there are or to recommend some.
+  if (!EVENT_NOUN.test(quote) || !asksEventsToGoTo(quote)) return false;
+  if (part.capabilities.some((capability) => capability === "fn.group" || capability === "fn.compare")) return false;
+  // Repair round 1, stability run (AE-ANS-011): "有哪些活动适合我？" came back tagged with a contact read as well, went down
+  // the ordinary read path and was answered with one note. Another read the first layer adds counts only when the words
+  // name something else to go by (a kind of record, the history with someone, "根据…"); otherwise the words ask for events.
+  if (part.capabilities.some((capability) => OTHER_READS.has(capability)) && (OTHER_RECORD_NOUN.test(quote) || OTHER_BASIS_WORDS.test(quote))) return false;
+  // AG19 stability run 1 (AE-ANS-010): "把接下来的活动都列出来" tagged as a schedule read listed the user's own schedule
+  // items. In Orbit 活动 are events: with no word for the schedule or another kind of record, the event list it is.
+  const event = part.capabilities.includes("event.read");
+  const schedule = part.capabilities.includes("schedule.read");
+  if (!event && !schedule) return false;
+  if (schedule && OTHER_RECORD_NOUN.test(quote)) return false;
+  return !part.refs.some((ref) => ref.recordId || ref.entity === "contact" || ref.entity === "memo" || ref.entity === "todo" || ref.entity === "schedule");
+}
+
 /** The kind of records a part ranks, or null when it is not a ranking this node does. */
 export function rankDomainOf(part: GraphPart, message: string): RankDomain | null {
+  if (listsUpcomingEvents(part, message)) return "event";
   if (part.route !== "read" || !part.capabilities.includes("fn.rank")) return null;
   // Comparing and grouping are other functions (AE-FN-014: "按免费和收费分个组" is a group, not a pick).
   if (part.capabilities.includes("fn.group") || part.capabilities.includes("fn.compare")) return null;
@@ -434,7 +469,9 @@ function fieldWords(field: RankField | null, direction: "asc" | "desc", language
   const name = names[field ?? "startsAt"][language];
   if (language === "en") return `${name}, ${direction === "asc" ? (field === "lastInteraction" ? "oldest first" : "earliest first") : "latest first"}`;
   if (language === "ja") return `${name}の${direction === "asc" ? (field === "lastInteraction" ? "古い順" : "早い順") : (field === "lastInteraction" ? "新しい順" : "遅い順")}`;
-  return `${name}${direction === "asc" ? "从远到近（由早到晚）" : "由近到远"}`;
+  // AG19: "从早到晚" for a start, a deadline or a planned day; a last interaction keeps "从远到近" (the longest ago first).
+  if (field === "lastInteraction") return `${name}${direction === "asc" ? "从远到近（最久没联系的在前）" : "由近到远"}`;
+  return `${name}${direction === "asc" ? "从早到晚" : "从晚到早"}`;
 }
 
 /** "11月21日到11月22日的活动", "the events of Nov 21–Nov 22": the dates the events were kept by. */
@@ -454,10 +491,25 @@ function periodWords(period: { from?: string; to?: string } | null, language: La
 interface Written {
   text: string;
   cites: string[];
+  /** AG19: the same answer as blocks — the lines before the list, one card per listed record in the list's order, the lines after. */
+  blocks: AnswerBlock[];
+}
+
+/** AG19 (board 1 note 1): the lead of a list ordered only by a field — how many in all, how they are ordered, how many are shown. */
+export function fieldListLead(language: Language, input: { field: RankField | null; direction: "asc" | "desc"; total: number; listed: number; unit: string; noun: string; upcoming?: boolean }): string {
+  const { direction, field, listed, noun, total, unit } = input;
+  if (!total || !listed) {
+    if (input.upcoming) return { en: "There are no events that have not started yet.", ja: "これから開催されるイベントはありません。", zh: "现在没有还没开始的活动。" }[language];
+    // Nothing to list: the order looked for is still said (what the user asked to sort by).
+    return { en: `Ordered by ${fieldWords(field, direction, language)}, there are no ${noun} to list.`, ja: `${fieldWords(field, direction, language)}では、該当する${noun}はありません。`, zh: `按${fieldWords(field, direction, language)}排的话，现在没有可以列出的${noun}。` }[language];
+  }
+  if (language === "en") return `${input.upcoming ? `${total} ${noun} have not started yet` : `${total} ${noun} in all`}, by ${fieldWords(field, direction, language)}${listed < total ? `; here are the first ${listed}` : ""}:`;
+  if (language === "ja") return `${input.upcoming ? `これから開催される${noun}は全部で${total}${unit}` : `全部で${total}${unit}`}、${fieldWords(field, direction, language)}です${listed < total ? `。まず${listed}${unit}` : ""}：`;
+  return `${input.upcoming ? `还没开始的${noun}共${total}${unit}` : `共${total}${unit}`}，按${fieldWords(field, direction, language)}${listed < total ? `，先看${listed}${unit}` : ""}：`;
 }
 
 /** The AG08 answer of a ranking (scope, topic, coverage; the reason of each by the record's own fields). */
-function writeAnswer(input: { apart?: string | null; domain: RankDomain; language: Language; basis: string | null; basisMemo: string | null; within: string | null; period: { from?: string; to?: string } | null; field: RankField | null; direction: "asc" | "desc"; result: RankResult<Candidate>; timeZone: string; now: string; lead: string | null; reasons: Map<string, string> }): Written {
+function writeAnswer(input: { upcoming?: boolean; apart?: string | null; domain: RankDomain; language: Language; basis: string | null; basisMemo: string | null; within: string | null; period: { from?: string; to?: string } | null; field: RankField | null; direction: "asc" | "desc"; result: RankResult<Candidate>; timeZone: string; now: string; lead: string | null; reasons: Map<string, string> }): Written {
   const { domain, language, result } = input;
   const unit = UNIT[domain][language];
   const noun = NOUN[domain][language];
@@ -469,7 +521,10 @@ function writeAnswer(input: { apart?: string | null; domain: RankDomain; languag
   const scope = input.within
     ? (language === "en" ? `your ${noun} ${input.within}` : language === "ja" ? `${input.within}${noun}` : `${input.within.replace(/的$/u, "")}的${noun}`)
     : domain === "event"
-      ? (language === "en" ? `the public events${period ? ` ${period}` : ""}` : language === "ja" ? `${period ?? "公開中の"}イベント` : `${period ?? "公开的"}活动`)
+      ? input.upcoming && !period
+        // Repair round 1 (decision 3): the lead says the list holds only events that have not started.
+        ? (language === "en" ? "the events that have not started yet" : language === "ja" ? "これから開催されるイベント" : "还没开始的活动")
+        : (language === "en" ? `the public events${period ? ` ${period}` : ""}` : language === "ja" ? `${period ?? "公開中の"}イベント` : `${period ?? "公开的"}活动`)
       : language === "en" ? `your ${noun}` : language === "ja" ? `あなたの${noun}` : `你的${noun}`;
   const topic = input.basisMemo ? (language === "en" ? `the topics of your note "${input.basisMemo}"` : language === "ja" ? `メモ「${input.basisMemo}」のテーマ` : `你的笔记「${input.basisMemo}」的主题`) : input.basis ? (language === "en" ? `"${input.basis}"` : `「${input.basis}」`) : null;
   const { afterHardConditions, judged, truncated } = result.coverage;
@@ -508,24 +563,39 @@ function writeAnswer(input: { apart?: string | null; domain: RankDomain; languag
         ? `${scope}（全部で${afterHardConditions}${unit}）${topic ? `から${topic}に合うものを、というご依頼ですが` : "について"}、今回はテーマとの照合をしていません（${why}）。詳しく見たものはなく、以下は記録の項目だけで並べた順です：${order}。合うものがないという意味ではありません。${n}${unit}：`
         : `在${scope}里（共${afterHardConditions}${unit}）${topic ? `，你要的是和${topic}相关的，但这次没有做主题匹配` : "，这次没有做主题匹配"}（${why}），${afterHardConditions}${unit}都没有细看，下面的顺序只按记录里的字段排：${order}。这不代表没有合适的。列出${n}${unit}：`);
   } else {
-    const total = result.matching;
-    lines.push(language === "en"
-      ? `Sorted by ${fieldWords(input.field, input.direction, language)}: ${n} of ${total} ${noun}.`
-      : language === "ja"
-        ? `${fieldWords(input.field, input.direction, language)}に並べました（${total}${unit}中${n}${unit}）。`
-        : `按${fieldWords(input.field, input.direction, language)}排（共${total}${unit}，列出${n}${unit}）：`);
+    lines.push(fieldListLead(language, { direction: input.direction, field: input.field, listed: n, noun, total: result.matching, unit, upcoming: input.upcoming }));
   }
+  const listAt = lines.length;
+  const cards: AgentAnswerRecordContract[] = [];
   result.ordered.forEach((item, index) => {
     const candidate = item.candidate;
     const level = result.matched ? item.level : null;
     const reason = input.reasons.get(candidate.id) ?? null;
     const line = domain === "contact" ? `${contactLine(candidate as ContactCandidate, language, level)}${reason ? `${language === "en" ? " — " : "——"}${reason}` : ""}` : domain === "event" ? eventLine(candidate as EventCandidate, language, level, input.timeZone, reason) : todoLine(candidate as TodoCandidate, language, input.timeZone, input.now);
     lines.push(`${index + 1}. ${line}`);
+    cards.push(cardOf(candidate, { language, level, now: input.now, reason, timeZone: input.timeZone }));
   });
+  const afterAt = lines.length;
   if (result.untimed.length && domain === "event") lines.push(say.untimedLine(language, result.untimed.map((item) => (item as EventCandidate).title)));
   if (input.apart) lines.push(input.apart);
   if (input.lead) lines.push(say.changeBasisLine(language));
-  return { cites: [...result.ordered.map((item) => item.candidate.ref), ...(domain === "event" ? result.untimed.map((item) => item.ref) : [])], text: lines.join("\n") };
+  // AG19 (D1): each listed record is one card, in the list's order; the name, the time and the place are on the card.
+  const list = recordsBlock(cards, language);
+  const paragraphs = (texts: readonly string[]): AnswerBlock[] => texts.filter((text) => text.trim()).map((text) => ({ text, type: "paragraph" as const }));
+  const blocks: AnswerBlock[] = [...paragraphs(lines.slice(0, listAt)), ...(list ? [list] : []), ...paragraphs(lines.slice(afterAt))];
+  return { blocks, cites: [...result.ordered.map((item) => item.candidate.ref), ...(domain === "event" ? result.untimed.map((item) => item.ref) : [])], text: lines.join("\n") };
+}
+
+/** AG19: the card of a listed candidate — the record's own three lines, and the one-line reason it was picked (if any). */
+function cardOf(candidate: Candidate, input: { language: Language; level: string | null; reason: string | null; timeZone: string; now: string }): AgentAnswerRecordContract {
+  const { language } = input;
+  const card = recordOfView(candidate.view, { language, now: input.now, timeZone: input.timeZone });
+  const level = input.level ? LEVEL_WORDS[language][input.level as keyof (typeof LEVEL_WORDS)["zh"]] : null;
+  const why = [input.reason, level].filter(Boolean).join(language === "en" ? "; " : "；");
+  const contact = candidate.view.kind === "contact" ? (candidate as ContactCandidate) : null;
+  const sub = contact ? (contact.lastInteraction ? lastInteractionWords(language, contact.lastInteraction) : [contact.place, contact.industry].filter(Boolean).join(" · ")) : "";
+  const top = contact ? [contact.company, contact.role].filter(Boolean).join(" · ") : "";
+  return { ...card, ...(top ? { top } : {}), ...(sub ? { sub } : {}), ...(why ? { why } : {}) };
 }
 
 /* ── the node ──────────────────────────────────────────────────────── */
@@ -682,12 +752,19 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   if (!topic && !field && !reply && domain !== "todo" && topicWordsOf(original) && !followUpAsk) topic = original;
   // "随便" leaves it to the agent: no topic, the natural order.
   if (leftToAgent) topic = null;
+  // AG19-6: "最近有哪些活动适合我" names no topic ("适合我" is not one): the list of what is coming up, by start time.
+  if (topic && !basisMemo && !basisSpan && !reply && listsUpcomingEvents(part, message) && !upcomingTopicOf(original)) {
+    emitTrace({ partId: part.localId, type: "functions.upcoming_no_topic" });
+    topic = null;
+  }
   // Saved memory (read only until AG14): preferences rank, constraints are hard conditions.
   const memories = deps.memories ? await deps.memories.list(input.actorId).catch(() => []) : [];
   const recalled = memoriesFor(domain, memories);
   for (const item of recalled) if (item.time && domain === "event") time.push(item.time);
   if (recalled.length) emitTrace({ memories: recalled.map((item) => item.memory.id), partId: part.localId, type: "memory.recall" });
-  const listing = !PICK_WORDS.test(original) && (part.plan.deliverable === "list" || /(列出|列一下|列个|\blist\b|一覧|並べて)/iu.test(original));
+  // AG19-6: "最近有哪些活动适合我" names no standard to pick by; it is a list of what is coming up, never a question back.
+  // A pick ("哪两场最值得去") still asks what to pick by, once (AG10-1): only the time filter is the default there.
+  const listing = (!PICK_WORDS.test(original) && (part.plan.deliverable === "list" || /(列出|列一下|列个|\blist\b|一覧|並べて)/iu.test(original))) || (!reply && !PICK_WORDS.test(original) && listsUpcomingEvents(part, message));
   const history = !topic && !field && !time.length && domain === "contact" && (followUpAsk || chosen === "overdue");
   const todoNatural = domain === "todo";
   const haveBasis = Boolean(topic || field || time.length || history || leftToAgent || listing || todoNatural || chosen);
@@ -714,7 +791,11 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const useNatural = !topic && !field && !time.length && !history;
   const order = useNatural || (!field && domain === "todo") ? naturalField(domain) : null;
   const orderField: RankField | null = field ?? order?.field ?? null;
-  const orderDirection = field ? direction : order?.direction ?? "asc";
+  // AG19-6: events asked for as "最近／接下来" are given the nearest first ("最近" is not "latest first" here).
+  // Repair round 1: for events the nearest comes first unless the words point at the past or say another order outright
+  // ("最近" is not "latest first" here, so it is taken out before the direction is read).
+  const eventDirection = directionSaidIn(words.replace(/最近|近期|近来|recent(?:ly)?/giu, " "), "asc");
+  const orderDirection = domain === "event" && !pointsAtPast(words) && (orderField ?? "startsAt") === "startsAt" ? eventDirection : field ? direction : order?.direction ?? "asc";
   const count = plan.count ?? rank.count ?? countSaidIn(original) ?? (orderField && !topic && !time.length ? FIELD_LIST_LIMIT : 3);
 
   // 3. Candidates and hard conditions (code), read under the account's scope.
@@ -726,6 +807,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   let timeOf: ((candidate: Candidate) => string | null) | undefined;
   // AG12 opening (AE-FN-003): people with only a to-do due or planned later in the period do not meet the history criteria.
   let upcoming: ContactCandidate[] = [];
+  let upcomingOnly = false;
   const fromDay = plan.from ? localMidnight(plan.from, timeZone) : null;
   const toDay = plan.to ? localMidnight(new Date(Date.parse(`${plan.to}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10), timeZone) : null;
   if (domain === "contact") {
@@ -778,11 +860,20 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     const pool = chosenIds.length >= 2 ? visible.filter((event) => chosenIds.includes(event.eventId)) : visible;
     candidates = pool.map(eventCandidate);
     timeOf = (candidate) => (candidate as EventCandidate).startsAt;
+    // AG19-6: "最近／近期／接下来有哪些活动" with no past period said: only events that have not started, whatever dates
+    // the first layer read into "最近" (a range that ends before now is not kept; one that starts earlier starts now).
+    // Repair round 1 (decision 3): the default for every event ranking, with or without "最近". Past events are read only
+    // when the user points at the past — in words (去过、之前、上个月) or by writing out a date that has passed.
+    const pastDate = writesADate(words) && Boolean(toDay && toDay <= now);
+    upcomingOnly = chosenIds.length < 2 && !pointsAtPast(words) && !pastDate;
+    const from = upcomingOnly ? (fromDay && fromDay > now ? fromDay : now) : fromDay;
+    const to = upcomingOnly && toDay && toDay <= now ? null : toDay;
+    if (upcomingOnly) emitTrace({ from, partId: part.localId, to, type: "functions.upcoming_only" });
     hard = (candidate) => {
       const at = (candidate as EventCandidate).startsAt;
-      if ((fromDay || toDay) && !at) return true;
-      if (fromDay && at! < fromDay) return false;
-      if (toDay && at! >= toDay) return false;
+      if ((from || to) && !at) return true;
+      if (from && at! < from) return false;
+      if (to && at! >= to) return false;
       return true;
     };
     for (const candidate of candidates) {
@@ -848,7 +939,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     ? say.rankLead(language, [say.fieldName(natural.field, language)], { history: false, memory: [], natural: true })
     : steps.length || memoryWords.length ? say.rankLead(language, steps, { history, memory: memoryWords, natural: false }) : null);
   const apart = history && upcoming.length ? say.upcomingApartLine(language, upcoming.map((contact) => `${contact.name}${language === "en" ? " — " : "——"}${contact.signals.map((item) => signalWords(item, language, timeZone)).join(language === "en" ? "; " : "；")}`)) : null;
-  const written = writeAnswer({ apart, basis: topic && !basisMemo ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
+  const written = writeAnswer({ upcoming: upcomingOnly, apart, basis: topic && !basisMemo ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
   // AG12 run-03 (AE-FN-003 R4): beside a ranking that says its basis, the ways of ordering it again as clickable entries (the
   // same options as the basis question; the clients show entries already). A click ranks again by it; it asks nothing.
   if (lead && !optionSets.some((set) => set.partId === part.localId && set.purpose === "ranking" && set.kind === "entry")) {
@@ -864,6 +955,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   }
   if (result.semantic && result.matched) run.topicMatched = true;
   run.answers.set(part.localId, written.text);
+  run.answerBlocks.set(part.localId, written.blocks);
   part.route = "read";
   part.status = "answered";
   part.reason = null;
@@ -877,6 +969,8 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   for (const item of [...result.ordered.map((entry) => entry.candidate), ...(domain === "event" ? result.untimed : []), ...upcoming]) {
     const source = readSourceOf(item.view, timeZone);
     if (source) run.readSources.set(item.view.ref, source);
+    // AG19: a record named beside the list (time not announced, coming up later) gets a small card under the answer.
+    run.recordCards.set(item.view.ref, recordOfView(item.view, { language, now, timeZone }));
     run.readNames.set(item.view.id, { name: domain === "contact" ? (item as ContactCandidate).name : domain === "event" ? (item as EventCandidate).title : (item as TodoCandidate).title, type: domain });
   }
   emitTrace({ coverage: result.coverage, domain, listed: result.ordered.map((item) => item.candidate.ref), matched: result.matched, partId: part.localId, semantic: result.semantic, type: "functions.ranked", unmatchedReason: result.unmatchedReason, untimed: result.untimed.map((item) => item.ref) });

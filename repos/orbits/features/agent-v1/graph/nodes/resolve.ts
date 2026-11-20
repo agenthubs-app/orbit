@@ -23,6 +23,7 @@ import { addLinkNames } from "../../answer/link-names";
 import { pinyin } from "pinyin-pro";
 
 import { readSourceOf } from "../../answer/basis";
+import { listSortKey, recordOfView } from "../../answer/blocks";
 import { gapWords } from "../../answer/gap-copy";
 import { materialOf } from "../../answer/materials";
 import type { GapReason, Material } from "../../answer/schema";
@@ -827,6 +828,15 @@ export function resolveNode(scope: NodeScope): GraphNode {
         for (const view of read.views) {
           const source = readSourceOf(view, zone);
           if (source) run.readSources.set(view.ref, source);
+          // AG19: its card (the three lines are code's), for the list or the small cards under the answer.
+          run.recordCards.set(view.ref, recordOfView(view, { language: state.language, nameOf: (id) => names.get(id) ?? run.readNames.get(id)?.name, now, timeZone: zone }));
+          run.recordSort.set(view.ref, listSortKey(view));
+          // AG19 repair round 1: what a statement about this event can be checked against (start, end, fee).
+          if (view.kind === "event" && typeof view.fields.title === "string") {
+            const kind = typeof view.fields.feeKind === "string" ? view.fields.feeKind : null;
+            const amount = typeof view.fields.feeAmountYen === "string" && view.fields.feeAmountYen.trim() ? Number(view.fields.feeAmountYen) : undefined;
+            run.eventFacts.set(view.ref, { endsAt: typeof view.fields.endsAt === "string" ? view.fields.endsAt : null, fee: kind ? { kind, ...(amount !== undefined && Number.isFinite(amount) ? { amountYen: amount } : {}) } : null, startsAt: typeof view.fields.startsAt === "string" ? view.fields.startsAt : null, title: view.fields.title });
+          }
         }
         finish("answered", null);
       } else if (read.gaps.has("service_error")) {
