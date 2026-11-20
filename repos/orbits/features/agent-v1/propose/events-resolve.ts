@@ -89,7 +89,7 @@ const ATTEND_WORD = /(自述|我去过|去过|参会|参加记录|参加了的�
 const NOISE = /[\s「」『』"“”'’()（）,，。.、!！?？:：·•@]|这场|那场|这次|那次|这个|那个|私人活动|私人|活动|日程|待办|代办|的|イベント|予定|タスク|\bthe\b|\bevent\b|\bmy\b/giu;
 const squash = (text: string) => text.toLowerCase().replace(NOISE, "");
 
-interface EventCandidate { ref: { kind: "platform" | "private"; id: string }; title: string; startsAt: string | null; endsAt?: string | null }
+interface EventCandidate { ref: { kind: "platform" | "private"; id: string }; title: string; startsAt: string | null; endsAt?: string | null; /** AG20a: a private event said with a day only. */ allDay?: boolean }
 
 async function eventCandidates(ctx: Ctx): Promise<EventCandidate[]> {
   const out: EventCandidate[] = [];
@@ -100,7 +100,7 @@ async function eventCandidates(ctx: Ctx): Promise<EventCandidate[]> {
     }
   }
   if (ctx.records?.privateEvents && ctx.scope) {
-    for (const event of await ctx.records.privateEvents.list(ctx.scope.accountId).catch(() => [])) out.push({ endsAt: event.endsAt ?? null, ref: { id: event.id, kind: "private" }, startsAt: event.startsAt, title: event.title });
+    for (const event of await ctx.records.privateEvents.list(ctx.scope.accountId).catch(() => [])) out.push({ endsAt: event.endsAt ?? null, ref: { id: event.id, kind: "private" }, startsAt: event.startsAt, title: event.title, ...(event.allDay ? { allDay: true } : {}) });
   }
   return out;
 }
@@ -307,9 +307,11 @@ export async function resolveEventIntent(ctx: Ctx, part: GraphPart, write: PartW
         const start = times?.start ?? localTimeOf(current.startsAt, zone);
         set.startsAt = instantOf(day, start, zone);
         if (times?.end) set.endsAt = instantOf(day, times.end, zone);
+        // AG20a: an all-day event given a clock time is no longer all day; a new day alone keeps it all day (00:00 of that day).
+        if (current.allDay && times) set.allDay = null;
       }
       if (!Object.keys(set).length) return stop("no_change", EVENT_WORDS.needTime(language, quote));
-      return { kind: "ready", ops: [{ ...base, capability: "privateEvent.update", expectedVersion: current.version, set, shown: { before: Object.fromEntries(Object.keys(set).map((key) => [key, (current as unknown as Record<string, string | undefined>)[key] ?? null])), title: current.title }, targetId: current.id } as CardOperationIntent & { localId: string }] };
+      return { kind: "ready", ops: [{ ...base, capability: "privateEvent.update", expectedVersion: current.version, set, shown: { before: Object.fromEntries(Object.keys(set).map((key) => [key, (current as unknown as Record<string, string | undefined>)[key] ?? null])), title: current.title, ...(current.allDay ? { allDay: true } : {}) }, targetId: current.id } as CardOperationIntent & { localId: string }] };
     }
     case "privateEvent.delete":
       return resolveDeletePlan(ctx, part, write, intent, clueTexts, quote, failedLine);
@@ -508,7 +510,10 @@ async function resolveSchedule(ctx: Ctx, part: GraphPart, write: PartWrite, inte
     if (!said && !fromEvent) return stop("date_unclear", EVENT_WORDS.needDay(language, quote));
     if (!times && !fromEvent) return stop("time_unclear", EVENT_WORDS.needTime(language, quote));
     const startsAt = fromEvent ? fromEvent.startsAt! : instantOf(said!.day, times!.start, itemZone);
-    const endsAt = fromEvent ? fromEvent.endsAt ?? (lengthSaid ? new Date(Date.parse(startsAt) + lengthSaid.minutes * 60_000).toISOString() : undefined)
+    // AG20a: from an all-day event the item is the whole day (local midnight to the next one) — never 00:00–00:00.
+    const allDayItem = Boolean(fromEvent?.allDay);
+    const nextDay = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+    const endsAt = allDayItem ? instantOf(nextDay(localDayOf(startsAt, zone)), "00:00", zone) : fromEvent ? fromEvent.endsAt ?? (lengthSaid ? new Date(Date.parse(startsAt) + lengthSaid.minutes * 60_000).toISOString() : undefined)
       : times!.end ? instantOf(said!.day, times!.end, itemZone) : lengthSaid ? new Date(Date.parse(startsAt) + lengthSaid.minutes * 60_000).toISOString() : undefined;
     if (fromEvent) emitTrace({ partId: part.localId, type: "propose.schedule_time_from_event" });
     const people: { id: string; name: string }[] = [];
@@ -528,7 +533,7 @@ async function resolveSchedule(ctx: Ctx, part: GraphPart, write: PartWrite, inte
       ctx.people.push(...people.filter((item) => !ctx.people.some((known) => known.id === item.id)).map((item) => ({ at: part.quote[0], id: item.id, name: item.name })));
     }
     if (zoneSaid || lengthSaid || people.length) emitTrace({ length: lengthSaid?.minutes ?? null, partId: part.localId, people: people.map((item) => item.id), type: "propose.schedule_said", zone: zoneSaid?.zone ?? null });
-    return { kind: "ready", ops: [{ ...base, capability: "schedule.create", set: { startsAt, timeZone: itemZone, title, ...(endsAt ? { endsAt } : {}), ...(events.length ? { eventRefs: events.map((item) => ({ ...item.ref })) } : {}), ...(people.length ? { contactIds: people.map((item) => item.id) } : {}) }, shown: { events: events.map((item) => ({ kind: item.ref.kind, startsAt: item.startsAt, title: item.title })), ...(people.length ? { names: Object.fromEntries(people.map((item) => [item.id, item.name])) } : {}), ...(zoneSaid && zoneSaid.zone !== zone ? { zoneLabel: zoneSaid.words } : {}) } } as CardOperationIntent & { localId: string }] };
+    return { kind: "ready", ops: [{ ...base, capability: "schedule.create", set: { startsAt, timeZone: allDayItem ? zone : itemZone, title, ...(endsAt ? { endsAt } : {}), ...(allDayItem ? { allDay: true } : {}), ...(events.length ? { eventRefs: events.map((item) => ({ ...item.ref })) } : {}), ...(people.length ? { contactIds: people.map((item) => item.id) } : {}) }, shown: { events: events.map((item) => ({ kind: item.ref.kind, startsAt: item.startsAt, title: item.title })), ...(people.length ? { names: Object.fromEntries(people.map((item) => [item.id, item.name])) } : {}), ...(zoneSaid && zoneSaid.zone !== zone ? { zoneLabel: zoneSaid.words } : {}) } } as CardOperationIntent & { localId: string }] };
   }
   // update / delete: the user's own schedule item the words name (its name without the words of when: "明天的选品周会").
   const clues = clueTexts.map(withoutWhenWords).filter((clue) => squash(clue).length >= 2);
@@ -619,7 +624,7 @@ async function resolveDeletePlan(ctx: Ctx, part: GraphPart, write: PartWrite & {
   if (!part.refs.some((ref) => ref.recordId === event.id)) part.refs.push({ entity: "event", quote: null, recordId: event.id });
   const references = await access.references(ctx.scope.accountId, event.id).catch(() => null);
   if (!references) return stop("read_failed", failedLine);
-  const deleteOp = { ...base, capability: "privateEvent.delete", expectedVersion: event.version, localId: `${intent.localId}:delete`, shown: { references: references.length, startsAt: event.startsAt, title: event.title }, targetId: event.id } as CardOperationIntent & { localId: string };
+  const deleteOp = { ...base, capability: "privateEvent.delete", expectedVersion: event.version, localId: `${intent.localId}:delete`, shown: { references: references.length, startsAt: event.startsAt, title: event.title, ...(event.allDay ? { allDay: true } : {}) }, targetId: event.id } as CardOperationIntent & { localId: string };
   if (!references.length) return { kind: "ready", ops: [deleteOp] };
   const hasAttendance = references.some((ref) => ref.kind === "attendance");
   const message = ctx.message;

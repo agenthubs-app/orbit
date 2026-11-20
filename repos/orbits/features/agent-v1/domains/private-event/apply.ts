@@ -97,6 +97,8 @@ export function eventWriteExecutors(deps: EventWriteDeps): AgentActionExecutor[]
         idempotencyKey: context.idempotencyKey, startsAt, title,
         ...(text(payload, "endsAt") ? { endsAt: text(payload, "endsAt") } : {}),
         ...(text(payload, "timeZone") ? { timeZone: text(payload, "timeZone") } : {}),
+        // AG20a: an item made from an all-day event is all day (the schedule service checks its zone and end).
+        ...(payload.allDay === true ? { allDay: true } : {}),
         ...(Array.isArray(payload.eventRefs) && payload.eventRefs.length ? { eventRefs: payload.eventRefs as never } : {}),
         ...(Array.isArray(payload.contactIds) && payload.contactIds.length ? { contactIds: payload.contactIds as string[] } : {}),
       } as never);

@@ -21,6 +21,8 @@ export interface OwnEventRecord {
   title: string;
   startsAt?: string | undefined;
   endsAt?: string | undefined;
+  /** AG20a: a private event said with a day only (startsAt is 00:00 of that day). */
+  allDay?: boolean | undefined;
   location?: string | undefined;
   /** «我去过»: the local day, the parts of the day and the user's own sentence. */
   attendedOn?: string | undefined;
@@ -47,25 +49,26 @@ const OWN_ID = /^(attendance|private_event):/u;
  */
 export function ownEventsOf(input: {
   attendance: { get(actorId: string, id: string): Promise<{ id: string; attendedOn: string; dayParts?: readonly string[] | undefined; selfNote?: string | undefined; eventRef: { kind: "platform" | "private"; id: string }; version: number; updatedAt: string } | null> };
-  privateEvents: { get(actorId: string, id: string): Promise<{ id: string; title: string; startsAt: string; endsAt?: string | undefined; venue?: string | undefined; version: number; updatedAt: string } | null> };
+  privateEvents: { get(actorId: string, id: string): Promise<{ id: string; title: string; startsAt: string; endsAt?: string | undefined; allDay?: boolean | undefined; venue?: string | undefined; version: number; updatedAt: string } | null> };
   byIds(ids: readonly string[]): Promise<readonly CanonicalEventRecord[]>;
 }): NonNullable<EventSource["own"]> {
   return async (actorId, id) => {
     if (id.startsWith("private_event:")) {
       const event = await input.privateEvents.get(actorId, id);
-      return event ? { endsAt: event.endsAt, id: event.id, kind: "private_event", location: event.venue, startsAt: event.startsAt, title: event.title, updatedAt: event.updatedAt, version: event.version } : null;
+      return event ? { ...(event.allDay ? { allDay: true } : {}), endsAt: event.endsAt, id: event.id, kind: "private_event", location: event.venue, startsAt: event.startsAt, title: event.title, updatedAt: event.updatedAt, version: event.version } : null;
     }
     const note = await input.attendance.get(actorId, id);
     if (!note) return null;
-    let about: { title: string; startsAt?: string | undefined; endsAt?: string | undefined; location?: string | undefined } | null = null;
+    let about: { title: string; startsAt?: string | undefined; endsAt?: string | undefined; location?: string | undefined; allDay?: boolean | undefined } | null = null;
     if (note.eventRef.kind === "private") {
       const event = await input.privateEvents.get(actorId, note.eventRef.id).catch(() => null);
-      if (event) about = { endsAt: event.endsAt, location: event.venue, startsAt: event.startsAt, title: event.title };
+      if (event) about = { ...(event.allDay ? { allDay: true } : {}), endsAt: event.endsAt, location: event.venue, startsAt: event.startsAt, title: event.title };
     } else {
       const [event] = (await input.byIds([note.eventRef.id]).catch(() => [])).filter((item) => visible(item, actorId));
       if (event) about = { endsAt: event.endsAt ?? undefined, location: event.venue ?? undefined, startsAt: event.startsAt ?? undefined, title: event.title ?? "" };
     }
     return {
+      ...(about?.allDay ? { allDay: true } : {}),
       attendedOn: note.attendedOn,
       dayParts: note.dayParts,
       endsAt: about?.endsAt,
@@ -86,6 +89,7 @@ function ownRow(record: OwnEventRecord): CanonicalRow {
   return {
     evidenceIds: [],
     fields: defined({
+      allDay: record.allDay ? true : undefined,
       attendedOn: record.attendedOn,
       dayParts: record.dayParts?.length ? [...record.dayParts] : undefined,
       endsAt: record.endsAt,
