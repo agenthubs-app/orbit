@@ -103,16 +103,16 @@ const WORDS = {
 
 const FIELD_OPTIONS: Record<RuleDomain, string[]> = { contact: ["lastInteraction", "topic"], event: ["startsAt", "topic"], todo: ["plannedDate"] };
 
-function noteBasis(language: Language, title: string): string {
+export function noteBasis(language: Language, title: string): string {
   return ({ en: `The topics of your note "${title}"`, ja: `メモ「${title}」のテーマに合うもの`, zh: `按笔记「${title}」的主题` } as const)[language];
 }
 
 /** "按开始时间从早到晚", "Start time, earliest first", "開始時間の早い順": a field order as the card's row says it. */
-function fieldBasis(field: "startsAt" | "lastInteraction" | "dueAt" | "plannedDate", direction: "asc" | "desc", language: Language): string {
+export function fieldBasis(field: "startsAt" | "lastInteraction" | "dueAt" | "plannedDate", direction: "asc" | "desc", language: Language): string {
   return capital(say.fieldOrderWords(field, direction, language).replace(/^by /u, ""));
 }
 
-function topicBasis(language: Language, words: string): string {
+export function topicBasis(language: Language, words: string): string {
   return ({ en: `Related to "${words}"`, ja: `「${words}」に関連するもの`, zh: `和「${words}」相关` } as const)[language];
 }
 
@@ -146,7 +146,7 @@ function scopeLineOf(said: string | null, scope: AgentRuleScope, language: Langu
   return language === "en" ? `${said} (${read})` : `${said}（${read}）`;
 }
 
-function titleOf(schedule: RuleSchedule, rule: Pick<AgentRuleSpec, "maxItems" | "scope" | "action">, said: string | null, language: Language): string {
+export function titleOf(schedule: RuleSchedule, rule: Pick<AgentRuleSpec, "maxItems" | "scope" | "action">, said: string | null, language: Language): string {
   const when = scheduleWords(schedule, language).replace(/ at \d{1,2}:\d{2}$/u, "").replace(/\s+\d{1,2}:\d{2}$/u, "");
   const unit = ({ contact: { ja: "人", zh: "位" }, event: { ja: "件", zh: "场" }, todo: { ja: "件", zh: "条" } } as const)[rule.scope.domain];
   const what = said ?? scopeWordsOf(rule.scope, language);

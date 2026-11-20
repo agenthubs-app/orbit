@@ -13,8 +13,9 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { agentActionPreviewSchema, agentResultDocumentSchema, agentSendReceiptSchema, agentSessionEventSchema } from "../../../../../shared/api-schema/agent-v1";
-import type { AgentActionPreviewContract, AgentAnswerLinkContract, AgentResultDocument, AgentRunStage, AgentSendReceiptContract } from "../../../../../shared/contract/agent-v1";
+import { agentActionPreviewSchema, agentReferenceCheckResultSchema, agentResultDocumentSchema, agentSendReceiptSchema, agentSessionEventSchema } from "../../../../../shared/api-schema/agent-v1";
+import { answerRecordCheckInput, answerRecordKey, answerRecordsIn } from "../../../../../shared/compute/agent-answer-blocks";
+import type { AgentActionPreviewContract, AgentAnswerLinkContract, AgentAnswerRecordContract, AgentResultDocument, AgentRunStage, AgentSendReceiptContract } from "../../../../../shared/contract/agent-v1";
 import type { AiSessionOriginInputContract, AiSessionReferenceContract, AiPageContextContract } from "../../../../../shared/contract/ai-sessions";
 
 const json = { "content-type": "application/json" };
@@ -111,20 +112,69 @@ export async function cancelAgentV1(requestId: string): Promise<boolean> {
   }
 }
 
-/** Where a record link of the answer opens on the web (notes live on the person's page). */
-export function agentLinkHref(link: AgentAnswerLinkContract): string | null {
-  switch (link.type) {
+/**
+ * AG19: where a record card of the answer opens on the web — every one of the six kinds has a page.
+ * 待办 opens that one to-do (D3); 笔记 opens on its person's page, or in the notes tab when it has no person (D5); 日程 opens
+ * the calendar on its day; 我去过 opens the event it is about (a private one in the events page's panel, AG13).
+ */
+export function agentRecordHref(record: Pick<AgentAnswerRecordContract, "kind" | "id" | "contactId" | "eventKind" | "eventId" | "day">): string | null {
+  const id = encodeURIComponent(record.id);
+  const privateEvent = (eventId: string) => `/app/events?${new URLSearchParams({ privateEvent: eventId, tab: "going" })}`;
+  switch (record.kind) {
     case "contact":
-      return `/app/contacts/${encodeURIComponent(link.id)}`;
+      return `/app/contacts/${id}`;
     case "memo":
-      return link.contactId ? `/app/contacts/${encodeURIComponent(link.contactId)}` : null;
+      return record.contactId ? `/app/contacts/${encodeURIComponent(record.contactId)}` : `/app/tasks?${new URLSearchParams({ memo: record.id, tab: "memo" })}`;
     case "todo":
-      return "/app/tasks";
+      return `/app/tasks/${id}`;
+    case "schedule":
+      return `/app/tasks?${new URLSearchParams({ tab: "calendar", ...(record.day ? { date: record.day } : {}) })}`;
     case "event":
-      return `/app/events/${encodeURIComponent(link.id)}`;
+      return record.eventKind === "private" || record.id.startsWith("private_event:") ? privateEvent(record.id) : `/app/events/${id}`;
+    case "attendance":
+      if (!record.eventId) return "/app/events?tab=going";
+      return record.eventKind === "private" ? privateEvent(record.eventId) : `/app/events/${encodeURIComponent(record.eventId)}`;
     default:
       return null;
   }
+}
+
+/** Where a record link of the answer's basis line opens on the web (the same table as the cards). */
+export function agentLinkHref(link: AgentAnswerLinkContract): string | null {
+  return agentRecordHref({ id: link.id, kind: link.type, ...(link.contactId ? { contactId: link.contactId } : {}) });
+}
+
+/** A document older than this was not verified a moment ago: its cards are checked once (still there, still yours). */
+const GONE_CHECK_AFTER_MS = 120_000;
+
+/**
+ * AG19-5: the records on the cards of older answers that are gone or cannot be seen any more ("kind:id"). One request per
+ * batch of records not checked yet (the @ picker's check, POST /api/agent/references/check); an answer delivered just now
+ * was verified by the server and is not asked about. A check that fails leaves the cards as they are.
+ */
+export function useAnswerRecordsGone(documents: ReadonlyMap<string, AgentResultDocument>, enabled: boolean): ReadonlySet<string> {
+  const [gone, setGone] = useState<ReadonlySet<string>>(() => new Set());
+  const asked = useRef(new Set<string>());
+  useEffect(() => {
+    if (!enabled) return;
+    const now = Date.now();
+    const pending = answerRecordsIn([...documents.values()].filter((document) => now - Date.parse(document.updatedAt) > GONE_CHECK_AFTER_MS).flatMap((document) => document.answer?.blocks ?? [])).filter((record) => !asked.current.has(answerRecordKey(record)));
+    if (!pending.length) return;
+    const batch = answerRecordCheckInput(pending);
+    for (const record of batch) asked.current.add(`${record.type}:${record.id}`);
+    if (!batch.length) return;
+    let cancelled = false;
+    void fetch("/api/agent/references/check", { body: JSON.stringify({ references: batch }), credentials: "same-origin", headers: json, method: "POST" })
+      .then(async (response) => (response.ok ? agentReferenceCheckResultSchema.safeParse(((await response.json()) as { data?: unknown }).data) : null))
+      .then((parsed) => {
+        if (cancelled || !parsed?.success) return;
+        const closed = parsed.data.references.filter((item) => !item.accessible).map((item) => `${item.type}:${item.id}`);
+        if (closed.length) setGone((previous) => new Set([...previous, ...closed]));
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [documents, enabled]);
+  return gone;
 }
 
 export interface AgentV1SessionState {

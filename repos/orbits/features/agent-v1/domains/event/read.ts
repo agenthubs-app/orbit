@@ -26,6 +26,8 @@ export interface OwnEventRecord {
   attendedOn?: string | undefined;
   dayParts?: readonly string[] | undefined;
   selfNote?: string | undefined;
+  /** AG19: «我去过»: the event the note is about (kind and id only), so its card opens that event. */
+  eventRef?: { kind: "platform" | "private"; id: string } | undefined;
   version: number;
   updatedAt: string;
 }
@@ -67,6 +69,7 @@ export function ownEventsOf(input: {
       attendedOn: note.attendedOn,
       dayParts: note.dayParts,
       endsAt: about?.endsAt,
+      eventRef: { id: note.eventRef.id, kind: note.eventRef.kind },
       id: note.id,
       kind: "attendance",
       location: about?.location,
@@ -86,6 +89,8 @@ function ownRow(record: OwnEventRecord): CanonicalRow {
       attendedOn: record.attendedOn,
       dayParts: record.dayParts?.length ? [...record.dayParts] : undefined,
       endsAt: record.endsAt,
+      eventRefId: record.eventRef?.id,
+      eventRefKind: record.eventRef?.kind,
       kind: record.kind,
       location: record.location,
       selfNote: record.selfNote,
@@ -136,9 +141,12 @@ export function eventFactsOf(event: Pick<CanonicalEventRecord, "description" | "
 }
 
 function canonical(event: CanonicalEventRecord): CanonicalRow {
+  // AG19 repair round 1 (judges, AE-ANS-003): an event is read with its topics and its fee too — the same facts the
+  // ranking uses — so an answer about events read by id is not written from the title, time and place alone.
+  const facts = eventFactsOf(event);
   return {
     evidenceIds: [],
-    fields: defined({ endsAt: event.endsAt ?? undefined, location: event.venue ?? undefined, startsAt: event.startsAt ?? undefined, title: event.title ?? undefined }),
+    fields: defined({ endsAt: event.endsAt ?? undefined, feeAmountYen: facts.fee.amountYen !== undefined ? String(facts.fee.amountYen) : undefined, feeKind: facts.fee.kind, location: event.venue ?? undefined, startsAt: event.startsAt ?? undefined, title: event.title ?? undefined, topics: facts.topics.length ? facts.topics : undefined }),
     id: event.eventId,
     position: JSON.stringify([event.startsAt ?? "", event.eventId]),
     revision: String(event.eventVersion),

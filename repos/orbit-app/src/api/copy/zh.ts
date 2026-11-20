@@ -117,6 +117,11 @@ export const zh = {
     confirmOne: "确认以上1项",
     dismiss: "不改了",
     beforeConfirm: "点确认之前，什么都不会改。",
+    // agent-design AG15（获批视觉稿 D15-2）：新建定时任务的卡用自己的按钮和提示。
+    confirmRule: "确认，开始运行",
+    dismissRule: "不建了",
+    beforeConfirmRule: "点确认之前，什么都不会运行。",
+    openNewCard: "看新的那张",
     changedBanner: "内容有变化，请再看一遍",
     nowIs: "现在是",
     changeTo: "改成",
@@ -161,6 +166,7 @@ export const zh = {
     progressNote: "通常不到一分钟",
     typeToAnswer: "也可以直接打字回答。",
     notesFootnote: "（以上出自你的笔记。）",
+    recordGone: "打不开了",
   },
   offline: {
     banner: "离线 · 修改会在联网后同步",

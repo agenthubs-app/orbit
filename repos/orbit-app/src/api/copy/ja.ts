@@ -117,6 +117,11 @@ export const ja = {
     confirmOne: "以上 1 件を確定",
     dismiss: "変更しない",
     beforeConfirm: "確定するまで、何も変更しません。",
+    // agent-design AG15（承認済みデザイン D15-2）：定期タスクを作るカードのボタンと注記。
+    confirmRule: "確定して開始",
+    dismissRule: "作らない",
+    beforeConfirmRule: "確定するまで、何も実行されません。",
+    openNewCard: "新しいカードを見る",
     changedBanner: "内容が変わりました。もう一度ご確認ください",
     nowIs: "現在は",
     changeTo: "変更後",
@@ -161,6 +166,7 @@ export const ja = {
     progressNote: "通常 1 分以内です",
     typeToAnswer: "そのまま入力して答えることもできます。",
     notesFootnote: "（メモの内容からです。）",
+    recordGone: "開けなくなりました",
   },
   offline: {
     banner: "オフライン · 変更は接続後に同期されます",

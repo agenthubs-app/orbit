@@ -16,6 +16,7 @@ import { createHash } from "node:crypto";
 
 import type { CardOperationIntent } from "../runtime/card-operations";
 import type { AgentActionOrigin } from "../runtime/contract";
+import { recordOfView } from "../../agent-v1/answer/blocks";
 import { memoriesFor, type TimePreference } from "../../agent-v1/functions/basis";
 import { rankCandidates, type RankCandidate, type RankResult } from "../../agent-v1/functions/rank";
 import type { AgentRecordAccess } from "../../agent-v1/graph/deps";
@@ -39,7 +40,7 @@ export interface RuleCardAccess {
   /** Freezes the period's card in the owner's ledger (idempotent by id); null when nothing could be put on it. */
   freeze(input: { actionId: string; origin: AgentActionOrigin; locale: string; intents: readonly CardOperationIntent[]; createdAt: string }): Promise<{ actionId: string; preview: string; expiresAt?: string } | null>;
   /** The earlier period's card of the same rule, still waiting: the new card takes its place. */
-  supersede(actionId: string): Promise<void>;
+  supersede(actionId: string, by?: { actionId: string; firedAt: string }): Promise<void>;
 }
 
 export interface RuleRunDeps {
@@ -61,6 +62,8 @@ export interface RulePeriodResult {
   attention?: AgentAutomationRunRecord["attention"];
   error?: string;
   coverage?: AgentAutomationRunRecord["coverage"];
+  /** AG15 interface: what the result page shows above and under the cards. */
+  detail?: AgentAutomationRunRecord["detail"];
 }
 
 const pad = (value: number) => String(value).padStart(2, "0");
@@ -301,10 +304,31 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
     const line = lineOf(item.candidate);
     lines.push(`${index + 1}. ${line}`);
     const name = (item.candidate as unknown as { title?: string; name?: string });
-    return { id: item.candidate.id, kind: domain, line, ref: item.candidate.view.ref, title: name.title ?? name.name ?? "" };
+    // AG15 interface (approved draft 15-5 ④): each pick as AG19's record card, its three lines written here.
+    let card: AgentAutomationRunItem["card"];
+    try {
+      card = recordOfView(item.candidate.view as unknown as Parameters<typeof recordOfView>[0], { language, now: deps.now(), timeZone });
+    } catch {
+      card = undefined;
+    }
+    return { id: item.candidate.id, kind: domain, line, ref: item.candidate.view.ref, title: name.title ?? name.name ?? "", ...(card ? { card } : {}) };
   });
   if (basisNote && !basis.includes(basisNote)) lines.splice(2, 0, ({ en: `Note used: "${basisNote}".`, ja: `使ったメモ：「${basisNote}」。`, zh: `用到的笔记：「${basisNote}」。` } as const)[language]);
-  return { coverage, items, outcome: "computed", text: lines.join("\n") };
+  return { coverage, detail: { basis, notes: plainNotes({ coverage, language, memories: recalled.map((item) => item.memory.content), toldBefore, topicChecked: topic ? result.matched : null, unit: unit[language] }) }, items, outcome: "computed", text: lines.join("\n") };
+}
+
+/**
+ * AG15 interface: the small lines under a result's cards, in plain words (no 「范围」, 「依据」): what was already sent
+ * before, what saved memory was applied, and how many were looked at closely.
+ */
+function plainNotes(input: { language: Language; toldBefore: number; memories: readonly string[]; coverage: { judged: number; truncated: number }; topicChecked: boolean | null; unit: string }): string[] {
+  const { coverage, language, toldBefore, unit } = input;
+  const notes: string[] = [];
+  if (toldBefore > 0) notes.push(({ en: `${toldBefore} sent to you before ${toldBefore === 1 ? "is" : "are"} not listed again.`, ja: `前にお知らせした${toldBefore}${unit}は、今回は挙げていません。`, zh: `之前告诉过你的 ${toldBefore} ${unit}，这次没有再列。` } as const)[language]);
+  for (const memory of input.memories) notes.push(({ en: `Also follows what you asked me to remember: ${memory}.`, ja: `覚えておくよう言われたことも反映しています：${memory}。`, zh: `也照你让我记住的这条来挑：${memory}。` } as const)[language]);
+  if (input.topicChecked === true && coverage.truncated > 0) notes.push(({ en: `${coverage.judged} were looked at closely and ${coverage.truncated} were not; these are the best of the ones looked at.`, ja: `詳しく見たのは${coverage.judged}${unit}で、残りの${coverage.truncated}${unit}は見ていません。見た中で合うものです。`, zh: `这一期细看了 ${coverage.judged} ${unit}，还有 ${coverage.truncated} ${unit}没有细看；这些是细看过的里面最合适的。` } as const)[language]);
+  if (input.topicChecked === false) notes.push(({ en: "This run could not check each one against your note, so only those whose words match it are listed; others may fit too.", ja: "今回は一件ずつ照合できなかったため、言葉が合うものだけを挙げています。ほかにも合うものがあるかもしれません。", zh: "这一期没能逐个核对，下面只列了字词对得上的，别的也可能合适。" } as const)[language]);
+  return notes;
 }
 
 async function replanPeriod(deps: RuleRunDeps, input: { automation: AgentAutomation; rule: AgentRuleSpec; ownerId: string; scheduledAt: string; periodDay: string; language: Language; head: string; previousCardId: string | null }): Promise<RulePeriodResult> {
@@ -315,10 +339,11 @@ async function replanPeriod(deps: RuleRunDeps, input: { automation: AgentAutomat
   const overdue = todos.filter((todo) => todo.plannedDate && todo.plannedDate < periodDay).sort((left, right) => left.plannedDate!.localeCompare(right.plannedDate!) || left.id.localeCompare(right.id)).slice(0, rule.maxItems);
   emitTrace({ automationId: automation.automationId, domain: "todo", inScope: overdue.length, scheduledAt, type: "rule.candidates" });
   // The earlier period's card, still waiting, gives way: to this period's card, or to "nothing to change any more".
-  if (input.previousCardId) await deps.cards?.supersede(input.previousCardId).catch(() => undefined);
+  const actionId = ruleCardId({ automationId: automation.automationId, ownerId, scheduledAt, version: automation.version });
+  // AG15 (D15-6): the old card names the period whose card replaced it.
+  if (input.previousCardId) await deps.cards?.supersede(input.previousCardId, overdue.length && deps.cards ? { actionId, firedAt: new Date(scheduledAt).toISOString() } : undefined).catch(() => undefined);
   if (!overdue.length) return { items: [], outcome: "no_match", text: "" };
   if (!deps.cards) return { error: "Cards cannot be made here.", items: [], outcome: "failed", text: "" };
-  const actionId = ruleCardId({ automationId: automation.automationId, ownerId, scheduledAt, version: automation.version });
   const intents = overdue.map((todo) => ({ capability: "todo.update" as const, set: { plannedDate: periodDay }, targetId: todo.id })) as unknown as CardOperationIntent[];
   const card = await deps.cards.freeze({ actionId, createdAt: deps.now(), intents, locale: language, origin: { firedAt: new Date(scheduledAt).toISOString(), kind: "automation", ruleId: automation.automationId } });
   if (!card) return { items: [], outcome: "no_match", text: "" };

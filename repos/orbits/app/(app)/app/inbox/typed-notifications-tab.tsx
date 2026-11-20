@@ -16,6 +16,7 @@ import {useOrbitLanguage} from '../orbit-language-context';
 import {communicationRequest,invalidateInboxActorConfirmation,readContactMessageActor,readContactMessageActorForWrite} from './inbox-request';
 import {notificationInboxView,notificationDetailView,type NotificationRow,type NotificationCategory,type NotificationList} from './notification-inbox-view-model';
 import {NotificationStatusRail,type WeekCounts} from './notification-status-rail';
+import {AgentEntryDetail,AgentEntryLine,agentEntryKind,agentEntryTile,agentGroupLabel,useAgentCardStates,waitsForClick} from './agent-inbox-entries';
 
 const categories={all:{zh:'全部',en:'All',ja:'すべて'},secretary:{zh:'秘书',en:'Secretary',ja:'秘書'},reminder:{zh:'提醒',en:'Reminders',ja:'リマインダー'},suggestion:{zh:'建议',en:'Suggestions',ja:'提案'},update:{zh:'动态',en:'Updates',ja:'更新'},history:{zh:'历史记录',en:'History',ja:'履歴'}};
 // b5 #6 row actions: 既読 / タスクに追加 / 1時間後.
@@ -48,14 +49,14 @@ function chipUnreadCounts(items:readonly NotificationRow[]) {
  return {all:unread.length,secretary:unread.filter(n=>secretaryKind(n)).length,reminder:unread.filter(n=>n.kind==='reminder').length,suggestion:unread.filter(n=>n.kind==='suggestion').length,update:unread.filter(n=>n.kind==='update').length};
 }
 /** b5 D05 list row: tile, two lines (title, reason · source · due), time and the unread dot. Actions live in the detail pane. */
-export function NotificationRecordCard({notification:n,onSelect,selected=false,timeZone,now}:{notification:NotificationRow;onSelect:()=>void;selected?:boolean;timeZone?:string;now:string}) {
+export function NotificationRecordCard({notification:n,onSelect,selected=false,timeZone,now,waiting=false}:{notification:NotificationRow;onSelect:()=>void;selected?:boolean;timeZone?:string;now:string;waiting?:boolean}) {
  const {t,language}=useOrbitLanguage();
- const zone=notificationDisplayZone(timeZone),tile=notificationTile(n);
+ const zone=notificationDisplayZone(timeZone),agent=agentEntryKind(n),tile=agent?agentEntryTile(n):notificationTile(n);
  const unread=!n.readAt&&n.disposition==='open';
  const subtitle=[n.reason,n.sources[0]?.excerpt,n.dueAt?`${t({zh:'截止时间',en:'Due',ja:'期限'})} · ${new Intl.DateTimeFormat(language,{timeZone:zone,month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(n.dueAt))}`:null].filter(Boolean).join(' · ');
  return <button type="button" aria-pressed={selected} className={`${ws.row}${unread?' '+ws.unread:''}${selected?' '+ws.sel:''}`} onClick={onSelect}>
   <MacTile emoji={tile.emoji} tone={tile.tone} size="sm"/>
-  <span style={{minWidth:0}}><span className={ws.rowTitle}>{n.title}</span>{subtitle?<span className={`${ws.lbl} ${ws.rowSub}`}>{subtitle}</span>:null}</span>
+  <span style={{minWidth:0}}><span className={ws.rowTitle}>{n.title}</span>{agent?<AgentEntryLine n={n} now={now} waiting={waiting}/>:subtitle?<span className={`${ws.lbl} ${ws.rowSub}`}>{subtitle}</span>:null}</span>
   <span className={ws.rowEnd}><span className={ws.lbl}>{inboxListTime(n.occurredAt,now,zone,language,t(days.yesterday))}</span>{unread?<i className={ws.dot} aria-label={t({zh:'未读',en:'Unread',ja:'未読'})}/>:null}</span>
  </button>;
 }
@@ -216,6 +217,23 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
  [railReady,language,usage,preferences,weekShown,quietBusy]);
  const now=data?.asOf??new Date().toISOString();
  const chosen=data?.items.find(n=>n.id===selected)??null;
+ // AG15 (D15-4): cards still waiting for a click are their own group on top; no new filter.
+ const cardStates=useAgentCardStates(data?.items);
+ const waitingAll=useMemo(()=>cardStates&&data?data.items.filter(n=>waitsForClick(n,cardStates)):[],[cardStates,data]);
+ // The group is the top of 「全部」; other filters list them in their day like any entry.
+ const waiting=filter==='all'?waitingAll:[];
+ const rest=useMemo(()=>data?data.items.filter(n=>!waiting.includes(n)):[],[data,waiting]);
+ // ?open=<run or card id>: 「看结果」 and 「在收件箱里看」 on a task's page select that period's entry.
+ const opened=useRef(false);
+ useEffect(()=>{
+  if(opened.current||!data)return;
+  const open=new URLSearchParams(window.location.search).get('open');
+  if(!open){opened.current=true;return;}
+  const match=data.items.find(n=>n.sources[0]?.sourceId===open||n.target.id===open);
+  if(match){opened.current=true;select(match);}
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[data]);
+ const selectCard=(actionId:string)=>{const match=data?.items.find(n=>n.target.id===actionId);if(match)select(match);};
  const unread=data?.unreadCount??0;
  const todayCount=data?.items.filter(n=>notificationDayGroup(n.occurredAt,now,timeZone)==='today').length??0;
  let previousGroup='';
@@ -225,7 +243,7 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
  return <div>
   <ShellPage rightRail={rail}/>
   {error?<div role="alert" className={ws.alert}>{error} <button className="btn btn-ghost" type="button" onClick={()=>{pending.current=null;setAttempt(n=>n+1);}}>{t({zh:'刷新',en:'Refresh',ja:'更新'})}</button>{pending.current?<button className="btn btn-ghost" type="button" disabled={busy} onClick={()=>void retryPending()}>{t({zh:'重试操作',en:'Retry action',ja:'操作を再試行'})}</button>:null}</div>:null}
-  {(!data||!zoneKnown)&&!error?<ScopedPageSkeleton kind="inboxCard" label={t({zh:'正在读取通知…',en:'Loading notifications…',ja:'通知を読み込み中…'})}/>:
+  {(!data||!zoneKnown||!cardStates)&&!error?<ScopedPageSkeleton kind="inboxCard" label={t({zh:'正在读取通知…',en:'Loading notifications…',ja:'通知を読み込み中…'})}/>:
   <section className={`${ws.card}${chosen?' '+ws.open:''}`} aria-label={t({zh:'通知列表',en:'Notifications',ja:'通知一覧'})}>
    <div className={ws.list}>
     <div className={ws.tool}>
@@ -238,10 +256,11 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
     </div>
     {!data?<p role="status" className={ws.listNote}>{error?'':t({zh:'正在读取通知…',en:'Loading notifications…',ja:'通知を読み込み中…'})}</p>
      :data.items.length?<div className={ws.rows}>
-      {data.items.map(n=>{
+      {waiting.length?[<div key="g:waiting" className={ws.day}>{agentGroupLabel(language,waiting.length)}</div>,...waiting.map(n=><NotificationRecordCard key={n.id} notification={n} timeZone={timeZone} now={now} waiting selected={n.id===selected} onSelect={()=>select(n)}/>)]:null}
+      {rest.map(n=>{
        const group=notificationDayGroup(n.occurredAt,now,timeZone),heading=group!==previousGroup;previousGroup=group;
        return [heading?<div key={'g:'+group} className={ws.day}>{t(days[group])}</div>:null,
-        <NotificationRecordCard key={n.id} notification={n} timeZone={timeZone} now={now} selected={n.id===selected} onSelect={()=>select(n)}/>];
+        <NotificationRecordCard key={n.id} notification={n} timeZone={timeZone} now={now} waiting={waitingAll.includes(n)} selected={n.id===selected} onSelect={()=>select(n)}/>];
       })}
       {data.nextCursor?<button type="button" className={`btn ${ws.btn} ${ws.sm} ${ws.more}`} disabled={busy} onClick={()=>void more()}>{t({zh:'加载更多',en:'Load more',ja:'さらに読み込む'})}</button>:null}
      </div>:<p className={ws.listNote}>{t({zh:'暂无通知',en:'No notifications',ja:'通知はありません'})}</p>}
@@ -249,7 +268,7 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
    <div className={ws.pane}>
     {chosen?<>
      <button type="button" className={`btn ${ws.btn} ${ws.sm} ${ws.back}`} style={{margin:'12px 16px 0',alignSelf:'flex-start'}} onClick={()=>setSelected(null)}><Icon name="left" size={16}/>{t({zh:'返回通知',en:'Back to notifications',ja:'通知に戻る'})}</button>
-     <NotificationDetail notification={chosen} now={now} timeZone={timeZone} disabled={busy} onAction={action=>void actFor(chosen,action)}/>
+     {agentEntryKind(chosen)?<AgentEntryDetail key={chosen.id} n={chosen} now={now} timeZone={timeZone} onSelectCard={selectCard} onChanged={()=>setAttempt(n=>n+1)}/>:<NotificationDetail notification={chosen} now={now} timeZone={timeZone} disabled={busy} onAction={action=>void actFor(chosen,action)}/>}
     </>:data&&!data.items.length&&filter==='all'?<div className={ws.empty}>
      <span className={ws.emptyTile} style={{background:'var(--mac-lav)'}} aria-hidden>🔔</span>
      <h3>{t({zh:'还没有通知',en:'No notifications yet',ja:'通知はまだありません'})}</h3>

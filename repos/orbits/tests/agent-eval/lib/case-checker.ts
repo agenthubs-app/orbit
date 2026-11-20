@@ -152,7 +152,8 @@ export function checkCase(testCase: EvalCase, areaFile: AreaFile, context: Check
     if (previous) push("id", `duplicate id, also in ${previous}`);
     seen.set(caseId, path.basename(areaFile.file));
   }
-  const sprintPattern = /^AG(0\d|1[0-8])$/u;
+  // AG19 (answer layout, added 2026-11-19) is the first sprint past AG18.
+  const sprintPattern = /^AG(0\d|1[0-9])$/u;
   if (typeof testCase.sprint === "string" && !sprintPattern.test(testCase.sprint)) push("sprint", `unknown sprint "${testCase.sprint}"`);
   if (testCase.gate !== undefined) {
     if (typeof testCase.gate !== "string" || !sprintPattern.test(testCase.gate)) push("gate", `unknown sprint "${testCase.gate}"`);

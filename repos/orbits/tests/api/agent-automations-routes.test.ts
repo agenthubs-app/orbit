@@ -49,16 +49,20 @@ test("'my scheduled tasks' shows the card's rows, the next expected run and the 
   const service = serviceFor(kit.storage, "user:a", kit.now);
   let tasks = await listScheduledTasks({ now: kit.now(), ownerId: "user:a", service, storage: kit.storage });
   assert.equal(tasks.length, 1, "only the owner's own tasks");
-  assert.deepEqual(tasks[0].rows.map((row) => [row.label, row.value]), [
-    ["检查时间", "每周五 9:00 之后约10分钟内"],
-    ["候选范围", "周末活动"],
-    ["排序依据", "按开始时间从早到晚"],
-    ["条数", "最多3场"],
-    ["有效期", "到12月31日（周四）为止"],
-    ["提醒方式", "只放进站内收件箱，不推送"],
-    ["下次预计运行", "11月20日（周五） 9:00 之后约10分钟内"],
+  // AG15 interface: the seven facts with the approved draft's labels (15-4), each value written by code.
+  assert.deepEqual(tasks[0].rows.map((row) => [row.label, row.value, row.note ?? null]), [
+    ["什么时候查", "每周五 9:00 之后约10分钟内", "东京时间。不保证整点开始。"],
+    ["从哪里挑", "周末活动", null],
+    ["按什么挑", "按开始时间从早到晚", null],
+    ["挑几条", "最多3场", null],
+    ["跑到哪天", "跑到 12月31日（周四）为止", null],
+    ["怎么通知你", "放进收件箱", "没有新的就不打扰"],
+    ["下次运行", "11月20日（周五） 9:00 之后约10分钟内", null],
   ]);
   assert.deepEqual([tasks[0].status, tasks[0].nextRunAt, tasks[0].lastRun], ["active", new Date("2026-11-20T09:00:00+09:00").toISOString(), null]);
+  assert.deepEqual(tasks[0].summary, { attention: null, schedule: "每周五 9:00 之后约10分钟内", status: "下次 11月20日（周五）" });
+  assert.deepEqual(tasks[0].next, { day: "11月20日（周五）", time: "9:00 之后约10分钟内" });
+  assert.equal(tasks[0].domain, "event");
 
   await kit.dispatch("2026-11-20T09:10:00+09:00");
   kit.result.value = () => picked([]);
@@ -74,6 +78,14 @@ test("'my scheduled tasks' shows the card's rows, the next expected run and the 
   assert.equal(history!.runs[1].computedAt, new Date("2026-11-20T09:10:00+09:00").toISOString());
   assert.equal(history!.task.lastRun?.outcome, "no_match");
   assert.equal(history!.task.rows.at(-1)?.value, "12月4日（周五） 9:00 之后约10分钟内");
+  // The history as the page shows it (15-4): the period's day, the time it finished, what it found, what opens.
+  assert.deepEqual(history!.runs.map((run) => run.display), [
+    { day: "11月27日（周五）", opens: null, skippedNote: null, text: "没有新的", time: "9:10" },
+    { day: "11月20日（周五）", opens: "result", skippedNote: null, text: "有 3 场新活动", time: "9:10" },
+  ]);
+  assert.deepEqual(history!.task.last, { opens: null, runId: history!.runs[0].runId, text: "没有新的", when: "今天 9:10" });
+  assert.equal(history!.task.summary?.status, "下次 12月4日（周五） · 上次 今天 9:10：没有新的");
+  assert.deepEqual(kit.inbox.filter((entry) => entry.actorId === "user:a").map((entry) => [entry.title, entry.object?.name]), [["有 3 场新活动", "每周五挑三场周末活动"]], "the inbox entry says what was found; the task's name is its second line");
   // Both shapes are what the two clients read.
   assert.equal(agentScheduledTaskHistorySchema.safeParse(history).success, true);
   tasks = await listScheduledTasks({ now: kit.now(), ownerId: "user:a", service, storage: kit.storage });
@@ -91,4 +103,38 @@ test("'my scheduled tasks' shows the card's rows, the next expected run and the 
   await kit.dispatch("2027-01-08T09:10:00+09:00");
   tasks = await listScheduledTasks({ now: kit.now(), ownerId: "user:a", service, storage: kit.storage });
   assert.deepEqual([tasks[0].status, tasks[0].nextRunAt], ["completed", null], "after its last valid day the task is shown as ended");
+  assert.deepEqual(tasks[0].summary, { attention: null, schedule: "跑到 12月31日（周四）为止", status: "已结束 · 一共跑了 3 期" });
+});
+
+test("AG15 interface: a paused task, a task whose note cannot be opened, a period passed over and a retried one read as the approved draft says", async () => {
+  const kit = createDispatchKit();
+  const rule = await createRule(kit.storage, "user:a", kit.now, { rule: { rankingBasis: "按笔记「兴趣笔记」的主题", ranking: {}, references: [{ id: "M36", title: "兴趣笔记", type: "memo" }] } });
+  const service = serviceFor(kit.storage, "user:a", kit.now);
+  // The note is unreadable at the first period: it needs the owner; the list says "没跑成" and the yellow line says why.
+  kit.result.value = () => ({ attention: { message: "这条任务用来挑选的笔记「兴趣笔记」读不到了。", reason: "reference_unreadable", reference: { id: "M36", title: "兴趣笔记", type: "memo" } }, items: [], outcome: "needs_attention", text: "x" });
+  await kit.dispatch("2026-11-20T09:10:00+09:00");
+  let tasks = await listScheduledTasks({ now: kit.now(), ownerId: "user:a", service, storage: kit.storage });
+  assert.equal(tasks[0].needsAttention, true);
+  assert.deepEqual(tasks[0].summary, { attention: "需要你处理：笔记「兴趣笔记」打不开了。重新选一篇，或者改成别的挑法。", schedule: "每周五 9:00 之后约10分钟内", status: "上次 今天 9:10：没跑成" });
+  assert.equal(tasks[0].rows[2].note, "每次运行读它当时的内容", "a note is read again at every run");
+  assert.deepEqual(tasks[0].form?.basis, { kind: "note", noteId: "M36", title: "兴趣笔记" });
+  // Paused.
+  await service.update(rule.automationId, { status: "paused" });
+  tasks = await listScheduledTasks({ now: kit.now(), ownerId: "user:a", service, storage: kit.storage });
+  assert.equal(tasks[0].summary?.status, "已暂停，不会再运行 · 上次 今天 9:10：没跑成");
+  assert.equal(tasks[0].needsAttention, true);
+});
+
+test("AG15 interface: the form makes the same rule fields a card would, with words written by code", async () => {
+  const { ruleFromForm } = await import("../../features/agent/automations/task-form");
+  const made = ruleFromForm({ basis: { kind: "note", noteId: "M36", title: "兴趣笔记" }, domain: "event", maxItems: 3, push: false, schedule: { daysOfWeek: [5], kind: "weekly", time: "09:00", timeZone: "Asia/Tokyo" }, title: "", validUntil: null, window: "weekend" }, "zh");
+  assert.deepEqual(made.rule.references, [{ id: "M36", title: "兴趣笔记", type: "memo" }]);
+  assert.equal(made.rule.rankingBasis, "按笔记「兴趣笔记」的主题");
+  assert.equal(made.rule.scopeText, "那个周末开始的公开活动");
+  assert.equal(made.title, "每周五挑3场：那个周末开始的公开活动", "an empty title is written by code");
+  const changed = ruleFromForm({ basis: { field: "startsAt", kind: "field" }, domain: "event", maxItems: 5, push: true, schedule: { kind: "daily", time: "08:00", timeZone: "Asia/Tokyo" }, title: "每天看活动", validUntil: "2026-12-31", window: "weekend" }, "zh", { rule: { ...made.rule, scopeText: "周末活动" } } as never);
+  assert.equal(changed.rule.scopeText, "周末活动", "an unchanged scope keeps its words");
+  assert.deepEqual([changed.rule.references, changed.rule.ranking, changed.rule.notify, changed.rule.maxItems, changed.rule.validUntil], [[], { field: { direction: "asc", name: "startsAt" } }, { inApp: true, push: true }, 5, "2026-12-31"]);
+  const todo = ruleFromForm({ basis: { kind: "topic", words: "ignored" }, domain: "todo", maxItems: 10, push: false, schedule: { daysOfWeek: [5], kind: "weekly", time: "08:30", timeZone: "Asia/Tokyo" }, title: "", validUntil: null }, "zh");
+  assert.deepEqual([todo.rule.action, todo.rule.ranking.field?.name, todo.rule.scope], ["replan", "plannedDate", { domain: "todo", filter: "past_planned" }]);
 });

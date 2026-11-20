@@ -26,6 +26,17 @@ export interface ConfirmationCardProps {
   onDecide(decision: Decision, operationId?: string): Promise<boolean>;
   onRegenerate(): Promise<boolean>;
   onRemove?(operationId: string): Promise<boolean>;
+  /** AG15 (D15-6): open the card that replaced this one (the inbox selects its entry). */
+  onOpenCard?(actionId: string): void;
+}
+
+/** AG15: this browser's time zone, so a scheduled task's card names its own zone only when it differs. */
+export function deviceTimeZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 const toneClass = (tone: string) => styles[tone] ?? "";
@@ -34,10 +45,11 @@ function SyncIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 0 1-14.3 4.9" /><path d="M4 12a8 8 0 0 1 14.3-4.9" /><path d="M18 3v4h-4" /><path d="M6 21v-4h4" /></svg>;
 }
 
-export function ConfirmationCard({ card, language, online, pendingTargets = [], onDecide, onRegenerate, onRemove }: ConfirmationCardProps) {
+export function ConfirmationCard({ card, language, online, pendingTargets = [], onDecide, onRegenerate, onRemove, onOpenCard }: ConfirmationCardProps) {
   const words = standardCopyFor(card.locale ?? language).aiCard;
   const ui = standardCopyFor(language).aiCard;
-  const view: AgentCardView = agentCardView(card, { online, pendingTargets }, words);
+  const [timeZone] = useState(deviceTimeZone);
+  const view: AgentCardView = agentCardView(card, { online, pendingTargets, timeZone }, words);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
@@ -103,6 +115,12 @@ export function ConfirmationCard({ card, language, online, pendingTargets = [], 
         </div>
       ) : null}
       {view.footer ? <div className={styles.footer}>{view.footer}</div> : null}
+      {view.expiredNote ? (
+        <div className={styles.expiredNote} data-orbit-agent-card-expired-note>
+          <span>{view.expiredNote}</span>
+          {view.replacedBy && onOpenCard ? <button type="button" className={`btn ${styles.small}`} onClick={() => onOpenCard(view.replacedBy!)} data-orbit-agent-card-replaced-by={view.replacedBy}>{ui.openNewCard}</button> : null}
+        </div>
+      ) : null}
       {view.regenerate ? (
         <div className={styles.regen}>
           <span className={styles.regenQuestion}>{view.regenerate.question}</span>
@@ -115,9 +133,10 @@ export function ConfirmationCard({ card, language, online, pendingTargets = [], 
 }
 
 /** Small change 2: the basis line at the top of the answer, with the records it rests on. */
-export function BasisLine({ basis, language, navigate }: { basis: NonNullable<NonNullable<AgentResultDocument["answer"]>["basis"]>; language: OrbitLanguage; navigate(href: string): void }) {
+export function BasisLine({ basis, language, navigate, cardsBelow = false }: { basis: NonNullable<NonNullable<AgentResultDocument["answer"]>["basis"]>; language: OrbitLanguage; navigate(href: string): void; /** AG19: the answer shows these records as cards, so the row of small labels is not repeated. */ cardsBelow?: boolean }) {
   const ui = standardCopyFor(language).aiCard;
-  const links = basis.links.map((link) => ({ href: agentLinkHref(link), link }));
+  const links = cardsBelow && basis.links.length !== 1 ? [] : basis.links.map((link) => ({ href: agentLinkHref(link), link }));
+  if (cardsBelow && basis.links.length !== 1) return <div className={styles.basis} data-orbit-agent-basis><span className={styles.basisChip}>{basis.text}</span></div>;
   const one = links.length === 1 ? links[0] : null;
   return (
     <div className={styles.basis} data-orbit-agent-basis>

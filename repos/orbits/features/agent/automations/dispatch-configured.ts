@@ -28,8 +28,8 @@ function cardsFor(ownerId: string): RuleCardAccess {
       if (!action) return null;
       return { actionId: action.actionId, preview: action.operations.map((operation) => operation.preview).filter(Boolean).join("\n") || action.preview, ...(action.expiresAt ? { expiresAt: action.expiresAt } : {}) };
     },
-    async supersede(actionId) {
-      await runtime().expireCard?.({ actionId, reason: "superseded" });
+    async supersede(actionId, by) {
+      await runtime().expireCard?.({ actionId, reason: "superseded", ...(by ? { by } : {}) });
     },
   };
 }

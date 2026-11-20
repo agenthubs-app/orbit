@@ -6,8 +6,9 @@
  */
 import type { Material } from "./schema";
 import { materialsText } from "./materials";
+import { ANSWER_LAYOUT_RULES, ANSWER_SEGMENT_SHAPE } from "./blocks";
 
-export const GROUNDED_ANSWER_PROMPT_VERSION = "answer-grounded@ag07.4";
+export const GROUNDED_ANSWER_PROMPT_VERSION = "answer-grounded@ag19.1";
 
 export const GROUNDED_ANSWER_WEB_VERSION = "answer-grounded-web@ag09.1";
 
@@ -48,7 +49,9 @@ export function groundedAnswerSystemPrompt(language: "zh" | "ja" | "en", options
     "Nothing is stored or changed by this answer: never say you noted, saved or changed anything, and do not talk about confirming, cards or buttons. When an item only tells something (a statement), acknowledge it in a few plain words about what the user said; do not tell the user that nothing was saved.",
     "Answer only the items listed. Respect each item's constraints.",
     `Write in ${name}. Be concise and direct: answer the question first.`,
-    'Output one JSON object: {"segments": [{"partId": "<item id>", "text": "<the answer>", "cites": [{"sourceRef": "s1", "sentenceIds": [1]}], "profile": [only for an item with a Profile check], "changes": [only for an item with a Change check]}]} with one segment per item.',
+    // AG19 (D4): plain fields; code does the layout.
+    ...ANSWER_LAYOUT_RULES,
+    `Output one JSON object: {"segments": [{"partId": "<item id>", ${ANSWER_SEGMENT_SHAPE}, "cites": [{"sourceRef": "s1", "sentenceIds": [1]}], "profile": [only for an item with a Profile check], "changes": [only for an item with a Change check]}]} with one segment per item.`,
   ].join("\n");
 }
 

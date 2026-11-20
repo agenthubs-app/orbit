@@ -2,6 +2,7 @@
  * The first layer's prompt (设计稿 §3.1, 附录 A, 附录 C; agent-design AG03).
  * The model splits the CURRENT message into parts and names what each needs; code decides routes.
  */
+import { ANSWER_LAYOUT_RULES, ANSWER_SEGMENT_SHAPE } from "../answer/blocks";
 import { CAPABILITIES } from "../route/capabilities";
 import { CLARITIES, DATA_SOURCES, DELIVERABLES, ENTITIES } from "./schema";
 import { QUALIFIER_CODES } from "../web/vocabulary";
@@ -102,7 +103,9 @@ export function answerSystemPrompt(language: "zh" | "ja" | "en"): string {
     "You see the recent conversation (text only, long replies cut) to understand what an item refers to, such as an email or a draft discussed above; work from it and from the item's goal, and answer the item itself (if it asks for a title, give one). Only if an item points at something that neither the conversation nor its goal shows (\"that matter\", \"さっきの件\"), do not guess what it was; say you cannot tell which one is meant and ask.",
     "This step changes nothing and shows no buttons: do not talk about confirming, cards or buttons.",
     `Write in ${name}. Be concise and practical: give a clear recommendation and the reason.`,
-    'Output one JSON object: {"segments": [{"partId": "<the item id>", "text": "<the answer>"}]} with one segment per item.',
+    // AG19 (D4): plain fields; code does the layout.
+    ...ANSWER_LAYOUT_RULES,
+    `Output one JSON object: {"segments": [{"partId": "<the item id>", ${ANSWER_SEGMENT_SHAPE}}]} with one segment per item.`,
   ].join("\n");
 }
 

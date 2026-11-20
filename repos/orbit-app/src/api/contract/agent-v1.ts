@@ -136,6 +136,8 @@ export interface AgentAnswerContract {
   cardLine?: string | undefined;
   /** AG09：这一轮实际发出的检索词和打开的网页（设计稿 §3.4“实际发出的检索词和打开的网页显示在回答旁边”），由服务端代码写。 */
   web?: AgentWebResultContract | undefined;
+  /** AG19：回答按块排好的版本（段落、要点、记录卡片、说明条），由服务端代码写；text 仍是完整的文字版，旧端只读 text。 */
+  blocks?: readonly AgentAnswerBlockContract[] | undefined;
 }
 
 /** AG09：联网的记录。被拦下的检索词不在这里（只按规则编号记在服务端）。 */
@@ -318,6 +320,20 @@ export interface AgentCardOperationDisplayContract {
   rows: readonly AgentCardDisplayRowContract[];
   /** 这一项要等前面某项成功才执行时的说明，如「第 1 项成功后才执行」。 */
   note?: string | undefined;
+  /**
+   * AG15（获批视觉稿 15-1，用户要求精简）：新建定时任务的卡在卡上只显示三行「什么时候」「挑什么」「之后」，每行由服务端
+   * 把 rows 里的几项拼成一句；rows 照旧逐项分开（冻结的事实不变）。zone：任务的时区与这台设备不同时，改用 zone.text。
+   */
+  lines?: readonly AgentCardDisplayLineContract[] | undefined;
+}
+
+/** AG15：卡上合并显示的一行。fields 是它合并的 rows 的字段名。 */
+export interface AgentCardDisplayLineContract {
+  key: "when" | "pick" | "after";
+  label: string;
+  text: string;
+  fields: readonly string[];
+  zone?: { id: string; text: string } | undefined;
 }
 
 export interface AgentCardDisplayRowContract {
@@ -339,6 +355,10 @@ export interface AgentActionPreviewContract {
   expiresAt?: string | undefined;
   /** AG15：卡片过期的原因。superseded 表示同一条定时任务的下一期出了新卡，这张被取代；不写表示放得太久。 */
   expiredReason?: "superseded" | undefined;
+  /** AG15（D15-5、D15-6）：过期的卡下面那一行小字，服务端按卡片语言写好（哪天出的、什么都没做；或哪一期出了新卡）。 */
+  expiredNote?: string | undefined;
+  /** AG15（D15-6）：取代这张卡的新卡和它那一期的触发时刻。 */
+  supersededBy?: { actionId: string; firedAt: string } | undefined;
   origin?:
     | { kind: "conversation"; conversationId: string; requestId: string }
     | { kind: "automation"; ruleId: string; firedAt: string }
@@ -511,7 +531,9 @@ export interface AgentScheduledTaskRunContract {
   /** 这一期的完整内容（收件箱里那一段）；没有要送的内容时是空串。 */
   text: string;
   /** 这一期列出的记录，可以点进各自的页面。 */
-  items: readonly { ref: string; kind: "event" | "contact" | "todo"; id: string; title: string; line: string }[];
+  items: readonly { ref: string; kind: "event" | "contact" | "todo"; id: string; title: string; line: string; card?: AgentAnswerRecordContract | undefined }[];
+  /** AG15 界面：结果页卡片上方的「按什么挑的」和卡片下面的几行小字（服务端写好，不含内部用词）。 */
+  detail?: { basis: string; notes: readonly string[] } | undefined;
   /** 这一期产生的待确认的卡（在收件箱里确认）。 */
   cardId?: string | undefined;
   /** 算了几次才算成（1 是一次算成；大于 1 是先失败、用同一期再试成功的）。 */
@@ -527,6 +549,26 @@ export interface AgentScheduledTaskRunContract {
   attention?: { reason: "reference_unreadable"; message: string; referenceTitle?: string | undefined } | undefined;
   /** 推送提醒的投递（AG16 起使用；AG15 只记这条任务有没有开提醒）。 */
   push: { state: "not_requested" | "pending" | "delivered" | "failed" | "skipped"; attempts: number; deliveredAt?: string | undefined; lastAttemptAt?: string | undefined; reason?: AgentScheduledTaskPushReason | undefined; line?: string | null | undefined; targets?: readonly AgentScheduledTaskPushTargetContract[] | undefined };
+  /**
+   * AG15 界面（获批视觉稿 15-4「历史里每种情况怎么写」）：历史里这一期怎么显示，服务端按任务语言写好。day 这一期的日子；
+   * time 算完的时刻（重试过的写在 text 里，这里为 null）；skippedNote 中间跳过了几期的那一行；opens 点开看什么。
+   */
+  display?: { day: string; time: string | null; text: string; skippedNote: string | null; opens: "result" | "card" | null } | undefined;
+}
+
+/** AG15 界面：表单（改一条任务、用表单新建）。笔记只带编号，名字只用来显示。 */
+export interface AgentScheduledTaskFormContract {
+  title: string;
+  schedule: { kind: "daily"; time: string; timeZone: string } | { kind: "weekly"; daysOfWeek: readonly number[]; time: string; timeZone: string };
+  domain: "event" | "contact" | "todo";
+  /** 活动从哪段时间里挑（只对活动）。 */
+  window?: "weekend" | "week" | "month" | "upcoming" | undefined;
+  /** 「从哪里挑」现在的说法（改的时候显示，不从表单回写）。 */
+  scopeText?: string | undefined;
+  basis: { kind: "note"; noteId: string; title: string } | { kind: "field"; field: "startsAt" | "lastInteraction" | "dueAt" | "plannedDate" } | { kind: "topic"; words: string };
+  maxItems: number;
+  validUntil: string | null;
+  push: boolean;
 }
 
 /** 「我的定时任务」里的一条任务。每一行的文字由服务端写好，和确认卡上的一致。 */
@@ -540,12 +582,25 @@ export interface AgentScheduledTaskContract {
   nextRunAt: string | null;
   /** 检查时间所用的时区（IANA 名称）；显示下次日期时一并写明。 */
   timeZone: string | null;
-  /** 检查时间、候选范围、排序依据、条数、有效期、提醒方式、下次预计运行，各一行。 */
-  rows: readonly { field: string; label: string; value: string }[];
+  /** 检查时间、候选范围、排序依据、条数、有效期、提醒方式、下次预计运行，各一行。AG15 界面：note 是值下面的灰色小字。 */
+  rows: readonly { field: string; label: string; value: string; note?: string | undefined }[];
   notify: { inApp: boolean; push: boolean };
   lastRun: AgentScheduledTaskRunContract | null;
   createdAt: string;
   updatedAt: string;
+  // ── AG15 界面（获批视觉稿 15-3、15-4）：两端照着显示的字，服务端按任务语言写好。 ──
+  /** 挑的是哪类记录（列表左边的图标）。 */
+  domain?: "event" | "contact" | "todo" | null | undefined;
+  /** 列表里的第二、三行和黄底那行：检查时间（已结束的写跑到哪天）；下次与上次；需要你处理。 */
+  summary?: { schedule: string; status: string; attention: string | null } | undefined;
+  /** 最近一期需要用户处理（笔记打不开了）。 */
+  needsAttention?: boolean | undefined;
+  /** 详情页「下次运行」：日子和「9:00 之后约10分钟内」。 */
+  next?: { day: string; time: string } | null | undefined;
+  /** 详情页「上次结果」：「今天 9:04」和结果那句；opens 点开看什么。 */
+  last?: { runId: string; when: string; text: string; opens: "result" | "card" | null } | null | undefined;
+  /** 改这条任务时表单的初值。 */
+  form?: AgentScheduledTaskFormContract | undefined;
 }
 
 /** GET /api/agent/automations 里的 tasks。 */
@@ -604,3 +659,64 @@ export interface AgentPushDeviceStateContract {
 export interface AgentWebPushConfigContract {
   publicKey: string | null;
 }
+/* ── AG19：回答排版与记录卡片（获批视觉稿 2026-11-19，D1–D6）──────────────── */
+
+/** AG19：回答里一条记录的种类（「我去过」即 attendance）。 */
+export type AgentAnswerRecordKind = "event" | "contact" | "todo" | "memo" | "schedule" | "attendance";
+
+/**
+ * AG19：回答里的一张记录卡片。上行、名字、下行都由服务端按回答的语言写好（日期带星期）；
+ * 两端只按 kind 选图标和去处，不自己拼日期，也不另读记录。
+ */
+export interface AgentAnswerRecordContract {
+  kind: AgentAnswerRecordKind;
+  /** 记录编号（活动为活动编号；我去过为那条自述的编号）。 */
+  id: string;
+  title: string;
+  /** 上行：类型标签后面的那一句（时间、公司和职位、截止时间…）。 */
+  top?: string | undefined;
+  /** 下行：地点、最近一次往来、已过期几天… */
+  sub?: string | undefined;
+  /** late：下行用提醒色（已过期的待办）。 */
+  subTone?: "late" | undefined;
+  /** 按主题挑出来时的一句理由。 */
+  why?: string | undefined;
+  /** 记录已删除或现在看不到：虚线卡，不可点。 */
+  gone?: boolean | undefined;
+  /** 笔记的第一位相关联系人（网页在联系人页上打开笔记，D5）。 */
+  contactId?: string | undefined;
+  /** 活动、我去过：平台活动还是用户自己建的私人活动。 */
+  eventKind?: "platform" | "private" | undefined;
+  /** 我去过：这条自述说的那场活动的编号（平台活动进它的详情页，私人活动在活动页里打开）。 */
+  eventId?: string | undefined;
+  /** 日程、我去过：所在的那一天 YYYY-MM-DD（网页日历停在这一天）。 */
+  day?: string | undefined;
+}
+
+/** AG19：要点里的一点。head 是开头加粗的几个字（可没有）。 */
+export interface AgentAnswerPointContract {
+  head?: string | undefined;
+  text: string;
+}
+
+/** AG19：「这次没做的部分」里的一条：用户原话里的那一段、为什么没做、能马上照着做的那一句。 */
+export interface AgentAnswerNoteItemContract {
+  quote?: string | undefined;
+  text: string;
+  action?: string | undefined;
+}
+
+/**
+ * AG19：回答的一块，按显示顺序排。
+ * conclusion：讨论类回答的第一句（加粗）；paragraph：一段正文；points：要点；
+ * records：一组记录卡片，先显示 shown 张，其余收在 moreLabel（「还有 3 位」）下面，点一下原地展开；
+ *   size 为 mini 时是文字下面「提到的记录」那种两行小卡，caption 是它上面的小字；
+ * note：灰底的说明条（这次没做的部分），title 是开头那行小字。
+ * 两端遇到不认识的 type 就跳过那一块。
+ */
+export type AgentAnswerBlockContract =
+  | { type: "conclusion"; text: string }
+  | { type: "paragraph"; text: string }
+  | { type: "points"; items: readonly AgentAnswerPointContract[] }
+  | { type: "records"; items: readonly AgentAnswerRecordContract[]; shown: number; size?: "full" | "mini" | undefined; caption?: string | undefined; moreLabel?: string | undefined; lessLabel?: string | undefined }
+  | { type: "note"; title: string; items: readonly AgentAnswerNoteItemContract[] };
