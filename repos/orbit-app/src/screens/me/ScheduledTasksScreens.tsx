@@ -157,10 +157,12 @@ export function ScheduledTaskScreen() {
     if (await deleteScheduledTask(client, task.id)) router.replace(TASKS_PATH as Href);
     else { toast.error(t("scheduledTasks.failed")); setBusy(false); }
   };
-  return <AppScreen inset="kit" title={task?.title ?? t("scheduledTasks.title")}>
+  return <AppScreen inset="kit" title={t("scheduledTasks.title")}>
     {history === null ? <Card><UiText>{t("scheduledTasks.notFound")}</UiText></Card> : null}
     {history === undefined ? (failed ? <Card><UiText accessibilityRole="alert">{t("scheduledTasks.loadFailed")}</UiText><Button label={t("scheduledTasks.retry")} onPress={() => setVersion((value) => value + 1)} /></Card> : <Skeleton />) : null}
     {task && history ? <View style={styles.stack}>
+      {/* Draft 15-4 (App): 「定时任务」 in the top bar, the task's own name as the page heading. */}
+      <UiText accessibilityRole="header" style={styles.pageTitle}>{task.title}</UiText>
       <View style={styles.headRow}>
         <Chip label={statusOf(task, t).label} tone={statusOf(task, t).tone} presentation="kit" />
         {task.status === "completed" ? null : <View style={styles.row}><UiText style={styles.meta}>{task.status === "active" ? t("scheduledTasks.on") : t("scheduledTasks.off")}</UiText><Toggle value={task.status === "active"} disabled={busy} accessibilityLabel={t("scheduledTasks.toggle", { title: task.title })} onValueChange={(next) => void toggle(next)} /></View>}
@@ -303,6 +305,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   row: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 10 },
   stack: { gap: spacing.md },
   headRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  pageTitle: { color: colors.ink, fontSize: 22, fontWeight: "800", lineHeight: 30 },
   boxes: { gap: 10 },
   box: { backgroundColor: colors.surface2, borderRadius: 14, gap: 4, padding: 14 },
   boxValue: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 24 },

@@ -87,7 +87,7 @@ export function AccountLayout({ active, title, subtitle, children, rightRail, ra
           </nav>
           <main className={s.content}>
             {/* b12 W-R18a-2x (390): a detail page is full screen with the kit .topbar — back + centred title. */}
-            <div className={s.phoneTopbar}><Link className={`btn ${s.phoneBack}`} href={back?.href ?? "/app/settings"} aria-label={back?.label ?? t("backToSettings")}><Icon name="left" size={20} /></Link><b>{title}</b><span /></div>
+            <div className={s.phoneTopbar}><Link className={`btn ${s.phoneBack}`} href={back?.href ?? "/app/settings"} aria-label={back?.label ?? t("backToSettings")}><Icon name="left" size={20} /></Link><b>{back ? back.label : title}</b><span /></div>
             {back ? <Link prefetch className={s.sectionBack} href={back.href}><Icon name="left" size={16} />{back.label}</Link> : null}
             {title ? <div className={`${s.heading} ${largeTitle ? s.largeTitle : ""}`}><h1>{title}</h1>{subtitle ? <p>{subtitle}</p> : null}</div>
               : <div className={s.heading} aria-hidden><span className={s.headingBone}><Bone width={96} height={20} /></span><span className={s.subheadingBone}><Bone width={260} height={13} /></span></div>}
