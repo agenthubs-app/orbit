@@ -106,8 +106,8 @@ export function withoutUnsourcedDates(text: string, days: readonly string[]): st
   const pieces = text.match(/[^。！？!?\n]+(?:[。！？!?]+|\n+|$)|\n+/gu) ?? [text];
   const kept: string[] = [];
   for (const piece of pieces) {
-    const parts = /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)\s+/u) : [piece];
+    const parts = /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)[ \t]+/u) : [piece];
     for (const part of parts) if (![...datesIn(part)].some((day) => bad.has(day))) kept.push(part);
   }
-  return kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").trim();
+  return kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").replace(/\n\s*\n/gu, "\n").trim();
 }

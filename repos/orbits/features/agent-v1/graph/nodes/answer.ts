@@ -18,7 +18,7 @@ import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
 import { composeStructured, inListOrder, needsLayout, stripMarkdown, textBlocks, type AnswerBlock } from "../../answer/blocks";
 import { lateCount, listAnswer } from "../../answer/list-answer";
-import { asksBeyondListing, cardFactsOf, leftOver, textSaysMore, withCodeLateCount } from "../../answer/list-or-text";
+import { asksBeyondListing, cardFactsOf, leftOver, textSaysMore, withCodeLateCount, withCodeLateness, withoutFieldLabels, withoutFalseReadClaims } from "../../answer/list-or-text";
 import { withoutUnsupportedEventClaims, type EventClaimFacts } from "../../answer/event-claims";
 import type { AgentAnswerRecordContract } from "../../../../shared/contract/agent-v1";
 import { statusSaidIn } from "./resolve";
@@ -286,6 +286,17 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
         if (recounted.changed.length) emitTrace({ changed: recounted.changed, partId: part.localId, type: "answer.late_count_corrected" });
         claimed = recounted.text;
       }
+      // Hotfix 1c (AE-RD-012 turn 2): how late a to-do is, where the answer names it, is the card's (code's) figure.
+      const lateness = withCodeLateness(claimed, todoCards);
+      if (lateness.changed.length) emitTrace({ changed: lateness.changed, partId: part.localId, type: "answer.lateness_corrected" });
+      claimed = lateness.text;
+      // Hotfix 1c (AE-SCL-008): a material's English field label is not shown in a zh or ja answer.
+      claimed = withoutFieldLabels(claimed, state.language);
+      // Hotfix 1c (AE-UND-015): "could not be read" must agree with this turn's coverage record.
+      const readAllFine = (part.coverage ?? []).length > 0 && (part.coverage ?? []).every((item) => item.complete) && !someUnread;
+      const readClaims = withoutFalseReadClaims(claimed, readAllFine);
+      if (readClaims.dropped.length) emitTrace({ dropped: readClaims.dropped, partId: part.localId, type: "answer.false_read_claims_dropped" });
+      if (readClaims.text.trim()) claimed = readClaims.text;
       run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(claimed, state.language) : claimed, state.language, state.asOf || deps.now()));
       run.modelAnswers.add(part.localId);
       // AG09: a web page is not a record of the user's: its citations stay out of the records' sourceRefs (the page is listed in the answer's web record).

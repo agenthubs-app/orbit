@@ -75,7 +75,7 @@ const NOT_A_TOPIC = /(告诉我|告诉|原因|理由|为什么|下一步|现在|
 export function realTopicOf(words: string): string {
   const left = topicWordsOf(words.replace(NOT_A_TOPIC, " ")).replace(NOT_A_TOPIC, " ");
   // A single character left over (a particle, half of a word taken apart: 「次 や」, 「现」) is no topic.
-  return left.split(/\s+/u).filter((token) => [...token].length > 1).join(" ").trim();
+  return left.split(/\s+/u).filter((token) => [...token.replace(/[^\p{L}\p{N}]/gu, "")].length > 1 && !/^'s$/iu.test(token)).join(" ").trim();
 }
 
 /** Rule 3: the basis words are the whole part (the model copied the question as its topic). */

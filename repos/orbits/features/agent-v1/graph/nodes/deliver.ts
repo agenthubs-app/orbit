@@ -251,6 +251,13 @@ function blocksOf(scope: NodeScope, state: AgentGraphState, written: readonly Gr
   const { run } = scope;
   const blocks: AnswerBlock[] = [];
   const notes: AgentAnswerNoteItemContract[] = [];
+  // Hotfix 1c (AE-SCL-008: 「3件」 with two cards under it, the third under the part before): a record several parts cite has its
+  // card under the part that cites the most records (the list of them); a tie goes to the later part.
+  const owner = new Map<string, GraphPart>();
+  for (const part of written) for (const ref of part.cites ?? []) {
+    const current = owner.get(ref);
+    if (!current || (part.cites?.length ?? 0) >= (current.cites?.length ?? 0)) owner.set(ref, part);
+  }
   for (const part of written) {
     const line = lineFor(scope, state, part, language);
     if (!line.trim()) continue;
@@ -269,11 +276,13 @@ function blocksOf(scope: NodeScope, state: AgentGraphState, written: readonly Gr
       : textBlocks(line, language);
     // The records this part cites that no card shows yet (verified by now: a citation that no longer opens was dropped).
     const carded = new Set([...cardedIn(blocks), ...cardedIn(mine)]);
-    const cited = (part.cites ?? []).map((ref) => run.recordCards.get(ref)).filter((card): card is AgentAnswerRecordContract => Boolean(card)).filter((card) => !carded.has(`${card.kind}:${card.id}`));
+    const cited = (part.cites ?? []).filter((ref) => (owner.get(ref) ?? part) === part).map((ref) => run.recordCards.get(ref)).filter((card): card is AgentAnswerRecordContract => Boolean(card)).filter((card) => !carded.has(`${card.kind}:${card.id}`));
     // Repair round 1: full-size cards are the lists code wrote (a ranking; a list-type read, answer/list-answer.ts) and
     // arrive in `own`. What an answer written by a model cites is "mentioned": small cards under its text.
     // Board 4 (last example): an answer that rests on one record is opened from its basis line ("按你11月10日记的笔记回答 打开 ›").
-    const byBasisLine = cited.length === 1 && run.basis?.links.length === 1 && run.basis.links[0].id === cited[0].id;
+    // Hotfix 1c (AE-SCL-025: the moved meeting had no card and no time): a schedule item, event or to-do the answer rests on
+    // still has its small card (its time or state is on it); a single note or contact opens from the basis line as before.
+    const byBasisLine = cited.length === 1 && run.basis?.links.length === 1 && run.basis.links[0].id === cited[0].id && (cited[0].kind === "memo" || cited[0].kind === "contact");
     const cards = byBasisLine ? null : recordsBlock(cited, language, { size: "mini" });
     blocks.push(...mine, ...(cards ? [cards] : []));
   }

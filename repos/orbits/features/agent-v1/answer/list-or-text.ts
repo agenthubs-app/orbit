@@ -107,4 +107,56 @@ export function withCodeLateCount(text: string, counts: { late: number; dueLate:
   return { changed, text: out };
 }
 
+/**
+ * Hotfix 1c (AE-RD-012 turn 2: 「已逾期一天」 copied from the record's note while the card said 已过期5天): how late a to-do is,
+ * said in the model's sentence or point that names it, is code's — the card's own lower line, measured against the turn's
+ * clock. Only a phrase with a number of days is replaced; the sentence stays.
+ */
+export function withCodeLateness(text: string, cards: readonly AgentAnswerRecordContract[]): { text: string; changed: string[] } {
+  const changed: string[] = [];
+  const late = cards.filter((card) => card.kind === "todo" && card.subTone === "late" && card.sub && card.title);
+  if (!late.length) return { changed, text };
+  const DAYS = /(?:已经|已)?(?:逾期|过期|超期)了?\s*(?:[一二两三四五六七八九十]+|\d+)\s*天|(?:\d+)\s*日(?:超過|遅れ|過ぎ)|\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+days?\s+(?:overdue|late|past due)\b/giu;
+  const out = text.split(/(?<=[。；;\n])/u).map((segment) => {
+    const card = late.find((item) => segment.includes(item.title));
+    if (!card) return segment;
+    return segment.replace(DAYS, (said) => {
+      if (said === card.sub) return said;
+      changed.push(`${said} → ${card.sub}`);
+      return /^[A-Za-z]/u.test(card.sub!) ? card.sub!.toLowerCase() : card.sub!;
+    });
+  });
+  return { changed, text: out.join("") };
+}
+
+/** Hotfix 1c (AE-SCL-008: 「Notes: 已过期」 on screen): a material's field label copied into a zh or ja answer goes; its value stays. */
+const FIELD_LABEL = /\b(?:Notes|Status|Due|Planned date|Title|Linked contacts?|Linked events|Linked notes|Starts|Ends|Place|With|Repeats|Name|Organization|Role)\s*[:：]\s*/gu;
+
+export function withoutFieldLabels(text: string, language: Language): string {
+  return language === "en" ? text : text.replace(FIELD_LABEL, "");
+}
+
+/** A sentence saying records could not be read, or were not all read (zh, ja, en). */
+const READ_FAILED = /(读不到|读不了|无法读取|没能读取|没有读取到|读取失败|没法读|没能读到|没有读到全部|没有全部读|読めておらず|読めません|読めませんでした|読み込めませ|読み取れませ|取得できませ|アクセスできませ|\bcouldn'?t (?:read|access|load)\b|\bcould not (?:read|access|load)\b|\bunable to (?:read|access|load)\b|\bcan(?:no|')t (?:read|access)\b|\bwasn'?t able to read\b|\bfailed to (?:read|load)\b)/iu;
+
+/**
+ * Hotfix 1c (AE-UND-015 run-03: 「カレンダーの予定は…読めておらず」 though the schedule read was complete): a sentence claiming
+ * a read failed or was incomplete must agree with the read's coverage record. When every read of the part was complete and
+ * nothing was withheld, unreadable or failed, such a sentence is not delivered.
+ */
+export function withoutFalseReadClaims(text: string, readAllFine: boolean): { text: string; dropped: string[] } {
+  if (!readAllFine || !READ_FAILED.test(text)) return { dropped: [], text };
+  const dropped: string[] = [];
+  const kept = text.split("\n").map((line) => {
+    const sentences = line.match(/[^。！？!?]+(?:[。！？!?]+|$)/gu) ?? [line];
+    const parts = sentences.flatMap((sentence) => (/[A-Za-z]/u.test(sentence) && !/[぀-ヿ一-鿿]/u.test(sentence) ? sentence.split(/(?<=\.)[ \t]+/u) : [sentence]));
+    return parts.filter((part) => {
+      if (!READ_FAILED.test(part)) return true;
+      dropped.push(part.trim());
+      return false;
+    }).join(/[A-Za-z]/u.test(line) && !/[぀-ヿ一-鿿]/u.test(line) ? " " : "").trim();
+  });
+  return { dropped, text: kept.filter((line) => line.trim()).join("\n") };
+}
+
 export type { Language };

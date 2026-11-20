@@ -18,7 +18,7 @@ export function withoutForeignUrls(text: string, allowed: ReadonlySet<string>): 
   const kept: string[] = [];
   for (const piece of pieces) {
     // English sentences end with ". "; a URL's own dots are not followed by a space.
-    const sentences = /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)\s+/u) : [piece];
+    const sentences = /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)[ \t]+/u) : [piece];
     for (const sentence of sentences) if (!sentence.includes("\u0000FOREIGN\u0000")) kept.push(sentence);
   }
   return { dropped: foreign, text: kept.map((sentence, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(sentence) ? ` ${sentence}` : sentence)).join("").trim() };

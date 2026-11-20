@@ -104,9 +104,10 @@ function todoNothingWords(language: Language, quote: string, asked: Pick<AskedRe
 /** What exists outside the narrowing: how many, and of the open ones how many are past their day. */
 export function todoOthersLine(language: Language, count: number, status: "open" | "completed", late: number | null, person?: string): string {
   const lateWords = status === "open" && late ? late : 0;
-  if (language === "en") return `You do have ${count} ${STATUS_WORDS.en[status]} ${count === 1 ? "to-do" : "to-dos"}${person ? ` for ${person}` : ""}${lateWords ? `, ${lateWords} of them overdue` : ""}.`;
-  if (language === "ja") return `${person ? `${person}さんの` : ""}${STATUS_WORDS.ja[status]}タスクはほかに${count}件あります${lateWords ? `（うち${lateWords}件は期限切れ）` : ""}。`;
-  return `${person ? `${person}名下` : ""}另有 ${count} 项${STATUS_WORDS.zh[status]}待办${lateWords ? `，其中 ${lateWords} 项已过期` : ""}。`;
+  // Hotfix 1c (AE-RD-013): the count is of those past their deadline or their planned day, as the cards mark them — said so.
+  if (language === "en") return `You do have ${count} ${STATUS_WORDS.en[status]} ${count === 1 ? "to-do" : "to-dos"}${person ? ` for ${person}` : ""}${lateWords ? `, ${lateWords} of them past their deadline or planned day` : ""}.`;
+  if (language === "ja") return `${person ? `${person}さんの` : ""}${STATUS_WORDS.ja[status]}タスクはほかに${count}件あります${lateWords ? `（うち${lateWords}件は期限または予定日を過ぎています）` : ""}。`;
+  return `${person ? `${person}名下` : ""}另有 ${count} 项${STATUS_WORDS.zh[status]}待办${lateWords ? `，其中 ${lateWords} 项已过期或过了计划日` : ""}。`;
 }
 
 export function scheduleNothingLine(language: Language, quote: string, asked: Pick<AskedRead, "fromDay" | "toDay" | "text">): string {

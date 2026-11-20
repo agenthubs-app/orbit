@@ -71,8 +71,10 @@ test("AE-SCL-025: 「明天这场周会关联了哪些人和哪篇笔记？」 �
   assert.match(run.result.text, /许嘉宁、顾远/u);
   assert.doesNotMatch(run.result.text, /有 1 个日程/u, "not replaced by the code-written list");
   assert.ok(run.events.some((event) => event.type === "answer.list_kept_text"));
-  // One record: it opens from the basis line above the answer (AG19 board 4), not a card.
   assert.deepEqual(run.result.sourceRefs, ["schedule:personal:weekly"]);
+  // Hotfix 1c: the meeting the question is about is attached as a small card, with the moved occurrence's time.
+  const small = records(run.result.blocks).flatMap((block) => block.items);
+  assert.equal(small.find((card) => card.title === "选品周会")?.top, "11月16日（周一）15:00–16:00", JSON.stringify(run.result.blocks));
   // What the model was given is the moved occurrence: 15:00 to 16:00, not the series' 10:00.
   const answerCall = run.modelCalls.find((call) => call.node === "answer")!;
   assert.match(answerCall.user, /Starts: [^\n]*15:00/u);

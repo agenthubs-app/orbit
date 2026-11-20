@@ -71,6 +71,27 @@ test("en and ja: the App's follow-up question is the same ranking", async () => 
   }
 });
 
+test("1c (AE-ANS-010 on a081afe94): a basis that only names the kind of record and its time is no topic (zh, en, ja)", () => {
+  for (const words of ["接下来的活动", "最近的活动", "upcoming events", "今後のイベント", "我的待办", "this week's meetings", "次のイベント", "the next events"]) assert.equal(realTopicOf(words), "", words);
+});
+
+for (const [language, message, basis] of [
+  ["zh", "把接下来的活动按开始时间都列出来。", "接下来的活动"],
+  ["en", "List all my upcoming events by start time.", "upcoming events"],
+  ["ja", "今後のイベントを開始時間順に全部並べて。", "今後のイベント"],
+] as const) {
+  test(`1c (AE-ANS-010, ${language}): fn.rank with basis 「${basis}」 and orderBy startsAt — no judgment, every upcoming event, nearest first`, async () => {
+    const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", rank: { basis, direction: "asc", orderBy: "startsAt" }, requiredCapabilities: ["event.read", "fn.rank"], sourceQuote: message }], { language });
+    assert.equal(run.judgeCalls.length, 0, "no topic judgment");
+    assert.ok(run.events.some((event) => event.type === "functions.basis_not_a_topic"));
+    const ranked = run.events.filter((event) => event.type === "fn.rank").at(-1) as { listed?: string[] } | undefined;
+    // Nov 15: E103 (19th) first, then E101, E104 (21st).
+    assert.deepEqual(ranked?.listed?.slice(0, 3), ["event:event:e103", "event:event:e101", "event:event:e104"], JSON.stringify(ranked));
+    assert.ok((ranked?.listed?.length ?? 0) >= 5, "all of them, not the ones matching a topic");
+    assert.doesNotMatch(run.result.text, new RegExp(`「${basis}」|"${basis}"`, "u"), "the lead never says related to the basis");
+  });
+}
+
 test("a real topic is still a topic ranking (AG08): 「挑两个最适合聊独立出版的人」", async () => {
   const message = "挑两个最适合聊独立出版的人";
   const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "ranked_list", rank: { basis: "聊独立出版", count: 2 }, requiredCapabilities: ["contact.read", "fn.rank"], sourceQuote: message }], { world: world() });
