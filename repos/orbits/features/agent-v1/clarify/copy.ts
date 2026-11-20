@@ -27,6 +27,9 @@ const MISSING: Record<MissingItem, Record<ReplyLanguage, string>> = {
   reading: { en: "which of the ways you mean", ja: "どの意味か", zh: "要按哪一种做法来" },
 };
 
+/** What a part that only creates is missing: what to create, never which record to change. */
+const CONTENT: Record<ReplyLanguage, string> = { en: "what it is about — what to create and what it should say", ja: "具体的な内容（何を作り、何と書くか）", zh: "具体是什么内容（要新建什么、写什么）" };
+
 export const CLARIFY_WORDS = {
   /** Row 1: one sentence, with the directions as the choices. */
   notUnderstood(language: ReplyLanguage, quote: string | null, labels: readonly string[]): string {
@@ -72,15 +75,16 @@ export const CLARIFY_WORDS = {
     return `If you'd like, press ${list(language, choices, "or")}.`;
   },
   /** Asked once already and still unclear: what is missing; no second question. */
-  stillUnclear(language: ReplyLanguage, quote: string, missing: MissingItem, changes: boolean): string {
-    const what = MISSING[missing][language];
+  stillUnclear(language: ReplyLanguage, quote: string, missing: MissingItem, changes: boolean, createsOnly = false): string {
+    const what = missing === "object" && createsOnly ? CONTENT[language] : MISSING[missing][language];
     if (language === "zh") return `「${quote}」还缺一项：${what}。没有这一项，${changes ? "这次什么都没有改" : "这次先不做"}。`;
     if (language === "ja") return `「${quote}」は、まだ1つ足りません：${what}。それが分からないため、${changes ? "今回は何も変更していません" : "今回は保留にします"}。`;
     return `"${quote}" is still missing one thing: ${what}. Without it, ${changes ? "nothing was changed this time" : "I'm leaving it for now"}.`;
   },
-  /** Row 4 with no clue words to quote: ask only for the missing item. */
-  askWhich(language: ReplyLanguage, quote: string, missing: "object" | "person"): string {
-    const what = MISSING[missing][language];
+  /** Row 4 with no clue words to quote: ask only for the missing item. "content": a part that only creates is missing what
+   *  to create (release-2 gate 2, AE-ANS-036 「帮我为新目标制定计划。」 was asked 「要改的是哪一条」), never which record to change. */
+  askWhich(language: ReplyLanguage, quote: string, missing: "object" | "person" | "content"): string {
+    const what = missing === "content" ? CONTENT[language] : MISSING[missing][language];
     if (language === "zh") return `「${quote}」${what}？告诉我一下，我再接着做。`;
     if (language === "ja") return `「${quote}」は${what}を教えていただけますか？分かれば続けます。`;
     return `For "${quote}", could you tell me ${what}? Then I'll go on.`;

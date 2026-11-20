@@ -103,9 +103,18 @@ function clarifyLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, 
     const unresolved = part.refs.find((ref) => !ref.recordId && (!kinds.size || kinds.has(recordKindOf(ref.entity)))) ?? part.refs.find((ref) => !ref.recordId);
     const clue = clueWords(scope.input.message, unresolved);
     if (clue) return words.clarifyObject(quote, clue, labels);
-    return CLARIFY_WORDS.askWhich(language, quote, missingOf(part, "object") === "person" ? "person" : "object");
+    return CLARIFY_WORDS.askWhich(language, quote, missingOf(part, "object") === "person" ? "person" : createsOnly(part) ? "content" : "object");
   }
   return words.clarifyNone(quote);
+}
+
+/**
+ * Release-2 gate 2 (AE-ANS-036 「帮我为新目标制定计划。」, tagged todo.create + schedule.create, was asked 「要改的是哪一条」): a part
+ * whose writes are all creates is missing what to create, not which record to change.
+ */
+function createsOnly(part: GraphPart): boolean {
+  const writes = part.capabilities.filter((capability) => capabilityKind(capability) === "write");
+  return writes.length > 0 && writes.every((capability) => capability.endsWith(".create"));
 }
 
 /** What a question for this part asks for: a person when the unresolved clue is a contact. */
@@ -121,7 +130,7 @@ function stillUnclearLine(scope: NodeScope, part: GraphPart, language: ReplyLang
   const step = scope.run.steps.get(part.localId);
   // A reply to a question is missing what the question asked for, and changes what that part would have changed.
   const missing: MissingItem = item?.asks ?? missingOf(part, step?.kind === "still_unclear" ? step.missing : "intent");
-  return CLARIFY_WORDS.stillUnclear(language, quote, missing, item?.writes ?? writesIn(part));
+  return CLARIFY_WORDS.stillUnclear(language, quote, missing, item?.writes ?? writesIn(part), createsOnly(part));
 }
 
 function entriesLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, language: ReplyLanguage): string {
