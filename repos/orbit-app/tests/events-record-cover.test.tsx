@@ -84,6 +84,7 @@ test("event detail (ended, in the results): the record card opens 会場の記�
   const page = await harness.open(t, { screen: "detail", params: { id: eventId }, responses: { [`${path}/overview`]: endedOverview } });
   await page.getByTestId("events-detail-record").waitFor();
   await page.getByText("会场记录", { exact: true }).waitFor();
+  await page.getByText(`报名 ${endedOverview.attendeeCounts.all}人`, { exact: true }).waitFor();
   await page.getByTestId("events-detail-cover-image").waitFor();
   assert.equal(await page.getByTestId("events-detail-status").innerText(), "已结束");
   await page.getByTestId("events-detail-record-open").click();

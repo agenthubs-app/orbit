@@ -151,6 +151,7 @@ export const eventsJourney = {
   "eventsJourney.agendaItemsN": "{n}项",
   "eventsJourney.agendaAll": "查看全部",
   "eventsJourney.peopleN": "{n}人",
+  "eventsJourney.peopleAppliedN": "报名 {n}人",
   "eventsJourney.peopleFitKnown": "符合计划 {fit} · 认识的人 {known}",
   "eventsJourney.peopleFitTitle": "符合你计划的人",
   "eventsJourney.peopleSomeTitle": "参加的人",

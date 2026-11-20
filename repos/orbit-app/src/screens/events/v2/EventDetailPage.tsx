@@ -102,8 +102,15 @@ export function EventDetailPage() {
   // Old ?tab= links (会場の記録 / notifications) scroll to that section once the page has laid out.
   const jumpTo = params.tab === "people" || params.tab === "agenda" ? params.tab : null;
   const scroller = useRef<ScrollView>(null);
-  const sectionY = useRef<Partial<Record<"intro" | "agenda" | "people", number>>>({});
+  const sectionY = useRef<Partial<Record<"agenda" | "people", number>>>({});
   const jumped = useRef(false);
+  // Section y arrives from onLayout, which can come before or after the content size changes: try from both.
+  const tryJump = () => {
+    const y = jumpTo ? sectionY.current[jumpTo] : undefined;
+    if (y === undefined || jumped.current) return;
+    jumped.current = true;
+    requestAnimationFrame(() => scroller.current?.scrollTo({ y: Math.max(0, y - 8), animated: false }));
+  };
   const [descOpen, setDescOpen] = useState(false);
   const [descLong, setDescLong] = useState(false);
   const [agendaOpen, setAgendaOpen] = useState(false);
@@ -267,10 +274,7 @@ export function EventDetailPage() {
   return (
     <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="events-detail">
       <ShellBackground />
-      <ScrollView ref={scroller} contentContainerStyle={styles.pad} onContentSizeChange={() => {
-        const y = jumpTo ? sectionY.current[jumpTo] : undefined;
-        if (y !== undefined && !jumped.current) { jumped.current = true; scroller.current?.scrollTo({ y: Math.max(0, y - 8), animated: false }); }
-      }}>
+      <ScrollView ref={scroller} contentContainerStyle={styles.pad} onContentSizeChange={tryJump}>
         {header}
         {offlineAt ? <EventsOfflineNotice lastSyncedAt={offlineAt} /> : null}
         <View style={[styles.card, styles.coverCard]}>
@@ -302,7 +306,7 @@ export function EventDetailPage() {
           onPeople={() => router.push(`${base}/people${data.attendeeCounts.planFit > 0 ? "?filter=planFit" : ""}` as Href)} />
         {showHostContact(data) ? <HostContactCard contact={data.hostContact} t={t} status={data.registration.status} priceYen={data.priceYen} style={styles.gap} /> : null}
         {/* 2026-11-21 用户拍板：去掉 4 个 tab，一页读完 紹介 → アジェンダ → 参加者 → 主催（与 Web 同序）；参加者只放预览，全名单另开页。 */}
-        <View onLayout={(event) => { sectionY.current.intro = event.nativeEvent.layout.y; }}>
+        <View>
           <SectionHead title={t("tabIntro")} />
           <View style={styles.card} testID="events-detail-intro">
             <UiText style={[styles.sub, styles.desc, data.description?.trim() ? null : { color: colors.ink3 }]} numberOfLines={descOpen ? undefined : DESC_LINES}
@@ -311,7 +315,7 @@ export function EventDetailPage() {
           </View>
         </View>
         {data.agenda.length ? (
-          <View onLayout={(event) => { sectionY.current.agenda = event.nativeEvent.layout.y; }}>
+          <View onLayout={(event) => { sectionY.current.agenda = event.nativeEvent.layout.y; tryJump(); }}>
             <SectionHead title={t("tabAgenda")} right={t("agendaItemsN", { n: data.agenda.length })} />
             <View style={styles.card} testID="events-detail-agenda">
               {(agendaOpen ? data.agenda : data.agenda.slice(0, AGENDA_ITEMS)).map((item, index) => (
@@ -324,8 +328,8 @@ export function EventDetailPage() {
             </View>
           </View>
         ) : null}
-        <View onLayout={(event) => { sectionY.current.people = event.nativeEvent.layout.y; }}>
-          <SectionHead title={t("tabPeople")} right={data.rosterLocked || hosting ? undefined : t("peopleN", { n: data.attendeeCounts.all })} />
+        <View onLayout={(event) => { sectionY.current.people = event.nativeEvent.layout.y; tryJump(); }}>
+          <SectionHead title={t("tabPeople")} right={data.rosterLocked || hosting ? undefined : t(ended ? "peopleAppliedN" : "peopleN", { n: data.attendeeCounts.all })} />
           {hosting ? hostRoster : data.rosterLocked && data.attendeeCounts.all > 0 ? rosterGate : data.assessmentPeopleUnknown && data.speakerCandidates?.length ? (
             <View style={styles.card} testID="events-detail-meet">
               <View style={styles.cardH}><UiText style={styles.h3}>{t("meetTitle")}</UiText><UiText style={styles.lbl}>{t("meetFromSpeakers")}</UiText></View>

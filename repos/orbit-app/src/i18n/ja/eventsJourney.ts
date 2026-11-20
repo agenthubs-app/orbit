@@ -151,6 +151,7 @@ export const eventsJourney = {
   "eventsJourney.agendaItemsN": "{n}項目",
   "eventsJourney.agendaAll": "すべて見る",
   "eventsJourney.peopleN": "{n}名",
+  "eventsJourney.peopleAppliedN": "申込 {n}名",
   "eventsJourney.peopleFitKnown": "プランに合う {fit} · 知り合い {known}",
   "eventsJourney.peopleFitTitle": "あなたのプランに合う人",
   "eventsJourney.peopleSomeTitle": "参加する人",

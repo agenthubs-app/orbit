@@ -151,6 +151,7 @@ export const eventsJourney = {
   "eventsJourney.agendaItemsN": "{n} items",
   "eventsJourney.agendaAll": "See all",
   "eventsJourney.peopleN": "{n}",
+  "eventsJourney.peopleAppliedN": "{n} registered",
   "eventsJourney.peopleFitKnown": "Fit your plan {fit} · Known {known}",
   "eventsJourney.peopleFitTitle": "People who fit your plan",
   "eventsJourney.peopleSomeTitle": "Attending",
