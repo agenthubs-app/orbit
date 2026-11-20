@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>活动详情结构 App</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<script src="kit/data.js"></script>
+<style>
+  .doc { min-width: 1520px; }
+  .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .chip svg.i { width: 12px; height: 12px; }
+  .seg.full { display: flex; } .seg.full button { flex: 1; }
+  .endchip { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: var(--surface-3); color: var(--ink-2); vertical-align: 1px; margin-right: 4px; }
+  .li.tap::after { content: ""; width: 7px; height: 7px; border-right: 1.6px solid var(--ink-4); border-top: 1.6px solid var(--ink-4); transform: rotate(45deg); margin-left: 4px; flex: none; }
+  .sec-h { display: flex; align-items: baseline; justify-content: space-between; margin: 22px 2px 8px; }
+  .sec-h h3 { font-size: 17px; font-weight: 800; margin: 0; }
+  .fold { position: relative; max-height: calc(1.75em * 6); overflow: hidden; }
+  .fold::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2.2em; background: linear-gradient(transparent, var(--surface)); }
+  .more-link { display: flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
+  .more-link svg.i { width: 14px; height: 14px; }
+  .tl { display: grid; grid-template-columns: 48px 12px 1fr; gap: 8px; font-size: 13px; }
+  .tl + .tl { margin-top: 10px; }
+  .tl .tat { font-family: var(--font-num); font-weight: 700; color: var(--ink-2); }
+  .tl .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--surface-3); margin-top: 5px; position: relative; }
+  .tl .dot.on { background: var(--plum-500); }
+  .tl b { font-weight: 700; display: block; }
+  .ppl-top { display: flex; align-items: center; gap: 12px; }
+  .ppl-top .num { font-family: var(--font-num); font-weight: 800; font-size: 26px; line-height: 1; }
+  .gate { text-align: center; padding: 18px 8px 6px; }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .bad { color: var(--coral); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <div>
+      <div class="doc-kicker">Orbit Redesign · 2026-11-21 · App 提案（iPhone 390×844）· 待用户确认</div>
+      <h1>活动详情：紹介 / アジェンダ / 主催 / 参加者 的信息结构</h1>
+      <p>用户反馈：这四块用 tab 分开，但内容其实是一条顺序的信息，tab 和顺序排列并存不合理。App 现状（板 ⓪）是真切换的 tab：「主催」tab 里只有一行，「アジェンダ」只有几行，看完一场活动要点三次；「紹介」tab 里还混着参加者的预览。提案改成一页从上往下读完，参加者全名单另开一页。示例与 b2 同一场「CFO Night Tokyo vol.18」，人物/公司均为虚构。Web 稿由 Web 会话出，区块顺序与命名两端一致。</p>
+    </div>
+    <div class="doc-tools">
+      <div class="seg" data-ctl="theme"><button data-v="light">ライト</button><button data-v="dark">ダーク</button></div>
+      <div class="seg" data-ctl="pins"><button data-v="on" class="on">标注 ON</button><button data-v="off">OFF</button></div>
+    </div>
+  </div>
+  <div class="decide">
+    <div class="box">
+      <h3>需要你拍板的点</h3>
+      <div class="q"><b>S1　去掉 4 个 tab，详情页改成一页从上往下读吗？</b><br>
+        <span class="opt-a">推荐 A：去掉 tab，四块按顺序排在同一页</span>（板 ①②）。对标 Luma / Meetup / connpass / Peatix：活动详情都是单列长页，没有 tab。<br>
+        B：保留 tab，但只在内容真的很长时用（实际上四块都不长，等于不用）。<br>
+        C：单列 + 顶部锚点 chip（点了滚到对应块）。页面不长，锚点多出一排控件，不推荐。</div>
+      <div class="q"><b>S2　四块的顺序？</b><br>
+        <span class="opt-a">推荐 A：紹介 → 参加者 → アジェンダ → 主催</span>。Orbit 看活动的核心是「会遇到谁」，参加者放第二；主办方名字已经在封面卡标题上方，底部只放一行卡。<br>
+        B：紹介 → アジェンダ → 参加者 → 主催（connpass / Peatix 的顺序，参加者靠后）。</div>
+      <div class="q"><b>S3　参加者在详情页放多少？</b><br>
+        <span class="opt-a">推荐 A：只放预览</span> —— 人数 + 头像 + 「プランに合う / 知り合い」人数 + 最多 3 位和你计划相关的人，下面「全員を見る」进全名单页（板 ③），筛选和搜索放在全名单页。对标 Luma「N Going」+ 全部一览、Meetup Attendees「See all」。<br>
+        B：详情页直接放全名单（128 人时页面会非常长，主办方和 アジェンダ 被压到最底）。</div>
+    </div>
+    <div class="box">
+      <h3>已按推荐定的（不用拍板）</h3>
+      <ol>
+        <li><b>紹介超过 6 行折叠</b>，渐隐 + 「続きを読む」原地展开（不跳页）。对标 Luma / Meetup 的 Read more。</li>
+        <li><b>アジェンダ 超过 5 项折叠</b>，「すべて見る（7）」原地展开；当天进行中的那一项圆点高亮（数据已有时间）。没有议程时整块不出（不放「未登録」空卡）。</li>
+        <li><b>主催 = 一行卡</b>：主办方名 + 举办次数，有主办方页才有箭头可点；没有公开名字时这块不出（封面卡上已经不显示）。</li>
+        <li><b>名单锁着（报名确定前）</b>：参加者块里显示人数和「参加登録すると見られます」，按钮去报名（板 ④）；主办方看到的是「運営ページで見る」。规则不变，只是从 tab 挪进同一页。</li>
+        <li><b>已结束</b>：会場の記録 卡仍在封面卡下面（板 ⑤），参加者块的人行照旧能点开参加者シート。</li>
+        <li><b>原「紹介」tab 里的「会いたい人」卡</b>并进参加者块的预览，不再单独一张卡；「知り合いも参加」那张卡也并进来（同一类信息不出两次）。</li>
+        <li><b>全名单页</b>：路由 /events/[id]/people，段控件 プランに合う / 知り合い / 全員 + 搜索；行和现在一样，点人打开参加者シート；读取按页取（只取当前段的前 30 人，往下滚再取）。</li>
+      </ol>
+    </div>
+  </div>
+  <nav class="doc-nav" id="docnav"></nav>
+  <div id="out"></div>
+</div>
+<script>
+const EV = { n: 'CFO Night Tokyo vol.18', host: 'CFO Night 実行委員会' };
+const P = [
+  { n: '清水 玲奈', i: '清', c: 'c1', co: 'Sorae Capital', role: 'プリンシパル', note: 'シリーズA・B2B SaaS に注力' },
+  { n: '森 拓也', i: '森', c: 'c3', co: 'ブルーム証券', role: '投資銀行部 VP', note: 'IPO 準備企業の資本政策を担当' },
+  { n: '井上 早紀', i: '井', c: 'c4', co: 'ノードワークス', role: 'CFO', note: '昨年シリーズAを調達' },
+  { n: '木村 大和', i: '木', c: 'c2', co: '東邦銀行', role: 'スタートアップ支援部', note: 'ベンチャーデットの窓口' },
+  { n: '林 美穂', i: '林', c: 'c3', co: 'クオリス', role: '経営企画部長', note: 'CVC 立ち上げを準備中' },
+  { n: '松本 亮', i: '松', c: 'c5', co: 'ミライ会計事務所', role: '公認会計士', note: '監査法人選びに詳しい' },
+];
+const AG = [['19:00', '受付・開場', 'ウェルカムドリンク'], ['19:30', 'キーノート', '「シリーズA前後の資本政策」伊藤 直子'], ['20:00', 'テーブルトーク R1', 'テーマ別 6名卓'], ['20:10', 'テーブルトーク R2', '席替えあり'], ['20:40', 'テーブルトーク R3', '席替えあり'], ['21:10', 'フリー交流', ''], ['21:30', '終了', '']];
+const DESC = '上場を目指すスタートアップの CFO・経営陣と、投資家・金融機関が本音で話す夜。キーノートのあと、テーマ別のテーブルトークを 3ラウンド。席とテーマは申込内容から主催者が決めます。<br><br>こんな方に：シリーズA〜C の CFO・管理部長、IPO 準備中の経営陣、スタートアップ投資・融資の担当者。<br><br>当日の流れ：19:00 受付、19:30 キーノート、20:00 からテーブルトーク。名刺は 30枚ほどお持ちください。';
+const back = `<button class="rbtn">${ic('left')}</button>`, shareB = `<button class="rbtn">${ic('share')}</button>`;
+const avs = (list, n = 5) => `<div class="avs">${list.slice(0, n).map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div>`;
+const hero = (status, ended) => `<div class="card rise" style="padding:0;overflow:hidden"><div class="cover"><span class="emo" style="background:var(--surface);font-size:24px">🥂</span></div>
+  <div style="padding:14px 16px 16px"><div class="lbl">${EV.host}</div><b style="font-size:19px;display:block;line-height:1.35;margin-top:2px">${EV.n}</b>
+  <div class="row" style="gap:6px;margin-top:8px"><span class="chip ${ended ? '' : 'apricot'}">${status}</span></div>
+  <div class="facts">${[['calendar', ended ? '10/7（水）19:00–21:30' : '11/28（土）19:00–21:30'], ['pin', '渋谷ストリーム 4F ホール'], ['ticket', '¥5,000 · 定員 150名 · 審査あり']].map(([i, t]) => `<div>${ic(i)}${t}</div>`).join('')}</div></div></div>`;
+const relCard = `<div class="card"><div class="card-h"><h3>あなたに関係すること</h3></div><div class="list">${[['🎯', 'lav', '会いたい人 · VC パートナー 3名'], ['👥', 'teal', '知り合い 2名が参加予定']].map(([e, c, t]) => `<div class="li"><span class="emo sm ${c}">${e}</span><div class="meta"><b style="font-size:13px">${t}</b></div></div>`).join('')}</div></div>`;
+const recCard = `<div class="card" style="background:linear-gradient(150deg,var(--mac-lav),var(--surface) 65%)"><div class="card-h"><h3>会場の記録</h3><span class="lbl">閲覧のみ</span></div>
+  <div class="mini3" style="margin-top:2px"><div><span class="lbl">同じテーブル</span><b>14<small class="lbl">人</small></b></div><div><span class="lbl">おすすめ</span><b>6<small class="lbl">人</small></b></div><div><span class="lbl">交換</span><b>3<small class="lbl">人</small></b></div></div>
+  <button class="btn primary block" style="margin-top:14px;height:40px">記録を見る</button></div>`;
+const secH = (t, right = '') => `<div class="sec-h"><h3>${t}</h3>${right ? `<span class="lbl">${right}</span>` : ''}</div>`;
+const intro = (open) => secH('紹介') + `<div class="card p-intro"><div class="sub ${open ? '' : 'fold'}" style="line-height:1.75">${DESC}</div>${open ? '' : `<div class="more-link">続きを読む${ic('down')}</div>`}</div>`;
+const people = (tap) => secH('参加者', '128名') + `<div class="card p-ppl">
+  <div class="ppl-top">${avs(P)}<div style="flex:1"><div class="lbl">プランに合う <b style="color:var(--ink)">18</b> · 知り合い <b style="color:var(--ink)">3</b></div></div></div>
+  <div class="lbl" style="margin:14px 0 2px">あなたのプランに合う人</div>
+  <div class="list">${P.slice(0, 3).map(p => `<div class="li ${tap ? 'tap' : ''}"><div class="av ${p.c}">${p.i}</div><div class="meta"><b>${p.n} · ${p.co}</b><span>${p.note}</span></div></div>`).join('')}</div>
+  <div class="row" style="gap:8px;margin-top:8px;align-items:center"><span class="lbl" style="flex:1">知り合い：井上さん · 森さん · 木村さん</span></div>
+  <button class="btn block p-all" style="margin-top:12px;height:40px">全員を見る（128名）</button></div>`;
+const peopleGate = secH('参加者', '128名 · 知り合い 3名') + `<div class="card p-gate"><div class="gate"><div style="font-size:34px">👥</div>
+  <b style="display:block;font-size:15px;margin-top:6px">参加登録すると、誰が来るか見られます</b><div class="lbl" style="margin-top:4px">あなたのプロフィールも参加者に公開されます</div>
+  <button class="btn primary" style="margin-top:12px;height:36px;padding:0 18px">参加登録</button></div></div>`;
+const agenda = (open) => secH('アジェンダ', `${AG.length}項目`) + `<div class="card p-ag">${(open ? AG : AG.slice(0, 5)).map(([at, t, d], k) => `<div class="tl"><span class="tat">${at}</span><span class="dot ${k === 0 && !open ? '' : ''}"></span><div><b>${t}</b>${d ? `<span class="lbl">${d}</span>` : ''}</div></div>`).join('')}
+  ${open ? '' : `<div class="more-link">すべて見る（${AG.length}）${ic('down')}</div>`}</div>`;
+const host = secH('主催') + `<div class="card p-host"><div class="row" style="gap:12px"><span class="emo" style="background:var(--mac-lav)">🥂</span><div style="flex:1"><b style="font-size:14px">${EV.host}</b><div class="lbl">これまで 17回開催</div></div><span style="color:var(--ink-3)">${ic('right')}</span></div></div>`;
+const cta = (label, star) => `<div class="ctabar">${star ? `<button class="lbtn">${ic('star')}</button>` : ''}<button class="btn primary" style="flex:1;height:46px">${label}</button></div>`;
+const utabs = (k) => `<div class="utabs">${['紹介', 'アジェンダ', '主催', '参加者<small>128</small>'].map((t, i) => `<button class="${i === k ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+
+function nowIntro() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + utabs(0) + `<div class="card"><div class="sub" style="line-height:1.75">${DESC}</div></div>
+  <div class="card" style="margin-top:12px"><div class="card-h"><h3>会いたい人</h3><span class="lbl">参加者 128名から</span></div><div class="list">${P.slice(0, 3).map(p => `<div class="li"><div class="av ${p.c}">${p.i}</div><div class="meta"><b>${p.n} · ${p.co}</b><span>${p.note}</span></div></div>`).join('')}</div></div>` + cta('AI と参加登録', true); }
+function nowHost() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + utabs(2) + `<div class="card"><div class="row" style="gap:12px"><span class="emo" style="background:var(--mac-lav)">🥂</span><div style="flex:1"><b style="font-size:14px">${EV.host}</b><div class="lbl">これまで 17回開催</div></div></div></div>` + cta('AI と参加登録', true); }
+function newTop() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + intro(false) + people(false) + cta('AI と参加登録', true); }
+function newTopGate() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + intro(false) + peopleGate + cta('AI と参加登録', true); }
+function newBottom() { return `<div style="margin-top:-8px"></div>` + people(true).replace('<div class="sec-h">', '<div class="sec-h" style="margin-top:6px">') + agenda(false) + host + cta('会う準備', false); }
+function endedPage() { return topbar('', '', back, shareB) + hero('終了', true) + recCard + intro(false) + people(true) + cta('ふりかえり', false); }
+function rosterPage() {
+  return topbar('参加者 128名', EV.n, back, '<span></span>') + `<div class="seg full p-seg"><button class="on">プランに合う 18</button><button>知り合い 3</button><button>全員 128</button></div>
+  <div class="search" style="margin-top:10px">${ic('search', 'sm')}名前・会社</div>
+  <div class="card p-roster" style="margin-top:12px;padding:6px 16px"><div class="list">${[...P, ...P.slice(0, 2)].map(p => `<div class="li tap"><div class="av ${p.c}">${p.i}</div><div class="meta"><b>${p.n}</b><span>${p.co} · ${p.role}</span></div></div>`).join('')}</div></div>`;
+}
+
+const notesHTML = (notes) => notes && notes.length ? `<ul class="note-list">${notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : '';
+const boards = (items) => `<div class="boards">${items.map(([label, tag, html, notes]) => `<div class="board"><div class="board-label">${label}${tag ? `<span class="tag">${tag}</span>` : ''}</div>${html}${notesHTML(notes)}</div>`).join('')}</div>`;
+const sec = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+
+let h = '';
+h += sec('⓪ 现状', '下划线 tab 真切换；「主催」「アジェンダ」很短，「紹介」里混着参加者预览');
+h += boards([
+  ['⓪a 現状 · 紹介 tab', '现状', phone({ body: nowIntro(), tab: -1 }), ['「紹介」tab 里除了介绍，还有「会いたい人」——其实是参加者的内容', '看アジェンダ / 主催 / 参加者 要再点三次 tab']],
+  ['⓪b 現状 · 主催 tab', '现状', phone({ body: nowHost(), tab: -1 }), ['一个 tab 里只有一行卡，tab 下面大片空白']],
+]);
+h += sec('提案 · 一页从上往下读（S1 推荐 A，S2 推荐顺序）', '封面 → 关联 → 紹介 → 参加者 → アジェンダ → 主催；全名单另开一页');
+h += boards([
+  ['① 詳細 · 上半', '提案', phone({ body: newTop(), tab: -1, pins: pin(1, '.p-intro') + pin(2, '.p-ppl') + pin(3, '.p-all') }), ['紹介：超过 6 行渐隐折叠，「続きを読む」原地展开', '参加者：人数 + 头像 + プランに合う / 知り合い 人数 + 最多 3 位和计划相关的人（原「会いたい人」卡并进来）；已报名时每行能点开参加者シート', '「全員を見る」进 ③ 全名单页']],
+  ['② 詳細 · 往下滚', '提案', phone({ body: newBottom(), tab: -1, pins: pin(1, '.p-ag') + pin(2, '.p-host') }), ['アジェンダ：时间线，超过 5 项折叠「すべて見る」；没有议程时整块不出', '主催：一行卡，有主办方页才有箭头；底部主按钮照旧（报名前「AI と参加登録」、报名后「会う準備」）']],
+  ['③ 参加者 · 全名单页', '新页', phone({ body: rosterPage(), tab: -1, pins: pin(1, '.p-seg') + pin(2, '.p-roster') }), ['段控件 プランに合う / 知り合い / 全員（从详情页挪过来）+ 搜索', '按页读取：当前段前 30 人，滚到底再取；点人打开参加者シート']],
+  ['④ 詳細 · 名单锁着（报名前）', '状态', phone({ body: newTopGate(), tab: -1, pins: pin(1, '.p-gate') }), ['规则不变（roster-policy A）：只给人数和知り合い人数，按钮去报名；主办方看到「運営ページで見る」']],
+  ['⑤ 詳細 · 已结束', '状态', phone({ body: endedPage(), tab: -1 }), ['会場の記録 卡在封面卡下面（已上线的样子）；下面同样是 紹介 → 参加者 → アジェンダ → 主催']],
+]);
+h += sec('ダーク', '');
+h += boards([
+  ['① 詳細 · 上半（ダーク）', '', phone({ body: newTop(), tab: -1, theme: 'dark' })],
+  ['③ 全名单页（ダーク）', '', phone({ body: rosterPage(), tab: -1, theme: 'dark' })],
+]);
+document.getElementById('out').innerHTML = h;
+document.addEventListener('click', e => {
+  const tb = e.target.closest('.utabs button, .seg:not([data-ctl]) button');
+  if (tb) tb.parentElement.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === tb));
+});
+docNav('event-detail-structure-app-proposal'); orbitChrome();
+</script>
+</body>
+</html>
