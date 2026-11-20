@@ -30,13 +30,13 @@ import { localDay } from "../../views/recent-interaction";
 import type { CanonicalEventRecord } from "../../../events/core/contract";
 import type { NoteInteractionContract } from "../../../../shared/contract/notes";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
-import { asksWhoToFollowUp, isWholeQuote, realTopicOf } from "../../functions/basis";
+import { asksForRecommendation, asksWhoToFollowUp, isWholeQuote, liftedIn, realTopicOf } from "../../functions/basis";
 import { asksWhatToPrepare, preparePart } from "./prepare";
 import { asksForNextStep, asksForReasons, asksWhichAreWorthIt, eventReason, fitLine, nextStepWords, themeLinks, themesOf } from "./reasons";
-import { onlyWindowWords } from "../../understand/read-window";
+import { onlyWindowWords, withoutWindowWords } from "../../understand/read-window";
 import { asksEventsToGoTo, meetsTime, pointsAtPast, writesADate, upcomingTopicOf, directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, naturalField, PICK_WORDS, sentenceTopicOf, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
 import { MEMORY_WORDS } from "../../domains/memory/copy";
-import { ensureTurnMemory, rankMemoryOf, timePreferenceOfEntry, topicOfEntry } from "../../domains/memory/turn";
+import { ensureTurnMemory, overruledByTurn, rankMemoryOf, timePreferenceOfEntry, topicOfEntry } from "../../domains/memory/turn";
 import { memoryChipsOf } from "../../domains/memory/chips";
 import type { RecalledMemory } from "../../../agent/memory/recall";
 import { compare, dimensionsIn, type ComparedEvent } from "../../functions/compare";
@@ -816,10 +816,14 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const quote = message.slice(part.quote[0], part.quote[1]);
   const reply = task.kind === "rank_reply";
   // A reply to the basis question: the ranking asked about (its domain, dates, count), with this reply as the basis.
-  const plan: RankPlanState = reply ? (task.item.rank as RankPlanState) : { domain: task.domain, ...(part.plan.rank?.count ? { count: part.plan.rank.count } : {}), ...(part.plan.readFilter?.from ? { from: part.plan.readFilter.from } : {}), ...(part.plan.readFilter?.to ? { to: part.plan.readFilter.to } : {}) };
+  // AG21a (decision 1): a number that is only part of the time window ("the next two weeks", "这两周") is no count — it never
+  // cuts the list, whether code or the first layer read it as one.
+  const windowCountOnly = !reply && countSaidIn(quote) !== null && countSaidIn(withoutWindowWords(quote)) === null;
+  if (windowCountOnly && part.plan.rank?.count) emitTrace({ count: part.plan.rank.count, partId: part.localId, type: "functions.window_number_not_a_count" });
+  const plan: RankPlanState = reply ? (task.item.rank as RankPlanState) : { domain: task.domain, ...(part.plan.rank?.count && !windowCountOnly ? { count: part.plan.rank.count } : {}), ...(part.plan.readFilter?.from ? { from: part.plan.readFilter.from } : {}), ...(part.plan.readFilter?.to ? { to: part.plan.readFilter.to } : {}) };
   const domain = plan.domain;
   const original = reply ? task.item.quote ?? "" : quote;
-  const rank = reply ? {} : part.plan.rank ?? {};
+  const rank = reply ? {} : windowCountOnly ? { ...part.plan.rank, count: undefined } : part.plan.rank ?? {};
   const basisSpan = rank.basis;
   const withinWords = rank.within ? message.slice(rank.within[0], rank.within[1]) : null;
   // A click on a way of ordering (the question's option) or a reply naming one.
@@ -838,7 +842,12 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const direction: "asc" | "desc" = field ? (rank.direction && groundedField(rank.orderBy, words) ? rank.direction : directionSaidIn(words, field === "lastInteraction" ? "asc" : "asc")) : "asc";
   const time: TimePreference[] = [];
   const timeClause = timeClauseOf(words) ?? (chosen === "weekend" ? (language === "en" ? "weekends" : language === "ja" ? "週末" : "周末") : null);
-  const turnTime = timeClause ? timePreferenceIn(timeClause, "turn") : null;
+  const saidTime = timeClause ? timePreferenceIn(timeClause, "turn") : null;
+  // AG21a (R32c): 「这次晚上的也算上」 lifts a saved rule for this turn; the time it names is no preference of its own.
+  const lifted = reply ? null : liftedIn(original);
+  const liftTime = lifted ? timePreferenceIn(lifted.words, "turn") : null;
+  const turnTime = saidTime && liftTime && saidTime.days === liftTime.days && saidTime.part === liftTime.part ? null : saidTime;
+  if (lifted) emitTrace({ partId: part.localId, time: liftTime ? { days: liftTime.days ?? null, part: liftTime.part ?? null } : null, type: "functions.saved_rule_lifted", words: lifted.words });
   if (turnTime && domain === "event") time.push(turnTime);
   // The topic: a memo attached with @ gives its words; otherwise the basis words, when something is left of them.
   // A to-do ranking's "正式跟进" is a hard condition (formal follow-ups), not a topic.
@@ -883,9 +892,15 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   // Hotfix 2026-11-20 part 2, rule 3 (「哪些人值得先跟进？」 ranked by the topic 「值得先跟进」): the whole question, or words that are
   // only question, kind, time or preparing words, are never the topic. With no real topic in the words it is no topic ranking.
   // Hotfix 1c (AE-ENT-005): words of only a date, a time of day and a kind of record are a window, never a topic.
-  if (basis && !basisMemo && (isWholeQuote(basis, original) || !realTopicOf(basis) || onlyWindowWords(basis))) {
+  // AG21a (R32a/b/c, decision 1): the words of the read window (「这两周」「这几天」) are taken out where they stand; vague fit
+  // words (「适合我」「可以去」) and a lifted rule's clause are no topic either (realTopicOf). What is left is the topic, or none.
+  const topicText = (words: string) => realTopicOf(withoutWindowWords(lifted ? words.replace(lifted.clause, " ") : words));
+  if (basis && !basisMemo && (isWholeQuote(basis, original) || !realTopicOf(basis) || onlyWindowWords(basis) || !topicText(basis))) {
     emitTrace({ partId: part.localId, type: "functions.basis_not_a_topic", whole: isWholeQuote(basis, original) });
-    basis = !onlyWindowWords(basis) && isWholeQuote(basis, original) && realTopicOf(basis) ? realTopicOf(basis) : null;
+    basis = !onlyWindowWords(basis) && isWholeQuote(basis, original) && topicText(basis) ? topicText(basis) : null;
+  } else if (basis && !basisMemo && topicText(basis) !== realTopicOf(basis)) {
+    emitTrace({ from: basis, partId: part.localId, type: "functions.basis_window_words_out" });
+    basis = topicText(basis);
   }
   const topicWords = basisMemo ? basis : topicWordsOf(basis ?? (reply ? replyWords : original));
   // Hotfix part 2: asking who to follow up with is the follow-up ranking; what is left of the basis is held to rule 3.
@@ -900,8 +915,8 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   // message — and AG14's says a sentence that only asks names none and that a topic read from the sentence itself (no
   // basis words from the first layer) is a weak one: saved entries for this task come before it (below).
   let topicIsSentence = false;
-  const sentenceTopic = realTopicOf(original);
-  if (!topic && !field && !reply && domain !== "todo" && sentenceTopic && sentenceTopicOf(original) && !followUpAsk) {
+  const sentenceTopic = topicText(original);
+  if (!topic && !field && !reply && domain !== "todo" && sentenceTopic && sentenceTopicOf(withoutWindowWords(original)) && !followUpAsk) {
     topic = sentenceTopic;
     topicIsSentence = true;
   }
@@ -927,11 +942,33 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   // order, a filter or a topic in the sentence (「过期最久的排前面」, 正式跟进, an @ note, a clicked ordering, who to follow up)
   // is the standard and nothing saved is added to it. A count or a period alone says how many and when, not by what
   // (AE-SCL-027/028, AE-FN-002, AE-MEM-*: 「挑三场」 with saved entries ranks by them).
-  const recommendsOrPicks = run.memory.reranks.includes(part.localId) || PICK_WORDS.test(original) || /(适合我|合适我|适合自己|对我来说|私に合う|自分に合う|\bfor me\b|\bsuits? me\b)/iu.test(original);
+  // AG21a (coordinator's decision 1): 可以去 / 值得去 / 适合我 / worth going / 行ける / おすすめ are a recommendation, from the
+  // user's words (asksForRecommendation), however the first layer tagged the question.
+  const recommendsOrPicks = run.memory.reranks.includes(part.localId) || PICK_WORDS.test(original) || asksForRecommendation(original) || Boolean(lifted);
   const ownStandard = Boolean(field || basisMemo || chosen || followUpAsk || (topic && !topicIsSentence) || (domain === "todo" && (FORMAL_FOLLOW_UP.test(words) || /(过期|逾期|期限切れ|期限を過ぎ|overdue)/iu.test(words))));
   const memoryApplies = recommendsOrPicks && !ownStandard;
   if (!memoryApplies) emitTrace({ ownStandard, partId: part.localId, recommendsOrPicks, type: "functions.memory_not_a_basis" });
   const saved = memoryApplies ? rankMemoryOf(await ensureTurnMemory(scope, now, timeZone), domain, { now, partId: part.localId, timeZone, turnHasTopic: Boolean(topic) && !topicIsSentence, turnTime: domain === "event" ? turnTime : null }) : { overruled: [], time: [], topic: null, used: [] };
+  // AG21a (R32c): a lift takes away only the saved rule it names, this turn (shown as 「只这一次」); every other saved entry
+  // still applies. A time rule is the one whose excluded time is the lifted time; otherwise a rule that leaves out what the
+  // lifted words name.
+  if (lifted && memoryApplies) {
+    const liftedTopic = liftTime ? "" : realTopicOf(lifted.words.replace(/的$/u, ""));
+    const lifts = (entry: RecalledMemory) => {
+      const preference = timePreferenceOfEntry(entry);
+      if (liftTime) return Boolean(preference?.exclude) && overruledByTurn({ ...preference!, hard: true }, liftTime);
+      return Boolean(liftedTopic) && !preference && /(不要|别|除了|排除|避开|以外|は除いて|\bnot\b|\bno\b|\bavoid\b|\bexcept\b|\bwithout\b)/iu.test(entry.content) && liftedTopic.split(" ").some((word) => entry.content.includes(word));
+    };
+    const gone = saved.used.filter(lifts);
+    if (gone.length) {
+      saved.overruled.push(...gone);
+      saved.used = saved.used.filter((entry) => !gone.includes(entry));
+      saved.time = saved.time.filter((item) => !gone.includes(item.entry));
+      const topics = saved.used.filter((entry) => !timePreferenceOfEntry(entry)).map((entry) => topicOfEntry(entry)).filter((item): item is string => Boolean(item));
+      saved.topic = topics.length ? topics.join("、") : null;
+      emitTrace({ lifted: gone.map((entry) => entry.memoryId), partId: part.localId, type: "functions.saved_rule_lifted_this_turn" });
+    }
+  }
   for (const item of saved.time) time.push(item.preference);
   let topicFromMemory = false;
   if (saved.topic && (!topic || topicIsSentence) && !basisMemo) {
@@ -946,7 +983,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   // Hotfix 1c (run-04: 「推荐值得参加的活动并说明原因」, 「最近おすすめのイベントは？」 asked what to pick by once rule 3 took the
   // fake topic away): a recommendation of events with no real topic, no field and no count is the list of what is coming up,
   // nearest first (AG19-6, decision 3) — never a question back.
-  const recommendsEvents = domain === "event" && !reply && !topic && !field && !rank.count && countSaidIn(original) === null && asksEventsToGoTo(original) && !pointsAtPast(original);
+  const recommendsEvents = domain === "event" && !reply && !topic && !field && !rank.count && countSaidIn(withoutWindowWords(original)) === null && asksEventsToGoTo(original) && !pointsAtPast(original);
   const listing = (!PICK_WORDS.test(original) && (part.plan.deliverable === "list" || /(列出|列一下|列个|\blist\b|一覧|並べて)/iu.test(original))) || (!reply && !PICK_WORDS.test(original) && listsUpcomingEvents(part, message)) || recommendsEvents;
   const history = !topic && !field && !time.length && domain === "contact" && (followUpAsk || chosen === "overdue");
   const todoNatural = domain === "todo";
@@ -979,7 +1016,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   // ("最近" is not "latest first" here, so it is taken out before the direction is read).
   const eventDirection = directionSaidIn(words.replace(/最近|近期|近来|recent(?:ly)?/giu, " "), "asc");
   const orderDirection = domain === "event" && !pointsAtPast(words) && (orderField ?? "startsAt") === "startsAt" ? eventDirection : field ? direction : order?.direction ?? "asc";
-  const count = plan.count ?? rank.count ?? countSaidIn(original) ?? (orderField && !topic && !time.length ? FIELD_LIST_LIMIT : 3);
+  const count = plan.count ?? rank.count ?? countSaidIn(withoutWindowWords(original)) ?? (orderField && !topic && !time.length ? FIELD_LIST_LIMIT : 3);
 
   // 3. Candidates and hard conditions (code), read under the account's scope.
   const freeWords = (withinWords ?? "") + " " + outside(quote, basisSpan ? [Math.max(0, basisSpan[0] - part.quote[0]), Math.max(0, basisSpan[1] - part.quote[0])] : undefined);
