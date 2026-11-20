@@ -564,6 +564,8 @@ function periodWords(period: { from?: string; to?: string } | null, language: La
 interface Written {
   text: string;
   cites: string[];
+  /** The count line under a ranking's lead (rankCountLine), when there is a lead. */
+  countLine?: string | null;
   /** AG19: the same answer as blocks — the lines before the list, one card per listed record in the list's order, the lines after. */
   blocks: AnswerBlock[];
 }
@@ -581,13 +583,38 @@ export function fieldListLead(language: Language, input: { field: RankField | nu
   return `${input.upcoming ? `还没开始的${noun}共${total}${unit}` : `共${total}${unit}`}，按${fieldWords(field, direction, language)}${listed < total ? `，先看${listed}${unit}` : ""}：`;
 }
 
+/**
+ * Release-2 gate 2 (AE-ANS-002, AE-MEM-001/003/006/009/011; the hotfix's code-owned count rule): the count line under a
+ * ranking's lead says how many meet everything the lead names — the hard conditions and what only ranks (a saved or said
+ * preferred time, a topic that was matched) — never the number that passed the hard conditions alone. When fewer meet it
+ * than are listed, it says so; with the events in scope it names how many there were; when not all were looked at, how many.
+ */
+export function rankCountLine(language: Language, input: { listed: number; matching: number; meeting: number; inScope: number | null; period: boolean; upcoming: boolean; noun: string; unit: { en: string; ja: string; zh: string }; judged: number; truncated: number; semantic: boolean }): string {
+  const { listed, matching, meeting, noun } = input;
+  const unit = input.unit[language];
+  const scope = input.inScope !== null && input.inScope > meeting && (input.period || input.upcoming)
+    ? input.period
+      ? { en: `There are ${input.inScope} in this period; `, ja: `この期間のものは全部で${input.inScope}${unit}、`, zh: `这段时间一共${input.inScope}${unit}，` }[language]
+      : { en: `${input.inScope} ${noun} have not started yet; `, ja: `これから開催される${noun}は全部で${input.inScope}${unit}、`, zh: `还没开始的${noun}共${input.inScope}${unit}，` }[language]
+    : "";
+  let line: string;
+  if (meeting >= matching) line = say.coverageLine(language, listed, matching, input.unit);
+  else if (meeting === 0) line = { en: `None fully matches these criteria; these are the ${listed} closest.`, ja: `条件に完全に合うものはありません。近いものを${listed}${unit}挙げます。`, zh: `没有完全符合这些条件的，下面是最接近的${listed}${unit}。` }[language];
+  else if (listed <= meeting) line = say.coverageLine(language, listed, meeting, input.unit);
+  else line = { en: `${meeting} match and come first; the other ${listed - meeting} listed after them do not fully match.`, ja: `該当するのは${meeting}${unit}で、先に並べています。残りの${listed - meeting}${unit}は条件に完全には合いません。`, zh: `符合条件的有${meeting}${unit}，排在前面；后面${listed - meeting}${unit}不完全符合。` }[language];
+  if (scope) line = language === "en" ? `${scope}${line.charAt(0).toLowerCase()}${line.slice(1)}` : `${scope}${line}`;
+  const looked = input.semantic && input.truncated > 0 ? { en: ` (${input.judged} were looked at closely; ${input.truncated} more were not.)`, ja: `（詳しく見たのは${input.judged}${unit}で、残りの${input.truncated}${unit}は詳しく見ていません。）`, zh: `（这次细看了${input.judged}${unit}，还有${input.truncated}${unit}没有细看。）` }[language] : "";
+  return `${line}${looked}`;
+}
+
 /** The AG08 answer of a ranking (scope, topic, coverage; the reason of each by the record's own fields). */
-function writeAnswer(input: { upcoming?: boolean; apart?: string | null; domain: RankDomain; language: Language; basis: string | null; basisMemo: string | null; within: string | null; period: { from?: string; to?: string } | null; field: RankField | null; direction: "asc" | "desc"; result: RankResult<Candidate>; timeZone: string; now: string; lead: string | null; offerBasis?: boolean; reasons: Map<string, string> }): Written {
+function writeAnswer(input: { upcoming?: boolean; inScope?: number | null; apart?: string | null; domain: RankDomain; language: Language; basis: string | null; basisMemo: string | null; within: string | null; period: { from?: string; to?: string } | null; field: RankField | null; direction: "asc" | "desc"; result: RankResult<Candidate>; timeZone: string; now: string; lead: string | null; offerBasis?: boolean; reasons: Map<string, string> }): Written {
   const { domain, language, result } = input;
   const unit = UNIT[domain][language];
   const noun = NOUN[domain][language];
   const n = result.ordered.length;
   const lines: string[] = [];
+  let countLine: string | null = null;
   if (input.lead) lines.push(input.lead);
   // Events are Orbit's public directory, not the user's own: they are named by the dates they were kept by.
   const period = domain === "event" ? periodWords(input.period, language) : null;
@@ -608,7 +635,8 @@ function writeAnswer(input: { upcoming?: boolean; apart?: string | null; domain:
     lines.push(say.uncheckedCoverageLine(language, n, topic, { en: unit, ja: UNIT[domain].ja, zh: UNIT[domain].zh }));
   } else if (input.lead) {
     // AG10: the lead said the basis; the coverage follows.
-    lines.push(say.coverageLine(language, n, result.matching, { en: unit, ja: UNIT[domain].ja, zh: UNIT[domain].zh }));
+    countLine = rankCountLine(language, { inScope: input.inScope ?? null, judged: result.coverage.judged, listed: n, matching: result.matching, meeting: result.meeting, noun, period: Boolean(period), semantic: result.semantic, truncated: result.coverage.truncated, unit: { en: unit, ja: UNIT[domain].ja, zh: UNIT[domain].zh }, upcoming: Boolean(input.upcoming) });
+    lines.push(countLine);
   } else if (result.semantic && result.matched) {
     lines.push(language === "en" ? `From ${scope}, picked by ${topic}: ${n} ${unit}.` : language === "ja" ? `${scope}の中から、${topic}に合うものを${n}${unit}選びました。` : `在${scope}里，按${topic}这个主题挑了${n}${unit}：`);
     if (truncated > 0) {
@@ -658,7 +686,7 @@ function writeAnswer(input: { upcoming?: boolean; apart?: string | null; domain:
   const list = recordsBlock(cards, language);
   const paragraphs = (texts: readonly string[]): AnswerBlock[] => texts.filter((text) => text.trim()).map((text) => ({ text, type: "paragraph" as const }));
   const blocks: AnswerBlock[] = [...paragraphs(lines.slice(0, listAt)), ...(list ? [list] : []), ...paragraphs(lines.slice(afterAt))];
-  return { blocks, cites: [...result.ordered.map((item) => item.candidate.ref), ...(domain === "event" ? result.untimed.map((item) => item.ref) : [])], text: lines.join("\n") };
+  return { blocks, cites: [...result.ordered.map((item) => item.candidate.ref), ...(domain === "event" ? result.untimed.map((item) => item.ref) : [])], countLine, text: lines.join("\n") };
 }
 
 /** AG19: the card of a listed candidate — the record's own three lines, and the one-line reason it was picked (if any). */
@@ -1118,7 +1146,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     emitTrace({ partId: part.localId, people: result.ordered.length, type: "functions.next_steps" });
   }
   const apart = history && upcoming.length ? say.upcomingApartLine(language, upcoming.map((contact) => `${contact.name}${language === "en" ? " — " : "——"}${contact.signals.map((item) => signalWords(item, language, timeZone)).join(language === "en" ? "; " : "；")}`)) : null;
-  const written = writeAnswer({ upcoming: upcomingOnly, apart: apart ?? fitText, basis: topic && !basisMemo && !topicFromMemory ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, offerBasis: recommendsEvents && !lead, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
+  const written = writeAnswer({ upcoming: upcomingOnly, inScope: domain === "event" ? candidates.filter((candidate) => hard(candidate) && Boolean((candidate as EventCandidate).startsAt)).length : null, apart: apart ?? fitText, basis: topic && !basisMemo && !topicFromMemory ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, offerBasis: recommendsEvents && !lead, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
   // AG12 run-03 (AE-FN-003 R4): beside a ranking that says its basis, the ways of ordering it again as clickable entries (the
   // same options as the basis question; the clients show entries already). A click ranks again by it; it asks nothing.
   if (lead && !optionSets.some((set) => set.partId === part.localId && set.purpose === "ranking" && set.kind === "entry")) {
@@ -1135,7 +1163,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   if (result.semantic && result.matched) run.topicMatched = true;
   // AG14 dev run 2: when none meets the preferred time, the count line says how many there are in the period, not how
   // many "match" — in the text and in the blocks alike (AG19: answer.text and answer.blocks change together).
-  const coverage = say.coverageLine(language, result.ordered.length, result.matching, { en: UNIT[domain].en, ja: UNIT[domain].ja, zh: UNIT[domain].zh });
+  const coverage = written.countLine ?? say.coverageLine(language, result.ordered.length, result.matching, { en: UNIT[domain].en, ja: UNIT[domain].ja, zh: UNIT[domain].zh });
   const periodCount = MEMORY_WORDS.periodCount(language, result.ordered.length, result.matching, UNIT[domain][language]);
   const answerText = unmet ? written.text.replace(coverage, periodCount) : written.text;
   const answerBlocks = unmet ? replaceInBlocks(written.blocks, coverage, periodCount) : written.blocks;
