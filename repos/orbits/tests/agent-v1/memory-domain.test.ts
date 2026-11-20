@@ -144,6 +144,17 @@ test("AG14 UI (D2): a limit in the words is the entry's last day and the card's 
   assert.equal(expiryIn("今年は週末を優先して", "2026-11-15"), "2026-12-31");
   assert.equal(expiryIn("Remember: this month, prefer weekend mornings", "2026-11-15"), "2026-11-30");
   assert.equal(expiryIn("记住，以后给我推荐活动时优先周末上午", "2026-11-15"), null);
+  // The limit is the 到期 row, not part of the entry's words.
+  const { withoutExpiryWords } = await import("../../features/agent-v1/domains/memory/words");
+  assert.equal(withoutExpiryWords("这个月整理笔记时不要超过五条要点"), "整理笔记时不要超过五条要点");
+  assert.equal(withoutExpiryWords("到12月31日之前都优先周末"), "都优先周末");
+  assert.equal(withoutExpiryWords("this month, prefer weekend mornings"), "prefer weekend mornings");
+  const { service: own } = world();
+  await own.updateSettings({ allowConversationLearning: true });
+  const settled = settleRemember({ language: "zh", requestId: "req-limit", snapshot: await own.snapshot(), today: "2026-11-20", words: "记住，这个月整理笔记时不要超过五条要点。" });
+  assert.equal(settled.kind, "card");
+  const set = (settled as { intent: { set: { content: string; validUntil?: string } } }).intent.set;
+  assert.deepEqual([set.content, set.validUntil], ["整理笔记时不要超过五条要点", "2026-11-30"]);
   const dated = await freeze({ capability: MEMORY_CREATE, set: { appliesTo: ["event.recommend"], category: "preference", content: "推荐活动时优先周末上午", structured: null, validUntil: "2026-11-30" }, sourceMessageRef: "request:req-1" });
   assert.deepEqual(dated.display?.rows.map((row) => `${row.label}:${row.after}`), ["用在:推荐活动时", "归到:酌情参考的", "到期:11月30日（周一）"]);
   assert.equal((dated.payload as Record<string, unknown>).validUntil, "2026-11-30");

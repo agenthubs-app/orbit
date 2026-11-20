@@ -54,6 +54,9 @@ test("the sentence to keep, without the words that only ask to keep it", () => {
 test("a change names the new value and the one it replaces", () => {
   assert.deepEqual(replacementOf("when you recommend events, prefer weekend afternoons instead of weekend mornings"), { next: "when you recommend events, prefer weekend afternoons", previous: "weekend mornings" });
   assert.deepEqual(replacementOf("推荐活动时优先周末下午，而不是周末上午"), { next: "推荐活动时优先周末下午", previous: "周末上午" });
+  // AG14 UI run: the change verb after where it is used is not part of the new words.
+  assert.deepEqual(replacementOf("推荐活动时改成优先周末下午"), { next: "推荐活动时优先周末下午", previous: null });
+  assert.deepEqual(replacementOf("推荐活动的时候换成优先周末下午"), { next: "推荐活动的时候优先周末下午", previous: null });
   assert.deepEqual(replacementOf("把周末上午改成周末下午"), { next: "周末下午", previous: "周末上午" });
   assert.deepEqual(replacementOf("週末の午前ではなく週末の午後を優先して"), { next: "週末の午後を優先", previous: "週末の午前" });
   assert.deepEqual(replacementOf("改成周末下午"), { next: "改成周末下午", previous: null });

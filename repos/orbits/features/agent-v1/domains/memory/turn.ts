@@ -31,7 +31,7 @@ import { resolveSaidDate } from "../../propose/dates";
 import { capabilityKind, type Capability } from "../../route/capabilities";
 import { MEMORY_WORDS, noteLine, type MemoryNote } from "./copy";
 import { MEMORY_CREATE, MEMORY_DELETE, MEMORY_UPDATE, type MemoryCardIntent, type MemoryValues } from "./ops";
-import { asksWhyOrder, composeEventTimeContent, entriesPointedAt, expiryIn, memoryAskOf, readMemoryWords, rememberedWordsOf, replacementOf, replyLanguageIn, timeValuesIn, timeWordsOf, type MemoryLanguage } from "./words";
+import { asksWhyOrder, composeEventTimeContent, entriesPointedAt, expiryIn, withoutExpiryWords, memoryAskOf, readMemoryWords, rememberedWordsOf, replacementOf, replyLanguageIn, timeValuesIn, timeWordsOf, type MemoryLanguage } from "./words";
 
 /** What the graph needs of the memory service: one read of an account's scope. */
 export interface AgentMemoryAccess {
@@ -347,7 +347,7 @@ export function settleRemember(input: { words: string; language: MemoryLanguage;
   if (isForgottenSource(snapshot.marks, memorySourceRef(input.requestId))) return { kind: "line", line: MEMORY_WORDS.nothingToForget(language, snapshot.entries.length > 0), reason: "memory_source_forgotten" };
   // AG14 UI (D2): a limit in the words ("这个月先……") becomes the entry's last day and the card's 到期 row.
   const validUntil = expiryIn(input.words, input.today);
-  return { intent: { capability: MEMORY_CREATE, set: { appliesTo: reading.appliesTo, category: reading.category, content, structured: reading.structured, ...(validUntil ? { validUntil } : {}) }, sourceMessageRef: memorySourceRef(input.requestId) }, kind: "card" };
+  return { intent: { capability: MEMORY_CREATE, set: { appliesTo: reading.appliesTo, category: reading.category, content: validUntil ? withoutExpiryWords(content) : content, structured: reading.structured, ...(validUntil ? { validUntil } : {}) }, sourceMessageRef: memorySourceRef(input.requestId) }, kind: "card" };
 }
 
 /** What an ask to forget becomes: a card that names the entry, or code's sentence. */

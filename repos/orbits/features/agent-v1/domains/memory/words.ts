@@ -87,6 +87,10 @@ export function replacementOf(words: string): { next: string; previous: string |
     if (!first || !second) continue;
     return order === "next_first" ? { next: first, previous: second } : { next: second, previous: first };
   }
+  // AG14 UI run (local check of board 2): "推荐活动时改成优先周末下午" — where it is used, then the change verb, then the
+  // new value. The verb is not part of the entry: the new value is "推荐活动时优先周末下午".
+  const inPlace = /^([\s\S]*?(?:时|的时候))\s*(?:改成|改为|换成)\s*([\s\S]+)$/u.exec(words.trim());
+  if (inPlace && inPlace[2].trim()) return { next: `${inPlace[1].trim()}${inPlace[2].trim()}`, previous: null };
   return { next: words.trim(), previous: null };
 }
 
@@ -201,6 +205,16 @@ export function expiryIn(words: string, today: string): string | null {
   if (/(这个月|这月|本月|今月|\bthis month\b)/iu.test(words)) return iso(new Date(Date.UTC(year, month, 0)));
   if (/(今年|\bthis year\b)/iu.test(words)) return `${year}-12-31`;
   return null;
+}
+
+/** The entry's words without the limit `expiryIn` read ("这个月整理笔记时……" → "整理笔记时……"): the limit is the 到期 row. */
+export function withoutExpiryWords(words: string): string {
+  const kept = words
+    .replace(/(?:到|至|截至|截止到?)?\s*\d{1,2}\s*月\s*\d{1,2}\s*[日号]?\s*(?:之前|以前|前|为止|まで)[，,、]?\s*/gu, "")
+    .replace(/(?:这周|这星期|这个星期|本周|这个月|这月|本月|今年|今週|今月)(?:先|内|里|之内|は)?[，,、]?\s*/gu, "")
+    .replace(/\b(?:this (?:week|month|year))\b[,，]?\s*/giu, "")
+    .trim();
+  return kept || words;
 }
 
 /* ── words code writes ─────────────────────────────────────────────── */
