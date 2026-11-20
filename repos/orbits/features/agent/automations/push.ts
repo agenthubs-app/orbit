@@ -40,6 +40,8 @@ export const RULE_PUSH_MAX_ATTEMPTS = 5;
 export const RULE_PUSH_RECEIPT_DELAY_MS = 15 * 60_000;
 /** After this long an unanswered receipt is no longer asked for. */
 export const RULE_PUSH_RECEIPT_GIVE_UP_MS = 24 * 3_600_000;
+/** A receipt saying the push service did not deliver brings at most this many further sends to that device per period. */
+export const RULE_PUSH_RECEIPT_RESENDS = 1;
 /** The safety row written with the inbox delivery: if the pass dies before sending, the reminder is picked up after this. */
 export const RULE_PUSH_SAFETY_DELAY_MS = 5 * 60_000;
 
@@ -198,10 +200,14 @@ export async function pushRun(deps: RulePushDeps, ref: { ownerId: string; runId:
       const receipt = await channel.getReceipt(target.receiptId, target.platform);
       if (receipt.status === "ok") targets.set(target.deviceId, { ...target, receipt: "verified" });
       else if (receipt.status === "error") {
+        // The push service says it did not deliver. A device that is gone, or a refusal that will not change, is not
+        // sent again; any other failure is sent once more — at most one resend per device per period.
         const gone = /DeviceNotRegistered/u.test(receipt.error ?? "");
+        const lasting = /InvalidCredentials|MessageTooBig|MismatchSenderId/u.test(receipt.error ?? "");
         if (gone) await access?.revoke(target.deviceId).catch(() => undefined);
         const { deliveredAt: _deliveredAt, receipt: _receipt, ...rest } = target;
-        targets.set(target.deviceId, { ...rest, error: (receipt.error ?? "provider receipt error").slice(0, 300), state: gone ? "revoked" : "rejected" });
+        const state = gone ? "revoked" : !lasting && (target.attempts ?? 1) < RULE_PUSH_RECEIPT_RESENDS + 1 ? "retry" : "rejected";
+        targets.set(target.deviceId, { ...rest, error: (receipt.error ?? "provider receipt error").slice(0, 300), state });
       } else if (age >= RULE_PUSH_RECEIPT_GIVE_UP_MS) {
         const { receipt: _receipt, ...rest } = target;
         targets.set(target.deviceId, rest);
@@ -248,8 +254,11 @@ export async function pushRun(deps: RulePushDeps, ref: { ownerId: string; runId:
       }
       if (toSend.length) {
         attempts += 1;
-        const hadDelivery = [...targets.values()].some((target) => target.state === "delivered");
-        const locale: RulePushLocale = rule!.rule?.notify.pushLocale ?? run.locale;
+        // Counted towards the day's limit once per period: a resend after a receipt does not count again.
+        const hadDelivery = push.state === "delivered" || (push.targets ?? []).some((target) => target.state === "delivered");
+        // The sentence is in the language of this period's result — the inbox entry it points at — never a language
+        // stored with the switch (older records may still carry one; it is ignored).
+        const locale: RulePushLocale = run.locale;
         const message = rulePushMessage(locale, run.runId);
         for (const device of toSend) {
           const before = targets.get(device.deviceId);

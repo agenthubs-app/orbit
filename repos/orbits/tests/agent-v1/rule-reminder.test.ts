@@ -56,24 +56,28 @@ test("the route sends a reminder change of a task to the card step, and leaves a
 
 test("the card says which task, that only this one changes, and that the reminder holds no content — in the language of the message", () => {
   const shown = { automationId: "rule:1", rule: ruleSpec(), schedule: FRIDAY_9, status: "active", title: "每周五挑三场周末活动", version: 1 };
-  const card = (locale: "zh" | "en" | "ja") => prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push: true, pushLocale: locale } }, shown, targetId: "rule:1" }, locale, revision: 1 });
+  const card = (locale: "zh" | "en" | "ja") => prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push: true } }, shown, targetId: "rule:1" }, locale, revision: 1 });
   const zh = card("zh");
   assert.equal(zh.display?.record, "定时任务「每周五挑三场周末活动」");
   // The approved draft's words (16-2): 「有新结果  只放进收件箱 → 放进收件箱，并在手机和浏览器上提醒」 and one sentence under it.
   assert.deepEqual(zh.display?.rows.map((row) => [row.field, row.label, row.before, row.after]), [["notify", "有新结果", "只放进收件箱", "放进收件箱，并在手机和浏览器上提醒"]]);
   assert.equal(zh.display?.note, "只改这一条，别的任务照旧只进收件箱。提醒上不写活动名称、时间和地点。");
-  assert.equal(zh.preview, `定时任务「每周五挑三场周末活动」：有新结果 只放进收件箱 → 放进收件箱，并在手机和浏览器上提醒。${zh.display?.note}`, "the card's own text says it too");
+  assert.equal(zh.preview, `定时任务「每周五挑三场周末活动」：有新结果：只放进收件箱 → 放进收件箱，并在手机和浏览器上提醒。${zh.display?.note}`, "the card's own text says it too");
+  // The text line that mirrors the card separates the label from its value as the new-task card's line does.
+  assert.equal(card("en").preview, 'Scheduled task "每周五挑三场周末活动": When there\'s something new: To your inbox only → To your inbox, with a reminder on your phone and in your browser. Only this task changes; your other tasks still go to your inbox only. The reminder shows no event names, times or places.');
+  assert.match(card("ja").preview, /：新しい結果があったら：受信箱に届けるだけ → 受信箱に届け、スマホとブラウザにもお知らせ。/u);
   // The product owner's rule: no 「推送」「站内」 (push, in-app) anywhere on the card, in any language.
   for (const locale of ["zh", "en", "ja"] as const) {
     for (const push of [true, false]) {
-      const turned = prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push, pushLocale: locale } }, shown: { ...shown, rule: ruleSpec({ notify: { inApp: true, push: !push } }) }, targetId: "rule:1" }, locale, revision: 1 });
+      const turned = prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push } }, shown: { ...shown, rule: ruleSpec({ notify: { inApp: true, push: !push } }) }, targetId: "rule:1" }, locale, revision: 1 });
       const visible = JSON.stringify([turned.display, turned.preview]);
       assert.doesNotMatch(visible, /推送|站内|in-app|In-app|プッシュ|アプリ内|\bpush\b/u, `${locale} ${push}: ${visible}`);
     }
   }
-  assert.deepEqual(zh.after, { notify: { inApp: true, push: true, pushLocale: "zh" } });
+  // The card writes the switch only: no language behind it (the reminder follows the language of the task's results).
+  assert.deepEqual(zh.after, { notify: { inApp: true, push: true } });
   assert.deepEqual(zh.before, { notify: { inApp: true, push: false } });
-  assert.deepEqual((zh.payload as { set: unknown }).set, { notify: { inApp: true, push: true, pushLocale: "zh" } });
+  assert.deepEqual((zh.payload as { set: unknown }).set, { notify: { inApp: true, push: true } });
   assert.match(card("ja").display?.note ?? "", /^変わるのはこのタスクだけで、ほかのタスクはこれまでどおり受信箱だけです。お知らせにはイベント名・日時・場所を書きません。$/u);
   assert.match(card("en").display?.note ?? "", /^Only this task changes; your other tasks still go to your inbox only\. The reminder shows no event names, times or places\.$/u);
   for (const locale of ["zh", "en", "ja"] as const) for (const word of ["来源", "证据", "授权", "引用", "范围"]) assert.equal(reminderNote(true, locale).includes(word) || reminderNote(false, locale).includes(word), false);
@@ -82,7 +86,7 @@ test("the card says which task, that only this one changes, and that the reminde
   assert.equal(count.display?.note, undefined);
 });
 
-test("after the click the reminder is on for that one task, in the language it was asked for; before it, nothing changed", async () => {
+test("after the click the reminder is on for that one task and the change writes exactly what the card shows; before it, nothing changed", async () => {
   const storage = createMemoryAutomationStorage(WORKSPACE);
   const now = () => "2026-11-15T01:00:00.000Z";
   const one = await createRule(storage, "user:a", now);
@@ -90,11 +94,18 @@ test("after the click the reminder is on for that one task, in the language it w
   const automations = serviceFor(storage, "user:a", now);
   const executor = ruleWriteExecutors({ automations }).find((item) => item.key === RULE_UPDATE)!;
   const shown = { automationId: one.automationId, rule: one.rule!, schedule: FRIDAY_9, status: "active", title: one.title, version: 1 };
-  const op = prepareRuleOperation({ actionId: "action:1", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push: true, pushLocale: "ja" } }, shown, targetId: one.automationId }, locale: "ja", revision: 1 });
+  const op = prepareRuleOperation({ actionId: "action:1", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push: true } }, shown, targetId: one.automationId }, locale: "ja", revision: 1 });
   assert.deepEqual((await automations.get(one.automationId))?.rule?.notify, { inApp: true, push: false }, "a frozen card changes nothing");
   await executor.execute(op.payload as Record<string, unknown>, { actionId: "action:1", idempotencyKey: "k1", now: now(), operationId: "op1", runId: "run:1" });
   const changed = (await automations.get(one.automationId))!;
-  assert.deepEqual(changed.rule?.notify, { inApp: true, push: true, pushLocale: "ja" });
+  // writes_exact: the task's stored switch is exactly the card's new value — nothing the card does not show.
+  assert.deepEqual(changed.rule?.notify, (op.after as { notify: unknown }).notify);
+  assert.deepEqual(changed.rule?.notify, { inApp: true, push: true });
+  assert.deepEqual(op.display?.rows.map((row) => row.field), ["notify"], "the only thing written is the one row on the card");
+  // A task stored with a language from before this change loses it when the switch is flipped again.
+  const old = await createRule(storage, "user:a", now, { rule: { notify: { inApp: true, push: true, pushLocale: "en" } }, title: "旧的那条" });
+  await executor.execute({ automationId: old.automationId, expectedVersion: 1, set: { notify: { inApp: true, push: false } } }, { actionId: "action:3", idempotencyKey: "k3", now: now(), operationId: "op3", runId: "run:3" });
+  assert.deepEqual((await automations.get(old.automationId))?.rule?.notify, { inApp: true, push: false });
   assert.deepEqual([changed.version, changed.rule?.toldFromVersion, changed.delivery], [2, 1, "push"], "a reminder-only change keeps what the task told before");
   assert.deepEqual((await automations.get(other.automationId))?.rule?.notify, { inApp: true, push: false }, "no other task changes");
   // A change of what the task does starts its memory anew, as before AG16.
@@ -114,7 +125,7 @@ test("the model is asked which task only as a number of the list it was shown; a
 
 test("the card's hash covers every word the reminder row shows: its label, both values and the sentence under it", () => {
   const shown = { automationId: "rule:1", rule: ruleSpec(), schedule: FRIDAY_9, status: "active", title: "每周五挑三场周末活动", version: 1 };
-  const op = prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push: true, pushLocale: "zh" } }, shown, targetId: "rule:1" }, locale: "zh", revision: 1 });
+  const op = prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push: true } }, shown, targetId: "rule:1" }, locale: "zh", revision: 1 });
   const hash = (operation: typeof op) => cardPayloadHash({ operations: [operation as never], preview: operation.preview, revision: 1, title: "修改1项" });
   const display = op.display!;
   const base = hash(op);

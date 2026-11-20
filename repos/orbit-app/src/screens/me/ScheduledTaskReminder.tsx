@@ -28,7 +28,7 @@ function usePhone(device: PhoneReminderDevice | null | undefined, client: OrbitA
 }
 
 export function ReminderCard({ task, client, onChanged, device }: { task: AgentScheduledTaskContract; client: OrbitApiClient; onChanged(): void; device?: PhoneReminderDevice | null }) {
-  const { t, language } = useOrbitLocale();
+  const { t } = useOrbitLocale();
   const toast = useToast();
   const { styles } = useStyles();
   const phone = usePhone(device, client);
@@ -40,7 +40,7 @@ export function ReminderCard({ task, client, onChanged, device }: { task: AgentS
     if (busy) return;
     setBusy(true);
     setPush(next);
-    const saved = await setScheduledTaskPush(client, task.id, next, language);
+    const saved = await setScheduledTaskPush(client, task.id, next);
     if (!saved) { setPush(!next); toast.error(t("scheduledTasks.failed")); setBusy(false); return; }
     // Never asked on this phone: switching it on brings up the system's own prompt.
     if (next && phone && (await phone.read().catch(() => null)) === "not_asked") { await phone.allow().catch(() => null); setAsked((value) => value + 1); }

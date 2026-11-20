@@ -28,10 +28,9 @@ export async function setScheduledTaskRunning(client: OrbitApiClient, id: string
   return Boolean(result?.success);
 }
 
-/** AG16 (draft 16-1): the task's own reminder switch, at once and without a card; `language` is the reminder's language. */
-export async function setScheduledTaskPush(client: OrbitApiClient, id: string, push: boolean, language: string): Promise<boolean> {
-  const locale = language === "en" || language === "ja" ? language : "zh";
-  const result = await client.put<unknown>(`/api/agent/automations/${encodeURIComponent(id)}/reminder`, { body: { locale, push } }).catch(() => null);
+/** AG16 (draft 16-1): the task's own reminder switch, at once and without a card. Only the switch is sent. */
+export async function setScheduledTaskPush(client: OrbitApiClient, id: string, push: boolean): Promise<boolean> {
+  const result = await client.put<unknown>(`/api/agent/automations/${encodeURIComponent(id)}/reminder`, { body: { push } }).catch(() => null);
   return Boolean(result?.success);
 }
 
