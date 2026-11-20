@@ -26,6 +26,7 @@ import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { radius, shadows } from "../../../design/tokens";
 import { AttendeeSheet, type AttendeeSheetPerson } from "./AttendeeSheet";
 import { GradientCard } from "./venue-ui";
+import { useCoverUri } from "./event-cover";
 import { CancelSheet } from "./CancelSheet";
 import { HostContactCard, showHostContact } from "./HostContact";
 import { newIdempotencyKey, useEventsApi } from "./events-api";
@@ -98,6 +99,7 @@ export function EventDetailPage() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sheetPerson, setSheetPerson] = useState<AttendeeSheetPerson | null>(null);
+  const cover = useCoverUri(data?.coverUrl);
   // ★: saved = an assessment of this event exists (the overview's assessmentId), or saved just now.
   const [savedId, setSavedId] = useState<string | null>(null);
   // Host of this event: the overview says so (hosting); an older server without the field is asked through the host API.
@@ -253,7 +255,7 @@ export function EventDetailPage() {
         {header}
         {offlineAt ? <EventsOfflineNotice lastSyncedAt={offlineAt} /> : null}
         <View style={[styles.card, styles.coverCard]}>
-          {data.coverUrl ? <Image source={{ uri: data.coverUrl }} resizeMode="cover" style={styles.coverImage} accessibilityIgnoresInvertColors testID="events-detail-cover-image" /> : (
+          {cover ? <Image source={{ uri: cover }} resizeMode="cover" style={styles.coverImage} accessibilityIgnoresInvertColors testID="events-detail-cover-image" /> : (
             <Cover style={styles.cover}>
               <View style={[styles.emo, { backgroundColor: colors.surface }]}><UiText style={styles.coverEmo}>{data.emoji}</UiText></View>
             </Cover>

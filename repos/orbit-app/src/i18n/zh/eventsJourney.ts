@@ -584,4 +584,5 @@ export const eventsJourney = {
   "eventsJourney.pExchangeClosed": "申请期已结束",
   "eventsJourney.pLoadFailed": "没能读取",
   "eventsJourney.vNextOrderPast": "当天建议的交谈顺序",
+  "eventsJourney.pNotPublic": "对方没有公开参加资料",
 } as const;

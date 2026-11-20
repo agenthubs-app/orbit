@@ -101,3 +101,30 @@ test("discover D2: one card with an image → every card in that row gets the 2:
   assert.equal(await page.getByTestId("events-discover-cover-b").count(), 0);
   await page.getByTestId("events-discover-card-b").getByText("🎤").waitFor();
 });
+
+test("cover uri: a site path is completed against the API address; absolute stays; empty is no image", async () => {
+  const { coverUri } = await import("../src/screens/events/v2/event-cover");
+  assert.equal(coverUri("/orbit-covers/events/a.jpg", "http://localhost:3017"), "http://localhost:3017/orbit-covers/events/a.jpg");
+  assert.equal(coverUri("https://cdn.example.com/a.webp", "http://localhost:3017"), "https://cdn.example.com/a.webp");
+  assert.equal(coverUri(null, "http://localhost:3017"), null);
+  assert.equal(coverUri("  ", "http://localhost:3017"), null);
+});
+
+test("attendee sheet: a request they sent can be accepted (same /respond route); a private profile says so, not 'load failed'", async (t) => {
+  const incoming = await harness.open(t, { screen: "venue", params: { id: eventId }, responses: {
+    [`${path}/venue`]: { ...ended, rounds },
+    [`${path}/attendees/`]: profile({ exchange: "incoming", requestId: "req-1", requestRevision: 3 }),
+    [`${path}/operations/contact-requests/req-1/respond`]: { ok: true },
+  } });
+  await incoming.getByRole("button", { name: mate.name }).first().click();
+  await incoming.getByTestId("events-attendee-accept").click();
+  const bodies = await incoming.evaluate(() => (window as unknown as { fixture: { postBodies?: { path: string; body: unknown }[] } }).fixture.postBodies ?? []);
+  const respond = bodies.find((entry) => entry.path.endsWith("/operations/contact-requests/req-1/respond"));
+  assert.deepEqual(respond?.body, { accept: true, expectedRevision: 3 });
+  const hidden = await harness.open(t, { screen: "venue", params: { id: eventId }, responses: {
+    [`${path}/venue`]: { ...ended, rounds },
+    [`${path}/attendees/`]: { __status: 404 },
+  } });
+  await hidden.getByRole("button", { name: mate.name }).first().click();
+  await hidden.getByText("对方没有公开参加资料", { exact: true }).waitFor();
+});

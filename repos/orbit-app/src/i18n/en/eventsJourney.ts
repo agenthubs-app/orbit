@@ -584,4 +584,5 @@ export const eventsJourney = {
   "eventsJourney.pExchangeClosed": "Requests have closed",
   "eventsJourney.pLoadFailed": "Couldn't load",
   "eventsJourney.vNextOrderPast": "Suggested order on the day",
+  "eventsJourney.pNotPublic": "This profile isn't public",
 } as const;

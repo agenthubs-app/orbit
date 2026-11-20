@@ -37,19 +37,19 @@ export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
   const client = useOrbitApiClient();
   const noKeyboard = addDesignMock("no-keyboard");
   const [profile, setProfile] = useState<EventAttendeeProfile | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<"private" | "network" | null>(null);
   const [memo, setMemo] = useState("");
   const [why, setWhy] = useState(false);
   const [busy, setBusy] = useState(false);
   const attendeeId = person?.attendeeId ?? null;
 
   useEffect(() => {
-    setProfile(null); setFailed(false); setWhy(false); setMemo("");
+    setProfile(null); setFailed(null); setWhy(false); setMemo("");
     if (!attendeeId) return undefined;
     let live = true;
     void api.attendee(eventId, attendeeId).then((res) => {
       if (!live) return;
-      if (res.ok) { setProfile(res.data); setMemo(res.data.memo ?? ""); } else setFailed(true);
+      if (res.ok) { setProfile(res.data); setMemo(res.data.memo ?? ""); } else setFailed(res.reason === "network" || res.reason === "unavailable" ? "network" : "private");
     });
     return () => { live = false; };
   }, [api, eventId, attendeeId]);
@@ -74,6 +74,17 @@ export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
     onChanged?.();
   };
 
+  // A request they sent me: accept / ignore through the same /respond route as 会場モード (the server keeps the 30-day window).
+  const respond = async (accept: boolean) => {
+    if (!profile?.requestId || profile.requestRevision == null || busy) return;
+    setBusy(true);
+    const res = await client.post<unknown>(`/api/events/${encodeURIComponent(eventId)}/operations/contact-requests/${encodeURIComponent(profile.requestId)}/respond`, { body: { accept, expectedRevision: profile.requestRevision } }).catch(() => null);
+    setBusy(false);
+    if (!res?.success) { toast.error(locale.t("eventsV2.genericError")); return; }
+    setProfile({ ...profile, exchange: accept ? "exchanged" : "none", requestId: null, requestRevision: null });
+    if (accept) toast.success(t("vSwappedToast", { name: profile.name }));
+    onChanged?.();
+  };
   const shown = profile ?? (person ? { ...person } : null);
   const deadlineParts = profile?.exchangeUntil ? tokyo(profile.exchangeUntil) : null;
   const together = profile?.together;
@@ -86,7 +97,7 @@ export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
             <View style={vs.grow}><UiText style={styles.name}>{shown.name}</UiText><UiText style={vs.lbl}>{[shown.org, shown.role].filter(Boolean).join(" · ")}</UiText></View>
             <UiPressable accessibilityRole="button" accessibilityLabel={t("close")} onPress={close} style={vs.lbtn}><Icon name="x" size={16} color={colors.ink2} /></UiPressable>
           </View>
-          {failed ? <UiText style={[vs.sub, { color: colors.ink3, marginTop: 14 }]}>{t("pLoadFailed")}</UiText> : null}
+          {failed ? <UiText style={[vs.sub, { color: colors.ink3, marginTop: 14 }]} testID="events-attendee-unavailable">{t(failed === "private" ? "pNotPublic" : "pLoadFailed")}</UiText> : null}
           {together && (together.sharedRounds.length || together.recommended || profile?.exchange === "exchanged") ? (
             <>
               <UiText style={styles.section}>{t("pContactPoints")}</UiText>
@@ -134,6 +145,18 @@ export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
                     {deadlineParts ? <UiText style={[vs.lbl, styles.center]}>{t("pExchangeUntil", { date: `${deadlineParts.month}/${deadlineParts.day}` })}</UiText> : null}
                   </>
                 ) : <View style={[styles.block, styles.off]}><UiText style={[styles.blockText, { color: colors.ink3 }]}>{t("pExchangeClosed")}</UiText></View>
+              ) : profile.exchange === "incoming" && profile.requestId ? (
+                <View style={[vs.card, vs.flat, styles.incoming]} testID="events-attendee-incoming">
+                  <View style={[vs.row, { gap: 8 }]}>
+                    <View style={[vs.emoSm, { backgroundColor: colors.macLav }]}><UiText style={vs.emoSmText}>📇</UiText></View>
+                    <UiText style={[vs.title13, vs.grow]}>{t("incomingTitle")}</UiText>
+                  </View>
+                  <View style={[vs.row, { gap: 8, marginTop: 10 }]}>
+                    <UiPressable accessibilityRole="button" accessibilityLabel={t("acceptSwap")} disabled={busy} onPress={() => void respond(true)} style={[vs.btnSm, vs.primary, vs.grow]} testID="events-attendee-accept"><UiText style={[vs.btnSmText, { color: colors.bg }]}>{t("acceptSwap")}</UiText></UiPressable>
+                    <UiPressable accessibilityRole="button" accessibilityLabel={t("ignoreSwap")} disabled={busy} onPress={() => void respond(false)} style={[vs.btnSm, vs.grow]}><UiText style={vs.btnSmText}>{t("ignoreSwap")}</UiText></UiPressable>
+                  </View>
+                  <UiText style={[vs.lbl, { marginTop: 6 }]}>{t("vIgnoreNote")}</UiText>
+                </View>
               ) : <View style={{ marginTop: 14 }}><Chip label={profile.exchange === "incoming" ? t("exIncoming") : t("exRequested")} {...(profile.exchange === "incoming" ? { tone: "lav" as const } : {})} /></View>}
             </>
           ) : null}
@@ -156,4 +179,5 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   off: { backgroundColor: colors.surface2 },
   blockText: { fontSize: 15, fontWeight: "700", lineHeight: 22 },
   center: { marginTop: 6, textAlign: "center" },
+  incoming: { marginTop: 14, padding: 14 },
 }));

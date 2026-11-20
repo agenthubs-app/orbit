@@ -584,4 +584,5 @@ export const eventsJourney = {
   "eventsJourney.pExchangeClosed": "申請期間は終了しました",
   "eventsJourney.pLoadFailed": "読み込めませんでした",
   "eventsJourney.vNextOrderPast": "次に話すと良かった順",
+  "eventsJourney.pNotPublic": "プロフィールは公開されていません",
 } as const;

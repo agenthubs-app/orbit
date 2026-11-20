@@ -26,6 +26,8 @@ import { useJourneyT } from "./useJourneyT";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
 import { recentSearchKey } from "../../../data/account-local-caches";
+import { useOrbitApiBaseUrl } from "../../../api/ApiBaseUrlProvider";
+import { coverUri } from "./event-cover";
 
 // Opens on this month with no area: a fixed 东京 filter left people elsewhere (and online events) with an empty page.
 export const APP_DISCOVER_QUERY: EventDiscoverQuery = { areas: [], period: "this_month", planFirst: true, sort: "date", themes: [] };
@@ -54,6 +56,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   const rt = useRelevanceT();
   const router = useRouter();
   const api = useJourneyApi();
+  const { baseUrl } = useOrbitApiBaseUrl();
   const [query, setQuery] = useState<EventDiscoverQuery>(initialQuery);
   const [data, setData] = useState<EventDiscoverResponse | null>(null);
   const [search, setSearch] = useState(initialSearch);
@@ -245,12 +248,13 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
           <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToOffsets={data.planFit.map((_row, index) => SHELL_GUTTER + index * (CARD + 12))} contentOffset={{ x: SHELL_GUTTER, y: 0 }} decelerationRate="fast" onScroll={onScroll} scrollEventThrottle={32} style={styles.carousel} contentContainerStyle={styles.carouselInner}>
             {data.planFit.map((row, index) => {
               const registered = registrationChipLabel(row.registrationCount, rt);
-              const banded = data.planFit.some((item) => item.coverUrl);
+              const banded = data.planFit.some((item) => coverUri(item.coverUrl, baseUrl));
+              const cover = coverUri(row.coverUrl, baseUrl);
               return (
                 <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={[styles.evCard, banded ? styles.evCardBand : null]} testID={`events-discover-card-${row.eventId}`}>
                   {banded ? (
                     <View>
-                      {row.coverUrl ? <Image source={{ uri: row.coverUrl }} resizeMode="cover" style={styles.band} accessibilityIgnoresInvertColors testID={`events-discover-cover-${row.eventId}`} />
+                      {cover ? <Image source={{ uri: cover }} resizeMode="cover" style={styles.band} accessibilityIgnoresInvertColors testID={`events-discover-cover-${row.eventId}`} />
                         : <View style={[styles.band, styles.bandEmoji, { backgroundColor: toneBg(rowTone(index)) }]}><UiText style={styles.bandEmojiText}>{row.emoji}</UiText></View>}
                       {registered ? <View style={[styles.chip, styles.bandChip]}><UiText style={[styles.chipText, { color: "#1E1A24" }]}>{registered}</UiText></View> : null}
                     </View>

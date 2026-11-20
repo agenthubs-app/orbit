@@ -25,6 +25,7 @@ import { DiscoverPage, discoverQueryFromParams } from "./DiscoverPage";
 import { eventAssessmentListSchema, useEventsApi } from "./events-api";
 import { myEventsResponseSchema } from "../../../api/schema/events-mine";
 import { EventsOfflineNotice } from "./EventsOfflineNotice";
+import { useCoverUri } from "./event-cover";
 import { usePageCopyResource } from "../../../hooks/usePageCopyResource";
 import { EVENTS_COPY_FRESH_MS, EVENTS_MINE_UPCOMING_PATH } from "./events-copies";
 
@@ -245,10 +246,11 @@ function GoingCard({ item, now, language, width, style, gradientKey, band = null
   const router = useRouter();
   const day = relativeDay(item.startsAt, now);
   const fullWidth = useFullCardWidth();
+  const cover = useCoverUri(item.coverUrl);
   const bandWidth = width ?? fullWidth;
   return (
     <View style={[styles.evCard, width ? { width } : null, band ? styles.evCardBand : null, style]} testID={`events-going-${item.eventId}`}>
-      {band === "image" && item.coverUrl ? <Image source={{ uri: item.coverUrl }} resizeMode="cover" style={{ height: bandWidth / 2, width: bandWidth }} accessibilityIgnoresInvertColors testID={`events-going-cover-${item.eventId}`} />
+      {band === "image" && cover ? <Image source={{ uri: cover }} resizeMode="cover" style={{ height: bandWidth / 2, width: bandWidth }} accessibilityIgnoresInvertColors testID={`events-going-cover-${item.eventId}`} />
         : band === "emoji" ? <View style={[styles.bandEmoji, { height: bandWidth / 2, width: bandWidth }]}><UiText style={styles.bandEmojiText}>{item.emoji || eventEmoji({ title: item.title })}</UiText></View> : null}
       {band ? null : <KitGradient id={`events-going-bg-${gradientKey}-${item.eventId}`} from={colors.macLav} to={colors.surface} stop={0.6} angle={160} />}
       <View style={band ? styles.bandBody : null}>
