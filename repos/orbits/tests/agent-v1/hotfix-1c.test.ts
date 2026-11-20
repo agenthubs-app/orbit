@@ -3,9 +3,10 @@ import { test } from "node:test";
 
 import { countsIn, seenCountsIn, withoutUnsourcedCounts, withoutWrongSeenCounts } from "../../features/agent-v1/answer/counts";
 import { withoutUnsourcedDates } from "../../features/agent-v1/answer/dates";
-import { withCodeLateness, withoutFalseReadClaims, withoutFieldLabels } from "../../features/agent-v1/answer/list-or-text";
+import { withCodeLateness, withListedPointsTrimmed, withoutFalseReadClaims, withoutFieldLabels, withoutInternalWords } from "../../features/agent-v1/answer/list-or-text";
+import { combinedLead } from "../../features/agent-v1/graph/nodes/wider-read";
 import { runAgentGraph } from "../../features/agent-v1/graph/build";
-import { dayOfWords, onlyWindowWords } from "../../features/agent-v1/understand/read-window";
+import { dayOfWords, onlyWindowWords, swapsPeriod } from "../../features/agent-v1/understand/read-window";
 import { fnWorld, runFn } from "./functions-kit";
 import { deepseekStub, graphKit, json, part, recordAccessOf } from "./graph-kit";
 import { schedule } from "./read-kit";
@@ -86,6 +87,48 @@ for (const withWindow of [false, true]) {
     assert.ok(run.events.some((event) => event.type === "understand.window_words_not_text"));
   });
 }
+
+test("live 1: 「那这周呢？」 only swaps the period; two empty kinds are one sentence, not four statements", () => {
+  for (const words of ["那这周呢？", "那下周呢", "来週は？", "What about next week?", "明天呢？"]) assert.equal(swapsPeriod(words), true, words);
+  for (const words of ["那小林呢？", "这周有哪些活动适合我？", "那这周的报价呢？"]) assert.equal(swapsPeriod(words), false, words);
+  const lead = combinedLead("zh", [
+    { count: 20, kind: "todo", late: 20, nothing: "这周到期或计划在这段时间的待办：没有。", status: "open" },
+    { count: 1, kind: "schedule", late: null, nothing: "这周的日程：没有。", status: "open" },
+  ]);
+  assert.equal(lead, "这周到期或计划在这段时间的待办和这周的日程都没有；下面是另外的20 项还没完成的待办（其中 20 项已过期或过了计划日）和接下来的 1 个日程。");
+  assert.equal((lead.match(/没有/gu) ?? []).length, 1);
+});
+
+test("live 1 in the graph: 「今天先处理哪些事？」 then 「那这周呢？」 — the same question for this week, no reading line", async () => {
+  const FRIDAY = "2026-11-20T01:00:00.000Z";
+  const world = fnWorld();
+  world.records.push(schedule(ACTOR, "personal:s20", "和王强对合同", "2026-11-20T05:00:00.000Z"));
+  // The turn before, as the conversation holds it.
+  const messages = [{ createdAt: "2026-11-20T00:58:00.000Z", role: "user" as const, text: "今天先处理哪些事？" }, { createdAt: "2026-11-20T00:58:10.000Z", role: "assistant" as const, text: "今天你有 4 项还没完成的待办，其中 4 项已过期或过了计划日：" }];
+  const kit = graphKit((async () => { throw new Error("replaced"); }) as never, { messages, now: FRIDAY, records: recordAccessOf(world) });
+  const citeAll = (call: { user: string }) => json({ segments: [{ cites: [...new Set(call.user.slice(call.user.indexOf("Items to answer")).match(/\bs\d+\b/gu) ?? [])].map((sourceRef) => ({ sentenceIds: [1], sourceRef })), lead: "好的。", partId: "p1" }] });
+  // The first layer reads 「那这周呢？」 as unclear between a summary and a list, with this week's window.
+  const run = await runFn("那这周呢？", [{ clarity: "multiple_readings", dataSources: ["orbit_records"], deliverable: "summary", readFilter: { from: "2026-11-16", to: "2026-11-22" }, readings: [{ capabilities: ["memo.read", "fn.summarize"], deliverable: "summary", label: "看摘要" }, { capabilities: ["todo.read"], deliverable: "list", label: "列待办" }], requiredCapabilities: ["memo.read"], sourceQuote: "那这周呢" }], { answer: citeAll, session: kit });
+  assert.doesNotMatch(run.result.text, /我按|来理解/u, run.result.text);
+  assert.ok(run.events.some((event) => event.type === "understand.period_swapped" && event.plate === true));
+  assert.ok(run.result.sourceRefs.includes("todo:task:t45") && run.result.sourceRefs.includes("schedule:personal:s20"), JSON.stringify(run.result.sourceRefs));
+});
+
+test("live 2: our words 材料 and 我读到的 are not shown; the user's words are", () => {
+  assert.equal(withoutInternalWords("这个日程是 14:00 到 15:00。材料里没有显示关联的人。我读到的这条日程只有时间。", "zh"), "这个日程是 14:00 到 15:00。记录里没有写关联的人。这条日程只有时间。");
+  assert.equal(withoutInternalWords("資料には参加者が書かれていません。", "ja"), "記録には参加者が書かれていません。");
+  assert.equal(withoutInternalWords("The materials show no one linked.", "en"), "your records show no one linked.".replace(/^y/u, "y"));
+});
+
+test("live 3: 16 to-dos — the past-deadline ones stay as points, the other 12 are the cards", () => {
+  const card = (index: number, late: boolean) => ({ id: `t${index}`, kind: "todo" as const, title: `待办${String(index).padStart(2, "0")}号`, ...(late ? { sub: "已过期9天", subTone: "late" as const } : { sub: "计划日已过" }) });
+  const cards = Array.from({ length: 16 }, (_, index) => card(index + 1, index < 4));
+  const text = ["今天先处理这 16 项，已过期的 4 项最急：", ...cards.map((item) => `・${item.title}：${item.sub}。`)].join("\n");
+  const trimmed = withListedPointsTrimmed(text, cards, "zh");
+  assert.equal(trimmed.dropped, 12);
+  assert.deepEqual(trimmed.text.split("\n"), ["今天先处理这 16 项，已过期的 4 项最急：", "・待办01号：已过期9天。", "・待办02号：已过期9天。", "・待办03号：已过期9天。", "・待办04号：已过期9天。", "其余 12 项在下面的卡片里，按计划日期排。"]);
+  assert.equal(withListedPointsTrimmed(["你有 3 项：", "・待办01号", "・待办02号", "・待办03号"].join("\n"), cards, "zh").dropped, 0, "a short walk-through stays");
+});
 
 test("English answers keep their lines: the sentence rules never glue lines or points together", () => {
   const text = "You last talked with Priya on Tue, Nov 10, the latest.\nHe called on Nov 3 about the role.\n- Send the JD: due Wed, Nov 18.\n- Confirm the on-site date: planned Tue, Nov 17.\nI see 9 notes.";

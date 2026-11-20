@@ -159,4 +159,56 @@ export function withoutFalseReadClaims(text: string, readAllFine: boolean): { te
   return { dropped, text: kept.filter((line) => line.trim()).join("\n") };
 }
 
+/**
+ * Hotfix 1c (live: 「材料里没有显示…」「我读到的这条日程只有…」): "材料" (the materials we hand the model) and "what I read" are our
+ * words, not the user's. They become the user's own: 记录 / 記録 / your records, and the record itself.
+ */
+const INTERNAL: Record<Language, [RegExp, string][]> = {
+  en: [[/\b(?:in|from) the (?:provided )?materials?\b/giu, "in your records"], [/\bthe (?:provided )?materials?\b/giu, "your records"], [/\bthe (\w+) I read\b/giu, "the $1"], [/\bI (?:only )?read\b(?= that| the| this)/giu, "your records show"]],
+  ja: [[/資料(?:には|では|に|で)/gu, "記録には"], [/資料/gu, "記録"], [/(?:私が)?読んだ(?=この|その)/gu, ""], [/読み取った(?=この|その)/gu, ""]],
+  zh: [[/(?:根据)?材料(?:里|中|上)?(?:没有显示|没显示)/gu, "记录里没有写"], [/(?:根据)?材料(?:里|中|上)/gu, "记录里"], [/材料/gu, "记录"], [/我(?:这次)?(?:只)?读到的(?=这|那)/gu, ""], [/我(?:这次)?读到的/gu, ""]],
+};
+
+export function withoutInternalWords(text: string, language: Language): string {
+  return INTERNAL[language].reduce((out, [pattern, to]) => out.replace(pattern, to), text);
+}
+
+/** How many records a kept text may walk through point by point before the rest are left to the cards (a list shows five). */
+export const POINTS_IN_TEXT = 5;
+const POINT = /^\s*(?:[・•●▪◦\-–—*+]|\d{1,2}\s*[.．、)）]|[（(]\d{1,2}[)）])\s*/u;
+
+/**
+ * Hotfix 1c (live: 16 stale to-dos written out in the text and again as cards): when a kept model text has one point per
+ * listed record for more than POINTS_IN_TEXT records, the points of the to-dos past their deadline stay (or the first five,
+ * when none is), the other points go and one line says the rest are the cards below, in the list's order.
+ */
+export function withListedPointsTrimmed(text: string, cards: readonly AgentAnswerRecordContract[], language: Language): { text: string; dropped: number } {
+  const lines = text.split("\n");
+  const pointOf = (line: string) => (POINT.test(line) ? cards.find((card) => card.title && line.includes(card.title)) ?? null : null);
+  const pointed = lines.map(pointOf);
+  const count = pointed.filter(Boolean).length;
+  if (count <= POINTS_IN_TEXT) return { dropped: 0, text };
+  const late = new Set(cards.filter((card) => card.subTone === "late").map((card) => card.title));
+  let kept = 0;
+  const keep = (card: AgentAnswerRecordContract) => (late.size ? late.has(card.title) : kept < POINTS_IN_TEXT);
+  const out: string[] = [];
+  let dropped = 0;
+  lines.forEach((line, index) => {
+    const card = pointed[index];
+    if (!card) return out.push(line);
+    if (keep(card)) {
+      kept += 1;
+      return out.push(line);
+    }
+    dropped += 1;
+  });
+  if (!dropped) return { dropped: 0, text };
+  const rest = { en: `The other ${dropped} are the cards below, by planned date.`, ja: `残りの${dropped}件は下のカードにあります（予定日の順）。`, zh: `其余 ${dropped} 项在下面的卡片里，按计划日期排。` }[language];
+  // The line goes right after the last point kept (or where the points were).
+  const lastPoint = out.map((line, index) => (pointOf(line) ? index : -1)).filter((index) => index >= 0).pop();
+  const at = lastPoint === undefined ? out.length : lastPoint + 1;
+  out.splice(at, 0, rest);
+  return { dropped, text: out.join("\n") };
+}
+
 export type { Language };

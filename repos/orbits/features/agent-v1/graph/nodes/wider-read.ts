@@ -132,6 +132,29 @@ export function scheduleOthersLine(language: Language, count: number): string {
   return `接下来还有 ${count} 个日程。`;
 }
 
+interface Piece {
+  kind: "todo" | "schedule";
+  nothing: string;
+  count: number;
+  status: "open" | "completed";
+  late: number | null;
+}
+
+/** Hotfix 1c: one sentence for several kinds that had nothing under the narrowing, and what is shown below instead. */
+export function combinedLead(language: Language, pieces: readonly Piece[]): string {
+  const subject = (piece: Piece) => piece.nothing.replace(/(?:：没有。|：ありません。|: none\.)$/u, "");
+  if (language === "en") {
+    const shown = pieces.map((piece) => (piece.kind === "todo" ? `${piece.count} ${STATUS_WORDS.en[piece.status]} ${piece.count === 1 ? "to-do" : "to-dos"}${piece.status === "open" && piece.late ? ` (${piece.late} past their deadline or planned day)` : ""}` : `the ${piece.count} coming up`));
+    return `No ${pieces.map((piece) => subject(piece).replace(/^./u, (first) => first.toLowerCase())).join(" and no ")}; below are ${shown.join(" and ")}.`;
+  }
+  if (language === "ja") {
+    const shown = pieces.map((piece) => (piece.kind === "todo" ? `${STATUS_WORDS.ja[piece.status]}タスク${piece.count}件${piece.status === "open" && piece.late ? `（うち${piece.late}件は期限または予定日を過ぎています）` : ""}` : `これからの予定${piece.count}件`));
+    return `${pieces.map(subject).join("も")}もありません。下は${shown.join("と")}です。`;
+  }
+  const shown = pieces.map((piece) => (piece.kind === "todo" ? `${piece.count} 项${STATUS_WORDS.zh[piece.status]}待办${piece.status === "open" && piece.late ? `（其中 ${piece.late} 项已过期或过了计划日）` : ""}` : `接下来的 ${piece.count} 个日程`));
+  return `${pieces.map(subject).join("和")}都没有；下面是另外的${shown.join("和")}。`;
+}
+
 /**
  * The wider read and its answer, or null when nothing was narrowed or nothing exists outside the narrowing (the plain
  * "nothing found" sentence then stays). A failed read is thrown to the caller, which keeps the plain sentence too.
@@ -139,6 +162,7 @@ export function scheduleOthersLine(language: Language, count: number): string {
 export async function widerThanAsked(input: WiderInput): Promise<Widened | null> {
   const lines: string[] = [];
   const views: RecordView[] = [];
+  const pieces: Piece[] = [];
   for (const asked of input.asked) {
     let query: DomainQuery | null = null;
     let status: "open" | "completed" = "open";
@@ -173,9 +197,16 @@ export async function widerThanAsked(input: WiderInput): Promise<Widened | null>
     }
     const count = pages.total ?? pages.items.length;
     const cards = pages.items.map(input.cardOf);
-    const others = asked.kind === "todo" ? todoOthersLine(input.language, count, status, pages.complete ? lateCount(cards, input.language) : null, asked.person?.name) : scheduleOthersLine(input.language, count);
+    const late = asked.kind === "todo" && pages.complete ? lateCount(cards, input.language) : null;
+    const others = asked.kind === "todo" ? todoOthersLine(input.language, count, status, late, asked.person?.name) : scheduleOthersLine(input.language, count);
     lines.push(`${nothing}${input.language === "en" ? " " : ""}${others}`);
+    pieces.push({ count, kind: asked.kind, late, nothing, status });
     views.push(...pages.items);
+  }
+  // Hotfix 1c (live, 「那这周呢？」: 「…：没有。另有 20 项…这周的日程：没有。接下来还有 1 个日程。」 — four statements): two kinds with
+  // nothing in the window are said in one sentence — what was looked for, then what is shown below.
+  if (pieces.length >= 2 && pieces.length === lines.length) {
+    lines.splice(0, lines.length, combinedLead(input.language, pieces));
   }
   // Part 1b item 4 (AE-RD-004): a person's read with nothing outside the narrowing still says who and what was looked for.
   if (!views.length && lines.length && input.asked.some((asked) => asked.person)) {

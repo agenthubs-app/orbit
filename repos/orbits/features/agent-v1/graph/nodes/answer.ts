@@ -18,7 +18,7 @@ import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
 import { composeStructured, inListOrder, needsLayout, stripMarkdown, textBlocks, type AnswerBlock } from "../../answer/blocks";
 import { lateCount, listAnswer } from "../../answer/list-answer";
-import { asksBeyondListing, cardFactsOf, leftOver, textSaysMore, withCodeLateCount, withCodeLateness, withoutFieldLabels, withoutFalseReadClaims } from "../../answer/list-or-text";
+import { asksBeyondListing, cardFactsOf, leftOver, textSaysMore, withCodeLateCount, withCodeLateness, withListedPointsTrimmed, withoutFieldLabels, withoutFalseReadClaims, withoutInternalWords } from "../../answer/list-or-text";
 import { withoutUnsupportedEventClaims, type EventClaimFacts } from "../../answer/event-claims";
 import type { AgentAnswerRecordContract } from "../../../../shared/contract/agent-v1";
 import { statusSaidIn } from "./resolve";
@@ -290,8 +290,8 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       const lateness = withCodeLateness(claimed, todoCards);
       if (lateness.changed.length) emitTrace({ changed: lateness.changed, partId: part.localId, type: "answer.lateness_corrected" });
       claimed = lateness.text;
-      // Hotfix 1c (AE-SCL-008): a material's English field label is not shown in a zh or ja answer.
-      claimed = withoutFieldLabels(claimed, state.language);
+      // Hotfix 1c (AE-SCL-008): a material's English field label is not shown in a zh or ja answer; nor our words (材料, 我读到的).
+      claimed = withoutInternalWords(withoutFieldLabels(claimed, state.language), state.language);
       // Hotfix 1c (AE-UND-015): "could not be read" must agree with this turn's coverage record.
       const readAllFine = (part.coverage ?? []).length > 0 && (part.coverage ?? []).every((item) => item.complete) && !someUnread;
       const readClaims = withoutFalseReadClaims(claimed, readAllFine);
@@ -314,6 +314,15 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       const facts = allMaterials.filter((material) => (part.cites ?? []).includes(material.ref)).flatMap((material) => cardFactsOf(material.sentences.map((sentence) => sentence.text)));
       const keepsText = listed.length > 0 && (asksBeyondListing(listQuote) || textSaysMore(segment.text, listed, facts));
       if (keepsText) emitTrace({ beyond: asksBeyondListing(listQuote), cards: listed.length, left: leftOver(segment.text, listed, facts).slice(0, 80), partId: part.localId, type: "answer.list_kept_text" });
+      // Hotfix 1c (live, 「今天先处理哪些事？」 with 16 stale to-dos: all 16 in the text and on the cards): a kept text that walks
+      // through more records than a list shows first keeps the past-deadline ones in its points; the rest are the cards.
+      if (keepsText) {
+        const trimmed = withListedPointsTrimmed(run.answers.get(part.localId) ?? "", listed, state.language);
+        if (trimmed.dropped) {
+          run.answers.set(part.localId, trimmed.text);
+          emitTrace({ dropped: trimmed.dropped, partId: part.localId, type: "answer.points_left_to_cards" });
+        }
+      }
       if (listed.length && listed.length === new Set(part.cites ?? []).size && !keepsText) {
         const quote = input.message.slice(part.quote[0], part.quote[1]);
         // Hotfix 2026-11-20 (AE-SCL-008): the lead says how many match in all when the cards are only some of them.

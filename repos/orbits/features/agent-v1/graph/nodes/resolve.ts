@@ -42,7 +42,7 @@ import { clueWords } from "./clarify";
 import { webPartReads } from "./probe";
 import { SIMILAR_TITLE, similarity } from "../../functions/link-back";
 import { localDayOf } from "../../propose/dates";
-import { asksTodaysPlate, isPlateFilter, onlyWindowWords } from "../../understand/read-window";
+import { asksTodaysPlate, isPlateFilter, onlyWindowWords, swapsPeriod } from "../../understand/read-window";
 import { widerThanAsked, type AskedRead, type Widened } from "./wider-read";
 import { occurrenceViews } from "../../domains/schedule/occurrences";
 
@@ -570,7 +570,10 @@ export function resolveNode(scope: NodeScope): GraphNode {
       // Hotfix 2026-11-20 (rule 1, understand/read-window.ts): "what to handle today" reads the open to-dos due or planned up
       // to today (overdue included) and today's schedule items, whichever of the two the first layer named.
       const today = localDayOf(now, zone);
-      const plate = isPlateFilter(filter, today) && asksTodaysPlate(quote);
+      // Hotfix 1c: also a follow-up that only swaps the period of "what to handle today" (understand/read-window.ts swapsPeriod).
+      const previousAsk = [...(context?.messages ?? [])].reverse().find((item) => item.role === "user")?.text;
+      const swappedPlate = Boolean(previousAsk) && swapsPeriod(quote) && asksTodaysPlate(previousAsk!);
+      const plate = (asksTodaysPlate(quote) && isPlateFilter(filter, today)) || (swappedPlate && isPlateFilter(filter, today, true));
       if (plate && !contacts.length && !text) {
         kinds.add("todo");
         kinds.add("schedule");

@@ -84,6 +84,18 @@ export function dayOfWords(words: string, today: string): string | null {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+const SWAP_LEAD = /^(?:那么说|那么|那|还有|それなら|じゃあ|では|なら|and|what about|how about)\s*/iu;
+const SWAP_TAIL = /(?:呢|吗|の|は|\?|？|。|\.|\s)+$/u;
+
+/**
+ * Hotfix 1c (live: 「那这周呢？」 after 「今天先处理哪些事？」 opened with 「我按「看摘要」来理解。」): a short follow-up that only swaps
+ * the period ("那这周呢", "来週は？", "what about next week?") is the question just answered, with the new window.
+ */
+export function swapsPeriod(message: string): boolean {
+  const core = message.trim().replace(SWAP_LEAD, "").replace(SWAP_TAIL, "").trim();
+  return Boolean(core) && [...core].length <= 14 && setsOwnTime(core) && onlyWindowWords(core);
+}
+
 /** "Today", "now" or "first" in the sense of what to take up (zh, ja, en). */
 const PLATE_WHEN = /(今天|今日|今儿|现在|眼下|当下|这会儿|先(?![生週月日])|首先|优先|最要紧|最紧急|当务之急|きょう|今すぐ|いま|今(?![週月年度回朝晩夜後])|まず|最初に|先に|\b(?:today|now|right now|first|this morning|tonight)\b)/iu;
 /** Doing, handling, taking up (zh, ja, en). */
@@ -97,12 +109,12 @@ export function asksTodaysPlate(words: string): boolean {
 }
 
 /** Rule 1: the window of a "today's plate" read — open to-dos due or planned up to today (no lower end). */
-export function plateFilter<F extends Windowed>(filter: F | undefined, today: string): F {
+export function plateFilter<F extends Windowed>(filter: F | undefined, until: string): F {
   const { from: _from, ...rest } = (filter ?? {}) as F;
-  return { ...rest, status: "open", to: today } as F;
+  return { ...rest, status: "open", to: until } as F;
 }
 
-/** Rule 1, read step: the filter is the one plateFilter() made for this day. */
-export function isPlateFilter(filter: Windowed | undefined, today: string): boolean {
-  return Boolean(filter && !filter.from && filter.to === today && filter.status === "open");
+/** Rule 1, read step: the filter is the one plateFilter() made — for today, or (a swapped period) up to that window's end. */
+export function isPlateFilter(filter: Windowed | undefined, today: string, swapped = false): boolean {
+  return Boolean(filter && !filter.from && filter.status === "open" && filter.to && (filter.to === today || (swapped && filter.to >= today)));
 }
