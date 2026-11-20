@@ -112,6 +112,8 @@ test("AG14-2 「回答时参考这些」 off: nothing is recalled, the rule incl
   assert.deepEqual(listed(run.events), UPCOMING_NEXT_WEEK);
   assert.match(run.result.text, /^还没开始的活动共5场，按开始时间从早到晚：/u);
   assert.doesNotMatch(run.result.text, /适合你|为你挑|推荐给你/u);
+  // …and under the list the standing line that invites another basis: nothing is decided for the user.
+  assert.match(run.result.text, /\n想换个依据重新排，直接告诉我新的标准就行（例如「按开始时间」「跟 @某篇笔记 的主题有关」）。$/u);
 });
 
 test("AG14-3 「这次看周四晚上的」: no card and no change; this turn's words overrule the saved preference", async () => {
@@ -284,6 +286,7 @@ test("dev run 2 (AE-MEM-002): asking which events are recommended is a ranking, 
   assert.deepEqual(listed(none.events), UPCOMING_NEXT_WEEK);
   assert.match(none.result.text, /^これから開催されるイベントは全部で5件、開始時間の早い順です：/u);
   assert.doesNotMatch(none.result.text, /あなたに合う|おすすめは/u);
+  assert.match(none.result.text, /\n別の基準で並べ直したいときは、基準を教えてください（例：「開始時間の順」「@メモ のテーマに合うもの」）。$/u);
   // A pick with a count still asks once what to pick by (AG10-1), as before.
   const three = "来週のイベントを3つ選んで。";
   const counted = await runFn(three, [EVENT_RANK(three, { ...NEXT_WEEK, rank: { count: 3 } })], { language: "ja", memories: [] });
@@ -292,6 +295,7 @@ test("dev run 2 (AE-MEM-002): asking which events are recommended is a ranking, 
   const plain = "来週のイベントを一覧で見せて。";
   const listing = await runFn(plain, [{ dataSources: ["orbit_records"], deliverable: "list", requiredCapabilities: ["event.read"], sourceQuote: plain }], { answer: () => JSON.stringify({ segments: [] }), language: "ja", memories: [MM1] });
   assert.equal(of(listing.events, "understand.recommend_is_ranking").length, 0);
+  assert.doesNotMatch(listing.result.text, /別の基準で並べ直したいとき/u, "a plain list is not a recommendation: no line about another basis");
 });
 
 test("dev run 2 (AE-MEM-007): a preferred time none of the events meets is said so; nothing is called a match", async () => {

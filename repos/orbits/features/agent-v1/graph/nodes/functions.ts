@@ -532,7 +532,7 @@ export function fieldListLead(language: Language, input: { field: RankField | nu
 }
 
 /** The AG08 answer of a ranking (scope, topic, coverage; the reason of each by the record's own fields). */
-function writeAnswer(input: { upcoming?: boolean; apart?: string | null; domain: RankDomain; language: Language; basis: string | null; basisMemo: string | null; within: string | null; period: { from?: string; to?: string } | null; field: RankField | null; direction: "asc" | "desc"; result: RankResult<Candidate>; timeZone: string; now: string; lead: string | null; reasons: Map<string, string> }): Written {
+function writeAnswer(input: { upcoming?: boolean; apart?: string | null; domain: RankDomain; language: Language; basis: string | null; basisMemo: string | null; within: string | null; period: { from?: string; to?: string } | null; field: RankField | null; direction: "asc" | "desc"; result: RankResult<Candidate>; timeZone: string; now: string; lead: string | null; offerBasis?: boolean; reasons: Map<string, string> }): Written {
   const { domain, language, result } = input;
   const unit = UNIT[domain][language];
   const noun = NOUN[domain][language];
@@ -601,7 +601,9 @@ function writeAnswer(input: { upcoming?: boolean; apart?: string | null; domain:
   const afterAt = lines.length;
   if (result.untimed.length && domain === "event") lines.push(say.untimedLine(language, result.untimed.map((item) => (item as EventCandidate).title)));
   if (input.apart) lines.push(input.apart);
-  if (input.lead) lines.push(say.changeBasisLine(language));
+  // Coordinator's decision 2026-11-20 (hotfix × AG14): a recommendation of events with nothing to pick by is answered with the
+  // list of what is coming up — and, so that nothing is decided for the user, the same standing line that invites another basis.
+  if (input.lead || input.offerBasis) lines.push(say.changeBasisLine(language));
   // AG19 (D1): each listed record is one card, in the list's order; the name, the time and the place are on the card.
   const list = recordsBlock(cards, language);
   const paragraphs = (texts: readonly string[]): AnswerBlock[] => texts.filter((text) => text.trim()).map((text) => ({ text, type: "paragraph" as const }));
@@ -1009,7 +1011,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const unmet = domain === "event" && !topic && preferred.length > 0 && result.ordered.length > 0 && !result.ordered.some((item) => item.meetsTime);
   const lead = basisLead && unmet ? `${basisLead}\n${MEMORY_WORDS.noneAtPreferredTime(language, say.timeWords(preferred[0], language))}` : basisLead;
   const apart = history && upcoming.length ? say.upcomingApartLine(language, upcoming.map((contact) => `${contact.name}${language === "en" ? " — " : "——"}${contact.signals.map((item) => signalWords(item, language, timeZone)).join(language === "en" ? "; " : "；")}`)) : null;
-  const written = writeAnswer({ upcoming: upcomingOnly, apart, basis: topic && !basisMemo && !topicFromMemory ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
+  const written = writeAnswer({ upcoming: upcomingOnly, apart, basis: topic && !basisMemo && !topicFromMemory ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, offerBasis: recommendsEvents && !lead, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
   // AG12 run-03 (AE-FN-003 R4): beside a ranking that says its basis, the ways of ordering it again as clickable entries (the
   // same options as the basis question; the clients show entries already). A click ranks again by it; it asks nothing.
   if (lead && !optionSets.some((set) => set.partId === part.localId && set.purpose === "ranking" && set.kind === "entry")) {
