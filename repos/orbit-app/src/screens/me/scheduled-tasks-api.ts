@@ -43,9 +43,11 @@ export async function deleteScheduledTask(client: OrbitApiClient, id: string): P
 
 /** The form, new (no id) or a change; resolves to the task's id, or the server's error code. */
 export async function saveScheduledTaskForm(client: OrbitApiClient, form: AgentScheduledTaskFormContract, language: string, id?: string): Promise<{ ok: true; id: string } | { ok: false; code: string }> {
-  const path = id ? `/api/agent/automations/${encodeURIComponent(id)}` : "/api/agent/automations";
   const body = { form, language };
-  const result = await (id ? client.patch<{ automation?: { automationId?: unknown } }>(path, { body }) : client.post<{ automation?: { automationId?: unknown } }>(path, { body })).catch(() => null);
+  // One literal path per call, so the offline inventory sees exactly the two routes this sends to.
+  const result = await (id
+    ? client.patch<{ automation?: { automationId?: unknown } }>(`/api/agent/automations/${encodeURIComponent(id)}`, { body })
+    : client.post<{ automation?: { automationId?: unknown } }>("/api/agent/automations", { body })).catch(() => null);
   if (!result) return { code: "OFFLINE", ok: false };
   if (!result.success) return { code: result.error?.code ?? "FAILED", ok: false };
   const saved = typeof result.data?.automation?.automationId === "string" ? result.data.automation.automationId : id;
