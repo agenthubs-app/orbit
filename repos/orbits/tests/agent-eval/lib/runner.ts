@@ -216,6 +216,23 @@ function productIdsOfFixture(value: unknown, idMap: Record<string, string>): unk
   return value;
 }
 
+/**
+ * AG15 (AE-SCH-008): the transcript line for one scheduler tick. A waiting delivery taken up is not a sent one: it says how
+ * many were sent, cancelled (the rule was paused, changed or removed, or its note can no longer be read) or still wait.
+ */
+export function dispatchNarration(at: string, status: number, dispatch: Record<string, number> | null): string {
+  const head = `*（定时派发推进到 ${at}：没有任何客户端在线，由运行器像定时器那样调用派发入口，HTTP ${status}`;
+  if (!dispatch) return `${head}）*`;
+  const taken = dispatch.deliveriesRetried ?? 0;
+  const cancelled = dispatch.deliveriesCancelled ?? 0;
+  const sent = dispatch.deliveriesSent ?? 0;
+  const waiting = Math.max(0, taken - cancelled - sent);
+  const retried = taken
+    ? `取出 ${taken} 条待送通知（${[sent ? `送进收件箱 ${sent} 条` : null, cancelled ? `取消 ${cancelled} 条，没有送出` : null, waiting ? `仍没送出、继续待送 ${waiting} 条` : null].filter(Boolean).join("，")}）`
+    : "没有待送通知";
+  return `${head}；这一次处理了 ${dispatch.periods ?? 0} 期规则、${retried}、触发 ${dispatch.timersFired ?? 0} 个一次性定时器${dispatch.undelivered ? `；其中 ${dispatch.undelivered} 期的结果算出来了，但没能写进收件箱，留作待送` : ""}）*`;
+}
+
 /** Per-case files and checks. */
 /**
  * AG19: the answer's blocks as the two clients lay them out (written by server code; the text above is the same answer as
@@ -709,7 +726,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           const body = (await response.json().catch(() => null)) as { data?: { dispatch?: Record<string, number> } } | null;
           const dispatch = body?.data?.dispatch ?? null;
           log.push({ dispatch, status: response.status, step: index, type: "scheduler.dispatch" });
-          transcript.push(`*（定时派发推进到 ${at}：没有任何客户端在线，由运行器像定时器那样调用派发入口，HTTP ${response.status}${dispatch ? `；这一次处理了 ${dispatch.periods ?? 0} 期规则、补送 ${dispatch.deliveriesRetried ?? 0} 条待送通知、触发 ${dispatch.timersFired ?? 0} 个一次性定时器${dispatch.undelivered ? `；其中 ${dispatch.undelivered} 期的结果算出来了，但没能写进收件箱，留作待送` : ""}` : ""}）*`, "");
+          transcript.push(dispatchNarration(at, response.status, dispatch), "");
           if (response.status !== 200) unsupported.push({ reason: `the dispatch entry answered HTTP ${response.status}`, step: index, word });
           if (inboxFaultArmed) {
             await serverControl(environment, "fault_end", { where: "notify.inbox" });

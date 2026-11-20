@@ -1874,6 +1874,22 @@
               "optional": false,
               "kind": "text",
               "type": "readonly string[]"
+            },
+            "source": {
+              "optional": true,
+              "kind": "object",
+              "members": {
+                "caption": {
+                  "optional": false,
+                  "kind": "text",
+                  "type": "string"
+                },
+                "card": {
+                  "optional": false,
+                  "kind": "text",
+                  "type": "AgentAnswerRecordContract"
+                }
+              }
             }
           }
         },

@@ -355,7 +355,7 @@ export const agentScheduledTaskRunSchema: z.ZodType<AgentScheduledTaskRunContrac
   delivery: z.object({ attempts: z.number().int().nonnegative(), cancelReason: z.enum(["rule_paused", "rule_changed", "rule_removed", "reference_unreadable"]).optional(), deliveredAt: z.string().optional(), state: z.enum(["none", "pending", "delivered", "cancelled"]) }),
   // AG15 interface: how the history shows the period (written by the server).
   display: z.object({ day: z.string(), opens: z.enum(["result", "card"]).nullable().catch(null), skippedNote: z.string().nullable(), text: z.string(), time: z.string().nullable() }).optional(),
-  detail: z.object({ basis: z.string(), notes: z.array(z.string()) }).optional(),
+  detail: z.object({ basis: z.string(), notes: z.array(z.string()), source: z.object({ caption: z.string(), card: agentAnswerRecordSchema }).optional().catch(undefined) }).optional(),
   items: z.array(z.object({ card: agentAnswerRecordSchema.optional().catch(undefined), id: z.string(), kind: z.enum(["event", "contact", "todo"]), line: z.string(), ref: z.string(), title: z.string() })),
   line: z.string(),
   outcome: scheduledRunOutcome,

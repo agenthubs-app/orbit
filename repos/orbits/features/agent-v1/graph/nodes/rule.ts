@@ -139,10 +139,23 @@ function scopeLineOf(said: string | null, scope: AgentRuleScope, language: Langu
   return language === "en" ? `${said} (${read})` : `${said}（${read}）`;
 }
 
-export function titleOf(schedule: RuleSchedule, rule: Pick<AgentRuleSpec, "maxItems" | "scope" | "action">, said: string | null, language: Language): string {
+/** The scope's short name: the user's own words in the scope line when there are any, else how code reads the scope. */
+function scopeNameOf(rule: Pick<AgentRuleSpec, "scope" | "scopeText">, language: Language): string {
+  const read = scopeWordsOf(rule.scope, language);
+  const text = rule.scopeText.trim();
+  if (!text || text === read || text === capital(read)) return read;
+  for (const tail of [`（${read}）`, ` (${read})`]) if (text.endsWith(tail) && text.length > tail.length) return text.slice(0, -tail.length).trim();
+  return text;
+}
+
+/**
+ * A task's name, from its rule alone: the card that proposes it, the task page, the inbox and a form left without a name
+ * all take this one (AG15 follow-up 6), so one rule has one name wherever it is shown.
+ */
+export function titleOf(schedule: RuleSchedule, rule: Pick<AgentRuleSpec, "maxItems" | "scope" | "scopeText" | "action">, language: Language): string {
   const when = scheduleWords(schedule, language).replace(/ at \d{1,2}:\d{2}$/u, "").replace(/\s+\d{1,2}:\d{2}$/u, "");
   const unit = ({ contact: { ja: "人", zh: "位" }, event: { ja: "件", zh: "场" }, todo: { ja: "件", zh: "条" } } as const)[rule.scope.domain];
-  const what = said ?? scopeWordsOf(rule.scope, language);
+  const what = scopeNameOf(rule, language);
   if (rule.action === "replan") return ({ en: `${capital(when)}: move overdue to-dos to that day`, ja: `${when}：予定日を過ぎたタスクを当日に変更`, zh: `${when}把过了计划日的待办改到当天` } as const)[language].slice(0, 120);
   return ({ en: `${capital(when)}: up to ${rule.maxItems} — ${what}`, ja: `${when}：${what}から最大${rule.maxItems}${unit.ja}`, zh: `${when}挑${rule.maxItems}${unit.zh}：${what}` } as const)[language].slice(0, 120);
 }
@@ -212,7 +225,7 @@ function createIntent(input: { ask: RuleAskState; basis: BasisFound; scopeSaid: 
     scopeText: scopeLineOf(input.scopeSaid, ask.scope, language),
     validUntil: ask.validUntil,
   };
-  return { capability: RULE_CREATE, set: { rule, schedule: ask.schedule, title: titleOf(ask.schedule, rule, input.scopeSaid, language) } };
+  return { capability: RULE_CREATE, set: { rule, schedule: ask.schedule, title: titleOf(ask.schedule, rule, language) } };
 }
 
 /** The account's task the words name: the one whose title the words hold, else the one sharing the most of them. */

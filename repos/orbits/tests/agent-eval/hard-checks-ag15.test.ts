@@ -68,3 +68,12 @@ test("the eval environment gives the dispatch entry its own secret: derived, at 
   assert.equal(buildEvalEnvironment({}, file, { worker: 2 }).env.CRON_SECRET, environment.env.CRON_SECRET, "every worker's server takes the same one");
   assert.equal(buildEvalEnvironment({}, { ...file, CRON_SECRET: "x".repeat(40) }).env.CRON_SECRET, "x".repeat(40), "the eval env file may set its own");
 });
+
+test("AE-SCH-008: a waiting delivery taken up and cancelled is never told as sent in the transcript", async () => {
+  const { dispatchNarration } = await import("./lib/runner");
+  const paused = dispatchNarration("2026-11-20T09:20:00+09:00", 200, { deliveriesCancelled: 1, deliveriesRetried: 1, deliveriesSent: 0, periods: 0, timersFired: 0, undelivered: 0 });
+  assert.doesNotMatch(paused, /补送|送进收件箱/u);
+  assert.match(paused, /取出 1 条待送通知（取消 1 条，没有送出）/u);
+  assert.match(dispatchNarration("x", 200, { deliveriesRetried: 2, deliveriesSent: 1, periods: 0, timersFired: 0 }), /取出 2 条待送通知（送进收件箱 1 条，仍没送出、继续待送 1 条）/u);
+  assert.match(dispatchNarration("x", 200, { deliveriesRetried: 0, periods: 1, timersFired: 0 }), /处理了 1 期规则、没有待送通知、/u);
+});

@@ -217,7 +217,7 @@ export function scheduledRunView(run: AgentAutomationRunRecord, locale: Locale =
     computedAt: run.computedAt,
     delivery: { attempts: run.delivery.inbox.attempts, state: run.delivery.inbox.state, ...(run.delivery.inbox.deliveredAt ? { deliveredAt: run.delivery.inbox.deliveredAt } : {}), ...(run.delivery.inbox.cancelReason ? { cancelReason: run.delivery.inbox.cancelReason } : {}) },
     display: runDisplay(run, locale, timeZone, domain),
-    ...(run.detail ? { detail: { basis: run.detail.basis, notes: [...run.detail.notes] } } : {}),
+    ...(run.detail ? { detail: { basis: run.detail.basis, notes: [...run.detail.notes], ...(run.detail.source ? { source: run.detail.source } : {}) } } : {}),
     items: run.items.map((item) => ({ id: item.id, kind: item.kind, line: item.line, ref: item.ref, title: item.title, ...(item.card ? { card: item.card } : {}) })),
     line: runHistoryLine(run, locale),
     outcome: run.outcome,

@@ -3,7 +3,9 @@ import test from "node:test";
 
 import { prepareRuleOperation, ruleLines, RULE_CREATE, type RuleCreateIntent } from "../../features/agent-v1/domains/rule/ops";
 import type { AgentAutomationRunRecord } from "../../features/agent/automations/runs";
-import { runInboxTitle, scheduledRunView } from "../../features/agent/automations/task-view";
+import { ruleFromForm } from "../../features/agent/automations/task-form";
+import { runInboxTitle, scheduledRunView, scheduledTaskView } from "../../features/agent/automations/task-view";
+import { titleOf } from "../../features/agent-v1/graph/nodes/rule";
 import { expiredCardNote } from "../../features/agent/runtime/card-view";
 import { cardLineOf } from "../../features/agent-v1/propose/copy";
 import { cardCountTitle } from "../../features/agent/runtime/card-operations";
@@ -146,4 +148,20 @@ test("every case of the history table reads as the approved draft writes it", ()
   assert.deepEqual(view({ cardId: "card:1", items: [{ id: "T1", kind: "todo", line: "", ref: "todo:T1", title: "" }, { id: "T2", kind: "todo", line: "", ref: "todo:T2", title: "" }] }), { day: "10月16日（周五）", opens: "card", skippedNote: null, text: "有 2 条要改，等你确认", time: "9:05" });
   assert.equal(runInboxTitle(run({ cardId: "card:1", items: [{ id: "T1", kind: "todo", line: "", ref: "todo:T1", title: "" }, { id: "T2", kind: "todo", line: "", ref: "todo:T2", title: "" }] })), "有 2 条要改，等你确认");
   assert.equal(runInboxTitle(run({ items: [{ id: "C1", kind: "contact", line: "", ref: "contact:C1", title: "" }] })), "有 1 位该联系的人");
+});
+
+test("one rule has one name: the card's, the form's default and the task page's come from titleOf on the rule alone", () => {
+  // The scope line of a conversation-made rule: the user's words, then how code reads them.
+  const said = ruleSpec({ scopeText: "周末活动（那个周末开始的公开活动）" });
+  assert.equal(titleOf(FRIDAY_9, said, "zh"), "每周五挑3场：周末活动");
+  // A form left without a name, for the same rule, gets the same name.
+  const form = { basis: { field: "startsAt" as const, kind: "field" as const }, domain: "event" as const, maxItems: 3, push: false, schedule: FRIDAY_9, title: "", validUntil: null, window: "weekend" as const };
+  const made = ruleFromForm(form, "zh");
+  assert.equal(made.title, titleOf(FRIDAY_9, made.rule, "zh"));
+  assert.equal(ruleFromForm(form, "zh", { rule: said, title: "x" } as never).title, "每周五挑3场：周末活动", "a task changed with the form keeps its scope words, so its default name is the card's");
+  // The page lists a task under the name it was made with, never a second wording.
+  const op = prepareRuleOperation({ actionId: "a1", index: 0, intent: { capability: RULE_CREATE, set: { rule: said, schedule: FRIDAY_9, title: titleOf(FRIDAY_9, said, "zh") } }, locale: "zh", now: NOW, revision: 1 });
+  assert.match(String(op.preview), /每周五挑3场：周末活动/u);
+  const automation = { automationId: "rule:1", capabilityId: "events.recommend", createdAt: NOW, delivery: "in_app", handledEventIds: [], instruction: "x", lastRun: null, nextRunAt: NOW, revisions: [], rule: said, runCount: 0, status: "active", title: titleOf(FRIDAY_9, said, "zh"), trigger: { kind: "schedule", schedule: FRIDAY_9 }, updatedAt: NOW, version: 1 } as unknown as Parameters<typeof scheduledTaskView>[0];
+  assert.equal(scheduledTaskView(automation, null, NOW, "zh").title, "每周五挑3场：周末活动");
 });

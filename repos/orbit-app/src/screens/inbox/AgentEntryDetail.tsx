@@ -52,6 +52,7 @@ function AgentResult({ n }: { n: InboxNotificationDTO }) {
   const cards = (run?.items ?? []).flatMap((item) => (item.card ? [item.card] : []));
   return <View style={styles.detail}>
     {run?.detail?.basis && cards.length ? <UiText style={styles.basis}>{run.detail.basis}</UiText> : null}
+    {cards.length && run?.detail?.source ? <AgentAnswerBlocks blocks={[{ caption: run.detail.source.caption, items: [run.detail.source.card], shown: 1, size: "mini", type: "records" }]} gone={new Set()} language={language} onOpenHref={(href) => router.push(href as Href)} /> : null}
     {cards.length ? <AgentAnswerBlocks blocks={[{ items: cards, shown: cards.length, size: "full", type: "records" }]} gone={new Set()} language={language} onOpenHref={(href) => router.push(href as Href)} /> : <UiText style={styles.body}>{run?.display?.text ?? n.reason}</UiText>}
     {run?.detail?.notes.map((note) => <UiText key={note} style={styles.sub}>{note}</UiText>)}
     {history ? <View style={styles.actions}><Button label={t("scheduledTasks.manage")} onPress={() => router.push(taskPath(n.target.id) as Href)} /></View> : <UiText style={styles.sub}>{t("scheduledTasks.notFound")}</UiText>}

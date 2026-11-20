@@ -13,6 +13,7 @@
  * owner confirms it from the inbox. The main model is not called.
  */
 import { createHash } from "node:crypto";
+import type { AgentAnswerRecordContract } from "../../../shared/contract/agent-v1";
 
 import type { CardOperationIntent } from "../runtime/card-operations";
 import type { AgentActionOrigin } from "../runtime/contract";
@@ -64,6 +65,8 @@ export interface RulePeriodResult {
   coverage?: AgentAutomationRunRecord["coverage"];
   /** AG15 interface: what the result page shows above and under the cards. */
   detail?: AgentAutomationRunRecord["detail"];
+  /** Why nothing was ranked, as the trace says it: no candidate in scope, or every one was told before. */
+  ranked?: "no_candidates" | "all_told_before";
 }
 
 const pad = (value: number) => String(value).padStart(2, "0");
@@ -145,14 +148,20 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
 
   // 1. The referenced notes, read again by id under the owner's authorization.
   let topic: string | null = rule.ranking.topic?.trim() || null;
-  let basisNote: string | null = null;
+  let basisNote: { id: string; title: string; day: string | null; said: string; view: unknown } | null = null;
   for (const reference of rule.references) {
     let body = "";
     let title = reference.title ?? "";
+    let written: string | null = null;
+    let noteView: unknown = null;
     try {
       const view = (await deps.records.reader.read("memo", scope, { id: reference.id })).items[0];
       body = view ? String(view.fields.body ?? "") : "";
       if (view?.fields.title) title = String(view.fields.title);
+      noteView = view ?? null;
+      // The day the note was written, as its card shows it — what tells two notes of the same title apart.
+      const stamp = view ? String(view.fields.createdAt ?? view.fields.updatedAt ?? "") : "";
+      if (stamp && Number.isFinite(Date.parse(stamp))) written = agentAutomationLocalDay(new Date(stamp).toISOString(), timeZone);
     } catch (error) {
       emitTrace({ automationId: automation.automationId, error: error instanceof Error ? error.message : String(error), type: "read.error", where: "rule.reference" });
     }
@@ -167,7 +176,7 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
       return { attention: { message, reason: "reference_unreadable", reference: { id: reference.id, type: reference.type, ...(title ? { title } : {}) } }, items: [], outcome: "needs_attention", text: `${head}\n${message}` };
     }
     topic = body;
-    basisNote = title || null;
+    basisNote = { day: written, id: reference.id, said: firstSentenceOf(body), title: title || reference.id, view: noteView };
   }
 
   // 2. A rule that re-plans to-dos proposes a card.
@@ -226,6 +235,12 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
   const inScope = candidates.filter(hard);
   const fresh = inScope.filter((candidate) => !input.told.has(candidate.view.ref));
   emitTrace({ automationId: automation.automationId, domain, inScope: inScope.length, scheduledAt, told: inScope.length - fresh.length, type: "rule.candidates" });
+  if (!fresh.length) {
+    const ranked = inScope.length ? "all_told_before" as const : "no_candidates" as const;
+    const coverage = { afterHardConditions: 0, judged: 0, total: candidates.length, truncated: 0 };
+    emitTrace({ automationId: automation.automationId, coverage, domain, listed: [], matched: false, scheduledAt, type: "rule.ranked", unmatchedReason: ranked });
+    return { coverage, items: [], outcome: "no_match", ranked, text: "" };
+  }
 
   // 5. The same ranking a conversation uses.
   const field = rule.ranking.field ?? null;
@@ -266,7 +281,7 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
   const unit = UNIT[domain];
   const noun = NOUN[domain][language];
   const lines: string[] = [({ en: `${head}:`, ja: `${head}：`, zh: `${head}的结果：` } as const)[language]];
-  const basis = rule.rankingBasis;
+  const basis = basisNote ? noteBasisWords(basisNote, language) : rule.rankingBasis;
   lines.push(({
     en: `Picked by: ${basis}. From: ${scopeLine} (${inScope.length} in all).`,
     ja: `選び方：${basis}。対象：${scopeLine}（全部で${inScope.length}${unit.ja}）。`,
@@ -313,8 +328,37 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
     }
     return { id: item.candidate.id, kind: domain, line, ref: item.candidate.view.ref, title: name.title ?? name.name ?? "", ...(card ? { card } : {}) };
   });
-  if (basisNote && !basis.includes(basisNote)) lines.splice(2, 0, ({ en: `Note used: "${basisNote}".`, ja: `使ったメモ：「${basisNote}」。`, zh: `用到的笔记：「${basisNote}」。` } as const)[language]);
-  return { coverage, detail: { basis, notes: plainNotes({ coverage, language, memories: recalled.map((item) => item.memory.content), toldBefore, topicChecked: topic ? result.matched : null, unit: unit[language] }) }, items, outcome: "computed", text: lines.join("\n") };
+  // AE-SCL-030 R4: the note picked by is one of the result's sources to open, as a small card under the basis.
+  let source: AgentAnswerRecordContract | undefined;
+  if (basisNote?.view) {
+    try {
+      source = recordOfView(basisNote.view as Parameters<typeof recordOfView>[0], { language, now: deps.now(), timeZone });
+    } catch {
+      source = undefined;
+    }
+  }
+  const sourceCaption = ({ en: "Picked by this note", ja: "このメモをもとに選びました", zh: "按这篇笔记挑的" } as const)[language];
+  return { coverage, detail: { basis, ...(basisNote ? { basisNote: { day: basisNote.day ?? "", id: basisNote.id, title: basisNote.title } } : {}), ...(source ? { source: { caption: sourceCaption, card: source } } : {}), notes: plainNotes({ coverage, language, memories: recalled.map((item) => item.memory.content), toldBefore, topicChecked: topic ? result.matched : null, unit: unit[language] }) }, items, outcome: "computed", text: lines.join("\n") };
+}
+
+/** The note's first sentence, as the user wrote it (no ellipsis unless it runs past 120 characters). */
+export function firstSentenceOf(body: string): string {
+  const text = body.replace(/\s+/gu, " ").trim();
+  const end = text.search(/[。！？!?]|\.(\s|$)/u);
+  const sentence = end >= 0 ? text.slice(0, end + 1) : text;
+  return sentence.length > 120 ? `${sentence.slice(0, 119)}…` : sentence;
+}
+
+/**
+ * AE-SCL-030 R4: what a rule picks by when its basis is a note — which note (title and the day of the version read,
+ * since two notes may share a title) and what was taken from it, in the user's own words.
+ */
+export function noteBasisWords(note: { title: string; day: string | null; said: string }, language: Language): string {
+  const [, month, date] = (note.day ?? "").split("-").map(Number);
+  const day = note.day ? (language === "en" ? `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][month - 1]} ${date}` : `${month}月${date}日`) : null;
+  if (language === "en") return `your note "${note.title}"${day ? ` (${day})` : ""}, which says: "${note.said}"`;
+  if (language === "ja") return `メモ「${note.title}」${day ? `（${day}）` : ""}に書いたこと：「${note.said}」`;
+  return `笔记「${note.title}」${day ? `（${day}）` : ""}里写的：“${note.said}”`;
 }
 
 /**

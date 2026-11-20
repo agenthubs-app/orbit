@@ -149,6 +149,7 @@ function AgentResult({n}:{n:NotificationRow}){
  const navigate=(href:string)=>router.push(href);
  return <>
   {run?.detail?.basis&&cards.length?<span className={ws.agentBasis}>{run.detail.basis}</span>:null}
+  {cards.length&&run?.detail?.source?<AnswerBlocks blocks={[{caption:run.detail.source.caption,items:[run.detail.source.card],shown:1,size:'mini',type:'records'}]} gone={new Set()} language={language} navigate={navigate}/>:null}
   {cards.length?<AnswerBlocks blocks={[{items:cards,shown:cards.length,size:'full',type:'records'}]} gone={new Set()} language={language} navigate={navigate}/>:<p className={ws.reason}>{run?.display?.text??n.reason}</p>}
   {run?.detail?.notes.length?<div className={ws.agentNotes}>{run.detail.notes.map(note=><p key={note}>{note}</p>)}</div>:null}
   {history?<div><Link prefetch className={`btn ${ws.btn}`} href={taskHref(taskId)} data-orbit-agent-manage>{say(language,'manage')}</Link></div>:<p className={ws.lbl}>{say(language,'gone')}</p>}
