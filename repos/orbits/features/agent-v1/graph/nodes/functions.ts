@@ -75,6 +75,8 @@ const CONTACT_SET_WORDS = /(?:联系人|聯絡人|人脉|連絡先|コンタク�
 const RANK_WORDS = /(挑|选出|选几|排序|排一下|排个序|并べ|並べ|選んで|順に|順番|\bpick\b|\bchoose\b|\brank\b|\bsort\b|\border\b|\blist the\b)/iu;
 const TODO_LIST_WORDS = /(待办|代办|跟进|タスク|ToDo|フォローアップ|\bto-?dos?\b|\bfollow[\s-]?ups?\b|\btasks?\b)/iu;
 const WHO_WORDS = /(谁|哪位|哪些人|哪几位|\bwho\b|\bwhom\b|誰|どなた|どの人)/iu;
+/** Words that ask for one person only (the singular "who" alone does not). */
+const JUST_ONE_WORDS = /((?<!哪)一个人|(?<!哪)一位|只要一个|就一个|只联系一个|一人だけ|1人だけ|ひとりだけ|一人に絞|\bjust one\b|\bonly one\b|\bone person\b|\bsingle person\b)/iu;
 const FORMAL_FOLLOW_UP = /(正式跟进|正式的跟进|フォローアップ|formal follow[\s-]?ups?)/iu;
 
 const EVENT_NOUN = /(活动|活動|イベント|\bevents?\b)/iu;
@@ -1025,7 +1027,13 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   // ("最近" is not "latest first" here, so it is taken out before the direction is read).
   const eventDirection = directionSaidIn(words.replace(/最近|近期|近来|recent(?:ly)?/giu, " "), "asc");
   const orderDirection = domain === "event" && !pointsAtPast(words) && (orderField ?? "startsAt") === "startsAt" ? eventDirection : field ? direction : order?.direction ?? "asc";
-  const count = plan.count ?? rank.count ?? countSaidIn(withoutWindowWords(original)) ?? (orderField && !topic && !time.length ? FIELD_LIST_LIMIT : 3);
+  // Integration (AG21b's run, AE-ANS-029): a singular "who" ("Who should I contact now…", 「现在该联系谁」, 「誰に連絡すべき」) is
+  // no count of 1 — a count of 1 the first layer read from it is not taken; only a number in the words or 「一个人／一人だけ／
+  // just one」 caps the list.
+  const saidCount = countSaidIn(withoutWindowWords(original));
+  const whoIsNoCount = domain === "contact" && WHO_WORDS.test(original) && (plan.count ?? rank.count) === 1 && saidCount === null && !JUST_ONE_WORDS.test(original);
+  if (whoIsNoCount) emitTrace({ partId: part.localId, type: "functions.who_is_no_count" });
+  const count = (whoIsNoCount ? null : plan.count ?? rank.count) ?? saidCount ?? (orderField && !topic && !time.length ? FIELD_LIST_LIMIT : 3);
 
   // 3. Candidates and hard conditions (code), read under the account's scope.
   const freeWords = (withinWords ?? "") + " " + outside(quote, basisSpan ? [Math.max(0, basisSpan[0] - part.quote[0]), Math.max(0, basisSpan[1] - part.quote[0])] : undefined);
