@@ -51,11 +51,28 @@ export interface SessionOpenItem {
   rank?: { domain: "event" | "contact" | "todo"; count?: number; from?: string; to?: string };
 }
 
+/**
+ * AG20a (owner's decision 2, 2026-11-20): the profile fields the last answer said are out of date and the values it took
+ * from the user's own record (a short value and that record's id). Kept for the next turn's "那把她的资料也更新了"; the record
+ * is read again under the current permissions before a card is made, and the value must still be in it.
+ */
+export interface StaleProfile {
+  contactId: string;
+  name: string;
+  field: "organization" | "role";
+  value: string;
+  sourceType: string;
+  sourceId: string;
+  at: string;
+}
+
 export interface AgentSessionState {
   sessionId: string;
   shownList: { items: NamedRecordRef[]; shownAt: string } | null;
   lastMentioned: NamedRecordRef[];
   openItems: SessionOpenItem[];
+  /** AG20a: set by an answer that found a profile out of date; replaced (or cleared) by the next turn. */
+  staleProfiles?: StaleProfile[];
   updatedAt: string;
 }
 
@@ -78,6 +95,7 @@ function normalizeState(sessionId: string, value: unknown): AgentSessionState | 
   return {
     lastMentioned: Array.isArray(raw.lastMentioned) ? raw.lastMentioned.filter((item) => item && typeof item.id === "string") : [],
     openItems: Array.isArray(raw.openItems) ? raw.openItems.filter((item) => item && typeof item.ref === "string") : [],
+    ...(Array.isArray(raw.staleProfiles) ? { staleProfiles: raw.staleProfiles.filter((item) => item && typeof item.contactId === "string" && typeof item.value === "string" && typeof item.sourceId === "string" && (item.field === "organization" || item.field === "role")) } : {}),
     sessionId,
     shownList: raw.shownList && Array.isArray(raw.shownList.items) ? { items: raw.shownList.items, shownAt: String(raw.shownList.shownAt ?? "") } : null,
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : "",

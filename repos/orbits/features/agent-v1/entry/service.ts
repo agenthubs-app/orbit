@@ -182,6 +182,8 @@ export async function acceptMessage(
     references: body.references,
     ...(body.origin ? { origin: body.origin } : {}),
     ...(body.pageContext ? { pageContext: body.pageContext } : {}),
+    // AG20a (decision 8): the device's zone, checked when the turn runs (graph/executor.ts); not part of the fingerprint.
+    ...(body.timeZone ? { timeZone: body.timeZone } : {}),
   };
   const requestId = agentRequestIdFor(input.actorId, body.sessionId, body.clientMessageId);
   const accepted = await deps.store.accept({

@@ -39,7 +39,7 @@ export const SESSION_TARGET_TYPE = "agent_v1_session";
 
 export const FINAL_STATUSES: ReadonlySet<AgentRequestStatus> = new Set(["completed", "failed", "cancelled"]);
 
-export type AgentEntryInput = Pick<AgentSendInputContract, "locale" | "message" | "origin" | "pageContext" | "references">;
+export type AgentEntryInput = Pick<AgentSendInputContract, "locale" | "message" | "origin" | "pageContext" | "references" | "timeZone">;
 
 export interface AgentEntryRequestRecord {
   protocolVersion: 3;

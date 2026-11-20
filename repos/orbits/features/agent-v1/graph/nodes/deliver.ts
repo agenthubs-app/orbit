@@ -374,6 +374,10 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
     }
   }
   next.openItems = kept;
+  // AG20a (decision 2): the profile fields this answer found out of date are what the next turn may update; a turn that
+  // found none clears them (only the answer right before counts).
+  if (run.staleProfiles.length) next.staleProfiles = run.staleProfiles.map((item) => ({ ...item }));
+  else delete next.staleProfiles;
   next.updatedAt = now;
   return next;
 }

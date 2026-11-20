@@ -640,6 +640,17 @@ async function resolveContactIntent(ctx: ResolveContext, part: GraphPart, write:
   if (found.kind === "none") return stop("person_not_found", WRITE_WORDS.notFoundPerson(language, quote));
   ctx.people.push(...(ctx.people.some((known) => known.id === found.id) ? [] : [{ at: part.quote[0], id: found.id, name: found.name }]));
   if (intent.capability === "contact.update") {
+    // AG20a (owner's decision 2): "那把她的资料也更新了" right after an answer said which of her fields are out of date — those
+    // fields, with the values the answer took from the user's record (read again now; the value must still be in it).
+    if (!Object.keys(values).length) {
+      const stale = (ctx.context?.staleProfiles ?? []).filter((item) => item.contactId === found.id);
+      for (const item of stale) {
+        if (!ctx.records || !ctx.scope || !["memo", "todo", "event", "schedule", "attendance"].includes(item.sourceType)) continue;
+        const source = (await ctx.records.reader.read(item.sourceType as "memo", ctx.scope, { id: item.sourceId }).catch(() => null))?.items[0];
+        if (source && JSON.stringify(source.fields).includes(item.value)) values[item.field] = item.value;
+      }
+      if (Object.keys(values).length) emitTrace({ fields: Object.keys(values), partId: part.localId, recordId: found.id, type: "propose.contact_update_from_answer" });
+    }
     if (!Object.keys(values).length) return stop("field_missing", CONTACT_WORDS.noFields(language, quote));
     const current = ctx.records?.contacts && ctx.scope ? await ctx.records.contacts.read(ctx.scope.accountId, found.id).catch(() => null) : null;
     if (current) {

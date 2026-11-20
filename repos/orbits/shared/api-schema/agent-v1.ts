@@ -81,6 +81,8 @@ export const agentSendInputSchema: z.ZodType<AgentSendInputContract> = z.object(
   protocolVersion: z.literal(3),
   references: z.array(agentReferenceSchema).max(20),
   sessionId: identifier,
+  // AG20a（决定 8）：设备时区；是否可用由服务端判断，无效时退回部署时区，不因此拒收。
+  timeZone: z.string().trim().min(1).max(64).optional(),
 }).superRefine((value, context) => {
   const found = referencePositionProblem(value.message, value.references);
   if (found) context.addIssue({ code: z.ZodIssueCode.custom, message: found.problem, path: ["references", found.index] });

@@ -1428,6 +1428,11 @@
           "optional": true,
           "kind": "text",
           "type": "AiPageContextContract"
+        },
+        "timeZone": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
         }
       }
     },

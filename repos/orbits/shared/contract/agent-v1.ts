@@ -398,6 +398,8 @@ export interface AgentSendInputContract {
   references: readonly AiSessionReferenceContract[];
   origin?: AiSessionOriginInputContract | undefined;
   pageContext?: AiPageContextContract | undefined;
+  /** AG20a（设计稿 §3.1，2026-11-20 决定 8）：设备的时区（IANA 名，如 Asia/Tokyo）。服务端校验后作为本轮「今天」「周五」「下午三点」的基准；不带或无效时用部署的时区。 */
+  timeZone?: string | undefined;
 }
 
 /** 发送的应答：收下即返回，不等模型。 */

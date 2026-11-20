@@ -30,6 +30,7 @@ import type { AgentCardAccess } from "./deps";
 import { configuredWebAccess } from "../web/factory";
 import { reviseImportByWords } from "../entry/import-revision";
 import { reviseCardByWords } from "../entry/card-revision";
+import { entryTimeZone } from "../entry/time-zone";
 
 /**
  * AG06: the graph's card is the request's card in the ledger (conversationCardId), frozen through
@@ -163,7 +164,8 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       loadMessages: overrides.loadMessages ?? sessionMessagesLoader(mode, execution.actorId),
       now,
       sessionState: overrides.sessionState ?? configuredAgentSessionStateStore(mode),
-      timeZone: overrides.timeZone ?? process.env.ORBIT_DEFAULT_TIME_ZONE ?? "Asia/Tokyo",
+      // AG20a (decision 8, §3.1): the device's zone when it sent a real one; else the deployment's, as before.
+      timeZone: overrides.timeZone ?? entryTimeZone(execution.input.timeZone, process.env.ORBIT_DEFAULT_TIME_ZONE ?? "Asia/Tokyo").zone,
       ...(overrides.modelCallLimit !== undefined ? { modelCallLimit: overrides.modelCallLimit } : {}),
       ...(execution.onStage ? { onStage: execution.onStage } : {}),
       // AG08: the judgment model, through the same stoppable fetch as the main model; no key: unavailable.
