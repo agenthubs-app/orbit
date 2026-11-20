@@ -16,7 +16,7 @@ const CONDITIONAL = /^(?:要是|如果|假如|假设|万一|若是|倘若|もし
 /** The particle tying the description to the demonstrative ("…的这条", "…のこの"). */
 const TRAILING = /(?:的|の)+$/u;
 /** "这条待办", "那篇笔记", "このタスク", "その予定": a demonstrative and a record word, nothing else. */
-const CJK_DEMONSTRATIVE = /^(?:(?:这|那)(?:条|个|篇|件|项|场|次|份)?(?:待办|笔记|活动|日程|任务|安排|事|记录)|(?:この|その|あの)(?:タスク|ToDo|予定|メモ|件|イベント|打ち合わせ|用事|記録))$/u;
+const CJK_DEMONSTRATIVE = /^(?:(?:这|那)(?:条|个|篇|件|项|场|次|份)?(?:待办|代办|笔记|活动|日程|任务|安排|事|记录)|(?:この|その|あの)(?:タスク|ToDo|予定|メモ|件|イベント|打ち合わせ|用事|記録))$/u;
 /** Words of when, not of what ("刚才那件事", "さっきのあの件"): they describe no record. */
 const TIME_ONLY = /^(?:刚才|刚刚|上次|之前|以前|昨天|今天|前天|早上|上午|下午|晚上|最近|さっき|この前|前回|昨日|今日|先日|earlier|recently|yesterday|today|last time)$/iu;
 const LATIN_NOUN = "(?:task|to-?do|note|memo|event|meeting|appointment|plan|item|schedule)";
@@ -77,7 +77,7 @@ export function unnamedSubject(text: string): boolean {
 }
 
 /** Record words that name no particular record ("待办", "笔记", "the note"): what is left after them must name it. */
-const GENERIC_RECORD_WORDS = /(?:这|那)?(?:条|篇|个|份)?(?:待办|笔记|备忘|记录|任务|日程|活动|メモ|タスク|予定|記録|ノート|\b(?:the|this|that|my)\b|\bnotes?\b|\bmemos?\b|\btasks?\b|\bto-?dos?\b|\brecords?\b)/giu;
+const GENERIC_RECORD_WORDS = /(?:这|那)?(?:条|篇|个|份)?(?:待办|代办|笔记|备忘|记录|任务|日程|活动|メモ|タスク|予定|記録|ノート|\b(?:the|this|that|my)\b|\bnotes?\b|\bmemos?\b|\btasks?\b|\bto-?dos?\b|\brecords?\b)/giu;
 
 /** A note clue that names a particular note in its own words ("竞品笔记 C", "the Nov 10 note"), not just "笔记" or "这篇笔记". */
 function namesANote(other: { entity: string; text: string }): boolean {

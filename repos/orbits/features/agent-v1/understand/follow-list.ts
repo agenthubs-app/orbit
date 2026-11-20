@@ -20,7 +20,7 @@ const KIND_NOUN: Record<ListKind, RegExp> = {
   event: /(活动|活動|イベント|\bevents?\b|哪[一几]?场|这几场|那几场)/iu,
   memo: /(笔记|筆記|メモ|\bnotes?\b)/iu,
   schedule: /(日程|安排|予定|\bschedule\b|\bappointments?\b)/iu,
-  todo: /(待办|跟进|タスク|\bto-?dos?\b|\btasks?\b|\bfollow[\s-]?ups?\b)/iu,
+  todo: /(待办|代办|跟进|タスク|\bto-?dos?\b|\btasks?\b|\bfollow[\s-]?ups?\b)/iu,
 };
 
 /** Words that point back at what was just shown. */

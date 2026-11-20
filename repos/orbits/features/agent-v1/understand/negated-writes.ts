@@ -11,7 +11,7 @@ const GAP = String.raw`[^，。,.;；!！?？\n]{0,24}`;
 const RECORD_WORDS: Record<"todo.create" | "memo.create" | "schedule.create", { zh: string; en: string; ja: string }> = {
   "memo.create": { en: String.raw`(?:notes?|memos?)`, ja: String.raw`(?:メモ|ノート)`, zh: String.raw`(?:笔记|备忘|记录)` },
   "schedule.create": { en: String.raw`(?:calendar|schedule)`, ja: String.raw`(?:予定|カレンダー|スケジュール)`, zh: String.raw`(?:日程|日历|行程)` },
-  "todo.create": { en: String.raw`(?:to-?dos?|tasks?|to-?do list)`, ja: String.raw`(?:ToDo|TODO|タスク|やること)`, zh: String.raw`(?:待办|任务|to-?do)` },
+  "todo.create": { en: String.raw`(?:to-?dos?|tasks?|to-?do list)`, ja: String.raw`(?:ToDo|TODO|タスク|やること)`, zh: String.raw`(?:待办|代办|任务|to-?do)` },
 };
 
 function refusals(record: { zh: string; en: string; ja: string }): RegExp[] {

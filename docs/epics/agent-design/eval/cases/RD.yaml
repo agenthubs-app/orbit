@@ -1,4 +1,4 @@
-# RD 区：授权读取与带出处的回答。AG05 的门槛用例，共 10 例。
+# RD 区：授权读取与带出处的回答。AG05 的门槛用例，共 13 例（011～013 是 2026-11-20 热修加的）。
 #
 # 本文件的写法约定（都在 README 词表之内，只是把词表没写死的取值定下来）：
 # - fault 的 where 写设计稿附录 A 的能力名。memo.read 指笔记的读取适配器。
@@ -326,3 +326,87 @@ cases:
       - id: R3
         text: "回答没有凭别的记录或印象替那篇笔记回答“田中最在意什么”。"
     notes: "笔记在发送前已在别处被删除；活动引用是平台活动，按可读字段照常交付。"
+
+  # 热修 2026-11-20（正式站，产品负责人）：「今天先处理哪些事？」「所有代办都是空吗？」都被答成“没有找到”。
+  # 三例都把时钟放在 11 月 20 日（周五），这时小账号的 T42、T44、T45、F1 都已过了计划日或截止时间。
+  - id: AE-RD-011
+    title: "「今天先处理哪些事？」：列出没完成且到今天为止到期或计划的待办（含已过期的），不是只找今天的"
+    sprint: AG05
+    split: dev
+    invariant: false
+    requirement: [AG-R05]
+    design: ["§3.2", "§4"]
+    locale: zh
+    world: base-v1
+    clock: "2026-11-20T10:00:00+09:00"
+    steps:
+      - user: "今天先处理哪些事？"
+    hard:
+      - reads_include: [T45, F1, T44, T42]
+      - answer_cards: { size: any, includes: [T45, F1, T44, T42], excludes: [T46, T47] }
+      - answer_excludes: ["没有找到"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答列出了已过期或过了计划日的待办：给李薇寄样片、跟进田中的分期方案、回复田中的询价、给小林发修订报价，没有说找不到。"
+      - id: R2
+        text: "没有把没有日期的“约山本吃饭”或已完成的“整理十月发票”说成今天要处理的。"
+    notes: "代码规则（understand/read-window.ts）：问今天、现在、先做什么，读的是没完成、到今天为止到期或计划的待办，加上今天的日程；今天没有日程。"
+
+  - id: AE-RD-012
+    title: "三轮对话：前一轮的“今天”不带到“所有代办都是空吗？”和“我有哪些还没完成的待办？”"
+    sprint: AG05
+    split: dev
+    invariant: false
+    requirement: [AG-R05, AG-R03]
+    design: ["§3.10", "§4"]
+    locale: zh
+    world: base-v1
+    clock: "2026-11-20T10:00:00+09:00"
+    steps:
+      - user: "今天先处理哪些事？"
+      - user: "所有代办都是空吗？"
+      - user: "我有哪些还没完成的待办？"
+    hard:
+      - reads_include: [T47]
+      - answer_cards: { size: any, includes: [T45, F1, T44, T42, T47], excludes: [T46] }
+      - answer_excludes: ["没有找到"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二轮（“代办”是“待办”的错字）回答说还有没完成的待办，没有说都空了，也没有说没找到。"
+      - id: R2
+        text: "第三轮列出了全部 5 项还没完成的待办，包括没有日期的“约山本吃饭”，没有只列今天的。"
+    notes: "协调者在正式站复现：第一轮的时间范围有时被带进后两轮，读到 0 条。代码规则：一句话没有自己的时间、也不是接着上一轮的结果问（这些、其中、还有吗），就不沿用上一轮的时间范围；说了所有、全部也不沿用。代码判定看第三轮，第二轮看 R1。"
+
+  - id: AE-RD-013
+    title: "「今天到期的待办有哪些？」今天没有：说清找的是什么，并给出另外还没完成的待办"
+    sprint: AG05
+    split: dev
+    invariant: false
+    requirement: [AG-R05]
+    design: ["§3.11", "§4"]
+    locale: zh
+    world: base-v1
+    clock: "2026-11-20T10:00:00+09:00"
+    steps:
+      - user: "今天到期的待办有哪些？"
+    hard:
+      - gaps: [ { quote: "今天到期的待办", reason: no_record } ]
+      - answer_blocks: { first: paragraph, has: [records] }
+      - answer_cards: { includes: [T45, F1, T44, T42, T47], excludes: [T46] }
+      - answer_excludes: ["在你的 Orbit 记录里没有找到"]
+      - model_calls_max: 2
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答先说今天到期或计划在今天的待办没有，再说另有 5 项还没完成的待办、其中 4 项已过期，并把它们列出来可以点开。"
+      - id: R2
+        text: "用词直白，没有“范围”“来源”这类说法。"
+    notes: "代码规则（graph/nodes/wider-read.ts）：带条件（某一天、状态、关键词）的读取什么都没找到、同类记录在条件之外还有时，由代码说一句找的是什么、另有多少，并给出那些记录的卡片；不调用回答模型。"
