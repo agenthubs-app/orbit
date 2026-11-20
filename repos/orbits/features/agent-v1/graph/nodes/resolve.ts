@@ -579,6 +579,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
         kinds.add("schedule");
         read.notes.push("This asks what to take up today: these are the to-dos not done that are due or planned today or earlier (the overdue ones included, most overdue first) and today's schedule items. Give them all, the most urgent first; never say only today's records were looked at.");
         emitTrace({ partId: part.localId, today, type: "resolve.todays_plate" });
+        run.showAllRead.add(part.localId);
       }
       // Finding events by conditions is not a read of this version (an attached event is read by id).
       if (kinds.has("event") && !part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event") && ![...kinds].some((kind) => kind !== "event" && kind !== "contact") && contacts.length && (text || part.refs.some((ref) => recordKindOf(ref.entity) === "event" && clueSearchWords(clueWords(input.message, ref) ?? "")))) {

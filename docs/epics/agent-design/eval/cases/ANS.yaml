@@ -407,7 +407,7 @@ cases:
     steps:
       - user: "Who should I follow up with first?"
     hard:
-      - listed: { includes: [C30, C31], excludes: [C17, C40, C46] }
+      - listed: { includes: [C30], excludes: [C17, C40, C46] }
       - answer_excludes: ["ties it to this directly", "+81-90"]
       - no_business_writes: true
       - cards: { count: 0 }

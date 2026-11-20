@@ -92,6 +92,14 @@ for (const capabilities of [["todo.read", "schedule.read"], ["todo.read"], ["sch
   });
 }
 
+test("1c (AE-ANS-019 run-05): the answer names 1 of the overdue to-dos — every to-do read for today's plate is still shown", async () => {
+  const message = "今天先处理哪些事？";
+  const citeOne = (call: ModelCall) => json({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: /(s\d+) — to-do/u.exec(call.user)![1] }], lead: "先处理最早过期的那一项。", partId: "p1" }] });
+  const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", readFilter: { from: TODAY, to: TODAY }, requiredCapabilities: ["todo.read", "schedule.read"], sourceQuote: message }], { answer: citeOne, session: session() });
+  assert.deepEqual(sorted(run.result.sourceRefs), sorted([...OVERDUE, "schedule:personal:s20"]));
+  assert.ok(run.events.some((event) => event.type === "answer.all_read_shown"));
+});
+
 test("rule 1 (en): 「What should I do first today?」 — the overdue to-dos, the undated and future ones left out", async () => {
   const message = "What should I do first today?";
   const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", readFilter: { from: TODAY, to: TODAY, status: "open" }, requiredCapabilities: ["todo.read"], sourceQuote: message }], { answer: citeAll, language: "en", session: session() });

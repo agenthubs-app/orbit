@@ -73,6 +73,17 @@ test("en and ja: the App's follow-up question is the same ranking", async () => 
 
 test("1c (AE-ANS-010 on a081afe94): a basis that only names the kind of record and its time is no topic (zh, en, ja)", () => {
   for (const words of ["接下来的活动", "最近的活动", "upcoming events", "今後のイベント", "我的待办", "this week's meetings", "次のイベント", "the next events"]) assert.equal(realTopicOf(words), "", words);
+  // AG20b run-04 (AE-JDG-003): a state of the records the read already filters on is no topic either.
+  for (const words of ["公開されている", "公開中のイベント", "published events", "open to-dos", "还没完成的待办", "未完了のタスク", "已发布的活动"]) assert.equal(realTopicOf(words), "", words);
+});
+
+test("1c (AG20b run-04, AE-JDG-003): 「公開されているイベントを、開始時間が早い順に並べてください。」 with basis 「公開されている」 — no judgment, by start time", async () => {
+  const message = "公開されているイベントを、開始時間が早い順に並べてください。";
+  const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "ranked_list", rank: { basis: "公開されている", direction: "asc", orderBy: "startsAt" }, requiredCapabilities: ["event.read", "fn.rank"], sourceQuote: message }], { language: "ja" });
+  assert.equal(run.judgeCalls.length, 0);
+  const ranked = run.events.filter((event) => event.type === "fn.rank").at(-1) as { listed?: string[] } | undefined;
+  assert.deepEqual(ranked?.listed?.slice(0, 3), ["event:event:e103", "event:event:e101", "event:event:e104"], JSON.stringify(ranked));
+  assert.doesNotMatch(run.result.text, /「公開されている」/u);
 });
 
 for (const [language, message, basis] of [

@@ -301,6 +301,16 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       run.modelAnswers.add(part.localId);
       // AG09: a web page is not a record of the user's: its citations stay out of the records' sourceRefs (the page is listed in the answer's web record).
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref).filter((ref) => !ref.startsWith("web:"));
+      // Hotfix 1c (AE-ANS-019 run-05: the model cited 3 of the 4 overdue to-dos read for "what to handle today"): such a part
+      // shows every record it read, in the read's order after the ones the answer named.
+      if (run.showAllRead.has(part.localId) && part.cites) {
+        const read = (part.reads ?? []).map((item) => item.ref).filter((ref) => run.recordCards.has(ref));
+        const added = read.filter((ref) => !part.cites!.includes(ref));
+        if (added.length) {
+          part.cites = [...part.cites, ...added];
+          emitTrace({ added, partId: part.localId, type: "answer.all_read_shown" });
+        }
+      }
       // AG19 repair round 1 (decision 1, D1): a list-type read is written by code from the records the answer picked —
       // the lead says how many, of what kind and for which window, each record is its card and is not written out again.
       // The order is code's, not the one the model happened to cite them in: schedule items and events by their time,
