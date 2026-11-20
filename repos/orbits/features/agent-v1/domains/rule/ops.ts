@@ -182,9 +182,12 @@ export function ruleLines(input: { schedule: RuleSchedule; rule: AgentRuleSpec }
   const basis = locale === "en" ? input.rule.rankingBasis : input.rule.rankingBasis.replace(/[。.]$/u, "");
   const count = countWords(input.rule, locale);
   const until = input.rule.validUntil ? words.through(dayText(input.rule.validUntil, locale)) : words.forever;
+  // The approved card keeps a line to two lines at most and never cuts the basis: the scope is said in the user's own
+  // words here; how code reads them (the part in brackets) stays on the separate row and on the task's page.
+  const scope = input.rule.scopeText.replace(/\s*[（(][^（）()]*[）)]$/u, "").trim() || input.rule.scopeText;
   return [
     { fields: ["schedule", "nextRunAt"], key: "when", label: words.when, text: `${check}${words.join}${nextText}`, zone: { id: input.schedule.timeZone, text: `${zoned}${words.join}${nextText}` } },
-    { fields: ["scope", "rankingBasis", "maxItems"], key: "pick", label: words.pick, text: [input.rule.scopeText, basis, locale === "en" ? count.charAt(0).toLowerCase() + count.slice(1) : count].join(words.listJoin) },
+    { fields: ["scope", "rankingBasis", "maxItems"], key: "pick", label: words.pick, text: [scope, basis, locale === "en" ? count.charAt(0).toLowerCase() + count.slice(1) : count].join(words.listJoin) },
     { fields: ["validUntil", "notify"], key: "after", label: words.after, text: `${until}${words.join}${input.rule.notify.push ? words.inboxPush : words.inbox}` },
   ];
 }

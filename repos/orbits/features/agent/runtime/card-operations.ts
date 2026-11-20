@@ -208,6 +208,11 @@ export function cardCountTitle(operations: readonly (Pick<AgentActionOperationPa
   // AG12-4: a card that is one import counts its rows.
   const rows = importCountTitle(operations, locale);
   if (rows) return rows;
+  // AG15 (approved draft 15-1): a card that only makes scheduled tasks says so — 「新建 1 条定时任务」.
+  if (operations.length > 0 && operations.every((op) => op.capability === RULE_CREATE)) {
+    const n = operations.length;
+    return ({ en: n === 1 ? "New scheduled task" : `${n} new scheduled tasks`, ja: `定期タスクを${n}件作成`, zh: `新建${n}条定时任务` } as const)[locale];
+  }
   const added = operations.filter((op) => op.capability === RULE_CREATE || op.capability === TODO_CREATE || op.capability === MEMO_CREATE || op.capability === CONTACT_CREATE || op.capability === CONTACT_IMPORT || op.capability === PRIVATE_EVENT_CREATE || op.capability === ATTENDANCE_CREATE || op.capability === SCHEDULE_CREATE).length;
   // AG12 (设计稿 §10「写“改”“新增”“删除”」): deletions and restores are counted as what they are. AG13: private events,
   // «我去过», schedule items and to-dos too.

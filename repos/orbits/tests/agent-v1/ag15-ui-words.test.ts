@@ -5,6 +5,8 @@ import { prepareRuleOperation, ruleLines, RULE_CREATE, type RuleCreateIntent } f
 import type { AgentAutomationRunRecord } from "../../features/agent/automations/runs";
 import { runInboxTitle, scheduledRunView } from "../../features/agent/automations/task-view";
 import { expiredCardNote } from "../../features/agent/runtime/card-view";
+import { cardLineOf } from "../../features/agent-v1/propose/copy";
+import { cardCountTitle } from "../../features/agent/runtime/card-operations";
 import type { AgentActionRecord } from "../../features/agent/runtime/contract";
 import { agentCardView } from "../../shared/compute/agent-card-view";
 import type { AgentActionPreviewContract } from "../../shared/contract/agent-v1";
@@ -44,6 +46,11 @@ test("the new-task card groups its facts in three lines; every fact is still on 
   const english = ruleLines({ rule: ruleSpec({ locale: "en", rankingBasis: "Start time, earliest first", scopeText: "Events that weekend" }), schedule: FRIDAY_9 }, "en", NOW);
   assert.deepEqual(english.map((line) => line.label), ["When", "What it picks", "After that"]);
   assert.equal(english[1].text, "Events that weekend · Start time, earliest first · up to 3 events");
+  // The scope in the user's words only; the code's reading in brackets stays on the row (it made the line run to three).
+  const said = ruleLines({ rule: ruleSpec({ rankingBasis: "按笔记「兴趣笔记」的主题", scopeText: "周末活动（那个周末开始的公开活动）" }), schedule: FRIDAY_9 }, "zh", NOW);
+  assert.equal(said[1].text, "周末活动，按笔记「兴趣笔记」的主题，最多3场");
+  const only = ruleLines({ rule: ruleSpec({ scopeText: "那个周末开始的公开活动" }), schedule: FRIDAY_9 }, "zh", NOW);
+  assert.ok(only[1].text.startsWith("那个周末开始的公开活动，"), "a scope with no brackets is kept whole");
 });
 
 const preview = (overrides: Partial<AgentActionPreviewContract> = {}): AgentActionPreviewContract => {
@@ -83,6 +90,20 @@ test("both clients show the three lines, the time zone only on a device in anoth
   const rowsOnly = { ...old, operations: old.operations.map((op) => ({ ...op, display: { ...op.display!, lines: undefined } })) };
   const legacy = agentCardView(rowsOnly, { online: true, pendingTargets: [] }, en.aiCard);
   assert.equal(legacy.kind === "card" && legacy.items[0].rows.length, 7);
+});
+
+test("a card that only makes scheduled tasks is titled as such (draft 15-1)", () => {
+  assert.equal(cardCountTitle([{ capability: RULE_CREATE }], "zh"), "新建1条定时任务");
+  assert.equal(cardCountTitle([{ capability: RULE_CREATE }], "en"), "New scheduled task");
+  assert.equal(cardCountTitle([{ capability: RULE_CREATE }, { capability: "todo.update" }], "zh"), "修改1项，新增1项", "a mixed card keeps the count sentence");
+});
+
+test("the answer names the new-task card's own button, so the words match what both clients show", () => {
+  const line = cardLineOf(preview(), "zh");
+  assert.ok(line.endsWith("点卡上的「确认，开始运行」之前，什么都不会运行。"), line);
+  assert.ok(cardLineOf(preview(), "en").endsWith("Nothing runs until you press \"Confirm and start\" on the card."));
+  const todo = preview({ operations: [{ after: {}, capability: "todo.update", operationId: "o", status: "pending", text: "t" }] });
+  assert.ok(cardLineOf(todo, "zh").endsWith("点卡上的「确认以上1项」之前，什么都不会改。"), "other cards keep their words");
 });
 
 test("an expired card says when it was made and that nothing was done; a replaced one names the period and offers the new card instead", () => {

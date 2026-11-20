@@ -117,7 +117,8 @@ test("the card of a new task lists the six things on their own rows, says 'after
   assert.equal(checkTimeWords(FRIDAY_9, "en"), "Every Friday, within about 10 minutes after 9:00");
   assert.equal(checkTimeWords(FRIDAY_9, "ja"), "毎週金曜 9:00 以降、約10分以内");
   assert.equal(nextRunWords(FRIDAY_9, "2026-11-30", "2026-11-28T01:00:00.000Z", "zh"), "有效期内已经没有下一次运行");
-  assert.equal(cardCountTitle([op], "zh"), "新增1项");
+  // AG15 interface (approved draft 15-1): a card that only makes scheduled tasks is titled 「新建1条定时任务」.
+  assert.equal(cardCountTitle([op], "zh"), "新建1条定时任务");
   // Regenerating a card rebuilds the same item from the kept intent.
   assert.deepEqual(cardIntentOf(op), { ...createIntent(), partId: "p1" });
 });
