@@ -606,7 +606,6 @@ export const eventsJourneyCopy = {
   roundTable: { ja: "R{r} · テーブル {t}", zh: "R{r} · 桌号{t}", en: "R{r} · table {t}", kind: "label" },
   recsTitleN: { ja: "あなたへのおすすめ · {n}名", zh: "给你的推荐 · {n}人", en: "For you · {n}", kind: "cardTitle" },
   recordRecsHint: { ja: "当日の推薦と理由 · クリックで右に詳細", zh: "当天的推荐和理由 · 点击在右侧看详情", en: "Suggestions from the day · click for details", kind: "label" },
-  notTalked: { ja: "話していない", zh: "没聊过", en: "Didn't talk", kind: "chip" },
   nextOrderTitle: { ja: "次に話すと良かった順", zh: "当时建议接着聊的人", en: "Who to talk to next", kind: "cardTitle" },
   nextOrderHint: { ja: "当日の表示のまま", zh: "保持当天的显示", en: "As shown on the day", kind: "label" },
   otherTablesRound: { ja: "ほかのテーブル · R{n}", zh: "其他桌 · R{n}", en: "Other tables · R{n}", kind: "cardTitle" },

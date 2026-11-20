@@ -47,11 +47,12 @@ export function firstRecordPerson(data: Pick<EventVenueResponse, "rounds" | "rec
 
 const seedOf = (person: { attendeeId: string; name: string; initial: string; org?: string | null; role?: string | null }): AttendeeSeed => ({ attendeeId: person.attendeeId, initial: person.initial, name: person.name, org: person.org ?? null, role: person.role ?? null });
 
+// 2026-11-21 用户定：只标事实（交換済み / 申請あり / 申請中），没交换就不标——不再用「有没有写メモ」推断「話していない」。
 function statusChip(person: EventVenuePerson, t: JourneyT) {
   if (person.exchange === "exchanged") return <span className={`${styles.chip} ${styles.c_teal}`}>{t("exExchanged")}</span>;
   if (person.exchange === "incoming") return <span className={`${styles.chip} ${styles.c_lav}`}>{t("exIncoming")}</span>;
   if (person.exchange === "requested") return <span className={styles.chip}>{t("exRequested")}</span>;
-  return <span className={styles.chip}>{t("notTalked")}</span>;
+  return null;
 }
 
 export function VenueRecordView({ data, eventId, language, t }: { data: EventVenueResponse; eventId: string; language: OrbitLanguage; t: JourneyT }) {

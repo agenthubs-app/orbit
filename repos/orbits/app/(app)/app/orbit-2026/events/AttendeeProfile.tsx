@@ -2,7 +2,7 @@
 
 // 2026-11-20 参加者の詳細（event-web-revisit-cover-width-proposal：详情页参加者卡 / 会場の記録 任何人名 / 会後「今日会った人」共用）。
 // 数据：GET /api/events/[id]/attendees/[attendeeId]（报名者之间、对方公开了参加用プロフィール才有，否则 404）。
-// 分区顺序：头部 → このイベントでの接点（同桌轮次 + おすすめ理由「?」）→ 自己紹介 + 公开问答 → メモ（自分だけ，可写）→ 底部交换。
+// 分区顺序：头部 → このイベントでの接点（同桌轮次 + おすすめ理由「?」）→ 自己紹介 + 公开问答 → 交换 → メモ（自分だけ，次要，最后）。
 // 交换：canRequestExchange → 「交換を申請」+ 期限一行；exchanged → 「交換済み · 人脈で開く」；incoming → 承認 / 無視（同会場）。
 // ≥1280 放在右栏（DetailRail 的位置），< 1280 放进抽屉（同一个组件，抽屉用 bare，标题行和 ✕ 由这里画）。
 import { useEffect, useState, type ReactNode } from "react";
@@ -184,6 +184,8 @@ export function AttendeeProfilePanel({ eventId, seed, language, t, onClose, tone
           ) : null}
         </div>
       ) : null}
+      {foot}
+      {/* 2026-11-21 用户定：交换（加好友）在前，メモ是次要入口，放最后。 */}
       {profile ? (
         <div className={`${styles.card} ${r.pcard}`} data-person-memo="">
           <div className={`${styles.lbl} ${r.memoLbl}`}>{t("memoTitle")}</div>
@@ -193,7 +195,6 @@ export function AttendeeProfilePanel({ eventId, seed, language, t, onClose, tone
           </div>
         </div>
       ) : null}
-      {foot}
     </div>
   );
 }
