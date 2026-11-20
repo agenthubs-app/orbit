@@ -226,7 +226,7 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope, today: string)
       while (end > part.quote[0] && /[\s，,。；;、]/u.test(message[end - 1])) end -= 1;
       const now: GraphPart = { ...part, capabilities: reads, plan: { ...part.plan, persistence: "this_turn" }, quote: [part.quote[0], end], refs: part.refs.filter((ref) => !ref.quote || ref.quote[0] < splitAt) };
       const keep: GraphPart = { ...part, capabilities: [...new Set([...reads, "rule.create"])] as GraphPart["capabilities"], dependsOn: [], localId: `${part.localId}k`, plan: { ...part.plan, persistence: "this_turn", readings: [] }, quote: [splitAt, part.quote[1]], refs: part.refs.map((ref) => ({ ...ref })) };
-      parts.splice(index, 1, now, keep);
+      (parts as GraphPart[]).splice(index, 1, now, keep);
       index += 1;
       emitTrace({ keep: keep.localId, now: [now.quote[0], now.quote[1]], partId: part.localId, type: "understand.find_now_and_keep_looking" });
       continue;
