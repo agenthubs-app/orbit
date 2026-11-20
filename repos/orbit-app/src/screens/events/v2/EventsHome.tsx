@@ -15,7 +15,7 @@ import type { MyEventItem } from "../../../api/contract/events-mine";
 import { ShellBackground } from "../../../components/ShellBackground";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../../components/ShellTopBar";
 import { TabPageBar } from "../../../components/TabPageBar";
-import { ConfirmDialog, Icon, IconButton, SwipeRow, UiPressable, UiText, useToast } from "../../../components/ui";
+import { ConfirmDialog, Icon, IconButton, Segmented, SwipeRow, UiPressable, UiText, useToast } from "../../../components/ui";
 import { SwipeSegments } from "../../../components/ui/Segmented";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
 import { createThemedStyles } from "../../../design/theme";
@@ -91,7 +91,7 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
   const subtitle = tab === "discover" && discoverSubtitle ? discoverSubtitle : empty ? t("eventsV2.subtitleEmpty") : goingCount === 0 ? t("eventsV2.goingEmptyTitle") : t("eventsV2.subtitleGoing", { going: goingCount, month });
   const segments = useMemo(() => [
     { key: "discover" as const, label: t("eventsV2.tabDiscover") },
-    { key: "going" as const, label: goingCount > 0 && tab !== "discover" ? t("eventsV2.tabGoingCount", { n: goingCount }) : t("eventsV2.tabGoing") },
+    { key: "going" as const, label: goingCount > 0 && tab !== "discover" ? t("eventsV2.tabMyEventsCount", { n: goingCount }) : t("eventsV2.tabMyEvents") },
     { key: "assess" as const, label: t("eventsV2.tabAssess") },
   ], [t, goingCount, tab]);
 
@@ -280,47 +280,47 @@ function avInk(index: number, styles: ReturnType<typeof useStyles>["styles"]) {
   return [styles.avInk0, styles.avInk1, styles.avInk2, styles.avInk3][index % 4];
 }
 
+// 2026-11-21 参加イベント（与 Web 同构，对标 Luma Upcoming / Past、Peatix 今後 / 過去、connpass 参加イベント）：段内顶部
+// 「これから N / 過去 N」二选一，默认これから（これから 0 件也停在这里显示空状态，不自动跳到過去）；两边都空时只出空状态卡。
 function GoingPage({ upcoming, past, now, language, onDiscover }: { upcoming: MyEventItem[]; past: MyEventItem[]; now: Date; language: string; onDiscover: () => void }) {
   const { styles, colors } = useStyles();
   const { t } = useOrbitLocale();
   const router = useRouter();
+  const [side, setSide] = useState<"upcoming" | "past">("upcoming");
   const coming = upcoming.filter((item) => item.status !== "cancelled" && item.status !== "rejected");
-  if (coming.length === 0 && past.length === 0) {
-    return (
-      <ScrollView contentContainerStyle={styles.scroll} testID="events-going-empty">
-        <View style={[styles.card, styles.guide]}>
-          <GuideGlow id="events-going-empty-glow" color={colors.macLav} />
-          <UiText style={styles.guideEmoji}>🗓️</UiText>
-          <UiText style={styles.guideBig}>{t("eventsV2.goingEmptyTitle")}</UiText>
-          <UiText style={styles.guideSub}>{t("eventsV2.goingEmptySub")}</UiText>
-          <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.tabDiscover")} onPress={onDiscover} style={styles.btnPrimary} testID="events-going-discover"><Icon name="search" size={16} color={colors.bg} /><UiText style={styles.btnPrimaryText}>{t("eventsV2.tabDiscover")}</UiText></UiPressable>
-        </View>
-      </ScrollView>
-    );
-  }
+  const emptyCard = (
+    <View style={[styles.card, styles.guide]} testID="events-going-upcoming-empty">
+      <GuideGlow id="events-going-empty-glow" color={colors.macLav} />
+      <UiText style={styles.guideEmoji}>🗓️</UiText>
+      <UiText style={styles.guideBig}>{t("eventsV2.myUpcomingEmptyTitle")}</UiText>
+      <UiText style={styles.guideSub}>{t("eventsV2.goingEmptySub")}</UiText>
+      <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.tabDiscover")} onPress={onDiscover} style={styles.btnPrimary} testID="events-going-discover"><Icon name="search" size={16} color={colors.bg} /><UiText style={styles.btnPrimaryText}>{t("eventsV2.tabDiscover")}</UiText></UiPressable>
+    </View>
+  );
+  if (coming.length === 0 && past.length === 0) return <ScrollView contentContainerStyle={styles.scroll} testID="events-going-empty">{emptyCard}</ScrollView>;
+  // Past: what happened, as a fact — checked in / cancelled / registered but never checked in.
+  const pastChip = (item: MyEventItem) => item.status === "attended" ? <Chip label={t("eventsV2.attended")} tone="teal" />
+    : item.status === "cancelled" ? <Chip label={t("eventsV2.pastCancelled")} tone="neutral" />
+    : item.status === "registered" || item.status === "pending_review" ? <Chip label={t("eventsV2.pastNoCheckIn")} tone="neutral" /> : null;
   return (
     <ScrollView contentContainerStyle={styles.scroll} testID="events-going">
-      <View style={styles.cardH}><UiText style={styles.h3}>{t("eventsV2.upcoming")}</UiText><UiText style={styles.more}>{t("eventsV2.countItems", { n: coming.length })}</UiText></View>
-      {coming.length === 0 ? (
-        <View style={[styles.row, { gap: 10, marginBottom: 12 }]}>
-          <UiText style={[styles.lbl, { flexShrink: 1 }]} testID="events-going-upcoming-empty">{t("eventsV2.upcomingEmpty")}</UiText>
-          <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.searchEvents")} onPress={onDiscover} style={styles.btnSm} testID="events-going-find"><UiText style={styles.btnSmText}>{t("eventsV2.searchEvents")}</UiText></UiPressable>
-        </View>
-      ) : null}
-      {coming.map((item) => <GoingCard key={item.eventId} item={item} now={now} language={language} style={{ marginBottom: 12 }} gradientKey="list" band={item.coverUrl ? "image" : null} />)}
-      {past.length ? (
-        <View style={[styles.card, { marginTop: 6, paddingHorizontal: 16, paddingVertical: 8 }]}>
-          <View style={[styles.cardH, { marginBottom: 0, marginTop: 8 }]}><UiText style={styles.h3}>{t("eventsV2.past")}</UiText><UiText style={styles.more}>{t("eventsV2.countItems", { n: past.length })}</UiText></View>
+      <Segmented<"upcoming" | "past"> accessibilityLabel={t("eventsV2.tabMyEvents")} value={side} onChange={setSide}
+        segments={[{ key: "upcoming", label: t("eventsV2.segUpcomingN", { n: coming.length }) }, { key: "past", label: t("eventsV2.segPastN", { n: past.length }) }]} />
+      <View style={{ height: 14 }} />
+      {side === "upcoming" ? (coming.length === 0 ? emptyCard
+        : coming.map((item) => <GoingCard key={item.eventId} item={item} now={now} language={language} style={{ marginBottom: 12 }} gradientKey="list" band={item.coverUrl ? "image" : null} />)) : null}
+      {side === "past" ? (past.length === 0 ? <UiText style={[styles.lbl, { paddingHorizontal: 4 }]} testID="events-going-past-empty">{t("eventsV2.pastEmpty")}</UiText> : (
+        <View style={[styles.card, { paddingHorizontal: 16, paddingVertical: 8 }]} testID="events-going-past">
           {past.map((item, index) => (
             <UiPressable key={item.eventId} accessibilityRole="button" accessibilityLabel={item.title} onPress={() => router.push(item.href as Href)} style={styles.li}>
               {index > 0 ? <View style={styles.liLine} /> : null}
               <View style={[styles.emo, styles.emoSm, { backgroundColor: item.status === "attended" ? colors.macTeal : colors.macLav }]}><UiText style={styles.emoTextSm}>{item.emoji || eventEmoji({ title: item.title })}</UiText></View>
               <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{item.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[appEventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</UiText></View>
-              {item.status === "attended" || item.status === "cancelled" ? <Chip label={item.status === "attended" ? t("eventsV2.attended") : t("eventsV2.statusCancelled")} tone={item.status === "attended" ? "teal" : "neutral"} /> : null}
+              {pastChip(item)}
             </UiPressable>
           ))}
         </View>
-      ) : null}
+      )) : null}
     </ScrollView>
   );
 }

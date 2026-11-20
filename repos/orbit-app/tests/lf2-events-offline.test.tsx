@@ -120,3 +120,23 @@ test("agenda is always shown: rows carry the time, title and a small detail line
     copies: { [`event-venue|${eventId}`]: { data: { ...venue, agenda: [], agendaTip: null }, syncedAt } } });
   await venueEmpty.getByText("主办方还没有公布议程", { exact: true }).waitFor();
 });
+
+test("参加的活动 (2026-11-21, same as Web): これから / 過去 switch, stays on これから with its empty card; past rows say what happened", async (t) => {
+  const none = { items: [], upcomingCount: 0, asOf: syncedAt, nextCursor: null, range: "upcoming" };
+  const pastItem = (eventId: string, status: string) => ({ emoji: "🥂", eventId, href: `/events/${eventId}`, startsAt: "2026-10-07T10:00:00.000Z", status, title: `Event ${eventId}`, venue: "渋谷" });
+  const past = { items: [pastItem("p1", "attended"), pastItem("p2", "registered"), pastItem("p3", "cancelled")], upcomingCount: 0, asOf: syncedAt, nextCursor: null, range: "past" };
+  const page = await harness.open(t, { screen: "events", online: false, params: { tab: "going" }, copies: {
+    "event-assessments|main": { data: [], syncedAt }, "events-mine|upcoming": { data: none, syncedAt }, "events-mine|past": { data: past, syncedAt },
+  } });
+  await page.getByRole("tab", { name: "接下来 0" }).waitFor();
+  await page.getByText("接下来没有要参加的活动", { exact: true }).waitFor();
+  assert.equal(await page.getByText("Event p1").count(), 0, "past events are not listed under 接下来");
+  await page.getByRole("tab", { name: "过去 3" }).click();
+  await page.getByText("Event p1").waitFor();
+  for (const chip of ["参加了", "未签到", "已取消"]) await page.getByText(chip, { exact: true }).waitFor();
+  const empty = await harness.open(t, { screen: "events", online: false, params: { tab: "going" }, copies: {
+    "event-assessments|main": { data: [], syncedAt }, "events-mine|upcoming": { data: none, syncedAt }, "events-mine|past": { data: { ...none, range: "past" }, syncedAt },
+  } });
+  await empty.getByText("接下来没有要参加的活动", { exact: true }).waitFor();
+  assert.equal(await empty.getByRole("tab", { name: "过去 0" }).count(), 0, "no switch when both sides are empty");
+});
