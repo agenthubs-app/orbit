@@ -58,14 +58,23 @@ test("the card says which task, that only this one changes, and that the reminde
   const card = (locale: "zh" | "en" | "ja") => prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push: true, pushLocale: locale } }, shown, targetId: "rule:1" }, locale, revision: 1 });
   const zh = card("zh");
   assert.equal(zh.display?.record, "定时任务「每周五挑三场周末活动」");
-  assert.deepEqual(zh.display?.rows.map((row) => [row.field, row.before, row.after]), [["notify", "只放进站内收件箱，不推送", "放进站内收件箱，并在手机和浏览器上提醒"]]);
-  assert.equal(zh.display?.note, "只改这一条任务。之后它有新结果时，会在你的手机和浏览器上弹一条提醒，只写「有新结果，请到 Orbit 查看。」，不写活动名称、时间和地点；结果照常放进收件箱。");
-  assert.equal(zh.preview, `定时任务「每周五挑三场周末活动」：提醒方式 只放进站内收件箱，不推送 → 放进站内收件箱，并在手机和浏览器上提醒。${zh.display?.note}`, "the card's own text says it too");
+  // The approved draft's words (16-2): 「有新结果  只放进收件箱 → 放进收件箱，并在手机和浏览器上提醒」 and one sentence under it.
+  assert.deepEqual(zh.display?.rows.map((row) => [row.field, row.label, row.before, row.after]), [["notify", "有新结果", "只放进收件箱", "放进收件箱，并在手机和浏览器上提醒"]]);
+  assert.equal(zh.display?.note, "只改这一条，别的任务照旧只进收件箱。提醒上不写活动名称、时间和地点。");
+  assert.equal(zh.preview, `定时任务「每周五挑三场周末活动」：有新结果 只放进收件箱 → 放进收件箱，并在手机和浏览器上提醒。${zh.display?.note}`, "the card's own text says it too");
+  // The product owner's rule: no 「推送」「站内」 (push, in-app) anywhere on the card, in any language.
+  for (const locale of ["zh", "en", "ja"] as const) {
+    for (const push of [true, false]) {
+      const turned = prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push, pushLocale: locale } }, shown: { ...shown, rule: ruleSpec({ notify: { inApp: true, push: !push } }) }, targetId: "rule:1" }, locale, revision: 1 });
+      const visible = JSON.stringify([turned.display, turned.preview]);
+      assert.doesNotMatch(visible, /推送|站内|in-app|In-app|プッシュ|アプリ内|\bpush\b/u, `${locale} ${push}: ${visible}`);
+    }
+  }
   assert.deepEqual(zh.after, { notify: { inApp: true, push: true, pushLocale: "zh" } });
   assert.deepEqual(zh.before, { notify: { inApp: true, push: false } });
   assert.deepEqual((zh.payload as { set: unknown }).set, { notify: { inApp: true, push: true, pushLocale: "zh" } });
-  assert.match(card("ja").display?.note ?? "", /変わるのはこのタスクだけです。.*スマホとブラウザ.*イベント名・日時・場所は書きません/u);
-  assert.match(card("en").display?.note ?? "", /^Only this task changes\..*your phone and your browser.*no event name, time or place/u);
+  assert.match(card("ja").display?.note ?? "", /^変わるのはこのタスクだけで、ほかのタスクはこれまでどおり受信箱だけです。お知らせにはイベント名・日時・場所を書きません。$/u);
+  assert.match(card("en").display?.note ?? "", /^Only this task changes; your other tasks still go to your inbox only\. The reminder shows no event names, times or places\.$/u);
   for (const locale of ["zh", "en", "ja"] as const) for (const word of ["来源", "证据", "授权", "引用", "范围"]) assert.equal(reminderNote(true, locale).includes(word) || reminderNote(false, locale).includes(word), false);
   // A change that leaves the reminder as it is says nothing about reminders.
   const count = prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { maxItems: 5 }, shown, targetId: "rule:1" }, locale: "zh", revision: 1 });

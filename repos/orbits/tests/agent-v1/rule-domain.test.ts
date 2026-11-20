@@ -96,7 +96,7 @@ test("the card of a new task lists the six things on their own rows, says 'after
     ["排序依据", "按笔记「兴趣笔记」的主题"],
     ["条数", "最多3场"],
     ["有效期", "到11月30日（周一）为止"],
-    ["提醒方式", "只放进站内收件箱，不推送"],
+    ["有新结果", "只放进收件箱"],
     ["下次预计运行", "11月20日（周五） 9:00 之后约10分钟内"],
   ]);
   assert.equal(op.display?.record, "定时任务「每周五挑3个：周末活动」");
@@ -127,7 +127,7 @@ test("a rule item goes on a card like any other item and is hashed with it", asy
   const built = await buildCardOperationList(null, { actionId: "action:2", intents: [{ ...createIntent(), partId: "p1" }], locale: "en", revision: 1 });
   assert.equal(built.operations.length, 1);
   assert.equal(built.operations[0].display?.rows[0].after, "Every Friday, within about 10 minutes after 9:00");
-  assert.equal(built.operations[0].display?.rows[5].after, "In-app inbox only, no push");
+  assert.equal(built.operations[0].display?.rows[5].after, "To your inbox only");
 });
 
 function executorsFor(now: () => string) {
@@ -191,7 +191,7 @@ test("pause, resume and removal cards say which task, and that it will not run u
   assert.equal(cardCountTitle([pause], "zh"), "修改1项");
   assert.equal(cardCountTitle([cancel], "en"), "1 deletion");
   const update = prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push: true } }, shown, targetId: "rule:1" }, locale: "zh", revision: 1 });
-  assert.deepEqual(update.display?.rows.map((row) => [row.label, row.before, row.after]), [["提醒方式", "只放进站内收件箱，不推送", "放进站内收件箱，并在手机和浏览器上提醒"]]);
+  assert.deepEqual(update.display?.rows.map((row) => [row.label, row.before, row.after]), [["有新结果", "只放进收件箱", "放进收件箱，并在手机和浏览器上提醒"]]);
   assert.deepEqual(update.after, { notify: { inApp: true, push: true } });
 });
 
