@@ -241,7 +241,7 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       const kept = untranslatedSourceWords({ language: state.language, material: sourceSentences, names: sourceNames, text: segment.text });
       if (!kept.length) continue;
       emitTrace({ partId, type: "answer.source_words_quoted", words: kept.length });
-      verification.segments.set(partId, { ...segment, text: quoteSourceWords(segment.text, kept, state.language) });
+      verification.segments.set(partId, { ...segment, text: quoteSourceWords(segment.text, kept, state.language, [...sourceSentences, ...sourceNames]) });
     }
   }
   const words = gapWords(state.language);

@@ -34,6 +34,16 @@ const SHARED_JAPANESE = new Set([
 const isChineseSentence = (text: string) => /\p{Script=Han}/u.test(text) && !KANA.test(text);
 
 /**
+ * Coordinator, after AE-REF-007 run 4: quotation marks exempt their content only when the whole quoted string is taken
+ * word for word from what was read — a record's text, name or title, or the user's own message. A title or phrase the
+ * model made up and put in quotation marks is the answer's own wording.
+ */
+export function isVerbatimQuote(span: string, sources: readonly string[]): boolean {
+  const inner = span.slice(1, -1).trim();
+  return inner.length > 0 && sources.some((source) => source.includes(inner));
+}
+
+/**
  * The words of a Japanese or English answer left as they stand in the Chinese material. `names` are the names, titles,
  * places and tags the user's message and the records give (they stay as they are); `material` the records' free text.
  */
@@ -42,7 +52,9 @@ export function untranslatedSourceWords(input: { text: string; language: "zh" | 
   const chinese = input.material.filter(isChineseSentence);
   if (!chinese.length) return [];
   const names = input.names.filter((name) => /\p{Script=Han}/u.test(name));
-  const open = input.text.replace(QUOTED, " ");
+  // Only a verbatim quote of what was read is set aside; a made-up phrase in quotation marks is read like the rest.
+  const sources = [...input.material, ...input.names];
+  const open = input.text.replace(QUOTED, (span) => (isVerbatimQuote(span, sources) ? " " : span.replace(/『[^』]*』|'[^']*'/gu, (inner) => (isVerbatimQuote(inner, sources) ? " " : inner))));
   const found: string[] = [];
   const consider = (run: string) => {
     if (found.includes(run)) return;
@@ -69,18 +81,22 @@ export function untranslatedProblem(partId: string, words: readonly string[], la
 
 /**
  * After the one repair: the copied words still in the answer's own sentences become quotes of the record (「在意」 in
- * Japanese, "在意" in English), so nothing Chinese reads as the answer's own words. Text already quoted is left alone.
+ * Japanese, "在意" in English), so nothing Chinese reads as the answer's own words. A verbatim quote of what was read is
+ * left alone; inside a made-up phrase in quotation marks the word becomes an inner quote (『在意』 / '在意').
  */
-export function quoteSourceWords(text: string, words: readonly string[], language: "ja" | "en"): string {
+export function quoteSourceWords(text: string, words: readonly string[], language: "ja" | "en", sources: readonly string[] = []): string {
   if (!words.length) return text;
   const sorted = [...words].sort((left, right) => right.length - left.length);
   const pattern = new RegExp(sorted.map((word) => word.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")).join("|"), "gu");
   const [open, close] = language === "ja" ? ["「", "」"] : ["\"", "\""];
+  const [innerOpen, innerClose] = language === "ja" ? ["『", "』"] : ["'", "'"];
   let out = "";
   let last = 0;
   for (const match of text.matchAll(QUOTED)) {
-    out += text.slice(last, match.index).replace(pattern, (word) => `${open}${word}${close}`) + match[0];
-    last = match.index! + match[0].length;
+    const span = match[0];
+    const kept = isVerbatimQuote(span, sources) ? span : span.replace(pattern, (word) => `${innerOpen}${word}${innerClose}`);
+    out += text.slice(last, match.index).replace(pattern, (word) => `${open}${word}${close}`) + kept;
+    last = match.index! + span.length;
   }
   return out + text.slice(last).replace(pattern, (word) => `${open}${word}${close}`);
 }

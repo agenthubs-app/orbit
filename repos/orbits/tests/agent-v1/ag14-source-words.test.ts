@@ -41,9 +41,27 @@ test("everyday Chinese words whose characters all exist in Japanese are found to
 
 test("what the repair still carries is delivered as a quote of the record, never as the answer's own words", () => {
   assert.equal(quoteSourceWords("田中さんが最も在意しているのは納期です。「客户访谈」の在意も同じ。", ["在意"], "ja"), "田中さんが最も「在意」しているのは納期です。「客户访谈」の「在意」も同じ。");
-  assert.equal(quoteSourceWords("Tanaka cares about 交付周期 and \"报价\".", ["交付周期", "报价"], "en"), "Tanaka cares about \"交付周期\" and \"报价\".");
+  assert.equal(quoteSourceWords("Tanaka cares about 交付周期 and \"报价\".", ["交付周期", "报价"], "en", [NOTE]), "Tanaka cares about \"交付周期\" and \"报价\".");
   const quoted = quoteSourceWords("田中さんが最も在意しているのは納期です。", ["在意"], "ja");
   assert.deepEqual(untranslatedSourceWords({ language: "ja", material: [NOTE_2], names: NAMES, text: quoted }), [], "once quoted, nothing is left to find");
+});
+
+/**
+ * Coordinator after AE-REF-007 run 4: quotation marks exempt their content only when the whole quoted string is taken word
+ * for word from what was read (a record, its name or title, the user's own message). A title the model made up and put in
+ * quotation marks is the answer's own wording.
+ */
+test("a made-up title in quotation marks is the answer's own wording; a verbatim quote of a record is not", () => {
+  const madeUp = "タイトルを「田中さん向けに、交付周期を明記した見積の修订版を送る」のように変えるのがよいです。";
+  assert.deepEqual(untranslatedSourceWords({ language: "ja", material: [NOTE], names: NAMES, text: madeUp }).sort(), ["交付周期", "修订版"]);
+  // A record's own words quoted verbatim, the record's title and the user's own message stay exempt.
+  assert.deepEqual(untranslatedSourceWords({ language: "ja", material: [NOTE], names: NAMES, text: "メモには「报价可以分两期」とあり、「回复田中的询价」を直すのがよいです。" }), []);
+  // After the repair: inside the made-up title the word becomes an inner quote of the record, and nothing is left.
+  const delivered = quoteSourceWords(madeUp, ["交付周期", "修订版"], "ja", [NOTE, ...NAMES]);
+  assert.equal(delivered, "タイトルを「田中さん向けに、『交付周期』を明記した見積の『修订版』を送る」のように変えるのがよいです。");
+  assert.deepEqual(untranslatedSourceWords({ language: "ja", material: [NOTE], names: NAMES, text: delivered }), []);
+  // A verbatim quote is left as it is.
+  assert.equal(quoteSourceWords("メモには「报价可以分两期」とあります。", ["报价"], "ja", [NOTE]), "メモには「报价可以分两期」とあります。");
 });
 
 test("record values shown as such stay as they are (AE-MEM-007 R4: an event's topics listed in an English answer)", () => {
