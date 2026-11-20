@@ -14,7 +14,6 @@ import type { MyEventItem } from "../../../api/contract/events-mine";
 import { ShellBackground } from "../../../components/ShellBackground";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../../components/ShellTopBar";
 import { TabPageBar } from "../../../components/TabPageBar";
-import { swipeToMainTab } from "../../../components/shell-navigation";
 import { ConfirmDialog, Icon, IconButton, SwipeRow, UiPressable, UiText, useToast } from "../../../components/ui";
 import { SwipeSegments } from "../../../components/ui/Segmented";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
@@ -110,7 +109,6 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
         value={tab}
         onChange={setTab}
         accessibilityLabel={t("eventsV2.tabsLabel")}
-        onSwipePastEdge={(direction) => swipeToMainTab(router, "/events", direction)}
         renderPage={(key) => key === "assess"
           ? <AssessPage items={ordered} upcoming={upcoming} empty={empty} now={now} language={language} onDelete={setConfirmDelete} />
           : key === "going" ? <GoingPage upcoming={upcoming} past={past} now={now} language={language} onDiscover={() => setTab("discover")} />

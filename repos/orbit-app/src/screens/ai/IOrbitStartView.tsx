@@ -120,17 +120,13 @@ export function IOrbitStartView({
   }, [designMenu, history, historyOpen]);
   const [renaming, setRenaming] = useState<IOrbitHistoryItem | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
-  const edgeExit = useMemo(() => PanResponder.create({
-    onMoveShouldSetPanResponder: (_event, gesture) => gesture.x0 < 54 && gesture.dx > 24 && Math.abs(gesture.dy) < 28,
-    onPanResponderRelease: (_event, gesture) => { if (gesture.x0 < 54 && gesture.dx > 64) onClose(); },
-  }), [onClose]);
   const groups = useMemo(() => {
     const result = new Map<ReturnType<typeof tokyoGroup>, IOrbitHistoryItem[]>([["pinned", []], ["today", []], ["week", []], ["older", []]]);
     for (const item of history) result.get(tokyoGroup(item))!.push(item);
     return [...result].filter(([, items]) => items.length > 0);
   }, [history]);
   const recent = history.slice(0, 3);
-  return <View {...edgeExit.panHandlers} style={styles.root}>
+  return <View style={styles.root}>
     <AppScreen inset="kit" title="iOrbit" showBack={false} header={<View style={styles.header}>
       <IconButton icon="menu" accessibilityLabel={copy.conversations} onPress={onHistoryOpen} />
       <View style={styles.headerCopy}><UiText accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit style={styles.headerTitle}>iOrbit</UiText>

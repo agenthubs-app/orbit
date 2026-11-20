@@ -14,7 +14,7 @@ test("R21 App start owns one kit screen with a one-line full-screen header", () 
   assert.match(view, /accessibilityLabel=\{copy\.conversations\}/u);
   assert.match(view, /accessibilityLabel=\{copy\.close\}/u);
   assert.match(japanese, /conversations: "会話リスト"/u);
-  assert.match(view, /gesture\.x0 < 54 && gesture\.dx > 64/u);
+  assert.doesNotMatch(view, /edgeExit|gesture\.x0 < 54/u, "2026-11-20: iOrbit closes with its ✕ only (no left-edge swipe)");
 });
 
 test("R21 starter questions are explicit sends and the composer keeps its draft", () => {

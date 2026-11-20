@@ -3,7 +3,6 @@ import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Keyboard,
-  PanResponder,
   Platform,
   useWindowDimensions,
 } from "react-native";
@@ -458,24 +457,6 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       : todayOverdue
         ? locale.t("todayActions.timedOut")
         : null;
-  const drawerPanResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_event, gesture) =>
-          Math.abs(gesture.dx) > 24 && Math.abs(gesture.dy) < 28,
-        onPanResponderRelease: (_event, gesture) => {
-          if (!drawerOpen && gesture.moveX < 54 && gesture.dx > 64) {
-            setDrawerOpen(true);
-          }
-
-          if (drawerOpen && gesture.dx < -64) {
-            setDrawerOpen(false);
-          }
-        }
-      }),
-    [drawerOpen]
-  );
-
   useEffect(() => {
     if (optionalParam(params.drawer) === "1") {
       setHistoryOpen(true);

@@ -15,7 +15,6 @@ import { useMobileViewport } from "../platform/use-mobile-viewport";
 import { mainTabForPath, parentForPath } from "../view-models/app-navigation";
 import { rememberScroll, rememberedScroll, shellScrollKey } from "../view-models/shell-state";
 import { useAppScreenEmbedding } from "./AppScreenEmbedding";
-import { MainTabSwipe } from "./MainTabSwipe";
 import { TabPageBar } from "./TabPageBar";
 import { ShellBackground } from "./ShellBackground";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "./ShellTopBar";
@@ -127,8 +126,6 @@ export function AppScreen({
             right={headerActions ? <View style={styles.navigationActions}>{headerActions}</View> : null} />
         </View>
       ) : null}
-      {/* Tab pages: a sideways swipe opens the neighbouring tab page (not while a child drags). */}
-      <MainTabSwipe path={mainTab ? pathname : null} enabled={scrollEnabled}>
       <ScrollView
         {...scroll.props}
         scrollEnabled={scrollEnabled}
@@ -151,7 +148,6 @@ export function AppScreen({
         </View> : eyebrow && eyebrow.trim().toLowerCase() !== "orbit" ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null)}
         <View style={styles.body}>{children}</View>
       </ScrollView>
-      </MainTabSwipe>
       {mainTab ? <TabPageBar tab={mainTab} /> : null}
     </SafeAreaView>
   );

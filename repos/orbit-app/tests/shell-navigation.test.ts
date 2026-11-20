@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -78,8 +78,9 @@ test("every auth change resets the stack instead of replacing one page", () => {
   assert.match(read("src/screens/public/WelcomeScreen.tsx"), /openMainTab\(router, "\/home"\)/u, "Google from the welcome page");
 });
 
-test("a tap opens a tab page at once; a swipe slides it in from its side; other pages keep their slide", async () => {
-  const { isTabPageRoute, rootStackScreenOptions, swipeToMainTab } = await import("../src/components/shell-navigation");
+test("first-level pages open by tap only: tab pages and iOrbit appear at once, other pages keep their slide", async () => {
+  const shell = await import("../src/components/shell-navigation");
+  const { isIOrbitRoute, isTabPageRoute, rootStackScreenOptions } = shell;
   assert.equal(isTabPageRoute({ name: "home" }), true);
   assert.equal(isTabPageRoute({ name: "task", params: { seg: "todo" } }), true);
   assert.equal(isTabPageRoute({ name: "(app)", params: { screen: "contacts" } }), true);
@@ -87,34 +88,24 @@ test("a tap opens a tab page at once; a swipe slides it in from its side; other 
   assert.equal(isTabPageRoute({ name: "(app)", params: { screen: "ai" } }), false, "iOrbit opens as a pushed page");
   assert.equal(isTabPageRoute({ name: "contacts/[id]", params: { id: "1" } }), false);
   assert.deepEqual(rootStackScreenOptions({ key: "settings-1", name: "settings" }), {});
-  assert.deepEqual(rootStackScreenOptions({ key: "home-1", name: "home" }), { animation: "none" }, "tapped");
-
-  const router = { dismissAll: () => undefined, replace: (_href: never) => undefined };
-  trackRootNavigationState(stack({}));
-  swipeToMainTab(router, "/home", "next");
-  assert.deepEqual(rootStackScreenOptions({ key: "home-1", name: "home" }), { animation: "none" }, "a page already shown keeps its options");
-  assert.deepEqual(rootStackScreenOptions({ key: "contacts-1", name: "(app)", params: { screen: "contacts" } }), { animation: "default" }, "next slides in from the right");
-  assert.deepEqual(rootStackScreenOptions({ key: "contacts-1", name: "(app)", params: { screen: "contacts" } }), { animation: "default" }, "kept for that page");
-  swipeToMainTab(router, "/contacts", "prev");
-  assert.deepEqual(rootStackScreenOptions({ key: "home-2", name: "home" }), { animation: "slide_from_left" });
-  assert.deepEqual(rootStackScreenOptions({ key: "events-1", name: "(app)", params: { screen: "events" } }), { animation: "none" }, "the swipe is used once");
+  assert.deepEqual(rootStackScreenOptions({ key: "home-1", name: "home" }), { animation: "none" });
+  assert.deepEqual(rootStackScreenOptions({ key: "events-1", name: "(app)", params: { screen: "events" } }), { animation: "none" });
+  assert.equal(isIOrbitRoute({ name: "(app)", params: { screen: "ai" } }), true);
+  assert.equal(isIOrbitRoute({ name: "ai" }), true, "inside the (app) stack");
+  assert.equal(isIOrbitRoute({ name: "ai/[id]", params: { id: "1" } }), false, "a conversation keeps the slide");
+  assert.deepEqual(rootStackScreenOptions({ key: "ai-1", name: "(app)", params: { screen: "ai" } }), { animation: "none", gestureEnabled: false }, "no slide in, no edge swipe back");
+  assert.deepEqual(rootStackScreenOptions({ key: "ai-2", name: "ai/[id]", params: { id: "1" } }), {});
+  for (const gone of ["swipeToMainTab", "swipeDirection", "adjacentTabPath"]) assert.equal(gone in shell, false, `${gone} is gone: no swipe between first-level pages`);
 });
 
-test("swipes move along the bar order and stop at its ends", async () => {
-  const { adjacentTabPath, swipeDirection, swipeToMainTab } = await import("../src/components/shell-navigation");
-  assert.equal(adjacentTabPath("/home", "next"), "/contacts");
-  assert.equal(adjacentTabPath("/contacts", "next"), "/events", "iOrbit is not a tab page");
-  assert.equal(adjacentTabPath("/events?tab=going", "prev"), "/contacts");
-  assert.equal(adjacentTabPath("/task", "prev"), "/events");
-  assert.equal(adjacentTabPath("/home", "prev"), null);
-  assert.equal(adjacentTabPath("/task", "next"), null);
-  const calls: string[] = [];
-  trackRootNavigationState(stack({}));
-  swipeToMainTab({ replace: (href: never) => calls.push(String(href)) }, "/task", "next");
-  assert.deepEqual(calls, [], "nothing past the last tab");
-  assert.equal(swipeDirection(-80, 0), "next");
-  assert.equal(swipeDirection(-20, -900), "next", "a quick flick");
-  assert.equal(swipeDirection(70, 0), "prev");
-  assert.equal(swipeDirection(30, 100), null, "too short and slow");
-  assert.equal(swipeDirection(20, -900), null, "flick against the drag");
+test("no sideways swipe leaves a first-level page", () => {
+  const read = (file: string) => readFileSync(join(root, file), "utf8");
+  assert.equal(existsSync(join(root, "src/components/MainTabSwipe.native.tsx")), false);
+  assert.equal(existsSync(join(root, "src/components/MainTabSwipe.tsx")), false);
+  assert.doesNotMatch(read("src/components/AppScreen.tsx"), /MainTabSwipe/u);
+  assert.doesNotMatch(read("src/components/ui/Segmented.tsx"), /onSwipePastEdge|onScrollEndDrag/u, "pulling past the last segment does not open the next tab");
+  assert.doesNotMatch(read("src/screens/events/v2/EventsHome.tsx"), /onSwipePastEdge|swipeToMainTab/u);
+  assert.doesNotMatch(read("src/screens/task/TaskScreen.tsx"), /onSwipePastEdge|swipeToMainTab/u);
+  assert.doesNotMatch(read("src/screens/ai/IOrbitStartView.tsx"), /edgeExit/u, "iOrbit closes with its ✕, not a left-edge swipe");
+  assert.match(read("app/(app)/_layout.tsx"), /isIOrbitRoute\(route\)/u);
 });

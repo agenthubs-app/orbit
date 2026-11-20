@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import { isIOrbitRoute } from "../../src/components/shell-navigation";
 import { AppErrorScreen } from "../../src/components/AppErrorBoundary";
 import { useOrbitTheme } from "../../src/design/theme";
 
@@ -16,5 +17,6 @@ export function ErrorBoundary({
 
 export default function AppLayout() {
   const { colors } = useOrbitTheme();
-  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />;
+  // iOrbit pushed from /contacts or /events lands in this stack: it appears at once, like from the root stack.
+  return <Stack screenOptions={({ route }) => ({ headerShown: false, contentStyle: { backgroundColor: colors.bg }, ...(isIOrbitRoute(route) ? { animation: "none" as const, gestureEnabled: false } : {}) })} />;
 }

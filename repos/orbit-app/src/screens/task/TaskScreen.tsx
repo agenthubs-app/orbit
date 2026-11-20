@@ -9,7 +9,6 @@ import { isTaskPlanDemoStatus, saveTaskPlanDemoCollapse, TASK_PLAN_DEMO_PATH, ta
 import { serverReachability } from "../../api/server-reachability";
 import { AppScreenEmbeddingProvider } from "../../components/AppScreenEmbedding";
 import { TabPageBar } from "../../components/TabPageBar";
-import { swipeToMainTab } from "../../components/shell-navigation";
 import { ShellBackground } from "../../components/ShellBackground";
 import { shellHeaderDate } from "../../components/shell-date";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../components/ShellTopBar";
@@ -175,7 +174,6 @@ export function TaskScreen() {
         value={segment}
         onChange={choose}
         accessibilityLabel={copy.nav.task}
-        onSwipePastEdge={(direction) => swipeToMainTab(router, "/task", direction)}
         renderPage={(key) => visited.has(key)
           ? <AppScreenEmbeddingProvider segment={key}><PlanGoalInputShown.Provider value={setPlanGoalInput}>
             {key === "plan" && planDemo.kind !== "off" ? planDemo.kind === "ready" ? <View style={styles.demoBlocked}>
