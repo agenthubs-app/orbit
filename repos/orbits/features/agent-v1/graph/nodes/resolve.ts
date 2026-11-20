@@ -865,7 +865,9 @@ export function resolveNode(scope: NodeScope): GraphNode {
               // words mark the notes that hold them, they never hide that person's newer notes (a person's notes are few; words
               // narrow only an account-wide read). The coverage then counts all of the person's notes.
               let personNotes: { total: number | null; complete: boolean } | null = null;
-              if ((current || contacts.length === 1) && kind === "memo" && contactId && kindText && direction === "newest") {
+              // Not for the notes R9 adds beside a to-do or schedule question (those are the notes holding the words only;
+              // AE-AMB-012 in run-03: "排在哪天" about a to-do must not read the person's other notes).
+              if ((current || (contacts.length === 1 && !notesToo)) && kind === "memo" && contactId && kindText && direction === "newest") {
                 const newest = await readPages(records.reader, kind, accountScope, queryOf(undefined), 1);
                 const added = newest.items.filter((view) => !read.views.some((item) => item.ref === view.ref));
                 for (const view of added) push(view);

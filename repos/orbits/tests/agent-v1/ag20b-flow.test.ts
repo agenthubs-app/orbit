@@ -89,6 +89,8 @@ test("R9 'Beatrix-style' question guessed as a to-do also reads the person's not
     assert.match(materials, /12 月 4 日/u, "the note is among the materials");
     assert.ok(result.sourceRefs.includes("memo:note:lena-opt"), result.text);
     assert.ok(trace.events.some((event) => event.type === "resolve.notes_also_read"));
+    // R24 does not widen these: only the notes holding the words, never the person's other notes (AE-AMB-012).
+    assert.ok(!trace.events.some((event) => event.type === "resolve.current_newest"));
   } finally {
     trace.restore();
   }
