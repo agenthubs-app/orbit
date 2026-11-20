@@ -114,6 +114,14 @@ export async function preparePart(scope: NodeScope, state: AgentGraphState, part
     const startsAt = view ? str(view.fields.startsAt) : undefined;
     if (view && startsAt && startsAt >= now && startsAt < until) events.push(view);
   }
+  // Hotfix 1c (coordinator's decision 2): the user's own private events that have not started (AG13's records), read by id
+  // through the domain reader like an attached one — the same rules, the same card (🔒 私人) — and sent nowhere new.
+  const own = records.privateEvents ? await quietly(records.privateEvents.list(input.actorId), [] as readonly { id: string; startsAt: string }[]) : [];
+  for (const item of own) {
+    if (!(item.startsAt >= now && item.startsAt < until)) continue;
+    const view = (await quietly(records.reader.read("event", account, { id: item.id }), { items: [] as RecordView[] })).items[0];
+    if (view) events.push(view);
+  }
   const items = [...meetings, ...events].sort((left, right) => String(left.fields.startsAt).localeCompare(String(right.fields.startsAt))).slice(0, PREPARE_LIMIT);
 
   // 3. What the user's records hold about each (each record said once).
@@ -135,9 +143,19 @@ export async function preparePart(scope: NodeScope, state: AgentGraphState, part
     const todos: RecordView[] = [];
     for (const contactId of people) todos.push(...(await quietly(records.reader.read("todo", account, { contactId, limit: 5, status: "open" }), { items: [] as RecordView[] })).items);
     if (item.kind === "event") todos.push(...openTodos.filter((view) => view.fields.eventId === item.id || strs(view.fields.eventRefs).some((ref) => ref === item.id || ref.endsWith(`:${item.id}`))));
+    // A private event's linked to-dos and notes are the records that point at it (privateEvents.references, AG13).
+    const linkedIds: string[] = [...strs(item.fields.noteIds)];
+    if (item.id.startsWith("private_event:") && records.privateEvents) {
+      for (const ref of await quietly(records.privateEvents.references(input.actorId, item.id), [] as readonly { id: string; kind: string }[])) {
+        if (ref.kind === "memo") linkedIds.push(ref.id);
+        if (ref.kind !== "todo") continue;
+        const view = (await quietly(records.reader.read("todo", account, { id: ref.id }), { items: [] as RecordView[] })).items[0];
+        if (view && view.fields.status !== "completed" && !todos.some((other) => other.ref === view.ref)) todos.push(view);
+      }
+    }
     const freshTodos = todos.filter((view) => !used.has(view.ref) && used.add(view.ref));
     const notes: RecordView[] = [];
-    for (const id of strs(item.fields.noteIds)) {
+    for (const id of linkedIds) {
       const note = (await quietly(records.reader.read("memo", account, { id }), { items: [] as RecordView[] })).items[0];
       if (note && !used.has(note.ref)) {
         used.add(note.ref);

@@ -3,7 +3,8 @@ import { test } from "node:test";
 
 import type { AnswerBlock } from "../../features/agent-v1/answer/blocks";
 import { asksWhatToPrepare } from "../../features/agent-v1/graph/nodes/prepare";
-import { fnWorld, runFn } from "./functions-kit";
+import { createDomainRegistry } from "../../features/agent-v1/domains/registry";
+import { fnWorld, runFn, todo } from "./functions-kit";
 import { graphKit, recordAccessOf } from "./graph-kit";
 import { schedule } from "./read-kit";
 
@@ -69,6 +70,27 @@ test("English and Japanese: the App's question in both", async () => {
     const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "answer", requiredCapabilities: ["schedule.read"], sourceQuote: message }], { language, session: session() });
     assert.match(run.result.text, lead, run.result.text);
   }
+});
+
+test("decision 2: the user's own private event is listed beside the meetings and the registered event, with its 🔒 card and what links to it", async () => {
+  const base = world();
+  base.records.push(
+    todo(ACTOR, "task:reunion", "给聚会订餐厅", { relatedEventRefs: [{ id: "private_event:p1", kind: "private" }] }),
+    { collection: "notes", id: "note:reunion", payload: { note: { accountId: ACTOR, body: "老同学聚会，要带上次拍的照片。", contactIds: [], createdAt: "2026-11-10T07:00:00.000Z", eventIds: [], id: "note:reunion", ownerUserId: ACTOR, title: "聚会准备", updatedAt: "2026-11-10T07:00:00.000Z", version: 1 } }, searchText: "聚会准备", userId: ACTOR, workspaceId: "workspace:test" },
+  );
+  const kit = session(base);
+  const reunion = { endsAt: "2026-11-18T13:00:00.000Z", id: "private_event:p1", kind: "private_event" as const, location: undefined, startsAt: "2026-11-18T10:00:00.000Z", title: "大学同学聚会", updatedAt: "2026-11-10T00:00:00.000Z", version: 1 };
+  const access = kit.deps.records!;
+  access.reader = createDomainRegistry({ cursorKey: new Uint8Array(Buffer.from("agent-v1-graph-kit-cursor-key-0123456789")), denied: () => new Set(), events: { byIds: async (ids) => fnWorld().events.filter((event) => ids.includes(event.eventId)), own: async (_actor, id) => (id === reunion.id ? reunion : null) }, now: () => NOW, source: access.source });
+  access.privateEvents = { get: async () => null, list: async () => [{ accountId: ACTOR, createdAt: reunion.updatedAt, id: reunion.id, startsAt: reunion.startsAt, title: reunion.title, updatedAt: reunion.updatedAt, version: 1 }], references: async () => [{ id: "task:reunion", kind: "todo", label: "给聚会订餐厅", version: "1" }, { id: "note:reunion", kind: "memo", label: "聚会准备", version: "1" }] } as never;
+  const message = "接下来的会面或活动，该准备什么？";
+  const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "answer", requiredCapabilities: ["schedule.read", "event.read"], sourceQuote: message }], { session: kit });
+  const full = records(run.result.blocks).filter((block) => (block.size ?? "full") === "full").flatMap((block) => block.items);
+  assert.deepEqual(full.map((item) => item.id), ["personal:solo", "private_event:p1", "personal:lunch", "event:e103"], "nearest first, the private event among them");
+  const card = full.find((item) => item.id === "private_event:p1")!;
+  assert.equal(card.eventKind, "private", "the 🔒 私人 card");
+  assert.match(run.result.text, /大学同学聚会[^\n]*\n还没完成的待办：给聚会订餐厅[^\n]*关联的笔记：「聚会准备」/u, run.result.text);
+  assert.equal(run.modelCalls.filter((call) => call.node !== "understand").length, 0);
 });
 
 test("an account with nothing coming: it says there is nothing to prepare yet", async () => {
