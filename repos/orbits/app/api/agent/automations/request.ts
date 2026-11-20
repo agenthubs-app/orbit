@@ -16,6 +16,9 @@ import {
 import type { AutomationStorage } from "../../../../features/agent/automations/due-index";
 import { configuredAutomationStorage, createAgentAutomationService } from "../../../../features/agent/automations/service-factory";
 import { resolveModuleMode } from "../../../../shared/services/module-mode";
+import { agentScheduledTaskFormSchema } from "../../../../shared/api-schema/agent-v1";
+import type { AgentScheduledTaskFormContract } from "../../../../shared/contract/agent-v1";
+import { configuredRecordAccess } from "../../../../features/agent-v1/domains/configured";
 
 interface AgentAutomationRequestContext {
   actorId: string;
@@ -184,6 +187,34 @@ export function parseUpdateAgentAutomationInput(
         ? value.changeNote
         : undefined,
   };
+}
+
+/**
+ * AG15 interface (approved draft 15-4): `{ form, language }` — a task made or changed by hand with the form. Null when
+ * the body has no form or it does not validate. The owner must still be able to open a note chosen in it.
+ */
+export async function taskFormFrom(body: unknown, actorId: string): Promise<{ form: AgentScheduledTaskFormContract; language: "zh" | "en" | "ja" } | { error: "invalid" | "note_unreadable" } | null> {
+  if (!isRecord(body) || body.form === undefined) return null;
+  const parsed = agentScheduledTaskFormSchema.safeParse(body.form);
+  if (!parsed.success) return { error: "invalid" };
+  const form = parsed.data;
+  if (form.basis.kind === "note") {
+    const access = configuredRecordAccess();
+    const ref = `memo:${form.basis.noteId}`;
+    if (!access || !(await access.visible(actorId, [ref])).has(ref)) return { error: "note_unreadable" };
+  }
+  const language = body.language === "en" || body.language === "ja" ? body.language : "zh";
+  return { form, language };
+}
+
+/** AG15 interface: `?language=` — the pages' words in the reader's language (absent: each task's own language). */
+export function languageOf(request: Request | undefined): { locale?: "zh" | "en" | "ja" } {
+  const value = request ? new URL(request.url).searchParams.get("language") : null;
+  return value === "zh" || value === "en" || value === "ja" ? { locale: value } : {};
+}
+
+export function taskFormErrorResponse(error: "invalid" | "note_unreadable"): Response {
+  return NextResponse.json({ error: error === "invalid" ? { code: "VALIDATION_ERROR", message: "The task form is incomplete." } : { code: "NOTE_UNREADABLE", message: "The note chosen to pick by cannot be opened." } }, { status: 400 });
 }
 
 /**

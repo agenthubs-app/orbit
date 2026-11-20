@@ -55,6 +55,8 @@
 .hint { font-size: var(--fs-meta); color: var(--ink-2); }
 .footer { font-size: var(--fs-body-sm); color: var(--ink-2); line-height: 1.5; }
 .regen { display: flex; flex-direction: column; gap: 8px; }
+/* AG15 (D15-5, D15-6): the small line under an expired card, and 「看新的那张」. */
+.expiredNote { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.6; }
 .regenQuestion { font-size: var(--fs-body); font-weight: 700; line-height: 1.5; }
 .offline { margin-top: 12px; max-width: 620px; box-sizing: border-box; border-radius: var(--r-md); background: var(--surface-2); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
 .offline b { font-size: var(--fs-body); }

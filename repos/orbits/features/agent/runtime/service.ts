@@ -192,7 +192,7 @@ export interface AgentRuntimeService {
   /** AG12: the user changed an item in words (an import row): the card is frozen again from the new intents as revision+1. */
   reviseCard?: (input: { actionId: string; intents: readonly CardOperationIntent[] }) => Promise<AgentReviseCardResult | null>;
   /** AG15: closes a waiting card without a click (its expiry timer, or the next period's card took its place). */
-  expireCard?: (input: { actionId: string; revision?: number; reason: "timer" | "superseded" }) => Promise<AgentExpireCardResult | null>;
+  expireCard?: (input: { actionId: string; revision?: number; reason: "timer" | "superseded"; by?: { actionId: string; firedAt: string } }) => Promise<AgentExpireCardResult | null>;
 }
 
 const TERMINAL_RUN_STATUSES = new Set<AgentRun["status"]>([

@@ -143,6 +143,52 @@ function ruleRows(input: { schedule: RuleSchedule; rule: AgentRuleSpec }, locale
 
 const sep = (locale: CardLocale) => (locale === "en" ? "; " : "；");
 
+/* ── the card's three lines (approved draft 15-1 as shortened by the user, APPROVAL.md) ──────────────── */
+
+const ZONE_NAMES: Record<string, Record<CardLocale, string>> = {
+  "America/Los_Angeles": { en: "Los Angeles time", ja: "ロサンゼルス時間", zh: "洛杉矶时间" },
+  "America/New_York": { en: "New York time", ja: "ニューヨーク時間", zh: "纽约时间" },
+  "Asia/Seoul": { en: "Seoul time", ja: "ソウル時間", zh: "首尔时间" },
+  "Asia/Shanghai": { en: "China time", ja: "中国時間", zh: "北京时间" },
+  "Asia/Singapore": { en: "Singapore time", ja: "シンガポール時間", zh: "新加坡时间" },
+  "Asia/Tokyo": { en: "Tokyo time", ja: "東京時間", zh: "东京时间" },
+  "Europe/London": { en: "London time", ja: "ロンドン時間", zh: "伦敦时间" },
+  UTC: { en: "UTC", ja: "協定世界時", zh: "协调世界时" },
+};
+
+/** "东京时间", "Tokyo time": a schedule's time zone as people say it (the IANA name when it has no common name). */
+export function zoneWords(timeZone: string, locale: CardLocale): string {
+  return ZONE_NAMES[timeZone]?.[locale] ?? timeZone;
+}
+
+const LINE_WORDS: Record<CardLocale, { when: string; pick: string; after: string; next: (day: string) => string; noNext: string; forever: string; through: (day: string) => string; inbox: string; inboxPush: string; join: string; listJoin: string }> = {
+  en: { after: "After that", forever: "Keeps running until you pause or delete it", inbox: "results go to your inbox", inboxPush: "results go to your inbox, and you get a reminder", join: " · ", listJoin: " · ", next: (day) => `next ${day}`, noNext: "no run left before the end date", pick: "What it picks", through: (day) => `Runs through ${day}`, when: "When" },
+  ja: { after: "そのあと", forever: "停止または削除するまで続けます", inbox: "結果は受信箱へ", inboxPush: "結果は受信箱へ届け、お知らせもします", join: " · ", listJoin: "、", next: (day) => `次回 ${day}`, noNext: "期限までに実行される回はありません", pick: "何を選ぶか", through: (day) => `${day}まで実行`, when: "いつ" },
+  zh: { after: "之后", forever: "一直运行，直到你暂停或删除", inbox: "结果放进收件箱", inboxPush: "结果放进收件箱，并提醒你", join: " · ", listJoin: "，", next: (day) => `下次 ${day}`, noNext: "有效期内已经没有下一次运行", pick: "挑什么", through: (day) => `运行到 ${day}`, when: "什么时候" },
+};
+
+/**
+ * The three lines a new task's card shows: when (check time, next day), what it picks (from where, by what, how many),
+ * after that (until when, how you are told). Every fact of `ruleRows` is still on the card, grouped; the separate rows
+ * stay in the frozen card. The time zone is named only on a device in another zone (`zone`).
+ */
+export function ruleLines(input: { schedule: RuleSchedule; rule: AgentRuleSpec }, locale: CardLocale, now: string): NonNullable<AgentCardOperationDisplayContract["lines"]> {
+  const words = LINE_WORDS[locale];
+  const next = nextAgentRulePeriod(input.schedule, input.rule.validUntil, now);
+  const nextText = next ? words.next(dayText(agentAutomationLocalDay(next, input.schedule.timeZone), locale)) : words.noNext;
+  const check = checkTimeWords(input.schedule, locale);
+  const zone = zoneWords(input.schedule.timeZone, locale);
+  const zoned = locale === "en" ? `${check} (${zone})` : `${check}（${zone}）`;
+  const basis = locale === "en" ? input.rule.rankingBasis : input.rule.rankingBasis.replace(/[。.]$/u, "");
+  const count = countWords(input.rule, locale);
+  const until = input.rule.validUntil ? words.through(dayText(input.rule.validUntil, locale)) : words.forever;
+  return [
+    { fields: ["schedule", "nextRunAt"], key: "when", label: words.when, text: `${check}${words.join}${nextText}`, zone: { id: input.schedule.timeZone, text: `${zoned}${words.join}${nextText}` } },
+    { fields: ["scope", "rankingBasis", "maxItems"], key: "pick", label: words.pick, text: [input.rule.scopeText, basis, locale === "en" ? count.charAt(0).toLowerCase() + count.slice(1) : count].join(words.listJoin) },
+    { fields: ["validUntil", "notify"], key: "after", label: words.after, text: `${until}${words.join}${input.rule.notify.push ? words.inboxPush : words.inbox}` },
+  ];
+}
+
 /** The fields a rule's card and its record share (the eval and both clients read these names). */
 function ruleAfter(input: { title: string; schedule: RuleSchedule; rule: AgentRuleSpec }): Record<string, unknown> {
   const { rule } = input;
@@ -186,7 +232,7 @@ export function prepareRuleOperation(input: { intent: RuleOperationIntent & { pa
   const cardIntent = intentCopy(kept as RuleOperationIntent);
   if (intent.capability === RULE_CREATE) {
     const rows = ruleRows(intent.set, locale, now);
-    const display: AgentCardOperationDisplayContract = { change: "create", record: words.record(intent.set.title), rows };
+    const display: AgentCardOperationDisplayContract = { change: "create", lines: ruleLines(intent.set, locale, now), record: words.record(intent.set.title), rows };
     const after = ruleAfter(intent.set);
     return {
       ...common,

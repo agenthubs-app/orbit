@@ -39,7 +39,7 @@ export interface RuleCardAccess {
   /** Freezes the period's card in the owner's ledger (idempotent by id); null when nothing could be put on it. */
   freeze(input: { actionId: string; origin: AgentActionOrigin; locale: string; intents: readonly CardOperationIntent[]; createdAt: string }): Promise<{ actionId: string; preview: string; expiresAt?: string } | null>;
   /** The earlier period's card of the same rule, still waiting: the new card takes its place. */
-  supersede(actionId: string): Promise<void>;
+  supersede(actionId: string, by?: { actionId: string; firedAt: string }): Promise<void>;
 }
 
 export interface RuleRunDeps {
@@ -315,10 +315,11 @@ async function replanPeriod(deps: RuleRunDeps, input: { automation: AgentAutomat
   const overdue = todos.filter((todo) => todo.plannedDate && todo.plannedDate < periodDay).sort((left, right) => left.plannedDate!.localeCompare(right.plannedDate!) || left.id.localeCompare(right.id)).slice(0, rule.maxItems);
   emitTrace({ automationId: automation.automationId, domain: "todo", inScope: overdue.length, scheduledAt, type: "rule.candidates" });
   // The earlier period's card, still waiting, gives way: to this period's card, or to "nothing to change any more".
-  if (input.previousCardId) await deps.cards?.supersede(input.previousCardId).catch(() => undefined);
+  const actionId = ruleCardId({ automationId: automation.automationId, ownerId, scheduledAt, version: automation.version });
+  // AG15 (D15-6): the old card names the period whose card replaced it.
+  if (input.previousCardId) await deps.cards?.supersede(input.previousCardId, overdue.length && deps.cards ? { actionId, firedAt: new Date(scheduledAt).toISOString() } : undefined).catch(() => undefined);
   if (!overdue.length) return { items: [], outcome: "no_match", text: "" };
   if (!deps.cards) return { error: "Cards cannot be made here.", items: [], outcome: "failed", text: "" };
-  const actionId = ruleCardId({ automationId: automation.automationId, ownerId, scheduledAt, version: automation.version });
   const intents = overdue.map((todo) => ({ capability: "todo.update" as const, set: { plannedDate: periodDay }, targetId: todo.id })) as unknown as CardOperationIntent[];
   const card = await deps.cards.freeze({ actionId, createdAt: deps.now(), intents, locale: language, origin: { firedAt: new Date(scheduledAt).toISOString(), kind: "automation", ruleId: automation.automationId } });
   if (!card) return { items: [], outcome: "no_match", text: "" };

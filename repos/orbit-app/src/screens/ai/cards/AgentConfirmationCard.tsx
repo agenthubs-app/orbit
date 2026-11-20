@@ -34,14 +34,26 @@ export interface AgentConfirmationCardProps {
   pendingTargets: readonly string[];
   onDecide(decision: Decision, operationId?: string): Promise<boolean>;
   onRegenerate(): Promise<boolean>;
+  /** AG15 (D15-6): open the card that replaced this one. */
+  onOpenCard?(actionId: string): void;
 }
 
-export function AgentConfirmationCard({ card, language, online, pendingTargets, onDecide, onRegenerate }: AgentConfirmationCardProps) {
+/** AG15: this device's time zone, so a scheduled task's card names its own zone only when it differs. */
+export function deviceTimeZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function AgentConfirmationCard({ card, language, online, pendingTargets, onDecide, onRegenerate, onOpenCard }: AgentConfirmationCardProps) {
   const { colors, styles } = useCardStyles();
   const C = paletteOf(colors);
   const words = standardCopy[card.locale ?? language].aiCard;
   const ui = standardCopy[language].aiCard;
-  const view: AgentCardView = agentCardView(card, { online, pendingTargets }, words);
+  const [timeZone] = useState(deviceTimeZone);
+  const view: AgentCardView = agentCardView(card, { online, pendingTargets, timeZone }, words);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const run = async (action: () => Promise<boolean>) => {
@@ -108,6 +120,12 @@ export function AgentConfirmationCard({ card, language, online, pendingTargets, 
         </View>
       ) : null}
       {view.footer ? <Text style={styles.footer}>{view.footer}</Text> : null}
+      {view.expiredNote ? (
+        <View style={styles.actions} testID="agent-card-expired-note">
+          <Text style={styles.footer}>{view.expiredNote}</Text>
+          {view.replacedBy && onOpenCard ? <View style={styles.buttons}><SmallButton label={ui.openNewCard} disabled={false} onPress={() => onOpenCard(view.replacedBy!)} /></View> : null}
+        </View>
+      ) : null}
       {view.regenerate ? (
         <View style={styles.actions}>
           <Text style={styles.regen}>{view.regenerate.question}</Text>

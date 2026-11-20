@@ -3,6 +3,7 @@ import { scheduledTaskHistory } from "../../../../../../features/agent/automatio
 import {
   agentAutomationErrorResponse,
   agentAutomationUnauthorizedResponse,
+  languageOf,
   resolveAgentAutomationRequest,
 } from "../../request";
 
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
  * entry's detail read. Only the signed-in account's own task resolves.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const requestContext = await resolveAgentAutomationRequest();
@@ -22,6 +23,7 @@ export async function GET(
     const { id } = await context.params;
     const history = await scheduledTaskHistory({
       automationId: id,
+      ...languageOf(request),
       now: new Date().toISOString(),
       ownerId: requestContext.actorId,
       service: requestContext.service,

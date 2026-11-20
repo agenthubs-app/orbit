@@ -117,6 +117,11 @@ export const ja = {
     confirmOne: "以上 1 件を確定",
     dismiss: "変更しない",
     beforeConfirm: "確定するまで、何も変更しません。",
+    // agent-design AG15（承認済みデザイン D15-2）：定期タスクを作るカードのボタンと注記。
+    confirmRule: "確定して開始",
+    dismissRule: "作らない",
+    beforeConfirmRule: "確定するまで、何も実行されません。",
+    openNewCard: "新しいカードを見る",
     changedBanner: "内容が変わりました。もう一度ご確認ください",
     nowIs: "現在は",
     changeTo: "変更後",

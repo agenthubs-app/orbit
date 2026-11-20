@@ -15,6 +15,7 @@ import { emitTrace, takeEvalFault } from "../../agent-v1/observability/trace";
 import type { AgentAutomation } from "./contract";
 import type { AutomationStorage } from "./due-index";
 import { createAutomationRunStore, type AgentAutomationRunRecord } from "./runs";
+import { runInboxTitle } from "./task-view";
 
 export type RuleInboxWriter = (entry: InboxNotificationUpsert) => Promise<Pick<InboxNotificationDTO, "id">>;
 
@@ -48,7 +49,7 @@ export function inboxEntryOf(run: AgentAutomationRunRecord): InboxNotificationUp
       semanticKey: `agent-rule-card:${run.cardId}`,
       sources: [{ excerpt, objectId: run.automationId, occurredAt: scheduledAt, readAt: run.computedAt, sourceId: run.cardId, sourceKind: "agent_card", sourceRevision: `rule:v${run.version}:${scheduledAt}` }],
       target: { href: null, id: run.cardId, kind: "card", status: "available" },
-      title: run.title,
+      title: runInboxTitle(run),
     };
   }
   const attention = run.outcome === "needs_attention" && run.attention;
@@ -64,7 +65,7 @@ export function inboxEntryOf(run: AgentAutomationRunRecord): InboxNotificationUp
     semanticKey: attention ? `agent-rule-attention:${run.automationId}:v${run.version}:${attention.reference?.id ?? attention.reason}` : `agent-rule-result:${run.automationId}:v${run.version}:${scheduledAt}`,
     sources: [{ excerpt, objectId: run.automationId, occurredAt: scheduledAt, readAt: run.computedAt, sourceId: run.runId, sourceKind: "automation_result", sourceRevision: `v${run.version}` }],
     target: { href: null, id: run.automationId, kind: "automation", status: "available" },
-    title: run.title,
+    title: runInboxTitle(run),
   };
 }
 

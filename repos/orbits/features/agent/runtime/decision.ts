@@ -564,7 +564,7 @@ export interface AgentExpireCardResult {
  * same scheduled task made a new card. It becomes `expired`: never executed, a click on it is refused with
  * CARD_EXPIRED, and regenerating it gives a new revision that still needs a click. Not a decision; no model is called.
  */
-export async function expireCard(deps: AgentCardDependencies, input: { actionId: string; revision?: number; reason: "timer" | "superseded" }): Promise<AgentExpireCardResult | null> {
+export async function expireCard(deps: AgentCardDependencies, input: { actionId: string; revision?: number; reason: "timer" | "superseded"; by?: { actionId: string; firedAt: string } }): Promise<AgentExpireCardResult | null> {
   const repository = requireCardRepository(deps.repository);
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const action = await deps.repository.getAction(input.actionId);
@@ -574,7 +574,7 @@ export async function expireCard(deps: AgentCardDependencies, input: { actionId:
     const waiting = action.status === "awaiting_confirmation" || action.status === "deferred";
     if (!waiting || (input.revision !== undefined && input.revision !== revision)) return { outcome: "unchanged", revision };
     if (input.reason === "timer" && !isPastExpiry(action, now)) return { outcome: "unchanged", revision };
-    const next: AgentActionRecord = { ...action, expiredAt: now, status: "expired", updatedAt: now, ...(input.reason === "superseded" ? { expiredReason: "superseded" as const } : {}) };
+    const next: AgentActionRecord = { ...action, expiredAt: now, status: "expired", updatedAt: now, ...(input.reason === "superseded" ? { expiredReason: "superseded" as const, ...(input.by ? { supersededBy: { actionId: input.by.actionId, firedAt: input.by.firedAt } } : {}) } : {}) };
     const committed = await repository.commitCardChange({ actionId: action.actionId, expect: { revision, statuses: [action.status], updatedAt: action.updatedAt }, next });
     if (!committed.committed) continue;
     await deps.afterChange?.(next);

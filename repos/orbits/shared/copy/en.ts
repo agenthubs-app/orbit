@@ -117,6 +117,11 @@ export const en = {
     confirmOne: "Confirm this change",
     dismiss: "Don't change",
     beforeConfirm: "Nothing changes until you confirm.",
+    // agent-design AG15 (approved draft D15-2): a card that makes a scheduled task has its own buttons and note.
+    confirmRule: "Confirm and start",
+    dismissRule: "Don't create",
+    beforeConfirmRule: "Nothing runs until you confirm.",
+    openNewCard: "See the new card",
     changedBanner: "Something changed. Please look again",
     nowIs: "Now",
     changeTo: "change to",

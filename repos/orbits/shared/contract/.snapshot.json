@@ -1168,6 +1168,52 @@
           "optional": true,
           "kind": "text",
           "type": "string"
+        },
+        "lines": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentCardDisplayLineContract[]"
+        }
+      }
+    },
+    "agent-v1.ts::AgentCardDisplayLineContract": {
+      "kind": "object",
+      "members": {
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "'when' | 'pick' | 'after'"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "fields": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "zone": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "id": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "text": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            }
+          }
         }
       }
     },
@@ -1228,6 +1274,27 @@
           "optional": true,
           "kind": "text",
           "type": "'superseded'"
+        },
+        "expiredNote": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "supersededBy": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "actionId": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "firedAt": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            }
+          }
         },
         "origin": {
           "optional": true,
@@ -1866,6 +1933,87 @@
               "type": "string"
             }
           }
+        },
+        "display": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "day": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "time": {
+              "optional": false,
+              "kind": "text",
+              "type": "string | null"
+            },
+            "text": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "skippedNote": {
+              "optional": false,
+              "kind": "text",
+              "type": "string | null"
+            },
+            "opens": {
+              "optional": false,
+              "kind": "text",
+              "type": "'result' | 'card' | null"
+            }
+          }
+        }
+      }
+    },
+    "agent-v1.ts::AgentScheduledTaskFormContract": {
+      "kind": "object",
+      "members": {
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "schedule": {
+          "optional": false,
+          "kind": "text",
+          "type": "{ kind: 'daily'; time: string; timeZone: string; } | { kind: 'weekly'; daysOfWeek: readonly number[]; time: string; timeZone: string; }"
+        },
+        "domain": {
+          "optional": false,
+          "kind": "text",
+          "type": "'contact' | 'event' | 'todo'"
+        },
+        "window": {
+          "optional": true,
+          "kind": "text",
+          "type": "'weekend' | 'week' | 'month' | 'upcoming' | undefined"
+        },
+        "scopeText": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "basis": {
+          "optional": false,
+          "kind": "text",
+          "type": "{ kind: 'note'; noteId: string; title: string; } | { kind: 'field'; field: 'startsAt' | 'lastInteraction' | 'dueAt' | 'plannedDate'; } | { kind: 'topic'; words: string; }"
+        },
+        "maxItems": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "validUntil": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "push": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },
@@ -1923,6 +2071,11 @@
                 "optional": false,
                 "kind": "text",
                 "type": "string"
+              },
+              "note": {
+                "optional": true,
+                "kind": "text",
+                "type": "string"
               }
             }
           }
@@ -1957,6 +2110,52 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "domain": {
+          "optional": true,
+          "kind": "text",
+          "type": "'contact' | 'event' | 'todo' | null | undefined"
+        },
+        "summary": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "schedule": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "status": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "attention": {
+              "optional": false,
+              "kind": "text",
+              "type": "string | null"
+            }
+          }
+        },
+        "needsAttention": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean | undefined"
+        },
+        "next": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ day: string; time: string; } | null | undefined"
+        },
+        "last": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ runId: string; when: string; text: string; opens: 'result' | 'card' | null; } | null | undefined"
+        },
+        "form": {
+          "optional": true,
+          "kind": "text",
+          "type": "AgentScheduledTaskFormContract"
         }
       }
     },
@@ -7452,6 +7651,11 @@
           "optional": true,
           "kind": "object",
           "members": {
+            "startsAt": {
+              "optional": true,
+              "kind": "text",
+              "type": "EventAssessmentFactBasis | undefined"
+            },
             "url": {
               "optional": true,
               "kind": "text",
@@ -7468,11 +7672,6 @@
               "type": "EventAssessmentFactBasis | undefined"
             },
             "title": {
-              "optional": true,
-              "kind": "text",
-              "type": "EventAssessmentFactBasis | undefined"
-            },
-            "startsAt": {
               "optional": true,
               "kind": "text",
               "type": "EventAssessmentFactBasis | undefined"
@@ -13360,7 +13559,7 @@
         "state": {
           "optional": false,
           "kind": "text",
-          "type": "'before' | 'after'"
+          "type": "'after' | 'before'"
         },
         "applied": {
           "optional": false,
@@ -14986,7 +15185,7 @@
         "kind": {
           "optional": false,
           "kind": "text",
-          "type": "'event' | 'schedule' | 'conversation' | 'automation' | 'task' | 'appointment' | 'batch' | 'source' | 'card'"
+          "type": "'event' | 'schedule' | 'conversation' | 'automation' | 'card' | 'task' | 'appointment' | 'batch' | 'source'"
         },
         "id": {
           "optional": false,
@@ -26759,7 +26958,7 @@
             "frequency": {
               "optional": false,
               "kind": "text",
-              "type": "'monthly' | 'daily' | 'weekly'"
+              "type": "'daily' | 'weekly' | 'monthly'"
             },
             "until": {
               "optional": true,
