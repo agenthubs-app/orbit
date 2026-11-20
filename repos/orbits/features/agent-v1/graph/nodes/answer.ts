@@ -33,7 +33,7 @@ import { parseModelJson } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
 import { withStandingRules } from "../../domains/memory/turn";
-import { untranslatedProblem, untranslatedSourceWords } from "../../answer/source-words";
+import { quoteSourceWords, untranslatedProblem, untranslatedSourceWords } from "../../answer/source-words";
 
 /** AG19 repair round 1: deliverables whose answer is the list of records itself (a comparison is a discussion of them). */
 const LIST_READS = new Set<string>(["list", "ranked_list"]);
@@ -234,6 +234,16 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   }
   const verification = checked?.verification ?? null;
   if (verification?.problems.length) emitTrace({ problems: verification.problems, type: "answer.citations_rejected" });
+  // AG14 (AE-REF-007): what the one repair still carries of the Chinese records' words is delivered as a quote of the
+  // record, never as the answer's own words.
+  if (verification && state.language !== "zh") {
+    for (const [partId, segment] of verification.segments) {
+      const kept = untranslatedSourceWords({ language: state.language, material: sourceSentences, names: sourceNames, text: segment.text });
+      if (!kept.length) continue;
+      emitTrace({ partId, type: "answer.source_words_quoted", words: kept.length });
+      verification.segments.set(partId, { ...segment, text: quoteSourceWords(segment.text, kept, state.language) });
+    }
+  }
   const words = gapWords(state.language);
   for (const part of due) {
     const segment = verification?.segments.get(part.localId);
