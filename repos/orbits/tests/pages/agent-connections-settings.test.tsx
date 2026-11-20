@@ -109,7 +109,7 @@ test("no connection: the three steps and the short address with «复制»; the 
   answer = { ...LIST, connections: [] };
   const renderer = await mount();
   const shown = text(renderer);
-  for (const words of ["还没有 AI 助手连到 Orbit", "在 Claude 或 Codex 里添加 Orbit，填这个地址", "orbit.example.test/connect", "复制", "它会打开 Orbit，让你选给它看哪几类。", "点「允许」就连上了。它提的修改，都要你回来点确认。", "不管连的是哪个，都一样"]) assert.ok(shown.includes(words), words);
+  for (const words of ["还没有 AI 助手连到 Orbit", "在 Claude 里添加 Orbit，填这个地址", "orbit.example.test/connect", "复制", "它会打开 Orbit，让你选给它看哪几类。", "点「允许」就连上了。它提的修改，都要你回来点确认。", "不管连的是哪个，都一样"]) assert.ok(shown.includes(words), words);
   assert.ok(!shown.includes("https://"), "the address is shown short; the copy carries the whole address");
 });
 

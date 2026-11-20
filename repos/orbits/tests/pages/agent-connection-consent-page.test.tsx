@@ -115,11 +115,17 @@ test("the account changed in another tab (board 2): the server refuses; the page
 
 test("the result and failure cards (board 4) use the draft's words", () => {
   const text = (initial: Parameters<typeof ConsentPage>[0]["initial"]) => textOf(renderToStaticMarkup(<ConsentPage initial={initial} />));
-  assert.ok(text({ kind: "unsupported" }).includes("这个应用现在连不了 Orbit") && text({ kind: "unsupported" }).includes("目前能连的只有 Claude 和 Codex。"));
+  assert.ok(text({ kind: "unsupported" }).includes("这个应用现在连不了 Orbit") && text({ kind: "unsupported" }).includes("目前能连的只有 Claude。"));
   assert.ok(text({ clientName: null, kind: "stale" }).includes("这次连接请求已经过期"));
   for (const key of ["allowedTitle", "refusedTitle", "refusedLine", "failedTitle", "staleTitle", "staleLine"] as const) assert.ok(agentConnectionsCopy[key].zh.length > 0);
   assert.equal(agentConnectionsCopy.refusedLine.zh, "{client} 看不到你 Orbit 里的任何东西。这一页可以关掉了。");
   assert.equal(agentConnectionsCopy.staleLine.zh, "回到 {client}，重新点一次连接就行。");
+});
+
+test("only what is true about who can connect: no fixed sentence names Codex until its sign-in is verified (coordinator)", () => {
+  for (const [key, words] of Object.entries(agentConnectionsCopy)) for (const value of Object.values(words)) assert.doesNotMatch(value, /Codex/u, `${key}: ${value}`);
+  assert.equal(agentConnectionsCopy.settingsIntro.zh, "你自己的 Claude 连到 Orbit 之后，能看什么、能提什么修改，都在这里。随时可以断开。");
+  assert.equal(agentConnectionsCopy.stepOne.zh, "在 Claude 里添加 Orbit，填这个地址");
 });
 
 test("no page says 授权、范围、令牌、scope、token or MCP, in any language", () => {

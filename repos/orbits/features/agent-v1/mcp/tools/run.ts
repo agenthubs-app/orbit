@@ -11,7 +11,7 @@ import type { DomainReader, DomainScope } from "../../domains/types";
 import type { McpAddresses } from "../auth/config";
 import type { ProposalService } from "../confirm-link";
 import type { AgentConnection } from "../connections";
-import { domainOf, KIND_OF_DOMAIN, PROPOSABLE_OPERATIONS, PROPOSALS_READ, readScopeOf, TOOL_NAMES, type McpDomain, type McpScope, type McpToolName } from "../scopes";
+import { domainOf, KIND_OF_DOMAIN, MCP_DOMAINS, PROPOSABLE_OPERATIONS, PROPOSALS_READ, readScopeOf, TOOL_NAMES, type McpDomain, type McpScope, type McpToolName } from "../scopes";
 import { getProposalInput, getRecordInput, inputProblem, proposeChangeInput, searchRecordsInput, type ProposedOperation } from "./definitions";
 import type { CursorSealer } from "./cursor";
 import { projectRecord, USER_DATA_NOTICE } from "./projection";
@@ -58,6 +58,9 @@ const BAD_CURSOR = "The cursor is not valid for this connection and query (or it
 
 const lacks = (connection: AgentConnection, scope: McpScope) => !connection.scopes.includes(scope);
 
+/** The kinds this connection may read now: a relation to any other kind is left out of what it reads. */
+const readableDomains = (connection: AgentConnection): ReadonlySet<McpDomain> => new Set(MCP_DOMAINS.filter((domain) => !lacks(connection, readScopeOf(domain))));
+
 function missingScope(scopes: McpScope[], what: string): ToolOutcome {
   return { kind: "insufficient_scope", message: `This connection is not allowed to ${what}. Missing: ${scopes.join(", ")}. The user can allow it in Orbit by connecting again and choosing it.`, scopes };
 }
@@ -102,7 +105,7 @@ export async function runTool(deps: ToolDeps, input: { connection: AgentConnecti
         const page = await access.reader.read(KIND_OF_DOMAIN[domain], access.scope, { id });
         const record = page.items[0];
         if (!record) return { code: "not_found", kind: "tool_error", message: "No such record." };
-        return { count: 1, kind: "result", payload: { data_notice: USER_DATA_NOTICE, record: projectRecord(domain, record) } };
+        return { count: 1, kind: "result", payload: { data_notice: USER_DATA_NOTICE, record: projectRecord(domain, record, readableDomains(connection)) } };
       }
       const { query, cursor, limit } = parsed.data as { query?: string; cursor?: string; limit?: number };
       if (domain === "attendance" || domain === "events") return { code: "not_searchable", kind: "tool_error", message: "These records can be read by id with get_record; they cannot be listed or searched here." };
@@ -112,7 +115,8 @@ export async function runTool(deps: ToolDeps, input: { connection: AgentConnecti
       const inner = cursor ? deps.cursors.open(cursor, binding) : null;
       if (cursor && !inner) return { code: "invalid_arguments", kind: "tool_error", message: BAD_CURSOR };
       const page = await access.reader.read(KIND_OF_DOMAIN[domain], access.scope, { ...(query?.trim() ? { text: query.trim() } : {}), ...(inner ? { cursor: inner } : {}), ...(limit ? { limit } : {}) });
-      const records = page.items.map((record) => projectRecord(domain, record));
+      const readable = readableDomains(connection);
+      const records = page.items.map((record) => projectRecord(domain, record, readable));
       return {
         count: records.length,
         kind: "result",

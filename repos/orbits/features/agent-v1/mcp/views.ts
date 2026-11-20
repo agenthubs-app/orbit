@@ -82,3 +82,18 @@ export async function proposalView(deps: { proposals: ProposalService; runtime: 
   const notice = card.status === "expired" ? expiredMessage(action) : card.status === "canceled" ? canceledMessage(action) : card.status === "rejected" ? cardMessages(action.locale).closedRejected : null;
   return { card, clientName: proposal.clientName, createdAt: proposal.createdAt, ...(notice ? { notice } : {}), proposalId: proposal.id };
 }
+
+/**
+ * The one answer for «not here» (approved decision D7): another account's real link and a mistyped one get exactly
+ * this — same status, code and words — so nobody can tell from the answer whether a link is real or whose it is.
+ */
+export const PROPOSAL_NOT_HERE = { error: { code: "NOT_FOUND", context: { reason: "PROPOSAL_NOT_FOUND" }, message: "There is no such change in this account." }, success: false } as const;
+
+/**
+ * GET /api/agent/proposals/<id> for the signed-in account. Both «not here» cases make the same reads (one look-up of
+ * the id, which finds nothing for this account) before the same answer.
+ */
+export async function proposalResponse(deps: { proposals: ProposalService; runtime: AgentRuntimeService; now: () => string }, input: { proposalId: string; accountId: string }): Promise<{ status: 200 | 404; body: unknown }> {
+  const view = await proposalView(deps, input);
+  return view ? { body: { data: view, success: true }, status: 200 } : { body: PROPOSAL_NOT_HERE, status: 404 };
+}

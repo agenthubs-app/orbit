@@ -209,6 +209,35 @@ function handoffPartFor(obs: Observation, fragment: string) {
   return null;
 }
 
+/** AG17: the product's id forms of each kind an external connection may be granted (schedule ids have no form of their own). */
+const KIND_IDS: Record<string, RegExp> = {
+  attendance: /^attendance:/u,
+  contacts: /^contact:/u,
+  events: /^(evt_|private_event:|platform:|private:)/u,
+  memos: /^note:/u,
+  todos: /^task:/u,
+};
+/** The result fields that point at another kind of record. */
+const RELATION_KIND: Record<string, string> = { contact_ids: "contacts", event_refs: "events", memo_ids: "memos" };
+
+/** The scopes the signed-in user granted this connection in its latest consent step before `seq`; null when not logged. */
+function grantOf(obs: Observation, as: string, seq: number): string[] | null {
+  const connect = [...obs.events].reverse().find((event) => event.type === "mcp.connect" && event.as === as && Number(event.seq) < seq);
+  const steps = (connect?.steps ?? []) as { granted?: string[] }[];
+  const granted = steps.find((step) => Array.isArray(step.granted))?.granted;
+  return granted ? [...granted] : null;
+}
+
+/** Every key and value of a tool result (the key is the field a value sits under; array items keep their field's key). */
+function walkResult(value: unknown, visit: (key: string | null, value: unknown) => void, key: string | null = null): void {
+  if (Array.isArray(value)) {
+    if (key) visit(key, value);
+    for (const item of value) walkResult(item, visit, key);
+  } else if (value && typeof value === "object") {
+    for (const [field, inner] of Object.entries(value as Record<string, unknown>)) walkResult(inner, visit, field);
+  } else visit(key, value);
+}
+
 /** AG17: the answers the simulated external agent got to its tool calls, in order. */
 function mcpAnswers(obs: Observation): TraceEvent[] {
   return obs.events.filter((event) => event.type === "mcp.response");
@@ -993,6 +1022,25 @@ export const CHECKS: Record<string, CheckFn> = {
           found.push(`${fragment} in the answer to ${answer.tool}${answer.page ? ` (page ${answer.page})` : ""} at seq ${answer.seq}`);
           evidence.push(Number(answer.seq));
         }
+      }
+    }
+    // A connection's answers carry no id of a kind it was not granted, as a record or as a relation (coordinator, after
+    // the final gate's judges): the grant is the one the signed-in user gave this connection in the case's consent step.
+    for (const answer of answers) {
+      const grant = grantOf(obs, String(answer.as ?? ""), Number(answer.seq));
+      if (!grant || !answer.result) continue;
+      const ungranted = Object.keys(KIND_IDS).filter((kind) => !grant.includes(`${kind}:read`));
+      if (!ungranted.length) continue;
+      const leaks = new Set<string>();
+      walkResult(answer.result, (key, value) => {
+        for (const kind of ungranted) {
+          if (key && RELATION_KIND[key] === kind) leaks.add(`${key} (${kind})`);
+          if (typeof value === "string" && KIND_IDS[kind]!.test(value)) leaks.add(`an id of ${kind}`);
+        }
+      });
+      if (leaks.size) {
+        found.push(`${[...leaks].join(", ")} in the answer to ${answer.tool} at seq ${answer.seq}, though ${answer.as} may not read ${[...new Set([...leaks].map((leak) => /(\w+)\)?$/u.exec(leak)![1]))].join(", ")}`);
+        evidence.push(Number(answer.seq));
       }
     }
     // Every paging cursor, read the way a client could read it (as it is, base64-decoded, and each dot-separated part
