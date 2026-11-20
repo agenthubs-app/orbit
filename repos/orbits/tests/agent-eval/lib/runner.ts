@@ -1126,8 +1126,13 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         for (const task of tasks) {
           rulesAfter.push({ account: label, fixtureId: fixtureIdOf(task.id), id: task.id, state: task.status, version: task.version });
           const history = await client.request("GET", `/api/agent/automations/${encodeURIComponent(task.id)}/runs`, undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: `runner: history of scheduled task ${fixtureIdOf(task.id) ?? task.id}` });
-          const runs = (history.body?.data?.runs ?? []) as { scheduledAt: string; line: string; outcome: string; skipped: number }[];
-          historyLines.push(`### 账号 ${label}：${task.title}（${fixtureIdOf(task.id) ?? "本用例新建"}，${({ active: "运行中", completed: "已结束", paused: "已暂停" } as Record<string, string>)[task.status] ?? task.status}）`, ...task.rows.map((row) => `- ${row.label}：${row.value}`), runs.length ? "- 历史（最近的在前）：" : "- 历史：还没有运行过", ...runs.map((run) => `  - ${localTime(run.scheduledAt)} 这一期：${run.line}`), "");
+          const runs = (history.body?.data?.runs ?? []) as { scheduledAt: string; line: string; outcome: string; skipped: number; detail?: { source?: { caption: string; card: { id: string; title: string; top?: string; sub?: string } } } }[];
+          // AE-SCL-030 R4: the note a result picked by, as the result page shows it (a card that opens the note).
+          const sourceLine = (run: (typeof runs)[number]) => {
+            const source = run.detail?.source;
+            return source ? [`    - 结果页上可以点开的笔记（${source.caption}）：${source.card.title}（${fixtureIdOf(source.card.id) ?? source.card.id}${source.card.top ? `，${source.card.top}` : ""}）${source.card.sub ? ` · ${source.card.sub}` : ""}`] : [];
+          };
+          historyLines.push(`### 账号 ${label}：${task.title}（${fixtureIdOf(task.id) ?? "本用例新建"}，${({ active: "运行中", completed: "已结束", paused: "已暂停" } as Record<string, string>)[task.status] ?? task.status}）`, ...task.rows.map((row) => `- ${row.label}：${row.value}`), runs.length ? "- 历史（最近的在前）：" : "- 历史：还没有运行过", ...runs.flatMap((run) => [`  - ${localTime(run.scheduledAt)} 这一期：${run.line}`, ...sourceLine(run)]), "");
         }
       }
       if (historyLines.length) ruleEndLines.push("## 「我的定时任务」接口最后返回的内容（任务、下次运行、运行历史）", "", ...historyLines);

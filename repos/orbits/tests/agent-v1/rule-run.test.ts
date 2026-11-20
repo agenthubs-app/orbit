@@ -59,12 +59,12 @@ test("a rule that picks by a note reads the note again by id, judges at most 30 
   assert.match(JSON.stringify(judge.calls[0].body), /最近想多看摄影展和街拍活动/u, "the note's current text is what is judged against — read now, not stored on the rule");
   // The basis says, in the user's own words, what was taken from the note, and which note it is (by its day — two notes
   // may share a title); the note is the result's source to open (AE-SCL-030 R4).
-  assert.match(result.text, /依据：笔记「兴趣笔记」（11月1日）里写的：“最近想多看摄影展和街拍活动，也想认识做独立出版的人。”/u);
+  assert.match(result.text, /依据：笔记「兴趣笔记」（11月1日）里写的：“最近想多看摄影展和街拍活动，也想认识做独立出版的人”。范围：/u);
   assert.doesNotMatch(result.text, /依据：与兴趣笔记的主题相关/u);
   assert.deepEqual(result.detail?.basisNote, { day: "2026-11-01", id: "note:m36", title: "兴趣笔记" });
   assert.equal(result.detail?.source?.caption, "按这篇笔记挑的");
   assert.deepEqual([result.detail?.source?.card.id, result.detail?.source?.card.kind, result.detail?.source?.card.title, result.detail?.source?.card.top], ["note:m36", "memo", "兴趣笔记", "11月1日（周日）"]);
-  assert.equal(result.detail?.basis, "笔记「兴趣笔记」（11月1日）里写的：“最近想多看摄影展和街拍活动，也想认识做独立出版的人。”");
+  assert.equal(result.detail?.basis, "笔记「兴趣笔记」（11月1日）里写的：“最近想多看摄影展和街拍活动，也想认识做独立出版的人”");
   assert.match(result.text, /范围里的4场都细看过了/u);
   assert.deepEqual(result.coverage, { afterHardConditions: 4, judged: 4, total: 7, truncated: 0 });
 

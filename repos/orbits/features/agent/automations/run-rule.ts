@@ -345,7 +345,8 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
 export function firstSentenceOf(body: string): string {
   const text = body.replace(/\s+/gu, " ").trim();
   const end = text.search(/[。！？!?]|\.(\s|$)/u);
-  const sentence = end >= 0 ? text.slice(0, end + 1) : text;
+  // The full stop is left out: the basis line closes the quote with its own.
+  const sentence = (end >= 0 ? text.slice(0, end + 1) : text).replace(/[。.]$/u, "");
   return sentence.length > 120 ? `${sentence.slice(0, 119)}…` : sentence;
 }
 
