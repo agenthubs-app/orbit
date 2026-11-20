@@ -8,6 +8,8 @@ import { canSeeRoster } from "./roster-policy";
 import { isCanonicalPublicOrganizerLabel } from "../core/public-organizer-identity";
 import type { EventRecommendationDismissReason, EventRecommendationDismissResult } from "../../../shared/contract/event-recommendation-feedback";
 import type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterResponse } from "../../../shared/contract/event-after";
+import type { EventAttendeeProfile } from "../../../shared/contract/event-attendee-profile";
+import { eventExchangeOpen, eventExchangeUntil } from "../../../shared/compute/event-exchange-window";
 import type { EventDiscoverResponse, EventDiscoverRow } from "../../../shared/contract/event-discover";
 import { canSeeHostContact } from "../../../shared/compute/host-contact";
 import type { EventOverviewResponse } from "../../../shared/contract/event-overview";
@@ -22,7 +24,7 @@ import { buildDiscover, eventArea, eventThemes, type DiscoverCandidate } from ".
 import type { JourneyContact, JourneyEvent, JourneyLivePorts } from "./ports";
 import { buildPrep, meetingSlotsAfter, type JourneyLanguage, type PrepAttendee } from "./prep-core";
 import { searchEvents } from "./search-core";
-import { buildVenue } from "./venue-core";
+import { buildVenue, venueExchangeRelation, venueRecordFrom, venueSharedRounds } from "./venue-core";
 
 export interface JourneyRecords {
   feedback: ReturnType<typeof createEventFeedbackService>;
@@ -43,6 +45,8 @@ export interface JourneyService {
   patchChecklist(actorId: string, eventId: string, items: readonly EventPrepChecklistItem[]): Promise<EventPrepChecklistItem[]>;
   venue(actorId: string, eventId: string, platform?: "web" | "app"): Promise<EventVenueResponse | null>;
   saveVenueMemo(actorId: string, eventId: string, attendeeId: string, text: string): Promise<EventVenueMemoResult | null>;
+  /** 参加者の詳細：我是该活动的报名者且对方报名资料对参加者公开，否则 null（路由一律 404）。 */
+  attendeeProfile(actorId: string, eventId: string, attendeeId: string): Promise<EventAttendeeProfile | null>;
   after(actorId: string, eventId: string, language: JourneyLanguage): Promise<EventAfterResponse | null>;
   confirmAfter(actorId: string, eventId: string, input: EventAfterConfirmInput): Promise<EventAfterConfirmResult | null>;
   dismiss(actorId: string, eventId: string, input: { reason: EventRecommendationDismissReason; idempotencyKey: string }): Promise<EventRecommendationDismissResult | null>;
@@ -51,6 +55,8 @@ export interface JourneyService {
 }
 
 const hrefFor = (eventId: string) => `/events/${eventId}`;
+/** 已结束：结束时间（没有就开始时间）已过。 */
+const eventEnded = (event: Pick<JourneyEvent, "startsAt" | "endsAt">, at: Date) => at.getTime() >= Date.parse(event.endsAt || event.startsAt);
 const DEADLINE_SOON_MS = 72 * 3_600_000;
 
 function historyText(contact: JourneyContact | undefined, now: Date, language: JourneyLanguage): string | null {
@@ -78,6 +84,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
   const candidateOf = (event: JourneyEvent): DiscoverCandidate => ({
     badges: event.badges,
     capacity: event.capacity,
+    ...(event.coverUrl ? { coverUrl: event.coverUrl } : {}),
     description: event.description,
     emoji: event.emoji,
     endsAt: event.endsAt,
@@ -176,6 +183,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         attendeeCounts: { all: roster.total, known: 0, planFit: 0 },
         attendees: [],
         capacity: event.capacity,
+        ...(event.coverUrl ? { coverUrl: event.coverUrl } : {}),
         registrationClosesAt: event.registrationClosesAt ?? null,
         deadlineSoon: Boolean(event.registrationClosesAt && Date.parse(event.registrationClosesAt) - at.getTime() <= DEADLINE_SOON_MS && Date.parse(event.registrationClosesAt) > at.getTime()),
         description: event.description,
@@ -194,13 +202,17 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       };
       // 未登录只给人数：报名资料的「参加者に表示」是给同场参加者看的，不给匿名访客（旧的公开预览也只有聚合桶）。
       if (!actorId) return { ...base, attendees: [], rosterLocked: !canSeeRoster({ signedIn: false }), signedOut: true };
-      const [contacts, judged, types, followed, hosting] = await Promise.all([
+      // 会場の記録入口：只在已结束 + 我是报名者时读工作区（其余情况不多读）。
+      const recordEligible = (status === "registered" || status === "attended") && eventEnded(event, at);
+      const [contacts, judged, types, followed, hosting, recordWorkspace] = await Promise.all([
         ports.contacts(actorId),
         ports.judge(actorId, [eventId], language),
         rosterVisible ? ports.planTypesFor(actorId, roster.attendees) : Promise.resolve({}),
         event.organizerKey ? records.follows.followed(actorId) : Promise.resolve(new Set<string>()),
         ports.hosting ? ports.hosting(actorId, eventId).catch(() => false) : Promise.resolve(false),
+        recordEligible ? ports.venueWorkspace(actorId, eventId).catch(() => null) : Promise.resolve(null),
       ]);
+      const venueRecord = recordWorkspace ? venueRecordFrom(recordWorkspace) : null;
       const contactNames = new Set(contacts.map((contact) => contact.name.replace(/\s+/g, "")));
       const lockedCounts = !rosterVisible && ports.publicRosterCounts
         ? await ports.publicRosterCounts(actorId, eventId, [...contactNames])
@@ -227,6 +239,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         // 主催者の連絡先：只给本场已报名的人（服务端按我的报名状态决定；未报名 / 未登录 / 公开页都不带这个字段）。
         ...(canSeeHostContact(status) ? { hostContact: event.hostContact ?? null } : {}),
         hosting,
+        ...(venueRecord ? { venueRecord } : {}),
       };
     },
 
@@ -289,6 +302,51 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
     async saveVenueMemo(actorId, eventId, attendeeId, text) {
       if (!(await ports.event(eventId)) || !(await ports.registered(actorId, eventId))) return null;
       return { attendeeId, memo: await records.memos.put(actorId, eventId, attendeeId, text) };
+    },
+
+    async attendeeProfile(actorId, eventId, attendeeId) {
+      const event = await ports.event(eventId);
+      if (!event || !ports.attendeeProfile || !attendeeId.trim()) return null;
+      // 名单规则 A（roster-policy）：只有本场的报名者能看；不区分「不存在」与「无权」。
+      if (!(await ports.registered(actorId, eventId).catch(() => false))) return null;
+      const facts = await ports.attendeeProfile(eventId, attendeeId);
+      if (!facts) return null;
+      const at = now();
+      const [workspace, contacts, memos] = await Promise.all([
+        ports.venueWorkspace(actorId, eventId).catch(() => null),
+        ports.contacts(actorId),
+        records.memos.read(actorId, eventId),
+      ]);
+      const self = workspace?.me.participantId === facts.attendeeId;
+      const relation = workspace
+        ? venueExchangeRelation(workspace, { displayName: facts.name, participantId: facts.attendeeId }, contacts)
+        : { contactId: contacts.find((contact) => contact.name.normalize("NFKC").replace(/\s+/g, "") === facts.name.normalize("NFKC").replace(/\s+/g, ""))?.id ?? null, exchange: "none" as const, known: false, request: null };
+      const rec = workspace?.recommendations?.recommendations.find((item) => item.targetParticipantId === facts.attendeeId);
+      const ended = eventEnded(event, at);
+      const endsAt = event.endsAt ?? event.startsAt;
+      return {
+        answers: facts.answers.slice(0, 6),
+        attendeeId: facts.attendeeId,
+        // 运营服务开场前不接受交换申请：开场前也不给按钮。
+        canRequestExchange: !self && relation.exchange === "none" && at.getTime() >= Date.parse(event.startsAt) && eventExchangeOpen(endsAt, at),
+        contactId: relation.contactId,
+        exchange: relation.exchange,
+        exchangeUntil: ended ? eventExchangeUntil(endsAt) : null,
+        initial: facts.name.trim().charAt(0),
+        intro: facts.intro,
+        memo: memos[facts.attendeeId] ?? null,
+        name: facts.name,
+        org: facts.org,
+        participantId: facts.attendeeId,
+        role: facts.role,
+        together: {
+          recommended: Boolean(rec),
+          sharedRounds: workspace ? venueSharedRounds(workspace, facts.attendeeId) : [],
+          why: rec?.reasons[0] ?? null,
+          whyDetail: rec && rec.reasons.length > 1 ? rec.reasons.slice(1).join(" ") : null,
+        },
+        ...(relation.request ? { requestId: relation.request.requestId, requestRevision: relation.request.requestRevision } : {}),
+      };
     },
 
     async after(actorId, eventId, language) {

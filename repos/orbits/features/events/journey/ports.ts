@@ -36,6 +36,8 @@ export interface JourneyEvent {
   registrationCount: number;
   badges: readonly ("members_only" | "early_access")[];
   publicCode: string | null;
+  /** 2026-11-20 主办方上传的活动图片（source_payload.coverUrl ?? coverPath；只接受 https:// 或站内 `/`）。 */
+  coverUrl?: string | null;
   /**
    * 主催者の連絡先（source_payload.host.contact）。私有：只有 overview / 报名结果按报名状态决定是否带出，
    * 不进探す、检索、公开页等任何列表。
@@ -51,6 +53,16 @@ export interface JourneyPublicAttendee {
   role: string | null;
   note: string | null;
   speaker: boolean;
+}
+
+/** 2026-11-20 参加者の詳細：一位报名者对参加者公开的报名资料（不公开 → 端口返回 null）。 */
+export interface JourneyAttendeeProfileFacts {
+  attendeeId: string;
+  name: string;
+  org: string | null;
+  role: string | null;
+  intro: string | null;
+  answers: readonly { q: string; a: string }[];
 }
 
 export interface JourneyContact {
@@ -76,6 +88,8 @@ export interface JourneyLivePorts {
   /** Event id by its public code (参加コード). */
   eventIdByCode(code: string): Promise<string | null>;
   publicAttendees(eventId: string): Promise<{ total: number; attendees: JourneyPublicAttendee[] }>;
+  /** One registrant's attendee-visible registration profile (by participant id), read alone; null = not registered or not public. */
+  attendeeProfile?(eventId: string, attendeeId: string): Promise<JourneyAttendeeProfileFacts | null>;
   /** Count-only projection for locked rosters; never loads complete profiles or returns names. */
   publicRosterCounts?(actorId: string, eventId: string, contactNames: readonly string[]): Promise<{ known: number; planFit: number }>;
   /** The actor runs this event (owner or co-host with any capability): the detail shows host actions instead of 报名. */

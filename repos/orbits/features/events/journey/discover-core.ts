@@ -110,6 +110,8 @@ export interface DiscoverCandidate {
   priceYen?: number | null;
   capacity?: number | null;
   emoji: string;
+  /** 2026-11-20 活动图片（null = 没有）。 */
+  coverUrl?: string | null;
   organizerId?: string | null;
   organizerName?: string | null;
   registrationCount?: number | null;
@@ -229,6 +231,7 @@ export function buildDiscover(input: DiscoverInput, options: { dailyCandidates?:
     const judge = scored && !ended ? item.candidate.judge ?? null : null;
     return {
       area: item.area,
+      ...(item.candidate.coverUrl ? { coverUrl: item.candidate.coverUrl } : {}),
       emoji: item.candidate.emoji,
       endsAt: item.candidate.endsAt ?? null,
       eventId: item.candidate.eventId,

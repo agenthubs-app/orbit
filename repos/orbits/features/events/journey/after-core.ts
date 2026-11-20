@@ -131,6 +131,8 @@ export function buildAfter(input: {
       meetings: input.meetings,
       wantedMet: input.met.filter((person) => person.wanted).length,
       wantedTotal: input.wantedTotal,
+      // 今日会った人（每行点开参加者の詳細）：与 nextSteps 同一顺序、同一 attendeeId。
+      people: ordered.map((person) => ({ attendeeId: person.attendeeId, initial: person.name.trim().charAt(0), name: person.name, org: person.org ?? null })),
     },
     nextSteps: steps,
     title: input.event.title,

@@ -16,3 +16,6 @@ tsconfig.build.tsbuildinfo
 
 # redesign 并行线各自的 Next distDir（RD-31）
 .next-line-*/
+
+# 2026-11-20 本机上传的活动图片（没有 Blob 令牌时的开发退路）
+public/orbit-covers/uploads/

@@ -132,6 +132,12 @@ export function createHostMockService(): HostService {
       m().events.set(eventId, next);
       return write(next, notify && (timeChanged || venueChanged) ? current.approvedCount + current.waitlistedCount : 0);
     },
+    async setCover(_actor, eventId, coverUrl) {
+      const current = eventOrThrow(eventId);
+      if (current.lifecycle === "archived" || current.lifecycle === "cancelled") throw new HostError("INVALID_STATE", "EVENT_READ_ONLY");
+      m().events.set(eventId, { ...current, coverUrl, version: current.version + 1 });
+      return { coverUrl };
+    },
     async publishEvent(_actor, eventId, input) {
       const current = eventOrThrow(eventId);
       if (current.lifecycle === "published") return write(current);

@@ -220,7 +220,17 @@ export interface HostEventView {
   contact?: HostEventContact | null;
   /** 议程（编辑表单 / 申込設定预填；旧服务端没有这个字段；还没填 = 空数组）。 */
   agenda?: readonly HostAgendaItem[];
+  /** 2026-11-20 活动图片（2:1 webp；null = 没有；旧服务端没有这个字段）。改它走 `POST/DELETE /api/host/events/[id]/cover`。 */
+  coverUrl?: string | null;
   sample?: true;
+}
+
+/**
+ * `POST /api/host/events/[id]/cover`（multipart：`file` = jpg / png / webp / heic，≤ 8MB；可选 `focusY` 0–1 = 2:1 裁剪的纵向位置）
+ * 与 `DELETE` 的结果。权限同编辑基本情報（`event.edit`）；不通知参加者、不出 changePreview。
+ */
+export interface HostEventCoverResult {
+  coverUrl: string | null;
 }
 
 /** `POST /api/host/events`：建草稿。 */

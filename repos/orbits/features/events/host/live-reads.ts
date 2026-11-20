@@ -3,6 +3,7 @@
  * 只读；授权在 live.ts（`requireEventCapability` 同一判定）。来自参加者私人记录的数字（会後フォロー、交換）在这里给原始计数，
  * 抑制（<5、差分保护）在拼装时用 `shared/compute/small-cell.ts` 做。
  */
+import { eventCoverUrlFromPayload } from "../../../shared/compute/event-cover";
 import type { EventOperationsPostgresClient } from "../event-operations/storage/postgres-client";
 import type { HostEventPayload } from "./storage/lifecycle";
 import type { HostAgendaItem } from "../../../shared/contract/host-events";
@@ -43,6 +44,8 @@ export interface HostEventFacts {
   payload: Partial<HostEventPayload>;
   /** source_payload.agenda（null = 还没有）。 */
   agenda: HostAgendaItem[] | null;
+  /** 2026-11-20 source_payload.coverUrl（旧种子是 coverPath；null = 没有图）。 */
+  coverUrl?: string | null;
   publicSlug: string | null;
   applied: number;
   pending: number;
@@ -89,6 +92,7 @@ function factsFromRow(row: Row): HostEventFacts {
   const capacity = row.policy_capacity !== null && row.policy_capacity !== undefined ? num(row.policy_capacity) : payload.capacity ?? null;
   return {
     agenda: normalizeHostAgenda(source?.agenda),
+    coverUrl: eventCoverUrlFromPayload(source as Record<string, unknown> | null),
     admissionMode: row.admission_mode === "instant" ? "first_come" : "review",
     admitted: Math.max(num(row.admitted_app), num(row.members)),
     applied: Math.max(num(row.applied_app), num(row.members)),

@@ -4,7 +4,7 @@
  * 我的联系人（只用我自己的，§9 #17）+ 议程。时间相关的状态（当前轮次、残り分、是否结束）全部用服务端的 `now` 算好。
  * 未报名：`state = not_registered`，什么都不读（页面也就不会去打运营接口 → 没有 403）。
  */
-import type { EventVenuePerson, EventVenueResponse } from "../../../shared/contract/event-venue";
+import type { EventVenuePerson, EventVenueResponse, EventVenueRound } from "../../../shared/contract/event-venue";
 
 export interface VenueParticipant {
   participantId: string;
@@ -71,6 +71,88 @@ function otherTables(round: readonly VenueTable[] | undefined, mine: VenueTable,
   }));
 }
 
+/** 我与某位参加者的交换关系（会場 / 会場の記録 / 参加者の詳細 共用同一规则）。 */
+export interface VenueExchangeRelation {
+  exchange: EventVenuePerson["exchange"];
+  contactId: string | null;
+  /** 不经交换、名字已在我的联系人里。 */
+  known: boolean;
+  /** `requested` / `incoming` 时给运营接口用的请求 id / 版本。 */
+  request: { requestId: string; requestRevision: number; requestedAt: string | null } | null;
+}
+
+export function venueExchangeRelation(ws: Pick<VenueWorkspace, "me" | "contactRequests">, participant: Pick<VenueParticipant, "participantId" | "displayName">, myContacts: readonly { id: string; name: string }[]): VenueExchangeRelation {
+  const meId = ws.me.participantId;
+  const request = ws.contactRequests.find((item) => !item.withdrawnAt && ((item.requesterParticipantId === meId && item.targetParticipantId === participant.participantId) || (item.targetParticipantId === meId && item.requesterParticipantId === participant.participantId)));
+  const byName = myContacts.find((contact) => normalize(contact.name) === normalize(participant.displayName))?.id ?? null;
+  const exchange: EventVenuePerson["exchange"] = !request ? "none" : request.status === "accepted" ? "exchanged" : request.requesterParticipantId === meId ? "requested" : "incoming";
+  return {
+    contactId: request?.contactId ?? byName,
+    exchange,
+    known: !request && byName !== null,
+    request: request && exchange !== "exchanged" ? { requestId: request.requestId, requestRevision: request.revision, requestedAt: request.createdAt ?? null } : null,
+  };
+}
+
+/** 我坐过的每一轮（R1 / R2）：桌号、主题、理由、同桌。只给我实际被分到的轮次。 */
+export function venueRounds(ws: Pick<VenueWorkspace, "me" | "directory" | "roundOneTable" | "roundTwoTable" | "configuration">, agenda: readonly { at: string; title: string }[] = []): EventVenueRound[] {
+  const meId = ws.me.participantId;
+  const rounds: Array<[number, VenueTable | null, string | null]> = [[1, ws.roundOneTable, ws.configuration.roundOneStartsAt], [2, ws.roundTwoTable, ws.configuration.roundTwoStartsAt]];
+  return rounds.flatMap(([round, table, startsAt]) => {
+    const member = table?.members.find((item) => item.participantId === meId);
+    if (!table || !member) return [];
+    return [{
+      round,
+      table: tableLabel(table, member.seat),
+      tablemates: tablematesOf(ws, table),
+      theme: table.theme || null,
+      title: roundTitle(startsAt, agenda),
+      why: table.rationale || null,
+      whyDetail: table.memberRationales[meId] ?? null,
+    }];
+  });
+}
+
+/** 和某位参加者同桌过的轮次。 */
+export function venueSharedRounds(ws: Pick<VenueWorkspace, "me" | "roundOneTable" | "roundTwoTable">, participantId: string): { round: number; table: string }[] {
+  const meId = ws.me.participantId;
+  return ([[1, ws.roundOneTable], [2, ws.roundTwoTable]] as const).flatMap(([round, table]) => {
+    const mine = table?.members.find((item) => item.participantId === meId);
+    return table && mine && participantId !== meId && table.members.some((item) => item.participantId === participantId) ? [{ round, table: tableLabel(table, mine.seat) }] : [];
+  });
+}
+
+function tablematesOf(ws: Pick<VenueWorkspace, "me" | "directory">, table: VenueTable | null): EventVenueRound["tablemates"] {
+  return (table?.members ?? []).filter((member) => member.participantId !== ws.me.participantId).flatMap((member) => {
+    const found = ws.directory.find((participant) => participant.participantId === member.participantId);
+    return found ? [{ attendeeId: found.participantId, initial: found.displayName.trim().charAt(0), name: found.displayName, org: found.company, role: found.role }] : [];
+  });
+}
+
+/** 轮次标题：议程里开始时刻（东京 HH:MM）与该轮开始一致的那一行；推不出 → null。 */
+function roundTitle(startsAt: string | null, agenda: readonly { at: string; title: string }[]): string | null {
+  const time = startsAt ? Date.parse(startsAt) : Number.NaN;
+  if (!Number.isFinite(time)) return null;
+  const hhmm = new Date(time + 9 * 3_600_000).toISOString().slice(11, 16);
+  const hit = agenda.find((item) => item.at.trim() === hhmm || item.at.trim() === startsAt || (Number.isFinite(Date.parse(item.at)) && Date.parse(item.at) === time));
+  return hit?.title.trim() || null;
+}
+
+/**
+ * 详情页「会場の記録」入口的数字（只在已结束 + 我是报名者 + 有工作区时由服务层调用）。
+ * tablemates = 各轮同桌去重人数（不含我）；recommended = 推荐给我的人数；exchanged = 与我相关、已成立的交换数。
+ * 我不在任何一桌、也没有推荐 → null（没有可回看的内容，不出入口）。
+ */
+export function venueRecordFrom(ws: Pick<VenueWorkspace, "me" | "checkIn" | "contactRequests" | "recommendations" | "roundOneTable" | "roundTwoTable">): { tablemates: number; recommended: number; exchanged: number; checkedIn: boolean } | null {
+  const meId = ws.me.participantId;
+  const seated = [ws.roundOneTable, ws.roundTwoTable].filter((table): table is VenueTable => Boolean(table?.members.some((member) => member.participantId === meId)));
+  const recommended = new Set((ws.recommendations?.recommendations ?? []).map((item) => item.targetParticipantId).filter((id) => id !== meId));
+  if (!seated.length && !recommended.size) return null;
+  const mates = new Set(seated.flatMap((table) => table.members.map((member) => member.participantId)).filter((id) => id !== meId));
+  const exchanged = new Set(ws.contactRequests.filter((request) => request.status === "accepted" && !request.withdrawnAt && (request.requesterParticipantId === meId || request.targetParticipantId === meId)).map((request) => (request.requesterParticipantId === meId ? request.targetParticipantId : request.requesterParticipantId)));
+  return { checkedIn: Boolean(ws.checkIn), exchanged: exchanged.size, recommended: recommended.size, tablemates: mates.size };
+}
+
 export function buildVenue(input: VenueInput): EventVenueResponse {
   const nowIso = input.now.toISOString();
   const base = { endsAt: input.event.endsAt ?? null, eventId: input.event.eventId, now: nowIso, startsAt: input.event.startsAt, title: input.event.title };
@@ -82,19 +164,17 @@ export function buildVenue(input: VenueInput): EventVenueResponse {
   if (!input.workspace) {
     const endedWithoutWorkspace = input.now.getTime() >= Date.parse(input.event.endsAt || input.event.startsAt);
     return endedWithoutWorkspace
-      ? { ...base, ...empty, state: "ended" }
-      : { ...base, ...empty, checkIn: { available: false, displayName: "", qrPayload: input.checkInPass?.qrPayload ?? null, receptionNumber: input.checkInPass?.receptionNumber ?? null }, state: "before_check_in" };
+      ? { ...base, ...empty, checkedIn: false, readOnly: true, rounds: [], state: "ended" }
+      : { ...base, ...empty, checkedIn: false, readOnly: false, checkIn: { available: false, displayName: "", qrPayload: input.checkInPass?.qrPayload ?? null, receptionNumber: input.checkInPass?.receptionNumber ?? null }, state: "before_check_in" };
   }
   const ws = input.workspace;
   const now = input.now.getTime();
   const ended = now >= Date.parse(ws.configuration.eventEndsAt || input.event.endsAt || input.event.startsAt);
   if (!ws.checkIn && !ended) {
-    return { ...base, ...empty, checkIn: { available: ws.checkInAvailable, displayName: ws.me.displayName, qrPayload: input.checkInPass?.qrPayload ?? null, receptionNumber: input.checkInPass?.receptionNumber ?? null }, state: "before_check_in" };
+    return { ...base, ...empty, checkedIn: false, checkIn: { available: ws.checkInAvailable, displayName: ws.me.displayName, qrPayload: input.checkInPass?.qrPayload ?? null, receptionNumber: input.checkInPass?.receptionNumber ?? null }, readOnly: false, state: "before_check_in" };
   }
 
   const meId = ws.me.participantId;
-  const contactByName = new Map(input.myContacts.map((contact) => [normalize(contact.name), contact.id]));
-  const requestWith = (participantId: string) => ws.contactRequests.find((request) => !request.withdrawnAt && ((request.requesterParticipantId === meId && request.targetParticipantId === participantId) || (request.targetParticipantId === meId && request.requesterParticipantId === participantId)));
   const tableOf = (participantId: string, round: VenueTable | null) => {
     if (!round) return null;
     const member = round.members.find((item) => item.participantId === participantId);
@@ -107,10 +187,7 @@ export function buildVenue(input: VenueInput): EventVenueResponse {
   const recByTarget = new Map((ws.recommendations?.recommendations ?? []).map((item) => [item.targetParticipantId, item]));
 
   const toPerson = (participant: VenueParticipant): EventVenuePerson => {
-    const request = requestWith(participant.participantId);
-    const exchange: EventVenuePerson["exchange"] = !request ? "none" : request.status === "accepted" ? "exchanged" : request.requesterParticipantId === meId ? "requested" : "incoming";
-    const contactId = request?.contactId ?? contactByName.get(normalize(participant.displayName)) ?? null;
-    const known = !request && contactByName.has(normalize(participant.displayName));
+    const { contactId, exchange, known, request } = venueExchangeRelation(ws, participant, input.myContacts);
     const wanted = input.wantedParticipantIds.has(participant.participantId);
     const rec = recByTarget.get(participant.participantId);
     const why = participant.experienceHighlight ?? participant.offers[0] ?? null;
@@ -128,7 +205,7 @@ export function buildVenue(input: VenueInput): EventVenueResponse {
       wanted,
       why,
       whyDetail: rec?.reasons.join(" ") || null,
-      ...(request && exchange !== "exchanged" ? { requestId: request.requestId, requestRevision: request.revision, requestedAt: request.createdAt ?? null } : {}),
+      ...(request ?? {}),
     };
   };
   const others = ws.directory.filter((participant) => participant.participantId !== meId);
@@ -137,13 +214,11 @@ export function buildVenue(input: VenueInput): EventVenueResponse {
   const attendees = [...people].sort((a, b) => stateOrder[b.exchange] - stateOrder[a.exchange] || Number(b.wanted) - Number(a.wanted) || a.name.localeCompare(b.name, "ja"));
   const recommendations = (ws.recommendations?.recommendations ?? [])
     .map((item) => people.find((person) => person.participantId === item.targetParticipantId))
-    .filter((person): person is EventVenuePerson => Boolean(person) && person!.exchange !== "exchanged");
+    // 会場の記録（结束后只读）：推荐名单原样保留（已交换的人也在，回看「当天推荐了谁」）。
+    .filter((person): person is EventVenuePerson => Boolean(person) && (ended || person!.exchange !== "exchanged"));
   const nextOrder = [...recommendations].sort((a, b) => Number(b.exchange === "incoming") - Number(a.exchange === "incoming")).slice(0, 4);
 
-  const mateOf = (table: VenueTable | null) => (table?.members ?? []).filter((member) => member.participantId !== meId).flatMap((member) => {
-    const found = others.find((participant) => participant.participantId === member.participantId);
-    return found ? [{ attendeeId: found.participantId, initial: found.displayName.trim().charAt(0), name: found.displayName, org: found.company, role: found.role }] : [];
-  });
+  const mateOf = (table: VenueTable | null) => tablematesOf(ws, table);
   const myCurrent = currentTable ? tableOf(meId, currentTable) : null;
   const roundEnd = currentRound === 1 && roundTwoStart !== null ? roundTwoStart : (currentRound > 0 ? (currentRound === 2 ? roundTwoStart! : roundOneStart!) + ROUND_MINUTES * 60_000 : null);
   const roundStart = currentRound === 2 ? roundTwoStart : roundOneStart;
@@ -172,6 +247,9 @@ export function buildVenue(input: VenueInput): EventVenueResponse {
     recommendations,
     round: currentRound > 0 && roundStart !== null && roundEnd !== null ? { endsAt: new Date(roundEnd).toISOString(), index: currentRound, remainingMinutes: Math.max(0, Math.ceil((roundEnd - now) / 60_000)), startsAt: new Date(roundStart).toISOString(), theme: currentTable?.theme ?? null, title: "テーブルトーク", total: ws.roundTwoTable ? 2 : 1 } : null,
     seats: [ws.roundOneTable ? { round: 1, table: tableOf(meId, ws.roundOneTable) ?? letter(ws.roundOneTable.tableNumber) } : null, ws.roundTwoTable ? { round: 2, table: tableOf(meId, ws.roundTwoTable) ?? letter(ws.roundTwoTable.tableNumber) } : null].filter((item): item is { round: number; table: string } => Boolean(item)),
+    checkedIn: Boolean(ws.checkIn),
+    readOnly: ended,
+    rounds: venueRounds(ws, input.agenda),
     state: ended ? "ended" : "checked_in",
     stats: { exchanged: people.filter((person) => person.exchange === "exchanged").length, incoming: people.filter((person) => person.exchange === "incoming").length, wantedMet, wantedTotal },
   };

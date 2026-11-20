@@ -7,6 +7,7 @@
  * - `upcoming` = 开始时间在现在之后（或今天还没结束），按开始时间升序；`past` 降序。取消的不算进 `upcomingCount`（复核：参加予定不含取消）。
  * - 同一场活动多个来源时取「最强」状态：attended > registered > pending_review > waitlisted > planned > rejected > cancelled。
  */
+import { eventCoverUrlFromPayload, normalizeEventCoverUrl } from "../../../shared/compute/event-cover";
 import { eventEmoji } from "../../../shared/compute/event-emoji";
 import type { MyEventItem, MyEventStatus, MyEventsRange, MyEventsResponse } from "../../../shared/contract/events-mine";
 
@@ -17,6 +18,8 @@ export interface MyEventSourceRow {
   endsAt: string | null;
   venue: string | null;
   emoji?: string | null;
+  /** 2026-11-20 活动图片（source_payload.coverUrl ?? coverPath）。 */
+  coverUrl?: string | null;
   status: MyEventStatus;
   assessmentId?: string | null;
   score?: number | null;
@@ -73,7 +76,7 @@ export function createMyEventsService(deps: { reader: MyEventsReader; now?: () =
         ? upcoming.filter((row) => row.status !== "rejected").sort((a, b) => a.startsAt.localeCompare(b.startsAt))
         : past.sort((a, b) => b.startsAt.localeCompare(a.startsAt))).slice(0, input.limit);
       const meet = deps.reader.meet && input.range === "upcoming" ? await deps.reader.meet(actorId, picked.filter((row) => !row.external).map((row) => row.eventId)).catch(() => ({})) : {};
-      const items: MyEventItem[] = picked.map((row) => ({
+      const items: MyEventItem[] = picked.map((row) => ({ row, coverUrl: normalizeEventCoverUrl(row.coverUrl) })).map(({ row, coverUrl }) => ({
         emoji: row.emoji ?? eventEmoji({ title: row.title }),
         endsAt: row.endsAt,
         eventId: row.eventId,
@@ -82,6 +85,7 @@ export function createMyEventsService(deps: { reader: MyEventsReader; now?: () =
         status: row.status,
         title: row.title,
         venue: row.venue,
+        ...(coverUrl ? { coverUrl } : {}),
         ...(row.assessmentId ? { assessmentId: row.assessmentId } : {}),
         ...(typeof row.score === "number" ? { score: row.score } : {}),
         ...((meet as Record<string, { count: number; initials: string[] }>)[row.eventId] ? { meetCount: (meet as Record<string, { count: number; initials: string[] }>)[row.eventId]!.count, meetInitials: (meet as Record<string, { count: number; initials: string[] }>)[row.eventId]!.initials.slice(0, 4) } : {}),
@@ -112,6 +116,7 @@ export function createPostgresMyEventsReader(input: { query: Query; workspaceId:
            select event_id from mine union select event_id from apps union select event_id from checked union select event_id from planned
          )
          select e.event_id, e.title, e.starts_at, e.ends_at, e.venue, e.lifecycle_state_v2, e.source_payload->>'emoji' as emoji,
+                e.source_payload->>'coverUrl' as cover_url, e.source_payload->>'coverPath' as cover_path,
                 m.status as membership, a.status as application, (c.event_id is not null) as attended, (pl.event_id is not null) as planned
          from ids join event_ops_events e on e.workspace_id = $1 and e.event_id = ids.event_id
          left join mine m on m.event_id = ids.event_id
@@ -125,7 +130,8 @@ export function createPostgresMyEventsReader(input: { query: Query; workspaceId:
       const out: MyEventSourceRow[] = registrations.rows.flatMap((row) => {
         const startsAt = iso(row.starts_at);
         if (!startsAt) return [];
-        const base = { emoji: (row.emoji as string | null) ?? null, endsAt: iso(row.ends_at), eventId: String(row.event_id), startsAt, title: String(row.title ?? ""), venue: (row.venue as string | null) ?? null };
+        const coverUrl = eventCoverUrlFromPayload({ coverPath: row.cover_path, coverUrl: row.cover_url });
+        const base = { ...(coverUrl ? { coverUrl } : {}), emoji: (row.emoji as string | null) ?? null, endsAt: iso(row.ends_at), eventId: String(row.event_id), startsAt, title: String(row.title ?? ""), venue: (row.venue as string | null) ?? null };
         const statuses: MyEventStatus[] = [];
         if (row.lifecycle_state_v2 === "cancelled") statuses.push("cancelled");
         if (row.attended) statuses.push("attended");

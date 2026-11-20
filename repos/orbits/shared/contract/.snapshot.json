@@ -12851,10 +12851,25 @@
           "kind": "text",
           "type": "readonly HostAgendaItem[]"
         },
+        "coverUrl": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
         "sample": {
           "optional": true,
           "kind": "text",
           "type": "true"
+        }
+      }
+    },
+    "host-events.ts::HostEventCoverResult": {
+      "kind": "object",
+      "members": {
+        "coverUrl": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },

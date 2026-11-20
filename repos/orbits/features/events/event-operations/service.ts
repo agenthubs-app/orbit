@@ -1,4 +1,5 @@
 import type { EventRegistrationService } from "../registration/service";
+import { eventExchangeOpen } from "../../../shared/compute/event-exchange-window";
 import type { EventOperationsGroupingResult } from "./contract";
 import {
   EventOperationsError,
@@ -608,6 +609,13 @@ export function createEventOperationsService({
         throw new EventOperationsError(
           "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
           "Contact requests open when the event starts.",
+        );
+      }
+      // 会場の記録：结束后 30 天内还能申请（两端用同一个期限显示「M/D まで」），之后服务端拒绝新建。
+      if (!eventExchangeOpen(configuration.eventEndsAt, new Date(currentMs))) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_CONTACT_REQUEST_CLOSED",
+          "Contact requests close 30 days after the event ends.",
         );
       }
       const published = await repository.getPublishedResult(eventId);

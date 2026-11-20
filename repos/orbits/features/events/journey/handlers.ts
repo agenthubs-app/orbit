@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import type { ZodType } from "zod";
 
+import { eventAttendeeProfileSchema } from "../../../shared/api-schema/event-attendee-profile";
 import { eventAfterConfirmInputSchema, eventAfterConfirmResultSchema, eventAfterResponseSchema } from "../../../shared/api-schema/event-after";
 import { eventDiscoverQueryObject, eventDiscoverResponseSchema } from "../../../shared/api-schema/event-discover";
 import { eventOverviewResponseSchema } from "../../../shared/api-schema/event-overview";
@@ -149,6 +150,12 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       const parsed = await body(request, eventVenueMemoInputObject);
       if (parsed.ok === false) return parsed.reply;
       return service.saveVenueMemo(actorId!, eventId(params), parsed.value.attendeeId, parsed.value.text);
+    }, deps),
+    // 参加者の詳細：我是报名者 + 对方资料对参加者公开，否则一律 404（不区分「不存在」与「无权」）。
+    attendeeProfile: journeyRoute({ auth: "required", schema: eventAttendeeProfileSchema }, async ({ actorId, params, service }) => {
+      const attendeeId = (params.attendeeId ?? "").trim();
+      if (!attendeeId || attendeeId.length > 200) return null;
+      return service.attendeeProfile(actorId!, eventId(params), attendeeId);
     }, deps),
     after: journeyRoute({ auth: "required", schema: eventAfterResponseSchema }, async ({ actorId, language, params, service }) => service.after(actorId!, eventId(params), language), deps),
     confirmAfter: journeyRoute({ auth: "required", schema: eventAfterConfirmResultSchema, write: true }, async ({ actorId, params, request, service }) => {

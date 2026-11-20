@@ -35,7 +35,16 @@ export interface JourneyMockState {
 }
 
 const DEFAULT_STATE: JourneyMockState = { after: "many", discover: "many", overview: "many", registration: "none", venue: "checked_in" };
-const holder = globalThis as typeof globalThis & { __orbitR27JourneyMock?: { state: JourneyMockState; store: ReturnType<typeof createMemoryActorRecordStore> } };
+/** 2026-11-20 本机示例「会場の記録」：开发接口装上的一场已结束活动（真实 service + 示例端口），按 eventId 整体接管。 */
+export interface JourneyMockRecord { eventId: string; service: JourneyService }
+const holder = globalThis as typeof globalThis & { __orbitR27JourneyMock?: { state: JourneyMockState; store: ReturnType<typeof createMemoryActorRecordStore> }; __orbitR27JourneyRecord?: JourneyMockRecord | null };
+
+/** 开发接口用：装上 / 卸下「会場の記录」示例活动（`null` 卸下）。示例数据本身只在 dev 路由里引用，不进生产包。 */
+export function setJourneyMockRecord(record: JourneyMockRecord | null): void {
+  holder.__orbitR27JourneyRecord = record;
+}
+
+const recordFor = (eventId: string): JourneyService | null => (holder.__orbitR27JourneyRecord?.eventId === eventId ? holder.__orbitR27JourneyRecord.service : null);
 
 function mockHolder() {
   holder.__orbitR27JourneyMock ??= { state: { ...DEFAULT_STATE }, store: createMemoryActorRecordStore() };
@@ -84,7 +93,9 @@ export function createJourneyMockService(): JourneyService {
     async search(_actorId, query) {
       return journeySearch(query);
     },
-    async overview(actorId, eventId, _language, platform) {
+    async overview(actorId, eventId, _language, platform, options) {
+      const record = recordFor(eventId);
+      if (record) return record.overview(actorId, eventId, _language, platform, options);
       if (eventId !== JOURNEY_EVENT_ID && !knownEvent(eventId)) return null;
       const base = journeyOverview(state().overview, platform ?? "web");
       const data = { ...base, eventId: JOURNEY_EVENT_ID, registration: { ...base.registration, status: actorId ? state().registration : "none" as const } };
@@ -100,7 +111,9 @@ export function createJourneyMockService(): JourneyService {
       }
       return withContact;
     },
-    async prep(_actorId, eventId) {
+    async prep(_actorId, eventId, language) {
+      const record = recordFor(eventId);
+      if (record) return record.prep(_actorId, eventId, language);
       if (eventId !== JOURNEY_EVENT_ID && !knownEvent(eventId)) return null;
       const data = journeyPrep();
       return { ...data, checklist: (await checklist.read(_actorId, JOURNEY_EVENT_ID)).some((item) => item.done) ? await checklist.read(_actorId, JOURNEY_EVENT_ID) : data.checklist };
@@ -109,18 +122,55 @@ export function createJourneyMockService(): JourneyService {
       return checklist.patch(actorId, JOURNEY_EVENT_ID, items);
     },
     async venue(_actorId, eventId, platform) {
+      const record = recordFor(eventId);
+      if (record) return record.venue(_actorId, eventId, platform);
       if (eventId !== JOURNEY_EVENT_ID && !knownEvent(eventId)) return null;
       return withVenueMemos(journeyVenue(state().venue, platform ?? "web"), await memos.read(_actorId, JOURNEY_EVENT_ID));
     },
     async saveVenueMemo(actorId, eventId, attendeeId, text) {
+      const record = recordFor(eventId);
+      if (record) return record.saveVenueMemo(actorId, eventId, attendeeId, text);
       if (eventId !== JOURNEY_EVENT_ID && !knownEvent(eventId)) return null;
       return { attendeeId, memo: await memos.put(actorId, JOURNEY_EVENT_ID, attendeeId, text) };
     },
-    async after(_actorId, eventId) {
+    async attendeeProfile(actorId, eventId, attendeeId) {
+      const record = recordFor(eventId);
+      if (record) return record.attendeeProfile(actorId, eventId, attendeeId);
+      if (eventId !== JOURNEY_EVENT_ID && !knownEvent(eventId)) return null;
+      // 演示世界：从会場示例里的同一个人拼出详情（只读示例，不读任何真实资料；与示例会場一样不按报名状态挡）。
+      const venue = journeyVenue("checked_in", "web");
+      const person = venue.attendees.find((item) => item.attendeeId === attendeeId);
+      if (!person) return null;
+      const memo = (await memos.read(actorId, JOURNEY_EVENT_ID))[attendeeId] ?? null;
+      const sameTable = venue.mySeat?.tablemates.some((mate) => mate.attendeeId === attendeeId) ?? false;
+      const recommended = venue.recommendations.find((item) => item.attendeeId === attendeeId);
+      return {
+        answers: [],
+        attendeeId,
+        canRequestExchange: person.exchange === "none",
+        contactId: person.contactId ?? null,
+        exchange: person.exchange,
+        exchangeUntil: null,
+        initial: person.initial,
+        intro: person.why ?? null,
+        memo,
+        name: person.name,
+        org: person.org ?? null,
+        participantId: person.participantId,
+        role: person.role ?? null,
+        together: { recommended: Boolean(recommended), sharedRounds: sameTable && venue.mySeat ? [{ round: venue.round?.index ?? 1, table: venue.mySeat.table }] : [], why: recommended?.why ?? null, whyDetail: recommended?.whyDetail ?? null },
+        ...(person.requestId ? { requestId: person.requestId, requestRevision: person.requestRevision ?? null } : {}),
+      };
+    },
+    async after(_actorId, eventId, language) {
+      const record = recordFor(eventId);
+      if (record) return record.after(_actorId, eventId, language);
       if (eventId !== JOURNEY_EVENT_ID && !knownEvent(eventId)) return null;
       return journeyAfter(state().after);
     },
     async confirmAfter(_actorId, eventId, input) {
+      const record = recordFor(eventId);
+      if (record) return record.confirmAfter(_actorId, eventId, input);
       if (eventId !== JOURNEY_EVENT_ID && !knownEvent(eventId)) return null;
       // 示例模式：只算结果，不建 To-do、不改联系人、不记分。
       const data = journeyAfter(state().after);

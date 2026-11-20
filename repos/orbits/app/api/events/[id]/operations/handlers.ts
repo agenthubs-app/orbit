@@ -90,7 +90,8 @@ function toAppError(error: unknown): AppError {
     error.code === "EVENT_OPERATIONS_CHECK_IN_CLOSED" ||
     error.code === "EVENT_OPERATIONS_GENERATION_NOT_READY" ||
     error.code === "EVENT_OPERATIONS_DURABLE_WORKER_REQUIRED" ||
-    error.code === "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID"
+    error.code === "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID" ||
+    error.code === "EVENT_OPERATIONS_CONTACT_REQUEST_CLOSED"
   ) {
     return new AppError("CONFLICT", error.message, { cause: error });
   }

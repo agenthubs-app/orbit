@@ -9,6 +9,7 @@
  */
 import type { EventAssessmentContract, EventAssessmentScoreItem } from "../../../shared/contract/event-assessment";
 import type { MyEventSourceRow } from "../mine/service";
+import { venueRecordMineRow } from "./venue-record";
 
 /** 画板的「今天」：2026-10-07（水）东京 12:00（fixture 生效时的开发时钟）。 */
 export const DESIGN_FIXTURE_NOW = "2026-10-07T03:00:00.000Z";
@@ -124,6 +125,11 @@ export const EVENT_DESIGN_FIXTURES: Readonly<Record<string, (now?: Date) => Even
       going("design-event-past-2", "製造業 DX カンファレンス 大阪", "2026-09-26T10:00:00+09:00", "グランフロント大阪", 0, "registered", now),
     ],
   }),
+  /**
+   * 2026-11-20 会場の記録：参加予定（過去）に 10/3 の終了済みイベント（図片つき）。開発接口はこの名前のとき
+   * 同じイベントの詳細 / 会場 / 参加者の詳細 / 会後 も示例端口で接管する（`venue-record.ts`）。
+   */
+  "venue-record": () => ({ assessments: [], mine: [venueRecordMineRow()] }),
   /** b12 W-R26-30e：参加予定 空。 */
   "going-empty": (now = new Date()) => ({ assessments: [summit(now)], mine: [] }),
 };

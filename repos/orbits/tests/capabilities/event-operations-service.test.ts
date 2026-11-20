@@ -586,6 +586,48 @@ test("business-card requests stay closed until the event starts", async () => {
   assert.equal(request.status, "awaiting_target_consent");
 });
 
+test("business-card requests close 30 days after the event ends; answering an existing request still works", async () => {
+  const harness = await createHarness();
+  harness.setTimestamp("2026-08-20T00:00:00.000Z");
+  const directory = (
+    await harness.service.attendeeWorkspace({ actorId: "actor:akira", eventId })
+  ).directory;
+  const mei = directory.find((participant) => participant.actorId === "actor:mei");
+  assert.ok(mei);
+  // Within 30 days of the end (2026-08-02T12:00Z): a new request is accepted.
+  const request = await harness.service.createContactRequest({
+    actorId: "actor:akira",
+    expectedRevision: null,
+    eventId,
+    targetParticipantId: mei.participantId,
+  });
+  assert.equal(request.status, "awaiting_target_consent");
+
+  harness.setTimestamp("2026-09-01T12:00:00.001Z");
+  const akira = directory.find((participant) => participant.actorId === "actor:akira") ??
+    (await harness.service.attendeeWorkspace({ actorId: "actor:mei", eventId })).directory.find((participant) => participant.actorId === "actor:akira");
+  assert.ok(akira);
+  await assert.rejects(
+    () =>
+      harness.service.createContactRequest({
+        actorId: "actor:mei",
+        expectedRevision: null,
+        eventId,
+        targetParticipantId: akira.participantId,
+      }),
+    (error: unknown) =>
+      (error as { code?: string }).code === "EVENT_OPERATIONS_CONTACT_REQUEST_CLOSED",
+  );
+  const accepted = await harness.service.respondToContactRequest({
+    accept: true,
+    actorId: "actor:mei",
+    expectedRevision: request.revision,
+    eventId,
+    requestId: request.requestId,
+  });
+  assert.equal(accepted.status, "accepted");
+});
+
 test("business-card requests are individual and create bilateral records only after target consent", async () => {
   const harness = await createHarness();
   harness.setTimestamp("2026-08-02T09:31:00.000Z");

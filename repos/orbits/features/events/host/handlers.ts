@@ -15,6 +15,7 @@ import {
   hostEventArchiveInputSchema,
   hostEventCancelInputSchema,
   hostEventCodeReissueInputSchema,
+  hostEventCoverResultSchema,
   hostEventInputSchema,
   hostEventPublishInputSchema,
   hostEventUpdateInputSchema,
@@ -68,6 +69,7 @@ import { redesignContractMode } from "../../redesign-contracts/route";
 import { createHostMockService, DEMO_ACTOR_ID } from "./mock";
 import { HostError, type HostErrorCode, type HostService } from "./service";
 import { EventOperationsError } from "../event-operations/contract";
+import { configuredEventCoverStore, EventCoverError, EVENT_COVER_MAX_BYTES, parseEventCoverFocus, renderEventCover, validateEventCoverUpload, type EventCoverStore } from "./cover-image";
 
 type Params = Record<string, string>;
 type RouteContext = { params?: Promise<Params> };
@@ -78,6 +80,8 @@ export interface HostRouteDeps {
   resolveMode?: () => FeatureMode;
   /** Tests: the live service (null = unconfigured). */
   liveService?: () => Promise<HostService | null>;
+  /** Tests: where processed covers go (null = unconfigured). */
+  coverStore?: () => EventCoverStore | null;
 }
 
 export const HOST_SAMPLE_HEADER = "x-orbit-sample";
@@ -159,6 +163,34 @@ const BUCKETS = ["pending", "approved", "waitlisted", "rejected"] as const;
 /** 限流 / 防枚举用的客户端键（不记录、不回显）。 */
 const clientKey = (request: Request) => (request.headers.get("x-forwarded-for")?.split(",")[0] ?? request.headers.get("x-real-ip") ?? "local").trim();
 
+type CoverReply = { error: AppError; context?: Record<string, string> };
+
+function coverFailure(error: EventCoverError): CoverReply {
+  const code: AppErrorCode = error.code === "COVER_STORAGE_UNCONFIGURED" || error.code === "COVER_STORAGE_FAILED" ? "SERVICE_UNAVAILABLE" : "VALIDATION_ERROR";
+  return { context: { reason: error.code }, error: new AppError(code, error.message) };
+}
+
+/** 封面的权限：能读这场活动（否则 404）且有 `event.edit`（否则 403）；服务端没有封面能力 → 503。 */
+async function coverEditable(service: HostService, actorId: string, eventId: string): Promise<true | CoverReply | null> {
+  if (!service.setCover) return { context: { reason: "COVER_UNSUPPORTED" }, error: new AppError("SERVICE_UNAVAILABLE", "Cover images are unavailable.") };
+  const view = await service.event(actorId, eventId);
+  if (!view) return null;
+  if (!view.capabilities.includes("event.edit")) return { context: { reason: "FORBIDDEN" }, error: new AppError("FORBIDDEN", "You cannot edit this event.") };
+  return true;
+}
+
+async function storeCover(deps: HostRouteDeps, eventId: string, webp: Buffer): Promise<string> {
+  const store = (deps.coverStore ?? configuredEventCoverStore)();
+  if (!store) throw new EventCoverError("COVER_STORAGE_UNCONFIGURED", "Image storage is not configured.");
+  const workspaceId = process.env.ORBIT_WORKSPACE_ID?.trim() || "workspace:default";
+  try {
+    return await store.put({ eventId, webp, workspaceId });
+  } catch (error) {
+    console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "host_event_cover_store_failed" }));
+    throw new EventCoverError("COVER_STORAGE_FAILED", "The image could not be stored.");
+  }
+}
+
 export function createHostRoutes(deps: HostRouteDeps = {}) {
   const r = <T>(options: { auth: "required" | "optional"; write?: boolean; schema: ZodType<T> }, handle: Parameters<typeof hostRoute<T>>[1]) => hostRoute(options, handle, deps);
   const required = { auth: "required" as const };
@@ -173,6 +205,36 @@ export function createHostRoutes(deps: HostRouteDeps = {}) {
     centerSummary: r({ ...required, schema: hostCenterSummarySchema }, async ({ actorId, service }) => service.centerSummary(actorId!)),
     createEvent: r({ ...writes, schema: hostEventWriteResultSchema }, async ({ actorId, request, service }) => ({ data: await service.createEvent(actorId!, await body(request, hostEventInputSchema)), status: 201 })),
     event: r({ ...required, schema: hostEventViewSchema }, async ({ actorId, params, service }) => service.event(actorId!, id(params))),
+    // 2026-11-20 活动图片：先按编辑权限把关（没有权限不处理、不上传），再转码存储，最后写 source_payload.coverUrl。
+    uploadCover: r({ ...writes, schema: hostEventCoverResultSchema }, async ({ actorId, params, request, sample, service }) => {
+      const eventId = id(params);
+      const editable = await coverEditable(service, actorId!, eventId);
+      if (editable !== true) return editable;
+      const declaredLength = Number(request.headers.get("content-length") ?? "0");
+      if (Number.isFinite(declaredLength) && declaredLength > EVENT_COVER_MAX_BYTES + 64 * 1024) return coverFailure(new EventCoverError("COVER_TOO_LARGE", "The image must be 8MB or smaller."));
+      const form = await request.formData().catch(() => null);
+      const file = form?.get("file");
+      if (!form || !file || typeof file === "string") return coverFailure(new EventCoverError("COVER_FILE_MISSING", "Attach an image file."));
+      try {
+        const focusY = parseEventCoverFocus(form.get("focusY"));
+        if (file.size > EVENT_COVER_MAX_BYTES) throw new EventCoverError("COVER_TOO_LARGE", "The image must be 8MB or smaller.");
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const type = validateEventCoverUpload({ bytes, declaredType: file.type });
+        const webp = await renderEventCover(bytes, type, focusY);
+        // 本机示例（mock）不写任何存储：只验证、处理，返回一个站内示例路径。
+        const coverUrl = sample ? `/orbit-covers/events/chinese-business-community-salon.jpg` : await storeCover(deps, eventId, webp);
+        return service.setCover!(actorId!, eventId, coverUrl);
+      } catch (error) {
+        if (error instanceof EventCoverError) return coverFailure(error);
+        throw error;
+      }
+    }),
+    deleteCover: r({ ...writes, schema: hostEventCoverResultSchema }, async ({ actorId, params, service }) => {
+      const eventId = id(params);
+      const editable = await coverEditable(service, actorId!, eventId);
+      if (editable !== true) return editable;
+      return service.setCover!(actorId!, eventId, null);
+    }),
     updateEvent: r({ ...writes, schema: hostEventWriteResultSchema }, async ({ actorId, params, request, service }) => service.updateEvent(actorId!, id(params), await body(request, hostEventUpdateInputSchema))),
     publishEvent: r({ ...writes, schema: hostEventWriteResultSchema }, async ({ actorId, params, request, service }) => service.publishEvent(actorId!, id(params), await body(request, hostEventPublishInputSchema))),
     cancelEvent: r({ ...writes, schema: hostEventWriteResultSchema }, async ({ actorId, params, request, service }) => service.cancelEvent(actorId!, id(params), await body(request, hostEventCancelInputSchema))),

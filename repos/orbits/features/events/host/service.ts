@@ -12,6 +12,7 @@ import type {
   HostEventArchiveInput,
   HostEventCancelInput,
   HostEventCodeReissueInput,
+  HostEventCoverResult,
   HostEventInput,
   HostEventPublishInput,
   HostEventUpdateInput,
@@ -101,6 +102,8 @@ export interface HostService {
   cancelEvent(actorId: string, eventId: string, input: HostEventCancelInput): Promise<HostEventWriteResult>;
   archiveEvent(actorId: string, eventId: string, input: HostEventArchiveInput): Promise<HostEventWriteResult>;
   reissueCode(actorId: string, eventId: string, input: HostEventCodeReissueInput): Promise<HostEventWriteResult>;
+  /** 2026-11-20 活动图片：写 source_payload.coverUrl（null = 删除），权限 `event.edit`。图片处理与存储在路由层（cover-image.ts）。 */
+  setCover?(actorId: string, eventId: string, coverUrl: string | null): Promise<HostEventCoverResult>;
 
   overview(actorId: string, eventId: string): Promise<HostOverviewResponse | null>;
   matching(actorId: string, eventId: string, round: number): Promise<HostMatchingResponse | null>;

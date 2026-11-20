@@ -38,6 +38,7 @@ import {
   afterDraftFrom,
   afterMetFrom,
   afterPlanFrom,
+  attendeeProfileFromRegistration,
   contactHistoryFrom,
   followupDueAt,
   followupTaskTitle,
@@ -277,6 +278,16 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       if (!event) return { attendees: [], total: 0 };
       const registrations = await operations.listCanonicalRegistrations(event.eventId);
       return publicAttendeesFromRegistrations(registrations, payloadSpeakerNames(event.sourcePayload ?? {}));
+    },
+
+    async attendeeProfile(eventId, attendeeId) {
+      // 按需单条读：participant id → 报名者（只认有效报名），再读这一个人的报名资料；名单不整份读。
+      const owner = await query(`/* events:r27-journey:attendee-owner */ select actor_id from event_ops_membership_heads where workspace_id = $1 and event_id = $2 and participant_id = $3 and status = 'rsvped' limit 1`, [workspaceId, eventId, attendeeId]);
+      const actorId = str(owner.rows[0]?.actor_id);
+      if (!actorId) return null;
+      const registration = await operations.getCanonicalRegistration(eventId, actorId);
+      if (!registration || registration.eventId !== eventId || registration.participantProfileId !== attendeeId) return null;
+      return attendeeProfileFromRegistration(registration);
     },
 
     async hosting(actorId, eventId) {

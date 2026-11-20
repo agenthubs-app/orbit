@@ -153,6 +153,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       capacity: facts.capacity,
       agenda: facts.agenda ?? [],
       contact: normalizeHostContact(facts.payload.contact),
+      coverUrl: facts.coverUrl ?? null,
       cohostCount: cohostList.length,
       cohosts: cohostList.slice(0, 5),
       description: facts.description,
@@ -381,6 +382,10 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
         return { changePreview: { afterStartsAt: input.startsAt ?? result.before.startsAt, afterVenue: input.venueName !== undefined ? input.venueName : result.before.venue, approvedCount: facts.admitted, beforeStartsAt: result.before.startsAt, beforeVenue: result.before.venue, timeChanged: input.startsAt !== undefined && input.startsAt !== result.before.startsAt, venueChanged: input.venueName !== undefined && input.venueName !== result.before.venue, waitlistedCount: facts.waitlisted }, event: await viewFor(actorId, eventId), notified: 0 };
       }
       return writeResult(actorId, eventId, result.notified);
+    },
+    async setCover(actorId, eventId, coverUrl) {
+      await require(actorId, eventId, "event.edit");
+      return { coverUrl: (await lifecycle.setCover(eventId, coverUrl)).coverUrl };
     },
     async publishEvent(actorId, eventId, input) {
       await require(actorId, eventId, "event.edit");

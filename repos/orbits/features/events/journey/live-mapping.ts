@@ -7,6 +7,7 @@
  */
 import { createHash } from "node:crypto";
 
+import { eventCoverUrlFromPayload } from "../../../shared/compute/event-cover";
 import { eventEmoji } from "../../../shared/compute/event-emoji";
 import { normalizeHostContact } from "../../../shared/compute/host-contact";
 import { typeOfPerson, type AttendeeTypingType } from "../../../shared/compute/event-attendee-typing";
@@ -25,7 +26,7 @@ import type { AttendeePostEventAiArtifactView } from "../post-event-artifact/con
 import type { EventRegistration } from "../registration/contract";
 import type { AfterAiDraft, AfterMetPerson, AfterPlan } from "./after-core";
 import type { JourneyLanguage } from "./prep-core";
-import type { JourneyContact, JourneyEvent, JourneyLivePorts, JourneyPublicAttendee } from "./ports";
+import type { JourneyAttendeeProfileFacts, JourneyContact, JourneyEvent, JourneyLivePorts, JourneyPublicAttendee } from "./ports";
 import type { VenueParticipant, VenueTable, VenueWorkspace } from "./venue-core";
 
 const sha = (...parts: string[]) => createHash("sha256").update(parts.join("\u0000")).digest("hex");
@@ -102,6 +103,7 @@ export function journeyEventFromCanonical(event: CanonicalEventLike, extra: { re
     agenda: facts.agenda.map((item) => ({ at: item.at, title: item.title, ...(item.detail ? { detail: item.detail } : {}) })),
     badges: [],
     capacity: extra.policy?.capacity ?? payloadCapacity,
+    coverUrl: eventCoverUrlFromPayload(payload),
     description: event.description?.trim() || null,
     emoji: eventEmoji({ emoji: facts.emoji, title: event.title }),
     endsAt: event.endsAt,
@@ -146,6 +148,41 @@ export function publicAttendeesFromRegistrations(registrations: readonly EventRe
   });
   attendees.sort((a, b) => Number(b.speaker) - Number(a.speaker) || a.name.localeCompare(b.name, "ja"));
   return { attendees: attendees.slice(0, PUBLIC_ATTENDEES_LIMIT), total: active.length };
+}
+
+/** 回答的问题文：有快照用快照的问题；旧数据只有字段名时用固定的日文标签。 */
+const FIELD_LABEL_JA: Readonly<Record<string, string>> = {
+  desiredOutcome: "参加の目的",
+  energyStyle: "話し方",
+  experienceHighlight: "話せるトピック",
+  followUpPreference: "連絡の希望",
+  industry: "業界",
+  positioning: "会社・役職",
+  targetAttendees: "会いたい人",
+  valueOffered: "提供できること",
+};
+export const ATTENDEE_PROFILE_ANSWERS_LIMIT = 6;
+
+/**
+ * 参加者の詳細：一位报名者对参加者公开的资料（与 `publicAttendeesFromRegistrations` 同一边界：只用 `event_attendees` / `public`
+ * 的回答，一个都没有 = 不公开 → null）。intro = 公开回答里的「話せるトピック」（与名单上的一句话同源）。
+ */
+export function attendeeProfileFromRegistration(registration: EventRegistration): JourneyAttendeeProfileFacts | null {
+  if (registration.status !== "rsvped") return null;
+  const visible = profileResponsesForParticipantDetail(registration.participantProfile.interviewResponses ?? [], { viewerOwnsTarget: false });
+  if (!visible.length) return null;
+  const participant = eventOperationsParticipantFromRegistration(
+    { ...registration, participantProfile: { ...registration.participantProfile, interviewResponses: visible } },
+    { lateRegistration: false, profileEditDeadlineAt: null },
+  );
+  const answers = visible.flatMap((response) => {
+    const a = text(response.answer?.displayText);
+    // 会社・役職 在名字下、話せるトピック 就是 intro：不在问答里重复。
+    if (!a || response.field === "positioning" || response.field === "experienceHighlight") return [];
+    const q = text(response.question?.prompt) ?? FIELD_LABEL_JA[response.field] ?? null;
+    return q ? [{ a, q }] : [];
+  }).slice(0, ATTENDEE_PROFILE_ANSWERS_LIMIT);
+  return { answers, attendeeId: participant.participantId, intro: participant.experienceHighlight, name: participant.displayName, org: participant.company, role: participant.role };
 }
 
 type JudgeOut = Awaited<ReturnType<JourneyLivePorts["judge"]>>["results"][string];

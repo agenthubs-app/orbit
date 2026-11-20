@@ -6,11 +6,15 @@
  * - R17：`POST { host: { center?: "empty"|"few"|"many"|"inactive", overview?: "pre_open"|"live", setup?: "few"|"many", kiosk?: "before"|"live"|"offline", organizer?: "empty"|"few"|"many" } }` 切换主催示例变体，`host: null` 恢复默认（features/events/host/mock.ts）。
  * - R27：`POST { journey: { discover?, overview?, after?: "empty" | "few" | "many", venue?: 会場 state, registration?: "none" | "registered" | "pending_review" } }` 切换参加者整条路的示例变体，
  *   `journey: null` 恢复默认（features/events/journey/mock.ts）。
+ * - 2026-11-20：`name: "venue-record"` 另外装上一场已结束的示例活动（`design-event-venue-record`：会場の記録 / 参加者の詳細 /
+ *   详情 venueRecord / 会後 met.people），换别的名字或 `name: null` 时卸下。
  */
 import { NextResponse } from "next/server";
 
 import { DESIGN_FIXTURE_NOW, EVENT_DESIGN_FIXTURES } from "../../../../features/events/design-fixtures";
 import { setDesignFixtureNow } from "../../../../features/events/dev-clock";
+import { VENUE_RECORD_EVENT_ID, venueRecordService } from "../../../../features/events/design-fixtures/venue-record";
+import { setJourneyMockRecord } from "../../../../features/events/journey/mock";
 import { overrideMyEventsMock } from "../../../../features/events/mine/configured";
 import { overrideRedesignMockAssessments, setHostMockState, setJourneyMockState, type JourneyMockState } from "../../../../features/redesign-contracts/service-factory";
 import { redesignContractMode } from "../../../../features/redesign-contracts/route";
@@ -53,6 +57,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ journey: state }, { headers: HEADERS });
   }
   if (body?.name === null) {
+    setJourneyMockRecord(null);
     await overrideRedesignMockAssessments(null);
     overrideMyEventsMock(null);
     setDesignFixtureNow(null);
@@ -65,5 +70,6 @@ export async function POST(request: Request) {
   const data = fixture(new Date(DESIGN_FIXTURE_NOW));
   await overrideRedesignMockAssessments(data.assessments);
   overrideMyEventsMock(data.mine);
+  setJourneyMockRecord(name === "venue-record" ? { eventId: VENUE_RECORD_EVENT_ID, service: venueRecordService() } : null);
   return NextResponse.json({ name }, { headers: HEADERS });
 }

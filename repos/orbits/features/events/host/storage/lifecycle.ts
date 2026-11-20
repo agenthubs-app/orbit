@@ -12,6 +12,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { participationCodeFromBytes } from "../../../../shared/compute/participation-code";
 import { normalizeHostAgenda } from "../../../../shared/compute/host-agenda";
 import { normalizeHostContact } from "../../../../shared/compute/host-contact";
+import { eventCoverUrlFromPayload, normalizeEventCoverUrl } from "../../../../shared/compute/event-cover";
 import type { HostAgendaItem, HostEventContact, HostEventFeeKind, HostEventInput, HostEventUpdateInput } from "../../../../shared/contract/host-events";
 import { acquireSyncCommitOrderLock } from "../../../sync/commit-order-lock";
 import type { EventOperationsPostgresClient, EventOperationsSqlExecutor } from "../../event-operations/storage/postgres-client";
@@ -55,6 +56,8 @@ export interface HostEventRow {
   payload: HostEventPayload;
   /** source_payload.agenda（顶层键，和外部导入的议程同一个；详情 / 会场 / 会前准备都读它）。null = 还没有这个键（不写回，免得盖掉别的格式）。 */
   agenda: HostAgendaItem[] | null;
+  /** 2026-11-20 source_payload.coverUrl（顶层键；旧种子是 coverPath）。只经 `setCover` 改。 */
+  coverUrl?: string | null;
 }
 
 const DEFAULT_PAYLOAD: HostEventPayload = { capacity: null, emoji: null, feeAmountYen: null, feeKind: "free", feeUrl: null, online: false, templateId: null, venueArea: null };
@@ -65,6 +68,7 @@ function rowToEvent(row: Row): HostEventRow {
   const source = (typeof row.source_payload === "string" ? JSON.parse(row.source_payload) : row.source_payload ?? {}) as { host?: Partial<HostEventPayload>; agenda?: unknown };
   return {
     agenda: normalizeHostAgenda(source.agenda),
+    coverUrl: eventCoverUrlFromPayload(source as Record<string, unknown>),
     archivedAt: iso(row.archived_at),
     cancelledAt: iso(row.cancelled_at),
     createdBy: (row.created_by as string | null) ?? null,
@@ -93,7 +97,7 @@ export async function readHostEvent(executor: EventOperationsSqlExecutor, worksp
 
 function contentHash(event: HostEventRow): string {
   // 议程只在有的时候进哈希（没有议程的旧活动哈希不变）。
-  const content = { description: event.description, endsAt: event.endsAt, eventId: event.eventId, lifecycle: event.lifecycle, organizerActorId: event.organizerActorId, payload: event.payload, publicCode: event.publicCode, startsAt: event.startsAt, timezone: event.timezone, title: event.title, venue: event.venue, ...(event.agenda?.length ? { agenda: event.agenda } : {}) };
+  const content = { description: event.description, endsAt: event.endsAt, eventId: event.eventId, lifecycle: event.lifecycle, organizerActorId: event.organizerActorId, payload: event.payload, publicCode: event.publicCode, startsAt: event.startsAt, timezone: event.timezone, title: event.title, venue: event.venue, ...(event.agenda?.length ? { agenda: event.agenda } : {}), ...(event.coverUrl ? { coverUrl: event.coverUrl } : {}) };
   return createHash("sha256").update(JSON.stringify(content)).digest("hex");
 }
 
@@ -319,6 +323,32 @@ export function createHostLifecycle(deps: HostLifecycleDeps) {
         await appendVersion(executor, workspaceId, event);
         await addAlias(executor, workspaceId, eventId, eventId, "event_id");
         return event;
+      });
+    },
+
+    /**
+     * 2026-11-20 活动图片：只改 source_payload.coverUrl（null = 删除，同时去掉旧的 coverPath，免得种子图又冒出来）。
+     * 和改基本情報一样追加一个活动版本（event_version + 1、event_event_versions 快照）；中止 / 归档后只读。不通知参加者。
+     */
+    async setCover(eventId: string, coverUrl: string | null): Promise<HostEventRow> {
+      const next = coverUrl === null ? null : normalizeEventCoverUrl(coverUrl);
+      if (coverUrl !== null && !next) throw new HostError("VALIDATION", "COVER_URL_INVALID");
+      return hostTransaction(client, async (executor) => {
+        const current = await lockedEvent(executor, eventId, null);
+        if (current.lifecycle === "cancelled" || current.lifecycle === "archived") throw new HostError("INVALID_STATE", "EVENT_READ_ONLY");
+        const result = await executor.query<Row>(
+          `update event_ops_events set
+             source_payload = case when $3::text is null then coalesce(source_payload, '{}'::jsonb) - 'coverUrl' - 'coverPath'
+                                   else jsonb_set(coalesce(source_payload, '{}'::jsonb), '{coverUrl}', to_jsonb($3::text)) end,
+             event_version = event_version + 1, updated_at = now(), revision = revision + 1
+           where workspace_id = $1 and event_id = $2 and event_version = $4
+           returning ${EVENT_COLUMNS}`,
+          [workspaceId, eventId, next, current.version],
+        );
+        if (!result.rows[0]) throw new HostError("VERSION_CONFLICT");
+        const saved = rowToEvent(result.rows[0]);
+        await appendVersion(executor, workspaceId, saved);
+        return saved;
       });
     },
 
