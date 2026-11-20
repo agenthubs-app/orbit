@@ -40,7 +40,7 @@
     <div>
       <div class="doc-kicker">Orbit Redesign · 2026-11-21 · App 提案（iPhone 390×844）· 待用户确认</div>
       <h1>活动详情：紹介 / アジェンダ / 主催 / 参加者 的信息结构</h1>
-      <p>用户反馈：这四块用 tab 分开，但内容其实是一条顺序的信息，tab 和顺序排列并存不合理。App 现状（板 ⓪）是真切换的 tab：「主催」tab 里只有一行，「アジェンダ」只有几行，看完一场活动要点三次；「紹介」tab 里还混着参加者的预览。提案改成一页从上往下读完，参加者全名单另开一页。示例与 b2 同一场「CFO Night Tokyo vol.18」，人物/公司均为虚构。Web 稿由 Web 会话出，区块顺序与命名两端一致。</p>
+      <p>用户反馈：这四块用 tab 分开，但内容其实是一条顺序的信息，tab 和顺序排列并存不合理。App 现状（板 ⓪）是真切换的 tab：「主催」tab 里只有一行，「アジェンダ」只有几行，看完一场活动要点三次；「紹介」tab 里还混着参加者的预览。提案改成一页从上往下读完，参加者全名单另开一页。示例与 b2 同一场「CFO Night Tokyo vol.18」，人物/公司均为虚构。Web 稿 event-detail-ia-proposal.html 由 Web 会话出，区块顺序与命名两端一致（Web 唯一差异：≥1280 宽屏时主催卡放右栏，见 Web W4）。</p>
     </div>
     <div class="doc-tools">
       <div class="seg" data-ctl="theme"><button data-v="light">ライト</button><button data-v="dark">ダーク</button></div>
@@ -55,8 +55,8 @@
         B：保留 tab，但只在内容真的很长时用（实际上四块都不长，等于不用）。<br>
         C：单列 + 顶部锚点 chip（点了滚到对应块）。页面不长，锚点多出一排控件，不推荐。</div>
       <div class="q"><b>S2　四块的顺序？</b><br>
-        <span class="opt-a">推荐 A：紹介 → 参加者 → アジェンダ → 主催</span>。Orbit 看活动的核心是「会遇到谁」，参加者放第二；主办方名字已经在封面卡标题上方，底部只放一行卡。<br>
-        B：紹介 → アジェンダ → 参加者 → 主催（connpass / Peatix 的顺序，参加者靠后）。</div>
+        <span class="opt-a">推荐 A：紹介 → アジェンダ → 参加者 → 主催</span>（与 Web 稿相同）。对标 Eventbrite / Meetup：介绍后紧跟议程；参加者块紧接着，仍在第一屏下方就能看到；主办方名字已经在封面卡标题上方，底部只放一行卡。<br>
+        B：紹介 → 参加者 → アジェンダ → 主催（把「会遇到谁」提到第二）。</div>
       <div class="q"><b>S3　参加者在详情页放多少？</b><br>
         <span class="opt-a">推荐 A：只放预览</span> —— 人数 + 头像 + 「プランに合う / 知り合い」人数 + 最多 3 位和你计划相关的人，下面「全員を見る」进全名单页（板 ③），筛选和搜索放在全名单页。对标 Luma「N Going」+ 全部一览、Meetup Attendees「See all」。<br>
         B：详情页直接放全名单（128 人时页面会非常长，主办方和 アジェンダ 被压到最底）。</div>
@@ -119,10 +119,10 @@ const utabs = (k) => `<div class="utabs">${['紹介', 'アジェンダ', '主催
 function nowIntro() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + utabs(0) + `<div class="card"><div class="sub" style="line-height:1.75">${DESC}</div></div>
   <div class="card" style="margin-top:12px"><div class="card-h"><h3>会いたい人</h3><span class="lbl">参加者 128名から</span></div><div class="list">${P.slice(0, 3).map(p => `<div class="li"><div class="av ${p.c}">${p.i}</div><div class="meta"><b>${p.n} · ${p.co}</b><span>${p.note}</span></div></div>`).join('')}</div></div>` + cta('参加登録', true); }
 function nowHost() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + utabs(2) + `<div class="card"><div class="row" style="gap:12px"><span class="emo" style="background:var(--mac-lav)">🥂</span><div style="flex:1"><b style="font-size:14px">${EV.host}</b><div class="lbl">これまで 17回開催</div></div></div></div>` + cta('参加登録', true); }
-function newTop() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + intro(false) + people(false) + cta('参加登録', true); }
-function newTopGate() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + intro(false) + peopleGate + cta('参加登録', true); }
-function newBottom() { return `<div style="margin-top:-8px"></div>` + people(true).replace('<div class="sec-h">', '<div class="sec-h" style="margin-top:6px">') + agenda(false) + host + cta('会う準備', false); }
-function endedPage() { return topbar('', '', back, shareB) + hero('終了', true) + recCard + intro(false) + people(true) + cta('ふりかえり', false); }
+function newTop() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + intro(false) + agenda(false) + cta('参加登録', true); }
+function newTopGate() { return topbar('', '', back, shareB) + hero('申込受付中 · 残り 22枠') + relCard + agenda(false).replace('<div class="sec-h">', '<div class="sec-h" style="margin-top:6px">') + peopleGate + cta('参加登録', true); }
+function newBottom() { return people(true).replace('<div class="sec-h">', '<div class="sec-h" style="margin-top:6px">') + host + cta('会う準備', false); }
+function endedPage() { return topbar('', '', back, shareB) + hero('終了', true) + recCard + intro(false) + agenda(false) + cta('ふりかえり', false); }
 function rosterPage() {
   return topbar('参加者 128名', EV.n, back, '<span></span>') + `<div class="seg full p-seg"><button class="on">プランに合う 18</button><button>知り合い 3</button><button>全員 128</button></div>
   <div class="search" style="margin-top:10px">${ic('search', 'sm')}名前・会社</div>
@@ -139,13 +139,13 @@ h += boards([
   ['⓪a 現状 · 紹介 tab', '现状', phone({ body: nowIntro(), tab: -1 }), ['「紹介」tab 里除了介绍，还有「会いたい人」——其实是参加者的内容', '看アジェンダ / 主催 / 参加者 要再点三次 tab']],
   ['⓪b 現状 · 主催 tab', '现状', phone({ body: nowHost(), tab: -1 }), ['一个 tab 里只有一行卡，tab 下面大片空白']],
 ]);
-h += sec('提案 · 一页从上往下读（S1 推荐 A，S2 推荐顺序）', '封面 → 关联 → 紹介 → 参加者 → アジェンダ → 主催；全名单另开一页');
+h += sec('提案 · 一页从上往下读（S1 推荐 A，S2 推荐顺序）', '封面 → 关联 → 紹介 → アジェンダ → 参加者 → 主催；全名单另开一页');
 h += boards([
-  ['① 詳細 · 上半', '提案', phone({ body: newTop(), tab: -1, pins: pin(1, '.p-intro') + pin(2, '.p-ppl') + pin(3, '.p-all') }), ['紹介：超过 6 行渐隐折叠，「続きを読む」原地展开', '参加者：人数 + 头像 + プランに合う / 知り合い 人数 + 最多 3 位和计划相关的人（原「会いたい人」卡并进来）；已报名时每行能点开参加者シート', '「全員を見る」进 ③ 全名单页']],
-  ['② 詳細 · 往下滚', '提案', phone({ body: newBottom(), tab: -1, pins: pin(1, '.p-ag') + pin(2, '.p-host') }), ['アジェンダ：时间线，超过 5 项折叠「すべて見る」；没有议程时整块不出', '主催：一行卡，有主办方页才有箭头；底部主按钮照旧（报名前「参加登録」、报名后「会う準備」）']],
+  ['① 詳細 · 上半', '提案', phone({ body: newTop(), tab: -1, pins: pin(1, '.p-intro') + pin(2, '.p-ag') }), ['紹介：超过 6 行渐隐折叠，「続きを読む」原地展开', 'アジェンダ：时间线，超过 5 项折叠「すべて見る」原地展开；没有议程时整块不出']],
+  ['② 詳細 · 往下滚', '提案', phone({ body: newBottom(), tab: -1, pins: pin(1, '.p-ppl') + pin(2, '.p-all') + pin(3, '.p-host') }), ['参加者：人数 + 头像 + プランに合う / 知り合い 人数 + 最多 3 位和计划相关的人（原「会いたい人」卡并进来）；已报名时每行能点开参加者シート', '「全員を見る」进 ③ 全名单页', '主催：一行卡，有主办方页才有箭头；底部主按钮照旧（报名前「参加登録」、报名后「会う準備」）']],
   ['③ 参加者 · 全名单页', '新页', phone({ body: rosterPage(), tab: -1, pins: pin(1, '.p-seg') + pin(2, '.p-roster') }), ['段控件 プランに合う / 知り合い / 全員（从详情页挪过来）+ 搜索', '按页读取：当前段前 30 人，滚到底再取；点人打开参加者シート']],
   ['④ 詳細 · 名单锁着（报名前）', '状态', phone({ body: newTopGate(), tab: -1, pins: pin(1, '.p-gate') }), ['规则不变（roster-policy A）：只给人数和知り合い人数，按钮去报名；主办方看到「運営ページで見る」']],
-  ['⑤ 詳細 · 已结束', '状态', phone({ body: endedPage(), tab: -1 }), ['会場の記録 卡在封面卡下面（已上线的样子）；下面同样是 紹介 → 参加者 → アジェンダ → 主催']],
+  ['⑤ 詳細 · 已结束', '状态', phone({ body: endedPage(), tab: -1 }), ['会場の記録 卡在封面卡下面（已上线的样子）；下面同样是 紹介 → アジェンダ → 参加者 → 主催']],
 ]);
 h += sec('ダーク', '');
 h += boards([
