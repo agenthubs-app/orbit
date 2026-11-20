@@ -66,7 +66,8 @@ function assertInSync(run: FnRun): void {
 /* ── rule 1: today's plate ─────────────────────────────────────────── */
 
 test("rule 1: which words ask what to handle today, now or first (zh, ja, en) — and which do not", () => {
-  for (const words of ["今天先处理哪些事？", "今天要做什么", "现在该做什么？", "今天最先处理哪个", "先做哪几件事", "今日やることは？", "まず何から手を付ければいい？", "What should I do today?", "What should I work on first?", "what's on my plate today"]) assert.equal(asksTodaysPlate(words), true, words);
+  // The App's own suggested question (todayVm.questionTasks) in zh, ja and en is among them.
+  for (const words of ["今天先处理哪些事？", "今日は何から進めますか？", "What should I handle first today?", "今天要做什么", "现在该做什么？", "今天最先处理哪个", "先做哪几件事", "今日やることは？", "まず何から手を付ければいい？", "What should I do today?", "What should I work on first?", "what's on my plate today"]) assert.equal(asksTodaysPlate(words), true, words);
   for (const words of ["今天有哪些日程？", "今天做了什么？", "明天有哪些安排", "今天到期的待办有哪些？", "What did I do today?", "Do I have any meetings today?", "田中先生的邮件", "先週のメモ"]) assert.equal(asksTodaysPlate(words), false, words);
 });
 

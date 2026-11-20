@@ -53,7 +53,7 @@ export function ownWindow<F extends Windowed>(filter: F, message: string): { fil
 /** "Today", "now" or "first" in the sense of what to take up (zh, ja, en). */
 const PLATE_WHEN = /(今天|今日|今儿|现在|眼下|当下|这会儿|先(?![生週月日])|首先|优先|最要紧|最紧急|当务之急|きょう|今すぐ|いま|今(?![週月年度回朝晩夜後])|まず|最初に|先に|\b(?:today|now|right now|first|this morning|tonight)\b)/iu;
 /** Doing, handling, taking up (zh, ja, en). */
-const PLATE_DO = /(处理|做|干|(?<![待代])办|忙|搞定|跟进|着手|解决|弄|やる|やるべき|やること|すること|すべき|片付け|対応|手を付け|取りかか|取り掛か|優先|こなす|処理|\b(?:(?:should|must|can|could|shall) i (?:do|handle|tackle|work on|focus on|start with)|to do|do (?:first|now|today|next)|handle|tackle|work on|focus on|start with|prioriti[sz]e|deal with|get done|on my plate)\b)/iu;
+const PLATE_DO = /(处理|做|干|(?<![待代])办|忙|搞定|跟进|着手|解决|弄|やる|やるべき|やること|すること|すべき|片付け|対応|手を付け|取りかか|取り掛か|優先|こなす|処理|進め|何から|\b(?:(?:should|must|can|could|shall) i (?:do|handle|tackle|work on|focus on|start with)|to do|do (?:first|now|today|next)|handle|tackle|work on|focus on|start with|prioriti[sz]e|deal with|get done|on my plate)\b)/iu;
 /** What was already done ("今天做了什么", "what did I do today"): a question about the past, not the plate. */
 const PLATE_PAST = /(做了|处理了|干了|办了|完成了|做过|处理过|做完了|忙了|やった|済ませた|片付けた|\bdid\b|\bhave i done\b|\bi(?:'ve| have)? done\b|\bfinished\b)/iu;
 
