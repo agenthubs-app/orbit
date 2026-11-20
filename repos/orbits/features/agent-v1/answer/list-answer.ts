@@ -88,11 +88,15 @@ export function recordLine(card: AgentAnswerRecordContract, language: Language):
 
 /** The whole list answer: the text version and its blocks (the lead, then the cards — five shown first). */
 export function listAnswer(input: ListAnswerInput): { text: string; blocks: AnswerBlock[] } {
-  const lead = listLead(input);
-  const cards = recordsBlock(input.cards, input.language);
-  const shown = cards && cards.type === "records" ? cards.items : input.cards;
+  return cardsAnswer(listLead(input), input.cards, input.language);
+}
+
+/** A lead written by code, then the records as cards; the text version has one line per card (hotfix 2026-11-20 too). */
+export function cardsAnswer(lead: string, records: readonly AgentAnswerRecordContract[], language: Language): { text: string; blocks: AnswerBlock[] } {
+  const cards = recordsBlock(records, language);
+  const shown = cards && cards.type === "records" ? cards.items : records;
   return {
     blocks: [{ text: lead, type: "paragraph" }, ...(cards ? [cards] : [])],
-    text: [lead, ...shown.map((card, index) => `${index + 1}. ${recordLine(card, input.language)}`)].join("\n"),
+    text: [lead, ...shown.map((card, index) => `${index + 1}. ${recordLine(card, language)}`)].join("\n"),
   };
 }

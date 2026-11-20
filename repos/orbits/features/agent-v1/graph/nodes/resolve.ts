@@ -41,6 +41,9 @@ import type { AgentGraphState, GraphPart, PartCoverage } from "../state";
 import { clueWords } from "./clarify";
 import { webPartReads } from "./probe";
 import { SIMILAR_TITLE, similarity } from "../../functions/link-back";
+import { localDayOf } from "../../propose/dates";
+import { asksTodaysPlate, isPlateFilter } from "../../understand/read-window";
+import { widerThanAsked, type AskedRead, type Widened } from "./wider-read";
 
 type ReadKind = "memo" | "todo" | "schedule" | "event" | "contact" | "interaction";
 
@@ -130,11 +133,13 @@ const CJK_NOISE = [
   "我记过的", "我记的", "我写的", "我的", "私が書いた", "私の", "关于", "有关", "について",
   "刚才", "刚刚", "上面", "前面", "之前", "先前", "さっき", "先ほど",
   "这些", "那些", "这个", "那个", "这条", "那条", "这篇", "那篇", "这件", "那件", "这份", "那份", "这次", "那次", "他们", "她们", "它们", "彼女", "あの人", "その人", "例の", "それ", "これ", "あれ", "その", "この", "あの",
-  "笔记", "记录", "备忘", "待办", "任务", "日程", "活动", "联系人", "事情", "东西", "内容", "要点", "话题", "話", "メモ", "ノート", "タスク", "ToDo", "予定", "イベント", "もの", "こと",
+  // Hotfix 2026-11-20: 代办 is the common mistyping of 待办; 所有、全部 name the whole set, never words to look for.
+  "所有的", "所有", "全部的", "全部", "一共", "总共", "全都", "すべての", "全ての", "全部の",
+  "笔记", "记录", "备忘", "待办", "代办", "任务", "日程", "活动", "联系人", "事情", "东西", "内容", "要点", "话题", "話", "メモ", "ノート", "タスク", "ToDo", "予定", "イベント", "もの", "こと",
   "他", "她", "它", "这", "那", "该", "彼", "我", "私", "件", "的", "の",
 ];
 const LATIN_NOISE = new Set(["the", "a", "an", "this", "that", "these", "those", "it", "its", "my", "mine", "our", "your", "his", "her", "their", "him", "them", "me", "i", "about", "of", "on", "for", "in", "at", "to", "note", "notes", "memo", "memos", "record", "records", "todo", "todos", "to-do", "to-dos", "task", "tasks", "schedule", "event", "events", "item", "items", "one", "ones", "first", "second", "third", "last", "earlier", "above", "previous", "wrote", "written",
-  "today", "tomorrow", "yesterday", "week", "month", "year", "next", "latest", "recent", "open", "done", "completed", "finished", "overdue", "pending", "upcoming"]);
+  "today", "tomorrow", "yesterday", "week", "month", "year", "next", "latest", "recent", "open", "done", "completed", "finished", "overdue", "pending", "upcoming", "all", "every"]);
 
 /** run-02 repair 1: words that point at one record ("那篇", "第二个", "it") — as opposed to naming a kind ("タスク", "notes"). */
 const POINTER = /(这|那|该|此|它|他|她|彼|それ|これ|あれ|その|この|あの|例の|刚才|刚刚|上面|前面|之前|さっき|先ほど|第[一二三四五六七八九十\d]|\b(this|that|these|those|it|its)\b)/iu;
@@ -561,6 +566,16 @@ export function resolveNode(scope: NodeScope): GraphNode {
       // 3. What to read.
       const capabilities = part.reading?.capabilities.length ? part.reading.capabilities : part.capabilities;
       const kinds = readKindsOf(capabilities);
+      // Hotfix 2026-11-20 (rule 1, understand/read-window.ts): "what to handle today" reads the open to-dos due or planned up
+      // to today (overdue included) and today's schedule items, whichever of the two the first layer named.
+      const today = localDayOf(now, zone);
+      const plate = isPlateFilter(filter, today) && asksTodaysPlate(quote);
+      if (plate && !contacts.length && !text) {
+        kinds.add("todo");
+        kinds.add("schedule");
+        read.notes.push("This asks what to take up today: these are the to-dos not done that are due or planned today or earlier (the overdue ones included, most overdue first) and today's schedule items. Give them all, the most urgent first; never say only today's records were looked at.");
+        emitTrace({ partId: part.localId, today, type: "resolve.todays_plate" });
+      }
       // Finding events by conditions is not a read of this version (an attached event is read by id).
       if (kinds.has("event") && !part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event") && ![...kinds].some((kind) => kind !== "event" && kind !== "contact") && contacts.length && (text || part.refs.some((ref) => recordKindOf(ref.entity) === "event" && clueSearchWords(clueWords(input.message, ref) ?? "")))) {
         // AG11 run-02 (AE-RD-009): "田中在客户访谈里最在意什么" tagged as an event of a named person: a meeting or interview with
@@ -666,6 +681,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
       const searchKinds = attachedOnly ? [] : (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !closedKinds.has(kind) && !(kind === "memo" && interactionAnswers) && !(kind === "memo" && openItems));
       if (current) read.notes.push("This asks how the person stands now: the interactions, their newest notes and the profile are all here; where they differ, the newer dated record is what holds now. Never give as current anything a newer record replaces (a former company, an old role).");
       const subjects = contacts.length ? contacts.map((item) => item.id) : [undefined];
+      const asked: AskedRead[] = [];
       let unclear = false;
       const reads = new Map<string, { complete: boolean; kind: string; pagesRead: number; total: number | null; directions: Set<"oldest" | "newest"> }>();
       for (const kind of searchKinds) {
@@ -683,9 +699,10 @@ export function resolveNode(scope: NodeScope): GraphNode {
         }
         // With nothing else to narrow by: a to-do list is the open ones, a schedule question is what is coming.
         const kindStatus = kind === "todo" ? status ?? (!contacts.length && !kindText ? "open" : undefined) : undefined;
-        const kindFrom = kind === "schedule" && !from && !to && !contacts.length && !kindText ? now : from;
+        const kindFrom = kind === "schedule" && plate ? localMidnight(today, zone) : kind === "schedule" && !from && !to && !contacts.length && !kindText ? now : from;
         if (kind === "todo" && kindStatus && !status) read.notes.push("Only the to-dos not done yet were read.");
-        if (kind === "schedule" && kindFrom !== from) read.notes.push("Only schedule items from now on were read.");
+        if (kind === "schedule" && kindFrom !== from && !plate) read.notes.push("Only schedule items from now on were read.");
+        if (kind === "todo" || kind === "schedule") asked.push({ defaultFrom: kind === "schedule" && kindFrom === now && !from, from: kindFrom, fromDay: plate ? (kind === "schedule" ? today : undefined) : filter?.from, kind, status: kindStatus, statusSaid: Boolean(status), text: kindText, to, toDay: filter?.to });
         if (!(kind === "memo" && notesBesideProfile && contacts.length)) read.wantsRecords = true;
         for (const contactId of subjects) {
           const orders: ("newest" | "oldest")[] = order === "both" ? ["newest", "oldest"] : [order];
@@ -810,6 +827,29 @@ export function resolveNode(scope: NodeScope): GraphNode {
         read.gaps.add("no_record");
         read.lines.push(words.noRecord(quote));
       }
+      // Hotfix 2026-11-20 (rule 3, graph/nodes/wider-read.ts): nothing under a narrowing, but records of the kind outside it —
+      // code says what was looked for and how many there are, and shows them (no model call).
+      let widened: Widened | null = null;
+      if (read.gaps.has("no_record") && !contacts.length && !boundIds.size && !recordViews.length && asked.length) {
+        try {
+          widened = await widerThanAsked({ asked, cardOf: (view) => recordOfView(view, { language: state.language, nameOf: (id) => names.get(id) ?? run.readNames.get(id)?.name, now, timeZone: zone }), language: state.language, maxPages: records.maxPages, now, quote, reader: records.reader, scope: accountScope });
+        } catch (error) {
+          emitTrace({ error: error instanceof Error ? error.message : String(error), partId: part.localId, type: "read.failed", where: "resolve.wider" });
+        }
+        if (widened) {
+          read.lines = read.lines.filter((line) => line !== words.noRecord(quote));
+          run.answers.set(part.localId, widened.text);
+          run.answerBlocks.set(part.localId, widened.blocks);
+          widened.views.forEach((view, index) => {
+            run.recordCards.set(view.ref, widened!.cards[index]);
+            run.recordSort.set(view.ref, listSortKey(view));
+            run.readNames.set(view.id, { name: nameOf(view, zone), type: view.kind });
+            const source = readSourceOf(view, zone);
+            if (source) run.readSources.set(view.ref, source);
+          });
+          emitTrace({ partId: part.localId, shown: widened.views.map((view) => view.ref), type: "resolve.nothing_under_narrowing" });
+        }
+      }
       const coverageLine = read.coverage.find((item) => item.total !== null && item.total > item.seen);
       if (coverageLine && LIST_DELIVERABLES.has(part.plan.deliverable)) read.lines.push(words.coverage(coverageLine.seen, coverageLine.total, coverageLine.direction ?? null));
 
@@ -846,6 +886,11 @@ export function resolveNode(scope: NodeScope): GraphNode {
       } else {
         // Nothing found: the part is answered by code's sentence (no model call).
         finish("answered", null);
+        // Hotfix 2026-11-20: the records shown instead were read and are what the answer rests on.
+        if (widened) {
+          part.reads = [...(part.reads ?? []), ...widened.views.map((view) => ({ ref: view.ref, version: view.version }))];
+          part.cites = widened.views.map((view) => view.ref);
+        }
       }
     }
     settleDependencies(parts);

@@ -44,7 +44,7 @@ const HONORIFIC =/(さん|様|さま|氏|先生|老师|女士|先生们)$/u;
  * Words that point at the user's own records or at something only the context names: a target made of them names
  * no public object, so nothing is built (§3.4: "如需要私有笔记…才能定位，改请用户给出可公开使用的名称或网址").
  */
-const PRIVATE_POINTER = /(笔记|备忘|记录|联系人|待办|日程|那家|这家|那个|这个|那位|这位|该公司|他|她|它|我的|メモ|ノート|記録|連絡先|予定|あの|その|この|彼|\bnotes?\b|\bmemos?\b|\brecords?\b|\bcontacts?\b|\bmy\b|\bthat (?:company|one|person)\b|\bthis (?:company|one|person)\b|\bthey\b|\bhe\b|\bshe\b)/iu;
+const PRIVATE_POINTER = /(笔记|备忘|记录|联系人|待办|代办|日程|那家|这家|那个|这个|那位|这位|该公司|他|她|它|我的|メモ|ノート|記録|連絡先|予定|あの|その|この|彼|\bnotes?\b|\bmemos?\b|\brecords?\b|\bcontacts?\b|\bmy\b|\bthat (?:company|one|person)\b|\bthis (?:company|one|person)\b|\bthey\b|\bhe\b|\bshe\b)/iu;
 
 export function namesPrivatePointer(quote: string): boolean {
   return PRIVATE_POINTER.test(quote);
