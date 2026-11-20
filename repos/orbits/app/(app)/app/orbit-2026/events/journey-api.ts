@@ -54,7 +54,8 @@ export const journeyApi = {
   confirmAfter: (eventId: string, items: EventAfterConfirmInput["items"]) => call(`/api/events/${id(eventId)}/after/confirm`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey(), items }), method: "POST" }, eventAfterConfirmResultSchema as ZodType<EventAfterConfirmResult>),
   dismiss: (eventId: string, reason: EventRecommendationDismissReason) => call(`/api/recommendations/events/${id(eventId)}/dismiss`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey(), reason }), method: "POST" }, eventRecommendationDismissResultSchema as ZodType<EventRecommendationDismissResult>),
   /** 2026-11-20 参加者の詳細（报名者之间、对方公开了参加用プロフィール才有；其余一律 404）。 */
-  attendee: (eventId: string, attendeeId: string) => call(`/api/events/${id(eventId)}/attendees/${id(attendeeId)}`, undefined, eventAttendeeProfileSchema as ZodType<EventAttendeeProfile>),
+  // participant id 走查询参数（id 里可能有 `%`，放路径会被解码两次）。
+  attendee: (eventId: string, attendeeId: string) => call(`/api/events/${id(eventId)}/attendees/profile?attendeeId=${id(attendeeId)}`, undefined, eventAttendeeProfileSchema as ZodType<EventAttendeeProfile>),
   /** メモ（自分だけ）：与会場モード同一条 `/venue/memo`（空文字 = 清除）。 */
   memo: (eventId: string, attendeeId: string, text: string) => call(`/api/events/${id(eventId)}/venue/memo`, { body: JSON.stringify({ attendeeId, text }), method: "POST" }, eventVenueMemoResultSchema),
   /** 交換を申請 / 承認・無視：与会場モード同一组运营路由。 */

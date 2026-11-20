@@ -240,3 +240,14 @@ function venueRecordRecords() {
   const store = createMemoryActorRecordStore();
   return { checklist: createPrepChecklistService({ store }), feedback: createEventFeedbackService({ store }), follows: createOrganizerFollowService({ store }), memos: createVenueMemoService({ store }) };
 }
+
+test("attendee profile reads the id from ?attendeeId= so ids that contain % are not decoded twice (2026-11-21)", async () => {
+  const odd = "event-participant-profile:e:party-app%3Aprofile%3Aabc";
+  const seen: string[] = [];
+  const base = venueRecordService();
+  const spy = { ...base, attendeeProfile: async (actorId: string, eventId: string, attendeeId: string) => { seen.push(attendeeId); return base.attendeeProfile(actorId, eventId, "vr-liu"); } };
+  const url = `http://x/api/events/${VENUE_RECORD_EVENT_ID}/attendees/profile?attendeeId=${encodeURIComponent(odd)}`;
+  const res = await routes(spy).attendeeProfile(new Request(url), params({ attendeeId: "profile", id: VENUE_RECORD_EVENT_ID }));
+  assert.equal(res.status, 200);
+  assert.deepEqual(seen, [odd]);
+});
