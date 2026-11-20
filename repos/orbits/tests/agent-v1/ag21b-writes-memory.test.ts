@@ -29,7 +29,8 @@ import type { ResolveContext } from "../../features/agent-v1/propose/resolve";
 import type { StoredIntent } from "../../features/agent-v1/propose/schema";
 import { contactWorld, memoryContactAccess } from "./contact-kit";
 import { recordAccessOf } from "./graph-kit";
-import { contact, memo, todo } from "./read-kit";
+import { contact, memo, schedule, todo } from "./read-kit";
+import { readingKindsOf } from "../../features/agent-v1/graph/nodes/route";
 import { asksForEverything } from "../../features/agent-v1/graph/nodes/answer";
 
 /**
@@ -340,6 +341,32 @@ test("R41 a new note that may be one already recorded: the existing note quoted 
   assert.equal(frozen.length, 0, "nothing written while it asks");
   assert.match(result.text, /颜色偏暖/u, "the existing note is quoted");
   assert.ok(result.sourceRefs.includes("memo:note:proof-visit"), JSON.stringify(result.sourceRefs));
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// R42: readings that differ only by record kind are looked up first; one kind with a match decides.
+
+test("R42 '把样书那条改到周四': only a to-do holds 样书 — no 'which kind' question, the part goes on to its card", async () => {
+  const message = "把样书那条改到周四";
+  const readings = [{ capabilities: ["todo.update"], deliverable: "change", label: "改待办" }, { capabilities: ["schedule.update"], deliverable: "change", label: "改日程" }, { capabilities: ["privateEvent.update"], deliverable: "change", label: "改私人活动" }];
+  assert.deepEqual(readingKindsOf(readings as never)?.map((item) => item.kind), ["todo", "schedule", "privateEvent"]);
+  assert.equal(readingKindsOf([{ capabilities: ["todo.update"] }, { capabilities: ["todo.read"] }] as never), null, "not only a kind apart");
+  const world = (records: ReturnType<typeof todo>[]) => ({ ...recordAccessOf({ events: [], records }), privateEvents: { get: async () => null, list: async () => [], references: async () => [] } }) as never;
+  const run = async (records: ReturnType<typeof todo>[]) => {
+    const model = deepseekStub((call: ModelCall) => {
+      if (call.node === "understand") return json({ language: "zh", parts: [part({ clarity: "multiple_readings", deliverable: "change", objectClues: [{ entity: "todo", text: "样书那条" }], readings, requiredCapabilities: ["todo.update"], sourceQuote: message })], plainChat: false });
+      throw new Error(`unexpected model call in ${call.node}`);
+    });
+    const kit = graphKit(model.fetchImplementation, { now: NOW, records: world(records) });
+    return runAgentGraph(kit.deps, kit.input(message)).catch(() => null);
+  };
+  const one = await run([todo(ACTOR, "task:proofs", "给石楠寄样书", { plannedDate: "2026-11-24" })]);
+  assert.ok(one);
+  assert.equal(one!.clarifications.filter((set) => set.kind === "question").length, 0, one!.text);
+  assert.equal(one!.partResults[0].route, "propose_write");
+  // A to-do and a schedule item both hold the words: asked as before.
+  const two = await run([todo(ACTOR, "task:proofs", "给石楠寄样书"), schedule(ACTOR, "schedule:proofs", "样书交接", "2026-11-26T02:00:00.000Z")]);
+  assert.equal(two!.clarifications.filter((set) => set.kind === "question").length, 1, two!.text);
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
