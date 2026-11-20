@@ -32,6 +32,7 @@ import type { NoteInteractionContract } from "../../../../shared/contract/notes"
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
 import { asksWhoToFollowUp, isWholeQuote, realTopicOf } from "../../functions/basis";
 import { asksWhatToPrepare, preparePart } from "./prepare";
+import { asksForNextStep, asksForReasons, eventReason, fitLine, nextStepWords, themeLinks, themesOf } from "./reasons";
 import { onlyWindowWords } from "../../understand/read-window";
 import { asksEventsToGoTo, pointsAtPast, writesADate, upcomingTopicOf, directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, memoriesFor, naturalField, PICK_WORDS, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
 import { compare, dimensionsIn, type ComparedEvent } from "../../functions/compare";
@@ -962,8 +963,34 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const lead = filterLead ?? (useNatural && !listing && !todoNatural
     ? say.rankLead(language, [say.fieldName(natural.field, language)], { history: false, memory: [], natural: true })
     : steps.length || memoryWords.length ? say.rankLead(language, steps, { history, memory: memoryWords, natural: false }) : null);
+  // Hotfix part 3 (graph/nodes/reasons.ts): asked why, each event's reason is its own themes and the user's note that mentions
+  // one; all stay listed by time, one line says which fit. Asked for a next step, each person's line ends with the recorded item.
+  let fitText: string | null = null;
+  const linkedNotes: RecordView[] = [];
+  if (domain === "event" && !topic && asksForReasons(original)) {
+    const shown = result.ordered.map((item) => item.candidate as EventCandidate);
+    const links = await themeLinks(records.reader, accountScope, [...new Set(shown.flatMap((event) => themesOf(event.topics)))], recalled.map((item) => item.memory.content));
+    let fitting = 0;
+    for (const event of shown) {
+      const reason = eventReason(language, themesOf(event.topics), links);
+      if (reason) reasons.set(event.id, reason);
+      if (themesOf(event.topics).some((theme) => links.has(theme))) fitting += 1;
+    }
+    fitText = fitLine(language, fitting, shown.length, [...links.keys()]);
+    for (const link of links.values()) if (link.note && !linkedNotes.some((view) => view.ref === link.note!.ref)) linkedNotes.push(link.note.view);
+    emitTrace({ fitting, linked: [...links.keys()], partId: part.localId, type: "functions.event_reasons" });
+  }
+  if (domain === "contact" && history && asksForNextStep(original)) {
+    const urgency = ["overdue_followup", "overdue_todo", "past_planned", "due_in_period", "planned_in_period"];
+    for (const item of result.ordered) {
+      const contact = item.candidate as ContactCandidate;
+      const first = [...contact.signals].sort((left, right) => urgency.indexOf(left.kind) - urgency.indexOf(right.kind))[0];
+      if (first) reasons.set(contact.id, `${reasons.get(contact.id) ?? ""}${reasons.get(contact.id) ? (language === "en" ? "; " : "；") : ""}${nextStepWords(language, first.todo.title)}`);
+    }
+    emitTrace({ partId: part.localId, people: result.ordered.length, type: "functions.next_steps" });
+  }
   const apart = history && upcoming.length ? say.upcomingApartLine(language, upcoming.map((contact) => `${contact.name}${language === "en" ? " — " : "——"}${contact.signals.map((item) => signalWords(item, language, timeZone)).join(language === "en" ? "; " : "；")}`)) : null;
-  const written = writeAnswer({ upcoming: upcomingOnly, apart, basis: topic && !basisMemo ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
+  const written = writeAnswer({ upcoming: upcomingOnly, apart: apart ?? fitText, basis: topic && !basisMemo ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
   // AG12 run-03 (AE-FN-003 R4): beside a ranking that says its basis, the ways of ordering it again as clickable entries (the
   // same options as the basis question; the clients show entries already). A click ranks again by it; it asks nothing.
   if (lead && !optionSets.some((set) => set.partId === part.localId && set.purpose === "ranking" && set.kind === "entry")) {
@@ -986,7 +1013,14 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   part.waitReason = null;
   const said = history ? [...result.ordered.map((item) => item.candidate as ContactCandidate), ...upcoming] : [];
   const signalRefs = history ? [...new Set(said.flatMap((item) => item.signals.map((signalItem) => signalItem.todo.ref)))] : [];
-  part.cites = [...written.cites, ...upcoming.map((item) => item.ref), ...signalRefs];
+  part.cites = [...written.cites, ...upcoming.map((item) => item.ref), ...signalRefs, ...linkedNotes.map((view) => view.ref)];
+  // Hotfix part 3: the notes a reason names are records of this answer (small cards under it).
+  for (const view of linkedNotes) {
+    run.recordCards.set(view.ref, recordOfView(view, { language, now, timeZone }));
+    run.readNames.set(view.id, { name: String(view.fields.title ?? ""), type: "memo" });
+    const source = readSourceOf(view, timeZone);
+    if (source) run.readSources.set(view.ref, source);
+  }
   part.reads = [...result.ordered.map((item) => ({ ref: item.candidate.view.ref, version: item.candidate.view.version })), ...upcoming.map((item) => ({ ref: item.view.ref, version: item.view.version })), ...signalRefs.map((ref) => ({ ref, version: "" }))];
   part.coverage = [{ complete: result.coverage.truncated === 0, kind: domain, pagesRead: Math.max(1, Math.ceil(result.coverage.total / PAGE)), seen: result.semantic && result.matched ? result.coverage.judged : result.ordered.length, total: result.matching }];
   part.gaps = [];
