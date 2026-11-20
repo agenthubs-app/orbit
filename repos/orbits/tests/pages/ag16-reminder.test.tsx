@@ -156,7 +156,7 @@ test("16-1: flipping the switch saves at once (no card), in the page's language;
   assert.equal(toggle.props["aria-label"], "「每周五挑 3 场周末活动」有新结果时提醒我");
   await act(async () => { toggle.props.onClick(); });
   await settle();
-  assert.ok(calls.includes("PUT /api/agent/automations/t1/reminder {\"locale\":\"zh\",\"push\":true}"), calls.join("\n"));
+  assert.ok(calls.includes("PUT /api/agent/automations/t1/reminder {\"push\":true}"), calls.join("\n"));
   assert.deepEqual(changed, ["x"]);
   // On: this browser's line appears; still no prompt (D16-3).
   assert.ok(textIn(renderer.root).includes("这个浏览器还没允许 Orbit 发通知"));
@@ -238,7 +238,7 @@ test("16-3: a deployment without browser reminders, or a browser that cannot sho
 /* ── 16-2: after the card ─────────────────────────────────────────────────── */
 
 const reminderCard = (overrides: Partial<AgentActionPreviewContract> = {}): AgentActionPreviewContract => ({
-  actionId: "a9", locale: "zh", operations: [{ after: { notify: { inApp: true, push: true, pushLocale: "zh" } }, before: { notify: { inApp: true, push: false } }, capability: "rule.update", display: { change: "update", note: "只改这一条，别的任务照旧只进收件箱。提醒上不写活动名称、时间和地点。", record: "定时任务「每周五挑 3 场周末活动」", rows: [{ after: "放进收件箱，并在手机和浏览器上提醒", before: "只放进收件箱", field: "notify", label: "有新结果" }] }, operationId: "a9:op1", status: "succeeded", text: "t" }],
+  actionId: "a9", locale: "zh", operations: [{ after: { notify: { inApp: true, push: true } }, before: { notify: { inApp: true, push: false } }, capability: "rule.update", display: { change: "update", note: "只改这一条，别的任务照旧只进收件箱。提醒上不写活动名称、时间和地点。", record: "定时任务「每周五挑 3 场周末活动」", rows: [{ after: "放进收件箱，并在手机和浏览器上提醒", before: "只放进收件箱", field: "notify", label: "有新结果" }] }, operationId: "a9:op1", status: "succeeded", text: "t" }],
   payloadHash: "h", revision: 1, revisions: [], status: "completed", summary: "s", title: "修改1项", updatedAt: "2026-11-20T01:00:00.000Z", ...overrides,
 });
 

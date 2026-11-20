@@ -63,8 +63,8 @@ export interface AgentRuleNotify {
   /** The task's own reminder switch (AG16): a period with a result also sends one reminder to the owner's phone and browser. */
   push: boolean;
   /**
-   * AG16: the language of the reminder's one sentence — the language the owner used when turning the reminder on
-   * (the task runs with nobody there). Not set: the rule's own language.
+   * Written by the first AG16 build only and ignored since: the reminder's sentence follows the language of the task's
+   * results (the run's locale) when it is sent, and switching the reminder drops this field. Kept so older records read.
    */
   pushLocale?: "zh" | "en" | "ja";
 }

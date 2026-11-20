@@ -49,7 +49,7 @@ export interface RuleUpdateIntent {
   targetId: string;
   expectedVersion: number;
   /** Only the parameters named here change. */
-  set: { schedule?: RuleSchedule; maxItems?: number; validUntil?: string | null; notify?: { inApp: true; push: boolean; pushLocale?: "zh" | "en" | "ja" } };
+  set: { schedule?: RuleSchedule; maxItems?: number; validUntil?: string | null; notify?: { inApp: true; push: boolean } };
   shown: RuleSnapshot;
 }
 
@@ -288,7 +288,7 @@ export function prepareRuleOperation(input: { intent: RuleOperationIntent & { pa
       payload: { automationId: intent.targetId, cardIntent, expectedVersion: intent.expectedVersion, set: after },
       preconditions,
       // AG16: a card that switches the reminder also says, in its text, that only this task changes and what the reminder holds.
-      preview: `${record}${locale === "en" ? ": " : "："}${rows.map((row) => `${row.label} ${row.before} → ${row.after}`).join(sep(locale))}${display.note ? `${locale === "en" ? ". " : "。"}${display.note}` : ""}`,
+      preview: `${record}${locale === "en" ? ": " : "："}${rows.map((row) => `${row.label}${locale === "en" ? ": " : "："}${row.before} → ${row.after}`).join(sep(locale))}${display.note ? `${locale === "en" ? ". " : "。"}${display.note}` : ""}`,
       shown: { title: shown.title },
       targetRef: target,
     };

@@ -14,8 +14,9 @@ export const dynamic = "force-dynamic";
 /**
  * agent-design AG16: the reminder switch of one scheduled task, as the owner flips it on the task's own page — it takes
  * effect at once, with no card (saying it in the conversation makes a card instead). One switch per task, covering the
- * owner's phone and browser; no other task changes. Body: `{ push: boolean, locale?: "zh" | "en" | "ja" }` — the
- * language the reminder's one sentence is written in. Answers with the task as the list shows it.
+ * owner's phone and browser; no other task changes. Body: `{ push: boolean }`. A `locale` sent by older clients is
+ * accepted and ignored: the reminder's sentence follows the language of the task's results. Answers with the task as
+ * the list shows it.
  */
 export async function PUT(
   request: Request,
@@ -25,11 +26,11 @@ export async function PUT(
   if (!requestContext) return agentAutomationUnauthorizedResponse();
   const parsed = agentScheduledTaskReminderInputSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ success: false, error: { code: "VALIDATION_ERROR", message: "The body must be { push: boolean, locale?: zh | en | ja }." } }, { status: 400 });
+    return NextResponse.json({ success: false, error: { code: "VALIDATION_ERROR", message: "The body must be { push: boolean }." } }, { status: 400 });
   }
   try {
     const { id } = await context.params;
-    const automation = await setTaskReminder(requestContext.service, id, { push: parsed.data.push, ...(parsed.data.locale ? { locale: parsed.data.locale } : {}) });
+    const automation = await setTaskReminder(requestContext.service, id, { push: parsed.data.push });
     if (!automation) {
       return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "No scheduled task matches that id." } }, { status: 404 });
     }

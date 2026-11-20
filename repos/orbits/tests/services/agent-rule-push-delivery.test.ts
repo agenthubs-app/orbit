@@ -6,7 +6,9 @@ import { pushDeliveryIdOf, pushDueKeyOf, pushHistoryLine, runHistoryLine, runIdO
 import { scheduledRunView } from "../../features/agent/automations/task-view";
 import type { OrbitPushMessage } from "../../features/notifications/push-adapter";
 import { agentScheduledTaskRunSchema } from "../../shared/api-schema/agent-v1";
-import { createDispatchKit, createRule, picked, serviceFor, type DispatchKit } from "../capabilities/agent-automation-kit";
+import { ruleWriteExecutors } from "../../features/agent-v1/domains/rule/apply";
+import { prepareRuleOperation, RULE_UPDATE } from "../../features/agent-v1/domains/rule/ops";
+import { createDispatchKit, createRule, FRIDAY_9, picked, serviceFor, type DispatchKit } from "../capabilities/agent-automation-kit";
 
 /**
  * agent-design AG16-1/2/3 (设计稿 §5.3; PLANNER 易错边界 1–5): a reminder goes out only for a task whose own switch is on;
@@ -144,12 +146,16 @@ test("AG16-2: the reminder is one fixed sentence; title, body and data hold noth
   assert.equal(rulePushMessage.length, 2);
 });
 
-test("AG16-2: the sentence is in the language the owner used when turning the reminder on, whatever the task's own language", async () => {
+test("AG16-2: the sentence is in the language of the task's results — the language of the inbox entry it announces", async () => {
   for (const [locale, body] of Object.entries(RULE_PUSH_BODY) as ["zh" | "en" | "ja", string][]) {
     const { kit, push } = setup();
     push.devices.set("user:a", [phone()]);
-    await createRule(kit.storage, "user:a", kit.now, { rule: { notify: { inApp: true, push: true, pushLocale: locale } } });
+    // A language stored with the switch before this rule (older records) no longer decides anything.
+    const other = locale === "zh" ? "ja" : "zh";
+    const rule = await createRule(kit.storage, "user:a", kit.now, { rule: { locale, notify: { inApp: true, push: true, pushLocale: other } } });
     await kit.dispatch(TICK);
+    const [run] = await kit.runs("user:a", rule.automationId);
+    assert.equal(run.locale, locale);
     assert.equal(push.sent[0].body, body);
     assert.equal(push.sent[0].title, "Orbit");
   }
@@ -341,6 +347,81 @@ test("AG16-3: a refusal that keeps coming is given up after the last round; a la
   assert.deepEqual(other.push.revoked, ["PD1"]);
   assert.equal(other.push.sent.length, 1, "a receipt never causes a second send");
   assert.equal(run.outcome, "delivered");
+});
+
+test("AG16-2: turned on from a Japanese conversation, a Chinese task's reminder is Chinese; the confirmed card wrote only the switch", async () => {
+  const { kit, push } = setup();
+  push.devices.set("user:a", [phone()]);
+  const rule = await createRule(kit.storage, "user:a", kit.now);
+  assert.equal(rule.rule?.locale, "zh");
+  const automations = serviceFor(kit.storage, "user:a", kit.now);
+  const shown = { automationId: rule.automationId, rule: rule.rule!, schedule: FRIDAY_9, status: "active", title: rule.title, version: rule.version };
+  const op = prepareRuleOperation({ actionId: "action:1", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: rule.version, set: { notify: { inApp: true, push: true } }, shown, targetId: rule.automationId }, locale: "ja", revision: 1 });
+  await ruleWriteExecutors({ automations }).find((item) => item.key === RULE_UPDATE)!.execute(op.payload as Record<string, unknown>, { actionId: "action:1", idempotencyKey: "k1", now: kit.now(), operationId: "op1", runId: "run:1" });
+  assert.deepEqual((await automations.get(rule.automationId))?.rule?.notify, (op.after as { notify: unknown }).notify, "writes exactly the card's new value");
+  await kit.dispatch(TICK);
+  assert.equal(push.sent.length, 1);
+  assert.equal(push.sent[0].body, RULE_PUSH_BODY.zh, "the same language as the result it announces");
+});
+
+/** One device, the push service accepts at 9:10; the receipt is asked for at the round 15 minutes later. */
+async function acceptedThenReceipt(receipt: { status: "ok" | "pending" } | { status: "error"; error: string } | null) {
+  const { kit, push } = setup();
+  push.devices.set("user:a", [phone()]);
+  const rule = await createRule(kit.storage, "user:a", kit.now, { rule: pushOn });
+  await kit.dispatch(TICK);
+  let [run] = await kit.runs("user:a", rule.automationId);
+  assert.deepEqual([run.delivery.push.state, run.delivery.push.targets?.[0].receipt], ["delivered", "pending"]);
+  assert.equal(pushHistoryLine(run, "zh", "Asia/Tokyo"), "提醒已送到 9:10");
+  if (receipt) push.receipts.set(run.delivery.push.targets![0].receiptId!, receipt);
+  // The second round: at 9:25 the receipt is due.
+  await kit.dispatch("2026-11-20T09:26:00+09:00");
+  [run] = await kit.runs("user:a", rule.automationId);
+  return { kit, push, rule, run };
+}
+
+test("AG16-3: the round after a delivery only reads the receipt — ok: nothing is sent and the history still says delivered", async () => {
+  const { push, run } = await acceptedThenReceipt({ status: "ok" });
+  assert.equal(push.sent.length, 1, "nothing sent again");
+  assert.deepEqual([run.delivery.push.state, run.delivery.push.attempts, run.delivery.push.targets?.[0].receipt], ["delivered", 1, "verified"]);
+  assert.equal(pushHistoryLine(run, "zh", "Asia/Tokyo"), "提醒已送到 9:10");
+  assert.deepEqual(push.counted.length, 1);
+});
+
+test("AG16-3: the receipt not there yet: nothing is sent; it is asked for again later, and after a day it is no longer asked for", async () => {
+  const { kit, push, rule, run } = await acceptedThenReceipt({ status: "pending" });
+  assert.equal(push.sent.length, 1);
+  assert.deepEqual([run.delivery.push.state, run.delivery.push.targets?.[0].receipt], ["delivered", "pending"]);
+  await kit.dispatch("2026-11-21T09:30:00+09:00");
+  const [later] = await kit.runs("user:a", rule.automationId);
+  assert.equal(push.sent.length, 1, "a receipt that never comes never causes a send");
+  assert.deepEqual([later.delivery.push.state, later.delivery.push.targets?.[0].receipt], ["delivered", undefined]);
+});
+
+test("AG16-3: the receipt says the push service did not deliver: one resend, the history says so; a second failure is not resent", async () => {
+  const { kit, push, rule, run } = await acceptedThenReceipt({ error: "MessageRateExceeded", status: "error" });
+  assert.equal(push.sent.length, 2, "sent once more");
+  assert.deepEqual(push.sent[0], push.sent[1], "the same fixed message");
+  assert.deepEqual([run.delivery.push.state, run.delivery.push.attempts, run.delivery.push.targets?.[0].attempts], ["delivered", 2, 2]);
+  assert.equal(pushHistoryLine(run, "zh", "Asia/Tokyo"), "第一次没送出去，9:26 补送到了。没有重新算。", "not 「已送到」 followed by a silent second push");
+  assert.equal(push.counted.length, 1, "still one reminder towards the day's limit");
+  // The resend's receipt also fails: no third send; the history says it did not arrive.
+  push.receipts.set(run.delivery.push.targets![0].receiptId!, { error: "MessageRateExceeded", status: "error" });
+  await kit.dispatch("2026-11-20T09:45:00+09:00");
+  const [after] = await kit.runs("user:a", rule.automationId);
+  assert.equal(push.sent.length, 2, "at most one resend per device per period");
+  assert.deepEqual([after.delivery.push.state, after.delivery.push.reason], ["failed", "provider_rejected"]);
+  assert.equal(pushHistoryLine(after, "zh", "Asia/Tokyo"), "提醒没送到。结果在收件箱里。");
+  assert.equal(kit.computed.length, 1, "nothing was worked out again");
+  assert.equal(kit.inbox.length, 1, "one inbox entry");
+});
+
+test("AG16-3: a receipt saying the device is gone, or a refusal that will not change, is never resent", async () => {
+  for (const error of ["DeviceNotRegistered", "MessageTooBig", "InvalidCredentials"]) {
+    const { push, run } = await acceptedThenReceipt({ error, status: "error" });
+    assert.equal(push.sent.length, 1, error);
+    assert.equal(run.delivery.push.state, "failed", error);
+  }
 });
 
 test("AG16: a result called off before it reached the inbox takes its reminder with it; no channel configured is said as such", async () => {

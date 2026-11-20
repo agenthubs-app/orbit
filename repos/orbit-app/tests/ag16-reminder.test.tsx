@@ -51,18 +51,18 @@ test("16-3 (App): what the line says in each state, and the draft's two cases wo
   }
 });
 
-test("16-1 (App): the switch saves at once on the web's route, with the reminder's language", async () => {
+test("16-1 (App): the switch saves at once on the web's route, and sends the switch only", async () => {
   const calls: string[] = [];
   const client = { async put(path: string, options: { body: unknown }) { calls.push(`PUT ${path} ${JSON.stringify(options.body)}`); return { data: { task: {} }, status: 200, success: true }; } } as unknown as OrbitApiClient;
-  assert.equal(await setScheduledTaskPush(client, "rule:1", true, "ja"), true);
-  assert.equal(await setScheduledTaskPush(client, "rule:1", false, "zh-Hans"), true);
-  assert.deepEqual(calls, ["PUT /api/agent/automations/rule%3A1/reminder {\"locale\":\"ja\",\"push\":true}", "PUT /api/agent/automations/rule%3A1/reminder {\"locale\":\"zh\",\"push\":false}"]);
+  assert.equal(await setScheduledTaskPush(client, "rule:1", true), true);
+  assert.equal(await setScheduledTaskPush(client, "rule:1", false), true);
+  assert.deepEqual(calls, ["PUT /api/agent/automations/rule%3A1/reminder {\"push\":true}", "PUT /api/agent/automations/rule%3A1/reminder {\"push\":false}"]);
   const failing = { async put() { return { error: { code: "NOT_FOUND" }, status: 404, success: false }; } } as unknown as OrbitApiClient;
-  assert.equal(await setScheduledTaskPush(failing, "rule:1", true, "zh"), false);
+  assert.equal(await setScheduledTaskPush(failing, "rule:1", true), false);
 });
 
 const reminderCard = (overrides: Partial<AgentActionPreviewContract> = {}): AgentActionPreviewContract => ({
-  actionId: "a9", locale: "zh", operations: [{ after: { notify: { inApp: true, push: true, pushLocale: "zh" } }, before: { notify: { inApp: true, push: false } }, capability: "rule.update", display: { change: "update", note: "只改这一条，别的任务照旧只进收件箱。提醒上不写活动名称、时间和地点。", record: "定时任务「每周五挑 3 场周末活动」", rows: [{ after: "放进收件箱，并在手机和浏览器上提醒", before: "只放进收件箱", field: "notify", label: "有新结果" }] }, operationId: "a9:op1", status: "succeeded", text: "t" }],
+  actionId: "a9", locale: "zh", operations: [{ after: { notify: { inApp: true, push: true } }, before: { notify: { inApp: true, push: false } }, capability: "rule.update", display: { change: "update", note: "只改这一条，别的任务照旧只进收件箱。提醒上不写活动名称、时间和地点。", record: "定时任务「每周五挑 3 场周末活动」", rows: [{ after: "放进收件箱，并在手机和浏览器上提醒", before: "只放进收件箱", field: "notify", label: "有新结果" }] }, operationId: "a9:op1", status: "succeeded", text: "t" }],
   payloadHash: "h", revision: 1, revisions: [], status: "completed", summary: "s", title: "修改1项", updatedAt: "2026-11-20T01:00:00.000Z", ...overrides,
 });
 

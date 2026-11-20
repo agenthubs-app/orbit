@@ -384,15 +384,15 @@ export async function rulePart(scope: NodeScope, state: AgentGraphState, part: G
     }
     // update: only what the words name.
     const rest = piece(draft.target) ? quote.replace(piece(draft.target)!, " ") : quote;
-    // AG16: the reminder switch — "推送" as before, and the plain ways of asking for a reminder on a device. The
-    // sentence's language is the one this message was written in.
+    // AG16: the reminder switch — "推送" as before, and the plain ways of asking for a reminder on a device. Only the
+    // switch is written (the card shows it); the reminder's sentence follows the language of the task's results.
     const restWords = aloneForReminder ? (piece(draft.target) ? message.replace(piece(draft.target)!, " ") : message) : rest;
     const push = pushSaidIn(rest) ?? reminderSaidIn(rest) ?? (aloneForReminder ? pushSaidIn(restWords) ?? reminderSaidIn(restWords) : null);
     const until = untilSaidIn(piece(draft.untilText) ?? rest, localDay(now, timeZone));
     const count = draft.count ?? countSaidIn(rest.replace(piece(draft.scheduleText) ?? "\u0000", " ").replace(piece(draft.untilText) ?? "\u0000", " "));
     const schedule = scheduleSaidIn(piece(draft.scheduleText) ?? rest, timeZone);
     const set: Extract<RuleOperationIntent, { capability: typeof RULE_UPDATE }>["set"] = {
-      ...(push !== null && push !== found.rule.notify.push ? { notify: { inApp: true as const, push, ...(push ? { pushLocale: language } : {}) } } : {}),
+      ...(push !== null && push !== found.rule.notify.push ? { notify: { inApp: true as const, push } } : {}),
       ...(until && until !== found.rule.validUntil ? { validUntil: until } : {}),
       ...(count && count !== found.rule.maxItems && draft.count ? { maxItems: Math.min(count, MAX_COUNT) } : {}),
       ...(schedule && JSON.stringify(schedule) !== JSON.stringify(found.schedule) ? { schedule } : {}),

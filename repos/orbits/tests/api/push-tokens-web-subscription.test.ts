@@ -124,8 +124,9 @@ test("AG16-1: the task page's own switch turns the reminder on for that one task
   assert.equal(agentScheduledTaskReminderInputSchema.safeParse({ push: true, locale: "ja" }).success, true);
   assert.equal(agentScheduledTaskReminderInputSchema.safeParse({ push: "yes" }).success, false);
   assert.equal(agentScheduledTaskReminderInputSchema.safeParse({ push: true, title: "x" }).success, false, "nothing else can be changed through the switch");
-  const on = await setTaskReminder(service, one.automationId, { locale: "ja", push: true });
-  assert.deepEqual(on?.rule?.notify, { inApp: true, push: true, pushLocale: "ja" });
+  const on = await setTaskReminder(service, one.automationId, { push: true });
+  // The switch only: the reminder's sentence follows the language of the task's results when it is sent.
+  assert.deepEqual(on?.rule?.notify, { inApp: true, push: true });
   assert.deepEqual([on?.version, on?.rule?.toldFromVersion, on?.delivery], [2, 1, "push"]);
   assert.deepEqual((await service.get(other.automationId))?.rule?.notify, { inApp: true, push: false }, "the other task is untouched");
   assert.equal((await kit.storage.direct.due.get({ key: one.automationId, kind: "rule", ownerId: "user:a" }))?.version, 2, "the dispatcher's row carries the switch");

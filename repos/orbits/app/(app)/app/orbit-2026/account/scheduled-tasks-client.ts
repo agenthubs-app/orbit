@@ -39,10 +39,10 @@ export async function setScheduledTaskRunning(id: string, running: boolean): Pro
 
 /**
  * AG16 (draft 16-1): the task's own reminder switch. It takes effect at once (no card) and covers the owner's phone and
- * browser; `language` is the language of the reminder's one sentence.
+ * browser. Only the switch: the reminder's sentence follows the language of the task's results.
  */
-export async function setScheduledTaskPush(id: string, push: boolean, language: OrbitLanguage): Promise<void> {
-  await body(await fetch(`/api/agent/automations/${encodeURIComponent(id)}/reminder`, { body: JSON.stringify({ locale: language, push }), credentials: "same-origin", headers: { "content-type": "application/json" }, method: "PUT" }));
+export async function setScheduledTaskPush(id: string, push: boolean): Promise<void> {
+  await body(await fetch(`/api/agent/automations/${encodeURIComponent(id)}/reminder`, { body: JSON.stringify({ push }), credentials: "same-origin", headers: { "content-type": "application/json" }, method: "PUT" }));
 }
 
 export async function deleteScheduledTask(id: string): Promise<void> {

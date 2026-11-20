@@ -38,7 +38,7 @@ export function ReminderBlock({ task, runs, language, onChanged, browser }: { ta
     setBusy(true);
     setPush(next);
     try {
-      await setScheduledTaskPush(task.id, next, language);
+      await setScheduledTaskPush(task.id, next);
       onChanged();
     } catch {
       setPush(!next);

@@ -8,19 +8,17 @@
  */
 import type { AgentAutomation, AgentAutomationService, AgentRuleSpec } from "./contract";
 
-export type ReminderLocale = "zh" | "en" | "ja";
-
 /**
- * The rule with its reminder switched. The sentence's language is the one the owner used when turning it on. A change
- * of the switch alone makes a new version of the task but not a new task: what earlier versions already told the owner
- * still counts as told (`toldFromVersion`).
+ * The rule with its reminder switched — the switch and nothing else (no language: the reminder's sentence follows the
+ * language of the task's results when it is sent; a language stored by older versions is dropped here). A change of the
+ * switch alone makes a new version of the task but not a new task: what earlier versions already told the owner still
+ * counts as told (`toldFromVersion`).
  */
-export function ruleWithReminder(automation: Pick<AgentAutomation, "version"> & { rule: AgentRuleSpec }, input: { push: boolean; locale?: ReminderLocale }): AgentRuleSpec {
+export function ruleWithReminder(automation: Pick<AgentAutomation, "version"> & { rule: AgentRuleSpec }, input: { push: boolean }): AgentRuleSpec {
   const { rule } = automation;
-  const pushLocale = input.locale ?? rule.notify.pushLocale ?? rule.locale;
   return {
     ...rule,
-    notify: { inApp: true, push: input.push, ...(input.push ? { pushLocale } : {}) },
+    notify: { inApp: true, push: input.push },
     toldFromVersion: rule.toldFromVersion ?? automation.version,
   };
 }
@@ -29,7 +27,7 @@ export function ruleWithReminder(automation: Pick<AgentAutomation, "version"> & 
  * The switch on the task's page. Null: not this owner's task, or not a scheduled task with parameters. Switching to the
  * state it is already in changes nothing (no new version).
  */
-export async function setTaskReminder(service: Pick<AgentAutomationService, "get" | "update">, automationId: string, input: { push: boolean; locale?: ReminderLocale }): Promise<AgentAutomation | null> {
+export async function setTaskReminder(service: Pick<AgentAutomationService, "get" | "update">, automationId: string, input: { push: boolean }): Promise<AgentAutomation | null> {
   const automation = await service.get(automationId);
   if (!automation?.rule || automation.trigger.kind !== "schedule") return null;
   if (automation.rule.notify.push === input.push) return automation;
