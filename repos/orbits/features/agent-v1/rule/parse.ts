@@ -183,3 +183,33 @@ export const RULE_NOUN = /(定时任务|定期任务|定时规则|自动任务|�
 
 /** Words that ask Orbit to tell or pick something for the user again and again (with a recurrence: a scheduled task). */
 export const RECURRING_ASK = /(挑|选|推荐|告诉我|发给我|提醒我|通知我|留意|看看|汇总|整理|知らせ|教えて|選んで|送って|まとめて|\bsend me\b|\blet me know\b|\bpick\b|\btell me\b|\bcheck\b|\bremind me\b|\bshow me\b)/iu;
+
+/**
+ * AG21a (coordinator's decision 2): a message that asks to find something now and to keep looking ("先帮我找摄影活动，再一直
+ * 帮我留意新的", "find photo events and keep watching for new ones", "まず探して、これからもチェックして") gets both — the
+ * search answered now, and the ongoing part on the scheduled-task path (its card, or its question for when to run).
+ * Returns where the ongoing words start (their clause, or the joiner before them), or null: no find-now, no ongoing words,
+ * or the keep-looking is a condition on finding nothing ("没有合适的就一直找下去，找到我满意为止" stays AG03's offer of a
+ * bounded alternative).
+ */
+const KEEP_LOOKING = /(一直(?:帮我|替我)?(?:找|留意|盯着|关注|看着|追踪)|持续(?:帮我|替我)?(?:找|留意|关注|盯着|追踪)|继续(?:帮我|替我)?(?:留意|关注|盯着)|以后也(?:帮我|替我)?(?:找|留意|关注|盯着)|长期(?:帮我|替我)?(?:留意|关注)|\bkeep (?:looking|watching|searching|checking|an eye (?:out|on))\b|\bkeep me posted\b|ずっと(?:探して|見て|チェックして|追って)|引き続き(?:探して|チェックして|見て)|これからも(?:探して|チェックして|見て|追って))/iu;
+const FIND_NOW = /(找|查|看看|列|推荐|挑|\bfind\b|\blook (?:up|for)\b|\bsearch\b|\bshow\b|\blist\b|探して|調べて|見せて|教えて|挙げて)/iu;
+const ONLY_IF_NONE = /(没有合适的?就|没合适的?就|找不到就|没找到就|如果没有|要是没有|直到|为止|满意|\bif (?:there(?:'s| is| are) )?(?:none|nothing)\b|\buntil I(?:'m| am)? ?(?:satisfied|happy)\b|見つからなければ|なかったら|なければ|満足するまで)/iu;
+const ONGOING_JOINER = /(再|然后|并且|同时|之后|以后|\band then\b|\band\b|それから|その後|そして)\s*$/iu;
+
+export function keepsLookingAt(quote: string): number | null {
+  const match = KEEP_LOOKING.exec(quote);
+  if (!match || ONLY_IF_NONE.test(quote)) return null;
+  const before = quote.slice(0, match.index);
+  if (!FIND_NOW.test(before)) return null;
+  const clause = Math.max(...["，", ",", "。", "；", ";", "、"].map((mark) => before.lastIndexOf(mark)));
+  const tail = before.slice(clause + 1);
+  const joiner = ONGOING_JOINER.exec(tail);
+  const start = joiner ? clause + 1 + joiner.index : clause >= 0 ? clause + 1 : match.index;
+  return quote.slice(0, start).replace(/[\s，,。；;、]+$/u, "").trim() ? start : null;
+}
+
+/** AG21a (decision 2): the words ask to keep looking (not only on finding nothing): the scheduled-task path. */
+export function keepsLookingIn(quote: string): boolean {
+  return KEEP_LOOKING.test(quote) && !ONLY_IF_NONE.test(quote);
+}

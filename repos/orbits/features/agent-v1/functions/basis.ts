@@ -261,7 +261,8 @@ export function upcomingTopicOf(words: string): string {
 /* ── AG19 repair round 1 (coordinator's decision 3) ─────────────────── */
 
 /** Asking which events there are, or to have some recommended or listed. */
-const EVENT_LIST_WORDS = /(哪些|哪几|哪场|有什么|有没有|有啥|推荐|值得|适合|列出|列一下|都列|\bwhat\b|\bwhich\b|\bany\b|\brecommend|\bsuggest|\bworth\b|\blist\b|おすすめ|どんな|どの|ありますか|教えて)/iu;
+// AG21a (decision 2): 「帮我找…活动」, "find events", 「イベントを探して」 ask for events to go to as well.
+const EVENT_LIST_WORDS = /(哪些|哪几|哪场|有什么|有没有|有啥|推荐|值得|适合|列出|列一下|都列|帮我找|找找|\bfind\b|探して|\bwhat\b|\bwhich\b|\bany\b|\brecommend|\bsuggest|\bworth\b|\blist\b|おすすめ|どんな|どの|ありますか|教えて)/iu;
 /** A calendar date written out ("11月10日", "2026-11-10", "Nov 10"). */
 const WRITTEN_DATE = /(\d{1,2}\s*月\s*\d{1,2}\s*[日号]?|\d{4}-\d{2}-\d{2}|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\b)/iu;
 

@@ -95,7 +95,9 @@ test("accepting the alternative in words: the accepted alternative is recorded, 
     const kit = graphKit(model.fetchImplementation);
     const one = await runAgentGraph(kit.deps, kit.input(first));
     assert.equal(one.status, "waiting_user");
-    assert.deepEqual(one.partResults.map((item) => [item.status, item.verdict, item.route, item.waitReason]), [["unfinished", "accept", "read", undefined], ["awaiting_acceptance", "convert", "offer_alternative", "awaiting_acceptance"]]);
+    // AG21a (coordinator's decision 2): 「帮我找摄影主题的活动」 is a search answered now (before: refused as a directory search,
+    // "unfinished"); the keep-looking-if-none part is still the bounded alternative, offered first.
+    assert.deepEqual(one.partResults.map((item) => [item.status, item.verdict, item.route, item.waitReason]), [["answered", "accept", "read", undefined], ["awaiting_acceptance", "convert", "offer_alternative", "awaiting_acceptance"]]);
     assert.match(one.text, /定期留意 Orbit 的活动目录/u);
     const stored = await kit.sessionState.get("actor:a", "session:a");
     assert.equal(stored?.openItems[0]?.kind, "alternative");

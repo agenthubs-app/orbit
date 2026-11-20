@@ -23,7 +23,7 @@ import { clueSearchWords } from "./resolve";
 import { needsIntentReview, readsAsQuestion, reviewWriteIntent } from "../../judgment/intent-review";
 import { CLARIFY_WORDS } from "../../clarify/copy";
 import { nextNoteGoalIn, organizeMeansSummary, updatesInteractionsFromMemo } from "./functions";
-import { pushSaidIn, RECURRING_ASK, recurrenceSaidIn, RULE_NOUN, RULE_QUALIFIER, stateVerbSaidIn } from "../../rule/parse";
+import { keepsLookingIn, pushSaidIn, RECURRING_ASK, recurrenceSaidIn, RULE_NOUN, RULE_QUALIFIER, stateVerbSaidIn } from "../../rule/parse";
 import { reminderSaidIn } from "../../rule/reminder";
 import { contactKindOf } from "../../propose/resolve";
 import { capabilityKind, type Capability } from "../../route/capabilities";
@@ -97,6 +97,9 @@ export function isRuleRequest(part: Pick<GraphPart, "capabilities" | "continues"
   // named a rule capability: it stays with the schedule writes.
   const calendar = part.capabilities.some((capability) => capability.startsWith("schedule.")) || CALENDAR_WORDS.test(quote);
   if (tagged && !calendar && (recurring || (RULE_NOUN.test(quote) && stateVerbSaidIn(quote) !== null))) return true;
+  // AG21a (decision 2): "…再一直帮我留意新的" tagged as a task — keeping looking is a scheduled task (AG15's card, or its
+  // question for when to run); keeping looking only on finding nothing is not (AG03's bounded alternative).
+  if (tagged && !calendar && keepsLookingIn(quote)) return true;
   if (tagged && RULE_NOUN.test(quote) && stateVerbSaidIn(quote) !== null) return true;
   // AG16: turning a task's reminder on or off ("这个定时任务以后在手机上提醒我", "turn off notifications for that task") is a
   // change of the task — it gets a card like any other change. Read by code: the words ask for or call off a reminder,
