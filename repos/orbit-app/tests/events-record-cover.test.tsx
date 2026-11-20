@@ -205,3 +205,14 @@ test("attendee profile request: the id goes in the query (an imported id with a 
   assert.equal(sent, `get:${path}/attendees/profile?attendeeId=${encodeURIComponent(odd)}&platform=app`);
   assert.equal(new URLSearchParams(sent.split("?")[1]).get("attendeeId"), odd);
 });
+
+test("会場の記録 asks with view=record and shows the slimmed answer (no memos / whyDetail / live parts)", async (t) => {
+  const slim = (person: Record<string, unknown>) => { const { memo: _m, whyDetail: _w, requestedAt: _r, isOrbitUser: _o, ...rest } = person; return rest; };
+  const { checkIn: _c, round: _r, seats: _s, mySeat: _y, nextRound: _n, groups: _g, mutualHint: _h, agendaTip: _a, meetingSlots: _l, ...base } = ended as Record<string, unknown>;
+  const answer = { ...base, openers: [], rounds, attendees: ended.attendees.map(slim), recommendations: ended.recommendations.map(slim), nextOrder: ended.nextOrder.map(slim) };
+  const page = await harness.open(t, { screen: "venue", params: { id: eventId, tab: "recs" }, responses: { [`${path}/venue`]: answer } });
+  await page.getByTestId("events-venue-recs").waitFor();
+  await page.getByText(ended.recommendations[0]!.name).first().waitFor();
+  const requests = await page.evaluate(() => (window as unknown as { fixture: { requests: string[] } }).fixture.requests);
+  assert.ok(requests.includes(`get:${path}/venue?view=record&platform=app`), requests.join(" "));
+});

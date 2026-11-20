@@ -57,7 +57,9 @@ export function createJourneyApi(client: OrbitApiClient, read: Read) {
     overview: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/overview?platform=app`), eventOverviewResponseSchema as ZodType<EventOverviewResponse>),
     prep: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/prep?platform=app`), eventPrepResponseSchema as ZodType<EventPrepResponse>),
     checklist: (eventId: string, items: readonly EventPrepChecklistItem[]) => read(client.patch<unknown>(`/api/events/${id(eventId)}/prep/checklist`, { body: { items } }), eventPrepResponseSchema as ZodType<EventPrepResponse>),
-    venue: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/venue?platform=app`), eventVenueResponseSchema as ZodType<EventVenueResponse>),
+    // view=record: after the event (read-only record) the server leaves out the live-only parts (seats, check-in, openers, memos,
+    // whyDetail …); during the event it answers in full, so the page can always ask this way (events-web 7da63ae55).
+    venue: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/venue?view=record&platform=app`), eventVenueResponseSchema as ZodType<EventVenueResponse>),
     venueMemo: (eventId: string, attendeeId: string, text: string) => read(client.post<unknown>(`/api/events/${id(eventId)}/venue/memo`, { body: { attendeeId, text } }), eventVenueMemoResultSchema as ZodType<EventVenueMemoResult>),
     // The attendee id goes in the query, not the path: imported ids carry a literal %3A, and a path segment is decoded twice on
     // the way to the route (platform + Next), so the path form 404s for them (2026-11-21, events-web).
