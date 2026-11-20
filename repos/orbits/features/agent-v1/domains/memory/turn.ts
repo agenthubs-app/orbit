@@ -16,7 +16,7 @@
  * - `rankMemoryOf()` (ranking): the entries a ranking of a domain may use, as time conditions and topics. What this
  *   turn's own words say wins over a saved preference.
  */
-import type { AgentMemory, AgentMemorySnapshot, AgentMemoryStructured } from "../../../agent/memory/contract";
+import type { AgentMemory, AgentMemoryCategory, AgentMemorySnapshot, AgentMemoryStructured } from "../../../agent/memory/contract";
 import { forgottenSourceRequests, isForgottenSource, memorySourceRef, rememberMemoryUse, staleMemoryUses, type MemoryUse } from "../../../agent/memory/forget";
 import { recallDay, recallFrom, type MemoryRecall, type MemoryRecallTask, type RecalledMemory } from "../../../agent/memory/recall";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
@@ -322,10 +322,25 @@ const sameJson = (left: unknown, right: unknown) => JSON.stringify(left ?? null)
 const timeOfEntry = (entry: Pick<AgentMemory, "structured" | "content">) => (entry.structured?.dayPart || entry.structured?.preferredDays?.length ? entry.structured : timeValuesIn(entry.content));
 const polarity = (strength: AgentMemoryStructured["strength"]) => (strength === "avoid" ? "avoid" : "want");
 
+/**
+ * AG21b (R34): the topics a sentence or an entry asks to favour, as a sorted list of their own words ("陶艺相关" → 陶艺,
+ * "和茶、器物有关" → 器物, 茶) — the same topics said in other words give the same list.
+ */
+const TOPIC_FILLER = /(推荐|展览|展覧|活动|活動|イベント|时候|时|的|相关|有关|関連|関係|优先|優先して|優先|おすすめ(?:する)?|ときは|とき|について|に関する|\babout\b|\brelated\b|\bto\b|\bones?\b|\bprefer\b|\bevents?\b|关|の|を|は)/giu;
+export function topicKeyOf(text: string | null): string[] {
+  if (!text) return [];
+  return [...new Set(text.split(/[\s、,，和与及/]+/u).map((token) => token.replace(TOPIC_FILLER, "").trim().toLowerCase()).filter((token) => [...token].length >= 1))].sort();
+}
+const CHANGE_WORDS = /(改成|改为|换成|变成|不再|而不是|instead|rather than|switch to|change (?:it |that )?to|に変えて|に変更|ではなく|じゃなくて)/iu;
+const isTopicEntry = (entry: AgentMemory, category: AgentMemoryCategory) => entry.category === category && !timeOfEntry(entry) && !(entry.structured?.replyLanguage ?? replyLanguageIn(entry.content)) && topicKeyOf(topicOfEntry(entry)).length > 0;
+const sharesTask = (entry: Pick<AgentMemory, "appliesTo">, tasks: readonly string[]) => entry.appliesTo.some((task) => tasks.includes(task));
+
 /** The saved entries a new sentence would change: the same kind of value for the same task. */
-function entriesItChanges(reading: ReturnType<typeof readMemoryWords>, previousWords: string | null, entries: readonly AgentMemory[]): AgentMemory[] {
+function entriesItChanges(reading: ReturnType<typeof readMemoryWords>, previousWords: string | null, entries: readonly AgentMemory[], said: { changes: boolean; topic: string[] } = { changes: false, topic: [] }): AgentMemory[] {
   let kept: AgentMemory[] = [];
   if (reading.structured?.replyLanguage) kept = entries.filter((entry) => Boolean(entry.structured?.replyLanguage ?? replyLanguageIn(entry.content)));
+  // AG21b (R34): "改成优先 Y" changes the saved topic preference of the same task (one entry: an update card, before and after).
+  else if (!reading.structured && said.changes && said.topic.length) kept = entries.filter((entry) => isTopicEntry(entry, reading.category) && sharesTask(entry, reading.appliesTo));
   else if (reading.structured && (reading.structured.dayPart || reading.structured.preferredDays?.length)) {
     kept = entries.filter((entry) => {
       const own = timeOfEntry(entry);
@@ -351,8 +366,19 @@ export function settleRemember(input: { words: string; language: MemoryLanguage;
   const words = rememberedWordsOf(next).replace(/^(?:改成|改为|换成|变成|switch to|change (?:it |that )?to)\s*/iu, "").trim();
   if (!words) return { kind: "line", line: MEMORY_WORDS.nothingToRemember(language, input.words.replace(/[。.!！]+$/u, "")), reason: "memory_nothing_to_keep" };
   const reading = readMemoryWords(words);
-  const existing = entriesItChanges(reading, previous, snapshot.entries);
+  // AG21b (R34): the topics the sentence asks to favour, and whether it changes a saved one ("改成", "instead", "に変えて").
+  const topic = reading.structured ? [] : topicKeyOf(topicOfEntry({ category: "preference", content: words, structured: null }));
+  const changes = CHANGE_WORDS.test(kept) || previous !== null;
+  const existing = entriesItChanges(reading, previous, snapshot.entries, { changes, topic });
   if (existing.length > 1) return { kind: "line", line: MEMORY_WORDS.whichOne(language, "change", existing), reason: "memory_several_match" };
+  if (existing.length === 1 && !reading.structured && topic.length && isTopicEntry(existing[0], reading.category)) {
+    const entry = existing[0];
+    if (sameJson(topicKeyOf(topicOfEntry(entry)), topic)) return { kind: "line", line: MEMORY_WORDS.alreadySaved(language, entry), reason: "memory_already_saved" };
+    // The stored topics go with the old words: the new words are the entry's topics now.
+    const { topics: _old, ...rest } = entry.structured ?? {};
+    const structured = Object.keys(rest).length ? (rest as AgentMemoryStructured) : null;
+    return { intent: { capability: MEMORY_UPDATE, expectedRevision: entry.revision, set: { content: words, structured }, shown: valuesOf(entry), targetId: entry.memoryId }, kind: "card" };
+  }
   if (existing.length === 1) {
     const entry = existing[0];
     // The same entry after the change: its task stays unless the words name another; pure time words are written from the values.
@@ -364,7 +390,9 @@ export function settleRemember(input: { words: string; language: MemoryLanguage;
     return { intent: { capability: MEMORY_UPDATE, expectedRevision: entry.revision, set: { content, structured }, shown: valuesOf(entry), targetId: entry.memoryId }, kind: "card" };
   }
   const content = reading.composable && reading.structured ? composeEventTimeContent(reading.structured, language) : words;
-  const twin = snapshot.entries.find((entry) => entry.content === content || (reading.structured && sameJson(entry.structured, reading.structured) && sameJson(entry.appliesTo, reading.appliesTo)));
+  // AG21b (R34): the same topics for the same task in other words are already saved too.
+  const twin = snapshot.entries.find((entry) => entry.content === content || (reading.structured && sameJson(entry.structured, reading.structured) && sameJson(entry.appliesTo, reading.appliesTo)))
+    ?? (topic.length ? snapshot.entries.find((entry) => isTopicEntry(entry, reading.category) && sharesTask(entry, reading.appliesTo) && sameJson(topicKeyOf(topicOfEntry(entry)), topic)) : undefined);
   if (twin) return { kind: "line", line: MEMORY_WORDS.alreadySaved(language, twin), reason: "memory_already_saved" };
   // A new entry is kept only with 「从对话里记住新的」 on; off: this turn only, and how to keep it (设计稿 §6).
   if (!snapshot.settings.allowConversationLearning) {

@@ -11,7 +11,10 @@ import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-st
 import { usesPromisedDate } from "../../features/agent-v1/graph/nodes/functions";
 import { clockBoundIn, meetsTime, timePreferenceIn } from "../../features/agent-v1/functions/basis";
 import { timeWords } from "../../features/agent-v1/functions/copy";
-import { timePreferenceOfEntry } from "../../features/agent-v1/domains/memory/turn";
+import { settleRemember, timePreferenceOfEntry, topicKeyOf } from "../../features/agent-v1/domains/memory/turn";
+import { MEMORY_CREATE, MEMORY_UPDATE, type MemoryCardIntent } from "../../features/agent-v1/domains/memory/ops";
+import type { AgentMemoryRecordPayload } from "../../features/agent/memory/contract";
+import { createStorageAgentMemoryService } from "../../features/agent/memory/service";
 import { readMemoryWords } from "../../features/agent-v1/domains/memory/words";
 import { applyResolution } from "../../features/agent-v1/graph/nodes/clarify";
 import { groupInteractions, interactionNamedIn } from "../../features/agent-v1/functions/extract-interactions";
@@ -284,4 +287,33 @@ test("R33 a ranking with a saved clock rule removes only what the bound says; th
   const late = await ask("推荐活动时不要晚上七点半以后开始的");
   assert.ok((fnRankOf(late.events).at(-1)!.listed as string[]).includes("event:event:e104"), "19:00 is before 19:30");
   assert.doesNotMatch(late.result.text, /七点半以后/u);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// R34: a topic preference is found as already saved in other words, and "改成…" updates it.
+
+async function memoryWith(content: string) {
+  const store = createMemoryLiveRecordStore<AgentMemoryRecordPayload>();
+  let next = 0;
+  const service = createStorageAgentMemoryService({ actorId: "account:a", id: () => `memory-${(next += 1)}`, now: () => NOW, store, workspaceId: "workspace:one" });
+  const entry = await service.create({ appliesTo: ["event.recommend"], category: "preference", content, structured: null });
+  const snapshot = { ...(await service.snapshot()), settings: { allowConversationLearning: true, enabled: true, updatedAt: "" } };
+  return { entry, snapshot };
+}
+
+test("R34 '改成优先版画相关的' updates the saved topic preference (before → after); the same topics in other words are already saved", async () => {
+  const { entry, snapshot } = await memoryWith("推荐展览时优先陶艺相关的");
+  const changed = settleRemember({ language: "zh", requestId: "req-t1", snapshot, today: "2026-11-20", words: "记住，推荐展览时改成优先版画相关的" });
+  assert.equal(changed.kind, "card");
+  const intent = (changed as { intent: MemoryCardIntent }).intent as unknown as { capability: string; targetId: string; set: { content: string } };
+  assert.deepEqual([intent.capability, intent.targetId, intent.set.content], [MEMORY_UPDATE, entry.memoryId, "推荐展览时优先版画相关的"]);
+  const same = settleRemember({ language: "zh", requestId: "req-t2", snapshot, today: "2026-11-20", words: "记住，推荐展览的时候陶艺相关的优先" });
+  assert.deepEqual([same.kind, (same as { reason: string }).reason], ["line", "memory_already_saved"]);
+  const teaFirst = await memoryWith("推荐活动时优先和器物、茶有关的");
+  const reordered = settleRemember({ language: "zh", requestId: "req-t3", snapshot: teaFirst.snapshot, today: "2026-11-20", words: "记住：推荐活动时优先和茶、器物有关的" });
+  assert.equal((reordered as { reason?: string }).reason, "memory_already_saved");
+  // A new topic said without a change word is a new entry (a second preference), not an update.
+  const added = settleRemember({ language: "zh", requestId: "req-t4", snapshot, today: "2026-11-20", words: "记住，推荐展览时也优先摄影相关的" });
+  assert.equal(((added as { intent: { capability: string } }).intent).capability, MEMORY_CREATE);
+  assert.deepEqual(topicKeyOf("展览 时候陶艺相关"), ["陶艺"]);
 });
