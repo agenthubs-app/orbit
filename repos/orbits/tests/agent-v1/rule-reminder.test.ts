@@ -4,6 +4,7 @@ import test from "node:test";
 import { createMemoryAutomationStorage } from "../../features/agent/automations/due-index";
 import { ruleWriteExecutors } from "../../features/agent-v1/domains/rule/apply";
 import { prepareRuleOperation, reminderNote, RULE_UPDATE } from "../../features/agent-v1/domains/rule/ops";
+import { cardPayloadHash } from "../../features/agent/runtime/decision";
 import { isRuleRequest } from "../../features/agent-v1/graph/nodes/route";
 import { stateVerbSaidIn } from "../../features/agent-v1/rule/parse";
 import { checkRuleChoice, reminderSaidIn, reminderSpanIn, ruleChoiceSystemPrompt, ruleChoiceUserText, withoutReminderWords } from "../../features/agent-v1/rule/reminder";
@@ -109,4 +110,18 @@ test("the model is asked which task only as a number of the list it was shown; a
   const user = ruleChoiceUserText({ message: "turn on phone notifications for my Friday weekend-picks task, not the design one", options: [{ checks: "every Friday at 9:00", number: 1, pickedBy: "按笔记「兴趣笔记」的主题", picksFrom: "周末活动", title: "每周五挑三场周末活动" }, { checks: "every Friday at 9:00", number: 2, pickedBy: "主题是设计", picksFrom: "周末活动", title: "每周五看看周末的设计活动" }] });
   assert.match(user, /1\. title: "每周五挑三场周末活动" \| picks from: 周末活动 \| picked by: 按笔记「兴趣笔记」的主题/u);
   assert.match(ruleChoiceSystemPrompt(), /Never guess/u);
+});
+
+test("the card's hash covers every word the reminder row shows: its label, both values and the sentence under it", () => {
+  const shown = { automationId: "rule:1", rule: ruleSpec(), schedule: FRIDAY_9, status: "active", title: "每周五挑三场周末活动", version: 1 };
+  const op = prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push: true, pushLocale: "zh" } }, shown, targetId: "rule:1" }, locale: "zh", revision: 1 });
+  const hash = (operation: typeof op) => cardPayloadHash({ operations: [operation as never], preview: operation.preview, revision: 1, title: "修改1项" });
+  const display = op.display!;
+  const base = hash(op);
+  for (const changed of [
+    { ...display, note: `${display.note}x` },
+    { ...display, rows: display.rows.map((row) => ({ ...row, label: "提醒方式" })) },
+    { ...display, rows: display.rows.map((row) => ({ ...row, before: "只放进站内收件箱，不推送" })) },
+    { ...display, rows: display.rows.map((row) => ({ ...row, after: `${row.after}x` })) },
+  ]) assert.notEqual(hash({ ...op, display: changed }), base, JSON.stringify(changed));
 });
