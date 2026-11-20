@@ -11,6 +11,7 @@
 import { ContactImportFileRejected, parseImportFile } from "../../../contacts/import/parse";
 import { reviewImportRows } from "../../../contacts/import/dedupe";
 import { isBlockingRow } from "../../../contacts/import/types";
+import { autoMapping } from "../../../contacts/import/parse/mapping";
 import type { LiveRecord } from "../../../../shared/storage/live-record-store";
 import type { ImportRowOverride } from "./types";
 
@@ -58,10 +59,39 @@ export function importBytesOf(text: string): Uint8Array {
 
 export class ImportTableRejected extends Error {}
 
+const EMAIL_CELL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
+const PHONE_CELL = /^\+?[\d\s()-]{7,}$/u;
+/** The columns of a pasted list with no header row, in the order a person is usually written: name, company, title. */
+const POSITIONAL = ["Name", "Company", "Title"];
+
+/**
+ * agent-design AG20b (TRIAGE R12; 设计稿 §3.3 批量导入由代码解析): a pasted list whose first line is not a header (none of its
+ * cells is a known column name) is one person per line — name, company, title in that order, a column of e-mail addresses
+ * or of phone numbers wherever it stands. The header is written by code; nothing is guessed beyond that. More unnamed
+ * columns than that is a format this version cannot read: refused (code's plain sentence), never a card of rows with no name.
+ */
+export function withHeader(text: string): string {
+  const lines = text.split("\n").filter((line) => line.trim());
+  const cells = (line: string) => line.split(/[,\t]/u).map((cell) => cell.trim().replace(/^"|"$/gu, ""));
+  if (!lines.length || Object.values(autoMapping(cells(lines[0]))).some((value) => value !== null)) return text;
+  const width = Math.max(...lines.map((line) => cells(line).length));
+  const columns = Array.from({ length: width }, (_, index) => lines.map((line) => cells(line)[index] ?? "").filter(Boolean));
+  let next = 0;
+  const header = columns.map((values) => {
+    if (values.length && values.every((value) => EMAIL_CELL.test(value))) return "Email";
+    if (values.length && values.every((value) => PHONE_CELL.test(value))) return "Phone";
+    const name = POSITIONAL[next];
+    next += 1;
+    return name;
+  });
+  if (header.some((name) => name === undefined)) throw new ImportTableRejected("unknown_columns");
+  return [header.join(","), ...lines].join("\n");
+}
+
 export function previewImport(text: string, existing: readonly LiveRecord<Record<string, unknown>>[], actorId: string, overrides: Readonly<Record<string, ImportRowOverride>> = {}): ImportPreview {
   let parsed;
   try {
-    parsed = parseImportFile({ bytes: importBytesOf(text), kind: "csv" });
+    parsed = parseImportFile({ bytes: importBytesOf(withHeader(text)), kind: "csv" });
   } catch (error) {
     if (error instanceof ContactImportFileRejected) throw new ImportTableRejected(error.reason);
     throw error;
@@ -78,6 +108,8 @@ export function previewImport(text: string, existing: readonly LiveRecord<Record
     if (row.candidate) return { ...base, decision: "duplicate", match: { id: row.candidate.contactId, name: row.candidate.displayName, organization: row.candidate.organization, role: row.candidate.role }, outcome: "skip" };
     return { ...base, decision: "create", outcome: "create" };
   });
+  // AG20b (R12): a table none of whose rows can be read (every one without a name) is not a card.
+  if (rows.length && rows.every((row) => row.reason === "missing_name" || row.reason === "unreadable_row")) throw new ImportTableRejected("no_readable_rows");
   return { counts: { create: rows.filter((row) => row.decision === "create").length, duplicate: rows.filter((row) => row.decision === "duplicate").length, skip: rows.filter((row) => row.decision === "skip").length }, rows };
 }
 

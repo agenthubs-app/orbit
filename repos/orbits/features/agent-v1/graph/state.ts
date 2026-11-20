@@ -196,6 +196,8 @@ export interface AgentGraphRun {
   partResults: AgentPartResult[];
   /** AG04: the §3.11 step of each part routed in this pass (its readings and options are built from it). */
   steps: Map<string, NextStep>;
+  /** AG20b (R4): parts whose answer is code's line (a write tag the review did not confirm); the answer step skips them. */
+  codeAnswers: Set<string>;
   /** AG04: route found parts that need directions built (clarify's prepare pass runs). */
   needsDirections: boolean;
   /** AG04: option labels written in this pass, by clarificationId → optionId. */

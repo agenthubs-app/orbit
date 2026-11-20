@@ -25,6 +25,7 @@ import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart, OptionSetState } from "../state";
 import { clueWords, nameOf, objectOf, setIdOf } from "./clarify";
 import { memoryOfSession } from "../../domains/memory/turn";
+import { asksToOrganize, nextNoteGoalIn } from "./functions";
 
 export const OPEN_ITEM_SHELF_AFTER = 2;
 
@@ -130,8 +131,23 @@ function entriesLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, 
   return labels.length ? CLARIFY_WORDS.entries(language, labels) : "";
 }
 
+/**
+ * AG20b (TRIAGE R22, AE-REF-008): the parts that say nothing on purpose — an item on this request's card, a part waiting for
+ * another part's question or card, a shelved one, or a part that one extraction of the same words answered for both.
+ */
+function silentByDesign(state: AgentGraphState, part: GraphPart): boolean {
+  if (part.status === "awaiting_confirmation" || part.reason === "shelved" || part.reason === "web_context") return true;
+  if (part.status === "waiting_dependency" && ["shares_question", "card_waits", "web_shares_question"].includes(part.reason ?? "")) return true;
+  // Plain chat: the first layer's one reply answers every discussion part.
+  if (state.plainChat && part.route === "answer" && part.status === "answered") return true;
+  return state.parts.some((other) => other !== part && other.quote[0] === part.quote[0] && other.quote[1] === part.quote[1] && other.localId < part.localId);
+}
+
 function lineFor(scope: NodeScope, state: AgentGraphState, part: GraphPart, language: ReplyLanguage): string {
-  const line = partLine(scope, state, part, language);
+  const said = partLine(scope, state, part, language);
+  // AG20b (R22): every part of a split message gets an answer or an explicit "not done" — none is dropped in silence.
+  const line = said.trim() || silentByDesign(state, part) ? said : handoffWords(language).notDone(quoteOf(scope.input.message, part));
+  if (line !== said) emitTrace({ partId: part.localId, reason: part.reason, route: part.route, status: part.status, type: "deliver.part_not_done" });
   // A part that answered an earlier question says which matter it goes on with (the "still missing" line already does).
   const item = part.continues?.kind === "clarification" ? scope.run.context?.openItems.find((open) => open.ref === part.continues!.ref) : undefined;
   if (!item?.quote || !line.trim() || part.reason === "still_unclear" || state.touched !== null) return line;
@@ -390,7 +406,10 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
       const asks = missingOf(part, set?.kind === "not_understood" || !set ? "intent" : set.asks ?? "object");
       // AG05: the clue words go with the matter, so a reply that continues it ("他") reads the same person.
       const clues = part.refs.map((ref) => ({ entity: ref.entity, text: clueWords(input.message, ref) ?? "" })).filter((clue) => clue.text);
-      kept.push({ asks, createdAt: now, kind: "clarification", partId: part.localId, quote, ref: `clarification:${input.requestId}:${part.localId}`, requestId: input.requestId, summary: summaryOfQuestion(scope, state, part), unrelatedMessages: 0, writes: writesIn(part), ...(clues.length ? { clues } : {}), ...(part.plan.rankAsk ? { rank: { ...part.plan.rankAsk } } : {}), ...(part.plan.ruleAsk ? { rule: JSON.parse(JSON.stringify(part.plan.ruleAsk)) } : {}) });
+      // AG20b (TRIAGE R13): the records offered, with their labels, so a typed answer that names one ("蒲公英那个") picks it.
+      const labelMap = set ? labelsOf(scope, set, state.language) : new Map<string, { label: string }>();
+      const offered = (set?.options ?? []).filter((option) => option.refId && option.refType).map((option) => ({ id: option.refId!, label: labelMap.get(option.optionId)?.label ?? "", type: option.refType! })).filter((option) => option.label);
+      kept.push({ asks, createdAt: now, kind: "clarification", partId: part.localId, quote, ref: `clarification:${input.requestId}:${part.localId}`, requestId: input.requestId, summary: summaryOfQuestion(scope, state, part), unrelatedMessages: 0, writes: writesIn(part), ...(clues.length ? { clues } : {}), ...(offered.length ? { options: offered } : {}), ...(part.plan.rankAsk ? { rank: { ...part.plan.rankAsk } } : {}), ...(part.plan.ruleAsk ? { rule: JSON.parse(JSON.stringify(part.plan.ruleAsk)) } : {}) });
     }
   }
   next.openItems = kept;
@@ -398,6 +417,10 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
   // found none clears them (only the answer right before counts).
   if (run.staleProfiles.length) next.staleProfiles = run.staleProfiles.map((item) => ({ ...item }));
   else delete next.staleProfiles;
+  // AG20b (TRIAGE R17, §3.5 last row): a goal stated for the next note is kept for the next "整理一下", and used up by it.
+  const goal = state.parts.map((part) => nextNoteGoalIn(quoteOf(input.message, part))).find((item) => item !== null) ?? null;
+  if (goal) next.noteGoal = { ...goal, setAt: now };
+  else if (next.noteGoal && (context?.idle || state.parts.some((part) => asksToOrganize(quoteOf(input.message, part))))) next.noteGoal = null;
   next.updatedAt = now;
   // AG14: the saved entries this turn's answer used (ids and revisions) and its ranking's codes; never an entry's words.
   if (run.memory.loaded && run.memory.snapshot) {

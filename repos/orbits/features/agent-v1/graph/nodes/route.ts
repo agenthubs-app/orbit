@@ -20,8 +20,9 @@ import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
 import { clueWords, needsDirections, objectOf, pageKindOf } from "./clarify";
 import { clueSearchWords } from "./resolve";
-import { needsIntentReview, reviewWriteIntent } from "../../judgment/intent-review";
-import { organizeMeansSummary } from "./functions";
+import { needsIntentReview, readsAsQuestion, reviewWriteIntent } from "../../judgment/intent-review";
+import { CLARIFY_WORDS } from "../../clarify/copy";
+import { nextNoteGoalIn, organizeMeansSummary, updatesInteractionsFromMemo } from "./functions";
 import { pushSaidIn, RECURRING_ASK, recurrenceSaidIn, RULE_NOUN, RULE_QUALIFIER, stateVerbSaidIn } from "../../rule/parse";
 import { reminderSaidIn } from "../../rule/reminder";
 import { contactKindOf } from "../../propose/resolve";
@@ -209,6 +210,24 @@ export function routeNode(scope: NodeScope): GraphNode {
       // AG10 (AE-FN-008): "@笔记 帮我整理一下" with no product named is a summary of that memo, not readings to choose from.
       // AG13 repair round 8 (AE-FN-008, run-08): also when the first layer added an extraction the words do not ask for
       // ("帮我整理一下" tagged fn.extractFollowUps); organizeMeansSummary already refuses words that ask for one.
+      // AG20b (TRIAGE R17, §3.5): "用这篇笔记更新我和小林的往来" on a picked note is the extraction of its interactions, prepared
+      // as a change (the card still needs the click) — not three readings to choose from.
+      const attachedIds = new Set(run.references.filter((reference) => reference.accessible !== false).map((reference) => reference.id));
+      if (!resume && updatesInteractionsFromMemo(part, input.message, attachedIds) && (part.plan.clarity !== "clear" || !part.capabilities.includes("fn.extractInteractions"))) {
+        part.capabilities = ["memo.read", "fn.extractInteractions"];
+        part.plan = { ...part.plan, clarity: "clear", dataSources: ["orbit_records"], deliverable: "change", readings: [] };
+        emitTrace({ partId: part.localId, type: "route.memo_updates_interactions" });
+      }
+      // AG20b (TRIAGE R17, §3.5 last row): a goal stated for the next note ("下一篇笔记我只要我答应的事") is kept for the next
+      // "整理一下" (deliver keeps it in the session) and acknowledged in code's words — not a standing rule, nothing written.
+      const noteGoal = !resume ? nextNoteGoalIn(input.message.slice(part.quote[0], part.quote[1])) : null;
+      if (noteGoal && !part.refs.some((ref) => ref.recordId)) {
+        part.capabilities = [];
+        part.plan = { ...part.plan, clarity: "clear", dataSources: [], deliverable: "answer", persistence: "this_turn", readings: [] };
+        run.answers.set(part.localId, CLARIFY_WORDS.noteGoalKept(state.language, noteGoal));
+        run.codeAnswers.add(part.localId);
+        emitTrace({ goal: noteGoal, partId: part.localId, type: "route.note_goal" });
+      }
       if (!resume && organizeMeansSummary(part, input.message, new Set(run.references.map((reference) => reference.id))) && (part.plan.clarity !== "clear" || part.capabilities.some((capability) => capabilityKind(capability) === "write" || capability.startsWith("fn.extract")))) {
         part.capabilities = ["memo.read", "fn.summarize"];
         part.plan = { ...part.plan, clarity: "clear", dataSources: ["orbit_records"], deliverable: "summary", readings: [] };
@@ -292,6 +311,13 @@ export function routeNode(scope: NodeScope): GraphNode {
         reason = run.cardPrepared ? null : "proposing";
       }
       if (decision.step) run.steps.set(part.localId, decision.step);
+      // AG20b (TRIAGE R4): a write tag the review did not confirm, on words that ask and suppose nothing, is answered by
+      // code — what was done (nothing changed) and the entry, never a limit Orbit does not have. A question is still answered.
+      if (!resume && reviewed.has(part.localId) && decision.route === "answer" && decision.step?.kind === "respond" && !part.plan.hypothesis && !readsAsQuestion(partWords)) {
+        run.answers.set(part.localId, CLARIFY_WORDS.statementNoChange(state.language, partWords.trim().replace(/[。.!！]+$/u, ""), Boolean(decision.step.entry)));
+        run.codeAnswers.add(part.localId);
+        emitTrace({ entry: decision.step.entry ?? null, partId: part.localId, type: "route.statement_by_code" });
+      }
       return {
         ...part,
         // AG05: a part routed again reads again (under the permissions of now).

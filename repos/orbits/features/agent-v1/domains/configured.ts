@@ -11,7 +11,7 @@ import { createConfiguredEventOperationsPostgresRuntime } from "../../events/eve
 import { createPostgresCanonicalRegistrationMethods } from "../../events/event-operations/storage/canonical-registration-repository";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import type { AgentRecordAccess } from "../graph/deps";
-import { evalDeniedReads } from "../observability/trace";
+import { emitTrace, evalDeniedReads } from "../observability/trace";
 import { createDomainRegistry, readMaxPages } from "./registry";
 import { ownEventsOf } from "./event/read";
 import { createPostgresRecordSource, type RecordSource } from "./source";
@@ -33,6 +33,16 @@ const COLLECTION_OF: Record<Exclude<DomainKind, "event">, string> = {
 /** 32 bytes for the read cursor's HMAC, derived from the deployment's secret (never the secret itself). */
 export function cursorKeyOf(secret: string): Uint8Array {
   return new Uint8Array(createHash("sha256").update(`orbit-agent-v1-read-cursor\u0000${secret}`).digest());
+}
+
+/**
+ * agent-design AG20b (TRIAGE R21): the deployment's secret for the read cursor, as a key — or null when none of at least
+ * 32 bytes is configured. Then there are no record reads at all (fails closed), never a cursor sealed with an empty key
+ * (the same rule as the task pages' READ_CURSOR_SECRET_MISSING).
+ */
+export function readCursorKey(): Uint8Array | null {
+  const secret = process.env.ORBIT_READ_CURSOR_SECRET ?? process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "";
+  return Buffer.byteLength(secret) >= 32 ? cursorKeyOf(secret) : null;
 }
 
 /** Which typed refs the account may read now: the deny list, then an existence check (ids only). */
@@ -59,6 +69,11 @@ export async function visibleRefs(source: RecordSource, scope: { accountId: stri
 }
 
 export function configuredRecordAccess(): AgentRecordAccess | null {
+  const cursorKey = readCursorKey();
+  if (!cursorKey) {
+    emitTrace({ error: "READ_CURSOR_SECRET_MISSING", type: "read.error", where: "domains.configured" });
+    return null;
+  }
   const configured = createConfiguredPostgresLiveRecordStore();
   if (!configured) return null;
   const source = createPostgresRecordSource(configured.client);
@@ -72,8 +87,7 @@ export function configuredRecordAccess(): AgentRecordAccess | null {
   const privateEvents = createPrivateEventService({ client: createConfiguredTransactionalPostgresRuntime()?.client ?? null, store: configured.store, workspaceId });
   // AG11: an @ of a private event or a «我去过» note is read by its id (the account's own only).
   const events = { byIds, own: ownEventsOf({ attendance, byIds, privateEvents }) };
-  const secret = process.env.ORBIT_READ_CURSOR_SECRET ?? process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "";
-  const reader = createDomainRegistry({ cursorKey: cursorKeyOf(secret), denied: evalDeniedReads, events, now: () => new Date().toISOString(), source });
+  const reader = createDomainRegistry({ cursorKey, denied: evalDeniedReads, events, now: () => new Date().toISOString(), source });
   return {
     // AG12: contact writes read the account's contacts from the same store (duplicates, restore, import review).
     contacts: createStoreContactAccess({ store: configured.store, workspaceId }),

@@ -369,6 +369,10 @@ export function proposeNode(scope: NodeScope): GraphNode {
       names: run.names,
       // AG14 (AG11 交接, AE-REF-005): the events the user picked with @, so the one to change is not searched for by name.
       pickedEvents: run.references.filter((reference) => reference.type === "event" && reference.accessible !== false).map((reference) => reference.id),
+      // AG20b (owner decision 6): to-dos named in another language are offered by meaning (one judgment request).
+      judgment: deps.judgment ?? null,
+      judgmentBudget: run.judgment,
+      requestId: input.requestId,
     };
     const outcomes = new Map<string, WriteOutcome>();
     const duplicates = new Map<string, Exclude<DuplicateDecision, { kind: "new" }>>();

@@ -123,8 +123,10 @@ test("AE-JDG-005, match.level not calibrated: not asked; three events by the not
     settings: { judgment_uncalibrated: ["match.level"] },
   });
   assert.equal(sentCount(decided, "match.level"), 0);
-  assert.equal(result.sourceRefs.length, 3);
-  for (const ref of result.sourceRefs) assert.ok(["event:event:e101", "event:event:e102", "event:event:e105", "event:event:e107"].includes(ref), ref);
+  // AG20b (TRIAGE R19): the note the ranking went by is among the openable sources, beside the three events.
+  assert.equal(result.sourceRefs.length, 4);
+  assert.ok(result.sourceRefs.includes("memo:note:m36"));
+  for (const ref of result.sourceRefs.filter((item) => item.startsWith("event:"))) assert.ok(["event:event:e101", "event:event:e102", "event:event:e105", "event:event:e107"].includes(ref), ref);
   assert.match(result.text, /^依据是你的笔记「兴趣笔记」的主题/u);
 });
 

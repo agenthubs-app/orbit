@@ -12,7 +12,7 @@
  * Record bodies never enter the context. The model sees short handles (r1, r2 …, o1 …) instead of
  * product ids; code maps them back, so a model can only point at what the context offered.
  */
-import type { AgentSessionState, NamedRecordRef, SessionOpenItem, StaleProfile } from "./session-state";
+import type { AgentSessionState, NamedRecordRef, NoteGoal, SessionOpenItem, StaleProfile } from "./session-state";
 
 export const CONTEXT_MESSAGE_WINDOW = 10;
 export const IDLE_BREAK_MINUTES = 60;
@@ -59,6 +59,8 @@ export interface FirstLayerContext {
   promptText: string;
   /** AG20a (decision 2): for code only, never in the prompt — the profile fields the last answer found out of date. */
   staleProfiles: StaleProfile[];
+  /** AG20b (R17): the goal the user stated for the next note (none when the session was idle). */
+  noteGoal?: NoteGoal | null;
 }
 
 const ENTITY_TYPES = new Set(["contact", "event", "attendance", "todo", "memo", "schedule", "rule", "memory"]);
@@ -160,6 +162,7 @@ export function buildFirstLayerContext(input: {
     lastMentioned,
     lastMentionedForCode: [...(input.state?.lastMentioned ?? [])],
     messages,
+    noteGoal: idle ? null : input.state?.noteGoal ?? null,
     openItemHandles,
     openItems,
     promptText: lines.join("\n"),

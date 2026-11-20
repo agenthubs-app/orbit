@@ -48,6 +48,22 @@ export const CLARIFY_WORDS = {
     if (language === "ja") return `「${label}」という意味で受け取りました。`;
     return `I took this as: ${label}.`;
   },
+  /**
+   * AG20b (TRIAGE R4, §3.11 "照常回应，不出卡。可以附一个入口"): a write tag the review did not confirm — what Orbit did, in
+   * code's words, never a limit it does not have. The entry (when there is one) follows on its own line.
+   */
+  statementNoChange(language: ReplyLanguage, quote: string, hasEntry: boolean): string {
+    if (language === "zh") return `我没有把「${quote}」当成要改记录的指令，所以没有改动任何记录。${hasEntry ? "" : "要改的话，直接告诉我改哪一条、改成什么。"}`;
+    if (language === "ja") return `「${quote}」は記録を変える指示としては受け取らなかったので、何も変更していません。${hasEntry ? "" : "変更する場合は、どれをどう変えるかをそのまま伝えてください。"}`;
+    return `I didn't take "${quote}" as a request to change your records, so nothing was changed.${hasEntry ? "" : " If you want a change, tell me which record and what to change."}`;
+  },
+  /** AG20b (R17): the goal for the next note is kept for the next "整理一下". */
+  noteGoalKept(language: ReplyLanguage, goal: { followUps: boolean; interactions: boolean }): string {
+    const what = goal.followUps ? { en: "only what you promised", ja: "ご自身が約束したことだけ", zh: "只列你答应的事" } : { en: "only the interactions that happened", ja: "実際にあったやりとりだけ", zh: "只整理实际有过的往来" };
+    if (language === "zh") return `好的，下一篇笔记让我整理时，我${what.zh}。`;
+    if (language === "ja") return `承知しました。次にメモの整理を頼まれたら、${what.ja}を取り出します。`;
+    return `OK — the next time you ask me to tidy up a note, I'll pull out ${what.en}.`;
+  },
   /** Entries offered after an answer (other readings, a statement's entry). Clicking is the request. */
   entries(language: ReplyLanguage, labels: readonly string[]): string {
     const choices = labels.map((label) => (language === "en" ? `"${label}"` : `「${label}」`));

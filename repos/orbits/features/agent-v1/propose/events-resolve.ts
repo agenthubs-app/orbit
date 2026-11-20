@@ -25,6 +25,8 @@ import { instantOf, localDayOf, localTimeOf, resolveSaidDate } from "./dates";
 import { dayPartsOf, durationPhraseOf, onlyStartSaid, resolveSaidTimes, timeZonePhraseOf, titleWithoutWhen } from "./times";
 import type { PartWrite, ResolveContext, WriteOutcome } from "./resolve";
 import type { StoredIntent } from "./schema";
+import { askedPerson } from "./asked";
+import { todosByMeaning } from "./meaning";
 
 export const EVENT_INTENT_CAPABILITIES = new Set(["privateEvent.create", "privateEvent.update", "privateEvent.delete", "attendance.create", "attendance.delete", "schedule.create", "schedule.update", "schedule.delete", "todo.complete", "todo.reopen", "todo.delete", "memo.update"]);
 
@@ -390,6 +392,13 @@ async function findTodo(ctx: Ctx, part: GraphPart, write: PartWrite, clues: read
     const inQuote = found.filter((view) => squash(quote).includes(squash(String(view.fields.title ?? ""))));
     if (inQuote.length) found = inQuote.sort((left, right) => String(right.fields.title ?? "").length - String(left.fields.title ?? "").length).slice(0, 1);
   }
+  // AG20b (TRIAGE R13): a part answering a question about a person goes on with that person's to-dos ("フォローを完了にして"
+  // after "白山さんの件…"), so it does not ask again over everyone's follow-ups.
+  if (found.length > 1) {
+    const person = await askedPerson(ctx, part);
+    const theirs = person ? found.filter((view) => (Array.isArray(view.fields.contactIds) ? (view.fields.contactIds as string[]) : [String(view.fields.contactId ?? "")]).includes(person)) : [];
+    if (theirs.length) found = theirs;
+  }
   if (!found.length) return { kind: "none" };
   if (found.length === 1) return { kind: "found", view: found[0] };
   return { kind: "ask", views: found.slice(0, 3) };
@@ -412,6 +421,11 @@ async function resolveTodoVerb(ctx: Ctx, part: GraphPart, write: PartWrite, inte
     return stop("read_failed", failedLine);
   }
   if (found.kind === "ask") return { kind: "ask", question: { candidates: found.views.map((view) => ({ id: view.id, name: String(view.fields.title ?? ""), type: "todo" })), clue: todoClues[0] ?? quote, type: "todo" } };
+  if (found.kind === "none" && todoClues.length) {
+    // AG20b (owner decision 6): "nda" against 「保密协议」 — the to-dos whose meaning matches are offered to click, never taken.
+    const meant = await todosByMeaning(ctx, todoClues[0], intent.capability === "todo.delete" ? statuses : ["open", "completed"], part.localId).catch(() => []);
+    if (meant.length) return { kind: "ask", question: { candidates: meant, clue: todoClues[0], notFound: todoClues[0], type: "todo" } };
+  }
   if (found.kind === "none") return stop("object_not_found", EVENT_WORDS.todoNotFound(language, todoClues[0] ?? quote));
   const view = found.view;
   const title = String(view.fields.title ?? "");
