@@ -14,7 +14,7 @@ import { coverEverySentence } from "../../understand/cover";
 import { describedObjectSpan, groupClue, questionWordClue, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
 import { refusedCreates } from "../../understand/negated-writes";
 import { followsShownList } from "../../understand/follow-list";
-import { asksTodaysPlate, ownWindow, plateFilter } from "../../understand/read-window";
+import { asksTodaysPlate, dayOfWords, onlyWindowWords, ownWindow, plateFilter } from "../../understand/read-window";
 import { localDayOf } from "../../propose/dates";
 import { asksAgainAbout, bindMarkedReferences } from "../../references/marks";
 import { recordKindOf } from "../../clarify/default-readings";
@@ -55,7 +55,17 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope, today: string)
     const namesPerson = part.objectClues.some((clue) => clue.entity === "contact" && !clue.referenceId && !SPEAKER_WORDS.test(clue.text.trim()) && !questionWordClue(clue) && !groupClue(clue));
     const plate = readsOnly && !namesPerson && !part.readFilter?.text && part.requiredCapabilities.some((capability) => capability === "todo.read" || capability === "schedule.read") && asksTodaysPlate(part.sourceQuote);
     if (plate) emitTrace({ partId: part.localId, today, type: "understand.todays_plate" });
-    const readFilter = plate ? plateFilter(own?.filter, today) : own?.filter;
+    // Hotfix 1c (AE-ENT-005): words of only a date, a time of day and a kind of record are a window, never search words —
+    // in readFilter.text or as a record clue; with no window of the first layer's, they give the day.
+    let windowed = own?.filter;
+    const windowText = [windowed?.text, ...part.objectClues.filter((clue) => !clue.referenceId).map((clue) => clue.text)].find((words) => onlyWindowWords(words));
+    if (windowText) {
+      const day = dayOfWords(windowText, today);
+      const { text: textWords, ...rest } = windowed ?? {};
+      windowed = { ...rest, ...(textWords && !onlyWindowWords(textWords) ? { text: textWords } : {}), ...(day && !rest.from && !rest.to ? { from: day, to: day } : {}) };
+      emitTrace({ day, partId: part.localId, type: "understand.window_words_not_text" });
+    }
+    const readFilter = plate ? plateFilter(windowed, today) : windowed;
     return {
       asked: 0,
       capabilities: [...new Set([...part.requiredCapabilities, ...implied])].filter((capability) => !refused.includes(capability)) as typeof part.requiredCapabilities,

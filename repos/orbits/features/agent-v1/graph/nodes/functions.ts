@@ -32,6 +32,7 @@ import type { NoteInteractionContract } from "../../../../shared/contract/notes"
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
 import { asksWhoToFollowUp, isWholeQuote, realTopicOf } from "../../functions/basis";
 import { asksWhatToPrepare, preparePart } from "./prepare";
+import { onlyWindowWords } from "../../understand/read-window";
 import { asksEventsToGoTo, pointsAtPast, writesADate, upcomingTopicOf, directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, memoriesFor, naturalField, PICK_WORDS, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
 import { compare, dimensionsIn, type ComparedEvent } from "../../functions/compare";
 import * as say from "../../functions/copy";
@@ -758,9 +759,10 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   }
   // Hotfix 2026-11-20 part 2, rule 3 (「哪些人值得先跟进？」 ranked by the topic 「值得先跟进」): the whole question, or words that are
   // only question, kind, time or preparing words, are never the topic. With no real topic in the words it is no topic ranking.
-  if (basis && !basisMemo && (isWholeQuote(basis, original) || !realTopicOf(basis))) {
+  // Hotfix 1c (AE-ENT-005): words of only a date, a time of day and a kind of record are a window, never a topic.
+  if (basis && !basisMemo && (isWholeQuote(basis, original) || !realTopicOf(basis) || onlyWindowWords(basis))) {
     emitTrace({ partId: part.localId, type: "functions.basis_not_a_topic", whole: isWholeQuote(basis, original) });
-    basis = isWholeQuote(basis, original) && realTopicOf(basis) ? realTopicOf(basis) : null;
+    basis = !onlyWindowWords(basis) && isWholeQuote(basis, original) && realTopicOf(basis) ? realTopicOf(basis) : null;
   }
   const topicWords = basisMemo ? basis : topicWordsOf(basis ?? (reply ? replyWords : original));
   const followUpAsk = domain === "contact" && (FOLLOW_UP_WORDS.test(words) || asksWhoToFollowUp(original)) && !basisMemo && !realTopicOf(basis ?? "").replace(FOLLOW_UP_WORDS, "").replace(FOLLOW_UP_QUESTION_WORDS, "").trim();

@@ -11,6 +11,7 @@ import type { AgentAnswerRecordContract } from "../../../../shared/contract/agen
 import type { AnswerBlock } from "../../answer/blocks";
 import { cardsAnswer, lateCount, windowWords } from "../../answer/list-answer";
 import { readPages } from "../../domains/registry";
+import { occurrenceIn } from "../../domains/schedule/read";
 import type { DomainQuery, DomainReader, DomainScope, RecordView } from "../../domains/types";
 import type { Language } from "../../functions/copy";
 
@@ -117,6 +118,14 @@ export function scheduleNothingLine(language: Language, quote: string, asked: Pi
   return `${when ? `${when}的` : ""}${asked.text ? `含「${asked.text}」的` : ""}日程：没有。`;
 }
 
+/** Hotfix 1c (AE-ENT-005): words found nothing in the window, but the window has items — said without "none" above them. */
+export function scheduleInWindowLine(language: Language, quote: string, asked: Pick<AskedRead, "fromDay" | "toDay" | "text">, count: number): string {
+  const when = periodWords(language, quote, asked.fromDay, asked.toDay);
+  if (language === "en") return `Nothing ${when ? `${ONE_DAY_WORD.test(when) ? when : `for ${when}`} ` : ""}contains "${asked.text}"; here ${count === 1 ? "is what is" : `are the ${count} items`} on then:`;
+  if (language === "ja") return `${when ? `${when}に` : ""}「${asked.text}」を含む予定はありません。この期間の予定は${count}件です：`;
+  return `${when ? `${when}` : ""}没有含「${asked.text}」的日程；这段时间里有 ${count} 个日程：`;
+}
+
 export function scheduleOthersLine(language: Language, count: number): string {
   if (language === "en") return `You have ${count} coming up.`;
   if (language === "ja") return `これからの予定は${count}件あります。`;
@@ -139,6 +148,17 @@ export async function widerThanAsked(input: WiderInput): Promise<Widened | null>
       query = { status, ...(asked.person ? { contactId: asked.person.id } : {}) };
     } else if ((asked.from || asked.to) && !asked.defaultFrom || asked.text) {
       query = { from: input.now, ...(asked.person ? { contactId: asked.person.id } : {}) };
+    }
+    // Hotfix 1c (AE-ENT-005): schedule words that found nothing in a window — the window's own items first, never "none" above
+    // a record that falls inside it.
+    if (asked.kind === "schedule" && asked.text && (asked.from || asked.to)) {
+      const inWindow = await readPages(input.reader, "schedule", input.scope, { ...(asked.from ? { from: asked.from } : {}), ...(asked.to ? { to: asked.to } : {}), ...(asked.person ? { contactId: asked.person.id } : {}) }, input.maxPages);
+      const kept = inWindow.items.filter((view) => occurrenceIn(String(view.fields.startsAt), typeof view.fields.recurrence === "string" ? view.fields.recurrence : undefined, asked.from, asked.to));
+      if (kept.length) {
+        lines.push(scheduleInWindowLine(input.language, input.quote, asked, kept.length));
+        views.push(...kept);
+        continue;
+      }
     }
     if (!query) {
       // Part 1b item 4: a person's read still says who and what was looked for.

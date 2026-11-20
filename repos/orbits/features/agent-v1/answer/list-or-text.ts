@@ -137,7 +137,7 @@ export function withoutFieldLabels(text: string, language: Language): string {
 }
 
 /** A sentence saying records could not be read, or were not all read (zh, ja, en). */
-const READ_FAILED = /(读不到|读不了|无法读取|没能读取|没有读取到|读取失败|没法读|没能读到|没有读到全部|没有全部读|読めておらず|読めません|読めませんでした|読み込めませ|読み取れませ|取得できませ|アクセスできませ|\bcouldn'?t (?:read|access|load)\b|\bcould not (?:read|access|load)\b|\bunable to (?:read|access|load)\b|\bcan(?:no|')t (?:read|access)\b|\bwasn'?t able to read\b|\bfailed to (?:read|load)\b)/iu;
+const READ_FAILED = /(读不到|读不了|无法读取|没能读取|没有读取到|读取失败|没法读|没能读到|没有读到全部|没有全部读|(?:其他|其余|更早|之前|别的|其它)[^。，,；]{0,10}?(?:并)?没(?:有)?(?:读到|读取|看到)|読めておらず|読めません|読めませんでした|読み込めませ|読み取れませ|取得できませ|アクセスできませ|\bcouldn'?t (?:read|access|load)\b|\bcould not (?:read|access|load)\b|\bunable to (?:read|access|load)\b|\bcan(?:no|')t (?:read|access)\b|\bwasn'?t able to read\b|\bfailed to (?:read|load)\b)/iu;
 
 /**
  * Hotfix 1c (AE-UND-015 run-03: 「カレンダーの予定は…読めておらず」 though the schedule read was complete): a sentence claiming

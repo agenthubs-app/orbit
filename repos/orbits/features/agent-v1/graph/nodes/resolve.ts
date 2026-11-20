@@ -42,7 +42,7 @@ import { clueWords } from "./clarify";
 import { webPartReads } from "./probe";
 import { SIMILAR_TITLE, similarity } from "../../functions/link-back";
 import { localDayOf } from "../../propose/dates";
-import { asksTodaysPlate, isPlateFilter } from "../../understand/read-window";
+import { asksTodaysPlate, isPlateFilter, onlyWindowWords } from "../../understand/read-window";
 import { widerThanAsked, type AskedRead, type Widened } from "./wider-read";
 import { occurrenceViews } from "../../domains/schedule/occurrences";
 
@@ -690,7 +690,9 @@ export function resolveNode(scope: NodeScope): GraphNode {
         // record clue's own words are the search; a clue of only a pronoun with no person to read for points
         // at nothing code can find — it says so instead of reading the newest page.
         const clue = part.refs.find((ref) => !ref.recordId && recordKindOf(ref.entity) === kind);
-        const clueText = clue ? clueSearchWords(clueWords(input.message, clue) ?? "") : undefined;
+        // Hotfix 1c (AE-ENT-005): a clue of only date, time-of-day and kind words is the window (graphPartsOf), never a search.
+        const windowClue = clue ? onlyWindowWords(clueWords(input.message, clue) ?? "") : false;
+        const clueText = clue && !windowClue ? clueSearchWords(clueWords(input.message, clue) ?? "") : undefined;
         // AG08 repair 1 (AE-UND-010): a list of notes with nothing to search by searches by its own words.
         const ownWords = !text && !clueText && !clue && kind === "memo" && !contacts.length && part.plan.deliverable === "list" ? listSearchWords(quote) : undefined;
         const kindText = text ?? clueText ?? ownWords;
@@ -726,7 +728,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
               } else if (ownWords) emitTrace({ partId: part.localId, type: "resolve.own_words", words: ownWords });
               // AG09 run-04 (AE-WEB-004): a clue that names a record by its title or label ("竞品笔记 C", "笔记 C") lost its
               // generic word in the search words ("竞品c"); when those find nothing, the clue is searched as the user wrote it.
-              if (clue && !text && !pages.items.length && !pages.withheld) {
+              if (clue && !windowClue && !text && !pages.items.length && !pages.withheld) {
                 const asWritten = clueAsWritten(clueWords(input.message, clue) ?? "");
                 if (asWritten && asWritten !== kindText) {
                   pages = await readPages(records.reader, kind, accountScope, queryOf(asWritten), order === "both" ? 1 : maxPages);

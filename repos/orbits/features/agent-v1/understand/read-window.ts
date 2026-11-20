@@ -50,6 +50,40 @@ export function ownWindow<F extends Windowed>(filter: F, message: string): { fil
   return { dropped: true, filter: rest as F };
 }
 
+/** Words of a date, a time of day, a kind of record, or glue — none of them a title or a topic. */
+const DATE_WORD = /(?:\d{4}\s*年\s*)?\d{1,2}\s*月\s*\d{1,2}\s*[日号]?|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\b|\d{4}-\d{2}-\d{2}/giu;
+const DAY_PART = /(早上|上午|中午|下午|傍晚|晚上|凌晨|夜里|午前|午後|お昼|昼|夕方|朝|夜|\b(?:morning|afternoon|evening|noon|night|lunchtime)\b)/giu;
+const KIND_OR_GLUE = /(日程|安排|行程|会议|待办|代办|笔记|活动|计划|予定|スケジュール|タスク|メモ|イベント|我的|我|的|の|に|は|有什么|什么|哪些|\b(?:my|the|on|at|in|of|for|schedule|meetings?|events?|to-?dos?|notes?|plans?|what|do i have)\b|[\s\p{P}\p{S}]+)/giu;
+
+/**
+ * Hotfix 1c (AE-ENT-005: the clue 「11 月 19 日中午」 was searched as a schedule item's title, found nothing, and the answer said
+ * "none containing 「11月19日中午」" above the very lunch asked about): words made only of dates, times of day and kinds of
+ * record are a window, never a title, search words or a ranking topic. Used for readFilter.text (graphPartsOf), a record clue
+ * (resolveNode) and rank.basis (rankPart).
+ */
+export function onlyWindowWords(words: string | undefined): boolean {
+  if (!words?.trim()) return false;
+  const timed = new RegExp(DATE_WORD.source, "iu").test(words) || new RegExp(DAY_PART.source, "iu").test(words) || OWN_TIME.test(words);
+  if (!timed) return false;
+  const rest = words.replace(DATE_WORD, " ").replace(DAY_PART, " ").replace(new RegExp(OWN_TIME.source, "giu"), " ").replace(KIND_OR_GLUE, " ");
+  return !/[\p{L}\p{N}]/u.test(rest);
+}
+
+/** The day such words name ("11 月 19 日中午" → "2026-11-19"), the year nearest to today; null without a month and day. */
+export function dayOfWords(words: string, today: string): string | null {
+  const cjk = words.match(/(?:(\d{4})\s*年\s*)?(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]?/u);
+  const en = cjk ? null : words.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})\b/iu);
+  const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+  const month = cjk ? Number(cjk[2]) : en ? months.indexOf(en[1].toLowerCase().slice(0, 3)) + 1 : 0;
+  const day = cjk ? Number(cjk[3]) : en ? Number(en[2]) : 0;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const base = Number(today.slice(0, 4));
+  const years = cjk?.[1] ? [Number(cjk[1])] : [base - 1, base, base + 1];
+  const target = Date.parse(`${today}T00:00:00Z`);
+  const year = years.sort((left, right) => Math.abs(Date.UTC(left, month - 1, day) - target) - Math.abs(Date.UTC(right, month - 1, day) - target))[0];
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 /** "Today", "now" or "first" in the sense of what to take up (zh, ja, en). */
 const PLATE_WHEN = /(今天|今日|今儿|现在|眼下|当下|这会儿|先(?![生週月日])|首先|优先|最要紧|最紧急|当务之急|きょう|今すぐ|いま|今(?![週月年度回朝晩夜後])|まず|最初に|先に|\b(?:today|now|right now|first|this morning|tonight)\b)/iu;
 /** Doing, handling, taking up (zh, ja, en). */

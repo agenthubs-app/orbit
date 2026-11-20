@@ -5,7 +5,12 @@ import { countsIn, seenCountsIn, withoutUnsourcedCounts, withoutWrongSeenCounts 
 import { withoutUnsourcedDates } from "../../features/agent-v1/answer/dates";
 import { withCodeLateness, withoutFalseReadClaims, withoutFieldLabels } from "../../features/agent-v1/answer/list-or-text";
 import { runAgentGraph } from "../../features/agent-v1/graph/build";
-import { deepseekStub, graphKit, json, part } from "./graph-kit";
+import { dayOfWords, onlyWindowWords } from "../../features/agent-v1/understand/read-window";
+import { fnWorld, runFn } from "./functions-kit";
+import { deepseekStub, graphKit, json, part, recordAccessOf } from "./graph-kit";
+import { schedule } from "./read-kit";
+
+const ACTOR = "actor:a";
 
 /**
  * Hotfix 1c (judge of 20261120-140053-2f51749-hotfix-regression-run-03):
@@ -49,6 +54,38 @@ test("AE-UND-015: 'could not be read' goes when every read was complete; it stay
   assert.equal(withoutFalseReadClaims(text, false).text, text);
   assert.equal(withoutFalseReadClaims("I couldn't read your calendar. You have one meeting.", true).text, "You have one meeting.");
 });
+
+test("AE-ENT-005: words of only a date, a time of day and a kind of record are a window, never search words", () => {
+  for (const words of ["11 月 19 日中午", "11月19日中午的安排", "明天上午", "下周的日程", "Nov 19 at noon", "tomorrow morning", "11月19日"]) assert.equal(onlyWindowWords(words), true, words);
+  for (const words of ["和田中午餐", "周会", "报价", "11月19日的周会", "lunch with Tanaka"]) assert.equal(onlyWindowWords(words), false, words);
+  assert.equal(dayOfWords("11 月 19 日中午", "2026-11-15"), "2026-11-19");
+  assert.equal(dayOfWords("Nov 19 at noon", "2026-11-15"), "2026-11-19");
+  assert.equal(dayOfWords("12月28日", "2027-01-03"), "2026-12-28");
+});
+
+test("AE-ENT-005: the two caveats the coverage does not support are not delivered (variance runs 1 and 3)", () => {
+  const one = "11月19日（周四）中午12:00到13:00，你跟田中浩约了「和田中午餐」。\n我只读到从今天起的日程，更早的日程没有读到。";
+  assert.equal(withoutFalseReadClaims(one, true).text, "11月19日（周四）中午12:00到13:00，你跟田中浩约了「和田中午餐」。");
+  const three = "11月19日（周四）中午12:00到13:00，你有一个日程叫「和田中午餐」，同行人是田中浩。\n不过，只有这一条日程能看得到，其他日程并没有读到，所以那个中午可能还有别的安排。";
+  assert.equal(withoutFalseReadClaims(three, true).text, "11月19日（周四）中午12:00到13:00，你有一个日程叫「和田中午餐」，同行人是田中浩。");
+  assert.equal(withoutFalseReadClaims("关于报价，没有读到相关的笔记。", true).text, "关于报价，没有读到相关的笔记。", "an honest 'found no note' stays");
+});
+
+for (const withWindow of [false, true]) {
+  test(`AE-ENT-005 in the graph: 「11 月 19 日中午我有什么安排？」 with the clue 「11 月 19 日中午」${withWindow ? " and the day's window" : " and no window"} — the lunch is read and cited, never "none"`, async () => {
+    const message = "11 月 19 日中午我有什么安排？";
+    const world = fnWorld();
+    world.records.push(schedule(ACTOR, "personal:lunch", "和田中午餐", "2026-11-19T03:00:00.000Z", { contactIds: ["contact:c30"], endsAt: "2026-11-19T04:00:00.000Z" }), schedule(ACTOR, "personal:weekly", "团队周会", "2026-11-16T01:00:00.000Z", { endsAt: "2026-11-16T02:00:00.000Z", recurrence: { frequency: "weekly" } }));
+    const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "answer", objectClues: [{ entity: "schedule", text: "11 月 19 日中午" }], ...(withWindow ? { readFilter: { from: "2026-11-19", to: "2026-11-19" } } : {}), requiredCapabilities: ["schedule.read"], sourceQuote: message }], {
+      answer: (call) => json({ segments: [{ body: [], cites: [...call.user.matchAll(/(s\d+) — personal schedule item/gu)].map((match) => ({ sentenceIds: [1], sourceRef: match[1] })), lead: "11月19日（周四）中午12:00到13:00，你跟田中浩约了「和田中午餐」。", partId: "p1" }] }),
+      session: graphKit((async () => { throw new Error("replaced"); }) as never, { now: "2026-11-15T01:00:00.000Z", records: recordAccessOf(world) }),
+    });
+    assert.deepEqual(run.result.sourceRefs, ["schedule:personal:lunch"]);
+    assert.doesNotMatch(run.result.text, /没有|含「11/u, run.result.text);
+    assert.equal(run.events.some((event) => event.type === "resolve.clue_as_written" || event.type === "resolve.nothing_under_narrowing"), false);
+    assert.ok(run.events.some((event) => event.type === "understand.window_words_not_text"));
+  });
+}
 
 test("English answers keep their lines: the sentence rules never glue lines or points together", () => {
   const text = "You last talked with Priya on Tue, Nov 10, the latest.\nHe called on Nov 3 about the role.\n- Send the JD: due Wed, Nov 18.\n- Confirm the on-site date: planned Tue, Nov 17.\nI see 9 notes.";
