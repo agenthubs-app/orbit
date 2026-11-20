@@ -1385,7 +1385,18 @@ const OTHER_PROMISE = /(答应|承诺|说好|说会|保证|约定|promised|said 
 const SELF_PROMISE = /(?:我|自己|\bI\b|私が?)\s*(?:答应|承诺|说好|保证|promised|約束)/iu;
 
 export function asksTodoAboutOthersPromise(quote: string): boolean {
-  return CREATE_TODO_ASK.test(quote) && !SELF_PROMISE.test(quote) && (CHASE_WORDS.test(quote) || OTHER_PROMISE.test(quote));
+  // AG21b (R30): "盯一下" chases too, and words that take the date from what they said point at their promise.
+  return CREATE_TODO_ASK.test(quote) && !SELF_PROMISE.test(quote) && (CHASE_WORDS.test(quote) || OTHER_PROMISE.test(quote) || /盯(?:一下|着|紧)/u.test(quote) || usesPromisedDate(quote));
+}
+
+/**
+ * AG21b (R30): this turn's words point at the promise's own date ("截止就按他说的", "按她答应的时间", "due when he said",
+ * "相手の期限で"): the to-do takes the deadline (and planned day) the extraction read from the promise. Without such words
+ * the day is never guessed from their deadline.
+ */
+const PROMISED_DATE = /(按(?:照)?(?:他|她|对方|他们|她们|人家)?(?:说|讲|答应|承诺|约)的(?:时间|日期|日子|期限|截止|那天)?(?:来|定|算|走)?|(?:截止|期限|日期|时间)(?:就|也)?(?:按|跟|照|用)(?:他|她|对方|他们)?(?:说|讲|答应|承诺)?的|跟(?:他|她|对方)说的(?:一样|一致)|\bdue (?:when|by the date) (?:he|she|they) (?:said|promised)\b|\b(?:their|his|her) (?:own )?(?:deadline|date)\b|\bthe date (?:he|she|they) (?:gave|said|promised)\b|相手の(?:期限|日付|締め切り|締切)|(?:彼|彼女|先方)の(?:言った|約束した)?(?:期限|日付|締め切り|締切|日))/iu;
+export function usesPromisedDate(quote: string): boolean {
+  return PROMISED_DATE.test(quote);
 }
 
 function chaseTitle(language: "zh" | "ja" | "en", name: string | null, action: string): string {
@@ -1570,16 +1581,21 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
         // The day the user said for following up (this turn's words); none said: no day, never their deadline guessed as one.
         const said = part.refs.reduce((text, ref) => { const named = ref.entity === "memo" ? clueWords(input.message, ref) : null; return named ? text.split(named).join(" ") : text; }, quote);
         const day = resolveSaidDate(said, state.asOf || deps.now(), timeZone)?.day ?? null;
+        // AG21b (R30): "截止就按他说的": their promise's own deadline (and planned day) is the to-do's.
+        const theirDate = usesPromisedDate(quote);
         for (const item of theirs) {
           n += 1;
           const sentence = sentenceOf(item.sentenceIds);
           const names = item.contact ? { [item.contact.id]: item.contact.name } : {};
+          const dueAt = theirDate && item.dueDate ? instantAt(item.dueDate, item.dueTime ?? "23:59", timeZone) : null;
+          const plannedDate = day ?? (theirDate ? item.plannedDate ?? null : null);
+          if (theirDate) emitTrace({ dueAt, item: item.key, partId: part.localId, type: "functions.promised_date_used" });
           intents.push({
             capability: "todo.create",
             localId: `${part.localId}-f${n}`,
             partId: part.localId,
-            set: { dueAt: null, notes: `${say.quoted(language, sentence)}（${memoName}）`, plannedDate: day, ...(item.contact ? { relatedContactIds: [item.contact.id] } : {}), sourceNoteId: memo.id, sourceNoteVersion: memo.version, title: chaseTitle(language, item.contact?.name ?? item.aboutClue, item.action) },
-            shown: { names, sentence, sourceTitle: memoName },
+            set: { dueAt, notes: `${say.quoted(language, sentence)}（${memoName}）`, plannedDate, ...(item.contact ? { relatedContactIds: [item.contact.id] } : {}), sourceNoteId: memo.id, sourceNoteVersion: memo.version, title: chaseTitle(language, item.contact?.name ?? item.aboutClue, item.action) },
+            shown: { ...(dueAt ? { dueDayOnly: !item.dueTime } : {}), names, sentence, sourceTitle: memoName },
           });
         }
         emitTrace({ items: theirs.map((item) => item.key), partId: part.localId, type: "functions.todo_for_others_promise" });

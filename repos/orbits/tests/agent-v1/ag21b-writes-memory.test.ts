@@ -8,6 +8,9 @@ import { createAgentExecutorRegistry } from "../../features/agent/runtime/execut
 import { createAgentRuntimeService } from "../../features/agent/runtime/service";
 import { createStorageAgentRuntimeRepository } from "../../features/agent/storage/agent-runtime-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+import { usesPromisedDate } from "../../features/agent-v1/graph/nodes/functions";
+import { fnWorld, runFn } from "./functions-kit";
+import { choice } from "./judgment-kit";
 import { endsInActionVerb, needsIntentReview, readsAsWriteRequest } from "../../features/agent-v1/judgment/intent-review";
 import { resolveEventIntent } from "../../features/agent-v1/propose/events-resolve";
 import type { ResolveContext } from "../../features/agent-v1/propose/resolve";
@@ -139,4 +142,36 @@ test("R29 '那条也删' / '备注也改' with another write in the message or r
   assert.equal(endsInActionVerb("今天和季朗聊了报价"), false);
   assert.equal(readsAsWriteRequest("把给石楠寄样书的待办删掉"), true);
   assert.equal(readsAsWriteRequest("石楠下周来东京吗？"), false);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// R30: a to-do to chase someone else's promise takes the promise's own date when the user says so.
+
+function proofWorld() {
+  const world = fnWorld();
+  world.records.push(
+    contact("actor:a", "contact:jl", "季朗", { organization: "柏舟设计", role: "项目经理" }),
+    memo("actor:a", "note:proof", "和季朗对了封面。季朗说11月20日前把校样发来。", "2026-11-16T03:00:00.000Z", ["contact:jl"], { title: "封面沟通" }),
+  );
+  return world;
+}
+
+const chase = (message: string) => runFn(message, [{ dataSources: ["orbit_records"], deliverable: "change", objectClues: [{ entity: "memo", referenceId: "r1", text: "@封面沟通" }, { entity: "todo", text: "待办" }], requiredCapabilities: ["memo.read", "fn.extractFollowUps", "todo.create"], sourceQuote: message }], {
+  extract: { followUps: [{ aboutClue: "季朗", action: "把校样发来", dueDateText: "11月20日前", owner: "other", sentenceIds: [2] }] },
+  judge: (id: string) => (id.split("__")[1] === "f1" ? choice("other", 0.95) : undefined),
+  references: [{ id: "note:proof", name: "封面沟通", type: "memo" }],
+  world: proofWorld(),
+});
+
+test("R30 '建个待办盯一下，截止就按他说的': the card's to-do is due on the promise's own day; without those words no due date", async () => {
+  const run = await chase("从 @封面沟通 建个待办盯一下季朗，截止就按他说的");
+  assert.equal(run.frozen.length, 1, run.result.text);
+  const [intent] = run.frozen[0].intents as unknown as { capability: string; set: Record<string, unknown> }[];
+  assert.equal(intent.capability, "todo.create");
+  assert.equal(String(intent.set.dueAt).slice(0, 10), "2026-11-20", "the day of the promise (end of that day, Tokyo)");
+  assert.ok(usesPromisedDate("Add a to-do to chase it, due when he said"));
+  assert.ok(usesPromisedDate("相手の期限でToDoに追加して"));
+  const plain = await chase("从 @封面沟通 建个待办跟进季朗答应的校样");
+  assert.equal(plain.frozen.length, 1, plain.result.text);
+  assert.equal((plain.frozen[0].intents[0] as unknown as { set: Record<string, unknown> }).set.dueAt, null, "no date guessed from their deadline");
 });
