@@ -68,6 +68,18 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * (AE-ENT-006: it then resumes after a seq > 0). Waits for one event of the turn; if the turn ends
  * (or the wait times out) first, the disconnect is late and the reason says why.
  */
+/**
+ * AG14 UI run (judge finding on AE-MEM-003, 008, AE-FN-002): a request's row reads "completed" a moment before its
+ * result document reaches the session's channel. Leaving the conversation in that moment closed the clients' channels
+ * of it, so the answer before 「新开对话」 never reached either client view although the server stored and pushed it.
+ * Before leaving a conversation the runner now waits, as a person who reads the answer before tapping 新对话, until each
+ * online client holds every stored document of that conversation's ended requests.
+ */
+export function sessionDelivered(rows: readonly Pick<EntryRequestRow, "requestId" | "sessionId" | "status" | "document">[], sessionId: string, channels: readonly Pick<ClientChannel, "online" | "docs">[]): boolean {
+  const ended = rows.filter((row) => row.sessionId === sessionId && row.document && (FINAL.has(row.status) || row.status === "waiting_user"));
+  return channels.filter((channel) => channel.online).every((channel) => ended.every((row) => JSON.stringify(channel.docs.get(row.requestId) ?? null) === JSON.stringify(row.document)));
+}
+
 export async function waitForChannelEvent(input: { hasEvent: () => boolean; isRunning: () => Promise<boolean>; timeoutMs?: number; pollMs?: number }): Promise<{ late: boolean; reason?: string }> {
   const timeoutMs = input.timeoutMs ?? 30_000;
   const deadline = Date.now() + timeoutMs;
@@ -306,6 +318,16 @@ export class EntryHarness {
       if (caughtUp) return;
       await sleep(300);
     }
+  }
+
+  /** Before leaving the current conversation: until each online client holds its ended requests' documents (sessionDelivered). */
+  async settleSession(timeoutMs = 15_000): Promise<boolean> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (sessionDelivered(await this.requests(), this.sessionId, [...this.channels.values()])) return true;
+      await sleep(200);
+    }
+    return false;
   }
 
   /** The highest event seq of the current session (for a reconnecting client to catch up to). */

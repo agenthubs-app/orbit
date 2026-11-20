@@ -690,6 +690,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           return;
         }
         case "new_conversation":
+          // AG14 UI run: the clients get the answer of the conversation being left before it is left (entry-client sessionDelivered).
+          if (entry && !(await entry.settleSession())) log.push({ note: "a client had not received every answer of the conversation before it was left", step: index, type: "runner.note" });
           conversation = { history: [], messageRevision: 0, sessionId: `session_${randomUUID()}`, started: false };
           opened.push(conversation);
           await entry?.switchSession(conversation.sessionId);
@@ -697,6 +699,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           transcript.push("*（新开对话）*", "");
           return;
         case "resume_conversation": {
+          // AG14 UI run: the clients get the answer of the conversation being left before it is left (entry-client sessionDelivered).
+          if (entry && !(await entry.settleSession())) log.push({ note: "a client had not received every answer of the conversation before it was left", step: index, type: "runner.note" });
           // AG14 (MEM.yaml): back to the n-th conversation of this case (from 1). The client opens the stored session
           // again, as it does from the conversation list, and the next message is sent in it.
           const at = Number((step.resume_conversation as { index?: number } | undefined)?.index ?? 0);
@@ -716,6 +720,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           return;
         }
         case "switch_account": {
+          // AG14 UI run: the clients get the answer of the conversation being left before it is left (entry-client sessionDelivered).
+          if (entry && !(await entry.settleSession())) log.push({ note: "a client had not received every answer of the conversation before it was left", step: index, type: "runner.note" });
           const label = String(step.switch_account);
           if (!accounts[label]) {
             unsupported.push({ reason: `account ${label} does not exist in ${testCase.world}`, step: index, word });

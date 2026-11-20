@@ -33,6 +33,7 @@ import { parseModelJson } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
 import { withStandingRules } from "../../domains/memory/turn";
+import { untranslatedProblem, untranslatedSourceWords } from "../../answer/source-words";
 
 /** AG19 repair round 1: deliverables whose answer is the list of records itself (a comparison is a discussion of them). */
 const LIST_READS = new Set<string>(["list", "ranked_list"]);
@@ -156,6 +157,11 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   emitTrace({ materials: allMaterials.map((material) => ({ handle: material.handle, partId: material.partId, ref: material.ref, sentences: material.sentences.length })), promptVersion: GROUNDED_ANSWER_PROMPT_VERSION, type: "answer.prompt" });
   const dateSources = [input.message, ...conversation.map((message) => message.text), ...dayWindow(state.asOf || deps.now(), zone), ...allMaterials.flatMap((material) => [material.header, ...material.sentences.map((sentence) => sentence.text)])];
   const weekdayNotes = allMaterials.filter((material) => material.sentences.some((sentence) => WEEKDAY_WORD.test(sentence.text)) && !material.sentences.some((sentence) => datesIn(sentence.text).size)).map((material) => material.header);
+  // The records' free text, and the names and titles that stay as they are (code-written "Field: value" lines, headers,
+  // the user's message) — for untranslatedSourceWords.
+  const FIELD_LINE = /^(?!Notes:|The user wrote:)[A-Z][A-Za-z «»]+: /u;
+  const sourceSentences = allMaterials.flatMap((material) => material.sentences.map((sentence) => sentence.text)).filter((sentence) => !FIELD_LINE.test(sentence));
+  const sourceNames = [input.message, ...allMaterials.flatMap((material) => [material.header, ...material.sentences.map((sentence) => sentence.text).filter((sentence) => FIELD_LINE.test(sentence))])];
   const check = (text: string) => {
     const parsed = parseAnswerOutput(text, state.language);
     if (parsed.ok === false) return { changes: null, error: parsed.error, profiles: null, verification: null };
@@ -194,6 +200,11 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
     // AG07 run-02 (AE-CTX-003): a calendar day the answer names must come from this turn; a note that says only
     // "by Friday" is not a source for a date. One repair; what still has no source is not delivered.
     for (const [partId, segment] of verification.segments) {
+      // AG14 UI run (AE-REF-007 R2): a Japanese or English answer says the Chinese records' words in its own language.
+      if (state.language !== "zh") {
+        const kept = untranslatedSourceWords({ language: state.language, material: sourceSentences, names: sourceNames, text: segment.text });
+        if (kept.length) verification.problems.push(untranslatedProblem(partId, kept, state.language));
+      }
       const days = unsourcedDates(segment.text, dateSources, { weekdayNotes });
       if (days.length) verification.problems.push(`${partId}: the answer names ${days.join(", ")} (month-day), but no material, message or today's date gives it; say a day the way the material says it (e.g. "by Friday"), never as a date you worked out`);
     }
