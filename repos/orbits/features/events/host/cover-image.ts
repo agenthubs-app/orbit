@@ -1,6 +1,6 @@
 /**
  * 2026-11-20 主办方上传的活动图片（`POST /api/host/events/[id]/cover`）：校验 → 转 webp、按 focusY 裁成 2:1、最长边 1600 →
- * 存 Vercel Blob（public：活动本身是公开的）。HEIC 先用 heic-convert 转 JPEG（同名片识别的做法）。
+ * 存 Vercel Blob（private，经 `/api/event-covers/…` 公开读取，见 blobStore）。HEIC 先用 heic-convert 转 JPEG（同名片识别的做法）。
  * - 类型按文件头判断（声明的 MIME 只作参考，不信任）；≤ 8MB。
  * - 存储：有 `BLOB_READ_WRITE_TOKEN`（或在 Vercel 上）→ Blob；本机开发没有令牌 → 写 `public/orbit-covers/uploads/`（gitignore），
  *   返回站内路径；生产环境没有令牌 → 明确报错（不静默退回本地盘）。
@@ -94,11 +94,29 @@ export function eventCoverObjectName(workspaceId: string, eventId: string, webp:
   return `orbit-event-covers/${scope}/${content}.webp`;
 }
 
+/** 站内读取地址：`/api/event-covers/<活动摘要>/<内容摘要>.webp`（对象名去掉前缀；内容寻址 → 可长缓存）。 */
+export const EVENT_COVER_ROUTE_PREFIX = "/api/event-covers/";
+const OBJECT_PATTERN = /^orbit-event-covers\/([0-9a-f]{20})\/([0-9a-f]{24})\.webp$/u;
+
+export function eventCoverRoutePath(objectName: string): string {
+  const match = OBJECT_PATTERN.exec(objectName);
+  if (!match) throw new EventCoverError("COVER_STORAGE_FAILED", "Unexpected cover object name.");
+  return `${EVENT_COVER_ROUTE_PREFIX}${match[1]}/${match[2]}.webp`;
+}
+
+/** 读取路由的参数 → 对象名；格式不对返回 null（路由回 404）。 */
+export function eventCoverObjectFromRoute(scope: string, file: string): string | null {
+  const name = `orbit-event-covers/${scope}/${file}`;
+  return OBJECT_PATTERN.test(name) ? name : null;
+}
+
+// 生产 Blob store 是 private（名片同库），封面也存 private，经 `/api/event-covers/…` 公开读出并让 CDN 长缓存。
 const blobStore: EventCoverStore = {
   async put({ eventId, webp, workspaceId }) {
     const { put } = await import("@vercel/blob");
-    const saved = await put(eventCoverObjectName(workspaceId, eventId, webp), webp, { access: "public", addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 31_536_000, contentType: "image/webp" });
-    return saved.url;
+    const name = eventCoverObjectName(workspaceId, eventId, webp);
+    await put(name, webp, { access: "private", addRandomSuffix: false, allowOverwrite: true, contentType: "image/webp" });
+    return eventCoverRoutePath(name);
   },
 };
 
