@@ -48,7 +48,7 @@ export const PICK_WORDS = /(挑|选出|选几|选个|选一|推荐|值得|最好
 /** Words that only ask for "the best" — not a basis by themselves. */
 const QUALITY_WORDS = /(最好的?|最值得(?:去|看|参加)?的?|值得(?:去|看|参加)的?|最重要的?|最合适的?|最适合的?|最推荐的?|最棒的?|最有意思的?|好的|最佳|\bthe best\b|\bbest\b|\bmost worth\b|\bworth (?:going|attending)\b|\bmost important\b|\btop\b|\bgood\b|\bgreat\b|おすすめの?|一番いい|一番良い|ベストな?|良い|いい)/giu;
 /** Words that name the set, the count or the act — not a basis. */
-const FILLER = /(帮我|请|给我|我想|从|在|这个月|本月|这周|本周|下周|今天|明天|剩下的?|里面?|中的?|之中|当中|的|挑|选出?|选择|推荐|排(?:个序|一下|序)?|一下|哪|几|[一二两三四五六七八九十\d]+\s*(?:场|个|位|条|件|项|人|つ|名)|活动|活動|イベント|联系人|連絡先|待办|跟进|谁|人|吗|呢|吧|呀|呗|？|\?|。|，|,|、|！|!|\s|\bpick\b|\bchoose\b|\brecommend\b|\bshow\b|\blist\b|\bme\b|\bthe\b|\bof\b|\bmy\b|\bin\b|\bthis\b|\bweek\b|\bmonth\b|\bevents?\b|\bcontacts?\b|\bwhich\b|\bones?\b|\bshould\b|\bi\b|\bgo\b|\bto\b|\battend\b|\bfor\b|\band\b|\ba\b|\bthree\b|\btwo\b|\bfive\b|を|が|は|に|の|で|か|から|選んで|ください|教えて|今月|今週|来週)/giu;
+const FILLER = /(帮我|请|给我|我想|从|在|这个月|本月|这周|本周|下周|今天|明天|剩下的?|里面?|中的?|之中|当中|的|挑|选出?|选择|推荐|排(?:个序|一下|序)?|一下|哪|几|[一二两三四五六七八九十\d]+\s*(?:场|个|位|条|件|项|人|つ|名)|活动|活動|イベント|联系人|連絡先|待办|代办|跟进|谁|人|吗|呢|吧|呀|呗|？|\?|。|，|,|、|！|!|\s|\bpick\b|\bchoose\b|\brecommend\b|\bshow\b|\blist\b|\bme\b|\bthe\b|\bof\b|\bmy\b|\bin\b|\bthis\b|\bweek\b|\bmonth\b|\bevents?\b|\bcontacts?\b|\bwhich\b|\bones?\b|\bshould\b|\bi\b|\bgo\b|\bto\b|\battend\b|\bfor\b|\band\b|\ba\b|\bthree\b|\btwo\b|\bfive\b|を|が|は|に|の|で|か|から|選んで|ください|教えて|今月|今週|来週)/giu;
 /** Words of following up on people (the history signals answer them). */
 export const FOLLOW_UP_WORDS = /(跟进|该联系|要联系|联系谁|回访|催一下|follow[\s-]?up|reach out|get back to|フォロー|連絡すべき|連絡する人)/iu;
 const NATURAL_REPLY = /^(?:随便|都行|都可以|无所谓|你定|你看着办|随你|没要求|没有要求|任意|any(?:thing|one)?|whatever|doesn'?t matter|no preference|up to you|どれでも|何でも|お任せ|おまかせ|特にない|特になし)/iu;
@@ -180,7 +180,7 @@ export interface SavedMemory {
 const DOMAIN_WORDS: Record<RankDomain, RegExp> = {
   contact: /(联系人|人脉|跟进|連絡先|contacts?|people|follow[\s-]?up)/iu,
   event: /(活动|活動|イベント|展|讲座|研讨会|events?|meetups?)/iu,
-  todo: /(待办|任务|タスク|ToDo|to-?dos?|tasks?)/iu,
+  todo: /(待办|代办|任务|タスク|ToDo|to-?dos?|tasks?)/iu,
 };
 
 /**

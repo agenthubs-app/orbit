@@ -23,9 +23,17 @@ export interface ListAnswerInput {
   to?: string | undefined;
   /** To-dos: the status the read was narrowed to. */
   status?: "open" | "completed" | undefined;
+  /**
+   * Hotfix 2026-11-20 (AE-SCL-008: 「未完了のタスクは3件」 beside a total of 64 — it counted the overdue ones without saying so):
+   * the user asked for the overdue ones; and how many match in all when the cards are only some of them.
+   */
+  overdue?: boolean;
+  total?: number | null;
 }
 
 const TIME_WORD = /(今天|明天|后天|昨天|前天|这周|本周|这星期|这个星期|下周|下星期|下个星期|上周|上星期|上个星期|这个月|本月|下个月|下月|上个月|上月|今年|明年|去年|周末|today|tomorrow|yesterday|this week|next week|last week|this month|next month|last month|this weekend|今日|明日|昨日|今週|来週|先週|今月|来月|先月|週末)/iu;
+/** Hotfix 2026-11-20: the words asking for the overdue ones (as resolve.ts reads them). */
+const OVERDUE_ASKED = /(期限を過ぎ|期限切れ|期限超過|过期|逾期|超期|过了计划日|\boverdue\b|\bpast due\b)/iu;
 const EN_MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const short = (day: string, language: Language, withMonth = true) => {
@@ -67,6 +75,18 @@ export function listLead(input: ListAnswerInput): string {
   if (kind === "todo") {
     const late = lateCount(cards, language);
     const status = input.status === "open" ? { en: "open ", ja: "未完了の", zh: "还没完成的" }[language] : input.status === "completed" ? { en: "completed ", ja: "完了した", zh: "已完成的" }[language] : "";
+    // Hotfix 2026-11-20: a lead always says what it counts — the overdue ones, or some of a larger total.
+    if ((input.overdue ?? OVERDUE_ASKED.test(input.quote)) && late === n) {
+      if (language === "en") return `${window ? `${window[0].toUpperCase()}${window.slice(1)}: ` : ""}${n} ${status}${n === 1 ? "to-do is" : "to-dos are"} past ${n === 1 ? "its" : "their"} deadline or planned day:`;
+      if (language === "ja") return `${window ? `${window}の` : ""}期限または予定日を過ぎた${status}タスクは${n}件です：`;
+      return `${window}已过期或过了计划日的${status}待办有 ${n} 项：`;
+    }
+    const total = input.total ?? null;
+    if (total !== null && total > n) {
+      if (language === "en") return `You have ${total} ${status}to-dos${window ? ` for ${window}` : ""}; here are ${n}${late ? `, ${late} of them past ${late === 1 ? "its" : "their"} deadline or planned day` : ""}:`;
+      if (language === "ja") return `${window ? `${window}の` : ""}${status}タスクは全部で${total}件、ここでは${n}件${late ? `（うち${late}件は期限または予定日を過ぎています）` : ""}：`;
+      return `${window}你有 ${total} 项${status}待办，这里列出 ${n} 项${late ? `，其中 ${late} 项已过期或过了计划日` : ""}：`;
+    }
     if (language === "en") return `You have ${n} ${status}${n === 1 ? "to-do" : "to-dos"}${window ? ` for ${window}` : ""}${late ? `, ${late} of them past ${late === 1 ? "its" : "their"} deadline or planned day` : ""}:`;
     if (language === "ja") return `${window ? `${window}の` : ""}${status}タスクは${n}件${late ? `、うち${late}件は期限または予定日を過ぎています` : "です"}：`;
     return `${window ? `${window}` : ""}你有 ${n} 项${status}待办${late ? `，其中 ${late} 项已过期或过了计划日` : ""}：`;
@@ -88,11 +108,15 @@ export function recordLine(card: AgentAnswerRecordContract, language: Language):
 
 /** The whole list answer: the text version and its blocks (the lead, then the cards — five shown first). */
 export function listAnswer(input: ListAnswerInput): { text: string; blocks: AnswerBlock[] } {
-  const lead = listLead(input);
-  const cards = recordsBlock(input.cards, input.language);
-  const shown = cards && cards.type === "records" ? cards.items : input.cards;
+  return cardsAnswer(listLead(input), input.cards, input.language);
+}
+
+/** A lead written by code, then the records as cards; the text version has one line per card (hotfix 2026-11-20 too). */
+export function cardsAnswer(lead: string, records: readonly AgentAnswerRecordContract[], language: Language): { text: string; blocks: AnswerBlock[] } {
+  const cards = recordsBlock(records, language);
+  const shown = cards && cards.type === "records" ? cards.items : records;
   return {
     blocks: [{ text: lead, type: "paragraph" }, ...(cards ? [cards] : [])],
-    text: [lead, ...shown.map((card, index) => `${index + 1}. ${recordLine(card, input.language)}`)].join("\n"),
+    text: [lead, ...shown.map((card, index) => `${index + 1}. ${recordLine(card, language)}`)].join("\n"),
   };
 }

@@ -16,8 +16,9 @@ import { profileCheckNote, profileCheckOf, profileLine, verifyProfileUpdates, ty
 import { groundedAnswerSystemPrompt, groundedAnswerUserText, GROUNDED_ANSWER_PROMPT_VERSION, type GroundedItem } from "../../answer/prompt";
 import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
-import { composeStructured, inListOrder, needsLayout, stripMarkdown } from "../../answer/blocks";
-import { listAnswer } from "../../answer/list-answer";
+import { composeStructured, inListOrder, needsLayout, stripMarkdown, textBlocks, type AnswerBlock } from "../../answer/blocks";
+import { lateCount, listAnswer } from "../../answer/list-answer";
+import { asksBeyondListing, cardFactsOf, leftOver, textSaysMore, withCodeLateCount } from "../../answer/list-or-text";
 import { withoutUnsupportedEventClaims, type EventClaimFacts } from "../../answer/event-claims";
 import type { AgentAnswerRecordContract } from "../../../../shared/contract/agent-v1";
 import { statusSaidIn } from "./resolve";
@@ -300,7 +301,15 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
           emitTrace({ partId: part.localId, type: "answer.cited_fallback", where: "delivery" });
         }
       }
-      run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(claimed, state.language) : claimed, state.language));
+      // Hotfix 2026-11-20 (AE-RD-012 turn 2): a count of the overdue to-dos read this turn is code's number (the cards mark them).
+      const todoCards = (part.reads ?? []).map((read) => run.recordCards.get(read.ref)).filter((card): card is AgentAnswerRecordContract => card?.kind === "todo");
+      const todoRead = (part.coverage ?? []).filter((item) => item.kind === "todo");
+      if (todoCards.length && todoRead.length && todoRead.every((item) => item.complete)) {
+        const recounted = withCodeLateCount(claimed, { dueLate: todoCards.filter((card) => card.subTone === "late").length, late: lateCount(todoCards, state.language) });
+        if (recounted.changed.length) emitTrace({ changed: recounted.changed, partId: part.localId, type: "answer.late_count_corrected" });
+        claimed = recounted.text;
+      }
+      run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(claimed, state.language) : claimed, state.language, state.asOf || deps.now()));
       run.modelAnswers.add(part.localId);
       // AG09: a web page is not a record of the user's: its citations stay out of the records' sourceRefs (the page is listed in the answer's web record).
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref).filter((ref) => !ref.startsWith("web:"));
@@ -311,9 +320,18 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       const readOrder = (part.reads ?? []).map((read) => read.ref);
       const inOrder = inListOrder([...new Set(part.cites ?? [])].map((ref) => ({ index: readOrder.indexOf(ref) < 0 ? Number.MAX_SAFE_INTEGER : readOrder.indexOf(ref), key: run.recordSort.get(ref) ?? "", kind: ref.slice(0, ref.indexOf(":")), ref }))).map((item) => item.ref);
       const listed = LIST_READS.has(part.plan.deliverable) && part.route === "read" ? inOrder.map((ref) => run.recordCards.get(ref)).filter((card): card is AgentAnswerRecordContract => Boolean(card)) : [];
-      if (listed.length && listed.length === new Set(part.cites ?? []).size) {
+      // Hotfix 2026-11-20 (answer/list-or-text.ts): only when the list says everything the model's answer said — the message
+      // asks only which records there are, and nothing is left of the model's text beyond the cards and the records' fields.
+      const listQuote = input.message.slice(part.quote[0], part.quote[1]);
+      const facts = allMaterials.filter((material) => (part.cites ?? []).includes(material.ref)).flatMap((material) => cardFactsOf(material.sentences.map((sentence) => sentence.text)));
+      const keepsText = listed.length > 0 && (asksBeyondListing(listQuote) || textSaysMore(segment.text, listed, facts));
+      if (keepsText) emitTrace({ beyond: asksBeyondListing(listQuote), cards: listed.length, left: leftOver(segment.text, listed, facts).slice(0, 80), partId: part.localId, type: "answer.list_kept_text" });
+      if (listed.length && listed.length === new Set(part.cites ?? []).size && !keepsText) {
         const quote = input.message.slice(part.quote[0], part.quote[1]);
-        const written = listAnswer({ cards: listed, from: part.plan.readFilter?.from, language: state.language, quote, status: part.plan.readFilter?.status === "open" || part.plan.readFilter?.status === "completed" ? part.plan.readFilter.status : statusSaidIn(quote), to: part.plan.readFilter?.to });
+        // Hotfix 2026-11-20 (AE-SCL-008): the lead says how many match in all when the cards are only some of them.
+        const todoCoverage = (part.coverage ?? []).filter((item) => item.kind === "todo");
+        const total = todoCoverage.length && todoCoverage.every((item) => item.total !== null) ? todoCoverage.reduce((sum, item) => sum + (item.total ?? 0), 0) : null;
+        const written = listAnswer({ cards: listed, from: part.plan.readFilter?.from, language: state.language, quote, status: part.plan.readFilter?.status === "open" || part.plan.readFilter?.status === "completed" ? part.plan.readFilter.status : statusSaidIn(quote), to: part.plan.readFilter?.to, total });
         run.answers.set(part.localId, written.text);
         run.answerBlocks.set(part.localId, written.blocks);
         run.modelAnswers.delete(part.localId);
@@ -363,6 +381,21 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   return { budget, parts, repairs };
 }
 
+/** A numbered line of a reply ("1. …", "2、…", "（3）…", "4) …"). */
+const NUMBERED_LINE = /^\s*(?:\d{1,2}\s*[.．、)）]|[（(]\d{1,2}[)）])\s*/u;
+
+/**
+ * Hotfix 2026-11-20: the first layer's plain reply laid out by code from its own lines — numbered lines read as points, the
+ * opening line is the conclusion when more follows. A reply whose lines give no structure is one paragraph.
+ */
+export function replyLayout(text: string, language: "zh" | "ja" | "en"): AnswerBlock[] {
+  const lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
+  const structured = lines.length > 1 && lines.filter((line) => NUMBERED_LINE.test(line) || /^\s*[・•●▪◦\-–—*+]\s*/u.test(line)).length >= 2;
+  if (!structured) return [{ text, type: "paragraph" }];
+  const blocks = textBlocks(lines.map((line) => line.replace(NUMBERED_LINE, "・")).join("\n"), language, { conclusion: true });
+  return blocks.length > 1 ? blocks : [{ text, type: "paragraph" }];
+}
+
 /** AG07 run-02: the days around today an answer may name without a record ("yesterday", "this Friday"), as "YYYY-MM-DD". */
 function dayWindow(asOf: string, timeZone: string): string[] {
   const today = Date.parse(`${localDayOf(asOf, timeZone)}T00:00:00.000Z`);
@@ -384,7 +417,6 @@ export function answerNode(scope: NodeScope): GraphNode {
     const due = discussion;
     if (!due.length) return {};
     const dropCardTalk = !run.cardPrepared;
-    let plainFallback: string | null = null;
     if (state.plainChat && run.plainReply && parts.every((part) => part.route === "answer")) {
       const plain = withoutCardTalk(run.plainReply, due[0].localId, dropCardTalk);
       // AG08 (AE-UND-006): nothing was read, so a count of the user's records has no source unless the user said it.
@@ -392,18 +424,17 @@ export function answerNode(scope: NodeScope): GraphNode {
       if (plainCounts.length) emitTrace({ counts: plainCounts, parts: due.map((part) => part.localId), type: "answer.unsourced_counts_dropped" });
       const reply = plain ? withoutFalseClaims(withoutUnsourcedCounts(plain, plainCounts), due.map((part) => part.localId), run.topicMatched, [input.message, ...(run.context?.messages ?? []).map((message) => message.text)].join("\n")) : plain;
       // AG19 (D4): the first layer's reply is a model's text too: its Markdown symbols are taken out.
-      const shown = reply ? stripMarkdown(localizeAnswerDates(withoutQuoteResidue(reply), state.language), state.language) : "";
-      if (shown && !(due.length === 1 && needsLayout(shown, state.language))) {
+      const shown = reply ? stripMarkdown(localizeAnswerDates(withoutQuoteResidue(reply), state.language, state.asOf || deps.now()), state.language) : "";
+      if (shown) {
         run.answers.set(due[0].localId, shown);
         run.modelAnswers.add(due[0].localId);
-        emitTrace({ note: "plain chat: the first layer's reply is shown, no second call", parts: due.map((part) => part.localId), type: "answer.plain_reply" });
+        // Hotfix 2026-11-20 (the AG19 decision: layout is code's, never a further model call; AE-UND-013 went to 5 calls): a reply
+        // of more than two sentences is laid out by code from its own lines — an opening line, numbered or bulleted lines as
+        // points (AE-ANS-007) — and one that has no such structure is one paragraph, as it is.
+        const layout = due.length === 1 && needsLayout(shown, state.language) ? replyLayout(shown, state.language) : null;
+        if (layout) run.answerBlocks.set(due[0].localId, layout);
+        emitTrace({ note: "plain chat: the first layer's reply is shown, no second call", parts: due.map((part) => part.localId), ...(layout ? { layout: layout.map((block) => block.type) } : {}), type: "answer.plain_reply" });
         return {};
-      }
-      // AG19 (D4): a reply of more than two sentences has no structure to lay out: the answer step writes it in the plain
-      // fields (one call, inside the round's budget). If that call fails, the reply itself is still delivered, as paragraphs.
-      if (shown) {
-        plainFallback = shown;
-        emitTrace({ length: shown.length, parts: due.map((part) => part.localId), type: "answer.plain_reply_needs_layout" });
       }
       // Nothing left but card talk: the answer step writes it instead.
     }
@@ -464,15 +495,8 @@ export function answerNode(scope: NodeScope): GraphNode {
         // AG09 (AG08 交接 2): a discussion read nothing, so no sentence may say how many records it saw.
         const seen = withoutWrongSeenCounts(withoutUnsourcedCounts(withoutUnsourcedDates(text, unsourced), uncounted), new Set());
         if (seen.dropped.length) emitTrace({ coverage: [], dropped: seen.dropped, partId: part.localId, type: "answer.seen_counts_dropped" });
-        run.answers.set(part.localId, localizeAnswerDates(withoutFalseClaims(seen.text, [part.localId], run.topicMatched, user), state.language));
+        run.answers.set(part.localId, localizeAnswerDates(withoutFalseClaims(seen.text, [part.localId], run.topicMatched, user), state.language, state.asOf || deps.now()));
         run.modelAnswers.add(part.localId);
-        continue;
-      }
-      // AG19: the layout call did not give an answer: the first layer's reply is delivered as it was (never lost).
-      if (plainFallback && part === due[0]) {
-        run.answers.set(part.localId, plainFallback);
-        run.modelAnswers.add(part.localId);
-        emitTrace({ partId: part.localId, type: "answer.plain_reply_fallback" });
         continue;
       }
       const budgetOut = result.ok === false && result.reason === "budget";

@@ -143,7 +143,7 @@ export function proposableOf(part: GraphPart, quote: string): string[] {
   return out;
 }
 
-const TODO_WORD = /(待办|提醒|ToDo|TODO|タスク|\bto-?dos?\b|\btasks?\b)/iu;
+const TODO_WORD = /(待办|代办|提醒|ToDo|TODO|タスク|\bto-?dos?\b|\btasks?\b)/iu;
 /** AG13: words of an event attended ("聚会", "研讨会", "meetup", "イベント"). */
 const EVENT_WORD = /(活动|聚会|研讨会|讲座|展览|摄影展|市集|论坛|沙龙|工作坊|发布会|读书会|同学会|イベント|セミナー|勉強会|交流会|フォーラム|展示会|\bevent\b|\bmeetup\b|\bseminar\b|\bworkshop\b|\bconference\b|\bforum\b|\bparty\b|\bwalk\b)/iu;
 /** "加进我的日程", "カレンダー": the user does mean a schedule item. */

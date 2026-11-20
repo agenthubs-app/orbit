@@ -66,14 +66,14 @@ const GENERIC_CONTACT_CLUE = /(?:联系人|聯絡人|人脉|連絡先|コンタ�
 /** Words that name the user's contacts as a set (inside a sentence): 联系人, 連絡先, my contacts. */
 const CONTACT_SET_WORDS = /(?:联系人|聯絡人|人脉|連絡先|コンタクト|\bcontacts\b)/iu;
 const RANK_WORDS = /(挑|选出|选几|排序|排一下|排个序|并べ|並べ|選んで|順に|順番|\bpick\b|\bchoose\b|\brank\b|\bsort\b|\border\b|\blist the\b)/iu;
-const TODO_LIST_WORDS = /(待办|跟进|タスク|ToDo|フォローアップ|\bto-?dos?\b|\bfollow[\s-]?ups?\b|\btasks?\b)/iu;
+const TODO_LIST_WORDS = /(待办|代办|跟进|タスク|ToDo|フォローアップ|\bto-?dos?\b|\bfollow[\s-]?ups?\b|\btasks?\b)/iu;
 const WHO_WORDS = /(谁|哪位|哪些人|哪几位|\bwho\b|\bwhom\b|誰|どなた|どの人)/iu;
 const FORMAL_FOLLOW_UP = /(正式跟进|正式的跟进|フォローアップ|formal follow[\s-]?ups?)/iu;
 
 const EVENT_NOUN = /(活动|活動|イベント|\bevents?\b)/iu;
 const OTHER_READS = new Set<string>(["memo.read", "todo.read", "contact.read", "view.recentInteraction", "view.timeline", "view.context"]);
 /** Words for the user's own schedule and other records: with one of them, "活动" is not the only thing asked about. */
-const OTHER_RECORD_NOUN = /(日程|安排|行程|会议|开会|待办|笔记|联系人|予定|スケジュール|会議|タスク|メモ|\bschedule\b|\bcalendar\b|\bmeetings?\b|\bto-?dos?\b|\bnotes?\b|\bappointments?\b)/iu;
+const OTHER_RECORD_NOUN = /(日程|安排|行程|会议|开会|待办|代办|笔记|联系人|予定|スケジュール|会議|タスク|メモ|\bschedule\b|\bcalendar\b|\bmeetings?\b|\bto-?dos?\b|\bnotes?\b|\bappointments?\b)/iu;
 
 /** Words that name something else to go by than the events themselves: the history with people, records, "根据…". */
 const OTHER_BASIS_WORDS = /(根据|按照|依据|结合|参考|基于|往来|互动|来往|聊过|谈过|见过|记录|记过|认识的|に基づ|をもとに|やり取り|やりとり|based on|according to|going by|interactions?|history)/iu;
@@ -140,7 +140,7 @@ export function rankDomainOf(part: GraphPart, message: string): RankDomain | nul
 }
 
 const INTERACTION_WORDS = /(往来|互动|来往|联系记录|通话记录|来电|やり取り|やりとり|接触|interactions?|contact log)/iu;
-const FOLLOW_UP_ASK = /(答应|承诺|约好|说好|約束|やること|待办|ToDo|TODO|タスク|\bto-?dos?\b|\btasks?\b|跟进事项|要做的事|\bpromise[sd]?\b|\bcommit(?:ted|ments?)?\b|supposed to do|follow[\s-]?ups?)/iu;
+const FOLLOW_UP_ASK = /(答应|承诺|约好|说好|約束|やること|待办|代办|ToDo|TODO|タスク|\bto-?dos?\b|\btasks?\b|跟进事项|要做的事|\bpromise[sd]?\b|\bcommit(?:ted|ments?)?\b|supposed to do|follow[\s-]?ups?)/iu;
 const WRITE_ASK = /(更新|记到|记下|记上|补记|登记|记录到|记进|加到|加进|添加到|放进|建成|update|record|\blog\b|add (?:it |them |these |this )?to|put (?:it |them )?(?:in|on)|追加|記録|登録|入れて)/iu;
 const ORGANIZE_WORDS = /(整理(?:一下|整理|下)?|まとめて|まとめ|tidy (?:it |this )?up|organi[sz]e(?: (?:it|this))?)/iu;
 const SUMMARY_ASKED = /(总结|归纳|概括|摘要|要約|summari[sz]e|sum (?:it )?up)/iu;

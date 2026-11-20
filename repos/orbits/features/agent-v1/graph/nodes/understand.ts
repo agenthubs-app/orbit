@@ -14,6 +14,8 @@ import { coverEverySentence } from "../../understand/cover";
 import { describedObjectSpan, groupClue, questionWordClue, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
 import { refusedCreates } from "../../understand/negated-writes";
 import { followsShownList } from "../../understand/follow-list";
+import { asksTodaysPlate, ownWindow, plateFilter } from "../../understand/read-window";
+import { localDayOf } from "../../propose/dates";
 import { asksAgainAbout, bindMarkedReferences } from "../../references/marks";
 import { recordKindOf } from "../../clarify/default-readings";
 import type { UnderstandOutput } from "../../understand/schema";
@@ -28,7 +30,7 @@ const SPEAKER_WORDS = /^(?:你|您|我|咱们?|我们|你们|あなた|私|僕|y
 /** The user alone ("我", "me", "myself"): never a contact to look up. "we" is not here — it can stand for a person named before it. */
 const SELF_WORDS = /^(?:我|我自己|自己|本人|私|僕|自分|me|myself|i)$/iu;
 
-function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
+function graphPartsOf(output: UnderstandOutput, scope: NodeScope, today: string): GraphPart[] {
   const context = scope.run.context!;
   const message = scope.input.message;
   // AG13 opening 3 (AE-RD-003): parts whose only contact clue is a word of time ("当时说了什么？"); they take the object of the
@@ -48,6 +50,14 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
     // is dropped before routing, so the refused part never proposes it.
     const refused = refusedCreates(part.sourceQuote, part.requiredCapabilities);
     if (refused.length) emitTrace({ dropped: refused, partId: part.localId, type: "understand.refused_create" });
+    // Hotfix 2026-11-20 (understand/read-window.ts): a window comes from this message, never carried from an earlier turn
+    // the message does not go on from; "what to handle today" is the open to-dos up to today (overdue included).
+    const own = part.readFilter ? ownWindow(part.readFilter, message) : null;
+    if (own?.dropped) emitTrace({ dropped: { from: part.readFilter!.from ?? null, to: part.readFilter!.to ?? null }, partId: part.localId, type: "understand.window_not_inherited" });
+    const namesPerson = part.objectClues.some((clue) => clue.entity === "contact" && !clue.referenceId && !SPEAKER_WORDS.test(clue.text.trim()) && !questionWordClue(clue) && !groupClue(clue));
+    const plate = readsOnly && !namesPerson && !part.readFilter?.text && part.requiredCapabilities.some((capability) => capability === "todo.read" || capability === "schedule.read") && asksTodaysPlate(part.sourceQuote);
+    if (plate) emitTrace({ partId: part.localId, today, type: "understand.todays_plate" });
+    const readFilter = plate ? plateFilter(own?.filter, today) : own?.filter;
     return {
       asked: 0,
       capabilities: [...new Set([...part.requiredCapabilities, ...implied])].filter((capability) => !refused.includes(capability)) as typeof part.requiredCapabilities,
@@ -68,7 +78,7 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope): GraphPart[] {
         persistence: part.persistence,
         readings: (part.readings ?? []).map((reading) => ({ capabilities: [...reading.capabilities], deliverable: reading.deliverable })),
         // The checkpoint keeps the words as offsets into this turn's message, never the words.
-        ...(part.readFilter ? { readFilter: { ...part.readFilter, text: part.readFilter.text && message.includes(part.readFilter.text) ? [message.indexOf(part.readFilter.text), message.indexOf(part.readFilter.text) + part.readFilter.text.length] as [number, number] : undefined } } : {}),
+        ...(readFilter ? { readFilter: { ...readFilter, text: readFilter.text && message.includes(readFilter.text) ? [message.indexOf(readFilter.text), message.indexOf(readFilter.text) + readFilter.text.length] as [number, number] : undefined } } : {}),
         // AG08: the rank words as offsets too.
         ...(part.rank ? { rank: { ...part.rank, basis: spanOf(message, part.rank.basis), within: spanOf(message, part.rank.within) } } : {}),
         // AG09: what a web.search part looks up, the words as offsets too.
@@ -326,7 +336,7 @@ export function understandNode(scope: NodeScope): GraphNode {
       run.plainReply = null;
     }
     emitTrace({ language: ruled ?? chosen.language, reported: covered.output.language ?? null, decidedBy: ruled ? "saved_rule" : chosen.source, ...(chosen.rejected ? { rejected: chosen.rejected } : {}), type: "understand.language" });
-    const made = graphPartsOf(covered.output, scope);
+    const made = graphPartsOf(covered.output, scope, localDayOf(state.asOf || deps.now(), zone));
     // AG19-6: a question right after a list goes on from that list (code's rule).
     const followed = continueShownList(covered.output, made, scope);
     if (followed) {

@@ -57,7 +57,8 @@ test("nothing found: answered, no_record, said by code without a second model ca
   const result = await runAgentGraph(kit.deps, kit.input(message, { locale: "en" }));
   assert.equal(model.calls.length, 1);
   assert.deepEqual(result.partResults.map((item) => [item.status, item.gaps]), [["answered", ["no_record"]]]);
-  assert.match(result.text, /I found nothing about this/u);
+  // Hotfix 2026-11-20 part 1b item 4 (AE-RD-004): code's sentence says who and what was looked for, not the bare one.
+  assert.equal(result.text, "Open to-dos for Emily Carter: none.");
   assert.doesNotMatch(result.text, /couldn't read|problem/u);
 });
 

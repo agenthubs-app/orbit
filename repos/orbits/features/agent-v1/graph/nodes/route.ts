@@ -47,7 +47,7 @@ function reviewedEntry(part: GraphPart, quote: string, clue: (ref: GraphPart["re
 }
 
 /** AG10 run-02: words naming a to-do, and words naming a note (a statement about either gets the matching entry). */
-const TODO_WORD = /(待办|(?:设|加|建)个?提醒|ToDo|TODO|タスク|リマインダー|\bto-?dos?\b|\btasks?\b|\ba reminder\b)/iu;
+const TODO_WORD = /(待办|代办|(?:设|加|建)个?提醒|ToDo|TODO|タスク|リマインダー|\bto-?dos?\b|\btasks?\b|\ba reminder\b)/iu;
 const RECORD_NOTE_WORD = /(笔记|メモ|\bnotes?\b|往来|来电|电话|電話|\bcall(?:ed)?\b)/iu;
 
 /** AG09 run-02: words that ask to look on the web (zh, ja, en). */
