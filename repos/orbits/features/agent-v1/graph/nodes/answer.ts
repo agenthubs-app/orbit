@@ -18,7 +18,7 @@ import { parseAnswerOutput } from "../../answer/schema";
 import { verifyCitations } from "../../answer/verify";
 import { composeStructured, inListOrder, needsLayout, stripMarkdown, textBlocks, type AnswerBlock } from "../../answer/blocks";
 import { lateCount, listAnswer } from "../../answer/list-answer";
-import { asksBeyondListing, cardFactsOf, leftOver, textSaysMore, withCodeLateCount } from "../../answer/list-or-text";
+import { asksBeyondListing, cardFactsOf, leftOver, textSaysMore, withCodeLateCount, withCodeLateness, withListedPointsTrimmed, withoutFieldLabels, withoutFalseReadClaims, withoutInternalWords } from "../../answer/list-or-text";
 import { withoutUnsupportedEventClaims, type EventClaimFacts } from "../../answer/event-claims";
 import type { AgentAnswerRecordContract } from "../../../../shared/contract/agent-v1";
 import { statusSaidIn } from "./resolve";
@@ -286,10 +286,31 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
         if (recounted.changed.length) emitTrace({ changed: recounted.changed, partId: part.localId, type: "answer.late_count_corrected" });
         claimed = recounted.text;
       }
+      // Hotfix 1c (AE-RD-012 turn 2): how late a to-do is, where the answer names it, is the card's (code's) figure.
+      const lateness = withCodeLateness(claimed, todoCards);
+      if (lateness.changed.length) emitTrace({ changed: lateness.changed, partId: part.localId, type: "answer.lateness_corrected" });
+      claimed = lateness.text;
+      // Hotfix 1c (AE-SCL-008): a material's English field label is not shown in a zh or ja answer; nor our words (材料, 我读到的).
+      claimed = withoutInternalWords(withoutFieldLabels(claimed, state.language), state.language);
+      // Hotfix 1c (AE-UND-015): "could not be read" must agree with this turn's coverage record.
+      const readAllFine = (part.coverage ?? []).length > 0 && (part.coverage ?? []).every((item) => item.complete) && !someUnread;
+      const readClaims = withoutFalseReadClaims(claimed, readAllFine);
+      if (readClaims.dropped.length) emitTrace({ dropped: readClaims.dropped, partId: part.localId, type: "answer.false_read_claims_dropped" });
+      if (readClaims.text.trim()) claimed = readClaims.text;
       run.answers.set(part.localId, localizeAnswerDates(someUnread ? withoutOnly(claimed, state.language) : claimed, state.language, state.asOf || deps.now()));
       run.modelAnswers.add(part.localId);
       // AG09: a web page is not a record of the user's: its citations stay out of the records' sourceRefs (the page is listed in the answer's web record).
       if (segment.cites.length) part.cites = segment.cites.map((cite) => cite.ref).filter((ref) => !ref.startsWith("web:"));
+      // Hotfix 1c (AE-ANS-019 run-05: the model cited 3 of the 4 overdue to-dos read for "what to handle today"): such a part
+      // shows every record it read, in the read's order after the ones the answer named.
+      if (run.showAllRead.has(part.localId) && part.cites) {
+        const read = (part.reads ?? []).map((item) => item.ref).filter((ref) => run.recordCards.has(ref));
+        const added = read.filter((ref) => !part.cites!.includes(ref));
+        if (added.length) {
+          part.cites = [...part.cites, ...added];
+          emitTrace({ added, partId: part.localId, type: "answer.all_read_shown" });
+        }
+      }
       // AG19 repair round 1 (decision 1, D1): a list-type read is written by code from the records the answer picked —
       // the lead says how many, of what kind and for which window, each record is its card and is not written out again.
       // The order is code's, not the one the model happened to cite them in: schedule items and events by their time,
@@ -303,6 +324,15 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
       const facts = allMaterials.filter((material) => (part.cites ?? []).includes(material.ref)).flatMap((material) => cardFactsOf(material.sentences.map((sentence) => sentence.text)));
       const keepsText = listed.length > 0 && (asksBeyondListing(listQuote) || textSaysMore(segment.text, listed, facts));
       if (keepsText) emitTrace({ beyond: asksBeyondListing(listQuote), cards: listed.length, left: leftOver(segment.text, listed, facts).slice(0, 80), partId: part.localId, type: "answer.list_kept_text" });
+      // Hotfix 1c (live, 「今天先处理哪些事？」 with 16 stale to-dos: all 16 in the text and on the cards): a kept text that walks
+      // through more records than a list shows first keeps the past-deadline ones in its points; the rest are the cards.
+      if (keepsText) {
+        const trimmed = withListedPointsTrimmed(run.answers.get(part.localId) ?? "", listed, state.language);
+        if (trimmed.dropped) {
+          run.answers.set(part.localId, trimmed.text);
+          emitTrace({ dropped: trimmed.dropped, partId: part.localId, type: "answer.points_left_to_cards" });
+        }
+      }
       if (listed.length && listed.length === new Set(part.cites ?? []).size && !keepsText) {
         const quote = input.message.slice(part.quote[0], part.quote[1]);
         // Hotfix 2026-11-20 (AE-SCL-008): the lead says how many match in all when the cards are only some of them.

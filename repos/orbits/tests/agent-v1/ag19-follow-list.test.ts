@@ -73,3 +73,10 @@ test("after the list of events, 「哪些活动？你觉得有必要参加？为
   assert.doesNotMatch(run.result.text, /活动目录|这次先不做|哪一位/u);
   assert.equal(hasMarkdownSymbols(run.result.text), false);
 });
+
+// AG14 merge (AE-SCL-028 in the AG14 stability runs): a message that names its own period is a new lookup over that period
+// (where saved memory ranks it), not a question about the list shown before; words pointing back keep it on the list.
+test("a message naming its own period is a new lookup, not a question about the list shown last", () => {
+  for (const message of ["下周（11 月 16 日到 22 日）有什么值得去的活动？挑三场。", "这个周末有什么活动值得去？", "来週おすすめのイベントは？", "Which events next week are worth going to?"]) assert.equal(rule(message), null, message);
+  assert.equal(rule("这些活动里周末那场值得去吗？"), "event", "words pointing back keep it on the list");
+});

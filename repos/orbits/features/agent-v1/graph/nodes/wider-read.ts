@@ -11,6 +11,7 @@ import type { AgentAnswerRecordContract } from "../../../../shared/contract/agen
 import type { AnswerBlock } from "../../answer/blocks";
 import { cardsAnswer, lateCount, windowWords } from "../../answer/list-answer";
 import { readPages } from "../../domains/registry";
+import { occurrenceIn } from "../../domains/schedule/read";
 import type { DomainQuery, DomainReader, DomainScope, RecordView } from "../../domains/types";
 import type { Language } from "../../functions/copy";
 
@@ -104,9 +105,10 @@ function todoNothingWords(language: Language, quote: string, asked: Pick<AskedRe
 /** What exists outside the narrowing: how many, and of the open ones how many are past their day. */
 export function todoOthersLine(language: Language, count: number, status: "open" | "completed", late: number | null, person?: string): string {
   const lateWords = status === "open" && late ? late : 0;
-  if (language === "en") return `You do have ${count} ${STATUS_WORDS.en[status]} ${count === 1 ? "to-do" : "to-dos"}${person ? ` for ${person}` : ""}${lateWords ? `, ${lateWords} of them overdue` : ""}.`;
-  if (language === "ja") return `${person ? `${person}さんの` : ""}${STATUS_WORDS.ja[status]}タスクはほかに${count}件あります${lateWords ? `（うち${lateWords}件は期限切れ）` : ""}。`;
-  return `${person ? `${person}名下` : ""}另有 ${count} 项${STATUS_WORDS.zh[status]}待办${lateWords ? `，其中 ${lateWords} 项已过期` : ""}。`;
+  // Hotfix 1c (AE-RD-013): the count is of those past their deadline or their planned day, as the cards mark them — said so.
+  if (language === "en") return `You do have ${count} ${STATUS_WORDS.en[status]} ${count === 1 ? "to-do" : "to-dos"}${person ? ` for ${person}` : ""}${lateWords ? `, ${lateWords} of them past their deadline or planned day` : ""}.`;
+  if (language === "ja") return `${person ? `${person}さんの` : ""}${STATUS_WORDS.ja[status]}タスクはほかに${count}件あります${lateWords ? `（うち${lateWords}件は期限または予定日を過ぎています）` : ""}。`;
+  return `${person ? `${person}名下` : ""}另有 ${count} 项${STATUS_WORDS.zh[status]}待办${lateWords ? `，其中 ${lateWords} 项已过期或过了计划日` : ""}。`;
 }
 
 export function scheduleNothingLine(language: Language, quote: string, asked: Pick<AskedRead, "fromDay" | "toDay" | "text">): string {
@@ -116,10 +118,41 @@ export function scheduleNothingLine(language: Language, quote: string, asked: Pi
   return `${when ? `${when}的` : ""}${asked.text ? `含「${asked.text}」的` : ""}日程：没有。`;
 }
 
+/** Hotfix 1c (AE-ENT-005): words found nothing in the window, but the window has items — said without "none" above them. */
+export function scheduleInWindowLine(language: Language, quote: string, asked: Pick<AskedRead, "fromDay" | "toDay" | "text">, count: number): string {
+  const when = periodWords(language, quote, asked.fromDay, asked.toDay);
+  if (language === "en") return `Nothing ${when ? `${ONE_DAY_WORD.test(when) ? when : `for ${when}`} ` : ""}contains "${asked.text}"; here ${count === 1 ? "is what is" : `are the ${count} items`} on then:`;
+  if (language === "ja") return `${when ? `${when}に` : ""}「${asked.text}」を含む予定はありません。この期間の予定は${count}件です：`;
+  return `${when ? `${when}` : ""}没有含「${asked.text}」的日程；这段时间里有 ${count} 个日程：`;
+}
+
 export function scheduleOthersLine(language: Language, count: number): string {
   if (language === "en") return `You have ${count} coming up.`;
   if (language === "ja") return `これからの予定は${count}件あります。`;
   return `接下来还有 ${count} 个日程。`;
+}
+
+interface Piece {
+  kind: "todo" | "schedule";
+  nothing: string;
+  count: number;
+  status: "open" | "completed";
+  late: number | null;
+}
+
+/** Hotfix 1c: one sentence for several kinds that had nothing under the narrowing, and what is shown below instead. */
+export function combinedLead(language: Language, pieces: readonly Piece[]): string {
+  const subject = (piece: Piece) => piece.nothing.replace(/(?:：没有。|：ありません。|: none\.)$/u, "");
+  if (language === "en") {
+    const shown = pieces.map((piece) => (piece.kind === "todo" ? `${piece.count} ${STATUS_WORDS.en[piece.status]} ${piece.count === 1 ? "to-do" : "to-dos"}${piece.status === "open" && piece.late ? ` (${piece.late} past their deadline or planned day)` : ""}` : `the ${piece.count} coming up`));
+    return `No ${pieces.map((piece) => subject(piece).replace(/^./u, (first) => first.toLowerCase())).join(" and no ")}; below are ${shown.join(" and ")}.`;
+  }
+  if (language === "ja") {
+    const shown = pieces.map((piece) => (piece.kind === "todo" ? `${STATUS_WORDS.ja[piece.status]}タスク${piece.count}件${piece.status === "open" && piece.late ? `（うち${piece.late}件は期限または予定日を過ぎています）` : ""}` : `これからの予定${piece.count}件`));
+    return `${pieces.map(subject).join("も")}もありません。下は${shown.join("と")}です。`;
+  }
+  const shown = pieces.map((piece) => (piece.kind === "todo" ? `${piece.count} 项${STATUS_WORDS.zh[piece.status]}待办${piece.status === "open" && piece.late ? `（其中 ${piece.late} 项已过期或过了计划日）` : ""}` : `接下来的 ${piece.count} 个日程`));
+  return `${pieces.map(subject).join("和")}都没有；下面是另外的${shown.join("和")}。`;
 }
 
 /**
@@ -129,6 +162,7 @@ export function scheduleOthersLine(language: Language, count: number): string {
 export async function widerThanAsked(input: WiderInput): Promise<Widened | null> {
   const lines: string[] = [];
   const views: RecordView[] = [];
+  const pieces: Piece[] = [];
   for (const asked of input.asked) {
     let query: DomainQuery | null = null;
     let status: "open" | "completed" = "open";
@@ -138,6 +172,17 @@ export async function widerThanAsked(input: WiderInput): Promise<Widened | null>
       query = { status, ...(asked.person ? { contactId: asked.person.id } : {}) };
     } else if ((asked.from || asked.to) && !asked.defaultFrom || asked.text) {
       query = { from: input.now, ...(asked.person ? { contactId: asked.person.id } : {}) };
+    }
+    // Hotfix 1c (AE-ENT-005): schedule words that found nothing in a window — the window's own items first, never "none" above
+    // a record that falls inside it.
+    if (asked.kind === "schedule" && asked.text && (asked.from || asked.to)) {
+      const inWindow = await readPages(input.reader, "schedule", input.scope, { ...(asked.from ? { from: asked.from } : {}), ...(asked.to ? { to: asked.to } : {}), ...(asked.person ? { contactId: asked.person.id } : {}) }, input.maxPages);
+      const kept = inWindow.items.filter((view) => occurrenceIn(String(view.fields.startsAt), typeof view.fields.recurrence === "string" ? view.fields.recurrence : undefined, asked.from, asked.to));
+      if (kept.length) {
+        lines.push(scheduleInWindowLine(input.language, input.quote, asked, kept.length));
+        views.push(...kept);
+        continue;
+      }
     }
     if (!query) {
       // Part 1b item 4: a person's read still says who and what was looked for.
@@ -152,9 +197,16 @@ export async function widerThanAsked(input: WiderInput): Promise<Widened | null>
     }
     const count = pages.total ?? pages.items.length;
     const cards = pages.items.map(input.cardOf);
-    const others = asked.kind === "todo" ? todoOthersLine(input.language, count, status, pages.complete ? lateCount(cards, input.language) : null, asked.person?.name) : scheduleOthersLine(input.language, count);
+    const late = asked.kind === "todo" && pages.complete ? lateCount(cards, input.language) : null;
+    const others = asked.kind === "todo" ? todoOthersLine(input.language, count, status, late, asked.person?.name) : scheduleOthersLine(input.language, count);
     lines.push(`${nothing}${input.language === "en" ? " " : ""}${others}`);
+    pieces.push({ count, kind: asked.kind, late, nothing, status });
     views.push(...pages.items);
+  }
+  // Hotfix 1c (live, 「那这周呢？」: 「…：没有。另有 20 项…这周的日程：没有。接下来还有 1 个日程。」 — four statements): two kinds with
+  // nothing in the window are said in one sentence — what was looked for, then what is shown below.
+  if (pieces.length >= 2 && pieces.length === lines.length) {
+    lines.splice(0, lines.length, combinedLead(input.language, pieces));
   }
   // Part 1b item 4 (AE-RD-004): a person's read with nothing outside the narrowing still says who and what was looked for.
   if (!views.length && lines.length && input.asked.some((asked) => asked.person)) {

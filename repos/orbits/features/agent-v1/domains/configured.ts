@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 
 import { createPostgresEventCoreRepositoryFromRuntime } from "../../events/core/storage/postgres-repository";
 import { createConfiguredEventOperationsPostgresRuntime } from "../../events/event-operations/storage/postgres-client";
+import { createPostgresCanonicalRegistrationMethods } from "../../events/event-operations/storage/canonical-registration-repository";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import type { AgentRecordAccess } from "../graph/deps";
 import { evalDeniedReads } from "../observability/trace";
@@ -63,6 +64,7 @@ export function configuredRecordAccess(): AgentRecordAccess | null {
   const source = createPostgresRecordSource(configured.client);
   const runtime = createConfiguredEventOperationsPostgresRuntime();
   const repository = runtime ? createPostgresEventCoreRepositoryFromRuntime(runtime) : null;
+  const registrations = runtime ? createPostgresCanonicalRegistrationMethods(runtime) : null;
   const byIds = async (ids: readonly string[]) => (repository?.listEventsByIds ? repository.listEventsByIds(ids) : []);
   const workspaceId = configured.workspaceId;
   // AG13: private events, «我去过» and the records linking to an event (the reverse lookups go by index).
@@ -80,6 +82,8 @@ export function configuredRecordAccess(): AgentRecordAccess | null {
     // AG08: the events of the deployment for ranking (functions node keeps those the account may see).
     listEvents: async () => (repository ? repository.listEvents() : []),
     eventsByIds: byIds,
+    // Hotfix 2026-11-20 part 2: the published events the user is registered for (not cancelled).
+    registeredEventIds: async (actorId) => (registrations ? (await registrations.listPublishedCanonicalRegistrationStatusesForUser(actorId)).filter((item) => item.status !== "cancelled").map((item) => item.eventId) : []),
     maxPages: readMaxPages(),
     reader,
     scope: (actorId) => ({ accountId: actorId, authorizationEpoch: AUTHORIZATION_EPOCH, workspaceId }),

@@ -92,6 +92,14 @@ for (const capabilities of [["todo.read", "schedule.read"], ["todo.read"], ["sch
   });
 }
 
+test("1c (AE-ANS-019 run-05): the answer names 1 of the overdue to-dos — every to-do read for today's plate is still shown", async () => {
+  const message = "今天先处理哪些事？";
+  const citeOne = (call: ModelCall) => json({ segments: [{ cites: [{ sentenceIds: [1], sourceRef: /(s\d+) — to-do/u.exec(call.user)![1] }], lead: "先处理最早过期的那一项。", partId: "p1" }] });
+  const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", readFilter: { from: TODAY, to: TODAY }, requiredCapabilities: ["todo.read", "schedule.read"], sourceQuote: message }], { answer: citeOne, session: session() });
+  assert.deepEqual(sorted(run.result.sourceRefs), sorted([...OVERDUE, "schedule:personal:s20"]));
+  assert.ok(run.events.some((event) => event.type === "answer.all_read_shown"));
+});
+
 test("rule 1 (en): 「What should I do first today?」 — the overdue to-dos, the undated and future ones left out", async () => {
   const message = "What should I do first today?";
   const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", readFilter: { from: TODAY, to: TODAY, status: "open" }, requiredCapabilities: ["todo.read"], sourceQuote: message }], { answer: citeAll, language: "en", session: session() });
@@ -152,9 +160,9 @@ test("rule 3: the sentences say what was looked for and what exists (zh, ja, en)
   // "open" beside a day says nothing more (dev run hotfix-dev1: 「今天到期或计划在今天的还没完成的待办」); alone it is the narrowing.
   assert.equal(todoNothingLine("zh", "今天到期的待办有哪些？", { ...today, status: "open", statusSaid: true }), "今天到期或计划在今天的待办：没有。");
   assert.equal(todoNothingLine("zh", "我有哪些还没完成的待办？", { status: "open", statusSaid: true }), "还没完成的待办：没有。");
-  assert.equal(todoOthersLine("zh", 20, "open", 16), "另有 20 项还没完成的待办，其中 16 项已过期。");
+  assert.equal(todoOthersLine("zh", 20, "open", 16), "另有 20 项还没完成的待办，其中 16 项已过期或过了计划日。");
   assert.equal(todoNothingLine("ja", "今日が期限のタスクは？", today), "今日が期限または予定日のタスク：ありません。");
-  assert.equal(todoOthersLine("ja", 20, "open", 16), "未完了のタスクはほかに20件あります（うち16件は期限切れ）。");
+  assert.equal(todoOthersLine("ja", 20, "open", 16), "未完了のタスクはほかに20件あります（うち16件は期限または予定日を過ぎています）。");
   assert.equal(todoNothingLine("en", "Which to-dos are due today?", today), "To-dos due or planned today: none.");
   assert.equal(todoOthersLine("en", 1, "open", 0), "You do have 1 open to-do.");
   assert.equal(todoNothingLine("zh", "下周三到期的待办", { fromDay: "2026-11-25", statusSaid: false, toDay: "2026-11-25" }), "下周（11月25日）到期或计划在这天的待办：没有。");
@@ -167,7 +175,7 @@ test("rule 3: 「今天到期的待办有哪些？」 with none due today — co
   const message = "今天到期的待办有哪些？";
   const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", readFilter: { from: TODAY, to: TODAY }, requiredCapabilities: ["todo.read"], sourceQuote: message }], { session: session() });
   assert.equal(run.modelCalls.length, 1, "only the first layer");
-  const lead = "今天到期或计划在今天的待办：没有。另有 6 项还没完成的待办，其中 4 项已过期。";
+  const lead = "今天到期或计划在今天的待办：没有。另有 6 项还没完成的待办，其中 4 项已过期或过了计划日。";
   assert.equal(run.result.text.split("\n")[0], lead);
   assert.deepEqual(run.result.blocks.map((block) => block.type), ["paragraph", "records"]);
   assert.equal(run.result.blocks[0].type === "paragraph" && run.result.blocks[0].text, lead);

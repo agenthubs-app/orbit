@@ -107,4 +107,108 @@ export function withCodeLateCount(text: string, counts: { late: number; dueLate:
   return { changed, text: out };
 }
 
+/**
+ * Hotfix 1c (AE-RD-012 turn 2: 「已逾期一天」 copied from the record's note while the card said 已过期5天): how late a to-do is,
+ * said in the model's sentence or point that names it, is code's — the card's own lower line, measured against the turn's
+ * clock. Only a phrase with a number of days is replaced; the sentence stays.
+ */
+export function withCodeLateness(text: string, cards: readonly AgentAnswerRecordContract[]): { text: string; changed: string[] } {
+  const changed: string[] = [];
+  const late = cards.filter((card) => card.kind === "todo" && card.subTone === "late" && card.sub && card.title);
+  if (!late.length) return { changed, text };
+  const DAYS = /(?:已经|已)?(?:逾期|过期|超期)了?\s*(?:[一二两三四五六七八九十]+|\d+)\s*天|(?:\d+)\s*日(?:超過|遅れ|過ぎ)|\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+days?\s+(?:overdue|late|past due)\b/giu;
+  const out = text.split(/(?<=[。；;\n])/u).map((segment) => {
+    const card = late.find((item) => segment.includes(item.title));
+    if (!card) return segment;
+    return segment.replace(DAYS, (said) => {
+      if (said === card.sub) return said;
+      changed.push(`${said} → ${card.sub}`);
+      return /^[A-Za-z]/u.test(card.sub!) ? card.sub!.toLowerCase() : card.sub!;
+    });
+  });
+  return { changed, text: out.join("") };
+}
+
+/** Hotfix 1c (AE-SCL-008: 「Notes: 已过期」 on screen): a material's field label copied into a zh or ja answer goes; its value stays. */
+const FIELD_LABEL = /\b(?:Notes|Status|Due|Planned date|Title|Linked contacts?|Linked events|Linked notes|Starts|Ends|Place|With|Repeats|Name|Organization|Role)\s*[:：]\s*/gu;
+
+export function withoutFieldLabels(text: string, language: Language): string {
+  return language === "en" ? text : text.replace(FIELD_LABEL, "");
+}
+
+/** A sentence saying records could not be read, or were not all read (zh, ja, en). */
+const READ_FAILED = /(读不到|读不了|无法读取|没能读取|没有读取到|读取失败|没法读|没能读到|没有读到全部|没有全部读|(?:其他|其余|更早|之前|别的|其它)[^。，,；]{0,10}?(?:并)?没(?:有)?(?:读到|读取|看到)|読めておらず|読めません|読めませんでした|読み込めませ|読み取れませ|取得できませ|アクセスできませ|\bcouldn'?t (?:read|access|load)\b|\bcould not (?:read|access|load)\b|\bunable to (?:read|access|load)\b|\bcan(?:no|')t (?:read|access)\b|\bwasn'?t able to read\b|\bfailed to (?:read|load)\b)/iu;
+
+/**
+ * Hotfix 1c (AE-UND-015 run-03: 「カレンダーの予定は…読めておらず」 though the schedule read was complete): a sentence claiming
+ * a read failed or was incomplete must agree with the read's coverage record. When every read of the part was complete and
+ * nothing was withheld, unreadable or failed, such a sentence is not delivered.
+ */
+export function withoutFalseReadClaims(text: string, readAllFine: boolean): { text: string; dropped: string[] } {
+  if (!readAllFine || !READ_FAILED.test(text)) return { dropped: [], text };
+  const dropped: string[] = [];
+  const kept = text.split("\n").map((line) => {
+    const sentences = line.match(/[^。！？!?]+(?:[。！？!?]+|$)/gu) ?? [line];
+    const parts = sentences.flatMap((sentence) => (/[A-Za-z]/u.test(sentence) && !/[぀-ヿ一-鿿]/u.test(sentence) ? sentence.split(/(?<=\.)[ \t]+/u) : [sentence]));
+    return parts.filter((part) => {
+      if (!READ_FAILED.test(part)) return true;
+      dropped.push(part.trim());
+      return false;
+    }).join(/[A-Za-z]/u.test(line) && !/[぀-ヿ一-鿿]/u.test(line) ? " " : "").trim();
+  });
+  return { dropped, text: kept.filter((line) => line.trim()).join("\n") };
+}
+
+/**
+ * Hotfix 1c (live: 「材料里没有显示…」「我读到的这条日程只有…」): "材料" (the materials we hand the model) and "what I read" are our
+ * words, not the user's. They become the user's own: 记录 / 記録 / your records, and the record itself.
+ */
+const INTERNAL: Record<Language, [RegExp, string][]> = {
+  en: [[/\b(?:in|from) the (?:provided )?materials?\b/giu, "in your records"], [/\bthe (?:provided )?materials?\b/giu, "your records"], [/\bthe (\w+) I read\b/giu, "the $1"], [/\bI (?:only )?read\b(?= that| the| this)/giu, "your records show"]],
+  ja: [[/資料(?:には|では|に|で)/gu, "記録には"], [/資料/gu, "記録"], [/(?:私が)?読んだ(?=この|その)/gu, ""], [/読み取った(?=この|その)/gu, ""]],
+  zh: [[/(?:根据)?材料(?:里|中|上)?(?:没有显示|没显示)/gu, "记录里没有写"], [/(?:根据)?材料(?:里|中|上)/gu, "记录里"], [/材料/gu, "记录"], [/我(?:这次)?(?:只)?读到的(?=这|那)/gu, ""], [/我(?:这次)?读到的/gu, ""]],
+};
+
+export function withoutInternalWords(text: string, language: Language): string {
+  return INTERNAL[language].reduce((out, [pattern, to]) => out.replace(pattern, to), text);
+}
+
+/** How many records a kept text may walk through point by point before the rest are left to the cards (a list shows five). */
+export const POINTS_IN_TEXT = 5;
+const POINT = /^\s*(?:[・•●▪◦\-–—*+]|\d{1,2}\s*[.．、)）]|[（(]\d{1,2}[)）])\s*/u;
+
+/**
+ * Hotfix 1c (live: 16 stale to-dos written out in the text and again as cards): when a kept model text has one point per
+ * listed record for more than POINTS_IN_TEXT records, the points of the to-dos past their deadline stay (or the first five,
+ * when none is), the other points go and one line says the rest are the cards below, in the list's order.
+ */
+export function withListedPointsTrimmed(text: string, cards: readonly AgentAnswerRecordContract[], language: Language): { text: string; dropped: number } {
+  const lines = text.split("\n");
+  const pointOf = (line: string) => (POINT.test(line) ? cards.find((card) => card.title && line.includes(card.title)) ?? null : null);
+  const pointed = lines.map(pointOf);
+  const count = pointed.filter(Boolean).length;
+  if (count <= POINTS_IN_TEXT) return { dropped: 0, text };
+  const late = new Set(cards.filter((card) => card.subTone === "late").map((card) => card.title));
+  let kept = 0;
+  const keep = (card: AgentAnswerRecordContract) => (late.size ? late.has(card.title) : kept < POINTS_IN_TEXT);
+  const out: string[] = [];
+  let dropped = 0;
+  lines.forEach((line, index) => {
+    const card = pointed[index];
+    if (!card) return out.push(line);
+    if (keep(card)) {
+      kept += 1;
+      return out.push(line);
+    }
+    dropped += 1;
+  });
+  if (!dropped) return { dropped: 0, text };
+  const rest = { en: `The other ${dropped} are the cards below, by planned date.`, ja: `残りの${dropped}件は下のカードにあります（予定日の順）。`, zh: `其余 ${dropped} 项在下面的卡片里，按计划日期排。` }[language];
+  // The line goes right after the last point kept (or where the points were).
+  const lastPoint = out.map((line, index) => (pointOf(line) ? index : -1)).filter((index) => index >= 0).pop();
+  const at = lastPoint === undefined ? out.length : lastPoint + 1;
+  out.splice(at, 0, rest);
+  return { dropped, text: out.join("\n") };
+}
+
 export type { Language };

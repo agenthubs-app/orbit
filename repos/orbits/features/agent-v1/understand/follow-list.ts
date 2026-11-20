@@ -32,6 +32,9 @@ const OPINION = /(值得|有必要|必要|推荐|建议|该不该|要不要|应�
 /** Asking for other or more records than the ones shown: a new lookup. */
 const ASKS_OTHERS = /(还有|其他|其它|别的|另外|更多|再找|再列|换一批|\bother\b|\bmore\b|\belse\b|\banother\b|ほかに|他に|別の|もっと)/iu;
 
+/** A period of its own: a day or a range said in words or as a date ("下周", "这个周末", "11月16日", "来週", "next week"). */
+const NAMES_PERIOD = /(今天|明天|后天|今晚|明晚|这周|本周|下周|下下周|这个?周末|本周末|下个?周末|这个月|本月|下个?月|\d{1,2}\s*月\s*\d{1,2}\s*[日号]|今日|明日|今週|来週|今月|来月|週末|\btoday\b|\btomorrow\b|\b(?:this|next) (?:week|weekend|month)\b)/iu;
+
 export interface FollowListInput {
   message: string;
   /** The list shown last, in display order (empty when the session was idle or showed none). */
@@ -58,5 +61,8 @@ export function followsShownList(input: FollowListInput): ListKind | null {
   if (ASKS_OTHERS.test(message)) return null;
   // "最近还有哪些活动值得去" asks what is coming up — a new list; with words that point back ("这些活动最近哪场值得去") it stays.
   if (kind === "event" && asksUpcomingEvents(message) && !POINTS_BACK.test(message)) return null;
+  // AG14 merge (AE-SCL-028 in the AG14 stability runs): "下周（11 月 16 日到 22 日）有什么值得去的活动？挑三场。" names its
+  // own period: a new lookup over that period (with the saved memory), not a question about the list shown before.
+  if (NAMES_PERIOD.test(message) && !POINTS_BACK.test(message)) return null;
   return kind;
 }

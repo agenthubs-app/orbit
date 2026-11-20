@@ -14,7 +14,7 @@ import { coverEverySentence } from "../../understand/cover";
 import { describedObjectSpan, groupClue, questionWordClue, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
 import { refusedCreates } from "../../understand/negated-writes";
 import { followsShownList } from "../../understand/follow-list";
-import { asksTodaysPlate, ownWindow, plateFilter } from "../../understand/read-window";
+import { asksTodaysPlate, dayOfWords, onlyWindowWords, ownWindow, plateFilter, swapsPeriod } from "../../understand/read-window";
 import { localDayOf } from "../../propose/dates";
 import { asksAgainAbout, bindMarkedReferences } from "../../references/marks";
 import { recordKindOf } from "../../clarify/default-readings";
@@ -55,26 +55,42 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope, today: string)
     const namesPerson = part.objectClues.some((clue) => clue.entity === "contact" && !clue.referenceId && !SPEAKER_WORDS.test(clue.text.trim()) && !questionWordClue(clue) && !groupClue(clue));
     const plate = readsOnly && !namesPerson && !part.readFilter?.text && part.requiredCapabilities.some((capability) => capability === "todo.read" || capability === "schedule.read") && asksTodaysPlate(part.sourceQuote);
     if (plate) emitTrace({ partId: part.localId, today, type: "understand.todays_plate" });
-    const readFilter = plate ? plateFilter(own?.filter, today) : own?.filter;
+    // Hotfix 1c (AE-ENT-005): words of only a date, a time of day and a kind of record are a window, never search words —
+    // in readFilter.text or as a record clue; with no window of the first layer's, they give the day.
+    let windowed = own?.filter;
+    const windowText = [windowed?.text, ...part.objectClues.filter((clue) => !clue.referenceId).map((clue) => clue.text)].find((words) => onlyWindowWords(words));
+    if (windowText) {
+      const day = dayOfWords(windowText, today);
+      const { text: textWords, ...rest } = windowed ?? {};
+      windowed = { ...rest, ...(textWords && !onlyWindowWords(textWords) ? { text: textWords } : {}), ...(day && !rest.from && !rest.to ? { from: day, to: day } : {}) };
+      emitTrace({ day, partId: part.localId, type: "understand.window_words_not_text" });
+    }
+    // Hotfix 1c (live, 「那这周呢？」): a follow-up that only swaps the period is the question just answered with the new window —
+    // no reading to choose; after "what to handle today" it is that question for the new window.
+    const previousAsk = [...context.messages].reverse().find((item) => item.role === "user")?.text;
+    const swapped = Boolean(previousAsk) && swapsPeriod(message);
+    const swappedPlate = swapped && !namesPerson && asksTodaysPlate(previousAsk!);
+    if (swapped) emitTrace({ partId: part.localId, plate: swappedPlate, type: "understand.period_swapped" });
+    const readFilter = plate ? plateFilter(windowed, today) : swappedPlate ? plateFilter(windowed, windowed?.to ?? today) : windowed;
     return {
       asked: 0,
-      capabilities: [...new Set([...part.requiredCapabilities, ...implied])].filter((capability) => !refused.includes(capability)) as typeof part.requiredCapabilities,
+      capabilities: (swappedPlate ? ["todo.read", "schedule.read"] : [...new Set([...part.requiredCapabilities, ...implied])].filter((capability) => !refused.includes(capability))) as typeof part.requiredCapabilities,
       continues: part.continues && continued ? { kind: part.continues.kind, ref: continued.ref } : null,
       dependsOn: [...part.dependsOn],
       localId: part.localId,
       origin: null,
       plan: {
-        clarity: part.clarity,
+        clarity: swapped ? "clear" : part.clarity,
         dataOwner: part.dataOwner,
         dataSources: [...part.dataSources],
-        deliverable: part.deliverable,
+        deliverable: swappedPlate ? "list" : part.deliverable,
         hypothesis: hypothesisOf(part),
         intentBasis: part.intentBasis,
         // AG09 run-04 repair 2 (AE-JDG-007): a negation counts only when the user's own message carries one; a note the model
         // wrote around the user's words ("（假设，先不要真的改）") does not make one.
         negation: negationOf(part) && negationIn(message),
         persistence: part.persistence,
-        readings: (part.readings ?? []).map((reading) => ({ capabilities: [...reading.capabilities], deliverable: reading.deliverable })),
+        readings: (swapped ? [] : part.readings ?? []).map((reading) => ({ capabilities: [...reading.capabilities], deliverable: reading.deliverable })),
         // The checkpoint keeps the words as offsets into this turn's message, never the words.
         ...(readFilter ? { readFilter: { ...readFilter, text: readFilter.text && message.includes(readFilter.text) ? [message.indexOf(readFilter.text), message.indexOf(readFilter.text) + readFilter.text.length] as [number, number] : undefined } } : {}),
         // AG08: the rank words as offsets too.

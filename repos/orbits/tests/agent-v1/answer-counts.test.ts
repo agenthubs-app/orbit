@@ -20,6 +20,10 @@ test("record counts are found in zh, ja and en; numbered advice is not a count",
   assert.deepEqual(countsIn("分五点说：第一，先了解客户。"), []);
   assert.deepEqual(countsIn("给你三个开场话题。"), []);
   assert.deepEqual(countsIn("Here are three tips for short emails."), []);
+  // Hotfix 2026-11-20 (AE-UND-006 run-03): points of advice are not a count of the user's records; the sentence stays.
+  assert.deepEqual(countsIn("確認すべき点は3つあります。"), []);
+  assert.deepEqual(countsIn("There are three things to check first."), []);
+  assert.deepEqual(countsIn("山本さんとの食事は3件あります。"), [3], "a count of records still counts");
 });
 
 test("a count no source gives is dropped with its sentence; one the read gives stays", () => {

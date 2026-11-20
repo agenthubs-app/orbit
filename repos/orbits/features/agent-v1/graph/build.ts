@@ -156,6 +156,7 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     readNames: new Map(),
     readNotes: new Map(),
     carriedQuestions: new Map(),
+    showAllRead: new Set(),
     references: [],
     readSources: new Map(),
     basis: null,
