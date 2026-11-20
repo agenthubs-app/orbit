@@ -184,3 +184,54 @@ export function memoriesFor(domain: RankDomain, memories: readonly SavedMemory[]
       return { memory, time: constrained, topic: constrained ? null : topicWordsOf(memory.content.replace(DOMAIN_WORDS[domain], " ")) || null };
     });
 }
+
+/* ── AG19-6: "最近有哪些活动" ───────────────────────────────────────── */
+
+const UPCOMING_WORDS = /(最近|近期|近来|接下来|这段时间|这阵子|这几天|今后|未来|之后|upcoming|coming up|these days|\bsoon\b|\bnext few\b|\bnext\b|近いうち|今後|これから|この先|直近|最近)/iu;
+const PAST_WORDS = /(上周|上个星期|上个月|上月|去年|昨天|前天|前几天|过去|之前|以前|去过|参加过|办过|已经结束|结束了|last (?:week|month|year)|yesterday|\bpast\b|\bago\b|\bwent\b|\battended\b|\bbeen to\b|先週|先月|去年|昨日|過去|以前|行った|参加した|終わった)/iu;
+
+/**
+ * AG19-6 (the user, 2026-11-19: "最近有哪些活动适合我" listed three events that had already taken place): "最近", "近期",
+ * "接下来" about events, with no past period said, ask for the ones that have not started yet — the nearest first. A past
+ * period in the words ("上个月", "去过", "last month") keeps the question about the past. Code's rule; no model decides it.
+ */
+export function asksUpcomingEvents(words: string): boolean {
+  return UPCOMING_WORDS.test(words) && !PAST_WORDS.test(words);
+}
+
+/** Words of "最近有哪些活动适合我" that name no topic: when, which ones, and "for me". */
+const NO_TOPIC_WORDS = /(最近|近期|近来|接下来|这段时间|这阵子|这几天|今后|未来|之后|哪些|哪几|什么|有没有|有啥|适合我|合适我|对我来说|对我|值得去|值得参加|可以参加|能参加|可以去|能去|推荐|活动|活動|イベント|upcoming|coming up|these days|\bsoon\b|\bnext few\b|\bnext\b|\bany\b|\bwhat\b|\bwhich\b|\bare there\b|\bthat\b|\bsuits?\b|\bsuitable\b|\bfor me\b|\bme\b|\bevents?\b|近いうち|今後|これから|この先|直近|どんな|どの|私に合う|私に向いている|おすすめ|ありますか)/giu;
+
+/**
+ * AG19-6: what is left of "最近有哪些…活动…" as a topic once the words for when, which and "for me" are taken out
+ * ("最近有哪些摄影活动" → 摄影; "最近有哪些活动适合我" → nothing: a plain list of what is coming up, not a topic ranking).
+ */
+export function upcomingTopicOf(words: string): string {
+  return topicWordsOf(words).replace(NO_TOPIC_WORDS, " ").replace(/[的吗嘛啊呀呢吧はでがをにのか\s?？。、，,]+/gu, " ").trim();
+}
+
+/* ── AG19 repair round 1 (coordinator's decision 3) ─────────────────── */
+
+/** Asking which events there are, or to have some recommended or listed. */
+const EVENT_LIST_WORDS = /(哪些|哪几|哪场|有什么|有没有|有啥|推荐|值得|适合|列出|列一下|都列|\bwhat\b|\bwhich\b|\bany\b|\brecommend|\bsuggest|\bworth\b|\blist\b|おすすめ|どんな|どの|ありますか|教えて)/iu;
+/** A calendar date written out ("11月10日", "2026-11-10", "Nov 10"). */
+const WRITTEN_DATE = /(\d{1,2}\s*月\s*\d{1,2}\s*[日号]?|\d{4}-\d{2}-\d{2}|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\b)/iu;
+
+/** The words point at the past ("去过", "之前", "上个月", "last month"). */
+export function pointsAtPast(words: string): boolean {
+  return PAST_WORDS.test(words);
+}
+
+/** The words write out a calendar date (a range the first layer gives is then the user's own, also when it has passed). */
+export function writesADate(words: string): boolean {
+  return WRITTEN_DATE.test(words);
+}
+
+/**
+ * Coordinator's decision 3 (2026-11-20): any request to recommend or list events to go to, with no expression pointing
+ * at the past, reads only events that have not started, the nearest first — with or without "最近". Past events appear
+ * only when the user points at the past (去过、之前、上个月、a past date). Code's rule.
+ */
+export function asksEventsToGoTo(words: string): boolean {
+  return (UPCOMING_WORDS.test(words) || EVENT_LIST_WORDS.test(words)) && !PAST_WORDS.test(words);
+}

@@ -133,9 +133,10 @@ export function ConfirmationCard({ card, language, online, pendingTargets = [], 
 }
 
 /** Small change 2: the basis line at the top of the answer, with the records it rests on. */
-export function BasisLine({ basis, language, navigate }: { basis: NonNullable<NonNullable<AgentResultDocument["answer"]>["basis"]>; language: OrbitLanguage; navigate(href: string): void }) {
+export function BasisLine({ basis, language, navigate, cardsBelow = false }: { basis: NonNullable<NonNullable<AgentResultDocument["answer"]>["basis"]>; language: OrbitLanguage; navigate(href: string): void; /** AG19: the answer shows these records as cards, so the row of small labels is not repeated. */ cardsBelow?: boolean }) {
   const ui = standardCopyFor(language).aiCard;
-  const links = basis.links.map((link) => ({ href: agentLinkHref(link), link }));
+  const links = cardsBelow && basis.links.length !== 1 ? [] : basis.links.map((link) => ({ href: agentLinkHref(link), link }));
+  if (cardsBelow && basis.links.length !== 1) return <div className={styles.basis} data-orbit-agent-basis><span className={styles.basisChip}>{basis.text}</span></div>;
   const one = links.length === 1 ? links[0] : null;
   return (
     <div className={styles.basis} data-orbit-agent-basis>

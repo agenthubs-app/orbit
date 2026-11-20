@@ -5,6 +5,7 @@
  * model's gaps are never taken.
  */
 import { parseModelJson } from "../understand/validate";
+import { composeStructured } from "./blocks";
 import type { Sentence } from "../text/sentences";
 import type { RecordView } from "../domains/types";
 
@@ -46,7 +47,7 @@ export interface Material {
   profile?: { organization: string | null; role: string | null; updatedAt: string | null };
 }
 
-export function parseAnswerOutput(text: string): { ok: true; value: AnswerOutput } | { ok: false; error: string } {
+export function parseAnswerOutput(text: string, language: "zh" | "ja" | "en" = "zh"): { ok: true; value: AnswerOutput } | { ok: false; error: string } {
   const parsed = parseModelJson(text);
   if (parsed.ok === false) return parsed;
   const raw = parsed.value as { segments?: unknown } | null;
@@ -60,7 +61,9 @@ export function parseAnswerOutput(text: string): { ok: true; value: AnswerOutput
       const ids = Array.isArray(cite.sentenceIds) ? cite.sentenceIds.map(Number).filter((id) => Number.isInteger(id)) : [];
       cites.push({ sentenceIds: ids, sourceRef: cite.sourceRef.trim() });
     }
-    segments.push({ cites, partId: typeof segment.partId === "string" ? segment.partId : "", text: typeof segment.text === "string" ? segment.text.trim() : "", ...(Array.isArray(segment.profile) ? { profile: segment.profile as unknown[] } : {}), ...(Array.isArray(segment.changes) ? { changes: segment.changes as unknown[] } : {}) });
+    // AG19 (D4): the structured fields (lead, body) become the text version in code's line convention; an answer given
+    // as one text is kept whole, its Markdown symbols taken out.
+    segments.push({ cites, partId: typeof segment.partId === "string" ? segment.partId : "", text: composeStructured(segment, language) ?? "", ...(Array.isArray(segment.profile) ? { profile: segment.profile as unknown[] } : {}), ...(Array.isArray(segment.changes) ? { changes: segment.changes as unknown[] } : {}) });
   }
   return { ok: true, value: { gaps: [], segments } };
 }
