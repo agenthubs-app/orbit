@@ -53,6 +53,32 @@ export function withoutTopicBasisClaims(text: string, topicMatched: boolean): { 
   return without(text, (piece) => !NO_MATCHING.test(piece) && TOPIC_CLAIM.some((pattern) => pattern.test(piece)));
 }
 
+/* ── AG20b (TRIAGE R4): limits Orbit does not have ─────────────────────── */
+
+/**
+ * A model sentence saying Orbit cannot see or change the user's records, that the user has to do it in another app, or
+ * that the material was cut off ("这一步我没有访问你的日程数据", "删除需要你在日历应用里手动操作", "この場では予定の変更は反映されません",
+ * "笔记里的具体数字在这段对话里被截断了"). Orbit reads and changes these records (with a card); code's own lines say what
+ * was and was not done this time, so such a sentence is not delivered.
+ */
+const ABILITY_DENIAL: RegExp[] = [
+  /(?:没有|无法|不能|没法|没办法|不可以)(?:直接)?(?:访问|查看|读取|看到|获取|调取|打开|修改|删除|更改|编辑|操作|改动|同步)(?:到)?(?:你|您)?的?(?:日程|日历|行程|记录|待办|笔记|备忘|数据|资料|联系人|活动)/u,
+  /(?:这一步|这里|这边|这段对话|对话里|此处|当前)[^。！？\n]{0,12}(?:没有|无法|不能|没法)(?:访问|查看|读取|修改|删除|反映|保存|同步|执行)/u,
+  /(?:需要|得|要|请)(?:你|您)?(?:自己|手动)?(?:在|到|去)[^。！？\n]{0,16}(?:应用|App|app|日历|设置|客户端)[^。！？\n]{0,12}(?:手动|自己)?(?:操作|删除|修改|更改|处理|设置)/u,
+  /(?:被|已经?)截断|截断了/u,
+  /この場では[^。！？\n]{0,30}(?:でき(?:ません|ない)|されません)/u,
+  /(?:記録|予定|スケジュール|カレンダー|メモ|ToDo|タスク|データ)[をにへがは]?[^。！？\n]{0,8}(?:参照|アクセス|閲覧|変更|削除|編集|反映)(?:は|が|すること(?:は|が)?)?(?:でき(?:ません|ない)|されません)/u,
+  /(?:アプリ|カレンダー)[^。！？\n]{0,12}(?:で|から)[^。！？\n]{0,12}(?:手動で|ご自身で)/u,
+  /途中で切れて|切り捨てられ/u,
+  /\b(?:i|we)\s+(?:can(?:not|'t|’t)|am unable to|'m unable to|’m unable to|do(?:n't|n’t| not) have (?:access to|the ability to))\s+(?:access|see|view|read|open|change|modify|edit|delete|update)?\s*(?:your\s+)?(?:schedule|calendar|records?|to-?dos?|notes?|data|contacts?|events?)\b/iu,
+  /\byou(?:'ll|’ll| will)? (?:need|have) to (?:do|delete|change|update|remove|edit) (?:it|this|that)\b[^.!?\n]{0,40}\b(?:manually|yourself|in your (?:calendar|app))/iu,
+  /\b(?:was|were|got|is|are) (?:cut off|truncated)\b/iu,
+];
+
+export function withoutAbilityDenials(text: string): { text: string; dropped: string[] } {
+  return without(text, (piece) => ABILITY_DENIAL.some((pattern) => pattern.test(piece)));
+}
+
 /* ── 2. "I cannot go online" ─────────────────────────────────────────── */
 
 const ONLINE_DENIAL: RegExp[] = [

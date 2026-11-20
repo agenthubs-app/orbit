@@ -22,7 +22,7 @@ import { withoutUnsupportedEventClaims, type EventClaimFacts } from "../../answe
 import type { AgentAnswerRecordContract } from "../../../../shared/contract/agent-v1";
 import { statusSaidIn } from "./resolve";
 import { withoutForeignUrls } from "../../web/answer-urls";
-import { withoutOnlineDenials, withoutQuoteResidue, withoutTopicBasisClaims, withoutStrayScripts, withoutUnsupportedStatus, withEffectiveDates } from "../../answer/claims";
+import { withoutAbilityDenials, withoutOnlineDenials, withoutQuoteResidue, withoutTopicBasisClaims, withoutStrayScripts, withoutUnsupportedStatus, withEffectiveDates } from "../../answer/claims";
 import { expiryLine } from "../../answer/change-check";
 import { stripCardTalk, stripSaveTalk } from "../../entry/approval-claims";
 import { callMainModel, type MainModelResult } from "../../models/main";
@@ -50,8 +50,11 @@ function withoutFalseClaims(text: string, partIds: readonly string[], topicMatch
   if (basis.dropped.length) emitTrace({ dropped: basis.dropped, note: "a model sentence claiming a topic ranking this turn did not do is not delivered; code says what the ranking used", parts: partIds, type: "answer.basis_claims_dropped" });
   const online = withoutOnlineDenials(basis.text);
   if (online.dropped.length) emitTrace({ dropped: online.dropped, note: "Orbit can go online; a sentence saying it cannot is not delivered", parts: partIds, type: "answer.online_denial_dropped" });
+  // AG20b (TRIAGE R4): a limit Orbit does not have ("I can't access your schedule", "do it in your calendar app").
+  const able = withoutAbilityDenials(online.text);
+  if (able.dropped.length) emitTrace({ dropped: able.dropped, note: "Orbit reads and changes these records; a sentence saying it cannot is not delivered", parts: partIds, type: "answer.ability_denial_dropped" });
   // AG10 run-03 (AE-CTX-005): words in a script the user did not write and no material holds.
-  const scripts = withoutStrayScripts(online.text, materials);
+  const scripts = withoutStrayScripts(able.text, materials);
   if (scripts.dropped.length) emitTrace({ dropped: scripts.dropped, note: "a sentence with words in a stray script that no record, page or message holds is not delivered", parts: partIds, type: "answer.stray_script_dropped" });
   // AG12 run-02 (AE-AMB-011): no empty or unbalanced quote is left on screen by the rules before.
   const quotes = withoutQuoteResidue(scripts.text);
@@ -356,7 +359,8 @@ export function answerNode(scope: NodeScope): GraphNode {
     // AG04: resuming a paused request makes no model call (§3.9) unless it now reads; its parts are written by code.
     if (resume && !reading.length) return {};
     // AG09: a part that only gave the web address another part reads (reason web_context) is not answered on its own.
-    const discussion = resume ? [] : parts.filter((part) => part.route === "answer" && part.status === "answered" && part.reason !== "web_context");
+    // AG20b (R4): a part code already answered (a write tag the review did not confirm) is not written again by a model.
+    const discussion = resume ? [] : parts.filter((part) => part.route === "answer" && part.status === "answered" && part.reason !== "web_context" && !run.codeAnswers.has(part.localId));
     if (reading.length) return groundedAnswer(scope, state, parts, [...discussion, ...reading]);
     const due = discussion;
     if (!due.length) return {};

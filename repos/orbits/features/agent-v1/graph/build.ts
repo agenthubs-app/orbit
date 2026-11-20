@@ -160,6 +160,7 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     basis: null,
     sourceRefs: [],
     steps: new Map(),
+    codeAnswers: new Set(),
     text: "",
     understood: null,
     writeLines: new Map(),

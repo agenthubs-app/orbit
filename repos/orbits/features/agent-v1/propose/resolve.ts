@@ -24,6 +24,8 @@ import type { AgentRecordAccess } from "../graph/deps";
 import type { GraphPart } from "../graph/state";
 import { emitTrace } from "../observability/trace";
 import { isPronounClue } from "../route/decide";
+import { optionNamedIn } from "../clarify/attribution";
+import { askedPerson, continuedItem } from "./asked";
 import type { ReplyLanguage } from "../route/handoff-copy";
 import { dayText, type CardLocale } from "../../agent/runtime/todo-operations";
 import type { CardOperationIntent } from "../../agent/runtime/card-operations";
@@ -31,7 +33,7 @@ import { instantOf, localDayOf, localTimeOf, resolveSaidDate } from "./dates";
 import { WRITE_WORDS } from "./copy";
 import type { StoredIntent } from "./schema";
 import { CONTACT_WORDS } from "../domains/contact/copy";
-import { importTableOf, ImportTableRejected, previewImport } from "../domains/contact/import-preview";
+import { importTableOf, ImportTableRejected, previewImport, withHeader } from "../domains/contact/import-preview";
 import { isEventIntent, resolveEventIntent, type EventResolveExtras } from "./events-resolve";
 import type { ContactEffect, ContactFieldName } from "../domains/contact/types";
 
@@ -151,6 +153,13 @@ export async function resolvePerson(ctx: ResolveContext, part: GraphPart, write:
   const bound = part.refs.find((ref) => ref.entity === "contact" && ref.recordId && (!clue.quote || !ref.quote || (ref.quote[0] < clue.quote[1] && clue.quote[0] < ref.quote[1])));
   if (bound?.recordId) return { id: bound.recordId, kind: "found", name: ctx.nameOf(bound.recordId) ?? "" };
   const picked = write.picks.contact ? { id: write.picks.contact, kind: "found" as const, name: ctx.nameOf(write.picks.contact) ?? "" } : null;
+  // AG20b (TRIAGE R13): a typed answer to "which one" that names an offered person by what tells them apart ("蒲公英那个").
+  const asked = continuedItem(ctx, part);
+  const named = asked ? optionNamedIn(asked, clue.text, "contact") ?? (isPronounClue(clue.text) || !clue.text.trim() ? optionNamedIn(asked, words(ctx.message, part.quote), "contact") : null) : null;
+  if (named) {
+    emitTrace({ partId: part.localId, recordId: named.id, type: "propose.option_named" });
+    return { id: named.id, kind: "found", name: ctx.nameOf(named.id) ?? named.label.replace(/[（(].*$/u, "").trim() };
+  }
   if (isPronounClue(clue.text)) {
     // A pronoun of a part that waited for a question about the person: the person picked.
     if (picked) return picked;
@@ -175,7 +184,8 @@ export async function resolvePerson(ctx: ResolveContext, part: GraphPart, write:
   // AG06 repair 1 (AE-XL-010): a nickname matching contacts only partially is a question, never a guess or a "not found".
   if (!matches.length) matches.push(...(await partialContacts(ctx.records, ctx.scope, clue.text)));
   if (!matches.length) return { kind: "none" };
-  if (matches.length === 1 && !matches[0].partial) return { id: matches[0].id, kind: "found", name: matches[0].name };
+  // AG20b (R10): one found only by the company the words name is offered in a question, never written on by a guess.
+  if (matches.length === 1 && !matches[0].partial && !matches[0].byCompany) return { id: matches[0].id, kind: "found", name: matches[0].name };
   // Several of the name and the user picked one of them in this request's question.
   const chosen = picked ? matches.find((match) => match.id === picked.id) : undefined;
   if (chosen) return { id: chosen.id, kind: "found", name: chosen.name, ...(chosen.detail ? { detail: chosen.detail } : {}) };
@@ -286,7 +296,10 @@ async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrit
       let rest = clue;
       for (const name of personWords.flatMap((item) => nameTokens(item))) rest = rest.split(name).join("");
       rest = rest.replace(/^[\s给跟和对向为与のにとへ]+|[\s的のにと]+$/gu, "");
-      for (const text of [whole, clueSearchWords(rest)]) if (text && !searches.includes(text)) searches.push(text);
+      // AG20b (R2): the words as said come first, so a title said exactly is always found (the search folds spaces,
+      // 的/の, width and case on both sides); then the words without pointers and kind words, then without the name.
+      const said = clue.replace(/^@/u, "").trim();
+      for (const text of [[...said].length >= 2 ? said : undefined, whole, clueSearchWords(rest)]) if (text && !searches.includes(text)) searches.push(text);
     }
     // What the user called it, for saying it was not found (their words without "那条待办").
     const said = (clues[0] ? clueSearchWords(clues[0]) : undefined) ?? "";
@@ -439,7 +452,8 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
         }
       }
       // No person named for the to-do: the one this message is about (picked in its question, or named before it).
-      const inheritedId = person ? null : write.picks.contact ?? [...ctx.people].filter((known) => known.at <= part.quote[0]).sort((left, right) => right.at - left.at)[0]?.id ?? null;
+      // AG20b (R13): a part that answers a question goes on with the asked part's person.
+      const inheritedId = person ? null : write.picks.contact ?? [...ctx.people].filter((known) => known.at <= part.quote[0]).sort((left, right) => right.at - left.at)[0]?.id ?? (await askedPerson(ctx, part));
       const todo = await resolveTodo(ctx, part, write, intent, person?.id ?? inheritedId, people.map((item) => item.text), Boolean(inheritedId));
       if (todo.kind === "failed") return stop("read_failed", failedLine);
       if (todo.kind === "ask") return { kind: "ask", question: { candidates: todo.candidates, clue: todo.clue, type: "todo", ...(todo.notFound !== undefined ? { notFound: todo.notFound } : {}) } };
@@ -542,9 +556,13 @@ async function resolveContactIntent(ctx: ResolveContext, part: GraphPart, write:
     return { kind: "ready", ops: [{ ...base, capability: "contact.create", set: { ...values, displayName: values.displayName } }] };
   }
   if (intent.capability === "contact.import") {
-    const text = importTableOf(ctx.message);
-    if (!text || !ctx.records?.contacts || !ctx.scope) return text ? stop("read_failed", failedLine) : stop("table_missing", CONTACT_WORDS.noTable(language));
+    const pasted = importTableOf(ctx.message);
+    if (!pasted || !ctx.records?.contacts || !ctx.scope) return pasted ? stop("read_failed", failedLine) : stop("table_missing", CONTACT_WORDS.noTable(language));
+    let text: string;
     try {
+      // AG20b (R12): a list with no header row gets code's header (one person per line); the card, its revisions and the
+      // import after the click all read the same text.
+      text = withHeader(pasted);
       previewImport(text, [], ctx.scope.accountId);
     } catch (error) {
       if (error instanceof ImportTableRejected) return stop("table_missing", CONTACT_WORDS.noTable(language));

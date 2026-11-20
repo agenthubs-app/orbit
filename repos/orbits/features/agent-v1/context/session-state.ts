@@ -47,6 +47,8 @@ export interface SessionOpenItem {
   writes?: boolean;
   /** AG05: the part's object clues as the user said them (a reply that continues the matter reads the same person). */
   clues?: { entity: string; text: string }[];
+  /** AG20b (R13): the records a question offered (id, kind, label as shown), so a typed answer naming one picks it. */
+  options?: { id: string; type: string; label: string }[];
   /** AG10: a ranking that asked "按什么来挑": its domain, dates and count (a reply such as "随便" goes on with them). */
   rank?: { domain: "event" | "contact" | "todo"; count?: number; from?: string; to?: string };
 }
@@ -57,6 +59,14 @@ export interface AgentSessionState {
   lastMentioned: NamedRecordRef[];
   openItems: SessionOpenItem[];
   updatedAt: string;
+  /** AG20b (TRIAGE R17, 设计稿 §3.5 last row): what the user said they want from the next note ("下一篇只列我的承诺"). */
+  noteGoal?: NoteGoal | null;
+}
+
+export interface NoteGoal {
+  followUps: boolean;
+  interactions: boolean;
+  setAt: string;
 }
 
 export function emptySessionState(sessionId: string, now: string): AgentSessionState {
@@ -81,6 +91,7 @@ function normalizeState(sessionId: string, value: unknown): AgentSessionState | 
     sessionId,
     shownList: raw.shownList && Array.isArray(raw.shownList.items) ? { items: raw.shownList.items, shownAt: String(raw.shownList.shownAt ?? "") } : null,
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : "",
+    ...(raw.noteGoal && typeof raw.noteGoal === "object" ? { noteGoal: { followUps: raw.noteGoal.followUps === true, interactions: raw.noteGoal.interactions === true, setAt: String(raw.noteGoal.setAt ?? "") } } : {}),
   };
 }
 

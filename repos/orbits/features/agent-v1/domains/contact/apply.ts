@@ -18,7 +18,7 @@ import type { ContactImportService } from "../../../contacts/import/service";
 import type { ManualContactV2Service } from "../../../contacts/manual-contact-v2/service";
 import type { LiveRecordStoreLike } from "../../../../shared/storage/live-record-store";
 import { AppError } from "../../../../shared/errors/app-error";
-import { importBytesOf } from "./import-preview";
+import { importBytesOf, withHeader } from "./import-preview";
 import { CONTACT_CREATE, CONTACT_DELETE, CONTACT_FIELDS, CONTACT_IMPORT, CONTACT_RESTORE, CONTACT_UPDATE, type ContactAccess, type ContactFieldName } from "./types";
 
 export interface ContactWriteDeps {
@@ -118,7 +118,8 @@ export async function applyApprovedContactImport(deps: ContactWriteDeps, payload
   const table = text(payload.text);
   const outcomes = (payload.outcomes ?? {}) as Record<string, "create" | "skip">;
   if (!table) throw new AgentExecutionPermanentError("text is required.");
-  const uploaded = await deps.imports.upload({ actorId: deps.actorId, bytes: importBytesOf(table), fileName: "conversation-import.csv", idempotencyKey: context.idempotencyKey, kind: "csv" });
+  // AG20b (R12): the same header code gave the card (the card's text has it already; an older card's text gets it the same way).
+  const uploaded = await deps.imports.upload({ actorId: deps.actorId, bytes: importBytesOf(withHeader(table)), fileName: "conversation-import.csv", idempotencyKey: context.idempotencyKey, kind: "csv" });
   let batch = uploaded.batch;
   if (batch.status === "reviewing") {
     const rows: { seq: number; decision: string | null; issues: readonly string[] }[] = [];

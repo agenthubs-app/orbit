@@ -71,6 +71,18 @@ function coalesceSql(paths: readonly PayloadPath[], fallback: string | null): st
 
 const ACTIVE = "lifecycle_state <> 'deleted' and deleted_at is null";
 
+/**
+ * agent-design AG20b (TRIAGE R2): the characters a word search ignores on both sides — spaces, the particles 的 and の, and
+ * punctuation — after full-width forms are folded (NFKC) and letters lower-cased. The user's words reach the search with
+ * them taken out ("回复 Dana 那条" → "回复dana"); the stored text is compared in the same form, so 「回复 Dana 的档期」 holds it.
+ */
+const MATCH_IGNORED = "[[:space:]的の、。・,.!?「」『』\"“”'’()【】:;]";
+const MATCH_IGNORED_JS = /[\s的の、。・,.!?「」『』"“”'’()【】:;]/gu;
+
+export function matchText(text: string): string {
+  return text.normalize("NFKC").toLocaleLowerCase().replace(MATCH_IGNORED_JS, "");
+}
+
 /** The where clause and its parameters (after $1 workspace, $2 account, $3 collection). */
 function whereOf(spec: RecordSpec, values: unknown[], options: { withDenied: boolean }): string {
   const clauses = ["workspace_id = $1", "user_id = $2", "collection_name = $3", ACTIVE];
@@ -90,7 +102,10 @@ function whereOf(spec: RecordSpec, values: unknown[], options: { withDenied: boo
   if (spec.text) {
     const value = bind(spec.text.value.toLocaleLowerCase());
     const fields = spec.text.paths === "search_text" ? ["coalesce(search_text, '')"] : spec.text.paths.map((path) => `coalesce(${pathSql(path)}, '')`);
-    clauses.push(`(${fields.map((field) => (spec.text!.within ? `(length(${field}) >= 2 and strpos(${value}, lower(${field})) > 0)` : `strpos(lower(${field}), ${value}) > 0`)).join(" or ")})`);
+    // AG20b (R2): a search also matches in the folded form of both sides (matchText); never with nothing left to match.
+    const folded = spec.text.within ? "" : matchText(spec.text.value);
+    const loose = folded ? { ignored: bind(MATCH_IGNORED), value: bind(folded) } : null;
+    clauses.push(`(${fields.map((field) => (spec.text!.within ? `(length(${field}) >= 2 and strpos(${value}, lower(${field})) > 0)` : `strpos(lower(${field}), ${value}) > 0${loose ? ` or strpos(regexp_replace(lower(normalize(${field}, NFKC)), ${loose.ignored}, '', 'g'), ${loose.value}) > 0` : ""}`)).join(" or ")})`);
   }
   if (spec.range) {
     const field = coalesceSql(spec.range.paths, null);
@@ -196,7 +211,8 @@ function matches(record: MemoryRecord, scope: { accountId: string; workspaceId: 
   if (spec.text) {
     const value = spec.text.value.toLocaleLowerCase();
     const fields = spec.text.paths === "search_text" ? [record.searchText ?? ""] : spec.text.paths.map((path) => textAt(record.payload, path) ?? "");
-    const hit = fields.some((field) => (spec.text!.within ? field.length >= 2 && value.includes(field.toLocaleLowerCase()) : field.toLocaleLowerCase().includes(value)));
+    const folded = spec.text.within ? "" : matchText(spec.text.value);
+    const hit = fields.some((field) => (spec.text!.within ? field.length >= 2 && value.includes(field.toLocaleLowerCase()) : field.toLocaleLowerCase().includes(value) || (Boolean(folded) && matchText(field).includes(folded))));
     if (!hit) return false;
   }
   if (spec.range) {

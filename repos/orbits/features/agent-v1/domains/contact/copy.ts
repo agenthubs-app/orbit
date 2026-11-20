@@ -23,7 +23,8 @@ export const CONTACT_WORDS = {
   noFields: (language: ReplyLanguage, quote: string) => pick(language, { en: `In "${quote}" I couldn't tell which field to change; here I can change the name, company, title, email and phone.`, ja: `「${quote}」はどの項目を変えるのか分かりませんでした。今は氏名・会社・役職・メール・電話を変更できます。`, zh: `「${quote}」没看出要改哪一项；现在能改的是姓名、公司、职位、邮箱和电话。` }),
   noDeleted: (language: ReplyLanguage, words: string) => pick(language, { en: `No contact called "${words}" was deleted in the last 30 days, so nothing was restored.`, ja: `この30日以内に削除した連絡先に「${words}」はいないため、元に戻していません。`, zh: `30天内删掉的联系人里没有「${words}」，所以没有恢复。` }),
   stillThere: (language: ReplyLanguage, name: string) => pick(language, { en: `"${name}" is still in your contacts, so there is nothing to restore.`, ja: `「${name}」は今も連絡先にあるため、元に戻す必要はありません。`, zh: `「${name}」现在还在联系人里，不用恢复。` }),
-  noTable: (language: ReplyLanguage) => pick(language, { en: "I didn't find a table to import (one person per line, separated by commas, with a header such as Name, Company, Title), so nothing was imported.", ja: "取り込む表が見つかりませんでした（1行に1人、カンマ区切り、先頭行に「氏名,会社,役職」など）。何も取り込んでいません。", zh: "没看到要导入的表格（每行一位、用逗号分开，第一行写“姓名,公司,职位”这样的表头），所以没有导入。" }),
+  // AG20b (R12): a list with no header row is read as name, company, title per line; anything else is refused with this.
+  noTable: (language: ReplyLanguage) => pick(language, { en: "I couldn't read a list to import (one person per line, separated by commas: name, company, title — or with a header row such as Name, Company, Title), so nothing was imported.", ja: "取り込める一覧が読み取れませんでした（1行に1人、カンマ区切りで「氏名,会社,役職」の順。先頭行に「氏名,会社,役職」などの見出しがあっても構いません）。何も取り込んでいません。", zh: "没能读出要导入的名单（每行一位，按“姓名,公司,职位”的顺序用逗号分开；第一行也可以写“姓名,公司,职位”这样的表头），所以没有导入。" }),
   askDuplicate: (language: ReplyLanguage, name: string, shown: readonly string[]) => pick(language, {
     en: `You already have ${shown.length === 1 ? "a contact" : "contacts"} like "${name}": ${shown.join("; ")}. Is the new one one of them? If not, pick "None of these — add a new contact".`,
     ja: `「${name}」に似た連絡先がすでにあります：${shown.join("、")}。新しく追加する方はこの中の方ですか？違う場合は「どれでもない、新しく追加する」を選んでください。`,
@@ -46,6 +47,12 @@ export const CONTACT_WORDS = {
     en: `OK — row ${rows.join(" and ")} is left out. The card is updated from ${countWords("en", before)} to ${countWords("en", counts)}. Nothing is imported until you confirm.`,
     ja: `承知しました。${rows.join("・")}行目は取り込みません。カードを「${countWords("ja", before)}」から「${countWords("ja", counts)}」に更新しました。確定するまで取り込みません。`,
     zh: `好的，第${rows.join("、")}行不导入。卡片已从「${countWords("zh", before)}」更新为「${countWords("zh", counts)}」，点确认之前不会导入。`,
+  }),
+  /** AG20b (R12): rows the words named that the card could not change. */
+  importRowsUnchanged: (language: ReplyLanguage, rows: readonly number[]) => pick(language, {
+    en: `Row ${rows.join(" and ")} could not be changed (there is no such row, or it has no name), so it stays as the card shows. Nothing is imported until you confirm.`,
+    ja: `${rows.join("・")}行目は変更できませんでした（その行がないか、名前がありません）。カードの表示のままです。確定するまで取り込みません。`,
+    zh: `第${rows.join("、")}行没法改（没有这一行，或者这一行没有姓名），卡片上保持原样。点确认之前不会导入。`,
   }),
   label: (language: ReplyLanguage, field: "organization" | "role") => pick(language, field === "organization" ? { en: "company", ja: "会社", zh: "公司" } : { en: "title", ja: "役職", zh: "职位" }),
 };

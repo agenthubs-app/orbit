@@ -28,6 +28,7 @@ import { gapWords } from "../../answer/gap-copy";
 import { materialOf } from "../../answer/materials";
 import type { GapReason, Material } from "../../answer/schema";
 import { recordKindOf } from "../../clarify/default-readings";
+import { optionNamedIn } from "../../clarify/attribution";
 import type { NamedRecordRef } from "../../context/session-state";
 import { gapOfReadError, readPages } from "../../domains/registry";
 import { occurrenceIn } from "../../domains/schedule/read";
@@ -236,6 +237,8 @@ export interface ContactMatch {
   detail?: string;
   /** AG06 repair 1: matched only partially (a nickname): offered in a question, never taken. */
   partial?: boolean;
+  /** AG20b (R10): found by the company the words name, not by the person's name (a write asks; a read may take the one). */
+  byCompany?: boolean;
 }
 
 /** AG06: the company and role of a contact view ("北辰软件 · 销售总监"), or nothing. */
@@ -297,16 +300,60 @@ export async function findContacts(records: AgentRecordAccess, scope: DomainScop
   }
   // AG07 (AE-UIX-008): "Li Wei" written in Latin letters names 李薇; the contacts' Chinese names are read in pinyin.
   if (!found.length && !failed) found = await romanizedContacts(records, scope, words);
+  // AG20b (TRIAGE R10): no one of that name — the words may name a company ("海桐的…", "蒲公英那个"): the account's contacts at
+  // a company holding them. Marked as found by company: a write offers them in a question, never picks one.
+  let byCompany = false;
+  if (!found.length && !failed) {
+    const companyWords = [...new Set([clueSearchWords(words.replace(/^@/u, "")), words.replace(/^@/u, "").split(/[の的之]/u)[0]?.trim()].filter((item): item is string => Boolean(item) && [...item!].length >= 2))];
+    try {
+      for (const text of companyWords) {
+        found = (await records.reader.read("contact", scope, { limit: 10, status: "company" as never, text })).items;
+        if (found.length) break;
+      }
+    } catch (error) {
+      emitTrace({ error: error instanceof Error ? error.message : String(error), type: "read.error", where: "resolve.contact_company" });
+    }
+    byCompany = found.length > 0;
+    if (byCompany) emitTrace({ found: found.map((view) => view.id), type: "resolve.contact_by_company" });
+  }
   let matches = found;
+  // AG20b (TRIAGE R10): a company or a role said in the sentence tells people of the same name apart before any question —
+  // the company's distinctive words count ("蒲公英那个" for 蒲公英童书), not only its full name.
   if (matches.length > 1) {
-    const named = matches.filter((view) => typeof view.fields.company === "string" && view.fields.company && (quote.includes(String(view.fields.company)) || message.includes(String(view.fields.company))));
+    // The person's own name is not a company word ("小林健" does not name 小林设计).
+    const clue = words.replace(/^@/u, "").trim();
+    const besides = (text: string) => [clue, ...tokens].filter(Boolean).reduce((rest, name) => rest.split(name).join(" "), text);
+    const named = matches.filter((view) => typeof view.fields.company === "string" && view.fields.company && (quote.includes(String(view.fields.company)) || message.includes(String(view.fields.company)) || companyNamedIn(String(view.fields.company), besides(quote)) || companyNamedIn(String(view.fields.company), besides(message))));
     if (named.length) matches = named;
+  }
+  if (matches.length > 1) {
+    const role = matches.filter((view) => typeof view.fields.headline === "string" && [...String(view.fields.headline).trim()].length >= 2 && (quote.includes(String(view.fields.headline).trim()) || message.includes(String(view.fields.headline).trim())));
+    if (role.length) matches = role;
   }
   if (matches.length > 1) {
     const exact = matches.filter((view) => tokens.includes(String(view.fields.displayName)));
     if (exact.length) matches = exact;
   }
-  return { failed, matches: matches.map((view) => ({ detail: contactDetail(view), id: view.id, name: String(view.fields.displayName ?? ""), view })) };
+  return { failed, matches: matches.map((view) => ({ detail: contactDetail(view), id: view.id, name: String(view.fields.displayName ?? ""), view, ...(byCompany ? { byCompany: true } : {}) })) };
+}
+
+const GENERIC_COMPANY_WORDS = /(株式会社|有限会社|合同会社|有限公司|股份|集团|公司|事务所|\b(?:inc|ltd|llc|co|corp|corporation|company|group|gmbh|kk)\b\.?)/giu;
+
+/**
+ * AG20b (TRIAGE R10): the words name this company — its full name, a distinctive Latin word of it, or the start of its name
+ * without the generic words ("蒲公英" of 蒲公英童书, "北辰" of 北辰软件, "Lighthouse" of Lighthouse Press).
+ */
+export function companyNamedIn(company: string, text: string): boolean {
+  const name = company.trim();
+  if (!name || !text) return false;
+  if (text.includes(name)) return true;
+  const core = name.replace(GENERIC_COMPANY_WORDS, " ").replace(/\s+/gu, " ").trim();
+  for (const word of core.split(/[\s·・,，]+/u)) {
+    if (/^[A-Za-z][A-Za-z0-9&'’-]{2,}$/u.test(word) && new RegExp(`(?:^|[^A-Za-z])${word.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}(?:$|[^A-Za-z])`, "iu").test(text)) return true;
+  }
+  const head = [...core.replace(/[^\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}ー]/gu, "")];
+  for (let length = head.length; length >= 2; length -= 1) if (text.includes(head.slice(0, length).join(""))) return true;
+  return false;
 }
 
 interface PartRead {
@@ -353,6 +400,10 @@ export function resolveNode(scope: NodeScope): GraphNode {
       const quote = input.message.slice(part.quote[0], part.quote[1]);
       const read: PartRead = { coverage: [], gaps: new Set(), lines: [], notes: [], occurrences: new Map(), views: [], wantsRecords: false };
       // AG11 (AE-SCL-021): 「那 @X 呢？」 — the previous question, asked again about the record picked now.
+      // AG20b (TRIAGE R20): a part this one goes on from whose record cannot be opened holds nothing back — this part is
+      // answered from its own records, and nothing is judged that would need the other one.
+      const closedBefore = parts.filter((other) => part.dependsOn.includes(other.localId) && other.status === "unfinished" && other.reason === "reference_not_accessible");
+      if (closedBefore.length) read.notes.push(`${closedBefore.map((other) => `"${input.message.slice(other.quote[0], other.quote[1])}"`).join(", ")} points at a record that cannot be opened now (code tells the user to choose it again). Answer this part from the records given only; do not guess what that record says or judge anything that would need it.`);
       const carried = run.carriedQuestions.get(part.localId);
       if (carried) read.notes.push(`This message asks the user's previous question again, about the record they picked now: "${carried}". Answer that question from this record only, not from the earlier record.`);
       const finish = (status: GraphPart["status"], reason: string | null) => {
@@ -470,6 +521,15 @@ export function resolveNode(scope: NodeScope): GraphNode {
           }
         }
         if (!said) continue;
+        // AG20b (TRIAGE R13): the answer to "which one" names an offered person by what tells them apart ("蒲公英那个").
+        const asked = part.continues?.kind === "clarification" ? context?.openItems.find((open) => open.ref === part.continues!.ref) : undefined;
+        const named = asked ? optionNamedIn(asked, said, "contact") : null;
+        if (named) {
+          ref.recordId = named.id;
+          contacts.push({ id: named.id, name: run.names.get(named.id) ?? named.label.replace(/[（(].*$/u, "").trim(), view: null });
+          emitTrace({ partId: part.localId, recordId: named.id, type: "resolve.option_named" });
+          continue;
+        }
         const { failed, matches } = await findContacts(records, accountScope, said, quote, input.message);
         if (failed) {
           read.gaps.add("service_error");
@@ -502,6 +562,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
         }
         ref.recordId = matches[0].id;
         contacts.push(matches[0]);
+        if (matches[0].byCompany) read.notes.push(`No contact is called "${said.replace(/^@/u, "")}"; it is the company of ${matches[0].name}, so this reads ${matches[0].name}'s records.`);
       }
       if (part.status === "awaiting_clarification") continue;
       if (!stop && unmatched.length) {
@@ -663,7 +724,15 @@ export function resolveNode(scope: NodeScope): GraphNode {
       // the JD" has no status and is not an open item (the to-do may be done since), so notes are not searched for it.
       const openItems = status === "open" && kinds.has("todo") && !current;
       if (openItems && kinds.has("memo")) emitTrace({ partId: part.localId, type: "resolve.open_items_from_todos" });
-      const searchKinds = attachedOnly ? [] : (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !closedKinds.has(kind) && !(kind === "memo" && interactionAnswers) && !(kind === "memo" && openItems));
+      // AG20b (TRIAGE R9): a question about a person with words to look for ("Beatrix 的 option 哪天到期") that the first layer
+      // took for a to-do or a schedule item also reads that person's notes holding the words — a first guess of the kind
+      // does not end the part when a note holds the answer. Not for a list, not for what the words call open or done.
+      const notesToo = !attachedOnly && !kinds.has("memo") && (kinds.has("todo") || kinds.has("schedule")) && contacts.length > 0 && Boolean(text) && !LIST_DELIVERABLES.has(part.plan.deliverable) && statusSaidIn(quote) === undefined && !current;
+      if (notesToo) {
+        kinds.add("memo");
+        emitTrace({ partId: part.localId, type: "resolve.notes_also_read", words: text ?? null });
+      }
+      const searchKinds = attachedOnly ? [] : (["memo", "todo", "schedule"] as const).filter((kind) => (kinds.has(kind) || (kind === "memo" && current)) && !boundIds.has(kind) && !closedKinds.has(kind) && !(kind === "memo" && interactionAnswers) && !(kind === "memo" && openItems && !notesToo));
       if (current) read.notes.push("This asks how the person stands now: the interactions, their newest notes and the profile are all here; where they differ, the newer dated record is what holds now. Never give as current anything a newer record replaces (a former company, an old role).");
       const subjects = contacts.length ? contacts.map((item) => item.id) : [undefined];
       let unclear = false;
@@ -683,7 +752,12 @@ export function resolveNode(scope: NodeScope): GraphNode {
         }
         // With nothing else to narrow by: a to-do list is the open ones, a schedule question is what is coming.
         const kindStatus = kind === "todo" ? status ?? (!contacts.length && !kindText ? "open" : undefined) : undefined;
-        const kindFrom = kind === "schedule" && !from && !to && !contacts.length && !kindText ? now : from;
+        // AG20b (TRIAGE R9): a period said for events (or read for to-dos and schedule items next to the notes added above)
+        // is not the notes' — a note named as the criterion was written before the weekend it is about.
+        const ownPeriod = !(kind === "memo" && (notesToo || (kinds.has("event") && part.capabilities.includes("fn.rank"))));
+        const kindFrom = !ownPeriod ? undefined : kind === "schedule" && !from && !to && !contacts.length && !kindText ? now : from;
+        const kindTo = ownPeriod ? to : undefined;
+        if (!ownPeriod && (from || to)) emitTrace({ kind, partId: part.localId, type: "resolve.period_not_for_notes" });
         if (kind === "todo" && kindStatus && !status) read.notes.push("Only the to-dos not done yet were read.");
         if (kind === "schedule" && kindFrom !== from) read.notes.push("Only schedule items from now on were read.");
         if (!(kind === "memo" && notesBesideProfile && contacts.length)) read.wantsRecords = true;
@@ -696,7 +770,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
                 ...(words ? { text: words } : {}),
                 ...(kindStatus ? { status: kindStatus } : {}),
                 ...(kindFrom ? { from: kindFrom } : {}),
-                ...(to ? { to } : {}),
+                ...(kindTo ? { to: kindTo } : {}),
                 ...(kind === "todo" && !filter?.order ? {} : { order: direction }),
               });
               let pages = await readPages(records.reader, kind, accountScope, queryOf(kindText), order === "both" ? 1 : maxPages);
@@ -725,7 +799,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
                   emitTrace({ found: pages.items.length, partId: part.localId, type: "resolve.web_name", words: webName });
                 }
               }
-              if (kindText && contactId && !pages.items.length && !pages.withheld) {
+              if (kindText && contactId && !pages.items.length && !pages.withheld && !(kind === "memo" && notesToo)) {
                 pages = await readPages(records.reader, kind, accountScope, queryOf(undefined), order === "both" ? 1 : maxPages);
                 if (pages.items.length) read.notes.push(`No note of theirs contains "${kindText}"; these are their ${kind === "memo" ? "notes" : "records"} without that filter.`);
               }

@@ -41,7 +41,14 @@ export async function reviseImportByWords(input: { runtime: AgentRuntimeService;
   const language = cardLocale(action.locale);
   const counts = countsOf(action.operations);
   const rows = Object.keys(overrides).map(Number).sort((left, right) => left - right);
-  const lead = Object.values(overrides).every((decision) => decision === "skip") ? CONTACT_WORDS.importRevisedSkip(language, rows, beforeCounts, counts) : CONTACT_WORDS.importRevised(language, rows, beforeCounts, counts);
+  // AG20b (TRIAGE R12): a row the words name that the card could not change (no such row, or a row without a name) is said
+  // so; the reply never says a row changed when the card did not.
+  const rowsAfter = ((action.operations.find((item) => item.capability === CONTACT_IMPORT)?.shown ?? {}) as { rows?: { row: number; outcome: string }[] }).rows ?? [];
+  const stuck = rows.filter((row) => rowsAfter.find((item) => item.row === row)?.outcome !== overrides[String(row)]);
+  const changed = rows.filter((row) => !stuck.includes(row));
+  const revisedLead = !changed.length ? "" : Object.values(overrides).every((decision) => decision === "skip") ? CONTACT_WORDS.importRevisedSkip(language, changed, beforeCounts, counts) : CONTACT_WORDS.importRevised(language, changed, beforeCounts, counts);
+  const lead = [revisedLead, stuck.length ? CONTACT_WORDS.importRowsUnchanged(language, stuck) : ""].filter(Boolean).join("\n");
+  if (stuck.length) emitTrace({ cardId: card.actionId, rows: stuck, type: "contact.import_rows_unchanged" });
   const cardLine = cardLineOf(preview, language);
   emitTrace({ cardId: card.actionId, overrides, revision: preview.revision, type: "contact.import_revised" });
   return {

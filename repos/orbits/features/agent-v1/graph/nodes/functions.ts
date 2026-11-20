@@ -42,7 +42,7 @@ import { rankCandidates, type RankCandidate, type RankResult } from "../../funct
 import type { AgentRecordAccess, GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart, OptionSetState } from "../state";
 import { clueWords, setIdOf } from "./clarify";
-import { localMidnight } from "./resolve";
+import { clueSearchWords, localMidnight } from "./resolve";
 
 type Language = "zh" | "ja" | "en";
 
@@ -120,7 +120,10 @@ export function rankDomainOf(part: GraphPart, message: string): RankDomain | nul
   if ((todo || FORMAL_FOLLOW_UP.test(quote)) && TODO_LIST_WORDS.test(quote) && !part.refs.some((ref) => ref.recordId && (ref.entity === "memo" || ref.entity === "todo"))) return "todo";
   // Reading other records is another kind of task — except a memo attached with @ (its topics are the basis).
   const memoBasis = part.refs.filter((ref) => ref.entity === "memo");
-  const readsMemoBasis = memoBasis.length > 0 && memoBasis.every((ref) => ref.recordId);
+  // AG20b (TRIAGE R9, §3.5 "按这篇 Memo 在目录中找活动"): a note named in words ("按我的看展札记挑周末的活动") is the criterion of an
+  // event ranking as an attached one is; it is found by its own words (rankPart), never through the events' dates.
+  const namedMemoBasis = memoBasis.length > 0 && part.capabilities.includes("event.read") && memoBasis.every((ref) => ref.recordId || Boolean(clueSearchWords((ref.quote ? message.slice(ref.quote[0], ref.quote[1]) : "").replace(/^@/u, ""))));
+  const readsMemoBasis = memoBasis.length > 0 && (memoBasis.every((ref) => ref.recordId) || namedMemoBasis);
   // AG13 repair round 8 (AE-SCL-013, AG08 rerun run-08): "东京做零售的联系人里，挑三个最适合聊柴烧器物的人" — the words name
   // the contacts as the set to pick from; a note read the first layer added (memo.read) does not make it another task.
   const namesPerson = part.refs.some((ref) => ref.entity === "contact" && (() => { const words = ref.quote ? message.slice(ref.quote[0], ref.quote[1]).replace(/^@/u, "").trim() : ""; return Boolean(words) && !GENERIC_CONTACT_CLUE.test(words); })());
@@ -153,6 +156,36 @@ export function organizeMeansSummary(part: GraphPart, message: string, attached:
   if (!SUMMARIZE_WORDS.test(quote) || INTERACTION_WORDS.test(quote) || FOLLOW_UP_ASK.test(quote) || WRITE_ASK.test(quote)) return false;
   const memos = part.refs.filter((ref) => ref.entity === "memo" && ref.recordId && attached.has(ref.recordId));
   return memos.length > 0 && part.refs.every((ref) => ref.entity === "memo");
+}
+
+/**
+ * AG20b (TRIAGE R17, 设计稿 §3.5 "用这篇笔记更新我和小林的往来"): on a note the user picked, words asking to update the
+ * interactions from it ("このメモでやりとりを更新して") are the extraction of the interactions, prepared as a change — not
+ * readings to choose from. Promises and to-dos asked for at the same time are not this one.
+ */
+const UPDATE_WORDS = /(更新|アップデート|反映|\bupdate\b)/iu;
+export function updatesInteractionsFromMemo(part: GraphPart, message: string, attached: ReadonlySet<string>): boolean {
+  const quote = message.slice(part.quote[0], part.quote[1]);
+  if (!INTERACTION_WORDS.test(quote) || !UPDATE_WORDS.test(quote) || FOLLOW_UP_ASK.test(quote) || part.plan.negation || part.plan.hypothesis) return false;
+  return part.refs.some((ref) => ref.entity === "memo" && ref.recordId && attached.has(ref.recordId)) || (attached.size === 1 && part.refs.some((ref) => ref.entity === "memo"));
+}
+
+/**
+ * AG20b (TRIAGE R17, 设计稿 §3.5 last row): a goal stated for the next note ("下一篇笔记我只要我答应的事", "次のメモは約束だけ",
+ * "for the next note, only my promises"): what to extract when the next "整理一下" comes. Null when the words state none.
+ */
+const NEXT_NOTE = /(下一篇|下篇|下一份|下次(?:的)?(?:笔记|整理)|以后的笔记|次のメモ|次回のメモ|次に(?:整理|まとめ)|\bnext (?:note|memo)s?\b|\bfrom now on\b)/iu;
+const ONLY_WORDS = /(只要|只看|只列|只需要|只想要|就要|だけ|のみ|\bonly\b|\bjust\b)/iu;
+export function nextNoteGoalIn(quote: string): { followUps: boolean; interactions: boolean } | null {
+  if (!NEXT_NOTE.test(quote) || !ONLY_WORDS.test(quote)) return null;
+  const followUps = FOLLOW_UP_ASK.test(quote);
+  const interactions = INTERACTION_WORDS.test(quote);
+  return followUps || interactions ? { followUps, interactions: interactions && !followUps } : null;
+}
+
+/** AG20b (R17): the words ask to tidy up a note ("整理一下"), so a goal kept for the next note is used up by them. */
+export function asksToOrganize(quote: string): boolean {
+  return ORGANIZE_WORDS.test(quote);
 }
 
 export type FunctionTask =
@@ -199,6 +232,16 @@ export function functionOf(scope: NodeScope, part: GraphPart): FunctionTask | nu
     const aboutEvents = part.capabilities.includes("event.read") && !part.capabilities.some((capability) => capability === "memo.read" || capability === "todo.read" || capability === "contact.read");
     if (aboutEvents && (part.capabilities.includes("fn.group") || GROUP_WORDS.test(quote))) return { kind: "group" };
     if ((aboutEvents || events >= 2) && events >= 2 && (part.capabilities.includes("fn.compare") || COMPARE_WORDS.test(quote))) return { kind: "compare" };
+  }
+  // AG20b (TRIAGE R17, §3.5 last row): the goal stated for the next note turns a plain "整理一下" of a note into that extraction;
+  // words of this turn asking for a summary win ("这次只要摘要").
+  const goal = scope.run.context?.noteGoal;
+  if (goal && (part.route === "read" || part.route === "answer") && ORGANIZE_WORDS.test(quote) && !SUMMARY_ASKED.test(quote)) {
+    const memoId = memoOf(scope, part, true);
+    if (memoId) {
+      emitTrace({ goal: { followUps: goal.followUps, interactions: goal.interactions }, memoId, partId: part.localId, type: "functions.note_goal_applied" });
+      return { kind: "extract", memoId, want: { followUps: goal.followUps, interactions: goal.interactions }, write: false };
+    }
   }
   // AG10 stability run (AE-FN-009): "用这篇笔记更新我和小林的往来" asks for a change in its own words; when the first layer left
   // the write capability out (deliverable change, no write), the extraction still makes the card — never a write without the words.
@@ -732,17 +775,38 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   let basisMemo: string | null = null;
   const memoRef = run.references.find((reference) => isMemoType(reference.type));
   const accountScope = records.scope(input.actorId);
+  // AG20b (TRIAGE R19): the note used as the criterion is one of the answer's openable sources.
+  let basisRef: string | null = null;
+  const useMemo = (view: RecordView | undefined, name: string | null) => {
+    const body = view ? String(view.fields.body ?? "") : "";
+    if (!body) return;
+    basis = body;
+    basisMemo = String(view!.fields.title ?? name ?? "");
+    basisRef = view!.ref;
+    run.readSources.set(view!.ref, readSourceOf(view!, timeZone) ?? { id: view!.id, kind: "memo" });
+    run.recordCards.set(view!.ref, recordOfView(view!, { language, now, timeZone }));
+    run.readNames.set(view!.id, { name: basisMemo || "memo", type: "memo" });
+  };
   if (memoRef && memoRef.accessible !== false && (!basis || basis.includes("@") || !field)) {
     try {
-      const view = (await records.reader.read("memo", accountScope, { id: memoRef.id })).items[0];
-      const body = view ? String(view.fields.body ?? "") : "";
-      if (body) {
-        basis = body;
-        basisMemo = String(view!.fields.title ?? memoRef.name ?? "");
-        run.readSources.set(view!.ref, readSourceOf(view!, timeZone) ?? { id: view!.id, kind: "memo" });
-      }
+      useMemo((await records.reader.read("memo", accountScope, { id: memoRef.id })).items[0], memoRef.name ?? null);
     } catch (error) {
       emitTrace({ error: error instanceof Error ? error.message : String(error), partId: part.localId, type: "read.error", where: "functions.basis_memo" });
+    }
+  }
+  // AG20b (TRIAGE R9): a note named in words as the criterion ("按我的看展札记") is found by those words — the newest of that
+  // name — and never through the events' period (a note written before the weekend is still the criterion).
+  const namedMemo = !memoRef && domain === "event" && !reply ? part.refs.find((ref) => ref.entity === "memo" && !ref.recordId && ref.quote) : undefined;
+  if (namedMemo && (!field || basisSpan)) {
+    const memoWords = clueSearchWords(message.slice(namedMemo.quote![0], namedMemo.quote![1]).replace(/^@/u, ""));
+    if (memoWords) {
+      try {
+        const found = (await records.reader.read("memo", accountScope, { limit: 10, order: "newest", text: memoWords })).items;
+        emitTrace({ found: found.map((view) => view.ref), partId: part.localId, type: "functions.basis_memo_by_words", words: memoWords });
+        useMemo(found[0], null);
+      } catch (error) {
+        emitTrace({ error: error instanceof Error ? error.message : String(error), partId: part.localId, type: "read.error", where: "functions.basis_memo_words" });
+      }
     }
   }
   const topicWords = basisMemo ? basis : topicWordsOf(basis ?? (reply ? replyWords : original));
@@ -962,7 +1026,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   part.waitReason = null;
   const said = history ? [...result.ordered.map((item) => item.candidate as ContactCandidate), ...upcoming] : [];
   const signalRefs = history ? [...new Set(said.flatMap((item) => item.signals.map((signalItem) => signalItem.todo.ref)))] : [];
-  part.cites = [...written.cites, ...upcoming.map((item) => item.ref), ...signalRefs];
+  part.cites = [...written.cites, ...upcoming.map((item) => item.ref), ...signalRefs, ...(basisRef && basisMemo ? [basisRef] : [])];
   part.reads = [...result.ordered.map((item) => ({ ref: item.candidate.view.ref, version: item.candidate.view.version })), ...upcoming.map((item) => ({ ref: item.view.ref, version: item.view.version })), ...signalRefs.map((ref) => ({ ref, version: "" }))];
   part.coverage = [{ complete: result.coverage.truncated === 0, kind: domain, pagesRead: Math.max(1, Math.ceil(result.coverage.total / PAGE)), seen: result.semantic && result.matched ? result.coverage.judged : result.ordered.length, total: result.matching }];
   part.gaps = [];
