@@ -7,6 +7,10 @@
   gap: 8px;
   z-index: var(--z-toast);
 }
+/* > 1440: the shell frame is centred at 1440 — keep the stack at its right edge, not the screen's. */
+@media (min-width: 1441px) {
+  .stack { right: calc((100vw - 1440px) / 2 + 24px); }
+}
 /* Dark: still a dark capsule — the raised surface with light text (RD-17). */
 .toast {
   display: flex;

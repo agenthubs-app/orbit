@@ -374,3 +374,12 @@
 @keyframes frameShimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .framePill, .frameLine, .frameBone, .frameCard { animation: none; } }
 :global([data-motion="reduce"]) :is(.framePill, .frameLine, .frameBone, .frameCard) { animation: none; }
+
+/* 2026-11-20 wide screens (> 1440): the whole frame (side + content + rail) keeps the 1440 design width and
+   sits centred; the extra width is the same page background either side (X / Bluesky / Mastodon). The frame
+   stays full width (its fog background spans the screen), so only the grid moves in. Up to 1440 nothing changes. */
+@media (min-width: 1441px) {
+  .frame { padding-inline: calc((100% - 1440px) / 2); }
+  .side { box-shadow: -1px 0 0 var(--line); }
+  .rail { box-shadow: 1px 0 0 var(--line); }
+}
