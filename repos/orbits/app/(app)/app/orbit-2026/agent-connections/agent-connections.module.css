@@ -85,6 +85,8 @@
 .stateBox { display: grid; grid-template-columns: 20px 1fr; gap: 2px 10px; padding: 14px 16px; border-radius: 18px; background: var(--surface-2); font-size: var(--fs-body-sm); line-height: 1.55; color: var(--ink-2); }
 .stateBox b { color: var(--ink); font-size: var(--fs-body); }
 .stateBox svg { margin-top: 3px; grid-row: span 2; }
+.stateBox.guaranteeYes { background: var(--mac-teal); color: var(--mac-teal-text); }
+.stateBox.guaranteeYes b { color: var(--ink); }
 .small { margin: 0; color: var(--ink-2); font-size: var(--fs-meta); line-height: 1.7; }
 .lockCard { background: var(--surface); border-radius: 24px; padding: 24px; display: grid; gap: 12px; justify-items: start; }
 .lockTile { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; background: var(--surface-2); color: var(--ink-2); }
@@ -96,7 +98,7 @@
 .pillLight { background: var(--surface-2); color: var(--ink); }
 .cardBone { height: 320px; border-radius: 24px; background: var(--surface); }
 @media (max-width: 767px) {
-  .confirmPage { padding: 0 0 32px; }
+  .confirmPage { padding: 0 16px 32px; box-sizing: border-box; }
   .phoneTop { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; height: 56px; margin: 0 0 4px; }
   .phoneTop b { text-align: center; font-size: 17px; }
   .phoneBack { width: 44px; height: 44px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; color: var(--ink); }
@@ -135,7 +137,7 @@
 @media (max-width: 767px) { .sameGrid { grid-template-columns: minmax(0, 1fr); } .connGrid { gap: var(--space-14); } }
 
 /* ── 收件箱右栏 (board 9) ── */
-.inboxPane { padding: 18px 22px 24px; display: grid; gap: 12px; align-content: start; }
+.inboxPane { padding: 18px 22px 0; display: grid; gap: 10px; align-content: start; }
 .inboxTop { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--ink-2); font-size: var(--fs-meta); }
 .inboxChip { padding: 3px 10px; border-radius: var(--r-pill); background: var(--mac-lav); color: var(--mac-lav-text); font-weight: var(--fw-bold); }
 .inboxPane h2 { margin: 0; font-size: 22px; font-weight: var(--fw-heavy); }

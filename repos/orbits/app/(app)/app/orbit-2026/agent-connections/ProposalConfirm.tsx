@@ -22,6 +22,13 @@ import { agentConnectionsWords } from "./copy";
 import { ClientTile, LocalTime, whenText } from "./parts";
 import s from "./agent-connections.module.css";
 
+const MARK = "\u0000";
+/** «<b>今天 14:20</b> 提的»: the time in bold inside the sentence of the copy table (board 5). */
+const boldTime = (sentence: string, time: string) => {
+  const [before, after = ""] = sentence.split(MARK);
+  return <>{before}<b>{time}</b>{after}</>;
+};
+
 const WAITING = new Set(["awaiting_confirmation", "deferred", "approved", "executing", "partially_failed", "failed"]);
 
 export function useProposalCard(view: AgentProposalViewContract) {
@@ -64,7 +71,7 @@ export function ProposalBody({ view, language, place }: { view: AgentProposalVie
             <h2>{state ? state.title : t("wantsToChange", { client, n: count })}</h2>
             <p className={s.whoMeta}>
               {state ? <LocalTime width={150} render={() => t("expiredWhen", { client, time: proposed() })} />
-                : <LocalTime width={220} render={() => `${t("proposedAt", { time: proposed() })}${card.expiresAt ? ` · ${t("validUntil", { time: until() })}` : ""}`} />}
+                : <LocalTime width={220} render={() => <>{boldTime(t("proposedAt", { time: MARK }), proposed())}{card.expiresAt ? <> · {boldTime(t("validUntil", { time: MARK }), until())}</> : null}</>} />}
             </p>
           </div>
         </div>

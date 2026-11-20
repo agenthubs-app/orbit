@@ -5,7 +5,7 @@
  * the client's initial tile (no brand mark; the draft uses initials), times in the reader's words («今天 14:20»,
  * «明天 14:20», «11月20日（周五）14:20»), and the three levels of a domain read from and written to scope names.
  */
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 
 import type { AgentConnectionScopeOptionContract } from "../../../../../shared/contract/agent-v1";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
@@ -18,7 +18,7 @@ const subscribeNever = () => () => undefined;
  * A time in the reader's own zone. The server does not know that zone, so the server-rendered page holds a bone of
  * about the same width in its place and the browser writes the time in at hydration (no line moves).
  */
-export function LocalTime({ render, width = 72 }: { render: () => string; width?: number }) {
+export function LocalTime({ render, width = 72 }: { render: () => ReactNode; width?: number }) {
   const hydrated = useSyncExternalStore(subscribeNever, () => true, () => false);
   return hydrated ? <>{render()}</> : <span style={{ display: "inline-flex", verticalAlign: "middle" }}><Bone width={width} height={13} /></span>;
 }
