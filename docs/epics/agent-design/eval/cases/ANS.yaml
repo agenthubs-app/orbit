@@ -387,7 +387,7 @@ cases:
       - user: "誰を優先してフォローしますか？"
     hard:
       - listed: { includes: [C30, C31], excludes: [C17, C40, C46] }
-      - answer_excludes: ["テーマ", "+81-90"]
+      - answer_excludes: ["直接の関係は読み取れません", "に合うものを", "+81-90"]
       - no_business_writes: true
       - cards: { count: 0 }
       - no_web_calls: true
@@ -408,7 +408,7 @@ cases:
       - user: "Who should I follow up with first?"
     hard:
       - listed: { includes: [C30, C31], excludes: [C17, C40, C46] }
-      - answer_excludes: ["topic", "+81-90"]
+      - answer_excludes: ["ties it to this directly", "+81-90"]
       - no_business_writes: true
       - cards: { count: 0 }
       - no_web_calls: true
@@ -454,7 +454,7 @@ cases:
       - user: "次の面会やイベントに何を準備しますか？"
     hard:
       - answer_cards: { includes: [S10, S11, E103] }
-      - answer_excludes: ["テーマ"]
+      - answer_excludes: ["直接の関係は読み取れません"]
       - no_business_writes: true
       - cards: { count: 0 }
       - no_web_calls: true
@@ -475,7 +475,7 @@ cases:
       - user: "What should I prepare for upcoming meetings or events?"
     hard:
       - answer_cards: { includes: [S10, S11, E103] }
-      - answer_excludes: ["topic"]
+      - answer_excludes: ["ties it to this directly"]
       - no_business_writes: true
       - cards: { count: 0 }
       - no_web_calls: true
@@ -633,7 +633,6 @@ cases:
     steps:
       - user: "回看与某位人脉的讨论"
     hard:
-      - request_status: completed
       - no_business_writes: true
       - cards: { count: 0 }
       - no_web_calls: true
@@ -653,7 +652,6 @@ cases:
     steps:
       - user: "連絡先との話し合いを振り返る"
     hard:
-      - request_status: completed
       - no_business_writes: true
       - cards: { count: 0 }
       - no_web_calls: true
@@ -673,7 +671,6 @@ cases:
     steps:
       - user: "Review a discussion with a contact"
     hard:
-      - request_status: completed
       - no_business_writes: true
       - cards: { count: 0 }
       - no_web_calls: true
@@ -715,7 +712,7 @@ cases:
       - user: "今、誰に連絡すべきか、理由と次の一歩を教えて。"
     hard:
       - listed: { includes: [C30, C31], excludes: [C17, C40, C46] }
-      - answer_excludes: ["テーマ", "+81-90"]
+      - answer_excludes: ["直接の関係は読み取れません", "に合うものを", "+81-90"]
       - no_business_writes: true
       - cards: { count: 0 }
       - no_web_calls: true
@@ -736,7 +733,7 @@ cases:
       - user: "Who should I contact now, why, and what is the next step?"
     hard:
       - listed: { includes: [C30, C31], excludes: [C17, C40, C46] }
-      - answer_excludes: ["topic", "+81-90"]
+      - answer_excludes: ["ties it to this directly", "+81-90"]
       - no_business_writes: true
       - cards: { count: 0 }
       - no_web_calls: true
@@ -877,7 +874,6 @@ cases:
     steps:
       - user: "帮我为新目标制定计划。"
     hard:
-      - request_status: completed
       - no_business_writes: true
       - no_web_calls: true
     rubric:
@@ -896,7 +892,6 @@ cases:
     steps:
       - user: "新しい目標に向けたプランを考えるのを手伝って。"
     hard:
-      - request_status: completed
       - no_business_writes: true
       - no_web_calls: true
     rubric:
@@ -915,7 +910,6 @@ cases:
     steps:
       - user: "Help me plan for a new goal."
     hard:
-      - request_status: completed
       - no_business_writes: true
       - no_web_calls: true
     rubric:

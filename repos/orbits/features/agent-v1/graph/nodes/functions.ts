@@ -782,7 +782,11 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   if (recalled.length) emitTrace({ memories: recalled.map((item) => item.memory.id), partId: part.localId, type: "memory.recall" });
   // AG19-6: "最近有哪些活动适合我" names no standard to pick by; it is a list of what is coming up, never a question back.
   // A pick ("哪两场最值得去") still asks what to pick by, once (AG10-1): only the time filter is the default there.
-  const listing = (!PICK_WORDS.test(original) && (part.plan.deliverable === "list" || /(列出|列一下|列个|\blist\b|一覧|並べて)/iu.test(original))) || (!reply && !PICK_WORDS.test(original) && listsUpcomingEvents(part, message));
+  // Hotfix 1c (run-04: 「推荐值得参加的活动并说明原因」, 「最近おすすめのイベントは？」 asked what to pick by once rule 3 took the
+  // fake topic away): a recommendation of events with no real topic, no field and no count is the list of what is coming up,
+  // nearest first (AG19-6, decision 3) — never a question back.
+  const recommendsEvents = domain === "event" && !reply && !topic && !field && !rank.count && countSaidIn(original) === null && asksEventsToGoTo(original) && !pointsAtPast(original);
+  const listing = (!PICK_WORDS.test(original) && (part.plan.deliverable === "list" || /(列出|列一下|列个|\blist\b|一覧|並べて)/iu.test(original))) || (!reply && !PICK_WORDS.test(original) && listsUpcomingEvents(part, message)) || recommendsEvents;
   const history = !topic && !field && !time.length && domain === "contact" && (followUpAsk || chosen === "overdue");
   const todoNatural = domain === "todo";
   const haveBasis = Boolean(topic || field || time.length || history || leftToAgent || listing || todoNatural || chosen);

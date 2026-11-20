@@ -27,7 +27,7 @@ test("who to follow up with, in the App's three languages and plain variants; a 
 });
 
 test("rule 3: question words, kind words and the whole question are never a topic; real words stay", () => {
-  for (const words of ["值得先跟进", "哪些人值得先跟进？", "该先跟进谁", "接下来的会面或活动，该准备什么？", "What should I prepare for upcoming meetings or events?", "次の面会やイベントに何を準備しますか？", "誰を優先してフォローしますか？", "Who should I follow up with first?", "告诉我现在该联系谁、原因和下一步。", "推荐值得参加的活动并说明原因。", "参加する価値があるイベントを、理由とともに教えて。", "Suggest events worth attending and explain why.", "最近おすすめのイベントは？", "Which recent events are a good fit for me?"]) assert.equal(realTopicOf(words), "", words);
+  for (const words of ["值得先跟进", "哪些人值得先跟进？", "该先跟进谁", "接下来的会面或活动，该准备什么？", "What should I prepare for upcoming meetings or events?", "次の面会やイベントに何を準備しますか？", "誰を優先してフォローしますか？", "Who should I follow up with first?", "告诉我现在该联系谁、原因和下一步。", "推荐值得参加的活动并说明原因。", "今、誰に連絡すべきか", "今、誰に連絡すべきか、理由と次の一歩を教えて。", "参加する価値があるイベントを、理由とともに教えて。", "Suggest events worth attending and explain why.", "最近おすすめのイベントは？", "Which recent events are a good fit for me?"]) assert.equal(realTopicOf(words), "", words);
   assert.equal(realTopicOf("聊独立出版"), "聊独立出版");
   assert.equal(realTopicOf("SaaS 定价"), "SaaS 定价");
   assert.equal(realTopicOf("a power-semiconductor packaging process lead role"), "power-semiconductor packaging process lead role");
@@ -91,6 +91,28 @@ for (const [language, message, basis] of [
     assert.doesNotMatch(run.result.text, new RegExp(`「${basis}」|"${basis}"`, "u"), "the lead never says related to the basis");
   });
 }
+
+for (const [language, message, basis] of [
+  ["zh", "推荐值得参加的活动并说明原因。", "值得参加的活动并说明原因"],
+  ["ja", "最近おすすめのイベントは？", "最近おすすめのイベント"],
+  ["en", "Suggest events worth attending and explain why.", "events worth attending and explain why"],
+] as const) {
+  test(`1c (run-04 AE-ANS-030/022/032, ${language}): 「${message}」 — the events coming up, nearest first; no question back, no judgment`, async () => {
+    const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "ranked_list", rank: { basis }, requiredCapabilities: ["event.read", "fn.rank"], sourceQuote: message }], { language });
+    assert.equal(run.result.clarifications.filter((set) => set.kind === "question").length, 0, run.result.text);
+    assert.equal(run.judgeCalls.length, 0);
+    const ranked = run.events.filter((event) => event.type === "fn.rank").at(-1) as { listed?: string[] } | undefined;
+    assert.equal(ranked?.listed?.[0], "event:event:e103", JSON.stringify(ranked));
+  });
+}
+
+test("1c (run-04 AE-ANS-028): 「今、誰に連絡すべきか、理由と次の一歩を教えて。」 with that as the basis — the follow-up ranking, not a topic", async () => {
+  const message = "今、誰に連絡すべきか、理由と次の一歩を教えて。";
+  const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "ranked_list", rank: { basis: "今、誰に連絡すべきか" }, requiredCapabilities: ["contact.read", "fn.rank"], sourceQuote: message }], { language: "ja", world: world() });
+  assert.equal(run.judgeCalls.length, 0);
+  const ranked = run.events.filter((event) => event.type === "fn.rank").at(-1) as { listed?: string[] } | undefined;
+  assert.equal(ranked?.listed?.[0], "contact:contact:c30", JSON.stringify(ranked));
+});
 
 test("a real topic is still a topic ranking (AG08): 「挑两个最适合聊独立出版的人」", async () => {
   const message = "挑两个最适合聊独立出版的人";

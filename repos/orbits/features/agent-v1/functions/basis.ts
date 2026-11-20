@@ -69,7 +69,7 @@ export function asksWhoToFollowUp(words: string): boolean {
  * and words for a kind of record, a time or the act of preparing ("哪些人值得先跟进" leaves 「值得先」, "接下来的会面或活动，该准备什么"
  * leaves 「接下来 会面 准备什么」: neither is a topic).
  */
-const NOT_A_TOPIC = /(告诉我|告诉|原因|理由|为什么|下一步|现在|目前|当前|并说明|说明|解释|值得参加|参加する|参加|教えて|理由|次の一歩|とともに|ともに|価値がある|価値|今|\b(?:now|currently|reason|reasons|why|next step|tell me|suggest|explain|worth|attending|attend|recommend|recent|recently|good fit|fit|for me|me|are|is)\b|值得|首先|最先|优先|先|应该|应当|该|需要|要|可以|能|哪些|哪个|哪位|哪几|哪|谁|什么|怎么|如何|是否|吗|呢|吧|或者|或|和|与|还有|接下来|下一个|下次|之后|以后|最近|近期|会面|见面|会议|开会|活动|日程|安排|准备|事情|事|东西|跟进|联系|優先|して|します|しますか|ますか|ますか|すべき|べき|誰|何から|何|どれ|次の|面会|イベント|予定|準備|フォロー|進め|今日|は|を|に|の|\b(?:first|should|need|needs|to|what|which|who|whom|how|do|i|for|with|up|follow|prepare|upcoming|next|meetings?|events?|or|and|the|my|a)\b|[\s。.，,、？?！!：:]+)/giu;
+const NOT_A_TOPIC = /(告诉我|告诉|原因|理由|为什么|下一步|现在|目前|当前|并说明|说明|解释|值得参加|参加する|参加|連絡すべき|連絡|教えて|理由|次の一歩|とともに|ともに|価値がある|価値|今|\b(?:now|currently|reason|reasons|why|next step|tell me|suggest|explain|worth|attending|attend|recommend|recent|recently|good fit|fit|for me|me|are|is)\b|值得|首先|最先|优先|先|应该|应当|该|需要|要|可以|能|哪些|哪个|哪位|哪几|哪|谁|什么|怎么|如何|是否|吗|呢|吧|或者|或|和|与|还有|接下来|下一个|下次|之后|以后|最近|近期|会面|见面|会议|开会|活动|日程|安排|准备|事情|事|东西|跟进|联系|優先|して|します|しますか|ますか|ますか|すべき|べき|誰|何から|何|どれ|次の|面会|イベント|予定|準備|フォロー|進め|今日|は|を|に|の|\b(?:first|should|need|needs|to|what|which|who|whom|how|do|i|for|with|up|follow|prepare|upcoming|next|meetings?|events?|or|and|the|my|a)\b|[\s。.，,、？?！!：:]+)/giu;
 
 /** Rule 3: the real topic in some words ("" when nothing but question, kind, time or preparing words is left). */
 export function realTopicOf(words: string): string {
