@@ -73,8 +73,19 @@ export function addressesFor(origin: string): McpAddresses {
 export function mcpAddresses(request: Request, env: Env = process.env): McpAddresses | null {
   const configured = configuredOrigin(env);
   if (configured) return addressesFor(configured);
-  if (env.ORBIT_AGENT_EVAL === "1" || env.NODE_ENV !== "production") return addressesFor(new URL(request.url).origin);
+  if (env.ORBIT_AGENT_EVAL === "1" || env.NODE_ENV !== "production") return addressesFor(requestOriginOf(request));
   return null;
+}
+
+/**
+ * The origin the browser or client used (eval and local development only). Next gives a route handler `request.url`
+ * on its own host name (localhost) and a page only the Host header; both go by the Host header, so a request ticket
+ * signed by the authorize route is readable by the consent page however the address was written.
+ */
+function requestOriginOf(request: Request): string {
+  const url = new URL(request.url);
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  return host && /^[A-Za-z0-9.\-[\]:]+$/u.test(host) ? `${url.protocol}//${host}` : url.origin;
 }
 
 /** The deployment secret the keys below are derived from; null when none is set (then nothing is issued or accepted). */

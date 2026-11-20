@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import test from "node:test";
 
 import { handleCardDecision } from "../../../features/agent/ledger/card-routes";
-import { addressesFor, CONNECT_PATH, MCP_PATH, PROPOSAL_PAGE_PATH } from "../../../features/agent-v1/mcp/auth/config";
+import { addressesFor, CONNECT_PATH, MCP_PATH, mcpAddresses, PROPOSAL_PAGE_PATH } from "../../../features/agent-v1/mcp/auth/config";
 import { protectedResourceMetadata } from "../../../features/agent-v1/mcp/auth/server";
 import { externalProposalInboxEntry } from "../../../features/agent-v1/mcp/inbox";
 import { accountKeyOf, connectionView, consentView } from "../../../features/agent-v1/mcp/views";
@@ -156,6 +156,18 @@ test("the short address: the endpoint the user pastes is /connect, its metadata 
   const asked = await kit.auth.authorize(kit.authorizeParams({ challenge: kit.s256(verifier()), resource: `${ORIGIN}/mcp` }), ADDRESSES);
   assert.equal(asked.kind, "redirect");
   assert.match((asked as { location: string }).location, /error=invalid_target/u);
+});
+
+test("with no public address configured (eval, local): a route handler and a page derive the same addresses from the address the browser used", () => {
+  const env = { NODE_ENV: "development" };
+  // Next hands a route handler request.url on its own host name, a page only the Host header: both must agree.
+  const routeRequest = new Request("http://localhost:3190/oauth/authorize", { headers: { host: "127.0.0.1:3190" } });
+  const pageRequest = new Request("http://127.0.0.1:3190/app/settings/agent-connections/authorize");
+  assert.equal(mcpAddresses(routeRequest, env)?.authorizeUrl, "http://127.0.0.1:3190/oauth/authorize");
+  assert.deepEqual(mcpAddresses(routeRequest, env), mcpAddresses(pageRequest, env));
+  // Configured, the request plays no part at all (production).
+  assert.equal(mcpAddresses(routeRequest, { AUTH_URL: "https://orbitailink.com", NODE_ENV: "production" })?.resource, "https://orbitailink.com/connect");
+  assert.equal(mcpAddresses(routeRequest, { NODE_ENV: "production" }), null);
 });
 
 test("the inbox line of a proposal: «Claude 想改 2 项，等你确认», the card's count line, and it opens the confirm page", async () => {
