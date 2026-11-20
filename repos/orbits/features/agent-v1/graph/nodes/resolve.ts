@@ -304,7 +304,9 @@ export async function findContacts(records: AgentRecordAccess, scope: DomainScop
   // a company holding them. Marked as found by company: a write offers them in a question, never picks one.
   let byCompany = false;
   if (!found.length && !failed) {
-    const companyWords = [...new Set([clueSearchWords(words.replace(/^@/u, "")), words.replace(/^@/u, "").split(/[の的之]/u)[0]?.trim()].filter((item): item is string => Boolean(item) && [...item!].length >= 2))];
+    // The words without what only points at the side ("Fjord 那边", "青柠那个", "東山さん側", "海桐的人").
+    const bare = words.replace(/^@/u, "").trim().replace(/(?:那边|这边|那里|这里|那儿|那头|那家|这家|那个|这个|那位|这位|方面|一方|的人|那些人|のほう|の方|さん側|側|の人|の皆さん)$/u, "").replace(/[\s的の]+$/u, "").trim();
+    const companyWords = [...new Set([bare, clueSearchWords(bare), bare.split(/[の的之]/u)[0]?.trim()].filter((item): item is string => Boolean(item) && [...item!].length >= 2))];
     try {
       for (const text of companyWords) {
         found = (await records.reader.read("contact", scope, { limit: 10, status: "company" as never, text })).items;

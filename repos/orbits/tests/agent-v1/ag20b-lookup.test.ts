@@ -3,9 +3,9 @@ import test from "node:test";
 
 import { configuredRecordAccess, readCursorKey } from "../../features/agent-v1/domains/configured";
 import { matchText } from "../../features/agent-v1/domains/source";
-import type { GraphPart } from "../../features/agent-v1/graph/state";
-import { resolvePartIntents, type ResolveContext } from "../../features/agent-v1/propose/resolve";
+import { resolvePartIntents } from "../../features/agent-v1/propose/resolve";
 import type { StoredIntent } from "../../features/agent-v1/propose/schema";
+import { ACTOR, ctxOf, partOf } from "./ag20b-kit";
 import { recordAccessOf } from "./graph-kit";
 import { contact, todo } from "./read-kit";
 
@@ -14,28 +14,11 @@ import { contact, todo } from "./read-kit";
  * here is this sprint's own, not the third party's.
  */
 
-const ACTOR = "actor:a";
-const NOW = "2026-11-15T01:00:00.000Z";
-
-export function partOf(message: string, quote: string, extra: Partial<GraphPart> = {}): GraphPart {
-  const at = message.indexOf(quote);
-  return {
-    asked: 0, capabilities: ["todo.update"], continues: null, dependsOn: [], localId: "p1", origin: null,
-    plan: { clarity: "clear", dataOwner: "self", dataSources: ["orbit_records"], deliverable: "change", hypothesis: false, intentBasis: "instruction", negation: false, persistence: "this_turn", readings: [] } as GraphPart["plan"],
-    quote: [at, at + quote.length], reading: null, reason: null, refs: [], route: "propose_write", status: "unfinished", step: null, verdict: "accept" as GraphPart["verdict"], waitReason: null,
-    ...extra,
-  };
-}
-
 const span = (message: string, words: string): [number, number] => {
   const at = message.indexOf(words);
   assert.ok(at >= 0, `"${words}" in the message`);
   return [at, at + words.length];
 };
-
-export function ctxOf(records: ReturnType<typeof recordAccessOf>, message: string, language: "zh" | "ja" | "en" = "zh"): ResolveContext {
-  return { asOf: NOW, asked: new Map(), context: null, language, message, nameOf: () => null, people: [], records, scope: records.scope(ACTOR), timeZone: "Asia/Tokyo" };
-}
 
 function lookupWorld() {
   return { events: [], records: [

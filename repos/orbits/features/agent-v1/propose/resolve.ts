@@ -299,7 +299,8 @@ async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrit
       // AG20b (R2): the words as said come first, so a title said exactly is always found (the search folds spaces,
       // 的/の, width and case on both sides); then the words without pointers and kind words, then without the name.
       const said = clue.replace(/^@/u, "").trim();
-      for (const text of [[...said].length >= 2 ? said : undefined, whole, clueSearchWords(rest)]) if (text && !searches.includes(text)) searches.push(text);
+      // Only words that name something ("她的待办" names no title: the person's to-dos are read instead).
+      for (const text of [whole && [...said].length >= 2 ? said : undefined, whole, clueSearchWords(rest)]) if (text && !searches.includes(text)) searches.push(text);
     }
     // What the user called it, for saying it was not found (their words without "那条待办").
     const said = (clues[0] ? clueSearchWords(clues[0]) : undefined) ?? "";
