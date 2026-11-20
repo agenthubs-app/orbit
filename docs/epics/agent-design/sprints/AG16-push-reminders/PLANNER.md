@@ -120,4 +120,4 @@
 6. 同时在跑的线：AG19、AG14、AG17（即将合并 AG15 的分支）、独立测试套件（`tp`）。AG15 的 Generator 之后还要回到同一批文件做页面：对 AG15 文件的改动要小，并在 REPORT 点名。
 7. 环境变量：CONVENTIONS §2 只登记了 `ORBIT_WEB_PUSH_VAPID_PUBLIC_KEY`、`ORBIT_WEB_PUSH_VAPID_PRIVATE_KEY`；本页提议的 `ORBIT_WEB_PUSH_SUBJECT` 没有登记。实现为可选：不设时取站点自己的地址（`AUTH_URL`／`NEXTAUTH_URL`，须为 https），在 REPORT 里列为与 CONVENTIONS 的出入。
 8. 证据目录在外置盘：`/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-design/sprint-AG16/run-01/`；评测日志在 `/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-eval-lines/ag16/runs/`（不是本页写的 `~/orbit-sprint-evidence/…`）。
-
+9. **2026-11-20 追加（协调者转达）：用户已批准 AG15、AG16 的视觉稿，D16-1～D16-4 全按推荐**——每条任务一个开关管手机和浏览器；提醒那句话是「有新结果，请到 Orbit 查看。」；浏览器只在点了按钮之后才询问；提醒受每日上限和免打扰时段管，历史里写明为什么没发。服务端已按这四项实现（第 3 条里「未批准」的说法到此为止）。两端页面在 AG15 的页面建好之后由另一位执行者做，本次停在服务端；界面证据仍记 blocked。

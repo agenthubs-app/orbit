@@ -136,7 +136,7 @@ test("real storage: a pass that dies right after the inbox write does not lose t
   assert.equal(run.delivery.push.deliveredAt, at("2026-11-20T09:20:00+09:00"));
 });
 
-test("real storage (视觉稿 D16-4, not approved yet): quiet hours and the daily limit hold a reminder back, read from the owner's own notification settings", { skip, timeout: 60_000 }, async (t) => {
+test("real storage (视觉稿 D16-4, approved 2026-11-20): quiet hours and the daily limit hold a reminder back, read from the owner's own notification settings", { skip, timeout: 60_000 }, async (t) => {
   const h = await harness();
   t.after(() => h.close());
   // A task that runs at 23:00: inside the default quiet hours (22:00–07:30, Asia/Tokyo).

@@ -291,7 +291,7 @@ test("AG16-1: the switch is looked at again before sending — turned off, pause
   }
 });
 
-test("AG16 (视觉稿 D16-4, not approved yet): quiet hours, the daily limit and a turned-off notification kind hold the reminder back; the result is in the inbox and the history says why", async () => {
+test("AG16 (视觉稿 D16-4, approved 2026-11-20): quiet hours, the daily limit and a turned-off notification kind hold the reminder back; the result is in the inbox and the history says why", async () => {
   const lines: Record<RulePushHold, string> = {
     daily_cap: "没有提醒：当天的提醒已到每日上限。结果在收件箱里。",
     notifications_off: "没有提醒：通知设置里关掉了这类提醒。结果在收件箱里。",
