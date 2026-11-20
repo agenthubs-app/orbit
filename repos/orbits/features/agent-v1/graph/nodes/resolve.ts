@@ -283,6 +283,28 @@ export function clueSearchWords(words: string): string | undefined {
   return rest.length >= 2 ? rest : undefined;
 }
 
+/**
+ * AG21a (R44): the distinctive words of a search phrase, each on its own ("Corvid 的订阅" → corvid, 订阅; "白鹭印务 报价单" →
+ * 白鹭印务, 报价单): split at spaces, punctuation, the particles 的/の/之 and where Latin letters meet CJK, and each piece held
+ * to the same noise rules as a clue's words. One piece or none: the phrase is searched whole only.
+ */
+export function searchTokensOf(phrase: string): string[] {
+  const pieces = phrase.normalize("NFKC")
+    .replace(/([A-Za-z0-9])(?=[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])|([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])(?=[A-Za-z0-9])/gu, "$1$2 ")
+    .split(/[\s、，。・,.!?！？「」『』"“”'’()（）【】:：;；/]+|[的の之]/u);
+  const out: string[] = [];
+  for (const piece of pieces) {
+    const word = clueSearchWords(piece);
+    if (word && !out.includes(word)) out.push(word);
+  }
+  return out;
+}
+
+/** The text of a record view a word search looks in (its string fields), folded as the search folds it. */
+function viewText(view: RecordView): string {
+  return matchText(Object.values(view.fields).filter((value): value is string => typeof value === "string").join(" "));
+}
+
 /** "2026-11-16" at 00:00 in the time zone, as a UTC instant. */
 export function localMidnight(day: string, timeZone: string): string {
   const guess = new Date(`${day}T00:00:00Z`);
@@ -930,6 +952,26 @@ export function resolveNode(scope: NodeScope): GraphNode {
                 ...(kind === "todo" && !filter?.order ? {} : { order: direction }),
               });
               let pages = await readPages(records.reader, kind, accountScope, queryOf(kindText), order === "both" ? 1 : maxPages);
+              // AG21a (R44): a phrase of several distinctive words found as one piece nowhere ("Corvid 的订阅" for a note on
+              // "Corvid Analytics 的年度订阅") — the records holding every one of its words, in any order and distance; only when
+              // none holds them all, the records holding its rarest word. The other narrowings (the person, status, period) stay.
+              const tokens = kindText && !pages.items.length && !pages.withheld ? searchTokensOf(kindText) : [];
+              if (tokens.length >= 2) {
+                const counted = await Promise.all(tokens.map(async (token) => ({ first: await readPages(records.reader, kind, accountScope, queryOf(token), 1), token })));
+                const rarest = counted.filter((item) => item.first.items.length || item.first.withheld).sort((left, right) => (left.first.total ?? Number.MAX_SAFE_INTEGER) - (right.first.total ?? Number.MAX_SAFE_INTEGER) || right.token.length - left.token.length)[0];
+                if (rarest) {
+                  const all = await readPages(records.reader, kind, accountScope, queryOf(rarest.token), Math.max(maxPages, records.maxPages));
+                  const holding = all.items.filter((view) => tokens.every((token) => viewText(view).includes(matchText(token))));
+                  if (holding.length) {
+                    pages = { ...all, complete: all.complete, items: holding, total: all.complete ? holding.length : null };
+                    emitTrace({ found: holding.length, kind, partId: part.localId, tokens, type: "resolve.text_all_words" });
+                  } else {
+                    pages = rarest.first.items.length && maxPages > 1 ? await readPages(records.reader, kind, accountScope, queryOf(rarest.token), order === "both" ? 1 : maxPages) : rarest.first;
+                    read.notes.push(`No ${kind === "memo" ? "note" : "record"} holds all of ${tokens.map((token) => `"${token}"`).join(", ")}; these hold "${rarest.token}" only. Say so; do not present them as holding the rest.`);
+                    emitTrace({ found: pages.items.length, kind, partId: part.localId, tokens, type: "resolve.text_rarest_word", word: rarest.token });
+                  }
+                }
+              }
               // The words were a narrowing: when none of the person's records has them, read the person's records
               // without them and say so. With no person, nothing found stays nothing found (no newest page instead).
               if (ownWords && !pages.items.length && !pages.withheld) {
