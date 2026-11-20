@@ -14,7 +14,7 @@ import type { AgentConnectionConsentContract } from "../../../../../shared/contr
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { signOutAndForget } from "../../orbit-sign-out";
 import { Avatar, Icon, Orbit2026Scope } from "../ui";
-import { agentConnectionsWords, type ConnectionDomain } from "./copy";
+import { agentConnectionsWords, type ConnectionDomain } from "../copy/agent-connections";
 import { dateText, levelOf, LocalTime, scopesFrom, type Level } from "./parts";
 import s from "./agent-connections.module.css";
 
@@ -104,7 +104,7 @@ export function ConsentPage({ initial }: { initial: ConsentInitial }) {
               <div className={s.account}>
                 <Avatar name={view.account?.name || view.account?.email || "?"} tone="lav" />
                 <div className={s.accountText}><small>{t("accountRow")}</small><b>{view.account?.name || view.account?.email}</b>{view.account?.name && view.account?.email ? <span>{view.account?.email}</span> : null}</div>
-                <button type="button" className={s.linkButton} onClick={switchAccount}>{t("switchAccount")}</button>
+                <button type="button" className={`btn ${s.linkButton}`} onClick={switchAccount}>{t("switchAccount")}</button>
               </div>
               <div className={s.chooseHead}><b>{t("chooseHeading", { client: view.clientName })}</b><span>{t("chooseNote")}</span></div>
               <div className={s.rows}>
@@ -128,7 +128,7 @@ export function ConsentPage({ initial }: { initial: ConsentInitial }) {
                           const disabled = key === "propose" && !option.propose;
                           return (
                             <button key={key} type="button" role="radio" aria-checked={on} disabled={disabled || busy}
-                              className={`${s.level} ${on ? (key === "propose" ? `${s.levelOn} ${s.levelProposeOn}` : s.levelOn) : ""}`}
+                              className={`btn ${s.level} ${on ? (key === "propose" ? `${s.levelOn} ${s.levelProposeOn}` : s.levelOn) : ""}`}
                               onClick={() => setLevels((before) => ({ ...before, [domain]: key }))} data-level={key}>
                               {t(key === "none" ? "levelNone" : key === "read" ? "levelRead" : "levelPropose")}
                             </button>
@@ -144,8 +144,8 @@ export function ConsentPage({ initial }: { initial: ConsentInitial }) {
                 <div className={s.guarantee}><Icon name="lock" size={16} /><b>{t("guaranteeTwoTitle")}</b><span>{t("guaranteeTwo")}</span></div>
               </div>
               <div className={s.buttons}>
-                <button type="button" className={s.secondary} disabled={busy} onClick={() => void submit("deny")} data-consent-deny="">{t(more ? "keepAsIs" : "deny")}</button>
-                <button type="button" className={s.primary} disabled={busy || scopes.length === 0} onClick={() => void submit("allow")} data-consent-allow="">{t(more ? "allowChanges" : "allow")}</button>
+                <button type="button" className={`btn ${s.secondary}`} disabled={busy} onClick={() => void submit("deny")} data-consent-deny="">{t(more ? "keepAsIs" : "deny")}</button>
+                <button type="button" className={`btn ${s.primary}`} disabled={busy || scopes.length === 0} onClick={() => void submit("allow")} data-consent-allow="">{t(more ? "allowChanges" : "allow")}</button>
               </div>
               <p className={s.footer}>{t(more ? "footerMore" : "footer", { host: view.redirectHost })}</p>
             </section>
@@ -162,7 +162,7 @@ function ResultCard({ tone, title, line, back, action }: { tone: "ok" | "none"; 
       <h1 className={s.resultTitle}>{title}</h1>
       <p className={s.resultLine}>{line}</p>
       {back ? <p className={s.resultLine}>{back.lead} <a className={s.resultLink} href={back.href}>{back.label}</a></p> : null}
-      {action ? <button type="button" className={`${s.pill} ${s.pillDark}`} onClick={action.onClick}>{action.label}</button> : null}
+      {action ? <button type="button" className={`btn ${s.pill} ${s.pillDark}`} onClick={action.onClick}>{action.label}</button> : null}
     </section>
   );
 }
