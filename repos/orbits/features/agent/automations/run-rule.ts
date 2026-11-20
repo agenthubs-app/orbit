@@ -9,6 +9,10 @@
  *   3. records this rule told its owner about before are left out;
  *   4. the same rankCandidates() a conversation uses orders them (at most 30 candidates go to the judgment model);
  *   5. the result is written by code in the rule's language: the basis, the dates or the coverage, the list.
+ * The owner's saved memory is read once per period (recall-seam.ts) and applied as a conversation turn applies it
+ * (domains/memory/turn.ts rankMemoryFrom): a standing rule with a time condition removes candidates, a preference only
+ * ranks, a saved topic gives way to the rule's own basis, and a standing rule about the reply language decides the
+ * language of the result. The rules for every task apply too. Nothing is ever written to memory here.
  * A rule that re-plans to-dos proposes a card instead (origin: the rule and the period); nothing is written until the
  * owner confirms it from the inbox. The main model is not called.
  */
@@ -16,7 +20,8 @@ import { createHash } from "node:crypto";
 
 import type { CardOperationIntent } from "../runtime/card-operations";
 import type { AgentActionOrigin } from "../runtime/contract";
-import { memoriesFor, type TimePreference } from "../../agent-v1/functions/basis";
+import { rankMemoryFrom, replyLanguageOfRules } from "../../agent-v1/domains/memory/turn";
+import type { TimePreference } from "../../agent-v1/functions/basis";
 import { rankCandidates, type RankCandidate, type RankResult } from "../../agent-v1/functions/rank";
 import type { AgentRecordAccess } from "../../agent-v1/graph/deps";
 import { contactCandidates, contactLine, eventCandidate, eventLine, openTodos, visibleEvent } from "../../agent-v1/graph/nodes/functions";
@@ -30,7 +35,7 @@ import {
   type AgentAutomation,
   type AgentRuleSpec,
 } from "./contract";
-import type { RuleMemoryRecall } from "./recall-seam";
+import { NO_RULE_MEMORY, RULE_RECALL_TASK, type RuleMemoryRecall } from "./recall-seam";
 import type { AgentAutomationRunItem, AgentAutomationRunRecord } from "./runs";
 
 type Language = "zh" | "en" | "ja";
@@ -130,8 +135,18 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
   const { automation, ownerId, scheduledAt } = input;
   const rule = automation.rule;
   if (!rule || automation.trigger.kind !== "schedule") return { error: "The rule has no parameters to run with.", items: [], outcome: "failed", text: "" };
-  const language = rule.locale;
   const timeZone = agentAutomationScheduleTimeZone(automation.trigger.schedule);
+  // The owner's saved memory, read once for this period (null: this run has no memory access). 「回答时参考这些」 off:
+  // the recall is empty and nothing below applies.
+  const recall = deps.recall
+    ? await deps.recall({ actorId: ownerId, domain: rule.scope.domain, now: deps.now(), timeZone, workspaceId: deps.workspaceId }).catch((error: unknown) => {
+      emitTrace({ automationId: automation.automationId, error: error instanceof Error ? error.message : String(error), type: "read.error", where: "rule.recall" });
+      return NO_RULE_MEMORY;
+    })
+    : null;
+  // A standing rule for every reply that names a language decides the language of the result, as in a conversation.
+  const languageRule = recall?.rules.find((item) => item.everyTask && replyLanguageOfRules([item])) ?? null;
+  const language: Language = (languageRule ? replyLanguageOfRules([languageRule]) : null) ?? rule.locale;
   const scope = deps.records.scope(ownerId);
   const periodDay = agentAutomationLocalDay(scheduledAt, timeZone);
   const head = ({
@@ -168,14 +183,23 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
   }
 
   // 2. A rule that re-plans to-dos proposes a card.
-  if (rule.action === "replan") return replanPeriod(deps, { automation, head, language, ownerId, periodDay, previousCardId: input.previousCardId ?? null, rule, scheduledAt });
+  if (rule.action === "replan") {
+    // The card's text follows the language rule; no other saved entry shapes a re-plan.
+    if (recall) emitTrace({ automationId: automation.automationId, enabled: recall.enabled, entries: languageRule ? [{ memoryId: languageRule.memoryId, revision: languageRule.revision }] : [], memories: languageRule ? [languageRule.memoryId] : [], memoryVersion: recall.memoryVersion, scope: RULE_RECALL_TASK[rule.scope.domain], type: "memory.recall", where: "rule" });
+    return replanPeriod(deps, { automation, head, language, ownerId, periodDay, previousCardId: input.previousCardId ?? null, rule, scheduledAt });
+  }
 
-  // 3. Saved memory that applies with nobody present (constraints are hard conditions; preferences only rank).
+  // 3. Saved memory that applies with nobody present, classified as a conversation turn classifies it (the recall's own
+  // `rules` and `relevant`; never a second filter by the entry's words): a standing rule with a time condition is a hard
+  // condition, a preference only ranks, a saved topic gives way to the rule's own basis. The rules for every task are
+  // among them here — the result is written by code, so there is no later step that could be told to follow them.
   const domain = rule.scope.domain as "event" | "contact";
-  const memories = deps.recall ? await deps.recall({ actorId: ownerId, domain, now: deps.now(), timeZone, workspaceId: deps.workspaceId }).catch(() => []) : [];
-  const recalled = memoriesFor(domain, memories);
-  if (recalled.length) emitTrace({ automationId: automation.automationId, memories: recalled.map((item) => item.memory.id), type: "memory.recall", where: "rule" });
-  const time: TimePreference[] = domain === "event" ? recalled.flatMap((item) => (item.time ? [item.time] : [])) : [];
+  const saved = rankMemoryFrom(recall ?? NO_RULE_MEMORY, domain, { everyTaskRules: true, turnHasTopic: Boolean(topic), turnTime: null });
+  // Entry ids and revisions only: a trace never holds an entry's words.
+  if (recall) emitTrace({ automationId: automation.automationId, enabled: recall.enabled, entries: saved.used.map((item) => ({ memoryId: item.memoryId, revision: item.revision })), memories: saved.used.map((item) => item.memoryId), memoryVersion: recall.memoryVersion, ...(saved.overruled.length ? { overruled: saved.overruled.map((item) => item.memoryId) } : {}), scope: RULE_RECALL_TASK[domain], type: "memory.recall", where: "rule" });
+  const time: TimePreference[] = saved.time.map((item) => item.preference);
+  // A saved topic only ranks: it never decides which records are picks (that is the rule's own topic, below).
+  const savedTopic = topic ? null : saved.topic;
 
   // 4. Candidates and hard conditions (code).
   let candidates: Candidate[] = [];
@@ -229,15 +253,17 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
   const natural = domain === "event" ? { direction: "asc" as const, value: (candidate: Candidate) => (candidate as unknown as { startsAt: string | null }).startsAt } : { direction: "desc" as const, value: (candidate: Candidate) => (candidate as unknown as { lastInteraction: string | null }).lastInteraction };
   const valueOf = (name: string) => (candidate: Candidate) => ((candidate as unknown as Record<string, string | null>)[name] ?? null);
   const budget = newJudgmentBudget();
+  // What the candidates are ranked by: the rule's own topic, else the topic of the owner's saved entries.
+  const rankTopic = topic ?? savedTopic;
   let result: RankResult<Candidate>;
   try {
     result = await rankCandidates<Candidate>({
       candidates: fresh,
       count: topic ? fresh.length : rule.maxItems,
       field: field ? { direction: field.direction, value: valueOf(field.name) } : null,
-      judge: topic ? async (kept) => askJudgment(deps.judgment ?? null, budget, {
+      judge: rankTopic ? async (kept) => askJudgment(deps.judgment ?? null, budget, {
         coverage: { afterHardConditions: fresh.length, judged: kept.length, total: candidates.length, truncated: Math.max(0, fresh.length - kept.length) },
-        input: rankJudgmentInput(language, topic!, kept.map(({ candidate, key }) => ({ key, text: lineOf(candidate) }))),
+        input: rankJudgmentInput(language, rankTopic, kept.map(({ candidate, key }) => ({ key, text: lineOf(candidate) }))),
         items: kept.map(({ key }) => ({ key, question: "match.level" as const, subject: key })),
         language,
         purpose: "rank",
@@ -247,7 +273,7 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
       ...(timeOf ? { timeOf } : {}),
       time,
       timeZone,
-      topic,
+      topic: rankTopic,
     });
   } catch (error) {
     return { error: error instanceof Error ? error.message : String(error), items: [], outcome: "failed", text: "" };
@@ -256,7 +282,7 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
   // answer — the record's own words sharing the topic's. Nothing else is listed to fill the count.
   const picks = (topic ? result.ordered.filter((item) => (result.matched ? item.level === "match" || item.level === "partial" || item.ruleScore > 0 : item.ruleScore > 0)) : result.ordered).slice(0, rule.maxItems);
   const coverage = { afterHardConditions: fresh.length, judged: result.coverage.judged, total: candidates.length, truncated: result.coverage.truncated };
-  emitTrace({ automationId: automation.automationId, basis: { field: field?.name ?? null, memory: recalled.map((item) => item.memory.id), topic: Boolean(topic) }, coverage, domain, listed: picks.map((item) => item.candidate.view.ref), matched: result.matched, scheduledAt, semantic: result.semantic, type: "rule.ranked", unmatchedReason: result.unmatchedReason });
+  emitTrace({ automationId: automation.automationId, basis: { field: field?.name ?? null, memory: saved.used.map((item) => item.memoryId), savedTopic: Boolean(savedTopic), topic: Boolean(topic) }, coverage, domain, listed: picks.map((item) => item.candidate.view.ref), matched: result.matched, scheduledAt, semantic: result.semantic, type: "rule.ranked", unmatchedReason: result.unmatchedReason });
   if (!picks.length) return { coverage, items: [], outcome: "no_match", text: "" };
 
   // 6. The result, written by code.
@@ -277,7 +303,7 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
       zh: `其中${toldBefore}${unit.zh}这条任务之前已经告诉过你，这次不再列。`,
     } as const)[language]);
   }
-  for (const item of recalled) lines.push(({ en: `Also applied, from what you asked me to remember: ${item.memory.content}.`, ja: `覚えておくよう言われたことも反映しています：${item.memory.content}。`, zh: `同时按你让我记住的这条来办：${item.memory.content}。` } as const)[language]);
+  for (const item of saved.used) lines.push(({ en: `Also applied, from what you asked me to remember: ${item.content}.`, ja: `覚えておくよう言われたことも反映しています：${item.content}。`, zh: `同时按你让我记住的这条来办：${item.content}。` } as const)[language]);
   if (topic && result.matched) {
     lines.push(coverage.truncated > 0
       ? ({

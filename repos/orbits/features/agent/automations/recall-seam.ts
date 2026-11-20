@@ -4,22 +4,16 @@
  *
  * AG14 delivers `recallFor()` (features/agent/memory/recall.ts), callable with an account and the workspace and no
  * session. AG15 was built in parallel with it, so the dispatcher talks to this one function; since the two were
- * merged, `configuredRuleRecall` returns AG14's recallFor() mapped to this shape: the standing rules in range (those
- * for every task and those for the kind of task the rule does), then the entries that apply to that kind of task.
- * Nothing is taken when 「回答时参考这些」 is off, and deleted or expired entries never are. The rule run (run-rule.ts)
- * applies what it returns: a constraint is a hard condition, a preference only ranks, and each entry it used is named
- * in the result and traced as `memory.recall` (the id only).
+ * merged, `configuredRuleRecall` returns AG14's recall as it is: the standing rules in range (those for every task and
+ * those for the kind of task the rule does) and the entries that apply to that kind of task. Nothing is taken when
+ * 「回答时参考这些」 is off, and deleted or expired entries never are.
+ *
+ * The rule run (run-rule.ts) applies it with the same classification a conversation turn uses
+ * (domains/memory/turn.ts `rankMemoryFrom`) — it does not filter the entries a second time by their words.
  */
 import { emitTrace } from "../../agent-v1/observability/trace";
 import type { AgentMemoryService } from "../memory/contract";
-import { recallFor, type MemoryRecallTask } from "../memory/recall";
-
-export interface RecalledRuleMemory {
-  id: string;
-  /** "constraint", "preference", … as the memory contract names them. */
-  category: string;
-  content: string;
-}
+import { recallFor, type MemoryRecall, type MemoryRecallTask } from "../memory/recall";
 
 export type RuleMemoryRecall = (input: {
   /** The rule owner's canonical account id. */
@@ -30,14 +24,17 @@ export type RuleMemoryRecall = (input: {
   now: string;
   /** The rule's own time zone (an entry's validity is counted in days there); absent: the deployment's default. */
   timeZone?: string;
-}) => Promise<readonly RecalledRuleMemory[]>;
+}) => Promise<MemoryRecall>;
 
 /** The kind of task (AG14's `appliesTo`) a rule over this domain does. */
-const TASK_OF: Record<"event" | "contact" | "todo", MemoryRecallTask> = {
+export const RULE_RECALL_TASK: Record<"event" | "contact" | "todo", MemoryRecallTask> = {
   contact: "contact.recommend",
   event: "event.recommend",
   todo: "todo.plan",
 };
+
+/** Nothing recalled (no memory access, or the read failed). */
+export const NO_RULE_MEMORY: MemoryRecall = { enabled: false, memoryVersion: 0, relevant: [], rules: [] };
 
 export interface RuleRecallOptions {
   /** The memory service of one account in one workspace (tests); default: the one of the configured database. */
@@ -46,25 +43,24 @@ export interface RuleRecallOptions {
 
 /**
  * The recall the dispatcher uses: AG14's recallFor() for the rule's owner — one read of that account's scope at the
- * moment of the run, no session. A read that fails is traced (`read.error`, where `rule.recall`) and the period is
- * computed without memory rather than not at all.
+ * moment of the run, no session, never a write. A read that fails is traced (`read.error`, where `rule.recall`) and
+ * the period is computed without memory rather than not at all.
  */
 export function configuredRuleRecall(options: RuleRecallOptions = {}): RuleMemoryRecall {
   return async ({ actorId, domain, now, timeZone, workspaceId }) => {
     try {
-      const recall = await recallFor({
+      return await recallFor({
         accountId: actorId,
         mode: "live",
         now,
-        task: TASK_OF[domain],
+        task: RULE_RECALL_TASK[domain],
         ...(timeZone ? { timeZone } : {}),
         workspaceId,
         ...(options.serviceFor ? { service: options.serviceFor(actorId, workspaceId) } : {}),
       });
-      return [...recall.rules, ...recall.relevant].map((item) => ({ category: item.category, content: item.content, id: item.memoryId }));
     } catch (error) {
       emitTrace({ domain, error: error instanceof Error ? error.message : String(error), ownerId: actorId, type: "read.error", where: "rule.recall" });
-      return [];
+      return NO_RULE_MEMORY;
     }
   };
 }

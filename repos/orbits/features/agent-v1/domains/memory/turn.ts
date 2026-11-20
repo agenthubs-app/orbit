@@ -18,7 +18,7 @@
  */
 import type { AgentMemory, AgentMemorySnapshot, AgentMemoryStructured } from "../../../agent/memory/contract";
 import { forgottenSourceRequests, isForgottenSource, memorySourceRef, rememberMemoryUse, staleMemoryUses, type MemoryUse } from "../../../agent/memory/forget";
-import { recallDay, recallFrom, type MemoryRecallTask, type RecalledMemory } from "../../../agent/memory/recall";
+import { recallDay, recallFrom, type MemoryRecall, type MemoryRecallTask, type RecalledMemory } from "../../../agent/memory/recall";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
 import type { ContextMessage } from "../../context/build";
 import type { AgentSessionState } from "../../context/session-state";
@@ -92,6 +92,11 @@ function replyLanguageOfRule(rule: Pick<RecalledMemory, "structured" | "content"
   return rule.structured?.replyLanguage ?? replyLanguageIn(rule.content);
 }
 
+/** The reply language the standing rules ask for (the first that names one), or null. A turn and a rule run read it the same way. */
+export function replyLanguageOfRules(rules: readonly Pick<RecalledMemory, "structured" | "content">[]): MemoryLanguage | null {
+  return rules.map(replyLanguageOfRule).find((language): language is MemoryLanguage => Boolean(language)) ?? null;
+}
+
 /** intake: one read of the scope; the rules for every task are in force from here on. */
 export async function loadTurnMemory(access: AgentMemoryAccess | undefined, input: { actorId: string; now: string; timeZone: string }): Promise<TurnMemory> {
   const turn = emptyTurnMemory();
@@ -105,7 +110,7 @@ export async function loadTurnMemory(access: AgentMemoryAccess | undefined, inpu
   }
   const recall = recallFrom(turn.snapshot, { now: input.now, task: null, timeZone: input.timeZone });
   turn.rules = recall.rules;
-  turn.replyLanguage = recall.rules.map(replyLanguageOfRule).find((language): language is MemoryLanguage => Boolean(language)) ?? null;
+  turn.replyLanguage = replyLanguageOfRules(recall.rules);
   noteUsed(turn, recall.rules);
   // Entry ids and revisions only: a trace never holds an entry's words (设计稿 §7).
   emitTrace({ enabled: recall.enabled, entries: recall.rules.map((item) => ({ memoryId: item.memoryId, revision: item.revision })), memories: recall.rules.map((item) => item.memoryId), memoryVersion: recall.memoryVersion, scope: "every_task", type: "memory.recall" });
@@ -238,12 +243,38 @@ export interface RankMemory {
  * topics are not. Rules for every task (the reply language …) are not ranking conditions and stay out of the lead.
  */
 export function rankMemoryOf(turn: TurnMemory, domain: RankDomain, input: { now: string; timeZone: string; turnTime: Pick<TimePreference, "days" | "part" | "exclude"> | null; turnHasTopic: boolean; partId: string }): RankMemory {
-  const out: RankMemory = { overruled: [], time: [], topic: null, used: [] };
-  if (!turn.snapshot) return out;
+  if (!turn.snapshot) return { overruled: [], time: [], topic: null, used: [] };
   const recall = recallFrom(turn.snapshot, { now: input.now, task: TASK_OF[domain], timeZone: input.timeZone });
+  const out = rankMemoryFrom(recall, domain, { turnHasTopic: input.turnHasTopic, turnTime: input.turnTime });
+  noteUsed(turn, out.used);
+  emitTrace({
+    enabled: recall.enabled,
+    entries: out.used.map((item) => ({ memoryId: item.memoryId, revision: item.revision })),
+    memories: out.used.map((item) => item.memoryId),
+    memoryVersion: recall.memoryVersion,
+    ...(out.overruled.length ? { overruled: out.overruled.map((item) => item.memoryId) } : {}),
+    partId: input.partId,
+    scope: TASK_OF[domain],
+    type: "memory.recall",
+  });
+  return out;
+}
+
+/**
+ * The classification itself, over a recall already made for the task (no storage, no trace): which entries are time
+ * conditions, which give the topic, which the caller's own basis overrules. A conversation turn (rankMemoryOf) and a
+ * scheduled rule run (features/agent/automations/run-rule.ts) both use it, so an entry means the same in both.
+ *
+ * `everyTaskRules`: a turn leaves the rules for every task out of the ranking (code sets the reply language and the
+ * step that writes the answer is told the rest). A rule run has no such step — its result is written by code — so
+ * there the rules for every task are among the entries: one that holds a time condition is a hard condition, and each
+ * is named in the result.
+ */
+export function rankMemoryFrom(recall: Pick<MemoryRecall, "rules" | "relevant">, domain: RankDomain, input: { turnTime: Pick<TimePreference, "days" | "part" | "exclude"> | null; turnHasTopic: boolean; everyTaskRules?: boolean }): RankMemory {
+  const out: RankMemory = { overruled: [], time: [], topic: null, used: [] };
   const topics: string[] = [];
   // What to weigh first, then the rules (the order the lead names them in).
-  for (const entry of [...recall.relevant, ...recall.rules.filter((rule) => !rule.everyTask)]) {
+  for (const entry of [...recall.relevant, ...recall.rules.filter((rule) => input.everyTaskRules || !rule.everyTask)]) {
     const preference = domain === "event" ? timePreferenceOfEntry(entry) : null;
     const topic = topicOfEntry(entry);
     if (preference) {
@@ -261,17 +292,6 @@ export function rankMemoryOf(turn: TurnMemory, domain: RankDomain, input: { now:
     } else out.used.push(entry);
   }
   out.topic = topics.length ? topics.join("、") : null;
-  noteUsed(turn, out.used);
-  emitTrace({
-    enabled: recall.enabled,
-    entries: out.used.map((item) => ({ memoryId: item.memoryId, revision: item.revision })),
-    memories: out.used.map((item) => item.memoryId),
-    memoryVersion: recall.memoryVersion,
-    ...(out.overruled.length ? { overruled: out.overruled.map((item) => item.memoryId) } : {}),
-    partId: input.partId,
-    scope: TASK_OF[domain],
-    type: "memory.recall",
-  });
   return out;
 }
 

@@ -124,7 +124,8 @@ test("saved memory reaches a rule through the recall seam: a constraint is a har
   const recalled: string[] = [];
   const recall: RuleRunDeps["recall"] = async (input) => {
     recalled.push(`${input.actorId}:${input.domain}`);
-    return [{ category: "constraint", content: "不要推荐晚上的活动", id: "memory:1" }];
+    // AG14's recall as it is (since the AG14 + AG15 integration the seam hands it over unchanged).
+    return { enabled: true, memoryVersion: 1, relevant: [], rules: [{ appliesTo: ["event.recommend"], category: "constraint", content: "不要推荐晚上的活动", everyTask: false, memoryId: "memory:1", revision: 1, structured: null, why: "rule" }] };
   };
   const result = await runRulePeriod(deps({ recall }), { automation: automation(), ownerId: ACTOR, scheduledAt: FRIDAY, told: new Set() });
   assert.deepEqual(recalled, [`${ACTOR}:event`], "recalled for the rule's owner with no session");
