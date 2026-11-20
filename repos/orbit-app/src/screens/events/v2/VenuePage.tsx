@@ -281,7 +281,7 @@ export function VenuePage() {
           <UiText style={styles.noGroupTitle}>{t("recordNoGroupTitle")}</UiText>
           <UiText style={styles.noGroupSub}>{t("recordNoGroupBody")}</UiText>
           <View style={[vs.row, { gap: 8, alignSelf: "stretch" }]}>
-            <UiPressable accessibilityRole="button" accessibilityLabel={t("recordPeopleList")} onPress={() => router.replace(`${base}?tab=people` as Href)} style={[vs.btnSm, vs.grow]}><UiText style={vs.btnSmText}>{t("recordPeopleList")}</UiText></UiPressable>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("recordPeopleList")} onPress={() => router.replace(`${base}/people` as Href)} style={[vs.btnSm, vs.grow]}><UiText style={vs.btnSmText}>{t("recordPeopleList")}</UiText></UiPressable>
             <UiPressable accessibilityRole="button" accessibilityLabel={t("tabAgenda")} onPress={() => router.replace(`${base}?tab=agenda` as Href)} style={[vs.btnSm, vs.grow]}><UiText style={vs.btnSmText}>{t("tabAgenda")}</UiText></UiPressable>
           </View>
         </View>

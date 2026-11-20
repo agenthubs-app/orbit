@@ -104,7 +104,7 @@ test("event detail: an applicant sees the organizer's WeChat / LINE card; someon
   assert.equal(await other.getByText("主办方联系方式", { exact: true }).count(), 0);
 });
 
-test("agenda is always shown: rows carry the time, title and a small detail line; no agenda says the host has not published it", async (t) => {
+test("agenda: rows carry the time, title and a small detail line; no agenda → the detail page leaves the section out (2026-11-21), the venue says it", async (t) => {
   const agenda = [{ at: "19:00", title: "開場・受付", detail: "受付で名札を受け取ってください" }, { at: "19:30", title: "キーノート", detail: null }];
   const page = await harness.open(t, { screen: "detail", params: { id: eventId, tab: "agenda" },
     responses: { [`/api/events/${encodeURIComponent(eventId)}/overview`]: { ...overview, agenda } } });
@@ -115,7 +115,8 @@ test("agenda is always shown: rows carry the time, title and a small detail line
   assert.equal(await page.getByText("主办方还没有公布议程", { exact: true }).count(), 0);
   const empty = await harness.open(t, { screen: "detail", params: { id: eventId, tab: "agenda" },
     responses: { [`/api/events/${encodeURIComponent(eventId)}/overview`]: { ...overview, agenda: [] } } });
-  await empty.getByText("主办方还没有公布议程", { exact: true }).waitFor();
+  await empty.getByTestId("events-detail-intro").waitFor();
+  assert.equal(await empty.getByTestId("events-detail-agenda").count(), 0);
   const venueEmpty = await harness.open(t, { screen: "venue", online: false, params: { id: eventId, tab: "agenda" },
     copies: { [`event-venue|${eventId}`]: { data: { ...venue, agenda: [], agendaTip: null }, syncedAt } } });
   await venueEmpty.getByText("主办方还没有公布议程", { exact: true }).waitFor();

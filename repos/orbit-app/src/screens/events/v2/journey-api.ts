@@ -54,7 +54,8 @@ export function createJourneyApi(client: OrbitApiClient, read: Read) {
     discover: (query: EventDiscoverQuery) => read(client.get<unknown>(`/api/events/discover?${discoverQueryString(query)}`), eventDiscoverResponseSchema as ZodType<EventDiscoverResponse>),
     search: (q: string, limit = 5) => read(client.get<unknown>(`/api/events/search?q=${encodeURIComponent(q)}&limit=${limit}&platform=app`), eventSearchResponseSchema as ZodType<EventSearchResponse>),
     byCode: (code: string) => read(client.get<unknown>(`/api/events/by-code/${id(code)}`), eventCodeResolveResponseSchema as ZodType<EventCodeResolveResponse>),
-    overview: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/overview?platform=app`), eventOverviewResponseSchema as ZodType<EventOverviewResponse>),
+    // allAttendees: the full roster for the 参加者 page (/events/[id]/people); the detail page reads the capped preview.
+    overview: (eventId: string, allAttendees = false) => read(client.get<unknown>(`/api/events/${id(eventId)}/overview?platform=app${allAttendees ? "&attendees=all" : ""}`), eventOverviewResponseSchema as ZodType<EventOverviewResponse>),
     prep: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/prep?platform=app`), eventPrepResponseSchema as ZodType<EventPrepResponse>),
     checklist: (eventId: string, items: readonly EventPrepChecklistItem[]) => read(client.patch<unknown>(`/api/events/${id(eventId)}/prep/checklist`, { body: { items } }), eventPrepResponseSchema as ZodType<EventPrepResponse>),
     // view=record: after the event (read-only record) the server leaves out the live-only parts (seats, check-in, openers, memos,

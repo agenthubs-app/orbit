@@ -1,11 +1,11 @@
-// R27 イベント詳細（App；b2 #14 参加者 0 / #15 少 / #16 多 · 参加者 tab）：封面卡（facts）·「あなたに関係すること」（2026-11-15 取代评分条）· 下划线 tab ·
-// 紹介（会えそうな人：未公开时按登壇者推定）/ 参加者（プランに合う / 知り合い / 全員）· 底部 CTA。
+// R27 イベント詳細（App）：封面卡（facts）·「あなたに関係すること」· 2026-11-21 起一页读完（event-detail-structure-app-proposal.html，
+// 用户拍板去掉 tab）：紹介（6 行折叠）→ アジェンダ（5 项折叠）→ 参加者预览（全名单 = /events/[id]/people）→ 主催 · 底部 CTA。
 // 已报名时 CTA 位置换成 ⋯（カレンダーに追加 / 参加用プロフィールを編集 / 参加を取り消す，与 Web b12 378–381 §31 同位置）+ 会う準備へ。
 // 数据：GET /api/events/[id]/overview（规则评估，不调 AI）。
 // 2026-11-20（events-replay-cover-app-proposal ① ⑥ ⑩）：主办方的活动图片（coverUrl，2:1）取代色带；状态 chip 挪到标题下；
 // 已结束且在公开分组里（venueRecord）→ 封面卡下「会場の記録」入口卡；参加者行点开 AttendeeSheet。
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Image, Platform, ScrollView, Share, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -16,7 +16,7 @@ import { RetryCard } from "../../../components/ui/States";
 import { useKeyedPageCopy } from "../../../hooks/useKeyedPageCopy";
 import { ShellBackground } from "../../../components/ShellBackground";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../../components/ShellTopBar";
-import { ActionSheet, GlassSurface, Icon, IconButton, Segmented, UiPressable, UiText, UnderlineTabs, useToast, type IconName } from "../../../components/ui";
+import { ActionSheet, GlassSurface, Icon, IconButton, UiPressable, UiText, useToast, type IconName } from "../../../components/ui";
 import Svg, { Defs, Path, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
 import { designIcons } from "../../../api/design/icons";
 import { useHostApi } from "../../host/host-api";
@@ -36,13 +36,18 @@ import { RelevanceCard, useRelevanceT } from "./Relevance";
 import { Bone, Bones } from "./loading-ui";
 import { useJourneyT } from "./useJourneyT";
 
-type Tab = "intro" | "agenda" | "host" | "people";
-type Filter = "planFit" | "known" | "all";
 type Tone = "lav" | "pink" | "blue" | "teal" | "apricot";
 /** 头像色（b2 #15 / #16）：lav · blue · teal · pink · blue · apricot 轮换；知り合い叠头像 pink · teal · blue。 */
 const AV_TONES: readonly Tone[] = ["lav", "blue", "teal", "pink", "blue", "apricot"];
-const KNOWN_TONES: readonly Tone[] = ["pink", "teal", "blue"];
 const SPEAKER_TONES: readonly Tone[] = ["lav", "blue"];
+/** 紹介 folds after 6 lines, アジェンダ after 5 items (both open in place; Luma / Meetup 「Read more」). */
+const DESC_LINES = 6;
+const AGENDA_ITEMS = 5;
+
+function SectionHead({ title, right }: { title: string; right?: string | undefined }) {
+  const { styles } = useStyles();
+  return <View style={styles.secHead}><UiText accessibilityRole="header" style={styles.secTitle}>{title}</UiText>{right ? <UiText style={styles.lbl}>{right}</UiText> : null}</View>;
+}
 
 /** kit .cover：linear-gradient(135deg, mac-lav, mac-pink 70%, mac-apricot)。 */
 function Cover({ children, style }: { children: ReactNode; style: object }) {
@@ -94,8 +99,14 @@ export function EventDetailPage() {
   const copy = useKeyedPageCopy<EventOverviewResponse>("event-overview", eventId, (value) => eventOverviewResponseSchema.safeParse(value).success);
   const [offlineAt, setOfflineAt] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
-  const [tab, setTab] = useState<Tab>(params.tab === "people" || params.tab === "agenda" || params.tab === "host" ? params.tab : "intro");
-  const [filter, setFilter] = useState<Filter | null>(null);
+  // Old ?tab= links (会場の記録 / notifications) scroll to that section once the page has laid out.
+  const jumpTo = params.tab === "people" || params.tab === "agenda" ? params.tab : null;
+  const scroller = useRef<ScrollView>(null);
+  const sectionY = useRef<Partial<Record<"intro" | "agenda" | "people", number>>>({});
+  const jumped = useRef(false);
+  const [descOpen, setDescOpen] = useState(false);
+  const [descLong, setDescLong] = useState(false);
+  const [agendaOpen, setAgendaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -213,9 +224,9 @@ export function EventDetailPage() {
   const holdingChip = { attended: "stCheckedIn", pending_review: "stPending", registered: "stRegistered", waitlisted: "stWaitlisted" } as const;
   const remainingChip = ended ? t("statusEnded") : holding && !hosting ? t(holdingChip[status as keyof typeof holdingChip]) : typeof data.remaining === "number" ? t(data.deadlineSoon ? "deadlineChip" : "openChip", { n: data.remaining }) : null;
   // Opens on 符合计划 when someone fits the plan, otherwise on 全部 (never on an empty list by default).
-  const shown: Filter = filter ?? (data.attendeeCounts.planFit > 0 ? "planFit" : "all");
-  const people = data.attendees.filter((person) => (shown === "planFit" ? person.planFit : shown === "known" ? person.known : true));
   const fit = data.attendees.filter((person) => person.planFit && !person.known).slice(0, 3);
+  // 参加者 preview: up to 3 who fit my plan; with none, the first 3 public attendees.
+  const preview = fit.length ? fit : data.attendees.slice(0, 3);
   const known = data.knownAttendees;
   const knownLine = known.map((person) => `${t("honorific", { name: person.name.split(/\s+/)[0] ?? person.name })}${person.speaker ? t("speakerTag") : ""}`)
     .reduce((line, item) => (line ? `${line}${/[）)]$/.test(line) ? "· " : " · "}${item}` : item), "");
@@ -228,18 +239,10 @@ export function EventDetailPage() {
     const [bg, ink] = tone(tones[index % tones.length]!);
     return <View style={[small ? styles.avSm : styles.av, { backgroundColor: bg }]}><UiText style={[small ? styles.avSmText : styles.avText, { color: ink }]}>{initial}</UiText></View>;
   };
-  const knownCard = (title: string, detail: string, avatars: readonly { initial: string }[], tones: readonly Tone[]) => (
-    <View style={[styles.card, styles.flat, styles.gap]}>
-      <View style={styles.row}>
-        <View style={styles.avs}>{avatars.map((person, index) => <View key={`${person.initial}-${index}`} style={[styles.avsItem, index ? styles.avsOverlap : null]}><Avatar initial={person.initial} index={index} small tones={tones} /></View>)}</View>
-        <View style={styles.grow}><UiText style={styles.knownTitle}>{title}</UiText><UiText style={styles.lbl}>{detail}</UiText></View>
-      </View>
-    </View>
-  );
 
   // The host is not asked to register to see people: their list is on the 运营 page.
   const hostRoster = (
-    <View style={[styles.card, tab === "intro" ? styles.gap : null]} testID="events-detail-host-roster">
+    <View style={styles.card} testID="events-detail-host-roster">
       <View style={styles.cardH}><UiText style={styles.h3}>{t("tabPeople")}</UiText><UiText style={styles.lbl}>{t("rosterCountsOnly", { n: data.attendeeCounts.all })}</UiText></View>
       <UiText style={styles.sub}>{t("hostRosterHint")}</UiText>
       <UiPressable accessibilityRole="button" accessibilityLabel={t("hostRosterOpen")} onPress={() => router.push(`${base}/operations?seg=people` as Href)} style={[styles.gateBtn, { alignSelf: "flex-start", marginTop: 12 }]}><UiText style={styles.gateBtnText}>{t("hostRosterOpen")}</UiText></UiPressable>
@@ -247,7 +250,7 @@ export function EventDetailPage() {
   );
   // 名单锁着（roster-policy A：报名确定前）：只给人数 · 知り合い人数 + 「参加登録すると…」（b12 #382 / #384）。
   const rosterGate = hosting ? hostRoster : (
-    <View style={[styles.card, tab === "intro" ? styles.gap : null]} testID="events-detail-roster-gate">
+    <View style={styles.card} testID="events-detail-roster-gate">
       <View style={styles.cardH}><UiText style={styles.h3}>{t("tabPeople")}</UiText><UiText style={styles.lbl}>{t("rosterCounts", { k: data.attendeeCounts.known, n: data.attendeeCounts.all })}</UiText></View>
       <View style={styles.gate}>
         <Svg width={220} height={220} style={styles.gateGlow}>
@@ -264,7 +267,10 @@ export function EventDetailPage() {
   return (
     <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="events-detail">
       <ShellBackground />
-      <ScrollView contentContainerStyle={styles.pad}>
+      <ScrollView ref={scroller} contentContainerStyle={styles.pad} onContentSizeChange={() => {
+        const y = jumpTo ? sectionY.current[jumpTo] : undefined;
+        if (y !== undefined && !jumped.current) { jumped.current = true; scroller.current?.scrollTo({ y: Math.max(0, y - 8), animated: false }); }
+      }}>
         {header}
         {offlineAt ? <EventsOfflineNotice lastSyncedAt={offlineAt} /> : null}
         <View style={[styles.card, styles.coverCard]}>
@@ -293,86 +299,79 @@ export function EventDetailPage() {
         ) : null}
         {/* 一行一件事实；「会いたい人」点进去 = 参加者 tab 的「プランに合う」。原来评分条打开的「判定の内訳」不再从这里进。 */}
         <RelevanceCard relevance={relevance} t={rt} style={styles.gap}
-          onPeople={() => { setTab("people"); if (data.attendeeCounts.planFit > 0) setFilter("planFit"); }} />
+          onPeople={() => router.push(`${base}/people${data.attendeeCounts.planFit > 0 ? "?filter=planFit" : ""}` as Href)} />
         {showHostContact(data) ? <HostContactCard contact={data.hostContact} t={t} status={data.registration.status} priceYen={data.priceYen} style={styles.gap} /> : null}
-        <UnderlineTabs value={tab} onChange={setTab} testIDPrefix="events-detail-tab-"
-          tabs={[{ key: "intro", label: t("tabIntro") }, { key: "agenda", label: t("tabAgenda") }, { key: "host", label: t("tabHost") }, { key: "people", label: t("tabPeople"), count: data.attendeeCounts.all }]} />
-        {tab === "intro" ? (
-          <>
-            <View style={styles.card}><UiText style={[styles.sub, styles.desc, data.description?.trim() ? null : { color: colors.ink3 }]}>{data.description?.trim() || t("noDescription")}</UiText></View>
-            {data.assessmentPeopleUnknown && data.speakerCandidates?.length ? (
-              <View style={[styles.card, styles.gap]} testID="events-detail-meet">
-                <View style={styles.cardH}><UiText style={styles.h3}>{t("meetTitle")}</UiText><UiText style={styles.lbl}>{t("meetFromSpeakers")}</UiText></View>
-                {data.speakerCandidates.map((speaker, index) => (
-                  <View key={speaker.name} style={styles.li}>
-                    {index ? <View style={styles.liLine} /> : null}
-                    <View style={[styles.emoSm, { backgroundColor: tone(SPEAKER_TONES[index % SPEAKER_TONES.length]!)[0] }]}><UiText style={styles.emoSmText}>{speaker.emoji}</UiText></View>
-                    <View style={styles.grow}><UiText style={styles.metaTitle} numberOfLines={1}>{t("speakerWithRole", { label: speaker.label, name: speaker.name })}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{speaker.note}</UiText></View>
-                  </View>
-                ))}
-                <View style={[styles.ghostRow, { marginTop: 6 }]}><View style={styles.ghostDot} /><UiText style={styles.ghostText}>{t("ghostMeet")}</UiText></View>
-                <View style={[styles.ghostRow, { marginTop: 8 }]}><View style={styles.ghostDot} /><UiText style={styles.ghostText}>{t("ghostKnown")}</UiText></View>
-                <UiPressable accessibilityRole="button" accessibilityLabel={t("notifyWhenPublic")} onPress={() => void save("notifyOn")} style={styles.btnSm}><Icon name="bell" size={16} color={colors.ink} /><UiText style={styles.btnSmText}>{t("notifyWhenPublic")}</UiText></UiPressable>
-              </View>
-            ) : data.rosterLocked && data.attendeeCounts.all > 0 ? rosterGate : fit.length ? (
-              <View style={[styles.card, styles.gap]} testID="events-detail-meet">
-                <View style={styles.cardH}><UiText style={styles.h3}>{t("meetTitle")}</UiText><UiText style={styles.lbl}>{t("meetFromAttendees", { n: data.attendeeCounts.all })}</UiText></View>
-                {fit.map((person, index) => (
-                  <UiPressable key={person.attendeeId} accessibilityRole={canOpenPeople ? "button" : undefined} accessibilityLabel={person.name} disabled={!canOpenPeople} onPress={() => openPerson(person, index)} style={styles.li}>
-                    {index ? <View style={styles.liLine} /> : null}
-                    <Avatar initial={person.initial} index={index} />
-                    <View style={styles.grow}><UiText style={styles.metaTitle} numberOfLines={1}>{[person.name, person.org].filter(Boolean).join(" · ")}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{person.note ?? ""}</UiText></View>
-                    {canOpenPeople ? <Icon name="right" size={16} color={colors.ink4} /> : null}
-                  </UiPressable>
-                ))}
-              </View>
-            ) : null}
-            {data.knownNote && !data.rosterLocked && !relevance?.known ? knownCard(data.knownNote.text, data.knownNote.detail ?? "", known.slice(0, 1), ["teal"]) : null}
-          </>
-        ) : null}
-        {tab === "agenda" ? (
-          <View style={styles.card}>{data.agenda.length === 0 ? <UiText style={[styles.sub, { color: colors.ink3 }]}>{t("noAgenda")}</UiText> : null}{data.agenda.map((item, index) => (
-            <View key={`${item.at}-${item.title}`} style={[styles.row, index ? { marginTop: 12 } : null, { alignItems: "flex-start" }]}>
-              <UiText style={styles.agendaAt}>{item.at}</UiText>
-              <View style={styles.grow}><UiText style={styles.metaTitle}>{item.title}</UiText>{item.detail ? <UiText style={styles.lbl}>{item.detail}</UiText> : null}</View>
+        {/* 2026-11-21 用户拍板：去掉 4 个 tab，一页读完 紹介 → アジェンダ → 参加者 → 主催（与 Web 同序）；参加者只放预览，全名单另开页。 */}
+        <View onLayout={(event) => { sectionY.current.intro = event.nativeEvent.layout.y; }}>
+          <SectionHead title={t("tabIntro")} />
+          <View style={styles.card} testID="events-detail-intro">
+            <UiText style={[styles.sub, styles.desc, data.description?.trim() ? null : { color: colors.ink3 }]} numberOfLines={descOpen ? undefined : DESC_LINES}
+              onTextLayout={(event) => { if (!descOpen && event.nativeEvent.lines.length >= DESC_LINES) setDescLong(true); }}>{data.description?.trim() || t("noDescription")}</UiText>
+            {descLong && !descOpen ? <UiPressable accessibilityRole="button" accessibilityLabel={t("readMore")} onPress={() => setDescOpen(true)} style={styles.moreLink} testID="events-detail-read-more"><UiText style={styles.moreLinkText}>{t("readMore")}</UiText><Icon name="down" size={13} color={colors.ink2} /></UiPressable> : null}
+          </View>
+        </View>
+        {data.agenda.length ? (
+          <View onLayout={(event) => { sectionY.current.agenda = event.nativeEvent.layout.y; }}>
+            <SectionHead title={t("tabAgenda")} right={t("agendaItemsN", { n: data.agenda.length })} />
+            <View style={styles.card} testID="events-detail-agenda">
+              {(agendaOpen ? data.agenda : data.agenda.slice(0, AGENDA_ITEMS)).map((item, index) => (
+                <View key={`${item.at}-${item.title}`} style={[styles.row, index ? { marginTop: 12 } : null, { alignItems: "flex-start" }]}>
+                  <UiText style={styles.agendaAt}>{item.at}</UiText>
+                  <View style={styles.grow}><UiText style={styles.metaTitle}>{item.title}</UiText>{item.detail ? <UiText style={styles.lbl}>{item.detail}</UiText> : null}</View>
+                </View>
+              ))}
+              {!agendaOpen && data.agenda.length > AGENDA_ITEMS ? <UiPressable accessibilityRole="button" accessibilityLabel={t("agendaAllN", { n: data.agenda.length })} onPress={() => setAgendaOpen(true)} style={styles.moreLink} testID="events-detail-agenda-all"><UiText style={styles.moreLinkText}>{t("agendaAllN", { n: data.agenda.length })}</UiText><Icon name="down" size={13} color={colors.ink2} /></UiPressable> : null}
             </View>
-          ))}</View>
+          </View>
         ) : null}
-        {tab === "host" ? (
-          // Seed / imported organizers may have no public name or page: say so plainly, and only link when there is a page.
-          <UiPressable accessibilityRole={data.organizer.slug ? "link" : undefined} disabled={!data.organizer.slug} onPress={() => { if (data.organizer.slug) router.push(`/o/${encodeURIComponent(data.organizer.slug)}` as Href); }} style={styles.card} testID="events-detail-organizer"><View style={[styles.row, { gap: 12 }]}>
-            <View style={[styles.emo, { backgroundColor: colors.macLav }]}><UiText style={styles.emoText}>{data.organizer.emoji ?? data.emoji}</UiText></View>
-            <View style={styles.grow}>
-              {publicOrganizerName(data.organizer.name) ? <UiText style={styles.metaTitle}>{publicOrganizerName(data.organizer.name)}</UiText> : <UiText style={[styles.sub, { color: colors.ink3 }]}>{t("hostUnnamed")}</UiText>}
-              {data.organizer.editions ? <UiText style={styles.lbl}>{t("hostEditions", { n: data.organizer.editions })}</UiText> : null}
+        <View onLayout={(event) => { sectionY.current.people = event.nativeEvent.layout.y; }}>
+          <SectionHead title={t("tabPeople")} right={data.rosterLocked || hosting ? undefined : t("peopleN", { n: data.attendeeCounts.all })} />
+          {hosting ? hostRoster : data.rosterLocked && data.attendeeCounts.all > 0 ? rosterGate : data.assessmentPeopleUnknown && data.speakerCandidates?.length ? (
+            <View style={styles.card} testID="events-detail-meet">
+              <View style={styles.cardH}><UiText style={styles.h3}>{t("meetTitle")}</UiText><UiText style={styles.lbl}>{t("meetFromSpeakers")}</UiText></View>
+              {data.speakerCandidates.map((speaker, index) => (
+                <View key={speaker.name} style={styles.li}>
+                  {index ? <View style={styles.liLine} /> : null}
+                  <View style={[styles.emoSm, { backgroundColor: tone(SPEAKER_TONES[index % SPEAKER_TONES.length]!)[0] }]}><UiText style={styles.emoSmText}>{speaker.emoji}</UiText></View>
+                  <View style={styles.grow}><UiText style={styles.metaTitle} numberOfLines={1}>{t("speakerWithRole", { label: speaker.label, name: speaker.name })}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{speaker.note}</UiText></View>
+                </View>
+              ))}
+              <UiPressable accessibilityRole="button" accessibilityLabel={t("notifyWhenPublic")} onPress={() => void save("notifyOn")} style={styles.btnSm}><Icon name="bell" size={16} color={colors.ink} /><UiText style={styles.btnSmText}>{t("notifyWhenPublic")}</UiText></UiPressable>
             </View>
-            {data.organizer.slug ? <Icon name="right" size={16} color={colors.ink3} /> : null}
-          </View></UiPressable>
-        ) : null}
-        {tab === "people" && data.rosterLocked ? rosterGate : null}
-        {tab === "people" && !data.rosterLocked ? (
-          <>
-            <Segmented<Filter> accessibilityLabel={t("tabPeople")} value={shown} onChange={setFilter}
-              segments={[{ key: "planFit", label: t("segPlanFit", { n: data.attendeeCounts.planFit }) }, { key: "known", label: t("segKnown", { n: data.attendeeCounts.known }) }, { key: "all", label: t("segAll", { n: data.attendeeCounts.all }) }]} />
-            {people.length ? (
-              <View style={[styles.card, styles.peopleCard]} testID="events-detail-people">
-                {people.map((person, index) => (
-                  <UiPressable key={person.attendeeId} accessibilityRole={canOpenPeople ? "button" : undefined} accessibilityLabel={person.name} disabled={!canOpenPeople} onPress={() => openPerson(person, index)} style={styles.li} testID={`events-detail-person-${person.attendeeId}`}>
-                    {index ? <View style={styles.liLine} /> : null}
-                    <Avatar initial={person.initial} index={index} />
-                    <View style={styles.grow}>
-                      <UiText style={styles.metaTitle} numberOfLines={1}>{person.name}</UiText>
-                      <UiText style={styles.metaSub} numberOfLines={1}>{[person.org, person.role].filter(Boolean).join(" · ")}</UiText>
-                      {person.note ? <UiText style={[styles.metaSub, { color: colors.ink2 }]} numberOfLines={1}>{person.note}</UiText> : null}
-                    </View>
-                    {person.wanted ? <View style={[styles.chip, { alignSelf: "center", backgroundColor: colors.macLav }]}><UiText style={[styles.chipText, { color: colors.macLavInk }]}>{t("legendWanted")}</UiText></View> : null}
-                    {canOpenPeople ? <Icon name="right" size={16} color={colors.ink4} /> : null}
-                  </UiPressable>
-                ))}
+          ) : data.attendeeCounts.all === 0 || data.attendees.length === 0 ? (
+            <View style={styles.card}><UiText style={[styles.sub, { color: colors.ink3 }]}>{holding && data.attendeeCounts.all === 1 ? t("onlyYou") : t("noPeopleHere")}</UiText></View>
+          ) : (
+            <View style={styles.card} testID="events-detail-people">
+              <View style={[styles.row, { gap: 12 }]}>
+                <View style={styles.avs}>{data.attendees.slice(0, 5).map((person, index) => <View key={person.attendeeId} style={[styles.avsItem, index ? styles.avsOverlap : null]}><Avatar initial={person.initial} index={index} small /></View>)}</View>
+                <UiText style={[styles.lbl, styles.grow]}>{t("peopleFitKnown", { fit: data.attendeeCounts.planFit, known: data.attendeeCounts.known })}</UiText>
               </View>
-            ) : <View style={[styles.card, styles.gap]}><UiText style={[styles.sub, { color: colors.ink3 }]}>{holding && data.attendees.length === 0 && data.attendeeCounts.all === 1 ? t("onlyYou") : t("noPeopleHere")}</UiText></View>}
-            {known.length ? knownCard(t("knownAlsoN", { n: known.length }), knownLine, known.slice(0, 3), KNOWN_TONES) : null}
-          </>
+              {preview.length ? <UiText style={[styles.lbl, { marginTop: 14 }]}>{t(fit.length ? "peopleFitTitle" : "peopleSomeTitle")}</UiText> : null}
+              {preview.map((person, index) => (
+                <UiPressable key={person.attendeeId} accessibilityRole={canOpenPeople ? "button" : undefined} accessibilityLabel={person.name} disabled={!canOpenPeople} onPress={() => openPerson(person, index)} style={styles.li} testID={`events-detail-person-${person.attendeeId}`}>
+                  {index ? <View style={styles.liLine} /> : null}
+                  <Avatar initial={person.initial} index={index} />
+                  <View style={styles.grow}><UiText style={styles.metaTitle} numberOfLines={1}>{[person.name, person.org].filter(Boolean).join(" · ")}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{person.note ?? person.role ?? ""}</UiText></View>
+                  {canOpenPeople ? <Icon name="right" size={16} color={colors.ink4} /> : null}
+                </UiPressable>
+              ))}
+              {knownLine ? <UiText style={[styles.lbl, { marginTop: 8 }]} numberOfLines={2}>{t("peopleKnownLine", { names: knownLine })}</UiText> : null}
+              <UiPressable accessibilityRole="button" accessibilityLabel={t("peopleSeeAllN", { n: data.attendeeCounts.all })} onPress={() => router.push(`${base}/people` as Href)} style={styles.allBtn} testID="events-detail-people-all"><UiText style={styles.btnSmText}>{t("peopleSeeAllN", { n: data.attendeeCounts.all })}</UiText></UiPressable>
+            </View>
+          )}
+        </View>
+        {publicOrganizerName(data.organizer.name) ? (
+          <View>
+            <SectionHead title={t("tabHost")} />
+            <UiPressable accessibilityRole={data.organizer.slug ? "link" : undefined} disabled={!data.organizer.slug} onPress={() => { if (data.organizer.slug) router.push(`/o/${encodeURIComponent(data.organizer.slug)}` as Href); }} style={styles.card} testID="events-detail-organizer"><View style={[styles.row, { gap: 12 }]}>
+              <View style={[styles.emo, { backgroundColor: colors.macLav }]}><UiText style={styles.emoText}>{data.organizer.emoji ?? data.emoji}</UiText></View>
+              <View style={styles.grow}>
+                <UiText style={styles.metaTitle}>{publicOrganizerName(data.organizer.name)}</UiText>
+                {data.organizer.editions ? <UiText style={styles.lbl}>{t("hostEditions", { n: data.organizer.editions })}</UiText> : null}
+              </View>
+              {data.organizer.slug ? <Icon name="right" size={16} color={colors.ink3} /> : null}
+            </View></UiPressable>
+          </View>
         ) : null}
       </ScrollView>
       {/* After 取消参加 the person can register again (the server reactivates); no CTA left them stuck. */}
@@ -415,6 +414,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   row: { alignItems: "center", flexDirection: "row", gap: 10 },
   grow: { flex: 1, minWidth: 0 },
   gap: { marginTop: 14 },
+  // Section heads of the one-page detail (proposal .sec-h: 17/800, 22 above, 8 below).
+  secHead: { alignItems: "baseline", flexDirection: "row", justifyContent: "space-between", marginBottom: 8, marginTop: 22, paddingHorizontal: 2 },
+  secTitle: { color: colors.ink, fontSize: 17, fontWeight: "800", lineHeight: 25 },
+  moreLink: { alignItems: "center", alignSelf: "flex-start", flexDirection: "row", gap: 4, marginTop: 8, paddingVertical: 4 },
+  moreLinkText: { color: colors.ink2, fontSize: 13, fontWeight: "700", lineHeight: 20 },
+  allBtn: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 40, justifyContent: "center", marginTop: 12 },
   card: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 18 },
   flat: { backgroundColor: colors.surface2 },
   coverCard: { overflow: "hidden", padding: 0 },

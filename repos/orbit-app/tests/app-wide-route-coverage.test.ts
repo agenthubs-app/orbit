@@ -234,6 +234,8 @@ const integratedFeatureRoutes = [
   // R27 会う準備 / 会後のふりかえり.
   "/events/[id]/prep",
   "/events/[id]/after",
+  // 2026-11-21 イベント詳細の参加者 全名单（详情页去 tab 后「全員を見る」）.
+  "/events/[id]/people",
   // R30 全局搜索（Task 🔍）.
   "/search",
   "/events/[id]/operations/experience",

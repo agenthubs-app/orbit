@@ -14,6 +14,7 @@ before(async () => {
     { name: "detail", importPath: "./src/screens/events/v2/EventDetailPage", exportName: "EventDetailPage" },
     { name: "venue", importPath: "./src/screens/events/v2/VenuePage", exportName: "VenuePage" },
     { name: "discover", importPath: "./src/screens/events/v2/DiscoverPage", exportName: "DiscoverPage" },
+    { name: "people", importPath: "./src/screens/events/v2/EventPeoplePage", exportName: "EventPeoplePage" },
   ]);
 });
 after(async () => { await harness.close(); });
@@ -215,4 +216,39 @@ test("会場の記録 asks with view=record and shows the slimmed answer (no mem
   await page.getByText(ended.recommendations[0]!.name).first().waitFor();
   const requests = await page.evaluate(() => (window as unknown as { fixture: { requests: string[] } }).fixture.requests);
   assert.ok(requests.includes(`get:${path}/venue?view=record&platform=app`), requests.join(" "));
+});
+
+test("event detail is one page (2026-11-21): no tabs; 紹介 → アジェンダ → 参加者 → 主催; long agenda folds; 全員を見る opens the roster page", async (t) => {
+  const agenda = Array.from({ length: 7 }, (_, index) => ({ at: `1${index}:00`, title: `Item ${index + 1}`, detail: null }));
+  const page = await harness.open(t, { screen: "detail", params: { id: eventId }, responses: { [`${path}/overview`]: { ...overview, agenda, rosterLocked: false } } });
+  await page.getByTestId("events-detail-intro").waitFor();
+  assert.equal(await page.getByRole("tab").count(), 0, "no tab bar");
+  const order = await page.evaluate(() => ["events-detail-intro", "events-detail-agenda", "events-detail-people"].map((id) => document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect().top ?? -1));
+  assert.ok(order[0]! < order[1]! && order[1]! < order[2]!, `section order ${order.join(",")}`);
+  assert.equal(await page.getByText("Item 6", { exact: true }).count(), 0, "agenda folds after 5");
+  await page.getByTestId("events-detail-agenda-all").click();
+  await page.getByText("Item 7", { exact: true }).waitFor();
+  await page.getByTestId("events-detail-people-all").click();
+  assert.ok((await page.evaluate(() => JSON.stringify((window as unknown as { fixture: { navigation: unknown[] } }).fixture.navigation))).includes(`/events/${encodeURIComponent(eventId)}/people`));
+});
+
+test("参加者 page: full roster (attendees=all), plan-fit / known / all, search by name or company; a registered person opens the sheet", async (t) => {
+  const registered = { ...overview, rosterLocked: false, hosting: false, registration: { ...overview.registration, status: "registered" as const } };
+  const page = await harness.open(t, { screen: "people", params: { id: eventId, filter: "all" }, responses: { [`${path}/overview`]: registered, [`${path}/attendees/profile`]: profile() } });
+  await page.getByTestId("events-people-list").waitFor();
+  const requests = await page.evaluate(() => (window as unknown as { fixture: { requests: string[] } }).fixture.requests);
+  assert.ok(requests.includes(`get:${path}/overview?platform=app&attendees=all`), requests.join(" "));
+  const first = registered.attendees[0]!;
+  const other = registered.attendees.find((person) => person.name !== first.name)!;
+  await page.getByTestId("events-people-search").fill(first.name);
+  await page.getByRole("button", { name: first.name }).first().waitFor();
+  assert.equal(await page.getByRole("button", { name: other.name }).count(), 0);
+  await page.getByTestId("events-people-search").fill("");
+  const known = registered.attendees.filter((person) => person.known);
+  await page.getByRole("tab", { name: `熟人${registered.attendeeCounts.known}` }).click();
+  if (known.length) await page.getByRole("button", { name: known[0]!.name }).first().waitFor();
+  assert.equal(await page.getByRole("button", { name: registered.attendees.find((person) => !person.known)!.name }).count(), 0);
+  await page.getByRole("tab", { name: `全部${registered.attendeeCounts.all}` }).click();
+  await page.getByRole("button", { name: first.name }).first().click();
+  await page.getByTestId("events-attendee-sheet").waitFor();
 });
