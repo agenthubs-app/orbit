@@ -52,7 +52,7 @@ test("an all-day item that repeats is listed as today's occurrence", async () =>
   const { materials, run } = await ask([WEEKLY_ALL_DAY]);
   assert.ok(run.result.sourceRefs.some((ref) => ref.includes("personal:weekly")), JSON.stringify(run.result.partResults));
   assert.match(materials, /家庭日/u);
-  assert.match(materials, /Starts: 2026-11-15 \(Sun\)/u, `today's occurrence, not next week's: ${materials}`);
+  assert.match(materials, /Day: 2026-11-15 \(Sun\) \(all day/u, `today's occurrence, not next week's: ${materials}`);
   assert.doesNotMatch(materials, /2026-11-22/u, materials);
 });
 

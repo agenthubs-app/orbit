@@ -80,11 +80,16 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
     case "schedule": {
       header = "personal schedule item";
       const start = context.occurrence ?? text(f.startsAt);
+      const zone = text(f.timeZone) ?? context.timeZone;
+      // AG13: an occurrence of a series ends as long after its start as the series does.
+      const end = text(f.endsAt) && !context.occurrence ? text(f.endsAt) : text(f.endsAt) && context.occurrence && text(f.startsAt) ? new Date(Date.parse(context.occurrence) + Date.parse(text(f.endsAt)!) - Date.parse(text(f.startsAt)!)).toISOString() : undefined;
+      // Integration 2026-11-20 (as AG20a did for private events): an all-day item has a day and no clock time — never a
+      // 00:00 start. An end is said only as the last day, when that is a later day (an end at the next midnight is the same day).
+      const lastDay = f.allDay === true && end && start && Number.isFinite(Date.parse(end)) ? formatWhen(new Date(Date.parse(end) - 1).toISOString(), zone, false) : null;
       sentences = numbered([
         `Title: ${text(f.title) ?? "—"}`,
-        `Starts: ${formatWhen(start, text(f.timeZone) ?? context.timeZone)}`,
-        // AG13: an occurrence of a series ends as long after its start as the series does.
-        text(f.endsAt) && !context.occurrence ? `Ends: ${formatWhen(text(f.endsAt), text(f.timeZone) ?? context.timeZone)}` : text(f.endsAt) && context.occurrence && text(f.startsAt) ? `Ends: ${formatWhen(new Date(Date.parse(context.occurrence) + Date.parse(text(f.endsAt)!) - Date.parse(text(f.startsAt)!)).toISOString(), text(f.timeZone) ?? context.timeZone)}` : null,
+        f.allDay === true ? `Day: ${formatWhen(start, zone, false)} (all day; no time of day was given)` : `Starts: ${formatWhen(start, zone)}`,
+        f.allDay === true ? (lastDay && lastDay !== formatWhen(start, zone, false) ? `Last day: ${lastDay} (all day)` : null) : end ? `Ends: ${formatWhen(end, zone)}` : null,
         text(f.recurrence) ? `Repeats: ${text(f.recurrence)}` : null,
         text(f.location) ? `Place: ${text(f.location)}` : null,
         names(f.contactIds) ? `With: ${names(f.contactIds)}` : null,
