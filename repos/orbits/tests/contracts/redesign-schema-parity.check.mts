@@ -23,6 +23,7 @@ import type { EventPrepChecklistPatch, EventPrepResponse } from "../../shared/co
 import type { OrganizerFollowResult } from "../../shared/contract/organizer-follow";
 import type { EventOverviewResponse } from "../../shared/contract/event-overview";
 import type { EventVenueMemoResult, EventVenueResponse } from "../../shared/contract/event-venue";
+import type { EventAttendeeProfile } from "../../shared/contract/event-attendee-profile";
 import type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterResponse } from "../../shared/contract/event-after";
 import type { EventJoinProfile, EventJoinResult, EventJoinStep, EventJoinCancelResult, EventJoinTentativeResult } from "../../shared/contract/event-join";
 import type { EventRecommendationDismissInput, EventRecommendationDismissResult } from "../../shared/contract/event-recommendation-feedback";
@@ -49,6 +50,7 @@ import type { eventPrepChecklistPatchObject, eventPrepResponseObject } from "../
 import type { organizerFollowResultObject } from "../../shared/api-schema/organizer-follow";
 import type { eventOverviewResponseObject } from "../../shared/api-schema/event-overview";
 import type { eventVenueMemoResultObject, eventVenueResponseObject } from "../../shared/api-schema/event-venue";
+import type { eventAttendeeProfileObject } from "../../shared/api-schema/event-attendee-profile";
 import type { eventAfterConfirmInputObject, eventAfterConfirmResultObject, eventAfterResponseObject } from "../../shared/api-schema/event-after";
 import type { eventJoinProfileObject, eventJoinResultObject, eventJoinStepObject, eventJoinCancelResultObject, eventJoinTentativeResultObject } from "../../shared/api-schema/event-join";
 import type { eventRecommendationDismissInputObject, eventRecommendationDismissResultObject } from "../../shared/api-schema/event-recommendation-feedback";
@@ -117,6 +119,7 @@ expectParity<Parity<EventPrepChecklistPatch, typeof eventPrepChecklistPatchObjec
 expectParity<Parity<OrganizerFollowResult, typeof organizerFollowResultObject>>();
 expectParity<Parity<EventOverviewResponse, typeof eventOverviewResponseObject>>();
 expectParity<Parity<EventVenueResponse, typeof eventVenueResponseObject>>();
+expectParity<Parity<EventAttendeeProfile, typeof eventAttendeeProfileObject>>();
 expectParity<Parity<EventVenueMemoResult, typeof eventVenueMemoResultObject>>();
 expectParity<Parity<EventAfterResponse, typeof eventAfterResponseObject>>();
 expectParity<Parity<EventAfterConfirmInput, typeof eventAfterConfirmInputObject>>();

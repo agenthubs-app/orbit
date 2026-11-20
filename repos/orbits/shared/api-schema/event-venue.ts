@@ -50,6 +50,9 @@ export const eventVenueResponseObject = z.object({
   agenda: readableItems(z.object({ at: z.string(), title: z.string(), detail: z.string().nullable().optional(), now: z.boolean().optional(), myTable: z.string().nullable().optional() })),
   agendaTip: z.object({ text: z.string(), detail: z.string().nullable().optional() }).nullable().optional().catch(null),
   meetingSlots: z.array(z.string()).max(3).optional().catch(undefined),
+  readOnly: z.boolean().optional(),
+  checkedIn: z.boolean().optional(),
+  rounds: readableItems(z.object({ round: z.number().int().min(1), title: z.string().nullable().optional(), table: z.string(), theme: z.string().nullable().optional(), why: z.string().nullable().optional(), whyDetail: z.string().nullable().optional(), tablemates: readableItems(mate) })).optional().catch(undefined),
   sample: z.literal(true).optional(),
 });
 export const eventVenueResponseSchema = eventVenueResponseObject as unknown as z.ZodType<EventVenueResponse>;

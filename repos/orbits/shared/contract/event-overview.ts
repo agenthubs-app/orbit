@@ -27,6 +27,8 @@ export interface EventOverviewResponse {
   eventId: string;
   title: string;
   emoji: string;
+  /** 2026-11-20 主办方上传的活动图片（2:1）；null / 缺省 = 没有图，保持 emoji 卡片。 */
+  coverUrl?: string | null;
   startsAt: string;
   endsAt?: string | null;
   venue?: string | null;
@@ -98,6 +100,11 @@ export interface EventOverviewResponse {
    * 字段缺省 = 我看不到；null = 我能看但主办方没填（界面显示「まだありません」）。
    */
   hostContact?: HostEventContact | null;
+  /**
+   * 2026-11-20「会場の記録」入口（详情页）。只在 已结束 + 我是报名者 + 我在主办方公开的分组结果里 时给；
+   * null / 缺省 = 不出入口。tablemates = 各轮同桌去重人数；recommended = 当天推荐给我的人数；exchanged = 交换成立人数。
+   */
+  venueRecord?: { tablemates: number; recommended: number; exchanged: number; checkedIn: boolean } | null;
   signedOut?: boolean;
   sample?: true;
 }

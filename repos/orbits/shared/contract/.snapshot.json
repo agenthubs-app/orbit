@@ -5135,6 +5135,36 @@
               "optional": false,
               "kind": "text",
               "type": "number"
+            },
+            "people": {
+              "optional": true,
+              "kind": "array",
+              "readonly": true,
+              "element": {
+                "kind": "object",
+                "members": {
+                  "attendeeId": {
+                    "optional": false,
+                    "kind": "text",
+                    "type": "string"
+                  },
+                  "name": {
+                    "optional": false,
+                    "kind": "text",
+                    "type": "string"
+                  },
+                  "initial": {
+                    "optional": false,
+                    "kind": "text",
+                    "type": "string"
+                  },
+                  "org": {
+                    "optional": true,
+                    "kind": "text",
+                    "type": "string | null"
+                  }
+                }
+              }
             }
           }
         },
@@ -5987,6 +6017,142 @@
         }
       }
     },
+    "event-attendee-profile.ts::EventAttendeeProfile": {
+      "kind": "object",
+      "members": {
+        "attendeeId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "participantId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "initial": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "intro": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "answers": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "q": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "a": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "together": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "sharedRounds": {
+              "optional": false,
+              "kind": "array",
+              "readonly": true,
+              "element": {
+                "kind": "object",
+                "members": {
+                  "round": {
+                    "optional": false,
+                    "kind": "text",
+                    "type": "number"
+                  },
+                  "table": {
+                    "optional": false,
+                    "kind": "text",
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "recommended": {
+              "optional": false,
+              "kind": "text",
+              "type": "boolean"
+            },
+            "why": {
+              "optional": true,
+              "kind": "text",
+              "type": "string | null"
+            },
+            "whyDetail": {
+              "optional": true,
+              "kind": "text",
+              "type": "string | null"
+            }
+          }
+        },
+        "exchange": {
+          "optional": false,
+          "kind": "text",
+          "type": "EventVenueExchangeState"
+        },
+        "requestId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "requestRevision": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "contactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "memo": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "canRequestExchange": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "exchangeUntil": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
     "event-code.ts::EventCodeResolveResponse": {
       "kind": "object",
       "members": {
@@ -6112,6 +6278,11 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "coverUrl": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         },
         "organizerId": {
           "optional": true,
@@ -6840,6 +7011,11 @@
           "kind": "text",
           "type": "string"
         },
+        "coverUrl": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
         "startsAt": {
           "optional": false,
           "kind": "text",
@@ -7157,6 +7333,11 @@
           "optional": true,
           "kind": "text",
           "type": "HostEventContact | null"
+        },
+        "venueRecord": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ tablemates: number; recommended: number; exchanged: number; checkedIn: boolean; } | null"
         },
         "signedOut": {
           "optional": true,
@@ -8246,6 +8427,76 @@
         }
       }
     },
+    "event-venue.ts::EventVenueRound": {
+      "kind": "object",
+      "members": {
+        "round": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "title": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "table": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "theme": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "why": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "whyDetail": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "tablemates": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "attendeeId": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "name": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "initial": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "org": {
+                "optional": true,
+                "kind": "text",
+                "type": "string | null"
+              },
+              "role": {
+                "optional": true,
+                "kind": "text",
+                "type": "string | null"
+              }
+            }
+          }
+        }
+      }
+    },
     "event-venue.ts::EventVenueMemoResult": {
       "kind": "object",
       "members": {
@@ -8445,6 +8696,21 @@
           "kind": "text",
           "type": "readonly string[]"
         },
+        "readOnly": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "checkedIn": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "rounds": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventVenueRound[]"
+        },
         "sample": {
           "optional": true,
           "kind": "text",
@@ -8503,6 +8769,11 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "coverUrl": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         },
         "status": {
           "optional": false,
@@ -13648,6 +13919,7 @@
         "EventAssessmentSpeaker",
         "EventAssessmentStatus",
         "EventAssessmentVerdict",
+        "EventAttendeeProfile",
         "EventCaptureMethodCode",
         "EventCodeResolveResponse",
         "EventDiscoverArea",
@@ -13704,6 +13976,7 @@
         "EventVenuePerson",
         "EventVenueRelation",
         "EventVenueResponse",
+        "EventVenueRound",
         "EventVenueState",
         "FollowupAuditContract",
         "FollowupPriorityCode",

@@ -23,6 +23,7 @@ export const eventOverviewResponseObject = z.object({
   eventId: z.string().min(1),
   title: z.string(),
   emoji: z.string().max(16),
+  coverUrl: z.string().min(1).nullable().optional().catch(null),
   startsAt: z.string(),
   endsAt: z.string().nullable().optional(),
   venue: z.string().nullable().optional(),
@@ -71,6 +72,7 @@ export const eventOverviewResponseObject = z.object({
   knownAttendees: readableItems(z.object({ name: z.string(), initial: z.string().max(4), speaker: z.boolean().optional() })),
   registration: z.object({ status: tolerantEnum(STATUSES, "none"), href: z.string().min(1) }),
   hostContact: hostEventContactObject.nullable().optional().catch(null),
+  venueRecord: z.object({ tablemates: z.number().int().min(0), recommended: z.number().int().min(0), exchanged: z.number().int().min(0), checkedIn: z.boolean() }).nullable().optional().catch(null),
   signedOut: z.boolean().optional(),
   sample: z.literal(true).optional(),
 });

@@ -40,7 +40,11 @@ export interface EventAfterResponse {
   title: string;
   /** Event date (YYYY-MM-DD, Tokyo). */
   date: string;
-  met: { count: number; initials: readonly string[]; exchanged: number; wantedMet: number; wantedTotal: number; meetings: number };
+  met: {
+    count: number; initials: readonly string[]; exchanged: number; wantedMet: number; wantedTotal: number; meetings: number;
+    /** 2026-11-20 people I met, so each row opens the attendee profile (same `attendeeId` as `nextSteps`). */
+    people?: readonly { attendeeId: string; name: string; initial: string; org?: string | null }[];
+  };
   /** AI draft (E3) — three items; absent when the draft is not available (then `summary` may carry the older single paragraph). */
   highlights?: readonly EventAfterHighlight[];
   summary?: string | null;

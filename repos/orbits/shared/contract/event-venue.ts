@@ -35,6 +35,21 @@ export interface EventVenuePerson {
   memo?: string | null;
 }
 
+/** One round of my seating: table, theme, why this table, and my tablemates. */
+export interface EventVenueRound {
+  /** 1-based. */
+  round: number;
+  /** Round title from the agenda (「自己紹介」); null when unknown. */
+  title?: string | null;
+  table: string;
+  theme?: string | null;
+  /** Table rationale. */
+  why?: string | null;
+  /** Rationale for me at this table (the 「?」 detail). */
+  whyDetail?: string | null;
+  tablemates: readonly { attendeeId: string; name: string; initial: string; org?: string | null; role?: string | null }[];
+}
+
 /** `POST /api/events/[id]/venue/memo` — save (or clear with an empty text) my private memo about an attendee. */
 export interface EventVenueMemoResult {
   attendeeId: string;
@@ -69,5 +84,11 @@ export interface EventVenueResponse {
   agendaTip?: { text: string; detail?: string | null } | null;
   /** 面談を提案: three default 30-minute slots (draft only, D46). */
   meetingSlots?: readonly string[];
+  /** 2026-11-20 会場の記録：活动结束后为 true。所有写操作（交換申請 / 承認 / 面談提案）隐藏，只有メモ可写。 */
+  readOnly?: boolean;
+  /** I checked in (decides the 「今日のふりかえり」 entry on the record page). */
+  checkedIn?: boolean;
+  /** Every round I was seated in (record page グループ; also returned during the event). */
+  rounds?: readonly EventVenueRound[];
   sample?: true;
 }

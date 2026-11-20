@@ -18,6 +18,8 @@ export interface MyEventItem {
   endsAt?: string | null;
   venue?: string | null;
   emoji: string;
+  /** 2026-11-20 主办方上传的活动图片（2:1）；null / 缺省 = 没有图，保持 emoji 卡片。 */
+  coverUrl?: string | null;
   status: MyEventStatus;
   /** 会いたい人 N名 (plan person types expected there). */
   meetCount?: number | null;
