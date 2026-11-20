@@ -13,6 +13,8 @@ timezone: Asia/Tokyo
 accounts:
   A: { name: 测试用户甲, workspace: W1, locale: zh, role: 主账号，绝大多数用例以它的身份运行 }
   B: { name: 测试用户乙, workspace: W2, locale: zh, role: 用来检验账号隔离 }
+  # 2026-11-20 热修（第 2 部分）：一个什么记录都没有的新账号，用来检验“还没有内容”时的如实回答（AE-ANS-021）。
+  E: { name: 测试用户戊, workspace: W1, locale: zh, role: 空账号，没有任何记录 }
 
 defaults:
   settings: { web: on, memory_use: on, memory_learn: off, judgment: on }

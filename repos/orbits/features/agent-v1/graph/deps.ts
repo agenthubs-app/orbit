@@ -42,6 +42,8 @@ export interface AgentRecordAccess {
   listEvents?(): Promise<readonly CanonicalEventRecord[]>;
   /** AG11: only the events with these ids (the ones the user picked); the caller still keeps those the account may see. */
   eventsByIds?(ids: readonly string[]): Promise<readonly CanonicalEventRecord[]>;
+  /** Hotfix 2026-11-20 part 2: the ids of the published events the user is registered for (code only, never a model). */
+  registeredEventIds?(actorId: string): Promise<readonly string[]>;
   /** AG12: the account's contacts for contact writes — duplicates, restore, import review (code only, never a model). */
   contacts?: ContactAccess;
   /** AG13: the account's private events, «我去过» notes and the records linking to an event (code only, never a model). */

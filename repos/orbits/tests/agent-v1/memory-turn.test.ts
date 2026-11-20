@@ -21,6 +21,8 @@ const of = (events: Record<string, unknown>[], type: string) => events.filter((e
 const listed = (events: Record<string, unknown>[]) => (of(events, "fn.rank").at(-1)?.listed ?? []) as string[];
 const recalled = (events: Record<string, unknown>[]) => [...new Set(of(events, "memory.recall").flatMap((event) => (event.memories ?? []) as string[]))].sort();
 const MORNINGS = ["event:event:e101", "event:event:e102", "event:event:e105"];
+/** The events of 11月16日–22日 that have not started, nearest first (the clock of the kit is 11月15日). */
+const UPCOMING_NEXT_WEEK = ["event:event:e103", "event:event:e101", "event:event:e104", "event:event:e102", "event:event:e105"];
 
 test("AG14-1 「记住……」 with learning on: one card with the new entry (its words and values from one payload), nothing saved by the turn", async () => {
   const message = "记住，以后给我推荐活动时优先周末上午。";
@@ -96,13 +98,20 @@ test("AG14-2 a task the entries do not apply to: only the rule for every task is
   assert.doesNotMatch(run.result.text, /周末上午|晚上的活动/u);
 });
 
-test("AG14-2 「回答时参考这些」 off: nothing is recalled, the rule included; a pick with no basis is asked about once", async () => {
+test("AG14-2 「回答时参考这些」 off: nothing is recalled, the rule included; a recommendation with no basis lists what is coming up in the period named", async () => {
   const message = "给我推荐几场下周的活动。";
   const run = await runFn(message, [EVENT_RANK(message, NEXT_WEEK)], { memories: [MM1, MM2, MM3], memorySettings: { enabled: false } });
   assert.deepEqual(recalled(run.events), []);
   assert.equal(run.result.state.language, "zh");
   assert.doesNotMatch(run.result.text, /你存过的|保存済み/u);
-  assert.equal(run.result.clarifications.filter((set) => set.kind === "question").length, 1);
+  // Coordinator's decision, 2026-11-20 (integration of the hotfix and AG14): a request to recommend events that names no
+  // standard, no count and no topic, with nothing saved that applies — here the switch is off — is answered with the list
+  // of what is coming up in the period named, nearest first, and no question back. (Before: asked once what to pick by.)
+  // The lead says what the order is and claims no fit; a pick with a count still asks once (AG10).
+  assert.equal(run.result.clarifications.filter((set) => set.kind === "question").length, 0);
+  assert.deepEqual(listed(run.events), UPCOMING_NEXT_WEEK);
+  assert.match(run.result.text, /^还没开始的活动共5场，按开始时间从早到晚：/u);
+  assert.doesNotMatch(run.result.text, /适合你|为你挑|推荐给你/u);
 });
 
 test("AG14-3 「这次看周四晚上的」: no card and no change; this turn's words overrule the saved preference", async () => {
@@ -267,9 +276,18 @@ test("dev run 2 (AE-MEM-002): asking which events are recommended is a ranking, 
   const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", readFilter: { from: "2026-11-16", to: "2026-11-22" }, requiredCapabilities: ["event.read"], sourceQuote: message }], { language: "ja", memories: [MM1] });
   assert.deepEqual(of(run.events, "understand.recommend_is_ranking").map((event) => event.partId), ["p1"]);
   assert.deepEqual(listed(run.events).sort(), MORNINGS);
-  // With nothing saved it is asked about once — never "the directory cannot be searched".
+  // With nothing saved — coordinator's decision, 2026-11-20 (integration of the hotfix and AG14): the list of what is coming
+  // up in the period named, nearest first, and no question back; never "the directory cannot be searched". (Before: asked
+  // once what to pick by.) The lead says the order and claims no fit.
   const none = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", readFilter: { from: "2026-11-16", to: "2026-11-22" }, requiredCapabilities: ["event.read"], sourceQuote: message }], { language: "ja", memories: [] });
-  assert.equal(none.result.clarifications.filter((set) => set.kind === "question").length, 1);
+  assert.equal(none.result.clarifications.filter((set) => set.kind === "question").length, 0);
+  assert.deepEqual(listed(none.events), UPCOMING_NEXT_WEEK);
+  assert.match(none.result.text, /^これから開催されるイベントは全部で5件、開始時間の早い順です：/u);
+  assert.doesNotMatch(none.result.text, /あなたに合う|おすすめは/u);
+  // A pick with a count still asks once what to pick by (AG10-1), as before.
+  const three = "来週のイベントを3つ選んで。";
+  const counted = await runFn(three, [EVENT_RANK(three, { ...NEXT_WEEK, rank: { count: 3 } })], { language: "ja", memories: [] });
+  assert.equal(counted.result.clarifications.filter((set) => set.kind === "question").length, 1);
   // A read that asks for no recommendation stays what it was.
   const plain = "来週のイベントを一覧で見せて。";
   const listing = await runFn(plain, [{ dataSources: ["orbit_records"], deliverable: "list", requiredCapabilities: ["event.read"], sourceQuote: plain }], { answer: () => JSON.stringify({ segments: [] }), language: "ja", memories: [MM1] });

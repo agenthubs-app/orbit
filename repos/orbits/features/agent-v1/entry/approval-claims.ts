@@ -90,7 +90,7 @@ function stripSentences(text: string, pattern: RegExp): { text: string; dropped:
   const dropped: string[] = [];
   for (const sentence of sentences) {
     // English sentences end with ". "; split them further so one card sentence does not take its neighbours.
-    const parts = /[A-Za-z]/u.test(sentence) ? sentence.split(/(?<=\.)\s+/u) : [sentence];
+    const parts = /[A-Za-z]/u.test(sentence) ? sentence.split(/(?<=\.)[ \t]+/u) : [sentence];
     for (const piece of parts) {
       if (pattern.test(piece)) {
         dropped.push(piece.trim());

@@ -18,9 +18,10 @@ const PATTERNS: RegExp[] = [
   // zh: 有 3 条, 共有 3 件, 一共 3 篇, 总共 3 项待办, 3 条待办
   new RegExp(`(?:有|共有|一共有?|总共有?|合计|共)\\s*${N}\\s*(?:条|件|篇|项|个(?=待办|日程|活动|笔记|记录|安排|约)|场|次(?=往来|见面|通话))`, "gu"),
   new RegExp(`${N}\\s*(?:条|件|篇|项)\\s*(?:待办|笔记|记录|日程|安排|活动|跟进|备忘)`, "gu"),
-  // ja: 3件あります, 全部で3件, 3つあります
-  new RegExp(`${N}\\s*(?:件|つ|個)\\s*(?:あります|ありました|ある|です|でした|見つかりました|残っています)`, "gu"),
-  new RegExp(`(?:全部で|合計|計)\\s*${N}\\s*(?:件|つ|個)`, "gu"),
+  // ja: 3件あります, 全部で3件. Hotfix 1c (AE-UND-006 run-03: 「確認すべき点は3つあります」 was dropped): 3つ / 3個 count points
+  // of advice, not the user's records (件 is the record counter).
+  new RegExp(`${N}\\s*件\\s*(?:あります|ありました|ある|です|でした|見つかりました|残っています)`, "gu"),
+  new RegExp(`(?:全部で|合計|計)\\s*${N}\\s*件`, "gu"),
   // en: you have 3 open to-dos, there are three notes, I found 2 records
   new RegExp(`\\b(?:you have|you've got|there (?:are|were|is)|there's|i found|i see|found|in all|a total of|total of)\\s+${EN_N}\\s+${RECORD_NOUNS_EN}\\b`, "giu"),
 ];
@@ -84,7 +85,7 @@ export function withoutUnsourcedCounts(text: string, counts: readonly number[]):
   const pieces = text.match(/[^。！？!?\n]+(?:[。！？!?]+|\n+|$)|\n+/gu) ?? [text];
   const kept: string[] = [];
   for (const piece of pieces) {
-    const parts = /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)\s+/u) : [piece];
+    const parts = /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)[ \t]+/u) : [piece];
     for (const part of parts) {
       if (!countsIn(part).some((value) => bad.has(value))) {
         kept.push(part);
@@ -94,7 +95,7 @@ export function withoutUnsourcedCounts(text: string, counts: readonly number[]):
       if (neutral !== null && !countsIn(neutral).some((value) => bad.has(value))) kept.push(neutral);
     }
   }
-  return kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").trim();
+  return kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").replace(/\n\s*\n/gu, "\n").trim();
 }
 
 /**
@@ -109,6 +110,9 @@ const SEEN_PATTERNS: RegExp[] = [
   new RegExp(`(?:看到了?|看了|看过|读了|读到了?|读过|查看了|翻了|浏览了)\\s*(?:其中的?|前|最近的?|最早的?|最新的?)?\\s*${N}\\s*(?:条|件|篇|项)`, "gu"),
   // ja: 10件しか見えていない, 50件を見ただけ, 20件に目を通し, うち50件を見ました
   new RegExp(`${N}\\s*件\\s*(?:しか|だけ|のみ)?\\s*(?:を|が)?\\s*(?:見え|見て|見た|見まし|見る|読ん|読み|目を通)`, "gu"),
+  // Hotfix 1c (AE-SCL-008 run-03: 「いま読み取れているのは期限が近い10件だけ」 beside code's 「50件を見ました」): the verb first.
+  new RegExp(`(?:読み取れて|読めて|見えて|見られて)[^。\\n]{0,16}?${N}\\s*件`, "gu"),
+  new RegExp(`(?:能读到|读得到|能看到|看得到|读取到)[^。\\n]{0,12}?${N}\\s*(?:条|件|篇|项)`, "gu"),
   // en: I looked at 10 notes, only saw the first 20 to-dos, went through 50 of them
   new RegExp(`\\b(?:saw|seen|see|looked at|look at|read|reviewed|went through|gone through|go through)\\s+(?:only\\s+)?(?:the\\s+)?(?:first\\s+|latest\\s+|nearest\\s+|most recent\\s+|top\\s+|oldest\\s+|newest\\s+)?${EN_N}\\b`, "giu"),
 ];
@@ -140,10 +144,10 @@ export function withoutWrongSeenCounts(text: string, allowed: ReadonlySet<number
   const pieces = text.match(/[^。！？!?\n]+(?:[。！？!?]+|\n+|$)|\n+/gu) ?? [text];
   const kept: string[] = [];
   for (const piece of pieces) {
-    const parts = /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)\s+/u) : [piece];
+    const parts = /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)[ \t]+/u) : [piece];
     for (const part of parts) if (!seenCountsIn(part).some((value) => bad.has(value))) kept.push(part);
   }
-  return { dropped: wrong, text: kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").trim() };
+  return { dropped: wrong, text: kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").replace(/\n\s*\n/gu, "\n").trim() };
 }
 
 /**
@@ -222,7 +226,7 @@ export function withoutPartialCounts(text: string, language: "zh" | "ja" | "en",
   const kept: string[] = [];
   const changed: string[] = [];
   for (const piece of pieces) {
-    const parts = language === "en" && /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)\s+/u) : [piece];
+    const parts = language === "en" && /[A-Za-z]/u.test(piece) ? piece.split(/(?<=\.)[ \t]+/u) : [piece];
     for (const part of parts) {
       const next = neutralized(part, language, allowed);
       if (next !== part) changed.push(part.trim());

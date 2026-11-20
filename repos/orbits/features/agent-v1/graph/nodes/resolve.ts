@@ -42,7 +42,7 @@ import { clueWords } from "./clarify";
 import { webPartReads } from "./probe";
 import { SIMILAR_TITLE, similarity } from "../../functions/link-back";
 import { localDayOf } from "../../propose/dates";
-import { asksTodaysPlate, isPlateFilter } from "../../understand/read-window";
+import { asksTodaysPlate, isPlateFilter, onlyWindowWords, swapsPeriod } from "../../understand/read-window";
 import { widerThanAsked, type AskedRead, type Widened } from "./wider-read";
 import { occurrenceViews } from "../../domains/schedule/occurrences";
 
@@ -570,12 +570,16 @@ export function resolveNode(scope: NodeScope): GraphNode {
       // Hotfix 2026-11-20 (rule 1, understand/read-window.ts): "what to handle today" reads the open to-dos due or planned up
       // to today (overdue included) and today's schedule items, whichever of the two the first layer named.
       const today = localDayOf(now, zone);
-      const plate = isPlateFilter(filter, today) && asksTodaysPlate(quote);
+      // Hotfix 1c: also a follow-up that only swaps the period of "what to handle today" (understand/read-window.ts swapsPeriod).
+      const previousAsk = [...(context?.messages ?? [])].reverse().find((item) => item.role === "user")?.text;
+      const swappedPlate = Boolean(previousAsk) && swapsPeriod(quote) && asksTodaysPlate(previousAsk!);
+      const plate = (asksTodaysPlate(quote) && isPlateFilter(filter, today)) || (swappedPlate && isPlateFilter(filter, today, true));
       if (plate && !contacts.length && !text) {
         kinds.add("todo");
         kinds.add("schedule");
         read.notes.push("This asks what to take up today: these are the to-dos not done that are due or planned today or earlier (the overdue ones included, most overdue first) and today's schedule items. Give them all, the most urgent first; never say only today's records were looked at.");
         emitTrace({ partId: part.localId, today, type: "resolve.todays_plate" });
+        run.showAllRead.add(part.localId);
       }
       // Finding events by conditions is not a read of this version (an attached event is read by id).
       if (kinds.has("event") && !part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event") && ![...kinds].some((kind) => kind !== "event" && kind !== "contact") && contacts.length && (text || part.refs.some((ref) => recordKindOf(ref.entity) === "event" && clueSearchWords(clueWords(input.message, ref) ?? "")))) {
@@ -690,7 +694,9 @@ export function resolveNode(scope: NodeScope): GraphNode {
         // record clue's own words are the search; a clue of only a pronoun with no person to read for points
         // at nothing code can find — it says so instead of reading the newest page.
         const clue = part.refs.find((ref) => !ref.recordId && recordKindOf(ref.entity) === kind);
-        const clueText = clue ? clueSearchWords(clueWords(input.message, clue) ?? "") : undefined;
+        // Hotfix 1c (AE-ENT-005): a clue of only date, time-of-day and kind words is the window (graphPartsOf), never a search.
+        const windowClue = clue ? onlyWindowWords(clueWords(input.message, clue) ?? "") : false;
+        const clueText = clue && !windowClue ? clueSearchWords(clueWords(input.message, clue) ?? "") : undefined;
         // AG08 repair 1 (AE-UND-010): a list of notes with nothing to search by searches by its own words.
         const ownWords = !text && !clueText && !clue && kind === "memo" && !contacts.length && part.plan.deliverable === "list" ? listSearchWords(quote) : undefined;
         const kindText = text ?? clueText ?? ownWords;
@@ -726,7 +732,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
               } else if (ownWords) emitTrace({ partId: part.localId, type: "resolve.own_words", words: ownWords });
               // AG09 run-04 (AE-WEB-004): a clue that names a record by its title or label ("竞品笔记 C", "笔记 C") lost its
               // generic word in the search words ("竞品c"); when those find nothing, the clue is searched as the user wrote it.
-              if (clue && !text && !pages.items.length && !pages.withheld) {
+              if (clue && !windowClue && !text && !pages.items.length && !pages.withheld) {
                 const asWritten = clueAsWritten(clueWords(input.message, clue) ?? "");
                 if (asWritten && asWritten !== kindText) {
                   pages = await readPages(records.reader, kind, accountScope, queryOf(asWritten), order === "both" ? 1 : maxPages);

@@ -13,7 +13,7 @@
 /** Sentences (and, in Latin text, the period-separated pieces) of a text, keeping their own punctuation. */
 function piecesOf(text: string): string[] {
   const pieces = text.match(/[^。！？!?\n]+(?:[。！？!?]+|\n+|$)|\n+/gu) ?? [text];
-  return pieces.flatMap((piece) => (/[A-Za-z]/u.test(piece) && !/[぀-ヿ一-鿿]/u.test(piece) ? piece.split(/(?<=\.)\s+/u) : [piece]));
+  return pieces.flatMap((piece) => (/[A-Za-z]/u.test(piece) && !/[぀-ヿ一-鿿]/u.test(piece) ? piece.split(/(?<=\.)[ \t]+/u) : [piece]));
 }
 
 function joined(kept: readonly string[]): string {

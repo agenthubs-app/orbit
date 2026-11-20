@@ -216,6 +216,8 @@ export interface AgentGraphRun {
   readNotes: Map<string, string[]>;
   /** AG11 (AE-SCL-021): per part, the previous question a 「那 @X 呢？」 asks again about the record picked now. */
   carriedQuestions: Map<string, string>;
+  /** Hotfix 1c (AE-ANS-019): parts whose every record read is shown ("what to handle today"), whatever the answer cited. */
+  showAllRead: Set<string>;
   /** AG05: per part, code's sentences after the answer (no record, partial, failed, choose again). */
   gapLines: Map<string, string[]>;
   /** AG20a (decision 2): the profile fields this turn's answer said are out of date, with the newer values it verified. */
