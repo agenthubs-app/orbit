@@ -246,7 +246,11 @@ export function recordOfView(view: RecordView, context: CardContext): AgentAnswe
     const startsAt = str(fields.startsAt);
     const valid = startsAt && Number.isFinite(Date.parse(startsAt)) ? startsAt : undefined;
     const day = valid ? localParts(valid, timeZone).day : undefined;
-    const top = valid ? (fields.allDay === true ? dayWordsOf(day!, language) : whenOnCard(valid, timeZone, language)) : undefined;
+    // Hotfix 2026-11-20 (AE-UND-015: 「10時から11時まで」 became a card showing only 10:00): the card shows start to end.
+    const endsAt = str(fields.endsAt);
+    const end = endsAt && Number.isFinite(Date.parse(endsAt)) && Date.parse(endsAt) > Date.parse(valid ?? "") ? endsAt : undefined;
+    const range = valid && end ? (localParts(end, timeZone).day === day ? `–${localParts(end, timeZone).time}` : ` – ${whenOnCard(end, timeZone, language)}`) : "";
+    const top = valid ? (fields.allDay === true ? dayWordsOf(day!, language) : `${whenOnCard(valid, timeZone, language)}${range}`) : undefined;
     const place = str(fields.location);
     return { id: view.id, kind: "schedule", title, ...(top ? { top } : {}), ...(place ? { sub: place } : {}), ...(day ? { day } : {}) };
   }

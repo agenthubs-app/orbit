@@ -44,6 +44,19 @@ test("hotfix 2026-11-20 (AE-UND-013 went to 5 calls): an unusable output, then a
   }
 });
 
+test("hotfix 2026-11-20 (AE-ANS-007): a plain reply with its own numbered lines is laid out by code — conclusion, then points — still one call", async () => {
+  const message = "下周要第一次拜访一家新客户，帮我想想要准备什么，分几点说。";
+  const reply = "第一次拜访新客户，建议按这几点准备：\n1. 客户基本情况：公司业务、规模和最近动向。\n2. 拜访目标：这次想拿到什么结果。\n3. 问题清单：准备几个开放式问题。\n如果你告诉我客户所在行业，我可以说得更具体。";
+  const model = deepseekStub([json({ parts: [part({ sourceQuote: message })], plainChat: true, reply })]);
+  const kit = graphKit(model.fetchImplementation);
+  const result = await runAgentGraph(kit.deps, kit.input(message));
+  assert.equal(model.calls.length, 1);
+  assert.deepEqual(result.blocks.map((block) => block.type), ["conclusion", "points", "paragraph"]);
+  assert.equal(result.text, reply);
+  const points = result.blocks[1];
+  assert.deepEqual(points.type === "points" && points.items.map((item) => item.head), ["客户基本情况", "拜访目标", "问题清单"]);
+});
+
 test("still unusable after the one repair: no third call, and the user is told it was not handled", async () => {
   const message = "跟客户开完会之后，跟进邮件一般隔几天发比较合适？";
   const model = deepseekStub([MALFORMED, MALFORMED, MALFORMED]);

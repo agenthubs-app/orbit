@@ -44,6 +44,7 @@ import { SIMILAR_TITLE, similarity } from "../../functions/link-back";
 import { localDayOf } from "../../propose/dates";
 import { asksTodaysPlate, isPlateFilter } from "../../understand/read-window";
 import { widerThanAsked, type AskedRead, type Widened } from "./wider-read";
+import { occurrenceViews } from "../../domains/schedule/occurrences";
 
 type ReadKind = "memo" | "todo" | "schedule" | "event" | "contact" | "interaction";
 
@@ -702,7 +703,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
         const kindFrom = kind === "schedule" && plate ? localMidnight(today, zone) : kind === "schedule" && !from && !to && !contacts.length && !kindText ? now : from;
         if (kind === "todo" && kindStatus && !status) read.notes.push("Only the to-dos not done yet were read.");
         if (kind === "schedule" && kindFrom !== from && !plate) read.notes.push("Only schedule items from now on were read.");
-        if (kind === "todo" || kind === "schedule") asked.push({ defaultFrom: kind === "schedule" && kindFrom === now && !from, from: kindFrom, fromDay: plate ? (kind === "schedule" ? today : undefined) : filter?.from, kind, status: kindStatus, statusSaid: Boolean(status), text: kindText, to, toDay: filter?.to });
+        if (kind === "todo" || kind === "schedule") asked.push({ ...(contacts.length === 1 ? { person: { id: contacts[0].id, name: names.get(contacts[0].id) || contacts[0].name } } : {}), defaultFrom: kind === "schedule" && kindFrom === now && !from, from: kindFrom, fromDay: plate ? (kind === "schedule" ? today : undefined) : filter?.from, kind, status: kindStatus, statusSaid: Boolean(status), text: kindText, to, toDay: filter?.to });
         if (!(kind === "memo" && notesBesideProfile && contacts.length)) read.wantsRecords = true;
         for (const contactId of subjects) {
           const orders: ("newest" | "oldest")[] = order === "both" ? ["newest", "oldest"] : [order];
@@ -757,6 +758,10 @@ export function resolveNode(scope: NodeScope): GraphNode {
                 // Hotfix 2026-11-20: a repeating item with no occurrence in the window is no match; a complete read counts only
                 // the ones kept (otherwise 「共1条，这次看的是最新的0条」 for the weekly meeting on a Friday).
                 if (pages.complete && items.length !== pages.items.length) pages = { ...pages, items, total: items.length };
+                // Hotfix 2026-11-20 (AE-SCL-025): a repeating item is given as its occurrence, with what was changed for that one time.
+                const resolved = await occurrenceViews(records.source, accountScope, items, read.occurrences, zone);
+                for (const view of resolved) if (typeof view.fields.recurrence === "string") read.occurrences.delete(view.ref);
+                items = resolved;
               }
               for (const view of items) push(view);
               // AG10 (AE-SCL-020): how a person stands now ("her current salary expectation") reads their newest notes as well,
@@ -833,7 +838,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
       // Hotfix 2026-11-20 (rule 3, graph/nodes/wider-read.ts): nothing under a narrowing, but records of the kind outside it —
       // code says what was looked for and how many there are, and shows them (no model call).
       let widened: Widened | null = null;
-      if (read.gaps.has("no_record") && !contacts.length && !boundIds.size && !recordViews.length && asked.length) {
+      if (read.gaps.has("no_record") && contacts.length <= 1 && !boundIds.size && !recordViews.length && asked.length) {
         try {
           widened = await widerThanAsked({ asked, cardOf: (view) => recordOfView(view, { language: state.language, nameOf: (id) => names.get(id) ?? run.readNames.get(id)?.name, now, timeZone: zone }), language: state.language, maxPages: records.maxPages, now, quote, reader: records.reader, scope: accountScope });
         } catch (error) {

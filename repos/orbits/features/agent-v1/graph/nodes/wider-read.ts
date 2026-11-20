@@ -28,6 +28,8 @@ export interface AskedRead {
   statusSaid: boolean;
   /** The schedule read started "now" only because nothing else narrowed it (code's default). */
   defaultFrom: boolean;
+  /** Part 1b item 4 (AE-RD-004): the read was of one person's records. */
+  person?: { id: string; name: string };
 }
 
 export interface WiderInput {
@@ -70,7 +72,16 @@ function periodWords(language: Language, quote: string, fromDay?: string, toDay?
 }
 
 /** What a to-do read looked for, ending in "：没有。" / ": none." */
-export function todoNothingLine(language: Language, quote: string, asked: Pick<AskedRead, "fromDay" | "toDay" | "text" | "status" | "statusSaid">): string {
+export function todoNothingLine(language: Language, quote: string, asked: Pick<AskedRead, "fromDay" | "toDay" | "text" | "status" | "statusSaid" | "person">): string {
+  const line = todoNothingWords(language, quote, asked);
+  const who = asked.person?.name;
+  if (!who) return line;
+  if (language === "en") return line.replace(/^([^:]*?to-dos)/u, `$1 for ${who}`);
+  if (language === "ja") return `${who}さんの${line}`;
+  return `${who}名下${line}`;
+}
+
+function todoNothingWords(language: Language, quote: string, asked: Pick<AskedRead, "fromDay" | "toDay" | "text" | "status" | "statusSaid">): string {
   const when = periodWords(language, quote, asked.fromDay, asked.toDay);
   const both = Boolean(asked.fromDay && asked.toDay);
   const single = both && asked.fromDay === asked.toDay;
@@ -91,11 +102,11 @@ export function todoNothingLine(language: Language, quote: string, asked: Pick<A
 }
 
 /** What exists outside the narrowing: how many, and of the open ones how many are past their day. */
-export function todoOthersLine(language: Language, count: number, status: "open" | "completed", late: number | null): string {
+export function todoOthersLine(language: Language, count: number, status: "open" | "completed", late: number | null, person?: string): string {
   const lateWords = status === "open" && late ? late : 0;
-  if (language === "en") return `You do have ${count} ${STATUS_WORDS.en[status]} ${count === 1 ? "to-do" : "to-dos"}${lateWords ? `, ${lateWords} of them overdue` : ""}.`;
-  if (language === "ja") return `${STATUS_WORDS.ja[status]}タスクはほかに${count}件あります${lateWords ? `（うち${lateWords}件は期限切れ）` : ""}。`;
-  return `另有 ${count} 项${STATUS_WORDS.zh[status]}待办${lateWords ? `，其中 ${lateWords} 项已过期` : ""}。`;
+  if (language === "en") return `You do have ${count} ${STATUS_WORDS.en[status]} ${count === 1 ? "to-do" : "to-dos"}${person ? ` for ${person}` : ""}${lateWords ? `, ${lateWords} of them overdue` : ""}.`;
+  if (language === "ja") return `${person ? `${person}さんの` : ""}${STATUS_WORDS.ja[status]}タスクはほかに${count}件あります${lateWords ? `（うち${lateWords}件は期限切れ）` : ""}。`;
+  return `${person ? `${person}名下` : ""}另有 ${count} 项${STATUS_WORDS.zh[status]}待办${lateWords ? `，其中 ${lateWords} 项已过期` : ""}。`;
 }
 
 export function scheduleNothingLine(language: Language, quote: string, asked: Pick<AskedRead, "fromDay" | "toDay" | "text">): string {
@@ -124,11 +135,15 @@ export async function widerThanAsked(input: WiderInput): Promise<Widened | null>
     if (asked.kind === "todo") {
       // A window or words narrowed it: the open ones without them. Only a status narrowed it: the other status.
       status = asked.from || asked.to || asked.text ? "open" : asked.status === "open" ? "completed" : "open";
-      query = { status };
+      query = { status, ...(asked.person ? { contactId: asked.person.id } : {}) };
     } else if ((asked.from || asked.to) && !asked.defaultFrom || asked.text) {
-      query = { from: input.now };
+      query = { from: input.now, ...(asked.person ? { contactId: asked.person.id } : {}) };
     }
-    if (!query) continue;
+    if (!query) {
+      // Part 1b item 4: a person's read still says who and what was looked for.
+      if (asked.person && asked.kind === "todo") lines.push(todoNothingLine(input.language, input.quote, asked));
+      continue;
+    }
     const pages = await readPages(input.reader, asked.kind, input.scope, query, input.maxPages);
     const nothing = asked.kind === "todo" ? todoNothingLine(input.language, input.quote, asked) : scheduleNothingLine(input.language, input.quote, asked);
     if (!pages.items.length) {
@@ -137,9 +152,14 @@ export async function widerThanAsked(input: WiderInput): Promise<Widened | null>
     }
     const count = pages.total ?? pages.items.length;
     const cards = pages.items.map(input.cardOf);
-    const others = asked.kind === "todo" ? todoOthersLine(input.language, count, status, pages.complete ? lateCount(cards, input.language) : null) : scheduleOthersLine(input.language, count);
+    const others = asked.kind === "todo" ? todoOthersLine(input.language, count, status, pages.complete ? lateCount(cards, input.language) : null, asked.person?.name) : scheduleOthersLine(input.language, count);
     lines.push(`${nothing}${input.language === "en" ? " " : ""}${others}`);
     views.push(...pages.items);
+  }
+  // Part 1b item 4 (AE-RD-004): a person's read with nothing outside the narrowing still says who and what was looked for.
+  if (!views.length && lines.length && input.asked.some((asked) => asked.person)) {
+    const text = lines.join(input.language === "en" ? " " : "");
+    return { blocks: [{ text, type: "paragraph" }], cards: [], text, views: [] };
   }
   if (!views.length) return null;
   const cards = views.map(input.cardOf);
