@@ -218,7 +218,7 @@ test("16-3 ④: allowed, later switched off in the system — found out by a rem
   const fake = fakeBrowser({ device: { active: false, revokedReason: "provider_rejected" }, permission: "granted" });
   const { renderer } = await mount(<BrowserReminderLine language="zh" runs={tableRuns} browser={fake.browser} />);
   const text = textIn(renderer.root);
-  for (const words of ["上一次提醒没送到：这个浏览器的通知被关掉了", "11月6日（周五） 那期的结果在收件箱里。任务照常运行，之后不再往这个浏览器发。", "重新允许"]) assert.ok(text.includes(words), words);
+  for (const words of ["上一次提醒没送到：这个浏览器的通知被关掉了", "11月6日（周五）那期的结果在收件箱里。任务照常运行，之后不再往这个浏览器发。", "重新允许"]) assert.ok(text.includes(words), words);
   assert.ok(!fake.asked.includes("PROMPT"));
   // Another task's history does not have that period: the same line without a day.
   const other = await mount(<BrowserReminderLine language="zh" runs={[]} browser={fakeBrowser({ device: { active: false, revokedReason: "provider_rejected" }, permission: "granted" }).browser} />);

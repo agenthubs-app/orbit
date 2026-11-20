@@ -121,8 +121,8 @@ function HistoryRow({ run, t, onOpen, reminderLines = false }: { run: AgentSched
   return <View testID={`scheduled-run-${run.runId}`}>
     <View style={styles.historyRow}>
       <UiText style={styles.meta}>{display?.day ?? run.scheduledAt.slice(0, 10)}</UiText>
-      <UiText style={run.outcome === "delivered" ? styles.lineStrong : styles.line}>{time}{display?.text ?? run.line}</UiText>
-      {opens ? <UiPressable accessibilityRole="link" onPress={() => onOpen(inboxPathOf(opens === "card" ? run.cardId ?? run.runId : run.runId))}><UiText style={styles.link}>{opens === "card" ? t("scheduledTasks.seeCard") : t("scheduledTasks.seeResult")} ›</UiText></UiPressable> : null}
+      <UiText style={run.outcome === "delivered" ? styles.lineStrong : styles.line}>{time}{display?.text ?? run.line}{opens && reminderLines ? <UiText accessibilityRole="link" style={styles.link} onPress={() => onOpen(inboxPathOf(opens === "card" ? run.cardId ?? run.runId : run.runId))}>{"  "}{opens === "card" ? t("scheduledTasks.seeCard") : t("scheduledTasks.seeResult")} ›</UiText> : null}</UiText>
+      {opens && !reminderLines ? <UiPressable accessibilityRole="link" onPress={() => onOpen(inboxPathOf(opens === "card" ? run.cardId ?? run.runId : run.runId))}><UiText style={styles.link}>{opens === "card" ? t("scheduledTasks.seeCard") : t("scheduledTasks.seeResult")} ›</UiText></UiPressable> : null}
       {reminder ? <UiText testID={`scheduled-push-${reminder.tone}`} style={reminder.tone === "missed" ? styles.pushMissed : styles.pushLine}>{reminder.tone === "delivered" ? <UiText style={styles.pushTick}>✓ </UiText> : null}{reminder.text}</UiText> : null}
     </View>
     {display?.skippedNote ? <UiText style={styles.skipped}>{display.skippedNote}</UiText> : null}

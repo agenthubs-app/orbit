@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
 
@@ -134,6 +135,10 @@ test("AG16-1: the task page's own switch turns the reminder on for that one task
   assert.deepEqual([off?.rule?.notify, off?.version, off?.rule?.toldFromVersion], [{ inApp: true, push: false }, 3, 1]);
   assert.equal(await setTaskReminder(serviceFor(kit.storage, "user:b", kit.now), one.automationId, { push: true }), null, "another account's task does not resolve");
   assert.equal(await setTaskReminder(service, "rule:missing", { push: true }), null);
+  // The route answers in the envelope both clients read (the App accepts only { success, data | error }).
+  const route = fs.readFileSync(new URL("../../app/api/agent/automations/[id]/reminder/route.ts", import.meta.url), "utf8");
+  assert.match(route, /NextResponse\.json\(\{ success: true, data: \{ task:/u);
+  assert.equal((route.match(/\{ success: false, error: \{ code: "(VALIDATION_ERROR|NOT_FOUND)"/gu) ?? []).length, 2);
 });
 
 test("AG16-2: a reminder's id leads its signed-in owner to that period's inbox entry — and tells nobody else anything", async () => {
@@ -155,7 +160,11 @@ test("AG16-2: a reminder's id leads its signed-in owner to that period's inbox e
   });
   const mine = await handler("user:a")(new Request("http://localhost"), { params: Promise.resolve({ id: deliveryId }) });
   assert.equal(mine.status, 200);
-  const body = ((await mine.json()) as { data: Record<string, any> }).data;
+  const envelope = (await mine.json()) as { success?: unknown; data: Record<string, any> };
+  // The App's client accepts only { success: true, data } (orbit-app src/api/client.ts isEnvelope); without it a tap on
+  // the reminder showed 「这条提醒暂时无法读取」 on the Simulator.
+  assert.equal(envelope.success, true);
+  const body = envelope.data;
   assert.deepEqual(body.target, { deliveryId, href: target!.href, kind: "inbox", status: "available" });
   assert.deepEqual([body.deliveryId, body.data, body.title, body.body], [deliveryId, { deliveryId }, "Orbit", "有新结果，请到 Orbit 查看。"]);
   assert.equal(JSON.stringify(body).includes("E101"), false, "nothing of the result is in the answer");

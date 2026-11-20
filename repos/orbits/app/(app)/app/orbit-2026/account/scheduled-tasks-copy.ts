@@ -100,7 +100,7 @@ const copy = {
   browserHowToStep1: { zh: "点地址栏左边的图标，找到「通知」，改成「允许」。", en: "Click the icon at the left end of the address bar, find Notifications, and set it to Allow.", ja: "アドレスバー左端のアイコンを押し、「通知」を「許可」に変えます。" },
   browserHowToStep2: { zh: "改好之后回到这一页。", en: "Then come back to this page.", ja: "変えたら、このページに戻ってください。" },
   browserStopped: { zh: "上一次提醒没送到：这个浏览器的通知被关掉了", en: "The last reminder didn't arrive: notifications are turned off in this browser", ja: "前回のお知らせは届きませんでした：このブラウザの通知がオフになっています" },
-  browserStoppedBody: { zh: "{day} 那期的结果在收件箱里。任务照常运行，之后不再往这个浏览器发。", en: "The result from {day} is in your inbox. The task keeps running; reminders no longer go to this browser.", ja: "{day}の結果は受信箱にあります。タスクは動き続け、今後このブラウザには送りません。" },
+  browserStoppedBody: { zh: "{day}那期的结果在收件箱里。任务照常运行，之后不再往这个浏览器发。", en: "The result from {day} is in your inbox. The task keeps running; reminders no longer go to this browser.", ja: "{day}の結果は受信箱にあります。タスクは動き続け、今後このブラウザには送りません。" },
   browserStoppedBodyPlain: { zh: "结果照常在收件箱里。任务照常运行，之后不再往这个浏览器发。", en: "Results are in your inbox as usual. The task keeps running; reminders no longer go to this browser.", ja: "結果はいつもどおり受信箱にあります。タスクは動き続け、今後このブラウザには送りません。" },
   browserAllowAgain: { zh: "重新允许", en: "Allow again", ja: "もう一度許可" },
   browserOff: { zh: "这个浏览器现在不弹提醒", en: "This browser isn't set to show reminders", ja: "このブラウザではお知らせを出さない設定です" },

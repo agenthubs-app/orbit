@@ -25,17 +25,17 @@ export async function PUT(
   if (!requestContext) return agentAutomationUnauthorizedResponse();
   const parsed = agentScheduledTaskReminderInputSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: { code: "VALIDATION_ERROR", message: "The body must be { push: boolean, locale?: zh | en | ja }." } }, { status: 400 });
+    return NextResponse.json({ success: false, error: { code: "VALIDATION_ERROR", message: "The body must be { push: boolean, locale?: zh | en | ja }." } }, { status: 400 });
   }
   try {
     const { id } = await context.params;
     const automation = await setTaskReminder(requestContext.service, id, { push: parsed.data.push, ...(parsed.data.locale ? { locale: parsed.data.locale } : {}) });
     if (!automation) {
-      return NextResponse.json({ error: { code: "NOT_FOUND", message: "No scheduled task matches that id." } }, { status: 404 });
+      return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "No scheduled task matches that id." } }, { status: 404 });
     }
     const storage = requestContext.storage;
     const lastRun = storage ? (await createAutomationRunStore(storage.direct.store, storage.workspaceId).list(requestContext.actorId, automation.automationId, 20))[0] ?? null : null;
-    return NextResponse.json({ data: { task: scheduledTaskView(automation, lastRun, new Date().toISOString()) } }, { headers: { "cache-control": "no-store" } });
+    return NextResponse.json({ success: true, data: { task: scheduledTaskView(automation, lastRun, new Date().toISOString()) } }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     return agentAutomationErrorResponse(error);
   }

@@ -40,7 +40,8 @@ export function createNotificationDeliveryRouteHandler(
     // answer points at that period's inbox entry and says nothing of its content (the inbox page reads it).
     const reminder = await (dependencies.resolveRuleReminder ?? resolveRuleReminderTarget)(actor.id, id);
     if (reminder) {
-      return NextResponse.json({ data: { body: reminder.body, data: { deliveryId: id }, deliveryId: id, status: reminder.status, target: { deliveryId: id, kind: "inbox", status: reminder.href ? "available" : "unavailable", ...(reminder.href ? { href: reminder.href } : {}) }, title: reminder.title } }, { headers: { "Cache-Control": "no-store" } });
+      // `success: true`: the App's client accepts only that envelope (its tap on a reminder goes through here).
+      return NextResponse.json({ success: true, data: { body: reminder.body, data: { deliveryId: id }, deliveryId: id, status: reminder.status, target: { deliveryId: id, kind: "inbox", status: reminder.href ? "available" : "unavailable", ...(reminder.href ? { href: reminder.href } : {}) }, title: reminder.title } }, { headers: { "Cache-Control": "no-store" } });
     }
     const delivery = await serviceForActor(actor.id).get(id);
     if (!delivery || delivery.actorId !== actor.id) {
