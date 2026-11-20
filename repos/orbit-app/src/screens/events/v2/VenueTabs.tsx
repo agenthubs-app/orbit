@@ -186,7 +186,7 @@ export function RecsTab({ data, t, toneOf, onRequest, onDismiss, onOpen, readOnl
               <View style={[styles.row, { gap: 6 }]}>
                 {person.table ? <Chip label={t("tableChip", { t: person.table })} tone="lav"><Icon name="pin" size={16} color={colors.macLavInk} /></Chip> : null}
                 {near && !readOnly ? <Chip label={t("vNearNext", { n: near })} tone="teal" /> : null}
-                {readOnly ? (person.exchange === "exchanged" ? <Chip label={t("exExchanged")} tone="teal" /> : <Chip label={t("recNotTalked")} />) : null}
+                {readOnly && person.exchange === "exchanged" ? <Chip label={t("exExchanged")} tone="teal" /> : null}
               </View>
               {person.why ? (
                 <View>

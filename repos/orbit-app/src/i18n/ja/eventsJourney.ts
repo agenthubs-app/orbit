@@ -565,7 +565,6 @@ export const eventsJourney = {
   "eventsJourney.recordExchanged": "交換",
   "eventsJourney.recordPeopleUnit": "人",
   "eventsJourney.statusEnded": "終了",
-  "eventsJourney.recNotTalked": "話していない",
   "eventsJourney.vSameTableN": "同じテーブル {n}",
   "eventsJourney.recordNoGroupTitle": "あなたはグループ分けに入っていませんでした",
   "eventsJourney.recordNoGroupBody": "当日受付がなかった、または主催者がグループを公開しなかった回です。参加者一覧とアジェンダは見られます。",

@@ -1,6 +1,6 @@
 // 2026-11-20 参加者の詳細（App；docs/designs/redesign-2026-10/events-replay-cover-app-proposal.html ⑤ ⑥）：会場の記録 / 詳細の参加者 tab /
 // 会後の「今日会った人」から同じ底部弹层。分区顺序与 Web 右栏一致：头部 → このイベントでの接点（同桌轮次 · おすすめ + 理由 ?）→
-// 自己紹介 / 公开问答 → メモ（自分だけ）→ 交換を申請（结束后 30 天内，服务端 canRequestExchange）或「人脈で開く」。
+// 自己紹介 / 公开问答 → 交換を申請（结束后 30 天内，服务端 canRequestExchange）或「人脈で開く」→ メモ（自分だけ，次要，2026-11-21 用户定放在交换之后）。
 // 数据：GET /api/events/[id]/attendees/[attendeeId]（按需单条读取，attendee-cache 内存缓存 5 分钟）；交换走现有
 // /operations/contact-requests，メモ走 /venue/memo。加载中：头部用调用方已知的名字立刻出，下面放同形状骨架（loading-ui）。
 import { useRouter, type Href } from "expo-router";
@@ -146,9 +146,6 @@ export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
           ) : null}
           {profile ? (
             <>
-              <UiText style={[vs.lbl, { marginBottom: 6, marginTop: 12 }]}>{t("pMemo")}</UiText>
-              <TextInput value={memo} onChangeText={setMemo} onEndEditing={() => void saveMemo()} onSubmitEditing={() => void saveMemo()} placeholder={t("vMemoPh")} placeholderTextColor={colors.ink3}
-                showSoftInputOnFocus={!noKeyboard} accessibilityLabel={t("pMemo")} maxLength={200} style={styles.input} testID="events-attendee-memo" />
               {profile.exchange === "exchanged" ? (
                 profile.contactId ? (
                   <UiPressable accessibilityRole="button" accessibilityLabel={t("pOpenInNetwork")} onPress={() => { onClose(); router.push(`/contacts/${encodeURIComponent(profile.contactId!)}` as Href); }} style={[styles.block, styles.primary]} testID="events-attendee-open-contact">
@@ -177,6 +174,9 @@ export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
                   <UiText style={[vs.lbl, { marginTop: 6 }]}>{t("vIgnoreNote")}</UiText>
                 </View>
               ) : <View style={{ marginTop: 14 }}><Chip label={profile.exchange === "incoming" ? t("exIncoming") : t("exRequested")} {...(profile.exchange === "incoming" ? { tone: "lav" as const } : {})} /></View>}
+              <UiText style={[vs.lbl, { marginBottom: 6, marginTop: 18 }]}>{t("pMemo")}</UiText>
+              <TextInput value={memo} onChangeText={setMemo} onEndEditing={() => void saveMemo()} onSubmitEditing={() => void saveMemo()} placeholder={t("vMemoPh")} placeholderTextColor={colors.ink3}
+                showSoftInputOnFocus={!noKeyboard} accessibilityLabel={t("pMemo")} maxLength={200} style={styles.input} testID="events-attendee-memo" />
             </>
           ) : null}
         </View>
@@ -185,7 +185,7 @@ export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
   );
 }
 
-/** Loading: the sections' own shapes (接点 chips → 自己紹介 card → メモ input → button), so nothing jumps when they fill. */
+/** Loading: the sections' own shapes (接点 chips → 自己紹介 card → button → メモ input), so nothing jumps when they fill. */
 function SheetBones() {
   const { styles } = useStyles();
   const vs = useVenueStyles().styles;
@@ -195,9 +195,9 @@ function SheetBones() {
       <View style={styles.chips}><Bone w={96} h={30} r={999} /><Bone w={72} h={30} r={999} /></View>
       <Bone w="88%" h={14} style={{ marginTop: 12 }} />
       <View style={[vs.card, vs.flat, styles.intro]}><Bone w="24%" h={11} /><Bone w="94%" h={14} style={{ marginTop: 8 }} /><Bone w="70%" h={14} style={{ marginTop: 7 }} /></View>
-      <Bone w="20%" h={11} style={{ marginBottom: 8, marginTop: 14 }} />
-      <Bone h={44} r={14} />
       <Bone h={44} r={999} style={{ marginTop: 14 }} />
+      <Bone w="20%" h={11} style={{ marginBottom: 8, marginTop: 18 }} />
+      <Bone h={44} r={14} />
     </Bones>
   );
 }

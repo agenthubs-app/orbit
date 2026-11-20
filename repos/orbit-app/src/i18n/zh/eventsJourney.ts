@@ -565,7 +565,6 @@ export const eventsJourney = {
   "eventsJourney.recordExchanged": "交换",
   "eventsJourney.recordPeopleUnit": "人",
   "eventsJourney.statusEnded": "已结束",
-  "eventsJourney.recNotTalked": "没聊过",
   "eventsJourney.vSameTableN": "同桌 {n}",
   "eventsJourney.recordNoGroupTitle": "你不在这场的分组里",
   "eventsJourney.recordNoGroupBody": "当天没有签到，或者主办方没有公开分组。参加者名单和议程仍可查看。",

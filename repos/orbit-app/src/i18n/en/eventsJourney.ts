@@ -565,7 +565,6 @@ export const eventsJourney = {
   "eventsJourney.recordExchanged": "Exchanged",
   "eventsJourney.recordPeopleUnit": " people",
   "eventsJourney.statusEnded": "Ended",
-  "eventsJourney.recNotTalked": "Not talked",
   "eventsJourney.vSameTableN": "Same table {n}",
   "eventsJourney.recordNoGroupTitle": "You weren't in the table groups",
   "eventsJourney.recordNoGroupBody": "There was no check-in, or the organizer didn't publish the groups. You can still see the attendee list and agenda.",

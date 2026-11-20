@@ -67,10 +67,12 @@ test("attendee sheet: exchanged opens the contact; past the window the request b
   assert.equal(await closed.getByTestId("events-attendee-request").count(), 0);
 });
 
-test("会場の記録 recs: no exchange / dismiss buttons, only 已交换 / 没聊过", async (t) => {
-  const page = await harness.open(t, { screen: "venue", params: { id: eventId, tab: "recs" }, responses: { [`${path}/venue`]: { ...ended, rounds } } });
+test("会場の記録 recs: no exchange / dismiss buttons; only the 已交换 fact, no 'not talked' guess from memos", async (t) => {
+  const recs = ended.recommendations.map((person, index) => ({ ...person, exchange: index === 0 ? "exchanged" as const : "none" as const }));
+  const page = await harness.open(t, { screen: "venue", params: { id: eventId, tab: "recs" }, responses: { [`${path}/venue`]: { ...ended, rounds, recommendations: recs } } });
   await page.getByTestId("events-venue-recs").waitFor();
-  await page.getByText("没聊过").first().waitFor();
+  await page.getByTestId("events-venue-recs").getByText("已交换", { exact: true }).first().waitFor();
+  assert.equal(await page.getByText("没聊过").count(), 0);
   assert.equal(await page.getByRole("button", { name: "申请交换" }).count(), 0);
   assert.equal(await page.getByRole("button", { name: "从推荐中移除" }).count(), 0);
 });
