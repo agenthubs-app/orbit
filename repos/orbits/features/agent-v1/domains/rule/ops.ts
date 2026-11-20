@@ -112,24 +112,25 @@ export function validityWords(validUntil: string | null, locale: CardLocale): st
  * task only, the reminder is the one fixed sentence, and the result still goes to the inbox.
  */
 export function reminderNote(push: boolean, locale: CardLocale): string {
+  // The approved draft's sentence (16-2): only this task changes, and the reminder holds no names, times or places.
   if (push) {
     return ({
-      en: "Only this task changes. When it has a new result, your phone and your browser show one reminder that says only \"You have new results. Open Orbit to see them.\" — no event name, time or place. The result itself still goes to your inbox.",
-      ja: "変わるのはこのタスクだけです。新しい結果が出ると、スマホとブラウザに「新しい結果があります。Orbit でご確認ください。」とだけ通知します。イベント名・日時・場所は書きません。結果はこれまでどおり受信箱に届きます。",
-      zh: "只改这一条任务。之后它有新结果时，会在你的手机和浏览器上弹一条提醒，只写「有新结果，请到 Orbit 查看。」，不写活动名称、时间和地点；结果照常放进收件箱。",
+      en: "Only this task changes; your other tasks still go to your inbox only. The reminder shows no event names, times or places.",
+      ja: "変わるのはこのタスクだけで、ほかのタスクはこれまでどおり受信箱だけです。お知らせにはイベント名・日時・場所を書きません。",
+      zh: "只改这一条，别的任务照旧只进收件箱。提醒上不写活动名称、时间和地点。",
     } as const)[locale];
   }
   return ({
-    en: "Only this task changes. It will no longer send a reminder; its results still go to your inbox.",
-    ja: "変わるのはこのタスクだけです。今後は通知せず、結果はこれまでどおり受信箱に届きます。",
-    zh: "只改这一条任务。之后不再弹提醒，结果照常放进收件箱。",
+    en: "Only this task changes. It will no longer remind you; its results still go to your inbox.",
+    ja: "変わるのはこのタスクだけです。今後はお知らせせず、結果はこれまでどおり受信箱に届きます。",
+    zh: "只改这一条。之后不再提醒，结果照常放进收件箱。",
   } as const)[locale];
 }
 
 export function notifyWords(notify: { push: boolean }, locale: CardLocale): string {
-  // AG16: said as what happens — a reminder on the phone and in the browser — not as "push".
-  if (notify.push) return ({ en: "In-app inbox, with a reminder on your phone and in your browser", ja: "アプリ内の受信箱に届け、スマホとブラウザにもお知らせ", zh: "放进站内收件箱，并在手机和浏览器上提醒" } as const)[locale];
-  return ({ en: "In-app inbox only, no push", ja: "アプリ内の受信箱のみ（プッシュなし）", zh: "只放进站内收件箱，不推送" } as const)[locale];
+  // AG16 (approved draft 16-2): said as what happens, without 「推送」 or 「站内」 (push, in-app).
+  if (notify.push) return ({ en: "To your inbox, with a reminder on your phone and in your browser", ja: "受信箱に届け、スマホとブラウザにもお知らせ", zh: "放进收件箱，并在手机和浏览器上提醒" } as const)[locale];
+  return ({ en: "To your inbox only", ja: "受信箱に届けるだけ", zh: "只放进收件箱" } as const)[locale];
 }
 
 /** The day the next run is expected, with its weekday, and the same "about 10 minutes" wording. */
@@ -141,9 +142,9 @@ export function nextRunWords(schedule: RuleSchedule, validUntil: string | null, 
 }
 
 const LABELS: Record<CardLocale, { record: (title: string) => string; when: string; scope: string; basis: string; count: string; until: string; notify: string; next: string; state: string; active: string; paused: string; none: string; noteNoRun: string; noteResume: string; noteCancel: string }> = {
-  en: { active: "On", basis: "Picked by", count: "How many", next: "Next run expected", none: "nothing left to run", noteCancel: "The task is removed and will not run again. What it already sent stays in your inbox.", noteNoRun: "It will not run again until you resume it; a result not delivered yet is not sent either.", noteResume: "It runs again from its next scheduled time; runs missed while paused are not made up.", notify: "How you're told", paused: "Paused", record: (title) => `Scheduled task "${title}"`, scope: "Picks from", state: "Status", until: "Runs until", when: "Checks" },
-  ja: { active: "実行中", basis: "選び方", count: "件数", next: "次回の実行予定", none: "実行される回はありません", noteCancel: "このタスクは削除され、今後は実行されません。すでに届いた結果は受信箱に残ります。", noteNoRun: "再開するまで実行されません。まだ届いていない結果も届けません。", noteResume: "次の予定時刻から再び実行します。停止中の回はさかのぼって実行しません。", notify: "お知らせ方法", paused: "停止中", record: (title) => `定期タスク「${title}」`, scope: "対象", state: "状態", until: "有効期限", when: "チェックする時間" },
-  zh: { active: "运行中", basis: "排序依据", count: "条数", next: "下次预计运行", none: "没有要运行的了", noteCancel: "这条任务会被删除，之后不再运行。已经送到收件箱的结果不受影响。", noteNoRun: "之后不再运行，直到你恢复它；还没送出的结果也不再送。", noteResume: "从下一个预定时间起恢复运行；暂停期间错过的不补。", notify: "提醒方式", paused: "已暂停", record: (title) => `定时任务「${title}」`, scope: "候选范围", state: "状态", until: "有效期", when: "检查时间" },
+  en: { active: "On", basis: "Picked by", count: "How many", next: "Next run expected", none: "nothing left to run", noteCancel: "The task is removed and will not run again. What it already sent stays in your inbox.", noteNoRun: "It will not run again until you resume it; a result not delivered yet is not sent either.", noteResume: "It runs again from its next scheduled time; runs missed while paused are not made up.", notify: "When there's something new", paused: "Paused", record: (title) => `Scheduled task "${title}"`, scope: "Picks from", state: "Status", until: "Runs until", when: "Checks" },
+  ja: { active: "実行中", basis: "選び方", count: "件数", next: "次回の実行予定", none: "実行される回はありません", noteCancel: "このタスクは削除され、今後は実行されません。すでに届いた結果は受信箱に残ります。", noteNoRun: "再開するまで実行されません。まだ届いていない結果も届けません。", noteResume: "次の予定時刻から再び実行します。停止中の回はさかのぼって実行しません。", notify: "新しい結果があったら", paused: "停止中", record: (title) => `定期タスク「${title}」`, scope: "対象", state: "状態", until: "有効期限", when: "チェックする時間" },
+  zh: { active: "运行中", basis: "排序依据", count: "条数", next: "下次预计运行", none: "没有要运行的了", noteCancel: "这条任务会被删除，之后不再运行。已经送到收件箱的结果不受影响。", noteNoRun: "之后不再运行，直到你恢复它；还没送出的结果也不再送。", noteResume: "从下一个预定时间起恢复运行；暂停期间错过的不补。", notify: "有新结果", paused: "已暂停", record: (title) => `定时任务「${title}」`, scope: "候选范围", state: "状态", until: "有效期", when: "检查时间" },
 };
 
 type Row = AgentCardOperationDisplayContract["rows"][number];

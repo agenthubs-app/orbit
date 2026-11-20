@@ -53,7 +53,7 @@ export function createNotificationDeliveryRouteHandler(
     if (delivery.policySource) {
       try {
         const source = await (dependencies.resolveTyped ?? ((actorId, candidate) => createConfiguredDeliveryPolicyRuntime(actorId)?.sources.resolve(candidate) ?? Promise.resolve(null)))(actor.id, delivery);
-        return NextResponse.json({data:{deliveryId:id,data:{deliveryId:id},status:delivery.status,title:source?.title??'Orbit',body:source?.body??'',target:{deliveryId:id,kind:'inbox',status:source?'available':'unavailable',...(source?{href:source.href}:{})}}},{headers:{'Cache-Control':'no-store'}});
+        return NextResponse.json({success:true,data:{deliveryId:id,data:{deliveryId:id},status:delivery.status,title:source?.title??'Orbit',body:source?.body??'',target:{deliveryId:id,kind:'inbox',status:source?'available':'unavailable',...(source?{href:source.href}:{})}}},{headers:{'Cache-Control':'no-store'}});
       } catch { return NextResponse.json({error:{code:'SERVICE_UNAVAILABLE',message:'Notification source temporarily unavailable'}},{status:503,headers:{'Cache-Control':'no-store'}}); }
     }
     const { actorId: _actorId, deviceId: _deviceId, ...publicDelivery } = {
@@ -61,6 +61,6 @@ export function createNotificationDeliveryRouteHandler(
       data: { deliveryId: delivery.deliveryId },
       target: { deliveryId: delivery.deliveryId, kind: "inbox" as const },
     };
-    return NextResponse.json({ data: publicDelivery }, { status: 200 });
+    return NextResponse.json({ success: true, data: publicDelivery }, { status: 200 });
   };
 }

@@ -4,6 +4,7 @@ import test from "node:test";
 import { createMemoryAutomationStorage } from "../../features/agent/automations/due-index";
 import { ruleWriteExecutors } from "../../features/agent-v1/domains/rule/apply";
 import { prepareRuleOperation, reminderNote, RULE_UPDATE } from "../../features/agent-v1/domains/rule/ops";
+import { cardPayloadHash } from "../../features/agent/runtime/decision";
 import { isRuleRequest } from "../../features/agent-v1/graph/nodes/route";
 import { stateVerbSaidIn } from "../../features/agent-v1/rule/parse";
 import { checkRuleChoice, reminderSaidIn, reminderSpanIn, ruleChoiceSystemPrompt, ruleChoiceUserText, withoutReminderWords } from "../../features/agent-v1/rule/reminder";
@@ -58,14 +59,23 @@ test("the card says which task, that only this one changes, and that the reminde
   const card = (locale: "zh" | "en" | "ja") => prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push: true, pushLocale: locale } }, shown, targetId: "rule:1" }, locale, revision: 1 });
   const zh = card("zh");
   assert.equal(zh.display?.record, "定时任务「每周五挑三场周末活动」");
-  assert.deepEqual(zh.display?.rows.map((row) => [row.field, row.before, row.after]), [["notify", "只放进站内收件箱，不推送", "放进站内收件箱，并在手机和浏览器上提醒"]]);
-  assert.equal(zh.display?.note, "只改这一条任务。之后它有新结果时，会在你的手机和浏览器上弹一条提醒，只写「有新结果，请到 Orbit 查看。」，不写活动名称、时间和地点；结果照常放进收件箱。");
-  assert.equal(zh.preview, `定时任务「每周五挑三场周末活动」：提醒方式 只放进站内收件箱，不推送 → 放进站内收件箱，并在手机和浏览器上提醒。${zh.display?.note}`, "the card's own text says it too");
+  // The approved draft's words (16-2): 「有新结果  只放进收件箱 → 放进收件箱，并在手机和浏览器上提醒」 and one sentence under it.
+  assert.deepEqual(zh.display?.rows.map((row) => [row.field, row.label, row.before, row.after]), [["notify", "有新结果", "只放进收件箱", "放进收件箱，并在手机和浏览器上提醒"]]);
+  assert.equal(zh.display?.note, "只改这一条，别的任务照旧只进收件箱。提醒上不写活动名称、时间和地点。");
+  assert.equal(zh.preview, `定时任务「每周五挑三场周末活动」：有新结果 只放进收件箱 → 放进收件箱，并在手机和浏览器上提醒。${zh.display?.note}`, "the card's own text says it too");
+  // The product owner's rule: no 「推送」「站内」 (push, in-app) anywhere on the card, in any language.
+  for (const locale of ["zh", "en", "ja"] as const) {
+    for (const push of [true, false]) {
+      const turned = prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push, pushLocale: locale } }, shown: { ...shown, rule: ruleSpec({ notify: { inApp: true, push: !push } }) }, targetId: "rule:1" }, locale, revision: 1 });
+      const visible = JSON.stringify([turned.display, turned.preview]);
+      assert.doesNotMatch(visible, /推送|站内|in-app|In-app|プッシュ|アプリ内|\bpush\b/u, `${locale} ${push}: ${visible}`);
+    }
+  }
   assert.deepEqual(zh.after, { notify: { inApp: true, push: true, pushLocale: "zh" } });
   assert.deepEqual(zh.before, { notify: { inApp: true, push: false } });
   assert.deepEqual((zh.payload as { set: unknown }).set, { notify: { inApp: true, push: true, pushLocale: "zh" } });
-  assert.match(card("ja").display?.note ?? "", /変わるのはこのタスクだけです。.*スマホとブラウザ.*イベント名・日時・場所は書きません/u);
-  assert.match(card("en").display?.note ?? "", /^Only this task changes\..*your phone and your browser.*no event name, time or place/u);
+  assert.match(card("ja").display?.note ?? "", /^変わるのはこのタスクだけで、ほかのタスクはこれまでどおり受信箱だけです。お知らせにはイベント名・日時・場所を書きません。$/u);
+  assert.match(card("en").display?.note ?? "", /^Only this task changes; your other tasks still go to your inbox only\. The reminder shows no event names, times or places\.$/u);
   for (const locale of ["zh", "en", "ja"] as const) for (const word of ["来源", "证据", "授权", "引用", "范围"]) assert.equal(reminderNote(true, locale).includes(word) || reminderNote(false, locale).includes(word), false);
   // A change that leaves the reminder as it is says nothing about reminders.
   const count = prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { maxItems: 5 }, shown, targetId: "rule:1" }, locale: "zh", revision: 1 });
@@ -100,4 +110,18 @@ test("the model is asked which task only as a number of the list it was shown; a
   const user = ruleChoiceUserText({ message: "turn on phone notifications for my Friday weekend-picks task, not the design one", options: [{ checks: "every Friday at 9:00", number: 1, pickedBy: "按笔记「兴趣笔记」的主题", picksFrom: "周末活动", title: "每周五挑三场周末活动" }, { checks: "every Friday at 9:00", number: 2, pickedBy: "主题是设计", picksFrom: "周末活动", title: "每周五看看周末的设计活动" }] });
   assert.match(user, /1\. title: "每周五挑三场周末活动" \| picks from: 周末活动 \| picked by: 按笔记「兴趣笔记」的主题/u);
   assert.match(ruleChoiceSystemPrompt(), /Never guess/u);
+});
+
+test("the card's hash covers every word the reminder row shows: its label, both values and the sentence under it", () => {
+  const shown = { automationId: "rule:1", rule: ruleSpec(), schedule: FRIDAY_9, status: "active", title: "每周五挑三场周末活动", version: 1 };
+  const op = prepareRuleOperation({ actionId: "a", index: 0, intent: { capability: RULE_UPDATE, expectedVersion: 1, set: { notify: { inApp: true, push: true, pushLocale: "zh" } }, shown, targetId: "rule:1" }, locale: "zh", revision: 1 });
+  const hash = (operation: typeof op) => cardPayloadHash({ operations: [operation as never], preview: operation.preview, revision: 1, title: "修改1项" });
+  const display = op.display!;
+  const base = hash(op);
+  for (const changed of [
+    { ...display, note: `${display.note}x` },
+    { ...display, rows: display.rows.map((row) => ({ ...row, label: "提醒方式" })) },
+    { ...display, rows: display.rows.map((row) => ({ ...row, before: "只放进站内收件箱，不推送" })) },
+    { ...display, rows: display.rows.map((row) => ({ ...row, after: `${row.after}x` })) },
+  ]) assert.notEqual(hash({ ...op, display: changed }), base, JSON.stringify(changed));
 });
