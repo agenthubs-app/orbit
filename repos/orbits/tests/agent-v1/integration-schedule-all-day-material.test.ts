@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { withoutFieldLabels } from "../../features/agent-v1/answer/list-or-text";
 import { materialOf } from "../../features/agent-v1/answer/materials";
 
 /**
@@ -37,6 +38,14 @@ test("a repeating all-day item read as one occurrence: that day, all day", () =>
   const lines = said({ allDay: true, endsAt: "2026-11-08T15:00:00.000Z", recurrence: "weekly", startsAt: "2026-11-07T15:00:00.000Z" }, DAY);
   assert.equal(lines[1], "Day: 2026-11-15 (Sun) (all day; no time of day was given)");
   assert.doesNotMatch(lines.join("\n"), /00:00|Last day/u, lines.join("\n"));
+});
+
+test("the all-day labels copied into a zh or ja answer go, their values stay (the hotfix's field-label rule); en keeps them", () => {
+  assert.equal(withoutFieldLabels("年度体检在 Day: 11月28日（周六）（all day…）。", "zh"), "年度体检在 11月28日（周六）（all day…）。");
+  assert.equal(withoutFieldLabels("年次健診は Day: 11月28日（土）（all day…）です。", "ja"), "年次健診は 11月28日（土）（all day…）です。");
+  assert.equal(withoutFieldLabels("合宿是 Day：11月28日（周六）到 Last day: 11月30日（周一）（all day）。", "zh"), "合宿是 11月28日（周六）到 11月30日（周一）（all day）。");
+  assert.equal(withoutFieldLabels("Day: Sat, Nov 28 (all day)", "en"), "Day: Sat, Nov 28 (all day)");
+  assert.equal(withoutFieldLabels("周六那天（Saturday）有空。", "zh"), "周六那天（Saturday）有空。", "a word that only contains the label is not touched");
 });
 
 test("a timed item reads as before: start and end with their times", () => {
