@@ -47,6 +47,7 @@ import { localDayOf } from "../../propose/dates";
 import { asksTodaysPlate, isPlateFilter, onlyWindowWords, swapsPeriod } from "../../understand/read-window";
 import { widerThanAsked, type AskedRead, type Widened } from "./wider-read";
 import { occurrenceViews } from "../../domains/schedule/occurrences";
+import { comesUp } from "./prepare";
 
 type ReadKind = "memo" | "todo" | "schedule" | "event" | "contact" | "interaction";
 
@@ -897,6 +898,30 @@ export function resolveNode(scope: NodeScope): GraphNode {
                 // Hotfix 2026-11-20: a repeating item with no occurrence in the window is no match; a complete read counts only
                 // the ones kept (otherwise 「共1条，这次看的是最新的0条」 for the weekly meeting on a Friday).
                 if (pages.complete && items.length !== pages.items.length) pages = { ...pages, items, total: items.length };
+                // Integration 2026-11-20 (after AG20b): the plain schedule question with no period reads from now on, but an
+                // all-day item is stored at its day's midnight and is coming up until the end of its day in the user's time
+                // zone (comesUp, as in the preparation answer). The all-day items whose occurrence is today are read apart (from
+                // the start of the user's day up to now) and come first; a repeating one is given as today's occurrence.
+                const dayStart = localMidnight(today, zone);
+                if (kindFrom === now && !from && !to && dayStart < now) {
+                  const earlier = await readPages(records.reader, kind, accountScope, { from: dayStart, to: now }, 1);
+                  withheld += earlier.withheld;
+                  const allDayToday = earlier.items.filter((view) => {
+                    if (view.fields.allDay !== true) return false;
+                    const at = occurrenceIn(String(view.fields.startsAt), typeof view.fields.recurrence === "string" ? view.fields.recurrence : undefined, dayStart, now);
+                    if (!at || !comesUp(at, true, now, zone)) return false;
+                    if (at !== view.fields.startsAt) read.occurrences.set(view.ref, at);
+                    else read.occurrences.delete(view.ref);
+                    return true;
+                  });
+                  if (allDayToday.length) {
+                    const kept = [...allDayToday, ...items.filter((view) => !allDayToday.some((item) => item.ref === view.ref))];
+                    if (pages.total !== null) pages = { ...pages, total: pages.total + kept.length - items.length };
+                    items = kept;
+                    read.notes.push("The all-day schedule items of today are listed too, first: they last until the end of the day.");
+                    emitTrace({ items: allDayToday.map((view) => view.ref), partId: part.localId, type: "resolve.all_day_today" });
+                  }
+                }
                 // Hotfix 2026-11-20 (AE-SCL-025): a repeating item is given as its occurrence, with what was changed for that one time.
                 const resolved = await occurrenceViews(records.source, accountScope, items, read.occurrences, zone);
                 for (const view of resolved) if (typeof view.fields.recurrence === "string") read.occurrences.delete(view.ref);
