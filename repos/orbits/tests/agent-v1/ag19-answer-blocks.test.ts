@@ -242,7 +242,7 @@ test("AG19-7: the document schema — a client skips a block type it does not kn
   assert.equal(parsed.answer?.text, "导语\n1. A");
 });
 
-test("D4: a plain-chat reply of one or two sentences is shown as it is; a longer one is written again in the plain fields", async () => {
+test("D4 (hotfix 2026-11-20, the AG19 decision): a plain-chat reply is shown as it is; a longer one is one paragraph — never a further model call", async () => {
   assert.equal(needsLayout("可以，周五前发就行。", "zh"), false);
   assert.equal(needsLayout("可以。周五前发就行。", "zh"), false);
   assert.equal(needsLayout("先准备报价。再准备案例。最后确认时间。", "zh"), true);
@@ -251,18 +251,14 @@ test("D4: a plain-chat reply of one or two sentences is shown as it is; a longer
   const message = "第一次拜访客户要准备什么？";
   const long = "建议先把对方的业务和最近的动态看一遍。**然后**准备一页自己的介绍，带上两个相近的案例。最后想好这次拜访想拿到的下一步，比如约下一次演示。";
   const understood = () => json({ language: "zh", parts: [part({ sourceQuote: message })], plainChat: true, reply: long });
-  // The answer step writes it in the structure: one more call, the layout is code's.
-  const laid = deepseekStub(byNode({ answer: () => json({ segments: [{ body: [{ points: [{ head: "了解对方", text: "把业务和最近的动态看一遍。" }, { head: "自己的介绍", text: "一页纸，带两个相近的案例。" }] }], lead: "先了解对方，再准备介绍和想要的下一步。", partId: "p1" }] }), understand: understood }));
-  const first = await runAgentGraph(graphKit(laid.fetchImplementation, { now: NOW }).deps, graphKit(laid.fetchImplementation, { now: NOW }).input(message));
-  assert.deepEqual(first.blocks.map((block) => block.type), ["conclusion", "points"]);
-  assert.equal(laid.calls.filter((call) => call.node === "answer").length, 1);
-  // That call fails: the reply itself is delivered as a paragraph, symbols out — never lost, never a failure.
-  const failing = deepseekStub(byNode({ answer: () => "not json", understand: understood }));
-  const kit = graphKit(failing.fetchImplementation, { now: NOW });
+  // No answer call (byNode throws on one): the reply itself is delivered as one paragraph, symbols out.
+  const plain = deepseekStub(byNode({ understand: understood }));
+  const kit = graphKit(plain.fetchImplementation, { now: NOW });
   const second = await runAgentGraph(kit.deps, kit.input(message));
+  assert.equal(plain.calls.length, 1, "the first layer's call only");
   assert.deepEqual(second.partResults.map((item) => item.status), ["answered"]);
   assert.equal(second.text, long.replace(/\*\*/gu, ""));
-  assert.deepEqual(second.blocks.map((block) => block.type), ["paragraph"]);
+  assert.deepEqual(second.blocks, [{ text: long.replace(/\*\*/gu, ""), type: "paragraph" }]);
   // A short reply: no second call.
   const short = deepseekStub(byNode({ understand: () => json({ language: "zh", parts: [part({ sourceQuote: message })], plainChat: true, reply: "可以，周五前发就行。" }) }));
   const shortKit = graphKit(short.fetchImplementation, { now: NOW });

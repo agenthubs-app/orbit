@@ -119,7 +119,8 @@ test("all visible area files pass the checker", () => {
   const cases = files.flatMap((file) => file.cases);
   // AG19 added the ANS area (answer layout and record cards).
   assert.equal(files.length, 22);
-  assert.equal(cases.length, 243);
+  // Hotfix 2026-11-20 added AE-RD-011～013.
+  assert.equal(cases.length, 246);
   assert.deepEqual(checkAreaFiles(files, context), []);
 });
 

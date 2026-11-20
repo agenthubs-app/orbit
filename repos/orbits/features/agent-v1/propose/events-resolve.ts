@@ -82,7 +82,7 @@ const ATTEND_DELETE = /(一起删|也删|一并删|删掉|删了|删除|一緒�
 const ATTEND_MOVE = /(转到|移到|改到另一场|挪到|別のイベントに移|\bmove (?:it )?to\b)/iu;
 const ATTEND_WORD = /(自述|我去过|去过|参会|参加记录|参加了的记录|行った|参加記録|\battendance\b|\bi went\b)/iu;
 
-const NOISE = /[\s「」『』"“”'’()（）,，。.、!！?？:：·•@]|这场|那场|这次|那次|这个|那个|私人活动|私人|活动|日程|待办|的|イベント|予定|タスク|\bthe\b|\bevent\b|\bmy\b/giu;
+const NOISE = /[\s「」『』"“”'’()（）,，。.、!！?？:：·•@]|这场|那场|这次|那次|这个|那个|私人活动|私人|活动|日程|待办|代办|的|イベント|予定|タスク|\bthe\b|\bevent\b|\bmy\b/giu;
 const squash = (text: string) => text.toLowerCase().replace(NOISE, "");
 
 interface EventCandidate { ref: { kind: "platform" | "private"; id: string }; title: string; startsAt: string | null }
