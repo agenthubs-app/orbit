@@ -17,9 +17,9 @@ const EVERYTHING = [...MCP_SCOPES];
 
 test("each kind of record has a fixed list of output fields, with no place for an e-mail address or a phone number", () => {
   const expected: Record<string, { plain: string[]; text: string[] }> = {
-    attendance: { plain: ["attended_on", "day_parts", "ends_at", "starts_at"], text: ["event_title", "location", "note"] },
+    attendance: { plain: ["all_day", "attended_on", "day_parts", "ends_at", "starts_at"], text: ["event_title", "location", "note"] },
     contacts: { plain: ["stage"], text: ["company", "name", "role", "tags"] },
-    events: { plain: ["ends_at", "kind", "starts_at"], text: ["location", "title"] },
+    events: { plain: ["all_day", "ends_at", "kind", "starts_at"], text: ["location", "title"] },
     memos: { plain: ["contact_ids", "created_at", "event_refs"], text: ["body", "title"] },
     schedule: { plain: ["all_day", "category", "contact_ids", "ends_at", "event_refs", "kind", "meeting_method", "memo_ids", "recurrence", "starts_at", "time_zone"], text: ["details", "location", "title"] },
     todos: { plain: ["category", "completed_at", "contact_ids", "created_at", "due_at", "event_refs", "planned_date", "status"], text: ["notes", "title"] },

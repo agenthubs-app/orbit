@@ -36,7 +36,8 @@ interface Projection {
 
 const PROJECTIONS: Record<McpDomain, Projection> = {
   attendance: {
-    plain: { attendedOn: "attended_on", dayParts: "day_parts", endsAt: "ends_at", startsAt: "starts_at" },
+    // `all_day`: the event the note is about is an all-day one (its starts_at is that day's midnight, not a time).
+    plain: { allDay: "all_day", attendedOn: "attended_on", dayParts: "day_parts", endsAt: "ends_at", startsAt: "starts_at" },
     text: { location: "location", selfNote: "note", title: "event_title" },
   },
   contacts: {
@@ -45,7 +46,9 @@ const PROJECTIONS: Record<McpDomain, Projection> = {
     text: { company: "company", displayName: "name", headline: "role", tags: "tags" },
   },
   events: {
-    plain: { endsAt: "ends_at", kind: "kind", startsAt: "starts_at" },
+    // `all_day` (integration 2026-11-20, AG17 × AG20a): an all-day private event, as the schedule projection marks an
+    // all-day item. Present only when true; an event with a time of day goes out as before.
+    plain: { allDay: "all_day", endsAt: "ends_at", kind: "kind", startsAt: "starts_at" },
     text: { location: "location", title: "title" },
   },
   memos: {
