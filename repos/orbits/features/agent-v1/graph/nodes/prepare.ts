@@ -21,6 +21,7 @@ import { dayWordsOf, localParts } from "../../functions/copy";
 import { emitTrace } from "../../observability/trace";
 import type { NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
+import { localMidnight } from "./resolve";
 
 const PREPARE = /(准备|準備|用意|\bprepar)/iu;
 const MEETINGS = /(会面|见面|会议|开会|约会|活动|日程|安排|面会|打ち合わせ|ミーティング|会議|イベント|予定|\bmeetings?\b|\bevents?\b|\bappointments?\b|\bcalls?\b)/iu;
@@ -87,6 +88,17 @@ async function quietly<T, F = T>(work: Promise<T>, fallback: F): Promise<T | F> 
   }
 }
 
+/**
+ * Whether an item is still coming up. A timed item until it starts. An all-day item (AG20a's private events; a schedule
+ * item) until the end of its day in the user's time zone — it is stored at that day's midnight, so by its start alone it
+ * would be "over" all through its own day (integration of the hotfix and AG20a, 2026-11-20).
+ */
+export function comesUp(startsAt: string, allDay: boolean | null | undefined, now: string, timeZone: string): boolean {
+  if (!allDay) return startsAt >= now;
+  const dayAfter = new Date(Date.parse(`${localParts(startsAt, timeZone).day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+  return Date.parse(now) < Date.parse(localMidnight(dayAfter, timeZone));
+}
+
 export async function preparePart(scope: NodeScope, state: AgentGraphState, part: GraphPart): Promise<void> {
   const { deps, input, run } = scope;
   const records = deps.records!;
@@ -100,11 +112,23 @@ export async function preparePart(scope: NodeScope, state: AgentGraphState, part
   // 1. The next schedule items in the horizon, each as its occurrence.
   const schedulePages = await quietly(readPages(records.reader, "schedule", account, { from: now, to: until }, 1), { complete: true, items: [] as RecordView[], pagesRead: 0, partialReasons: [], total: 0, withheld: 0 });
   const occurrences = new Map<string, string>();
-  const upcoming = schedulePages.items.filter((view) => {
-    const at = occurrenceIn(String(view.fields.startsAt), typeof view.fields.recurrence === "string" ? view.fields.recurrence : undefined, now, until);
+  // An all-day item of today began at midnight, before `now`, and is still to prepare for: the all-day items whose
+  // occurrence is today are read apart (from the start of the user's day up to now) and come first.
+  const dayStart = localMidnight(localParts(now, zone).day, zone);
+  const earlierToday = dayStart < now ? await quietly(readPages(records.reader, "schedule", account, { from: dayStart, to: now }, 1), { complete: true, items: [] as RecordView[], pagesRead: 0, partialReasons: [], total: 0, withheld: 0 }) : { items: [] as RecordView[] };
+  const allDayToday = earlierToday.items.filter((view) => {
+    if (view.fields.allDay !== true) return false;
+    const at = occurrenceIn(String(view.fields.startsAt), typeof view.fields.recurrence === "string" ? view.fields.recurrence : undefined, dayStart, now);
     if (at) occurrences.set(view.ref, at);
     return Boolean(at);
   });
+  const upcoming = [...allDayToday, ...schedulePages.items.filter((view) => {
+    // Today's occurrence of an all-day item that repeats is the one listed, not next week's.
+    if (occurrences.has(view.ref)) return false;
+    const at = occurrenceIn(String(view.fields.startsAt), typeof view.fields.recurrence === "string" ? view.fields.recurrence : undefined, now, until);
+    if (at) occurrences.set(view.ref, at);
+    return Boolean(at);
+  })];
   const meetings = await quietly(occurrenceViews(records.source, account, upcoming, occurrences, zone), upcoming);
   // 2. The events the user is registered for that have not started.
   const ids = records.registeredEventIds ? await quietly(records.registeredEventIds(input.actorId), [] as readonly string[]) : [];
@@ -116,9 +140,10 @@ export async function preparePart(scope: NodeScope, state: AgentGraphState, part
   }
   // Hotfix 1c (coordinator's decision 2): the user's own private events that have not started (AG13's records), read by id
   // through the domain reader like an attached one — the same rules, the same card (🔒 私人) — and sent nowhere new.
-  const own = records.privateEvents ? await quietly(records.privateEvents.list(input.actorId), [] as readonly { id: string; startsAt: string }[]) : [];
+  const own = records.privateEvents ? await quietly(records.privateEvents.list(input.actorId), [] as readonly { id: string; startsAt: string; allDay?: boolean }[]) : [];
   for (const item of own) {
-    if (!(item.startsAt >= now && item.startsAt < until)) continue;
+    // An all-day one counts until the end of its day (comesUp), not until its midnight start.
+    if (!(comesUp(item.startsAt, item.allDay, now, zone) && item.startsAt < until)) continue;
     const view = (await quietly(records.reader.read("event", account, { id: item.id }), { items: [] as RecordView[] })).items[0];
     if (view) events.push(view);
   }
