@@ -9,6 +9,8 @@
 import { useState, type ReactNode } from "react";
 
 import { agentCardView, type AgentCardView } from "../../../../../shared/compute/agent-card-view";
+import { cardTurnedReminderOn } from "../../../../../shared/compute/agent-reminder";
+import { BrowserReminderLine } from "../account/ScheduledTaskReminder";
 import type { AgentActionPreviewContract, AgentAnswerMemoryUseContract, AgentClarificationContract, AgentResultDocument, AgentRunStage } from "../../../../../shared/contract/agent-v1";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { standardCopyFor } from "../copy/standard";
@@ -67,7 +69,11 @@ export function ConfirmationCard({ card, language, online, pendingTargets = [], 
     return <div className={styles.offline} role="status" data-orbit-agent-card="offline" data-orbit-agent-card-id={view.actionId}><b>{view.summary}</b><span>{view.hint}</span></div>;
   }
   const waiting = Boolean(view.buttons);
+  // AG16 (draft 16-2): the card is unchanged; once it has turned a task's reminder on, a line under it says whether
+  // this browser will show the reminder, with 「允许这个浏览器通知」 when it does not yet.
+  const reminderOn = cardTurnedReminderOn(card);
   return (
+    <>
     <section className={styles.card} aria-label={view.title} data-orbit-agent-card={view.status} data-orbit-agent-card-id={view.actionId} data-orbit-agent-card-revision={view.revision}>
       <div className={styles.head}><span className={`${styles.chip} ${toneClass(view.chip.tone)}`}>{view.chip.label}</span><span className={styles.title}>{view.title}</span></div>
       {view.banner ? <div className={styles.banner} role="status"><SyncIcon />{view.banner}</div> : null}
@@ -135,6 +141,8 @@ export function ConfirmationCard({ card, language, online, pendingTargets = [], 
       ) : null}
       {failed ? <span className={styles.error} role="alert">{ui.actionFailed}</span> : null}
     </section>
+    {reminderOn ? <div className={styles.afterCard} data-orbit-agent-card-reminder><BrowserReminderLine afterCard language={language} /></div> : null}
+    </>
   );
 }
 

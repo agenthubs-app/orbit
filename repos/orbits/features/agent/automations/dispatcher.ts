@@ -22,8 +22,9 @@ import {
 } from "./contract";
 import { deliverRun, type RuleDeliveryDeps } from "./delivery";
 import type { AutomationStorage, DueItem } from "./due-index";
+import { pushRun, type RulePushDeps } from "./push";
 import type { RulePeriodResult } from "./run-rule";
-import { automationRunId, createAutomationRunStore, toldRefsOf, type AgentAutomationRunRecord } from "./runs";
+import { automationRunId, createAutomationRunStore, runIdOfPushDueKey, toldRefsOf, type AgentAutomationRunRecord } from "./runs";
 import { fireAgentTimer, type AgentTimerHandlers } from "./timers";
 
 export const DISPATCH_LEASE_MS = 5 * 60_000;
@@ -35,6 +36,8 @@ export interface AutomationDispatchDeps {
   /** Computes one period of a rule under its owner's authorization (run-rule.ts). */
   runPeriod(input: { automation: AgentAutomation; ownerId: string; scheduledAt: string; told: ReadonlySet<string>; previousCardId: string | null }): Promise<RulePeriodResult>;
   delivery: RuleDeliveryDeps;
+  /** AG16: the reminder of a task whose switch is on. Not given: no device and no channel (a wanted reminder is recorded as not arrived). */
+  push?: RulePushDeps;
   timers: AgentTimerHandlers;
   now(): string;
   leaseId?(): string;
@@ -54,9 +57,27 @@ export interface AutomationDispatchSummary {
   deliveriesSent?: number;
   deliveriesCancelled?: number;
   timersFired: number;
+  /** AG16: reminder rounds run in this pass, and how many of them ended with the reminder delivered. */
+  pushRounds?: number;
+  pushesDelivered?: number;
 }
 
-const emptySummary = (): AutomationDispatchSummary => ({ claimed: 0, delivered: 0, deliveriesCancelled: 0, deliveriesRetried: 0, deliveriesSent: 0, failed: 0, needsAttention: 0, noMatch: 0, periods: 0, skippedPeriods: 0, timersFired: 0, undelivered: 0 });
+const emptySummary = (): AutomationDispatchSummary => ({ claimed: 0, delivered: 0, deliveriesCancelled: 0, deliveriesRetried: 0, deliveriesSent: 0, failed: 0, needsAttention: 0, noMatch: 0, periods: 0, pushRounds: 0, pushesDelivered: 0, skippedPeriods: 0, timersFired: 0, undelivered: 0 });
+
+/**
+ * AG16: one round of a run's reminder. Called right after its result reached the inbox, and for the reminder's own row
+ * of the due index (a retry, a receipt check, or the safety row). A reminder that fails never fails the pass, the run
+ * or the task: the result is in the inbox already.
+ */
+async function pushRound(deps: AutomationDispatchDeps, ownerId: string, runId: string, summary: AutomationDispatchSummary): Promise<void> {
+  const push: RulePushDeps = deps.push ?? { channel: null, devices: () => null, now: deps.now, storage: deps.storage };
+  try {
+    summary.pushRounds = (summary.pushRounds ?? 0) + 1;
+    if ((await pushRun(push, { ownerId, runId })) === "delivered") summary.pushesDelivered = (summary.pushesDelivered ?? 0) + 1;
+  } catch (error) {
+    emitTrace({ error: error instanceof Error ? error.message : String(error), runId, type: "error", where: "automation.push" });
+  }
+}
 
 export async function dispatchDueAutomations(deps: AutomationDispatchDeps, input: { limit?: number; deadline?: number } = {}): Promise<AutomationDispatchSummary> {
   const summary = emptySummary();
@@ -75,11 +96,18 @@ export async function dispatchDueAutomations(deps: AutomationDispatchDeps, input
       try {
         if (item.kind === "rule") await runRuleItem(deps, item, leaseId, now, summary);
         else if (item.kind === "delivery") {
+          const pushOf = runIdOfPushDueKey(item.key);
+          if (pushOf) {
+            // AG16: the reminder's own row — only the reminder; the result is not delivered or worked out again.
+            await pushRound(deps, item.ownerId, pushOf, summary);
+            continue;
+          }
           summary.deliveriesRetried += 1;
           const state = await deliverRun(deps.delivery, { ownerId: item.ownerId, runId: item.key });
           if (state === "delivered") {
             summary.delivered += 1;
             summary.deliveriesSent = (summary.deliveriesSent ?? 0) + 1;
+            await pushRound(deps, item.ownerId, item.key, summary);
           } else if (state === "cancelled") summary.deliveriesCancelled = (summary.deliveriesCancelled ?? 0) + 1;
         } else await fireTimerItem(deps, item, now, summary);
       } catch (error) {
@@ -128,7 +156,9 @@ async function runRuleItem(deps: AutomationDispatchDeps, item: DueItem, leaseId:
   let run = await runs.get(item.ownerId, runId);
   const next = nextAgentRulePeriod(schedule, validUntil, due.scheduledAt);
   if (!run) {
-    const history = (await runs.list(item.ownerId, automation.automationId, 200)).filter((earlier) => earlier.version === item.version);
+    // AG16: a version made by changing the reminder switch alone keeps what earlier versions told (rule.toldFromVersion).
+    const toldFrom = Math.min(item.version, Number(automation.rule?.toldFromVersion ?? item.version));
+    const history = (await runs.list(item.ownerId, automation.automationId, 200)).filter((earlier) => earlier.version >= toldFrom && earlier.version <= item.version);
     let result: RulePeriodResult;
     try {
       result = await runWithTraceContext({ requestId: `rule-run:${runId}` }, () => deps.runPeriod({
@@ -209,6 +239,8 @@ async function runRuleItem(deps: AutomationDispatchDeps, item: DueItem, leaseId:
   if (run.delivery.inbox.state === "pending") {
     const state = await deliverRun(deps.delivery, { ownerId: item.ownerId, runId });
     if (state === "delivered" && outcome === "undelivered") outcome = "delivered";
+    // AG16: the result is in the inbox; a task whose reminder is on gets its one reminder now.
+    if (state === "delivered" && run.delivery.push.state === "pending") await pushRound(deps, item.ownerId, runId, summary);
   }
   if (outcome === "delivered") summary.delivered += 1;
   else if (outcome === "no_match") summary.noMatch += 1;

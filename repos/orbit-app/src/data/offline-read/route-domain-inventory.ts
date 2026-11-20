@@ -820,6 +820,8 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/me/scheduled-tasks-api.ts","POST","/api/agent/automations"],
   ["src/screens/me/scheduled-tasks-api.ts","PATCH","/api/agent/automations/:id"],
   ["src/screens/me/scheduled-tasks-api.ts","DELETE","/api/agent/automations/:id"],
+  // agent-design AG16: a task's own reminder switch (online-only, like the rest of the task page).
+  ["src/screens/me/scheduled-tasks-api.ts","PUT","/api/agent/automations/:id/reminder"],
   // R11a 人脈（一覧・連絡先詳細・編集・削除）。
   ["src/screens/network/ContactEditScreen.tsx","GET","/api/contacts/:id"],
   ["src/screens/network/ContactEditScreen.tsx","PATCH","/api/contacts/:id"],

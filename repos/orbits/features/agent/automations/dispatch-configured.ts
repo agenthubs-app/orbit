@@ -12,6 +12,7 @@ import { createConfiguredInboxRuntime } from "../../notifications/inbox-record-s
 import type { MaintenanceTask } from "../../operations/maintenance/pass";
 import { createOrbitAgentRuntimeService } from "../runtime/service-factory";
 import { dispatchDueAutomations, type AutomationDispatchDeps, type AutomationDispatchSummary } from "./dispatcher";
+import { configuredRulePushDeps } from "./push-configured";
 import { configuredRuleRecall } from "./recall-seam";
 import { runRulePeriod, type RuleCardAccess } from "./run-rule";
 import { configuredAutomationStorage } from "./service-factory";
@@ -49,6 +50,8 @@ export function configuredAutomationDispatchDeps(now: () => string = () => new D
       visible: (ownerId, refs) => records.visible(ownerId, refs),
     },
     now,
+    // AG16: the reminder of a task whose own switch is on — the owner's phones and browsers, through Expo and Web Push.
+    push: configuredRulePushDeps(storage, now),
     runPeriod: (input) => runRulePeriod({ cards: cardsFor(input.ownerId), judgment, now, recall, records, workspaceId: storage.workspaceId }, input),
     storage,
     timers: {

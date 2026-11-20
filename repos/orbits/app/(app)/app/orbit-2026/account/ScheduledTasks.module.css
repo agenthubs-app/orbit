@@ -33,7 +33,8 @@
 .boxLink { color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); text-decoration: none; }
 .section { display: grid; gap: 0; padding: 18px 24px; border-radius: var(--r-card-web); background: var(--surface); min-width: 0; }
 .sectionHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 8px; }
-.sectionHead h2 { margin: 0; font-size: var(--fs-emph); font-weight: var(--fw-bold); }
+.sectionHead h2 { margin: 0; font-size: var(--fs-emph); font-weight: var(--fw-bold); white-space: nowrap; }
+.sectionHead .sectionMeta { text-align: right; }
 .sectionMeta { margin: 0; color: var(--ink-2); font-size: var(--fs-meta); }
 .roundButton { min-width: 44px; min-height: 44px; padding: 0 12px; border-radius: var(--r-pill); background: var(--surface-3); color: var(--ink); font-weight: var(--fw-bold); border: 0; cursor: pointer; }
 .fact { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
@@ -50,6 +51,32 @@
 .skipped { margin: 2px 0 6px; padding: 10px 14px; border-radius: var(--r-chip); background: var(--surface-3); color: var(--ink-2); font-size: var(--fs-body-sm); line-height: 1.55; }
 .earlier { justify-self: start; margin-top: 8px; padding: 6px 0; border: 0; background: none; color: var(--ink); font-weight: var(--fw-bold); cursor: pointer; }
 .bottom { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+
+/* AG16 (draft 16-1, 16-3, 16-4): the reminder block, this browser's line, the history's second line, the list marker. */
+.reminder { display: grid; gap: 14px; padding: 18px 24px; border-radius: var(--r-card-web); background: var(--surface); min-width: 0; }
+.reminderHead { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.reminderMain { display: grid; gap: 4px; min-width: 0; }
+.reminderTitle { font-size: var(--fs-emph); font-weight: var(--fw-bold); line-height: 1.45; }
+.reminderSub { color: var(--ink-2); font-size: var(--fs-body-sm); line-height: 1.55; }
+.dev { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 12px; align-items: start; padding: 14px 16px; border-radius: var(--r-md); background: var(--surface-2); }
+.devIcon { display: grid; place-items: center; width: 24px; height: 24px; border-radius: var(--r-pill); background: var(--surface-3); color: var(--ink-2); font-size: var(--fs-meta); font-style: normal; font-weight: var(--fw-bold); }
+.devOk .devIcon { background: var(--mac-teal); color: var(--mac-teal-text); }
+.devNo .devIcon { background: var(--coral-soft); color: var(--coral-text); }
+.devText { display: grid; gap: 4px; min-width: 0; font-size: var(--fs-body-sm); line-height: 1.6; }
+.devText b { color: var(--ink); font-weight: var(--fw-bold); overflow-wrap: anywhere; }
+.devText > span { color: var(--ink-2); overflow-wrap: anywhere; }
+.devButtons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.devButton { min-height: 40px; padding: 0 16px; border: 0; border-radius: var(--r-pill); background: var(--ink); color: var(--surface); font: inherit; font-size: var(--fs-body-sm); font-weight: var(--fw-bold); cursor: pointer; }
+.devButtonLine { min-height: 40px; padding: 0 16px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--fs-body-sm); font-weight: var(--fw-bold); cursor: pointer; }
+.devButton:disabled, .devButtonLine:disabled, .devLink:disabled { opacity: 0.55; cursor: default; }
+.devLink { padding: 0; border: 0; background: none; color: var(--accent-text); font: inherit; font-weight: var(--fw-bold); cursor: pointer; }
+.devSteps { margin: 4px 0 0; padding-left: 20px; color: var(--ink-2); }
+.historyLines { display: grid; gap: 2px; min-width: 0; }
+.pushLine { font-size: var(--fs-body-sm); line-height: 1.55; overflow-wrap: anywhere; color: var(--ink-2); }
+.pushDelivered { color: var(--mac-teal-text); }
+.pushDelivered .pushText { color: var(--ink-2); }
+.pushMissed { color: var(--coral-text); font-weight: var(--fw-bold); }
+.listMarker { color: var(--ink-2); white-space: nowrap; }
 
 /* the form */
 .formRow { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px 0; border-top: 1px solid var(--line); }
@@ -84,4 +111,6 @@
   .formLabel { padding-top: 0; }
   .historyRow { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .detailHead { margin-top: 0; }
+  .reminder { padding: 14px 16px; }
+  .reminderHead { align-items: flex-start; }
 }

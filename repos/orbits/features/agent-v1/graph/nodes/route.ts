@@ -22,7 +22,8 @@ import { clueWords, needsDirections, objectOf, pageKindOf } from "./clarify";
 import { clueSearchWords } from "./resolve";
 import { needsIntentReview, reviewWriteIntent } from "../../judgment/intent-review";
 import { organizeMeansSummary } from "./functions";
-import { RECURRING_ASK, recurrenceSaidIn, RULE_NOUN, RULE_QUALIFIER, stateVerbSaidIn } from "../../rule/parse";
+import { pushSaidIn, RECURRING_ASK, recurrenceSaidIn, RULE_NOUN, RULE_QUALIFIER, stateVerbSaidIn } from "../../rule/parse";
+import { reminderSaidIn } from "../../rule/reminder";
 import { contactKindOf } from "../../propose/resolve";
 import { capabilityKind, type Capability } from "../../route/capabilities";
 import type { NextStep } from "../../clarify/next-step";
@@ -96,6 +97,12 @@ export function isRuleRequest(part: Pick<GraphPart, "capabilities" | "continues"
   const calendar = part.capabilities.some((capability) => capability.startsWith("schedule.")) || CALENDAR_WORDS.test(quote);
   if (tagged && !calendar && (recurring || (RULE_NOUN.test(quote) && stateVerbSaidIn(quote) !== null))) return true;
   if (tagged && RULE_NOUN.test(quote) && stateVerbSaidIn(quote) !== null) return true;
+  // AG16: turning a task's reminder on or off ("这个定时任务以后在手机上提醒我", "turn off notifications for that task") is a
+  // change of the task — it gets a card like any other change. Read by code: the words ask for or call off a reminder,
+  // and speak of a task — a scheduled task named as such, or (when the first layer named a rule capability) "任务 / task".
+  // A sentence that only says how a task made in the same message should tell the user ("不用推送，先跑到 11 月底") names
+  // no task: it stays that task's qualifier (qualifiesRuleOf).
+  if (!calendar && (pushSaidIn(quote) ?? reminderSaidIn(quote)) !== null && (RULE_NOUN.test(quote) || (tagged && /(任务|タスク|\btasks?\b)/iu.test(quote)))) return true;
   if (!recurring || calendar) return false;
   return RECURRING_ASK.test(quote) && part.capabilities.some((capability) => capability === "event.read" || capability === "contact.read" || capability === "todo.read" || capability === "fn.rank" || capability.startsWith("rule."));
 }

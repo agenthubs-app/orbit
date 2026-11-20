@@ -12,11 +12,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { AgentReferenceCandidateContract, AgentScheduledTaskContract, AgentScheduledTaskFormContract, AgentScheduledTaskHistoryContract, AgentScheduledTaskRunContract } from "../../../../../shared/contract/agent-v1";
+import { namesResultTime, reminderLineOf, showsReminderLines } from "../../../../../shared/compute/agent-reminder";
 import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { Bone, Button, Chip, ConfirmDialog, Icon, MacTile, Toggle, useToast, type ChipTone } from "../ui";
 import { browserTimeZone, deleteScheduledTask, readScheduledTask, readScheduledTasks, saveScheduledTaskForm, searchNotes, setScheduledTaskRunning, TASK_LIST_KEY, taskHistoryKey } from "./scheduled-tasks-client";
 import { scheduledTaskCopy, TASK_TILE, UNIT_OF, WEEKDAYS } from "./scheduled-tasks-copy";
+import { ReminderBlock } from "./ScheduledTaskReminder";
 import s from "./ScheduledTasks.module.css";
 
 type Words = ReturnType<typeof scheduledTaskCopy>;
@@ -120,7 +122,7 @@ export function ScheduledTaskList() {
                 <MacTile emoji={tile.emoji} tone={tile.tone} size="sm" />
                 <Link prefetch className={s.taskMain} href={taskHref(task.id)}>
                   <b className={s.taskTitle}>{task.title}</b>
-                  <span className={s.taskLine}>{task.summary?.schedule}</span>
+                  <span className={s.taskLine}>{task.summary?.schedule}{task.notify.push ? <span className={s.listMarker} data-orbit-scheduled-reminder-marker>{" · "}{t("reminderMarker")}</span> : null}</span>
                   {task.summary?.status ? <span className={s.taskLine}><StatusLine text={task.summary.status} /></span> : null}
                   {task.summary?.attention ? <span className={s.attention}>{task.summary.attention}</span> : null}
                 </Link>
@@ -142,17 +144,23 @@ export function ScheduledTaskList() {
 
 const FIRST_RUNS = 6;
 
-function HistoryRow({ run, t }: { run: AgentScheduledTaskRunContract; t: Words }) {
+/** AG16 (16-4): with reminders, a second line says whether the reminder arrived — apart from when the result was ready. */
+function HistoryRow({ run, t, reminderLines = false }: { run: AgentScheduledTaskRunContract; t: Words; reminderLines?: boolean }) {
   const display = run.display;
   const opens = display?.opens ?? null;
   const strong = run.outcome === "delivered";
+  const reminder = reminderLines ? reminderLineOf(run) : null;
+  const time = display?.time ? (namesResultTime(run, reminderLines) ? `${t("resultAt")} ${display.time} · ` : `${display.time} · `) : "";
   return (
     <>
       <div className={s.historyRow} data-orbit-scheduled-run={run.runId}>
         <span className={s.historyDay}>{display?.day ?? run.scheduledAt.slice(0, 10)}</span>
-        <span className={strong ? s.historyStrong : s.historyText}>
-          {display?.time ? `${display.time} · ` : ""}{display?.text ?? run.line}
-          {opens ? <Link prefetch className={s.historyLink} href={inboxHrefOf(opens === "card" ? run.cardId ?? run.runId : run.runId)}>{opens === "card" ? t("seeCard") : t("seeResult")} ›</Link> : null}
+        <span className={s.historyLines}>
+          <span className={strong ? s.historyStrong : s.historyText}>
+            {time}{display?.text ?? run.line}
+            {opens ? <Link prefetch className={s.historyLink} href={inboxHrefOf(opens === "card" ? run.cardId ?? run.runId : run.runId)}>{opens === "card" ? t("seeCard") : t("seeResult")} ›</Link> : null}
+          </span>
+          {reminder ? <span className={`${s.pushLine} ${reminder.tone === "delivered" ? s.pushDelivered : reminder.tone === "missed" ? s.pushMissed : ""}`} data-orbit-scheduled-push={reminder.tone}>{reminder.tone === "delivered" ? <>✓ <span className={s.pushText}>{reminder.text}</span></> : reminder.text}</span> : null}
         </span>
       </div>
       {display?.skippedNote ? <div className={s.skipped}>{display.skippedNote}</div> : null}
@@ -195,8 +203,10 @@ export function ScheduledTaskDetail({ id, onTitle }: { id: string; onTitle(title
   if (!history) return failed ? <div className={s.retry} role="alert">{t("loadFailed")} <Button size="sm" label={t("retry")} onClick={() => setAttempt((n) => n + 1)} /></div> : <DetailSkeleton />;
   const { task, runs } = history;
   const status = statusOf(task, t);
-  const facts = task.rows.filter((row) => row.field !== "nextRunAt");
+  // AG16 (16-1): with the reminder on, the reminder block says how you are told; the fact row is not repeated.
+  const facts = task.rows.filter((row) => row.field !== "nextRunAt" && !(row.field === "notify" && task.notify.push));
   const shownRuns = allRuns ? runs : runs.slice(0, FIRST_RUNS);
+  const reminderLines = showsReminderLines(task, runs);
   const remove = async () => {
     setBusy(true);
     try {
@@ -226,7 +236,8 @@ export function ScheduledTaskDetail({ id, onTitle }: { id: string; onTitle(title
           {task.last ? <><b className={s.boxValue}>{task.last.when}：{task.last.text}</b>{task.last.opens ? <Link prefetch className={s.boxLink} href={inboxHrefOf(task.last.opens === "card" ? task.lastRun?.cardId ?? task.last.runId : task.last.runId)}>{t("inInbox")} ›</Link> : null}</> : <b className={s.boxValue}>{t("noLast")}</b>}
         </div>
       </div>
-      {/* AG16 (draft 16-1): the reminder block 「有新结果时提醒我」 goes here, between the next/last boxes and 「这条任务怎么跑」. */}
+      {/* AG16 (draft 16-1): the reminder block, between the next/last boxes and 「这条任务怎么跑」. An ended task runs no more. */}
+      {task.status === "completed" ? null : <ReminderBlock task={task} runs={runs} language={language} onChanged={() => setAttempt((n) => n + 1)} />}
       {editing && task.form ? (
         <ScheduledTaskForm initial={task.form} id={task.id} zoneNote={task.rows.find((row) => row.field === "schedule")?.note ?? null} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); setAttempt((n) => n + 1); toast.success(t("saved")); }} />
       ) : (
@@ -241,8 +252,8 @@ export function ScheduledTaskDetail({ id, onTitle }: { id: string; onTitle(title
         </section>
       )}
       <section className={s.section} aria-label={t("history")}>
-        <div className={s.sectionHead}><h2>{t("history")}</h2><span className={s.sectionMeta}>{t("perRun")}</span></div>
-        {runs.length ? shownRuns.map((run) => <HistoryRow key={run.runId} run={run} t={t} />) : <p className={s.sectionMeta}>{t("noHistory")}</p>}
+        <div className={s.sectionHead}><h2>{t("history")}</h2><span className={s.sectionMeta}>{reminderLines ? t("twoThings") : t("perRun")}</span></div>
+        {runs.length ? shownRuns.map((run) => <HistoryRow key={run.runId} run={run} t={t} reminderLines={reminderLines} />) : <p className={s.sectionMeta}>{t("noHistory")}</p>}
         {!allRuns && runs.length > FIRST_RUNS ? <button type="button" className={`btn ${s.earlier}`} onClick={() => setAllRuns(true)}>{t("earlier")} ›</button> : null}
       </section>
       <div className={s.bottom}>

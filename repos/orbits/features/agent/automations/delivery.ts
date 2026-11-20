@@ -14,8 +14,11 @@ import type { InboxNotificationUpsert } from "../../notifications/inbox-record-s
 import { emitTrace, takeEvalFault } from "../../agent-v1/observability/trace";
 import type { AgentAutomation } from "./contract";
 import type { AutomationStorage } from "./due-index";
-import { createAutomationRunStore, type AgentAutomationRunRecord } from "./runs";
+import { createAutomationRunStore, pushCalledOff, pushDueKeyOf, type AgentAutomationRunRecord } from "./runs";
 import { runInboxTitle } from "./task-view";
+
+/** AG16: how long after the inbox delivery the reminder's own row comes due if the pass did not send it at once. */
+const PUSH_ROW_DELAY_MS = 5 * 60_000;
 
 export type RuleInboxWriter = (entry: InboxNotificationUpsert) => Promise<Pick<InboxNotificationDTO, "id">>;
 
@@ -93,6 +96,11 @@ export async function deliverRun(deps: RuleDeliveryDeps, ref: { ownerId: string;
     await createAutomationRunStore(tx.store, storage.workspaceId).save(next);
     if (again) await tx.due.put({ definition: { automationId: run.automationId, version: run.version }, key: ref.runId, kind: "delivery", nextRunAt: again, ownerId: ref.ownerId, status: "active", updatedAt: now, version: run.version });
     else await tx.due.remove(dueRef);
+    // AG16: the result is in the inbox and its reminder is still to go out — the reminder's row is written in the same
+    // transaction, so a pass that dies right here does not lose it (the dispatcher sends at once; this row is the net).
+    if (next.delivery.inbox.state === "delivered" && next.delivery.push.state === "pending") {
+      await tx.due.put({ definition: { automationId: run.automationId, channel: "push", version: run.version }, key: pushDueKeyOf(ref.runId), kind: "delivery", nextRunAt: new Date(Date.parse(now) + PUSH_ROW_DELAY_MS).toISOString(), ownerId: ref.ownerId, status: "active", updatedAt: now, version: run.version });
+    }
   });
 
   // Looked at again before every send: the rule's state and owner, and the owner's right to read what it references.
@@ -108,7 +116,8 @@ export async function deliverRun(deps: RuleDeliveryDeps, ref: { ownerId: string;
     }
   }
   if (cancel) {
-    await finish({ ...run, delivery: { ...run.delivery, inbox: { ...run.delivery.inbox, cancelReason: cancel, lastAttemptAt: now, state: "cancelled" } } }, null);
+    // AG16: a reminder that was waiting for this result is called off with it.
+    await finish({ ...run, delivery: { inbox: { ...run.delivery.inbox, cancelReason: cancel, lastAttemptAt: now, state: "cancelled" }, push: pushCalledOff(run.delivery.push, now) } }, null);
     emitTrace({ automationId: run.automationId, outcome: "cancelled", reason: cancel, runId: run.runId, scheduledAt: run.scheduledAt, type: "notify.inbox" });
     return "cancelled";
   }

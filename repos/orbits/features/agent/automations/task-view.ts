@@ -9,7 +9,7 @@ import { checkTimeWords, countWords, nextRunWords, zoneWords, type RuleSchedule 
 import { dayText } from "../runtime/todo-operations";
 import { agentAutomationLocalDay, agentAutomationNotify, type AgentAutomation, type AgentAutomationService } from "./contract";
 import type { AutomationStorage } from "./due-index";
-import { createAutomationRunStore, runHistoryLine, type AgentAutomationRunRecord } from "./runs";
+import { createAutomationRunStore, pushHistoryLine, runHistoryLine, type AgentAutomationRunRecord } from "./runs";
 
 type Locale = "zh" | "en" | "ja";
 type Domain = "event" | "contact" | "todo";
@@ -221,7 +221,16 @@ export function scheduledRunView(run: AgentAutomationRunRecord, locale: Locale =
     items: run.items.map((item) => ({ id: item.id, kind: item.kind, line: item.line, ref: item.ref, title: item.title, ...(item.card ? { card: item.card } : {}) })),
     line: runHistoryLine(run, locale),
     outcome: run.outcome,
-    push: { attempts: run.delivery.push.attempts, state: run.delivery.push.state, ...(run.delivery.push.deliveredAt ? { deliveredAt: run.delivery.push.deliveredAt } : {}) },
+    // AG16: the reminder, apart from the result's own line above. No ticket, token or error text leaves the server.
+    push: {
+      attempts: run.delivery.push.attempts,
+      line: pushHistoryLine(run, locale, timeZone),
+      state: run.delivery.push.state,
+      targets: (run.delivery.push.targets ?? []).map((target) => ({ deviceId: target.deviceId, platform: target.platform, state: target.state })),
+      ...(run.delivery.push.deliveredAt ? { deliveredAt: run.delivery.push.deliveredAt } : {}),
+      ...(run.delivery.push.lastAttemptAt ? { lastAttemptAt: run.delivery.push.lastAttemptAt } : {}),
+      ...(run.delivery.push.reason ? { reason: run.delivery.push.reason } : {}),
+    },
     runId: run.runId,
     scheduledAt: run.scheduledAt,
     skipped: run.skipped,

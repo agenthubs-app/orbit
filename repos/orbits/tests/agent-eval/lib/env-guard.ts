@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createECDH, createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { parseEnv } from "node:util";
@@ -85,6 +85,13 @@ export interface EvalEnvironment {
  * The eval server's environment. Throws before anything starts when the database is not the local
  * `orbit_agent_eval`, the port is the dev server's, or the process looks like a Vercel/production one.
  */
+/** AG16: a VAPID key pair for the local simulator only, derived on this machine (CONVENTIONS §2: keys never enter the repo). */
+export function evalVapidKeys(secret: string): { ORBIT_WEB_PUSH_VAPID_PUBLIC_KEY: string; ORBIT_WEB_PUSH_VAPID_PRIVATE_KEY: string } {
+  const ecdh = createECDH("prime256v1");
+  ecdh.setPrivateKey(createHash("sha256").update(`agent-eval-vapid\u0000${secret}`).digest());
+  return { ORBIT_WEB_PUSH_VAPID_PRIVATE_KEY: ecdh.getPrivateKey().toString("base64url"), ORBIT_WEB_PUSH_VAPID_PUBLIC_KEY: ecdh.getPublicKey().toString("base64url") };
+}
+
 export function buildEvalEnvironment(processEnv: Record<string, string | undefined>, fileEnv: Record<string, string>, options: { port?: number; worker?: number } = {}): EvalEnvironment {
   if (processEnv.VERCEL_ENV === "production" || fileEnv.VERCEL_ENV === "production") throw new EvalEnvironmentError("Refusing to start the agent eval with VERCEL_ENV=production.");
   if (processEnv.VERCEL || fileEnv.VERCEL) throw new EvalEnvironmentError("Refusing to start the agent eval with VERCEL set.");
@@ -146,6 +153,11 @@ export function buildEvalEnvironment(processEnv: Record<string, string | undefin
     ORBIT_BATCH_UPLOAD_DIR: paths.batchUploads,
     ORBIT_EXPO_PUSH_ENDPOINT: `http://127.0.0.1:${port}/__agent-eval/push/expo/send`,
     ORBIT_EXPO_PUSH_RECEIPT_ENDPOINT: `http://127.0.0.1:${port}/__agent-eval/push/expo/receipts`,
+    // AG16: the Expo adapter needs a token to be configured at all; the simulator never looks at it. Browser reminders
+    // need a VAPID key pair: made on this machine from the eval's own auth secret, never written to a file or the repo.
+    ORBIT_EXPO_PUSH_ACCESS_TOKEN: "agent-eval-simulated",
+    ...evalVapidKeys(fileEnv.AUTH_SECRET ?? ""),
+    ORBIT_WEB_PUSH_SUBJECT: "mailto:agent-eval@orbit.test",
     // AG15: scheduler_tick calls the product's dispatch entry as a scheduler would; the entry needs its bearer secret.
     // Derived from the eval's own auth secret (the env file may set one); the runner and the eval server share it.
     CRON_SECRET: fileEnv.CRON_SECRET?.trim() || createHash("sha256").update(`agent-eval-dispatch\u0000${fileEnv.AUTH_SECRET ?? ""}`).digest("hex"),

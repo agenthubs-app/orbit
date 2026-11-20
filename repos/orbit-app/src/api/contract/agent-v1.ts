@@ -791,7 +791,7 @@ export interface AgentScheduledTaskRunContract {
   /** 需处理时的原因说明（服务端写好），例如引用的笔记读不到了。 */
   attention?: { reason: "reference_unreadable"; message: string; referenceTitle?: string | undefined } | undefined;
   /** 推送提醒的投递（AG16 起使用；AG15 只记这条任务有没有开提醒）。 */
-  push: { state: "not_requested" | "pending" | "delivered" | "failed"; attempts: number; deliveredAt?: string | undefined };
+  push: { state: "not_requested" | "pending" | "delivered" | "failed" | "skipped"; attempts: number; deliveredAt?: string | undefined; lastAttemptAt?: string | undefined; reason?: AgentScheduledTaskPushReason | undefined; line?: string | null | undefined; targets?: readonly AgentScheduledTaskPushTargetContract[] | undefined };
   /**
    * AG15 界面（获批视觉稿 15-4「历史里每种情况怎么写」）：历史里这一期怎么显示，服务端按任务语言写好。day 这一期的日子；
    * time 算完的时刻（重试过的写在 text 里，这里为 null）；skippedNote 中间跳过了几期的那一行；opens 点开看什么。
@@ -856,4 +856,49 @@ export interface AgentScheduledTaskHistoryContract {
   task: AgentScheduledTaskContract;
   /** 最近的在前。 */
   runs: readonly AgentScheduledTaskRunContract[];
+}
+
+// ── AG16：定时任务的提醒（设计稿 §5.3）。结果一律进站内收件箱；提醒是每条任务自己的开关。 ──
+
+/** 这一期的提醒为什么没发，或者没送到。前七种是有意不发（skipped），后五种是想发但没送到（failed）。 */
+export type AgentScheduledTaskPushReason =
+  | "quiet_hours" | "daily_cap" | "notifications_off"
+  | "reminder_off" | "rule_paused" | "rule_removed" | "result_not_sent"
+  | "no_device" | "permission_revoked" | "provider_rejected" | "outcome_unknown" | "not_configured";
+
+/** 一期的提醒发往的一台设备：只有编号、种类和状态。 */
+export interface AgentScheduledTaskPushTargetContract {
+  deviceId: string;
+  platform: "ios" | "android" | "web";
+  state: "delivered" | "retry" | "revoked" | "rejected" | "unknown";
+}
+
+/**
+ * 一期的提醒（AgentScheduledTaskRunContract.push），和算出结果的时刻（computedAt）分开记。AG16 起服务端总会带上：
+ * `line` 是写好的第二行（「提醒已送到」「提醒没送到：手机的通知被关了。结果在收件箱里。」），没有可说的时候是 null；
+ * `targets` 是这一期发往的设备；`reason` 是没发或没送到的原因；state 多了一种 skipped（有意不发）。
+ */
+export type AgentScheduledTaskRunPushContract = AgentScheduledTaskRunContract["push"];
+
+/** 页面上直接拨提醒开关（不出卡）：PUT /api/agent/automations/[id]/reminder。locale 是提醒那句话用的语言。 */
+export interface AgentScheduledTaskReminderInputContract {
+  push: boolean;
+  locale?: "zh" | "en" | "ja" | undefined;
+}
+
+/** 这台浏览器或手机在服务端登记的通知状态：GET /api/devices/push-tokens/[id]。 */
+export interface AgentPushDeviceStateContract {
+  deviceId: string;
+  platform: "ios" | "android" | "web";
+  permission: "granted" | "provisional" | "denied" | "undetermined";
+  /** 现在会不会往这台设备发。 */
+  active: boolean;
+  revokedAt?: string | undefined;
+  /** user：用户自己在这台设备上关的；provider_rejected：发提醒时推送服务拒收（通知在系统设置里被关了），服务端才发现。 */
+  revokedReason?: "user" | "provider_rejected" | undefined;
+}
+
+/** 浏览器订阅要用的公钥：GET /api/devices/web-push。publicKey 为 null 表示这个部署还没开浏览器通知。 */
+export interface AgentWebPushConfigContract {
+  publicKey: string | null;
 }

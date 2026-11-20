@@ -10,6 +10,7 @@ import { StyleSheet, TextInput, View } from "react-native";
 
 import type { AgentReferenceCandidateContract, AgentScheduledTaskContract, AgentScheduledTaskFormContract, AgentScheduledTaskHistoryContract, AgentScheduledTaskRunContract } from "../../api/contract/agent-v1";
 import { searchAgentReferences } from "../../api/agent-v1-client";
+import { namesResultTime, reminderLineOf, showsReminderLines } from "../../api/compute/agent-reminder";
 import { AppScreen } from "../../components/AppScreen";
 import { Button, Card, Chip, MacTile, Radio, Segmented, Skeleton, Toggle, UiPressable, UiText, presentConfirm, useToast, type ChipTone } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
@@ -18,6 +19,7 @@ import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { OrbitTranslator } from "../../i18n/messages";
 import { deleteScheduledTask, deviceTimeZone, readScheduledTask, readScheduledTasks, saveScheduledTaskForm, setScheduledTaskRunning } from "./scheduled-tasks-api";
+import { ReminderCard } from "./ScheduledTaskReminder";
 
 export const TASKS_PATH = "/settings/tasks";
 export const taskPath = (id: string) => `${TASKS_PATH}/${encodeURIComponent(id)}`;
@@ -90,7 +92,7 @@ export function ScheduledTasksScreen() {
             <MacTile emoji={tile.emoji} tone={tile.tone} size="sm" />
             <UiPressable accessibilityRole="button" accessibilityLabel={task.title} style={styles.taskMain} onPress={() => router.push(taskPath(task.id) as Href)}>
               <UiText style={styles.taskTitle}>{task.title}</UiText>
-              <UiText style={styles.line}>{task.summary?.schedule ?? ""}</UiText>
+              <UiText style={styles.line}>{task.summary?.schedule ?? ""}{task.notify.push ? <UiText style={styles.line} testID={`scheduled-reminder-marker-${task.id}`}>{" · "}{t("scheduledTasks.reminderMarker")}</UiText> : null}</UiText>
               {task.summary?.status ? <StatusLine text={task.summary.status} /> : null}
               {task.summary?.attention ? <UiText style={styles.attention}>{task.summary.attention}</UiText> : null}
             </UiPressable>
@@ -109,15 +111,19 @@ export function ScheduledTasksScreen() {
 
 const FIRST_RUNS = 6;
 
-function HistoryRow({ run, t, onOpen }: { run: AgentScheduledTaskRunContract; t: OrbitTranslator; onOpen(path: string): void }) {
+/** AG16 (16-4): with reminders, a second line says whether the reminder arrived — apart from when the result was ready. */
+function HistoryRow({ run, t, onOpen, reminderLines = false }: { run: AgentScheduledTaskRunContract; t: OrbitTranslator; onOpen(path: string): void; reminderLines?: boolean }) {
   const { styles } = useStyles();
   const display = run.display;
   const opens = display?.opens ?? null;
+  const reminder = reminderLines ? reminderLineOf(run) : null;
+  const time = display?.time ? (namesResultTime(run, reminderLines) ? `${t("scheduledTasks.resultAt")} ${display.time} · ` : `${display.time} · `) : "";
   return <View testID={`scheduled-run-${run.runId}`}>
     <View style={styles.historyRow}>
       <UiText style={styles.meta}>{display?.day ?? run.scheduledAt.slice(0, 10)}</UiText>
-      <UiText style={run.outcome === "delivered" ? styles.lineStrong : styles.line}>{display?.time ? `${display.time} · ` : ""}{display?.text ?? run.line}</UiText>
-      {opens ? <UiPressable accessibilityRole="link" onPress={() => onOpen(inboxPathOf(opens === "card" ? run.cardId ?? run.runId : run.runId))}><UiText style={styles.link}>{opens === "card" ? t("scheduledTasks.seeCard") : t("scheduledTasks.seeResult")} ›</UiText></UiPressable> : null}
+      <UiText style={run.outcome === "delivered" ? styles.lineStrong : styles.line}>{time}{display?.text ?? run.line}{opens && reminderLines ? <UiText accessibilityRole="link" style={styles.link} onPress={() => onOpen(inboxPathOf(opens === "card" ? run.cardId ?? run.runId : run.runId))}>{"  "}{opens === "card" ? t("scheduledTasks.seeCard") : t("scheduledTasks.seeResult")} ›</UiText> : null}</UiText>
+      {opens && !reminderLines ? <UiPressable accessibilityRole="link" onPress={() => onOpen(inboxPathOf(opens === "card" ? run.cardId ?? run.runId : run.runId))}><UiText style={styles.link}>{opens === "card" ? t("scheduledTasks.seeCard") : t("scheduledTasks.seeResult")} ›</UiText></UiPressable> : null}
+      {reminder ? <UiText testID={`scheduled-push-${reminder.tone}`} style={reminder.tone === "missed" ? styles.pushMissed : styles.pushLine}>{reminder.tone === "delivered" ? <UiText style={styles.pushTick}>✓ </UiText> : null}{reminder.text}</UiText> : null}
     </View>
     {display?.skippedNote ? <UiText style={styles.skipped}>{display.skippedNote}</UiText> : null}
   </View>;
@@ -144,6 +150,7 @@ export function ScheduledTaskScreen() {
   }, [client, id, language, version]);
   const open = useCallback((path: string) => router.push(path as Href), [router]);
   const task = history?.task;
+  const reminderLines = task && history ? showsReminderLines(task, history.runs) : false;
   const toggle = async (running: boolean) => {
     if (!task || busy) return;
     setBusy(true);
@@ -172,18 +179,19 @@ export function ScheduledTaskScreen() {
         <View style={styles.box} testID="scheduled-next"><UiText style={styles.meta}>{t("scheduledTasks.nextRun")}</UiText>{task.next ? <><UiText style={styles.boxValue}>{task.next.day}</UiText><UiText style={styles.meta}>{task.next.time}</UiText></> : <UiText style={styles.boxValue}>{t("scheduledTasks.noNext")}</UiText>}</View>
         <View style={styles.box} testID="scheduled-last"><UiText style={styles.meta}>{t("scheduledTasks.lastResult")}</UiText>{task.last ? <><UiText style={styles.boxValue}>{task.last.when}：{task.last.text}</UiText>{task.last.opens ? <UiPressable accessibilityRole="link" onPress={() => open(inboxPathOf(task.last!.opens === "card" ? task.lastRun?.cardId ?? task.last!.runId : task.last!.runId))}><UiText style={styles.link}>{t("scheduledTasks.inInbox")} ›</UiText></UiPressable> : null}</> : <UiText style={styles.boxValue}>{t("scheduledTasks.noLast")}</UiText>}</View>
       </Card>
-      {/* AG16 (draft 16-1): the reminder block 「有新结果时提醒我」 goes here, between the next/last boxes and 「这条任务怎么跑」. */}
+      {/* AG16 (draft 16-1): the reminder block, between the next/last boxes and 「这条任务怎么跑」. An ended task runs no more. */}
+      {task.status === "completed" ? null : <ReminderCard task={task} client={client} onChanged={() => setVersion((value) => value + 1)} />}
       {editing && task.form ? <ScheduledTaskForm initial={task.form} id={task.id} zoneNote={task.rows.find((row) => row.field === "schedule")?.note ?? null} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); setVersion((value) => value + 1); toast.success(t("scheduledTasks.saved")); }} /> : <Card style={styles.section}>
         <View style={styles.sectionHead}><UiText style={styles.sectionTitle}>{t("scheduledTasks.howItRuns")}</UiText>{task.form && task.status !== "completed" ? <Button label={t("scheduledTasks.edit")} size="sm" onPress={() => setEditing(true)} /> : null}</View>
-        {task.rows.filter((row) => row.field !== "nextRunAt").map((row) => <View key={row.field} style={styles.fact}>
+        {task.rows.filter((row) => row.field !== "nextRunAt" && !(row.field === "notify" && task.notify.push)).map((row) => <View key={row.field} style={styles.fact}>
           <UiText style={styles.meta}>{row.label}</UiText>
           <UiText style={styles.lineStrong}>{row.value}</UiText>
           {row.note ? <UiText style={styles.meta}>{row.note}</UiText> : null}
         </View>)}
       </Card>}
       <Card style={styles.section}>
-        <View style={styles.sectionHead}><UiText style={styles.sectionTitle}>{t("scheduledTasks.history")}</UiText><UiText style={styles.meta}>{t("scheduledTasks.perRun")}</UiText></View>
-        {history.runs.length ? (all ? history.runs : history.runs.slice(0, FIRST_RUNS)).map((run) => <HistoryRow key={run.runId} run={run} t={t} onOpen={open} />) : <UiText style={styles.meta}>{t("scheduledTasks.noHistory")}</UiText>}
+        <View style={styles.sectionHead}><UiText style={styles.sectionTitle}>{t("scheduledTasks.history")}</UiText><UiText style={[styles.meta, styles.sectionMeta]}>{reminderLines ? t("scheduledTasks.twoThings") : t("scheduledTasks.perRun")}</UiText></View>
+        {history.runs.length ? (all ? history.runs : history.runs.slice(0, FIRST_RUNS)).map((run) => <HistoryRow key={run.runId} run={run} t={t} onOpen={open} reminderLines={reminderLines} />) : <UiText style={styles.meta}>{t("scheduledTasks.noHistory")}</UiText>}
         {!all && history.runs.length > FIRST_RUNS ? <UiPressable accessibilityRole="button" onPress={() => setAll(true)}><UiText style={styles.link}>{t("scheduledTasks.earlier")} ›</UiText></UiPressable> : null}
       </Card>
       <View style={styles.row}>
@@ -314,6 +322,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sectionTitle: { color: colors.ink, fontSize: 17, fontWeight: "700" },
   fact: { borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth, gap: 2, paddingVertical: 10 },
   historyRow: { borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth, gap: 2, paddingVertical: 10 },
+  sectionMeta: { flexShrink: 1, marginLeft: 12, textAlign: "right" },
+  pushLine: { color: colors.ink2, fontSize: 13, lineHeight: 20 },
+  pushTick: { color: colors.macTealText, fontSize: 13, fontWeight: "700" },
+  pushMissed: { color: colors.coralText, fontSize: 13, fontWeight: "700", lineHeight: 20 },
   skipped: { backgroundColor: colors.surface3, borderRadius: 10, color: colors.ink2, fontSize: 13, lineHeight: 19, marginBottom: 6, padding: 12 },
   input: { backgroundColor: colors.surface2, borderColor: colors.line, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, color: colors.ink, fontSize: 16, minHeight: 44, paddingHorizontal: 12 },
   short: { minWidth: 84 },

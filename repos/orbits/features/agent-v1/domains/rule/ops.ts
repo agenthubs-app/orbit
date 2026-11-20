@@ -49,7 +49,7 @@ export interface RuleUpdateIntent {
   targetId: string;
   expectedVersion: number;
   /** Only the parameters named here change. */
-  set: { schedule?: RuleSchedule; maxItems?: number; validUntil?: string | null; notify?: { inApp: true; push: boolean } };
+  set: { schedule?: RuleSchedule; maxItems?: number; validUntil?: string | null; notify?: { inApp: true; push: boolean; pushLocale?: "zh" | "en" | "ja" } };
   shown: RuleSnapshot;
 }
 
@@ -107,8 +107,28 @@ export function validityWords(validUntil: string | null, locale: CardLocale): st
   return ({ en: `Through ${day}`, ja: `${day}まで`, zh: `到${day}为止` } as const)[locale];
 }
 
+/**
+ * agent-design AG16 (视觉稿 16-2): what a card that switches a task's reminder says under its rows — it changes this one
+ * task only, the reminder is the one fixed sentence, and the result still goes to the inbox.
+ */
+export function reminderNote(push: boolean, locale: CardLocale): string {
+  if (push) {
+    return ({
+      en: "Only this task changes. When it has a new result, your phone and your browser show one reminder that says only \"You have new results. Open Orbit to see them.\" — no event name, time or place. The result itself still goes to your inbox.",
+      ja: "変わるのはこのタスクだけです。新しい結果が出ると、スマホとブラウザに「新しい結果があります。Orbit でご確認ください。」とだけ通知します。イベント名・日時・場所は書きません。結果はこれまでどおり受信箱に届きます。",
+      zh: "只改这一条任务。之后它有新结果时，会在你的手机和浏览器上弹一条提醒，只写「有新结果，请到 Orbit 查看。」，不写活动名称、时间和地点；结果照常放进收件箱。",
+    } as const)[locale];
+  }
+  return ({
+    en: "Only this task changes. It will no longer send a reminder; its results still go to your inbox.",
+    ja: "変わるのはこのタスクだけです。今後は通知せず、結果はこれまでどおり受信箱に届きます。",
+    zh: "只改这一条任务。之后不再弹提醒，结果照常放进收件箱。",
+  } as const)[locale];
+}
+
 export function notifyWords(notify: { push: boolean }, locale: CardLocale): string {
-  if (notify.push) return ({ en: "In-app inbox, with a push reminder", ja: "アプリ内の受信箱に届け、プッシュでもお知らせ", zh: "放进站内收件箱，并推送提醒" } as const)[locale];
+  // AG16: said as what happens — a reminder on the phone and in the browser — not as "push".
+  if (notify.push) return ({ en: "In-app inbox, with a reminder on your phone and in your browser", ja: "アプリ内の受信箱に届け、スマホとブラウザにもお知らせ", zh: "放进站内收件箱，并在手机和浏览器上提醒" } as const)[locale];
   return ({ en: "In-app inbox only, no push", ja: "アプリ内の受信箱のみ（プッシュなし）", zh: "只放进站内收件箱，不推送" } as const)[locale];
 }
 
@@ -258,14 +278,16 @@ export function prepareRuleOperation(input: { intent: RuleOperationIntent & { pa
     const next = { rule: { ...shown.rule, ...(intent.set.maxItems !== undefined ? { maxItems: intent.set.maxItems } : {}), ...(intent.set.validUntil !== undefined ? { validUntil: intent.set.validUntil } : {}), ...(intent.set.notify ? { notify: intent.set.notify } : {}) }, schedule: intent.set.schedule ?? shown.schedule };
     const before = ruleRows(shown, locale, now);
     const rows = ruleRows(next, locale, now).map((row, index) => ({ ...row, before: before[index].after })).filter((row) => row.before !== row.after && (row.field !== "nextRunAt" || Boolean(intent.set.schedule) || intent.set.validUntil !== undefined));
-    const display: AgentCardOperationDisplayContract = { change: "update", record, rows };
+    const reminderChanged = intent.set.notify !== undefined && intent.set.notify.push !== shown.rule.notify.push;
+    const display: AgentCardOperationDisplayContract = { change: "update", record, rows, ...(reminderChanged ? { note: reminderNote(intent.set.notify!.push, locale) } : {}) };
     const after: Record<string, unknown> = { ...(intent.set.schedule ? { schedule: intent.set.schedule } : {}), ...(intent.set.maxItems !== undefined ? { maxItems: intent.set.maxItems } : {}), ...(intent.set.validUntil !== undefined ? { validUntil: intent.set.validUntil } : {}), ...(intent.set.notify ? { notify: { ...intent.set.notify } } : {}) };
     const beforeValues: Record<string, unknown> = { ...(intent.set.schedule ? { schedule: shown.schedule } : {}), ...(intent.set.maxItems !== undefined ? { maxItems: shown.rule.maxItems } : {}), ...(intent.set.validUntil !== undefined ? { validUntil: shown.rule.validUntil } : {}), ...(intent.set.notify ? { notify: { ...shown.rule.notify } } : {}) };
     return {
       ...common, after, before: beforeValues, capability: RULE_UPDATE, display, executorKey: RULE_UPDATE, operationType: "update_rule",
       payload: { automationId: intent.targetId, cardIntent, expectedVersion: intent.expectedVersion, set: after },
       preconditions,
-      preview: `${record}${locale === "en" ? ": " : "："}${rows.map((row) => `${row.label} ${row.before} → ${row.after}`).join(sep(locale))}`,
+      // AG16: a card that switches the reminder also says, in its text, that only this task changes and what the reminder holds.
+      preview: `${record}${locale === "en" ? ": " : "："}${rows.map((row) => `${row.label} ${row.before} → ${row.after}`).join(sep(locale))}${display.note ? `${locale === "en" ? ". " : "。"}${display.note}` : ""}`,
       shown: { title: shown.title },
       targetRef: target,
     };

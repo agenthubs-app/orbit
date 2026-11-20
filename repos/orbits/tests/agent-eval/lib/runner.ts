@@ -136,7 +136,7 @@ const DEPLOYMENT_SETTINGS = new Set(["model_calls_limit", "judgment_uncalibrated
 const MEMORY_SETTINGS = new Set(["memory_use", "memory_learn"]);
 const MEMORY_SETTING_LABEL: Record<string, string> = { memory_learn: "从对话里记住新的", memory_use: "回答时参考这些" };
 
-async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches: Record<string, any>, writer: WorldWriter, report: SeedReportFile, unsupported: Observation["unsupported"], fixtureCards: FixtureRecord[] = [], deploymentSettings: Record<string, unknown> = {}, conversations: string[] = [], memoryWritten: FixtureRecord[] = [], fixtureConnections: FixtureRecord[] = []): Promise<Record<string, string>> {
+async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches: Record<string, any>, writer: WorldWriter, report: SeedReportFile, unsupported: Observation["unsupported"], fixtureCards: FixtureRecord[] = [], deploymentSettings: Record<string, unknown> = {}, conversations: string[] = [], memoryWritten: FixtureRecord[] = [], fixtureConnections: FixtureRecord[] = [], serverPort = 0): Promise<Record<string, string>> {
   const extraIds: Record<string, string> = {};
   for (const name of testCase.patches ?? []) {
     const patch = world.patches[name] ?? filePatches[name];
@@ -174,6 +174,8 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
         // AG13: private events and «我去过».
         else if (record.kind === "private_event") await writer.writePrivateEvent(record);
         else if (record.kind === "attendance") await writer.writeAttendance(record);
+        // AG16: a phone or a browser registered for notifications (PSH.yaml push-device-app).
+        else if (record.kind === "push_device") await writer.writePushDevice(record, serverPort);
         else if (record.kind === "conversation") {
           // AG03 (CTX conv-prior-turns): the messages and the session state; the case continues this conversation.
           await writer.writeConversation(record);
@@ -189,6 +191,15 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
     }
     for (const [section, items] of Object.entries(patch.set ?? {})) {
       for (const item of items as Record<string, unknown>[]) {
+        // AG16 (rule-push-on): a rule's reminder switch, set the way the task's own page sets it.
+        if (section === "rules") {
+          try {
+            await writer.updateRule(String(item.id), String(item.account ?? world.mainAccount), item);
+          } catch (error) {
+            unsupported.push({ reason: `patch ${name}: changing ${section} ${item.id} failed: ${error instanceof Error ? error.message : error}`, step: 0, word: "patch" });
+          }
+          continue;
+        }
         // AG06 (todo-plan-and-due): a to-do's fields are changed through the to-do service before the case starts.
         if (section !== "todos") {
           unsupported.push({ reason: `patch ${name}: changing ${section} ${item.id} in place is not supported yet`, step: 0, word: "patch" });
@@ -307,7 +318,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const patchConversations: string[] = [];
   const fixtureConnections: FixtureRecord[] = [];
   const patchMemory: FixtureRecord[] = [];
-  const extraIds = await applyPatches(testCase, world, filePatches, ctx.writer, report, unsupported, fixtureCards, deploymentSettings, patchConversations, patchMemory, fixtureConnections);
+  const extraIds = await applyPatches(testCase, world, filePatches, ctx.writer, report, unsupported, fixtureCards, deploymentSettings, patchConversations, patchMemory, fixtureConnections, ctx.environment.port);
   const idMap: Record<string, string> = { ...report.ids, ...extraIds };
   const reverse = new Map(Object.entries(idMap).map(([fixture, product]) => [product, fixture]));
   const fixtureIdOf = (productId: string | null | undefined) => (productId ? reverse.get(productId) ?? null : null);
@@ -776,7 +787,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           // AG15: writing a scheduled run's result to the inbox is a fault point too (notify.inbox); it covers the next
           // scheduler_tick (SCH.yaml notes: "故障只作用于第一次派发") and ends after it.
           if (step.fault?.where === "notify.inbox") inboxFaultArmed = true;
-          if (!["model", "understand", "judgment", "executor", "notify.inbox", "memo.read", "todo.read", "contact.read", "schedule.read", "event.read", ...EXECUTOR_FAULT_POINTS].includes(step.fault?.where)) unsupported.push({ reason: `fault point "${step.fault?.where}" has no consumer in the current product`, step: index, word });
+          // AG16: the push service is a fault point too (push): the simulated service refuses, or does not answer, the next send.
+          if (!["model", "understand", "judgment", "executor", "notify.inbox", "push", "memo.read", "todo.read", "contact.read", "schedule.read", "event.read", ...EXECUTOR_FAULT_POINTS].includes(step.fault?.where)) unsupported.push({ reason: `fault point "${step.fault?.where}" has no consumer in the current product`, step: index, word });
           if (EXECUTOR_FAULT_POINTS.includes(step.fault?.where) || step.fault?.where === "executor") executorFaultArmed = String(step.fault?.where);
           await serverControl(environment, "fault", step.fault);
           return;
@@ -1225,8 +1237,15 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           }
           // AG05 (PLANNER 出入 4): the product has no per-record read permission yet; the eval's deny list,
           // checked by every read, stands for it. `read: "memo:M31"` withdraws the read of that record.
-          const spec = (step.revoke ?? {}) as { read?: string };
-          log.push({ revoke: spec, step: index, type: "turn.revoke" });
+          const spec = (step.revoke ?? {}) as { read?: string; push?: string };
+          log.push({ revoke: spec, source: spec.push ? "simulated" : undefined, step: index, type: "turn.revoke" });
+          if (spec.push === "app" || spec.push === "web") {
+            // AG16 (PSH.yaml revoke.push): the permission is taken away on the device. The server is not told: only the
+            // simulated push service knows, and refuses what is sent to that client from now on.
+            await serverControl(environment, "revoke", { push: spec.push });
+            transcript.push(`*（${spec.push === "app" ? "手机" : "浏览器"}在系统设置里撤销了通知授权：服务端事先不知道，之后发给它的提醒会被模拟的推送服务拒收）*`, "");
+            return;
+          }
           const target = typeof spec.read === "string" ? spec.read.slice(spec.read.indexOf(":") + 1) : "";
           const productId = target ? idMap[target] : undefined;
           if (!productId) {
@@ -1351,13 +1370,15 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         for (const task of tasks) {
           rulesAfter.push({ account: label, fixtureId: fixtureIdOf(task.id), id: task.id, state: task.status, version: task.version });
           const history = await client.request("GET", `/api/agent/automations/${encodeURIComponent(task.id)}/runs`, undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: `runner: history of scheduled task ${fixtureIdOf(task.id) ?? task.id}` });
-          const runs = (history.body?.data?.runs ?? []) as { scheduledAt: string; line: string; outcome: string; skipped: number; detail?: { source?: { caption: string; card: { id: string; title: string; top?: string; sub?: string } } } }[];
+          const runs = (history.body?.data?.runs ?? []) as { scheduledAt: string; line: string; outcome: string; skipped: number; computedAt?: string; push?: { line?: string | null; state?: string; attempts?: number; deliveredAt?: string; lastAttemptAt?: string }; detail?: { source?: { caption: string; card: { id: string; title: string; top?: string; sub?: string } } } }[];
+          // AG16: the two things the history keeps apart — when the result was worked out, and whether the reminder arrived.
+          const second = (run: (typeof runs)[number]) => (run.push?.line ? `\n    - 结果算出的时刻：${run.computedAt ? localTime(run.computedAt) : "（没有）"}\n    - 提醒：${run.push.line}（状态 ${run.push.state}，尝试 ${run.push.attempts ?? 0} 次${run.push.deliveredAt ? `，送达时刻 ${localTime(run.push.deliveredAt)}` : run.push.lastAttemptAt ? `，最后一次尝试 ${localTime(run.push.lastAttemptAt)}` : ""}）` : "");
           // AE-SCL-030 R4: the note a result picked by, as the result page shows it (a card that opens the note).
           const sourceLine = (run: (typeof runs)[number]) => {
             const source = run.detail?.source;
             return source ? [`    - 结果页上可以点开的笔记（${source.caption}）：${source.card.title}（${fixtureIdOf(source.card.id) ?? source.card.id}${source.card.top ? `，${source.card.top}` : ""}）${source.card.sub ? ` · ${source.card.sub}` : ""}`] : [];
           };
-          historyLines.push(`### 账号 ${label}：${task.title}（${fixtureIdOf(task.id) ?? "本用例新建"}，${({ active: "运行中", completed: "已结束", paused: "已暂停" } as Record<string, string>)[task.status] ?? task.status}）`, ...task.rows.map((row) => `- ${row.label}：${row.value}`), runs.length ? "- 历史（最近的在前）：" : "- 历史：还没有运行过", ...runs.flatMap((run) => [`  - ${localTime(run.scheduledAt)} 这一期：${run.line}`, ...sourceLine(run)]), "");
+          historyLines.push(`### 账号 ${label}：${task.title}（${fixtureIdOf(task.id) ?? "本用例新建"}，${({ active: "运行中", completed: "已结束", paused: "已暂停" } as Record<string, string>)[task.status] ?? task.status}）`, ...task.rows.map((row) => `- ${row.label}：${row.value}`), runs.length ? "- 历史（最近的在前）：" : "- 历史：还没有运行过", ...runs.flatMap((run) => [`  - ${localTime(run.scheduledAt)} 这一期：${run.line}${second(run)}`, ...sourceLine(run)]), "");
         }
       }
       if (historyLines.length) ruleEndLines.push("## 「我的定时任务」接口最后返回的内容（任务、下次运行、运行历史）", "", ...historyLines);
@@ -1597,8 +1618,9 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     ...(rulesAfter ? { rulesAfter } : {}),
     // AG15: the run history written in this case, from the database difference (never from the product's own report).
     ruleRuns: diff.records.filter((change) => change.collection === "agentAutomationRuns" && change.kind !== "deleted" && change.after?.run).map((change) => {
-      const run = change.after!.run as { automationId: string; scheduledAt: string; outcome: string; skipped?: number; items?: { ref: string; id: string }[]; cardId?: string; ownerId: string; delivery?: { inbox?: { state?: string } } };
-      return { account: accountByActor.get(run.ownerId) ?? null, cardId: run.cardId ?? null, delivery: run.delivery?.inbox?.state ?? "none", fixtureRule: fixtureIdOf(run.automationId), listed: (run.items ?? []).map((item) => fixtureIdOf(item.id) ?? fixtureIdOf(item.ref) ?? item.id), outcome: run.outcome, rule: run.automationId, scheduledAt: run.scheduledAt, skipped: Number(run.skipped ?? 0) };
+      const run = change.after!.run as { runId?: string; computedAt?: string; computeAttempts?: number; automationId: string; scheduledAt: string; outcome: string; skipped?: number; items?: { ref: string; id: string }[]; cardId?: string; ownerId: string; delivery?: { inbox?: { state?: string }; push?: { state?: string; attempts?: number; deliveredAt?: string; reason?: string; deliveryId?: string; targets?: { platform: string; state: string; attempts: number }[] } } };
+      const pushed = run.delivery?.push;
+      return { ...(run.runId ? { runId: run.runId } : {}), ...(run.computedAt ? { computedAt: run.computedAt } : {}), computeAttempts: Number(run.computeAttempts ?? 1), push: { attempts: Number(pushed?.attempts ?? 0), deliveredAt: pushed?.deliveredAt ?? null, deliveryId: pushed?.deliveryId ?? null, reason: pushed?.reason ?? null, state: pushed?.state ?? "not_requested", targets: (pushed?.targets ?? []).map((target) => ({ attempts: Number(target.attempts ?? 0), platform: target.platform, state: target.state })) }, account: accountByActor.get(run.ownerId) ?? null, cardId: run.cardId ?? null, delivery: run.delivery?.inbox?.state ?? "none", fixtureRule: fixtureIdOf(run.automationId), listed: (run.items ?? []).map((item) => fixtureIdOf(item.id) ?? fixtureIdOf(item.ref) ?? item.id), outcome: run.outcome, rule: run.automationId, scheduledAt: run.scheduledAt, skipped: Number(run.skipped ?? 0) };
     }).sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt) || left.rule.localeCompare(right.rule)),
     reads,
     ...(Object.keys(recentInteractions).length ? { recentInteractions } : {}),
@@ -1612,9 +1634,17 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   fs.writeFileSync(path.join(dir, "hard-checks.json"), JSON.stringify({ caseId: testCase.id, checks, hardPass: hardChecksPass(checks), unsupported }, null, 2));
   if (cardEndLines.length) transcript.push("", ...cardEndLines);
   if (ruleEndLines.length) transcript.push("", ...ruleEndLines);
+  // AG16: every reminder the simulated push service was handed, as it arrived there — which device, what it said, and
+  // whether the service took it. Nothing here comes from the product's own report.
+  const reminders = events.filter((event) => event.type === "notify.push");
+  if (reminders.length || testCase.steps.some((step) => "scheduler_tick" in step) && (testCase.hard ?? []).some((check) => "push" in (check as object) || "push_delivery" in (check as object))) {
+    transcript.push("", "## 模拟推送服务收到的提醒（不连真实推送服务；每条都标 simulated）", "", ...(reminders.length ? reminders.map((event) => `- #${event.seq} 发往${event.client === "web" ? "浏览器" : "手机"}（${String(event.channel)}），${event.outcome === "accepted" || event.outcome === undefined ? "推送服务已接受" : event.outcome === "rejected" ? `推送服务拒收（${String(event.error ?? "")}）` : "推送服务没有应答"}：标题「${String(event.title ?? "")}」，正文「${String(event.body ?? "")}」，附带数据 ${JSON.stringify(event.data ?? null)}`) : ["- 一条也没有收到"]), "");
+  }
   transcript.push("", "---", "", `数据变化（业务）：${businessChanges.length ? businessChanges.map((change) => `${change.fixtureId ?? change.id} ${change.kind}${change.external ? "（别处的修改，不算被测系统写入）" : ""}`).join("、") : "无"}`);
   fs.writeFileSync(path.join(dir, "transcript.md"), `${transcript.join("\n")}\n`);
-  const simulated = events.some((event) => ["model.request", "judgment.request", "web.search", "web.fetch", "exec.call"].includes(event.type) && (event.source === "simulated" || event.source === "replay")) || testCase.steps.some((step) => "fault" in step) || replay.length > 0;
+  const simulated = events.some((event) => ["model.request", "judgment.request", "web.search", "web.fetch", "exec.call"].includes(event.type) && (event.source === "simulated" || event.source === "replay")) || testCase.steps.some((step) => "fault" in step) || replay.length > 0
+    // AG16: every reminder goes to the local push simulator, so a case that sent one (or took a permission away) contains simulation.
+    || events.some((event) => event.type === "notify.push") || testCase.steps.some((step) => Boolean((step as { revoke?: { push?: string } }).revoke?.push));
   return { account, area, checks, caseId: testCase.id, dir, durationMs: Date.now() - started, error, events, fake: fake !== null, hardPass: hardChecksPass(checks), observation, simulated, unsupported };
 }
 
