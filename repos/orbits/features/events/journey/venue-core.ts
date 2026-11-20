@@ -113,6 +113,16 @@ export function venueRounds(ws: Pick<VenueWorkspace, "me" | "directory" | "round
   });
 }
 
+/** 会場の記録「ほかのテーブル」：每一轮里我不在的桌，带成员（不含我）。没有全桌数据的轮次不给。 */
+export function venueRoundTables(ws: Pick<VenueWorkspace, "me" | "directory" | "rounds">): { round: number; tables: { table: string; theme: string | null; members: EventVenueRound["tablemates"][number][] }[] }[] {
+  const meId = ws.me.participantId;
+  return ([[1, ws.rounds?.one], [2, ws.rounds?.two]] as const).flatMap(([round, tables]) => {
+    const others = (tables ?? []).filter((table) => !table.members.some((member) => member.participantId === meId));
+    if (!others.length) return [];
+    return [{ round, tables: others.map((table) => ({ members: [...tablematesOf(ws, table)], table: letter(table.tableNumber), theme: table.theme || null })) }];
+  });
+}
+
 /** 和某位参加者同桌过的轮次。 */
 export function venueSharedRounds(ws: Pick<VenueWorkspace, "me" | "roundOneTable" | "roundTwoTable">, participantId: string): { round: number; table: string }[] {
   const meId = ws.me.participantId;
@@ -250,6 +260,7 @@ export function buildVenue(input: VenueInput): EventVenueResponse {
     checkedIn: Boolean(ws.checkIn),
     readOnly: ended,
     rounds: venueRounds(ws, input.agenda),
+    ...(ended ? { roundTables: venueRoundTables(ws) } : {}),
     state: ended ? "ended" : "checked_in",
     stats: { exchanged: people.filter((person) => person.exchange === "exchanged").length, incoming: people.filter((person) => person.exchange === "incoming").length, wantedMet, wantedTotal },
   };

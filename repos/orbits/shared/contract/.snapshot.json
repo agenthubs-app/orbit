@@ -8497,6 +8497,71 @@
         }
       }
     },
+    "event-venue.ts::EventVenueRoundTables": {
+      "kind": "object",
+      "members": {
+        "round": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "tables": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "table": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "theme": {
+                "optional": true,
+                "kind": "text",
+                "type": "string | null"
+              },
+              "members": {
+                "optional": false,
+                "kind": "array",
+                "readonly": true,
+                "element": {
+                  "kind": "object",
+                  "members": {
+                    "attendeeId": {
+                      "optional": false,
+                      "kind": "text",
+                      "type": "string"
+                    },
+                    "name": {
+                      "optional": false,
+                      "kind": "text",
+                      "type": "string"
+                    },
+                    "initial": {
+                      "optional": false,
+                      "kind": "text",
+                      "type": "string"
+                    },
+                    "org": {
+                      "optional": true,
+                      "kind": "text",
+                      "type": "string | null"
+                    },
+                    "role": {
+                      "optional": true,
+                      "kind": "text",
+                      "type": "string | null"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "event-venue.ts::EventVenueMemoResult": {
       "kind": "object",
       "members": {
@@ -8710,6 +8775,11 @@
           "optional": true,
           "kind": "text",
           "type": "readonly EventVenueRound[]"
+        },
+        "roundTables": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventVenueRoundTables[]"
         },
         "sample": {
           "optional": true,
@@ -13992,6 +14062,7 @@
         "EventVenueRelation",
         "EventVenueResponse",
         "EventVenueRound",
+        "EventVenueRoundTables",
         "EventVenueState",
         "FollowupAuditContract",
         "FollowupPriorityCode",

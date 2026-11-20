@@ -61,6 +61,11 @@ export function VenueRecordView({ data, eventId, language, t }: { data: EventVen
   const summary = useMemo(() => recordSummary(data), [data]);
   const [tab, setTab] = useState<RecordTab>("groups");
   const [why, setWhy] = useState<Record<number, boolean>>({});
+  // 「ほかのテーブル」：按轮切换（默认我所在的第一轮），点一桌展开那桌的人。
+  const otherRounds = data.roundTables ?? [];
+  const [otherRoundNo, setOtherRoundNo] = useState<number | null>(null);
+  const otherRound = otherRounds.find((item) => item.round === otherRoundNo) ?? otherRounds[0];
+  const [openTable, setOpenTable] = useState<string | null>(null);
   // 宽屏一打开就和画板一样右栏有人（第一轮第一个同桌）；窄屏不自动弹抽屉。
   const [autoPicked, setAutoPicked] = useState(false);
   useEffect(() => {
@@ -156,12 +161,29 @@ export function VenueRecordView({ data, eventId, language, t }: { data: EventVen
             <div className={r.mates}>{round.tablemates.map(mateRow)}</div>
           </div>
         ))}
-        {data.groups?.others.length ? (
+        {otherRounds.length ? (
           <div className={`${styles.card} ${styles.span12}`} data-record-other="">
-            <div className={styles.cardH}><h3>{t("otherTablesRound", { n: data.groups.round })}</h3></div>
-            {data.groups.others.map((group) => (
-              <div key={group.table} className={r.othert}><b>{group.table}</b><span>{group.theme ?? ""}</span><span className={styles.lbl}>{t("peopleN", { n: group.count })}</span></div>
-            ))}
+            <div className={styles.cardH}>
+              <h3>{t("otherTablesRound", { n: otherRound?.round ?? 1 })}</h3>
+              {otherRounds.length > 1 ? (
+                <div className={styles.seg} role="tablist">
+                  {otherRounds.map((item) => (
+                    <button key={item.round} type="button" role="tab" aria-selected={item.round === otherRound?.round} className={`btn ${styles.segBtn} ${item.round === otherRound?.round ? styles.segOn : ""}`} onClick={() => { setOtherRoundNo(item.round); setOpenTable(null); }} data-record-other-round={item.round}>R{item.round}</button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            {otherRound?.tables.map((group) => {
+              const open = openTable === group.table;
+              return (
+                <div key={group.table} className={r.otherBlock}>
+                  <button type="button" className={`btn ${r.othert}`} aria-expanded={open} onClick={() => setOpenTable(open ? null : group.table)} data-record-other-table={group.table}>
+                    <b>{group.table}</b><span>{group.theme ?? ""}</span><span className={styles.lbl}>{t("peopleN", { n: group.members.length })}<span aria-hidden> {open ? "⌃" : "›"}</span></span>
+                  </button>
+                  {open ? <div className={r.otherMates}>{group.members.map(mateRow)}</div> : null}
+                </div>
+              );
+            })}
           </div>
         ) : null}
       </>

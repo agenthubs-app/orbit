@@ -50,6 +50,12 @@ export interface EventVenueRound {
   tablemates: readonly { attendeeId: string; name: string; initial: string; org?: string | null; role?: string | null }[];
 }
 
+/** One round's other tables (not mine) for 会場の記録. */
+export interface EventVenueRoundTables {
+  round: number;
+  tables: readonly { table: string; theme?: string | null; members: readonly { attendeeId: string; name: string; initial: string; org?: string | null; role?: string | null }[] }[];
+}
+
 /** `POST /api/events/[id]/venue/memo` — save (or clear with an empty text) my private memo about an attendee. */
 export interface EventVenueMemoResult {
   attendeeId: string;
@@ -90,5 +96,7 @@ export interface EventVenueResponse {
   checkedIn?: boolean;
   /** Every round I was seated in (record page グループ; also returned during the event). */
   rounds?: readonly EventVenueRound[];
+  /** 会場の記録「ほかのテーブル」: per round, every other table with its members (only when `readOnly`). */
+  roundTables?: readonly EventVenueRoundTables[];
   sample?: true;
 }

@@ -45,6 +45,20 @@ test("venue record: ended + workspace → readOnly, checkedIn, both rounds with 
   assert.ok(eventVenueResponseSchema.safeParse(venue).success);
 });
 
+test("venue record: roundTables lists, per round, the tables I was not at with their members (never me); only after the end", () => {
+  const input = { agenda: [], event: { endsAt: "2026-10-03T21:30:00+09:00", eventId: "e", startsAt: "2026-10-03T19:00:00+09:00", title: "t" }, myContacts: [], registered: true, wantedParticipantIds: new Set<string>(), workspace: venueRecordWorkspace() };
+  const ended = buildVenue({ ...input, now: NOW });
+  assert.ok(ended.roundTables && ended.roundTables.length > 0);
+  for (const round of ended.roundTables!) {
+    const mine = ended.rounds?.find((item) => item.round === round.round)?.table.charAt(0);
+    assert.ok(round.tables.every((table) => table.table !== mine), "my own table is not repeated");
+    assert.ok(round.tables.every((table) => table.members.every((member) => member.attendeeId !== "vr-me")));
+  }
+  assert.ok(eventVenueResponseSchema.safeParse(ended).success);
+  const during = buildVenue({ ...input, now: new Date("2026-10-03T20:00:00+09:00") });
+  assert.equal(during.roundTables, undefined, "live venue keeps the old groups only");
+});
+
 test("venue record: during the event the exchanged are still filtered out of recommendations and readOnly is false", () => {
   const venue = buildVenue({ agenda: [], event: { endsAt: "2026-10-03T21:30:00+09:00", eventId: "e", startsAt: "2026-10-03T19:00:00+09:00", title: "t" }, myContacts: [], now: new Date("2026-10-03T11:20:00.000Z"), registered: true, wantedParticipantIds: new Set(), workspace: venueRecordWorkspace() });
   assert.equal(venue.state, "checked_in");
