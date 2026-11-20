@@ -944,7 +944,10 @@ export function resolveNode(scope: NodeScope): GraphNode {
       const profiles = read.views.filter((view) => view.kind === "contact");
       // Only when the part asks about the person (their profile, their context), not for a list of one kind ("Do I have open
       // to-dos for Emily?": the profile cannot answer that; nothing found stays nothing found).
-      const asksAboutPerson = capabilities.some((capability) => capability === "contact.read" || capability === "profile.read" || capability === "view.context");
+      // AE-RD-004 (run-05): "Do I have any open to-dos for Emily?" tagged contact.read + todo.read is still a list of to-dos —
+      // a list, or a part naming a kind of record in its own words, is not a question about the person.
+      const namesRecordKind = part.refs.some((ref) => ["todo", "memo", "schedule", "event"].includes(recordKindOf(ref.entity) ?? "") && !ref.recordId);
+      const asksAboutPerson = capabilities.some((capability) => capability === "contact.read" || capability === "profile.read" || capability === "view.context") && !LIST_DELIVERABLES.has(part.plan.deliverable) && !namesRecordKind;
       const profileAnswers = asksAboutPerson && !recordViews.length && profiles.length > 0 && read.wantsRecords && !failures.length && !withheld && !read.gaps.has("unreadable");
       if (profileAnswers) {
         const empty = searchKinds.filter((kind) => read.coverage.some((item) => item.kind === kind && item.seen === 0));

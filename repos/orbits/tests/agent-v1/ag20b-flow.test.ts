@@ -155,6 +155,18 @@ test("R25 'what does she do now' about a contact with a role and no notes: the p
   assert.ok(p1.coverage?.some((item) => item.kind === "memo" && item.seen === 0), "and the empty kind");
 });
 
+test("R25 mirror (AE-RD-004 shape): 'open to-dos for her' tagged contact.read + todo.read is still 'nothing found'", async () => {
+  const world = smallWorld();
+  for (const record of world.records) if (record.userId === "user:a") record.userId = "actor:a";
+  world.records.push(contact("actor:a", "contact:ines", "Inès Moreau", { organization: "Atelier Lune", role: "Head of Partnerships" }));
+  const message = "Do I have any open to-dos for Inès Moreau?";
+  const model = deepseekStub([json({ language: "en", parts: [part({ dataSources: ["orbit_records"], deliverable: "list", localId: "p1", objectClues: [{ entity: "contact", text: "Inès Moreau" }, { entity: "todo", text: "open to-dos for Inès Moreau" }], readFilter: { status: "open" }, requiredCapabilities: ["contact.read", "todo.read"], sourceQuote: message })], plainChat: false })]);
+  const kit = graphKit(model.fetchImplementation, { now: "2026-11-15T01:00:00.000Z", records: recordAccessOf(world) });
+  const result = await runAgentGraph(kit.deps, kit.input(message, { locale: "en" }));
+  assert.deepEqual(result.partResults[0].gaps, ["no_record"], JSON.stringify(result.partResults));
+  assert.match(result.text, /I found nothing about this/u);
+});
+
 /* ── R20 ── */
 
 test("R20 a part that depends on a read whose record cannot be opened is not held back", () => {
