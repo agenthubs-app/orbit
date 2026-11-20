@@ -86,10 +86,22 @@ export const WRITE_WORDS = {
 /** The card line of a turn, from the frozen preview only: the count sentence, each item, how it runs. */
 export function cardLineOf(preview: AgentActionPreviewContract, language: ReplyLanguage): string {
   const items = preview.operations.map((op, index) => `${CIRCLED[index] ?? `${index + 1}.`} ${op.text}`);
-  const label = cardConfirmLabel(language, preview.operations.length);
-  if (language === "en") return `Confirmation card — ${preview.title}:\n${items.join("\n")}\nNothing is changed until you press "${label}" on the card.`;
-  if (language === "ja") return `確認カード（${preview.title}）：\n${items.join("\n")}\nカードの「${label}」を押すまで何も変更しません。`;
-  return `确认卡（${preview.title}）：\n${items.join("\n")}\n点卡上的「${label}」之前，什么都不会改。`;
+  const label = cardConfirmLabelFor(language, preview.operations);
+  // AG15 (approved draft 15-1): a card that makes scheduled tasks says nothing *runs* before the click.
+  const runs = makesTasksOnly(preview.operations);
+  if (language === "en") return `Confirmation card — ${preview.title}:\n${items.join("\n")}\n${runs ? "Nothing runs" : "Nothing is changed"} until you press "${label}" on the card.`;
+  if (language === "ja") return `確認カード（${preview.title}）：\n${items.join("\n")}\nカードの「${label}」を押すまで何も${runs ? "実行されません" : "変更しません"}。`;
+  return `确认卡（${preview.title}）：\n${items.join("\n")}\n点卡上的「${label}」之前，什么都不会${runs ? "运行" : "改"}。`;
+}
+
+/** AG15: a card whose every item makes a scheduled task (its buttons are 「确认，开始运行」「不建了」, D15-2). */
+export function makesTasksOnly(operations: readonly { capability: string }[]): boolean {
+  return operations.length > 0 && operations.every((op) => op.capability === "rule.create");
+}
+
+/** The confirm button's label as both clients show it for these items (the new-task card has its own, D15-2). */
+export function cardConfirmLabelFor(language: ReplyLanguage, operations: readonly { capability: string }[]): string {
+  return makesTasksOnly(operations) ? (language === "en" ? en : language === "ja" ? ja : zh).aiCard.confirmRule : cardConfirmLabel(language, operations.length);
 }
 
 /** The confirm button's label exactly as both clients show it (shared copy `aiCard`), for any code text that names the button. */

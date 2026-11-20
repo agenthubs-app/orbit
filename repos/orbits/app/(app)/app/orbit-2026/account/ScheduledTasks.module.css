@@ -97,7 +97,7 @@
 .choices { display: grid; gap: 8px; }
 .choice { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 32px; font-size: var(--fs-body); }
 .noteChip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: var(--r-pill); background: var(--mac-lav); color: var(--mac-lav-text); font-weight: var(--fw-bold); }
-.noteRemove { width: 28px; height: 28px; border: 0; border-radius: var(--r-pill); background: transparent; color: inherit; font-size: 16px; cursor: pointer; }
+.noteRemove { width: 28px; height: 28px; border: 0; border-radius: var(--r-pill); background: transparent; color: inherit; font-size: var(--fs-dialog-title); cursor: pointer; }
 .noteSearch { display: grid; gap: 6px; padding-left: 24px; }
 .noteOption { justify-self: start; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--fs-body-sm); cursor: pointer; text-align: left; }
 

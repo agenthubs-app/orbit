@@ -27,8 +27,8 @@ export const taskPath = (id: string) => `${TASKS_PATH}/${encodeURIComponent(id)}
 export const inboxPathOf = (id: string) => `/inbox?tab=notifications&open=${encodeURIComponent(id)}`;
 
 const TILE: Record<"event" | "contact" | "todo", { emoji: string; tone: "pink" | "apricot" | "blue" }> = { contact: { emoji: "🤝", tone: "apricot" }, event: { emoji: "🎟️", tone: "pink" }, todo: { emoji: "🗓️", tone: "blue" } };
-const UNIT: Record<"event" | "contact" | "todo", Record<string, string>> = { contact: { en: "", ja: "人", zh: "位" }, event: { en: "", ja: "件", zh: "场" }, todo: { en: "", ja: "件", zh: "条" } };
-const WEEKDAYS: Record<string, readonly string[]> = { en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], ja: ["日", "月", "火", "水", "木", "金", "土"], zh: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"] };
+const UNIT_KEY = { contact: "scheduledTasks.unitContact", event: "scheduledTasks.unitEvent", todo: "scheduledTasks.unitTodo" } as const;
+const DAY_KEY = ["scheduledTasks.day0", "scheduledTasks.day1", "scheduledTasks.day2", "scheduledTasks.day3", "scheduledTasks.day4", "scheduledTasks.day5", "scheduledTasks.day6"] as const;
 
 function statusOf(task: AgentScheduledTaskContract, t: OrbitTranslator): { label: string; tone: ChipTone } {
   if (task.status === "completed") return { label: t("scheduledTasks.ended"), tone: "neutral" };
@@ -164,10 +164,12 @@ export function ScheduledTaskScreen() {
     if (await deleteScheduledTask(client, task.id)) router.replace(TASKS_PATH as Href);
     else { toast.error(t("scheduledTasks.failed")); setBusy(false); }
   };
-  return <AppScreen inset="kit" title={task?.title ?? t("scheduledTasks.title")}>
+  return <AppScreen inset="kit" title={t("scheduledTasks.title")}>
     {history === null ? <Card><UiText>{t("scheduledTasks.notFound")}</UiText></Card> : null}
     {history === undefined ? (failed ? <Card><UiText accessibilityRole="alert">{t("scheduledTasks.loadFailed")}</UiText><Button label={t("scheduledTasks.retry")} onPress={() => setVersion((value) => value + 1)} /></Card> : <Skeleton />) : null}
     {task && history ? <View style={styles.stack}>
+      {/* Draft 15-4 (App): 「定时任务」 in the top bar, the task's own name as the page heading. */}
+      <UiText accessibilityRole="header" style={styles.pageTitle}>{task.title}</UiText>
       <View style={styles.headRow}>
         <Chip label={statusOf(task, t).label} tone={statusOf(task, t).tone} presentation="kit" />
         {task.status === "completed" ? null : <View style={styles.row}><UiText style={styles.meta}>{task.status === "active" ? t("scheduledTasks.on") : t("scheduledTasks.off")}</UiText><Toggle value={task.status === "active"} disabled={busy} accessibilityLabel={t("scheduledTasks.toggle", { title: task.title })} onValueChange={(next) => void toggle(next)} /></View>}
@@ -252,7 +254,7 @@ export function ScheduledTaskForm({ initial, id, zoneNote, onCancel, onSaved }: 
     <Segmented accessibilityLabel={t("scheduledTasks.when")} segments={[{ key: "weekly", label: t("scheduledTasks.weekly") }, { key: "daily", label: t("scheduledTasks.daily") }]} value={form.schedule.kind} onChange={(kind) => set({ schedule: kind === "daily" ? { kind: "daily", time: form.schedule.time, timeZone: form.schedule.timeZone } : { daysOfWeek: [5], kind: "weekly", time: form.schedule.time, timeZone: form.schedule.timeZone } })} />
     {weekly ? <View style={styles.days}>{[1, 2, 3, 4, 5, 6, 0].map((day) => {
       const on = weekly.daysOfWeek.includes(day);
-      return <UiPressable key={day} accessibilityRole="button" accessibilityState={{ selected: on }} style={[styles.day, on && styles.dayOn]} onPress={() => set({ schedule: { ...weekly, daysOfWeek: on ? weekly.daysOfWeek.filter((value) => value !== day) : [...weekly.daysOfWeek, day] } })}><UiText style={on ? styles.dayOnText : styles.line}>{(WEEKDAYS[language] ?? WEEKDAYS.zh)?.[day] ?? ""}</UiText></UiPressable>;
+      return <UiPressable key={day} accessibilityRole="button" accessibilityState={{ selected: on }} style={[styles.day, on && styles.dayOn]} onPress={() => set({ schedule: { ...weekly, daysOfWeek: on ? weekly.daysOfWeek.filter((value) => value !== day) : [...weekly.daysOfWeek, day] } })}><UiText style={on ? styles.dayOnText : styles.line}>{t(DAY_KEY[day] ?? "scheduledTasks.day0")}</UiText></UiPressable>;
     })}</View> : null}
     <TextInput style={[styles.input, styles.short]} value={form.schedule.time} accessibilityLabel={t("scheduledTasks.time")} placeholder="09:00" maxLength={5} keyboardType="numbers-and-punctuation" onChangeText={(time) => set({ schedule: { ...form.schedule, time } })} />
     <UiText style={styles.meta}>{t("scheduledTasks.whenNote")}{zoneNote ? ` ${zoneNote.split(/(?<=[。.])/u)[0]}` : ""}</UiText>
@@ -272,7 +274,7 @@ export function ScheduledTaskForm({ initial, id, zoneNote, onCancel, onSaved }: 
       {form.basis.kind === "topic" ? <TextInput style={styles.input} value={form.basis.words} placeholder={t("scheduledTasks.wordsPlaceholder")} accessibilityLabel={t("scheduledTasks.byWords")} maxLength={200} onChangeText={(words) => set({ basis: { kind: "topic", words } })} /> : null}
     </>}
     <UiText style={styles.meta}>{t("scheduledTasks.howMany")}</UiText>
-    <View style={styles.row}><UiText style={styles.line}>{t("scheduledTasks.upTo")}</UiText><TextInput style={[styles.input, styles.short]} value={String(form.maxItems)} keyboardType="number-pad" maxLength={2} accessibilityLabel={t("scheduledTasks.howMany")} onChangeText={(value) => set({ maxItems: Math.max(1, Math.min(20, Number(value) || 1)) })} /><UiText style={styles.line}>{UNIT[form.domain][language] ?? ""}</UiText></View>
+    <View style={styles.row}><UiText style={styles.line}>{t("scheduledTasks.upTo")}</UiText><TextInput style={[styles.input, styles.short]} value={String(form.maxItems)} keyboardType="number-pad" maxLength={2} accessibilityLabel={t("scheduledTasks.howMany")} onChangeText={(value) => set({ maxItems: Math.max(1, Math.min(20, Number(value) || 1)) })} /><UiText style={styles.line}>{t(UNIT_KEY[form.domain])}</UiText></View>
     <UiText style={styles.meta}>{t("scheduledTasks.until")}</UiText>
     <Choice selected={form.validUntil === null} label={t("scheduledTasks.forever")} onSelect={() => set({ validUntil: null })} />
     <Choice selected={form.validUntil !== null} label={t("scheduledTasks.untilDay")} onSelect={() => set({ validUntil: form.validUntil ?? new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10) })} />
@@ -311,6 +313,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   row: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 10 },
   stack: { gap: spacing.md },
   headRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  pageTitle: { color: colors.ink, fontSize: 22, fontWeight: "800", lineHeight: 30 },
   boxes: { gap: 10 },
   box: { backgroundColor: colors.surface2, borderRadius: 14, gap: 4, padding: 14 },
   boxValue: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 24 },
