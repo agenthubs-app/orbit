@@ -32,7 +32,7 @@ import type { NoteInteractionContract } from "../../../../shared/contract/notes"
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
 import { asksWhoToFollowUp, isWholeQuote, realTopicOf } from "../../functions/basis";
 import { asksWhatToPrepare, preparePart } from "./prepare";
-import { asksForNextStep, asksForReasons, eventReason, fitLine, nextStepWords, themeLinks, themesOf } from "./reasons";
+import { asksForNextStep, asksForReasons, asksWhichAreWorthIt, eventReason, fitLine, nextStepWords, themeLinks, themesOf } from "./reasons";
 import { onlyWindowWords } from "../../understand/read-window";
 import { asksEventsToGoTo, meetsTime, pointsAtPast, writesADate, upcomingTopicOf, directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, naturalField, PICK_WORDS, sentenceTopicOf, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
 import { MEMORY_WORDS } from "../../domains/memory/copy";
@@ -114,6 +114,9 @@ export function rankDomainOf(part: GraphPart, message: string): RankDomain | nul
   // 「这周该跟进谁」 whatever the first layer tagged — unless a person is named or picked (then it is about that person).
   const asked = message.slice(part.quote[0], part.quote[1]);
   if (part.route === "read" && asksWhoToFollowUp(asked) && !part.refs.some((ref) => ref.entity === "contact" && (ref.recordId || (ref.quote && !GENERIC_CONTACT_CLUE.test(message.slice(ref.quote[0], ref.quote[1])))))) return "contact";
+  // Release-2 gate 2 (AE-ANS-003): which of the events this is about are worth going to, and why — part 3's recommendation
+  // with reasons over those events (graph/nodes/reasons.ts), whatever the first layer tagged.
+  if (part.route === "read" && asksWhichAreWorthIt(asked) && part.refs.filter((ref) => ref.entity === "event" && ref.recordId).length >= 2) return "event";
   if (part.route !== "read" || !part.capabilities.includes("fn.rank")) return null;
   // Comparing and grouping are other functions (AE-FN-014: "按免费和收费分个组" is a group, not a pick).
   if (part.capabilities.includes("fn.group") || part.capabilities.includes("fn.compare")) return null;
@@ -904,6 +907,13 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   }
   // "随便" leaves it to the agent: no topic, the natural order.
   if (leftToAgent) topic = null;
+  // Release-2 gate 2 (AE-ANS-003): 「你觉得有必要参加？为什么？」 names no topic — which are worth going to is answered with part 3's
+  // reasons (below), never by matching the events against 「你觉得」.
+  if (topic && topicIsSentence && domain === "event" && asksWhichAreWorthIt(original)) {
+    emitTrace({ partId: part.localId, type: "functions.worth_no_topic" });
+    topic = null;
+    topicIsSentence = false;
+  }
   // AG19-6: "最近有哪些活动适合我" names no topic ("适合我" is not one): the list of what is coming up, by start time.
   if (topic && !basisMemo && !basisSpan && !reply && listsUpcomingEvents(part, message) && !upcomingTopicOf(original)) {
     emitTrace({ partId: part.localId, type: "functions.upcoming_no_topic" });

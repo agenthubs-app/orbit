@@ -18,6 +18,14 @@ const NEXT_STEP_ASKED = /(下一步|接下来做什么|怎么跟进|次の一歩
 export const asksForReasons = (words: string) => REASONS_ASKED.test(words);
 export const asksForNextStep = (words: string) => NEXT_STEP_ASKED.test(words);
 
+/**
+ * Release-2 gate 2 (AE-ANS-003 「哪些活动？你觉得有必要参加？为什么？」 about the events just listed): asking which are worth going
+ * to, and why, is the same request as 「推荐值得参加的活动并说明原因」 — part 3's reasons from each event's themes and the user's
+ * notes, over the events the question is about. No model call decides "worth it".
+ */
+const WORTH_ASKED = /(有必要(?:参加|去)|值不值得|值得(?:参加|去)|该不该去|要不要去|行く価値|参加すべき|行くべき|行った方がいい|参加した方がいい|\bworth (?:going|attending|it)\b|\bshould I (?:go|attend)\b)/iu;
+export const asksWhichAreWorthIt = (words: string) => WORTH_ASKED.test(words) && REASONS_ASKED.test(words);
+
 /** An event's themes as the organizer tagged them ("摄影、街拍" → ["摄影", "街拍"]). */
 export function themesOf(topics: string | null): string[] {
   return topics ? [...new Set(topics.split(/[、,，/／\s]+/u).map((item) => item.trim()).filter((item) => [...item].length >= 2))] : [];
