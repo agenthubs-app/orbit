@@ -138,6 +138,8 @@ export interface AgentAnswerContract {
   web?: AgentWebResultContract | undefined;
   /** AG19：回答按块排好的版本（段落、要点、记录卡片、说明条），由服务端代码写；text 仍是完整的文字版，旧端只读 text。 */
   blocks?: readonly AgentAnswerBlockContract[] | undefined;
+  /** AG14：回答开头记忆的小标签（获批视觉稿第 5 组）；没用到记忆时没有。 */
+  memoryUse?: readonly AgentAnswerMemoryUseContract[] | undefined;
 }
 
 /** AG09：联网的记录。被拦下的检索词不在这里（只按规则编号记在服务端）。 */
@@ -329,6 +331,8 @@ export interface AgentCardDisplayRowContract {
   /** 原值，只有改已有记录时才有。 */
   before?: string | undefined;
   after: string;
+  /** AG14（D1）：原来的和改成的左右两栏并排（记忆的内容）；没有时照旧一行「旧 → 新」。 */
+  sideBySide?: boolean | undefined;
 }
 
 /** 一张卡的当前版（GET /api/agent/ledger/[id] 与结果文档的 actionPreview 同一形状）。 */
@@ -631,4 +635,25 @@ export type AgentAnswerBlockContract =
   | { type: "paragraph"; text: string }
   | { type: "points"; items: readonly AgentAnswerPointContract[] }
   | { type: "records"; items: readonly AgentAnswerRecordContract[]; shown: number; size?: "full" | "mini" | undefined; caption?: string | undefined; moreLabel?: string | undefined; lessLabel?: string | undefined }
-  | { type: "note"; title: string; items: readonly AgentAnswerNoteItemContract[] };
+  | { type: "note"; title: string; items: readonly AgentAnswerNoteItemContract[]; go?: AgentAnswerGoContract | undefined };
+
+/* ── AG14 界面（获批视觉稿 2026-11-20，D1–D10 取 A）──────────────── */
+
+/** AG14：说明条末尾的入口（「去设置 ›」），两端各自换成自己的页面地址；memoryId 有值时那一条直接打开。 */
+export interface AgentAnswerGoContract {
+  label: string;
+  to: "memory_settings";
+  memoryId?: string | undefined;
+}
+
+/**
+ * AG14：回答开头记忆的小标签，紧跟「按你的 N 条记录回答」（D4）。整句由服务端按回答语言写好：
+ * used「按你存的偏好「周末上午」挑的」（带「修改 ›」，D5 点了到设置页这一条）；
+ * skipped「只这一次：没按你存的「周末上午」」（不带「修改」）；
+ * rule「按你定的规矩，没放晚上的」——一直遵守的只在让结果少了东西时才写（D6），带「修改 ›」。
+ */
+export interface AgentAnswerMemoryUseContract {
+  kind: "used" | "skipped" | "rule";
+  memoryId: string;
+  text: string;
+}

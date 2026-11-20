@@ -371,7 +371,10 @@ export function joinBlocks(previous: Pick<AgentAnswerContract, "blocks" | "text"
     const again = recordsBlock(items, language, { size: block.size ?? "full" });
     if (again) out.push(again);
   }
-  if (notes.length) out.push({ items: notes.flatMap((note) => note.items), title: notes[0].title, type: "note" });
+  // AG14 UI: a memory note (it ends in 「去设置 ›」 and has its own title) stays a note of its own.
+  out.push(...notes.filter((note) => note.go));
+  const plain = notes.filter((note) => !note.go);
+  if (plain.length) out.push({ items: plain.flatMap((note) => note.items), title: plain[0].title, type: "note" });
   return out;
 }
 

@@ -144,6 +144,14 @@ export function agentLinkHref(link: AgentAnswerLinkContract): string | null {
   return agentRecordHref({ id: link.id, kind: link.type, ...(link.contactId ? { contactId: link.contactId } : {}) });
 }
 
+/**
+ * AG14 (approved draft D5): the memory part of the settings page; with an entry, that entry opens ready to edit
+ * (「修改 ›」 of a memory chip, 「去设置 ›」 of a memory note).
+ */
+export function memorySettingsHref(memoryId?: string | null): string {
+  return `/app/settings/iorbit${memoryId ? `?${new URLSearchParams({ memory: memoryId })}` : ""}#memory`;
+}
+
 /** A document older than this was not verified a moment ago: its cards are checked once (still there, still yours). */
 const GONE_CHECK_AFTER_MS = 120_000;
 

@@ -169,3 +169,8 @@ export function agentRecordHref(record: Pick<AgentAnswerRecordContract, "kind" |
 export function agentLinkHref(link: AgentAnswerLinkContract): string | null {
   return agentRecordHref({ id: link.id, kind: link.type });
 }
+
+/** AG14 (approved draft D5): 「我的 › iOrbit 使用的信息」, with that entry's sheet open when one is named. */
+export function memorySettingsHref(memoryId?: string | null): string {
+  return `/settings/iorbit${memoryId ? `?${new URLSearchParams({ memory: memoryId })}` : ""}`;
+}

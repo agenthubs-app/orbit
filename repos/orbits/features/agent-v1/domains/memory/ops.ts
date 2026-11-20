@@ -12,7 +12,7 @@
 import type { AgentCardOperationDisplayContract } from "../../../../shared/contract/agent-v1";
 import type { AgentMemoryCategory, AgentMemoryStructured, AgentMemoryTask } from "../../../agent/memory/contract";
 import type { AgentActionOperationPayload } from "../../../agent/runtime/contract";
-import type { CardLocale } from "../../../agent/runtime/todo-operations";
+import { dayText, type CardLocale } from "../../../agent/runtime/todo-operations";
 import { AGENT_MEMORY_COLLECTION } from "../../../agent/memory/service";
 import { appliesLabel, kindLabel } from "./words";
 
@@ -35,6 +35,8 @@ export interface MemoryValues {
   content: string;
   appliesTo: AgentMemoryTask[];
   structured: AgentMemoryStructured | null;
+  /** AG14 UI (D2): the last day the entry is used (YYYY-MM-DD), only when the user's words carried one. */
+  validUntil?: string | null;
 }
 
 export type MemoryCardIntent =
@@ -42,20 +44,25 @@ export type MemoryCardIntent =
   | { capability: typeof MEMORY_UPDATE; targetId: string; expectedRevision: number; set: Partial<MemoryValues>; shown: MemoryValues }
   | { capability: typeof MEMORY_DELETE; targetId: string; expectedRevision: number; shown: MemoryValues };
 
-type Words = { record: string; content: string; usedIn: string; kind: string; create: (text: string, where: string) => string; update: (before: string, after: string, where: string) => string; remove: (text: string, where: string) => string; deleteNote: string };
+/**
+ * AG14 UI (approved draft boards 1–3, board 8): the item reads 记忆「推荐活动时优先周末上午」 with 用在 and 归到 under it
+ * (到期 only when the user's words carried one, D2); a change reads 记忆 with 原来 and 改成 side by side (D1); a deletion
+ * names the entry and says what follows.
+ */
+type Words = { named: (text: string) => string; record: string; content: string; usedIn: string; kind: string; until: string; create: (text: string, where: string) => string; update: (before: string, after: string, where: string) => string; remove: (text: string, where: string) => string; deleteNote: string };
 
 const WORDS: Record<CardLocale, Words> = {
   en: {
-    content: "What", create: (text, where) => `New personal memory: "${text}" (used for: ${where})`, deleteNote: "After this it is no longer used, in this conversation or any other.", kind: "How it is used", record: "Personal memory",
-    remove: (text, where) => `Delete personal memory: "${text}" (used for: ${where})`, update: (before, after, where) => `Change personal memory: "${before}" → "${after}" (used for: ${where})`, usedIn: "Used for",
+    content: "What", create: (text, where) => `New personal memory: "${text}" (used for: ${where})`, deleteNote: "Once deleted, it is no longer used in new conversations or earlier ones.", kind: "Group", named: (text) => `Memory "${text}"`, record: "Memory",
+    remove: (text, where) => `Delete personal memory: "${text}" (used for: ${where})`, until: "Until", update: (before, after, where) => `Change personal memory: "${before}" → "${after}" (used for: ${where})`, usedIn: "Used for",
   },
   ja: {
-    content: "内容", create: (text, where) => `個人メモリーを追加：「${text}」（使う場面：${where}）`, deleteNote: "削除後は、この会話でもほかの会話でも使いません。", kind: "使い方", record: "個人メモリー",
-    remove: (text, where) => `個人メモリーを削除：「${text}」（使う場面：${where}）`, update: (before, after, where) => `個人メモリーを変更：「${before}」→「${after}」（使う場面：${where}）`, usedIn: "使う場面",
+    content: "内容", create: (text, where) => `個人メモリーを追加：「${text}」（使う場面：${where}）`, deleteNote: "削除すると、新しい会話でもこれまでの会話でも使いません。", kind: "分類", named: (text) => `メモリー「${text}」`, record: "メモリー",
+    remove: (text, where) => `個人メモリーを削除：「${text}」（使う場面：${where}）`, until: "期限", update: (before, after, where) => `個人メモリーを変更：「${before}」→「${after}」（使う場面：${where}）`, usedIn: "使う場面",
   },
   zh: {
-    content: "内容", create: (text, where) => `新增个人记忆：「${text}」（用在：${where}）`, deleteNote: "删除后，这个对话和其他对话都不再用它。", kind: "怎么用", record: "个人记忆",
-    remove: (text, where) => `删除个人记忆：「${text}」（用在：${where}）`, update: (before, after, where) => `修改个人记忆：「${before}」→「${after}」（用在：${where}）`, usedIn: "用在",
+    content: "内容", create: (text, where) => `新增个人记忆：「${text}」（用在：${where}）`, deleteNote: "删掉以后，新对话和以前的对话都不再用它。", kind: "归到", named: (text) => `记忆「${text}」`, record: "记忆",
+    remove: (text, where) => `删除个人记忆：「${text}」（用在：${where}）`, until: "到期", update: (before, after, where) => `修改个人记忆：「${before}」→「${after}」（用在：${where}）`, usedIn: "用在",
   },
 };
 
@@ -72,7 +79,7 @@ function base(input: { actionId: string; revision: number; index: number; partId
   };
 }
 
-const valuesOf = (values: MemoryValues): MemoryValues => ({ appliesTo: [...values.appliesTo], category: values.category, content: values.content, structured: values.structured ? { ...values.structured } : null });
+const valuesOf = (values: MemoryValues): MemoryValues => ({ appliesTo: [...values.appliesTo], category: values.category, content: values.content, structured: values.structured ? { ...values.structured } : null, ...(values.validUntil ? { validUntil: values.validUntil } : {}) });
 
 /** The id of the entry a create item makes: the item's own, the same for every revision of the card. */
 export function memoryIdOfItem(actionId: string, index: number): string {
@@ -87,10 +94,10 @@ export function prepareMemoryOperation(input: { intent: MemoryCardIntent & { par
   if (intent.capability === MEMORY_CREATE) {
     const after = valuesOf(intent.set);
     const where = appliesLabel(after.appliesTo, locale);
-    const display: AgentCardOperationDisplayContract = { change: "create", record: w.record, rows: [
-      { after: after.content, field: "content", label: w.content },
+    const display: AgentCardOperationDisplayContract = { change: "create", record: w.named(after.content), rows: [
       { after: where, field: "appliesTo", label: w.usedIn },
       { after: kindLabel(after.category, locale), field: "category", label: w.kind },
+      ...(after.validUntil ? [{ after: dayText(after.validUntil, locale), field: "validUntil", label: w.until }] : []),
     ] };
     return { ...common, after: { ...after }, display, payload: { ...after, memoryId: memoryIdOfItem(input.actionId, input.index), sourceMessageRef: intent.sourceMessageRef }, preconditions: { targetExists: false }, preview: w.create(after.content, where), shown: {} };
   }
@@ -109,13 +116,13 @@ export function prepareMemoryOperation(input: { intent: MemoryCardIntent & { par
       before[field] = shown[field];
     }
     const nextWhere = appliesLabel(next.appliesTo, locale);
-    const rows: AgentCardOperationDisplayContract["rows"][number][] = [{ after: next.content, before: shown.content, field: "content", label: w.content }];
-    rows.push("appliesTo" in after ? { after: nextWhere, before: where, field: "appliesTo", label: w.usedIn } : { after: where, field: "appliesTo", label: w.usedIn });
-    if ("category" in after) rows.push({ after: kindLabel(next.category, locale), before: kindLabel(shown.category, locale), field: "category", label: w.kind });
+    // D1: the entry's words before and after side by side; 用在 and 归到 join the two columns only when they change.
+    const rows: AgentCardOperationDisplayContract["rows"][number][] = [{ after: next.content, before: shown.content, field: "content", label: w.content, sideBySide: true }];
+    rows.push("appliesTo" in after ? { after: nextWhere, before: where, field: "appliesTo", label: w.usedIn, sideBySide: true } : { after: where, field: "appliesTo", label: w.usedIn });
+    if ("category" in after) rows.push({ after: kindLabel(next.category, locale), before: kindLabel(shown.category, locale), field: "category", label: w.kind, sideBySide: true });
     return { ...common, after, before, display: { change: "update", record: w.record, rows }, payload: { expectedRevision: intent.expectedRevision, memoryId: intent.targetId, patch: { ...after } }, preconditions: { targetExists: true, versionToken: String(intent.expectedRevision) }, preview: w.update(shown.content, next.content, nextWhere), shown: { ...shown }, targetRef };
   }
-  const display: AgentCardOperationDisplayContract = { change: "delete", note: w.deleteNote, record: w.record, rows: [
-    { after: shown.content, field: "content", label: w.content },
+  const display: AgentCardOperationDisplayContract = { change: "delete", note: w.deleteNote, record: w.named(shown.content), rows: [
     { after: where, field: "appliesTo", label: w.usedIn },
   ] };
   return { ...common, after: { status: "deleted" }, before: { status: "active" }, display, payload: { expectedRevision: intent.expectedRevision, memoryId: intent.targetId }, preconditions: { targetExists: true, versionToken: String(intent.expectedRevision) }, preview: w.remove(shown.content, where), shown: { ...shown }, targetRef };
@@ -125,7 +132,7 @@ export function prepareMemoryOperation(input: { intent: MemoryCardIntent & { par
 export function memoryIntentOf(op: AgentActionOperationPayload): MemoryCardIntent | null {
   const payload = (op.payload ?? {}) as Record<string, unknown>;
   const shown = (op.shown ?? {}) as Partial<MemoryValues>;
-  const values = (from: Partial<MemoryValues>): MemoryValues => ({ appliesTo: [...(from.appliesTo ?? [])], category: (from.category ?? "preference") as AgentMemoryCategory, content: String(from.content ?? ""), structured: from.structured ? { ...from.structured } : null });
+  const values = (from: Partial<MemoryValues>): MemoryValues => ({ appliesTo: [...(from.appliesTo ?? [])], category: (from.category ?? "preference") as AgentMemoryCategory, content: String(from.content ?? ""), structured: from.structured ? { ...from.structured } : null, ...(typeof from.validUntil === "string" ? { validUntil: from.validUntil } : {}) });
   if (op.capability === MEMORY_CREATE) return { capability: MEMORY_CREATE, set: values((op.after ?? {}) as Partial<MemoryValues>), sourceMessageRef: typeof payload.sourceMessageRef === "string" ? payload.sourceMessageRef : null };
   if (!op.targetRef || typeof payload.expectedRevision !== "number") return null;
   if (op.capability === MEMORY_UPDATE) return { capability: MEMORY_UPDATE, expectedRevision: payload.expectedRevision, set: { ...((op.after ?? {}) as Partial<MemoryValues>) }, shown: values(shown), targetId: op.targetRef.id };

@@ -84,7 +84,7 @@ import { pendingWriteItems, usePendingWriteCounts } from "../../hooks/usePending
 import { agentProtocolForSend, agentProtocolVersion, requestIdOfAssistantMessage, sendAgentV1 } from "../../api/agent-v1-client";
 import { useAgentV1Turns, latestAgentCard, type AgentV1TurnsState } from "../../hooks/useAgentV1Turns";
 import { useCardLocalPendingEdits } from "../../hooks/useCardLocalPendingEdits";
-import { AgentBasisLine, AgentConfirmationCard, AgentProgress, AgentQuestionOptions, answerTextOf } from "./cards/AgentConfirmationCard";
+import { AgentBasisLine, AgentConfirmationCard, AgentMemoryChips, AgentProgress, AgentQuestionOptions, answerTextOf } from "./cards/AgentConfirmationCard";
 import { AgentAnswerBlocks, AgentAnswerText } from "./cards/AgentAnswerBlocks";
 import { answerBlocksOf } from "../../api/compute/agent-answer-blocks";
 import { useAgentAnswerGone } from "../../hooks/useAgentAnswerGone";
@@ -1410,6 +1410,8 @@ function AgentV1Turn({ requestId, turns, online, pendingTargets, language, onOpe
       <View style={styles.r21Message}>
         {running ? <AgentProgress language={language} queued={document?.status === "queued"} /> : null}
         {!running && document?.answer?.basis ? <AgentBasisLine basis={document.answer.basis} language={language} onOpenHref={onOpenHref} cardsBelow={hasCards} /> : null}
+        {/* AG14 (board 5, D4): the memory chips right after the basis chip. */}
+        {!running && document?.answer?.memoryUse?.length ? <AgentMemoryChips memoryUse={document.answer.memoryUse} language={language} onOpenHref={onOpenHref} /> : null}
         {blocks ? <AgentAnswerBlocks blocks={blocks} gone={gone} language={language} onOpenHref={onOpenHref} /> : null}
         {!running && !blocks && text ? <AgentAnswerText text={text} /> : null}
         {!running && document?.clarifications?.length ? <AgentQuestionOptions clarifications={document.clarifications} language={language} disabled={picking || !online} onSelect={(set, optionId) => {

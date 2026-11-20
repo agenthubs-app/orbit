@@ -47,6 +47,8 @@ export function memoryWriteExecutors(deps: MemoryWriteDeps): AgentActionExecutor
         source: "conversation",
         sourceMessageRef: text(payload, "sourceMessageRef") ?? null,
         structured: (payload.structured ?? null) as AgentMemoryStructured | null,
+        // AG14 UI (D2): the last day, when the user's words carried one.
+        ...(typeof payload.validUntil === "string" ? { validUntil: payload.validUntil } : {}),
       });
       return { resultRef: `${AGENT_MEMORY_COLLECTION}:${created.memoryId}`, summary: "Personal memory saved in Orbit." };
     }),

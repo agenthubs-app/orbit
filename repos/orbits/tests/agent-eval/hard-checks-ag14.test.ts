@@ -3,6 +3,17 @@ import { test } from "node:test";
 
 import { CHECKS, NOT_YET, type CheckContext } from "./lib/hard-checks";
 import type { Observation } from "./lib/observations";
+import { blockLines, memoryUseLines } from "./lib/runner";
+
+test("AG14 UI: the transcript shows the memory chips and the note's 「去设置 ›」 as the clients show them", () => {
+  const fixture = (id: string | null | undefined) => (id === "mem-product-1" ? "MM1" : null);
+  assert.deepEqual(memoryUseLines(undefined, fixture), []);
+  assert.deepEqual(memoryUseLines([{ kind: "used", memoryId: "mem-product-1", text: "按你存的偏好「周末上午」挑的" }, { kind: "skipped", memoryId: "m2", text: "只这一次：没按你存的「周末上午」" }], fixture), [
+    "- 回答开头记忆的小标签（两端显示在依据行后面；服务端代码写的）：「按你存的偏好「周末上午」挑的」带「修改 ›」，点了打开设置页里这一条（MM1）；「只这一次：没按你存的「周末上午」」（m2）",
+  ]);
+  const lines = blockLines([{ go: { label: "去设置", to: "memory_settings" }, items: [{ action: "打开「从对话里记住新的」再说一次。", text: "「推荐活动时优先周末上午」下次不会自动用。" }], title: "只用在这一次，没有存下来", type: "note" }], fixture);
+  assert.equal(lines.at(-1), "    - 末尾的入口「去设置 ›」：点了打开设置页「iOrbit 记住的信息」");
+});
 
 /**
  * agent-design AG14 (eval README §3.2, §3.4; MEM.yaml): the memory words of the runner — `memory_state` with entries,

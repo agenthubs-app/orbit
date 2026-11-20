@@ -28,7 +28,7 @@ import { routeNode } from "./nodes/route";
 import { understandNode } from "./nodes/understand";
 import { verifyNode } from "./nodes/verify";
 import { AgentGraphAnnotation, type AgentGraphRun, type AgentGraphState, type GraphResolution } from "./state";
-import type { AgentActionPreviewContract, AgentAnswerBasisContract, AgentAnswerBlockContract, AgentClarificationContract, AgentPartResult, AgentRunStage, AgentWebResultContract } from "../../../shared/contract/agent-v1";
+import type { AgentActionPreviewContract, AgentAnswerBasisContract, AgentAnswerBlockContract, AgentAnswerMemoryUseContract, AgentClarificationContract, AgentPartResult, AgentRunStage, AgentWebResultContract } from "../../../shared/contract/agent-v1";
 
 export const GRAPH_NODES = ["intake", "understand", "route", "functions", "resolve", "probe", "propose", "clarify", "answer", "verify", "deliver"] as const;
 
@@ -131,6 +131,8 @@ export interface AgentGraphResult {
   web: AgentWebResultContract;
   /** AG19: the answer laid out in blocks (paragraphs, points, record cards, the note of what was not done). */
   blocks: AgentAnswerBlockContract[];
+  /** AG14 UI: the memory chips at the start of the answer. */
+  memoryUse: AgentAnswerMemoryUseContract[];
 }
 
 function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRun {
@@ -183,6 +185,8 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     blocks: [],
     eventFacts: new Map(),
     recordSort: new Map(),
+    memoryNotes: new Map(),
+    memoryUse: [],
   };
 }
 
@@ -200,6 +204,7 @@ async function resultOf(graph: ReturnType<typeof buildAgentGraph>, run: AgentGra
     sourceRefs: run.sourceRefs,
     basis: run.basis,
     blocks: run.blocks,
+    memoryUse: run.memoryUse,
     cardLine: run.cardLine,
     state,
     status: state.requestStatus ?? "completed",

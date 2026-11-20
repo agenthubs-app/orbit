@@ -252,10 +252,17 @@ function blocksOf(scope: NodeScope, state: AgentGraphState, written: readonly Gr
   const { run } = scope;
   const blocks: AnswerBlock[] = [];
   const notes: AgentAnswerNoteItemContract[] = [];
+  const memoryNotes: AnswerBlock[] = [];
   for (const part of written) {
     const line = lineFor(scope, state, part, language);
     if (!line.trim()) continue;
     const quote = quoteOf(scope.input.message, part);
+    // AG14 UI (board 4, D3): a memory line said as a grey note with 「去设置 ›」, after the answer (its text is the same words).
+    const memoryNote = run.memoryNotes.get(part.localId);
+    if (memoryNote) {
+      memoryNotes.push({ go: { label: memoryNote.go, to: "memory_settings" }, items: [{ text: memoryNote.text, ...(memoryNote.action ? { action: memoryNote.action } : {}) }], title: memoryNote.title, type: "note" });
+      continue;
+    }
     if (isNotDone(part, run.writeLines.has(part.localId))) {
       // Each sentence of code's is one entry; the first carries the user's words.
       line.split("\n").map((text) => text.trim()).filter(Boolean).forEach((text, index) => notes.push(noteItemOf(text, index === 0 ? quote : null, language)));
@@ -278,6 +285,7 @@ function blocksOf(scope: NodeScope, state: AgentGraphState, written: readonly Gr
     const cards = byBasisLine ? null : recordsBlock(cited, language, { size: "mini" });
     blocks.push(...mine, ...(cards ? [cards] : []));
   }
+  blocks.push(...memoryNotes);
   const note = noteBlock(notes, language);
   if (note) blocks.push(note);
   if (run.cardLine?.trim()) blocks.push({ text: run.cardLine, type: "paragraph" });

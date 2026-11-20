@@ -87,8 +87,11 @@ test("memory.delete: the card names the entry; the click forgets it at that revi
   const op = await freeze((settled as { intent: MemoryCardIntent }).intent);
   assert.equal(op.operationType, "delete_memory");
   assert.deepEqual(op.after, { status: "deleted" });
-  assert.equal(op.display?.rows[0].after, "推荐活动时优先周末上午");
-  assert.equal(op.display?.rows[1].after, "推荐活动时");
+  // AG14 UI (board 3): the item names the entry; 用在 under it; what follows the click in one line.
+  assert.equal(op.display?.record, "记忆「推荐活动时优先周末上午」");
+  assert.equal(op.display?.change, "delete");
+  assert.deepEqual(op.display?.rows.map((row) => `${row.label}:${row.after}`), ["用在:推荐活动时"]);
+  assert.equal(op.display?.note, "删掉以后，新对话和以前的对话都不再用它。");
   assert.equal((await service.list()).length, 1, "nothing is deleted before the click");
   await run(MEMORY_DELETE, op.payload);
   assert.deepEqual(await service.list(), []);
@@ -124,6 +127,27 @@ test("a regenerated card keeps its memory items; the card's count sentence says 
     assert.deepEqual(cardIntentOf(op), { ...memoryIntentOf(op), partId: "p1" });
   }
   assert.equal(cardCountTitle([update, create, remove], "zh"), "修改1项，新增1项，删除1项");
-  assert.equal(create.display?.rows[2].after, "一直遵守的");
-  assert.equal(create.display?.rows[1].after, "所有回答");
+  assert.equal(create.display?.record, "记忆「回答用日语」");
+  assert.equal(create.display?.rows[1].after, "一直遵守的");
+  assert.equal(create.display?.rows[0].after, "所有回答");
+  // AG14 UI (D1): a change shows the words before and after side by side.
+  assert.equal(update.display?.record, "记忆");
+  assert.deepEqual(update.display?.rows[0], { after: "b", before: "a", field: "content", label: "内容", sideBySide: true });
+});
+
+test("AG14 UI (D2): a limit in the words is the entry's last day and the card's 到期 row; none, no row", async () => {
+  const { expiryIn } = await import("../../features/agent-v1/domains/memory/words");
+  assert.equal(expiryIn("记住，这个月先优先周末上午", "2026-11-15"), "2026-11-30");
+  assert.equal(expiryIn("记住，这周不要推荐晚上的", "2026-11-15"), "2026-11-15", "2026-11-15 is a Sunday: the week ends that day");
+  assert.equal(expiryIn("记住，这周不要推荐晚上的", "2026-11-17"), "2026-11-22");
+  assert.equal(expiryIn("记住，到12月31日之前都优先周末", "2026-11-15"), "2026-12-31");
+  assert.equal(expiryIn("今年は週末を優先して", "2026-11-15"), "2026-12-31");
+  assert.equal(expiryIn("Remember: this month, prefer weekend mornings", "2026-11-15"), "2026-11-30");
+  assert.equal(expiryIn("记住，以后给我推荐活动时优先周末上午", "2026-11-15"), null);
+  const dated = await freeze({ capability: MEMORY_CREATE, set: { appliesTo: ["event.recommend"], category: "preference", content: "推荐活动时优先周末上午", structured: null, validUntil: "2026-11-30" }, sourceMessageRef: "request:req-1" });
+  assert.deepEqual(dated.display?.rows.map((row) => `${row.label}:${row.after}`), ["用在:推荐活动时", "归到:酌情参考的", "到期:11月30日（周一）"]);
+  assert.equal((dated.payload as Record<string, unknown>).validUntil, "2026-11-30");
+  const { run, service } = world();
+  await run(MEMORY_CREATE, dated.payload);
+  assert.equal((await service.list())[0]?.validUntil, "2026-11-30");
 });

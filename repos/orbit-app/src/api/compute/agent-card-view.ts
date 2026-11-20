@@ -85,6 +85,8 @@ export interface AgentCardRowView {
   after: string;
   /** The server marked this row as changed since the card was shown ("现在是 … → 改成 …"). */
   changed: boolean;
+  /** AG14 (D1): before and after in two columns side by side (「原来」「改成」, aiCard memoryWas / memoryNow). */
+  sideBySide: boolean;
 }
 
 export interface AgentCardItemView {
@@ -231,7 +233,7 @@ export function agentCardView(preview: AgentActionPreviewContract, client: Agent
       // A card frozen before AG07 has no display: its one line written by the server stands for the item.
       record: display?.record ?? op.text,
       review: op.status === "needs_review",
-      rows: (display?.rows ?? []).map((row) => ({ after: row.after, before: row.before ?? null, changed: changed.has(`${op.operationId}|${row.field}`), field: row.field, label: row.label })),
+      rows: (display?.rows ?? []).map((row) => ({ after: row.after, before: row.before ?? null, changed: changed.has(`${op.operationId}|${row.field}`), field: row.field, label: row.label, sideBySide: Boolean(row.sideBySide && row.before !== undefined) })),
       status: itemStatusOf(preview.status, op.status, change, words),
     };
   });

@@ -29,9 +29,9 @@ import type { AgentGraphState, GraphPart } from "../../graph/state";
 import { emitTrace } from "../../observability/trace";
 import { resolveSaidDate } from "../../propose/dates";
 import { capabilityKind, type Capability } from "../../route/capabilities";
-import { MEMORY_WORDS } from "./copy";
+import { MEMORY_WORDS, noteLine, type MemoryNote } from "./copy";
 import { MEMORY_CREATE, MEMORY_DELETE, MEMORY_UPDATE, type MemoryCardIntent, type MemoryValues } from "./ops";
-import { asksWhyOrder, composeEventTimeContent, entriesPointedAt, memoryAskOf, readMemoryWords, rememberedWordsOf, replacementOf, replyLanguageIn, timeValuesIn, timeWordsOf, type MemoryLanguage } from "./words";
+import { asksWhyOrder, composeEventTimeContent, entriesPointedAt, expiryIn, memoryAskOf, readMemoryWords, rememberedWordsOf, replacementOf, replyLanguageIn, timeValuesIn, timeWordsOf, type MemoryLanguage } from "./words";
 
 /** What the graph needs of the memory service: one read of an account's scope. */
 export interface AgentMemoryAccess {
@@ -312,7 +312,8 @@ function entriesItChanges(reading: ReturnType<typeof readMemoryWords>, previousW
   return kept;
 }
 
-type Settled = { kind: "card"; intent: MemoryCardIntent } | { kind: "line"; reason: string; line: string; usedThisTurn?: string };
+/** A line said as a grey note with 「去设置 ›」 (AG14 UI, D3) carries the note; `line` is its text version. */
+type Settled = { kind: "card"; intent: MemoryCardIntent } | { kind: "line"; reason: string; line: string; usedThisTurn?: string; note?: MemoryNote };
 
 /** What a sentence to remember becomes: a card item, or code's sentence (already saved, learning off, nothing to keep). */
 export function settleRemember(input: { words: string; language: MemoryLanguage; snapshot: AgentMemorySnapshot; requestId: string; today: string }): Settled {
@@ -338,17 +339,25 @@ export function settleRemember(input: { words: string; language: MemoryLanguage;
   const twin = snapshot.entries.find((entry) => entry.content === content || (reading.structured && sameJson(entry.structured, reading.structured) && sameJson(entry.appliesTo, reading.appliesTo)));
   if (twin) return { kind: "line", line: MEMORY_WORDS.alreadySaved(language, twin), reason: "memory_already_saved" };
   // A new entry is kept only with 「从对话里记住新的」 on; off: this turn only, and how to keep it (设计稿 §6).
-  if (!snapshot.settings.allowConversationLearning) return { kind: "line", line: MEMORY_WORDS.learningOff(language, content), reason: "memory_learning_off", usedThisTurn: words };
+  if (!snapshot.settings.allowConversationLearning) {
+    const note = MEMORY_WORDS.learningOffNote(language, content);
+    return { kind: "line", line: noteLine(note, language), note, reason: "memory_learning_off", usedThisTurn: words };
+  }
   // The message a deleted entry was made from never proposes it again (the same request handled once more).
   if (isForgottenSource(snapshot.marks, memorySourceRef(input.requestId))) return { kind: "line", line: MEMORY_WORDS.nothingToForget(language, snapshot.entries.length > 0), reason: "memory_source_forgotten" };
-  return { intent: { capability: MEMORY_CREATE, set: { appliesTo: reading.appliesTo, category: reading.category, content, structured: reading.structured }, sourceMessageRef: memorySourceRef(input.requestId) }, kind: "card" };
+  // AG14 UI (D2): a limit in the words ("这个月先……") becomes the entry's last day and the card's 到期 row.
+  const validUntil = expiryIn(input.words, input.today);
+  return { intent: { capability: MEMORY_CREATE, set: { appliesTo: reading.appliesTo, category: reading.category, content, structured: reading.structured, ...(validUntil ? { validUntil } : {}) }, sourceMessageRef: memorySourceRef(input.requestId) }, kind: "card" };
 }
 
 /** What an ask to forget becomes: a card that names the entry, or code's sentence. */
 export function settleForget(input: { words: string; language: MemoryLanguage; snapshot: AgentMemorySnapshot }): Settled {
   const { language, snapshot } = input;
   const pointed = entriesPointedAt(input.words, snapshot.entries);
-  if (!pointed.length) return { kind: "line", line: MEMORY_WORDS.nothingToForget(language, snapshot.entries.length > 0), reason: "memory_not_found" };
+  if (!pointed.length) {
+    const note = MEMORY_WORDS.nothingToForgetNote(language, snapshot.entries.length > 0);
+    return { kind: "line", line: noteLine(note, language), note, reason: "memory_not_found" };
+  }
   if (pointed.length > 1) return { kind: "line", line: MEMORY_WORDS.whichOne(language, "forget", pointed), reason: "memory_several_match" };
   const entry = pointed[0];
   return { intent: { capability: MEMORY_DELETE, expectedRevision: entry.revision, shown: valuesOf(entry), targetId: entry.memoryId }, kind: "card" };
@@ -404,6 +413,8 @@ function settleWrite(scope: NodeScope, part: GraphPart, settled: Settled, capabi
     part.status = "unfinished";
     part.reason = settled.reason;
     run.writeLines.set(part.localId, settled.line);
+    // AG14 UI (D3): the grey note with 「去设置 ›」 stands for this line in the blocks (deliver).
+    if (settled.note) run.memoryNotes.set(part.localId, settled.note);
     return;
   }
   part.capabilities = [settled.intent.capability as Capability];

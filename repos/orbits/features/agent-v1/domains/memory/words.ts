@@ -176,6 +176,33 @@ export function readMemoryWords(words: string): MemoryReading {
   return { appliesTo, category, composable: Boolean(time) && appliesTo.length === 1 && appliesTo[0] === "event.recommend" && beyondTime(words) === "", structured: time ? { ...time } : null };
 }
 
+/**
+ * AG14 UI (approved draft board 1, D2): the last day the words give an entry — 「这周／这个月／今年先……」, 「到12月31日」,
+ * 「今月は」, "this month" … — as YYYY-MM-DD from `today` (YYYY-MM-DD). Null when the words name no limit; the card then
+ * has no 到期 row and the entry has no expiry.
+ */
+export function expiryIn(words: string, today: string): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(today);
+  if (!match) return null;
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const iso = (date: Date) => date.toISOString().slice(0, 10);
+  const until = /(?:到|至|截至|截止到?)?\s*(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]?\s*(?:之前|以前|前|为止|まで)/u.exec(words);
+  if (until) {
+    const [m, d] = [Number(until[1]), Number(until[2])];
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      const passed = m < month || (m === month && d < day);
+      return iso(new Date(Date.UTC(passed ? year + 1 : year, m - 1, d)));
+    }
+  }
+  if (/(这周|这星期|这个星期|本周|今週|\bthis week\b)/iu.test(words)) {
+    const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+    return iso(new Date(Date.UTC(year, month - 1, day + ((7 - weekday) % 7))));
+  }
+  if (/(这个月|这月|本月|今月|\bthis month\b)/iu.test(words)) return iso(new Date(Date.UTC(year, month, 0)));
+  if (/(今年|\bthis year\b)/iu.test(words)) return `${year}-12-31`;
+  return null;
+}
+
 /* ── words code writes ─────────────────────────────────────────────── */
 
 const DAY_WORDS: Record<MemoryLanguage, { weekend: string; weekday: string }> = {

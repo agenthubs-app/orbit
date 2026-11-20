@@ -13,7 +13,7 @@ import { referenceKindLabel } from "../../../../../shared/compute/agent-referenc
 import type { AgentAnswerRecordContract, AgentAnswerRecordKind } from "../../../../../shared/contract/agent-v1";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { standardCopyFor } from "../copy/standard";
-import { agentRecordHref } from "./action-preview-client";
+import { agentRecordHref, memorySettingsHref } from "./action-preview-client";
 import styles from "./answer-blocks.module.css";
 
 const KIND_CLASS: Record<AgentAnswerRecordKind, string> = { attendance: styles.kWent, contact: styles.kContact, event: styles.kEvent, memo: styles.kMemo, schedule: styles.kSchedule, todo: styles.kTodo };
@@ -75,9 +75,11 @@ function Records({ block, gone, language, navigate }: { block: AnswerRecordsBloc
   );
 }
 
-function Note({ block }: { block: Extract<AnswerBlock, { type: "note" }> }) {
+function Note({ block, navigate }: { block: Extract<AnswerBlock, { type: "note" }>; navigate(href: string): void }) {
+  // AG14 (board 4, D3): a memory note ends in 「去设置 ›」 to the memory part of the settings page.
+  const go = block.go ? memorySettingsHref(block.go.memoryId) : null;
   return (
-    <div className={styles.note} data-orbit-answer-note>
+    <div className={styles.note} data-orbit-answer-note={block.go ? "memory" : ""}>
       <div className={styles.noteHead}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.6v.2" /></svg>{block.title}</div>
       {block.items.map((item, index) => (
         <div key={index} className={styles.noteItem}>
@@ -85,6 +87,7 @@ function Note({ block }: { block: Extract<AnswerBlock, { type: "note" }> }) {
           {item.text}{item.action ? <span className={styles.noteDo}>{item.action}</span> : null}
         </div>
       ))}
+      {go && block.go ? <a className={styles.noteGo} href={go} data-orbit-answer-note-go onClick={(event) => { event.preventDefault(); navigate(go); }}>{block.go.label} ›</a> : null}
     </div>
   );
 }
@@ -115,7 +118,7 @@ export function AnswerBlocks({ blocks, gone, language, navigate }: { blocks: rea
           );
         }
         if (group.block.type === "records") return <Records key={at} block={group.block} gone={gone} language={language} navigate={navigate} />;
-        if (group.block.type === "note") return <Note key={at} block={group.block} />;
+        if (group.block.type === "note") return <Note key={at} block={group.block} navigate={navigate} />;
         return null;
       })}
     </div>

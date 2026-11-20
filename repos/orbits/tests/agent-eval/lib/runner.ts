@@ -241,9 +241,19 @@ export function blockLines(blocks: readonly AgentAnswerBlockContract[] | undefin
     else if (block.type === "records") {
       lines.push(`  - 【${block.size === "mini" ? "小卡片" : "卡片"}${block.caption ? `，上方小字「${block.caption}」` : ""}，共 ${block.items.length} 张${block.moreLabel ? `，先显示 ${block.shown} 张，其余收在「${block.moreLabel}」里，点一下原地展开` : ""}】`);
       block.items.forEach((item, index) => lines.push(`    - ${index + 1}. [${KIND[item.kind] ?? item.kind}] ${item.top ?? ""}｜${item.title}｜${item.sub ?? ""}${item.why ? `｜理由：${item.why}` : ""}（${fixtureIdOf(item.id) ?? item.id}${item.gone ? "，已不在" : ""}）`));
-    } else if (block.type === "note") lines.push(`  - 【灰底说明条「${block.title}」】`, ...block.items.map((item) => `    - ${item.quote ? `「${item.quote}」` : ""}${item.text}${item.action ? `〔可以马上做：${item.action}〕` : ""}`));
+    } else if (block.type === "note") lines.push(`  - 【灰底说明条「${block.title}」】`, ...block.items.map((item) => `    - ${item.quote ? `「${item.quote}」` : ""}${item.text}${item.action ? `〔可以马上做：${item.action}〕` : ""}`), ...(block.go ? [`    - 末尾的入口「${block.go.label} ›」：点了打开设置页「iOrbit 记住的信息」${block.go.memoryId ? `里那一条（${block.go.memoryId}）` : ""}`] : []));
   }
   return lines;
+}
+
+/**
+ * AG14 UI: the memory chips at the start of the answer, right after the basis line (approved draft board 5): which saved
+ * entry the answer used ("修改 ›" opens that entry in settings), the one this turn did not follow, a rule that took
+ * results away. Written by server code; both clients show them as they are.
+ */
+export function memoryUseLines(memoryUse: readonly { kind: string; memoryId: string; text: string }[] | undefined, fixtureIdOf: (id: string | null | undefined) => string | null): string[] {
+  if (!memoryUse?.length) return [];
+  return [`- 回答开头记忆的小标签（两端显示在依据行后面；服务端代码写的）：${memoryUse.map((chip) => `「${chip.text}」${chip.kind === "skipped" ? "" : "带「修改 ›」，点了打开设置页里这一条"}（${fixtureIdOf(chip.memoryId) ?? chip.memoryId}）`).join("；")}`];
 }
 
 export async function runCase(testCase: EvalCase, filePatches: Record<string, any>, area: string, ctx: RunnerContext): Promise<CaseOutcome> {
@@ -1206,7 +1216,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       const SET_KIND: Record<string, string> = { entry: "附带的入口（点了才算提出）", not_understood: "没看懂时给的方向", question: "追问的候选" };
       const SET_STATE: Record<string, string> = { answered: "已回答", open: "还能点", shelved: "已放下（用户没理会）" };
       const setLines = (row.document?.clarifications ?? []).map((set) => `  - ${SET_KIND[set.kind] ?? set.kind}（子目标 ${set.partId}，${SET_STATE[set.state] ?? set.state}${set.selectedOptionId ? `，选了 ${set.selectedOptionId}` : ""}${set.answeredBy ? `，由后面的消息 ${set.answeredBy} 回答` : ""}）：${set.options.map((option) => `${option.optionId}「${option.label}」（${option.capability}${option.ref ? `，指向 ${fixtureIdOf(option.ref.id) ?? option.ref.id}` : ""}）`).join("；") || "没有候选"}`);
-      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, ...(row.document?.answer?.basis ? [`- 回答开头的依据行（两端显示在回答上方，可点开记录）：${row.document.answer.basis.text}（${row.document.answer.basis.links.map((link) => link.label).join("、")}）`] : []), `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, ...blockLines(row.document?.answer?.blocks, fixtureIdOf), ...(row.document?.answer?.web ? [`- 结果文档里的联网记录（服务端代码写的；实际发出的检索词和打开的网页）：检索词 ${row.document.answer.web.queries.map((query) => `「${query.text}」`).join("、") || "无"}；网页 ${row.document.answer.web.pages.map((page) => `${page.url}（${page.readStatus}${page.sourceDate ? `，页面日期 ${page.sourceDate}` : ""}）`).join("、") || "无"}`] : []), ...(setLines.length ? ["- 可点的方向（结果文档里由服务端代码给出，两端照此显示）：", ...setLines] : []), ...(partLines.length ? ["- 拆出的子目标（结果文档里的服务端记录，不是给用户看的文字）：", ...partLines] : []), ...(row.document?.actionPreview ? ["- 这一轮结果文档里的卡（交付时的状态）：", ...cardText(row.document.actionPreview)] : []), "");
+      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, ...(row.document?.answer?.basis ? [`- 回答开头的依据行（两端显示在回答上方，可点开记录）：${row.document.answer.basis.text}（${row.document.answer.basis.links.map((link) => link.label).join("、")}）`] : []), ...memoryUseLines(row.document?.answer?.memoryUse, fixtureIdOf), `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, ...blockLines(row.document?.answer?.blocks, fixtureIdOf), ...(row.document?.answer?.web ? [`- 结果文档里的联网记录（服务端代码写的；实际发出的检索词和打开的网页）：检索词 ${row.document.answer.web.queries.map((query) => `「${query.text}」`).join("、") || "无"}；网页 ${row.document.answer.web.pages.map((page) => `${page.url}（${page.readStatus}${page.sourceDate ? `，页面日期 ${page.sourceDate}` : ""}）`).join("、") || "无"}`] : []), ...(setLines.length ? ["- 可点的方向（结果文档里由服务端代码给出，两端照此显示）：", ...setLines] : []), ...(partLines.length ? ["- 拆出的子目标（结果文档里的服务端记录，不是给用户看的文字）：", ...partLines] : []), ...(row.document?.actionPreview ? ["- 这一轮结果文档里的卡（交付时的状态）：", ...cardText(row.document.actionPreview)] : []), "");
     }
     const reconnects = events.filter((event) => event.type === "turn.reconnect");
     if (reconnects.length) {

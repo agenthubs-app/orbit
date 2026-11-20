@@ -111,7 +111,7 @@ export const agentActionPreviewSchema: z.ZodType<AgentActionPreviewContract> = z
       change: z.enum(["update", "create", "delete", "restore"]),
       note: z.string().optional(),
       record: z.string(),
-      rows: z.array(z.object({ after: z.string(), before: z.string().optional(), field: z.string(), label: z.string() })),
+      rows: z.array(z.object({ after: z.string(), before: z.string().optional(), field: z.string(), label: z.string(), sideBySide: z.boolean().optional() })),
     }).optional(),
     operationId: z.string(),
     // AG13: why an item that ran was not done (written by the server in the card's language).
@@ -207,8 +207,12 @@ export const agentAnswerBlockSchema: z.ZodType<AgentAnswerBlockContract> = z.dis
   z.object({ text: z.string(), type: z.literal("paragraph") }),
   z.object({ items: z.array(z.object({ head: z.string().optional(), text: z.string() })), type: z.literal("points") }),
   z.object({ caption: z.string().optional(), items: z.array(agentAnswerRecordSchema), lessLabel: z.string().optional(), moreLabel: z.string().optional(), shown: z.number().int().nonnegative(), size: z.enum(["full", "mini"]).optional(), type: z.literal("records") }),
-  z.object({ items: z.array(z.object({ action: z.string().optional(), quote: z.string().optional(), text: z.string() })), title: z.string(), type: z.literal("note") }),
+  // AG14: the note may end in an entry to the memory settings («去设置 ›»).
+  z.object({ go: z.object({ label: z.string(), memoryId: z.string().optional(), to: z.literal("memory_settings") }).optional(), items: z.array(z.object({ action: z.string().optional(), quote: z.string().optional(), text: z.string() })), title: z.string(), type: z.literal("note") }),
 ]) as unknown as z.ZodType<AgentAnswerBlockContract>;
+
+/** AG14: one memory chip at the start of an answer. */
+export const agentAnswerMemoryUseSchema = z.object({ kind: z.enum(["used", "skipped", "rule"]), memoryId: z.string(), text: z.string() });
 
 export const agentResultDocumentSchema: z.ZodType<AgentResultDocument> = z.object({
   actionPreview: agentActionPreviewSchema.optional(),
@@ -221,6 +225,8 @@ export const agentResultDocumentSchema: z.ZodType<AgentResultDocument> = z.objec
     // AG19: the answer laid out in blocks (code's); a block this client does not know is skipped, never an error.
     blocks: z.array(z.unknown()).transform((items) => items.flatMap((item) => { const parsed = agentAnswerBlockSchema.safeParse(item); return parsed.success ? [parsed.data] : []; })).optional(),
     cardLine: z.string().optional(),
+    // AG14: the memory chips at the start of the answer (code's); one this client does not know is skipped.
+    memoryUse: z.array(z.unknown()).transform((items) => items.flatMap((item) => { const parsed = agentAnswerMemoryUseSchema.safeParse(item); return parsed.success ? [parsed.data] : []; })).optional(),
     sourceRefs: z.array(z.string()),
     text: z.string(),
     // AG09: the queries sent and the pages opened (code's).

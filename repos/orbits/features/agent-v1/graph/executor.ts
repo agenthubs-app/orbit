@@ -180,7 +180,7 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       const resumed = await resumeAgentGraph(deps, graphInputOf(execution.actorId, execution.requestId, execution.sessionId, execution.input, false), { clarificationId: execution.resume.clarificationId, kind: "select", optionId: execution.resume.optionId }, { names: namesIn(execution.document), previousClarifications: execution.document?.clarifications ?? null });
       // AG07 repair 2 (AE-XL-003): the read answered before the pause is still in the answer; its basis line and links stay.
       const kept = keepEarlierBasis(execution.document ?? null, resumed);
-      return { ...(resumed.actionPreview ? { actionPreview: resumed.actionPreview } : {}), basis: kept.basis, ...(resumed.blocks.length ? { blocks: resumed.blocks } : {}), ...(resumed.cardLine && resumed.text.includes(resumed.cardLine) ? { cardLine: resumed.cardLine } : {}), clarifications: resumed.clarifications, partResults: resumed.partResults, sourceRefs: kept.sourceRefs, status: resumed.status, text: resumed.text, web: resumed.web };
+      return { ...(resumed.actionPreview ? { actionPreview: resumed.actionPreview } : {}), basis: kept.basis, ...(resumed.blocks.length ? { blocks: resumed.blocks } : {}), ...(resumed.memoryUse.length ? { memoryUse: resumed.memoryUse } : {}), ...(resumed.cardLine && resumed.text.includes(resumed.cardLine) ? { cardLine: resumed.cardLine } : {}), clarifications: resumed.clarifications, partResults: resumed.partResults, sourceRefs: kept.sourceRefs, status: resumed.status, text: resumed.text, web: resumed.web };
     }
     // AG12-4: words about the rows of this conversation's waiting import card give its next revision (code, no model).
     const importRevision = await reviseImportByWords({ actorId: execution.actorId, message: execution.input.message, now: deps.now, runtime, sessionId: execution.sessionId, store: entryStore ?? null });
@@ -210,6 +210,8 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       ...(settled.basis ? { basis: settled.basis } : {}),
       // AG19: the graph's blocks; what the boundary said after the graph's text follows as paragraphs.
       ...(settled.blocks.length ? { blocks: withBoundaryTail(settled.blocks, settled.text, boundary.text, settled.state.language) } : {}),
+      // AG14 UI: the memory chips at the start of the answer.
+      ...(settled.memoryUse.length ? { memoryUse: settled.memoryUse } : {}),
       ...(settled.cardLine && boundary.text.includes(settled.cardLine) ? { cardLine: settled.cardLine } : {}),
       partResults,
       sourceRefs: boundary.sourceRefs,

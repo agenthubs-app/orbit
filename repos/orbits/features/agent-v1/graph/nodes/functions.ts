@@ -30,9 +30,11 @@ import { localDay } from "../../views/recent-interaction";
 import type { CanonicalEventRecord } from "../../../events/core/contract";
 import type { NoteInteractionContract } from "../../../../shared/contract/notes";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
-import { asksEventsToGoTo, pointsAtPast, writesADate, upcomingTopicOf, directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, naturalField, PICK_WORDS, sentenceTopicOf, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
+import { asksEventsToGoTo, meetsTime, pointsAtPast, writesADate, upcomingTopicOf, directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, naturalField, PICK_WORDS, sentenceTopicOf, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
 import { MEMORY_WORDS } from "../../domains/memory/copy";
-import { ensureTurnMemory, rankMemoryOf } from "../../domains/memory/turn";
+import { ensureTurnMemory, rankMemoryOf, timePreferenceOfEntry, topicOfEntry } from "../../domains/memory/turn";
+import { memoryChipsOf } from "../../domains/memory/chips";
+import type { RecalledMemory } from "../../../agent/memory/recall";
 import { compare, dimensionsIn, type ComparedEvent } from "../../functions/compare";
 import * as say from "../../functions/copy";
 import { memoDayOf } from "../../functions/dates";
@@ -987,10 +989,28 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const periodCount = MEMORY_WORDS.periodCount(language, result.ordered.length, result.matching, UNIT[domain][language]);
   const answerText = unmet ? written.text.replace(coverage, periodCount) : written.text;
   const answerBlocks = unmet ? replaceInBlocks(written.blocks, coverage, periodCount) : written.blocks;
-  // AG14 (设计稿 §6 "旁边可改"): an answer that used saved entries says where they can be changed.
-  const manage = saved.used.length && lead ? MEMORY_WORDS.manageLine(language, saved.used.length) : null;
-  run.answers.set(part.localId, manage ? `${answerText}\n${manage}` : answerText);
-  run.answerBlocks.set(part.localId, manage ? [...answerBlocks, { text: manage, type: "paragraph" }] : answerBlocks);
+  run.answers.set(part.localId, answerText);
+  run.answerBlocks.set(part.localId, answerBlocks);
+  // AG14 UI (approved draft board 5, D4–D6; 设计稿 §6 "旁边可改"): the entries this ranking used are named in chips at the
+  // start of the answer, each with 「修改 ›」 to the entry in settings — they replace the old "where to change" line. A
+  // saved rule is named only when it took candidates away; an entry this turn's words overruled reads "只这一次".
+  const removedBy = (preference: TimePreference) => (domain !== "event" ? 0 : candidates.filter((candidate) => hard(candidate)).filter((candidate) => {
+    const startsAt = (candidate as EventCandidate).startsAt;
+    return Boolean(startsAt) && (preference.exclude ? meetsTime(preference, startsAt!, timeZone) : !meetsTime(preference, startsAt!, timeZone));
+  }).length);
+  const timeIds = new Set(saved.time.map((item) => item.entry.memoryId));
+  const topicOf = (entry: RecalledMemory) => (timeIds.has(entry.memoryId) ? null : topicOfEntry(entry));
+  run.memoryUse.push(...memoryChipsOf({
+    language,
+    other: saved.used.filter((entry) => !timeIds.has(entry.memoryId) && !topicOf(entry)),
+    overruled: saved.overruled.map((entry) => {
+      const preference = timePreferenceOfEntry(entry);
+      // A preferred time by its time words ("周末上午"); a rule that leaves something out by its own words.
+      return { entry, label: preference && !preference.exclude && !preference.hard ? say.timeWords(preference, language) : preference ? entry.content : topicOfEntry(entry) ?? entry.content };
+    }),
+    time: saved.time.map((item) => ({ entry: item.entry, preference: item.preference, removed: item.preference.hard ? removedBy(item.preference) : 0 })),
+    topics: saved.used.flatMap((entry) => { const topic = topicOf(entry); return topic ? [{ entry, topic }] : []; }),
+  }).filter((chip) => !run.memoryUse.some((item) => item.memoryId === chip.memoryId)));
   // AG14: what this ranking used, by reference, for the session ("为什么排第一", "这次看……").
   run.memory.ranking = {
     at: now,

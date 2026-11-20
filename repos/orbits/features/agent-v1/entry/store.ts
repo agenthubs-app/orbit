@@ -147,7 +147,10 @@ export function resumedAnswer(previous: AgentAnswerContract, next: AgentAnswerCo
   const pages = [...(previous.web?.pages ?? []), ...(next.web?.pages ?? [])].filter((page, index, all) => all.findIndex((other) => other.sourceRef === page.sourceRef) === index);
   // AG19: the joined answer's blocks, in the same order as its text.
   const blocks = joinBlocks(previous, next, languageOfText(`${previous.text}\n${next.text}`));
+  // AG14 UI: the memory chips of both, each entry once.
+  const memoryUse = [...(previous.memoryUse ?? []), ...(next.memoryUse ?? [])].filter((item, index, all) => all.findIndex((other) => other.memoryId === item.memoryId && other.kind === item.kind) === index);
   return {
+    ...(memoryUse.length ? { memoryUse } : {}),
     sourceRefs: [...new Set([...previous.sourceRefs, ...next.sourceRefs])],
     text: [previous.text, next.text].filter((text) => text.trim()).join("\n\n"),
     ...(basis ? { basis } : {}),

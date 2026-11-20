@@ -615,6 +615,11 @@
           "optional": true,
           "kind": "text",
           "type": "readonly AgentAnswerBlockContract[]"
+        },
+        "memoryUse": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly AgentAnswerMemoryUseContract[]"
         }
       }
     },
@@ -1198,6 +1203,11 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "sideBySide": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean | undefined"
         }
       }
     },
@@ -2070,6 +2080,46 @@
     "agent-v1.ts::AgentAnswerBlockContract": {
       "kind": "alias",
       "type": "AgentAnswerBlockContract"
+    },
+    "agent-v1.ts::AgentAnswerGoContract": {
+      "kind": "object",
+      "members": {
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "to": {
+          "optional": false,
+          "kind": "text",
+          "type": "'memory_settings'"
+        },
+        "memoryId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "agent-v1.ts::AgentAnswerMemoryUseContract": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'skipped' | 'used' | 'rule'"
+        },
+        "memoryId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
     },
     "ai-artifacts.ts::AiContactArtifactStatus": {
       "kind": "enum",
