@@ -34,6 +34,11 @@ export interface MyEventItem {
   selfAttendance?: MyEventSelfAttendance | null;
   /** AG13（只加，可选）：这是用户自己建的私人活动，只有本人能看到；status 用已有的值（planned）。 */
   privateEvent?: true;
+  /**
+   * AG20a（只加，可选；名字与日程的 allDay 一致）：只说了哪天、没说几点的私人活动。startsAt 仍是那天 0 点，显示时在钟点的位置写「全天」。
+   * 读不懂这个字段的旧 App（build 19）会照旧显示 0:00，直到 build 20。
+   */
+  allDay?: boolean;
   /** AG13（只加，可选）：私人活动的详情（D4：宽屏右栏 / 手机底部弹出，不开新页面）——关联到它的笔记、待办、日程。 */
   related?: readonly MyEventRelatedRecord[];
 }

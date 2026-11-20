@@ -56,12 +56,12 @@ export interface EventShown { title: string; startsAt?: string | null; kind: "pl
 
 export type EventCardIntent =
   | { capability: typeof PRIVATE_EVENT_CREATE; set: { title: string; startsAt: string; endsAt?: string; venue?: string; /** AG20a R5: a day said without a clock time (startsAt is 00:00 of that day). */ allDay?: boolean } }
-  | { capability: typeof PRIVATE_EVENT_UPDATE; targetId: string; expectedVersion: number; set: { title?: string; startsAt?: string; endsAt?: string | null; venue?: string | null }; shown: { title: string; before: Record<string, string | null> } }
-  | { capability: typeof PRIVATE_EVENT_DELETE; targetId: string; expectedVersion: number; shown: { title: string; startsAt: string; references: number } }
+  | { capability: typeof PRIVATE_EVENT_UPDATE; targetId: string; expectedVersion: number; set: { title?: string; startsAt?: string; endsAt?: string | null; venue?: string | null; allDay?: null }; shown: { title: string; before: Record<string, string | null>; /** AG20a: the event is all day (its start shows as the day and 全天). */ allDay?: boolean } }
+  | { capability: typeof PRIVATE_EVENT_DELETE; targetId: string; expectedVersion: number; shown: { title: string; startsAt: string; references: number; allDay?: boolean } }
   | { capability: typeof ATTENDANCE_CREATE; set: { eventRef: CardEventRef; attendedOn: string; dayParts?: DayPart[]; selfNote?: string }; shown: { event: EventShown | null } }
   | { capability: typeof ATTENDANCE_UPDATE; targetId: string; expectedVersion: number; set: { eventRef: { kind: "platform" | "private"; id: string } }; shown: { from: EventShown; to: EventShown; attendedOn: string } }
   | { capability: typeof ATTENDANCE_DELETE; targetId: string; expectedVersion: number; shown: { event: EventShown; attendedOn: string } }
-  | { capability: typeof SCHEDULE_CREATE; set: { title: string; startsAt: string; endsAt?: string; timeZone: string; eventRefs?: { kind: "platform" | "private"; id: string }[]; contactIds?: string[] }; shown: { events: EventShown[]; names?: Record<string, string>; /** AG20a R6: the user's words for a zone other than their own ("伦敦时间"). */ zoneLabel?: string } }
+  | { capability: typeof SCHEDULE_CREATE; set: { title: string; startsAt: string; endsAt?: string; timeZone: string; /** AG20a: made from an all-day event — the whole day, never 00:00–00:00. */ allDay?: boolean; eventRefs?: { kind: "platform" | "private"; id: string }[]; contactIds?: string[] }; shown: { events: EventShown[]; names?: Record<string, string>; /** AG20a R6: the user's words for a zone other than their own ("伦敦时间"). */ zoneLabel?: string } }
   | { capability: typeof SCHEDULE_UPDATE; targetId: string; set: { scope: "this_occurrence" | "whole_series"; occurrenceDate?: string; startsAt?: string; endsAt?: string; eventRefs?: { kind: "platform" | "private"; id: string }[] }; shown: { title: string; before: { startsAt: string; endsAt?: string | null }; timeZone: string; repeats?: "daily" | "weekly" | "monthly" | null; eventTitles?: { before: string[]; after: string[] } } }
   | { capability: typeof SCHEDULE_DELETE; targetId: string; set: { scope: "this_occurrence" | "whole_series" | "single"; occurrenceDate?: string }; shown: { title: string; startsAt: string; timeZone: string; repeats?: "daily" | "weekly" | "monthly" | null } }
   | { capability: typeof TODO_COMPLETE | typeof TODO_REOPEN | typeof TODO_DELETE; targetId: string; shown: { title: string; status: string } };
@@ -175,6 +175,19 @@ export function whenText(value: string, locale: CardLocale, timeZone: string): s
   return `${dayText(at.day, locale)}${locale === "en" ? " " : ""}${at.time}`;
 }
 
+/** AG20a: what an all-day event shows in the place of the clock time. */
+export const ALL_DAY_WORDS: Record<CardLocale, string> = { en: "All day", ja: "終日", zh: "全天" };
+
+/** AG20a: "2月6日（周六）全天" — an all-day event's day and 全天 where the time would be (whenText's layout). */
+export function allDayText(value: string, locale: CardLocale, timeZone: string): string {
+  return `${dayText(local(value, timeZone).day, locale)}${locale === "en" ? " " : ""}${ALL_DAY_WORDS[locale]}`;
+}
+
+/** whenText, or allDayText for an all-day event. */
+export function eventWhenText(value: string, allDay: boolean | null | undefined, locale: CardLocale, timeZone: string): string {
+  return allDay ? allDayText(value, locale, timeZone) : whenText(value, locale, timeZone);
+}
+
 /** "10:00–11:00", or the start alone. */
 function spanText(startsAt: string, endsAt: string | null | undefined, timeZone: string): string {
   const start = local(startsAt, timeZone).time;
@@ -223,22 +236,23 @@ export function prepareEventOperation(input: { intent: EventCardIntent & { partI
       const set = intent.set;
       const after = { startsAt: set.startsAt, title: set.title, ...(set.endsAt ? { endsAt: set.endsAt } : {}), ...(set.venue ? { venue: set.venue } : {}), ...(set.allDay ? { allDay: true } : {}) };
       return done({ after, display: { change: "create", record: w.privateEvent(set.title), rows: [
-        // AG20a R5: an all-day event shows its day only.
-        { after: set.allDay ? dayText(local(set.startsAt, zone).day, locale) : set.endsAt ? `${whenText(set.startsAt, locale, zone)}–${local(set.endsAt, zone).time}` : whenText(set.startsAt, locale, zone), field: "startsAt", label: set.allDay ? w.day : w.time },
+        // AG20a R5: an all-day event shows its day and 全天 where the time would be.
+        { after: set.allDay ? allDayText(set.startsAt, locale, zone) : set.endsAt ? `${whenText(set.startsAt, locale, zone)}–${local(set.endsAt, zone).time}` : whenText(set.startsAt, locale, zone), field: "startsAt", label: w.time },
         ...(set.venue ? [{ after: set.venue, field: "venue", label: w.venue }] : []),
         { after: w.onlyYou, field: "visibility", label: w.visible },
       ] }, payload: { ...after }, preconditions: { targetExists: false } });
     }
     case PRIVATE_EVENT_UPDATE: {
-      const rows = Object.entries(intent.set).map(([field, value]) => ({
-        after: value === null ? w.none : field === "startsAt" || field === "endsAt" ? whenText(String(value), locale, zone) : String(value),
-        before: intent.shown.before[field] === null || intent.shown.before[field] === undefined ? w.none : field === "startsAt" || field === "endsAt" ? whenText(String(intent.shown.before[field]), locale, zone) : String(intent.shown.before[field]),
+      // AG20a: allDay cleared with a new time is not a row of its own (the time row says it).
+      const rows = Object.entries(intent.set).filter(([field]) => field !== "allDay").map(([field, value]) => ({
+        after: value === null ? w.none : field === "startsAt" ? eventWhenText(String(value), intent.shown.allDay && intent.set.allDay !== null, locale, zone) : field === "endsAt" ? whenText(String(value), locale, zone) : String(value),
+        before: intent.shown.before[field] === null || intent.shown.before[field] === undefined ? w.none : field === "startsAt" ? eventWhenText(String(intent.shown.before[field]), intent.shown.allDay, locale, zone) : field === "endsAt" ? whenText(String(intent.shown.before[field]), locale, zone) : String(intent.shown.before[field]),
         field, label: field === "venue" ? w.venue : field === "title" ? (locale === "en" ? "Title" : locale === "ja" ? "名前" : "名称") : w.time,
       }));
       return done({ after: { ...intent.set }, before: { ...intent.shown.before }, display: { change: "update", record: w.privateEvent(intent.shown.title), rows }, payload: { eventId: intent.targetId, expectedVersion: intent.expectedVersion, patch: { ...intent.set } }, preconditions: { targetExists: true, versionToken: String(intent.expectedVersion) }, shown: { ...intent.shown }, targetRef: { collection: PRIVATE_EVENT_COLLECTION, id: intent.targetId } });
     }
     case PRIVATE_EVENT_DELETE:
-      return done({ after: { deleted: true }, display: { change: "delete", note: w.deleteLast, record: w.privateEvent(intent.shown.title), rows: [{ after: whenText(intent.shown.startsAt, locale, zone), field: "startsAt", label: w.time }] }, payload: { eventId: intent.targetId, expectedVersion: intent.expectedVersion }, preconditions: { targetExists: true, versionToken: String(intent.expectedVersion) }, shown: { ...intent.shown }, targetRef: { collection: PRIVATE_EVENT_COLLECTION, id: intent.targetId } });
+      return done({ after: { deleted: true }, display: { change: "delete", note: w.deleteLast, record: w.privateEvent(intent.shown.title), rows: [{ after: eventWhenText(intent.shown.startsAt, intent.shown.allDay, locale, zone), field: "startsAt", label: w.time }] }, payload: { eventId: intent.targetId, expectedVersion: intent.expectedVersion }, preconditions: { targetExists: true, versionToken: String(intent.expectedVersion) }, shown: { ...intent.shown }, targetRef: { collection: PRIVATE_EVENT_COLLECTION, id: intent.targetId } });
     case ATTENDANCE_CREATE: {
       const set = intent.set;
       const ref = set.eventRef;
@@ -256,9 +270,9 @@ export function prepareEventOperation(input: { intent: EventCardIntent & { partI
       return done({ after: { deleted: true }, display: { change: "delete", note: w.attendanceDeleteNote, record: w.attendance, rows: [{ after: `${intent.shown.event.title} · ${dayText(intent.shown.attendedOn, locale)}`, field: "eventRef", label: w.event }] }, payload: { attendanceId: intent.targetId, expectedVersion: intent.expectedVersion }, preconditions: { targetExists: true, versionToken: String(intent.expectedVersion) }, shown: { ...intent.shown }, targetRef: { collection: ATTENDANCE_COLLECTION, id: intent.targetId } });
     case SCHEDULE_CREATE: {
       const set = intent.set;
-      const after = { endsAt: set.endsAt, startsAt: set.startsAt, timeZone: set.timeZone, title: set.title, ...(set.eventRefs?.length ? { eventRefs: set.eventRefs.map((ref) => ({ ...ref })) } : {}), ...(set.contactIds?.length ? { contactIds: [...set.contactIds] } : {}) };
+      const after = { endsAt: set.endsAt, startsAt: set.startsAt, timeZone: set.timeZone, title: set.title, ...(set.allDay ? { allDay: true } : {}), ...(set.eventRefs?.length ? { eventRefs: set.eventRefs.map((ref) => ({ ...ref })) } : {}), ...(set.contactIds?.length ? { contactIds: [...set.contactIds] } : {}) };
       const rows = [
-        { after: `${dayText(local(set.startsAt, set.timeZone).day, locale)}${locale === "en" ? " " : ""}${spanText(set.startsAt, set.endsAt, set.timeZone)}${intent.shown.zoneLabel ? (locale === "en" ? ` (${intent.shown.zoneLabel})` : `（${intent.shown.zoneLabel}）`) : ""}`, field: "startsAt", label: w.time },
+        { after: `${set.allDay ? allDayText(set.startsAt, locale, set.timeZone) : `${dayText(local(set.startsAt, set.timeZone).day, locale)}${locale === "en" ? " " : ""}${spanText(set.startsAt, set.endsAt, set.timeZone)}`}${intent.shown.zoneLabel ? (locale === "en" ? ` (${intent.shown.zoneLabel})` : `（${intent.shown.zoneLabel}）`) : ""}`, field: "startsAt", label: w.time },
         ...(intent.shown.events.length ? [{ after: intent.shown.events.map((event) => `${event.title}${event.kind === "platform" ? (locale === "en" ? ` (${w.platform})` : `（${w.platform}）`) : ""}`).join(w.join), field: "eventRefs", label: w.event }] : []),
         ...(set.contactIds?.length ? [{ after: set.contactIds.map((id) => intent.shown.names?.[id] ?? id).join(w.join), field: "contactIds", label: w.people }] : []),
       ];

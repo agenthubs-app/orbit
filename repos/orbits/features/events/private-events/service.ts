@@ -46,6 +46,8 @@ export interface PrivateEventCreateInput {
 }
 
 export interface PrivateEventPatch {
+  /** AG20a: null when a clock time is set on an all-day event. */
+  allDay?: null;
   title?: string;
   startsAt?: string;
   endsAt?: string | null;

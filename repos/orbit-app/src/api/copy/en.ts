@@ -226,6 +226,8 @@ export const en = {
   myEvents: {
     selfAttended: "I went (my own note)",
     privateChip: "Private",
+    // AG20a: a private event with a day only, shown where the time would be.
+    allDay: "All day",
     view: "View",
     onlyYou: "You created this event; only you can see it.",
     attendedTitle: "I went (my own note)",
