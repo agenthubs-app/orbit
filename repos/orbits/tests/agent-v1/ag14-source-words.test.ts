@@ -34,7 +34,8 @@ const NOTE_2 = "田中说他最在意交期，下周要再考虑一下预算，�
 test("everyday Chinese words whose characters all exist in Japanese are found too: 在意, 考虑, 沟通, 安排", () => {
   const answer = "田中さんが最も在意しているのは納期で、来週もう一度考虑し、もっと沟通したいとのことです。月末までに返事をして、会議を安排します。";
   assert.deepEqual(untranslatedSourceWords({ language: "ja", material: [NOTE_2], names: NAMES, text: answer }).sort(), ["在意", "安排", "沟通", "考虑"]);
-  // Everyday Japanese written with the same characters (月末) and the record's own words in quotes are left alone.
+  // Everyday Japanese written with the same characters (月末, 希望) and the record's own words in quotes are left alone.
+  assert.deepEqual(untranslatedSourceWords({ language: "ja", material: ["希望月底前看到修订版。"], names: [], text: "先方の希望は月末までに修正版を受け取ることです。" }), []);
   assert.deepEqual(untranslatedSourceWords({ language: "ja", material: ["月底前给答复，期限是月末。"], names: [], text: "月末までに返事をします。期限は「月底」です。" }), []);
 });
 

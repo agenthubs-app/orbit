@@ -27,6 +27,8 @@ const SHARED_JAPANESE = new Set([
   "予定", "担当", "会社", "社長", "部長", "名刺", "資料", "案件", "顧客", "商品", "理由", "目標", "目的", "方法", "意見", "以上",
   "以下", "以内", "以外", "前後", "午前", "午後", "全部", "一部", "半分", "大学", "中国", "日本", "東京", "大阪", "京都", "時期",
   "当日", "翌日", "前日", "毎日", "平日", "休日", "現在", "最近", "今後", "以前", "以後", "主要", "重点", "優先", "対応", "相手",
+  // AE-REF-007 run 1 after the widening: 希望 was named in the repair note although it is everyday Japanese.
+  "希望", "了解", "注意", "安心", "自由", "成功", "失敗", "感謝", "相談", "交流", "参加", "出席", "予約", "変更", "修正", "作成",
 ]);
 
 const isChineseSentence = (text: string) => /\p{Script=Han}/u.test(text) && !KANA.test(text);
