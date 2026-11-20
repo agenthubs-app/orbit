@@ -147,6 +147,7 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     context: null,
     earlier: [],
     gapLines: new Map(),
+    staleProfiles: [],
     locale: input.locale,
     materials: new Map(),
     message: input.message,

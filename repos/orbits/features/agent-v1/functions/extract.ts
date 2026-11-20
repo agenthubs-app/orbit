@@ -187,6 +187,8 @@ function namesOf(name: string): string[] {
     out.add(`老${clean[0]}`);
     // Japanese family names of two characters (中村理沙 → 中村) and Chinese ones of one (小林健 → 小林 is two).
     out.add(clean.slice(0, 2));
+    // AG20a R11 (TP-FN-004): the given name a note uses ("兰青" for 贺兰青, "晓雯" for 欧阳晓雯, "理沙" for 中村理沙).
+    if (clean.length >= 3) out.add(clean.slice(clean.length - 2));
   }
   return [...out].filter((item) => item.length >= 2 || /[a-z]{3,}/iu.test(item));
 }

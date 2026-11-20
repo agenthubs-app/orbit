@@ -17,7 +17,9 @@ import { MEMO_CHANNELS, MEMO_DIRECTIONS, PROPOSE_ENTITIES, PROPOSE_VERBS, RELATI
 export const PROPOSED_CAPABILITIES = ["todo.create", "todo.update", "memo.create", "contact.create", "contact.update", "contact.delete", "contact.restore", "contact.import",
   // AG13: private events, «我去过», schedule items, the other to-do verbs, and a memo's event links.
   "privateEvent.create", "privateEvent.update", "privateEvent.delete", "attendance.create", "attendance.delete", "schedule.create", "schedule.update", "schedule.delete", "todo.complete", "todo.reopen", "todo.delete", "memo.update"] as const;
-const OPERATION_KEYS = new Set(["localId", "partId", "entity", "verb", "selector", "fields", "dateText", "relations", "channel", "direction", "dependsOn", "timeText", "eventClues"]);
+const OPERATION_KEYS = new Set(["localId", "partId", "entity", "verb", "selector", "fields", "dateText", "relations", "channel", "direction", "dependsOn", "timeText", "eventClues", "dueText", "timeZoneText", "durationText"]);
+/** AG20a: optional words kept as offsets (a to-do's deadline, a schedule item's zone and length). */
+const EXTRA_SPANS = [["dueText", "due"], ["timeZoneText", "zone"], ["durationText", "duration"]] as const;
 
 export interface ProposeValidationInput {
   message: string;
@@ -116,6 +118,14 @@ export function validateProposeOutput(value: unknown, input: ProposeValidationIn
     if (raw.timeText !== undefined && raw.timeText !== null && raw.timeText !== "") {
       const found = span(raw.timeText, `${where}.timeText`);
       if (found) stored.time = found;
+    }
+    for (const [key, field] of EXTRA_SPANS) {
+      // Optional: words not copied from the message are left out (code reads the message itself), never a repair call.
+      const said = typeof raw[key] === "string" ? String(raw[key]).trim() : "";
+      if (!said) continue;
+      const at = message.indexOf(said);
+      if (at >= 0) stored[field] = [at, at + said.length];
+      else dropped.push(`${where}.${key}`);
     }
     if (raw.eventClues !== undefined) {
       if (!Array.isArray(raw.eventClues)) errors.push(`${where}.eventClues must be a list of words`);

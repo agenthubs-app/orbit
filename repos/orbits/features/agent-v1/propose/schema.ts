@@ -50,6 +50,11 @@ export interface OperationIntent {
   timeText?: string;
   /** AG13: words naming events (the event attended, the event a schedule item is for, events to link to a to-do). */
   eventClues?: string[];
+  /** AG20a R7: a new to-do's deadline words when a planned day is said too ("最迟周五中午"), worked out by code. */
+  dueText?: string;
+  /** AG20a R6: a schedule item's time-zone words ("伦敦时间", "New York time") and its length ("45 分钟"), worked out by code. */
+  timeZoneText?: string;
+  durationText?: string;
   dependsOn: string[];
 }
 
@@ -78,4 +83,8 @@ export interface StoredIntent {
   note?: [number, number];
   /** AG13: the model's localId of the operation this one depends on (an attendance note on the event created before it). */
   after?: string;
+  /** AG20a: offsets of a to-do's deadline words, a schedule item's zone words and its length words. */
+  due?: [number, number];
+  zone?: [number, number];
+  duration?: [number, number];
 }

@@ -49,7 +49,7 @@ export function eventWriteExecutors(deps: EventWriteDeps): AgentActionExecutor[]
       const title = text(payload, "title");
       const startsAt = text(payload, "startsAt");
       if (!title || !startsAt) throw new AgentExecutionPermanentError("title and startsAt are required.");
-      const event = await events.create(deps.actorId, { idempotencyKey: context.idempotencyKey, startsAt, title, ...(text(payload, "endsAt") ? { endsAt: text(payload, "endsAt") } : {}), ...(text(payload, "venue") ? { venue: text(payload, "venue") } : {}) });
+      const event = await events.create(deps.actorId, { idempotencyKey: context.idempotencyKey, startsAt, title, ...(text(payload, "endsAt") ? { endsAt: text(payload, "endsAt") } : {}), ...(text(payload, "venue") ? { venue: text(payload, "venue") } : {}), ...(payload.allDay === true ? { allDay: true } : {}) });
       return { resultRef: `private_events:${event.id}`, summary: "Private event created in Orbit." };
     });
     add(PRIVATE_EVENT_UPDATE, async (payload) => {

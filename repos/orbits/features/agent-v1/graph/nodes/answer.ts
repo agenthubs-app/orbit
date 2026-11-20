@@ -345,6 +345,9 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
           run.gapLines.set(part.localId, [line, ...(run.gapLines.get(part.localId) ?? [])]);
           part.cites = [...new Set([...(part.cites ?? []), ...updates.map((item) => item.source.ref)])];
           emitTrace({ fields: updates.map((item) => ({ contact: item.contact.ref, field: item.field, source: item.source.ref })), partId: part.localId, type: "answer.profile_outdated" });
+          // AG20a (decision 2): kept for the next turn's "那把她的资料也更新了" (deliver writes them into the session state).
+          const idOf = (ref: string) => ref.slice(ref.indexOf(":") + 1);
+          for (const item of updates) run.staleProfiles.push({ at: item.source.at ?? "", contactId: idOf(item.contact.ref), field: item.field, name: run.readNames.get(idOf(item.contact.ref))?.name ?? "", sourceId: idOf(item.source.ref), sourceType: item.source.ref.slice(0, item.source.ref.indexOf(":")), value: item.newValue });
         }
       }
       // AG12 run-02 (AE-SCL-016 R2): a cited record that says an earlier value has expired — said by code when the answer does not.

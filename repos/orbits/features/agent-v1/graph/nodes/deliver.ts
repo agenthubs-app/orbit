@@ -312,6 +312,20 @@ function summaryOfQuestion(scope: NodeScope, state: AgentGraphState, part: Graph
   return `Orbit asked what "${quote}" refers to${labels.length ? ` (${labels.join(" / ")})` : ""}`;
 }
 
+const KIND_OF_COLLECTION: Record<string, string> = { contacts: "contact", event_attendance_notes: "attendance", notes: "memo", personal_schedule_items: "schedule", private_events: "event", tasks: "todo" };
+
+/** AG20a R15: the existing records a card changes, by id and the name the card shows ("联系人「李薇」" → 李薇). */
+export function cardTargetsOf(preview: { operations: readonly { target?: { collection: string; id: string }; display?: { record: string } }[] } | null, at: string): NamedRecordRef[] {
+  const out: NamedRecordRef[] = [];
+  for (const op of preview?.operations ?? []) {
+    const target = op.target ?? (op as { targetRef?: { collection: string; id: string } }).targetRef;
+    const type = target ? KIND_OF_COLLECTION[target.collection] : undefined;
+    const name = /[「『“"]([^」』”"]+)[」』”"]/u.exec(op.display?.record ?? "")?.[1]?.trim();
+    if (target && type && name && !out.some((item) => item.id === target.id)) out.push({ at, id: target.id, name, type });
+  }
+  return out;
+}
+
 function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: AgentSessionState | null): AgentSessionState {
   const { input, run } = scope;
   const now = state.asOf || scope.deps.now();
@@ -339,6 +353,8 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
       next.shownList = { items: part.cites!.map((ref) => ({ id: ref.slice(ref.indexOf(":") + 1), name: run.readNames.get(ref.slice(ref.indexOf(":") + 1))?.name ?? "", type: ref.slice(0, ref.indexOf(":")) })), shownAt: now };
     }
   }
+  // AG20a R15 (§3.10, TP-CON-004): a record this turn's card changes is the one just mentioned of its kind ("还是把他恢复吧").
+  for (const item of cardTargetsOf(run.actionPreview ?? null, now)) mentioned.push(item);
   for (const item of mentioned) next.lastMentioned = [item, ...next.lastMentioned.filter((old) => old.type !== item.type)];
   // Open items: continued ones close; the others count one more unrelated message and are shelved after two
   // (or when the session was idle); new alternatives and questions open.
@@ -369,6 +385,10 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
     }
   }
   next.openItems = kept;
+  // AG20a (decision 2): the profile fields this answer found out of date are what the next turn may update; a turn that
+  // found none clears them (only the answer right before counts).
+  if (run.staleProfiles.length) next.staleProfiles = run.staleProfiles.map((item) => ({ ...item }));
+  else delete next.staleProfiles;
   next.updatedAt = now;
   // AG14: the saved entries this turn's answer used (ids and revisions) and its ranking's codes; never an entry's words.
   if (run.memory.loaded && run.memory.snapshot) {

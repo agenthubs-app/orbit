@@ -35,16 +35,18 @@ function weekdayOf(day: string): number {
 
 const pad = (value: number) => String(value).padStart(2, "0");
 
-function weekdayDay(today: string, target: number, which: "next" | "this" | "upcoming"): string {
+function weekdayDay(today: string, target: number, which: "next" | "this" | "upcoming" | "last" | "latest"): string {
   const current = weekdayOf(today);
   if (which === "upcoming") {
     const ahead = (target - current + 7) % 7 || 7;
     return addDays(today, ahead);
   }
-  // Weeks start on Monday.
+  // AG20a R5: "last Saturday" is the latest one before today.
+  if (which === "latest") return addDays(today, -((current - target + 7) % 7 || 7));
+  // Weeks start on Monday. AG20a R5: "上周六", "先週の土曜日" are that day of the week before.
   const monday = addDays(today, -((current + 6) % 7));
   const offset = (target + 6) % 7;
-  return addDays(monday, offset + (which === "next" ? 7 : 0));
+  return addDays(monday, offset + (which === "next" ? 7 : which === "last" ? -7 : 0));
 }
 
 function timeOf(text: string): string | undefined {
@@ -99,13 +101,13 @@ export function resolveSaidDate(text: string, asOf: string, timeZone: string): S
   if (/(明天|明日|\btomorrow\b)/u.test(lower)) return out(addDays(today, 1));
   if (/(前天|一昨日|おととい)/u.test(lower)) return out(addDays(today, -2));
   if (/(昨天|昨日|\byesterday\b)/u.test(lower)) return out(addDays(today, -1));
-  const which = (prefix: string | undefined): "next" | "this" | "upcoming" => (!prefix ? "upcoming" : /(下|来|next)/u.test(prefix) ? "next" : "this");
-  const zh = /(下个?|这个?|本)?(?:周|星期|礼拜)([一二三四五六日天])/u.exec(words);
+  const which = (prefix: string | undefined): "next" | "this" | "upcoming" | "last" => (!prefix ? "upcoming" : /(上|先|last)/u.test(prefix) ? "last" : /(下|来|next)/u.test(prefix) ? "next" : "this");
+  const zh = /(上个?|下个?|这个?|本)?(?:周|星期|礼拜)([一二三四五六日天])/u.exec(words);
   if (zh) return out(weekdayDay(today, ZH_WEEKDAY[zh[2]], which(zh[1])));
-  const ja = /(来週|今週|再来週)?\s*の?\s*([月火水木金土日])曜(?:日)?/u.exec(words);
+  const ja = /(来週|今週|再来週|先週)?\s*の?\s*([月火水木金土日])曜(?:日)?/u.exec(words);
   if (ja) return out(weekdayDay(today, JA_WEEKDAY[ja[2]], ja[1] === "再来週" ? "next" : which(ja[1])));
-  const en = /\b(next|this|coming)?\s*(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tues|tue|wed|thurs|thur|thu|fri|sat)\b/u.exec(lower);
-  if (en) return out(weekdayDay(today, EN_WEEKDAY[en[2]], en[1] === "coming" ? "upcoming" : which(en[1])));
+  const en = /\b(next|this|coming|last)?\s*(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tues|tue|wed|thurs|thur|thu|fri|sat)\b/u.exec(lower);
+  if (en) return out(weekdayDay(today, EN_WEEKDAY[en[2]], en[1] === "coming" ? "upcoming" : en[1] === "last" ? "latest" : which(en[1])));
   return null;
 }
 

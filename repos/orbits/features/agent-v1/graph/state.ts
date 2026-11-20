@@ -15,7 +15,7 @@ import type { Material } from "../answer/schema";
 import type { EventClaimFacts } from "../answer/event-claims";
 import type { NextStep } from "../clarify/next-step";
 import type { FirstLayerContext } from "../context/build";
-import type { AgentSessionState, NamedRecordRef } from "../context/session-state";
+import type { AgentSessionState, NamedRecordRef, StaleProfile } from "../context/session-state";
 import type { TurnMemory } from "../domains/memory/turn";
 import type { MemoryNote } from "../domains/memory/copy";
 import type { AgentAnswerMemoryUseContract } from "../../../shared/contract/agent-v1";
@@ -218,6 +218,8 @@ export interface AgentGraphRun {
   carriedQuestions: Map<string, string>;
   /** AG05: per part, code's sentences after the answer (no record, partial, failed, choose again). */
   gapLines: Map<string, string[]>;
+  /** AG20a (decision 2): the profile fields this turn's answer said are out of date, with the newer values it verified. */
+  staleProfiles: StaleProfile[];
   /** AG05: names of records read in this request (id → name), for the answer and the session state. */
   readNames: Map<string, { type: string; name: string }>;
   /** AG05: per part, several people match its name: the candidates to ask about. */

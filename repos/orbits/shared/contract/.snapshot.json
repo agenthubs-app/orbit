@@ -1510,6 +1510,11 @@
           "optional": true,
           "kind": "text",
           "type": "AiPageContextContract"
+        },
+        "timeZone": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
         }
       }
     },
@@ -1690,6 +1695,11 @@
           "optional": true,
           "kind": "text",
           "type": "string"
+        },
+        "allDay": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean | undefined"
         },
         "venue": {
           "optional": true,

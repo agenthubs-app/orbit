@@ -30,7 +30,30 @@ export interface ExistingTodo {
   dueAt: string | null;
   notes: string | null;
   sourceNoteId: string | null;
+  /** AG20a R11: the person the to-do is about (its first linked contact), when known. */
+  contactId?: string | null;
 }
+
+/** Characters that only join the words of an action ("把…发给…的"): not what the action is about. */
+const JOINING = new Set([..."把给发的了和跟向对将要去再也在为与及并"]);
+
+/**
+ * AG20a R11 (TP-FN-004): how much of what an action is about (its own characters and words, without the joining ones)
+ * a title holds — "把样稿发给明远" is all in 「给明远发样稿」, word order aside.
+ */
+export function contentOverlap(action: string, title: string): number {
+  const own = (text: string) => new Set([...text.toLowerCase().replace(/[a-z0-9]+/gu, " ").replace(/[\s\p{P}\p{S}]/gu, "")].filter((char) => !JOINING.has(char)));
+  const words = (text: string) => new Set((text.toLowerCase().match(/[a-z0-9]{3,}/gu) ?? []));
+  const chars = own(action);
+  const latin = words(action);
+  const total = chars.size + latin.size;
+  if (total < 3) return 0;
+  const inTitle = own(title);
+  const titleWords = words(title);
+  const found = [...chars].filter((char) => inTitle.has(char)).length + [...latin].filter((word) => titleWords.has(word)).length;
+  return found / total;
+}
+export const SAME_CONTENT = 0.8;
 
 export type FollowUpLink =
   | { kind: "same"; todo: ExistingTodo }
@@ -59,14 +82,16 @@ export function similarity(left: string, right: string): number {
 export const SAME_TITLE = 0.6;
 export const SIMILAR_TITLE = 0.35;
 
-export function linkFollowUp(candidate: { action: string; sentence: string; plannedDate: string | null; dueDate: string | null }, existing: readonly ExistingTodo[], dayOf: (instant: string) => string): FollowUpLink {
+export function linkFollowUp(candidate: { action: string; sentence: string; plannedDate: string | null; dueDate: string | null; /** AG20a R11: the person the promise is to. */ contactId?: string | null }, existing: readonly ExistingTodo[], dayOf: (instant: string) => string): FollowUpLink {
   const sentence = normalized(candidate.sentence);
-  const scored = existing.map((todo) => ({ fromSentence: Boolean(sentence) && Boolean(todo.notes) && normalized(todo.notes!).includes(sentence), score: similarity(candidate.action, todo.title), todo }))
-    .sort((left, right) => Number(right.fromSentence) - Number(left.fromSentence) || right.score - left.score || (left.todo.id < right.todo.id ? -1 : 1));
+  // AG20a R11: a to-do about the same person that holds what the action is about is the same item, wherever it came from.
+  const samePerson = (todo: ExistingTodo) => Boolean(candidate.contactId && todo.contactId && todo.contactId === candidate.contactId);
+  const scored = existing.map((todo) => ({ contained: samePerson(todo) && contentOverlap(candidate.action, todo.title) >= SAME_CONTENT, fromSentence: Boolean(sentence) && Boolean(todo.notes) && normalized(todo.notes!).includes(sentence), score: similarity(candidate.action, todo.title), todo }))
+    .sort((left, right) => Number(right.fromSentence) - Number(left.fromSentence) || Number(right.contained) - Number(left.contained) || right.score - left.score || (left.todo.id < right.todo.id ? -1 : 1));
   const best = scored[0];
   if (!best) return { kind: "new" };
   // The same sentence of the same memo: the same item when the action is the one it holds (a sentence may hold two).
-  const sameItem = (best.fromSentence && (best.score >= SIMILAR_TITLE || scored.filter((item) => item.fromSentence).length === 1)) || best.score >= SAME_TITLE;
+  const sameItem = (best.fromSentence && (best.score >= SIMILAR_TITLE || scored.filter((item) => item.fromSentence).length === 1)) || best.score >= SAME_TITLE || best.contained;
   if (!sameItem) return best.score >= SIMILAR_TITLE ? { kind: "unsure", todo: best.todo } : { kind: "new" };
   const differences: ("plannedDate" | "dueDate")[] = [];
   if (candidate.plannedDate && best.todo.plannedDate && candidate.plannedDate !== best.todo.plannedDate) differences.push("plannedDate");

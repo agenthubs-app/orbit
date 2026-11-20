@@ -84,6 +84,9 @@ test("AE-SCL-004 shape: the answer text leaves the profile out; code still says 
   assert.match(result.text, /彤云茶室/u);
   assert.match(result.text, /联系人资料里写的还是「拾野选物店店长」，和11月6日的记录不一致，这份资料已经过时了。/u);
   assert.deepEqual(result.sourceRefs, ["memo:note:m50"]);
+  // AG20a (decision 2): the next turn's 「那把她的资料也更新了」 has these fields and values to go on.
+  const state = await kit.sessionState.get("actor:a", "session:a");
+  assert.deepEqual(state?.staleProfiles?.map((item) => [item.field, item.value, item.sourceId]), [["organization", "彤云茶室", "note:m50"], ["role", "自己开了彤云茶室", "note:m50"]]);
 });
 
 test("the profile entry is required for such a part: left out, the one repair asks for it", async () => {

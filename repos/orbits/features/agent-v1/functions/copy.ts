@@ -207,7 +207,9 @@ export function existingTodoLine(language: Language, title: string, status: stri
   return { en: `Already a to-do: "${title}"${when ? ` (${when})` : ""}, ${statusWords(status, language)}. Nothing new was added.`, ja: `すでにタスクがあります：「${title}」${when ? `（${when}）` : ""}、${statusWords(status, language)}。新しくは追加していません。`, zh: `已经有这条待办：「${title}」${when ? `（${when}）` : ""}，现在${statusWords(status, language)}。这次没有再新增。` }[language];
 }
 
-export function differsLine(language: Language, title: string, changes: readonly string[]): string {
+export function differsLine(language: Language, title: string, changes: readonly string[], elsewhere?: { status: string }): string {
+  // AG20a R11: a to-do the user made elsewhere for the same thing (not from this note) is named as such, with its state.
+  if (elsewhere) return { en: `You already have a to-do for this: "${title}" (${statusWords(elsewhere.status, language)}), but ${changes.join("; ")}. Nothing was added or changed; tell me if it should be updated.`, ja: `同じ件のタスク「${title}」がすでにあります（${statusWords(elsewhere.status, language)}）が、${changes.join("、")}。追加も変更もしていません。直す必要があれば教えてください。`, zh: `已经有这件事的待办「${title}」（现在${statusWords(elsewhere.status, language)}），但${changes.join("；")}。这次没有新增也没有改；需要改的话告诉我。` }[language];
   return { en: `A to-do from this note already exists ("${title}"), but ${changes.join("; ")}. Nothing was added or changed; tell me if it should be updated.`, ja: `このメモから作ったタスク「${title}」がすでにありますが、${changes.join("、")}。追加も変更もしていません。直す必要があれば教えてください。`, zh: `这篇笔记已经建过待办「${title}」，但${changes.join("；")}。这次没有新增也没有改；需要改的话告诉我。` }[language];
 }
 

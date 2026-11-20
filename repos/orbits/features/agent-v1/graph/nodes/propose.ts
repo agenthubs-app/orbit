@@ -22,6 +22,7 @@ import { cardLineOf, WRITE_WORDS } from "../../propose/copy";
 import { proposeRepairText, proposeSystemPrompt, proposeUserText, PROPOSE_PROMPT_VERSION } from "../../propose/prompt";
 import { contactKindOf, resolvePartIntents, waitsForPrevious, type PartWrite, type WriteOutcome, type WriteQuestion } from "../../propose/resolve";
 import { checkProposeOutput, PROPOSED_CAPABILITIES } from "../../propose/validate";
+import type { StoredIntent } from "../../propose/schema";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart, OptionSetState } from "../state";
@@ -312,10 +313,33 @@ export function proposeNode(scope: NodeScope): GraphNode {
         for (const part of fresh) settle(part, "unfinished", outOfBudget ? "budget" : "model_error", outOfBudget ? words.budget(quoteOf(part)) : words.answerFailed(quoteOf(part)));
       } else {
         emitTrace({ intents: [...checked.intents.entries()].map(([partId, list]) => ({ capabilities: list.map((item) => item.capability), partId })), modelDependsOn: Object.fromEntries(checked.modelDependsOn), type: "propose.intents" });
+        // AG20a R23 (AE-BND-001): every write part comes back with an operation of its own capabilities. A part left without
+        // one (not a check-in, which is code's sentence) is a problem for the one repair, inside the round's call budget.
+        const intentsOf = new Map(fresh.map((part) => [part.localId, checked!.ok ? checked!.intents.get(part.localId) ?? [] : []]));
+        // A sentence whose words another part's operations already use (its date, a memo's body: AG07 repair 2) is part of
+        // that card, not a missing operation.
+        const spansOf = (intents: readonly StoredIntent[]) => intents.flatMap((intent) => [intent.title, intent.body, intent.date, intent.time, intent.due, ...intent.selector, ...(intent.events ?? []), ...intent.relations.map((relation) => relation.quote)].filter((span): span is [number, number] => Array.isArray(span)));
+        const usedElsewhere = (part: GraphPart) => fresh.some((other) => other !== part && spansOf(intentsOf.get(other.localId) ?? []).some(([start, end]) => start < part.quote[1] && end > part.quote[0]));
+        const missing = fresh.filter((part) => !intentsOf.get(part.localId)!.length && !CHECKIN.test(quoteOf(part)) && !usedElsewhere(part));
+        let repaired = false;
+        if (missing.length && repairs < 1 && result.ok) {
+          repairs += 1;
+          repaired = true;
+          const problems = missing.map((part) => `part ${part.localId} ("${quoteOf(part)}") asks for ${proposableOf(part, quoteOf(part)).join(", ")}; give its operation (all of these verbs are available)`);
+          emitTrace({ parts: missing.map((part) => part.localId), type: "propose.missing_operation" });
+          const repair = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "propose", purpose: "repair", requestId: input.requestId, system, user: proposeRepairText(user, result.text, problems) });
+          const again = repair.ok ? checkProposeOutput(repair.text, validation) : null;
+          if (again?.ok) for (const part of missing) intentsOf.set(part.localId, again.intents.get(part.localId) ?? []);
+          emitTrace({ found: missing.filter((part) => intentsOf.get(part.localId)!.length).map((part) => part.localId), type: "propose.missing_operation_repaired" });
+        }
         for (const part of fresh) {
-          const intents = checked.intents.get(part.localId) ?? [];
+          const intents = intentsOf.get(part.localId)!;
           part.write = { intents, picks: {} };
-          if (!intents.length) { const unproposed = unproposedOutcome(language, quoteOf(part)); settle(part, "unfinished", unproposed.reason, unproposed.line); }
+          if (intents.length) continue;
+          // Still none: the part is not done, said plainly (how to ask again) — never an ordinary paragraph, never another card.
+          const anyOperation = fresh.some((other) => (intentsOf.get(other.localId) ?? []).length > 0);
+          if (repaired && missing.includes(part) && !anyOperation) settle(part, "unfinished", "not_prepared", WRITE_WORDS.notPrepared(language, quoteOf(part)));
+          else { const unproposed = unproposedOutcome(language, quoteOf(part)); settle(part, "unfinished", unproposed.reason, unproposed.line); }
         }
       }
     }

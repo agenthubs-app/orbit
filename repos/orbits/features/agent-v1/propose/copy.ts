@@ -41,6 +41,12 @@ export const WRITE_WORDS = {
     if (language === "ja") return `「${quote}」のToDoの名前が分からなかったため、今回は追加していません。`;
     return `I couldn't tell what to call the to-do in "${quote}", so nothing was added.`;
   },
+  /** AG20a R23: the change could not be prepared (no operation came back, also after the repair); how to ask again. */
+  notPrepared(language: ReplyLanguage, quote: string): string {
+    if (language === "zh") return `「${quote}」这次没能准备好要改的内容，所以什么都没有改。可以再发一次，说清是哪一条、改成什么，比如「把这条待办改到周五」。`;
+    if (language === "ja") return `「${quote}」は今回、変更内容を用意できなかったため、何も変更していません。どの記録を何に変えるかを添えて、もう一度送ってください（例：「このToDoを金曜日に変更して」）。`;
+    return `"${quote}": the change could not be prepared this time, so nothing was changed. Please send it again, saying which record and what to change it to (for example, "move this to-do to Friday").`;
+  },
   gone(language: ReplyLanguage, quote: string): string {
     if (language === "zh") return `「${quote}」：要改的那条记录现在找不到了，所以这次没有改。`;
     if (language === "ja") return `「${quote}」：変更するはずの記録が見つからなくなったため、今回は何も変更していません。`;

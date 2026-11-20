@@ -51,10 +51,21 @@ export function requestIdOfAssistantMessage(id: string | null | undefined): stri
   return match?.[1] ?? null;
 }
 
+/** AG20a (decision 8, 设计稿 §3.1): the device's time zone, sent with each message; none when the device cannot say. */
+export function deviceTimeZone(): string | null {
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return typeof zone === "string" && zone.length > 0 && zone.length <= 64 ? zone : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function sendAgentV1(client: OrbitApiClient, input: { sessionId: string; clientMessageId: string; locale: "zh" | "ja" | "en"; message: string; origin?: AiSessionOriginInputContract; references?: readonly AiSessionReferenceContract[] }): Promise<AgentSendReceiptContract | null> {
+  const zone = deviceTimeZone();
   const result = await client.post<{ agentRequest?: unknown }>(ORBIT_API_ENDPOINTS.conversations, {
-    // AG11: the records picked with @, each with its marker's place in the (trimmed) message.
-    body: { clientMessageId: input.clientMessageId, locale: input.locale, message: input.message, protocolVersion: 3, references: input.references ?? [], sessionId: input.sessionId, ...(input.origin ? { origin: input.origin } : {}) },
+    // AG11: the records picked with @, each with its marker's place in the (trimmed) message. AG20a: the device's zone.
+    body: { clientMessageId: input.clientMessageId, locale: input.locale, message: input.message, protocolVersion: 3, references: input.references ?? [], sessionId: input.sessionId, ...(input.origin ? { origin: input.origin } : {}), ...(zone ? { timeZone: zone } : {}) },
   });
   if (!result.success) return null;
   const parsed = agentSendReceiptSchema.safeParse(result.data?.agentRequest);
