@@ -103,12 +103,15 @@ export function EventDetailPage() {
   const jumpTo = params.tab === "people" || params.tab === "agenda" ? params.tab : null;
   const scroller = useRef<ScrollView>(null);
   const sectionY = useRef<Partial<Record<"agenda" | "people", number>>>({});
-  const jumped = useRef(false);
-  // Section y arrives from onLayout, which can come before or after the content size changes: try from both.
+  const jumpedAt = useRef<number | null>(null);
+  const userScrolled = useRef(false);
+  // Section y arrives from onLayout, before or after the content size changes, and moves again when 紹介 grows its
+  // 「続きを読む」: align on every change for a short while after the first jump, unless the person has scrolled (as Web 4ef9cc8f8).
   const tryJump = () => {
     const y = jumpTo ? sectionY.current[jumpTo] : undefined;
-    if (y === undefined || jumped.current) return;
-    jumped.current = true;
+    if (y === undefined || userScrolled.current) return;
+    if (jumpedAt.current !== null && Date.now() - jumpedAt.current > 800) return;
+    jumpedAt.current ??= Date.now();
     requestAnimationFrame(() => scroller.current?.scrollTo({ y: Math.max(0, y - 8), animated: false }));
   };
   const [descOpen, setDescOpen] = useState(false);
@@ -274,7 +277,7 @@ export function EventDetailPage() {
   return (
     <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="events-detail">
       <ShellBackground />
-      <ScrollView ref={scroller} contentContainerStyle={styles.pad} onContentSizeChange={tryJump}>
+      <ScrollView ref={scroller} contentContainerStyle={styles.pad} onContentSizeChange={tryJump} onScrollBeginDrag={() => { userScrolled.current = true; }}>
         {header}
         {offlineAt ? <EventsOfflineNotice lastSyncedAt={offlineAt} /> : null}
         <View style={[styles.card, styles.coverCard]}>
