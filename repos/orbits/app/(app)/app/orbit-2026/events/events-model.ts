@@ -25,12 +25,12 @@ export function eventMonthDay(iso: string | undefined | null, language: OrbitLan
 }
 
 /** 「10月16日（金）」; with `time`: 「10月7日（水）19:00」 (the board's list and card format). */
-export function eventDate(iso: string | undefined | null, language: OrbitLanguage, options: { time?: boolean } = {}): string {
+export function eventDate(iso: string | undefined | null, language: OrbitLanguage, options: { time?: boolean; /** AG20a: words in the clock's place (「全天」 for an all-day event). */ clockText?: string } = {}): string {
   if (!iso) return "";
   const t = tokyo(iso);
   if (!t) return "";
   const weekday = new Intl.DateTimeFormat(LOCALE[language], { timeZone: "Asia/Tokyo", weekday: "short" }).format(new Date(Date.parse(iso)));
-  const clock = options.time ? `${t.hh}:${String(t.mm).padStart(2, "0")}` : "";
+  const clock = options.clockText ?? (options.time ? `${t.hh}:${String(t.mm).padStart(2, "0")}` : "");
   const md = eventMonthDay(iso, language);
   if (language === "en") return `${weekday} ${md}${clock ? ` ${clock}` : ""}`;
   return `${md}\uFF08${weekday}\uFF09${clock}`;
@@ -42,8 +42,14 @@ export function showsTime(iso: string | undefined | null): boolean {
   return Boolean(t && (t.hh >= 17 || t.hh < 9));
 }
 
-export function eventWhen(iso: string | undefined | null, language: OrbitLanguage): string {
-  return eventDate(iso, language, { time: showsTime(iso) });
+/** AG20a: `allDayLabel` (the copy's 「全天」) for an all-day event — the day, and the label where the time would be. */
+export function eventWhen(iso: string | undefined | null, language: OrbitLanguage, allDayLabel?: string | null): string {
+  return allDayLabel ? eventDate(iso, language, { clockText: allDayLabel }) : eventDate(iso, language, { time: showsTime(iso) });
+}
+
+/** AG20a: the copy's 「全天」 for an all-day item of 「我的活动」, else nothing. */
+export function allDayLabelOf(item: Pick<MyEventItem, "allDay">, label: string): string | null {
+  return item.allDay === true ? label : null;
 }
 
 /** 今夜 / 今日 / 明日 chip (null otherwise). */

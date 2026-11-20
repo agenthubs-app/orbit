@@ -33,7 +33,7 @@ import { usePageCopyResource } from "../../../hooks/usePageCopyResource";
 import { EVENTS_COPY_FRESH_MS, EVENTS_MINE_UPCOMING_PATH } from "./events-copies";
 
 import { RelevanceChips, relevanceChips, useRelevanceT } from "./Relevance";
-import { appCardLine, appEventWhen, monthOf, orderAssessed, relativeDay } from "./events-model";
+import { appAllDayLabel, appCardLine, appEventWhen, monthOf, orderAssessed, relativeDay } from "./events-model";
 
 type Tab = "assess" | "going" | "discover";
 
@@ -258,7 +258,7 @@ function PrivateEventSheet({ item, language, onClose }: { item: MyEventItem | nu
   if (!item) return null;
   const self = item.selfAttendance;
   const parts = (self?.dayParts ?? []).map((part) => words[part]).filter(Boolean);
-  const message = copy.myEvents.prefill.replace("{title}", item.title).replace("{day}", appEventWhen(item.startsAt, language));
+  const message = copy.myEvents.prefill.replace("{title}", item.title).replace("{day}", appEventWhen(item.startsAt, language, appAllDayLabel(item, copy.myEvents.allDay)));
   // The AI page takes a registered prefill's id (as the to-do tools do), not the words themselves.
   const openIorbit = () => {
     onClose();
@@ -271,7 +271,7 @@ function PrivateEventSheet({ item, language, onClose }: { item: MyEventItem | nu
       <View style={{ gap: 14, paddingBottom: 8 }} testID={`events-private-sheet-${item.eventId}`}>
         <View style={[styles.row, { alignItems: "flex-start", gap: 10 }]}>
           <View style={[styles.emo, styles.emoSm, { backgroundColor: colors.macLav }]}><UiText style={styles.emoTextSm}>{item.emoji || eventEmoji({ title: item.title })}</UiText></View>
-          <View style={styles.meta}><UiText style={styles.metaTitle}>{item.title}</UiText><UiText style={styles.metaSub}>{[appEventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</UiText></View>
+          <View style={styles.meta}><UiText style={styles.metaTitle}>{item.title}</UiText><UiText style={styles.metaSub}>{[appEventWhen(item.startsAt, language, appAllDayLabel(item, copy.myEvents.allDay)), item.venue].filter(Boolean).join(" · ")}</UiText></View>
           <Chip label={copy.myEvents.privateChip} tone="lav" icon="lock" />
         </View>
         <UiText style={styles.lbl}>{copy.myEvents.onlyYou}</UiText>
@@ -308,7 +308,7 @@ function GoingCard({ item, now, language, width, style, gradientKey, onOpenPriva
     <View style={[styles.evCard, width ? { width } : null, style]} testID={`events-going-${item.eventId}`}>
       <KitGradient id={`events-going-bg-${gradientKey}-${item.eventId}`} from={colors.macLav} to={colors.surface} stop={0.6} angle={160} />
       <View style={[styles.row, { justifyContent: "space-between" }]}>
-        <Chip label={appEventWhen(item.startsAt, language)} tone="neutral" />
+        <Chip label={appEventWhen(item.startsAt, language, appAllDayLabel(item, copy.myEvents.allDay))} tone="neutral" />
         <View style={[styles.row, { gap: 6 }]}>{day ? <Chip label={t(`eventsV2.${day}`)} tone="apricot" /> : null}{item.privateEvent ? <Chip label={copy.myEvents.privateChip} tone="lav" icon="lock" /> : null}</View>
       </View>
       <UiText style={styles.evName}>{item.title}</UiText>
@@ -378,7 +378,7 @@ function GoingPage({ upcoming, past, now, language, onDiscover, openPrivateId }:
             <UiPressable key={item.eventId} accessibilityRole="button" accessibilityLabel={item.title} onPress={() => (item.privateEvent ? setPrivateOpen(item) : router.push(item.href as Href))} style={styles.li} testID={`events-past-${item.eventId}`}>
               {index > 0 ? <View style={styles.liLine} /> : null}
               <View style={[styles.emo, styles.emoSm, { backgroundColor: item.status === "attended" ? colors.macTeal : colors.macLav }]}><UiText style={styles.emoTextSm}>{item.emoji || eventEmoji({ title: item.title })}</UiText></View>
-              <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{item.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[appEventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</UiText><SelfAttendedLine item={item} /></View>
+              <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{item.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[appEventWhen(item.startsAt, language, appAllDayLabel(item, copy.myEvents.allDay)), item.venue].filter(Boolean).join(" · ")}</UiText><SelfAttendedLine item={item} /></View>
               {item.privateEvent ? <Chip label={copy.myEvents.privateChip} tone="lav" icon="lock" />
                 : item.status === "attended" || item.status === "cancelled" ? <Chip label={item.status === "attended" ? t("eventsV2.attended") : t("eventsV2.statusCancelled")} tone={item.status === "attended" ? "teal" : "neutral"} /> : null}
             </UiPressable>

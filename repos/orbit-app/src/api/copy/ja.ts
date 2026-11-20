@@ -218,6 +218,8 @@ export const ja = {
   myEvents: {
     selfAttended: "行った（自分で記録）",
     privateChip: "プライベート",
+    // AG20a：日付だけのプライベートイベント（時刻の位置に表示）。
+    allDay: "終日",
     view: "見る",
     onlyYou: "あなたが作ったイベントで、あなただけが見られます。",
     attendedTitle: "行った（自分で記録）",

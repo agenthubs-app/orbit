@@ -20,7 +20,7 @@ import { Assessing, FillThree, LoginRequired, NotEventPage, PasteText } from "./
 import { AssessmentPage, AssessmentRail, translator, type Translate } from "./AssessmentDetail";
 import { DiscoverHelpRail, DiscoverRail, DiscoverTab, type DiscoverRailState } from "./DiscoverTab";
 import { eventsApi, newIdempotencyKey, pollAssessment } from "./events-api";
-import { cardLine, eventWhen, isShownInGrid, monthOf, orderAssessed, relativeDay, tabOf } from "./events-model";
+import { allDayLabelOf, cardLine, eventWhen, isShownInGrid, monthOf, orderAssessed, relativeDay, tabOf } from "./events-model";
 import { PrivateEventPanel } from "./PrivateEventPanel";
 import { RelevanceChips } from "./Relevance";
 import styles from "./events.module.css";
@@ -444,6 +444,7 @@ function dayChip(iso: string, now: Date, t: Translate) {
 }
 
 function NextCard({ t, tier, item, language, now }: { t: Translate; tier: Tier; item: MyEventItem; language: OrbitLanguage; now: Date }) {
+  const std = useStandardCopy();
   if (tier === "narrow") {
     return (
       <div className={`${styles.card} ${styles.nextRow}`} data-events-next="">
@@ -458,7 +459,7 @@ function NextCard({ t, tier, item, language, now }: { t: Translate; tier: Tier; 
     <div className={`${styles.card} ${medium ? styles.span5 : styles.span4} ${styles.nextCard}`} data-events-next="">
       <div className={`${styles.row} ${styles.between}`}><span className={styles.lbl}>{t("nextTitle")}</span>{dayChip(item.startsAt, now, t)}</div>
       <b className={medium ? styles.clamp2 : styles.nextName} style={medium ? { fontSize: "var(--fs-dialog-title)", marginTop: 8 } : undefined}>{item.title}</b>
-      <div className={styles.lbl}>{[eventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</div>
+      <div className={styles.lbl}>{[eventWhen(item.startsAt, language, allDayLabelOf(item, std.myEvents.allDay)), item.venue].filter(Boolean).join(" · ")}</div>
       {item.meetCount ? <div className={styles.row} style={{ marginTop: medium ? 12 : 14 }}><Avatars initials={item.meetInitials ?? []} /><span className={styles.lbl}>{t("meetCount", { n: item.meetCount })}</span></div> : null}
       <a className={`${styles.btn} ${styles.sm} ${styles.primary} ${styles.nextBtn}`} href={item.href}>{t("prepare")}</a>
     </div>
@@ -526,7 +527,7 @@ function MyEvents({ language, upcoming, past, now, t, selectedPrivate, onOpenPri
       <div className={`${styles.span12} ${styles.cardH}`} style={{ margin: "0 0 -6px" }}><h3>{t("upcoming")}</h3><span className={styles.more}>{t("countItems", { n: coming.length })}</span></div>
       {coming.map((item) => (
         <div key={item.eventId} className={`${styles.card} ${styles.span4} ${styles.nextCard}`}>
-          <div className={`${styles.row} ${styles.between}`}><span className={styles.lbl}>{eventWhen(item.startsAt, language)}</span><span className={styles.row} style={{ gap: 6 }}>{dayChip(item.startsAt, now, t)}{item.privateEvent ? privateChip : null}</span></div>
+          <div className={`${styles.row} ${styles.between}`}><span className={styles.lbl}>{eventWhen(item.startsAt, language, allDayLabelOf(item, std.myEvents.allDay))}</span><span className={styles.row} style={{ gap: 6 }}>{dayChip(item.startsAt, now, t)}{item.privateEvent ? privateChip : null}</span></div>
           <b className={styles.nextName}>{item.title}</b>
           <div className={styles.lbl}>{item.venue ?? ""}</div>
           {item.meetCount ? <div className={`${styles.row} ${styles.nextMeet}`}><Avatars initials={item.meetInitials ?? []} /><span className={styles.lbl}>{t("meetCount", { n: item.meetCount })}</span></div> : null}
@@ -543,7 +544,7 @@ function MyEvents({ language, upcoming, past, now, t, selectedPrivate, onOpenPri
               const body = (
                 <>
                   <span className={`${styles.emo} ${styles.emoSm} ${item.status === "attended" ? styles.t_teal : styles.t_lav}`}>{item.emoji}</span>
-                  <div className={styles.meta}><b>{item.title}</b><span>{[eventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</span>{selfLine(item)}</div>
+                  <div className={styles.meta}><b>{item.title}</b><span>{[eventWhen(item.startsAt, language, allDayLabelOf(item, std.myEvents.allDay)), item.venue].filter(Boolean).join(" · ")}</span>{selfLine(item)}</div>
                   {item.privateEvent ? privateChip
                     : item.status === "attended" ? <span className={`${styles.chip} ${styles.c_teal}`}>{t("attended")}</span>
                     : item.status === "cancelled" ? <span className={styles.chip}>{t("statusCancelled")}</span>

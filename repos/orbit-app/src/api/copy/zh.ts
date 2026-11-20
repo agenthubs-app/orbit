@@ -218,6 +218,8 @@ export const zh = {
   myEvents: {
     selfAttended: "我去过（自己记的）",
     privateChip: "私人",
+    // AG20a：只说了哪天的私人活动，在钟点的位置显示。
+    allDay: "全天",
     view: "查看",
     onlyYou: "这场活动是你自己建的，只有你能看到。",
     attendedTitle: "我去过（自己记的）",

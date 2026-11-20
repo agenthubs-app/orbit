@@ -10165,6 +10165,11 @@
           "kind": "text",
           "type": "true"
         },
+        "allDay": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
         "related": {
           "optional": true,
           "kind": "text",

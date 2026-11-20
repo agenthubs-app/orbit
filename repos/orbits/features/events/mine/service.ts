@@ -22,6 +22,8 @@ export interface MyEventSourceRow {
   score?: number | null;
   /** 外部活动（我的评估）。 */
   external?: boolean;
+  /** AG20a：只说了哪天的私人活动（全天）。 */
+  allDay?: boolean;
 }
 
 /**
@@ -29,7 +31,7 @@ export interface MyEventSourceRow {
  * 「我去过」只加一个可选字段，不改 status（签到才是 attended）。
  */
 export interface MyEventsSelfRecords {
-  privateEvents: readonly { id: string; title: string; startsAt: string; endsAt?: string | null; venue?: string | null }[];
+  privateEvents: readonly { id: string; title: string; startsAt: string; endsAt?: string | null; venue?: string | null; allDay?: boolean | null }[];
   attendance: readonly { eventRef: { kind: "platform" | "private"; id: string }; attendedOn: string; dayParts?: readonly string[]; selfNote?: string | null }[];
   /** 私人活动的关联记录（详情用，有界）。 */
   related?(privateEventId: string): Promise<MyEventRelatedRecord[]>;
@@ -88,7 +90,7 @@ export function createMyEventsService(deps: { reader: MyEventsReader; now?: () =
       const until = new Date(at.getTime() + MY_EVENTS_FUTURE_DAYS * DAY).toISOString();
       // AG13: the user's own private events are rows of their own (status planned, an existing value); never merged into a platform event.
       const self = deps.reader.selfRecords ? await deps.reader.selfRecords(actorId).catch(() => null) : null;
-      const privateRows: MyEventSourceRow[] = (self?.privateEvents ?? []).filter((event) => event.startsAt >= from && event.startsAt < until).map((event) => ({ endsAt: event.endsAt ?? null, eventId: event.id, startsAt: event.startsAt, status: "planned" as const, title: event.title, venue: event.venue ?? null }));
+      const privateRows: MyEventSourceRow[] = (self?.privateEvents ?? []).filter((event) => event.startsAt >= from && event.startsAt < until).map((event) => ({ endsAt: event.endsAt ?? null, eventId: event.id, startsAt: event.startsAt, status: "planned" as const, title: event.title, venue: event.venue ?? null, ...(event.allDay === true ? { allDay: true } : {}) }));
       const privateIds = new Set(privateRows.map((row) => row.eventId));
       const merged = [...mergeMyEvents(await deps.reader.rows(actorId, { from, limit: 200, until })).filter((row) => !privateIds.has(row.eventId)), ...privateRows];
       const selfOf = (eventId: string): MyEventSelfAttendance | null => {
@@ -119,6 +121,8 @@ export function createMyEventsService(deps: { reader: MyEventsReader; now?: () =
         // AG13: optional fields only; status stays what the organizer's records say.
         ...(selfOf(row.eventId) ? { selfAttendance: selfOf(row.eventId) } : {}),
         ...(privateIds.has(row.eventId) ? { href: privateEventHref(row.eventId, input.platform), privateEvent: true as const, related: related.get(row.eventId) ?? [] } : {}),
+        // AG20a: an all-day private event (only added; startsAt is 00:00 of its day and stays as it was).
+        ...(row.allDay ? { allDay: true } : {}),
       }));
       return { asOf: at.toISOString(), items, range: input.range, upcomingCount };
     },
