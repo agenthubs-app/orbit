@@ -149,7 +149,7 @@ export const eventsJourney = {
   "eventsJourney.tabPeople": "参会者",
   "eventsJourney.readMore": "展开全文",
   "eventsJourney.agendaItemsN": "{n}项",
-  "eventsJourney.agendaAllN": "查看全部（{n}）",
+  "eventsJourney.agendaAll": "查看全部",
   "eventsJourney.peopleN": "{n}人",
   "eventsJourney.peopleFitKnown": "符合计划 {fit} · 认识的人 {known}",
   "eventsJourney.peopleFitTitle": "符合你计划的人",

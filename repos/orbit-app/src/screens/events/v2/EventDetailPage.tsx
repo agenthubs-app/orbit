@@ -320,7 +320,7 @@ export function EventDetailPage() {
                   <View style={styles.grow}><UiText style={styles.metaTitle}>{item.title}</UiText>{item.detail ? <UiText style={styles.lbl}>{item.detail}</UiText> : null}</View>
                 </View>
               ))}
-              {!agendaOpen && data.agenda.length > AGENDA_ITEMS ? <UiPressable accessibilityRole="button" accessibilityLabel={t("agendaAllN", { n: data.agenda.length })} onPress={() => setAgendaOpen(true)} style={styles.moreLink} testID="events-detail-agenda-all"><UiText style={styles.moreLinkText}>{t("agendaAllN", { n: data.agenda.length })}</UiText><Icon name="down" size={13} color={colors.ink2} /></UiPressable> : null}
+              {!agendaOpen && data.agenda.length > AGENDA_ITEMS ? <UiPressable accessibilityRole="button" accessibilityLabel={t("agendaAll")} onPress={() => setAgendaOpen(true)} style={styles.moreLink} testID="events-detail-agenda-all"><UiText style={styles.moreLinkText}>{t("agendaAll")}</UiText><Icon name="down" size={13} color={colors.ink2} /></UiPressable> : null}
             </View>
           </View>
         ) : null}
