@@ -105,7 +105,7 @@ export function MemorySettings({ list, language, why, onList }: { list: AgentMem
 
   const editor = (state: Editing) => {
     const ruleDisabled = view.rulesFull && !(state.memoryId !== "new" && list.memories.find((item) => item.memoryId === state.memoryId && isStandingRule(item.category)));
-    const pill = (on: boolean) => `btn ${styles.pill} ${on ? styles.pillOn : ""}`;
+    const pill = (on: boolean) => `${styles.pill} ${on ? styles.pillOn : ""}`;
     const month = memoryExpiryAfter(today, 1);
     const three = memoryExpiryAfter(today, 3);
     const custom = Boolean(state.validUntil && state.validUntil !== month && state.validUntil !== three);
@@ -122,18 +122,18 @@ export function MemorySettings({ list, language, why, onList }: { list: AgentMem
           </label>
           <div className={styles.fieldGroup}><span>{words.group}</span>
             <div className={styles.pills}>
-              <button type="button" className={pill(state.rule)} aria-pressed={state.rule} disabled={ruleDisabled} onClick={() => setEditing({ ...state, rule: true })}>{words.rules}</button>
-              <button type="button" className={pill(!state.rule)} aria-pressed={!state.rule} onClick={() => setEditing({ ...state, rule: false })}>{words.weighed}</button>
+              <button type="button" className={`btn ${pill(state.rule)}`} aria-pressed={state.rule} disabled={ruleDisabled} onClick={() => setEditing({ ...state, rule: true })}>{words.rules}</button>
+              <button type="button" className={`btn ${pill(!state.rule)}`} aria-pressed={!state.rule} onClick={() => setEditing({ ...state, rule: false })}>{words.weighed}</button>
             </div>
           </div>
           <div className={styles.fieldGroup}><span>{words.expiry}</span>
             <div className={styles.pills}>
-              <button type="button" className={pill(!state.validUntil)} aria-pressed={!state.validUntil} onClick={() => setEditing({ ...state, picking: false, validUntil: null })}>{words.noExpiry}</button>
-              <button type="button" className={pill(state.validUntil === month)} aria-pressed={state.validUntil === month} onClick={() => setEditing({ ...state, picking: false, validUntil: month })}>{words.oneMonth}</button>
-              <button type="button" className={pill(state.validUntil === three)} aria-pressed={state.validUntil === three} onClick={() => setEditing({ ...state, picking: false, validUntil: three })}>{words.threeMonths}</button>
+              <button type="button" className={`btn ${pill(!state.validUntil)}`} aria-pressed={!state.validUntil} onClick={() => setEditing({ ...state, picking: false, validUntil: null })}>{words.noExpiry}</button>
+              <button type="button" className={`btn ${pill(state.validUntil === month)}`} aria-pressed={state.validUntil === month} onClick={() => setEditing({ ...state, picking: false, validUntil: month })}>{words.oneMonth}</button>
+              <button type="button" className={`btn ${pill(state.validUntil === three)}`} aria-pressed={state.validUntil === three} onClick={() => setEditing({ ...state, picking: false, validUntil: three })}>{words.threeMonths}</button>
               {state.picking || custom
                 ? <input type="date" className={`${styles.pill} ${styles.pillOn} ${styles.date}`} aria-label={words.pickDay} min={today} value={state.validUntil ?? ""} onChange={(event) => setEditing({ ...state, validUntil: event.target.value || null })} />
-                : <button type="button" className={pill(false)} onClick={() => setEditing({ ...state, picking: true })}>{words.pickDay}</button>}
+                : <button type="button" className={`btn ${pill(false)}`} onClick={() => setEditing({ ...state, picking: true })}>{words.pickDay}</button>}
             </div>
           </div>
         </div>
