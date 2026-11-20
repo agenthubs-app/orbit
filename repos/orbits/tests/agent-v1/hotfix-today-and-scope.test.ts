@@ -31,6 +31,8 @@ function world() {
     todo(ACTOR, "task:t50", "准备十二月的报价模板", { plannedDate: "2026-11-25" }),
     schedule(ACTOR, "personal:s20", "和王强对合同", "2026-11-20T05:00:00.000Z"),
     schedule(ACTOR, "personal:s21", "下周的评审会", "2026-11-26T05:00:00.000Z"),
+    // Every Monday: no occurrence on Friday the 20th.
+    schedule(ACTOR, "personal:s10", "团队周会", "2026-11-16T01:00:00.000Z", { recurrence: { frequency: "weekly" } }),
   );
   return base;
 }
@@ -83,6 +85,9 @@ for (const capabilities of [["todo.read", "schedule.read"], ["todo.read"], ["sch
     const [list] = records(run.result.blocks);
     assert.equal(list.items.length, 5);
     assert.doesNotMatch(run.result.text, /没有找到/u);
+    // The weekly meeting has no occurrence today: it is no match, so no "共1条，这次看的是最新的0条" line (dev run hotfix-dev1).
+    assert.doesNotMatch(run.result.text, /共\s*\d+\s*条，这次看的是/u);
+    assert.equal(run.result.sourceRefs.includes("schedule:personal:s10"), false);
     assertInSync(run);
   });
 }
@@ -144,6 +149,9 @@ test("代办 is read as 待办, and 所有、全部、all name the whole set —
 test("rule 3: the sentences say what was looked for and what exists (zh, ja, en)", () => {
   const today = { fromDay: TODAY, statusSaid: false, toDay: TODAY };
   assert.equal(todoNothingLine("zh", "今天到期的待办有哪些？", today), "今天到期或计划在今天的待办：没有。");
+  // "open" beside a day says nothing more (dev run hotfix-dev1: 「今天到期或计划在今天的还没完成的待办」); alone it is the narrowing.
+  assert.equal(todoNothingLine("zh", "今天到期的待办有哪些？", { ...today, status: "open", statusSaid: true }), "今天到期或计划在今天的待办：没有。");
+  assert.equal(todoNothingLine("zh", "我有哪些还没完成的待办？", { status: "open", statusSaid: true }), "还没完成的待办：没有。");
   assert.equal(todoOthersLine("zh", 20, "open", 16), "另有 20 项还没完成的待办，其中 16 项已过期。");
   assert.equal(todoNothingLine("ja", "今日が期限のタスクは？", today), "今日が期限または予定日のタスク：ありません。");
   assert.equal(todoOthersLine("ja", 20, "open", 16), "未完了のタスクはほかに20件あります（うち16件は期限切れ）。");

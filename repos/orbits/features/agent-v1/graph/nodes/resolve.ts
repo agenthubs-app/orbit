@@ -754,6 +754,9 @@ export function resolveNode(scope: NodeScope): GraphNode {
                   if (at && at !== view.fields.startsAt) read.occurrences.set(view.ref, at);
                   return Boolean(at);
                 });
+                // Hotfix 2026-11-20: a repeating item with no occurrence in the window is no match; a complete read counts only
+                // the ones kept (otherwise 「共1条，这次看的是最新的0条」 for the weekly meeting on a Friday).
+                if (pages.complete && items.length !== pages.items.length) pages = { ...pages, items, total: items.length };
               }
               for (const view of items) push(view);
               // AG10 (AE-SCL-020): how a person stands now ("her current salary expectation") reads their newest notes as well,

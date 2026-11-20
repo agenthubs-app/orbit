@@ -75,7 +75,8 @@ export function todoNothingLine(language: Language, quote: string, asked: Pick<A
   const both = Boolean(asked.fromDay && asked.toDay);
   const single = both && asked.fromDay === asked.toDay;
   const plain = ONE_DAY_WORD.test(when);
-  const status = asked.statusSaid && asked.status ? STATUS_WORDS[language][asked.status] : "";
+  // "open" beside a day or words says nothing more ("今天到期的还没完成的待办"); it is said when it is the only narrowing.
+  const status = asked.statusSaid && asked.status && (asked.status === "completed" || (!when && !asked.text)) ? STATUS_WORDS[language][asked.status] : "";
   if (language === "en") {
     const period = !when ? "" : both ? ` due or planned ${plain ? when : single ? `on ${when}` : `for ${when}`}` : asked.toDay ? ` due or planned by ${when}` : ` due or planned from ${when}`;
     const head = `${status ? `${status} ` : ""}to-dos${asked.text ? ` containing "${asked.text}"` : ""}${period}`;
