@@ -375,8 +375,14 @@ export async function findContacts(records: AgentRecordAccess, scope: DomainScop
   // the company's distinctive words count ("蒲公英那个" for 蒲公英童书), not only its full name.
   if (matches.length > 1) {
     // The person's own name is not a company word ("小林健" does not name 小林设计).
+    // AG21a (R39): only the name is taken out, not the whole clue — the words in it that tell two people of the name apart
+    // stay for the company and role tests ("季朗（柏舟那个）" keeps 柏舟). A clue that holds none of the found names as
+    // written (a romanized or partial name) is taken out whole, as before.
     const clue = words.replace(/^@/u, "").trim();
-    const besides = (text: string) => [clue, ...tokens].filter(Boolean).reduce((rest, name) => rest.split(name).join(" "), text);
+    const shownNames = matches.map((view) => String(view.fields.displayName ?? "").trim()).filter(Boolean);
+    const namesInClue = shownNames.filter((name) => clue.includes(name));
+    const nameWords = namesInClue.length ? [...namesInClue, ...tokens.filter((token) => shownNames.some((name) => name.includes(token)))] : [clue, ...tokens];
+    const besides = (text: string) => [...new Set(nameWords.filter(Boolean))].sort((left, right) => right.length - left.length).reduce((rest, name) => rest.split(name).join(" "), text);
     const named = matches.filter((view) => typeof view.fields.company === "string" && view.fields.company && (quote.includes(String(view.fields.company)) || message.includes(String(view.fields.company)) || companyNamedIn(String(view.fields.company), besides(quote)) || companyNamedIn(String(view.fields.company), besides(message))));
     if (named.length) matches = named;
   }
