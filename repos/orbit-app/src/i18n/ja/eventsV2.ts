@@ -160,7 +160,7 @@ export const eventsV2 = {
   "eventsV2.myUpcomingEmptyTitle": "これからの参加予定はありません",
   "eventsV2.pastEmpty": "まだ参加したイベントはありません",
   "eventsV2.pastCancelled": "キャンセル",
-  "eventsV2.pastNoCheckIn": "未受付",
+  "eventsV2.pastNoCheckIn": "未チェックイン",
   "eventsV2.attended": "参加した",
   "eventsV2.notCheckedIn": "未チェックイン",
   "eventsV2.statusRegistered": "申込済み",
