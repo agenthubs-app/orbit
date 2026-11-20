@@ -154,7 +154,14 @@ export interface AgentAutomationRunRecord {
   error?: string;
   coverage?: { total: number; afterHardConditions: number; judged: number; truncated: number };
   /** AG15 interface: the result page's basis line and the plain notes under its cards. */
-  detail?: { basis: string; notes: readonly string[] };
+  detail?: {
+    basis: string;
+    notes: readonly string[];
+    /** The note the run picked by: which one (two may share a title), for the trace and the judge. */
+    basisNote?: { id: string; title: string; day: string };
+    /** The same note as a small card the result page opens (AE-SCL-030 R4), with the line above it. */
+    source?: { caption: string; card: AgentAnswerRecordContract };
+  };
   notify: AgentRuleNotify;
   delivery: { inbox: AgentAutomationInboxDelivery; push: AgentAutomationPushDelivery };
 }

@@ -52,14 +52,17 @@ export interface AutomationDispatchSummary {
   needsAttention: number;
   failed: number;
   skippedPeriods: number;
+  /** Waiting deliveries taken up in this pass; of them, how many were sent and how many cancelled (not sent). */
   deliveriesRetried: number;
+  deliveriesSent?: number;
+  deliveriesCancelled?: number;
   timersFired: number;
   /** AG16: reminder rounds run in this pass, and how many of them ended with the reminder delivered. */
   pushRounds?: number;
   pushesDelivered?: number;
 }
 
-const emptySummary = (): AutomationDispatchSummary => ({ claimed: 0, delivered: 0, deliveriesRetried: 0, failed: 0, needsAttention: 0, noMatch: 0, periods: 0, pushRounds: 0, pushesDelivered: 0, skippedPeriods: 0, timersFired: 0, undelivered: 0 });
+const emptySummary = (): AutomationDispatchSummary => ({ claimed: 0, delivered: 0, deliveriesCancelled: 0, deliveriesRetried: 0, deliveriesSent: 0, failed: 0, needsAttention: 0, noMatch: 0, periods: 0, pushRounds: 0, pushesDelivered: 0, skippedPeriods: 0, timersFired: 0, undelivered: 0 });
 
 /**
  * AG16: one round of a run's reminder. Called right after its result reached the inbox, and for the reminder's own row
@@ -103,8 +106,9 @@ export async function dispatchDueAutomations(deps: AutomationDispatchDeps, input
           const state = await deliverRun(deps.delivery, { ownerId: item.ownerId, runId: item.key });
           if (state === "delivered") {
             summary.delivered += 1;
+            summary.deliveriesSent = (summary.deliveriesSent ?? 0) + 1;
             await pushRound(deps, item.ownerId, item.key, summary);
-          }
+          } else if (state === "cancelled") summary.deliveriesCancelled = (summary.deliveriesCancelled ?? 0) + 1;
         } else await fireTimerItem(deps, item, now, summary);
       } catch (error) {
         // One row's failure never stops the pass; the row stays leased and is taken again when the lease ends.

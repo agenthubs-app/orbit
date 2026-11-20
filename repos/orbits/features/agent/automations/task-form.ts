@@ -46,7 +46,7 @@ export function ruleFromForm(form: AgentScheduledTaskFormContract, locale: Local
     scopeText,
     validUntil: form.validUntil,
   };
-  const title = form.title.trim() || titleOf(schedule, rule, null, locale);
+  const title = form.title.trim() || titleOf(schedule, rule, locale);
   return { rule, schedule, title: title.slice(0, 120) };
 }
 

@@ -227,6 +227,23 @@ function productIdsOfFixture(value: unknown, idMap: Record<string, string>): unk
   return value;
 }
 
+/**
+ * AG15 (AE-SCH-008): the transcript line for one scheduler tick. A waiting delivery taken up is not a sent one: it says how
+ * many were sent, cancelled (the rule was paused, changed or removed, or its note can no longer be read) or still wait.
+ */
+export function dispatchNarration(at: string, status: number, dispatch: Record<string, number> | null): string {
+  const head = `*（定时派发推进到 ${at}：没有任何客户端在线，由运行器像定时器那样调用派发入口，HTTP ${status}`;
+  if (!dispatch) return `${head}）*`;
+  const taken = dispatch.deliveriesRetried ?? 0;
+  const cancelled = dispatch.deliveriesCancelled ?? 0;
+  const sent = dispatch.deliveriesSent ?? 0;
+  const waiting = Math.max(0, taken - cancelled - sent);
+  const retried = taken
+    ? `取出 ${taken} 条待送通知（${[sent ? `送进收件箱 ${sent} 条` : null, cancelled ? `取消 ${cancelled} 条，没有送出` : null, waiting ? `仍没送出、继续待送 ${waiting} 条` : null].filter(Boolean).join("，")}）`
+    : "没有待送通知";
+  return `${head}；这一次处理了 ${dispatch.periods ?? 0} 期规则、${retried}、触发 ${dispatch.timersFired ?? 0} 个一次性定时器${dispatch.undelivered ? `；其中 ${dispatch.undelivered} 期的结果算出来了，但没能写进收件箱，留作待送` : ""}）*`;
+}
+
 /** Per-case files and checks. */
 /**
  * AG19: the answer's blocks as the two clients lay them out (written by server code; the text above is the same answer as
@@ -721,7 +738,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           const body = (await response.json().catch(() => null)) as { data?: { dispatch?: Record<string, number> } } | null;
           const dispatch = body?.data?.dispatch ?? null;
           log.push({ dispatch, status: response.status, step: index, type: "scheduler.dispatch" });
-          transcript.push(`*（定时派发推进到 ${at}：没有任何客户端在线，由运行器像定时器那样调用派发入口，HTTP ${response.status}${dispatch ? `；这一次处理了 ${dispatch.periods ?? 0} 期规则、补送 ${dispatch.deliveriesRetried ?? 0} 条待送通知、触发 ${dispatch.timersFired ?? 0} 个一次性定时器${dispatch.undelivered ? `；其中 ${dispatch.undelivered} 期的结果算出来了，但没能写进收件箱，留作待送` : ""}` : ""}）*`, "");
+          transcript.push(dispatchNarration(at, response.status, dispatch), "");
           if (response.status !== 200) unsupported.push({ reason: `the dispatch entry answered HTTP ${response.status}`, step: index, word });
           if (inboxFaultArmed) {
             await serverControl(environment, "fault_end", { where: "notify.inbox" });
@@ -1128,10 +1145,15 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         for (const task of tasks) {
           rulesAfter.push({ account: label, fixtureId: fixtureIdOf(task.id), id: task.id, state: task.status, version: task.version });
           const history = await client.request("GET", `/api/agent/automations/${encodeURIComponent(task.id)}/runs`, undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: `runner: history of scheduled task ${fixtureIdOf(task.id) ?? task.id}` });
-          const runs = (history.body?.data?.runs ?? []) as { scheduledAt: string; line: string; outcome: string; skipped: number; computedAt?: string; push?: { line?: string | null; state?: string; attempts?: number; deliveredAt?: string; lastAttemptAt?: string } }[];
+          const runs = (history.body?.data?.runs ?? []) as { scheduledAt: string; line: string; outcome: string; skipped: number; computedAt?: string; push?: { line?: string | null; state?: string; attempts?: number; deliveredAt?: string; lastAttemptAt?: string }; detail?: { source?: { caption: string; card: { id: string; title: string; top?: string; sub?: string } } } }[];
           // AG16: the two things the history keeps apart — when the result was worked out, and whether the reminder arrived.
           const second = (run: (typeof runs)[number]) => (run.push?.line ? `\n    - 结果算出的时刻：${run.computedAt ? localTime(run.computedAt) : "（没有）"}\n    - 提醒：${run.push.line}（状态 ${run.push.state}，尝试 ${run.push.attempts ?? 0} 次${run.push.deliveredAt ? `，送达时刻 ${localTime(run.push.deliveredAt)}` : run.push.lastAttemptAt ? `，最后一次尝试 ${localTime(run.push.lastAttemptAt)}` : ""}）` : "");
-          historyLines.push(`### 账号 ${label}：${task.title}（${fixtureIdOf(task.id) ?? "本用例新建"}，${({ active: "运行中", completed: "已结束", paused: "已暂停" } as Record<string, string>)[task.status] ?? task.status}）`, ...task.rows.map((row) => `- ${row.label}：${row.value}`), runs.length ? "- 历史（最近的在前）：" : "- 历史：还没有运行过", ...runs.map((run) => `  - ${localTime(run.scheduledAt)} 这一期：${run.line}${second(run)}`), "");
+          // AE-SCL-030 R4: the note a result picked by, as the result page shows it (a card that opens the note).
+          const sourceLine = (run: (typeof runs)[number]) => {
+            const source = run.detail?.source;
+            return source ? [`    - 结果页上可以点开的笔记（${source.caption}）：${source.card.title}（${fixtureIdOf(source.card.id) ?? source.card.id}${source.card.top ? `，${source.card.top}` : ""}）${source.card.sub ? ` · ${source.card.sub}` : ""}`] : [];
+          };
+          historyLines.push(`### 账号 ${label}：${task.title}（${fixtureIdOf(task.id) ?? "本用例新建"}，${({ active: "运行中", completed: "已结束", paused: "已暂停" } as Record<string, string>)[task.status] ?? task.status}）`, ...task.rows.map((row) => `- ${row.label}：${row.value}`), runs.length ? "- 历史（最近的在前）：" : "- 历史：还没有运行过", ...runs.flatMap((run) => [`  - ${localTime(run.scheduledAt)} 这一期：${run.line}${second(run)}`, ...sourceLine(run)]), "");
         }
       }
       if (historyLines.length) ruleEndLines.push("## 「我的定时任务」接口最后返回的内容（任务、下次运行、运行历史）", "", ...historyLines);

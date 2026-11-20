@@ -113,6 +113,7 @@ test("a rule paused before its result was delivered: the result is not sent, the
   // The state is looked at again before the send.
   const afterPause = await kit.dispatch("2026-11-20T09:20:00+09:00");
   assert.equal(afterPause.delivered, 0);
+  assert.deepEqual([afterPause.deliveriesRetried, afterPause.deliveriesCancelled], [1, 1], "the waiting delivery was taken up and cancelled — not sent");
   assert.equal(kit.inbox.length, 0);
   const nextWeek = await kit.dispatch("2026-11-27T09:10:00+09:00");
   assert.equal(nextWeek.periods, 0);
