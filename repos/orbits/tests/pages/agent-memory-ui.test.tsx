@@ -69,7 +69,7 @@ test("board 6 (D7, D8): two switches, groups with their counts, 用在 on each r
   const rules = Array.from({ length: 7 }, () => entry({ appliesTo: ["all"], category: "constraint" }));
   const html = page(list([...rules, entry({ content: "推荐活动时优先周末" })]));
   const text = textOf(html);
-  for (const words of ["iOrbit 记住的信息", "添加一条", "回答时参考这些", "关掉后条目都还在，只是回答时不用。", "从对话里记住新的（会先问你）", "一直遵守的 7 条 · 每次回答都照做", "酌情参考的 1 条 · 和手上的事有关时才用", "还有 2 条", "用在：推荐活动时"]) assert.ok(text.includes(words), words);
+  for (const words of ["iOrbit 记住的信息", "添加一条", "回答时参考这些", "关掉后条目都还在，只是回答时不用。", "从对话里记住新的（会先问你）", "一直遵守的 7条 · 每次回答都照做", "酌情参考的 1条 · 和手上的事有关时才用", "还有2条", "用在：推荐活动时"]) assert.ok(text.includes(words), words);
   assert.equal(html.match(/aria-label="改"/gu)?.length, 6, "five rules shown and one preference");
   assert.equal(html.match(/aria-label="删除"/gu)?.length, 6);
   assert.doesNotMatch(text, /笔记|对话里记的/u, "D8: no source");
@@ -83,7 +83,7 @@ test("board 7: empty; both switches off (rows fade, still editable); expired; un
   assert.match(off, /aria-label="改"/u);
   const expired = page(list([entry({ appliesTo: ["schedule.plan"], content: "下个月把日程里的空档用起来", validUntil: "2020-01-01" })]));
   assert.match(textOf(expired), /用在：安排日程时 · 1月1日（周三）已到期 延期 删除/u);
-  assert.match(textOf(page(list([entry({ appliesTo: [], content: "我习惯用中文记笔记" })]))), /还没说用在哪的 1 条 · 只在明显有关时参考 我习惯用中文记笔记 以前存的，没写用在哪 补上/u);
+  assert.match(textOf(page(list([entry({ appliesTo: [], content: "我习惯用中文记笔记" })]))), /还没说用在哪的 1条 · 只在明显有关时参考 我习惯用中文记笔记 以前存的，没写用在哪 补上/u);
   const full = page({ ...list(Array.from({ length: 2 }, () => entry({ appliesTo: ["all"], category: "constraint" }))), ruleLimit: 2 });
-  assert.match(textOf(full), /已经 2 条了。再加之前，先合并或删掉几条。/u);
+  assert.match(textOf(full), /已经2条了。再加之前，先合并或删掉几条。/u);
 });

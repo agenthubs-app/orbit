@@ -31,9 +31,9 @@ test("three groups; five rows each, then 「还有 N 条」 that unfolds in plac
   const legacy = entry({ appliesTo: [], content: "我习惯用中文记笔记" });
   const shown = view([...rules, ...weighed, legacy]);
   assert.deepEqual(shown.groups.map((group) => [group.title, group.note, group.rows.length, group.shown, group.moreLabel]), [
-    ["一直遵守的", "7 条 · 每次回答都照做", 7, 5, "还有 2 条"],
-    ["酌情参考的", "2 条 · 和手上的事有关时才用", 2, 2, null],
-    ["还没说用在哪的", "1 条 · 只在明显有关时参考", 1, 1, null],
+    ["一直遵守的", "7条 · 每次回答都照做", 7, 5, "还有2条"],
+    ["酌情参考的", "2条 · 和手上的事有关时才用", 2, 2, null],
+    ["还没说用在哪的", "1条 · 只在明显有关时参考", 1, 1, null],
   ]);
   assert.equal(shown.groups[1].rows[0].meta, "用在：安排待办时 · 12月31日（周四）到期");
   assert.equal(shown.groups[0].rows[0].meta, "用在：所有回答");
@@ -52,7 +52,7 @@ test("an entry past its last day stays, last in its group, with 「已到期」 
   assert.equal(shown.groups[0].rows[1].metaLead, "用在：安排日程时 · ");
   assert.equal(shown.groups[0].rows[1].expiredText, "11月19日（周四）已到期");
   const full = view(Array.from({ length: 3 }, () => entry({ appliesTo: ["all"], category: "constraint" })), undefined, { ruleLimit: 3 });
-  assert.equal(full.groups[0].full, "已经 3 条了。再加之前，先合并或删掉几条。");
+  assert.equal(full.groups[0].full, "已经3条了。再加之前，先合并或删掉几条。");
   assert.equal(full.rulesFull, true);
 });
 

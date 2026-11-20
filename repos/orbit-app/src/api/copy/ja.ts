@@ -275,7 +275,7 @@ export const ja = {
     save: "保存",
     editTitle: "この項目を編集",
     addTitle: "項目を追加",
-    content: "内容",
+    content: "覚えておく内容",
     contentPlaceholder: "例：イベントのおすすめは週末の午前を優先",
     group: "分類",
     expiry: "期限（なくても可）",
@@ -296,7 +296,7 @@ export const ja = {
     taskEvent: "イベントをおすすめするとき",
     taskContact: "連絡先をおすすめするとき",
     taskSchedule: "予定を組むとき",
-    taskTodo: "ToDo を組むとき",
+    taskTodo: "To-do を組むとき",
     taskMemo: "メモを整理するとき",
   },
 } as const;
