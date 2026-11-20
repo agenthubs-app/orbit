@@ -26,6 +26,7 @@ import { journeyApi } from "./journey-api";
 import { readSavedPlanGoal, type SavedPlanGoal } from "../plan/saved-goal";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
+import r from "./record.module.css";
 
 export type JourneyT = (key: keyof typeof jc, values?: Record<string, string | number>) => string;
 export function journeyTranslator(language: OrbitLanguage): JourneyT {
@@ -116,16 +117,41 @@ const SAMPLE_RELEVANCE: readonly EventRelevance[] = [
 /** 卡片 emoji 底色按位置轮换（不再按判定上色）。 */
 const emoTone = (index: number): Tone => RECOMMEND_TONES[index % RECOMMEND_TONES.length]!;
 
-export function EventCard({ row, index, language, t, selected, faded, ended, metaOverride, onSelect, onOpen }: { row: EventDiscoverRow; index: number; language: OrbitLanguage; t: JourneyT; selected?: boolean; faded?: boolean; ended?: boolean; metaOverride?: string; onSelect?: () => void; onOpen: () => void }) {
+/**
+ * D2（2026-11-20 用户拍板）：同一排（宽屏 3 张一排）只要有一张有图，没图的卡顶部画 2:1 色带 + 自己的 emoji 补齐；整排都没图保持现样。
+ * 返回每张卡要不要画色带（有图的卡自己画图，不算色带）。
+ */
+export function coverBands(rows: readonly { coverUrl?: string | null }[], perRow = 3): boolean[] {
+  return rows.map((row, index) => {
+    if (row.coverUrl) return false;
+    const start = index - (index % perRow);
+    return rows.slice(start, start + perRow).some((item) => Boolean(item.coverUrl));
+  });
+}
+
+export function EventCard({ row, index, language, t, selected, faded, ended, metaOverride, onSelect, onOpen, band = false, coverPosition }: { row: EventDiscoverRow; index: number; language: OrbitLanguage; t: JourneyT; selected?: boolean; faded?: boolean; ended?: boolean; metaOverride?: string; onSelect?: () => void; onOpen: () => void; /** D2：同排有图时没图的卡画 2:1 色带。 */ band?: boolean; /** 主办表单预览：还没裁的图按 focusY 定位。 */ coverPosition?: string }) {
   const meta = metaOverride ?? [discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ");
   const registered = ended ? null : registrationChipText(row.registrationCount, language);
   const fee = feeText(row.priceYen, t);
   const card = (
     <div role="button" tabIndex={0} className={`${styles.evc} ${d.evc} ${selected ? styles.sel : ""}`} onClick={onSelect ?? onOpen} onKeyDown={(event) => { if (event.key === "Enter") (onSelect ?? onOpen)(); }} data-discover-card={row.eventId} style={faded ? { flex: 1 } : undefined}>
-      <div className={`${styles.row} ${styles.between}`}>
-        <span className={`${styles.emo} ${styles[`t_${emoTone(index)}`]}`}>{row.emoji}</span>
-        {registered ? <span className={`${styles.chip} ${styles.regChip}`} data-discover-registered="">{registered}</span> : null}
-      </div>
+      {row.coverUrl ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element -- 主办方上传的图（Blob / 站内路径），服务端已裁成 2:1 */}
+          <div className={r.cardCover} data-discover-cover=""><img src={row.coverUrl} alt="" loading="lazy" style={coverPosition ? { objectPosition: coverPosition } : undefined} /></div>
+          {registered ? <span className={`${styles.chip} ${styles.regChip} ${r.onImg}`} data-discover-registered="">{registered}</span> : null}
+        </>
+      ) : band ? (
+        <>
+          <div className={`${r.cardBand} ${r[`band_${emoTone(index)}`]}`} data-discover-band=""><span className={`${styles.emo} ${r.bandEmo}`}>{row.emoji}</span></div>
+          {registered ? <span className={`${styles.chip} ${styles.regChip} ${r.onImg}`} data-discover-registered="">{registered}</span> : null}
+        </>
+      ) : (
+        <div className={`${styles.row} ${styles.between}`}>
+          <span className={`${styles.emo} ${styles[`t_${emoTone(index)}`]}`}>{row.emoji}</span>
+          {registered ? <span className={`${styles.chip} ${styles.regChip}`} data-discover-registered="">{registered}</span> : null}
+        </div>
+      )}
       <b className={d.evcTitle}>{row.title}</b>
       <div className={styles.lbl}>{meta}</div>
       {ended ? null : <RelevanceChips relevance={row.relevance} language={language} className={d.relChips} />}
@@ -283,7 +309,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
   if (!data) return <div className={styles.wgrid} data-events-discover-tab="">{filters}<div className={styles.span12}><PageSkeletonBody kind="events" label={std.loading.loading} bare /></div></div>;
 
   // 2026-10-29：活动还少，開催済み以灰卡片平铺在结果下方（不折叠成入口行）；超过上限才给「すべて見る」。
-  const endedCards = (rows: readonly EventDiscoverRow[]) => rows.map((row, index) => <EventCard key={row.eventId} ended row={row} index={index} language={language} t={t} onOpen={() => open(row.href)} />);
+  const endedCards = (rows: readonly EventDiscoverRow[]) => { const bands = coverBands(rows); return rows.map((row, index) => <EventCard key={row.eventId} ended row={row} index={index} band={bands[index]} language={language} t={t} onOpen={() => open(row.href)} />); };
   const pastSection = !past && data.past?.length ? (
     <>
       <div className={`${styles.span12} ${styles.cardH} ${d.sectionHead}`} data-discover-past-section=""><h3>{t("pastTitle", { n: data.pastTotal ?? data.past.length })}</h3>{(data.pastTotal ?? 0) > data.past.length ? <button type="button" className={`btn ${styles.more} ${d.moreBtn}`} onClick={() => set({ period: "past" })}>{t("pastSeeAll")} <Icon name="right" size={16} /></button> : <span className={styles.lbl}>{t("byNewest")}</span>}</div>
@@ -295,7 +321,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
     return <PhoneDiscover data={data} query={query} language={language} t={t} search={search} onSearch={setSearch} onQuery={(patch) => setQuery((current) => ({ ...current, ...patch }))} onClear={(key) => setQuery((current) => { const next = { ...current }; delete next[key]; return key === "period" ? { ...next, period: "upcoming" } : next; })} onOpen={open} />;
   }
 
-  const card = (row: EventDiscoverRow, index: number) => <EventCard key={row.eventId} row={row} index={index} language={language} t={t} selected={tier !== "narrow" && railRow?.eventId === row.eventId} onSelect={() => setSelected(row.eventId)} onOpen={() => open(row.href)} />;
+  const card = (row: EventDiscoverRow, index: number, band = false) => <EventCard key={row.eventId} row={row} index={index} band={band} language={language} t={t} selected={tier !== "narrow" && railRow?.eventId === row.eventId} onSelect={() => setSelected(row.eventId)} onOpen={() => open(row.href)} />;
 
   return (
     <div className={styles.wgrid} data-events-discover-tab="">
@@ -346,7 +372,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
             {(query.areas ?? []).map((a) => <button key={a} type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => set({ areas: (query.areas ?? []).filter((x) => x !== a) })}>{areaLabel(a, t)} ✕</button>)}
             {(query.themes ?? []).map((x) => <button key={x} type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => set({ themes: (query.themes ?? []).filter((v) => v !== x) })}>{themeLabel(x, t)} ✕</button>)}
           </div>
-          {data.all.map((row, index) => card(row, index))}
+          {(() => { const bands = coverBands(data.all); return data.all.map((row, index) => card(row, index, bands[index])); })()}
           {data.widen?.length ? (
             <div className={`${styles.card} ${styles.span12} ${styles.flat}`} data-discover-widen="">
               <div className={styles.row} style={{ gap: 12 }}>
@@ -383,7 +409,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
             </div>
           ) : null}
           {data.planFit.length ? <div className={`${styles.span12} ${styles.cardH} ${d.sectionHead}`} data-discover-planfit-head=""><h3>{t("planFitTitle")}</h3><span className={styles.lbl}>{t("countN", { n: data.planFitTotal })} · {t("byDate")}</span></div> : null}
-          {data.planFit.map((row, index) => card(row, index))}
+          {(() => { const bands = coverBands(data.planFit); return data.planFit.map((row, index) => card(row, index, bands[index])); })()}
           {data.all.length ? <AllTable rows={data.all} total={data.total} language={language} t={t} onOpen={open} onSave={save} onDismiss={dismiss} /> : null}
         </>
       )}

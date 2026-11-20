@@ -14,6 +14,9 @@ import { translator as assessTranslator } from "./AssessmentDetail";
 import { DiscoverHelpRail, journeyTranslator, type JourneyT } from "./DiscoverTab";
 import { WEEK, parts, usePhone, useWide } from "./EventDetail";
 import { journeyApi } from "./journey-api";
+import { personRailOrDrawer, usePersonDetail, type AttendeeSeed } from "./AttendeeProfile";
+import { personTone } from "./VenueRecord";
+import r from "./record.module.css";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
 import x from "./detail.module.css";
@@ -74,6 +77,8 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
   const wide = useWide();
   const phone = usePhone();
   const [drawer, setDrawer] = useState(false);
+  // 2026-11-20「今日会った人」点开参加者の詳細：≥1280 换掉右栏（✕ 回到お礼の下書き），< 1280 用抽屉。
+  const personDetail = usePersonDetail();
 
   useEffect(() => { void journeyApi.after(eventId).then((res) => { if (res.ok) setData(res.data); else setMissing(true); }); }, [eventId]);
 
@@ -137,7 +142,19 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
       <div className={`${styles.lbl} ${a.note}`}><Icon name="mail" size={16} /> {t("noSendNote")}</div>
     </div>
   ) : null;
-  const rail = empty ? <DiscoverHelpRail language={language} /> : wide && draftPanel ? draftPanel : false;
+  const baseRail = empty ? <DiscoverHelpRail language={language} /> : wide && draftPanel ? draftPanel : false;
+  const person = personRailOrDrawer({ close: personDetail.close, eventId, fallbackRail: baseRail, language, person: personDetail.person, t, tone: personDetail.person ? personTone(personDetail.person.attendeeId) : undefined, wide: wide && !phone });
+  const rail = person.rail;
+  const metPeople = (data.met.people ?? []).map((item) => ({ ...item, org: item.org ?? null }));
+  const metList = metPeople.length ? (
+    <div className={r.metList} data-after-met-people="">
+      {metPeople.map((item) => (
+        <button key={item.attendeeId} type="button" className={`btn ${r.metRow} ${personDetail.selectedId === item.attendeeId ? r.metOn : ""}`} aria-pressed={personDetail.selectedId === item.attendeeId} data-after-person={item.attendeeId} onClick={() => personDetail.open(item as AttendeeSeed)}>
+          <div className={`${x.av} ${a.avSm} ${personTone(item.attendeeId)}`}>{item.initial}</div><b>{item.name}</b><Icon name="right" size={16} />
+        </button>
+      ))}
+    </div>
+  ) : null;
   const drawerEl = !wide && selected ? <Drawer open={drawer} onClose={() => setDrawer(false)} title={t("thanksTitle", { name: selected.name.split(/\s+/)[0] ?? selected.name })} size="sm">{draftPanel}</Drawer> : null;
   const scoreCard = data.score && preview ? (
     <div className={`${styles.card} ${phone ? a.pCard : a.fill}`} data-after-score="">
@@ -180,6 +197,7 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
               <div><span className={styles.lbl}>{t("itemTarget")}</span><b>{data.met.wantedMet}<small className={styles.lbl}>/{data.met.wantedTotal}</small></b></div>
               <div><span className={styles.lbl}>{t("meetingsSet")}</span><b>{data.met.meetings}</b></div>
             </div>
+            {metList}
           </div>
           <div className={`${styles.card} ${a.pCard}`} data-after-summary="">
             <div className={styles.cardH}><h3>{t("summaryTitle")}</h3>{data.aiDraft ? <span className={styles.lbl}>{t("aiDraftEditable")}</span> : null}</div>
@@ -220,6 +238,7 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
           {scoreCard}
         </div>
         {drawerEl}
+        {person.drawer}
       </>
     );
   }
@@ -237,6 +256,7 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
                 <div><span className={styles.lbl}>{t("itemTarget")}</span><b>{data.met.wantedMet}<small className={styles.lbl}>/{data.met.wantedTotal}</small></b></div>
                 <div><span className={styles.lbl}>{t("meetingsLbl")}</span><b>{data.met.meetings}</b></div>
               </div>
+              {metList}
             </div>
             <div className={`${x.span5} ${a.flexCell}`}>
               <div className={`${styles.card} ${a.fill}`} data-after-summary="">
@@ -308,6 +328,7 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
           </>
         )}
       </div>
+      {person.drawer}
       {!wide && selected ? <Drawer open={drawer} onClose={() => setDrawer(false)} title={t("thanksTitle", { name: selected.name.split(/\s+/)[0] ?? selected.name })} size="sm">{draftPanel}</Drawer> : null}
     </>
   );

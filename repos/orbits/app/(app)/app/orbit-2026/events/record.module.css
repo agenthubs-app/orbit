@@ -1,0 +1,119 @@
+/* 2026-11-20 会場の記録 / 参加者の詳細 / 活动图片（event-web-revisit-cover-width-proposal）。色・角丸・文字は token のみ。
+   按钮类一律写两个 class（压过 real-page 的 button 重置）。 */
+.grow { flex: 1; min-width: 0; }
+.row.row { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+.center { text-align: center; }
+
+/* ── 参加者の詳細（右栏 / 抽屉） ── */
+.panel.panel { gap: 14px; }
+.head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.close.close { width: 32px; height: 32px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface); display: grid; place-items: center; color: var(--ink-2); cursor: pointer; flex: 0 0 auto; }
+.ph { display: flex; gap: 12px; align-items: center; }
+.avLg.avLg { width: 56px; height: 56px; font-size: var(--fs-emoji-sm); }
+.name { display: block; font-size: var(--fs-dialog-title); }
+.pcard.pcard { padding: 14px; }
+.cardLbl.cardLbl { display: block; margin-bottom: 8px; }
+.cardTitle { display: block; font-size: var(--fs-body-sm); }
+.tog { display: grid; gap: 8px; }
+.togRow { display: flex; gap: 8px; align-items: center; font-size: var(--fs-control); }
+.togWhy { flex: 1; min-width: 0; line-height: var(--lh-prose); color: var(--ink); }
+.chipIcon :global(svg) { width: 12px; height: 12px; }
+.intro.intro { line-height: var(--lh-prose-lg); }
+.qas { margin-top: 12px; display: grid; gap: 10px; }
+.qa { display: grid; gap: 2px; font-size: var(--fs-control); }
+.memoLbl.memoLbl { display: block; margin-bottom: 6px; }
+.memoRow.memoRow { gap: 8px; }
+.input.memoInput { flex: 1; min-width: 0; height: 44px; border: 0; outline: 0; border-radius: var(--r-md); background: var(--surface-2); padding: 0 14px; font: inherit; font-size: var(--fs-body-sm); color: var(--ink); }
+.input.memoInput:focus { box-shadow: 0 0 0 2px var(--plum-300); }
+.openContact { margin-left: auto; font-size: var(--fs-label); font-weight: var(--fw-bold); color: var(--ink-3); text-decoration: none; }
+.openContact:hover { color: var(--ink); }
+.acts.acts { gap: 8px; margin-top: 10px; }
+.xchg { display: grid; gap: 8px; }
+.full.full { width: 100%; }
+
+/* ── 参加者卡（详情页）：可点 = hover 描边 + ›，选中描边 ── */
+.pick.pick { cursor: pointer; transition: box-shadow .15s; border: 0; font: inherit; color: inherit; text-align: left; width: 100%; }
+.pick.pick:hover { box-shadow: 0 0 0 1.5px var(--plum-300); }
+.pick.pickOn { box-shadow: 0 0 0 2px var(--plum-500); background: var(--surface); }
+.chev { margin-left: auto; color: var(--ink-4); flex: 0 0 auto; display: grid; place-items: center; }
+.pLiBtn.pLiBtn { width: 100%; border: 0; background: transparent; padding: 11px 0; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: var(--r-none); height: auto; min-height: 0; }
+
+/* ── 封面（详情页 / 卡片） ── */
+.coverPhoto { display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; background: var(--surface-3); }
+.cardCover { margin: -18px -18px 4px; aspect-ratio: 2 / 1; overflow: hidden; border-top-left-radius: var(--r-card-web); border-top-right-radius: var(--r-card-web); background: var(--surface-3); flex: 0 0 auto; }
+.cardCover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* D2：同一排有图时，没图的卡顶部画同样 2:1 的色带 + emoji。 */
+.cardBand { margin: -18px -18px 4px; aspect-ratio: 2 / 1; border-top-left-radius: var(--r-card-web); border-top-right-radius: var(--r-card-web); display: flex; align-items: flex-end; padding: 0 16px 14px; flex: 0 0 auto; }
+.band_teal { background: linear-gradient(135deg, var(--mac-teal), var(--surface) 90%); }
+.band_lav { background: linear-gradient(135deg, var(--mac-lav), var(--mac-pink) 90%); }
+.band_blue { background: linear-gradient(135deg, var(--mac-blue), var(--mac-lav) 90%); }
+.bandEmo.bandEmo { background: var(--surface); }
+.onImg.onImg { position: absolute; top: 12px; right: 12px; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: var(--ink-2); }
+.nextCover { margin: -20px -20px 14px; aspect-ratio: 2 / 1; overflow: hidden; border-top-left-radius: var(--r-card-web); border-top-right-radius: var(--r-card-web); background: var(--surface-3); }
+.nextCover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* 详情页（手机）：会場の記録 入口 */
+.pEntry.pEntry { display: flex; flex-direction: row; align-items: center; gap: 12px; margin-top: 12px; padding: 14px 16px; text-decoration: none; color: inherit; }
+.pEntry b { flex: 1; font-size: var(--fs-body); }
+
+/* ── 会場の記録 ── */
+.tabsRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.readOnly { display: inline-flex; align-items: center; gap: 6px; }
+.readOnly :global(svg) { width: 14px; height: 14px; }
+.stats { display: flex; align-items: flex-end; gap: 28px; flex-wrap: wrap; }
+.stat b { display: block; font-family: var(--font-num); font-size: var(--fs-number-md); font-weight: var(--fw-heavy); line-height: 1.15; }
+.stat small { font-size: var(--fs-label); color: var(--ink-3); font-weight: var(--fw-medium); margin-left: 2px; }
+.statLink.statLink { margin-left: auto; align-self: center; }
+.rnd.rnd { background: linear-gradient(150deg, var(--mac-lav), var(--surface) 60%); }
+.rndHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tb { font-family: var(--font-num); font-size: var(--fs-emoji-xl); font-weight: var(--fw-heavy); line-height: 1; margin-top: 6px; letter-spacing: -0.01em; }
+.whyLine { display: flex; gap: 6px; align-items: flex-start; font-size: var(--fs-control); color: var(--ink-2); margin-top: 10px; line-height: var(--lh-prose); }
+.mates { margin-top: 12px; }
+.mate.mate { display: flex; align-items: center; gap: 10px; width: 100%; height: auto; min-height: 0; padding: 9px 0; border: 0; border-top: 1px solid var(--line); border-radius: var(--r-none); background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.mate.mate:first-child { border-top: 0; }
+.mate.mateOn { background: var(--surface-2); border-radius: var(--r-row); padding-left: 8px; padding-right: 8px; margin: 0 -8px; width: calc(100% + 16px); border-top-color: transparent; }
+.mate.mateOn + .mate { border-top-color: transparent; }
+.mate b { display: block; font-size: var(--fs-body-sm); }
+.mate span { display: block; font-size: var(--fs-label); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mateMeta { flex: 1; min-width: 0; }
+.othert { display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); font-size: var(--fs-body-sm); }
+.othert:first-of-type { border-top: 0; }
+.othert b { font-family: var(--font-num); }
+.recCard.recCard { gap: 8px; }
+.recCard.selRec { box-shadow: 0 0 0 2px var(--plum-500); }
+.recFoot { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-top: auto; padding-top: 6px; }
+.empty.empty { padding: 28px; }
+.emptyTitle { font-size: var(--fs-title-sm); font-weight: var(--fw-heavy); margin: 4px 0; }
+.emptyActs { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+/* 会後：今日会った人 */
+.metList { margin-top: 12px; display: grid; gap: 2px; }
+.metRow.metRow { display: flex; align-items: center; gap: 8px; width: 100%; height: auto; min-height: 0; padding: 6px 4px; border: 0; border-radius: var(--r-row); background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.metRow.metRow:hover { background: var(--surface-2); }
+.metRow.metOn { background: var(--surface-2); }
+.metRow b { flex: 1; min-width: 0; font-size: var(--fs-body-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── 主办：カバー画像 ── */
+.coverField { display: grid; gap: 8px; margin-bottom: 14px; }
+.coverLbl { font-weight: var(--fw-bold); color: var(--ink-2); }
+.coverLbl small { font-weight: var(--fw-medium); color: var(--ink-3); margin-left: 4px; }
+.drop.drop { aspect-ratio: 2 / 1; width: 100%; height: auto; min-height: 0; border: 1.6px dashed var(--plum-300); border-radius: var(--r-bubble); display: grid; place-items: center; align-content: center; gap: 6px; text-align: center; color: var(--ink-2); font: inherit; font-size: var(--fs-control); background: color-mix(in srgb, var(--accent-soft) 55%, transparent); cursor: pointer; padding: 16px; }
+.drop.dropOver { border-color: var(--plum-500); background: var(--accent-soft); }
+.drop :global(svg) { width: 24px; height: 24px; margin: 0 auto; color: var(--plum-500); }
+.drop b { font-size: var(--fs-body-sm); color: var(--ink); }
+.crop { position: relative; border-radius: var(--r-bubble); overflow: hidden; aspect-ratio: 2 / 1; background: var(--surface-3); touch-action: none; }
+.crop img { display: block; width: 100%; height: 100%; object-fit: cover; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.cropDrag { cursor: grab; }
+.cropDrag:active { cursor: grabbing; }
+.hint { position: absolute; left: 12px; bottom: 12px; background: color-mix(in srgb, var(--ink) 62%, transparent); color: var(--bg); border-radius: var(--r-pill); padding: 4px 10px; font-size: var(--fs-label); }
+.cropActs { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; }
+.cropBtn.cropBtn { background: var(--surface); }
+.hidden { display: none; }
+.pvCard.pvCard { box-shadow: 0 0 0 1px var(--line); flex: 1; }
+.pvNote { margin-top: 12px; }
+.pvCoverImg { display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; }
+.pCoverPhotoWrap { position: relative; }
+.recsHead.recsHead { margin: 0 0 -6px; }
+.pvHead.pvHead { display: block; margin-bottom: 10px; }
+.pvWrap { display: flex; }
+.pvWrap > div { flex: 1; }

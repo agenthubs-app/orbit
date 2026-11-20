@@ -16,6 +16,7 @@ import { journeyTranslator, type JourneyT } from "./DiscoverTab";
 import { WEEK, parts, useWide } from "./EventDetail";
 import { eventsCall } from "./events-api";
 import { journeyApi } from "./journey-api";
+import { VenueRecordView } from "./VenueRecord";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
 import x from "./detail.module.css";
@@ -214,6 +215,9 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
 
   const detailHref = `/app/events/${id(eventId)}`;
   const exit = <a className={`btn ${styles.btn} ${styles.sm}`} href={detailHref}><Icon name="x" size={16} />{t("liveExit")}</a>;
+
+  // 2026-11-20 会場の記録：结束后的只读回看（手机也直接在 Web 看，不出「App で」引导）。
+  if (data && data.state === "ended" && data.readOnly) return <VenueRecordView data={data} eventId={eventId} language={language} t={t} />;
 
   if (phone && !webAnyway) {
     return (

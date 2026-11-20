@@ -23,6 +23,7 @@ import { eventsApi, newIdempotencyKey, pollAssessment } from "./events-api";
 import { cardLine, eventWhen, isShownInGrid, monthOf, orderAssessed, relativeDay, tabOf } from "./events-model";
 import { RelevanceChips } from "./Relevance";
 import styles from "./events.module.css";
+import r from "./record.module.css";
 
 type Tab = "assess" | "going" | "discover";
 type Tier = "wide" | "medium" | "narrow";
@@ -439,6 +440,9 @@ function NextCard({ t, tier, item, language, now }: { t: Translate; tier: Tier; 
   const medium = tier === "medium";
   return (
     <div className={`${styles.card} ${medium ? styles.span5 : styles.span4} ${styles.nextCard}`} data-events-next="">
+      {/* 2026-11-20 活动图片：顶部 2:1 出血；没有图保持现样。 */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- 主办方上传的图（Blob / 站内路径），服务端已裁成 2:1 */}
+      {item.coverUrl ? <div className={r.nextCover} data-events-next-cover=""><img src={item.coverUrl} alt="" /></div> : null}
       <div className={`${styles.row} ${styles.between}`}><span className={styles.lbl}>{t("nextTitle")}</span>{dayChip(item.startsAt, now, t)}</div>
       <b className={medium ? styles.clamp2 : styles.nextName} style={medium ? { fontSize: "var(--fs-dialog-title)", marginTop: 8 } : undefined}>{item.title}</b>
       <div className={styles.lbl}>{[eventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</div>

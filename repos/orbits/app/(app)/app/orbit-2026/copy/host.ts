@@ -913,6 +913,19 @@ export const hostCopy = {
   dateLong: { ja: "{mon}{d}日（{wd}）{time}", zh: "{mon}{d}日（周{wd}）{time}", en: "{wd}, {mon} {d} {time}", kind: "label" },
   dateShort: { ja: "{m}/{d}", zh: "{m}/{d}", en: "{m}/{d}", kind: "label" },
   dateDay: { ja: "{mon}{d}日", zh: "{mon}{d}日", en: "{mon} {d}", kind: "label" },
+  // 2026-11-20 カバー画像（event-web-revisit-cover-width-proposal 第 9 张）：只在 Web 主办表单上传。
+  evCover: { ja: "カバー画像", zh: "封面图片", en: "Cover image", kind: "label" },
+  evCoverSpec: { ja: "（任意 · 2:1 · 推奨 1600×800）", zh: "（选填 · 2:1 · 建议1600×800）", en: "(optional · 2:1 · 1600×800 recommended)", kind: "label" },
+  evCoverDrop: { ja: "画像をドラッグ、またはクリックして選択", zh: "拖入图片，或点击选择", en: "Drag an image here, or click to choose", kind: "label" },
+  evCoverTypes: { ja: "JPG / PNG / WebP / HEIC · 8MB 以内", zh: "JPG / PNG / WebP / HEIC · 不超过8MB", en: "JPG / PNG / WebP / HEIC · up to 8MB", kind: "label" },
+  evCoverDrag: { ja: "ドラッグで位置を調整", zh: "拖动调整位置", en: "Drag to reposition", kind: "label" },
+  evCoverChange: { ja: "変更", zh: "更换", en: "Change", kind: "button" },
+  evCoverRemove: { ja: "削除", zh: "删除", en: "Remove", kind: "button" },
+  evCoverTooLarge: { ja: "画像が大きすぎます（4.5MB まで）", zh: "图片太大（上限4.5MB）", en: "Image too large (max 4.5MB)", kind: "toast" },
+  evCoverType: { ja: "この形式の画像は使えません", zh: "不支持这种图片格式", en: "This image type isn't supported", kind: "toast" },
+  evCoverFailed: { ja: "画像を保存できませんでした", zh: "图片没能保存", en: "Couldn't save the image", kind: "toast" },
+  evPreviewCard: { ja: "プレビュー · 探す のカード", zh: "预览 · 「发现」里的卡片", en: "Preview · Discover card", kind: "title" },
+  evPreviewCardNote: { ja: "未設定のときは今の絵文字カードのまま表示されます", zh: "不设置时仍显示现在的表情卡片", en: "Without an image, the card keeps its emoji", kind: "label" },
 } as const satisfies OrbitCopyTable;
 
 export type HostCopyKey = keyof typeof hostCopy;

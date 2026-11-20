@@ -4,15 +4,19 @@
 // 読み取りは契約 schema で寛容に解析し、失敗は理由で返す（throw しない）。
 import type { ZodType } from "zod";
 
+import { z } from "zod";
+
 import { eventAfterConfirmResultSchema, eventAfterResponseSchema } from "../../../../../shared/api-schema/event-after";
+import { eventAttendeeProfileSchema } from "../../../../../shared/api-schema/event-attendee-profile";
 import { eventDiscoverResponseSchema } from "../../../../../shared/api-schema/event-discover";
 import { eventOverviewResponseSchema } from "../../../../../shared/api-schema/event-overview";
 import { eventPrepResponseSchema } from "../../../../../shared/api-schema/event-prep";
 import { eventRecommendationDismissResultSchema } from "../../../../../shared/api-schema/event-recommendation-feedback";
 import { eventSearchResponseSchema } from "../../../../../shared/api-schema/event-search";
-import { eventVenueResponseSchema } from "../../../../../shared/api-schema/event-venue";
+import { eventVenueMemoResultSchema, eventVenueResponseSchema } from "../../../../../shared/api-schema/event-venue";
 import { organizerFollowResultSchema } from "../../../../../shared/api-schema/organizer-follow";
 import type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterResponse } from "../../../../../shared/contract/event-after";
+import type { EventAttendeeProfile } from "../../../../../shared/contract/event-attendee-profile";
 import type { EventDiscoverQuery, EventDiscoverResponse } from "../../../../../shared/contract/event-discover";
 import type { EventOverviewResponse } from "../../../../../shared/contract/event-overview";
 import type { EventPrepChecklistItem, EventPrepResponse } from "../../../../../shared/contract/event-prep";
@@ -23,6 +27,7 @@ import type { OrganizerFollowResult } from "../../../../../shared/contract/organ
 import { eventsCall as call, newIdempotencyKey } from "./events-api";
 
 const id = (value: string) => encodeURIComponent(value);
+const anyData = z.unknown();
 
 export function discoverQueryString(query: EventDiscoverQuery): string {
   const search = new URLSearchParams();
@@ -48,5 +53,12 @@ export const journeyApi = {
   after: (eventId: string) => call(`/api/events/${id(eventId)}/after`, undefined, eventAfterResponseSchema as ZodType<EventAfterResponse>),
   confirmAfter: (eventId: string, items: EventAfterConfirmInput["items"]) => call(`/api/events/${id(eventId)}/after/confirm`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey(), items }), method: "POST" }, eventAfterConfirmResultSchema as ZodType<EventAfterConfirmResult>),
   dismiss: (eventId: string, reason: EventRecommendationDismissReason) => call(`/api/recommendations/events/${id(eventId)}/dismiss`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey(), reason }), method: "POST" }, eventRecommendationDismissResultSchema as ZodType<EventRecommendationDismissResult>),
+  /** 2026-11-20 参加者の詳細（报名者之间、对方公开了参加用プロフィール才有；其余一律 404）。 */
+  attendee: (eventId: string, attendeeId: string) => call(`/api/events/${id(eventId)}/attendees/${id(attendeeId)}`, undefined, eventAttendeeProfileSchema as ZodType<EventAttendeeProfile>),
+  /** メモ（自分だけ）：与会場モード同一条 `/venue/memo`（空文字 = 清除）。 */
+  memo: (eventId: string, attendeeId: string, text: string) => call(`/api/events/${id(eventId)}/venue/memo`, { body: JSON.stringify({ attendeeId, text }), method: "POST" }, eventVenueMemoResultSchema),
+  /** 交換を申請 / 承認・無視：与会場モード同一组运营路由。 */
+  requestExchange: (eventId: string, participantId: string) => call(`/api/events/${id(eventId)}/operations/contact-requests`, { body: JSON.stringify({ expectedRevision: null, targetParticipantId: participantId }), method: "POST" }, anyData),
+  respondExchange: (eventId: string, requestId: string, revision: number, accept: boolean) => call(`/api/events/${id(eventId)}/operations/contact-requests/${id(requestId)}/respond`, { body: JSON.stringify({ accept, expectedRevision: revision }), method: "POST" }, anyData),
   follow: (organizerId: string, following: boolean) => call(`/api/organizers/${id(organizerId)}/follow`, { method: following ? "POST" : "DELETE" }, organizerFollowResultSchema as ZodType<OrganizerFollowResult>),
 };

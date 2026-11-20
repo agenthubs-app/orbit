@@ -19,6 +19,10 @@ import type { OrganizerProfile } from "../../../../../shared/contract/organizer-
 import { ShellPage } from "../shell/slots";
 import { Icon, Modal, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { failureOf, hostEventApi } from "./host-api";
+import { CoverField } from "./CoverField";
+import { coverApi, coverError, prepareCover } from "./cover-upload";
+import { EventCard, journeyTranslator } from "../events/DiscoverTab";
+import r from "../events/record.module.css";
 import { AgendaEditor, AgendaPreview, agendaMissing, focusAgendaMissing } from "./AgendaEditor";
 import { QuestionsEditor } from "./HostSetup";
 import { templateKeyOf, templateQuestions } from "./setup-model";
@@ -31,6 +35,13 @@ export const DESC_MAX = 2000;
 export const NOTE_MAX = 140;
 const TEMPLATES = [["mixer", "🥂", "tplMixer", "m_lav"], ["study", "📚", "tplStudy", "m_blue"], ["roundtable", "💬", "tplRound", "m_pink"]] as const;
 type TemplateId = (typeof TEMPLATES)[number][0];
+
+/** カバー画像の未保存の変更：keep = 変更なし；new = 選んだ画像（保存時に focusY で 2:1 に裁つ）；remove = 削除。 */
+export type CoverChange = { kind: "keep" } | { kind: "new"; blob: Blob; name: string; url: string; focusY: number } | { kind: "remove" };
+/** 表单上显示哪张图（null = 拖放框）。 */
+export function coverShown(change: CoverChange, saved: string | null | undefined): string | null {
+  return change.kind === "new" ? change.url : change.kind === "remove" ? null : saved ?? null;
+}
 
 export type EventDraft = {
   title: string;
@@ -267,9 +278,15 @@ export type HostEventFormViewProps = {
   onTemplate?: (templateId: EventDraft["templateId"]) => void;
   /** 按过「前往公开 / 保存」被议程挡住：缺时间 / 标题的行出红字。 */
   agendaShowMissing?: boolean;
+  /** カバー画像（2026-11-20）：未保存の変更と、選んだ / 動かした / 消したとき。 */
+  cover?: CoverChange;
+  onCoverPick?: (file: File) => void;
+  onCoverFocus?: (focusY: number) => void;
+  onCoverRemove?: () => void;
 };
 
-export function HostEventFormView({ mode, draft, profiles, language, event = null, busy = false, readOnly = false, showTemplates = false, onChange, onSaveDraft, onPrimary, editingQuestion = -1, onEditQuestion, onTemplate, agendaShowMissing = false }: HostEventFormViewProps) {
+export function HostEventFormView({ mode, draft, profiles, language, event = null, busy = false, readOnly = false, showTemplates = false, onChange, onSaveDraft, onPrimary, editingQuestion = -1, onEditQuestion, onTemplate, agendaShowMissing = false, cover = { kind: "keep" }, onCoverPick, onCoverFocus, onCoverRemove }: HostEventFormViewProps) {
+  const coverUrl = coverShown(cover, event?.coverUrl);
   const t = useMemo(() => hostTranslator(language), [language]);
   const toast = useToast();
   const set = <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => onChange?.({ ...draft, [key]: value });
@@ -307,6 +324,8 @@ export function HostEventFormView({ mode, draft, profiles, language, event = nul
           ) : null}
           <div className={`${s.card} ${f.blk}`} data-host-evform="">
             <div className={s.cardH}><h3>{t("evBasics")}</h3><span className={s.lbl}>{t("evRequired")}</span></div>
+            <CoverField t={t} url={coverUrl} adjustable={cover.kind === "new"} focusY={cover.kind === "new" ? cover.focusY : 0.5} disabled={readOnly || busy}
+              onPick={(file) => onCoverPick?.(file)} onFocus={(focusY) => onCoverFocus?.(focusY)} onRemove={() => onCoverRemove?.()} />
             <fieldset className={f.fs} disabled={readOnly}>
               {field(t("evName"), <input value={draft.title} maxLength={120} placeholder={t("evNamePh")} aria-label={t("evName")} onChange={(ev) => set("title", ev.target.value)} />)}
               {field(t("evWhen"), <>
@@ -365,10 +384,21 @@ export function HostEventFormView({ mode, draft, profiles, language, event = nul
           ) : null}
         </div>
         <div className={`${f.col} ${f.span5}`}>
+          <div className={`${s.card} ${f.blk}`} data-host-evcard-preview="">
+            <div className={`${s.lbl} ${r.pvHead}`}>{t("evPreviewCard")}</div>
+            <div className={r.pvWrap}>
+              <EventCard index={0} language={language} t={journeyTranslator(language)} onOpen={() => undefined}
+                metaOverride={meta.split(" · ").slice(0, 2).join(" · ")}
+                coverPosition={cover.kind === "new" ? `50% ${Math.round(cover.focusY * 100)}%` : undefined}
+                row={{ coverUrl, emoji: profile?.emoji ?? "🎪", eventId: event?.eventId ?? "preview", href: "#", priceYen: draft.feeKind === "free" ? 0 : draft.feeAmount.trim() ? Number(draft.feeAmount) : null, registrationCount: event?.appliedCount ?? null, startsAt: startsAt ?? "", title: draft.title.trim() || t("evUntitled") }} />
+            </div>
+            {coverUrl ? <div className={`${s.lbl} ${r.pvNote}`}>{t("evPreviewCardNote")}</div> : null}
+          </div>
           <div className={`${s.card} ${f.blk}`} data-host-evprev="">
             <div className={s.cardH}><h3>{t("evPreview")}</h3><span className={s.lbl}>{t("evPreviewSub")}</span></div>
             <div className={f.pv}>
-              <div className={f.pvCover} />
+              {/* eslint-disable-next-line @next/next/no-img-element -- 本地预览（blob:）或已保存的图 */}
+              {coverUrl ? <img className={r.pvCoverImg} src={coverUrl} alt="" style={cover.kind === "new" ? { objectPosition: `50% ${Math.round(cover.focusY * 100)}%` } : undefined} /> : <div className={f.pvCover} />}
               <div className={f.pvBody}>
                 <div className={s.lbl}>{profile ? `${profile.emoji ?? "🎪"} ${profile.displayName}` : ""}</div>
                 <b className={f.pvTitle}>{draft.title.trim() || t("evUntitled")}</b>
@@ -495,6 +525,24 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
   // 「前往公开 / 保存」被议程挡住后：红字 + 聚焦到第一处。
   const [agendaShowMissing, setAgendaShowMissing] = useState(false);
   const formRef = useRef<HTMLDivElement | null>(null);
+  // カバー画像：保存（新規作成は作成）するまで手元に置き、保存時に POST / DELETE …/cover。
+  const [cover, setCover] = useState<CoverChange>({ kind: "keep" });
+  const replaceCover = (next: CoverChange) => setCover((current) => { if (current.kind === "new" && (next.kind !== "new" || next.url !== current.url)) URL.revokeObjectURL(current.url); return next; });
+  const pickCover = async (file: File) => {
+    const prepared = await prepareCover(file);
+    if (!prepared.ok) { toast.error(t(coverError(prepared) === "tooLarge" ? "evCoverTooLarge" : "evCoverType")); return; }
+    const ready = prepared as Extract<typeof prepared, { ok: true }>;
+    replaceCover({ blob: ready.blob, focusY: 0.5, kind: "new", name: ready.name, url: ready.url });
+  };
+  /** 未保存の画像変更をサーバーへ。返り値：変更後の活動（版が進む）/ null = 何もしない / "failed"。 */
+  const applyCover = async (eventId: string): Promise<HostEventView | null | "failed"> => {
+    if (cover.kind === "keep") return null;
+    const res = cover.kind === "new" ? await coverApi.upload(eventId, cover.blob, cover.name, cover.focusY) : await coverApi.remove(eventId);
+    if (!res.ok) { toast.error(t(coverError(res) === "tooLarge" ? "evCoverTooLarge" : coverError(res) === "type" ? "evCoverType" : coverError(res) === "sample" ? "evSample" : "evCoverFailed")); return "failed"; }
+    replaceCover({ kind: "keep" });
+    const fresh = await hostEventApi.event(eventId);
+    return fresh.ok ? fresh.data : "failed";
+  };
   // テンプレート → 申込フォームの初期質問（質問集から；未選択は「交流会」と同じ。主催者の画面の言語で入れる）。
   const questionsFor = useCallback((templateId: EventDraft["templateId"]) => templateQuestions(templateKeyOf(templateId), language), [language]);
 
@@ -546,7 +594,10 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
     setBusy(false);
     if (!res.ok) { toast.error(failureOf(res) === "sample" ? t("evSample") : t("saveError")); return; }
     clearTempDraft(browserStorage(), userKey);
-    if (thenPublish) { setEvent(res.data.event); setPublishFor(res.data.event); return; }
+    // 画像は活動ができてから送る（作成と同じ操作の続き）；失敗しても活動は作成済み、編集ページで付け直せる。
+    const withCover = await applyCover(res.data.event.eventId);
+    const created = withCover && withCover !== "failed" ? withCover : res.data.event;
+    if (thenPublish) { setEvent(created); setPublishFor(created); return; }
     toast.success(t("evDraftSaved"));
     // 下書きになったら編集ページへ（このまま続けて編集・保存できる）。
     router.replace(`/app/events/${encodeURIComponent(res.data.event.eventId)}/edit`);
@@ -569,10 +620,10 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
     setDraft({ ...draftFromEvent(null, profiles ?? []), questions: questionsFor(null) });
   };
 
-  const patch = async (fields: Omit<HostEventUpdateInput, "expectedVersion">, notify?: boolean) => {
-    if (!event) return;
+  const patch = async (fields: Omit<HostEventUpdateInput, "expectedVersion">, notify?: boolean, base: HostEventView | null = event) => {
+    if (!base) return;
     setBusy(true);
-    const res = await hostEventApi.update(event.eventId, { ...fields, expectedVersion: event.version, ...(notify === undefined ? {} : { notify }) });
+    const res = await hostEventApi.update(base.eventId, { ...fields, expectedVersion: base.version, ...(notify === undefined ? {} : { notify }) });
     setBusy(false);
     if (!res.ok) {
       const reason = failureOf(res);
@@ -584,15 +635,24 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
     setPreview(null);
     setEvent(res.data.event);
     setDraft(draftFromEvent(res.data.event, profiles ?? []));
-    toast.success(res.data.notified > 0 ? t("evSavedNotified", { n: res.data.notified }) : event.lifecycle === "draft" && notify === undefined ? t("evDraftSaved") : t("evSaved"));
+    toast.success(res.data.notified > 0 ? t("evSavedNotified", { n: res.data.notified }) : base.lifecycle === "draft" && notify === undefined ? t("evDraftSaved") : t("evSaved"));
   };
 
-  const save = () => {
+  const save = async () => {
     const result = problemOf();
     if (!result?.input || !event) return;
-    const fields = changedFields(event, result.input);
+    // 画像を先に（版が 1 つ進む）→ 新しい版で残りの項目を PATCH。
+    let base = event;
+    if (cover.kind !== "keep") {
+      setBusy(true);
+      const done = await applyCover(event.eventId);
+      setBusy(false);
+      if (done === "failed") return;
+      if (done) { base = done; setEvent(done); }
+    }
+    const fields = changedFields(base, result.input);
     if (!Object.keys(fields).length) { toast.success(t("evSaved")); return; }
-    void patch(fields);
+    void patch(fields, undefined, base);
   };
 
   const publish = async () => {
@@ -636,7 +696,9 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
         showTemplates={mode === "create" && params.get("from") === "template"} onChange={setDraft}
         editingQuestion={editingQuestion} onEditQuestion={setEditingQuestion}
         onTemplate={(templateId) => { setDraft((current) => (current ? { ...current, templateId, questions: questionsFor(templateId) } : current)); setEditingQuestion(-1); }}
-        onSaveDraft={() => (mode === "create" ? saveTemp() : save())} onPrimary={() => (mode === "create" ? void create(true) : save())} />
+        onSaveDraft={() => (mode === "create" ? saveTemp() : void save())} onPrimary={() => (mode === "create" ? void create(true) : void save())}
+        cover={cover} onCoverPick={(file) => void pickCover(file)} onCoverFocus={(focusY) => setCover((current) => (current.kind === "new" ? { ...current, focusY } : current))}
+        onCoverRemove={() => replaceCover(cover.kind === "new" && !event?.coverUrl ? { kind: "keep" } : { kind: "remove" })} />
       </div>
       {preview ? <ChangeNotifyConfirm preview={preview.change} t={t} language={language} busy={busy} onClose={() => setPreview(null)} onSilent={() => void patch(preview.patch, false)} onNotify={() => void patch(preview.patch, true)} /> : null}
       {publishFor ? <PublishEventConfirm event={publishFor} t={t} language={language} busy={busy} onCancel={() => { setPublishFor(null); router.push(`/app/events/${encodeURIComponent(publishFor.eventId)}/edit`); }} onPublish={() => void publish()} /> : null}

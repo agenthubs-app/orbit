@@ -19,6 +19,8 @@ import { canSeeHostContact } from "../../../../../shared/compute/host-contact";
 import { eventsApi, eventsCall, newIdempotencyKey } from "./events-api";
 import { journeyApi } from "./journey-api";
 import { useDetailTiming } from "./detail-timing";
+import { personRailOrDrawer, usePersonDetail, type AttendeeSeed } from "./AttendeeProfile";
+import r from "./record.module.css";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
 import x from "./detail.module.css";
@@ -314,6 +316,10 @@ export function DetailRail({ data, t, onRegister, language = "ja", toast }: { da
   );
 }
 
+const seedOf = (person: EventOverviewAttendee): AttendeeSeed => ({ attendeeId: person.attendeeId, initial: person.initial, name: person.name, org: person.org ?? null, role: person.role ?? null });
+/** 参加者卡能不能点开详情：已登录、名单可见（非 rosterLocked）。 */
+export const canOpenPeople = (data: EventOverviewResponse): boolean => !data.signedOut && !data.rosterLocked;
+
 /** `signedOutAside`：未登录时右上卡片（默认「ログインして行く価値を判定」；/register/〈コード〉着地页换成参加コード卡）。 */
 /** < 768（b12 #352）：App 式詳細——封面卡（facts）· 评分条 · 下划线 tab · 参加者（プランに合う / 知り合い / 全員）· 底部 CTA。 */
 export function usePhone(): boolean {
@@ -328,7 +334,8 @@ export function usePhone(): boolean {
   return phone;
 }
 
-export function PhoneDetailBody({ data, language, t, onRegister }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; onRegister: () => void }) {
+/** `onOpenPerson`：参加者行可点开「参加者の詳細」（只在能看到名单的已登录详情页传；公开页不传）。 */
+export function PhoneDetailBody({ data, language, t, onRegister, onOpenPerson }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; onRegister: () => void; onOpenPerson?: (seed: AttendeeSeed) => void }) {
   const { ended, canRegister } = useDetailTiming(data);
   const toast = useToast();
   // ★ 保存 = 记成 R26 的评估（出现在「評価」列表），同一活动重复保存由服务端按来源去重。
@@ -350,10 +357,18 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
   return (
     <div className={x.phone} data-event-detail={data.eventId} data-detail-phone="">
       <div className={`${styles.card} ${x.pCover}`}>
-        <div className={x.pCoverArt}>
-          <span className={`${styles.emo} ${x.pCoverEmo}`}>{data.emoji}</span>
-          {!ended && data.deadlineSoon && typeof data.remaining === "number" ? <span className={`${styles.chip} ${x.pDeadline}`}>{t("deadlineChip", { n: data.remaining })}</span> : null}
-        </div>
+        {data.coverUrl ? (
+          <div className={r.pCoverPhotoWrap}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- 主办方上传的图（Blob / 站内路径），尺寸已在服务端裁成 2:1 */}
+            <img className={r.coverPhoto} src={data.coverUrl} alt="" data-detail-cover-photo="" />
+            {!ended && data.deadlineSoon && typeof data.remaining === "number" ? <span className={`${styles.chip} ${x.pDeadline} ${r.onImg}`}>{t("deadlineChip", { n: data.remaining })}</span> : null}
+          </div>
+        ) : (
+          <div className={x.pCoverArt}>
+            <span className={`${styles.emo} ${x.pCoverEmo}`}>{data.emoji}</span>
+            {!ended && data.deadlineSoon && typeof data.remaining === "number" ? <span className={`${styles.chip} ${x.pDeadline}`}>{t("deadlineChip", { n: data.remaining })}</span> : null}
+          </div>
+        )}
         <div className={x.pCoverBody}>
           <div className={styles.lbl}>{hostName(data, t)}</div>
           {ended ? <span className={styles.chip}>{t("liveEnded")}</span> : null}
@@ -361,6 +376,11 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
           <div className={x.pFacts}>{facts.map((fact) => <div key={fact.icon}><Icon name={fact.icon} size={16} />{fact.text}</div>)}</div>
         </div>
       </div>
+      {ended && data.venueRecord ? (
+        <a className={`${styles.card} ${r.pEntry}`} href={`/app/events/${encodeURIComponent(data.eventId)}/live`} data-detail-record-entry="">
+          <span className={`${styles.emo} ${styles.t_lav}`}><Icon name="layers" size={20} /></span><b>{t("venueRecord")}</b><Icon name="right" size={16} />
+        </a>
+      ) : null}
       {data.signedOut || noPlan(data) ? <RelevanceGuideBar data={data} t={t} language={language} /> : <RelevanceCard relevance={data.assessment?.relevance} language={language} className={x.pRel} />}
       {showHostContact(data) ? <HostContactCard contact={data.hostContact} t={t} status={data.registration.status} priceYen={data.priceYen} /> : null}
       <div className={x.pTabs} role="tablist">
@@ -383,13 +403,19 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
           </div>
           {people.length ? (
             <div className={`${styles.card} ${x.pPeople}`} data-detail-people="">
-              {people.map((person, index) => (
-                <div key={person.attendeeId} className={x.pLi}>
-                  <div className={`${x.av} ${avTone(index)}`}>{person.initial}</div>
-                  <div className={x.pMeta}><b>{person.name}</b><span>{[person.org, person.role].filter(Boolean).join(" · ")}</span>{person.note ? <span className={x.pNote}>{person.note}</span> : null}</div>
-                  {person.wanted ? <span className={`${styles.chip} ${styles.c_lav}`}>{t("legendWanted")}</span> : null}
-                </div>
-              ))}
+              {people.map((person, index) => {
+                const inner = (
+                  <>
+                    <div className={`${x.av} ${avTone(index)}`}>{person.initial}</div>
+                    <div className={x.pMeta}><b>{person.name}</b><span>{[person.org, person.role].filter(Boolean).join(" · ")}</span>{person.note ? <span className={x.pNote}>{person.note}</span> : null}</div>
+                    {person.wanted ? <span className={`${styles.chip} ${styles.c_lav}`}>{t("legendWanted")}</span> : null}
+                    {onOpenPerson ? <span className={r.chev}><Icon name="right" size={16} /></span> : null}
+                  </>
+                );
+                return onOpenPerson ? (
+                  <button key={person.attendeeId} type="button" className={`btn ${x.pLi} ${r.pLiBtn}`} data-detail-person={person.attendeeId} onClick={() => onOpenPerson(seedOf(person))}>{inner}</button>
+                ) : <div key={person.attendeeId} className={x.pLi}>{inner}</div>;
+              })}
             </div>
           ) : null}
           {known.length ? (
@@ -415,7 +441,8 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
 /** `onSeeAll`：「すべて見る」去取全部公开参加者（取过就不再显示按钮；其余人没有公开资料）。 */
 /** `contactInBody`：右栏没有显示（< 1280）时，主催者の連絡先卡片放在正文里。 */
 /** `railShown`：右栏（DetailRail）在显示——「和你有关 + 可能见到的人」与主办方卡都在右栏；否则（公开页 / < 1280）放在议程下面。 */
-export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, onRegister, contactInBody = false, railShown = false }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; signedOutAside?: ReactNode; onSeeAll?: () => void; onRegister?: () => void; contactInBody?: boolean; railShown?: boolean }) {
+/** `onOpenPerson` / `selectedPersonId`：参加者卡可点开「参加者の詳細」（名单可见时；公开页不传）。 */
+export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, onRegister, contactInBody = false, railShown = false, onOpenPerson, selectedPersonId = null }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; signedOutAside?: ReactNode; onSeeAll?: () => void; onRegister?: () => void; contactInBody?: boolean; railShown?: boolean; onOpenPerson?: (seed: AttendeeSeed) => void; selectedPersonId?: string | null }) {
   const { ended } = useDetailTiming(data);
   const at = assessTranslator(language);
   const toast = useToast();
@@ -438,7 +465,10 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
   return (
     <div className={styles.wgrid} data-event-detail={data.eventId}>
       <div className={`${styles.card} ${styles.span12} ${x.coverCard}`}>
-        <div className={x.cover}><span className={`${styles.emo} ${x.coverEmo}`}>{data.emoji}</span></div>
+        {data.coverUrl
+          // eslint-disable-next-line @next/next/no-img-element -- 主办方上传的图（Blob / 站内路径），服务端已裁成 2:1
+          ? <img className={r.coverPhoto} src={data.coverUrl} alt="" data-detail-cover-photo="" />
+          : <div className={x.cover}><span className={`${styles.emo} ${x.coverEmo}`}>{data.emoji}</span></div>}
         <div className={x.coverBody}>
           {ended ? <span className={styles.chip}>{t("liveEnded")}</span> : null}
           <div className={x.facts}>
@@ -476,9 +506,13 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
         ) : (
           <>
             <div className={x.pgrid}>
-              {data.attendees.map((person, index) => (
+              {data.attendees.map((person, index) => (onOpenPerson ? (
+                <button key={person.attendeeId} type="button" className={`btn ${x.pmini} ${r.pick} ${selectedPersonId === person.attendeeId ? r.pickOn : ""}`} aria-pressed={selectedPersonId === person.attendeeId} data-detail-person={person.attendeeId} onClick={() => onOpenPerson(seedOf(person))}>
+                  <div className={`${x.av} ${avTone(index)}`}>{person.initial}</div><div className={x.meta}><b>{person.name}</b><span>{person.org}</span></div><span className={r.chev}><Icon name="right" size={16} /></span>
+                </button>
+              ) : (
                 <div key={person.attendeeId} className={x.pmini}><div className={`${x.av} ${avTone(index)}`}>{person.initial}</div><div className={x.meta}><b>{person.name}</b><span>{person.org}</span></div></div>
-              ))}
+              )))}
             </div>
             {onSeeAll && data.attendeeCounts.all > data.attendees.length ? <button type="button" className={`btn ${styles.btn} ${styles.sm} ${x.moreBtn}`} onClick={onSeeAll}>{t("seeAllPeople", { n: data.attendeeCounts.all })}</button> : null}
           </>
@@ -555,6 +589,10 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
     try { await navigator.clipboard.writeText(window.location.href); toast.success(t("shareCopied")); } catch { /* clipboard blocked: nothing to do */ }
   };
   const status = data?.registration.status ?? "none";
+  // 2026-11-20 参加者の詳細：≥1280 换掉右栏（✕ 回到原右栏），< 1280 用抽屉。
+  const personDetail = usePersonDetail();
+  const openPerson = data && canOpenPeople(data) ? personDetail.open : undefined;
+  const recordHref = `/app/events/${encodeURIComponent(eventId)}/live`;
   const statusLabel = status === "registered" ? t("stRegistered") : status === "pending_review" ? t("stPending") : status === "waitlisted" ? t("stWaitlisted") : status === "rejected" ? t("stRejected") : status === "cancelled" ? t("stCancelled") : status === "attended" ? t("stAttended") : null;
   const right = (
     <div className={x.headRight}>
@@ -572,12 +610,13 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
           ) : null}
         </span>
       ) : null}
-      {ended ? (status === "attended" ? <a className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${encodeURIComponent(eventId)}/after`}>{t("goAfter")}</a> : <span className={styles.chip}>{t("liveEnded")}</span>) : status === "none" && canRegister ? <button type="button" className={`btn ${styles.btn} ${x.accent}`} onClick={register}>{t("register")}</button>
+      {ended ? (data?.venueRecord ? <a className={`btn ${styles.btn} ${x.accent}`} href={recordHref} data-detail-record=""><Icon name="layers" size={16} />{t("venueRecord")}</a> : status === "attended" ? <a className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${encodeURIComponent(eventId)}/after`}>{t("goAfter")}</a> : <span className={styles.chip}>{t("liveEnded")}</span>) : status === "none" && canRegister ? <button type="button" className={`btn ${styles.btn} ${x.accent}`} onClick={register}>{t("register")}</button>
         : status === "registered" || status === "pending_review" ? <a className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${encodeURIComponent(eventId)}/prep`}>{t("goPrep")}</a>
           : status === "attended" ? <a className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${encodeURIComponent(eventId)}/after`}>{t("goAfter")}</a>
             : <span className={styles.chip}>{statusLabel}</span>}
     </div>
   );
+  const person = data ? personRailOrDrawer({ close: personDetail.close, eventId, fallbackRail: wide ? <DetailRail data={data} t={t} onRegister={register} language={language} toast={toast} /> : false, language, person: personDetail.person, t, wide: wide && !phone }) : { drawer: null, rail: false as const };
   return (
     <>
       <ShellPage
@@ -585,10 +624,11 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
         subtitle={phone ? undefined : data ? hostName(data, t) : ""}
         left={<a className={`btn ${x.rbtn}`} href="/app/events?tab=discover" aria-label={t("back")}><Icon name="left" size={16} /></a>}
         right={phone ? <button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void share()}><Icon name="share" size={20} /></button> : right}
-        rightRail={wide && data ? <DetailRail data={data} t={t} onRegister={register} language={language} toast={toast} /> : false}
+        rightRail={wide && data ? person.rail : false}
         phoneBare={phone}
       />
-      {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? (phone ? <PhoneDetailBody data={data} language={language} t={t} onRegister={register} /> : <EventDetailBody data={data} language={language} t={t} onRegister={register} contactInBody={!wide} railShown={wide} {...(allLoaded ? {} : { onSeeAll: () => void seeAll() })} />) : null}
+      {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? (phone ? <PhoneDetailBody data={data} language={language} t={t} onRegister={register} onOpenPerson={openPerson} /> : <EventDetailBody data={data} language={language} t={t} onRegister={register} contactInBody={!wide} railShown={wide} onOpenPerson={openPerson} selectedPersonId={personDetail.selectedId} {...(allLoaded ? {} : { onSeeAll: () => void seeAll() })} />) : null}
+      {person.drawer}
       {data ? <CancelDialog open={cancelOpen} event={data} language={language} t={t} busy={cancelBusy} onKeep={closeCancel} onCancel={() => void confirmCancel()} /> : null}
     </>
   );
