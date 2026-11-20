@@ -1,31 +1,39 @@
 // 2026-11-20 参加者の詳細（App；docs/designs/redesign-2026-10/events-replay-cover-app-proposal.html ⑤ ⑥）：会場の記録 / 詳細の参加者 tab /
 // 会後の「今日会った人」から同じ底部弹层。分区顺序与 Web 右栏一致：头部 → このイベントでの接点（同桌轮次 · おすすめ + 理由 ?）→
 // 自己紹介 / 公开问答 → メモ（自分だけ）→ 交換を申請（结束后 30 天内，服务端 canRequestExchange）或「人脈で開く」。
-// 数据：GET /api/events/[id]/attendees/[attendeeId]（按需单条读取）；交换走现有 /operations/contact-requests，メモ走 /venue/memo。
+// 数据：GET /api/events/[id]/attendees/[attendeeId]（按需单条读取，attendee-cache 内存缓存 5 分钟）；交换走现有
+// /operations/contact-requests，メモ走 /venue/memo。加载中：头部用调用方已知的名字立刻出，下面放同形状骨架（loading-ui）。
 import { useRouter, type Href } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 
 import type { EventAttendeeProfile } from "../../../api/contract/event-attendee-profile";
+import type { EventVenueExchangeState } from "../../../api/contract/event-venue";
+import { useOrbitApiBaseUrl } from "../../../api/ApiBaseUrlProvider";
+import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
 import { BottomSheet, Icon, UiPressable, UiText, useToast } from "../../../components/ui";
 import { createThemedStyles } from "../../../design/theme";
 import { useOrbitApiClient } from "../../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { addDesignMock } from "../../add/add-design-mock";
+import { patchAttendee, readAttendee, writeAttendee } from "./attendee-cache";
 import { useJourneyApi } from "./journey-api";
 import { tokyo } from "./journey-model";
+import { Bone, Bones } from "./loading-ui";
 import { useJourneyT } from "./useJourneyT";
 import { Avatar, Chip, useVenueStyles, Why, WhyBody, type Tone } from "./venue-ui";
 
 /** What the caller already knows about the person, so the header shows at once while the profile loads. */
 export type AttendeeSheetPerson = { attendeeId: string; name: string; initial: string; org?: string | null; role?: string | null; tone?: Tone };
+/** What changed in the sheet, so the page patches its own list instead of re-reading it. */
+export type AttendeeSheetChange = { attendeeId: string; exchange?: EventVenueExchangeState; memo?: string | null };
 
 export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
   eventId: string;
   person: AttendeeSheetPerson | null;
   onClose: () => void;
-  /** After an exchange request or a memo save, so the page can re-read its list. */
-  onChanged?: () => void;
+  /** After an exchange request / answer or a memo save: the change, for the page to patch its list (no re-read). */
+  onChanged?: (change: AttendeeSheetChange) => void;
 }) {
   const { styles, colors } = useStyles();
   const vs = useVenueStyles().styles;
@@ -35,6 +43,9 @@ export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
   const toast = useToast();
   const api = useJourneyApi();
   const client = useOrbitApiClient();
+  const { baseUrl } = useOrbitApiBaseUrl();
+  const { cookieHeader } = useOrbitAuthSession();
+  const identity = `${baseUrl}\n${cookieHeader}`;
   const noKeyboard = addDesignMock("no-keyboard");
   const [profile, setProfile] = useState<EventAttendeeProfile | null>(null);
   const [failed, setFailed] = useState<"private" | "network" | null>(null);
@@ -43,24 +54,33 @@ export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
   const [busy, setBusy] = useState(false);
   const attendeeId = person?.attendeeId ?? null;
 
+  // Cached → shown at once; fresh (< 5 min) → no request; older → shown, then re-read quietly (a failure keeps what is shown).
   useEffect(() => {
-    setProfile(null); setFailed(null); setWhy(false); setMemo("");
-    if (!attendeeId) return undefined;
+    setFailed(null); setWhy(false);
+    if (!attendeeId) { setProfile(null); setMemo(""); return undefined; }
+    const cached = readAttendee(identity, eventId, attendeeId);
+    setProfile(cached?.data ?? null); setMemo(cached?.data.memo ?? "");
+    if (cached?.fresh) return undefined;
     let live = true;
     void api.attendee(eventId, attendeeId).then((res) => {
       if (!live) return;
-      if (res.ok) { setProfile(res.data); setMemo(res.data.memo ?? ""); } else setFailed(res.reason === "network" || res.reason === "unavailable" ? "network" : "private");
+      if (res.ok) { writeAttendee(identity, eventId, res.data); setProfile(res.data); setMemo((current) => (cached && current !== (cached.data.memo ?? "") ? current : res.data.memo ?? "")); }
+      else if (!cached) setFailed(res.reason === "network" || res.reason === "unavailable" ? "network" : "private");
     });
     return () => { live = false; };
-  }, [api, eventId, attendeeId]);
+  }, [api, eventId, attendeeId, identity]);
+  const keep = (next: EventAttendeeProfile, change: Omit<AttendeeSheetChange, "attendeeId">) => {
+    setProfile(next);
+    patchAttendee(identity, eventId, next.attendeeId, change.memo !== undefined ? { memo: change.memo } : { contactId: next.contactId ?? null, exchange: next.exchange, requestId: next.requestId ?? null, requestRevision: next.requestRevision ?? null });
+    onChanged?.({ attendeeId: next.attendeeId, ...change });
+  };
 
   const saveMemo = async () => {
     if (!profile || (profile.memo ?? "") === memo.trim()) return;
     const res = await api.venueMemo(eventId, profile.attendeeId, memo);
     if (!res.ok) { toast.error(locale.t("eventsV2.genericError")); return; }
-    setProfile({ ...profile, memo: memo.trim() || null });
+    keep({ ...profile, memo: memo.trim() || null }, { memo: memo.trim() || null });
     toast.success(t("memoSaved"));
-    onChanged?.();
   };
   const close = () => { void saveMemo(); onClose(); };
   const request = async () => {
@@ -69,9 +89,8 @@ export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
     const res = await client.post<unknown>(`/api/events/${encodeURIComponent(eventId)}/operations/contact-requests`, { body: { expectedRevision: null, targetParticipantId: profile.participantId } }).catch(() => null);
     setBusy(false);
     if (!res?.success) { toast.error(locale.t("eventsV2.genericError")); return; }
-    setProfile({ ...profile, exchange: "requested" });
+    keep({ ...profile, exchange: "requested" }, { exchange: "requested" });
     toast.success(t("swapRequested"));
-    onChanged?.();
   };
 
   // A request they sent me: accept / ignore through the same /respond route as 会場モード (the server keeps the 30-day window).
@@ -81,9 +100,8 @@ export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
     const res = await client.post<unknown>(`/api/events/${encodeURIComponent(eventId)}/operations/contact-requests/${encodeURIComponent(profile.requestId)}/respond`, { body: { accept, expectedRevision: profile.requestRevision } }).catch(() => null);
     setBusy(false);
     if (!res?.success) { toast.error(locale.t("eventsV2.genericError")); return; }
-    setProfile({ ...profile, exchange: accept ? "exchanged" : "none", requestId: null, requestRevision: null });
+    keep({ ...profile, exchange: accept ? "exchanged" : "none", requestId: null, requestRevision: null }, { exchange: accept ? "exchanged" : "none" });
     if (accept) toast.success(t("vSwappedToast", { name: profile.name }));
-    onChanged?.();
   };
   const shown = profile ?? (person ? { ...person } : null);
   const deadlineParts = profile?.exchangeUntil ? tokyo(profile.exchangeUntil) : null;
@@ -97,6 +115,7 @@ export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
             <View style={vs.grow}><UiText style={styles.name}>{shown.name}</UiText><UiText style={vs.lbl}>{[shown.org, shown.role].filter(Boolean).join(" · ")}</UiText></View>
             <UiPressable accessibilityRole="button" accessibilityLabel={t("close")} onPress={close} style={vs.lbtn}><Icon name="x" size={16} color={colors.ink2} /></UiPressable>
           </View>
+          {!profile && !failed ? <SheetBones /> : null}
           {failed ? <UiText style={[vs.sub, { color: colors.ink3, marginTop: 14 }]} testID="events-attendee-unavailable">{t(failed === "private" ? "pNotPublic" : "pLoadFailed")}</UiText> : null}
           {together && (together.sharedRounds.length || together.recommended || profile?.exchange === "exchanged") ? (
             <>
@@ -163,6 +182,23 @@ export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
         </View>
       ) : null}
     </BottomSheet>
+  );
+}
+
+/** Loading: the sections' own shapes (接点 chips → 自己紹介 card → メモ input → button), so nothing jumps when they fill. */
+function SheetBones() {
+  const { styles } = useStyles();
+  const vs = useVenueStyles().styles;
+  return (
+    <Bones testID="events-attendee-loading">
+      <Bone w="32%" h={12} style={{ marginBottom: 10, marginTop: 18 }} />
+      <View style={styles.chips}><Bone w={96} h={30} r={999} /><Bone w={72} h={30} r={999} /></View>
+      <Bone w="88%" h={14} style={{ marginTop: 12 }} />
+      <View style={[vs.card, vs.flat, styles.intro]}><Bone w="24%" h={11} /><Bone w="94%" h={14} style={{ marginTop: 8 }} /><Bone w="70%" h={14} style={{ marginTop: 7 }} /></View>
+      <Bone w="20%" h={11} style={{ marginBottom: 8, marginTop: 14 }} />
+      <Bone h={44} r={14} />
+      <Bone h={44} r={999} style={{ marginTop: 14 }} />
+    </Bones>
   );
 }
 

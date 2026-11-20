@@ -30,6 +30,7 @@ import { useJourneyApi } from "./journey-api";
 import { eventRange, hm, tokyo, weekday, type JourneyT } from "./journey-model";
 import { AttendeeSheet, type AttendeeSheetPerson } from "./AttendeeSheet";
 import { JourneyPage } from "./JourneyPage";
+import { Bone, BoneCard, Bones } from "./loading-ui";
 import { useJourneyT } from "./useJourneyT";
 import { AgendaTab, CheckInView, GroupsTab, NowTab, PeopleTab, RecsTab, RoundsTab } from "./VenueTabs";
 import { Avatar, Chip, personTones, shortTitle, surname, useVenueStyles, Why, WhyBody } from "./venue-ui";
@@ -97,7 +98,7 @@ export function VenuePage() {
   const topGap = useShellTopGap();
   const dev = addDesignMock("open-path");
   const noKeyboard = addDesignMock("no-keyboard");
-  const params = useLocalSearchParams<{ id?: string; tab?: string; view?: string; person?: string; meet?: string; approve?: string }>();
+  const params = useLocalSearchParams<{ id?: string; tab?: string; view?: string; person?: string; meet?: string; approve?: string; record?: string }>();
   const eventId = String(params.id ?? "");
   const base = `/events/${encodeURIComponent(eventId)}`;
   const [data, setData] = useState<EventVenueResponse | null>(null);
@@ -215,9 +216,27 @@ export function VenuePage() {
 
   const back = { fallback: base, leftLabel: t("close"), leftIcon: "x" as const };
   const notice = offlineAt ? <EventsOfflineNotice lastSyncedAt={offlineAt} /> : null;
+  // First open with no saved copy: the frame first, the content's shapes in grey. From 「記録を見る」 (?record=1) the frame is
+  // 会場の記録's own (top bar + record tab bar), so the page does not change shape when the answer arrives.
+  if (!data && !missing && params.record === "1") {
+    return (
+      <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="events-venue-loading">
+        <ShellBackground />
+        <ScrollView contentContainerStyle={styles.pad} scrollEnabled={false}>
+          <View style={styles.bar}>
+            <IconButton icon="left" accessibilityLabel={t("back")} onPress={() => (router.canGoBack() ? router.back() : router.replace(base as Href))} />
+            <Bones style={styles.center}><Bone w="62%" h={19} style={{ marginVertical: 5 }} /><Bone w="44%" h={12} style={{ marginBottom: 4, marginTop: 5 }} /></Bones>
+            <View style={styles.barSpacer} />
+          </View>
+          <Bones><BoneCard rows={3} /><BoneCard rows={2} /></Bones>
+        </ScrollView>
+        <LiveTabBar tab={tab && tab !== "now" ? tab : "groups"} onTab={setTab} t={t} record />
+      </SafeAreaView>
+    );
+  }
   if (!data) return <JourneyPage title={t("liveTitle")} {...back}>{missing === "network"
     ? <RetryCard title={locale.t("sync.needsNetwork")} message={locale.t("sync.needsNetworkBody")} onRetry={() => { setMissing(null); void load(); }} />
-    : missing ? <View style={vs.card}><UiText style={vs.sub}>{t("notFound")}</UiText></View> : null}</JourneyPage>;
+    : missing ? <View style={vs.card}><UiText style={vs.sub}>{t("notFound")}</UiText></View> : <Bones testID="events-venue-loading"><BoneCard rows={3} /><BoneCard rows={2} /></Bones>}</JourneyPage>;
   // Registered but not in the host's published results (server 9683ee88f: no operations workspace): there is no name or QR
   // to show at reception yet, so say it opens after check-in (as Web) instead of an empty name card.
   if (data.state === "before_check_in" && !data.checkIn?.qrPayload && !data.checkIn?.displayName?.trim()) {
@@ -248,7 +267,8 @@ export function VenuePage() {
           {recordTab === "agenda" ? <AgendaTab data={data} t={t} /> : null}
         </ScrollView>
         <LiveTabBar tab={recordTab} onTab={setTab} t={t} record />
-        <AttendeeSheet eventId={eventId} person={sheetPerson} onClose={() => setSheetPerson(null)} onChanged={() => void load()} />
+        <AttendeeSheet eventId={eventId} person={sheetPerson} onClose={() => setSheetPerson(null)} onChanged={(change) => patchPerson(change.attendeeId, {
+          ...(change.exchange ? { exchange: change.exchange } : {}), ...(change.memo !== undefined ? { memo: change.memo } : {}) })} />
       </SafeAreaView>
     );
   }

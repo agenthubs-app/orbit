@@ -33,6 +33,7 @@ import { newIdempotencyKey, useEventsApi } from "./events-api";
 import { useJourneyApi } from "./journey-api";
 import { eventRange, feeText, publicOrganizerName, subscribeEventChanged } from "./journey-model";
 import { RelevanceCard, useRelevanceT } from "./Relevance";
+import { Bone, Bones } from "./loading-ui";
 import { useJourneyT } from "./useJourneyT";
 
 type Tab = "intro" | "agenda" | "host" | "people";
@@ -179,7 +180,19 @@ export function EventDetailPage() {
         <ShellBackground />
         <View style={styles.pad}>{header}{missing === "network"
           ? <RetryCard title={locale.t("sync.needsNetwork")} message={locale.t("sync.needsNetworkBody")} onRetry={() => { setMissing(null); setReload((value) => value + 1); }} />
-          : missing ? <View style={styles.card}><UiText style={styles.sub}>{t("notFound")}</UiText></View> : null}</View>
+          : missing ? <View style={styles.card}><UiText style={styles.sub}>{t("notFound")}</UiText></View> : (
+            // First open, no saved copy: the cover card's and the description's shapes, so the page does not jump when it fills.
+            <Bones testID="events-detail-loading">
+              <View style={[styles.card, styles.coverCard]}>
+                <Bone h={96} r={0} />
+                <View style={styles.coverBody}>
+                  <Bone w="30%" h={11} /><Bone w="82%" h={20} style={{ marginTop: 8 }} /><Bone w={64} h={22} r={999} style={{ marginTop: 10 }} />
+                  {[56, 48, 40].map((w) => <View key={w} style={[styles.fact, { marginTop: 10 }]}><Bone w={16} h={16} r={4} /><Bone w={`${w}%`} h={12} /></View>)}
+                </View>
+              </View>
+              <View style={[styles.card, styles.gap]}><Bone w="90%" h={13} /><Bone w="96%" h={13} style={{ marginTop: 9 }} /><Bone w="60%" h={13} style={{ marginTop: 9 }} /></View>
+            </Bones>
+          )}</View>
       </SafeAreaView>
     );
   }
@@ -275,7 +288,7 @@ export function EventDetailPage() {
                 <View key={label} style={styles.miniCell}><UiText style={styles.lbl}>{t(label)}</UiText><UiText style={styles.miniNum}>{n}<UiText style={styles.lbl}>{t("recordPeopleUnit")}</UiText></UiText></View>
               ))}
             </View>
-            <UiPressable accessibilityRole="button" accessibilityLabel={t("recordOpen")} onPress={() => router.push(`${base}/live` as Href)} style={styles.recordBtn} testID="events-detail-record-open"><UiText style={styles.ctaMainText}>{t("recordOpen")}</UiText></UiPressable>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("recordOpen")} onPress={() => router.push(`${base}/live?record=1` as Href)} style={styles.recordBtn} testID="events-detail-record-open"><UiText style={styles.ctaMainText}>{t("recordOpen")}</UiText></UiPressable>
           </GradientCard>
         ) : null}
         {/* 一行一件事实；「会いたい人」点进去 = 参加者 tab 的「プランに合う」。原来评分条打开的「判定の内訳」不再从这里进。 */}

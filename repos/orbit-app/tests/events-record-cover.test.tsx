@@ -145,3 +145,46 @@ test("会場の記録 ほかのテーブル: switch rounds, open a table to see 
   await page.getByTestId("events-venue-other-tables").getByRole("button", { name: mate.name }).click();
   await page.getByTestId("events-attendee-sheet").waitFor();
 });
+
+// 2026-11-21 加载与读取：先出框架 + 骨架再填内容；同一人的资料 5 分钟内再打开不再请求；弹层里的交换只改本页，不整页重读。
+const gets = (page: { evaluate: (fn: () => unknown) => Promise<unknown> }, part: string) =>
+  page.evaluate(() => (window as unknown as { fixture: { requests: string[] } }).fixture.requests).then((list) => (list as string[]).filter((entry) => entry.startsWith("get:") && entry.includes(part)).length);
+
+test("attendee sheet: grey shapes while the profile loads; re-opening the same person reads nothing", async (t) => {
+  const page = await harness.open(t, { screen: "venue", params: { id: eventId }, slowPrefix: `${path}/attendees/`, responses: {
+    [`${path}/venue`]: { ...ended, rounds },
+    [`${path}/attendees/`]: profile(),
+  } });
+  await page.getByRole("button", { name: mate.name }).first().click();
+  await page.getByTestId("events-attendee-loading").waitFor();
+  await page.getByText("資本政策の相談歓迎です。", { exact: true }).waitFor();
+  assert.equal(await page.getByTestId("events-attendee-loading").count(), 0);
+  await page.getByTestId("events-attendee-sheet").getByRole("button", { name: "关闭" }).click();
+  await page.getByRole("button", { name: mate.name }).first().click();
+  await page.getByText("資本政策の相談歓迎です。", { exact: true }).waitFor();
+  assert.equal(await page.getByTestId("events-attendee-loading").count(), 0, "a cached profile shows at once");
+  assert.equal(await gets(page, "/attendees/"), 1, "one read for two opens");
+});
+
+test("会場の記録: an exchange request in the sheet patches the page (no second venue read)", async (t) => {
+  const page = await harness.open(t, { screen: "venue", params: { id: eventId }, responses: {
+    [`${path}/venue`]: { ...ended, rounds },
+    [`${path}/attendees/`]: profile(),
+    [`${path}/operations/contact-requests`]: { ok: true },
+  } });
+  await page.getByRole("button", { name: mate.name }).first().click();
+  await page.getByTestId("events-attendee-request").click();
+  await page.getByTestId("events-attendee-sheet").getByText("已申请", { exact: false }).first().waitFor();
+  assert.equal(await gets(page, "/venue"), 1);
+});
+
+test("loading frames: 記録を見る opens on the record's own frame; the detail page shows the cover card's shape first", async (t) => {
+  const record = await harness.open(t, { screen: "venue", params: { id: eventId, record: "1" }, noMirror: true, slowPrefix: `${path}/venue`, responses: { [`${path}/venue`]: { ...ended, rounds } } });
+  await record.getByTestId("events-venue-loading").waitFor();
+  await record.getByTestId("events-venue-tab-groups").waitFor();
+  await record.getByTestId("events-venue-round-1").waitFor();
+  const detail = await harness.open(t, { screen: "detail", params: { id: eventId }, noMirror: true, slowPrefix: `${path}/overview`, responses: { [`${path}/overview`]: overview } });
+  await detail.getByTestId("events-detail-loading").waitFor();
+  await detail.getByText(overview.title).first().waitFor();
+  assert.equal(await detail.getByTestId("events-detail-loading").count(), 0);
+});

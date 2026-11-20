@@ -17,6 +17,7 @@ import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { useJourneyApi } from "./journey-api";
 import { tokyo, weekday } from "./journey-model";
 import { JourneyPage } from "./JourneyPage";
+import { BoneCard, Bones } from "./loading-ui";
 import { useJourneyT } from "./useJourneyT";
 import { AttendeeSheet, type AttendeeSheetPerson } from "./AttendeeSheet";
 import { Avatar, AvatarStack, useVenueStyles, Why, WhyBody, type Tone } from "./venue-ui";
@@ -95,7 +96,7 @@ export function AfterPage() {
   };
 
   const top = { fallback: base, leftLabel: t("back") };
-  if (!data) return <JourneyPage title={t("afterTitle")} {...top}>{missing ? <View style={vs.card}><UiText style={vs.sub}>{t("notFound")}</UiText></View> : null}</JourneyPage>;
+  if (!data) return <JourneyPage title={t("afterTitle")} {...top}>{missing ? <View style={vs.card}><UiText style={vs.sub}>{t("notFound")}</UiText></View> : <Bones testID="events-after-loading"><BoneCard rows={2} /><BoneCard rows={3} /></Bones>}</JourneyPage>;
   const d = tokyo(`${data.date}T12:00:00+09:00`);
   // 「今天的回顾」 only on the event day; afterwards the page is just 「回顾」.
   const title = data.date === new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date()) ? t("afterTitle") : t("goAfter");

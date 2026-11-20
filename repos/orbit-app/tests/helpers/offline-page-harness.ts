@@ -77,6 +77,8 @@ const client = {
   baseUrl: base,
   async get(path) {
     if (path === "/api/health" && state.healthDelayMs) await new Promise(resolve => setTimeout(resolve, state.healthDelayMs));
+    // 2026-11-21: a slow answer for GETs under fixture.slowPrefix, so a test can see the loading frame before the content.
+    if (state.slowPrefix && path.startsWith(state.slowPrefix)) await new Promise(resolve => setTimeout(resolve, state.slowMs ?? 600));
     const result = answer("get", path);
     if (path === "/api/health") state.healthResolved = true;
     return result;
