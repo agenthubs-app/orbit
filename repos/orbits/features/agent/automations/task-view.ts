@@ -126,12 +126,12 @@ const WORDS: Record<Locale, {
     nothing: "没有新的",
     paused: "已暂停，不会再运行",
     quiet: "没有新的就不打扰",
-    ranThrough: (day) => `跑到 ${day} 为止`,
+    ranThrough: (day) => `跑到 ${day}为止`,
     readsNow: "每次运行读它当时的内容",
     resent: "（第一次没送到，补送到了）",
     retried: (clock, text) => `没跑成，已重试；${clock} 跑完：${text}`,
     skipped: (count, days) => `中间跳过了 ${count} 期${days ? `（${days}）` : ""}。那段时间 Orbit 停过，恢复后只补了最近一期。`,
-    through: (day) => `跑到 ${day} 为止`,
+    through: (day) => `跑到 ${day}为止`,
     today: (clock) => `今天 ${clock}`,
     undelivered: {
       pending: "已经算好，还没送到，会再送",
@@ -217,7 +217,8 @@ export function scheduledRunView(run: AgentAutomationRunRecord, locale: Locale =
     computedAt: run.computedAt,
     delivery: { attempts: run.delivery.inbox.attempts, state: run.delivery.inbox.state, ...(run.delivery.inbox.deliveredAt ? { deliveredAt: run.delivery.inbox.deliveredAt } : {}), ...(run.delivery.inbox.cancelReason ? { cancelReason: run.delivery.inbox.cancelReason } : {}) },
     display: runDisplay(run, locale, timeZone, domain),
-    items: run.items.map((item) => ({ id: item.id, kind: item.kind, line: item.line, ref: item.ref, title: item.title })),
+    ...(run.detail ? { detail: { basis: run.detail.basis, notes: [...run.detail.notes] } } : {}),
+    items: run.items.map((item) => ({ id: item.id, kind: item.kind, line: item.line, ref: item.ref, title: item.title, ...(item.card ? { card: item.card } : {}) })),
     line: runHistoryLine(run, locale),
     outcome: run.outcome,
     push: { attempts: run.delivery.push.attempts, state: run.delivery.push.state, ...(run.delivery.push.deliveredAt ? { deliveredAt: run.delivery.push.deliveredAt } : {}) },
@@ -321,7 +322,9 @@ export async function listScheduledTasks(input: { ownerId: string; service: Pick
     const history = runs ? await runs.list(input.ownerId, automation.automationId, 50) : [];
     tasks.push(scheduledTaskView(automation, history[0] ?? null, input.now, input.locale, history.length));
   }
-  return tasks;
+  // The draft's order (15-3): running, then those that need the owner, paused, ended; newest first within each.
+  const rank = (task: AgentScheduledTaskContract) => (task.status === "completed" ? 3 : task.status === "paused" ? 2 : task.needsAttention ? 1 : 0);
+  return tasks.sort((left, right) => rank(left) - rank(right) || right.createdAt.localeCompare(left.createdAt));
 }
 
 /** One task with its history, newest period first; null when it is not this owner's. */

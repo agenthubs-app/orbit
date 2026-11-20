@@ -173,6 +173,7 @@ async function runRuleItem(deps: AutomationDispatchDeps, item: DueItem, leaseId:
       ...(result.cardId ? { cardId: result.cardId } : {}),
       ...(result.cardExpiresAt ? { cardExpiresAt: result.cardExpiresAt } : {}),
       ...(result.coverage ? { coverage: result.coverage } : {}),
+      ...(result.detail ? { detail: result.detail } : {}),
       ...(result.error ? { error: result.error.slice(0, 500) } : {}),
     };
     // The result, what is still to be delivered, and the rule's next period: one transaction.

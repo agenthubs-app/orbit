@@ -531,7 +531,9 @@ export interface AgentScheduledTaskRunContract {
   /** 这一期的完整内容（收件箱里那一段）；没有要送的内容时是空串。 */
   text: string;
   /** 这一期列出的记录，可以点进各自的页面。 */
-  items: readonly { ref: string; kind: "event" | "contact" | "todo"; id: string; title: string; line: string }[];
+  items: readonly { ref: string; kind: "event" | "contact" | "todo"; id: string; title: string; line: string; card?: AgentAnswerRecordContract | undefined }[];
+  /** AG15 界面：结果页卡片上方的「按什么挑的」和卡片下面的几行小字（服务端写好，不含内部用词）。 */
+  detail?: { basis: string; notes: readonly string[] } | undefined;
   /** 这一期产生的待确认的卡（在收件箱里确认）。 */
   cardId?: string | undefined;
   /** 算了几次才算成（1 是一次算成；大于 1 是先失败、用同一期再试成功的）。 */

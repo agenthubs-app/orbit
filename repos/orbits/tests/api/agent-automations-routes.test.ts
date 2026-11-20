@@ -55,7 +55,7 @@ test("'my scheduled tasks' shows the card's rows, the next expected run and the 
     ["从哪里挑", "周末活动", null],
     ["按什么挑", "按开始时间从早到晚", null],
     ["挑几条", "最多3场", null],
-    ["跑到哪天", "跑到 12月31日（周四） 为止", null],
+    ["跑到哪天", "跑到 12月31日（周四）为止", null],
     ["怎么通知你", "放进收件箱", "没有新的就不打扰"],
     ["下次运行", "11月20日（周五） 9:00 之后约10分钟内", null],
   ]);
@@ -103,7 +103,7 @@ test("'my scheduled tasks' shows the card's rows, the next expected run and the 
   await kit.dispatch("2027-01-08T09:10:00+09:00");
   tasks = await listScheduledTasks({ now: kit.now(), ownerId: "user:a", service, storage: kit.storage });
   assert.deepEqual([tasks[0].status, tasks[0].nextRunAt], ["completed", null], "after its last valid day the task is shown as ended");
-  assert.deepEqual(tasks[0].summary, { attention: null, schedule: "跑到 12月31日（周四） 为止", status: "已结束 · 一共跑了 3 期" });
+  assert.deepEqual(tasks[0].summary, { attention: null, schedule: "跑到 12月31日（周四）为止", status: "已结束 · 一共跑了 3 期" });
 });
 
 test("AG15 interface: a paused task, a task whose note cannot be opened, a period passed over and a retried one read as the approved draft says", async () => {

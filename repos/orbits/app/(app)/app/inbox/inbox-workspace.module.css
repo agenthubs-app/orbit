@@ -114,3 +114,12 @@
   .detail, .msgs { height: auto; overflow: visible; }
   .back:global(.btn) { display: inline-flex; }
 }
+
+/* agent-design AG15 (approved draft 15-5, 15-6): the tag on an agent row, and the detail of a result or a card. */
+.agentTagTask, .agentTagWait { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: var(--r-chip); font-size: var(--fs-caption); font-weight: var(--fw-bold); line-height: 1.6; }
+.agentTagTask { background: var(--mac-blue); color: var(--mac-blue-text); }
+.agentTagWait { background: var(--mac-lav); color: var(--mac-lav-text); }
+.agentHead { display: flex; align-items: flex-start; gap: var(--space-12); }
+.agentHead h2 { margin: 0 0 2px; }
+.agentBasis { align-self: flex-start; padding: var(--space-6) var(--space-12); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--ink-2); font-size: var(--fs-body-sm); }
+.agentNotes p { margin: 0 0 4px; color: var(--ink-2); font-size: var(--fs-body-sm); line-height: 1.6; }
