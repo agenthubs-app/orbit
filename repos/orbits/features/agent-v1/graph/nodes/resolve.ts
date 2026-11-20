@@ -32,6 +32,7 @@ import { optionNamedIn } from "../../clarify/attribution";
 import { emptyKindsLine } from "../../answer/empty-kinds-copy";
 import type { NamedRecordRef } from "../../context/session-state";
 import { gapOfReadError, readPages } from "../../domains/registry";
+import { matchText } from "../../domains/source";
 import { occurrenceIn } from "../../domains/schedule/read";
 import type { DomainKind, DomainScope, RecordView } from "../../domains/types";
 import { emitTrace } from "../../observability/trace";
@@ -49,7 +50,16 @@ import { widerThanAsked, type AskedRead, type Widened } from "./wider-read";
 import { occurrenceViews } from "../../domains/schedule/occurrences";
 import { comesUp } from "./prepare";
 
-type ReadKind = "memo" | "todo" | "schedule" | "event" | "contact" | "interaction";
+type ReadKind = "memo" | "todo" | "schedule" | "event" | "contact" | "interaction" | "attendance";
+
+/**
+ * AG21a (R35): words saying the user went to events ("我上个月去过哪些活动", "行ったイベント", "events I went to") — their
+ * own «我去过» records, not the event directory.
+ */
+const WENT_WORDS = /(去过|参加过|我去了的|我参加了的|行った|参加した|\bwent to\b|\battended\b|\bbeen to\b)/iu;
+export function asksWhereIWent(words: string): boolean {
+  return WENT_WORDS.test(words);
+}
 
 const LIST_DELIVERABLES = new Set(["list", "ranked_list", "comparison"]);
 
@@ -85,6 +95,10 @@ export function readKindsOf(capabilities: readonly Capability[]): Set<ReadKind> 
         break;
       case "event.read":
         kinds.add("event");
+        break;
+      // AG21a (R35): the user's own «我去过» records (the list the write path uses), never a directory search.
+      case "attendance.read":
+        kinds.add("attendance");
         break;
       case "contact.read":
       case "profile.read":
@@ -696,15 +710,24 @@ export function resolveNode(scope: NodeScope): GraphNode {
         emitTrace({ partId: part.localId, today, type: "resolve.todays_plate" });
         run.showAllRead.add(part.localId);
       }
+      // AG21a (R35): "which events did I go to" lists the account's own «我去过» records (attendance.read, or an event read
+      // whose words say the user went), in the period said — not a search of the event directory. A part that points at an
+      // event by id reads that event as before.
+      const pointsAtEvent = part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event");
+      // With a person named and no words of going (「田中在客户访谈里最在意什么」 tagged attendance.read), it is about that person's
+      // notes, as AG11 run-02 reads it (below).
+      const listsAttendance = !pointsAtEvent && ((kinds.has("attendance") && (!contacts.length || asksWhereIWent(quote))) || (kinds.has("event") && asksWhereIWent(quote)));
+      if (listsAttendance) kinds.add("attendance");
+      else kinds.delete("attendance");
       // Finding events by conditions is not a read of this version (an attached event is read by id).
-      if (kinds.has("event") && !part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event") && ![...kinds].some((kind) => kind !== "event" && kind !== "contact") && contacts.length && (text || part.refs.some((ref) => recordKindOf(ref.entity) === "event" && clueSearchWords(clueWords(input.message, ref) ?? "")))) {
+      if (!listsAttendance && kinds.has("event") && !part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event") && ![...kinds].some((kind) => kind !== "event" && kind !== "contact") && contacts.length && (text || part.refs.some((ref) => recordKindOf(ref.entity) === "event" && clueSearchWords(clueWords(input.message, ref) ?? "")))) {
         // AG11 run-02 (AE-RD-009): "田中在客户访谈里最在意什么" tagged as an event of a named person: a meeting or interview with
         // someone is in the user's notes about them — those are read by the words, not the event directory.
         kinds.add("memo");
         if (!text) text = part.refs.map((ref) => (recordKindOf(ref.entity) === "event" ? clueSearchWords(clueWords(input.message, ref) ?? "") : undefined)).find(Boolean);
         emitTrace({ partId: part.localId, type: "resolve.person_event_in_notes", words: text ?? null });
       }
-      if (kinds.has("event") && !part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event") && ![...kinds].some((kind) => kind !== "event" && kind !== "contact")) {
+      if (!listsAttendance && kinds.has("event") && !part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) === "event") && ![...kinds].some((kind) => kind !== "event" && kind !== "contact")) {
         read.lines.push(words.eventSearch(quote));
         finish("unfinished", "not_in_this_version");
         continue;
@@ -777,6 +800,37 @@ export function resolveNode(scope: NodeScope): GraphNode {
               if (!read.lines.includes(line)) read.lines.push(line);
             }
           }
+        }
+      }
+      // AG21a (R35): the account's own «我去过» records in the period said, the latest first, each read by id (with the event
+      // it is about) — the same records the write path lists. Only these count as "went": an event the user only
+      // registered for is not one.
+      if (listsAttendance) {
+        read.wantsRecords = true;
+        try {
+          const all = records.attendance ? await records.attendance.list(input.actorId) : null;
+          if (!all) throw new Error("attendance notes are not available");
+          const inPeriod = all.filter((note) => (!filter?.from || note.attendedOn >= filter.from) && (!filter?.to || note.attendedOn <= filter.to))
+            .sort((left, right) => (left.attendedOn === right.attendedOn ? (left.id < right.id ? -1 : 1) : left.attendedOn < right.attendedOn ? 1 : -1));
+          const limit = Math.max(1, records.maxPages) * 10;
+          // An event named in words ("校友茶会那次我是哪天去的") keeps the records of events of that title only.
+          const eventWords = part.refs.filter((ref) => !ref.recordId && recordKindOf(ref.entity) === "event").map((ref) => { const said = (clueWords(input.message, ref) ?? "").replace(/(哪些|哪几场|哪几个|哪个|哪场|哪|什么|啥|どの|どれ|どんな|\bwhich\b|\bwhat\b|\bany\b)/giu, " ").replace(new RegExp(WENT_WORDS.source, "giu"), " "); return onlyWindowWords(said) ? undefined : clueSearchWords(said); }).find(Boolean);
+          let seen = 0;
+          let total = eventWords ? 0 : inPeriod.length;
+          for (const note of inPeriod.slice(0, limit)) {
+            const view = (await records.reader.read("event", accountScope, { id: note.id }).catch(() => ({ items: [] as RecordView[] }))).items[0];
+            if (!view) continue;
+            if (eventWords && !matchText(String(view.fields.title ?? "")).includes(matchText(eventWords))) continue;
+            push(view);
+            seen += 1;
+            if (eventWords) total += 1;
+          }
+          read.coverage.push({ complete: inPeriod.length <= limit, kind: "attendance", pagesRead: 1, seen, total });
+          read.notes.push(`These are the user's own «I went» records${filter?.from || filter?.to ? ` from ${filter?.from ?? "the start"} to ${filter?.to ?? "now"}` : ""}, the latest first: only these are events the user went to (an event only registered for is not one).`);
+          emitTrace({ found: inPeriod.length, from: filter?.from ?? null, partId: part.localId, to: filter?.to ?? null, type: "resolve.attendance_read" });
+        } catch (error) {
+          failures.push("attendance");
+          emitTrace({ error: error instanceof Error ? error.message : String(error), partId: part.localId, type: "read.failed", where: "resolve.attendance" });
         }
       }
       // The last interaction (structured only), or the person's notes as old material.
@@ -992,7 +1046,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
         const direction = directions.size === 1 ? [...directions][0] : null;
         read.coverage.push({ complete: entries.every((item) => item.complete) || (total !== null && seen >= total), kind, pagesRead: entries.reduce((sum, item) => sum + item.pagesRead, 0), seen, total, ...(direction ? { direction } : {}) });
       }
-      if (kinds.has("event") && !boundIds.has("event")) read.notes.push("Events are read when the user attaches one; none was attached.");
+      if (kinds.has("event") && !boundIds.has("event") && !listsAttendance) read.notes.push("Events are read when the user attaches one; none was attached.");
 
       // AG10 (AE-SCL-020): how a person stands now — a note saying something still needs doing ("Still need to send Priya the
       // JD") is not given when the person's to-do for it was completed after the note: it no longer holds (设计稿 §4 新的为准).
