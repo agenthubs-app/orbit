@@ -9,8 +9,11 @@ import { createAgentRuntimeService } from "../../features/agent/runtime/service"
 import { createStorageAgentRuntimeRepository } from "../../features/agent/storage/agent-runtime-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { usesPromisedDate } from "../../features/agent-v1/graph/nodes/functions";
-import { fnWorld, runFn } from "./functions-kit";
-import { choice } from "./judgment-kit";
+import { applyResolution } from "../../features/agent-v1/graph/nodes/clarify";
+import { groupInteractions, interactionNamedIn } from "../../features/agent-v1/functions/extract-interactions";
+import { fnWorld, NOW as FN_NOW, runFn } from "./functions-kit";
+import { choice, noul } from "./judgment-kit";
+import { graphKit } from "./graph-kit";
 import { endsInActionVerb, needsIntentReview, readsAsWriteRequest } from "../../features/agent-v1/judgment/intent-review";
 import { resolveEventIntent } from "../../features/agent-v1/propose/events-resolve";
 import type { ResolveContext } from "../../features/agent-v1/propose/resolve";
@@ -174,4 +177,67 @@ test("R30 '建个待办盯一下，截止就按他说的': the card's to-do is d
   const plain = await chase("从 @封面沟通 建个待办跟进季朗答应的校样");
   assert.equal(plain.frozen.length, 1, plain.result.text);
   assert.equal((plain.frozen[0].intents[0] as unknown as { set: Record<string, unknown> }).set.dueAt, null, "no date guessed from their deadline");
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// R31: one meeting with several people is one interaction; several occasions are a registered question.
+
+const SITE = { id: "note:site", name: "工地笔记", type: "memo" };
+function siteWorld(body: string) {
+  const world = fnWorld();
+  world.records.push(
+    contact("actor:a", "contact:sn", "石楠", { organization: "白鹭印务" }),
+    contact("actor:a", "contact:jl", "季朗", { organization: "柏舟设计" }),
+    contact("actor:a", "contact:gbz", "葛柏舟", { organization: "青檀装订" }),
+    memo("actor:a", "note:site", body, "2026-11-12T03:00:00.000Z", ["contact:sn", "contact:jl"], { title: "工地笔记" }),
+  );
+  return world;
+}
+const UPDATE = (message: string) => [{ dataSources: ["orbit_records"], deliverable: "change", objectClues: [{ entity: "memo", referenceId: "r1", text: "@工地笔记" }], requiredCapabilities: ["memo.read", "fn.extractInteractions", "memo.update"], sourceQuote: message }];
+const MEETING = [{ channel: "meeting", contactClue: "石楠", dateText: "11月10日", direction: "mutual", kind: "happened", precision: "day", sentenceIds: [1] }, { channel: "meeting", contactClue: "季朗", dateText: "11月10日", direction: "mutual", kind: "happened", precision: "day", sentenceIds: [1] }];
+
+test("R31 grouping and picking, by code: one sentence, day and channel is one occasion; a reply names one by its words", () => {
+  const people = { jl: { id: "contact:jl", name: "季朗" }, sn: { id: "contact:sn", name: "石楠" } };
+  const result = (contact: { id: string; name: string }, channel: "meeting" | "phone", sentenceIds: number[]) => ({ channel, clue: contact.name, contact, direction: "mutual" as const, key: contact.id, occurredOn: "2026-11-10", precision: "day" as const, reason: null, sentenceIds, writable: true });
+  const groups = groupInteractions([result(people.sn, "meeting", [1]), result(people.jl, "meeting", [1]), result(people.jl, "phone", [2])]);
+  assert.deepEqual(groups.map((group) => [group.channel, group.contacts.map((contact) => contact.id)]), [["meeting", ["contact:sn", "contact:jl"]], ["phone", ["contact:jl"]]]);
+  const options = [{ id: "a", label: "石楠、季朗，11月10日，见面「11月10日在工地和石楠、季朗碰头。」" }, { id: "b", label: "季朗，11月10日，电话「11月10日晚上给季朗打了电话。」" }];
+  assert.equal(interactionNamedIn("工地那次", options), "a");
+  assert.equal(interactionNamedIn("打电话那个", options), "b");
+  assert.equal(interactionNamedIn("第二个", options), "b");
+  assert.equal(interactionNamedIn("都行", options), null);
+});
+
+test("R31 '用这篇更新往来' on one meeting with two people: one interaction with both, no question", async () => {
+  const message = "用 @工地笔记 更新往来";
+  const run = await runFn(message, UPDATE(message), { extract: { interactions: MEETING }, judge: () => noul(0.95), references: [SITE], world: siteWorld("11月10日在工地和石楠、季朗碰头。") });
+  assert.equal(run.frozen.length, 1, run.result.text);
+  assert.deepEqual((run.frozen[0].intents[0] as unknown as { set: { interaction: { actualContactIds: string[] } } }).set.interaction.actualContactIds, ["contact:sn", "contact:jl"]);
+  assert.equal(run.result.clarifications.filter((set) => set.kind === "question").length, 0);
+});
+
+test("R31 two occasions: a registered question with one option each; '工地那次' goes on with that one and makes its card", async () => {
+  const body = "11月10日在工地和石楠、季朗碰头。11月10日晚上给季朗打了电话。也给柏舟发了消息。";
+  const world = siteWorld(body);
+  const session = graphKit(fetch, { now: FN_NOW, records: recordAccessOf(world) });
+  const message = "用 @工地笔记 更新往来";
+  const first = await runFn(message, UPDATE(message), {
+    extract: { interactions: [...MEETING, { channel: "phone", contactClue: "季朗", dateText: "11月10日", direction: "outgoing", kind: "happened", precision: "day", sentenceIds: [2] }, { channel: "message", contactClue: "柏舟", direction: "outgoing", kind: "happened", precision: "unknown", sentenceIds: [3] }] },
+    judge: () => noul(0.95), references: [SITE], session, world,
+  });
+  assert.equal(first.frozen.length, 0, "no card while it asks");
+  const question = first.result.clarifications.find((set) => set.kind === "question");
+  assert.ok(question, first.result.text);
+  assert.equal(question!.options.length, 2, "one option per occasion (the meeting with both, the call)");
+  assert.match(first.result.text, /要记哪一次/u);
+  assert.match(first.result.text, /联系人里有葛柏舟（青檀装订）；要记这次，先把他关联到这篇笔记/u, "an unlinked person is looked up and offered, not picked");
+  const reply = "工地那次";
+  const second = await runFn(reply, [{ clarity: "statement", sourceQuote: reply }], { session, world });
+  assert.equal(second.frozen.length, 1, second.result.text);
+  const set = (second.frozen[0].intents[0] as unknown as { set: { interaction: { actualContactIds: string[]; channel: string } } }).set;
+  assert.deepEqual([set.interaction.channel, set.interaction.actualContactIds], ["meeting", ["contact:sn", "contact:jl"]]);
+  // A click on the question's option resumes the part as a write to prepare (the functions node reads the pick).
+  const optionSet = { asks: "object", clarificationId: "c.q", kind: "question", options: [{ capabilities: [], capability: "memo.update", optionId: "o1", refId: "interaction|note:site|2026-11-10|meeting|mutual|contact:sn,contact:jl|1", refType: "interaction" }], partId: "p1", purpose: "interaction", state: "open", subgoal: "s" };
+  const resumed = applyResolution({ optionSets: [optionSet], parts: [{ localId: "p1", plan: {}, reads: [{ ref: "memo:note:site", version: "1" }], refs: [], route: "propose_write", status: "awaiting_clarification" }] } as never, { clarificationId: "c.q", kind: "select", optionId: "o1" }, "req");
+  assert.deepEqual([resumed.parts![0].status, resumed.parts![0].reason, resumed.parts![0].reads, resumed.optionSets![0].selectedOptionId], ["unfinished", "proposing", undefined, "o1"]);
 });

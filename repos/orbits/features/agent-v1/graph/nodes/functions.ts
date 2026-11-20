@@ -45,6 +45,8 @@ import { memoDayOf } from "../../functions/dates";
 import { resolveSaidDate } from "../../propose/dates";
 import { contactOfClue, type LinkedContact, type MemoForExtraction } from "../../functions/extract";
 import { extractFromMemo } from "../../functions/extract-memo";
+import { splitSentences } from "../../text/sentences";
+import { groupInteractions, interactionNamedIn, interactionOfOption, interactionOptionId, type InteractionGroup } from "../../functions/extract-interactions";
 import { groupEventsByFee } from "../../functions/group";
 import { linkFollowUp, linkInteraction, type ExistingTodo } from "../../functions/link-back";
 import { rankCandidates, type RankCandidate, type RankResult } from "../../functions/rank";
@@ -208,7 +210,7 @@ export function asksToOrganize(quote: string): boolean {
 export type FunctionTask =
   | { kind: "rank"; domain: RankDomain }
   | { kind: "rank_reply"; item: SessionOpenItem }
-  | { kind: "extract"; memoId: string; want: { interactions: boolean; followUps: boolean }; write: boolean }
+  | { kind: "extract"; memoId: string; want: { interactions: boolean; followUps: boolean }; write: boolean; /** AG21b (R31): the occasion a reply picked among those offered (its option id). */ pick?: string }
   | { kind: "summary"; memoId: string }
   | { kind: "compare" }
   | { kind: "group" }
@@ -253,6 +255,13 @@ export function functionOf(scope: NodeScope, part: GraphPart): FunctionTask | nu
   const rule = ruleTaskOf(scope, part, item);
   if (rule) return rule;
   if (item?.rank) return { item, kind: "rank_reply" };
+  // AG21b (R31): a reply to "which occasion should the note record" that names one ("工地那次") goes on with that occasion.
+  const occasions = item?.options?.filter((option) => option.type === "interaction") ?? [];
+  if (occasions.length) {
+    const picked = interactionNamedIn(quote, occasions);
+    const occasion = picked ? interactionOfOption(picked) : null;
+    if (picked && occasion) return { kind: "extract", memoId: occasion.memoId, pick: picked, want: { followUps: false, interactions: true }, write: true };
+  }
   // Hotfix 2026-11-20 part 2 (the App's 「接下来的会面或活动，该准备什么？」): what to prepare for the next meetings or events is
   // code's answer (graph/nodes/prepare.ts), never a topic ranking — unless a person or a record is named (then it is about that).
   if ((part.route === "read" || part.route === "answer") && asksWhatToPrepare(quote) && !part.refs.some((ref) => ref.recordId || (ref.entity === "contact" && ref.quote && !GENERIC_CONTACT_CLUE.test(message.slice(ref.quote[0], ref.quote[1]))))) return { kind: "prepare" };
@@ -760,7 +769,7 @@ export function functionsNode(scope: NodeScope): GraphNode {
         else if (task.kind === "summary") summaryPart(scope, state, part, optionSets);
         else if (task.kind === "compare" || task.kind === "group") await eventsPart(scope, state, part, task.kind);
         else if (task.kind === "extract") {
-          const done = await extractPart(scope, state, part, task, { budget, repairs });
+          const done = await extractPart(scope, state, part, task, { budget, repairs }, optionSets);
           budget = done.budget;
           repairs = done.repairs;
         } else if (task.kind === "rule") {
@@ -1405,7 +1414,50 @@ function chaseTitle(language: "zh" | "ja" | "en", name: string | null, action: s
   return `跟进${name ? ` ${name}` : ""}：${action}`;
 }
 
-async function extractPart(scope: NodeScope, state: AgentGraphState, part: GraphPart, task: Extract<FunctionTask, { kind: "extract" }>, round: { budget: AgentGraphState["budget"]; repairs: number }): Promise<{ budget: AgentGraphState["budget"]; repairs: number }> {
+/** AG21b (R31): an occasion as listed and offered: who, the day, how, and its sentence. */
+function occasionLabel(occasion: InteractionGroup, sentence: string, language: "zh" | "ja" | "en"): string {
+  const who = occasion.contacts.map((contact) => contact.name).join(language === "en" ? ", " : "、");
+  return `${who}，${say.dayWordsOf(occasion.occurredOn, language)}，${say.howWords(occasion.channel, occasion.direction, language)} ${say.sentenceQuote(language, sentence)}`.replace(/，/gu, language === "en" ? ", " : "，").trim();
+}
+
+/** AG21b (R31): the memo.update for one occasion (all its people), or what is already recorded / in conflict. */
+function occasionIntent(part: GraphPart, memo: MemoForExtraction, memoName: string, contacts: readonly LinkedContact[], occasion: InteractionGroup, sentence: string, language: "zh" | "ja" | "en"): { intent: (CardOperationIntent & { localId: string }) | null; lines: string[] } {
+  const who = occasion.contacts.map((contact) => contact.name).join(language === "en" ? ", " : "、");
+  const interaction: NoteInteractionContract = { actualContactIds: occasion.contacts.map((contact) => contact.id), channel: occasion.channel, direction: occasion.direction, occurredOn: occasion.occurredOn, precision: "day" } as NoteInteractionContract;
+  const link = linkInteraction(memo.interaction as NoteInteractionContract | null, interaction);
+  emitTrace({ link: link.kind, memo: memo.ref, partId: part.localId, people: interaction.actualContactIds.length, type: "functions.link_back" });
+  if (link.kind === "recorded") return { intent: null, lines: [say.recordedLine(language, who, occasion.occurredOn, say.howWords(occasion.channel, occasion.direction, language), memoName)] };
+  if (link.kind === "conflict") return { intent: null, lines: [say.conflictLine(language, memo.title, `${link.existing.occurredOn ?? ""} ${say.howWords(link.existing.channel, link.existing.direction, language)}`, `${occasion.occurredOn} ${say.howWords(occasion.channel, occasion.direction, language)}`)] };
+  const names = Object.fromEntries(contacts.map((contact) => [contact.id, contact.name]));
+  return {
+    intent: { capability: "memo.update", expectedVersion: memo.version, localId: `${part.localId}-i1`, partId: part.localId, set: { interaction }, shown: { before: (memo.interaction as NoteInteractionContract | null) ?? null, contactIds: [...memo.contactIds], names, sentence, title: memoName }, targetId: memo.id },
+    lines: [`${say.HEADINGS.interactions[language]}${language === "en" ? ":" : "："} ${occasionLabel(occasion, sentence, language)}`],
+  };
+}
+
+/**
+ * AG21b (R31): the interactions not written, with their reason. A person the note names but does not link is looked up
+ * among the account's contacts: when one has that name, the line offers it (link them on the note first) — never picks it.
+ */
+async function notLinkedLinesOf(records: AgentRecordAccess, scope: DomainScope, items: readonly { contact: LinkedContact | null; clue: string; reason: string | null }[], language: "zh" | "ja" | "en"): Promise<string[]> {
+  const out: string[] = [];
+  for (const item of items) {
+    let line = `- ${item.contact?.name ?? item.clue}${language === "en" ? ": " : "："}${say.WHY_NOT[(item.reason ?? "unsure") as keyof typeof say.WHY_NOT][language]}`;
+    if (item.reason === "not_linked" && item.clue.trim()) {
+      const found = (await records.reader.read("contact", scope, { limit: 5, text: item.clue.trim() }).catch(() => ({ items: [] as RecordView[] }))).items
+        .map((view) => ({ id: view.id, name: str((view.fields as Record<string, unknown>).displayName) ?? "", organization: str((view.fields as Record<string, unknown>).company) ?? "" }))
+        .filter((contact) => contact.name && contactOfClue(item.clue.trim(), [{ id: contact.id, name: contact.name }]));
+      if (found.length) {
+        const shown = found.slice(0, 2).map((contact) => (contact.organization ? (language === "en" ? `${contact.name} (${contact.organization})` : `${contact.name}（${contact.organization}）`) : contact.name)).join(language === "en" ? " or " : "、");
+        line += ({ en: `. Your contacts have ${shown}; to record this one, link them to the note first.`, ja: `。連絡先に${shown}がいます。このやり取りを記録するには、先にメモに紐づけてください。`, zh: `。联系人里有${shown}；要记这次，先把他关联到这篇笔记。` } as const)[language];
+      }
+    }
+    out.push(line);
+  }
+  return out;
+}
+
+async function extractPart(scope: NodeScope, state: AgentGraphState, part: GraphPart, task: Extract<FunctionTask, { kind: "extract" }>, round: { budget: AgentGraphState["budget"]; repairs: number }, optionSets: OptionSetState[]): Promise<{ budget: AgentGraphState["budget"]; repairs: number }> {
   const { deps, input, run } = scope;
   const records = deps.records!;
   const language = state.language;
@@ -1432,6 +1484,34 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
   const memoName = ownTitle || ({ en: `note of ${say.dayWordsOf(memoDay, language)}`, ja: `${say.dayWordsOf(memoDay, language)}のメモ`, zh: `${say.dayWordsOf(memoDay, language)}的笔记` } as const)[language];
   run.readNames.set(view.id, { name: memoName, type: "memo" });
   for (const contact of contacts) run.readNames.set(contact.id, { name: contact.name, type: "contact" });
+  // AG21b (R31): the occasion picked among those offered (a typed reply, or a click on the question): its card, from the
+  // ids the option kept and the memo as it is now — no second extraction. Its people must still be linked to the note.
+  const pickedSet = state.optionSets.find((set) => set.partId === part.localId && set.purpose === "interaction" && set.selectedOptionId);
+  const pickId = task.pick ?? pickedSet?.options.find((option) => option.optionId === pickedSet.selectedOptionId)?.refId;
+  const picked = pickId ? interactionOfOption(pickId) : null;
+  if (task.write && picked && picked.memoId === memo.id && picked.contactIds.every((id) => contacts.some((contact) => contact.id === id))) {
+    const sentences = splitSentences(memo.body);
+    const occasion: InteractionGroup = { channel: picked.channel, contacts: picked.contactIds.map((id) => contacts.find((contact) => contact.id === id)!), direction: picked.direction, occurredOn: picked.occurredOn, sentenceIds: picked.sentenceIds };
+    const made = occasionIntent(part, memo, memoName, contacts, occasion, picked.sentenceIds.map((id) => sentences.find((sentence) => sentence.id === id)?.text ?? "").join(" ").trim(), language);
+    part.reads = [{ ref: view.ref, version: String(memo.version) }];
+    part.cites = [view.ref];
+    part.coverage = [{ complete: true, kind: "memo", pagesRead: 1, seen: 1, total: 1 }];
+    part.gaps = [];
+    part.route = "propose_write";
+    emitTrace({ memo: memo.ref, partId: part.localId, type: "functions.interaction_picked" });
+    if (made.intent) {
+      run.presetIntents.set(part.localId, [made.intent]);
+      part.write = { intents: [], picks: {} };
+      run.leadLines.set(part.localId, [say.memoHead(language, ownTitle, memoDay), ...made.lines].join("\n"));
+      part.status = "unfinished";
+      part.reason = "proposing";
+    } else {
+      part.status = "unfinished";
+      part.reason = "nothing_to_write";
+      run.writeLines.set(part.localId, [say.memoHead(language, ownTitle, memoDay), ...made.lines].join("\n"));
+    }
+    return round;
+  }
   // The people the user asked about ("我和小林的往来"): only these may be written.
   const focus = part.refs.filter((ref) => ref.entity === "contact").map((ref) => (ref.recordId && contacts.some((contact) => contact.id === ref.recordId) ? contacts.find((contact) => contact.id === ref.recordId)! : contactOfClue((clueWords(input.message, ref) ?? "").replace(/^@/u, ""), contacts))).filter((contact): contact is LinkedContact => Boolean(contact)).map((contact) => contact.id);
   const budget = { ...round.budget };
@@ -1486,28 +1566,41 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
         for (const item of notCounted) lines.push(`- ${say.quoted(language, sentenceOf(item.sentenceIds))}${language === "en" ? " — " : "——"}${nameOf(item.contact, item.clue)}${language === "en" ? ": " : "："}${say.WHY_NOT[item.reason ?? "unsure"][language]}`);
       }
     } else {
-      // One memo holds one interaction (附录 E): several real ones are listed for the user to choose; none is merged.
-      if (happened.length > 1) {
-        lines.push(`${say.HEADINGS.interactions[language]}${language === "en" ? ":" : "："}`);
-        for (const item of happened) lines.push(`- ${nameOf(item.contact, item.clue)}，${item.occurredOn ? say.dayWordsOf(item.occurredOn, language) : ""}，${say.howWords(item.channel, item.direction, language)} ${say.sentenceQuote(language, sentenceOf(item.sentenceIds))}`.replace(/，/gu, language === "en" ? ", " : "，"));
-        lines.push({ en: "A note records one interaction; tell me which one to mark on it.", ja: "1つのメモに記録できるやり取りは1件です。どれを記録するか教えてください。", zh: "一篇笔记只能记一次往来，请告诉我要标记哪一次。" }[language]);
-      } else {
-        const item = happened[0];
-        const interaction: NoteInteractionContract = { actualContactIds: [item.contact!.id], channel: item.channel, direction: item.direction, occurredOn: item.occurredOn!, precision: "day" } as NoteInteractionContract;
-        const link = linkInteraction(memo.interaction as NoteInteractionContract | null, interaction);
-        emitTrace({ link: link.kind, memo: memo.ref, partId: part.localId, type: "functions.link_back" });
-        if (link.kind === "recorded") lines.push(say.recordedLine(language, nameOf(item.contact, item.clue), item.occurredOn, say.howWords(item.channel, item.direction, language), memoName));
-        else if (link.kind === "conflict") lines.push(say.conflictLine(language, memo.title, `${link.existing.occurredOn ?? ""} ${say.howWords(link.existing.channel, link.existing.direction, language)}`, `${item.occurredOn ?? ""} ${say.howWords(item.channel, item.direction, language)}`));
-        else {
-          const names = Object.fromEntries(contacts.map((contact) => [contact.id, contact.name]));
-          intents.push({ capability: "memo.update", expectedVersion: memo.version, localId: `${part.localId}-i1`, partId: part.localId, set: { interaction }, shown: { before: (memo.interaction as NoteInteractionContract | null) ?? null, contactIds: [...memo.contactIds], names, sentence: sentenceOf(item.sentenceIds), title: memoName }, targetId: memo.id });
-          lines.push(`${say.HEADINGS.interactions[language]}${language === "en" ? ":" : "："} ${nameOf(item.contact, item.clue)}，${item.occurredOn ? say.dayWordsOf(item.occurredOn, language) : ""}，${say.howWords(item.channel, item.direction, language)} ${say.sentenceQuote(language, sentenceOf(item.sentenceIds))}`.replace(/，/gu, language === "en" ? ", " : "，"));
-        }
-      }
+      // One memo holds one interaction (附录 E), which takes several people. AG21b (R31): the interactions of one occasion
+      // (same sentence, day and channel) are one interaction with all their contacts; several occasions are a registered
+      // question with one option per occasion (a reply naming one, or a click, goes on with it); none is merged.
+      const occasions = groupInteractions(happened);
       const notCounted = others.filter((item) => item.reason !== "not_asked_about" && !repeated(item));
+      const notLinkedLines = await notLinkedLinesOf(records, accountScope, notCounted, language);
+      if (occasions.length > 1) {
+        const labels = occasions.map((occasion) => occasionLabel(occasion, sentenceOf(occasion.sentenceIds), language));
+        lines.push(`${say.HEADINGS.interactions[language]}${language === "en" ? ":" : "："}`);
+        for (const label of labels) lines.push(`- ${label}`);
+        if (notCounted.length) {
+          lines.push(`${say.HEADINGS.notInteractions[language]}${language === "en" ? ":" : "："}`);
+          lines.push(...notLinkedLines);
+        }
+        lines.push({ en: "A note records one interaction; which one should it record?", ja: "1つのメモに記録できるやり取りは1件です。どれを記録しますか？", zh: "一篇笔记只能记一次往来，要记哪一次？" }[language]);
+        const clarificationId = setIdOf(input.requestId, part.localId, "q");
+        const set: OptionSetState = { asks: "object", clarificationId, kind: "question", options: occasions.map((occasion, index) => ({ capabilities: [...part.capabilities], capability: "memo.update", optionId: `o${index + 1}`, refId: interactionOptionId(memo.id, occasion), refType: "interaction" })), partId: part.localId, purpose: "interaction", state: "open", subgoal: `clarification:${input.requestId}:${part.localId}` };
+        optionSets.push(set);
+        run.optionLabels.set(clarificationId, new Map(labels.map((label, index) => [`o${index + 1}`, { label }])));
+        run.questionLines.set(part.localId, lines.join("\n"));
+        part.cites = [view.ref, ...extraCites];
+        part.route = "propose_write";
+        part.status = "awaiting_clarification";
+        part.waitReason = "object_ambiguous";
+        part.reason = null;
+        part.asked += 1;
+        emitTrace({ clarificationId, kind: "question", options: occasions.length, partId: part.localId, question: "which_interaction", subgoal: set.subgoal, type: "clarify.asked" });
+        return { budget, repairs: result.repairs };
+      }
+      const made = occasionIntent(part, memo, memoName, contacts, occasions[0], sentenceOf(occasions[0].sentenceIds), language);
+      lines.push(...made.lines);
+      if (made.intent) intents.push(made.intent);
       if (notCounted.length) {
         lines.push(`${say.HEADINGS.notInteractions[language]}${language === "en" ? ":" : "："}`);
-        for (const item of notCounted) lines.push(`- ${nameOf(item.contact, item.clue)}${language === "en" ? ": " : "："}${say.WHY_NOT[item.reason ?? "unsure"][language]}`);
+        lines.push(...notLinkedLines);
       }
     }
   }
