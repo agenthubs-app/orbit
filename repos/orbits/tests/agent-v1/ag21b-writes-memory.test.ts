@@ -27,7 +27,8 @@ import type { ResolveContext } from "../../features/agent-v1/propose/resolve";
 import type { StoredIntent } from "../../features/agent-v1/propose/schema";
 import { contactWorld, memoryContactAccess } from "./contact-kit";
 import { recordAccessOf } from "./graph-kit";
-import { contact, memo } from "./read-kit";
+import { contact, memo, todo } from "./read-kit";
+import { asksForEverything } from "../../features/agent-v1/graph/nodes/answer";
 
 /**
  * agent-design AG21b (independent suite, final run: R27–R43, writes and memory). This line's own sentences, not the suite's.
@@ -316,4 +317,20 @@ test("R34 '改成优先版画相关的' updates the saved topic preference (befo
   const added = settleRemember({ language: "zh", requestId: "req-t4", snapshot, today: "2026-11-20", words: "记住，推荐展览时也优先摄影相关的" });
   assert.equal(((added as { intent: { capability: string } }).intent).capability, MEMORY_CREATE);
   assert.deepEqual(topicKeyOf("展览 时候陶艺相关"), ["陶艺"]);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// R36: "show me all" is a listing written by code — no answer-model call, whatever the number of records.
+
+test("R36 '把所有没完成的待办都列出来' with 40 open to-dos: code's lead and cards, no call to the answer model", async () => {
+  const world = fnWorld();
+  for (let index = 1; index <= 40; index += 1) world.records.push(todo("actor:a", `task:all${index}`, `整理第${index}批样书`, { plannedDate: `2026-12-${String((index % 28) + 1).padStart(2, "0")}` }));
+  const message = "把所有没完成的待办都列出来";
+  const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", readFilter: { status: "open" }, requiredCapabilities: ["todo.read"], sourceQuote: message }], { world });
+  assert.equal(run.modelCalls.filter((call) => call.node === "answer").length, 0, "the answer model is not asked to write the list");
+  assert.ok(run.events.some((event) => event.type === "answer.all_listed_by_code"));
+  assert.match(run.result.text, /待办/u);
+  assert.ok(run.result.sourceRefs.filter((ref) => ref.startsWith("todo:task:all")).length >= 10, `${run.result.sourceRefs.length}`);
+  assert.ok(asksForEverything("Show me all my open to-dos") && asksForEverything("未完了のタスクをすべて見せて"));
+  assert.ok(!asksForEverything("我有哪些还没完成的待办？"), "a plain list question is unchanged (the answer step picks the records)");
 });

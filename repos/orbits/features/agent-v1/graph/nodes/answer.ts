@@ -438,6 +438,39 @@ function dayWindow(asOf: string, timeZone: string): string[] {
   return Array.from({ length: 9 }, (_, index) => new Date(today + (index - 1) * 86_400_000).toISOString().slice(0, 10));
 }
 
+/** AG21b (R36): words that ask for every record of a kind ("所有没完成的待办", "全部列出来", "すべて", "all my open to-dos"). */
+const SHOW_ALL = /(全部|所有|全都|统统|一个不落|都列出来|都列一下|都给我看|すべて|全て|全部の|一覧|\ball (?:of )?(?:my|the)\b|\bevery\b|\beverything\b|\blist all\b|\bshow (?:me )?all\b)/iu;
+
+export function asksForEverything(quote: string): boolean {
+  return SHOW_ALL.test(quote);
+}
+
+/** AG21b (R36): a list read the user asked to see whole, every record read has its card, nothing asked beyond the list. */
+function listsAllByCode(scope: NodeScope, part: GraphPart): boolean {
+  const quote = scope.input.message.slice(part.quote[0], part.quote[1]);
+  const materials = scope.run.materials.get(part.localId) ?? [];
+  if (!LIST_READS.has(part.plan.deliverable) || part.route !== "read" || !asksForEverything(quote) || asksBeyondListing(quote) || part.dependsOn.length) return false;
+  return materials.length > 0 && materials.every((material) => material.kind !== "web" && scope.run.recordCards.has(material.ref));
+}
+
+/** AG21b (R36): the listing written by code — every record read as its card, in list order; the lead counts them. */
+function writeAllListed(scope: NodeScope, state: AgentGraphState, part: GraphPart): void {
+  const { input, run } = scope;
+  const quote = input.message.slice(part.quote[0], part.quote[1]);
+  const readOrder = (part.reads ?? []).map((read) => read.ref);
+  const refs = [...new Set((run.materials.get(part.localId) ?? []).map((material) => material.ref))];
+  const ordered = inListOrder(refs.map((ref) => ({ index: readOrder.indexOf(ref) < 0 ? Number.MAX_SAFE_INTEGER : readOrder.indexOf(ref), key: run.recordSort.get(ref) ?? "", kind: ref.slice(0, ref.indexOf(":")), ref }))).map((item) => item.ref);
+  const cards = ordered.map((ref) => run.recordCards.get(ref)).filter((card): card is AgentAnswerRecordContract => Boolean(card));
+  const coverage = part.coverage ?? [];
+  const total = coverage.length && coverage.every((item) => item.total !== null) ? coverage.reduce((sum, item) => sum + (item.total ?? 0), 0) : null;
+  const status = part.plan.readFilter?.status === "open" || part.plan.readFilter?.status === "completed" ? part.plan.readFilter.status : statusSaidIn(quote);
+  const written = listAnswer({ cards, from: part.plan.readFilter?.from, language: state.language, quote, status, to: part.plan.readFilter?.to, total });
+  run.answers.set(part.localId, written.text);
+  run.answerBlocks.set(part.localId, written.blocks);
+  part.cites = ordered;
+  emitTrace({ cards: cards.length, partId: part.localId, total, type: "answer.all_listed_by_code" });
+}
+
 export function answerNode(scope: NodeScope): GraphNode {
   const { deps, input, run } = scope;
   return async (state: AgentGraphState) => {
@@ -450,7 +483,13 @@ export function answerNode(scope: NodeScope): GraphNode {
     // AG09: a part that only gave the web address another part reads (reason web_context) is not answered on its own.
     // AG20b (R4): a part code already answered (a write tag the review did not confirm) is not written again by a model.
     const discussion = resume ? [] : parts.filter((part) => part.route === "answer" && part.status === "answered" && part.reason !== "web_context" && !run.codeAnswers.has(part.localId));
-    if (reading.length) return groundedAnswer(scope, state, parts, [...discussion, ...reading]);
+    // AG21b (R36): "show me all …" is a listing of every record read: code writes it (the cards in order, the lead with the
+    // count), no model call — a call given forty records to write out runs past its time limit, every time.
+    const listedByCode = reading.filter((part) => listsAllByCode(scope, part));
+    for (const part of listedByCode) writeAllListed(scope, state, part);
+    const toWrite = reading.filter((part) => !listedByCode.includes(part));
+    if (listedByCode.length && !toWrite.length && !discussion.length) return { parts };
+    if (toWrite.length) return groundedAnswer(scope, state, parts, [...discussion, ...toWrite]);
     const due = discussion;
     if (!due.length) return {};
     const dropCardTalk = !run.cardPrepared;
