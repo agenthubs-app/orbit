@@ -747,7 +747,19 @@ export function resolveNode(scope: NodeScope): GraphNode {
         read.wantsRecords = true;
         for (const id of ids) {
           try {
-            const view = (await records.reader.read(kind, accountScope, { id })).items[0];
+            let view = (await records.reader.read(kind, accountScope, { id })).items[0];
+            // Integration 2026-11-20 (AE-EVT-005, AE-SCL-025): a repeating schedule item the part points at by id (since AG20a
+            // a card's schedule item is a mentioned record the next turn binds to) is given as its occurrence in the period
+            // said, with what was changed for that one time — as the search below does (the hotfix's occurrence rule).
+            if (view && kind === "schedule" && (from || to) && typeof view.fields.recurrence === "string") {
+              const at = occurrenceIn(String(view.fields.startsAt), view.fields.recurrence, from, to);
+              if (at && at !== view.fields.startsAt) read.occurrences.set(view.ref, at);
+              if (at) {
+                view = (await occurrenceViews(records.source, accountScope, [view], read.occurrences, zone))[0] ?? view;
+                if (typeof view.fields.recurrence === "string") read.occurrences.delete(view.ref);
+                emitTrace({ at, partId: part.localId, ref: view.ref, type: "resolve.bound_occurrence" });
+              }
+            }
             if (view) push(view);
           } catch (error) {
             const gap = gapOfReadError(error, { byId: true });
