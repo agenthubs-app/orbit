@@ -1748,6 +1748,11 @@
           "optional": false,
           "kind": "text",
           "type": "string | null"
+        },
+        "waitingProposals": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
         }
       }
     },
@@ -1763,6 +1768,11 @@
           "optional": false,
           "kind": "text",
           "type": "readonly AgentConnectionScopeOptionContract[]"
+        },
+        "connectAddress": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null | undefined"
         }
       }
     },
@@ -1803,6 +1813,32 @@
           "optional": false,
           "kind": "text",
           "type": "readonly AgentConnectionScopeOptionContract[]"
+        },
+        "account": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "key": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "name": {
+              "optional": false,
+              "kind": "text",
+              "type": "string | null"
+            },
+            "email": {
+              "optional": false,
+              "kind": "text",
+              "type": "string | null"
+            }
+          }
+        },
+        "current": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ scopes: readonly string[]; connectedAt: string; } | null | undefined"
         }
       }
     },
@@ -1823,6 +1859,11 @@
           "optional": false,
           "kind": "text",
           "type": "readonly string[]"
+        },
+        "accountKey": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
         }
       }
     },

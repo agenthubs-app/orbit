@@ -158,7 +158,9 @@ test("the request must name this MCP endpoint as its resource, a registered redi
   };
   assert.equal(await errorOf(kit.authorizeParams({ challenge, resource: null })), "invalid_target");
   assert.equal(await errorOf(kit.authorizeParams({ challenge, resource: "https://other.example.test/mcp" })), "invalid_target");
-  assert.equal(await errorOf(kit.authorizeParams({ challenge, resource: `${ORIGIN}/mcp/` })), "consent");
+  assert.equal(await errorOf(kit.authorizeParams({ challenge, resource: `${ORIGIN}/connect/` })), "consent");
+  // The technical address of the server-only run is no resource here any more (the short address is the endpoint).
+  assert.equal(await errorOf(kit.authorizeParams({ challenge, resource: `${ORIGIN}/mcp` })), "invalid_target");
   assert.equal(await errorOf(kit.authorizeParams({ challenge, scope: "todos:read memory:read" })), "invalid_scope");
   assert.equal(await errorOf(kit.authorizeParams({ challenge, scope: "todos:read offline_access" })), "consent");
   // An address the client never registered: no redirect at all (it could be an attacker's).

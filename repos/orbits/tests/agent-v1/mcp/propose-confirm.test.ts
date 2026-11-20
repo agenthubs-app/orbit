@@ -7,7 +7,7 @@ import { externalProposalInboxEntry } from "../../../features/agent-v1/mcp/inbox
 import { TOOL_DEFINITIONS } from "../../../features/agent-v1/mcp/tools/definitions";
 import { TOOL_NAMES } from "../../../features/agent-v1/mcp/scopes";
 import { proposalView } from "../../../features/agent-v1/mcp/views";
-import { ADDRESSES, ORIGIN, mcpKit, type McpKit } from "./kit";
+import { ADDRESSES, CLAUDE_CODE, ORIGIN, mcpKit, type McpKit } from "./kit";
 
 /**
  * agent-design AG17-2, AG17-3 (设计稿 §5.4「确认链接」, §5.1, §5.2; PLANNER 易错边界 6, 7, 9): a proposal returns an id,
@@ -80,7 +80,7 @@ test("the same key with the same operations is the same proposal and one card; w
   // Another key is another proposal; another connection's same key is not this one's.
   const second = await propose("ext-002");
   assert.notEqual(second.data!.proposal_id, first.data!.proposal_id);
-  const elsewhere = await kit.connect({ scopes: SCOPES });
+  const elsewhere = await kit.connect({ clientId: CLAUDE_CODE, scopes: SCOPES });
   const theirs = await kit.call(elsewhere.accessToken, "propose_change", { idempotencyKey: "ext-001", operations: [{ op: "todo.create", set: { title: "另一条连接的提议" } }] });
   assert.equal(theirs.isError, false);
   assert.notEqual(theirs.data!.proposal_id, first.data!.proposal_id);
@@ -242,15 +242,17 @@ test("a new proposal is announced once (the inbox seam); a repeat of the same ke
 
 test("the inbox entry of an external proposal: source «外部提议», names the client, points at the card, ends with the card", async () => {
   const { kit, propose, tokens } = await setup();
-  await propose("ext-001");
+  const proposalId = String((await propose("ext-001")).data!.proposal_id);
   const [action] = await cardsOf(kit);
   const connection = (await kit.connections.get(tokens.connectionId))!;
-  const entry = externalProposalInboxEntry({ action, connection, now: "2026-11-15T01:00:05.000Z" });
+  const proposal = { id: proposalId };
+  const entry = externalProposalInboxEntry({ action, connection, now: "2026-11-15T01:00:05.000Z", proposal });
   assert.equal(entry.actorId, kit.A);
-  assert.equal(entry.title, "Claude 提了一项修改，等你确认");
-  assert.equal(entry.reason, action.preview);
+  // Approved visual draft, board 9 (the words changed from the server-only run).
+  assert.equal(entry.title, "Claude 想改 1 项，等你确认");
+  assert.equal(entry.reason, action.title);
   assert.equal(entry.expiresAt, action.expiresAt);
-  assert.deepEqual(entry.target, { href: null, id: action.actionId, kind: "card", status: "available" });
+  assert.deepEqual(entry.target, { href: `/app/agent/proposals/${proposalId}`, id: action.actionId, kind: "card", status: "available" });
   assert.equal(entry.sources.length, 1);
   assert.equal(entry.sources[0].sourceKind, "external_proposal");
   assert.equal(entry.sources[0].sourceId, action.actionId);
@@ -258,8 +260,8 @@ test("the inbox entry of an external proposal: source «外部提议», names th
   assert.deepEqual(entry.object, { id: connection.id, name: "Claude" });
   // Plain words, in the connection's language; no token, no scope name.
   assert.doesNotMatch(JSON.stringify(entry), /todos:propose|Bearer|授权|范围|来源|证据/u);
-  assert.equal(externalProposalInboxEntry({ action, connection: { ...connection, locale: "ja" }, now: "2026-11-15T01:00:05.000Z" }).title, "Claude から変更の提案があります。確認をお待ちしています");
-  assert.equal(externalProposalInboxEntry({ action, connection: { ...connection, locale: "en" }, now: "2026-11-15T01:00:05.000Z" }).title, "Claude proposed a change for you to confirm");
+  assert.equal(externalProposalInboxEntry({ action, connection: { ...connection, locale: "ja" }, now: "2026-11-15T01:00:05.000Z", proposal }).title, "Claude が 1 件の変更を提案しています。確認をお待ちしています");
+  assert.equal(externalProposalInboxEntry({ action, connection: { ...connection, locale: "en" }, now: "2026-11-15T01:00:05.000Z", proposal }).title, "Claude wants to change 1 item — waiting for you");
 });
 
 test("a connection cannot pile up proposals: past the daily number a new one is refused, a repeat of an old one is not, and a day later it may propose again", async () => {
@@ -274,7 +276,7 @@ test("a connection cannot pile up proposals: past the daily number a new one is 
   assert.equal((await cardsOf(kit)).length, 3, "the refused one made no card");
   assert.equal((await create("a")).isError, false, "asking again about an existing proposal still works");
   // Another connection of the same account has its own count.
-  const other = await kit.connect({ scopes: SCOPES });
+  const other = await kit.connect({ clientId: CLAUDE_CODE, scopes: SCOPES });
   assert.equal((await kit.call(other.accessToken, "propose_change", { idempotencyKey: "x", operations: [{ op: "todo.create", set: { title: "另一条连接" } }] })).isError, false);
   kit.cards.advance(DAY + 60_000);
   const refreshed = await kit.auth.token(new URLSearchParams({ grant_type: "refresh_token", refresh_token: tokens.refreshToken }), ADDRESSES);

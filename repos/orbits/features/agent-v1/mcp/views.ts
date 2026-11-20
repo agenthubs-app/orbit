@@ -6,10 +6,11 @@ import type { AgentConnectionConsentContract, AgentConnectionContract, AgentConn
 import { agentCardPreview } from "../../agent/runtime/card-view";
 import { canceledMessage, cardMessages, expiredMessage } from "../../agent/runtime/decision";
 import type { AgentRuntimeService } from "../../agent/runtime/service";
+import { sha256 } from "./auth/config";
 import type { AuthorizationRequest } from "./auth/server";
 import type { ProposalService } from "./confirm-link";
 import type { AgentConnection } from "./connections";
-import { scopeCatalogue } from "./scopes";
+import { MCP_SCOPES, scopeCatalogue } from "./scopes";
 
 const hostOf = (url: string): string => {
   try {
@@ -23,16 +24,47 @@ const LOOPBACK = new Set(["127.0.0.1", "[::1]", "localhost"]);
 
 export const scopeOptions = (): AgentConnectionScopeOptionContract[] => scopeCatalogue();
 
-export function connectionView(connection: AgentConnection & { lastUsedAt: string | null }): AgentConnectionContract {
-  return { clientHost: hostOf(connection.clientId), clientName: connection.clientName, createdAt: connection.createdAt, id: connection.id, lastUsedAt: connection.lastUsedAt, scopes: [...connection.scopes] };
+/** A connection in settings; `waitingProposals` is how many of its proposals still wait for the user (approved draft D10). */
+export function connectionView(connection: AgentConnection & { lastUsedAt: string | null; waitingProposals?: number }): AgentConnectionContract {
+  return { clientHost: hostOf(connection.clientId), clientName: connection.clientName, createdAt: connection.createdAt, id: connection.id, lastUsedAt: connection.lastUsedAt, scopes: [...connection.scopes], waitingProposals: connection.waitingProposals ?? 0 };
 }
 
-/** The consent page names the host the client's document lives on (the document's own name is self-asserted) and where the browser goes back to. */
-export function consentView(request: AuthorizationRequest): AgentConnectionConsentContract {
+/**
+ * What the consent page knows the signed-in account by: a key derived from the account (never the id itself), its
+ * name and e-mail. The page sends the key back with the answer; another account in between is noticed (draft board 2).
+ */
+export const accountKeyOf = (accountId: string): string => `acct_${sha256(`orbit-consent-account\u0000${accountId}`).slice(0, 22)}`;
+
+export interface ConsentAccount {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+}
+
+/**
+ * The consent page names the host the client's document lives on (the document's own name is self-asserted) and where
+ * the browser goes back to; who is signed in; and, when this client is already connected, what it may do now.
+ *
+ * Pre-set (approved draft D2): what the connection already has stays as it is; reading the client asks for and does not
+ * have yet is pre-set; «可以提修改» never is — the client's wish is only marked, the tick is the user's own.
+ */
+export function consentView(request: AuthorizationRequest, context: { account?: ConsentAccount; current?: AgentConnection | null } = {}): AgentConnectionConsentContract {
   const redirectHost = hostOf(request.redirectUri);
-  // Reading may come pre-selected when the client asked for it; «可以提修改» never is — that tick is the user's own.
-  const preselectedScopes = request.scopes.filter((scope) => !scope.endsWith(":propose"));
-  return { clientHost: hostOf(request.clientId), clientName: request.clientName, options: scopeOptions(), preselectedScopes, redirectHost, redirectIsLoopback: LOOPBACK.has(redirectHost), requestedScopes: [...request.scopes] };
+  const current = context.current ?? null;
+  const preselected = new Set<string>(current ? current.scopes : []);
+  for (const scope of request.scopes) if (!scope.endsWith(":propose")) preselected.add(scope);
+  const preselectedScopes = MCP_SCOPES.filter((scope) => preselected.has(scope));
+  return {
+    account: context.account ? { email: context.account.email ?? null, key: accountKeyOf(context.account.id), name: context.account.name ?? null } : { email: null, key: "", name: null },
+    clientHost: hostOf(request.clientId),
+    clientName: request.clientName,
+    current: current ? { connectedAt: current.createdAt, scopes: [...current.scopes] } : null,
+    options: scopeOptions(),
+    preselectedScopes,
+    redirectHost,
+    redirectIsLoopback: LOOPBACK.has(redirectHost),
+    requestedScopes: [...request.scopes],
+  };
 }
 
 /**

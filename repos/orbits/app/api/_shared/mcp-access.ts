@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { CONSENT_PAGE_PATH, PROPOSAL_PAGE_PATH } from "../../../features/agent-v1/mcp/auth/config";
 import { configuredMcp, type McpServices } from "../../../features/agent-v1/mcp/configured";
 import { resolveAuthenticatedApiActor, resolveAuthenticatedApiActorFromSession, type AuthenticatedApiActor } from "./authenticated-actor";
 
@@ -22,6 +23,35 @@ export function mcpUnavailableResponse(): Response {
 export async function signedInActor(): Promise<(AuthenticatedApiActor & { userId: string }) | null> {
   const actor = await resolveAuthenticatedApiActor();
   return actor?.userId ? (actor as AuthenticatedApiActor & { userId: string }) : null;
+}
+
+/**
+ * 视觉稿 D8: the one line the sign-in dialog adds when it stands in front of the consent page («Claude 想连接你的
+ * Orbit») or a confirm link («有一条修改等你确认»). The client's name is taken only from a request ticket this server
+ * signed (a link someone made up gets no name); a confirm link says nothing about the proposal before sign-in.
+ */
+export type SignInNote = { kind: "connect"; clientName: string } | { kind: "proposal" };
+
+export async function signInNoteFor(next: string | null | undefined, origin: string): Promise<SignInNote | null> {
+  if (!next || !next.startsWith("/app/")) return null;
+  const url = new URL(next, origin);
+  if (url.pathname.startsWith(`${PROPOSAL_PAGE_PATH}/`)) return { kind: "proposal" };
+  if (url.pathname !== CONSENT_PAGE_PATH) return null;
+  const services = mcpServices();
+  const addresses = services?.addresses(new Request(origin));
+  if (!services || !addresses) return null;
+  const pending = await services.auth.readTicket(url.searchParams.get("request") ?? "", addresses);
+  return pending ? { clientName: pending.clientName, kind: "connect" } : null;
+}
+
+/** The origin a server component's request came to (the eval and local development address themselves by it). */
+export async function requestOrigin(): Promise<string | null> {
+  const { headers } = await import("next/headers");
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  if (!host) return null;
+  const protocol = requestHeaders.get("x-forwarded-proto") ?? (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/u.test(host) ? "http" : "https");
+  return `${protocol}://${host}`;
 }
 
 export function signInRequiredResponse(): Response {

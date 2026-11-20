@@ -43,10 +43,10 @@ export interface ConfiguredMcpOptions {
  * expired at its time needs nothing here: the account's ledger sets it for every card it freezes.
  */
 export const PROPOSAL_SEAMS: ProposalSeams = {
-  async notifyProposed({ action, connection }) {
+  async notifyProposed({ action, connection, proposal }) {
     const inbox = createConfiguredInboxRuntime();
     if (!inbox) throw new Error("The inbox is not configured.");
-    const written = await inbox.service.upsert(externalProposalInboxEntry({ action, connection, now: new Date().toISOString() }));
+    const written = await inbox.service.upsert(externalProposalInboxEntry({ action, connection, now: new Date().toISOString(), proposal }));
     emitTrace({ cardId: action.actionId, connectionId: connection.id, inboxId: written.id, outcome: "written", sourceKind: "external_proposal", type: "notify.inbox" });
   },
 };

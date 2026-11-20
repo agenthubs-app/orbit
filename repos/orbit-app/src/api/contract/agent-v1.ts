@@ -510,14 +510,18 @@ export interface AgentConnectionContract {
   scopes: readonly string[];
   createdAt: string;
   lastUsedAt: string | null;
+  /** 它提的、还在等用户确认的修改有几项（视觉稿 D10；断开时会一起作废的也是这几项）。 */
+  waitingProposals?: number | undefined;
 }
 
 export interface AgentConnectionListContract {
   connections: readonly AgentConnectionContract[];
   options: readonly AgentConnectionScopeOptionContract[];
+  /** 用户抄进 Claude、Codex 的地址（就是 MCP 端点本身，令牌绑定在它上面）；服务没配好时为 null。 */
+  connectAddress?: string | null | undefined;
 }
 
-/** 同意页要显示的内容：谁在请求、请求了什么、同意后会跳回哪里。 */
+/** 同意页要显示的内容：谁在请求、请求了什么、同意后会跳回哪里、现在登录的是谁、这个客户端现在已经能做什么。 */
 export interface AgentConnectionConsentContract {
   clientName: string;
   clientHost: string;
@@ -525,9 +529,13 @@ export interface AgentConnectionConsentContract {
   redirectHost: string;
   redirectIsLoopback: boolean;
   requestedScopes: readonly string[];
-  /** 页面一开始勾上的：客户端请求里的只读项。「可以提修改」从不预先勾上，要用户自己勾。 */
+  /** 页面一开始选上的：已有的原样保留，加上客户端这次请求的只读项。「可以提修改」从不预先选上，要用户自己点。 */
   preselectedScopes: readonly string[];
   options: readonly AgentConnectionScopeOptionContract[];
+  /** 现在登录的账号。key 由账号派生（不是账号编号），提交时原样带回，用来发现中途换了账号。 */
+  account?: { key: string; name: string | null; email: string | null } | undefined;
+  /** 这个客户端已经连着时：它现在能做什么、从哪天起连着。第一次连接时为 null。 */
+  current?: { scopes: readonly string[]; connectedAt: string } | null | undefined;
 }
 
 export interface AgentConnectionConsentInputContract {
@@ -535,6 +543,8 @@ export interface AgentConnectionConsentInputContract {
   request: string;
   decision: "allow" | "deny";
   scopes: readonly string[];
+  /** 页面打开时的账号 key；和现在登录的不一致时不执行，回 409 并带上新的同意页内容。 */
+  accountKey?: string | undefined;
 }
 
 export interface AgentConnectionConsentResultContract {

@@ -16,13 +16,15 @@ const names = (response: { body: Record<string, any> | null }) => (response.body
 
 test("the tool list is filtered by what was granted", async () => {
   const kit = mcpKit();
+  // One connection per client per account (approved draft, board 3): each authorisation below changes the same
+  // connection, so each list is read right after its own authorisation.
   const all = await kit.connect({ scopes: ["memos:read", "todos:read", "todos:propose", "proposals:read"] });
-  const readOnly = await kit.connect({ scopes: ["todos:read"] });
-  const proposeOnly = await kit.connect({ scopes: ["todos:propose"] });
-  const receiptsOnly = await kit.connect({ scopes: ["memos:read", "proposals:read"] });
   assert.deepEqual(names(await kit.rpc(all.accessToken, "tools/list")), ["search_records", "get_record", "propose_change", "get_proposal"]);
+  const readOnly = await kit.connect({ scopes: ["todos:read"] });
   assert.deepEqual(names(await kit.rpc(readOnly.accessToken, "tools/list")), ["search_records", "get_record"]);
+  const proposeOnly = await kit.connect({ scopes: ["todos:propose"] });
   assert.deepEqual(names(await kit.rpc(proposeOnly.accessToken, "tools/list")), ["propose_change"]);
+  const receiptsOnly = await kit.connect({ scopes: ["memos:read", "proposals:read"] });
   assert.deepEqual(names(await kit.rpc(receiptsOnly.accessToken, "tools/list")), ["search_records", "get_record", "get_proposal"]);
   assert.deepEqual(toolsFor([]), []);
   assert.deepEqual(toolsFor(["proposals:read"]), ["get_proposal"]);

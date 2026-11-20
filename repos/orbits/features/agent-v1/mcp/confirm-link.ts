@@ -70,6 +70,8 @@ export interface ProposalService {
   forAccount(input: { proposalId: string; accountId: string }): Promise<StoredProposal | null>;
   /** Voids every proposal of the connection that nobody confirmed; what was already carried out stays. */
   voidOpen(connection: AgentConnection): Promise<{ voided: number }>;
+  /** How many of the connection's proposals still wait for the user — the ones disconnecting would void (draft D10). */
+  waitingCount(connection: AgentConnection): Promise<number>;
   confirmUrl(addresses: McpAddresses, proposalId: string): string;
 }
 
@@ -185,6 +187,21 @@ export function createProposalService(deps: {
     async forAccount(input) {
       const proposal = await read(input.proposalId);
       return proposal && proposal.accountId === input.accountId ? proposal : null;
+    },
+
+    async waitingCount(connection) {
+      // A proposal lives 24 hours: only the last day's rows can still wait (at most the daily number of them).
+      const since = Date.parse(deps.now()) - DAY_MS;
+      const proposals = (await deps.records.list<StoredProposal>(PROPOSAL_COLLECTION, connection.accountId, { limit: PROPOSAL_LIST_LIMIT, sourceId: connection.id })).filter((proposal) => proposal.connectionId === connection.id && Date.parse(proposal.createdAt) > since);
+      if (!proposals.length) return 0;
+      const runtime = deps.runtimeFor(connection.accountId);
+      const now = deps.now();
+      let waiting = 0;
+      for (const proposal of proposals) {
+        const action = await runtime.getAction(proposal.actionId);
+        if (action && OPEN.includes(action.status) && effectiveCardStatus(action, now) !== "expired") waiting += 1;
+      }
+      return waiting;
     },
 
     async voidOpen(connection) {
