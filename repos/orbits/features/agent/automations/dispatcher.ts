@@ -194,7 +194,9 @@ async function runRuleItem(deps: AutomationDispatchDeps, item: DueItem, leaseId:
         push: { attempts: 0, state: pending && notify.push && result.outcome === "computed" ? "pending" : "not_requested" },
       },
       items: result.items,
-      locale: automation.rule?.locale ?? "zh",
+      // The language the result was written in (a saved reply-language rule can differ from the task's): the run keeps it,
+      // and the reminder that announces the result speaks it (coordinator's decision 6, 2026-11-20).
+      locale: result.language ?? automation.rule?.locale ?? "zh",
       notify,
       outcome: result.outcome === "computed" ? "undelivered" : result.outcome,
       ownerId: item.ownerId,

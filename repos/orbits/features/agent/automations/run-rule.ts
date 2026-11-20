@@ -72,6 +72,9 @@ export interface RulePeriodResult {
   detail?: AgentAutomationRunRecord["detail"];
   /** Why nothing was ranked, as the trace says it: no candidate in scope, or every one was told before. */
   ranked?: "no_candidates" | "all_told_before";
+  /** The language the text was written in (a saved standing reply-language rule, else the task's own); a result with no
+   *  text has none. The run record keeps it, and the reminder that announces the result is written in it. */
+  language?: Language;
 }
 
 const pad = (value: number) => String(value).padStart(2, "0");
@@ -188,7 +191,7 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
         zh: `这条任务用来挑选的笔记「${name}」读不到了，所以这一期没有挑。请给任务换一篇笔记，或者先暂停它。`,
       } as const)[language];
       emitTrace({ automationId: automation.automationId, reference: reference.id, scheduledAt, type: "rule.reference_unreadable" });
-      return { attention: { message, reason: "reference_unreadable", reference: { id: reference.id, type: reference.type, ...(title ? { title } : {}) } }, items: [], outcome: "needs_attention", text: `${head}\n${message}` };
+      return { attention: { message, reason: "reference_unreadable", reference: { id: reference.id, type: reference.type, ...(title ? { title } : {}) } }, items: [], language, outcome: "needs_attention", text: `${head}\n${message}` };
     }
     topic = body;
     basisNote = { day: written, id: reference.id, said: firstSentenceOf(body), title: title || reference.id, view: noteView };
@@ -364,7 +367,7 @@ export async function runRulePeriod(deps: RuleRunDeps, input: { automation: Agen
     }
   }
   const sourceCaption = ({ en: "Picked by this note", ja: "このメモをもとに選びました", zh: "按这篇笔记挑的" } as const)[language];
-  return { coverage, detail: { basis, ...(basisNote ? { basisNote: { day: basisNote.day ?? "", id: basisNote.id, title: basisNote.title } } : {}), ...(source ? { source: { caption: sourceCaption, card: source } } : {}), notes: plainNotes({ coverage, language, memories: saved.used.map((item) => item.content), toldBefore, topicChecked: topic ? result.matched : null, unit: unit[language] }) }, items, outcome: "computed", text: lines.join("\n") };
+  return { coverage, detail: { basis, ...(basisNote ? { basisNote: { day: basisNote.day ?? "", id: basisNote.id, title: basisNote.title } } : {}), ...(source ? { source: { caption: sourceCaption, card: source } } : {}), notes: plainNotes({ coverage, language, memories: saved.used.map((item) => item.content), toldBefore, topicChecked: topic ? result.matched : null, unit: unit[language] }) }, items, language, outcome: "computed", text: lines.join("\n") };
 }
 
 /** The note's first sentence, as the user wrote it (no ellipsis unless it runs past 120 characters). */
@@ -427,6 +430,7 @@ async function replanPeriod(deps: RuleRunDeps, input: { automation: AgentAutomat
     cardExpiresAt: card.expiresAt,
     cardId: card.actionId,
     items: overdue.map((todo) => ({ id: todo.id, kind: "todo" as const, line: todo.title, ref: todo.ref, title: todo.title })),
+    language,
     outcome: "computed",
     text,
   };

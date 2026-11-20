@@ -9,6 +9,14 @@ import { agentScheduledTaskRunSchema } from "../../shared/api-schema/agent-v1";
 import { ruleWriteExecutors } from "../../features/agent-v1/domains/rule/apply";
 import { prepareRuleOperation, RULE_UPDATE } from "../../features/agent-v1/domains/rule/ops";
 import { createDispatchKit, createRule, FRIDAY_9, picked, serviceFor, type DispatchKit } from "../capabilities/agent-automation-kit";
+import type { AgentAutomation } from "../../features/agent/automations/contract";
+import { configuredRuleRecall } from "../../features/agent/automations/recall-seam";
+import { runRulePeriod } from "../../features/agent/automations/run-rule";
+import type { AgentMemoryRecordPayload } from "../../features/agent/memory/contract";
+import { createStorageAgentMemoryService } from "../../features/agent/memory/service";
+import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+import { ACTOR, fnWorld } from "../agent-v1/functions-kit";
+import { recordAccessOf } from "../agent-v1/graph-kit";
 
 /**
  * agent-design AG16-1/2/3 (设计稿 §5.3; PLANNER 易错边界 1–5): a reminder goes out only for a task whose own switch is on;
@@ -487,4 +495,37 @@ test("AG16-3: what the two task pages read — the result's completion time and 
   assert.deepEqual(view.push.targets, [{ deviceId: "PD1", platform: "ios", state: "delivered" }]);
   assert.equal(JSON.stringify(view.push).includes("ticket-"), false, "the push service's ticket is not sent to the clients");
   assert.equal(view.line, "已放进收件箱（2条）", "the first line is the result's; it does not change because of the reminder");
+});
+
+/* ── Integration (AG14 × AG16, coordinator's decision 6, 2026-11-20) ── */
+
+/** The real period computation over the FN world, with the owner's saved memory behind the recall seam. */
+async function realRuns(saved: { content: string; memoryId: string }[]) {
+  const { kit, push } = setup();
+  const store = createMemoryLiveRecordStore<AgentMemoryRecordPayload>();
+  const memoryOf = (accountId: string, workspaceId: string) => createStorageAgentMemoryService({ actorId: accountId, now: kit.now, store, workspaceId });
+  for (const entry of saved) await memoryOf(ACTOR, kit.storage.workspaceId).create({ appliesTo: ["all"], category: "constraint", ...entry });
+  const recall = configuredRuleRecall({ serviceFor: memoryOf });
+  kit.result.value = (input) => runRulePeriod({ now: kit.now, recall, records: recordAccessOf(fnWorld()), workspaceId: kit.storage.workspaceId }, { ...(input as typeof input & { automation: AgentAutomation }), previousCardId: null });
+  push.devices.set(ACTOR, [phone()]);
+  const rule = await createRule(kit.storage, ACTOR, kit.now, { rule: pushOn });
+  await kit.dispatch(TICK);
+  const [run] = await kit.runs(ACTOR, rule.automationId);
+  return { push, run };
+}
+
+test("a Chinese task with a saved 「回答用日语」 rule: the result is Japanese, the run records Japanese, and so is the reminder", async () => {
+  const { push, run } = await realRuns([{ content: "回答用日语", memoryId: "memory:ja" }]);
+  assert.match(run.text ?? "", /^定期タスク「每周五挑三场周末活动」/u, run.text);
+  assert.equal(run.locale, "ja");
+  assert.equal(push.sent.length, 1);
+  assert.equal(push.sent[0].body, RULE_PUSH_BODY.ja);
+});
+
+test("with no saved reply-language rule the result, the run and the reminder all follow the task's own language", async () => {
+  const { push, run } = await realRuns([]);
+  assert.match(run.text ?? "", /^定时任务「每周五挑三场周末活动」/u, run.text);
+  assert.equal(run.locale, "zh");
+  assert.equal(push.sent.length, 1);
+  assert.equal(push.sent[0].body, RULE_PUSH_BODY.zh);
 });
