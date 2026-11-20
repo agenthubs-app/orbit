@@ -22,3 +22,26 @@ export function useDetailTiming(data: Timing | null) {
   }, [data?.endsAt, data?.registrationClosesAt, now]);
   return detailTiming(data, now);
 }
+
+/**
+ * 2026-11-21 開催中（开始了、还没结束）：封面 chip「開催中」、议程高亮当前项、参加卡换「会場モード」。
+ * 没有结束时间就不算「開催中」（不猜结束）。开始前只在开始那一刻重算；进行中每分钟本地重算一次（只为议程高亮，不请求接口）。
+ */
+export function liveAt(data: { startsAt?: string | null; endsAt?: string | null } | null, now: number): boolean {
+  const start = Date.parse(data?.startsAt ?? "");
+  const end = Date.parse(data?.endsAt ?? "");
+  return Number.isFinite(start) && Number.isFinite(end) && now >= start && now < end;
+}
+
+export function useLiveClock(data: { startsAt?: string | null; endsAt?: string | null } | null) {
+  const [now, setNow] = useState(() => Date.now());
+  const live = liveAt(data, now);
+  const start = Date.parse(data?.startsAt ?? "");
+  useEffect(() => {
+    const refresh = () => setNow(Date.now());
+    const timer = live ? window.setTimeout(refresh, 60_000) : Number.isFinite(start) && start > now ? window.setTimeout(refresh, Math.min(start - now + 1, 2_147_483_647)) : undefined;
+    window.addEventListener("focus", refresh);
+    return () => { if (timer !== undefined) window.clearTimeout(timer); window.removeEventListener("focus", refresh); };
+  }, [live, start, now]);
+  return { live, now };
+}

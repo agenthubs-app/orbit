@@ -26,9 +26,9 @@ test('desktop (no rail): no plan → the 和你有关 card holds a 设定目标 
   const html = renderedModule.render!('desktop', base);
   assert.match(html, /data-detail-relevance-guide/); assert.match(html, /和你有关/); assert.match(html, /设定目标后显示/); assert.match(html, />设定目标</); assert.match(html, /\/app\/tasks\?tab=plan/);
   assert.doesNotMatch(html, /与目标的契合|对你的评估|\/ 100|推荐参加/);
-  // 2026-11-15: the agenda card is always there; without an agenda it is one grey line.
-  assert.match(html, /data-agenda-empty/); assert.match(html, /主办方还没有公布议程/);
-  assert.doesNotMatch(html, /Organizer #/); assert.match(html, /主办方（未入驻 Orbit）/);
+  // 2026-11-21 单页：没有议程 → 整块不出（不再是灰字空卡）；主办方没有公开名字 → 主催区块整块不出（与 App 一致）。
+  assert.doesNotMatch(html, /data-detail-agenda|主办方还没有公布议程/);
+  assert.doesNotMatch(html, /Organizer #/); assert.doesNotMatch(html, /data-detail-host=/);
 });
 test('rail: no plan → the 和你有关 card in the rail holds the guide (the only 设定目标 button: the body no longer has a slot right of the cover)', () => {
   const html = renderedModule.render!('rail', base);
@@ -43,14 +43,15 @@ test('phone: no plan → a 设定目标 guide under the cover (no score), generi
 test('with a plan (or an older payload without hasPlan) nothing new appears; a named organizer keeps its name', () => {
   for (const data of [{ ...base, hasPlan: true }, { ...base, hasPlan: undefined }]) {
     assert.doesNotMatch(renderedModule.render!('desktop', data), /data-detail-no-plan|data-detail-relevance-guide/);
-    assert.match(renderedModule.render!('rail', data), /可能符合计划的人 约0人/);
+    // 2026-11-21：右栏不再有「会えそうな人」；名单锁着只在主栏参加者里说。
+    assert.doesNotMatch(renderedModule.render!('rail', data), /可能符合计划的人|data-detail-relevance-guide/);
   }
   const named = renderedModule.render!('desktop', { ...base, agenda: [{ at: '19:00', title: '受付' }], organizer: { name: 'CFO Night 実行委員会' } });
   assert.match(named, /CFO Night 実行委員会/); assert.doesNotMatch(named, /data-agenda-empty/); assert.doesNotMatch(named, /未入驻/);
 });
 test('signed out: the 和你有关 guide with a 登录后查看 button that returns here, no score', () => {
   const html = renderedModule.render!('desktop', { ...base, signedOut: true, hasPlan: undefined });
-  assert.match(html, /data-detail-relevance-guide/); assert.match(html, /登录后显示/); assert.match(html, /登录后查看/); assert.doesNotMatch(html, /\/ 100|推荐参加/); assert.match(html, /next=%2Fapp%2Fevents%2Fimported/);
+  assert.match(html, /data-detail-relevance-guide/); assert.match(html, /登录后显示/); assert.match(html, />登录</); assert.doesNotMatch(html, /\/ 100|推荐参加/); assert.match(html, /next=%2Fapp%2Fevents%2Fimported/);
   assert.match(renderedModule.render!('phone', { ...base, signedOut: true, hasPlan: undefined }), /data-detail-relevance-guide/);
 });
 
@@ -63,20 +64,20 @@ test('isCanonicalPublicOrganizerLabel recognises the fallback label and nothing 
   assert.equal(isCanonicalPublicOrganizerLabel('Organizer Taro'), false);
 });
 
-test('ended + no plan: the 和你有关 slot still shows the guide, an empty roster has no 「notify me」', () => {
+test('ended + no plan: no 和你有关 at all (field table: 终了 → 不出), an empty roster is one line without 「notify me」', () => {
   const ended = { ...base, startsAt: '2026-04-25T09:30:00Z', endsAt: '2026-04-25T12:00:00Z', attendeeCounts: { all: 0, planFit: 0, known: 0 }, rosterLocked: false };
   const html = renderedModule.render!('desktop', ended);
-  assert.match(html, /data-detail-relevance-guide/); assert.match(html, /活动已结束/);
-  assert.match(html, /data-past-no-roster/); assert.doesNotMatch(html, /公开后提醒我/);
-  assert.match(renderedModule.render!('phone', ended), /data-detail-relevance-guide/);
-  assert.match(renderedModule.render!('rail', { ...ended, hasPlan: true, assessment: { score: 19, verdict: 'skip', display: { goalFit: 0, people: 0, timeCost: 65 }, basis: '' }, assessmentPeopleUnknown: true }), /没有参加者记录/);
+  assert.doesNotMatch(html, /data-detail-relevance/); assert.match(html, /活动已结束/);
+  assert.match(html, /data-detail-people-none=""[^>]*>没有参加者记录/); assert.doesNotMatch(html, /公开后提醒我/);
+  assert.doesNotMatch(renderedModule.render!('phone', ended), /data-detail-relevance/);
+  assert.doesNotMatch(renderedModule.render!('rail', { ...ended, hasPlan: true, assessment: { score: 19, verdict: 'skip', display: { goalFit: 0, people: 0, timeCost: 65 }, basis: '' }, assessmentPeopleUnknown: true }), /data-detail-relevance/);
 });
 
-test('ended: the host card gets a 下一场 row — next event or 还没公布, follow host, upcoming link', () => {
-  const ended = { ...base, startsAt: '2026-04-25T09:30:00Z', endsAt: '2026-04-25T12:00:00Z' };
-  // Signed out, no next event: says so, offers log-in-to-follow and the public events list.
+test('ended: the host card ends with a 下一场 row — next event or 还没公布; follow stays on the host row', () => {
+  const ended = { ...base, organizer: { name: '日中创新创业协会', averageAttendance: 30 }, startsAt: '2026-04-25T09:30:00Z', endsAt: '2026-04-25T12:00:00Z' };
+  // Signed out, no next event: says so; follow is a log-in link that comes back here (2026-11-21: the 「接下来的活动」 link is gone, prototype A4b).
   const out = renderedModule.render!('desktop', { ...ended, signedOut: true, hasPlan: undefined });
-  assert.match(out, /data-detail-ended/); assert.match(out, /下一场/); assert.match(out, /还没公布/); assert.match(out, /href="\/app\/events"/);
+  assert.match(out, /data-detail-ended/); assert.match(out, /下一场/); assert.match(out, /还没公布/);
   // 关注 sits once, on the host row (signed out: a log-in link that comes back here).
   assert.match(out, /href="\/app\/account\/login\?next=%2Fapp%2Fevents%2Fimported"[^>]*>关注</); assert.doesNotMatch(out, /登录后关注|data-detail-ended-follow/);
   // No repeated wording: the card does not restate the ended status, the count, or explain the button.
@@ -87,9 +88,8 @@ test('ended: the host card gets a 下一场 row — next event or 还没公布, 
   const inside = renderedModule.render!('desktop', { ...ended, organizer: { ...ended.organizer, organizerId: 'org_1', following: false, next } });
   assert.match(inside, /data-detail-ended-next="evt next\/5"/); assert.match(inside, /href="\/app\/events\/evt%20next%2F5"/); assert.match(inside, /第5回 中日创业交流会/);
   assert.doesNotMatch(inside, /还没公布/); assert.match(inside, /data-detail-follow=""[^>]*>关注</); assert.doesNotMatch(inside, /data-detail-ended-follow/);
-  assert.match(inside, /\/app\/events\?tab=discover/);
-  // The next row sits inside the host card, after the stats line; the 和你有关 card holds the guide.
-  assert.ok(out.indexOf('data-detail-ended') > out.indexOf('平均30人参加')); assert.match(out, /data-detail-relevance-guide/);
+  // The next row sits inside the host card, after the stats line; ended → no 和你有关.
+  assert.ok(out.indexOf('data-detail-ended') > out.indexOf('平均30人参加')); assert.doesNotMatch(out, /data-detail-relevance/);
   // Rail: no 「make a plan」 nudge on an ended event.
   assert.doesNotMatch(renderedModule.render!('rail', ended), /data-detail-no-plan/);
 });
@@ -98,27 +98,23 @@ test('upcoming events never show the ended card', () => {
   assert.doesNotMatch(renderedModule.render!('phone', base), /data-detail-ended/);
 });
 
-test('locked roster: same small tiles as the registered roster — host, mosaic tiles that carry no attendee data, +N, no extra register button', () => {
+test('locked roster: mosaic avatar stack (no attendee data) + count + one sentence, no extra register button', () => {
   const locked = { ...base, organizer: { name: '日中创新创业协会', emoji: '🥂' }, attendeeCounts: { all: 79, planFit: 0, known: 0 }, attendees: [], rosterLocked: true };
   const html = renderedModule.render!('desktop', { ...locked, signedOut: true, hasPlan: undefined });
-  assert.match(html, /data-roster-host/); assert.match(html, /日中创新创业协会/); assert.match(html, /主办/);
-  // Desktop: 2 rows × 4 = host + 6 mosaic + more.
-  assert.equal((html.match(/data-roster-masked/g) ?? []).length, 6);
-  assert.match(html, /data-roster-more[\s\S]*\+73/);
-  // The register action lives in the page header / phone bottom bar, not repeated inside the card.
-  assert.doesNotMatch(html.slice(html.indexOf('data-roster-gate')), /登录后报名|报名后查看全部|去报名/);
-  // Mosaic is decoration only: aria-hidden, and nothing but the host's name and counts is in the markup.
-  assert.match(html, /aria-hidden="true" data-roster-masked/);
-  assert.doesNotMatch(html, /参加者信息只在报名了同一活动的人之间显示/);
-  // Signed in, not registered: same row.
-  assert.match(renderedModule.render!('desktop', locked), /data-roster-host/);
-  // Phone (2 × 2) is covered by the shipped layout: host + 2 mosaic + more.
-  // Small rosters: no +N tile when every attendee already has a mosaic tile.
+  // 2026-11-21（A1）：5 个马赛克头像 + 「预计参加 79人」+ 一句；未登录不提熟人。
+  assert.equal((html.match(/data-roster-masked/g) ?? []).length, 5);
+  assert.match(html, /预计参加<b>79<\/b>人/); assert.doesNotMatch(html, /熟人/);
+  assert.match(html, /data-roster-gate=""[\s\S]*报名后可以看到名字和一句话介绍/);
+  // The register action lives in the page header / rail / phone bottom bar, not repeated inside the card.
+  assert.doesNotMatch(html.slice(html.indexOf('data-detail-people')), /登录后报名|去报名|<button/);
+  // Mosaic is decoration only: aria-hidden and no names.
+  assert.match(html, /aria-hidden="true"><div[^>]*data-roster-masked/);
+  // Small rosters: as many mosaic avatars as people (≤ 5).
   const few = renderedModule.render!('desktop', { ...locked, attendeeCounts: { all: 2, planFit: 0, known: 0 } });
-  assert.equal((few.match(/data-roster-masked/g) ?? []).length, 2); assert.doesNotMatch(few, /data-roster-more/);
-  // Ended: the row stays, no register button.
+  assert.equal((few.match(/data-roster-masked/g) ?? []).length, 2);
+  // Ended: registrations, not a future-attendance claim; the gate sentence says who can see the roster.
   const ended = renderedModule.render!('desktop', { ...locked, signedOut: true, startsAt: '2026-04-25T09:30:00Z', endsAt: '2026-04-25T12:00:00Z' });
-  assert.match(ended, /data-roster-host/);
+  assert.match(ended, /报名<b>79<\/b>人/); assert.match(ended, /仅报名过这场活动的用户可查看参加者信息/);
 });
 
 import { inviteCodeSize } from '../../app/(app)/app/orbit-2026/events/PublicEvents';
@@ -133,10 +129,10 @@ test('with a plan: 和你有关 lists facts only (no ring / verdict / criteria);
   const assessment = { score: 74, verdict: 'recommend', display: { goalFit: 80, people: 70, timeCost: 60 }, basis: 'x', relevance };
   for (const kind of ['desktop', 'phone']) {
     const html = renderedModule.render!(kind, { ...base, hasPlan: true, assessment });
-    assert.match(html, kind === 'phone' ? /data-relevance-card/ : /data-detail-meet[\s\S]*data-relevance-row="people"/); assert.match(html, /想见的人 · CFO 3位/); assert.match(html, /来自报名名单/);
+    assert.match(html, /data-detail-relevance[\s\S]*data-relevance-row="people"/); assert.match(html, /想见的人 · CFO 3位/); assert.match(html, /来自报名名单/);
     assert.match(html, /认识的人有1位参加/); assert.match(html, /山田 健太/); assert.match(html, /超出预算 ¥5,000/); assert.match(html, /费用 ¥8,000/);
     assert.doesNotMatch(html, /推荐参加|与目标的契合|\/ 100|data-why-box|>74</);
     const empty = renderedModule.render!(kind, { ...base, hasPlan: true, assessment: { ...assessment, relevance: { group: 'other', people: [], known: null, topic: null, warnings: [] } } });
-    assert.doesNotMatch(empty, /data-relevance-card|data-relevance-row|data-detail-relevance-guide/);
+    assert.doesNotMatch(empty, /data-detail-relevance|data-relevance-row|data-detail-relevance-guide/);
   }
 });

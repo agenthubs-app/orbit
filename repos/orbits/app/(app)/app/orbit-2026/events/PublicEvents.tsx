@@ -121,7 +121,7 @@ function DetailInner({ eventId, language, inviteCode }: { eventId: string; langu
   const t = useMemo(() => journeyTranslator(language), [language]);
   const [data, setData] = useState<EventOverviewResponse | null>(null);
   const [missing, setMissing] = useState(false);
-  const { ended, canRegister } = useDetailTiming(data);
+  const { canRegister } = useDetailTiming(data);
   // < 768：和登录后一样用 App 式详情（b12 W-R27-20u-390）；桌面 12 栏网格在手机宽度会挤成窄列。
   const phone = usePhone();
   useEffect(() => { void journeyApi.overview(eventId).then((result) => { if (result.ok) setData({ ...result.data, signedOut: true }); else setMissing(true); }); }, [eventId]);
@@ -135,7 +135,8 @@ function DetailInner({ eventId, language, inviteCode }: { eventId: string; langu
           <div className={p.t}>{phone ? null : <><b>{data?.title}</b><small>{data ? hostName(data, t) : ""}</small></>}</div>
           <div className={p.r}>
             <button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void navigator.clipboard?.writeText(window.location.href).catch(() => undefined)}><Icon name="share" size={16} /></button>
-            {phone ? null : canRegister ? <a className={`btn ${styles.btn} ${x.accent}`} href={`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`}>{t("loginRegister")}</a> : data ? <span className={styles.chip}>{t(ended ? "liveEnded" : "registrationClosed")}</span> : null}
+            {/* 2026-11-21：公开页没有右栏，主按钮在页头（W2）；截止 / 已结束不在页头再说一次（封面 chip 已说）。 */}
+            {phone || !canRegister ? null : <a className={`btn ${styles.btn} ${x.accent}`} href={`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`}>{t("loginRegister")}</a>}
           </div>
         </div>
         {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? (phone

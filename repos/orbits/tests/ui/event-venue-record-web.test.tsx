@@ -47,8 +47,10 @@ test("detail body: cover image replaces the gradient band; attendee cards are bu
   assert.match(html, /<img[^>]*src="\/orbit-covers\/events\/chinese-business-community-salon.jpg"[^>]*data-detail-cover-photo=""/);
   assert.match(html, /<button[^>]*aria-pressed="true"[^>]*data-detail-person="a1"/);
   assert.match(html, /<button[^>]*aria-pressed="false"[^>]*data-detail-person="a2"/);
+  // 2026-11-21 单页：不可点开时（公开页）参加者是普通行（data-detail-person-row），不是按钮。
   const pub = render(<EventDetailBody data={{ ...overview, coverUrl: null }} language="ja" t={t} railShown />);
-  assert.doesNotMatch(pub, /data-detail-person|data-detail-cover-photo/, "public page / no image: unchanged");
+  assert.doesNotMatch(pub, /data-detail-person=|data-detail-cover-photo/, "public page / no image: unchanged");
+  assert.match(pub, /data-detail-person-row="a1"/);
 });
 
 test("参加者の詳細 exchange footer: exchanged / incoming (needs id + revision) / requested / request / none", () => {
@@ -93,6 +95,8 @@ test("record page groups: no write actions; stats with ふりかえり link only
   assert.doesNotMatch(render(<VenueRecordView data={venue({ checkedIn: false })} eventId="e1" language="ja" t={t} />), /data-record-after/);
   const empty = render(<VenueRecordView data={venue({ recommendations: [], rounds: [] })} eventId="e1" language="ja" t={t} />);
   assert.match(empty, /data-record-empty=""[\s\S]*あなたはグループ分けに入っていませんでした[\s\S]*参加者一覧[\s\S]*アジェンダ/);
+  // 2026-11-21：「参加者一覧」= 全名单页（与详情页「全員を見る」同一页）。
+  assert.match(empty, /href="\/app\/events\/e1\/people"[^>]*>[\s\S]*?参加者一覧/);
   assert.doesNotMatch(empty, /data-record-tabs/);
 });
 

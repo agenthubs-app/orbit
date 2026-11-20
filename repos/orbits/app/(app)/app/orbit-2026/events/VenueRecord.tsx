@@ -4,6 +4,7 @@
 // 会場モード同一页面（/app/events/[id]/live）的只读状态——venue.state === "ended" && readOnly。
 // 页签 グループ / おすすめ / 参加者 / アジェンダ（去掉「現場」「マップ」）；所有写操作隐藏，只有参加者の詳細里的メモ可写。
 // 任何人名点开 → 右栏（≥1280）/ 抽屉的同一个「参加者の詳細」。
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import type { EventVenuePerson, EventVenueResponse } from "../../../../../shared/contract/event-venue";
@@ -131,7 +132,8 @@ export function VenueRecordView({ data, eventId, language, t }: { data: EventVen
         <div className={r.emptyTitle}>{t("recordEmptyTitle")}</div>
         <div className={styles.sub}>{t("recordEmptySub")}</div>
         <div className={r.emptyActs}>
-          <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={() => setTab("people")}><Icon name="users" size={16} />{t("attendeeList")}</button>
+          {/* 2026-11-21：记录为空时「参加者一覧」= 全名单页（与详情页「全員を見る」同一页）。 */}
+          <Link className={`btn ${styles.btn} ${styles.primary}`} href={`/app/events/${encodeURIComponent(eventId)}/people`} data-record-people=""><Icon name="users" size={16} />{t("attendeeList")}</Link>
           <button type="button" className={`btn ${styles.btn}`} onClick={() => setTab("agenda")}>{t("tabAgenda")}</button>
         </div>
       </div>

@@ -23,8 +23,9 @@ for (const kind of ['desktop', 'phone', 'rail']) {
  test(`${kind}: ended event has no registration action or future attendance claim`, () => {
   const html = renderedModule.render!(kind, data);
   assert.doesNotMatch(html, /预计参加|登录后报名|去报名|开始报名|报名后可以看到/);
-  assert.match(html, /活动已结束/);
-  if (kind === 'desktop') { assert.match(html, /报名人数.*92/); assert.match(html, /data-roster-gate/); }
+  // 2026-11-21：状态只说一次——「活动已结束」只在封面 chip（主栏 / 手机），右栏不再重复。
+  if (kind === 'rail') assert.doesNotMatch(html, /活动已结束/); else assert.equal((html.match(/活动已结束/g) ?? []).length, 1);
+  if (kind === 'desktop') { assert.match(html, /报名<b>92<\/b>人/); assert.match(html, /data-roster-gate/); }
  });
 }
 test('upcoming public event keeps the expected count and the roster row (register action lives in the page header, not repeated in the card)', () => {
