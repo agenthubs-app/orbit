@@ -31,3 +31,9 @@
 .codeXlong.codeXlong { font-size: var(--fs-emph); }
 .codeActions { display: grid; gap: 8px; margin-top: 14px; }
 .codeNote.codeNote { margin-top: 8px; }
+
+/* > 1440: the public nav and main keep the 1440 design width centred (same as the shell frame). */
+@media (min-width: 1441px) {
+  .lpNav { padding-inline: calc((100% - 1440px) / 2 + 40px); }
+  .pubmain { padding-inline: calc((100% - 1440px) / 2 + 40px); }
+}

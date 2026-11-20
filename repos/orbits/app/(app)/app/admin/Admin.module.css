@@ -53,3 +53,10 @@
 @media (max-width: 320px) {
   .grid { grid-template-columns: 1fr; }
 }
+
+/* > 1440: the sidebar + main keep the 1440 width centred, like the member shell frame. */
+@media (min-width: 1441px) {
+  .shell { padding-inline: calc((100% - 1440px) / 2); }
+  .sidebar { box-shadow: -1px 0 0 var(--line); }
+  .main { box-shadow: 1px 0 0 var(--line); }
+}

@@ -296,4 +296,8 @@ ${S} .btn.cb-float-pill { position: fixed; right: 20px; bottom: 96px; z-index: 9
   ${S} .cb-photo-panel { min-height: 0; }
   ${S} .cb-photo-stage { padding: 12px 0; }
 }
+/* 2026-11-20 wide screens (> 1440): the shell frame is centred at 1440, so the floating pill keeps its 20px from the frame's right edge. */
+@media (min-width: 1441px) {
+  ${S} .btn.cb-float-pill { right: calc((100vw - 1440px) / 2 + 20px); }
+}
 `;

@@ -292,3 +292,8 @@
 @media (max-width: 767px) {
   .settingsGrid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* > 1440: the header row keeps the 1440 design width centred (the body is already a centred column). */
+@media (min-width: 1441px) {
+  .header { padding-inline: calc((100% - 1440px) / 2 + var(--space-40)); }
+}

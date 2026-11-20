@@ -13,7 +13,8 @@ function RegisterRouteStateBoundary({
   routeState: AppRegisterRouteStateViewModel;
 }) {
   return (
-    <div data-orbit-route="app-register-route-state">
+    // > 1440: keep the 1440 width centred like the shell frame (no change at 1440 and below).
+    <div data-orbit-route="app-register-route-state" style={{ margin: "0 auto", maxWidth: 1440 }}>
       <StateView
         description={routeState.copy.description}
         emptyState={routeState.copy.emptyState}

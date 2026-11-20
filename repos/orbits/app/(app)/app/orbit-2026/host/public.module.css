@@ -92,3 +92,9 @@
   .pastGrid:not(.pastAll) > :nth-child(n + 4) { display: none; }
   .foot { margin-top: 18px; }
 }
+
+/* > 1440: the top bar's background and line still span the screen; its contents and the main column keep the 1440 width centred. */
+@media (min-width: 1441px) {
+  .pubtop { padding-inline: calc((100% - 1440px) / 2 + 40px); }
+  .main { padding-inline: calc((100% - 1440px) / 2 + 110px); }
+}

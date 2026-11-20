@@ -226,3 +226,11 @@
 :global([data-motion="reduce"]) .modal,
 :global([data-motion="reduce"]) .top,
 :global([data-motion="reduce"]) .drawer { animation-name: fadeIn; }
+
+/* > 1440: the shell frame is centred at 1440 (shell.module.css) — edge-pinned overlays keep their offset
+   from the centred frame's edge, not the screen's. Up to 1440 nothing changes. */
+@media (min-width: 1441px) {
+  .drawer { right: calc((100vw - 1440px) / 2 + 14px); }
+  .drawerLeft { left: calc((100vw - 1440px) / 2 + 14px); right: auto; }
+  .sheet { left: calc((100vw - 1440px) / 2 + 8px); right: calc((100vw - 1440px) / 2 + 8px); }
+}

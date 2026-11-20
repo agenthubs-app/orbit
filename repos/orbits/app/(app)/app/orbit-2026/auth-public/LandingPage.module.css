@@ -99,3 +99,6 @@
   .features p { font-size: var(--fs-body); line-height: 1.55; }
 }
 @media (max-width: 700px) { .header { height: 62px; padding: 0 36px; gap: 44px; } .logo { width: 36px; height: 36px; } .nav { display: none; } .account { margin-left: 0; gap: 14px; } .account .primary { display: none; } .body { padding: 34px 36px 40px; } .hero { display: block; } .copy h1 { font-size: var(--fs-number-lg); } .copy > p { font-size: var(--fs-body); } .ctas { margin-top: 26px; } .ctas .primary { padding-inline: 16px; font-size: var(--fs-body-sm); } .sample { min-height: 245px; padding: 12px; margin-top: 24px; } .sample > .sampleLabel { background: var(--plum-100); } .sampleCard { width: auto; max-width: 210px; min-height: 0; margin-top: 8px; padding: 10px; font-size: var(--fs-caption); } .sampleCard small { font-size: var(--fs-caption); } .sampleOffset { margin-left: 0; } .features { grid-template-columns: 1fr; margin-top: 30px; } .features article { min-height: 0; padding: 18px; } }
+
+/* > 1440: the page keeps the 1440 design width centred (same as the shell frame); the fog background spans the screen. */
+@media (min-width: 1441px) { .page { padding-inline: calc((100% - 1440px) / 2 + 72px); } }
