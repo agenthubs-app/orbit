@@ -609,8 +609,13 @@ function useLegacyTabScroll(ready: boolean) {
     if (!ready) return;
     const target = TAB_TARGET[new URLSearchParams(window.location.search).get("tab") ?? ""];
     if (!target) return;
-    const frame = window.requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ block: "start" }));
-    return () => window.cancelAnimationFrame(frame);
+    // 紹介的折叠在渲染后才量高度，上面的区块还会变高：先滚一次，布局稳定后（350ms）再对一次；
+    // 期间用户自己滚过就不再动。
+    const go = () => document.getElementById(target)?.scrollIntoView({ block: "start" });
+    let landed = -1;
+    const frame = window.requestAnimationFrame(() => { go(); landed = window.scrollY; });
+    const settle = window.setTimeout(() => { if (landed < 0 || Math.abs(window.scrollY - landed) < 2) go(); }, 350);
+    return () => { window.cancelAnimationFrame(frame); window.clearTimeout(settle); };
   }, [ready]);
 }
 
