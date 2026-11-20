@@ -25,8 +25,8 @@ export const taskPath = (id: string) => `${TASKS_PATH}/${encodeURIComponent(id)}
 export const inboxPathOf = (id: string) => `/inbox?tab=notifications&open=${encodeURIComponent(id)}`;
 
 const TILE: Record<"event" | "contact" | "todo", { emoji: string; tone: "pink" | "apricot" | "blue" }> = { contact: { emoji: "🤝", tone: "apricot" }, event: { emoji: "🎟️", tone: "pink" }, todo: { emoji: "🗓️", tone: "blue" } };
-const UNIT: Record<"event" | "contact" | "todo", Record<string, string>> = { contact: { en: "", ja: "人", zh: "位" }, event: { en: "", ja: "件", zh: "场" }, todo: { en: "", ja: "件", zh: "条" } };
-const WEEKDAYS: Record<string, readonly string[]> = { en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], ja: ["日", "月", "火", "水", "木", "金", "土"], zh: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"] };
+const UNIT_KEY = { contact: "scheduledTasks.unitContact", event: "scheduledTasks.unitEvent", todo: "scheduledTasks.unitTodo" } as const;
+const DAY_KEY = ["scheduledTasks.day0", "scheduledTasks.day1", "scheduledTasks.day2", "scheduledTasks.day3", "scheduledTasks.day4", "scheduledTasks.day5", "scheduledTasks.day6"] as const;
 
 function statusOf(task: AgentScheduledTaskContract, t: OrbitTranslator): { label: string; tone: ChipTone } {
   if (task.status === "completed") return { label: t("scheduledTasks.ended"), tone: "neutral" };
@@ -246,7 +246,7 @@ export function ScheduledTaskForm({ initial, id, zoneNote, onCancel, onSaved }: 
     <Segmented accessibilityLabel={t("scheduledTasks.when")} segments={[{ key: "weekly", label: t("scheduledTasks.weekly") }, { key: "daily", label: t("scheduledTasks.daily") }]} value={form.schedule.kind} onChange={(kind) => set({ schedule: kind === "daily" ? { kind: "daily", time: form.schedule.time, timeZone: form.schedule.timeZone } : { daysOfWeek: [5], kind: "weekly", time: form.schedule.time, timeZone: form.schedule.timeZone } })} />
     {weekly ? <View style={styles.days}>{[1, 2, 3, 4, 5, 6, 0].map((day) => {
       const on = weekly.daysOfWeek.includes(day);
-      return <UiPressable key={day} accessibilityRole="button" accessibilityState={{ selected: on }} style={[styles.day, on && styles.dayOn]} onPress={() => set({ schedule: { ...weekly, daysOfWeek: on ? weekly.daysOfWeek.filter((value) => value !== day) : [...weekly.daysOfWeek, day] } })}><UiText style={on ? styles.dayOnText : styles.line}>{(WEEKDAYS[language] ?? WEEKDAYS.zh)?.[day] ?? ""}</UiText></UiPressable>;
+      return <UiPressable key={day} accessibilityRole="button" accessibilityState={{ selected: on }} style={[styles.day, on && styles.dayOn]} onPress={() => set({ schedule: { ...weekly, daysOfWeek: on ? weekly.daysOfWeek.filter((value) => value !== day) : [...weekly.daysOfWeek, day] } })}><UiText style={on ? styles.dayOnText : styles.line}>{t(DAY_KEY[day] ?? "scheduledTasks.day0")}</UiText></UiPressable>;
     })}</View> : null}
     <TextInput style={[styles.input, styles.short]} value={form.schedule.time} accessibilityLabel={t("scheduledTasks.time")} placeholder="09:00" maxLength={5} keyboardType="numbers-and-punctuation" onChangeText={(time) => set({ schedule: { ...form.schedule, time } })} />
     <UiText style={styles.meta}>{t("scheduledTasks.whenNote")}{zoneNote ? ` ${zoneNote.split(/(?<=[。.])/u)[0]}` : ""}</UiText>
@@ -266,7 +266,7 @@ export function ScheduledTaskForm({ initial, id, zoneNote, onCancel, onSaved }: 
       {form.basis.kind === "topic" ? <TextInput style={styles.input} value={form.basis.words} placeholder={t("scheduledTasks.wordsPlaceholder")} accessibilityLabel={t("scheduledTasks.byWords")} maxLength={200} onChangeText={(words) => set({ basis: { kind: "topic", words } })} /> : null}
     </>}
     <UiText style={styles.meta}>{t("scheduledTasks.howMany")}</UiText>
-    <View style={styles.row}><UiText style={styles.line}>{t("scheduledTasks.upTo")}</UiText><TextInput style={[styles.input, styles.short]} value={String(form.maxItems)} keyboardType="number-pad" maxLength={2} accessibilityLabel={t("scheduledTasks.howMany")} onChangeText={(value) => set({ maxItems: Math.max(1, Math.min(20, Number(value) || 1)) })} /><UiText style={styles.line}>{UNIT[form.domain][language] ?? ""}</UiText></View>
+    <View style={styles.row}><UiText style={styles.line}>{t("scheduledTasks.upTo")}</UiText><TextInput style={[styles.input, styles.short]} value={String(form.maxItems)} keyboardType="number-pad" maxLength={2} accessibilityLabel={t("scheduledTasks.howMany")} onChangeText={(value) => set({ maxItems: Math.max(1, Math.min(20, Number(value) || 1)) })} /><UiText style={styles.line}>{t(UNIT_KEY[form.domain])}</UiText></View>
     <UiText style={styles.meta}>{t("scheduledTasks.until")}</UiText>
     <Choice selected={form.validUntil === null} label={t("scheduledTasks.forever")} onSelect={() => set({ validUntil: null })} />
     <Choice selected={form.validUntil !== null} label={t("scheduledTasks.untilDay")} onSelect={() => set({ validUntil: form.validUntil ?? new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10) })} />
