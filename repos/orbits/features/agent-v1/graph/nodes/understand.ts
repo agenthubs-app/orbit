@@ -11,7 +11,7 @@ import { hypothesisOf, isPronounClue, negationIn, negationOf } from "../../route
 import { replyLanguageOf } from "../../route/handoff-copy";
 import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_PROMPT_VERSION } from "../../understand/prompt";
 import { coverEverySentence } from "../../understand/cover";
-import { describedObjectSpan, groupClue, questionWordClue, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
+import { describedObjectSpan, groupClue, INDEFINITE_PERSON, questionWordClue, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
 import { refusedCreates, retractedWrites } from "../../understand/negated-writes";
 import { followsShownList } from "../../understand/follow-list";
 import { asksTodaysPlate, dayOfWords, onlyWindowWords, ownWindow, plateFilter, swapsPeriod } from "../../understand/read-window";
@@ -42,6 +42,15 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope, today: string)
     // AG13 (AE-SCL-025): a part that only reads and names a schedule item reads schedule items too
     // ("明天这场周会关联了哪些人" tagged event.read only).
     const readsOnly = part.requiredCapabilities.length > 0 && part.requiredCapabilities.every((capability) => capabilityKind(capability) !== "write");
+    // Release-2 gate 2 (AE-ANS-024, AE-ANS-026): someone not named ("回看与某位人脉的讨论", "Review a discussion with a contact")
+    // is a person asked for and not said — the read asks which contact (gap-copy noContact). Not a reason to give up on
+    // the whole message ("没看懂" with the words used as a name), nor to read every note without a person.
+    const indefinite = readsOnly ? INDEFINITE_PERSON.exec(part.sourceQuote) : null;
+    if (indefinite && !part.objectClues.some((clue) => clue.entity === "contact" && (clue.referenceId || !groupClue(clue)) && !INDEFINITE_PERSON.test(clue.text))) {
+      part.objectClues = [...part.objectClues.filter((clue) => !(clue.entity === "contact" && INDEFINITE_PERSON.test(clue.text))), { entity: "contact", text: indefinite[0] } as (typeof part.objectClues)[number]];
+      if (part.clarity === "none") part.clarity = "missing_one";
+      emitTrace({ clue: indefinite[0], partId: part.localId, type: "understand.unnamed_person" });
+    }
     // A meeting the user calls an event ("明天这场周会" tagged event) is one of their own schedule items too.
     const MEETING = /(周会|例会|会议|开会|定例|打ち合わせ|ミーティング|\bmeeting\b|\bstand-?up\b)/iu;
     const implied = readsOnly ? part.objectClues.flatMap((clue) => ((clue.entity === "schedule" || (clue.entity === "event" && MEETING.test(clue.text))) && !part.requiredCapabilities.includes("schedule.read" as never) ? ["schedule.read"] : [])) : [];

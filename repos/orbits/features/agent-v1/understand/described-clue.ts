@@ -116,10 +116,25 @@ export function questionWordClue(clue: { entity: string; text: string }): boolea
   return clue.entity === "contact" && QUESTION_PERSON.test(clue.text.trim().replace(/[?？。.]+$/u, ""));
 }
 
+/**
+ * Release-2 gate 2 (AE-ANS-033/034, AE-REF-003): words for the user's contacts or relationships as a whole ("人脉关系",
+ * "人脈", "my contacts") or for the people a record is about ("两位客户", "the two clients") name the set, not one person.
+ */
+// A bare 「联系人」 / 「連絡先」 stays a clue (AG13: "the contact" spoken of); with 我的 / 所有 / 们 it is the set.
+const CJK_ALL_PEOPLE = /^(?:(?:我的|自己的|所有的?|全部的?|这些|那些)(?:联系人|連絡先)|联系人们|(?:我的|自己的|所有的?|全部的?)?(?:人脉关系|人脉|人际关系|关系网|客户们|人脈関係|人脈|人間関係|つながり))(?:全体|全部|全員|里|中)?$/u;
+const CJK_COUNTED_PEOPLE = /^(?:这|那)?(?:两|二|三|四|几|各|每|一些|一些个)(?:位|个|名|人の)?(?:客户|联系人|人|朋友|同事|お客様|お客さん|方)$/u;
+const EN_ALL_PEOPLE = /^(?:(?:all\s+)?(?:of\s+)?my\s+|the\s+|all\s+(?:the\s+|my\s+)?)?(?:contacts|relationships|network|connections|clients|customers|people)$|^(?:the\s+)?(?:two|both|three|several)\s+(?:clients|customers|contacts|people)$/iu;
+
+/**
+ * Words for someone not named ("某位人脉", "某个联系人", "a contact", "ある連絡先", "someone"): a person is asked for but none is
+ * said — the part asks which contact (gap-copy noContact), never reads everything without one.
+ */
+export const INDEFINITE_PERSON = /(某位人脉|某位联系人|某个联系人|某个人脉|某位客户|某个人|某人|某位朋友|ある連絡先|ある人脈|誰か|\ba contact\b|\bone of my contacts\b|\bsomeone\b|\bsomebody\b)/iu;
+
 export function groupClue(clue: { entity: string; text: string }): boolean {
   if (clue.entity !== "contact") return false;
   const words = clue.text.trim().replace(/[。.?？!！、，,]+$/u, "");
-  return CJK_GROUP.test(words) || JA_GROUP.test(words) || EN_GROUP.test(words);
+  return CJK_GROUP.test(words) || JA_GROUP.test(words) || EN_GROUP.test(words) || CJK_ALL_PEOPLE.test(words) || CJK_COUNTED_PEOPLE.test(words) || EN_ALL_PEOPLE.test(words);
 }
 
 /** Only parts that read: in a change ("把她的待办改到周五") the person is who the record is about. */
