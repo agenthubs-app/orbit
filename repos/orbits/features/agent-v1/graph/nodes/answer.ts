@@ -361,7 +361,6 @@ export function answerNode(scope: NodeScope): GraphNode {
     const due = discussion;
     if (!due.length) return {};
     const dropCardTalk = !run.cardPrepared;
-    let plainFallback: string | null = null;
     if (state.plainChat && run.plainReply && parts.every((part) => part.route === "answer")) {
       const plain = withoutCardTalk(run.plainReply, due[0].localId, dropCardTalk);
       // AG08 (AE-UND-006): nothing was read, so a count of the user's records has no source unless the user said it.
@@ -370,17 +369,15 @@ export function answerNode(scope: NodeScope): GraphNode {
       const reply = plain ? withoutFalseClaims(withoutUnsourcedCounts(plain, plainCounts), due.map((part) => part.localId), run.topicMatched, [input.message, ...(run.context?.messages ?? []).map((message) => message.text)].join("\n")) : plain;
       // AG19 (D4): the first layer's reply is a model's text too: its Markdown symbols are taken out.
       const shown = reply ? stripMarkdown(localizeAnswerDates(withoutQuoteResidue(reply), state.language), state.language) : "";
-      if (shown && !(due.length === 1 && needsLayout(shown, state.language))) {
+      if (shown) {
         run.answers.set(due[0].localId, shown);
         run.modelAnswers.add(due[0].localId);
-        emitTrace({ note: "plain chat: the first layer's reply is shown, no second call", parts: due.map((part) => part.localId), type: "answer.plain_reply" });
+        // Hotfix 2026-11-20 (the AG19 decision: layout is code's, never a further model call; AE-UND-013 went to 5 calls):
+        // a reply of more than two sentences that came without structure is one paragraph, as it is.
+        const paragraph = due.length === 1 && needsLayout(shown, state.language);
+        if (paragraph) run.answerBlocks.set(due[0].localId, [{ text: shown, type: "paragraph" }]);
+        emitTrace({ note: "plain chat: the first layer's reply is shown, no second call", parts: due.map((part) => part.localId), ...(paragraph ? { layout: "one_paragraph" } : {}), type: "answer.plain_reply" });
         return {};
-      }
-      // AG19 (D4): a reply of more than two sentences has no structure to lay out: the answer step writes it in the plain
-      // fields (one call, inside the round's budget). If that call fails, the reply itself is still delivered, as paragraphs.
-      if (shown) {
-        plainFallback = shown;
-        emitTrace({ length: shown.length, parts: due.map((part) => part.localId), type: "answer.plain_reply_needs_layout" });
       }
       // Nothing left but card talk: the answer step writes it instead.
     }
@@ -442,13 +439,6 @@ export function answerNode(scope: NodeScope): GraphNode {
         if (seen.dropped.length) emitTrace({ coverage: [], dropped: seen.dropped, partId: part.localId, type: "answer.seen_counts_dropped" });
         run.answers.set(part.localId, localizeAnswerDates(withoutFalseClaims(seen.text, [part.localId], run.topicMatched, user), state.language));
         run.modelAnswers.add(part.localId);
-        continue;
-      }
-      // AG19: the layout call did not give an answer: the first layer's reply is delivered as it was (never lost).
-      if (plainFallback && part === due[0]) {
-        run.answers.set(part.localId, plainFallback);
-        run.modelAnswers.add(part.localId);
-        emitTrace({ partId: part.localId, type: "answer.plain_reply_fallback" });
         continue;
       }
       const budgetOut = result.ok === false && result.reason === "budget";

@@ -24,6 +24,26 @@ test("an unusable output is repaired once; the repaired output is used", async (
   assert.equal(result.partResults[0].status, "answered");
 });
 
+test("hotfix 2026-11-20 (AE-UND-013 went to 5 calls): an unusable output, then a repaired plain reply of several sentences — two calls in all, the reply is one paragraph, no call to lay it out", async () => {
+  const message = "那如果对方一直没回，第二封隔多久再发？";
+  const long = "一般隔 3 到 5 个工作日再发第二封。第二封要短一些，只提一个具体的问题。如果还没回，可以再隔一周换个话题联系。";
+  const model = deepseekStub([MALFORMED, json({ parts: [part({ sourceQuote: message })], plainChat: true, reply: long })]);
+  const kit = graphKit(model.fetchImplementation);
+  const trace = captureTrace();
+  try {
+    const result = await runAgentGraph(kit.deps, kit.input(message));
+    assert.equal(model.calls.length, 2, "understand and its one repair; no layout call");
+    assert.deepEqual(model.calls.map((call) => call.node), ["understand", "understand"]);
+    assert.equal(result.text, long);
+    assert.deepEqual(result.blocks, [{ text: long, type: "paragraph" }]);
+    assert.equal(result.partResults[0].status, "answered");
+    const budget = trace.events.filter((event) => event.type === "budget" && event.what === "model_calls");
+    assert.ok(budget.every((event) => Number(event.used) <= Number(event.limit)), "every call was inside the round's limit");
+  } finally {
+    trace.restore();
+  }
+});
+
 test("still unusable after the one repair: no third call, and the user is told it was not handled", async () => {
   const message = "跟客户开完会之后，跟进邮件一般隔几天发比较合适？";
   const model = deepseekStub([MALFORMED, MALFORMED, MALFORMED]);
