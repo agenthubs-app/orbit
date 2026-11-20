@@ -94,6 +94,39 @@ test("R9 'Beatrix-style' question guessed as a to-do also reads the person's not
   }
 });
 
+/* ── R24 ── */
+
+for (const quote of ["What is Mira Okafor's salary expectation?", "her current salary expectation"]) {
+  test(`R24 '${quote}': words never hide the person's newer note — both notes are read, the newer one is cited`, async () => {
+    const world = smallWorld();
+    for (const record of world.records) if (record.userId === "user:a") record.userId = "actor:a";
+    world.records.push(contact("actor:a", "contact:mira", "Mira Okafor", { organization: "Northwind Labs" }));
+    world.records.push(memo("actor:a", "note:mira-old", "Mira said her salary expectation is around 8.2M yen.", "2025-03-10T03:00:00.000Z", ["contact:mira"], { title: "Mira first call" }));
+    world.records.push(memo("actor:a", "note:mira-new", "Mira now asks for 9.5M yen after the competing offer.", "2026-11-05T03:00:00.000Z", ["contact:mira"], { title: "Mira follow-up" }));
+    const message = quote.startsWith("her") ? `I'm meeting Mira Okafor tomorrow. ${quote}` : quote;
+    let materials = "";
+    const model = deepseekStub((call: ModelCall) => {
+      if (call.node === "understand") {
+        const parts = quote.startsWith("her")
+          ? [part({ dataSources: [], deliverable: "answer", localId: "p1", objectClues: [{ entity: "contact", text: "Mira Okafor" }], requiredCapabilities: ["contact.read"], sourceQuote: "I'm meeting Mira Okafor tomorrow." }), part({ dataSources: ["orbit_records"], localId: "p2", objectClues: [{ entity: "contact", text: "her" }, { entity: "memo", text: "salary expectation" }], readFilter: { order: "newest", text: "salary expectation" }, requiredCapabilities: ["memo.read"], sourceQuote: quote })]
+          : [part({ dataSources: ["orbit_records"], localId: "p1", objectClues: [{ entity: "contact", text: "Mira Okafor" }], readFilter: { order: "newest", text: "salary expectation" }, requiredCapabilities: ["memo.read"], sourceQuote: quote })];
+        return json({ language: "en", parts, plainChat: false });
+      }
+      materials = call.user;
+      const handle = /(s\d+) — memo "Mira follow-up"/u.exec(call.user)?.[1];
+      const partId = quote.startsWith("her") ? "p2" : "p1";
+      return json({ segments: [{ cites: handle ? [{ sentenceIds: [1], sourceRef: handle }] : [], partId, text: "She now asks for 9.5M yen (before: about 8.2M)." }, ...(partId === "p2" ? [{ cites: [], partId: "p1", text: "Good luck with the meeting." }] : [])] });
+    });
+    const kit = graphKit(model.fetchImplementation, { now: "2026-11-15T01:00:00.000Z", records: recordAccessOf(world) });
+    const result = await runAgentGraph(kit.deps, kit.input(message, { locale: "en" }));
+    assert.match(materials, /9\.5M yen/u, "the newer note is read");
+    assert.match(materials, /8\.2M yen/u, "the note holding the words too");
+    assert.ok(result.sourceRefs.includes("memo:note:mira-new"), `${result.text} ${result.sourceRefs.join(", ")}`);
+    const coverage = result.partResults.flatMap((item) => item.coverage ?? []).find((item) => item.kind === "memo");
+    assert.equal(coverage?.total, 2, "the coverage counts all of her notes, not only those holding the words");
+  });
+}
+
 /* ── R20 ── */
 
 test("R20 a part that depends on a read whose record cannot be opened is not held back", () => {

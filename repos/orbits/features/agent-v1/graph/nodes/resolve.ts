@@ -861,17 +861,26 @@ export function resolveNode(scope: NodeScope): GraphNode {
               for (const view of items) push(view);
               // AG10 (AE-SCL-020): how a person stands now ("her current salary expectation") reads their newest notes as well,
               // not only the ones holding the words — a newer note that says it differently ("updated her expectation") wins.
-              if (current && kind === "memo" && contactId && kindText && direction === "newest") {
+              // AG20b (R24, AE-SCL-020 split into parts): the same for every read of ONE resolved person's notes by words — the
+              // words mark the notes that hold them, they never hide that person's newer notes (a person's notes are few; words
+              // narrow only an account-wide read). The coverage then counts all of the person's notes.
+              let personNotes: { total: number | null; complete: boolean } | null = null;
+              if ((current || contacts.length === 1) && kind === "memo" && contactId && kindText && direction === "newest") {
                 const newest = await readPages(records.reader, kind, accountScope, queryOf(undefined), 1);
                 const added = newest.items.filter((view) => !read.views.some((item) => item.ref === view.ref));
                 for (const view of added) push(view);
-                if (added.length) emitTrace({ added: added.length, partId: part.localId, type: "resolve.current_newest", words: kindText });
+                personNotes = { complete: newest.complete && pages.complete, total: newest.total };
+                if (added.length) {
+                  const holding = pages.items.map((view) => nameOf(view, zone)).slice(0, 5);
+                  read.notes.push(`Besides the note(s) holding "${kindText}"${holding.length ? ` (${holding.map((name) => `"${name}"`).join(", ")})` : ""}, these are ${names.get(contactId) ?? "this person"}'s newest notes: a newer one may say the same thing in other words. Where they differ, the newer dated note is what holds now; give the older one as what it was before. Never say a value is the only one on record.`);
+                  emitTrace({ added: added.length, partId: part.localId, type: "resolve.current_newest", words: kindText });
+                }
               }
               // run-02 repair 2 (AE-SCL-007): one entry per kind and person; the newest and oldest reads of the same
               // records share one total, and `seen` is set below from what is really given to the answer.
               const key = `${kind}|${contactId ?? ""}`;
               const prior = reads.get(key);
-              reads.set(key, { complete: (prior?.complete ?? true) && pages.complete, directions: new Set([...(prior?.directions ?? []), ...(kind === "todo" ? [] : [direction])]), kind, pagesRead: (prior?.pagesRead ?? 0) + pages.pagesRead, total: prior?.total ?? pages.total });
+              reads.set(key, { complete: (prior?.complete ?? true) && (personNotes?.complete ?? pages.complete), directions: new Set([...(prior?.directions ?? []), ...(kind === "todo" ? [] : [direction])]), kind, pagesRead: (prior?.pagesRead ?? 0) + pages.pagesRead + (personNotes ? 1 : 0), total: prior?.total ?? personNotes?.total ?? pages.total });
               if (!pages.complete || (pages.total !== null && pages.total > pages.items.length)) {
                 read.notes.push(pages.total !== null
                   ? `${kind}: ${pages.total} match in all (an exact count); the ${pages.items.length} listed here are the ${kind === "todo" ? "soonest due" : direction === "oldest" ? "oldest" : "newest"} of them${kind === "todo" ? "" : direction === "oldest" ? ", so it is newer ones that may be missing, never older ones" : ", so it is older ones that may be missing, never newer ones"}. Give the total as ${pages.total}; do not present the listed ones as all.`
