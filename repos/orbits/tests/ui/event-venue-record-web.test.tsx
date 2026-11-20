@@ -113,3 +113,22 @@ test("host cover: shown image per pending change; drag maps to focusY within the
   assert.deepEqual(fitEdge(4000, 3000, 2400), { height: 1800, width: 2400 });
   assert.deepEqual(fitEdge(800, 400, 2400), { height: 400, width: 800 });
 });
+
+test("参加者の詳細 first paint (2026-11-21): skeleton while nothing is known; the last answer shows at once with no skeleton and no 未公開", async () => {
+  const { AttendeeProfilePanel } = await import("../../app/(app)/app/orbit-2026/events/AttendeeProfile");
+  const { rememberAnswer, resetLastAnswersForTests } = await import("../../app/(app)/app/orbit-last-answer");
+  const { setSharedReadAccount } = await import("../../app/(app)/app/orbit-shared-read");
+  resetLastAnswersForTests();
+  setSharedReadAccount("actor:me");
+  const seed = { attendeeId: "p1", initial: "王", name: "王 磊", org: "華東キャピタル", role: null };
+  const cold = render(<AttendeeProfilePanel eventId="e1" seed={seed} language="ja" t={t} onClose={() => {}} />);
+  assert.match(cold, /data-person-loading=""/);
+  assert.match(cold, /王 磊/);
+  assert.doesNotMatch(cold, /data-person-hidden/);
+  rememberAnswer("events:attendee:e1:p1", { answers: [{ a: "SaaS", q: "業界" }], attendeeId: "p1", canRequestExchange: false, contactId: null, exchange: "none", exchangeUntil: null, initial: "王", intro: "越境 EC の話ができます", memo: null, name: "王 磊", org: "華東キャピタル", participantId: "p1", role: null, together: { recommended: false, sharedRounds: [], why: null, whyDetail: null } });
+  const warm = render(<AttendeeProfilePanel eventId="e1" seed={seed} language="ja" t={t} onClose={() => {}} />);
+  assert.doesNotMatch(warm, /data-person-loading/);
+  assert.match(warm, /越境 EC の話ができます/);
+  setSharedReadAccount(null);
+  resetLastAnswersForTests();
+});

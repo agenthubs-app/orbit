@@ -3,6 +3,7 @@
 // R27 会場モード（Web 1440：b2 #36；390：b12 #364「会場モードは App で」）。数据：GET /api/events/[id]/venue（只读组合，
 // 未报名 = not_registered，页面不调运营路由，所以没有 403）；交换名片走现有 /operations/contact-requests*，
 // メモ（自分だけ）走 /venue/memo。示例数据（sample）只在本页里变，不写库。
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
@@ -10,7 +11,10 @@ import type { EventVenuePerson, EventVenueResponse } from "../../../../../shared
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { eventVenueMemoResultSchema } from "../../../../../shared/api-schema/event-venue";
 import { ShellPage } from "../shell/slots";
-import { Drawer, Icon, Orbit2026Scope, Segmented, ToastProvider, useToast } from "../ui";
+import { FRESH } from "../../orbit-last-answer";
+import { JourneyRailSkeleton, JourneySkeleton } from "./JourneySkeleton";
+import { useJourneyAnswer } from "./use-journey-answer";
+import { Drawer, Icon, Orbit2026Scope, RetryCard, Segmented, ToastProvider, useToast } from "../ui";
 import { translator as assessTranslator } from "./AssessmentDetail";
 import { journeyTranslator, type JourneyT } from "./DiscoverTab";
 import { WEEK, parts, useWide } from "./EventDetail";
@@ -130,8 +134,11 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
   const t = useMemo(() => journeyTranslator(language), [language]);
   const at = useMemo(() => assessTranslator(language), [language]);
   const toast = useToast();
-  const [data, setData] = useState<EventVenueResponse | null>(null);
-  const [missing, setMissing] = useState(false);
+  // 2026-11-21：上次的结果先画、每次进来都在后台重读（会場是实时的：新鲜期 0）、请求共享；没读到前画骨架。
+  const answer = useJourneyAnswer(`events:venue:${eventId}`, () => journeyApi.venue(eventId), FRESH.focus);
+  const data = answer.data;
+  const setData = answer.update;
+  const missing = answer.failure === "not_found";
   const [tab, setTab] = useState<Tab>("now");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [seatWhy, setSeatWhy] = useState(false);
@@ -144,8 +151,7 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
   const wide = useWide();
   const [drawer, setDrawer] = useState(false);
 
-  const load = () => journeyApi.venue(eventId).then((res) => { if (res.ok) setData(res.data); else setMissing(true); });
-  useEffect(() => { void load(); }, [eventId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const load = answer.reload;
   useEffect(() => {
     const query = window.matchMedia("(max-width: 767px)");
     const update = () => setPhone(query.matches);
@@ -214,7 +220,7 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
   };
 
   const detailHref = `/app/events/${id(eventId)}`;
-  const exit = <a className={`btn ${styles.btn} ${styles.sm}`} href={detailHref}><Icon name="x" size={16} />{t("liveExit")}</a>;
+  const exit = <Link className={`btn ${styles.btn} ${styles.sm}`} href={detailHref}><Icon name="x" size={16} />{t("liveExit")}</Link>;
 
   // 2026-11-20 会場の記録：结束后的只读回看（手机也直接在 Web 看，不出「App で」引导）。
   if (data && data.state === "ended" && data.readOnly) return <VenueRecordView data={data} eventId={eventId} language={language} t={t} />;
@@ -222,7 +228,7 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
   if (phone && !webAnyway) {
     return (
       <>
-        <ShellPage title={t("liveTitle")} subtitle={data?.title ?? ""} left={<a className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("back")}><Icon name="left" size={16} /></a>} rightRail={false} phoneBare />
+        <ShellPage title={t("liveTitle")} subtitle={data?.title ?? ""} left={<Link className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("back")}><Icon name="left" size={16} /></Link>} rightRail={false} phoneBare />
         <div className={`${styles.card} ${v.appOnly}`} data-venue-app-only="">
           <div className={v.appEmoji}>📱</div>
           <b className={v.appTitle}>{t("appOnlyTitle")}</b>
@@ -241,12 +247,12 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
         <ShellPage title={data?.title ?? t("liveTitle")} left={exit} rightRail={false} />
         <div className={`${styles.card} ${x.missing}`} data-venue-state={data?.state ?? "missing"}>
           <b>{message}</b>
-          {data?.state === "ended" ? <div className={v.stateAct}><a className={`btn ${styles.btn} ${styles.primary}`} href={`${detailHref}/after`}>{t("toAfter")}</a></div> : null}
+          {data?.state === "ended" ? <div className={v.stateAct}><Link className={`btn ${styles.btn} ${styles.primary}`} href={`${detailHref}/after`}>{t("toAfter")}</Link></div> : null}
         </div>
       </>
     );
   }
-  if (!data) return <ShellPage title="" left={exit} rightRail={false} />;
+  if (!data) return <><ShellPage title="" left={exit} rightRail={wide && !answer.failure ? <JourneyRailSkeleton /> : false} />{answer.failure ? <RetryCard title={at("genericError")} onRetry={() => void load()} /> : <JourneySkeleton kind="venue" />}</>;
 
   const round = data.round;
   const openers = data.openers.length > 2 ? [0, 1].map((n) => data.openers[(openerPage * 2 + n) % data.openers.length]!) : data.openers;

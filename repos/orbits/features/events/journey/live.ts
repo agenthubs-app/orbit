@@ -94,6 +94,10 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
   const store = createPostgresActorRecordStore({ query, workspaceId });
   let operationsService: ReturnType<typeof createConfiguredEventOperationsService> | undefined;
   const opsService = () => (operationsService ??= createConfiguredEventOperationsService());
+  // 2026-11-21 一次请求内同一份事实只读一次（端口对象按请求创建）：活动、发布的分组结果、当前计划。
+  // 实测之前一次详情 77 条 SQL（计划被读 6–10 遍、活动 4 遍、整份发布结果 3 遍）。失败的不留，下次照常重读。
+  const getPublished = once((eventId: string) => core!.getPublishedEvent(eventId));
+  const publishedResult = once((eventId: string) => operations!.getPublishedResultForAttendee(eventId));
 
   // ── 活动事实 ────────────────────────────────────────────────────────────
   async function countsFor(eventIds: readonly string[]): Promise<Map<string, number>> {
@@ -133,12 +137,13 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
   }
 
   async function publishedEvent(eventId: string): Promise<PublishedCanonicalEvent | null> {
-    const event = await core!.getPublishedEvent(eventId);
+    const event = await getPublished(eventId);
     return event && event.publicCode?.trim() ? event : null;
   }
 
   // ── 计划（当前目标）────────────────────────────────────────────────────
-  async function currentPlan(actorId: string) {
+  const currentPlan = once(readCurrentPlan);
+  async function readCurrentPlan(actorId: string) {
     const resolved = resolvePlanV2Service({ actorId });
     if (!resolved.success) return null;
     const service = resolved.service;
@@ -267,7 +272,7 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       const trimmed = code.trim();
       if (!trimmed) return null;
       for (const candidate of [...new Set([trimmed, trimmed.toUpperCase()])]) {
-        const event = await core.getPublishedEvent(candidate);
+        const event = await getPublished(candidate);
         if (event?.publicCode && event.publicCode.trim().toLowerCase() === trimmed.toLowerCase()) return event.eventId;
       }
       return null;
@@ -349,6 +354,20 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       return rows.map((row) => ({ eventId: row.eventId, organizerKey: byEvent.get(row.eventId) ?? null, status: row.status as MyEventStatus }));
     },
 
+    async contactNames(actorId) {
+      const result = await query(
+        `/* events:r27-journey:contact-names */ select c.record_id, coalesce(c.payload->>'displayName', c.payload->>'name', '') as name
+           from orbit_records c
+          where c.workspace_id = $1 and c.collection_name = 'contacts' and c.user_id = $2 and c.lifecycle_state <> 'deleted'
+          order by c.updated_at desc limit $3`,
+        [workspaceId, actorId, CONTACTS_LIMIT],
+      );
+      return result.rows.flatMap((row): JourneyContact[] => {
+        const name = str(row.name);
+        return name ? [{ history: [], id: String(row.record_id), linkedTypeKey: null, name, org: null, role: null }] : [];
+      });
+    },
+
     async contacts(actorId) {
       const [result, plan] = await Promise.all([
         query(
@@ -425,7 +444,7 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       const workspace = await attendeeWorkspace(actorId, eventId);
       if (!workspace) return null;
       const published = workspace.resultsState === "ready"
-        ? await operations.getPublishedResultForAttendee(eventId).catch(warned("r27_journey_published_result_failed", null, { eventId }))
+        ? await publishedResult(eventId).catch(warned("r27_journey_published_result_failed", null, { eventId }))
         : null;
       return venueWorkspaceFrom(workspace, published);
     },
@@ -465,7 +484,7 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       const [workspace, plan, event] = await Promise.all([
         attendeeWorkspace(actorId, eventId),
         currentPlan(actorId).catch(warned("r27_journey_plan_failed", null)),
-        core.getPublishedEvent(eventId).catch(warned("r27_journey_event_read_failed", null, { eventId })),
+        getPublished(eventId).catch(warned("r27_journey_event_read_failed", null, { eventId })),
       ]);
       // 读不到运营工作区就什么都确认不了：不写整场记录（否则确定按钮永久锁死），让调用方重试。
       if (!workspace) throw new AppError("SERVICE_UNAVAILABLE", "The event workspace is temporarily unavailable; nothing was confirmed.");
@@ -560,4 +579,17 @@ function taskService() {
 
 function contactsStore() {
   return createConfiguredPostgresLiveRecordStore<Record<string, unknown>>();
+}
+
+/** 按 key 记住进行中/已完成的读取（同一端口对象内）；失败的不记，下次再读。 */
+function once<K, V>(load: (key: K) => Promise<V>): (key: K) => Promise<V> {
+  const cache = new Map<K, Promise<V>>();
+  return (key) => {
+    const hit = cache.get(key);
+    if (hit) return hit;
+    const pending = load(key);
+    cache.set(key, pending);
+    pending.catch(() => { if (cache.get(key) === pending) cache.delete(key); });
+    return pending;
+  };
 }

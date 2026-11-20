@@ -4,7 +4,8 @@
 // 数据来自 GET /api/events/discover；2026-11-15 起不显示分数，卡片只列「あなたに関係すること」标签（Relevance.tsx），
 // 「会いたい人が来る」= 服务端 planFit（people 组，按日期），すべて 一律按日期。保存 = 参加予定に追加。
 // 興味なし（契约 9）在表格行的菜单里。检索走 /api/events/search（R30 同一服务）。
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { EventDiscoverArea, EventDiscoverFormat, EventDiscoverPeriod, EventDiscoverQuery, EventDiscoverResponse, EventDiscoverRow, EventDiscoverTheme } from "../../../../../shared/contract/event-discover";
@@ -205,7 +206,7 @@ function SearchResults({ data, language, t, onOpen, onFollow }: { data: EventSea
           <div className={d.grow}><b>{[person.name, [person.org, person.role].filter(Boolean).join(" ")].filter(Boolean).join(" · ")}</b><div className={styles.lbl}>{t("personEvents", { n: person.eventCount })}</div></div>
         </div>
       ))}</> : null}
-      <a className={`${styles.mac} ${styles.macApricot} ${d.pasteRow}`} href="/app/events?tab=assess"><span>🔗</span><div className={d.grow}><b>{t("searchNotFound")}</b><div className={styles.lbl}>{t("searchPasteUrl")}</div></div><span className={`btn ${styles.btn} ${styles.sm}`}>{t("paste")}</span></a>
+      <Link className={`${styles.mac} ${styles.macApricot} ${d.pasteRow}`} href="/app/events?tab=assess"><span>🔗</span><div className={d.grow}><b>{t("searchNotFound")}</b><div className={styles.lbl}>{t("searchPasteUrl")}</div></div><span className={`btn ${styles.btn} ${styles.sm}`}>{t("paste")}</span></Link>
     </div>
   );
 }
@@ -262,7 +263,9 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
     onSubtitle(past ? t("dSubtitlePast", { n: data.total }) : data.popularityFallback ? t("dSubtitleEmpty") : flat ? t("dSubtitleFew", { n: data.total }) : t("dSubtitleMany", { n: data.planFitTotal, period: query.period ? periodLabel(query.period, t) : "", total: data.total }));
   }, [data, flat, onSubtitle, past, query.period, t]);
 
-  const open = (href: string) => { window.location.assign(`/app${href}`); };
+  // 2026-11-21 站内跳转（不整页重载：外壳、脚本、登录不重来，详情页能先画上次的结果）。
+  const router = useRouter();
+  const open = (href: string) => { router.push(`/app${href}`); };
   const filterOn = data ? past || !data.popularityFallback : false;
   const set = (patch: Partial<EventDiscoverQuery>) => { setQuery((current) => ({ ...current, ...patch })); setPop(null); };
   const dismiss = async (row: EventDiscoverRow, reason: EventRecommendationDismissReason) => {

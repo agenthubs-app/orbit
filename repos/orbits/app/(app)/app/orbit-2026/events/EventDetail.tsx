@@ -2,13 +2,18 @@
 
 // R27 イベント詳細（Web 1440：b2 #17 参加者 0 / #18 少 / #19 多，深色 #47；1024 / 390：b12 #350 / #352）。
 // 数据：GET /api/events/[id]/overview（主办统计、只公开资料的参加者、「あなたに関係すること」）。2026-11-15 起不显示分数。
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { EventOverviewAttendee, EventOverviewResponse } from "../../../../../shared/contract/event-overview";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { eventJoinCancelResultSchema, eventJoinTentativeResultSchema } from "../../../../../shared/api-schema/event-join";
 import { ShellPage } from "../shell/slots";
-import { Icon, Orbit2026Scope, ToastProvider, UnderlineTabs, useToast } from "../ui";
+import { FRESH } from "../../orbit-last-answer";
+import { JourneyRailSkeleton, JourneySkeleton } from "./JourneySkeleton";
+import { useJourneyAnswer } from "./use-journey-answer";
+import { Icon, Orbit2026Scope, RetryCard, ToastProvider, UnderlineTabs, useToast } from "../ui";
 import { translator as assessTranslator } from "./AssessmentDetail";
 import { feeText, journeyTranslator, type JourneyT } from "./DiscoverTab";
 import { RelevanceCard, RelevanceRows, relevanceRows, relevanceTitle } from "./Relevance";
@@ -76,11 +81,11 @@ export function HostNext({ data, t, language, hideFollow = false }: { data: Even
     <div className={x.hostNext} data-detail-ended="">
       <div className={styles.lbl}>{t("endedNextLbl")}</div>
       {next ? (
-        <a className={x.endedNext} href={`/app/events/${encodeURIComponent(next.eventId)}`} data-detail-ended-next={next.eventId}>
+        <Link className={x.endedNext} href={`/app/events/${encodeURIComponent(next.eventId)}`} data-detail-ended-next={next.eventId}>
           <span className={`${styles.emo} ${styles.t_lav}`}>{data.organizer.emoji ?? data.emoji}</span>
           <span className={x.endedNextText}><b>{next.title}</b><span className={styles.lbl}>{eventRange(next.startsAt, null, language)}</span></span>
           <Icon name="right" size={16} />
-        </a>
+        </Link>
       ) : <b className={x.endedNone}>{t("endedNoNext")}</b>}
       <div className={x.hostNextActions}>
         {hideFollow ? null : data.signedOut ? (
@@ -88,7 +93,7 @@ export function HostNext({ data, t, language, hideFollow = false }: { data: Even
         ) : organizerId ? (
           <button type="button" className={`btn ${styles.btn} ${styles.sm}`} aria-pressed={following} disabled={busy} onClick={() => void toggle()} data-detail-ended-follow="">{following ? t("following") : t("endedFollowHost")}</button>
         ) : null}
-        <a className={x.endedFoot} href={data.signedOut ? "/app/events" : "/app/events?tab=discover"}>{t("endedSeeUpcoming")}<Icon name="right" size={16} /></a>
+        <Link className={x.endedFoot} href={data.signedOut ? "/app/events" : "/app/events?tab=discover"}>{t("endedSeeUpcoming")}<Icon name="right" size={16} /></Link>
       </div>
     </div>
   );
@@ -278,11 +283,11 @@ export function HostCard({ data, t, language, className, heading = true }: { dat
       {organizer.bio ? <div className={x.orgBio} data-detail-host-bio="">{organizer.bio}</div> : null}
       {past.length || page ? <div className={x.railSub}><span>{past.length ? t("hostPast") : ""}</span>{page ? <a href={page} data-detail-host-page="">{t("hostPage")}<span aria-hidden> ›</span></a> : null}</div> : null}
       {past.map((event) => (
-        <a key={event.eventId} className={x.pastRow} href={`/app/events/${encodeURIComponent(event.eventId)}`} data-detail-host-past={event.eventId}>
+        <Link key={event.eventId} className={x.pastRow} href={`/app/events/${encodeURIComponent(event.eventId)}`} data-detail-host-past={event.eventId}>
           <span className={x.pastDate}>{monthDayPadded(event.startsAt)}</span>
           <span className={x.pastTitle}>{event.title}</span>
           {event.attendance ? <span className={x.pastN}>{t("hostPastN", { n: event.attendance })}</span> : null}
-        </a>
+        </Link>
       ))}
       {ended ? <HostNext data={data} t={t} language={language} hideFollow /> : null}
     </div>
@@ -377,9 +382,9 @@ export function PhoneDetailBody({ data, language, t, onRegister, onOpenPerson }:
         </div>
       </div>
       {ended && data.venueRecord ? (
-        <a className={`${styles.card} ${r.pEntry}`} href={`/app/events/${encodeURIComponent(data.eventId)}/live`} data-detail-record-entry="">
+        <Link className={`${styles.card} ${r.pEntry}`} href={`/app/events/${encodeURIComponent(data.eventId)}/live`} data-detail-record-entry="">
           <span className={`${styles.emo} ${styles.t_lav}`}><Icon name="layers" size={20} /></span><b>{t("venueRecord")}</b><Icon name="right" size={16} />
-        </a>
+        </Link>
       ) : null}
       {data.signedOut || noPlan(data) ? <RelevanceGuideBar data={data} t={t} language={language} /> : <RelevanceCard relevance={data.assessment?.relevance} language={language} className={x.pRel} />}
       {showHostContact(data) ? <HostContactCard contact={data.hostContact} t={t} status={data.registration.status} priceYen={data.priceYen} /> : null}
@@ -539,12 +544,13 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
   const toast = useToast();
   const wide = useWide();
   const phone = usePhone();
-  const [data, setData] = useState<EventOverviewResponse | null>(null);
-  const [missing, setMissing] = useState(false);
-  useEffect(() => {
-    void journeyApi.overview(eventId).then((result) => { if (result.ok) setData(result.data); else setMissing(true); });
-  }, [eventId]);
-  const register = () => window.location.assign(`/app/events/${encodeURIComponent(eventId)}/register`);
+  // 2026-11-21：上次的结果先画 + 新鲜期 + 请求共享（useJourneyAnswer）；没读到前画骨架。
+  const answer = useJourneyAnswer(`events:detail:${eventId}`, () => journeyApi.overview(eventId), FRESH.list);
+  const data = answer.data;
+  const setData = answer.update;
+  const missing = answer.failure === "not_found";
+  const router = useRouter();
+  const register = () => router.push(`/app/events/${encodeURIComponent(eventId)}/register`);
   const [allLoaded, setAllLoaded] = useState(false);
   const seeAll = async () => {
     const res = await journeyApi.overview(eventId, true);
@@ -604,15 +610,15 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
           {menuOpen ? (
             <div className={x.dmenu} role="menu" data-detail-menu="">
               <button type="button" role="menuitem" className={`btn ${x.mi}`} onClick={() => { setMenuOpen(false); void addCalendar(); }}><Icon name="calendar" size={16} /><span>{t("addToCalendar")}</span></button>
-              <a role="menuitem" className={`btn ${x.mi}`} href={`/app/events/${encodeURIComponent(eventId)}/register`}><Icon name="pen" size={16} /><span>{t("editJoinProfile")}</span></a>
+              <Link role="menuitem" className={`btn ${x.mi}`} href={`/app/events/${encodeURIComponent(eventId)}/register`}><Icon name="pen" size={16} /><span>{t("editJoinProfile")}</span></Link>
               <button type="button" role="menuitem" className={`btn ${x.mi} ${x.miDanger}`} onClick={() => { setMenuOpen(false); setCancelOpen(true); }}><Icon name="x" size={16} /><span>{t("cancelDo")}</span></button>
             </div>
           ) : null}
         </span>
       ) : null}
-      {ended ? (data?.venueRecord ? <a className={`btn ${styles.btn} ${x.accent}`} href={recordHref} data-detail-record=""><Icon name="layers" size={16} />{t("venueRecord")}</a> : status === "attended" ? <a className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${encodeURIComponent(eventId)}/after`}>{t("goAfter")}</a> : <span className={styles.chip}>{t("liveEnded")}</span>) : status === "none" && canRegister ? <button type="button" className={`btn ${styles.btn} ${x.accent}`} onClick={register}>{t("register")}</button>
-        : status === "registered" || status === "pending_review" ? <a className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${encodeURIComponent(eventId)}/prep`}>{t("goPrep")}</a>
-          : status === "attended" ? <a className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${encodeURIComponent(eventId)}/after`}>{t("goAfter")}</a>
+      {ended ? (data?.venueRecord ? <Link className={`btn ${styles.btn} ${x.accent}`} href={recordHref} data-detail-record=""><Icon name="layers" size={16} />{t("venueRecord")}</Link> : status === "attended" ? <Link className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${encodeURIComponent(eventId)}/after`}>{t("goAfter")}</Link> : <span className={styles.chip}>{t("liveEnded")}</span>) : status === "none" && canRegister ? <button type="button" className={`btn ${styles.btn} ${x.accent}`} onClick={register}>{t("register")}</button>
+        : status === "registered" || status === "pending_review" ? <Link className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${encodeURIComponent(eventId)}/prep`}>{t("goPrep")}</Link>
+          : status === "attended" ? <Link className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${encodeURIComponent(eventId)}/after`}>{t("goAfter")}</Link>
             : <span className={styles.chip}>{statusLabel}</span>}
     </div>
   );
@@ -622,12 +628,12 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
       <ShellPage
         title={phone ? "" : data?.title ?? ""}
         subtitle={phone ? undefined : data ? hostName(data, t) : ""}
-        left={<a className={`btn ${x.rbtn}`} href="/app/events?tab=discover" aria-label={t("back")}><Icon name="left" size={16} /></a>}
+        left={<Link className={`btn ${x.rbtn}`} href="/app/events?tab=discover" aria-label={t("back")}><Icon name="left" size={16} /></Link>}
         right={phone ? <button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void share()}><Icon name="share" size={20} /></button> : right}
-        rightRail={wide && data ? person.rail : false}
+        rightRail={wide ? (data ? person.rail : missing || answer.failure ? false : <JourneyRailSkeleton />) : false}
         phoneBare={phone}
       />
-      {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? (phone ? <PhoneDetailBody data={data} language={language} t={t} onRegister={register} onOpenPerson={openPerson} /> : <EventDetailBody data={data} language={language} t={t} onRegister={register} contactInBody={!wide} railShown={wide} onOpenPerson={openPerson} selectedPersonId={personDetail.selectedId} {...(allLoaded ? {} : { onSeeAll: () => void seeAll() })} />) : null}
+      {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : !data && answer.failure ? <RetryCard title={assessTranslator(language)("genericError")} onRetry={() => void answer.reload()} /> : !data ? <JourneySkeleton kind="detail" /> : data ? (phone ? <PhoneDetailBody data={data} language={language} t={t} onRegister={register} onOpenPerson={openPerson} /> : <EventDetailBody data={data} language={language} t={t} onRegister={register} contactInBody={!wide} railShown={wide} onOpenPerson={openPerson} selectedPersonId={personDetail.selectedId} {...(allLoaded ? {} : { onSeeAll: () => void seeAll() })} />) : null}
       {person.drawer}
       {data ? <CancelDialog open={cancelOpen} event={data} language={language} t={t} busy={cancelBusy} onKeep={closeCancel} onCancel={() => void confirmCancel()} /> : null}
     </>

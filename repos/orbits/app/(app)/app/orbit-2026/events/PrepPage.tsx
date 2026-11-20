@@ -4,6 +4,7 @@
 // - 倒计时从服务端给的 now 起算（首帧不读客户端时钟，避免水合差异），之后每分钟本地递减。
 // - 名刺の残り只存这台设备（localStorage），从不发给服务端（DESIGN §2.5 / IMPLEMENTATION-PLAN §1.5）。
 // - 准备清单两端同步（PATCH prep/checklist）；「明日のフォロー」确认后才写日历（POST /api/schedule-items）。
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import type { EventPrepChecklistItem, EventPrepResponse } from "../../../../../shared/contract/event-prep";
@@ -132,8 +133,8 @@ function PrepInner({ eventId, language }: { eventId: string; language: OrbitLang
         <ShellPage
           title={t("prepTitle")}
           subtitle={t("prepSubtitle", { title: data.title.replace(/\s*(Tokyo|東京)?\s*vol\.?\s*\d+\s*$/i, "").trim() || data.title, when: prepWhen(data.startsAt, data.now, t) })}
-          left={<a className={`btn ${x.rbtn}`} href={`/app/events/${encodeURIComponent(eventId)}`} aria-label={t("back")}><Icon name="left" size={20} /></a>}
-          right={<a className={`btn ${x.rbtn}`} href={`/app/events/${encodeURIComponent(eventId)}/live`} aria-label={t("checkIn")}><Icon name="scan" size={20} /></a>}
+          left={<Link className={`btn ${x.rbtn}`} href={`/app/events/${encodeURIComponent(eventId)}`} aria-label={t("back")}><Icon name="left" size={20} /></Link>}
+          right={<Link className={`btn ${x.rbtn}`} href={`/app/events/${encodeURIComponent(eventId)}/live`} aria-label={t("checkIn")}><Icon name="scan" size={20} /></Link>}
           rightRail={false}
           phoneBare
         />
@@ -156,7 +157,7 @@ function PrepInner({ eventId, language }: { eventId: string; language: OrbitLang
             </div>
             <div className={`${styles.row} ${q.pActs}`}>
               {data.mapUrl ? <a className={`btn ${styles.btn} ${styles.sm} ${q.pGrow}`} href={data.mapUrl} target="_blank" rel="noreferrer"><Icon name="pin" size={16} />{t("mapOpen")}</a> : null}
-              <a className={`btn ${styles.btn} ${styles.sm} ${q.pGrow}`} href={`/app/events/${encodeURIComponent(eventId)}/live`}><Icon name="ticket" size={16} />{t("checkIn")}</a>
+              <Link className={`btn ${styles.btn} ${styles.sm} ${q.pGrow}`} href={`/app/events/${encodeURIComponent(eventId)}/live`}><Icon name="ticket" size={16} />{t("checkIn")}</Link>
             </div>
           </div>
           {low ? (
@@ -231,8 +232,8 @@ function PrepInner({ eventId, language }: { eventId: string; language: OrbitLang
       <ShellPage
         title={t("prepTitle")}
         subtitle={t("prepSubtitle", { title: data.title, when: prepWhen(data.startsAt, data.now, t) })}
-        left={<a className={`btn ${x.rbtn}`} href={`/app/events/${encodeURIComponent(eventId)}`} aria-label={t("back")}><Icon name="left" size={16} /></a>}
-        right={<a className={`btn ${styles.btn}`} href={`/app/events/${encodeURIComponent(eventId)}/live`}><Icon name="ticket" size={16} />{t("checkIn")}</a>}
+        left={<Link className={`btn ${x.rbtn}`} href={`/app/events/${encodeURIComponent(eventId)}`} aria-label={t("back")}><Icon name="left" size={16} /></Link>}
+        right={<Link className={`btn ${styles.btn}`} href={`/app/events/${encodeURIComponent(eventId)}/live`}><Icon name="ticket" size={16} />{t("checkIn")}</Link>}
         rightRail={wide ? rail : false}
       />
       <div className={styles.wgrid} data-prep={eventId}>

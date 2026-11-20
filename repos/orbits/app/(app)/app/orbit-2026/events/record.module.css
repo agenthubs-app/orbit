@@ -118,3 +118,9 @@
 .pvHead.pvHead { display: block; margin-bottom: 10px; }
 .pvWrap { display: flex; }
 .pvWrap > div { flex: 1; }
+/* 2026-11-21 参加者の詳細 读取中：与下面各卡同位置的骨架（不回空白）。 */
+.skel { display: grid; gap: 14px; }
+.skel > .pcard { display: grid; gap: 8px; }
+.skelLines { display: grid; gap: 8px; }
+.skelCover { width: 100%; aspect-ratio: 4 / 1; background: var(--surface-3); }
+.skelPad { padding: 18px; }

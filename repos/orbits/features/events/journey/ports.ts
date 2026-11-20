@@ -98,6 +98,8 @@ export interface JourneyLivePorts {
   /** Signed-in actor's facts. */
   myEvents(actorId: string): Promise<Array<{ eventId: string; status: MyEventStatus; organizerKey: string | null }>>;
   contacts(actorId: string): Promise<JourneyContact[]>;
+  /** 只为按名字认人（参加者の詳細）：同 contacts 的名单范围，但不带往来记录、不读计划。 */
+  contactNames?(actorId: string): Promise<JourneyContact[]>;
   /** Rule-based score for one event against my current plan (same `judgeEvent` / `scoreEvent` as the plan page); null without plan. */
   judge(actorId: string, eventIds: readonly string[], language: "ja" | "zh" | "en"): Promise<{ hasPlan: boolean; goal: string | null; results: Record<string, NonNullable<DiscoverCandidate["judge"]> & { display: { goalFit: number; people: number; timeCost: number }; basis: string; assessmentId: string | null; planFitNames: readonly string[] }> }>;
   /** Plan person-type label per attendee (my current plan, rule typing). */

@@ -9,10 +9,12 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import type { EventAttendeeProfile } from "../../../../../shared/contract/event-attendee-profile";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
-import { Drawer, Icon, useToast } from "../ui";
+import { FRESH } from "../../orbit-last-answer";
+import { Bone, Drawer, Icon, RetryCard, useToast } from "../ui";
 import { translator as assessTranslator } from "./AssessmentDetail";
 import type { JourneyT } from "./DiscoverTab";
 import { journeyApi } from "./journey-api";
+import { useJourneyAnswer } from "./use-journey-answer";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
 import x from "./detail.module.css";
@@ -48,20 +50,18 @@ export function usePersonDetail() {
 export function AttendeeProfilePanel({ eventId, seed, language, t, onClose, tone }: { eventId: string; seed: AttendeeSeed; language: OrbitLanguage; t: JourneyT; onClose: () => void; tone?: string }) {
   const toast = useToast();
   const at = assessTranslator(language);
-  const [profile, setProfile] = useState<EventAttendeeProfile | null>(null);
-  const [hidden, setHidden] = useState(false);
-  const [memo, setMemo] = useState("");
+  // 2026-11-21：上次的结果先画、新鲜期内不重读、同一人的请求共享（useJourneyAnswer）；没读到前画骨架。
+  // 「未公開」只在 404（不是报名者 / 没有公开回答）时显示；其他失败给重试，不再一律说未公开。
+  const answer = useJourneyAnswer(`events:attendee:${eventId}:${seed.attendeeId}`, () => journeyApi.attendee(eventId, seed.attendeeId), FRESH.list);
+  const profile = answer.data;
+  const setProfile = answer.update;
+  const hidden = !profile && answer.failure === "not_found";
+  const failed = !profile && answer.failure !== null && answer.failure !== "not_found";
+  const loading = !profile && answer.failure === null;
+  const [memo, setMemo] = useState(profile?.memo ?? "");
   const [why, setWhy] = useState(false);
   const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    let live = true;
-    setProfile(null); setHidden(false); setWhy(false); setMemo("");
-    void journeyApi.attendee(eventId, seed.attendeeId).then((res) => {
-      if (!live) return;
-      if (res.ok) { setProfile(res.data); setMemo(res.data.memo ?? ""); } else setHidden(true);
-    });
-    return () => { live = false; };
-  }, [eventId, seed.attendeeId]);
+  useEffect(() => { setMemo(profile?.memo ?? ""); }, [profile?.memo]);
 
   const saveMemo = async () => {
     if (!profile || memo.trim() === (profile.memo ?? "")) return;
@@ -147,6 +147,14 @@ export function AttendeeProfilePanel({ eventId, seed, language, t, onClose, tone
         <div className={r.grow}><b className={r.name}>{head.name}</b>{sub ? <div className={styles.lbl}>{sub}</div> : null}</div>
       </div>
       {hidden ? <div className={`${styles.card} ${r.pcard} ${styles.lbl}`} data-person-hidden="">{t("profileHidden")}</div> : null}
+      {failed ? <RetryCard title={at("genericError")} onRetry={() => void answer.reload()} /> : null}
+      {loading ? (
+        <div className={r.skel} aria-busy data-person-loading="">
+          <div className={`${styles.card} ${r.pcard}`}><Bone width={72} height={11} /><Bone width="78%" height={22} /></div>
+          <div className={`${styles.card} ${r.pcard}`}><Bone width={64} height={11} /><Bone width="100%" height={13} /><Bone width="86%" height={13} /><Bone width="60%" height={13} /></div>
+          <div className={`${styles.card} ${r.pcard}`}><Bone width={56} height={11} /><Bone width="100%" height={36} /></div>
+        </div>
+      ) : null}
       {profile && hasTogether ? (
         <div className={`${styles.card} ${r.pcard}`} data-person-together="">
           <div className={`${styles.lbl} ${r.cardLbl}`}>{t("togetherTitle")}</div>

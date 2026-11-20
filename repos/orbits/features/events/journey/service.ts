@@ -305,16 +305,19 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
     },
 
     async attendeeProfile(actorId, eventId, attendeeId) {
-      const event = await ports.event(eventId);
-      if (!event || !ports.attendeeProfile || !attendeeId.trim()) return null;
-      // 名单规则 A（roster-policy）：只有本场的报名者能看；不区分「不存在」与「无权」。
-      if (!(await ports.registered(actorId, eventId).catch(() => false))) return null;
-      const facts = await ports.attendeeProfile(eventId, attendeeId);
-      if (!facts) return null;
+      if (!ports.attendeeProfile || !attendeeId.trim()) return null;
+      // 三项互不依赖：并行读（之前串行 3 段往返）。名单规则 A（roster-policy）：只有本场的报名者能看；
+      // 不区分「不存在」与「无权」——没报名时读到的 facts 直接丢掉，不返回。
+      const [event, registered, facts] = await Promise.all([
+        ports.event(eventId),
+        ports.registered(actorId, eventId).catch(() => false),
+        ports.attendeeProfile(eventId, attendeeId),
+      ]);
+      if (!event || !registered || !facts) return null;
       const at = now();
       const [workspace, contacts, memos] = await Promise.all([
         ports.venueWorkspace(actorId, eventId).catch(() => null),
-        ports.contacts(actorId),
+        ports.contactNames ? ports.contactNames(actorId) : ports.contacts(actorId),
         records.memos.read(actorId, eventId),
       ]);
       const self = workspace?.me.participantId === facts.attendeeId;

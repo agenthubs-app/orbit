@@ -3,13 +3,17 @@
 // R27 会後のふりかえり（Web 1440：b2 #40 记录为空 / #41 少 / #42 多）。数据：GET /api/events/[id]/after（E3 AI 下書き可用时
 // 带まとめ 3 条与逐人次の一手；不可用时退回规则，界面不出现「AI」字样）；✓ 的行 POST /after/confirm 才生效。
 // お礼は下書きだけ：コピー / メールアプリで開く，Orbit 不发送。分数预览用两端共用的 previewAfterScore（确定后以服务端为准）。
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import type { EventAfterNextStep, EventAfterResponse } from "../../../../../shared/contract/event-after";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { previewAfterScore } from "../../../../../features/events/journey/after-core";
 import { ShellPage } from "../shell/slots";
-import { CountUp, Drawer, Icon, Orbit2026Scope, ToastProvider, useToast } from "../ui";
+import { FRESH } from "../../orbit-last-answer";
+import { JourneyRailSkeleton, JourneySkeleton } from "./JourneySkeleton";
+import { useJourneyAnswer } from "./use-journey-answer";
+import { CountUp, Drawer, Icon, Orbit2026Scope, RetryCard, ToastProvider, useToast } from "../ui";
 import { translator as assessTranslator } from "./AssessmentDetail";
 import { DiscoverHelpRail, journeyTranslator, type JourneyT } from "./DiscoverTab";
 import { WEEK, parts, usePhone, useWide } from "./EventDetail";
@@ -43,7 +47,7 @@ function EmptyAfter({ eventId, t }: { eventId: string; t: JourneyT }) {
             <div className={a.guideTitle}>{t("emptyAfterTitle")}</div>
             <div className={styles.sub}>{t("emptyAfterSub")}</div>
           </div>
-          <a className={`btn ${styles.btn} ${styles.primary} ${a.h48}`} href={`/app/events/${id(eventId)}`}><Icon name="users" size={16} />{t("pickFromAttendees")}</a>
+          <Link className={`btn ${styles.btn} ${styles.primary} ${a.h48}`} href={`/app/events/${id(eventId)}`}><Icon name="users" size={16} />{t("pickFromAttendees")}</Link>
         </div>
         <div className={a.grid3}>
           <a className={`${styles.mac} ${a.apricot} ${styles.row}`} href="/app/contacts/new/scan"><span className={a.tileEmoji}>📇</span><div><b className={a.tileTitle}>{t("scanCards")}</b><div className={styles.lbl}>{t("scanCardsSub")}</div></div></a>
@@ -63,8 +67,11 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
   const t = useMemo(() => journeyTranslator(language), [language]);
   const at = useMemo(() => assessTranslator(language), [language]);
   const toast = useToast();
-  const [data, setData] = useState<EventAfterResponse | null>(null);
-  const [missing, setMissing] = useState(false);
+  // 2026-11-21：上次的结果先画 + 新鲜期 + 请求共享（useJourneyAnswer）；没读到前画骨架。
+  const answer = useJourneyAnswer(`events:after:${eventId}`, () => journeyApi.after(eventId), FRESH.list);
+  const data = answer.data;
+  const setData = answer.update;
+  const missing = answer.failure === "not_found";
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [unlinked, setUnlinked] = useState<Set<string>>(new Set());
   const [dates, setDates] = useState<Record<string, string>>({});
@@ -80,7 +87,6 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
   // 2026-11-20「今日会った人」点开参加者の詳細：≥1280 换掉右栏（✕ 回到お礼の下書き），< 1280 用抽屉。
   const personDetail = usePersonDetail();
 
-  useEffect(() => { void journeyApi.after(eventId).then((res) => { if (res.ok) setData(res.data); else setMissing(true); }); }, [eventId]);
 
   const steps = data?.nextSteps ?? [];
   const checked = steps.filter((step) => !excluded.has(step.attendeeId));
@@ -115,9 +121,9 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
     try { await navigator.clipboard.writeText(lines.join("\n")); toast.success(t("recapCopied")); } catch { toast.error(at("genericError")); }
   };
 
-  const back = <a className={`btn ${x.rbtn}`} href={`/app/events/${id(eventId)}`} aria-label={t("back")}><Icon name="left" size={20} /></a>;
+  const back = <Link className={`btn ${x.rbtn}`} href={`/app/events/${id(eventId)}`} aria-label={t("back")}><Icon name="left" size={20} /></Link>;
   if (missing) return <><ShellPage title={t("afterTitle")} left={back} rightRail={false} /><div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div></>;
-  if (!data) return <ShellPage title={t("afterTitle")} left={back} rightRail={false} />;
+  if (!data) return <><ShellPage title={t("afterTitle")} left={back} rightRail={wide && !answer.failure ? <JourneyRailSkeleton /> : false} />{answer.failure ? <RetryCard title={at("genericError")} onRetry={() => void answer.reload()} /> : <JourneySkeleton kind="after" />}</>;
   const dateP = parts(`${data.date}T12:00:00+09:00`);
   const subtitle = `${data.title} · ${dateP ? t("dateWeek", { d: dateP.day, m: dateP.month, wd: WEEK[language][dateP.wd] }) : data.date}`;
   const empty = data.met.count === 0 && steps.length === 0;
@@ -230,7 +236,7 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
               })}
               <div className={`${styles.row} ${a.pFoot}`}>
                 <button type="button" className={`btn ${styles.btn} ${styles.primary} ${a.grow}`} disabled={busy || !checked.length || Boolean(data.confirmedAt)} onClick={() => void confirm()}>{t("confirmN", { n: checked.length })}</button>
-                <a className={`btn ${styles.btn} ${a.ghost}`} href={`/app/events/${id(eventId)}`}>{t("later")}</a>
+                <Link className={`btn ${styles.btn} ${a.ghost}`} href={`/app/events/${id(eventId)}`}>{t("later")}</Link>
               </div>
               <div className={`${styles.lbl} ${a.pNote}`}><Icon name="mail" size={16} /> {t("noSendNote")}</div>
             </div>
@@ -320,7 +326,7 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
                 </table>
                 <div className={`${styles.row} ${a.foot}`}>
                   <span className={styles.lbl}><Icon name="mail" size={16} /> {t("noSendNote")}</span>
-                  <a className={`btn ${styles.btn} ${a.ghost}`} href={`/app/events/${id(eventId)}`}>{t("later")}</a>
+                  <Link className={`btn ${styles.btn} ${a.ghost}`} href={`/app/events/${id(eventId)}`}>{t("later")}</Link>
                   <button type="button" className={`btn ${styles.btn} ${styles.primary}`} disabled={busy || !checked.length || Boolean(data.confirmedAt)} onClick={() => void confirm()}>{t("confirmN", { n: checked.length })}</button>
                 </div>
               </div>

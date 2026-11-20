@@ -3,6 +3,7 @@
 // R26 イベント (events DESIGN §2.1): the 評価 / 参加予定 / 探す page in the shell. 評価: the input card, 次の参加予定,
 // 調べたイベント (newest first; 2026-11-15 no scores) and the selected one in the rail (1440) / a drawer (1024) / its own screen (390).
 // 参加予定: events/mine upcoming + past. 探す: R27 `DiscoverTab`（コミュニティ / プランに効く / すべて，右栏「選択中のイベント」）。
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
@@ -237,7 +238,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
           <div className={styles.ptop} data-events-phone-top="">
             <ShellSearchButton />
             <div className={styles.ptopT}><b>{t("title")}</b>{discoverSubtitle ? <small>{discoverSubtitle}</small> : discover ? null : <small>{pendingLine}</small>}</div>
-            <a className={`btn ${styles.ptopBtn}`} href="/app/events?tab=going" aria-label={t("tabGoing")}><Icon name="calendar" size={20} /></a>
+            <Link className={`btn ${styles.ptopBtn}`} href="/app/events?tab=going" aria-label={t("tabGoing")}><Icon name="calendar" size={20} /></Link>
           </div>
           {segmentFor(true)}
         </>
@@ -282,7 +283,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
       ) : null}
       {tier === "medium" && current && (current.status === "ready" || current.status === "needs_input") && tab === "assess" && !initialAssessmentId ? (
         <Drawer open onClose={() => setSelected(null)} title={t("detailTitle")} size="lg">
-          <div className={styles.row} style={{ justifyContent: "flex-end", marginBottom: 10 }}><a className={`${styles.btn} ${styles.sm}`} href={`/app/events/assessments/${encodeURIComponent(current.id)}`}>{t("fullScreen")}</a></div>
+          <div className={styles.row} style={{ justifyContent: "flex-end", marginBottom: 10 }}><Link className={`${styles.btn} ${styles.sm}`} href={`/app/events/assessments/${encodeURIComponent(current.id)}`}>{t("fullScreen")}</Link></div>
           <AssessmentPage item={current} language={language} busy={busy} phone onAdd={() => void addToPlan(current)} />
         </Drawer>
       ) : null}
@@ -499,7 +500,7 @@ function MyEvents({ language, upcoming, past, now, t }: { language: OrbitLanguag
             <div className={styles.goingEmptyTitle}>{t("goingEmptyTitle")}</div>
             <div className={styles.sub} style={{ marginTop: 4 }}>{t("goingEmptySub")}</div>
           </div>
-          <a className={`${styles.btn} ${styles.primary} ${styles.goingEmptyBtn}`} href="/app/events?tab=discover"><Icon name="search" size={16} />{t("goingEmptyCta")}</a>
+          <Link className={`${styles.btn} ${styles.primary} ${styles.goingEmptyBtn}`} href="/app/events?tab=discover"><Icon name="search" size={16} />{t("goingEmptyCta")}</Link>
         </div>
       </div>
     );
