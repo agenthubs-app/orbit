@@ -360,6 +360,12 @@ export function RoundsTab({ data, t, toneOf, onOpen }: { data: EventVenueRespons
   const v = useStyles().styles;
   const [why, setWhy] = useState<number | null>(null);
   const rounds = data.rounds ?? [];
+  // ほかのテーブル（Web 同款）：按轮切换，点一桌展开成员（名字也打开参加者の詳細）。
+  const others = (data.roundTables ?? []).filter((entry) => entry.tables.length > 0);
+  const [otherRound, setOtherRound] = useState<number | null>(null);
+  const [openTable, setOpenTable] = useState<string | null>(null);
+  const shownRound = others.find((entry) => entry.round === otherRound) ?? others[0] ?? null;
+  const tone = useTone();
   const exchanged = new Set(data.attendees.filter((person) => person.exchange === "exchanged").map((person) => person.attendeeId));
   return (
     <View testID="events-venue-rounds">
@@ -392,6 +398,38 @@ export function RoundsTab({ data, t, toneOf, onOpen }: { data: EventVenueRespons
           );
         })}
       </View>
+      {shownRound ? (
+        <View style={[styles.card, styles.gap]} testID="events-venue-other-tables">
+          <View style={styles.cardH}><UiText style={styles.h3}>{t("vOtherTables")}</UiText><UiText style={styles.lbl}>{t("vRoundShort", { n: shownRound.round })}</UiText></View>
+          {shownRound.tables.map((table, index) => {
+            const key = `${shownRound.round}:${table.table}`;
+            const open = openTable === key;
+            return (
+              <View key={key}>
+                <UiPressable accessibilityRole="button" accessibilityLabel={table.theme ?? table.table} accessibilityState={{ expanded: open }} onPress={() => setOpenTable(open ? null : key)} style={v.groupRow} testID={`events-venue-other-table-${table.table}`}>
+                  <View style={[styles.emoSm, { backgroundColor: tone(TABLE_TONES[index % TABLE_TONES.length]!)[0] }]}><UiText style={v.groupLetter}>{table.table.charAt(0)}</UiText></View>
+                  <View style={styles.grow}><UiText style={styles.title13}>{table.theme ?? table.table}</UiText><UiText style={styles.lbl}>{[table.table.length > 1 ? table.table : null, t("vNPeople", { n: table.members.length })].filter(Boolean).join(" · ")}</UiText></View>
+                  {open ? null : <AvatarStack people={table.members.slice(0, 3)} toneOf={toneOf} />}
+                  <Icon name={open ? "up" : "down"} size={16} color={colors.ink3} />
+                </UiPressable>
+                {open ? table.members.map((member) => (
+                  <UiPressable key={member.attendeeId} accessibilityRole="button" accessibilityLabel={member.name} onPress={() => onOpen(member)} style={[styles.li, v.mateRow, v.otherMember]}>
+                    <Avatar initial={member.initial} tone={toneOf(member)} size="sm" />
+                    <View style={styles.grow}><UiText style={styles.title13} numberOfLines={1}>{member.name}</UiText>{member.org || member.role ? <UiText style={styles.metaSub} numberOfLines={1}>{[member.org, member.role].filter(Boolean).join(" · ")}</UiText> : null}</View>
+                    <Icon name="right" size={16} color={colors.ink4} />
+                  </UiPressable>
+                )) : null}
+              </View>
+            );
+          })}
+          {others.length > 1 ? (
+            <View style={{ marginTop: 10 }}>
+              <Segmented<string> accessibilityLabel={t("vOtherTables")} value={String(shownRound.round)} onChange={(value) => { setOtherRound(Number(value)); setOpenTable(null); }}
+                segments={others.map((entry) => ({ key: String(entry.round), label: t("vRoundShort", { n: entry.round }) }))} />
+            </View>
+          ) : null}
+        </View>
+      ) : null}
       <UiText style={[styles.lbl, { marginTop: 14, textAlign: "center" }]}>{t("vSeatsByOrganizer")}</UiText>
     </View>
   );
@@ -516,6 +554,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   roundLeft: { width: 56 },
   roundTable: { fontSize: 22, letterSpacing: -0.44, lineHeight: 26 },
   mateRow: { gap: 10, paddingVertical: 7 },
+  otherMember: { paddingLeft: 42 },
   pcard: { backgroundColor: colors.surface, borderRadius: radius.xl, gap: 10, padding: 18, width: PCARD },
   name16: { color: colors.ink, fontSize: 18, fontWeight: "700", lineHeight: 27 },
   dots: { flexDirection: "row", gap: 5, justifyContent: "center", marginTop: 10 },

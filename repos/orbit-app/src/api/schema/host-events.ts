@@ -8,6 +8,7 @@ import type {
   HostEventCancelInput,
   HostEventArchiveInput,
   HostEventCodeReissueInput,
+  HostEventCoverResult,
   HostEventInput,
   HostEventPublishInput,
   HostEventUpdateInput,
@@ -153,9 +154,13 @@ export const hostEventViewObject = z.object({
   version: z.number().int().min(1),
   contact: hostEventContactObject.nullable().optional().catch(null),
   agenda: readableItems(z.object({ at: z.string(), title: z.string(), detail: z.string().nullable().optional() })).optional().catch(undefined),
+  coverUrl: z.string().min(1).nullable().optional().catch(null),
   sample: z.literal(true).optional(),
 });
 export const hostEventViewSchema = hostEventViewObject as unknown as z.ZodType<HostEventView>;
+
+export const hostEventCoverResultObject = z.object({ coverUrl: z.string().min(1).nullable() });
+export const hostEventCoverResultSchema = hostEventCoverResultObject as unknown as z.ZodType<HostEventCoverResult>;
 
 export const hostEventChangePreviewObject = z.object({
   timeChanged: z.boolean(),

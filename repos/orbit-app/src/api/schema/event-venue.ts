@@ -52,6 +52,7 @@ export const eventVenueResponseObject = z.object({
   meetingSlots: z.array(z.string()).max(3).optional().catch(undefined),
   readOnly: z.boolean().optional(),
   checkedIn: z.boolean().optional(),
+  roundTables: readableItems(z.object({ round: z.number().int().min(1), tables: readableItems(z.object({ table: z.string(), theme: z.string().nullable().optional(), members: readableItems(mate) })) })).optional().catch(undefined),
   rounds: readableItems(z.object({ round: z.number().int().min(1), title: z.string().nullable().optional(), table: z.string(), theme: z.string().nullable().optional(), why: z.string().nullable().optional(), whyDetail: z.string().nullable().optional(), tablemates: readableItems(mate) })).optional().catch(undefined),
   sample: z.literal(true).optional(),
 });

@@ -128,3 +128,20 @@ test("attendee sheet: a request they sent can be accepted (same /respond route);
   await hidden.getByRole("button", { name: mate.name }).first().click();
   await hidden.getByText("对方没有公开参加资料", { exact: true }).waitFor();
 });
+
+test("会場の記録 ほかのテーブル: switch rounds, open a table to see its members; a member opens the sheet", async (t) => {
+  const roundTables = [
+    { round: 1, tables: [{ table: "B-1", theme: "AI・SaaS", members: [{ attendeeId: mate.attendeeId, initial: mate.initial, name: mate.name }] }] },
+    { round: 2, tables: [{ table: "D-3", theme: "飲食・小売", members: [{ attendeeId: "x-9", initial: "周", name: "周 遥" }] }] },
+  ];
+  const page = await harness.open(t, { screen: "venue", params: { id: eventId }, responses: { [`${path}/venue`]: { ...ended, rounds, roundTables }, [`${path}/attendees/`]: profile() } });
+  await page.getByTestId("events-venue-other-tables").waitFor();
+  await page.getByText("AI・SaaS", { exact: true }).waitFor();
+  assert.equal(await page.getByText("飲食・小売", { exact: true }).count(), 0);
+  await page.getByRole("tab", { name: "R2" }).click();
+  await page.getByText("飲食・小売", { exact: true }).waitFor();
+  await page.getByRole("tab", { name: "R1" }).click();
+  await page.getByTestId("events-venue-other-table-B-1").click();
+  await page.getByTestId("events-venue-other-tables").getByRole("button", { name: mate.name }).click();
+  await page.getByTestId("events-attendee-sheet").waitFor();
+});

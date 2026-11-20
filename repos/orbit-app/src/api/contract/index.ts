@@ -378,7 +378,7 @@ export type { EventPrepAgendaItem, EventPrepChecklistItem, EventPrepChecklistKey
 export type { OrganizerFollowResult } from "./organizer-follow";
 export type { EventRelevance, EventRelevanceGroup, EventRelevancePeople, EventRelevanceWarning } from "./event-relevance";
 export type { EventOverviewAttendee, EventOverviewRegistrationStatus, EventOverviewResponse } from "./event-overview";
-export type { EventVenueExchangeState, EventVenuePerson, EventVenueRelation, EventVenueResponse, EventVenueRound, EventVenueState } from "./event-venue";
+export type { EventVenueExchangeState, EventVenuePerson, EventVenueRelation, EventVenueResponse, EventVenueRound, EventVenueRoundTables, EventVenueState } from "./event-venue";
 export type { EventAttendeeProfile } from "./event-attendee-profile";
 export type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterHighlight, EventAfterNextStep, EventAfterResponse, EventAfterScoreSlot } from "./event-after";
 export type { EventJoinAnswer, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "./event-join";
