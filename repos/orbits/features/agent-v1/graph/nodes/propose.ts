@@ -28,6 +28,7 @@ import type { CardOperationIntent } from "../../../agent/runtime/card-operations
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart, OptionSetState } from "../state";
 import { nameOf as boundName, setIdOf } from "./clarify";
+import { readSourceOf } from "../../answer/basis";
 import { judgeDuplicate, possibleDuplicates, type DuplicateDecision } from "../../judgment/duplicate";
 import { localDay } from "../../views/recent-interaction";
 import type { RecordView } from "../../domains/types";
@@ -485,6 +486,13 @@ export function proposeNode(scope: NodeScope): GraphNode {
         const made = duplicateSet(scope, { ...state, optionSets }, part, duplicate);
         optionSets.push(made.set);
         run.optionLabels.set(made.set.clarificationId, made.labels);
+        // AG21b (R41): the existing notes code quotes in its own sentence are this part's sources (the basis line opens them).
+        const quoted = duplicate.kind === "same" ? [duplicate.existing] : duplicate.existing;
+        for (const view of quoted) {
+          const source = readSourceOf(view, ctx.timeZone);
+          if (source) run.readSources.set(view.ref, source);
+        }
+        part.cites = [...new Set([...(part.cites ?? []), ...quoted.map((view) => view.ref)])];
         if (duplicate.kind === "ask") {
           settle(part, "awaiting_clarification", null, made.line);
           part.waitReason = "object_ambiguous";

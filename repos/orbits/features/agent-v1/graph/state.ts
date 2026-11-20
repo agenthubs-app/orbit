@@ -84,7 +84,7 @@ export interface OptionSetState {
   kind: "question" | "not_understood" | "entry";
   asks?: "object" | "reading";
   /** AG06: operation — a question before the card (which person, which to-do, which date field). */
-  purpose: "directions" | "readings" | "object" | "other_readings" | "entry" | "alternative" | "operation" | "web_pick" | "web_send" | "ranking";
+  purpose: "directions" | "readings" | "object" | "other_readings" | "entry" | "alternative" | "operation" | "web_pick" | "web_send" | "ranking" | /** AG21b (R31): which occasion a note records. */ "interaction";
   state: "open" | "answered" | "shelved";
   selectedOptionId?: string | null;
   answeredBy?: string | null;

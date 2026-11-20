@@ -49,7 +49,9 @@ export function attributeMessage(parts: readonly AttributionPart[], openItems: r
   }
   // AG10 (AE-FN-005): right after "按什么来挑", a bare reply with nothing of its own to do ("随便，都行", "按开始时间") answers it.
   const bare = parts.filter((part) => (part.clarity === "statement" || part.clarity === "none" || part.clarity === "clear") && !(part.capabilities ?? []).some((capability) => /\.(read|create|update|delete|complete|reopen)$|^view\./u.test(capability)) && result.get(part.localId)?.kind === "new");
-  if (!anyContinued && justAsked.length === 1 && justAsked[0].rank && bare.length === 1 && parts.length === 1) {
+  // AG21b (R31): so does a bare reply right after "which occasion should the note record" ("工地那次").
+  const asksOccasion = (item: SessionOpenItem) => Boolean(item.options?.some((option) => option.type === "interaction"));
+  if (!anyContinued && justAsked.length === 1 && (justAsked[0].rank || asksOccasion(justAsked[0])) && bare.length === 1 && parts.length === 1) {
     result.set(bare[0].localId, { fallback: true, item: justAsked[0], kind: "clarification" });
   }
   return result;

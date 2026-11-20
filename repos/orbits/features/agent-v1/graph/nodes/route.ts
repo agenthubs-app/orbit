@@ -20,7 +20,7 @@ import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
 import { clueWords, needsDirections, objectOf, pageKindOf } from "./clarify";
 import { clueSearchWords } from "./resolve";
-import { needsIntentReview, readsAsQuestion, reviewWriteIntent } from "../../judgment/intent-review";
+import { needsIntentReview, readsAsQuestion, readsAsWriteRequest, reviewWriteIntent } from "../../judgment/intent-review";
 import { CLARIFY_WORDS } from "../../clarify/copy";
 import { nextNoteGoalIn, organizeMeansSummary, updatesInteractionsFromMemo } from "./functions";
 import { keepsLookingIn, pushSaidIn, RECURRING_ASK, recurrenceSaidIn, RULE_NOUN, RULE_QUALIFIER, stateVerbSaidIn } from "../../rule/parse";
@@ -125,6 +125,44 @@ export function qualifiesRuleOf(part: Pick<GraphPart, "capabilities" | "continue
   return others.some((other) => other.part.localId !== part.localId && isRuleRequest(other.part, other.quote, openItems));
 }
 
+type LookupKind = "todo" | "schedule" | "memo" | "privateEvent";
+
+/**
+ * AG21b (R42): the readings of a write that differ only by the kind of record they change (the same verbs on a to-do, a
+ * schedule item, a private event or a note), one kind each; null when they differ otherwise.
+ */
+export function readingKindsOf(readings: readonly { capabilities: readonly Capability[] }[]): { kind: LookupKind; capabilities: Capability[] }[] | null {
+  if (readings.length < 2) return null;
+  const out: { kind: LookupKind; capabilities: Capability[]; verbs: string }[] = [];
+  for (const reading of readings) {
+    const writes = reading.capabilities.filter((capability) => capabilityKind(capability) === "write");
+    const heads = new Set(writes.map((capability) => capability.slice(0, capability.indexOf("."))));
+    if (!writes.length || heads.size !== 1) return null;
+    const head = [...heads][0];
+    if (head !== "todo" && head !== "schedule" && head !== "memo" && head !== "privateEvent") return null;
+    out.push({ capabilities: [...reading.capabilities], kind: head, verbs: writes.map((capability) => capability.slice(capability.indexOf(".") + 1)).sort().join(",") });
+  }
+  if (new Set(out.map((item) => item.kind)).size !== out.length || new Set(out.map((item) => item.verbs)).size !== 1) return null;
+  return out.map(({ capabilities, kind }) => ({ capabilities, kind }));
+}
+
+/** AG21b (R42): whether the account holds a record of this kind with these words. A read that fails counts as holding one. */
+async function kindHolds(records: NonNullable<NodeScope["deps"]["records"]>, actorId: string, kind: LookupKind, words: readonly string[]): Promise<boolean> {
+  const scope = records.scope(actorId);
+  try {
+    if (kind === "privateEvent") {
+      if (!records.privateEvents) return true;
+      const squash = (text: string) => text.toLowerCase().replace(/[\s「」"“”]/gu, "");
+      const events = await records.privateEvents.list(scope.accountId);
+      return events.some((event) => words.some((word) => squash(event.title).includes(squash(word)) || squash(word).includes(squash(event.title))));
+    }
+    for (const text of words) if ((await records.reader.read(kind, scope, { limit: 3, text })).items.length) return true;
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 export function routeNode(scope: NodeScope): GraphNode {
   const { deps, input, run } = scope;
   return async (state: AgentGraphState) => {
@@ -161,12 +199,16 @@ export function routeNode(scope: NodeScope): GraphNode {
     // registered write verb, is checked once by the judgment model. Anything but a sure "yes" makes it a statement.
     const reviewed = new Set<string>();
     const ruleQuotes = state.parts.map((part) => ({ part, quote: input.message.slice(part.quote[0], part.quote[1]) }));
+    // AG21b (R29): the turn continues a write in progress — an open question of a write, or the last request asked for one.
+    const lastUserText = context && !context.idle ? [...context.messages].reverse().find((message) => message.role === "user")?.text ?? "" : "";
+    const writeInProgress = Boolean(context && !context.idle && (context.openItems.some((item) => item.writes) || (lastUserText && readsAsWriteRequest(lastUserText))));
     if (!resume) {
       for (const original of state.parts) {
         const found = attribution?.get(original.localId);
         const quote = input.message.slice(original.quote[0], original.quote[1]);
         const followsWrite = original.dependsOn.some((id) => state.parts.find((other) => other.localId === id)?.capabilities.some((capability) => capabilityKind(capability) === "write"));
-        const review = { capabilities: original.capabilities, clarity: original.plan.clarity, continues: Boolean(found && found.kind !== "new"), followsWrite, hypothesis: original.plan.hypothesis, intentBasis: original.plan.intentBasis, negation: original.plan.negation, quote };
+        const withWrite = writeInProgress || state.parts.some((other) => other.localId !== original.localId && other.capabilities.some((capability) => capabilityKind(capability) === "write"));
+        const review = { capabilities: original.capabilities, clarity: original.plan.clarity, continues: Boolean(found && found.kind !== "new"), followsWrite, hypothesis: original.plan.hypothesis, intentBasis: original.plan.intentBasis, negation: original.plan.negation, quote, withWrite };
         // AG14: an ask about saved memory is read from the words by code (memoryRouteStep); it needs no review.
         if (isMemoryAsk(quote, original.capabilities)) continue;
         // AG15: a recurrence with a pick or tell verb, or a named task with pause / resume / delete, is an explicit
@@ -178,9 +220,29 @@ export function routeNode(scope: NodeScope): GraphNode {
         if (!result.explicit) reviewed.add(original.localId);
       }
     }
+    // AG21b (R42): a write read several ways that differ only by the kind of record ("把样书那条改到周四": a to-do or a
+    // schedule item) is looked up in each kind first: exactly one kind holding a record of those words decides (still a
+    // card); two or more, or none, are asked as before.
+    const narrowed = new Map<string, Capability[]>();
+    if (!resume && deps.records) {
+      for (const original of state.parts) {
+        if (original.plan.clarity !== "multiple_readings" || reviewed.has(original.localId)) continue;
+        const words = original.refs.filter((ref) => ref.entity !== "contact" && !ref.recordId).map((ref) => clueSearchWords(clueText(ref))).filter((text): text is string => Boolean(text));
+        const kinds = readingKindsOf(original.plan.readings ?? []);
+        if (!words.length || !kinds) continue;
+        const holding = [];
+        for (const item of kinds) if (await kindHolds(deps.records, input.actorId, item.kind, words)) holding.push(item);
+        emitTrace({ holding: holding.map((item) => item.kind), kinds: kinds.map((item) => item.kind), partId: original.localId, type: "route.reading_kinds_looked_up" });
+        if (holding.length === 1) narrowed.set(original.localId, holding[0].capabilities);
+      }
+    }
     let parts: GraphPart[] = state.parts.map((original) => {
       if (resume && !state.touched!.includes(original.localId)) return original;
       const part: GraphPart = { ...original };
+      if (narrowed.has(part.localId)) {
+        part.capabilities = [...narrowed.get(part.localId)!];
+        part.plan = { ...part.plan, clarity: "clear", readings: [] };
+      }
       // AG09 stability run (AE-SCL-016): with a public object named in this message (a name to look up, a web page), a
       // contact clue that is only a pronoun ("they") stands for that company or person, not for one of the user's contacts.
       if (!resume && namesPublicObject) {

@@ -54,5 +54,15 @@ export const CONTACT_WORDS = {
     ja: `${rows.join("・")}行目は変更できませんでした（その行がないか、名前がありません）。カードの表示のままです。確定するまで取り込みません。`,
     zh: `第${rows.join("、")}行没法改（没有这一行，或者这一行没有姓名），卡片上保持原样。点确认之前不会导入。`,
   }),
+  /** AG21b (R27): rows the words named that already had the decision asked for: nothing changed. */
+  importRowsAlready: (language: ReplyLanguage, rows: readonly number[], decision: "create" | "skip") => pick(language, decision === "create" ? {
+    en: `Row ${rows.join(" and ")} is already a new contact on the card, so nothing changed.`,
+    ja: `${rows.join("・")}行目はもともと新規です。カードは変わっていません。`,
+    zh: `第${rows.join("、")}行本来就是新增，卡片没有变。`,
+  } : {
+    en: `Row ${rows.join(" and ")} is already left out on the card, so nothing changed.`,
+    ja: `${rows.join("・")}行目はもともと取り込まない行です。カードは変わっていません。`,
+    zh: `第${rows.join("、")}行本来就不导入，卡片没有变。`,
+  }),
   label: (language: ReplyLanguage, field: "organization" | "role") => pick(language, field === "organization" ? { en: "company", ja: "会社", zh: "公司" } : { en: "title", ja: "役職", zh: "职位" }),
 };

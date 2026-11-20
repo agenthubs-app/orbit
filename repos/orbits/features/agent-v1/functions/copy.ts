@@ -36,11 +36,14 @@ export const quoted = (language: Language, text: string) => (language === "en" ?
 
 /* ── ranking ─────────────────────────────────────────────────────────── */
 
-export function timeWords(preference: Pick<TimePreference, "days" | "part">, language: Language): string {
+export function timeWords(preference: Pick<TimePreference, "days" | "part" | "clock">, language: Language): string {
   const days = preference.days === "weekend" ? { en: "on a weekend", ja: "週末", zh: "周末" }[language] : preference.days === "weekday" ? { en: "on a weekday", ja: "平日", zh: "工作日" }[language] : "";
   const part = preference.part ? { afternoon: { en: "afternoon", ja: "午後", zh: "下午" }, evening: { en: "evening", ja: "夜", zh: "晚上" }, morning: { en: "morning", ja: "午前", zh: "上午" } }[preference.part][language] : "";
-  if (language === "en") return [days, part ? `in the ${part}` : ""].filter(Boolean).join(" ");
-  return `${days}${part}`;
+  // AG21b (R33): a clock boundary, as a 24-hour time.
+  const at = preference.clock ? `${String(Math.floor(preference.clock.minutes / 60)).padStart(2, "0")}:${String(preference.clock.minutes % 60).padStart(2, "0")}` : "";
+  const clock = !preference.clock ? "" : preference.clock.side === "from" ? { en: `starting at ${at} or later`, ja: `${at}以降に開始`, zh: `${at}以后开始` }[language] : { en: `starting before ${at}`, ja: `${at}より前に開始`, zh: `${at}以前开始` }[language];
+  if (language === "en") return [days, part ? `in the ${part}` : "", clock].filter(Boolean).join(" ");
+  return `${days}${part}${clock}`;
 }
 
 export function fieldName(field: RankField, language: Language): string {

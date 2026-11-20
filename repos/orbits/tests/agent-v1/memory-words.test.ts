@@ -88,7 +88,8 @@ test("what a sentence to remember holds: the kind, the tasks and the values", ()
 
 test("time values and the reply language are read from an entry's own words too", () => {
   assert.deepEqual(timeValuesIn("推荐活动时优先周末上午"), { dayPart: "morning", preferredDays: ["Sat", "Sun"], strength: "prefer" });
-  assert.deepEqual(timeValuesIn("不要推荐晚上 18 点以后开始的活动"), { dayPart: "evening", strength: "avoid" });
+  // AG21b (R33): a clock time is a start-time bound read from the words, never widened to the whole evening.
+  assert.deepEqual(timeValuesIn("不要推荐晚上 18 点以后开始的活动"), { strength: "avoid" });
   assert.equal(timeValuesIn("推荐活动时优先和器物、茶有关的"), null);
   assert.equal(replyLanguageIn("回答用日语"), "ja");
   assert.equal(replyLanguageIn("日本語で答えて"), "ja");

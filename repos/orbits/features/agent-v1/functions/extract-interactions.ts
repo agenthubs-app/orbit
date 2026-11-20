@@ -85,6 +85,69 @@ export function extractInteractions(candidates: readonly InteractionCandidate[],
   return { items, results };
 }
 
+/** AG21b (R31): one occasion — the interactions of one meeting, call or message, with every contact who was in it. */
+export interface InteractionGroup {
+  contacts: LinkedContact[];
+  channel: InteractionResult["channel"];
+  direction: InteractionResult["direction"];
+  occurredOn: string;
+  sentenceIds: number[];
+}
+
+/**
+ * AG21b (R31): the extractor returns one interaction per person; a note holds one interaction that takes several people.
+ * Writable interactions of the same day and channel that share a sentence are one occasion with all their contacts
+ * ("周二在工地和石楠、季朗碰头" is one meeting with both). Different days, channels or sentences stay separate occasions.
+ */
+export function groupInteractions(results: readonly InteractionResult[]): InteractionGroup[] {
+  const groups: InteractionGroup[] = [];
+  for (const item of results) {
+    if (!item.writable || !item.contact || !item.occurredOn) continue;
+    const same = groups.find((group) => group.occurredOn === item.occurredOn && group.channel === item.channel && group.sentenceIds.some((id) => item.sentenceIds.includes(id)));
+    if (same) {
+      if (!same.contacts.some((contact) => contact.id === item.contact!.id)) same.contacts.push(item.contact);
+      same.sentenceIds = [...new Set([...same.sentenceIds, ...item.sentenceIds])].sort((left, right) => left - right);
+      if (same.direction !== item.direction) same.direction = "mutual";
+      continue;
+    }
+    groups.push({ channel: item.channel, contacts: [item.contact], direction: item.direction, occurredOn: item.occurredOn, sentenceIds: [...item.sentenceIds].sort((left, right) => left - right) });
+  }
+  return groups;
+}
+
+/** AG21b (R31): an occasion offered in a question, as the option's id (codes and ids only), and read back from it. */
+export function interactionOptionId(memoId: string, group: InteractionGroup): string {
+  return ["interaction", memoId, group.occurredOn, group.channel, group.direction, group.contacts.map((contact) => contact.id).join(","), group.sentenceIds.join(",")].join("|");
+}
+
+export function interactionOfOption(id: string): { memoId: string; occurredOn: string; channel: InteractionResult["channel"]; direction: InteractionResult["direction"]; contactIds: string[]; sentenceIds: number[] } | null {
+  const [tag, memoId, occurredOn, channel, direction, contacts, sentences] = id.split("|");
+  if (tag !== "interaction" || !memoId || !/^\d{4}-\d{2}-\d{2}$/u.test(occurredOn ?? "") || !channel || !direction || !contacts) return null;
+  return { channel: channel as InteractionResult["channel"], contactIds: contacts.split(",").filter(Boolean), direction: direction as InteractionResult["direction"], memoId, occurredOn, sentenceIds: (sentences ?? "").split(",").filter(Boolean).map(Number) };
+}
+
+const PICK_FILLER = /(那一次|这一次|那次|这次|那回|这回|那个|这个|那条|这条|那场|就是|就|是|选|要|记|吧|的|の方|のほう|の|方|\bthe\b|\bone\b|[。，,.!！、\s])/giu;
+const PICK_ORDINAL: Record<string, number> = { 一: 0, 1: 0, first: 0, 二: 1, 两: 1, 2: 1, second: 1, 三: 2, 3: 2, third: 2 };
+
+/**
+ * AG21b (R31): the occasion a typed reply names among those offered ("工地那次", "打电话那个", "第二个", "the call"): by
+ * an ordinal, or by the most two-character pieces of the reply found in one option's label. Null when none or a tie.
+ */
+export function interactionNamedIn(reply: string, options: readonly { id: string; label: string }[]): string | null {
+  const ordinal = /第\s*([一二两三123])\s*(?:个|次|条|项)|\b(first|second|third)\b|^\s*([123])\s*$/iu.exec(reply);
+  if (ordinal) {
+    const index = PICK_ORDINAL[(ordinal[1] ?? ordinal[2] ?? ordinal[3]).toLowerCase()];
+    return options[index]?.id ?? null;
+  }
+  const words = reply.toLowerCase().replace(PICK_FILLER, "");
+  if (!words) return null;
+  const pieces = words.length === 1 ? [words] : Array.from({ length: words.length - 1 }, (_, index) => words.slice(index, index + 2));
+  const scores = options.map((option) => pieces.filter((piece) => option.label.toLowerCase().includes(piece)).length);
+  const best = Math.max(...scores);
+  if (best <= 0 || scores.filter((score) => score === best).length > 1) return null;
+  return options[scores.indexOf(best)].id;
+}
+
 /** extractInteractions — step 2: only a sure "yes" of the review makes an interaction writable; anything else is "unsure". */
 export function reviewInteractions(results: readonly InteractionResult[], outcome: JudgmentOutcome | null): InteractionResult[] {
   return results.map((result) => {

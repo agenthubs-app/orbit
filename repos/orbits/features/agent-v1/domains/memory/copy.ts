@@ -35,6 +35,12 @@ export const noteLine = (note: MemoryNote, language: MemoryLanguage): string => 
 const GO: Record<MemoryLanguage, string> = { en: "Settings", ja: "設定へ", zh: "去设置" };
 
 export const MEMORY_WORDS = {
+  /** AG21b (R43): an ask to skip or pre-approve the confirmation step — it is not kept, and the rule stays. */
+  confirmationStays: (language: MemoryLanguage) => ({
+    en: "Confirmation can't be switched off: every change is still shown on a card first and is only made after you tap confirm yourself. This was not saved as a preference.",
+    ja: "確認は省けません。変更はこれからも必ず先にカードでお見せし、ご自身で確定を押したときだけ反映します。この内容は記憶として保存していません。",
+    zh: "确认这一步不能省：每个改动都会先放在确认卡上给你看，要你自己点确认才会写入。这句话没有存成记忆。",
+  })[language],
   /** 「从对话里记住新的」 is off: used for this turn only, and the two ways to keep it (board 4). */
   learningOffNote(language: MemoryLanguage, content: string): MemoryNote {
     if (language === "en") return { action: `Switch on "Remember new things from conversations" and tell me again, or add it yourself in Settings.`, go: GO.en, text: `${quoted(language, content)} won't be used automatically next time. To keep it:`, title: "Used this once only, not saved" };

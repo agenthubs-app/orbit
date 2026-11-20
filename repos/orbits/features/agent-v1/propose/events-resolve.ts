@@ -337,6 +337,13 @@ export async function resolveEventIntent(ctx: Ctx, part: GraphPart, write: PartW
     case "memo.update": {
       // Part of deleting a private event in this message: the plan makes these items (and keeps their order).
       if (ctx.deleting) return { kind: "covered" } as unknown as WriteOutcome;
+      // AG21b (R28): words that ask to unlink a note from an event are the unlink operation. When the same message deletes
+      // the event ("把茶会删了，笔记只解除关联"), its delete plan makes the unlink (covered above: a schedule-tagged delete of a
+      // private event becomes that plan); otherwise the note linked to the event named is unlinked on its own.
+      if (intent.capability === "memo.update" && UNLINK_WORDS.test(quote)) {
+        const unlink = await memoUnlink(ctx, part, intent, clueTexts, quote, said?.day ?? null);
+        if (unlink) return unlink;
+      }
       if (intent.capability === "memo.update") return stop("not_in_this_version", language === "zh" ? `「${quote}」这次在对话里只能解除笔记和活动的关联，改笔记内容请到笔记页。这次没有改。` : language === "ja" ? `「${quote}」：会話からはメモとイベントの紐づけを外すことだけができます。本文の変更はメモの画面でお願いします。今回は変更していません。` : `"${quote}": in the chat a memo can only be unlinked from an event; edit its text on the note's page. Nothing was changed.`);
       const all = await eventCandidates(ctx, { clues: clueTexts, quote });
       const matched = matchEvents(all, clueTexts, quote, said?.day ?? null, zone);
@@ -592,8 +599,19 @@ async function resolveSchedule(ctx: Ctx, part: GraphPart, write: PartWrite, inte
     if (exact.length) found = exact;
   }
   if (!found.length) {
+    const named = matchEvents(await eventCandidates(ctx, { clues, quote }), clues, quote, day, zone);
+    // AG21b (R28): the first layer often calls a named event a schedule item. With no schedule item of those words, the
+    // user's own private event of the same words is the one meant: its change, or its delete plan (links listed first).
+    if (named.some((item) => item.ref.kind === "private")) {
+      emitTrace({ capability: intent.capability, partId: part.localId, type: "propose.schedule_as_private_event" });
+      if (intent.capability === "schedule.delete") {
+        ctx.deleting = true;
+        return resolveDeletePlan(ctx, part, write, { ...intent, capability: "privateEvent.delete" }, clueTexts, quote, failedLine);
+      }
+      return resolveEventIntent(ctx, part, write, { ...intent, capability: "privateEvent.update" });
+    }
     // A platform event's time is the organizer's, never the user's to change.
-    const event = matchEvents(await eventCandidates(ctx, { clues, quote }), clues, quote, day, zone).find((item) => item.ref.kind === "platform");
+    const event = named.find((item) => item.ref.kind === "platform");
     if (event) return stop("platform_event", EVENT_WORDS.platformLocked(language, event.title));
     return stop("object_not_found", EVENT_WORDS.scheduleNotFound(language, clues[0] ?? quote));
   }
@@ -619,6 +637,33 @@ async function resolveSchedule(ctx: Ctx, part: GraphPart, write: PartWrite, inte
   if (onlyStartSaid(timeWords || quote)) emitTrace({ partId: part.localId, type: "propose.schedule_length_kept" });
   ctx.names?.set(item.id, title);
   return { kind: "ready", ops: [{ ...base, capability: "schedule.update", set: { scope: scope === "single" ? "whole_series" : scope, ...(scope === "this_occurrence" ? { occurrenceDate: anchorDay } : {}), startsAt: newStart, ...(newEnd ? { endsAt: newEnd } : {}) }, shown, targetId: item.id } as CardOperationIntent & { localId: string }] };
+}
+
+/**
+ * AG21b (R28): "把茶会纪要和校友茶会的关联解除" outside a delete plan — the note linked to the private event the words name
+ * loses that link (one memo.update with links, as in the delete plan). The note is the one the other words name, or the
+ * only note linked to the event. Null when that cannot be told (the caller says what it says without an unlink).
+ */
+async function memoUnlink(ctx: Ctx, part: GraphPart, intent: StoredIntent, clueTexts: string[], quote: string, day: string | null): Promise<WriteOutcome | null> {
+  const access = ctx.records?.privateEvents;
+  if (!access || !ctx.scope) return null;
+  const all = await eventCandidates(ctx, { clues: clueTexts, quote });
+  const events = matchEvents(all, clueTexts, quote, day, ctx.timeZone).filter((event) => event.ref.kind === "private");
+  if (events.length !== 1) return null;
+  const event = events[0];
+  const references = (await access.references(ctx.scope.accountId, event.ref.id).catch(() => null))?.filter((ref) => ref.kind === "memo") ?? [];
+  const eventKey = squash(event.title);
+  const memoClues = clueTexts.map(squash).filter((key) => key.length >= 2 && !eventKey.includes(key) && !key.includes(eventKey));
+  const named = memoClues.length ? references.filter((ref) => memoClues.some((key) => squash(ref.label).includes(key) || key.includes(squash(ref.label)))) : references;
+  if (named.length !== 1) return null;
+  const view = (await ctx.records!.reader.read("memo", ctx.scope, { id: named[0].id }).catch(() => null))?.items[0];
+  if (!view) return null;
+  const current = refsFrom(view.fields.eventRefs);
+  const rest = current.filter((item) => !(item.kind === "private" && item.id === event.ref.id));
+  if (rest.length === current.length) return null;
+  const labels = (list: typeof current) => list.map((item) => all.find((candidate) => refKey(candidate.ref) === refKey(item))?.title ?? item.id);
+  emitTrace({ memo: view.id, partId: part.localId, type: "propose.memo_unlinked" });
+  return { kind: "ready", ops: [{ before: { eventRefs: current }, capability: "memo.update", expectedVersion: Number(view.fields.version ?? 1), links: true, localId: intent.localId, partId: part.localId, set: { eventRefs: rest }, shown: { events: { after: labels(rest), before: labels(current) }, title: named[0].label }, targetId: view.id } as CardOperationIntent & { localId: string }] };
 }
 
 /**

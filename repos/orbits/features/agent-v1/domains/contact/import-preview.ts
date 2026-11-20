@@ -74,18 +74,41 @@ export function withHeader(text: string): string {
   const lines = text.split("\n").filter((line) => line.trim());
   const cells = (line: string) => line.split(/[,\t]/u).map((cell) => cell.trim().replace(/^"|"$/gu, ""));
   if (!lines.length || Object.values(autoMapping(cells(lines[0]))).some((value) => value !== null)) return text;
-  const width = Math.max(...lines.map((line) => cells(line).length));
-  const columns = Array.from({ length: width }, (_, index) => lines.map((line) => cells(line)[index] ?? "").filter(Boolean));
-  let next = 0;
-  const header = columns.map((values) => {
-    if (values.length && values.every((value) => EMAIL_CELL.test(value))) return "Email";
-    if (values.length && values.every((value) => PHONE_CELL.test(value))) return "Phone";
-    const name = POSITIONAL[next];
-    next += 1;
-    return name;
+  // AG21b (R27): each line is read on its own — its list marker ("1.", "2)", "・", "-") taken off, each cell typed by its own
+  // shape (an e-mail, a phone number), the other cells name, company, title in that order. A placeholder or a bracketed
+  // remark where the name stands ("（名字忘了）", "?") is no name: the row is left out as missing_name, never created.
+  const rows = lines.map((line) => {
+    const out = { Company: "", Email: "", Name: "", Phone: "", Title: "" } as Record<string, string>;
+    const rest: string[] = [];
+    for (const cell of cells(withoutListMarker(line))) {
+      if (EMAIL_CELL.test(cell) && !out.Email) out.Email = cell;
+      else if (PHONE_CELL.test(cell) && !out.Phone) out.Phone = cell;
+      else rest.push(cell);
+    }
+    while (rest.length && !rest[rest.length - 1]) rest.pop();
+    if (rest.length > POSITIONAL.length) throw new ImportTableRejected("unknown_columns");
+    rest.forEach((cell, index) => { out[POSITIONAL[index]] = cell; });
+    if (isPlaceholderName(out.Name)) out.Name = "";
+    return out;
   });
-  if (header.some((name) => name === undefined)) throw new ImportTableRejected("unknown_columns");
-  return [header.join(","), ...lines].join("\n");
+  const header = ["Name", "Company", "Title", "Email", "Phone"];
+  const quoted = (cell: string) => (/[",\n]/u.test(cell) ? `"${cell.replace(/"/gu, '""')}"` : cell);
+  return [header.join(","), ...rows.map((row) => header.map((column) => quoted(row[column])).join(","))].join("\n");
+}
+
+/** AG21b (R27): a list marker at the start of a pasted line ("1.", "2)", "3、", "①", "・", "-", "*", "•"). */
+const LIST_MARKER = /^\s*(?:\d{1,3}\s*[.)、．）:：]|[（(]\s*\d{1,3}\s*[)）]|[①-⑳]|[・•*·\-–—])\s*/u;
+export function withoutListMarker(line: string): string {
+  return line.replace(LIST_MARKER, "");
+}
+
+/** AG21b (R27): words that stand where a name would but are none — a bracketed remark, a question mark, "unknown". */
+const PLACEHOLDER = /^(?:[?？]+|[-–—_.…]+|无|不详|未知|不知道|忘了|名字忘了|待定|待补|某某|xx+|n\/?a|unknown|tbd|不明|未定|名前不明)$/iu;
+export function isPlaceholderName(value: string): boolean {
+  const text = value.trim();
+  if (!text) return false;
+  if (/^[（(［\[【〔<＜].*[）)］\]】〕>＞]$/u.test(text)) return true;
+  return PLACEHOLDER.test(text);
 }
 
 export function previewImport(text: string, existing: readonly LiveRecord<Record<string, unknown>>[], actorId: string, overrides: Readonly<Record<string, ImportRowOverride>> = {}): ImportPreview {

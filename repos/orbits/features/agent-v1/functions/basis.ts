@@ -20,6 +20,12 @@ export type BasisSource = "turn" | "session_goal" | "memory" | "history" | "natu
 export interface TimePreference {
   days?: "weekend" | "weekday";
   part?: "morning" | "afternoon" | "evening";
+  /**
+   * AG21b (R33): a clock boundary on the start ("八点以后开始的", "before 8 am", "20時以降"), in minutes after midnight:
+   * "from" includes that minute (以后/以降/after), "before" leaves it out (以前/前/before). With a clock the part of the day
+   * is not used — "晚上八点以后" is 20:00 on, never the whole evening.
+   */
+  clock?: { minutes: number; side: "from" | "before" };
   /** A constraint (只…, 不要…, only, not): candidates that miss it are removed; otherwise it only ranks. */
   hard: boolean;
   /** The opposite: "不要晚上的" excludes evenings. */
@@ -141,10 +147,45 @@ export function timePreferenceIn(said: string, source: "turn" | "memory"): TimeP
   // Record names chosen with @ ("@设计师之夜") are not time words.
   const words = said.replace(/@\S+/gu, " ");
   const days = WEEKEND.test(words) ? "weekend" : WEEKDAY.test(words) ? "weekday" : undefined;
-  const part = MORNING.test(words) ? "morning" : AFTERNOON.test(words) ? "afternoon" : EVENING.test(words) ? "evening" : undefined;
-  if (!days && !part) return null;
+  const clock = clockBoundIn(words);
+  const part = clock ? undefined : MORNING.test(words) ? "morning" : AFTERNOON.test(words) ? "afternoon" : EVENING.test(words) ? "evening" : undefined;
+  if (!days && !part && !clock) return null;
   const exclude = EXCLUDE.test(words);
-  return { exclude, hard: exclude || ONLY.test(words), source, words: words.trim(), ...(days ? { days } : {}), ...(part ? { part } : {}) };
+  return { exclude, hard: exclude || ONLY.test(words), source, words: words.trim(), ...(days ? { days } : {}), ...(part ? { part } : {}), ...(clock ? { clock } : {}) };
+}
+
+const CJK_NUMBER: Record<string, number> = { 零: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10, 十一: 11, 十二: 12 };
+const PM_WORDS = /(下午|晚上|傍晚|夜里|夜间|夜|午後|夕方|pm|p\.m\.)/iu;
+const AM_WORDS = /(早上|上午|早晨|凌晨|午前|朝|am|a\.m\.)/iu;
+const ZH_JA_CLOCK = /(早上|上午|早晨|凌晨|中午|下午|傍晚|晚上|夜里|夜间|午前|午後|夕方|夜|朝)?\s*(\d{1,2}|十[一二]?|[零一二两三四五六七八九])\s*(?:[点點時时])\s*(半|\d{1,2}\s*分?)?\s*(以后|之后|以後|过后|后|後|以降|から|起|以前|之前|前|より前|まで)/u;
+const EN_CLOCK = /\b(after|from|at or after|before|earlier than|later than)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?|\b(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s+or\s+(later|after|earlier|before)\b/iu;
+
+/** AG21b (R33): the clock boundary the words put on a start time; null when they name none. */
+export function clockBoundIn(words: string): TimePreference["clock"] | null {
+  const hourOf = (raw: string, qualifier: string): number | null => {
+    let hour = /^\d+$/u.test(raw) ? Number(raw) : CJK_NUMBER[raw] ?? NaN;
+    if (!Number.isFinite(hour) || hour > 24) return null;
+    if (PM_WORDS.test(qualifier) && hour < 12) hour += 12;
+    else if (AM_WORDS.test(qualifier) && hour === 12) hour = 0;
+    return hour % 24;
+  };
+  const zh = ZH_JA_CLOCK.exec(words);
+  if (zh) {
+    const hour = hourOf(zh[2], zh[1] ?? "");
+    if (hour === null) return null;
+    const minute = zh[3] === "半" ? 30 : zh[3] ? Number(zh[3].replace(/\D/gu, "")) : 0;
+    const side = /(以前|之前|前|より前|まで)/u.test(zh[4]) ? "before" : "from";
+    return { minutes: hour * 60 + Math.min(minute, 59), side };
+  }
+  const en = EN_CLOCK.exec(words);
+  if (en) {
+    const [word, raw, mm, meridiem] = en[1] ? [en[1], en[2], en[3], en[4] ?? ""] : [en[8], en[5], en[6], en[7] ?? ""];
+    const hour = hourOf(raw, meridiem);
+    if (hour === null) return null;
+    const side = /(before|earlier)/iu.test(word) ? "before" : "from";
+    return { minutes: hour * 60 + (mm ? Math.min(Number(mm), 59) : 0), side };
+  }
+  return null;
 }
 
 /** The clause of the words that holds the time preference (between punctuation), for the lead. */
@@ -154,12 +195,17 @@ export function timeClauseOf(words: string): string | null {
 }
 
 /** Whether an event at this instant (in the time zone) meets the preference's days and part of the day. */
-export function meetsTime(preference: Pick<TimePreference, "days" | "part">, startsAt: string, timeZone: string): boolean {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hourCycle: "h23", timeZone, weekday: "short" }).formatToParts(new Date(startsAt)).map((part) => [part.type, part.value]));
+export function meetsTime(preference: Pick<TimePreference, "days" | "part" | "clock">, startsAt: string, timeZone: string): boolean {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hourCycle: "h23", minute: "2-digit", timeZone, weekday: "short" }).formatToParts(new Date(startsAt)).map((part) => [part.type, part.value]));
   const weekend = parts.weekday === "Sat" || parts.weekday === "Sun";
   const hour = Number(parts.hour);
   if (preference.days === "weekend" && !weekend) return false;
   if (preference.days === "weekday" && weekend) return false;
+  // AG21b (R33): a clock boundary, with its own inclusiveness ("以后" includes the minute, "以前" does not).
+  if (preference.clock) {
+    const minutes = hour * 60 + Number(parts.minute);
+    if (preference.clock.side === "from" ? minutes < preference.clock.minutes : minutes >= preference.clock.minutes) return false;
+  }
   if (preference.part === "morning" && hour >= 12) return false;
   if (preference.part === "afternoon" && (hour < 12 || hour >= 17)) return false;
   if (preference.part === "evening" && hour < 17) return false;

@@ -8,6 +8,7 @@
  *   are frozen together on the card; no model writes any of them.
  */
 import type { AgentMemory, AgentMemoryCategory, AgentMemoryStructured, AgentMemoryTask } from "../../../agent/memory/contract";
+import { clockBoundIn } from "../../functions/basis";
 
 export type MemoryLanguage = "zh" | "ja" | "en";
 
@@ -134,8 +135,11 @@ export function replyLanguageIn(words: string): NonNullable<AgentMemoryStructure
 /** The time preference an entry's words hold, as stored values; null when they name none. */
 export function timeValuesIn(words: string): Pick<AgentMemoryStructured, "preferredDays" | "dayPart" | "strength"> | null {
   const days = WEEKEND.test(words) ? (["Sat", "Sun"] as const) : WEEKDAY.test(words) ? (["Mon", "Tue", "Wed", "Thu", "Fri"] as const) : null;
-  const part = MORNING.test(words) ? "morning" : AFTERNOON.test(words) ? "afternoon" : EVENING.test(words) ? "evening" : null;
-  if (!days && !part) return null;
+  // AG21b (R33): with a clock boundary ("早上八点以前") the part-of-day word only says which eight o'clock: no part is stored
+  // (the boundary is read from the entry's words when it is used), only how strong the entry is.
+  const clock = clockBoundIn(words);
+  const part = clock ? null : MORNING.test(words) ? "morning" : AFTERNOON.test(words) ? "afternoon" : EVENING.test(words) ? "evening" : null;
+  if (!days && !part && !clock) return null;
   const strength = AVOID.test(words) ? "avoid" : ONLY.test(words) ? "only" : "prefer";
   return { ...(days ? { preferredDays: [...days] } : {}), ...(part ? { dayPart: part } : {}), strength };
 }

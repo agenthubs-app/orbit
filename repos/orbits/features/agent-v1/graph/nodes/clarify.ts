@@ -263,6 +263,17 @@ export function applyResolution(state: AgentGraphState, resolution: GraphResolut
     part.continues = { kind: "alternative", ref: `alternative:${requestId}:${part.localId}` };
     return { optionSets: sets, parts, pausing: false, resumeNext: "route", touched: [part.localId] };
   }
+  // AG21b (R31): the occasion a note records, picked: the part goes on to its card (functions node reads the pick).
+  if (set.purpose === "interaction") {
+    part.status = "unfinished";
+    part.reason = "proposing";
+    part.waitReason = null;
+    part.route = "propose_write";
+    delete part.write;
+    delete part.reads;
+    delete part.gaps;
+    return { optionSets: sets, parts, pausing: false, resumeNext: "route", touched: [part.localId] };
+  }
   // AG10: a way of ordering picked for a ranking with no basis: the part goes on to rank by it (functions node reads the pick).
   if (set.purpose === "ranking") {
     part.status = "answered";
