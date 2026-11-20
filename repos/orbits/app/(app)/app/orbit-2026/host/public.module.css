@@ -93,8 +93,8 @@
   .foot { margin-top: 18px; }
 }
 
-/* > 1440: the top bar's background and line still span the screen; its contents and the main column keep the 1440 width centred. */
+/* > 1440: the top bar (with its background and line) and the main column keep the 1440 width centred. */
 @media (min-width: 1441px) {
-  .pubtop { padding-inline: calc((100% - 1440px) / 2 + 40px); }
+  .pubtop { margin-inline: calc((100% - 1440px) / 2); }
   .main { padding-inline: calc((100% - 1440px) / 2 + 110px); }
 }

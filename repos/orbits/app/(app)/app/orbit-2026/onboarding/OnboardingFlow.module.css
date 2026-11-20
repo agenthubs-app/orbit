@@ -159,8 +159,8 @@ select.input:disabled + svg { color: var(--ink-3); }
   .foot .ghost:global(.btn), .foot .primary:global(.btn) { flex: 1 1 100%; }
 }
 
-/* > 1440: the header line spans the screen; the header row and the body keep the 1440 design width centred. */
+/* > 1440: the header (with its line) and the body keep the 1440 design width centred. */
 @media (min-width: 1441px) {
-  .head { padding-inline: calc((100% - 1440px) / 2 + 40px); }
+  .head { margin-inline: calc((100% - 1440px) / 2); }
   .body { padding-inline: calc((100% - 1440px) / 2 + 120px); }
 }

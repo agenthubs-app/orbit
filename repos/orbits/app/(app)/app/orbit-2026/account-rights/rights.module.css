@@ -103,5 +103,5 @@ td.lblCell { display: table-cell; white-space: nowrap; }
 .dangerTitle { color: var(--coral-text); }
 .dangerBody { flex: 1 1 280px; margin: 0; color: var(--ink-2); font-size: var(--fs-body-sm); line-height: var(--lh-prose-lg); }
 
-/* > 1440: the header line spans the screen; its row keeps the 1440 design width centred. */
-@media (min-width: 1441px) { .deletedHeader { padding-inline: calc((100% - 1440px) / 2 + 22px); } }
+/* > 1440: the header, line included, keeps the 1440 design width centred. */
+@media (min-width: 1441px) { .deletedHeader { margin-inline: calc((100% - 1440px) / 2); } }
