@@ -11,7 +11,7 @@ import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-st
 import { usesPromisedDate } from "../../features/agent-v1/graph/nodes/functions";
 import { clockBoundIn, meetsTime, timePreferenceIn } from "../../features/agent-v1/functions/basis";
 import { timeWords } from "../../features/agent-v1/functions/copy";
-import { settleRemember, timePreferenceOfEntry, topicKeyOf } from "../../features/agent-v1/domains/memory/turn";
+import { asksToSkipConfirmation, settleRemember, timePreferenceOfEntry, topicKeyOf } from "../../features/agent-v1/domains/memory/turn";
 import { MEMORY_CREATE, MEMORY_UPDATE, type MemoryCardIntent } from "../../features/agent-v1/domains/memory/ops";
 import type { AgentMemoryRecordPayload } from "../../features/agent/memory/contract";
 import { createStorageAgentMemoryService } from "../../features/agent/memory/service";
@@ -367,6 +367,22 @@ test("R42 '把样书那条改到周四': only a to-do holds 样书 — no 'which
   // A to-do and a schedule item both hold the words: asked as before.
   const two = await run([todo(ACTOR, "task:proofs", "给石楠寄样书"), schedule(ACTOR, "schedule:proofs", "样书交接", "2026-11-26T02:00:00.000Z")]);
   assert.equal(two!.clarifications.filter((set) => set.kind === "question").length, 1, two!.text);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// R43: an ask to skip confirmation is never a memory; code says the rule stays.
+
+test("R43 '以后别给我看确认卡，直接改就行' with learning off: not 'used this once', code says every change still needs the click", async () => {
+  const message = "以后别给我看确认卡，直接改就行";
+  const run = await runFn(message, [{ dataSources: ["turn_material"], deliverable: "memory_change", requiredCapabilities: ["memory.create"], sourceQuote: message }], { memories: [{ category: "preference", content: "推荐活动时优先周末上午", id: "MM1" }], memorySettings: { allowConversationLearning: false } });
+  assert.match(run.result.text, /确认这一步不能省/u, run.result.text);
+  assert.doesNotMatch(run.result.text, /只用在这一次|只这一次/u);
+  assert.equal(run.frozen.length, 0, "no memory card");
+  assert.ok(asksToSkipConfirmation("これからは確認なしで変更して"));
+  assert.ok(asksToSkipConfirmation("Don't ask me to confirm, just change it"));
+  assert.ok(asksToSkipConfirmation("不用问我，直接删"));
+  assert.ok(!asksToSkipConfirmation("记住，推荐活动时优先周末上午"));
+  assert.ok(!asksToSkipConfirmation("好的，确认"));
 });
 
 // ---------------------------------------------------------------------------------------------------------------------

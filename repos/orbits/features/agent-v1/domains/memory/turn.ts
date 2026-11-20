@@ -432,6 +432,15 @@ const SCHEDULE_WORDS = /(每天|每日|每周|每星期|每月|每隔|每到|定
  */
 const memoryLike = (capability: Capability, words: string) => isMemoryWrite(capability) || (capability.startsWith("rule.") && !SCHEDULE_WORDS.test(words));
 
+/**
+ * AG21b (R43): words that ask to drop or pre-approve the confirmation step ("以后别给我看确认卡，直接改就行", "不用问我，直接删",
+ * "確認なしで変更して", "don't ask me to confirm, just change it").
+ */
+const SKIP_CONFIRMATION = /((?:别|不要|不用|无需|不必|跳过|省掉|省去|免去|取消)(?:再)?(?:给我)?(?:看|弹|出|显示|发)?(?:确认卡|确认框|确认)|不用(?:再)?问我|别(?:再)?问我|自动(?:确认|同意|批准|通过)|默认(?:同意|确认)|確認(?:カード)?(?:なし|不要|しないで|いらない|せずに|を省いて|はいらない)|確認せず|\b(?:don'?t|never|stop) (?:ask(?:ing)? me (?:to |for )?(?:confirm|approval)|show(?:ing)? (?:me )?(?:the )?(?:confirmation|cards?))|\bwithout (?:asking|confirm(?:ation|ing)?)\b|\bskip (?:the )?confirm(?:ation)?\b|\bauto-?(?:approve|confirm)\b)/iu;
+export function asksToSkipConfirmation(words: string): boolean {
+  return SKIP_CONFIRMATION.test(words);
+}
+
 /** The words are an ask about saved memory that code settles (no other change is asked for in the same part). */
 export function isMemoryAsk(words: string, capabilities: readonly Capability[]): boolean {
   const otherWrites = capabilities.some((capability) => capabilityKind(capability) === "write" && !memoryLike(capability, words));
@@ -532,6 +541,22 @@ async function explainOrder(scope: NodeScope, state: AgentGraphState, part: Grap
 export async function memoryRouteStep(scope: NodeScope, state: AgentGraphState, parts: GraphPart[]): Promise<void> {
   const { input, run } = scope;
   const turn = run.memory;
+  // AG21b (R43): an ask to skip or pre-approve the confirmation is never something to remember (whatever the switch says):
+  // code says the rule stays; a change asked in the same words goes on to its card like any other.
+  const waived = new Set<string>();
+  for (const part of parts) {
+    const quote = input.message.slice(part.quote[0], part.quote[1]);
+    if (!asksToSkipConfirmation(quote)) continue;
+    waived.add(part.localId);
+    const line = MEMORY_WORDS.confirmationStays(state.language as MemoryLanguage);
+    part.capabilities = part.capabilities.filter((capability) => !isMemoryWrite(capability) && !capability.startsWith("rule."));
+    emitTrace({ otherWrites: writesOf(part).length, partId: part.localId, type: "memory.confirmation_not_waived" });
+    if (writesOf(part).length) run.leadLines.set(part.localId, line);
+    else {
+      answerByCode(scope, part, line);
+      run.codeAnswers.add(part.localId);
+    }
+  }
   const snapshot = turn.snapshot;
   if (!snapshot) return;
   const language = state.language as MemoryLanguage;
@@ -540,6 +565,7 @@ export async function memoryRouteStep(scope: NodeScope, state: AgentGraphState, 
   const session = run.sessionState;
   const settledIds = new Set<string>();
   for (const part of parts) {
+    if (waived.has(part.localId)) continue;
     const quote = input.message.slice(part.quote[0], part.quote[1]);
     const tagged = part.capabilities.some(isMemoryWrite);
     // A rule tag on words with no schedule does not make it another kind of change (see memoryLike).
