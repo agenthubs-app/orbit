@@ -59,7 +59,9 @@ export function createJourneyApi(client: OrbitApiClient, read: Read) {
     checklist: (eventId: string, items: readonly EventPrepChecklistItem[]) => read(client.patch<unknown>(`/api/events/${id(eventId)}/prep/checklist`, { body: { items } }), eventPrepResponseSchema as ZodType<EventPrepResponse>),
     venue: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/venue?platform=app`), eventVenueResponseSchema as ZodType<EventVenueResponse>),
     venueMemo: (eventId: string, attendeeId: string, text: string) => read(client.post<unknown>(`/api/events/${id(eventId)}/venue/memo`, { body: { attendeeId, text } }), eventVenueMemoResultSchema as ZodType<EventVenueMemoResult>),
-    attendee: (eventId: string, attendeeId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/attendees/${id(attendeeId)}?platform=app`), eventAttendeeProfileSchema as ZodType<EventAttendeeProfile>),
+    // The attendee id goes in the query, not the path: imported ids carry a literal %3A, and a path segment is decoded twice on
+    // the way to the route (platform + Next), so the path form 404s for them (2026-11-21, events-web).
+    attendee: (eventId: string, attendeeId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/attendees/profile?attendeeId=${id(attendeeId)}&platform=app`), eventAttendeeProfileSchema as ZodType<EventAttendeeProfile>),
     after: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/after?platform=app`), eventAfterResponseSchema as ZodType<EventAfterResponse>),
     confirmAfter: (eventId: string, items: EventAfterConfirmInput["items"]) => read(client.post<unknown>(`/api/events/${id(eventId)}/after/confirm`, { body: { idempotencyKey: newIdempotencyKey(), items } }), eventAfterConfirmResultSchema as ZodType<EventAfterConfirmResult>),
     dismiss: (eventId: string, reason: EventRecommendationDismissReason) => read(client.post<unknown>(`/api/recommendations/events/${id(eventId)}/dismiss`, { body: { idempotencyKey: newIdempotencyKey(), reason } }), eventRecommendationDismissResultSchema as ZodType<unknown>),

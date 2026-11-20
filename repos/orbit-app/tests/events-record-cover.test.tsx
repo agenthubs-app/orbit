@@ -188,3 +188,18 @@ test("loading frames: 記録を見る opens on the record's own frame; the detai
   await detail.getByText(overview.title).first().waitFor();
   assert.equal(await detail.getByTestId("events-detail-loading").count(), 0);
 });
+
+test("attendee profile request: the id goes in the query (an imported id with a literal %3A survives one decode)", async (t) => {
+  const odd = "event-participant-profile:ev:party-app%3Aprofile%3Aabc";
+  const oddRounds: EventVenueRound[] = [{ round: 1, table: "A-2", theme: "IPO", tablemates: [{ attendeeId: odd, initial: "周", name: "周 遥" }] }];
+  const page = await harness.open(t, { screen: "venue", params: { id: eventId }, responses: {
+    [`${path}/venue`]: { ...ended, rounds: oddRounds },
+    [`${path}/attendees/profile`]: profile({ attendeeId: odd, name: "周 遥" }),
+  } });
+  await page.getByRole("button", { name: "周 遥" }).first().click();
+  await page.getByText("資本政策の相談歓迎です。", { exact: true }).waitFor();
+  const requests = await page.evaluate(() => (window as unknown as { fixture: { requests: string[] } }).fixture.requests);
+  const sent = requests.find((entry) => entry.includes("/attendees/"))!;
+  assert.equal(sent, `get:${path}/attendees/profile?attendeeId=${encodeURIComponent(odd)}&platform=app`);
+  assert.equal(new URLSearchParams(sent.split("?")[1]).get("attendeeId"), odd);
+});
