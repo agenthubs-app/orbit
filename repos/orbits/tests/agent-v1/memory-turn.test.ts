@@ -31,7 +31,9 @@ test("AG14-1 「记住……」 with learning on: one card with the new entry (i
   assert.equal(op.capability, "memory.create");
   assert.deepEqual(op.after, { appliesTo: ["event.recommend"], category: "preference", content: "推荐活动时优先周末上午", structured: { dayPart: "morning", preferredDays: ["Sat", "Sun"], strength: "prefer" } });
   assert.equal(op.preview, "新增个人记忆：「推荐活动时优先周末上午」（用在：推荐活动时）");
-  assert.deepEqual(op.display.rows.map((row: { label: string; after: string }) => `${row.label}:${row.after}`), ["内容:推荐活动时优先周末上午", "用在:推荐活动时", "怎么用:酌情参考的"]);
+  // AG14 UI (board 1, D2): 记忆「…」, then 用在 and 归到; no 到期 row when the words carry no limit.
+  assert.equal(op.display.record, "记忆「推荐活动时优先周末上午」");
+  assert.deepEqual(op.display.rows.map((row: { label: string; after: string }) => `${row.label}:${row.after}`), ["用在:推荐活动时", "归到:酌情参考的"]);
   assert.equal(run.result.partResults[0].status, "awaiting_confirmation");
   // No model call beyond the first layer: the card is code's.
   assert.deepEqual(run.modelCalls.map((call) => call.node), ["understand"]);
@@ -53,8 +55,12 @@ test("AG14-1 learning off: no card, nothing to save; the words are used for this
   const second = "先按这个给我推荐几场下周的活动。";
   const run = await runFn(`${first}${second}`, [MEMORY_PART(first), { ...EVENT_RANK(second, NEXT_WEEK), dependsOn: ["p1"], localId: "p2" }], { memories: [] });
   assert.equal(run.frozen.length, 0);
-  assert.match(run.result.text, /没有保存，只在这一次的回答里用/u);
-  assert.match(run.result.text, /打开「从对话里记住新的」之后再跟我说一次，或者直接在那里自己添加/u);
+  // AG14 UI (board 4, D3): the grey note — what happened, the two ways to keep it, 「去设置 ›」 — and the same words in the text.
+  assert.match(run.result.text, /只用在这一次，没有存下来。「推荐活动时优先周末上午」下次不会自动用。想让我一直记着：打开「从对话里记住新的」再说一次，或者到设置里自己加一条。/u);
+  const notes = run.result.blocks.filter((block) => block.type === "note");
+  assert.deepEqual(notes, [{ go: { label: "去设置", to: "memory_settings" }, items: [{ action: "打开「从对话里记住新的」再说一次，或者到设置里自己加一条。", text: "「推荐活动时优先周末上午」下次不会自动用。想让我一直记着：" }], title: "只用在这一次，没有存下来", type: "note" }]);
+  assert.equal(run.result.blocks.at(-1)?.type, "note", "the note comes after the answer");
+  assert.deepEqual(run.result.memoryUse, [], "nothing was saved: no memory chip");
   // The pick of the same message is not held back by the part before it, and uses its words.
   assert.deepEqual(listed(run.events).slice(0, 3).sort(), MORNINGS);
   assert.deepEqual(recalled(run.events), []);
@@ -73,7 +79,10 @@ test("AG14-2 a new conversation: the saved preference and rule are recalled for 
   // The every-task rule decides the language of code's words; it is not a ranking condition and is not named.
   assert.match(run.result.text, /保存済みの「推荐活动时优先周末上午」と「不要推荐晚上的活动」/u);
   assert.doesNotMatch(run.result.text, /回答用日语/u);
-  assert.match(run.result.text, /保存済みのメモリーです。変更したいときは/u);
+  // AG14 UI (board 5, D4–D6): the chips at the start — the preference used, and the rule because it took two evening
+  // events away; the every-task rule is not named. The old "where to change" line is gone (the chip has 「修正 ›」).
+  assert.deepEqual(run.result.memoryUse.map((chip) => [chip.kind, chip.text]), [["used", "保存した好み「週末午前」で選びました"], ["rule", "決めたルールで、夜のものは外しました"]]);
+  assert.doesNotMatch(run.result.text, /保存済みのメモリーです。変更したいときは/u);
   const entries = of(run.events, "memory.recall").flatMap((event) => (event.entries ?? []) as { memoryId: string; revision: number }[]);
   assert.ok(entries.every((entry) => entry.revision === 1));
   assert.equal(JSON.stringify(of(run.events, "memory.recall")).includes("周末上午"), false, "the trace holds ids and revisions, never an entry's words");
@@ -111,6 +120,8 @@ test("AG14-3 「这次看周四晚上的」: no card and no change; this turn's 
   // The sentence itself is not a topic to match events against (dev run 1): no judgment, no "和「这次看……」有多相关".
   assert.equal(run.judgeCalls.length, 0);
   assert.doesNotMatch(run.result.text, /有多相关|这次看周四晚上的/u);
+  // AG14 UI (board 5, note 3): the same place at the start reads "只这一次", with no 「修改」 (nothing was changed).
+  assert.deepEqual(run.result.memoryUse, [{ kind: "skipped", memoryId: "MM1", text: "只这一次：没按你存的「周末上午」" }]);
 });
 
 test("dev run 1: 「记住，以后……」 tagged as a rule (even 'keep going without an end') is a memory card; a rule with a schedule is not taken", async () => {
@@ -124,7 +135,7 @@ test("dev run 1: 「记住，以后……」 tagged as a rule (even 'keep going 
   const second = "先按这个给我推荐几场下周的活动。";
   const off = await runFn(`${message}${second}`, [{ clarity: "statement", deliverable: "rule", persistence: "until_satisfied", requiredCapabilities: ["rule.create"], sourceQuote: message }, { ...EVENT_RANK(second, NEXT_WEEK), dependsOn: ["p1"], localId: "p2" }], { memories: [] });
   assert.equal(off.frozen.length, 0);
-  assert.match(off.result.text, /没有保存，只在这一次的回答里用/u);
+  assert.match(off.result.text, /只用在这一次，没有存下来/u);
   assert.deepEqual(listed(off.events).slice(0, 3).sort(), MORNINGS);
   // A task to run later is a rule, not a memory: the memory rules leave it alone.
   const scheduled = "记住，以后每周一提醒我看有没有新的摄影活动。";
@@ -207,7 +218,7 @@ test("AG14-3 the same thing said again: nothing new, said so; no card", async ()
   const message = "记住，以后给我推荐活动时优先周末上午。";
   const run = await runFn(message, [MEMORY_PART(message)], { memories: [MM1], memorySettings: { allowConversationLearning: true } });
   assert.equal(run.frozen.length, 0);
-  assert.match(run.result.text, /这条已经存着了：「推荐活动时优先周末上午」（用在：推荐活动时）/u);
+  assert.match(run.result.text, /这条已经记着了：「推荐活动时优先周末上午」（用在：推荐活动时）/u);
 });
 
 test("AG14-4 「忘掉……」: a card naming the entry and where it is used; with nothing saved, said so and no card", async () => {
@@ -224,6 +235,11 @@ test("AG14-4 「忘掉……」: a card naming the entry and where it is used; w
   assert.equal(other.frozen.length, 0);
   assert.match(other.result.text, /没有保存任何记忆，所以没有可以忘掉的条目/u);
   assert.equal(other.result.partResults[0].reason, "memory_not_found");
+  // AG14 UI (board 3, board 8): 「没有找到这样一条记忆」 as a grey note with the way to the settings page.
+  const note = other.result.blocks.find((block) => block.type === "note");
+  assert.equal(note?.type === "note" && note.title, "没有找到这样一条记忆");
+  assert.deepEqual(note?.type === "note" && note.go, { label: "去设置", to: "memory_settings" });
+  assert.match(other.result.text, /^没有找到这样一条记忆。/u);
 });
 
 test("AG14-4 the message a deleted entry came from never proposes it again; the same words in a new message do", async () => {

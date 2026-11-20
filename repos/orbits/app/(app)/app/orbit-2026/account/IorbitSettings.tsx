@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 
-import type { AgentMemory } from "../../../../../features/agent/memory/contract";
+import type { AgentMemoryListContract } from "../../../../../shared/contract/agent-v1";
 import { profileBioLimit, profileBioWithinLimit, profileVisibleLength } from "../../../../../shared/api-schema/profile-bio";
 import type { ProfilePayload } from "../../../../../features/profile/contract";
 import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
@@ -11,25 +11,19 @@ import { fetchGlobalSearch, readSemanticPreference, searchUrl, writeSemanticPref
 import { Bone, Button, ConfirmDialog, Icon, MacTile, Toggle, WhyBody, WhyButton, useStandardCopy, useToast } from "../ui";
 import { planV2SummaryResponseSchema } from "../../../../../shared/api-schema/plan-v2";
 import { useSavedPlanGoalAnswer } from "../plan/saved-goal";
+import { MemorySettings, readMemoryList } from "./MemorySettings";
 import { settingsCopy } from "./settings-copy";
 import styles from "./SettingsSecondary.module.css";
 
-type MemoryResponse = { data?: { memories?: AgentMemory[] } };
 type Goal = { text: string; kind: string };
 // The four reads of this page in one answer (orbit-last-answer.ts), so they arrive — and come back — together.
-type IorbitAnswer = { memories: AgentMemory[] | null; bio: string; goal: Goal | null; semanticAvailable: boolean };
+// AG14: the memory list is the settings API's whole answer (entries, both switches, the rule limit).
+type IorbitAnswer = { memories: AgentMemoryListContract | null; bio: string; goal: Goal | null; semanticAvailable: boolean };
 const ANSWER_KEY = "settings:iorbit";
-
-async function readMemories(): Promise<AgentMemory[]> {
-  const response = await fetch("/api/agent/memory", { cache: "no-store" });
-  const body = await response.json() as MemoryResponse;
-  if (!response.ok || !Array.isArray(body.data?.memories)) throw new Error("Memory unavailable");
-  return body.data.memories;
-}
 
 async function readIorbitAnswer(): Promise<IorbitAnswer> {
   const [memories, bio, goal, semantic] = await Promise.allSettled([
-    readMemories(),
+    readMemoryList(),
     fetch("/api/profile", { cache: "no-store" }).then(async (response) => {
       const body = await response.json() as { success?: boolean; data?: ProfilePayload };
       return response.ok && body.success === true && body.data?.profile ? body.data.profile.bio ?? "" : "";
@@ -65,7 +59,7 @@ export function IorbitSettings() {
   const toast = useToast();
   const [cached] = useState(() => lastAnswer<IorbitAnswer>(ANSWER_KEY));
   const [ready, setReady] = useState(Boolean(cached));
-  const [memories, setMemories] = useState<AgentMemory[]>(cached?.memories ?? []);
+  const [memories, setMemories] = useState<AgentMemoryListContract | null>(cached?.memories ?? null);
   const [goal, setGoal] = useState<Goal | null>(cached?.goal ?? null);
   const savedGoalAnswer = useSavedPlanGoalAnswer();
   const savedGoal = savedGoalAnswer ?? null;
@@ -75,7 +69,6 @@ export function IorbitSettings() {
   const whyId = useId();
   const [semanticAvailable, setSemanticAvailable] = useState(cached?.semanticAvailable ?? false);
   const [semanticOn, setSemanticOn] = useState(true);
-  const [deleting, setDeleting] = useState<string | null>(null);
   const [draft, setDraft] = useState(cached?.bio ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -98,19 +91,6 @@ export function IorbitSettings() {
     return () => { alive = false; };
   }, []); // once per visit; language changes navigate the page
 
-  const removeMemory = async () => {
-    const id = deleting;
-    if (!id || busy) return;
-    setDeleting(null);
-    setBusy(true);
-    try {
-      const response = await fetch(`/api/agent/memory/${encodeURIComponent(id)}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("Delete failed");
-      setMemories((current) => current.filter((item) => item.memoryId !== id));
-      toast.success(t("saved"));
-    } catch { toast.error(t("failed")); }
-    finally { setBusy(false); }
-  };
   const generateDraft = async () => {
     if (busy || language === "ja") return;
     setBusy(true);
@@ -168,17 +148,9 @@ export function IorbitSettings() {
             <Button label={t("confirmBio")} size="sm" variant="primary" disabled={!bioChanged || !draft.trim() || !profileBioWithinLimit(draft) || busy} onClick={() => void saveDraft()} /></div>
         </> : <button type="button" className={`btn ${styles.introBox}`} onClick={() => setEditingBio(true)}>{savedBio || t("noIntro")}</button>}
       </section>
-      <section className={`${styles.setCard} ${styles.full}`}>
-        <div className={styles.memoryHead}><h2>{t("memory")}</h2><WhyButton open={whyOpen} onToggle={() => setWhyOpen(!whyOpen)} controls={whyId} /><span className={styles.lbl}>{t("memoryDeleteHint")}</span></div>
-        <WhyBody id={whyId} open={whyOpen}>{t("memoryWhy")}</WhyBody>
-        {memories.length === 0 ? <p className={styles.detail}>{t("noMemories")}</p> : <table className={styles.memoryTable}><tbody>{memories.map((item) => <tr key={item.memoryId}>
-          <td><b>{item.content}</b></td>
-          <td className={styles.lbl}>{item.source === "conversation" ? t("sourceConversation") : t("sourceManual")}{item.createdAt ? ` ${new Date(item.createdAt).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" })}` : ""}</td>
-          <td className={styles.memoryAction}><button type="button" className={`btn ${styles.lbtn}`} aria-label={t("delete")} disabled={busy} onClick={() => setDeleting(item.memoryId)}><Icon name="x" size={16} /></button></td>
-        </tr>)}</tbody></table>}
-      </section>
+      {/* AG14 (approved draft boards 6–7): switches, the groups, add, edit in place, delete, a last day. */}
+      {memories ? <MemorySettings list={memories} language={language} why={t("memoryWhy")} onList={(next) => { setMemories(next); rememberAnswer(ANSWER_KEY, { bio: savedBio, goal, memories: next, semanticAvailable }); }} /> : null}
       {semanticAvailable ? <section className={`${styles.setCard} ${styles.full} ${styles.semanticCard}`}><div><b>{t("semantic")}</b><span className={styles.lbl}>{t("semanticNote")}</span></div><Toggle checked={semanticOn} label={t("semantic")} onChange={(next) => { writeSemanticPreference(next); setSemanticOn(next); }} /></section> : null}
     </div>
-    <ConfirmDialog open={deleting !== null} title={t("deleteMemoryTitle")} confirmLabel={t("delete")} cancelLabel={t("cancel")} destructive onConfirm={() => void removeMemory()} onCancel={() => setDeleting(null)} />
   </>;
 }

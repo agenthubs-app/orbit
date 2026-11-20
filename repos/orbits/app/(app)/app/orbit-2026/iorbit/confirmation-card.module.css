@@ -29,6 +29,16 @@
 .badge { font-size: var(--fs-caption); font-weight: 700; padding: 2px 7px; border-radius: var(--r-seg); flex: none; }
 .badgeUpdate { background: var(--mac-lav); color: var(--mac-lav-text); }
 .badgeCreate { background: var(--mac-teal); color: var(--mac-teal-text); }
+/* AG14 (approved draft board 3): the third badge, 删除, in coral. */
+.badgeDelete { background: var(--coral-soft); color: var(--coral-text); }
+/* AG14 (D1): before and after side by side, each in a white box; before struck through and lighter, after bold. */
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.pair > div { background: var(--surface); border-radius: var(--r-chip); padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pairLabel { font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.5; }
+.pair s { font-size: var(--fs-body-sm); color: var(--ink-2); line-height: 1.5; overflow-wrap: anywhere; }
+.pair b { font-size: var(--fs-body-sm); font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+/* AG14 (board 5, D4): the memory chip after the basis chip; 修改 › in plum. */
+.memoryEdit { color: var(--plum-900); font-weight: 700; white-space: nowrap; }
 .record { font-size: var(--fs-body); font-weight: 700; line-height: 1.4; flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .itemStatus { font-size: var(--fs-meta); font-weight: 700; white-space: nowrap; }
 .statusplum { color: var(--plum-900); }

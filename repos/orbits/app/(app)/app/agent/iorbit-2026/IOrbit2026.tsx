@@ -20,8 +20,10 @@ import { useAgentChat } from "../iorbit-0918/use-agent-chat";
 import { useAgentHistory } from "../iorbit-0918/use-agent-history";
 import { contactPageContextSource, createContactPageContextLoader } from "../../orbit-2026/iorbit/page-context";
 import { readIOrbitEntityDraft, type IOrbitEntityDraft } from "../../orbit-2026/iorbit/entity-draft";
-import { cancelAgentV1, decideAgentCard, latestCard, regenerateAgentCard, removeAgentCardItem, requestIdOfAssistantMessage, selectAgentOption, useAgentV1Session, type AgentV1SessionState } from "../../orbit-2026/iorbit/action-preview-client";
-import { answerTextOf, BasisLine, ConfirmationCard, ProgressLine, QuestionOptions, QueuedNote } from "../../orbit-2026/iorbit/confirmation-card";
+import { cancelAgentV1, decideAgentCard, latestCard, regenerateAgentCard, removeAgentCardItem, requestIdOfAssistantMessage, selectAgentOption, useAgentV1Session, type AgentV1SessionState, useAnswerRecordsGone } from "../../orbit-2026/iorbit/action-preview-client";
+import { AnswerBlocks } from "../../orbit-2026/iorbit/answer-blocks";
+import { answerBlocksOf } from "../../../../../shared/compute/agent-answer-blocks";
+import { answerTextOf, BasisLine, ConfirmationCard, MemoryChipRow, MemoryChips, ProgressLine, QuestionOptions, QueuedNote } from "../../orbit-2026/iorbit/confirmation-card";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import styles from "./IOrbit2026.module.css";
 import { checkPickedReferences, MarkedMirror, ReferenceChips, ReferencePicker, useReferenceComposer, type PickerKeys } from "./ReferencePicker";
@@ -184,7 +186,7 @@ const STARTER_TONES = ["lav", "apricot", "teal", "pink"] as const;
  * agent-design AG07: one protocol-3 turn, from its result document — progress while it runs, then the basis line,
  * the answer (without the part that stands for the card), the options under a question and the confirmation card.
  */
-function V1Turn({ requestId, sessionId, session, language, navigate }: { requestId: string; sessionId: string | null; session: AgentV1SessionState; language: OrbitLanguage; navigate(href: string): void }) {
+function V1Turn({ requestId, sessionId, session, language, navigate, gone }: { requestId: string; sessionId: string | null; session: AgentV1SessionState; language: OrbitLanguage; navigate(href: string): void; gone: ReadonlySet<string> }) {
   const document = session.documents.get(requestId);
   const fromDocument = document?.actionPreview;
   const card = latestCard(fromDocument, fromDocument ? session.cards.get(fromDocument.actionId) : undefined);
@@ -192,14 +194,22 @@ function V1Turn({ requestId, sessionId, session, language, navigate }: { request
   const running = !document || document.status === "running" || document.status === "queued";
   const words = iorbitCopy;
   const { t } = useOrbitLanguage();
+  // AG19: the answer in blocks (an older document has none and is shown as text, in the new type size).
+  const blocks = !running && document ? answerBlocksOf(document, Boolean(card)) : null;
+  const hasCards = Boolean(blocks?.some((block) => block.type === "records"));
+  // Board 4: when nothing was done, the note stands alone — no copy button under it.
+  const onlyNote = Boolean(blocks?.length) && blocks!.every((block) => block.type === "note");
   return (
     <div className={styles.assistantRow} data-orbit-iorbit-message data-orbit-agent-request={requestId} data-orbit-agent-request-status={document?.status ?? "pending"}>
       <span className={styles.assistantIcon} aria-hidden><Icon name="sparkle" size={16} /></span>
       <div className={styles.answer}>
         <b>iOrbit</b>
         {running ? (document?.status === "queued" ? null : <ProgressLine language={language} stage={session.stages.get(requestId) ?? null} action={<Button label={t(words.stop)} variant="ghost" size="sm" onClick={() => void cancelAgentV1(requestId)} />} />) : null}
-        {!running && document?.answer?.basis ? <BasisLine basis={document.answer.basis} language={language} navigate={navigate} /> : null}
-        {!running && document ? <AgentMarkdown text={answerTextOf(document, Boolean(card)) || (document.status === "failed" || document.status === "cancelled" ? t(words.tryAgain) : "")} /> : null}
+        {/* AG14 (board 5, D4): the memory chips follow the basis chip in the same row. */}
+        {!running && document?.answer?.basis ? <BasisLine basis={document.answer.basis} language={language} navigate={navigate} cardsBelow={hasCards}>{document.answer.memoryUse?.length ? <MemoryChips memoryUse={document.answer.memoryUse} language={language} navigate={navigate} /> : null}</BasisLine>
+          : !running && document?.answer?.memoryUse?.length ? <MemoryChipRow memoryUse={document.answer.memoryUse} language={language} navigate={navigate} /> : null}
+        {blocks ? <AnswerBlocks blocks={blocks} gone={gone} language={language} navigate={navigate} /> : null}
+        {!running && document && !blocks ? <div className={styles.answerText}><AgentMarkdown text={answerTextOf(document, Boolean(card)) || (document.status === "failed" || document.status === "cancelled" ? t(words.tryAgain) : "")} /></div> : null}
         {!running && document?.clarifications?.length ? <QuestionOptions clarifications={document.clarifications} language={language} disabled={picking || !session.online || !sessionId} onSelect={(set, optionId) => {
           if (!sessionId) return;
           setPicking(true);
@@ -209,7 +219,7 @@ function V1Turn({ requestId, sessionId, session, language, navigate }: { request
           onDecide={async (decision, operationId) => { const result = await decideAgentCard(card, decision, operationId); session.noteCard(result.card); return result.ok; }}
           onRegenerate={async () => { const result = await regenerateAgentCard(card); session.noteCard(result.card); return result.ok; }}
           onRemove={async (operationId) => { const result = await removeAgentCardItem(card, operationId); session.noteCard(result.card); return result.ok; }} /> : null}
-        {!running && document?.answer?.text ? <AgentMessageCopyButton text={answerTextOf(document, false)} /> : null}
+        {!running && document?.answer?.text && !onlyNote ? <AgentMessageCopyButton text={answerTextOf(document, false)} /> : null}
       </div>
     </div>
   );
@@ -246,6 +256,8 @@ export function IOrbit2026({ accountName, initialHistoryOpen = false, agentV1 = 
   // AG07: the protocol-3 turns of the open conversation, from their result documents.
   const v1 = useAgentV1Session(chat.activeSessionId, agentV1);
   const v1RequestIds = agentV1 ? chat.messages.flatMap((message) => (message.role === "assistant" ? [message.v1RequestId ?? requestIdOfAssistantMessage(message.id)].filter((id): id is string => Boolean(id)) : [])) : [];
+  // AG19-5: cards of older answers whose record is gone or cannot be seen any more.
+  const v1Gone = useAnswerRecordsGone(v1.documents, agentV1);
   const v1Key = v1RequestIds.join(",");
   const loadV1 = v1.load;
   useEffect(() => { if (v1Key) loadV1(v1Key.split(",")); }, [v1Key, loadV1]);
@@ -439,7 +451,7 @@ export function IOrbit2026({ accountName, initialHistoryOpen = false, agentV1 = 
             {chat.earlier.hasMore || chat.earlier.status === "error" ? <Button label={t(chat.earlier.status === "error" ? iorbitCopy.earlierRetry : iorbitCopy.earlier)} variant="ghost" onClick={() => void chat.loadEarlier()} disabled={chat.earlier.status === "loading"} /> : null}
             {chat.messages.map((message, index) => message.role === "user" ?
               <div className={styles.userRow} key={message.id ?? `u${index}`} data-orbit-iorbit-message><span className={styles.userBubble}>{message.marks?.length ? <UserText text={message.text} marks={message.marks} /> : message.text}{message.supplement ? <small>{message.supplement}</small> : null}</span><AgentMessageCopyButton text={message.text} />{(() => { const next = v1Of(chat.messages[index + 1]); return next && v1.documents.get(next)?.status === "queued" ? <QueuedNote language={language} /> : null; })()}</div> :
-              v1Of(message) ? <V1Turn key={message.id ?? `a${index}`} requestId={v1Of(message)!} sessionId={chat.activeSessionId} session={v1} language={language} navigate={chat.navigate} /> :
+              v1Of(message) ? <V1Turn gone={v1Gone} key={message.id ?? `a${index}`} requestId={v1Of(message)!} sessionId={chat.activeSessionId} session={v1} language={language} navigate={chat.navigate} /> :
               <div className={styles.assistantRow} key={message.id ?? `a${index}`} data-orbit-iorbit-message><span className={styles.assistantIcon} aria-hidden><Icon name="sparkle" size={16} /></span><div className={styles.answer}>
                 <b>iOrbit</b>{message.note ? <p>{message.note}</p> : null}<AgentMarkdown text={message.text} />
                 {message.taskInteraction ? <AgentTaskInteractionCard interaction={message.taskInteraction} language={panelLanguage} {...chat.taskSuggestions.forInteraction(message.taskInteraction)} /> : null}

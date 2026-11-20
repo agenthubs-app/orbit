@@ -16,7 +16,7 @@ import { randomUUID } from "node:crypto";
 
 import type {
   AgentActionPreviewContract,
-  AgentAnswerBasisContract,
+  AgentAnswerBasisContract, AgentAnswerBlockContract, AgentAnswerMemoryUseContract,
   AgentWebResultContract,
   AgentRunStage,
   AgentPartResult,
@@ -68,6 +68,10 @@ export interface AgentEntryExecuteResult {
   sourceRefs: readonly string[];
   /** AG07: the answer's basis line and record links (code's, from sourceRefs). */
   basis?: AgentAnswerBasisContract | null;
+  /** AG19: the answer laid out in blocks (code's). */
+  blocks?: readonly AgentAnswerBlockContract[];
+  /** AG14 UI: the memory chips at the start of the answer (code's). */
+  memoryUse?: readonly AgentAnswerMemoryUseContract[];
   /** AG07: the part of `text` that stands for the card. */
   cardLine?: string;
   /** AG09: the queries sent and the pages opened in this round. */
@@ -396,7 +400,7 @@ async function processRequest(deps: AgentEntryDependencies, actorId: string, rec
     const result = await Promise.race([execution, stopped]);
     if (result !== "stopped") {
       outcome = {
-        answer: { sourceRefs: [...result.sourceRefs], text: result.text, ...(result.basis ? { basis: result.basis } : {}), ...(result.cardLine ? { cardLine: result.cardLine } : {}), ...(result.web && (result.web.queries.length || result.web.pages.length) ? { web: result.web } : {}) },
+        answer: { sourceRefs: [...result.sourceRefs], text: result.text, ...(result.basis ? { basis: result.basis } : {}), ...(result.blocks?.length ? { blocks: [...result.blocks] } : {}), ...(result.memoryUse?.length ? { memoryUse: [...result.memoryUse] } : {}), ...(result.cardLine ? { cardLine: result.cardLine } : {}), ...(result.web && (result.web.queries.length || result.web.pages.length) ? { web: result.web } : {}) },
         partResults: result.partResults?.length ? [...result.partResults] : [result.actionPreview && (result.actionPreview.status === "awaiting_confirmation" || result.actionPreview.status === "deferred")
           ? { operationId: result.actionPreview.operations[0]?.operationId, partId: "p1", status: "awaiting_confirmation" }
           : { partId: "p1", status: "answered" }],

@@ -18,17 +18,41 @@ const MANAGE: Record<MemoryLanguage, string> = {
   zh: "设置里的「iOrbit 记住的信息」",
 };
 
+/**
+ * AG14 UI (approved draft board 4 and board 8, D3): what is said as a grey note with 「去设置 ›」 rather than in the answer:
+ * the 「记住」 of a turn with 「从对话里记住新的」 off, and a 「忘掉」 that matches nothing. Its text version is the same words
+ * on one line (title, then the body), so answer.text and answer.blocks say the same.
+ */
+export interface MemoryNote {
+  title: string;
+  text: string;
+  action?: string;
+  go: string;
+}
+
+export const noteLine = (note: MemoryNote, language: MemoryLanguage): string => `${note.title}${language === "en" ? ". " : "。"}${note.text}${note.action ? (language === "en" ? ` ${note.action}` : note.action) : ""}`;
+
+const GO: Record<MemoryLanguage, string> = { en: "Settings", ja: "設定へ", zh: "去设置" };
+
 export const MEMORY_WORDS = {
-  /** 「从对话里记住新的」 is off: used for this turn only, and the two ways to keep it. */
+  /** 「从对话里记住新的」 is off: used for this turn only, and the two ways to keep it (board 4). */
+  learningOffNote(language: MemoryLanguage, content: string): MemoryNote {
+    if (language === "en") return { action: `Switch on "Remember new things from conversations" and tell me again, or add it yourself in Settings.`, go: GO.en, text: `${quoted(language, content)} won't be used automatically next time. To keep it:`, title: "Used this once only, not saved" };
+    if (language === "ja") return { action: "「会話から新しく覚える」をオンにしてもう一度伝えるか、設定で自分で追加してください。", go: GO.ja, text: `${quoted(language, content)}は次から自動では使いません。ずっと覚えておくには：`, title: "今回だけ使いました。保存はしていません" };
+    return { action: "打开「从对话里记住新的」再说一次，或者到设置里自己加一条。", go: GO.zh, text: `${quoted(language, content)}下次不会自动用。想让我一直记着：`, title: "只用在这一次，没有存下来" };
+  },
   learningOff(language: MemoryLanguage, content: string): string {
-    if (language === "en") return `Remembering new things from conversations is switched off, so ${quoted(language, content)} was not saved; I only use it for this reply. To keep it, switch on "Remember new things from conversations" in ${MANAGE.en} and tell me again, or add it there yourself.`;
-    if (language === "ja") return `「会話から新しく覚える」がオフになっているため、${quoted(language, content)}は保存していません。今回の回答にだけ使います。今後も使いたい場合は、${MANAGE.ja}で「会話から新しく覚える」をオンにしてからもう一度お伝えいただくか、そこでご自身で追加してください。`;
-    return `「从对话里记住新的」这个开关现在是关着的，所以${quoted(language, content)}没有保存，只在这一次的回答里用。想长期保存有两个办法：到${MANAGE.zh}打开「从对话里记住新的」之后再跟我说一次，或者直接在那里自己添加。`;
+    return noteLine(MEMORY_WORDS.learningOffNote(language, content), language);
   },
   alreadySaved(language: MemoryLanguage, entry: Entry): string {
     if (language === "en") return `That is already saved: ${withWhere(language, entry)}. Nothing new was added.`;
-    if (language === "ja") return `それはすでに保存されています：${withWhere(language, entry)}。新しくは追加していません。`;
-    return `这条已经存着了：${withWhere(language, entry)}，没有重复保存。`;
+    if (language === "ja") return `それはもう覚えています：${withWhere(language, entry)}。新しくは追加していません。`;
+    return `这条已经记着了：${withWhere(language, entry)}，没有重复保存。`;
+  },
+  /** Nothing saved fits a 「忘掉……」 (board 3, board 8): said so, with the way to the settings page; no card. */
+  nothingToForgetNote(language: MemoryLanguage, anySaved: boolean): MemoryNote {
+    const title = { en: "No such memory found", ja: "そのようなメモリーは見つかりませんでした", zh: "没有找到这样一条记忆" }[language];
+    return { go: GO[language], text: MEMORY_WORDS.nothingToForget(language, anySaved), title };
   },
   nothingToRemember(language: MemoryLanguage, quote: string): string {
     if (language === "en") return `I couldn't tell what to remember from "${quote}", so nothing was saved.`;

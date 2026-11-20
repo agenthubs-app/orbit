@@ -9,10 +9,10 @@
 import { useState, type ReactNode } from "react";
 
 import { agentCardView, type AgentCardView } from "../../../../../shared/compute/agent-card-view";
-import type { AgentActionPreviewContract, AgentClarificationContract, AgentResultDocument, AgentRunStage } from "../../../../../shared/contract/agent-v1";
+import type { AgentActionPreviewContract, AgentAnswerMemoryUseContract, AgentClarificationContract, AgentResultDocument, AgentRunStage } from "../../../../../shared/contract/agent-v1";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { standardCopyFor } from "../copy/standard";
-import { agentLinkHref } from "./action-preview-client";
+import { agentLinkHref, memorySettingsHref } from "./action-preview-client";
 import styles from "./confirmation-card.module.css";
 
 type Decision = "confirm" | "reject" | "retry" | "mark_done" | "abandon";
@@ -66,13 +66,19 @@ export function ConfirmationCard({ card, language, online, pendingTargets = [], 
         return (
           <div key={item.operationId} className={`${styles.item} ${changedItem ? styles.itemChanged : ""} ${view.dim ? styles.dim : ""}`} data-orbit-agent-card-item={item.operationId}>
             <div className={styles.itemHead}>
-              <span className={`${styles.badge} ${item.change === "create" ? styles.badgeCreate : styles.badgeUpdate}`}>{item.badge}</span>
+              <span className={`${styles.badge} ${item.change === "create" ? styles.badgeCreate : item.change === "delete" ? styles.badgeDelete : styles.badgeUpdate}`} data-orbit-agent-card-badge={item.change}>{item.badge}</span>
               <span className={styles.record}>{item.record}</span>
               {item.status ? <span className={`${styles.itemStatus} ${styles[`status${item.status.tone}`] ?? ""}`}>{item.status.label}</span> : null}
               {removable ? <button type="button" className={`btn ${styles.more}`} aria-expanded={expanded} onClick={() => setOpen(expanded ? null : item.operationId)}>{expanded ? ui.hideDetails : `${ui.details} ›`}</button> : null}
             </div>
             {item.pendingEdit ? <div className={styles.note}><SyncIcon />{item.pendingEdit}</div> : null}
-            {item.rows.map((row) => (
+            {item.rows.map((row) => row.sideBySide && row.before !== null ? (
+              // AG14 (D1): 原来 and 改成 side by side.
+              <div key={row.field} className={`${styles.pair} ${row.changed ? styles.rowChanged : ""}`} data-orbit-agent-card-pair={row.field}>
+                <div><span className={styles.pairLabel}>{words.memoryWas}</span><s>{row.before}</s></div>
+                <div><span className={styles.pairLabel}>{words.memoryNow}</span><b>{row.after}</b></div>
+              </div>
+            ) : (
               <div key={row.field} className={`${styles.row} ${row.changed ? styles.rowChanged : ""}`}>
                 <span className={styles.label}>{row.label}</span>
                 {row.before !== null && row.changed ? <span className={styles.value}><span className={styles.old}>{words.nowIs} </span><b>{row.before}</b><span className={styles.arrow}> → {words.changeTo} </span><b>{row.after}</b></span>
@@ -115,9 +121,29 @@ export function ConfirmationCard({ card, language, online, pendingTargets = [], 
 }
 
 /** Small change 2: the basis line at the top of the answer, with the records it rests on. */
-export function BasisLine({ basis, language, navigate }: { basis: NonNullable<NonNullable<AgentResultDocument["answer"]>["basis"]>; language: OrbitLanguage; navigate(href: string): void }) {
+/**
+ * AG14 (approved draft board 5, D4–D6): the memory chips, right after the basis chip in the same row (they wrap under it
+ * on a narrow screen). A used entry or a rule that took results away ends in 「修改 ›」, which opens that entry in the
+ * settings page (D5); 「只这一次……」 has none.
+ */
+export function MemoryChips({ memoryUse, language, navigate }: { memoryUse: readonly AgentAnswerMemoryUseContract[]; language: OrbitLanguage; navigate(href: string): void }) {
   const ui = standardCopyFor(language).aiCard;
-  const links = basis.links.map((link) => ({ href: agentLinkHref(link), link }));
+  return <>{memoryUse.map((chip) => {
+    if (chip.kind === "skipped") return <span key={`${chip.kind}:${chip.memoryId}`} className={styles.basisChip} data-orbit-agent-memory-chip={chip.kind}>{chip.text}</span>;
+    const href = memorySettingsHref(chip.memoryId);
+    return <a key={`${chip.kind}:${chip.memoryId}`} className={styles.basisChip} href={href} data-orbit-agent-memory-chip={chip.kind} onClick={(event) => { event.preventDefault(); navigate(href); }}>{chip.text}<span className={styles.memoryEdit}>{ui.memoryEdit} ›</span></a>;
+  })}</>;
+}
+
+/** AG14: the chips row when an answer has memory chips but no basis line. */
+export function MemoryChipRow(props: { memoryUse: readonly AgentAnswerMemoryUseContract[]; language: OrbitLanguage; navigate(href: string): void }) {
+  return <div className={styles.basis} data-orbit-agent-basis="memory"><MemoryChips {...props} /></div>;
+}
+
+export function BasisLine({ basis, language, navigate, cardsBelow = false, children }: { basis: NonNullable<NonNullable<AgentResultDocument["answer"]>["basis"]>; language: OrbitLanguage; navigate(href: string): void; /** AG19: the answer shows these records as cards, so the row of small labels is not repeated. */ cardsBelow?: boolean; /** AG14: the memory chips, in the same row after the basis. */ children?: ReactNode }) {
+  const ui = standardCopyFor(language).aiCard;
+  const links = cardsBelow && basis.links.length !== 1 ? [] : basis.links.map((link) => ({ href: agentLinkHref(link), link }));
+  if (cardsBelow && basis.links.length !== 1) return <div className={styles.basis} data-orbit-agent-basis><span className={styles.basisChip}>{basis.text}</span>{children}</div>;
   const one = links.length === 1 ? links[0] : null;
   return (
     <div className={styles.basis} data-orbit-agent-basis>
@@ -129,6 +155,7 @@ export function BasisLine({ basis, language, navigate }: { basis: NonNullable<No
           {links.map(({ href, link }) => (href ? <a key={`${link.type}:${link.id}`} className={styles.basisChip} href={href} onClick={(event) => { event.preventDefault(); navigate(href); }}>{link.label}<span className={styles.basisOpen}>›</span></a> : null))}
         </>
       )}
+      {children}
     </div>
   );
 }

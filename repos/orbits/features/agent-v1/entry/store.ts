@@ -11,6 +11,7 @@
  * (sha256(actorId, requestId)); the lane and the events are their own collections. The lock is
  * `pg_advisory_xact_lock`, as the reliable send (orbit-agent-chat-request-store.ts) does.
  */
+import { joinBlocks, languageOfText } from "../answer/blocks";
 import { createHash } from "node:crypto";
 
 import type {
@@ -144,10 +145,16 @@ export function resumedAnswer(previous: AgentAnswerContract, next: AgentAnswerCo
   // AG09: what was sent and opened before the pause stays next to the joined answer, with the continuation's own after it.
   const queries = [...(previous.web?.queries ?? []), ...(next.web?.queries ?? [])].filter((query, index, all) => all.findIndex((other) => other.text === query.text) === index);
   const pages = [...(previous.web?.pages ?? []), ...(next.web?.pages ?? [])].filter((page, index, all) => all.findIndex((other) => other.sourceRef === page.sourceRef) === index);
+  // AG19: the joined answer's blocks, in the same order as its text.
+  const blocks = joinBlocks(previous, next, languageOfText(`${previous.text}\n${next.text}`));
+  // AG14 UI: the memory chips of both, each entry once.
+  const memoryUse = [...(previous.memoryUse ?? []), ...(next.memoryUse ?? [])].filter((item, index, all) => all.findIndex((other) => other.memoryId === item.memoryId && other.kind === item.kind) === index);
   return {
+    ...(memoryUse.length ? { memoryUse } : {}),
     sourceRefs: [...new Set([...previous.sourceRefs, ...next.sourceRefs])],
     text: [previous.text, next.text].filter((text) => text.trim()).join("\n\n"),
     ...(basis ? { basis } : {}),
+    ...(blocks?.length ? { blocks } : {}),
     ...(next.cardLine ? { cardLine: next.cardLine } : {}),
     ...(queries.length || pages.length ? { web: { pages, queries } } : {}),
   };

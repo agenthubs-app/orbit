@@ -84,7 +84,10 @@ import { pendingWriteItems, usePendingWriteCounts } from "../../hooks/usePending
 import { agentProtocolForSend, agentProtocolVersion, requestIdOfAssistantMessage, sendAgentV1 } from "../../api/agent-v1-client";
 import { useAgentV1Turns, latestAgentCard, type AgentV1TurnsState } from "../../hooks/useAgentV1Turns";
 import { useCardLocalPendingEdits } from "../../hooks/useCardLocalPendingEdits";
-import { AgentBasisLine, AgentConfirmationCard, AgentProgress, AgentQuestionOptions, answerTextOf } from "./cards/AgentConfirmationCard";
+import { AgentBasisLine, AgentConfirmationCard, AgentMemoryChips, AgentProgress, AgentQuestionOptions, answerTextOf } from "./cards/AgentConfirmationCard";
+import { AgentAnswerBlocks, AgentAnswerText } from "./cards/AgentAnswerBlocks";
+import { answerBlocksOf } from "../../api/compute/agent-answer-blocks";
+import { useAgentAnswerGone } from "../../hooks/useAgentAnswerGone";
 import { chooseReplyPolish, replyPolishTarget } from "../../data/reply-polish-handoff";
 
 function firstParam(value: string | string[] | undefined): string {
@@ -336,6 +339,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const v1RequestIds = protocolV3 && v1Session ? v1Session.messages.flatMap((message) => (message.role === "assistant" ? [requestIdOfAssistantMessage(message.id)].filter((id): id is string => Boolean(id)) : [])) : [];
   const cardEdits = useCardLocalPendingEdits(protocolV3 && Boolean(auth.signedIn && auth.actorId));
   const v1 = useAgentV1Turns({ client, enabled: protocolV3, pendingTargets: cardEdits.pendingTargets, requestIds: v1RequestIds, sessionId: v1Session?.id ?? null, syncedAt: cardEdits.syncedAt });
+  // AG19-5: cards of older answers whose record is gone or cannot be seen any more.
+  const v1Gone = useAgentAnswerGone(client, v1.documents, protocolV3);
   // AG07 repair 2 (item 10): a server error (5xx) is not offline; only a server that cannot be reached is.
   const v1Online = v1.online && state.kind !== "offline";
   // AG07-3: a read that failed — the server unreachable or answering with an error — is tried again on its own
@@ -963,7 +968,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       thread={acceptedTaskId && thread.taskInteraction ? { ...thread, taskInteraction: { ...thread.taskInteraction, taskId: acceptedTaskId } } : thread}
       v1Turn={protocolV3 ? (messageId) => {
         const requestId = requestIdOfAssistantMessage(messageId);
-        return requestId ? <AgentV1Turn key={messageId} requestId={requestId} turns={v1} online={v1Online} pendingTargets={cardEdits.pendingTargets} language={locale.language} onOpenHref={openHref} /> : null;
+        return requestId ? <AgentV1Turn key={messageId} gone={v1Gone} requestId={requestId} turns={v1} online={v1Online} pendingTargets={cardEdits.pendingTargets} language={locale.language} onOpenHref={openHref} /> : null;
       } : undefined}
     />
   );
@@ -1388,7 +1393,7 @@ function QuickRouteDock({
  * for the one before), then the basis line, the answer without the part that stands for the card, the options under a
  * question and the confirmation card. Offline the card shows only the count (D7: the answer text stays).
  */
-function AgentV1Turn({ requestId, turns, online, pendingTargets, language, onOpenHref }: { requestId: string; turns: AgentV1TurnsState; online: boolean; pendingTargets: readonly string[]; language: "en" | "ja" | "zh"; onOpenHref: (href: string) => void }) {
+function AgentV1Turn({ requestId, turns, online, pendingTargets, language, onOpenHref, gone }: { requestId: string; turns: AgentV1TurnsState; online: boolean; pendingTargets: readonly string[]; language: "en" | "ja" | "zh"; onOpenHref: (href: string) => void; gone: ReadonlySet<string> }) {
   const { colors, styles } = useStyles();
   const [picking, setPicking] = useState(false);
   const document = turns.documents.get(requestId);
@@ -1396,13 +1401,19 @@ function AgentV1Turn({ requestId, turns, online, pendingTargets, language, onOpe
   const card = latestAgentCard(fromDocument, fromDocument ? turns.cards.get(fromDocument.actionId) : undefined);
   const running = !document || document.status === "queued" || document.status === "running";
   const text = document ? answerTextOf(document, Boolean(card)) : "";
+  // AG19: the answer in blocks (an older document has none and is shown as text, in the new type size).
+  const blocks = !running && document ? answerBlocksOf(document, Boolean(card)) : null;
+  const hasCards = Boolean(blocks?.some((block) => block.type === "records"));
   return (
     <View style={styles.r21Assistant} testID={`agent-turn-${requestId}`}>
       <View style={styles.r21AssistantIcon}><UiIcon name="sparkle" size={16} color={colors.accentText} /></View>
       <View style={styles.r21Message}>
         {running ? <AgentProgress language={language} queued={document?.status === "queued"} /> : null}
-        {!running && document?.answer?.basis ? <AgentBasisLine basis={document.answer.basis} language={language} onOpenHref={onOpenHref} /> : null}
-        {!running && text ? <UiText selectable>{text}</UiText> : null}
+        {!running && document?.answer?.basis ? <AgentBasisLine basis={document.answer.basis} language={language} onOpenHref={onOpenHref} cardsBelow={hasCards} /> : null}
+        {/* AG14 (board 5, D4): the memory chips right after the basis chip. */}
+        {!running && document?.answer?.memoryUse?.length ? <AgentMemoryChips memoryUse={document.answer.memoryUse} language={language} onOpenHref={onOpenHref} /> : null}
+        {blocks ? <AgentAnswerBlocks blocks={blocks} gone={gone} language={language} onOpenHref={onOpenHref} /> : null}
+        {!running && !blocks && text ? <AgentAnswerText text={text} /> : null}
         {!running && document?.clarifications?.length ? <AgentQuestionOptions clarifications={document.clarifications} language={language} disabled={picking || !online} onSelect={(set, optionId) => {
           setPicking(true);
           void turns.select(requestId, set.clarificationId, optionId).finally(() => setPicking(false));

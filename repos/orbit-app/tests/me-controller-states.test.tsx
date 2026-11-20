@@ -11,13 +11,17 @@ async function accountControllerScript(screen: "Iorbit" | "Suggestions" | "Integ
     const active=()=>true;
     createRoot(document.getElementById("root")).render(<${component} scopeKey="test" isScopeCurrent={active}/>);
   `, [{ name: "r18a-controller-boundaries", setup(plugin) {
+    // AG14: the memory part opens a bottom sheet, which reads the safe-area insets (the shared test stand-in).
+    plugin.onResolve({ filter: /^react-native-safe-area-context$/ }, () => ({ path: `${process.cwd()}/tests/helpers/stubs/react-native-safe-area-context.js` }));
     plugin.onResolve({ filter: /\/useAccountEditor$|\/useAccountSettingsApi$|\/useMyPageSummaries$|\/useAccountDesign$|\/useAccountProfile$|\/useOrbitApiClient$|\/ApiBaseUrlProvider$|\/(suggestions|account)-api$|\/AppScreen$|^expo-router$|^expo-(crypto|document-picker|image-picker|file-system|web-browser)$|^@react-native-async-storage\/async-storage$/ }, () => ({ path: "fixture", namespace: "r18a-state" }));
     plugin.onLoad({ filter: /.*/, namespace: "r18a-state" }, () => ({ loader: "jsx", resolveDir: process.cwd(), contents: `
       import React from "react";
       import {UiFeedbackHost} from "./src/components/ui/feedback-host";
       import {demoAccountProfiles} from "../orbits/shared/mock/demo-world/account";
       import {accountDesignFixtures} from "./fixtures/account-design";
-      const api={memories:async()=>{window.memoryReads=(window.memoryReads??0)+1;if(window.uiFixture.memoryDelete)return accountDesignFixtures.memories;if(window.uiFixture.actorSwitch)return [{memoryId:"old",content:"前のアカウントのメモ",source:"manual",createdAt:"2026-10-01"}];return window.memoryReads===1?null:[{memoryId:"m1",content:"再取得したメモ",source:"manual",createdAt:"2026-10-01"}];},goal:async()=>undefined,semanticAvailable:async()=>false};
+      const memoryEntry=m=>({appliesTo:[],category:"preference",revision:1,status:"active",structured:null,sourceMessageRef:null,updatedAt:m.createdAt,validFrom:null,validUntil:null,...m});
+      const memoryList=ms=>ms?{memories:ms.filter(m=>!(window.memoryDeleteCalls??[]).includes(m.memoryId)).map(memoryEntry),settings:{allowConversationLearning:true,enabled:true,updatedAt:""}}:null;
+      const api={memories:async()=>{window.memoryReads=(window.memoryReads??0)+1;if(window.uiFixture.memoryDelete)return memoryList(accountDesignFixtures.memories);if(window.uiFixture.actorSwitch)return memoryList([{memoryId:"old",content:"前のアカウントのメモ",source:"manual",createdAt:"2026-10-01"}]);return window.memoryReads===1?null:memoryList([{memoryId:"m1",content:"再取得したメモ",source:"manual",createdAt:"2026-10-01"}]);},goal:async()=>undefined,semanticAvailable:async()=>false};
       api.list=async()=>window.uiFixture.listFailure?null:[{id:"old-suggestion",status:"pending",sourceKind:"chat",sourceLabel:"会話",createdAt:"2026-10-01",targetProfileField:"role",currentValue:"担当",suggestedValue:"前のアカウントの提案"}];
       api.integrations=async()=>[{provider:"gmail",status:window.gmailRevoked?"revoked":"active",healthStatus:"healthy"},{provider:"google_calendar",status:window.uiFixture.providerConnected?"active":"pending",healthStatus:"not_checked"}];
       api.disconnect=async provider=>{(window.disconnectCalls??=[]).push(provider);window.gmailRevoked=true;return true;};
@@ -31,7 +35,7 @@ async function accountControllerScript(screen: "Iorbit" | "Suggestions" | "Integ
       function useScopedApi(){const[value,setValue]=React.useState(api);window.switchAccountApi=()=>setValue(nextApi);return value;}
       export const useAccountEditor=()=>window.uiFixture.designIorbit?designState:state; export const useAccountSettingsApi=useScopedApi; export const useOrbitApiClient=useScopedApi; export const createAccountSuggestionsApi=client=>client; export const createAccountApi=client=>client; export const accountDestination=path=>path; export const useAccountDesign=()=>window.uiFixture.mypage||window.uiFixture.designIorbit?design:null; export const useAccountProfile=()=>profileState;
       export const useMyPageSummaries=()=>({unread:null,going:null,host:null}); export const useAccountPath=()=>"/api/profile"; export const useOrbitApiBaseUrl=()=>({baseUrl:"http://fixture",ready:true});
-      export const AppScreen=({children})=><main>{children}<UiFeedbackHost/></main>; export const useRouter=()=>({push(){}});
+      export const AppScreen=({children})=><main>{children}<UiFeedbackHost/></main>; export const useRouter=()=>({push(){}}); export const useLocalSearchParams=()=>({});
       export const randomUUID=()=>"test-mutation"; export class File{}; export const openBrowserAsync=url=>{(window.openedBrowserUrls??=[]).push(url);return new Promise(resolve=>{window.resolveBrowser=resolve;});};
       export const getDocumentAsync=async()=>({canceled:true}); export const requestCameraPermissionsAsync=async()=>({granted:false}); export const requestMediaLibraryPermissionsAsync=requestCameraPermissionsAsync; export const launchCameraAsync=async()=>({canceled:true}); export const launchImageLibraryAsync=launchCameraAsync;
       export default {getItem:async()=>window.uiFixture.semanticOff?"off":null,setItem:async(key,value)=>{window.savedSemantic={key,value};}};
@@ -146,14 +150,16 @@ test("R18a actual memory controller confirms deletion and removes only the ackno
   const browser = await launch(); t.after(() => browser.close());
   const page = await openScenario(browser, await accountControllerScript(), { memoryDelete: true }); t.after(() => page.close());
   page.setDefaultTimeout(3000);
-  assert.equal(await page.getByRole("button", { name: "削除", exact: true }).count(), 3);
-  await page.getByRole("button", { name: "削除", exact: true }).first().click();
+  // AG14 (D9): no delete button on the rows; the row opens the sheet, and deleting is in it.
+  assert.equal(await page.getByRole("button", { name: "削除", exact: true }).count(), 0);
+  await page.getByTestId("memory-row-demo-memory-1").click();
+  await page.getByTestId("memory-sheet-delete").click();
   await page.getByRole("alert").getByText("この記憶を削除しますか？", { exact: true }).waitFor();
   assert.deepEqual(await page.evaluate("window.memoryDeleteCalls??[]"), []);
   await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[role="alert"]')!).opacity) === 1);
   await page.screenshot({ path: "/Users/xzhao/orbit-sprint-evidence/redesign/R18a/run-01/app-functional-memory-confirm.png", fullPage: true });
   await page.getByRole("alert").getByRole("button", { name: "削除", exact: true }).click();
-  await page.waitForFunction(() => [...document.querySelectorAll("button")].filter(button => button.textContent === "削除").length === 2);
+  await page.waitForFunction(() => !document.querySelector('[data-testid="memory-row-demo-memory-1"]'));
   assert.deepEqual(await page.evaluate("window.memoryDeleteCalls"), ["demo-memory-1"]);
   assert.equal(await page.getByText("中部の製造業に販路を広げたい", { exact: true }).count(), 0);
   await page.getByText("評価額より、リード投資家の業界理解を重視", { exact: true }).waitFor();
