@@ -83,3 +83,8 @@
 @media (max-width: 767px) {
   .card, .offline { max-width: none; }
 }
+
+/* AG16 (draft 16-2): under a card that turned a reminder on, whether this browser will show it. */
+.afterCard { width: 100%; max-width: 620px; box-sizing: border-box; margin-top: 8px; }
+.afterCard:empty { display: none; }
+@media (max-width: 767px) { .afterCard { max-width: none; } }

@@ -278,6 +278,18 @@ const UNDELIVERED: Record<"pending" | NonNullable<AgentAutomationInboxDelivery["
 
 type PushLineRun = Pick<AgentAutomationRunRecord, "outcome" | "delivery">;
 
+/** "9:04": when the reminder arrived, on the wall clock of the task's zone. */
+function pushClock(instant: string, timeZone: string): string | null {
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", minute: "2-digit", timeZone }).formatToParts(new Date(instant));
+    const hour = parts.find((part) => part.type === "hour")?.value;
+    const minute = parts.find((part) => part.type === "minute")?.value;
+    return hour && minute ? `${Number(hour)}:${minute}` : null;
+  } catch {
+    return null;
+  }
+}
+
 const DEVICE_WORDS: Record<"phone" | "browser" | "both", Record<"zh" | "en" | "ja", string>> = {
   both: { en: "notifications were turned off on your phone and in your browser", ja: "スマホとブラウザの通知がオフになっていました", zh: "手机和浏览器的通知都被关了" },
   browser: { en: "notifications were turned off in your browser", ja: "ブラウザの通知がオフになっていました", zh: "浏览器的通知被关了" },
@@ -303,8 +315,10 @@ const PUSH_SKIPPED: Record<SkipReason, Record<"zh" | "en" | "ja", string>> = {
  * which says when the result was worked out. A reminder that did not arrive is said as such and never as a failed task.
  * Null: nothing to say (the period made no result to remind about and the first line says why).
  */
-export function pushHistoryLine(run: PushLineRun, locale: "zh" | "en" | "ja"): string | null {
+export function pushHistoryLine(run: PushLineRun, locale: "zh" | "en" | "ja", timeZone?: string): string | null {
   const push = run.delivery.push;
+  // With the task's zone (the task pages): when the reminder arrived, as the draft writes it (「提醒已送到 9:04」).
+  const at = timeZone && push.deliveredAt ? pushClock(push.deliveredAt, timeZone) : null;
   const inbox = run.delivery.inbox.state === "delivered" ? IN_INBOX[locale] : "";
   if (push.state === "not_requested") {
     if (run.outcome === "no_match") return ({ en: "Nothing new, so no reminder", ja: "新しいものがないため、お知らせはありません", zh: "没有新的，所以不提醒" } as const)[locale];
@@ -312,6 +326,11 @@ export function pushHistoryLine(run: PushLineRun, locale: "zh" | "en" | "ja"): s
     return null;
   }
   if (push.state === "delivered") {
+    if (at) {
+      return push.attempts > 1
+        ? ({ en: `The reminder did not go out at first and arrived at ${at}. Nothing was worked out a second time.`, ja: `お知らせは最初は送れず、${at} に届きました。結果の計算はやり直していません。`, zh: `第一次没送出去，${at} 补送到了。没有重新算。` } as const)[locale]
+        : ({ en: `Reminder delivered at ${at}`, ja: `お知らせを届けました（${at}）`, zh: `提醒已送到 ${at}` } as const)[locale];
+    }
     return push.attempts > 1
       ? ({ en: "The reminder did not go out at first and was sent again. Nothing was worked out a second time.", ja: "お知らせは最初は送れず、送り直して届きました。結果の計算はやり直していません。", zh: "第一次没送出去，后来补送到了。没有重新算。" } as const)[locale]
       : ({ en: "Reminder delivered", ja: "お知らせを届けました", zh: "提醒已送到" } as const)[locale];

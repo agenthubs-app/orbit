@@ -392,7 +392,17 @@ test("AG16-3: what the two task pages read — the result's completion time and 
   const view = scheduledRunView(run, "zh");
   assert.equal(agentScheduledTaskRunSchema.safeParse(view).success, true, JSON.stringify(agentScheduledTaskRunSchema.safeParse(view)));
   assert.equal(view.computedAt, new Date(TICK).toISOString());
-  assert.deepEqual({ attempts: view.push.attempts, deliveredAt: view.push.deliveredAt, line: view.push.line, state: view.push.state }, { attempts: 2, deliveredAt: new Date(LATER).toISOString(), line: "第一次没送出去，后来补送到了。没有重新算。", state: "delivered" });
+  // The page shows the clock of the second round in the task's own zone (draft 16-4 「9:20 补送到了」); the clients format nothing.
+  assert.deepEqual({ attempts: view.push.attempts, deliveredAt: view.push.deliveredAt, line: view.push.line, state: view.push.state }, { attempts: 2, deliveredAt: new Date(LATER).toISOString(), line: "第一次没送出去，9:20 补送到了。没有重新算。", state: "delivered" });
+  assert.equal(scheduledRunView(run, "en", "Asia/Tokyo").push.line, "The reminder did not go out at first and arrived at 9:20. Nothing was worked out a second time.");
+  assert.equal(scheduledRunView(run, "ja", "Asia/Tokyo").push.line, "お知らせは最初は送れず、9:20 に届きました。結果の計算はやり直していません。");
+  assert.equal(scheduledRunView(run, "zh", "Europe/London").push.line, "第一次没送出去，0:20 补送到了。没有重新算。", "in the task's zone");
+  const once = { ...run, delivery: { ...run.delivery, push: { ...run.delivery.push, attempts: 1, deliveredAt: new Date(TICK).toISOString() } } };
+  assert.equal(scheduledRunView(once, "zh", "Asia/Tokyo").push.line, "提醒已送到 9:10");
+  assert.equal(scheduledRunView(once, "en", "Asia/Tokyo").push.line, "Reminder delivered at 9:10");
+  assert.equal(scheduledRunView(once, "ja", "Asia/Tokyo").push.line, "お知らせを届けました（9:10）");
+  // Without a zone (as before AG16's pages) the line has no clock.
+  assert.equal(pushHistoryLine(once, "zh"), "提醒已送到");
   assert.deepEqual(view.push.targets, [{ deviceId: "PD1", platform: "ios", state: "delivered" }]);
   assert.equal(JSON.stringify(view.push).includes("ticket-"), false, "the push service's ticket is not sent to the clients");
   assert.equal(view.line, "已放进收件箱（2条）", "the first line is the result's; it does not change because of the reminder");

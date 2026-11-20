@@ -28,6 +28,13 @@ export async function setScheduledTaskRunning(client: OrbitApiClient, id: string
   return Boolean(result?.success);
 }
 
+/** AG16 (draft 16-1): the task's own reminder switch, at once and without a card; `language` is the reminder's language. */
+export async function setScheduledTaskPush(client: OrbitApiClient, id: string, push: boolean, language: string): Promise<boolean> {
+  const locale = language === "en" || language === "ja" ? language : "zh";
+  const result = await client.put<unknown>(`/api/agent/automations/${encodeURIComponent(id)}/reminder`, { body: { locale, push } }).catch(() => null);
+  return Boolean(result?.success);
+}
+
 export async function deleteScheduledTask(client: OrbitApiClient, id: string): Promise<boolean> {
   const result = await client.delete<unknown>(`/api/agent/automations/${encodeURIComponent(id)}`).catch(() => null);
   // 204 has no body (the client reads that as a failed envelope): the status says it was deleted.

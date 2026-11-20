@@ -17,6 +17,7 @@ import {communicationRequest,invalidateInboxActorConfirmation,readContactMessage
 import {notificationInboxView,notificationDetailView,type NotificationRow,type NotificationCategory,type NotificationList} from './notification-inbox-view-model';
 import {NotificationStatusRail,type WeekCounts} from './notification-status-rail';
 import {AgentEntryDetail,AgentEntryLine,agentEntryKind,agentEntryTile,agentGroupLabel,useAgentCardStates,waitsForClick} from './agent-inbox-entries';
+import {inboxEntryOfDelivery} from './delivery-entry';
 
 const categories={all:{zh:'全部',en:'All',ja:'すべて'},secretary:{zh:'秘书',en:'Secretary',ja:'秘書'},reminder:{zh:'提醒',en:'Reminders',ja:'リマインダー'},suggestion:{zh:'建议',en:'Suggestions',ja:'提案'},update:{zh:'动态',en:'Updates',ja:'更新'},history:{zh:'历史记录',en:'History',ja:'履歴'}};
 // b5 #6 row actions: 既読 / タスクに追加 / 1時間後.
@@ -224,15 +225,31 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
  const waiting=filter==='all'?waitingAll:[];
  const rest=useMemo(()=>data?data.items.filter(n=>!waiting.includes(n)):[],[data,waiting]);
  // ?open=<run or card id>: 「看结果」 and 「在收件箱里看」 on a task's page select that period's entry.
+ // AG16 (16-5) ?delivery=<reminder id>: the browser reminder's click; the server says which entry it is for this account.
  const opened=useRef(false);
+ const [deliveredEntry,setDeliveredEntry]=useState<string|null>(null);
+ useEffect(()=>{
+  const delivery=new URLSearchParams(window.location.search).get('delivery');
+  if(!delivery)return;
+  const controller=new AbortController();
+  void inboxEntryOfDelivery(delivery,controller.signal).then(entry=>{if(!controller.signal.aborted)setDeliveredEntry(entry);}).catch(()=>undefined);
+  return()=>controller.abort();
+ },[]);
  useEffect(()=>{
   if(opened.current||!data)return;
-  const open=new URLSearchParams(window.location.search).get('open');
+  const params=new URLSearchParams(window.location.search);
+  const open=params.get('open');
+  if(!open&&params.get('delivery')){
+   if(!deliveredEntry)return;
+   const entry=data.items.find(n=>n.id===deliveredEntry);
+   if(entry){opened.current=true;select(entry);}
+   return;
+  }
   if(!open){opened.current=true;return;}
   const match=data.items.find(n=>n.sources[0]?.sourceId===open||n.target.id===open);
   if(match){opened.current=true;select(match);}
  // eslint-disable-next-line react-hooks/exhaustive-deps
- },[data]);
+ },[data,deliveredEntry]);
  const selectCard=(actionId:string)=>{const match=data?.items.find(n=>n.target.id===actionId);if(match)select(match);};
  const unread=data?.unreadCount??0;
  const todayCount=data?.items.filter(n=>notificationDayGroup(n.occurredAt,now,timeZone)==='today').length??0;

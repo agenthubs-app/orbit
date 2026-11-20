@@ -224,7 +224,7 @@ export function scheduledRunView(run: AgentAutomationRunRecord, locale: Locale =
     // AG16: the reminder, apart from the result's own line above. No ticket, token or error text leaves the server.
     push: {
       attempts: run.delivery.push.attempts,
-      line: pushHistoryLine(run, locale),
+      line: pushHistoryLine(run, locale, timeZone),
       state: run.delivery.push.state,
       targets: (run.delivery.push.targets ?? []).map((target) => ({ deviceId: target.deviceId, platform: target.platform, state: target.state })),
       ...(run.delivery.push.deliveredAt ? { deliveredAt: run.delivery.push.deliveredAt } : {}),

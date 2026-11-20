@@ -24,7 +24,6 @@ export const notificationCopy={
  unavailable:{ja:'通知設定を確認できませんでした。更新してもう一度お試しください。',zh:'无法确认通知设置。刷新后重试。',en:'Could not confirm notification settings. Refresh and try again.'},
  refresh:{ja:'設定を更新',zh:'刷新设置',en:'Refresh settings'},
  discovery:{ja:'自動で見つける',zh:'自动发现',en:'Discover automatically'},
- browser:{ja:'ブラウザ通知は準備中です。',zh:'浏览器通知尚未开放。',en:'Browser notifications are coming later.'},
  secretary:{ja:'秘書の通知',zh:'秘书通知',en:'Secretary notifications'},
  secretaryHint:{ja:'期限とイベントのおすすめはアプリで設定できます。',zh:'期限提醒和活动推荐可在 App 中设置。',en:'Set deadline reminders and event recommendations in the app.'},
 } as const;

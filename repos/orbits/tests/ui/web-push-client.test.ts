@@ -4,7 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import vm from "node:vm";
 
-import { applicationServerKey, disableWebPush, enableWebPush, readWebPushState, syncWebPush, WEB_PUSH_DEVICE_KEY, type WebPushBrowser } from "../../app/(app)/app/orbit-2026/account/web-push-client";
+import { applicationServerKey, disableWebPush, enableWebPush, forgetWebPushOnSignOut, readWebPushState, syncWebPush, WEB_PUSH_DEVICE_KEY, type WebPushBrowser } from "../../app/(app)/app/orbit-2026/account/web-push-client";
 
 /**
  * agent-design AG16-1 (PLANNER 易错边界 2/6; 视觉稿 16-3, D16-3): the browser's side, without a browser. The permission
@@ -124,6 +124,28 @@ test("视觉稿 16-3 ④: a browser the push service refused says 'stopped' unti
   assert.equal(await syncWebPush(browser), "stopped", "opening the page does not quietly register it again");
   assert.equal(await enableWebPush(browser), "on", "'重新允许' registers it again");
   assert.equal(await readWebPushState(browser), "on");
+});
+
+test("signing out: a browser that took reminders stops them before the session ends; one that never did is not touched; a slow network does not hold the sign-out", async () => {
+  const taken = fakeBrowser();
+  assert.equal(await enableWebPush(taken.browser), "on");
+  taken.state.calls.length = 0;
+  await forgetWebPushOnSignOut(taken.browser);
+  assert.equal(taken.state.subscription?.unsubscribed, true, "the subscription is dropped");
+  assert.ok(taken.state.calls.some((call) => call.method === "DELETE" && call.path.startsWith("/api/devices/push-tokens/")), "and the registration revoked while still signed in");
+  assert.equal(taken.state.asked, 1, "no new prompt");
+
+  const never = fakeBrowser({ permission: "granted" });
+  await forgetWebPushOnSignOut(never.browser);
+  assert.deepEqual(never.state.calls, [], "never registered here: no request and no service worker");
+  await forgetWebPushOnSignOut(null);
+
+  const slow = fakeBrowser();
+  await enableWebPush(slow.browser);
+  slow.browser.fetch = () => new Promise(() => undefined);
+  const started = Date.now();
+  await forgetWebPushOnSignOut(slow.browser, 50);
+  assert.ok(Date.now() - started < 1_000, "the sign-out goes on");
 });
 
 test("a browser without notifications, or a server without browser reminders set up, asks for nothing", async () => {

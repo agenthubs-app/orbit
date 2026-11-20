@@ -147,6 +147,21 @@ export async function disableWebPush(browser: WebPushBrowser | null = browserWeb
 }
 
 /**
+ * Signing out (orbit-sign-out.ts): a browser that took reminders stops them while the session still exists, so the next
+ * person on this computer is not reminded of the last one's tasks. A browser that never registered is not touched (no
+ * request, no service worker), and a slow network never holds the sign-out longer than `limitMs`.
+ */
+export async function forgetWebPushOnSignOut(browser: WebPushBrowser | null = browserWebPush(), limitMs = 2_000): Promise<void> {
+  if (!browser || browser.permission() === null || !webPushDeviceId(browser, false)) return;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    disableWebPush(browser).catch(() => undefined),
+    new Promise<void>((resolve) => { timer = setTimeout(resolve, limitMs); }),
+  ]);
+  if (timer) clearTimeout(timer);
+}
+
+/**
  * On opening the page, without asking anything: a browser that once registered and no longer allows notifications is
  * reported (its registration is revoked); a browser that is registered re-sends its current subscription, which the
  * browser may have replaced. A browser the owner turned off here stays off.

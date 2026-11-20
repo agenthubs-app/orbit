@@ -2,6 +2,8 @@ import { Fragment, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { agentCardView, type AgentCardView } from "../../../api/compute/agent-card-view";
+import { cardTurnedReminderOn } from "../../../api/compute/agent-reminder";
+import { PhoneReminderLine } from "../../me/ScheduledTaskReminder";
 import type { AgentActionPreviewContract, AgentAnswerBasisContract, AgentClarificationContract, AgentResultDocument } from "../../../api/contract/agent-v1";
 import { agentLinkHref } from "../../../api/agent-v1-client";
 import { createThemedStyles } from "../../../design/theme";
@@ -70,7 +72,11 @@ export function AgentConfirmationCard({ card, language, online, pendingTargets, 
     );
   }
   const chip = toneOf(C, view.chip.tone);
+  // AG16 (draft 16-2): the card is unchanged; once it has turned a task's reminder on, a line under it says whether this
+  // phone will show the reminder, with the way to allow it when it does not yet.
+  const reminderOn = cardTurnedReminderOn(card);
   return (
+    <>
     <View style={styles.card} testID={`agent-card-${view.status}`} accessibilityLabel={view.title}>
       <View style={styles.head}>
         <Text style={[styles.chip, { backgroundColor: chip.bg, color: chip.ink }]}>{view.chip.label}</Text>
@@ -134,6 +140,8 @@ export function AgentConfirmationCard({ card, language, online, pendingTargets, 
       ) : null}
       {failed ? <Text accessibilityRole="alert" style={styles.error}>{ui.actionFailed}</Text> : null}
     </View>
+    {reminderOn ? <View style={styles.afterCard} testID="agent-card-reminder"><PhoneReminderLine afterCard /></View> : null}
+    </>
   );
 }
 
@@ -215,6 +223,7 @@ const useCardStyles = createThemedStyles((colors) => { const C = paletteOf(color
   blocked: { color: C.apricotInk, fontSize: 13, fontWeight: "700" },
   buttons: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 8 },
   card: { backgroundColor: C.white, borderColor: C.border, borderRadius: 20, borderWidth: 1, gap: 12, marginTop: 12, padding: 16, shadowColor: C.ink, shadowOffset: { height: 10, width: 0 }, shadowOpacity: 0.12, shadowRadius: 18 },
+  afterCard: { marginTop: 8 },
   chip: { borderRadius: 999, fontSize: 12, fontWeight: "700", overflow: "hidden", paddingHorizontal: 9, paddingVertical: 3 },
   confirm: { alignItems: "center", backgroundColor: C.ink, borderRadius: 999, flex: 1, height: 44, justifyContent: "center", paddingHorizontal: 18 },
   confirmDisabled: { backgroundColor: C.greyBg },
