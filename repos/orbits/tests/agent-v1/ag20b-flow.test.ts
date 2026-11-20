@@ -164,7 +164,9 @@ test("R25 mirror (AE-RD-004 shape): 'open to-dos for her' tagged contact.read + 
   const kit = graphKit(model.fetchImplementation, { now: "2026-11-15T01:00:00.000Z", records: recordAccessOf(world) });
   const result = await runAgentGraph(kit.deps, kit.input(message, { locale: "en" }));
   assert.deepEqual(result.partResults[0].gaps, ["no_record"], JSON.stringify(result.partResults));
-  assert.match(result.text, /I found nothing about this/u);
+  // Integration seam (2026-11-20): the nothing-found sentence is the hotfix's (part 1b item 4, live): who and what was looked
+  // for, as in hotfix-counts-dates-person.test.ts — not the bare "I found nothing about this".
+  assert.equal(result.text, "Open to-dos for Inès Moreau: none.");
 });
 
 /* ── R20 ── */

@@ -77,7 +77,9 @@ export function todoNothingLine(language: Language, quote: string, asked: Pick<A
   const line = todoNothingWords(language, quote, asked);
   const who = asked.person?.name;
   if (!who) return line;
-  if (language === "en") return line.replace(/^([^:]*?to-dos)/u, `$1 for ${who}`);
+  // Integration seam (2026-11-20): the person goes after the head's "to-dos" whatever its case ("To-dos containing …" had no
+  // person at all), never inside the quoted words, and a name is never read as a replacement pattern.
+  if (language === "en") return line.replace(/^([^:"]*?to-dos)/iu, (head) => `${head} for ${who}`);
   if (language === "ja") return `${who}さんの${line}`;
   return `${who}名下${line}`;
 }

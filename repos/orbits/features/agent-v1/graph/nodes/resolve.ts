@@ -830,7 +830,19 @@ export function resolveNode(scope: NodeScope): GraphNode {
         if (!ownPeriod && (from || to)) emitTrace({ kind, partId: part.localId, type: "resolve.period_not_for_notes" });
         if (kind === "todo" && kindStatus && !status) read.notes.push("Only the to-dos not done yet were read.");
         if (kind === "schedule" && kindFrom !== from && !plate) read.notes.push("Only schedule items from now on were read.");
-        if (kind === "todo" || kind === "schedule") asked.push({ ...(contacts.length === 1 ? { person: { id: contacts[0].id, name: names.get(contacts[0].id) || contacts[0].name } } : {}), defaultFrom: kind === "schedule" && kindFrom === now && !from, from: kindFrom, fromDay: plate ? (kind === "schedule" ? today : undefined) : filter?.from, kind, status: kindStatus, statusSaid: Boolean(status), text: kindText, to, toDay: filter?.to });
+        // Integration seam (2026-11-20; the hotfix's part 1b item 4 × AG20b's AE-RD-004 shape, where the to-do clue is "open
+        // to-dos for Inès Moreau"): what the read is SAID to have looked for never holds the words that name the one person
+        // it was read for — she is the narrowing already. The read itself is as before (with no record of hers holding the
+        // words it reads hers without them, below), so the sentence says what was really looked at.
+        let askedText = kindText;
+        if (!text && clueText && contacts.length === 1) {
+          let rest = clueWords(input.message, clue) ?? "";
+          const personWords = [...part.refs.filter((ref) => ref.entity === "contact").map((ref) => clueWords(input.message, ref) ?? ""), names.get(contacts[0].id) ?? "", contacts[0].name ?? ""].filter(Boolean);
+          for (const name of personWords.flatMap((item) => nameTokens(item)).sort((left, right) => right.length - left.length)) rest = rest.split(name).join(" ");
+          askedText = rest.trim() ? clueSearchWords(rest) : undefined;
+          if (askedText !== kindText) emitTrace({ kind, partId: part.localId, type: "resolve.person_words_not_searched_for" });
+        }
+        if (kind === "todo" || kind === "schedule") asked.push({ ...(contacts.length === 1 ? { person: { id: contacts[0].id, name: names.get(contacts[0].id) || contacts[0].name } } : {}), defaultFrom: kind === "schedule" && kindFrom === now && !from, from: kindFrom, fromDay: plate ? (kind === "schedule" ? today : undefined) : filter?.from, kind, status: kindStatus, statusSaid: Boolean(status), text: askedText, to, toDay: filter?.to });
         if (!(kind === "memo" && notesBesideProfile && contacts.length)) read.wantsRecords = true;
         for (const contactId of subjects) {
           const orders: ("newest" | "oldest")[] = order === "both" ? ["newest", "oldest"] : [order];
@@ -978,7 +990,10 @@ export function resolveNode(scope: NodeScope): GraphNode {
       // AE-RD-004 (run-05): "Do I have any open to-dos for Emily?" tagged contact.read + todo.read is still a list of to-dos —
       // a list, or a part naming a kind of record in its own words, is not a question about the person.
       const namesRecordKind = part.refs.some((ref) => ["todo", "memo", "schedule", "event"].includes(recordKindOf(ref.entity) ?? "") && !ref.recordId);
-      const asksAboutPerson = capabilities.some((capability) => capability === "contact.read" || capability === "profile.read" || capability === "view.context") && !LIST_DELIVERABLES.has(part.plan.deliverable) && !namesRecordKind;
+      // Integration seam (2026-11-20, coordinator): "what to handle today" about a picked person (the hotfix's plate) is a
+      // question about the day's to-dos and schedule, never about the person — the hotfix's "nothing under this narrowing,
+      // here is what is outside it" answers it, not the profile.
+      const asksAboutPerson = capabilities.some((capability) => capability === "contact.read" || capability === "profile.read" || capability === "view.context") && !LIST_DELIVERABLES.has(part.plan.deliverable) && !namesRecordKind && !plate;
       const profileAnswers = asksAboutPerson && !recordViews.length && profiles.length > 0 && read.wantsRecords && !failures.length && !withheld && !read.gaps.has("unreadable");
       if (profileAnswers) {
         const empty = searchKinds.filter((kind) => read.coverage.some((item) => item.kind === kind && item.seen === 0));
