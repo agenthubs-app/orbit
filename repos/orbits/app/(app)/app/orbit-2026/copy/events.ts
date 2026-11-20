@@ -157,7 +157,7 @@ export const eventsCopy = {
   upcoming: { ja: "これから", zh: "接下来", en: "Upcoming", kind: "label" },
   past: { ja: "過去", zh: "过去", en: "Past", kind: "label" },
   attended: { ja: "参加した", zh: "参加了", en: "Attended", kind: "chip" },
-  notCheckedIn: { ja: "未チェックイン", zh: "未签到", en: "Not checked in", kind: "chip" },
+  notCheckedIn: { ja: "未受付", zh: "未签到", en: "Not checked in", kind: "chip" },
   statusRegistered: { ja: "申込済み", zh: "已报名", en: "Registered", kind: "chip" },
   statusPending: { ja: "審査中", zh: "审核中", en: "In review", kind: "chip" },
   statusWaitlisted: { ja: "キャンセル待ち", zh: "候补", en: "Waitlisted", kind: "chip" },

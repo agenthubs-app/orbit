@@ -488,6 +488,14 @@ function emojiOf(item: EventAssessmentContract): string {
   return eventEmoji({ title: item.facts.title ?? "" });
 }
 
+/** 过去活动的标记（两端同规则）：参加した / 取り消し / 未受付（报名了没受付）；被拒、候补、只是想去的不标。 */
+function pastMark(status: MyEventItem["status"], t: Translate) {
+  if (status === "attended") return <span className={`${styles.chip} ${styles.c_teal}`}>{t("attended")}</span>;
+  if (status === "cancelled") return <span className={styles.chip}>{t("statusCancelled")}</span>;
+  if (status === "registered" || status === "pending_review") return <span className={styles.chip}>{t("notCheckedIn")}</span>;
+  return null;
+}
+
 function MyEvents({ language, upcoming, past, now, t }: { language: OrbitLanguage; upcoming: MyEventItem[]; past: MyEventItem[]; now: Date; t: Translate }) {
   const coming = upcoming.filter((item) => item.status !== "cancelled" && item.status !== "rejected");
   // 2026-11-21 参加イベント：これから / 過去 是同级的二选一（之前「過去」挂在「これから」标题下面，像它的下级）；
@@ -528,7 +536,7 @@ function MyEvents({ language, upcoming, past, now, t }: { language: OrbitLanguag
               <Link key={item.eventId} className={styles.li} href={item.href} style={{ color: "inherit", textDecoration: "none" }}>
                 <span className={`${styles.emo} ${styles.emoSm} ${item.status === "attended" ? styles.t_teal : styles.t_lav}`}>{item.emoji}</span>
                 <div className={styles.meta}><b>{item.title}</b><span>{[eventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</span></div>
-                <span className={`${styles.chip} ${item.status === "attended" ? styles.c_teal : ""}`}>{item.status === "attended" ? t("attended") : item.status === "cancelled" ? t("statusCancelled") : t("notCheckedIn")}</span>
+                {pastMark(item.status, t)}
               </Link>
             ))}
           </div>
