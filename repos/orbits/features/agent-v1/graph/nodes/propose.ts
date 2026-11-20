@@ -21,6 +21,7 @@ import { handoffWords, type ReplyLanguage } from "../../route/handoff-copy";
 import { cardLineOf, WRITE_WORDS } from "../../propose/copy";
 import { proposeRepairText, proposeSystemPrompt, proposeUserText, PROPOSE_PROMPT_VERSION } from "../../propose/prompt";
 import { contactKindOf, resolvePartIntents, waitsForPrevious, type PartWrite, type WriteOutcome, type WriteQuestion } from "../../propose/resolve";
+import { continuedItem, optionPickedIn, resumedResolution } from "../../propose/asked";
 import { checkProposeOutput, PROPOSED_CAPABILITIES } from "../../propose/validate";
 import type { StoredIntent } from "../../propose/schema";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
@@ -260,6 +261,18 @@ export function proposeNode(scope: NodeScope): GraphNode {
         work.push(part);
         continue;
       }
+      // AG21a (R26): a typed answer to a write question that names one of its options ("计划日", "柏舟那个") goes on with the
+      // part asked about — its object, its date, its words — as a click on that option would; the second layer is not asked
+      // to read the few words of the answer as a request of their own.
+      const askedItem = !part.write ? continuedItem({ context: run.context }, part) : null;
+      const picked = askedItem?.resume ? optionPickedIn(askedItem, quoteOf(part)) : null;
+      if (askedItem?.resume && picked) {
+        const picks: PartWrite["picks"] = picked.type === "field" ? { field: picked.id as "plannedDate" | "dueAt" } : picked.type === "contact" ? { contact: picked.id } : picked.type === "todo" ? { todo: picked.id } : picked.type === "event" ? { event: picked.id } : {};
+        part.write = { intents: [], picks, resume: askedItem.resume };
+        emitTrace({ item: askedItem.ref, partId: part.localId, picked: { id: picked.id, type: picked.type }, type: "propose.answer_picks_option" });
+        work.push(part);
+        continue;
+      }
       // AG13 gate run-03 (AE-EVT-007): a repetition the schedule cannot store ("隔周", "每月第二个周二") is said so by code,
       // with a few one-off dates offered instead, whatever capability the first layer gave (rule.create, schedule.*).
       const repeatLine = part.capabilities.some((capability) => /^(?:schedule|rule)\./u.test(capability)) ? unsupportedRepeatLine(quoteOf(part), { asOf: state.asOf || deps.now(), language, timeZone: state.timeZone || "Asia/Tokyo" }) : null;
@@ -380,7 +393,8 @@ export function proposeNode(scope: NodeScope): GraphNode {
     const active = work.filter((part) => part.write && part.status === "unfinished" && part.reason === "proposing").sort((left, right) => left.quote[0] - right.quote[0]);
     for (const part of active) {
       const preset = run.presetIntents.get(part.localId);
-      const outcome: WriteOutcome = preset ? { kind: "ready", ops: preset } : await resolvePartIntents(ctx, part, part.write!);
+      const resumed = !preset && part.write!.resume ? resumedResolution(ctx, part, part.write!.resume, part.write!.picks) : null;
+      const outcome: WriteOutcome = preset ? { kind: "ready", ops: preset } : resumed ? await resolvePartIntents(resumed.ctx, resumed.part, resumed.write) : await resolvePartIntents(ctx, part, part.write!);
       outcomes.set(part.localId, outcome);
       // AG08: a new memo of an interaction that may be one already recorded is checked before it goes on a card.
       if (outcome.kind === "ready" && deps.records && ctx.scope && !part.write!.picks.duplicate) {

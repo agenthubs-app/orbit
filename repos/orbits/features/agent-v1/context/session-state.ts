@@ -54,6 +54,11 @@ export interface SessionOpenItem {
   rank?: { domain: "event" | "contact" | "todo"; count?: number; from?: string; to?: string };
   /** AG15: a scheduled task that asked "按什么来挑": its schedule, scope, count and end day (codes, ids and names only). */
   rule?: RuleAskState;
+  /**
+   * AG21a (R26): a write question's part as it was asked — its words, its operations as offsets into them, its clues and
+   * picks — so a typed answer naming an option goes on with that part (propose/asked.ts). The user's words and ids only.
+   */
+  resume?: import("../propose/asked").AskedResume;
 }
 
 /**

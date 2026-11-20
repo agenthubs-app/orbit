@@ -26,6 +26,7 @@ import { nextNoteGoalIn, organizeMeansSummary, updatesInteractionsFromMemo } fro
 import { keepsLookingIn, pushSaidIn, RECURRING_ASK, recurrenceSaidIn, RULE_NOUN, RULE_QUALIFIER, stateVerbSaidIn } from "../../rule/parse";
 import { reminderSaidIn } from "../../rule/reminder";
 import { contactKindOf } from "../../propose/resolve";
+import { optionPickedIn } from "../../propose/asked";
 import { capabilityKind, type Capability } from "../../route/capabilities";
 import type { NextStep } from "../../clarify/next-step";
 import { isMemoryAsk, memoryRouteStep } from "../../domains/memory/turn";
@@ -293,6 +294,14 @@ export function routeNode(scope: NodeScope): GraphNode {
           emitTrace({ from: decision.route, partId: part.localId, reason: "a scheduled task, read by code", type: "route.rule_request" });
           decision = { ...decision, reason: "a scheduled task to set up or change (code reads it; the card needs a click)", route: "propose_write", step: undefined, verdict: "accept", waitReason: null };
         }
+      }
+      // AG21a (R26): a typed answer that names an option of a write question ("计划日", "柏舟那个") goes on with the asked part
+      // (propose resumes it with the pick), whatever the first layer made of the few words.
+      if (!resume && part.continues?.kind === "clarification" && openItem?.resume && optionPickedIn(openItem, partWords)) {
+        part.capabilities = [...new Set(openItem.resume.intents.map((intent) => intent.capability))] as Capability[];
+        part.plan = { ...part.plan, clarity: "clear", readings: [] };
+        if (decision.route !== "propose_write") emitTrace({ from: decision.route, partId: part.localId, type: "route.answer_picks_option" });
+        decision = { ...decision, reason: "answers a write question by naming one of its options (the asked part goes on)", route: "propose_write", step: undefined, verdict: "accept", waitReason: null };
       }
       // AG15: a sentence that only qualifies the task (inbox only, until when) belongs to the task's card.
       if (!resume && qualifiesRuleOf(part, input.message.slice(part.quote[0], part.quote[1]), ruleQuotes, context?.openItems ?? [])) {

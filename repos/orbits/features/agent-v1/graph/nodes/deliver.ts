@@ -26,6 +26,7 @@ import type { AgentGraphState, GraphPart, OptionSetState } from "../state";
 import { clueWords, nameOf, objectOf, setIdOf } from "./clarify";
 import { memoryOfSession } from "../../domains/memory/turn";
 import { asksToOrganize, nextNoteGoalIn } from "./functions";
+import { resumeOf } from "../../propose/asked";
 
 export const OPEN_ITEM_SHELF_AFTER = 2;
 
@@ -419,7 +420,9 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
       // AG20b (TRIAGE R13): the records offered, with their labels, so a typed answer that names one ("蒲公英那个") picks it.
       const labelMap = set ? labelsOf(scope, set, state.language) : new Map<string, { label: string }>();
       const offered = (set?.options ?? []).filter((option) => option.refId && option.refType).map((option) => ({ id: option.refId!, label: labelMap.get(option.optionId)?.label ?? "", type: option.refType! })).filter((option) => option.label);
-      kept.push({ asks, createdAt: now, kind: "clarification", partId: part.localId, quote, ref: `clarification:${input.requestId}:${part.localId}`, requestId: input.requestId, summary: summaryOfQuestion(scope, state, part), unrelatedMessages: 0, writes: writesIn(part), ...(clues.length ? { clues } : {}), ...(offered.length ? { options: offered } : {}), ...(part.plan.rankAsk ? { rank: { ...part.plan.rankAsk } } : {}), ...(part.plan.ruleAsk ? { rule: JSON.parse(JSON.stringify(part.plan.ruleAsk)) } : {}) });
+      // AG21a (R26): a write question keeps the part as it was asked, so a typed answer that picks an option goes on with it.
+      const resume = set?.purpose === "operation" && offered.length ? resumeOf(part, input.message) : null;
+      kept.push({ asks, createdAt: now, kind: "clarification", partId: part.localId, quote, ref: `clarification:${input.requestId}:${part.localId}`, requestId: input.requestId, summary: summaryOfQuestion(scope, state, part), unrelatedMessages: 0, writes: writesIn(part), ...(clues.length ? { clues } : {}), ...(offered.length ? { options: offered } : {}), ...(part.plan.rankAsk ? { rank: { ...part.plan.rankAsk } } : {}), ...(part.plan.ruleAsk ? { rule: JSON.parse(JSON.stringify(part.plan.ruleAsk)) } : {}), ...(resume ? { resume } : {}) });
     }
   }
   next.openItems = kept;
