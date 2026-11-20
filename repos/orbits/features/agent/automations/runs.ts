@@ -10,6 +10,7 @@
 import { createHash } from "node:crypto";
 
 import type { LiveRecord, LiveRecordStoreLike } from "../../../shared/storage/live-record-store";
+import type { AgentAnswerRecordContract } from "../../../shared/contract/agent-v1";
 import type { AgentRuleNotify } from "./contract";
 
 export const AGENT_AUTOMATION_RUN_COLLECTION = "agentAutomationRuns" as const;
@@ -25,6 +26,8 @@ export interface AgentAutomationRunItem {
   title: string;
   /** One line of the record's own facts (code writes it). */
   line: string;
+  /** AG15 interface: the record as AG19's record card (three lines written by code when the period was computed). */
+  card?: AgentAnswerRecordContract;
 }
 
 export interface AgentAutomationInboxDelivery {
@@ -79,6 +82,15 @@ export interface AgentAutomationRunRecord {
   attention?: { reason: "reference_unreadable"; message: string; reference?: { type: string; id: string; title?: string } };
   error?: string;
   coverage?: { total: number; afterHardConditions: number; judged: number; truncated: number };
+  /** AG15 interface: the result page's basis line and the plain notes under its cards. */
+  detail?: {
+    basis: string;
+    notes: readonly string[];
+    /** The note the run picked by: which one (two may share a title), for the trace and the judge. */
+    basisNote?: { id: string; title: string; day: string };
+    /** The same note as a small card the result page opens (AE-SCL-030 R4), with the line above it. */
+    source?: { caption: string; card: AgentAnswerRecordContract };
+  };
   notify: AgentRuleNotify;
   delivery: { inbox: AgentAutomationInboxDelivery; push: AgentAutomationPushDelivery };
 }

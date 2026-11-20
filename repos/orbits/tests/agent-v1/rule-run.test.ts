@@ -44,6 +44,9 @@ test("a rule that orders by a field lists that weekend's events by start time, w
   assert.match(result.text, /依据：按开始时间从早到晚。范围：11月21日（周六）到11月22日（周日）开始的活动（共4场）/u);
   assert.doesNotMatch(result.text, /AI 产品沙龙|别人的草稿/u, "an event with no announced time, or another organizer's draft, is never in the list");
   assert.equal(result.items[0].ref, "event:event:e101");
+  // AG15 interface: each pick carries AG19's record card, and the result page's basis line is the rule's own.
+  assert.deepEqual(result.items.map((item) => [item.card?.kind, item.card?.id, Boolean(item.card?.title)]), [["event", "event:e101", true], ["event", "event:e104", true], ["event", "event:e102", true]]);
+  assert.deepEqual(result.detail, { basis: "按开始时间从早到晚", notes: [] });
 });
 
 test("a rule that picks by a note reads the note again by id, judges at most 30 candidates, and lists only what fits", async () => {
@@ -54,7 +57,14 @@ test("a rule that picks by a note reads the note again by id, judges at most 30 
   assert.deepEqual(ids(result).sort(), ["e101", "e102", "e105"], "the design evening does not fit the note and is not listed to fill the count");
   assert.equal(judge.calls.length, 1);
   assert.match(JSON.stringify(judge.calls[0].body), /最近想多看摄影展和街拍活动/u, "the note's current text is what is judged against — read now, not stored on the rule");
-  assert.match(result.text, /依据：与兴趣笔记的主题相关/u);
+  // The basis says, in the user's own words, what was taken from the note, and which note it is (by its day — two notes
+  // may share a title); the note is the result's source to open (AE-SCL-030 R4).
+  assert.match(result.text, /依据：笔记「兴趣笔记」（11月1日）里写的：“最近想多看摄影展和街拍活动，也想认识做独立出版的人”。范围：/u);
+  assert.doesNotMatch(result.text, /依据：与兴趣笔记的主题相关/u);
+  assert.deepEqual(result.detail?.basisNote, { day: "2026-11-01", id: "note:m36", title: "兴趣笔记" });
+  assert.equal(result.detail?.source?.caption, "按这篇笔记挑的");
+  assert.deepEqual([result.detail?.source?.card.id, result.detail?.source?.card.kind, result.detail?.source?.card.title, result.detail?.source?.card.top], ["note:m36", "memo", "兴趣笔记", "11月1日（周日）"]);
+  assert.equal(result.detail?.basis, "笔记「兴趣笔记」（11月1日）里写的：“最近想多看摄影展和街拍活动，也想认识做独立出版的人”");
   assert.match(result.text, /范围里的4场都细看过了/u);
   assert.deepEqual(result.coverage, { afterHardConditions: 4, judged: 4, total: 7, truncated: 0 });
 
@@ -73,6 +83,13 @@ test("records the rule told its owner before are left out; when nothing is left 
   const told = new Set(first.items.map((item) => item.ref));
   const second = await runRulePeriod(deps(), { automation: daily, ownerId: ACTOR, scheduledAt: at("2026-11-17T09:00:00+09:00"), told });
   assert.deepEqual([second.outcome, second.items.length, second.text], ["no_match", 0, ""]);
+  assert.equal(second.ranked, "all_told_before", "nothing left because everything was told before — not 'unavailable'");
+  const empty = await runRulePeriod(deps(), { automation: daily, ownerId: ACTOR, scheduledAt: at("2027-03-01T09:00:00+09:00"), told: new Set() });
+  assert.deepEqual([empty.outcome, empty.ranked], ["no_match", "no_candidates"], "no event in the window at all");
+  // A later run that still finds something says, in plain words, how many it left out because they were told before.
+  const third = await runRulePeriod(deps(), { automation: daily, ownerId: ACTOR, scheduledAt: at("2026-11-17T09:00:00+09:00"), told: new Set([first.items[0].ref]) });
+  assert.deepEqual(third.detail?.notes, ["之前告诉过你的 1 场，这次没有再列。"]);
+  assert.doesNotMatch(third.detail!.notes.join(""), /范围|依据/u);
 });
 
 test("a referenced note that cannot be read makes the period need attention; nothing is picked and no other note stands in", async () => {
@@ -94,13 +111,15 @@ test("a referenced note that cannot be read makes the period need attention; not
 test("a rule that re-plans to-dos proposes a card from the rule and the period; the earlier card gives way; nothing is written here", async () => {
   const frozen: Parameters<RuleCardAccess["freeze"]>[0][] = [];
   const superseded: string[] = [];
+  const replacedBy: { actionId: string; firedAt: string }[] = [];
   const cards: RuleCardAccess = {
     async freeze(input) {
       frozen.push(input);
       return { actionId: input.actionId, expiresAt: "2026-11-23T00:10:00.000Z", preview: "待办「给李薇寄样片」：计划日 11月10日（周二） → 11月16日（周一）" };
     },
-    async supersede(actionId) {
+    async supersede(actionId, by) {
       superseded.push(actionId);
+      if (by) replacedBy.push(by);
     },
   };
   const monday = at("2026-11-16T09:00:00+09:00");
@@ -111,12 +130,14 @@ test("a rule that re-plans to-dos proposes a card from the rule and the period; 
   assert.deepEqual(frozen[0].origin, { firedAt: monday, kind: "automation", ruleId: "rule:1" }, "the card's origin is the rule and the period, not a conversation");
   assert.deepEqual(frozen[0].intents, [{ capability: "todo.update", set: { plannedDate: "2026-11-16" }, targetId: "task:t45" }], "only the to-do past its planned day; the one planned for the 18th is left alone");
   assert.deepEqual(superseded, ["action:rule:earlier"]);
+  assert.deepEqual(replacedBy, [{ actionId: result.cardId, firedAt: monday }], "the old card names the period and card that replaced it (D15-6)");
   assert.match(result.text, /提议做一项修改/u);
   assert.match(result.text, /在这里确认之后才会修改/u);
   // Without overdue to-dos the period has nothing to propose, and the waiting card of the period before still gives way.
   const none = await runRulePeriod(deps({ cards, now: () => at("2026-11-09T09:10:00+09:00") }), { automation: replan, ownerId: ACTOR, previousCardId: "action:rule:older", scheduledAt: at("2026-11-09T09:00:00+09:00"), told: new Set() });
   assert.equal(none.outcome, "no_match");
   assert.deepEqual(superseded, ["action:rule:earlier", "action:rule:older"]);
+  assert.equal(replacedBy.length, 1, "with no new card, the old one is closed without naming a replacement");
   assert.equal(frozen.length, 1);
 });
 

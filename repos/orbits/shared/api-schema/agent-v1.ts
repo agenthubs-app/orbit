@@ -15,6 +15,7 @@ import type {
   AgentReferenceSearchResultContract,
   AgentResultDocument,
   AgentScheduledTaskContract,
+  AgentScheduledTaskFormContract,
   AgentScheduledTaskHistoryContract,
   AgentScheduledTaskListContract,
   AgentScheduledTaskRunContract,
@@ -107,8 +108,12 @@ const cardChangeSchema = z.object({ field: z.string(), now: z.unknown(), operati
 export const agentActionPreviewSchema: z.ZodType<AgentActionPreviewContract> = z.object({
   actionId: identifier,
   changes: z.array(cardChangeSchema).optional(),
+  // AG15: why and how an expired card says it expired (D15-5, D15-6).
+  expiredNote: z.string().optional(),
+  expiredReason: z.literal("superseded").optional(),
   expiresAt: z.string().optional(),
   locale: z.enum(["zh", "ja", "en"]).optional(),
+  supersededBy: z.object({ actionId: z.string(), firedAt: z.string() }).optional(),
   operations: z.array(z.object({
     after: z.record(z.string(), z.unknown()),
     before: z.record(z.string(), z.unknown()).optional(),
@@ -117,6 +122,8 @@ export const agentActionPreviewSchema: z.ZodType<AgentActionPreviewContract> = z
     // AG07: how the card shows the item (written by the server in the card's language).
     display: z.object({
       change: z.enum(["update", "create", "delete", "restore"]),
+      // AG15: a new scheduled task's three grouped lines (rows stay as they are).
+      lines: z.array(z.object({ fields: z.array(z.string()), key: z.enum(["when", "pick", "after"]), label: z.string(), text: z.string(), zone: z.object({ id: z.string(), text: z.string() }).optional() })).optional(),
       note: z.string().optional(),
       record: z.string(),
       rows: z.array(z.object({ after: z.string(), before: z.string().optional(), field: z.string(), label: z.string(), sideBySide: z.boolean().optional() })),
@@ -464,7 +471,10 @@ export const agentScheduledTaskRunSchema: z.ZodType<AgentScheduledTaskRunContrac
   computeAttempts: z.number().int().positive(),
   computedAt: z.string(),
   delivery: z.object({ attempts: z.number().int().nonnegative(), cancelReason: z.enum(["rule_paused", "rule_changed", "rule_removed", "reference_unreadable"]).optional(), deliveredAt: z.string().optional(), state: z.enum(["none", "pending", "delivered", "cancelled"]) }),
-  items: z.array(z.object({ id: z.string(), kind: z.enum(["event", "contact", "todo"]), line: z.string(), ref: z.string(), title: z.string() })),
+  // AG15 interface: how the history shows the period (written by the server).
+  display: z.object({ day: z.string(), opens: z.enum(["result", "card"]).nullable().catch(null), skippedNote: z.string().nullable(), text: z.string(), time: z.string().nullable() }).optional(),
+  detail: z.object({ basis: z.string(), notes: z.array(z.string()), source: z.object({ caption: z.string(), card: agentAnswerRecordSchema }).optional().catch(undefined) }).optional(),
+  items: z.array(z.object({ card: agentAnswerRecordSchema.optional().catch(undefined), id: z.string(), kind: z.enum(["event", "contact", "todo"]), line: z.string(), ref: z.string(), title: z.string() })),
   line: z.string(),
   outcome: scheduledRunOutcome,
   push: z.object({ attempts: z.number().int().nonnegative(), deliveredAt: z.string().optional(), state: z.enum(["not_requested", "pending", "delivered", "failed"]) }),
@@ -476,13 +486,40 @@ export const agentScheduledTaskRunSchema: z.ZodType<AgentScheduledTaskRunContrac
   text: z.string(),
 }) as unknown as z.ZodType<AgentScheduledTaskRunContract>;
 
+/** AG15 interface: the task form (edit a task, or make one with the form). Notes by id only. */
+export const agentScheduledTaskFormSchema: z.ZodType<AgentScheduledTaskFormContract> = z.object({
+  basis: z.union([
+    z.object({ kind: z.literal("note"), noteId: identifier, title: z.string().max(200) }),
+    z.object({ field: z.enum(["startsAt", "lastInteraction", "dueAt", "plannedDate"]), kind: z.literal("field") }),
+    z.object({ kind: z.literal("topic"), words: z.string().trim().min(1).max(200) }),
+  ]),
+  domain: z.enum(["event", "contact", "todo"]),
+  maxItems: z.number().int().min(1).max(20),
+  push: z.boolean(),
+  schedule: z.union([
+    z.object({ kind: z.literal("daily"), time: z.string().regex(/^\d{2}:\d{2}$/u), timeZone: z.string().min(1).max(64) }),
+    z.object({ daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1).max(7), kind: z.literal("weekly"), time: z.string().regex(/^\d{2}:\d{2}$/u), timeZone: z.string().min(1).max(64) }),
+  ]),
+  scopeText: z.string().max(400).optional(),
+  title: z.string().trim().max(120),
+  validUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).nullable(),
+  window: z.enum(["weekend", "week", "month", "upcoming"]).optional(),
+}) as unknown as z.ZodType<AgentScheduledTaskFormContract>;
+
 export const agentScheduledTaskSchema: z.ZodType<AgentScheduledTaskContract> = z.object({
   createdAt: z.string(),
   id: identifier,
   lastRun: agentScheduledTaskRunSchema.nullable(),
   nextRunAt: z.string().nullable(),
   notify: z.object({ inApp: z.boolean(), push: z.boolean() }),
-  rows: z.array(z.object({ field: z.string(), label: z.string(), value: z.string() })),
+  rows: z.array(z.object({ field: z.string(), label: z.string(), note: z.string().optional(), value: z.string() })),
+  // AG15 interface (approved draft 15-3, 15-4): words the two clients show as they are.
+  domain: z.enum(["event", "contact", "todo"]).nullable().optional().catch(null),
+  form: agentScheduledTaskFormSchema.optional().catch(undefined),
+  last: z.object({ opens: z.enum(["result", "card"]).nullable().catch(null), runId: z.string(), text: z.string(), when: z.string() }).nullable().optional(),
+  needsAttention: z.boolean().optional(),
+  next: z.object({ day: z.string(), time: z.string() }).nullable().optional(),
+  summary: z.object({ attention: z.string().nullable(), schedule: z.string(), status: z.string() }).optional(),
   status: z.string().transform((value): AgentScheduledTaskContract["status"] => (value === "active" || value === "completed" ? value : "paused")),
   timeZone: z.string().nullable(),
   title: z.string(),

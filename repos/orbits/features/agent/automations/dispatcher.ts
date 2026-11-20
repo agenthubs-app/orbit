@@ -49,11 +49,14 @@ export interface AutomationDispatchSummary {
   needsAttention: number;
   failed: number;
   skippedPeriods: number;
+  /** Waiting deliveries taken up in this pass; of them, how many were sent and how many cancelled (not sent). */
   deliveriesRetried: number;
+  deliveriesSent?: number;
+  deliveriesCancelled?: number;
   timersFired: number;
 }
 
-const emptySummary = (): AutomationDispatchSummary => ({ claimed: 0, delivered: 0, deliveriesRetried: 0, failed: 0, needsAttention: 0, noMatch: 0, periods: 0, skippedPeriods: 0, timersFired: 0, undelivered: 0 });
+const emptySummary = (): AutomationDispatchSummary => ({ claimed: 0, delivered: 0, deliveriesCancelled: 0, deliveriesRetried: 0, deliveriesSent: 0, failed: 0, needsAttention: 0, noMatch: 0, periods: 0, skippedPeriods: 0, timersFired: 0, undelivered: 0 });
 
 export async function dispatchDueAutomations(deps: AutomationDispatchDeps, input: { limit?: number; deadline?: number } = {}): Promise<AutomationDispatchSummary> {
   const summary = emptySummary();
@@ -74,7 +77,10 @@ export async function dispatchDueAutomations(deps: AutomationDispatchDeps, input
         else if (item.kind === "delivery") {
           summary.deliveriesRetried += 1;
           const state = await deliverRun(deps.delivery, { ownerId: item.ownerId, runId: item.key });
-          if (state === "delivered") summary.delivered += 1;
+          if (state === "delivered") {
+            summary.delivered += 1;
+            summary.deliveriesSent = (summary.deliveriesSent ?? 0) + 1;
+          } else if (state === "cancelled") summary.deliveriesCancelled = (summary.deliveriesCancelled ?? 0) + 1;
         } else await fireTimerItem(deps, item, now, summary);
       } catch (error) {
         // One row's failure never stops the pass; the row stays leased and is taken again when the lease ends.
@@ -173,6 +179,7 @@ async function runRuleItem(deps: AutomationDispatchDeps, item: DueItem, leaseId:
       ...(result.cardId ? { cardId: result.cardId } : {}),
       ...(result.cardExpiresAt ? { cardExpiresAt: result.cardExpiresAt } : {}),
       ...(result.coverage ? { coverage: result.coverage } : {}),
+      ...(result.detail ? { detail: result.detail } : {}),
       ...(result.error ? { error: result.error.slice(0, 500) } : {}),
     };
     // The result, what is still to be delivered, and the rule's next period: one transaction.

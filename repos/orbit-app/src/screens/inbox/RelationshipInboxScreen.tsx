@@ -1,6 +1,7 @@
 import {authorizedDeliveryHref} from '../../notifications/delivery-navigation';
 import {NotificationDeliverySettings} from '../settings/NotificationDeliverySettings';
 import {NotificationInboxList} from './NotificationInboxList';
+import { useAgentCardStates } from './AgentInboxEntries';
 import {useNotificationInbox} from './useNotificationInbox';
 import { OfflineNotice } from "../../components/OfflineNotice";
 import { MessagesOfflineNotice, OutboxMessageBubble, UnsentEndedNotice } from "../../components/RelationshipOutboxViews";
@@ -298,6 +299,7 @@ export function RelationshipInboxScreen() {
     participantName?: string | string[];
     tab?: string | string[];
     filter?: string | string[];
+    open?: string | string[];
   }>();
   const seedContactId = firstParam(params.contactId);
   const deliveryId = firstParam(params.deliveryId);
@@ -307,13 +309,15 @@ export function RelationshipInboxScreen() {
   const requestedTab = firstParam(params.tab);
   const requestedSection = requestedTab === 'notifications' || requestedTab === 'alerts' ? 'alerts' : requestedTab === 'messages' || requestedTab === 'threads' ? 'threads' : null;
   const requestedNotificationFilter = firstParam(params.filter) === 'secretary' ? 'secretary' : null;
+  // AG15: ?open=<run or card id> opens that agent entry (「看结果」 and 「在收件箱里看」 on a task's page).
+  const openId = firstParam(params.open) || null;
   const { actorId, ready, scopeKey } = useInboxIdentity(JSON.stringify([seedContactId, deliveryId, seedName, seedOrganization]));
   if (!ready) return <InboxLayout title={locale.t("inbox.title")}><LoadingState /></InboxLayout>;
-  return <ScopedRelationshipInboxScreen key={scopeKey} actorId={actorId} scopeKey={scopeKey} seedContactId={seedContactId} deliveryId={deliveryId} seedName={seedName} seedOrganization={seedOrganization} requestedSection={requestedSection} requestedNotificationFilter={requestedNotificationFilter} />;
+  return <ScopedRelationshipInboxScreen key={scopeKey} actorId={actorId} scopeKey={scopeKey} seedContactId={seedContactId} deliveryId={deliveryId} seedName={seedName} seedOrganization={seedOrganization} requestedSection={requestedSection} requestedNotificationFilter={requestedNotificationFilter} openId={openId} />;
 }
 
-function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliveryId, seedName, seedOrganization, requestedSection, requestedNotificationFilter }: {
-  actorId: string; scopeKey: string; seedContactId: string; deliveryId: string; seedName: string; seedOrganization: string; requestedSection: InboxSection | null; requestedNotificationFilter: 'secretary' | null;
+function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliveryId, seedName, seedOrganization, requestedSection, requestedNotificationFilter, openId = null }: {
+  actorId: string; scopeKey: string; seedContactId: string; deliveryId: string; seedName: string; seedOrganization: string; requestedSection: InboxSection | null; requestedNotificationFilter: 'secretary' | null; openId?: string | null;
 }) {
   const renderStartedAt = isAppPerformanceEnabled()
     ? globalThis.performance.now()
@@ -332,6 +336,11 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
   const { clientGet, clientPost, clientPatch, isCurrent } = useInboxRequests(scopeKey);
   const server = useOrbitApiBaseUrl();
   const typedInbox = useNotificationInbox(actorId, clientGet, clientPost, isCurrent, requestedNotificationFilter);
+  // AG15 (D15-4): the cards behind the card entries, so those still waiting are grouped on top.
+  const agentClient = useOrbitApiClient({ scopeKey });
+  // Read again each time the inbox comes back into view (a card confirmed on its own page moves out of the group).
+  const inboxFocused = useIsFocused();
+  const cardStates = useAgentCardStates(agentClient, typedInbox.data?.items, inboxFocused ? "focused" : "away");
   const [activeSection, setActiveSection] = useState<InboxSection>(deliveryId ? "alerts" : requestedSection ?? "threads");
   const selectionChanged = useRef(false);
   useEffect(() => { if (requestedSection) setActiveSection(requestedSection); }, [requestedSection]);
@@ -601,7 +610,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       {activeSection === "alerts" && typedInbox.offline ? <OfflineNotice lastSyncedAt={typedInbox.lastSyncedAt} /> : null}
       {activeSection === "threads" && threadsOffline && !composing && !createdThread ? outbox.enabled ? <MessagesOfflineNotice lastSyncedAt={localThreads.freshness.lastSyncedAt} /> : <OfflineNotice lastSyncedAt={localThreads.freshness.lastSyncedAt} /> : null}
       {activeSection === "threads" && !composing && !createdThread ? <UnsentEndedNotice messages={endedOutbox} onDiscard={ids => { void outbox.discard(ids).catch(() => undefined); }} /> : null}
-      {activeSection === "alerts" ? (typedInbox.data ? <NotificationInboxList data={typedInbox.data} timeZone={typedInbox.timeZone} filter={typedInbox.filter} onFilter={kind => { typedInbox.setFilter(kind); router.setParams({ filter: kind }); }} onAction={(item,action)=>void typedInbox.act(item,action)} busy={typedInbox.busy} error={typedInbox.error} onRefresh={typedInbox.refresh} onMore={() => void typedInbox.more()} onOpen={openNotification} /> : typedInbox.error ? <View><ErrorState message={typedInbox.error}/><Pressable accessibilityRole="button" onPress={typedInbox.refresh}><Text>{locale.t("common.retry")}</Text></Pressable></View> : <LoadingState />) : retainedContent.current ? (
+      {activeSection === "alerts" ? (typedInbox.data ? <NotificationInboxList data={typedInbox.data} timeZone={typedInbox.timeZone} filter={typedInbox.filter} onFilter={kind => { typedInbox.setFilter(kind); router.setParams({ filter: kind }); }} onAction={(item,action)=>void typedInbox.act(item,action)} busy={typedInbox.busy} error={typedInbox.error} onRefresh={typedInbox.refresh} onMore={() => void typedInbox.more()} onOpen={openNotification} cardStates={cardStates} openId={openId} /> : typedInbox.error ? <View><ErrorState message={typedInbox.error}/><Pressable accessibilityRole="button" onPress={typedInbox.refresh}><Text>{locale.t("common.retry")}</Text></Pressable></View> : <LoadingState />) : retainedContent.current ? (
         <View style={activeSection === "threads" && !contentReady ? { display: "none" } : undefined}>
         <InboxContent
           onLoadMoreMessages={nextCursor ? () => void loadMoreMessages() : undefined}
