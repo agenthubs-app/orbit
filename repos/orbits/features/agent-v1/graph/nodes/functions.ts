@@ -30,6 +30,7 @@ import { localDay } from "../../views/recent-interaction";
 import type { CanonicalEventRecord } from "../../../events/core/contract";
 import type { NoteInteractionContract } from "../../../../shared/contract/notes";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
+import { asksWhoToFollowUp, isWholeQuote, realTopicOf } from "../../functions/basis";
 import { asksEventsToGoTo, pointsAtPast, writesADate, upcomingTopicOf, directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, memoriesFor, naturalField, PICK_WORDS, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
 import { compare, dimensionsIn, type ComparedEvent } from "../../functions/compare";
 import * as say from "../../functions/copy";
@@ -100,6 +101,10 @@ export function listsUpcomingEvents(part: GraphPart, message: string): boolean {
 /** The kind of records a part ranks, or null when it is not a ranking this node does. */
 export function rankDomainOf(part: GraphPart, message: string): RankDomain | null {
   if (listsUpcomingEvents(part, message)) return "event";
+  // Hotfix 2026-11-20 part 2 (the App's suggested 「哪些人值得先跟进？」): asking who to follow up with is the people ranking of
+  // 「这周该跟进谁」 whatever the first layer tagged — unless a person is named or picked (then it is about that person).
+  const asked = message.slice(part.quote[0], part.quote[1]);
+  if (part.route === "read" && asksWhoToFollowUp(asked) && !part.refs.some((ref) => ref.entity === "contact" && (ref.recordId || (ref.quote && !GENERIC_CONTACT_CLUE.test(message.slice(ref.quote[0], ref.quote[1])))))) return "contact";
   if (part.route !== "read" || !part.capabilities.includes("fn.rank")) return null;
   // Comparing and grouping are other functions (AE-FN-014: "按免费和收费分个组" is a group, not a pick).
   if (part.capabilities.includes("fn.group") || part.capabilities.includes("fn.compare")) return null;
@@ -424,7 +429,7 @@ function contactLine(item: ContactCandidate, language: Language, level: string |
   if (item.place) facts.push(item.place);
   if (item.industry) facts.push(language === "en" ? `industry: ${item.industry}${INDUSTRY_WORDS[item.industry]?.[0] ? ` (${INDUSTRY_WORDS[item.industry][0]})` : ""}` : language === "ja" ? `業種：${item.industry}` : `行业：${item.industry}`);
   if (item.tags.length) facts.push(language === "en" ? `tags: ${item.tags.join(", ")}` : language === "ja" ? `タグ：${item.tags.join("、")}` : `标签：${item.tags.join("、")}`);
-  if (item.notes) facts.push(language === "en" ? `note: ${item.notes}` : language === "ja" ? `メモ：${item.notes}` : `备注：${item.notes}`);
+  // Hotfix 2026-11-20 part 2: a contact line never carries the contact's free-text notes (phone numbers, addresses went into answers).
   if (item.lastInteraction) facts.push(language === "en" ? `last recorded interaction: ${say.dayWordsOf(item.lastInteraction, language)}` : language === "ja" ? `最後のやり取り：${say.dayWordsOf(item.lastInteraction, language)}` : `最近一次往来：${say.dayWordsOf(item.lastInteraction, language)}`);
   const open = language === "en" ? " (" : "（";
   const close = language === "en" ? ")" : "）";
@@ -745,11 +750,18 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
       emitTrace({ error: error instanceof Error ? error.message : String(error), partId: part.localId, type: "read.error", where: "functions.basis_memo" });
     }
   }
+  // Hotfix 2026-11-20 part 2, rule 3 (「哪些人值得先跟进？」 ranked by the topic 「值得先跟进」): the whole question, or words that are
+  // only question, kind, time or preparing words, are never the topic. With no real topic in the words it is no topic ranking.
+  if (basis && !basisMemo && (isWholeQuote(basis, original) || !realTopicOf(basis))) {
+    emitTrace({ partId: part.localId, type: "functions.basis_not_a_topic", whole: isWholeQuote(basis, original) });
+    basis = isWholeQuote(basis, original) && realTopicOf(basis) ? realTopicOf(basis) : null;
+  }
   const topicWords = basisMemo ? basis : topicWordsOf(basis ?? (reply ? replyWords : original));
-  const followUpAsk = domain === "contact" && FOLLOW_UP_WORDS.test(words) && !basisMemo && !topicWordsOf(basis ?? "").replace(FOLLOW_UP_WORDS, "").replace(FOLLOW_UP_QUESTION_WORDS, "").trim();
+  const followUpAsk = domain === "contact" && (FOLLOW_UP_WORDS.test(words) || asksWhoToFollowUp(original)) && !basisMemo && !realTopicOf(basis ?? "").replace(FOLLOW_UP_WORDS, "").replace(FOLLOW_UP_QUESTION_WORDS, "").trim();
   let topic: string | null = basisMemo ? basis : topicWords && !followUpAsk ? (basis && topicWordsOf(basis) ? basis : reply ? replyWords : null) : null;
-  // A ranking with neither a basis nor a field, in AG08's words of the part itself ("最适合聊…"): kept when words remain.
-  if (!topic && !field && !reply && domain !== "todo" && topicWordsOf(original) && !followUpAsk) topic = original;
+  // A ranking with neither a basis nor a field, in AG08's words of the part itself ("最适合聊…"): the real topic words in it,
+  // never the whole message (hotfix part 2, rule 3).
+  if (!topic && !field && !reply && domain !== "todo" && realTopicOf(original) && !followUpAsk) topic = realTopicOf(original);
   // "随便" leaves it to the agent: no topic, the natural order.
   if (leftToAgent) topic = null;
   // AG19-6: "最近有哪些活动适合我" names no topic ("适合我" is not one): the list of what is coming up, by start time.

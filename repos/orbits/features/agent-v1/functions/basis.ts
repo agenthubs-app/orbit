@@ -50,7 +50,39 @@ const QUALITY_WORDS = /(最好的?|最值得(?:去|看|参加)?的?|值得(?:去
 /** Words that name the set, the count or the act — not a basis. */
 const FILLER = /(帮我|请|给我|我想|从|在|这个月|本月|这周|本周|下周|今天|明天|剩下的?|里面?|中的?|之中|当中|的|挑|选出?|选择|推荐|排(?:个序|一下|序)?|一下|哪|几|[一二两三四五六七八九十\d]+\s*(?:场|个|位|条|件|项|人|つ|名)|活动|活動|イベント|联系人|連絡先|待办|代办|跟进|谁|人|吗|呢|吧|呀|呗|？|\?|。|，|,|、|！|!|\s|\bpick\b|\bchoose\b|\brecommend\b|\bshow\b|\blist\b|\bme\b|\bthe\b|\bof\b|\bmy\b|\bin\b|\bthis\b|\bweek\b|\bmonth\b|\bevents?\b|\bcontacts?\b|\bwhich\b|\bones?\b|\bshould\b|\bi\b|\bgo\b|\bto\b|\battend\b|\bfor\b|\band\b|\ba\b|\bthree\b|\btwo\b|\bfive\b|を|が|は|に|の|で|か|から|選んで|ください|教えて|今月|今週|来週)/giu;
 /** Words of following up on people (the history signals answer them). */
-export const FOLLOW_UP_WORDS = /(跟进|该联系|要联系|联系谁|回访|催一下|follow[\s-]?up|reach out|get back to|フォロー|連絡すべき|連絡する人)/iu;
+export const FOLLOW_UP_WORDS = /(跟进|该联系|要联系|联系谁|先联系|优先联系|回访|催一下|follow[\s-]?up|reach out|get back to|\bshould I (?:contact|call|email|message)\b|\bcontact (?:first|now|next)\b|フォロー|連絡すべき|連絡する人)/iu;
+
+/** Hotfix 2026-11-20 part 2: asking who (哪些人、谁、誰、who). */
+const WHO_ASKED = /(谁|哪位|哪些人|哪几位|\bwho\b|\bwhom\b|誰|どなた|どの人)/iu;
+
+/**
+ * Hotfix 2026-11-20 part 2 (the App's suggested question todayVm.questionFollowup: 「哪些人值得先跟进？」, 「誰を優先してフォローしますか？」,
+ * "Who should I follow up with first?"): asking who to follow up with is the follow-up ranking of 「这周该跟进谁」 — due follow-ups,
+ * to-dos past their planned day — never a topic ranking over the sentence.
+ */
+export function asksWhoToFollowUp(words: string): boolean {
+  return WHO_ASKED.test(words) && FOLLOW_UP_WORDS.test(words);
+}
+
+/**
+ * Hotfix 2026-11-20 part 2, rule 3: words that are never a ranking topic on their own — question words, "first / worth / should",
+ * and words for a kind of record, a time or the act of preparing ("哪些人值得先跟进" leaves 「值得先」, "接下来的会面或活动，该准备什么"
+ * leaves 「接下来 会面 准备什么」: neither is a topic).
+ */
+const NOT_A_TOPIC = /(告诉我|告诉|原因|理由|为什么|下一步|现在|目前|当前|教えて|理由|次の一歩|今|\b(?:now|currently|reason|reasons|why|next step|tell me)\b|值得|首先|最先|优先|先|应该|应当|该|需要|要|可以|能|哪些|哪个|哪位|哪几|哪|谁|什么|怎么|如何|是否|吗|呢|吧|或者|或|和|与|还有|接下来|下一个|下次|之后|以后|最近|近期|会面|见面|会议|开会|活动|日程|安排|准备|事情|事|东西|跟进|联系|優先|して|します|しますか|ますか|ますか|すべき|べき|誰|何から|何|どれ|次の|面会|イベント|予定|準備|フォロー|進め|今日|は|を|に|の|\b(?:first|should|need|needs|to|what|which|who|whom|how|do|i|for|with|up|follow|prepare|upcoming|next|meetings?|events?|or|and|the|my|a)\b|[\s。.，,、？?！!：:]+)/giu;
+
+/** Rule 3: the real topic in some words ("" when nothing but question, kind, time or preparing words is left). */
+export function realTopicOf(words: string): string {
+  const left = topicWordsOf(words.replace(NOT_A_TOPIC, " ")).replace(NOT_A_TOPIC, " ");
+  // A single character left over (a particle, half of a word taken apart: 「次 や」, 「现」) is no topic.
+  return left.split(/\s+/u).filter((token) => [...token].length > 1).join(" ").trim();
+}
+
+/** Rule 3: the basis words are the whole part (the model copied the question as its topic). */
+export function isWholeQuote(basis: string, quote: string): boolean {
+  const flat = (text: string) => text.replace(/[\s。.，,、？?！!：:]+/gu, "");
+  return Boolean(flat(basis)) && flat(basis) === flat(quote);
+}
 const NATURAL_REPLY = /^(?:随便|都行|都可以|无所谓|你定|你看着办|随你|没要求|没有要求|任意|any(?:thing|one)?|whatever|doesn'?t matter|no preference|up to you|どれでも|何でも|お任せ|おまかせ|特にない|特になし)/iu;
 
 /** A reply to "按什么来挑" that leaves it to the agent ("随便", "都行", "whatever"). */
