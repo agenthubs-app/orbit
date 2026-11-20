@@ -102,7 +102,8 @@ function clarifyLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, 
     const kinds = new Set(set.options.map((option) => recordKindOf(option.refType)));
     const unresolved = part.refs.find((ref) => !ref.recordId && (!kinds.size || kinds.has(recordKindOf(ref.entity)))) ?? part.refs.find((ref) => !ref.recordId);
     const clue = clueWords(scope.input.message, unresolved);
-    if (clue) return words.clarifyObject(quote, clue, labels);
+    // A part that only creates, with nothing to choose among: the clue (「新目标」) is the thing to make, not a record to find.
+    if (clue && !(createsOnly(part) && !labels.length)) return words.clarifyObject(quote, clue, labels);
     return CLARIFY_WORDS.askWhich(language, quote, missingOf(part, "object") === "person" ? "person" : createsOnly(part) ? "content" : "object");
   }
   return words.clarifyNone(quote);

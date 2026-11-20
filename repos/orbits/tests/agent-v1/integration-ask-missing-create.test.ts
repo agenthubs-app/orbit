@@ -17,6 +17,13 @@ test("AE-ANS-036 「帮我为新目标制定计划。」: asks what the new thin
   assert.equal(run.frozen.length, 0);
 });
 
+test("AE-ANS-036 solo run 1: the first layer named 「新目标」 as a clue — still what to create, not 「我不确定指的是哪一个」", async () => {
+  const message = "帮我为新目标制定计划。";
+  const run = await runFn(message, [{ clarity: "missing_one", dataSources: ["turn_material"], deliverable: "change", objectClues: [{ entity: "todo", text: "新目标" }], requiredCapabilities: ["todo.create"], sourceQuote: message }]);
+  assert.match(run.result.text, /具体是什么内容/u, run.result.text);
+  assert.doesNotMatch(run.result.text, /我不确定指的是哪一个|要改的是哪一条/u);
+});
+
 test("the same in Japanese and English", async () => {
   const ja = "新しい目標の計画を立てて。";
   const jaRun = await runFn(ja, [{ clarity: "missing_one", dataSources: ["turn_material"], deliverable: "change", requiredCapabilities: ["todo.create"], sourceQuote: ja }], { language: "ja" });
