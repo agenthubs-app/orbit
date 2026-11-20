@@ -226,6 +226,7 @@ export function ScheduledTaskDetail({ id, onTitle }: { id: string; onTitle(title
           {task.last ? <><b className={s.boxValue}>{task.last.when}：{task.last.text}</b>{task.last.opens ? <Link prefetch className={s.boxLink} href={inboxHrefOf(task.last.opens === "card" ? task.lastRun?.cardId ?? task.last.runId : task.last.runId)}>{t("inInbox")} ›</Link> : null}</> : <b className={s.boxValue}>{t("noLast")}</b>}
         </div>
       </div>
+      {/* AG16 (draft 16-1): the reminder block 「有新结果时提醒我」 goes here, between the next/last boxes and 「这条任务怎么跑」. */}
       {editing && task.form ? (
         <ScheduledTaskForm initial={task.form} id={task.id} zoneNote={task.rows.find((row) => row.field === "schedule")?.note ?? null} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); setAttempt((n) => n + 1); toast.success(t("saved")); }} />
       ) : (
