@@ -87,7 +87,9 @@ export const TOOL_DEFINITIONS: Record<McpToolName, McpToolDefinition> = {
     inputSchema: {
       additionalProperties: false,
       properties: {
-        cursor: { description: "next_cursor of the previous page, with the same domain and query.", type: "string" },
+        // AG21c (decision D3): "only this person's notes" — a contact filter for memos.
+        contact: { description: "memos only: a contact id (from search_records with domain contacts) — only the notes linked to that person. Needs contacts to be readable too.", type: "string" },
+        cursor: { description: "next_cursor of the previous page, with the same domain, query and contact.", type: "string" },
         domain: { description: `One of: ${DOMAIN_WORDS}.`, type: "string" },
         limit: { description: "Records per page, 1–10 (default 10).", maximum: 10, minimum: 1, type: "integer" },
         query: { description: "Words to look for (a name for contacts; words of the title or text for the others). Leave out to list everything.", type: "string" },
@@ -103,6 +105,7 @@ export const TOOL_DEFINITIONS: Record<McpToolName, McpToolDefinition> = {
 // ── Input checks. `.strict()` everywhere: a field that is not listed is an error. ──
 
 export const searchRecordsInput = z.object({
+  contact: z.string().min(1).max(200).optional(),
   cursor: z.string().min(1).max(4000).optional(),
   domain: z.string().min(1).max(40),
   limit: z.number().int().min(1).max(10).optional(),
