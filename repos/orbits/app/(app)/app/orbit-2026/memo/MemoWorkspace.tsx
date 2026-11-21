@@ -7,13 +7,14 @@ import { pickCopy } from "../copy/types";
 import { memoCopy } from "../copy/memo";
 import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
-import { Bone, Button, CategoryTabs, Chip, EmptyState, Modal, Orbit2026Scope, RetryCard, SearchField, Skeleton, TextField, ToastProvider, useStandardCopy, useToast } from "../ui";
+import { Bone, Button, CategoryTabs, Chip, EmptyState, Icon, IconButton, Modal, Orbit2026Scope, RetryCard, SearchField, Skeleton, TextField, ToastProvider, useStandardCopy, useToast } from "../ui";
 import { activeMemoMentionQuery, insertMemoMention, memoContactIds, memoPage, memoRequest, memoTabForKind, rebaseMemoMentions, type MemoMentionCandidate, type MemoRow, type MemoTab } from "./memo-model";
 import styles from "./memo.module.css";
 import { useAreaChanges } from "../../orbit-change-watch";
 
 type Counts = Record<MemoTab, number | null>;
 const countsKey = (query: string) => `memo:counts:${query}`;
+const PHONE_QUERY = "(max-width: 767px)";
 
 type Draft = { title: string; body: string; kind: "meeting" | "free" | "voice"; usedForPlan: boolean; contactIds: string[]; eventIds: string[]; mentions: MemoRow["mentions"] };
 const emptyDraft = (): Draft => ({ title: "", body: "", kind: "free", usedForPlan: false, contactIds: [], eventIds: [], mentions: [] });
@@ -160,6 +161,53 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
     url.searchParams.set("memo", id);
     window.history.replaceState(window.history.state, "", url);
   };
+  // Phone (<768, memo-empty-entry-proposal P2 / P3): two screens like Apple Notes. The list alone, and a tapped
+  // note full screen over it (the list keeps its scroll underneath). ?memo=<id> is the open note, so the detail
+  // is linkable; opening pushes a history entry, so the browser's back returns to the list. ≥768 is unchanged.
+  const [phone, setPhone] = useState(false);
+  const [phoneDetail, setPhoneDetail] = useState(false);
+  const openedFrom = useRef("");
+  useEffect(() => {
+    const query = window.matchMedia(PHONE_QUERY);
+    const update = () => setPhone(query.matches);
+    update();
+    // A link straight to a note (?memo=<id>) opens it on the phone.
+    if (query.matches && new URL(window.location.href).searchParams.get("memo")) setPhoneDetail(true);
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    const onPop = () => {
+      const id = new URL(window.location.href).searchParams.get("memo");
+      if (id && window.matchMedia(PHONE_QUERY).matches) { pinnedId.current = id; setSelected(id); setPhoneDetail(true); }
+      else setPhoneDetail(false);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  const detailOpen = phone && phoneDetail;
+  const openRow = (id: string) => {
+    if (!window.matchMedia(PHONE_QUERY).matches) { select(id); return; }
+    pinnedId.current = id; setSelected(id); openedFrom.current = id;
+    const url = new URL(window.location.href);
+    url.searchParams.set("memo", id);
+    // Keep the router's own state fields: Next's popstate handling needs them to restore without a reload.
+    window.history.pushState({ ...(window.history.state ?? {}), orbitMemoDetail: true }, "", url);
+    setPhoneDetail(true);
+  };
+  const backToList = () => {
+    if ((window.history.state as { orbitMemoDetail?: boolean } | null)?.orbitMemoDetail) { window.history.back(); return; }
+    // Opened from a link: there is no list entry behind it, so the address loses ?memo= in place.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("memo");
+    window.history.replaceState(window.history.state, "", url);
+    setPhoneDetail(false);
+  };
+  useEffect(() => {
+    if (detailOpen) { document.querySelector<HTMLElement>("[data-memo-back]")?.focus({ preventScroll: true }); return; }
+    const id = openedFrom.current;
+    if (id) document.querySelector<HTMLElement>(`[data-memo-row="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+  }, [detailOpen]);
   const current = useMemo(() => notes?.find(row => row.id === selected) ?? notes?.[0], [notes, selected]);
   const contactKey = current?.contactIds.join("\u0000") ?? "";
   useEffect(() => {
@@ -264,17 +312,63 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
   const shownContacts = contactOptions.filter(option => !optionQuery || option.label.toLocaleLowerCase(language).includes(optionQuery.toLocaleLowerCase(language)));
   const shownEvents = eventOptions.filter(option => !optionQuery || option.label.toLocaleLowerCase(language).includes(optionQuery.toLocaleLowerCase(language))).slice(0, 20);
   const draftContactCount = editor ? memoContactIds(editor.draft.contactIds, editor.draft.mentions).length : 0;
+  const editorModal = <Modal open={Boolean(editor)} title={editor?.id ? t(memoCopy.edit) : t(memoCopy.add)} size={680} form onClose={() => { if (!saving) setEditor(null); }}>
+    {editor ? <form className={styles.form} onSubmit={event => { event.preventDefault(); void save(); }}>
+      <TextField label={t(memoCopy.title)} value={editor.draft.title} onChange={event => patch({ title: event.target.value })} disabled={saving} />
+      <CategoryTabs label={t(memoCopy.meeting)} options={kindOptions} value={memoTabForKind(editor.draft.kind)} onChange={kind => patch({ kind, usedForPlan: kind === "meeting" && editor.draft.usedForPlan })} />
+      <label className={styles.bodyLabel}>{t(memoCopy.body)}<textarea ref={bodyInput} value={editor.draft.body} onChange={event => { changeBody(event.target.value); setCaret(event.target.selectionStart); }} onSelect={event => setCaret(event.currentTarget.selectionStart)} disabled={saving} rows={9} /></label>
+      {tokenError ? <p role="alert" className={styles.error}>{t(memoCopy.tokenEdit)}</p> : null}
+      <div className={styles.linkPicker}>
+        {activeMention ? <p className={styles.meta}>{t(memoCopy.mentionChoice)}</p> : <SearchField value={linkQuery} onChange={setLinkQuery} placeholder={t(memoCopy.linkSearch)} />}
+        {optionError ? <p role="alert" className={styles.error}>{t(memoCopy.optionsFailed)}</p> : null}
+        <div className={styles.optionGroup}><strong>{t(memoCopy.people)}</strong><div className={styles.optionRows}>{shownContacts.map(option => <Button key={option.id} label={`${activeMention ? "@" : "+ "}${option.label}`} onClick={() => chooseOption(option)} disabled={saving} />)}</div></div>
+        <div className={styles.optionGroup}><strong>{t(memoCopy.events)}</strong><div className={styles.optionRows}>{shownEvents.map(option => <Button key={option.id} label={`${activeMention ? "@" : "+ "}${option.label}`} onClick={() => chooseOption(option)} disabled={saving} />)}</div></div>
+        {!activeMention && (editor.draft.contactIds.length || editor.draft.eventIds.length) ? <div className={styles.selectedLinks}>
+          {editor.draft.contactIds.map(id => <Button key={`c:${id}`} label={`${t(memoCopy.removeLink)} ${contactOptions.find(option => option.id === id)?.label ?? resolvedContacts[id] ?? id}`} onClick={() => chooseOption({ id, label: id, kind: "contact" })} disabled={saving} />)}
+          {editor.draft.eventIds.map(id => <Button key={`e:${id}`} label={`${t(memoCopy.removeLink)} ${eventOptions.find(option => option.id === id)?.label ?? id}`} onClick={() => chooseOption({ id, label: id, kind: "event" })} disabled={saving} />)}
+        </div> : null}
+      </div>
+      {editor.draft.eventIds.length ? <p className={styles.meta}>{t(memoCopy.eventUnlink)}</p> : null}
+      <label className={styles.planUse}><input type="checkbox" checked={editor.draft.usedForPlan} disabled={saving || editor.draft.kind !== "meeting" || draftContactCount !== 1} onChange={event => patch({ usedForPlan: event.target.checked })} />{t(memoCopy.planUse)}</label>
+      {editor.draft.kind !== "meeting" || draftContactCount !== 1 ? <p className={styles.meta}>{t(memoCopy.planNeedsOne)}</p> : null}
+      {writeError ? <p role="alert" className={styles.error}>{t(writeError === "conflict" ? memoCopy.conflict : memoCopy.saveFailed)}</p> : null}
+      <div className={styles.actions}><Button label={t(memoCopy.cancel)} onClick={() => setEditor(null)} disabled={saving} /><Button type="submit" label={t(memoCopy.save)} variant="primary" loading={saving} disabled={!online || !editor.draft.title.trim() || !editor.draft.body.trim()} /></div>
+    </form> : null}
+  </Modal>;
+  // No notes at all (not a search or a kind filter that came back empty): one empty state for the whole
+  // workspace — no search row, no kind tabs, no detail panel (memo-empty-entry-proposal P1 / T1 / D1).
+  const nothingYet = notes?.length === 0 && !query.trim() && !settledQuery && (tab === "all" || counts?.all === 0);
+  // Phone: the header's add button folds away with the shell header, so the workspace carries its own entry
+  // (the ＋ by the search field, or the empty state's button). From 768 up both are hidden: the header has it.
+  const add = () => openEditor();
+  if (nothingYet) return <main className={styles.page}>
+    <section className={styles.emptyCard} aria-label={t(memoCopy.empty)}>
+      <span className={styles.emptyMark} aria-hidden><Icon name="note" size={20} /></span>
+      <EmptyState inset title={t(memoCopy.empty)} />
+      <ul className={styles.uses}>
+        <li><span className={styles.useMark} aria-hidden>🤝</span><span><strong>{t(memoCopy.meeting)}</strong>{t(memoCopy.useMeeting)}</span></li>
+        <li><span className={styles.useMark} aria-hidden>✍️</span><span><strong>{t(memoCopy.free)}</strong>{t(memoCopy.useFree)}</span></li>
+        <li><span className={styles.useMark} aria-hidden><Icon name="at" size={16} /></span><span><strong>{t(memoCopy.useLink)}</strong>{t(memoCopy.useLinkBody)}</span></li>
+        <li><span className={styles.useMark} aria-hidden><Icon name="target" size={16} /></span><span><strong>{t(memoCopy.usePlan)}</strong>{t(memoCopy.usePlanBody)}</span></li>
+      </ul>
+      <Button className={styles.phoneAdd} label={t(memoCopy.add)} icon="plus" variant="primary" block onClick={add} disabled={!online} title={!online ? t(memoCopy.needsNetwork) : undefined} />
+    </section>
+    {editorModal}
+  </main>;
   return <main className={styles.page}>
-    <div className={styles.grid}>
-      <section className={styles.list} aria-label={t(memoCopy.all)}>
-        <SearchField value={query} onChange={setQuery} placeholder={t(memoCopy.search)} />
+    <div className={`${styles.grid} ${notes?.length === 0 ? styles.gridNoDetail : ""}`}>
+      <section className={styles.list} aria-label={t(memoCopy.all)} inert={detailOpen || undefined}>
+        <div className={styles.searchRow}>
+          <SearchField value={query} onChange={setQuery} placeholder={t(memoCopy.search)} />
+          <IconButton className={styles.plus} icon="plus" label={t(memoCopy.add)} onClick={add} disabled={!online} title={!online ? t(memoCopy.needsNetwork) : t(memoCopy.add)} />
+        </div>
         {counts ? <CategoryTabs<MemoTab> label={t(memoCopy.all)} options={options} value={tab} onChange={setTab} />
           : <div className={styles.tabsPending} role="progressbar" aria-busy aria-label={standard.loading.loading}>{[72, 64, 88].map(width => <Bone key={width} width={width} height={34} round />)}</div>}
         {notes === null && !failed ? <Skeleton lines={5} /> : null}
         {failed && notes === null ? <RetryCard title={t(memoCopy.retry)} onRetry={() => { void read(); }} /> : null}
-        {notes?.length === 0 ? <EmptyState title={query ? t(memoCopy.noResult) : t(memoCopy.empty)} message={t(memoCopy.emptyBody)} /> : null}
+        {notes?.length === 0 ? <p className={styles.noResult}>{t(memoCopy.noResult)}</p> : null}
         {notes ? <div className={styles.srOnly} aria-live="polite">{notes.length} / {total}</div> : null}
-        {notes?.map(row => <Button key={row.id} label={row.title} aria-label={row.title} className={`${styles.row} ${current?.id === row.id ? styles.selected : ""}`} aria-pressed={current?.id === row.id} onClick={() => select(row.id)} trailing={<>
+        {notes?.map(row => <Button key={row.id} label={row.title} aria-label={row.title} className={`${styles.row} ${current?.id === row.id ? styles.selected : ""}`} aria-pressed={current?.id === row.id} data-memo-row={row.id} onClick={() => openRow(row.id)} trailing={<>
           <span className={styles.rowIcon} aria-hidden>{row.noteKind === "meeting" ? "🤝" : row.noteKind === "voice" ? "🎙️" : "✍️"}</span>
           <time className={styles.rowDate}>{new Date(row.updatedAt).toLocaleDateString(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US", { month: "numeric", day: "numeric" })}</time>
           <span className={styles.rowBody}>{row.body.replace(/\s+/gu, " ")}</span>
@@ -283,37 +377,21 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
         {cursor ? <Button label={t(memoCopy.loadMore)} loading={moreLoading} onClick={() => { void read(true); }} /> : null}
         {failed && notes ? <RetryCard title={t(memoCopy.retry)} onRetry={() => { void read(Boolean(cursor)); }} /> : null}
       </section>
-      <section className={styles.detail} aria-label={current?.title ?? t(memoCopy.empty)}>
-        {current ? <><div className={styles.detailHead}><div><span className={styles.kind}>{t(memoCopy[memoTabForKind(current.noteKind)])}</span><h2>{current.title}</h2><time>{new Date(current.updatedAt).toLocaleString(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US")}</time></div><Button label={t(memoCopy.edit)} onClick={() => openEditor(current)} disabled={!online || current.sample === true} /></div>
+      {notes?.length === 0 ? null : <section className={`${styles.detail} ${detailOpen ? styles.detailOpen : ""}`} aria-label={current?.title ?? t(memoCopy.empty)} data-memo-detail={detailOpen ? "open" : undefined}
+        onKeyDown={detailOpen ? event => { if (event.key === "Escape" && !editor) backToList(); } : undefined}>
+        {/* Phone only (P3): round back to the list, 「编辑」 on the right. */}
+        {current ? <div className={styles.phoneBar}>
+          <IconButton data-memo-back="" icon="left" label={standard.nav.back} onClick={backToList} />
+          <Button label={t(memoCopy.edit)} size="sm" onClick={() => openEditor(current)} disabled={!online || current.sample === true} />
+        </div> : null}
+        {current ? <><div className={styles.detailHead}><div><span className={styles.kind}>{t(memoCopy[memoTabForKind(current.noteKind)])}</span><h2>{current.title}</h2><time>{new Date(current.updatedAt).toLocaleString(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US")}</time></div><Button className={styles.wideEdit} label={t(memoCopy.edit)} onClick={() => openEditor(current)} disabled={!online || current.sample === true} /></div>
           {linksSettled || !current.mentions.length ? <p className={styles.body}>{memoBody(current, resolvedContacts, resolvedEvents)}</p>
             : <div className={styles.body}><Skeleton lines={3} /></div>}
           <div className={styles.chips}>{current.noteKind === "voice" ? <Chip label={t(memoCopy.voice)} /> : null}{!contactsSettled ? current.contactIds.map(id => <Bone key={`c:${id}`} width={72} height={28} round />) : current.contactIds.map(id => resolvedContacts[id] ? <a key={`c:${id}`} href={`/app/contacts/${encodeURIComponent(id)}`} aria-label={`${t(memoCopy.people)}: ${resolvedContacts[id]}`}><Chip label={resolvedContacts[id]} /></a> : <Chip key={`c:${id}`} label={id} />)}{!eventsSettled ? current.eventIds.map(id => <Bone key={`e:${id}`} width={88} height={28} round />) : current.eventIds.map(id => resolvedEvents[id] ? <a key={`e:${id}`} href={`/app/events/${encodeURIComponent(id)}`} aria-label={`${t(memoCopy.events)}: ${resolvedEvents[id]}`}><Chip label={resolvedEvents[id]} /></a> : <Chip key={`e:${id}`} label={id} />)}</div>
           {current.usedForPlan ? <p className={styles.meta}>{t(memoCopy.planUse)}</p> : null}
-        </> : notes ? <EmptyState title={t(memoCopy.empty)} message={t(memoCopy.emptyBody)} /> : null}
-      </section>
+        </> : null}
+      </section>}
     </div>
-    <Modal open={Boolean(editor)} title={editor?.id ? t(memoCopy.edit) : t(memoCopy.add)} size={680} form onClose={() => { if (!saving) setEditor(null); }}>
-      {editor ? <form className={styles.form} onSubmit={event => { event.preventDefault(); void save(); }}>
-        <TextField label={t(memoCopy.title)} value={editor.draft.title} onChange={event => patch({ title: event.target.value })} disabled={saving} />
-        <CategoryTabs label={t(memoCopy.meeting)} options={kindOptions} value={memoTabForKind(editor.draft.kind)} onChange={kind => patch({ kind, usedForPlan: kind === "meeting" && editor.draft.usedForPlan })} />
-        <label className={styles.bodyLabel}>{t(memoCopy.body)}<textarea ref={bodyInput} value={editor.draft.body} onChange={event => { changeBody(event.target.value); setCaret(event.target.selectionStart); }} onSelect={event => setCaret(event.currentTarget.selectionStart)} disabled={saving} rows={9} /></label>
-        {tokenError ? <p role="alert" className={styles.error}>{t(memoCopy.tokenEdit)}</p> : null}
-        <div className={styles.linkPicker}>
-          {activeMention ? <p className={styles.meta}>{t(memoCopy.mentionChoice)}</p> : <SearchField value={linkQuery} onChange={setLinkQuery} placeholder={t(memoCopy.linkSearch)} />}
-          {optionError ? <p role="alert" className={styles.error}>{t(memoCopy.optionsFailed)}</p> : null}
-          <div className={styles.optionGroup}><strong>{t(memoCopy.people)}</strong><div className={styles.optionRows}>{shownContacts.map(option => <Button key={option.id} label={`${activeMention ? "@" : "+ "}${option.label}`} onClick={() => chooseOption(option)} disabled={saving} />)}</div></div>
-          <div className={styles.optionGroup}><strong>{t(memoCopy.events)}</strong><div className={styles.optionRows}>{shownEvents.map(option => <Button key={option.id} label={`${activeMention ? "@" : "+ "}${option.label}`} onClick={() => chooseOption(option)} disabled={saving} />)}</div></div>
-          {!activeMention && (editor.draft.contactIds.length || editor.draft.eventIds.length) ? <div className={styles.selectedLinks}>
-            {editor.draft.contactIds.map(id => <Button key={`c:${id}`} label={`${t(memoCopy.removeLink)} ${contactOptions.find(option => option.id === id)?.label ?? resolvedContacts[id] ?? id}`} onClick={() => chooseOption({ id, label: id, kind: "contact" })} disabled={saving} />)}
-            {editor.draft.eventIds.map(id => <Button key={`e:${id}`} label={`${t(memoCopy.removeLink)} ${eventOptions.find(option => option.id === id)?.label ?? id}`} onClick={() => chooseOption({ id, label: id, kind: "event" })} disabled={saving} />)}
-          </div> : null}
-        </div>
-        {editor.draft.eventIds.length ? <p className={styles.meta}>{t(memoCopy.eventUnlink)}</p> : null}
-        <label className={styles.planUse}><input type="checkbox" checked={editor.draft.usedForPlan} disabled={saving || editor.draft.kind !== "meeting" || draftContactCount !== 1} onChange={event => patch({ usedForPlan: event.target.checked })} />{t(memoCopy.planUse)}</label>
-        {editor.draft.kind !== "meeting" || draftContactCount !== 1 ? <p className={styles.meta}>{t(memoCopy.planNeedsOne)}</p> : null}
-        {writeError ? <p role="alert" className={styles.error}>{t(writeError === "conflict" ? memoCopy.conflict : memoCopy.saveFailed)}</p> : null}
-        <div className={styles.actions}><Button label={t(memoCopy.cancel)} onClick={() => setEditor(null)} disabled={saving} /><Button type="submit" label={t(memoCopy.save)} variant="primary" loading={saving} disabled={!online || !editor.draft.title.trim() || !editor.draft.body.trim()} /></div>
-      </form> : null}
-    </Modal>
+    {editorModal}
   </main>;
 }

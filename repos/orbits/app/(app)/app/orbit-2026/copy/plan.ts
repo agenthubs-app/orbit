@@ -681,11 +681,13 @@ export const planOverviewCopy = {
   pendingStepMeta: { ja: "目安：{criteria}", zh: "标准：{criteria}", en: "Done when: {criteria}", kind: "label" },
   talkedPeople: { ja: "話した人 {n}人：{names}", zh: "聊过的人{n}人：{names}", en: "Talked to {n}: {names}", kind: "label" },
   talkedName: { ja: "{name}（{date}）", zh: "{name}（{date}）", en: "{name} ({date})", kind: "label" },
-  typeHeadKicker: { ja: "{label} · 役割 × 状況", zh: "{label} · 角色 × 处境", en: "{label} · role × situation", kind: "label" },
+  // 2026-11-21 类型详情改版：小字不再重复标题里的类型名。
+  typeHeadKicker: { ja: "役割 × 状況", zh: "角色 × 处境", en: "Role × situation", kind: "label" },
   typeHeadScore: { ja: "/ {allocation}点 · {met} / {target}人", zh: "/{allocation}分 · {met}/{target}人", en: "/ {allocation} pts · {met} / {target}", kind: "label" },
-  typeSubtitleV2: { ja: "Step {steps} · 配点 {points}", zh: "Step {steps} · 配分{points}", en: "Step {steps} · {points} pts", kind: "label" },
-  typeSubtitleV2NoStep: { ja: "配点 {points}", zh: "配分{points}", en: "{points} pts", kind: "label" },
-  typeSubtitleNone: { ja: "Step {steps} · 配点 {points} · 人脈にまだいません", zh: "Step {steps} · 配分{points} · 人脉中还没有", en: "Step {steps} · {points} pts · not in your network yet", kind: "label" },
+  // 2026-11-21：副标题只留 Step（配分已在头卡「/10分」里；「人脉中还没有」已在头卡第一格里）。
+  typeSubtitleV2: { ja: "Step {steps}", zh: "Step {steps}", en: "Step {steps}", kind: "label" },
+  // 头卡 ⋯：收着「この分野はもう詳しい」（手机底部弹层，平板 / 桌面小菜单）。
+  typeMoreActions: { ja: "その他の操作", zh: "更多操作", en: "More actions", kind: "button" },
   candidatesTitleV2: { ja: "あなたの人脈の候補 · 推薦度順", zh: "你人脉中的候选 · 按推荐度", en: "Candidates in your network · by fit", kind: "label" },
   selectedCountV2: { ja: "{n}人を選択中", zh: "已选{n}人", en: "{n} selected", kind: "label" },
   routeTitleVia: { ja: "紹介ルート：{name}さん経由", zh: "引荐路径：经{name}", en: "Intro route: through {name}", kind: "label" },
@@ -704,7 +706,6 @@ export const planOverviewCopy = {
   colEventType: { ja: "このタイプ（推定）", zh: "这类人（推测）", en: "This type (est.)", kind: "label" },
   expectedV2: { ja: "約 {n}人参加", zh: "约{n}人参加", en: "~{n} attending", kind: "chip" },
   eventDetail: { ja: "詳細", zh: "详情", en: "Details", kind: "button" },
-  railTypeEvents: { ja: "このタイプに会えるイベント", zh: "能见到这类人的活动", en: "Events to meet this type", kind: "label" },
   railDraftNote: { ja: "メール・メッセージは下書きまで。送信はあなたが行います。", zh: "邮件、消息只到草稿为止。由你来发送。", en: "Emails and messages stop at a draft. You send them.", kind: "sentence" },
   toneFormal: { ja: "丁寧に", zh: "礼貌一些", en: "Polite", kind: "chip" },
   toneShort: { ja: "短く", zh: "简短一些", en: "Short", kind: "chip" },

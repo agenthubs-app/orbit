@@ -14,6 +14,7 @@ import { EventDetailBody, PhoneDetailBody, hostName, monthDaySlash, usePhone } f
 import { journeyApi } from "./journey-api";
 import { useDetailTiming } from "./detail-timing";
 import styles from "./events.module.css";
+import d from "./discover.module.css";
 import x from "./detail.module.css";
 import p from "./public.module.css";
 import r from "./record.module.css";
@@ -67,23 +68,22 @@ function ListInner({ language, nowIso }: { language: OrbitLanguage; nowIso: stri
             const tone = rowTone({ verdict: "recommend" }, index).emo;
             const band = coverBands(rows, 4)[index];
             return (
-            <a key={row.eventId} href={`/app${row.href}`} className={`${styles.evc} ${styles.span3} ${p.evc}`} data-public-card={row.eventId}>
+            <a key={row.eventId} href={`/app${row.href}`} className={`${styles.evc} ${styles.span3} ${p.evc} ${d.ec}`} data-public-card={row.eventId}>
+              {/* 2026-11-21 与探す同一张卡（event-card-compact-proposal）：≥768 封面 2:1 + 标题 + 日期 · 地点；<768 左 88×88 缩略图 + 右文。 */}
               {row.coverUrl ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- 主办方上传的图（站内路径），服务端已裁成 2:1 */}
-                  <div className={r.cardCover} data-public-cover=""><img src={row.coverUrl} alt="" loading="lazy" /></div>
-                  <span className={`${styles.chip} ${r.onImg}`}>{t("loginChip")}</span>
-                </>
+                // eslint-disable-next-line @next/next/no-img-element -- 主办方上传的图（站内路径），服务端已裁成 2:1
+                <div className={d.ecCover} data-public-cover=""><img src={row.coverUrl} alt="" loading="lazy" /></div>
               ) : band ? (
-                <>
-                  <div className={`${r.cardBand} ${r[`band_${tone}`]}`} data-public-band=""><span className={`${styles.emo} ${r.bandEmo}`}>{row.emoji}</span></div>
-                  <span className={`${styles.chip} ${r.onImg}`}>{t("loginChip")}</span>
-                </>
+                <div className={`${d.ecTile} ${d.ecBand} ${r[`band_${tone}`]} ${d[`tile_${tone}`]}`} data-public-band=""><span className={`${styles.emo} ${r.bandEmo} ${d.ecEmo}`}>{row.emoji}</span></div>
               ) : (
-                <div className={`${styles.row} ${styles.between}`}><span className={`${styles.emo} ${styles[`t_${tone}`]}`}>{row.emoji}</span><span className={styles.chip}>{t("loginChip")}</span></div>
+                <div className={`${d.ecTile} ${d.ecPlain} ${d[`tile_${tone}`]}`}><span className={`${styles.emo} ${styles[`t_${tone}`]} ${d.ecEmo}`}>{row.emoji}</span></div>
               )}
-              <b className={p.evcTitle}>{row.title}</b>
-              <div className={styles.lbl}>{[discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ")}</div>
+              <span className={`${styles.chip} ${row.coverUrl || band ? r.onImg : ""} ${d.ecReg}`}>{t("loginChip")}</span>
+              <div className={d.ecBody}>
+                <b className={d.ecTitle}>{row.title}</b>
+                <span className={d.ecMeta}>{[discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ")}</span>
+                <div className={`${d.ecFoot} ${d.ecFootPhone}`}><span className={d.ecChips} /><span className={`${styles.chip} ${d.ecRegText}`}>{t("loginChip")}</span></div>
+              </div>
             </a>
             );
           })}

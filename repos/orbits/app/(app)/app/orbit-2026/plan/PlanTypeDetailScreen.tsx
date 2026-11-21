@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import type {
   PlanAwardResult,
@@ -18,8 +18,9 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { planFlowCopy, planOverviewCopy as c } from "../copy/plan";
+import { shellCopy } from "../copy/shell";
 import { ShellPage, useInShell } from "../shell/slots";
-import { Avatar, EmptyState, Icon, MacTile, Orbit2026Scope, RetryCard, Skeleton, ToastProvider, fillCopy, useStandardCopy, useToast } from "../ui";
+import { Avatar, BottomSheet, ContextMenu, Drawer, EmptyState, Icon, MacTile, Orbit2026Scope, RetryCard, Skeleton, ToastProvider, fillCopy, useStandardCopy, useToast } from "../ui";
 import { RelevanceChips } from "../events/Relevance";
 import { eventView, groupEventOptions, sortedCandidates, typeDetailState, typeTone, unitsOf, type EventGroupKey, type TypeTone } from "./overview-model";
 import { planApi } from "./plan-api";
@@ -64,6 +65,11 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
   const [plus, setPlus] = useState<{ points: number; half: boolean; at: number } | null>(null);
   // R24 复核：「新しく登録」が失敗したら、名前なしで記録するかを聞く。
   const [createFailed, setCreateFailed] = useState(false);
+  // 2026-11-21 类型详情改版：⋯（「这方面我已熟悉」）与「下一步」抽屉。
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [railOpen, setRailOpen] = useState(false);
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const tier = useTier();
 
   const read = useCallback(async () => {
     // 整份计划只用于标题栏与统计：计划页刚读过（60 秒内）就直接用，不再重读 14KB。
@@ -84,15 +90,25 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
   const backHref = planTaskSegmentHref("web", planId);
   const back = <Link href={backHref} className={`btn ${k.rbtn}`} aria-label={t(c.backToPlan)} data-plan-back=""><Icon name="left" size={20} /></Link>;
   const ready = load.status === "ready" ? load : null;
-  const rail = useMemo(() => (ready ? <TypeRail detail={ready.detail} t={t} language={language} /> : null), [ready?.detail, language]); // eslint-disable-line react-hooks/exhaustive-deps
-  const headButtons = ready ? (
-    <>
-      {ready.detail.skipped ? null : <button type="button" className={`btn ${k.btn} ${k.ghost}`} onClick={() => setSkipOpen(true)} data-plan-skip="">{t(c.skipButton)}</button>}
-      <button type="button" className={`btn ${k.btn}`} disabled={ready.detail.skipped} onClick={() => { setMatches(null); setCreateFailed(false); setRecord({ contactId: null, mode: "offline" }); }} data-plan-record-offline=""><Icon name="plus" size={16} />{t(c.recordOffline)}</button>
-    </>
+  const rail = useMemo(() => (ready ? <TypeRail t={t} /> : null), [ready !== null, language]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 提案 plan-type-detail-redesign-proposal（2026-11-21 定稿）：动作只剩一组——主「线下聊过」· 次「下一步」· ⋯（「这方面我已熟悉」）。
+  // 手机放在头卡底部一行；768 起放在页头右侧；≥1280 有常驻右栏，不出「下一步」。标题行（返回 + 标题 + Step）不放按钮。
+  const skippedNow = ready?.detail.skipped ?? false;
+  const recordButton = (extra = "") => (
+    <button type="button" className={`btn ${k.btn} ${k.primary} ${extra}`} disabled={skippedNow} onClick={() => { setMatches(null); setCreateFailed(false); setRecord({ contactId: null, mode: "offline" }); }} data-plan-record-offline=""><Icon name="plus" size={16} />{t(c.recordOffline)}</button>
+  );
+  // 「下一步」= 右栏（问问这个类型 · 草稿说明）；没有常驻右栏（<1280）时一律出现，打开本页的抽屉。
+  const nextButton = tier !== "wide" ? (
+    <button type="button" className={`btn ${k.btn} ${tier === "narrow" ? styles.thActBtn : styles.headSecondary}`} onClick={() => setRailOpen(true)} aria-haspopup="dialog" aria-expanded={railOpen} data-plan-next=""><Icon name="sparkle" size={16} />{t(shellCopy.railNextTitle)}</button>
   ) : null;
+  // 已跳过时唯一的菜单项已生效，⋯ 不出。
+  const moreButton = skippedNow ? null : (
+    <button ref={moreRef} type="button" className={`btn ${k.rbtn} ${tier === "narrow" ? styles.thMore : styles.headMore}`} aria-label={t(c.typeMoreActions)} aria-haspopup={tier === "narrow" ? "dialog" : "menu"} aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)} data-plan-more=""><Icon name="more" size={20} /></button>
+  );
+  const headButtons = ready && tier !== "narrow" ? <>{nextButton}{moreButton}{recordButton()}</> : null;
+  const cardActions = ready && tier === "narrow" ? <div className={styles.thActs} data-plan-actions="">{recordButton(styles.thRecord)}{nextButton}{moreButton}</div> : null;
   const shell = ready
-    ? <ShellPage title={ready.detail.shortLabel} subtitle={subtitle(ready.detail, ready.plan, t)} left={back} right={headButtons} rightRail={rail ?? false} />
+    ? <ShellPage title={ready.detail.shortLabel} subtitle={subtitle(ready.detail, ready.plan, t)} left={back} right={headButtons ?? undefined} rightRail={tier === "wide" ? (rail ?? false) : false} />
     : <ShellPage title={t(c.typesTitle)} left={back} rightRail={false} />;
   if (load.status === "loading") return <>{shell}<Skeleton lines={6} /></>;
   if (load.status === "failed") return <>{shell}<RetryCard title={t(c.loadTypeFailed)} onRetry={() => void read()} /></>;
@@ -205,7 +221,7 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
       {/* Outside the shell (a page on its own, tests) the header buttons and the rail stay on the page. */}
       {inShell ? null : <div className={k.goalRow}>{back}<div className={k.acts}>{headButtons}</div></div>}
       <div className={`${k.wgrid} ${styles.detailCols}`}>
-        <HeadCard detail={detail} plan={plan} plus={plus} tone={tone} t={t} busy={busy} onUnskip={() => void unskip()} language={language} />
+        <HeadCard detail={detail} plan={plan} plus={plus} tone={tone} t={t} busy={busy} onUnskip={() => void unskip()} language={language} actions={cardActions} />
 
         {state === "none" ? (
           <section className={`${k.card} ${k.span5}`} data-plan-persona="">
@@ -254,10 +270,10 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
           </section>
         ) : (
           <section className={`${k.card} ${k.span7}`} data-plan-candidates="">
-            <div className={k.cardH}>
+            <div className={`${k.cardH} ${styles.candHead}`}>
               <h3>{t(c.candidatesTitleV2)}</h3>
               {selected.length && !skipped ? (
-                <div className={k.row} data-plan-select-bar="">
+                <div className={`${k.row} ${styles.selBar}`} data-plan-select-bar="">
                   <span className={k.lbl}><b style={{ color: "var(--ink)" }}>{t(c.selectedPeople, { n: selected.length })}</b>{t(c.selectedSuffix)}</span>
                   <button type="button" className={`btn ${k.btn} ${k.sm}`} disabled={busy !== null} aria-busy={busy === "record" || undefined} onClick={() => void recordSelected()} data-plan-record-selected="">{t(c.alreadyTalked)}</button>
                   <button type="button" className={`btn ${k.btn} ${k.sm} ${k.primary}`} onClick={() => setProposalOpen(true)} data-plan-propose="">{t(c.propose)}</button>
@@ -282,20 +298,56 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
         )}
       </div>
 
-      {inShell || !rail ? null : <div className={k.inlineRail}>{rail}</div>}
+      {inShell || !rail || tier !== "wide" ? null : <div className={k.inlineRail}>{rail}</div>}
       <RecordModal open={Boolean(record)} detail={detail} initialMode={record?.mode ?? "talked"} initialContactId={record?.contactId} matches={matches ?? null} busy={busy === "record"} createFailed={createFailed} t={t}
         onClose={() => { setRecord(null); setMatches(null); setCreateFailed(false); }} saveRecord={(submit) => void submitRecord(submit)} />
       <SkipDialog open={skipOpen} label={detail.shortLabel} points={Math.max(0, detail.allocation - detail.earned)} busy={busy === "skip"} t={t} onCancel={() => setSkipOpen(false)} onConfirm={() => void skip()} />
       <ProposalDrawer open={proposalOpen} people={candidates.filter((candidate) => selected.includes(candidate.contactId))} t={t} onClose={() => setProposalOpen(false)} onPropose={propose} />
       <IntroDraftDrawer draft={intro} typeLabel={detail.shortLabel} roleSituation={detail.roleSituation} t={t} onClose={() => setIntro(null)} />
+      {skipped ? null : tier === "narrow" ? (
+        <BottomSheet open={menuOpen} onClose={() => setMenuOpen(false)} label={t(c.typeMoreActions)} tight>
+          <div className={styles.sheetMenu}>
+            <button type="button" className={`btn ${styles.sheetItem}`} onClick={() => { setMenuOpen(false); setSkipOpen(true); }} data-plan-skip=""><Icon name="check" size={20} />{t(c.skipButton)}</button>
+            <button type="button" className={`btn ${styles.sheetItem} ${styles.sheetCancel}`} onClick={() => setMenuOpen(false)}>{copy.action.cancel}</button>
+          </div>
+        </BottomSheet>
+      ) : menuOpen ? (
+        <ContextMenu open onClose={() => setMenuOpen(false)} anchor={moreRef} label={t(c.typeMoreActions)} items={[{ icon: "check", key: "skip", label: t(c.skipButton), onSelect: () => setSkipOpen(true) }]} />
+      ) : null}
+      {tier !== "wide" ? (
+        <Drawer open={railOpen} onClose={() => setRailOpen(false)} title={t(shellCopy.railNextTitle)} size="sm" bare>
+          <div className={styles.railDrawer}>
+            <button type="button" className={`btn ${k.rbtn} ${styles.railDrawerClose}`} aria-label={copy.action.close} onClick={() => setRailOpen(false)}><Icon name="x" size={20} /></button>
+            {rail}
+          </div>
+        </Drawer>
+      ) : null}
     </div>
   );
 }
 
-function subtitle(detail: PlanPersonTypeDetail, plan: PlanV2Detail | null, t: Translate): string {
+/** 副标题只留 Step（配分在头卡「/10分」，「人脉中还没有」在头卡第一格）；不在任何 Step → 不出副标题。 */
+function subtitle(detail: PlanPersonTypeDetail, plan: PlanV2Detail | null, t: Translate): string | undefined {
   const steps = stepNumbers(detail, plan).join(t(planFlowCopy.listSeparator));
-  if (!steps) return t(c.typeSubtitleV2NoStep, { points: detail.allocation });
-  return typeDetailState(detail) === "none" ? t(c.typeSubtitleNone, { points: detail.allocation, steps }) : t(c.typeSubtitleV2, { points: detail.allocation, steps });
+  return steps ? t(c.typeSubtitleV2, { steps }) : undefined;
+}
+
+type Tier = "wide" | "medium" | "narrow";
+const WIDE = "(min-width: 1280px)";
+const MEDIUM = "(min-width: 768px)";
+function readTier(): Tier {
+  if (typeof window === "undefined" || !window.matchMedia) return "wide";
+  return window.matchMedia(WIDE).matches ? "wide" : window.matchMedia(MEDIUM).matches ? "medium" : "narrow";
+}
+function subscribeTier(onChange: () => void): () => void {
+  if (typeof window === "undefined" || !window.matchMedia) return () => undefined;
+  const queries = [window.matchMedia(WIDE), window.matchMedia(MEDIUM)];
+  for (const query of queries) query.addEventListener("change", onChange);
+  return () => { for (const query of queries) query.removeEventListener("change", onChange); };
+}
+/** ≥1280 常驻右栏（Shell 同断点）· 768–1279 页头右侧动作 · <768 头卡底部动作；读在渲染前，换页不先闪一帧错位的按钮。 */
+function useTier(): Tier {
+  return useSyncExternalStore(subscribeTier, readTier, () => "wide");
 }
 
 function stepNumbers(detail: PlanPersonTypeDetail, plan: PlanV2Detail | null): number[] {
@@ -337,49 +389,56 @@ function useWhy() {
   return { button, open, text };
 }
 
-/** b4 .k-wvhead: tile · 「役割 × 状況」 · three cells · points and bar; skipped adds the 習熟済み row. */
-function HeadCard({ detail, plan, plus, tone, t, busy, onUnskip, language }: { detail: PlanPersonTypeDetail; plan: PlanV2Detail | null; plus: { points: number; half: boolean; at: number } | null; tone: TypeTone; t: Translate; busy: string | null; onUnskip: () => void; language: OrbitLanguage }) {
+/**
+ * 头卡（plan-type-detail-redesign-proposal 2026-11-21）：MacTile + 小字「角色 × 处境」+ 一句话标题 → 三格一行（细分隔线，不是卡中卡）
+ * → 进度整行（分数 + 「/10分 · 0/1人」+ 满宽进度条）；≥1280 标题在左、三格在右，进度在底行。已跳过加撤销行；手机的动作行在最下面。
+ */
+function HeadCard({ detail, plan, plus, tone, t, busy, onUnskip, language, actions }: { detail: PlanPersonTypeDetail; plan: PlanV2Detail | null; plus: { points: number; half: boolean; at: number } | null; tone: TypeTone; t: Translate; busy: string | null; onUnskip: () => void; language: OrbitLanguage; actions: ReactNode }) {
   const stats = plan?.typeStats?.find((item) => item.itemId === detail.itemId);
   const candidates = detail.candidates.length;
   const events = stats?.events ?? detail.events.length;
   const routes = detail.introRoutes.length;
   const points = detail.earned + detail.overflow;
   return (
-    <section className={`${k.card} ${k.span12}`} data-plan-type-head="">
-      <div className={styles.headRow}>
-        <MacTile emoji={detail.emoji} tone={tone} />
-        <div className={k.grow}>
-          <div className={k.v22tk}>{t(c.typeHeadKicker, { label: detail.shortLabel })}</div>
-          <b className={styles.headName}>{detail.roleSituation}</b>
-        </div>
-        <div className={`${k.v22m3} ${styles.m3Head}`}>
-          <div data-cell="candidates" className={candidates === 0 ? k.z : undefined}><b>{candidates}<small>{t(c.typeCellPeople)}</small></b><span>{t(candidates === 0 ? c.typeNone : planFlowCopy.sampleCandidates)}</span></div>
-          <div data-cell="events" className={events === 0 ? k.z : undefined}><b>{events}</b><span>{t(planFlowCopy.sampleEvents)}</span></div>
-          <div data-cell="routes" className={routes === 0 ? k.z : undefined}><b>{routes}</b><span>{t(planFlowCopy.sampleRoutes)}</span></div>
-        </div>
-        <div className={styles.headScore}>
-          <div className={styles.scoreLine}>
-            <span className={styles.mid} data-plan-type-earned={points}>
-              {points}
-              {plus ? <span key={plus.at} className={`${styles.plusfx} ${plus.half ? styles.plusfxHalf : ""}`} aria-hidden>+{plus.points}</span> : null}
-            </span>
-            <span className={k.lbl}>{detail.skipped ? t(c.typeHeadSkipped, { allocation: detail.allocation }) : t(c.typeHeadScore, { allocation: detail.allocation, met: detail.metCount, target: detail.targetCount })}</span>
+    <section className={`${k.card} ${k.span12} ${styles.typeHead}`} data-plan-type-head="">
+      <div className={styles.thMain}>
+        <div className={styles.thId}>
+          <MacTile emoji={detail.emoji} tone={tone} />
+          <div className={k.grow}>
+            <div className={k.v22tk}>{t(c.typeHeadKicker)}</div>
+            <b className={styles.headName}>{detail.roleSituation}</b>
           </div>
-          {detail.skipped ? <div className={`${k.v2mb} ${k.mbSk}`} aria-hidden data-plan-type-bar="skipped" /> : (
-            <div className={k.v2mb} aria-hidden>
-              <b style={{ width: `${(Math.min(detail.allocation, detail.earned) / Math.max(1, detail.allocation + detail.overflow)) * 100}%` }} />
-              {detail.overflow > 0 ? <b className={k.bo} style={{ width: `${(detail.overflow / Math.max(1, detail.allocation + detail.overflow)) * 100}%` }} /> : null}
-            </div>
-          )}
+        </div>
+        {/* 第一格标签固定「人脉中的候选」，0 时数字变灰（不再换成「人脉中没有」）。 */}
+        <div className={styles.thStats}>
+          <div data-cell="candidates" className={candidates === 0 ? styles.thZero : undefined}><b>{candidates}<small>{t(c.typeCellPeople)}</small></b><span>{t(planFlowCopy.sampleCandidates)}</span></div>
+          <div data-cell="events" className={events === 0 ? styles.thZero : undefined}><b>{events}</b><span>{t(planFlowCopy.sampleEvents)}</span></div>
+          <div data-cell="routes" className={routes === 0 ? styles.thZero : undefined}><b>{routes}</b><span>{t(planFlowCopy.sampleRoutes)}</span></div>
         </div>
       </div>
+      <div className={styles.thProg}>
+        <div className={styles.scoreLine}>
+          <span className={styles.mid} data-plan-type-earned={points}>
+            {points}
+            {plus ? <span key={plus.at} className={`${styles.plusfx} ${plus.half ? styles.plusfxHalf : ""}`} aria-hidden>+{plus.points}</span> : null}
+          </span>
+          <span className={k.lbl}>{detail.skipped ? t(c.typeHeadSkipped, { allocation: detail.allocation }) : t(c.typeHeadScore, { allocation: detail.allocation, met: detail.metCount, target: detail.targetCount })}</span>
+        </div>
+        {detail.skipped ? <div className={`${k.v2mb} ${k.mbSk} ${styles.thBar}`} aria-hidden data-plan-type-bar="skipped" /> : (
+          <div className={`${k.v2mb} ${styles.thBar}`} aria-hidden>
+            <b style={{ width: `${(Math.min(detail.allocation, detail.earned) / Math.max(1, detail.allocation + detail.overflow)) * 100}%` }} />
+            {detail.overflow > 0 ? <b className={k.bo} style={{ width: `${(detail.overflow / Math.max(1, detail.allocation + detail.overflow)) * 100}%` }} /> : null}
+          </div>
+        )}
+      </div>
       {detail.skipped ? (
-        <div className={styles.skipRow} data-plan-banner="skipped">
-          <i className={styles.hatch} aria-hidden />
+        <div className={styles.thSkip} data-plan-banner="skipped">
+          <i className={styles.thHatch} aria-hidden />
           <div className={k.grow}><b>{t(c.skippedBanner)}</b><div className={k.lbl}>{[detail.skippedAt ? new Intl.DateTimeFormat(language, { day: "numeric", month: "long" }).format(new Date(detail.skippedAt)) : null, t(c.skippedNote)].filter(Boolean).join(" · ")}</div></div>
           <button type="button" className={`btn ${k.btn} ${k.sm}`} disabled={busy !== null} aria-busy={busy === "unskip" || undefined} onClick={onUnskip} data-plan-unskip="">{t(c.unskip)}</button>
         </div>
       ) : null}
+      {actions}
     </section>
   );
 }
@@ -432,7 +491,7 @@ function CandidateTable({ candidates, selected, disabled, language, t, onToggle 
   onToggle: (contactId: string, on: boolean) => void;
 }) {
   return (
-    <table className={styles.tableV2}>
+    <table className={`${styles.tableV2} ${styles.candTable}`}>
       <thead>
         <tr><th aria-hidden /><th>{t(c.colScore)}</th><th>{t(c.colName)}</th><th>{t(c.colReason)}</th></tr>
       </thead>
@@ -468,27 +527,6 @@ function CandidateRow({ candidate, on, disabled, language, t, onToggle }: { cand
   );
 }
 
-/**
- * 右栏活动行的「日时 · 会場」（同概要 RecommendedEvents / b4 #11 右栏）：当天 17 点后写「今夜 19:00」；
- * 日文日期以全角括号结尾，「· 」前不再空格（「10月16日（金）· 東京国際フォーラム」）。
- */
-function eventWhereLine(startsAt: string, venue: string | null, language: OrbitLanguage, t: Translate): string {
-  const start = new Date(startsAt);
-  const tonight = start.toDateString() === new Date().toDateString() && start.getHours() >= 17;
-  const when = tonight ? t(c.eventTonight, { time: `${start.getHours()}:${String(start.getMinutes()).padStart(2, "0")}` }) : eventDay(startsAt, language);
-  if (!venue) return when.trimEnd();
-  return `${when}${when.endsWith(" ") || when.endsWith("）") ? "" : " "}· ${venue}`;
-}
-
-/** 「10月16日（金）」 in Japanese (full-width brackets as in the design); the platform's format elsewhere. */
-function eventDay(startsAt: string, language: OrbitLanguage): string {
-  const date = new Date(startsAt);
-  if (language !== "ja") return new Intl.DateTimeFormat(language, { day: "numeric", month: "long", weekday: "short" }).format(date);
-  const day = new Intl.DateTimeFormat("ja-JP", { day: "numeric", month: "long" }).format(date);
-  const weekday = new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(date);
-  return `${day}（${weekday}）`;
-}
-
 function feeLabel(fee: number | null | undefined, t: Translate): string | null {
   return fee === undefined || fee === null ? null : fee === 0 ? t(c.feeFree) : `¥${fee.toLocaleString("ja-JP")}`;
 }
@@ -510,7 +548,7 @@ export function eventGroupTitle(key: EventGroupKey, typeLabel: string | null, t:
 /** 会える活動 (event-relevance-proposal ④)：日付 · イベント · あなたに関係すること；按组（会想见的人来 → 主题相近 → 其他）分段，空组不出。 */
 function EventTable({ events, typeLabel, language, t }: { events: readonly PlanEventOption[]; typeLabel: string | null; language: OrbitLanguage; t: Translate }) {
   return (
-    <table className={styles.tableV2}>
+    <table className={`${styles.tableV2} ${styles.evTable}`}>
       <thead><tr><th>{t(c.colEventDate)}</th><th>{t(c.colEvent)}</th><th>{t(c.colRelevance)}</th></tr></thead>
       <tbody>
         {groupEventOptions(events).map((group) => (
@@ -522,7 +560,9 @@ function EventTable({ events, typeLabel, language, t }: { events: readonly PlanE
                 <tr key={option.eventId} data-plan-event-option={option.eventId}>
                   <td className={styles.dateCell}><b>{date.day}</b><div className={k.lbl}>{date.sub}</div></td>
                   <td><Link href={`/app/events/${encodeURIComponent(option.eventId)}`} className={styles.evLink}><b>{option.title}</b></Link><div className={k.lbl}>{[option.venue, feeLabel(option.fee, t)].filter(Boolean).join(" · ")}</div></td>
-                  <td>{option.relevance && (option.relevance.people.length || option.relevance.known || option.relevance.topic || option.relevance.warnings.length) ? <RelevanceChips relevance={option.relevance} language={language} /> : <span className={k.lbl}>—</span>}</td>
+                  <td className={styles.relCell}>{option.relevance && (option.relevance.people.length || option.relevance.known || option.relevance.topic || option.relevance.warnings.length) ? <RelevanceChips relevance={option.relevance} language={language} /> : <span className={`${k.lbl} ${styles.relNone}`}>—</span>}</td>
+                  {/* 手机：表格改列表行，整行可点（标题链接铺满整行），右端 ›；宽屏不出这一格。 */}
+                  <td className={styles.chevCell} aria-hidden><Icon name="right" size={16} /></td>
                 </tr>
               );
             })}
@@ -533,29 +573,12 @@ function EventTable({ events, typeLabel, language, t }: { events: readonly PlanE
   );
 }
 
-/** Right rail (b4 / b12 typeRail): ask about this type · events that meet this type · drafts only. */
-function TypeRail({ detail, t, language }: { detail: PlanPersonTypeDetail; t: Translate; language: OrbitLanguage }) {
+/** Right rail (b4 / b12 typeRail): ask about this type · drafts only. 2026-11-21：不再列「能见到这类人的活动」（主栏「能见到的活动」已是同一批）。 */
+function TypeRail({ t }: { t: Translate }) {
   return (
     <div className={k.rail} data-plan-type-rail="">
       <h2 className={k.railH}><Icon name="sparkle" size={16} />iOrbit</h2>
       <button type="button" className={`btn ${k.assistIn}`} onClick={() => window.dispatchEvent(new CustomEvent("orbit:open-palette"))}><Icon name="sparkle" size={16} />{t(c.railAskType)}</button>
-      {detail.events.length ? (
-        <>
-          <h2 className={k.railH}>{t(c.railTypeEvents)}</h2>
-          <div className={`${k.card} ${styles.railEvents}`}>
-            {detail.events.slice(0, 2).map((option) => (
-              <div key={option.eventId} className={styles.evRow}>
-                <span className={styles.evEmoji} aria-hidden>{option.emoji ?? "🎟️"}</span>
-                <div className={styles.evMeta}>
-                  <b>{option.title}</b>
-                  <span className={k.lbl}>{eventWhereLine(option.startsAt, option.venue, language, t)}</span>
-                  <RelevanceChips relevance={option.relevance} language={language} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      ) : null}
       <div className={`${k.card} ${k.flat} ${k.railNote}`}>{t(c.railDraftNote)}</div>
     </div>
   );

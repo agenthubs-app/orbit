@@ -32,5 +32,32 @@
 .planUse { align-items: center; display: flex; gap: 8px; }
 .error { color: var(--coral-text); }
 .actions { display: flex; gap: 8px; justify-content: flex-end; }
-@media (max-width: 1023px) { .page { padding: 0 20px 32px; } .grid { grid-template-columns: minmax(260px, 40%) minmax(0, 1fr); } }
-@media (max-width: 767px) { .page { padding: 0 16px 32px; } .grid { display: block; } .detail { margin-top: 14px; min-height: 360px; } }
+/* No search hit: one line, no card. A list without a detail (no hit) keeps the list column only. */
+.noResult { color: var(--ink-3-text); font-size: var(--fs-body-sm); margin: 0; padding: 8px 2px; }
+.gridNoDetail { grid-template-columns: 376px; }
+/* Search field + the phone's add (kit .addc: 44 round, ink). From 768 the Task header carries 「添加笔记」. */
+.searchRow { align-items: center; display: flex; gap: 10px; }
+.searchRow > :first-child { flex: 1; min-width: 0; }
+.searchRow .plus { background: var(--ink); color: var(--bg); flex: none; height: 44px; width: 44px; }
+/* The one empty state: list + detail as a single card (memo-empty-entry-proposal P1 / T1 / D1). */
+.emptyCard { background: var(--surface); border-radius: var(--r-card-web); display: grid; gap: 4px; justify-items: start; padding: 22px 22px 24px; }
+.emptyCard > * { max-width: 520px; }
+.emptyMark { align-items: center; background: var(--surface-2); border-radius: var(--r-sm); color: var(--ink-2); display: flex; height: 40px; justify-content: center; width: 40px; }
+.uses { display: grid; gap: 12px; list-style: none; margin: 4px 0 0; padding: 0; width: 100%; }
+.uses li { align-items: start; display: grid; gap: 12px; grid-template-columns: 32px minmax(0, 1fr); }
+.useMark { align-items: center; background: var(--surface-2); border-radius: var(--r-sm); color: var(--ink-2); display: flex; font-size: var(--fs-body); height: 32px; justify-content: center; width: 32px; }
+.uses li > span:last-child { color: var(--ink-2); font-size: var(--fs-meta); line-height: 1.6; }
+.uses strong { color: var(--ink); display: block; font-size: var(--fs-body-sm); font-weight: 700; }
+.phoneAdd { margin-top: 18px; }
+@media (min-width: 768px) { .searchRow .plus, .phoneAdd { display: none !important; } }
+@media (max-width: 1023px) { .page { padding: 0 20px 32px; } .grid { grid-template-columns: minmax(260px, 40%) minmax(0, 1fr); } .gridNoDetail { grid-template-columns: minmax(260px, 40%); } }
+@media (max-width: 767px) { .page { padding: 0 18px 32px; } .grid { display: block; } .emptyCard { border-radius: var(--r-lg); padding: 18px; } }
+/* Phone two screens (P2 / P3): the list alone; a tapped note full screen over it, above the shell's bars and
+   below the editor dialog. ≥768 keeps list left, detail right — the bar and its 「编辑」 stay hidden there. */
+.phoneBar { display: none; }
+@media (max-width: 767px) {
+  .detail { display: none; }
+  .detailOpen { background: var(--bg); border-radius: var(--r-none); display: block; inset: 0; margin: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: calc(10px + env(safe-area-inset-top)) 18px calc(40px + env(safe-area-inset-bottom)); position: fixed; z-index: var(--z-overlay); }
+  .detailOpen .phoneBar { align-items: center; display: flex; justify-content: space-between; margin-bottom: 14px; }
+  .detailOpen .wideEdit { display: none; }
+}

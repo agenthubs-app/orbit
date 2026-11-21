@@ -296,8 +296,9 @@ test("type detail: candidates / not in network / skipped are three different pag
   none.introRoutes = [{ viaContactId: "demo-person-ito", viaName: "伊藤 直子", why: "起業家コミュニティで創業者と面識がある" }];
   const founder = await screen(t, { handlers: [typeRead(none), detailRead(base.detail)], itemId: FOUNDER, planId: PLAN, view: "type" });
   await founder.locator('[data-plan-type][data-state="none"]').waitFor();
-  // b4 「② 人脈にいない · Web」: no banner — the head cell says 人脈にいない and the subtitle 人脈にまだいません.
-  await founder.locator('[data-plan-type-head] [data-cell="candidates"]').getByText("人脈にいない").waitFor();
+  // 2026-11-21 type-detail redesign: no banner — the first head cell keeps its label 「人脈の候補」 and only its 0 turns grey.
+  await founder.locator('[data-plan-type-head] [data-cell="candidates"]').getByText("人脈の候補").waitFor();
+  assert.equal(await founder.locator('[data-plan-type-head] [data-cell="candidates"] b').evaluate((node) => node.textContent?.startsWith("0")), true);
   await founder.locator("[data-plan-persona]").getByText(none.persona).waitFor();
   await founder.locator("[data-plan-opener]").getByText(none.opener).waitFor();
   await founder.locator('[data-plan-route="demo-person-ito"]').getByText("伊藤 直子").waitFor();
@@ -412,7 +413,9 @@ test("skip: the confirmation focuses the primary button; skipping records full p
     { method: "POST", replies: [ok({ replayed: false, score: base.detail.score })], url: `/types/${VC}/skip$` },
     { method: "DELETE", replies: [ok({ replayed: false, score: base.detail.score })], url: `/types/${VC}/skip$` },
   ], itemId: VC, planId: PLAN, view: "type" });
-  await page.getByRole("button", { name: "この分野はもう詳しい" }).click();
+  // 2026-11-21 redesign: 「この分野はもう詳しい」 sits in the ⋯ menu next to オフラインで話した.
+  await page.getByRole("button", { name: "その他の操作" }).click();
+  await page.getByRole("menuitem", { name: "この分野はもう詳しい" }).click();
   const dialog = page.getByRole("dialog", { name: "この分野をスキップしますか？" });
   await dialog.getByText(`スキップすると満点（${type.allocation - type.earned}点）を記録します。あとで取り消せます。`).waitFor();
   await page.waitForFunction(() => document.activeElement?.textContent === "スキップする");
@@ -423,6 +426,26 @@ test("skip: the confirmation focuses the primary button; skipping records full p
   await toast.getByRole("button", { name: "元に戻す" }).click();
   await page.getByText("スキップを取り消しました").waitFor();
   assert.deepEqual(await writes(page), [`POST /v2/${PLAN}/types/${VC}/skip`, `DELETE /v2/${PLAN}/types/${VC}/skip`]);
+});
+
+test("390: the actions sit at the foot of the head card; 次の一手 opens the rail drawer; ⋯ opens a bottom sheet whose 「この分野はもう詳しい」 opens the skip dialog", async (t) => {
+  const page = await screen(t, { handlers: [typeRead(base.types[VC]!), detailRead(base.detail)], itemId: VC, planId: PLAN, view: "type" }, { width: 390 });
+  const actions = page.locator("[data-plan-type-head] [data-plan-actions]");
+  await actions.getByRole("button", { name: "オフラインで話した" }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "オフラインで話した" }).count(), 1, "one set of actions on the page");
+  const card = await page.locator("[data-plan-type-head]").boundingBox();
+  const stats = await page.locator("[data-plan-type-head] [data-cell]").evaluateAll((cells) => cells.map((cell) => cell.getBoundingClientRect()).map((box) => ({ right: box.right, top: Math.round(box.top) })));
+  assert.equal(new Set(stats.map((box) => box.top)).size, 1, "three cells on one row");
+  assert.ok(stats.every((box) => box.right <= card!.x + card!.width), "nothing leaves the card");
+  // 没有常驻右栏（<1280）：「次の一手」在动作行里，打开右栏抽屉（このタイプについて質問 · 下書きの説明）。
+  await actions.getByRole("button", { name: "次の一手" }).click();
+  await page.getByRole("dialog", { name: "次の一手" }).getByRole("button", { name: "このタイプについて質問" }).waitFor();
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog", { name: "次の一手" }).waitFor({ state: "detached" });
+  await actions.getByRole("button", { name: "その他の操作" }).click();
+  await page.getByRole("dialog", { name: "その他の操作" }).getByRole("button", { name: "この分野はもう詳しい" }).click();
+  await page.getByRole("dialog", { name: "この分野をスキップしますか？" }).waitFor();
+  assert.deepEqual(await writes(page), [], "opening the menu and the confirmation writes nothing");
 });
 
 test("candidates: sorted by 推薦度, Orbit chip; selecting shows 「n人を選択中」 and すでに話した records each person", async (t) => {
@@ -526,7 +549,8 @@ test("mock end to end: plan → type → record → undo → skip → unskip →
   await toast.getByRole("button", { name: "元に戻す" }).click();
   await page.waitForFunction((value) => document.querySelector("[data-plan-type-earned]")?.getAttribute("data-plan-type-earned") === String(value), start);
   // skip (full points) → unskip
-  await page.getByRole("button", { name: "この分野はもう詳しい" }).click();
+  await page.getByRole("button", { name: "その他の操作" }).click();
+  await page.getByRole("menuitem", { name: "この分野はもう詳しい" }).click();
   await page.getByRole("dialog", { name: "この分野をスキップしますか？" }).getByRole("button", { name: "スキップする" }).click();
   await page.locator('[data-plan-type][data-state="skipped"]').waitFor();
   assert.equal((await call(mock().summary, "/x")).data.current.score.total, before - start + 30, "skip records the full allocation");

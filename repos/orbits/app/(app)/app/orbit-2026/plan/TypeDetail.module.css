@@ -210,21 +210,11 @@
 .pageV2 { display: block; padding: 0 var(--space-34) 40px; }
 @media (max-width: 1279px) { .pageV2 { padding-left: var(--space-26); padding-right: var(--space-26); } }
 @media (max-width: 767px) { .pageV2 { padding: 0 18px 120px; } }
-.headRow { display: flex; align-items: center; gap: 16px; }
-@media (max-width: 1023px) { .headRow { flex-wrap: wrap; } }
 .headName { display: block; margin: 0; font-size: var(--fs-section); font-weight: var(--fw-heavy); line-height: 1.5; }
-.m3Head { width: 330px; margin: 0; flex: none; }
-.m3Head > div { background: var(--surface-2); }
-/* 2026-11-21：330 定宽在手机主卡里伸出右边 9px；主卡单列（≤1023）时三格占整行。 */
-@media (max-width: 1023px) { .m3Head { width: 100%; flex: 1 1 100%; } }
-.headScore { display: block; width: 170px; min-width: 0; flex: none; }
 .scoreLine { display: flex; gap: 6px; align-items: baseline; }
 .mid { position: relative; font-family: var(--font-num); font-size: var(--fs-number); font-weight: var(--fw-heavy); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 .plusfx { position: absolute; left: 100%; top: -2px; margin-left: 6px; font-family: var(--font-num); font-weight: var(--fw-black); color: var(--plum-700); font-size: var(--fs-title-sm); white-space: nowrap; animation: floatUp 1.2s var(--ease) both; }
 .plusfxHalf { color: var(--rose-700); }
-.skipRow { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 12px 14px; border-radius: var(--r-tile); background: var(--surface-2); }
-.skipRow .hatch { width: 26px; height: 16px; border-radius: var(--r-bar); flex: none; background: repeating-linear-gradient(135deg, var(--plum-300) 0 2px, var(--plum-100) 2px 6px); }
-.skipRow b { font-size: var(--fs-body-sm); display: block; }
 .sec { display: block; font-size: var(--fs-body); font-weight: var(--fw-heavy); }
 .secHead { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
 .whyText { font-size: var(--fs-body-sm); line-height: 1.7; margin-top: 4px; color: var(--ink-2); }
@@ -276,15 +266,6 @@
 /* 画板 ESTI：推定值后的小 chip（10px · 1/6 内边距 · 左 4 · 上移 1）。 */
 .e5f .e5est { font-size: var(--fs-tab); padding: 1px 6px; margin-left: 4px; vertical-align: 1px; }
 .ringNum { font-family: var(--font-num); font-weight: var(--fw-heavy); font-size: var(--fs-meta); }
-.railEvents { padding: 6px 14px; }
-.railEvents .evRow + .evRow { border-top: 1px solid var(--line); }
-.evRow { display: flex; gap: 10px; align-items: center; padding: 10px 0; }
-/* 标题 / 日时 / chip 各占一行（kit .v22ev .meta；chip 不跟在日时后面）。 */
-.evMeta { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
-.evMeta > * { max-width: 100%; }
-.evMeta b { display: block; font-size: var(--fs-body-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.evMeta .lbl { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.evMeta > span:last-child { margin-top: 4px; }
 .dimmed { opacity: 0.5; }
 /* drawers (b4 wProposeDrawer · b12 wIntroDrawer) */
 .slotLbl { font-size: var(--fs-label); font-weight: var(--fw-bold); color: var(--ink-2); min-width: 52px; }
@@ -327,12 +308,100 @@
 .ringWrap { position: relative; display: inline-grid; place-items: center; flex: none; }
 .ringWrap .ringNum { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-num); font-weight: var(--fw-heavy); font-size: var(--fs-meta); }
 
-/* 2026-11-15 活动不再打分（event-relevance-proposal ④）：组头行、日期列、右栏活动 emoji。 */
+/* 2026-11-15 活动不再打分（event-relevance-proposal ④）：组头行、日期列。 */
 .tableV2 tr.grpRow td { background: var(--surface-2); font-size: var(--fs-caption); font-weight: var(--fw-bold); color: var(--ink-2); padding: 5px 10px; }
 .tableV2 tbody tr.grpRow:hover { background: transparent; }
 .dateCell { white-space: nowrap; }
 .dateCell b { font-family: var(--font-num); font-weight: var(--fw-heavy); }
 .evLink { color: inherit; text-decoration: none; }
 .evLink:hover { text-decoration: underline; }
-.evEmoji { width: 36px; height: 36px; border-radius: var(--r-sm); background: var(--mac-lav); display: grid; place-items: center; font-size: var(--fs-emoji-sm); flex: none; }
-.evMeta > div:last-child { margin-top: 4px; }
+
+/* ===== 2026-11-21 类型详情改版（docs/designs/redesign-2026-10/plan-type-detail-redesign-proposal.html，用户定稿推荐方案） ===== */
+/* 标题行：返回 + 标题 + 小字 Step 左对齐一行（kit .hhead / .whead），标题行不放按钮；只对本页的 Shell 页头生效。 */
+:global([data-orbit-2026-shell]):has(.pageV2) :global([data-orbit-2026-mainhead]:not([data-crowded="true"])) { grid-template-columns: auto minmax(0, 1fr) auto; }
+:global([data-orbit-2026-shell]):has(.pageV2) :global([data-orbit-2026-mainhead]) > :nth-child(2) { min-width: 0; text-align: left; }
+/* 页头右侧（768 起）：「下一步」白底 · ⋯ 白底圆钮 · 主按钮「线下聊过」。 */
+.headSecondary.headSecondary.headSecondary { background: var(--surface); }
+.headMore.headMore.headMore { width: 40px; padding: 0; background: var(--surface); }
+
+/* 头卡：纵向（MacTile + 小字 + 一句话标题 → 三格一行 → 进度整行）；≥1280 标题左、三格右（400），进度在底行。 */
+.thId { display: flex; gap: 12px; align-items: flex-start; }
+.thId .headName { margin-top: 2px; font-size: var(--fs-logo); line-height: 1.45; }
+@media (min-width: 768px) { .thId .headName { font-size: var(--fs-section); } }
+/* 三格：一行带细分隔线的小格，不是卡中卡；标签固定，0 时数字变灰。 */
+.thStats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.thStats > div { min-width: 0; padding: 0 10px; }
+.thStats > div:first-child { padding-left: 0; }
+.thStats > div + div { border-left: 1px solid var(--line); }
+.thStats b { display: block; font-family: var(--font-num); font-size: var(--fs-title-sm); font-weight: var(--fw-heavy); line-height: 1.2; }
+.thStats b small { margin-left: 1px; font-size: var(--fs-caption); font-weight: var(--fw-bold); color: var(--ink-3); }
+.thStats span { display: block; overflow: hidden; font-size: var(--fs-label); font-weight: 600; color: var(--ink-3); white-space: nowrap; text-overflow: ellipsis; }
+.thStats > .thZero b { color: var(--ink-4); }
+.thProg { margin-top: 14px; }
+.thProg > .thBar.thBar { height: 6px; margin-top: 8px; }
+/* 已按熟悉记为满分：头卡内一行（细线隔开）+ 撤销跳过。 */
+.thSkip { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); font-size: var(--fs-body-sm); }
+.thSkip b { display: block; }
+.thHatch { flex: none; width: 28px; height: 28px; border-radius: var(--r-input-sm); background: repeating-linear-gradient(135deg, var(--plum-300) 0 2px, var(--plum-100) 2px 6px); }
+/* 手机动作行：主按钮占满余宽 +「下一步」+ ⋯（44 高）。 */
+.thActs { display: flex; gap: 8px; margin-top: 16px; }
+.thActs > .thRecord.thRecord { flex: 1; min-width: 0; height: 44px; }
+.thActs > .thActBtn.thActBtn { flex: none; height: 44px; }
+.thActs > .thMore.thMore { width: 44px; height: 44px; background: var(--surface-2); }
+@media (min-width: 1280px) {
+  .thMain { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 28px; align-items: center; }
+  .thStats { margin-top: 0; padding-top: 0; border-top: 0; }
+  .thStats > div { padding: 4px 16px; }
+  .thProg { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .thProg > .thBar.thBar { margin-top: 0; }
+}
+
+/* ⋯ 在手机上的底部弹层（iOS 操作菜单）：「这方面我已熟悉」· 取消。 */
+.sheetMenu { display: flex; flex-direction: column; }
+.sheetItem.sheetItem { display: flex; align-items: center; justify-content: flex-start; gap: 12px; width: 100%; height: 52px; min-height: 0; padding: 0 8px; border: 0; border-radius: var(--r-none); background: transparent; color: var(--ink); font-size: var(--fs-emph); font-weight: var(--fw-bold); cursor: pointer; }
+.sheetItem.sheetItem + .sheetItem.sheetItem { border-top: 1px solid var(--line); }
+.sheetCancel.sheetCancel.sheetCancel { justify-content: center; color: var(--ink-3); }
+/* 「下一步」抽屉（<1280，本页自己的；内容即 1440 的右栏）。 */
+.railDrawer { display: flex; flex-direction: column; gap: var(--space-14); }
+.railDrawerClose { align-self: flex-start; }
+
+/* 手机：模块间距只用网格的 14（kit .card + .card 的上边距在网格里会叠成 28）。 */
+@media (max-width: 767px) { .detailCols.detailCols.detailCols > * { margin-top: 0; } }
+
+/* 候选：选中后的「n位已选 · 已经聊过 · 提议面谈」在手机上独占标题下一行。 */
+@media (max-width: 767px) {
+  .candHead { flex-wrap: wrap; }
+  .selBar { flex: 1 1 100%; padding: 10px 12px; border-radius: var(--r-lg); background: var(--surface-2); }
+  .selBar > :first-child { flex: 1; min-width: 0; }
+}
+
+/* 手机：活动表、候选表改成列表行（b8 断点规范「表格 → 卡片列表」）。 */
+.chevCell { display: none; }
+@media (max-width: 767px) {
+  .evTable, .evTable tbody, .candTable, .candTable tbody { display: block; }
+  .evTable thead, .candTable thead { display: none; }
+  .evTable tr { position: relative; display: grid; grid-template-columns: minmax(46px, max-content) minmax(0, 1fr) 16px; column-gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+  .evTable tbody tr:hover { background: transparent; }
+  .evTable td { min-width: 0; padding: 0; border-top: 0; }
+  .evTable td.dateCell { grid-column: 1; grid-row: 1 / span 2; white-space: nowrap; }
+  .evTable td.dateCell > div { font-size: var(--fs-caption); }
+  .evTable td:nth-child(2) { grid-column: 2; grid-row: 1; }
+  .evTable td:nth-child(2) > div { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .evTable .evLink { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .evTable .evLink::after { content: ""; position: absolute; inset: 0; }
+  .evTable td.relCell { grid-column: 2; grid-row: 2; margin-top: 5px; }
+  .evTable td.relCell:has(.relNone) { display: none; }
+  .evTable td.chevCell { display: block; grid-column: 3; grid-row: 1 / span 2; color: var(--ink-4); }
+  .evTable tr.grpRow { display: block; padding: 4px 0 0; border-top: 0; }
+  .evTable tr.grpRow td { display: block; padding: 0; background: transparent; font-size: var(--fs-caption); font-weight: var(--fw-heavy); color: var(--ink-3); }
+  .evTable tr.grpRow + tr { border-top: 0; }
+  .evTable tbody tr:first-child { padding-top: 0; }
+  .candTable tr { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; column-gap: 10px; align-items: start; padding: 12px 0; border-top: 1px solid var(--line); }
+  .candTable tbody tr:first-child { border-top: 0; }
+  .candTable tbody tr:hover, .candTable tr[data-selected] { background: transparent; }
+  .candTable td { min-width: 0; padding: 0; border-top: 0; }
+  .candTable td:nth-child(1) { grid-column: 1; grid-row: 1 / span 2; padding-top: 6px; }
+  .candTable td:nth-child(2) { grid-column: 3; grid-row: 1; padding-top: 4px; text-align: right; }
+  .candTable td.nameCell { grid-column: 2; grid-row: 1; width: auto; }
+  .candTable td.reasonCell { grid-column: 2 / span 2; grid-row: 2; margin-top: 4px; color: var(--ink-2); }
+}

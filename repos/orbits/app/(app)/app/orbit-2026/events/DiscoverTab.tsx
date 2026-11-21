@@ -130,39 +130,40 @@ export function coverBands(rows: readonly { coverUrl?: string | null }[], perRow
   });
 }
 
-export function EventCard({ row, index, language, t, selected, faded, ended, metaOverride, onSelect, onOpen, band = false, coverPosition }: { row: EventDiscoverRow; index: number; language: OrbitLanguage; t: JourneyT; selected?: boolean; faded?: boolean; ended?: boolean; metaOverride?: string; onSelect?: () => void; onOpen: () => void; /** D2：同排有图时没图的卡画 2:1 色带。 */ band?: boolean; /** 主办表单预览：还没裁的图按 focusY 定位。 */ coverPosition?: string }) {
+/**
+ * 探す 活动卡（2026-11-21 event-card-compact-proposal 推荐案）：
+ * <768 = 方案 B 左图右文列表行（88×88 缩略图：封面居中裁方 / 没封面 = emoji 色块；右边 标题 ≤2 行 · 日期 · 地点 1 行 · 标签 · 报名人数 · 费用）；
+ * ≥768 = 方案 A 卡（封面保持 2:1 · 标题 · 日期 · 地点 · 底部一行 标签 + 费用）。整张可点（Enter / Space），不放「詳細」按钮。
+ */
+export function EventCard({ row, index, language, t, selected, faded, ended, metaOverride, onSelect, onOpen, band = false, coverPosition, listRow = false }: { row: EventDiscoverRow; index: number; language: OrbitLanguage; t: JourneyT; selected?: boolean; faded?: boolean; ended?: boolean; metaOverride?: string; onSelect?: () => void; onOpen: () => void; /** D2：同排有图时没图的卡画 2:1 色带。 */ band?: boolean; /** 主办表单预览：还没裁的图按 focusY 定位。 */ coverPosition?: string; /** 手机列表里的一行（data-discover-row）。 */ listRow?: boolean }) {
   const meta = metaOverride ?? [discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ");
   const registered = ended ? null : registrationChipText(row.registrationCount, language);
   const fee = feeText(row.priceYen, t);
+  const tone = emoTone(index);
+  const activate = onSelect ?? onOpen;
   const card = (
-    <div role="button" tabIndex={0} className={`${styles.evc} ${d.evc} ${selected ? styles.sel : ""}`} onClick={onSelect ?? onOpen} onKeyDown={(event) => { if (event.key === "Enter") (onSelect ?? onOpen)(); }} data-discover-card={row.eventId} style={faded ? { flex: 1 } : undefined}>
+    <div role="button" tabIndex={0} className={`${styles.evc} ${d.evc} ${d.ec} ${selected ? styles.sel : ""}`} onClick={activate} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); activate(); } }} data-discover-card={row.eventId} style={faded ? { flex: 1 } : undefined}>
       {row.coverUrl ? (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element -- 主办方上传的图（Blob / 站内路径），服务端已裁成 2:1 */}
-          <div className={r.cardCover} data-discover-cover=""><img src={row.coverUrl} alt="" loading="lazy" style={coverPosition ? { objectPosition: coverPosition } : undefined} /></div>
-          {registered ? <span className={`${styles.chip} ${styles.regChip} ${r.onImg}`} data-discover-registered="">{registered}</span> : null}
-        </>
+        // eslint-disable-next-line @next/next/no-img-element -- 主办方上传的图（Blob / 站内路径），服务端已裁成 2:1
+        <div className={d.ecCover} data-discover-cover=""><img src={row.coverUrl} alt="" loading="lazy" style={coverPosition ? { objectPosition: coverPosition } : undefined} /></div>
       ) : band ? (
-        <>
-          <div className={`${r.cardBand} ${r[`band_${emoTone(index)}`]}`} data-discover-band=""><span className={`${styles.emo} ${r.bandEmo}`}>{row.emoji}</span></div>
-          {registered ? <span className={`${styles.chip} ${styles.regChip} ${r.onImg}`} data-discover-registered="">{registered}</span> : null}
-        </>
+        <div className={`${d.ecTile} ${d.ecBand} ${r[`band_${tone}`]} ${d[`tile_${tone}`]}`} data-discover-band=""><span className={`${styles.emo} ${r.bandEmo} ${d.ecEmo}`}>{row.emoji}</span></div>
       ) : (
-        <div className={`${styles.row} ${styles.between}`}>
-          <span className={`${styles.emo} ${styles[`t_${emoTone(index)}`]}`}>{row.emoji}</span>
-          {registered ? <span className={`${styles.chip} ${styles.regChip}`} data-discover-registered="">{registered}</span> : null}
-        </div>
+        <div className={`${d.ecTile} ${d.ecPlain} ${d[`tile_${tone}`]}`}><span className={`${styles.emo} ${styles[`t_${tone}`]} ${d.ecEmo}`}>{row.emoji}</span></div>
       )}
-      <b className={d.evcTitle}>{row.title}</b>
-      <div className={styles.lbl}>{meta}</div>
-      {ended ? null : <RelevanceChips relevance={row.relevance} language={language} className={d.relChips} />}
-      <div className={`${styles.row} ${styles.between} ${d.push}`} style={{ gap: 6 }}>
-        {ended ? <span className={styles.chip}>{t("endedChip")}</span> : <b className={d.cardFee}>{fee ?? ""}</b>}
-        <button type="button" className={`btn ${styles.btn} ${styles.sm} ${d.detailBtn}`} onClick={(event) => { event.stopPropagation(); onOpen(); }}>{t("detail")}</button>
+      {registered ? <span className={`${styles.chip} ${styles.regChip} ${row.coverUrl || band ? r.onImg : ""} ${d.ecReg}`} data-discover-registered="">{registered}</span> : null}
+      <div className={d.ecBody}>
+        <b className={d.ecTitle}>{row.title}</b>
+        <span className={d.ecMeta}>{meta}</span>
+        <div className={d.ecFoot}>
+          <div className={d.ecChips}>{ended ? null : <RelevanceChips relevance={row.relevance} language={language} className={d.ecChipRow} />}</div>
+          {registered ? <span className={`${styles.lbl} ${d.ecRegText}`}>{registered}</span> : null}
+          {ended ? <span className={`${styles.chip} ${d.ecEnd}`}>{t("endedChip")}</span> : fee ? <b className={d.ecFee}>{fee}</b> : null}
+        </div>
       </div>
     </div>
   );
-  return <div className={`${styles.span4} ${faded ? d.faded : ended ? d.ended : ""}`} style={{ display: "flex" }} data-discover-ended={ended ? "" : undefined}>{card}</div>;
+  return <div className={`${styles.span4} ${d.ecCell} ${faded ? d.faded : ended ? d.ended : ""}`} style={{ display: "flex" }} data-discover-ended={ended ? "" : undefined} data-discover-row={listRow ? "" : undefined}>{card}</div>;
 }
 
 function FilterPopover({ open, onClose, children, align }: { open: boolean; onClose: () => void; children: ReactNode; align?: "right" }) {
@@ -211,6 +212,19 @@ function SearchResults({ data, language, t, onOpen, onFollow }: { data: EventSea
   );
 }
 
+/** 768–1023（iPad 竖屏 834）卡片两列，≥1024 三列：D2 色带按同一排的张数算。 */
+function useCardsPerRow(): number {
+  const [perRow, setPerRow] = useState(3);
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px) and (max-width: 1023px)");
+    const update = () => setPerRow(media.matches ? 2 : 3);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  return perRow;
+}
+
 export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { language: OrbitLanguage; tier: Tier; signedIn: boolean; onRail: (state: DiscoverRailState) => void; onSubtitle: (text: string) => void }) {
   const t = useMemo(() => journeyTranslator(language), [language]);
   const at = useMemo(() => assessTranslator(language), [language]);
@@ -218,6 +232,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
   const params = useSearchParams();
   const [query, setQuery] = useState<EventDiscoverQuery>(() => queryFromParams(params));
   const std = useStandardCopy();
+  const perRow = useCardsPerRow();
   const [data, setData] = useState<EventDiscoverResponse | null>(() => lastAnswer<EventDiscoverResponse>(discoverAnswerKey(queryFromParams(params))) ?? null);
   const [selected, setSelected] = useState<string | null>(null);
   const [pop, setPop] = useState<"period" | "area" | "theme" | null>(null);
@@ -314,7 +329,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
   if (!data) return <div className={styles.wgrid} data-events-discover-tab="">{filters}<div className={styles.span12}><PageSkeletonBody kind="events" label={std.loading.loading} bare /></div></div>;
 
   // 2026-10-29：活动还少，開催済み以灰卡片平铺在结果下方（不折叠成入口行）；超过上限才给「すべて見る」。
-  const endedCards = (rows: readonly EventDiscoverRow[]) => { const bands = coverBands(rows); return rows.map((row, index) => <EventCard key={row.eventId} ended row={row} index={index} band={bands[index]} language={language} t={t} onOpen={() => open(row.href)} />); };
+  const endedCards = (rows: readonly EventDiscoverRow[]) => { const bands = coverBands(rows, perRow); return rows.map((row, index) => <EventCard key={row.eventId} ended row={row} index={index} band={bands[index]} language={language} t={t} onOpen={() => open(row.href)} />); };
   const pastSection = !past && data.past?.length ? (
     <>
       <div className={`${styles.span12} ${styles.cardH} ${d.sectionHead}`} data-discover-past-section=""><h3>{t("pastTitle", { n: data.pastTotal ?? data.past.length })}</h3>{(data.pastTotal ?? 0) > data.past.length ? <button type="button" className={`btn ${styles.more} ${d.moreBtn}`} onClick={() => set({ period: "past" })}>{t("pastSeeAll")} <Icon name="right" size={16} /></button> : <span className={styles.lbl}>{t("byNewest")}</span>}</div>
@@ -377,7 +392,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
             {(query.areas ?? []).map((a) => <button key={a} type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => set({ areas: (query.areas ?? []).filter((x) => x !== a) })}>{areaLabel(a, t)} ✕</button>)}
             {(query.themes ?? []).map((x) => <button key={x} type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => set({ themes: (query.themes ?? []).filter((v) => v !== x) })}>{themeLabel(x, t)} ✕</button>)}
           </div>
-          {(() => { const bands = coverBands(data.all); return data.all.map((row, index) => card(row, index, bands[index])); })()}
+          {(() => { const bands = coverBands(data.all, perRow); return data.all.map((row, index) => card(row, index, bands[index])); })()}
           {data.widen?.length ? (
             <div className={`${styles.card} ${styles.span12} ${styles.flat}`} data-discover-widen="">
               <div className={styles.row} style={{ gap: 12 }}>
@@ -414,7 +429,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
             </div>
           ) : null}
           {data.planFit.length ? <div className={`${styles.span12} ${styles.cardH} ${d.sectionHead}`} data-discover-planfit-head=""><h3>{t("planFitTitle")}</h3><span className={styles.lbl}>{t("countN", { n: data.planFitTotal })} · {t("byDate")}</span></div> : null}
-          {(() => { const bands = coverBands(data.planFit); return data.planFit.map((row, index) => card(row, index, bands[index])); })()}
+          {(() => { const bands = coverBands(data.planFit, perRow); return data.planFit.map((row, index) => card(row, index, bands[index])); })()}
           {data.all.length ? <AllTable rows={data.all} total={data.total} language={language} t={t} onOpen={open} onSave={save} onDismiss={dismiss} /> : null}
         </>
       )}
@@ -514,13 +529,8 @@ function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, on
   const past = query.period === "past";
   const rows = data.all;
   const datebox = (iso: string) => { const dm = dayMonth(iso, t); return <div className={d.pDate}><b>{dm.day}</b><small>{dm.month}</small></div>; };
-  const endedRow = (row: EventDiscoverRow) => (
-    <button key={row.eventId} type="button" className={`btn ${d.pLi} ${d.ended}`} data-discover-row="" data-discover-ended="" onClick={() => onOpen(row.href)}>
-      {datebox(row.startsAt)}
-      <div className={d.pMeta}><b>{row.title}</b><span>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</span></div>
-      <span className={styles.chip}>{t("endedChip")}</span>
-    </button>
-  );
+  // 2026-11-21 方案 B：すべて / 開催済み 都是左图右文列表行（EventCard 在 <768 的样子），整行可点。
+  const listRows = (list: readonly EventDiscoverRow[], ended: boolean) => <div className={d.pRows}>{list.map((row, index) => <EventCard key={row.eventId} listRow ended={ended} row={row} index={index} language={language} t={t} onOpen={() => onOpen(row.href)} />)}</div>;
   return (
     <div data-events-discover-tab="" data-discover-phone="">
       <div className={`${styles.row} ${d.pSearchRow}`}>
@@ -557,7 +567,7 @@ function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, on
           <div className={styles.cardH}><h3>{t("planFitTitle")}</h3><span className={d.pMore}>{t("countN", { n: data.planFitTotal })}</span></div>
           <div className={d.pCarousel} onScroll={(event) => { const el = event.currentTarget; setPage(Math.round(el.scrollLeft / 272)); }}>
             {data.planFit.map((row, index) => (
-              <div key={row.eventId} className={d.pCard} role="button" tabIndex={0} data-discover-card={row.eventId} onClick={() => onOpen(row.href)} onKeyDown={(event) => { if (event.key === "Enter") onOpen(row.href); }}>
+              <div key={row.eventId} className={d.pCard} role="button" tabIndex={0} data-discover-card={row.eventId} onClick={() => onOpen(row.href)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(row.href); } }}>
                 <div className={`${styles.row} ${styles.between}`}>
                   <span className={`${styles.emo} ${styles[`t_${emoTone(index)}`]}`}>{row.emoji}</span>
                   {registrationChipText(row.registrationCount, language) ? <span className={`${styles.chip} ${styles.regChip}`}>{registrationChipText(row.registrationCount, language)}</span> : null}
@@ -565,7 +575,7 @@ function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, on
                 <b className={d.pCardTitle}>{row.title}</b>
                 <div className={`${styles.lbl} ${d.pCardMeta}`}>{[discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ")}</div>
                 <RelevanceChips relevance={row.relevance} language={language} className={d.pReason} />
-                <div className={`${styles.row} ${d.pCardFoot}`}>{feeText(row.priceYen, t) ? <span className={styles.chip}>{feeText(row.priceYen, t)}</span> : null}<button type="button" className={`btn ${styles.btn} ${styles.sm} ${d.pDetail}`} onClick={(event) => { event.stopPropagation(); onOpen(row.href); }}>{t("detailsBtn")}</button></div>
+                {feeText(row.priceYen, t) ? <div className={`${styles.row} ${d.pCardFoot}`}><b className={d.ecFee}>{feeText(row.priceYen, t)}</b></div> : null}
               </div>
             ))}
           </div>
@@ -573,23 +583,16 @@ function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, on
         </div>
       ) : null}
       {rows.length ? (
-        <div className={`${styles.card} ${d.pAll}`} data-discover-all="">
-          <div className={`${styles.cardH} ${d.pAllH}`}><h3>{past ? t("pastTitle", { n: data.total }) : t("allPlain")}</h3><span className={styles.lbl}>{past ? t("byNewest") : t("byDate")}</span></div>
-          <div className={d.pList}>
-            {past ? rows.map(endedRow) : rows.map((row) => (
-              <button key={row.eventId} type="button" className={`btn ${d.pLi}`} data-discover-row="" onClick={() => onOpen(row.href)}>
-                {datebox(row.startsAt)}
-                <div className={d.pMeta}><b>{row.title}</b><span>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</span><RelevanceChips relevance={row.relevance} language={language} /></div>
-              </button>
-            ))}
-          </div>
-        </div>
+        <section className={d.pSection} data-discover-all="">
+          <div className={`${styles.cardH} ${d.pListH}`}><h3>{past ? t("pastTitle", { n: data.total }) : t("allPlain")}</h3><span className={styles.lbl}>{past ? t("byNewest") : t("byDate")}</span></div>
+          {listRows(rows, past)}
+        </section>
       ) : past ? <div className={`${styles.card} ${styles.flat} ${d.pAll}`} data-discover-past-empty=""><b>{t("pastEmpty")}</b><div className={styles.lbl}>{t("pastEmptySub")}</div></div> : null}
       {!past && data.past?.length ? (
-        <div className={`${styles.card} ${d.pAll}`} data-discover-past-section="">
-          <div className={`${styles.cardH} ${d.pAllH}`}><h3>{t("pastTitle", { n: data.pastTotal ?? data.past.length })}</h3>{(data.pastTotal ?? 0) > data.past.length ? <button type="button" className={`btn ${d.pMore}`} onClick={() => onQuery({ period: "past" })}>{t("pastSeeAll")} <Icon name="right" size={16} /></button> : <span className={styles.lbl}>{t("byNewest")}</span>}</div>
-          <div className={d.pList}>{data.past.map(endedRow)}</div>
-        </div>
+        <section className={d.pSection} data-discover-past-section="">
+          <div className={`${styles.cardH} ${d.pListH}`}><h3>{t("pastTitle", { n: data.pastTotal ?? data.past.length })}</h3>{(data.pastTotal ?? 0) > data.past.length ? <button type="button" className={`btn ${d.pMore}`} onClick={() => onQuery({ period: "past" })}>{t("pastSeeAll")} <Icon name="right" size={16} /></button> : <span className={styles.lbl}>{t("byNewest")}</span>}</div>
+          {listRows(data.past, true)}
+        </section>
       ) : null}
       <BottomSheet open={sheet} onClose={() => setSheet(false)} label={t("filtersLbl")}>
         <div className={d.pSheet}>

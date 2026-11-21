@@ -171,3 +171,86 @@ test("a saved memo remains selected when the first page omits it", async t => {
   await page.locator("section[aria-label='保存した自由メモ']").getByText("Saved body").waitFor();
   assert.match(page.url(), /memo=memo%3Anew/u);
 });
+
+// memo-empty-entry-proposal: one empty state (no second detail card); the phone adds from the workspace,
+// 768+ only from the Task header; a search with no hit is one line, not a card.
+for (const width of [390, 834]) test(`no notes yet shows one empty state and the right add entry at ${width}`, async t => {
+  const page = await open(browser, code, { width, html: `<div id="root"></div><script>
+    window.shellFixture={path:"/app/tasks",lang:"ja",calls:[]};
+    window.memoRows=[];
+    window.fetch=async (url)=>{
+      const query=new URL(url,"https://example.test").searchParams;
+      const rows=window.memoRows.filter(row=>!query.get("q")||row.title.includes(query.get("q")));
+      return Response.json({data:{notes:rows,total:rows.length}});
+    };
+  </script>` });
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  page.setDefaultTimeout(3000);
+  await page.getByRole("heading", { name: "メモはまだありません" }).waitFor();
+  assert.equal(await page.getByRole("heading", { name: "メモはまだありません" }).count(), 1);
+  assert.equal(await page.getByRole("searchbox").count(), 0, "no search row while there is nothing to search");
+  assert.equal(await page.getByRole("radio").count(), 0, "no kind tabs while empty");
+  const add = page.getByRole("button", { name: "メモを追加" });
+  if (width < 768) {
+    assert.equal(await add.count(), 1);
+    await add.click();
+    await page.getByRole("dialog").waitFor();
+  } else {
+    assert.equal(await add.filter({ visible: true }).count(), 0, "834/1440 add only from the Task header");
+  }
+});
+
+test("a search with no hit is one line, and the phone keeps its ＋ beside the search field", async t => {
+  const page = await open(browser, code, { width: 390, html: `<div id="root"></div><script>
+    window.shellFixture={path:"/app/tasks",lang:"ja",calls:[]};
+    window.memoRows=[{id:"memo:1",title:"面談の要点",body:"Discussed plans",version:1,noteKind:"meeting",manualContactIds:[],contactIds:[],eventIds:[],mentions:[],updatedAt:"2026-10-19T10:00:00Z"}];
+    window.fetch=async (url)=>{
+      const query=new URL(url,"https://example.test").searchParams;
+      const rows=window.memoRows.filter(row=>!query.get("q")||row.title.includes(query.get("q")));
+      return Response.json({data:{notes:rows,total:rows.length}});
+    };
+  </script>` });
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  page.setDefaultTimeout(3000);
+  await page.getByRole("button", { name: "面談の要点" }).waitFor();
+  await page.getByRole("button", { name: "メモを追加" }).waitFor();
+  await page.getByRole("searchbox").fill("監査");
+  await page.getByText("一致するメモはありません").waitFor();
+  assert.equal(await page.getByRole("heading", { name: "一致するメモはありません" }).count(), 0, "a line, not an empty-state card");
+  assert.equal(await page.locator("section[aria-label='メモはまだありません']").count(), 0, "no detail panel");
+  assert.equal(await page.getByRole("button", { name: "メモを追加" }).count(), 1);
+});
+
+test("phone: the list alone, a row opens the note full screen, back (button or browser) returns to the list where it was", async t => {
+  const page = await open(browser, code, { width: 390, html: `<div style="height:600px"></div><div id="root"></div><script>
+    window.shellFixture={path:"/app/tasks",lang:"ja",calls:[]};
+    window.memoRows=Array.from({length:8},(_,i)=>({id:"memo:"+i,title:"メモ "+i,body:"本文 "+i,version:1,noteKind:i%2?"free":"meeting",manualContactIds:[],contactIds:[],eventIds:[],mentions:[],updatedAt:"2026-10-19T10:00:00Z"}));
+    window.fetch=async ()=>Response.json({data:{notes:window.memoRows,total:window.memoRows.length}});
+  </script>` });
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  page.setDefaultTimeout(3000);
+  const row = page.getByRole("button", { name: "メモ 6" });
+  await row.waitFor();
+  assert.equal(await page.getByText("本文 0", { exact: true }).filter({ visible: true }).count(), 1, "only the list row's preview, no detail card under the list");
+  assert.equal(await page.getByRole("button", { name: "編集" }).count(), 0);
+  await row.scrollIntoViewIfNeeded();
+  const scrolled = await page.evaluate(() => window.scrollY);
+  assert.ok(scrolled > 0);
+  await row.click();
+  const detail = page.locator("[data-memo-detail=open]");
+  await detail.getByRole("heading", { name: "メモ 6" }).waitFor();
+  assert.match(page.url(), /memo=memo%3A6/u);
+  assert.equal(await page.getByRole("button", { name: "編集" }).count(), 1, "one 編集, top right");
+  await detail.getByRole("button", { name: "戻る" }).click();
+  await detail.waitFor({ state: "detached" });
+  assert.doesNotMatch(page.url(), /memo=/u);
+  assert.equal(await page.evaluate(() => window.scrollY), scrolled, "the list keeps its scroll");
+  await page.getByRole("button", { name: "メモ 3" }).click();
+  await detail.getByRole("heading", { name: "メモ 3" }).waitFor();
+  await detail.getByRole("button", { name: "編集" }).click();
+  await page.getByRole("dialog").waitFor();
+  await page.getByRole("button", { name: "キャンセル" }).click();
+  await page.goBack();
+  await detail.waitFor({ state: "detached" });
+  await page.getByRole("button", { name: "メモ 3" }).waitFor();
+});
