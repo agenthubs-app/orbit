@@ -13,7 +13,7 @@
   left: 50%;
   top: 50%;
   width: min(420px, calc(100vw - 32px));
-  max-height: calc(100vh - 48px);
+  max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px);
   overflow: auto;
   transform: translate(-50%, -50%);
   z-index: var(--z-modal);
@@ -37,7 +37,7 @@
 .w760 { width: min(760px, calc(100vw - 32px)); }
 .w860 { width: min(860px, calc(100vw - 32px)); }
 .w1000 { width: min(1000px, calc(100vw - 32px)); }
-.top { top: 96px; max-height: calc(100vh - 120px); transform: translateX(-50%); animation-name: topIn; }
+.top { top: 96px; max-height: calc(100vh - 120px); max-height: calc(100dvh - 120px); transform: translateX(-50%); animation-name: topIn; }
 .form { background: var(--bg); }
 /* R30：⌘K 面板（kit .cmdk）内边距 10，面板本体自己画分隔线与行。 */
 .bare { padding: var(--space-10); }
@@ -159,7 +159,10 @@
   box-shadow: var(--shadow-float);
   border: 1px solid var(--line);
   animation: fadeIn var(--dur-dialog) var(--ease);
+  /* 2026-11-21 手机：宽度按 340–440 夹，390 屏上 420 宽的人脉「筛选」右侧按钮被截 → 不超过屏宽；内容高时可滚动。 */
+  max-width: calc(100vw - 16px);
 }
+@media (max-width: 767px) { .popover { max-height: calc(100dvh - 16px); overflow-y: auto; } }
 
 .popoverTight { padding: 8px; }
 

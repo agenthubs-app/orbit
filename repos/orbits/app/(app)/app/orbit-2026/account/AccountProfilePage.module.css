@@ -89,4 +89,6 @@
 @media (min-width:1441px) { .toast { right:calc((100vw - 1440px) / 2 + 24px); } .drawerBackdrop { padding-right:calc((100vw - 1440px) / 2); } }
 @media (max-width:1279px) { .mobilePreview { display:block; } }
 @media (max-width:1279px) { .businessCard, .progressCard { grid-column: span 12; } }
-@media (max-width:767px) { .grid { grid-template-columns:1fr; } .grid > * { grid-column: 1; } .rowCard + .rowCard { margin-top: var(--space-14); } .mobilePreview { display:block; } .drawerBackdrop { align-items:flex-end; } .drawer { width:100%; height:min(85vh,780px); border-top-left-radius:var(--r-bubble); border-top-right-radius:var(--r-bubble); } }
+@media (max-width:767px) { .grid { grid-template-columns: minmax(0, 1fr); } .grid > * { grid-column: 1; } .rowCard + .rowCard { margin-top: var(--space-14); } .mobilePreview { display:block; } .drawerBackdrop { align-items:flex-end; } .drawer { width:100%; height:min(85vh,780px); border-top-left-radius:var(--r-bubble); border-top-right-radius:var(--r-bubble); } }
+/* 2026-11-21 手机：卡片图标居中、文字块居中但文字左排、按钮靠左，三种对齐混在一张卡里 → 手机上统一左对齐。 */
+@media (max-width:767px) { .rowCard { align-items: flex-start; } }

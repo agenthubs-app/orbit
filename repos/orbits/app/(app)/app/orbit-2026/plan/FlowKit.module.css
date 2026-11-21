@@ -506,7 +506,7 @@ ol.v22flow { margin: 0; padding: 0; list-style: none; }
 .plannedDiagBody { font-size: var(--fs-row); font-weight: var(--fw-bold); line-height: 1.6; margin-top: 8px; }
 /* kit .overlay / .wmodal (01-system ② Web) */
 .overlay { position: fixed; inset: 0; background: var(--scrim-web); z-index: var(--z-overlay); }
-.wmodal { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: var(--z-modal); background: var(--surface); border-radius: var(--r-dialog); padding: 24px; box-shadow: var(--shadow-float); line-height: 1.5; max-height: calc(100vh - 48px); overflow-y: auto; }
+.wmodal { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: var(--z-modal); background: var(--surface); border-radius: var(--r-dialog); padding: 24px; box-shadow: var(--shadow-float); line-height: 1.5; max-width: calc(100vw - 32px); max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px); overflow-y: auto; }
 .w420 { width: 420px; }
 .w480 { width: 480px; }
 .w520 { width: 520px; }

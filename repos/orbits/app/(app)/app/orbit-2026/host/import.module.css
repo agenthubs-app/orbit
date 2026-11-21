@@ -1,6 +1,6 @@
 /* R17 名簿の取り込み（b12 #476 .k-imptab / .k-impinv / .k-imprule）。 */
 .blk.blk { display: block; }
-.col { display: grid; gap: 18px; align-content: start; min-width: 0; }
+.col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-content: start; min-width: 0; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
 .stat { background: var(--surface-2); border-radius: var(--r-tile); padding: 10px 14px; }
 .stat b { display: block; font-family: var(--font-num); font-size: var(--fs-number); font-weight: var(--fw-heavy); line-height: var(--lh-snug); margin-top: 4px; }
@@ -19,4 +19,4 @@
 .rulesTitle { font-size: var(--fs-body-sm); }
 .rules { display: grid; gap: 8px; margin-top: 8px; font-size: var(--fs-control); color: var(--ink-2); line-height: var(--lh-prose); }
 .rule { display: flex; gap: 8px; align-items: flex-start; }
-@media (max-width: 767px) { .stats { grid-template-columns: 1fr; } }
+@media (max-width: 767px) { .stats { grid-template-columns: minmax(0, 1fr); } }

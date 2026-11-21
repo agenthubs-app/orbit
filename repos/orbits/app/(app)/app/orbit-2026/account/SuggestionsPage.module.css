@@ -12,7 +12,8 @@
 .who { display: flex; align-items: center; gap: 10px; }
 .who > div { flex: 1; min-width: 0; }
 .who b { display: block; font-size: var(--fs-row); }
-.who span { display: block; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
+/* 只管文字块里的副标题；之前 `.who span` 也命中头像里的首字母（被改成 block 灰色小字，偏到左上角）。 */
+.who > div span { display: block; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
 .sourceRow { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
 .why { margin-left: auto; display: inline-flex; }
 .rows { margin-top: 6px; }
@@ -50,6 +51,8 @@
 .select { min-height: 40px; padding: 8px 10px; }
 .textarea { width: 100%; min-height: 100px; padding: 10px 12px; box-sizing: border-box; resize: vertical; line-height: 1.5; }
 .file { max-width: 100%; padding: 8px; font-size:var(--fs-meta); }
+/* 原生「选择文件」按钮换成项目的小按钮样式（之前是浏览器默认灰框）。 */
+.file::file-selector-button { margin-right: 10px; padding: 6px 12px; border: 0; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); font: inherit; font-weight: var(--fw-bold); cursor: pointer; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .error { color: var(--coral-text); font-size:var(--fs-body-sm); line-height: 1.5; margin: 0; }
 .sample { opacity: .75; }

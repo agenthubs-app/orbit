@@ -1,7 +1,7 @@
 /* R17 申込設定（b6 #13 空 / #14 少 / #15 大；b12 #406 お知らせの文面）。数値は画板の kit（.ta / .qcard / .qopt / .rad / .pv / .pq / .grid2 / .mac / .ghost-row）、
    色・角丸・文字は token。共通の .card / .btn / .chip / .seg は host.module.css、.setrow / .tgl / .handle / .lbtn / .cbx / .input は tabs.module.css。 */
 
-.col { display: grid; gap: 18px; align-content: start; min-width: 0; }
+.col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-content: start; min-width: 0; }
 .span7 { grid-column: span 7; }
 .span5 { grid-column: span 5; }
 /* 画板のカードは .wgrid 直下ではない → kit の .card は block。 */
@@ -118,7 +118,7 @@ button.setVal:hover { text-decoration: underline; text-decoration-color: var(--i
 }
 @media (max-width: 767px) {
   .span7, .span5 { grid-column: auto; }
-  .grid2 { grid-template-columns: 1fr; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
   .saveBar { flex-wrap: wrap; }
   .addRow { flex-wrap: wrap; }
   .nrow > b { width: 96px; }
@@ -169,3 +169,9 @@ button.setVal:hover { text-decoration: underline; text-decoration-color: var(--i
 
 /* 主催者の連絡先（申込設定の右列）：カードの下に保存ボタン。 */
 .contactActs { justify-content: flex-end; margin-top: 10px; }
+/* 2026-11-21 手机：问题行「⋮⋮ Q1 标题 类型 必填 ✎」一行放不下，标题被挤成一个字（「あ‥」）→ 标题占满第一行，芯片与编辑按钮换到第二行。 */
+@media (max-width: 767px) {
+  .qrow { flex-wrap: wrap; row-gap: 6px; }
+  .qrow > b { flex: 1 1 calc(100% - 96px); min-width: 0; }
+  .qrow > button:last-child { margin-left: auto; }
+}

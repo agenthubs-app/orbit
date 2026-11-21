@@ -109,7 +109,7 @@
 .sampleTag { font-size: var(--fs-micro); font-weight: var(--fw-heavy); padding: 1px 6px; border-radius: var(--r-tag); background: var(--mac-apricot); color: var(--mac-apricot-ink); margin-left: 4px; vertical-align: 1px; white-space: nowrap; }
 .faded { opacity: 0.5; filter: saturate(0.7); pointer-events: none; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
-@media (max-width: 767px) { .grid2 { grid-template-columns: 1fr; gap: 0; } }
+@media (max-width: 767px) { .grid2 { grid-template-columns: minmax(0, 1fr); gap: 0; } }
 
 /* 右栏名单 (kit .rail content) */
 .rail { display: flex; flex-direction: column; gap: 14px; }
@@ -125,3 +125,5 @@
 .stageNurture { background: var(--plum-500); }
 .stageLegend { display: flex; justify-content: space-between; margin-top: 6px; }
 .btnStart.btnStart { align-self: flex-start; margin-top: 10px; }
+/* 2026-11-21 手机：环形图(140) 与说明并排，标题被挤成一行三四个字 → 上下排。 */
+@media (max-width: 767px) { .guide > .row { flex-direction: column; align-items: flex-start; } }

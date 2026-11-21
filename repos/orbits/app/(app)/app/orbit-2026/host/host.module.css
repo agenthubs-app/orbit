@@ -175,9 +175,16 @@
   .span3 { grid-column: span 6; }
 }
 @media (max-width: 767px) {
-  .wgrid, .subgrid { grid-template-columns: 1fr; gap: 12px; }
+  .wgrid, .subgrid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  /* 单列时子项一律占满（子项带 span 12 等会生出隐式列、把同级卡片挤窄）。 */
+  .wgrid.wgrid > *, .subgrid.subgrid > * { grid-column: 1 / -1; }
+  /* 标题栏右侧（共同運営者头像 + 按钮 + 视角切换 + ⋯）一行放不下时换行、靠右，不再向左溢出盖住返回按钮。 */
+  .headRight { flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; min-width: 0; }
+  /* 「対応が必要なこと」：标题独占一行，各项整行排列（之前标题夹在第一项左边，后面几项左缘对不齐）。 */
+  .todoWrap > b { flex: 1 1 100%; }
+  .todo { flex-basis: 100%; min-width: 0; }
   .span3, .span4, .span8, .span12 { grid-column: auto; }
-  .grid3 { grid-template-columns: 1fr; }
+  .grid3 { grid-template-columns: minmax(0, 1fr); }
   .guide { padding: 20px; }
   .toolbar { flex-direction: column; align-items: stretch; }
   .search { width: 100%; }

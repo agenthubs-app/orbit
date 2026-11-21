@@ -42,7 +42,7 @@
 .deletedMain p { margin: 0 0 18px; color: var(--ink-2); font-size: var(--fs-body); line-height: 1.7; }
 .deletedCard { padding: 20px; border: 1px solid var(--line); border-radius: var(--r-card-web); background: var(--surface); font-size: var(--fs-body); }
 .deletedActions { display: flex; justify-content: flex-end; margin-top: 20px; }
-@media (max-width: 600px) { .selection { grid-template-columns: 1fr; } .allOption { grid-column: auto; } .historyItem { align-items: flex-start; flex-direction: column; } .actions { justify-content: stretch; } .actions :global(.btn) { width: 100%; } }
+@media (max-width: 600px) { .selection { grid-template-columns: minmax(0, 1fr); } .allOption { grid-column: auto; } .historyItem { align-items: flex-start; flex-direction: column; } .actions { justify-content: stretch; } .actions :global(.btn) { width: 100%; } }
 @media (max-width: 600px) { .deletedHeader { min-height: 66px; padding: 0 36px; } .deletedMain { padding: 20px 36px 88px; } .deletedMain h1 { font-size: var(--fs-title-sm); } .deletedCard { padding: 15px; } .deletedActions :global(.btn) { width: 100%; } }
 
 /* b7 #24 退会 1/2 */
@@ -70,7 +70,7 @@
 .flatCard b { display: block; }
 .flatCard p { margin: 4px 0 0; color: var(--ink-2); font-size: var(--fs-control); line-height: var(--lh-prose-lg); }
 .flatCard span { display: block; margin-top: 4px; }
-.leaveActions { display: flex; justify-content: flex-end; gap: 10px; }
+.leaveActions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
 .leaveActions .stop, .leaveActions .toVerify { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 16px; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--ink-2); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); text-decoration: none; cursor: pointer; }
 .leaveActions .toVerify { height: 50px; color: var(--coral-text); font-size: var(--fs-card-title); }
 @media (max-width: 1023px) { .leaveCard, .leaveSide { grid-column: span 12; } }

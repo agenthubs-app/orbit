@@ -1,6 +1,6 @@
 /* b1 A3 Web #16–#20 (.web.bare > .obw): no shell — 84px header (logo · .wstp · あとで設定する),
    body 30 / 120 padding on a 12-column grid: the form card spans 7 and fills the height, the aside spans 5. */
-.page { display: flex; min-height: 100vh; flex-direction: column; background: radial-gradient(900px 500px at 10% -10%, var(--fog-a), transparent 70%), radial-gradient(700px 500px at 95% 0%, var(--fog-b), transparent 70%), var(--bg); color: var(--ink); font-size: var(--fs-body); line-height: 1.5; }
+.page { display: flex; min-height: 100vh; min-height: 100dvh; flex-direction: column; background: radial-gradient(900px 500px at 10% -10%, var(--fog-a), transparent 70%), radial-gradient(700px 500px at 95% 0%, var(--fog-b), transparent 70%), var(--bg); color: var(--ink); font-size: var(--fs-body); line-height: 1.5; }
 .head { display: flex; height: 84px; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 24px; padding: 0 40px; border-bottom: 1px solid var(--line); }
 .brand { display: flex; align-items: center; gap: 10px; }
 .logo { display: grid; width: 34px; height: 34px; place-items: center; border-radius: var(--r-row); background: var(--ink); color: var(--bg); font-weight: var(--fw-black); }
@@ -164,3 +164,10 @@ select.input:disabled + svg { color: var(--ink-3); }
   .head { margin-inline: calc((100% - 1440px) / 2); }
   .body { padding-inline: calc((100% - 1440px) / 2 + 120px); }
 }
+/* 2026-11-21 手机：图标、两行文字、按钮挤一行，标题被挤成「…名片图 / 片，自动填写」→ 按钮换到第二行整宽。 */
+@media (max-width: 767px) {
+  .autofill { flex-wrap: wrap; }
+  .autofill > button { flex: 1 1 100%; justify-content: center; }
+}
+/* 2026-11-21 ≤374（如 360 宽 + 日文「あとで設定する」）：Logo、五步进度、稍后设置一行放不下，右侧按钮被挤出屏幕 → 小屏去掉 Logo。 */
+@media (max-width: 374px) { .head .brand { display: none; } }

@@ -77,7 +77,7 @@
 .wgrid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
 .wgrid > .card { display: flex; flex-direction: column; }
 .span4 { grid-column: span 4; } .span5 { grid-column: span 5; } .span7 { grid-column: span 7; } .span8 { grid-column: span 8; } .span12 { grid-column: span 12; }
-.col5 { grid-column: span 5; display: grid; gap: 18px; align-content: start; }
+.col5 { grid-column: span 5; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-content: start; }
 .narrow { display: flex; flex-direction: column; }
 .narrow > .card + .card, .narrow > * + .card { margin-top: var(--gap); }
 /* b8 #7 .k-pend：390 的確認待ち卡更紧（padding 14 16 · 上距 12 · 标题下 10）。 */

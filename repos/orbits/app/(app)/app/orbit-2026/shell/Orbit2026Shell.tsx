@@ -98,6 +98,8 @@ function ShellFrame({ language, pathname, currentBuildId, focus = null, children
   const active = shellNavKeyFor(pathname);
   const dot = useInboxDot(language, pathname);
   const hasHeader = Boolean(slots.title || slots.left || slots.right || slots.demoPill || rail);
+  const headRef = useRef<HTMLElement | null>(null);
+  usePhoneHeadCrowding(headRef, hasHeader);
   // b11 TT2 (2026-10-28): on a primary page (a left-rail destination itself) the title takes its own
   // row and the side controls drop to a toolbar row under it — left search / segments, right action.
   const twoTier = Boolean(slots.left || slots.right) && (Boolean(slots.twoTier) || SHELL_NAV.some((item) => item.href === pathname.replace(/\/+$/u, "")));
@@ -117,7 +119,7 @@ function ShellFrame({ language, pathname, currentBuildId, focus = null, children
           <ToastProvider>
             {focus ? null : <ShellMobileTop active={active} dot={dot} />}
             {hasHeader ? (
-              <header className={`${styles.mainhead} ${twoTier ? styles.twoTier : ""} ${slots.phoneFold ? styles.mainheadFold : ""}`} data-orbit-2026-mainhead="" data-two-tier={twoTier ? "true" : undefined}>
+              <header ref={headRef} className={`${styles.mainhead} ${twoTier ? styles.twoTier : ""} ${slots.phoneFold ? styles.mainheadFold : ""}`} data-orbit-2026-mainhead="" data-two-tier={twoTier ? "true" : undefined}>
                 <div className={styles.headSide}>{slots.left}{slots.demoPill ? <span className={styles.demoSlot}>{slots.demoPill}</span> : null}</div>
                 <div className={styles.headTitle}>
                   {slots.title ? <h1 className={styles.title}>{slots.title}</h1> : null}
@@ -193,6 +195,42 @@ function frameSlots(frame: RouteFrame, language: OrbitLanguage): ShellSlots {
     phoneFold: frame.phoneFold,
     ...(frame.phoneBare ? { phoneBare: true } : {}),
   };
+}
+
+/** 2026-11-21 < 768：标题栏是「左 | 标题 | 右」三栏，某一侧放了带文字的按钮（運営センター的「共同運営に参加」「イベントを作成」等）
+ *  就会盖住标题。量出两侧内容的自然宽度，放不下时给标题栏标 data-crowded，CSS 改成「标题一行、左右按钮一行」（与宽屏 twoTier 同构）。 */
+function usePhoneHeadCrowding(ref: { current: HTMLElement | null }, active: boolean) {
+  useEffect(() => {
+    const head = ref.current;
+    if (!active || !head || typeof window === "undefined") return undefined;
+    const phone = window.matchMedia("(max-width: 767px)");
+    const natural = (el: Element | undefined) => {
+      if (!el) return 0;
+      const kids = [...el.children].filter((child) => (child as HTMLElement).offsetWidth > 0);
+      const gap = parseFloat(getComputedStyle(el).columnGap) || 0;
+      return kids.reduce((sum, child) => sum + (child as HTMLElement).offsetWidth, 0) + gap * Math.max(0, kids.length - 1);
+    };
+    const check = () => {
+      const [left, title, right] = [...head.children];
+      if (!phone.matches || !title || head.clientWidth === 0) { head.removeAttribute("data-crowded"); return; }
+      const range = document.createRange();
+      range.selectNodeContents(title);
+      const titleWidth = Math.min(range.getBoundingClientRect().width, head.clientWidth);
+      const style = getComputedStyle(head);
+      const inner = head.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+      const room = (inner - titleWidth) / 2 - (parseFloat(style.columnGap) || 0);
+      if (Math.max(natural(left), natural(right)) > room + 1) head.setAttribute("data-crowded", "true");
+      else head.removeAttribute("data-crowded");
+    };
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(head);
+    for (const child of head.children) for (const inner of child.children) observer.observe(inner);
+    const mutation = new MutationObserver(() => { for (const child of head.children) for (const inner of child.children) observer.observe(inner); check(); });
+    mutation.observe(head, { childList: true, subtree: true, characterData: true });
+    phone.addEventListener("change", check);
+    return () => { observer.disconnect(); mutation.disconnect(); phone.removeEventListener("change", check); };
+  }, [ref, active]);
 }
 
 function FrameRail() {

@@ -117,5 +117,5 @@
   .sr .slots { grid-column: 2; grid-row: 2; }
   .sr .pts { grid-row: 1; grid-column: 3; }
   .slots i { width: 26px; height: 26px; }
-  .ex { grid-template-columns: 1fr; padding: 6px 14px 14px; }
+  .ex { grid-template-columns: minmax(0, 1fr); padding: 6px 14px 14px; }
 }

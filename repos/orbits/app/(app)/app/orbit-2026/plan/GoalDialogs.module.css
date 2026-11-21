@@ -6,7 +6,7 @@
 .switcherText { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 /* b4 .gmenu（Web：left 120 · top 138 · 340 宽） */
-.gmenu { position: fixed; z-index: var(--z-modal); width: 340px; max-width: calc(100vw - 32px); max-height: calc(100vh - 24px); overflow: auto; border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-float); padding: 8px; color: var(--ink); font-size: var(--fs-body); line-height: 1.5; }
+.gmenu { position: fixed; z-index: var(--z-modal); width: 340px; max-width: calc(100vw - 32px); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow: auto; border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-float); padding: 8px; color: var(--ink); font-size: var(--fs-body); line-height: 1.5; }
 .gmenu:focus { outline: none; }
 .ghead { padding: 6px 10px 2px; font-weight: var(--fw-heavy); }
 .gi.gi { display: flex; align-items: center; gap: 10px; width: 100%; height: auto; margin: 0; padding: 10px; border: 0; border-radius: var(--r-tile); background: none; color: var(--ink); font: inherit; font-weight: inherit; line-height: inherit; text-align: left; white-space: normal; cursor: pointer; }

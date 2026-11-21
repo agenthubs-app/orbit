@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type KeyboardEvent } from "react";
+import { useEffect, useRef, type KeyboardEvent } from "react";
 
 import { Icon } from "./Icon";
 import styles from "./Controls.module.css";
@@ -121,6 +121,16 @@ export function UnderlineTabs<Key extends string>({ tabs, value, onChange, label
   className?: string;
 } & { [data: `data-${string}`]: string | undefined }) {
   const refs = useRef<(HTMLElement | null)[]>([]);
+  const list = useRef<HTMLDivElement | null>(null);
+  // 2026-11-21 手机上页签一行放不下时横向滑动：当前页签滑到可见处（只动页签条自己的 scrollLeft，不动页面）。
+  const active = tabs.findIndex((tab) => tab.key === value);
+  useEffect(() => {
+    const bar = list.current, tab = refs.current[active];
+    if (!bar || !tab || bar.scrollWidth <= bar.clientWidth) return;
+    const left = tab.offsetLeft - bar.offsetLeft, right = left + tab.offsetWidth;
+    if (left < bar.scrollLeft) bar.scrollLeft = left - 8;
+    else if (right > bar.scrollLeft + bar.clientWidth) bar.scrollLeft = right - bar.clientWidth + 8;
+  }, [active]);
   const move = (event: KeyboardEvent, index: number) => {
     const delta = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
     const target = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : delta ? (index + delta + tabs.length) % tabs.length : -1;
@@ -130,7 +140,7 @@ export function UnderlineTabs<Key extends string>({ tabs, value, onChange, label
     refs.current[target]?.focus();
   };
   return (
-    <div {...rest} role="tablist" aria-label={label} className={[styles.utabs, variant === "host" ? styles.utabsHost : "", className ?? ""].filter(Boolean).join(" ")}>
+    <div {...rest} ref={list} role="tablist" aria-label={label} className={[styles.utabs, variant === "host" ? styles.utabsHost : "", className ?? ""].filter(Boolean).join(" ")}>
       {tabs.map((tab, index) => {
         const selected = tab.key === value;
         const body = (

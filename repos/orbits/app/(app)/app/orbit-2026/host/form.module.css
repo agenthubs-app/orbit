@@ -1,6 +1,6 @@
 /* R17 建活动 / 基本情報を編集（b12 #396 / #398）+ 公開・中止の確認（b12 #400 / #402 / #404）+ 公開と中止カード。
    画板 kit：.k-evform（.setrow 132 宽标签 + .input 40 高）/ .ta + .counter / .k-evprev 预览 / .wmodal .dic；色・角丸・文字は token。 */
-.col { display: grid; gap: 18px; align-content: start; min-width: 0; }
+.col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-content: start; min-width: 0; }
 .span7 { grid-column: span 7; }
 .span5 { grid-column: span 5; }
 .blk.blk { display: block; }
@@ -72,7 +72,16 @@
 @media (max-width: 767px) {
   .fl { width: 96px; }
   .hint { margin-left: 0; }
-  .tpls { grid-template-columns: 1fr; }
+  .tpls { grid-template-columns: minmax(0, 1fr); }
+  /* 2026-11-21：390 宽放不下「132 标签 + 日期 + 两个时刻」一行（把卡片撑到 528px、整页横向溢出）。
+     照常见手机表单：标签在上、输入框占满整行；日期与时刻平分。 */
+  div:has(> .fl) { flex-wrap: wrap; row-gap: 6px; }
+  .fl.fl { width: 100%; }
+  .date, .time { max-width: none; flex: 1 1 0%; }
+  .date { flex-grow: 1.5; }
+  .emojiPick { margin-left: 0; }
+  /* 单列网格里 span 12 会生出隐式列，把同网格的其他卡挤窄（主办方页面列表/预览只有约 60% 宽）。 */
+  .span7, .span5 { grid-column: auto; }
 }
 
 /* 主催者ページ（b12 #412 .k-orglist / .k-orgform / .k-orgprev） */

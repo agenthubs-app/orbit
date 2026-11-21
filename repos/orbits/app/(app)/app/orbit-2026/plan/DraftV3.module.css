@@ -151,7 +151,7 @@
   .mine .pr { grid-template-columns: 64px 1fr; }
   .mine .pr .sg, .mine .pr .gaps { grid-column: 2; justify-self: start; }
   .lr { grid-template-columns: 96px 1fr 50px; }
-  .nums { grid-template-columns: 1fr; }
+  .nums { grid-template-columns: minmax(0, 1fr); }
   .nb { border-left: 0; border-top: 1px solid var(--line); padding: 12px 22px; }
   .nb:first-child { border-top: 0; }
   .adj { grid-template-columns: 32px 1fr auto 28px; row-gap: 8px; padding: 10px 14px; }

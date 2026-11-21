@@ -21,3 +21,5 @@
 .axis span { text-align: center; white-space: nowrap; overflow: visible; }
 
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* 2026-11-21 手机：隔天标注的最后一个与「最后一天」相邻时会挤成「11/411/5」，手机上去掉相邻的那个。 */
+@media (max-width: 767px) { .nearLast { visibility: hidden; } }

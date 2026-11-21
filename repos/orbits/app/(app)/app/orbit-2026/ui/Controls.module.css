@@ -138,6 +138,12 @@
 .utabOn::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2.5px; border-radius: var(--r-hair); background: var(--ink); }
 .utabCount { font-family: var(--font-num); color: var(--ink-3); margin-left: 3px; }
 .utabsHost { gap: 2px; }
+/* 2026-11-21 手机：六个页签一行放不下（运营台「レポート」被挤出屏幕、整页横向溢出）→ 页签条自己横向滑动。 */
+@media (max-width: 767px) {
+  .utabs { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .utabs::-webkit-scrollbar { display: none; }
+  .utab { flex: 0 0 auto; }
+}
 .utabsHost .utab { padding: 10px 16px 12px; }
 .utabsHost .utabOn::after { left: 12px; right: 12px; height: 3px; border-radius: var(--r-bar); background: var(--plum-700); }
 .utabBadge { font-size: var(--fs-tiny); padding: 1px 6px; border-radius: var(--r-pill); background: var(--coral-soft); color: var(--coral); margin-left: 4px; }

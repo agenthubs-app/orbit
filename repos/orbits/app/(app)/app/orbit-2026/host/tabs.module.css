@@ -124,7 +124,7 @@
 .ringCard { text-align: center; display: flex; flex-direction: column; align-items: center; }
 .reviewCard { display: block; }
 .ringLbl { margin-top: 8px; }
-.side { display: grid; gap: 18px; align-content: start; }
+.side { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-content: start; }
 .reviewBody { margin-top: 6px; line-height: var(--lh-prose-lg); }
 .reviewCard b { font-size: var(--fs-body-sm); }
 

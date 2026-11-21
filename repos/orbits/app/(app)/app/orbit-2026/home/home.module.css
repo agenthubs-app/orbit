@@ -161,3 +161,5 @@
 /* Card body before its reads have answered: bones laid out like the rows (.row: 7px padding, ~36 tall) or the figure. */
 .cardSkeleton { display: flex; flex-direction: column; gap: 10px; padding-top: 2px; }
 .skeletonRow { display: flex; align-items: center; gap: 9px; min-height: 36px; }
+/* 2026-11-21 手机半宽卡：「目標からプランを作る」这类长按钮不换行会伸出卡片 → 手机上限宽并允许折行。 */
+@media (max-width: 767px) { .card .action { max-width: 100%; height: auto; min-height: 32px; padding: 6px 12px; white-space: normal; } }

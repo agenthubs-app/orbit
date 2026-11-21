@@ -60,3 +60,10 @@
 .avs .av { border: 2px solid var(--surface); margin-left: -8px; }
 .avs .av:first-child { margin-left: 0; }
 .meta span { display: block; font-size: var(--fs-meta); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 2026-11-21 手机：按钮行里的说明被挤成一字一行；详情页「说明 | Step 侧栏(220)」并排把说明挤成 35px 宽 → 换行 / 上下排。 */
+@media (max-width: 767px) {
+  .acts { flex-wrap: wrap; }
+  .acts > span:last-child { flex: 1 1 100%; }
+  .headRow { flex-direction: column; gap: 16px; }
+  .side { width: 100%; }
+}

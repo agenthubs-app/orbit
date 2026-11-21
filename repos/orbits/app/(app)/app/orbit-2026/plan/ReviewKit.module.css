@@ -76,7 +76,7 @@
 
 /* kit .wmodal（自带遮罩：kit .overlay = --scrim-web） */
 .overlay { position: fixed; inset: 0; background: var(--scrim-web); z-index: var(--z-modal); }
-.wmodal { position: fixed; left: 50%; top: 50%; width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; transform: translate(-50%, -50%); z-index: var(--z-modal); background: var(--surface); border-radius: var(--r-dialog); padding: var(--space-24); box-shadow: var(--shadow-float); color: var(--ink); font-size: var(--fs-body); line-height: 1.5; }
+.wmodal { position: fixed; left: 50%; top: 50%; width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow: auto; transform: translate(-50%, -50%); z-index: var(--z-modal); background: var(--surface); border-radius: var(--r-dialog); padding: var(--space-24); box-shadow: var(--shadow-float); color: var(--ink); font-size: var(--fs-body); line-height: 1.5; }
 .wmodal:focus { outline: none; }
 .w480 { width: min(480px, calc(100vw - 32px)); }
 .w600 { width: min(600px, calc(100vw - 32px)); }

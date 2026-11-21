@@ -2,7 +2,7 @@
    1180 × 820 平板画面；1024 以上同一布局居中（A8），767 以下只出引导。数値は画板の kit（.web.kiosk / .k-*），色・角丸・文字は token。 */
 
 .page {
-  min-height: 100vh;
+  min-height: 100vh; min-height: 100dvh;
   background:
     radial-gradient(900px 500px at 10% -10%, var(--fog-a), transparent 70%),
     radial-gradient(700px 500px at 95% 0%, var(--fog-b), transparent 70%),
@@ -10,7 +10,7 @@
   color: var(--ink);
   line-height: var(--lh-body);
 }
-.kiosk { position: relative; max-width: 1180px; height: 100vh; min-height: 640px; margin: 0 auto; display: flex; flex-direction: column; padding: 24px 30px; gap: 18px; }
+.kiosk { position: relative; max-width: 1180px; height: 100vh; height: 100dvh; min-height: 640px; margin: 0 auto; display: flex; flex-direction: column; padding: 24px 30px; gap: 18px; }
 
 .lbl { font-size: var(--fs-label); color: var(--ink-3); font-weight: var(--fw-medium); }
 .sub { color: var(--ink-2); font-size: var(--fs-control); }

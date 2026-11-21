@@ -193,9 +193,11 @@
 }
 @media (max-width: 767px) {
   .page { padding: 0 18px 120px; }
-  .wgrid { grid-template-columns: 1fr; gap: 12px; }
+  .wgrid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  /* 单列时子项一律占满（子项带 span 12 等会生出隐式列、把同级卡片挤窄）。 */
+  .wgrid.wgrid > * { grid-column: 1 / -1; }
   .span3, .span4, .span6, .span8, .span12 { grid-column: auto; }
-  .grid3 { grid-template-columns: 1fr; }
+  .grid3 { grid-template-columns: minmax(0, 1fr); }
   .guide { padding: 20px; }
 }
 @media (prefers-reduced-motion: reduce) {

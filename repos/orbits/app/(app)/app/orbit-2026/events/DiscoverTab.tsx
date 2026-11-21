@@ -286,6 +286,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} />
         {tier === "wide" ? <span className={styles.lbl} style={{ marginLeft: "auto" }}>{t("kbdSearch")}</span> : null}
       </label>
+      <div className={d.filterScroll}>
       <div className={d.popWrap}>
         <button type="button" className={`btn ${d.wfilter} ${filterOn ? d.on : ""}`} onClick={() => setPop(pop === "period" ? null : "period")}><Icon name="calendar" size={16} />{t("filterPeriod", { v: periodLabel(query.period ?? "upcoming", t) })}<Icon name="down" size={16} /></button>
         <FilterPopover open={pop === "period"} onClose={() => setPop(null)}><b>{t("periodLbl")}</b><div className={`${styles.chips} ${d.optChips}`}>{PERIODS.map((p) => <FilterOption key={p} label={periodLabel(p, t)} selected={query.period === p} onToggle={() => set({ period: p })} />)}</div></FilterPopover>
@@ -302,6 +303,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
           <div className={`${styles.row} ${styles.between} ${d.toggleRow}`}>{t("planFirst")}<Toggle checked={query.planFirst !== false} onChange={(value: boolean) => setQuery((current) => ({ ...current, planFirst: value }))} label={t("planFirst")} /></div>
           <div className={`${styles.row} ${d.popFoot}`}><span className={styles.lbl}><Kbd>Esc</Kbd> {t("escClose")}</span><button type="button" className={`btn ${styles.btn} ${styles.primary} ${styles.sm}`} style={{ marginLeft: "auto" }} onClick={() => set({ themes: draftThemes })}>{t("showN", { n: data?.total ?? 0 })}</button></div>
         </FilterPopover>
+      </div>
       </div>
     </div>
   );
@@ -336,7 +338,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
       ) : data.popularityFallback && !data.signedOut ? (
         <>
           <div className={`${styles.card} ${styles.span12} ${styles.guide}`} data-discover-empty="">
-            <div className={styles.row} style={{ alignItems: "center", gap: 24 }}>
+            <div className={`${styles.row} ${d.guideRow}`}>
               <div style={{ flex: 1 }}>
                 <div className={styles.lbl}>{t("noPlanLbl")}</div>
                 {goal === undefined ? (

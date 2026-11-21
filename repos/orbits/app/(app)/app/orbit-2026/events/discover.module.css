@@ -42,6 +42,9 @@
 .lbtn.lbtn { width: 34px; height: 34px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); display: grid; place-items: center; color: var(--ink-2); flex: 0 0 auto; cursor: pointer; }
 .lbtn svg { width: 16px; height: 16px; }
 .widenBtn { gap: 6px; }
+.guideRow.guideRow { align-items: center; gap: 24px; }
+/* 2026-11-21 手机：标题和「用目标生成计划」并排会把标题挤成五行 → 上下排。 */
+@media (max-width: 767px) { .guideRow.guideRow { flex-direction: column; align-items: stretch; gap: 16px; } }
 .guideTitle { font-size: var(--fs-number); font-weight: var(--fw-heavy); margin: 4px 0; }
 .signedOut { padding: 14px 20px; font-size: var(--fs-control); color: var(--ink-2); }
 /* 開催済み：灰掉的卡片 / 行，仍可点开详情（2026-10-29）。 */
@@ -91,7 +94,7 @@
 .pMeta b { display: block; font-size: var(--fs-body); font-weight: var(--fw-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pMeta span { display: block; font-size: var(--fs-meta); color: var(--ink-3); font-weight: var(--fw-regular); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pSection { margin-top: 18px; }
-.pCarousel { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -18px; padding: 2px 18px 4px; scrollbar-width: none; }
+.pCarousel { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 18px; margin: 0 -18px; padding: 2px 18px 4px; scrollbar-width: none; }
 .pCarousel::-webkit-scrollbar { display: none; }
 .pCard { scroll-snap-align: start; flex: 0 0 auto; width: 260px; border-radius: var(--r-card-web); background: var(--surface); padding: 16px; display: flex; flex-direction: column; cursor: pointer; }
 .pCardTitle { display: block; margin-top: 12px; font-size: var(--fs-body); line-height: 1.35; }
@@ -106,3 +109,17 @@
 .pAll.pAll { margin-top: 16px; padding: 8px 16px; }
 .pAllH.pAllH { margin: 8px 0 0; }
 .pSheet { display: grid; gap: 10px; padding-bottom: 8px; }
+/* 宽屏：三个筛选按钮的包裹层不参与布局。 */
+.filterScroll { display: contents; }
+/* 2026-11-21 手机（<768）：之前筛选条四个控件不换行，把单列网格撑到约 600px 宽，整页横向溢出、iOS 缩小显示。
+   照常见做法（与 App 探す 一致）：搜索框独占一行，三个筛选按钮一行可横向滑动；筛选弹层改为贴底的整宽卡片（底部 tab 栏之上）。 */
+@media (max-width: 767px) {
+  .filterRow { flex-wrap: wrap; row-gap: 10px; }
+  .search { flex: 1 1 100%; min-width: 0; }
+  .filterScroll { display: flex; gap: 8px; flex: 1 1 100%; min-width: 0; overflow-x: auto; margin: 0 -18px; padding: 0 18px; scrollbar-width: none; }
+  .filterScroll::-webkit-scrollbar { display: none; }
+  .popWrap { position: static; flex: 0 0 auto; }
+  .popover { position: fixed; top: auto; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); width: auto; max-height: calc(100dvh - 180px); overflow-y: auto; z-index: var(--z-modal); box-shadow: 0 0 0 100vmax var(--scrim-web), var(--shadow-float); }
+  .popRight { left: 12px; right: 12px; }
+  .popFoot > span { display: none; }
+}

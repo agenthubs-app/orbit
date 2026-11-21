@@ -66,7 +66,7 @@ export function SignupTrend({ values, startDate, t, height = 120, marks }: { val
         })}
       </div>
       <div className={st.axis} style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }} aria-hidden>
-        {labels.map((label, index) => <span key={index}>{index % step === 0 || index === labels.length - 1 ? label : ""}</span>)}
+        {labels.map((label, index) => <span key={index} className={index % step === 0 && index < labels.length - 1 && labels.length - 1 - index < step ? st.nearLast : undefined}>{index % step === 0 || index === labels.length - 1 ? label : ""}</span>)}
       </div>
       <table className={st.srOnly}>
         <caption>{t("trendTitle")}</caption>

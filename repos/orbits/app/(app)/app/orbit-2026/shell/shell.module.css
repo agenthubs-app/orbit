@@ -5,7 +5,7 @@
   --orbit-shell-bottom-inset: 0px;
   display: grid;
   grid-template-columns: 84px minmax(0, 1fr);
-  min-height: 100vh;
+  min-height: 100vh; min-height: 100dvh;
   /* kit .web: two fog blooms, top left (lavender) and top right (smoke pink). */
   background:
     radial-gradient(900px 500px at 10% -10%, var(--fog-a), transparent 70%),
@@ -14,7 +14,7 @@
 }
 .frame[data-rail="true"] { grid-template-columns: 84px minmax(0, 1fr) 360px; }
 
-.sideScope { position: sticky; top: 0; height: 100vh; z-index: var(--z-sticky); }
+.sideScope { position: sticky; top: 0; height: 100vh; height: 100dvh; z-index: var(--z-sticky); }
 .side {
   height: 100%;
   padding: var(--space-22) 0;
@@ -111,7 +111,7 @@
 }
 .content { flex: 1; min-width: 0; }
 
-.railScope { display: block; position: sticky; top: 0; height: 100vh; }
+.railScope { display: block; position: sticky; top: 0; height: 100vh; height: 100dvh; }
 .rail {
   height: 100%;
   border-left: 1px solid var(--line);
@@ -340,6 +340,12 @@
   .mainhead { padding: var(--space-16) var(--space-18) 0; }
   /* b6 / b8 390: pages that fold their title into their own content (phoneFold) lose the
      header row; only the sample-mode pill stays (it is the way out of the demo). */
+  /* 2026-11-21：两侧按钮放不下（Shell 量出后标 data-crowded）→ 标题一行、左右按钮一行，不再盖住标题。 */
+  .mainhead[data-crowded="true"] { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "t t" "l r"; row-gap: var(--space-12); }
+  .mainhead[data-crowded="true"] > .headRight { flex-wrap: wrap; row-gap: 8px; }
+  .mainhead[data-crowded="true"] > .headSide:first-child { grid-area: l; }
+  .mainhead[data-crowded="true"] > .headTitle { grid-area: t; }
+  .mainhead[data-crowded="true"] > .headRight { grid-area: r; }
   .mainheadFold { display: flex; justify-content: flex-start; padding: 0 var(--space-18); margin-bottom: 0; }
   .mainheadFold:not(:has(.demoSlot)) { display: none; }
   .mainheadFold .headTitle, .mainheadFold .headSide > :not(.demoSlot) { display: none; }
