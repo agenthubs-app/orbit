@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>该聊的人 类型详情</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<script src="kit/data.js"></script>
+<style>
+  .doc { min-width: 1520px; }
+  .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  /* ---------- 说明区 ---------- */
+  .decide { display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 18px; margin-bottom: 18px; max-width: 1440px; }
+  .decide .box { background: var(--surface); border-radius: 22px; padding: 20px 22px; font-size: 13px; line-height: 1.75; color: var(--ink-2); }
+  .decide .box h3 { font-size: 15px; font-weight: 800; color: var(--ink); margin-bottom: 10px; }
+  .decide .box b { color: var(--ink); }
+  .decide ol { padding-left: 18px; display: grid; gap: 6px; }
+  .fields { width: 1440px; border-collapse: separate; border-spacing: 0; background: var(--surface); border-radius: 22px; overflow: hidden; font-size: 12.5px; color: var(--ink-2); }
+  .fields th, .fields td { text-align: left; vertical-align: top; padding: 9px 14px; border-bottom: 1px solid var(--line); line-height: 1.6; }
+  .fields th { background: var(--surface-2); color: var(--ink); font-weight: 800; font-size: 12px; }
+  .fields td:first-child { font-weight: 800; color: var(--ink); white-space: nowrap; }
+  .fields tr:last-child td { border-bottom: 0; }
+
+  /* ---------- 手机浏览器框（同 b8 m390：品牌顶栏 + 胶囊导航在 Safari 底栏之上） ---------- */
+  .mweb .scroll { padding-bottom: 200px; }
+  .mweb .tabbar { bottom: 100px; }
+  .sbar { position: absolute; left: 0; right: 0; bottom: 0; height: 92px; z-index: 34; background: var(--glass); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border-top: 1px solid var(--line); padding: 10px 14px 0; display: flex; gap: 10px; align-items: flex-start; }
+  .sbar .url { flex: 1; height: 42px; border-radius: 14px; background: var(--surface); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13.5px; color: var(--ink-2); font-weight: 600; }
+  .sbar .ub { width: 42px; height: 42px; display: grid; place-items: center; color: var(--ink-2); font-size: 14px; font-weight: 700; }
+  .mw-head { display: flex; align-items: center; gap: 8px; padding: 6px 0 10px; }
+  .mw-head .logo { width: 34px; height: 34px; border-radius: 11px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; }
+  .mweb .hhead { padding: 4px 0 12px; }
+
+  /* ---------- iPad 834（72px 图标栏，无常驻右栏） ---------- */
+  .web.w834 { width: 834px; height: auto; min-height: 1112px; grid-template-columns: 72px 1fr; }
+  .w834 .side a { width: 48px; padding: 12px 0; font-size: 0; gap: 0; }
+  .w834 .side .logo { margin-bottom: 14px; }
+  .w834 .main { padding: 22px 26px 40px; overflow: visible; }
+  .web.tall { height: auto; min-height: 960px; }
+  .web.tall .main { overflow: visible; }
+
+  /* ---------- 类型详情：头卡 ---------- */
+  .th-top { display: flex; gap: 12px; align-items: flex-start; }
+  .th-top .tt { flex: 1; min-width: 0; }
+  .th-name { display: block; font-size: 17px; font-weight: 800; line-height: 1.45; margin-top: 2px; }
+  .web .th-name { font-size: 19px; }
+  .th-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .th-stats > div { min-width: 0; padding: 0 10px; }
+  .th-stats > div:first-child { padding-left: 0; }
+  .th-stats > div + div { border-left: 1px solid var(--line); }
+  .th-stats b { display: block; font-family: var(--font-num); font-size: 20px; font-weight: 800; line-height: 1.2; }
+  .th-stats span { display: block; font-size: 11.5px; color: var(--ink-3); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .th-stats .z b { color: var(--ink-4); }
+  .th-prog { margin-top: 14px; }
+  .th-prog .sl { display: flex; align-items: baseline; gap: 6px; }
+  .th-prog .sl b { font-family: var(--font-num); font-size: 22px; font-weight: 800; line-height: 1; }
+  .th-prog .v2mb { height: 6px; margin-top: 8px; }
+  .th-acts { display: flex; gap: 8px; margin-top: 16px; }
+  .th-acts .btn { height: 44px; }
+  .th-acts .grow { flex: 1; }
+  .th-acts .lbtn { width: 44px; height: 44px; background: var(--surface-2); }
+  .btn[disabled] { opacity: .4; }
+  .th-skip { display: flex; gap: 12px; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .th-skip .hatch { width: 28px; height: 28px; border-radius: 9px; flex: none; background: repeating-linear-gradient(135deg, var(--plum-300) 0 2px, var(--plum-100) 2px 6px); }
+  .th-skip .tx { flex: 1; min-width: 0; font-size: 13px; }
+  .th-skip .tx b { display: block; }
+  /* 宽屏头卡：左标题 | 右三格；进度整行 */
+  .web .th-wide { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 28px; align-items: center; }
+  .web .th-wide .th-stats { margin-top: 0; padding-top: 0; border-top: 0; }
+  .web .th-wide .th-stats > div { padding: 4px 16px; }
+  .web .th-prog { padding-top: 14px; border-top: 1px solid var(--line); margin-top: 16px; display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; }
+  .web .th-prog .v2mb { margin-top: 0; }
+
+  /* ---------- 下方区块（低保真） ---------- */
+  .whead { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .whead .t { flex: 1; min-width: 0; }
+  .whead .t b { display: block; font-size: 20px; font-weight: 800; }
+  .whead .t small { font-size: 12px; color: var(--ink-3); }
+  .whead .r { display: flex; gap: 8px; align-items: center; }
+  .whead .r > .btn:not(.primary) { background: var(--surface); }
+  .gapc { height: 14px; }
+  .sec-h { display: flex; align-items: baseline; justify-content: space-between; margin: 22px 2px 8px; }
+  .sec-h h3 { font-size: 16px; font-weight: 800; }
+  .mweb .card + .card { margin-top: 12px; }
+  .kvp { font-size: 13px; color: var(--ink-2); line-height: 1.75; }
+  .hr { height: 1px; background: var(--line); margin: 14px 0 12px; }
+  .q { font-size: 13px; font-weight: 700; line-height: 1.65; }
+  .evr { display: grid; grid-template-columns: 46px minmax(0, 1fr) 14px; gap: 10px; align-items: center; padding: 10px 0; }
+  .evr + .evr { border-top: 1px solid var(--line); }
+  .evr .dt b { display: block; font-family: var(--font-num); font-size: 15px; font-weight: 800; }
+  .evr .dt span { display: block; font-size: 10.5px; color: var(--ink-3); }
+  .evr .m b { display: block; font-size: 13.5px; font-weight: 700; }
+  .evr .m .lbl { display: block; margin: 1px 0 5px; }
+  .evr > svg { color: var(--ink-4); }
+  .grp { font-size: 11px; font-weight: 800; color: var(--ink-3); margin: 4px 0 0; }
+  .cand { display: grid; grid-template-columns: 20px 38px minmax(0, 1fr) 30px; gap: 10px; align-items: start; padding: 12px 0; }
+  .cand + .cand { border-top: 1px solid var(--line); }
+  .cand .cbx { margin-top: 9px; }
+  .cand .m b { font-size: 13.5px; font-weight: 700; }
+  .cand .m .lbl { display: block; }
+  .cand .m p { font-size: 12.5px; color: var(--ink-2); margin-top: 4px; line-height: 1.6; }
+  .cand .sc { font-family: var(--font-num); font-size: 16px; font-weight: 800; text-align: right; margin-top: 7px; }
+  .selbar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 16px; background: var(--surface-2); margin-bottom: 4px; }
+  .selbar .lbl b { color: var(--ink); }
+  .qn { display: grid; grid-template-columns: 20px 1fr; gap: 8px; font-size: 13px; line-height: 1.6; padding: 5px 0; }
+  .qn i { font-style: normal; width: 20px; height: 20px; border-radius: 50%; background: var(--surface-2); font-size: 11px; font-weight: 800; display: grid; place-items: center; margin-top: 1px; }
+  .ghost-lines i { display: block; height: 9px; border-radius: 5px; background: var(--surface-2); margin: 8px 0; }
+  .table.ev td { vertical-align: top; }
+  .table.ev .grpr td { font-size: 11px; font-weight: 800; color: var(--ink-3); padding-top: 14px; border-top: 0; }
+  .menu-sheet .it { display: flex; align-items: center; gap: 12px; height: 52px; font-size: 15px; font-weight: 700; }
+  .menu-sheet .it + .it { border-top: 1px solid var(--line); }
+  .rail .card { padding: 16px; border-radius: 20px; }
+  .wpop { position: absolute; z-index: 25; width: 220px; background: var(--surface); border-radius: 16px; padding: 6px; box-shadow: var(--shadow-float); }
+  .wpop .it { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 11px; font-size: 13px; font-weight: 700; }
+  .wpop .it:hover { background: var(--surface-2); }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <div>
+      <div class="doc-kicker">Orbit Redesign · 2026-11-21 · Web 提案（390 / 834 / 1440）· 待用户确认</div>
+      <h1>「该聊的人」类型详情：页头和头卡重排</h1>
+      <p>路由 /app/plans/&lt;planId&gt;/types/&lt;itemId&gt;。只改布局和重复信息，不加功能：按钮、字段、文案都来自现有 PlanTypeDetailScreen.tsx 与 copy/plan.ts（zh）。头部和头卡按高保真画，下面的区块按低保真画，用来看清三档宽度下整页怎么排。示例人物、活动均为虚构。</p>
+    </div>
+    <div class="doc-tools">
+      <div class="seg" data-ctl="theme"><button data-v="light">浅色</button><button data-v="dark">深色</button></div>
+      <div class="seg" data-ctl="pins"><button data-v="on" class="on">标注 ON</button><button data-v="off">OFF</button></div>
+    </div>
+  </div>
+
+  <div class="decide">
+    <div class="box">
+      <h3>问题（手机现状截图）</h3>
+      <ol>
+        <li><b>页头三个按钮乱排</b>：返回钮、「这方面我已熟悉」「＋线下聊过」「下一步」挤在标题下面，返回钮被挤到第二行中间，按钮分两行右对齐，和返回钮不在一条线上。</li>
+        <li><b>头卡溢出</b>：桌面的「标题 | 三格 | 分数」一行硬塞进 354px，三格那一块越出卡片右边缘。</li>
+        <li><b>格子太挤</b>：三格只有约 90px 宽；进度条只占半宽；「人物画像」「能见到的活动」仍按桌面 5 / 7 两列并排，各剩 130–180px，标题「能见到的活动」和「参加活动栏 +5」都被折成两行。</li>
+        <li><b>同屏重复</b>：「前 CFO」出现在标题和卡片小字两处；「配分10」与「/10分」重复；「人脉中还没有」与格子里的「人脉中没有」重复。</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h3>方案</h3>
+      <ol>
+        <li><b>标题行</b>：← 返回 + 标题「前 CFO」+ 小字「Step 1」，左对齐一行（kit .hhead）。标题行不再放按钮。</li>
+        <li><b>动作只剩一组</b>：主按钮「＋ 线下聊过」（实心、最宽）；次按钮「✦ 下一步」；「这方面我已熟悉」收进 ⋯ 菜单（不常用，而且是会改分数的操作）。手机放在头卡底部一行；834 / 1440 放在页头右侧。1440 有常驻右栏，所以不出「下一步」。</li>
+        <li><b>头卡改成纵向</b>：MacTile + 小字「角色 × 处境」+ 一句话标题 → 三格一行（细分隔线，不是卡中卡）→ 进度整行（分数 + 「/10分 · 0/1人」+ 满宽进度条）。</li>
+        <li><b>去重</b>：小字删掉「前 CFO ·」；副标题只留 Step；三格第一格标签固定写「人脉中的候选」，数字为 0 时变灰，不再换成「人脉中没有」。</li>
+        <li><b>下方区块</b>：手机和 834 都单列满宽；1440 维持 5 / 7 两列。手机上活动表、候选表改成列表行（b8 断点规范「表格 → 卡片列表」）。</li>
+        <li><b>右栏去重</b>：1440 右栏删掉「能见到这类人的活动」（主栏已有同一批活动），只留「问问这个类型」和草稿说明。</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h3>对标成熟产品的做法</h3>
+      <ol>
+        <li><b>LinkedIn 个人页（手机）</b>：头卡里一个实心主按钮（Message / Connect）占大半行，旁边一个次按钮 + 「More ⋯」；不常用操作全进 ⋯。本方案手机头卡底部的「线下聊过 / 下一步 / ⋯」照这个排。</li>
+        <li><b>Linear issue 详情</b>：标题区左侧是返回 + 标题，右上角只有一个主操作 + ⋯；桌面不在标题下面堆按钮。本方案 834 / 1440 页头照这个排。</li>
+        <li><b>Notion / GitHub 移动端</b>：属性和数字在窄屏改成纵向堆叠，统计做成一行带分隔线的小格（GitHub 仓库页 Stars · Forks · Watching），不做卡中卡。</li>
+        <li><b>iOS 操作菜单</b>：⋯ 在手机上打开底部弹层（与 b8「弹窗 → 底部 sheet」一致），桌面是锚定在按钮下的小菜单。</li>
+      </ol>
+    </div>
+  </div>
+  <nav class="doc-nav" id="docnav"></nav>
+  <div id="out"></div>
+</div>
+<script>
+/* ================= 示例数据（虚构） ================= */
+const T = {
+  label: '前 CFO', step: 'Step 1', emoji: '📊',
+  head: '在高强度融资节奏中把控数字与资金规划，帮首次融资的团队把模型讲清楚',
+  persona: '团队明确缺口在财务模型，需要一位能直接上手的财务把关人',
+  why: '你的计划第 1 步是「把财务模型做到能见投资人」，这类人做过同样的事。',
+  opener: '我们在准备首轮融资的财务模型，想听听您当年是怎么跟投资人讲清楚收入假设的？',
+};
+const EVS = [
+  { g: '会来前 CFO', d: '11/28', w: '周六 19:00', n: 'CFO Night Tokyo vol.18', v: '渋谷ストリーム · ¥5,000', chips: [['lav', '前 CFO 3位'], ['teal', '认识的人1位']] },
+  { g: '主题相近', d: '12/03', w: '周三 18:30', n: 'SaaS 财务实务研讨会', v: '丸の内 · 免费', chips: [['blue', '主题相近']] },
+];
+const CANDS = [
+  { i: '伊', c: 'c4', n: '伊藤 直子', co: '株式会社ハルモニア · CFO', r: '带过两家公司做 A 轮，熟悉 SaaS 收入模型', s: 86, on: true },
+  { i: '松', c: 'c5', n: '松本 亮', co: 'ミライ会計事務所 · 公认会计师', r: '常给创业公司做融资前的数字检查', s: 72 },
+  { i: '林', c: 'c3', n: '林 美穂', co: 'クオリス · 经营企划部长', r: '上一家公司做过 IPO 准备', s: 64 },
+];
+
+/* ================= zh 画框（同 kit 结构，导航改 zh） ================= */
+const NAVZ = [['home', '首页'], ['users', '人脉'], ['sparkle', 'iOrbit'], ['calendar', '活动'], ['task', 'Task']];
+const SIDEZ = [...NAVZ, ['inbox', '收件箱']];
+const sbar = `<div class="sbar"><span class="ub">aA</span><div class="url">${ic('search', 'sm')}orbit.app</div><span class="ub">${ic('refresh', 'sm')}</span></div>`;
+const mNav = (on) => `<nav class="tabbar">${NAVZ.map(([i, l], k) => `<button class="${k === on ? 'on' : ''}">${ic(i)}${l}</button>`).join('')}</nav>`;
+const brand = `<div class="mw-head"><div class="logo">O</div><b style="font-size:16px">Orbit</b><div style="flex:1"></div><button class="rbtn">${ic('inbox')}</button><button class="avatar-btn">佐</button></div>`;
+const m390 = ({ body, nav = 4, overlay = '', pins = '', theme = '' }) => phone({ tab: -1, body: brand + body, overlay: mNav(nav) + overlay + sbar, pins, theme }).replace('class="phone"', 'class="phone mweb"');
+const webZ = ({ nav = 4, body, rail = '', pins = '', cls = '', theme = '' }) =>
+  `<div class="web ${rail ? '' : 'no-rail'} ${cls}" ${theme ? `data-theme="${theme}"` : ''}>
+    <aside class="side"><div class="logo">O</div>${SIDEZ.map(([i, l], k) => `<a class="${k === nav ? 'on' : ''}">${ic(i)}${l}</a>`).join('')}
+      <div class="sp"></div><a>${ic('brief')}主办</a><a>${ic('settings')}设置</a><div class="avatar-btn" style="margin-top:8px">佐</div></aside>
+    <section class="main">${body}</section>${rail ? `<aside class="rail">${rail}</aside>` : ''}${pins}</div>`;
+
+/* ================= 头部与头卡 ================= */
+const back = `<button class="rbtn">${ic('left')}</button>`;
+const hhead = `<div class="hhead p-title">${back}<div class="t"><b>${T.label}</b><small>${T.step}</small></div></div>`;
+const stats = (s) => `<div class="th-stats p-stats">${[[s.c, '人脉中的候选', '名'], [s.e, '能见到的活动'], [s.r, '引荐路径']].map(([v, l, u]) => `<div class="${v === 0 ? 'z' : ''}"><b>${v}${u ? `<small style="font-size:11px;color:var(--ink-3);margin-left:1px">${u}</small>` : ''}</b><span>${l}</span></div>`).join('')}</div>`;
+const prog = (s) => `<div class="th-prog p-prog"><div class="sl"><b>${s.pts}</b><span class="lbl">${s.skipped ? '/10分 · 已熟悉' : `/10分 · ${s.met}/${s.tg}人`}</span></div>${s.skipped ? '<div class="v2mb sk"></div>' : `<div class="v2mb"><b style="width:${s.pts * 10}%"></b></div>`}</div>`;
+const S0 = { c: 0, e: 2, r: 0, pts: 0, met: 0, tg: 1 };
+const S1 = { c: 3, e: 2, r: 1, pts: 5, met: 1, tg: 2 };
+const SK = { c: 3, e: 2, r: 1, pts: 10, skipped: true };
+const tileTone = 'teal';
+const headTop = `<div class="th-top"><span class="emo ${tileTone}">${T.emoji}</span><div class="tt"><div class="v22tk">角色 × 处境</div><b class="th-name">${T.head}</b></div></div>`;
+const acts = (o = {}) => `<div class="th-acts p-acts"><button class="btn primary grow" ${o.skipped ? 'disabled' : ''}>${ic('plus', 'sm')}线下聊过</button><button class="btn">${ic('sparkle', 'sm')}下一步</button>${o.skipped ? '' : `<button class="lbtn p-more">${ic('more', 'sm')}</button>`}</div>`;
+const skipRow = `<div class="th-skip p-skip"><i class="hatch"></i><div class="tx"><b>已按熟悉记为满分</b><span class="lbl">11月18日 · 和聊出来的分分开显示</span></div><button class="btn sm">撤销跳过</button></div>`;
+const pHead = (s, o = {}) => `<div class="card p-head">${headTop}${stats(s)}${prog(s)}${o.skipped ? skipRow : ''}${acts(o)}</div>`;
+
+/* ================= 下方区块 ================= */
+const secH = () => '<div class="gapc"></div>';
+const secH0 = (t, r = '') => `<div class="sec-h"><h3>${t}</h3>${r ? `<span class="lbl">${r}</span>` : ''}</div>`;
+const persona = (o = {}) => `<div class="card ${o.span || ''} p-persona"><div class="card-h"><h3>人物画像</h3><span class="why">?</span></div>
+  <div class="kvp">${T.persona}</div><div class="hr"></div>
+  <div class="row between" style="margin-bottom:4px"><span class="lbl" style="font-weight:700">开场白</span><button class="btn sm ghost">复制</button></div>
+  <div class="q">「${T.opener}」</div></div>`;
+const evRows = () => {
+  let g = '', h = '';
+  EVS.forEach(e => { if (e.g !== g) { g = e.g; h += `<div class="grp">${g}</div>`; }
+    h += `<div class="evr"><div class="dt"><b>${e.d}</b><span>${e.w}</span></div><div class="m"><b class="ell">${e.n}</b><span class="lbl ell">${e.v}</span><div class="chips">${e.chips.map(([c, t]) => `<span class="chip ${c}">${t}</span>`).join('')}</div></div>${ic('right', 'sm')}</div>`; });
+  return h;
+};
+const pEvents = (empty) => `<div class="card p-events"><div class="card-h" style="margin-bottom:${empty ? 6 : 4}px"><h3>能见到的活动</h3><span class="lbl">参加活动栏 +5</span></div>${empty ? '<div class="lbl" style="font-size:12.5px">还没找到适合这类人的活动</div>' : evRows()}</div>`;
+const pAbout = `<div class="card p-about"><div class="card-h" style="margin-bottom:6px"><h3>为什么是这类人</h3></div><div class="kvp">${T.why}</div>
+  <div class="row between" style="margin:14px 0 4px"><b style="font-size:13px">只再确认3个问题</b><button class="btn sm ghost">复制</button></div>
+  ${['当年首轮融资前，模型里哪条假设被投资人问得最多？', '收入预测是按客户分层做，还是按渠道做？', '有没有可以参考的模板或检查清单？'].map((q, k) => `<div class="qn"><i>${k + 1}</i><span>${q}</span></div>`).join('')}
+  <div class="ghost-lines" style="margin-top:10px"><i style="width:40%"></i><i style="width:92%"></i><i style="width:78%"></i></div></div>`;
+const pCands = `<div class="card p-cands"><div class="card-h" style="margin-bottom:8px"><h3>你人脉中的候选</h3><span class="lbl">按推荐度</span></div>
+  <div class="selbar p-selbar"><span class="lbl" style="flex:1"><b>1位</b>已选</span><button class="btn sm">已经聊过</button><button class="btn sm primary">提议面谈</button></div>
+  ${CANDS.map(p => `<div class="cand"><span class="cbx ${p.on ? 'on' : ''}">${ic('check')}</span><div class="av ${p.c}">${p.i}</div><div class="m"><b>${p.n}</b><span class="lbl ell">${p.co}</span><p>${p.r}</p></div><div class="sc">${p.s}</div></div>`).join('')}</div>`;
+
+/* ================= 板 ================= */
+const notesHTML = (notes, w = 390) => notes && notes.length ? `<ul class="note-list" style="max-width:${w}px">${notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : '';
+const boards = (items) => `<div class="boards">${items.map(([label, tag, html, notes, w]) => `<div class="board"><div class="board-label">${label}${tag ? `<span class="tag">${tag}</span>` : ''}</div>${html}${notesHTML(notes, w)}</div>`).join('')}</div>`;
+const sec = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+const scrollTo = (y, html) => `<div data-scrollto="${y}">${html}</div>`;
+
+let h = '';
+/* ---------- 手机 390 ---------- */
+h += sec('① 手机 390', '品牌顶栏 + 标题行 + 头卡；下方单列；底部胶囊导航（Task 选中）');
+const pNone = hhead + pHead(S0) + secH('关于这类人') + persona() + secH('去哪见') + pEvents(false);
+const pWith = hhead + pHead(S1) + secH('关于这类人') + pAbout + secH('你的人脉') + pCands;
+h += boards([
+  ['P1 · 人脉中还没有（同截图状态）', '提案', m390({ body: pNone, pins: pin(1, '.p-title') + pin(2, '.p-stats') + pin(3, '.p-prog') + pin(4, '.p-acts') }),
+    ['标题行：← + 「前 CFO」+ 小字「Step 1」，左对齐一行；不放按钮', '三格一行，细分隔线；标签固定，0 变灰', '进度整行：分数 + 「/10分 · 0/1人」+ 满宽进度条', '动作一行：主按钮「线下聊过」占满余宽 +「下一步」+ ⋯（内含「这方面我已熟悉」）']],
+  ['P2 · 往下滚', '提案', scrollTo(330, m390({ body: pNone, pins: pin(1, '.p-persona') + pin(2, '.p-events') })),
+    ['人物画像满宽：「?」展开为什么是这类人；开场白可复制', '能见到的活动：表格改列表行（日期 · 活动 · 和你有关），按「会来前 CFO / 主题相近」分组；整行可点进活动详情']],
+  ['P3 · 人脉里有候选', '提案', m390({ body: pWith, pins: pin(1, '.p-stats') }),
+    ['有数据时三格和进度条照常；头卡结构不变']],
+  ['P4 · 有候选 · 往下滚', '低保真', scrollTo(470, m390({ body: pWith, pins: pin(1, '.p-selbar') + pin(2, '.p-cands') })),
+    ['选中后卡片顶部出现「1位已选 · 已经聊过 · 提议面谈」', '候选表改列表行：勾选 · 头像 · 姓名 / 公司 / 理由 · 推荐度']],
+]);
+const sheet = `<div class="sheet-scrim"></div><div class="sheet menu-sheet p-sheet"><div class="grab"></div><div class="it">${ic('check')}这方面我已熟悉</div><div class="it" style="justify-content:center;color:var(--ink-3)">取消</div></div>`;
+h += `<div style="height:28px"></div>` + boards([
+  ['P5 · 点 ⋯', '提案', m390({ body: pNone, overlay: sheet, pins: pin(1, '.p-sheet') }),
+    ['⋯ → 底部弹层；选「这方面我已熟悉」后沿用现有确认弹窗（SkipDialog）']],
+  ['P6 · 已标记熟悉', '状态', m390({ body: hhead + pHead(SK, { skipped: true }) + secH('关于这类人') + pAbout, pins: pin(1, '.p-skip') + pin(2, '.p-acts') }),
+    ['跳过后：头卡内一行「已按熟悉记为满分」+ 撤销跳过；进度条斜纹、写「/10分 · 已熟悉」', '「线下聊过」置灰，⋯ 不出（唯一的菜单项已生效）']],
+  ['P7 · 能见到的活动为空', '状态', scrollTo(330, m390({ body: hhead + pHead({ ...S0, e: 0 }) + secH('关于这类人') + persona() + secH('去哪见') + pEvents(true), pins: pin(1, '.p-events') })),
+    ['没有活动：一行灰字，不再是半屏空白卡']],
+  ['P1 · 深色', '', m390({ body: pNone, theme: 'dark' })],
+]);
+
+/* ---------- iPad 834 ---------- */
+h += sec('② iPad 834', '72px 图标栏，无常驻右栏；页头右侧放动作；头卡纵向；下方区块单列满宽');
+const whead = (r) => `<div class="whead">${back}<div class="t"><b>${T.label}</b><small>${T.step}</small></div><div class="r">${r}</div></div>`;
+const railBtn = `<button class="btn">${ic('sparkle', 'sm')}下一步</button>`;
+const moreBtn = `<button class="rbtn p-wmore">${ic('more')}</button>`;
+const recBtn = `<button class="btn primary">${ic('plus', 'sm')}线下聊过</button>`;
+const wHead = (s) => `<div class="card span12 p-whead">${headTop}${stats(s)}${prog(s)}</div>`;
+const wHeadWide = (s) => `<div class="card span12 p-whead"><div class="th-wide">${headTop}${stats(s)}</div>${prog(s)}</div>`;
+const evTable = () => `<table class="table ev"><thead><tr><th style="width:70px">日期</th><th>活动</th><th>和你有关</th></tr></thead><tbody>${(() => { let g = '', r = ''; EVS.forEach(e => { if (e.g !== g) { g = e.g; r += `<tr class="grpr"><td colspan="3">${g}</td></tr>`; } r += `<tr><td><b style="font-family:var(--font-num)">${e.d}</b><div class="lbl">${e.w}</div></td><td><b style="font-weight:700">${e.n}</b><div class="lbl">${e.v}</div></td><td><div class="chips">${e.chips.map(([c, t]) => `<span class="chip ${c}">${t}</span>`).join('')}</div></td></tr>`; }); return r; })()}</tbody></table>`;
+const wEvents = (span) => `<div class="card ${span} p-wevents"><div class="card-h"><h3>能见到的活动</h3><span class="lbl">参加活动栏 +5</span></div>${evTable()}</div>`;
+const popMenu = (x, y) => `<div class="wpop p-pop" style="left:${x}px;top:${y}px"><div class="it">${ic('check', 'sm')}这方面我已熟悉</div></div>`;
+h += boards([
+  ['T1 · 834 · 人脉中还没有', '提案', webZ({ cls: 'w834', body: whead(railBtn + moreBtn + recBtn) + `<div class="wgrid">${wHead(S0)}${persona({ span: 'span12' })}${wEvents('span12')}</div>`, pins: pin(1, '.whead .r') + pin(2, '.p-stats') + pin(3, '.p-persona') }),
+    ['页头右侧：「下一步」（打开右栏抽屉）· ⋯ · 主按钮「线下聊过」；标题行左侧只有返回', '头卡与手机同一纵向结构，三格和进度都满宽', '人物画像、能见到的活动各占整行（710px 分 5 / 7 两列会回到截图里的挤法）'], 834],
+  ['T2 · 834 · 点 ⋯', '提案', webZ({ cls: 'w834', body: whead(railBtn + moreBtn + recBtn) + `<div class="wgrid">${wHead(S0)}${persona({ span: 'span12' })}</div>` + popMenu(486, 72), pins: pin(1, '.p-pop') }),
+    ['桌面 / 平板：⋯ 打开锚定在按钮下的小菜单（不是底部弹层）'], 834],
+]);
+
+/* ---------- 桌面 1440 ---------- */
+h += sec('③ 桌面 1440', '84px 导航 + 主栏 + 360 右栏；页头右侧 ⋯ + 主按钮；头卡左右两段；下方 5 / 7 两列');
+const rail = `<h4>${ic('sparkle', 'sm')}iOrbit</h4><button class="assist-in" style="text-align:left">${ic('sparkle', 'sm')}问问这个类型</button><div class="card flat p-rnote" style="font-size:12.5px;color:var(--ink-2);line-height:1.7">邮件、消息只到草稿为止。由你来发送。</div>`;
+h += boards([
+  ['D1 · 1440 · 人脉中还没有', '提案', webZ({ cls: 'tall', rail, body: whead(moreBtn + recBtn) + `<div class="wgrid">${wHeadWide(S0)}${persona({ span: 'span5' })}${wEvents('span7')}</div>`, pins: pin(1, '.whead .r') + pin(2, '.p-stats') + pin(3, '.p-prog') + pin(4, '.rail .assist-in') }),
+    ['页头右侧只有 ⋯ + 「线下聊过」；有常驻右栏，不出「下一步」', '头卡：左边标题、右边三格（400px），不再和分数挤一行', '进度整行在头卡底部', '右栏删掉「能见到这类人的活动」：主栏「能见到的活动」已列同一批，右栏只留「问问这个类型」和草稿说明'], 1440],
+]);
+h += `<div style="height:28px"></div>` + boards([
+  ['D2 · 1440 · 人脉里有候选', '低保真', webZ({ cls: 'tall', rail, body: whead(moreBtn + recBtn) + `<div class="wgrid">${wHeadWide(S1)}<div class="card span5">${pAbout.replace(/^<div class="card p-about">/, '').replace(/<\/div>$/, '')}</div><div class="card span7"><div class="card-h"><h3>你人脉中的候选 · 按推荐度</h3><span class="lbl">3位</span></div><div class="ghost-lines"><i style="width:100%;height:28px;border-radius:10px"></i><i style="width:100%;height:28px;border-radius:10px"></i><i style="width:100%;height:28px;border-radius:10px"></i></div></div></div>`, pins: pin(1, '.p-whead') }),
+    ['有候选时结构相同；候选表沿用现有表格（勾选 · 推荐度 · 姓名 · 理由 · 开场方式）'], 1440],
+]);
+
+/* ---------- 字段表 ---------- */
+h += sec('字段表：头部与头卡', '谁来填 / 上限 / 缺失怎么显示');
+const F = [
+  ['标题', '计划（类型 shortLabel）', '1 行，超出省略', '必有'],
+  ['副标题', '系统（该类型所在的 Step）', '「Step 1」或「Step 1、3」', '不在任何 Step → 不出副标题（配分不再写在这里）'],
+  ['小字', '固定「角色 × 处境」', '1 行', '—'],
+  ['一句话标题', '计划（roleSituation）', '手机 ≤3 行；桌面 ≤2 行', '必有'],
+  ['三格', '系统计数：人脉中的候选 / 能见到的活动 / 引荐路径', '整数', '0 → 数字变灰，标签不变'],
+  ['进度', '系统：已得分 /配分 · 已聊人数/目标人数', '1 行 + 进度条；超出部分玫瑰色', '跳过 → 「/10分 · 已熟悉」+ 斜纹条'],
+  ['动作', '固定', '主「线下聊过」· 次「下一步」（无常驻右栏时）· ⋯「这方面我已熟悉」', '已跳过 → 「线下聊过」置灰，⋯ 不出，头卡内出撤销行'],
+];
+h += `<table class="fields"><tr><th style="width:120px">块</th><th style="width:380px">谁来填</th><th style="width:420px">上限</th><th>缺失怎么显示</th></tr>${F.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</table>`;
+
+document.getElementById('out').innerHTML = h;
+document.querySelectorAll('[data-scrollto]').forEach(w => { const s = w.querySelector('.scroll'); if (s) s.scrollTop = +w.dataset.scrollto; });
+docNav(''); orbitChrome();
+</script>
+</body>
+</html>

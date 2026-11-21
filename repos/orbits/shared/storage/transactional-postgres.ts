@@ -9,6 +9,7 @@ import {
   type PostgresReadMetricsConfig,
   type PostgresReadMetricsRunner,
 } from "./postgres-read-metrics";
+import { guardIdlePoolErrors } from "./pool-idle-errors";
 
 export interface TransactionalSqlExecutor {
   query<TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]): Promise<{ rows: readonly TRow[] }>;
@@ -66,7 +67,7 @@ function executor(
 export function createTransactionalPostgresClient({ connectionString, max = 2, ssl, pool: providedPool, readMetrics, timeouts }: TransactionalPostgresOptions): TransactionalPostgresClient {
   if (!connectionString?.trim()) throw new Error("A database connection string is required.");
   if (!Number.isSafeInteger(max) || max < 1) throw new Error("Pool size must be a positive integer.");
-  const pool = providedPool ?? new Pool({ connectionString, max, ssl, ...(timeouts ?? {}) });
+  const pool = guardIdlePoolErrors(providedPool ?? new Pool({ connectionString, max, ssl, keepAlive: true, ...(timeouts ?? {}) }));
   const measureRead = createPostgresReadMetricsRunner(readMetrics);
   return {
     ...executor(pool, measureRead),

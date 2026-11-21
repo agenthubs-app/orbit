@@ -16,6 +16,7 @@ import {
   createPostgresReadMetricsRunner,
   type PostgresReadMetricsConfig,
 } from "./postgres-read-metrics";
+import { guardIdlePoolErrors } from "./pool-idle-errors";
 
 export interface LiveRecordSqlResult<TRow = Record<string, unknown>> {
   rows: readonly TRow[];
@@ -313,12 +314,13 @@ export function createPgLiveRecordSqlClient({
   readMetrics,
   timeouts,
 }: PgLiveRecordSqlClientOptions): ClosableLiveRecordSqlClient {
-  const pool = new Pool({
+  const pool = guardIdlePoolErrors(new Pool({
     connectionString,
     max,
     ssl,
+    keepAlive: true,
     ...(timeouts ?? { connectionTimeoutMillis: 10_000, idleTimeoutMillis: 10_000 }),
-  });
+  }));
   const measureRead = createPostgresReadMetricsRunner(readMetrics);
 
   return {

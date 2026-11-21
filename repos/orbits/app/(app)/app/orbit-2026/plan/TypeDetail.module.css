@@ -3,7 +3,11 @@
 .slot { display: block; padding: var(--space-14) var(--space-34) var(--space-34); }
 .page { display: block; padding: var(--space-14) var(--space-34) 120px; max-width: 1240px; margin: 0 auto; }
 @media (max-width: 1279px) { .slot, .page { padding-left: var(--space-26); padding-right: var(--space-26); } }
-@media (max-width: 767px) { .slot, .page { padding-left: var(--space-16); padding-right: var(--space-16); } }
+/* 2026-11-21：手机内边距与全站一致为 18（之前 16，换页时左边线跳 2px）。 */
+@media (max-width: 767px) { .slot, .page { padding-left: var(--space-18); padding-right: var(--space-18); } }
+/* 该聊的人详情的 5 / 7 栏：之前没有断点，手机和 iPad 宽度仍左右并排，卡片被挤成窄列（人物画像 / 能见到的活动）。
+   ≤1023 单列全宽（与 FlowKit / plan 其余页相同）；单列时子项一律占满，不生隐式列。 */
+@media (max-width: 1023px) { .detailCols.detailCols { grid-template-columns: minmax(0, 1fr); gap: var(--space-14); } .detailCols.detailCols > * { grid-column: 1 / -1; } }
 
 .stack { display: flex; flex-direction: column; gap: var(--space-16); }
 .recordStack { gap: var(--space-8); }
@@ -211,6 +215,8 @@
 .headName { display: block; margin: 0; font-size: var(--fs-section); font-weight: var(--fw-heavy); line-height: 1.5; }
 .m3Head { width: 330px; margin: 0; flex: none; }
 .m3Head > div { background: var(--surface-2); }
+/* 2026-11-21：330 定宽在手机主卡里伸出右边 9px；主卡单列（≤1023）时三格占整行。 */
+@media (max-width: 1023px) { .m3Head { width: 100%; flex: 1 1 100%; } }
 .headScore { display: block; width: 170px; min-width: 0; flex: none; }
 .scoreLine { display: flex; gap: 6px; align-items: baseline; }
 .mid { position: relative; font-family: var(--font-num); font-size: var(--fs-number); font-weight: var(--fw-heavy); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }

@@ -28,6 +28,8 @@ import { IntroDraftDrawer, ProposalDrawer, RecordModal, SkipDialog, type RecordM
 import { translator, type Translate } from "./PlanParts";
 import k from "./overview.module.css";
 import styles from "./TypeDetail.module.css";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
+import { planDetailAnswerKey, planTypeAnswerKey } from "./plan-detail-answer";
 
 /** 人物タイプ詳細 (`/app/plans/[planId]/types/[itemId]`, b10 ⑧ · b4 A2 Web). */
 export function PlanTypeDetailScreen({ planId, itemId }: { planId: string; itemId: string }) {
@@ -48,7 +50,11 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
   const toast = useToast();
   const copy = useStandardCopy();
   const { busy, pending, run } = usePlanWrites(language);
-  const [load, setLoad] = useState<Load>({ status: "loading" });
+  // 2026-11-21：看过的详情先显示上次的结果，同时在后台重读（之前每次都从空白骨架等两条请求）。
+  const [load, setLoad] = useState<Load>(() => {
+    const detail = lastAnswer<PlanPersonTypeDetail>(planTypeAnswerKey(planId, itemId, language));
+    return detail ? { status: "ready", detail, plan: lastAnswer<PlanV2Detail>(planDetailAnswerKey(planId, language)) ?? null } : { status: "loading" };
+  });
   const [selected, setSelected] = useState<string[]>([]);
   const [record, setRecord] = useState<{ mode: RecordMode; contactId: string | null } | null>(null);
   const [matches, setMatches] = useState<PlanTalkedOfflineResult["matches"] | null>(null);
@@ -60,10 +66,15 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
   const [createFailed, setCreateFailed] = useState(false);
 
   const read = useCallback(async () => {
+    // 整份计划只用于标题栏与统计：计划页刚读过（60 秒内）就直接用，不再重读 14KB。
+    const planKey = planDetailAnswerKey(planId, language);
+    const cachedPlan = answerFresh(planKey, FRESH.list) ? lastAnswer<PlanV2Detail>(planKey) : undefined;
     const [type, plan] = await Promise.all([
       planApi<PlanPersonTypeDetail>(v2Path(planId, `/types/${enc(itemId)}`), { language }),
-      planApi<PlanV2Detail>(v2Path(planId), { language }),
+      cachedPlan ? Promise.resolve({ ok: true as const, data: cachedPlan }) : planApi<PlanV2Detail>(v2Path(planId), { language }),
     ]);
+    if (plan.ok && !cachedPlan) rememberAnswer(planKey, plan.data);
+    if (type.ok) rememberAnswer(planTypeAnswerKey(planId, itemId, language), type.data);
     if (type.ok) setLoad({ detail: type.data, plan: plan.ok ? plan.data : null, status: "ready" });
     else setLoad(type.ok === false && type.error.status === 404 ? { status: "missing" } : { status: "failed" });
   }, [planId, itemId, language]);
@@ -193,7 +204,7 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
       {shell}
       {/* Outside the shell (a page on its own, tests) the header buttons and the rail stay on the page. */}
       {inShell ? null : <div className={k.goalRow}>{back}<div className={k.acts}>{headButtons}</div></div>}
-      <div className={k.wgrid}>
+      <div className={`${k.wgrid} ${styles.detailCols}`}>
         <HeadCard detail={detail} plan={plan} plus={plus} tone={tone} t={t} busy={busy} onUnskip={() => void unskip()} language={language} />
 
         {state === "none" ? (

@@ -6,6 +6,7 @@ import {
   type PostgresReadMetricsEnv,
   type PostgresReadMetricsRunner,
 } from "./postgres-read-metrics";
+import { guardIdlePoolErrors } from "./pool-idle-errors";
 
 /**
  * The metering entry point for feature-owned `pg` pools.
@@ -62,6 +63,7 @@ export function meterPostgresPool<TPool extends Pool>(
   readMetrics?: PostgresReadMetricsConfig,
   env: PostgresReadMetricsEnv = process.env,
 ): TPool {
+  guardIdlePoolErrors(pool);
   const runner = createPostgresReadMetricsRunner(readMetrics, env);
   if (!runner) return pool;
   const query = pool.query.bind(pool) as QueryFunction;

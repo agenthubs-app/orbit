@@ -240,12 +240,12 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
             <div className={styles.ptopT}><b>{t("title")}</b>{discoverSubtitle ? <small>{discoverSubtitle}</small> : discover ? null : <small>{pendingLine}</small>}</div>
             <Link className={`btn ${styles.ptopBtn}`} href="/app/events?tab=going" aria-label={t("tabGoing")}><Icon name="calendar" size={20} /></Link>
           </div>
-          {segmentFor(true)}
+          <div className={styles.phoneSeg}>{segmentFor(true)}</div>
         </>
       ) : tier === "narrow" ? (
         <>
           <div className={styles.r8ttl}>{t("title")}{items === null ? <i className={styles.pendBone} style={{ width: 64 }} aria-hidden /> : assessedCount > 0 ? <span className={styles.lbl}>{t("assessedCount", { n: assessedCount })}</span> : null}</div>
-          {segmentFor(true)}
+          <div className={styles.phoneSeg}>{segmentFor(true)}</div>
         </>
       ) : !inShell ? <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 12px" }}>{segment}</div> : null}
       {tab === "discover" ? <div data-events-discover="">{discover ?? <DiscoverTab language={language} tier={tier} signedIn onRail={setDiscoverRail} onSubtitle={setDiscoverSubtitle} />}</div> : null}

@@ -51,7 +51,7 @@ export function TodoPresenter({ state, view, onRetry, onDecision, onDraft, onFol
     {view.decisions.state !== "hidden" ? <Card className={styles.decisions} aria-label={t(taskCopy.todoDecisions)}>
       {header(t(taskCopy.todoDecisions), view.decisions, "decisions")}
       {issues(view.decisions)}
-      {view.decisions.state === "empty" ? <EmptyState title={t(taskCopy.todoDecisionsEmpty)} /> : view.decisions.items.slice(0, 2).map((row, index) => {
+      {view.decisions.state === "empty" ? <EmptyState inset title={t(taskCopy.todoDecisionsEmpty)} /> : view.decisions.items.slice(0, 2).map((row, index) => {
         // web.html #14 .hov-acts: 明日 / あとで, then ✓ 完了. 見送る stays in the 「すべて」 list.
         const actions: RowAction[] = row.actions.map(action => ({ key: action,
           label: t(action === "accept" ? taskCopy.todoDone : action === "dismiss" ? taskCopy.todoDismiss : row.source === "task_suggestion" ? taskCopy.todoTomorrow : taskCopy.todoLater),
@@ -71,12 +71,13 @@ export function TodoPresenter({ state, view, onRetry, onDecision, onDraft, onFol
     </Card> : null}
     {view.nextMoves.state !== "hidden" ? <div className={styles.nextMoves}>
       {/* web.html #14 .nstack: two cards peeking behind a lav-tinted front card, paged 1 / N. */}
-      <span className={`${styles.stackBack} ${styles.stackBack2}`} aria-hidden /><span className={`${styles.stackBack} ${styles.stackBack1}`} aria-hidden />
+      {/* 叠层表示「后面还有几张」：只有 1 张或空时不画（之前空状态也露出两层，看起来像几张卡叠着）。 */}
+      {view.nextMoves.items.length > 2 ? <span className={`${styles.stackBack} ${styles.stackBack2}`} aria-hidden /> : null}{view.nextMoves.items.length > 1 ? <span className={`${styles.stackBack} ${styles.stackBack1}`} aria-hidden /> : null}
       <section className={styles.stackFront} aria-label={t(taskCopy.todoNextMoves)}>
         <div className={styles.stackHead}><MacTile emoji={MOVE_TILES[nextIndex % MOVE_TILES.length]!.emoji} tone={MOVE_TILES[nextIndex % MOVE_TILES.length]!.tone} size="sm" /><b>{t(taskCopy.todoNextMoves)}</b>
           {item ? <><span className={styles.stackCount}>{nextIndex % view.nextMoves.items.length + 1} / {view.nextMoves.items.length}</span>{view.nextMoves.items.length > 1 ? <button type="button" className={`btn ${styles.stackNext}`} aria-label={t(taskCopy.todoNextCard)} onClick={() => setNextIndex(index => index + 1)}><Icon name="right" size={16} /></button> : null}</> : null}</div>
         {issues(view.nextMoves)}
-        {view.nextMoves.state === "empty" ? <EmptyState title={t(taskCopy.todoNextMovesEmpty)} /> : item ? <>
+        {view.nextMoves.state === "empty" ? <EmptyState inset title={t(taskCopy.todoNextMovesEmpty)} /> : item ? <>
           <div className={styles.moveTitle}>{item.title}{item.sample ? <SampleTag /> : null}</div>
           {item.subtitle ? <p className={styles.reason}>{item.subtitle}</p> : null}
           <div className={styles.moveFoot}><Button label={t(taskCopy.todoOpenDraft)} icon="mail" variant="primary" size="sm" disabled={item.sample || !onDraft} onClick={() => { if (!item.sample) onDraft?.(item.key); }} />
@@ -91,7 +92,7 @@ export function TodoPresenter({ state, view, onRetry, onDecision, onDraft, onFol
       <header className={styles.header}><h3 className={styles.heading}>{t(taskCopy.todoFollowups)}<span className={styles.headingNote}>{t(taskCopy.todoDueOrder)}</span></h3>
         <a className={`btn ${styles.more}`} href="/app/tasks?tab=todo&view=all">{t(taskCopy.taskListTitle)}<Icon name="right" size={16} /></a></header>
       {issues(view.followups)}
-      {view.followups.state === "empty" ? <EmptyState title={t(taskCopy.todoFollowupsEmpty)} /> : view.followups.items.slice(0, 3).map(row => <div key={row.key}><div className={styles.followupRow}>{!row.sample && (row.kind === "lifecycle" ? onFollowup : onTaskComplete) ? <CheckCircle checked={false} label={t(taskCopy.taskListComplete).replace("{title}", row.title)} onChange={() => row.kind === "lifecycle" ? onFollowup?.(row.key) : onTaskComplete?.(row.key)} /> : null}<div className={styles.followupMain}><ListRow title={row.title} subtitle={row.contactName} href={row.sample || (row.kind === "lifecycle" && onFollowup) ? undefined : row.href} onSelect={row.kind === "lifecycle" && !row.sample && onFollowup ? () => onFollowup(row.key) : undefined} trailing={<>{row.sample ? <SampleTag /> : null}{row.dueAt ? <Chip label={new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-GB", { month: "numeric", day: "numeric", timeZone: view.timeZone }).format(new Date(row.dueAt))} tone={row.overdue ? "coral" : undefined} /> : null}</>} /></div></div>{row.detailUnavailable && !onFollowup ? <p className={styles.note}>{t(taskCopy.todoLifecycleDetailPending)}</p> : null}</div>)}
+      {view.followups.state === "empty" ? <EmptyState inset title={t(taskCopy.todoFollowupsEmpty)} /> : view.followups.items.slice(0, 3).map(row => <div key={row.key}><div className={styles.followupRow}>{!row.sample && (row.kind === "lifecycle" ? onFollowup : onTaskComplete) ? <CheckCircle checked={false} label={t(taskCopy.taskListComplete).replace("{title}", row.title)} onChange={() => row.kind === "lifecycle" ? onFollowup?.(row.key) : onTaskComplete?.(row.key)} /> : null}<div className={styles.followupMain}><ListRow title={row.title} subtitle={row.contactName} href={row.sample || (row.kind === "lifecycle" && onFollowup) ? undefined : row.href} onSelect={row.kind === "lifecycle" && !row.sample && onFollowup ? () => onFollowup(row.key) : undefined} trailing={<>{row.sample ? <SampleTag /> : null}{row.dueAt ? <Chip label={new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-GB", { month: "numeric", day: "numeric", timeZone: view.timeZone }).format(new Date(row.dueAt))} tone={row.overdue ? "coral" : undefined} /> : null}</>} /></div></div>{row.detailUnavailable && !onFollowup ? <p className={styles.note}>{t(taskCopy.todoLifecycleDetailPending)}</p> : null}</div>)}
       {view.followups.more.length ? <Button label={t(taskCopy.todoAll)} variant="ghost" size="sm" onClick={() => onMore("followups")} /> : null}
     </Card> : null}
   </div>;

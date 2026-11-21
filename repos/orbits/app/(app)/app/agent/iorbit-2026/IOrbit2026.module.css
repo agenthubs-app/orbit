@@ -5,7 +5,7 @@
 .phoneHeader { display: none; }
 .phoneHeaderTitle { display: flex; flex-direction: column; align-items: center; min-width: 0; }
 .phoneHeaderTitle small { color: var(--ink-3-text); font-size: var(--fs-label); font-weight: 400; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.start { width: 100%; display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-4) var(--space-4) var(--space-16); }
+.start { width: 100%; display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-4) 0 var(--space-16); } /* 左右不留 4（2026-11-21）：建议卡与下方输入框左边对齐；按压效果是缩小，不会被裁。 */
 .start > * { width: 100%; max-width: 680px; margin-left: auto; margin-right: auto; }
 .greeting { margin-top: 30px; }
 .greeting h1 { margin: 14px 0 0; font-size: var(--fs-title-lg); font-weight: var(--fw-heavy); line-height: var(--lh-title); overflow-wrap: anywhere; }

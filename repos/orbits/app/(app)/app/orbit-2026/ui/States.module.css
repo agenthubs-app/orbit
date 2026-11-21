@@ -19,6 +19,9 @@
   opacity: 0.9;
 }
 .guide > * { position: relative; }
+/* 2026-11-21：嵌在卡片里的空状态只留文字（之前白卡套白卡、再加光斑，看起来像几张卡叠在一起）。 */
+.inset { display: grid; gap: 4px; padding: var(--space-4) 0; }
+.inset .title { font-size: var(--fs-body); }
 .title { font-size: var(--fs-dialog-title); font-weight: var(--fw-heavy); line-height: var(--lh-title); }
 .message { font-size: var(--fs-body-sm); color: var(--ink-2); line-height: 1.6; }
 .steps { list-style: none; display: grid; gap: 8px; margin-top: 4px; }

@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>发现 活动卡片紧凑化</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<script src="kit/data.js"></script>
+<style>
+  .doc { min-width: 1520px; }
+  .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .decide { display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 18px; margin-bottom: 18px; max-width: 1440px; }
+  .decide .box { background: var(--surface); border-radius: 22px; padding: 20px 22px; font-size: 13px; line-height: 1.75; color: var(--ink-2); }
+  .decide .box h3 { font-size: 15px; font-weight: 800; color: var(--ink); margin-bottom: 10px; }
+  .decide .box b { color: var(--ink); }
+  .decide ol { padding-left: 18px; display: grid; gap: 6px; }
+  .cmp { width: 1440px; border-collapse: separate; border-spacing: 0; background: var(--surface); border-radius: 22px; overflow: hidden; font-size: 12.5px; color: var(--ink-2); }
+  .cmp th, .cmp td { text-align: left; vertical-align: top; padding: 9px 14px; border-bottom: 1px solid var(--line); line-height: 1.6; }
+  .cmp th { background: var(--surface-2); color: var(--ink); font-weight: 800; font-size: 12px; }
+  .cmp td:first-child { font-weight: 800; color: var(--ink); white-space: nowrap; }
+  .cmp tr:last-child td { border-bottom: 0; }
+
+  /* 手机框（同 App 内 Web：品牌顶栏 + 浮动胶囊导航；不画 Safari 底栏，与用户截图一致） */
+  .mw-head { display: flex; align-items: center; gap: 8px; padding: 6px 0 10px; }
+  .mw-head .logo { width: 34px; height: 34px; border-radius: 11px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; }
+  .fl { display: flex; gap: 6px; margin: 10px 0 4px; }
+  .fl .chip { height: 32px; padding: 0 12px; font-size: 12.5px; background: var(--surface); }
+  .lh { display: flex; justify-content: space-between; align-items: baseline; margin: 14px 2px 10px; }
+  .lh b { font-size: 15px; font-weight: 800; }
+  .vis { position: absolute; left: 0; right: 0; z-index: 29; border-top: 2px dashed var(--rose-500); pointer-events: none; }
+  .vis span { position: absolute; right: 8px; top: -22px; font-size: 10.5px; font-weight: 800; color: var(--rose-700); background: var(--surface); padding: 1px 6px; border-radius: 6px; }
+
+  /* ---------- 现状卡（复刻截图） ---------- */
+  .now { background: var(--surface); border-radius: 24px; overflow: hidden; }
+  .now .cov { aspect-ratio: 2 / 1; background-size: cover; background-position: center; }
+  .now .bd { padding: 16px 18px 18px; }
+  .now .bd b { display: block; font-size: 15px; font-weight: 700; margin-top: 4px; }
+  .now .bd .lbl { display: block; font-size: 12.5px; }
+  .now .chips { margin-top: 18px; }
+  .now .ft { display: flex; justify-content: flex-end; margin-top: 18px; }
+  .list > * + * { margin-top: 12px; }
+
+  /* ---------- A：矮封面卡 ---------- */
+  .ca { background: var(--surface); border-radius: 22px; overflow: hidden; position: relative; display: block; }
+  .ca .cov { height: 120px; background-size: cover; background-position: center; position: relative; }
+  .ca .band { height: 120px; display: flex; align-items: flex-end; padding: 0 14px 12px; }
+  .ca .band .emo { background: var(--surface); }
+  .ca .reg { position: absolute; top: 10px; right: 10px; background: color-mix(in srgb, var(--surface) 88%, transparent); }
+  .ca .bd { padding: 12px 14px 14px; }
+  .ca .t { font-size: 14.5px; font-weight: 700; line-height: 1.45; }
+  .ca .m { display: block; font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+  .ca .ft { display: flex; align-items: center; gap: 8px; margin-top: 10px; min-width: 0; }
+  .ca .ft .chips { flex: 1; min-width: 0; flex-wrap: nowrap; overflow: hidden; }
+  .ca .fee { font-family: var(--font-num); font-size: 13px; font-weight: 800; flex: none; }
+  .ended { opacity: .55; filter: grayscale(1); }
+  /* 宽屏 A 卡：封面保持 2:1 */
+  .wide .ca .cov, .wide .ca .band { height: auto; aspect-ratio: 2 / 1; }
+  .wide .ca .bd { padding: 14px 16px 16px; }
+
+  /* ---------- B：左图右文 ---------- */
+  .cb { background: var(--surface); border-radius: 20px; padding: 12px; display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 12px; align-items: stretch; }
+  .cb .th { width: 88px; height: 88px; border-radius: 14px; background-size: cover; background-position: center; display: grid; place-items: center; font-size: 34px; }
+  .cb .tx { min-width: 0; display: flex; flex-direction: column; }
+  .cb .t { font-size: 14px; font-weight: 700; line-height: 1.4; }
+  .cb .m { display: block; font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+  .cb .ft { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 6px; min-width: 0; }
+  .cb .ft .chips { flex: 1; min-width: 0; flex-wrap: nowrap; overflow: hidden; }
+  .cb .fee { font-family: var(--font-num); font-size: 13px; font-weight: 800; flex: none; }
+
+  .tone-lav { background: var(--mac-lav); } .tone-blue { background: var(--mac-blue); } .tone-apricot { background: var(--mac-apricot); } .tone-teal { background: var(--mac-teal); } .tone-pink { background: var(--mac-pink); }
+
+  /* iPad / 桌面 */
+  .web.w834 { width: 834px; height: 1000px; grid-template-columns: 72px 1fr; }
+  .w834 .side a { width: 48px; padding: 12px 0; font-size: 0; gap: 0; }
+  .w834 .side .logo { margin-bottom: 14px; }
+  .w834 .main { padding: 22px 26px 40px; }
+  .g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  .g3 { display: grid; grid-template-columns: repeat(12, 1fr); gap: 18px; align-items: start; }
+  .g3 > * { grid-column: span 4; }
+  .wfl { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+  .wfl .search { flex: 1; max-width: 360px; height: 40px; }
+  .wfl .chip { height: 32px; padding: 0 12px; font-size: 12.5px; background: var(--surface); }
+  .rail .card { padding: 16px; border-radius: 20px; }
+  .ghost-lines i { display: block; height: 9px; border-radius: 5px; background: var(--surface-2); margin: 8px 0; }
+  /* 桌面现状卡（复刻 span4） */
+  .nowd { background: var(--surface); border-radius: 22px; padding: 18px; display: flex; flex-direction: column; }
+  .nowd .cov { margin: -18px -18px 4px; aspect-ratio: 2 / 1; background-size: cover; background-position: center; border-radius: 22px 22px 0 0; }
+  .nowd b.t { display: block; margin-top: 12px; font-size: 14.5px; }
+  .nowd .ft { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 10px; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <div>
+      <div class="doc-kicker">Orbit Redesign · 2026-11-21 · Web 提案（390 两案 + 834 / 1440 推荐案）· 待用户确认</div>
+      <h1>活动 › 发现：活动卡片太大、太空，改紧凑</h1>
+      <p>对应 DiscoverTab.tsx 的 EventCard。字段不变：封面（或 emoji 色带）、报名人数 chip（≥10 人）、标题、日期 · 地点、「和你有关」标签（RelevanceChips，不打分）、费用或「已结束」。只改排布，并去掉单独的「详情」按钮——卡片本身已经整张可点（role=button），按钮与点卡片是同一个动作。示例活动为虚构。</p>
+    </div>
+    <div class="doc-tools">
+      <div class="seg" data-ctl="theme"><button data-v="light">浅色</button><button data-v="dark">深色</button></div>
+      <div class="seg" data-ctl="pins"><button data-v="on" class="on">标注 ON</button><button data-v="off">OFF</button></div>
+    </div>
+  </div>
+  <div class="decide">
+    <div class="box">
+      <h3>问题（手机现状截图）</h3>
+      <ol>
+        <li><b>一张卡约 330px 高</b>：2:1 封面在 354px 宽下约 177px；下面标题、日期地点、一个标签、一个按钮各占一行，行间 18px 空白。</li>
+        <li><b>一屏只看得到 1 张多</b>：列表区（筛选下面到底部导航上面）约 <span id="vis-h">—</span>px，只放得下 <span id="now-n">—</span> 张。</li>
+        <li><b>右下角孤零零一个「详情」</b>：点卡片本身就进详情，按钮重复同一个动作；它独占一行，把卡片撑高。</li>
+        <li><b>费用</b>：现状在左下角和「详情」同一行；没有费用时这一行只剩按钮。</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h3>两个方案</h3>
+      <ol>
+        <li><b>A · 矮封面卡</b>：封面高 120px（从 2:1 裁成约 3:1，居中）；标题最多 2 行；日期 · 地点 1 行；「和你有关」标签与费用同一行（标签左、费用右）；整张卡可点，不放「详情」。没封面画 120px emoji 色带，已结束整张置灰、费用位换「已结束」。</li>
+        <li><b>B · 左图右文列表行（推荐，手机）</b>：左边 88×88 缩略图（封面居中裁方，没封面用 emoji 色块），右边 标题（≤2 行）/ 日期 · 地点 / 标签 + 费用。三种卡同高 112px。</li>
+        <li><b>推荐</b>：手机用 B，一屏从约 <span class="cnt-now">—</span> 张变成约 <span id="b-n">—</span> 张，适合「往下翻着挑」；834 / 1440 用 A 的卡片结构但封面保持 2:1（宽度够，不用裁）。同一组件按断点切换，与 b8 规范「表格 / 网格 → 手机卡片列表」一致。</li>
+        <li><b>桌面也要改</b>：1440 的 span4 卡同样有「详情」独占一行、费用单独一行，比需要的高约 50px；改成 A 的底部一行（标签 + 费用），去掉按钮。</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h3>对标成熟产品的做法</h3>
+      <ol>
+        <li><b>Luma（手机 Discover / 日历）</b>：一行一个活动，右侧方形缩略图，左侧时间、标题、地点；整行可点，没有「详情」按钮。</li>
+        <li><b>Meetup / Eventbrite（手机搜索结果）</b>：左侧小图 + 右侧 日期 / 标题 / 地点 / 价格的列表行，一屏 4–5 个；桌面换成 2:1 封面的网格卡。</li>
+        <li><b>Airbnb / App Store 卡片</b>：整张卡就是点击区，卡内不放与点卡同义的按钮。</li>
+        <li>B 选左图（Meetup / Eventbrite）而不是右图（Luma）：Orbit 的封面多是主办方海报，放左边先看到图，阅读顺序和 A 卡（图在上）一致。</li>
+      </ol>
+    </div>
+  </div>
+  <nav class="doc-nav" id="docnav"></nav>
+  <div id="out"></div>
+</div>
+<script>
+const IMG1 = 'proposal-assets/chinese-business-community-salon.jpg';
+const IMG2 = 'proposal-assets/investor-founder-salon.jpg';
+const E = [
+  { img: IMG1, n: '第六期 中日创业交流会', m: '11/28（六）· 東京都港区新橋6-5-3 山田屋ビル B2', chips: [['blue', '主题相近']], fee: '¥3,000', reg: '报名128人' },
+  { emoji: '🥂', tone: 'lav', n: 'CFO Night Tokyo vol.18', m: '12/05（五）19:00 · 渋谷ストリーム', chips: [['lav', '前 CFO 3位'], ['teal', '认识的人1位']], fee: '¥5,000' },
+  { img: IMG2, n: '投资人 × 创始人 早餐会 #12', m: '10/24（五）8:00 · 丸の内', chips: [], fee: '免费', ended: true },
+];
+const NAVZ = [['home', '首页'], ['users', '人脉'], ['sparkle', 'iOrbit'], ['calendar', '活动'], ['task', 'Task']];
+const SIDEZ = [...NAVZ, ['inbox', '收件箱']];
+const mNav = `<nav class="tabbar">${NAVZ.map(([i, l], k) => `<button class="${k === 3 ? 'on' : ''}">${ic(i)}${l}</button>`).join('')}</nav>`;
+const brand = `<div class="mw-head"><div class="logo">O</div><b style="font-size:16px">Orbit</b><div style="flex:1"></div><button class="rbtn">${ic('inbox')}</button><button class="avatar-btn">佐</button></div>`;
+const seg = `<div class="seg" style="display:flex"><button style="flex:1">评估</button><button style="flex:1">参加的活动</button><button class="on" style="flex:1">发现</button></div>`;
+const pHead = brand + seg + `<div class="search" style="margin-top:10px">${ic('search', 'sm')}活动名、主办方、关键词</div><div class="fl"><span class="chip">时间：之后</span><span class="chip">地点：不限</span><span class="chip">主题</span></div><div class="lh p-lh"><b>全部 · 24场</b><span class="lbl">按日期</span></div>`;
+const m390 = (body, pins = '', theme = '') => phone({ tab: -1, body: pHead + `<div class="list p-cards">${body}</div>`, overlay: mNav + '<div class="vis-slot"></div>', pins, theme }).replace('class="phone"', 'class="phone mweb"');
+const webZ = ({ body, rail = '', pins = '', cls = '' }) => `<div class="web ${rail ? '' : 'no-rail'} ${cls}"><aside class="side"><div class="logo">O</div>${SIDEZ.map(([i, l], k) => `<a class="${k === 3 ? 'on' : ''}">${ic(i)}${l}</a>`).join('')}<div class="sp"></div><a>${ic('brief')}主办</a><a>${ic('settings')}设置</a><div class="avatar-btn" style="margin-top:8px">佐</div></aside><section class="main">${body}</section>${rail ? `<aside class="rail">${rail}</aside>` : ''}${pins}</div>`;
+
+const chipsH = (e) => `<div class="chips">${e.ended ? '' : e.chips.map(([c, t]) => `<span class="chip ${c}">${t}</span>`).join('')}</div>`;
+const nowCard = (e) => `<div class="now ${e.ended ? 'ended' : ''}">${e.img ? `<div class="cov" style="background-image:url(${e.img})"></div>` : ''}<div class="bd">${e.img ? '' : `<span class="emo ${e.tone}">${e.emoji}</span>`}<b>${e.n}</b><span class="lbl">${e.m}</span>${e.ended ? '' : chipsH(e)}<div class="ft" style="justify-content:space-between"><b style="font-size:13px">${e.ended ? '<span class="chip">已结束</span>' : e.fee}</b><button class="btn sm">详情</button></div></div></div>`;
+const aCard = (e) => `<div class="ca ${e.ended ? 'ended' : ''}">${e.img ? `<div class="cov" style="background-image:url(${e.img})"></div>` : `<div class="band tone-${e.tone}"><span class="emo">${e.emoji}</span></div>`}${e.reg && !e.ended ? `<span class="chip reg">${e.reg}</span>` : ''}
+  <div class="bd"><div class="t clamp2">${e.n}</div><span class="m ell">${e.m}</span><div class="ft">${chipsH(e)}${e.ended ? '<span class="chip">已结束</span>' : `<span class="fee">${e.fee}</span>`}</div></div></div>`;
+const bCard = (e) => `<div class="cb ${e.ended ? 'ended' : ''}">${e.img ? `<div class="th" style="background-image:url(${e.img})"></div>` : `<div class="th tone-${e.tone}">${e.emoji}</div>`}
+  <div class="tx"><div class="t clamp2">${e.n}</div><span class="m ell">${e.m}</span><div class="ft">${e.ended ? '<div class="chips"></div><span class="chip">已结束</span>' : `${chipsH(e)}${e.reg ? `<span class="lbl" style="flex:none">${e.reg.replace('报名', '报名 ')}</span>` : ''}<span class="fee">${e.fee}</span>`}</div></div></div>`;
+
+const notesHTML = (notes, w = 390) => notes && notes.length ? `<ul class="note-list" style="max-width:${w}px">${notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : '';
+const boards = (items) => `<div class="boards">${items.map(([label, tag, html, notes, w]) => `<div class="board"><div class="board-label">${label}${tag ? `<span class="tag">${tag}</span>` : ''}</div>${html}${notesHTML(notes, w)}</div>`).join('')}</div>`;
+const sec = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+
+let h = '';
+h += sec('① 手机 390 · 现状 vs 两个方案', '同一组三张：有封面 / 无封面（emoji）/ 已结束；红虚线 = 底部导航上沿，虚线以上是一屏能看到的部分');
+h += boards([
+  ['N · 现状（复刻截图）', '现状', `<div data-k="now">${m390(E.map(nowCard).join(''))}</div>`, ['2:1 封面 + 四行 + 「详情」独占一行；一屏约 <span class="cnt-now">—</span> 张']],
+  ['A · 矮封面卡', '方案 A', `<div data-k="a">${m390(E.map(aCard).join(''), pin(1, '.ca .cov') + pin(2, '.ca .ft'))}</div>`, ['封面 120px（2:1 居中裁成约 3:1）；报名人数 chip 仍在图右上', '标签左、费用右同一行；没有「详情」，整张卡可点；一屏约 <span class="cnt-a">—</span> 张', '无封面：同高 emoji 色带；已结束：置灰 + 「已结束」占费用位']],
+  ['B · 左图右文（推荐）', '方案 B', `<div data-k="b">${m390(E.map(bCard).join(''), pin(1, '.cb .th') + pin(2, '.cb .ft'))}</div>`, ['88×88 缩略图：封面居中裁方；无封面 = emoji 色块（同一组轮换色）', '底部一行：标签 · 报名人数 · 费用；三种卡同高；一屏约 <span class="cnt-b">—</span> 张', '报名人数不再盖在图上（缩略图太小），改成灰字放在费用前']],
+]);
+h += `<div style="height:28px"></div>` + boards([
+  ['B · 深色', '', m390(E.map(bCard).join(''), '', 'dark')],
+  ['B · 往下翻（列表长什么样）', '方案 B', `<div data-k="b2">${m390([...E.slice(0, 2), { ...E[1], n: 'SaaS 财务实务研讨会', m: '12/03（三）18:30 · 丸の内', chips: [['blue', '主题相近']], fee: '免费', emoji: '📊', tone: 'teal' }, { ...E[0], n: '名古屋 製造業 DX ミートアップ', m: '12/12（五）· 名古屋駅前', chips: [['lav', 'CVC 20位'], ['apricot', '需要出差']], reg: null, fee: '¥2,000', emoji: '🏭', tone: 'apricot', img: null }, E[2]].map(bCard).join(''))}</div>`, ['标签超出一行时只显示放得下的（现有 relevanceChips 最多 3 个，提醒类优先保留）']],
+]);
+
+h += sec('② 推荐方案在 834 / 1440', '≥768 用 A 卡结构，封面保持 2:1；去掉「详情」，标签 + 费用同一行');
+const wHead = mainhead('活动', '11月 · 计划参加2场 · 已评估3场', '', '') + `<div class="seg" style="margin-bottom:14px"><button>评估</button><button>参加的活动</button><button class="on">发现</button></div><div class="wfl"><div class="search">${ic('search', 'sm')}活动名、主办方、关键词</div><span class="chip">时间：之后</span><span class="chip">地点：不限</span><span class="chip">主题</span></div><div class="lh"><b>全部 · 24场</b><span class="lbl">按日期</span></div>`;
+const six = [...E.slice(0, 2), { ...E[1], n: 'SaaS 财务实务研讨会', m: '12/03（三）18:30 · 丸の内', chips: [['blue', '主题相近']], fee: '免费', emoji: '📊', tone: 'teal' }, E[2]];
+h += boards([
+  ['T · 834 · 两列', '推荐', webZ({ cls: 'w834 wide', body: wHead + `<div class="g2">${six.map(aCard).join('')}</div>`, pins: pin(1, '.ca .ft') }), ['两列 A 卡，封面 2:1；无封面的卡同排有图时画同高色带（沿用 D2 规则）', '底部一行 标签 + 费用；没有「详情」'], 834],
+]);
+const rail = `<h4>${ic('sparkle', 'sm')}下一步</h4><div class="card"><div class="ghost-lines"><i style="width:60%"></i><i style="width:92%"></i><i style="width:80%"></i></div></div>`;
+const nowD = (e) => `<div class="nowd ${e.ended ? 'ended' : ''}" style="grid-column:span 4">${e.img ? `<div class="cov" style="background-image:url(${e.img})"></div>` : `<div class="cov tone-${e.tone}" style="display:flex;align-items:flex-end;padding:0 16px 14px"><span class="emo" style="background:var(--surface)">${e.emoji}</span></div>`}<b class="t">${e.n}</b><span class="lbl">${e.m}</span>${e.ended ? '' : `<div style="margin-top:8px">${chipsH(e)}</div>`}<div class="ft"><b style="font-size:13px">${e.ended ? '<span class="chip">已结束</span>' : e.fee}</b><button class="btn sm">详情</button></div></div>`;
+h += boards([
+  ['D0 · 1440 · 现状 span4', '现状', webZ({ rail, cls: 'wide', body: wHead + `<div class="g3">${E.map(nowD).join('')}</div>` }), ['桌面同样有「详情」+ 费用独占一行；卡片比需要的高约 50px'], 1440],
+]);
+h += `<div style="height:28px"></div>` + boards([
+  ['D1 · 1440 · 推荐 span4', '推荐', webZ({ rail, cls: 'wide', body: wHead + `<div class="g3">${six.slice(0, 3).map(aCard).join('')}${[six[3]].map(aCard).join('')}</div>`, pins: pin(1, '.ca .ft') }), ['同 A：封面 2:1、标签 + 费用一行、整张可点（悬停上浮沿用现有）；三张一排高度一致'], 1440],
+]);
+
+h += sec('对比', '一屏能看到几张（本页实测：列表区高 ÷（三种卡平均高 + 12px 间距）；列表区 = 「全部 · 24场」下沿到底部导航上沿）');
+h += `<table class="cmp"><tr><th style="width:160px">方案</th><th>单张卡高（有封面 / 无封面 / 已结束）</th><th>一屏可见</th><th>得失</th></tr>
+<tr><td>现状</td><td id="r-now">—</td><td id="c-now">—</td><td>封面大，适合看图；但一屏一张多，「详情」重复点卡动作</td></tr>
+<tr><td>A · 矮封面卡</td><td id="r-a">—</td><td id="c-a">—</td><td>保留大图感；封面被裁掉上下约 1/3，海报类封面上的字可能被切</td></tr>
+<tr><td>B · 左图右文（推荐）</td><td id="r-b">—</td><td id="c-b">—</td><td>一屏最多；缩略图小，看不清海报细节（点进详情看大图）</td></tr></table>`;
+
+document.getElementById('out').innerHTML = h;
+docNav(''); orbitChrome();
+
+/* 实测：每个画框里列表区高度、卡片高度、一屏可见张数；画红虚线 */
+const measure = (k) => {
+  const wrap = document.querySelector(`[data-k="${k}"]`); if (!wrap) return null;
+  const ph = wrap.querySelector('.phone'), list = ph.querySelector('.p-cards'), bar = ph.querySelector('.tabbar');
+  const pr = ph.getBoundingClientRect(), top = list.getBoundingClientRect().top - pr.top, bottom = bar.getBoundingClientRect().top - pr.top;
+  const vis = document.createElement('div'); vis.className = 'vis'; vis.style.top = bottom + 'px'; vis.innerHTML = `<span>列表区 ${Math.round(bottom - top)}px</span>`; ph.appendChild(vis);
+  const cards = [...list.children].map(c => c.getBoundingClientRect());
+  const hs3 = cards.slice(0, 3).map(r => r.height), avg = hs3.reduce((a, b) => a + b, 0) / hs3.length;
+  const n = (bottom - top) / (avg + 12); // 三种卡平均高 + 12px 间距
+  return { area: Math.round(bottom - top), hs: cards.slice(0, 3).map(r => Math.round(r.height)), n: Math.round(n * 10) / 10, avg: Math.round(avg) };
+};
+const set = (id, v) => document.querySelectorAll(id).forEach(e => e.textContent = v);
+requestAnimationFrame(() => setTimeout(() => {
+  for (const k of ['now', 'a', 'b']) {
+    const r = measure(k); if (!r) continue;
+    set(`.cnt-${k}`, r.n); set(`#r-${k}`, r.hs.join(' / ') + ' px'); set(`#c-${k}`, `约 ${r.n} 张（列表区 ${r.area}px）`);
+    if (k === 'now') { set('#vis-h', r.area); set('#now-n', r.n); }
+    if (k === 'b') set('#b-n', r.n);
+  }
+  measure('b2');
+}, 300));
+</script>
+</body>
+</html>

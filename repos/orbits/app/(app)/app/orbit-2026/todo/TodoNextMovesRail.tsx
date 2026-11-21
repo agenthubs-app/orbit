@@ -72,7 +72,7 @@ export function TodoNextMovesRail({ account, language, state, view, onRetry, onD
         : section.state === "hidden" ? null : <>
           {section.count.partial ? <p className={styles.note} role="status">{t(taskCopy.todoPartial)}</p> : null}
           {section.issues.some(issue => issue.status === "unavailable") ? <RetryCard title={t(taskCopy.todoUnavailable)} onRetry={onRetry} /> : null}
-          {section.state === "empty" || !shown.length ? <EmptyState title={t(taskCopy.todoNextMovesEmpty)} /> : shown.map((item, index) => <div key={item.key} className={home.sugg}>
+          {section.state === "empty" || !shown.length ? <EmptyState inset title={t(taskCopy.todoNextMovesEmpty)} /> : shown.map((item, index) => <div key={item.key} className={home.sugg}>
             <div className={home.suggRow}><MacTile emoji={TILES[index % TILES.length]!.emoji} tone={TILES[index % TILES.length]!.tone} size="sm" /><div><b>{item.title}</b>{item.subtitle ? <span>{item.subtitle}</span> : null}</div>{item.sample ? <SampleTag /> : null}</div>
             <div className={home.suggActs}><button type="button" className={`btn ${home.suggGo}`} disabled={item.sample} onClick={() => { if (!item.sample) onDraft(item.key); }}>{t(taskCopy.todoOpenDraft)}</button>
               <button type="button" className={`btn ${home.suggLater}`} onClick={() => setLater(keys => [...keys, item.key])}>{t(taskCopy.todoLater)}</button></div>

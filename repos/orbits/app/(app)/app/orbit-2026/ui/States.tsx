@@ -9,15 +9,17 @@ import styles from "./States.module.css";
 
 // kit .guide: an empty state that guides (title, why, numbered steps, ghost rows,
 // one primary action). Same props as the App's EmptyState.
-export function EmptyState({ title, message, action, steps, ghostRows = 0 }: {
+export function EmptyState({ title, message, action, steps, ghostRows = 0, inset = false }: {
   title: string;
+  /** Inside another card: text only, no second card surface or glow (a card inside a card reads as a stack). */
+  inset?: boolean;
   message?: string;
   action?: { label: string; onSelect: () => void };
   steps?: { label: string; state: "done" | "now" | "later" }[];
   ghostRows?: number;
 }) {
   return (
-    <div className={styles.guide}>
+    <div className={inset ? styles.inset : styles.guide}>
       <h3 className={styles.title}>{title}</h3>
       {message ? <p className={styles.message}>{message}</p> : null}
       {steps?.length ? (

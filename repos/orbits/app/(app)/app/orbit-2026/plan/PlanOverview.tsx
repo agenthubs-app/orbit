@@ -25,6 +25,8 @@ import { sinceFromDetail } from "./review-model";
 import { useLayoutTier, usePlanWrites, v2Path, enc, type LayoutTier } from "./plan-v2-actions";
 import { translator, type Translate } from "./PlanParts";
 import styles from "./overview.module.css";
+import { rememberAnswer } from "../../orbit-last-answer";
+import { planDetailAnswerKey } from "./plan-detail-answer";
 
 /**
  * R24 プラン概要: Task › プラン for an active v2 plan. 2026-10-12 pixel rework: 1440 = web.html
@@ -61,7 +63,7 @@ function OverviewBody({ planId, language }: { planId: string; language: OrbitLan
 
   const load = useCallback(async () => {
     const [result, list] = await Promise.all([planApi<PlanV2Detail>(v2Path(planId), { language }), planApi<PlanGoalListResponse>("/v2", { language })]);
-    if (result.ok) { setDetail(result.data); setFailed(false); } else setFailed(true);
+    if (result.ok) { setDetail(result.data); setFailed(false); rememberAnswer(planDetailAnswerKey(planId, language), result.data); } else setFailed(true);
     if (list.ok) setGoals(list.data.goals);
   }, [planId, language]);
   useEffect(() => { void load(); }, [load]);

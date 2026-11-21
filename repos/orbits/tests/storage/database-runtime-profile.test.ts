@@ -11,7 +11,7 @@ test("Vercel resolves to the serverless profile: small pool, client-side query t
     { pool: 5, tx: 3, query: 15_000, statement: null },
   );
   assert.equal(profile.connectionTimeoutMillis, 10_000);
-  assert.equal(profile.idleTimeoutMillis, 10_000);
+  assert.equal(profile.idleTimeoutMillis, 60_000);
 });
 
 test("an explicit worker runtime gets a larger pool and long timeouts on both sides", () => {

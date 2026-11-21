@@ -253,6 +253,8 @@
 .fl { display: block; flex: 1 0 0px; }
 
 /* b12 #348 探す 390：topbar（44 · 1fr · 44；6 / 14 padding；标题 17 / 小字 11.5）。 */
+/* b8 #1 / b12 #348（390）：全宽 seg 下方 14（kit .seg.k-evseg margin-bottom:14px）；之前漏了，seg 与搜索框/内容贴在一起。 */
+.phoneSeg { margin-bottom: 14px; }
 .ptop { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 6px 0 14px; }
 .ptopT { text-align: center; }
 .ptopT b { display: block; font-size: var(--fs-logo); font-weight: var(--fw-heavy); letter-spacing: 0.01em; }

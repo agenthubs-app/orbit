@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>笔记 空状态与入口</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<script src="kit/data.js"></script>
+<style>
+  .doc { min-width: 1520px; }
+  .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .decide { display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 18px; margin-bottom: 18px; max-width: 1440px; }
+  .decide .box { background: var(--surface); border-radius: 22px; padding: 20px 22px; font-size: 13px; line-height: 1.75; color: var(--ink-2); }
+  .decide .box h3 { font-size: 15px; font-weight: 800; color: var(--ink); margin-bottom: 10px; }
+  .decide .box b { color: var(--ink); }
+  .decide ol { padding-left: 18px; display: grid; gap: 6px; }
+
+  /* 手机浏览器框（同 b8 m390） */
+  .mweb .scroll { padding-bottom: 200px; }
+  .mweb .tabbar { bottom: 100px; }
+  .sbar { position: absolute; left: 0; right: 0; bottom: 0; height: 92px; z-index: 34; background: var(--glass); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border-top: 1px solid var(--line); padding: 10px 14px 0; display: flex; gap: 10px; align-items: flex-start; }
+  .sbar .url { flex: 1; height: 42px; border-radius: 14px; background: var(--surface); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13.5px; color: var(--ink-2); font-weight: 600; }
+  .sbar .ub { width: 42px; height: 42px; display: grid; place-items: center; color: var(--ink-2); font-size: 14px; font-weight: 700; }
+  .mw-head { display: flex; align-items: center; gap: 8px; padding: 6px 0 10px; }
+  .mw-head .logo { width: 34px; height: 34px; border-radius: 11px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; }
+  .web.w834 { width: 834px; height: 1000px; grid-template-columns: 72px 1fr; }
+  .w834 .side a { width: 48px; padding: 12px 0; font-size: 0; gap: 0; }
+  .w834 .side .logo { margin-bottom: 14px; }
+  .w834 .main { padding: 22px 26px 40px; }
+  .web .mainhead .l .tseg { margin: 0; }
+
+  /* 笔记 */
+  .srow { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+  .srow .search { flex: 1; min-width: 0; }
+  .addc { width: 44px; height: 44px; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; flex: none; }
+  .cats { display: flex; gap: 6px; margin: 12px 0; }
+  .cats button { height: 34px; padding: 0 14px; border-radius: 999px; background: var(--surface-2); font-size: 13px; font-weight: 700; color: var(--ink-2); }
+  .cats button.on { background: var(--ink); color: var(--bg); }
+  .cats button span { font-family: var(--font-num); margin-left: 4px; }
+  .mrow { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 10px; padding: 12px 0; align-items: start; }
+  .mrow + .mrow { border-top: 1px solid var(--line); }
+  .mrow .k { width: 32px; height: 32px; border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; font-size: 16px; }
+  .mrow b { display: block; font-size: 14px; font-weight: 700; }
+  .mrow .body { display: block; font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
+  .mrow time { font-family: var(--font-num); font-size: 12px; color: var(--ink-3); }
+  .mrow.sel { background: var(--surface-2); margin: 0 -10px; padding: 12px 10px; border-radius: 14px; }
+  .mrow.sel + .mrow { border-top: 0; }
+  .card.mlist { padding: 4px 16px; }
+  /* 空状态 */
+  .empty-ttl { font-size: 18px; font-weight: 800; margin-top: 12px; }
+  .uses { display: grid; gap: 12px; margin-top: 14px; }
+  .uses > div { display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: start; }
+  .uses .emo.sm { font-size: 15px; }
+  .uses b { display: block; font-size: 13.5px; font-weight: 700; }
+  .uses div > span:not(.emo) { display: block; font-size: 12.5px; color: var(--ink-2); line-height: 1.6; }
+  .web .empty-wide { max-width: 520px; }
+  /* 详情 */
+  .dk { font-size: 11.5px; color: var(--ink-3); font-weight: 700; }
+  .dt { font-size: 20px; font-weight: 800; margin: 2px 0; line-height: 1.35; }
+  .dbody { font-size: 13.5px; line-height: 1.85; color: var(--ink); margin-top: 12px; }
+  .dbody a { color: var(--plum-700); font-weight: 700; }
+  .dmeta { font-size: 12px; color: var(--ink-3); margin-top: 12px; display: flex; gap: 6px; align-items: center; }
+  .split { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 18px; align-items: start; }
+  .web .split .card { padding: 18px; }
+  .web .split .card.mlist { padding: 6px 14px; }
+  /* 编辑弹层 */
+  .fld { margin-top: 12px; }
+  .fld .lbl { display: block; margin-bottom: 6px; font-weight: 700; }
+  .area { height: 120px; border-radius: 14px; background: var(--surface-2); padding: 12px 14px; font-size: 13px; color: var(--ink-3); }
+  .ck { display: flex; gap: 8px; align-items: center; font-size: 13px; margin-top: 12px; }
+  .sheet.ed { top: 120px; padding-bottom: 20px; }
+  .rail .card { padding: 16px; border-radius: 20px; }
+  .ghost-lines i { display: block; height: 9px; border-radius: 5px; background: var(--surface-2); margin: 8px 0; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <div>
+      <div class="doc-kicker">Orbit Redesign · 2026-11-21 · Web 提案（390 / 834 / 1440）· 待用户确认</div>
+      <h1>Task › 笔记：一个空状态，讲清楚用途，入口固定</h1>
+      <p>路由 /app/tasks?tab=memo。不加功能：备忘录种类（面谈 / 自由备忘录）、关联联系人和活动（正文 @ 或关联搜索）、「用于计划的已交流项」都来自现有 MemoWorkspace.tsx；新建沿用现有编辑弹窗（?tab=memo&amp;new=1）。UI 文案用 copy/memo.ts 的 zh 值，空状态说明为新写（替换「记下你注意到的事。」）。示例内容均为虚构。</p>
+    </div>
+    <div class="doc-tools">
+      <div class="seg" data-ctl="theme"><button data-v="light">浅色</button><button data-v="dark">深色</button></div>
+      <div class="seg" data-ctl="pins"><button data-v="on" class="on">标注 ON</button><button data-v="off">OFF</button></div>
+    </div>
+  </div>
+  <div class="decide">
+    <div class="box">
+      <h3>问题（手机现状截图）</h3>
+      <ol>
+        <li><b>两个一样的空状态</b>：列表区一张「还没有备忘录 / 记下你注意到的事。」，下面详情区又一张同样文字的大白卡（手机上列表和详情上下叠在一起，详情区没有内容时也照样渲染）。</li>
+        <li><b>没有地方新建</b>：桌面的「添加备忘录」在 Shell 页头右侧；手机页头折叠（phoneFold）后这个按钮跟着消失，整页找不到入口。</li>
+        <li><b>看不出这页干什么</b>：「记下你注意到的事。」没有说能记什么、和人 / 活动 / 计划有什么关系；而搜索框和「全部 0 / 面谈 0 / 自由备忘录 0」在没有内容时只是噪音。</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h3>方案</h3>
+      <ol>
+        <li><b>只有一个空状态</b>：列表为空时详情区不渲染（手机）；834 / 1440 列表 + 详情合成一张空状态卡。</li>
+        <li><b>空状态说清用途</b>（四行事实，按代码能做到的写）：面谈 / 自由备忘录两种；正文 @ 关联联系人或活动；面谈只关联一位联系人时可算进计划。</li>
+        <li><b>入口位置固定</b>：手机 = 搜索框右侧一个黑色「＋」圆钮（有内容时常驻）；空状态时搜索行和分类不出，空状态卡里的「添加备忘录」是唯一入口。834 / 1440 = 页头右侧「添加备忘录」（现有位置），空状态卡里不再放按钮。</li>
+        <li><b>有内容时</b>：手机列表 → 点一行进全屏详情（b8「详情 → 全屏页」）；834 / 1440 左列表、右详情。</li>
+        <li><b>搜索无结果</b>：列表里一行「没有匹配的备忘录」，不出卡片、不出说明。</li>
+      </ol>
+      <div style="margin-top:10px"><b>待定</b>：Tab 叫「笔记」，页内全部叫「备忘录」（添加备忘录 / 搜索备忘录）。建议统一成一个词；本稿先照现有文案画。</div>
+    </div>
+    <div class="box">
+      <h3>对标成熟产品的做法</h3>
+      <ol>
+        <li><b>Apple Notes（iPhone）</b>：新建按钮位置永远不变（右下角写字图标），列表为空时只有一行「无备忘录」，不出第二块空白；点一条进全屏详情。本方案手机「＋」固定在搜索行右侧，同理。</li>
+        <li><b>Bear / Notion</b>：第一次打开时空状态说明「这里能放什么」并给唯一一个新建按钮；有内容后新建回到固定位置（Notion 侧栏「+ New page」/ Bear 顶部「✎」）。</li>
+        <li><b>Apple Notes / Bear（iPad、Mac）</b>：左列表右详情；没有笔记时右侧不画空详情卡。新建在工具栏（本方案的页头右侧）。</li>
+      </ol>
+    </div>
+  </div>
+  <nav class="doc-nav" id="docnav"></nav>
+  <div id="out"></div>
+</div>
+<script>
+const M = [
+  { k: '🤝', t: '和伊藤 直子聊财务模型', b: '她建议收入预测按客户分层做，先把前 20 家客户的续约率单独列出来…', d: '11/20', kind: '面谈' },
+  { k: '🤝', t: 'CFO Night 第 2 桌', b: '松本 亮：IPO 准备至少提前两年找审计。约了下周再聊…', d: '11/14', kind: '面谈' },
+  { k: '✍️', t: '投资人常问的问题', b: '获客成本怎么算；为什么现在融资；资金用到哪里…', d: '11/09', kind: '自由备忘录' },
+];
+/* zh 画框 */
+const NAVZ = [['home', '首页'], ['users', '人脉'], ['sparkle', 'iOrbit'], ['calendar', '活动'], ['task', 'Task']];
+const SIDEZ = [...NAVZ, ['inbox', '收件箱']];
+const sbar = `<div class="sbar"><span class="ub">aA</span><div class="url">${ic('search', 'sm')}orbit.app</div><span class="ub">${ic('refresh', 'sm')}</span></div>`;
+const mNav = (on) => `<nav class="tabbar">${NAVZ.map(([i, l], k) => `<button class="${k === on ? 'on' : ''}">${ic(i)}${l}</button>`).join('')}</nav>`;
+const brand = `<div class="mw-head"><div class="logo">O</div><b style="font-size:16px">Orbit</b><div style="flex:1"></div><button class="rbtn">${ic('inbox')}</button><button class="avatar-btn">佐</button></div>`;
+const m390 = ({ body, nav = 4, overlay = '', pins = '', theme = '', noBrand = false }) => phone({ tab: -1, body: (noBrand ? '' : brand) + body, overlay: (nav >= 0 ? mNav(nav) : '') + overlay + sbar, pins, theme }).replace('class="phone"', 'class="phone mweb"');
+const webZ = ({ nav = 4, body, rail = '', pins = '', cls = '', theme = '' }) =>
+  `<div class="web ${rail ? '' : 'no-rail'} ${cls}" ${theme ? `data-theme="${theme}"` : ''}>
+    <aside class="side"><div class="logo">O</div>${SIDEZ.map(([i, l], k) => `<a class="${k === nav ? 'on' : ''}">${ic(i)}${l}</a>`).join('')}
+      <div class="sp"></div><a>${ic('brief')}主办</a><a>${ic('settings')}设置</a><div class="avatar-btn" style="margin-top:8px">佐</div></aside>
+    <section class="main">${body}</section>${rail ? `<aside class="rail">${rail}</aside>` : ''}${pins}</div>`;
+
+/* 部件 */
+const tseg = `<div class="tseg">${['日历', '待办', '计划', '笔记'].map((t, i) => `<button class="${i === 3 ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+const uses = `<div class="uses">
+  <div><span class="emo sm lav">🤝</span><div><b>面谈</b><span>见完一个人，写下聊了什么、约了什么</span></div></div>
+  <div><span class="emo sm apricot">✍️</span><div><b>自由备忘录</b><span>不针对某个人的想法和清单</span></div></div>
+  <div><span class="emo sm blue">@</span><div><b>关联联系人和活动</b><span>正文里 @ 一下，备忘录里就能点开 TA 或那场活动</span></div></div>
+  <div><span class="emo sm teal">${ic('target', 'sm')}</span><div><b>算进计划</b><span>面谈只关联一位联系人时，可记为计划里的已交流项</span></div></div></div>`;
+const emptyPhone = `<div class="card p-empty"><span class="emo lav">${ic('note')}</span><div class="empty-ttl">还没有备忘录</div>${uses}<button class="btn primary block p-add" style="margin-top:18px;height:46px">${ic('plus', 'sm')}添加备忘录</button></div>`;
+const emptyWide = `<div class="card p-empty" style="padding:28px 30px"><div class="empty-wide"><span class="emo lav">${ic('note')}</span><div class="empty-ttl">还没有备忘录</div>${uses}</div></div>`;
+const searchRow = (q = '') => `<div class="srow p-srow"><div class="search">${ic('search', 'sm')}<span style="${q ? 'color:var(--ink)' : ''}">${q || '搜索备忘录'}</span></div><button class="addc p-plus" aria-label="添加备忘录">${ic('plus')}</button></div>`;
+const cats = (a, b, c) => `<div class="cats p-cats"><button class="on">全部<span>${a}</span></button><button>面谈<span>${b}</span></button><button>自由备忘录<span>${c}</span></button></div>`;
+const rows = (sel = -1) => M.map((m, k) => `<div class="mrow ${k === sel ? 'sel' : ''}"><span class="k">${m.k}</span><div style="min-width:0"><b class="ell">${m.t}</b><span class="body ell">${m.b}</span></div><time>${m.d}</time></div>`).join('');
+const listCard = (sel) => `<div class="card mlist p-list">${rows(sel)}</div>`;
+const detail = `<span class="dk">面谈</span><div class="dt">和伊藤 直子聊财务模型</div><span class="lbl">2026/11/20 21:14</span>
+  <div class="dbody">在 <a>@CFO Night Tokyo vol.18</a> 认识的 <a>@伊藤 直子</a>。她建议收入预测按客户分层做，先把前 20 家客户的续约率单独列出来，投资人最先问的就是这个。<br>约了 12 月初再看一次模型。</div>
+  <div class="chips" style="margin-top:12px"><span class="chip">伊藤 直子</span><span class="chip">CFO Night Tokyo vol.18</span></div>
+  <div class="dmeta">${ic('check', 'sm')}用于计划的已交流项</div>`;
+
+/* 板 */
+const notesHTML = (notes, w = 390) => notes && notes.length ? `<ul class="note-list" style="max-width:${w}px">${notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : '';
+const boards = (items) => `<div class="boards">${items.map(([label, tag, html, notes, w]) => `<div class="board"><div class="board-label">${label}${tag ? `<span class="tag">${tag}</span>` : ''}</div>${html}${notesHTML(notes, w)}</div>`).join('')}</div>`;
+const sec = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+const segTop = `<div style="margin-bottom:0">${tseg}</div>`;
+
+let h = '';
+h += sec('① 手机 390', '品牌顶栏 + Task 分段（笔记）+ 内容；底部胶囊导航');
+const editor = `<div class="sheet-scrim"></div><div class="sheet ed p-editor"><div class="grab"></div><div class="row between"><b style="font-size:17px">添加备忘录</b><button class="lbtn">${ic('x', 'sm')}</button></div>
+  <div class="fld"><span class="lbl">标题</span><div class="input"></div></div>
+  <div class="fld"><div class="seg" style="display:flex"><button style="flex:1">面谈</button><button class="on" style="flex:1">自由备忘录</button></div></div>
+  <div class="fld"><span class="lbl">正文</span><div class="area"></div></div>
+  <div class="fld"><div class="input">${ic('search', 'sm')}搜索关联的人或活动</div></div>
+  <div class="ck"><span class="cbx"></span><span style="color:var(--ink-3)">用于计划的已交流项</span></div>
+  <div class="row" style="margin-top:16px;gap:8px"><button class="btn" style="flex:1;height:46px">取消</button><button class="btn primary" style="flex:1.6;height:46px">保存</button></div></div>`;
+h += boards([
+  ['P1 · 空', '提案', m390({ body: segTop + `<div style="height:12px"></div>` + emptyPhone, pins: pin(1, '.p-empty') + pin(2, '.p-add') }),
+    ['只有一张空状态：四行说清能记什么、和人 / 活动 / 计划的关系；搜索框和「全部 0」等分类不出', '「添加备忘录」是这一屏唯一的入口']],
+  ['P2 · 有内容', '提案', m390({ body: segTop + searchRow() + cats(3, 2, 1) + listCard(), pins: pin(1, '.p-plus') + pin(2, '.p-list') }),
+    ['新建入口固定在搜索框右侧（黑色「＋」，44px），有内容时一直在这', '只有列表；点一行进全屏详情（P3），列表下面不再叠详情卡']],
+  ['P3 · 详情（全屏）', '低保真', m390({ nav: -1, noBrand: true, body: `<div class="hhead"><button class="rbtn">${ic('left')}</button><div class="t"></div><button class="hedit">编辑</button></div><div class="card p-detail">${detail}</div>`, pins: pin(1, '.p-detail') }),
+    ['@ 的人和活动在正文里可点；关联的 chip 在下方；勾了「用于计划的已交流项」时出一行']],
+  ['P4 · 搜索无结果', '状态', m390({ body: segTop + searchRow('审计') + cats(0, 0, 0) + `<div class="lbl p-nores" style="font-size:13px;padding:6px 4px">没有匹配的备忘录</div>`, pins: pin(1, '.p-nores') }),
+    ['一行字，不出卡片；「＋」位置不变']],
+]);
+h += `<div style="height:28px"></div>` + boards([
+  ['P5 · 点「＋」/「添加备忘录」', '现有弹窗', m390({ body: segTop + searchRow() + cats(3, 2, 1) + listCard(), overlay: editor, pins: pin(1, '.p-editor') }),
+    ['沿用现有编辑弹窗（手机为底部弹层）：标题 · 面谈 / 自由备忘录 · 正文 · 关联搜索 · 用于计划的已交流项']],
+  ['P1 · 深色', '', m390({ body: segTop + `<div style="height:12px"></div>` + emptyPhone, theme: 'dark' })],
+]);
+
+/* iPad */
+h += sec('② iPad 834', '72px 图标栏；页头：左 Task 分段 · 中标题 · 右「添加备忘录」');
+const addBtn = `<button class="btn primary p-hadd">${ic('plus', 'sm')}添加备忘录</button>`;
+const wHead = mainhead('Task', '11月1日–11月30日', tseg, addBtn);
+const wList = `<div><div class="search" style="margin-bottom:0">${ic('search', 'sm')}搜索备忘录</div>${cats(3, 2, 1)}${listCard(0)}</div>`;
+h += boards([
+  ['T1 · 834 · 空', '提案', webZ({ cls: 'w834', body: wHead + emptyWide, pins: pin(1, '.p-hadd') + pin(2, '.p-empty') }),
+    ['入口 = 页头右侧「添加备忘录」（现有位置）', '列表 + 详情合成一张空状态卡；卡里不再放第二个「添加备忘录」'], 834],
+  ['T2 · 834 · 有内容', '提案', webZ({ cls: 'w834', body: wHead + `<div class="split">${wList}<div class="card p-detail">${detail}</div></div>`, pins: pin(1, '.p-detail') }),
+    ['左列表 300px、右详情；选中行浅底'], 834],
+]);
+
+/* 1440 */
+h += sec('③ 桌面 1440', '84px 导航 + 主栏 + 360 右栏（右栏为 Shell 的 iOrbit 卡，本稿不改）');
+const rail = `<h4>${ic('sparkle', 'sm')}下一步</h4><div class="card"><div class="ghost-lines"><i style="width:60%"></i><i style="width:92%"></i><i style="width:80%"></i></div></div>`;
+h += boards([
+  ['D1 · 1440 · 空', '提案', webZ({ rail, body: wHead + emptyWide, pins: pin(1, '.p-hadd') + pin(2, '.p-empty') }),
+    ['同 834：页头右侧是唯一入口；一张空状态卡'], 1440],
+]);
+h += `<div style="height:28px"></div>` + boards([
+  ['D2 · 1440 · 有内容', '提案', webZ({ rail, body: wHead + `<div class="split" style="grid-template-columns:340px minmax(0,1fr)">${wList}<div class="card p-detail">${detail}<div style="margin-top:16px"><button class="btn sm">编辑</button></div></div></div>`, pins: pin(1, '.p-detail') }),
+    ['左列表 340px、右详情；新建仍在页头右侧'], 1440],
+]);
+
+document.getElementById('out').innerHTML = h;
+docNav(''); orbitChrome();
+</script>
+</body>
+</html>

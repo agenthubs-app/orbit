@@ -84,8 +84,8 @@
 @media (max-width: 767px) {
   .narrow > .pendSection.card { margin-top: var(--space-12); padding: 14px 16px; }
   .narrow > .pendSection .cardH { margin-bottom: 10px; }
-  /* b8 #7：步骤轮播的圆点之后紧接今日のチャンス卡（圆点自带上距 8，卡片不再加间距）。 */
-  .narrow > .dots + .card { margin-top: 0; }
+  /* b8 #7 原为圆点之后紧接卡片（0 间距）；2026-11-21 用户反馈「模块粘在一起」→ 与其他模块同为 14。 */
+  .narrow > .dots + .card { margin-top: var(--space-14); }
   /* b8 #7 .r8goal：390 的目标下拉是白底胶囊（padding 0 14）；右侧两个圆钮图标 ink-2（kit .rbtn）。 */
   .goalRow > :first-child :global(button[data-plan-goal-switcher]) { height: 40px; padding: 0 14px; background: var(--surface); }
   .goalRow .rbtn.rbtn { color: var(--ink-2); }
@@ -236,7 +236,7 @@
 .recentRow > b { font-family: var(--font-num); color: var(--plum-700); flex: none; }
 
 /* 390 step carousel (b8 .r8stp) */
-.carousel { display: flex; gap: var(--space-8); overflow-x: auto; scroll-snap-type: x mandatory; margin: 12px -18px 0; padding: 2px 18px 4px; scrollbar-width: none; }
+.carousel { display: flex; gap: var(--space-8); overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 18px; margin: 12px -18px 0; padding: 2px 18px 4px; scrollbar-width: none; }
 .carousel::-webkit-scrollbar { display: none; }
 .stpCard { flex: none; scroll-snap-align: start; width: 156px; border-radius: var(--r-menu); padding: 12px 14px; background: var(--surface); font-size: var(--fs-meta); }
 .stpOn { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--plum-500); }

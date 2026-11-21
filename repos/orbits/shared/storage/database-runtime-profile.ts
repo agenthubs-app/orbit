@@ -22,9 +22,13 @@ export interface DatabaseRuntimeProfile {
 export type DatabaseRuntimeEnv = Record<string, string | undefined>;
 
 const PROFILES: Record<DatabaseRuntimeKind, DatabaseRuntimeProfile> = {
+  // 2026-11-21: idle 10s → 60s. Clicks in one visit are usually more than 10s apart, so almost every page load
+  // reopened its connection through the Neon pooler (production: ~1.1s extra on the first read after 10s idle,
+  // 250–330ms when warm). Idle connections do not keep the Neon compute awake (only activity does), and
+  // guardIdlePoolErrors keeps a dropped idle client from crashing the instance.
   // A page fires about a dozen API reads at once on one Fluid instance; 2 connections made them
   // queue. The Neon pooler (pgbouncer) takes far more clients than these per-instance pools.
-  serverless: { kind: "serverless", poolMax: 5, transactionalPoolMax: 3, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 10_000, queryTimeoutMillis: 15_000, statementTimeoutMillis: null },
+  serverless: { kind: "serverless", poolMax: 5, transactionalPoolMax: 3, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 60_000, queryTimeoutMillis: 15_000, statementTimeoutMillis: null },
   worker: { kind: "worker", poolMax: 4, transactionalPoolMax: 4, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 30_000, queryTimeoutMillis: 60_000, statementTimeoutMillis: 60_000 },
   local: { kind: "local", poolMax: 4, transactionalPoolMax: 4, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 10_000, queryTimeoutMillis: 30_000, statementTimeoutMillis: 30_000 },
 };
