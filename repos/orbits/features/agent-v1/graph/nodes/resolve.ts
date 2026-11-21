@@ -157,7 +157,10 @@ const CJK_NOISE = [
   "他", "她", "它", "这", "那", "该", "彼", "我", "私", "件", "的", "の",
 ];
 const LATIN_NOISE = new Set(["the", "a", "an", "this", "that", "these", "those", "it", "its", "my", "mine", "our", "your", "his", "her", "their", "him", "them", "me", "i", "about", "of", "on", "for", "in", "at", "to", "note", "notes", "memo", "memos", "record", "records", "todo", "todos", "to-do", "to-dos", "task", "tasks", "schedule", "event", "events", "item", "items", "one", "ones", "first", "second", "third", "last", "earlier", "above", "previous", "wrote", "written",
-  "today", "tomorrow", "yesterday", "week", "month", "year", "next", "latest", "recent", "open", "done", "completed", "finished", "overdue", "pending", "upcoming", "all", "every"]);
+  "today", "tomorrow", "yesterday", "week", "month", "year", "next", "latest", "recent", "open", "done", "completed", "finished", "overdue", "pending", "upcoming", "all", "every",
+  // AG21c (R47/R53 lookup, AE-SCL-020): question and function words ("what's still open with her") are never search words —
+  // the rarest of them ("with") narrowed a person's open to-dos to the ones that happen to hold it.
+  "what", "which", "who", "whom", "how", "when", "where", "why", "still", "with", "and", "or", "is", "are", "was", "were", "be", "any", "anything", "there", "from", "by", "up", "do", "does", "have", "has"]);
 
 /** run-02 repair 1: words that point at one record ("那篇", "第二个", "it") — as opposed to naming a kind ("タスク", "notes"). */
 const POINTER = /(这|那|该|此|它|他|她|彼|それ|これ|あれ|その|この|あの|例の|刚才|刚刚|上面|前面|之前|さっき|先ほど|第[一二三四五六七八九十\d]|\b(this|that|these|those|it|its)\b)/iu;
