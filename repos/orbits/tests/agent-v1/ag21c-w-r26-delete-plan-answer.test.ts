@@ -98,6 +98,23 @@ test("R26 a reply of three sentences to the delete plan is one answer: one plan 
   assert.deepEqual(intents.map((intent) => [intent.capability, intent.targetId]), [["attendance.delete", "attendance:ink"], ["memo.update", "note:ink"], ["privateEvent.delete", FAIR.id]], JSON.stringify(intents.map((intent) => [intent.capability, intent.targetId, (intent as { partId?: string }).partId])));
 });
 
+test("R26 combined-tree gate (AE-EVT-008): the unlink sentence tagged memo.unlink + todo.update is part of the same plan answer", async () => {
+  const { base, records } = world();
+  const session = graphKit((async () => { throw new Error("replaced"); }) as typeof fetch, { now: NOW, records: records as never });
+  const first = "把上个月的墨池读书夜删了";
+  await turn(session, base, first, [{ deliverable: "change", objectClues: [{ entity: "event", text: "墨池读书夜" }], requiredCapabilities: ["privateEvent.delete"], sourceQuote: first }], [{ dependsOn: [], entity: "privateEvent", localId: "w1", partId: "p1", selector: { clues: ["上个月的墨池读书夜"] }, verb: "delete" }]);
+  const sentences = ["去过的那条一起删掉", "笔记和待办留着，只解除它们和这场活动的关联", "然后把活动删了"];
+  const reply = sentences.join("；");
+  // As the first layer gave it on the combined tree: the middle sentence as memo.unlink and todo.update.
+  const capabilities = [["privateEvent.delete"], ["memo.unlink", "todo.update"], ["privateEvent.delete"]];
+  const parts = sentences.map((quote, index) => ({ ...(index === 0 ? { continues: { kind: "clarification", ref: "o1" } } : {}), deliverable: "change", requiredCapabilities: capabilities[index], sourceQuote: quote }));
+  const ops = [{ dependsOn: [], entity: "attendance", localId: "w1", partId: "p2", selector: { clues: ["参会"] }, verb: "delete" }, { dependsOn: [], entity: "privateEvent", localId: "w2", partId: "p2", selector: { clues: ["这场活动"] }, verb: "delete" }];
+  const two = await turn(session, base, reply, parts, ops);
+  const intents = two.frozen.flatMap((card) => card.intents) as { capability: string; targetId?: string }[];
+  assert.deepEqual(intents.map((intent) => [intent.capability, intent.targetId]), [["attendance.delete", "attendance:ink"], ["memo.update", "note:ink"], ["privateEvent.delete", FAIR.id]], JSON.stringify(intents.map((intent) => [intent.capability, intent.targetId, (intent as { partId?: string }).partId])));
+  assert.equal(two.proposeCalls, 0, "no sentence of the answer is a request of its own");
+});
+
 test("R26 an answer that names no option keeps the asked event for the second layer (never 'no event called <the answer>')", async () => {
   const { base, records } = world();
   const session = graphKit((async () => { throw new Error("replaced"); }) as typeof fetch, { now: NOW, records: records as never });

@@ -154,7 +154,8 @@ const EVENT_WORD = /(活动|聚会|研讨会|讲座|展览|摄影展|市集|论�
 const SCHEDULE_WORD = /(日程|日历|行程|カレンダー|スケジュール|\bschedule\b|\bcalendar\b)/iu;
 const AG13_FAMILY = new Set<string>(["privateEvent.create", "privateEvent.update", "privateEvent.delete", "attendance.create", "attendance.delete", "attendance.update", "schedule.create", "schedule.update", "schedule.delete", "todo.complete", "todo.reopen", "todo.delete", "memo.update"]);
 /** AG21c (R26): the writes a private event's delete plan makes. */
-const PLAN_FAMILY = new Set<string>(["privateEvent.delete", "attendance.delete", "attendance.update", "memo.update", "todo.update", "schedule.update", "schedule.delete"]);
+// Combined-tree gate (AE-EVT-008): the first layer tags "笔记和待办留着，只解除关联" memo.unlink — an unlink is the plan's too.
+const PLAN_FAMILY = new Set<string>(["privateEvent.delete", "attendance.delete", "attendance.update", "memo.update", "memo.unlink", "todo.update", "schedule.update", "schedule.delete"]);
 const TIME_OF_DAY = /(\d{1,2}\s*[:：]\s*\d{2}|\d{1,2}\s*(?:時|时|点)|\b\d{1,2}\s*(?:am|pm)\b|上午|下午|晚上|中午|午前|午後|夕方|\bmorning\b|\bafternoon\b|\bevening\b)/iu;
 
 /** Parts this pass proposes for. */
