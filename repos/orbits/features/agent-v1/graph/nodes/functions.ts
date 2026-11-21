@@ -30,7 +30,7 @@ import { localDay } from "../../views/recent-interaction";
 import type { CanonicalEventRecord } from "../../../events/core/contract";
 import type { NoteInteractionContract } from "../../../../shared/contract/notes";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
-import { asksForRecommendation, asksWhoToFollowUp, isWholeQuote, liftedIn, realTopicOf } from "../../functions/basis";
+import { asksForRecommendation, asksWhoToFollowUp, isWholeQuote, liftedIn, realTopicOf, withoutOccasionWords } from "../../functions/basis";
 import { holdsRole, rolesIn, roleWordsIn } from "../../understand/role-words";
 import { asksWhatToPrepare, preparePart } from "./prepare";
 import { asksForNextStep, asksForReasons, asksWhichAreWorthIt, eventReason, fitLine, nextStepWords, themeLinks, themesOf } from "./reasons";
@@ -916,7 +916,8 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   if (basis && !basisMemo && (isWholeQuote(basis, original) || !realTopicOf(basis) || onlyWindowWords(basis) || !topicText(basis))) {
     emitTrace({ partId: part.localId, type: "functions.basis_not_a_topic", whole: isWholeQuote(basis, original) });
     basis = !onlyWindowWords(basis) && isWholeQuote(basis, original) && topicText(basis) ? topicText(basis) : null;
-  } else if (basis && !basisMemo && topicText(basis) !== realTopicOf(basis)) {
+  } else if (basis && !basisMemo && (topicText(basis) !== realTopicOf(basis) || withoutOccasionWords(basis) !== basis.replace(/\s+/gu, " ").trim())) {
+    // AG21c (R45): an occasion anchor or the request's verb in the basis ("陶艺展前想见") leaves only its subject (陶艺).
     emitTrace({ from: basis, partId: part.localId, type: "functions.basis_window_words_out" });
     basis = topicText(basis);
   }
