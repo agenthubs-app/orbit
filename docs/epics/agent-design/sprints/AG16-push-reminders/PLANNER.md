@@ -107,3 +107,17 @@
 外部条件缺失（AG15 未完成、视觉稿未批准、密钥缺失）先不启动，或只做不受影响的部分并把受影响的证据记 blocked；run 已开始则按规则产出 failed 或 blocked 报告，不开第二次 Generator。真实投递没有授权时只记“未做”，不影响三项验收的判定，也不能写成真实可送达。
 报告包含：验收项与证据的对应、功能 SHA、命令与退出码、门槛运行编号与 `RUNS.md` 一行、双评不一致清单、新增依赖与版本、新环境变量、模拟与真实投递分开的结果、费用、未提交与失败项、下一步。
 分支：从 `orbit-agent-claude` 建 `sprint/AG16-push-reminders`；只暂存本 sprint 的文件，禁止 `git add .`；提交前跑 `node .gitnexus/run.cjs detect-changes --scope staged --repo .`，`partial` 或 `truncated` 要重跑。由协调者 `git merge --no-ff` 合回 `orbit-agent-claude`，在合并树跑收口集与 typecheck 后才登记 completed。push 需要用户授权。
+
+## 进入条件核对（协调者 2026-11-20 核对，Generator 在 run-01 开工时追加；以上原文未改）
+
+原文 SHA-256：`349b7284185d15c58455bbd8ce6b3fa094f9b3cd0a710155180f41a63866f239`。基线 HEAD：`002c63eb7`（`sprint/AG15-scheduled-tasks-inbox`）。分支 `sprint/AG16-push-reminders`，检出 `.worktrees/ag16`，评测端口 3230–3245。门槛用例文件 `eval/cases/PSH.yaml` SHA-256 `ebd9b6db8c29740538d163c147bf8e50e13c95162ec4b1246cb95888703d5982`（现有 5 例：AE-PSH-001～005，004、005 是日文、英文版）。
+
+1. **分支从 AG15 的分支起，不是从集成线起。** AG15 的服务端已完成并过了门槛（`002c63eb7`），它的两端「定时任务」页还没做（视觉稿等用户批准），所以提醒开关在界面上的位置还不存在。进入条件 1（AG15 已 completed 并合回）按协调者指示改为：在 AG15 的分支上并行开工。
+2. **AG15 留下的接口**（以它的 REPORT 为准，上下文包「前序交接要点」据此更正）：`agentAutomationNotify(automation): { inApp; push }`；`AgentAutomationRunRecord.delivery.push`；`createAutomationRunStore(store, workspaceId)` 的 `get/save/list`；`dispatcher.ts` 里 `deliverRun()` 之后的挂点。每期的投递状态已经和结果的 `computedAt` 分开存。现有推送管线（`typed-delivery-factory.ts` 的 `materialize()`）已经跳过定时任务的三种来源。
+3. **涵盖 AG16 的视觉稿已画、未批准**（进入条件 5 未满足）。本次只做不依赖它的部分：只给开了开关的任务发；固定的一句话，标题、正文、附带数据都不含资料；两个适配器（App 走 Expo，浏览器走 Web Push：VAPID 密钥按 CONVENTIONS §2、Service Worker、订阅存储），测试和评测里指向本机模拟端，`notify.push` 事件标 `source: simulated`；授权被拒或撤销时收件箱结果完整、任务照常；补送不重算、不读资料、不调模型；投递状态与结果完成时刻分开记；对话里开提醒的卡（沿用现有确认卡）；页面要用的设置与接口；评测运行器的推送模拟端与 `push_delivery`、`push_excludes`、`revoke: { push }`；单元测试。界面证据（两端提醒开关、浏览器授权几种状态的截图）记 blocked。未批准稿的 AG16 部分（16-1～16-5、D16-1～D16-4）只作参考；数据要能表达 16-4 的每一行历史。
+4. **真实投递**（进入条件 6）没有用户授权：不做，REPORT 写「未做真实投递」。
+5. 新增依赖要在 REPORT 写明名称和版本。
+6. 同时在跑的线：AG19、AG14、AG17（即将合并 AG15 的分支）、独立测试套件（`tp`）。AG15 的 Generator 之后还要回到同一批文件做页面：对 AG15 文件的改动要小，并在 REPORT 点名。
+7. 环境变量：CONVENTIONS §2 只登记了 `ORBIT_WEB_PUSH_VAPID_PUBLIC_KEY`、`ORBIT_WEB_PUSH_VAPID_PRIVATE_KEY`；本页提议的 `ORBIT_WEB_PUSH_SUBJECT` 没有登记。实现为可选：不设时取站点自己的地址（`AUTH_URL`／`NEXTAUTH_URL`，须为 https），在 REPORT 里列为与 CONVENTIONS 的出入。
+8. 证据目录在外置盘：`/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-design/sprint-AG16/run-01/`；评测日志在 `/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-eval-lines/ag16/runs/`（不是本页写的 `~/orbit-sprint-evidence/…`）。
+9. **2026-11-20 追加（协调者转达）：用户已批准 AG15、AG16 的视觉稿，D16-1～D16-4 全按推荐**——每条任务一个开关管手机和浏览器；提醒那句话是「有新结果，请到 Orbit 查看。」；浏览器只在点了按钮之后才询问；提醒受每日上限和免打扰时段管，历史里写明为什么没发。服务端已按这四项实现（第 3 条里「未批准」的说法到此为止）。两端页面在 AG15 的页面建好之后由另一位执行者做，本次停在服务端；界面证据仍记 blocked。

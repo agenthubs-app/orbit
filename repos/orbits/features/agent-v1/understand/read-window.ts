@@ -31,6 +31,18 @@ const POINTS_AT_RESULT = /(这些|那些|这几|那几|其中|里面|里头|当�
 /** Words that name the whole set of a kind (所有、全部、一共、all …). */
 const WHOLE_SET = /(所有|全部|一共|总共|全都|统统|全体|整体|すべて|全て|全件|\b(?:all|every|everything|in total|altogether|overall)\b)/iu;
 
+/**
+ * AG21a (R32a): the words with every stretch that sets a time window taken out ("这两周", "这几天", "接下来一周", "next
+ * week") — they are the read's window (the first layer turned them into dates), never a ranking topic. Each stretch the
+ * time pattern matches is blanked where it stands, with a 这/那/近 just before it.
+ */
+// Also the spelled-out spans the pattern leaves for setsOwnTime as they were ("the next two weeks", "ここ数日", "この2週間").
+const SPELLED_WINDOW = "\\b(?:the\\s+)?(?:next|last|past|coming|these|those)\\s+(?:(?:two|three|four|few|couple of|several)\\s+)?(?:days|weeks|months)\\b|(?:ここ|この)?(?:数日|[二三2-3]週間|数週間)";
+const WINDOW_STRETCH = new RegExp(`(?:这|那|近|头)?(?:${OWN_TIME.source}|${SPELLED_WINDOW})`, "giu");
+export function withoutWindowWords(words: string): string {
+  return words.replace(WINDOW_STRETCH, " ").replace(/\s+/gu, " ").trim();
+}
+
 /** True when the message sets a time window of its own. */
 export function setsOwnTime(message: string): boolean {
   return OWN_TIME.test(message);

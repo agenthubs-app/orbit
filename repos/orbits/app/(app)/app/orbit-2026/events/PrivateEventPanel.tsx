@@ -8,7 +8,7 @@
 import type { MyEventItem } from "../../../../../shared/contract/events-mine";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { Icon, useStandardCopy } from "../ui";
-import { eventWhen } from "./events-model";
+import { allDayLabelOf, eventWhen } from "./events-model";
 import styles from "./events.module.css";
 
 const DAY_PART_KEYS = ["morning", "noon", "afternoon", "evening", "night"] as const;
@@ -21,8 +21,8 @@ function attendedLine(item: MyEventItem, language: OrbitLanguage, words: Record<
   return [`${day}${parts.length ? ` ${parts.join("、")}` : ""}`, self.selfNote].filter(Boolean).join(" · ");
 }
 
-export function prefillOf(item: MyEventItem, language: OrbitLanguage, template: string): string {
-  return template.replace("{title}", item.title).replace("{day}", eventWhen(item.startsAt, language));
+export function prefillOf(item: MyEventItem, language: OrbitLanguage, template: string, allDayLabel = ""): string {
+  return template.replace("{title}", item.title).replace("{day}", eventWhen(item.startsAt, language, allDayLabelOf(item, allDayLabel)));
 }
 
 // `titled`: the drawer (phone) already shows the title in its own header, so the panel leaves it out.
@@ -36,7 +36,7 @@ export function PrivateEventPanel({ item, language, titled = false }: { item: My
         <span className={`${styles.emo} ${styles.t_lav}`} aria-hidden>{item.emoji}</span>
         <div className={styles.grow}>
           {titled ? null : <b className={styles.privateTitle}>{item.title}</b>}
-          <div className={styles.lbl}>{[eventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</div>
+          <div className={styles.lbl}>{[eventWhen(item.startsAt, language, allDayLabelOf(item, std.myEvents.allDay)), item.venue].filter(Boolean).join(" · ")}</div>
         </div>
         <span className={`${styles.chip} ${styles.c_lav}`}><Icon name="lock" size={12} />{words.privateChip}</span>
       </div>
@@ -61,7 +61,7 @@ export function PrivateEventPanel({ item, language, titled = false }: { item: My
           </div>
         ) : <div className={styles.lbl}>{words.relatedNone}</div>}
       </section>
-      <a className={`${styles.btn} ${styles.primary}`} href={`/app/agent?prefill=${encodeURIComponent(prefillOf(item, language, words.prefill))}`} data-events-private-edit="">{words.editInIorbit}</a>
+      <a className={`${styles.btn} ${styles.primary}`} href={`/app/agent?prefill=${encodeURIComponent(prefillOf(item, language, words.prefill, std.myEvents.allDay))}`} data-events-private-edit="">{words.editInIorbit}</a>
     </div>
   );
 }

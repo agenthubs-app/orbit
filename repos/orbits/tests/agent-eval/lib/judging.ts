@@ -78,6 +78,13 @@ export function eventIndexLine(event: TraceEvent): string {
     case "egress.blocked":
     case "egress.connected":
       return `${base} · ${event.host}:${event.port ?? ""} · ${event.at}`;
+    // AG14: which saved entries a turn used (ids and revisions; never their words), and the user's own setting changes.
+    case "memory.recall":
+      return `${base} · ${event.scope ?? ""} · 用到的记忆条目 ${((event.memories as string[] | undefined) ?? []).join(",") || "无"}${Array.isArray(event.overruled) && event.overruled.length ? ` · 本轮原话优先、没用的 ${(event.overruled as string[]).join(",")}` : ""}${event.enabled === false ? " · 「回答时参考这些」关着" : ""}`;
+    case "turn.setting":
+      return `${base} · ${short(event.setting)}`;
+    case "turn.resume_conversation":
+      return `${base} · 回到第 ${event.index} 个对话`;
     default:
       return `${base}${event.text ? ` · ${short(event.text)}` : ""}`;
   }

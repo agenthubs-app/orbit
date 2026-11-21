@@ -66,6 +66,10 @@ export interface AgentCardWords {
   retry: string;
   markDone: string;
   abandon: string;
+  /** AG15 (approved draft D15-2): the buttons and note of a card that makes a scheduled task. */
+  confirmRule: string;
+  dismissRule: string;
+  beforeConfirmRule: string;
 }
 
 export interface AgentCardClientState {
@@ -73,6 +77,11 @@ export interface AgentCardClientState {
   online: boolean;
   /** Records with an edit on this device not synced yet, as `<collection>:<id>` (the App's outbox; empty on the web). */
   pendingTargets: readonly string[];
+  /**
+   * AG15: this device's time zone (IANA). A scheduled task's "when" line names the task's time zone only when it differs
+   * from this one; unknown (absent): the line is shown without it.
+   */
+  timeZone?: string | undefined;
 }
 
 export type AgentCardTone = "plum" | "teal" | "apricot" | "grey";
@@ -85,6 +94,8 @@ export interface AgentCardRowView {
   after: string;
   /** The server marked this row as changed since the card was shown ("现在是 … → 改成 …"). */
   changed: boolean;
+  /** AG14 (D1): before and after in two columns side by side (「原来」「改成」, aiCard memoryWas / memoryNow). */
+  sideBySide: boolean;
 }
 
 export interface AgentCardItemView {
@@ -126,6 +137,10 @@ export type AgentCardView =
     footer: string | null;
     dim: boolean;
     regenerate: { question: string; label: string } | null;
+    /** AG15 (D15-5, D15-6): the server's line under an expired card — when it was made and that nothing ran, or which period replaced it. */
+    expiredNote: string | null;
+    /** AG15 (D15-6): the card that replaced this one (its id), when a scheduled task's next period made a new one. */
+    replacedBy: string | null;
     reviewButtons: { retry: string; markDone: string; abandon: string } | null;
   };
 
@@ -231,28 +246,39 @@ export function agentCardView(preview: AgentActionPreviewContract, client: Agent
       // A card frozen before AG07 has no display: its one line written by the server stands for the item.
       record: display?.record ?? op.text,
       review: op.status === "needs_review",
-      rows: (display?.rows ?? []).map((row) => ({ after: row.after, before: row.before ?? null, changed: changed.has(`${op.operationId}|${row.field}`), field: row.field, label: row.label })),
+      // AG15 (approved draft 15-1, as shortened by the user): a new scheduled task shows its facts grouped in three lines
+      // the server wrote ("什么时候", "挑什么", "之后"); the frozen facts stay separate fields (`rows`, `after`).
+      rows: display?.lines?.length
+        ? display.lines.map((line) => ({ after: line.zone && client.timeZone && client.timeZone !== line.zone.id ? line.zone.text : line.text, before: null, changed: line.fields.some((field) => changed.has(`${op.operationId}|${field}`)), field: line.key, label: line.label, sideBySide: false }))
+        : (display?.rows ?? []).map((row) => ({ after: row.after, before: row.before ?? null, changed: changed.has(`${op.operationId}|${row.field}`), field: row.field, label: row.label, sideBySide: Boolean(row.sideBySide && row.before !== undefined) })),
       status: itemStatusOf(preview.status, op.status, change, words),
     };
   });
   const blocked = waiting && items.some((item) => item.pendingEdit) ? words.syncFirst : null;
   const confirmEnabled = waiting && client.online && !blocked;
   const count = preview.operations.length;
+  // A card that only makes scheduled tasks: "确认，开始运行" / "不建了" (D15-2).
+  const makesTasks = count > 0 && preview.operations.every((op) => op.capability === "rule.create");
   return {
     actionId: preview.actionId,
     banner: waiting && changed.size ? words.changedBanner : null,
     blocked,
-    buttons: waiting ? { confirm: confirmButtonLabel(words, count), confirmEnabled, dismiss: words.dismiss, dismissEnabled: client.online } : null,
+    buttons: waiting ? { confirm: makesTasks ? words.confirmRule : confirmButtonLabel(words, count), confirmEnabled, dismiss: makesTasks ? words.dismissRule : words.dismiss, dismissEnabled: client.online } : null,
     cardContent: "shown",
     chip: chipOf(preview.status, review, words),
     confirmEnabled,
     dim: preview.status === "expired" || preview.status === "rejected" || preview.status === "canceled",
     footer: footerOf(preview, review, words),
-    hint: waiting && !blocked ? words.beforeConfirm : null,
+    hint: waiting && !blocked ? (makesTasks ? words.beforeConfirmRule : words.beforeConfirm) : null,
     items,
     kind: "card",
     pendingCount,
-    regenerate: preview.status === "expired" ? { label: words.regenerate, question: words.expiredQuestion } : null,
+    expiredNote: preview.status === "expired" ? preview.expiredNote ?? null : null,
+    replacedBy: preview.status === "expired" ? preview.supersededBy?.actionId ?? null : null,
+    // AG17 (approved draft, board 6): what an outside agent proposed cannot be made again in Orbit (the server refuses
+    // it too); that agent has to propose it again, so its expired card offers no «重新生成».
+    // D15-6: a card the next period replaced is not regenerated; its replacement is the one to use.
+    regenerate: preview.status === "expired" && preview.origin?.kind !== "connection" && preview.expiredReason !== "superseded" ? { label: words.regenerate, question: words.expiredQuestion } : null,
     reviewButtons: review ? { abandon: words.abandon, markDone: words.markDone, retry: words.retry } : null,
     revision: preview.revision,
     status: preview.status,

@@ -1,0 +1,149 @@
+/* agent-design AG17 (approved visual draft): the consent page (boards 1–4), the confirm page (5–6), settings ›
+   外部 AI 助手 (7–8) and the inbox's right column for a proposal (9). Product tokens only. */
+
+/* ── 同意页：no navigation, one column (600 at 1440, the phone width minus 16 + 16) ── */
+.consentPage { min-height: 100dvh; box-sizing: border-box; padding: 28px 16px 40px; background: var(--bg); color: var(--ink); }
+.consentColumn { width: 100%; max-width: 600px; margin: 0 auto; display: grid; gap: 18px; }
+.brand { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: var(--fs-logo); font-weight: var(--fw-bold); }
+.brandLogo, .orbitTile { display: inline-grid; place-items: center; background: var(--plum-900); color: var(--on-accent); font-weight: var(--fw-bold); }
+.brandLogo { width: 34px; height: 34px; border-radius: var(--r-logo-sm); font-size: var(--fs-emph); }
+.card { background: var(--surface); border-radius: var(--r-dialog); padding: 28px; box-shadow: var(--shadow-float); display: grid; gap: 18px; }
+.pair { display: flex; align-items: center; gap: 10px; }
+.bigTile { width: 52px; height: 52px; border-radius: var(--r-md); display: inline-grid; place-items: center; font-size: var(--fs-number); font-weight: var(--fw-medium); }
+.tileApricot { background: var(--mac-apricot); color: var(--mac-apricot-text); }
+.tileBlue { background: var(--mac-blue); color: var(--mac-blue-text); }
+.orbitTile { width: 52px; height: 52px; border-radius: var(--r-md); font-size: var(--fs-number); }
+.dots { color: var(--ink-3); letter-spacing: 2px; font-size: var(--fs-title-xs); }
+.title { margin: 0; font-size: var(--fs-title); line-height: 1.3; font-weight: var(--fw-heavy); }
+.lead { margin: -8px 0 0; color: var(--ink-2); font-size: var(--fs-body); line-height: 1.6; }
+.banner { display: flex; gap: 10px; align-items: flex-start; padding: 14px 16px; border-radius: var(--r-bubble); background: var(--mac-apricot); color: var(--mac-apricot-text); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); line-height: 1.55; }
+.banner svg { flex: none; margin-top: 2px; }
+.account { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--r-bubble); background: var(--surface-2); }
+.accountText { min-width: 0; flex: 1; display: grid; gap: 1px; }
+.accountText small { color: var(--ink-2); font-size: var(--fs-meta); }
+.accountText b { font-size: var(--fs-body); overflow-wrap: anywhere; }
+.accountText span { color: var(--ink-2); font-size: var(--fs-meta); overflow-wrap: anywhere; }
+.linkButton { border: 0; background: transparent; padding: 6px 0; color: var(--plum-500); font: inherit; font-size: var(--fs-body); font-weight: var(--fw-bold); cursor: pointer; white-space: nowrap; }
+.linkButton:hover { color: var(--plum-900); }
+.chooseHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.chooseHead b { font-size: var(--fs-body); }
+.chooseHead span { color: var(--ink-2); font-size: var(--fs-meta); }
+.rows { display: grid; margin-top: -8px; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
+.rowText { min-width: 0; display: grid; gap: 2px; }
+.rowName { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--fs-body); font-weight: var(--fw-bold); }
+.rowDesc { color: var(--ink-2); font-size: var(--fs-meta); line-height: 1.5; }
+.rowNote { color: var(--ink-3-text, var(--ink-2)); font-size: var(--fs-meta); }
+.mark { display: inline-flex; padding: 2px 8px; border-radius: var(--r-chip); background: var(--mac-lav); color: var(--mac-lav-text); font-size: var(--fs-meta); font-weight: var(--fw-bold); }
+.markNew { background: var(--mac-apricot); color: var(--mac-apricot-text); }
+.levels { display: inline-grid; grid-template-columns: repeat(3, auto); gap: 2px; padding: 3px; border-radius: var(--r-pill); background: var(--surface-2); }
+.level { height: 34px; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--ink-2); font: inherit; font-size: var(--fs-body-sm); font-weight: var(--fw-bold); cursor: pointer; white-space: nowrap; }
+.level:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.levelOn { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-seg); }
+.levelProposeOn { background: var(--plum-900); color: var(--on-accent); }
+.level:disabled { cursor: not-allowed; color: var(--ink-3); text-decoration: line-through; }
+.guarantee { display: grid; grid-template-columns: 20px 1fr; gap: 4px 12px; padding: 14px 16px; border-radius: var(--r-bubble); background: var(--surface-2); font-size: var(--fs-body-sm); line-height: 1.55; }
+.guarantee b { font-size: var(--fs-body); }
+.guarantee svg { margin-top: 2px; grid-row: span 2; }
+.guaranteeYes { background: var(--mac-teal); color: var(--mac-teal-text); }
+.guaranteeYes span, .guaranteeYes b { color: var(--ink); }
+.guarantees { display: grid; gap: 10px; }
+.buttons { display: grid; grid-template-columns: 1fr 1.5fr; gap: 12px; }
+.primary, .secondary { height: 48px; border: 0; border-radius: var(--r-pill); font: inherit; font-size: var(--fs-body); font-weight: var(--fw-bold); cursor: pointer; }
+.primary { background: var(--plum-900); color: var(--on-accent); }
+.secondary { background: var(--surface-2); color: var(--ink); }
+.primary:disabled, .secondary:disabled { opacity: 0.55; cursor: not-allowed; }
+.footer { margin: -4px 0 0; color: var(--ink-2); font-size: var(--fs-meta); text-align: center; line-height: 1.6; }
+.result { display: grid; justify-items: center; gap: 10px; text-align: center; padding: 34px 28px; }
+.resultTile { width: 52px; height: 52px; border-radius: var(--r-tile); display: grid; place-items: center; background: var(--surface-2); color: var(--ink-2); }
+.resultTileOk { background: var(--mac-teal); color: var(--mac-teal-text); }
+.resultTitle { margin: 4px 0 0; font-size: var(--fs-title-sm); font-weight: var(--fw-heavy); }
+.resultLine { margin: 0; color: var(--ink-2); font-size: var(--fs-body); line-height: 1.6; }
+.resultLink { color: var(--plum-500); font-weight: var(--fw-bold); text-decoration: none; }
+/* Same height as the card it stands for while the request is read (no jump when it arrives). */
+.skeletonCard { min-height: 640px; }
+@media (max-width: 767px) {
+  .consentPage { padding-top: 18px; }
+  .card { padding: 22px 20px; border-radius: var(--r-xl); }
+  .row { grid-template-columns: minmax(0, 1fr); }
+  .levels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .level { padding: 0 6px; }
+  /* D9: at the end of the page, «允许» above «不允许», each a full row. */
+  .buttons { grid-template-columns: minmax(0, 1fr); }
+  .buttons .primary { order: 1; }
+  .buttons .secondary { order: 2; }
+}
+
+/* ── 确认页 (board 5–6): one column in the shell's content area ── */
+.confirmPage { width: 100%; max-width: 640px; margin: 0 auto; padding: 4px 0 40px; display: grid; gap: 14px; }
+.phoneTop { display: none; }
+.who { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 14px; }
+.who h2 { margin: 0; font-size: var(--fs-number); line-height: 1.3; font-weight: var(--fw-heavy); }
+.whoMeta { margin: 2px 0 0; color: var(--ink-2); font-size: var(--fs-body-sm); }
+.whoMeta b { color: var(--ink); font-weight: var(--fw-bold); }
+.stateBox { display: grid; grid-template-columns: 20px 1fr; gap: 2px 10px; padding: 14px 16px; border-radius: var(--r-bubble); background: var(--surface-2); font-size: var(--fs-body-sm); line-height: 1.55; color: var(--ink-2); }
+.stateBox b { color: var(--ink); font-size: var(--fs-body); }
+.stateBox svg { margin-top: 3px; grid-row: span 2; }
+.stateBox.guaranteeYes { background: var(--mac-teal); color: var(--mac-teal-text); }
+.stateBox.guaranteeYes b { color: var(--ink); }
+.small { margin: 0; color: var(--ink-2); font-size: var(--fs-meta); line-height: 1.7; }
+.lockCard { background: var(--surface); border-radius: var(--r-xl); padding: 24px; display: grid; gap: 12px; justify-items: start; }
+.lockTile { width: 52px; height: 52px; border-radius: var(--r-tile); display: grid; place-items: center; background: var(--surface-2); color: var(--ink-2); }
+.lockCard h2 { margin: 4px 0 0; font-size: var(--fs-title-sm); font-weight: var(--fw-heavy); }
+.lockCard p { margin: 0; color: var(--ink-2); font-size: var(--fs-body); line-height: 1.6; }
+.lockButtons { display: flex; gap: 10px; flex-wrap: wrap; }
+.pill { height: 42px; padding: 0 20px; border: 0; border-radius: var(--r-pill); font: inherit; font-size: var(--fs-body); font-weight: var(--fw-bold); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+.pillDark { background: var(--plum-900); color: var(--on-accent); }
+.pillLight { background: var(--surface-2); color: var(--ink); }
+.cardBone { height: 320px; border-radius: var(--r-xl); background: var(--surface); }
+@media (max-width: 767px) {
+  .confirmPage { padding: 0 16px 32px; box-sizing: border-box; }
+  .phoneTop { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; height: 56px; margin: 0 0 4px; }
+  .phoneTop b { text-align: center; font-size: var(--fs-logo); }
+  .phoneBack { width: 44px; height: 44px; border-radius: var(--r-pill); background: var(--surface); display: grid; place-items: center; color: var(--ink); }
+}
+
+/* ── 设置 › 外部 AI 助手 (board 7–8) ── */
+.connGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-18); align-items: stretch; }
+.connCard { display: flex; flex-direction: column; gap: 0; padding: var(--space-20); border-radius: var(--r-card-web); background: var(--surface); min-width: 0; }
+.connHead { display: flex; align-items: flex-start; justify-content: space-between; }
+.connName { margin: 10px 0 0; font-size: var(--fs-emph); font-weight: var(--fw-bold); }
+.connMeta { margin: 2px 0 0; color: var(--ink-3-text, var(--ink-2)); font-size: var(--fs-label); }
+.connRows { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; font-size: var(--fs-body-sm); }
+.connRows dt { color: var(--ink-2); }
+.connRows dd { margin: 0; font-weight: var(--fw-bold); min-width: 0; overflow-wrap: anywhere; }
+.waiting { margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 14px; border-radius: var(--r-row); background: var(--mac-lav); color: var(--mac-lav-text); font-size: var(--fs-meta); font-weight: var(--fw-bold); text-decoration: none; }
+.connFoot { margin-top: auto; padding-top: 14px; display: flex; justify-content: flex-end; }
+.release { height: 32px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--coral-text); font: inherit; font-size: var(--fs-meta); font-weight: var(--fw-bold); cursor: pointer; }
+.sameCard { grid-column: 1 / -1; padding: var(--space-20); border-radius: var(--r-card-web); background: var(--surface); }
+.sameCard h3 { margin: 0 0 12px; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
+.sameGrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-12); }
+.sameYes, .sameNo { border-radius: var(--r-tile); padding: var(--space-12) 16px; font-size: var(--fs-control); line-height: var(--lh-letter); }
+.sameYes { background: var(--mac-teal); }
+.sameNo { background: var(--surface-2); }
+.emptyCard { grid-column: 1 / -1; padding: var(--space-20); border-radius: var(--r-card-web); background: var(--surface); display: grid; gap: 0; }
+.emptyTile { width: 44px; height: 44px; border-radius: var(--r-row); display: grid; place-items: center; background: var(--surface-2); color: var(--ink-2); }
+.steps { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+.steps li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; font-size: var(--fs-body-sm); line-height: 1.6; }
+.stepNum { width: 26px; height: 26px; border-radius: var(--r-pill); display: grid; place-items: center; background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-meta); font-weight: var(--fw-bold); }
+.address { margin-top: 8px; display: inline-flex; align-items: center; gap: 12px; max-width: 100%; padding: 6px 6px 6px 14px; border-radius: var(--r-md); background: var(--surface-2); }
+.address code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-body-sm); overflow-wrap: anywhere; }
+.copy { height: 32px; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--fs-meta); font-weight: var(--fw-bold); cursor: pointer; white-space: nowrap; }
+.dialogList { margin: 0; padding: 0 0 0 18px; display: grid; gap: 6px; color: var(--ink-2); font-size: var(--fs-body-sm); line-height: 1.6; }
+.dialogList b { color: var(--ink); }
+.boneLine { display: block; }
+@media (max-width: 1279px) { .connGrid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 767px) { .sameGrid { grid-template-columns: minmax(0, 1fr); } .connGrid { gap: var(--space-14); } }
+
+/* ── 收件箱这一行 (board 9): the inbox is an old page whose unscoped `.btn` (44 high, padding 0 20, centred, nowrap)
+   would reshape the row; three classes restate the row's own values (as ListRow and Button do over the legacy .btn). ── */
+.inboxRow.inboxRow:global(.btn) { display: grid; gap: var(--space-11); align-items: start; justify-content: normal; height: auto; padding: var(--space-11) var(--space-10); border: 0; border-radius: var(--r-md); font: inherit; letter-spacing: normal; white-space: normal; text-align: left; user-select: auto; transition: none; }
+.inboxRow.inboxRow:global(.btn):active { transform: none; }
+
+/* ── 收件箱右栏 (board 9) ── */
+.inboxPane { padding: 18px 22px 0; display: grid; gap: 10px; align-content: start; }
+.inboxTop { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--ink-2); font-size: var(--fs-meta); }
+.inboxChip { padding: 3px 10px; border-radius: var(--r-pill); background: var(--mac-lav); color: var(--mac-lav-text); font-weight: var(--fw-bold); }
+.inboxPane h2 { margin: 0; font-size: var(--fs-number); font-weight: var(--fw-heavy); }
+.inboxPane p { margin: 0; color: var(--ink-2); font-size: var(--fs-body-sm); line-height: 1.6; }

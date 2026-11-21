@@ -73,6 +73,8 @@ a.card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .noteItem { overflow-wrap: anywhere; }
 .noteItem b { display: block; color: var(--ink); font-weight: 600; }
 .noteDo { color: var(--ink); }
+/* AG14 (board 4): the memory note's 「去设置 ›」. */
+.noteGo { align-self: flex-start; color: var(--plum-900); font-weight: 700; text-decoration: none; }
 .noteItem + .noteItem { border-top: 1px solid var(--line); padding-top: 10px; }
 
 @media (max-width: 767px) {

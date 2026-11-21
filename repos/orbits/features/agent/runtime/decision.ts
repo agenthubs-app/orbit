@@ -51,6 +51,13 @@ async function checkCardTarget(op: AgentActionOperationPayload, reader: TodoRead
 
 /** Conversation cards expire after 7 days (设计稿 §5.2). */
 export const AGENT_CARD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+/** agent-design AG17 (设计稿 §5.2, §5.4): what an external agent proposed waits 24 hours, then the agent has to propose again. */
+export const AGENT_EXTERNAL_CARD_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** How long a card of this origin waits for a decision. */
+export function cardTtlMs(origin: AgentActionOrigin | undefined): number {
+  return origin?.kind === "connection" ? AGENT_EXTERNAL_CARD_TTL_MS : AGENT_CARD_TTL_MS;
+}
 const MAX_OUTBOX_ATTEMPTS = 5;
 
 export const AGENT_DECISIONS = ["confirm", "reject", "retry", "mark_done", "abandon"] as const;
@@ -110,6 +117,12 @@ const MESSAGES: Record<CardLocale, {
   revisionChanged: string;
   contentChanged: string;
   expired: string;
+  /** AG17: an external proposal past its 24 hours; it is not made again in Orbit. */
+  expiredExternal: string;
+  /** AG17: an external proposal voided because its connection was revoked. */
+  canceledExternal: string;
+  /** AG15: the next period of the same scheduled task made a new card. */
+  superseded: string;
   closedRejected: string;
   closedCanceled: string;
   retry: string;
@@ -126,6 +139,9 @@ const MESSAGES: Record<CardLocale, {
     confirmed: "Confirmed. Carrying it out now.",
     contentChanged: "Something on this card changed. Please look at it again: it now shows the current data and needs another click.",
     expired: "This card was left too long. Generate a new one?",
+    canceledExternal: "This proposal is void: the connection that made it was revoked. It can no longer be confirmed.",
+    expiredExternal: "This proposal is more than 24 hours old and no longer works. If you still want the change, ask the assistant that proposed it to propose it again.",
+    superseded: "A newer card from the same scheduled task took this one's place. Use the newer card.",
     markDone: "Marked as done on your word. Nothing was written again.",
     notInReview: "This item does not need review.",
     regenerated: "The card was made again from the current data. Nothing is done until you click confirm.",
@@ -141,6 +157,9 @@ const MESSAGES: Record<CardLocale, {
     confirmed: "確認しました。実行しています。",
     contentChanged: "カードの内容に変更があります。もう一度ご確認ください。現在のデータで更新しました。もう一度押すまで実行しません。",
     expired: "このカードは時間が経ちすぎました。作り直しますか？",
+    canceledExternal: "この提案は無効になりました。提案した連携が解除されたため、確定できません。",
+    expiredExternal: "この提案は 24 時間を過ぎたため、もう使えません。必要な場合は、提案したアシスタントにもう一度提案させてください。",
+    superseded: "同じ定期タスクの新しいカードに置き換わりました。新しいカードをお使いください。",
     markDone: "ご判断のとおり完了にしました。もう一度書き込むことはしていません。",
     notInReview: "この項目は確認の必要がありません。",
     regenerated: "現在のデータでカードを作り直しました。確認を押すまで何も実行しません。",
@@ -156,6 +175,9 @@ const MESSAGES: Record<CardLocale, {
     confirmed: "已确认，正在执行。",
     contentChanged: "内容有变化，请再看一遍。卡片已按现在的数据更新，再点一次确认才会执行。",
     expired: "这张卡放太久了，要重新生成一张吗？",
+    canceledExternal: "这条提议已经作废：提出它的那个连接被撤销了，不能再确认。",
+    expiredExternal: "这条提议已经超过 24 小时，失效了。还需要的话，请让提出它的那个助手重新提一次。",
+    superseded: "同一条定时任务的下一期出了新卡，这张已经被取代。请用新的那张。",
     markDone: "已按你的判断标为已完成，没有再写一次。",
     notInReview: "这一项现在不需要核对。",
     regenerated: "已按现在的数据重新生成这张卡，点确认之前不会执行。",
@@ -167,6 +189,18 @@ const MESSAGES: Record<CardLocale, {
 
 export function cardMessages(locale: string | undefined) {
   return MESSAGES[cardLocale(locale)];
+}
+
+/** What a canceled card says: a conversation card was stopped; an external proposal was voided with its connection. */
+export function canceledMessage(action: Pick<AgentActionRecord, "locale" | "origin">): string {
+  const messages = cardMessages(action.locale);
+  return action.origin?.kind === "connection" ? messages.canceledExternal : messages.closedCanceled;
+}
+
+/** What a card past its time says: a conversation card can be made again; an external proposal has to be proposed again. */
+export function expiredMessage(action: Pick<AgentActionRecord, "locale" | "origin">): string {
+  const messages = cardMessages(action.locale);
+  return action.origin?.kind === "connection" ? messages.expiredExternal : messages.expired;
 }
 
 /** The visible and executable content the SHA-256 card hash covers (设计稿 §5.1). */
@@ -303,7 +337,7 @@ async function nextRevision(deps: AgentCardDependencies, action: AgentActionReco
   return {
     ...action,
     contentChanges: undefined,
-    expiresAt: reason === "regenerated" ? new Date(Date.parse(now) + AGENT_CARD_TTL_MS).toISOString() : action.expiresAt,
+    expiresAt: reason === "regenerated" ? new Date(Date.parse(now) + cardTtlMs(action.origin)).toISOString() : action.expiresAt,
     expiredAt: undefined,
     operations,
     payloadHash: texts.payloadHash,
@@ -392,11 +426,11 @@ async function decideOnce(
   // Expiry is judged from expiresAt at the click (no timer before AG15).
   if (isPastExpiry(action, now)) {
     const expired: AgentActionRecord = { ...action, expiredAt: now, status: "expired", updatedAt: now };
-    return commit(record("refused", messages.expired, { reason: "CARD_EXPIRED" }), { next: expired });
+    return commit(record("refused", expiredMessage(action), { reason: "CARD_EXPIRED" }), { next: expired });
   }
-  if (action.status === "expired") return refuse("CARD_EXPIRED", messages.expired);
+  if (action.status === "expired") return refuse("CARD_EXPIRED", action.expiredReason === "superseded" ? messages.superseded : expiredMessage(action));
   if (action.status === "rejected" || action.status === "canceled") {
-    return refuse("CARD_CLOSED", action.status === "rejected" ? messages.closedRejected : messages.closedCanceled);
+    return refuse("CARD_CLOSED", action.status === "rejected" ? messages.closedRejected : canceledMessage(action));
   }
   if (input.revision !== revision || input.payloadHash !== action.payloadHash) {
     return refuse("CARD_REVISION_CHANGED", messages.revisionChanged);
@@ -516,7 +550,7 @@ async function decideOnce(
 
 export interface AgentRegenerateResult {
   outcome: "regenerated" | "refused";
-  reason?: "CARD_NOT_EXPIRED" | "CARD_REVISION_CHANGED";
+  reason?: "CARD_NOT_EXPIRED" | "CARD_REVISION_CHANGED" | "CARD_EXPIRED";
   message: string;
   revision: number;
 }
@@ -537,6 +571,10 @@ export async function regenerateCard(deps: AgentCardDependencies, input: { actio
     if (!past && action.status !== "expired") {
       return { message: messages.revisionChanged, outcome: "refused", reason: "CARD_NOT_EXPIRED", revision: action.revision ?? 1 };
     }
+    // AG17 (设计稿 §5.4): an external proposal that ran out is not made again here; the agent proposes again.
+    if (action.origin?.kind === "connection") {
+      return { message: expiredMessage(action), outcome: "refused", reason: "CARD_EXPIRED", revision: action.revision ?? 1 };
+    }
     const next = await nextRevision(deps, action, "regenerated", now);
     const committed = await repository.commitCardChange({ actionId: action.actionId, expect: { revision: action.revision ?? 1, statuses: [action.status], updatedAt: action.updatedAt }, next });
     if (!committed.committed) continue;
@@ -546,6 +584,37 @@ export async function regenerateCard(deps: AgentCardDependencies, input: { actio
     return { message: messages.regenerated, outcome: "regenerated", revision: next.revision ?? 1 };
   }
   throw new Error(`Agent action ${input.actionId} kept changing while it was being regenerated.`);
+}
+
+export interface AgentExpireCardResult {
+  outcome: "expired" | "unchanged";
+  revision: number;
+}
+
+/**
+ * agent-design AG15 (设计稿 §5.2, §5.3; PLANNER 易错边界 9): a card left waiting is closed without a click — by its
+ * one-off timer once its expiry has passed (only the revision the timer was set for), or because the next period of the
+ * same scheduled task made a new card. It becomes `expired`: never executed, a click on it is refused with
+ * CARD_EXPIRED, and regenerating it gives a new revision that still needs a click. Not a decision; no model is called.
+ */
+export async function expireCard(deps: AgentCardDependencies, input: { actionId: string; revision?: number; reason: "timer" | "superseded"; by?: { actionId: string; firedAt: string } }): Promise<AgentExpireCardResult | null> {
+  const repository = requireCardRepository(deps.repository);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const action = await deps.repository.getAction(input.actionId);
+    if (!action) return null;
+    const now = deps.now();
+    const revision = action.revision ?? 1;
+    const waiting = action.status === "awaiting_confirmation" || action.status === "deferred";
+    if (!waiting || (input.revision !== undefined && input.revision !== revision)) return { outcome: "unchanged", revision };
+    if (input.reason === "timer" && !isPastExpiry(action, now)) return { outcome: "unchanged", revision };
+    const next: AgentActionRecord = { ...action, expiredAt: now, status: "expired", updatedAt: now, ...(input.reason === "superseded" ? { expiredReason: "superseded" as const, ...(input.by ? { supersededBy: { actionId: input.by.actionId, firedAt: input.by.firedAt } } : {}) } : {}) };
+    const committed = await repository.commitCardChange({ actionId: action.actionId, expect: { revision, statuses: [action.status], updatedAt: action.updatedAt }, next });
+    if (!committed.committed) continue;
+    await deps.afterChange?.(next);
+    emitTrace({ cardId: action.actionId, from: action.status, revision, to: "expired", type: "card.state", via: input.reason === "timer" ? "timer" : "superseded" });
+    return { outcome: "expired", revision };
+  }
+  throw new Error(`Agent action ${input.actionId} kept changing while it was being closed.`);
 }
 
 export interface AgentRecheckResult {

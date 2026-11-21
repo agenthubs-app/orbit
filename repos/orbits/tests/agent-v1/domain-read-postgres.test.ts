@@ -88,6 +88,21 @@ test("Postgres and memory sources agree on scope, filters, order and pages", { s
   });
 });
 
+test("AG20b R2: Postgres folds the stored text the same way as the memory source (spaces, 的/の, width, case)", { skip }, async () => {
+  const records = [todo(A, "task:r2a", "回复 Mara 的报价"), todo(A, "task:r2b", "窑炉の点検"), todo(A, "task:r2c", "ＦＩＸ　Ｋｉｌｎ ｄｏｏｒ")];
+  await withSchema(records, async (client) => {
+    const events = { async byIds() { return []; } };
+    const pg = createDomainRegistry({ cursorKey: CURSOR_KEY, events, now: () => "2026-11-15T01:00:00.000Z", source: createPostgresRecordSource(client) });
+    const memory = createDomainRegistry({ cursorKey: CURSOR_KEY, events, now: () => "2026-11-15T01:00:00.000Z", source: createMemoryRecordSource(records) });
+    for (const [text, expected] of [["回复mara", ["task:r2a"]], ["窑炉点検", ["task:r2b"]], ["fix kiln", ["task:r2c"]], ["的", ["task:r2a"]], ["回复 Lena", []]] as const) {
+      const left = (await pg.read("todo", scopeOf(A), { text })).items.map((item) => item.id);
+      const right = (await memory.read("todo", scopeOf(A), { text })).items.map((item) => item.id);
+      assert.deepEqual(left, expected, `postgres: ${text}`);
+      assert.deepEqual(right, expected, `memory: ${text}`);
+    }
+  });
+});
+
 test("Postgres: a withdrawn record is counted, never returned; the existence check returns no record", { skip }, async () => {
   const world = smallWorld();
   await withSchema(world.records, async (client, seen) => {

@@ -60,15 +60,17 @@ test("after the list of events, 「哪些活动？你觉得有必要参加？为
   });
   assert.ok(run.events.some((event) => event.type === "understand.follows_shown_list"));
   assert.deepEqual(run.result.partResults.map((item) => [item.partId, item.status, item.route, item.sourceQuote]), [["p1", "answered", "read", second]]);
-  // The three listed events were read again by id and given to the answer step.
-  assert.equal(calls.length, 1);
-  for (const title of ["SaaS 定价研讨会", "东京街头摄影展", "设计师之夜"]) assert.match(calls[0].user ?? "", new RegExp(title, "u"));
+  // Release-2 gate 2 (AE-ANS-003; coordinator, 2026-11-20): which of them are worth going to, and why, is hotfix part 3's
+  // recommendation with reasons over the three listed events — code writes each one's reason from its themes and the user's
+  // note; no answer-model call. (Before: the three were given to the answer step, which wrote an opinion — assertions
+  // changed here; the one-part follow-up and the rest are kept.)
+  assert.equal(calls.length, 0, "no answer-model call");
+  const ranked = run.events.filter((event) => event.type === "fn.rank").at(-1) as { listed?: string[] } | undefined;
+  assert.deepEqual([...(ranked?.listed ?? [])].sort(), ["event:event:e101", "event:event:e103", "event:event:e104"], "the three listed events, read again by id");
+  assert.match(run.result.text, /东京街头摄影展[^\n]*——主题是摄影；你的笔记「兴趣笔记」里写了摄影/u, run.result.text);
   const blocks = run.result.blocks;
-  assert.equal(blocks[0].type, "conclusion");
-  assert.equal(blocks.some((block) => block.type === "points"), true);
   assert.equal(blocks.some((block) => block.type === "note"), false, "nothing is turned down or left waiting");
   const cards = blocks.find((block): block is Extract<AnswerBlock, { type: "records" }> => block.type === "records");
-  assert.deepEqual([cards?.size, cards?.caption], ["mini", "提到的活动"]);
   assert.equal(cards?.items.every((item) => item.kind === "event"), true);
   assert.doesNotMatch(run.result.text, /活动目录|这次先不做|哪一位/u);
   assert.equal(hasMarkdownSymbols(run.result.text), false);

@@ -23,7 +23,7 @@ import { withoutUnsupportedEventClaims, type EventClaimFacts } from "../../answe
 import type { AgentAnswerRecordContract } from "../../../../shared/contract/agent-v1";
 import { statusSaidIn } from "./resolve";
 import { withoutForeignUrls } from "../../web/answer-urls";
-import { withoutOnlineDenials, withoutQuoteResidue, withoutTopicBasisClaims, withoutStrayScripts, withoutUnsupportedStatus, withEffectiveDates } from "../../answer/claims";
+import { withoutAbilityDenials, withoutOnlineDenials, withoutQuoteResidue, withoutTopicBasisClaims, withoutStrayScripts, withoutUnsupportedStatus, withEffectiveDates } from "../../answer/claims";
 import { expiryLine } from "../../answer/change-check";
 import { stripCardTalk, stripSaveTalk } from "../../entry/approval-claims";
 import { callMainModel, type MainModelResult } from "../../models/main";
@@ -33,6 +33,8 @@ import { answerSystemPrompt, answerUserText } from "../../understand/prompt";
 import { parseModelJson } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
+import { withStandingRules } from "../../domains/memory/turn";
+import { quoteSourceWords, untranslatedProblem, untranslatedSourceWords } from "../../answer/source-words";
 
 /** AG19 repair round 1: deliverables whose answer is the list of records itself (a comparison is a discussion of them). */
 const LIST_READS = new Set<string>(["list", "ranked_list"]);
@@ -51,8 +53,11 @@ function withoutFalseClaims(text: string, partIds: readonly string[], topicMatch
   if (basis.dropped.length) emitTrace({ dropped: basis.dropped, note: "a model sentence claiming a topic ranking this turn did not do is not delivered; code says what the ranking used", parts: partIds, type: "answer.basis_claims_dropped" });
   const online = withoutOnlineDenials(basis.text);
   if (online.dropped.length) emitTrace({ dropped: online.dropped, note: "Orbit can go online; a sentence saying it cannot is not delivered", parts: partIds, type: "answer.online_denial_dropped" });
+  // AG20b (TRIAGE R4): a limit Orbit does not have ("I can't access your schedule", "do it in your calendar app").
+  const able = withoutAbilityDenials(online.text);
+  if (able.dropped.length) emitTrace({ dropped: able.dropped, note: "Orbit reads and changes these records; a sentence saying it cannot is not delivered", parts: partIds, type: "answer.ability_denial_dropped" });
   // AG10 run-03 (AE-CTX-005): words in a script the user did not write and no material holds.
-  const scripts = withoutStrayScripts(online.text, materials);
+  const scripts = withoutStrayScripts(able.text, materials);
   if (scripts.dropped.length) emitTrace({ dropped: scripts.dropped, note: "a sentence with words in a stray script that no record, page or message holds is not delivered", parts: partIds, type: "answer.stray_script_dropped" });
   // AG12 run-02 (AE-AMB-011): no empty or unbalanced quote is left on screen by the rules before.
   const quotes = withoutQuoteResidue(scripts.text);
@@ -151,10 +156,16 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   const hasWeb = allMaterials.some((material) => material.kind === "web");
   const system = groundedAnswerSystemPrompt(state.language, { web: hasWeb });
   const conversation = (run.context?.messages ?? []).map((message) => ({ role: message.role, text: message.text }));
-  const user = groundedAnswerUserText({ conversation, items, message: input.message, timeZone: zone, today: formatWhen(state.asOf || deps.now(), zone) });
+  // AG14: the user's saved rules for every answer go with the request (a block after it; nothing else changes).
+  const user = withStandingRules(groundedAnswerUserText({ conversation, items, message: input.message, timeZone: zone, today: formatWhen(state.asOf || deps.now(), zone) }), run.memory);
   emitTrace({ materials: allMaterials.map((material) => ({ handle: material.handle, partId: material.partId, ref: material.ref, sentences: material.sentences.length })), promptVersion: GROUNDED_ANSWER_PROMPT_VERSION, type: "answer.prompt" });
   const dateSources = [input.message, ...conversation.map((message) => message.text), ...dayWindow(state.asOf || deps.now(), zone), ...allMaterials.flatMap((material) => [material.header, ...material.sentences.map((sentence) => sentence.text)])];
   const weekdayNotes = allMaterials.filter((material) => material.sentences.some((sentence) => WEEKDAY_WORD.test(sentence.text)) && !material.sentences.some((sentence) => datesIn(sentence.text).size)).map((material) => material.header);
+  // The records' free text, and the names and titles that stay as they are (code-written "Field: value" lines, headers,
+  // the user's message) — for untranslatedSourceWords.
+  const FIELD_LINE = /^(?!Notes:|The user wrote:)[A-Z][A-Za-z «»]+: /u;
+  const sourceSentences = allMaterials.flatMap((material) => material.sentences.map((sentence) => sentence.text)).filter((sentence) => !FIELD_LINE.test(sentence));
+  const sourceNames = [input.message, ...allMaterials.flatMap((material) => [material.header, ...material.sentences.map((sentence) => sentence.text).filter((sentence) => FIELD_LINE.test(sentence))])];
   const check = (text: string) => {
     const parsed = parseAnswerOutput(text, state.language);
     if (parsed.ok === false) return { changes: null, error: parsed.error, profiles: null, verification: null };
@@ -193,6 +204,11 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
     // AG07 run-02 (AE-CTX-003): a calendar day the answer names must come from this turn; a note that says only
     // "by Friday" is not a source for a date. One repair; what still has no source is not delivered.
     for (const [partId, segment] of verification.segments) {
+      // AG14 UI run (AE-REF-007 R2): a Japanese or English answer says the Chinese records' words in its own language.
+      if (state.language !== "zh") {
+        const kept = untranslatedSourceWords({ language: state.language, material: sourceSentences, names: sourceNames, text: segment.text });
+        if (kept.length) verification.problems.push(untranslatedProblem(partId, kept, state.language));
+      }
       const days = unsourcedDates(segment.text, dateSources, { weekdayNotes });
       if (days.length) verification.problems.push(`${partId}: the answer names ${days.join(", ")} (month-day), but no material, message or today's date gives it; say a day the way the material says it (e.g. "by Friday"), never as a date you worked out`);
     }
@@ -222,6 +238,16 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   }
   const verification = checked?.verification ?? null;
   if (verification?.problems.length) emitTrace({ problems: verification.problems, type: "answer.citations_rejected" });
+  // AG14 (AE-REF-007): what the one repair still carries of the Chinese records' words is delivered as a quote of the
+  // record, never as the answer's own words.
+  if (verification && state.language !== "zh") {
+    for (const [partId, segment] of verification.segments) {
+      const kept = untranslatedSourceWords({ language: state.language, material: sourceSentences, names: sourceNames, text: segment.text });
+      if (!kept.length) continue;
+      emitTrace({ partId, type: "answer.source_words_quoted", words: kept.length });
+      verification.segments.set(partId, { ...segment, text: quoteSourceWords(segment.text, kept, state.language) });
+    }
+  }
   const words = gapWords(state.language);
   for (const part of due) {
     const segment = verification?.segments.get(part.localId);
@@ -352,6 +378,9 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
           run.gapLines.set(part.localId, [line, ...(run.gapLines.get(part.localId) ?? [])]);
           part.cites = [...new Set([...(part.cites ?? []), ...updates.map((item) => item.source.ref)])];
           emitTrace({ fields: updates.map((item) => ({ contact: item.contact.ref, field: item.field, source: item.source.ref })), partId: part.localId, type: "answer.profile_outdated" });
+          // AG20a (decision 2): kept for the next turn's "那把她的资料也更新了" (deliver writes them into the session state).
+          const idOf = (ref: string) => ref.slice(ref.indexOf(":") + 1);
+          for (const item of updates) run.staleProfiles.push({ at: item.source.at ?? "", contactId: idOf(item.contact.ref), field: item.field, name: run.readNames.get(idOf(item.contact.ref))?.name ?? "", sourceId: idOf(item.source.ref), sourceType: item.source.ref.slice(0, item.source.ref.indexOf(":")), value: item.newValue });
         }
       }
       // AG12 run-02 (AE-SCL-016 R2): a cited record that says an earlier value has expired — said by code when the answer does not.
@@ -409,6 +438,39 @@ function dayWindow(asOf: string, timeZone: string): string[] {
   return Array.from({ length: 9 }, (_, index) => new Date(today + (index - 1) * 86_400_000).toISOString().slice(0, 10));
 }
 
+/** AG21b (R36): words that ask for every record of a kind ("所有没完成的待办", "全部列出来", "すべて", "all my open to-dos"). */
+const SHOW_ALL = /(全部|所有|全都|统统|一个不落|都列出来|都列一下|都给我看|すべて|全て|全部の|一覧|\ball (?:of )?(?:my|the)\b|\bevery\b|\beverything\b|\blist all\b|\bshow (?:me )?all\b)/iu;
+
+export function asksForEverything(quote: string): boolean {
+  return SHOW_ALL.test(quote);
+}
+
+/** AG21b (R36): a list read the user asked to see whole, every record read has its card, nothing asked beyond the list. */
+function listsAllByCode(scope: NodeScope, part: GraphPart): boolean {
+  const quote = scope.input.message.slice(part.quote[0], part.quote[1]);
+  const materials = scope.run.materials.get(part.localId) ?? [];
+  if (!LIST_READS.has(part.plan.deliverable) || part.route !== "read" || !asksForEverything(quote) || asksBeyondListing(quote) || part.dependsOn.length) return false;
+  return materials.length > 0 && materials.every((material) => material.kind !== "web" && scope.run.recordCards.has(material.ref));
+}
+
+/** AG21b (R36): the listing written by code — every record read as its card, in list order; the lead counts them. */
+function writeAllListed(scope: NodeScope, state: AgentGraphState, part: GraphPart): void {
+  const { input, run } = scope;
+  const quote = input.message.slice(part.quote[0], part.quote[1]);
+  const readOrder = (part.reads ?? []).map((read) => read.ref);
+  const refs = [...new Set((run.materials.get(part.localId) ?? []).map((material) => material.ref))];
+  const ordered = inListOrder(refs.map((ref) => ({ index: readOrder.indexOf(ref) < 0 ? Number.MAX_SAFE_INTEGER : readOrder.indexOf(ref), key: run.recordSort.get(ref) ?? "", kind: ref.slice(0, ref.indexOf(":")), ref }))).map((item) => item.ref);
+  const cards = ordered.map((ref) => run.recordCards.get(ref)).filter((card): card is AgentAnswerRecordContract => Boolean(card));
+  const coverage = part.coverage ?? [];
+  const total = coverage.length && coverage.every((item) => item.total !== null) ? coverage.reduce((sum, item) => sum + (item.total ?? 0), 0) : null;
+  const status = part.plan.readFilter?.status === "open" || part.plan.readFilter?.status === "completed" ? part.plan.readFilter.status : statusSaidIn(quote);
+  const written = listAnswer({ cards, from: part.plan.readFilter?.from, language: state.language, quote, status, to: part.plan.readFilter?.to, total });
+  run.answers.set(part.localId, written.text);
+  run.answerBlocks.set(part.localId, written.blocks);
+  part.cites = ordered;
+  emitTrace({ cards: cards.length, partId: part.localId, total, type: "answer.all_listed_by_code" });
+}
+
 export function answerNode(scope: NodeScope): GraphNode {
   const { deps, input, run } = scope;
   return async (state: AgentGraphState) => {
@@ -419,8 +481,15 @@ export function answerNode(scope: NodeScope): GraphNode {
     // AG04: resuming a paused request makes no model call (§3.9) unless it now reads; its parts are written by code.
     if (resume && !reading.length) return {};
     // AG09: a part that only gave the web address another part reads (reason web_context) is not answered on its own.
-    const discussion = resume ? [] : parts.filter((part) => part.route === "answer" && part.status === "answered" && part.reason !== "web_context");
-    if (reading.length) return groundedAnswer(scope, state, parts, [...discussion, ...reading]);
+    // AG20b (R4): a part code already answered (a write tag the review did not confirm) is not written again by a model.
+    const discussion = resume ? [] : parts.filter((part) => part.route === "answer" && part.status === "answered" && part.reason !== "web_context" && !run.codeAnswers.has(part.localId));
+    // AG21b (R36): "show me all …" is a listing of every record read: code writes it (the cards in order, the lead with the
+    // count), no model call — a call given forty records to write out runs past its time limit, every time.
+    const listedByCode = reading.filter((part) => listsAllByCode(scope, part));
+    for (const part of listedByCode) writeAllListed(scope, state, part);
+    const toWrite = reading.filter((part) => !listedByCode.includes(part));
+    if (listedByCode.length && !toWrite.length && !discussion.length) return { parts };
+    if (toWrite.length) return groundedAnswer(scope, state, parts, [...discussion, ...toWrite]);
     const due = discussion;
     if (!due.length) return {};
     const dropCardTalk = !run.cardPrepared;
@@ -455,7 +524,8 @@ export function answerNode(scope: NodeScope): GraphNode {
     const system = answerSystemPrompt(state.language);
     // §3.10: the same window the first layer saw — recent messages as text, long replies cut, none when idle.
     const conversation = (run.context?.messages ?? []).map((message) => ({ role: message.role, text: message.text }));
-    const user = answerUserText({ conversation, items, message: input.message });
+    // AG14: the user's saved rules for every answer go with the request (a block after it; nothing else changes).
+    const user = withStandingRules(answerUserText({ conversation, items, message: input.message }), run.memory);
     let repairs = state.repairs;
     let result: MainModelResult = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "answer", purpose: "first", requestId: input.requestId, system, user });
     // AG19 repair round 1: the same one second chance for a call that failed in transit.

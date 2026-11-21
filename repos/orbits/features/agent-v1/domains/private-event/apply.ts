@@ -49,7 +49,7 @@ export function eventWriteExecutors(deps: EventWriteDeps): AgentActionExecutor[]
       const title = text(payload, "title");
       const startsAt = text(payload, "startsAt");
       if (!title || !startsAt) throw new AgentExecutionPermanentError("title and startsAt are required.");
-      const event = await events.create(deps.actorId, { idempotencyKey: context.idempotencyKey, startsAt, title, ...(text(payload, "endsAt") ? { endsAt: text(payload, "endsAt") } : {}), ...(text(payload, "venue") ? { venue: text(payload, "venue") } : {}) });
+      const event = await events.create(deps.actorId, { idempotencyKey: context.idempotencyKey, startsAt, title, ...(text(payload, "endsAt") ? { endsAt: text(payload, "endsAt") } : {}), ...(text(payload, "venue") ? { venue: text(payload, "venue") } : {}), ...(payload.allDay === true ? { allDay: true } : {}) });
       return { resultRef: `private_events:${event.id}`, summary: "Private event created in Orbit." };
     });
     add(PRIVATE_EVENT_UPDATE, async (payload) => {
@@ -97,6 +97,8 @@ export function eventWriteExecutors(deps: EventWriteDeps): AgentActionExecutor[]
         idempotencyKey: context.idempotencyKey, startsAt, title,
         ...(text(payload, "endsAt") ? { endsAt: text(payload, "endsAt") } : {}),
         ...(text(payload, "timeZone") ? { timeZone: text(payload, "timeZone") } : {}),
+        // AG20a: an item made from an all-day event is all day (the schedule service checks its zone and end).
+        ...(payload.allDay === true ? { allDay: true } : {}),
         ...(Array.isArray(payload.eventRefs) && payload.eventRefs.length ? { eventRefs: payload.eventRefs as never } : {}),
         ...(Array.isArray(payload.contactIds) && payload.contactIds.length ? { contactIds: payload.contactIds as string[] } : {}),
       } as never);

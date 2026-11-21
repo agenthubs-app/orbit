@@ -121,3 +121,21 @@
 外部条件缺失（前序未完成、视觉稿未批准、密钥缺失）先不启动，或只做不受影响的部分并把受影响的证据记 blocked；run 已开始则按规则产出 failed 或 blocked 报告，不开第二次 Generator。
 报告包含：验收项与证据的对应、功能 SHA、命令与退出码、门槛运行编号与 `RUNS.md` 一行、双评不一致清单、旧按账号领取路径的处理、本机库旧分区规则数、费用、未提交与失败项、下一步。给 AG16 的交接写明规则的 `notify` 字段、运行记录与待投递记录的结构、“我的定时任务”页里提醒开关的位置。
 分支：从 `orbit-agent-claude` 建 `sprint/AG15-scheduled-tasks-inbox`；只暂存本 sprint 的文件，禁止 `git add .`；提交前跑 `node .gitnexus/run.cjs detect-changes --scope staged --repo .`，`partial` 或 `truncated` 要重跑。由协调者 `git merge --no-ff` 合回 `orbit-agent-claude`，在合并树跑收口集与 typecheck 后才登记 completed。push 需要用户授权。
+
+## 进入条件核对（2026-11-19，协调者核对，Generator 启动时追加；以上原文未改）
+
+本页启动时的 SHA-256：`3df3967767d8f5aca26f3e8153e36e91dcb3b8ceeb4efc0cdd1a5dd2eb0d4736`。基线 HEAD：`98869bb4c36cc05ef30f034e6260091b028783e0`（`agent-v1-integration`，本页写的 `orbit-agent-claude` 读作它）。run-01。
+
+| 进入条件 | 核对结果 |
+| --- | --- |
+| 1. AG02、AG10 已合并 | 已合并；AG03～AG13 也都已合并进 `agent-v1-integration` @ `98869bb4c`。 |
+| 1. AG14 completed | **没有满足，按协调者安排并行开发。** AG14 与本 sprint 同时进行。本 sprint 只在一处用到它：规则运行时照样生效的约束（AE-SCL-030 的 LMM05），经 `recallFor()`。做法：对着一个小接缝写（`features/agent/automations/recall-seam.ts`），本分支上接缝不返回任何记忆；协调者合并 AG14 后把它接上，再重跑 AE-SCL-030。这一例在本分支上可以是红的，不在本 sprint 修。 |
+| 2. 产品批准 | 沿用“2026-11-15 已定的事项”与设计稿 §5.3。 |
+| 3. 付费模型调用 | 已允许；每次完整门槛运行 30 元、本 sprint 累计 150 元以内。 |
+| 4. 环境 | 本条线有自己的评测环境：库 `orbit_agent_eval_ag15`、端口 3170 起、目录 `/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-eval-lines/ag15`。`CRON_SECRET` 不在环境文件里，改由评测环境自己派生（见 REPORT）。 |
+| 5. 视觉稿 | **还没有批准**（另有 agent 在画）。先做不依赖它的部分：规则字段、规则卡的内容与执行器、跨账号派发、运行历史、投递与补送、一次性定时器、收件箱条目的数据与接口、运行器的词和测试。规则卡在对话里沿用现有确认卡组件。两端「我的定时任务」页面和收件箱新条目的样式等批准后再做；界面证据在此之前记 blocked。 |
+| 6. 生产库、部署 | 不在授权内，没有做。 |
+
+门槛用例与夹具在启动时的校验值（SHA-256）：`cases/SCH.yaml` `244cfc09…fefcf1`、`cases/SCL.yaml` `0b490714…aeb9c8`、`world/base-v1.yaml` `4cbed9e5…12819e`、`world/regular-v1.yaml` `10438580…268975`、`world/large-v1.yaml` `216a69e4…8d6ec5`（完整值见 REPORT）。
+
+后续 sprint 对本 sprint 的要求（协调者转述）：AG16 要按任务发推送，需要“投递状态与运行完成时间分开记”；AG17 要用一次性定时器和收件箱来源「外部提议」，合并后接本 sprint 的接口。两者要调用的函数名与签名写在 REPORT 的交接节。

@@ -217,7 +217,15 @@ export function statusForRoute(route: Route): PartStatus {
  * A part whose prerequisite is not done this round waits for it. Done means answered; anything else
  * (suggested to an external agent, not available yet, declined …) leaves the dependent part waiting.
  */
-export function settleDependencies<T extends { localId: string; dependsOn: readonly string[]; status: PartStatus; waitReason: WaitReason | null; route?: Route | null }>(parts: T[]): T[] {
+/**
+ * AG20b (TRIAGE R20, AE-REF-006; 设计稿 §3.2 "每项只等自己的前置条件"): a read whose record cannot be opened is finished — it
+ * says so and asks to choose again — and holds nothing back: the part that went on from it is answered from its own records.
+ */
+function finishedWithoutResult(part: { status: PartStatus; route?: Route | null; reason?: string | null }): boolean {
+  return part.status === "unfinished" && part.route === "read" && part.reason === "reference_not_accessible";
+}
+
+export function settleDependencies<T extends { localId: string; dependsOn: readonly string[]; status: PartStatus; waitReason: WaitReason | null; route?: Route | null; reason?: string | null }>(parts: T[]): T[] {
   const byId = new Map(parts.map((part) => [part.localId, part]));
   let changed = true;
   while (changed) {
@@ -227,7 +235,10 @@ export function settleDependencies<T extends { localId: string; dependsOn: reado
       // AG06: a write part's wait is decided by the propose step (a read it depends on is delivered first; an item
       // that waits for another item goes on the same card with dependsOn).
       if (part.route === "propose_write") continue;
-      const blocked = part.dependsOn.some((id) => byId.get(id)?.status !== "answered");
+      const blocked = part.dependsOn.some((id) => {
+        const dependency = byId.get(id);
+        return dependency?.status !== "answered" && !(dependency && finishedWithoutResult(dependency));
+      });
       if (blocked) {
         part.status = "waiting_dependency";
         part.waitReason = "dependency_pending";

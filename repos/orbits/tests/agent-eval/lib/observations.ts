@@ -147,6 +147,34 @@ export interface Observation {
   clientViews?: ClientViewRecord[];
   /** AG11: the account's memory entries (not settings, not deleted) when the case ended, read by the runner. */
   memoryAfter?: { id: string }[];
+  /** AG14: every memory entry at the end (any account, deleted ones with their mark), as stored. */
+  memoryEntries?: MemoryEntryObservation[];
+  /** AG14: the entries the last turn used (the product's memory.recall events after the last user message). */
+  memoryRecalled?: { id: string; fixtureId: string | null }[];
+  /** AG14: per account label, the entries the settings API listed for that account's own sign-in at the end. */
+  settingsMemory?: Record<string, { status: number; ids: string[] }>;
+  /** AG15: every scheduled rule of the world's accounts when the case ended (state as its owner's list shows it). */
+  rulesAfter?: { id: string; fixtureId: string | null; account: string | null; state: string; version: number }[];
+  /** AG15: the run history written during the case, in the order the periods were planned (from the database difference). */
+  ruleRuns?: {
+    rule: string; fixtureRule: string | null; account: string | null; scheduledAt: string; outcome: string; skipped: number; listed: string[]; cardId: string | null; delivery: string;
+    /** AG16: the run's id, when its result was worked out, and its reminder — each as the database holds it at the end. */
+    runId?: string;
+    computedAt?: string;
+    computeAttempts?: number;
+    push?: { state: string; attempts: number; deliveredAt: string | null; reason: string | null; deliveryId: string | null; targets: { platform: string; state: string; attempts: number }[] };
+  }[];
+}
+
+export interface MemoryEntryObservation {
+  id: string;
+  fixtureId: string | null;
+  /** The account label of the owner (null: not one of the case's accounts). */
+  account: string | null;
+  status: "active" | "deleted";
+  revision: number;
+  category: string;
+  appliesTo: string[];
 }
 
 export interface RecentInteractionObservation {

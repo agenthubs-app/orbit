@@ -138,6 +138,8 @@ export interface AgentAnswerContract {
   web?: AgentWebResultContract | undefined;
   /** AG19：回答按块排好的版本（段落、要点、记录卡片、说明条），由服务端代码写；text 仍是完整的文字版，旧端只读 text。 */
   blocks?: readonly AgentAnswerBlockContract[] | undefined;
+  /** AG14：回答开头记忆的小标签（获批视觉稿第 5 组）；没用到记忆时没有。 */
+  memoryUse?: readonly AgentAnswerMemoryUseContract[] | undefined;
 }
 
 /** AG09：联网的记录。被拦下的检索词不在这里（只按规则编号记在服务端）。 */
@@ -320,6 +322,20 @@ export interface AgentCardOperationDisplayContract {
   rows: readonly AgentCardDisplayRowContract[];
   /** 这一项要等前面某项成功才执行时的说明，如「第 1 项成功后才执行」。 */
   note?: string | undefined;
+  /**
+   * AG15（获批视觉稿 15-1，用户要求精简）：新建定时任务的卡在卡上只显示三行「什么时候」「挑什么」「之后」，每行由服务端
+   * 把 rows 里的几项拼成一句；rows 照旧逐项分开（冻结的事实不变）。zone：任务的时区与这台设备不同时，改用 zone.text。
+   */
+  lines?: readonly AgentCardDisplayLineContract[] | undefined;
+}
+
+/** AG15：卡上合并显示的一行。fields 是它合并的 rows 的字段名。 */
+export interface AgentCardDisplayLineContract {
+  key: "when" | "pick" | "after";
+  label: string;
+  text: string;
+  fields: readonly string[];
+  zone?: { id: string; text: string } | undefined;
 }
 
 export interface AgentCardDisplayRowContract {
@@ -329,6 +345,8 @@ export interface AgentCardDisplayRowContract {
   /** 原值，只有改已有记录时才有。 */
   before?: string | undefined;
   after: string;
+  /** AG14（D1）：原来的和改成的左右两栏并排（记忆的内容）；没有时照旧一行「旧 → 新」。 */
+  sideBySide?: boolean | undefined;
 }
 
 /** 一张卡的当前版（GET /api/agent/ledger/[id] 与结果文档的 actionPreview 同一形状）。 */
@@ -339,6 +357,12 @@ export interface AgentActionPreviewContract {
   payloadHash: string;
   status: AgentCardStatus;
   expiresAt?: string | undefined;
+  /** AG15：卡片过期的原因。superseded 表示同一条定时任务的下一期出了新卡，这张被取代；不写表示放得太久。 */
+  expiredReason?: "superseded" | undefined;
+  /** AG15（D15-5、D15-6）：过期的卡下面那一行小字，服务端按卡片语言写好（哪天出的、什么都没做；或哪一期出了新卡）。 */
+  expiredNote?: string | undefined;
+  /** AG15（D15-6）：取代这张卡的新卡和它那一期的触发时刻。 */
+  supersededBy?: { actionId: string; firedAt: string } | undefined;
   origin?:
     | { kind: "conversation"; conversationId: string; requestId: string }
     | { kind: "automation"; ruleId: string; firedAt: string }
@@ -398,6 +422,8 @@ export interface AgentSendInputContract {
   references: readonly AiSessionReferenceContract[];
   origin?: AiSessionOriginInputContract | undefined;
   pageContext?: AiPageContextContract | undefined;
+  /** AG20a（设计稿 §3.1，2026-11-20 决定 8）：设备的时区（IANA 名，如 Asia/Tokyo）。服务端校验后作为本轮「今天」「周五」「下午三点」的基准；不带或无效时用部署的时区。 */
+  timeZone?: string | undefined;
 }
 
 /** 发送的应答：收下即返回，不等模型。 */
@@ -465,6 +491,8 @@ export interface PrivateEventContract {
   title: string;
   startsAt: string;
   endsAt?: string | undefined;
+  /** AG20a（设计稿附录 E `allDay?`）：只说了哪天、没说几点；startsAt 是那天 0 点（按用户时区），显示时只写日期。 */
+  allDay?: boolean | undefined;
   venue?: string | undefined;
   notes?: string | undefined;
   /** 每次写入加一。 */
@@ -489,6 +517,87 @@ export interface AttendanceNoteContract {
   version: number;
   createdAt: string;
   updatedAt: string;
+}
+
+/* ── AG14：个人记忆（设计稿 §6、附录 E）。设置页与对话读写的是同一批条目：规范账号加工作区。 ── */
+
+/** 约束（constraint）是「一直遵守的」，其余三类是「酌情参考的」。 */
+export type AgentMemoryCategoryContract = "identity" | "goal" | "preference" | "constraint";
+
+/** 条目用在哪类任务上；`all` 是所有回答。没有任何一项的旧条目是「还没归类」。 */
+export type AgentMemoryTaskContract = "all" | "event.recommend" | "contact.recommend" | "memo.summarize" | "todo.plan" | "schedule.plan";
+
+/** 代码可以拿来排序或筛选的值；和正文出自同一份冻结的卡片载荷。 */
+export interface AgentMemoryStructuredContract {
+  preferredDays?: readonly ("Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun")[] | undefined;
+  dayPart?: "morning" | "afternoon" | "evening" | undefined;
+  strength?: "prefer" | "only" | "avoid" | undefined;
+  topics?: readonly string[] | undefined;
+  replyLanguage?: "zh" | "ja" | "en" | undefined;
+}
+
+/** 一条在用的记忆。删掉的条目不在任何列表里（只留删除标记，没有正文）。 */
+export interface AgentMemoryEntryContract {
+  memoryId: string;
+  category: AgentMemoryCategoryContract;
+  content: string;
+  /** manual：用户在设置页自己写的；conversation：对话里出卡、点了确认才保存的。 */
+  source: "manual" | "conversation";
+  createdAt: string;
+  updatedAt: string;
+  /** 新建为 1，每改一次加一；修改和删除带上它，条目已经变了就返回 409。 */
+  revision: number;
+  status: "active" | "deleted";
+  appliesTo: readonly AgentMemoryTaskContract[];
+  structured: AgentMemoryStructuredContract | null;
+  /** 本地日期 YYYY-MM-DD，含当天；null 表示不限。到期日是 validUntil。 */
+  validFrom: string | null;
+  validUntil: string | null;
+  sourceMessageRef: string | null;
+  deletedAt?: string | null | undefined;
+}
+
+/** 两个开关：enabled 是「回答时参考这些」，allowConversationLearning 是「从对话里记住新的（会先问你）」。 */
+export interface AgentMemorySettingsContract {
+  enabled: boolean;
+  allowConversationLearning: boolean;
+  updatedAt: string;
+}
+
+/** GET /api/agent/memory。memoryVersion 随每次新增、修改、删除前进。 */
+export interface AgentMemoryListContract {
+  memories: readonly AgentMemoryEntryContract[];
+  settings: AgentMemorySettingsContract;
+  memoryVersion: number;
+  /** 「一直遵守的」每次最多加载多少条（20）；超过时管理页提示合并，多出的不会被用到。 */
+  ruleLimit?: number | undefined;
+}
+
+/** POST /api/agent/memory 的请求体（设置页上用户自己添加，不出卡）。 */
+export interface AgentMemoryCreateInputContract {
+  category: AgentMemoryCategoryContract;
+  content: string;
+  appliesTo?: readonly AgentMemoryTaskContract[] | undefined;
+  structured?: AgentMemoryStructuredContract | null | undefined;
+  validFrom?: string | null | undefined;
+  validUntil?: string | null | undefined;
+}
+
+/** PATCH /api/agent/memory/[id] 的请求体；至少改一项。删除是 DELETE /api/agent/memory/[id]?expectedRevision=n。 */
+export interface AgentMemoryUpdateInputContract {
+  category?: AgentMemoryCategoryContract | undefined;
+  content?: string | undefined;
+  appliesTo?: readonly AgentMemoryTaskContract[] | undefined;
+  structured?: AgentMemoryStructuredContract | null | undefined;
+  validFrom?: string | null | undefined;
+  validUntil?: string | null | undefined;
+  expectedRevision?: number | undefined;
+}
+
+/** PATCH /api/agent/memory/settings 的请求体。 */
+export interface AgentMemorySettingsInputContract {
+  enabled?: boolean | undefined;
+  allowConversationLearning?: boolean | undefined;
 }
 
 /* ── AG19：回答排版与记录卡片（获批视觉稿 2026-11-19，D1–D6）──────────────── */
@@ -551,4 +660,245 @@ export type AgentAnswerBlockContract =
   | { type: "paragraph"; text: string }
   | { type: "points"; items: readonly AgentAnswerPointContract[] }
   | { type: "records"; items: readonly AgentAnswerRecordContract[]; shown: number; size?: "full" | "mini" | undefined; caption?: string | undefined; moreLabel?: string | undefined; lessLabel?: string | undefined }
-  | { type: "note"; title: string; items: readonly AgentAnswerNoteItemContract[] };
+  | { type: "note"; title: string; items: readonly AgentAnswerNoteItemContract[]; go?: AgentAnswerGoContract | undefined };
+
+/* ── AG14 界面（获批视觉稿 2026-11-20，D1–D10 取 A）──────────────── */
+
+/** AG14：说明条末尾的入口（「去设置 ›」），两端各自换成自己的页面地址；memoryId 有值时那一条直接打开。 */
+export interface AgentAnswerGoContract {
+  label: string;
+  to: "memory_settings";
+  memoryId?: string | undefined;
+}
+
+/**
+ * AG14：回答开头记忆的小标签，紧跟「按你的 N 条记录回答」（D4）。整句由服务端按回答语言写好：
+ * used「按你存的偏好「周末上午」挑的」（带「修改 ›」，D5 点了到设置页这一条）；
+ * skipped「只这一次：没按你存的「周末上午」」（不带「修改」）；
+ * rule「按你定的规矩，没放晚上的」——一直遵守的只在让结果少了东西时才写（D6），带「修改 ›」。
+ */
+export interface AgentAnswerMemoryUseContract {
+  kind: "used" | "skipped" | "rule";
+  memoryId: string;
+  text: string;
+}
+
+/* ── AG17：外部连接（用户自己的 Claude、Codex 经 MCP 接入）────────────────── */
+
+/** 一个领域能勾什么：只读，以及（有的领域）可以提修改。 */
+export interface AgentConnectionScopeOptionContract {
+  domain: "contacts" | "events" | "attendance" | "todos" | "memos" | "schedule";
+  read: string;
+  /** 这个领域还不能由外部提修改时为 null。 */
+  propose: string | null;
+}
+
+/** 设置里的一条连接：哪个客户端、能读什么、能改什么、上次什么时候用过。 */
+export interface AgentConnectionContract {
+  id: string;
+  clientName: string;
+  /** 客户端身份文档所在的主机名（如 claude.ai），和名字一起显示。 */
+  clientHost: string;
+  scopes: readonly string[];
+  createdAt: string;
+  lastUsedAt: string | null;
+  /** 它提的、还在等用户确认的修改有几项（视觉稿 D10；断开时会一起作废的也是这几项）。 */
+  waitingProposals?: number | undefined;
+}
+
+export interface AgentConnectionListContract {
+  connections: readonly AgentConnectionContract[];
+  options: readonly AgentConnectionScopeOptionContract[];
+  /** 用户抄进 Claude、Codex 的地址（就是 MCP 端点本身，令牌绑定在它上面）；服务没配好时为 null。 */
+  connectAddress?: string | null | undefined;
+}
+
+/** 同意页要显示的内容：谁在请求、请求了什么、同意后会跳回哪里、现在登录的是谁、这个客户端现在已经能做什么。 */
+export interface AgentConnectionConsentContract {
+  clientName: string;
+  clientHost: string;
+  /** 同意后浏览器跳回的地址的主机名；本机回调（localhost、127.0.0.1）时页面要多提醒一句。 */
+  redirectHost: string;
+  redirectIsLoopback: boolean;
+  requestedScopes: readonly string[];
+  /** 页面一开始选上的：已有的原样保留，加上客户端这次请求的只读项。「可以提修改」从不预先选上，要用户自己点。 */
+  preselectedScopes: readonly string[];
+  options: readonly AgentConnectionScopeOptionContract[];
+  /** 现在登录的账号。key 由账号派生（不是账号编号），提交时原样带回，用来发现中途换了账号。 */
+  account?: { key: string; name: string | null; email: string | null } | undefined;
+  /** 这个客户端已经连着时：它现在能做什么、从哪天起连着。第一次连接时为 null。 */
+  current?: { scopes: readonly string[]; connectedAt: string } | null | undefined;
+}
+
+export interface AgentConnectionConsentInputContract {
+  /** 授权请求的凭条（地址栏里的 request 参数）。 */
+  request: string;
+  decision: "allow" | "deny";
+  scopes: readonly string[];
+  /** 页面打开时的账号 key；和现在登录的不一致时不执行，回 409 并带上新的同意页内容。 */
+  accountKey?: string | undefined;
+}
+
+export interface AgentConnectionConsentResultContract {
+  /** 浏览器接下来要去的地址（客户端登记的回调地址）。 */
+  redirectTo: string;
+}
+
+/** 确认链接页：这条外部提议现在的样子。卡片本身沿用 AgentActionPreviewContract。 */
+export interface AgentProposalViewContract {
+  proposalId: string;
+  clientName: string;
+  createdAt: string;
+  card: AgentActionPreviewContract;
+  /** 不能再确认时页面显示的一句话（已失效要重新提、已作废、已否决），由服务端按卡的语言写好。 */
+  notice?: string | undefined;
+}
+
+// ── agent-design AG15：定时任务与它的运行历史（设计稿 §5.3、§10「我的定时任务」）。本块由 AG15 追加。 ──
+
+/** 一期运行的结果：已送达 / 没有新的 / 已算出未送出 / 失败 / 需处理。 */
+export type AgentScheduledTaskRunOutcome = "delivered" | "no_match" | "undelivered" | "failed" | "needs_attention";
+
+/** 一期运行。算出结果的时刻（computedAt）和结果送到用户手里的情况（delivery、push）分开记。 */
+export interface AgentScheduledTaskRunContract {
+  runId: string;
+  taskId: string;
+  /** 这一期计划触发的时刻（不是实际跑的时刻）。 */
+  scheduledAt: string;
+  computedAt: string;
+  outcome: AgentScheduledTaskRunOutcome;
+  /** 中断恢复时在这一期之前跳过的期数（只补最近一期）。 */
+  skipped: number;
+  /** 历史里的一行说明，服务端写好，两端照着显示。 */
+  line: string;
+  /** 这一期的完整内容（收件箱里那一段）；没有要送的内容时是空串。 */
+  text: string;
+  /** 这一期列出的记录，可以点进各自的页面。 */
+  items: readonly { ref: string; kind: "event" | "contact" | "todo"; id: string; title: string; line: string; card?: AgentAnswerRecordContract | undefined }[];
+  /** AG15 界面：结果页卡片上方的「按什么挑的」和卡片下面的几行小字（服务端写好，不含内部用词）。 */
+  detail?: { basis: string; notes: readonly string[]; source?: { caption: string; card: AgentAnswerRecordContract } | undefined } | undefined;
+  /** 这一期产生的待确认的卡（在收件箱里确认）。 */
+  cardId?: string | undefined;
+  /** 算了几次才算成（1 是一次算成；大于 1 是先失败、用同一期再试成功的）。 */
+  computeAttempts: number;
+  /**
+   * 站内收件箱的投递。attempts 大于 1 是补送过（补送不重新算）。cancelled 时 cancelReason 说明为什么没送：
+   * rule_paused 送出前暂停了；rule_changed 送出前改了任务；rule_removed 送出前删了任务；reference_unreadable 用来挑的笔记打不开了。
+   */
+  delivery: { state: "none" | "pending" | "delivered" | "cancelled"; attempts: number; deliveredAt?: string | undefined; cancelReason?: "rule_paused" | "rule_changed" | "rule_removed" | "reference_unreadable" | undefined };
+  /** 中断恢复时跳过的那几期的本地日期（YYYY-MM-DD，最早的在前，最多 12 个）。 */
+  skippedDays: readonly string[];
+  /** 需处理时的原因说明（服务端写好），例如引用的笔记读不到了。 */
+  attention?: { reason: "reference_unreadable"; message: string; referenceTitle?: string | undefined } | undefined;
+  /** 推送提醒的投递（AG16 起使用；AG15 只记这条任务有没有开提醒）。 */
+  push: { state: "not_requested" | "pending" | "delivered" | "failed" | "skipped"; attempts: number; deliveredAt?: string | undefined; lastAttemptAt?: string | undefined; reason?: AgentScheduledTaskPushReason | undefined; line?: string | null | undefined; targets?: readonly AgentScheduledTaskPushTargetContract[] | undefined };
+  /**
+   * AG15 界面（获批视觉稿 15-4「历史里每种情况怎么写」）：历史里这一期怎么显示，服务端按任务语言写好。day 这一期的日子；
+   * time 算完的时刻（重试过的写在 text 里，这里为 null）；skippedNote 中间跳过了几期的那一行；opens 点开看什么。
+   */
+  display?: { day: string; time: string | null; text: string; skippedNote: string | null; opens: "result" | "card" | null } | undefined;
+}
+
+/** AG15 界面：表单（改一条任务、用表单新建）。笔记只带编号，名字只用来显示。 */
+export interface AgentScheduledTaskFormContract {
+  title: string;
+  schedule: { kind: "daily"; time: string; timeZone: string } | { kind: "weekly"; daysOfWeek: readonly number[]; time: string; timeZone: string };
+  domain: "event" | "contact" | "todo";
+  /** 活动从哪段时间里挑（只对活动）。 */
+  window?: "weekend" | "week" | "month" | "upcoming" | undefined;
+  /** 「从哪里挑」现在的说法（改的时候显示，不从表单回写）。 */
+  scopeText?: string | undefined;
+  basis: { kind: "note"; noteId: string; title: string } | { kind: "field"; field: "startsAt" | "lastInteraction" | "dueAt" | "plannedDate" } | { kind: "topic"; words: string };
+  maxItems: number;
+  validUntil: string | null;
+  push: boolean;
+}
+
+/** 「我的定时任务」里的一条任务。每一行的文字由服务端写好，和确认卡上的一致。 */
+export interface AgentScheduledTaskContract {
+  id: string;
+  title: string;
+  /** active 运行中；paused 已暂停；completed 已结束（过了有效期，或一次性的已经跑完）。 */
+  status: "active" | "paused" | "completed";
+  version: number;
+  /** 下次预计运行的时刻；暂停或已结束时为 null。到点后约 10 分钟内运行。 */
+  nextRunAt: string | null;
+  /** 检查时间所用的时区（IANA 名称）；显示下次日期时一并写明。 */
+  timeZone: string | null;
+  /** 检查时间、候选范围、排序依据、条数、有效期、提醒方式、下次预计运行，各一行。AG15 界面：note 是值下面的灰色小字。 */
+  rows: readonly { field: string; label: string; value: string; note?: string | undefined }[];
+  notify: { inApp: boolean; push: boolean };
+  lastRun: AgentScheduledTaskRunContract | null;
+  createdAt: string;
+  updatedAt: string;
+  // ── AG15 界面（获批视觉稿 15-3、15-4）：两端照着显示的字，服务端按任务语言写好。 ──
+  /** 挑的是哪类记录（列表左边的图标）。 */
+  domain?: "event" | "contact" | "todo" | null | undefined;
+  /** 列表里的第二、三行和黄底那行：检查时间（已结束的写跑到哪天）；下次与上次；需要你处理。 */
+  summary?: { schedule: string; status: string; attention: string | null } | undefined;
+  /** 最近一期需要用户处理（笔记打不开了）。 */
+  needsAttention?: boolean | undefined;
+  /** 详情页「下次运行」：日子和「9:00 之后约10分钟内」。 */
+  next?: { day: string; time: string } | null | undefined;
+  /** 详情页「上次结果」：「今天 9:04」和结果那句；opens 点开看什么。 */
+  last?: { runId: string; when: string; text: string; opens: "result" | "card" | null } | null | undefined;
+  /** 改这条任务时表单的初值。 */
+  form?: AgentScheduledTaskFormContract | undefined;
+}
+
+/** GET /api/agent/automations 里的 tasks。 */
+export interface AgentScheduledTaskListContract {
+  tasks: readonly AgentScheduledTaskContract[];
+}
+
+/** GET /api/agent/automations/[id]/runs。 */
+export interface AgentScheduledTaskHistoryContract {
+  task: AgentScheduledTaskContract;
+  /** 最近的在前。 */
+  runs: readonly AgentScheduledTaskRunContract[];
+}
+
+// ── AG16：定时任务的提醒（设计稿 §5.3）。结果一律进站内收件箱；提醒是每条任务自己的开关。 ──
+
+/** 这一期的提醒为什么没发，或者没送到。前七种是有意不发（skipped），后五种是想发但没送到（failed）。 */
+export type AgentScheduledTaskPushReason =
+  | "quiet_hours" | "daily_cap" | "notifications_off"
+  | "reminder_off" | "rule_paused" | "rule_removed" | "result_not_sent"
+  | "no_device" | "permission_revoked" | "provider_rejected" | "outcome_unknown" | "not_configured";
+
+/** 一期的提醒发往的一台设备：只有编号、种类和状态。 */
+export interface AgentScheduledTaskPushTargetContract {
+  deviceId: string;
+  platform: "ios" | "android" | "web";
+  state: "delivered" | "retry" | "revoked" | "rejected" | "unknown";
+}
+
+/**
+ * 一期的提醒（AgentScheduledTaskRunContract.push），和算出结果的时刻（computedAt）分开记。AG16 起服务端总会带上：
+ * `line` 是写好的第二行（「提醒已送到」「提醒没送到：手机的通知被关了。结果在收件箱里。」），没有可说的时候是 null；
+ * `targets` 是这一期发往的设备；`reason` 是没发或没送到的原因；state 多了一种 skipped（有意不发）。
+ */
+export type AgentScheduledTaskRunPushContract = AgentScheduledTaskRunContract["push"];
+
+/** 页面上直接拨提醒开关（不出卡）：PUT /api/agent/automations/[id]/reminder。locale 是提醒那句话用的语言。 */
+export interface AgentScheduledTaskReminderInputContract {
+  push: boolean;
+  locale?: "zh" | "en" | "ja" | undefined;
+}
+
+/** 这台浏览器或手机在服务端登记的通知状态：GET /api/devices/push-tokens/[id]。 */
+export interface AgentPushDeviceStateContract {
+  deviceId: string;
+  platform: "ios" | "android" | "web";
+  permission: "granted" | "provisional" | "denied" | "undetermined";
+  /** 现在会不会往这台设备发。 */
+  active: boolean;
+  revokedAt?: string | undefined;
+  /** user：用户自己在这台设备上关的；provider_rejected：发提醒时推送服务拒收（通知在系统设置里被关了），服务端才发现。 */
+  revokedReason?: "user" | "provider_rejected" | undefined;
+}
+
+/** 浏览器订阅要用的公钥：GET /api/devices/web-push。publicKey 为 null 表示这个部署还没开浏览器通知。 */
+export interface AgentWebPushConfigContract {
+  publicKey: string | null;
+}

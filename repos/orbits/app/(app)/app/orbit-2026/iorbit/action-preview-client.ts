@@ -20,6 +20,16 @@ import type { AiSessionOriginInputContract, AiSessionReferenceContract, AiPageCo
 
 const json = { "content-type": "application/json" };
 
+/** AG20a (decision 8, 设计稿 §3.1): the device's time zone, sent with each message; none when the browser cannot say. */
+export function deviceTimeZone(): string | null {
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return typeof zone === "string" && zone.length > 0 && zone.length <= 64 ? zone : null;
+  } catch {
+    return null;
+  }
+}
+
 /** "assistant:<requestId>" or "assistant:<requestId>:<selection key>": the request a stored assistant message answers. */
 export function requestIdOfAssistantMessage(id: string | null | undefined): string | null {
   const match = /^assistant:(agreq_[0-9a-f]+)/u.exec(id ?? "");
@@ -38,8 +48,9 @@ export interface AgentV1SendInput {
 }
 
 export async function sendAgentV1(input: AgentV1SendInput, signal?: AbortSignal): Promise<AgentSendReceiptContract | null> {
+  const zone = deviceTimeZone();
   const response = await fetch("/api/ai/conversations", {
-    body: JSON.stringify({ clientMessageId: input.clientMessageId, locale: input.locale, message: input.message, protocolVersion: 3, references: input.references ?? [], sessionId: input.sessionId, ...(input.origin ? { origin: input.origin } : {}), ...(input.pageContext ? { pageContext: input.pageContext } : {}) }),
+    body: JSON.stringify({ clientMessageId: input.clientMessageId, locale: input.locale, message: input.message, protocolVersion: 3, references: input.references ?? [], sessionId: input.sessionId, ...(input.origin ? { origin: input.origin } : {}), ...(input.pageContext ? { pageContext: input.pageContext } : {}), ...(zone ? { timeZone: zone } : {}) }),
     credentials: "same-origin",
     headers: json,
     method: "POST",
@@ -142,6 +153,14 @@ export function agentRecordHref(record: Pick<AgentAnswerRecordContract, "kind" |
 /** Where a record link of the answer's basis line opens on the web (the same table as the cards). */
 export function agentLinkHref(link: AgentAnswerLinkContract): string | null {
   return agentRecordHref({ id: link.id, kind: link.type, ...(link.contactId ? { contactId: link.contactId } : {}) });
+}
+
+/**
+ * AG14 (approved draft D5): the memory part of the settings page; with an entry, that entry opens ready to edit
+ * (「修改 ›」 of a memory chip, 「去设置 ›」 of a memory note).
+ */
+export function memorySettingsHref(memoryId?: string | null): string {
+  return `/app/settings/iorbit${memoryId ? `?${new URLSearchParams({ memory: memoryId })}` : ""}#memory`;
 }
 
 /** A document older than this was not verified a moment ago: its cards are checked once (still there, still yours). */

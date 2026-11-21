@@ -202,9 +202,11 @@ test("an event is read in full: the follow-up after a list gets each event's top
   const session = (await import("./graph-kit")).graphKit((async () => { throw new Error("no model call expected here"); }) as never, { now: "2026-11-15T01:00:00.000Z", records: (await import("./graph-kit")).recordAccessOf(world) });
   const first = "最近有哪些活动适合我？";
   await runFn(first, [{ dataSources: ["orbit_records"], deliverable: "list", rank: { count: 3 }, requiredCapabilities: ["event.read", "fn.rank"], sourceQuote: first }], { session, world });
-  const second = "哪些活动？你觉得有必要参加？为什么？";
+  // Release-2 gate 2: 「你觉得有必要参加？为什么？」 is now written by code (part 3's reasons, ag19-follow-list.test.ts), so the
+  // answer step's materials and its checked statements are tested with a follow-up that still goes to it.
+  const second = "这几场里哪场更适合先去？";
   const calls: ModelCall[] = [];
-  const run = await runFn(second, [{ dataSources: ["orbit_records"], deliverable: "list", requiredCapabilities: ["event.read"], sourceQuote: "哪些活动？" }, { deliverable: "answer", dependsOn: ["p1"], sourceQuote: "你觉得有必要参加？" }, { deliverable: "answer", dependsOn: ["p2"], sourceQuote: "为什么？" }], {
+  const run = await runFn(second, [{ dataSources: ["orbit_records"], deliverable: "answer", requiredCapabilities: ["event.read"], sourceQuote: second }], {
     answer: (call) => {
       calls.push(call);
       // The two statements of run-01, word for word in kind: one event 'the shortest', and 'no ticket price'.

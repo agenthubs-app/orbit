@@ -21,12 +21,21 @@ import { createPersonalScheduleService } from "../../../features/personal-schedu
 import { createPersonalScheduleAssociationReader } from "../../../features/personal-schedule/association-reader";
 import { createStorageAgentMemoryService } from "../../../features/agent/memory/service";
 import { createStorageAgentAutomationService } from "../../../features/agent/automations/service";
-import { AGENT_CAPABILITY_DEFINITIONS } from "../../../features/agent/capabilities/registry";
+import { createPostgresAutomationStorage } from "../../../features/agent/automations/due-index";
+import { setTaskReminder } from "../../../features/agent/automations/reminder";
+import { createPushDeviceService } from "../../../features/notifications/push-device-service";
+import { webPushTokenOf } from "../../../features/notifications/web-push-adapter";
+import { RULE_CAPABILITY_OF } from "../../../features/agent-v1/domains/rule/apply";
+import { domainSaidIn, replanSaidIn, scopeSaidIn } from "../../../features/agent-v1/rule/parse";
+import { fieldSaidIn } from "../../../features/agent-v1/functions/basis";
+import { INDUSTRY_WORDS, PLACE_WORDS } from "../../../features/agent-v1/graph/nodes/functions";
+import { scopeWordsOf } from "../../../features/agent-v1/graph/nodes/rule";
+import { loadWorld } from "./world";
 import { createConfiguredStorageOrbitAgentChatSessionProvider } from "../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
 import { createLiveAgentSessionStateStore } from "../../../features/agent-v1/context/session-state";
 import { createConfiguredEventOperationsPostgresRuntime } from "../../../features/events/event-operations/storage/postgres-client";
 import { createPostgresEventOperationsRepository } from "../../../features/events/event-operations/storage/postgres-repository";
-import { createHostLifecycle } from "../../../features/events/host/storage/lifecycle";
+import { createHostLifecycle, readHostEvent } from "../../../features/events/host/storage/lifecycle";
 import { createHostProfiles } from "../../../features/events/host/storage/profiles";
 import { eventRegistrationId } from "../../../features/events/registration/service";
 import type { EventRegistration } from "../../../features/events/registration/contract";
@@ -470,34 +479,115 @@ export function createWorldWriter(world: string, clock: string) {
     const actorId = actorOf(record.account);
     const data = record.data;
     const service = createStorageAgentMemoryService({ actorId, now: () => new Date(Date.parse(clock) - 10 * 86_400_000).toISOString(), store: store as never, workspaceId });
-    const memory = await service.create({ category: data.category as never, content: String(data.content), memoryId: productId("memory", world, record.id), source: "manual" as never });
-    report.ids[record.id] = (memory as { memoryId?: string; id?: string }).memoryId ?? (memory as unknown as { id: string }).id;
+    // AG14: the entry as the fixture writes it — its tasks, its values and its validity — through the memory service.
+    const memory = await service.create({
+      category: data.category as never,
+      content: String(data.content),
+      memoryId: productId("memory", world, record.id),
+      source: "manual" as never,
+      ...(Array.isArray(data.appliesTo) ? { appliesTo: data.appliesTo as never } : {}),
+      ...(data.structured && typeof data.structured === "object" ? { structured: data.structured as never } : {}),
+      ...(typeof data.validFrom === "string" ? { validFrom: data.validFrom } : {}),
+      ...(typeof data.validUntil === "string" ? { validUntil: data.validUntil } : {}),
+    });
+    // A fixture at revision n was changed n − 1 times: the same words written again move the revision on.
+    for (let revision = 1; revision < Number(data.revision ?? 1); revision += 1) await service.update(memory.memoryId, { content: memory.content, expectedRevision: revision });
+    report.ids[record.id] = memory.memoryId;
     count(report, record.account, "memory");
-    for (const field of ["appliesTo", "structured", "validUntil"]) if (data[field] !== undefined) gap(report, record.id, field, "memory scope fields arrive in AG14");
-    if (Number(data.revision ?? 1) > 1) gap(report, record.id, "revision", "memory has no revision yet (AG14)");
   }
 
+  /** AG14: the account's two memory switches as a case starts with them (`memory_use`, `memory_learn`). */
+  async function setMemorySettings(account: string, settings: { memory_use?: unknown; memory_learn?: unknown }): Promise<void> {
+    const service = createStorageAgentMemoryService({ actorId: actorOf(account), now: () => new Date(Date.parse(clock) - 10 * 86_400_000).toISOString(), store: store as never, workspaceId });
+    await service.updateSettings({
+      ...(settings.memory_use !== undefined ? { enabled: settings.memory_use === "on" || settings.memory_use === true } : {}),
+      ...(settings.memory_learn !== undefined ? { allowConversationLearning: settings.memory_learn === "on" || settings.memory_learn === true } : {}),
+    });
+  }
+
+  /**
+   * AG15: a fixture rule is written through the automation service with the due index attached (the rule and its index
+   * row in one transaction), carrying the fields of 设计稿 §5.3. The scope is read from the fixture's words by the
+   * product's own reader (rule/parse.ts); a rule with no ranking basis in the fixture gets the domain's natural order.
+   * `nextRunAt` in the fixture is what the product computes from the schedule when the rule is made at the world clock.
+   */
   async function writeRule(record: FixtureRecord): Promise<void> {
     const actorId = actorOf(record.account);
     const data = record.data;
     const scheduleSpec = data.schedule as { kind: string; daysOfWeek?: number[]; time: string; timeZone: string };
-    const service = createStorageAgentAutomationService({ actorId, now: () => new Date(Date.parse(clock) - 7 * 86_400_000).toISOString(), store: store as never, workspaceId });
+    const storage = createPostgresAutomationStorage({ client: runtime.client, workspaceId });
+    const service = createStorageAgentAutomationService({ actorId, now: () => new Date(Date.parse(clock) - 60_000).toISOString(), storage, store: store as never, workspaceId });
     const title = String(data.title);
-    const capability = AGENT_CAPABILITY_DEFINITIONS.find((definition) => definition.userConfigurableAutomation && (/活动|events?/iu.test(title) ? /event/iu.test(definition.id) : /联系|候选|contact/iu.test(title) ? /contact/iu.test(definition.id) : /follow|task/iu.test(definition.id)));
-    const trigger = scheduleSpec.kind === "weekly"
-      ? { kind: "schedule", schedule: { daysOfWeek: (scheduleSpec.daysOfWeek ?? []).map((day) => day % 7), kind: "weekly", time: scheduleSpec.time, timeZone: scheduleSpec.timeZone } }
-      : { kind: "schedule", schedule: { kind: scheduleSpec.kind, time: scheduleSpec.time, timeZone: scheduleSpec.timeZone } };
+    const schedule = scheduleSpec.kind === "weekly"
+      ? { daysOfWeek: (scheduleSpec.daysOfWeek ?? []).map((day) => day % 7), kind: "weekly" as const, time: scheduleSpec.time, timeZone: scheduleSpec.timeZone }
+      : { kind: "daily" as const, time: scheduleSpec.time, timeZone: scheduleSpec.timeZone };
+    const scopeWords = String(data.candidateScope ?? title);
+    const replan = replanSaidIn(title);
+    const domain = replan ? "todo" : domainSaidIn(scopeWords) ?? "event";
+    const scope = scopeSaidIn(scopeWords, { industries: INDUSTRY_WORDS, places: PLACE_WORDS }, domain)!;
+    const titleOf = (fixtureId: string) => loadWorld(world).anchors.find((anchor) => anchor.id === fixtureId)?.data.title;
+    const references = ((data.references as { type: string; id: string }[] | undefined) ?? []).map((reference) => ({ id: report.ids[reference.id] ?? reference.id, ...(typeof titleOf(reference.id) === "string" ? { title: String(titleOf(reference.id)) } : {}), type: "memo" as const }));
+    const basisWords = data.rankingBasis ? String(data.rankingBasis) : null;
+    const said = basisWords ? fieldSaidIn(basisWords, domain) : null;
+    const natural = domain === "contact" ? "lastInteraction" : domain === "todo" ? "plannedDate" : "startsAt";
+    const field = said ?? (!references.length && (!basisWords || replan) ? natural : null);
+    const notify = (data.notify as { inApp?: boolean; push?: boolean } | undefined) ?? {};
+    const locale = (loadWorld(world).accounts[record.account]?.locale ?? "zh") as "zh" | "en" | "ja";
+    const rule = {
+      action: replan ? ("replan" as const) : ("pick" as const),
+      locale,
+      maxItems: Number(data.maxItems ?? 3),
+      notify: { inApp: true, push: notify.push === true },
+      onEmpty: "silent" as const,
+      ranking: { ...(field ? { field: { direction: "asc" as const, name: field } } : {}), ...(!field && !references.length && basisWords ? { topic: basisWords } : {}) },
+      rankingBasis: basisWords ?? (locale === "en" ? "By start time, earliest first" : locale === "ja" ? "開始時間の早い順" : "按开始时间从早到晚"),
+      references,
+      scope,
+      scopeText: data.candidateScope ? scopeWords : scopeWordsOf(scope, locale),
+      validUntil: typeof data.validUntil === "string" ? data.validUntil : null,
+    };
     const automation = await service.create({
-      capabilityId: capability?.id ?? AGENT_CAPABILITY_DEFINITIONS.find((definition) => definition.userConfigurableAutomation)!.id,
-      delivery: (data.notify as { push?: boolean } | undefined)?.push ? "push" : "in_app",
-      instruction: [data.candidateScope, data.rankingBasis, data.maxItems ? `最多 ${data.maxItems} 项` : ""].filter(Boolean).join("；") || title,
+      automationId: productId("rule", world, record.id),
+      capabilityId: RULE_CAPABILITY_OF[domain],
+      delivery: rule.notify.push ? "push" : "in_app",
+      instruction: `${rule.scopeText} — ${rule.rankingBasis}`,
+      rule,
       source: "manual",
       title,
-      trigger: trigger as never,
+      trigger: { kind: "schedule", schedule },
     });
-    report.ids[record.id] = (automation as { automationId?: string; id?: string }).automationId ?? (automation as unknown as { id: string }).id;
+    report.ids[record.id] = automation.automationId;
     count(report, record.account, "rules");
-    gap(report, record.id, "references/maxItems/onEmpty", "rule fields arrive in AG15; folded into the instruction text");
+    const expected = iso(data.nextRunAt);
+    const indexed = (await storage.direct.due.get({ key: automation.automationId, kind: "rule", ownerId: actorId }))?.nextRunAt ?? null;
+    if (expected && indexed !== expected) gap(report, record.id, "nextRunAt", `the fixture says ${expected}; the schedule gives ${indexed}`);
+    if (Number(data.version ?? 1) > 1) gap(report, record.id, "version", "a fixture rule is made at version 1; its earlier versions are not replayed");
+    if (data.status === "paused") await service.update(automation.automationId, { status: "paused" });
+  }
+
+  /**
+   * AG15 (SCH.yaml external_change of a platform event): the organizer announces the time, the place and the topics of
+   * an event through the host's own update and publish — not a write of the tested system.
+   */
+  async function updatePlatformEvent(fixtureId: string, set: Record<string, unknown>): Promise<void> {
+    const eventId = report.ids[fixtureId];
+    if (!eventId) throw new Error(`unknown platform event ${fixtureId}`);
+    await ensureOrganizer();
+    const organizerActor = actorOf(EVAL_ORGANIZER.label);
+    const current = await readHostEvent(events.client, workspaceId, eventId);
+    if (!current) throw new Error(`platform event ${fixtureId} is not in the eval database`);
+    const startsAt = iso(set.startsAt);
+    const topics = Array.isArray(set.topics) ? (set.topics as string[]).join("、") : null;
+    const description = topics ? [`主题：${topics}`, ...String(current.description ?? "").split("\n").filter((line) => !/^主题：/u.test(line) && !/时间未公布/u.test(line))].filter(Boolean).join("\n") : undefined;
+    const updated = await hostLifecycle.update(organizerActor, eventId, {
+      ...(description !== undefined ? { description } : {}),
+      ...(startsAt ? { endsAt: new Date(Date.parse(startsAt) + 3 * 3_600_000).toISOString(), startsAt } : {}),
+      expectedVersion: current.version,
+      notify: false,
+      ...(set.venue !== undefined ? { venueName: String(set.venue) } : {}),
+      ...(typeof set.title === "string" ? { title: set.title } : {}),
+    } as never);
+    if (startsAt && updated.event.lifecycle !== "published") await hostLifecycle.publish(organizerActor, eventId, updated.event.version);
   }
 
   async function writeConversation(record: FixtureRecord): Promise<void> {
@@ -590,18 +680,51 @@ export function createWorldWriter(world: string, clock: string) {
     await step("memory", 1, writeMemory);
     await step("rule", 1, writeRule);
     await step("conversation", 4, writeConversation);
-    for (const kind of ["connection", "card", "push_device"] as const) {
-      for (const record of byKind(kind)) gap(report, record.id, kind, `${kind} cannot be written by the current product; arrives in a later sprint`);
+    for (const kind of ["connection", "card"] as const) {
+      // AG17: an external connection is not seeded; the runner makes it through the product's authorization flow when a case uses it.
+      for (const record of byKind(kind)) gap(report, record.id, kind, kind === "connection" ? "made by the runner through the product's authorization flow when a case uses it (AG17), not by the seed" : `${kind} cannot be written by the current product; arrives in a later sprint`);
       if (byKind(kind).length) count(report, byKind(kind)[0].account, `${kind}_not_seeded`, byKind(kind).length);
     }
     return report;
+  }
+
+  /**
+   * AG16 (PSH.yaml push-device-app): a device registration through the product's device service. `client: app` is a
+   * phone with an Expo token; `client: web` is a browser whose subscription points at this server's local simulator
+   * (its keys are derived from the device id — tests/agent-eval/preload/web-push-sim.cjs). `permission` is stored as
+   * the fixture says: a browser that said no is on record as denied, and the product must not send to it.
+   */
+  async function writePushDevice(record: FixtureRecord, port: number): Promise<void> {
+    const actorId = actorOf(record.account);
+    const client = String(record.data.client ?? "app");
+    const permission = String(record.data.permission ?? "granted") as "granted" | "provisional" | "denied" | "undetermined";
+    const deviceId = productId("push-device", world, record.id);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { evalWebPushSubscription } = require("../preload/web-push-sim.cjs") as { evalWebPushSubscription(deviceId: string, port: number): { endpoint: string; keys: { p256dh: string; auth: string } } };
+    const token = client === "web" ? webPushTokenOf(evalWebPushSubscription(deviceId, port)) : `ExponentPushToken[agent-eval-${record.id}]`;
+    await createPushDeviceService({ actorId }).register({ deviceId, permission, platform: client === "web" ? "web" : "ios", token });
+    report.ids[record.id] = deviceId;
+    count(report, record.account, "push_devices");
+  }
+
+  /** AG16 (PSH.yaml rule-push-on): a rule's reminder switch, set the way the task's own page sets it. */
+  async function updateRule(fixtureId: string, account: string, set: Record<string, unknown>): Promise<void> {
+    const actorId = actorOf(account);
+    const automationId = idOf(fixtureId);
+    if (!automationId) throw new Error(`${fixtureId} was not seeded`);
+    const other = Object.keys(set).filter((key) => key !== "id" && key !== "account" && key !== "notify");
+    if (other.length) throw new Error(`only a rule's notify can be changed in place (got ${other.join(", ")})`);
+    const storage = createPostgresAutomationStorage({ client: runtime.client, workspaceId });
+    const service = createStorageAgentAutomationService({ actorId, now: () => new Date(Date.parse(clock) - 30_000).toISOString(), storage, store: store as never, workspaceId });
+    const updated = await setTaskReminder(service, automationId, { push: (set.notify as { push?: boolean } | undefined)?.push === true });
+    if (!updated) throw new Error(`${fixtureId} is not a scheduled task`);
   }
 
   async function close(): Promise<void> {
     await Promise.allSettled([configured.client.close(), runtime.client.close(), events.client.close()]);
   }
 
-  return { actorOf, close, ensureAccount, report, updateTodo, writeAll, writeAttendance, writeContact, writeConversation, writeMemo, writeMemory, writePrivateEvent, writeRule, writeSchedule, writeTodo };
+  return { actorOf, close, ensureAccount, report, setMemorySettings, updatePlatformEvent, updateRule, updateTodo, writePushDevice, writeAll, writeAttendance, writeContact, writeConversation, writeMemo, writeMemory, writePrivateEvent, writeRule, writeSchedule, writeTodo };
 }
 
 export type WorldWriter = ReturnType<typeof createWorldWriter>;

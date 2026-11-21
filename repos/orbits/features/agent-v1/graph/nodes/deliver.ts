@@ -24,6 +24,9 @@ import { handoffWords, notYetText, type ReplyLanguage } from "../../route/handof
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart, OptionSetState } from "../state";
 import { clueWords, nameOf, objectOf, setIdOf } from "./clarify";
+import { memoryOfSession } from "../../domains/memory/turn";
+import { asksToOrganize, nextNoteGoalIn } from "./functions";
+import { resumeOf } from "../../propose/asked";
 
 export const OPEN_ITEM_SHELF_AFTER = 2;
 
@@ -100,10 +103,20 @@ function clarifyLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, 
     const kinds = new Set(set.options.map((option) => recordKindOf(option.refType)));
     const unresolved = part.refs.find((ref) => !ref.recordId && (!kinds.size || kinds.has(recordKindOf(ref.entity)))) ?? part.refs.find((ref) => !ref.recordId);
     const clue = clueWords(scope.input.message, unresolved);
-    if (clue) return words.clarifyObject(quote, clue, labels);
-    return CLARIFY_WORDS.askWhich(language, quote, missingOf(part, "object") === "person" ? "person" : "object");
+    // A part that only creates, with nothing to choose among: the clue (「新目标」) is the thing to make, not a record to find.
+    if (clue && !(createsOnly(part) && !labels.length)) return words.clarifyObject(quote, clue, labels);
+    return CLARIFY_WORDS.askWhich(language, quote, missingOf(part, "object") === "person" ? "person" : createsOnly(part) ? "content" : "object");
   }
   return words.clarifyNone(quote);
+}
+
+/**
+ * Release-2 gate 2 (AE-ANS-036 「帮我为新目标制定计划。」, tagged todo.create + schedule.create, was asked 「要改的是哪一条」): a part
+ * whose writes are all creates is missing what to create, not which record to change.
+ */
+function createsOnly(part: GraphPart): boolean {
+  const writes = part.capabilities.filter((capability) => capabilityKind(capability) === "write");
+  return writes.length > 0 && writes.every((capability) => capability.endsWith(".create"));
 }
 
 /** What a question for this part asks for: a person when the unresolved clue is a contact. */
@@ -119,7 +132,7 @@ function stillUnclearLine(scope: NodeScope, part: GraphPart, language: ReplyLang
   const step = scope.run.steps.get(part.localId);
   // A reply to a question is missing what the question asked for, and changes what that part would have changed.
   const missing: MissingItem = item?.asks ?? missingOf(part, step?.kind === "still_unclear" ? step.missing : "intent");
-  return CLARIFY_WORDS.stillUnclear(language, quote, missing, item?.writes ?? writesIn(part));
+  return CLARIFY_WORDS.stillUnclear(language, quote, missing, item?.writes ?? writesIn(part), createsOnly(part));
 }
 
 function entriesLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, language: ReplyLanguage): string {
@@ -129,8 +142,23 @@ function entriesLine(scope: NodeScope, state: AgentGraphState, part: GraphPart, 
   return labels.length ? CLARIFY_WORDS.entries(language, labels) : "";
 }
 
+/**
+ * AG20b (TRIAGE R22, AE-REF-008): the parts that say nothing on purpose — an item on this request's card, a part waiting for
+ * another part's question or card, a shelved one, or a part that one extraction of the same words answered for both.
+ */
+function silentByDesign(state: AgentGraphState, part: GraphPart): boolean {
+  if (part.status === "awaiting_confirmation" || part.reason === "shelved" || part.reason === "web_context") return true;
+  if (part.status === "waiting_dependency" && ["shares_question", "card_waits", "web_shares_question"].includes(part.reason ?? "")) return true;
+  // Plain chat: the first layer's one reply answers every discussion part.
+  if (state.plainChat && part.route === "answer" && part.status === "answered") return true;
+  return state.parts.some((other) => other !== part && other.quote[0] === part.quote[0] && other.quote[1] === part.quote[1] && other.localId < part.localId);
+}
+
 function lineFor(scope: NodeScope, state: AgentGraphState, part: GraphPart, language: ReplyLanguage): string {
-  const line = partLine(scope, state, part, language);
+  const said = partLine(scope, state, part, language);
+  // AG20b (R22): every part of a split message gets an answer or an explicit "not done" — none is dropped in silence.
+  const line = said.trim() || silentByDesign(state, part) ? said : handoffWords(language).notDone(quoteOf(scope.input.message, part));
+  if (line !== said) emitTrace({ partId: part.localId, reason: part.reason, route: part.route, status: part.status, type: "deliver.part_not_done" });
   // A part that answered an earlier question says which matter it goes on with (the "still missing" line already does).
   const item = part.continues?.kind === "clarification" ? scope.run.context?.openItems.find((open) => open.ref === part.continues!.ref) : undefined;
   if (!item?.quote || !line.trim() || part.reason === "still_unclear" || state.touched !== null) return line;
@@ -251,6 +279,7 @@ function blocksOf(scope: NodeScope, state: AgentGraphState, written: readonly Gr
   const { run } = scope;
   const blocks: AnswerBlock[] = [];
   const notes: AgentAnswerNoteItemContract[] = [];
+  const memoryNotes: AnswerBlock[] = [];
   // Hotfix 1c (AE-SCL-008: 「3件」 with two cards under it, the third under the part before): a record several parts cite has its
   // card under the part that cites the most records (the list of them); a tie goes to the later part.
   const owner = new Map<string, GraphPart>();
@@ -262,6 +291,12 @@ function blocksOf(scope: NodeScope, state: AgentGraphState, written: readonly Gr
     const line = lineFor(scope, state, part, language);
     if (!line.trim()) continue;
     const quote = quoteOf(scope.input.message, part);
+    // AG14 UI (board 4, D3): a memory line said as a grey note with 「去设置 ›」, after the answer (its text is the same words).
+    const memoryNote = run.memoryNotes.get(part.localId);
+    if (memoryNote) {
+      memoryNotes.push({ go: { label: memoryNote.go, to: "memory_settings" }, items: [{ text: memoryNote.text, ...(memoryNote.action ? { action: memoryNote.action } : {}) }], title: memoryNote.title, type: "note" });
+      continue;
+    }
     if (isNotDone(part, run.writeLines.has(part.localId))) {
       // Each sentence of code's is one entry; the first carries the user's words.
       line.split("\n").map((text) => text.trim()).filter(Boolean).forEach((text, index) => notes.push(noteItemOf(text, index === 0 ? quote : null, language)));
@@ -286,6 +321,7 @@ function blocksOf(scope: NodeScope, state: AgentGraphState, written: readonly Gr
     const cards = byBasisLine ? null : recordsBlock(cited, language, { size: "mini" });
     blocks.push(...mine, ...(cards ? [cards] : []));
   }
+  blocks.push(...memoryNotes);
   const note = noteBlock(notes, language);
   if (note) blocks.push(note);
   if (run.cardLine?.trim()) blocks.push({ text: run.cardLine, type: "paragraph" });
@@ -305,9 +341,25 @@ function summaryOfQuestion(scope: NodeScope, state: AgentGraphState, part: Graph
   const labels = optionLabels(scope, set, state.language);
   if (set?.kind === "not_understood") return `Orbit could not tell what "${quote}" asks for${labels.length ? `; it offered: ${labels.join(" / ")}` : ""}`;
   // AG10: the one question of a ranking with no basis; any reply about how to pick (or "随便") answers it.
+  // AG15: the one question of a scheduled task with no ranking basis; a reply naming a standard answers it.
+  if (part.plan.ruleAsk) return `Orbit asked what the scheduled task "${quote}" should pick by each time (offered: ${labels.join(" / ")}); a reply naming a standard, a note chosen with @, or "any / 随便", answers it`;
   if (part.plan.rankAsk) return `Orbit asked what to pick "${quote}" by (offered: ${labels.join(" / ")}); a reply naming a standard, or "any / 随便", answers it`;
   if (set?.asks === "reading") return `Orbit asked which of these "${quote}" means: ${labels.join(" / ")}`;
   return `Orbit asked what "${quote}" refers to${labels.length ? ` (${labels.join(" / ")})` : ""}`;
+}
+
+const KIND_OF_COLLECTION: Record<string, string> = { contacts: "contact", event_attendance_notes: "attendance", notes: "memo", personal_schedule_items: "schedule", private_events: "event", tasks: "todo" };
+
+/** AG20a R15: the existing records a card changes, by id and the name the card shows ("联系人「李薇」" → 李薇). */
+export function cardTargetsOf(preview: { operations: readonly { target?: { collection: string; id: string }; display?: { record: string } }[] } | null, at: string): NamedRecordRef[] {
+  const out: NamedRecordRef[] = [];
+  for (const op of preview?.operations ?? []) {
+    const target = op.target ?? (op as { targetRef?: { collection: string; id: string } }).targetRef;
+    const type = target ? KIND_OF_COLLECTION[target.collection] : undefined;
+    const name = /[「『“"]([^」』”"]+)[」』”"]/u.exec(op.display?.record ?? "")?.[1]?.trim();
+    if (target && type && name && !out.some((item) => item.id === target.id)) out.push({ at, id: target.id, name, type });
+  }
+  return out;
 }
 
 function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: AgentSessionState | null): AgentSessionState {
@@ -337,6 +389,8 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
       next.shownList = { items: part.cites!.map((ref) => ({ id: ref.slice(ref.indexOf(":") + 1), name: run.readNames.get(ref.slice(ref.indexOf(":") + 1))?.name ?? "", type: ref.slice(0, ref.indexOf(":")) })), shownAt: now };
     }
   }
+  // AG20a R15 (§3.10, TP-CON-004): a record this turn's card changes is the one just mentioned of its kind ("还是把他恢复吧").
+  for (const item of cardTargetsOf(run.actionPreview ?? null, now)) mentioned.push(item);
   for (const item of mentioned) next.lastMentioned = [item, ...next.lastMentioned.filter((old) => old.type !== item.type)];
   // Open items: continued ones close; the others count one more unrelated message and are shelved after two
   // (or when the session was idle); new alternatives and questions open.
@@ -363,11 +417,32 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
       const asks = missingOf(part, set?.kind === "not_understood" || !set ? "intent" : set.asks ?? "object");
       // AG05: the clue words go with the matter, so a reply that continues it ("他") reads the same person.
       const clues = part.refs.map((ref) => ({ entity: ref.entity, text: clueWords(input.message, ref) ?? "" })).filter((clue) => clue.text);
-      kept.push({ asks, createdAt: now, kind: "clarification", partId: part.localId, quote, ref: `clarification:${input.requestId}:${part.localId}`, requestId: input.requestId, summary: summaryOfQuestion(scope, state, part), unrelatedMessages: 0, writes: writesIn(part), ...(clues.length ? { clues } : {}), ...(part.plan.rankAsk ? { rank: { ...part.plan.rankAsk } } : {}) });
+      // AG20b (TRIAGE R13): the records offered, with their labels, so a typed answer that names one ("蒲公英那个") picks it.
+      const labelMap = set ? labelsOf(scope, set, state.language) : new Map<string, { label: string }>();
+      const offered = (set?.options ?? []).filter((option) => option.refId && option.refType).map((option) => ({ id: option.refId!, label: labelMap.get(option.optionId)?.label ?? "", type: option.refType! })).filter((option) => option.label);
+      // AG21a (R26): a write question keeps the part as it was asked, so a typed answer that picks an option goes on with it.
+      const resume = set?.purpose === "operation" && offered.length ? resumeOf(part, input.message) : null;
+      kept.push({ asks, createdAt: now, kind: "clarification", partId: part.localId, quote, ref: `clarification:${input.requestId}:${part.localId}`, requestId: input.requestId, summary: summaryOfQuestion(scope, state, part), unrelatedMessages: 0, writes: writesIn(part), ...(clues.length ? { clues } : {}), ...(offered.length ? { options: offered } : {}), ...(part.plan.rankAsk ? { rank: { ...part.plan.rankAsk } } : {}), ...(part.plan.ruleAsk ? { rule: JSON.parse(JSON.stringify(part.plan.ruleAsk)) } : {}), ...(resume ? { resume } : {}) });
     }
   }
   next.openItems = kept;
+  // AG20a (decision 2): the profile fields this answer found out of date are what the next turn may update; a turn that
+  // found none clears them (only the answer right before counts).
+  if (run.staleProfiles.length) next.staleProfiles = run.staleProfiles.map((item) => ({ ...item }));
+  else delete next.staleProfiles;
+  // AG20b (TRIAGE R17, §3.5 last row): a goal stated for the next note is kept for the next "整理一下", and used up by it.
+  const goal = state.parts.map((part) => nextNoteGoalIn(quoteOf(input.message, part))).find((item) => item !== null) ?? null;
+  if (goal) next.noteGoal = { ...goal, setAt: now };
+  else if (next.noteGoal && (context?.idle || state.parts.some((part) => asksToOrganize(quoteOf(input.message, part))))) next.noteGoal = null;
   next.updatedAt = now;
+  // AG14: the saved entries this turn's answer used (ids and revisions) and its ranking's codes; never an entry's words.
+  if (run.memory.loaded && run.memory.snapshot) {
+    const kept = memoryOfSession(previous, run.memory, input.requestId);
+    if (kept.memoryUses) next.memoryUses = kept.memoryUses;
+    else delete next.memoryUses;
+    if (kept.lastRanking) next.lastRanking = kept.lastRanking;
+    if (kept.memoryVersion !== undefined) next.memoryVersion = kept.memoryVersion;
+  }
   return next;
 }
 

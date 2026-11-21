@@ -20,6 +20,12 @@ export type BasisSource = "turn" | "session_goal" | "memory" | "history" | "natu
 export interface TimePreference {
   days?: "weekend" | "weekday";
   part?: "morning" | "afternoon" | "evening";
+  /**
+   * AG21b (R33): a clock boundary on the start ("八点以后开始的", "before 8 am", "20時以降"), in minutes after midnight:
+   * "from" includes that minute (以后/以降/after), "before" leaves it out (以前/前/before). With a clock the part of the day
+   * is not used — "晚上八点以后" is 20:00 on, never the whole evening.
+   */
+  clock?: { minutes: number; side: "from" | "before" };
   /** A constraint (只…, 不要…, only, not): candidates that miss it are removed; otherwise it only ranks. */
   hard: boolean;
   /** The opposite: "不要晚上的" excludes evenings. */
@@ -69,7 +75,10 @@ export function asksWhoToFollowUp(words: string): boolean {
  * and words for a kind of record, a time or the act of preparing ("哪些人值得先跟进" leaves 「值得先」, "接下来的会面或活动，该准备什么"
  * leaves 「接下来 会面 准备什么」: neither is a topic).
  */
-const NOT_A_TOPIC = /(タスク|メモ|ノート|連絡先|スケジュール|公開されている|公開中の?|公開済み|公開|まだ終わっていない|終わっていない|未完了の?|已发布的?|发布的|公开的|公开|进行中的?|还没完成的?|没完成的?|未完成的?|还没开始的?|\b(?:published|public|open|pending|not done|unfinished|not started|ongoing|to-?dos?|tasks?)\b|告诉我|告诉|原因|理由|为什么|下一步|现在|目前|当前|并说明|说明|解释|值得参加|参加する|参加|連絡すべき|連絡|教えて|理由|次の一歩|とともに|ともに|価値がある|価値|今|\b(?:now|currently|reason|reasons|why|next step|tell me|suggest|explain|worth|attending|attend|recommend|recent|recently|good fit|fit|for me|me|are|is)\b|值得|首先|最先|优先|先|应该|应当|该|需要|要|可以|能|哪些|哪个|哪位|哪几|哪|谁|什么|怎么|如何|是否|吗|呢|吧|或者|或|和|与|还有|接下来|下一个|下次|之后|以后|最近|近期|会面|见面|会议|开会|活动|日程|安排|准备|事情|事|东西|跟进|联系|優先|して|します|しますか|ますか|ますか|すべき|べき|誰|何から|何|どれ|次の|面会|イベント|予定|準備|フォロー|進め|今日|は|を|に|の|\b(?:first|should|need|needs|to|what|which|who|whom|how|do|i|for|with|up|follow|prepare|upcoming|next|meetings?|events?|or|and|the|my|a)\b|[\s。.，,、？?！!：:]+)/giu;
+// AG21a (R32b, coordinator's decision 1): vague words of fit or of being worth it ("适合我", "可以去", "for me", "私に合う",
+// "行ける", "おすすめ") ask for a recommendation; they are never its topic. Lifting a saved rule this once ("这次…也算上") names
+// no topic either.
+const NOT_A_TOPIC = /(适合我的?|合适我的?|适合自己的?|对我来说|适合|合适|可以去的?|可以看的?|可以参加的?|能去的?|值得去的?|值得看的?|值得一去|也算上|也算进来|也算进去|也包括|这次|这回|本次|私に合う|自分に合う|私に向いている|向いている|合いそう|行ける|行けそう|おすすめ|オススメ|今回|ありますか|あります|ある|\b(?:suits? me|suitable|worth going|worth it|this time|any|anything|there|some)\b|タスク|メモ|ノート|連絡先|スケジュール|公開されている|公開中の?|公開済み|公開|まだ終わっていない|終わっていない|未完了の?|已发布的?|发布的|公开的|公开|进行中的?|还没完成的?|没完成的?|未完成的?|还没开始的?|\b(?:published|public|open|pending|not done|unfinished|not started|ongoing|to-?dos?|tasks?)\b|告诉我|告诉|原因|理由|为什么|下一步|现在|目前|当前|并说明|说明|解释|值得参加|参加する|参加|連絡すべき|連絡|教えて|理由|次の一歩|とともに|ともに|価値がある|価値|今|\b(?:now|currently|reason|reasons|why|next step|tell me|suggest|explain|worth|attending|attend|recommend|recent|recently|good fit|fit|for me|me|are|is)\b|值得|首先|最先|优先|先|应该|应当|该|需要|要|可以|能|哪些|哪个|哪位|哪几|哪|谁|什么|怎么|如何|是否|吗|呢|吧|或者|或|和|与|还有|接下来|下一个|下次|之后|以后|最近|近期|会面|见面|会议|开会|活动|日程|安排|准备|事情|事|东西|跟进|联系|優先|して|します|しますか|ますか|ますか|すべき|べき|誰|何から|何|どれ|次の|面会|イベント|予定|準備|フォロー|進め|今日|は|を|に|の|\b(?:first|should|need|needs|to|what|which|who|whom|how|do|i|for|with|up|follow|prepare|upcoming|next|meetings?|events?|or|and|the|my|a)\b|[\s。.，,、？?！!：:]+)/giu;
 
 /** Rule 3: the real topic in some words ("" when nothing but question, kind, time or preparing words is left). */
 export function realTopicOf(words: string): string {
@@ -112,6 +121,19 @@ export function topicWordsOf(words: string): string {
     .trim();
 }
 
+/** Words of asking, counting and repeating that name no topic ("几场", "再……一次", "有什么", "would you", "もの"). */
+const ASK_WORDS = /(几\s*(?:场|个|位|条|件|项|人)|[场个位条件项]|这一次|这次|这回|本次|今回は?|(?:周|星期|礼拜)[一二三四五六日天]|[月火水木金土日]曜日?|\b(?:mon|tues|wednes|thurs|fri|satur|sun)days?\b|\b(?:this|time|once|just|show|see|look|at|only)\b|見せて|見たい|夜|看|先|这个|那个|这些|那些|就|再|一次|一遍|一回|什么|哪些|有没有|看看|想去|可以|能不能|到|至|[（(][月火水木金土日一二三四五六天][）)]|[（()）~～—\-–「」『』"“”'’]|\b(?:would|you|can|could|do|does|did|next|some|any|are|is|was|there|what|what's|whats|please|have|has|on|again|few|worth|going|about|happening|coming|up|it|them|these|those|that|that's|will|be)\b|もう一度|もう一回|何か|ありますか|あります|ある|どんな|行く価値(?:が|の)?(?:ありそうな|ある|高い)?|価値|行く|ありそう|もの|こと|と|も|な|ら|\d+)/giu;
+
+/**
+ * AG14: what is left of a whole sentence as a topic when the first layer gave no basis words. A sentence that only
+ * asks ("给我推荐几场下周的活动", "Which events would you recommend for next week?", "来週のおすすめイベントを教えて") names
+ * no topic: it is ranked by what is saved, or — with nothing saved — asked about once (设计稿 §3.5), never matched
+ * against its own words.
+ */
+export function sentenceTopicOf(words: string): string {
+  return topicWordsOf(words).replace(ASK_WORDS, " ").replace(/\s+/gu, " ").trim();
+}
+
 const WEEKEND = /(周末|週末|礼拜六日|土日|土曜|日曜|weekend|saturday|sunday)/iu;
 const WEEKDAY = /(工作日|平日|weekday)/iu;
 const MORNING = /(上午|早上|早晨|午前|朝|morning)/iu;
@@ -125,10 +147,57 @@ export function timePreferenceIn(said: string, source: "turn" | "memory"): TimeP
   // Record names chosen with @ ("@设计师之夜") are not time words.
   const words = said.replace(/@\S+/gu, " ");
   const days = WEEKEND.test(words) ? "weekend" : WEEKDAY.test(words) ? "weekday" : undefined;
-  const part = MORNING.test(words) ? "morning" : AFTERNOON.test(words) ? "afternoon" : EVENING.test(words) ? "evening" : undefined;
-  if (!days && !part) return null;
+  const clock = clockBoundIn(words);
+  const part = clock ? undefined : MORNING.test(words) ? "morning" : AFTERNOON.test(words) ? "afternoon" : EVENING.test(words) ? "evening" : undefined;
+  if (!days && !part && !clock) return null;
   const exclude = EXCLUDE.test(words);
-  return { exclude, hard: exclude || ONLY.test(words), source, words: words.trim(), ...(days ? { days } : {}), ...(part ? { part } : {}) };
+  return { exclude, hard: exclude || ONLY.test(words), source, words: words.trim(), ...(days ? { days } : {}), ...(part ? { part } : {}), ...(clock ? { clock } : {}) };
+}
+
+const CJK_NUMBER: Record<string, number> = { 零: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10, 十一: 11, 十二: 12 };
+const PM_WORDS = /(下午|晚上|傍晚|夜里|夜间|夜|午後|夕方|pm|p\.m\.)/iu;
+const AM_WORDS = /(早上|上午|早晨|凌晨|午前|朝|am|a\.m\.)/iu;
+const ZH_JA_CLOCK = /(早上|上午|早晨|凌晨|中午|下午|傍晚|晚上|夜里|夜间|午前|午後|夕方|夜|朝)?\s*(\d{1,2}|十[一二]?|[零一二两三四五六七八九])\s*(?:[点點時时])\s*(半|\d{1,2}\s*分?)?\s*(以后|之后|以後|过后|后|後|以降|から|起|以前|之前|前|より前|まで)/u;
+const COLON_CLOCK = /(早上|上午|早晨|凌晨|中午|下午|傍晚|晚上|夜里|夜间|午前|午後|夕方|夜|朝)?\s*(\d{1,2})[:：](\d{2})\s*(?:[点點時时])?\s*(?:开始|開始|スタート)?(?:的)?\s*(以后|之后|以後|过后|后|後|以降|から|起|以前|之前|前|より前|まで)/u;
+const EN_CLOCK = /\b(after|from|at or after|before|earlier than|later than)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?|\b(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s+or\s+(later|after|earlier|before)\b/iu;
+
+/** AG21b (R33): the clock boundary the words put on a start time; null when they name none. */
+export function clockBoundIn(words: string): TimePreference["clock"] | null {
+  // Integration (coordinator, 2026-11-21): 「推荐晚上的活动，只要七点以后开始的」 — the evening said elsewhere in the words makes a
+  // bare 七点 seven in the evening (only when nothing in them says morning).
+  const pmElsewhere = /(下午|晚上|傍晚|夜里|夜间|夜|午後|夕方|\bpm\b|p\.m\.|\bevenings?\b|\bnights?\b|\bafternoons?\b)/iu.test(words) && !/(早上|上午|早晨|凌晨|午前|朝|\bam\b|a\.m\.|\bmornings?\b)/iu.test(words);
+  const hourOf = (raw: string, qualifier: string): number | null => {
+    let hour = /^\d+$/u.test(raw) ? Number(raw) : CJK_NUMBER[raw] ?? NaN;
+    if (!Number.isFinite(hour) || hour > 24) return null;
+    if ((PM_WORDS.test(qualifier) || (!qualifier && pmElsewhere)) && hour < 12) hour += 12;
+    else if (AM_WORDS.test(qualifier) && hour === 12) hour = 0;
+    return hour % 24;
+  };
+  // Integration (coordinator, 2026-11-21): a clock written with a colon ("19:00 以后开始的", "19:00以降") is the same bound.
+  const colon = COLON_CLOCK.exec(words);
+  if (colon) {
+    const hour = hourOf(colon[2], colon[1] ?? "");
+    if (hour === null) return null;
+    const side = /(以前|之前|前|より前|まで)/u.test(colon[4]) ? "before" : "from";
+    return { minutes: hour * 60 + Math.min(Number(colon[3]), 59), side };
+  }
+  const zh = ZH_JA_CLOCK.exec(words);
+  if (zh) {
+    const hour = hourOf(zh[2], zh[1] ?? "");
+    if (hour === null) return null;
+    const minute = zh[3] === "半" ? 30 : zh[3] ? Number(zh[3].replace(/\D/gu, "")) : 0;
+    const side = /(以前|之前|前|より前|まで)/u.test(zh[4]) ? "before" : "from";
+    return { minutes: hour * 60 + Math.min(minute, 59), side };
+  }
+  const en = EN_CLOCK.exec(words);
+  if (en) {
+    const [word, raw, mm, meridiem] = en[1] ? [en[1], en[2], en[3], en[4] ?? ""] : [en[8], en[5], en[6], en[7] ?? ""];
+    const hour = hourOf(raw, meridiem);
+    if (hour === null) return null;
+    const side = /(before|earlier)/iu.test(word) ? "before" : "from";
+    return { minutes: hour * 60 + (mm ? Math.min(Number(mm), 59) : 0), side };
+  }
+  return null;
 }
 
 /** The clause of the words that holds the time preference (between punctuation), for the lead. */
@@ -138,12 +207,17 @@ export function timeClauseOf(words: string): string | null {
 }
 
 /** Whether an event at this instant (in the time zone) meets the preference's days and part of the day. */
-export function meetsTime(preference: Pick<TimePreference, "days" | "part">, startsAt: string, timeZone: string): boolean {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hourCycle: "h23", timeZone, weekday: "short" }).formatToParts(new Date(startsAt)).map((part) => [part.type, part.value]));
+export function meetsTime(preference: Pick<TimePreference, "days" | "part" | "clock">, startsAt: string, timeZone: string): boolean {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hourCycle: "h23", minute: "2-digit", timeZone, weekday: "short" }).formatToParts(new Date(startsAt)).map((part) => [part.type, part.value]));
   const weekend = parts.weekday === "Sat" || parts.weekday === "Sun";
   const hour = Number(parts.hour);
   if (preference.days === "weekend" && !weekend) return false;
   if (preference.days === "weekday" && weekend) return false;
+  // AG21b (R33): a clock boundary, with its own inclusiveness ("以后" includes the minute, "以前" does not).
+  if (preference.clock) {
+    const minutes = hour * 60 + Number(parts.minute);
+    if (preference.clock.side === "from" ? minutes < preference.clock.minutes : minutes >= preference.clock.minutes) return false;
+  }
   if (preference.part === "morning" && hour >= 12) return false;
   if (preference.part === "afternoon" && (hour < 12 || hour >= 17)) return false;
   if (preference.part === "evening" && hour < 17) return false;
@@ -245,7 +319,8 @@ export function upcomingTopicOf(words: string): string {
 /* ── AG19 repair round 1 (coordinator's decision 3) ─────────────────── */
 
 /** Asking which events there are, or to have some recommended or listed. */
-const EVENT_LIST_WORDS = /(哪些|哪几|哪场|有什么|有没有|有啥|推荐|值得|适合|列出|列一下|都列|\bwhat\b|\bwhich\b|\bany\b|\brecommend|\bsuggest|\bworth\b|\blist\b|おすすめ|どんな|どの|ありますか|教えて)/iu;
+// AG21a (decision 2): 「帮我找…活动」, "find events", 「イベントを探して」 ask for events to go to as well.
+const EVENT_LIST_WORDS = /(哪些|哪几|哪场|有什么|有没有|有啥|推荐|值得|适合|列出|列一下|都列|帮我找|找找|\bfind\b|探して|\bwhat\b|\bwhich\b|\bany\b|\brecommend|\bsuggest|\bworth\b|\blist\b|おすすめ|どんな|どの|ありますか|教えて)/iu;
 /** A calendar date written out ("11月10日", "2026-11-10", "Nov 10"). */
 const WRITTEN_DATE = /(\d{1,2}\s*月\s*\d{1,2}\s*[日号]?|\d{4}-\d{2}-\d{2}|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\b)/iu;
 
@@ -266,4 +341,31 @@ export function writesADate(words: string): boolean {
  */
 export function asksEventsToGoTo(words: string): boolean {
   return (UPCOMING_WORDS.test(words) || EVENT_LIST_WORDS.test(words)) && !PAST_WORDS.test(words);
+}
+
+/* ── AG21a (R32, coordinator's decision 1) ─────────────────────────── */
+
+/**
+ * AG21a (coordinator's decision 1, R32): wording that asks what is worth going to or suits the user — a recommendation, so
+ * saved preferences apply when the user gives no standard of their own. Decided from the user's words, whatever the first
+ * layer tagged.
+ */
+const RECOMMEND_WORDS = /(推荐|值得|适合我|合适我|适合自己|对我来说|可以去|可以看|可以参加|能去|去哪|おすすめ|オススメ|私に合う|自分に合う|私に向いている|行ける|行けそう|行く価値|\bfor me\b|\bsuits? me\b|\bworth (?:going|attending|it|seeing)\b|\brecommend|\bshould I (?:go|attend)\b)/iu;
+export function asksForRecommendation(words: string): boolean {
+  return RECOMMEND_WORDS.test(words);
+}
+
+/**
+ * AG21a (R32c): 「这次晚上的也算上」, 「今回は夜のも含めて」, "include evening ones this time" lift a saved rule for this turn only;
+ * they state no new preference and no topic. Returns the clause and the words lifted ("晚上的"), or null.
+ */
+const LIFT = /(也算上|也算进来|也算进去|也包括进来|也包括|也放进来|也列进来|也列上|也可以|也行|也没关系|も含めて|も入れて|もOK|もいい|\binclude\b.{0,40}\b(?:too|as well|this time)\b|\b(?:are|is) (?:fine|ok|okay) (?:too|this time)\b)/iu;
+const LIFT_WORDS = /(也算上|也算进来|也算进去|也包括进来|也包括|也放进来|也列进来|也列上|也可以|也行|也没关系|这次|这回|本次|今回は?|も含めて|も入れて|もOK|もいい|\binclude\b|\btoo\b|\bas well\b|\bthis time\b|\b(?:are|is) (?:fine|ok|okay)\b)/giu;
+export function liftedIn(words: string): { clause: string; words: string } | null {
+  for (const clause of words.split(/[，,。；;！!？?]/u)) {
+    if (!LIFT.test(clause)) continue;
+    const lifted = clause.replace(LIFT_WORDS, " ").replace(/\s+/gu, " ").trim();
+    return { clause: clause.trim(), words: lifted };
+  }
+  return null;
 }

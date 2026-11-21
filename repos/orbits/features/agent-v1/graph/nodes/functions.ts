@@ -16,7 +16,7 @@
  * Every function that runs is traced (fn.rank with the list it delivered, fn.extractInteractions, fn.extractFollowUps).
  */
 import { readSourceOf } from "../../answer/basis";
-import { lastInteractionWords, recordOfView, recordsBlock, type AnswerBlock } from "../../answer/blocks";
+import { lastInteractionWords, recordOfView, recordsBlock, replaceInBlocks, type AnswerBlock } from "../../answer/blocks";
 import type { AgentAnswerRecordContract } from "../../../../shared/contract/agent-v1";
 import { gapWords } from "../../answer/gap-copy";
 import type { SessionOpenItem } from "../../context/session-state";
@@ -30,23 +30,32 @@ import { localDay } from "../../views/recent-interaction";
 import type { CanonicalEventRecord } from "../../../events/core/contract";
 import type { NoteInteractionContract } from "../../../../shared/contract/notes";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
-import { asksWhoToFollowUp, isWholeQuote, realTopicOf } from "../../functions/basis";
+import { asksForRecommendation, asksWhoToFollowUp, isWholeQuote, liftedIn, realTopicOf } from "../../functions/basis";
+import { holdsRole, rolesIn, roleWordsIn } from "../../understand/role-words";
 import { asksWhatToPrepare, preparePart } from "./prepare";
-import { asksForNextStep, asksForReasons, eventReason, fitLine, nextStepWords, themeLinks, themesOf } from "./reasons";
-import { onlyWindowWords } from "../../understand/read-window";
-import { asksEventsToGoTo, pointsAtPast, writesADate, upcomingTopicOf, directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, memoriesFor, naturalField, PICK_WORDS, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
+import { asksForNextStep, asksForReasons, asksWhichAreWorthIt, eventReason, fitLine, nextStepWords, themeLinks, themesOf } from "./reasons";
+import { onlyWindowWords, withoutWindowWords } from "../../understand/read-window";
+import { asksEventsToGoTo, meetsTime, pointsAtPast, writesADate, upcomingTopicOf, directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, naturalField, PICK_WORDS, sentenceTopicOf, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
+import { MEMORY_WORDS } from "../../domains/memory/copy";
+import { ensureTurnMemory, overruledByTurn, rankMemoryOf, timePreferenceOfEntry, topicOfEntry } from "../../domains/memory/turn";
+import { memoryChipsOf } from "../../domains/memory/chips";
+import type { RecalledMemory } from "../../../agent/memory/recall";
 import { compare, dimensionsIn, type ComparedEvent } from "../../functions/compare";
 import * as say from "../../functions/copy";
 import { memoDayOf } from "../../functions/dates";
+import { resolveSaidDate } from "../../propose/dates";
 import { contactOfClue, type LinkedContact, type MemoForExtraction } from "../../functions/extract";
 import { extractFromMemo } from "../../functions/extract-memo";
+import { splitSentences } from "../../text/sentences";
+import { groupInteractions, interactionNamedIn, interactionOfOption, interactionOptionId, type InteractionGroup } from "../../functions/extract-interactions";
 import { groupEventsByFee } from "../../functions/group";
 import { linkFollowUp, linkInteraction, type ExistingTodo } from "../../functions/link-back";
 import { rankCandidates, type RankCandidate, type RankResult } from "../../functions/rank";
 import type { AgentRecordAccess, GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart, OptionSetState } from "../state";
 import { clueWords, setIdOf } from "./clarify";
-import { localMidnight } from "./resolve";
+import { rulePart, ruleTaskOf, type RuleTask } from "./rule";
+import { clueSearchWords, localMidnight } from "./resolve";
 
 type Language = "zh" | "ja" | "en";
 
@@ -67,6 +76,14 @@ const CONTACT_SET_WORDS = /(?:联系人|聯絡人|人脉|連絡先|コンタク�
 const RANK_WORDS = /(挑|选出|选几|排序|排一下|排个序|并べ|並べ|選んで|順に|順番|\bpick\b|\bchoose\b|\brank\b|\bsort\b|\border\b|\blist the\b)/iu;
 const TODO_LIST_WORDS = /(待办|代办|跟进|タスク|ToDo|フォローアップ|\bto-?dos?\b|\bfollow[\s-]?ups?\b|\btasks?\b)/iu;
 const WHO_WORDS = /(谁|哪位|哪些人|哪几位|\bwho\b|\bwhom\b|誰|どなた|どの人)/iu;
+/** The part of the day a clock bound on the start falls in: before 12:00 → morning, from 17:00 on → evening. */
+function partOfClock(clock: NonNullable<TimePreference["clock"]>): TimePreference["part"] {
+  if (clock.side === "before") return clock.minutes <= 12 * 60 ? "morning" : undefined;
+  return clock.minutes >= 17 * 60 ? "evening" : clock.minutes >= 12 * 60 ? "afternoon" : undefined;
+}
+
+/** Words that ask for one person only (the singular "who" alone does not). */
+const JUST_ONE_WORDS = /((?<!哪)一个人|(?<!哪)一位|只要一个|就一个|只联系一个|一人だけ|1人だけ|ひとりだけ|一人に絞|\bjust one\b|\bonly one\b|\bone person\b|\bsingle person\b)/iu;
 const FORMAL_FOLLOW_UP = /(正式跟进|正式的跟进|フォローアップ|formal follow[\s-]?ups?)/iu;
 
 const EVENT_NOUN = /(活动|活動|イベント|\bevents?\b)/iu;
@@ -108,6 +125,9 @@ export function rankDomainOf(part: GraphPart, message: string): RankDomain | nul
   // 「这周该跟进谁」 whatever the first layer tagged — unless a person is named or picked (then it is about that person).
   const asked = message.slice(part.quote[0], part.quote[1]);
   if (part.route === "read" && asksWhoToFollowUp(asked) && !part.refs.some((ref) => ref.entity === "contact" && (ref.recordId || (ref.quote && !GENERIC_CONTACT_CLUE.test(message.slice(ref.quote[0], ref.quote[1])))))) return "contact";
+  // Release-2 gate 2 (AE-ANS-003): which of the events this is about are worth going to, and why — part 3's recommendation
+  // with reasons over those events (graph/nodes/reasons.ts), whatever the first layer tagged.
+  if (part.route === "read" && asksWhichAreWorthIt(asked) && part.refs.filter((ref) => ref.entity === "event" && ref.recordId).length >= 2) return "event";
   if (part.route !== "read" || !part.capabilities.includes("fn.rank")) return null;
   // Comparing and grouping are other functions (AE-FN-014: "按免费和收费分个组" is a group, not a pick).
   if (part.capabilities.includes("fn.group") || part.capabilities.includes("fn.compare")) return null;
@@ -128,7 +148,10 @@ export function rankDomainOf(part: GraphPart, message: string): RankDomain | nul
   if ((todo || FORMAL_FOLLOW_UP.test(quote)) && TODO_LIST_WORDS.test(quote) && !part.refs.some((ref) => ref.recordId && (ref.entity === "memo" || ref.entity === "todo"))) return "todo";
   // Reading other records is another kind of task — except a memo attached with @ (its topics are the basis).
   const memoBasis = part.refs.filter((ref) => ref.entity === "memo");
-  const readsMemoBasis = memoBasis.length > 0 && memoBasis.every((ref) => ref.recordId);
+  // AG20b (TRIAGE R9, §3.5 "按这篇 Memo 在目录中找活动"): a note named in words ("按我的看展札记挑周末的活动") is the criterion of an
+  // event ranking as an attached one is; it is found by its own words (rankPart), never through the events' dates.
+  const namedMemoBasis = memoBasis.length > 0 && part.capabilities.includes("event.read") && memoBasis.every((ref) => ref.recordId || Boolean(clueSearchWords((ref.quote ? message.slice(ref.quote[0], ref.quote[1]) : "").replace(/^@/u, ""))));
+  const readsMemoBasis = memoBasis.length > 0 && (memoBasis.every((ref) => ref.recordId) || namedMemoBasis);
   // AG13 repair round 8 (AE-SCL-013, AG08 rerun run-08): "东京做零售的联系人里，挑三个最适合聊柴烧器物的人" — the words name
   // the contacts as the set to pick from; a note read the first layer added (memo.read) does not make it another task.
   const namesPerson = part.refs.some((ref) => ref.entity === "contact" && (() => { const words = ref.quote ? message.slice(ref.quote[0], ref.quote[1]).replace(/^@/u, "").trim() : ""; return Boolean(words) && !GENERIC_CONTACT_CLUE.test(words); })());
@@ -163,13 +186,46 @@ export function organizeMeansSummary(part: GraphPart, message: string, attached:
   return memos.length > 0 && part.refs.every((ref) => ref.entity === "memo");
 }
 
+/**
+ * AG20b (TRIAGE R17, 设计稿 §3.5 "用这篇笔记更新我和小林的往来"): on a note the user picked, words asking to update the
+ * interactions from it ("このメモでやりとりを更新して") are the extraction of the interactions, prepared as a change — not
+ * readings to choose from. Promises and to-dos asked for at the same time are not this one.
+ */
+const UPDATE_WORDS = /(更新|アップデート|反映|\bupdate\b)/iu;
+export function updatesInteractionsFromMemo(part: GraphPart, message: string, attached: ReadonlySet<string>): boolean {
+  const quote = message.slice(part.quote[0], part.quote[1]);
+  if (!INTERACTION_WORDS.test(quote) || !UPDATE_WORDS.test(quote) || FOLLOW_UP_ASK.test(quote) || part.plan.negation || part.plan.hypothesis) return false;
+  return part.refs.some((ref) => ref.entity === "memo" && ref.recordId && attached.has(ref.recordId)) || (attached.size === 1 && part.refs.some((ref) => ref.entity === "memo"));
+}
+
+/**
+ * AG20b (TRIAGE R17, 设计稿 §3.5 last row): a goal stated for the next note ("下一篇笔记我只要我答应的事", "次のメモは約束だけ",
+ * "for the next note, only my promises"): what to extract when the next "整理一下" comes. Null when the words state none.
+ */
+const NEXT_NOTE = /(下一篇|下篇|下一份|下次(?:的)?(?:笔记|整理)|以后的笔记|次のメモ|次回のメモ|次に(?:整理|まとめ)|\bnext (?:note|memo)s?\b|\bfrom now on\b)/iu;
+const ONLY_WORDS = /(只要|只看|只列|只需要|只想要|就要|だけ|のみ|\bonly\b|\bjust\b)/iu;
+export function nextNoteGoalIn(quote: string): { followUps: boolean; interactions: boolean } | null {
+  if (!NEXT_NOTE.test(quote) || !ONLY_WORDS.test(quote)) return null;
+  const followUps = FOLLOW_UP_ASK.test(quote);
+  const interactions = INTERACTION_WORDS.test(quote);
+  return followUps || interactions ? { followUps, interactions: interactions && !followUps } : null;
+}
+
+/** AG20b (R17): the words ask to tidy up a note ("整理一下"), so a goal kept for the next note is used up by them. */
+export function asksToOrganize(quote: string): boolean {
+  return ORGANIZE_WORDS.test(quote);
+}
+
 export type FunctionTask =
   | { kind: "rank"; domain: RankDomain }
   | { kind: "rank_reply"; item: SessionOpenItem }
-  | { kind: "extract"; memoId: string; want: { interactions: boolean; followUps: boolean }; write: boolean }
+  | { kind: "extract"; memoId: string; want: { interactions: boolean; followUps: boolean }; write: boolean; /** AG21b (R31): the occasion a reply picked among those offered (its option id). */ pick?: string }
   | { kind: "summary"; memoId: string }
   | { kind: "compare" }
   | { kind: "group" }
+  // AG15: a scheduled task to set up, change, pause, resume or remove (graph/nodes/rule.ts).
+  | RuleTask
+  // Hotfix part 2: 「接下来的会面或活动，该准备什么？」 (graph/nodes/prepare.ts).
   | { kind: "prepare" };
 
 const isMemoType = (type: string) => type === "memo" || type === "note";
@@ -178,7 +234,13 @@ const isMemoType = (type: string) => type === "memo" || type === "note";
 function memoOf(scope: NodeScope, part: GraphPart, allowSession: boolean): string | null {
   // AG10 run-03 repair 1 (AE-FN-011): a clue bound to a memo is the memo whatever entity the first layer called it ("それ" as a to-do).
   const memoIds = new Set([...(scope.run.context?.handles.values() ?? [])].filter((handle) => isMemoType(handle.type)).map((handle) => handle.id));
-  const bound = part.refs.find((ref) => ref.recordId && (ref.entity === "memo" || memoIds.has(ref.recordId)));
+  // AG20b (AE-EVT-009 in the run-01 run): a memo clue the first layer bound to a record of another kind (the private event
+  // being deleted) is not a memo to work on.
+  const otherKind = (id: string) => {
+    const type = scope.run.references.find((reference) => reference.id === id)?.type ?? [...(scope.run.context?.handles.values() ?? [])].find((handle) => handle.id === id)?.type;
+    return Boolean(type && !isMemoType(type));
+  };
+  const bound = part.refs.find((ref) => ref.recordId && (ref.entity === "memo" || memoIds.has(ref.recordId)) && !otherKind(ref.recordId));
   // AG10 run-02: a memo chosen with @ that cannot be opened now is no memo to work on.
   if (bound && scope.run.references.some((reference) => reference.id === bound.recordId && reference.accessible === false)) return null;
   if (bound) return bound.recordId!;
@@ -198,7 +260,17 @@ export function functionOf(scope: NodeScope, part: GraphPart): FunctionTask | nu
   const quote = message.slice(part.quote[0], part.quote[1]);
   // A reply to "按什么来挑" (AG10-1): the ranking asked about goes on with this answer.
   const item = part.continues?.kind === "clarification" ? scope.run.context?.openItems.find((open) => open.ref === part.continues!.ref) : undefined;
+  // AG15: scheduled tasks (also the reply to a task's "按什么来挑").
+  const rule = ruleTaskOf(scope, part, item);
+  if (rule) return rule;
   if (item?.rank) return { item, kind: "rank_reply" };
+  // AG21b (R31): a reply to "which occasion should the note record" that names one ("工地那次") goes on with that occasion.
+  const occasions = item?.options?.filter((option) => option.type === "interaction") ?? [];
+  if (occasions.length) {
+    const picked = interactionNamedIn(quote, occasions);
+    const occasion = picked ? interactionOfOption(picked) : null;
+    if (picked && occasion) return { kind: "extract", memoId: occasion.memoId, pick: picked, want: { followUps: false, interactions: true }, write: true };
+  }
   // Hotfix 2026-11-20 part 2 (the App's 「接下来的会面或活动，该准备什么？」): what to prepare for the next meetings or events is
   // code's answer (graph/nodes/prepare.ts), never a topic ranking — unless a person or a record is named (then it is about that).
   if ((part.route === "read" || part.route === "answer") && asksWhatToPrepare(quote) && !part.refs.some((ref) => ref.recordId || (ref.entity === "contact" && ref.quote && !GENERIC_CONTACT_CLUE.test(message.slice(ref.quote[0], ref.quote[1]))))) return { kind: "prepare" };
@@ -211,6 +283,16 @@ export function functionOf(scope: NodeScope, part: GraphPart): FunctionTask | nu
     const aboutEvents = part.capabilities.includes("event.read") && !part.capabilities.some((capability) => capability === "memo.read" || capability === "todo.read" || capability === "contact.read");
     if (aboutEvents && (part.capabilities.includes("fn.group") || GROUP_WORDS.test(quote))) return { kind: "group" };
     if ((aboutEvents || events >= 2) && events >= 2 && (part.capabilities.includes("fn.compare") || COMPARE_WORDS.test(quote))) return { kind: "compare" };
+  }
+  // AG20b (TRIAGE R17, §3.5 last row): the goal stated for the next note turns a plain "整理一下" of a note into that extraction;
+  // words of this turn asking for a summary win ("这次只要摘要").
+  const goal = scope.run.context?.noteGoal;
+  if (goal && (part.route === "read" || part.route === "answer") && ORGANIZE_WORDS.test(quote) && !SUMMARY_ASKED.test(quote)) {
+    const memoId = memoOf(scope, part, true);
+    if (memoId) {
+      emitTrace({ goal: { followUps: goal.followUps, interactions: goal.interactions }, memoId, partId: part.localId, type: "functions.note_goal_applied" });
+      return { kind: "extract", memoId, want: { followUps: goal.followUps, interactions: goal.interactions }, write: false };
+    }
   }
   // AG10 stability run (AE-FN-009): "用这篇笔记更新我和小林的往来" asks for a change in its own words; when the first layer left
   // the write capability out (deliverable change, no write), the extraction still makes the card — never a write without the words.
@@ -503,6 +585,8 @@ function periodWords(period: { from?: string; to?: string } | null, language: La
 interface Written {
   text: string;
   cites: string[];
+  /** The count line under a ranking's lead (rankCountLine), when there is a lead. */
+  countLine?: string | null;
   /** AG19: the same answer as blocks — the lines before the list, one card per listed record in the list's order, the lines after. */
   blocks: AnswerBlock[];
 }
@@ -520,13 +604,38 @@ export function fieldListLead(language: Language, input: { field: RankField | nu
   return `${input.upcoming ? `还没开始的${noun}共${total}${unit}` : `共${total}${unit}`}，按${fieldWords(field, direction, language)}${listed < total ? `，先看${listed}${unit}` : ""}：`;
 }
 
+/**
+ * Release-2 gate 2 (AE-ANS-002, AE-MEM-001/003/006/009/011; the hotfix's code-owned count rule): the count line under a
+ * ranking's lead says how many meet everything the lead names — the hard conditions and what only ranks (a saved or said
+ * preferred time, a topic that was matched) — never the number that passed the hard conditions alone. When fewer meet it
+ * than are listed, it says so; with the events in scope it names how many there were; when not all were looked at, how many.
+ */
+export function rankCountLine(language: Language, input: { listed: number; matching: number; meeting: number; inScope: number | null; period: boolean; upcoming: boolean; noun: string; unit: { en: string; ja: string; zh: string }; judged: number; truncated: number; semantic: boolean }): string {
+  const { listed, matching, meeting, noun } = input;
+  const unit = input.unit[language];
+  const scope = input.inScope !== null && input.inScope > meeting && (input.period || input.upcoming)
+    ? input.period
+      ? { en: `There are ${input.inScope} in this period; `, ja: `この期間のものは全部で${input.inScope}${unit}、`, zh: `这段时间一共${input.inScope}${unit}，` }[language]
+      : { en: `${input.inScope} ${noun} have not started yet; `, ja: `これから開催される${noun}は全部で${input.inScope}${unit}、`, zh: `还没开始的${noun}共${input.inScope}${unit}，` }[language]
+    : "";
+  let line: string;
+  if (meeting >= matching) line = say.coverageLine(language, listed, matching, input.unit);
+  else if (meeting === 0) line = { en: `None fully matches these criteria; these are the ${listed} closest.`, ja: `条件に完全に合うものはありません。近いものを${listed}${unit}挙げます。`, zh: `没有完全符合这些条件的，下面是最接近的${listed}${unit}。` }[language];
+  else if (listed <= meeting) line = say.coverageLine(language, listed, meeting, input.unit);
+  else line = { en: `${meeting} match and come first; the other ${listed - meeting} listed after them do not fully match.`, ja: `該当するのは${meeting}${unit}で、先に並べています。残りの${listed - meeting}${unit}は条件に完全には合いません。`, zh: `符合条件的有${meeting}${unit}，排在前面；后面${listed - meeting}${unit}不完全符合。` }[language];
+  if (scope) line = language === "en" ? `${scope}${line.charAt(0).toLowerCase()}${line.slice(1)}` : `${scope}${line}`;
+  const looked = input.semantic && input.truncated > 0 ? { en: ` (${input.judged} were looked at closely; ${input.truncated} more were not.)`, ja: `（詳しく見たのは${input.judged}${unit}で、残りの${input.truncated}${unit}は詳しく見ていません。）`, zh: `（这次细看了${input.judged}${unit}，还有${input.truncated}${unit}没有细看。）` }[language] : "";
+  return `${line}${looked}`;
+}
+
 /** The AG08 answer of a ranking (scope, topic, coverage; the reason of each by the record's own fields). */
-function writeAnswer(input: { upcoming?: boolean; apart?: string | null; domain: RankDomain; language: Language; basis: string | null; basisMemo: string | null; within: string | null; period: { from?: string; to?: string } | null; field: RankField | null; direction: "asc" | "desc"; result: RankResult<Candidate>; timeZone: string; now: string; lead: string | null; reasons: Map<string, string> }): Written {
+function writeAnswer(input: { upcoming?: boolean; inScope?: number | null; apart?: string | null; domain: RankDomain; language: Language; basis: string | null; basisMemo: string | null; within: string | null; period: { from?: string; to?: string } | null; field: RankField | null; direction: "asc" | "desc"; result: RankResult<Candidate>; timeZone: string; now: string; lead: string | null; offerBasis?: boolean; reasons: Map<string, string> }): Written {
   const { domain, language, result } = input;
   const unit = UNIT[domain][language];
   const noun = NOUN[domain][language];
   const n = result.ordered.length;
   const lines: string[] = [];
+  let countLine: string | null = null;
   if (input.lead) lines.push(input.lead);
   // Events are Orbit's public directory, not the user's own: they are named by the dates they were kept by.
   const period = domain === "event" ? periodWords(input.period, language) : null;
@@ -547,7 +656,8 @@ function writeAnswer(input: { upcoming?: boolean; apart?: string | null; domain:
     lines.push(say.uncheckedCoverageLine(language, n, topic, { en: unit, ja: UNIT[domain].ja, zh: UNIT[domain].zh }));
   } else if (input.lead) {
     // AG10: the lead said the basis; the coverage follows.
-    lines.push(say.coverageLine(language, n, result.matching, { en: unit, ja: UNIT[domain].ja, zh: UNIT[domain].zh }));
+    countLine = rankCountLine(language, { inScope: input.inScope ?? null, judged: result.coverage.judged, listed: n, matching: result.matching, meeting: result.meeting, noun, period: Boolean(period), semantic: result.semantic, truncated: result.coverage.truncated, unit: { en: unit, ja: UNIT[domain].ja, zh: UNIT[domain].zh }, upcoming: Boolean(input.upcoming) });
+    lines.push(countLine);
   } else if (result.semantic && result.matched) {
     lines.push(language === "en" ? `From ${scope}, picked by ${topic}: ${n} ${unit}.` : language === "ja" ? `${scope}の中から、${topic}に合うものを${n}${unit}選びました。` : `在${scope}里，按${topic}这个主题挑了${n}${unit}：`);
     if (truncated > 0) {
@@ -590,12 +700,14 @@ function writeAnswer(input: { upcoming?: boolean; apart?: string | null; domain:
   const afterAt = lines.length;
   if (result.untimed.length && domain === "event") lines.push(say.untimedLine(language, result.untimed.map((item) => (item as EventCandidate).title)));
   if (input.apart) lines.push(input.apart);
-  if (input.lead) lines.push(say.changeBasisLine(language));
+  // Coordinator's decision 2026-11-20 (hotfix × AG14): a recommendation of events with nothing to pick by is answered with the
+  // list of what is coming up — and, so that nothing is decided for the user, the same standing line that invites another basis.
+  if (input.lead || input.offerBasis) lines.push(say.changeBasisLine(language));
   // AG19 (D1): each listed record is one card, in the list's order; the name, the time and the place are on the card.
   const list = recordsBlock(cards, language);
   const paragraphs = (texts: readonly string[]): AnswerBlock[] => texts.filter((text) => text.trim()).map((text) => ({ text, type: "paragraph" as const }));
   const blocks: AnswerBlock[] = [...paragraphs(lines.slice(0, listAt)), ...(list ? [list] : []), ...paragraphs(lines.slice(afterAt))];
-  return { blocks, cites: [...result.ordered.map((item) => item.candidate.ref), ...(domain === "event" ? result.untimed.map((item) => item.ref) : [])], text: lines.join("\n") };
+  return { blocks, cites: [...result.ordered.map((item) => item.candidate.ref), ...(domain === "event" ? result.untimed.map((item) => item.ref) : [])], countLine, text: lines.join("\n") };
 }
 
 /** AG19: the card of a listed candidate — the record's own three lines, and the one-line reason it was picked (if any). */
@@ -666,7 +778,11 @@ export function functionsNode(scope: NodeScope): GraphNode {
         else if (task.kind === "summary") summaryPart(scope, state, part, optionSets);
         else if (task.kind === "compare" || task.kind === "group") await eventsPart(scope, state, part, task.kind);
         else if (task.kind === "extract") {
-          const done = await extractPart(scope, state, part, task, { budget, repairs });
+          const done = await extractPart(scope, state, part, task, { budget, repairs }, optionSets);
+          budget = done.budget;
+          repairs = done.repairs;
+        } else if (task.kind === "rule") {
+          const done = await rulePart(scope, state, part, task, optionSets, { budget, repairs });
           budget = done.budget;
           repairs = done.repairs;
         } else await rankPart(scope, state, part, task, optionSets);
@@ -718,10 +834,14 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const quote = message.slice(part.quote[0], part.quote[1]);
   const reply = task.kind === "rank_reply";
   // A reply to the basis question: the ranking asked about (its domain, dates, count), with this reply as the basis.
-  const plan: RankPlanState = reply ? (task.item.rank as RankPlanState) : { domain: task.domain, ...(part.plan.rank?.count ? { count: part.plan.rank.count } : {}), ...(part.plan.readFilter?.from ? { from: part.plan.readFilter.from } : {}), ...(part.plan.readFilter?.to ? { to: part.plan.readFilter.to } : {}) };
+  // AG21a (decision 1): a number that is only part of the time window ("the next two weeks", "这两周") is no count — it never
+  // cuts the list, whether code or the first layer read it as one.
+  const windowCountOnly = !reply && countSaidIn(quote) !== null && countSaidIn(withoutWindowWords(quote)) === null;
+  if (windowCountOnly && part.plan.rank?.count) emitTrace({ count: part.plan.rank.count, partId: part.localId, type: "functions.window_number_not_a_count" });
+  const plan: RankPlanState = reply ? (task.item.rank as RankPlanState) : { domain: task.domain, ...(part.plan.rank?.count && !windowCountOnly ? { count: part.plan.rank.count } : {}), ...(part.plan.readFilter?.from ? { from: part.plan.readFilter.from } : {}), ...(part.plan.readFilter?.to ? { to: part.plan.readFilter.to } : {}) };
   const domain = plan.domain;
   const original = reply ? task.item.quote ?? "" : quote;
-  const rank = reply ? {} : part.plan.rank ?? {};
+  const rank = reply ? {} : windowCountOnly ? { ...part.plan.rank, count: undefined } : part.plan.rank ?? {};
   const basisSpan = rank.basis;
   const withinWords = rank.within ? message.slice(rank.within[0], rank.within[1]) : null;
   // A click on a way of ordering (the question's option) or a reply naming one.
@@ -731,13 +851,21 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const leftToAgent = reply && leavesItToAgent(replyWords);
 
   // 1. The basis (functions/basis.ts): now → memory → history; none → one question.
-  const words = `${original} ${replyWords}`;
+  // AG14: words of this very message the user asked to remember ("记住，以后……优先周末上午。先按这个推荐……") count as this
+  // turn's own basis, whether or not they are saved.
+  const rememberedNow = run.memory.turnWords.join("，");
+  const words = `${original} ${replyWords}${rememberedNow ? ` ${rememberedNow}` : ""}`;
   const fieldFromWords = groundedField(rank.orderBy, words) ?? (domain === "contact" && LAST_INTERACTION_WORDS.test(words) ? "lastInteraction" : domain === "event" && START_WORDS.test(words) ? "startsAt" : null) ?? (chosen === "startsAt" || chosen === "dueAt" || chosen === "plannedDate" || chosen === "lastInteraction" ? chosen : null);
   const field: RankField | null = fieldFromWords;
   const direction: "asc" | "desc" = field ? (rank.direction && groundedField(rank.orderBy, words) ? rank.direction : directionSaidIn(words, field === "lastInteraction" ? "asc" : "asc")) : "asc";
   const time: TimePreference[] = [];
   const timeClause = timeClauseOf(words) ?? (chosen === "weekend" ? (language === "en" ? "weekends" : language === "ja" ? "週末" : "周末") : null);
-  const turnTime = timeClause ? timePreferenceIn(timeClause, "turn") : null;
+  const saidTime = timeClause ? timePreferenceIn(timeClause, "turn") : null;
+  // AG21a (R32c): 「这次晚上的也算上」 lifts a saved rule for this turn; the time it names is no preference of its own.
+  const lifted = reply ? null : liftedIn(original);
+  const liftTime = lifted ? timePreferenceIn(lifted.words, "turn") : null;
+  const turnTime = saidTime && liftTime && saidTime.days === liftTime.days && saidTime.part === liftTime.part ? null : saidTime;
+  if (lifted) emitTrace({ partId: part.localId, time: liftTime ? { days: liftTime.days ?? null, part: liftTime.part ?? null } : null, type: "functions.saved_rule_lifted", words: lifted.words });
   if (turnTime && domain === "event") time.push(turnTime);
   // The topic: a memo attached with @ gives its words; otherwise the basis words, when something is left of them.
   // A to-do ranking's "正式跟进" is a hard condition (formal follow-ups), not a topic.
@@ -745,50 +873,150 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   let basisMemo: string | null = null;
   const memoRef = run.references.find((reference) => isMemoType(reference.type));
   const accountScope = records.scope(input.actorId);
+  // AG20b (TRIAGE R19): the note used as the criterion is one of the answer's openable sources.
+  let basisRef: string | null = null;
+  const useMemo = (view: RecordView | undefined, name: string | null) => {
+    const body = view ? String(view.fields.body ?? "") : "";
+    if (!body) return;
+    basis = body;
+    basisMemo = String(view!.fields.title ?? name ?? "");
+    basisRef = view!.ref;
+    run.readSources.set(view!.ref, readSourceOf(view!, timeZone) ?? { id: view!.id, kind: "memo" });
+    run.recordCards.set(view!.ref, recordOfView(view!, { language, now, timeZone }));
+    run.readNames.set(view!.id, { name: basisMemo || "memo", type: "memo" });
+  };
   if (memoRef && memoRef.accessible !== false && (!basis || basis.includes("@") || !field)) {
     try {
-      const view = (await records.reader.read("memo", accountScope, { id: memoRef.id })).items[0];
-      const body = view ? String(view.fields.body ?? "") : "";
-      if (body) {
-        basis = body;
-        basisMemo = String(view!.fields.title ?? memoRef.name ?? "");
-        run.readSources.set(view!.ref, readSourceOf(view!, timeZone) ?? { id: view!.id, kind: "memo" });
-      }
+      useMemo((await records.reader.read("memo", accountScope, { id: memoRef.id })).items[0], memoRef.name ?? null);
     } catch (error) {
       emitTrace({ error: error instanceof Error ? error.message : String(error), partId: part.localId, type: "read.error", where: "functions.basis_memo" });
+    }
+  }
+  // AG20b (TRIAGE R9): a note named in words as the criterion ("按我的看展札记") is found by those words — the newest of that
+  // name — and never through the events' period (a note written before the weekend is still the criterion).
+  const namedMemo = !memoRef && domain === "event" && !reply ? part.refs.find((ref) => ref.entity === "memo" && !ref.recordId && ref.quote) : undefined;
+  if (namedMemo && (!field || basisSpan)) {
+    const memoWords = clueSearchWords(message.slice(namedMemo.quote![0], namedMemo.quote![1]).replace(/^@/u, ""));
+    if (memoWords) {
+      try {
+        const found = (await records.reader.read("memo", accountScope, { limit: 10, order: "newest", text: memoWords })).items;
+        emitTrace({ found: found.map((view) => view.ref), partId: part.localId, type: "functions.basis_memo_by_words", words: memoWords });
+        useMemo(found[0], null);
+      } catch (error) {
+        emitTrace({ error: error instanceof Error ? error.message : String(error), partId: part.localId, type: "read.error", where: "functions.basis_memo_words" });
+      }
     }
   }
   // Hotfix 2026-11-20 part 2, rule 3 (「哪些人值得先跟进？」 ranked by the topic 「值得先跟进」): the whole question, or words that are
   // only question, kind, time or preparing words, are never the topic. With no real topic in the words it is no topic ranking.
   // Hotfix 1c (AE-ENT-005): words of only a date, a time of day and a kind of record are a window, never a topic.
-  if (basis && !basisMemo && (isWholeQuote(basis, original) || !realTopicOf(basis) || onlyWindowWords(basis))) {
+  // AG21a (R32a/b/c, decision 1): the words of the read window (「这两周」「这几天」) are taken out where they stand; vague fit
+  // words (「适合我」「可以去」) and a lifted rule's clause are no topic either (realTopicOf). What is left is the topic, or none.
+  const topicText = (words: string) => realTopicOf(withoutWindowWords(lifted ? words.replace(lifted.clause, " ") : words));
+  if (basis && !basisMemo && (isWholeQuote(basis, original) || !realTopicOf(basis) || onlyWindowWords(basis) || !topicText(basis))) {
     emitTrace({ partId: part.localId, type: "functions.basis_not_a_topic", whole: isWholeQuote(basis, original) });
-    basis = !onlyWindowWords(basis) && isWholeQuote(basis, original) && realTopicOf(basis) ? realTopicOf(basis) : null;
+    basis = !onlyWindowWords(basis) && isWholeQuote(basis, original) && topicText(basis) ? topicText(basis) : null;
+  } else if (basis && !basisMemo && topicText(basis) !== realTopicOf(basis)) {
+    emitTrace({ from: basis, partId: part.localId, type: "functions.basis_window_words_out" });
+    basis = topicText(basis);
   }
   const topicWords = basisMemo ? basis : topicWordsOf(basis ?? (reply ? replyWords : original));
+  // Hotfix part 2: asking who to follow up with is the follow-up ranking; what is left of the basis is held to rule 3.
   const followUpAsk = domain === "contact" && (FOLLOW_UP_WORDS.test(words) || asksWhoToFollowUp(original)) && !basisMemo && !realTopicOf(basis ?? "").replace(FOLLOW_UP_WORDS, "").replace(FOLLOW_UP_QUESTION_WORDS, "").trim();
-  let topic: string | null = basisMemo ? basis : topicWords && !followUpAsk ? (basis && topicWordsOf(basis) ? basis : reply ? replyWords : null) : null;
-  // A ranking with neither a basis nor a field, in AG08's words of the part itself ("最适合聊…"): the real topic words in it,
-  // never the whole message (hotfix part 2, rule 3).
-  if (!topic && !field && !reply && domain !== "todo" && realTopicOf(original) && !followUpAsk) topic = realTopicOf(original);
+  // AG14 dev run 2 (AE-SCL-027): basis words that only say "worth going" ("行く価値がありそう", "值得去的") name no topic,
+  // whoever copied them out — the first layer's basis is held to the same test as the sentence itself. (The hotfix's
+  // rule 3 has already run on the basis above: the whole question, or words of only question, kind, time or preparing,
+  // are gone by here. A basis is a topic only when both rules leave something of it.)
+  let topic: string | null = basisMemo ? basis : topicWords && !followUpAsk ? (basis && sentenceTopicOf(basis) ? basis : reply ? replyWords : null) : null;
+  // A ranking with neither a basis nor a field, in AG08's words of the part itself ("最适合聊…"). Two rules meet here and
+  // both hold: the hotfix's rule 3 says what the topic is — the real topic words in the sentence, never the whole
+  // message — and AG14's says a sentence that only asks names none and that a topic read from the sentence itself (no
+  // basis words from the first layer) is a weak one: saved entries for this task come before it (below).
+  let topicIsSentence = false;
+  const sentenceTopic = topicText(original);
+  if (!topic && !field && !reply && domain !== "todo" && sentenceTopic && sentenceTopicOf(withoutWindowWords(original)) && !followUpAsk) {
+    topic = sentenceTopic;
+    topicIsSentence = true;
+  }
   // "随便" leaves it to the agent: no topic, the natural order.
   if (leftToAgent) topic = null;
+  // Release-2 gate 2 (AE-ANS-003): 「你觉得有必要参加？为什么？」 names no topic — which are worth going to is answered with part 3's
+  // reasons (below), never by matching the events against 「你觉得」.
+  if (topic && topicIsSentence && domain === "event" && asksWhichAreWorthIt(original)) {
+    emitTrace({ partId: part.localId, type: "functions.worth_no_topic" });
+    topic = null;
+    topicIsSentence = false;
+  }
+  // Integration (coordinator, 2026-11-21): 「帮我挑两位最值得联系的摄影师」 — the profession names the set to pick from (the
+  // contacts whose role, tags or notes say it, below), not the standard: with nothing else to go by, the saved entries for
+  // picking contacts apply, as for any pick without a standard of its own.
+  const roles = domain === "contact" && !basisMemo ? rolesIn(original) : [];
+  if (roles.length && topic) {
+    const rest = roleWordsIn(original).reduce((text, word) => text.split(word).join(" "), topic);
+    if (!realTopicOf(rest) || !sentenceTopicOf(rest)) {
+      emitTrace({ partId: part.localId, roles: roles.map((row) => row[0]), type: "functions.role_is_the_set" });
+      topic = null;
+      topicIsSentence = false;
+    }
+  }
   // AG19-6: "最近有哪些活动适合我" names no topic ("适合我" is not one): the list of what is coming up, by start time.
   if (topic && !basisMemo && !basisSpan && !reply && listsUpcomingEvents(part, message) && !upcomingTopicOf(original)) {
     emitTrace({ partId: part.localId, type: "functions.upcoming_no_topic" });
     topic = null;
   }
-  // Saved memory (read only until AG14): preferences rank, constraints are hard conditions.
-  const memories = deps.memories ? await deps.memories.list(input.actorId).catch(() => []) : [];
-  const recalled = memoriesFor(domain, memories);
-  for (const item of recalled) if (item.time && domain === "event") time.push(item.time);
-  if (recalled.length) emitTrace({ memories: recalled.map((item) => item.memory.id), partId: part.localId, type: "memory.recall" });
+  // AG14 (设计稿 §6; replaces AG10's read-only list): the saved entries for this task. Rules are hard conditions and
+  // preferences rank; what this turn's own words say wins over a saved preference ("这次看周四晚上").
+  // Release-2 gate (AE-ANS-009, AE-SCL-017; coordinator, 2026-11-20): saved entries are a basis only for a request to
+  // recommend or pick (a pick or recommend word, or 「适合我」) that gives no standard of its own. A plain listing
+  // (「接下来有哪些活动？」) is never turned into a ranking by memory, nor does a saved time rule hide records from it; an
+  // order, a filter or a topic in the sentence (「过期最久的排前面」, 正式跟进, an @ note, a clicked ordering, who to follow up)
+  // is the standard and nothing saved is added to it. A count or a period alone says how many and when, not by what
+  // (AE-SCL-027/028, AE-FN-002, AE-MEM-*: 「挑三场」 with saved entries ranks by them).
+  // AG21a (coordinator's decision 1): 可以去 / 值得去 / 适合我 / worth going / 行ける / おすすめ are a recommendation, from the
+  // user's words (asksForRecommendation), however the first layer tagged the question.
+  const recommendsOrPicks = run.memory.reranks.includes(part.localId) || PICK_WORDS.test(original) || asksForRecommendation(original) || Boolean(lifted);
+  const ownStandard = Boolean(field || basisMemo || chosen || followUpAsk || (topic && !topicIsSentence) || (domain === "todo" && (FORMAL_FOLLOW_UP.test(words) || /(过期|逾期|期限切れ|期限を過ぎ|overdue)/iu.test(words))));
+  const memoryApplies = recommendsOrPicks && !ownStandard;
+  if (!memoryApplies) emitTrace({ ownStandard, partId: part.localId, recommendsOrPicks, type: "functions.memory_not_a_basis" });
+  const saved = memoryApplies ? rankMemoryOf(await ensureTurnMemory(scope, now, timeZone), domain, { now, partId: part.localId, timeZone, turnHasTopic: Boolean(topic) && !topicIsSentence, turnTime: domain === "event" ? turnTime : null }) : { overruled: [], time: [], topic: null, used: [] };
+  // AG21a (R32c): a lift takes away only the saved rule it names, this turn (shown as 「只这一次」); every other saved entry
+  // still applies. A time rule is the one whose excluded time is the lifted time; otherwise a rule that leaves out what the
+  // lifted words name.
+  if (lifted && memoryApplies) {
+    const liftedTopic = liftTime ? "" : realTopicOf(lifted.words.replace(/的$/u, ""));
+    const lifts = (entry: RecalledMemory) => {
+      const preference = timePreferenceOfEntry(entry);
+      // Integration (coordinator, 2026-11-21; AG21a's lift × AG21b's clock rules): a clock rule ("不要早上八点以前开始的",
+      // "只推荐 19 点以后开始的") is about the part of the day its bound falls in, so 「这次早上的也算上」 lifts it.
+      const slot = preference && !preference.part && preference.clock ? { ...preference, part: partOfClock(preference.clock) } : preference;
+      if (liftTime) return Boolean(slot && (slot.exclude || slot.hard)) && overruledByTurn({ ...slot!, hard: true }, liftTime);
+      return Boolean(liftedTopic) && !preference && /(不要|别|除了|排除|避开|以外|は除いて|\bnot\b|\bno\b|\bavoid\b|\bexcept\b|\bwithout\b)/iu.test(entry.content) && liftedTopic.split(" ").some((word) => entry.content.includes(word));
+    };
+    const gone = saved.used.filter(lifts);
+    if (gone.length) {
+      saved.overruled.push(...gone);
+      saved.used = saved.used.filter((entry) => !gone.includes(entry));
+      saved.time = saved.time.filter((item) => !gone.includes(item.entry));
+      const topics = saved.used.filter((entry) => !timePreferenceOfEntry(entry)).map((entry) => topicOfEntry(entry)).filter((item): item is string => Boolean(item));
+      saved.topic = topics.length ? topics.join("、") : null;
+      emitTrace({ lifted: gone.map((entry) => entry.memoryId), partId: part.localId, type: "functions.saved_rule_lifted_this_turn" });
+    }
+  }
+  for (const item of saved.time) time.push(item.preference);
+  let topicFromMemory = false;
+  if (saved.topic && (!topic || topicIsSentence) && !basisMemo) {
+    topic = saved.topic;
+    topicFromMemory = true;
+  } else if (topicIsSentence && saved.used.length) {
+    // "值得去的" with saved entries for this task: the entries are the basis, not the sentence.
+    topic = null;
+  }
   // AG19-6: "最近有哪些活动适合我" names no standard to pick by; it is a list of what is coming up, never a question back.
   // A pick ("哪两场最值得去") still asks what to pick by, once (AG10-1): only the time filter is the default there.
   // Hotfix 1c (run-04: 「推荐值得参加的活动并说明原因」, 「最近おすすめのイベントは？」 asked what to pick by once rule 3 took the
   // fake topic away): a recommendation of events with no real topic, no field and no count is the list of what is coming up,
   // nearest first (AG19-6, decision 3) — never a question back.
-  const recommendsEvents = domain === "event" && !reply && !topic && !field && !rank.count && countSaidIn(original) === null && asksEventsToGoTo(original) && !pointsAtPast(original);
+  const recommendsEvents = domain === "event" && !reply && !topic && !field && !rank.count && countSaidIn(withoutWindowWords(original)) === null && asksEventsToGoTo(original) && !pointsAtPast(original);
   const listing = (!PICK_WORDS.test(original) && (part.plan.deliverable === "list" || /(列出|列一下|列个|\blist\b|一覧|並べて)/iu.test(original))) || (!reply && !PICK_WORDS.test(original) && listsUpcomingEvents(part, message)) || recommendsEvents;
   const history = !topic && !field && !time.length && domain === "contact" && (followUpAsk || chosen === "overdue");
   const todoNatural = domain === "todo";
@@ -821,10 +1049,17 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   // ("最近" is not "latest first" here, so it is taken out before the direction is read).
   const eventDirection = directionSaidIn(words.replace(/最近|近期|近来|recent(?:ly)?/giu, " "), "asc");
   const orderDirection = domain === "event" && !pointsAtPast(words) && (orderField ?? "startsAt") === "startsAt" ? eventDirection : field ? direction : order?.direction ?? "asc";
-  const count = plan.count ?? rank.count ?? countSaidIn(original) ?? (orderField && !topic && !time.length ? FIELD_LIST_LIMIT : 3);
+  // Integration (AG21b's run, AE-ANS-029): a singular "who" ("Who should I contact now…", 「现在该联系谁」, 「誰に連絡すべき」) is
+  // no count of 1 — a count of 1 the first layer read from it is not taken; only a number in the words or 「一个人／一人だけ／
+  // just one」 caps the list.
+  const saidCount = countSaidIn(withoutWindowWords(original));
+  const whoIsNoCount = domain === "contact" && WHO_WORDS.test(original) && (plan.count ?? rank.count) === 1 && saidCount === null && !JUST_ONE_WORDS.test(original);
+  if (whoIsNoCount) emitTrace({ partId: part.localId, type: "functions.who_is_no_count" });
+  const count = (whoIsNoCount ? null : plan.count ?? rank.count) ?? saidCount ?? (orderField && !topic && !time.length ? FIELD_LIST_LIMIT : 3);
 
   // 3. Candidates and hard conditions (code), read under the account's scope.
-  const freeWords = (withinWords ?? "") + " " + outside(quote, basisSpan ? [Math.max(0, basisSpan[0] - part.quote[0]), Math.max(0, basisSpan[1] - part.quote[0])] : undefined);
+  // A profession named as the set (above) is matched on the contacts' own words; it is not also an industry ("摄影" of 摄影师).
+  const freeWords = roleWordsIn(original).filter(() => roles.length > 0).reduce((text, word) => text.split(word).join(" "), (withinWords ?? "") + " " + outside(quote, basisSpan ? [Math.max(0, basisSpan[0] - part.quote[0]), Math.max(0, basisSpan[1] - part.quote[0])] : undefined));
   const reasons = new Map<string, string>();
   let candidates: Candidate[] = [];
   let hard: (candidate: Candidate) => boolean = () => true;
@@ -837,6 +1072,10 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const toDay = plan.to ? localMidnight(new Date(Date.parse(`${plan.to}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10), timeZone) : null;
   if (domain === "contact") {
     const list = await contactCandidates(records, input.actorId, orderField === "lastInteraction" || history);
+    // The profession named as the set: the contacts whose own words say it; none does — the words narrow nothing (traced).
+    const holding = roles.length ? list.filter((item) => holdsRole([item.role, item.notes, item.industry, ...item.tags], roles)) : [];
+    const roleSet = holding.length ? new Set(holding.map((item) => item.id)) : null;
+    if (roles.length) emitTrace({ holding: holding.length, partId: part.localId, roles: roles.map((row) => row[0]), type: "functions.role_set" });
     const places = new Set(Object.entries(PLACE_WORDS).filter(([place, others]) => saidIn(freeWords, place) || others.some((other) => saidIn(freeWords, other))).map(([place]) => place));
     const industries = new Set(Object.entries(INDUSTRY_WORDS).filter(([industry, others]) => saidIn(freeWords, industry) || others.some((other) => saidIn(freeWords, other))).map(([industry]) => industry));
     if (history) {
@@ -870,6 +1109,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
       const item = candidate as ContactCandidate;
       if (places.size && !(item.place && places.has(item.place)) && !(item.city && [...places].some((place) => PLACE_WORDS[place]?.includes(item.city!.toLowerCase())))) return false;
       if (industries.size && !(item.industry && industries.has(item.industry))) return false;
+      if (roleSet && !roleSet.has(item.id)) return false;
       if (orderField === "lastInteraction" && !history && !item.lastInteraction) return false;
       // Code owns who meets the criteria the lead names (AE-FN-003): a follow-up or to-do past due, a to-do past its planned day.
       if (history && !meetsHistory(item)) return false;
@@ -903,7 +1143,9 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     };
     for (const candidate of candidates) {
       const item = candidate as EventCandidate;
-      if (item.startsAt && time.length) reasons.set(item.id, time.map((preference) => (preferenceMet(preference, item.startsAt!, timeZone) ? say.timeWords(preference, language) : null)).filter(Boolean).join("、"));
+      // AG14: a time that is left out ("不要晚上的") removes candidates; it is not a reason said next to the ones kept
+      // (a morning event was labelled "晚上" because it met the exclusion).
+      if (item.startsAt && time.length) reasons.set(item.id, time.filter((preference) => !preference.exclude).map((preference) => (preferenceMet(preference, item.startsAt!, timeZone) ? say.timeWords(preference, language) : null)).filter(Boolean).join("、"));
     }
     emitTrace({ chosen: chosenIds.length >= 2 ? chosenIds.length : 0, hard: { from: fromDay, to: toDay }, partId: part.localId, time: time.map((item) => ({ days: item.days ?? null, hard: item.hard, part: item.part ?? null, source: item.source })), type: "functions.hard_conditions" });
   } else {
@@ -954,22 +1196,34 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   // The lead: what the ranking used (code). AG08's shapes stay for a topic or a field alone.
   const steps: string[] = [];
   for (const preference of time.filter((item) => item.source === "turn")) steps.push(language === "en" ? `whether it is ${say.timeWords(preference, language)}` : language === "ja" ? `${say.timeWords(preference, language)}かどうか` : `是不是${say.timeWords(preference, language)}`);
-  if (topic && time.length) steps.push(basisMemo ? (language === "en" ? `how closely it relates to the topics of your note "${basisMemo}"` : language === "ja" ? `メモ「${basisMemo}」のテーマにどれだけ合うか` : `和你的笔记「${basisMemo}」的主题有多相关`) : (language === "en" ? `how closely it relates to "${topic}"` : language === "ja" ? `「${topic}」にどれだけ合うか` : `和「${topic}」有多相关`));
+  // AG14: a topic that came from a saved entry is named with that entry (below), not as a step of its own.
+  if (topic && time.length && !topicFromMemory) steps.push(basisMemo ? (language === "en" ? `how closely it relates to the topics of your note "${basisMemo}"` : language === "ja" ? `メモ「${basisMemo}」のテーマにどれだけ合うか` : `和你的笔记「${basisMemo}」的主题有多相关`) : (language === "en" ? `how closely it relates to "${topic}"` : language === "ja" ? `「${topic}」にどれだけ合うか` : `和「${topic}」有多相关`));
   if (history) steps.push(language === "en" ? "follow-ups past due that are not done, then to-dos past their planned day" : language === "ja" ? "期限を過ぎて未完了のフォローアップ、次に予定日を過ぎたタスク" : "已到期没做的跟进、过了计划日的待办");
   if (domain === "todo" && orderField) steps.push(say.fieldOrderWords(orderField, orderDirection, language));
-  const memoryWords = recalled.map((item) => item.memory.content);
+  const removedBy = (preference: TimePreference) => (domain !== "event" ? 0 : candidates.filter((candidate) => hard(candidate)).filter((candidate) => {
+    const startsAt = (candidate as EventCandidate).startsAt;
+    return Boolean(startsAt) && (preference.exclude ? meetsTime(preference, startsAt!, timeZone) : !meetsTime(preference, startsAt!, timeZone));
+  }).length);
+  // AG21b (R33): a saved rule (a hard time condition) is named in the lead only when it took something away.
+  const idle = new Set(saved.time.filter((item) => item.preference.hard && removedBy(item.preference) === 0).map((item) => item.entry.memoryId));
+  const memoryWords = saved.used.filter((item) => !idle.has(item.memoryId)).map((item) => item.content);
   // AE-FN-006: only the related ones, in the order of the field the user named.
   const filterLead = topicAsFilter && orderField ? ({ en: `Only the ${NOUN[domain].en} related to "${topic}", ${say.fieldOrderWords(orderField, orderDirection, "en")}.`, ja: `「${topic}」に関連する${NOUN[domain].ja}だけを、${say.fieldOrderWords(orderField, orderDirection, "ja")}に並べました。`, zh: `只列和「${topic}」相关的${NOUN[domain].zh}，${say.fieldOrderWords(orderField, orderDirection, "zh")}排。` } as const)[language] : null;
-  const lead = filterLead ?? (useNatural && !listing && !todoNatural
+  const basisLead = filterLead ?? (useNatural && !listing && !todoNatural
     ? say.rankLead(language, [say.fieldName(natural.field, language)], { history: false, memory: [], natural: true })
     : steps.length || memoryWords.length ? say.rankLead(language, steps, { history, memory: memoryWords, natural: false }) : null);
+  // AG14 dev run 2 (AE-MEM-007): a time that is only preferred ("优先周末下午") and that none of the events listed meets is
+  // said so right after the basis — the list below is then the other times, never events "that match" the preference.
+  const preferred = time.filter((item) => !item.hard && !item.exclude);
+  const unmet = domain === "event" && !topic && preferred.length > 0 && result.ordered.length > 0 && !result.ordered.some((item) => item.meetsTime);
+  const lead = basisLead && unmet ? `${basisLead}\n${MEMORY_WORDS.noneAtPreferredTime(language, say.timeWords(preferred[0], language))}` : basisLead;
   // Hotfix part 3 (graph/nodes/reasons.ts): asked why, each event's reason is its own themes and the user's note that mentions
   // one; all stay listed by time, one line says which fit. Asked for a next step, each person's line ends with the recorded item.
   let fitText: string | null = null;
   const linkedNotes: RecordView[] = [];
   if (domain === "event" && !topic && asksForReasons(original)) {
     const shown = result.ordered.map((item) => item.candidate as EventCandidate);
-    const links = await themeLinks(records.reader, accountScope, [...new Set(shown.flatMap((event) => themesOf(event.topics)))], recalled.map((item) => item.memory.content));
+    const links = await themeLinks(records.reader, accountScope, [...new Set(shown.flatMap((event) => themesOf(event.topics)))], memoryWords);
     let fitting = 0;
     for (const event of shown) {
       const reason = eventReason(language, themesOf(event.topics), links);
@@ -990,7 +1244,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     emitTrace({ partId: part.localId, people: result.ordered.length, type: "functions.next_steps" });
   }
   const apart = history && upcoming.length ? say.upcomingApartLine(language, upcoming.map((contact) => `${contact.name}${language === "en" ? " — " : "——"}${contact.signals.map((item) => signalWords(item, language, timeZone)).join(language === "en" ? "; " : "；")}`)) : null;
-  const written = writeAnswer({ upcoming: upcomingOnly, apart: apart ?? fitText, basis: topic && !basisMemo ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
+  const written = writeAnswer({ upcoming: upcomingOnly, inScope: domain === "event" ? candidates.filter((candidate) => hard(candidate) && Boolean((candidate as EventCandidate).startsAt)).length : null, apart: apart ?? fitText, basis: topic && !basisMemo && !topicFromMemory ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, offerBasis: recommendsEvents && !lead, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
   // AG12 run-03 (AE-FN-003 R4): beside a ranking that says its basis, the ways of ordering it again as clickable entries (the
   // same options as the basis question; the clients show entries already). A click ranks again by it; it asks nothing.
   if (lead && !optionSets.some((set) => set.partId === part.localId && set.purpose === "ranking" && set.kind === "entry")) {
@@ -1005,15 +1259,50 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     }
   }
   if (result.semantic && result.matched) run.topicMatched = true;
-  run.answers.set(part.localId, written.text);
-  run.answerBlocks.set(part.localId, written.blocks);
+  // AG14 dev run 2: when none meets the preferred time, the count line says how many there are in the period, not how
+  // many "match" — in the text and in the blocks alike (AG19: answer.text and answer.blocks change together).
+  const coverage = written.countLine ?? say.coverageLine(language, result.ordered.length, result.matching, { en: UNIT[domain].en, ja: UNIT[domain].ja, zh: UNIT[domain].zh });
+  const periodCount = MEMORY_WORDS.periodCount(language, result.ordered.length, result.matching, UNIT[domain][language]);
+  const answerText = unmet ? written.text.replace(coverage, periodCount) : written.text;
+  const answerBlocks = unmet ? replaceInBlocks(written.blocks, coverage, periodCount) : written.blocks;
+  run.answers.set(part.localId, answerText);
+  run.answerBlocks.set(part.localId, answerBlocks);
+  // AG14 UI (approved draft board 5, D4–D6; 设计稿 §6 "旁边可改"): the entries this ranking used are named in chips at the
+  // start of the answer, each with 「修改 ›」 to the entry in settings — they replace the old "where to change" line. A
+  // saved rule is named only when it took candidates away; an entry this turn's words overruled reads "只这一次".
+  const timeIds = new Set(saved.time.map((item) => item.entry.memoryId));
+  const topicOf = (entry: RecalledMemory) => (timeIds.has(entry.memoryId) ? null : topicOfEntry(entry));
+  run.memoryUse.push(...memoryChipsOf({
+    language,
+    other: saved.used.filter((entry) => !timeIds.has(entry.memoryId) && !topicOf(entry)),
+    overruled: saved.overruled.map((entry) => {
+      const preference = timePreferenceOfEntry(entry);
+      // A preferred time by its time words ("周末上午"); a rule that leaves something out by its own words.
+      return { entry, label: preference && !preference.exclude && !preference.hard ? say.timeWords(preference, language) : preference ? entry.content : topicOfEntry(entry) ?? entry.content };
+    }),
+    time: saved.time.map((item) => ({ entry: item.entry, preference: item.preference, removed: item.preference.hard ? removedBy(item.preference) : 0 })),
+    topics: saved.used.flatMap((entry) => { const topic = topicOf(entry); return topic ? [{ entry, topic }] : []; }),
+  }).filter((chip) => !run.memoryUse.some((item) => item.memoryId === chip.memoryId)));
+  // AG14: what this ranking used, by reference, for the session ("为什么排第一", "这次看……").
+  run.memory.ranking = {
+    at: now,
+    domain,
+    listed: result.ordered.slice(0, 10).map((item) => item.candidate.ref),
+    memories: saved.used.map((item) => ({ memoryId: item.memoryId, revision: item.revision })),
+    requestId: input.requestId,
+    topic: Boolean(topic),
+    turnBasis: Boolean(turnTime) || (Boolean(topic) && !topicFromMemory),
+    ...(plan.count ?? rank.count ? { count: plan.count ?? rank.count } : {}),
+    ...(plan.from ? { from: plan.from } : {}),
+    ...(plan.to ? { to: plan.to } : {}),
+  };
   part.route = "read";
   part.status = "answered";
   part.reason = null;
   part.waitReason = null;
   const said = history ? [...result.ordered.map((item) => item.candidate as ContactCandidate), ...upcoming] : [];
   const signalRefs = history ? [...new Set(said.flatMap((item) => item.signals.map((signalItem) => signalItem.todo.ref)))] : [];
-  part.cites = [...written.cites, ...upcoming.map((item) => item.ref), ...signalRefs, ...linkedNotes.map((view) => view.ref)];
+  part.cites = [...written.cites, ...upcoming.map((item) => item.ref), ...signalRefs, ...(basisRef && basisMemo ? [basisRef] : []), ...linkedNotes.map((view) => view.ref)];
   // Hotfix part 3: the notes a reason names are records of this answer (small cards under it).
   for (const view of linkedNotes) {
     run.recordCards.set(view.ref, recordOfView(view, { language, now, timeZone }));
@@ -1032,7 +1321,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     run.readNames.set(item.view.id, { name: domain === "contact" ? (item as ContactCandidate).name : domain === "event" ? (item as EventCandidate).title : (item as TodoCandidate).title, type: domain });
   }
   emitTrace({ coverage: result.coverage, domain, listed: result.ordered.map((item) => item.candidate.ref), matched: result.matched, partId: part.localId, semantic: result.semantic, type: "functions.ranked", unmatchedReason: result.unmatchedReason, untimed: result.untimed.map((item) => item.ref) });
-  emitTrace({ basis: { field: orderField, history, memory: recalled.map((item) => item.memory.id), natural: useNatural, time: time.length, topic: Boolean(topic) }, listed: result.ordered.map((item) => item.candidate.ref), partId: part.localId, rejected: result.rejected, type: "fn.rank", ...(history ? { upcoming: upcoming.map((item) => item.ref) } : {}), untimed: result.untimed.map((item) => item.ref) });
+  emitTrace({ basis: { field: orderField, history, memory: saved.used.map((item) => item.memoryId), natural: useNatural, time: time.length, topic: Boolean(topic) }, listed: result.ordered.map((item) => item.candidate.ref), partId: part.localId, rejected: result.rejected, type: "fn.rank", ...(history ? { upcoming: upcoming.map((item) => item.ref) } : {}), untimed: result.untimed.map((item) => item.ref) });
 }
 
 function preferenceMet(preference: TimePreference, startsAt: string, timeZone: string): boolean {
@@ -1149,15 +1438,101 @@ async function memoAndContacts(records: AgentRecordAccess, scope: DomainScope, m
   return { contacts, memo, view };
 }
 
-async function existingTodosFrom(records: AgentRecordAccess, scope: DomainScope, memoId: string): Promise<ExistingTodo[]> {
-  const rows = await readAll(records, { accountId: scope.accountId, workspaceId: scope.workspaceId }, { collection: "tasks", denied: [...evalDeniedReads()], equals: [{ paths: [["task", "sourceNoteId"]], value: memoId }], excludes: [{ path: ["task", "status"], values: ["deleted", "cancelled"] }], order: { direction: "asc", paths: [["task", "createdAt"]] } });
-  return rows.map((row) => {
+async function existingTodosFrom(records: AgentRecordAccess, scope: DomainScope, memoId: string, contactIds: readonly string[] = []): Promise<ExistingTodo[]> {
+  const of = (row: { id: string; payload: Record<string, unknown> }): ExistingTodo => {
     const task = row.payload.task as Record<string, unknown>;
-    return { dueAt: str(task.dueAt), id: row.id, notes: str(task.notes), plannedDate: str(task.plannedDate), ref: `todo:${row.id}`, sourceNoteId: str(task.sourceNoteId), status: str(task.status) ?? "open", title: String(task.title ?? "") };
-  });
+    return { contactId: str(task.relatedContactId), dueAt: str(task.dueAt), id: row.id, notes: str(task.notes), plannedDate: str(task.plannedDate), ref: `todo:${row.id}`, sourceNoteId: str(task.sourceNoteId), status: str(task.status) ?? "open", title: String(task.title ?? "") };
+  };
+  const base = { accountId: scope.accountId, workspaceId: scope.workspaceId };
+  const excludes = [{ path: ["task", "status"], values: ["deleted", "cancelled"] }];
+  const rows = await readAll(records, base, { collection: "tasks", denied: [...evalDeniedReads()], equals: [{ paths: [["task", "sourceNoteId"]], value: memoId }], excludes, order: { direction: "asc", paths: [["task", "createdAt"]] } });
+  const out = rows.map(of);
+  // AG20a R11 (§3.5 "代码查当前 Todo 和来源关联"): the to-dos about the note's people, made by hand or from elsewhere, too.
+  for (const contactId of contactIds.slice(0, 5)) {
+    const about = await readAll(records, base, { collection: "tasks", denied: [...evalDeniedReads()], equals: [{ paths: [["task", "relatedContactId"]], value: contactId }], excludes, order: { direction: "asc", paths: [["task", "createdAt"]] } }).catch(() => []);
+    for (const row of about) if (!out.some((todo) => todo.id === row.id)) out.push(of(row));
+  }
+  return out;
 }
 
-async function extractPart(scope: NodeScope, state: AgentGraphState, part: GraphPart, task: Extract<FunctionTask, { kind: "extract" }>, round: { budget: AgentGraphState["budget"]; repairs: number }): Promise<{ budget: AgentGraphState["budget"]; repairs: number }> {
+/** AG20a R18: an explicit request for a to-do ("建一条待办", "add a to-do", "ToDoに追加"). */
+const CREATE_TODO_ASK = /((?:建|新建|加|添加|创建|记)(?:一?[条个])?(?:待办|提醒|任务)|(?:待办|任务)(?:里|中)?(?:加|添)|\b(?:add|create|make|set up)\b[^.?!]{0,20}\b(?:to-?do|task|reminder)\b|(?:ToDo|TODO|タスク|リマインダー)(?:に|を)?(?:追加|作成|作って|入れて))/iu;
+/** AG20a R18: words of following up on what someone else said they would do. */
+const CHASE_WORDS = /(跟进|催|追一下|追问|确认一下|提醒我|问问|\bchase\b|\bfollow(?:\s|-)?up\b|\bcheck (?:in|on|back)\b|\bremind me\b|\bnudge\b|フォロー|催促|確認|リマインド)/iu;
+const OTHER_PROMISE = /(答应|承诺|说好|说会|保证|约定|promised|said (?:she|he|they)(?:'d| would)|will send|約束|送ると)/iu;
+
+/**
+ * AG20a R18 (设计稿 §3.2, §3.5; TP-FN-003): a to-do about what the other person promised, asked for in so many words
+ * ("帮我建一条待办，周二跟进 Dana 答应的报价单"). The design separates whose promise it is; it does not forbid a to-do about the
+ * other side's. Code writes the title ("跟进 <name>：<their action>"); the day is the one the user said this turn.
+ */
+const SELF_PROMISE = /(?:我|自己|\bI\b|私が?)\s*(?:答应|承诺|说好|保证|promised|約束)/iu;
+
+export function asksTodoAboutOthersPromise(quote: string): boolean {
+  // AG21b (R30): "盯一下" chases too, and words that take the date from what they said point at their promise.
+  return CREATE_TODO_ASK.test(quote) && !SELF_PROMISE.test(quote) && (CHASE_WORDS.test(quote) || OTHER_PROMISE.test(quote) || /盯(?:一下|着|紧)/u.test(quote) || usesPromisedDate(quote));
+}
+
+/**
+ * AG21b (R30): this turn's words point at the promise's own date ("截止就按他说的", "按她答应的时间", "due when he said",
+ * "相手の期限で"): the to-do takes the deadline (and planned day) the extraction read from the promise. Without such words
+ * the day is never guessed from their deadline.
+ */
+const PROMISED_DATE = /(按(?:照)?(?:他|她|对方|他们|她们|人家)?(?:说|讲|答应|承诺|约)的(?:时间|日期|日子|期限|截止|那天)?(?:来|定|算|走)?|(?:截止|期限|日期|时间)(?:就|也)?(?:按|跟|照|用)(?:他|她|对方|他们)?(?:说|讲|答应|承诺)?的|跟(?:他|她|对方)说的(?:一样|一致)|\bdue (?:when|by the date) (?:he|she|they) (?:said|promised)\b|\b(?:their|his|her) (?:own )?(?:deadline|date)\b|\bthe date (?:he|she|they) (?:gave|said|promised)\b|相手の(?:期限|日付|締め切り|締切)|(?:彼|彼女|先方)の(?:言った|約束した)?(?:期限|日付|締め切り|締切|日))/iu;
+export function usesPromisedDate(quote: string): boolean {
+  return PROMISED_DATE.test(quote);
+}
+
+function chaseTitle(language: "zh" | "ja" | "en", name: string | null, action: string): string {
+  if (language === "en") return `Follow up${name ? ` with ${name}` : ""}: ${action}`;
+  if (language === "ja") return `${name ? `${name}さんに` : ""}フォロー：${action}`;
+  return `跟进${name ? ` ${name}` : ""}：${action}`;
+}
+
+/** AG21b (R31): an occasion as listed and offered: who, the day, how, and its sentence. */
+function occasionLabel(occasion: InteractionGroup, sentence: string, language: "zh" | "ja" | "en"): string {
+  const who = occasion.contacts.map((contact) => contact.name).join(language === "en" ? ", " : "、");
+  return `${who}，${say.dayWordsOf(occasion.occurredOn, language)}，${say.howWords(occasion.channel, occasion.direction, language)} ${say.sentenceQuote(language, sentence)}`.replace(/，/gu, language === "en" ? ", " : "，").trim();
+}
+
+/** AG21b (R31): the memo.update for one occasion (all its people), or what is already recorded / in conflict. */
+function occasionIntent(part: GraphPart, memo: MemoForExtraction, memoName: string, contacts: readonly LinkedContact[], occasion: InteractionGroup, sentence: string, language: "zh" | "ja" | "en"): { intent: (CardOperationIntent & { localId: string }) | null; lines: string[] } {
+  const who = occasion.contacts.map((contact) => contact.name).join(language === "en" ? ", " : "、");
+  const interaction: NoteInteractionContract = { actualContactIds: occasion.contacts.map((contact) => contact.id), channel: occasion.channel, direction: occasion.direction, occurredOn: occasion.occurredOn, precision: "day" } as NoteInteractionContract;
+  const link = linkInteraction(memo.interaction as NoteInteractionContract | null, interaction);
+  emitTrace({ link: link.kind, memo: memo.ref, partId: part.localId, people: interaction.actualContactIds.length, type: "functions.link_back" });
+  if (link.kind === "recorded") return { intent: null, lines: [say.recordedLine(language, who, occasion.occurredOn, say.howWords(occasion.channel, occasion.direction, language), memoName)] };
+  if (link.kind === "conflict") return { intent: null, lines: [say.conflictLine(language, memo.title, `${link.existing.occurredOn ?? ""} ${say.howWords(link.existing.channel, link.existing.direction, language)}`, `${occasion.occurredOn} ${say.howWords(occasion.channel, occasion.direction, language)}`)] };
+  const names = Object.fromEntries(contacts.map((contact) => [contact.id, contact.name]));
+  return {
+    intent: { capability: "memo.update", expectedVersion: memo.version, localId: `${part.localId}-i1`, partId: part.localId, set: { interaction }, shown: { before: (memo.interaction as NoteInteractionContract | null) ?? null, contactIds: [...memo.contactIds], names, sentence, title: memoName }, targetId: memo.id },
+    lines: [`${say.HEADINGS.interactions[language]}${language === "en" ? ":" : "："} ${occasionLabel(occasion, sentence, language)}`],
+  };
+}
+
+/**
+ * AG21b (R31): the interactions not written, with their reason. A person the note names but does not link is looked up
+ * among the account's contacts: when one has that name, the line offers it (link them on the note first) — never picks it.
+ */
+async function notLinkedLinesOf(records: AgentRecordAccess, scope: DomainScope, items: readonly { contact: LinkedContact | null; clue: string; reason: string | null }[], language: "zh" | "ja" | "en"): Promise<string[]> {
+  const out: string[] = [];
+  for (const item of items) {
+    let line = `- ${item.contact?.name ?? item.clue}${language === "en" ? ": " : "："}${say.WHY_NOT[(item.reason ?? "unsure") as keyof typeof say.WHY_NOT][language]}`;
+    if (item.reason === "not_linked" && item.clue.trim()) {
+      const found = (await records.reader.read("contact", scope, { limit: 5, text: item.clue.trim() }).catch(() => ({ items: [] as RecordView[] }))).items
+        .map((view) => ({ id: view.id, name: str((view.fields as Record<string, unknown>).displayName) ?? "", organization: str((view.fields as Record<string, unknown>).company) ?? "" }))
+        .filter((contact) => contact.name && contactOfClue(item.clue.trim(), [{ id: contact.id, name: contact.name }]));
+      if (found.length) {
+        const shown = found.slice(0, 2).map((contact) => (contact.organization ? (language === "en" ? `${contact.name} (${contact.organization})` : `${contact.name}（${contact.organization}）`) : contact.name)).join(language === "en" ? " or " : "、");
+        line += ({ en: `. Your contacts have ${shown}; to record this one, link them to the note first.`, ja: `。連絡先に${shown}がいます。このやり取りを記録するには、先にメモに紐づけてください。`, zh: `。联系人里有${shown}；要记这次，先把他关联到这篇笔记。` } as const)[language];
+      }
+    }
+    out.push(line);
+  }
+  return out;
+}
+
+async function extractPart(scope: NodeScope, state: AgentGraphState, part: GraphPart, task: Extract<FunctionTask, { kind: "extract" }>, round: { budget: AgentGraphState["budget"]; repairs: number }, optionSets: OptionSetState[]): Promise<{ budget: AgentGraphState["budget"]; repairs: number }> {
   const { deps, input, run } = scope;
   const records = deps.records!;
   const language = state.language;
@@ -1184,6 +1559,34 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
   const memoName = ownTitle || ({ en: `note of ${say.dayWordsOf(memoDay, language)}`, ja: `${say.dayWordsOf(memoDay, language)}のメモ`, zh: `${say.dayWordsOf(memoDay, language)}的笔记` } as const)[language];
   run.readNames.set(view.id, { name: memoName, type: "memo" });
   for (const contact of contacts) run.readNames.set(contact.id, { name: contact.name, type: "contact" });
+  // AG21b (R31): the occasion picked among those offered (a typed reply, or a click on the question): its card, from the
+  // ids the option kept and the memo as it is now — no second extraction. Its people must still be linked to the note.
+  const pickedSet = state.optionSets.find((set) => set.partId === part.localId && set.purpose === "interaction" && set.selectedOptionId);
+  const pickId = task.pick ?? pickedSet?.options.find((option) => option.optionId === pickedSet.selectedOptionId)?.refId;
+  const picked = pickId ? interactionOfOption(pickId) : null;
+  if (task.write && picked && picked.memoId === memo.id && picked.contactIds.every((id) => contacts.some((contact) => contact.id === id))) {
+    const sentences = splitSentences(memo.body);
+    const occasion: InteractionGroup = { channel: picked.channel, contacts: picked.contactIds.map((id) => contacts.find((contact) => contact.id === id)!), direction: picked.direction, occurredOn: picked.occurredOn, sentenceIds: picked.sentenceIds };
+    const made = occasionIntent(part, memo, memoName, contacts, occasion, picked.sentenceIds.map((id) => sentences.find((sentence) => sentence.id === id)?.text ?? "").join(" ").trim(), language);
+    part.reads = [{ ref: view.ref, version: String(memo.version) }];
+    part.cites = [view.ref];
+    part.coverage = [{ complete: true, kind: "memo", pagesRead: 1, seen: 1, total: 1 }];
+    part.gaps = [];
+    part.route = "propose_write";
+    emitTrace({ memo: memo.ref, partId: part.localId, type: "functions.interaction_picked" });
+    if (made.intent) {
+      run.presetIntents.set(part.localId, [made.intent]);
+      part.write = { intents: [], picks: {} };
+      run.leadLines.set(part.localId, [say.memoHead(language, ownTitle, memoDay), ...made.lines].join("\n"));
+      part.status = "unfinished";
+      part.reason = "proposing";
+    } else {
+      part.status = "unfinished";
+      part.reason = "nothing_to_write";
+      run.writeLines.set(part.localId, [say.memoHead(language, ownTitle, memoDay), ...made.lines].join("\n"));
+    }
+    return round;
+  }
   // The people the user asked about ("我和小林的往来"): only these may be written.
   const focus = part.refs.filter((ref) => ref.entity === "contact").map((ref) => (ref.recordId && contacts.some((contact) => contact.id === ref.recordId) ? contacts.find((contact) => contact.id === ref.recordId)! : contactOfClue((clueWords(input.message, ref) ?? "").replace(/^@/u, ""), contacts))).filter((contact): contact is LinkedContact => Boolean(contact)).map((contact) => contact.id);
   const budget = { ...round.budget };
@@ -1238,28 +1641,41 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
         for (const item of notCounted) lines.push(`- ${say.quoted(language, sentenceOf(item.sentenceIds))}${language === "en" ? " — " : "——"}${nameOf(item.contact, item.clue)}${language === "en" ? ": " : "："}${say.WHY_NOT[item.reason ?? "unsure"][language]}`);
       }
     } else {
-      // One memo holds one interaction (附录 E): several real ones are listed for the user to choose; none is merged.
-      if (happened.length > 1) {
-        lines.push(`${say.HEADINGS.interactions[language]}${language === "en" ? ":" : "："}`);
-        for (const item of happened) lines.push(`- ${nameOf(item.contact, item.clue)}，${item.occurredOn ? say.dayWordsOf(item.occurredOn, language) : ""}，${say.howWords(item.channel, item.direction, language)} ${say.sentenceQuote(language, sentenceOf(item.sentenceIds))}`.replace(/，/gu, language === "en" ? ", " : "，"));
-        lines.push({ en: "A note records one interaction; tell me which one to mark on it.", ja: "1つのメモに記録できるやり取りは1件です。どれを記録するか教えてください。", zh: "一篇笔记只能记一次往来，请告诉我要标记哪一次。" }[language]);
-      } else {
-        const item = happened[0];
-        const interaction: NoteInteractionContract = { actualContactIds: [item.contact!.id], channel: item.channel, direction: item.direction, occurredOn: item.occurredOn!, precision: "day" } as NoteInteractionContract;
-        const link = linkInteraction(memo.interaction as NoteInteractionContract | null, interaction);
-        emitTrace({ link: link.kind, memo: memo.ref, partId: part.localId, type: "functions.link_back" });
-        if (link.kind === "recorded") lines.push(say.recordedLine(language, nameOf(item.contact, item.clue), item.occurredOn, say.howWords(item.channel, item.direction, language), memoName));
-        else if (link.kind === "conflict") lines.push(say.conflictLine(language, memo.title, `${link.existing.occurredOn ?? ""} ${say.howWords(link.existing.channel, link.existing.direction, language)}`, `${item.occurredOn ?? ""} ${say.howWords(item.channel, item.direction, language)}`));
-        else {
-          const names = Object.fromEntries(contacts.map((contact) => [contact.id, contact.name]));
-          intents.push({ capability: "memo.update", expectedVersion: memo.version, localId: `${part.localId}-i1`, partId: part.localId, set: { interaction }, shown: { before: (memo.interaction as NoteInteractionContract | null) ?? null, contactIds: [...memo.contactIds], names, sentence: sentenceOf(item.sentenceIds), title: memoName }, targetId: memo.id });
-          lines.push(`${say.HEADINGS.interactions[language]}${language === "en" ? ":" : "："} ${nameOf(item.contact, item.clue)}，${item.occurredOn ? say.dayWordsOf(item.occurredOn, language) : ""}，${say.howWords(item.channel, item.direction, language)} ${say.sentenceQuote(language, sentenceOf(item.sentenceIds))}`.replace(/，/gu, language === "en" ? ", " : "，"));
-        }
-      }
+      // One memo holds one interaction (附录 E), which takes several people. AG21b (R31): the interactions of one occasion
+      // (same sentence, day and channel) are one interaction with all their contacts; several occasions are a registered
+      // question with one option per occasion (a reply naming one, or a click, goes on with it); none is merged.
+      const occasions = groupInteractions(happened);
       const notCounted = others.filter((item) => item.reason !== "not_asked_about" && !repeated(item));
+      const notLinkedLines = await notLinkedLinesOf(records, accountScope, notCounted, language);
+      if (occasions.length > 1) {
+        const labels = occasions.map((occasion) => occasionLabel(occasion, sentenceOf(occasion.sentenceIds), language));
+        lines.push(`${say.HEADINGS.interactions[language]}${language === "en" ? ":" : "："}`);
+        for (const label of labels) lines.push(`- ${label}`);
+        if (notCounted.length) {
+          lines.push(`${say.HEADINGS.notInteractions[language]}${language === "en" ? ":" : "："}`);
+          lines.push(...notLinkedLines);
+        }
+        lines.push({ en: "A note records one interaction; which one should it record?", ja: "1つのメモに記録できるやり取りは1件です。どれを記録しますか？", zh: "一篇笔记只能记一次往来，要记哪一次？" }[language]);
+        const clarificationId = setIdOf(input.requestId, part.localId, "q");
+        const set: OptionSetState = { asks: "object", clarificationId, kind: "question", options: occasions.map((occasion, index) => ({ capabilities: [...part.capabilities], capability: "memo.update", optionId: `o${index + 1}`, refId: interactionOptionId(memo.id, occasion), refType: "interaction" })), partId: part.localId, purpose: "interaction", state: "open", subgoal: `clarification:${input.requestId}:${part.localId}` };
+        optionSets.push(set);
+        run.optionLabels.set(clarificationId, new Map(labels.map((label, index) => [`o${index + 1}`, { label }])));
+        run.questionLines.set(part.localId, lines.join("\n"));
+        part.cites = [view.ref, ...extraCites];
+        part.route = "propose_write";
+        part.status = "awaiting_clarification";
+        part.waitReason = "object_ambiguous";
+        part.reason = null;
+        part.asked += 1;
+        emitTrace({ clarificationId, kind: "question", options: occasions.length, partId: part.localId, question: "which_interaction", subgoal: set.subgoal, type: "clarify.asked" });
+        return { budget, repairs: result.repairs };
+      }
+      const made = occasionIntent(part, memo, memoName, contacts, occasions[0], sentenceOf(occasions[0].sentenceIds), language);
+      lines.push(...made.lines);
+      if (made.intent) intents.push(made.intent);
       if (notCounted.length) {
         lines.push(`${say.HEADINGS.notInteractions[language]}${language === "en" ? ":" : "："}`);
-        for (const item of notCounted) lines.push(`- ${nameOf(item.contact, item.clue)}${language === "en" ? ": " : "："}${say.WHY_NOT[item.reason ?? "unsure"][language]}`);
+        lines.push(...notLinkedLines);
       }
     }
   }
@@ -1285,7 +1701,9 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
       }
     } else {
       const writable = mine.filter((item) => item.writable);
-      const existing = writable.length ? await existingTodosFrom(records, accountScope, memo.id) : [];
+      // AG20a R18: no promise of the user's, and the words ask for a to-do about the other side's: those become the items.
+      const theirs = !writable.length && asksTodoAboutOthersPromise(quote) ? result.followUps.filter((item) => item.owner === "other" && (!focus.length || !item.contact || focus.includes(item.contact.id))) : [];
+      const existing = writable.length ? await existingTodosFrom(records, accountScope, memo.id, contacts.map((contact) => contact.id)) : [];
       for (const todo of existing) {
         extraCites.push(todo.ref);
         run.readSources.set(todo.ref, { id: todo.id, kind: "todo", title: todo.title } as never);
@@ -1295,7 +1713,7 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
       const carded: (typeof result.followUps)[number][] = [];
       for (const item of writable) {
         const sentence = sentenceOf(item.sentenceIds);
-        const link = linkFollowUp({ action: item.action, dueDate: item.dueDate, plannedDate: item.plannedDate, sentence }, existing, (instant) => localDay(instant, timeZone));
+        const link = linkFollowUp({ action: item.action, contactId: item.contact?.id ?? null, dueDate: item.dueDate, plannedDate: item.plannedDate, sentence }, existing, (instant) => localDay(instant, timeZone));
         emitTrace({ action: item.action, link: link.kind, partId: part.localId, todo: link.kind === "new" ? null : link.todo.ref, type: "functions.link_back" });
         if (link.kind === "same") {
           const when = link.todo.dueAt ? say.dueWords(language, localDay(link.todo.dueAt, timeZone), null) : link.todo.plannedDate ? say.plannedWords(language, link.todo.plannedDate, null) : null;
@@ -1304,7 +1722,7 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
         }
         if (link.kind === "differs") {
           const changes = link.differences.map((what) => (what === "dueDate" ? ({ en: `the note says ${say.dueWords(language, item.dueDate, item.dueText)}`, ja: `メモでは${say.dueWords(language, item.dueDate, item.dueText)}`, zh: `笔记里写的是${say.dueWords(language, item.dueDate, item.dueText)}` } as const)[language] : ({ en: `the note says ${say.plannedWords(language, item.plannedDate, item.plannedText)}`, ja: `メモでは${say.plannedWords(language, item.plannedDate, item.plannedText)}`, zh: `笔记里写的是${say.plannedWords(language, item.plannedDate, item.plannedText)}` } as const)[language]));
-          lines.push(say.differsLine(language, link.todo.title, changes));
+          lines.push(say.differsLine(language, link.todo.title, changes, link.todo.sourceNoteId === memo.id ? undefined : { status: link.todo.status }));
           continue;
         }
         if (link.kind === "unsure") {
@@ -1327,12 +1745,37 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
         lines.push(`${say.HEADINGS.myPromises[language]}${language === "en" ? ":" : "："}`);
         for (const item of carded) lines.push(describe(item));
       }
+      if (theirs.length) {
+        // The day the user said for following up (this turn's words); none said: no day, never their deadline guessed as one.
+        const said = part.refs.reduce((text, ref) => { const named = ref.entity === "memo" ? clueWords(input.message, ref) : null; return named ? text.split(named).join(" ") : text; }, quote);
+        const day = resolveSaidDate(said, state.asOf || deps.now(), timeZone)?.day ?? null;
+        // AG21b (R30): "截止就按他说的": their promise's own deadline (and planned day) is the to-do's.
+        const theirDate = usesPromisedDate(quote);
+        for (const item of theirs) {
+          n += 1;
+          const sentence = sentenceOf(item.sentenceIds);
+          const names = item.contact ? { [item.contact.id]: item.contact.name } : {};
+          const dueAt = theirDate && item.dueDate ? instantAt(item.dueDate, item.dueTime ?? "23:59", timeZone) : null;
+          const plannedDate = day ?? (theirDate ? item.plannedDate ?? null : null);
+          if (theirDate) emitTrace({ dueAt, item: item.key, partId: part.localId, type: "functions.promised_date_used" });
+          intents.push({
+            capability: "todo.create",
+            localId: `${part.localId}-f${n}`,
+            partId: part.localId,
+            set: { dueAt, notes: `${say.quoted(language, sentence)}（${memoName}）`, plannedDate, ...(item.contact ? { relatedContactIds: [item.contact.id] } : {}), sourceNoteId: memo.id, sourceNoteVersion: memo.version, title: chaseTitle(language, item.contact?.name ?? item.aboutClue, item.action) },
+            shown: { ...(dueAt ? { dueDayOnly: !item.dueTime } : {}), names, sentence, sourceTitle: memoName },
+          });
+        }
+        emitTrace({ items: theirs.map((item) => item.key), partId: part.localId, type: "functions.todo_for_others_promise" });
+        lines.push(`${say.HEADINGS.otherPromises[language]}${language === "en" ? ":" : "："}`);
+        for (const item of theirs) lines.push(describe(item));
+      }
       const doubtful = result.followUps.filter((item) => item.owner === "doubtful");
       if (doubtful.length) {
         lines.push(`${say.HEADINGS.doubtfulPromise[language]}${language === "en" ? ":" : "："}`);
         for (const item of doubtful) lines.push(describe(item));
       }
-      if (!writable.length && !doubtful.length) lines.push(say.nothingToAddLine(language));
+      if (!writable.length && !doubtful.length && !theirs.length) lines.push(say.nothingToAddLine(language));
     }
   }
 
@@ -1370,3 +1813,5 @@ function instantAt(day: string, time: string, timeZone: string): string {
 }
 
 export type { FunnelCandidate };
+// agent-design AG15: a scheduled rule's period reads and words its candidates exactly as a conversation's ranking does.
+export { contactCandidates, contactLine, eventCandidate, eventLine, INDUSTRY_WORDS, openTodos, PLACE_WORDS, visibleEvent };

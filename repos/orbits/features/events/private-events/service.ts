@@ -38,12 +38,16 @@ export interface PrivateEventCreateInput {
   title: string;
   startsAt: string;
   endsAt?: string;
+  /** AG20a: a day without a clock time (startsAt is 00:00 of that day). */
+  allDay?: boolean;
   venue?: string;
   notes?: string;
   idempotencyKey: string;
 }
 
 export interface PrivateEventPatch {
+  /** AG20a: null when a clock time is set on an all-day event. */
+  allDay?: null;
   title?: string;
   startsAt?: string;
   endsAt?: string | null;
@@ -172,6 +176,7 @@ export function createPrivateEventService(input: { store: LiveRecordStoreLike<Re
       const event: PrivateEventContract = {
         accountId: actorId, createdAt: time, id, startsAt: new Date(fields.startsAt).toISOString(), title: fields.title.trim(), updatedAt: time, version: 1,
         ...(fields.endsAt ? { endsAt: new Date(fields.endsAt).toISOString() } : {}),
+        ...(fields.allDay === true ? { allDay: true } : {}),
         ...(fields.venue?.trim() ? { venue: fields.venue.trim() } : {}),
         ...(fields.notes?.trim() ? { notes: fields.notes.trim() } : {}),
       };

@@ -29,6 +29,12 @@ import { cardLocale } from "../../agent/runtime/todo-operations";
 import type { AgentCardAccess } from "./deps";
 import { configuredWebAccess } from "../web/factory";
 import { reviseImportByWords } from "../entry/import-revision";
+import { createAgentMemoryService } from "../../agent/memory/service-factory";
+import { createAgentAutomationService } from "../../agent/automations/service-factory";
+import { ruleSnapshotOf } from "../domains/rule/apply";
+import type { RuleSnapshot } from "../domains/rule/ops";
+import { reviseCardByWords } from "../entry/card-revision";
+import { entryTimeZone } from "../entry/time-zone";
 
 /**
  * AG06: the graph's card is the request's card in the ledger (conversationCardId), frozen through
@@ -135,6 +141,8 @@ function sessionMessagesLoader(mode: FeatureMode, actorId: string): AgentGraphDe
       text: message.text,
       ...(typeof message.createdAt === "string" ? { createdAt: message.createdAt } : {}),
       ...(Array.isArray(message.recordRefs) ? { recordRefs: message.recordRefs.filter((ref): ref is string => typeof ref === "string") } : {}),
+      // AG14: the message's own id, so an answer made with a memory entry changed or deleted since can be told apart.
+      ...(typeof message.id === "string" ? { id: message.id } : {}),
     }));
   };
 }
@@ -162,24 +170,45 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       loadMessages: overrides.loadMessages ?? sessionMessagesLoader(mode, execution.actorId),
       now,
       sessionState: overrides.sessionState ?? configuredAgentSessionStateStore(mode),
-      timeZone: overrides.timeZone ?? process.env.ORBIT_DEFAULT_TIME_ZONE ?? "Asia/Tokyo",
+      // AG20a (decision 8, §3.1): the device's zone when it sent a real one; else the deployment's, as before.
+      timeZone: overrides.timeZone ?? entryTimeZone(execution.input.timeZone, process.env.ORBIT_DEFAULT_TIME_ZONE ?? "Asia/Tokyo").zone,
       ...(overrides.modelCallLimit !== undefined ? { modelCallLimit: overrides.modelCallLimit } : {}),
       ...(execution.onStage ? { onStage: execution.onStage } : {}),
       // AG08: the judgment model, through the same stoppable fetch as the main model; no key: unavailable.
       judgment: overrides.judgment ?? { apiKey: process.env.ORBIT_GEMINI_DECISION_API_KEY?.trim() || null, fetchImplementation: overrides.fetchImplementation ?? execution.fetchImplementation },
       // AG09: the public web, through the same stoppable fetch; switched off or no key: not one web request.
       web: overrides.web ?? configuredWebAccess(mode, overrides.fetchImplementation ?? execution.fetchImplementation),
+      // AG14: the account's saved memory (the same canonical account as the settings page; one read per turn).
+      memory: overrides.memory ?? { snapshot: (actorId) => createAgentMemoryService({ actorId, mode }).snapshot() },
+      // AG15: the account's own scheduled tasks, read through the automation service (the next period comes from the due index).
+      rules: overrides.rules ?? { list: async (actorId) => (await createAgentAutomationService({ actorId, mode }).list()).map(ruleSnapshotOf).filter((rule): rule is RuleSnapshot => rule !== null) },
     };
     if (execution.resume) {
       // AG04: a click resumes this request's paused thread; no message, no confirmation boundary, no model.
       const resumed = await resumeAgentGraph(deps, graphInputOf(execution.actorId, execution.requestId, execution.sessionId, execution.input, false), { clarificationId: execution.resume.clarificationId, kind: "select", optionId: execution.resume.optionId }, { names: namesIn(execution.document), previousClarifications: execution.document?.clarifications ?? null });
       // AG07 repair 2 (AE-XL-003): the read answered before the pause is still in the answer; its basis line and links stay.
       const kept = keepEarlierBasis(execution.document ?? null, resumed);
-      return { ...(resumed.actionPreview ? { actionPreview: resumed.actionPreview } : {}), basis: kept.basis, ...(resumed.blocks.length ? { blocks: resumed.blocks } : {}), ...(resumed.cardLine && resumed.text.includes(resumed.cardLine) ? { cardLine: resumed.cardLine } : {}), clarifications: resumed.clarifications, partResults: resumed.partResults, sourceRefs: kept.sourceRefs, status: resumed.status, text: resumed.text, web: resumed.web };
+      return { ...(resumed.actionPreview ? { actionPreview: resumed.actionPreview } : {}), basis: kept.basis, ...(resumed.blocks.length ? { blocks: resumed.blocks } : {}), ...(resumed.memoryUse.length ? { memoryUse: resumed.memoryUse } : {}), ...(resumed.cardLine && resumed.text.includes(resumed.cardLine) ? { cardLine: resumed.cardLine } : {}), clarifications: resumed.clarifications, partResults: resumed.partResults, sourceRefs: kept.sourceRefs, status: resumed.status, text: resumed.text, web: resumed.web };
     }
     // AG12-4: words about the rows of this conversation's waiting import card give its next revision (code, no model).
     const importRevision = await reviseImportByWords({ actorId: execution.actorId, message: execution.input.message, now: deps.now, runtime, sessionId: execution.sessionId, store: entryStore ?? null });
     if (importRevision) return importRevision;
+    // AG20a R1 (§5.1, §5.2): words about the items of this conversation's waiting card (drop one, a new day or time, this
+    // time or the series) give its next revision (code, no model); the earlier revision can no longer be confirmed.
+    const cardRevision = await reviseCardByWords({
+      actorId: execution.actorId,
+      message: execution.input.message,
+      now: deps.now,
+      ...(records ? { readSchedule: async (id: string) => { const view = (await records.reader.read("schedule", records.scope(execution.actorId), { id })).items[0]; return view && typeof view.fields.startsAt === "string" ? { endsAt: typeof view.fields.endsAt === "string" ? view.fields.endsAt : null, recurrence: typeof view.fields.recurrence === "string" ? view.fields.recurrence : null, startsAt: view.fields.startsAt, timeZone: typeof view.fields.timeZone === "string" ? view.fields.timeZone : null } : null; } } : {}),
+      runtime,
+      sessionId: execution.sessionId,
+      store: entryStore ?? null,
+      timeZone: deps.timeZone ?? "Asia/Tokyo",
+    }).catch((error: unknown) => {
+      emitTrace({ error: error instanceof Error ? error.message : String(error), type: "error", where: "executor.card_revision" });
+      return null;
+    });
+    if (cardRevision) return cardRevision;
     const cardPrepared = Boolean(await runtime.getAction(conversationCardId(execution.requestId)).catch(() => null));
     let graph: AgentGraphResult | null = null;
     const boundary = await runWithConfirmBoundary({ now: deps.now, runtime }, {
@@ -205,6 +234,8 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       ...(settled.basis ? { basis: settled.basis } : {}),
       // AG19: the graph's blocks; what the boundary said after the graph's text follows as paragraphs.
       ...(settled.blocks.length ? { blocks: withBoundaryTail(settled.blocks, settled.text, boundary.text, settled.state.language) } : {}),
+      // AG14 UI: the memory chips at the start of the answer.
+      ...(settled.memoryUse.length ? { memoryUse: settled.memoryUse } : {}),
       ...(settled.cardLine && boundary.text.includes(settled.cardLine) ? { cardLine: settled.cardLine } : {}),
       partResults,
       sourceRefs: boundary.sourceRefs,

@@ -91,6 +91,16 @@ test("operation types cover the design-derived write operations", () => {
       "complete_todo",
       "reopen_todo",
       "delete_todo",
+      // agent-design AG14: personal memory — a new entry, a change of one, forgetting one.
+      "create_memory",
+      "update_memory",
+      "delete_memory",
+      // agent-design AG15: scheduled rules, after a card.
+      "create_rule",
+      "update_rule",
+      "pause_rule",
+      "resume_rule",
+      "cancel_rule",
     ],
   );
 });

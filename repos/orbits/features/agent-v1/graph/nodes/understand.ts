@@ -11,8 +11,8 @@ import { hypothesisOf, isPronounClue, negationIn, negationOf } from "../../route
 import { replyLanguageOf } from "../../route/handoff-copy";
 import { repairUserText, understandSystemPrompt, understandUserText, UNDERSTAND_PROMPT_VERSION } from "../../understand/prompt";
 import { coverEverySentence } from "../../understand/cover";
-import { describedObjectSpan, groupClue, questionWordClue, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
-import { refusedCreates } from "../../understand/negated-writes";
+import { describedObjectSpan, groupClue, INDEFINITE_PERSON, questionWordClue, subjectInsideRecord, timeWordClue } from "../../understand/described-clue";
+import { refusedCreates, retractedWrites } from "../../understand/negated-writes";
 import { followsShownList } from "../../understand/follow-list";
 import { asksTodaysPlate, dayOfWords, onlyWindowWords, ownWindow, plateFilter, swapsPeriod } from "../../understand/read-window";
 import { localDayOf } from "../../propose/dates";
@@ -22,6 +22,11 @@ import type { UnderstandOutput } from "../../understand/schema";
 import { parseModelJson, validateUnderstandOutput, type UnderstandValidationInput } from "../../understand/validate";
 import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
+import { standingRuleNotes } from "../../domains/memory/turn";
+import { mergePickIntoQuestion, recommendIsRanking } from "../../understand/merge-pick";
+import { keepsLookingAt, keepsLookingIn } from "../../rule/parse";
+import { PICK_WORDS } from "../../functions/basis";
+import { roleGroupClue } from "../../understand/role-words";
 
 /** "你", "我", "you", "me": the two people talking, never a contact to look up. */
 const SPEAKER_WORDS = /^(?:你|您|我|咱们?|我们|你们|あなた|私|僕|you|me|i|we|us)$/iu;
@@ -40,14 +45,27 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope, today: string)
     // AG13 (AE-SCL-025): a part that only reads and names a schedule item reads schedule items too
     // ("明天这场周会关联了哪些人" tagged event.read only).
     const readsOnly = part.requiredCapabilities.length > 0 && part.requiredCapabilities.every((capability) => capabilityKind(capability) !== "write");
+    // Release-2 gate 2 (AE-ANS-024, AE-ANS-026): someone not named ("回看与某位人脉的讨论", "Review a discussion with a contact")
+    // is a person asked for and not said — the read asks which contact (gap-copy noContact). Not a reason to give up on
+    // the whole message ("没看懂" with the words used as a name), nor to read every note without a person.
+    const indefinite = readsOnly ? INDEFINITE_PERSON.exec(part.sourceQuote) : null;
+    if (indefinite && !part.objectClues.some((clue) => clue.entity === "contact" && (clue.referenceId || !groupClue(clue)) && !INDEFINITE_PERSON.test(clue.text))) {
+      part.objectClues = [...part.objectClues.filter((clue) => !(clue.entity === "contact" && INDEFINITE_PERSON.test(clue.text))), { entity: "contact", text: indefinite[0] } as (typeof part.objectClues)[number]];
+      if (part.clarity === "none") part.clarity = "missing_one";
+      emitTrace({ clue: indefinite[0], partId: part.localId, type: "understand.unnamed_person" });
+    }
     // A meeting the user calls an event ("明天这场周会" tagged event) is one of their own schedule items too.
     const MEETING = /(周会|例会|会议|开会|定例|打ち合わせ|ミーティング|\bmeeting\b|\bstand-?up\b)/iu;
     const implied = readsOnly ? part.objectClues.flatMap((clue) => ((clue.entity === "schedule" || (clue.entity === "event" && MEETING.test(clue.text))) && !part.requiredCapabilities.includes("schedule.read" as never) ? ["schedule.read"] : [])) : [];
     if (implied.length) emitTrace({ added: [...new Set(implied)], partId: part.localId, type: "understand.read_implied_by_clue" });
     // AG13 repair round 7 (AE-UND-003): a create the user refuses in the same clause ("don't add anything to my to-dos")
     // is dropped before routing, so the refused part never proposes it.
-    const refused = refusedCreates(part.sourceQuote, part.requiredCapabilities);
-    if (refused.length) emitTrace({ dropped: refused, partId: part.localId, type: "understand.refused_create" });
+    // AG20a R16 (TP-UND-005): a change taken back later in the same sentence ("…改到周五——算了不改了") is dropped the same way.
+    const retracted = retractedWrites(part.sourceQuote, part.requiredCapabilities);
+    if (retracted.length) emitTrace({ dropped: retracted, partId: part.localId, type: "understand.retracted_write" });
+    const refusedCreate = refusedCreates(part.sourceQuote, part.requiredCapabilities);
+    if (refusedCreate.length) emitTrace({ dropped: refusedCreate, partId: part.localId, type: "understand.refused_create" });
+    const refused = [...refusedCreate, ...retracted];
     // Hotfix 2026-11-20 (understand/read-window.ts): a window comes from this message, never carried from an earlier turn
     // the message does not go on from; "what to handle today" is the open to-dos up to today (overdue included).
     const own = part.readFilter ? ownWindow(part.readFilter, message) : null;
@@ -88,7 +106,7 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope, today: string)
         intentBasis: part.intentBasis,
         // AG09 run-04 repair 2 (AE-JDG-007): a negation counts only when the user's own message carries one; a note the model
         // wrote around the user's words ("（假设，先不要真的改）") does not make one.
-        negation: negationOf(part) && negationIn(message),
+        negation: (negationOf(part) && negationIn(message)) || retracted.length > 0,
         persistence: part.persistence,
         readings: (swapped ? [] : part.readings ?? []).map((reading) => ({ capabilities: [...reading.capabilities], deliverable: reading.deliverable })),
         // The checkpoint keeps the words as offsets into this turn's message, never the words.
@@ -126,6 +144,12 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope, today: string)
           emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.group_clue" });
           return false;
         }
+        // Integration (coordinator, 2026-11-21): in a pick ("帮我挑两位最值得联系的摄影师"), people described by their profession
+        // or role are the set to pick from — a ranking over the contacts — never one person to look up.
+        if (!clue.referenceId && !writes && clue.entity === "contact" && roleGroupClue(clue.text) && (part.requiredCapabilities.includes("fn.rank" as never) || PICK_WORDS.test(part.sourceQuote))) {
+          emitTrace({ clue: clue.text, partId: part.localId, type: "understand.role_clue" });
+          return false;
+        }
         // Only a title the user quoted counts ("「联系老周聊独立出版」这条待办"); "上次和小林聊了什么" names 小林 the person.
         const quotedTitles = (text: string) => [...text.matchAll(/[「『"“]([^」』"”]+)[」』"”]/gu)].map((match) => match[1]);
         if (!clue.referenceId && !writes && clue.entity === "contact" && part.objectClues.some((other) => other !== clue && other.entity !== "contact" && quotedTitles(other.text).some((title) => title.includes(clue.text) && title !== clue.text))) {
@@ -135,8 +159,16 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope, today: string)
         if (clue.referenceId || !subjectInsideRecord(clue, part.objectClues, writes)) return true;
         emitTrace({ clue: clue.text, entity: clue.entity, partId: part.localId, type: "understand.subject_in_record" });
         return false;
-      }).map((clue) => {
-        const at = message.indexOf(clue.text);
+      }).map((clue, _index, kept) => {
+        // AG21a (R40): the same words twice ("把 @季朗 的待办和 @季朗 的笔记对一下") are two places of the message: the second
+        // clue with those words is the second occurrence, so each keeps its own half of the sentence.
+        const before = kept.slice(0, kept.indexOf(clue)).filter((other) => other.text === clue.text).length;
+        let at = message.indexOf(clue.text);
+        for (let count = 0; count < before && at >= 0; count += 1) {
+          const next = message.indexOf(clue.text, at + clue.text.length);
+          if (next < 0) break;
+          at = next;
+        }
         const own: [number, number] | null = at >= 0 ? [at, at + clue.text.length] : null;
         // AG09 run-03 (AE-BND-006): a demonstrative the user described just before ("约山本吃饭这条待办") is looked up by
         // those words; the clue then names the record and is not a missing object.
@@ -187,7 +219,39 @@ function graphPartsOf(output: UnderstandOutput, scope: NodeScope, today: string)
       emitTrace({ capabilities: reads, partId: part.localId, type: "understand.asks_again_about_picked" });
     }
   }
-  return parts;
+  // AG21a (coordinator's decision 2): "先帮我找…，再一直帮我留意…" asks for both. The search is answered now (the part keeps
+  // its reads, for this turn only); the keep-looking words go to the scheduled-task path as a part of their own (rule.create:
+  // AG15's card, or its question for when to run) — never only an offer to be accepted first.
+  for (let index = 0; index < parts.length; index += 1) {
+    const part = parts[index];
+    if (part.plan.negation || part.plan.hypothesis || part.capabilities.some((capability) => capabilityKind(capability) === "write" && !capability.startsWith("rule."))) continue;
+    const quote = message.slice(part.quote[0], part.quote[1]);
+    const at = keepsLookingAt(quote);
+    const reads = part.capabilities.filter((capability) => !capability.startsWith("rule."));
+    if (at !== null) {
+      const splitAt = part.quote[0] + at;
+      let end = splitAt;
+      while (end > part.quote[0] && /[\s，,。；;、]/u.test(message[end - 1])) end -= 1;
+      const now: GraphPart = { ...part, capabilities: reads, plan: { ...part.plan, persistence: "this_turn" }, quote: [part.quote[0], end], refs: part.refs.filter((ref) => !ref.quote || ref.quote[0] < splitAt) };
+      const keep: GraphPart = { ...part, capabilities: [...new Set([...reads, "rule.create"])] as GraphPart["capabilities"], dependsOn: [], localId: `${part.localId}k`, plan: { ...part.plan, persistence: "this_turn", readings: [] }, quote: [splitAt, part.quote[1]], refs: part.refs.map((ref) => ({ ...ref })) };
+      (parts as GraphPart[]).splice(index, 1, now, keep);
+      index += 1;
+      emitTrace({ keep: keep.localId, now: [now.quote[0], now.quote[1]], partId: part.localId, type: "understand.find_now_and_keep_looking" });
+      continue;
+    }
+    const findsBefore = parts.some((other) => other !== part && other.quote[1] <= part.quote[0] && other.capabilities.some((capability) => capabilityKind(capability) !== "write"));
+    if (findsBefore && keepsLookingIn(quote) && (part.plan.persistence === "until_satisfied" || part.capabilities.some((capability) => capability.startsWith("rule.")))) {
+      part.plan = { ...part.plan, persistence: "this_turn", readings: [] };
+      part.capabilities = [...new Set([...reads, "rule.create"])] as GraphPart["capabilities"];
+      emitTrace({ partId: part.localId, type: "understand.keep_looking_is_a_task" });
+    }
+  }
+  // AG14 dev run 1 (AE-FN-002): a pick with no set of its own ("帮我挑两场") is one ranking with the question before it.
+  const picks = mergePickIntoQuestion(parts, message);
+  for (const item of picks.merged) emitTrace({ into: item.into, partId: item.pick, type: "understand.pick_merged_into_question" });
+  // AG14 dev run 2 (AE-MEM-002): asking which events are recommended is a ranking, also when it came tagged as a plain read.
+  for (const partId of recommendIsRanking(picks.parts, message)) emitTrace({ partId, type: "understand.recommend_is_ranking" });
+  return picks.parts;
 }
 
 /**
@@ -300,8 +364,10 @@ export function understandNode(scope: NodeScope): GraphNode {
     // AG05: today (with its weekday, in the user's time zone) lets the first layer give a date range.
     const zone = state.timeZone || "Asia/Tokyo";
     const today = `${formatWhen(state.asOf || deps.now(), zone, false)}, ${zone}`;
-    const user = understandUserText({ contextText: context.promptText, message: input.message, today });
-    emitTrace({ contextMessages: context.messages.length, promptVersion: UNDERSTAND_PROMPT_VERSION, type: "understand.prompt" });
+    // AG14: the user's saved rules for every answer matter here only for a plain-chat reply this step writes itself.
+    const contextText = [context.promptText, ...standingRuleNotes(run.memory)].join("\n");
+    const user = understandUserText({ contextText, message: input.message, today });
+    emitTrace({ contextMessages: context.messages.length, promptVersion: UNDERSTAND_PROMPT_VERSION, ...(run.memory.rules.length ? { standingRules: run.memory.rules.length } : {}), type: "understand.prompt" });
     let repairs = state.repairs;
     let first = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "understand", purpose: "first", requestId: input.requestId, system, user });
     if (first.ok === false && first.reason === "model_error" && first.retryable && repairs < 1) {
@@ -315,7 +381,7 @@ export function understandNode(scope: NodeScope): GraphNode {
       emitTrace({ errors: checked.errors, purpose: "first", type: "understand.invalid" });
       if (repairs >= 1) return { budget, repairs, understanding: "invalid" };
       repairs += 1;
-      const repair = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "understand", purpose: "repair", requestId: input.requestId, system, user: repairUserText({ contextText: context.promptText, errors: checked.errors, message: input.message, previousOutput: first.text, today }) });
+      const repair = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "understand", purpose: "repair", requestId: input.requestId, system, user: repairUserText({ contextText, errors: checked.errors, message: input.message, previousOutput: first.text, today }) });
       if (repair.ok === false) return { budget, repairs, understanding: failedUnderstanding(repair) };
       checked = check(repair.text, validation);
       if (checked.ok === false) {
@@ -334,7 +400,15 @@ export function understandNode(scope: NodeScope): GraphNode {
     // AG06 repair 1: a Han-only message is decided by the user's earlier messages of this session, else the locale.
     const earlier = (run.context?.messages ?? []).filter((item) => item.role === "user").map((item) => item.text);
     const chosen = replyLanguageOf(input.message, covered.output.language, input.locale, earlier);
-    emitTrace({ language: chosen.language, reported: covered.output.language ?? null, decidedBy: chosen.source, ...(chosen.rejected ? { rejected: chosen.rejected } : {}), type: "understand.language" });
+    // AG14: a saved rule for every answer ("回答用日语") decides the reply language, whatever the message is written in.
+    const ruled = run.memory.replyLanguage;
+    // A plain-chat reply this step wrote in another language than the rule asks for is not delivered: the answer step
+    // writes it again in the ruled language.
+    if (ruled && run.plainReply && replyLanguageOf(run.plainReply, null, ruled).language !== ruled) {
+      emitTrace({ ruled, type: "understand.plain_reply_not_in_ruled_language" });
+      run.plainReply = null;
+    }
+    emitTrace({ language: ruled ?? chosen.language, reported: covered.output.language ?? null, decidedBy: ruled ? "saved_rule" : chosen.source, ...(chosen.rejected ? { rejected: chosen.rejected } : {}), type: "understand.language" });
     const made = graphPartsOf(covered.output, scope, localDayOf(state.asOf || deps.now(), zone));
     // AG19-6: a question right after a list goes on from that list (code's rule).
     const followed = continueShownList(covered.output, made, scope);
@@ -342,6 +416,6 @@ export function understandNode(scope: NodeScope): GraphNode {
       run.understood = followed.output;
       run.plainReply = null;
     }
-    return { budget, language: chosen.language, parts: followed?.parts ?? made, plainChat: followed ? false : covered.output.plainChat, repairs, understanding: "understood" };
+    return { budget, language: ruled ?? chosen.language, parts: followed?.parts ?? made, plainChat: followed ? false : covered.output.plainChat, repairs, understanding: "understood" };
   };
 }

@@ -41,6 +41,12 @@ export const WRITE_WORDS = {
     if (language === "ja") return `「${quote}」のToDoの名前が分からなかったため、今回は追加していません。`;
     return `I couldn't tell what to call the to-do in "${quote}", so nothing was added.`;
   },
+  /** AG20a R23: the change could not be prepared (no operation came back, also after the repair); how to ask again. */
+  notPrepared(language: ReplyLanguage, quote: string): string {
+    if (language === "zh") return `「${quote}」这次没能准备好要改的内容，所以什么都没有改。可以再发一次，说清是哪一条、改成什么，比如「把这条待办改到周五」。`;
+    if (language === "ja") return `「${quote}」は今回、変更内容を用意できなかったため、何も変更していません。どの記録を何に変えるかを添えて、もう一度送ってください（例：「このToDoを金曜日に変更して」）。`;
+    return `"${quote}": the change could not be prepared this time, so nothing was changed. Please send it again, saying which record and what to change it to (for example, "move this to-do to Friday").`;
+  },
   gone(language: ReplyLanguage, quote: string): string {
     if (language === "zh") return `「${quote}」：要改的那条记录现在找不到了，所以这次没有改。`;
     if (language === "ja") return `「${quote}」：変更するはずの記録が見つからなくなったため、今回は何も変更していません。`;
@@ -86,10 +92,22 @@ export const WRITE_WORDS = {
 /** The card line of a turn, from the frozen preview only: the count sentence, each item, how it runs. */
 export function cardLineOf(preview: AgentActionPreviewContract, language: ReplyLanguage): string {
   const items = preview.operations.map((op, index) => `${CIRCLED[index] ?? `${index + 1}.`} ${op.text}`);
-  const label = cardConfirmLabel(language, preview.operations.length);
-  if (language === "en") return `Confirmation card — ${preview.title}:\n${items.join("\n")}\nNothing is changed until you press "${label}" on the card.`;
-  if (language === "ja") return `確認カード（${preview.title}）：\n${items.join("\n")}\nカードの「${label}」を押すまで何も変更しません。`;
-  return `确认卡（${preview.title}）：\n${items.join("\n")}\n点卡上的「${label}」之前，什么都不会改。`;
+  const label = cardConfirmLabelFor(language, preview.operations);
+  // AG15 (approved draft 15-1): a card that makes scheduled tasks says nothing *runs* before the click.
+  const runs = makesTasksOnly(preview.operations);
+  if (language === "en") return `Confirmation card — ${preview.title}:\n${items.join("\n")}\n${runs ? "Nothing runs" : "Nothing is changed"} until you press "${label}" on the card.`;
+  if (language === "ja") return `確認カード（${preview.title}）：\n${items.join("\n")}\nカードの「${label}」を押すまで何も${runs ? "実行されません" : "変更しません"}。`;
+  return `确认卡（${preview.title}）：\n${items.join("\n")}\n点卡上的「${label}」之前，什么都不会${runs ? "运行" : "改"}。`;
+}
+
+/** AG15: a card whose every item makes a scheduled task (its buttons are 「确认，开始运行」「不建了」, D15-2). */
+export function makesTasksOnly(operations: readonly { capability: string }[]): boolean {
+  return operations.length > 0 && operations.every((op) => op.capability === "rule.create");
+}
+
+/** The confirm button's label as both clients show it for these items (the new-task card has its own, D15-2). */
+export function cardConfirmLabelFor(language: ReplyLanguage, operations: readonly { capability: string }[]): string {
+  return makesTasksOnly(operations) ? (language === "en" ? en : language === "ja" ? ja : zh).aiCard.confirmRule : cardConfirmLabel(language, operations.length);
 }
 
 /** The confirm button's label exactly as both clients show it (shared copy `aiCard`), for any code text that names the button. */

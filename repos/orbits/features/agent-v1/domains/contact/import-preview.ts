@@ -11,6 +11,7 @@
 import { ContactImportFileRejected, parseImportFile } from "../../../contacts/import/parse";
 import { reviewImportRows } from "../../../contacts/import/dedupe";
 import { isBlockingRow } from "../../../contacts/import/types";
+import { autoMapping } from "../../../contacts/import/parse/mapping";
 import type { LiveRecord } from "../../../../shared/storage/live-record-store";
 import type { ImportRowOverride } from "./types";
 
@@ -58,10 +59,62 @@ export function importBytesOf(text: string): Uint8Array {
 
 export class ImportTableRejected extends Error {}
 
+const EMAIL_CELL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
+const PHONE_CELL = /^\+?[\d\s()-]{7,}$/u;
+/** The columns of a pasted list with no header row, in the order a person is usually written: name, company, title. */
+const POSITIONAL = ["Name", "Company", "Title"];
+
+/**
+ * agent-design AG20b (TRIAGE R12; 设计稿 §3.3 批量导入由代码解析): a pasted list whose first line is not a header (none of its
+ * cells is a known column name) is one person per line — name, company, title in that order, a column of e-mail addresses
+ * or of phone numbers wherever it stands. The header is written by code; nothing is guessed beyond that. More unnamed
+ * columns than that is a format this version cannot read: refused (code's plain sentence), never a card of rows with no name.
+ */
+export function withHeader(text: string): string {
+  const lines = text.split("\n").filter((line) => line.trim());
+  const cells = (line: string) => line.split(/[,\t]/u).map((cell) => cell.trim().replace(/^"|"$/gu, ""));
+  if (!lines.length || Object.values(autoMapping(cells(lines[0]))).some((value) => value !== null)) return text;
+  // AG21b (R27): each line is read on its own — its list marker ("1.", "2)", "・", "-") taken off, each cell typed by its own
+  // shape (an e-mail, a phone number), the other cells name, company, title in that order. A placeholder or a bracketed
+  // remark where the name stands ("（名字忘了）", "?") is no name: the row is left out as missing_name, never created.
+  const rows = lines.map((line) => {
+    const out = { Company: "", Email: "", Name: "", Phone: "", Title: "" } as Record<string, string>;
+    const rest: string[] = [];
+    for (const cell of cells(withoutListMarker(line))) {
+      if (EMAIL_CELL.test(cell) && !out.Email) out.Email = cell;
+      else if (PHONE_CELL.test(cell) && !out.Phone) out.Phone = cell;
+      else rest.push(cell);
+    }
+    while (rest.length && !rest[rest.length - 1]) rest.pop();
+    if (rest.length > POSITIONAL.length) throw new ImportTableRejected("unknown_columns");
+    rest.forEach((cell, index) => { out[POSITIONAL[index]] = cell; });
+    if (isPlaceholderName(out.Name)) out.Name = "";
+    return out;
+  });
+  const header = ["Name", "Company", "Title", "Email", "Phone"];
+  const quoted = (cell: string) => (/[",\n]/u.test(cell) ? `"${cell.replace(/"/gu, '""')}"` : cell);
+  return [header.join(","), ...rows.map((row) => header.map((column) => quoted(row[column])).join(","))].join("\n");
+}
+
+/** AG21b (R27): a list marker at the start of a pasted line ("1.", "2)", "3、", "①", "・", "-", "*", "•"). */
+const LIST_MARKER = /^\s*(?:\d{1,3}\s*[.)、．）:：]|[（(]\s*\d{1,3}\s*[)）]|[①-⑳]|[・•*·\-–—])\s*/u;
+export function withoutListMarker(line: string): string {
+  return line.replace(LIST_MARKER, "");
+}
+
+/** AG21b (R27): words that stand where a name would but are none — a bracketed remark, a question mark, "unknown". */
+const PLACEHOLDER = /^(?:[?？]+|[-–—_.…]+|无|不详|未知|不知道|忘了|名字忘了|待定|待补|某某|xx+|n\/?a|unknown|tbd|不明|未定|名前不明)$/iu;
+export function isPlaceholderName(value: string): boolean {
+  const text = value.trim();
+  if (!text) return false;
+  if (/^[（(［\[【〔<＜].*[）)］\]】〕>＞]$/u.test(text)) return true;
+  return PLACEHOLDER.test(text);
+}
+
 export function previewImport(text: string, existing: readonly LiveRecord<Record<string, unknown>>[], actorId: string, overrides: Readonly<Record<string, ImportRowOverride>> = {}): ImportPreview {
   let parsed;
   try {
-    parsed = parseImportFile({ bytes: importBytesOf(text), kind: "csv" });
+    parsed = parseImportFile({ bytes: importBytesOf(withHeader(text)), kind: "csv" });
   } catch (error) {
     if (error instanceof ContactImportFileRejected) throw new ImportTableRejected(error.reason);
     throw error;
@@ -78,6 +131,8 @@ export function previewImport(text: string, existing: readonly LiveRecord<Record
     if (row.candidate) return { ...base, decision: "duplicate", match: { id: row.candidate.contactId, name: row.candidate.displayName, organization: row.candidate.organization, role: row.candidate.role }, outcome: "skip" };
     return { ...base, decision: "create", outcome: "create" };
   });
+  // AG20b (R12): a table none of whose rows can be read (every one without a name) is not a card.
+  if (rows.length && rows.every((row) => row.reason === "missing_name" || row.reason === "unreadable_row")) throw new ImportTableRejected("no_readable_rows");
   return { counts: { create: rows.filter((row) => row.decision === "create").length, duplicate: rows.filter((row) => row.decision === "duplicate").length, skip: rows.filter((row) => row.decision === "skip").length }, rows };
 }
 

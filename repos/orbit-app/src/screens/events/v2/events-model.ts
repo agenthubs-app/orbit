@@ -13,15 +13,21 @@ function parts(iso: string) {
 }
 
 /** 「10月16日（金）」, 「10月7日（水）19:00」 for evening / early starts (app.html #15). */
-export function appEventWhen(iso: string | undefined | null, language: string): string {
+/** AG20a: `allDayLabel` (the copy's 「全天」) for an all-day event — the day, and the label where the time would be. */
+export function appEventWhen(iso: string | undefined | null, language: string, allDayLabel?: string | null): string {
   const p = iso ? parts(iso) : null;
   if (!p) return "";
   const locale = LOCALE[language] ?? "ja-JP";
   const md = new Intl.DateTimeFormat(locale, language === "en" ? { day: "numeric", month: "numeric", timeZone: "Asia/Tokyo" } : { day: "numeric", month: "long", timeZone: "Asia/Tokyo" }).format(new Date(p.time));
   const weekday = new Intl.DateTimeFormat(locale, { timeZone: "Asia/Tokyo", weekday: "short" }).format(new Date(p.time));
-  const clock = p.hh >= 17 || p.hh < 9 ? `${p.hh}:${String(p.mm).padStart(2, "0")}` : "";
+  const clock = allDayLabel ? allDayLabel : p.hh >= 17 || p.hh < 9 ? `${p.hh}:${String(p.mm).padStart(2, "0")}` : "";
   if (language === "en") return `${weekday} ${md}${clock ? ` ${clock}` : ""}`;
   return `${md}（${weekday}）${clock}`;
+}
+
+/** AG20a: the copy's 「全天」 for an all-day item of 「我的活动」, else nothing. */
+export function appAllDayLabel(item: { allDay?: boolean | undefined }, label: string): string | null {
+  return item.allDay === true ? label : null;
 }
 
 /** 「10月16日（金） · ¥15,000」 (the 評価したイベント row). */

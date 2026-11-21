@@ -46,7 +46,7 @@ export const KEY_KINDS = {
     "queued", "progressReading", "progressWeb", "progressComposing", "progressNote",
   ].map((key) => [`aiCard.${key}`, "banner"])),
   ...Object.fromEntries([
-    "beforeConfirm", "footerProcessing", "footerDoneOne", "footerDoneAll", "footerPartial", "footerFailed", "footerCanceled", "footerReview",
+    "beforeConfirm", "beforeConfirmRule", "footerProcessing", "footerDoneOne", "footerDoneAll", "footerPartial", "footerFailed", "footerCanceled", "footerReview",
     "expiredQuestion", "actionFailed", "typeToAnswer",
   ].map((key) => [`aiCard.${key}`, "sentence"])),
   "offline.pending": "chip",

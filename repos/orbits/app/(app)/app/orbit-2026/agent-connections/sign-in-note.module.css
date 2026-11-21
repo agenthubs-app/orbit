@@ -1,0 +1,6 @@
+/* agent-design AG17 (D8): the one line the sign-in dialog adds in front of the consent page or a confirm link. */
+.note { display: flex; align-items: center; gap: 12px; margin: 14px 0 4px; padding: 12px 14px; border-radius: var(--r-tile); background: var(--mac-lav); }
+.note div { display: grid; gap: 2px; min-width: 0; }
+.note b { color: var(--mac-lav-text); font-size: var(--fs-body); }
+.note div span { color: var(--mac-lav-text); font-size: var(--fs-body-sm); opacity: 0.85; }
+.orbit { flex: none; width: 34px; height: 34px; border-radius: var(--r-logo-sm); display: grid; place-items: center; background: var(--plum-900); color: var(--on-accent); font-weight: var(--fw-bold); font-size: var(--fs-emph); }

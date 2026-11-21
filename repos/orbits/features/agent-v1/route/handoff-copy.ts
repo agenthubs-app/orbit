@@ -101,6 +101,8 @@ type Words = {
   clarifyNone: (quote: string) => string;
   budget: (quote: string) => string;
   answerFailed: (quote: string) => string;
+  /** AG20b (R22): a part that would otherwise get no line at all. */
+  notDone: (quote: string) => string;
   notUnderstood: string;
   budgetBeforeUnderstanding: string;
   join: string;
@@ -113,6 +115,7 @@ const WORDS: Record<ReplyLanguage, Words> = {
       : "好，就按这个做法来。",
     alternative: (quote, topic, scope, accept) => `「${quote}」：我没办法一直不停地找下去。可以换个做法：定期留意${scope === "events" ? " Orbit 的活动目录" : "你在 Orbit 里的记录"}，看有没有新出现的${topic}，有合适的再告诉你。要不要这样做，由你决定：${accept ? `回一句，或点「${accept}」就行。` : "回一句就行。"}`,
     answerFailed: (quote) => `「${quote}」这次没处理成：写回答时出了问题。请再发一次。`,
+    notDone: (quote) => `「${quote}」这次没有处理到，没有改动任何记录。请再发一次。`,
     budget: (quote) => `「${quote}」这次没做完：这一轮能用的处理次数已经用完了，并不是 Orbit 做不了这件事。再发一次，我就接着处理。`,
     budgetBeforeUnderstanding: "这次没处理成：这一轮能用的处理次数已经用完了。请再发一次。",
     clarifyNone: (quote) => `「${quote}」我没看懂要办的是哪件事，能具体说一下吗？`,
@@ -136,6 +139,7 @@ const WORDS: Record<ReplyLanguage, Words> = {
       : "では、その方法で進めます。",
     alternative: (quote, topic, scope, accept) => `「${quote}」：ずっと探し続けることはできません。代わりに、${scope === "events" ? "Orbit のイベント一覧" : "Orbit の記録"}に新しく${topic}が出ていないかを定期的にチェックして、合うものがあればお知らせする方法があります。そうするかどうかはお任せします。${accept ? `一言お返事いただくか、「${accept}」を押してください。` : "一言お返事ください。"}`,
     answerFailed: (quote) => `「${quote}」は今回うまく処理できませんでした。回答を作る途中で問題が起きました。もう一度送ってください。`,
+    notDone: (quote) => `「${quote}」は今回処理できませんでした。記録は何も変更していません。もう一度送ってください。`,
     budget: (quote) => `「${quote}」は今回終わっていません。この回で使える処理回数を使い切ったためで、Orbit にできないことではありません。もう一度送っていただければ続けます。`,
     budgetBeforeUnderstanding: "今回はうまく処理できませんでした。この回で使える処理回数を使い切りました。もう一度送ってください。",
     clarifyNone: (quote) => `「${quote}」がどの件のことか分かりませんでした。もう少し詳しく教えてください。`,
@@ -159,6 +163,7 @@ const WORDS: Record<ReplyLanguage, Words> = {
       : "OK, we'll go with that approach.",
     alternative: (quote, topic, scope, accept) => `"${quote}": I can't keep searching without end. Instead, I could regularly check ${scope === "events" ? "Orbit's event directory" : "your Orbit records"} for new ${topic} and tell you when something fits. Whether to do that is up to you: ${accept ? `reply, or press "${accept}".` : "just reply."}`,
     answerFailed: (quote) => `"${quote}" was not handled this time: something went wrong while writing the answer. Please send it again.`,
+    notDone: (quote) => `"${quote}" was not handled this time, and nothing in your records was changed. Please send it again.`,
     budget: (quote) => `"${quote}" is not done this time: this round's processing allowance ran out. It is not something Orbit can't do; send it again and I'll continue.`,
     budgetBeforeUnderstanding: "This was not handled: this round's processing allowance ran out. Please send it again.",
     clarifyNone: (quote) => `I couldn't tell what "${quote}" refers to. Could you say which matter you mean?`,

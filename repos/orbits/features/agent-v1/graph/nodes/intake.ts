@@ -13,6 +13,7 @@ import { modelCallLimit } from "../../models/main";
 import { emitTrace } from "../../observability/trace";
 import { replyLanguageOf } from "../../route/handoff-copy";
 import type { GraphNode, NodeScope } from "../deps";
+import { loadTurnMemory, withholdForgotten } from "../../domains/memory/turn";
 
 const KNOWN = new Set(["contact", "memo", "todo", "schedule", "event"]);
 
@@ -26,10 +27,20 @@ export function intakeNode({ deps, input, run }: NodeScope): GraphNode {
     const now = deps.now();
     const references = await deps.authorizeReferences(input.actorId, input.references);
     run.references = references;
-    const [messages, state] = await Promise.all([
+    const [stored, state, memory] = await Promise.all([
       deps.loadMessages(input.sessionId).catch(() => []),
       deps.sessionState.get(input.actorId, input.sessionId).catch(() => null),
+      // AG14: one read of the account's saved memory; the rules for every task are in force for the whole turn.
+      loadTurnMemory(deps.memory, { actorId: input.actorId, now, timeZone: deps.timeZone ?? "Asia/Tokyo" }),
     ]);
+    run.memory = memory;
+    run.sessionState = state;
+    // AG14 (设计稿 §6): a resumed conversation gets its personal context as the entries are now — an answer made with an
+    // entry changed or deleted since, and the message a deleted entry came from, are not handed to the model again.
+    const { messages, withheld } = withholdForgotten(stored, state?.memoryUses, memory.snapshot);
+    if (withheld.stale || withheld.sources || (state?.memoryVersion !== undefined && memory.snapshot && state.memoryVersion !== memory.snapshot.version)) {
+      emitTrace({ from: state?.memoryVersion ?? null, to: memory.snapshot?.version ?? null, type: "memory.context_rebuilt", withheld });
+    }
     // AG05: re-check the records the context points at (ids only; no content is read here).
     const pointed = new Map<string, string>();
     for (const message of messages) {
@@ -68,7 +79,8 @@ export function intakeNode({ deps, input, run }: NodeScope): GraphNode {
       budget: { limit: deps.modelCallLimit ?? modelCallLimit(), used: 0 },
       context: summary,
       // AG06 repair 1: until the first layer reports it; a Han-only message follows the session, else the locale.
-      language: replyLanguageOf(input.message, null, input.locale, context.messages.filter((item) => item.role === "user").map((item) => item.text)).language,
+      // AG14: a saved rule for every answer ("回答用日语") decides the reply language whatever language the message is in.
+      language: memory.replyLanguage ?? replyLanguageOf(input.message, null, input.locale, context.messages.filter((item) => item.role === "user").map((item) => item.text)).language,
       messageRef: `request:${input.requestId}`,
       references: references.filter((item) => item.accessible !== false).map((item) => item.id),
       requestId: input.requestId,

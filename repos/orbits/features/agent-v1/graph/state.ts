@@ -15,13 +15,17 @@ import type { Material } from "../answer/schema";
 import type { EventClaimFacts } from "../answer/event-claims";
 import type { NextStep } from "../clarify/next-step";
 import type { FirstLayerContext } from "../context/build";
-import type { NamedRecordRef } from "../context/session-state";
+import type { AgentSessionState, NamedRecordRef, StaleProfile } from "../context/session-state";
+import type { TurnMemory } from "../domains/memory/turn";
+import type { MemoryNote } from "../domains/memory/copy";
+import type { AgentAnswerMemoryUseContract } from "../../../shared/contract/agent-v1";
 import type { ReferenceHandle } from "./deps";
 import type { Capability, Route, Verdict, WaitReason } from "../route/capabilities";
 import type { PartStatus } from "../route/decide";
 import type { PartWrite } from "../propose/resolve";
 import type { CardOperationIntent } from "../../agent/runtime/card-operations";
 import type { JudgmentBudget } from "../judgment/ask";
+import type { RuleAskState } from "../rule/state";
 import type { AgentActionPreviewContract, AgentWebResultContract } from "../../../shared/contract/agent-v1";
 import type { Clarity, DataOwner, DataSource, Deliverable, IntentBasis, Persistence, RankField, ReadFilter, UnderstandOutput } from "../understand/schema";
 
@@ -58,6 +62,8 @@ export interface PartPlan {
   webTarget?: { quote?: [number, number]; qualifiers: string[] };
   /** AG10: a ranking that asked "按什么来挑": its domain, dates and count (the reply goes on with them). */
   rankAsk?: { domain: "event" | "contact" | "todo"; count?: number; from?: string; to?: string };
+  /** AG15: a scheduled task that asked "按什么来挑": what was read of it so far (the reply goes on to the card). */
+  ruleAsk?: RuleAskState;
 }
 
 /** AG05: what a read part covered, per kind (codes and counts only). */
@@ -78,7 +84,7 @@ export interface OptionSetState {
   kind: "question" | "not_understood" | "entry";
   asks?: "object" | "reading";
   /** AG06: operation — a question before the card (which person, which to-do, which date field). */
-  purpose: "directions" | "readings" | "object" | "other_readings" | "entry" | "alternative" | "operation" | "web_pick" | "web_send" | "ranking";
+  purpose: "directions" | "readings" | "object" | "other_readings" | "entry" | "alternative" | "operation" | "web_pick" | "web_send" | "ranking" | /** AG21b (R31): which occasion a note records. */ "interaction";
   state: "open" | "answered" | "shelved";
   selectedOptionId?: string | null;
   answeredBy?: string | null;
@@ -190,6 +196,8 @@ export interface AgentGraphRun {
   partResults: AgentPartResult[];
   /** AG04: the §3.11 step of each part routed in this pass (its readings and options are built from it). */
   steps: Map<string, NextStep>;
+  /** AG20b (R4): parts whose answer is code's line (a write tag the review did not confirm); the answer step skips them. */
+  codeAnswers: Set<string>;
   /** AG04: route found parts that need directions built (clarify's prepare pass runs). */
   needsDirections: boolean;
   /** AG04: option labels written in this pass, by clarificationId → optionId. */
@@ -214,6 +222,8 @@ export interface AgentGraphRun {
   showAllRead: Set<string>;
   /** AG05: per part, code's sentences after the answer (no record, partial, failed, choose again). */
   gapLines: Map<string, string[]>;
+  /** AG20a (decision 2): the profile fields this turn's answer said are out of date, with the newer values it verified. */
+  staleProfiles: StaleProfile[];
   /** AG05: names of records read in this request (id → name), for the answer and the session state. */
   readNames: Map<string, { type: string; name: string }>;
   /** AG05: per part, several people match its name: the candidates to ask about. */
@@ -248,6 +258,10 @@ export interface AgentGraphRun {
   leadLines: Map<string, string>;
   /** AG10: per part, the card operations an extraction made (propose freezes them; no second-layer model call). */
   presetIntents: Map<string, (CardOperationIntent & { localId: string })[]>;
+  /** AG14: the turn's saved memory — the scope as read at intake, the rules in force, what was used (never checkpointed). */
+  memory: TurnMemory;
+  /** AG14: the session state as intake read it (the last ranking's codes, the memory uses of earlier answers). */
+  sessionState: AgentSessionState | null;
   /** AG19: per part, its answer as blocks (the same words as `answers`, with the listed records as cards). */
   answerBlocks: Map<string, AgentAnswerBlockContract[]>;
   /** AG19: parts whose answer a model wrote (its first line is the conclusion when more follows). */
@@ -260,4 +274,8 @@ export interface AgentGraphRun {
   recordSort: Map<string, string>;
   /** AG19 repair round 1: the start, end and fee of each event read in this request (ref → facts), for answer/event-claims.ts. */
   eventFacts: Map<string, EventClaimFacts>;
+  /** AG14 UI (D3): per part, the grey note with 「去设置 ›」 that stands for its memory line ("只用在这一次", "没有找到"). */
+  memoryNotes: Map<string, MemoryNote>;
+  /** AG14 UI (D4–D6): the memory chips at the start of the answer, in the order the parts used them. */
+  memoryUse: AgentAnswerMemoryUseContract[];
 }

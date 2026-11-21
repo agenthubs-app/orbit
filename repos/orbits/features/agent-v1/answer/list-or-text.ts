@@ -129,8 +129,9 @@ export function withCodeLateness(text: string, cards: readonly AgentAnswerRecord
   return { changed, text: out.join("") };
 }
 
-/** Hotfix 1c (AE-SCL-008: 「Notes: 已过期」 on screen): a material's field label copied into a zh or ja answer goes; its value stays. */
-const FIELD_LABEL = /\b(?:Notes|Status|Due|Planned date|Title|Linked contacts?|Linked events|Linked notes|Starts|Ends|Place|With|Repeats|Name|Organization|Role)\s*[:：]\s*/gu;
+/** Hotfix 1c (AE-SCL-008: 「Notes: 已过期」 on screen): a material's field label copied into a zh or ja answer goes; its value stays.
+ *  Integration 2026-11-20: also the all-day labels ("Day:", "Last day:" — AG20a's private events, all-day schedule items). */
+const FIELD_LABEL = /\b(?:Notes|Status|Due|Planned date|Title|Linked contacts?|Linked events|Linked notes|Starts|Ends|Last day|Day|Place|With|Repeats|Name|Organization|Role)\s*[:：]\s*/gu;
 
 export function withoutFieldLabels(text: string, language: Language): string {
   return language === "en" ? text : text.replace(FIELD_LABEL, "");

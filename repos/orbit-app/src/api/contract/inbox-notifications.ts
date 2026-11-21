@@ -6,7 +6,10 @@ export type InboxSourceKind = 'reminder_plan' | 'task' | 'schedule' | 'appointme
   // R08 (R13 owns, inbox / home secretary use): secretary sources.
   | 'event_deadline' | 'event_prep' | 'event_pick' | 'mail_summary'
   // R17 (host/DESIGN.md §2.10): fixed-template host notices (admission decisions, cancel / change, co-host invite, desktop link).
-  | 'event_host_notice';
+  | 'event_host_notice'
+  // agent-design AG15 (设计稿 §5.3, §10 站内收件箱): what a scheduled task found (sourceId = the run), a change waiting for
+  // the owner's click (sourceId = the card), and a proposal from a connected external agent (AG17 writes these).
+  | 'automation_result' | 'agent_card' | 'external_proposal';
 export interface InboxNotificationSource {
   sourceKind: InboxSourceKind;
   sourceId: string;
@@ -18,7 +21,9 @@ export interface InboxNotificationSource {
   excerpt?: string;
 }
 export interface InboxNotificationTarget {
-  kind: 'task' | 'schedule' | 'appointment' | 'event' | 'conversation' | 'batch' | 'source';
+  kind: 'task' | 'schedule' | 'appointment' | 'event' | 'conversation' | 'batch' | 'source'
+    // agent-design AG15: a confirmation card (id = the card), a scheduled task (id = the task).
+    | 'card' | 'automation';
   id: string;
   href: string | null;
   status: 'available' | 'changed' | 'unavailable';

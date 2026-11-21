@@ -80,11 +80,16 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
     case "schedule": {
       header = "personal schedule item";
       const start = context.occurrence ?? text(f.startsAt);
+      const zone = text(f.timeZone) ?? context.timeZone;
+      // AG13: an occurrence of a series ends as long after its start as the series does.
+      const end = text(f.endsAt) && !context.occurrence ? text(f.endsAt) : text(f.endsAt) && context.occurrence && text(f.startsAt) ? new Date(Date.parse(context.occurrence) + Date.parse(text(f.endsAt)!) - Date.parse(text(f.startsAt)!)).toISOString() : undefined;
+      // Integration 2026-11-20 (as AG20a did for private events): an all-day item has a day and no clock time — never a
+      // 00:00 start. An end is said only as the last day, when that is a later day (an end at the next midnight is the same day).
+      const lastDay = f.allDay === true && end && start && Number.isFinite(Date.parse(end)) ? formatWhen(new Date(Date.parse(end) - 1).toISOString(), zone, false) : null;
       sentences = numbered([
         `Title: ${text(f.title) ?? "—"}`,
-        `Starts: ${formatWhen(start, text(f.timeZone) ?? context.timeZone)}`,
-        // AG13: an occurrence of a series ends as long after its start as the series does.
-        text(f.endsAt) && !context.occurrence ? `Ends: ${formatWhen(text(f.endsAt), text(f.timeZone) ?? context.timeZone)}` : text(f.endsAt) && context.occurrence && text(f.startsAt) ? `Ends: ${formatWhen(new Date(Date.parse(context.occurrence) + Date.parse(text(f.endsAt)!) - Date.parse(text(f.startsAt)!)).toISOString(), text(f.timeZone) ?? context.timeZone)}` : null,
+        f.allDay === true ? `Day: ${formatWhen(start, zone, false)} (all day; no time of day was given)` : `Starts: ${formatWhen(start, zone)}`,
+        f.allDay === true ? (lastDay && lastDay !== formatWhen(start, zone, false) ? `Last day: ${lastDay} (all day)` : null) : end ? `Ends: ${formatWhen(end, zone)}` : null,
         text(f.recurrence) ? `Repeats: ${text(f.recurrence)}` : null,
         text(f.location) ? `Place: ${text(f.location)}` : null,
         names(f.contactIds) ? `With: ${names(f.contactIds)}` : null,
@@ -97,12 +102,13 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
       // AG11: an @ of the user's own «我去过» note or private event (read by id); a platform event as before.
       if (f.kind === "attendance") {
         header = "«I went» — the user's own note of having been at an event (not a check-in or registration)";
-        sentences = numbered([`Event: ${text(f.title) ?? "not readable now"}`, text(f.startsAt) ? `Event starts: ${formatWhen(text(f.startsAt), context.timeZone)}` : null, `Went on: ${text(f.attendedOn) ?? "—"}${Array.isArray(f.dayParts) && f.dayParts.length ? ` (${f.dayParts.join(", ")})` : ""}`, text(f.selfNote) ? `The user wrote: ${text(f.selfNote)}` : "The user wrote nothing about it."]);
+        sentences = numbered([`Event: ${text(f.title) ?? "not readable now"}`, text(f.startsAt) ? (f.allDay === true ? `Event day: ${formatWhen(text(f.startsAt), context.timeZone, false)} (all day)` : `Event starts: ${formatWhen(text(f.startsAt), context.timeZone)}`) : null, `Went on: ${text(f.attendedOn) ?? "—"}${Array.isArray(f.dayParts) && f.dayParts.length ? ` (${f.dayParts.join(", ")})` : ""}`, text(f.selfNote) ? `The user wrote: ${text(f.selfNote)}` : "The user wrote nothing about it."]);
         break;
       }
       if (f.kind === "private_event") {
         header = "the user's own private event";
-        sentences = numbered([`Title: ${text(f.title) ?? "—"}`, `Starts: ${formatWhen(text(f.startsAt), context.timeZone)}`, text(f.endsAt) ? `Ends: ${formatWhen(text(f.endsAt), context.timeZone)}` : null, `Place: ${text(f.location) ?? "not given"}`]);
+        // AG20a: an all-day event has a day and no clock time (never "00:00").
+        sentences = numbered([`Title: ${text(f.title) ?? "—"}`, f.allDay === true ? `Day: ${formatWhen(text(f.startsAt), context.timeZone, false)} (all day; no time of day was given)` : `Starts: ${formatWhen(text(f.startsAt), context.timeZone)}`, text(f.endsAt) ? `Ends: ${formatWhen(text(f.endsAt), context.timeZone)}` : null, `Place: ${text(f.location) ?? "not given"}`]);
         break;
       }
       header = "platform event";

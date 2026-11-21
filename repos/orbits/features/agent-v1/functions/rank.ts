@@ -54,6 +54,10 @@ export interface RankResult<T extends RankCandidate> {
   untimed: T[];
   /** How many met the hard conditions (before the count cut). */
   matching: number;
+  /** Of those, how many also meet what only ranks — the soft time preferences and the topic when it was matched (release-2
+   *  gate 2, AE-ANS-002 / AE-MEM-*: the count line says this number, not the hard-condition one). Equal to `matching` when
+   *  nothing only ranks. */
+  meeting: number;
   coverage: FunnelCoverage;
   matched: boolean;
   semantic: boolean;
@@ -142,10 +146,16 @@ export async function rankCandidates<T extends RankCandidate>(request: RankReque
     return naturalOrder(left, right);
   });
   const count = Math.max(0, request.count);
+  const meetsTopic = (candidate: T) => {
+    if (!topic || !topic.matched || request.topicAsFilter) return true;
+    const score = scoreOf.get(candidate.id);
+    return Boolean(score && (score.ruleScore > 0 || score.level === "match" || score.level === "partial"));
+  };
   return {
     coverage: topic?.coverage ?? { afterHardConditions: kept.length, judged: 0, total, truncated: 0 },
     matched: topic?.matched ?? false,
     matching: ordered.length,
+    meeting: ordered.filter((candidate) => (softTime.length === 0 || meets(candidate)) && meetsTopic(candidate)).length,
     ordered: ordered.slice(0, count).map((candidate) => ({ candidate, level: scoreOf.get(candidate.id)?.level ?? null, meetsTime: meets(candidate), ruleScore: scoreOf.get(candidate.id)?.ruleScore ?? 0 })),
     rejected,
     semantic: topic?.semantic ?? false,

@@ -38,6 +38,20 @@ export interface ReviewInput {
   continues?: boolean;
   /** It depends on a write part of the same message (a date or a value for that request, "予定日は11月18日です"). */
   followsWrite?: boolean;
+  /** AG21b (R29): another part of this message is a write, or the turn continues a write in progress (the last request). */
+  withWrite?: boolean;
+}
+
+/**
+ * AG21b (R29): a clause that ends in a bare action verb ("那条也删", "…一起删", "备注也改", "这个也去掉", "それも消して"),
+ * with nothing after it but a particle. Reports ("我已经删了", "昨天改了") are not this form.
+ */
+const ENDS_IN_ACTION = /(?:删|删掉|删除|改|改掉|改一下|去掉|拿掉|加|加上|挪|挪一下|移|取消|撤|撤掉|换|换掉|关掉|停|停掉|标|勾掉|清掉|消して|削除して|外して|変えて|移して|足して|\bdelete\b|\bremove\b|\bchange\b|\bmove\b|\bdrop\b)(?:\s*(?:了|吧|掉|一下|好了|就行|就好|啊|呀|も|too|as well|it|that|them|that one))*$/iu;
+const REPORT = /(?:已经|刚才|刚刚|昨天|前天|上周|之前|早就|^我(?!把)|もう|すでに|already|yesterday|^i\b)/iu;
+export function endsInActionVerb(quote: string): boolean {
+  const text = quote.trim().replace(/[。！!.\s]+$/u, "");
+  if (!text || text.length > 40 || REPORT.test(text)) return false;
+  return ENDS_IN_ACTION.test(text);
 }
 
 /** Whether the part's write tag is checked by the judgment model (code decides; never the model). */
@@ -47,8 +61,37 @@ export function needsIntentReview(part: ReviewInput): boolean {
   if (part.intentBasis !== "instruction" || part.negation || part.continues || part.followsWrite) return false;
   // A part that asks first (an object or a value missing, several readings, nothing readable) is not a write yet: AG04 asks.
   if (part.clarity !== "clear" && part.clarity !== "statement") return false;
-  if (part.clarity === "statement" || part.hypothesis || !WRITE_VERBS.test(part.quote)) return true;
-  return QUESTION_OR_HYPOTHESIS.test(part.quote) && !POLITE_REQUEST.test(part.quote);
+  // AG21b (R29): "那条也删" next to another write, or right after one: an instruction, whatever the verb's form.
+  if (part.withWrite && !part.hypothesis && !readsAsQuestion(part.quote) && endsInActionVerb(part.quote)) return false;
+  if (part.clarity === "statement" || part.hypothesis) return true;
+  if (QUESTION_OR_HYPOTHESIS.test(part.quote) && !POLITE_REQUEST.test(part.quote)) return true;
+  // AG20b (TRIAGE R3, §3.11 "读起来像陈述或假设"): a sentence in the form of an instruction is a request even when its verb
+  // is not on the list ("把…删了", "…を隔週にして"); only words that read like a report or a statement are reviewed.
+  return !WRITE_VERBS.test(part.quote) && !imperativeForm(part.quote);
+}
+
+/**
+ * The form of an instruction, whatever its verb (AG20b R3). zh: the sentence opens with 把 (after at most a lead-in such as
+ * 那就 / 请 / 帮我) — the disposal form with no subject; "我把…", "昨天把…" are reports. ja: an object (を) and a request
+ * ending (…して, …にして, …ておいて, …といて, …てください). A question or a hypothesis was decided before this.
+ */
+const ZH_INSTRUCTION = /^(?:(?:那就|那么|那|就|然后|再|也|顺便|另外|还有|请你?|麻烦你?|帮我|帮忙|给我|你)[，,、\s]*)*把[^。？?]{1,60}$/u;
+const JA_INSTRUCTION = /を[^。？?]{0,40}(?:て|で)(?:ください|下さい|おいて(?:ください)?|おいてね|くれ(?:る)?|ね|ほしい)?$|を[^。？?]{0,40}(?:といて|とって)$/u;
+
+/** AG20b R4: the words ask something or suppose something (then the answer step answers them; it is not code's line). */
+export function readsAsQuestion(quote: string): boolean {
+  return QUESTION_OR_HYPOTHESIS.test(quote) && !POLITE_REQUEST.test(quote);
+}
+
+/** AG21b (R29): an earlier message of the conversation that asked for a change (a registered verb or the instruction form). */
+export function readsAsWriteRequest(text: string): boolean {
+  return !readsAsQuestion(text) && (WRITE_VERBS.test(text) || imperativeForm(text));
+}
+
+export function imperativeForm(quote: string): boolean {
+  const text = quote.trim().replace(/[。！!.\s]+$/u, "");
+  if (!text) return false;
+  return ZH_INSTRUCTION.test(text) || JA_INSTRUCTION.test(text);
 }
 
 export interface ReviewResult {

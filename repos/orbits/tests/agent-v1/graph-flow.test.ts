@@ -81,7 +81,8 @@ test("through the entry: the graph's parts land in the result document; waiting 
   await settleSession("actor:a", "session:flow");
   const document = await getRequestResult(deps, { actorId: "actor:a", requestId: receipt.requestId });
   assert.equal(document?.status, "waiting_user");
-  assert.deepEqual(document?.partResults.map((item) => [item.sourceQuote, item.status]), [["帮我找摄影主题的活动", "unfinished"], ["这次没有合适的就一直找下去，找到我满意为止", "awaiting_acceptance"]]);
+  // AG21a (coordinator's decision 2): the search asked for now is answered now (before: "unfinished", a directory search).
+  assert.deepEqual(document?.partResults.map((item) => [item.sourceQuote, item.status]), [["帮我找摄影主题的活动", "answered"], ["这次没有合适的就一直找下去，找到我满意为止", "awaiting_acceptance"]]);
   assert.match(document?.answer?.text ?? "", /要不要这样做，由你决定/u);
   const next = await acceptMessage(deps, { actorId: "actor:a", body: body("再说一句", "session:flow") });
   assert.notEqual(next.receipt.status, "queued", "a request waiting for the user does not hold up the lane");

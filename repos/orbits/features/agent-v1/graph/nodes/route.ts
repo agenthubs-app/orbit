@@ -20,11 +20,16 @@ import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart } from "../state";
 import { clueWords, needsDirections, objectOf, pageKindOf } from "./clarify";
 import { clueSearchWords } from "./resolve";
-import { needsIntentReview, reviewWriteIntent } from "../../judgment/intent-review";
-import { organizeMeansSummary } from "./functions";
+import { needsIntentReview, readsAsQuestion, readsAsWriteRequest, reviewWriteIntent } from "../../judgment/intent-review";
+import { CLARIFY_WORDS } from "../../clarify/copy";
+import { nextNoteGoalIn, organizeMeansSummary, updatesInteractionsFromMemo } from "./functions";
+import { keepsLookingIn, pushSaidIn, RECURRING_ASK, recurrenceSaidIn, RULE_NOUN, RULE_QUALIFIER, stateVerbSaidIn } from "../../rule/parse";
+import { reminderSaidIn } from "../../rule/reminder";
 import { contactKindOf } from "../../propose/resolve";
+import { optionPickedIn } from "../../propose/asked";
 import { capabilityKind, type Capability } from "../../route/capabilities";
 import type { NextStep } from "../../clarify/next-step";
+import { isMemoryAsk, memoryRouteStep } from "../../domains/memory/turn";
 
 /** The words of a day said in the message ("周五", "金曜日", "Friday", "11月20日"), for an entry's label. */
 const DAY_WORDS = /(下(?:个)?(?:周|星期|礼拜)[一二三四五六日天]|(?:周|星期|礼拜)[一二三四五六日天]|明天|后天|\d{1,2}\s*月\s*\d{1,2}\s*日|来週の?[月火水木金土日]曜日?|[月火水木金土日]曜日|明日|明後日|(?:next\s+)?(?:mon|tues|wednes|thurs|fri|satur|sun)day|tomorrow)/iu;
@@ -78,6 +83,86 @@ export function reschedulesTo(words: string, asOf: string, timeZone: string): bo
   return CHANGE_TO.test(words) && resolveSaidDate(words, asOf, timeZone) !== null;
 }
 
+/**
+ * AG15: whether a part asks for a scheduled task, by code's reading of its words (never the model's say-so alone):
+ * - it continues an open question about a task ("按什么来挑");
+ * - the first layer named a rule capability and the words hold a recurrence, or name a task with pause / resume / delete;
+ * - the words hold a recurrence and ask Orbit to pick, tell or check something each time — and are not a calendar entry
+ *   ("每周一十点的周会加进日程" is a schedule item, AG13).
+ */
+export function isRuleRequest(part: Pick<GraphPart, "capabilities" | "continues">, quote: string, openItems: readonly { ref: string; rule?: unknown }[]): boolean {
+  if (part.continues && openItems.some((item) => item.ref === part.continues!.ref && item.rule)) return true;
+  const tagged = part.capabilities.some((capability) => capability.startsWith("rule."));
+  const recurring = recurrenceSaidIn(quote) !== null;
+  // A repeating calendar entry ("毎週月曜の定例を11時に変更して", AG13) is a schedule item even when the first layer also
+  // named a rule capability: it stays with the schedule writes.
+  const calendar = part.capabilities.some((capability) => capability.startsWith("schedule.")) || CALENDAR_WORDS.test(quote);
+  if (tagged && !calendar && (recurring || (RULE_NOUN.test(quote) && stateVerbSaidIn(quote) !== null))) return true;
+  // AG21a (decision 2): "…再一直帮我留意新的" tagged as a task — keeping looking is a scheduled task (AG15's card, or its
+  // question for when to run); keeping looking only on finding nothing is not (AG03's bounded alternative).
+  if (tagged && !calendar && keepsLookingIn(quote)) return true;
+  if (tagged && RULE_NOUN.test(quote) && stateVerbSaidIn(quote) !== null) return true;
+  // AG16: turning a task's reminder on or off ("这个定时任务以后在手机上提醒我", "turn off notifications for that task") is a
+  // change of the task — it gets a card like any other change. Read by code: the words ask for or call off a reminder,
+  // and speak of a task — a scheduled task named as such, or (when the first layer named a rule capability) "任务 / task".
+  // A sentence that only says how a task made in the same message should tell the user ("不用推送，先跑到 11 月底") names
+  // no task: it stays that task's qualifier (qualifiesRuleOf).
+  if (!calendar && (pushSaidIn(quote) ?? reminderSaidIn(quote)) !== null && (RULE_NOUN.test(quote) || (tagged && /(任务|タスク|\btasks?\b)/iu.test(quote)))) return true;
+  if (!recurring || calendar) return false;
+  return RECURRING_ASK.test(quote) && part.capabilities.some((capability) => capability === "event.read" || capability === "contact.read" || capability === "todo.read" || capability === "fn.rank" || capability.startsWith("rule."));
+}
+
+const CALENDAR_WORDS = /(日程|日历|行程|カレンダー|スケジュールに|\bschedule\b|\bcalendar\b)/iu;
+
+/**
+ * AG15: a sentence that only qualifies the scheduled task another part of the same message asks for — how to be told,
+ * until when ("结果放站内收件箱就行，不用推送，先跑到 11 月底。"). It is not a request of its own: the task's card takes its
+ * words (graph/nodes/rule.ts reads them from the whole message), so it is neither proposed nor answered separately.
+ */
+export function qualifiesRuleOf(part: Pick<GraphPart, "capabilities" | "continues" | "localId" | "refs">, quote: string, others: readonly { part: Pick<GraphPart, "capabilities" | "continues" | "localId">; quote: string }[], openItems: readonly { ref: string; rule?: unknown }[]): boolean {
+  if (isRuleRequest(part, quote, openItems) || !RULE_QUALIFIER.test(quote) || part.refs.some((ref) => ref.recordId)) return false;
+  if (part.capabilities.some((capability) => capabilityKind(capability) === "write" && !capability.startsWith("rule."))) return false;
+  return others.some((other) => other.part.localId !== part.localId && isRuleRequest(other.part, other.quote, openItems));
+}
+
+type LookupKind = "todo" | "schedule" | "memo" | "privateEvent";
+
+/**
+ * AG21b (R42): the readings of a write that differ only by the kind of record they change (the same verbs on a to-do, a
+ * schedule item, a private event or a note), one kind each; null when they differ otherwise.
+ */
+export function readingKindsOf(readings: readonly { capabilities: readonly Capability[] }[]): { kind: LookupKind; capabilities: Capability[] }[] | null {
+  if (readings.length < 2) return null;
+  const out: { kind: LookupKind; capabilities: Capability[]; verbs: string }[] = [];
+  for (const reading of readings) {
+    const writes = reading.capabilities.filter((capability) => capabilityKind(capability) === "write");
+    const heads = new Set(writes.map((capability) => capability.slice(0, capability.indexOf("."))));
+    if (!writes.length || heads.size !== 1) return null;
+    const head = [...heads][0];
+    if (head !== "todo" && head !== "schedule" && head !== "memo" && head !== "privateEvent") return null;
+    out.push({ capabilities: [...reading.capabilities], kind: head, verbs: writes.map((capability) => capability.slice(capability.indexOf(".") + 1)).sort().join(",") });
+  }
+  if (new Set(out.map((item) => item.kind)).size !== out.length || new Set(out.map((item) => item.verbs)).size !== 1) return null;
+  return out.map(({ capabilities, kind }) => ({ capabilities, kind }));
+}
+
+/** AG21b (R42): whether the account holds a record of this kind with these words. A read that fails counts as holding one. */
+async function kindHolds(records: NonNullable<NodeScope["deps"]["records"]>, actorId: string, kind: LookupKind, words: readonly string[]): Promise<boolean> {
+  const scope = records.scope(actorId);
+  try {
+    if (kind === "privateEvent") {
+      if (!records.privateEvents) return true;
+      const squash = (text: string) => text.toLowerCase().replace(/[\s「」"“”]/gu, "");
+      const events = await records.privateEvents.list(scope.accountId);
+      return events.some((event) => words.some((word) => squash(event.title).includes(squash(word)) || squash(word).includes(squash(event.title))));
+    }
+    for (const text of words) if ((await records.reader.read(kind, scope, { limit: 3, text })).items.length) return true;
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 export function routeNode(scope: NodeScope): GraphNode {
   const { deps, input, run } = scope;
   return async (state: AgentGraphState) => {
@@ -113,21 +198,51 @@ export function routeNode(scope: NodeScope): GraphNode {
     // AG08 (§3.11, §3.8): a write tag on words that read like a statement, a question or a hypothesis, or with no
     // registered write verb, is checked once by the judgment model. Anything but a sure "yes" makes it a statement.
     const reviewed = new Set<string>();
+    const ruleQuotes = state.parts.map((part) => ({ part, quote: input.message.slice(part.quote[0], part.quote[1]) }));
+    // AG21b (R29): the turn continues a write in progress — an open question of a write, or the last request asked for one.
+    const lastUserText = context && !context.idle ? [...context.messages].reverse().find((message) => message.role === "user")?.text ?? "" : "";
+    const writeInProgress = Boolean(context && !context.idle && (context.openItems.some((item) => item.writes) || (lastUserText && readsAsWriteRequest(lastUserText))));
     if (!resume) {
       for (const original of state.parts) {
         const found = attribution?.get(original.localId);
         const quote = input.message.slice(original.quote[0], original.quote[1]);
         const followsWrite = original.dependsOn.some((id) => state.parts.find((other) => other.localId === id)?.capabilities.some((capability) => capabilityKind(capability) === "write"));
-        const review = { capabilities: original.capabilities, clarity: original.plan.clarity, continues: Boolean(found && found.kind !== "new"), followsWrite, hypothesis: original.plan.hypothesis, intentBasis: original.plan.intentBasis, negation: original.plan.negation, quote };
+        const withWrite = writeInProgress || state.parts.some((other) => other.localId !== original.localId && other.capabilities.some((capability) => capabilityKind(capability) === "write"));
+        const review = { capabilities: original.capabilities, clarity: original.plan.clarity, continues: Boolean(found && found.kind !== "new"), followsWrite, hypothesis: original.plan.hypothesis, intentBasis: original.plan.intentBasis, negation: original.plan.negation, quote, withWrite };
+        // AG14: an ask about saved memory is read from the words by code (memoryRouteStep); it needs no review.
+        if (isMemoryAsk(quote, original.capabilities)) continue;
+        // AG15: a recurrence with a pick or tell verb, or a named task with pause / resume / delete, is an explicit
+        // request by code's own reading (isRuleRequest); the judgment is not asked whether it is one.
+        if (isRuleRequest(original, quote, context?.openItems ?? []) || qualifiesRuleOf(original, quote, ruleQuotes, context?.openItems ?? [])) continue;
         if (!needsIntentReview(review)) continue;
         const result = await reviewWriteIntent(deps.judgment, run.judgment, { language: state.language, message: input.message, quote, requestId: input.requestId });
         emitTrace({ explicit: result.explicit, partId: original.localId, type: "route.intent_review", verdict: result.verdict ? { answer: result.verdict.answer, confidence: result.verdict.confidence, fallback: result.verdict.fallback, reason: result.verdict.reason } : null });
         if (!result.explicit) reviewed.add(original.localId);
       }
     }
-    const parts: GraphPart[] = state.parts.map((original) => {
+    // AG21b (R42): a write read several ways that differ only by the kind of record ("把样书那条改到周四": a to-do or a
+    // schedule item) is looked up in each kind first: exactly one kind holding a record of those words decides (still a
+    // card); two or more, or none, are asked as before.
+    const narrowed = new Map<string, Capability[]>();
+    if (!resume && deps.records) {
+      for (const original of state.parts) {
+        if (original.plan.clarity !== "multiple_readings" || reviewed.has(original.localId)) continue;
+        const words = original.refs.filter((ref) => ref.entity !== "contact" && !ref.recordId).map((ref) => clueSearchWords(clueText(ref))).filter((text): text is string => Boolean(text));
+        const kinds = readingKindsOf(original.plan.readings ?? []);
+        if (!words.length || !kinds) continue;
+        const holding = [];
+        for (const item of kinds) if (await kindHolds(deps.records, input.actorId, item.kind, words)) holding.push(item);
+        emitTrace({ holding: holding.map((item) => item.kind), kinds: kinds.map((item) => item.kind), partId: original.localId, type: "route.reading_kinds_looked_up" });
+        if (holding.length === 1) narrowed.set(original.localId, holding[0].capabilities);
+      }
+    }
+    let parts: GraphPart[] = state.parts.map((original) => {
       if (resume && !state.touched!.includes(original.localId)) return original;
       const part: GraphPart = { ...original };
+      if (narrowed.has(part.localId)) {
+        part.capabilities = [...narrowed.get(part.localId)!];
+        part.plan = { ...part.plan, clarity: "clear", readings: [] };
+      }
       // AG09 stability run (AE-SCL-016): with a public object named in this message (a name to look up, a web page), a
       // contact clue that is only a pronoun ("they") stands for that company or person, not for one of the user's contacts.
       if (!resume && namesPublicObject) {
@@ -161,6 +276,24 @@ export function routeNode(scope: NodeScope): GraphNode {
       // AG10 (AE-FN-008): "@笔记 帮我整理一下" with no product named is a summary of that memo, not readings to choose from.
       // AG13 repair round 8 (AE-FN-008, run-08): also when the first layer added an extraction the words do not ask for
       // ("帮我整理一下" tagged fn.extractFollowUps); organizeMeansSummary already refuses words that ask for one.
+      // AG20b (TRIAGE R17, §3.5): "用这篇笔记更新我和小林的往来" on a picked note is the extraction of its interactions, prepared
+      // as a change (the card still needs the click) — not three readings to choose from.
+      const attachedIds = new Set(run.references.filter((reference) => reference.accessible !== false).map((reference) => reference.id));
+      if (!resume && updatesInteractionsFromMemo(part, input.message, attachedIds) && (part.plan.clarity !== "clear" || !part.capabilities.includes("fn.extractInteractions"))) {
+        part.capabilities = ["memo.read", "fn.extractInteractions"];
+        part.plan = { ...part.plan, clarity: "clear", dataSources: ["orbit_records"], deliverable: "change", readings: [] };
+        emitTrace({ partId: part.localId, type: "route.memo_updates_interactions" });
+      }
+      // AG20b (TRIAGE R17, §3.5 last row): a goal stated for the next note ("下一篇笔记我只要我答应的事") is kept for the next
+      // "整理一下" (deliver keeps it in the session) and acknowledged in code's words — not a standing rule, nothing written.
+      const noteGoal = !resume ? nextNoteGoalIn(input.message.slice(part.quote[0], part.quote[1])) : null;
+      if (noteGoal && !part.refs.some((ref) => ref.recordId)) {
+        part.capabilities = [];
+        part.plan = { ...part.plan, clarity: "clear", dataSources: [], deliverable: "answer", persistence: "this_turn", readings: [] };
+        run.answers.set(part.localId, CLARIFY_WORDS.noteGoalKept(state.language, noteGoal));
+        run.codeAnswers.add(part.localId);
+        emitTrace({ goal: noteGoal, partId: part.localId, type: "route.note_goal" });
+      }
       if (!resume && organizeMeansSummary(part, input.message, new Set(run.references.map((reference) => reference.id))) && (part.plan.clarity !== "clear" || part.capabilities.some((capability) => capabilityKind(capability) === "write" || capability.startsWith("fn.extract")))) {
         part.capabilities = ["memo.read", "fn.summarize"];
         part.plan = { ...part.plan, clarity: "clear", dataSources: ["orbit_records"], deliverable: "summary", readings: [] };
@@ -214,6 +347,31 @@ export function routeNode(scope: NodeScope): GraphNode {
         emitTrace({ partId: part.localId, reason: "a repetition the schedule cannot store", type: "route.repeat_unsupported" });
         decision = { ...decision, reason: "a repetition the schedule cannot store (code says so)", route: "propose_write", step: undefined, waitReason: null };
       }
+      // AG15 (设计稿 §5.3, §3.5): a scheduled task — said with a recurrence, or the reply to its "按什么来挑", or a named task
+      // to pause / resume / remove — goes to the second step, where code reads it and asks its one question itself (the
+      // ranking basis). A negation or a hypothesis stays conservative.
+      if (!part.plan.negation && !part.plan.hypothesis && (part.plan.ruleAsk || isRuleRequest(part, input.message.slice(part.quote[0], part.quote[1]), context?.openItems ?? []))) {
+        if (!part.capabilities.some((capability) => capability.startsWith("rule."))) part.capabilities = [...part.capabilities, "rule.create"];
+        if (decision.route !== "propose_write") {
+          emitTrace({ from: decision.route, partId: part.localId, reason: "a scheduled task, read by code", type: "route.rule_request" });
+          decision = { ...decision, reason: "a scheduled task to set up or change (code reads it; the card needs a click)", route: "propose_write", step: undefined, verdict: "accept", waitReason: null };
+        }
+      }
+      // AG21a (R26): a typed answer that names an option of a write question ("计划日", "柏舟那个") goes on with the asked part
+      // (propose resumes it with the pick), whatever the first layer made of the few words.
+      if (!resume && part.continues?.kind === "clarification" && openItem?.resume && optionPickedIn(openItem, partWords)) {
+        part.capabilities = [...new Set(openItem.resume.intents.map((intent) => intent.capability))] as Capability[];
+        part.plan = { ...part.plan, clarity: "clear", readings: [] };
+        if (decision.route !== "propose_write") emitTrace({ from: decision.route, partId: part.localId, type: "route.answer_picks_option" });
+        decision = { ...decision, reason: "answers a write question by naming one of its options (the asked part goes on)", route: "propose_write", step: undefined, verdict: "accept", waitReason: null };
+      }
+      // AG15: a sentence that only qualifies the task (inbox only, until when) belongs to the task's card.
+      if (!resume && qualifiesRuleOf(part, input.message.slice(part.quote[0], part.quote[1]), ruleQuotes, context?.openItems ?? [])) {
+        emitTrace({ from: decision.route, partId: part.localId, reason: "it only qualifies the scheduled task asked for in the same message", type: "route.rule_qualifier" });
+        part.capabilities = part.capabilities.filter((capability) => capabilityKind(capability) !== "write");
+        part.plan = { ...part.plan, clarity: "statement", readings: [] };
+        decision = { blockedWrites: [], reason: "part of the scheduled task asked for in the same message", route: "answer", verdict: "accept", waitReason: null };
+      }
       if (accepted && part.continues) acceptedAlternativeRef = part.continues.ref;
       let status = statusForRoute(decision.route);
       let reason: string | null = NOT_YET_ROUTES.has(decision.route) ? "not_in_this_version" : null;
@@ -227,6 +385,13 @@ export function routeNode(scope: NodeScope): GraphNode {
         reason = run.cardPrepared ? null : "proposing";
       }
       if (decision.step) run.steps.set(part.localId, decision.step);
+      // AG20b (TRIAGE R4): a write tag the review did not confirm, on words that ask and suppose nothing, is answered by
+      // code — what was done (nothing changed) and the entry, never a limit Orbit does not have. A question is still answered.
+      if (!resume && reviewed.has(part.localId) && decision.route === "answer" && decision.step?.kind === "respond" && !part.plan.hypothesis && !readsAsQuestion(partWords)) {
+        run.answers.set(part.localId, CLARIFY_WORDS.statementNoChange(state.language, partWords.trim().replace(/[。.!！]+$/u, ""), Boolean(decision.step.entry)));
+        run.codeAnswers.add(part.localId);
+        emitTrace({ entry: decision.step.entry ?? null, partId: part.localId, type: "route.statement_by_code" });
+      }
       return {
         ...part,
         // AG05: a part routed again reads again (under the permissions of now).
@@ -244,6 +409,26 @@ export function routeNode(scope: NodeScope): GraphNode {
       };
     });
     if (!resume) {
+      // AG15: a qualifying sentence right next to the scheduled task it belongs to ("…挑三场周末活动。结果放收件箱就行，不用推送，
+      // 先跑到 11 月底。") becomes part of that task: one part, one question at most, one card. Code reads the whole of it.
+      const absorbed = new Set<string>();
+      for (const part of parts) {
+        const quote = input.message.slice(part.quote[0], part.quote[1]);
+        if (!qualifiesRuleOf(part, quote, ruleQuotes, context?.openItems ?? [])) continue;
+        const host = parts.find((other) => other.localId !== part.localId && !absorbed.has(other.localId) && other.route === "propose_write" && isRuleRequest(other, input.message.slice(other.quote[0], other.quote[1]), context?.openItems ?? []));
+        if (!host) continue;
+        const [from, to] = host.quote[1] <= part.quote[0] ? [host.quote[1], part.quote[0]] : [part.quote[1], host.quote[0]];
+        // Only words of no other part may lie between the two (punctuation, spaces).
+        const between = from <= to ? input.message.slice(from, to) : "";
+        if (from > to || /[^\s，。、,.!！;；:：]/u.test(between)) continue;
+        host.quote = [Math.min(host.quote[0], part.quote[0]), Math.max(host.quote[1], part.quote[1])];
+        absorbed.add(part.localId);
+        emitTrace({ into: host.localId, partId: part.localId, type: "route.rule_qualifier_absorbed" });
+      }
+      if (absorbed.size) parts = parts.filter((part) => !absorbed.has(part.localId)).map((part) => (part.dependsOn.some((id) => absorbed.has(id)) ? { ...part, dependsOn: part.dependsOn.filter((id) => !absorbed.has(id)) } : part));
+      // AG14: the parts about saved memory ("记住……", "这次……", "忘掉……", what is saved, why the list was ordered so) are
+      // settled by code before dependencies are (domains/memory/turn.ts).
+      await memoryRouteStep(scope, state, parts);
       settleDependencies(parts);
       for (const part of parts) if (part.status === "waiting_dependency") part.reason = "dependency_pending";
     }

@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
-import { agentRecordHref } from "../../../api/agent-v1-client";
+import { agentRecordHref, memorySettingsHref } from "../../../api/agent-v1-client";
 import { answerRecordKey, answerTileOf, recordsShown, type AnswerBlock, type AnswerRecordsBlock, type AnswerTileTone } from "../../../api/compute/agent-answer-blocks";
 import { referenceKindLabel } from "../../../api/compute/agent-references";
 import type { AgentAnswerRecordContract, AgentAnswerRecordKind } from "../../../api/contract/agent-v1";
@@ -115,10 +115,12 @@ function Records({ block, gone, language, onOpenHref }: { block: AnswerRecordsBl
   );
 }
 
-function Note({ block }: { block: Extract<AnswerBlock, { type: "note" }> }) {
+function Note({ block, onOpenHref }: { block: Extract<AnswerBlock, { type: "note" }>; onOpenHref(href: string): void }) {
   const { colors, styles } = useStyles();
+  // AG14 (board 4, D3): a memory note ends in 「去设置 ›」 to the memory part of the iOrbit settings.
+  const go = block.go ? memorySettingsHref(block.go.memoryId) : null;
   return (
-    <View style={styles.note} testID="answer-note">
+    <View style={styles.note} testID={block.go ? "answer-note-memory" : "answer-note"}>
       <View style={styles.noteHead}>
         <Svg width={14} height={14} viewBox="0 0 24 24"><Circle cx={12} cy={12} r={9} fill="none" stroke={colors.ink3Text} strokeWidth={2} /><Path d="M12 11v5M12 7.6v.2" fill="none" stroke={colors.ink3Text} strokeWidth={2} strokeLinecap="round" /></Svg>
         <Text style={styles.noteTitle}>{block.title}</Text>
@@ -129,6 +131,7 @@ function Note({ block }: { block: Extract<AnswerBlock, { type: "note" }> }) {
           <Text selectable style={styles.noteText}>{item.text}{item.action ? <Text style={styles.noteDo}>{item.action}</Text> : null}</Text>
         </View>
       ))}
+      {go && block.go ? <Pressable accessibilityRole="link" onPress={() => onOpenHref(go)} style={styles.noteGo} testID="answer-note-go"><Text style={styles.noteGoText}>{block.go.label} ›</Text></Pressable> : null}
     </View>
   );
 }
@@ -171,7 +174,7 @@ export function AgentAnswerBlocks({ blocks, gone, language, onOpenHref }: { bloc
           );
         }
         if (group.block.type === "records") return <Records key={at} block={group.block} gone={gone} language={language} onOpenHref={onOpenHref} />;
-        if (group.block.type === "note") return <Note key={at} block={group.block} />;
+        if (group.block.type === "note") return <Note key={at} block={group.block} onOpenHref={onOpenHref} />;
         return null;
       })}
     </View>
@@ -205,6 +208,8 @@ const useStyles = createThemedStyles((c) => StyleSheet.create({
   moreText: { color: c.ink2, fontSize: 15, fontWeight: "700" },
   note: { backgroundColor: c.surface2, borderRadius: 14, gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
   noteDo: { color: c.ink },
+  noteGo: { alignSelf: "flex-start", minHeight: 30, justifyContent: "center" },
+  noteGoText: { color: c.plum900, fontSize: 15, fontWeight: "700" },
   noteHead: { alignItems: "center", flexDirection: "row", gap: 6 },
   noteNext: { borderTopColor: c.line, borderTopWidth: 1, paddingTop: 10 },
   noteQuote: { color: c.ink, fontSize: 15, fontWeight: "600", lineHeight: 23 },

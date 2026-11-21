@@ -32,6 +32,28 @@ export async function reviseImportByWords(input: { runtime: AgentRuntimeService;
   const before = agentCardPreview(card, await input.runtime.getRun(card.runId), input.now());
   const countsOf = (ops: readonly { capability?: string; shown?: unknown }[]) => ((ops.find((item) => item.capability === CONTACT_IMPORT)?.shown ?? {}) as { counts?: ImportPreview["counts"] }).counts ?? { create: 0, duplicate: 0, skip: 0 };
   const beforeCounts = countsOf(card.operations);
+  const rowsOf = (ops: readonly { capability?: string; shown?: unknown }[]) => ((ops.find((item) => item.capability === CONTACT_IMPORT)?.shown ?? {}) as { rows?: { row: number; outcome: string }[] }).rows ?? [];
+  // AG21b (R27): a row the words name that already has that decision is not "changed": said so; with nothing else to change,
+  // the card is not revised at all.
+  const rowsBefore = rowsOf(card.operations);
+  const already = Object.keys(overrides).map(Number).filter((row) => rowsBefore.find((item) => item.row === row)?.outcome === overrides[String(row)]).sort((left, right) => left - right);
+  const alreadyLine = (language: ReturnType<typeof cardLocale>) => (["create", "skip"] as const).map((decision) => {
+    const rows = already.filter((row) => overrides[String(row)] === decision);
+    return rows.length ? CONTACT_WORDS.importRowsAlready(language, rows, decision) : "";
+  }).filter(Boolean).join("\n");
+  if (already.length && already.length === Object.keys(overrides).length) {
+    const language = cardLocale(card.locale);
+    const cardLine = cardLineOf(before, language);
+    emitTrace({ cardId: card.actionId, rows: already, type: "contact.import_rows_already" });
+    return {
+      actionPreview: before,
+      cardLine,
+      partResults: [{ operationId: before.operations[0]?.operationId, partId: "p1", reason: "card_unchanged", route: "propose_write", sourceQuote: input.message, status: "awaiting_confirmation" }],
+      sourceRefs: [],
+      status: "completed",
+      text: `${alreadyLine(language)}\n\n${cardLine}`,
+    };
+  }
   const revised = await input.runtime.reviseCard({ actionId: card.actionId, intents });
   if (!revised || revised.outcome !== "revised") return null;
   const action = await input.runtime.getAction(card.actionId);
@@ -41,7 +63,14 @@ export async function reviseImportByWords(input: { runtime: AgentRuntimeService;
   const language = cardLocale(action.locale);
   const counts = countsOf(action.operations);
   const rows = Object.keys(overrides).map(Number).sort((left, right) => left - right);
-  const lead = Object.values(overrides).every((decision) => decision === "skip") ? CONTACT_WORDS.importRevisedSkip(language, rows, beforeCounts, counts) : CONTACT_WORDS.importRevised(language, rows, beforeCounts, counts);
+  // AG20b (TRIAGE R12): a row the words name that the card could not change (no such row, or a row without a name) is said
+  // so; the reply never says a row changed when the card did not.
+  const rowsAfter = rowsOf(action.operations);
+  const stuck = rows.filter((row) => rowsAfter.find((item) => item.row === row)?.outcome !== overrides[String(row)]);
+  const changed = rows.filter((row) => !stuck.includes(row) && !already.includes(row));
+  const revisedLead = !changed.length ? "" : changed.every((row) => overrides[String(row)] === "skip") ? CONTACT_WORDS.importRevisedSkip(language, changed, beforeCounts, counts) : CONTACT_WORDS.importRevised(language, changed, beforeCounts, counts);
+  const lead = [revisedLead, already.length ? alreadyLine(language) : "", stuck.length ? CONTACT_WORDS.importRowsUnchanged(language, stuck) : ""].filter(Boolean).join("\n");
+  if (stuck.length) emitTrace({ cardId: card.actionId, rows: stuck, type: "contact.import_rows_unchanged" });
   const cardLine = cardLineOf(preview, language);
   emitTrace({ cardId: card.actionId, overrides, revision: preview.revision, type: "contact.import_revised" });
   return {

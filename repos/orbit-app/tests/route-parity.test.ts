@@ -170,7 +170,8 @@ test("every web-only exception records a user decision with a reason", () => {
   assert.ok(webOnlyRouteExceptions.length > 0);
   webOnlyRouteExceptions.forEach((exception) => {
     assert.ok(exception.reason.trim().length > 0, `${exception.route} has no reason`);
-    assert.equal(exception.decidedAt, "2026-09-27");
+    // Any real decision day, not only the first one (2026-09-27): a well-formed calendar date that is not in the future.
+    assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(exception.decidedAt) && new Date(`${exception.decidedAt}T00:00:00Z`).toISOString().slice(0, 10) === exception.decidedAt && exception.decidedAt <= new Date().toISOString().slice(0, 10), `${exception.route}: decidedAt ${exception.decidedAt} is not a past calendar date`);
     assert.equal(exception.decidedBy, "user");
   });
 });

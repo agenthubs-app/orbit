@@ -36,11 +36,14 @@ export const quoted = (language: Language, text: string) => (language === "en" ?
 
 /* ── ranking ─────────────────────────────────────────────────────────── */
 
-export function timeWords(preference: Pick<TimePreference, "days" | "part">, language: Language): string {
+export function timeWords(preference: Pick<TimePreference, "days" | "part" | "clock">, language: Language): string {
   const days = preference.days === "weekend" ? { en: "on a weekend", ja: "週末", zh: "周末" }[language] : preference.days === "weekday" ? { en: "on a weekday", ja: "平日", zh: "工作日" }[language] : "";
   const part = preference.part ? { afternoon: { en: "afternoon", ja: "午後", zh: "下午" }, evening: { en: "evening", ja: "夜", zh: "晚上" }, morning: { en: "morning", ja: "午前", zh: "上午" } }[preference.part][language] : "";
-  if (language === "en") return [days, part ? `in the ${part}` : ""].filter(Boolean).join(" ");
-  return `${days}${part}`;
+  // AG21b (R33): a clock boundary, as a 24-hour time.
+  const at = preference.clock ? `${String(Math.floor(preference.clock.minutes / 60)).padStart(2, "0")}:${String(preference.clock.minutes % 60).padStart(2, "0")}` : "";
+  const clock = !preference.clock ? "" : preference.clock.side === "from" ? { en: `starting at ${at} or later`, ja: `${at}以降に開始`, zh: `${at}以后开始` }[language] : { en: `starting before ${at}`, ja: `${at}より前に開始`, zh: `${at}以前开始` }[language];
+  if (language === "en") return [days, part ? `in the ${part}` : "", clock].filter(Boolean).join(" ");
+  return `${days}${part}${clock}`;
 }
 
 export function fieldName(field: RankField, language: Language): string {
@@ -207,7 +210,9 @@ export function existingTodoLine(language: Language, title: string, status: stri
   return { en: `Already a to-do: "${title}"${when ? ` (${when})` : ""}, ${statusWords(status, language)}. Nothing new was added.`, ja: `すでにタスクがあります：「${title}」${when ? `（${when}）` : ""}、${statusWords(status, language)}。新しくは追加していません。`, zh: `已经有这条待办：「${title}」${when ? `（${when}）` : ""}，现在${statusWords(status, language)}。这次没有再新增。` }[language];
 }
 
-export function differsLine(language: Language, title: string, changes: readonly string[]): string {
+export function differsLine(language: Language, title: string, changes: readonly string[], elsewhere?: { status: string }): string {
+  // AG20a R11: a to-do the user made elsewhere for the same thing (not from this note) is named as such, with its state.
+  if (elsewhere) return { en: `You already have a to-do for this: "${title}" (${statusWords(elsewhere.status, language)}), but ${changes.join("; ")}. Nothing was added or changed; tell me if it should be updated.`, ja: `同じ件のタスク「${title}」がすでにあります（${statusWords(elsewhere.status, language)}）が、${changes.join("、")}。追加も変更もしていません。直す必要があれば教えてください。`, zh: `已经有这件事的待办「${title}」（现在${statusWords(elsewhere.status, language)}），但${changes.join("；")}。这次没有新增也没有改；需要改的话告诉我。` }[language];
   return { en: `A to-do from this note already exists ("${title}"), but ${changes.join("; ")}. Nothing was added or changed; tell me if it should be updated.`, ja: `このメモから作ったタスク「${title}」がすでにありますが、${changes.join("、")}。追加も変更もしていません。直す必要があれば教えてください。`, zh: `这篇笔记已经建过待办「${title}」，但${changes.join("；")}。这次没有新增也没有改；需要改的话告诉我。` }[language];
 }
 

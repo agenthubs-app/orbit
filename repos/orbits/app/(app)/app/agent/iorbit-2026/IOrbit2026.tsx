@@ -23,7 +23,7 @@ import { readIOrbitEntityDraft, type IOrbitEntityDraft } from "../../orbit-2026/
 import { cancelAgentV1, decideAgentCard, latestCard, regenerateAgentCard, removeAgentCardItem, requestIdOfAssistantMessage, selectAgentOption, useAgentV1Session, type AgentV1SessionState, useAnswerRecordsGone } from "../../orbit-2026/iorbit/action-preview-client";
 import { AnswerBlocks } from "../../orbit-2026/iorbit/answer-blocks";
 import { answerBlocksOf } from "../../../../../shared/compute/agent-answer-blocks";
-import { answerTextOf, BasisLine, ConfirmationCard, ProgressLine, QuestionOptions, QueuedNote } from "../../orbit-2026/iorbit/confirmation-card";
+import { answerTextOf, BasisLine, ConfirmationCard, MemoryChipRow, MemoryChips, ProgressLine, QuestionOptions, QueuedNote } from "../../orbit-2026/iorbit/confirmation-card";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import styles from "./IOrbit2026.module.css";
 import { checkPickedReferences, MarkedMirror, ReferenceChips, ReferencePicker, useReferenceComposer, type PickerKeys } from "./ReferencePicker";
@@ -205,7 +205,9 @@ function V1Turn({ requestId, sessionId, session, language, navigate, gone }: { r
       <div className={styles.answer}>
         <b>iOrbit</b>
         {running ? (document?.status === "queued" ? null : <ProgressLine language={language} stage={session.stages.get(requestId) ?? null} action={<Button label={t(words.stop)} variant="ghost" size="sm" onClick={() => void cancelAgentV1(requestId)} />} />) : null}
-        {!running && document?.answer?.basis ? <BasisLine basis={document.answer.basis} language={language} navigate={navigate} cardsBelow={hasCards} /> : null}
+        {/* AG14 (board 5, D4): the memory chips follow the basis chip in the same row. */}
+        {!running && document?.answer?.basis ? <BasisLine basis={document.answer.basis} language={language} navigate={navigate} cardsBelow={hasCards}>{document.answer.memoryUse?.length ? <MemoryChips memoryUse={document.answer.memoryUse} language={language} navigate={navigate} /> : null}</BasisLine>
+          : !running && document?.answer?.memoryUse?.length ? <MemoryChipRow memoryUse={document.answer.memoryUse} language={language} navigate={navigate} /> : null}
         {blocks ? <AnswerBlocks blocks={blocks} gone={gone} language={language} navigate={navigate} /> : null}
         {!running && document && !blocks ? <div className={styles.answerText}><AgentMarkdown text={answerTextOf(document, Boolean(card)) || (document.status === "failed" || document.status === "cancelled" ? t(words.tryAgain) : "")} /></div> : null}
         {!running && document?.clarifications?.length ? <QuestionOptions clarifications={document.clarifications} language={language} disabled={picking || !session.online || !sessionId} onSelect={(set, optionId) => {

@@ -23,7 +23,7 @@ import { cardLocale, TODO_CREATE, type CardLocale, type TodoOperationIntent } fr
 import type { AgentNaturalLanguageActionRequest } from "../../agent/natural-language-actions/contract";
 import { readEntityDraftIntent } from "../../orbit-ai/entity-drafts/contract";
 import { emitTrace } from "../observability/trace";
-import { cardConfirmLabel } from "../propose/copy";
+import { cardConfirmLabel, cardConfirmLabelFor } from "../propose/copy";
 import { rejectModelApprovalClaims } from "./approval-claims";
 
 /** The ledger id of the card a conversation request produces: one card per request. */
@@ -112,7 +112,7 @@ export function typedConfirmationReminder(locale: string, count: number): string
 }
 
 export function cardLine(preview: AgentActionPreviewContract, locale: string): string {
-  return TEXTS[cardLocale(locale)].card(preview.operations.map((op) => op.text).join(cardLocale(locale) === "en" ? "; " : "；"), cardConfirmLabel(cardLocale(locale), preview.operations.length));
+  return TEXTS[cardLocale(locale)].card(preview.operations.map((op) => op.text).join(cardLocale(locale) === "en" ? "; " : "；"), cardConfirmLabelFor(cardLocale(locale), preview.operations));
 }
 
 export { rejectModelApprovalClaims, stripApprovalClaims } from "./approval-claims";
@@ -247,7 +247,7 @@ export async function runWithConfirmBoundary(
     turn.extraText ?? "",
     actionPreview && !turn.cardShown ? cardLine(actionPreview, locale) : "",
     ...unsupportedKinds.map((kind) => words.unsupported(words.kinds[kind] ?? kind)),
-    open.length && !actionPreview && mentionsConfirmation(input.message) ? words.reminder(cardConfirmLabel(locale, open.at(-1)?.operations?.length ?? 1)) : "",
+    open.length && !actionPreview && mentionsConfirmation(input.message) ? words.reminder(open.at(-1)?.operations?.length ? cardConfirmLabelFor(locale, open.at(-1)!.operations as readonly { capability: string }[]) : cardConfirmLabel(locale, 1)) : "",
     closed ? words.closed[closed.status] : "",
   ].filter((line) => line.trim());
   if (unsupportedKinds.length) emitTrace({ kinds: unsupportedKinds, type: "entry.proposal_without_card" });

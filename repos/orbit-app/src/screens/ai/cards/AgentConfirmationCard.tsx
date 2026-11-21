@@ -2,8 +2,10 @@ import { Fragment, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { agentCardView, type AgentCardView } from "../../../api/compute/agent-card-view";
-import type { AgentActionPreviewContract, AgentAnswerBasisContract, AgentClarificationContract, AgentResultDocument } from "../../../api/contract/agent-v1";
-import { agentLinkHref } from "../../../api/agent-v1-client";
+import { cardTurnedReminderOn } from "../../../api/compute/agent-reminder";
+import { PhoneReminderLine } from "../../me/ScheduledTaskReminder";
+import type { AgentActionPreviewContract, AgentAnswerBasisContract, AgentAnswerMemoryUseContract, AgentClarificationContract, AgentResultDocument } from "../../../api/contract/agent-v1";
+import { agentLinkHref, memorySettingsHref } from "../../../api/agent-v1-client";
 import { createThemedStyles } from "../../../design/theme";
 import type { OrbitColors } from "../../../design/tokens";
 import { standardCopy } from "../../../i18n/standard-copy";
@@ -19,7 +21,7 @@ type Decision = "confirm" | "reject" | "retry" | "mark_done" | "abandon";
 
 /** The draft's colours, from the design tokens (light and dark). */
 const paletteOf = (c: OrbitColors) => ({
-  apricotBg: c.macApricot, apricotInk: c.macApricotText, border: c.line, coral: c.coralText, disabled: c.ink3Text, edge: c.macApricotInk, greyBg: c.surface3, greyInk: c.ink2,
+  apricotBg: c.macApricot, apricotInk: c.macApricotText, border: c.line, coral: c.coralText, coralSoft: c.coralSoft, disabled: c.ink3Text, edge: c.macApricotInk, greyBg: c.surface3, greyInk: c.ink2,
   ink: c.ink, item: c.surface2, lavBg: c.macLav, lavInk: c.macLavText, muted: c.ink2, onInk: c.onAccent, plumBg: c.plum100, plumInk: c.plum900, tealBg: c.macTeal, tealInk: c.macTealText, white: c.surface,
 });
 type Palette = ReturnType<typeof paletteOf>;
@@ -34,14 +36,26 @@ export interface AgentConfirmationCardProps {
   pendingTargets: readonly string[];
   onDecide(decision: Decision, operationId?: string): Promise<boolean>;
   onRegenerate(): Promise<boolean>;
+  /** AG15 (D15-6): open the card that replaced this one. */
+  onOpenCard?(actionId: string): void;
 }
 
-export function AgentConfirmationCard({ card, language, online, pendingTargets, onDecide, onRegenerate }: AgentConfirmationCardProps) {
+/** AG15: this device's time zone, so a scheduled task's card names its own zone only when it differs. */
+export function deviceTimeZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function AgentConfirmationCard({ card, language, online, pendingTargets, onDecide, onRegenerate, onOpenCard }: AgentConfirmationCardProps) {
   const { colors, styles } = useCardStyles();
   const C = paletteOf(colors);
   const words = standardCopy[card.locale ?? language].aiCard;
   const ui = standardCopy[language].aiCard;
-  const view: AgentCardView = agentCardView(card, { online, pendingTargets }, words);
+  const [timeZone] = useState(deviceTimeZone);
+  const view: AgentCardView = agentCardView(card, { online, pendingTargets, timeZone }, words);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const run = async (action: () => Promise<boolean>) => {
@@ -58,7 +72,11 @@ export function AgentConfirmationCard({ card, language, online, pendingTargets, 
     );
   }
   const chip = toneOf(C, view.chip.tone);
+  // AG16 (draft 16-2): the card is unchanged; once it has turned a task's reminder on, a line under it says whether this
+  // phone will show the reminder, with the way to allow it when it does not yet.
+  const reminderOn = cardTurnedReminderOn(card);
   return (
+    <>
     <View style={styles.card} testID={`agent-card-${view.status}`} accessibilityLabel={view.title}>
       <View style={styles.head}>
         <Text style={[styles.chip, { backgroundColor: chip.bg, color: chip.ink }]}>{view.chip.label}</Text>
@@ -68,12 +86,18 @@ export function AgentConfirmationCard({ card, language, online, pendingTargets, 
       {view.items.map((item) => (
         <View key={item.operationId} style={[styles.item, item.rows.some((row) => row.changed) && styles.itemChanged, view.dim && styles.dim]} testID={`agent-card-item-${item.operationId}`}>
           <View style={styles.itemHead}>
-            <Text style={[styles.badge, item.change === "create" ? styles.badgeCreate : styles.badgeUpdate]}>{item.badge}</Text>
+            <Text style={[styles.badge, item.change === "create" ? styles.badgeCreate : item.change === "delete" ? styles.badgeDelete : styles.badgeUpdate]}>{item.badge}</Text>
             <Text style={styles.record}>{item.record}</Text>
             {item.status ? <Text style={[styles.itemStatus, { color: itemToneOf(C, item.status.tone) }]}>{item.status.label}</Text> : null}
           </View>
           {item.pendingEdit ? <Text style={styles.note}>{item.pendingEdit}</Text> : null}
-          {item.rows.map((row) => (
+          {item.rows.map((row) => row.sideBySide && row.before !== null ? (
+            // AG14 (D1): 原来 and 改成 side by side, each in a white box.
+            <View key={row.field} style={[styles.pair, row.changed && styles.rowChanged]} testID={`agent-card-pair-${row.field}`}>
+              <View style={styles.pairCell}><Text style={styles.label}>{words.memoryWas}</Text><Text style={[styles.pairText, styles.old]}>{row.before}</Text></View>
+              <View style={styles.pairCell}><Text style={styles.label}>{words.memoryNow}</Text><Text style={[styles.pairText, styles.strong]}>{row.after}</Text></View>
+            </View>
+          ) : (
             <View key={row.field} style={[styles.row, row.changed && styles.rowChanged]}>
               <Text style={styles.label}>{row.label}</Text>
               <Text style={styles.value}>
@@ -108,6 +132,12 @@ export function AgentConfirmationCard({ card, language, online, pendingTargets, 
         </View>
       ) : null}
       {view.footer ? <Text style={styles.footer}>{view.footer}</Text> : null}
+      {view.expiredNote ? (
+        <View style={styles.actions} testID="agent-card-expired-note">
+          <Text style={styles.footer}>{view.expiredNote}</Text>
+          {view.replacedBy && onOpenCard ? <View style={styles.buttons}><SmallButton label={ui.openNewCard} disabled={false} onPress={() => onOpenCard(view.replacedBy!)} /></View> : null}
+        </View>
+      ) : null}
       {view.regenerate ? (
         <View style={styles.actions}>
           <Text style={styles.regen}>{view.regenerate.question}</Text>
@@ -116,6 +146,8 @@ export function AgentConfirmationCard({ card, language, online, pendingTargets, 
       ) : null}
       {failed ? <Text accessibilityRole="alert" style={styles.error}>{ui.actionFailed}</Text> : null}
     </View>
+    {reminderOn ? <View style={styles.afterCard} testID="agent-card-reminder"><PhoneReminderLine afterCard /></View> : null}
+    </>
   );
 }
 
@@ -142,6 +174,22 @@ export function AgentBasisLine({ basis, language, onOpenHref, cardsBelow = false
     <View style={styles.basisRow} testID="agent-basis">
       <View style={styles.basis}><Text style={styles.basisText}>{basis.text}</Text></View>
       {links.map(({ href, link }) => (href ? <Pressable key={`${link.type}:${link.id}`} accessibilityRole="link" onPress={() => onOpenHref(href)} style={styles.basis}><Text style={styles.basisText}>{link.label}<Text style={styles.basisOpen}> ›</Text></Text></Pressable> : null))}
+    </View>
+  );
+}
+
+/**
+ * AG14 (approved draft board 5, D4–D6): the memory chips under the basis chip — 「按你存的偏好「周末上午」挑的 修改 ›」 opens
+ * that entry in the iOrbit settings (D5); 「只这一次：……」 has no 「修改」. The words are the server's.
+ */
+export function AgentMemoryChips({ memoryUse, language, onOpenHref }: { memoryUse: readonly AgentAnswerMemoryUseContract[]; language: Language; onOpenHref(href: string): void }) {
+  const { styles } = useCardStyles();
+  const ui = standardCopy[language].aiCard;
+  return (
+    <View style={styles.basisRow} testID="agent-memory-chips">
+      {memoryUse.map((chip) => chip.kind === "skipped"
+        ? <View key={`${chip.kind}:${chip.memoryId}`} style={styles.memoryChip} testID={`agent-memory-chip-${chip.kind}`}><Text style={styles.basisText}>{chip.text}</Text></View>
+        : <Pressable key={`${chip.kind}:${chip.memoryId}`} accessibilityRole="link" onPress={() => onOpenHref(memorySettingsHref(chip.memoryId))} style={styles.memoryChip} testID={`agent-memory-chip-${chip.kind}`}><Text style={styles.basisText}>{chip.text}<Text style={styles.basisOpen}>  {ui.memoryEdit} ›</Text></Text></Pressable>)}
     </View>
   );
 }
@@ -189,6 +237,11 @@ const useCardStyles = createThemedStyles((colors) => { const C = paletteOf(color
   badge: { borderRadius: 6, fontSize: 11, fontWeight: "700", overflow: "hidden", paddingHorizontal: 7, paddingVertical: 2 },
   badgeCreate: { backgroundColor: C.tealBg, color: C.tealInk },
   badgeUpdate: { backgroundColor: C.lavBg, color: C.lavInk },
+  badgeDelete: { backgroundColor: C.coralSoft, color: C.coral },
+  memoryChip: { alignSelf: "flex-start", backgroundColor: C.white, borderColor: C.border, borderRadius: 999, borderWidth: 1, marginBottom: 8, minHeight: 30, paddingHorizontal: 12, paddingVertical: 6 },
+  pair: { flexDirection: "row", gap: 8 },
+  pairCell: { backgroundColor: C.white, borderRadius: 8, flex: 1, gap: 2, minWidth: 0, paddingHorizontal: 10, paddingVertical: 8 },
+  pairText: { fontSize: 13, lineHeight: 19 },
   banner: { backgroundColor: C.apricotBg, borderRadius: 10, color: C.apricotInk, fontSize: 13, fontWeight: "700", overflow: "hidden", paddingHorizontal: 12, paddingVertical: 8 },
   basis: { alignSelf: "flex-start", backgroundColor: C.white, borderColor: C.border, borderRadius: 999, borderWidth: 1, marginBottom: 8, minHeight: 30, paddingHorizontal: 12, paddingVertical: 6 },
   basisOpen: { color: C.plumInk, fontWeight: "700" },
@@ -197,6 +250,7 @@ const useCardStyles = createThemedStyles((colors) => { const C = paletteOf(color
   blocked: { color: C.apricotInk, fontSize: 13, fontWeight: "700" },
   buttons: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 8 },
   card: { backgroundColor: C.white, borderColor: C.border, borderRadius: 20, borderWidth: 1, gap: 12, marginTop: 12, padding: 16, shadowColor: C.ink, shadowOffset: { height: 10, width: 0 }, shadowOpacity: 0.12, shadowRadius: 18 },
+  afterCard: { marginTop: 8 },
   chip: { borderRadius: 999, fontSize: 12, fontWeight: "700", overflow: "hidden", paddingHorizontal: 9, paddingVertical: 3 },
   confirm: { alignItems: "center", backgroundColor: C.ink, borderRadius: 999, flex: 1, height: 44, justifyContent: "center", paddingHorizontal: 18 },
   confirmDisabled: { backgroundColor: C.greyBg },

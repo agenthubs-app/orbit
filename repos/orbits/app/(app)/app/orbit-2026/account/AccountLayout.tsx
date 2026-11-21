@@ -13,14 +13,18 @@ import { Avatar, Bone, Icon, Orbit2026Scope, ToastProvider, type IconName } from
 import s from "./AccountLayout.module.css";
 
 export type AccountSection =
-  | "home" | "profile" | "account" | "iorbit" | "integrations" | "schedule"
+  | "home" | "profile" | "account" | "iorbit" | "tasks" | "integrations" | "agentConnections" | "schedule"
   | "notifications" | "appearance" | "permissions" | "export" | "help";
 
 const menu: readonly { section: Exclude<AccountSection, "home">; href: string; icon: IconName }[] = [
   { section: "profile", href: "/app/profile", icon: "user" },
   { section: "account", href: "/app/settings/account", icon: "settings" },
   { section: "iorbit", href: "/app/settings/iorbit", icon: "sparkle" },
+  // agent-design AG15 (D15-1): scheduled tasks, its list and each task under /app/settings/tasks.
+  { section: "tasks", href: "/app/settings/tasks", icon: "clock" },
   { section: "integrations", href: "/app/settings/integrations", icon: "link" },
+  // agent-design AG17 (approved draft D3): under 「连接」; the draft's plug is not in the icon set, so the chat bubble.
+  { section: "agentConnections", href: "/app/settings/agent-connections", icon: "chat" },
   // contact-reach R41 ⑤: 可約時間, next to the calendar connection.
   { section: "schedule", href: "/app/settings/schedule", icon: "calendar" },
   { section: "notifications", href: "/app/settings/notifications", icon: "bell" },
@@ -45,9 +49,11 @@ export function accountSectionFor(pathname: string): AccountSection {
  * the heading as bones — so nothing moves when it arrives. `shell={false}`: the route skeleton
  * (loading.tsx), which leaves the shell's frame as it is.
  */
-export function AccountLayout({ active, title, subtitle, children, rightRail, railPending = false, largeTitle = false, shell = true }: {
+export function AccountLayout({ active, title, subtitle, children, rightRail, railPending = false, largeTitle = false, shell = true, back }: {
   active: AccountSection;
   title?: string;
+  /** AG15: a page under a section (one scheduled task): 「‹ 定时任务」 above its title, and the phone's back button. */
+  back?: { href: string; label: string };
   subtitle?: string;
   children: ReactNode;
   rightRail?: ReactNode | false;
@@ -83,7 +89,8 @@ export function AccountLayout({ active, title, subtitle, children, rightRail, ra
           </nav>
           <main className={s.content}>
             {/* b12 W-R18a-2x (390): a detail page is full screen with the kit .topbar — back + centred title. */}
-            <div className={s.phoneTopbar}><Link className={`btn ${s.phoneBack}`} href="/app/settings" aria-label={t("backToSettings")}><Icon name="left" size={20} /></Link><b>{title}</b><span /></div>
+            <div className={s.phoneTopbar}><Link className={`btn ${s.phoneBack}`} href={back?.href ?? "/app/settings"} aria-label={back?.label ?? t("backToSettings")}><Icon name="left" size={20} /></Link><b>{back ? back.label : title}</b><span /></div>
+            {back ? <Link prefetch className={s.sectionBack} href={back.href}><Icon name="left" size={16} />{back.label}</Link> : null}
             {title ? <div className={`${s.heading} ${largeTitle ? s.largeTitle : ""}`}><h1>{title}</h1>{subtitle ? <p>{subtitle}</p> : null}</div>
               : <div className={s.heading} aria-hidden><span className={s.headingBone}><Bone width={96} height={20} /></span><span className={s.subheadingBone}><Bone width={260} height={13} /></span></div>}
             {children}

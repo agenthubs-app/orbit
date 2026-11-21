@@ -10,6 +10,7 @@ import type { MemoryRecord } from "../../features/agent-v1/domains/source";
 import { contactSnapshotOf } from "../../features/agent-v1/domains/contact/access";
 import { boundContactReader, type ContactAccess } from "../../features/agent-v1/domains/contact/types";
 import type { AgentActionPreviewContract } from "../../shared/contract/agent-v1";
+import type { AgentSessionState } from "../../features/agent-v1/context/session-state";
 import type { LiveRecord } from "../../shared/storage/live-record-store";
 import { captureTrace, deepseekStub, graphKit, json, part, recordAccessOf, type ModelCall } from "./graph-kit";
 import { contact, memo, todo } from "./read-kit";
@@ -90,6 +91,8 @@ export interface ContactRun {
   events: Record<string, unknown>[];
   modelCalls: ModelCall[];
   frozen: ReturnType<typeof contactCards>["frozen"];
+  /** AG20a: the session state the turn left (what the next turn's first layer sees). */
+  state: AgentSessionState | null;
 }
 
 /** One turn: the first layer's parts and the second layer's operations (stubbed); the answer step answers from its materials. */
@@ -115,7 +118,7 @@ export async function runContact(message: string, understood: Record<string, unk
       if (!option) throw new Error(`no option ${key} among ${set.options.map((item) => item.optionId).join(", ")}`);
       return resumeAgentGraph(kit.deps, input, { clarificationId: set.clarificationId, kind: "select", optionId: option.optionId });
     };
-    return { events: trace.events, frozen: card.frozen, modelCalls: model.calls, result, resume };
+    return { events: trace.events, frozen: card.frozen, modelCalls: model.calls, result, resume, state: await kit.sessionState.get(input.actorId, input.sessionId) };
   } finally {
     trace.restore();
   }

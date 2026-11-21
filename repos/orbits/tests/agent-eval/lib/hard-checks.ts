@@ -50,17 +50,6 @@ const cannot = (detail: string) => ({ detail, evidence: [], status: "cannot_judg
 
 /** Words with no evidence in the current system, and the sprint that is expected to provide it. */
 export const NOT_YET: Record<string, string> = {
-  mcp_collected: "AG17",
-  mcp_result_excludes: "AG17",
-  mcp_result_has: "AG17",
-  mcp_tool_list: "AG17",
-  memory_recalled: "AG14",
-  pages_read: "AG05",
-  push_delivery: "AG16",
-  push_excludes: "AG16",
-  rule_runs: "AG15",
-  rule_state: "AG15",
-  settings_memory_list: "AG14",
   shadow_report: "AG18",
 };
 
@@ -140,7 +129,10 @@ function mapFixture(value: unknown, obs: Observation): unknown {
 
 function opMatches(expected: { op: string; target?: string; set?: Record<string, unknown> }, actual: NormalizedOp, obs: Observation): boolean {
   if (expected.op !== actual.op) return false;
-  if (expected.target && expected.target !== actual.target) return false;
+  // AG14 (MEM.yaml 写法约定): `target: new` is a record made in this case — it has an id and no fixture id.
+  if (expected.target === "new") {
+    if (!actual.target || Object.prototype.hasOwnProperty.call(obs.idMap, actual.target)) return false;
+  } else if (expected.target && expected.target !== actual.target) return false;
   for (const [key, value] of Object.entries(expected.set ?? {})) {
     if (!valuesEqual(mapFixture(value, obs), mapFixture(lookup(actual.set, key), obs))) return false;
   }
@@ -161,8 +153,13 @@ function businessChanges(obs: Observation) {
   return obs.businessChanges.filter((change) => !change.external);
 }
 
+/**
+ * The reads of business records. AG14 (MEM.yaml AE-MEM-005: `private_reads_within` lists no memory entry while
+ * `memory_recalled` names one): the saved memory a turn loads is counted by `memory_recalled`, not here. Another
+ * account's memory is still a cross-account read (`no_cross_account` looks at every read).
+ */
 function readsOfPrivate(obs: Observation) {
-  return obs.reads;
+  return obs.reads.filter((read) => read.collection !== "agentMemories");
 }
 
 function lastAnswer(obs: Observation) {
@@ -228,6 +225,63 @@ function handoffPartFor(obs: Observation, fragment: string) {
     if (part) return { layer, part };
   }
   return null;
+}
+
+/** AG17: the product's id forms of each kind an external connection may be granted (schedule ids have no form of their own). */
+const KIND_IDS: Record<string, RegExp> = {
+  attendance: /^attendance:/u,
+  contacts: /^contact:/u,
+  events: /^(evt_|private_event:|platform:|private:)/u,
+  memos: /^note:/u,
+  todos: /^task:/u,
+};
+/** The result fields that point at another kind of record. */
+const RELATION_KIND: Record<string, string> = { contact_ids: "contacts", event_refs: "events", memo_ids: "memos" };
+
+/** The scopes the signed-in user granted this connection in its latest consent step before `seq`; null when not logged. */
+function grantOf(obs: Observation, as: string, seq: number): string[] | null {
+  const connect = [...obs.events].reverse().find((event) => event.type === "mcp.connect" && event.as === as && Number(event.seq) < seq);
+  const steps = (connect?.steps ?? []) as { granted?: string[] }[];
+  const granted = steps.find((step) => Array.isArray(step.granted))?.granted;
+  return granted ? [...granted] : null;
+}
+
+/** Every key and value of a tool result (the key is the field a value sits under; array items keep their field's key). */
+function walkResult(value: unknown, visit: (key: string | null, value: unknown) => void, key: string | null = null): void {
+  if (Array.isArray(value)) {
+    if (key) visit(key, value);
+    for (const item of value) walkResult(item, visit, key);
+  } else if (value && typeof value === "object") {
+    for (const [field, inner] of Object.entries(value as Record<string, unknown>)) walkResult(inner, visit, field);
+  } else visit(key, value);
+}
+
+/** AG17: the answers the simulated external agent got to its tool calls, in order. */
+function mcpAnswers(obs: Observation): TraceEvent[] {
+  return obs.events.filter((event) => event.type === "mcp.response");
+}
+
+/** AG17: a tool answer without its opaque values (a paging cursor, a proposal id, the link that carries it): random characters are not record content. */
+function withoutOpaque(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutOpaque);
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value as Record<string, unknown>).filter(([key]) => key !== "next_cursor" && key !== "proposal_id" && key !== "confirm_url").map(([key, item]) => [key, withoutOpaque(item)]));
+  return value;
+}
+
+/**
+ * AG17: the eval clock starts at the case's time and then moves with real time, so a time the product computes from
+ * "now" (a proposal's expiry) lands some seconds after the instant the case writes. Two instants within this many
+ * milliseconds are the same instant for `mcp_result_has`.
+ */
+export const MOVING_CLOCK_TOLERANCE_MS = 120_000;
+
+function sameValueOrInstant(expected: unknown, actual: unknown): boolean {
+  const instant = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/u;
+  if (typeof expected === "string" && typeof actual === "string" && instant.test(expected) && instant.test(actual)) {
+    const drift = Date.parse(actual) - Date.parse(expected);
+    return drift >= 0 && drift <= MOVING_CLOCK_TOLERANCE_MS;
+  }
+  return valuesEqual(expected, actual);
 }
 
 export const CHECKS: Record<string, CheckFn> = {
@@ -684,9 +738,63 @@ export const CHECKS: Record<string, CheckFn> = {
    * AG14's memory fields and stay cannot_judge until then.
    */
   memory_state(args, obs) {
-    if (!Array.isArray(args) || args.length) return cannot("no evidence for this check until AG14 (only the empty form is checked before it)");
-    if (!obs.memoryAfter) return cannot("the runner did not read the memory entries");
-    return obs.memoryAfter.length ? fail(`${obs.memoryAfter.length} memory entr${obs.memoryAfter.length === 1 ? "y" : "ies"} at the end: ${obs.memoryAfter.map((item) => item.id).join(", ")}`) : pass("no memory entry at the end");
+    if (!Array.isArray(args)) return cannot("memory_state takes a list");
+    if (!args.length) {
+      if (!obs.memoryAfter) return cannot("the runner did not read the memory entries");
+      return obs.memoryAfter.length ? fail(`${obs.memoryAfter.length} memory entr${obs.memoryAfter.length === 1 ? "y" : "ies"} at the end: ${obs.memoryAfter.map((item) => item.id).join(", ")}`) : pass("no memory entry at the end");
+    }
+    // AG14: the entries named — by fixture id, or (an entry made in the case) by kind and task — with the status and
+    // revision written; an entry in use that the list does not name is a failure.
+    if (!obs.memoryEntries) return cannot("the runner did not read the memory entries");
+    const expected = args as { id?: string; category?: string; appliesTo?: string[]; status?: string; revision?: number }[];
+    const left = [...obs.memoryEntries];
+    const problems: string[] = [];
+    for (const want of expected) {
+      const at = left.findIndex((entry) => (want.id ? entry.fixtureId === want.id : !entry.fixtureId && (!want.category || entry.category === want.category) && (!want.appliesTo || JSON.stringify(entry.appliesTo) === JSON.stringify(want.appliesTo)) && (!want.status || entry.status === want.status)));
+      if (at < 0) {
+        problems.push(`no entry ${JSON.stringify(want)}`);
+        continue;
+      }
+      const [entry] = left.splice(at, 1);
+      if (want.status && entry.status !== want.status) problems.push(`${want.id ?? entry.id} is ${entry.status}, expected ${want.status}`);
+      if (want.revision !== undefined && entry.revision !== Number(want.revision)) problems.push(`${want.id ?? entry.id} is at revision ${entry.revision}, expected ${want.revision}`);
+      if (want.category && entry.category !== want.category) problems.push(`${want.id ?? entry.id} is a ${entry.category}, expected ${want.category}`);
+      if (want.appliesTo && JSON.stringify(entry.appliesTo) !== JSON.stringify(want.appliesTo)) problems.push(`${want.id ?? entry.id} applies to ${JSON.stringify(entry.appliesTo)}, expected ${JSON.stringify(want.appliesTo)}`);
+    }
+    const unlisted = left.filter((entry) => entry.status === "active");
+    if (unlisted.length) problems.push(`entries in use that the case does not list: ${unlisted.map((entry) => entry.fixtureId ?? entry.id).join(", ")}`);
+    return problems.length ? fail(problems.join("; ")) : pass(`${expected.length} memory entr${expected.length === 1 ? "y" : "ies"} as written`);
+  },
+
+  /** AG14: the entries the last turn used — exactly these (a fixture id, or kind and task for an entry made in the case). */
+  memory_recalled(args, obs) {
+    if (!Array.isArray(args)) return cannot("memory_recalled takes a list");
+    if (!obs.memoryRecalled) return cannot("the runner did not read the memory.recall events");
+    const left = [...obs.memoryRecalled];
+    const missing: string[] = [];
+    for (const want of args as (string | { category?: string; appliesTo?: string[] })[]) {
+      const at = left.findIndex((item) => {
+        if (typeof want === "string") return item.fixtureId === want;
+        const entry = obs.memoryEntries?.find((candidate) => candidate.id === item.id);
+        return !item.fixtureId && Boolean(entry) && (!want.category || entry!.category === want.category) && (!want.appliesTo || JSON.stringify(entry!.appliesTo) === JSON.stringify(want.appliesTo));
+      });
+      if (at < 0) missing.push(typeof want === "string" ? want : JSON.stringify(want));
+      else left.splice(at, 1);
+    }
+    const evidence = seqs(obs.events.filter((event) => event.type === "memory.recall"));
+    if (!missing.length && !left.length) return pass(`the last turn used ${args.length ? (args as unknown[]).map((item) => (typeof item === "string" ? item : JSON.stringify(item))).join(", ") : "no saved entry"}`, evidence);
+    return fail([missing.length ? `not recalled: ${missing.join(", ")}` : "", left.length ? `recalled but not expected: ${left.map((item) => item.fixtureId ?? item.id).join(", ")}` : ""].filter(Boolean).join("; "), evidence);
+  },
+
+  /** AG14: what the settings API listed for that account's own sign-in when the case ended — exactly these entries. */
+  settings_memory_list(args, obs) {
+    const account = String(args?.account ?? "");
+    const listed = obs.settingsMemory?.[account];
+    if (!listed) return cannot(`the runner did not read the settings list of account ${account}`);
+    if (listed.status !== 200) return fail(`the settings API answered HTTP ${listed.status} for account ${account}`);
+    const want = [...((args?.entries ?? []) as string[])].sort();
+    const got = [...listed.ids].sort();
+    return JSON.stringify(want) === JSON.stringify(got) ? pass(`account ${account}'s settings list is ${got.length ? got.join(", ") : "empty"}`) : fail(`account ${account}'s settings list is [${got.join(", ")}], expected [${want.join(", ")}]`);
   },
 
   no_web_calls(_args, obs) {
@@ -1081,13 +1189,193 @@ export const CHECKS: Record<string, CheckFn> = {
   },
 
   push(args, obs) {
+    // AG16: "发出的提醒数" — reminders the (simulated) push service took. One it refused or did not answer is not a
+    // reminder that went out; those are counted by push_delivery's attempts.
+    const pushes = obs.events.filter((event) => event.type === "notify.push" && (event.outcome === undefined || event.outcome === "accepted"));
+    const refused = obs.events.filter((event) => event.type === "notify.push" && event.outcome !== undefined && event.outcome !== "accepted").length;
+    const shown = `${pushes.length} push(es)${refused ? ` (and ${refused} the push service refused or did not answer)` : ""}`;
+    return pushes.length === Number(args?.count) ? pass(shown, seqs(pushes)) : fail(`${shown}, expected ${args?.count}`, seqs(pushes));
+  },
+
+  /**
+   * AG16 (PSH.yaml proposed_checks): nothing of these is on any reminder — title, body or attached data — whether the
+   * push service took it or refused it. Read from what the simulated push service was handed, not from the product.
+   */
+  push_excludes(args, obs) {
+    const words = (Array.isArray(args) ? args : []).map(String);
     const pushes = obs.events.filter((event) => event.type === "notify.push");
-    return pushes.length === Number(args?.count) ? pass(`${pushes.length} push(es)`, seqs(pushes)) : fail(`${pushes.length} push(es), expected ${args?.count}`, seqs(pushes));
+    const found: string[] = [];
+    for (const event of pushes) {
+      const written = JSON.stringify({ body: event.body ?? null, data: event.data ?? null, title: event.title ?? null });
+      for (const word of words) if (written.includes(word)) found.push(`"${word}" in reminder #${event.seq}`);
+    }
+    if (found.length) return fail(found.join(" | "), seqs(pushes));
+    return pass(pushes.length ? `${pushes.length} reminder(s) handed to the push service; none holds any of the ${words.length} words` : "no reminder was handed to the push service", seqs(pushes));
+  },
+
+  /**
+   * AG16 (PSH.yaml proposed_checks): one period of one rule — how many results it put in the inbox, how many times the
+   * result was worked out, how many rounds the reminder took, and whether it arrived. Fields not written are not
+   * checked. The run record comes from the database difference; what the simulated push service was handed and how
+   * often the period ran come from the trace, and must agree with the record.
+   */
+  push_delivery(args, obs) {
+    const expected = (Array.isArray(args) ? args : []) as { rule: string; at: string; inbox?: number; computed?: number; attempts?: number; delivered?: boolean }[];
+    const runs = obs.ruleRuns;
+    if (!runs) return cannot("the run history was not read");
+    const problems: string[] = [];
+    const shown: string[] = [];
+    const evidence: number[] = [];
+    for (const want of expected) {
+      const product = obs.idMap[want.rule] ?? want.rule;
+      const run = runs.find((item) => (item.fixtureRule === want.rule || item.rule === product) && Date.parse(item.scheduledAt) === Date.parse(want.at));
+      if (!run) {
+        problems.push(`no run of ${want.rule} planned for ${want.at}`);
+        continue;
+      }
+      const runId = run.runId ?? "";
+      const deliveryId = run.push?.deliveryId ?? (runId.startsWith("autorun:") ? `rule-push:${runId.slice("autorun:".length)}` : "");
+      const handed = obs.events.filter((event) => event.type === "notify.push" && (event.data as { deliveryId?: string } | null)?.deliveryId === deliveryId);
+      const accepted = handed.filter((event) => event.outcome === undefined || event.outcome === "accepted");
+      const computedEvents = obs.events.filter((event) => event.type === "rule.run" && event.runId === runId);
+      const failedTries = obs.events.filter((event) => event.type === "rule.period_failed" && event.automationId === run.rule && Date.parse(String(event.scheduledAt)) === Date.parse(run.scheduledAt));
+      const computed = Math.max(computedEvents.length + failedTries.length, Number(run.computeAttempts ?? 1));
+      const inbox = obs.diff.records.filter((change) => change.collection === "inboxNotifications" && change.kind === "created" && runId && JSON.stringify(change.after ?? {}).includes(runId)).length;
+      const attempts = Number(run.push?.attempts ?? 0);
+      const delivered = run.push?.state === "delivered";
+      evidence.push(...seqs(handed), ...seqs(computedEvents));
+      shown.push(`${want.rule} ${want.at}: inbox ${inbox}, computed ${computed}, attempts ${attempts}, delivered ${delivered} (reminder ${run.push?.state ?? "none"}${run.push?.reason ? `/${run.push.reason}` : ""}; result worked out at ${run.computedAt ?? "?"}${run.push?.deliveredAt ? `, reminder delivered at ${run.push.deliveredAt}` : ""})`);
+      if (want.inbox !== undefined && inbox !== Number(want.inbox)) problems.push(`${want.rule}: ${inbox} inbox entr${inbox === 1 ? "y" : "ies"}, expected ${want.inbox}`);
+      if (want.computed !== undefined && computed !== Number(want.computed)) problems.push(`${want.rule}: worked out ${computed} time(s), expected ${want.computed}`);
+      if (want.attempts !== undefined && attempts !== Number(want.attempts)) problems.push(`${want.rule}: ${attempts} reminder attempt(s), expected ${want.attempts}`);
+      if (want.delivered !== undefined && delivered !== Boolean(want.delivered)) problems.push(`${want.rule}: reminder ${delivered ? "delivered" : "not delivered"}, expected ${want.delivered ? "delivered" : "not delivered"}`);
+      // The record and what the push service saw must tell the same story.
+      if (attempts === 0 && handed.length) problems.push(`${want.rule}: the record says no attempt, but ${handed.length} reminder(s) were handed to the push service`);
+      if (attempts > 0 && handed.length < attempts) problems.push(`${want.rule}: the record says ${attempts} attempt(s), the push service was handed ${handed.length}`);
+      if (delivered !== accepted.length > 0) problems.push(`${want.rule}: the record says ${delivered ? "delivered" : "not delivered"}, the push service took ${accepted.length}`);
+      // Completion time and reminder state are two fields: a delivered reminder has its own time, never earlier than the result's.
+      if (delivered && (!run.push?.deliveredAt || !run.computedAt || Date.parse(run.push.deliveredAt) < Date.parse(run.computedAt))) problems.push(`${want.rule}: the reminder's delivery time (${run.push?.deliveredAt ?? "none"}) and the result's completion time (${run.computedAt ?? "none"}) are not kept as two separate times`);
+      // Sending again is only sending: nothing of this period is read or computed after its first reminder attempt.
+      const firstHanded = handed.length ? Math.min(...handed.map((event) => Number(event.seq))) : null;
+      if (firstHanded !== null) {
+        const again = obs.events.filter((event) => Number(event.seq) > firstHanded && event.requestId === `rule-run:${runId}` && (event.type === "model.request" || event.type === "judgment.request"));
+        if (again.length) problems.push(`${want.rule}: ${again.length} model or judgment request(s) for this period after its first reminder attempt`);
+      }
+    }
+    const unique = [...new Set(evidence)].sort((left, right) => left - right);
+    return problems.length ? fail(`${problems.join(" | ")} (${shown.join("; ") || "no run found"})`, unique) : pass(shown.join("; "), unique);
   },
 
   http_status(args, obs) {
-    const last = [...obs.events].reverse().find((event) => event.type === "http.response");
+    // AG17 (MCP.yaml: "http_status 判的是最后一步那次调用"): with an external agent in the case, the last tool call it
+    // made — after its one token refresh, when there was one; the runner's own reads afterwards (a card's final state
+    // for the transcript) are not the call. Without one, the last HTTP response, as before.
+    const last = mcpAnswers(obs).at(-1) ?? [...obs.events].reverse().find((event) => event.type === "http.response");
     return last && Number(last.status) === Number(args) ? pass(`last status ${last.status}`, seqs([last])) : fail(`last status ${last?.status ?? "none"}, expected ${args}`, last ? seqs([last]) : []);
+  },
+
+  // ── AG17: what the simulated external agent got back (MCP.yaml, SCL.yaml proposed_checks) ──
+
+  /** Every tool answer of the case (results and error bodies): none carries the fragments. A fixture id means that record. */
+  mcp_result_excludes(args, obs) {
+    const answers = mcpAnswers(obs);
+    if (!answers.length) return cannot("the external agent made no tool call in this case");
+    const fragments = (Array.isArray(args) ? args : []).map(String);
+    const found: string[] = [];
+    const evidence: number[] = [];
+    for (const answer of answers) {
+      const text = JSON.stringify(withoutOpaque({ error: answer.error ?? null, result: answer.result ?? null }));
+      for (const fragment of fragments) {
+        const productId = obs.idMap[fragment];
+        const isId = Boolean(productId) || /^[A-Z]{1,4}\d+$/u.test(fragment);
+        // A fixture id stands for the record: its product id anywhere, or the id itself as a whole value. Anything else is text.
+        const hit = isId ? (productId ? text.includes(JSON.stringify(productId).slice(1, -1)) : false) || text.includes(`"${fragment}"`) : text.includes(JSON.stringify(fragment).slice(1, -1));
+        if (hit) {
+          found.push(`${fragment} in the answer to ${answer.tool}${answer.page ? ` (page ${answer.page})` : ""} at seq ${answer.seq}`);
+          evidence.push(Number(answer.seq));
+        }
+      }
+    }
+    // A connection's answers carry no id of a kind it was not granted, as a record or as a relation (coordinator, after
+    // the final gate's judges): the grant is the one the signed-in user gave this connection in the case's consent step.
+    for (const answer of answers) {
+      const grant = grantOf(obs, String(answer.as ?? ""), Number(answer.seq));
+      if (!grant || !answer.result) continue;
+      const ungranted = Object.keys(KIND_IDS).filter((kind) => !grant.includes(`${kind}:read`));
+      if (!ungranted.length) continue;
+      const leaks = new Set<string>();
+      walkResult(answer.result, (key, value) => {
+        for (const kind of ungranted) {
+          if (key && RELATION_KIND[key] === kind) leaks.add(`${key} (${kind})`);
+          if (typeof value === "string" && KIND_IDS[kind]!.test(value)) leaks.add(`an id of ${kind}`);
+        }
+      });
+      if (leaks.size) {
+        found.push(`${[...leaks].join(", ")} in the answer to ${answer.tool} at seq ${answer.seq}, though ${answer.as} may not read ${[...new Set([...leaks].map((leak) => /(\w+)\)?$/u.exec(leak)![1]))].join(", ")}`);
+        evidence.push(Number(answer.seq));
+      }
+    }
+    // Every paging cursor, read the way a client could read it (as it is, base64-decoded, and each dot-separated part
+    // decoded): no account id, no workspace, no record of the fixture and no readable time may be in it.
+    const cursors = answers.filter((answer) => typeof (answer.result as Record<string, unknown> | null)?.next_cursor === "string");
+    const secrets = [...new Set([...Object.values(obs.accounts), ...Object.values(obs.idMap)])].filter((value) => typeof value === "string" && value.length >= 5);
+    for (const answer of cursors) {
+      const cursor = String((answer.result as Record<string, unknown>).next_cursor);
+      const decode = (value: string) => Buffer.from(value, "base64url").toString("latin1");
+      const readings = [cursor, decode(cursor), ...cursor.split(".").map(decode)].join("\n");
+      const seen = secrets.find((value) => readings.includes(value)) ?? (/workspace:|"actorId"|"workspaceId"/u.test(readings) ? "the workspace or account field" : /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/u.test(readings) ? "a readable time" : null);
+      if (seen) {
+        found.push(`the cursor of ${answer.tool}${answer.page ? ` (page ${answer.page})` : ""} at seq ${answer.seq} can be read: it holds ${obs.fixtureIdOf(seen) ?? seen}`);
+        evidence.push(Number(answer.seq));
+      }
+    }
+    return found.length ? fail(`found ${[...new Set(found)].slice(0, 12).join(" | ")}`, [...new Set(evidence)].slice(0, 30)) : pass(`none of the ${fragments.length} fragment(s) in ${answers.length} tool answer(s); ${cursors.length} cursor(s) unreadable`, seqs(answers).slice(-30));
+  },
+
+  /** The last tool answer has these fields: `present` means there and not empty; a value must be equal (a time as an instant). */
+  mcp_result_has(args, obs) {
+    const last = mcpAnswers(obs).at(-1);
+    if (!last) return cannot("the external agent made no tool call in this case");
+    const result = (last.result ?? {}) as Record<string, unknown>;
+    const problems: string[] = [];
+    for (const [field, expected] of Object.entries((args ?? {}) as Record<string, unknown>)) {
+      const actual = result[field];
+      if (expected === "present") {
+        if (actual === undefined || actual === null || actual === "") problems.push(`${field} is missing or empty`);
+      } else if (!sameValueOrInstant(expected, actual)) problems.push(`${field} is ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`);
+    }
+    return problems.length ? fail(problems.join("; "), seqs([last])) : pass(`the last tool answer (${last.tool}, HTTP ${last.status}) has ${Object.keys(args ?? {}).join(", ")}`, seqs([last]));
+  },
+
+  /** The tool list the connection saw when it listed tools is exactly the named ones. */
+  mcp_tool_list(args, obs) {
+    const listed = [...obs.events].reverse().find((event) => event.type === "mcp.tools" && event.as === args?.as);
+    if (!listed) return cannot(`connection ${args?.as} never listed its tools in this case`);
+    const actual = ((listed.tools ?? []) as { name: string }[]).map((tool) => tool.name).sort();
+    const expected = [...((args?.tools ?? []) as string[])].sort();
+    return JSON.stringify(actual) === JSON.stringify(expected) ? pass(`${args.as} sees ${actual.join(", ") || "no tool"}`, seqs([listed])) : fail(`${args.as} sees ${actual.join(", ") || "no tool"}, expected ${expected.join(", ")}`, seqs([listed]));
+  },
+
+  /** The records of the latest mcp_paginate, all pages together: how many, how many more than once, which must be there. */
+  mcp_collected(args, obs) {
+    const paging = [...obs.events].reverse().find((event) => event.type === "mcp.paginate");
+    if (!paging) return cannot("no mcp_paginate step ran in this case");
+    const ids = (paging.ids ?? []) as string[];
+    const unique = new Set(ids);
+    const problems: string[] = [];
+    if (paging.complete !== true) problems.push("the paging stopped before the last page");
+    if (args?.count !== undefined && unique.size !== Number(args.count)) problems.push(`${unique.size} different record(s), expected ${args.count}`);
+    if (args?.duplicates !== undefined && ids.length - unique.size !== Number(args.duplicates)) problems.push(`${ids.length - unique.size} record(s) came back more than once, expected ${args.duplicates}`);
+    const missing = ((args?.includes ?? []) as string[]).filter((fixtureId) => !unique.has(obs.idMap[fixtureId] ?? fixtureId));
+    if (missing.length) problems.push(`not among them: ${missing.join(", ")}`);
+    return problems.length ? fail(problems.join("; "), seqs([paging])) : pass(`${unique.size} record(s) over ${paging.pages} page(s), none twice`, seqs([paging]));
+  },
+
+  /** README §3.2 "某次检索至少翻了几页": the pages of the latest paged retrieval (AG17: the external agent's mcp_paginate). */
+  pages_read(args, obs) {
+    const paging = [...obs.events].reverse().find((event) => event.type === "mcp.paginate");
+    if (!paging) return cannot("no paged retrieval was recorded in this case");
+    return Number(paging.pages) >= Number(args?.min ?? 1) ? pass(`${paging.pages} page(s)`, seqs([paging])) : fail(`${paging.pages} page(s), expected at least ${args?.min}`, seqs([paging]));
   },
 
   reads_include(args, obs) {
@@ -1143,11 +1431,53 @@ export const CHECKS: Record<string, CheckFn> = {
     return problems.length ? fail(problems.join(" | ")) : pass(shown.join("; "));
   },
 
+  /**
+   * AG15 (eval/README.md §3.4): the run history of the whole case is exactly these — rule, planned time, outcome and
+   * the periods skipped (not written: 0). `rule: new` is the rule this case's conversation made.
+   */
+  rule_runs(args, obs) {
+    const expected = (Array.isArray(args) ? args : []) as { rule: string; scheduledAt: string; outcome: string; skipped?: number }[];
+    const runs = obs.ruleRuns;
+    if (!runs) return cannot("the run history was not read");
+    const fixtureRules = new Set(Object.keys(obs.idMap));
+    const nameOf = (run: NonNullable<Observation["ruleRuns"]>[number]) => run.fixtureRule ?? (fixtureRules.has(run.rule) ? run.rule : "new");
+    const shown = runs.map((run) => `${nameOf(run)} ${run.scheduledAt} ${run.outcome}${run.skipped ? ` skipped ${run.skipped}` : ""}`);
+    const rest = [...runs];
+    const problems: string[] = [];
+    for (const want of expected) {
+      const at = rest.findIndex((run) => nameOf(run) === want.rule && Date.parse(run.scheduledAt) === Date.parse(want.scheduledAt));
+      if (at < 0) {
+        problems.push(`no run of ${want.rule} planned for ${want.scheduledAt}`);
+        continue;
+      }
+      const [run] = rest.splice(at, 1);
+      if (run.outcome !== want.outcome) problems.push(`${want.rule} ${want.scheduledAt}: ${run.outcome}, expected ${want.outcome}`);
+      if (run.skipped !== Number(want.skipped ?? 0)) problems.push(`${want.rule} ${want.scheduledAt}: skipped ${run.skipped}, expected ${want.skipped ?? 0}`);
+    }
+    for (const run of rest) problems.push(`unexpected run: ${nameOf(run)} ${run.scheduledAt} ${run.outcome}`);
+    const evidence = seqs(obs.events.filter((event) => event.type === "rule.run"));
+    return problems.length ? fail(`${problems.join(" | ")} (history: ${shown.join("; ") || "empty"})`, evidence) : pass(`history: ${shown.join("; ") || "empty"}`, evidence);
+  },
+
+  /** AG15: the state of a scheduled rule when the case ended (active, paused, completed; removed when it is gone). */
+  rule_state(args, obs) {
+    const rules = obs.rulesAfter;
+    if (!rules) return cannot("the rules were not read");
+    const product = obs.idMap[String(args?.rule)] ?? String(args?.rule);
+    const found = rules.find((rule) => rule.fixtureId === args?.rule || rule.id === product);
+    const state = found?.state ?? "removed";
+    return state === args?.state ? pass(`rule ${args?.rule} is ${state}`) : fail(`rule ${args?.rule} is ${state}, expected ${args?.state}`);
+  },
+
   listed(args, obs) {
     // AG05: until AG10's functions deliver lists of their own, the list delivered last is the last
     // answer's cited records in the order they are cited (登记 in CHANGES.md).
     // AG10 (CHANGES.md 2026-11-18): when the request of the last answer delivered a function's list (fn.rank), that list is it.
-    const answer = lastAnswer(obs);
+    // AG15 (SCL.yaml AE-SCL-029 notes: "listed 判的是最后一份交付的清单"): with no conversation, the list delivered last is
+    // the last scheduled run that reached the inbox — its items in the order shown.
+    const delivered = (obs.ruleRuns ?? []).filter((run) => run.delivery === "delivered" && run.listed.length > 0);
+    const scheduled = delivered[delivered.length - 1];
+    const answer = lastAnswer(obs) ?? (scheduled ? { citations: scheduled.listed, seq: Number(obs.events.filter((event) => event.type === "notify.inbox" && event.outcome === "written").pop()?.seq ?? -1), text: "" } : null);
     if (!answer) return fail("no answer");
     const own = functionListOf(obs, answer);
     const list = own ?? answer.citations;

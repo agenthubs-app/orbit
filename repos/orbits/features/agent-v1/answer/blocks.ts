@@ -21,6 +21,7 @@ import type {
 } from "../../../shared/contract/agent-v1";
 import type { RecordView } from "../domains/types";
 import { dayWordsOf, localParts, whenWordsOf, type Language } from "../functions/copy";
+import { ALL_DAY_WORDS } from "../domains/private-event/ops";
 
 export type AnswerBlock = AgentAnswerBlockContract;
 
@@ -262,7 +263,9 @@ export function recordOfView(view: RecordView, context: CardContext): AgentAnswe
     return { id: view.id, kind: "attendance", title, ...(day ? { day, top: dayWordsOf(day, language) } : {}), ...(sub ? { sub } : {}), ...(eventKind ? { eventKind } : {}), ...(str(fields.eventRefId) ? { eventId: str(fields.eventRefId)! } : {}) };
   }
   const startsAt = str(fields.startsAt);
-  const top = startsAt && Number.isFinite(Date.parse(startsAt)) ? whenOnCard(startsAt, timeZone, language) : WORDS.untimed[language];
+  const timed = startsAt && Number.isFinite(Date.parse(startsAt)) ? startsAt : undefined;
+  // AG20a: an all-day private event shows its day and 全天 where the time would be (never 00:00).
+  const top = timed ? (fields.allDay === true ? `${dayWordsOf(localParts(timed, timeZone).day, language)}${language === "en" ? " " : ""}${ALL_DAY_WORDS[language]}` : whenOnCard(timed, timeZone, language)) : WORDS.untimed[language];
   const place = str(fields.location) ?? (identity.eventKind === "private" ? WORDS.privateEvent[language] : undefined);
   return { id: view.id, kind: "event", title, top, ...(place ? { sub: place } : {}), ...(identity.eventKind ? { eventKind: identity.eventKind } : {}) };
 }
@@ -375,7 +378,10 @@ export function joinBlocks(previous: Pick<AgentAnswerContract, "blocks" | "text"
     const again = recordsBlock(items, language, { size: block.size ?? "full" });
     if (again) out.push(again);
   }
-  if (notes.length) out.push({ items: notes.flatMap((note) => note.items), title: notes[0].title, type: "note" });
+  // AG14 UI: a memory note (it ends in 「去设置 ›」 and has its own title) stays a note of its own.
+  out.push(...notes.filter((note) => note.go));
+  const plain = notes.filter((note) => !note.go);
+  if (plain.length) out.push({ items: plain.flatMap((note) => note.items), title: plain[0].title, type: "note" });
   return out;
 }
 

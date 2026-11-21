@@ -19,7 +19,7 @@ import type { EvalEnvironment } from "./env-guard";
 import { baseUrl } from "./eval-env";
 import { fakeTurn, FAKE_DEFECTS, type FakeDefect } from "./fake-agent";
 import { hardChecksPass, runHardChecks, type CheckContext, type CheckResult } from "./hard-checks";
-import { BUSINESS_COLLECTIONS, normalizeDraftOps, normalizeLedgerOps, PRIVATE_READ_COLLECTIONS, productIdsIn, type CardObservation, type EntryObservation, type FirstLayerObservation, type HandoffPart, type Observation, type ReadObservation } from "./observations";
+import { BUSINESS_COLLECTIONS, normalizeDraftOps, normalizeLedgerOps, PRIVATE_READ_COLLECTIONS, productIdsIn, type MemoryEntryObservation, type CardObservation, type EntryObservation, type FirstLayerObservation, type HandoffPart, type Observation, type ReadObservation } from "./observations";
 import { evalPaths } from "./paths";
 import { drainServer, serverControl } from "./server";
 import { readSeedReport, type SeedReportFile } from "./selfcheck";
@@ -29,6 +29,7 @@ import type { AgentActionPreviewContract } from "../../../shared/contract/agent-
 import { agentRequestIdFor } from "../../../features/agent-v1/entry/store";
 import { CARD_STATUS_LABEL, cardText, decisionRecord, intentsFor, seedCard, seedSpecFor, type CardOpSpec } from "./cards";
 import { ClientViews, viewText } from "./client-views";
+import { clientProfileFor, ExternalAgent, type McpCallResult } from "./mcp-client";
 import { DEFAULT_CLOCK } from "./vocabulary";
 import { loadWorld, patchRecords, type FixtureRecord, type WorldFixture } from "./world";
 import { createWorldWriter, type WorldWriter } from "./seed";
@@ -73,14 +74,10 @@ const STEP_SUPPORT_NOTE: Record<string, string> = {
   disconnect: "the real-time channel needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   legacy_update: "only a to-do's fields can be sent the way an old client does (AG13); other records arrive in AG18",
   local_pending_edit: "unsynced App edits need the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)",
-  mcp: "MCP access arrives in AG17",
-  mcp_paginate: "MCP access arrives in AG17",
-  open_link: "confirmation links arrive in AG17",
   reconnect: "the real-time channel needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   resume_conversation: "resuming a saved conversation with its progress arrives in AG14",
-  revoke: "revoking a connection or a push permission is simulated from AG16/AG17 (a read permission from AG05)",
+  revoke: "revoking a push permission is simulated from AG16 (a read permission from AG05, a connection from AG17)",
   rollback: "rollback arrives in AG18",
-  scheduler_tick: "scheduled dispatch driven by the runner arrives in AG15",
   stop: "stopping a running turn needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   sync: "App sync needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)",
 };
@@ -135,8 +132,11 @@ function stripLifecycle(payload: Record<string, unknown> | null | undefined): Re
 
 /** Deployment settings a patch may set for one case (AG03: model-budget-1); the eval preload hands them to the server. */
 const DEPLOYMENT_SETTINGS = new Set(["model_calls_limit", "judgment_uncalibrated"]);
+/** AG14: the account's own memory switches (「回答时参考这些」, 「从对话里记住新的」). */
+const MEMORY_SETTINGS = new Set(["memory_use", "memory_learn"]);
+const MEMORY_SETTING_LABEL: Record<string, string> = { memory_learn: "从对话里记住新的", memory_use: "回答时参考这些" };
 
-async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches: Record<string, any>, writer: WorldWriter, report: SeedReportFile, unsupported: Observation["unsupported"], fixtureCards: FixtureRecord[] = [], deploymentSettings: Record<string, unknown> = {}, conversations: string[] = []): Promise<Record<string, string>> {
+async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches: Record<string, any>, writer: WorldWriter, report: SeedReportFile, unsupported: Observation["unsupported"], fixtureCards: FixtureRecord[] = [], deploymentSettings: Record<string, unknown> = {}, conversations: string[] = [], memoryWritten: FixtureRecord[] = [], fixtureConnections: FixtureRecord[] = [], serverPort = 0): Promise<Record<string, string>> {
   const extraIds: Record<string, string> = {};
   for (const name of testCase.patches ?? []) {
     const patch = world.patches[name] ?? filePatches[name];
@@ -156,16 +156,26 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
           fixtureCards.push(record);
           continue;
         }
+        // AG17: a fixture connection is made through the product flow once the server knows the case (runCase).
+        if (record.kind === "connection") {
+          fixtureConnections.push(record);
+          continue;
+        }
         if (record.kind === "contact") await writer.writeContact(record);
         else if (record.kind === "memo") await writer.writeMemo(record);
         else if (record.kind === "todo") await writer.writeTodo(record, false);
         else if (record.kind === "followup") await writer.writeTodo(record, true);
-        else if (record.kind === "memory") await writer.writeMemory(record);
-        else if (record.kind === "rule") await writer.writeRule(record);
+        else if (record.kind === "memory") {
+          await writer.writeMemory(record);
+          // AG14: a patch's memory entry belongs to its account alone (no_cross_account looks for its words elsewhere).
+          memoryWritten.push(record);
+        } else if (record.kind === "rule") await writer.writeRule(record);
         else if (record.kind === "schedule") await writer.writeSchedule(record);
         // AG13: private events and «我去过».
         else if (record.kind === "private_event") await writer.writePrivateEvent(record);
         else if (record.kind === "attendance") await writer.writeAttendance(record);
+        // AG16: a phone or a browser registered for notifications (PSH.yaml push-device-app).
+        else if (record.kind === "push_device") await writer.writePushDevice(record, serverPort);
         else if (record.kind === "conversation") {
           // AG03 (CTX conv-prior-turns): the messages and the session state; the case continues this conversation.
           await writer.writeConversation(record);
@@ -181,6 +191,15 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
     }
     for (const [section, items] of Object.entries(patch.set ?? {})) {
       for (const item of items as Record<string, unknown>[]) {
+        // AG16 (rule-push-on): a rule's reminder switch, set the way the task's own page sets it.
+        if (section === "rules") {
+          try {
+            await writer.updateRule(String(item.id), String(item.account ?? world.mainAccount), item);
+          } catch (error) {
+            unsupported.push({ reason: `patch ${name}: changing ${section} ${item.id} failed: ${error instanceof Error ? error.message : error}`, step: 0, word: "patch" });
+          }
+          continue;
+        }
         // AG06 (todo-plan-and-due): a to-do's fields are changed through the to-do service before the case starts.
         if (section !== "todos") {
           unsupported.push({ reason: `patch ${name}: changing ${section} ${item.id} in place is not supported yet`, step: 0, word: "patch" });
@@ -195,6 +214,8 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
     }
     for (const [key, value] of Object.entries((patch.settings ?? {}) as Record<string, unknown>)) {
       if (DEPLOYMENT_SETTINGS.has(key)) deploymentSettings[key] = value;
+      // AG14 (mem-learn-on): the account's own memory switches, set through the memory service before the case starts.
+      else if (MEMORY_SETTINGS.has(key)) await writer.setMemorySettings(world.mainAccount, { [key]: value });
       else unsupported.push({ reason: `patch ${name}: setting ${key}: ${JSON.stringify(value)} is not supported by the current product`, step: 0, word: "patch" });
     }
     for (const kind of Object.keys(generated)) if (kind !== "contacts") unsupported.push({ reason: `patch ${name}: generated ${kind} are not supported yet`, step: 0, word: "patch" });
@@ -217,6 +238,23 @@ function productIdsOfFixture(value: unknown, idMap: Record<string, string>): unk
   return value;
 }
 
+/**
+ * AG15 (AE-SCH-008): the transcript line for one scheduler tick. A waiting delivery taken up is not a sent one: it says how
+ * many were sent, cancelled (the rule was paused, changed or removed, or its note can no longer be read) or still wait.
+ */
+export function dispatchNarration(at: string, status: number, dispatch: Record<string, number> | null): string {
+  const head = `*（定时派发推进到 ${at}：没有任何客户端在线，由运行器像定时器那样调用派发入口，HTTP ${status}`;
+  if (!dispatch) return `${head}）*`;
+  const taken = dispatch.deliveriesRetried ?? 0;
+  const cancelled = dispatch.deliveriesCancelled ?? 0;
+  const sent = dispatch.deliveriesSent ?? 0;
+  const waiting = Math.max(0, taken - cancelled - sent);
+  const retried = taken
+    ? `取出 ${taken} 条待送通知（${[sent ? `送进收件箱 ${sent} 条` : null, cancelled ? `取消 ${cancelled} 条，没有送出` : null, waiting ? `仍没送出、继续待送 ${waiting} 条` : null].filter(Boolean).join("，")}）`
+    : "没有待送通知";
+  return `${head}；这一次处理了 ${dispatch.periods ?? 0} 期规则、${retried}、触发 ${dispatch.timersFired ?? 0} 个一次性定时器${dispatch.undelivered ? `；其中 ${dispatch.undelivered} 期的结果算出来了，但没能写进收件箱，留作待送` : ""}）*`;
+}
+
 /** Per-case files and checks. */
 /**
  * AG19: the answer's blocks as the two clients lay them out (written by server code; the text above is the same answer as
@@ -233,9 +271,19 @@ export function blockLines(blocks: readonly AgentAnswerBlockContract[] | undefin
     else if (block.type === "records") {
       lines.push(`  - 【${block.size === "mini" ? "小卡片" : "卡片"}${block.caption ? `，上方小字「${block.caption}」` : ""}，共 ${block.items.length} 张${block.moreLabel ? `，先显示 ${block.shown} 张，其余收在「${block.moreLabel}」里，点一下原地展开` : ""}】`);
       block.items.forEach((item, index) => lines.push(`    - ${index + 1}. [${KIND[item.kind] ?? item.kind}] ${item.top ?? ""}｜${item.title}｜${item.sub ?? ""}${item.why ? `｜理由：${item.why}` : ""}（${fixtureIdOf(item.id) ?? item.id}${item.gone ? "，已不在" : ""}）`));
-    } else if (block.type === "note") lines.push(`  - 【灰底说明条「${block.title}」】`, ...block.items.map((item) => `    - ${item.quote ? `「${item.quote}」` : ""}${item.text}${item.action ? `〔可以马上做：${item.action}〕` : ""}`));
+    } else if (block.type === "note") lines.push(`  - 【灰底说明条「${block.title}」】`, ...block.items.map((item) => `    - ${item.quote ? `「${item.quote}」` : ""}${item.text}${item.action ? `〔可以马上做：${item.action}〕` : ""}`), ...(block.go ? [`    - 末尾的入口「${block.go.label} ›」：点了打开设置页「iOrbit 记住的信息」${block.go.memoryId ? `里那一条（${block.go.memoryId}）` : ""}`] : []));
   }
   return lines;
+}
+
+/**
+ * AG14 UI: the memory chips at the start of the answer, right after the basis line (approved draft board 5): which saved
+ * entry the answer used ("修改 ›" opens that entry in settings), the one this turn did not follow, a rule that took
+ * results away. Written by server code; both clients show them as they are.
+ */
+export function memoryUseLines(memoryUse: readonly { kind: string; memoryId: string; text: string }[] | undefined, fixtureIdOf: (id: string | null | undefined) => string | null): string[] {
+  if (!memoryUse?.length) return [];
+  return [`- 回答开头记忆的小标签（两端显示在依据行后面；服务端代码写的）：${memoryUse.map((chip) => `「${chip.text}」${chip.kind === "skipped" ? "" : "带「修改 ›」，点了打开设置页里这一条"}（${fixtureIdOf(chip.memoryId) ?? chip.memoryId}）`).join("；")}`];
 }
 
 export async function runCase(testCase: EvalCase, filePatches: Record<string, any>, area: string, ctx: RunnerContext): Promise<CaseOutcome> {
@@ -268,7 +316,9 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const fixtureCards: FixtureRecord[] = [];
   const deploymentSettings: Record<string, unknown> = {};
   const patchConversations: string[] = [];
-  const extraIds = await applyPatches(testCase, world, filePatches, ctx.writer, report, unsupported, fixtureCards, deploymentSettings, patchConversations);
+  const fixtureConnections: FixtureRecord[] = [];
+  const patchMemory: FixtureRecord[] = [];
+  const extraIds = await applyPatches(testCase, world, filePatches, ctx.writer, report, unsupported, fixtureCards, deploymentSettings, patchConversations, patchMemory, fixtureConnections, ctx.environment.port);
   const idMap: Record<string, string> = { ...report.ids, ...extraIds };
   const reverse = new Map(Object.entries(idMap).map(([fixture, product]) => [product, fixture]));
   const fixtureIdOf = (productId: string | null | undefined) => (productId ? reverse.get(productId) ?? null : null);
@@ -286,6 +336,11 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       deploymentSettings.web = value;
       continue;
     }
+    // AG14: a case that starts with a memory switch other than the default.
+    if (MEMORY_SETTINGS.has(key)) {
+      await ctx.writer!.setMemorySettings(account, { [key]: value });
+      continue;
+    }
     unsupported.push({ reason: `setting ${key}: ${JSON.stringify(value)} is not supported by the current product`, step: 0, word: "settings" });
   }
 
@@ -293,6 +348,12 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   await db.connect();
   let diff: DatabaseDiff = { records: [], tables: [] };
   let memoryAfter: { id: string }[] | undefined;
+  // AG14: every memory entry at the end, the settings lists read with each account's own sign-in, the setting steps.
+  let memoryEntries: MemoryEntryObservation[] | undefined;
+  const settingsMemory: Record<string, { status: number; ids: string[] }> = {};
+  let userChangedMemorySettings = false;
+  let rulesAfter: NonNullable<Observation["rulesAfter"]> | undefined;
+  const ruleEndLines: string[] = [];
   let mergedEvents: TraceEvent[] = [];
   let error: string | undefined;
   const transcript: string[] = [`# ${testCase.id} ${testCase.title}`, "", `- 账号：${account}（${world.accounts[account]?.name ?? ""}） · 世界：${testCase.world} · 时钟：${clock}`, ""];
@@ -346,6 +407,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     const continuedSession = continued ? idMap[continued] : undefined;
     if (continued && !continuedSession) unsupported.push({ reason: `conversation ${continued} is not in the seeded world (re-run agent-eval:seed)`, step: 0, word: "conversation" });
     let conversation: ConversationState = { history: [], messageRevision: 0, sessionId: continuedSession ?? `session_${randomUUID()}`, started: Boolean(continuedSession) };
+    // AG14 (resume_conversation): the conversations of this case in the order they were opened.
+    const opened: ConversationState[] = [conversation];
     if (continuedSession) transcript.push(`*（接着已有的对话 ${continued} 说；会话里存的上文和状态见 trace 的 context.built）*`, "");
     const sentBodies = new Map<number, unknown>();
     const clientFor = async (name: string) => new EvalClient(baseUrl(environment), log, await cookieFor(account), (name as "web" | "app") ?? "web");
@@ -353,6 +416,50 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       entry = new EntryHarness({ actorId: () => accounts[account], baseUrl: baseUrl(environment), cookie: () => cookieFor(account), db, log, sessionId: conversation.sessionId });
       await entry.start(["web", "app"]);
     }
+
+    // ── AG17: external connections. Each is made through the product flow by the simulated external client: the 401
+    // challenge, the metadata, the authorization request, the fixture account agreeing on Orbit's consent interface
+    // with the fixture's scopes, the code and the tokens. A patch's connections are made before the first step; a
+    // world's own (regular-v1, large-v1) when a step first uses them.
+    const agents = new Map<string, ExternalAgent>();
+    const lastProposal: { id: string | null; url: string | null; owner?: string } = { id: null, url: null };
+    /** AG17: the account whose latest open_link was refused (another account's link); its next click is a direct post. */
+    let refusedLinkAs: string | null = null;
+    const connectAgent = async (record: FixtureRecord): Promise<ExternalAgent> => {
+      const data = record.data as { client?: string; scopes?: string[] };
+      const profile = clientProfileFor(String(data.client ?? "Claude"));
+      const agent = new ExternalAgent({ baseUrl: baseUrl(environment), log, name: record.id, ...profile });
+      await agent.connect(await cookieFor(record.account), data.scopes ?? []);
+      agents.set(record.id, agent);
+      transcript.push(`*（外部连接 ${record.id}：模拟的外部客户端（夹具写作 ${data.client ?? "Claude"}，用录好的 ${profile.clientId === "https://claude.ai/oauth/mcp-oauth-client-metadata" ? "Claude" : "Claude Code"} 身份文档，${profile.era === "modern" ? "按 2026-07-28 版逐次请求" : "先做 2025-11-25 版握手"}）走完授权流程：未带令牌的调用得到 401 质询 → 读元数据 → 带 PKCE 的授权请求 → 账号 ${record.account} 在 Orbit 的同意接口上勾选 ${(data.scopes ?? []).join("、")} → 用授权码换令牌。它列出的工具：${agent.tools.join("、") || "（无）"}）*`, "");
+      return agent;
+    };
+    const agentFor = async (name: string): Promise<ExternalAgent | null> => {
+      const known = agents.get(name);
+      if (known) return known;
+      const record = world.anchors.find((item) => item.kind === "connection" && item.id === name);
+      return record ? connectAgent(record) : null;
+    };
+    for (const record of fixtureConnections) {
+      try {
+        await connectAgent(record);
+      } catch (connectError) {
+        unsupported.push({ reason: `connection ${record.id} could not be made through the product flow: ${connectError instanceof Error ? connectError.message : connectError}`, step: 0, word: "patch" });
+      }
+    }
+    /** Records in a tool result, named by their fixture ids where they have one (for the transcript). */
+    const recordNames = (result: Record<string, any> | null): string[] => (Array.isArray(result?.records) ? result!.records : result?.record ? [result.record] : []).map((item: { id?: string }) => fixtureIdOf(item.id) ?? String(item.id));
+    const mcpAnswerLines = (answer: McpCallResult): string[] => {
+      const lines = [`- Orbit（HTTP ${answer.status}${answer.refreshed ? "，客户端先刷新了一次令牌" : ""}）：${answer.result ? (answer.isError ? "工具结果（isError）" : "工具结果") : "没有工具结果"}`];
+      if (answer.wwwAuthenticate) lines.push(`  - WWW-Authenticate：${answer.wwwAuthenticate}`);
+      if (answer.error) lines.push(`  - 错误体：${JSON.stringify(answer.error).slice(0, 1200)}`);
+      if (answer.result) {
+        const named = recordNames(answer.result);
+        if (named.length) lines.push(`  - 返回的记录（夹具编号）：${named.join("、")}`);
+        lines.push("  ```json", ...JSON.stringify(answer.result, null, 2).slice(0, 6000).split("\n").map((line) => `  ${line}`), "  ```");
+      }
+      return lines;
+    };
 
     // ── AG02: cards. Hashes per revision as the clients saw them (click.revision), seeding. ──
     const cardHashes = new Map<string, Map<number, string>>();
@@ -546,6 +653,31 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       transcript.push(`**Agent**${result.status !== 200 ? `（HTTP ${result.status}）` : ""}：${assistantText || "（无文字回应）"}`, ...cardLines, "");
     };
 
+    // ── AG15: the inbox, read as each account's own client; a card an entry points at is a card the user can click. ──
+    const platformEvents = new Set(world.anchors.filter((record) => record.kind === "platform_event").map((record) => record.id));
+    /** "2026-11-20 09:00（Asia/Tokyo）": a period's planned time as the account's own clock shows it. */
+    const localTime = (instant: string) => `${new Intl.DateTimeFormat("sv-SE", { dateStyle: "short", timeStyle: "short", timeZone: world.timezone ?? "Asia/Tokyo" }).format(new Date(instant))}（${world.timezone ?? "Asia/Tokyo"}）`;
+    let inboxFaultArmed = false;
+    const inboxSeen = new Set<string>();
+    const readInboxes = async (index: number) => {
+      for (const label of Object.keys(accounts)) {
+        const client = new EvalClient(baseUrl(environment), log, await cookieFor(label), "web");
+        // The runner's own look at each account's inbox (not the tested system's read): tagged like the other device's.
+        const result = await client.request("GET", "/api/inbox/notifications?limit=50", undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: `inbox of account ${label}` });
+        const items = ((result.body?.data?.items ?? []) as { id: string; title: string; reason: string; kind: string; sources: { sourceKind: string; sourceId: string }[]; target: { kind: string; id: string } }[]).filter((item) => item.sources.some((source) => ["automation_result", "agent_card", "external_proposal"].includes(source.sourceKind)));
+        for (const item of items) {
+          if (inboxSeen.has(`${label}:${item.id}`)) continue;
+          inboxSeen.add(`${label}:${item.id}`);
+          log.push({ account: label, inboxId: item.id, kind: item.kind, sourceKind: item.sources[0]?.sourceKind ?? null, step: index, target: item.target, title: item.title, type: "client.inbox_entry" });
+          transcript.push(`**站内收件箱**（账号 ${label}，新条目）：${item.title}`, ...String(item.reason).split("\n").map((line) => `> ${line}`), "");
+          if (item.target.kind === "card" && label === account) {
+            const card = await readCardAs("web", item.target.id, "inbox: open the card this entry points at");
+            transcript.push(`*（这条收件箱条目指向一张待确认的卡，不挂在任何对话下；出处：${card?.origin?.kind === "automation" ? `定时任务 ${fixtureIdOf(card.origin.ruleId) ?? card.origin.ruleId}，触发时刻 ${card.origin.firedAt}` : card?.origin?.kind ?? "未知"}）*`, ...cardText(card), "");
+          }
+        }
+      }
+    };
+
     const runStep = async (step: Step, index: number): Promise<void> => {
       const word = Object.keys(step).find((key) => !["client", "refs", "while_running"].includes(key)) ?? "unknown";
       stepRecords.push({ index, word });
@@ -652,7 +784,11 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         case "fault": {
           log.push({ fault: step.fault, source: "simulated", step: index, type: "turn.fault" });
           // AG05: the read adapters are fault points too (<kind>.read). AG06: one card operation (memo.create …).
-          if (!["model", "understand", "judgment", "executor", "memo.read", "todo.read", "contact.read", "schedule.read", "event.read", ...EXECUTOR_FAULT_POINTS].includes(step.fault?.where)) unsupported.push({ reason: `fault point "${step.fault?.where}" has no consumer in the current product`, step: index, word });
+          // AG15: writing a scheduled run's result to the inbox is a fault point too (notify.inbox); it covers the next
+          // scheduler_tick (SCH.yaml notes: "故障只作用于第一次派发") and ends after it.
+          if (step.fault?.where === "notify.inbox") inboxFaultArmed = true;
+          // AG16: the push service is a fault point too (push): the simulated service refuses, or does not answer, the next send.
+          if (!["model", "understand", "judgment", "executor", "notify.inbox", "push", "memo.read", "todo.read", "contact.read", "schedule.read", "event.read", ...EXECUTOR_FAULT_POINTS].includes(step.fault?.where)) unsupported.push({ reason: `fault point "${step.fault?.where}" has no consumer in the current product`, step: index, word });
           if (EXECUTOR_FAULT_POINTS.includes(step.fault?.where) || step.fault?.where === "executor") executorFaultArmed = String(step.fault?.where);
           await serverControl(environment, "fault", step.fault);
           return;
@@ -669,13 +805,60 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           transcript.push(`*（时钟推进到 ${result.now}）*`, "");
           return;
         }
+        case "scheduler_tick": {
+          // AG15 (eval/README.md §10): the runner drives the dispatch. The clock moves to the tick's time and the
+          // product's own dispatch entry is called as a scheduler calls it: no account, no client, only its secret.
+          const at = String((step.scheduler_tick as { at?: string } | undefined)?.at ?? "");
+          const moved = await serverControl<{ now: string }>(environment, "clock", { to: at });
+          clockOffsetMs = Date.parse(moved.now) - Date.now();
+          log.push({ at, now: moved.now, step: index, type: "turn.scheduler_tick" });
+          const response = await fetch(`${baseUrl(environment)}/api/internal/agent/automations`, { headers: { authorization: `Bearer ${environment.env.CRON_SECRET ?? ""}` }, method: "POST" });
+          const body = (await response.json().catch(() => null)) as { data?: { dispatch?: Record<string, number> } } | null;
+          const dispatch = body?.data?.dispatch ?? null;
+          log.push({ dispatch, status: response.status, step: index, type: "scheduler.dispatch" });
+          transcript.push(dispatchNarration(at, response.status, dispatch), "");
+          if (response.status !== 200) unsupported.push({ reason: `the dispatch entry answered HTTP ${response.status}`, step: index, word });
+          if (inboxFaultArmed) {
+            await serverControl(environment, "fault_end", { where: "notify.inbox" });
+            log.push({ step: index, type: "turn.fault_end", where: "notify.inbox" });
+            inboxFaultArmed = false;
+          }
+          await readInboxes(index);
+          return;
+        }
         case "new_conversation":
+          // AG14 UI run: the clients get the answer of the conversation being left before it is left (entry-client sessionDelivered).
+          if (entry && !(await entry.settleSession())) log.push({ note: "a client had not received every answer of the conversation before it was left", step: index, type: "runner.note" });
           conversation = { history: [], messageRevision: 0, sessionId: `session_${randomUUID()}`, started: false };
+          opened.push(conversation);
           await entry?.switchSession(conversation.sessionId);
           log.push({ sessionId: conversation.sessionId, step: index, type: "turn.new_conversation" });
           transcript.push("*（新开对话）*", "");
           return;
+        case "resume_conversation": {
+          // AG14 UI run: the clients get the answer of the conversation being left before it is left (entry-client sessionDelivered).
+          if (entry && !(await entry.settleSession())) log.push({ note: "a client had not received every answer of the conversation before it was left", step: index, type: "runner.note" });
+          // AG14 (MEM.yaml): back to the n-th conversation of this case (from 1). The client opens the stored session
+          // again, as it does from the conversation list, and the next message is sent in it.
+          const at = Number((step.resume_conversation as { index?: number } | undefined)?.index ?? 0);
+          const target = opened[at - 1];
+          if (!target) {
+            unsupported.push({ reason: `this case has no conversation number ${at} (it opened ${opened.length})`, step: index, word });
+            return;
+          }
+          conversation = target;
+          await entry?.switchSession(conversation.sessionId);
+          const client = await clientFor(String(step.client ?? "web"));
+          const session = await client.request("GET", `/api/ai/conversations/sessions/${encodeURIComponent(conversation.sessionId)}`, undefined, { purpose: "reopen a stored conversation" });
+          const revision = session.body?.data?.session?.messageRevision;
+          if (typeof revision === "number") conversation.messageRevision = revision;
+          log.push({ index: at, sessionId: conversation.sessionId, status: session.status, step: index, type: "turn.resume_conversation" });
+          transcript.push(`*（回到本用例的第 ${at} 个对话，接着说）*`, "");
+          return;
+        }
         case "switch_account": {
+          // AG14 UI run: the clients get the answer of the conversation being left before it is left (entry-client sessionDelivered).
+          if (entry && !(await entry.settleSession())) log.push({ note: "a client had not received every answer of the conversation before it was left", step: index, type: "runner.note" });
           const label = String(step.switch_account);
           if (!accounts[label]) {
             unsupported.push({ reason: `account ${label} does not exist in ${testCase.world}`, step: index, word });
@@ -683,6 +866,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           }
           account = label;
           conversation = { history: [], messageRevision: 0, sessionId: `session_${randomUUID()}`, started: false };
+          opened.push(conversation);
           await entry?.switchSession(conversation.sessionId);
           log.push({ account: label, step: index, type: "turn.switch_account" });
           transcript.push(`*（换成账号 ${label}）*`, "");
@@ -725,6 +909,27 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
             const body = { clientDecisionId: `decision:${randomUUID()}`, payloadHash, revision, transition: decision, ...(operationId ? { operationId } : {}) };
             sentBodies.set(index, { cardId, clientName, decisionBody: body });
             await sendDecision(index, clientName, cardId!, body, false);
+            return;
+          }
+          if (!cardId && word === "click" && refusedLinkAs === account && lastProposal.id && lastProposal.owner && lastProposal.owner !== account) {
+            // AG17 (coordinator, after the final gate's judges): this account's page showed no card, but a hostile client
+            // could still post the decision. The runner looks up the card behind the proposal as its owner (a housekeeping
+            // read nobody is shown) and posts the confirm transition with this account's session, with the card's own
+            // revision and hash: the server must refuse it, and nothing may be written.
+            const owner = new EvalClient(baseUrl(environment), log, await cookieFor(lastProposal.owner), "web");
+            const looked = await owner.request("GET", `/api/agent/proposals/${encodeURIComponent(lastProposal.id)}`, undefined, { purpose: `the runner looks up the card behind the proposal as its owner ${lastProposal.owner} (not shown to anyone)` });
+            const target = looked.body?.data?.card as AgentActionPreviewContract | undefined;
+            if (!target) {
+              unsupported.push({ reason: "the owner could not read the proposal's card", step: index, word });
+              return;
+            }
+            log.push({ as: account, cardId: target.actionId, client: clientName, decision, foreign: true, step: index, type: "turn.click" });
+            transcript.push(`**账号 ${account} 直接发出决定**：${decision}（${target.actionId}，它自己的页面上没有这张卡；运行器按卡的版本和哈希代发，模拟绕过页面的客户端）`, "");
+            const intruder = await clientFor(clientName);
+            const result = await intruder.request("POST", `/api/agent/ledger/${encodeURIComponent(target.actionId)}/transition`, { clientDecisionId: `decision:${randomUUID()}`, payloadHash: target.payloadHash, revision: target.revision, transition: decision }, { purpose: `account ${account} posts the decision for another account's card` });
+            const accepted = result.status >= 200 && result.status < 300;
+            log.push({ accepted, cardId: target.actionId, decision, reason: accepted ? null : result.body?.error?.code ?? `HTTP_${result.status}`, status: result.status, type: "card.decision", via: "click" });
+            transcript.push(`- 服务端：${accepted ? "已接受" : `拒绝（HTTP ${result.status}，${result.body?.error?.code ?? "没有代码"}）`}`, "");
             return;
           }
           log.push({ cardId: cardId ?? null, client: clientName, decision, step: index, type: "turn.click" });
@@ -822,6 +1027,17 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           const change = (step.external_change ?? {}) as { target?: string; set?: Record<string, unknown>; delete?: boolean };
           log.push({ change, step: index, type: "turn.external_change" });
           const productId = change.target ? idMap[change.target] : undefined;
+          if (change.target && platformEvents.has(change.target) && !change.delete) {
+            // AG15 (SCH.yaml): the organizer announces an event's time, place and topics through the host's own
+            // update and publish. Not the tested system's write.
+            try {
+              await ctx.writer!.updatePlatformEvent(change.target, change.set ?? {});
+              transcript.push(`*（主办方更新了平台活动 ${change.target}：${JSON.stringify(change.set ?? {})}，经主办方自己的修改与发布流程）*`, "");
+            } catch (changeError) {
+              unsupported.push({ reason: `external change of ${change.target} failed: ${changeError instanceof Error ? changeError.message : changeError}`, step: index, word });
+            }
+            return;
+          }
           if (productId && change.delete && productId.startsWith("note:")) {
             // AG05: the note is deleted on another device through the product's normal delete endpoint.
             const device = new EvalClient(baseUrl(environment), log, await cookieFor(account), "web");
@@ -934,11 +1150,102 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           transcript.push("");
           return;
         }
+        case "mcp":
+        case "mcp_paginate": {
+          // AG17 (README §3.1, §3.4): one tool call of the simulated external agent; or the same call page after page.
+          const spec = (step[word] ?? {}) as { as?: string; tool?: string; args?: Record<string, unknown>; pages?: number | "all" };
+          const agent = await agentFor(String(spec.as));
+          log.push({ args: spec.args ?? {}, as: spec.as, ...(word === "mcp_paginate" ? { pages: spec.pages ?? "all" } : {}), step: index, tool: spec.tool, type: `turn.${word}` });
+          if (!agent) {
+            unsupported.push({ reason: `connection ${spec.as} is not in this case's patches or world`, step: index, word });
+            return;
+          }
+          // Fixture ids in the arguments become the product's ids; `proposal: last` is the latest proposal's id.
+          const args = productIdsOfFixture(spec.args ?? {}, idMap) as Record<string, unknown>;
+          if (args.proposal === "last") args.proposal = lastProposal.id ?? "none";
+          transcript.push(`**外部 Agent（${spec.as}）调用** \`${spec.tool}\`：\`${JSON.stringify(spec.args ?? {})}\`${word === "mcp_paginate" ? `（从第一页起，每次带上一页的游标再调，${spec.pages === undefined || spec.pages === "all" ? "直到没有下一页" : `翻满 ${spec.pages} 页`}）` : ""}`, "");
+          if (word === "mcp") {
+            const answer = await agent.call(String(spec.tool), args, { shownArgs: spec.args ?? {}, step: index });
+            if (typeof answer.result?.proposal_id === "string") {
+              lastProposal.id = answer.result.proposal_id;
+              lastProposal.url = typeof answer.result.confirm_url === "string" ? answer.result.confirm_url : null;
+              lastProposal.owner = [...fixtureConnections, ...world.anchors].find((item) => item.kind === "connection" && item.id === spec.as)?.account ?? account;
+            }
+            transcript.push(...mcpAnswerLines(answer), "");
+            return;
+          }
+          const limit = spec.pages === undefined || spec.pages === "all" ? 2000 : Number(spec.pages);
+          const ids: string[] = [];
+          let cursor: string | undefined;
+          let pages = 0;
+          let lastAnswer: McpCallResult | null = null;
+          let firstAnswer: McpCallResult | null = null;
+          do {
+            pages += 1;
+            lastAnswer = await agent.call(String(spec.tool), { ...args, ...(cursor ? { cursor } : {}) }, { page: pages, shownArgs: spec.args ?? {}, step: index });
+            firstAnswer ??= lastAnswer;
+            if (lastAnswer.status !== 200 || lastAnswer.isError || !Array.isArray(lastAnswer.result?.records)) break;
+            ids.push(...(lastAnswer.result!.records as { id: string }[]).map((record) => String(record.id)));
+            cursor = typeof lastAnswer.result!.next_cursor === "string" ? lastAnswer.result!.next_cursor : undefined;
+          } while (cursor && pages < limit);
+          const unique = new Set(ids);
+          log.push({ as: spec.as, complete: !cursor, duplicates: ids.length - unique.size, ids, pages, step: index, tool: spec.tool, type: "mcp.paginate" });
+          transcript.push(`- 共翻了 ${pages} 页（每页一次真实调用），收到 ${ids.length} 条记录，重复 ${ids.length - unique.size} 条，${cursor ? "还有下一页（按页数停下）" : "没有下一页了"}。第一页和最后一页如下，其余各页的逐条内容在 trace.jsonl 的 mcp.response 里。`, "- 第一页：", ...(firstAnswer ? mcpAnswerLines(firstAnswer) : []), ...(pages > 1 && lastAnswer ? ["- 最后一页：", ...mcpAnswerLines(lastAnswer)] : []), "");
+          return;
+        }
+        case "open_link": {
+          // AG17 (README §3.1): an account, signed in to Orbit, opens the confirm link. The page reads this interface;
+          // what it answers is what that account can see (the page itself is drawn once its visual draft is approved).
+          const spec = (step.open_link ?? {}) as { proposal?: string; as?: string };
+          const label = String(spec.as ?? account);
+          log.push({ as: label, proposal: spec.proposal ?? "last", step: index, type: "turn.open_link", url: lastProposal.url });
+          if (!lastProposal.id || !accounts[label]) {
+            unsupported.push({ reason: !lastProposal.id ? "no proposal was returned before this step" : `account ${label} does not exist in ${testCase.world}`, step: index, word });
+            return;
+          }
+          const opener = new EvalClient(baseUrl(environment), log, await cookieFor(label), "web");
+          const opened = await opener.request("GET", `/api/agent/proposals/${encodeURIComponent(lastProposal.id)}`, undefined, { purpose: `account ${label} opens the confirm link` });
+          const view = opened.body?.data as { card?: AgentActionPreviewContract; clientName?: string; notice?: string } | undefined;
+          transcript.push(`**账号 ${label} 登录后打开确认链接** ${lastProposal.url ?? ""}`, "");
+          refusedLinkAs = opened.status === 200 && view?.card ? null : label;
+          if (opened.status === 200 && view?.card) {
+            noteCard(view.card, "web");
+            log.push({ as: label, cardId: view.card.actionId, clientName: view.clientName ?? null, status: view.card.status, step: index, type: "link.opened" });
+            transcript.push(`- 页面读到的内容（HTTP 200）：${view.clientName ?? "外部助手"} 提的修改`, ...cardText(view.card), ...view.card.operations.flatMap((op) => (op.display?.rows ?? []).map((row) => `    - ${row.label}：${row.before ?? "（空）"} → ${row.after ?? "（空）"}`)), ...(view.notice ? [`  - 页面上的说明（服务端给的文字）：${view.notice}`] : []), "");
+          } else {
+            log.push({ as: label, reason: opened.body?.error?.context?.reason ?? null, status: opened.status, step: index, type: "link.refused" });
+            transcript.push(`- 页面读到的内容（HTTP ${opened.status}）：${opened.body?.error?.message ?? "（没有内容）"}`, `- 响应全文：\`${JSON.stringify(opened.body ?? null).slice(0, 800)}\``, "- 页面上没有卡，也没有可点的按钮。", "");
+          }
+          return;
+        }
         case "revoke": {
+          // AG17: `connection: <name>` — the owner revokes the connection in Orbit's settings (the session interface).
+          const connectionName = (step.revoke as { connection?: string } | undefined)?.connection;
+          if (connectionName) {
+            const agent = await agentFor(connectionName);
+            const owner = [...fixtureConnections, ...world.anchors].find((item) => item.kind === "connection" && item.id === connectionName)?.account ?? account;
+            log.push({ revoke: { connection: connectionName }, step: index, type: "turn.revoke" });
+            if (!agent?.connectionId) {
+              unsupported.push({ reason: `connection ${connectionName} was never made, so it cannot be revoked`, step: index, word });
+              return;
+            }
+            const settings = new EvalClient(baseUrl(environment), log, await cookieFor(owner), "web");
+            const revoked = await settings.request("DELETE", `/api/agent/connections/${encodeURIComponent(agent.connectionId)}`, undefined, { purpose: `account ${owner} revokes the connection in settings` });
+            transcript.push(`*（账号 ${owner} 在设置里撤销了连接 ${connectionName}：HTTP ${revoked.status}${revoked.body?.data ? `，作废了 ${revoked.body.data.voidedProposals} 条还没确认的提议` : ""}）*`, "");
+            if (revoked.status !== 200) unsupported.push({ reason: `revoking ${connectionName} answered ${revoked.status}`, step: index, word });
+            return;
+          }
           // AG05 (PLANNER 出入 4): the product has no per-record read permission yet; the eval's deny list,
           // checked by every read, stands for it. `read: "memo:M31"` withdraws the read of that record.
-          const spec = (step.revoke ?? {}) as { read?: string };
-          log.push({ revoke: spec, step: index, type: "turn.revoke" });
+          const spec = (step.revoke ?? {}) as { read?: string; push?: string };
+          log.push({ revoke: spec, source: spec.push ? "simulated" : undefined, step: index, type: "turn.revoke" });
+          if (spec.push === "app" || spec.push === "web") {
+            // AG16 (PSH.yaml revoke.push): the permission is taken away on the device. The server is not told: only the
+            // simulated push service knows, and refuses what is sent to that client from now on.
+            await serverControl(environment, "revoke", { push: spec.push });
+            transcript.push(`*（${spec.push === "app" ? "手机" : "浏览器"}在系统设置里撤销了通知授权：服务端事先不知道，之后发给它的提醒会被模拟的推送服务拒收）*`, "");
+            return;
+          }
           const target = typeof spec.read === "string" ? spec.read.slice(spec.read.indexOf(":") + 1) : "";
           const productId = target ? idMap[target] : undefined;
           if (!productId) {
@@ -949,9 +1256,24 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           transcript.push(`*（撤回了对 ${target} 的读取权限：评测环境的拒读名单，之后的每次读取都会核对）*`, "");
           return;
         }
-        case "setting":
-          unsupported.push({ reason: `setting ${JSON.stringify(step.setting)} is not supported by the current product`, step: index, word });
+        case "setting": {
+          // AG14: the user flips one of the two memory switches on the settings page (the settings API, with the account's
+          // own sign-in). It is the user's own action, not a write of the tested system.
+          const setting = (step.setting ?? {}) as Record<string, unknown>;
+          const other = Object.keys(setting).filter((key) => !MEMORY_SETTINGS.has(key));
+          if (other.length || !Object.keys(setting).length) {
+            unsupported.push({ reason: `setting ${JSON.stringify(step.setting)} is not supported by the current product`, step: index, word });
+            return;
+          }
+          const body = { ...(setting.memory_use !== undefined ? { enabled: setting.memory_use === "on" || setting.memory_use === true } : {}), ...(setting.memory_learn !== undefined ? { allowConversationLearning: setting.memory_learn === "on" || setting.memory_learn === true } : {}) };
+          const device = new EvalClient(baseUrl(environment), log, await cookieFor(account), "web");
+          log.push({ account, setting, step: index, type: "turn.setting" });
+          const result = await device.request("PATCH", "/api/agent/memory/settings", body, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: "the user changes a memory switch on the settings page" });
+          userChangedMemorySettings = true;
+          if (result.status !== 200) unsupported.push({ reason: `changing the memory setting failed (HTTP ${result.status})`, step: index, word });
+          transcript.push(`*（用户在设置页把${Object.entries(setting).map(([key, value]) => `「${MEMORY_SETTING_LABEL[key] ?? key}」${value === "on" || value === true ? "打开" : "关掉"}`).join("、")}）*`, "");
           return;
+        }
         default:
           log.push({ step: index, type: `turn.${word}`, value: step[word] });
           unsupported.push({ reason: STEP_SUPPORT_NOTE[word] ?? "step not supported by the current product", step: index, word });
@@ -1036,15 +1358,58 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     for (const fault of serverState.faults ?? []) {
       if (!fault.applied) unsupported.push({ reason: `${fault.where}/${fault.kind} was armed but never reached, so this case did not test what it plans`, step: -1, word: "fault" });
     }
+    // AG15: what each account's "my scheduled tasks" shows at the end (through the product's own endpoints, as that
+    // account), for rule_state and for the judges: the task, its next run and its history lines.
+    if (!fake && (testCase.steps.some((step) => "scheduler_tick" in step) || (testCase.hard ?? []).some((check) => "rule_state" in (check as object) || "rule_runs" in (check as object)))) {
+      rulesAfter = [];
+      const historyLines: string[] = [];
+      for (const label of Object.keys(accounts)) {
+        const client = new EvalClient(baseUrl(environment), log, await cookieFor(label), "web");
+        const list = await client.request("GET", "/api/agent/automations", undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: `runner: scheduled tasks of account ${label}` });
+        const tasks = (list.body?.data?.tasks ?? []) as { id: string; title: string; status: string; version: number; rows: { label: string; value: string }[] }[];
+        for (const task of tasks) {
+          rulesAfter.push({ account: label, fixtureId: fixtureIdOf(task.id), id: task.id, state: task.status, version: task.version });
+          const history = await client.request("GET", `/api/agent/automations/${encodeURIComponent(task.id)}/runs`, undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: `runner: history of scheduled task ${fixtureIdOf(task.id) ?? task.id}` });
+          const runs = (history.body?.data?.runs ?? []) as { scheduledAt: string; line: string; outcome: string; skipped: number; computedAt?: string; push?: { line?: string | null; state?: string; attempts?: number; deliveredAt?: string; lastAttemptAt?: string }; detail?: { source?: { caption: string; card: { id: string; title: string; top?: string; sub?: string } } } }[];
+          // AG16: the two things the history keeps apart — when the result was worked out, and whether the reminder arrived.
+          const second = (run: (typeof runs)[number]) => (run.push?.line ? `\n    - 结果算出的时刻：${run.computedAt ? localTime(run.computedAt) : "（没有）"}\n    - 提醒：${run.push.line}（状态 ${run.push.state}，尝试 ${run.push.attempts ?? 0} 次${run.push.deliveredAt ? `，送达时刻 ${localTime(run.push.deliveredAt)}` : run.push.lastAttemptAt ? `，最后一次尝试 ${localTime(run.push.lastAttemptAt)}` : ""}）` : "");
+          // AE-SCL-030 R4: the note a result picked by, as the result page shows it (a card that opens the note).
+          const sourceLine = (run: (typeof runs)[number]) => {
+            const source = run.detail?.source;
+            return source ? [`    - 结果页上可以点开的笔记（${source.caption}）：${source.card.title}（${fixtureIdOf(source.card.id) ?? source.card.id}${source.card.top ? `，${source.card.top}` : ""}）${source.card.sub ? ` · ${source.card.sub}` : ""}`] : [];
+          };
+          historyLines.push(`### 账号 ${label}：${task.title}（${fixtureIdOf(task.id) ?? "本用例新建"}，${({ active: "运行中", completed: "已结束", paused: "已暂停" } as Record<string, string>)[task.status] ?? task.status}）`, ...task.rows.map((row) => `- ${row.label}：${row.value}`), runs.length ? "- 历史（最近的在前）：" : "- 历史：还没有运行过", ...runs.flatMap((run) => [`  - ${localTime(run.scheduledAt)} 这一期：${run.line}${second(run)}`, ...sourceLine(run)]), "");
+        }
+      }
+      if (historyLines.length) ruleEndLines.push("## 「我的定时任务」接口最后返回的内容（任务、下次运行、运行历史）", "", ...historyLines);
+      await readInboxes(-1);
+    }
     const after = await readDatabaseState(db);
     diff = await diffStates(db, before, beforePayloads, after);
     // AG11 (memory_state, first used by AE-REF-002's gate): the account's memory entries at the end of the case.
-    const memoryKeys = [...after.records.values()].filter((row) => row.collection === "agentMemories" && row.owner === accounts[account]);
-    const memoryPayloads = await readPayloads(db, memoryKeys);
-    memoryAfter = memoryKeys.flatMap((row) => {
-      const payload = memoryPayloads.get(recordKey(row));
-      return payload && payload.kind === "memory" && payload.__lifecycleState !== "deleted" ? [{ id: row.id }] : [];
+    // AG14: an entry is the account's when its partition is the account's (entries stored before AG14 carry no owner
+    // column); a deleted entry stays as a mark (status deleted, no words) and is not an entry in use.
+    const ownerOfMemory = (row: { owner: string | null; workspace: string }) => row.owner ?? row.workspace.slice(row.workspace.indexOf(":agent-actor:") + ":agent-actor:".length);
+    const allMemoryKeys = [...after.records.values()].filter((row) => row.collection === "agentMemories");
+    const allMemoryPayloads = await readPayloads(db, allMemoryKeys);
+    memoryEntries = allMemoryKeys.flatMap((row) => {
+      const payload = allMemoryPayloads.get(recordKey(row)) as { kind?: string; __lifecycleState?: string; memory?: { status?: string; revision?: number; category?: string; appliesTo?: string[] } } | undefined;
+      if (!payload || payload.kind !== "memory" || payload.__lifecycleState === "deleted") return [];
+      const memory = payload.memory ?? {};
+      return [{ account: accountByActor.get(ownerOfMemory(row)) ?? null, appliesTo: Array.isArray(memory.appliesTo) ? memory.appliesTo : [], category: String(memory.category ?? ""), fixtureId: fixtureIdOf(row.id), id: row.id, revision: Number(memory.revision ?? 1), status: memory.status === "deleted" ? "deleted" as const : "active" as const }];
     });
+    memoryAfter = memoryEntries.filter((entry) => entry.status === "active" && entry.account === account).map((entry) => ({ id: entry.id }));
+    // AG14 (settings_memory_list): what the settings API lists for each account named, with that account's own sign-in.
+    for (const check of testCase.hard) {
+      const wanted = (check as { settings_memory_list?: { account?: string } }).settings_memory_list;
+      const label = wanted?.account ? String(wanted.account) : null;
+      if (!label || settingsMemory[label] || !accounts[label]) continue;
+      const device = new EvalClient(baseUrl(environment), log, await cookieFor(label), "web");
+      const listedNow = await device.request("GET", "/api/agent/memory", undefined, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: `the settings page of account ${label} lists its memory` });
+      const memories = (listedNow.body?.data?.memories ?? []) as { memoryId?: string }[];
+      settingsMemory[label] = { ids: memories.map((item) => fixtureIdOf(String(item.memoryId)) ?? String(item.memoryId)), status: listedNow.status };
+      transcript.push(`*（结束时用账号 ${label} 的登录身份打开设置页的记忆管理接口：HTTP ${listedNow.status}，列出 ${settingsMemory[label].ids.join("、") || "0 条"}）*`, "");
+    }
     // AG13 opening 4 (AE-BND-001): background work this case started (a contact import's industry layers call) ends in this
     // case's trace, never in the next case's; the server is idle before the next case restores the snapshot.
     const drained = await drainServer(environment);
@@ -1127,7 +1492,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       const SET_KIND: Record<string, string> = { entry: "附带的入口（点了才算提出）", not_understood: "没看懂时给的方向", question: "追问的候选" };
       const SET_STATE: Record<string, string> = { answered: "已回答", open: "还能点", shelved: "已放下（用户没理会）" };
       const setLines = (row.document?.clarifications ?? []).map((set) => `  - ${SET_KIND[set.kind] ?? set.kind}（子目标 ${set.partId}，${SET_STATE[set.state] ?? set.state}${set.selectedOptionId ? `，选了 ${set.selectedOptionId}` : ""}${set.answeredBy ? `，由后面的消息 ${set.answeredBy} 回答` : ""}）：${set.options.map((option) => `${option.optionId}「${option.label}」（${option.capability}${option.ref ? `，指向 ${fixtureIdOf(option.ref.id) ?? option.ref.id}` : ""}）`).join("；") || "没有候选"}`);
-      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, ...(row.document?.answer?.basis ? [`- 回答开头的依据行（两端显示在回答上方，可点开记录）：${row.document.answer.basis.text}（${row.document.answer.basis.links.map((link) => link.label).join("、")}）`] : []), `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, ...blockLines(row.document?.answer?.blocks, fixtureIdOf), ...(row.document?.answer?.web ? [`- 结果文档里的联网记录（服务端代码写的；实际发出的检索词和打开的网页）：检索词 ${row.document.answer.web.queries.map((query) => `「${query.text}」`).join("、") || "无"}；网页 ${row.document.answer.web.pages.map((page) => `${page.url}（${page.readStatus}${page.sourceDate ? `，页面日期 ${page.sourceDate}` : ""}）`).join("、") || "无"}`] : []), ...(setLines.length ? ["- 可点的方向（结果文档里由服务端代码给出，两端照此显示）：", ...setLines] : []), ...(partLines.length ? ["- 拆出的子目标（结果文档里的服务端记录，不是给用户看的文字）：", ...partLines] : []), ...(row.document?.actionPreview ? ["- 这一轮结果文档里的卡（交付时的状态）：", ...cardText(row.document.actionPreview)] : []), "");
+      transcript.push(`### 接收顺序 #${row.receivedSeq}：「${row.message}」`, `- requestId：${row.requestId}`, `- 状态：${statusLabel(row.status)}${row.document?.ending?.kind === "stopped_by_user" ? "（这一轮是用户停掉的，不是出错）" : ""}`, ...(row.document?.answer?.basis ? [`- 回答开头的依据行（两端显示在回答上方，可点开记录）：${row.document.answer.basis.text}（${row.document.answer.basis.links.map((link) => link.label).join("、")}）`] : []), ...memoryUseLines(row.document?.answer?.memoryUse, fixtureIdOf), `- 回答：${row.document?.answer?.text ?? "（没有交付内容）"}`, ...blockLines(row.document?.answer?.blocks, fixtureIdOf), ...(row.document?.answer?.web ? [`- 结果文档里的联网记录（服务端代码写的；实际发出的检索词和打开的网页）：检索词 ${row.document.answer.web.queries.map((query) => `「${query.text}」`).join("、") || "无"}；网页 ${row.document.answer.web.pages.map((page) => `${page.url}（${page.readStatus}${page.sourceDate ? `，页面日期 ${page.sourceDate}` : ""}）`).join("、") || "无"}`] : []), ...(setLines.length ? ["- 可点的方向（结果文档里由服务端代码给出，两端照此显示）：", ...setLines] : []), ...(partLines.length ? ["- 拆出的子目标（结果文档里的服务端记录，不是给用户看的文字）：", ...partLines] : []), ...(row.document?.actionPreview ? ["- 这一轮结果文档里的卡（交付时的状态）：", ...cardText(row.document.actionPreview)] : []), "");
     }
     const reconnects = events.filter((event) => event.type === "turn.reconnect");
     if (reconnects.length) {
@@ -1208,6 +1573,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   // AG02 (BND 约定一): a change is external when it is exactly what an external_change step set:
   // every changed field (bookkeeping aside) is one it set, with the value it set.
   const isExternal = (change: (typeof diff.records)[number]) => {
+    // AG14: the two memory switches flipped by a `setting` step are the user's own action on the settings page.
+    if (userChangedMemorySettings && change.collection === "agentMemories" && change.id === "settings") return true;
     // AG12: a record deleted elsewhere and restored by the tested system afterwards (active at the end) is the system's write.
     if (externalDeletes.has(`${change.collection}\u0000${change.id}`) && (change.kind === "deleted" || (change.kind === "updated" && (change.after as Record<string, unknown> | null)?.__lifecycleState === "deleted"))) return true;
     const set = externalSets.get(`${change.collection}\u0000${change.id}`);
@@ -1246,33 +1613,68 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     fixtureIdOf,
     idMap,
     ...(memoryAfter ? { memoryAfter } : {}),
+    ...(memoryEntries ? { memoryEntries, memoryRecalled: memoryRecalledIn(events, fixtureIdOf) } : {}),
+    ...(Object.keys(settingsMemory).length ? { settingsMemory } : {}),
+    ...(rulesAfter ? { rulesAfter } : {}),
+    // AG15: the run history written in this case, from the database difference (never from the product's own report).
+    ruleRuns: diff.records.filter((change) => change.collection === "agentAutomationRuns" && change.kind !== "deleted" && change.after?.run).map((change) => {
+      const run = change.after!.run as { runId?: string; computedAt?: string; computeAttempts?: number; automationId: string; scheduledAt: string; outcome: string; skipped?: number; items?: { ref: string; id: string }[]; cardId?: string; ownerId: string; delivery?: { inbox?: { state?: string }; push?: { state?: string; attempts?: number; deliveredAt?: string; reason?: string; deliveryId?: string; targets?: { platform: string; state: string; attempts: number }[] } } };
+      const pushed = run.delivery?.push;
+      return { ...(run.runId ? { runId: run.runId } : {}), ...(run.computedAt ? { computedAt: run.computedAt } : {}), computeAttempts: Number(run.computeAttempts ?? 1), push: { attempts: Number(pushed?.attempts ?? 0), deliveredAt: pushed?.deliveredAt ?? null, deliveryId: pushed?.deliveryId ?? null, reason: pushed?.reason ?? null, state: pushed?.state ?? "not_requested", targets: (pushed?.targets ?? []).map((target) => ({ attempts: Number(target.attempts ?? 0), platform: target.platform, state: target.state })) }, account: accountByActor.get(run.ownerId) ?? null, cardId: run.cardId ?? null, delivery: run.delivery?.inbox?.state ?? "none", fixtureRule: fixtureIdOf(run.automationId), listed: (run.items ?? []).map((item) => fixtureIdOf(item.id) ?? fixtureIdOf(item.ref) ?? item.id), outcome: run.outcome, rule: run.automationId, scheduledAt: run.scheduledAt, skipped: Number(run.skipped ?? 0) };
+    }).sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt) || left.rule.localeCompare(right.rule)),
     reads,
     ...(Object.keys(recentInteractions).length ? { recentInteractions } : {}),
     requests,
     unsupported,
     ...(views.records.length ? { clientViews: views.records } : {}),
   };
-  const otherAccountRecords = loadWorldRecordsForIsolation(world, idMap, observation.account);
+  const otherAccountRecords = loadWorldRecordsForIsolation(world, idMap, observation.account, patchMemory);
   const context: CheckContext = { otherAccountRecords, rawTrace, secrets };
   const checks = runHardChecks(testCase as never, observation, context);
   fs.writeFileSync(path.join(dir, "hard-checks.json"), JSON.stringify({ caseId: testCase.id, checks, hardPass: hardChecksPass(checks), unsupported }, null, 2));
   if (cardEndLines.length) transcript.push("", ...cardEndLines);
+  if (ruleEndLines.length) transcript.push("", ...ruleEndLines);
+  // AG16: every reminder the simulated push service was handed, as it arrived there — which device, what it said, and
+  // whether the service took it. Nothing here comes from the product's own report.
+  const reminders = events.filter((event) => event.type === "notify.push");
+  if (reminders.length || testCase.steps.some((step) => "scheduler_tick" in step) && (testCase.hard ?? []).some((check) => "push" in (check as object) || "push_delivery" in (check as object))) {
+    transcript.push("", "## 模拟推送服务收到的提醒（不连真实推送服务；每条都标 simulated）", "", ...(reminders.length ? reminders.map((event) => `- #${event.seq} 发往${event.client === "web" ? "浏览器" : "手机"}（${String(event.channel)}），${event.outcome === "accepted" || event.outcome === undefined ? "推送服务已接受" : event.outcome === "rejected" ? `推送服务拒收（${String(event.error ?? "")}）` : "推送服务没有应答"}：标题「${String(event.title ?? "")}」，正文「${String(event.body ?? "")}」，附带数据 ${JSON.stringify(event.data ?? null)}`) : ["- 一条也没有收到"]), "");
+  }
   transcript.push("", "---", "", `数据变化（业务）：${businessChanges.length ? businessChanges.map((change) => `${change.fixtureId ?? change.id} ${change.kind}${change.external ? "（别处的修改，不算被测系统写入）" : ""}`).join("、") : "无"}`);
   fs.writeFileSync(path.join(dir, "transcript.md"), `${transcript.join("\n")}\n`);
-  const simulated = events.some((event) => ["model.request", "judgment.request", "web.search", "web.fetch", "exec.call"].includes(event.type) && (event.source === "simulated" || event.source === "replay")) || testCase.steps.some((step) => "fault" in step) || replay.length > 0;
+  const simulated = events.some((event) => ["model.request", "judgment.request", "web.search", "web.fetch", "exec.call"].includes(event.type) && (event.source === "simulated" || event.source === "replay")) || testCase.steps.some((step) => "fault" in step) || replay.length > 0
+    // AG16: every reminder goes to the local push simulator, so a case that sent one (or took a permission away) contains simulation.
+    || events.some((event) => event.type === "notify.push") || testCase.steps.some((step) => Boolean((step as { revoke?: { push?: string } }).revoke?.push));
   return { account, area, checks, caseId: testCase.id, dir, durationMs: Date.now() - started, error, events, fake: fake !== null, hardPass: hardChecksPass(checks), observation, simulated, unsupported };
 }
 
+/**
+ * AG14 (memory_recalled): the saved entries the last turn used — the product's memory.recall events after the last
+ * message the user sent (a click or a setting change after it is still that turn's aftermath, not a new turn).
+ */
+export function memoryRecalledIn(events: readonly TraceEvent[], fixtureIdOf: (id: string | null | undefined) => string | null): { id: string; fixtureId: string | null }[] {
+  const lastUser = [...events].reverse().find((event) => event.type === "turn.user");
+  const from = lastUser ? Number(lastUser.seq) : -1;
+  const ids = new Set<string>();
+  for (const event of events) {
+    if (event.type !== "memory.recall" || event.origin === "runner" || Number(event.seq) <= from) continue;
+    for (const id of (event.memories ?? []) as unknown[]) if (typeof id === "string") ids.add(id);
+  }
+  return [...ids].map((id) => ({ fixtureId: fixtureIdOf(id), id }));
+}
+
 /** Records of the other accounts in this world (for no_cross_account): their ids and distinctive strings. */
-function loadWorldRecordsForIsolation(world: WorldFixture, idMap: Record<string, string>, account: string): CheckContext["otherAccountRecords"] {
+function loadWorldRecordsForIsolation(world: WorldFixture, idMap: Record<string, string>, account: string, patched: readonly FixtureRecord[] = []): CheckContext["otherAccountRecords"] {
   // AG05: a name or sentence the case's own account also has (account B's 松本彩 next to A's 松本彩) is not
   // evidence of a leak when the answer says it; only what is the other account's alone counts.
   const own = world.anchors.filter((record: FixtureRecord) => record.account === account).flatMap((record) => [record.data.name, record.data.title, record.data.body].filter((value): value is string => typeof value === "string"));
   const ownToo = (text: string) => own.some((value) => value === text || value.includes(text));
-  return world.anchors
+  // AG14: a memory entry a patch gave another account (its words must not show up in this account's answers).
+  return [...world.anchors, ...patched]
     .filter((record: FixtureRecord) => record.account !== account && record.account !== "platform")
     .map((record) => {
       const texts: string[] = [];
+      if (record.kind === "memory" && typeof record.data.content === "string") texts.push(record.data.content);
       if (typeof record.data.name === "string") texts.push(record.data.name);
       if (typeof record.data.body === "string") {
         for (const sentence of String(record.data.body).split(/[。.!?！？]/u)) {

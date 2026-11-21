@@ -69,6 +69,9 @@ const state = {
   blocked: [],
   connected: [],
   pushes: [],
+  // AG16: the clients ("app", "web") whose notification permission a case took away (revoke: { push }); the simulated
+  // push service refuses every later send to them, as the real ones do — the server is not told beforehand.
+  pushRevoked: [],
 };
 
 /** AG01: the request being processed (features/agent-v1/observability/trace.ts runWithTraceContext). */
@@ -758,11 +761,53 @@ function buildIdentity() {
   }
 }
 
+/**
+ * AG16: the simulated browser push service. The message is decrypted with the simulated browser's own keys
+ * (web-push-sim.cjs), so the event says exactly what a browser would be handed: title, body and data.
+ */
+async function handleWebPush(req, res, deviceId) {
+  const remote = req.socket?.remoteAddress ?? "";
+  if (!hostAllowed(remote) || MODEL_HOSTS[remote]) return reply(res, 403, { error: "loopback only" });
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const event = { type: "notify.push", source: "simulated", channel: "web-push", client: "web", to: "[device]", vapid: /^vapid t=[^,]+, k=.+$/u.test(String(req.headers.authorization ?? "")), ttl: req.headers.ttl ?? null };
+  let message;
+  try {
+    const { decryptWebPush, evalWebPushKeys } = require("./web-push-sim.cjs");
+    message = JSON.parse(decryptWebPush(Buffer.concat(chunks), evalWebPushKeys(deviceId)));
+  } catch (error) {
+    emit({ ...event, outcome: "rejected", error: `undecryptable: ${error instanceof Error ? error.message : String(error)}` });
+    return reply(res, 400, { error: "the message was not encrypted for this browser" });
+  }
+  const content = { title: message?.title ?? null, body: message?.body ?? null, data: message?.data ?? null, keys: Object.keys(message ?? {}).sort() };
+  const fault = takeFault("push");
+  if (fault && (fault.kind === "unknown_outcome" || fault.kind === "timeout")) {
+    emit({ ...event, ...content, outcome: "unknown", fault: { where: "push", kind: fault.kind } });
+    return reply(res, 503, { error: "agent-eval simulated failure (push): no answer" });
+  }
+  if (state.pushRevoked.includes("web")) {
+    emit({ ...event, ...content, outcome: "rejected", error: "gone", note: "the browser no longer allows notifications: the push service answers 410" });
+    return reply(res, 410, { error: "subscription is gone" });
+  }
+  if (fault) {
+    emit({ ...event, ...content, outcome: "rejected", error: "rate limited", fault: { where: "push", kind: fault.kind } });
+    return reply(res, 429, { error: "agent-eval simulated failure (push)" });
+  }
+  const id = `sim-web-${realNow()}`;
+  state.pushes.push({ id, to: deviceId, ...content });
+  emit({ ...event, ...content, outcome: "accepted", ticketId: id });
+  res.writeHead(201, { location: `http://127.0.0.1/__agent-eval/push/web/message/${id}` });
+  res.end();
+  return undefined;
+}
+
 async function handleControl(req, res) {
   const remote = req.socket?.remoteAddress ?? "";
   if (!hostAllowed(remote) || MODEL_HOSTS[remote]) return reply(res, 403, { error: "loopback only" });
   const url = new URL(req.url, "http://127.0.0.1");
   const route = url.pathname.replace(/^\/__agent-eval\//u, "");
+  // AG16: a browser reminder arrives encrypted (binary), so it is read before the JSON body below.
+  if (route.startsWith("push/web/")) return handleWebPush(req, res, decodeURIComponent(route.slice("push/web/".length)));
   const body = req.method === "POST" ? await readBody(req) : {};
   try {
     if (route === "state") {
@@ -792,6 +837,7 @@ async function handleControl(req, res) {
       state.blocked = [];
       state.connected = [];
       state.pushes = [];
+      state.pushRevoked = [];
       // AG03: per-case deployment settings (model-budget-1: model_calls_limit), read by the product's evalSetting().
       state.settings = body.settings && typeof body.settings === "object" ? { ...body.settings } : {};
       state.denied = [];
@@ -827,6 +873,13 @@ async function handleControl(req, res) {
       state.ended = [...(state.ended ?? []), ...ended];
       return reply(res, 200, { ok: true, ended: ended.length });
     }
+    if (route === "revoke" && typeof body.push === "string") {
+      // AG16 (PSH.yaml revoke.push): only the simulated push service learns it; nothing is written to the product.
+      if (body.push !== "app" && body.push !== "web") return reply(res, 400, { error: "revoke push needs app or web" });
+      if (!state.pushRevoked.includes(body.push)) state.pushRevoked.push(body.push);
+      emit({ type: "eval.revoke", push: body.push, source: "simulated", note: "the notification permission of this client was taken away in the system settings; the server is not told — the push service refuses the next send" });
+      return reply(res, 200, { ok: true, pushRevoked: state.pushRevoked });
+    }
     if (route === "revoke") {
       if (typeof body.read !== "string" || !body.read) return reply(res, 400, { error: "revoke needs { read: <record id> }" });
       if (!state.denied.includes(body.read)) state.denied.push(body.read);
@@ -839,13 +892,30 @@ async function handleControl(req, res) {
     }
     if (route === "push/expo/send") {
       const messages = Array.isArray(body) ? body : [body];
+      // AG16: a fault at the push service (fault: { where: push }) and a permission taken away on the phone.
+      const fault = takeFault("push");
+      if (fault && (fault.kind === "unknown_outcome" || fault.kind === "timeout")) {
+        // No answer the server can read: it must not send again (the reminder may have arrived).
+        for (const message of messages) emit({ type: "notify.push", source: "simulated", channel: "expo", client: "app", outcome: "unknown", title: message?.title ?? null, body: message?.body ?? null, data: message?.data ?? null, fault: { where: "push", kind: fault.kind } });
+        return reply(res, 503, { errors: [{ message: "agent-eval simulated failure (push): no answer" }] });
+      }
       const tickets = messages.map((message, index) => {
         const id = `sim-ticket-${realNow()}-${index}`;
+        const event = { type: "notify.push", source: "simulated", channel: "expo", client: "app", to: message?.to ? "[device]" : null, title: message?.title ?? null, body: message?.body ?? null, data: message?.data ?? null };
+        if (state.pushRevoked.includes("app")) {
+          emit({ ...event, outcome: "rejected", error: "DeviceNotRegistered", note: "the phone no longer allows notifications: the push service refuses" });
+          return { status: "error", message: "The recipient device is not registered.", details: { error: "DeviceNotRegistered" } };
+        }
+        if (fault) {
+          emit({ ...event, outcome: "rejected", error: "MessageRateExceeded", fault: { where: "push", kind: fault.kind } });
+          return { status: "error", message: "agent-eval simulated failure (push)", details: { error: "MessageRateExceeded" } };
+        }
         state.pushes.push({ id, to: message?.to ?? null, title: message?.title ?? null, body: message?.body ?? null, data: message?.data ?? null });
-        emit({ type: "notify.push", source: "simulated", channel: "expo", ticketId: id, to: message?.to ? "[device]" : null, title: message?.title ?? null, body: message?.body ?? null, data: message?.data ?? null });
+        emit({ ...event, outcome: "accepted", ticketId: id });
         return { status: "ok", id };
       });
-      return reply(res, 200, { data: tickets });
+      // One message per request (the product's adapter): its ticket is the answer.
+      return reply(res, 200, { data: Array.isArray(body) ? tickets : tickets[0] });
     }
     if (route === "push/expo/receipts") {
       const ids = Array.isArray(body?.ids) ? body.ids : [];
@@ -888,9 +958,27 @@ http.Server.prototype.emit = function evalServerEmit(event, req, res, ...rest) {
   return Reflect.apply(originalEmit, this, [event, req, res, ...rest]);
 };
 
+// AG17: the recorded copies of the external clients' identity documents (Client ID Metadata Documents). The product's
+// authorization server asks this hook instead of fetching; a client_id with no recorded copy gets nothing (and is refused).
+const CLIENT_DOCUMENTS_FILE = path.join(__dirname, "..", "..", "..", "..", "..", "docs", "epics", "agent-design", "eval", "world", "mcp-client-documents.json");
+let clientDocuments = null;
+function clientDocument(clientId) {
+  if (clientDocuments === null) {
+    try {
+      clientDocuments = JSON.parse(fs.readFileSync(CLIENT_DOCUMENTS_FILE, "utf8")).documents || {};
+    } catch {
+      clientDocuments = {};
+    }
+  }
+  const found = Object.prototype.hasOwnProperty.call(clientDocuments, clientId) ? clientDocuments[clientId] : null;
+  emit({ type: "mcp.client_document", clientId, source: found ? "replay" : "simulated", found: Boolean(found) });
+  return found;
+}
+
 globalThis.__orbitAgentEval = {
   emit,
   takeFault,
+  clientDocument,
   setting: (name) => (state.settings && Object.prototype.hasOwnProperty.call(state.settings, name) ? state.settings[name] : null),
   deniedReads: () => [...state.denied],
   get context() {

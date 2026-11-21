@@ -13,6 +13,7 @@
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import type { LiveRecord } from "../../../shared/storage/live-record-store";
 import type { FeatureMode } from "../../../shared/config/feature-mode";
+import type { RuleAskState } from "../rule/state";
 
 export const SESSION_STATE_COLLECTION = "agent_v1_session_states";
 
@@ -47,8 +48,32 @@ export interface SessionOpenItem {
   writes?: boolean;
   /** AG05: the part's object clues as the user said them (a reply that continues the matter reads the same person). */
   clues?: { entity: string; text: string }[];
+  /** AG20b (R13): the records a question offered (id, kind, label as shown), so a typed answer naming one picks it. */
+  options?: { id: string; type: string; label: string }[];
   /** AG10: a ranking that asked "按什么来挑": its domain, dates and count (a reply such as "随便" goes on with them). */
   rank?: { domain: "event" | "contact" | "todo"; count?: number; from?: string; to?: string };
+  /** AG15: a scheduled task that asked "按什么来挑": its schedule, scope, count and end day (codes, ids and names only). */
+  rule?: RuleAskState;
+  /**
+   * AG21a (R26): a write question's part as it was asked — its words, its operations as offsets into them, its clues and
+   * picks — so a typed answer naming an option goes on with that part (propose/asked.ts). The user's words and ids only.
+   */
+  resume?: import("../propose/asked").AskedResume;
+}
+
+/**
+ * AG20a (owner's decision 2, 2026-11-20): the profile fields the last answer said are out of date and the values it took
+ * from the user's own record (a short value and that record's id). Kept for the next turn's "那把她的资料也更新了"; the record
+ * is read again under the current permissions before a card is made, and the value must still be in it.
+ */
+export interface StaleProfile {
+  contactId: string;
+  name: string;
+  field: "organization" | "role";
+  value: string;
+  sourceType: string;
+  sourceId: string;
+  at: string;
 }
 
 export interface AgentSessionState {
@@ -56,7 +81,37 @@ export interface AgentSessionState {
   shownList: { items: NamedRecordRef[]; shownAt: string } | null;
   lastMentioned: NamedRecordRef[];
   openItems: SessionOpenItem[];
+  /** AG20a: set by an answer that found a profile out of date; replaced (or cleared) by the next turn. */
+  staleProfiles?: StaleProfile[];
   updatedAt: string;
+  /**
+   * AG14 (设计稿 §6 "恢复的旧会话须按最新版本重建"): the memory version this session's last turn saw, and the saved
+   * entries its answers used (ids and revisions only, never their words). A turn that finds an entry changed or
+   * deleted since leaves the answers made with it out of the model's context.
+   */
+  memoryVersion?: number;
+  memoryUses?: { requestId: string; memories: { memoryId: string; revision: number }[] }[];
+  /** AG14: what the last ranking of this session used (ids and codes), for "为什么排第一" and "这次看……". */
+  lastRanking?: {
+    requestId: string;
+    domain: "event" | "contact" | "todo";
+    at: string;
+    from?: string;
+    to?: string;
+    count?: number;
+    listed: string[];
+    memories: { memoryId: string; revision: number }[];
+    turnBasis: boolean;
+    topic: boolean;
+  };
+  /** AG20b (TRIAGE R17, 设计稿 §3.5 last row): what the user said they want from the next note ("下一篇只列我的承诺"). */
+  noteGoal?: NoteGoal | null;
+}
+
+export interface NoteGoal {
+  followUps: boolean;
+  interactions: boolean;
+  setAt: string;
 }
 
 export function emptySessionState(sessionId: string, now: string): AgentSessionState {
@@ -78,9 +133,15 @@ function normalizeState(sessionId: string, value: unknown): AgentSessionState | 
   return {
     lastMentioned: Array.isArray(raw.lastMentioned) ? raw.lastMentioned.filter((item) => item && typeof item.id === "string") : [],
     openItems: Array.isArray(raw.openItems) ? raw.openItems.filter((item) => item && typeof item.ref === "string") : [],
+    ...(Array.isArray(raw.staleProfiles) ? { staleProfiles: raw.staleProfiles.filter((item) => item && typeof item.contactId === "string" && typeof item.value === "string" && typeof item.sourceId === "string" && (item.field === "organization" || item.field === "role")) } : {}),
     sessionId,
     shownList: raw.shownList && Array.isArray(raw.shownList.items) ? { items: raw.shownList.items, shownAt: String(raw.shownList.shownAt ?? "") } : null,
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : "",
+    // AG14: references to saved entries (ids and revisions) and the last ranking's codes.
+    ...(typeof raw.memoryVersion === "number" ? { memoryVersion: raw.memoryVersion } : {}),
+    ...(Array.isArray(raw.memoryUses) ? { memoryUses: raw.memoryUses.filter((use) => use && typeof use.requestId === "string" && Array.isArray(use.memories)).map((use) => ({ memories: use.memories.filter((item) => item && typeof item.memoryId === "string" && typeof item.revision === "number").map((item) => ({ memoryId: item.memoryId, revision: item.revision })), requestId: use.requestId })) } : {}),
+    ...(raw.lastRanking && typeof raw.lastRanking.requestId === "string" && Array.isArray(raw.lastRanking.listed) && Array.isArray(raw.lastRanking.memories) ? { lastRanking: { ...raw.lastRanking, listed: raw.lastRanking.listed.filter((ref) => typeof ref === "string"), memories: raw.lastRanking.memories.filter((item) => item && typeof item.memoryId === "string" && typeof item.revision === "number") } } : {}),
+    ...(raw.noteGoal && typeof raw.noteGoal === "object" ? { noteGoal: { followUps: raw.noteGoal.followUps === true, interactions: raw.noteGoal.interactions === true, setAt: String(raw.noteGoal.setAt ?? "") } } : {}),
   };
 }
 
