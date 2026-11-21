@@ -183,8 +183,18 @@ const INTERNAL: Record<Language, [RegExp, string][]> = {
   zh: [[/(?:根据)?材料(?:里|中|上)?(?:没有显示|没显示)/gu, "记录里没有写"], [/(?:根据)?材料(?:里|中|上)/gu, "记录里"], [/材料/gu, "记录"], [/我(?:这次)?(?:只)?读到的(?=这|那)/gu, ""], [/我(?:这次)?读到的/gu, ""]],
 };
 
+/**
+ * AG21c (R52): a record's stored status ("open", "completed", "cancelled") said as the cards say it, and "这部分记录里" as
+ * plain "记录里" — the same display words as the cards, never the stored codes.
+ */
+const STATUS_WORDS: Record<Language, [RegExp, string][]> = {
+  en: [[/\b(?:has|is in) (?:the |a )?status\s*(?:of\s*|:\s*)?["“]?open["”]?/giu, "is not done yet"], [/\bwith (?:the |a )?status\s*(?:of\s*|:\s*)?["“]?open["”]?/giu, "that is not done yet"], [/\b(?:its |the )?status\s*(?:is|:)\s*["“]?open["”]?/giu, "it is not done yet"], [/\b(?:has|is in) (?:the |a )?status\s*(?:of\s*|:\s*)?["“]?completed["”]?/giu, "is done"]],
+  ja: [[/(?:ステータス|状態)\s*(?:は|が|：|:)?\s*[「"]?open[」"]?\s*(?:のままです|のまま|です)?/giu, "未完了"], [/(?:ステータス|状態)\s*(?:は|が|：|:)?\s*[「"]?completed[」"]?(?:です)?/giu, "完了"]],
+  zh: [[/(?:状态|狀態)\s*(?:为|是|：|:)?\s*[「"“]?open[」"”]?/giu, "还没完成"], [/[「"“]?open[」"”]?\s*状态/giu, "还没完成"], [/(?:状态|狀態)\s*(?:为|是|：|:)?\s*[「"“]?completed[」"”]?/giu, "已完成"], [/这部分记录里/gu, "记录里"]],
+};
+
 export function withoutInternalWords(text: string, language: Language): string {
-  return INTERNAL[language].reduce((out, [pattern, to]) => out.replace(pattern, to), text);
+  return [...INTERNAL[language], ...STATUS_WORDS[language]].reduce((out, [pattern, to]) => out.replace(pattern, to), text);
 }
 
 /** How many records a kept text may walk through point by point before the rest are left to the cards (a list shows five). */

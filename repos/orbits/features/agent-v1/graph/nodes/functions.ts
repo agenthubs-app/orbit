@@ -581,12 +581,13 @@ function todoLine(item: TodoCandidate, language: Language, timeZone: string, now
 const UNIT: Record<RankDomain, Record<Language, string>> = { contact: { en: "contacts", ja: "人", zh: "位" }, event: { en: "events", ja: "件", zh: "场" }, todo: { en: "to-dos", ja: "件", zh: "条" } };
 const NOUN: Record<RankDomain, Record<Language, string>> = { contact: { en: "contacts", ja: "連絡先", zh: "联系人" }, event: { en: "events", ja: "イベント", zh: "活动" }, todo: { en: "to-dos", ja: "タスク", zh: "待办" } };
 
+// AG21c (R52): said in the user's words — the topic check — never "判断" / "判定" / "the matching step" (internal parts).
 function unmatchedWhy(reason: string | null, language: Language): string {
   const words: Record<string, Record<Language, string>> = {
-    not_enabled: { en: "that step is not switched on yet", ja: "その判定はまだ使えない状態です", zh: "这一步的判断还没有启用" },
-    timeout: { en: "the matching step did not answer in time", ja: "判定が時間内に返ってきませんでした", zh: "判断没有及时回应" },
+    not_enabled: { en: "checking against a topic is not available yet", ja: "テーマとの照合はまだ使えません", zh: "按主题比对这次还用不了" },
+    timeout: { en: "checking against the topic took too long this time", ja: "テーマとの照合が今回は時間内に終わりませんでした", zh: "这次按主题比对没能及时完成" },
   };
-  return (words[reason ?? ""] ?? { en: "the matching step was not available", ja: "判定が使えませんでした", zh: "判断暂时不可用" })[language];
+  return (words[reason ?? ""] ?? { en: "checking against the topic was not available this time", ja: "今回はテーマとの照合ができませんでした", zh: "这次没能按主题比对" })[language];
 }
 
 function fieldWords(field: RankField | null, direction: "asc" | "desc", language: Language): string {
