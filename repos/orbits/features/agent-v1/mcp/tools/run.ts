@@ -107,14 +107,18 @@ export async function runTool(deps: ToolDeps, input: { connection: AgentConnecti
         if (!record) return { code: "not_found", kind: "tool_error", message: "No such record." };
         return { count: 1, kind: "result", payload: { data_notice: USER_DATA_NOTICE, record: projectRecord(domain, record, readableDomains(connection)) } };
       }
-      const { query, cursor, limit } = parsed.data as { query?: string; cursor?: string; limit?: number };
+      const { contact, query, cursor, limit } = parsed.data as { contact?: string; query?: string; cursor?: string; limit?: number };
       if (domain === "attendance" || domain === "events") return { code: "not_searchable", kind: "tool_error", message: "These records can be read by id with get_record; they cannot be listed or searched here." };
+      // AG21c (decision D3): a contact filter narrows notes to one person's. Only for memos, and only when the connection
+      // may read contacts too (otherwise it would tell which people a note is linked to).
+      if (contact !== undefined && domain !== "memos") return { code: "invalid_arguments", kind: "tool_error", message: "contact filters memos only." };
+      if (contact !== undefined && lacks(connection, readScopeOf("contacts"))) return missingScope([readScopeOf("contacts")], "filter notes by a contact");
       // The client's cursor is opened for this connection, this kind of record and this query only; what it holds
       // (the adapters' own cursor) is then checked again by the adapters against the connection's account.
-      const binding = { connectionId: connection.id, domain, query: query?.trim() ?? "" };
+      const binding = { connectionId: connection.id, domain, query: `${query?.trim() ?? ""}${contact ? `\u0000contact:${contact}` : ""}` };
       const inner = cursor ? deps.cursors.open(cursor, binding) : null;
       if (cursor && !inner) return { code: "invalid_arguments", kind: "tool_error", message: BAD_CURSOR };
-      const page = await access.reader.read(KIND_OF_DOMAIN[domain], access.scope, { ...(query?.trim() ? { text: query.trim() } : {}), ...(inner ? { cursor: inner } : {}), ...(limit ? { limit } : {}) });
+      const page = await access.reader.read(KIND_OF_DOMAIN[domain], access.scope, { ...(query?.trim() ? { text: query.trim() } : {}), ...(contact ? { contactId: contact } : {}), ...(inner ? { cursor: inner } : {}), ...(limit ? { limit } : {}) });
       const readable = readableDomains(connection);
       const records = page.items.map((record) => projectRecord(domain, record, readable));
       return {

@@ -5,6 +5,7 @@
  * its due time is marked overdue by code. Record text is data, not instructions.
  */
 import type { RecordView } from "../domains/types";
+import { localDayOf, resolveSaidDate } from "../propose/dates";
 import { splitSentences, type Sentence } from "../text/sentences";
 import type { Material } from "./schema";
 
@@ -57,12 +58,18 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
         Number(f.version) > 1 ? `version ${f.version}, last edited ${formatWhen(text(f.updatedAt), context.timeZone)}` : null,
       ].filter(Boolean).join("; ");
       sentences = splitSentences(String(f.body ?? ""));
+      // AG21c (R58): a relative day in a note ("by Friday", "明天", "来週の水曜") counts from the day the note was written, not
+      // from today; code works it out once (the same rule in every language) and says whether it has passed.
+      const written = text(f.createdAt);
+      if (written) sentences = [...sentences, ...noteDayLines(sentences, written, context)];
       break;
     }
     case "todo": {
       const open = f.status === "open";
       const due = text(f.dueAt);
-      const overdue = open && due && Date.parse(due) < Date.parse(context.now) ? " — overdue" : "";
+      // AG21c (R51): how many days late is code's count (the card's figure), given as a fixed value — never left to the model.
+      const lateDays = open && due && Date.parse(due) < Date.parse(context.now) ? Math.floor((Date.parse(context.now) - Date.parse(due)) / 86_400_000) : null;
+      const overdue = lateDays === null ? "" : lateDays >= 1 ? ` — overdue by ${lateDays} day${lateDays > 1 ? "s" : ""} (code's count; use this number)` : " — overdue (less than a day)";
       header = `to-do, last updated ${formatWhen(text(f.updatedAt), context.timeZone)}`;
       at = text(f.updatedAt);
       sentences = numbered([
@@ -127,6 +134,30 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
     }
   }
   return { at, handle, header, kind: view.kind, partId, ref: view.ref, sentences, version: view.version, ...(profile ? { profile } : {}) };
+}
+
+/** Relative day words (no calendar date): today, tomorrow, a weekday, "next Monday", 下周三, 来週の水曜, 明日. */
+const RELATIVE_DAY = /(大后天|后天|明天|今天|昨天|前天|明後日|あさって|しあさって|明日|今日|昨日|一昨日|おととい|\b(?:today|tonight|tomorrow|yesterday|day after tomorrow)\b|(?:上个?|下个?|这个?|本)?(?:周|星期|礼拜)[一二三四五六日天]|(?:来週|今週|先週|再来週)?\s*の?\s*[月火水木金土日]曜(?:日)?|\b(?:next |this |coming |last )?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b)/iu;
+const CALENDAR_DATE = /(\d{4}-\d{2}-\d{2}|\d{1,2}\s*月\s*\d{1,2}\s*[日号]?|\b\d{1,2}\/\d{1,2}\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\b)/iu;
+
+/**
+ * AG21c (R58): code's lines for the relative days in a note's sentences — each counted from the day the note was written
+ * (resolveSaidDate with the note's date as "today"), and whether that day has passed as of now. Numbered after the body,
+ * so the body's own sentence numbers hold.
+ */
+export function noteDayLines(body: readonly Sentence[], writtenAt: string, context: Pick<MaterialContext, "now" | "timeZone">): Sentence[] {
+  const today = localDayOf(context.now, context.timeZone);
+  const lines: string[] = [];
+  for (const sentence of body) {
+    const said = RELATIVE_DAY.exec(sentence.text);
+    if (!said || CALENDAR_DATE.test(sentence.text)) continue;
+    const day = resolveSaidDate(said[0], writtenAt, context.timeZone)?.day;
+    if (!day) continue;
+    const state = day < today ? "that day has passed" : day === today ? "that is today" : "that day is still ahead";
+    lines.push(`Code's date note: in sentence ${sentence.id}, "${said[0]}" means ${formatWhen(day, context.timeZone, false)}, counted from the day the note was written (${formatWhen(writtenAt, context.timeZone, false)}), not from today; as of today ${state}. Use this day; do not count it again.`);
+  }
+  const start = body.length ? Math.max(...body.map((sentence) => sentence.id)) : 0;
+  return lines.map((line, index) => ({ id: start + index + 1, text: line }));
 }
 
 /** The fee of an event as its material says it (the organizer's own statement; "not stated" is never "free"). */

@@ -29,7 +29,7 @@ import { materialOf } from "../../answer/materials";
 import type { GapReason, Material } from "../../answer/schema";
 import { recordKindOf } from "../../clarify/default-readings";
 import { optionNamedIn } from "../../clarify/attribution";
-import { emptyKindsLine } from "../../answer/empty-kinds-copy";
+import { emptyDayLine, emptyKindsLine } from "../../answer/empty-kinds-copy";
 import type { NamedRecordRef } from "../../context/session-state";
 import { gapOfReadError, readPages } from "../../domains/registry";
 import { matchText } from "../../domains/source";
@@ -44,7 +44,7 @@ import type { AgentGraphState, GraphPart, PartCoverage } from "../state";
 import { clueWords } from "./clarify";
 import { webPartReads } from "./probe";
 import { SIMILAR_TITLE, similarity } from "../../functions/link-back";
-import { localDayOf } from "../../propose/dates";
+import { localDayOf, resolveSaidDate } from "../../propose/dates";
 import { asksTodaysPlate, isPlateFilter, onlyWindowWords, swapsPeriod } from "../../understand/read-window";
 import { widerThanAsked, type AskedRead, type Widened } from "./wider-read";
 import { occurrenceViews } from "../../domains/schedule/occurrences";
@@ -157,7 +157,10 @@ const CJK_NOISE = [
   "他", "她", "它", "这", "那", "该", "彼", "我", "私", "件", "的", "の",
 ];
 const LATIN_NOISE = new Set(["the", "a", "an", "this", "that", "these", "those", "it", "its", "my", "mine", "our", "your", "his", "her", "their", "him", "them", "me", "i", "about", "of", "on", "for", "in", "at", "to", "note", "notes", "memo", "memos", "record", "records", "todo", "todos", "to-do", "to-dos", "task", "tasks", "schedule", "event", "events", "item", "items", "one", "ones", "first", "second", "third", "last", "earlier", "above", "previous", "wrote", "written",
-  "today", "tomorrow", "yesterday", "week", "month", "year", "next", "latest", "recent", "open", "done", "completed", "finished", "overdue", "pending", "upcoming", "all", "every"]);
+  "today", "tomorrow", "yesterday", "week", "month", "year", "next", "latest", "recent", "open", "done", "completed", "finished", "overdue", "pending", "upcoming", "all", "every",
+  // AG21c (R47/R53 lookup, AE-SCL-020): question and function words ("what's still open with her") are never search words —
+  // the rarest of them ("with") narrowed a person's open to-dos to the ones that happen to hold it.
+  "what", "which", "who", "whom", "how", "when", "where", "why", "still", "with", "and", "or", "is", "are", "was", "were", "be", "any", "anything", "there", "from", "by", "up", "do", "does", "have", "has"]);
 
 /** run-02 repair 1: words that point at one record ("那篇", "第二个", "it") — as opposed to naming a kind ("タスク", "notes"). */
 const POINTER = /(这|那|该|此|它|他|她|彼|それ|これ|あれ|その|この|あの|例の|刚才|刚刚|上面|前面|之前|さっき|先ほど|第[一二三四五六七八九十\d]|\b(this|that|these|those|it|its)\b)/iu;
@@ -311,6 +314,24 @@ export function localMidnight(day: string, timeZone: string): string {
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { day: "2-digit", hour: "2-digit", hourCycle: "h23", minute: "2-digit", month: "2-digit", timeZone, year: "numeric" }).formatToParts(guess).map((part) => [part.type, part.value]));
   const shown = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute));
   return new Date(guess.getTime() - (shown - guess.getTime())).toISOString();
+}
+
+/** AG21c (R40): words that only compare or combine what was read before ("对一下", "compare them", "照らし合わせて"). */
+const COMBINE_ONLY = /^(?:[\s，,。.、]*(?:然后|再|并且?|and(?: then)?|then|それから|そして)?\s*(?:帮我)?(?:把(?:这两|两|它们|这些)[^，。]{0,6})?(?:对一下|对一对|对照一下|对照|对比一下|对比|比较一下|比较|比一比|核对一下|核对|放在一起看|合起来看|结合起来看|对得上吗|照らし合わせて|突き合わせて|比べて|見比べて|(?:please )?(?:compare|cross-check|match up|line up)(?: (?:them|the two|both|these))?(?: side by side)?)(?:一下|看看|ください|吧|呢|看)?[\s。.!！?？]*)$/iu;
+export function combinesEarlierParts(words: string): boolean {
+  return COMBINE_ONLY.test(words.trim());
+}
+
+/**
+ * AG21c (R50): the window a repeating item bound by id is read in when the part has none: the day the words name (the clue
+ * first, then the part's words), else from now on (the next occurrence).
+ */
+export function boundOccurrenceWindow(words: readonly string[], now: string, timeZone: string): { from?: string; to?: string } {
+  for (const text of words) {
+    const day = text ? resolveSaidDate(text, now, timeZone)?.day : null;
+    if (day) return { from: localMidnight(day, timeZone), to: localMidnight(nextDay(day), timeZone) };
+  }
+  return { from: now };
 }
 
 function nextDay(day: string): string {
@@ -523,9 +544,12 @@ export function resolveNode(scope: NodeScope): GraphNode {
     }
 
     const resolvedParts = new Map<string, { partId: string; contacts: ContactMatch[]; filter: GraphPart["plan"]["readFilter"] }>();
+    // AG21c (R40): the records each part of this pass answered from (a part that only compares them uses these).
+    const partViews = new Map<string, RecordView[]>();
     for (const part of [...due].sort((left, right) => left.quote[0] - right.quote[0])) {
       const quote = input.message.slice(part.quote[0], part.quote[1]);
       const read: PartRead = { coverage: [], gaps: new Set(), lines: [], notes: [], occurrences: new Map(), views: [], wantsRecords: false };
+      let combineFrom: string[] = [];
       // AG11 (AE-SCL-021): 「那 @X 呢？」 — the previous question, asked again about the record picked now.
       // AG20b (TRIAGE R20): a part this one goes on from whose record cannot be opened holds nothing back — this part is
       // answered from its own records, and nothing is judged that would need the other one.
@@ -725,7 +749,16 @@ export function resolveNode(scope: NodeScope): GraphNode {
       // person and points at no record of its own: it reads the same person, narrowed the same way.
       const ownTargets = part.refs.some((ref) => ref.recordId && recordKindOf(ref.entity) !== "contact");
       const namesPerson = part.refs.some((ref) => recordKindOf(ref.entity) === "contact" && !isPronounClue(clueWords(input.message, ref) ?? "他"));
-      if (!contacts.length && !ownTargets && !namesPerson) {
+      // AG21c (R40): a part that only compares or combines the results of earlier parts ("对一下", "compare them",
+      // "照らし合わせて") reads nothing new: it answers from those parts' records, with every person they read (so two people
+      // of the same name stay two, each named with their company).
+      const combined = !contacts.length && !ownTargets && !namesPerson && combinesEarlierParts(quote) ? (part.dependsOn.length ? part.dependsOn : [...resolvedParts.keys()]).filter((id) => partViews.has(id)) : [];
+      if (combined.length) {
+        const people = combined.flatMap((id) => resolvedParts.get(id)?.contacts ?? []);
+        for (const person of people) if (!contacts.some((item) => item.id === person.id)) contacts.push(person);
+        combineFrom = combined;
+        emitTrace({ from: combined, partId: part.localId, people: contacts.length, type: "resolve.combines_earlier_parts" });
+      } else if (!contacts.length && !ownTargets && !namesPerson) {
         const earlier = part.dependsOn.map((id) => resolvedParts.get(id)).find((item) => item?.contacts.length) ?? [...resolvedParts.values()].reverse().find((item) => item.contacts.length);
         if (earlier) {
           contacts.push(...earlier.contacts);
@@ -863,8 +896,12 @@ export function resolveNode(scope: NodeScope): GraphNode {
             // Integration 2026-11-20 (AE-EVT-005, AE-SCL-025): a repeating schedule item the part points at by id (since AG20a
             // a card's schedule item is a mentioned record the next turn binds to) is given as its occurrence in the period
             // said, with what was changed for that one time — as the search below does (the hotfix's occurrence rule).
-            if (view && kind === "schedule" && (from || to) && typeof view.fields.recurrence === "string") {
-              const at = occurrenceIn(String(view.fields.startsAt), view.fields.recurrence, from, to);
+            // AG21c (R50): with no window of the part's own ("明天这场例会" — the day sits inside the clue), the occurrence is the
+            // one the clue's own date words name, else the next one from now; always one occurrence, its changes applied.
+            if (view && kind === "schedule" && typeof view.fields.recurrence === "string") {
+              const ref = part.refs.find((item) => item.recordId === id);
+              const window = from || to ? { from, to } : boundOccurrenceWindow([ref?.quote ? input.message.slice(ref.quote[0], ref.quote[1]) : "", quote], now, zone);
+              const at = occurrenceIn(String(view.fields.startsAt), view.fields.recurrence, window.from, window.to);
               if (at && at !== view.fields.startsAt) read.occurrences.set(view.ref, at);
               if (at) {
                 view = (await occurrenceViews(records.source, accountScope, [view], read.occurrences, zone))[0] ?? view;
@@ -1190,6 +1227,14 @@ export function resolveNode(scope: NodeScope): GraphNode {
       }
 
       // 4. Gaps (code decides; the model never does).
+      // AG21c (R40): a comparing part answers from the earlier parts' records only (and the people read with them).
+      if (combineFrom.length) {
+        const kept = new Map<string, RecordView>();
+        for (const view of read.views) if (view.kind === "contact") kept.set(view.ref, view);
+        for (const id of combineFrom) for (const view of partViews.get(id) ?? []) kept.set(view.ref, view);
+        read.views = [...kept.values()];
+        read.wantsRecords = true;
+      }
       const recordViews = read.views.filter((view) => view.kind !== "contact");
       if (failures.length) {
         read.gaps.add("service_error");
@@ -1227,9 +1272,14 @@ export function resolveNode(scope: NodeScope): GraphNode {
         read.coverage.push({ complete: true, kind: "contact", pagesRead: 1, seen: profiles.length, total: profiles.length });
         emitTrace({ empty, partId: part.localId, profiles: profiles.map((view) => view.ref), type: "resolve.profile_answers" });
       }
+      let noneLine: string | null = null;
       if (!profileAnswers && !recordViews.length && !failures.length && !withheld && (read.wantsRecords || !contacts.length) && !read.gaps.has("unreadable")) {
         read.gaps.add("no_record");
-        read.lines.push(words.noRecord(quote));
+        // AG21c (R53): one day asked about for to-dos or schedule items, with nothing in it: say which kinds are empty that day.
+        const dayKinds = searchKinds.filter((kind): kind is "todo" | "schedule" => kind === "todo" || kind === "schedule");
+        const oneDay = filter?.from && (filter.to ?? filter.from) === filter.from ? filter.from : plate ? today : null;
+        noneLine = oneDay && dayKinds.length && dayKinds.length === searchKinds.length && !contacts.length && !text ? emptyDayLine(state.language, oneDay, today, dayKinds) : words.noRecord(quote);
+        read.lines.push(noneLine);
       }
       // Hotfix 2026-11-20 (rule 3, graph/nodes/wider-read.ts): nothing under a narrowing, but records of the kind outside it —
       // code says what was looked for and how many there are, and shows them (no model call).
@@ -1241,7 +1291,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
           emitTrace({ error: error instanceof Error ? error.message : String(error), partId: part.localId, type: "read.failed", where: "resolve.wider" });
         }
         if (widened) {
-          read.lines = read.lines.filter((line) => line !== words.noRecord(quote));
+          read.lines = read.lines.filter((line) => line !== words.noRecord(quote) && line !== noneLine);
           run.answers.set(part.localId, widened.text);
           run.answerBlocks.set(part.localId, widened.blocks);
           widened.views.forEach((view, index) => {
@@ -1266,6 +1316,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
         const materials: Material[] = [...read.views.filter((view) => view.kind === "contact"), ...read.views.filter((view) => view.kind !== "contact")]
           .map((view) => materialOf(view, part.localId, `s${(n += 1)}`, { names, now, occurrence: read.occurrences.get(view.ref) ?? null, timeZone: zone }));
         run.materials.set(part.localId, materials);
+        partViews.set(part.localId, read.views.filter((view) => view.kind !== "contact"));
         run.readNotes.set(part.localId, read.notes);
         for (const view of read.views) if (!run.readNames.has(view.id)) run.readNames.set(view.id, { name: nameOf(view, zone), type: view.kind });
         // AG07: what the answer's links need of each record read (the basis line is written from the citations).

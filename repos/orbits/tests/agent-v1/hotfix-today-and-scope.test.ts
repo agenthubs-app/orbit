@@ -199,6 +199,7 @@ test("rule 3: nothing of the kind at all — the plain sentence stays", async ()
   empty.records = empty.records.filter((record) => record.collection !== "tasks");
   const message = "今天到期的待办有哪些？";
   const run = await runFn(message, [{ dataSources: ["orbit_records"], deliverable: "list", readFilter: { from: TODAY, to: TODAY }, requiredCapabilities: ["todo.read"], sourceQuote: message }], { session: graphKit((async () => { throw new Error("x"); }) as never, { now: FRIDAY, records: recordAccessOf(empty) }) });
-  assert.match(run.result.text, /在你的 Orbit 记录里没有找到相关的内容/u);
+  // AG21c (R53): the plain sentence says which kind is empty that day, not the generic "nothing related found".
+  assert.match(run.result.text, /今天没有待办/u);
   assert.deepEqual(records(run.result.blocks), []);
 });
