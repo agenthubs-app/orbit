@@ -10,9 +10,9 @@ import { everyTaskChipsOf } from "../../features/agent-v1/domains/memory/chips";
 import { json, runFn } from "./functions-kit";
 import type { ModelCall } from "./graph-kit";
 
-const WEEKDAY = { category: "constraint", content: "回答里的日期都带上星期", memoryId: "MW1" };
-const CLOCK = { category: "constraint", content: "时间一律写 24 小时制", memoryId: "MW2" };
-const OTHER = { category: "constraint", content: "回答尽量简短", memoryId: "MW3" };
+const WEEKDAY = { category: "constraint" as const, content: "回答里的日期都带上星期", memoryId: "MW1" };
+const CLOCK = { category: "constraint" as const, content: "时间一律写 24 小时制", memoryId: "MW2" };
+const OTHER = { category: "constraint" as const, content: "回答尽量简短", memoryId: "MW3" };
 
 test("R57 an every-task entry is labelled only when its effect is in the text (zh, ja, en dates; 24-hour times)", () => {
   assert.deepEqual(everyTaskChipsOf([WEEKDAY, CLOCK, OTHER], "下次见面是11月27日（周五）。", "zh").map((chip) => chip.memoryId), ["MW1"]);

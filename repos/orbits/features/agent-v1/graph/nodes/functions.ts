@@ -37,7 +37,7 @@ import { asksForNextStep, asksForReasons, asksWhichAreWorthIt, eventReason, fitL
 import { onlyWindowWords, withoutWindowWords } from "../../understand/read-window";
 import { asksEventsToGoTo, meetsTime, pointsAtPast, writesADate, upcomingTopicOf, directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, naturalField, PICK_WORDS, sentenceTopicOf, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
 import { MEMORY_WORDS } from "../../domains/memory/copy";
-import { ensureTurnMemory, overruledByTurn, rankMemoryOf, timePreferenceOfEntry, topicOfEntry } from "../../domains/memory/turn";
+import { ensureTurnMemory, overruledByTurn, rankMemoryOf, rulesOnlyOf, timePreferenceOfEntry, topicOfEntry, type RankMemory } from "../../domains/memory/turn";
 import { memoryChipsOf } from "../../domains/memory/chips";
 import type { RecalledMemory } from "../../../agent/memory/recall";
 import { compare, dimensionsIn, type ComparedEvent } from "../../functions/compare";
@@ -978,7 +978,9 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const ownStandard = Boolean(field || basisMemo || chosen || followUpAsk || (topic && !topicIsSentence) || (domain === "todo" && (FORMAL_FOLLOW_UP.test(words) || /(过期|逾期|期限切れ|期限を過ぎ|overdue)/iu.test(words))));
   const memoryApplies = recommendsOrPicks && !ownStandard;
   if (!memoryApplies) emitTrace({ ownStandard, partId: part.localId, recommendsOrPicks, type: "functions.memory_not_a_basis" });
-  const saved = memoryApplies ? rankMemoryOf(await ensureTurnMemory(scope, now, timeZone), domain, { now, partId: part.localId, timeZone, turnHasTopic: Boolean(topic) && !topicIsSentence, turnTime: domain === "event" ? turnTime : null }) : { overruled: [], time: [], topic: null, used: [] };
+  // AG21c (decision D8): with a standard of the user's own, saved rules still hold (a hard time condition, a topic ruled
+  // out); only saved preferences give way to it.
+  const saved: RankMemory = memoryApplies ? rankMemoryOf(await ensureTurnMemory(scope, now, timeZone), domain, { now, partId: part.localId, timeZone, turnHasTopic: Boolean(topic) && !topicIsSentence, turnTime: domain === "event" ? turnTime : null }) : recommendsOrPicks && ownStandard ? rulesOnlyOf(await ensureTurnMemory(scope, now, timeZone), domain, { now, partId: part.localId, timeZone }) : { overruled: [], time: [], topic: null, used: [] };
   // AG21a (R32c): a lift takes away only the saved rule it names, this turn (shown as 「只这一次」); every other saved entry
   // still applies. A time rule is the one whose excluded time is the lifted time; otherwise a rule that leaves out what the
   // lifted words name.
@@ -1163,6 +1165,19 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     };
     emitTrace({ hard: { formal, from: fromDay, overdue: overdueWords, to: toDay }, partId: part.localId, type: "functions.hard_conditions" });
   }
+  // AG21c (decision D8): a saved rule that leaves a topic out removes the candidates whose own words name it.
+  const ruledOutBy = new Map<string, number>();
+  if (saved.ruledOut?.length) {
+    const own = hard;
+    const textOf = (candidate: Candidate) => (domain === "event" ? `${(candidate as EventCandidate).title} ${(candidate as EventCandidate).topics ?? ""}` : domain === "contact" ? [(candidate as ContactCandidate).company, (candidate as ContactCandidate).role, (candidate as ContactCandidate).industry, ...(candidate as ContactCandidate).tags].filter(Boolean).join(" ") : (candidate as TodoCandidate).title).toLowerCase();
+    const ruleOf = (candidate: Candidate) => saved.ruledOut!.find((rule) => rule.words.some((word) => textOf(candidate).includes(word.toLowerCase())));
+    for (const candidate of candidates) {
+      const rule = own(candidate) ? ruleOf(candidate) : undefined;
+      if (rule) ruledOutBy.set(rule.entry.memoryId, (ruledOutBy.get(rule.entry.memoryId) ?? 0) + 1);
+    }
+    hard = (candidate) => own(candidate) && !ruleOf(candidate);
+    emitTrace({ partId: part.localId, removed: Object.fromEntries(ruledOutBy), type: "functions.saved_rule_ruled_out" });
+  }
   const natural = naturalField(domain);
   const valueOf = (which: RankField) => (candidate: Candidate) => {
     if (which === "startsAt") return (candidate as EventCandidate).startsAt ?? null;
@@ -1282,7 +1297,8 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     }),
     time: saved.time.map((item) => ({ entry: item.entry, preference: item.preference, removed: item.preference.hard ? removedBy(item.preference) : 0 })),
     topics: saved.used.flatMap((entry) => { const topic = topicOf(entry); return topic ? [{ entry, topic }] : []; }),
-    unclear: "unclear" in saved ? saved.unclear : undefined,
+    unclear: saved.unclear,
+    ruledOut: (saved.ruledOut ?? []).map((rule) => ({ entry: rule.entry, removed: ruledOutBy.get(rule.entry.memoryId) ?? 0, words: rule.words })),
   }).filter((chip) => !run.memoryUse.some((item) => item.memoryId === chip.memoryId)));
   // AG14: what this ranking used, by reference, for the session ("为什么排第一", "这次看……").
   run.memory.ranking = {

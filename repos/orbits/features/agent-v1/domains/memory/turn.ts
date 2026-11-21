@@ -27,6 +27,7 @@ import * as say from "../../functions/copy";
 import type { NodeScope } from "../../graph/deps";
 import type { AgentGraphState, GraphPart } from "../../graph/state";
 import { emitTrace } from "../../observability/trace";
+import { polarityOf } from "../../functions/negation";
 import { resolveSaidDate } from "../../propose/dates";
 import { capabilityKind, type Capability } from "../../route/capabilities";
 import { MEMORY_WORDS, noteLine, type MemoryNote } from "./copy";
@@ -252,6 +253,42 @@ export interface RankMemory {
   overruled: RecalledMemory[];
   /** AG21c (R33): entries whose time words cannot be read as "leave out" or "only": not applied, named as unclear. */
   unclear?: RecalledMemory[];
+  /** AG21c (decision D8): saved rules that leave a topic out ("不要推荐酒会类的"), with the words that rule it out. */
+  ruledOut?: { entry: RecalledMemory; words: string[] }[];
+}
+
+/** AG21c (D8): what a rule that leaves something out names — its words without the negation, task and filler words. */
+const RULE_FILLER = /(不要|别再?|不推荐|不用|不想|不去|不看|除了|排除|避开|以外|は除いて|を除いて|除く|入れない|入れないで|出さない|見せない|しないで|ないで|推荐|推薦|おすすめ(?:する|しない)?|活动|活動|イベント|联系人|連絡先|待办|タスク|时候?|的|类|類|相关|有关|関連|一律|永远|从来|都|也|任何|もの|こと|とき|は|を|の|に|も|\b(?:never|don'?t|do not|not|no|avoid|exclude|skip|recommend(?:ing)?|suggest(?:ing)?|events?|contacts?|to-?dos?|any|anything|ones?|related|about|kind|type|of|the|a|me|with|when)\b|[\s，,。.、！!：:]+)/giu;
+export function ruledOutWordsOf(content: string): string[] {
+  if (polarityOf(content) !== "exclude" || timePreferenceIn(content, "memory")) return [];
+  return content.replace(TASK_WORDS_IN_ENTRY, " ").replace(RULE_FILLER, " ").split(/\s+/u).map((word) => word.trim()).filter((word) => [...word].length >= 2);
+}
+
+/**
+ * AG21c (decision D8): the saved rules of a task that still hold when the message gives its own standard — a hard time
+ * condition, and a rule that leaves a topic out. Saved preferences give way to the user's own standard and are not used.
+ */
+export function rulesOnlyOf(turn: TurnMemory, domain: RankDomain, input: { now: string; timeZone: string; partId: string }): RankMemory {
+  const out: RankMemory = { overruled: [], time: [], topic: null, used: [] };
+  if (!turn.snapshot) return out;
+  const recall = recallFrom(turn.snapshot, { now: input.now, task: TASK_OF[domain], timeZone: input.timeZone });
+  for (const entry of [...recall.relevant, ...recall.rules.filter((rule) => !rule.everyTask)]) {
+    if (entry.category !== "constraint") continue;
+    const preference = domain === "event" ? timePreferenceOfEntry(entry) : null;
+    if (preference?.hard && !preference.unclear) {
+      out.time.push({ entry, preference });
+      out.used.push(entry);
+      continue;
+    }
+    const words = ruledOutWordsOf(entry.content);
+    if (words.length) {
+      out.ruledOut = [...(out.ruledOut ?? []), { entry, words }];
+      out.used.push(entry);
+    }
+  }
+  noteUsed(turn, out.used);
+  emitTrace({ entries: out.used.map((item) => ({ memoryId: item.memoryId, revision: item.revision })), memories: out.used.map((item) => item.memoryId), partId: input.partId, scope: TASK_OF[domain], type: "memory.recall", rulesOnly: true });
+  return out;
 }
 
 /**
@@ -313,7 +350,12 @@ export function rankMemoryFrom(recall: Pick<MemoryRecall, "rules" | "relevant">,
         topics.push(topic);
         out.used.push(entry);
       }
-    } else out.used.push(entry);
+    } else {
+      // AG21c (D8): a rule that leaves a topic out is a hard condition (ruledOut), named when it took something away.
+      const words = entry.category === "constraint" ? ruledOutWordsOf(entry.content) : [];
+      if (words.length) out.ruledOut = [...(out.ruledOut ?? []), { entry, words }];
+      out.used.push(entry);
+    }
   }
   out.topic = topics.length ? topics.join("、") : null;
   return out;

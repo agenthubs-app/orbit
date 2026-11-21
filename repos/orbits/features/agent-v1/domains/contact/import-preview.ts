@@ -14,6 +14,7 @@ import { isBlockingRow } from "../../../contacts/import/types";
 import { autoMapping } from "../../../contacts/import/parse/mapping";
 import type { LiveRecord } from "../../../../shared/storage/live-record-store";
 import type { ImportRowOverride } from "./types";
+import { duplicateCandidates } from "./duplicates";
 
 export type ImportRowClass = "create" | "duplicate" | "skip";
 export type ImportSkipReason = "missing_name" | "unreadable_row" | "in_file_duplicate" | "user_skip";
@@ -129,6 +130,10 @@ export function previewImport(text: string, existing: readonly LiveRecord<Record
     if (override === "create") return { ...base, decision: "create", outcome: "create" };
     if (row.inFileDuplicateOf !== null) return { ...base, decision: "skip", outcome: "skip", reason: "in_file_duplicate", repeats: row.inFileDuplicateOf };
     if (row.candidate) return { ...base, decision: "duplicate", match: { id: row.candidate.contactId, name: row.candidate.displayName, organization: row.candidate.organization, role: row.candidate.role }, outcome: "skip" };
+    // AG21c (decision D7): a name one character off at the same company (季朗 / 季明 at 柏舟设计, Lena / Lina at Harbor) is
+    // a possible duplicate the user decides on — never merged on its own, never created silently beside it.
+    const near = row.fields.displayName && row.fields.organization ? duplicateCandidates(existing, actorId, { displayName: row.fields.displayName, organization: row.fields.organization, ...(row.fields.role ? { role: row.fields.role } : {}) }).find((item) => item.basis === "near") : undefined;
+    if (near) return { ...base, decision: "duplicate", match: { id: near.id, name: near.name, organization: near.organization ?? "", role: near.role ?? "" }, outcome: "skip" };
     return { ...base, decision: "create", outcome: "create" };
   });
   // AG20b (R12): a table none of whose rows can be read (every one without a name) is not a card.

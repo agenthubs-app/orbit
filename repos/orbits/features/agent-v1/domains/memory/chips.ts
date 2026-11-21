@@ -56,6 +56,8 @@ export interface ChipInput {
   overruled: readonly { entry: Entry; label: string }[];
   /** AG21c (R33): entries not applied because their direction cannot be read (named so, with 「修改」 to fix the words). */
   unclear?: readonly Entry[];
+  /** AG21c (D8): rules that leave a topic out, with how many candidates each took away. */
+  ruledOut?: readonly { entry: Entry; words: string[]; removed: number }[];
 }
 
 /** The chips of one ranking, each entry once, in the order: what was weighed, what was overruled, what a rule took away. */
@@ -70,6 +72,7 @@ export function memoryChipsOf(input: ChipInput): AgentAnswerMemoryUseContract[] 
   for (const entry of input.other) if (entry.category !== "constraint") add({ kind: "used", memoryId: entry.memoryId, text: SAY.used[language](entry.content) });
   for (const item of input.overruled) add({ kind: "skipped", memoryId: item.entry.memoryId, text: SAY.skipped[language](item.label) });
   for (const entry of input.unclear ?? []) add({ kind: "skipped", memoryId: entry.memoryId, text: SAY.unclear[language](entry.content) });
+  for (const item of input.ruledOut ?? []) if (item.removed > 0) add({ kind: "rule", memoryId: item.entry.memoryId, text: SAY.rule[language](item.words.join(language === "en" ? " / " : "、"), false) });
   for (const item of input.time) {
     if (!item.preference.hard || item.removed <= 0) continue;
     add({ kind: "rule", memoryId: item.entry.memoryId, text: SAY.rule[language](say.timeWords(item.preference, language), !item.preference.exclude) });
