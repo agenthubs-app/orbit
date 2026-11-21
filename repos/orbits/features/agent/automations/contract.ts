@@ -346,9 +346,18 @@ function zonedLocalToInstant(
     .filter((instant) => offsetAt(instant) === targetAsUtc - instant)
     .sort((left, right) => left - right);
   if (matching.length > 0) return matching[0];
-  // In the gap (clocks went forward, so the offset grew): the offset before the change — the smaller one — gives the
-  // same elapsed time after it (02:30 → 03:30).
-  return targetAsUtc - Math.min(...offsets);
+  // AG21c (decision D5): in the gap (clocks went forward, so the offset grew) the task runs at the first valid minute after
+  // it (02:30 → 03:00): the instant of the change, found between the two readings of the local time.
+  const after = Math.max(...offsets);
+  let early = targetAsUtc - after;
+  let late = targetAsUtc - Math.min(...offsets);
+  while (late - early > 60_000) {
+    const middle = early + Math.floor((late - early) / 120_000) * 60_000;
+    if (middle <= early) break;
+    if (offsetAt(middle) === after) late = middle;
+    else early = middle;
+  }
+  return late;
 }
 
 function weekdayForLocalDate(input: Pick<ZonedParts, "year" | "month" | "day">) {

@@ -135,7 +135,8 @@ test("the next period follows the rule's time zone: a local time that occurs twi
   assert.equal(nextAgentAutomationRunAt(daily, first!), "2026-11-02T06:30:00.000Z", "the second 01:30 of the same day is not another period");
   // 2026-03-08: clocks go forward at 02:00 EST → 03:00 EDT; 02:30 does not exist.
   const spring = { kind: "daily" as const, time: "02:30", timeZone: "America/New_York" };
-  assert.equal(nextAgentAutomationRunAt(spring, "2026-03-08T05:00:00.000Z"), "2026-03-08T07:30:00.000Z", "02:30 in the gap runs at 03:30 local time, not skipped");
+  // AG21c (decision D5): the first valid minute after the gap (02:30 → 03:00 EDT), not the same width later (03:30).
+  assert.equal(nextAgentAutomationRunAt(spring, "2026-03-08T05:00:00.000Z"), "2026-03-08T07:00:00.000Z", "02:30 in the gap runs at 03:00 local time, not skipped");
   assert.equal(nextAgentAutomationRunAt(spring, "2026-03-08T07:30:00.000Z"), "2026-03-09T06:30:00.000Z");
   // Tokyo has no daylight saving time; weekly rules land on the local weekday.
   assert.equal(nextAgentAutomationRunAt(FRIDAY_9, "2026-11-15T01:00:00.000Z"), at("2026-11-20T09:00:00+09:00"));
