@@ -182,7 +182,10 @@ function questionSet(scope: NodeScope, state: AgentGraphState, part: GraphPart, 
   // The option leads to what the second layer proposes for this part (a to-do question to todo.update), never to
   // a capability this version cannot do (AE-CTX-005: schedule.create).
   const proposable = proposableOf(part, quote);
-  const capability = (question.type === "contact" ? proposable.find((item) => item === "memo.create") ?? proposable[0] : "todo.update") as Capability ?? "todo.update";
+  // AG21c (R49): a to-do offered as a candidate carries the part's own write (delete, complete, reopen, update) — the click
+  // resumes that operation on the picked to-do, never an update the user did not ask for.
+  const ownTodoWrite = part.write?.intents.find((intent) => intent.capability.startsWith("todo."))?.capability;
+  const capability = (question.type === "contact" ? proposable.find((item) => item === "memo.create") ?? proposable[0] : question.type === "todo" && ownTodoWrite ? ownTodoWrite : "todo.update") as Capability ?? "todo.update";
   const existing = state.optionSets.filter((set) => set.partId === part.localId && set.purpose === "operation").length;
   const clarificationId = `${setIdOf(scope.input.requestId, part.localId, "q")}${existing ? existing + 1 : ""}`;
   const labels = new Map<string, { label: string; refName?: string }>();
