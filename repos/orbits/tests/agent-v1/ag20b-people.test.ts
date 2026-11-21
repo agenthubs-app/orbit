@@ -156,7 +156,12 @@ test("decision 4: a name one character off two real contacts offers both to pick
 
 /* ── owner decision 6: a to-do named in another language ── */
 
-test("decision 6: 'NDA' against 「签署供应商保密协议」 offers that to-do (done) as a candidate to click, never a match", async () => {
+test("decision 6: 'NDA' against 「签署供应商保密协议」 offers that to-do (done) as a candidate to click, never a match", async (t) => {
+  // Record finder port: owner decision 6 (to-dos by meaning, judgment match.level) is the legacy lookup's; the new finder asks
+  // DeepSeek once for other words instead (finder/live.ts reformulate). Kept under the rollback flag.
+  const finder = process.env.ORBIT_AGENT_FINDER;
+  process.env.ORBIT_AGENT_FINDER = "legacy";
+  t.after(() => { if (finder === undefined) delete process.env.ORBIT_AGENT_FINDER; else process.env.ORBIT_AGENT_FINDER = finder; });
   const world = peopleWorld();
   world.records.push(todo(ACTOR, "task:nda", "签署供应商保密协议", { completedAt: "2026-11-10T01:00:00.000Z", status: "completed" }), todo(ACTOR, "task:photos", "整理样品照片"));
   const records = recordAccessOf(world);

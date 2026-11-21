@@ -27,6 +27,11 @@ import type { PartWrite, ResolveContext, WriteOutcome } from "./resolve";
 import type { StoredIntent } from "./schema";
 import { askedPerson } from "./asked";
 import { todosByMeaning } from "./meaning";
+import { findRecord, finderMode, finderSessionOf, type Found } from "../finder/session";
+import { ACCOUNT, labIdOf, type AgentKind } from "../finder/world";
+import type { Verb, World } from "../finder/types";
+import { findEvents as findLabEvents } from "../finder/impl/finders";
+import { decide as decideEvents } from "../finder/impl/decide";
 
 export const EVENT_INTENT_CAPABILITIES = new Set(["privateEvent.create", "privateEvent.update", "privateEvent.delete", "attendance.create", "attendance.delete", "schedule.create", "schedule.update", "schedule.delete", "todo.complete", "todo.reopen", "todo.delete", "memo.update"]);
 
@@ -190,6 +195,58 @@ function matchEvents(candidates: readonly EventCandidate[], clues: readonly stri
   return found;
 }
 
+/**
+ * The events the words name, by the record finder (finder/session.ts findEvents): one → [it], a question → its options
+ * (in the finder's order), none → []; `legacy` (the old matchEvents call) when ORBIT_AGENT_FINDER=legacy. The events the
+ * user picked with @ in this turn come first (AG14): when the finder's records include some of them, only those stay.
+ * A read that failed is [] as before (eventCandidates never failed a lookup), and traced.
+ */
+async function eventsNamed(ctx: Ctx, request: { clues: readonly string[]; quote: string; verb: Verb; timeText?: string; timeDrop?: readonly ("went" | "time" | "endTime" | "shiftMinutes" | "partOfDay")[]; partId: string }, legacy: () => EventCandidate[] | Promise<EventCandidate[]>): Promise<EventCandidate[]> {
+  if (finderMode() === "legacy") return legacy();
+  const session = finderSessionOf(ctx);
+  if (!session) return [];
+  const said = request.clues.filter(Boolean).join(" ") || request.quote;
+  const clue = request.timeDrop?.includes("went") ? said.replace(new RegExp(WENT_WORDS.source, "giu"), " ").trim() || said : said;
+  // AG14 (AG11 交接, AE-REF-005): the platform events picked with @ are looked at first, by the same finder over just them;
+  // when the words name one of them, the whole directory is not listed to find an event already chosen.
+  const pickedIds = (ctx.pickedEvents ?? []).filter((id) => !id.startsWith("private_event:") && !id.startsWith("attendance:"));
+  if (pickedIds.length && ctx.records?.eventsByIds) {
+    const chosen: EventCandidate[] = [];
+    for (const event of await ctx.records.eventsByIds(pickedIds).catch(() => [])) {
+      if (event.archivedAt || (event.lifecycleState !== "published" && event.organizerActorId !== ctx.scope?.accountId) || !event.title || !event.startsAt) continue;
+      chosen.push({ endsAt: event.endsAt ?? null, ref: { id: event.eventId, kind: "platform" }, startsAt: event.startsAt, title: event.title });
+    }
+    const named = pickedFinder(ctx, chosen, clue, request.verb);
+    if (named.length) {
+      emitTrace({ picked: named.length, type: "propose.picked_events_first" });
+      return named;
+    }
+  }
+  const found: Found = await findRecord(session, { accept: ["platform", "private"], clue, fn: "findEvents", partId: request.partId, sentence: ctx.message, verb: request.verb, ...(request.timeText?.trim() ? { timeText: request.timeText } : {}), ...(request.timeDrop ? { timeDrop: request.timeDrop } : {}) });
+  if (found.kind === "failed") emitTrace({ partId: request.partId, type: "read.error", where: "finder.events" });
+  const refs: { id: string; agentKind: AgentKind }[] = found.kind === "one" ? [{ agentKind: found.agentKind, id: found.id }] : found.kind === "ask" ? found.ids : [];
+  let out = refs.flatMap(({ agentKind, id }) => {
+    const fields = session.loader.loaded.get(labIdOf(agentKind, id));
+    if (!fields || (agentKind !== "platform" && agentKind !== "private")) return [];
+    return [{ endsAt: typeof fields.endsAt === "string" ? fields.endsAt : null, ref: { id, kind: agentKind }, startsAt: typeof fields.startsAt === "string" ? fields.startsAt : null, title: String(fields.title ?? ""), ...(fields.allDay === true ? { allDay: true } : {}) } as EventCandidate];
+  });
+  const picked = new Set(ctx.pickedEvents ?? []);
+  if (picked.size && out.some((event) => picked.has(event.ref.id))) {
+    out = out.filter((event) => picked.has(event.ref.id));
+    emitTrace({ picked: out.length, type: "propose.picked_events_first" });
+  }
+  return out;
+}
+
+/** The finder's rules (no model) over the picked events only: the ones the words name, in its order; [] when none. */
+function pickedFinder(ctx: Ctx, chosen: readonly EventCandidate[], clue: string, verb: Verb): EventCandidate[] {
+  if (!chosen.length) return [];
+  const world: World = { aliases: [], attendance: [], contacts: [], memos: [], now: ctx.asOf, platformEvents: chosen.map((event) => ({ endsAt: event.endsAt ?? event.startsAt!, id: labIdOf("platform", event.ref.id), startsAt: event.startsAt!, title: event.title })), privateEvents: [], schedule: [], timeZone: ctx.timeZone, todos: [] };
+  const input = { account: ACCOUNT, clue, sentence: ctx.message, verb };
+  const decision = decideEvents(findLabEvents(input, world), null, input, world);
+  return decision.ids.flatMap((id) => chosen.filter((event) => labIdOf("platform", event.ref.id) === id));
+}
+
 function eventLabelOf(event: { title: string; startsAt: string | null }, language: ResolveContext["language"], timeZone: string): string {
   return event.startsAt ? `${event.title} · ${dayText(localDayOf(event.startsAt, timeZone), language)}` : event.title;
 }
@@ -285,7 +342,9 @@ export async function resolveEventIntent(ctx: Ctx, part: GraphPart, write: PartW
       // On the private event this request creates: when the model said so, or the words name no other event.
       const created = ctx.createdEvents ?? [];
       const all = await eventCandidates(ctx);
-      const matched = narrowByWhen(matchEvents(all, clueTexts, quote, said?.day ?? null, zone), quote, ctx);
+      // Recording «我去过» is not a lookup of an event already attended: the finder gets the day said, not "went"; an event
+      // still to come is never the one gone to (narrowByWhen, as before).
+      const matched = narrowByWhen(await eventsNamed(ctx, { clues: clueTexts, partId: part.localId, quote, timeDrop: ["went"], timeText: dateWords || quote, verb: "link" }, () => matchEvents(all, clueTexts, quote, said?.day ?? null, zone)), quote, ctx);
       const fresh = created.find((item) => item.localId === intent.after) ?? (created.length && (!matched.length || clueTexts.some((clue) => created.some((item) => squash(item.title) === squash(clue)))) ? created[created.length - 1] : undefined);
       if (fresh) {
         const day = said && intent.date ? said.day : fresh.day;
@@ -309,8 +368,12 @@ export async function resolveEventIntent(ctx: Ctx, part: GraphPart, write: PartW
       return { kind: "ready", ops: [{ ...base, capability: "attendance.create", set: { attendedOn: day, eventRef: { ...event.ref }, ...(parts.length || fromEvent.length ? { dayParts: parts.length ? parts : fromEvent } : {}), ...(note ? { selfNote: note } : {}) }, shown: { event: { kind: event.ref.kind, startsAt: event.startsAt, title: event.title } } } as CardOperationIntent & { localId: string }] };
     }
     case "privateEvent.update": {
-      const matched = matchEvents(await eventCandidates(ctx, { clues: clueTexts, quote }), clueTexts, quote, said?.day ?? null, zone);
-      const target = matched.find((event) => event.ref.kind === "private") ?? null;
+      const matched = await eventsNamed(ctx, { clues: clueTexts, partId: part.localId, quote, verb: "update" }, async () => matchEvents(await eventCandidates(ctx, { clues: clueTexts, quote }), clueTexts, quote, said?.day ?? null, zone));
+      // The record finder asks between private events it cannot tell apart (never the first one by a guess); a click picks.
+      const pickedEvent = write.picks.event ? matched.find((event) => refKey(event.ref) === write.picks.event) : undefined;
+      const privates = matched.filter((event) => event.ref.kind === "private");
+      if (finderMode() === "new" && !pickedEvent && privates.length > 1) return { kind: "ask", question: { candidates: privates.slice(0, 3).map((event) => ({ detail: event.startsAt ? dayText(localDayOf(event.startsAt, zone), language) : undefined, id: refKey(event.ref), name: event.title, type: "event" })), clue: clueTexts[0] ?? quote, type: "event" } } as unknown as WriteOutcome;
+      const target = pickedEvent?.ref.kind === "private" ? pickedEvent : matched.find((event) => event.ref.kind === "private") ?? null;
       if (!target && matched[0]?.ref.kind === "platform") return stop("platform_event", EVENT_WORDS.platformLocked(language, matched[0].title));
       if (!target) return stop("event_not_found", EVENT_WORDS.privateNotFound(language, clueTexts[0] ?? quote));
       const current = await ctx.records.privateEvents?.get(scope.accountId, target.ref.id).catch(() => null);
@@ -346,7 +409,7 @@ export async function resolveEventIntent(ctx: Ctx, part: GraphPart, write: PartW
       }
       if (intent.capability === "memo.update") return stop("not_in_this_version", language === "zh" ? `「${quote}」这次在对话里只能解除笔记和活动的关联，改笔记内容请到笔记页。这次没有改。` : language === "ja" ? `「${quote}」：会話からはメモとイベントの紐づけを外すことだけができます。本文の変更はメモの画面でお願いします。今回は変更していません。` : `"${quote}": in the chat a memo can only be unlinked from an event; edit its text on the note's page. Nothing was changed.`);
       const all = await eventCandidates(ctx, { clues: clueTexts, quote });
-      const matched = matchEvents(all, clueTexts, quote, said?.day ?? null, zone);
+      const matched = await eventsNamed(ctx, { clues: clueTexts, partId: part.localId, quote, timeText: dateWords, verb: "delete" }, () => matchEvents(all, clueTexts, quote, said?.day ?? null, zone));
       const notes = await ctx.records.attendance?.list(scope.accountId).catch(() => null);
       if (!notes) return stop("read_failed", failedLine);
       const note = notes.find((item) => matched.some((event) => event.ref.kind === item.eventRef.kind && event.ref.id === item.eventRef.id));
@@ -373,14 +436,53 @@ async function readTodos(ctx: Ctx, text: string | undefined, status?: "open" | "
   return result.items;
 }
 
+/** The record finder's action for a to-do verb (reopen is a change of a done to-do: "update" over the done ones). */
+function verbOf(capability: string): Verb {
+  return capability === "todo.complete" ? "complete" : capability === "todo.delete" ? "delete" : capability === "todo.update" ? "link" : "update";
+}
+
+/**
+ * The record finder's to-do lookup for complete / reopen / delete / link: one → that to-do, a question → its options
+ * (read again by id for the card), none → not found. Between several, a part answering a question about a person goes
+ * on with that person's to-dos (AG20b R13), as before. A read that failed throws (the caller says so).
+ */
+async function todoVerbByFinder(ctx: Ctx, part: GraphPart, clues: readonly string[], quote: string, statuses: ("open" | "completed")[], verb: Verb): Promise<{ kind: "found"; view: RecordView } | { kind: "ask"; views: RecordView[] } | { kind: "none" }> {
+  const session = finderSessionOf(ctx);
+  if (!session) throw new Error("SOURCE_UNAVAILABLE");
+  const status = statuses.length === 1 ? (statuses[0] === "completed" ? "done" : "open") : "any";
+  const found = await findRecord(session, { accept: ["todo"], clue: clues.join(" ") || quote, fn: "findTodosMemos", kinds: ["todo"], partId: part.localId, sentence: ctx.message, status, verb, ...(ctx.context && !ctx.context.idle ? { shown: ctx.context.shownList.filter((item) => item.type === "todo").map((item) => ({ id: item.id, kind: "todo" as const })) } : {}) });
+  if (found.kind === "failed") throw new Error("SOURCE_UNAVAILABLE");
+  if (found.kind === "none") return { kind: "none" };
+  const readOne = async (id: string) => (await ctx.records!.reader.read("todo", ctx.scope!, { id })).items[0] ?? null;
+  if (found.kind === "one") {
+    const view = await readOne(found.id);
+    return view ? { kind: "found", view } : { kind: "none" };
+  }
+  let ids = found.ids.map((item) => item.id);
+  const person = await askedPerson(ctx, part);
+  if (person) {
+    const theirs = ids.filter((id) => {
+      const fields = session.loader.loaded.get(labIdOf("todo", id)) ?? {};
+      return (Array.isArray(fields.contactIds) ? (fields.contactIds as string[]) : [String(fields.contactId ?? "")]).includes(person);
+    });
+    if (theirs.length) ids = theirs;
+  }
+  const views = (await Promise.all(ids.slice(0, 3).map(readOne))).filter((view): view is RecordView => Boolean(view));
+  if (!views.length) return { kind: "none" };
+  // Narrowed to the asked person's one to-do: that one (as before); otherwise the question.
+  if (views.length === 1 && ids.length === 1) return { kind: "found", view: views[0] };
+  return { kind: "ask", views };
+}
+
 /** The to-do the words name, among those of the given status (a title inside the words, or the words inside a title). */
-async function findTodo(ctx: Ctx, part: GraphPart, write: PartWrite, clues: readonly string[], quote: string, statuses: ("open" | "completed")[]): Promise<{ kind: "found"; view: RecordView } | { kind: "ask"; views: RecordView[] } | { kind: "none" }> {
+async function findTodo(ctx: Ctx, part: GraphPart, write: PartWrite, clues: readonly string[], quote: string, statuses: ("open" | "completed")[], verb: Verb = "update"): Promise<{ kind: "found"; view: RecordView } | { kind: "ask"; views: RecordView[] } | { kind: "none" }> {
   // "另外把…也关联上": a sentence that names no to-do goes on with the one this message named before.
   const bound = write.picks.todo ?? part.refs.find((ref) => ref.entity === "todo" && ref.recordId)?.recordId ?? (!clues.length ? (ctx as Ctx).lastTodo?.id : undefined);
   if (bound) {
     const view = (await ctx.records!.reader.read("todo", ctx.scope!, { id: bound })).items[0];
     return view ? { kind: "found", view } : { kind: "none" };
   }
+  if (finderMode() === "new") return todoVerbByFinder(ctx, part, clues, quote, statuses, verb);
   const keys = clues.map(squash).filter((key) => key.length >= 2);
   const seen = new Map<string, RecordView>();
   for (const status of statuses) {
@@ -422,13 +524,14 @@ async function resolveTodoVerb(ctx: Ctx, part: GraphPart, write: PartWrite, inte
   if (intent.capability === "todo.update" && ctx.deleting && !intent.relations.length && (!intent.events?.length || UNLINK_WORDS.test(quote)) && !intent.title && !intent.date) return { kind: "covered" } as unknown as WriteOutcome;
   let found;
   try {
-    found = await findTodo(ctx, part, write, todoClues, quote, statuses);
-    if (found.kind === "none" && intent.capability !== "todo.delete") found = await findTodo(ctx, part, write, todoClues, quote, ["open", "completed"]);
+    found = await findTodo(ctx, part, write, todoClues, quote, statuses, verbOf(intent.capability));
+    if (found.kind === "none" && intent.capability !== "todo.delete") found = await findTodo(ctx, part, write, todoClues, quote, ["open", "completed"], verbOf(intent.capability));
   } catch {
     return stop("read_failed", failedLine);
   }
   if (found.kind === "ask") return { kind: "ask", question: { candidates: found.views.map((view) => ({ id: view.id, name: String(view.fields.title ?? ""), type: "todo" })), clue: todoClues[0] ?? quote, type: "todo" } };
-  if (found.kind === "none" && todoClues.length) {
+  if (found.kind === "none" && todoClues.length && finderMode() === "legacy") {
+    // (Legacy lookup only: the record finder's reformulate round stands in for this.)
     // AG20b (owner decision 6): "nda" against 「保密协议」 — the to-dos whose meaning matches are offered to click, never taken.
     const meant = await todosByMeaning(ctx, todoClues[0], intent.capability === "todo.delete" ? statuses : ["open", "completed"], part.localId).catch(() => []);
     if (meant.length) return { kind: "ask", question: { candidates: meant, clue: todoClues[0], notFound: todoClues[0], type: "todo" } };
@@ -475,7 +578,8 @@ async function resolveTodoVerb(ctx: Ctx, part: GraphPart, write: PartWrite, inte
     for (const [index, clue] of eventClues.entries()) {
       // A day said with the event ("11 月 19 日那场「…」") narrows same-named events even when the clue is the title alone.
       const day = resolveSaidDate(clue, ctx.asOf, zone)?.day ?? resolveSaidDate(clauseAround(ctx.message, eventSpans[index]), ctx.asOf, zone)?.day ?? null;
-      const matched = matchEvents(all, [clue.replace(/\d{1,2}\s*月\s*\d{1,2}\s*[日号]?\s*(?:那场|那一场|的)?/u, "")], clue, day, zone);
+      const dayWords = resolveSaidDate(clue, ctx.asOf, zone) ? clue : clauseAround(ctx.message, eventSpans[index]);
+      const matched = await eventsNamed(ctx, { clues: [clue], partId: part.localId, quote: clue, timeText: dayWords, verb: "link" }, () => matchEvents(all, [clue.replace(/\d{1,2}\s*月\s*\d{1,2}\s*[日号]?\s*(?:那场|那一场|的)?/u, "")], clue, day, zone));
       const picked = (write.picks as { event?: string }).event ? matched.find((event) => refKey(event.ref) === (write.picks as { event?: string }).event) : undefined;
       if (!matched.length) return stop("event_not_found", EVENT_WORDS.eventNotFound(language, clue));
       if (matched.length > 1 && !picked) return { kind: "ask", question: { candidates: matched.slice(0, 3).map((event) => ({ detail: event.startsAt ? dayText(localDayOf(event.startsAt, zone), language) : undefined, id: refKey(event.ref), name: event.title, type: "event" })), clue, type: "event" } } as unknown as WriteOutcome;
@@ -574,32 +678,53 @@ async function resolveSchedule(ctx: Ctx, part: GraphPart, write: PartWrite, inte
   }
   // update / delete: the user's own schedule item the words name (its name without the words of when: "明天的选品周会").
   const clues = clueTexts.map(withoutWhenWords).filter((clue) => squash(clue).length >= 2);
-  let items: RecordView[];
-  try {
-    const seen = new Map<string, RecordView>();
-    for (const clue of clues.length ? clues : [undefined]) for (const view of (await ctx.records!.reader.read("schedule", ctx.scope!, { limit: 10, ...(clue ? { text: clue } : {}) })).items) seen.set(view.id, view);
-    items = [...seen.values()];
-  } catch {
-    return stop("read_failed", failedLine);
-  }
   const keys = clues.map(squash).filter((key) => key.length >= 2);
-  let found = items.filter((view) => {
-    const title = squash(String(view.fields.title ?? ""));
-    return keys.some((key) => title.includes(key) || key.includes(title)) || (!keys.length && squash(quote).includes(title));
-  });
-  const day = intent.date ? said?.day ?? null : said && /(今天|明天|后天|昨天|今日|明日|tomorrow|today|\d{1,2}\s*月\s*\d{1,2}|\b(?:mon|tue|wed|thu|fri|sat|sun))/iu.test(quote) ? said.day : null;
+  let found: RecordView[];
+  const byFinder = finderMode() === "new";
+  if (byFinder) {
+    // The record finder: the item the words name, the day said narrowing its occurrences; a new time of an update is a
+    // value of the change, never a filter. One → that item; several → which one (the sentence below); none → []
+    // (then the events of those words, below).
+    const session = finderSessionOf(ctx);
+    if (!session) return stop("read_failed", failedLine);
+    const result = await findRecord(session, {
+      accept: ["schedule"], clue: clueTexts.join(" ") || quote, fn: "findSchedule", partId: part.localId, sentence: ctx.message, timeText: dateWords || quote,
+      verb: intent.capability === "schedule.delete" ? "delete" : "update", ...(intent.capability === "schedule.update" ? { timeDrop: ["time", "endTime", "shiftMinutes", "partOfDay"] as const } : {}),
+    });
+    if (result.kind === "failed") return stop("read_failed", failedLine);
+    const ids = result.kind === "one" ? [result.id] : result.kind === "ask" ? result.ids.map((item) => item.id) : [];
+    try {
+      found = (await Promise.all(ids.slice(0, 3).map(async (id) => (await ctx.records!.reader.read("schedule", ctx.scope!, { id })).items[0] ?? null))).filter((view): view is RecordView => Boolean(view));
+    } catch {
+      return stop("read_failed", failedLine);
+    }
+  } else {
+    let items: RecordView[];
+    try {
+      const seen = new Map<string, RecordView>();
+      for (const clue of clues.length ? clues : [undefined]) for (const view of (await ctx.records!.reader.read("schedule", ctx.scope!, { limit: 10, ...(clue ? { text: clue } : {}) })).items) seen.set(view.id, view);
+      items = [...seen.values()];
+    } catch {
+      return stop("read_failed", failedLine);
+    }
+    found = items.filter((view) => {
+      const title = squash(String(view.fields.title ?? ""));
+      return keys.some((key) => title.includes(key) || key.includes(title)) || (!keys.length && squash(quote).includes(title));
+    });
+  }
+  const day =intent.date ? said?.day ?? null : said && /(今天|明天|后天|昨天|今日|明日|tomorrow|today|\d{1,2}\s*月\s*\d{1,2}|\b(?:mon|tue|wed|thu|fri|sat|sun))/iu.test(quote) ? said.day : null;
   const occursOn = (view: RecordView, on: string) => {
     const from = instantOf(on, "00:00", zone);
     const to = new Date(Date.parse(from) + 86_400_000).toISOString();
     return Boolean(occurrenceIn(String(view.fields.startsAt), typeof view.fields.recurrence === "string" ? view.fields.recurrence : undefined, from, to));
   };
-  if (day && found.length > 1) found = found.filter((view) => occursOn(view, day));
-  if (found.length > 1) {
+  if (!byFinder && day && found.length > 1) found = found.filter((view) => occursOn(view, day));
+  if (!byFinder && found.length > 1) {
     const exact = found.filter((view) => keys.includes(squash(String(view.fields.title ?? ""))));
     if (exact.length) found = exact;
   }
   if (!found.length) {
-    const named = matchEvents(await eventCandidates(ctx, { clues, quote }), clues, quote, day, zone);
+    const named = await eventsNamed(ctx, { clues, partId: part.localId, quote, timeText: dateWords, verb: intent.capability === "schedule.delete" ? "delete" : "update" }, async () => matchEvents(await eventCandidates(ctx, { clues, quote }), clues, quote, day, zone));
     // AG21b (R28): the first layer often calls a named event a schedule item. With no schedule item of those words, the
     // user's own private event of the same words is the one meant: its change, or its delete plan (links listed first).
     if (named.some((item) => item.ref.kind === "private")) {
@@ -682,7 +807,7 @@ async function resolveDeletePlan(ctx: Ctx, part: GraphPart, write: PartWrite & {
   let target = bound ? all.find((event) => event.ref.id === bound) ?? null : null;
   if (!target) {
     const named = clueTexts.filter((clue) => squash(clue).length >= 2);
-    const matched = named.length ? matchEvents(all, named, quote, null, zone) : matchEvents(all, [], ctx.message, null, zone);
+    const matched = await eventsNamed(ctx, { clues: named, partId: part.localId, quote: named.length ? quote : ctx.message, verb: "delete" }, () => (named.length ? matchEvents(all, named, quote, null, zone) : matchEvents(all, [], ctx.message, null, zone)));
     target = matched.find((event) => event.ref.kind === "private") ?? null;
     if (!target && matched[0]?.ref.kind === "platform") return stop("platform_event", EVENT_WORDS.platformLocked(language, matched[0].title));
   }

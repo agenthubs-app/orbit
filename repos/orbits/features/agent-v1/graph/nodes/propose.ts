@@ -418,6 +418,9 @@ export function proposeNode(scope: NodeScope): GraphNode {
       judgment: deps.judgment ?? null,
       judgmentBudget: run.judgment,
       requestId: input.requestId,
+      // The record finder's one reformulate round counts in this round's model calls (finder/live.ts).
+      modelBudget: budget,
+      ...(deps.fetchImplementation ? { fetchImplementation: deps.fetchImplementation } : {}),
     };
     const outcomes = new Map<string, WriteOutcome>();
     const duplicates = new Map<string, Exclude<DuplicateDecision, { kind: "new" }>>();

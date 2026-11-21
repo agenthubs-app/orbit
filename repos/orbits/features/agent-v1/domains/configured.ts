@@ -98,6 +98,7 @@ export function configuredRecordAccess(): AgentRecordAccess | null {
     eventsByIds: byIds,
     // Hotfix 2026-11-20 part 2: the published events the user is registered for (not cancelled).
     registeredEventIds: async (actorId) => (registrations ? (await registrations.listPublishedCanonicalRegistrationStatusesForUser(actorId)).filter((item) => item.status !== "cancelled").map((item) => item.eventId) : []),
+    deniedReads: evalDeniedReads,
     maxPages: readMaxPages(),
     reader,
     scope: (actorId) => ({ accountId: actorId, authorizationEpoch: AUTHORIZATION_EPOCH, workspaceId }),

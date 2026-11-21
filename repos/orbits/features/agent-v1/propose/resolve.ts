@@ -39,6 +39,10 @@ import { CONTACT_WORDS } from "../domains/contact/copy";
 import { importTableOf, ImportTableRejected, previewImport, withHeader } from "../domains/contact/import-preview";
 import { isEventIntent, resolveEventIntent, type EventResolveExtras } from "./events-resolve";
 import type { ContactEffect, ContactFieldName } from "../domains/contact/types";
+import type { ModelBudget } from "../models/main";
+import { findRecord, finderMode, finderSessionOf, shownRefsOf, type FinderSession } from "../finder/session";
+import { resolvePerson as finderPerson } from "../finder/impl/person";
+import { ACCOUNT, labIdOf, agentRefOf } from "../finder/world";
 
 export interface PartWrite {
   intents: StoredIntent[];
@@ -95,6 +99,11 @@ export interface ResolveContext {
   judgment?: JudgmentAccess | null;
   judgmentBudget?: JudgmentBudget;
   requestId?: string;
+  /** The record finder (finder/session.ts): the round's main-model budget and fetch for its reformulate round, and the
+   *  request's session (made on first use). ORBIT_AGENT_FINDER=legacy keeps the old lookups. */
+  modelBudget?: ModelBudget;
+  fetchImplementation?: typeof fetch;
+  finder?: FinderSession | null;
 }
 
 const words = (message: string, span: [number, number] | null | undefined) => (span ? message.slice(span[0], span[1]).trim() : "");
@@ -224,6 +233,13 @@ export async function resolvePerson(ctx: ResolveContext, part: GraphPart, write:
     return { kind: "missing" };
   }
   if (!ctx.records || !ctx.scope) return { kind: "failed" };
+  if (finderMode() === "new") {
+    const byFinder = await personByFinder(ctx, part, picked, clue.text);
+    if (byFinder.kind !== "none") return byFinder;
+    // The finder reads names as the lab's world writes them (a space between family and given name, a saved reading);
+    // the agent stores neither ("小林健"), so a name it does not read is looked up as before — never "not found" on that.
+    emitTrace({ partId: part.localId, said: clue.text, type: "finder.person_fallback" });
+  }
   const { failed, matches } = await findContacts(ctx.records, ctx.scope, clue.text, words(ctx.message, part.quote), ctx.message);
   if (failed) return { kind: "failed" };
   // AG06 repair 1 (AE-XL-010): a nickname matching contacts only partially is a question, never a guess or a "not found".
@@ -239,6 +255,46 @@ export async function resolvePerson(ctx: ResolveContext, part: GraphPart, write:
     if (partId !== part.localId && asked.length === ids.length && [...asked].sort().every((id, index) => id === ids[index])) return { kind: "shares", with: partId };
   }
   return { candidates: matches.slice(0, 3).map((match) => ({ id: match.id, name: match.name, type: "contact", ...(match.detail ? { detail: match.detail } : {}) })), clue: clue.text, kind: "ask" };
+}
+
+/**
+ * The record finder's person step (finder/impl/person.ts, the lab's resolvePerson) over the account's contacts: one by
+ * name, alias or reading is the person; one found only by company or role, or names one character off ("near"), are
+ * offered in a question and never taken (AG20b R10, owner decision 4); several are one question (shared with another
+ * part asking about the same people). Pronouns never reach here (resolvePerson above handles them).
+ */
+async function personByFinder(ctx: ResolveContext, part: GraphPart, picked: { id: string; name: string } | null, said: string): Promise<PersonResult> {
+  const session = finderSessionOf(ctx);
+  if (!session) return { kind: "failed" };
+  let world;
+  try {
+    world = await session.loader.world(["contacts"]);
+  } catch {
+    return { kind: "failed" };
+  }
+  const sessionPeople = [...ctx.people].sort((left, right) => left.at - right.at).map((person) => labIdOf("contact", person.id));
+  const found = finderPerson({ account: ACCOUNT, mention: said.replace(/^@/u, "").trim(), sentence: ctx.message, sessionPeople }, world);
+  const asCandidate = (labId: string): Candidate & { id: string } => {
+    const fields = session.loader.loaded.get(labId) ?? {};
+    const detail = [fields.company, fields.headline].filter((value): value is string => typeof value === "string" && value.trim().length > 0).join(" · ");
+    return { id: agentRefOf(labId)?.id ?? labId, name: String(fields.displayName ?? ""), type: "contact", ...(detail ? { detail } : {}) };
+  };
+  const named = found.filter((item) => item.why !== "near");
+  const near = found.filter((item) => item.why === "near");
+  emitTrace({ candidates: found.map((item) => ({ id: agentRefOf(item.contactId)?.id ?? item.contactId, why: item.why })), partId: part.localId, type: "finder.person" });
+  if (!named.length) return near.length ? { candidates: near.slice(0, 3).map((item) => asCandidate(item.contactId)), clue: said, kind: "ask" } : { kind: "none" };
+  if (named.length === 1 && named[0].why !== "company" && named[0].why !== "role") {
+    const only = asCandidate(named[0].contactId);
+    return { id: only.id, kind: "found", name: only.name };
+  }
+  const options = named.map((item) => asCandidate(item.contactId));
+  const chosen = picked ? options.find((item) => item.id === picked.id) : undefined;
+  if (chosen) return { id: chosen.id, kind: "found", name: chosen.name, ...(chosen.detail ? { detail: chosen.detail } : {}) };
+  const ids = options.map((item) => item.id).sort();
+  for (const [partId, asked] of ctx.asked) {
+    if (partId !== part.localId && asked.length === ids.length && [...asked].sort().every((id, index) => id === ids[index])) return { kind: "shares", with: partId };
+  }
+  return { candidates: options.slice(0, 3), clue: said, kind: "ask" };
 }
 
 interface TodoView { id: string; title: string; plannedDate: string | null; dueAt: string | null }
@@ -333,6 +389,7 @@ async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrit
         if (view) return { kind: "found", todo: todoOf(view) };
       }
     }
+    if (finderMode() === "new") return await todoByFinder(ctx, part, clues, personId, inherited);
     // Words to look for, in turn: the clue's own words ("约山本吃饭" is a title with the name in it), then the same
     // words without the person's name ("给小林寄合同" → "寄合同", "山本さんに原稿" → "原稿"). The first that finds wins.
     const searches: string[] = [];
@@ -425,6 +482,58 @@ async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrit
     emitTrace({ error: error instanceof Error ? error.message : String(error), partId: part.localId, type: "read.error", where: "propose.todo_lookup" });
     return { kind: "failed" };
   }
+}
+
+/**
+ * The record finder's to-do lookup for "改" (todo.update): the open to-dos of the account, the person settled for the
+ * item narrowing them (the finder's people filter), the words of the clue; one → the card (still needs a click), several
+ * → which one (up to three, with their dates), none → the not-found line in the user's words. The new date is a value
+ * of the change, never a filter of the lookup.
+ */
+async function todoByFinder(ctx: ResolveContext, part: GraphPart, clues: readonly string[], personId: string | null, inherited: boolean): Promise<TodoResult> {
+  const session = finderSessionOf(ctx);
+  if (!session) return { kind: "failed" };
+  const clue = [...new Set(clues.map((text) => text.replace(/^@/u, "").trim()).filter(Boolean))].join(" ");
+  // What the user called it, for saying it was not found (their words without "那条待办"; nothing when only a kind word).
+  const said = (clues[0] ? clueSearchWords(clues[0]) : undefined) ?? "";
+  const lookup = (people: string | null) => findRecord(session, {
+    accept: ["todo"], clue, fn: "findTodosMemos", kinds: ["todo"], partId: part.localId, sentence: ctx.message, status: "open", verb: "update",
+    ...(people ? { people: [people] } : {}),
+    ...(ctx.context && !ctx.context.idle ? { shown: shownRefsOf(ctx.context.shownList) } : {}),
+  });
+  let found = await lookup(personId);
+  // A person only inherited from the message narrows the search; when none of theirs matches, the words alone decide (as before).
+  if (found.kind === "none" && inherited && personId && clue) found = await lookup(null);
+  if (found.kind === "failed") return { kind: "failed" };
+  if (found.kind === "none") return { kind: "none", words: said };
+  if (found.kind === "one") {
+    const view = (await ctx.records!.reader.read("todo", ctx.scope!, { id: found.id })).items[0];
+    return view ? { kind: "found", todo: todoOf(view) } : { kind: "none", words: said };
+  }
+  // The finder links a record to a person by its links or by the person's name in its text; between two people of the same
+  // name ("给季朗发报价" twice) the to-dos linked to the settled person are the ones meant (the old lookup read by contact).
+  let options = found.ids;
+  if (personId) {
+    const linked = options.filter(({ id }) => {
+      const fields = session.loader.loaded.get(labIdOf("todo", id)) ?? {};
+      return (Array.isArray(fields.contactIds) ? (fields.contactIds as string[]) : [String(fields.contactId ?? "")]).includes(personId);
+    });
+    if (linked.length && linked.length < options.length) {
+      emitTrace({ kept: linked.map((item) => item.id), partId: part.localId, type: "finder.linked_to_person" });
+      options = linked;
+      if (options.length === 1) {
+        const view = (await ctx.records!.reader.read("todo", ctx.scope!, { id: options[0].id })).items[0];
+        if (view) return { kind: "found", todo: todoOf(view) };
+      }
+    }
+  }
+  const candidates = options.slice(0, 3).map(({ id }) => {
+    const fields = session.loader.loaded.get(labIdOf("todo", id)) ?? {};
+    const item: TodoView = { dueAt: typeof fields.dueAt === "string" ? fields.dueAt : null, id, plannedDate: typeof fields.plannedDate === "string" ? fields.plannedDate : null, title: String(fields.title ?? "") };
+    return { detail: whenText(item, ctx.language, ctx.timeZone) ?? undefined, id, name: item.title, type: "todo" as const };
+  });
+  // The words matched none of them: said so with the offer ("没有找到…，是指…吗"), as the old lookup did (AG06 repair 1).
+  return { candidates, clue: clues[0] ?? "", kind: "ask", ...(found.unmatched ? { notFound: said || clue } : {}) };
 }
 
 /** One part's intents → its card operations, a question, or code's sentence. */

@@ -49,6 +49,8 @@ export interface AgentRecordAccess {
   /** AG13: the account's private events, «我去过» notes and the records linking to an event (code only, never a model). */
   privateEvents?: Pick<PrivateEventService, "list" | "get" | "references">;
   attendance?: Pick<AttendanceService, "list">;
+  /** Record ids that may not be read now (the same deny list the reader applies; the record finder's World uses it). */
+  deniedReads?(): ReadonlySet<string>;
 }
 
 /** A reference of this turn as intake keeps it: named when accessible; `accessible: false` when not (AG05). */

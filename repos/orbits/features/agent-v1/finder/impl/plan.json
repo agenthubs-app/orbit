@@ -1,0 +1,127 @@
+{
+  "design": "approach B, rules only: code gathers candidates (recall), the model only picks among ids, code decides",
+  "structure": {
+    "index.ts": "exports the Finders & Lookup object",
+    "text.ts": "folding (NFKC, case, katakana->hiragana, long vowel dropped, traditional/shinjitai->simplified, CJK numerals next to a counter->digits, Latin diacritics/umlauts), romaji, pinyin table, edit distance, light English stemmer; loanKey: consonant skeleton shared by a katakana loanword (romaji) and its Latin source word (digraphs merged, r/l/w/y/h dropped, voicing merged); soundKey also drops h and maps v→b; r03: pinyin supplement for common given-name characters (surname reads even when a given char is unknown); romajiKey (Hepburn/Kunrei/long-vowel spellings: si=shi, Satō=Satou=Sato); latinSoundKey (Latin spelling → sound before soundKey: sch, ph, th, c, final -er, m before b/p) and looseSoundKey (voicing, s/z/ts merged); ウィ/ウェ → wi/we; JA_NAME_KANJI name-kanji readings + kanjiReadsAs (segment kanji into name readings, rendaku); wadeGiles (pinyin syllable → Wade-Giles); r04: more traditional → simplified pairs (則 刪 備 and traditional surname forms 羅 馮 鄧 蕭 蔣 呂 …); pinyin for phonetic-transliteration characters and the surname characters the tables missed (闫 庞 聂 阮 翁 …); r08: pinyin for more transliteration and given-name characters (separate table, no duplicate keys); small kana vowels after any kana (フォ = fo, ウォ = wo, ファ = fa, ティ = ti, ディ = di, トゥ = tu); Latin final -ng compared as n against katakana ン; more Japanese name kanji readings (人 / 亜 / 阿 / 工 / 浦 / 横 / 増 / 塚 / 望 …, fixed readings 井上 / 木下 / 山下 / 渡部 / 藤原 / 服部 / 長谷) and the repeat mark 々 reads as the kanji before it",
+    "lexicon.ts": "kind / soft-kind / pointer / verb / stop words, pronouns, honorific and job-title words (+ title equivalence classes), surnames, cross-language synonym classes (generic verb classes marked); self-reference words (咱们/俺/うち) as stop words; more pronouns (TA/人家/对方/先方); positional pointers (后面那个/後のほう/中间/真ん中/latter/former/middle); job-title classes (董事≈取締役, 产品经理≈PM, 律师助理≈paralegal, 财务≈経理…); COMPOUND_PARTS (verb+object compounds searched as parts: 订房 = 订 + 酒店); r03: EN_NICKNAMES / ZH_EN_NAMES; more kind words (リマインダー); more synonym classes (价格表~pricing sheet, 更新~update, 草稿~draft, 周报~weekly report, 清单~list, 想法~idea, 接待, 签合同~签约, 续期, 检查~check, 最终~final, 年调, 安全数据表~SDS, 读书~reading, 问卷~questionnaire, 健康~health, 賃貸~lease, プロダクト~product, 迎え/接人~pickup, visit~見学); r04: kind words 予定表 / 日程表; formal pointers (该项 / 此条 / 本条 / 当該 / 該当 / 那则); English vague nouns (thingy / whatsit); verbs 划掉 / 干掉 / 处理掉; synonym classes 咨询~consulting~コンサル, 合伙人~partner~パートナー, meeting += 碰头会 / sit-down / 打ち合せ; r07: synonym classes relocation words (moving / relocation) joined to the existing house-move class; fly / flight ~ 飞 / 飛 (an item titled with the verb); r08: more English given-name nickname groups whose short form is not a plain clip (henry / hank, leonard / len, wesley / wes, mary / molly …); r10: synonym classes 媒体 ~ 传媒 ~ メディア ~ media; 跨境电商 ~ 越境EC ~ cross-border e-commerce (and 跨境 / 电商 parts); 监管 ~ 規制 ~ regulation / rules; 放松 ~ 緩和 ~ easing / relax; 排期 ~ スケジュール ~ schedule; the shipment class gains 发送 / 発送 / shipping; vague pointers 玩意儿 / アレコレ; honorific 女史",
+    "time.ts": "resolveTime: regex hits over an NFKC copy with index map, longest-match overlap resolution, rules R1-R24 of cases/time.yaml; R25 weekday-to-weekday ranges (下周一到周三 / 来週の月〜水 / Mon to Wed next week); R26 minutes before the hour (差一刻三点 / 三点差一刻 / 3時15分前 / quarter to three); within/in the next N days|weeks; 今儿/明儿/昨儿; 这回/下回 occurrence; M.D dates (not after 版本/v); a bracketed weekday after a date joins its span; more went phrasings (跑了一趟 / 顔を出した / 寄った / dropped by); part-of-day words starting compounds are not time (下午茶 / 朝食 / 朝刊 / 夜市 / 晩酌 / afternoon tea); r04: 半个钟头 shift; 来年の1月 / 明年的1月; next / last <month name> as that whole month; a 24h-looking clock (7:30) under an evening / afternoon part of day is read as 12-hour; 那回 / 那趟 / 这回 pin an occurrence by the day; an evaluative remark (X得真好) is not an occurrence; spans joined across 'in the' (8 in the morning); r05: relative month + third (下个月上旬 / 来月の中旬 / 先月下旬 / 来月頭); bare 月初 / 月头 / 月中 (current month 1–10 / 11–20); 年初 = Jan 1–10 (bare: nearest); 月内 / 年内 = today … end of month / year; fixed-date holidays (JP national, CN, international: 勤労感謝の日 / 圣诞节 / 元旦 …) → nearest occurrence (R5); N个半小时 / N時間半 / an hour and a half shifts; bare 早 right before an amount = earlier; a period-end word (年末 / 年底 / 月末 / 月底) glued to a two-Han noun not starting with a verb / position / modal character is a compound, not time (R15); r06: a leading English article is not part of 'the week after next / before last' (R12); a week range absorbs 之内 / 以内 / 内 / 中 (这周之内 / 本周内 / 今週中); Japanese era years 令和 / 平成 / 昭和 N年 (元年 = 1) in full dates; N刻钟 = N × 15 minutes as a shift amount; r07: a bare month / day written with a CJK numeral glued to a following noun character is the head of a fixed compound, not a date (R15): in Japanese text any Han character that is not a time continuation (中 / 末 / 頃 / 朝 …), and 月天 in any text (a band or idiom headed by a month / day numeral); r10: the Nth / last weekday of a month (11月最后一个周五 / 12月の第1月曜 / the first Monday of December) → that day (month year by R5); the month after next / before last (下下个月 / 再来月 / 上上个月 / 先々月 / month after next) → that whole month; 今日中 / 本日中 / 今天之内 / 明日中 → that day; a holiday + 当日 / 当天 joins the span; N時のM分前 (の allowed)",
+    "clean.ts": "cleanClue: quotes kept, time spans removed, CJK scanner (folded matching) for person/pointer/kind/verb/stop words, script-boundary split, ja verb split; wrapper suffixes (系の / につきましての / に関しての / 的事儿 / self-possessives うちの・俺の); narrative fillers (跟你提过的 / 上回说的 / 前に話した) as stop; kind word glued before a request verb ends the content; zh one-char prepositions only in runs without kana; 小X+さん one mention; 様/氏 glued to a following Han char is a compound (仕様書); a known katakana word + さん is a role, not a name; function words never split a katakana word; long CJK compounds that are exactly a sequence of lexicon words are split there; ja dictionary-form verb before a noun is split off; r03: 的事 does not swallow 事项; 那项/那张/那笔… pointers; 有条/有个 indefinite openers; 记的/存的 narration; 啥/手头 fillers; 上から/一番上 positional pointers; okurigana も り not a particle; の before a kind/pointer/end splits even after hiragana; hiragana function/pointer words never start inside a katakana word; one-char prepositions keep common words (跟进/对接…); a number keeps its counter (3部); two-kanji suru verb split off (用意する); a Chinese soft kind word (安排/记录) closing the clue after a pointer/的 is the kind; r04: emoji / pictographic symbols are separators; hedges and vague wrappers (好像是 / 叫什么 / 什么的 / 之类的 / たしか / どうとか / とか / なんか) are stop words; listed / shown narration (刚才列出来的); pronoun-like person words (哥们儿 / 那家伙); 宛 / あて after a person is a function word and 様宛 is not a compound; surname + job title inside a longer Han run before a pointer / 的 / end is a person (<company><surname>课长那份); a request verb may be followed by another (帮我划掉); a casual Japanese te / chau verb form closing a sloppy clue is the request (消しちゃって / 片付けといて); r05: chat deixis 楼上 / 上边 as pointers; ja narration 出てきた / 行った / 参加した / 見た and zh 参加的 / 去过的 / 上面出现的 as stop; 董 / 王sir / 张桑 (net honorifics) after a surname = person; X担当 with X ordinary or job-title vocabulary is a role, not a name; '<org>管 / 负责<known role>' split into org + role, leading 负责<role> keeps the role; a capitalised Latin word before a CJK speech verb (说 / 提到 / 问) is a person and the verb is narration; 前 / 之前 / までに right after a time word belong to it; no word starts on a mark that folds to nothing (ー); more zh note kinds (便签 / 便条 / 备忘); English went / attended / visited are verbs; r06: a negated alternative (不是X…，是Y / Xじゃなくて、Y / not the X one, the Y / Y, not X) drops the negated part before cleaning; Cantonese pointers and particle (嗰个 / 嗰条 / 嗰, 嘅 = 的); hesitation fillers (呃 / えーと / えー / あのー) as stop; vague past time (前两天 / 前阵子 / 最近 / こないだ / 先日 / recently) as time; a status said as a modifier (已经做完的 / 做好的 / 还没做的 / 済んだ方の / finished) as stop; title-naming wrappers (叫… / 名为 / 标题是 / called / named / titled) as stop; a kind word followed by 里 / 中 (待办里那条) or a casual Japanese verb ending (メモっといた) is the kind; narration opening with the speaker may follow content (…我记下来的); more casual pronoun-like person words (这小子 / あいつ / こいつ / あの人); r07 (structural, by class and morphology): Chinese demonstrative phrases = demonstrative (那/这/哪/某/嗰) + optional numeral (一/两/几/些/N) + optional measure word + optional 儿 (那几条 / 这一条 / 某个 / 那块儿) and a bare count + record measure word at a word start (几条 / 两个) are pointers; Chinese relational prepositions opening a clue (关于 / 涉及 / 针对 / 围绕 / 对于 / 就是), the speaker's memory openers (我记得 / 印象中) and self-reference determiners (我们 / 咱们 (+ 组 / 部门 / 公司)) are stop; title-introducing verbs (写着 / 内容是 / 标着 …) join the naming wrapper; Japanese ko-so-a-do deixis (ko-so-a-do series + の) + の is a pointer; a Japanese relational noun closing content (絡み / がらみ / まわり / 周り / あたり) is a wrapper; a plain-past Japanese relative-clause verb before a noun (書いた資料 / 渡した書類) is narration; を is always a particle; も / と / や opening an inflected hiragana verb (もらった) start a word; a bare Japanese job title before a person particle (部長に / 課長から) is a person; 小/老/阿 + surname absorbs a following title; a number keeps its edition / counter word and 第 + digits stays one word (第3稿); English: relational wrappers (concerning / regarding / related / relating / pertaining / involving) are stop, the speaker's narration after a subject pronoun (the memo I wrote / the task I need to …) is stop, record-book words before a kind word (diary item / planner note) are kind, an ordinal modifying a content noun with no kind word after it (the third version) is content, a request verb that is also a noun right after a content word at the end (an office move) is content, count words after a pointer or before a kind (these four notes) are pointers, vague nouns (anything / something / the bit on) are pointers; quoted subjects lose email reply / forward markers (Re: / Fwd: / 回复：); r08 (shape of a content noun phrase, applied to every non-quoted content word): discourse / hedge openers (closed class: 就是 / 其实 / 反正 / 大概 / 啥 / 嗯 …, ほら / えっと / まあ / なんか …, uh / um / maybe / okay …) and request openers ((请 / 麻烦 / 帮我)* + a look-up verb in request form: 查查 / 找一下 / 找下) are trimmed off the front; sentence-final particles (吧呢吗嘛啊呀啦哦哈么呗咯 …, 了 / 来着; ja copula / question endings だっけ / かな / よね / じゃん / なんだけど …) are trimmed off the end; a Chinese question / request clause after the noun (starts with a predicate character 在是有还能可帮请你怎什啥咋哪几多谁记找查看 and carries a question word, the A-not-A form 在不在 / 有没有, a final 吗 / 么 / 呢, or a modal + look-up verb) is cut off, or dropped when it is the whole piece; a kind word followed by such a clause (or, in Japanese, by hiragana only / a short particle-free verb) ends the content; a pure-hiragana piece ending in an inflection or particle (ある / だっけ) is dropped unless nothing else is left; a standalone Japanese request / polite verb (見つけてくれる / 探してほしい) is dropped; a negation + one verb (不在 / 没有) is dropped; English: an auxiliary / modal / wh-word right after a kind word or pointer opens a question / request clause and every Latin word from there on is not content (…, is it still there / could you pull it up); a request verb with content words on both sides is a noun (trade show poster); a pronoun + group word (她们组 / 他公司) and a person + instructing verb + 的 (交代的 / 吩咐的) are not content; r09 (search words safe for unfamiliar names): a Chinese sentence-final particle is trimmed only when no content follows the word (a name or word ending in 哈 / 啦 before 的 or more content keeps it); a question / request clause is cut from inside a word only after a head of at least 2 characters, and the modal + look-up branch needs the look-up verb in a look-up form (找一下 / 查出来 / 看看 / at the end), so 翻新 / 看板 are content; a hiragana word followed by a case / linking particle (への / の / に / と / が / から) is a noun (often a name), never a dropped predicate; a Japanese discourse opener (まあ / なんか …) is trimmed only at a word boundary (not when hiragana runs on into the same word); a standalone request verb built on a 2–3 kanji verbal noun keeps the noun (確認してもらう → 確認); r10 (conservative trimming — unknown vocabulary keeps the whole piece): a question / request clause is cut from inside a Han word only at a closed-class multi-character opener (还在 / 是不是 / 有没有 / 能不能 / 帮我 / 麻烦 / 怎么 / 什么 / 多少 / 几号 / 哪 / 谁 …; a single 请 / 能 / 在 / 是 / 几 is never a cut point) and never where the character before and the opener form a lexicon word; a whole piece counts as a request clause only when it ENDS in the look-up form (帮我找找 / 能帮我查一下吗), so 帮 / 请 + more words keep their content; 帮 opening a common compound (帮扶 / 帮手) is not a request; a noun ending in a particle character (酒吧 / 毛呢 / 喇嘛) keeps it; 喂 is not a discourse opener (it is also a verb) and 就 keeps more 就-words (就绪 / 就位 / 就任 …) in both places; a pure-hiragana piece is a predicate only with an unambiguous verbal / sentence ending (った / ている / ない / ます / っけ / かな / けど / だ / て …), so hiragana nouns and names ending in ん / い / る / か (みかん / あおい) stay; the casual te-verb pop needs hiragana before て unless it is one kanji + て (子育て / 仕立て stay); や / も + り after a kanji is okurigana (水やり); 他 after 吉 / 其 / 利 / 排 is part of a word; r10 (new structure): a self-correction (X，哦不，Y / X…じゃなかった、Y / X、いや違う、Y / X — sorry, Y) keeps only Y; whole-piece courtesy formulas (麻烦了 / 谢谢 / お願いできる？ / よろしく), forgotten-name questions (誰だっけ / 谁来着) and Japanese concessive clauses (…たけど) are not content; 《》 / 〈〉 are title brackets (quoted) and ASCII ' quotes only at word edges (what's is not a quote); # / ＃ are separators; English forgotten names (what's-his-name / so-and-so) are a person, 'action item' is a kind, 'the whole / entire X' drops the determiner, ordinals from the end (second-to-last / penultimate) and 倒数第N are pointers; vague nouns 玩意儿 / アレコレ are pointers; 刚 before a demonstrative is vague time; '<kind>里 / 上 + a jotting verb (记的 / 写的)' and '记在 / 写在 <place> 上 / 里的' are the kind; a Latin name + a form of address (总 / 经理 / 老师 / 先生 …, not an occupation) and a one-character given name + 哥 / 姐 are a person; 女史 is a Japanese honorific",
+    "person.ts": "resolvePerson: pronoun -> alias table -> saved aliases -> full name -> reading (kana/romaji/pinyin, both orders) -> initials -> surname+title (job title narrows, honorific language prefers ja/zh reading) -> 小/老/阿 -> given name (incl. alias given) -> surname+job-title fragment -> katakana sound of Latin name -> one-char-off (near); company qualifier filters first; job-title words of TITLE_EQUIV split from a mention (X弁護士 / X工場長 / X董事); intensifying 大 between surname and title dropped; saved alias + honorific; apostrophes ignored in names; more pronouns incl. 那位 / あの方 / 对方 / 人家 (→ last session person); company + role (<company>的PM / <company>做产品的 / <company>のプロダクトマネージャー → contact whose job title is that role); katakana sound also against Latin saved aliases; r03: readings compared through romajiKey for Japanese names (kana / romaji spelling variants); Wade-Giles readings of Chinese names as a fallback (full name, surname + title); English nickname groups (Liz = Elizabeth) and Chinese renderings of English given names; katakana full names split on ・ matched part by part; short katakana names (≤3 kana vs ≤4 letters) allowed one-consonant sound keys; kanji typed for a Japanese name saved in kana settles (reading), same reading in other kanji than a kanji-saved name is only near; more role words after a surname (秘书 / 先輩 / 董 / 船长 …), Mr.X without space, Miss; r04: ordinary word or a name — a bare Han mention settled by full / given / reading must be used as a name in the sentence (zh: degree adverb / 得 before, 一点 / 地 after, wish formula 祝… → not a person unless a name cue like 说 / 那边 / 约 / 给 is next to it; ja: a bare kanji given name needs an honorific or a person particle / contact verb right after it); Chinese-form alias gives a surname (a Latin-named contact with a Chinese-form alias → that alias's surname), a Han surname also names a Latin-written contact by its pinyin; clipped English nicknames (start of a saved first name, ≥ clipMinLength letters: Pete = Peter); Chinese phonetic renderings of Latin names by consonant skeleton (TRANSLIT characters only; same initial sound class; exact skeleton first, then one extra Latin consonant); a company glued to a name / role without 的 / の (<company>课长) as a fallback; a role said with an honorific (課長さん); r05: colloquial pronouns (这哥们 / 那家伙 / 此人 / あいつ / this guy) → last session person; 桑 / sir as pure honorifics after a surname (never narrow by job; a Latin title only splits off a non-Latin base); clipped nickname with a pet-name ending (-e / -y / -ie / -o): its stem (≥ clipMinLength) starts a saved first name; katakana of a clipped nickname: kana sound key equals the sound key of a ≥ clipMinLength prefix of a saved Latin first name; r06: more anaphoric pronouns (该客户 / 那位客户 / 向こうさん / 先方さん / あちらさん) → last session person; a katakana rendering of a Chinese surname (kana romaji vs pinyin under a key that merges ng/n, zh/ch/j/q, sh/x, z/c/ts, l/r; small ェ after シ/チ/ジ is one syllable) matches surname + honorific; a given-name initial + Latin surname (X. Surname): surname by Latin family name or reading, given name (Latin or romaji reading) starting with the initial; r07: a Latin full name in either order (given first / family first) matches by the set of name words; katakana full-name parts also match a Latin part with its glides (w / y) dropped (a written w / y glide); r08 (name-independent paths): 阿 / 小 + the last character of a two-character Chinese given name is that given name (pet name); a pinyin head w / v no longer merges with b / p (沃 / 威 vs 普 / 帕); a katakana clipped first name (ウェス) is tried before the loose r-dropping sound keys; more Chinese transliteration characters (什通门顿默茨琼汀敦夫哥根瓜圭夸涅努派恰切钦屈热茹瑞若绍施舒提魏翁席薛卓楚); r10: a single romanised word with -ue (pinyin xue / yue / jue …) only reads a Han name part whose own pinyin has that vowel (the comparison fold merges ue / u for German spellings); a bare romanised syllable that reads both a Han given name and a surname keeps both (given-name holders first); romanised 老 / 小 / 阿 (Lao / Xiao / A + surname pinyin) as 老X; katakana rendering of a Chinese surname: a kana yu / yo glide after a consonant is the pinyin medial i and long vowels are one vowel (kanaPinyinKey); pronouns あの子 / この子 / その子; a two-consonant katakana key may match by the loose key (voiced final s = ズ) with at least kanaLatinShortKana kana, same first sound and same key length; ordinary word or a name: in a Japanese sentence any bare given name needs the honorific / person particle after it, and in a Chinese sentence a bare given name glued after a Han noun inside a clause with no name cue (说 / 跟 / 要 / 会 …) is a word",
+    "match.ts": "query tokens (synonym concepts by longest match, CJK bigrams, weak unigrams, kana runs + weak kana bigrams, Latin stems, numbers, multi-word Latin phrases) and IDF-weighted best-field scoring; synonym matches marked label~; glued Latin word = two adjacent title words (datasheet = data sheet); katakana loanword token vs Latin title / name words and adjacent pairs by loanKey (quality loanwordQuality); compound expansion before tokenising; r05: synonym surfaces also through the singular of the last Latin word (lessons → lesson), single words and multi-word phrases",
+    "finders.ts": "isolation + deleted (restore: deleted within 30 days only), ordinal/deixis over sessionShown, people filter (linked or named in text; fallback to others at a discount), time filter (todos planned/due day, schedule occurrences incl. moved/cancelled, events days/part of day/attendance) or soft (memos written day), title time words, top K; positional pointers (middle / latter / former) in pointerPick; ordinal / deixis picks narrowed by input.kinds; an explicit ordinal also applies when the clue keeps content words, if the picked record matches them; r04: a single (non-recurring) schedule item pinned by the said day / range reports that day as its occurrence; r07: findSchedule reads an all-day attribute in the clue (全天 / 終日 / 一日中 / all-day) as a filter on allDay items (not a title word); r10: pointerPick counts from the end for 倒数第N / 最後から N番目 / 後ろから / 下から N番目 / second-to-last / third from the end / penultimate",
+    "decide.ts": "drop invalid / duplicate model ids, D1 option rules, lexical winner (only full match, literal first, or a score lead with more evidence), mustNotSayNone protection via the rarest content token; a lexical winner that is not linked to the named person never wins while that person has candidates; r03: title lead: the only candidate whose title holds every strong content word (≥ titleLeadMinTokens) wins when its score ≥ titleLeadRatio × the runner-up; r05: matchedHolds — a candidate's matched entry holds a token as label, label~, either side of a 'record word~query word' pair, a 'field:word' annotation, or a longer CJK matched word containing the token (used for the rarest-word protection and the lexical winner); r06: name independence: clue tokens that are (part of) a named person's name / saved alias are dropped from the content-word checks (lexical winner, rarest-word protection); the lexical winner only requires the words that at least one candidate holds (a kept name or a word of no record cannot tell candidates apart); rarest-word df also counts the candidates holding the word (cross-script pairs the lexicon does not know); fallback ask: when 2–3 candidates hold every content word and the others do not, those are the options (tiers: as typed, then synonyms through a whole record word, then any synonym; a record word that is only a part of the typed compound is the weakest)",
+    "lookup.ts": "per item person -> time -> clean -> find; words-alone check (lexical winner + strong); one combined pick call; at most one reformulate round; timeout/malformed -> lexical fallback; r05: words alone do not settle when the leader matches the content words only outside its title (body / notes) while the named person has other candidates → model pick (then decide's none-protection asks); r06: words alone also do not settle when the words that set the leader apart from the named person's other records are only in its body / notes; r07: plural pointer = any count ≥ 2 with a measure word (两条 / 三个 / 2つ / 三件) or an English count word (the last three / all four); counting from the end when the clue says last / 最后 / 後ろ"
+  },
+  "K": 10,
+  "person": {
+    "nearMinLength": 3,
+    "kanaLatinMinKey": 2,
+    "kanaLatinShortKana": 3,
+    "kanaLatinShortLatin": 4,
+    "clipMinLength": 3
+  },
+  "score": {
+    "fieldWeight": {
+      "title": 1,
+      "body": 0.6,
+      "meta": 0.6,
+      "contactName": 1,
+      "contactCompany": 1,
+      "contactTitle": 1,
+      "contactIndustry": 0.8
+    },
+    "unigramWeight": 0.3,
+    "genericWeight": 0.5,
+    "synonymQuality": 0.9,
+    "extraFieldBonus": 0.15,
+    "fuzzyLatinQuality": 0.8,
+    "pinyinQuality": 0.8,
+    "loanwordQuality": 0.8,
+    "phraseBonus": 0.3,
+    "personBonus": 2,
+    "extraPersonBonus": 0.25,
+    "timeBonus": 2,
+    "memoTimeBonus": 1,
+    "ordinalScore": 10,
+    "titleTimeWordBonus": 1.5,
+    "fallbackFactor": 0.5,
+    "attendedRecencyBonus": 0.5
+  },
+  "fuzzy": {
+    "latinMinLength": 5,
+    "latinMaxEdits": 1,
+    "latinPrefixMinLength": 4,
+    "pinyinMinLength": 4,
+    "loanKanaMinLength": 4,
+    "loanKeyMinLength": 3
+  },
+  "decide": {
+    "dominanceRatio": 1.5,
+    "dominanceGap": 1,
+    "maxOptions": 3,
+    "titleLeadRatio": 1.3,
+    "titleLeadMinTokens": 2
+  },
+  "lookup": {
+    "strongCoverage": 0.9,
+    "maxReformulateRounds": 1
+  },
+  "time": {
+    "deletedRestoreDays": 30,
+    "seriesWindowPastDays": 200,
+    "seriesWindowFutureDays": 400
+  },
+  "partOfDayHours": {
+    "early": [
+      [
+        0,
+        6
+      ]
+    ],
+    "morning": [
+      [
+        5,
+        12
+      ]
+    ],
+    "noon": [
+      [
+        11,
+        14
+      ]
+    ],
+    "afternoon": [
+      [
+        12,
+        18
+      ]
+    ],
+    "evening": [
+      [
+        17,
+        24
+      ]
+    ],
+    "night": [
+      [
+        21,
+        24
+      ],
+      [
+        0,
+        5
+      ]
+    ]
+  },
+  "clean": {
+    "zhTailClauseMaxChars": 9,
+    "trimKeepMinChars": 2,
+    "jaHiraPredicateMaxChars": 8,
+    "trimPasses": 4,
+    "zhTailClauseMinHeadChars": 2,
+    "jaVerbalNounKeepChars": [
+      2,
+      3
+    ]
+  }
+}

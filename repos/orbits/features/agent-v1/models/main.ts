@@ -45,12 +45,16 @@ export type MainModelResult =
 export interface MainModelCall {
   node: "understand" | "propose" | "answer" | "probe" | "functions";
   /** repair: the previous output was unusable; retry: the previous call failed (timeout, 429, 5xx). */
-  purpose: "first" | "repair" | "retry";
+  purpose: "first" | "repair" | "retry" | "reformulate";
   requestId: string;
   system: string;
   user: string;
   budget: ModelBudget;
   fetchImplementation?: typeof fetch;
+  /** Shorter than the node default (the record finder's reformulate round: 2 s, finder/live.ts). */
+  timeoutMs?: number;
+  /** A cap on the answer's tokens (the reformulate round asks for a few search words). */
+  maxTokens?: number;
 }
 
 export async function callMainModel(call: MainModelCall): Promise<MainModelResult> {
@@ -70,7 +74,8 @@ export async function callMainModel(call: MainModelCall): Promise<MainModelResul
       jsonOutput: true,
       model: mainModelName(),
       provider: "deepseek",
-      requestTimeoutMs: MODEL_NODE_TIMEOUT_MS,
+      requestTimeoutMs: call.timeoutMs ?? MODEL_NODE_TIMEOUT_MS,
+      ...(call.maxTokens ? { maxTokens: call.maxTokens } : {}),
     },
     systemInstruction: system.text,
     userText: user.text,

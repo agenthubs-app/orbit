@@ -133,7 +133,8 @@ export async function requestDecisions(request: DecisionRequest): Promise<Decisi
   }
 }
 
-async function requestDecisionsOnce(request: DecisionRequest): Promise<DecisionResult> {
+/** One attempt, no retry (the record finder's picker: 2 s, then the rules decide; finder/live.ts). */
+export async function requestDecisionsOnce(request: DecisionRequest): Promise<DecisionResult> {
   const ids = Object.keys(request.questions);
   if (!ids.length) throw new Error("a judgment request needs at least one question");
   for (const id of ids) if (!QUESTION_ID.test(id)) throw new Error(`judgment question id ${id} is not accepted by the endpoint`);

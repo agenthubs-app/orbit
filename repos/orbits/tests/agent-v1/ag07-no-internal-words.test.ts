@@ -33,6 +33,8 @@ const MODEL_ONLY = [
   // AG18: the operator's reports (backfill counts, reconcile list, shadow report) are read by whoever runs the rollout
   // runbook, never by an Orbit user. The rollout words a user reads (legacy-client, legacy-words, rollback) stay scanned.
   /rollout\/(backfill|reconcile|shadow-report)\.ts$/u,
+  // The record finder: the lab's word lists (matching data, never shown) and the picker / reformulate prompts (models only).
+  /finder\/impl\//u, /finder\/prompts\.ts$/u,
 ];
 
 const FORBIDDEN: { name: string; pattern: RegExp }[] = [

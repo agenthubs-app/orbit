@@ -89,6 +89,7 @@ export function recordAccessOf(world?: { records: MemoryRecord[]; events: Canoni
   const reader = createDomainRegistry({ cursorKey: new Uint8Array(Buffer.from("agent-v1-graph-kit-cursor-key-0123456789")), denied: () => denied, events, now: () => "2026-11-15T01:00:00.000Z", source });
   return {
     denied,
+    deniedReads: () => denied,
     listEvents: async () => world!.events,
     maxPages: options.maxPages ?? 5,
     reader,

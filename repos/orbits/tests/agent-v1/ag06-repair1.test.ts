@@ -143,7 +143,12 @@ test("4 AE-XL-006: after an item is taken off the card, the result document's ca
   assert.deepEqual(document.partResults.map((item) => [item.partId, item.status, item.reason ?? null]), [["p2", "awaiting_confirmation", null], ["p3", "unfinished", "removed_from_card"]], "the part taken off the card no longer waits for it");
 });
 
-test("5 AE-CTX-005: a to-do word with no time of day is not swallowed by schedule.create; the person's to-do is offered when the words do not match its title", async () => {
+test("5 AE-CTX-005: a to-do word with no time of day is not swallowed by schedule.create; the person's to-do is offered when the words do not match its title", async (t) => {
+  // Record finder port: the lab design reads 食事 ≈ 吃饭 as the words of 「约山本吃饭」 and puts it on a card (a click still
+  // needed) instead of offering the person's two to-dos; this AG06 rule is the legacy lookup's, kept under the rollback flag.
+  const finder = process.env.ORBIT_AGENT_FINDER;
+  process.env.ORBIT_AGENT_FINDER = "legacy";
+  t.after(() => { if (finder === undefined) delete process.env.ORBIT_AGENT_FINDER; else process.env.ORBIT_AGENT_FINDER = finder; });
   assert.deepEqual(proposableOf({ capabilities: [], refs: [] } as never, "x"), [], "guard: nothing to propose without a write");
   const toDoPart = { capabilities: ["todo.read", "schedule.create"], refs: [] } as never;
   assert.deepEqual(proposableOf(toDoPart, "山本さんとの食事のToDo、11月20日（金）に予定を入れておいて。").sort(), ["todo.create", "todo.update"]);
