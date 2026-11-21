@@ -33,7 +33,7 @@ import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi } from "./plan-api";
-import { KitCard, kitText, useKitStyles } from "./plan-kit";
+import { KitButton, KitCard, kitText, useKitStyles } from "./plan-kit";
 import { newIdempotencyKey } from "./plan-model";
 import { typeTone } from "./plan-overview-kit";
 import { typeState } from "./plan-overview-model";
@@ -128,11 +128,11 @@ export function PlanTypeScreen({ planId, itemId, design = null }: { planId: stri
 
   const steps = detail ? stepsOf(detail, plan, t("plan.types.stepSeparator")) : "";
   const title = detail ? detail.shortLabel : t("plan.type.title");
-  const subtitle = detail ? (steps ? t("plan.type.subtitleV2", { allocation: detail.allocation, steps }) : t("plan.type.subtitleNoStep", { allocation: detail.allocation })) : undefined;
-  const more = detail ? <IconButton icon="more" accessibilityLabel={t("plan.type.more")} onPress={() => setMenu(true)} /> : null;
+  // 2026-11-21 plan-type-detail-redesign-proposal（用户确认）：标题行只有 返回 + 标题 + 小字 Step，不放按钮；动作在头卡底部一行。
+  const subtitle = detail && steps ? t("plan.type.stepOnly", { steps }) : undefined;
   return (
     <View style={layout.fill}>
-    <AppScreen title={title} subtitle={subtitle} headerActions={more}>
+    <AppScreen title={title} {...(subtitle ? { subtitle } : {})}>
       {state.kind === "loading" ? <Skeleton lines={5} /> : null}
       {state.kind === "offline" ? <EmptyState title={t("plan.segment.offlineTitle")} message={t("plan.segment.offlineBody")} action={{ label: copy.action.retry, onPress: () => void load() }} /> : null}
       {state.kind === "failed" ? <RetryCard title={fillCopy(copy.error.loadFailed, { item: t("plan.type.title") })} onRetry={() => { setRetrying(true); void load().finally(() => setRetrying(false)); }} retrying={retrying} /> : null}
@@ -149,6 +149,8 @@ export function PlanTypeScreen({ planId, itemId, design = null }: { planId: stri
           onSkipAsk={setSkipAsk}
           unskipRef={unskipRef}
           footSpace={selectedPeople.length > 0}
+          onRecord={() => setRecordFor([])}
+          onMore={() => setMenu(true)}
         />
       ) : null}
     </AppScreen>
@@ -158,7 +160,6 @@ export function PlanTypeScreen({ planId, itemId, design = null }: { planId: stri
         visible={menu}
         title={detail.shortLabel}
         options={[
-          ...(detail.skipped ? [] : [{ key: "record", label: t("plan.type.record") }]),
           detail.skipped ? { key: "unskip", label: t("plan.type.unskip") } : { key: "skip", label: t("plan.type.skipAction") },
           { key: "cancel", label: copy.action.cancel },
         ]}
@@ -190,7 +191,7 @@ export function PlanTypeScreen({ planId, itemId, design = null }: { planId: stri
   );
 }
 
-function PlanTypeBody({ detail, plan, steps, reload, selected, onSelect, onAwarded, skipAsk, onSkipAsk, unskipRef, footSpace }: {
+function PlanTypeBody({ detail, plan, steps, reload, selected, onSelect, onAwarded, skipAsk, onSkipAsk, unskipRef, footSpace, onRecord, onMore }: {
   detail: PlanPersonTypeDetail;
   plan: PlanV2Detail | null;
   steps: string;
@@ -202,6 +203,8 @@ function PlanTypeBody({ detail, plan, steps, reload, selected, onSelect, onAward
   onSkipAsk: (open: boolean) => void;
   unskipRef: { current: () => void };
   footSpace: boolean;
+  onRecord: () => void;
+  onMore: () => void;
 }) {
   const { styles } = useStyles();
   const shared = usePlanOverviewStyles().styles;
@@ -226,7 +229,7 @@ function PlanTypeBody({ detail, plan, steps, reload, selected, onSelect, onAward
   const index = plan ? Math.max(0, plan.content.personTypes.findIndex((type) => type.itemId === detail.itemId)) : Math.max(0, detail.letter.charCodeAt(0) - 65);
   const stats = plan?.typeStats?.find((item) => item.itemId === detail.itemId);
   const eventUnit = plan && plan.content.event.allocation > 0 ? (unitPoints(plan.content.event.allocation, plan.content.event.targetCount)[0] ?? null) : null;
-  const kicker = steps ? t("plan.type.kicker", { allocation: detail.allocation, label: detail.shortLabel, steps }) : t("plan.type.kickerNoStep", { allocation: detail.allocation, label: detail.shortLabel });
+  const kicker = t("plan.type.headKicker");
 
   const running = useRef(false);
   const run = async (work: () => Promise<boolean>) => {
@@ -333,7 +336,12 @@ function PlanTypeBody({ detail, plan, steps, reload, selected, onSelect, onAward
   return (
     <View style={styles.page}>
       {state === "none" ? <NoneBanner /> : null}
-      <TypeHeadCard detail={detail} tone={typeTone(index)} kicker={kicker} events={stats?.events ?? detail.events.length} busy={busy} onUnskip={() => void unskip()} />
+      <TypeHeadCard detail={detail} tone={typeTone(index)} kicker={kicker} events={stats?.events ?? detail.events.length} busy={busy} onUnskip={() => void unskip()}
+        actions={<>
+          {/* 主按钮最宽；⋯ 里是「这方面我已熟悉」（会改分数，不常用）。已跳过时卡里有「取消」按钮，主按钮不可用、⋯ 不出。 */}
+          <KitButton primary label={t("plan.type.record")} icon="plus" onPress={onRecord} disabled={detail.skipped || busy} style={styles.headPrimary} testID="type-record" />
+          {detail.skipped ? null : <IconButton icon="more" accessibilityLabel={t("plan.type.more")} onPress={onMore} />}
+        </>} />
       {problem ? <InlineProblem text={problem} /> : null}
       {state === "none" ? (
         <>
@@ -420,6 +428,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   talked: { paddingVertical: 8 },
   talkedName: { color: colors.ink, ...kitText(13, "700") },
   task: { paddingVertical: 8 },
+  headPrimary: { flex: 1 },
   taskText: { color: colors.ink, ...kitText(13, "400", 1.6) },
   footSpace: { height: 76 },
 }));

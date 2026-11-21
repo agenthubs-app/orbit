@@ -101,6 +101,11 @@ export const notes = {
   "notes.kindAll": "All",
   "notes.kindMeeting": "Meetings",
   "notes.kindFree": "Free notes",
+  // 2026-11-21 memo-empty-entry-proposal（用户确认）：唯一的空状态说清笔记能记什么（只写 App 能做到的）。
+  "notes.useMeeting": "After meeting someone, write down what you talked about and agreed on",
+  "notes.useFree": "Ideas and lists not tied to one person",
+  "notes.useLink": "Link people and events",
+  "notes.useLinkBody": "Type @ in the body and pick one; it opens straight from the note",
   "notes.voiceSource": "Voice source",
   "notes.useForPlan": "Use for plan conversation",
   "notes.eventTokenUnlinkHint": "Removing an @event token keeps its event link. Remove the linked event separately.",

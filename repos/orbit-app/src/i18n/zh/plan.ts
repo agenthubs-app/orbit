@@ -664,6 +664,9 @@ export const plan = {
   "plan.event.rule": "参加1次 +{unit} · {target}次内满额，之后减半 · {count}/{target}次",
   "plan.type.subtitleV2": "第 {steps} 步 · {allocation} 分",
   "plan.type.subtitleNoStep": "{allocation} 分",
+  // 2026-11-21 plan-type-detail-redesign-proposal（用户确认）：副标题只留 Step；头卡小字固定写「角色 × 处境」（不再重复类型名 / 配分）。
+  "plan.type.stepOnly": "第 {steps} 步",
+  "plan.type.headKicker": "角色 × 处境",
   "plan.type.kicker": "{label} · 第 {steps} 步 · {allocation} 分",
   "plan.type.kickerNoStep": "{label} · {allocation} 分",
   "plan.type.more": "更多操作",

@@ -177,8 +177,8 @@ const read = async <T,>(server: (call: Call) => Promise<Reply | null>, path: str
 const scoreText = (page: Page) => page.getByTestId("plan-score").getAttribute("aria-label");
 const navigation = (page: Page) => page.evaluate(() => (window as unknown as { planNav: { navigation: unknown[]; stack: string[] } }).planNav);
 // RD-16 rework: the type page draws no per-row buttons. A long press on a candidate row opens
-// 「プランの候補にする / すでに話した / 候補から外す」; 「話したを記録 / この分野はもう詳しい /
-// スキップを取り消す」 also sit under the top-right 「⋯」 (その他の操作).
+// 「プランの候補にする / すでに話した / 候補から外す」. 2026-11-21: 「話したを記録」 is the head card's main button and
+// 「この分野はもう詳しい」 sits under the head card's 「⋯」 (その他の操作).
 async function longPress(page: Page, row: Locator) {
   await row.scrollIntoViewIfNeeded();
   const box = (await row.boundingBox())!;
@@ -195,6 +195,8 @@ async function rowAction(page: Page, name: string, option: string) {
 async function moreAction(page: Page, option: string) {
   // The previous dialog / sheet fades out (~300 ms) and its scrim takes taps until it is gone.
   await page.waitForTimeout(600);
+  // 2026-11-21 redesign: 「話したを記録」 is the head card's main button (no longer in 「⋯」).
+  if (option === "話したを記録") { await page.getByTestId("type-record").click(); return; }
   await page.getByRole("button", { name: "その他の操作" }).click();
   await page.getByRole("button", { name: option, exact: true }).locator('xpath=self::*[not(starts-with(@data-testid,"type-"))]').click();
 }
@@ -372,7 +374,8 @@ test("skip: the confirm focuses the main button; full points striped; 元に戻�
   await page.getByTestId("type-skipped").waitFor();
   // skippedAt 通过 schema 传到界面：「10月14日 · 話した人の点とは分けて表示します」。
   await page.getByTestId("type-skipped").getByText(/^\d+月\d+日 · 話した人の点とは分けて表示します$/).waitFor();
-  await moreAction(page, "スキップを取り消す");
+  // Skipped: 「⋯」 is gone (its one item already applies); the head card's own button undoes it.
+  await page.getByTestId("type-unskip").click();
   await page.getByTestId("type-skip").waitFor();
   assert.equal(writes(calls).length, 6, "skip / unskip three times, one request each");
 });

@@ -101,6 +101,11 @@ export const notes = {
   "notes.kindAll": "すべて",
   "notes.kindMeeting": "面談",
   "notes.kindFree": "自由メモ",
+  // 2026-11-21 memo-empty-entry-proposal（用户确认）：唯一的空状态说清笔记能记什么（只写 App 能做到的）。
+  "notes.useMeeting": "会った人と話したこと、約束したことを書く",
+  "notes.useFree": "特定の人に限らないアイデアやリスト",
+  "notes.useLink": "人とイベントをつなぐ",
+  "notes.useLinkBody": "本文で @ を入力して選ぶと、メモから直接開けます",
   "notes.voiceSource": "音声由来",
   "notes.useForPlan": "プランの話せたに使う",
   "notes.eventTokenUnlinkHint": "@イベントを消しても関連付けは残ります。関連イベントは別に解除してください。",

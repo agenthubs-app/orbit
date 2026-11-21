@@ -664,6 +664,9 @@ export const plan = {
   "plan.event.rule": "参加 1回 +{unit} · {target}回まで満額、以降は半分 · {count} / {target}回",
   "plan.type.subtitleV2": "Step {steps} · 配点 {allocation}",
   "plan.type.subtitleNoStep": "配点 {allocation}",
+  // 2026-11-21 plan-type-detail-redesign-proposal（用户确认）：副标题只留 Step；头卡小字固定写「角色 × 处境」（不再重复类型名 / 配分）。
+  "plan.type.stepOnly": "Step {steps}",
+  "plan.type.headKicker": "役割 × 状況",
   "plan.type.kicker": "{label} · Step {steps} · 配点 {allocation}",
   "plan.type.kickerNoStep": "{label} · 配点 {allocation}",
   "plan.type.more": "その他の操作",

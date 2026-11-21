@@ -100,7 +100,12 @@ export const notes = {
   "notes.unknownMentionEdit": "此提及标记无法更改，请保持原样。",
   "notes.kindAll": "全部",
   "notes.kindMeeting": "面谈",
-  "notes.kindFree": "自由备忘录",
+  "notes.kindFree": "自由笔记",
+  // 2026-11-21 memo-empty-entry-proposal（用户确认）：唯一的空状态说清笔记能记什么（只写 App 能做到的）。
+  "notes.useMeeting": "见完一个人，写下聊了什么、约了什么",
+  "notes.useFree": "不针对某个人的想法和清单",
+  "notes.useLink": "关联联系人和活动",
+  "notes.useLinkBody": "在正文里输入 @ 选择，之后可从笔记直接打开",
   "notes.voiceSource": "语音来源",
   "notes.useForPlan": "用于计划的已交流项",
   "notes.eventTokenUnlinkHint": "删除 @活动不会取消关联，请单独移除关联活动。",

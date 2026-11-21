@@ -664,6 +664,9 @@ export const plan = {
   "plan.event.rule": "+{unit} per event · full up to {target}, then half · {count} / {target}",
   "plan.type.subtitleV2": "Step {steps} · {allocation} pts",
   "plan.type.subtitleNoStep": "{allocation} pts",
+  // 2026-11-21 plan-type-detail-redesign-proposal（用户确认）：副标题只留 Step；头卡小字固定写「角色 × 处境」（不再重复类型名 / 配分）。
+  "plan.type.stepOnly": "Step {steps}",
+  "plan.type.headKicker": "Role × situation",
   "plan.type.kicker": "{label} · Step {steps} · {allocation} pts",
   "plan.type.kickerNoStep": "{label} · {allocation} pts",
   "plan.type.more": "More actions",

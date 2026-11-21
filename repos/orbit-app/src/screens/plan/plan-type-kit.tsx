@@ -3,6 +3,7 @@
 // なぜこの人か、.v22qn 聞くこと、.v22rule 話せたの判定、.v22sig 見分け方、.v22route 紹介ルート、
 // .v22ev 会える活動、.kv 人物像、.quote 開口一番、.foot 选择底栏）。数值见 plan-kit.tsx。
 // 每个数字仍来自 GET /api/agent/plans/v2/[planId]/types/[itemId]。
+import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -52,13 +53,15 @@ export function NoneBanner() {
 
 /* ---------- 头卡 .k-thead ---------- */
 
-export function TypeHeadCard({ detail, tone, kicker, events, busy, onUnskip }: {
+export function TypeHeadCard({ detail, tone, kicker, events, busy, onUnskip, actions }: {
   detail: PlanPersonTypeDetail;
   tone: TypeTone;
   kicker: string;
   events: number;
   busy: boolean;
   onUnskip: () => void;
+  /** 2026-11-21 改版：头卡底部的动作行（主「记录聊过」+ ⋯）。 */
+  actions?: ReactNode;
 }) {
   const { styles, colors } = useStyles();
   const kit = useKitStyles().styles;
@@ -85,19 +88,20 @@ export function TypeHeadCard({ detail, tone, kicker, events, busy, onUnskip }: {
         {/* 示例标不占标题宽度（标题折行与画板一致）；スキップ済み chip 在时并排。 */}
         {detail.sample ? <KitSampleTag style={detail.skipped ? undefined : styles.sampleCorner} /> : null}
       </View>
+      {/* 2026-11-21 plan-type-detail-redesign-proposal（用户确认）：纵向 —— 三格一行（细分隔线，不是卡中卡）→ 分数 + 满宽进度。 */}
+      <View style={styles.m3}>
+        <Cell value={candidates} small={t("plan.type.cellPeople")} label={t("plan.type.cellCandidates")} />
+        <View style={styles.m3sep} />
+        <Cell value={events} label={t("plan.type.cellEvents")} />
+        <View style={styles.m3sep} />
+        <Cell value={routes} label={t("plan.type.cellRoutes")} />
+      </View>
       <View style={styles.scoreRow}>
         <UiText style={styles.mid}>{String(points)}</UiText>
         <UiText style={[kit.lbl, styles.scoreLbl]}>{scoreText}</UiText>
-        {/* QA-A: with none, the banner above already says so (it showed three times). */}
-        {candidates > 0 ? <KitChip label={t("plan.type.inNetwork", { count: candidates })} tone="lav" style={styles.chipRight} /> : null}
       </View>
       <View style={styles.mb}>
         {detail.skipped ? <KitHatch line={colors.plum300} base={colors.plum100} /> : <View style={[styles.mbFill, { width: `${fill}%` }]} />}
-      </View>
-      <View style={styles.m3}>
-        <Cell value={candidates} small={t("plan.type.cellPeople")} label={t("plan.type.cellCandidates")} />
-        <Cell value={events} label={t("plan.type.cellEvents")} />
-        <Cell value={routes} label={t("plan.type.cellRoutes")} />
       </View>
       {detail.skipped ? (
         <View style={styles.skipped} testID="type-skipped">
@@ -109,6 +113,7 @@ export function TypeHeadCard({ detail, tone, kicker, events, busy, onUnskip }: {
           <KitButton sm label={t("plan.type.unskipShort")} accessibilityLabel={t("plan.type.unskip")} onPress={onUnskip} disabled={busy} testID="type-unskip" />
         </View>
       ) : null}
+      {actions ? <View style={styles.headActs}>{actions}</View> : null}
     </KitCard>
   );
 }
@@ -506,14 +511,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   headRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   tk: { color: colors.ink3, ...kitText(10.5, "800", 1.5, 0.04) },
   tn: { color: colors.ink2, ...kitText(16.5, "600", 1.5), marginTop: 12 },
-  scoreRow: { flexDirection: "row", alignItems: "baseline", gap: 10, marginTop: 12 },
+  scoreRow: { flexDirection: "row", alignItems: "baseline", gap: 10, marginTop: 14 },
   mid: { color: colors.ink, ...kitText(22, "800", 1.5, -0.01) },
   scoreLbl: { flexShrink: 1 },
-  chipRight: { marginLeft: "auto", alignSelf: "baseline" },
   mb: { height: 5, borderRadius: 3, backgroundColor: colors.surface3, marginTop: 4, overflow: "hidden", flexDirection: "row" },
   mbFill: { height: "100%", backgroundColor: colors.plum700 },
-  m3: { flexDirection: "row", gap: 6, marginTop: 10 },
-  m3cell: { flex: 1, minWidth: 0, backgroundColor: colors.surface2, borderRadius: 12, paddingVertical: 6, paddingHorizontal: 8 },
+  m3: { flexDirection: "row", alignItems: "center", marginTop: 14, paddingVertical: 2 },
+  m3sep: { alignSelf: "stretch", backgroundColor: colors.line, marginHorizontal: 12, width: StyleSheet.hairlineWidth },
+  headActs: { alignItems: "center", flexDirection: "row", gap: 8, marginTop: 14 },
+  m3cell: { flex: 1, minWidth: 0 },
   m3b: { color: colors.ink, ...kitText(17, "800", 1.2) },
   m3z: { color: colors.ink4 },
   // CSS 里 b 是 line-height 1.2 的块（20.4）：固定行高，基线对齐的小字不再把它撑高。

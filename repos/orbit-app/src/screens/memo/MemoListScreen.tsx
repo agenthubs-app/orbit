@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Platform, Pressable, RefreshControl, StyleSheet, TextInput, View } from "react-native";
 
 import { AppScreen } from "../../components/AppScreen";
-import { EmptyState, presentActionSheet, presentConfirm, RetryCard, Skeleton, UiText as Text } from "../../components/ui";
+import { EmptyState, MacTile, presentActionSheet, presentConfirm, RetryCard, Skeleton, UiText as Text } from "../../components/ui";
 import { useToast } from "../../components/ui/Toast";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { deleteNoteOnServer, hasPendingNoteWrite } from "./delete-note";
@@ -74,6 +74,8 @@ export function MemoListScreen({ actorId, scopeKey }: { actorId: string; scopeKe
     { value: "week", label: locale.t("notes.groupWeek") },
     { value: "earlier", label: locale.t("notes.groupEarlier") },
   ] as const).map((group) => ({ ...group, notes: notes?.filter((note) => noteGroup(note.updatedAt) === group.value) ?? [] })).filter((group) => group.notes.length), [locale, notes]);
+  // No notes at all (not a search, not one contact's notes): the one empty state below, without the search box.
+  const blank = notes?.length === 0 && !query && !contactId && !source.loading && !source.failure;
   return <AppScreen inset="kit" title={locale.t("notes.myNotes")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("nav.home") })} backLabel={locale.t("nav.home")} onBack={() => router.replace("/home" as Href)} refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={source.refresh} />} headerActions={
     <Pressable accessibilityRole="button" accessibilityLabel={needsNetwork ? `${locale.t("notes.new")}，${locale.t("sync.needsNetwork")}` : locale.t("notes.new")} accessibilityState={{ disabled: needsNetwork }} disabled={needsNetwork} onPress={() => router.push((contactId ? `/notes/new?contactId=${encodeURIComponent(contactId)}` : "/notes/new") as Href)} style={[styles.add, needsNetwork && styles.addDisabled]}>
       <Icon color={colors.onAccent} name="plus" size={24} />
@@ -81,16 +83,31 @@ export function MemoListScreen({ actorId, scopeKey }: { actorId: string; scopeKe
   }>
     {source.offline ? <MemoOfflineNotice lastSyncedAt={source.lastSyncedAt} /> : null}
     {contactId ? <View><Text style={styles.sort}>{locale.t("notes.contactScope")}</Text><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.allNotes")} onPress={() => router.push("/notes")} style={styles.more}><Text style={styles.moreText}>{locale.t("notes.allNotes")}</Text></Pressable></View> : null}
-    <View style={styles.searchBox}>
+    {/* 2026-11-21 memo-empty-entry-proposal（用户确认）：一屏只有一个空状态；没有笔记时不出搜索框（只是噪音），新建入口是页头固定的「＋」。 */}
+    {blank ? null : <View style={styles.searchBox}>
       <Icon color={colors.ink3Text} name="search" size={20} />
       <TextInput accessibilityLabel={locale.t("notes.search")} autoCorrect={false} maxFontSizeMultiplier={2} onChangeText={setQuery} placeholder={locale.t("notes.searchPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.searchInput} value={query} />
       {query ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.clearSearch")} onPress={() => setQuery("")}><Icon color={colors.ink3Text} name="x-circle" size={20} /></Pressable> : null}
-    </View>
+    </View>}
     {source.loading ? <Skeleton /> : null}
     {source.failure ? <RetryCard title={source.failure} onRetry={source.refresh} /> : null}
     {source.invalid ? <RetryCard title={locale.t("notes.invalidPayload")} onRetry={source.refresh} /> : null}
     {source.pageError ? <><RetryCard title={source.pageError} onRetry={source.refresh} /><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.reloadHistory")} onPress={source.refresh} style={styles.more}><Text style={styles.moreText}>{locale.t("notes.reloadHistory")}</Text></Pressable></> : null}
-    {notes?.length === 0 ? <EmptyState title={locale.t(query ? "notes.emptySearch" : contactId ? "notes.emptyLinked" : "notes.empty")} message={locale.t(query ? "notes.emptySearchBody" : "notes.emptyBody")} /> : null}
+    {notes?.length === 0 && query ? <Text style={styles.noMatch} testID="notes-no-match">{locale.t("notes.emptySearch")}</Text> : null}
+    {notes?.length === 0 && !query && contactId ? <EmptyState title={locale.t("notes.emptyLinked")} message={locale.t("notes.emptyBody")} /> : null}
+    {blank ? <View style={styles.empty} testID="notes-empty">
+      <MacTile emoji="📝" tone="lav" />
+      <Text accessibilityRole="header" style={styles.emptyTitle}>{locale.t("notes.empty")}</Text>
+      <Text style={styles.emptyBody}>{locale.t("notes.emptyBody")}</Text>
+      <View style={styles.uses}>
+        {([["🤝", "macLav", "notes.kindMeeting", "notes.useMeeting"], ["✍️", "macApricot", "notes.kindFree", "notes.useFree"], ["@", "macBlue", "notes.useLink", "notes.useLinkBody"]] as const).map(([emoji, tone, title, body]) => (
+          <View key={title} style={styles.use}>
+            <View style={[styles.useTile, { backgroundColor: colors[tone] }]}><Text style={styles.useEmoji}>{emoji}</Text></View>
+            <View style={styles.useText}><Text style={styles.useTitle}>{locale.t(title)}</Text><Text style={styles.useBody}>{locale.t(body)}</Text></View>
+          </View>
+        ))}
+      </View>
+    </View> : null}
     {/* UX-6: iOS Notes list — each group one card; a row is the title, then the time and the first line. */}
     <View style={styles.list}>{groups.map((group) => <View key={group.value} style={styles.group}><Text maxFontSizeMultiplier={2} style={styles.groupTitle}>{group.label}</Text><View style={styles.card}>{group.notes.map((note, index) => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel={locale.t("notes.viewNamed", { title: note.title })} accessibilityActions={[{ name: "delete", label: locale.t("notes.deleteNote") }]} onAccessibilityAction={event => { if (event.nativeEvent.actionName === "delete") void offerDelete(note); }} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}` as Href)} onLongPress={() => void offerDelete(note)} style={styles.row}>
       <View style={index > 0 ? styles.rowLine : null} />
@@ -115,6 +132,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   hero: { alignItems: "baseline", flexDirection: "row", gap: spacing.sm, paddingTop: spacing.sm },
   heroTitle: { color: colors.ink, fontSize: 34, fontWeight: "900", letterSpacing: -0.8 },
   heroCount: { color: colors.accentText, fontSize: 34, fontWeight: "900" },
+  noMatch: { color: colors.ink3Text, fontSize: typography.body, paddingVertical: spacing.md, textAlign: "center" },
+  empty: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 20 },
+  emptyTitle: { color: colors.ink, fontSize: 18, fontWeight: "800", marginTop: 12 },
+  emptyBody: { color: colors.ink2, fontSize: 13.5, lineHeight: 21, marginTop: 4 },
+  uses: { gap: 12, marginTop: 14 },
+  use: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
+  useTile: { alignItems: "center", borderRadius: 10, height: 32, justifyContent: "center", width: 32 },
+  useEmoji: { fontSize: 15, fontWeight: "800" },
+  useText: { flex: 1, minWidth: 0 },
+  useTitle: { color: colors.ink, fontSize: 13.5, fontWeight: "700", lineHeight: 19 },
+  useBody: { color: colors.ink2, fontSize: 12.5, lineHeight: 20 },
   searchBox: { alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.pill, flexDirection: "row", gap: spacing.sm, minHeight: 44, paddingHorizontal: spacing.md },
   searchInput: { color: colors.ink, flex: 1, fontSize: typography.bodySm, minHeight: 44, paddingVertical: 0 },
   filters: { borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", flexWrap: "wrap", gap: spacing.md },

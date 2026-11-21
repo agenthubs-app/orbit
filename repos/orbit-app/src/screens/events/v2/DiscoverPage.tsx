@@ -6,7 +6,7 @@
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Image, ScrollView, StyleSheet, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { Image, ScrollView, StyleSheet, TextInput, View } from "react-native";
 
 import type { EventDiscoverArea, EventDiscoverFormat, EventDiscoverPeriod, EventDiscoverQuery, EventDiscoverResponse, EventDiscoverRow, EventDiscoverTheme } from "../../../api/contract/event-discover";
 import type { EventSearchResponse } from "../../../api/contract/event-search";
@@ -32,7 +32,6 @@ import { coverUri } from "./event-cover";
 
 // Opens on this month with no area: a fixed 东京 filter left people elsewhere (and online events) with an empty page.
 export const APP_DISCOVER_QUERY: EventDiscoverQuery = { areas: [], period: "this_month", planFirst: true, sort: "date", themes: [] };
-const CARD = 260;
 const FORMATS: readonly EventDiscoverFormat[] = ["speakers", "networking", "small"];
 
 /** 路由参数里的条件（`/events?tab=discover&period=this_week&areas=tokyo&themes=manufacturing_dx&q=CFO&filters=1`）。 */
@@ -76,7 +75,6 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   const [draft, setDraft] = useState<EventDiscoverQuery>((): EventDiscoverQuery => openFilters && addDesignMock("open-path")
     ? { ...initialQuery, themes: ["funding", "saas"], formats: ["networking"] }
     : initialQuery);
-  const [page, setPage] = useState(0);
   // 门禁开发开关：聚焦不弹软键盘（画板从不画系统键盘）。
   const noKeyboard = addDesignMock("no-keyboard");
 
@@ -139,8 +137,6 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   const [pickDay, setPickDay] = useState<"from" | "to" | null>(null);
   const customRange = (value: EventDiscoverQuery) => [value.from, value.to].filter(Boolean).map((day) => `${Number(day!.slice(5, 7))}/${Number(day!.slice(8, 10))}`).join("–");
   const toggleIn = <T extends string>(list: readonly T[] | undefined, value: T) => (list?.includes(value) ? list.filter((item) => item !== value) : [...(list ?? []), value]);
-  // 2026-11-21（手机根因 D，同 Web）：吸附点从 0 起，卡片停在页边距 18，和上下卡片同一条左边线（之前初始偏移 = 页边距，卡片贴屏幕左缘）。
-  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => setPage(Math.max(0, Math.round(event.nativeEvent.contentOffset.x / (CARD + 12))));
 
   const datebox = (iso: string, tall = false) => { const p = tokyo(iso); return <View style={styles.datebox}><UiText style={styles.dateDay}>{p?.day ?? ""}</UiText><UiText style={[styles.dateMonth, tall ? { lineHeight: 15.4 } : null]}>{p ? t("monthLabel", { m: p.month }) : ""}</UiText></View>; };
   const chip = (label: string, onPress: () => void, on: boolean, key: string, caret = false) => (
@@ -199,15 +195,18 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
           </View>
           <View style={[styles.card, { marginTop: 14 }]}>
             <View style={styles.cardH}><View style={[styles.row, { gap: 8 }]}><UiText style={styles.h3}>{t("samplePreview")}</UiText><View style={styles.sampleTag}><UiText style={styles.sampleText}>{t("sampleTag")}</UiText></View></View></View>
-            <View style={{ opacity: 0.5 }}>
-              <View style={[styles.row, { justifyContent: "space-between" }]}>
-                <View style={[styles.emo, { backgroundColor: colors.macTeal }]}><UiText style={styles.emoText}>🎤</UiText></View>
-                <View style={styles.chip}><UiText style={styles.chipText}>{rt("eventsV2.relChipRegistered", { n: 128 })}</UiText></View>
+            {/* 2026-11-21：示例也用新的左图右文行（与真卡一致，无「詳細」按钮）。 */}
+            <View style={[styles.ecRow, styles.ecSample]}>
+              <View style={[styles.ecThumb, styles.ecThumbEmoji, { backgroundColor: colors.macTeal }]}><UiText style={styles.ecEmoji}>🎤</UiText></View>
+              <View style={styles.ecText}>
+                <UiText style={styles.ecTitle} numberOfLines={2}>{t("sample1Title")}</UiText>
+                <UiText style={styles.ecMeta} numberOfLines={1}>{t("sample1Meta").split(" · ").slice(0, 2).join(" · ")}</UiText>
+                <View style={styles.ecFoot}>
+                  <View style={styles.ecChips}><RelevanceChips style={styles.ecChipRow} chips={relevanceChips({ group: "people", known: { count: 2, names: [] }, people: [{ count: 3, emoji: "", label: rt("eventsV2.relExampleType"), source: "registrants", typeKey: "sample" }], topic: null, warnings: [] }, rt)} /></View>
+                  <UiText style={styles.ecReg} numberOfLines={1}>{rt("eventsV2.relChipRegistered", { n: 128 })}</UiText>
+                  <UiText style={styles.ecFee} numberOfLines={1}>¥15,000</UiText>
+                </View>
               </View>
-              <UiText style={styles.evTitle}>{t("sample1Title")}</UiText>
-              <UiText style={[styles.lbl, { marginTop: 3 }]}>{t("sample1Meta").split(" · ").slice(0, 2).join(" · ")}</UiText>
-              <RelevanceChips style={{ marginTop: 10 }} chips={relevanceChips({ group: "people", known: { count: 2, names: [] }, people: [{ count: 3, emoji: "", label: rt("eventsV2.relExampleType"), source: "registrants", typeKey: "sample" }], topic: null, warnings: [] }, rt)} />
-              <View style={[styles.row, styles.cardFoot]}><View style={styles.chip}><UiText style={styles.chipText}>¥15,000</UiText></View><View style={styles.btnSm}><UiText style={styles.btnSmText}>{t("detailsBtn")}</UiText></View></View>
             </View>
             <View style={[styles.ghostRow, { marginTop: 12 }]}><View style={styles.ghostDot} /><UiText style={styles.ghostText}>{t("sampleCommunityLine")}</UiText></View>
             <View style={[styles.ghostRow, { marginTop: 8 }]}><View style={styles.ghostDot} /><UiText style={styles.ghostText}>{t("sampleKnownLine")}</UiText></View>
@@ -263,40 +262,30 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
       {!flat && data && data.planFit.length ? (
         <View style={styles.section} testID="events-discover-planfit">
           <View style={styles.cardH}><UiText style={styles.h3}>{rt("eventsV2.relDiscoverPeople")}</UiText><UiText style={styles.more}>{t("countN", { n: data.planFitTotal })}</UiText></View>
-          {/* D2：这一排有任何一张有图 → 每张卡都出 2:1 顶部（没图的用 emoji 色带）。 */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToOffsets={data.planFit.map((_row, index) => index * (CARD + 12))} decelerationRate="fast" onScroll={onScroll} scrollEventThrottle={32} style={styles.carousel} contentContainerStyle={styles.carouselInner}>
+          {/* 2026-11-21 event-card-compact-proposal 推荐案 B（用户确认）：手机用左图右文列表行——88×88 缩略图（封面居中裁方 / 没封面 = emoji 色块），
+              右边 标题 ≤2 行 · 日期 · 地点 1 行 · 标签 · 报名人数 · 费用 1 行；有封面 / 无封面同高 112；整行可点，不放「詳細」按钮（取代 260 宽横滑卡）。 */}
+          <View style={styles.ecList}>
             {data.planFit.map((row, index) => {
               const registered = registrationChipLabel(row.registrationCount, rt);
-              const banded = data.planFit.some((item) => coverUri(item.coverUrl, baseUrl));
               const cover = coverUri(row.coverUrl, baseUrl);
+              const fee = feeText(row.priceYen, t);
               return (
-                <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={[styles.evCard, banded ? styles.evCardBand : null]} testID={`events-discover-card-${row.eventId}`}>
-                  {banded ? (
-                    <View>
-                      {cover ? <Image source={{ uri: cover }} resizeMode="cover" style={styles.band} accessibilityIgnoresInvertColors testID={`events-discover-cover-${row.eventId}`} />
-                        : <View style={[styles.band, styles.bandEmoji, { backgroundColor: toneBg(rowTone(index)) }]}><UiText style={styles.bandEmojiText}>{row.emoji}</UiText></View>}
-                      {registered ? <View style={[styles.chip, styles.bandChip]}><UiText style={[styles.chipText, { color: "#1E1A24" }]}>{registered}</UiText></View> : null}
+                <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={styles.ecRow} testID={`events-discover-card-${row.eventId}`}>
+                  {cover ? <Image source={{ uri: cover }} resizeMode="cover" style={styles.ecThumb} accessibilityIgnoresInvertColors testID={`events-discover-cover-${row.eventId}`} />
+                    : <View style={[styles.ecThumb, styles.ecThumbEmoji, { backgroundColor: toneBg(rowTone(index)) }]}><UiText style={styles.ecEmoji}>{row.emoji}</UiText></View>}
+                  <View style={styles.ecText}>
+                    <UiText style={styles.ecTitle} numberOfLines={2}>{row.title}</UiText>
+                    <UiText style={styles.ecMeta} numberOfLines={1}>{[discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ")}</UiText>
+                    <View style={styles.ecFoot}>
+                      <View style={styles.ecChips}><RelevanceChips style={styles.ecChipRow} chips={relevanceChips(row.relevance, rt)} /></View>
+                      {registered ? <UiText style={styles.ecReg} numberOfLines={1}>{registered}</UiText> : null}
+                      {fee ? <UiText style={styles.ecFee} numberOfLines={1}>{fee}</UiText> : null}
                     </View>
-                  ) : (
-                    <View style={[styles.row, { justifyContent: "space-between" }]}>
-                      <View style={[styles.emo, { backgroundColor: toneBg(rowTone(index)) }]}><UiText style={styles.emoText}>{row.emoji}</UiText></View>
-                      {registered ? <View style={styles.chip}><UiText style={styles.chipText}>{registered}</UiText></View> : null}
-                    </View>
-                  )}
-                  <View style={banded ? styles.bandBody : styles.plainBody}>
-                  <UiText style={[styles.evTitle, banded ? { marginTop: 0 } : null]}>{row.title}</UiText>
-                  <UiText style={[styles.lbl, { marginTop: 3 }]}>{[discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ")}</UiText>
-                  <RelevanceChips style={{ marginTop: 10 }} chips={relevanceChips(row.relevance, rt)} />
-                  <View style={[styles.row, styles.cardFoot]}>
-                    {feeText(row.priceYen, t) ? <View style={styles.chip}><UiText style={styles.chipText}>{feeText(row.priceYen, t)}</UiText></View> : null}
-                    <UiPressable accessibilityRole="button" accessibilityLabel={t("detailsBtn")} onPress={() => open(row)} style={styles.btnSm}><UiText style={styles.btnSmText}>{t("detailsBtn")}</UiText></UiPressable>
-                  </View>
                   </View>
                 </UiPressable>
               );
             })}
-          </ScrollView>
-          <View style={styles.dots}>{data.planFit.map((row, index) => <View key={row.eventId} style={[styles.dot, index === Math.min(page, data.planFit.length - 1) ? styles.dotOn : null]} />)}</View>
+          </View>
         </View>
       ) : null}
 
@@ -446,31 +435,31 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   metaTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25 },
   metaSub: { color: colors.ink3, fontSize: 14, lineHeight: 21 },
   section: { marginTop: 18 },
-  carousel: { marginHorizontal: -SHELL_GUTTER },
-  carouselInner: { gap: 12, paddingBottom: 4, paddingHorizontal: SHELL_GUTTER, paddingTop: 2 },
-  evCard: { backgroundColor: colors.surface, borderRadius: 22, padding: 16, width: CARD },
+  ecList: { gap: 12 },
+  // 示例在卡片里：不再画第二层卡面（根因 B 卡中卡）。
+  ecSample: { backgroundColor: "transparent", opacity: 0.5, padding: 0 },
+  ecRow: { backgroundColor: colors.surface, borderRadius: 20, flexDirection: "row", gap: 12, minHeight: 112, padding: 12 },
+  ecThumb: { borderRadius: 14, height: 88, width: 88 },
+  ecThumbEmoji: { alignItems: "center", justifyContent: "center" },
+  ecEmoji: { fontSize: 34, lineHeight: 42 },
+  ecText: { flex: 1, minWidth: 0 },
+  ecTitle: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 19.6 },
+  ecMeta: { color: colors.ink3, fontSize: 12, lineHeight: 17, marginTop: 2 },
+  ecFoot: { alignItems: "center", flexDirection: "row", gap: 8, marginTop: "auto", minWidth: 0, paddingTop: 6 },
+  ecChips: { flex: 1, minWidth: 0, overflow: "hidden" },
+  ecChipRow: { flexWrap: "nowrap" },
+  ecReg: { color: colors.ink3, flexShrink: 0, fontSize: 12 },
+  ecFee: { color: colors.ink, flexShrink: 0, fontSize: 13, fontWeight: "800" },
   // 有图的一排：卡片不留内边距，图满宽贴上沿（圆角跟卡片），正文 14 / 16 / 16。
-  evCardBand: { overflow: "hidden", padding: 0 },
-  band: { height: CARD / 2, width: CARD },
-  bandEmoji: { alignItems: "center", justifyContent: "center" },
-  bandEmojiText: { fontSize: 46, lineHeight: 54 },
   // 毛玻璃 chip：rgba(255,255,255,.78)，深浅模式同一个（叠在照片上）。
-  bandChip: { backgroundColor: "rgba(255,255,255,0.78)", position: "absolute", right: 10, top: 10 },
-  bandBody: { flex: 1, paddingBottom: 16, paddingHorizontal: 16, paddingTop: 14 },
-  plainBody: { flex: 1 },
   emo: { alignItems: "center", borderRadius: 13, height: 40, justifyContent: "center", width: 40 },
   emoText: { fontSize: 23, lineHeight: 28 },
-  evTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 23, marginTop: 12 },
   lbl: { color: colors.ink3, fontSize: 13, fontWeight: "500", lineHeight: 20 },
-  cardFoot: { gap: 6, marginTop: "auto", paddingTop: 10 },
   btnSm: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 32, justifyContent: "center", marginLeft: "auto", paddingHorizontal: 12 },
   btnSmText: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21 },
   noMatch: { alignItems: "center", gap: 12, marginTop: 14, paddingVertical: 28 },
   noMatchTitle: { color: colors.ink2, fontSize: 15, fontWeight: "600", lineHeight: 22, textAlign: "center" },
   noMatchBtn: { marginLeft: 0 },
-  dots: { flexDirection: "row", gap: 5, justifyContent: "center", marginTop: 10 },
-  dot: { backgroundColor: colors.ink4, borderRadius: 3, height: 6, width: 6 },
-  dotOn: { backgroundColor: colors.ink2, width: 18 },
   all: { marginTop: 16, paddingHorizontal: 16, paddingVertical: 8 },
   sheet: { paddingBottom: 0 },
   sheetTitle: { color: colors.ink, fontSize: 18, fontWeight: "700", lineHeight: 27 },
