@@ -116,14 +116,27 @@ export function withCodeLateness(text: string, cards: readonly AgentAnswerRecord
   const changed: string[] = [];
   const late = cards.filter((card) => card.kind === "todo" && card.subTone === "late" && card.sub && card.title);
   if (!late.length) return { changed, text };
-  const DAYS = /(?:已经|已)?(?:逾期|过期|超期)了?\s*(?:[一二两三四五六七八九十]+|\d+)\s*天|(?:\d+)\s*日(?:超過|遅れ|過ぎ)|\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+days?\s+(?:overdue|late|past due)\b/giu;
+  const DAYS = /(?:已经|已)?(?:逾期|过期|超期)了?\s*(?:[一二两三四五六七八九十]+|\d+)\s*天|(?:\d+)\s*日超過|\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+days?\s+(?:overdue|late|past due)\b/giu;
+  // AG21c (R51): other ways of saying it ("晚了6天", "拖了六天", "超过截止日6天", "期限を6日過ぎて", "six days past the deadline"):
+  // only the number becomes the card's, so the sentence keeps its own wording.
+  const OTHER_DAYS = /((?:晚了|拖了|迟了|超过(?:截止日?|期限)?)\s*)([一二两三四五六七八九十]+|\d+)(\s*天)|((?:期限|締め切り|締切)を\s*)?(\d+)(\s*日(?:以上)?(?:過ぎ|超え|遅れ))|\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)(\s+days?\s+(?:past (?:the|its) (?:deadline|due date)|behind(?: schedule)?))\b/giu;
   const out = text.split(/(?<=[。；;\n])/u).map((segment) => {
     const card = late.find((item) => segment.includes(item.title));
     if (!card) return segment;
-    return segment.replace(DAYS, (said) => {
+    const days = /\d+/u.exec(card.sub!)?.[0] ?? null;
+    const fixed = segment.replace(DAYS, (said) => {
       if (said === card.sub) return said;
       changed.push(`${said} → ${card.sub}`);
       return /^[A-Za-z]/u.test(card.sub!) ? card.sub!.toLowerCase() : card.sub!;
+    });
+    if (!days) return fixed;
+    return fixed.replace(OTHER_DAYS, (said, zhHead?: string, zhN?: string, zhTail?: string, jaHead?: string, jaN?: string, jaTail?: string, enN?: string, enTail?: string) => {
+      const n = zhN ?? jaN ?? enN;
+      if (n === days) return said;
+      const plural = enTail ? enTail.replace(/^\s+days?/u, Number(days) === 1 ? " day" : " days") : "";
+      const to = zhHead !== undefined ? `${zhHead}${days}${zhTail}` : jaN !== undefined ? `${jaHead ?? ""}${days}${jaTail}` : `${days}${plural}`;
+      changed.push(`${said} → ${to}`);
+      return to;
     });
   });
   return { changed, text: out.join("") };

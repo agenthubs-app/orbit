@@ -1142,7 +1142,10 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
       }
       for (const contact of list) {
         if (!contact.signals.length) continue;
-        reasons.set(contact.id, contact.signals.map((item) => signalWords(item, language, timeZone)).join(language === "en" ? "; " : "；"));
+        // AG21c (R51): a listed person's reason names only what the lead counts (past due, past the planned day); a to-do not
+        // yet due is no reason of theirs (it is said apart, for the people who have only such).
+        const counted = meetsHistory(contact) ? contact.signals.filter((item) => MEETS_HISTORY.has(item.kind)) : contact.signals;
+        reasons.set(contact.id, counted.map((item) => signalWords(item, language, timeZone)).join(language === "en" ? "; " : "；"));
         for (const item of contact.signals) run.readSources.set(item.todo.ref, { id: item.todo.ref.slice(5), kind: "todo", title: item.todo.title } as never);
       }
       upcoming = list.filter((contact) => contact.signals.length > 0 && !meetsHistory(contact)).sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));

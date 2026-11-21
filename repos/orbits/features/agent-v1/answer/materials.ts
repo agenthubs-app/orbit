@@ -67,7 +67,9 @@ export function materialOf(view: RecordView, partId: string, handle: string, con
     case "todo": {
       const open = f.status === "open";
       const due = text(f.dueAt);
-      const overdue = open && due && Date.parse(due) < Date.parse(context.now) ? " — overdue" : "";
+      // AG21c (R51): how many days late is code's count (the card's figure), given as a fixed value — never left to the model.
+      const lateDays = open && due && Date.parse(due) < Date.parse(context.now) ? Math.floor((Date.parse(context.now) - Date.parse(due)) / 86_400_000) : null;
+      const overdue = lateDays === null ? "" : lateDays >= 1 ? ` — overdue by ${lateDays} day${lateDays > 1 ? "s" : ""} (code's count; use this number)` : " — overdue (less than a day)";
       header = `to-do, last updated ${formatWhen(text(f.updatedAt), context.timeZone)}`;
       at = text(f.updatedAt);
       sentences = numbered([
