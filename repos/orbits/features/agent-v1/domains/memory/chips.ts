@@ -32,6 +32,11 @@ const SAY = {
     ja: (words: string) => `保存した「${words}」は、その時間を外すのか、それだけにするのか読み取れなかったため使っていません`,
     zh: (words: string) => `没按你存的「${words}」挑：看不出它是要排除这个时间，还是只要这个时间`,
   },
+  format: {
+    en: (label: string) => `Written by your saved "${label}"`,
+    ja: (label: string) => `保存した「${label}」に沿って書きました`,
+    zh: (label: string) => `按你存的「${label}」写的`,
+  },
   used: {
     en: (label: string) => `Picked by your saved preference "${label}"`,
     ja: (label: string) => `保存した好み「${label}」で選びました`,
@@ -68,6 +73,31 @@ export function memoryChipsOf(input: ChipInput): AgentAnswerMemoryUseContract[] 
   for (const item of input.time) {
     if (!item.preference.hard || item.removed <= 0) continue;
     add({ kind: "rule", memoryId: item.entry.memoryId, text: SAY.rule[language](say.timeWords(item.preference, language), !item.preference.exclude) });
+  }
+  return chips;
+}
+
+/* ── AG21c (R57): saved entries for every answer that shape how it is written ── */
+
+/** "回答里的日期都带上星期", "日付には曜日をつけて", "always add the weekday to dates". */
+const WEEKDAY_RULE = /(星期|周几|礼拜几|曜日|\bweekdays?\b|\bday of the week\b|\bdays? of the week\b)/iu;
+/** A date written with its weekday: 「11月20日（周五）」, 「11月20日（金）」, "Fri, Nov 20", "Nov 20 (Fri)". */
+const DATE_WITH_WEEKDAY = /(\d{1,2}\s*月\s*\d{1,2}\s*[日号]\s*[（(]\s*(?:周|星期|礼拜)?[一二三四五六日天月火水木金土](?:曜日?)?\s*[）)]|\b(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*,?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\s*\((?:mon|tue|wed|thu|fri|sat|sun)[a-z]*\))/iu;
+/** "时间一律写 24 小时制", "24時間表記で", "use the 24-hour clock". */
+const CLOCK24_RULE = /(24\s*小时|二十四小时|24\s*時間|24\s*-?\s*hours?\b|\bmilitary time\b)/iu;
+/** A time of day written on the 24-hour clock ("14:30", "09:00"). */
+const CLOCK24_TIME = /(?<![\d:])(?:[01]?\d|2[0-3]):[0-5]\d(?![\d:])/u;
+
+/**
+ * AG21c (R57): the saved entries for every answer whose effect shows in this answer's text — a date with its weekday for
+ * "日期都带上星期", a 24-hour time for "24 小时制" — each named once with the same small label as task entries (the client
+ * adds 「修改 ›」). An entry whose effect is not in the text, or that code cannot see in it, gets no label.
+ */
+export function everyTaskChipsOf(rules: readonly Entry[], text: string, language: MemoryLanguage): AgentAnswerMemoryUseContract[] {
+  const chips: AgentAnswerMemoryUseContract[] = [];
+  for (const rule of rules) {
+    const shows = (WEEKDAY_RULE.test(rule.content) && DATE_WITH_WEEKDAY.test(text)) || (CLOCK24_RULE.test(rule.content) && CLOCK24_TIME.test(text));
+    if (shows && !chips.some((chip) => chip.memoryId === rule.memoryId)) chips.push({ kind: "used", memoryId: rule.memoryId, text: SAY.format[language](rule.content) });
   }
   return chips;
 }

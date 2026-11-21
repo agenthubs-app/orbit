@@ -25,6 +25,7 @@ import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart, OptionSetState } from "../state";
 import { clueWords, nameOf, objectOf, setIdOf } from "./clarify";
 import { memoryOfSession } from "../../domains/memory/turn";
+import { everyTaskChipsOf } from "../../domains/memory/chips";
 import { asksToOrganize, nextNoteGoalIn } from "./functions";
 import { resumeOf } from "../../propose/asked";
 
@@ -500,6 +501,11 @@ export function deliverNode(scope: NodeScope): GraphNode {
     }
     run.text = text;
     run.blocks = blocks;
+    // AG21c (R57): a saved entry for every answer that shaped this text (dates with their weekday, a 24-hour clock) is named
+    // with the same label as task entries; one that changed nothing is not.
+    // Only the text the model wrote under those rules counts (code's own dates always carry their weekday).
+    const modelText = [...run.modelAnswers].map((id) => run.answers.get(id) ?? "").join("\n");
+    if (run.memory.rules.length && modelText) for (const chip of everyTaskChipsOf(run.memory.rules, modelText, language)) if (!run.memoryUse.some((item) => item.memoryId === chip.memoryId)) run.memoryUse.push(chip);
     run.partResults = partResults;
     run.clarifications = state.optionSets.map((set) => contractOf(scope, set, language));
     if (!resume) {
