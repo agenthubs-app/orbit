@@ -14,9 +14,10 @@ import { AGENT_MEMORY_COLLECTION } from "../../../agent/memory/service";
 import type { AgentActionExecutor } from "../../../agent/runtime/executor-registry";
 import { AgentExecutionPermanentError } from "../../../agent/runtime/service";
 import { MEMORY_CREATE, MEMORY_DELETE, MEMORY_UPDATE } from "./ops";
+import { twinOfNewEntry } from "./turn";
 
 export interface MemoryWriteDeps {
-  memory: Pick<AgentMemoryService, "create" | "update" | "remove" | "get" | "deletionMarks">;
+  memory: Pick<AgentMemoryService, "create" | "update" | "remove" | "get" | "deletionMarks"> & Partial<Pick<AgentMemoryService, "list">>;
 }
 
 const text = (payload: Readonly<Record<string, unknown>>, key: string) => (typeof payload[key] === "string" && String(payload[key]).trim() ? String(payload[key]).trim() : undefined);
@@ -39,6 +40,12 @@ export function memoryWriteExecutors(deps: MemoryWriteDeps): AgentActionExecutor
       const content = text(payload, "content");
       const category = text(payload, "category");
       if (!memoryId || !content || !category) throw new AgentExecutionPermanentError("memoryId, category and content are required.");
+      // AG21c (R34): a create card still waiting while the same entry was saved or changed by a later card is replaced by
+      // it: an entry with the same task, kind and topics already there is not written again (applied twice: still one).
+      if (!(await memory.get(memoryId)) && memory.list) {
+        const twin = twinOfNewEntry(await memory.list(), { appliesTo: Array.isArray(payload.appliesTo) ? (payload.appliesTo as AgentMemoryTask[]) : [], category: category as never, content, structured: (payload.structured ?? null) as AgentMemoryStructured | null });
+        if (twin) throw changed(`the same entry is already saved (${twin.memoryId}); this card was replaced by a later one`);
+      }
       const created = await memory.create({
         appliesTo: Array.isArray(payload.appliesTo) ? (payload.appliesTo as AgentMemoryTask[]) : [],
         category: category as never,

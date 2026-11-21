@@ -344,6 +344,33 @@ export function topicKeyOf(text: string | null): string[] {
   if (!text) return [];
   return [...new Set(text.split(/[\s、,，和与及/]+/u).map((token) => token.replace(TOPIC_FILLER, "").trim().toLowerCase()).filter((token) => [...token].length >= 1))].sort();
 }
+/**
+ * AG21c (R34): two topic sets are the same when they cover the same words once a compound on one side is split against the
+ * other side's words ("木工体验" against 木工, 体验; "陶芸体験" against 陶芸, 体験) — or when their words joined are the same.
+ */
+export function sameTopics(left: readonly string[], right: readonly string[]): boolean {
+  if (!left.length || !right.length) return false;
+  const split = (token: string, words: readonly string[]): string[] => {
+    const chars = [...token];
+    const best: (string[] | null)[] = Array(chars.length + 1).fill(null);
+    best[0] = [];
+    for (let end = 1; end <= chars.length; end += 1) {
+      for (const word of words) {
+        const size = [...word].length;
+        const start = end - size;
+        if (size > 0 && start >= 0 && best[start] && chars.slice(start, end).join("") === word) {
+          const next = [...best[start]!, word];
+          if (!best[end] || next.length < best[end]!.length) best[end] = next;
+        }
+      }
+    }
+    return best[chars.length] ?? [token];
+  };
+  const spread = (tokens: readonly string[], words: readonly string[]) => [...new Set(tokens.flatMap((token) => split(token, words)))].sort();
+  if (sameJson(spread(left, right), spread(right, left))) return true;
+  return [...left].join("") === [...right].join("") || [...left].reverse().join("") === [...right].join("");
+}
+
 const CHANGE_WORDS = /(改成|改为|换成|变成|不再|而不是|instead|rather than|switch to|change (?:it |that )?to|に変えて|に変更|ではなく|じゃなくて)/iu;
 const isTopicEntry = (entry: AgentMemory, category: AgentMemoryCategory) => entry.category === category && !timeOfEntry(entry) && !(entry.structured?.replyLanguage ?? replyLanguageIn(entry.content)) && topicKeyOf(topicOfEntry(entry)).length > 0;
 const sharesTask = (entry: Pick<AgentMemory, "appliesTo">, tasks: readonly string[]) => entry.appliesTo.some((task) => tasks.includes(task));
@@ -386,7 +413,7 @@ export function settleRemember(input: { words: string; language: MemoryLanguage;
   if (existing.length > 1) return { kind: "line", line: MEMORY_WORDS.whichOne(language, "change", existing), reason: "memory_several_match" };
   if (existing.length === 1 && !reading.structured && topic.length && isTopicEntry(existing[0], reading.category)) {
     const entry = existing[0];
-    if (sameJson(topicKeyOf(topicOfEntry(entry)), topic)) return { kind: "line", line: MEMORY_WORDS.alreadySaved(language, entry), reason: "memory_already_saved" };
+    if (sameTopics(topicKeyOf(topicOfEntry(entry)), topic)) return { kind: "line", line: MEMORY_WORDS.alreadySaved(language, entry), reason: "memory_already_saved" };
     // The stored topics go with the old words: the new words are the entry's topics now.
     const { topics: _old, ...rest } = entry.structured ?? {};
     const structured = Object.keys(rest).length ? (rest as AgentMemoryStructured) : null;
@@ -405,7 +432,7 @@ export function settleRemember(input: { words: string; language: MemoryLanguage;
   const content = reading.composable && reading.structured ? composeEventTimeContent(reading.structured, language) : words;
   // AG21b (R34): the same topics for the same task in other words are already saved too.
   const twin = snapshot.entries.find((entry) => entry.content === content || (reading.structured && sameJson(entry.structured, reading.structured) && sameJson(entry.appliesTo, reading.appliesTo)))
-    ?? (topic.length ? snapshot.entries.find((entry) => isTopicEntry(entry, reading.category) && sharesTask(entry, reading.appliesTo) && sameJson(topicKeyOf(topicOfEntry(entry)), topic)) : undefined);
+    ?? (topic.length ? snapshot.entries.find((entry) => isTopicEntry(entry, reading.category) && sharesTask(entry, reading.appliesTo) && sameTopics(topicKeyOf(topicOfEntry(entry)), topic)) : undefined);
   if (twin) return { kind: "line", line: MEMORY_WORDS.alreadySaved(language, twin), reason: "memory_already_saved" };
   // A new entry is kept only with 「从对话里记住新的」 on; off: this turn only, and how to keep it (设计稿 §6).
   if (!snapshot.settings.allowConversationLearning) {
@@ -417,6 +444,18 @@ export function settleRemember(input: { words: string; language: MemoryLanguage;
   // AG14 UI (D2): a limit in the words ("这个月先……") becomes the entry's last day and the card's 到期 row.
   const validUntil = expiryIn(input.words, input.today);
   return { intent: { capability: MEMORY_CREATE, set: { appliesTo: reading.appliesTo, category: reading.category, content: validUntil ? withoutExpiryWords(content) : content, structured: reading.structured, ...(validUntil ? { validUntil } : {}) }, sourceMessageRef: memorySourceRef(input.requestId) }, kind: "card" };
+}
+
+/**
+ * AG21c (R34): an entry already saved that a new entry would only repeat — the same task, the same kind and the same
+ * topics (compounds split as in sameTopics). A create card made before that entry was saved or changed is not applied.
+ */
+export function twinOfNewEntry(entries: readonly AgentMemory[], created: Pick<AgentMemory, "category" | "content" | "appliesTo" | "structured">): AgentMemory | null {
+  const timed = Boolean(created.structured?.dayPart || created.structured?.preferredDays?.length || created.structured?.replyLanguage);
+  const topics = timed ? [] : topicKeyOf(topicOfEntry(created));
+  return entries.find((entry) => entry.content === created.content && entry.category === created.category)
+    ?? (topics.length ? entries.find((entry) => isTopicEntry(entry, created.category) && sharesTask(entry, created.appliesTo) && sameTopics(topicKeyOf(topicOfEntry(entry)), topics)) : undefined)
+    ?? null;
 }
 
 /** What an ask to forget becomes: a card that names the entry, or code's sentence. */
