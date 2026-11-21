@@ -543,7 +543,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       const decision = data.decision ?? {};
       noteCard(data.card, clientName);
       log.push(decisionRecord({ body, cardId, client: clientName, result }));
-      const outcome = decision.replayed ? `重复提交，返回第一次的结果（${decision.outcome}${decision.reason ? `，${decision.reason}` : ""}）` : decision.outcome === "accepted" ? "已接受" : decision.outcome === "already_decided" ? "没有新的决定：这张卡已经处理过了" : `拒绝（${decision.reason ?? result.body?.error?.code ?? result.status}）`;
+      const outcome = decision.replayed ? `重复提交，返回第一次的结果（${decision.outcome}${decision.reason ? `，${decision.reason}` : ""}）` : decision.outcome === "accepted" ? "已接受" : decision.outcome === "already_decided" ? "没有新的决定" : `拒绝（${decision.reason ?? result.body?.error?.code ?? result.status}）`;
       transcript.push(`- 服务端（HTTP ${result.status}）：${outcome}。${decision.message ?? result.body?.error?.message ?? ""}`, ...cardText(data.card), "");
     };
     /** Cards the entry delivered in result documents (in the order the server received them). */

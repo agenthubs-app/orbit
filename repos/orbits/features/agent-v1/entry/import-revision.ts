@@ -59,7 +59,7 @@ export async function reviseImportByWords(input: { runtime: AgentRuntimeService;
   const action = await input.runtime.getAction(card.actionId);
   if (!action) return null;
   const preview: AgentActionPreviewContract = agentCardPreview(action, await input.runtime.getRun(action.runId), input.now());
-  if (input.store) await refreshCardInDocument({ actorId: input.actorId, now: input.now(), previous: before, store: input.store, updated: preview }).catch(() => false);
+  if (input.store) await refreshCardInDocument({ actorId: input.actorId, now: input.now(), previous: before, store: input.store, updated: preview, keepText: true }).catch(() => false);
   const language = cardLocale(action.locale);
   const counts = countsOf(action.operations);
   const rows = Object.keys(overrides).map(Number).sort((left, right) => left - right);

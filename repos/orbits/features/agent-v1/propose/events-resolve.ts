@@ -713,7 +713,7 @@ async function resolveDeletePlan(ctx: Ctx, part: GraphPart, write: PartWrite & {
   if (!pick || (references.some((ref) => ref.kind !== "attendance") && !unlinkSaid)) {
     const lines = references.map((ref) => EVENT_WORDS.refLine(language, ref.kind, ref.label, ref.kind === "attendance" ? dayText(ref.label, language) : undefined));
     emitTrace({ partId: part.localId, references: references.map((ref) => ({ id: ref.id, kind: ref.kind })), type: "propose.event_delete_plan_asked" });
-    return { kind: "ask", question: { hasAttendance, line: EVENT_WORDS.askDeletePlan(language, event.title, lines, hasAttendance), options: EVENT_WORDS.planOptions(language, hasAttendance), type: "event_plan" } } as unknown as WriteOutcome;
+    return { kind: "ask", question: { hasAttendance, line: EVENT_WORDS.askDeletePlan(language, event.title, lines, hasAttendance, [...new Set(references.map((ref) => ref.kind as string))].filter((kind): kind is "memo" | "todo" | "schedule" => kind === "memo" || kind === "todo" || kind === "schedule")), options: EVENT_WORDS.planOptions(language, hasAttendance), type: "event_plan" } } as unknown as WriteOutcome;
   }
   const ops: (CardOperationIntent & { localId: string })[] = [];
   const eventShown = { kind: "private" as const, startsAt: event.startsAt, title: event.title };

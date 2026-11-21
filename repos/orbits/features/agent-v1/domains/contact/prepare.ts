@@ -319,7 +319,9 @@ function importOperation(head: Record<string, unknown>, text: string, overrides:
     display: { change: "create", record: words.importRecord(preview.counts), rows: importRows(preview, words) },
     payload: { outcomes, text },
     preconditions: { targetExists: false },
-    preview: [words.importLine(preview.counts), ...importRows(preview, words).map((row) => `${row.label}：${row.after}`)].join("\n"),
+    // AG21c (R54): the card's title is already the count line, so the item opens with what it is (not the counts again);
+    // each row is "label: what happens" with the session language's own colon.
+    preview: [words.importRecord(preview.counts), ...importRows(preview, words).map((row) => `${row.label}${words === WORDS.en ? ": " : "："}${row.after}`)].join("\n"),
     shown: { counts: { ...preview.counts }, overrides: { ...overrides }, rows: preview.rows.map((row: ImportPreviewRow) => ({ decision: row.decision, ...(row.match ? { match: row.match.id } : {}), outcome: row.outcome, ...(row.reason ? { reason: row.reason } : {}), row: row.row })), text },
   };
 }

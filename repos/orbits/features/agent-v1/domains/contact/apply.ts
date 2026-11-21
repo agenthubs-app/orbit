@@ -136,5 +136,10 @@ export async function applyApprovedContactImport(deps: ContactWriteDeps, payload
     if (decisions.length) batch = (await deps.imports.setDecisions(deps.actorId, batch.id, decisions)).batch;
   }
   const committed = await deps.imports.commit(deps.actorId, batch.id, { confirmationIntentId: context.idempotencyKey, mergeConfirmations: [] });
-  return { resultRef: `contact_imports:${committed.batch.id}`, summary: `Contacts imported in Orbit (${committed.batch.counts ? JSON.stringify(committed.batch.counts) : "done"}).` };
+  // AG21c (R54): the receipt counts each row by the outcome the card showed — a row the card left out (a row without a
+  // name included) is skipped, never "failed"; only a row the card said to create that was not created is a failure.
+  const shownSkips = Object.values(outcomes).filter((outcome) => outcome === "skip").length;
+  const counts = committed.batch.counts;
+  const receipt = counts ? { created: counts.created, failed: Math.max(0, Object.keys(outcomes).length - counts.created - counts.merged - shownSkips), merged: counts.merged, skipped: shownSkips } : null;
+  return { resultRef: `contact_imports:${committed.batch.id}`, summary: `Contacts imported in Orbit (${receipt ? JSON.stringify(receipt) : "done"}).` };
 }
