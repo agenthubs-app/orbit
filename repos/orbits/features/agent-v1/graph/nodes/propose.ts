@@ -269,11 +269,16 @@ export function proposeNode(scope: NodeScope): GraphNode {
       const askedItem = !part.write ? continuedItem({ context: run.context }, part) : null;
       const picked = askedItem?.resume ? optionPickedIn(askedItem, quoteOf(part)) : null;
       if (askedItem?.resume && picked) {
-        const picks: PartWrite["picks"] = picked.type === "field" ? { field: picked.id as "plannedDate" | "dueAt" } : picked.type === "contact" ? { contact: picked.id } : picked.type === "todo" ? { todo: picked.id } : picked.type === "event" ? { event: picked.id } : {};
+        const picks: PartWrite["picks"] = picked.type === "field" ? { field: picked.id as "plannedDate" | "dueAt" } : picked.type === "contact" ? { contact: picked.id } : picked.type === "todo" ? { todo: picked.id } : picked.type === "event" ? { event: picked.id } : picked.type === "event_plan" ? { eventPlan: picked.id } : {};
         part.write = { intents: [], picks, resume: askedItem.resume };
         emitTrace({ item: askedItem.ref, partId: part.localId, picked: { id: picked.id, type: picked.type }, type: "propose.answer_picks_option" });
         work.push(part);
         continue;
+      }
+      // AG21c (R26): an answer to the delete-plan question that names no option goes to the second layer with the asked
+      // event kept (its id), so it is never searched for by the words of the answer.
+      if (askedItem?.resume && askedItem.options?.length && askedItem.options.every((option) => option.type === "event_plan")) {
+        for (const ref of askedItem.resume.refs) if (ref.recordId?.startsWith("private_event:") && !part.refs.some((own) => own.recordId === ref.recordId)) part.refs.push({ entity: "event", quote: null, recordId: ref.recordId });
       }
       // AG13 gate run-03 (AE-EVT-007): a repetition the schedule cannot store ("隔周", "每月第二个周二") is said so by code,
       // with a few one-off dates offered instead, whatever capability the first layer gave (rule.create, schedule.*).
