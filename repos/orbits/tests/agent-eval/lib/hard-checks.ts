@@ -792,7 +792,11 @@ export const CHECKS: Record<string, CheckFn> = {
       if (want.category && entry.category !== want.category) problems.push(`${want.id ?? entry.id} is a ${entry.category}, expected ${want.category}`);
       if (want.appliesTo && JSON.stringify(entry.appliesTo) !== JSON.stringify(want.appliesTo)) problems.push(`${want.id ?? entry.id} applies to ${JSON.stringify(entry.appliesTo)}, expected ${JSON.stringify(want.appliesTo)}`);
     }
-    const unlisted = left.filter((entry) => entry.status === "active");
+    // AG18 (sealed set): an untouched fixture entry (revision 1) of an account the case never signed in to is world
+    // data, not something the case did; entries made in the case, and fixture entries that changed, always count.
+    const used = new Set((obs.accountTimeline ?? []).map((item) => item.account));
+    const untouchedElsewhere = (entry: (typeof left)[number]) => Boolean(entry.fixtureId) && entry.revision === 1 && entry.account !== null && used.size > 0 && !used.has(entry.account);
+    const unlisted = left.filter((entry) => entry.status === "active" && !untouchedElsewhere(entry));
     if (unlisted.length) problems.push(`entries in use that the case does not list: ${unlisted.map((entry) => entry.fixtureId ?? entry.id).join(", ")}`);
     return problems.length ? fail(problems.join("; ")) : pass(`${expected.length} memory entr${expected.length === 1 ? "y" : "ies"} as written`);
   },

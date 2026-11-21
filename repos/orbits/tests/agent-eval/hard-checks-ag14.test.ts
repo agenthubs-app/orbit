@@ -100,3 +100,14 @@ test("card_ops: `target: new` is an entry made in this case (no fixture id); a f
   assert.equal(CHECKS.card_ops([{ op: "memory.delete", target: "MM1" }], obs({ cards: [card("MM1")] }), context).status, "pass");
   assert.equal(CHECKS.card_ops([{ op: "memory.delete", target: "new" }], obs({ cards: [card(null)] }), context).status, "fail");
 });
+
+test("memory_state: an untouched fixture entry of an account the case never signed in to is world data, not unlisted", () => {
+  const BMM1 = { ...MM1, account: "B", fixtureId: "BMM1", id: "memory:bmm1" };
+  const onlyA = [{ account: "A", fromSeq: 0 }];
+  assert.equal(CHECKS.memory_state([{ id: "MM1", status: "active" }], obs({ accountTimeline: onlyA, memoryEntries: [MM1, BMM1] }), context).status, "pass");
+  // The case switched to B: B's entry counts again.
+  assert.equal(CHECKS.memory_state([{ id: "MM1", status: "active" }], obs({ accountTimeline: [...onlyA, { account: "B", fromSeq: 9 }], memoryEntries: [MM1, BMM1] }), context).status, "fail");
+  // B's entry changed, or an entry was made in B: it counts even though the case never signed in as B.
+  assert.equal(CHECKS.memory_state([{ id: "MM1", status: "active" }], obs({ accountTimeline: onlyA, memoryEntries: [MM1, { ...BMM1, revision: 2 }] }), context).status, "fail");
+  assert.equal(CHECKS.memory_state([{ id: "MM1", status: "active" }], obs({ accountTimeline: onlyA, memoryEntries: [MM1, { ...NEW, account: "B" }] }), context).status, "fail");
+});
