@@ -203,7 +203,14 @@ export function contactOfClue(clue: string, contacts: readonly LinkedContact[]):
   const full = contacts.filter((contact) => contact.name.toLowerCase() === said);
   if (full.length === 1) return full[0];
   const matches = contacts.filter((contact) => namesOf(contact.name).some((name) => name.toLowerCase() === said) || (said.length >= 2 && contact.name.toLowerCase().startsWith(said) && !contacts.some((other) => other !== contact && other.name.toLowerCase().startsWith(said))));
-  return matches.length === 1 ? matches[0] : null;
+  if (matches.length === 1) return matches[0];
+  // AG21c (R46): a surname of one character ("林さん", "关老师", "Mr. Lin" against 林美咲 / 关雨): CJK names have no space,
+  // so it names the contact whose name starts with it — only when exactly one of these contacts does.
+  if (!matches.length && /^[\p{Script=Han}\p{Script=Hangul}]$/u.test(said)) {
+    const starting = contacts.filter((contact) => contact.name.trim().startsWith(said));
+    if (starting.length === 1) return starting[0];
+  }
+  return null;
 }
 
 /* ── code's guards on what a sentence says ───────────────────────────── */

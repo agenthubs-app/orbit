@@ -1624,7 +1624,10 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
     // A person the memo shows in real contact is not listed again as "only mentioned" or "only planned" (the promise to send
     // them something is a follow-up, not a second contact).
     const inContact = new Set([...happened, ...doubtfulOnes].map((item) => item.contact?.id).filter(Boolean));
-    const repeated = (item: (typeof others)[number]) => Boolean(item.contact && inContact.has(item.contact.id) && (item.reason === "planned" || item.reason === "mentioned_only"));
+    // AG21c (R46): each person once, in the group that decided their row — one in real contact is never listed again as
+    // "between others" either.
+    const counted = new Set(happened.map((item) => item.contact?.id).filter(Boolean));
+    const repeated = (item: (typeof others)[number]) => Boolean(item.contact && (counted.has(item.contact.id) || (item.reason !== "unsure" && inContact.has(item.contact.id))));
     if (!task.write || !happened.length) {
       const listed = task.write ? happened : [...happened, ...doubtfulOnes];
       if (listed.length) {
