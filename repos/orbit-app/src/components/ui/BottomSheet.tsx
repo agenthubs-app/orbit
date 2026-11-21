@@ -21,7 +21,9 @@ import { useBackHandler } from "./useBackHandler";
 // while the keyboard is up. `dismissOnBackdrop={false}`: a backdrop tap does nothing (Android back and the VoiceOver escape
 // gesture still close it). `draggable={false}`: the handle stays drawn but a drag does not close it (confirm sheets).
 // R43: `scrollEnabled={false}` holds the content still while a child owns a drag (the slot picker's paint grid).
-export function BottomSheet({ visible, onClose, children, accessibilityLabel, dismissOnBackdrop = true, draggable = true, returnFocusTo, scrollEnabled = true }: { visible: boolean; onClose: () => void; children: ReactNode; accessibilityLabel?: string; dismissOnBackdrop?: boolean; draggable?: boolean; returnFocusTo?: RefObject<View | null> | undefined; scrollEnabled?: boolean }) {
+// 2026-11-21: optional `header` stays put above the scrolling content (a filter sheet's title + apply button used to scroll
+// away once the options ran past one screen on 375×667). Without it the sheet renders exactly as before.
+export function BottomSheet({ visible, onClose, children, accessibilityLabel, dismissOnBackdrop = true, draggable = true, returnFocusTo, scrollEnabled = true, header }: { visible: boolean; onClose: () => void; children: ReactNode; accessibilityLabel?: string; dismissOnBackdrop?: boolean; draggable?: boolean; returnFocusTo?: RefObject<View | null> | undefined; scrollEnabled?: boolean; header?: ReactNode }) {
   const { styles } = useStyles();
   const reduced = useReducedMotion();
   const { height } = useWindowDimensions();
@@ -73,6 +75,7 @@ export function BottomSheet({ visible, onClose, children, accessibilityLabel, di
             <GestureDetector gesture={drag}>
               <View accessibilityRole="adjustable" accessibilityLabel={accessibilityLabel} style={styles.grabArea}><View style={styles.grab} /></View>
             </GestureDetector>
+            {header ? <View style={styles.fixedHeader}>{header}</View> : null}
             <ScrollView bounces={false} scrollEnabled={scrollEnabled} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">{children}</ScrollView>
           </Animated.View>
         </KeyboardAvoidingView>
@@ -118,4 +121,5 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   grabArea: { alignItems: "center", paddingTop: 10, paddingBottom: 14, minHeight: 29 },
   grab: { width: 38, height: 5, borderRadius: 3, backgroundColor: colors.surface3 },
   content: { paddingHorizontal: 18, paddingBottom: 26 },
+  fixedHeader: { paddingHorizontal: 18, paddingBottom: 12 },
 }));

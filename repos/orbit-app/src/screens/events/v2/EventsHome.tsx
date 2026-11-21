@@ -146,11 +146,12 @@ function AssessPage({ items, upcoming, empty, now, language, onDelete }: { items
           {/* 背景 color-mix(accent-soft 60%, transparent)：同色铺底 + 0.6 不透明度。 */}
           <View pointerEvents="none" style={styles.dropFill} />
           <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.pasteUrl")} onPress={() => openAssess("url")} style={styles.dropHalf} testID="events-paste-url">
-            <Icon name="link" size={16} color={colors.ink2} /><UiText style={styles.dropText}>{t("eventsV2.pasteUrl")}</UiText>
+            <Icon name="link" size={16} color={colors.ink2} /><UiText style={styles.dropText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t("eventsV2.pasteUrl")}</UiText>
           </UiPressable>
-          <UiText style={[styles.dropText, { marginLeft: -8 }]}>{"　|　"}</UiText>
+          {/* 2026-11-21 手机扫描：375 宽日文时整行放不下（左图标被切、「ぶ」被框裁掉）。两半各占一半、放不下时缩字；分隔改细线（全角空格「　|　」占约 40pt）。 */}
+          <View style={styles.dropSep} />
           <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.pickPoster")} onPress={() => openAssess("poster")} style={styles.dropHalf} testID="events-pick-poster">
-            <Icon name="image" size={16} color={colors.ink2} /><UiText style={styles.dropText}>{t("eventsV2.pickPoster")}</UiText>
+            <Icon name="image" size={16} color={colors.ink2} /><UiText style={styles.dropText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t("eventsV2.pickPoster")}</UiText>
           </UiPressable>
         </View>
         {empty ? (
@@ -170,7 +171,7 @@ function AssessPage({ items, upcoming, empty, now, language, onDelete }: { items
           <View style={styles.cardH}><UiText style={styles.h3}>{t("eventsV2.tabGoing")}</UiText><UiText style={styles.more}>{t("eventsV2.countItems", { n: coming.length })}</UiText></View>
           {/* .carousel scroll-snap-type: x mandatory · snap-align start：多张时首张贴左缘（同 kit 在 Chrome 的落点）。 */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carousel} contentContainerStyle={styles.carouselInner} testID="events-going-carousel"
-            {...(coming.length > 1 ? { contentOffset: { x: SHELL_GUTTER, y: 0 }, decelerationRate: "fast" as const, snapToOffsets: coming.map((_, index) => SHELL_GUTTER + index * (300 + 12)) } : {})}>
+            {...(coming.length > 1 ? { decelerationRate: "fast" as const, snapToOffsets: coming.map((_, index) => index * (300 + 12)) } : {})}>
             {coming.map((item) => <GoingCard key={item.eventId} item={item} now={now} language={language} width={coming.length > 1 ? 300 : fullCard} gradientKey="carousel" band={coming.some((other) => other.coverUrl) ? (item.coverUrl ? "image" : "emoji") : null} />)}
           </ScrollView>
           {coming.length > 1 ? <View style={styles.dots}>{coming.map((item, index) => <View key={item.eventId} style={[styles.dot, index === 0 ? styles.dotOn : null]} />)}</View> : null}
@@ -361,10 +362,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     guideTitle: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 25 },
     // .drop：背景 color-mix(accent-soft 60%, transparent)，行内 gap 8。
     // 边框 1.6：Chrome 在 3x 屏按整设备像素画成 4px（4/3pt），这里照画出来的宽度；高 = 上下 16 + 行高 18.75 + 边框。
-    drop: { alignItems: "center", overflow: "hidden", borderColor: colors.plum300, borderRadius: 18, borderStyle: "dashed", borderWidth: DROP_BORDER, flexDirection: "row", gap: 8, height: 16 * 2 + 18.75 + DROP_BORDER * 2, justifyContent: "center", paddingHorizontal: 16 },
+    drop: { alignItems: "center", overflow: "hidden", borderColor: colors.plum300, borderRadius: 18, borderStyle: "dashed", borderWidth: DROP_BORDER, flexDirection: "row", gap: 8, height: 16 * 2 + 18.75 + DROP_BORDER * 2, justifyContent: "center", paddingHorizontal: 12 },
     dropFill: { bottom: 0, left: 0, position: "absolute", right: 0, top: 0, backgroundColor: colors.accentSoft, opacity: 0.6 },
-    dropHalf: { alignItems: "center", flexDirection: "row", gap: 8 },
-    dropText: { color: colors.ink2, fontSize: 15, lineHeight: 23 },
+    dropHalf: { alignItems: "center", flex: 1, flexDirection: "row", gap: 8, justifyContent: "center", minWidth: 0 },
+    dropSep: { backgroundColor: colors.plum300, height: 18, width: StyleSheet.hairlineWidth * 2 },
+    dropText: { color: colors.ink2, flexShrink: 1, fontSize: 15, lineHeight: 23 },
     cardH: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
     h3: { color: colors.ink, fontSize: 17, fontWeight: "800", lineHeight: 25 },
     more: { color: colors.ink3, fontSize: 14, fontWeight: "600", lineHeight: 21 },

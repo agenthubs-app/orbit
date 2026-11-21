@@ -91,7 +91,8 @@ function PublicFaqRow({ question, answer }: { question: string; answer: string }
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  content: { paddingHorizontal: spacing.xl - spacing.xxs, paddingTop: spacing.sm, paddingBottom: spacing.xxl },
+  // 2026-11-21 手机扫描（根因 H 左边线）：外层 AppScreen 已给页边距 18，这里不再加左右内边距（之前两层叠加约 42pt）。
+  content: { paddingTop: spacing.sm, paddingBottom: spacing.xxl },
   eyebrow: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "500" },
   title: { color: colors.ink, fontSize: typography.title, fontWeight: "700", lineHeight: 37, marginTop: spacing.sm },
   legalTitle: { marginTop: spacing.md },

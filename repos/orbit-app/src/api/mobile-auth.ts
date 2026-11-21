@@ -79,6 +79,9 @@ function failure(
   };
 }
 
+/** How long the start-up session check waits before treating the server as unreachable. */
+export const SESSION_CHECK_TIMEOUT_MS = 12_000;
+
 function networkFailure(_error: unknown): MobileAuthFailure {
   return failure(
     "ORBIT_APP_AUTH_NETWORK_ERROR",
@@ -434,11 +437,17 @@ export async function validateAuthSession({
 > {
   let response: Response;
   const normalizedCookieHeader = cookieHeader.trim();
+  // 2026-11-21: the start-up session check had no deadline, so a slow or stuck server kept the app on
+  // 「ログイン状態を確認しています…」 for minutes. After SESSION_CHECK_TIMEOUT_MS it counts as unreachable,
+  // which lets the app enter with the last validated identity (offline) like any other network failure.
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  const deadline = controller ? setTimeout(() => controller.abort(), SESSION_CHECK_TIMEOUT_MS) : null;
 
   try {
     response = await fetchImpl(
       endpoint(baseUrl, ORBIT_API_ENDPOINTS.authSession),
       {
+        ...(controller ? { signal: controller.signal } : {}),
         cache: "no-store",
         // 原生会话以 SecureStore 中的显式 Cookie 为唯一来源；若同时 include
         // 原生 cookie jar，React Native 会追加两个 Cookie 值并破坏 JWE。
@@ -453,6 +462,7 @@ export async function validateAuthSession({
       }
     );
   } catch (error) {
+    if (deadline) clearTimeout(deadline);
     return networkFailure(error);
   }
 
@@ -460,6 +470,7 @@ export async function validateAuthSession({
   try {
     body = await response.json();
   } catch {
+    if (deadline) clearTimeout(deadline);
     // A 2xx that is not JSON (captive portal, proxy page) says nothing about the
     // session: report it as unavailable, never as a rejected session.
     if (response.ok) {
@@ -471,6 +482,7 @@ export async function validateAuthSession({
     }
     body = null;
   }
+  if (deadline) clearTimeout(deadline);
   const payload = isRecord(body) ? body : null;
   const user = mobileUser(payload?.user);
   const expiresAt = stringField(payload, "expires").trim();

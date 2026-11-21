@@ -95,7 +95,7 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
         right={list.status === "loading" ? <IconButton icon="sliders" accessibilityLabel={t("network.filter")} onPress={() => setFilterOpen(true)} />
           : <IconButton icon="plus" accessibilityLabel={t("network.addPeople")} onPress={() => setAddOpen(true)} />} />}>
       <View testID="network-screen">
-        {list.offline ? <View style={styles.gapBottom}><OfflineBar offline pending={0} /></View> : null}
+        {list.offline ? <View style={styles.bannerSlot}><OfflineBar offline pending={0} /></View> : null}
         {list.status === "loading" ? <NetworkLoading /> : list.status === "failure" && rows.length === 0 && !empty ? (
           <RetryCard title={t("network.loadFailed")} {...(list.failure ? { message: list.failure } : {})} onRetry={list.refresh} />
         ) : empty ? (
@@ -330,16 +330,18 @@ export function NetworkFilterSheet({ visible, onClose, summary, filters, onChang
     </View>
   );
   return (
-    <BottomSheet visible={visible} onClose={onClose} accessibilityLabel={t("network.filterTitle")}>
-      <View testID="network-filter-sheet">
-        {/* QA-C: the apply button sits in the header (it used to be below the fold); the any/all rule line was jargon. */}
-        <View style={styles.between}>
-          <UiText style={styles.sheetTitle}>{t("network.filterTitle")}</UiText>
-          <View style={styles.rowCenter}>
-            <Button variant="ghost" size="sm" label={t("network.filterClear")} onPress={() => onChange(EMPTY_NETWORK_FILTERS)} disabled={networkFilterCount(filters) === 0} />
-            <Button variant="primary" size="sm" label={t("network.showPeople", { n: matched })} onPress={onClose} />
-          </View>
+    // QA-C: the apply button sits in the header (it used to be below the fold); the any/all rule line was jargon.
+    // 2026-11-21: the header is the sheet's fixed header, so it stays visible while the options scroll (375×667).
+    <BottomSheet visible={visible} onClose={onClose} accessibilityLabel={t("network.filterTitle")} header={
+      <View style={styles.between}>
+        <UiText style={styles.sheetTitle}>{t("network.filterTitle")}</UiText>
+        <View style={styles.rowCenter}>
+          <Button variant="ghost" size="sm" label={t("network.filterClear")} onPress={() => onChange(EMPTY_NETWORK_FILTERS)} disabled={networkFilterCount(filters) === 0} />
+          <Button variant="primary" size="sm" label={t("network.showPeople", { n: matched })} onPress={onClose} />
         </View>
+      </View>
+    }>
+      <View testID="network-filter-sheet">
         {group(t("network.groupStage"), "statuses", NETWORK_STAGE_OPTIONS.map((key) => ({ key, label: t(key === "active" ? "network.stageActive" : "network.stageNurture"), count: summary?.statuses[key] ?? 0 })))}
         {group(t("network.groupIndustry"), "industries", industries.map((option) => ({ key: option.key, label: industryOptionLabel(option.key, language, other), count: option.count })))}
         {group(t("network.groupRegion"), "regions", regions.map((option) => ({ key: option.key, label: regionOptionLabel(option.key, (city) => t(`network.city.${city}`), other), count: option.count })))}
@@ -353,7 +355,9 @@ export function NetworkFilterSheet({ visible, onClose, summary, filters, onChang
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   gapTop: { marginTop: 12 },
-  gapBottom: { marginBottom: 12 },
+  // 2026-11-21 手机扫描：下面第一块（搜索 / 空状态 / 加载）都用 marginTop -16 贴近标题栏；横幅出现时由它占住这 16，
+  // 下边距 28 抵掉下一块的 -16，留出 12 的间距（之前搜索框压住横幅底边）。
+  bannerSlot: { marginTop: -16, marginBottom: 28 },
   searchRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: -16 },
   tabs: { marginTop: 14 },
   card: { backgroundColor: colors.surface, borderRadius: 22, padding: 18 },

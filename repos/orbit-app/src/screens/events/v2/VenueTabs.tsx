@@ -16,7 +16,7 @@ import { Avatar, AvatarStack, Chip, exchangeChip, GradientCard, surname, ThinBar
 
 type ToneOf = (person: { attendeeId?: string; initial: string }) => Tone;
 const PCARD = 300;
-// kit .carousel：scroll-snap-align start、无 scroll-padding → 卡片吸附到屏幕左缘（同 探す 的横滑卡，初始偏移 = 页边距）。
+// kit .carousel：横滑卡吸附在页边距 18（2026-11-21 手机根因 D，同 Web scroll-padding-inline 18；之前贴屏幕左缘）。
 
 // ---------- ① チェックイン（b2 #26） ----------
 function qrPath(text: string): { size: number; path: string } {
@@ -169,12 +169,12 @@ export function RecsTab({ data, t, toneOf, onRequest, onDismiss, onOpen, readOnl
   const [page, setPage] = useState(0);
   const [why, setWhy] = useState<string | null>(null);
   const recs = data.recommendations;
-  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => setPage(Math.max(0, Math.min(recs.length - 1, Math.round((event.nativeEvent.contentOffset.x - SHELL_GUTTER) / (PCARD + 12)))));
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => setPage(Math.max(0, Math.min(recs.length - 1, Math.round(event.nativeEvent.contentOffset.x / (PCARD + 12)))));
   return (
     <View testID="events-venue-recs">
       <View style={styles.cardH}><UiText style={styles.h3}>{t("recsTitle")}</UiText><UiText style={styles.lbl}>{t("vRecsHint", { n: Math.max(recs.length, data.recommendations.length) })}</UiText></View>
       {recs.length ? null : <View style={styles.card}><UiText style={[styles.sub, { color: colors.ink3 }]}>{t("vRecsEmpty")}</UiText></View>}
-      {recs.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentOffset={{ x: SHELL_GUTTER, y: 0 }} snapToOffsets={recs.map((_, index) => SHELL_GUTTER + index * (PCARD + 12))} decelerationRate="fast" onScroll={onScroll} scrollEventThrottle={32} style={v.carousel} contentContainerStyle={v.carouselInner}>
+      {recs.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToOffsets={recs.map((_, index) => index * (PCARD + 12))} decelerationRate="fast" onScroll={onScroll} scrollEventThrottle={32} style={v.carousel} contentContainerStyle={v.carouselInner}>
         {recs.map((person) => {
           const near = nearNext(person, data);
           return (

@@ -260,7 +260,11 @@ function PickerSession({ onClose, onInsert, minimum = 3, requirePlace = false, i
     <BottomSheet visible onClose={onClose} accessibilityLabel={t("calendar.pick.title")} scrollEnabled={!drag}>
       <View style={styles.body} testID="slot-picker">
         <View style={styles.titleRow}>
-          <UiText accessibilityRole="header" style={styles.title}>{t("calendar.pick.title")}</UiText>
+          {/* 2026-11-21 手机扫描：375 宽时右侧按钮把标题挤断成「…最 / 大５件」。按「 · 」拆成标题 + 小字上限，按钮不缩。 */}
+          <View style={styles.titleCol}>
+            <UiText accessibilityRole="header" style={styles.title} numberOfLines={1}>{t("calendar.pick.title").split(" · ")[0]}</UiText>
+            {t("calendar.pick.title").includes(" · ") ? <UiText style={styles.titleCap}>{t("calendar.pick.title").split(" · ").slice(1).join(" · ")}</UiText> : null}
+          </View>
           <Button size="sm" variant="primary" label={email ? t("calendar.pick.insertRanges", { count }) : t("calendar.pick.insert", { count })} disabled={!canInsert} onPress={insert} />
         </View>
         {summary ? (
@@ -375,7 +379,9 @@ function PickerSession({ onClose, onInsert, minimum = 3, requirePlace = false, i
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   body: { gap: 14 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  title: { flex: 1, color: colors.ink, fontSize: 17, fontWeight: "800" },
+  titleCol: { flex: 1, minWidth: 0 },
+  title: { color: colors.ink, fontSize: 17, fontWeight: "800" },
+  titleCap: { color: colors.ink3Text, fontSize: 12, marginTop: 1 },
   hint: { color: colors.ink3Text, fontSize: 13 },
   rules: { backgroundColor: colors.surface2, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
   rulesText: { color: colors.ink2, fontSize: 13, lineHeight: 19 },
@@ -418,7 +424,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   cut: { position: "absolute", left: 4, right: 4, top: -2, height: 1, backgroundColor: colors.bg },
   n: { position: "absolute", left: 3, top: 2, color: colors.bg, fontSize: 9, fontWeight: "800", lineHeight: 10 },
   nLight: { color: colors.ink2 },
-  legend: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  // 2026-11-21 手机扫描：图例和下面「本文に書く時間帯」之间没有间距，贴在一起。
+  legend: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 12 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   legendText: { color: colors.ink3Text, fontSize: 11 },
   swatch: { width: 14, height: 10, borderRadius: 3 },

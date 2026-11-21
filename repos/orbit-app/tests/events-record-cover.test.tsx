@@ -163,7 +163,7 @@ test("attendee sheet: grey shapes while the profile loads; re-opening the same p
   await page.getByTestId("events-attendee-loading").waitFor();
   await page.getByText("資本政策の相談歓迎です。", { exact: true }).waitFor();
   assert.equal(await page.getByTestId("events-attendee-loading").count(), 0);
-  await page.getByTestId("events-attendee-sheet").getByRole("button", { name: "关闭" }).click();
+  await page.getByTestId("events-attendee-head").getByRole("button", { name: "关闭" }).click();
   await page.getByRole("button", { name: mate.name }).first().click();
   await page.getByText("資本政策の相談歓迎です。", { exact: true }).waitFor();
   assert.equal(await page.getByTestId("events-attendee-loading").count(), 0, "a cached profile shows at once");

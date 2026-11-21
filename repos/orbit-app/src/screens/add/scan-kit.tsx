@@ -98,7 +98,9 @@ export function KitCardRow({ title, sub, trailing, failed = false, first = false
  */
 export function KitFoot({ children }: { children: ReactNode }) {
   const { colors, styles } = useStyles();
-  const [height, setHeight] = useState(0);
+  // 2026-11-21 手机扫描：遮罩用 width="100%" 时 iOS 上右侧约 20pt 没盖住，后面的卡片从右边露出白条。按量到的宽高画。
+  const [size, setSize] = useState({ height: 0, width: 0 });
+  const { height, width } = size;
   // The bar stays at the bottom of the screen: while the keyboard is up it would cover the field being typed in.
   const [keyboard, setKeyboard] = useState(false);
   useEffect(() => {
@@ -108,9 +110,9 @@ export function KitFoot({ children }: { children: ReactNode }) {
   }, []);
   if (keyboard) return null;
   return (
-    <View pointerEvents="box-none" style={styles.foot} onLayout={(event) => setHeight(event.nativeEvent.layout.height)}>
-      {height ? (
-        <Svg pointerEvents="none" style={StyleSheet.absoluteFill} width="100%" height={height}>
+    <View pointerEvents="box-none" style={styles.foot} onLayout={(event) => setSize({ height: event.nativeEvent.layout.height, width: event.nativeEvent.layout.width })}>
+      {height && width ? (
+        <Svg pointerEvents="none" style={StyleSheet.absoluteFill} width={width} height={height}>
           <Defs>
             <LinearGradient id="scan-foot" x1="0" y1="0" x2="0" y2="1">
               <Stop offset={0} stopColor={colors.bg} stopOpacity={0} />
@@ -118,7 +120,7 @@ export function KitFoot({ children }: { children: ReactNode }) {
               <Stop offset={1} stopColor={colors.bg} stopOpacity={1} />
             </LinearGradient>
           </Defs>
-          <Rect x={0} y={0} width="100%" height={height} fill="url(#scan-foot)" />
+          <Rect x={0} y={0} width={width} height={height} fill="url(#scan-foot)" />
         </Svg>
       ) : null}
       {children}

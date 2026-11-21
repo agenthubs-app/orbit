@@ -396,7 +396,10 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       }
     };
 
-    void Promise.allSettled([restoreSession(), loadProviders()]).finally(() => {
+    // 2026-11-21: the sign-in providers (the Google button) no longer hold up start-up; a signed-in
+    // person never needs them, and a slow providers call kept everyone on the session check.
+    void loadProviders().catch(() => undefined);
+    void restoreSession().finally(() => {
       if (active) {
         setReady(true);
       }

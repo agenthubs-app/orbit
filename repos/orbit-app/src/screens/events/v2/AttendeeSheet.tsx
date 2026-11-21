@@ -107,14 +107,16 @@ export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
   const deadlineParts = profile?.exchangeUntil ? tokyo(profile.exchangeUntil) : null;
   const together = profile?.together;
   return (
-    <BottomSheet visible={Boolean(person)} onClose={close} accessibilityLabel={person?.name ?? ""}>
+    // 2026-11-21 手机扫描：375×667 上点メモ弹出键盘后，头部（头像 / 名字 / 关闭）随内容滚出可视区。头部改为弹层的固定头部。
+    <BottomSheet visible={Boolean(person)} onClose={close} accessibilityLabel={person?.name ?? ""} header={shown ? (
+      <View style={[vs.row, { gap: 12 }]} testID="events-attendee-head">
+        <Avatar initial={shown.initial} tone={person?.tone ?? "lav"} size="lg" />
+        <View style={vs.grow}><UiText style={styles.name}>{shown.name}</UiText><UiText style={vs.lbl}>{[shown.org, shown.role].filter(Boolean).join(" · ")}</UiText></View>
+        <UiPressable accessibilityRole="button" accessibilityLabel={t("close")} onPress={close} style={vs.lbtn}><Icon name="x" size={16} color={colors.ink2} /></UiPressable>
+      </View>
+    ) : undefined}>
       {shown ? (
         <View testID="events-attendee-sheet">
-          <View style={[vs.row, { gap: 12 }]}>
-            <Avatar initial={shown.initial} tone={person?.tone ?? "lav"} size="lg" />
-            <View style={vs.grow}><UiText style={styles.name}>{shown.name}</UiText><UiText style={vs.lbl}>{[shown.org, shown.role].filter(Boolean).join(" · ")}</UiText></View>
-            <UiPressable accessibilityRole="button" accessibilityLabel={t("close")} onPress={close} style={vs.lbtn}><Icon name="x" size={16} color={colors.ink2} /></UiPressable>
-          </View>
           {!profile && !failed ? <SheetBones /> : null}
           {failed ? <UiText style={[vs.sub, { color: colors.ink3, marginTop: 14 }]} testID="events-attendee-unavailable">{t(failed === "private" ? "pNotPublic" : "pLoadFailed")}</UiText> : null}
           {together && (together.sharedRounds.length || together.recommended || profile?.exchange === "exchanged") ? (

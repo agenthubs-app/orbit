@@ -93,7 +93,7 @@ export function AssessInputScreen() {
     return (
       <AppScreen title={t("eventsV2.codeDialogTitle")} subtitle={t("eventsV2.codeDialogSub")}>
         <View style={[styles.card, { gap: 12 }]}>
-          <TextInput value={code} autoCapitalize="characters" maxLength={9} placeholder="XXXX-XXXX" placeholderTextColor={colors.ink3}
+          <TextInput value={code} autoCapitalize="characters" keyboardType="ascii-capable" maxLength={9} placeholder="XXXX-XXXX" placeholderTextColor={colors.ink3}
             onChangeText={(value) => setCode(value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))} style={styles.codeInput} accessibilityLabel={t("eventsV2.codeDialogTitle")} testID="events-code-input" />
           {code.length > 0 && !valid ? <UiText style={styles.lbl}>{t("eventsV2.codeInvalid")}</UiText> : null}
           <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.codeNext")} disabled={!valid} onPress={() => router.push(`/register/${encodeURIComponent(code)}` as Href)} style={[styles.btnPrimary, !valid ? { opacity: 0.4 } : null]}>

@@ -62,7 +62,7 @@ function JoinCodePage({ onSubmit }: { onSubmit: (code: string) => void }) {
       <View style={styles.card}>
         <UiText style={styles.lbl}>{t("appCodeSub")}</UiText>
         <UiPressable accessibilityRole="button" accessibilityLabel={t("appCodeSub")} onPress={() => input.current?.focus()}><CodeBoxes value={value} /></UiPressable>
-        <TextInput ref={input} value={value} onChangeText={(text) => setValue(normalizeCode(text))} autoCapitalize="characters" autoCorrect={false} autoFocus showSoftInputOnFocus={!noKeyboard} maxLength={9} accessibilityLabel={t("appCodeSub")} style={j.hidden} onSubmitEditing={() => { if (ready) onSubmit(value); }} />
+        <TextInput ref={input} value={value} onChangeText={(text) => setValue(normalizeCode(text))} autoCapitalize="characters" autoCorrect={false} keyboardType="ascii-capable" autoFocus showSoftInputOnFocus={!noKeyboard} maxLength={9} accessibilityLabel={t("appCodeSub")} style={j.hidden} onSubmitEditing={() => { if (ready) onSubmit(value); }} />
         <Btn label={t("jnNext")} variant="primary" height={50} onPress={() => { if (ready) onSubmit(value); }} style={j.mt16} />
       </View>
     </JourneyPage>

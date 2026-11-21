@@ -47,6 +47,7 @@ type SegmentState =
   | { kind: "ready"; current: PlanV2HomeSummary | null; goals: readonly PlanGoalListItem[]; intakes: PlanIntakeListResponse | null; overview: PlanV2Detail | null; legacy: readonly PlanLegacyItem[]; offlineAt: string | null };
 
 export function PlanSegment() {
+  const { styles: statusStyles } = useStyles();
   const api = usePlanApi();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
@@ -130,10 +131,11 @@ export function PlanSegment() {
 
   return (
     <AppScreen title={copy.taskSegments.plan}>
-      {state.kind === "loading" ? <Skeleton lines={4} /> : null}
-      {state.kind === "offline" ? <EmptyState title={t("plan.segment.offlineTitle")} message={t("plan.segment.offlineBody")} action={{ label: copy.action.retry, onPress: () => void retry() }} /> : null}
+      {/* 2026-11-21 手机扫描：这页 AppScreen 不带页边距（正常状态的卡片自带 18），加载 / 离线 / 出错三种状态之前贴着屏幕边。 */}
+      {state.kind === "loading" ? <View style={statusStyles.statusGutter}><Skeleton lines={4} /></View> : null}
+      {state.kind === "offline" ? <View style={statusStyles.statusGutter}><EmptyState title={t("plan.segment.offlineTitle")} message={t("plan.segment.offlineBody")} action={{ label: copy.action.retry, onPress: () => void retry() }} /></View> : null}
       {state.kind === "ready" && state.offlineAt ? <EventsOfflineNotice lastSyncedAt={state.offlineAt} /> : null}
-      {state.kind === "failed" ? <RetryCard title={fillCopy(copy.error.loadFailed, { item: copy.taskSegments.plan })} onRetry={() => void retry()} retrying={reloading} /> : null}
+      {state.kind === "failed" ? <View style={statusStyles.statusGutter}><RetryCard title={fillCopy(copy.error.loadFailed, { item: copy.taskSegments.plan })} onRetry={() => void retry()} retrying={reloading} /></View> : null}
       {state.kind === "ready" && adding ? <NewGoal intakes={state.intakes} goals={state.goals} onCancel={state.current || state.overview || state.legacy.length ? () => { setAdding(false); router.setParams({ new: undefined }); } : null} /> : null}
       {state.kind === "ready" && !adding && state.overview ? <PlanOverview plan={state.overview} reload={load} goals={state.goals} onAddGoal={() => setAdding(true)} design={design} /> : null}
       {state.kind === "ready" && !adding && state.current && !state.overview ? <ConfirmedPlanCard plan={state.current} /> : null}
@@ -207,6 +209,7 @@ export function ConfirmedPlanCard({ plan }: { plan: PlanV2HomeSummary }) {
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   page: { gap: 14 },
+  statusGutter: { paddingHorizontal: 18 },
   back: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 2, minHeight: 44 },
   backText: { color: colors.accentText, fontSize: 17, fontWeight: "600" },
   grow: { flex: 1, minWidth: 0 },

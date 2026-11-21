@@ -250,8 +250,10 @@ export function GlobalSearchScreen() {
         {people.items.map((hit, index) => (
           <UiPressable key={hit.contactId} accessibilityRole="button" accessibilityLabel={hit.name} onPress={() => open(hit.href)} style={[styles.row, isSemantic && index === 0 && styles.sel]}>
             {avatar(hit.name, hit.initial)}
-            <View style={styles.meta}>{marked(hit.name, hit.highlights, "title", styles.title)}{marked([hit.org, hit.role].filter(Boolean).join(" · "), hit.highlights, "subtitle", styles.sub)}</View>
-            {hit.reason ? <View style={styles.reason}><UiText style={styles.reasonText}>{hit.reason}</UiText></View>
+            {/* 2026-11-21 手机扫描：原因 chip 放右侧时把公司 · 职位挤成「梅田科技 · 投资…」。原因改放副标题下一行。 */}
+            <View style={styles.meta}>{marked(hit.name, hit.highlights, "title", styles.title)}{marked([hit.org, hit.role].filter(Boolean).join(" · "), hit.highlights, "subtitle", styles.sub)}
+              {hit.reason ? <View style={[styles.reason, styles.reasonBelow]}><UiText style={styles.reasonText} numberOfLines={1}>{hit.reason}</UiText></View> : null}</View>
+            {hit.reason ? null
               : hit.status === "in_progress" ? <View style={[styles.chip, { backgroundColor: colors.macLav }]}><UiText style={[styles.chipText, { color: colors.macLavText }]}>{t("search.statusInProgress")}</UiText></View>
                 : hit.status === "acquaintance" ? <View style={[styles.chip, { backgroundColor: colors.macApricot }]}><UiText style={[styles.chipText, { color: colors.macApricotText }]}>{t("search.statusAcquaintance")}</UiText></View> : null}
           </UiPressable>
@@ -359,6 +361,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   chipText: { fontSize: 13, fontWeight: "700", lineHeight: 20 },
   reason: { backgroundColor: colors.rose100, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
   reasonText: { color: colors.rose700, fontSize: 13, fontWeight: "700", lineHeight: 20 },
+  reasonBelow: { alignSelf: "flex-start", marginTop: 4, maxWidth: "100%" },
   banner: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 14, flexDirection: "row", gap: 8, marginTop: 4, paddingHorizontal: 12, paddingVertical: 9 },
   bannerText: { color: colors.ink2, flex: 1, fontSize: 13, lineHeight: 20 },
   bannerCount: { fontWeight: "700" },

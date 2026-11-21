@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { PanResponder, StyleSheet, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, PanResponder, Platform, StyleSheet, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppScreen } from "../../components/AppScreen";
 import { createThemedStyles } from "../../design/theme";
@@ -112,6 +113,7 @@ export function IOrbitStartView({
   undoAvailable: boolean;
 }) {
   const { colors, styles } = useStyles();
+  const { bottom } = useSafeAreaInsets();
   const locale = useOrbitLocale();
   const copy = iorbitR21Copy[locale.language];
   const [selected, setSelected] = useState<IOrbitHistoryItem | null>(null);
@@ -158,16 +160,21 @@ export function IOrbitStartView({
         </Card> : null}
         {offline ? <UiText accessibilityRole="alert" style={styles.muted}>{copy.offline} · {offlineAt && !Number.isNaN(new Date(offlineAt).getTime()) ? `${new Intl.DateTimeFormat(locale.language, { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(offlineAt))} ${copy.historyAt}` : copy.savedHistory}</UiText> : null}
         {hasPendingWrites ? <UiText accessibilityLiveRegion="polite" style={styles.muted}>{copy.syncPending}</UiText> : null}
+        {error ? <UiText accessibilityRole="alert" style={styles.error}>{error}</UiText> : null}
+        {onDiscardFailedWrite ? <Button label={copy.discardChange} variant="ghost" onPress={onDiscardFailedWrite} /> : null}
+        {undoAvailable ? <Button label={copy.undo} variant="ghost" icon="undo" onPress={onUndo} /> : null}
+      </View>
+    </AppScreen>
+    {/* 2026-11-21 手机扫描：375×667 上输入框被建议卡和「最近の会話」推到首屏外。按聊天首页惯例把输入框固定在底部，上面内容照常滚动。 */}
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <View style={[styles.dock, { paddingBottom: Math.max(bottom, 10) }]}>
         <View style={styles.composer}>
           <TextInput accessibilityLabel={copy.ask} autoCorrect multiline={false} onChangeText={onDraftChange} onSubmitEditing={() => onSend()} placeholder={copy.askPlaceholder} placeholderTextColor={colors.ink3Text} returnKeyType="send" style={styles.input} value={draft} />
           <IconButton icon="send" accessibilityLabel={copy.send} onPress={() => onSend()} disabled={!draft.trim() || offline} solid />
         </View>
-        {error ? <UiText accessibilityRole="alert" style={styles.error}>{error}</UiText> : null}
-        {onDiscardFailedWrite ? <Button label={copy.discardChange} variant="ghost" onPress={onDiscardFailedWrite} /> : null}
-        {undoAvailable ? <Button label={copy.undo} variant="ghost" icon="undo" onPress={onUndo} /> : null}
         <UiText style={styles.muted}>{copy.manualSend}</UiText>
       </View>
-    </AppScreen>
+    </KeyboardAvoidingView>
     <FullDrawer visible={historyOpen} title={copy.conversations} side="left" onClose={onHistoryClose}>
       <Button label={copy.newConversation} icon="plus" variant="primary" onPress={onNew} block />
       <SearchField value={historyQuery} onChangeText={onHistoryQueryChange} placeholder={copy.searchHistory} />
@@ -246,7 +253,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   recentRowTitle: { flex: 1 },
   recentWhen: { color: colors.ink3Text, fontSize: typography.label },
   recentMeta: { color: colors.ink3Text, fontSize: typography.label },
-  composer: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.xl, backgroundColor: colors.surface, borderRadius: 22, borderColor: colors.line, borderWidth: 1, paddingHorizontal: spacing.sm, minHeight: 58 },
+  dock: { gap: 8, paddingHorizontal: 18, paddingTop: 10, backgroundColor: colors.bg },
+  composer: { flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: colors.surface, borderRadius: 22, borderColor: colors.line, borderWidth: 1, paddingHorizontal: spacing.sm, minHeight: 58 },
   input: { flex: 1, minWidth: 0, color: colors.ink, fontSize: typography.body, paddingHorizontal: spacing.sm, minHeight: 44 },
   error: { color: colors.coralText, fontSize: typography.bodySm },
   muted: { color: colors.ink3Text, fontSize: typography.label },

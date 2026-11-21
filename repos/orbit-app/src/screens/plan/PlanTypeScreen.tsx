@@ -11,6 +11,8 @@
 // 「話したを記録 / この分野はもう詳しい / スキップを取り消す」 also sit under the top-right 「⋯」.
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { StyleSheet, View } from "react-native";
 
 import type { PlanAwardResult, PlanCandidateView, PlanEventOption, PlanPersonTypeDetail, PlanV2Detail } from "../../api/contract/plan-v2";
@@ -69,21 +71,37 @@ function stepsOf(detail: PlanPersonTypeDetail, plan: PlanV2Detail | null, separa
   return plan.content.steps.flatMap((step, index) => (detail.stepKeys.includes(step.key) ? [String(index + 1)] : [])).join(separator);
 }
 
+// 2026-11-21 手机扫描（加载慢）：本次运行内记住每个类型页的上次答复，再次打开时先出上次的内容、后台刷新（之前每次都从骨架开始，
+// 还要等整份计划概览）。按 服务器 + 账号 + 计划 + 类型 区分；写操作后的 load() 会顺带刷新。
+const lastTypePage = new Map<string, { detail: PlanPersonTypeDetail; plan: PlanV2Detail | null }>();
+const LAST_TYPE_PAGE_MAX = 30;
+
 export function PlanTypeScreen({ planId, itemId, design = null }: { planId: string; itemId: string; design?: string | null }) {
   const api = usePlanApi();
   const copy = useStandardCopy();
   const { t } = useOrbitLocale();
-  const [state, setState] = useState<State>({ kind: "loading" });
+  const { baseUrl } = useOrbitApiBaseUrl();
+  const auth = useOrbitAuthSession();
+  const cacheKey = `${baseUrl}\n${auth.actorId ?? ""}\n${planId}\n${itemId}`;
+  const [state, setState] = useState<State>(() => { const last = lastTypePage.get(cacheKey); return last ? { ...last, kind: "ready" } : { kind: "loading" }; });
   const [retrying, setRetrying] = useState(false);
   const sequence = useRef(0);
 
   const load = useCallback(async () => {
     const run = (sequence.current += 1);
-    const [detail, plan] = await Promise.all([api.typeDetail(planId, itemId), api.overview(planId)]);
+    const [detail, plan] = await Promise.all([api.typeDetail(planId, itemId), api.overviewRecent(planId)]);
     if (run !== sequence.current) return;
-    if (!detail.ok) return setState({ kind: detail.failure.kind === "network" ? "offline" : "failed" });
-    setState({ detail: detail.data, kind: "ready", plan: plan.ok ? plan.data : null });
-  }, [api, itemId, planId]);
+    if (!detail.ok) {
+      // A failed refresh keeps the last answer on screen instead of replacing it with an error.
+      const last = lastTypePage.get(cacheKey);
+      return setState(last ? { ...last, kind: "ready" } : { kind: detail.failure.kind === "network" ? "offline" : "failed" });
+    }
+    const next = { detail: detail.data, plan: plan.ok ? plan.data : lastTypePage.get(cacheKey)?.plan ?? null };
+    lastTypePage.delete(cacheKey);
+    lastTypePage.set(cacheKey, next);
+    if (lastTypePage.size > LAST_TYPE_PAGE_MAX) lastTypePage.delete(lastTypePage.keys().next().value!);
+    setState({ ...next, kind: "ready" });
+  }, [api, cacheKey, itemId, planId]);
 
   useEffect(() => { void load(); }, [load]);
 

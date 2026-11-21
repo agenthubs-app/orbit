@@ -115,9 +115,9 @@ export function HostEventCard({ row, t, language, onAction, onOpen, faded = fals
       <UiText style={styles.hcTitle} numberOfLines={2}>{row.title}</UiText>
       <UiText style={styles.lbl} numberOfLines={1}>{where}</UiText>
       <View style={styles.cnt3}>
-        <View style={styles.cnt}><UiText style={styles.cntLbl}>{t("kApplied")}</UiText><UiText style={styles.cntNum}>{row.applied}{row.capacity ? <UiText style={styles.cntSmall}>{`/${row.capacity}`}</UiText> : null}</UiText></View>
-        <View style={styles.cnt}><UiText style={styles.cntLbl}>{t("cMatched")}</UiText><UiText style={styles.cntNum}>{n(row.matched)}</UiText></View>
-        <View style={styles.cnt}><UiText style={styles.cntLbl}>{t("cCheckedIn")}</UiText><UiText style={styles.cntNum}>{n(row.checkedIn)}</UiText></View>
+        <View style={styles.cnt}><UiText style={styles.cntLbl}>{t("kApplied")}</UiText><UiText style={styles.cntNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{row.applied}{row.capacity ? <UiText style={styles.cntSmall}>{`/${row.capacity}`}</UiText> : null}</UiText></View>
+        <View style={styles.cnt}><UiText style={styles.cntLbl}>{t("cMatched")}</UiText><UiText style={styles.cntNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{n(row.matched)}</UiText></View>
+        <View style={styles.cnt}><UiText style={styles.cntLbl}>{t("cCheckedIn")}</UiText><UiText style={styles.cntNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{n(row.checkedIn)}</UiText></View>
       </View>
       <ThinBar share={fillPercent(row.applied, row.capacity) / 100} />
       <View style={[styles.row, styles.between, styles.hcFoot]}>
@@ -163,6 +163,7 @@ export const useHostStyles = createThemedStyles((colors) => StyleSheet.create({
   // .cnt3 > div 里的 span.lbl 是行内元素，行盒按 div 的 14px × 1.5 = 21 的 strut 撑高，字落在基线上（比居中低约 1px）。
   cntLbl: { color: colors.ink3, fontSize: 13, fontWeight: "500", lineHeight: 23, paddingTop: 1 },
   cnt: { backgroundColor: colors.surface2, borderRadius: 14, flex: 1, minWidth: 0, paddingHorizontal: 11, paddingVertical: 9 },
+  // 2026-11-21 手机扫描：375 宽「128/150」折成「/15」+「0」；数字一行显示，放不下时缩小字号。
   cntNum: { color: colors.ink, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontSize: 22, fontWeight: "800", lineHeight: 26 },
   cntSmall: { color: colors.ink3, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontSize: 13, fontWeight: "700" },
   bar: { backgroundColor: colors.surface3, borderRadius: 6, height: 6, marginBottom: 4, marginTop: 8 },

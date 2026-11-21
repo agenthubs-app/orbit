@@ -182,8 +182,8 @@ export function TaskScreen() {
               </View>
               <Pressable style={StyleSheet.absoluteFill} accessibilityRole="button" accessibilityLabel={locale.t("tasks.demoBlockedTitle")}
                 onPress={() => setDemoIntercept(true)} />
-            </View> : planDemo.kind === "loading" ? <Skeleton lines={4} />
-              : <RetryCard title={locale.t("tasks.demoUnavailable")} onRetry={() => void reloadDemo(true)} />
+            </View> : planDemo.kind === "loading" ? <View style={styles.statusGutter}><Skeleton lines={4} /></View>
+              : <View style={styles.statusGutter}><RetryCard title={locale.t("tasks.demoUnavailable")} onRetry={() => void reloadDemo(true)} /></View>
               : TASK_SLOTS[key]({ quickAdd, revision, onCreated })}
           </PlanGoalInputShown.Provider></AppScreenEmbeddingProvider>
           : null}
@@ -218,4 +218,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: SHELL_GUTTER },
   demoBlocked: { flex: 1 },
+  // 2026-11-21 手机扫描：计划段加载 / 出错时贴着屏幕边（段内页面不带页边距，卡片自带 18）。
+  statusGutter: { paddingHorizontal: 18 },
 }));

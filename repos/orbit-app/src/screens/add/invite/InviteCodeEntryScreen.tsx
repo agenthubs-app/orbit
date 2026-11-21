@@ -45,6 +45,7 @@ export function InviteCodeEntryScreen() {
               label={t("add.inviteIn.manualField")}
               value={value}
               autoCapitalize="characters"
+              keyboardType="ascii-capable"
               autoCorrect={false}
               autoComplete="off"
               maxLength={12}

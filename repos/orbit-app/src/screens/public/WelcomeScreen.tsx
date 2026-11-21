@@ -15,7 +15,8 @@ export function WelcomeScreen() {
   const { t } = useOrbitLocale();
   const router = useRouter();
   const auth = useOrbitAuthSession();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const compact = height < 740;
   const pager = useRef<ScrollView>(null);
   const [slide, setSlide] = useState(0);
   const [googleError, setGoogleError] = useState<string | null>(null);
@@ -54,35 +55,43 @@ export function WelcomeScreen() {
     }
   }
 
+  // 2026-11-21 手机扫描：375×667 上主按钮被挤出首屏。按钮固定在底部（成熟 App 引导页惯例），上方示例区自己滚动；矮屏收紧示例卡间距。
   return <SafeAreaView edges={["top", "bottom"]} style={styles.screen}>
-    <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.brand}><Text allowFontScaling={false} style={styles.brandMark}>O</Text><Text style={styles.brandText}>Orbit</Text></View>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <View style={[styles.brand, compact && styles.brandCompact]}><Text allowFontScaling={false} style={styles.brandMark}>O</Text><Text style={styles.brandText}>Orbit</Text></View>
       <ScrollView ref={pager} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={onPageSettled} style={styles.pager}>
         {samples.map((lines, index) => <View key={index} style={[styles.page, { width }]}>
-          <View style={styles.sample}>
+          <View style={[styles.sample, compact && styles.sampleCompact]}>
             <Text style={styles.sampleLabel}>{t("auth.welcomeSample")}</Text>
-            {lines.map((line) => <Text key={line} style={styles.sampleCard}>{line}</Text>)}
+            {lines.map((line) => <Text key={line} style={[styles.sampleCard, compact && styles.sampleCardCompact]}>{line}</Text>)}
           </View>
           <Text accessibilityRole="header" style={styles.title}>{headlines[index]![0]}</Text>
           <Text style={styles.description}>{headlines[index]![1]}</Text>
         </View>)}
       </ScrollView>
-      <View style={styles.dots}>
+      <View style={[styles.dots, compact && styles.dotsCompact]}>
         {samples.map((_, index) => <Pressable key={index} accessibilityRole="button" accessibilityLabel={`${index + 1} / ${samples.length}`} accessibilityState={{ selected: index === slide }} hitSlop={8} onPress={() => showSlide(index)} style={[styles.dot, index === slide && styles.dotActive]} />)}
       </View>
-      <View style={styles.spacer} />
+    </ScrollView>
+    <View style={styles.footer}>
       <Pressable accessibilityRole="button" onPress={() => router.push("/account/signup")} style={styles.primary}><Text style={styles.primaryText}>{t("auth.welcomeStart")}</Text></Pressable>
       {auth.googleEnabled ? <Pressable accessibilityRole="button" disabled={googlePending} onPress={continueWithGoogle} style={styles.secondary}><Text style={styles.secondaryText}>{t("auth.welcomeGoogle")}</Text></Pressable> : null}
       {googleError ? <Text accessibilityRole="alert" style={styles.error}>{googleError}</Text> : null}
       <Pressable accessibilityRole="link" onPress={() => router.push("/account/login")} style={styles.login}><Text style={styles.loginText}>{t("auth.welcomeLogin")}</Text></Pressable>
-    </ScrollView>
+    </View>
   </SafeAreaView>;
 }
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
+  scroll: { flex: 1 },
   content: { flexGrow: 1, paddingBottom: 12 },
+  footer: { paddingTop: 8, paddingBottom: 12 },
   brand: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 36, marginBottom: 28 },
+  brandCompact: { marginTop: 8, marginBottom: 16 },
+  sampleCompact: { paddingTop: 18, paddingBottom: 24, gap: 12 },
+  sampleCardCompact: { paddingVertical: 12 },
+  dotsCompact: { marginTop: 16 },
   pager: { flexGrow: 0 },
   page: { paddingHorizontal: 18 },
   brandMark: { width: 36, height: 36, overflow: "hidden", borderRadius: 12, backgroundColor: colors.ink, color: colors.surface, textAlign: "center", textAlignVertical: "center", fontSize: 24, fontWeight: "900" },
@@ -95,7 +104,6 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   dots: { flexDirection: "row", justifyContent: "center", gap: 20, marginTop: 24 },
   dot: { width: 13, height: 13, borderRadius: 7, borderWidth: 1, borderColor: colors.plum500 },
   dotActive: { backgroundColor: colors.plum700 },
-  spacer: { flexGrow: 1, minHeight: 55 },
   primary: { minHeight: 50, marginHorizontal: 18, borderRadius: 24, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
   primaryText: { color: colors.surface, fontSize: 17, fontWeight: "700" },
   secondary: { minHeight: 50, borderRadius: 24, marginHorizontal: 18, marginTop: 10, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },

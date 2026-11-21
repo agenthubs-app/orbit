@@ -324,15 +324,17 @@ function InviteIntro() {
       </KitGuide>
       <View style={[kit.card, local.steps]}>
         <UiText accessibilityRole="header" style={local.h3}>{t("add.invite.stepsTitle")}</UiText>
+        {/* 2026-11-21 手机扫描：三格并排在 375–430 宽每格只有 95–111pt，「お互いの人脈 / に」类折行。手机上改为纵向三行。 */}
         <View style={local.st3}>
-          {steps.map(([emoji, title, body], index) => [
-            index > 0 ? <View key={`${title}-arrow`} style={local.st3Arrow}><Icon name="right" size={16} color={colors.ink4} /></View> : null,
+          {steps.map(([emoji, title, body]) => (
             <View key={title} style={local.st3Cell}>
               <UiText importantForAccessibility="no" accessibilityElementsHidden style={local.st3Emoji}>{emoji}</UiText>
-              <UiText style={local.st3Title}>{t(title)}</UiText>
-              <UiText style={local.st3Small}>{t(body)}</UiText>
-            </View>,
-          ])}
+              <View style={local.st3Text}>
+                <UiText style={local.st3Title}>{t(title)}</UiText>
+                <UiText style={local.st3Small}>{t(body)}</UiText>
+              </View>
+            </View>
+          ))}
         </View>
       </View>
       <View style={[kit.card, local.faq]}>
@@ -637,14 +639,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   heroSub: { lineHeight: 20, marginTop: 6 },
   heroRow: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
   chipIcon: { alignItems: "center", height: 12, justifyContent: "center", transform: [{ scale: 0.75 }], width: 12 },
-  steps: { padding: 14 },
+  // 2026-11-21 手机根因 C：和上面的 🤝 主卡之间只有约 7pt，统一成 14。
+  steps: { marginTop: 7, padding: 14 },
   h3: { color: colors.ink, fontSize: 17, fontWeight: "800", lineHeight: 25, marginBottom: 10 },
-  st3: { alignItems: "center", flexDirection: "row", gap: 2 },
-  st3Arrow: { alignItems: "center", transform: [{ scale: 0.875 }], width: 16 },
-  st3Cell: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 14, flex: 1, minWidth: 0, paddingHorizontal: 4, paddingVertical: 9 },
-  st3Emoji: { fontSize: 20, lineHeight: 26 },
-  st3Title: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 18, textAlign: "center" },
-  st3Small: { color: colors.ink3, fontSize: 12, lineHeight: 16, marginTop: 2, textAlign: "center" },
+  st3: { gap: 8 },
+  st3Cell: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 14, flexDirection: "row", gap: 12, paddingHorizontal: 12, paddingVertical: 10 },
+  st3Emoji: { fontSize: 20, lineHeight: 26, textAlign: "center", width: 28 },
+  st3Text: { flex: 1, minWidth: 0 },
+  st3Title: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 18 },
+  st3Small: { color: colors.ink3, fontSize: 12, lineHeight: 16, marginTop: 2 },
   faq: { marginTop: 14, paddingHorizontal: 16, paddingVertical: 6 },
   nx: { alignItems: "center", flexDirection: "row", gap: 10, paddingVertical: 10 },
   nxLine: { borderTopColor: colors.line, borderTopWidth: 1 },

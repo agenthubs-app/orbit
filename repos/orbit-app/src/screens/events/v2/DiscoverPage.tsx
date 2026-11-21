@@ -23,6 +23,7 @@ import { AREAS, PERIODS, THEMES, areaLabel, discoverWhen, feeText, periodLabel, 
 import { RelevanceChips, registrationChipLabel, relevanceChips, useRelevanceT } from "./Relevance";
 import { PersonalScheduleDateTimePicker } from "../../schedule/PersonalScheduleDateTimePicker";
 import { useJourneyT } from "./useJourneyT";
+import { BoneCard, Bones } from "./loading-ui";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
 import { recentSearchKey } from "../../../data/account-local-caches";
@@ -49,6 +50,11 @@ export function discoverQueryFromParams(params: Record<string, string | string[]
   };
 }
 
+// 2026-11-21 手机扫描（加载慢）：本次运行内记住每个筛选条件的上次结果，回到探す 时先出上次的列表、后台再刷新。
+// 按 服务器 + 账号 + 条件 区分；只存成功的答复。
+const lastDiscover = new Map<string, EventDiscoverResponse>();
+const LAST_DISCOVER_MAX = 20;
+
 export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, initialSearch = "", openFilters = false }: { onSubtitle?: (text: string) => void; initialQuery?: EventDiscoverQuery; initialSearch?: string; openFilters?: boolean }) {
   const { styles, colors } = useStyles();
   const { t, language } = useJourneyT();
@@ -58,7 +64,9 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   const api = useJourneyApi();
   const { baseUrl } = useOrbitApiBaseUrl();
   const [query, setQuery] = useState<EventDiscoverQuery>(initialQuery);
-  const [data, setData] = useState<EventDiscoverResponse | null>(null);
+  const auth = useOrbitAuthSession();
+  const cacheKey = `${baseUrl}\n${auth.actorId ?? ""}\n${JSON.stringify(query)}`;
+  const [data, setData] = useState<EventDiscoverResponse | null>(() => lastDiscover.get(cacheKey) ?? null);
   const [search, setSearch] = useState(initialSearch);
   const [searching, setSearching] = useState(Boolean(initialSearch));
   const [results, setResults] = useState<EventSearchResponse | null>(null);
@@ -74,11 +82,18 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
 
   useEffect(() => {
     let live = true;
-    void api.discover(query).then((result) => { if (live) setData(result.ok ? result.data : { all: [], community: [], planFit: [], planFitTotal: 0, popularityFallback: true, total: 0 }); });
+    setData(lastDiscover.get(cacheKey) ?? null);
+    void api.discover(query).then((result) => {
+      if (result.ok) {
+        lastDiscover.delete(cacheKey);
+        lastDiscover.set(cacheKey, result.data);
+        if (lastDiscover.size > LAST_DISCOVER_MAX) lastDiscover.delete(lastDiscover.keys().next().value!);
+      }
+      if (live) setData(result.ok ? result.data : lastDiscover.get(cacheKey) ?? { all: [], community: [], planFit: [], planFitTotal: 0, popularityFallback: true, total: 0 });
+    });
     return () => { live = false; };
-  }, [api, query]);
+  }, [api, query, cacheKey]);
   // LF5: the account's own recent event searches (the list used to be shared by every account on the device).
-  const auth = useOrbitAuthSession();
   const recentKey = recentSearchKey("events", auth.actorId);
   useEffect(() => {
     let live = true;
@@ -124,7 +139,8 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   const [pickDay, setPickDay] = useState<"from" | "to" | null>(null);
   const customRange = (value: EventDiscoverQuery) => [value.from, value.to].filter(Boolean).map((day) => `${Number(day!.slice(5, 7))}/${Number(day!.slice(8, 10))}`).join("–");
   const toggleIn = <T extends string>(list: readonly T[] | undefined, value: T) => (list?.includes(value) ? list.filter((item) => item !== value) : [...(list ?? []), value]);
-  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => setPage(Math.max(0, Math.round((event.nativeEvent.contentOffset.x - SHELL_GUTTER) / (CARD + 12))));
+  // 2026-11-21（手机根因 D，同 Web）：吸附点从 0 起，卡片停在页边距 18，和上下卡片同一条左边线（之前初始偏移 = 页边距，卡片贴屏幕左缘）。
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => setPage(Math.max(0, Math.round(event.nativeEvent.contentOffset.x / (CARD + 12))));
 
   const datebox = (iso: string, tall = false) => { const p = tokyo(iso); return <View style={styles.datebox}><UiText style={styles.dateDay}>{p?.day ?? ""}</UiText><UiText style={[styles.dateMonth, tall ? { lineHeight: 15.4 } : null]}>{p ? t("monthLabel", { m: p.month }) : ""}</UiText></View>; };
   const chip = (label: string, onPress: () => void, on: boolean, key: string, caret = false) => (
@@ -143,10 +159,13 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
         </View>
         <UiPressable accessibilityRole="button" accessibilityLabel={t("filtersLbl")} onPress={openSheet} style={styles.rbtn} testID="events-discover-filter">
           <Icon name="sliders" size={20} color={colors.ink2} />
-          {count && !data?.popularityFallback ? <View style={styles.badge}><UiText style={styles.badgeText}>{count}</UiText></View> : null}
+          {count && data && !data.popularityFallback ? <View style={styles.badge}><UiText style={styles.badgeText}>{count}</UiText></View> : null}
         </UiPressable>
       </View>
-      {data?.popularityFallback ? null : <View style={styles.chips}>
+      {/* 2026-11-21 手机扫描：数据未到时不知道是否走「人気順」引导，先只出骨架，不画筛选块（之前先画「今月 ✕」再整体换掉）。 */}
+      {data === null ? (
+        <Bones testID="events-discover-loading" style={styles.loadingBones}><BoneCard rows={2} /><BoneCard rows={3} /></Bones>
+      ) : data.popularityFallback ? null : <View style={styles.chips}>
         {query.period ? chip(query.period === "custom" && query.from ? customRange(query) : periodLabel(query.period, t), () => clear("period"), true, "period") : null}
         {(query.areas ?? []).map((a) => chip(areaLabel(a, t), () => patch({ areas: (query.areas ?? []).filter((x) => x !== a) }), true, `a-${a}`))}
         {(query.themes ?? []).map((x) => chip(themeLabel(x, t), () => patch({ themes: (query.themes ?? []).filter((v) => v !== x) }), true, `t-${x}`))}
@@ -245,7 +264,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
         <View style={styles.section} testID="events-discover-planfit">
           <View style={styles.cardH}><UiText style={styles.h3}>{rt("eventsV2.relDiscoverPeople")}</UiText><UiText style={styles.more}>{t("countN", { n: data.planFitTotal })}</UiText></View>
           {/* D2：这一排有任何一张有图 → 每张卡都出 2:1 顶部（没图的用 emoji 色带）。 */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToOffsets={data.planFit.map((_row, index) => SHELL_GUTTER + index * (CARD + 12))} contentOffset={{ x: SHELL_GUTTER, y: 0 }} decelerationRate="fast" onScroll={onScroll} scrollEventThrottle={32} style={styles.carousel} contentContainerStyle={styles.carouselInner}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToOffsets={data.planFit.map((_row, index) => index * (CARD + 12))} decelerationRate="fast" onScroll={onScroll} scrollEventThrottle={32} style={styles.carousel} contentContainerStyle={styles.carouselInner}>
             {data.planFit.map((row, index) => {
               const registered = registrationChipLabel(row.registrationCount, rt);
               const banded = data.planFit.some((item) => coverUri(item.coverUrl, baseUrl));
@@ -408,6 +427,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   badge: { alignItems: "center", backgroundColor: colors.ink, borderRadius: 9, height: 17, justifyContent: "center", minWidth: 17, paddingHorizontal: 4, position: "absolute", right: -2, top: -2 },
   badgeText: { color: colors.bg, fontSize: 12, fontWeight: "800", lineHeight: 14 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
+  loadingBones: { marginTop: 14 },
   chip: { alignItems: "center", alignSelf: "flex-start", backgroundColor: colors.surface2, borderRadius: radius.pill, flexDirection: "row", gap: 4, paddingHorizontal: 9, paddingVertical: 3 },
   chipText: { color: colors.ink2, fontSize: 13, fontWeight: "700", lineHeight: 20 },
   caret: { alignItems: "center", height: 12, justifyContent: "center", width: 12 },

@@ -84,7 +84,7 @@ function CodeSheet({ visible, onClose, api, t }: { visible: boolean; onClose: ()
         <UiPressable accessibilityRole="button" accessibilityLabel={t("appCodeSub")} onPress={() => input.current?.focus()}>
           <CodeBoxes value={code} />
         </UiPressable>
-        <TextInput ref={input} value={code} onChangeText={(text) => setCode(normalizeCode(text))} autoCapitalize="characters" autoCorrect={false} autoFocus={visible} showSoftInputOnFocus={!noKeyboard} maxLength={9} accessibilityLabel={t("appCodeSub")} style={styles.hiddenInput} onSubmitEditing={() => void join()} />
+        <TextInput ref={input} value={code} onChangeText={(text) => setCode(normalizeCode(text))} autoCapitalize="characters" autoCorrect={false} keyboardType="ascii-capable" autoFocus={visible} showSoftInputOnFocus={!noKeyboard} maxLength={9} accessibilityLabel={t("appCodeSub")} style={styles.hiddenInput} onSubmitEditing={() => void join()} />
         <Btn label={t("jnJoin")} variant="primary" height={50} onPress={() => void join()} style={styles.joinBtn} testID="host-code-join" />
       </View>
     </BottomSheet>

@@ -1,6 +1,6 @@
 // R30 全局搜索（App /search；search/DESIGN.md §2.2）。与 Web orbits app/(app)/app/orbit-2026/copy/search.ts 同一组文案。
 export const search = {
-  "search.placeholder": "人・イベント・メモ・To-do・予定を検索",
+  "search.placeholder": "人・イベント・メモなどを検索",
   "search.typeAll": "すべて",
   "search.typePeople": "人",
   "search.typeEvents": "イベント",

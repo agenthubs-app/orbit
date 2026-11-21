@@ -286,11 +286,14 @@ function StepItem({ n, last, step, chip, types, hasEvent, closing, onOpenType, o
       {why.body}
       <View style={styles.mey}>
         <Icon name="flag" size={16} color={colors.plum700} />
+        {/* 2026-11-21 手机扫描：指标 chip 放在右侧时把目安正文挤成每行 3–4 字的竖条（375 宽）。chip 挪到小标题那一行，正文占满整行。 */}
         <View style={kit.grow}>
-          <UiText style={styles.meySmall}>{t("plan.step.criteria")}</UiText>
+          <View style={styles.meyHead}>
+            <UiText style={styles.meySmall}>{t("plan.step.criteria")}</UiText>
+            {chip ? <View style={styles.meyChip}><KitChip label={chip.label} tone={chip.tone} /></View> : null}
+          </View>
           <UiText style={styles.meyText}>{step.doneCriteria}</UiText>
         </View>
-        {chip ? <KitChip label={chip.label} tone={chip.tone} /> : null}
       </View>
       {extra}
       {types.length || hasEvent ? (
@@ -468,6 +471,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   stText: { color: colors.ink, ...kitText(14.5, "800", 1.4) },
   mey: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 8, paddingVertical: 9, paddingHorizontal: 11, borderRadius: 14, backgroundColor: colors.surface2 },
   meySmall: { color: colors.ink3, ...kitText(10.5, "700", 1.55) },
+  meyHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  meyChip: { flexShrink: 1, alignItems: "flex-end" },
   meyText: { color: colors.ink, ...kitText(12.5, "400", 1.55) },
   stepChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
   stepLbl: { marginTop: 8 },

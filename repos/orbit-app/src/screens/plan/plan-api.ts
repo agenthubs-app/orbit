@@ -114,6 +114,8 @@ export interface PlanApi {
   searchContacts(query: string): Promise<PlanResult<ContactCandidate[]>>;
   // R24: the overview, the person-type page and their commands (UI-SPEC「接口」).
   overview(planId: string): Promise<PlanResult<PlanV2Detail>>;
+  /** 2026-11-21: the overview a parent page read in the last 60 s (any write through this client drops it); otherwise reads it. */
+  overviewRecent(planId: string): Promise<PlanResult<PlanV2Detail>>;
   typeDetail(planId: string, itemId: string): Promise<PlanResult<PlanPersonTypeDetail>>;
   award(planId: string, itemId: string, contactId: string, idempotencyKey: string): Promise<PlanResult<PlanAwardResult>>;
   talkedOffline(planId: string, itemId: string, body: PlanTalkedOfflineRequest): Promise<PlanResult<PlanTalkedOfflineResult>>;
@@ -155,13 +157,26 @@ export interface PlanApi {
 
 type Method = "get" | "post" | "patch" | "delete";
 
+// 2026-11-21（手机根因 I，同 Web「计划 60 秒内复用」）：plan overviews read through one client (= one server + account),
+// so the person-type page can reuse the one its parent page just read instead of reading the whole plan again.
+const RECENT_OVERVIEW_MS = 60_000;
+const recentOverviews = new WeakMap<object, Map<string, { at: number; data: PlanV2Detail }>>();
+function recentOverviewsOf(owner: object): Map<string, { at: number; data: PlanV2Detail }> {
+  let found = recentOverviews.get(owner);
+  if (!found) { found = new Map(); recentOverviews.set(owner, found); }
+  return found;
+}
+
 export function createPlanApi(client: OrbitApiClient, language: string): PlanApi {
   const headers = { "x-orbit-lang": language, "x-orbit-platform": "app" };
+  const recent = recentOverviewsOf(client);
   async function call<T>(method: Method, path: string, schema: ZodType<T>, body?: unknown): Promise<PlanResult<T>> {
+    if (method !== "get") recent.clear();
     const result = await client[method]<unknown>(path, body === undefined ? { headers } : { body, headers });
     if (!result.success) return { failure: planFailureOf(result), ok: false };
     const parsed = schema.safeParse(result.data);
     if (!parsed.success) return { failure: { kind: "other", message: "", reason: "INVALID_RESPONSE" }, ok: false };
+    if (method === "get" && schema === (planV2DetailSchema as unknown)) recent.set(`${language}\n${path}`, { at: Date.now(), data: parsed.data as PlanV2Detail });
     return { data: parsed.data, ok: true, status: result.status };
   }
   const intake = (id: string, rest = "") => `${PLANS}/intakes/${segment(id)}${rest}`;
@@ -195,6 +210,10 @@ export function createPlanApi(client: OrbitApiClient, language: string): PlanApi
     dismissPending: (id, idempotencyKey) => call("post", pending(id, "/dismiss"), planPendingDecisionResultSchema, { idempotencyKey }),
     introDraft: (id, itemId, viaContactId, idempotencyKey) => call("post", type(id, itemId, "/intro-drafts"), planIntroDraftResultSchema, { idempotencyKey, viaContactId }),
     overview: (id) => call("get", plan(id), planV2DetailSchema),
+    overviewRecent: (id) => {
+      const hit = recent.get(`${language}\n${plan(id)}`);
+      return hit && Date.now() - hit.at < RECENT_OVERVIEW_MS ? Promise.resolve({ data: hit.data, ok: true as const, status: 200 }) : call("get", plan(id), planV2DetailSchema);
+    },
     proposal: (id, itemId, contactId, slots, idempotencyKey) => call("post", type(id, itemId, "/proposals"), planProposalResultSchema, { contactId, idempotencyKey, slots }),
     reopenStep: (id, stepKey, idempotencyKey) => call("delete", plan(id, `/steps/${segment(stepKey)}/complete`), planCommandResultSchema, { idempotencyKey }),
     skip: (id, itemId, idempotencyKey) => call("post", type(id, itemId, "/skip"), planCommandResultSchema, { idempotencyKey }),
