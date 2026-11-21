@@ -1,6 +1,8 @@
 # Sprint AG17 — 执行总结（用户自己的 Claude、Codex 经 MCP 读授权的资料、提出修改，H）
 
-对应 GOAL.md。run-01 的阶段报告：服务端和不需要页面的测试已做完；三张网页、与 AG15 的两处接线、两个真实客户端的联调没有做。
+对应 [GOAL.md](GOAL.md)。**状态：completed，随第二次发布于 2026-11-21 上正式站（见页尾「协调者复核与结论」）；与真实 Claude 的联调还没做，Codex 未接。**
+
+本页按时间顺序：先是 run-01 的阶段报告（当时服务端和不需要页面的测试已做完，三张网页、与 AG15 的两处接线、两个真实客户端的联调没有做，结果记为 blocked），后面三段「追加」是之后做的。正文由 Generator 写（前三段 Fable 5.2，追加 3 起 Opus 5.5），协调者原样写入。
 
 ### 结果
 
@@ -443,3 +445,49 @@ blocked：除两项真实客户端联调（Claude、Codex，要用户另行授�
 目录 `/Volumes/ORICO/Dev/orbit-sprint-evidence/agent-eval-lines/ag17/runs/20261120-142305-9b5b33d-AG17-ten-cases-judges-fixes`，评审材料 `judging.md` 已生成，没有评审。核对：AE-MCP-004 里乙的确认这次真的发到了服务端，得 404 `NOT_FOUND`，没有被接受；乙打开甲的链接得到的代码是 `PROPOSAL_NOT_FOUND`；AE-MCP-001、002、006、AE-SCL-031 的结果里没有 `contact_ids`、`event_refs`（新判定也通过）。
 
 本段的测试：MCP 82 条、评测判定 8 条、三张页面 21 条、`ag07-no-internal-words` 等，共 268 条全过；`tsc` 没有新的错误。全量测试没有在 `9b5b33dd4` 上重跑（协调者只要求十例；改动限于 MCP 投影、提议接口、运行器和页面文字，相邻测试都已跑过）。
+
+## 追加 5：合并树上已红的三条棘轮测试里，本 sprint 新加的违规（Generator，2026-11-20，提交 `aa7b1b1e9`）
+
+集成线按内容比较发现：几条在基线就红的测试里，有本 sprint 文件新加的违规（只按测试名比较看不出来）。本段只移走这些，不改行为、不改样子，不碰别人的违规、不改测试、不抬上限。
+
+| 测试 | 本 sprint 文件的违规：之前 → 之后 |
+|---|---|
+| `no page has more hard-coded text or missing Japanese than the allow list grants` | `agent-connections/copy.ts` 250 + `parts.tsx` 15 → 0 |
+| `skeleton files stay at zero and can never be allow-listed` | 同上两个文件 → 0 |
+| `showcases, the root layout, the landing page and orbit-2026 outside copy tables have no hard-coded text` | 同上 250 + 15 → 0 |
+| `non-.btn <button> count in app/(app)/app does not increase` | 9 个按钮（`ConsentPage.tsx` 5、`ProposalConfirm.tsx` 2、`AgentConnectionsSettings.tsx` 1、`external-proposal-entry.tsx` 1）→ 0（本分支计数 116 → 107） |
+| App：`native app has a route for every web app surface` | 3 条网页路由 → **没有改，等决定**（见下） |
+
+- **文字表**：页面的固定文字搬到 `orbit-2026/copy/agent-connections.ts`，每条写成 `{ zh, ja, en }`（和其他设置页的文字表同一种写法）；原来按位置写的 `agent-connections/copy.ts` 删掉。125 条逐条按数据比较完全相同（`run-01/ratchets/copy-before.json`、`copy-after.json`）；`parts.tsx` 里的日期用字（「{m}月{d}日」、星期名）也搬进去，`dateText` 的输出不变（「11月20日（周五）」「11月20日(金)」「Fri, Nov 20」）。没有用允许名单。
+- **按钮**：九个按钮加上共用的 `btn` 类。同意页、确认页、设置页不在旧页面的范围里，`btn` 在那里只把按下时的位移设为无，看不出差别；收件箱那一行在旧页面（`[data-orbit-real-page]`）里，旧的 `.btn` 会改行高、内边距和对齐，所以用 `.inboxRow.inboxRow:global(.btn)` 把这一行自己的值写回去（`ListRow`、`Button` 也是这么做的）。截图对照见 `run-01/ui-ratchet/`。
+- **App 路由对照（没有改，需要决定）**：例外清单要求写明用户的决定。这三页「只有网页」是用户 2026-11-20 批准视觉稿时定的；但同一个文件里另一条测试 `every web-only exception records a user decision with a reason`（现在是绿的）要求每一条的 `decidedAt` 都等于 `2026-09-27`。写 2026-09-27 是假日期，写 2026-11-20 会把这条绿测试弄红。所以没有加，三条现成的条目（含理由）放在 `run-01/ratchets/route-parity-exceptions.AG17-entries.txt`，等协调者定：让测试的维护者把日期检查放宽到合法日期（检查器本身已经核对 YYYY-MM-DD 格式），或者另作决定。
+- 检查：三条文字棘轮和按钮棘轮的失败输出里没有任何本 sprint 的文件；三张页面测试、MCP 测试、收件箱页面测试、令牌测试共 133 条通过；`tsc` 只有基线的错误。
+- **App 路由对照（已按协调者的决定完成，提交 `deaa25b85`）**：协调者决定（本 epic 的常设授权，会列给产品负责人）：`every web-only exception records a user decision with a reason` 里「`decidedAt` 必须等于 2026-09-27」那一句，当初只是因为所有例外都来自同一天的决定，不是要禁止以后的决定；改为接受任何格式正确、不在未来的日期（加一行注释），其余要求（有理由、决定人是用户、原有条目不动）不变。三条例外加进 `tests/route-parity-exceptions.ts`，`decidedAt: 2026-11-20`，理由：用户当天批准 AG17 视觉稿，连接外部助手的页面这一版只有网页；App 在收件箱里显示这种修改，点开时在浏览器里打开确认页。结果：`native app has a route for every web app surface` 只剩基线的 `/settings/account/delete`；`every web-only exception records a user decision with a reason` 通过。App typecheck 只有基线那一处。
+
+## 协调者复核与结论
+
+**结论：completed（真实客户端联调除外）。** 最终提交 `deaa25b85`（`4d0be2b40` 之后两个提交：页面文字进文字表、九个按钮用共用的 `btn`、三条只有网页的路由按协调者决定登记），经集成线 `agent-v1-next` 合并，随第二次发布（`463de7fdd`）在 2026-11-21 09:17 上正式站。AG17-5 的「与 Claude、Codex 各联调一次」没有做，见下。
+
+**评审。** 都是 Claude 新会话，互不相见；门槛里另外 65 例是不变量包，只看代码判定。
+
+| 运行 | 代码判定 | 评审 | 说明 |
+|---|---|---|---|
+| `20261120-081733-8789c20-AG17-gate-run-01b-with-AG15` | 69/75 | 一位（Fable 5.2），本 sprint 10 例：10/10 | 评审看出翻页游标是可读的 base64、里面有内部账号编号 → 「追加：翻页游标对外不可读」 |
+| `20261120-133314-3b594f4-AG17-gate-run-01d-final` | 71/75 | 两位（Fable 5.2）各 10/10 | 没过代码判定的 4 例要 AG14。评审之外指出四处：未授权种类的关系编号（`contact_ids`、`event_refs`）要从结果里去掉；别人的提议编号和打错的编号要回一样的结果；跨账号确认要有服务端测试；对外文字只写 Claude → `9b5b33dd4`，十例重跑 10/10 |
+| 上线门槛 `20261121-002824-bdb67c3-release2-gate-all-4` | MCP 区全过 | 两位（Opus 5.5） | — |
+
+**协调者看过的截图。** `consent-first-375`、`settings-list-1440`：与稿一致。
+
+**怎么合并的**（`coordination/next/INTEGRATION-LOG.md`）：
+- `1e29899ae` 合 `1a558c9d1`（8 个文件冲突）。合并时核对：MCP 模块和它的路由没有一处引用记忆的存储或领域，`memory`、`conversations` 不在任何授权范围里；能提议的只有 `todo.create`、`todo.update`、`memo.create`。
+- `465d0121e` 合 `4d0be2b40`，`2a2f6b0e3` 合 `deaa25b85`。收件箱里外部提议的那一行与 AG15 的重叠，在 AG15 的合并处定了（见 AG15 页尾）。
+- `63f202cb1`（接缝修复，协调者决定）：全天的私人活动经 MCP 出去时只有零点的 `starts_at`，没有全天标记；活动和「我去过」的投影都加了 `all_day`，只在为真时出现。
+
+**协调者的决定**（DECISIONS-2026-11-20.md 末节第 2 条）：App 路由对照里「每条只有网页的例外日期必须是 2026-09-27」改成接受任何格式正确、不在未来的日期；AG17 的三页登记为只有网页（2026-11-20，用户批准视觉稿时定）。
+
+**正式站的配置。** 上线时加了环境变量 `ORBIT_MCP_BASE_URL=https://orbitailink.com`；对外的地址就是 `https://orbitailink.com/connect`。
+
+**还没做的：**
+- 与真实 Claude 联调：用户 2026-11-20 同意，要用户本人在 Claude 里添加 `https://orbitailink.com/connect`、登录并点同意。
+- Codex：接入方式没有核实，不在名单里，所有对外文字只写 Claude。
+- 第三方用例集里两处等产品负责人定：带了不认识的字段（例如「已同意」）的提议是拒绝（现在）还是忽略那几个字段，「完成一条待办」要不要能经 MCP 提议；查记录时要不要支持按人筛选。详见 [RELEASE-2.md](../../RELEASE-2.md)。

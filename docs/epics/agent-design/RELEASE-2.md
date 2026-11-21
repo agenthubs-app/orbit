@@ -7,7 +7,7 @@ Orbit Agent 第一版的第二次发布，2026-11-21 09:17 上正式站 orbitail
 | 部署 | `dpl_9GbfuJe8zZb684Vscixpz1zZBnmK`（`https://orbit-staging-hx91f3sdq-orbitsdev2026-7133.vercel.app`），先部署、查 `/api/health`、再切换为正式 |
 | 代码 | `agent-v1-integration` @ `463de7fdd`（合并集成线 `agent-v1-next` @ `bdb67c329`，树完全相同），已推送 |
 | 正式库 | 正式站现在读写的那个库（见下「正式环境的改动」） |
-| App | 第 20 版 09:19 起打包，09:26 归档成功并开始上传 TestFlight（`a55f7b448`）；上传结果以打包线的记录（`release-2/app-build-20.log`）为准 |
+| App | 1.0.0（20），`a55f7b448`；09:28 上传 App Store Connect 成功（苹果处理中），连正式站；归档 `_evidence-main/ux-release/Orbit-Prod-20.xcarchive` |
 | 回退 | 在 `repos/orbits` 里执行 `vercel promote https://orbit-staging-2ucmj0n2n-orbitsdev2026-7133.vercel.app --yes`，回到上一次发布（热修复第三部分，2026-11-20 19:04）。正式库新加的表是附加的，回退不用动它 |
 
 ## 这次上线了什么
