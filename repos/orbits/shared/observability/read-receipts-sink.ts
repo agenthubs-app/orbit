@@ -30,6 +30,13 @@ export interface ReadReceiptLogPayload {
   responseBytes: number | null;
   status: number | null;
   sampleRate: number;
+  /** P0 week only (request-timing.ts). */
+  connects?: number;
+  connectMs?: number;
+  wallMs?: number;
+  instanceAgeMs?: number;
+  instanceSeq?: number;
+  region?: string | null;
 }
 
 export interface ReadReceiptSqlClient {
@@ -70,6 +77,16 @@ export function readReceiptLogPayload(receipt: ReadReceipt): ReadReceiptLogPaylo
     responseBytes: receipt.responseBytes,
     status: receipt.statusCode,
     sampleRate: receipt.sampleRate,
+    ...(receipt.timing
+      ? {
+          connects: receipt.timing.connectCount,
+          connectMs: Math.round(receipt.timing.connectMs),
+          wallMs: receipt.timing.wallMs,
+          instanceAgeMs: receipt.timing.instanceAgeMs,
+          instanceSeq: receipt.timing.instanceSeq,
+          region: receipt.timing.region,
+        }
+      : {}),
   };
 }
 

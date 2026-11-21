@@ -71,7 +71,7 @@ test("legacy register route does not load an unused profile form before redirect
 
 test("/app/register redirects a reviewed code without propagating fixture controls", async () => {
   const Page = (await import("../../app/(app)/app/register/page"))
-    .default as (props: {
+    .default as unknown as (props: {
     searchParams: Promise<Record<string, string | undefined>>;
   }) => Promise<React.ReactElement>;
 
@@ -97,7 +97,7 @@ test("/app/register redirects a reviewed code without propagating fixture contro
 
 test("/app/register uses first-value decoders and explicitly clears an inherited fragment", async () => {
   const Page = (await import("../../app/(app)/app/register/page"))
-    .default as (props: {
+    .default as unknown as (props: {
     searchParams: Promise<Record<string, string | string[] | undefined>>;
   }) => Promise<React.ReactElement>;
 
@@ -119,7 +119,7 @@ test("/app/register uses first-value decoders and explicitly clears an inherited
 
 test("app register page fails closed for an unknown public code without retrying the same route", async () => {
   const Page = (await import("../../app/(app)/app/register/page"))
-    .default as (props: {
+    .default as unknown as (props: {
     searchParams: Promise<Record<string, string | undefined>>;
   }) => Promise<React.ReactElement>;
   await assert.rejects(

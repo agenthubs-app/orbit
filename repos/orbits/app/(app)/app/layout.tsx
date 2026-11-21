@@ -20,6 +20,7 @@ import { OrbitLanguageProvider } from "./orbit-language-context";
 import { resolveRequestOrbitLanguage } from "./orbit-language-core";
 import { OrbitResponsiveA11y } from "./orbit-responsive-a11y";
 import { OrbitThemeRuntime, OrbitThemeStyles } from "./orbit-theme";
+import { OrbitWebTiming } from "./orbit-web-timing";
 import { Orbit2026Shell } from "./orbit-2026/shell/Orbit2026Shell";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -41,6 +42,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <OrbitResponsiveA11y />
         <OrbitThemeStyles />
         <OrbitThemeRuntime />
+        {/* P0 计量（docs/2026-11-21-data-access-redesign.md）：首屏与站内换页时间，只写日志，一周后自动停。 */}
+        <OrbitWebTiming />
         {/* iOrbit 提问的草稿与交接（R07 起由新壳的 ⌘K 面板使用）。挂在 layout：
             App Router 换页时只有 layout 存活，草稿要跨页保留就必须住在这一层。 */}
         <OrbitAskProvider>

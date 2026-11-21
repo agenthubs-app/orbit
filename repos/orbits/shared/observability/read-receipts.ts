@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
 import type { PostgresReadMetric } from "../storage/postgres-read-metrics";
+import { requestTimingEnabled, requestTimingFor, type RequestTiming } from "./request-timing";
 
 /**
  * Request read receipts (monitoring design O1).
@@ -39,6 +40,8 @@ export interface ReadReceipt {
   responseBytes: number | null;
   statusCode: number | null;
   sampleRate: number;
+  /** P0 only: connections opened and instance facts; logged, never written to the database. */
+  timing?: RequestTiming;
 }
 
 export interface ReadLedger {
@@ -159,6 +162,9 @@ export function readReceiptFromLedger(ledger: ReadLedger, response: ReadReceiptR
     responseBytes: response.responseBytes ?? null,
     statusCode: response.statusCode ?? null,
     sampleRate: ledger.sampleRate,
+    ...(requestTimingEnabled()
+      ? { timing: { ...requestTimingFor(ledger), wallMs: Math.max(0, Date.now() - ledger.startedAt.getTime()) } }
+      : {}),
   };
 }
 
@@ -174,6 +180,15 @@ export function installReadReceiptSink(sink: ReadReceiptSink | null, options: { 
 
 export function installRequestReadLedgerResolver(resolver: RequestReadLedgerResolver | null): void {
   state().resolver = resolver;
+}
+
+/** The ledger the current request or task reads into — the same one its next query uses (P0 connection timing attaches to it). */
+export function currentReadLedgerForTiming(): ReadLedger | null {
+  try {
+    return currentLedger();
+  } catch {
+    return null;
+  }
 }
 
 function currentLedger(): ReadLedger | null {
