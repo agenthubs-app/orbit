@@ -15,6 +15,7 @@
  */
 import { capabilityKind, type Capability } from "../../route/capabilities";
 import { emitTrace } from "../../observability/trace";
+import { isProposalsPausedError, pausedWords } from "../../rollout/rollback";
 import { callMainModel } from "../../models/main";
 import { formatWhen } from "../../answer/materials";
 import { handoffWords, type ReplyLanguage } from "../../route/handoff-copy";
@@ -549,10 +550,21 @@ export function proposeNode(scope: NodeScope): GraphNode {
       previous = part;
     }
     arrangeEventItems(intents, owners);
+    let paused = false;
     const preview = deps.cards ? await deps.cards.freeze({ intents, locale: language, requestId: input.requestId, sessionId: input.sessionId }).catch((error: unknown) => {
+      // AG18 rollback: proposals are paused — no card, and the user is told so in plain words (CMP-005 R3).
+      if (isProposalsPausedError(error)) {
+        paused = true;
+        emitTrace({ parts: ready.map((part) => part.localId), type: "propose.paused" });
+        return null;
+      }
       emitTrace({ error: error instanceof Error ? error.message : String(error), type: "error", where: "propose.freeze" });
       return null;
     }) : null;
+    if (paused) {
+      for (const part of [...ready, ...covered]) settle(part, "unfinished", "proposals_paused", pausedWords(language).newChange);
+      return { budget, optionSets, parts, repairs };
+    }
     if (!preview || !preview.operations.length) {
       for (const part of ready) settle(part, "unfinished", deps.cards ? "target_gone" : "not_in_this_version", deps.cards ? WRITE_WORDS.gone(language, quoteOf(part)) : WRITE_WORDS.unsupported(language, quoteOf(part), ""));
       return { budget, optionSets, parts, repairs };

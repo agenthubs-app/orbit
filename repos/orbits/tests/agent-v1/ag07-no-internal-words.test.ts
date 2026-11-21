@@ -30,6 +30,9 @@ const MODEL_ONLY = [
   // AG17: JSON-RPC protocol errors of the MCP endpoint ("Unsupported protocol version" is the MCP spec's own wording);
   // an external client's software reads them, an Orbit user never does. The rest of mcp/ stays scanned.
   /mcp\/transport\.ts$/u,
+  // AG18: the operator's reports (backfill counts, reconcile list, shadow report) are read by whoever runs the rollout
+  // runbook, never by an Orbit user. The rollout words a user reads (legacy-client, legacy-words, rollback) stay scanned.
+  /rollout\/(backfill|reconcile|shadow-report)\.ts$/u,
 ];
 
 const FORBIDDEN: { name: string; pattern: RegExp }[] = [

@@ -35,6 +35,7 @@ import { ruleSnapshotOf } from "../domains/rule/apply";
 import type { RuleSnapshot } from "../domains/rule/ops";
 import { reviseCardByWords } from "../entry/card-revision";
 import { entryTimeZone } from "../entry/time-zone";
+import { isProposalsPausedError } from "../rollout/rollback";
 
 /**
  * AG06: the graph's card is the request's card in the ledger (conversationCardId), frozen through
@@ -191,7 +192,11 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       return { ...(resumed.actionPreview ? { actionPreview: resumed.actionPreview } : {}), basis: kept.basis, ...(resumed.blocks.length ? { blocks: resumed.blocks } : {}), ...(resumed.memoryUse.length ? { memoryUse: resumed.memoryUse } : {}), ...(resumed.cardLine && resumed.text.includes(resumed.cardLine) ? { cardLine: resumed.cardLine } : {}), clarifications: resumed.clarifications, partResults: resumed.partResults, sourceRefs: kept.sourceRefs, status: resumed.status, text: resumed.text, web: resumed.web };
     }
     // AG12-4: words about the rows of this conversation's waiting import card give its next revision (code, no model).
-    const importRevision = await reviseImportByWords({ actorId: execution.actorId, message: execution.input.message, now: deps.now, runtime, sessionId: execution.sessionId, store: entryStore ?? null });
+    // AG18 rollback: with proposals paused no card gets a new revision; the turn goes on to the graph (which says why).
+    const importRevision = await reviseImportByWords({ actorId: execution.actorId, message: execution.input.message, now: deps.now, runtime, sessionId: execution.sessionId, store: entryStore ?? null }).catch((error: unknown) => {
+      if (isProposalsPausedError(error)) return null;
+      throw error;
+    });
     if (importRevision) return importRevision;
     // AG20a R1 (§5.1, §5.2): words about the items of this conversation's waiting card (drop one, a new day or time, this
     // time or the series) give its next revision (code, no model); the earlier revision can no longer be confirmed.

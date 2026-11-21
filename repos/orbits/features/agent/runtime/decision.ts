@@ -34,6 +34,7 @@ import type {
 import { sha256PayloadHash } from "./hash";
 import { agentDecisionRecordId, type AgentRuntimeRepository } from "./repository";
 import { emitTrace } from "../../agent-v1/observability/trace";
+import { agentProposalsPaused, pausedWords, PROPOSALS_PAUSED } from "../../agent-v1/rollout/rollback";
 import {
   cardLocale,
   checkTodoTarget,
@@ -69,7 +70,9 @@ export type AgentDecisionReason =
   | "CARD_CONTENT_CHANGED"
   | "CARD_EXPIRED"
   | "CARD_CLOSED"
-  | "OPERATION_NOT_IN_REVIEW";
+  | "OPERATION_NOT_IN_REVIEW"
+  /** AG18 rollback: ORBIT_AGENT_V1_PROPOSALS=paused — nothing is carried out until it is open again. */
+  | "PROPOSALS_PAUSED";
 
 export interface AgentDecisionInput {
   actionId: string;
@@ -431,6 +434,11 @@ async function decideOnce(
   if (action.status === "expired") return refuse("CARD_EXPIRED", action.expiredReason === "superseded" ? messages.superseded : expiredMessage(action));
   if (action.status === "rejected" || action.status === "canceled") {
     return refuse("CARD_CLOSED", action.status === "rejected" ? messages.closedRejected : canceledMessage(action));
+  }
+  // AG18 rollback (CMP-005 R1): while proposals are paused nothing runs — not a confirm, a retry or a "mark done";
+  // rejecting stays possible (it writes nothing). The card is left as it is for the reconcile list.
+  if (agentProposalsPaused() && input.decision !== "reject" && input.decision !== "abandon") {
+    return refuse(PROPOSALS_PAUSED, pausedWords(action.locale).click);
   }
   if (input.revision !== revision || input.payloadHash !== action.payloadHash) {
     return refuse("CARD_REVISION_CHANGED", messages.revisionChanged);

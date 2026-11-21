@@ -30,6 +30,7 @@ import { contactCandidates, contactLine, eventCandidate, eventLine, openTodos, v
 import { askJudgment, newJudgmentBudget, type JudgmentAccess } from "../../agent-v1/judgment/ask";
 import { rankJudgmentInput } from "../../agent-v1/judgment/funnel";
 import { emitTrace, evalDeniedReads } from "../../agent-v1/observability/trace";
+import { isProposalsPausedError } from "../../agent-v1/rollout/rollback";
 import {
   agentAutomationDayStart,
   agentAutomationLocalDay,
@@ -419,7 +420,15 @@ async function replanPeriod(deps: RuleRunDeps, input: { automation: AgentAutomat
   if (!overdue.length) return { items: [], outcome: "no_match", text: "" };
   if (!deps.cards) return { error: "Cards cannot be made here.", items: [], outcome: "failed", text: "" };
   const intents = overdue.map((todo) => ({ capability: "todo.update" as const, set: { plannedDate: periodDay }, targetId: todo.id })) as unknown as CardOperationIntent[];
-  const card = await deps.cards.freeze({ actionId, createdAt: deps.now(), intents, locale: language, origin: { firedAt: new Date(scheduledAt).toISOString(), kind: "automation", ruleId: automation.automationId } });
+  let card: Awaited<ReturnType<NonNullable<RuleRunDeps["cards"]>["freeze"]>>;
+  try {
+    card = await deps.cards.freeze({ actionId, createdAt: deps.now(), intents, locale: language, origin: { firedAt: new Date(scheduledAt).toISOString(), kind: "automation", ruleId: automation.automationId } });
+  } catch (error) {
+    // AG18 rollback: proposals are paused — this period makes no card; its history says why (nothing was written).
+    if (!isProposalsPausedError(error)) throw error;
+    emitTrace({ automationId: automation.automationId, scheduledAt, type: "rule.card_paused" });
+    return { error: "Write proposals are paused (rollback); no card was made for this period.", items: [], outcome: "failed", text: "" };
+  }
   if (!card) return { items: [], outcome: "no_match", text: "" };
   const text = ({
     en: `${input.head} proposes a change:\n${card.preview}\nNothing is changed until you confirm it here.`,

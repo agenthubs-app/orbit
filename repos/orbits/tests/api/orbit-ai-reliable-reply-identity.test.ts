@@ -37,6 +37,8 @@ test("reliable POST gives each reply a stable request identity and persists the 
     // f3df1cd93 (sprint 0085) reads a typed draft confirmation on every turn. The
     // intent reader is pure and runs for real; an ordinary read-only turn must not
     // build the Postgres-backed draft service.
+    // agent-design AG18: the switch is read on every send; the new entry is off in this test.
+    "../../../../features/agent-v1/entry/mode": { readAgentV1Mode: () => "off" },
     "../../../../features/orbit-ai/entity-drafts/contract": { readEntityDraftIntent },
     "../../../../features/orbit-ai/entity-drafts/service-factory": { createConfiguredEntityDraftService: () => {
       throw new Error("an ordinary turn must not build the entity draft service");

@@ -5,6 +5,8 @@ import test from "node:test";
 import ts from "typescript";
 
 import { handleAgentV1Send } from "../../features/agent-v1/entry/http";
+import { readAgentV1Mode } from "../../features/agent-v1/entry/mode";
+import { closeLegacyWrites, handleLegacyClientSend, legacyClientResponse, legacyStaysOnOldPath } from "../../features/agent-v1/rollout/legacy-client";
 import { settleSession, type AgentEntryDependencies } from "../../features/agent-v1/entry/service";
 import { createMemoryAgentEntryStore } from "../../features/agent-v1/entry/store";
 import { readEntityDraftIntent } from "../../features/orbit-ai/entity-drafts/contract";
@@ -22,6 +24,7 @@ function loadRoute(entryDependencies: AgentEntryDependencies) {
   const requestStore = createMemoryOrbitAgentChatRequestStore();
   const sessionProvider = createStorageOrbitAgentChatSessionProvider({ actorId: "actor:qa", store: createMemoryLiveRecordStore<Record<string, unknown>>(), workspaceId: "workspace:v3-route" });
   const legacy = { calls: 0 };
+  const shadowed = { calls: 0 };
   const boundaries: Record<string, unknown> = {
     "../../../../shared/config/feature-mode": { resolveFeatureMode: () => "live" },
     "./request-context": { resolveOrbitAgentConversationRequestContext: async () => ({ actorId: "actor:qa", runtime: {} }) },
@@ -44,6 +47,15 @@ function loadRoute(entryDependencies: AgentEntryDependencies) {
     "../../../../features/orbit-ai/entity-drafts/contract": { readEntityDraftIntent },
     "../../../../features/orbit-ai/entity-drafts/service-factory": { createConfiguredEntityDraftService: () => { throw new Error("an ordinary turn must not build the entity draft service"); } },
     "../../../../features/agent-v1/entry/http": { handleAgentV1Send: (input: Parameters<typeof handleAgentV1Send>[0]) => handleAgentV1Send({ ...input, dependencies: entryDependencies }) },
+    // AG18: the switch as the environment sets it; an old client's message goes to the same new entry.
+    "../../../../features/agent-v1/entry/mode": { readAgentV1Mode },
+    "../../../../features/agent-v1/rollout/legacy-client": {
+      closeLegacyWrites,
+      handleLegacyClientSend: (input: Parameters<typeof handleLegacyClientSend>[0]) => handleLegacyClientSend({ ...input, deps: { entry: { ...entryDependencies, schedule: (task) => { void task(); } }, messageRevision: async () => 2, pollMs: 5, waitMs: 2000 } }),
+      legacyClientResponse,
+      legacyStaysOnOldPath,
+    },
+    "../../../../features/agent-v1/rollout/shadow": { oldCardOpsOf: async () => [], scheduleShadowComparison: () => { shadowed.calls += 1; } },
   };
   const url = new URL("../../app/api/ai/conversations/route.ts", import.meta.url);
   const require = createRequire(url);
@@ -55,7 +67,7 @@ function loadRoute(entryDependencies: AgentEntryDependencies) {
     return new Proxy({}, { get(_target, key) { throw new Error(`Unexpected dependency: ${id}.${String(key)}`); } });
   }, module, module.exports);
   const POST = (module.exports as { POST: (request: Request) => Promise<Response> }).POST;
-  return { POST, legacy };
+  return { POST, legacy, shadowed };
 }
 
 function stuckEntry() {
@@ -107,24 +119,48 @@ test("switch off: protocol 3 is refused and runs nothing", async () => {
   });
 });
 
-test("protocol 2 answers the same with the switch off and on", async () => {
-  const strip = (body: Record<string, unknown>) => JSON.parse(JSON.stringify(body));
+test("protocol 2: the old pipeline with the switch off; the new entry, waited for and answered in the old shape, with it on (AG18)", async () => {
   const off = await withMode(undefined, async () => {
-    const { POST } = loadRoute(stuckEntry().dependencies);
+    const { POST, legacy } = loadRoute(stuckEntry().dependencies);
     const response = await post(POST, v2);
-    return { body: strip(await response.json()), status: response.status };
-  });
-  const on = await withMode("on", async () => {
-    const entry = stuckEntry();
-    const { POST } = loadRoute(entry.dependencies);
-    const response = await post(POST, v2);
-    assert.equal(entry.executions(), 0, "protocol 2 never goes through the new entry");
-    return { body: strip(await response.json()), status: response.status };
+    assert.equal(legacy.calls, 1);
+    return { body: await response.json(), status: response.status };
   });
   assert.equal(off.status, 200);
-  assert.deepEqual(on, off);
   assert.equal(off.body.data.reliableSend.protocolVersion, 2);
   assert.equal(off.body.data.reliableSend.state, "completed");
+  await withMode("on", async () => {
+    const entry = stuckEntry();
+    const { POST, legacy } = loadRoute(entry.dependencies);
+    entry.release();
+    const response = await post(POST, v2);
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(entry.executions(), 1, "protocol 2 is answered by the new entry");
+    assert.equal(legacy.calls, 0, "the old pipeline (direct to-do, typed confirmation) is not run");
+    assert.equal(body.data.assistantMessage, "三个话题");
+    assert.equal(body.data.state, "success");
+    assert.equal(body.data.reliableSend.protocolVersion, 2);
+    assert.equal(body.data.reliableSend.requestId, "request:1");
+    assert.equal(body.data.reliableSend.state, "completed");
+    assert.equal("actionPreview" in body.data, false);
+  });
+});
+
+test("shadow: the old pipeline answers and the shadow pass is scheduled once per request (AG18)", async () => {
+  await withMode("shadow", async () => {
+    const entry = stuckEntry();
+    const { POST, legacy, shadowed } = loadRoute(entry.dependencies);
+    const response = await post(POST, v2);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).data.assistantMessage, "final answer");
+    assert.equal(legacy.calls, 1);
+    assert.equal(entry.executions(), 0, "the user's answer never comes from the new side");
+    assert.equal(shadowed.calls, 1);
+    // The same request asked again is a replay: no second shadow pass.
+    await post(POST, v2);
+    assert.equal(shadowed.calls, 1);
+  });
 });
 
 test("switch on: protocol 3 answers 202 with requestId and status while the runtime is still running", async () => {

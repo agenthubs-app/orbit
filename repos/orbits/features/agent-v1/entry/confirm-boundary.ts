@@ -12,6 +12,7 @@
  * - Records of other kinds (note, schedule, event, contact drafts) get no card in this sprint;
  *   a fixed sentence says so.
  */
+import { agentProposalsPaused, pausedWords } from "../rollout/rollback";
 import { createHash } from "node:crypto";
 
 import type { AgentActionPreviewContract } from "../../../shared/contract/agent-v1";
@@ -212,7 +213,8 @@ export async function runWithConfirmBoundary(
       actionPreview: agentCardPreview(latest, await deps.runtime.getRun(latest.runId), now()),
       modelCalled: false,
       sourceRefs: [],
-      text: typedConfirmationReminder(locale, latest.operations?.length ?? 1),
+      // AG18 rollback: while proposals are paused the button would not run it either; say so (CMP-005 R2).
+      text: agentProposalsPaused() ? pausedWords(locale).typedConfirm : typedConfirmationReminder(locale, latest.operations?.length ?? 1),
     };
   }
   // AG06 (AE-BND-008): agreeing in words while the latest card is closed: code's sentence only, no model call.

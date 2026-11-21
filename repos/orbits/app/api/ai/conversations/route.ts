@@ -67,6 +67,9 @@ import {
   authorizeAiSessionContactReferences,
 } from "../../../../features/orbit-ai/ai-session-reference-authorization";
 import { handleAgentV1Send } from "../../../../features/agent-v1/entry/http";
+import { readAgentV1Mode } from "../../../../features/agent-v1/entry/mode";
+import { closeLegacyWrites, handleLegacyClientSend, legacyClientResponse, legacyStaysOnOldPath } from "../../../../features/agent-v1/rollout/legacy-client";
+import { oldCardOpsOf, scheduleShadowComparison } from "../../../../features/agent-v1/rollout/shadow";
 
 // 这个 route 是 OrbitRealAgent 前端聊天框调用的服务端入口。
 // 业务逻辑不写在 route 里：route 只负责读请求、调用 conversation service、
@@ -655,6 +658,17 @@ export async function POST(request: Request): Promise<Response> {
   if (body.protocolVersion === 3) {
     return handleAgentV1Send({ actorId: agentContext.actorId, body, mode });
   }
+  // agent-design AG18-1: with the new entry on, an old client (protocol 2, or no protocol) is answered by the new flow
+  // and waited for here (rollout/legacy-client.ts); only the contacts-analysis entry stays on the old pipeline, with its
+  // direct to-do write, its draft card and its typed confirmation closed.
+  const v1Mode = readAgentV1Mode();
+  let legacyWritesClosed = false;
+  if (v1Mode === "on" && agentContext.actorId) {
+    if (!legacyStaysOnOldPath(body)) {
+      return legacyClientResponse(mode, await handleLegacyClientSend({ actorId: agentContext.actorId, body, mode }));
+    }
+    legacyWritesClosed = true;
+  }
   const input = readSendInput(body, new URL(request.url).searchParams);
   const reliableInput =
     body.protocolVersion === 2 ? reliableAiSendInputSchema.safeParse(body) : null;
@@ -730,6 +744,7 @@ export async function POST(request: Request): Promise<Response> {
     ? createOrbitAgentConversationServiceForActor(agentContext.actorId)
     : createOrbitAgentConversationService();
   async function executeConversation(conversationInput = trustedInput): Promise<OrbitAgentConversationResult> {
+    if (legacyWritesClosed) return closeLegacyWrites(await service.sendMessage(conversationInput), conversationInput.locale);
     if (conversationInput.contactsAnalysis) return service.sendMessage(conversationInput);
     if (mode === "mock" && !conversationInput.sourceNote && isChatKnownWorkflowInput(conversationInput)) {
     // 已知工作流必须在 bounded planner/provider 之前命中。listConversations
@@ -884,11 +899,19 @@ export async function POST(request: Request): Promise<Response> {
           session?.messageRevision,
         ),
       );
+      // agent-design AG18-2: shadow mode — the old answer goes out; the new flow runs read-only after it (once per request).
+      if (v1Mode === "shadow" && agentContext.actorId && !reliable.replayed) {
+        scheduleShadowComparison(mode, { actorId: agentContext.actorId, locale: reliableInput.data.locale, message: reliableInput.data.message, old: result, requestId: reliableInput.data.requestId, sessionId: reliableInput.data.sessionId }, undefined, () => oldCardOpsOf(agentContext.runtime, result.success ? result.data.actionIds ?? [] : []));
+      }
     } catch (error) {
       return reliableSendErrorResponse(mode, error);
     }
   } else {
     result = await executeConversation();
+    if (v1Mode === "shadow" && agentContext.actorId && input.message?.trim()) {
+      const unversioned = result;
+      scheduleShadowComparison(mode, { actorId: agentContext.actorId, locale: input.locale ?? "zh", message: input.message.trim(), old: unversioned, requestId: `unversioned:${crypto.randomUUID()}`, sessionId: (unversioned.success ? unversioned.data.activeConversationId : null) ?? "unversioned" }, undefined, () => oldCardOpsOf(agentContext.runtime, unversioned.success ? unversioned.data.actionIds ?? [] : []));
+    }
   }
   timing.finish("orbit-service", serviceStartedAt);
 

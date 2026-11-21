@@ -61,7 +61,8 @@ function route(message: string, sourceNote: boolean) {
     // entity-drafts/contract is pure matching logic, not a boundary: the point of
     // this test is that a read question never reaches a write, so the real
     // confirmation matcher has to run.
-    if (id === "next/server" || id.startsWith("../../../../shared/") || id.endsWith("/entity-drafts/contract")) return require(id);
+    // agent-design AG18: the new-entry switch is read on every send (unset here: off).
+    if (id === "next/server" || id.startsWith("../../../../shared/") || id.endsWith("/entity-drafts/contract") || id.endsWith("/agent-v1/entry/mode")) return require(id);
     return new Proxy({}, { get(_target, key) { throw new Error(`Unexpected dependency: ${id}.${String(key)}`); } });
   }, module, module.exports);
   return { handler: (module.exports as { POST: (request: Request) => Promise<Response> }).POST, counts, answer,

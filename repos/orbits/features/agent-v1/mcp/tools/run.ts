@@ -143,6 +143,7 @@ export async function runTool(deps: ToolDeps, input: { connection: AgentConnecti
     if (outcome.kind === "revoked") return { kind: "revoked" };
     if (outcome.kind === "conflict") return { code: "idempotency_conflict", kind: "tool_error", message: "This idempotencyKey was already used for a different proposal. Use a new key for a new proposal." };
     if (outcome.kind === "missing") return { code: "not_found", kind: "tool_error", message: "A record to change was not found. Nothing was proposed." };
+    if (outcome.kind === "paused") return { code: "proposals_paused", kind: "tool_error", message: "Orbit is not taking new changes right now. Nothing was proposed and nothing was written; try again later." };
     if (outcome.kind === "too_many") return { code: "too_many_proposals", kind: "tool_error", message: `This connection already made ${outcome.limit} proposals in the last 24 hours. Ask the user to look at the ones that are waiting before proposing more.` };
     return {
       count: 0,

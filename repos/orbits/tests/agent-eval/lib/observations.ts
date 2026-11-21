@@ -164,6 +164,13 @@ export interface Observation {
     computeAttempts?: number;
     push?: { state: string; attempts: number; deliveredAt: string | null; reason: string | null; deliveryId: string | null; targets: { platform: string; state: string; attempts: number }[] };
   }[];
+  /**
+   * AG18 (switch_account): which account was signed in from which trace seq on (the first entry is seq 0). A read
+   * belongs to the account signed in when it was made; `account` above is the last one only.
+   */
+  accountTimeline?: { fromSeq: number; account: string }[];
+  /** AG18 (shadow_report): every shadow comparison record at the end, with its stored owner (account label) and payload. */
+  shadowRecords?: { ownerAccount: string | null; recordAccount: string | null; requestId: string; divergences: { field: string; old: unknown; new: unknown }[]; newError: string | null; oldText: string; newText: string }[];
 }
 
 export interface MemoryEntryObservation {
