@@ -1,5 +1,9 @@
 /**
- * npm run agent-eval:run -- --gate AGnn | --all | --case AE-H-006[,AE-…] [--label <text>] [--seed-cards] [--sealed] [--workers N]
+ * npm run agent-eval:run -- --gate AGnn | --all | --case AE-H-006[,AE-…] [--label <text>] [--seed-cards] [--sealed] [--workers N] [--shadow]
+ *
+ * --shadow (AG18-2 evidence, not a gate): every selected case runs in shadow mode (as with `settings: { shadow: on }`):
+ * the old path answers, the new one runs read-only after it; each case folder gets shadow-records.json. One after
+ * another only (no --workers).
  *
  * Needs the eval server (npm run agent-eval:env). Writes ~/orbit-sprint-evidence/agent-eval/runs/<run id>/:
  * manifest.json, env.json, summary.json, report.md, costs.json, bundle.sha256 and cases/<id>/… (README §4).
@@ -52,6 +56,7 @@ async function main(argv: readonly string[]): Promise<void> {
   // AG02 (SPRINTS.md「AG02 用预置的卡」): seed the card a case's card_ops describe before its first message.
   const seedCards = argv.includes("--seed-cards");
   const sealed = argv.includes("--sealed");
+  const shadowAll = argv.includes("--shadow");
   const gate = flag(argv, "--gate");
   const caseIds = flag(argv, "--case")?.split(",").map((id) => id.trim()).filter(Boolean);
   const areaFiles = loadAreaFiles({ sealed });
@@ -69,6 +74,7 @@ async function main(argv: readonly string[]): Promise<void> {
   }
   const workerCount = Number(flag(argv, "--workers") ?? 1);
   if (!Number.isInteger(workerCount) || workerCount < 1 || workerCount > MAX_EVAL_WORKERS) throw new Error(`--workers takes 1–${MAX_EVAL_WORKERS}.`);
+  if (shadowAll && workerCount > 1) throw new Error("--shadow runs one case after another (no --workers).");
   let workers: { environments: Awaited<ReturnType<typeof prepareWorkers>>["environments"]; servers: WorkerServer[]; pool: WorkerPool | null } | null = null;
   if (workerCount > 1) {
     // harness/eval-parallel-workers: worker k ≥ 2's database and server are removed on every way out.
@@ -126,6 +132,7 @@ async function main(argv: readonly string[]): Promise<void> {
     promptVersions: "current product prompts (no versioned prompt set before AG03)",
     runId,
     seedCards,
+    ...(shadowAll ? { shadowAll: true } : {}),
     selection: { all: argv.includes("--all"), caseIds: caseIds ?? null, sealed },
     server: { build, buildId: state.buildId, builtFromHead: build?.commit === tree.head && !build?.dirty, pid: state.pid, port: state.port },
     soloExcluded: selection.solo.map((testCase) => testCase.id),
@@ -159,7 +166,7 @@ async function main(argv: readonly string[]): Promise<void> {
   }
 
   const balanceBefore = await readDeepSeekBalance(environment.env.DEEPSEEK_API_KEY);
-  const ctx: RunnerContext = { areaCases: Object.fromEntries(areaFiles.map((file) => [file.area, file.cases as EvalCase[]])), currentWorld: null, environment, runDir, runId, seedCards, writer: null };
+  const ctx: RunnerContext = { areaCases: Object.fromEntries(areaFiles.map((file) => [file.area, file.cases as EvalCase[]])), currentWorld: null, environment, runDir, runId, seedCards, ...(shadowAll ? { shadowAll: true } : {}), writer: null };
   const outcomes: CaseOutcome[] = [];
   let pooled: PoolResult | null = null;
   if (workers?.pool) {

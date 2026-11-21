@@ -115,6 +115,8 @@ export interface RunnerContext {
   currentWorld: string | null;
   /** AG02 `--seed-cards`: put the card a case's card_ops describe into the ledger before its first message. */
   seedCards?: boolean;
+  /** AG18 (`--shadow`): every case runs in shadow mode (the old path answers; the new one only compares). */
+  shadowAll?: boolean;
   /** The cases of each area file (seedSpecFor looks for a case with the same first message). */
   areaCases?: Record<string, EvalCase[]>;
 }
@@ -326,7 +328,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   let account = accountLabelFor(testCase, world);
   const firstAccount = account;
 
-  const settings = (testCase.settings ?? {}) as Record<string, unknown>;
+  const settings: Record<string, unknown> = { ...((testCase.settings ?? {}) as Record<string, unknown>), ...(ctx.shadowAll ? { shadow: "on" } : {}) };
   const replayNames = settings.web_replay === undefined ? [] : Array.isArray(settings.web_replay) ? settings.web_replay : [settings.web_replay];
   const replay = replayNames.map((name) => ({ ...world.webReplay[String(name)], name }));
   for (const [key, value] of Object.entries(settings)) {
@@ -1373,7 +1375,10 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     // AG18 (shadow_report): every comparison record, read from the database with its stored owner.
     if (shadowMode) {
       await waitShadowRecords(db, shadowSends, -1, log);
-      shadowRecords = (await db.query(`select user_id, payload from orbit_records where collection_name = 'agentV1ShadowComparisons' order by created_at, record_id`)).rows.map((row: { user_id: string | null; payload: Record<string, any> }) => ({
+      const shadowRows = (await db.query(`select user_id, payload from orbit_records where collection_name = 'agentV1ShadowComparisons' order by created_at, record_id`)).rows as { user_id: string | null; payload: Record<string, any> }[];
+      // The whole records, with the stored owner as an account label, for the per-account report across cases.
+      fs.writeFileSync(path.join(dir, "shadow-records.json"), JSON.stringify(shadowRows.map((row) => ({ ownerAccount: row.user_id ? accountByActor.get(row.user_id) ?? null : null, record: row.payload, world: testCase.world })), null, 2));
+      shadowRecords = shadowRows.map((row: { user_id: string | null; payload: Record<string, any> }) => ({
         divergences: (row.payload.divergences ?? []) as { field: string; old: unknown; new: unknown }[],
         newError: row.payload.new?.error ?? null,
         newText: String(row.payload.new?.text ?? ""),

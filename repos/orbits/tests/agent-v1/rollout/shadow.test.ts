@@ -66,7 +66,7 @@ test("the old side: its draft card, its direct to-do and its citations", () => {
   const old = oldSideOf({ data: { assistantMessage: "好的", entityDraft: { fields: { plannedDate: "2026-11-20", title: "给小林发修订报价" }, kind: "task" }, provenance: { evidenceIds: ["task:t42"] } }, success: true });
   assert.deepEqual(old.card, { ops: [{ op: "todo.create", set: { plannedDate: "2026-11-20", title: "给小林发修订报价" }, target: null }] });
   assert.deepEqual(old.cited, ["task:t42"]);
-  assert.equal(oldSideOf({ code: "MODEL_UNAVAILABLE", success: false }).error, "MODEL_UNAVAILABLE");
+  assert.equal(oldSideOf({ error: { code: "MODEL_UNAVAILABLE" }, success: false }).error, "MODEL_UNAVAILABLE");
 });
 
 test("a failure of the new side is one divergence with the request id; the store keeps it; nothing throws", async () => {
