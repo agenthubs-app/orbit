@@ -4,8 +4,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import nodeTest, { before, after } from "node:test";
 import { fileURLToPath } from "node:url";
-import { renderToStaticMarkup } from "react-dom/server";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { getAccessFallbackHTTPStatus, isHTTPAccessFallbackError } from "next/dist/client/components/http-access-fallback/http-access-fallback";
 import { loadLocalEnv } from "../../scripts/load-local-env";
 import { resolveLiveDatabaseConnectionConfig } from "../../shared/storage/live-database-config";
 
@@ -35,7 +35,8 @@ test("/app/register resolves invite codes before redirecting to the canonical re
   assert.match(pageSource, /loadAppRegisterRouteViewModel/);
   assert.match(pageSource, /redirect\(/);
   assert.match(pageSource, /routeModel\.register\.event\.id/);
-  assert.match(pageSource, /StateView/);
+  assert.match(pageSource, /notFound\(\)/);
+  assert.doesNotMatch(pageSource, /StateView/);
   assert.doesNotMatch(pageSource, /query\.mode|query\.scenario|destination\.set\("mode"/);
   assert.doesNotMatch(pageSource, /getOrbitRegisterViewModel/);
   assert.doesNotMatch(pageSource, /OrbitRealRegister|Registration complete/);
@@ -121,20 +122,14 @@ test("app register page fails closed for an unknown public code without retrying
     .default as (props: {
     searchParams: Promise<Record<string, string | undefined>>;
   }) => Promise<React.ReactElement>;
-  const html = renderToStaticMarkup(
-    await Page({
+  await assert.rejects(
+    Page({
       searchParams: Promise.resolve({
         code: "demo-event-1",
         mode: "mock",
         scenario: "failure",
       }),
     }),
+    (error: unknown) => isHTTPAccessFallbackError(error) && getAccessFallbackHTTPStatus(error) === 404,
   );
-
-  assert.match(html, /Registration is not ready/);
-  assert.match(html, /PUBLIC_REGISTRATION_EVENT_NOT_FOUND/);
-  assert.match(html, /public-catalogue-registration-event-not-found/);
-  assert.match(html, /data-state-boundary="shared-ui-state-view"/);
-  assert.match(html, /app-register-route-state/);
-  assert.doesNotMatch(html, /Climate founders dinner|Retry registration/);
 });

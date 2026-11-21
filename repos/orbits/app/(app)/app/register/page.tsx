@@ -1,39 +1,9 @@
 /** Legacy invite-code adapter into the canonical event registration workspace. */
-import { redirect } from "next/navigation";
-import { StateView } from "../../../../shared/ui/state-view";
+import { notFound, redirect } from "next/navigation";
 import {
   loadAppRegisterRouteViewModel,
-  type AppRegisterRouteStateViewModel,
   type AppRegisterSearchParams,
 } from "./compose-app-register-from-previously-approved-mock-first-capabilities/register-route-view-model";
-
-function RegisterRouteStateBoundary({
-  routeState,
-}: {
-  routeState: AppRegisterRouteStateViewModel;
-}) {
-  return (
-    // > 1440: keep the 1440 width centred like the shell frame (no change at 1440 and below).
-    <div data-orbit-route="app-register-route-state" style={{ margin: "0 auto", maxWidth: 1440 }}>
-      <StateView
-        description={routeState.copy.description}
-        emptyState={routeState.copy.emptyState}
-        evidence={Array.from(routeState.evidenceIds)}
-        eyebrow={routeState.copy.eyebrow}
-        guardrail={routeState.copy.guardrail}
-        nextStep={routeState.copy.nextStep}
-        purpose={routeState.copy.purpose}
-        recoveryActions={routeState.recoveryActions.map((action) => ({
-          id: action.id,
-          label: action.label,
-          recoveryCopy: action.recoveryCopy,
-          href: action.href,
-        }))}
-        title={routeState.copy.title}
-      />
-    </div>
-  );
-}
 
 export default async function AppRegisterPage({
   searchParams,
@@ -59,5 +29,7 @@ export default async function AppRegisterPage({
     );
   }
 
-  return <RegisterRouteStateBoundary routeState={routeModel.routeState} />;
+  // 2026-11-21：无码 / 无效码不再显示旧版英文说明页（手机上贴边、开发说明式文案），
+  // 照成熟产品对失效邀请链接的做法落到站点自己的「页面不存在」（多语言、有返回入口）。
+  notFound();
 }
