@@ -60,7 +60,7 @@ export function reconcileItemOf(action: AgentActionRecord, outbox: readonly Agen
       capability: String((operation as { capability?: string }).capability ?? (operation as { operationType?: string }).operationType ?? "action"),
       idempotencyKeys: [...new Set(events.map((event) => event.idempotencyKey))],
       operationId: operation.operationId,
-      outbox: events.map((event) => ({ attempts: Number((event as { attempts?: number }).attempts ?? 0), status: String(event.status) })),
+      outbox: events.map((event) => ({ attempts: Number(event.attempt ?? 0), status: String(event.status) })),
       receipts: done.map((receipt) => ({ at: receipt.updatedAt, status: receipt.status, summary: receipt.resultSummary })),
     };
   });

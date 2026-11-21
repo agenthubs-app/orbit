@@ -15,9 +15,10 @@
  * Not filled, by decision: schedule items (they never had a single event field: a missing eventRefs is none), contacts'
  * `version` (an old contact without one reads as 0, and the relationship initialization still relies on it being absent,
  * CONVENTIONS §8), attendance (参会自述不从报名推断: nothing is made from registrations). Row timestamps and versions are
- * left as they are: the record means the same before and after.
+ * left as they are: the record means the same before and after (the sync revision moves, so devices get the lists).
  */
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../../shared/storage/transactional-postgres";
+import { acquireSyncCommitOrderLock } from "../../sync/commit-order-lock";
 
 export type BackfillMode = "dry-run" | "preview" | "apply";
 
@@ -126,6 +127,9 @@ export async function runAgentV1Backfill(input: { client: TransactionalPostgresC
     return result;
   }
   await input.client.transaction(async (tx) => {
+    // tasks and notes sync to devices: every write takes the sync commit-order lock first (features/sync/commit-order-lock.ts),
+    // so each row's new sync revision commits in order and devices receive the filled lists.
+    await acquireSyncCommitOrderLock(tx);
     await plan(tx, input.workspaceId, result);
     for (const change of result.changes) {
       const field = PLANNERS[change.collection].field;
