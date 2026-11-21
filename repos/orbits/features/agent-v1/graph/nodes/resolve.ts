@@ -29,7 +29,7 @@ import { materialOf } from "../../answer/materials";
 import type { GapReason, Material } from "../../answer/schema";
 import { recordKindOf } from "../../clarify/default-readings";
 import { optionNamedIn } from "../../clarify/attribution";
-import { emptyKindsLine } from "../../answer/empty-kinds-copy";
+import { emptyDayLine, emptyKindsLine } from "../../answer/empty-kinds-copy";
 import type { NamedRecordRef } from "../../context/session-state";
 import { gapOfReadError, readPages } from "../../domains/registry";
 import { matchText } from "../../domains/source";
@@ -1269,9 +1269,14 @@ export function resolveNode(scope: NodeScope): GraphNode {
         read.coverage.push({ complete: true, kind: "contact", pagesRead: 1, seen: profiles.length, total: profiles.length });
         emitTrace({ empty, partId: part.localId, profiles: profiles.map((view) => view.ref), type: "resolve.profile_answers" });
       }
+      let noneLine: string | null = null;
       if (!profileAnswers && !recordViews.length && !failures.length && !withheld && (read.wantsRecords || !contacts.length) && !read.gaps.has("unreadable")) {
         read.gaps.add("no_record");
-        read.lines.push(words.noRecord(quote));
+        // AG21c (R53): one day asked about for to-dos or schedule items, with nothing in it: say which kinds are empty that day.
+        const dayKinds = searchKinds.filter((kind): kind is "todo" | "schedule" => kind === "todo" || kind === "schedule");
+        const oneDay = filter?.from && (filter.to ?? filter.from) === filter.from ? filter.from : plate ? today : null;
+        noneLine = oneDay && dayKinds.length && dayKinds.length === searchKinds.length && !contacts.length && !text ? emptyDayLine(state.language, oneDay, today, dayKinds) : words.noRecord(quote);
+        read.lines.push(noneLine);
       }
       // Hotfix 2026-11-20 (rule 3, graph/nodes/wider-read.ts): nothing under a narrowing, but records of the kind outside it —
       // code says what was looked for and how many there are, and shows them (no model call).
@@ -1283,7 +1288,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
           emitTrace({ error: error instanceof Error ? error.message : String(error), partId: part.localId, type: "read.failed", where: "resolve.wider" });
         }
         if (widened) {
-          read.lines = read.lines.filter((line) => line !== words.noRecord(quote));
+          read.lines = read.lines.filter((line) => line !== words.noRecord(quote) && line !== noneLine);
           run.answers.set(part.localId, widened.text);
           run.answerBlocks.set(part.localId, widened.blocks);
           widened.views.forEach((view, index) => {
