@@ -756,7 +756,9 @@ export const CHECKS: Record<string, CheckFn> = {
   answer_excludes(args, obs) {
     const answer = lastAnswer(obs);
     const card = cardAt(obs, "last");
-    const text = `${answer?.text ?? ""}\n${card ? JSON.stringify(card.ops.map((op) => op.set)) : ""}`;
+    // The answer's text, what its blocks show (record cards included) and the last card's values.
+    const blocks = (lastAnswerBlocks(obs)?.blocks ?? []).flatMap((block) => (block.type === "conclusion" || block.type === "paragraph" ? [block.text] : block.type === "points" ? block.items.flatMap((item) => [item.head ?? "", item.text]) : block.type === "records" ? [block.caption ?? "", ...block.items.flatMap((item) => [item.top ?? "", item.title, item.sub ?? "", item.why ?? ""])] : block.type === "note" ? [block.title, ...block.items.flatMap((item) => [item.quote ?? "", item.text, item.action ?? ""])] : []));
+    const text = `${answer?.text ?? ""}\n${blocks.join("\n")}\n${card ? JSON.stringify(card.ops.map((op) => op.set)) : ""}`;
     const found = (Array.isArray(args) ? args : []).filter((fragment: string) => text.includes(fragment));
     return found.length ? fail(`contains ${found.join(", ")}`, answer ? [answer.seq] : []) : pass("none of the fragments appear", answer ? [answer.seq] : []);
   },

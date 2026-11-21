@@ -31,7 +31,8 @@ import { CARD_STATUS_LABEL, cardText, decisionRecord, intentsFor, seedCard, seed
 import { ClientViews, viewText } from "./client-views";
 import { clientProfileFor, ExternalAgent, type McpCallResult } from "./mcp-client";
 import { DEFAULT_CLOCK } from "./vocabulary";
-import { loadWorld, patchRecords, type FixtureRecord, type WorldFixture } from "./world";
+import { loadWorld, patchProblems, patchRecords, snapshotKey, worldWithPatches, type FixtureRecord, type WorldFixture } from "./world";
+import { casePatchDefinitions, patchSha256, replacingPatchOf } from "./patched-world";
 import { createWorldWriter, type WorldWriter } from "./seed";
 import { generatePatchContacts, type ContactsGeneration } from "./patch-generator";
 import { configuredRecordAccess } from "../../../features/agent-v1/domains/configured";
@@ -141,7 +142,13 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
   const extraIds: Record<string, string> = {};
   for (const name of testCase.patches ?? []) {
     const patch = world.patches[name] ?? filePatches[name];
-    if (!patch) continue;
+    if (!patch) {
+      unsupported.push({ reason: `patch ${name} is not in the world or the case file`, step: 0, word: "patch" });
+      continue;
+    }
+    // A key the harness does not know is not ignored: the case fails. `replace*` are in the restored snapshot already
+    // and `web_replay` is in the case's world (runCase); the rest is written here.
+    for (const problem of patchProblems(patch)) unsupported.push({ reason: `patch ${name}: ${problem}`, step: 0, word: "patch" });
     const records = patchRecords(patch, world.mainAccount);
     // AG08 (base-v1 contacts-2000): generated contacts, each with one recorded interaction, through the same write path.
     const generated = (patch.generate ?? {}) as Record<string, unknown>;
@@ -293,8 +300,15 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const dir = path.join(ctx.runDir, "cases", testCase.id);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "case.yaml"), yaml.dump(testCase, { lineWidth: 160 }));
-  const world = loadWorld(testCase.world);
-  const report = readSeedReport(environment, testCase.world);
+  // eval/README.md §7: a replacing patch's world (`replace`, `replace_B`, `replace_platform_events`) is its own snapshot
+  // <world>+<patch>; the checks see the world with those records in place, and every patch's web_replay added.
+  const baseWorld = loadWorld(testCase.world);
+  const casePatches = casePatchDefinitions(testCase.patches, baseWorld, filePatches);
+  const replacing = replacingPatchOf(casePatches);
+  const world = worldWithPatches(baseWorld, casePatches.map((item) => item.patch));
+  const worldKey = snapshotKey(testCase.world, replacing?.name ?? null);
+  const report = readSeedReport(environment, worldKey);
+  if (replacing && report.patch?.sha256 !== patchSha256(replacing.patch)) throw new Error(`snapshot ${worldKey} was not written from the current patch ${replacing.name}; re-run agent-eval:seed (with --sealed for a sealed patch)`);
   const clock = caseClock(testCase, world);
   const paths = evalPaths(environment.env);
   const unsupported: Observation["unsupported"] = [];
@@ -305,10 +319,11 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   // AG13 opening 4: nothing from an earlier case may still be running when the snapshot is restored.
   await drainServer(environment);
   restoreSnapshot(environment.database.url, report.snapshot.file);
-  if (!ctx.writer || ctx.currentWorld !== testCase.world) {
+  // A new writer per snapshot (not per world): its id map must not keep the ids of a snapshot that was replaced.
+  if (!ctx.writer || ctx.currentWorld !== worldKey) {
     // Do not close the previous writer: the configured stores and pools are cached per process and shared.
     ctx.writer = createWorldWriter(testCase.world, world.clock);
-    ctx.currentWorld = testCase.world;
+    ctx.currentWorld = worldKey;
     for (const [label, account] of Object.entries(report.accounts)) {
       if (label !== "HOST") await ctx.writer.ensureAccount({ displayName: loadWorld(testCase.world).accounts[label]?.name ?? label, email: account.email, label, userId: account.userId });
     }
@@ -330,7 +345,11 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
 
   const settings: Record<string, unknown> = { ...((testCase.settings ?? {}) as Record<string, unknown>), ...(ctx.shadowAll ? { shadow: "on" } : {}) };
   const replayNames = settings.web_replay === undefined ? [] : Array.isArray(settings.web_replay) ? settings.web_replay : [settings.web_replay];
-  const replay = replayNames.map((name) => ({ ...world.webReplay[String(name)], name }));
+  const replay = replayNames.filter((name) => {
+    if (world.webReplay[String(name)]) return true;
+    unsupported.push({ reason: `web replay ${name} is not in ${testCase.world} or the case's patches`, step: 0, word: "settings" });
+    return false;
+  }).map((name) => ({ ...world.webReplay[String(name)], name }));
   for (const [key, value] of Object.entries(settings)) {
     if (key === "web_replay") continue;
     // AG09: the user's own web switch for this case (features/agent-v1/web/settings.ts reads it under ORBIT_AGENT_EVAL=1).

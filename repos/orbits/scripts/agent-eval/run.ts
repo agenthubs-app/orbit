@@ -29,7 +29,8 @@ import { costsProblems, crashedOutcome, settleRunLevelChecks, summarizeCase, wri
 import { gitInfo, runCase, type CaseOutcome, type RunnerContext } from "../../tests/agent-eval/lib/runner";
 import { runSelfCheck } from "../../tests/agent-eval/lib/selfcheck";
 import { serverControl } from "../../tests/agent-eval/lib/server";
-import { loadWorld } from "../../tests/agent-eval/lib/world";
+import { casePatchDefinitions, replacingPatchOf } from "../../tests/agent-eval/lib/patched-world";
+import { loadWorld, snapshotKey } from "../../tests/agent-eval/lib/world";
 import { fileSha256, sha256, stableStringify } from "../../tests/agent-eval/lib/yaml";
 import { renderRunReport } from "../../tests/agent-eval/lib/report-md";
 
@@ -112,6 +113,8 @@ async function main(argv: readonly string[]): Promise<void> {
   const startedAt = new Date().toISOString();
   const fileOf = new Map(areaFiles.flatMap((file) => file.cases.map((testCase) => [testCase.id, file] as const)));
   const worlds = [...new Set(selection.cases.map((testCase) => testCase.world))];
+  // The snapshots the cases restore (a replacing patch has its own, <world>+<patch>); the self-check covers each.
+  const snapshotKeys = [...new Set(selection.cases.map((testCase) => snapshotKey(testCase.world, replacingPatchOf(casePatchDefinitions(testCase.patches, loadWorld(testCase.world), fileOf.get(testCase.id)?.new_patches ?? {}))?.name ?? null)))];
   const manifest = {
     branch: git.branch,
     caseFiles: Object.fromEntries(areaFiles.filter((file) => selection.cases.some((testCase) => fileOf.get(testCase.id) === file)).map((file) => [path.basename(file.file), fileSha256(file.file)])),
@@ -147,7 +150,7 @@ async function main(argv: readonly string[]): Promise<void> {
   let selfCheck: Awaited<ReturnType<typeof runSelfCheck>>;
   if (workers) {
     // Each worker self-checks its own database and server (README §10); env.json is worker 1's, with the others under `workers`.
-    workers.pool = new WorkerPool(workers.environments, { runDir, runId, sealed, seedCards, worlds });
+    workers.pool = new WorkerPool(workers.environments, { runDir, runId, sealed, seedCards, worlds: snapshotKeys });
     const ready = await workers.pool.start();
     const first = ready.get(1)!.selfCheck;
     const others = [...ready.entries()].filter(([worker]) => worker !== 1);
@@ -155,7 +158,7 @@ async function main(argv: readonly string[]): Promise<void> {
     selfCheck = { ...first, ok: first.ok && failedOthers.length === 0, checks: [...first.checks, ...others.flatMap(([worker, item]) => item.selfCheck.checks.map((check) => ({ ...check, name: `worker ${worker}: ${check.name}` })))] };
     fs.writeFileSync(path.join(runDir, "env.json"), JSON.stringify({ ...selfCheck, checks: first.checks, ok: selfCheck.ok, workers: Object.fromEntries(others.map(([worker, item]) => [worker, item.selfCheck])) }, null, 2));
   } else {
-    selfCheck = await runSelfCheck(environment, worlds);
+    selfCheck = await runSelfCheck(environment, snapshotKeys);
     fs.writeFileSync(path.join(runDir, "env.json"), JSON.stringify(selfCheck, null, 2));
   }
   if (!selfCheck.ok) {

@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { worldRecords } from "./bulk-generator";
 import { evalDatabaseName, type EvalEnvironment } from "./env-guard";
 import { baseUrl } from "./eval-env";
+import { patchSha256, resolveSnapshotKey, snapshotRecords } from "./patched-world";
 import { evalPaths } from "./paths";
 import { countWorldRows, serverControl } from "./server";
 import { restoreSnapshot } from "./snapshot";
@@ -19,23 +19,25 @@ export interface SeedReportFile {
   snapshot: { file: string; sha256: string; createdAt: string };
   fixtureSha256: string;
   generatedSha256: string;
+  /** A `<world>+<patch>` snapshot: the replacing patch it was written from. */
+  patch?: { name: string; sha256: string };
 }
 
+/** `world` is a world name or a `<world>+<patch>` snapshot key (patched-world.ts). */
 export function readSeedReport(environment: EvalEnvironment, world: string): SeedReportFile {
   const file = path.join(evalPaths(environment.env).snapshots, `${world}.seed.json`);
-  if (!fs.existsSync(file)) throw new Error(`No snapshot for ${world}; run npm run agent-eval:seed first.`);
+  if (!fs.existsSync(file)) throw new Error(`No snapshot for ${world}; run npm run agent-eval:seed first${world.includes("+") ? ` (it writes ${world} for the cases that use the patch; add --sealed for a sealed patch)` : ""}.`);
   return JSON.parse(fs.readFileSync(file, "utf8")) as SeedReportFile;
 }
 
-/** What the fixture says each account holds, in the kinds the current product can store. */
+/** What the fixture (with a replacing patch, for a `<world>+<patch>` key) says each account holds, in the kinds the current product can store. */
 export function expectedCounts(world: string): Record<string, Record<string, number>> {
-  const fixture = loadWorld(world);
   const out: Record<string, Record<string, number>> = {};
   const bump = (account: string, kind: string) => {
     out[account] ??= {};
     out[account][kind] = (out[account][kind] ?? 0) + 1;
   };
-  for (const record of worldRecords(fixture)) {
+  for (const record of snapshotRecords(world)) {
     const kind = { contact: "contacts", conversation: "conversations", followup: "todos_and_followups", memo: "memos", memory: "memory", my_event: "my_events", platform_event: "platform_events", rule: "rules", schedule: "schedule", todo: "todos_and_followups" }[record.kind as string];
     if (kind) bump(record.account, kind);
   }
@@ -100,8 +102,13 @@ export async function runSelfCheck(environment: EvalEnvironment, worlds: readonl
   const worldResults: SelfCheckResult["worlds"] = {};
   for (const world of worlds) {
     const report = readSeedReport(environment, world);
-    const fixtureSha256 = fileSha256(loadWorld(world).file);
+    const resolved = resolveSnapshotKey(world);
+    const fixtureSha256 = fileSha256(loadWorld(resolved.world).file);
     push(`${world}: snapshot made from the current fixture`, report.fixtureSha256 === fixtureSha256, { fixture: fixtureSha256, snapshot: report.fixtureSha256 });
+    if (resolved.patch) {
+      const current = patchSha256(resolved.patch.patch);
+      push(`${world}: snapshot made from the current patch`, report.patch?.sha256 === current, { patch: current, snapshot: report.patch?.sha256 ?? null });
+    }
     const snapshotFileSha256 = fileSha256(report.snapshot.file);
     push(`${world}: snapshot file unchanged since seeding`, snapshotFileSha256 === report.snapshot.sha256, { recorded: report.snapshot.sha256, now: snapshotFileSha256 });
     restoreSnapshot(environment.database.url, report.snapshot.file);
