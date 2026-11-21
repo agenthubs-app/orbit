@@ -44,7 +44,7 @@ import type { AgentGraphState, GraphPart, PartCoverage } from "../state";
 import { clueWords } from "./clarify";
 import { webPartReads } from "./probe";
 import { SIMILAR_TITLE, similarity } from "../../functions/link-back";
-import { localDayOf } from "../../propose/dates";
+import { localDayOf, resolveSaidDate } from "../../propose/dates";
 import { asksTodaysPlate, isPlateFilter, onlyWindowWords, swapsPeriod } from "../../understand/read-window";
 import { widerThanAsked, type AskedRead, type Widened } from "./wider-read";
 import { occurrenceViews } from "../../domains/schedule/occurrences";
@@ -311,6 +311,18 @@ export function localMidnight(day: string, timeZone: string): string {
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { day: "2-digit", hour: "2-digit", hourCycle: "h23", minute: "2-digit", month: "2-digit", timeZone, year: "numeric" }).formatToParts(guess).map((part) => [part.type, part.value]));
   const shown = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute));
   return new Date(guess.getTime() - (shown - guess.getTime())).toISOString();
+}
+
+/**
+ * AG21c (R50): the window a repeating item bound by id is read in when the part has none: the day the words name (the clue
+ * first, then the part's words), else from now on (the next occurrence).
+ */
+export function boundOccurrenceWindow(words: readonly string[], now: string, timeZone: string): { from?: string; to?: string } {
+  for (const text of words) {
+    const day = text ? resolveSaidDate(text, now, timeZone)?.day : null;
+    if (day) return { from: localMidnight(day, timeZone), to: localMidnight(nextDay(day), timeZone) };
+  }
+  return { from: now };
 }
 
 function nextDay(day: string): string {
@@ -863,8 +875,12 @@ export function resolveNode(scope: NodeScope): GraphNode {
             // Integration 2026-11-20 (AE-EVT-005, AE-SCL-025): a repeating schedule item the part points at by id (since AG20a
             // a card's schedule item is a mentioned record the next turn binds to) is given as its occurrence in the period
             // said, with what was changed for that one time — as the search below does (the hotfix's occurrence rule).
-            if (view && kind === "schedule" && (from || to) && typeof view.fields.recurrence === "string") {
-              const at = occurrenceIn(String(view.fields.startsAt), view.fields.recurrence, from, to);
+            // AG21c (R50): with no window of the part's own ("明天这场例会" — the day sits inside the clue), the occurrence is the
+            // one the clue's own date words name, else the next one from now; always one occurrence, its changes applied.
+            if (view && kind === "schedule" && typeof view.fields.recurrence === "string") {
+              const ref = part.refs.find((item) => item.recordId === id);
+              const window = from || to ? { from, to } : boundOccurrenceWindow([ref?.quote ? input.message.slice(ref.quote[0], ref.quote[1]) : "", quote], now, zone);
+              const at = occurrenceIn(String(view.fields.startsAt), view.fields.recurrence, window.from, window.to);
               if (at && at !== view.fields.startsAt) read.occurrences.set(view.ref, at);
               if (at) {
                 view = (await occurrenceViews(records.source, accountScope, [view], read.occurrences, zone))[0] ?? view;
