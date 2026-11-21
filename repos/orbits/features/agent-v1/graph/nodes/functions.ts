@@ -1282,6 +1282,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     }),
     time: saved.time.map((item) => ({ entry: item.entry, preference: item.preference, removed: item.preference.hard ? removedBy(item.preference) : 0 })),
     topics: saved.used.flatMap((entry) => { const topic = topicOf(entry); return topic ? [{ entry, topic }] : []; }),
+    unclear: "unclear" in saved ? saved.unclear : undefined,
   }).filter((chip) => !run.memoryUse.some((item) => item.memoryId === chip.memoryId)));
   // AG14: what this ranking used, by reference, for the session ("为什么排第一", "这次看……").
   run.memory.ranking = {
@@ -1328,7 +1329,7 @@ function preferenceMet(preference: TimePreference, startsAt: string, timeZone: s
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hourCycle: "h23", timeZone, weekday: "short" }).formatToParts(new Date(startsAt)).map((part) => [part.type, part.value]));
   const weekend = parts.weekday === "Sat" || parts.weekday === "Sun";
   const hour = Number(parts.hour);
-  const days = !preference.days || (preference.days === "weekend" ? weekend : !weekend);
+  const days = (!preference.days || (preference.days === "weekend" ? weekend : !weekend)) && (!preference.weekdays?.length || preference.weekdays.includes(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(parts.weekday)));
   const part = !preference.part || (preference.part === "morning" ? hour < 12 : preference.part === "afternoon" ? hour >= 12 && hour < 17 : hour >= 17);
   return preference.exclude ? !(days && part) : days && part;
 }

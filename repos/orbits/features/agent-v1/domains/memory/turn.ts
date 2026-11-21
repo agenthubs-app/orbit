@@ -187,29 +187,35 @@ export function withholdForgotten<T extends ContextMessage & { id?: string }>(me
 
 /* ── ranking ───────────────────────────────────────────────────────── */
 
-function daysOf(structured: AgentMemoryStructured): "weekend" | "weekday" | undefined {
+function daysOf(structured: AgentMemoryStructured): Pick<TimePreference, "days" | "weekdays"> {
   const days = structured.preferredDays ?? [];
-  if (days.length === 2 && days.includes("Sat") && days.includes("Sun")) return "weekend";
-  if (days.length === 5 && !days.includes("Sat") && !days.includes("Sun")) return "weekday";
-  return undefined;
+  if (days.length === 2 && days.includes("Sat") && days.includes("Sun")) return { days: "weekend" };
+  if (days.length === 5 && !days.includes("Sat") && !days.includes("Sun")) return { days: "weekday" };
+  // AG21c (R33): days stored one by one ("周日" → Sun) are those days.
+  const weekdays = days.map((day) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(day)).filter((day) => day >= 0).sort((left, right) => left - right);
+  return weekdays.length ? { weekdays } : {};
 }
 
-/** The time condition an entry holds: from its stored values, else from its own words. A rule is a hard condition. */
+/**
+ * The time condition an entry holds: from its stored values, else from its own words. A rule is a hard condition.
+ * AG21c (R33): whether it leaves the time out or asks for it only is read from the entry's own words whenever they name a
+ * time (functions/negation.ts, the same reader as this turn's words; a stored strength may be an older, wrong reading).
+ * Words whose direction cannot be read give an unclear condition: never hard, never applied the wrong way round.
+ */
 export function timePreferenceOfEntry(entry: Pick<RecalledMemory, "structured" | "content" | "category">): TimePreference | null {
   const structured = entry.structured;
+  const said = timePreferenceIn(entry.content, "memory");
+  if (said?.unclear) return { ...said, exclude: false, hard: false };
   // AG21b (R33): an entry whose words hold a clock boundary ("不要早上八点以前的") is read from its words — the stored part
   // of the day (older entries kept "avoid morning" for it) would widen it to the whole morning.
-  if (clockBoundIn(entry.content)) {
-    const said = timePreferenceIn(entry.content, "memory");
-    if (said) return { ...said, hard: said.hard || entry.category === "constraint" || structured?.strength === "avoid" || structured?.strength === "only" };
-  }
+  if (said && clockBoundIn(entry.content)) return { ...said, hard: said.hard || entry.category === "constraint" };
   if (structured && (structured.dayPart || structured.preferredDays?.length)) {
     const days = daysOf(structured);
-    if (!days && !structured.dayPart) return null;
-    const exclude = structured.strength === "avoid";
-    return { exclude, hard: exclude || structured.strength === "only" || entry.category === "constraint", source: "memory", words: entry.content, ...(days ? { days } : {}), ...(structured.dayPart ? { part: structured.dayPart } : {}) };
+    if (!days.days && !days.weekdays && !structured.dayPart) return null;
+    const exclude = said ? said.exclude : structured.strength === "avoid";
+    const only = said ? said.hard && !said.exclude : structured.strength === "only";
+    return { exclude, hard: exclude || only || entry.category === "constraint", source: "memory", words: entry.content, ...days, ...(structured.dayPart ? { part: structured.dayPart } : {}) };
   }
-  const said = timePreferenceIn(entry.content, "memory");
   return said ? { ...said, hard: said.hard || entry.category === "constraint" } : null;
 }
 
@@ -227,12 +233,13 @@ export function topicOfEntry(entry: Pick<RecalledMemory, "structured" | "content
  * a preference gives way to any time the turn names; a rule (a hard condition) only when the turn asks for exactly
  * what it leaves out ("这次看周四晚上" against "不要晚上的") or for another slot than the only one it allows.
  */
-export function overruledByTurn(saved: Pick<TimePreference, "days" | "part" | "exclude" | "hard">, turn: Pick<TimePreference, "days" | "part" | "exclude"> | null): boolean {
+export function overruledByTurn(saved: Pick<TimePreference, "days" | "part" | "exclude" | "hard" | "weekdays">, turn: Pick<TimePreference, "days" | "part" | "exclude" | "weekdays"> | null): boolean {
   if (!turn) return false;
   if (!saved.hard) return true;
   if (turn.exclude) return false;
-  const sameSlot = (!saved.part || saved.part === turn.part) && (!saved.days || saved.days === turn.days);
-  const namesSlot = Boolean((saved.part && turn.part) || (saved.days && turn.days));
+  const sameDays = (left?: number[], right?: number[]) => JSON.stringify(left ?? []) === JSON.stringify(right ?? []);
+  const sameSlot = (!saved.part || saved.part === turn.part) && (!saved.days || saved.days === turn.days) && (!saved.weekdays?.length || sameDays(saved.weekdays, turn.weekdays));
+  const namesSlot = Boolean((saved.part && turn.part) || (saved.days && turn.days) || (saved.weekdays?.length && turn.weekdays?.length));
   return saved.exclude ? sameSlot && namesSlot : namesSlot && !sameSlot;
 }
 
@@ -243,6 +250,8 @@ export interface RankMemory {
   topic: string | null;
   /** Entries recalled for the task that this turn's own words overrule (not used, not named). */
   overruled: RecalledMemory[];
+  /** AG21c (R33): entries whose time words cannot be read as "leave out" or "only": not applied, named as unclear. */
+  unclear?: RecalledMemory[];
 }
 
 /**
@@ -288,6 +297,10 @@ export function rankMemoryFrom(recall: Pick<MemoryRecall, "rules" | "relevant">,
     if (domain === "todo" && (entry.category === "goal" || entry.category === "identity")) continue;
     const preference = domain === "event" ? timePreferenceOfEntry(entry) : null;
     const topic = topicOfEntry(entry);
+    if (preference?.unclear) {
+      out.unclear = [...(out.unclear ?? []), entry];
+      continue;
+    }
     if (preference) {
       if (overruledByTurn(preference, input.turnTime)) out.overruled.push(entry);
       else {

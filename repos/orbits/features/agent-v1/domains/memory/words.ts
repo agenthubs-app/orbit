@@ -8,7 +8,10 @@
  *   are frozen together on the card; no model writes any of them.
  */
 import type { AgentMemory, AgentMemoryCategory, AgentMemoryStructured, AgentMemoryTask } from "../../../agent/memory/contract";
-import { clockBoundIn } from "../../functions/basis";
+import { clockBoundIn, weekdaysNamedIn } from "../../functions/basis";
+import { polarityOf } from "../../functions/negation";
+
+const DAY_KEYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 export type MemoryLanguage = "zh" | "ja" | "en";
 
@@ -107,8 +110,6 @@ const WEEKDAY = /(工作日|平日|weekdays?)/iu;
 const MORNING = /(上午|早上|早晨|午前|朝の|朝は|朝に|毎朝|mornings?)/iu;
 const AFTERNOON = /(下午|午後|afternoons?)/iu;
 const EVENING = /(晚上|夜里|夜间|夜晚|夕方|夜|evenings?|nights?)/iu;
-const AVOID = /(不要|别|不想|避开|排除|しないで|ないで|避けて|\bnot\b|\bno\b|\bavoid\b|\bnever\b|\bdon'?t\b)/iu;
-const ONLY = /(只要|只看|只选|只推荐|只挑|仅限?|だけ|のみ|\bonly\b)/iu;
 const PREFER = /(优先|尽量|偏好|更喜欢|喜欢|最好|優先|できれば|なるべく|好き|\bprefer(?:ably)?\b|\bideally\b|\blike\b|\bfavou?r\b)/iu;
 
 const TASK_WORDS: [AgentMemoryTask, RegExp][] = [
@@ -134,14 +135,19 @@ export function replyLanguageIn(words: string): NonNullable<AgentMemoryStructure
 
 /** The time preference an entry's words hold, as stored values; null when they name none. */
 export function timeValuesIn(words: string): Pick<AgentMemoryStructured, "preferredDays" | "dayPart" | "strength"> | null {
-  const days = WEEKEND.test(words) ? (["Sat", "Sun"] as const) : WEEKDAY.test(words) ? (["Mon", "Tue", "Wed", "Thu", "Fri"] as const) : null;
+  // AG21c (R33): days named one by one ("周日", "日曜", "Sundays") are kept as those days.
+  const named = weekdaysNamedIn(words).map((day) => DAY_KEYS[day]);
+  const days = WEEKEND.test(words) ? (["Sat", "Sun"] as const) : WEEKDAY.test(words) ? (["Mon", "Tue", "Wed", "Thu", "Fri"] as const) : named.length ? named : null;
   // AG21b (R33): with a clock boundary ("早上八点以前") the part-of-day word only says which eight o'clock: no part is stored
   // (the boundary is read from the entry's words when it is used), only how strong the entry is.
   const clock = clockBoundIn(words);
   const part = clock ? null : MORNING.test(words) ? "morning" : AFTERNOON.test(words) ? "afternoon" : EVENING.test(words) ? "evening" : null;
   if (!days && !part && !clock) return null;
-  const strength = AVOID.test(words) ? "avoid" : ONLY.test(words) ? "only" : "prefer";
-  return { ...(days ? { preferredDays: [...days] } : {}), ...(part ? { dayPart: part } : {}), strength };
+  // AG21c (R33): the same negation reader as the ranking (functions/negation.ts); words whose direction cannot be read
+  // store no strength (they are never a hard condition).
+  const polarity = polarityOf(words);
+  const strength = polarity === "exclude" ? "avoid" : polarity === "only" ? "only" : polarity === "prefer" ? "prefer" : null;
+  return { ...(days ? { preferredDays: [...days] } : {}), ...(part ? { dayPart: part } : {}), ...(strength ? { strength } : {}) };
 }
 
 export interface MemoryReading {

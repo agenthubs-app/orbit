@@ -27,6 +27,11 @@ const SAY = {
     ja: (label: string) => `今回だけ：保存した「${label}」は使っていません`,
     zh: (label: string) => `只这一次：没按你存的「${label}」`,
   },
+  unclear: {
+    en: (words: string) => `Not used: your saved "${words}" — it is not clear whether it leaves that time out or asks for it only`,
+    ja: (words: string) => `保存した「${words}」は、その時間を外すのか、それだけにするのか読み取れなかったため使っていません`,
+    zh: (words: string) => `没按你存的「${words}」挑：看不出它是要排除这个时间，还是只要这个时间`,
+  },
   used: {
     en: (label: string) => `Picked by your saved preference "${label}"`,
     ja: (label: string) => `保存した好み「${label}」で選びました`,
@@ -44,6 +49,8 @@ export interface ChipInput {
   other: readonly Entry[];
   /** Entries this turn's own words overruled, with the short words to name them by. */
   overruled: readonly { entry: Entry; label: string }[];
+  /** AG21c (R33): entries not applied because their direction cannot be read (named so, with 「修改」 to fix the words). */
+  unclear?: readonly Entry[];
 }
 
 /** The chips of one ranking, each entry once, in the order: what was weighed, what was overruled, what a rule took away. */
@@ -57,6 +64,7 @@ export function memoryChipsOf(input: ChipInput): AgentAnswerMemoryUseContract[] 
   for (const item of input.topics) add({ kind: "used", memoryId: item.entry.memoryId, text: SAY.used[language](item.topic) });
   for (const entry of input.other) if (entry.category !== "constraint") add({ kind: "used", memoryId: entry.memoryId, text: SAY.used[language](entry.content) });
   for (const item of input.overruled) add({ kind: "skipped", memoryId: item.entry.memoryId, text: SAY.skipped[language](item.label) });
+  for (const entry of input.unclear ?? []) add({ kind: "skipped", memoryId: entry.memoryId, text: SAY.unclear[language](entry.content) });
   for (const item of input.time) {
     if (!item.preference.hard || item.removed <= 0) continue;
     add({ kind: "rule", memoryId: item.entry.memoryId, text: SAY.rule[language](say.timeWords(item.preference, language), !item.preference.exclude) });
