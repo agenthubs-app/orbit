@@ -872,7 +872,9 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const timeZone = state.timeZone || "Asia/Tokyo";
   const now = state.asOf || deps.now();
   const message = input.message;
-  const quote = message.slice(part.quote[0], part.quote[1]);
+  // AG21c (R47): a part that repeats or adjusts the last list ranks by that request's words (and this turn's adjustment).
+  const repeated = run.repeatedLists.get(part.localId) ?? null;
+  const quote = repeated ? repeated.words : message.slice(part.quote[0], part.quote[1]);
   const reply = task.kind === "rank_reply";
   // A reply to the basis question: the ranking asked about (its domain, dates, count), with this reply as the basis.
   // AG21a (decision 1): a number that is only part of the time window ("the next two weeks", "这两周") is no count — it never
@@ -910,7 +912,9 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   if (turnTime && domain === "event") time.push(turnTime);
   // The topic: a memo attached with @ gives its words; otherwise the basis words, when something is left of them.
   // A to-do ranking's "正式跟进" is a hard condition (formal follow-ups), not a topic.
-  let basis = basisSpan ? message.slice(basisSpan[0], basisSpan[1]).replace(domain === "todo" ? FORMAL_FOLLOW_UP : /$^/u, " ").trim() || null : null;
+  let basis = basisSpan ? message.slice(basisSpan[0], basisSpan[1]).replace(domain === "todo" ? FORMAL_FOLLOW_UP : /$^/u, " ").trim() || null : repeated?.basis ?? null;
+  // AG21c (R47): the request's own basis words, as asked, for the next "再给我看一次".
+  const askedBasis = basis;
   let basisMemo: string | null = null;
   const memoRef = run.references.find((reference) => isMemoType(reference.type));
   const accountScope = records.scope(input.actorId);
@@ -1363,6 +1367,17 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     requestId: input.requestId,
     topic: Boolean(topic),
     turnBasis: Boolean(turnTime) || (Boolean(topic) && !topicFromMemory),
+    ...(plan.count ?? rank.count ? { count: plan.count ?? rank.count } : {}),
+    ...(plan.from ? { from: plan.from } : {}),
+    ...(plan.to ? { to: plan.to } : {}),
+  };
+  // AG21c (R47): the list request as asked; a repeat keeps the request it repeated (a "this time" adjustment is not kept).
+  run.lastList = {
+    at: now,
+    deliverable: part.plan.deliverable,
+    domain,
+    words: repeated ? run.sessionState?.lastList?.words ?? quote : reply ? `${original}，${replyWords}` : quote,
+    ...(repeated ? (run.sessionState?.lastList?.basis ? { basis: run.sessionState.lastList.basis } : {}) : askedBasis ? { basis: askedBasis } : {}),
     ...(plan.count ?? rank.count ? { count: plan.count ?? rank.count } : {}),
     ...(plan.from ? { from: plan.from } : {}),
     ...(plan.to ? { to: plan.to } : {}),

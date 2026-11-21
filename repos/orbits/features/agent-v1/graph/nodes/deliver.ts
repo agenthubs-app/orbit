@@ -435,6 +435,8 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
   if (goal) next.noteGoal = { ...goal, setAt: now };
   else if (next.noteGoal && (context?.idle || state.parts.some((part) => asksToOrganize(quoteOf(input.message, part))))) next.noteGoal = null;
   next.updatedAt = now;
+  // AG21c (R47): the list request this turn answered is the one "再给我看一次" repeats next.
+  if (run.lastList) next.lastList = { ...run.lastList };
   // AG14: the saved entries this turn's answer used (ids and revisions) and its ranking's codes; never an entry's words.
   if (run.memory.loaded && run.memory.snapshot) {
     const kept = memoryOfSession(previous, run.memory, input.requestId);

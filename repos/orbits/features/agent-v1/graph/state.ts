@@ -218,6 +218,10 @@ export interface AgentGraphRun {
   readNotes: Map<string, string[]>;
   /** AG11 (AE-SCL-021): per part, the previous question a 「那 @X 呢？」 asks again about the record picked now. */
   carriedQuestions: Map<string, string>;
+  /** AG21c (R47): per part, the last list request it repeats or adjusts ("再给我看一次", "这次把周日的也加上"). */
+  repeatedLists: Map<string, import("../context/session-state").LastListRequest>;
+  /** AG21c (R47): the list request this turn answered (kept in the session for the next turn). */
+  lastList: import("../context/session-state").LastListRequest | null;
   /** Hotfix 1c (AE-ANS-019): parts whose every record read is shown ("what to handle today"), whatever the answer cited. */
   showAllRead: Set<string>;
   /** AG05: per part, code's sentences after the answer (no record, partial, failed, choose again). */

@@ -380,8 +380,8 @@ export function asksForRecommendation(words: string): boolean {
  * AG21a (R32c): 「这次晚上的也算上」, 「今回は夜のも含めて」, "include evening ones this time" lift a saved rule for this turn only;
  * they state no new preference and no topic. Returns the clause and the words lifted ("晚上的"), or null.
  */
-const LIFT = /(也算上|也算进来|也算进去|也包括进来|也包括|也放进来|也列进来|也列上|也可以|也行|也没关系|も含めて|も入れて|もOK|もいい|\binclude\b.{0,40}\b(?:too|as well|this time)\b|\b(?:are|is) (?:fine|ok|okay) (?:too|this time)\b)/iu;
-const LIFT_WORDS = /(也算上|也算进来|也算进去|也包括进来|也包括|也放进来|也列进来|也列上|也可以|也行|也没关系|这次|这回|本次|今回は?|も含めて|も入れて|もOK|もいい|\binclude\b|\btoo\b|\bas well\b|\bthis time\b|\b(?:are|is) (?:fine|ok|okay)\b)/giu;
+const LIFT = /(也加上|也加进来|也算上|也算进来|也算进去|也包括进来|也包括|也放进来|也列进来|也列上|也可以|也行|也没关系|も含めて|も入れて|もOK|もいい|\binclude\b.{0,40}\b(?:too|as well|this time)\b|\b(?:are|is) (?:fine|ok|okay) (?:too|this time)\b)/iu;
+const LIFT_WORDS = /(也加上|也加进来|也算上|也算进来|也算进去|也包括进来|也包括|也放进来|也列进来|也列上|也可以|也行|也没关系|这次|这回|本次|今回は?|も含めて|も入れて|もOK|もいい|\binclude\b|\btoo\b|\bas well\b|\bthis time\b|\b(?:are|is) (?:fine|ok|okay)\b)/giu;
 export function liftedIn(words: string): { clause: string; words: string } | null {
   for (const clause of words.split(/[，,。；;！!？?]/u)) {
     if (!LIFT.test(clause)) continue;
