@@ -845,6 +845,13 @@ async function handleControl(req, res) {
       emit({ type: "eval.context", runId: state.context.runId, account: state.context.account, clock: body.clock ?? null, replay: state.replay.map((item) => item.name ?? item.url ?? item.match), settings: state.settings });
       return reply(res, 200, { ok: true, now: new RealDate(realNow() + state.offsetMs).toISOString() });
     }
+    if (route === "settings") {
+      // AG18 (CMP rollback): a deployment setting changed in the middle of a case (the runbook's rollback switch);
+      // merged into this case's settings, read by the product's evalSetting().
+      state.settings = { ...(state.settings ?? {}), ...(body.settings && typeof body.settings === "object" ? body.settings : {}) };
+      emit({ type: "eval.settings", settings: state.settings });
+      return reply(res, 200, { ok: true, settings: state.settings });
+    }
     if (route === "drain") {
       return reply(res, 200, { ok: true, ...(await drain(body)) });
     }

@@ -30,6 +30,7 @@ import { optionPickedIn } from "../../propose/asked";
 import { capabilityKind, type Capability } from "../../route/capabilities";
 import type { NextStep } from "../../clarify/next-step";
 import { isMemoryAsk, memoryRouteStep } from "../../domains/memory/turn";
+import { nothingToRepeatLine, repeatedWords, repeatOrAdjust } from "../../understand/repeat-list";
 
 /** The words of a day said in the message ("周五", "金曜日", "Friday", "11月20日"), for an entry's label. */
 const DAY_WORDS = /(下(?:个)?(?:周|星期|礼拜)[一二三四五六日天]|(?:周|星期|礼拜)[一二三四五六日天]|明天|后天|\d{1,2}\s*月\s*\d{1,2}\s*日|来週の?[月火水木金土日]曜日?|[月火水木金土日]曜日|明日|明後日|(?:next\s+)?(?:mon|tues|wednes|thurs|fri|satur|sun)day|tomorrow)/iu;
@@ -298,6 +299,24 @@ export function routeNode(scope: NodeScope): GraphNode {
         part.capabilities = ["memo.read", "fn.summarize"];
         part.plan = { ...part.plan, clarity: "clear", dataSources: ["orbit_records"], deliverable: "summary", readings: [] };
         emitTrace({ partId: part.localId, type: "route.organize_is_summary" });
+      }
+      // AG21c (R47): "再给我看一次" / "这回把周日的也加上" right after a list re-runs that list request (kind, window, count, its
+      // words), read fresh, with the adjustment; with no list request stored it says so and asks what to list.
+      const repeat = !resume && !part.continues && !part.refs.some((ref) => ref.recordId || (clueText(ref) && !isPronounClue(clueText(ref)) && !/^(?:那个|这个|它|それ|あれ|it|that|them)$/iu.test(clueText(ref)))) && !part.capabilities.some((capability) => capabilityKind(capability) === "write") ? repeatOrAdjust(input.message.slice(part.quote[0], part.quote[1])) : null;
+      if (repeat) {
+        const last = context && !context.idle ? run.sessionState?.lastList ?? null : null;
+        if (last) {
+          part.capabilities = [`${last.domain}.read`, "fn.rank"] as GraphPart["capabilities"];
+          part.refs = [];
+          part.plan = { ...part.plan, clarity: "clear", dataSources: ["orbit_records"], deliverable: last.deliverable as GraphPart["plan"]["deliverable"], rank: { ...(last.count ? { count: last.count } : {}) }, readFilter: { ...(last.from ? { from: last.from } : {}), ...(last.to ? { to: last.to } : {}) }, readings: [] };
+          run.repeatedLists.set(part.localId, { ...last, words: repeatedWords(last, input.message.slice(part.quote[0], part.quote[1]), repeat) });
+        } else {
+          part.capabilities = [];
+          part.plan = { ...part.plan, clarity: "clear", dataSources: [], deliverable: "answer", readings: [] };
+          run.answers.set(part.localId, nothingToRepeatLine(state.language));
+          run.codeAnswers.add(part.localId);
+        }
+        emitTrace({ kind: repeat, partId: part.localId, stored: Boolean(last), type: "route.repeats_last_list" });
       }
       const routeOptions = { acceptedAlternative: accepted, asked: part.asked, objectKind: objectOf(scope, part).kind, pageKind: pageKindOf(scope), topicKind, namedObjectWithDate: namedObjectWithDate(part), reschedule, unboundPronoun: unboundPronoun(part) };
       let decision = decideRoute(routeInputOf(part, input.message), routeOptions);

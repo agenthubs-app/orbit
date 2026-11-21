@@ -13,7 +13,7 @@ import type { FeatureMode } from "../../../shared/config/feature-mode";
 import { configuredAgentEntryStore } from "./configured-store";
 import type { AgentEntryStore } from "./store";
 
-export async function refreshCardInDocument(input: { store: AgentEntryStore; actorId: string; now: string; updated: AgentActionPreviewContract; previous?: AgentActionPreviewContract | null; locale?: string }): Promise<boolean> {
+export async function refreshCardInDocument(input: { store: AgentEntryStore; actorId: string; now: string; updated: AgentActionPreviewContract; previous?: AgentActionPreviewContract | null; locale?: string; keepText?: boolean }): Promise<boolean> {
   const requestId = input.updated.origin?.kind === "conversation" ? input.updated.origin.requestId : null;
   if (!requestId) return false;
   const record = await input.store.get(input.actorId, requestId);
@@ -28,7 +28,9 @@ export async function refreshCardInDocument(input: { store: AgentEntryStore; act
   let text = answer?.text ?? null;
   let cardLine: string | undefined;
   let oldCardLine: string | undefined;
-  for (const language of languages) {
+  // AG21c (R54): a revision asked for in words is shown in its own new turn; the turn that was delivered keeps its text
+  // (what it said then), and only its card follows the new revision.
+  for (const language of input.keepText ? [] : languages) {
     const oldLine = cardLineOf(previous, language);
     if (text && text.includes(oldLine)) {
       oldCardLine = oldLine;

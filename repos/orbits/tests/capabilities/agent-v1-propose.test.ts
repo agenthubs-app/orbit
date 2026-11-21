@@ -91,7 +91,8 @@ test("小林: one answer, one card of two items — count sentence, values befor
   assert.deepEqual(card.operations.map((op) => op.capability), ["todo.update", "memo.create"]);
   assert.equal(card.operations[0].text, "待办「给小林发修订报价」：计划日 11月18日（周三） → 11月20日（周五）");
   assert.deepEqual(card.operations[0].after, { plannedDate: "2026-11-20" });
-  assert.match(card.operations[1].text, /^新增往来笔记「小林健今天来过电话」：实际往来对象 小林健，11月15日（周日），对方来电$/u);
+  // AG21c R55: the title drops the relative day (it is the date field).
+  assert.match(card.operations[1].text, /^新增往来笔记「小林健来过电话」：实际往来对象 小林健，11月15日（周日），对方来电$/u);
   assert.deepEqual((card.operations[1].after as Record<string, unknown>).interaction, { actualContactIds: ["contact:c17"], channel: "phone", direction: "incoming", occurredOn: "2026-11-15", precision: "day" });
   assert.match(result.text, /实施费单列/u, "the answer comes first");
   assert.ok(result.text.indexOf("实施费单列") < result.text.indexOf("确认卡（修改1项，新增1项）"), "then the card line");
@@ -168,7 +169,8 @@ test("stab1 shape (AE-XL-011): \"log that Emily called me\" tagged attendance.cr
   kit.deps.cards = cards.access;
   const result = await runAgentGraph(kit.deps, kit.input(message, { locale: "en" }));
   assert.deepEqual(result.actionPreview?.operations.map((op) => op.capability), ["memo.create"]);
-  assert.match(result.actionPreview!.operations[0].text, /^New interaction note "Emily called me today": with Emily Carter, Sun, Nov 15, they called$/u);
+  // AG21c R55: the title drops the relative day (it is the date field).
+  assert.match(result.actionPreview!.operations[0].text, /^New interaction note "Emily called me": with Emily Carter, Sun, Nov 15, they called$/u);
 });
 
 test("two quote to-dos: the answer is delivered, only the to-do is asked; the pick is honoured", async () => {

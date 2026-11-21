@@ -15,6 +15,7 @@
  */
 import { capabilityKind, type Capability } from "../../route/capabilities";
 import { emitTrace } from "../../observability/trace";
+import { isProposalsPausedError, pausedWords } from "../../rollout/rollback";
 import { callMainModel } from "../../models/main";
 import { formatWhen } from "../../answer/materials";
 import { handoffWords, type ReplyLanguage } from "../../route/handoff-copy";
@@ -152,6 +153,9 @@ const EVENT_WORD = /(活动|聚会|研讨会|讲座|展览|摄影展|市集|论�
 /** "加进我的日程", "カレンダー": the user does mean a schedule item. */
 const SCHEDULE_WORD = /(日程|日历|行程|カレンダー|スケジュール|\bschedule\b|\bcalendar\b)/iu;
 const AG13_FAMILY = new Set<string>(["privateEvent.create", "privateEvent.update", "privateEvent.delete", "attendance.create", "attendance.delete", "attendance.update", "schedule.create", "schedule.update", "schedule.delete", "todo.complete", "todo.reopen", "todo.delete", "memo.update"]);
+/** AG21c (R26): the writes a private event's delete plan makes. */
+// Combined-tree gate (AE-EVT-008): the first layer tags "笔记和待办留着，只解除关联" memo.unlink — an unlink is the plan's too.
+const PLAN_FAMILY = new Set<string>(["privateEvent.delete", "attendance.delete", "attendance.update", "memo.update", "memo.unlink", "todo.update", "schedule.update", "schedule.delete"]);
 const TIME_OF_DAY = /(\d{1,2}\s*[:：]\s*\d{2}|\d{1,2}\s*(?:時|时|点)|\b\d{1,2}\s*(?:am|pm)\b|上午|下午|晚上|中午|午前|午後|夕方|\bmorning\b|\bafternoon\b|\bevening\b)/iu;
 
 /** Parts this pass proposes for. */
@@ -181,7 +185,10 @@ function questionSet(scope: NodeScope, state: AgentGraphState, part: GraphPart, 
   // The option leads to what the second layer proposes for this part (a to-do question to todo.update), never to
   // a capability this version cannot do (AE-CTX-005: schedule.create).
   const proposable = proposableOf(part, quote);
-  const capability = (question.type === "contact" ? proposable.find((item) => item === "memo.create") ?? proposable[0] : "todo.update") as Capability ?? "todo.update";
+  // AG21c (R49): a to-do offered as a candidate carries the part's own write (delete, complete, reopen, update) — the click
+  // resumes that operation on the picked to-do, never an update the user did not ask for.
+  const ownTodoWrite = part.write?.intents.find((intent) => intent.capability.startsWith("todo."))?.capability;
+  const capability = (question.type === "contact" ? proposable.find((item) => item === "memo.create") ?? proposable[0] : question.type === "todo" && ownTodoWrite ? ownTodoWrite : "todo.update") as Capability ?? "todo.update";
   const existing = state.optionSets.filter((set) => set.partId === part.localId && set.purpose === "operation").length;
   const clarificationId = `${setIdOf(scope.input.requestId, part.localId, "q")}${existing ? existing + 1 : ""}`;
   const labels = new Map<string, { label: string; refName?: string }>();
@@ -250,6 +257,11 @@ export function proposeNode(scope: NodeScope): GraphNode {
     const blockedBy = (part: GraphPart) => part.dependsOn.map((id) => byId.get(id)).find((other) => other && other.route !== "propose_write" && other.status !== "answered" && other.status !== "awaiting_clarification");
     // 1. Writes this version does not do in the conversation.
     const work: GraphPart[] = [];
+    const resumedPlans = new Set<string>();
+    const coveredParts = new Set<string>();
+    const isPlanItem = (item: NonNullable<ReturnType<typeof continuedItem>>) => Boolean(item.resume && item.options?.length && item.options.every((option) => option.type === "event_plan"));
+    // A sentence that continues nothing else and asks only for writes of a delete plan (delete, unlink, «我去过»).
+    const planCompanion = (other: GraphPart) => !other.continues && writesOf(other).length > 0 && writesOf(other).every((capability) => PLAN_FAMILY.has(capability));
     for (const part of due) {
       const writes = writesOf(part);
       if (blockedBy(part)) {
@@ -266,13 +278,32 @@ export function proposeNode(scope: NodeScope): GraphNode {
       // part asked about — its object, its date, its words — as a click on that option would; the second layer is not asked
       // to read the few words of the answer as a request of their own.
       const askedItem = !part.write ? continuedItem({ context: run.context }, part) : null;
-      const picked = askedItem?.resume ? optionPickedIn(askedItem, quoteOf(part)) : null;
+      // AG21c (R26, gate AE-EVT-008): several sentences of one reply to the delete-plan question are one answer — read
+      // together, and only the first resumes the plan; the others are part of its card (never a second plan).
+      const planItem = askedItem && isPlanItem(askedItem) ? askedItem : null;
+      if (resumedPlans.size && !part.write && (planItem ? resumedPlans.has(planItem.ref) : planCompanion(part))) {
+        part.write = { intents: [], picks: {} };
+        coveredParts.add(part.localId);
+        emitTrace({ partId: part.localId, type: "propose.part_of_delete_plan_answer" });
+        work.push(part);
+        continue;
+      }
+      // The first layer marks one sentence as the answer; the sentences beside it that only say what to do with the plan's
+      // records ("笔记留着，只解除关联", "然后把活动删了") are the same answer.
+      const answerWords = planItem ? due.filter((other) => other === part || (!other.write && (continuedItem({ context: run.context }, other)?.ref === planItem.ref || planCompanion(other)))).map(quoteOf).join("。") : quoteOf(part);
+      const picked = askedItem?.resume ? optionPickedIn(askedItem, answerWords) : null;
+      if (planItem && picked) resumedPlans.add(planItem.ref);
       if (askedItem?.resume && picked) {
-        const picks: PartWrite["picks"] = picked.type === "field" ? { field: picked.id as "plannedDate" | "dueAt" } : picked.type === "contact" ? { contact: picked.id } : picked.type === "todo" ? { todo: picked.id } : picked.type === "event" ? { event: picked.id } : {};
+        const picks: PartWrite["picks"] = picked.type === "field" ? { field: picked.id as "plannedDate" | "dueAt" } : picked.type === "contact" ? { contact: picked.id } : picked.type === "todo" ? { todo: picked.id } : picked.type === "event" ? { event: picked.id } : picked.type === "event_plan" ? { eventPlan: picked.id } : {};
         part.write = { intents: [], picks, resume: askedItem.resume };
         emitTrace({ item: askedItem.ref, partId: part.localId, picked: { id: picked.id, type: picked.type }, type: "propose.answer_picks_option" });
         work.push(part);
         continue;
+      }
+      // AG21c (R26): an answer to the delete-plan question that names no option goes to the second layer with the asked
+      // event kept (its id), so it is never searched for by the words of the answer.
+      if (askedItem?.resume && askedItem.options?.length && askedItem.options.every((option) => option.type === "event_plan")) {
+        for (const ref of askedItem.resume.refs) if (ref.recordId?.startsWith("private_event:") && !part.refs.some((own) => own.recordId === ref.recordId)) part.refs.push({ entity: "event", quote: null, recordId: ref.recordId });
       }
       // AG13 gate run-03 (AE-EVT-007): a repetition the schedule cannot store ("隔周", "每月第二个周二") is said so by code,
       // with a few one-off dates offered instead, whatever capability the first layer gave (rule.create, schedule.*).
@@ -393,6 +424,10 @@ export function proposeNode(scope: NodeScope): GraphNode {
     const contactDuplicates = new Map<string, { name: string; candidates: DuplicateCandidate[] }>();
     const active = work.filter((part) => part.write && part.status === "unfinished" && part.reason === "proposing").sort((left, right) => left.quote[0] - right.quote[0]);
     for (const part of active) {
+      if (coveredParts.has(part.localId)) {
+        outcomes.set(part.localId, { kind: "covered" });
+        continue;
+      }
       const preset = run.presetIntents.get(part.localId);
       const resumed = !preset && part.write!.resume ? resumedResolution(ctx, part, part.write!.resume, part.write!.picks) : null;
       const outcome: WriteOutcome = preset ? { kind: "ready", ops: preset } : resumed ? await resolvePartIntents(resumed.ctx, resumed.part, resumed.write) : await resolvePartIntents(ctx, part, part.write!);
@@ -549,10 +584,21 @@ export function proposeNode(scope: NodeScope): GraphNode {
       previous = part;
     }
     arrangeEventItems(intents, owners);
+    let paused = false;
     const preview = deps.cards ? await deps.cards.freeze({ intents, locale: language, requestId: input.requestId, sessionId: input.sessionId }).catch((error: unknown) => {
+      // AG18 rollback: proposals are paused — no card, and the user is told so in plain words (CMP-005 R3).
+      if (isProposalsPausedError(error)) {
+        paused = true;
+        emitTrace({ parts: ready.map((part) => part.localId), type: "propose.paused" });
+        return null;
+      }
       emitTrace({ error: error instanceof Error ? error.message : String(error), type: "error", where: "propose.freeze" });
       return null;
     }) : null;
+    if (paused) {
+      for (const part of [...ready, ...covered]) settle(part, "unfinished", "proposals_paused", pausedWords(language).newChange);
+      return { budget, optionSets, parts, repairs };
+    }
     if (!preview || !preview.operations.length) {
       for (const part of ready) settle(part, "unfinished", deps.cards ? "target_gone" : "not_in_this_version", deps.cards ? WRITE_WORDS.gone(language, quoteOf(part)) : WRITE_WORDS.unsupported(language, quoteOf(part), ""));
       return { budget, optionSets, parts, repairs };

@@ -352,13 +352,26 @@ export function createWorldWriter(world: string, clock: string) {
     if (!taskId) throw new Error(`${fixtureId} was not seeded`);
     const current = await tasks.get({ actorId, taskId });
     if (!current) throw new Error(`${fixtureId} cannot be read`);
-    const patch: Record<string, string | null> = {};
+    const patch: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(set)) {
-      if (key === "id") continue;
+      if (key === "id" || key === "account") continue;
+      // AG18 (CMP todo-multi-links): the multi-value links, set through the to-do service as a current client sets them.
+      if (key === "relatedContactIds") {
+        const ids = ((value as string[] | undefined) ?? []).map((id) => idOf(id));
+        if (ids.some((id) => !id)) throw new Error(`a contact in ${fixtureId}.relatedContactIds was not seeded`);
+        patch[key] = ids;
+        continue;
+      }
+      if (key === "relatedEventRefs") {
+        const refs = eventRefsOf(value);
+        if (refs.length !== ((value as unknown[] | undefined) ?? []).length) throw new Error(`an event in ${fixtureId}.relatedEventRefs was not seeded`);
+        patch[key] = refs;
+        continue;
+      }
       if (!["title", "plannedDate", "dueAt"].includes(key)) throw new Error(`field ${key} cannot be set by a patch yet`);
       patch[key] = key === "dueAt" && typeof value === "string" ? iso(value) ?? value : (value as string | null);
     }
-    await tasks.update({ actorId, expectedUpdatedAt: current.updatedAt, idempotencyKey: `agent-eval:${world}:${fixtureId}:set:${JSON.stringify(patch)}`, now: current.updatedAt, patch, taskId });
+    await tasks.update({ actorId, expectedUpdatedAt: current.updatedAt, idempotencyKey: `agent-eval:${world}:${fixtureId}:set:${JSON.stringify(patch)}`, now: current.updatedAt, patch: patch as Parameters<typeof tasks.update>[0]["patch"], taskId });
   }
 
   async function writeSchedule(record: FixtureRecord): Promise<void> {

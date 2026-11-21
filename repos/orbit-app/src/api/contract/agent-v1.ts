@@ -402,7 +402,7 @@ export interface AgentCardDecisionResultContract {
   accepted: boolean;
   /** 同一个 clientDecisionId 重发：返回第一次的结果。 */
   replayed: boolean;
-  /** 被拒的原因：CARD_REVISION_CHANGED、CARD_CONTENT_CHANGED、CARD_EXPIRED、CARD_CLOSED、OPERATION_NOT_IN_REVIEW。 */
+  /** 被拒的原因：CARD_REVISION_CHANGED、CARD_CONTENT_CHANGED、CARD_EXPIRED、CARD_CLOSED、OPERATION_NOT_IN_REVIEW；AG18 加 PROPOSALS_PAUSED（回退开关 ORBIT_AGENT_V1_PROPOSALS=paused 时，什么都不执行）。旧接口（旧草稿卡、旧待办页的接受）在新入口打开后拒收时 error.context.reason 为 CONFIRM_ON_NEW_CLIENT。 */
   reason?: string | undefined;
   message: string;
   revision: number;

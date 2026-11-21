@@ -30,14 +30,14 @@ import { localDay } from "../../views/recent-interaction";
 import type { CanonicalEventRecord } from "../../../events/core/contract";
 import type { NoteInteractionContract } from "../../../../shared/contract/notes";
 import type { CardOperationIntent } from "../../../agent/runtime/card-operations";
-import { asksForRecommendation, asksWhoToFollowUp, isWholeQuote, liftedIn, realTopicOf } from "../../functions/basis";
+import { asksForRecommendation, asksWhoToFollowUp, isWholeQuote, liftedIn, realTopicOf, withoutOccasionWords } from "../../functions/basis";
 import { holdsRole, rolesIn, roleWordsIn } from "../../understand/role-words";
 import { asksWhatToPrepare, preparePart } from "./prepare";
 import { asksForNextStep, asksForReasons, asksWhichAreWorthIt, eventReason, fitLine, nextStepWords, themeLinks, themesOf } from "./reasons";
 import { onlyWindowWords, withoutWindowWords } from "../../understand/read-window";
 import { asksEventsToGoTo, meetsTime, pointsAtPast, writesADate, upcomingTopicOf, directionSaidIn, FOLLOW_UP_WORDS, groundedField, leavesItToAgent, naturalField, PICK_WORDS, sentenceTopicOf, timeClauseOf, timePreferenceIn, topicWordsOf, type RankDomain, type TimePreference } from "../../functions/basis";
 import { MEMORY_WORDS } from "../../domains/memory/copy";
-import { ensureTurnMemory, overruledByTurn, rankMemoryOf, timePreferenceOfEntry, topicOfEntry } from "../../domains/memory/turn";
+import { ensureTurnMemory, overruledByTurn, rankMemoryOf, rulesOnlyOf, timePreferenceOfEntry, topicOfEntry, type RankMemory } from "../../domains/memory/turn";
 import { memoryChipsOf } from "../../domains/memory/chips";
 import type { RecalledMemory } from "../../../agent/memory/recall";
 import { compare, dimensionsIn, type ComparedEvent } from "../../functions/compare";
@@ -510,6 +510,42 @@ const LEVEL_WORDS: Record<Language, Record<"insufficient" | "partial" | "match",
   zh: { insufficient: "记录里看不出和这个主题直接相关", match: "记录直接对得上", partial: "部分相关" },
 };
 
+/** AG21c (R48): whether a record's value and the topic share words (a CJK pair of characters, or a Latin word of 3+ letters). */
+export function sharesTopicWords(topic: string, value: string): boolean {
+  const flat = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const left = flat(topic);
+  const right = flat(value);
+  if (!left || !right) return false;
+  const latin = (text: string) => text.split(" ").filter((word) => /^[a-z]{3,}$/u.test(word));
+  const stem = (word: string) => word.replace(/(?:ing|ers|er|s)$/u, "");
+  if (latin(left).some((word) => latin(right).some((other) => stem(word) === stem(other) || (stem(word).length >= 4 && (other.startsWith(stem(word)) || word.startsWith(stem(other))))))) return true;
+  const cjk = (text: string) => text.replace(/[a-z0-9\s]+/gu, " ").split(" ").filter(Boolean);
+  const pairs = (word: string) => [...word].slice(0, -1).map((char, index) => char + [...word][index + 1]);
+  return cjk(left).some((word) => cjk(right).some((other) => (other.length >= 2 && word.includes(other)) || (word.length >= 2 && other.includes(word)) || pairs(word).some((pair) => other.includes(pair))));
+}
+
+/**
+ * AG21c (R48): the reason a candidate fits a topic, named from its own record by code — the field and its value
+ * ("行业：出版", "role: Kiln Designer", "テーマ：陶芸") — or null when no field of it shares the topic's words.
+ */
+export function fieldReasonOf(candidate: { kind: "contact"; industry: string | null; role: string | null; company: string | null; tags: readonly string[] } | { kind: "event"; title: string; topics: string | null }, topic: string, language: Language): string | null {
+  const label = (zh: string, ja: string, en: string, value: string) => (language === "en" ? `${en}: ${value}` : language === "ja" ? `${ja}：${value}` : `${zh}：${value}`);
+  if (candidate.kind === "event") {
+    const theme = (candidate.topics ?? "").split(/[、,，\n]/u).map((item) => item.trim()).filter((item) => item && !/[:：]/u.test(item)).find((item) => sharesTopicWords(topic, item));
+    if (theme) return label("主题", "テーマ", "topic", theme);
+    return sharesTopicWords(topic, candidate.title) ? label("标题", "タイトル", "title", candidate.title) : null;
+  }
+  if (candidate.industry) {
+    const names = [candidate.industry, ...(INDUSTRY_WORDS[candidate.industry] ?? [])];
+    if (names.some((name) => sharesTopicWords(topic, name))) return label("行业", "業種", "industry", language === "en" ? INDUSTRY_WORDS[candidate.industry]?.[0] ?? candidate.industry : candidate.industry);
+  }
+  if (candidate.role && sharesTopicWords(topic, candidate.role)) return label("职位", "役職", "role", candidate.role);
+  const tag = candidate.tags.find((item) => sharesTopicWords(topic, item));
+  if (tag) return label("标签", "タグ", "tag", tag);
+  if (candidate.company && sharesTopicWords(topic, candidate.company)) return label("机构", "会社", "company", candidate.company);
+  return null;
+}
+
 function contactLine(item: ContactCandidate, language: Language, level: string | null): string {
   const sep = language === "en" ? ", " : "，";
   const facts: string[] = [];
@@ -545,12 +581,13 @@ function todoLine(item: TodoCandidate, language: Language, timeZone: string, now
 const UNIT: Record<RankDomain, Record<Language, string>> = { contact: { en: "contacts", ja: "人", zh: "位" }, event: { en: "events", ja: "件", zh: "场" }, todo: { en: "to-dos", ja: "件", zh: "条" } };
 const NOUN: Record<RankDomain, Record<Language, string>> = { contact: { en: "contacts", ja: "連絡先", zh: "联系人" }, event: { en: "events", ja: "イベント", zh: "活动" }, todo: { en: "to-dos", ja: "タスク", zh: "待办" } };
 
+// AG21c (R52): said in the user's words — the topic check — never "判断" / "判定" / "the matching step" (internal parts).
 function unmatchedWhy(reason: string | null, language: Language): string {
   const words: Record<string, Record<Language, string>> = {
-    not_enabled: { en: "that step is not switched on yet", ja: "その判定はまだ使えない状態です", zh: "这一步的判断还没有启用" },
-    timeout: { en: "the matching step did not answer in time", ja: "判定が時間内に返ってきませんでした", zh: "判断没有及时回应" },
+    not_enabled: { en: "checking against a topic is not available yet", ja: "テーマとの照合はまだ使えません", zh: "按主题比对这次还用不了" },
+    timeout: { en: "checking against the topic took too long this time", ja: "テーマとの照合が今回は時間内に終わりませんでした", zh: "这次按主题比对没能及时完成" },
   };
-  return (words[reason ?? ""] ?? { en: "the matching step was not available", ja: "判定が使えませんでした", zh: "判断暂时不可用" })[language];
+  return (words[reason ?? ""] ?? { en: "checking against the topic was not available this time", ja: "今回はテーマとの照合ができませんでした", zh: "这次没能按主题比对" })[language];
 }
 
 function fieldWords(field: RankField | null, direction: "asc" | "desc", language: Language): string {
@@ -629,7 +666,7 @@ export function rankCountLine(language: Language, input: { listed: number; match
 }
 
 /** The AG08 answer of a ranking (scope, topic, coverage; the reason of each by the record's own fields). */
-function writeAnswer(input: { upcoming?: boolean; inScope?: number | null; apart?: string | null; domain: RankDomain; language: Language; basis: string | null; basisMemo: string | null; within: string | null; period: { from?: string; to?: string } | null; field: RankField | null; direction: "asc" | "desc"; result: RankResult<Candidate>; timeZone: string; now: string; lead: string | null; offerBasis?: boolean; reasons: Map<string, string> }): Written {
+function writeAnswer(input: { upcoming?: boolean; inScope?: number | null; apart?: string | null; domain: RankDomain; language: Language; basis: string | null; basisMemo: string | null; within: string | null; period: { from?: string; to?: string } | null; field: RankField | null; direction: "asc" | "desc"; result: RankResult<Candidate>; timeZone: string; now: string; lead: string | null; offerBasis?: boolean; reasons: Map<string, string>; noneFits?: { field: RankField; direction: "asc" | "desc" } | null }): Written {
   const { domain, language, result } = input;
   const unit = UNIT[domain][language];
   const noun = NOUN[domain][language];
@@ -658,6 +695,9 @@ function writeAnswer(input: { upcoming?: boolean; inScope?: number | null; apart
     // AG10: the lead said the basis; the coverage follows.
     countLine = rankCountLine(language, { inScope: input.inScope ?? null, judged: result.coverage.judged, listed: n, matching: result.matching, meeting: result.meeting, noun, period: Boolean(period), semantic: result.semantic, truncated: result.coverage.truncated, unit: { en: unit, ja: UNIT[domain].ja, zh: UNIT[domain].zh }, upcoming: Boolean(input.upcoming) });
     lines.push(countLine);
+  } else if (result.semantic && result.matched && input.noneFits) {
+    // AG21c (R48): nothing in any record relates to the topic — said so, and the list is the natural order, said as such.
+    lines.push(language === "en" ? `None of ${scope} has anything in the record about ${topic}; here are ${n} ${unit} by ${fieldWords(input.noneFits.field, input.noneFits.direction, language)} instead:` : language === "ja" ? `${scope}の記録には${topic}に関係するものがありません。代わりに${fieldWords(input.noneFits.field, input.noneFits.direction, language)}で${n}${unit}挙げます：` : `${scope}的记录里没有和${topic}相关的，下面改按${fieldWords(input.noneFits.field, input.noneFits.direction, language)}列出${n}${unit}：`);
   } else if (result.semantic && result.matched) {
     lines.push(language === "en" ? `From ${scope}, picked by ${topic}: ${n} ${unit}.` : language === "ja" ? `${scope}の中から、${topic}に合うものを${n}${unit}選びました。` : `在${scope}里，按${topic}这个主题挑了${n}${unit}：`);
     if (truncated > 0) {
@@ -691,7 +731,9 @@ function writeAnswer(input: { upcoming?: boolean; inScope?: number | null; apart
   const cards: AgentAnswerRecordContract[] = [];
   result.ordered.forEach((item, index) => {
     const candidate = item.candidate;
-    const level = result.matched ? item.level : null;
+    // AG21c (R48): a match level ("部分相关", "the record fits directly") is never a reason; the reason is what code found in
+    // the record itself (fieldReasonOf, in the reasons map).
+    const level = null;
     const reason = input.reasons.get(candidate.id) ?? null;
     const line = domain === "contact" ? `${contactLine(candidate as ContactCandidate, language, level)}${reason ? `${language === "en" ? " — " : "——"}${reason}` : ""}` : domain === "event" ? eventLine(candidate as EventCandidate, language, level, input.timeZone, reason) : todoLine(candidate as TodoCandidate, language, input.timeZone, input.now);
     lines.push(`${index + 1}. ${line}`);
@@ -831,7 +873,9 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const timeZone = state.timeZone || "Asia/Tokyo";
   const now = state.asOf || deps.now();
   const message = input.message;
-  const quote = message.slice(part.quote[0], part.quote[1]);
+  // AG21c (R47): a part that repeats or adjusts the last list ranks by that request's words (and this turn's adjustment).
+  const repeated = run.repeatedLists.get(part.localId) ?? null;
+  const quote = repeated ? repeated.words : message.slice(part.quote[0], part.quote[1]);
   const reply = task.kind === "rank_reply";
   // A reply to the basis question: the ranking asked about (its domain, dates, count), with this reply as the basis.
   // AG21a (decision 1): a number that is only part of the time window ("the next two weeks", "这两周") is no count — it never
@@ -869,7 +913,9 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   if (turnTime && domain === "event") time.push(turnTime);
   // The topic: a memo attached with @ gives its words; otherwise the basis words, when something is left of them.
   // A to-do ranking's "正式跟进" is a hard condition (formal follow-ups), not a topic.
-  let basis = basisSpan ? message.slice(basisSpan[0], basisSpan[1]).replace(domain === "todo" ? FORMAL_FOLLOW_UP : /$^/u, " ").trim() || null : null;
+  let basis = basisSpan ? message.slice(basisSpan[0], basisSpan[1]).replace(domain === "todo" ? FORMAL_FOLLOW_UP : /$^/u, " ").trim() || null : repeated?.basis ?? null;
+  // AG21c (R47): the request's own basis words, as asked, for the next "再给我看一次".
+  const askedBasis = basis;
   let basisMemo: string | null = null;
   const memoRef = run.references.find((reference) => isMemoType(reference.type));
   const accountScope = records.scope(input.actorId);
@@ -916,7 +962,8 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   if (basis && !basisMemo && (isWholeQuote(basis, original) || !realTopicOf(basis) || onlyWindowWords(basis) || !topicText(basis))) {
     emitTrace({ partId: part.localId, type: "functions.basis_not_a_topic", whole: isWholeQuote(basis, original) });
     basis = !onlyWindowWords(basis) && isWholeQuote(basis, original) && topicText(basis) ? topicText(basis) : null;
-  } else if (basis && !basisMemo && topicText(basis) !== realTopicOf(basis)) {
+  } else if (basis && !basisMemo && (topicText(basis) !== realTopicOf(basis) || withoutOccasionWords(basis) !== basis.replace(/\s+/gu, " ").trim())) {
+    // AG21c (R45): an occasion anchor or the request's verb in the basis ("陶艺展前想见") leaves only its subject (陶艺).
     emitTrace({ from: basis, partId: part.localId, type: "functions.basis_window_words_out" });
     basis = topicText(basis);
   }
@@ -978,7 +1025,9 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
   const ownStandard = Boolean(field || basisMemo || chosen || followUpAsk || (topic && !topicIsSentence) || (domain === "todo" && (FORMAL_FOLLOW_UP.test(words) || /(过期|逾期|期限切れ|期限を過ぎ|overdue)/iu.test(words))));
   const memoryApplies = recommendsOrPicks && !ownStandard;
   if (!memoryApplies) emitTrace({ ownStandard, partId: part.localId, recommendsOrPicks, type: "functions.memory_not_a_basis" });
-  const saved = memoryApplies ? rankMemoryOf(await ensureTurnMemory(scope, now, timeZone), domain, { now, partId: part.localId, timeZone, turnHasTopic: Boolean(topic) && !topicIsSentence, turnTime: domain === "event" ? turnTime : null }) : { overruled: [], time: [], topic: null, used: [] };
+  // AG21c (decision D8): with a standard of the user's own, saved rules still hold (a hard time condition, a topic ruled
+  // out); only saved preferences give way to it.
+  const saved: RankMemory = memoryApplies ? rankMemoryOf(await ensureTurnMemory(scope, now, timeZone), domain, { now, partId: part.localId, timeZone, turnHasTopic: Boolean(topic) && !topicIsSentence, turnTime: domain === "event" ? turnTime : null }) : recommendsOrPicks && ownStandard ? rulesOnlyOf(await ensureTurnMemory(scope, now, timeZone), domain, { now, partId: part.localId, timeZone }) : { overruled: [], time: [], topic: null, used: [] };
   // AG21a (R32c): a lift takes away only the saved rule it names, this turn (shown as 「只这一次」); every other saved entry
   // still applies. A time rule is the one whose excluded time is the lifted time; otherwise a rule that leaves out what the
   // lifted words name.
@@ -1096,7 +1145,10 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
       }
       for (const contact of list) {
         if (!contact.signals.length) continue;
-        reasons.set(contact.id, contact.signals.map((item) => signalWords(item, language, timeZone)).join(language === "en" ? "; " : "；"));
+        // AG21c (R51): a listed person's reason names only what the lead counts (past due, past the planned day); a to-do not
+        // yet due is no reason of theirs (it is said apart, for the people who have only such).
+        const counted = meetsHistory(contact) ? contact.signals.filter((item) => MEETS_HISTORY.has(item.kind)) : contact.signals;
+        reasons.set(contact.id, counted.map((item) => signalWords(item, language, timeZone)).join(language === "en" ? "; " : "；"));
         for (const item of contact.signals) run.readSources.set(item.todo.ref, { id: item.todo.ref.slice(5), kind: "todo", title: item.todo.title } as never);
       }
       upcoming = list.filter((contact) => contact.signals.length > 0 && !meetsHistory(contact)).sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
@@ -1163,6 +1215,19 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     };
     emitTrace({ hard: { formal, from: fromDay, overdue: overdueWords, to: toDay }, partId: part.localId, type: "functions.hard_conditions" });
   }
+  // AG21c (decision D8): a saved rule that leaves a topic out removes the candidates whose own words name it.
+  const ruledOutBy = new Map<string, number>();
+  if (saved.ruledOut?.length) {
+    const own = hard;
+    const textOf = (candidate: Candidate) => (domain === "event" ? `${(candidate as EventCandidate).title} ${(candidate as EventCandidate).topics ?? ""}` : domain === "contact" ? [(candidate as ContactCandidate).company, (candidate as ContactCandidate).role, (candidate as ContactCandidate).industry, ...(candidate as ContactCandidate).tags].filter(Boolean).join(" ") : (candidate as TodoCandidate).title).toLowerCase();
+    const ruleOf = (candidate: Candidate) => saved.ruledOut!.find((rule) => rule.words.some((word) => textOf(candidate).includes(word.toLowerCase())));
+    for (const candidate of candidates) {
+      const rule = own(candidate) ? ruleOf(candidate) : undefined;
+      if (rule) ruledOutBy.set(rule.entry.memoryId, (ruledOutBy.get(rule.entry.memoryId) ?? 0) + 1);
+    }
+    hard = (candidate) => own(candidate) && !ruleOf(candidate);
+    emitTrace({ partId: part.localId, removed: Object.fromEntries(ruledOutBy), type: "functions.saved_rule_ruled_out" });
+  }
   const natural = naturalField(domain);
   const valueOf = (which: RankField) => (candidate: Candidate) => {
     if (which === "startsAt") return (candidate as EventCandidate).startsAt ?? null;
@@ -1193,6 +1258,35 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     topicAsFilter,
   });
   if (result.rejected) emitTrace({ partId: part.localId, rejected: result.rejected, type: "functions.rejected", note: "judgment answers for candidates that were not asked (or repeated) are not taken" });
+  // AG21c (R48): a topic ranking's reason is the field of the record that matched, found by code; a level alone is none.
+  // When no record relates at all (every level "insufficient", no field shares the topic's words), the lead says so and the
+  // list is the natural order.
+  let noneFits: { field: RankField; direction: "asc" | "desc" } | null = null;
+  if (topic && !basisMemo && result.semantic && result.matched && (domain === "contact" || domain === "event")) {
+    let found = 0;
+    for (const item of result.ordered) {
+      const candidate = item.candidate;
+      const why = domain === "contact" ? fieldReasonOf({ kind: "contact", ...(candidate as ContactCandidate) }, topic, language) : fieldReasonOf({ kind: "event", title: (candidate as EventCandidate).title, topics: (candidate as EventCandidate).topics }, topic, language);
+      if (!why) continue;
+      found += 1;
+      const before = reasons.get(candidate.id);
+      reasons.set(candidate.id, before ? `${why}${language === "en" ? "; " : "；"}${before}` : why);
+    }
+    if (!found && result.ordered.every((item) => item.level === "insufficient" || item.level === null) && !topicAsFilter) {
+      noneFits = naturalField(domain);
+      const naturalValue = valueOf(noneFits.field);
+      const dir = noneFits.direction;
+      result.ordered.sort((left, right) => {
+        const a = naturalValue(left.candidate);
+        const b = naturalValue(right.candidate);
+        if (a === b) return left.candidate.id < right.candidate.id ? -1 : 1;
+        if (a === null) return 1;
+        if (b === null) return -1;
+        return (dir === "asc" ? a < b : a > b) ? -1 : 1;
+      });
+      emitTrace({ partId: part.localId, type: "functions.topic_none_fits" });
+    }
+  }
   // The lead: what the ranking used (code). AG08's shapes stay for a topic or a field alone.
   const steps: string[] = [];
   for (const preference of time.filter((item) => item.source === "turn")) steps.push(language === "en" ? `whether it is ${say.timeWords(preference, language)}` : language === "ja" ? `${say.timeWords(preference, language)}かどうか` : `是不是${say.timeWords(preference, language)}`);
@@ -1244,7 +1338,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     emitTrace({ partId: part.localId, people: result.ordered.length, type: "functions.next_steps" });
   }
   const apart = history && upcoming.length ? say.upcomingApartLine(language, upcoming.map((contact) => `${contact.name}${language === "en" ? " — " : "——"}${contact.signals.map((item) => signalWords(item, language, timeZone)).join(language === "en" ? "; " : "；")}`)) : null;
-  const written = writeAnswer({ upcoming: upcomingOnly, inScope: domain === "event" ? candidates.filter((candidate) => hard(candidate) && Boolean((candidate as EventCandidate).startsAt)).length : null, apart: apart ?? fitText, basis: topic && !basisMemo && !topicFromMemory ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, now, offerBasis: recommendsEvents && !lead, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
+  const written = writeAnswer({ upcoming: upcomingOnly, inScope: domain === "event" ? candidates.filter((candidate) => hard(candidate) && Boolean((candidate as EventCandidate).startsAt)).length : null, apart: apart ?? fitText, basis: topic && !basisMemo && !topicFromMemory ? topic : null, basisMemo, direction: orderDirection, domain, field: orderField, language, lead, noneFits, now, offerBasis: recommendsEvents && !lead, period: domain === "event" ? { ...(plan.from ? { from: plan.from } : {}), ...(plan.to ? { to: plan.to } : {}) } : null, reasons, result, timeZone, within: withinWords });
   // AG12 run-03 (AE-FN-003 R4): beside a ranking that says its basis, the ways of ordering it again as clickable entries (the
   // same options as the basis question; the clients show entries already). A click ranks again by it; it asks nothing.
   if (lead && !optionSets.some((set) => set.partId === part.localId && set.purpose === "ranking" && set.kind === "entry")) {
@@ -1258,7 +1352,7 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
       emitTrace({ clarificationId, options: keys.length, partId: part.localId, purpose: "ranking", type: "clarify.entry_offered" });
     }
   }
-  if (result.semantic && result.matched) run.topicMatched = true;
+  if (result.semantic && result.matched && !noneFits) run.topicMatched = true;
   // AG14 dev run 2: when none meets the preferred time, the count line says how many there are in the period, not how
   // many "match" — in the text and in the blocks alike (AG19: answer.text and answer.blocks change together).
   const coverage = written.countLine ?? say.coverageLine(language, result.ordered.length, result.matching, { en: UNIT[domain].en, ja: UNIT[domain].ja, zh: UNIT[domain].zh });
@@ -1282,6 +1376,8 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     }),
     time: saved.time.map((item) => ({ entry: item.entry, preference: item.preference, removed: item.preference.hard ? removedBy(item.preference) : 0 })),
     topics: saved.used.flatMap((entry) => { const topic = topicOf(entry); return topic ? [{ entry, topic }] : []; }),
+    unclear: saved.unclear,
+    ruledOut: (saved.ruledOut ?? []).map((rule) => ({ entry: rule.entry, removed: ruledOutBy.get(rule.entry.memoryId) ?? 0, words: rule.words })),
   }).filter((chip) => !run.memoryUse.some((item) => item.memoryId === chip.memoryId)));
   // AG14: what this ranking used, by reference, for the session ("为什么排第一", "这次看……").
   run.memory.ranking = {
@@ -1292,6 +1388,17 @@ async function rankPart(scope: NodeScope, state: AgentGraphState, part: GraphPar
     requestId: input.requestId,
     topic: Boolean(topic),
     turnBasis: Boolean(turnTime) || (Boolean(topic) && !topicFromMemory),
+    ...(plan.count ?? rank.count ? { count: plan.count ?? rank.count } : {}),
+    ...(plan.from ? { from: plan.from } : {}),
+    ...(plan.to ? { to: plan.to } : {}),
+  };
+  // AG21c (R47): the list request as asked; a repeat keeps the request it repeated (a "this time" adjustment is not kept).
+  run.lastList = {
+    at: now,
+    deliverable: part.plan.deliverable,
+    domain,
+    words: repeated ? run.sessionState?.lastList?.words ?? quote : reply ? `${original}，${replyWords}` : quote,
+    ...(repeated ? (run.sessionState?.lastList?.basis ? { basis: run.sessionState.lastList.basis } : {}) : askedBasis ? { basis: askedBasis } : {}),
     ...(plan.count ?? rank.count ? { count: plan.count ?? rank.count } : {}),
     ...(plan.from ? { from: plan.from } : {}),
     ...(plan.to ? { to: plan.to } : {}),
@@ -1328,7 +1435,7 @@ function preferenceMet(preference: TimePreference, startsAt: string, timeZone: s
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hourCycle: "h23", timeZone, weekday: "short" }).formatToParts(new Date(startsAt)).map((part) => [part.type, part.value]));
   const weekend = parts.weekday === "Sat" || parts.weekday === "Sun";
   const hour = Number(parts.hour);
-  const days = !preference.days || (preference.days === "weekend" ? weekend : !weekend);
+  const days = (!preference.days || (preference.days === "weekend" ? weekend : !weekend)) && (!preference.weekdays?.length || preference.weekdays.includes(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(parts.weekday)));
   const part = !preference.part || (preference.part === "morning" ? hour < 12 : preference.part === "afternoon" ? hour >= 12 && hour < 17 : hour >= 17);
   return preference.exclude ? !(days && part) : days && part;
 }
@@ -1623,7 +1730,10 @@ async function extractPart(scope: NodeScope, state: AgentGraphState, part: Graph
     // A person the memo shows in real contact is not listed again as "only mentioned" or "only planned" (the promise to send
     // them something is a follow-up, not a second contact).
     const inContact = new Set([...happened, ...doubtfulOnes].map((item) => item.contact?.id).filter(Boolean));
-    const repeated = (item: (typeof others)[number]) => Boolean(item.contact && inContact.has(item.contact.id) && (item.reason === "planned" || item.reason === "mentioned_only"));
+    // AG21c (R46): each person once, in the group that decided their row — one in real contact is never listed again as
+    // "between others" either.
+    const counted = new Set(happened.map((item) => item.contact?.id).filter(Boolean));
+    const repeated = (item: (typeof others)[number]) => Boolean(item.contact && (counted.has(item.contact.id) || (item.reason !== "unsure" && inContact.has(item.contact.id))));
     if (!task.write || !happened.length) {
       const listed = task.write ? happened : [...happened, ...doubtfulOnes];
       if (listed.length) {

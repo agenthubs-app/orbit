@@ -31,7 +31,8 @@ import { CARD_STATUS_LABEL, cardText, decisionRecord, intentsFor, seedCard, seed
 import { ClientViews, viewText } from "./client-views";
 import { clientProfileFor, ExternalAgent, type McpCallResult } from "./mcp-client";
 import { DEFAULT_CLOCK } from "./vocabulary";
-import { loadWorld, patchRecords, type FixtureRecord, type WorldFixture } from "./world";
+import { loadWorld, patchProblems, patchRecords, snapshotKey, worldWithPatches, type FixtureRecord, type WorldFixture } from "./world";
+import { casePatchDefinitions, patchSha256, replacingPatchOf } from "./patched-world";
 import { createWorldWriter, type WorldWriter } from "./seed";
 import { generatePatchContacts, type ContactsGeneration } from "./patch-generator";
 import { configuredRecordAccess } from "../../../features/agent-v1/domains/configured";
@@ -77,7 +78,6 @@ const STEP_SUPPORT_NOTE: Record<string, string> = {
   reconnect: "the real-time channel needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   resume_conversation: "resuming a saved conversation with its progress arrives in AG14",
   revoke: "revoking a push permission is simulated from AG16 (a read permission from AG05, a connection from AG17)",
-  rollback: "rollback arrives in AG18",
   stop: "stopping a running turn needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on, AG01)",
   sync: "App sync needs the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)",
 };
@@ -116,6 +116,8 @@ export interface RunnerContext {
   currentWorld: string | null;
   /** AG02 `--seed-cards`: put the card a case's card_ops describe into the ledger before its first message. */
   seedCards?: boolean;
+  /** AG18 (`--shadow`): every case runs in shadow mode (the old path answers; the new one only compares). */
+  shadowAll?: boolean;
   /** The cases of each area file (seedSpecFor looks for a case with the same first message). */
   areaCases?: Record<string, EvalCase[]>;
 }
@@ -140,7 +142,13 @@ async function applyPatches(testCase: EvalCase, world: WorldFixture, filePatches
   const extraIds: Record<string, string> = {};
   for (const name of testCase.patches ?? []) {
     const patch = world.patches[name] ?? filePatches[name];
-    if (!patch) continue;
+    if (!patch) {
+      unsupported.push({ reason: `patch ${name} is not in the world or the case file`, step: 0, word: "patch" });
+      continue;
+    }
+    // A key the harness does not know is not ignored: the case fails. `replace*` are in the restored snapshot already
+    // and `web_replay` is in the case's world (runCase); the rest is written here.
+    for (const problem of patchProblems(patch)) unsupported.push({ reason: `patch ${name}: ${problem}`, step: 0, word: "patch" });
     const records = patchRecords(patch, world.mainAccount);
     // AG08 (base-v1 contacts-2000): generated contacts, each with one recorded interaction, through the same write path.
     const generated = (patch.generate ?? {}) as Record<string, unknown>;
@@ -292,8 +300,15 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const dir = path.join(ctx.runDir, "cases", testCase.id);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "case.yaml"), yaml.dump(testCase, { lineWidth: 160 }));
-  const world = loadWorld(testCase.world);
-  const report = readSeedReport(environment, testCase.world);
+  // eval/README.md §7: a replacing patch's world (`replace`, `replace_B`, `replace_platform_events`) is its own snapshot
+  // <world>+<patch>; the checks see the world with those records in place, and every patch's web_replay added.
+  const baseWorld = loadWorld(testCase.world);
+  const casePatches = casePatchDefinitions(testCase.patches, baseWorld, filePatches);
+  const replacing = replacingPatchOf(casePatches);
+  const world = worldWithPatches(baseWorld, casePatches.map((item) => item.patch));
+  const worldKey = snapshotKey(testCase.world, replacing?.name ?? null);
+  const report = readSeedReport(environment, worldKey);
+  if (replacing && report.patch?.sha256 !== patchSha256(replacing.patch)) throw new Error(`snapshot ${worldKey} was not written from the current patch ${replacing.name}; re-run agent-eval:seed (with --sealed for a sealed patch)`);
   const clock = caseClock(testCase, world);
   const paths = evalPaths(environment.env);
   const unsupported: Observation["unsupported"] = [];
@@ -304,10 +319,11 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   // AG13 opening 4: nothing from an earlier case may still be running when the snapshot is restored.
   await drainServer(environment);
   restoreSnapshot(environment.database.url, report.snapshot.file);
-  if (!ctx.writer || ctx.currentWorld !== testCase.world) {
+  // A new writer per snapshot (not per world): its id map must not keep the ids of a snapshot that was replaced.
+  if (!ctx.writer || ctx.currentWorld !== worldKey) {
     // Do not close the previous writer: the configured stores and pools are cached per process and shared.
     ctx.writer = createWorldWriter(testCase.world, world.clock);
-    ctx.currentWorld = testCase.world;
+    ctx.currentWorld = worldKey;
     for (const [label, account] of Object.entries(report.accounts)) {
       if (label !== "HOST") await ctx.writer.ensureAccount({ displayName: loadWorld(testCase.world).accounts[label]?.name ?? label, email: account.email, label, userId: account.userId });
     }
@@ -325,15 +341,26 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   const accounts = Object.fromEntries(Object.entries(report.accounts).filter(([label]) => label !== "HOST").map(([label, account]) => [label, account.userId]));
   const accountByActor = new Map(Object.entries(accounts).map(([label, actor]) => [actor, label]));
   let account = accountLabelFor(testCase, world);
+  const firstAccount = account;
 
-  const settings = (testCase.settings ?? {}) as Record<string, unknown>;
+  const settings: Record<string, unknown> = { ...((testCase.settings ?? {}) as Record<string, unknown>), ...(ctx.shadowAll ? { shadow: "on" } : {}) };
   const replayNames = settings.web_replay === undefined ? [] : Array.isArray(settings.web_replay) ? settings.web_replay : [settings.web_replay];
-  const replay = replayNames.map((name) => ({ ...world.webReplay[String(name)], name }));
+  const replay = replayNames.filter((name) => {
+    if (world.webReplay[String(name)]) return true;
+    unsupported.push({ reason: `web replay ${name} is not in ${testCase.world} or the case's patches`, step: 0, word: "settings" });
+    return false;
+  }).map((name) => ({ ...world.webReplay[String(name)], name }));
   for (const [key, value] of Object.entries(settings)) {
     if (key === "web_replay") continue;
     // AG09: the user's own web switch for this case (features/agent-v1/web/settings.ts reads it under ORBIT_AGENT_EVAL=1).
     if (key === "web") {
       deploymentSettings.web = value;
+      continue;
+    }
+    // AG18 (CMP settings.shadow): the deployment runs in shadow mode for this case — the old path answers, the new one
+    // runs read-only after it (ORBIT_AGENT_V1_MODE=shadow, read through the product's evalSetting).
+    if (key === "shadow") {
+      if (value === "on") deploymentSettings.agent_v1_mode = "shadow";
       continue;
     }
     // AG14: a case that starts with a memory switch other than the default.
@@ -355,6 +382,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   let rulesAfter: NonNullable<Observation["rulesAfter"]> | undefined;
   const ruleEndLines: string[] = [];
   let mergedEvents: TraceEvent[] = [];
+  let shadowRecords: NonNullable<Observation["shadowRecords"]> | undefined;
   let error: string | undefined;
   const transcript: string[] = [`# ${testCase.id} ${testCase.title}`, "", `- 账号：${account}（${world.accounts[account]?.name ?? ""}） · 世界：${testCase.world} · 时钟：${clock}`, ""];
   const cardsSeen = new Map<string, { kind: CardObservation["kind"]; observedBy: Set<string> }>();
@@ -372,7 +400,11 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
   let fake: FakeDefect | null = null;
   const stepRecords: StepRecord[] = [];
   // AG01: with the new entry on, web and app send protocol 3 and follow the session channel.
-  const useEntry = environment.env.ORBIT_AGENT_V1_MODE === "on";
+  // AG18: in shadow mode the protocol-3 entry is closed; the clients send protocol 2 (they ask /protocol first).
+  const shadowMode = deploymentSettings.agent_v1_mode === "shadow";
+  const useEntry = environment.env.ORBIT_AGENT_V1_MODE === "on" && !shadowMode;
+  /** AG18: the protocol-2 messages sent in shadow mode (each gets one comparison record after its answer). */
+  let shadowSends = 0;
   let entry: EntryHarness | null = null;
   let entryRows: EntryRequestRow[] = [];
   const onlineAtEnd = new Set<string>();
@@ -394,7 +426,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     }, null, 2));
 
     await serverControl(environment, "context", { account, caseId: testCase.id, clock, replay, runId: ctx.runId, settings: deploymentSettings });
-    if (Object.keys(deploymentSettings).length) transcript.push(`*（部署侧设置：${Object.entries(deploymentSettings).map(([key, value]) => (key === "model_calls_limit" ? `单轮主模型调用上限压到 ${value} 次` : key === "web" ? `这个账号自己的联网开关：${value === "off" ? "关" : "开"}` : `${key}=${JSON.stringify(value)}`)).join("；")}）*`, "");
+    if (Object.keys(deploymentSettings).length) transcript.push(`*（部署侧设置：${Object.entries(deploymentSettings).map(([key, value]) => (key === "model_calls_limit" ? `单轮主模型调用上限压到 ${value} 次` : key === "web" ? `这个账号自己的联网开关：${value === "off" ? "关" : "开"}` : key === "agent_v1_mode" ? "影子运行打开（ORBIT_AGENT_V1_MODE=shadow）：用户拿到旧通路的回答，新通路在应答之后只读地跑一遍、只留比较记录" : `${key}=${JSON.stringify(value)}`)).join("；")}）*`, "");
     const traceOffset = traceFileSize(paths.traceDir);
     const secret = environment.env.AUTH_SECRET;
     const cookies = new Map<string, string>();
@@ -511,7 +543,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       const decision = data.decision ?? {};
       noteCard(data.card, clientName);
       log.push(decisionRecord({ body, cardId, client: clientName, result }));
-      const outcome = decision.replayed ? `重复提交，返回第一次的结果（${decision.outcome}${decision.reason ? `，${decision.reason}` : ""}）` : decision.outcome === "accepted" ? "已接受" : decision.outcome === "already_decided" ? "没有新的决定：这张卡已经处理过了" : `拒绝（${decision.reason ?? result.body?.error?.code ?? result.status}）`;
+      const outcome = decision.replayed ? `重复提交，返回第一次的结果（${decision.outcome}${decision.reason ? `，${decision.reason}` : ""}）` : decision.outcome === "accepted" ? "已接受" : decision.outcome === "already_decided" ? "没有新的决定" : `拒绝（${decision.reason ?? result.body?.error?.code ?? result.status}）`;
       transcript.push(`- 服务端（HTTP ${result.status}）：${outcome}。${decision.message ?? result.body?.error?.message ?? ""}`, ...cardText(data.card), "");
     };
     /** Cards the entry delivered in result documents (in the order the server received them). */
@@ -602,6 +634,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         sessionId: conversation.sessionId,
       };
       sentBodies.set(index, body);
+      if (shadowMode && !resendOf) shadowSends += 1;
       let result = await client.request("POST", "/api/ai/conversations", body, { purpose: "send" });
       const deadline = Date.now() + 180_000;
       while (result.status === 202 && Date.now() < deadline) {
@@ -649,6 +682,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         ...((data.actionIds ?? []) as string[]).map((id) => `- 卡片（动作账本）${id}`),
         ...(data.entityDraft ? [`- 卡片（草稿）${data.entityDraft.draftId ?? ""}：${JSON.stringify(data.entityDraft.fields ?? data.entityDraft).slice(0, 300)}`] : []),
         ...(data.taskInteraction ? [`- 待办交互：${data.taskInteraction.state} ${data.taskInteraction.title ?? ""}`] : []),
+        // CONVENTIONS §8 (AG01 finding, closed in AG18): what the old reply carried besides its text, as the old client got it.
+        ...(Array.isArray(data.artifacts) && data.artifacts.length ? [`- 回复里附带的结果（artifacts，旧版客户端按它显示的记录）：${(data.artifacts as Record<string, unknown>[]).map((artifact) => `${String(artifact.kind ?? artifact.type ?? "artifact")}${artifact.title ? `「${String(artifact.title)}」` : ""}（${[...productIdsIn([artifact], known)].map((id) => fixtureIdOf(id) ?? id).join("、") || "无记录编号"}）`).join("；")}`] : []),
       ];
       transcript.push(`**Agent**${result.status !== 200 ? `（HTTP ${result.status}）` : ""}：${assistantText || "（无文字回应）"}`, ...cardLines, "");
     };
@@ -788,7 +823,7 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           // scheduler_tick (SCH.yaml notes: "故障只作用于第一次派发") and ends after it.
           if (step.fault?.where === "notify.inbox") inboxFaultArmed = true;
           // AG16: the push service is a fault point too (push): the simulated service refuses, or does not answer, the next send.
-          if (!["model", "understand", "judgment", "executor", "notify.inbox", "push", "memo.read", "todo.read", "contact.read", "schedule.read", "event.read", ...EXECUTOR_FAULT_POINTS].includes(step.fault?.where)) unsupported.push({ reason: `fault point "${step.fault?.where}" has no consumer in the current product`, step: index, word });
+          if (!["model", "understand", "judgment", "executor", "notify.inbox", "push", "memo.read", "todo.read", "contact.read", "schedule.read", "event.read", "shadow", ...EXECUTOR_FAULT_POINTS].includes(step.fault?.where)) unsupported.push({ reason: `fault point "${step.fault?.where}" has no consumer in the current product`, step: index, word });
           if (EXECUTOR_FAULT_POINTS.includes(step.fault?.where) || step.fault?.where === "executor") executorFaultArmed = String(step.fault?.where);
           await serverControl(environment, "fault", step.fault);
           return;
@@ -859,6 +894,8 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
         case "switch_account": {
           // AG14 UI run: the clients get the answer of the conversation being left before it is left (entry-client sessionDelivered).
           if (entry && !(await entry.settleSession())) log.push({ note: "a client had not received every answer of the conversation before it was left", step: index, type: "runner.note" });
+          // AG18: the shadow passes of this account's messages end before another account signs in.
+          if (shadowMode) await waitShadowRecords(db, shadowSends, index, log);
           const label = String(step.switch_account);
           if (!accounts[label]) {
             unsupported.push({ reason: `account ${label} does not exist in ${testCase.world}`, step: index, word });
@@ -1100,8 +1137,20 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
           const patch = spec.full_object ? { ...Object.fromEntries(LEGACY_FIELDS.filter((field) => task[field] !== undefined).map((field) => [field, task[field]])), ...set } : set;
           const result = await device.request("PATCH", `/api/tasks/${encodeURIComponent(productId)}`, { action: "update", expectedUpdatedAt: task.updatedAt, idempotencyKey: `agent-eval:legacy:${testCase.id}:${index}`, patch }, { headers: { [OTHER_DEVICE_HEADER]: "other" }, purpose: "old client: edit the to-do with its old fields only" });
           externalSets.set(`tasks\u0000${productId}`, { ...(externalSets.get(`tasks\u0000${productId}`) ?? {}), ...set });
-          transcript.push(`*（旧版客户端经旧接口改了 ${spec.target}：${JSON.stringify(spec.set ?? {})}${spec.full_object ? "（整条提交它认得的字段）" : "（只提交这几个字段）"}，HTTP ${result.status}）*`, "");
+          // AG18 (CMP-002 R1): what the old client reads back in the response — its single fields, as fixture ids.
+          const answered = (result.body?.data?.task ?? {}) as Record<string, unknown>;
+          const legacyView = LEGACY_FIELDS.filter((field) => answered[field] !== undefined).map((field) => `${field}=${typeof answered[field] === "string" ? fixtureIdOf(String(answered[field])) ?? String(answered[field]) : JSON.stringify(answered[field])}`).join("，");
+          transcript.push(`*（旧版客户端经旧接口改了 ${spec.target}：${JSON.stringify(spec.set ?? {})}${spec.full_object ? `（整条提交它认得的字段：${Object.keys(patch).join("、")}）` : "（只提交这几个字段）"}，HTTP ${result.status}；响应里旧端认得的字段：${legacyView || "（无）"}）*`, "");
           if (result.status !== 200) unsupported.push({ reason: `legacy update of ${spec.target} failed (HTTP ${result.status})`, step: index, word });
+          return;
+        }
+        case "rollback": {
+          // AG18 (CMP 约定三): the operator's rollback switch of the runbook (ROLLOUT.md): ORBIT_AGENT_V1_PROPOSALS=paused,
+          // set on this case's server the way the deployment sets it; not a message, not a click.
+          if (entry && !(await entry.waitIdle())) log.push({ note: "the earlier turns did not end before the rollback", step: index, type: "runner.note" });
+          await serverControl(environment, "settings", { settings: { agent_v1_proposals: "paused" } });
+          log.push({ proposals: "paused", step: index, type: "turn.rollback" });
+          transcript.push("*（运维按上线手册做了一次回退：ORBIT_AGENT_V1_PROPOSALS=paused。不再接新的修改提议，账本里还没执行的动作停住；已完成的不动）*", "");
           return;
         }
         case "local_pending_edit": {
@@ -1341,6 +1390,27 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
       for (const channel of entry.channels.values()) if (channel.online) onlineAtEnd.add(channel.name);
       await refreshDeliveredCards();
       await entry.close();
+    }
+    // AG18 (shadow_report): every comparison record, read from the database with its stored owner.
+    if (shadowMode) {
+      await waitShadowRecords(db, shadowSends, -1, log);
+      const shadowRows = (await db.query(`select user_id, payload from orbit_records where collection_name = 'agentV1ShadowComparisons' order by created_at, record_id`)).rows as { user_id: string | null; payload: Record<string, any> }[];
+      // The whole records, with the stored owner as an account label, for the per-account report across cases.
+      fs.writeFileSync(path.join(dir, "shadow-records.json"), JSON.stringify(shadowRows.map((row) => ({ ownerAccount: row.user_id ? accountByActor.get(row.user_id) ?? null : null, record: row.payload, world: testCase.world })), null, 2));
+      shadowRecords = shadowRows.map((row: { user_id: string | null; payload: Record<string, any> }) => ({
+        divergences: (row.payload.divergences ?? []) as { field: string; old: unknown; new: unknown }[],
+        newError: row.payload.new?.error ?? null,
+        newText: String(row.payload.new?.text ?? ""),
+        oldText: String(row.payload.old?.text ?? ""),
+        ownerAccount: row.user_id ? accountByActor.get(row.user_id) ?? null : null,
+        recordAccount: accountByActor.get(String(row.payload.actorId)) ?? null,
+        requestId: String(row.payload.requestId ?? ""),
+      }));
+      transcript.push("## 影子运行的比较记录（数据库里按账号存的，用户看不到）", "");
+      for (const record of shadowRecords) {
+        transcript.push(`### 账号 ${record.ownerAccount ?? "?"}（记录属于 ${record.recordAccount ?? "?"}）委托 ${record.requestId}`, `- 旧通路（用户看到的）：${record.oldText.replace(/\s+/gu, " ").slice(0, 400) || "（无）"}`, `- 新通路（只读，没有交付）：${record.newError ? `出错：${record.newError}` : record.newText.replace(/\s+/gu, " ").slice(0, 400) || "（无）"}`, `- 分歧：${record.divergences.length ? record.divergences.map((item) => `${item.field}（旧 ${JSON.stringify(item.old)} / 新 ${JSON.stringify(item.new)}）`).join("；") : "无（措辞不同不算）"}`, "");
+      }
+      if (!shadowRecords.length) transcript.push("- 一条也没有", "");
     }
     // AG02: each ledger card as it ends, as the web client would show it (the single-card GET).
     const ledgerCards = [...cardsSeen.entries()].filter(([, seen]) => seen.kind === "ledger_action").map(([cardId]) => cardId);
@@ -1627,9 +1697,13 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     requests,
     unsupported,
     ...(views.records.length ? { clientViews: views.records } : {}),
+    ...(shadowRecords ? { shadowRecords } : {}),
+    // AG18: who was signed in from which seq on (no_cross_account judges each read and answer by it).
+    accountTimeline: [{ account: firstAccount, fromSeq: 0 }, ...events.filter((event) => event.type === "turn.switch_account" && event.origin === "runner").map((event) => ({ account: String(event.account), fromSeq: Number(event.seq) }))],
   };
   const otherAccountRecords = loadWorldRecordsForIsolation(world, idMap, observation.account, patchMemory);
-  const context: CheckContext = { otherAccountRecords, rawTrace, secrets };
+  const signedIn = [...new Set(observation.accountTimeline!.map((item) => item.account))];
+  const context: CheckContext = { otherAccountRecords, ...(signedIn.length > 1 ? { otherAccountRecordsByAccount: Object.fromEntries(signedIn.map((label) => [label, loadWorldRecordsForIsolation(world, idMap, label, patchMemory)])) } : {}), rawTrace, secrets };
   const checks = runHardChecks(testCase as never, observation, context);
   fs.writeFileSync(path.join(dir, "hard-checks.json"), JSON.stringify({ caseId: testCase.id, checks, hardPass: hardChecksPass(checks), unsupported }, null, 2));
   if (cardEndLines.length) transcript.push("", ...cardEndLines);
@@ -1646,6 +1720,21 @@ export async function runCase(testCase: EvalCase, filePatches: Record<string, an
     // AG16: every reminder goes to the local push simulator, so a case that sent one (or took a permission away) contains simulation.
     || events.some((event) => event.type === "notify.push") || testCase.steps.some((step) => Boolean((step as { revoke?: { push?: string } }).revoke?.push));
   return { account, area, checks, caseId: testCase.id, dir, durationMs: Date.now() - started, error, events, fake: fake !== null, hardPass: hardChecksPass(checks), observation, simulated, unsupported };
+}
+
+/** AG18: wait (up to 90 s) until the shadow passes of the messages sent so far have each left their comparison record. */
+async function waitShadowRecords(db: pg.Client, expected: number, step: number, log: CaseLog): Promise<void> {
+  if (expected <= 0) return;
+  const deadline = Date.now() + 90_000;
+  for (;;) {
+    const found = Number((await db.query(`select count(*)::int as n from orbit_records where collection_name = 'agentV1ShadowComparisons'`)).rows[0]?.n ?? 0);
+    if (found >= expected) return;
+    if (Date.now() > deadline) {
+      log.push({ expected, found, note: "shadow comparison records still missing after 90 s", step, type: "runner.note" });
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
 }
 
 /**

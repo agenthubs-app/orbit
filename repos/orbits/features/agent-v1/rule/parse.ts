@@ -93,6 +93,14 @@ export function untilSaidIn(words: string, today: string): string | null {
   if (match) return endOf(Number(match[1]));
   if (/(这个月底|本月底|月底|今月末|今月いっぱい|end of (?:the|this) month)/u.test(text)) return endOf(month);
   if (/(年底|今年底|年末|end of (?:the|this) year)/u.test(text)) return `${year}-12-31`;
+  // AG21c (decision D4): "for a week", "到下周", "1週間", "until next week" end at the end of the seventh calendar day after
+  // today in the user's time zone (the last valid day, inclusive) — never at the same minute seven days later.
+  // A week that names what is looked at ("未来一周的活动", "1週間以内", "events in the next 7 days") is the scope, not this.
+  if (/((?<![未来接下这本每近])(?:一周|一个星期|一星期|一个礼拜|七天|7\s*天)(?![的内以之没]|\s*(?:以前|之前|前))|(?:到|至|直到|跑到)\s*下(?:周|个星期|星期|礼拜)(?:为止)?(?![的])|下(?:周|个星期)为止|(?:一週間|1\s*週間|7\s*日間)(?![のい以内])|来週まで|\bfor (?:a|one|1) week\b|\bfor (?:7|seven) days\b|\b(?:until|till|through) next week\b)/u.test(text)) {
+    const [y, m, d] = today.split("-").map(Number);
+    const end = new Date(Date.UTC(y, m - 1, d + 7));
+    return `${end.getUTCFullYear()}-${pad(end.getUTCMonth() + 1)}-${pad(end.getUTCDate())}`;
+  }
   match = text.match(/\b(?:through|until|till|thru|up to)\s+(?:the\s+)?(?:end of\s+)?(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?(?:\s+(\d{1,2})(?:st|nd|rd|th)?)?/u)
     ?? text.match(/\bend of\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/u);
   if (match) {

@@ -1,5 +1,9 @@
 /**
- * npm run agent-eval:run -- --gate AGnn | --all | --case AE-H-006[,AE-…] [--label <text>] [--seed-cards] [--sealed] [--workers N]
+ * npm run agent-eval:run -- --gate AGnn | --all | --case AE-H-006[,AE-…] [--label <text>] [--seed-cards] [--sealed] [--workers N] [--shadow]
+ *
+ * --shadow (AG18-2 evidence, not a gate): every selected case runs in shadow mode (as with `settings: { shadow: on }`):
+ * the old path answers, the new one runs read-only after it; each case folder gets shadow-records.json. One after
+ * another only (no --workers).
  *
  * Needs the eval server (npm run agent-eval:env). Writes ~/orbit-sprint-evidence/agent-eval/runs/<run id>/:
  * manifest.json, env.json, summary.json, report.md, costs.json, bundle.sha256 and cases/<id>/… (README §4).
@@ -25,7 +29,8 @@ import { costsProblems, crashedOutcome, settleRunLevelChecks, summarizeCase, wri
 import { gitInfo, runCase, type CaseOutcome, type RunnerContext } from "../../tests/agent-eval/lib/runner";
 import { runSelfCheck } from "../../tests/agent-eval/lib/selfcheck";
 import { serverControl } from "../../tests/agent-eval/lib/server";
-import { loadWorld } from "../../tests/agent-eval/lib/world";
+import { casePatchDefinitions, replacingPatchOf } from "../../tests/agent-eval/lib/patched-world";
+import { loadWorld, snapshotKey } from "../../tests/agent-eval/lib/world";
 import { fileSha256, sha256, stableStringify } from "../../tests/agent-eval/lib/yaml";
 import { renderRunReport } from "../../tests/agent-eval/lib/report-md";
 
@@ -52,6 +57,7 @@ async function main(argv: readonly string[]): Promise<void> {
   // AG02 (SPRINTS.md「AG02 用预置的卡」): seed the card a case's card_ops describe before its first message.
   const seedCards = argv.includes("--seed-cards");
   const sealed = argv.includes("--sealed");
+  const shadowAll = argv.includes("--shadow");
   const gate = flag(argv, "--gate");
   const caseIds = flag(argv, "--case")?.split(",").map((id) => id.trim()).filter(Boolean);
   const areaFiles = loadAreaFiles({ sealed });
@@ -69,6 +75,7 @@ async function main(argv: readonly string[]): Promise<void> {
   }
   const workerCount = Number(flag(argv, "--workers") ?? 1);
   if (!Number.isInteger(workerCount) || workerCount < 1 || workerCount > MAX_EVAL_WORKERS) throw new Error(`--workers takes 1–${MAX_EVAL_WORKERS}.`);
+  if (shadowAll && workerCount > 1) throw new Error("--shadow runs one case after another (no --workers).");
   let workers: { environments: Awaited<ReturnType<typeof prepareWorkers>>["environments"]; servers: WorkerServer[]; pool: WorkerPool | null } | null = null;
   if (workerCount > 1) {
     // harness/eval-parallel-workers: worker k ≥ 2's database and server are removed on every way out.
@@ -106,6 +113,8 @@ async function main(argv: readonly string[]): Promise<void> {
   const startedAt = new Date().toISOString();
   const fileOf = new Map(areaFiles.flatMap((file) => file.cases.map((testCase) => [testCase.id, file] as const)));
   const worlds = [...new Set(selection.cases.map((testCase) => testCase.world))];
+  // The snapshots the cases restore (a replacing patch has its own, <world>+<patch>); the self-check covers each.
+  const snapshotKeys = [...new Set(selection.cases.map((testCase) => snapshotKey(testCase.world, replacingPatchOf(casePatchDefinitions(testCase.patches, loadWorld(testCase.world), fileOf.get(testCase.id)?.new_patches ?? {}))?.name ?? null)))];
   const manifest = {
     branch: git.branch,
     caseFiles: Object.fromEntries(areaFiles.filter((file) => selection.cases.some((testCase) => fileOf.get(testCase.id) === file)).map((file) => [path.basename(file.file), fileSha256(file.file)])),
@@ -126,6 +135,7 @@ async function main(argv: readonly string[]): Promise<void> {
     promptVersions: "current product prompts (no versioned prompt set before AG03)",
     runId,
     seedCards,
+    ...(shadowAll ? { shadowAll: true } : {}),
     selection: { all: argv.includes("--all"), caseIds: caseIds ?? null, sealed },
     server: { build, buildId: state.buildId, builtFromHead: build?.commit === tree.head && !build?.dirty, pid: state.pid, port: state.port },
     soloExcluded: selection.solo.map((testCase) => testCase.id),
@@ -140,7 +150,7 @@ async function main(argv: readonly string[]): Promise<void> {
   let selfCheck: Awaited<ReturnType<typeof runSelfCheck>>;
   if (workers) {
     // Each worker self-checks its own database and server (README §10); env.json is worker 1's, with the others under `workers`.
-    workers.pool = new WorkerPool(workers.environments, { runDir, runId, sealed, seedCards, worlds });
+    workers.pool = new WorkerPool(workers.environments, { runDir, runId, sealed, seedCards, worlds: snapshotKeys });
     const ready = await workers.pool.start();
     const first = ready.get(1)!.selfCheck;
     const others = [...ready.entries()].filter(([worker]) => worker !== 1);
@@ -148,7 +158,7 @@ async function main(argv: readonly string[]): Promise<void> {
     selfCheck = { ...first, ok: first.ok && failedOthers.length === 0, checks: [...first.checks, ...others.flatMap(([worker, item]) => item.selfCheck.checks.map((check) => ({ ...check, name: `worker ${worker}: ${check.name}` })))] };
     fs.writeFileSync(path.join(runDir, "env.json"), JSON.stringify({ ...selfCheck, checks: first.checks, ok: selfCheck.ok, workers: Object.fromEntries(others.map(([worker, item]) => [worker, item.selfCheck])) }, null, 2));
   } else {
-    selfCheck = await runSelfCheck(environment, worlds);
+    selfCheck = await runSelfCheck(environment, snapshotKeys);
     fs.writeFileSync(path.join(runDir, "env.json"), JSON.stringify(selfCheck, null, 2));
   }
   if (!selfCheck.ok) {
@@ -159,7 +169,7 @@ async function main(argv: readonly string[]): Promise<void> {
   }
 
   const balanceBefore = await readDeepSeekBalance(environment.env.DEEPSEEK_API_KEY);
-  const ctx: RunnerContext = { areaCases: Object.fromEntries(areaFiles.map((file) => [file.area, file.cases as EvalCase[]])), currentWorld: null, environment, runDir, runId, seedCards, writer: null };
+  const ctx: RunnerContext = { areaCases: Object.fromEntries(areaFiles.map((file) => [file.area, file.cases as EvalCase[]])), currentWorld: null, environment, runDir, runId, seedCards, ...(shadowAll ? { shadowAll: true } : {}), writer: null };
   const outcomes: CaseOutcome[] = [];
   let pooled: PoolResult | null = null;
   if (workers?.pool) {

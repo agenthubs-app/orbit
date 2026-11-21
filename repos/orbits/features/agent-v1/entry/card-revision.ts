@@ -412,7 +412,7 @@ export async function reviseCardByWords(deps: CardRevisionDeps): Promise<AgentEn
   const action = await deps.runtime.getAction(card.actionId);
   if (!action) return null;
   const preview = agentCardPreview(action, await deps.runtime.getRun(action.runId), deps.now());
-  if (deps.store) await refreshCardInDocument({ actorId: deps.actorId, now: deps.now(), previous: before, store: deps.store, updated: preview }).catch(() => false);
+  if (deps.store) await refreshCardInDocument({ actorId: deps.actorId, now: deps.now(), previous: before, store: deps.store, updated: preview, keepText: true }).catch(() => false);
   const words = WORDS[locale];
   const lead = plan.kind === "drop" ? words.dropped(plan.item.name, before.title, preview.title) : plan.lead === "scope" && plan.scope ? words.scope(plan.item.name, plan.scope.before, plan.scope.after) : words.changed(plan.item.name, before.title, preview.title);
   const cardLine = cardLineOf(preview, locale);

@@ -171,7 +171,8 @@ export const REQUIRED_CASE_FIELDS = [
   "hard",
   "rubric",
 ] as const;
-export const OPTIONAL_CASE_FIELDS = ["notes", "patches", "clock", "settings", "account", "conversation", "gate", "interference"] as const;
+// `category`: the sealed set's grouping (1–6); not read by the runner.
+export const OPTIONAL_CASE_FIELDS = ["notes", "patches", "clock", "settings", "account", "conversation", "gate", "interference", "category"] as const;
 export const SPLITS = ["dev", "val", "sealed"] as const;
 export const LOCALES = ["zh", "ja", "en"] as const;
 export const ACCOUNTS = ["small", "regular", "large"] as const;

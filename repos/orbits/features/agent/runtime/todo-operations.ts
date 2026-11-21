@@ -163,7 +163,10 @@ export function todoOperationText(op: Pick<AgentActionOperationPayload, "capabil
     const details = TODO_FIELDS.filter((field) => field !== "title" && after[field])
       .map((field) => (field === "dueAt" && shown.dueDayOnly && typeof after.dueAt === "string" ? `${FROM_MEMO[locale].dueBy} ${dayText(localDay(after.dueAt, timeZone), locale)}` : `${words.field[field]} ${valueText(field, after[field], locale, timeZone)}`))
       .join(locale === "en" ? ", " : "，");
-    return words.create(String(after.title ?? ""), details);
+    // AG21c (R54): the text line names everything the card row names — the people the to-do is linked to too.
+    const related = Array.isArray(after.relatedContactIds) ? (after.relatedContactIds as string[]).map((id) => shown.names?.[id] ?? "").filter(Boolean) : [];
+    const people = related.length ? `${FROM_MEMO[locale].about} ${related.join(FROM_MEMO[locale].join)}` : "";
+    return words.create(String(after.title ?? ""), [details, people].filter(Boolean).join(locale === "en" ? ", " : "，"));
   }
   const before = (op.before ?? {}) as Record<string, unknown>;
   const title = String((op.shown as Record<string, unknown> | undefined)?.title ?? "");

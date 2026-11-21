@@ -12,6 +12,7 @@ import type {
 import type { AgentExecutorRegistry } from "./executor-registry";
 import { stablePayloadHash } from "./hash";
 import { emitTrace, takeEvalFault } from "../../agent-v1/observability/trace";
+import { AgentProposalsPausedError, agentProposalsPaused } from "../../agent-v1/rollout/rollback";
 import { resolveLocalCreateRefs } from "../../agent-v1/domains/private-event/ops";
 import type { AgentRuntimeRepository } from "./repository";
 import {
@@ -1036,6 +1037,11 @@ export function createAgentRuntimeService({
     async freezeCard(input) {
       const existing = await repository.getAction(input.actionId);
       if (existing) return { action: existing, created: false, missingTargets: [] };
+      // AG18 rollback (ORBIT_AGENT_V1_PROPOSALS=paused): no new card from any entry (chat, scheduled tasks, MCP).
+      if (agentProposalsPaused()) {
+        emitTrace({ actionId: input.actionId, origin: input.origin.kind, type: "rollout.proposal_refused" });
+        throw new AgentProposalsPausedError();
+      }
       const createdAt = input.createdAt ?? now();
       const { operations, missing } = await buildCardOperations(cardReader, { actionId: input.actionId, intents: input.intents, locale: input.locale, revision: 1 });
       if (!operations.length) return { action: null, created: false, missingTargets: missing };
@@ -1070,12 +1076,18 @@ export function createAgentRuntimeService({
       return { action, created: true, missingTargets: missing };
     },
     decideAction: (input) => decideAction(cardDependencies(), input),
-    regenerateCard: (input) => regenerateCard(cardDependencies(), input),
+    // AG18 rollback: a paused deployment makes no new revision of a card either (no new content to approve).
+    regenerateCard: (input) => (agentProposalsPaused() ? Promise.reject(new AgentProposalsPausedError()) : regenerateCard(cardDependencies(), input)),
     expireCard: (input) => expireCard(cardDependencies(), input),
-    editCard: (input) => editCard(cardDependencies(), input),
-    recheckCard: (input) => recheckCard(cardDependencies(), input),
-    reviseCard: (input) => reviseCard(cardDependencies(), input),
+    editCard: (input) => (agentProposalsPaused() ? Promise.reject(new AgentProposalsPausedError()) : editCard(cardDependencies(), input)),
+    recheckCard: (input) => (agentProposalsPaused() ? Promise.reject(new AgentProposalsPausedError()) : recheckCard(cardDependencies(), input)),
+    reviseCard: (input) => (agentProposalsPaused() ? Promise.reject(new AgentProposalsPausedError()) : reviseCard(cardDependencies(), input)),
     async processOutbox(input = {}) {
+      // AG18 rollback: the queue claims nothing while paused; approved items wait where they are (same keys on restore).
+      if (agentProposalsPaused()) {
+        emitTrace({ actionId: input.actionId ?? null, type: "rollout.queue_paused" });
+        return { completed: 0, deadLettered: 0, failed: 0, processed: 0 };
+      }
       // AG06: an item waiting for another is put back while that one runs; once a prerequisite settled in a
       // pass, the waiting items get another pass right away (at most three passes per call).
       const total = { completed: 0, deadLettered: 0, failed: 0, processed: 0 };

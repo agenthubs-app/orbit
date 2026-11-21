@@ -27,6 +27,7 @@ import * as say from "../../functions/copy";
 import type { NodeScope } from "../../graph/deps";
 import type { AgentGraphState, GraphPart } from "../../graph/state";
 import { emitTrace } from "../../observability/trace";
+import { polarityOf } from "../../functions/negation";
 import { resolveSaidDate } from "../../propose/dates";
 import { capabilityKind, type Capability } from "../../route/capabilities";
 import { MEMORY_WORDS, noteLine, type MemoryNote } from "./copy";
@@ -187,29 +188,35 @@ export function withholdForgotten<T extends ContextMessage & { id?: string }>(me
 
 /* ── ranking ───────────────────────────────────────────────────────── */
 
-function daysOf(structured: AgentMemoryStructured): "weekend" | "weekday" | undefined {
+function daysOf(structured: AgentMemoryStructured): Pick<TimePreference, "days" | "weekdays"> {
   const days = structured.preferredDays ?? [];
-  if (days.length === 2 && days.includes("Sat") && days.includes("Sun")) return "weekend";
-  if (days.length === 5 && !days.includes("Sat") && !days.includes("Sun")) return "weekday";
-  return undefined;
+  if (days.length === 2 && days.includes("Sat") && days.includes("Sun")) return { days: "weekend" };
+  if (days.length === 5 && !days.includes("Sat") && !days.includes("Sun")) return { days: "weekday" };
+  // AG21c (R33): days stored one by one ("周日" → Sun) are those days.
+  const weekdays = days.map((day) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(day)).filter((day) => day >= 0).sort((left, right) => left - right);
+  return weekdays.length ? { weekdays } : {};
 }
 
-/** The time condition an entry holds: from its stored values, else from its own words. A rule is a hard condition. */
+/**
+ * The time condition an entry holds: from its stored values, else from its own words. A rule is a hard condition.
+ * AG21c (R33): whether it leaves the time out or asks for it only is read from the entry's own words whenever they name a
+ * time (functions/negation.ts, the same reader as this turn's words; a stored strength may be an older, wrong reading).
+ * Words whose direction cannot be read give an unclear condition: never hard, never applied the wrong way round.
+ */
 export function timePreferenceOfEntry(entry: Pick<RecalledMemory, "structured" | "content" | "category">): TimePreference | null {
   const structured = entry.structured;
+  const said = timePreferenceIn(entry.content, "memory");
+  if (said?.unclear) return { ...said, exclude: false, hard: false };
   // AG21b (R33): an entry whose words hold a clock boundary ("不要早上八点以前的") is read from its words — the stored part
   // of the day (older entries kept "avoid morning" for it) would widen it to the whole morning.
-  if (clockBoundIn(entry.content)) {
-    const said = timePreferenceIn(entry.content, "memory");
-    if (said) return { ...said, hard: said.hard || entry.category === "constraint" || structured?.strength === "avoid" || structured?.strength === "only" };
-  }
+  if (said && clockBoundIn(entry.content)) return { ...said, hard: said.hard || entry.category === "constraint" };
   if (structured && (structured.dayPart || structured.preferredDays?.length)) {
     const days = daysOf(structured);
-    if (!days && !structured.dayPart) return null;
-    const exclude = structured.strength === "avoid";
-    return { exclude, hard: exclude || structured.strength === "only" || entry.category === "constraint", source: "memory", words: entry.content, ...(days ? { days } : {}), ...(structured.dayPart ? { part: structured.dayPart } : {}) };
+    if (!days.days && !days.weekdays && !structured.dayPart) return null;
+    const exclude = said ? said.exclude : structured.strength === "avoid";
+    const only = said ? said.hard && !said.exclude : structured.strength === "only";
+    return { exclude, hard: exclude || only || entry.category === "constraint", source: "memory", words: entry.content, ...days, ...(structured.dayPart ? { part: structured.dayPart } : {}) };
   }
-  const said = timePreferenceIn(entry.content, "memory");
   return said ? { ...said, hard: said.hard || entry.category === "constraint" } : null;
 }
 
@@ -227,12 +234,13 @@ export function topicOfEntry(entry: Pick<RecalledMemory, "structured" | "content
  * a preference gives way to any time the turn names; a rule (a hard condition) only when the turn asks for exactly
  * what it leaves out ("这次看周四晚上" against "不要晚上的") or for another slot than the only one it allows.
  */
-export function overruledByTurn(saved: Pick<TimePreference, "days" | "part" | "exclude" | "hard">, turn: Pick<TimePreference, "days" | "part" | "exclude"> | null): boolean {
+export function overruledByTurn(saved: Pick<TimePreference, "days" | "part" | "exclude" | "hard" | "weekdays">, turn: Pick<TimePreference, "days" | "part" | "exclude" | "weekdays"> | null): boolean {
   if (!turn) return false;
   if (!saved.hard) return true;
   if (turn.exclude) return false;
-  const sameSlot = (!saved.part || saved.part === turn.part) && (!saved.days || saved.days === turn.days);
-  const namesSlot = Boolean((saved.part && turn.part) || (saved.days && turn.days));
+  const sameDays = (left?: number[], right?: number[]) => JSON.stringify(left ?? []) === JSON.stringify(right ?? []);
+  const sameSlot = (!saved.part || saved.part === turn.part) && (!saved.days || saved.days === turn.days) && (!saved.weekdays?.length || sameDays(saved.weekdays, turn.weekdays));
+  const namesSlot = Boolean((saved.part && turn.part) || (saved.days && turn.days) || (saved.weekdays?.length && turn.weekdays?.length));
   return saved.exclude ? sameSlot && namesSlot : namesSlot && !sameSlot;
 }
 
@@ -243,6 +251,44 @@ export interface RankMemory {
   topic: string | null;
   /** Entries recalled for the task that this turn's own words overrule (not used, not named). */
   overruled: RecalledMemory[];
+  /** AG21c (R33): entries whose time words cannot be read as "leave out" or "only": not applied, named as unclear. */
+  unclear?: RecalledMemory[];
+  /** AG21c (decision D8): saved rules that leave a topic out ("不要推荐酒会类的"), with the words that rule it out. */
+  ruledOut?: { entry: RecalledMemory; words: string[] }[];
+}
+
+/** AG21c (D8): what a rule that leaves something out names — its words without the negation, task and filler words. */
+const RULE_FILLER = /(不要|别再?|不推荐|不用|不想|不去|不看|除了|排除|避开|以外|は除いて|を除いて|除く|入れない|入れないで|出さない|見せない|しないで|ないで|推荐|推薦|おすすめ(?:する|しない)?|活动|活動|イベント|联系人|連絡先|待办|タスク|时候?|的|类|類|相关|有关|関連|一律|永远|从来|都|也|任何|もの|こと|とき|は|を|の|に|も|\b(?:never|don'?t|do not|not|no|avoid|exclude|skip|recommend(?:ing)?|suggest(?:ing)?|events?|contacts?|to-?dos?|any|anything|ones?|related|about|kind|type|of|the|a|me|with|when)\b|[\s，,。.、！!：:]+)/giu;
+export function ruledOutWordsOf(content: string): string[] {
+  if (polarityOf(content) !== "exclude" || timePreferenceIn(content, "memory")) return [];
+  return content.replace(TASK_WORDS_IN_ENTRY, " ").replace(RULE_FILLER, " ").split(/\s+/u).map((word) => word.trim()).filter((word) => [...word].length >= 2);
+}
+
+/**
+ * AG21c (decision D8): the saved rules of a task that still hold when the message gives its own standard — a hard time
+ * condition, and a rule that leaves a topic out. Saved preferences give way to the user's own standard and are not used.
+ */
+export function rulesOnlyOf(turn: TurnMemory, domain: RankDomain, input: { now: string; timeZone: string; partId: string }): RankMemory {
+  const out: RankMemory = { overruled: [], time: [], topic: null, used: [] };
+  if (!turn.snapshot) return out;
+  const recall = recallFrom(turn.snapshot, { now: input.now, task: TASK_OF[domain], timeZone: input.timeZone });
+  for (const entry of [...recall.relevant, ...recall.rules.filter((rule) => !rule.everyTask)]) {
+    if (entry.category !== "constraint") continue;
+    const preference = domain === "event" ? timePreferenceOfEntry(entry) : null;
+    if (preference?.hard && !preference.unclear) {
+      out.time.push({ entry, preference });
+      out.used.push(entry);
+      continue;
+    }
+    const words = ruledOutWordsOf(entry.content);
+    if (words.length) {
+      out.ruledOut = [...(out.ruledOut ?? []), { entry, words }];
+      out.used.push(entry);
+    }
+  }
+  noteUsed(turn, out.used);
+  emitTrace({ entries: out.used.map((item) => ({ memoryId: item.memoryId, revision: item.revision })), memories: out.used.map((item) => item.memoryId), partId: input.partId, scope: TASK_OF[domain], type: "memory.recall", rulesOnly: true });
+  return out;
 }
 
 /**
@@ -288,6 +334,10 @@ export function rankMemoryFrom(recall: Pick<MemoryRecall, "rules" | "relevant">,
     if (domain === "todo" && (entry.category === "goal" || entry.category === "identity")) continue;
     const preference = domain === "event" ? timePreferenceOfEntry(entry) : null;
     const topic = topicOfEntry(entry);
+    if (preference?.unclear) {
+      out.unclear = [...(out.unclear ?? []), entry];
+      continue;
+    }
     if (preference) {
       if (overruledByTurn(preference, input.turnTime)) out.overruled.push(entry);
       else {
@@ -300,7 +350,12 @@ export function rankMemoryFrom(recall: Pick<MemoryRecall, "rules" | "relevant">,
         topics.push(topic);
         out.used.push(entry);
       }
-    } else out.used.push(entry);
+    } else {
+      // AG21c (D8): a rule that leaves a topic out is a hard condition (ruledOut), named when it took something away.
+      const words = entry.category === "constraint" ? ruledOutWordsOf(entry.content) : [];
+      if (words.length) out.ruledOut = [...(out.ruledOut ?? []), { entry, words }];
+      out.used.push(entry);
+    }
   }
   out.topic = topics.length ? topics.join("、") : null;
   return out;
@@ -331,6 +386,33 @@ export function topicKeyOf(text: string | null): string[] {
   if (!text) return [];
   return [...new Set(text.split(/[\s、,，和与及/]+/u).map((token) => token.replace(TOPIC_FILLER, "").trim().toLowerCase()).filter((token) => [...token].length >= 1))].sort();
 }
+/**
+ * AG21c (R34): two topic sets are the same when they cover the same words once a compound on one side is split against the
+ * other side's words ("木工体验" against 木工, 体验; "陶芸体験" against 陶芸, 体験) — or when their words joined are the same.
+ */
+export function sameTopics(left: readonly string[], right: readonly string[]): boolean {
+  if (!left.length || !right.length) return false;
+  const split = (token: string, words: readonly string[]): string[] => {
+    const chars = [...token];
+    const best: (string[] | null)[] = Array(chars.length + 1).fill(null);
+    best[0] = [];
+    for (let end = 1; end <= chars.length; end += 1) {
+      for (const word of words) {
+        const size = [...word].length;
+        const start = end - size;
+        if (size > 0 && start >= 0 && best[start] && chars.slice(start, end).join("") === word) {
+          const next = [...best[start]!, word];
+          if (!best[end] || next.length < best[end]!.length) best[end] = next;
+        }
+      }
+    }
+    return best[chars.length] ?? [token];
+  };
+  const spread = (tokens: readonly string[], words: readonly string[]) => [...new Set(tokens.flatMap((token) => split(token, words)))].sort();
+  if (sameJson(spread(left, right), spread(right, left))) return true;
+  return [...left].join("") === [...right].join("") || [...left].reverse().join("") === [...right].join("");
+}
+
 const CHANGE_WORDS = /(改成|改为|换成|变成|不再|而不是|instead|rather than|switch to|change (?:it |that )?to|に変えて|に変更|ではなく|じゃなくて)/iu;
 const isTopicEntry = (entry: AgentMemory, category: AgentMemoryCategory) => entry.category === category && !timeOfEntry(entry) && !(entry.structured?.replyLanguage ?? replyLanguageIn(entry.content)) && topicKeyOf(topicOfEntry(entry)).length > 0;
 const sharesTask = (entry: Pick<AgentMemory, "appliesTo">, tasks: readonly string[]) => entry.appliesTo.some((task) => tasks.includes(task));
@@ -373,7 +455,7 @@ export function settleRemember(input: { words: string; language: MemoryLanguage;
   if (existing.length > 1) return { kind: "line", line: MEMORY_WORDS.whichOne(language, "change", existing), reason: "memory_several_match" };
   if (existing.length === 1 && !reading.structured && topic.length && isTopicEntry(existing[0], reading.category)) {
     const entry = existing[0];
-    if (sameJson(topicKeyOf(topicOfEntry(entry)), topic)) return { kind: "line", line: MEMORY_WORDS.alreadySaved(language, entry), reason: "memory_already_saved" };
+    if (sameTopics(topicKeyOf(topicOfEntry(entry)), topic)) return { kind: "line", line: MEMORY_WORDS.alreadySaved(language, entry), reason: "memory_already_saved" };
     // The stored topics go with the old words: the new words are the entry's topics now.
     const { topics: _old, ...rest } = entry.structured ?? {};
     const structured = Object.keys(rest).length ? (rest as AgentMemoryStructured) : null;
@@ -392,7 +474,7 @@ export function settleRemember(input: { words: string; language: MemoryLanguage;
   const content = reading.composable && reading.structured ? composeEventTimeContent(reading.structured, language) : words;
   // AG21b (R34): the same topics for the same task in other words are already saved too.
   const twin = snapshot.entries.find((entry) => entry.content === content || (reading.structured && sameJson(entry.structured, reading.structured) && sameJson(entry.appliesTo, reading.appliesTo)))
-    ?? (topic.length ? snapshot.entries.find((entry) => isTopicEntry(entry, reading.category) && sharesTask(entry, reading.appliesTo) && sameJson(topicKeyOf(topicOfEntry(entry)), topic)) : undefined);
+    ?? (topic.length ? snapshot.entries.find((entry) => isTopicEntry(entry, reading.category) && sharesTask(entry, reading.appliesTo) && sameTopics(topicKeyOf(topicOfEntry(entry)), topic)) : undefined);
   if (twin) return { kind: "line", line: MEMORY_WORDS.alreadySaved(language, twin), reason: "memory_already_saved" };
   // A new entry is kept only with 「从对话里记住新的」 on; off: this turn only, and how to keep it (设计稿 §6).
   if (!snapshot.settings.allowConversationLearning) {
@@ -404,6 +486,18 @@ export function settleRemember(input: { words: string; language: MemoryLanguage;
   // AG14 UI (D2): a limit in the words ("这个月先……") becomes the entry's last day and the card's 到期 row.
   const validUntil = expiryIn(input.words, input.today);
   return { intent: { capability: MEMORY_CREATE, set: { appliesTo: reading.appliesTo, category: reading.category, content: validUntil ? withoutExpiryWords(content) : content, structured: reading.structured, ...(validUntil ? { validUntil } : {}) }, sourceMessageRef: memorySourceRef(input.requestId) }, kind: "card" };
+}
+
+/**
+ * AG21c (R34): an entry already saved that a new entry would only repeat — the same task, the same kind and the same
+ * topics (compounds split as in sameTopics). A create card made before that entry was saved or changed is not applied.
+ */
+export function twinOfNewEntry(entries: readonly AgentMemory[], created: Pick<AgentMemory, "category" | "content" | "appliesTo" | "structured">): AgentMemory | null {
+  const timed = Boolean(created.structured?.dayPart || created.structured?.preferredDays?.length || created.structured?.replyLanguage);
+  const topics = timed ? [] : topicKeyOf(topicOfEntry(created));
+  return entries.find((entry) => entry.content === created.content && entry.category === created.category)
+    ?? (topics.length ? entries.find((entry) => isTopicEntry(entry, created.category) && sharesTask(entry, created.appliesTo) && sameTopics(topicKeyOf(topicOfEntry(entry)), topics)) : undefined)
+    ?? null;
 }
 
 /** What an ask to forget becomes: a card that names the entry, or code's sentence. */

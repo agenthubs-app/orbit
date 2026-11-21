@@ -13,6 +13,7 @@
  * A new proposal also writes one inbox entry «外部提议» (`ProposalSeams`, mcp/inbox.ts). The one-off timer that marks
  * the card expired at its time is the ledger's own (AG15); reading and deciding judge expiry from expiresAt as well.
  */
+import { isProposalsPausedError } from "../rollout/rollback";
 import type { AgentActionRecord } from "../../agent/runtime/contract";
 import type { CardOperationIntent } from "../../agent/runtime/card-operations";
 import { cardOperationStatus, effectiveCardStatus } from "../../agent/runtime/decision";
@@ -53,7 +54,9 @@ export type ProposeOutcome =
   /** The connection was revoked while this was running; the card was voided. */
   | { kind: "revoked" }
   /** The connection already made as many proposals in the last 24 hours as one connection may. */
-  | { kind: "too_many"; limit: number };
+  | { kind: "too_many"; limit: number }
+  /** AG18 rollback: write proposals are paused (ORBIT_AGENT_V1_PROPOSALS=paused); nothing was made. */
+  | { kind: "paused" };
 
 export interface ProposalReceipt {
   proposal: StoredProposal;
@@ -143,7 +146,13 @@ export function createProposalService(deps: {
       }
       const actionId = actionIdOf(id);
       // The server reads the records itself and freezes what it found; nothing the agent says about old values is used.
-      const frozen = await runtime.freezeCard({ actionId, intents: input.intents, locale: connection.locale, origin: { connectionId: connection.id, externalRequestKey: input.idempotencyKey, kind: "connection" } });
+      let frozen: Awaited<ReturnType<NonNullable<AgentRuntimeService["freezeCard"]>>>;
+      try {
+        frozen = await runtime.freezeCard({ actionId, intents: input.intents, locale: connection.locale, origin: { connectionId: connection.id, externalRequestKey: input.idempotencyKey, kind: "connection" } });
+      } catch (error) {
+        if (isProposalsPausedError(error)) return { kind: "paused" };
+        throw error;
+      }
       if (!frozen.action) return { kind: "missing", targets: frozen.missingTargets };
       const at = deps.now();
       const proposal: StoredProposal = { accountId: connection.accountId, actionId, clientName: connection.clientName, connectionId: connection.id, createdAt: frozen.action.createdAt, id, requestHash, version: 1 };

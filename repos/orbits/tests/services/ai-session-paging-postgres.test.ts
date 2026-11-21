@@ -401,7 +401,7 @@ function conversationRoute(actorId: string) {
     "../../../../features/orbit-ai/storage/orbit-agent-chat-session-provider-factory": { createOrbitAgentChatSessionProvider: () => provider(actorId) },
     "../../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider": { OrbitAgentChatSessionWriteError },
   };
-  return loadRoute<{ POST: (request: Request) => Promise<Response> }>("../../app/api/ai/conversations/route.ts", boundaries, ["/ai-session-reference-authorization"]).POST;
+  return loadRoute<{ POST: (request: Request) => Promise<Response> }>("../../app/api/ai/conversations/route.ts", boundaries, ["/ai-session-reference-authorization", "/agent-v1/entry/mode"]).POST;
 }
 
 async function ask(actorId: string, sessionId: string, turn: string, expectedMessageRevision: number) {

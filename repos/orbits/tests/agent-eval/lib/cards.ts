@@ -165,6 +165,20 @@ export function cardText(card: AgentActionPreviewContract | null | undefined): s
     `  - 卡片 ${card.actionId} · 第 ${card.revision} 版 · ${CARD_STATUS_LABEL[card.status] ?? card.status}${card.expiresAt ? ` · ${localTime(card.expiresAt)} 前有效` : ""}`,
     `  - ${card.title}`,
     ...card.operations.map((op, index) => `    ${index + 1}. ${op.text}（${CARD_STATUS_LABEL[op.status] ?? op.status}）`),
-    ...(card.changes?.length ? [`  - 变化的行：${card.changes.map((change) => `${change.field}：卡上原来是 ${JSON.stringify(change.shownBefore)}，现在是 ${JSON.stringify(change.now)}${change.to !== undefined ? `，要改成 ${JSON.stringify(change.to)}` : ""}`).join("；")}`] : []),
+    ...(card.changes?.length ? [`  - 变化的行：${card.changes.map((change) => `${changeLabel(card, change)}：卡上原来是「${shownValue(change.shownBefore)}」，现在是「${shownValue(change.now)}」${change.to !== undefined ? `，要改成「${shownValue(change.to)}」` : ""}`).join("；")}`] : []),
   ];
+}
+
+/** AG21c (R54): a changed row named by the card's own label, never by its field name. */
+const FIELD_LABELS: Record<string, string> = { displayName: "姓名", dueAt: "截止时间", email: "邮箱", endsAt: "结束时间", organization: "公司", phone: "电话", plannedDate: "计划日", role: "职位", startsAt: "时间", status: "状态", title: "标题", venue: "地点" };
+function changeLabel(card: AgentActionPreviewContract, change: { operationId: string; field: string }): string {
+  const op = card.operations.find((item) => item.operationId === change.operationId) as { display?: { rows?: readonly { field: string; label: string }[] } } | undefined;
+  return op?.display?.rows?.find((row) => row.field === change.field)?.label ?? FIELD_LABELS[change.field] ?? change.field;
+}
+/** AG21c (R54): a value as the card shows it — a day as 「11月18日」, an instant in local time; never an ISO string. */
+function shownValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "（空）";
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/u.test(value)) return `${Number(value.slice(5, 7))}月${Number(value.slice(8, 10))}日`;
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/u.test(value)) return localTime(value);
+  return typeof value === "string" ? value : JSON.stringify(value);
 }

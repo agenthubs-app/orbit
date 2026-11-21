@@ -13,6 +13,19 @@ import type { AgentActionPreviewContract, AgentCardDecisionResultContract } from
 import type { AgentActionRecord } from "../runtime/contract";
 import { agentCardPreview } from "../runtime/card-view";
 import type { AgentRuntimeService } from "../runtime/service";
+import { isProposalsPausedError, pausedWords, PROPOSALS_PAUSED } from "../../agent-v1/rollout/rollback";
+
+/** AG18 rollback: a call that would make a new revision of a card is refused while proposals are paused. */
+async function pausedOr<T>(action: AgentActionRecord, run: () => Promise<T>): Promise<T | CardHttpResult> {
+  try {
+    return await run();
+  } catch (error) {
+    if (!isProposalsPausedError(error)) throw error;
+    return { body: failureBody("CONFLICT", pausedWords(action.locale).click, PROPOSALS_PAUSED), status: 409 };
+  }
+}
+
+const isHttpResult = (value: unknown): value is CardHttpResult => typeof value === "object" && value !== null && "status" in value && "body" in value;
 
 export interface CardHttpResult {
   status: number;
@@ -146,7 +159,8 @@ export async function handleCardEdit(input: { runtime: AgentRuntimeService; acti
   if (!Number.isInteger(revision) || typeof payloadHash !== "string" || typeof removeOperationId !== "string" || !payloadHash || !removeOperationId) {
     return { body: failureBody("VALIDATION_ERROR", "Taking an item off a card needs revision, payloadHash and removeOperationId.", "EDIT_FIELDS_REQUIRED"), status: 400 };
   }
-  const result = await input.runtime.editCard({ actionId: input.actionId, payloadHash, removeOperationId, revision: revision as number });
+  const result = await pausedOr(action, () => input.runtime.editCard!({ actionId: input.actionId, payloadHash, removeOperationId, revision: revision as number }));
+  if (isHttpResult(result)) return result;
   if (!result) return { body: failureBody("NOT_FOUND", "No card matches that id.", "CARD_NOT_FOUND"), status: 404 };
   const card = await preview(input.runtime, input.actionId, input.now?.() ?? new Date().toISOString());
   await notifyRevised(input.onCardRevised, action.revision ?? 1, card);
@@ -162,7 +176,8 @@ export async function handleCardRecheck(input: { runtime: AgentRuntimeService; a
   if (!input.runtime.recheckCard) return { body: failureBody("SERVICE_UNAVAILABLE", "Cards cannot be checked again here.", "UNSUPPORTED"), status: 503 };
   const action = await input.runtime.getAction(input.actionId);
   if (!action?.origin) return { body: failureBody("NOT_FOUND", "No card matches that id.", "CARD_NOT_FOUND"), status: 404 };
-  const result = await input.runtime.recheckCard({ actionId: input.actionId });
+  const result = await pausedOr(action, () => input.runtime.recheckCard!({ actionId: input.actionId }));
+  if (isHttpResult(result)) return result;
   if (!result) return { body: failureBody("NOT_FOUND", "No card matches that id.", "CARD_NOT_FOUND"), status: 404 };
   const card = await preview(input.runtime, input.actionId, input.now?.() ?? new Date().toISOString());
   await notifyRevised(input.onCardRevised, action.revision ?? 1, card);
@@ -174,7 +189,8 @@ export async function handleCardRegenerate(input: { runtime: AgentRuntimeService
   if (!input.runtime.regenerateCard) return { body: failureBody("SERVICE_UNAVAILABLE", "Cards cannot be regenerated here.", "UNSUPPORTED"), status: 503 };
   const action = await input.runtime.getAction(input.actionId);
   if (!action?.origin) return { body: failureBody("NOT_FOUND", "No card matches that id.", "CARD_NOT_FOUND"), status: 404 };
-  const result = await input.runtime.regenerateCard({ actionId: input.actionId });
+  const result = await pausedOr(action, () => input.runtime.regenerateCard!({ actionId: input.actionId }));
+  if (isHttpResult(result)) return result;
   if (!result) return { body: failureBody("NOT_FOUND", "No card matches that id.", "CARD_NOT_FOUND"), status: 404 };
   const card = await preview(input.runtime, input.actionId, input.now?.() ?? new Date().toISOString());
   await notifyRevised(input.onCardRevised, action.revision ?? 1, card);

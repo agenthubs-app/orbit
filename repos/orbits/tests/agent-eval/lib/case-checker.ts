@@ -14,7 +14,8 @@ import {
   STEP_WORDS,
   WORLD_FOR_ACCOUNT,
 } from "./vocabulary";
-import { idInRanges, loadWorld, patchRecords, type WorldFixture } from "./world";
+import { casePatchDefinitions, replacingPatchOf } from "./patched-world";
+import { idInRanges, loadWorld, patchProblems, patchRecords, worldWithPatches, type WorldFixture } from "./world";
 
 export interface CheckIssue {
   file: string;
@@ -28,7 +29,8 @@ const CASE_FIELDS = new Set<string>([...REQUIRED_CASE_FIELDS, ...OPTIONAL_CASE_F
 /** A token that names a fixture record: C17, RM05, LC10001, or "memo:M31". */
 const RECORD_TOKEN = /^(?:[a-z_]+:)?([A-Z]{1,4}\d{1,5})$/u;
 /** Values under these keys are not record references. */
-const NON_REFERENCE_KEYS = new Set(["fault", "expect_judge_verdicts", "expect_hard_fail", "switch_account", "client", "as", "item", "quote"]);
+// answer_excludes lists text fragments (an "IP67" is not a record id).
+const NON_REFERENCE_KEYS = new Set(["fault", "expect_judge_verdicts", "expect_hard_fail", "switch_account", "client", "as", "item", "quote", "answer_excludes"]);
 /**
  * Ids the cases name on purpose although no fixture has them. E999 is the phantom candidate that the
  * `phantom_candidate` fault injects (README §3.4) and that checks must not find in a result.
@@ -187,6 +189,17 @@ export function checkCase(testCase: EvalCase, areaFile: AreaFile, context: Check
   for (const name of Array.isArray(patches) ? patches : []) {
     if (!world?.patches[name] && !filePatches[name]) push("patches", `patch "${name}" does not exist in ${testCase.world} or this file's new_patches`);
   }
+  // The world as the case sees it: a replacing patch's records in place of the ones it replaces, every patch's web_replay added.
+  let caseWorld = world;
+  if (world && Array.isArray(patches)) {
+    const definitions = casePatchDefinitions(patches, world, filePatches);
+    try {
+      replacingPatchOf(definitions);
+    } catch (error) {
+      push("patches", error instanceof Error ? error.message : String(error));
+    }
+    caseWorld = worldWithPatches(world, definitions.map((item) => item.patch));
+  }
   if (testCase.settings !== undefined) {
     if (!isRecord(testCase.settings)) push("settings", "must be a mapping");
     else {
@@ -195,7 +208,7 @@ export function checkCase(testCase: EvalCase, areaFile: AreaFile, context: Check
       }
       const replays = testCase.settings.web_replay;
       for (const name of replays === undefined ? [] : Array.isArray(replays) ? replays : [replays]) {
-        if (!world?.webReplay[name]) push("settings.web_replay", `replay "${name}" does not exist in ${testCase.world}`);
+        if (!caseWorld?.webReplay[name]) push("settings.web_replay", `replay "${name}" does not exist in ${testCase.world} or the case's patches`);
       }
     }
   }
@@ -242,8 +255,8 @@ export function checkCase(testCase: EvalCase, areaFile: AreaFile, context: Check
       }
     });
   }
-  if (world) {
-    const known = knownIds(world, Array.isArray(patches) ? patches : [], filePatches);
+  if (caseWorld) {
+    const known = knownIds(caseWorld, Array.isArray(patches) ? patches : [], filePatches);
     if (testCase.conversation !== undefined && !known.ids.has(String(testCase.conversation))) {
       push("conversation", `conversation "${testCase.conversation}" is not in ${testCase.world} or the case's patches`);
     }
@@ -253,7 +266,7 @@ export function checkCase(testCase: EvalCase, areaFile: AreaFile, context: Check
     ];
     for (const reference of references) {
       if (SYNTHETIC_IDS.has(reference.id) || known.ids.has(reference.id) || known.accounts.has(reference.id)) continue;
-      if (idInRanges(reference.id, world.bulkRanges)) continue;
+      if (idInRanges(reference.id, caseWorld.bulkRanges)) continue;
       push(reference.at, `references ${reference.id}, which is not in ${testCase.world} or the case's patches`);
     }
   }
@@ -263,6 +276,17 @@ export function checkCase(testCase: EvalCase, areaFile: AreaFile, context: Check
 export function checkAreaFiles(areaFiles: readonly AreaFile[], context: CheckerContext = createCheckerContext()): CheckIssue[] {
   const issues: CheckIssue[] = [];
   const seen = new Map<string, string>();
+  // Every patch's keys and shape (world files and the area files' new_patches): an unknown key is an error, not ignored.
+  for (const world of context.worlds.values()) {
+    for (const [name, patch] of Object.entries(world.patches)) {
+      for (const message of patchProblems(patch)) issues.push({ caseId: null, field: `patches.${name}`, file: path.basename(world.file), message });
+    }
+  }
+  for (const areaFile of areaFiles) {
+    for (const [name, patch] of Object.entries(areaFile.new_patches ?? {})) {
+      for (const message of patchProblems(patch)) issues.push({ caseId: null, field: `new_patches.${name}`, file: path.basename(areaFile.file), message });
+    }
+  }
   for (const areaFile of areaFiles) {
     const file = path.basename(areaFile.file);
     for (const key of Object.keys(areaFile.raw)) {

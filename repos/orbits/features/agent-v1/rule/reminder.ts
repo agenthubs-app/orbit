@@ -41,6 +41,20 @@ export function reminderSpanIn(message: string): [number, number] | null {
   return null;
 }
 
+const PHONE = /(手机|手機|移动端|スマホ|携帯|モバイル|\bphone\b|\bmobile\b|\biphone\b|\bandroid\b|\bcell\b)/iu;
+const NOT_ONLY_PHONE = /(浏览器|電腦|电脑|桌面|网页|ブラウザ|パソコン|デスクトップ|\bPC\b|\bbrowser\b|\bdesktop\b|\bcomputer\b|\blaptop\b|\bweb\b)/iu;
+
+/** AG21c (R56): the words ask for a reminder on the phone and name no other device. */
+export function asksPhoneOnly(words: string): boolean {
+  return PHONE.test(words) && !NOT_ONLY_PHONE.test(words);
+}
+
+/** AG21c (R56, decision D9): one plain sentence — the one reminder switch also shows it in the browser. */
+export function alsoInBrowserLine(locale: string): string {
+  const language = locale.startsWith("ja") ? "ja" : locale.startsWith("en") ? "en" : "zh";
+  return ({ en: "This reminder will also show in your browser.", ja: "このお知らせはブラウザにも表示されます。", zh: "这个提醒也会在浏览器里显示。" } as const)[language];
+}
+
 export const RULE_CHOICE_PROMPT_VERSION = "rule-choice@ag16.1";
 
 export interface RuleChoiceOption {

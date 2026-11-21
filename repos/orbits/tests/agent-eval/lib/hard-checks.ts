@@ -42,6 +42,8 @@ export interface CheckContext {
   rawTrace: string;
   /** All fixture records of other accounts in this world: id, product id and distinctive strings. */
   otherAccountRecords: { fixtureId: string; productId: string | null; account: string; texts: string[] }[];
+  /** AG18 (switch_account): the same, for each account signed in during the case (answers are checked against theirs). */
+  otherAccountRecordsByAccount?: Record<string, { fixtureId: string; productId: string | null; account: string; texts: string[] }[]>;
 }
 
 const pass = (detail: string, evidence: number[] = []) => ({ detail, evidence, status: "pass" as const });
@@ -49,9 +51,7 @@ const fail = (detail: string, evidence: number[] = []) => ({ detail, evidence, s
 const cannot = (detail: string) => ({ detail, evidence: [], status: "cannot_judge" as const });
 
 /** Words with no evidence in the current system, and the sprint that is expected to provide it. */
-export const NOT_YET: Record<string, string> = {
-  shadow_report: "AG18",
-};
+export const NOT_YET: Record<string, string> = {};
 
 /** AG19 repair round 1: the one check the runner adds to every case (README §3.4 `answer_blocks_in_sync`). */
 export const ALWAYS_CHECK = "answer_blocks_in_sync";
@@ -559,13 +559,16 @@ export const CHECKS: Record<string, CheckFn> = {
   no_cross_account(_args, obs, context) {
     const problems: string[] = [];
     const evidence: number[] = [];
-    for (const read of obs.reads.filter((item) => item.account && item.account !== obs.account)) {
+    // AG18: after switch_account a read belongs to the account signed in when it was made (accountTimeline).
+    const signedInAt = (seq: number) => (obs.accountTimeline?.length ? [...obs.accountTimeline].reverse().find((item) => item.fromSeq <= seq)?.account ?? obs.accountTimeline[0].account : obs.account);
+    for (const read of obs.reads.filter((item) => item.account && item.account !== signedInAt(item.seq))) {
       problems.push(`read ${read.fixtureId ?? read.productId} of account ${read.account} at seq ${read.seq}`);
       evidence.push(read.seq);
     }
     const otherIds = new Set(context.otherAccountRecords.map((record) => record.productId).filter((id): id is string => Boolean(id)));
     for (const answer of obs.answers) {
-      const leaked = context.otherAccountRecords.filter((record) => (record.productId && answer.text.includes(record.productId)) || record.texts.some((text) => text.length >= 3 && answer.text.includes(text)));
+      const others = context.otherAccountRecordsByAccount?.[signedInAt(answer.seq)] ?? context.otherAccountRecords;
+      const leaked = others.filter((record) => (record.productId && answer.text.includes(record.productId)) || record.texts.some((text) => text.length >= 3 && answer.text.includes(text)));
       for (const record of leaked) {
         problems.push(`answer at seq ${answer.seq} contains ${record.fixtureId} of account ${record.account}`);
         evidence.push(answer.seq);
@@ -576,6 +579,32 @@ export const CHECKS: Record<string, CheckFn> = {
       if (ids.length) problems.push(`card ${card.cardId} references ${ids.map((id) => obs.fixtureIdOf(id) ?? id).join(", ")}`);
     }
     return problems.length ? fail(problems.join(" | "), evidence) : pass("no record of another account in reads, answers or cards");
+  },
+
+  /**
+   * AG18 (CMP shadow_report): the shadow comparison records grouped by account. Each expected group has `compared`
+   * records (and `divergences` of them with a divergence, when given); every record lies in its own account's
+   * partition (stored owner = the record's account); no group holds a record of another account; each divergence
+   * names its request.
+   */
+  shadow_report(args, obs) {
+    const expected = (Array.isArray(args) ? args : []) as { account?: string; compared?: number; divergences?: number }[];
+    const records = obs.shadowRecords ?? [];
+    const problems: string[] = [];
+    for (const record of records) {
+      if (!record.ownerAccount || record.ownerAccount !== record.recordAccount) problems.push(`record ${record.requestId} of account ${record.recordAccount ?? "?"} is stored under ${record.ownerAccount ?? "no account of this case"}`);
+      if (record.divergences.length && !record.requestId) problems.push("a divergence without its request id");
+    }
+    for (const group of expected) {
+      const mine = records.filter((record) => record.ownerAccount === group.account);
+      if (group.compared !== undefined && mine.length !== group.compared) problems.push(`account ${group.account}: ${mine.length} compared, expected ${group.compared}`);
+      const diverged = mine.filter((record) => record.divergences.length).length;
+      if (group.divergences !== undefined && diverged !== group.divergences) problems.push(`account ${group.account}: ${diverged} with a divergence, expected ${group.divergences}`);
+    }
+    const listed = new Set(expected.map((group) => group.account));
+    for (const record of records) if (record.ownerAccount && !listed.has(record.ownerAccount)) problems.push(`account ${record.ownerAccount} has a record ${record.requestId} the case did not expect`);
+    const summary = [...new Set(records.map((record) => record.ownerAccount))].map((account) => `${account}: ${records.filter((record) => record.ownerAccount === account).length} compared, ${records.filter((record) => record.ownerAccount === account && record.divergences.length).length} diverged`).join("; ");
+    return problems.length ? fail(problems.join(" | ")) : pass(summary || "no records");
   },
 
   cites_within_reads(_args, obs) {
@@ -727,7 +756,9 @@ export const CHECKS: Record<string, CheckFn> = {
   answer_excludes(args, obs) {
     const answer = lastAnswer(obs);
     const card = cardAt(obs, "last");
-    const text = `${answer?.text ?? ""}\n${card ? JSON.stringify(card.ops.map((op) => op.set)) : ""}`;
+    // The answer's text, what its blocks show (record cards included) and the last card's values.
+    const blocks = (lastAnswerBlocks(obs)?.blocks ?? []).flatMap((block) => (block.type === "conclusion" || block.type === "paragraph" ? [block.text] : block.type === "points" ? block.items.flatMap((item) => [item.head ?? "", item.text]) : block.type === "records" ? [block.caption ?? "", ...block.items.flatMap((item) => [item.top ?? "", item.title, item.sub ?? "", item.why ?? ""])] : block.type === "note" ? [block.title, ...block.items.flatMap((item) => [item.quote ?? "", item.text, item.action ?? ""])] : []));
+    const text = `${answer?.text ?? ""}\n${blocks.join("\n")}\n${card ? JSON.stringify(card.ops.map((op) => op.set)) : ""}`;
     const found = (Array.isArray(args) ? args : []).filter((fragment: string) => text.includes(fragment));
     return found.length ? fail(`contains ${found.join(", ")}`, answer ? [answer.seq] : []) : pass("none of the fragments appear", answer ? [answer.seq] : []);
   },
@@ -761,7 +792,11 @@ export const CHECKS: Record<string, CheckFn> = {
       if (want.category && entry.category !== want.category) problems.push(`${want.id ?? entry.id} is a ${entry.category}, expected ${want.category}`);
       if (want.appliesTo && JSON.stringify(entry.appliesTo) !== JSON.stringify(want.appliesTo)) problems.push(`${want.id ?? entry.id} applies to ${JSON.stringify(entry.appliesTo)}, expected ${JSON.stringify(want.appliesTo)}`);
     }
-    const unlisted = left.filter((entry) => entry.status === "active");
+    // AG18 (sealed set): an untouched fixture entry (revision 1) of an account the case never signed in to is world
+    // data, not something the case did; entries made in the case, and fixture entries that changed, always count.
+    const used = new Set((obs.accountTimeline ?? []).map((item) => item.account));
+    const untouchedElsewhere = (entry: (typeof left)[number]) => Boolean(entry.fixtureId) && entry.revision === 1 && entry.account !== null && used.size > 0 && !used.has(entry.account);
+    const unlisted = left.filter((entry) => entry.status === "active" && !untouchedElsewhere(entry));
     if (unlisted.length) problems.push(`entries in use that the case does not list: ${unlisted.map((entry) => entry.fixtureId ?? entry.id).join(", ")}`);
     return problems.length ? fail(problems.join("; ")) : pass(`${expected.length} memory entr${expected.length === 1 ? "y" : "ies"} as written`);
   },
@@ -1177,7 +1212,13 @@ export const CHECKS: Record<string, CheckFn> = {
 
   request_status(args, obs) {
     const entry = obs.entry;
-    if (!entry) return cannot("the case did not run on the protocol-3 entry (ORBIT_AGENT_V1_MODE=on)");
+    if (!entry) {
+      // AG18 (shadow mode, protocol 2): the old path's request record — its state as the server stored it.
+      const stored = [...obs.requests].sort((left, right) => left.seq - right.seq).pop();
+      if (!stored) return cannot("the case did not run on the protocol-3 entry (ORBIT_AGENT_V1_MODE=on) and stored no old request");
+      const state = stored.state === "completed" && stored.status === 200 ? "completed" : stored.state === "failed_before_execution" ? "failed" : stored.state ?? `HTTP ${stored.status}`;
+      return state === args ? pass(`last request ${state} (protocol 2, HTTP ${stored.status})`, stored.seq >= 0 ? [stored.seq] : []) : fail(`last request ${state} (protocol 2, HTTP ${stored.status}), expected ${args}`, stored.seq >= 0 ? [stored.seq] : []);
+    }
     const last = [...entry.requests].sort((left, right) => left.receivedSeq - right.receivedSeq).pop();
     if (!last) return fail("no request");
     return last.status === args ? pass(`last request ${last.status}`, last.endSeq !== null ? [last.endSeq] : []) : fail(`last request ${last.status}, expected ${args}`, last.endSeq !== null ? [last.endSeq] : []);

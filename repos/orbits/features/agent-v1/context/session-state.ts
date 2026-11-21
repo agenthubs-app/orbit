@@ -106,6 +106,39 @@ export interface AgentSessionState {
   };
   /** AG20b (TRIAGE R17, 设计稿 §3.5 last row): what the user said they want from the next note ("下一篇只列我的承诺"). */
   noteGoal?: NoteGoal | null;
+  /** AG21c (R47): the last list request answered in this session, so "再给我看一次" / "这次把…也加上" runs it again. */
+  lastList?: LastListRequest;
+}
+
+/**
+ * AG21c (R47): a list request as it was asked — the kind, the window, the count, the user's words of it and of its basis,
+ * the deliverable. Re-run fresh (current records, current memory), never answered from the conversation text.
+ */
+export interface LastListRequest {
+  domain: "event" | "contact" | "todo";
+  at: string;
+  from?: string;
+  to?: string;
+  count?: number;
+  words: string;
+  basis?: string;
+  deliverable: string;
+}
+
+function lastListOf(raw: unknown): LastListRequest | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Partial<LastListRequest>;
+  if ((value.domain !== "event" && value.domain !== "contact" && value.domain !== "todo") || typeof value.words !== "string" || typeof value.at !== "string") return null;
+  return {
+    at: value.at,
+    deliverable: typeof value.deliverable === "string" ? value.deliverable : "ranked_list",
+    domain: value.domain,
+    words: value.words,
+    ...(typeof value.basis === "string" ? { basis: value.basis } : {}),
+    ...(typeof value.count === "number" ? { count: value.count } : {}),
+    ...(typeof value.from === "string" ? { from: value.from } : {}),
+    ...(typeof value.to === "string" ? { to: value.to } : {}),
+  };
 }
 
 export interface NoteGoal {
@@ -141,6 +174,7 @@ function normalizeState(sessionId: string, value: unknown): AgentSessionState | 
     ...(typeof raw.memoryVersion === "number" ? { memoryVersion: raw.memoryVersion } : {}),
     ...(Array.isArray(raw.memoryUses) ? { memoryUses: raw.memoryUses.filter((use) => use && typeof use.requestId === "string" && Array.isArray(use.memories)).map((use) => ({ memories: use.memories.filter((item) => item && typeof item.memoryId === "string" && typeof item.revision === "number").map((item) => ({ memoryId: item.memoryId, revision: item.revision })), requestId: use.requestId })) } : {}),
     ...(raw.lastRanking && typeof raw.lastRanking.requestId === "string" && Array.isArray(raw.lastRanking.listed) && Array.isArray(raw.lastRanking.memories) ? { lastRanking: { ...raw.lastRanking, listed: raw.lastRanking.listed.filter((ref) => typeof ref === "string"), memories: raw.lastRanking.memories.filter((item) => item && typeof item.memoryId === "string" && typeof item.revision === "number") } } : {}),
+    ...(lastListOf(raw.lastList) ? { lastList: lastListOf(raw.lastList)! } : {}),
     ...(raw.noteGoal && typeof raw.noteGoal === "object" ? { noteGoal: { followUps: raw.noteGoal.followUps === true, interactions: raw.noteGoal.interactions === true, setAt: String(raw.noteGoal.setAt ?? "") } } : {}),
   };
 }

@@ -108,8 +108,10 @@ test("3 AE-XL-003: a contact on a card is named by the contact's name, never by 
   const memo = resumed.actionPreview!.operations.find((op) => op.capability === "memo.create")!;
   assert.match(memo.text, /实际往来对象 小林健，/u);
   assert.doesNotMatch(memo.text, /实际往来对象 他/u);
-  assert.match(memo.text, /^新增往来笔记「小林健今天来过电话」/u, "the title on the card names the person too");
-  assert.equal((memo.after as { body: string }).body, "他今天来过电话", "the body stays the user's words");
+  // AG21c R55 (supersedes the AG06 wording): the title drops the relative day (it is the date field) and the body names the
+  // contact instead of the pronoun; otherwise the body is the user's words.
+  assert.match(memo.text, /^新增往来笔记「小林健来过电话」/u, "the title on the card names the person too");
+  assert.equal((memo.after as { body: string }).body, "小林健今天来过电话", "the user's words, the pronoun replaced by the name");
 });
 
 test("4 AE-XL-006: after an item is taken off the card, the result document's card description follows the new version", async () => {

@@ -12,6 +12,7 @@
  * "最好的", "最重要的", "best" are not a basis. A field the model names to order by counts only when the user's words say it.
  */
 import type { RankField } from "../understand/schema";
+import { polarityOf } from "./negation";
 
 export type RankDomain = "event" | "contact" | "todo";
 export type BasisSource = "turn" | "session_goal" | "memory" | "history" | "natural";
@@ -26,6 +27,10 @@ export interface TimePreference {
    * is not used — "晚上八点以后" is 20:00 on, never the whole evening.
    */
   clock?: { minutes: number; side: "from" | "before" };
+  /** AG21c (R33): days of the week named one by one ("周日", "日曜", "Sunday"), 0 = Sunday … 6 = Saturday. */
+  weekdays?: number[];
+  /** AG21c (R33): the words name a time but whether they leave it out or ask for it only cannot be read: never applied. */
+  unclear?: boolean;
   /** A constraint (只…, 不要…, only, not): candidates that miss it are removed; otherwise it only ranks. */
   hard: boolean;
   /** The opposite: "不要晚上的" excludes evenings. */
@@ -80,9 +85,30 @@ export function asksWhoToFollowUp(words: string): boolean {
 // no topic either.
 const NOT_A_TOPIC = /(适合我的?|合适我的?|适合自己的?|对我来说|适合|合适|可以去的?|可以看的?|可以参加的?|能去的?|值得去的?|值得看的?|值得一去|也算上|也算进来|也算进去|也包括|这次|这回|本次|私に合う|自分に合う|私に向いている|向いている|合いそう|行ける|行けそう|おすすめ|オススメ|今回|ありますか|あります|ある|\b(?:suits? me|suitable|worth going|worth it|this time|any|anything|there|some)\b|タスク|メモ|ノート|連絡先|スケジュール|公開されている|公開中の?|公開済み|公開|まだ終わっていない|終わっていない|未完了の?|已发布的?|发布的|公开的|公开|进行中的?|还没完成的?|没完成的?|未完成的?|还没开始的?|\b(?:published|public|open|pending|not done|unfinished|not started|ongoing|to-?dos?|tasks?)\b|告诉我|告诉|原因|理由|为什么|下一步|现在|目前|当前|并说明|说明|解释|值得参加|参加する|参加|連絡すべき|連絡|教えて|理由|次の一歩|とともに|ともに|価値がある|価値|今|\b(?:now|currently|reason|reasons|why|next step|tell me|suggest|explain|worth|attending|attend|recommend|recent|recently|good fit|fit|for me|me|are|is)\b|值得|首先|最先|优先|先|应该|应当|该|需要|要|可以|能|哪些|哪个|哪位|哪几|哪|谁|什么|怎么|如何|是否|吗|呢|吧|或者|或|和|与|还有|接下来|下一个|下次|之后|以后|最近|近期|会面|见面|会议|开会|活动|日程|安排|准备|事情|事|东西|跟进|联系|優先|して|します|しますか|ますか|ますか|すべき|べき|誰|何から|何|どれ|次の|面会|イベント|予定|準備|フォロー|進め|今日|は|を|に|の|\b(?:first|should|need|needs|to|what|which|who|whom|how|do|i|for|with|up|follow|prepare|upcoming|next|meetings?|events?|or|and|the|my|a)\b|[\s。.，,、？?！!：:]+)/giu;
 
+/**
+ * AG21c (R45): a time-anchor clause — an occasion or a deadline the request must happen before ("展会前", "月底之前",
+ * "展示会の前に", "月末までに", "before the trade fair", "by the end of the month") — says when, never by what. The occasion
+ * noun and the anchor go; a subject of the occasion stays ("陶艺展前" leaves 陶艺, "before the ceramics fair" leaves ceramics).
+ */
+const OCCASION_ZH = "(?:展销会|展览会|博览会|交易会|发布会|交流会|研讨会|分享会|见面会|年会|大会|会议|开会|会展|展会|展览|展|活动|出差|旅行|出发|见面|开幕|月底|月末|年底|年末|周末|节前|假期|放假|截止|deadline)";
+const OCCASION_JA = "(?:展示会|見本市|展覧会|発表会|交流会|説明会|イベント|会議|出張|旅行|月末|年末|週末|締め切り|締切)";
+const OCCASION_EN = "(?:trade\\s+fair|trade\\s+show|fair|expo|exhibition|conference|summit|show|trip|event|launch|meeting|deadline|weekend|holidays?)";
+const ANCHOR_ZH = new RegExp(`(?<![发进扩伸施开])(?:在)?${OCCASION_ZH}(?:开始)?(?:之前|以前|前)`, "giu");
+const ANCHOR_JA = new RegExp(`${OCCASION_JA}(?:の)?(?:前に|前まで|前|までに|まで)`, "gu");
+const ANCHOR_EN = new RegExp(`\\b(?:before|ahead of|prior to|in time for)\\s+(?:(?:the|my|our|this|next|that)\\s+)?((?:[\\p{L}-]+\\s+){0,2}?)${OCCASION_EN}s?\\b`, "giu");
+const BY_END_EN = /\b(?:by|before)\s+(?:the\s+)?end\s+of\s+(?:the\s+|this\s+|next\s+)?(?:month|week|year)\b/giu;
+/**
+ * AG21c (R45): the request's own verb — meeting or getting in touch, the same act as the pick words — names no topic
+ * ("想见", "想联系", "会っておきたい", "to meet").
+ */
+const REQUEST_VERB = /(想要见|想见|要见|去见|见见|想联系|要联系|想认识|想约|约见|想拜访|拜访|值得见|值得联系|会っておきたい|会いたい|会うべき|会う価値|会える|会う|連絡したい|話したい|\b(?:want(?:s)? to |would like to |should |to )?(?:meet(?:ing)?|see|contact(?:ing)?|connect(?:ing)? with|talk(?:ing)? to|reach out to)\b)/giu;
+export function withoutOccasionWords(words: string): string {
+  return words.replace(/(下个?月|下星期|下礼拜|来月|来週|\bnext (?:month|week)\b)/giu, " ").replace(ANCHOR_ZH, " ").replace(ANCHOR_JA, " ").replace(ANCHOR_EN, " $1 ").replace(BY_END_EN, " ").replace(REQUEST_VERB, " ").replace(/\s+/gu, " ").trim();
+}
+
 /** Rule 3: the real topic in some words ("" when nothing but question, kind, time or preparing words is left). */
 export function realTopicOf(words: string): string {
-  const left = topicWordsOf(words.replace(NOT_A_TOPIC, " ")).replace(NOT_A_TOPIC, " ");
+  const left = topicWordsOf(withoutOccasionWords(words).replace(NOT_A_TOPIC, " ")).replace(NOT_A_TOPIC, " ");
   // A single character left over (a particle, half of a word taken apart: 「次 や」, 「现」) is no topic.
   return left.split(/\s+/u).filter((token) => [...token.replace(/[^\p{L}\p{N}]/gu, "")].length > 1 && !/^'s$/iu.test(token)).join(" ").trim();
 }
@@ -134,24 +160,59 @@ export function sentenceTopicOf(words: string): string {
   return topicWordsOf(words).replace(ASK_WORDS, " ").replace(/\s+/gu, " ").trim();
 }
 
-const WEEKEND = /(周末|週末|礼拜六日|土日|土曜|日曜|weekend|saturday|sunday)/iu;
+const WEEKEND = /(周末|週末|礼拜六日|土日|weekend)/iu;
 const WEEKDAY = /(工作日|平日|weekday)/iu;
+const ZH_DAY: Record<string, number> = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 日: 0, 天: 0 };
+const JA_DAY: Record<string, number> = { 月: 1, 火: 2, 水: 3, 木: 4, 金: 5, 土: 6, 日: 0 };
+const EN_DAY: Record<string, number> = { mon: 1, tues: 2, wednes: 3, thurs: 4, fri: 5, satur: 6, sun: 0 };
+const DAY_NAME = /(?:周|星期|礼拜)([一二三四五六日天])|([月火水木金土日])曜(?:日)?|\b(mon|tues|wednes|thurs|fri|satur|sun)days?\b/giu;
+const DAY_RANGE = /^\s*(?:到|至|~|～|-|–|—|から|\bto\b|\bthrough\b|\bthru\b)\s*$/iu;
+
+/**
+ * AG21c (R33): the days of the week the words name one by one ("周日", "周一到周三", "日曜", "Sundays"), 0 = Sunday; a range
+ * between two days covers the days between. Empty when they name none.
+ */
+export function weekdaysNamedIn(words: string): number[] {
+  const found: { day: number; start: number; end: number }[] = [];
+  for (const match of words.matchAll(DAY_NAME)) {
+    const day = match[1] ? ZH_DAY[match[1]] : match[2] ? JA_DAY[match[2]] : EN_DAY[match[3]!.toLowerCase()];
+    if (day !== undefined) found.push({ day, end: match.index! + match[0].length, start: match.index! });
+  }
+  const days = new Set<number>();
+  found.forEach((item, index) => {
+    days.add(item.day);
+    const next = found[index + 1];
+    if (next && DAY_RANGE.test(words.slice(item.end, next.start))) for (let day = item.day; day !== next.day; day = (day + 1) % 7) days.add(day);
+  });
+  return [...days].sort((left, right) => left - right);
+}
+
+/** The days a time preference names: weekend / weekday words, else the days named one by one. */
+function daysIn(words: string): Pick<TimePreference, "days" | "weekdays"> {
+  if (WEEKEND.test(words)) return { days: "weekend" };
+  if (WEEKDAY.test(words)) return { days: "weekday" };
+  const named = weekdaysNamedIn(words);
+  if (!named.length) return {};
+  if (named.length === 2 && named[0] === 0 && named[1] === 6) return { days: "weekend" };
+  if (named.length === 5 && named.every((day) => day >= 1 && day <= 5)) return { days: "weekday" };
+  return { weekdays: named };
+}
 const MORNING = /(上午|早上|早晨|午前|朝|morning)/iu;
 const AFTERNOON = /(下午|午後|afternoon)/iu;
 const EVENING = /(晚上|夜里|夜间|夜晚|夕方|夜の(?:時間|イベント|部)|夜は|夜に|夜間|\bevenings?\b|\bnights?\b)/iu;
-const EXCLUDE = /(不要|别|不想|除了|排除|避开|以外|は除いて|じゃない|ではない|\bnot\b|\bno\b|\bavoid\b|\bexcept\b|\bwithout\b)/iu;
-const ONLY = /(只要|只看|只选|只挑|仅|限|だけ|のみ|限定|\bonly\b)/iu;
 
 /** A time preference in some words ("优先周末上午", "不要晚上的活动", "weekend mornings only"); null when they name none. */
 export function timePreferenceIn(said: string, source: "turn" | "memory"): TimePreference | null {
   // Record names chosen with @ ("@设计师之夜") are not time words.
   const words = said.replace(/@\S+/gu, " ");
-  const days = WEEKEND.test(words) ? "weekend" : WEEKDAY.test(words) ? "weekday" : undefined;
+  const { days, weekdays } = daysIn(words);
   const clock = clockBoundIn(words);
   const part = clock ? undefined : MORNING.test(words) ? "morning" : AFTERNOON.test(words) ? "afternoon" : EVENING.test(words) ? "evening" : undefined;
-  if (!days && !part && !clock) return null;
-  const exclude = EXCLUDE.test(words);
-  return { exclude, hard: exclude || ONLY.test(words), source, words: words.trim(), ...(days ? { days } : {}), ...(part ? { part } : {}), ...(clock ? { clock } : {}) };
+  if (!days && !weekdays && !part && !clock) return null;
+  // AG21c (R33): one negation reader for the turn and saved entries (verb negations too); unclear words are never a condition.
+  const polarity = polarityOf(words);
+  const exclude = polarity === "exclude";
+  return { exclude, hard: exclude || polarity === "only", source, words: words.trim(), ...(polarity === "unclear" ? { unclear: true } : {}), ...(days ? { days } : {}), ...(weekdays ? { weekdays } : {}), ...(part ? { part } : {}), ...(clock ? { clock } : {}) };
 }
 
 const CJK_NUMBER: Record<string, number> = { 零: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10, 十一: 11, 十二: 12 };
@@ -207,12 +268,13 @@ export function timeClauseOf(words: string): string | null {
 }
 
 /** Whether an event at this instant (in the time zone) meets the preference's days and part of the day. */
-export function meetsTime(preference: Pick<TimePreference, "days" | "part" | "clock">, startsAt: string, timeZone: string): boolean {
+export function meetsTime(preference: Pick<TimePreference, "days" | "part" | "clock" | "weekdays">, startsAt: string, timeZone: string): boolean {
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hourCycle: "h23", minute: "2-digit", timeZone, weekday: "short" }).formatToParts(new Date(startsAt)).map((part) => [part.type, part.value]));
   const weekend = parts.weekday === "Sat" || parts.weekday === "Sun";
   const hour = Number(parts.hour);
   if (preference.days === "weekend" && !weekend) return false;
   if (preference.days === "weekday" && weekend) return false;
+  if (preference.weekdays?.length && !preference.weekdays.includes(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(parts.weekday))) return false;
   // AG21b (R33): a clock boundary, with its own inclusiveness ("以后" includes the minute, "以前" does not).
   if (preference.clock) {
     const minutes = hour * 60 + Number(parts.minute);
@@ -359,8 +421,8 @@ export function asksForRecommendation(words: string): boolean {
  * AG21a (R32c): 「这次晚上的也算上」, 「今回は夜のも含めて」, "include evening ones this time" lift a saved rule for this turn only;
  * they state no new preference and no topic. Returns the clause and the words lifted ("晚上的"), or null.
  */
-const LIFT = /(也算上|也算进来|也算进去|也包括进来|也包括|也放进来|也列进来|也列上|也可以|也行|也没关系|も含めて|も入れて|もOK|もいい|\binclude\b.{0,40}\b(?:too|as well|this time)\b|\b(?:are|is) (?:fine|ok|okay) (?:too|this time)\b)/iu;
-const LIFT_WORDS = /(也算上|也算进来|也算进去|也包括进来|也包括|也放进来|也列进来|也列上|也可以|也行|也没关系|这次|这回|本次|今回は?|も含めて|も入れて|もOK|もいい|\binclude\b|\btoo\b|\bas well\b|\bthis time\b|\b(?:are|is) (?:fine|ok|okay)\b)/giu;
+const LIFT = /(也加上|也加进来|也算上|也算进来|也算进去|也包括进来|也包括|也放进来|也列进来|也列上|也可以|也行|也没关系|も含めて|も入れて|もOK|もいい|\binclude\b.{0,40}\b(?:too|as well|this time)\b|\b(?:are|is) (?:fine|ok|okay) (?:too|this time)\b)/iu;
+const LIFT_WORDS = /(也加上|也加进来|也算上|也算进来|也算进去|也包括进来|也包括|也放进来|也列进来|也列上|也可以|也行|也没关系|这次|这回|本次|今回は?|も含めて|も入れて|もOK|もいい|\binclude\b|\btoo\b|\bas well\b|\bthis time\b|\b(?:are|is) (?:fine|ok|okay)\b)/giu;
 export function liftedIn(words: string): { clause: string; words: string } | null {
   for (const clause of words.split(/[，,。；;！!？?]/u)) {
     if (!LIFT.test(clause)) continue;

@@ -66,12 +66,46 @@ const DUE_PICK = /(截止|到期|期限|締め切り|締切|〆切|\bdue\b|\bdea
  */
 export function optionPickedIn(item: Pick<SessionOpenItem, "options" | "resume"> | null | undefined, words: string): { id: string; type: string } | null {
   if (!item?.resume || !item.options?.length || !words.trim()) return null;
+  // AG21c (R26): the delete-plan question is answered by what to do (delete / move / keep / unlink), not by a label's name.
+  if (item.options.every((option) => option.type === "event_plan")) {
+    const id = deletePlanPickIn(item.options.map((option) => option.id), words);
+    return id ? { id, type: "event_plan" } : null;
+  }
   const named = optionNamedIn(item, words);
   if (named) return named;
   const fields = item.options.filter((option) => option.type === "field");
   const plan = PLAN_PICK.test(words);
   const due = DUE_PICK.test(words);
   if (fields.length && plan !== due) return fields.find((option) => option.id === (due ? "dueAt" : "plannedDate")) ?? null;
+  return null;
+}
+
+/** "先不删了", "やめておく", "don't delete it": the event is kept (said with a negation, so read before the delete words). */
+const PLAN_KEEP = /(先不删了?|不删了?|别删|不要删|不用删|算了|やめて?お?く|やめます|やめる|やめて|削除しない|消さない|\bdon'?t delete\b|\bdo not delete\b|\bnever ?mind\b|\bcancel\b|\bkeep (?:the |this |that )?event\b|\bleave it\b)/giu;
+const PLAN_MOVE = /(转到|转去|移到|移去|挪到|换到|改到另一场|改挂到|別のイベントに|に移す|に移して|移動|\bmove\b|\bshift\b)/iu;
+const PLAN_DELETE = /(删|刪|削除|消して|消す|\bdelete\b|\bremove\b|\berase\b)/iu;
+const PLAN_UNLINK = /(解除|解绑|解綁|取消关联|不再关联|去掉关联|断开|紐付けを外|紐づけを外|紐付けだけ外|外す|外して|\bunlink\b|\bdetach\b|\bdisconnect\b)/iu;
+
+/**
+ * AG21c (R26): the option of the delete-plan question ("「我去过」一起删 / 转到另一场 / 先不删了", or "只解除关联 / 先不删了") a
+ * typed answer takes, by what it says to do — exactly as a click on that option. Null when it says none, or two that
+ * disagree (code does not guess; the question stays).
+ */
+export function deletePlanPickIn(ids: readonly string[], words: string): string | null {
+  const keep = new RegExp(PLAN_KEEP.source, "iu").test(words);
+  const rest = words.replace(PLAN_KEEP, " ");
+  const move = PLAN_MOVE.test(rest);
+  const remove = PLAN_DELETE.test(rest);
+  const unlink = PLAN_UNLINK.test(rest);
+  const offered = (id: string) => (ids.includes(id) ? id : null);
+  if (ids.includes("delete_attendance") || ids.includes("move_attendance")) {
+    if (move && !remove) return offered("move_attendance");
+    if (remove && !move) return offered("delete_attendance");
+    if (keep && !move && !remove && !unlink) return offered("keep");
+    return null;
+  }
+  if ((unlink || remove) && !keep) return offered("unlink");
+  if (keep && !unlink && !remove) return offered("keep");
   return null;
 }
 

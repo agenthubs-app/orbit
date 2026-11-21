@@ -36,8 +36,10 @@ export const quoted = (language: Language, text: string) => (language === "en" ?
 
 /* ── ranking ─────────────────────────────────────────────────────────── */
 
-export function timeWords(preference: Pick<TimePreference, "days" | "part" | "clock">, language: Language): string {
-  const days = preference.days === "weekend" ? { en: "on a weekend", ja: "週末", zh: "周末" }[language] : preference.days === "weekday" ? { en: "on a weekday", ja: "平日", zh: "工作日" }[language] : "";
+export function timeWords(preference: Pick<TimePreference, "days" | "part" | "clock" | "weekdays">, language: Language): string {
+  // AG21c (R33): days named one by one ("周日", "日曜", "on Sunday").
+  const named = (preference.weekdays ?? []).map((day) => ({ en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][day], ja: `${"日月火水木金土"[day]}曜`, zh: `周${"日一二三四五六"[day]}` })[language]);
+  const days = preference.days === "weekend" ? { en: "on a weekend", ja: "週末", zh: "周末" }[language] : preference.days === "weekday" ? { en: "on a weekday", ja: "平日", zh: "工作日" }[language] : named.length ? (language === "en" ? `on ${named.join(" or ")}` : named.join("、")) : "";
   const part = preference.part ? { afternoon: { en: "afternoon", ja: "午後", zh: "下午" }, evening: { en: "evening", ja: "夜", zh: "晚上" }, morning: { en: "morning", ja: "午前", zh: "上午" } }[preference.part][language] : "";
   // AG21b (R33): a clock boundary, as a 24-hour time.
   const at = preference.clock ? `${String(Math.floor(preference.clock.minutes / 60)).padStart(2, "0")}:${String(preference.clock.minutes % 60).padStart(2, "0")}` : "";

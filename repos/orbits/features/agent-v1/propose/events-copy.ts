@@ -69,10 +69,21 @@ export const EVENT_WORDS = {
     `I could not find "${words}" among your private events, so nothing was deleted.`),
   deleteKeep: (language: ReplyLanguage) => pick(language, "好的，先不删，活动和它的关联都保持原样。", "承知しました。削除せず、イベントと紐づけはそのままにします。", "Okay — nothing is deleted; the event and its links stay as they are."),
   moveWhere: (language: ReplyLanguage) => pick(language, "要把「我去过」转到哪一场？说一下那场活动的名称，我再出卡。这次没有改。", "「行った」の記録をどのイベントに移しますか？イベント名を教えてください。今回は変更していません。", "Which event should the \"I went\" note move to? Tell me its name and I will make the card. Nothing was changed."),
-  askDeletePlan: (language: ReplyLanguage, title: string, lines: string[], hasAttendance: boolean) => pick(language,
-    `「${title}」还被 ${lines.length} 条记录用着：\n${lines.map((line) => `· ${line}`).join("\n")}\n笔记、待办和日程可以只解除和这场活动的关联，原文和待办都留着。${hasAttendance ? "「我去过」要么一起删，要么转到另一场。" : ""}怎么处理？`,
-    `「${title}」はまだ ${lines.length} 件の記録で使われています：\n${lines.map((line) => `· ${line}`).join("\n")}\nメモ・タスク・予定はこのイベントとの紐づけだけを外せます（本文やタスクは残ります）。${hasAttendance ? "「行った」の記録は一緒に削除するか、別のイベントに移せます。" : ""}どうしますか？`,
-    `"${title}" is still used by ${lines.length} record(s):\n${lines.map((line) => `· ${line}`).join("\n")}\nNotes, to-dos and schedule items can just be unlinked from it (their text stays).${hasAttendance ? " The \"I went\" note can be deleted with it or moved to another event." : ""} What would you like to do?`),
+  // AG21c (R54): only the kinds that are actually linked are offered to unlink (no 「日程」 when no schedule item uses it).
+  askDeletePlan: (language: ReplyLanguage, title: string, lines: string[], hasAttendance: boolean, kinds: readonly ("memo" | "todo" | "schedule")[] = ["memo", "todo", "schedule"]) => {
+    const names = { en: { memo: "notes", schedule: "schedule items", todo: "to-dos" }, ja: { memo: "メモ", schedule: "予定", todo: "タスク" }, zh: { memo: "笔记", schedule: "日程", todo: "待办" } } as const;
+    const listed = (["memo", "todo", "schedule"] as const).filter((kind) => kinds.includes(kind));
+    const zhKinds = listed.map((kind) => names.zh[kind]);
+    const enKinds = listed.map((kind) => names.en[kind]);
+    const zh = zhKinds.length > 1 ? `${zhKinds.slice(0, -1).join("、")}和${zhKinds.at(-1)}` : zhKinds[0] ?? "";
+    const en = enKinds.length > 1 ? `${enKinds.slice(0, -1).join(", ")} and ${enKinds.at(-1)}` : enKinds[0] ?? "";
+    const enCap = en ? en[0].toUpperCase() + en.slice(1) : "";
+    const kept = { en: listed.length === 1 && listed[0] === "todo" ? "the to-do stays" : "their text stays", zh: listed.includes("todo") ? (listed.length > 1 ? "原文和待办都留着" : "待办留着") : "原文留着" };
+    return pick(language,
+      `「${title}」还被 ${lines.length} 条记录用着：\n${lines.map((line) => `· ${line}`).join("\n")}\n${zh ? `${zh}可以只解除和这场活动的关联，${kept.zh}。` : ""}${hasAttendance ? "「我去过」要么一起删，要么转到另一场。" : ""}怎么处理？`,
+      `「${title}」はまだ ${lines.length} 件の記録で使われています：\n${lines.map((line) => `· ${line}`).join("\n")}\n${listed.length ? `${listed.map((kind) => names.ja[kind]).join("・")}はこのイベントとの紐づけだけを外せます（本文やタスクは残ります）。` : ""}${hasAttendance ? "「行った」の記録は一緒に削除するか、別のイベントに移せます。" : ""}どうしますか？`,
+      `"${title}" is still used by ${lines.length} record(s):\n${lines.map((line) => `· ${line}`).join("\n")}\n${enCap ? `${enCap} can just be unlinked from it (${kept.en}).` : ""}${hasAttendance ? `${enCap ? " " : ""}The "I went" note can be deleted with it or moved to another event.` : ""} What would you like to do?`);
+  },
   planOptions: (language: ReplyLanguage, hasAttendance: boolean) => hasAttendance
     ? [
       { id: "delete_attendance", label: pick(language, "「我去过」一起删，其余只解除关联", "「行った」は一緒に削除、ほかは紐づけを外す", "Delete the \"I went\" note too; unlink the rest") },

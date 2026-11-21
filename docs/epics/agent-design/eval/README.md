@@ -286,6 +286,22 @@ cases:
 | `summary_separates_simulated` | `summary_separates_simulated: true` | summary.json 和 report.md 把本用例列在含模拟的用例里，真实调用次数与模拟次数分两栏登记、不合计，费用只算真实调用。 | H |
 | `trace_complete` | `trace_complete: true` | 日志与事实对得上。数据前后差异里的每处变化都有 db.write 事件，每次 db.write 之前有 exec.call，每张卡有 card.frozen，模型的请求与响应成对，全文没有密钥和令牌。 | H |
 
+**夹具增量的写法。** 一个增量（世界文件的 `patches` 或用例文件的 `new_patches` 里的一项）只能用下面这些键；写了别的键，`agent-eval:check` 报错，运行时该用例记为不支持而判失败，不再静默忽略。
+
+- `summary`：说明文字。
+- `add` / `add_B`：在主账号 / 账号乙的数据上追加这些记录（分节同世界文件：contacts、memos、todos、formal_followups、schedule、private_events、attendance、my_events、memory、rules、connections、cards、push_devices、conversations）。
+- `set`：改已有记录的字段（目前支持 todos 和 rules）。
+- `settings`：部署侧设置与记忆开关。
+- `generate`：按规则生成记录（目前支持 contacts）。
+- `replace`：整体替换主账号的数据：结束时主账号的联系人、笔记、待办、日程、记忆、规则、连接等恰好是这里列的，没列的分节为空。
+- `replace_B`：整体替换账号乙的数据，规则同上。
+- `replace_platform_events`：整体替换平台活动（一个列表，写法同世界文件的 `platform_events`）。
+- `web_replay`：追加联网回放，写法同世界文件的 `web_replay`；用例在 `settings.web_replay` 里点名，由原有的回放机制提供。
+
+（这里用列表而不是表格：§3.4 的表格第一列是判定词与步骤词，由 `vocabulary.test.ts` 与 `vocabulary.ts` 对照。）
+
+带 `replace`、`replace_B` 或 `replace_platform_events` 的增量不能叠加在恢复后的快照上：`agent-eval:seed` 为用到它的世界另写一个快照 `<世界>+<增量名>`（账号同原世界，被替换的部分取自增量，其余照原世界），用例运行时恢复这个快照；封存集的增量要加 `--sealed` 才写。一个用例最多用一个这样的增量。被替换掉的原世界记录编号不再算已知编号，用例引用它们会被 `agent-eval:check` 报出。用例可以带 `category` 字段（封存集的分类号），运行器不读它。
+
 **夹具增量。** 小账号的这些增量定义在提出它的用例文件顶部的 `new_patches` 里，不在 `base-v1.yaml` 里。
 
 | 增量 | 用途 | 所在文件 |

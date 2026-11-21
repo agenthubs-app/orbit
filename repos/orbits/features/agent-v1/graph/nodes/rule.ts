@@ -25,7 +25,7 @@ import { unsupportedRepeatLine } from "../../propose/events-resolve";
 import { handoffWords } from "../../route/handoff-copy";
 import { domainSaidIn, pushSaidIn, recurrenceSaidIn, replanSaidIn, RULE_NOUN, scheduleSaidIn, SCOPE_ONLY_WORDS, scopeSaidIn, stateVerbSaidIn, untilSaidIn, type RuleDomain } from "../../rule/parse";
 import { checkRuleDraft, ruleRepairText, ruleSystemPrompt, ruleUserText, RULE_PROMPT_VERSION, type RuleModelDraft } from "../../rule/prompt";
-import { checkRuleChoice, reminderSaidIn, reminderSpanIn, ruleChoiceSystemPrompt, ruleChoiceUserText, RULE_CHOICE_PROMPT_VERSION, withoutReminderWords } from "../../rule/reminder";
+import { alsoInBrowserLine, asksPhoneOnly, checkRuleChoice, reminderSaidIn, reminderSpanIn, ruleChoiceSystemPrompt, ruleChoiceUserText, RULE_CHOICE_PROMPT_VERSION, withoutReminderWords } from "../../rule/reminder";
 import type { RuleAskState } from "../../rule/state";
 import { localDay } from "../../views/recent-interaction";
 import type { NodeScope } from "../deps";
@@ -185,11 +185,18 @@ function settle(scope: NodeScope, part: GraphPart, status: GraphPart["status"], 
  * "先跑到 11 月底"): a sentence of the same message that only holds such a piece is part of the card, not a question of
  * its own (propose's usedByCard reads them from here).
  */
-function ready(scope: NodeScope, part: GraphPart, intent: RuleOperationIntent, used: readonly ([number, number] | null)[] = []): void {
+function ready(scope: NodeScope, part: GraphPart, intent: RuleOperationIntent, used: readonly ([number, number] | null)[] = [], language: Language | null = null): void {
   scope.run.presetIntents.set(part.localId, [{ ...(intent as unknown as CardOperationIntent), localId: "r1", partId: part.localId } as CardOperationIntent & { localId: string }]);
   const spans = used.filter((span): span is [number, number] => Boolean(span));
   part.write = { intents: spans.length ? ([{ capability: intent.capability, localId: "r1", relations: [], selector: spans }] as never) : [], picks: {} };
   emitTrace({ capability: intent.capability, partId: part.localId, type: "rule.intent" });
+  // AG21c (R56, decision D9): one switch covers the phone and the browser. Asked for the phone only, the reply says in one
+  // plain sentence that the reminder also shows in the browser (the card is not widened silently).
+  const notify = (intent as { notify?: { push?: boolean }; set?: { notify?: { push?: boolean } } }).notify ?? (intent as { set?: { notify?: { push?: boolean } } }).set?.notify;
+  if (notify?.push === true && asksPhoneOnly(scope.input.message.slice(part.quote[0], part.quote[1]))) {
+    scope.run.leadLines.set(part.localId, alsoInBrowserLine(language ?? scope.input.locale));
+    emitTrace({ partId: part.localId, type: "rule.reminder_also_in_browser" });
+  }
 }
 
 /** Where a pattern's first match sits in the message. */
@@ -295,7 +302,7 @@ export async function rulePart(scope: NodeScope, state: AgentGraphState, part: G
       basis = { ranking: { field: { direction: "asc", name: natural } }, rankingBasis: fieldBasis(natural, "asc", language) };
     }
     part.plan = { ...part.plan, ruleAsk: undefined };
-    ready(scope, part, createIntent({ ask, basis, language, scopeSaid }));
+    ready(scope, part, createIntent({ ask, basis, language, scopeSaid }), [], language);
     return { budget, repairs };
   }
 
@@ -411,7 +418,7 @@ export async function rulePart(scope: NodeScope, state: AgentGraphState, part: G
       settle(scope, part, "unfinished", "rule_no_change", push !== null && push === found.rule.notify.push ? WORDS.reminderAlready(language, found.title, push) : WORDS.noChange(language, found.title));
       return { budget, repairs };
     }
-    ready(scope, part, { capability: RULE_UPDATE, expectedVersion: found.version, set, shown: found, targetId: found.automationId }, set.notify && aloneForReminder ? [reminderSpanIn(message), spanOfMatch(message, PUSH_SPAN)] : []);
+    ready(scope, part, { capability: RULE_UPDATE, expectedVersion: found.version, set, shown: found, targetId: found.automationId }, set.notify && aloneForReminder ? [reminderSpanIn(message), spanOfMatch(message, PUSH_SPAN)] : [], language);
     return { budget, repairs };
   }
 
@@ -465,6 +472,6 @@ export async function rulePart(scope: NodeScope, state: AgentGraphState, part: G
     emitTrace({ clarificationId, domain, kind: "question", options: options.length, partId: part.localId, question: "rule_ranking_basis", subgoal: `clarification:${input.requestId}:${part.localId}`, type: "clarify.asked" });
     return { budget, repairs };
   }
-  ready(scope, part, createIntent({ ask, basis, language, scopeSaid }), task.alternative ? [] : used);
+  ready(scope, part, createIntent({ ask, basis, language, scopeSaid }), task.alternative ? [] : used, language);
   return { budget, repairs };
 }

@@ -25,6 +25,7 @@ import type { GraphNode, NodeScope } from "../deps";
 import type { AgentGraphState, GraphPart, OptionSetState } from "../state";
 import { clueWords, nameOf, objectOf, setIdOf } from "./clarify";
 import { memoryOfSession } from "../../domains/memory/turn";
+import { everyTaskChipsOf } from "../../domains/memory/chips";
 import { asksToOrganize, nextNoteGoalIn } from "./functions";
 import { resumeOf } from "../../propose/asked";
 
@@ -267,6 +268,43 @@ export function isNotDone(part: Pick<GraphPart, "status" | "reason" | "route">, 
   return !(part.route === "propose_write" && hasWriteLine);
 }
 
+/** AG21c (R53): another part of this turn was answered over the same words (or words that hold this part's). */
+export function answeredElsewhere(part: Pick<GraphPart, "localId" | "status" | "quote">, written: readonly Pick<GraphPart, "localId" | "status" | "quote">[]): boolean {
+  if (part.status !== "unfinished" && part.status !== "failed") return false;
+  return written.some((other) => other.localId !== part.localId && other.status === "answered" && other.quote[0] <= part.quote[0] && other.quote[1] >= part.quote[1]);
+}
+
+/**
+ * AG21c (R52): a paragraph (or conclusion) block whose words were already said in an earlier one is dropped, and a sentence
+ * said twice in a row is said once (the same short sentence after different items of a list stays). Cards, points and
+ * notes are left as they are.
+ */
+export function withoutRepeatedParagraphs(blocks: readonly AnswerBlock[]): AnswerBlock[] {
+  const flat = (text: string) => text.replace(/[\s。.!！?？、，,：:；;]+/gu, "");
+  const seen = new Set<string>();
+  const out: AnswerBlock[] = [];
+  for (const block of blocks) {
+    if (block.type !== "paragraph" && block.type !== "conclusion") {
+      out.push(block);
+      continue;
+    }
+    const key = flat(block.text);
+    if (key && seen.has(key)) continue;
+    if (key) seen.add(key);
+    const sentences = (block.text.match(/[^。！？!?\n]*?(?:[。！？!?]+|\.(?=\s|$)|\n+|$)\s*/gu) ?? [block.text]).filter(Boolean);
+    let previous = "";
+    const kept = sentences.filter((sentence) => {
+      const words = flat(sentence);
+      if (!words) return true;
+      if (words === previous) return false;
+      previous = words;
+      return true;
+    });
+    out.push(kept.length === sentences.length ? block : { ...block, text: kept.join("").trim() });
+  }
+  return out;
+}
+
 /** The typed ref of a card ("event:attendance:…" for «我去过»), as the citations name it. */
 const refOfCard = (card: AgentAnswerRecordContract) => `${card.kind === "attendance" ? "event" : card.kind}:${card.id}`;
 
@@ -298,6 +336,12 @@ function blocksOf(scope: NodeScope, state: AgentGraphState, written: readonly Gr
       continue;
     }
     if (isNotDone(part, run.writeLines.has(part.localId))) {
+      // AG21c (R53): a part left unfinished or failed whose words another part of this turn answered (the same words or
+      // inside them) is not listed as "not done" — that matter was answered.
+      if (answeredElsewhere(part, written)) {
+        emitTrace({ partId: part.localId, status: part.status, type: "deliver.not_done_answered_elsewhere" });
+        continue;
+      }
       // Each sentence of code's is one entry; the first carries the user's words.
       line.split("\n").map((text) => text.trim()).filter(Boolean).forEach((text, index) => notes.push(noteItemOf(text, index === 0 ? quote : null, language)));
       continue;
@@ -325,6 +369,10 @@ function blocksOf(scope: NodeScope, state: AgentGraphState, written: readonly Gr
   const note = noteBlock(notes, language);
   if (note) blocks.push(note);
   if (run.cardLine?.trim()) blocks.push({ text: run.cardLine, type: "paragraph" });
+  // AG21c (R52): the same paragraph twice in one answer is said once.
+  const deduped = withoutRepeatedParagraphs(blocks);
+  if (deduped.length !== blocks.length) emitTrace({ dropped: blocks.length - deduped.length, type: "deliver.repeated_paragraphs_dropped" });
+  blocks.splice(0, blocks.length, ...deduped);
   emitTrace({ blocks: blocks.map((block) => (block.type === "records" ? { cards: block.items.map(refOfCard), shown: block.shown, size: block.size ?? "full", type: block.type } : block.type === "note" ? { items: block.items.length, type: block.type } : { type: block.type })), type: "deliver.blocks" });
   return blocks;
 }
@@ -435,6 +483,8 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
   if (goal) next.noteGoal = { ...goal, setAt: now };
   else if (next.noteGoal && (context?.idle || state.parts.some((part) => asksToOrganize(quoteOf(input.message, part))))) next.noteGoal = null;
   next.updatedAt = now;
+  // AG21c (R47): the list request this turn answered is the one "再给我看一次" repeats next.
+  if (run.lastList) next.lastList = { ...run.lastList };
   // AG14: the saved entries this turn's answer used (ids and revisions) and its ranking's codes; never an entry's words.
   if (run.memory.loaded && run.memory.snapshot) {
     const kept = memoryOfSession(previous, run.memory, input.requestId);
@@ -481,7 +531,10 @@ export function deliverNode(scope: NodeScope): GraphNode {
     } else {
       const ordered = [...state.parts].sort((left, right) => left.quote[0] - right.quote[0] || left.localId.localeCompare(right.localId));
       const written = resume ? ordered.filter((part) => state.touched!.includes(part.localId)) : ordered;
-      text = [...written.map((part) => lineFor(scope, state, part, language)), run.cardLine ?? ""].filter((line) => line.trim()).join("\n\n");
+      // AG21c (R52, R53): the text says what the blocks say — a not-done line for words answered by another part goes, and
+      // the same paragraph is said once.
+      const lines = [...written.filter((part) => !(isNotDone(part, run.writeLines.has(part.localId)) && answeredElsewhere(part, written))).map((part) => lineFor(scope, state, part, language)), run.cardLine ?? ""].filter((line) => line.trim());
+      text = withoutRepeatedParagraphs(lines.flatMap((line) => line.split(/\n{2,}/u)).map((line) => ({ text: line, type: "paragraph" as const }))).map((block) => (block as { text: string }).text).filter((line) => line.trim()).join("\n\n");
       blocks = blocksOf(scope, state, written, language);
       partResults = state.parts.map((part) => ({
         partId: part.localId,
@@ -500,6 +553,11 @@ export function deliverNode(scope: NodeScope): GraphNode {
     }
     run.text = text;
     run.blocks = blocks;
+    // AG21c (R57): a saved entry for every answer that shaped this text (dates with their weekday, a 24-hour clock) is named
+    // with the same label as task entries; one that changed nothing is not.
+    // Only the text the model wrote under those rules counts (code's own dates always carry their weekday).
+    const modelText = [...run.modelAnswers].map((id) => run.answers.get(id) ?? "").join("\n");
+    if (run.memory.rules.length && modelText) for (const chip of everyTaskChipsOf(run.memory.rules, modelText, language)) if (!run.memoryUse.some((item) => item.memoryId === chip.memoryId)) run.memoryUse.push(chip);
     run.partResults = partResults;
     run.clarifications = state.optionSets.map((set) => contractOf(scope, set, language));
     if (!resume) {
