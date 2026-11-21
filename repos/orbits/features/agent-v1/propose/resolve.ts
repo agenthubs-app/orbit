@@ -121,6 +121,40 @@ export function memoBodyOf(text: string): string {
   return text.trim().replace(BODY_LEAD, "").replace(BODY_TAIL, "").trim();
 }
 
+const squashed = (text: string) => text.toLowerCase().replace(/[\s，,。.、；;：:！!？?「」『』"“”'’()（）]/gu, "");
+
+/**
+ * AG21c (R55): the note's body — the model's span when it holds every clause of the user's own words (their sentence without
+ * "记一下："), else those words themselves. "她今天来电话，说一月要调去东京办公室" never becomes "She called me today."
+ */
+export function memoBodyKeepingClauses(modelBody: string, said: string): string {
+  if (!said) return modelBody;
+  // A clause that asks for another write ("再建个待办", "remind me Friday") is that write's, not the note's.
+  const pieces = said.split(/(?<=[，,；;。.!！？?\n])/u).filter((piece) => !INSTRUCTION_CLAUSE.test(piece));
+  const own = pieces.join("").replace(/[，,；;]+$/u, "").trim() || said;
+  if (!modelBody) return own;
+  const clauses = pieces.map(squashed).filter((clause) => [...clause].length >= 2);
+  const body = squashed(modelBody);
+  return clauses.every((clause) => body.includes(clause)) ? modelBody : own;
+}
+
+const INSTRUCTION_CLAUSE = /(待办|提醒我|建个|建一个|加个|加一个|改到|改成|删掉|删了|ToDo|TODO|タスク|リマインド|\bremind me\b|\bto-?dos?\b|\bcreate\b|\badd (?:a|an)\b|\bschedule\b)/iu;
+
+const RELATIVE_DAY = /(今天上午|今天下午|今天晚上|今天|昨天|前天|今早|今晚|昨晚|刚才|刚刚|今日の?|昨日の?|一昨日の?|今朝|さっき|\btoday\b|\byesterday\b|\btonight\b|\bthis (?:morning|afternoon|evening)\b|\bjust now\b)/giu;
+
+/** AG21c (R55): a title without its relative day words ("小林健今天来过电话" → "小林健来过电话"); the day is the date field. */
+export function withoutRelativeDay(title: string): string {
+  return title.replace(RELATIVE_DAY, " ").replace(/\s{2,}/gu, " ").replace(/\s+([，,。.、])/gu, "$1").replace(/^[\s，,、]+|[\s，,、]+$/gu, "").replace(/(?<=[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])\s+(?=[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])/gu, "").trim();
+}
+
+/** AG21c (R55): the first pronoun of the clue replaced by the contact's name ("她今天来电话" → "林美咲今天来电话", "She called" → "Emily called"). */
+export function replacePronoun(text: string, pronoun: string, name: string): string {
+  const clean = pronoun.replace(/^@/u, "").trim();
+  if (!clean) return text;
+  if (/^[\x20-\x7e]+$/u.test(clean)) return text.replace(new RegExp(`\\b${clean.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}\\b`, "iu"), name);
+  return text.includes(clean) ? text.replace(clean, name) : text;
+}
+
 /** The kind of contact as the words say it (code decides where the words are clear; otherwise the model's code). */
 export function contactKindOf(text: string): { channel?: "phone" | "meeting" | "message" | "email"; direction?: "incoming" | "outgoing" | "mutual" } {
   const channel = /(电话|電話|来电|來電|\bcall(ed|s|ing)?\b|\bphoned?\b|\brang\b)/iu.test(text) ? "phone"
@@ -517,7 +551,8 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
       continue;
     }
     // memo.create: the user's words, the people, the day and the kind of contact.
-    const body = words(ctx.message, intent.body) || memoBodyOf(quote);
+    // AG21c (R55): the body keeps every clause of the user's own words — the model's span is used only when it holds them all.
+    const body = memoBodyKeepingClauses(words(ctx.message, intent.body), memoBodyOf(quote));
     if (!body) return stop("body_missing", WRITE_WORDS.noTitle(language, quote));
     const said = contactKindOf(`${body} ${quote}`);
     const actual = people.filter((item) => item.role === "actual_contact");
@@ -528,14 +563,17 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
     if (people.some((item) => !item.name)) return stop("read_failed", failedLine);
     const names = Object.fromEntries(people.map((item) => [item.id, item.detail ? (language === "en" ? `${item.name} (${item.detail})` : `${item.name}（${item.detail}）`) : item.name]));
     // The body stays the user's words; the title is code's and names the person where the words used a pronoun.
-    let title = body.split(/(?<=[。.!！？?])\s*/u)[0].replace(/[。.!！]+$/u, "").slice(0, 40) || body.slice(0, 40);
-    for (const person of people) if (person.text && isPronounClue(person.text) && title.includes(person.text)) title = title.replace(person.text, person.name);
+    // AG21c (R55): in both, a pronoun becomes the linked contact's name; the title drops the relative day (it is the date).
+    const named = (text: string) => { let out = text; for (const person of people) if (person.text && isPronounClue(person.text) && person.name) out = replacePronoun(out, person.text, person.name); return out; };
+    const noteBody = named(body);
+    let title = noteBody.split(/(?<=[。.!！？?])\s*/u)[0].replace(/[。.!！]+$/u, "").slice(0, 40) || noteBody.slice(0, 40);
+    title = withoutRelativeDay(title) || title;
     ops.push({
       capability: "memo.create",
       localId: intent.localId,
       partId: part.localId,
       set: {
-        body,
+        body: noteBody,
         contactIds,
         ...(actualPeople.length ? { interaction: { actualContactIds: actualPeople.map((item) => item.id), channel: said.channel ?? intent.channel ?? "other", direction: said.direction ?? intent.direction ?? "mutual", occurredOn: day, precision: "day" as const } } : {}),
         names,
