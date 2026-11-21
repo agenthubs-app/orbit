@@ -153,6 +153,8 @@ const EVENT_WORD = /(活动|聚会|研讨会|讲座|展览|摄影展|市集|论�
 /** "加进我的日程", "カレンダー": the user does mean a schedule item. */
 const SCHEDULE_WORD = /(日程|日历|行程|カレンダー|スケジュール|\bschedule\b|\bcalendar\b)/iu;
 const AG13_FAMILY = new Set<string>(["privateEvent.create", "privateEvent.update", "privateEvent.delete", "attendance.create", "attendance.delete", "attendance.update", "schedule.create", "schedule.update", "schedule.delete", "todo.complete", "todo.reopen", "todo.delete", "memo.update"]);
+/** AG21c (R26): the writes a private event's delete plan makes. */
+const PLAN_FAMILY = new Set<string>(["privateEvent.delete", "attendance.delete", "attendance.update", "memo.update", "todo.update", "schedule.update", "schedule.delete"]);
 const TIME_OF_DAY = /(\d{1,2}\s*[:：]\s*\d{2}|\d{1,2}\s*(?:時|时|点)|\b\d{1,2}\s*(?:am|pm)\b|上午|下午|晚上|中午|午前|午後|夕方|\bmorning\b|\bafternoon\b|\bevening\b)/iu;
 
 /** Parts this pass proposes for. */
@@ -254,6 +256,11 @@ export function proposeNode(scope: NodeScope): GraphNode {
     const blockedBy = (part: GraphPart) => part.dependsOn.map((id) => byId.get(id)).find((other) => other && other.route !== "propose_write" && other.status !== "answered" && other.status !== "awaiting_clarification");
     // 1. Writes this version does not do in the conversation.
     const work: GraphPart[] = [];
+    const resumedPlans = new Set<string>();
+    const coveredParts = new Set<string>();
+    const isPlanItem = (item: NonNullable<ReturnType<typeof continuedItem>>) => Boolean(item.resume && item.options?.length && item.options.every((option) => option.type === "event_plan"));
+    // A sentence that continues nothing else and asks only for writes of a delete plan (delete, unlink, «我去过»).
+    const planCompanion = (other: GraphPart) => !other.continues && writesOf(other).length > 0 && writesOf(other).every((capability) => PLAN_FAMILY.has(capability));
     for (const part of due) {
       const writes = writesOf(part);
       if (blockedBy(part)) {
@@ -270,7 +277,21 @@ export function proposeNode(scope: NodeScope): GraphNode {
       // part asked about — its object, its date, its words — as a click on that option would; the second layer is not asked
       // to read the few words of the answer as a request of their own.
       const askedItem = !part.write ? continuedItem({ context: run.context }, part) : null;
-      const picked = askedItem?.resume ? optionPickedIn(askedItem, quoteOf(part)) : null;
+      // AG21c (R26, gate AE-EVT-008): several sentences of one reply to the delete-plan question are one answer — read
+      // together, and only the first resumes the plan; the others are part of its card (never a second plan).
+      const planItem = askedItem && isPlanItem(askedItem) ? askedItem : null;
+      if (resumedPlans.size && !part.write && (planItem ? resumedPlans.has(planItem.ref) : planCompanion(part))) {
+        part.write = { intents: [], picks: {} };
+        coveredParts.add(part.localId);
+        emitTrace({ partId: part.localId, type: "propose.part_of_delete_plan_answer" });
+        work.push(part);
+        continue;
+      }
+      // The first layer marks one sentence as the answer; the sentences beside it that only say what to do with the plan's
+      // records ("笔记留着，只解除关联", "然后把活动删了") are the same answer.
+      const answerWords = planItem ? due.filter((other) => other === part || (!other.write && (continuedItem({ context: run.context }, other)?.ref === planItem.ref || planCompanion(other)))).map(quoteOf).join("。") : quoteOf(part);
+      const picked = askedItem?.resume ? optionPickedIn(askedItem, answerWords) : null;
+      if (planItem && picked) resumedPlans.add(planItem.ref);
       if (askedItem?.resume && picked) {
         const picks: PartWrite["picks"] = picked.type === "field" ? { field: picked.id as "plannedDate" | "dueAt" } : picked.type === "contact" ? { contact: picked.id } : picked.type === "todo" ? { todo: picked.id } : picked.type === "event" ? { event: picked.id } : picked.type === "event_plan" ? { eventPlan: picked.id } : {};
         part.write = { intents: [], picks, resume: askedItem.resume };
@@ -402,6 +423,10 @@ export function proposeNode(scope: NodeScope): GraphNode {
     const contactDuplicates = new Map<string, { name: string; candidates: DuplicateCandidate[] }>();
     const active = work.filter((part) => part.write && part.status === "unfinished" && part.reason === "proposing").sort((left, right) => left.quote[0] - right.quote[0]);
     for (const part of active) {
+      if (coveredParts.has(part.localId)) {
+        outcomes.set(part.localId, { kind: "covered" });
+        continue;
+      }
       const preset = run.presetIntents.get(part.localId);
       const resumed = !preset && part.write!.resume ? resumedResolution(ctx, part, part.write!.resume, part.write!.picks) : null;
       const outcome: WriteOutcome = preset ? { kind: "ready", ops: preset } : resumed ? await resolvePartIntents(resumed.ctx, resumed.part, resumed.write) : await resolvePartIntents(ctx, part, part.write!);
