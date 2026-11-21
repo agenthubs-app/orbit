@@ -21,7 +21,7 @@
 
 ## 运行记录
 
-- 结果：等协调者评审。门槛硬判定 74/78，本 sprint 的 14 例全过；没过的 4 例是 AE-MEM-008、009、012 和 AE-REF-005，归 AG14（本分支没有 AG14）。
+- 结果：completed（见页尾「协调者复核与结论」）。本分支门槛硬判定 74/78，本 sprint 的 14 例全过；没过的 4 例是 AE-MEM-008、009、012 和 AE-REF-005，归 AG14（本分支没有 AG14）。
 - Generator：服务端 Claude（Fable 5.2）；界面 Claude（Opus 5.5），2026-11-20。Planner revision 1，SHA-256 `3df3967767d8f5aca26f3e8153e36e91dcb3b8ceeb4efc0cdd1a5dd2eb0d4736`。
 - 分支 `sprint/AG15-scheduled-tasks-inbox`；界面开工时 `002c63eb7`；合并了 AG19（`917148533`，合并提交 `cde1e8fa0`）。最终 SHA `55e8bbbe4`（门槛构建在它上面）。
 - 档位 H。push：无。生产库、部署：没有碰。11:43 机器重启、12:35 账号用量上限各停过一次；没有半写的文件；中断时在排队的构建作废重来。
@@ -113,10 +113,24 @@
 
 **需要决定：**
 
-1. AE-SCH-001 R1 的读法（见上「评测用例与三行卡」）。
+1. ~~AE-SCH-001 R1 的读法~~：协调者已确认改写（见下「协调者第二轮的七项」第 7 条）。
 2. 结果条目标题用服务端统一句式（与稿不同，差异 2），是否可以。
 
 **回退：** 不合并，或 revert 合并提交。界面改动都是附加的；`display.lines` 不在时两端照旧显示七行。
+
+## 协调者第二轮的七项（提交 `b132469d6`、`81d8f5b2a`）
+
+1. **AE-SCL-030 R4（依据要认得出是哪篇笔记）。** 只改定时任务这条路径（`features/agent/automations/run-rule.ts`），对话里的回答（`graph/nodes/functions.ts`、`answer/basis.ts`）没有碰。`runRulePeriod` 按编号重读笔记时记下标题、写下那天（`createdAt`，与笔记卡上的日子相同）和第一句；新函数 `noteBasisWords` 写成依据一行：「依据：笔记「本周重点职位」（11月14日）里写的：“本周重点：功率器件（SiC／GaN）方向的工艺负责人，客户是临港的一家新厂”。」——用户自己的话、标题加日子（同名的 LM19 是 11 月 7 日），`firstSentenceOf` 取第一句。原来那行「用到的笔记：…」去掉。笔记本身作为这一期结果可点开的来源：运行记录 `detail.source`（`{ caption: 「按这篇笔记挑的」, card }`，卡由 AG19 的 `recordOfView` 写），两端结果页在依据下面放一张小卡（网页 `agent-inbox-entries.tsx` 的 `AgentResult`，App `AgentEntryDetail.tsx` 的 `AgentResult`）；契约 `AgentScheduledTaskRunContract.detail.source`、schema 读不懂时丢掉不报错。运行器在「我的定时任务」历史里把这张卡写出来，评审看得到。测试：`tests/agent-v1/rule-run.test.ts`。
+2. **AE-SCL-030 R1：范围里是 114 位，241 只在夹具字段里。** 依据：夹具 `large-v1.yaml` 的 facts 写 241（LC24～LC28 加 LC10375～LC10610，按字段 `lastInteractionOn` 数）；但种子不写这个字段——「最近互动」按 AG05 从往来记录推出来，种子报告里 2441 条 `lastInteractionOn` 都记为「kept in the fixture only」，只有锚点联系人补写了那天的往来笔记（`bulk-generator.ts` 的 `supplements` 只取 anchors）。在 large-v1 快照里按往来笔记数（`work/scope-count.sql`、`work/scope_members.py`）：半导体 534 位，有往来记录的 137 位，最近一次在 9 月 17 日以前的 114 位——与产品的「共114位」一致，产品没有少数。241 位里只有 65 位有往来记录、60 位在范围里；另有 54 位（如 LC10619，夹具里最近往来在 9 月 23 日以后）因为随机生成的往来笔记较早而在范围里。LC24～LC28 都在。要 241 成立得改种子（给每个批量联系人按 `lastInteractionOn` 写一条往来），不是产品。用例没有改。
+3. **AE-SCL-029：59 对。** 夹具有 60 场平台活动，其中 RE08「茶器交流会」没有开始时间，种子按产品写入链路存成主办方的未发布草稿（种子报告 gap：`RE08 startsAt — an event without a start time cannot be published`），账号读不到（已发布或自己主办才读得到）。产品读到 59 场，`coverage.total` 59。与 AE-JDG-003、AE-FN-006 同一原因。
+4. **一期没有可排的候选时，trace 不再写 `unavailable`。** `runRulePeriod` 在排序之前就分出两种：范围里一条都没有记 `no_candidates`，都告诉过了记 `all_told_before`（`rule.ranked` 的 `unmatchedReason`，结果上 `ranked`）；这时不再调排序。AE-SCH-007、AE-SCL-029 的第二期现在是 `no_candidates`。测试：`rule-run.test.ts`。
+5. **AE-SCH-008 运行器的话。** 派发汇总加 `deliveriesSent`、`deliveriesCancelled`（`dispatcher.ts` 的 `dispatchDueAutomations`）；运行器的 `dispatchNarration` 写「取出 1 条待送通知（取消 1 条，没有送出）」，没有待送时写「没有待送通知」，不再说「补送」。测试：`tests/agent-eval/hard-checks-ag15.test.ts`、`tests/capabilities/agent-automation-runs.test.ts`。
+6. **一条任务一个名字。** `titleOf`（`graph/nodes/rule.ts`）只看规则本身：范围的短名取范围那行里用户自己的话（`scopeNameOf`），不再另传一份 `said`；对话出的卡、表单没填名字时、任务页都用它。截图里两种写法的来源是我造界面数据时手填了「每周五挑 3 场周末活动」，产品自己出的名字只有「每周五挑3场：周末活动」一种。用户在表单里自己起的名字照用。测试：`tests/agent-v1/ag15-ui-words.test.ts`。
+7. **AE-SCH-001 R1** 按协调者确认改为「六样都在卡上，而且每一样都分得出来；可以合并成三行来写（用户 2026-11-20 的决定）」，`eval/CHANGES.md` 记为协调者已确认。
+
+影响分析：`titleOf` 在索引里撞了 iorbit-0918 的同名函数（报 HIGH，指的是那一个），`runRulePeriod`、`dispatchDueAutomations` 索引里没有（UNKNOWN）；文本搜索确认：`titleOf` 只有 `createIntent` 和 `ruleFromForm` 两处调用，另两个只有派发和测试调用。`detect-changes --scope staged` 两次都是 low，但索引落后，只认出运行器里的几个函数，不当作已核对。收口集 900/900；两端 `tsc` 只剩基线错误；契约同步四个测试通过。
+
+重跑（新构建 `81d8f5b2a`，只跑这五例，没有跑整个门槛）：`20261120-150629-81d8f5b-AG15-followup`，代码判定 5/5（AE-SCL-030、AE-SCL-029、AE-SCH-007、AE-SCH-008、AE-SCH-001），主模型 4 次，0.0221 元；评审材料 5 份（`judging.md`），尚未评审。中间一次 `20261120-145349-b132469-AG15-followup`（5/5，0.0124 元）里依据那行引号后面多一个句号，`81d8f5b2a` 修掉后重跑。
 
 ---
 
@@ -324,3 +338,35 @@
 - **与未批准的视觉稿有一处不一致，待定稿时对齐：** 引用的笔记读不到时，服务端按 PLANNER 在收件箱里说一次（同一版本的任务不每期重复）；视觉稿 15-4 的表里写的是「不进收件箱，只在列表上标需要处理」。
 - **界面部分**在视觉稿获批后由同一个 Generator 在本 sprint 内继续做。
 
+
+## 协调者复核与结论
+
+**结论：completed。** 最终提交 `2378aacae`（`81d8f5b2a` 上一个只动 App 的提交：五处真实的 `/api/agent/automations` 调用登记在 `agent-automations` 下，两处并不存在的路由删掉），经集成线 `agent-v1-next` 合并，随第二次发布（`463de7fdd`）在 2026-11-21 09:17 上正式站。本页正文由两位 Generator 写，协调者原样写入。
+
+**评审。** 都是 Claude 新会话，互不相见；门槛里另外 64 例是不变量包，只看代码判定。
+
+| 运行 | 代码判定 | 评审 | 说明 |
+|---|---|---|---|
+| `20261120-042802-90158fd-AG15-gate`（服务端） | 74/78 | 一位（Sonnet 5.5），本 sprint 14 例：14/14 | 没过代码判定的 4 例要 AG14 |
+| `20261120-135604-55e8bbb-AG15-gate-ui`（界面） | 74/78 | 两位（Fable 5.2），本 sprint 14 例：13/14 | AE-SCL-030 一位不过、一位不确定：依据那行认不出是哪篇笔记，范围人数与用例文字不符 → 协调者第二轮七项 |
+| `20261120-150629-81d8f5b-AG15-followup` | 5/5 | 一位（Fable 5.2）：5/5 | 评审另提的两点（收件箱条目点开的是不是那一期的结果、英文回执摘要）查明不用改：两端都按 `sources[0].sourceId` 打开那一期，英文摘要不显示 |
+| 上线门槛 `20261121-002824-bdb67c3-release2-gate-all-4` | SCH 12 例全过 | 两位（Opus 5.5） | SCH、SCL-029/030 都过 |
+
+**协调者看过的截图。** `app-10-rule-card`（三行卡，按定案）、`app-3-task-detail`：与稿一致。
+
+**怎么合并的**（`coordination/next/INTEGRATION-LOG.md`）：
+- `c555050f7` 合服务端那一轮（19 个文件冲突，都是两边在同一处各加一段，都保留）；`af19d86f9` 召回接缝接到 AG14 的 `recallFor()`；`29eb66da0` 定时任务运行按对话一样用记忆。
+- `327289a93` 合最终的 `81d8f5b2a`（10 个文件冲突）。**设计重叠在这里定的**：收件箱里外部助手的提议，两个 sprint 都画了。保留 AG15 的列表（「等你确认」一组在最上面），有确认页的提议用 AG17 的那一行和右栏；没有确认页的仍是 AG15 的行。协调者确认与两份获批稿一致。
+- `5d2d0b993` 合 `2378aacae`，没有冲突。
+- 合并后在发布门槛里查出、已改的：接受了「定期留意」之后回答却说「现在还不能在对话里建」（AG15 的 `ruleTaskOf` 把接受的选项留给了 AG03 的旧句子），`f14f562f9` 改成出定时任务卡或先问一句。AG21a 又加了两条：只有一条任务时按描述也能找到它（R37）；「现在找一下，之后一直帮我留意」拆成本轮的查找和一条定时任务（产品决定 2）。
+- 定时提醒的语言（AG16 合并处，`091c80cb6`）：提醒按这一期结果的语言写；存了「回答用日语」时结果和提醒都是日语。
+
+**正式库与配置。** 上线前在正式库建了到期索引表 `agent_automation_due`（只执行 AG15 自己的 `create table if not exists`，先做了备份分支 `backup-pre-release2-20261121`，用户说「你来做」）。
+
+**用例修订**（协调者确认，`eval/CHANGES.md`）：AE-SCH-001 R1 改成「六样都在卡上，每一样都分得出来；可以合并成三行写」；AE-SCL-030 范围里是 114 位联系人（241 只在夹具字段里）；AE-SCL-029 是 59 场活动（RE08 是没发布的草稿）。
+
+**已知的不足：**
+- 卡上的时间按部署所在时区显示（卡没有自己的时区）。
+- App 上「改」的表单没截到图；外部提议的条目在真实界面上没出现过，由两端组件测试证明。
+- 三行卡上不写「不推送」：用户要卡上少写，完整表单里有。
+- 第三方用例集里有三处等产品负责人定：「未来一周」按时刻还是按日历日算到第 7 天；夏令时跳过的那个钟点任务何时跑；一例的夹具与期望对不上，要先改夹具。详见 [RELEASE-2.md](../../RELEASE-2.md)。
