@@ -95,6 +95,12 @@ export interface ShadowStore {
 }
 
 const sortedUnique = (values: readonly string[]) => [...new Set(values.filter(Boolean))].sort();
+/**
+ * The ids of the user's records (a memo, contact, to-do, event, schedule item, «我去过»). The old path also lists
+ * where its answer came from ("orbit-agent:model-provider"), which is not a record and is not compared.
+ */
+const RECORD_ID = /^(note|contact|task|event|personal|private_event|attendance|schedule|connection):[^:]/u;
+const recordIds = (ids: readonly string[]) => sortedUnique(ids.filter((id) => RECORD_ID.test(id)));
 /** "memo:note:abc" → "note:abc"; "note:abc" stays. */
 export const recordIdOfRef = (ref: string) => (ref.split(":").length >= 3 ? ref.slice(ref.indexOf(":") + 1) : ref);
 
@@ -113,7 +119,7 @@ export function oldSideOf(result: { success: boolean; data?: unknown; error?: un
   const evidence = Array.isArray(data.provenance?.evidenceIds) ? (data.provenance.evidenceIds as unknown[]).filter((id): id is string => typeof id === "string") : [];
   return {
     card: ops.length ? { ops } : null,
-    cited: sortedUnique(evidence.map(recordIdOfRef)),
+    cited: recordIds(evidence.map(recordIdOfRef)),
     clarification: data.routingDecision?.intent === "clarification",
     error: null,
     outside: [],
@@ -229,7 +235,7 @@ export async function runShadowComparison(deps: ShadowRunDeps, input: ShadowRunI
       const intents = frozen.flat();
       neu = {
         card: intents.length ? { ops: cardOpsOfIntents(intents) } : null,
-        cited: sortedUnique(result.sourceRefs.map(recordIdOfRef)),
+        cited: recordIds(result.sourceRefs.map(recordIdOfRef)),
         clarification: result.clarifications.some((set) => set.state === "open" && set.kind !== "entry"),
         error: null,
         outside: [],
