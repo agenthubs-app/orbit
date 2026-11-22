@@ -95,3 +95,77 @@ test("the local event detail passes the detail screen's own schema; the calendar
   assert.equal(item?.title, "Climate night");
   assert.equal(item?.location, "Shibuya Hall");
 });
+
+// 2026-11-22 trilingual event AI text: the synced row carries `i18n: { ja, zh, en }` beside the legacy strings (the publish
+// language). The device keeps all three; the screen language is picked at read time, so switching re-renders from the same rows.
+const trilingualResult = {
+  ...result,
+  recommendations: {
+    sourceParticipantId: "p-a", noMatchReason: null,
+    i18n: { ja: { noMatchReason: null }, zh: { noMatchReason: null }, en: { noMatchReason: null } },
+    recommendations: [{
+      targetParticipantId: "p-b", score: 91, reasons: ["蓄電の話が合う"], icebreakers: ["実証の話"], memberHint: "ヒント",
+      i18n: {
+        ja: { reasons: ["蓄電の話が合う"], icebreakers: ["実証の話"], memberHint: "ヒント" },
+        zh: { reasons: ["都在做储能"], icebreakers: ["问问试点"], memberHint: "提示" },
+        en: { reasons: ["Both work on storage"], icebreakers: ["Ask about pilots"], memberHint: "Hint" },
+      },
+    }],
+  },
+  roundOneTable: {
+    ...result.roundOneTable, theme: "蓄電", rationale: "蓄電の卓", icebreakers: ["あ"], memberPrompts: { "p-a": ["ア"], "p-b": ["イ"] }, memberRationales: { "p-a": "理由A", "p-b": "理由B" },
+    i18n: {
+      ja: { theme: "蓄電", rationale: "蓄電の卓", icebreakers: ["あ"], memberPrompts: { "p-a": ["ア"], "p-b": ["イ"] }, memberRationales: { "p-a": "理由A", "p-b": "理由B" } },
+      zh: { theme: "储能", rationale: "储能桌", icebreakers: ["甲"], memberPrompts: { "p-a": ["一"], "p-b": ["二"] }, memberRationales: { "p-a": "原因A", "p-b": "原因B" } },
+      en: { theme: "Storage", rationale: "Storage table", icebreakers: ["one"], memberPrompts: { "p-a": ["x"], "p-b": ["y"] }, memberRationales: { "p-a": "why a", "p-b": "why b" } },
+    },
+  },
+};
+const dayRecords = (payload: unknown) => ({
+  registrations: [record("event_registration", "event-1", { eventId: "event-1", membershipStatus: "rsvped", admissionStatus: null })],
+  events: [record("registered_event", "event-1", event)],
+  results: [record("event_published_result", "event-1", payload)],
+});
+
+test("trilingual AI text: the same device rows read in ja, zh and en", () => {
+  const records = dayRecords(trilingualResult);
+  const expected = {
+    ja: { reason: "蓄電の話が合う", hint: "ヒント", theme: "蓄電", rationale: "蓄電の卓", prompt: "ア", why: "理由A", icebreaker: "あ" },
+    zh: { reason: "都在做储能", hint: "提示", theme: "储能", rationale: "储能桌", prompt: "一", why: "原因A", icebreaker: "甲" },
+    en: { reason: "Both work on storage", hint: "Hint", theme: "Storage", rationale: "Storage table", prompt: "x", why: "why a", icebreaker: "one" },
+  } as const;
+  for (const language of ["ja", "zh", "en"] as const) {
+    const day = localEventDay(records, "event-1", language);
+    const workspace = localAttendeeWorkspace(day, { now: NOW, displayName: "Aiko" });
+    assert.ok(workspace, language);
+    assert.deepEqual(readAttendeeWorkspace(workspace, "event-1"), workspace, `${language}: the live page's own validation accepts it`);
+    const want = expected[language];
+    const recommendation = workspace.recommendations?.recommendations[0];
+    assert.deepEqual(recommendation?.reasons, [want.reason], language);
+    assert.equal(recommendation?.memberHint, want.hint, language);
+    assert.equal(recommendation?.score, 91, `${language}: non-text fields stay`);
+    assert.equal(workspace.roundOneTable?.theme, want.theme, language);
+    assert.equal(workspace.roundOneTable?.rationale, want.rationale, language);
+    assert.deepEqual(workspace.roundOneTable?.icebreakers, [want.icebreaker], language);
+    assert.deepEqual(workspace.roundOneTable?.memberPrompts["p-a"], [want.prompt], language);
+    assert.equal(workspace.roundOneTable?.memberRationales["p-a"], want.why, language);
+    assert.equal(workspace.roundOneTable?.tableNumber, 3, `${language}: seating stays`);
+    assert.ok(!("i18n" in (day.result?.roundOneTable ?? {})), `${language}: the picked view carries no i18n map`);
+  }
+});
+
+test("trilingual AI text falls back to the legacy strings: old server rows, a missing language, a malformed i18n", () => {
+  const legacy = localEventDay(dayRecords(result), "event-1", "zh").result;
+  assert.deepEqual(legacy?.recommendations?.recommendations[0]?.reasons, ["Both work on storage"], "no i18n → legacy strings");
+  assert.equal(legacy?.roundOneTable?.theme, "Storage");
+
+  const onlyJa = { ...trilingualResult, roundOneTable: { ...trilingualResult.roundOneTable, i18n: { ja: trilingualResult.roundOneTable.i18n.ja } } };
+  assert.equal(localEventDay(dayRecords(onlyJa), "event-1", "en").result?.roundOneTable?.theme, "蓄電", "no text in the screen language → legacy strings");
+
+  const broken = { ...trilingualResult, roundOneTable: { ...trilingualResult.roundOneTable, i18n: { en: { theme: 42 }, zh: "x" } } };
+  const day = localEventDay(dayRecords(broken), "event-1", "en");
+  assert.ok(day.result, "a malformed i18n never drops the row");
+  assert.equal(day.result.roundOneTable?.theme, "蓄電", "malformed language entry → legacy strings");
+
+  assert.equal(localEventDay(dayRecords(trilingualResult), "event-1").result?.roundOneTable?.theme, "蓄電", "no screen language given → legacy strings");
+});

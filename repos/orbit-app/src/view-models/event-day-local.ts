@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { OrbitLanguage } from "../api/contract/language";
 import type { SyncRecord } from "../api/contract/sync";
 import { readAttendeeWorkspace, type AttendeeWorkspace } from "../api/event-attendee-operations";
 import { publicEventDetailSchema, type PublicEventDetail } from "../api/event-detail-contract";
@@ -33,11 +34,21 @@ const registeredEventSchema = z.object({
 export type LocalRegisteredEvent = z.infer<typeof registeredEventSchema>;
 
 const person = z.object({ participantId: id, displayName: z.string(), company: z.string().nullable(), role: z.string().nullable(), industry: z.string().nullable(), topics: strings, experienceHighlight: z.string().nullable(), languages: strings, needs: strings, offers: strings });
-const table = z.object({ tableNumber: z.number().int().positive(), theme: z.string(), rationale: z.string(), icebreakers: strings, memberPrompts: z.record(z.string(), strings), memberRationales: z.record(z.string(), z.string()), members: z.array(z.object({ participantId: id, seat: z.string() })) });
+// AI-written text travels in all three languages (`i18n: { ja, zh, en }`, each holding the same text fields as the row) beside the
+// legacy single-language strings (the publish language, kept for older apps). The device keeps every language; the reader picks the
+// screen language at read time, so a language switch re-renders without a pull. A missing or malformed `i18n` falls back to the
+// legacy strings and never drops the row.
+function trilingual<T extends z.ZodRawShape>(fields: T) {
+  const one = z.object(fields).partial().optional().catch(undefined);
+  return z.object({ ja: one, zh: one, en: one }).optional().catch(undefined);
+}
+const tableText = { theme: z.string(), rationale: z.string(), icebreakers: strings, memberPrompts: z.record(z.string(), strings), memberRationales: z.record(z.string(), z.string()) };
+const table = z.object({ tableNumber: z.number().int().positive(), ...tableText, members: z.array(z.object({ participantId: id, seat: z.string() })), i18n: trilingual(tableText) });
+const recommendationText = { reasons: strings, icebreakers: strings, memberHint: z.string() };
 const publishedResultSchema = z.object({
   eventId: id, generationId: id, publishedAt: iso, resultsAvailableAt: iso,
   me: person, directory: z.array(person), directoryComplete: z.boolean().optional(),
-  recommendations: z.object({ sourceParticipantId: id, noMatchReason: z.string().nullable(), recommendations: z.array(z.object({ targetParticipantId: id, score: z.number().finite(), reasons: strings, icebreakers: strings, memberHint: z.string() })) }).nullable(),
+  recommendations: z.object({ sourceParticipantId: id, noMatchReason: z.string().nullable(), i18n: trilingual({ noMatchReason: z.string().nullable() }), recommendations: z.array(z.object({ targetParticipantId: id, score: z.number().finite(), ...recommendationText, i18n: trilingual(recommendationText) })) }).nullable(),
   roundOneTable: table.nullable(), roundTwoTable: table.nullable(),
 }).refine((value) => value.directory.some((entry) => entry.participantId === value.me.participantId));
 export type LocalPublishedResult = z.infer<typeof publishedResultSchema>;
@@ -69,9 +80,28 @@ export interface LocalEventDay {
   result: LocalPublishedResult | null;
 }
 
-export function localEventDay(records: LocalEventDayRecords, eventId: string): LocalEventDay {
+type Localized<T> = Omit<T, "i18n">;
+function pick<T extends { i18n?: Partial<Record<OrbitLanguage, object | undefined>> | undefined }>(row: T, language: OrbitLanguage | undefined): Localized<T> {
+  const { i18n, ...legacy } = row;
+  const chosen = language ? i18n?.[language] : undefined;
+  return chosen ? { ...legacy, ...chosen } : legacy;
+}
+
+/** The published result with its AI text in `language` (legacy strings when the row has no text in that language). */
+export function localizePublishedResult(result: LocalPublishedResult, language: OrbitLanguage | undefined): LocalPublishedResult {
+  const tableIn = (value: LocalPublishedResult["roundOneTable"]) => value && pick(value, language);
+  const recommendations = result.recommendations && {
+    ...pick(result.recommendations, language),
+    recommendations: result.recommendations.recommendations.map((entry) => pick(entry, language)),
+  };
+  return { ...result, recommendations, roundOneTable: tableIn(result.roundOneTable), roundTwoTable: tableIn(result.roundTwoTable) };
+}
+
+/** `language` is the screen language; pass it from the locale so a switch re-renders the AI text from the same device rows. */
+export function localEventDay(records: LocalEventDayRecords, eventId: string, language?: OrbitLanguage): LocalEventDay {
   const event = parsed(registeredEventSchema, records.events, eventId)[0] ?? null;
-  const result = parsed(publishedResultSchema, records.results, eventId)[0] ?? null;
+  const stored = parsed(publishedResultSchema, records.results, eventId)[0] ?? null;
+  const result = stored && localizePublishedResult(stored, language);
   return {
     eventId,
     registration: parsed(registrationSchema, records.registrations, eventId)[0] ?? null,
