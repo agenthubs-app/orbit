@@ -8,8 +8,6 @@ import { boundContactReader } from "../../features/agent-v1/domains/contact/type
 import { reviseImportByWords } from "../../features/agent-v1/entry/import-revision";
 import { runAgentGraph } from "../../features/agent-v1/graph/build";
 import { companyNamedIn, findContacts, oneCharOff, partialContacts } from "../../features/agent-v1/graph/nodes/resolve";
-import { newJudgmentBudget } from "../../features/agent-v1/judgment/ask";
-import { access, graded, judgeStub } from "./judgment-kit";
 import { resolvePartIntents } from "../../features/agent-v1/propose/resolve";
 import type { StoredIntent } from "../../features/agent-v1/propose/schema";
 import { createAgentExecutorRegistry } from "../../features/agent/runtime/executor-registry";
@@ -156,32 +154,33 @@ test("decision 4: a name one character off two real contacts offers both to pick
 
 /* ── owner decision 6: a to-do named in another language ── */
 
-test("decision 6: 'NDA' against 「签署供应商保密协议」 offers that to-do (done) as a candidate to click, never a match", async (t) => {
-  // Record finder port: owner decision 6 (to-dos by meaning, judgment match.level) is the legacy lookup's; the new finder asks
-  // DeepSeek once for other words instead (finder/live.ts reformulate). Kept under the rollback flag.
+test("record finder (replaces decision 6): 'NDA' against 「签署供应商保密协议」 — no word matches, one reformulate round finds it; a card, still a click", async (t) => {
+  // The default (new) record finder's behaviour, whatever ORBIT_AGENT_FINDER the run has.
   const finder = process.env.ORBIT_AGENT_FINDER;
-  process.env.ORBIT_AGENT_FINDER = "legacy";
-  t.after(() => { if (finder === undefined) delete process.env.ORBIT_AGENT_FINDER; else process.env.ORBIT_AGENT_FINDER = finder; });
+  delete process.env.ORBIT_AGENT_FINDER;
+  t.after(() => { if (finder !== undefined) process.env.ORBIT_AGENT_FINDER = finder; });
   const world = peopleWorld();
-  world.records.push(todo(ACTOR, "task:nda", "签署供应商保密协议", { completedAt: "2026-11-10T01:00:00.000Z", status: "completed" }), todo(ACTOR, "task:photos", "整理样品照片"));
+  world.records.push(todo(ACTOR, "task:nda", "签署供应商保密协议"), todo(ACTOR, "task:photos", "整理样品照片"), todo("actor:other", "task:other-nda", "签署供应商保密协议"));
   const records = recordAccessOf(world);
-  const judge = judgeStub((id, _question, call) => {
-    const key = /t\d+/u.exec(id)?.[0] ?? "";
-    const line = call.body.input.map((item) => item.text).join("\n").split("\n").find((text) => text.startsWith(`[${key}]`)) ?? "";
-    return line.includes("保密协议") ? graded(0.02, 0.05, 0.93) : graded(0.9, 0.08, 0.02);
-  });
-  const message = "把 supplier NDA 那条改到周五";
-  const intent: StoredIntent = { capability: "todo.update", date: span(message, "周五"), localId: "o1", relations: [], selector: [span(message, "supplier NDA 那条")] };
-  const ctx = { ...ctxOf(records, message), judgment: access(judge.fetchImplementation), judgmentBudget: newJudgmentBudget() };
+  const message = "把 NDA 那条改到周五";
+  const intent: StoredIntent = { capability: "todo.update", date: span(message, "周五"), localId: "o1", relations: [], selector: [span(message, "NDA 那条")] };
+  // ("supplier NDA" would already match through the finder's word list: 供应商 = supplier.) The reformulate round (finder/live.ts): DeepSeek gives other words once; the store is searched again with them.
+  const model = deepseekStub([JSON.stringify({ terms: ["保密协议", "NDA"] })]);
+  const budget = { limit: 4, used: 0 };
+  const ctx = { ...ctxOf(records, message), fetchImplementation: model.fetchImplementation, judgment: null, modelBudget: budget, requestId: "req:nda" };
   const outcome = await resolvePartIntents(ctx, partOf(message, message), { intents: [intent], picks: {} });
-  assert.equal(outcome.kind, "ask", JSON.stringify(outcome));
-  const question = outcome.kind === "ask" && outcome.question.type === "todo" ? outcome.question : null;
-  assert.deepEqual(question?.candidates.map((item) => [item.id, item.detail]), [["task:nda", "已完成"]]);
-  assert.ok(question?.notFound !== undefined, "said as not found by the words");
-  assert.equal(judge.calls.length, 1, "one judgment request");
-  // No judgment available: still "not found", nothing offered.
-  const plain = await resolvePartIntents(ctxOf(records, message), partOf(message, message), { intents: [intent], picks: {} });
-  assert.equal(plain.kind, "stop");
+  assert.equal(outcome.kind, "ready", JSON.stringify(outcome));
+  const ops = outcome.kind === "ready" ? outcome.ops : [];
+  assert.deepEqual(ops.map((op) => [op.capability, (op as { targetId?: string }).targetId]), [["todo.update", "task:nda"]], "the account's own to-do, never another account's of the same title");
+  assert.equal(model.calls.length, 1, "one reformulate call");
+  assert.equal(model.calls[0].node, "propose");
+  assert.equal(budget.used, 1, "inside the round's model budget");
+  assert.equal((records.source.records.find((record) => record.id === "task:nda")!.payload as { task: Record<string, unknown> }).task.plannedDate, undefined, "a card only: nothing is written before the click");
+  assert.ok(!records.source.reads.includes("task:other-nda"), "another account's to-do is never read");
+  // No model budget left: no reformulate call, the words alone find nothing — said so, nothing offered or guessed.
+  const spent = await resolvePartIntents({ ...ctxOf(records, message), fetchImplementation: model.fetchImplementation, modelBudget: { limit: 4, used: 4 }, requestId: "req:nda2" }, partOf(message, message), { intents: [intent], picks: {} });
+  assert.equal(spent.kind, "stop");
+  assert.equal(model.calls.length, 1);
 });
 
 /* ── R12 ── */

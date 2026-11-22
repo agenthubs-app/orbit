@@ -143,12 +143,11 @@ test("4 AE-XL-006: after an item is taken off the card, the result document's ca
   assert.deepEqual(document.partResults.map((item) => [item.partId, item.status, item.reason ?? null]), [["p2", "awaiting_confirmation", null], ["p3", "unfinished", "removed_from_card"]], "the part taken off the card no longer waits for it");
 });
 
-test("5 AE-CTX-005: a to-do word with no time of day is not swallowed by schedule.create; the person's to-do is offered when the words do not match its title", async (t) => {
-  // Record finder port: the lab design reads 食事 ≈ 吃饭 as the words of 「约山本吃饭」 and puts it on a card (a click still
-  // needed) instead of offering the person's two to-dos; this AG06 rule is the legacy lookup's, kept under the rollback flag.
+test("5 AE-CTX-005: a to-do word with no time of day is not swallowed by schedule.create; the person's to-do the words mean is on a card (still a click)", async (t) => {
+  // The default (new) record finder's behaviour, whatever ORBIT_AGENT_FINDER the run has.
   const finder = process.env.ORBIT_AGENT_FINDER;
-  process.env.ORBIT_AGENT_FINDER = "legacy";
-  t.after(() => { if (finder === undefined) delete process.env.ORBIT_AGENT_FINDER; else process.env.ORBIT_AGENT_FINDER = finder; });
+  delete process.env.ORBIT_AGENT_FINDER;
+  t.after(() => { if (finder !== undefined) process.env.ORBIT_AGENT_FINDER = finder; });
   assert.deepEqual(proposableOf({ capabilities: [], refs: [] } as never, "x"), [], "guard: nothing to propose without a write");
   const toDoPart = { capabilities: ["todo.read", "schedule.create"], refs: [] } as never;
   assert.deepEqual(proposableOf(toDoPart, "山本さんとの食事のToDo、11月20日（金）に予定を入れておいて。").sort(), ["todo.create", "todo.update"]);
@@ -176,7 +175,38 @@ test("5 AE-CTX-005: a to-do word with no time of day is not swallowed by schedul
   assert.doesNotMatch(only.text, /今はまだ|このバージョンでは/u, "not answered as not doable yet");
   assert.equal(only.actionPreview?.operations[0].target?.id, "task:t47");
   assert.deepEqual(only.actionPreview?.operations[0].after, { plannedDate: "2026-11-20" });
-  // With two open to-dos of the person, neither matching the words: offered, not guessed (AG06 repair 1).
+  // Two open to-dos of the person: the record finder reads 食事 as the 吃饭 of 「约山本吃饭」 (its synonym list) and decides that
+  // one — a card to confirm, never the other to-do, nothing written before the click (owner decision on the finder port).
+  const two = recordAccessOf(world((list) => {
+    list.push(contact(ACTOR, "contact:c41", "山本直子", { organization: "山手出版" }));
+    list.push(todo(ACTOR, "task:t47", "约山本吃饭", { relatedContactId: "contact:c41" }));
+    list.push(todo(ACTOR, "task:t48", "给山本寄稿件", { relatedContactId: "contact:c41" }));
+    // Another account's same-titled to-do and same-named contact: never read, never on the card.
+    list.push(contact("actor:other", "contact:other41", "山本直子"), todo("actor:other", "task:other47", "约山本吃饭", { relatedContactId: "contact:other41" }));
+  }));
+  const cards2 = cardsOver(two);
+  const kit2 = graphKit(model.fetchImplementation, { now: NOW, records: two });
+  kit2.deps.cards = cards2.access;
+  const first = await runAgentGraph(kit2.deps, kit2.input(message, { locale: "ja" }));
+  assert.equal(first.actionPreview?.operations.length, 1);
+  assert.equal(first.actionPreview?.operations[0].target?.id, "task:t47", "the to-do the words mean, never 「给山本寄稿件」");
+  assert.equal(first.actionPreview?.operations[0].capability, "todo.update", "the to-do change, not the unsupported schedule entry");
+  assert.deepEqual(first.actionPreview?.operations[0].after, { plannedDate: "2026-11-20" });
+  const stored = (id: string) => two.source.records.find((record) => record.id === id)!.payload as { task: Record<string, unknown> };
+  assert.equal(stored("task:t47").task.plannedDate, undefined, "nothing is written before the click");
+  assert.equal(stored("task:t48").task.plannedDate, undefined);
+  assert.ok(!two.source.reads.some((id) => id.includes("other")), "another account's records are never read");
+});
+
+test("5b rollback flag: ORBIT_AGENT_FINDER=legacy restores the old lookup end to end (the person's two to-dos offered, not decided)", async (t) => {
+  const finder = process.env.ORBIT_AGENT_FINDER;
+  process.env.ORBIT_AGENT_FINDER = "legacy";
+  t.after(() => { if (finder === undefined) delete process.env.ORBIT_AGENT_FINDER; else process.env.ORBIT_AGENT_FINDER = finder; });
+  const message = "山本さんとの食事のToDo、11月20日（金）に予定を入れておいて。";
+  const model = deepseekStub(byNode({
+    propose: () => json({ operations: [{ dateText: "11月20日（金）", dependsOn: [], entity: "todo", localId: "w1", partId: "p1", relations: [{ clue: "山本さん", entity: "contact", role: "about" }], selector: { clues: ["山本さんとの食事のToDo"] }, verb: "update" }] }),
+    understand: () => json({ language: "ja", parts: [part({ deliverable: "change", objectClues: [{ entity: "contact", text: "山本さん" }, { entity: "todo", text: "山本さんとの食事のToDo" }], requiredCapabilities: ["todo.read", "schedule.create"], sourceQuote: message })], plainChat: false }),
+  }));
   const two = recordAccessOf(world((list) => {
     list.push(contact(ACTOR, "contact:c41", "山本直子", { organization: "山手出版" }));
     list.push(todo(ACTOR, "task:t47", "约山本吃饭", { relatedContactId: "contact:c41" }));
