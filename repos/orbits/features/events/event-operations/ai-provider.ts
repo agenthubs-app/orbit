@@ -744,11 +744,13 @@ export function fillParticipantPlaceholders(
     for (const language of TEXT_LANGUAGES) {
       // Look-alike letters inside braces (Cyrillic М/С seen in calibration) are the Latin key letters.
       const normalized = sentence[language].replace(/\{[^{}]{1,24}\}/gu, (inner) => inner.replace(/[МмΜ]/gu, "M").replace(/[СсϹ]/gu, "S"));
-      const filled = normalized.replace(PLACEHOLDER_PATTERN, (match: string, key: string, company?: string) => {
+      // Japanese: the server adds さん after a person's name (any さん/様 the model wrote is dropped first), so it is never missing or doubled.
+      const honorific = language === "ja" ? normalized.replace(/(\{[A-Z][A-Z0-9]*\})(さん|様|氏)/gu, "$1") : normalized;
+      const filled = honorific.replace(PLACEHOLDER_PATTERN, (match: string, key: string, company?: string) => {
         const participant = byKey.get(key);
         const value = company ? (participant ? registeredCompany(participant) : null) : participant?.displayName;
         if (!value?.trim()) { problems.push(match); return match; }
-        return value.trim();
+        return language === "ja" && !company ? `${value.trim()}さん` : value.trim();
       });
       if (/[{}]/u.test(filled)) problems.push("stray-brace");
       (sentence as Record<TextLanguage, string>)[language] = filled;
@@ -808,6 +810,8 @@ export function collectTrilingualOutputViolations(
     const rest = stripPlaceholders(value).trim();
     if (!rest) return false;
     if (!HAN_CHARACTER_PATTERN.test(rest) || KANA_PATTERN.test(rest)) return true;
+    // Style (2026-11-22 review): Japanese-calque terms, 贵公司 for a person, and 你 (we address readers as 您).
+    if (/贵公司|课题|导入支持|实际业绩|你(?!们)/u.test(rest)) return true;
     const policy = collectChineseOutputPolicyViolations([rest], []);
     return policy.disallowedTokens.length > 0 || policy.untranslatedValues.length > 0;
   });
@@ -881,6 +885,45 @@ function trilingualRetryable<TValue>(message: string, responseMetadata?: EventOp
   };
 }
 
+
+type FactKind = "need" | "offer" | "topic" | "context";
+interface ProfileFact { id: string; kind: FactKind; owner: string; text: string }
+const FACT_PREFIX: Readonly<Record<FactKind, string>> = { context: "c", need: "n", offer: "o", topic: "t" };
+/** A participant's profile as owned, typed facts: needs, offers (incl. the experience highlight), topics, context (industry, role). */
+export function profileFacts(key: string, participant: import("./contract").EventOperationsParticipant): ProfileFact[] {
+  const facts: ProfileFact[] = [];
+  const add = (kind: FactKind, text: string | null | undefined) => {
+    const value = text?.trim();
+    if (!value) return;
+    const index = facts.filter((fact) => fact.kind === kind).length + 1;
+    facts.push({ id: `${key}.${FACT_PREFIX[kind]}${index}`, kind, owner: key, text: value.slice(0, 200) });
+  };
+  for (const need of participant.needs) add("need", need);
+  for (const offer of participant.offers) add("offer", offer);
+  add("offer", participant.experienceHighlight);
+  for (const topic of participant.topics) add("topic", topic);
+  add("context", participant.industry);
+  add("context", participant.role);
+  return facts;
+}
+const factOwnerTag = (fact: { id: string }) => fact.id.slice(0, fact.id.lastIndexOf("."));
+/** A legal basis pair: a need of one person with an offer of the other, or a topic of each. */
+function isLegalFactPair(left: { id: string; kind: FactKind }, right: { id: string; kind: FactKind }): boolean {
+  if (factOwnerTag(left) === factOwnerTag(right)) return false;
+  const kinds = [left.kind, right.kind].sort().join("+");
+  return kinds === "need+offer" || kinds === "topic+topic";
+}
+/** Every legal pair among the cited facts, as sorted "a|b" ids. */
+function legalPairsIn(cited: ReadonlyArray<{ id: string; kind: FactKind }>): string[] {
+  const pairs: string[] = [];
+  for (let i = 0; i < cited.length; i += 1) for (let j = i + 1; j < cited.length; j += 1) if (isLegalFactPair(cited[i]!, cited[j]!)) pairs.push([cited[i]!.id, cited[j]!.id].sort().join("|"));
+  return pairs;
+}
+/** Every cited need/offer/topic is part of a legal pair in the same reason; context facts may only accompany one. */
+function evidenceIsClosed(cited: ReadonlyArray<{ id: string; kind: FactKind }>): boolean {
+  return cited.every((fact) => fact.kind === "context" || cited.some((other) => other !== fact && isLegalFactPair(fact, other)));
+}
+
 /** One participant-facing text in three languages (assembled by the program from the base draft and its translations). */
 export interface TrilingualSentence { ja: string; zh: string; en: string }
 
@@ -922,7 +965,7 @@ const TRILINGUAL_RETRYABLE_JSON_SHAPES: ReadonlySet<EventOperationsJsonFailureSh
 
 const BASE_DRAFT_INSTRUCTION = `Write every participant-facing text in natural, polite Japanese only. Each text is specific to the people involved and grounded in their supplied profiles; never use template sentences. Never write a participant's name or company name: refer to a person only as {KEY} and to their company only as {KEY:company}, using the supplied keys exactly, and use {KEY:company} only when that profile has hasCompany=true. Profiles may be written in any language: express every profile term in Japanese, except upper-case abbreviations (AI, DX, VC, M&A …) which stay as written. Write numbers with Arabic digits. Return exactly one JSON document with exactly the documented keys.`;
 
-const TRANSLATION_INSTRUCTION = (language: "zh" | "en") => `You translate Japanese event networking texts into ${language === "zh" ? "idiomatic Simplified Chinese (no Japanese kana; keep upper-case abbreviations such as AI, DX, VC, M&A, IPO and the terms SaaS, Web3, EdTech, FinTech, PoC as written; translate every other English word)" : "natural English (no Chinese or Japanese characters)"}. Translate only: never add, remove, or change a fact, a person, a direction (who needs and who offers), a negation, or a number. Keep every {…} placeholder exactly as it appears in the Japanese text, and keep numbers as Arabic digits with the same values. Return exactly {"items":{"<id>":"<translation>"}} with exactly the same ids.`;
+const TRANSLATION_INSTRUCTION = (language: "zh" | "en") => `You translate Japanese event networking texts into ${language === "zh" ? "idiomatic Simplified Chinese as a native Chinese business writer would write it (no Japanese kana; address the reader as 您, never 你; never 贵公司 for a person; avoid Japanese calques such as 课题, 导入支持, 实际业绩; keep upper-case abbreviations such as AI, DX, VC, M&A, IPO and the terms SaaS, Web3, EdTech, FinTech, PoC as written; translate every other English word)" : "natural, concise English (no Chinese or Japanese characters; address the reader as you; refer to a person as they, never it)"}. A Japanese sentence without a subject keeps the same implied person; never turn a person into a company. Translate only: never add, remove, or change a fact, a person, a direction (who needs and who offers), a negation, or a number. Keep every {…} placeholder exactly as it appears in the Japanese text, and keep numbers as Arabic digits with the same values. Return exactly {"items":{"<id>":"<translation>"}} with exactly the same ids.`;
 
 const systemInstruction = `You are Orbit's event operations matching model.
 Return exactly one JSON document and no markdown, explanation, code fences, or trailing text.
@@ -980,7 +1023,7 @@ function requestFingerprint(
     temperature,
     responseSchema: "event-operations-tokenized-recommendations-v1",
     // 2026-11-22: only present when on, so single-language fingerprints are unchanged.
-    ...(trilingual ? { participantTextLanguages: "ja-choose-write-translate-v1" } : {}),
+    ...(trilingual ? { participantTextLanguages: "ja-facts-choose-write-translate-v1" } : {}),
   };
   return JSON.stringify(
     recommendationPromptEncoding === "deduplicated" ||
@@ -1401,19 +1444,30 @@ export function createEventOperationsAiProvider({
     // Exactly K picks per source: K = min(N, candidates). The program owns the count, the order (rank) and the targets' validity.
     const pickCount = new Map(tokenizedSources.tokenSources.map((token) => [token.sourceKey, Math.min(Math.max(0, Math.floor(input.recommendationCount)), token.candidateIdByKey.size)]));
     const pickKeys = (sourceKey: string) => Array.from({ length: pickCount.get(sourceKey)! }, (_, index) => `p${index + 1}`);
-    // Step 1a — choose (small output): exactly K distinct shortlist targets per source, best first, with scores.
-    const chooseShape = Object.fromEntries(tokenizedSources.tokenSources.map((token) => [token.sourceKey, pickKeys(token.sourceKey).map(() => ({ score: 80, target: `${token.sourceKey}C?` }))]));
+    // Fact anchors (2026-11-22): every profile becomes owned, typed facts. The model must say which facts a
+    // recommendation rests on; the program checks owners and types, so a need cannot be presented as an offer,
+    // a topic as expertise, or one person's need as the other's.
+    const factsByKey = new Map<string, readonly ProfileFact[]>();
+    for (const [key, participant] of participantByKey) factsByKey.set(key, profileFacts(key, participant));
+    const promptPerson = (key: string) => ({ facts: factsByKey.get(key)!.map(({ id, kind, text }) => ({ id, kind, text })), hasCompany: registeredCompany(participantByKey.get(key)!) !== null });
+    // Step 1a — choose (small output): exactly K distinct shortlist targets per source, best first, with the fact pairs it rests on.
+    const chooseShape = Object.fromEntries(tokenizedSources.tokenSources.map((token) => [token.sourceKey, pickKeys(token.sourceKey).map(() => ({ basis: [[`${token.sourceKey}.n1`, `${token.sourceKey}C?.o1`]], score: 80, target: `${token.sourceKey}C?` }))]));
+    const chooseSources = tokenizedSources.tokenSources.map((token) => ({
+      candidates: [...token.candidateIdByKey.keys()].map((key) => ({ candidateKey: key, ...promptPerson(key) })),
+      sourceKey: token.sourceKey,
+      ...promptPerson(token.sourceKey),
+    }));
     const choose = await runModelText({
       config,
-      systemInstruction: `${systemInstruction}\nYou choose who should meet whom at a networking event. Judge from the supplied profiles only (needs, offers, industry, topics, role). Return exactly one JSON document.`,
-      userText: `For each sourceKey, choose exactly the number of different people shown in the JSON shape (a list of that length; an empty list when the source has no candidates) from that source's own candidateParticipants shortlist, best first. Each target is a candidateKey from that source's shortlist, never repeated within a source. score is an integer 0..100 for how strongly they should meet. Choose by fit (one needs what the other offers, shared topics), not by list order.
-${recommendationPromptEncoding === "deduplicated" ? "Resolve sourceProfileKey and each candidate profileKey from the supplied profiles lookup.\n" : ""}
+      systemInstruction: `${systemInstruction}\nYou choose who should meet whom at a networking event, from the supplied facts only. Return exactly one JSON document.`,
+      userText: `For each sourceKey, choose exactly the number of different people shown in the JSON shape (an empty list when the source has no candidates) from that source's own candidates, best first. score is an integer 0..100.
+For every pick, basis lists the fact pairs the match rests on (at least one). A pair is either [a need of one person, an offer of the other person] or [a topic of the source, a topic of the target]. A topic is an interest, not an ability. Use only the supplied fact ids of the source and that pick's target. Choose by these facts, not by list order.
+
 JSON shape (exact keys and list lengths):
 ${JSON.stringify(chooseShape)}
 
-Event id: ${input.eventId}
-Sources and deterministic shortlists:
-${JSON.stringify(tokenizedSources.promptSources)}`,
+Sources and their candidates:
+${JSON.stringify(chooseSources)}`,
     });
     if (choose.success === false) return modelFailure(choose);
     let metadata = metadataOf(choose);
@@ -1429,44 +1483,58 @@ ${JSON.stringify(tokenizedSources.promptSources)}`,
         if (!Array.isArray(list) || list.length !== pickCount.get(token.sourceKey)) return "count";
         const targets = new Set<string>();
         for (const item of list) {
-          if (!isRecord(item) || !exactKeys(item, ["score", "target"])) return "item";
+          if (!isRecord(item) || !exactKeys(item, ["basis", "score", "target"])) return "item";
           if (typeof item.target !== "string" || !token.candidateIdByKey.has(item.target) || targets.has(item.target)) return "target";
           targets.add(item.target);
           if (typeof item.score !== "number" || !Number.isInteger(item.score) || item.score < 0 || item.score > 100) return "score";
+          const known = new Map([...factsByKey.get(token.sourceKey)!, ...factsByKey.get(item.target)!].map((fact) => [fact.id, fact]));
+          if (!Array.isArray(item.basis) || item.basis.length === 0) return "basis_missing";
+          for (const pair of item.basis) {
+            if (!Array.isArray(pair) || pair.length !== 2 || !pair.every((id) => typeof id === "string" && known.has(id))) return "basis_unknown_fact";
+            if (!isLegalFactPair(known.get(pair[0])!, known.get(pair[1])!)) return "basis_illegal_pair";
+          }
         }
       }
       return null;
     })();
     if (chooseProblem) return trilingualFailure({ kind: "recommendations", stage: `choose_${chooseProblem}`, text: choose.text, result: trilingualRetryable(`The choice did not match the required picks (${chooseProblem}).`, metadata) });
-    const chosen = new Map(tokenizedSources.tokenSources.map((token) => [token.sourceKey, (chosenJson as Record<string, Array<{ score: number; target: string }>>)[token.sourceKey]!]));
-    // Step 1b — write the Japanese base draft for exactly the chosen pairs. Text names only {SOURCE} and {TARGET}.
-    const promptProfile = (participant: import("./contract").EventOperationsParticipant) => {
-      const { company: _company, displayName: _name, participantId: _id, ...rest } = compactParticipant(participant);
-      return { ...rest, hasCompany: registeredCompany(participant) !== null };
-    };
+    const chosen = new Map(tokenizedSources.tokenSources.map((token) => [token.sourceKey, (chosenJson as Record<string, Array<{ basis: string[][]; score: number; target: string }>>)[token.sourceKey]!]));
+    // Step 1b — write the Japanese base draft for exactly the chosen pairs, from the pair's facts (relabelled S.* / T.*).
+    const relabel = (id: string, sourceKey: string, targetKey: string | null) => (id.startsWith(`${sourceKey}.`) ? `S.${id.slice(sourceKey.length + 1)}` : targetKey && id.startsWith(`${targetKey}.`) ? `T.${id.slice(targetKey.length + 1)}` : id);
+    const pairFacts = (sourceKey: string, targetKey: string | null) => [
+      ...factsByKey.get(sourceKey)!.map((fact) => ({ ...fact, id: relabel(fact.id, sourceKey, targetKey) })),
+      ...(targetKey ? factsByKey.get(targetKey)!.map((fact) => ({ ...fact, id: relabel(fact.id, sourceKey, targetKey) })) : []),
+    ];
     const pairs: Record<string, unknown> = {};
     const writeShape: Record<string, unknown> = {};
     for (const token of tokenizedSources.tokenSources) {
-      const source = participantByKey.get(token.sourceKey)!;
       const list = chosen.get(token.sourceKey)!;
       if (list.length === 0) {
-        pairs[`${token.sourceKey}.none`] = { source: promptProfile(source) };
+        pairs[`${token.sourceKey}.none`] = { sourceFacts: pairFacts(token.sourceKey, null).map(({ id, kind, text }) => ({ id, kind, text })) };
         writeShape[`${token.sourceKey}.none`] = { none: "…" };
       }
       list.forEach((item, index) => {
         const id = `${token.sourceKey}.p${index + 1}`;
-        pairs[id] = { source: promptProfile(source), target: promptProfile(participantByKey.get(item.target)!) };
-        writeShape[id] = { hint: "…", q1: "…", q2: "…", r1: "…", r2: "…" };
+        pairs[id] = {
+          basis: item.basis.map((pair) => pair.map((factId) => relabel(factId, token.sourceKey, item.target))),
+          facts: pairFacts(token.sourceKey, item.target).map(({ id: factId, kind, text }) => ({ id: factId, kind, text })),
+          sourceHasCompany: registeredCompany(participantByKey.get(token.sourceKey)!) !== null,
+          targetHasCompany: registeredCompany(participantByKey.get(item.target)!) !== null,
+        };
+        writeShape[id] = { hint: "…", q1: "…", q2: "…", r1: { ev: ["S.n1", "T.o1"], text: "…" }, r2: { ev: ["T.n1", "S.o1"], text: "…" } };
       });
     }
     const response = await runModelText({
       config,
       systemInstruction: baseSystemInstruction,
-      userText: `Write the texts for these already-chosen networking pairs, in Japanese.
+      userText: `Write the texts for these already-chosen networking pairs, in Japanese, from the supplied facts only (S.* are the source person's facts, T.* the target's).
 
-For every pair id: r1 and r2 are two different concrete reasons, grounded in both profiles, why the source person should meet the target (who needs what and who offers it). q1 and q2 are two questions the source person can ask the target. hint is one practical tip for starting the conversation.
-For an id ending in ".none" (a source with nobody to recommend): none is one sentence explaining why there is no match.
-Refer to the source person only as {SOURCE} and to the target only as {TARGET}; a company only as {SOURCE:company} / {TARGET:company} next to that person, and only when that profile has hasCompany=true. No other placeholders exist.
+For every pair id:
+- r1 and r2: two different reasons why the source person should meet the target. Each reason states only what its cited facts say and lists them in ev. A need belongs to its owner and is answered only by the other person's offer; a topic is an interest, never an ability or knowledge; never attribute one person's fact to the other. Build the two reasons on the supplied basis. Vary the wording; do not write every reason with the same sentence pattern.
+- q1 and q2: two questions the source person asks the target directly. Address the target directly in polite Japanese (no names, no placeholders, no third person).
+- hint: one practical tip for starting the conversation.
+For an id ending in ".none": none is one sentence explaining why there is no match.
+In r1, r2, hint and none, refer to the source person only as {SOURCE} and the target only as {TARGET} (the server adds the name and さん); a company only as {SOURCE:company} / {TARGET:company} next to that person, and only when that person has a company (sourceHasCompany / targetHasCompany).
 
 JSON shape (exact keys):
 ${JSON.stringify(writeShape)}
@@ -1485,24 +1553,54 @@ ${JSON.stringify(pairs)}`,
       const shapeName = classifyJsonFailureShape(response.text);
       return trilingualFailure({ kind: "recommendations", stage: `write_json_${shapeName}`, text: response.text, result: invalidJson(shapeName, metadata, TRILINGUAL_RETRYABLE_JSON_SHAPES) });
     }
-    const writeOk = isRecord(json) && exactKeys(json, Object.keys(writeShape)) && Object.entries(writeShape).every(([id, fields]) => {
-      const row = (json as Record<string, unknown>)[id];
-      const required = Object.keys(fields as Record<string, unknown>);
-      return isRecord(row) && exactKeys(row, required) && required.every((field) => nonEmptyString(row[field]));
-    });
-    if (!writeOk) return trilingualFailure({ kind: "recommendations", stage: "write_shape", text: response.text, result: trilingualRetryable("The base draft did not match the fixed pair shape.", metadata) });
-    // 2. Base texts, scoped to the pair; {SOURCE}/{TARGET} become that pair's keys (no other person can be named).
-    const written = json as Record<string, Record<string, string>>;
+    const writeProblem = (() => {
+      if (!isRecord(json) || !exactKeys(json, Object.keys(writeShape))) return "rows";
+      for (const token of tokenizedSources.tokenSources) {
+        const list = chosen.get(token.sourceKey)!;
+        if (list.length === 0) {
+          const row = json[`${token.sourceKey}.none`];
+          if (!isRecord(row) || !exactKeys(row, ["none"]) || !nonEmptyString(row.none)) return "none";
+        }
+        for (const [index, item] of list.entries()) {
+          const row = json[`${token.sourceKey}.p${index + 1}`];
+          if (!isRecord(row) || !exactKeys(row, ["hint", "q1", "q2", "r1", "r2"]) || !["hint", "q1", "q2"].every((field) => nonEmptyString(row[field]))) return "pair_keys";
+          // Questions are said to the target directly: no placeholder, no name.
+          if (/[{}]/u.test(`${row.q1}${row.q2}`)) return "question_not_direct";
+          const known = new Map(pairFacts(token.sourceKey, item.target).map((fact) => [fact.id, fact]));
+          const basis = item.basis.map((pair) => pair.map((factId) => relabel(factId, token.sourceKey, item.target)).sort().join("|"));
+          const usedPairs = new Set<string>();
+          for (const field of ["r1", "r2"]) {
+            const reason = row[field];
+            if (!isRecord(reason) || !exactKeys(reason, ["ev", "text"]) || !nonEmptyString(reason.text) || !Array.isArray(reason.ev) || reason.ev.length === 0) return "reason_keys";
+            if (!reason.ev.every((factId) => typeof factId === "string" && known.has(factId))) return "evidence_unknown_fact";
+            const cited = (reason.ev as string[]).map((factId) => known.get(factId)!);
+            const legal = legalPairsIn(cited);
+            if (legal.length === 0) return "evidence_no_legal_pair";
+            if (!evidenceIsClosed(cited)) return "evidence_unmatched_fact";
+            if (/\{TARGET(:company)?\}/u.test(String(reason.text)) && !cited.some((fact) => fact.id.startsWith("T."))) return "evidence_target_unsupported";
+            if (/\{SOURCE(:company)?\}/u.test(String(reason.text)) && !cited.some((fact) => fact.id.startsWith("S."))) return "evidence_source_unsupported";
+            for (const pair of legal) usedPairs.add(pair);
+          }
+          if (!basis.some((pair) => usedPairs.has(pair))) return "evidence_off_basis";
+        }
+      }
+      return null;
+    })();
+    if (writeProblem) return trilingualFailure({ kind: "recommendations", stage: `write_${writeProblem}`, text: response.text, result: trilingualRetryable(`The base draft failed the fact checks (${writeProblem}).`, metadata) });
+    // 2. Base texts, scoped to the pair; {SOURCE}/{TARGET} become that pair's keys (no other person can be named). ev is internal only.
+    const written = json as Record<string, Record<string, unknown>>;
     const base: Array<{ allowed: ReadonlySet<string>; id: string; text: string }> = [];
     const bind = (text: string, sourceKey: string, targetKey: string | null) => normalizePlaceholders(text)
       .replace(/\{(SOURCE|TARGET)(:company)?\}/gu, (match, role: string, company?: string) => (role === "SOURCE" ? `{${sourceKey}${company ?? ""}}` : targetKey ? `{${targetKey}${company ?? ""}}` : match));
     for (const token of tokenizedSources.tokenSources) {
       const list = chosen.get(token.sourceKey)!;
-      if (list.length === 0) base.push({ allowed: new Set([token.sourceKey]), id: `${token.sourceKey}.none`, text: bind(written[`${token.sourceKey}.none`]!.none!, token.sourceKey, null) });
+      if (list.length === 0) base.push({ allowed: new Set([token.sourceKey]), id: `${token.sourceKey}.none`, text: bind(String(written[`${token.sourceKey}.none`]!.none), token.sourceKey, null) });
       list.forEach((item, index) => {
         const id = `${token.sourceKey}.p${index + 1}`;
+        const row = written[id]!;
         const allowed = new Set([token.sourceKey, item.target]);
-        for (const field of ["r1", "r2", "q1", "q2", "hint"]) base.push({ allowed, id: `${id}.${field}`, text: bind(written[id]![field]!, token.sourceKey, item.target) });
+        for (const field of ["r1", "r2"]) base.push({ allowed, id: `${id}.${field}`, text: bind(String((row[field] as Record<string, unknown>).text), token.sourceKey, item.target) });
+        for (const field of ["q1", "q2", "hint"]) base.push({ allowed, id: `${id}.${field}`, text: bind(String(row[field]), token.sourceKey, item.target) });
       });
     }
     const baseProblems = baseTextProblems(base, participants);
@@ -1570,8 +1668,8 @@ ${JSON.stringify(pairs)}`,
 
 Requirements:
 - theme: a concrete theme for this table. rationale: why these members work as a table. q1..q3: three icebreaker questions for the table.
-- For every member key: p1 and p2 are two questions or prompts for that person, and why is one sentence explaining why that person belongs at this table.
-- The only placeholders that exist are ${keys.map((key) => `{${key}}`).join(", ")} (company as {Mn:company} next to {Mn}, only when hasCompany=true). Use the supplied features and profiles.
+- For every member key: p1 and p2 are two questions for that person, addressed to them directly in polite Japanese (no names, no placeholders, no third person), and why is one sentence explaining why that person belongs at this table, stating only what the supplied profile says (a topic is an interest, not an ability).
+- The only placeholders that exist are ${keys.map((key) => `{${key}}`).join(", ")} (the server adds the name and さん; company as {Mn:company} next to {Mn}, only when hasCompany=true). Use the supplied features and profiles.
 
 JSON shape (exact keys):
 ${JSON.stringify(shape)}
@@ -1600,6 +1698,9 @@ ${JSON.stringify(promptFeatures)}`,
       ...["theme", "rationale", "q1", "q2", "q3"].map((field) => ({ allowed, id: field, text: normalize(String(doc[field])) })),
       ...keys.flatMap((key) => ["p1", "p2", "why"].map((field) => ({ allowed, id: `${key}.${field}`, text: normalize(doc.members[key]![field]!) }))),
     ];
+    if (keys.some((key) => /[{}]/u.test(`${doc.members[key]!.p1}${doc.members[key]!.p2}`))) {
+      return trilingualFailure({ kind: "table", stage: "base_prompt_not_direct", text: response.text, result: trilingualRetryable("Member prompts must address the member directly.", metadata) });
+    }
     const baseProblems = baseTextProblems(base, input.members);
     if (baseProblems.length) return trilingualFailure({ kind: "table", stage: `base_check_${baseProblems[0]}`, text: response.text, result: trilingualRetryable(`The base draft failed: ${baseProblems.join(", ")}.`, metadata) });
     const translated = await translateAndCheck({ base, kind: "table", metadata, participants: input.members, text: response.text });
