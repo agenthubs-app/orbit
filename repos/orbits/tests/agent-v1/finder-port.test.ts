@@ -48,21 +48,31 @@ function accessFor(denied: string[] = []) {
   return access;
 }
 
-test("finder World: only the signed-in account's records, every part; the deny list holds; drafts of others are not events", async () => {
+test("finder World: only the signed-in account's rows, only the ones the lookup could mean; the deny list holds", async () => {
   const access = accessFor(["task:hidden"]);
+  for (let index = 0; index < 40; index += 1) access.source.records.push(todo(ME, `task:noise${index}`, `整理第${index}批发票`));
   const loader = createWorldLoader({ now: NOW, records: access, scope: access.scope(ME), timeZone: "Asia/Tokyo" });
-  const world = await loader.world(["todos", "memos", "schedule", "events"]);
-  assert.deepEqual(world.contacts.map((item) => item.id), [labIdOf("contact", "contact:mine")]);
-  assert.deepEqual(world.todos.map((item) => item.id), [labIdOf("todo", "task:mine")], "another account's same-titled to-do and the denied one never enter");
-  assert.deepEqual(world.todos[0].contactIds, [labIdOf("contact", "contact:mine")]);
-  assert.deepEqual(world.privateEvents.map((item) => item.id), [labIdOf("private", "private_event:mine")]);
-  assert.deepEqual(world.attendance, [], "another account's «我去过» is dropped");
-  assert.deepEqual(world.platformEvents.map((item) => item.id), [labIdOf("platform", "event:fair")], "a draft organised by someone else is not offered");
-  assert.ok([...world.contacts, ...world.todos, ...world.privateEvents].every((item) => item.account === "A"));
-  assert.equal(await loader.world(["events", "todos", "memos", "schedule"]), world, "one World per set of parts in a request");
+  const before = access.source.reads.length;
+  const world = await loader.findWorld("findTodosMemos", { account: "A", clue: "寄纸样", kinds: ["todo"], sentence: "把寄纸样那条改到周五", status: "open", verb: "update" });
+  assert.deepEqual(world.todos.map((item) => item.id), [labIdOf("todo", "task:mine")], "another account's same-titled to-do, the denied one and the unrelated ones are never read");
+  assert.deepEqual([...new Set(access.source.reads.slice(before))], ["task:mine"], "the store returned only that row");
+  assert.deepEqual(world.contacts, [], "no contact is read when no person is settled");
+  // The settled person's linked rows come too, and that person by id only.
+  const linked = await loader.findWorld("findTodosMemos", { account: "A", clue: "那条待办", kinds: ["todo"], people: [labIdOf("contact", "contact:mine")], sentence: "她那条待办", status: "open", verb: "update" });
+  assert.deepEqual(linked.contacts.map((item) => item.id), [labIdOf("contact", "contact:mine")]);
+  assert.deepEqual(linked.todos.map((item) => item.id), [labIdOf("todo", "task:mine")]);
+  // Events: the account's own private events; «我去过» of another account is never in it.
+  const events = await loader.findWorld("findEvents", { account: "A", clue: "茶会", sentence: "茶会我去过了", verb: "read" });
+  assert.deepEqual(events.privateEvents.map((item) => item.id), [labIdOf("private", "private_event:mine")]);
+  assert.deepEqual(events.attendance, []);
+  assert.deepEqual(events.platformEvents.map((item) => item.id), [labIdOf("platform", "event:fair")], "a draft organised by someone else is not offered");
+  assert.ok([...world.todos, ...events.privateEvents].every((item) => item.account === "A"));
+  // Persons: the contacts the name variants match, not the address book.
+  const person = await loader.personWorld({ account: "A", mention: "苇原さん", sentence: "苇原さんに連絡" });
+  assert.deepEqual(person.contacts.map((item) => item.id), [labIdOf("contact", "contact:mine")]);
   // The other account sees its own, never mine.
-  const theirs = await createWorldLoader({ now: NOW, records: access, scope: access.scope(OTHER), timeZone: "Asia/Tokyo" }).world(["todos"]);
-  assert.deepEqual(theirs.todos.map((item) => item.id).sort(), [labIdOf("todo", "task:only-theirs"), labIdOf("todo", "task:theirs")]);
+  const theirs = await createWorldLoader({ now: NOW, records: access, scope: access.scope(OTHER), timeZone: "Asia/Tokyo" }).findWorld("findTodosMemos", { account: "A", clue: "寄纸样", kinds: ["todo"], sentence: "寄纸样", status: "open", verb: "update" });
+  assert.deepEqual(theirs.todos.map((item) => item.id), [labIdOf("todo", "task:theirs")]);
 });
 
 test("finder lookup: a title only another account holds is not found; the account's own is", async () => {
@@ -221,4 +231,17 @@ test("live lookup (port guard): the named person's only record, holding none of 
   assert.equal(same.unmatched, true);
   const other = await liveFind("findTodosMemos", { ...input, clue: "the revised pricing thing", people: ["C-k"], sentence: "move the revised pricing thing for her to Friday" }, personWorld, { judgment: { apiKey: null }, judgmentBudget: newJudgmentBudget() });
   assert.deepEqual(other.decision, { ids: ["T-k"], outcome: "one" }, "English words cannot be compared with a Chinese title: her only to-do (a card, still a click)");
+});
+
+test("memo.create: the card's contactIds are in the order the note service stores them (sorted), the actual contact kept apart (AE-XL-010)", async () => {
+  const { resolvePartIntents } = await import("../../features/agent-v1/propose/resolve");
+  const access = recordAccessOf({ events: [], records: [contact(ME, "contact:z9", "庄明远"), contact(ME, "contact:a1", "柯以宁")] });
+  const message = "记一下：今天庄明远来电话了，说柯以宁还在审合同。";
+  const at = (words: string): [number, number] => [message.indexOf(words), message.indexOf(words) + words.length];
+  const ctx = { asOf: NOW, asked: new Map(), context: null, language: "zh" as const, message, nameOf: () => null, people: [], records: access, scope: access.scope(ME), timeZone: "Asia/Tokyo" };
+  const outcome = await resolvePartIntents(ctx as never, { localId: "p1", quote: [0, message.length], refs: [] } as never, { intents: [{ body: at("今天庄明远来电话了，说柯以宁还在审合同"), capability: "memo.create", localId: "w1", relations: [{ quote: at("庄明远"), role: "actual_contact" }, { quote: at("柯以宁"), role: "mentioned" }], selector: [] }] as never, picks: {} });
+  assert.equal(outcome.kind, "ready", JSON.stringify(outcome));
+  const set = (outcome as { ops: { set: { contactIds: string[]; interaction: { actualContactIds: string[] } } }[] }).ops[0].set;
+  assert.deepEqual(set.contactIds, ["contact:a1", "contact:z9"]);
+  assert.deepEqual(set.interaction.actualContactIds, ["contact:z9"]);
 });

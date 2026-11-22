@@ -165,7 +165,11 @@ function sameScript(word: string, title: string): boolean {
 }
 
 /** One record lookup, the lab's phase-2 flow (see the header). */
-export async function liveFind(fn: FinderFn, input: FindInput, world: World, models: FinderModels): Promise<LiveResult> {
+/**
+ * `requery`: the World for the reformulated words (the agent reads the store again with them; without it — the lab's
+ * single World — the same World is searched again, as rsi/live.ts did).
+ */
+export async function liveFind(fn: FinderFn, input: FindInput, world: World, models: FinderModels, requery?: (input: FindInput) => Promise<World>): Promise<LiveResult> {
   const finder = FINDERS[fn];
   let cands = finder(input, world);
   let found = input;
@@ -192,10 +196,12 @@ export async function liveFind(fn: FinderFn, input: FindInput, world: World, mod
       if (r.called) calls.reformulate += 1;
       if (r.terms.length) {
         const input2 = { ...input, clue: r.terms.join(" ") };
-        const c2 = finder(input2, world);
+        const world2 = requery ? await requery(input2) : world;
+        const c2 = finder(input2, world2);
         if (c2.length) {
           cands = c2;
           found = input2;
+          world = world2;
           p = await pickWithModel(input, cands, world, models);
           calls.pick += p.calls;
         }

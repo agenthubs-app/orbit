@@ -266,14 +266,16 @@ export async function resolvePerson(ctx: ResolveContext, part: GraphPart, write:
 async function personByFinder(ctx: ResolveContext, part: GraphPart, picked: { id: string; name: string } | null, said: string): Promise<PersonResult> {
   const session = finderSessionOf(ctx);
   if (!session) return { kind: "failed" };
+  const sessionPeople = [...ctx.people].sort((left, right) => left.at - right.at).map((person) => labIdOf("contact", person.id));
+  const input = { account: ACCOUNT, mention: said.replace(/^@/u, "").trim(), sentence: ctx.message, sessionPeople };
   let world;
   try {
-    world = await session.loader.world(["contacts"]);
+    // Only the contacts the name variants match (finder/prefilter.ts personTerms; stage 2 when needed), never all.
+    world = await session.loader.personWorld(input);
   } catch {
     return { kind: "failed" };
   }
-  const sessionPeople = [...ctx.people].sort((left, right) => left.at - right.at).map((person) => labIdOf("contact", person.id));
-  const found = finderPerson({ account: ACCOUNT, mention: said.replace(/^@/u, "").trim(), sentence: ctx.message, sessionPeople }, world);
+  const found = finderPerson(input, world);
   const asCandidate = (labId: string): Candidate & { id: string } => {
     const fields = session.loader.loaded.get(labId) ?? {};
     const detail = [fields.company, fields.headline].filter((value): value is string => typeof value === "string" && value.trim().length > 0).join(" · ");
@@ -667,7 +669,9 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
     const actual = people.filter((item) => item.role === "actual_contact");
     const actualPeople = actual.length ? actual : people.filter((item) => item.role !== "mentioned").slice(0, 1);
     const day = date?.day ?? resolveSaidDate(body, ctx.asOf, ctx.timeZone)?.day ?? localDayOf(ctx.asOf, ctx.timeZone);
-    const contactIds = [...new Set(people.map((item) => item.id))];
+    // In the order the note service stores them (features/notes normalizedIds sorts a memo's contactIds), so the card and the
+    // stored note list the same contacts in the same order (AE-XL-010); who is the actual contact is `interaction`, not the order.
+    const contactIds = [...new Set(people.map((item) => item.id))].sort();
     // A person picked among several of the name is named on the card with what told them apart.
     if (people.some((item) => !item.name)) return stop("read_failed", failedLine);
     const names = Object.fromEntries(people.map((item) => [item.id, item.detail ? (language === "en" ? `${item.name} (${item.detail})` : `${item.name}（${item.detail}）`) : item.name]));

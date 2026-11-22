@@ -17,7 +17,7 @@ import { emitTrace } from "../observability/trace";
 import { resolveTime } from "./impl/time";
 import { liveFind, type FinderFn, type FinderModels } from "./live";
 import type { Decision, FindInput, Verb } from "./types";
-import { ACCOUNT, agentRefOf, createWorldLoader, labIdOf, WorldReadError, type AgentKind, type WorldLoader, type WorldPart } from "./world";
+import { ACCOUNT, agentRefOf, createWorldLoader, labIdOf, WorldReadError, type AgentKind, type WorldLoader } from "./world";
 
 export { finderMode } from "./live";
 
@@ -93,14 +93,6 @@ export function outcomeOf(decision: Decision, kinds: readonly AgentKind[], occur
   return { kind: "none" };
 }
 
-const PARTS_OF: Record<FinderFn, WorldPart[]> = {
-  findContacts: ["contacts"],
-  findEvents: ["events"],
-  findSchedule: ["schedule"],
-  // to-dos and memos together: the lab's "rarest word" check (decide.protectedCandidates) counts over the records.
-  findTodosMemos: ["todos", "memos"],
-};
-
 export interface FindRequest {
   fn: FinderFn;
   sentence: string;
@@ -123,14 +115,6 @@ export interface FindRequest {
 
 /** One lookup: the World, the lab's finder and decide, the model steps when the rules do not settle it. */
 export async function findRecord(session: FinderSession, request: FindRequest): Promise<Found> {
-  let world;
-  try {
-    world = await session.loader.world(PARTS_OF[request.fn]);
-  } catch (error) {
-    if (error instanceof WorldReadError) return { kind: "failed" };
-    emitTrace({ error: error instanceof Error ? error.message : String(error), type: "read.error", where: "finder.world" });
-    return { kind: "failed" };
-  }
   let time: FindInput["time"];
   if (request.timeText?.trim()) {
     const { spans: _spans, ...said } = resolveTime({ now: session.now, text: request.timeText, timeZone: session.timeZone });
@@ -144,8 +128,16 @@ export async function findRecord(session: FinderSession, request: FindRequest): 
     ...(time ? { time } : {}),
     ...(request.shown?.length ? { sessionShown: request.shown.map((ref) => labIdOf(ref.kind, ref.id)) } : {}),
   };
-  const result = await liveFind(request.fn, input, world, session.models);
-  const occurrences = new Map(result.candidates.filter((item) => item.occurrence).map((item) => [item.id, item.occurrence!]));
+  let result: Awaited<ReturnType<typeof liveFind>>;
+  try {
+    // Only the rows this lookup could mean are read (finder/prefilter.ts); the reformulated words are a new query.
+    const world = await session.loader.findWorld(request.fn, input);
+    result = await liveFind(request.fn, input, world, session.models, (again) => session.loader.findWorld(request.fn, again));
+  } catch (error) {
+    if (!(error instanceof WorldReadError)) emitTrace({ error: error instanceof Error ? error.message : String(error), type: "read.error", where: "finder.world" });
+    return { kind: "failed" };
+  }
+  const occurrences = new Map<string, string>(result.candidates.filter((item) => item.occurrence).map((item) => [item.id, item.occurrence!]));
   const mapped = outcomeOf(result.decision, request.accept, occurrences);
   const found: Found = mapped.kind === "ask" && result.unmatched ? { ...mapped, unmatched: true } : mapped;
   emitTrace({
