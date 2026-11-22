@@ -344,6 +344,31 @@ test("the reader is addressed, never named: a base text naming them is rewritten
   assert.equal(ok.success, true);
   if (ok.success) assert.equal(ok.data[0]!.recommendations[0]!.i18n!.ja.memberHint, "まずはBoさんに聞いてみましょう。");
   await failsRetryably(model({ base: goodBase({ p1: { hint: "{SOURCE}さんは{TARGET}さんに聞くとよいです。" } }), baseRepair: { texts: { t1: "{SOURCE}さんから聞きましょう。" } } }), two, "still naming the reader");
+  const generic = model({ base: goodBase({ p1: { hint: "あなたも{KEY}もAIに関心があります。" } }), baseRepair: { texts: { t1: "あなたも{TARGET}もAIに関心があります。" } } });
+  assert.equal((await provider(generic).generateRecommendations(two)).success, true);
+  const repairRequest = generic.calls.find((call) => call.kind === "baseRepair")!.userText;
+  assert.match(repairRequest, /"allowedPlaceholders":\["\{S1C1\}"\]/u, "the reader's own placeholder is never offered to the rewrite");
+  assert.match(repairRequest, /"reader":"あなた/u);
+});
+
+test("numbers: a translation may spell a number out but never add or change one; digits inside a word are names", async () => {
+  const spelled = model({ base: goodBase({ p1: { r2: { ev: ["T.n1", "S.o1"], text: "{TARGET}さんはWeb3の分野で10年の経験があります。" } } }), translate: (language, id) => (id !== "S1.p1.r2" ? undefined : language === "zh" ? "{S1C1}在Web3领域有十年经验。" : "{S1C1} has a decade of experience in Web3.") });
+  assert.equal((await provider(spelled).generateRecommendations(two)).success, true);
+  assert.ok(!spelled.calls.some((call) => call.kind === "repair"), "no repair for an equivalent wording");
+  await failsRetryably(model({ base: goodBase({ p1: { r2: { ev: ["T.n1", "S.o1"], text: "{TARGET}さんは5G分野で10年の経験があります。" } } }), translate: (language, id) => (language === "en" && id === "S1.p1.r2" ? "{S1C1} has 12 years of 5G experience." : undefined) }), two, "a changed number is still caught");
+});
+
+test("a rejected draft is re-asked with where it broke and which rule", async () => {
+  const inner = model({ base: goodBase() });
+  let first = true;
+  const runner = Object.assign(async (input: { systemInstruction: string; userText: string }) => {
+    const result = await (inner as unknown as (value: typeof input) => Promise<{ text: string }>)(input);
+    if (first && inner.calls.at(-1)!.kind === "base") { first = false; return { ...result, text: JSON.stringify(goodBase({ p2: { r1: { ev: ["S.t1", "T.o1"], text: "AIに関心があります。" } } })) }; }
+    return result;
+  }, { calls: inner.calls }) as unknown as EventOperationsModelRunner;
+  assert.equal((await provider(runner).generateRecommendations(two)).success, true);
+  const retry = inner.calls.filter((call) => call.kind === "base")[1]!.userText;
+  assert.match(retry, /rejected at S1\.p2\.r1: each reason's ev must contain a need/u);
 });
 
 test("voice and gender: a text to the reader never opens with the writer; nobody is gendered", () => {
@@ -367,10 +392,9 @@ test("translation requests carry each text's voice; a gendered or first-person t
   });
   const ok = await provider(runner).generateRecommendations(two);
   assert.equal(ok.success, true);
-  const zhRequest = JSON.parse(runner.calls.find((call) => call.kind === "zh")!.userText.split("\n")[1]!).items;
-  assert.equal(zhRequest["S1.p1.r1"].voice, "to_reader");
-  assert.equal(zhRequest["S1.p1.q1"].voice, "to_target");
-  assert.equal(zhRequest["S1.p1.hint"].voice, "to_reader");
+  const zhRequest = JSON.parse(runner.calls.find((call) => call.kind === "zh")!.userText.split("\n")[1]!);
+  assert.equal(typeof zhRequest.items["S1.p1.r1"], "string", "items stay a flat id → text map");
+  assert.deepEqual([zhRequest.voice["S1.p1.r1"], zhRequest.voice["S1.p1.q1"], zhRequest.voice["S1.p1.hint"]], ["to_reader", "to_target", "to_reader"]);
   const repair = runner.calls.find((call) => call.kind === "repair")!.userText;
   assert.match(repair, /"voice":"to_reader"/u);
   if (ok.success) assert.equal(ok.data[0]!.recommendations[0]!.i18n!.zh.reasons[0], "您正在寻找医疗领域的合作伙伴，值得和Bo聊聊。");
