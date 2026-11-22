@@ -44,6 +44,7 @@ import { createSecretaryDigestMaintenanceTask } from "../../notifications/secret
 import { clearDailySlot, writeDailySlot } from "../../notifications/secretary/digest";
 import { createHostArchiveMaintenanceTask, createHostMatchingUsageMaintenanceTask, createHostNoticeMaintenanceTask } from "../../events/host/maintenance";
 import { createEventAssessmentRecomputeMaintenanceTask, eventPickNotification } from "../../events/assessment/recompute-job";
+import { createAutomationDispatchMaintenanceTask } from "../../agent/automations/dispatch-configured";
 import type { MaintenanceTask } from "./pass";
 
 // The production task list. Each task checks its own configuration and reports
@@ -351,6 +352,8 @@ export function createConfiguredMaintenanceTasks({
     createHostNoticeMaintenanceTask(),
     createHostArchiveMaintenanceTask(),
     createHostMatchingUsageMaintenanceTask(),
+    // agent-design AG15: scheduled rules of every account, their pending inbox deliveries and one-off timers (due index).
+    createAutomationDispatchMaintenanceTask(),
     // Monitoring O2/O3: daily read-cost rollup, Neon reconciliation, retention
     // and admin alerts. Days already final are skipped, so heartbeat passes are cheap.
     createReadCostMaintenanceTask({ env }),

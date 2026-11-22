@@ -1,0 +1,405 @@
+# MEM 区：个人记忆的保存、使用、更正、忘记。AG14 的门槛用例。
+# 时钟缺省是 11 月 15 日周日，“下周”指 11 月 16 日到 22 日。这一周的平台活动：
+# E103 周四 19:00、E101 周六 10:00、E104 周六 19:00、E102 周日 9:30、E105 周日 10:00；E106 时间未公布。
+# 写法约定：memory_state 和 memory_recalled 的条目有夹具编号就写编号；本用例里新建的条目
+# 没有编号，按 category、appliesTo 这些字段指认，卡上的 target 写 new。memory_recalled 判的是最后一轮。
+
+area: MEM
+
+proposed_checks:
+  - name: settings_memory_list
+    form: "settings_memory_list: { account: <账号>, entries: [ <条目编号>, ... ] }"
+    meaning: "结束时用设置页的记忆管理接口、以该账号的登录身份读到的有效条目恰好是这些。"
+
+proposed_steps:
+  - name: resume_conversation
+    form: "resume_conversation: { index: <序号> }"
+    meaning: "回到本用例里的第几个对话继续，从它保存的进度恢复；之后的 user 步骤发在这个对话里。"
+
+new_patches: {}
+
+cases:
+  - id: AE-MEM-001
+    title: "说“记住”出一张记忆卡，点了才保存，新对话里用上并写明"
+    sprint: AG14
+    split: dev
+    invariant: false
+    requirement: [AG-R14]
+    design: ["§6", "§3.5", "附录 E"]
+    locale: zh
+    world: base-v1
+    patches: [mem-learn-on]
+    steps:
+      - user: "记住，以后给我推荐活动时优先周末上午。"
+      - click: { card: last, decision: confirm }
+      - new_conversation: {}
+      - user: "给我推荐几场下周的活动。"
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: memory.create, set: { category: preference, appliesTo: [event.recommend], structured: { preferredDays: [Sat, Sun], dayPart: morning, strength: prefer } } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - memory_state: [ { category: preference, appliesTo: [event.recommend], status: active, revision: 1 } ]
+      - memory_recalled: [ { category: preference, appliesTo: [event.recommend] } ]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡上的记忆内容保留了“推荐活动时”和“优先”这两层意思。"
+      - id: R2
+        text: "新对话的回答开头写明用了“周末上午”这条偏好。"
+      - id: R3
+        text: "新对话里周末上午的三场（E101、E102、E105）排在其他时段的活动前面。"
+      - id: R4
+        text: "时间未公布的 E106 没有被说成符合这条偏好。"
+    notes: "验收项 AG14-1、AG14-2。学习开关由增量 mem-learn-on 打开。"
+
+  - id: AE-MEM-002
+    title: "记忆卡没点：不保存，新对话里不用"
+    sprint: AG14
+    split: dev
+    invariant: false
+    requirement: [AG-R14]
+    design: ["§6", "§5.1"]
+    locale: ja
+    world: base-v1
+    patches: [mem-learn-on]
+    steps:
+      - user: "覚えておいて。これからイベントをおすすめするときは、週末の午前中を優先してほしい。"
+      - new_conversation: {}
+      - user: "来週のおすすめイベントを教えて。"
+    hard:
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: memory.create, set: { category: preference, appliesTo: [event.recommend], structured: { preferredDays: [Sat, Sun], dayPart: morning, strength: prefer } } }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - decisions: { count: 0 }
+      - no_business_writes: true
+      - memory_state: []
+      - memory_recalled: []
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮的回应没有说“已记住”，而是请用户点卡确认。"
+      - id: R2
+        text: "新对话的回答没有按周末上午排序，也没有说用了这条偏好。"
+      - id: R3
+        text: "两轮回答都用日语。"
+    notes: "验收项 AG14-1。上一个对话里说过的话不算新对话的“本会话目标”，没保存就不能带过来。"
+
+  - id: AE-MEM-003
+    title: "学习开关关着：只用于这一轮，不出卡也不保存"
+    sprint: AG14
+    split: val
+    invariant: false
+    requirement: [AG-R14]
+    design: ["§6"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "记住，以后给我推荐活动时优先周末上午。先按这个给我推荐几场下周的活动。"
+      - new_conversation: {}
+      - user: "给我推荐几场下周的活动。"
+    hard:
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - memory_state: []
+      - memory_recalled: []
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮的推荐把周末上午的三场（E101、E102、E105）排在前面。"
+      - id: R2
+        text: "第一轮明确告诉用户这条偏好只用在这一次，没有保存。"
+      - id: R3
+        text: "第一轮说明了想长期保存可以怎么做：打开从对话里记住的开关，或到设置里自己添加。"
+      - id: R4
+        text: "新对话的回答没有按周末上午排序，也没有说用了这条偏好。"
+    notes: "验收项 AG14-1。默认设置下从对话学习是关的。§6：关闭学习时可用于当前轮，跨会话保存需要启用学习或用户亲自到设置添加。"
+
+  - id: AE-MEM-004
+    title: "新对话推荐活动：用上偏好并写明，约束照样生效"
+    sprint: AG14
+    split: dev
+    invariant: false
+    requirement: [AG-R14]
+    design: ["§6", "§3.5", "§10"]
+    locale: zh
+    world: base-v1
+    patches: [mem-weekend-morning, mem-no-evening]
+    steps:
+      - user: "给我推荐几场下周的活动。"
+    hard:
+      - memory_recalled: [MM1, MM2]
+      - memory_state: [ { id: MM1, status: active, revision: 1 }, { id: MM2, status: active, revision: 1 } ]
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回答开头写明用了“周末上午”这条偏好。"
+      - id: R2
+        text: "推荐里没有晚上的活动：E103（周四 19:00）和 E104（周六 19:00）都不在。"
+      - id: R3
+        text: "周末上午的 E101、E102、E105 都在推荐里。"
+      - id: R4
+        text: "时间未公布的 E106 没有被当作符合条件的推荐。"
+    notes: "验收项 AG14-2。MM1 是偏好，按任务相关才取；MM2 是约束，在推荐活动这个范围内每次都加载。"
+
+  - id: AE-MEM-005
+    title: "问待办：活动偏好不拿出来，“回答用日语”照样生效"
+    sprint: AG14
+    split: val
+    invariant: false
+    requirement: [AG-R14]
+    design: ["§6"]
+    locale: zh
+    world: base-v1
+    patches: [mem-weekend-morning, mem-no-evening, mem-reply-ja]
+    steps:
+      - user: "我还有哪些待办没做完？"
+    hard:
+      - memory_recalled: [MM3]
+      - private_reads_within: [T42, T44, T45, T46, T47, F1, C17, C30, C31, C41]
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回答是日语。"
+      - id: R2
+        text: "回答列出了 T42、T44、T45、T47 四条未完成的待办和未完成的正式跟进 F1，共五条，没有把已完成的 T46 算进去。"
+      - id: R3
+        text: "回答没有提到活动时段偏好，也没有提到“不推荐晚上”。"
+    notes: "验收项 AG14-2。MM3 的适用范围是全部任务，所以每次都加载；MM1、MM2 只适用于推荐活动，问待办时不取。用户用中文提问，回答按约束用日语。"
+
+  - id: AE-MEM-006
+    title: "“这次看周四晚上”只改这一次，原偏好不变"
+    sprint: AG14
+    split: dev
+    invariant: false
+    requirement: [AG-R14]
+    design: ["§6"]
+    locale: zh
+    world: base-v1
+    patches: [mem-weekend-morning]
+    steps:
+      - user: "给我推荐几场下周的活动。"
+      - user: "这次看周四晚上的。"
+      - new_conversation: {}
+      - user: "给我推荐几场下周的活动。"
+    hard:
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - memory_state: [ { id: MM1, status: active, revision: 1 } ]
+      - memory_recalled: [MM1]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二轮给出了周四晚上的 E103（11 月 19 日 19:00 的 SaaS 定价研讨会）。"
+      - id: R2
+        text: "第二轮没有再把周末上午的活动排在 E103 前面。"
+      - id: R3
+        text: "新对话的回答又按周末上午来排，并在开头写明。"
+    notes: "验收项 AG14-3。临时例外不出卡、不改条目；MM1 的内容和版本都不变。"
+
+  - id: AE-MEM-007
+    title: "“以后改成周末下午”：卡上有前后值，点了才更新"
+    sprint: AG14
+    split: val
+    invariant: false
+    requirement: [AG-R14]
+    design: ["§6", "附录 B", "附录 E"]
+    locale: en
+    world: base-v1
+    patches: [mem-weekend-morning]
+    steps:
+      - user: "From now on, when you recommend events, prefer weekend afternoons instead of weekend mornings."
+      - click: { card: last, decision: confirm }
+      - new_conversation: {}
+      - user: "Which events would you recommend for next week?"
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: memory.update, target: MM1, set: { structured.dayPart: afternoon } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - memory_state: [ { id: MM1, status: active, revision: 2 } ]
+      - memory_recalled: [MM1]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡上同时显示同一条记忆的原值（周末上午）和新值（周末下午）。"
+      - id: R2
+        text: "新对话的回答写明用了周末下午这条偏好。"
+      - id: R3
+        text: "新对话的回答没有把任何一场活动说成在周末下午（下周没有这样的活动）。"
+      - id: R4
+        text: "回答用英语。"
+    notes: "验收项 AG14-3。改的是同一条 MM1，不是新增一条；从对话学习关着也不妨碍改已有的记忆。记忆内容的文字用哪种语言不作硬性要求，只判结构化值。"
+
+  - id: AE-MEM-008
+    title: "忘掉之后：原对话和新对话都不再用，也不从旧消息里重新记"
+    sprint: AG14
+    split: dev
+    invariant: true
+    requirement: [AG-R14]
+    design: ["§6", "附录 E"]
+    locale: zh
+    world: base-v1
+    patches: [mem-learn-on]
+    steps:
+      - user: "记住，以后给我推荐活动时优先周末上午。"
+      - click: { card: last, decision: confirm }
+      - user: "还是算了，忘掉我的活动时段偏好。"
+      - click: { card: last, decision: confirm }
+      - user: "给我推荐几场下周的活动。"
+      - new_conversation: {}
+      - user: "给我推荐几场下周的活动。"
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 2 }
+      - decisions: { count: 2 }
+      - card_ops:
+          - { op: memory.delete, target: new }
+      - memory_state: [ { category: preference, appliesTo: [event.recommend], status: deleted } ]
+      - memory_recalled: []
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "忘掉那张卡显示了要删的条目内容和它用在哪（推荐活动时）。"
+      - id: R2
+        text: "忘掉之后，原对话里的推荐没有按周末上午排，也没有说用了这条偏好。"
+      - id: R3
+        text: "新对话里的推荐同样没有用这条偏好。"
+    notes: "验收项 AG14-4。从对话学习是开着的，原对话里还留着那句“记住……”，全程只有两张卡，说明没有从旧消息里重新提议。target: new 指本用例第一张卡新建的那条记忆。"
+
+  - id: AE-MEM-009
+    title: "忘掉之后恢复旧对话，不再用那条偏好"
+    sprint: AG14
+    split: val
+    invariant: true
+    requirement: [AG-R14]
+    design: ["§6", "§3.10"]
+    locale: zh
+    world: base-v1
+    patches: [mem-weekend-morning]
+    steps:
+      - user: "给我推荐几场下周的活动。"
+      - new_conversation: {}
+      - user: "忘掉我的活动时段偏好。"
+      - click: { card: last, decision: confirm }
+      - resume_conversation: { index: 1 }
+      - user: "再给我推荐一次下周的活动。"
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: memory.delete, target: MM1 }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - memory_state: [ { id: MM1, status: deleted } ]
+      - memory_recalled: []
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "恢复第一个对话后的回答没有按周末上午排序。"
+      - id: R2
+        text: "恢复第一个对话后的回答没有写“按你存的偏好”这类依据。"
+      - id: R3
+        text: "删除卡显示了这条记忆现在的内容“推荐活动时优先周末上午”。"
+    notes: "验收项 AG14-4。第一个对话的进度里存着用过 MM1 的上下文；恢复时要按最新的记忆版本重建，不能沿用旧的。"
+
+  - id: AE-MEM-010
+    title: "对话里和设置页是同一批条目；关掉使用后条目还在"
+    sprint: AG14
+    split: dev
+    invariant: false
+    requirement: [AG-R14]
+    design: ["§6", "§10"]
+    locale: zh
+    world: base-v1
+    patches: [mem-weekend-morning, mem-no-evening]
+    steps:
+      - user: "你现在记着我哪些偏好和规矩？"
+      - setting: { memory_use: off }
+      - new_conversation: {}
+      - user: "给我推荐几场下周的活动。"
+    hard:
+      - settings_memory_list: { account: A, entries: [MM1, MM2] }
+      - memory_state: [ { id: MM1, status: active, revision: 1 }, { id: MM2, status: active, revision: 1 } ]
+      - memory_recalled: []
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮的回答列出的恰好是两条：“推荐活动时优先周末上午”和“不要推荐晚上的活动”。"
+      - id: R2
+        text: "关掉使用后的回答没有写用了哪条偏好。"
+      - id: R3
+        text: "关掉使用后的回答没有以“不推荐晚上”为由排除活动。"
+    notes: "验收项 AG14-5，以及 §6 的“暂停使用保留条目”。关掉的是“回答时参考这些”，偏好和约束都不再取，条目一条不少。"
+
+  - id: AE-MEM-011
+    title: "问“为什么排第一”：用这次真正用到的记忆和活动事实来解释"
+    sprint: AG14
+    split: dev
+    invariant: false
+    requirement: [AG-R14]
+    design: ["§6", "§3.5"]
+    locale: zh
+    world: base-v1
+    patches: [mem-weekend-morning]
+    steps:
+      - user: "给我推荐几场下周的活动。"
+      - user: "你为什么把第一场排在最前面？"
+    hard:
+      - cites_within_reads: true
+      - memory_state: [ { id: MM1, status: active, revision: 1 } ]
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "解释里说到了“周末上午”这条偏好。"
+      - id: R2
+        text: "解释里说到的开始时间属于第一轮排在首位的那场活动，并且与夹具一致。"
+      - id: R3
+        text: "解释里提到的依据都是第一轮实际用到的，日志里有对应的记忆召回或读取。"
+    notes: "§6：用本次实际用过的记忆和活动事实解释。第一轮没读过的东西（例如兴趣笔记 M36、报名记录）不能拿来当理由。"
+
+  - id: AE-MEM-012
+    title: "另一个账号全程看不到、用不到、也删不掉甲的记忆"
+    sprint: AG14
+    split: dev
+    invariant: true
+    requirement: [AG-R14]
+    design: ["§6"]
+    locale: zh
+    world: base-v1
+    patches: [mem-weekend-morning, mem-no-evening, mem-reply-ja]
+    steps:
+      - switch_account: B
+      - user: "给我推荐几场下周的活动。"
+      - user: "你记着我哪些偏好？"
+      - user: "忘掉我的活动时段偏好。"
+    hard:
+      - no_cross_account: true
+      - memory_recalled: []
+      - settings_memory_list: { account: B, entries: [] }
+      - memory_state: [ { id: MM1, status: active, revision: 1 }, { id: MM2, status: active, revision: 1 }, { id: MM3, status: active, revision: 1 } ]
+      - cards: { count: 0 }
+      - no_business_writes: true
+    rubric:
+      - id: R1
+        text: "乙的三轮回答都是中文，没有变成日语。"
+      - id: R2
+        text: "第二轮回答说乙没有保存任何记忆，没有列出甲的三条。"
+      - id: R3
+        text: "第三轮说明没有可以忘掉的条目。"
+    notes: "验收项 AG14-5。三条记忆都属于账号甲。甲的“回答用日语”如果漏到乙这边，乙的回答会变成日语，一眼可见。"

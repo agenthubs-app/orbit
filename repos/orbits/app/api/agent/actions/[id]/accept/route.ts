@@ -16,6 +16,10 @@ import {
   createAgentActionQueueForRequest,
   resolveAgentRequestContext,
 } from "../../../../_shared/agent-request-context";
+import { AppError } from "../../../../../../shared/errors/app-error";
+import { agentV1EntryEnabled } from "../../../../../../features/agent-v1/entry/mode";
+import { agentProposalsPaused } from "../../../../../../features/agent-v1/rollout/rollback";
+import { LEGACY_CONFIRM_ELSEWHERE, legacyActionDecisionWords, legacyDecisionRefusal } from "../../../../../../features/agent-v1/rollout/legacy-words";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +76,15 @@ export async function POST(
   const { id } = await context.params;
   const agentContext = await resolveAgentRequestContext(mode);
   if (!agentContext) return agentRequestUnauthorizedResponse();
+  // agent-design AG18-1: the old to-do page's decision (no revision, no hash) never decides a card with an origin, and
+  // with the new entry on it approves no old card either; the user is sent to the card in the new App or the web.
+  const action = await Promise.resolve().then(() => agentContext.runtime.getAction(id)).catch(() => null);
+  if (legacyDecisionRefusal({ decision: "accept", entryOn: agentV1EntryEnabled(), hasOrigin: Boolean(action?.origin), paused: agentProposalsPaused() })) {
+    return NextResponse.json(
+      failure(new AppError("CONFLICT", legacyActionDecisionWords(action?.locale)), { reason: LEGACY_CONFIRM_ELSEWHERE }),
+      { headers: runtimeBoundaryHeaders(mode), status: 409 },
+    );
+  }
   const agentActionService = createAgentActionQueueForRequest(agentContext);
   const result = await agentActionService.acceptAction(
     await readInput(request, id),

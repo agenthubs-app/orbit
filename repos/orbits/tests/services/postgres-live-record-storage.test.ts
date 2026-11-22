@@ -101,11 +101,15 @@ test("orbit records migration can run through an async SQL client", async () => 
   await runOrbitRecordsMigration(client);
 
   // +5: orbit_records, lifecycle, event-ops bootstrap, read receipts, (sprint 0109) the relationship
-  // message tables; then (sprint 0113) sync_revision on the event head tables, one statement each.
+  // message tables; then (sprint 0113) sync_revision on the event head tables, one statement each;
+  // then (agent-design AG13) one statement with the private-event and attendance indexes;
+  // then (agent-design AG15) one statement with the due index of scheduled rules, last.
   const eventSync = EVENT_SYNC_REVISION_STATEMENTS.length;
-  assert.equal(client.calls.length, EVENT_OPERATIONS_SCHEMA_MIGRATIONS.length + 5 + eventSync);
-  assert.deepEqual(client.calls.slice(-eventSync).map((call) => call.text), [...EVENT_SYNC_REVISION_STATEMENTS]);
-  assert.match(client.calls.at(-eventSync - 1)?.text ?? "", /create table if not exists relationship_messages/i);
+  assert.equal(client.calls.length, EVENT_OPERATIONS_SCHEMA_MIGRATIONS.length + 5 + eventSync + 2);
+  assert.match(client.calls.at(-1)?.text ?? "", /create table if not exists agent_automation_due/i);
+  assert.match(client.calls.at(-2)?.text ?? "", /orbit_records_attendance_event_uidx/i);
+  assert.deepEqual(client.calls.slice(-eventSync - 2, -2).map((call) => call.text), [...EVENT_SYNC_REVISION_STATEMENTS]);
+  assert.match(client.calls.at(-eventSync - 3)?.text ?? "", /create table if not exists relationship_messages/i);
   assert.match(
     client.calls[0]?.text ?? "",
     /create table if not exists orbit_records/i,
@@ -121,7 +125,7 @@ test("orbit records migration can run through an async SQL client", async () => 
   );
   assert.match(client.calls[3]?.text ?? "", /create table event_ops_events/i);
   assert.match(
-    client.calls.at(-eventSync - 2)?.text ?? "",
+    client.calls.at(-eventSync - 4)?.text ?? "",
     /create table if not exists orbit_read_receipts/i,
   );
   for (const [index, migration] of EVENT_OPERATIONS_SCHEMA_MIGRATIONS.entries()) {

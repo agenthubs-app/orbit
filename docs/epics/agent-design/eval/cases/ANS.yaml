@@ -1,0 +1,917 @@
+# ANS 区：回答排版与记录卡片。AG19 的门槛用例。
+# 依据：2026-11-19 获批视觉稿（D1–D6）；SPRINTS.md 的 AG19-1 到 AG19-8；用户当天在正式站的三轮对话。
+# 前面各 sprint 的用例只看回答文字；这一区看结果文档里的分块：列出的记录是不是每条一张能点开的卡片、顺序对不对、
+# 文字版是不是说的同一份内容、没做的部分有没有和回答分开。
+
+area: ANS
+
+proposed_checks:
+  - name: answer_cards
+    form: "answer_cards: { kinds: [...], exact: [...], within: [...], includes: [...], excludes: [...], sequence: [...], count: n, min: n, shown_first: n, more: true, text_order: true, lead_plain: true, size: full ／ mini ／ any, none: true }"
+    meaning: "最后一次回答的结果文档里的记录卡片，按显示顺序取夹具编号。默认只看正常大小的卡片（列表本身），size 写 mini 看文字下面「提到的记录」小卡片，写 any 两种都看。kinds 表示每张卡的类型都在其中；exact、within、includes、excludes、sequence、count 与 listed 同义，min 表示至少几张；shown_first 是第一组卡片先显示的张数；more 表示有没有「还有 N 条」这一行；text_order 表示每张卡的名称都出现在回答的文字版里且先后一致；none 表示一张卡片都没有；lead_plain 表示第一组卡片上面的文字（导语、段落、要点）里不出现这组卡片里任何一条记录的名称——列出的每一项就是它的卡片，不再另写一遍。同一条记录出现在两张卡上、卡片没有名称或记录编号，都判不通过。各键都可省。"
+  - name: answer_blocks
+    form: "answer_blocks: { has: [conclusion, points, records, note], lacks: [note], first: paragraph }"
+    meaning: "最后一次回答的结果文档里分块的类型。has 里的类型都要有，lacks 里的都不能有，first 是第一块的类型。类型取 conclusion（结论）、paragraph（段落）、points（要点）、records（卡片组）、note（这次没做的部分）。"
+  - name: answer_text_plain
+    form: "answer_text_plain: true"
+    meaning: "最后一次回答的文字版和各分块的文字里都没有星号、反引号和行首的井号。"
+
+new_patches:
+  all-todos-overdue:
+    summary: "2026-11-20 热修：约山本吃饭（T47）也有一个已经过去的计划日，于是 11 月 20 日时账号甲还没完成的五项待办全部过期"
+    set:
+      todos:
+        - { id: T47, plannedDate: "2026-11-12" }
+
+cases:
+  - id: AE-ANS-001
+    title: 问最近有哪些活动：一句导语加每场一张能点开的卡片
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 1 组", "D1"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "最近有哪些活动适合我？"
+    hard:
+      - answer_cards: { kinds: [event], min: 3, sequence: [E103, E101, E104], within: [E103, E101, E104, E102, E105, E107], text_order: true, lead_plain: true }
+      - listed: { sequence: [E103, E101, E104], excludes: [E106] }
+      - answer_blocks: { first: paragraph, has: [records], lacks: [note, conclusion] }
+      - answer_text_plain: true
+      - clarifications: { count: 0 }
+      - request_status: completed
+      - judgment_calls: 0
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "导语用一句平常的话说了还没开始的活动一共几场、按开始时间从早到晚、这次先列几场；没有出现括号套括号的说法。"
+      - id: R2
+        text: "每张卡片上有类型、带星期的开始时间、活动名称和地点，卡片的先后就是开始时间的先后。"
+      - id: R3
+        text: "时间未公布的那场（AI 产品沙龙）没有被排进先后；提到它时说明了时间未公布。"
+    notes: "用户 2026-11-19 的原话。小账号的七场平台活动里六场有开始时间，都在时钟（11 月 15 日）之后；E106 没有开始时间。「适合我」不是主题，按开始时间列出即可，不追问。没说要几场时默认先列 3 场（视觉稿 D2「平时默认只列 3 条」），列得更多也可以，但先后不能错。超过 5 张的折叠见 AE-ANS-009、AE-ANS-010。"
+
+  - id: AE-ANS-002
+    title: 常规账号问最近有哪些活动：只列还没开始的，最近的在前，办完的不列
+    sprint: AG19
+    split: val
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 1 组", "D2", "AG19-6"]
+    locale: zh
+    account: regular
+    world: regular-v1
+    steps:
+      - user: "最近有哪些活动适合我？"
+    hard:
+      - answer_cards: { kinds: [event], min: 3, includes: [RE03], excludes: [RE06, RE08], text_order: true }
+      - answer_blocks: { has: [records], lacks: [note] }
+      - answer_text_plain: true
+      - clarifications: { count: 0 }
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡片上的活动全部在 11 月 15 日之后开始，没有任何一场已经办完的活动；最早开始的排在最前面。"
+      - id: R2
+        text: "导语说了还没开始的活动一共多少场、这次先列几场。"
+    interference: [similar_records, cross_page]
+    notes: "常规账号有 60 场平台活动，开始时间从 2026 年 9 月到 2027 年 3 月，一半已经办完；RE06 是同名的上一期（10 月 17 日）。用户报告的问题就是「最近」列出了三场已经办完的活动。RE08 时间未公布，不排进先后。还没开始的活动里最早的是 RE03（11 月 21 日 10:00）。"
+
+  - id: AE-ANS-003
+    title: 列表之后紧跟着问哪些值得去、为什么：接着刚才那份列表回答
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 4 组", "视觉稿第 5 组", "AG19-6"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "最近有哪些活动适合我？"
+      - user: "哪些活动？你觉得有必要参加？为什么？"
+    hard:
+      - parts: [ { quote: "哪些活动？你觉得有必要参加？为什么？", status: answered } ]
+      - routes_absent: [explain_limit, clarify, suggest_external_agent, offer_alternative]
+      - answer_blocks: { lacks: [note] }
+      - answer_text_plain: true
+      - clarifications: { count: 0 }
+      - cites_within_reads: true
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二轮接着第一轮列出的活动回答：说了哪几场值得去，并给了理由。"
+      - id: R2
+        text: "第二轮没有说现在还不能按条件找活动，没有说要等前一段有结果，也没有反问指的是哪一位。"
+      - id: R3
+        text: "理由只用了这些活动自己的时间、地点、主题和费用，没有编造议程、嘉宾或用户的偏好。"
+    notes: "用户 2026-11-19 的第二问。当时被按问号拆成三段：第一段当成按条件找活动而拒绝，后两段等它。现在由代码规则把整句当成对刚才那份列表的一个追问，重新按编号读那几场活动再回答。"
+
+  - id: AE-ANS-004
+    title: 问这周该跟进谁：每位一张联系人卡片，卡片下面有一句理由
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 2 组", "D1"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "这周该跟进谁？"
+    hard:
+      - answer_cards: { kinds: [contact], includes: [C30, C31], excludes: [C46, C40], text_order: true }
+      - answer_blocks: { has: [records], lacks: [note] }
+      - answer_text_plain: true
+      - cites_within_reads: true
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "田中浩和李薇各有一张联系人卡片，卡片上有公司和职位，下面有一句为什么该跟进（哪条待办或跟进到期、过了计划日）。"
+      - id: R2
+        text: "开头写明了这次是按什么挑的（已到期没做的跟进、过了计划日的待办），没有说成是模型觉得重要。"
+    notes: "沿用 AE-FN-003 的数据：田中有逾期的正式跟进 F1，李薇的待办 T45 过了计划日。卡片下面的理由来自这些待办；待办本身在文字下面另有小卡片，同一条记录不出现两次。"
+
+  - id: AE-ANS-005
+    title: 问还没完成的待办：每条一张待办卡片，已完成的不在里面
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 2 组", "D3"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "我有哪些还没完成的待办？"
+    hard:
+      - answer_cards: { kinds: [todo], includes: [T42, T44, T45, T47, F1], excludes: [T46], text_order: true, lead_plain: true }
+      - answer_blocks: { first: paragraph, has: [records], lacks: [note, conclusion, points] }
+      - answer_text_plain: true
+      - cites_within_reads: true
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "五条没完成的待办各有一张卡片，卡片上有待办的名称和它的截止时间或计划日（有的话），日期带星期。"
+      - id: R2
+        text: "已完成的「整理十月发票」没有出现在卡片里，回答也没有把它说成没完成。"
+      - id: R3
+        text: "卡片上面只有一句导语，说了一共几项待办、其中几项已过期或过了计划日；导语里没有把任何一条待办的名称再写一遍。"
+    notes: "没完成的是五条：T42、T44、T45、T47 和正式跟进 F1；T46 已完成（run-01 评审指出评审项原来写成了四条）。卡片点开的是这一条待办（D3），由两端的链接表保证，这里只判卡片本身。修复第 1 轮（协调者决定 1）：列表类的读取，导语由代码按数量、类型、时间范围写，不再由模型写、也不列举记录；给旧端的文字版是导语加每条记录一行。T45 没有截止时间、计划日 11 月 10 日已过，卡片下行写「计划日已过」（用普通的灰色：视觉稿的提醒色只画了过了截止时间的情况）。"
+
+  - id: AE-ANS-006
+    title: 问下周有哪些日程：日程卡片
+    sprint: AG19
+    split: val
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 2 组"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "下周我有哪些日程？"
+    hard:
+      - answer_cards: { kinds: [schedule, event, todo], includes: [S11], text_order: true, lead_plain: true }
+      - answer_blocks: { first: paragraph, has: [records], lacks: [note, conclusion, points] }
+      - answer_text_plain: true
+      - cites_within_reads: true
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "「和田中午餐」有一张日程卡片，上面有带星期的日期和时间（11 月 19 日周四 12:00）。"
+      - id: R2
+        text: "回答里说到的每条日程都对得上夹具里下一周（11 月 16 日到 22 日）的记录，没有多出不存在的安排。"
+      - id: R3
+        text: "卡片上面只有一句导语，说了时间范围和一共几个日程；导语里没有把任何一条日程的名称或时间再写一遍。"
+    notes: "时钟是 11 月 15 日周日，下周是 11 月 16 日到 22 日：日程 S10（团队周会，11 月 16 日，每周重复）和 S11（和田中午餐，11 月 19 日）。把那一周的活动或到期的待办一并列出也可以。第 18 版里两端的回答都点不开日程，卡片把入口补上。"
+
+  - id: AE-ANS-007
+    title: 讨论类的问题：结论一句，后面分点，由程序排版，不出现星号井号
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 5 组", "D4"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "下周要第一次拜访一家新客户，帮我想想要准备什么，分几点说。"
+    hard:
+      - answer_blocks: { first: conclusion, has: [conclusion], lacks: [note, records] }
+      - answer_text_plain: true
+      - answer_cards: { none: true }
+      - no_private_reads: true
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一句是一句完整的结论或总的建议，后面分成几条要点或几个短段，每条只讲一件事。"
+      - id: R2
+        text: "回答没有声称查过用户的记录，也没有提到任何具体的客户、联系人或待办。"
+    notes: "不涉及用户的记录，所以没有卡片。模型只按「结论、段落、要点」填字，加粗和分点由程序画；第一层直接给出的长回答没有结构，回答步骤会按结构重写一次。视觉稿第 5 组：最多列 5 点，再多就并成段，所以要点超过 5 条时显示成短段，这里不要求一定有要点块。"
+
+  - id: AE-ANS-008
+    title: 一半答了、一半没做：回答在上，没做的部分单独成一块说明
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 4 组"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "田中上次说了什么？另外帮我做一份东南亚物流市场的进入调研，自己找竞品和行业数据交叉核验。"
+    hard:
+      - parts: [ { quote: "田中上次说了什么", status: answered }, { quote: "东南亚物流市场", status: suggested_external } ]
+      - answer_blocks: { has: [note] }
+      - answer_text_plain: true
+      - cites: { include: [M37] }
+      - cites_within_reads: true
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "关于田中的回答在前面，用正文的样子；调研那一段在后面的「这次没做的部分」说明条里，两者分开。"
+      - id: R2
+        text: "说明条里先写了用户原话里调研的那一段，再写为什么这次没做、建议怎么办，没有假装做了调研。"
+      - id: R3
+        text: "关于田中的回答说出了 11 月 11 日那篇笔记的要点（最在意交付周期、报价可分两期、月底前看修订版），没有编造。"
+    notes: "前半句读笔记 M37 回答；后半句超出 Orbit 现在能做的范围，建议交给通用 Agent。只引用了一篇笔记时，依据行本身能点开它，不另放小卡片。"
+
+  - id: AE-ANS-009
+    title: 较大账号问最近有哪些活动：只列还没开始的，卡片不超过二十张
+    sprint: AG19
+    split: val
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 3 组", "D2", "AG19-6"]
+    locale: zh
+    account: large
+    world: large-v1
+    steps:
+      - user: "接下来有哪些活动？"
+    hard:
+      - answer_cards: { kinds: [event], min: 6, shown_first: 5, more: true, text_order: true }
+      - answer_blocks: { has: [records], lacks: [note] }
+      - answer_text_plain: true
+      - clarifications: { count: 0 }
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡片上的活动全部在 11 月 15 日之后开始，最早开始的排在最前面，没有已经办完的活动。"
+      - id: R2
+        text: "导语说了还没开始的活动一共多少场、这次先列多少场；卡片不超过 20 张，第 6 张起收在「还有 N 场」里。"
+    interference: [cross_page]
+    notes: "较大账号有 600 场平台活动。问法换成「接下来」，没有「适合我」。一次最多列 20 场，剩下的在导语里说总数。"
+
+  - id: AE-ANS-010
+    title: 让它把接下来的活动都列出来：六张卡片先放五张，剩下一张收在「还有 1 场」里
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["视觉稿第 3 组", "D2"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把接下来的活动按开始时间都列出来。"
+    hard:
+      - answer_cards: { kinds: [event], exact: [E103, E101, E104, E102, E105, E107], shown_first: 5, more: true, text_order: true, lead_plain: true }
+      - answer_blocks: { first: paragraph, has: [records], lacks: [note, conclusion] }
+      - answer_text_plain: true
+      - clarifications: { count: 0 }
+      - request_status: completed
+      - judgment_calls: 0
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "六场有开始时间的活动各有一张卡片，按开始时间从早到晚；前五张直接显示，第六张收在「还有 1 场」里。"
+      - id: R2
+        text: "时间未公布的那场没有被排进先后；提到它时说明了时间未公布。"
+    notes: "视觉稿 D2：先放 5 张，多的收进「还有 N 条」，点一下原地展开（展开不重新请求，由两端的测试保证）。小账号六场有开始时间的活动都在时钟之后。"
+
+  - id: AE-ANS-011
+    title: 不说「最近」，只问有哪些活动适合我：也只列还没开始的，最近的在前
+    sprint: AG19
+    split: val
+    invariant: false
+    requirement: [AG-R19]
+    design: ["AG19-6", "协调者决定 3（2026-11-20）"]
+    locale: zh
+    account: regular
+    world: regular-v1
+    steps:
+      - user: "有哪些活动适合我？"
+    hard:
+      - answer_cards: { kinds: [event], min: 3, includes: [RE03], excludes: [RE06, RE08], text_order: true, lead_plain: true }
+      - answer_blocks: { has: [records], lacks: [note] }
+      - answer_text_plain: true
+      - clarifications: { count: 0 }
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡片上的活动全部在 11 月 15 日之后开始，没有任何一场已经办完的活动；最早开始的排在最前面。"
+      - id: R2
+        text: "导语写明列的是还没开始的活动，并说了一共多少场、这次先列几场。"
+    interference: [similar_records, cross_page]
+    notes: "修复第 1 轮（协调者决定 3）：凡是让推荐或列出可以去的活动，只要用户的话没有指向过去（去过、之前、上个月、一个已经过去的日期），就只取还没开始的活动、最近的在前，并在导语里说明。常规账号的 60 场平台活动里一半已经办完；RE06 是 10 月 17 日那一期，RE08 时间未公布。还没开始的里最早的是 RE03（11 月 21 日 10:00）。"
+
+  # ── 2026-11-20 热修第 2 部分：App 与网页给用户的固定建议问题，每一句至少一例 ───────────────
+  # tests/agent-eval/suggested-questions.test.ts 从 App（todayVm.question*、ai.discussionPrompt）和网页（copy/iorbit.ts 的
+  # suggestion*Query）的文案里读出这些问题，哪一句没有用例就不通过。中文的「今天先处理哪些事？」在 AE-RD-011，
+  # 「最近有哪些活动适合我？」在本区前面的用例里。小账号 11 月 15 日时：跟进 F1 已过截止，T45 过了计划日（李薇），
+  # T42 计划在 18 日，T47 没有日期；日程 S10（每周一 10:00）、S11（19 日中午和田中）；报名了 E103（19 日 19:00）。
+
+  - id: AE-ANS-012
+    title: "App 建议问题（中）「哪些人值得先跟进？」：按到期的跟进和过了计划日的待办排人，不按“主题”挑"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["App todayVm.questionFollowup", "热修 2026-11-20"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "哪些人值得先跟进？"
+    hard:
+      - listed: { includes: [C30, C31], excludes: [C17, C40, C46] }
+      - answer_excludes: ["记录里看不出", "这个主题", "kobayashi@", "+81-90"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "田中浩排在前面，理由是跟进「跟进田中的分期方案」已过截止；李薇的理由是「给李薇寄样片」过了计划日。"
+      - id: R2
+        text: "回答没有说按某个主题挑人，也没有列出电话、邮箱、住址这类联系方式。"
+    notes: "正式站上这句被当成按主题「值得先跟进」挑人。代码规则：问该先跟进谁，就是「这周该跟进谁」那条排序（不限本周）。"
+
+  - id: AE-ANS-013
+    title: "App 建议问题（日）「誰を優先してフォローしますか？」：同一条排序"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["App todayVm.questionFollowup", "热修 2026-11-20"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "誰を優先してフォローしますか？"
+    hard:
+      - listed: { includes: [C30, C31], excludes: [C17, C40, C46] }
+      - answer_excludes: ["直接の関係は読み取れません", "に合うものを", "+81-90"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "日本語で、田中浩を先に、期限を過ぎたフォローアップを理由として挙げている。"
+
+  - id: AE-ANS-014
+    title: "App 建议问题（英）「Who should I follow up with first?」：同一条排序"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["App todayVm.questionFollowup", "热修 2026-11-20"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Who should I follow up with first?"
+    hard:
+      - listed: { includes: [C30], excludes: [C17, C40, C46] }
+      - answer_excludes: ["ties it to this directly", "+81-90"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "In English; 田中浩 comes first, with the follow-up past its deadline as the reason."
+
+  - id: AE-ANS-015
+    title: "App 建议问题（中）「接下来的会面或活动，该准备什么？」：接下来的日程和报名的活动，各带记录里相关的内容"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["App todayVm.questionPreparation", "热修 2026-11-20"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "接下来的会面或活动，该准备什么？"
+    hard:
+      - answer_cards: { includes: [S10, S11, E103] }
+      - reads_include: [S11, E103, F1, T44]
+      - answer_excludes: ["记录里看不出", "这个主题"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "按时间先后给出 11 月 16 日的团队周会、19 日中午和田中午餐、19 日晚上的 SaaS 定价研讨会，各一张卡片。"
+      - id: R2
+        text: "和田中午餐下面列了田中的两项还没完成的事（跟进分期方案、回复询价）和他最新的笔记；其余两项如实说记录里没有相关内容。"
+    notes: "正式站上这句被当成按主题挑一场活动，日程一条都没读。代码规则（graph/nodes/prepare.ts）：读接下来的日程和已报名、还没开始的活动，每项下面写记录里相关的待办和笔记，没有就直说。"
+
+  - id: AE-ANS-016
+    title: "App 建议问题（日）「次の面会やイベントに何を準備しますか？」"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["App todayVm.questionPreparation", "热修 2026-11-20"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "次の面会やイベントに何を準備しますか？"
+    hard:
+      - answer_cards: { includes: [S10, S11, E103] }
+      - answer_excludes: ["直接の関係は読み取れません"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "日本語で、三つの予定とイベントを時間順に挙げ、田中とのランチの下に関係するタスクとメモを添えている。"
+
+  - id: AE-ANS-017
+    title: "App 建议问题（英）「What should I prepare for upcoming meetings or events?」"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["App todayVm.questionPreparation", "热修 2026-11-20"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "What should I prepare for upcoming meetings or events?"
+    hard:
+      - answer_cards: { includes: [S10, S11, E103] }
+      - answer_excludes: ["ties it to this directly"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "In English; the three items in time order, the lunch with Tanaka with his open to-dos and his latest note under it."
+
+  - id: AE-ANS-018
+    title: "App 建议问题（日）「今日は何から進めますか？」：期限や予定日を過ぎた未完了のタスク"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["App todayVm.questionTasks", "热修 2026-11-20"]
+    locale: ja
+    world: base-v1
+    clock: "2026-11-20T10:00:00+09:00"
+    steps:
+      - user: "今日は何から進めますか？"
+    hard:
+      - reads_include: [T45, F1, T44, T42]
+      - answer_cards: { size: any, includes: [T45, F1, T44, T42], excludes: [T46, T47] }
+      - answer_excludes: ["見つかりませんでした"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "日本語で、期限または予定日を過ぎた四件のタスクを挙げている。"
+
+  - id: AE-ANS-019
+    title: "App 建议问题（英）「What should I handle first today?」"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["App todayVm.questionTasks", "热修 2026-11-20"]
+    locale: en
+    world: base-v1
+    clock: "2026-11-20T10:00:00+09:00"
+    steps:
+      - user: "What should I handle first today?"
+    hard:
+      - reads_include: [T45, F1, T44, T42]
+      - answer_cards: { size: any, includes: [T45, F1, T44, T42], excludes: [T46, T47] }
+      - answer_excludes: ["found nothing"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "In English; the four to-dos past their deadline or planned day."
+
+  - id: AE-ANS-020
+    title: "「今天先处理哪些事？」：待办全部已过期的账号"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["App todayVm.questionTasks", "热修 2026-11-20"]
+    locale: zh
+    world: base-v1
+    patches: [all-todos-overdue]
+    clock: "2026-11-20T10:00:00+09:00"
+    steps:
+      - user: "今天先处理哪些事？"
+    hard:
+      - reads_include: [T45, F1, T44, T42, T47]
+      - answer_cards: { size: any, includes: [T45, F1, T44, T42, T47], excludes: [T46] }
+      - answer_excludes: ["没有找到"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "五项还没完成的待办都列出来了，并说明它们都已过期或过了计划日。"
+
+  - id: AE-ANS-021
+    title: "什么记录都没有的新账号：问今天先做什么、接下来该准备什么，如实说还没有"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["App todayVm.questionTasks", "App todayVm.questionPreparation", "热修 2026-11-20"]
+    locale: zh
+    world: base-v1
+    steps:
+      - switch_account: E
+      - user: "今天先处理哪些事？"
+      - user: "接下来的会面或活动，该准备什么？"
+    hard:
+      - answer_cards: { none: true }
+      - answer_excludes: ["记录里看不出", "这个主题"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮如实说没有要处理的待办或日程，没有编出任何待办。"
+      - id: R2
+        text: "第二轮说接下来没有安排的会面或报名的活动，现在还没有要准备的事。"
+    notes: "账号戊（E）是 base-v1 里新加的空账号。"
+
+  - id: AE-ANS-022
+    title: "App 建议问题（日）「最近おすすめのイベントは？」：これから開催されるイベント"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["App todayVm.questionDiscovery", "热修 2026-11-20"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "最近おすすめのイベントは？"
+    hard:
+      - answer_cards: { kinds: [event], min: 3, excludes: [E106] }
+      - answer_text_plain: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "日本語で、これから開催されるイベントだけを近い順に挙げている。"
+
+  - id: AE-ANS-023
+    title: "App 建议问题（英）「Which recent events are a good fit for me?」"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["App todayVm.questionDiscovery", "热修 2026-11-20"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Which recent events are a good fit for me?"
+    hard:
+      - answer_cards: { kinds: [event], min: 3, excludes: [E106] }
+      - answer_text_plain: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "In English; only events that have not started, nearest first."
+
+  - id: AE-ANS-024
+    title: "App 建议问题（中）「回看与某位人脉的讨论」：没说是谁，先问是哪一位"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["App ai.discussionPrompt", "热修 2026-11-20"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "回看与某位人脉的讨论"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答问是哪一位联系人（或给出可点的人选），没有自己挑一个人来回顾，也没有编出讨论内容。"
+
+  - id: AE-ANS-025
+    title: "App 建议问题（日）「連絡先との話し合いを振り返る」"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["App ai.discussionPrompt", "热修 2026-11-20"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "連絡先との話し合いを振り返る"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "日本語で、どの連絡先かを尋ねている。話し合いの内容を作り上げていない。"
+
+  - id: AE-ANS-026
+    title: "App 建议问题（英）「Review a discussion with a contact」"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["App ai.discussionPrompt", "热修 2026-11-20"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Review a discussion with a contact"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "In English; asks which contact, invents no discussion."
+
+  - id: AE-ANS-027
+    title: "网页建议问题（中）「告诉我现在该联系谁、原因和下一步。」：跟进排序，带理由"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["网页 suggestionPeopleQuery", "热修 2026-11-20"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "告诉我现在该联系谁、原因和下一步。"
+    hard:
+      - listed: { includes: [C30, C31], excludes: [C17, C40, C46] }
+      - answer_excludes: ["记录里看不出", "这个主题", "+81-90"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "先联系田中浩，理由是到期没做的跟进；下一步说的是记录里那件事本身。"
+
+  - id: AE-ANS-028
+    title: "网页建议问题（日）「今、誰に連絡すべきか、理由と次の一歩を教えて。」"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["网页 suggestionPeopleQuery", "热修 2026-11-20"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "今、誰に連絡すべきか、理由と次の一歩を教えて。"
+    hard:
+      - listed: { includes: [C30, C31], excludes: [C17, C40, C46] }
+      - answer_excludes: ["直接の関係は読み取れません", "に合うものを", "+81-90"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "日本語で、田中浩を先に、期限を過ぎたフォローアップを理由に挙げている。"
+
+  - id: AE-ANS-029
+    title: "网页建议问题（英）「Who should I contact now, why, and what is the next step?」"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["网页 suggestionPeopleQuery", "热修 2026-11-20"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Who should I contact now, why, and what is the next step?"
+    hard:
+      - listed: { includes: [C30, C31], excludes: [C17, C40, C46] }
+      - answer_excludes: ["ties it to this directly", "+81-90"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "In English; Tanaka first, for the follow-up past its deadline."
+
+  - id: AE-ANS-030
+    title: "网页建议问题（中）「推荐值得参加的活动并说明原因。」：还没开始的活动，不把整句当主题"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["网页 suggestionEventsQuery", "热修 2026-11-20"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "推荐值得参加的活动并说明原因。"
+    hard:
+      - answer_cards: { kinds: [event], min: 1, excludes: [E106] }
+      - answer_excludes: ["「推荐值得参加的活动并说明原因」", "「并说明」"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "只推荐还没开始的活动；说的理由来自活动本身或用户记录（如兴趣笔记里的摄影、独立出版），没有编造。"
+
+  - id: AE-ANS-031
+    title: "网页建议问题（日）「参加する価値があるイベントを、理由とともに教えて。」"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["网页 suggestionEventsQuery", "热修 2026-11-20"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "参加する価値があるイベントを、理由とともに教えて。"
+    hard:
+      - answer_cards: { kinds: [event], min: 1, excludes: [E106] }
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "日本語で、これから開催されるイベントを理由とともに挙げている。"
+
+  - id: AE-ANS-032
+    title: "网页建议问题（英）「Suggest events worth attending and explain why.」"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["网页 suggestionEventsQuery", "热修 2026-11-20"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Suggest events worth attending and explain why."
+    hard:
+      - answer_cards: { kinds: [event], min: 1, excludes: [E106] }
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "In English; upcoming events with reasons grounded in the events or the user's notes."
+
+  - id: AE-ANS-033
+    title: "网页建议问题（中）「整理人脉关系中接下来该做的事。」：从待办和跟进里整理"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["网页 suggestionRelationsQuery", "热修 2026-11-20"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "整理人脉关系中接下来该做的事。"
+    hard:
+      - answer_excludes: ["没有找到"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "列出了和联系人有关、还没做完的事（跟进田中的分期方案、回复田中的询价、给李薇寄样片、给小林发修订报价等），说了各自是谁的事。"
+
+  - id: AE-ANS-034
+    title: "网页建议问题（日）「人脈との関係で次にすべきことを整理して。」"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["网页 suggestionRelationsQuery", "热修 2026-11-20"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "人脈との関係で次にすべきことを整理して。"
+    hard:
+      - answer_excludes: ["見つかりませんでした"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "日本語で、連絡先に関わる未完了のことを誰のことか添えて挙げている。"
+
+  - id: AE-ANS-035
+    title: "网页建议问题（英）「Organize the next steps for my relationships.」"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["网页 suggestionRelationsQuery", "热修 2026-11-20"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Organize the next steps for my relationships."
+    hard:
+      - answer_excludes: ["found nothing"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "In English; the open things with contacts, each with whose it is."
+
+  - id: AE-ANS-036
+    title: "网页建议问题（中）「帮我为新目标制定计划。」：没说目标，先问；什么都不写"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["网页 suggestionPlanQuery", "热修 2026-11-20"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "帮我为新目标制定计划。"
+    hard:
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答问新目标是什么（或给出开始的方向），没有编出一个目标，也没有建任何记录。"
+
+  - id: AE-ANS-037
+    title: "网页建议问题（日）「新しい目標に向けたプランを考えるのを手伝って。」"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["网页 suggestionPlanQuery", "热修 2026-11-20"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "新しい目標に向けたプランを考えるのを手伝って。"
+    hard:
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "日本語で、目標が何かを尋ねている。何も記録していない。"
+
+  - id: AE-ANS-038
+    title: "网页建议问题（英）「Help me plan for a new goal.」"
+    sprint: AG19
+    split: dev
+    invariant: false
+    requirement: [AG-R19]
+    design: ["网页 suggestionPlanQuery", "热修 2026-11-20"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Help me plan for a new goal."
+    hard:
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "In English; asks what the goal is, records nothing."

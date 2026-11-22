@@ -26,6 +26,12 @@ export interface PushDevice {
   registeredAt: string;
   updatedAt: string;
   revokedAt?: string;
+  /**
+   * agent-design AG16: who ended the registration. user: the owner turned it off on the device (or signed out);
+   * provider_rejected: the push service refused the device when a reminder was sent — the permission was taken away in
+   * the system settings, which the server only learns this way.
+   */
+  revokedReason?: "user" | "provider_rejected";
 }
 
 export interface PushDeviceDescriptor extends Omit<PushDevice, "actorId"> {
@@ -40,7 +46,14 @@ interface PushDeviceRecordPayload extends Record<string, unknown> {
 }
 
 export interface PushDeviceService {
-  listActive: () => Promise<readonly (PushDeviceDescriptor & { token: string })[]>;
+  /**
+   * The devices that may be sent to now. Browsers (platform "web", whose token is a Web Push subscription and not an
+   * Expo token) are listed only when asked for with `includeWeb` (agent-design AG16): every sender written for phones
+   * keeps seeing phones only.
+   */
+  listActive: (options?: { includeWeb?: boolean }) => Promise<readonly (PushDeviceDescriptor & { token: string })[]>;
+  /** agent-design AG16: one device's registration as stored, also after it was revoked (no token). */
+  get?: (deviceId: string) => Promise<PushDeviceDescriptor | null>;
   register: (input: {
     deviceId: string;
     token: string;
@@ -48,7 +61,7 @@ export interface PushDeviceService {
     permission?: PushPermissionState;
     appVersion?: string;
   }) => Promise<PushDeviceDescriptor>;
-  revoke: (deviceId: string) => Promise<PushDeviceDescriptor | null>;
+  revoke: (deviceId: string, reason?: "user" | "provider_rejected") => Promise<PushDeviceDescriptor | null>;
 }
 
 export interface StoragePushDeviceServiceOptions {
@@ -170,7 +183,12 @@ export function createStoragePushDeviceService({
   }
 
   return {
-    async listActive() {
+    async get(deviceId) {
+      // A revoked registration is archived; it is still this device's last known state.
+      const existing = await read(deviceId);
+      return existing ? descriptor(existing.device) : null;
+    },
+    async listActive(options) {
       const records = await store.listRecords({
         limit: "unbounded",
         collectionName: PUSH_DEVICE_COLLECTION,
@@ -181,6 +199,7 @@ export function createStoragePushDeviceService({
       return records.flatMap((record) => {
         const value = deviceFromRecord(record, tokenVault);
         return value && !value.device.revokedAt && (value.device.permission === "granted" || value.device.permission === "provisional")
+          && (value.device.platform !== "web" || options?.includeWeb === true)
           ? [{ ...descriptor(value.device), token: value.token }]
           : [];
       });
@@ -218,13 +237,15 @@ export function createStoragePushDeviceService({
       );
       return descriptor(device);
     },
-    async revoke(deviceId) {
+    async revoke(deviceId, reason = "user") {
       const existing = await read(deviceId);
       if (!existing) return null;
       const updatedAt = now();
       const device: PushDevice = {
         ...existing.device,
         revokedAt: updatedAt,
+        // A later sign-out does not hide that the push service refused this device first.
+        revokedReason: existing.device.revokedAt && existing.device.revokedReason === "provider_rejected" ? "provider_rejected" : reason,
         updatedAt,
       };
       await store.upsertRecord(

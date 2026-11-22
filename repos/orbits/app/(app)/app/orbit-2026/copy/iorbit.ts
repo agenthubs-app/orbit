@@ -99,4 +99,18 @@ export const iorbitCopy = {
   privacy: { ja: "メール・メッセージは下書きまで。送信はあなたが行います。", zh: "邮件和消息只写到草稿，发送由你来做。", en: "Emails and messages stop at a draft. You do the sending." },
   deleteTitle: { ja: "この会話を削除しますか？", zh: "删除此对话？", en: "Delete this conversation?" },
   deleteMessage: { ja: "会話内で追加したタスクや予定は削除されません。", zh: "对话中创建的任务和日程不会删除。", en: "Tasks and events created in this conversation will remain." },
+  // agent-design AG11（获批视觉稿 D1–D8）：@ 选择器与已选标签。
+  addContext: { ja: "コンテキストを追加", zh: "添加上下文", en: "Add context" },
+  refSearch: { ja: "名前で記録を探す", zh: "按名字找一条记录", en: "Find a record by name" },
+  refKinds: { ja: "種類", zh: "类型", en: "Kinds" },
+  refLoading: { ja: "探しています…", zh: "正在找…", en: "Searching…" },
+  refNoneFor: { ja: "{kinds}：「{q}」に当たるものはありません", zh: "{kinds}：没有叫「{q}」的", en: "{kinds}: nothing named “{q}”" },
+  refNone: { ja: "当たる記録はありません", zh: "没有找到这样的记录", en: "No record found" },
+  refUnavailable: { ja: "{kinds}は今回読めませんでした。少し後でもう一度。", zh: "{kinds}这次没读到，稍后再试。", en: "{kinds} could not be read this time. Try again shortly." },
+  refKeys: { ja: "↑↓ 選ぶ · Enter 決定 · Esc 閉じる", zh: "↑↓ 选 · 回车 选中 · Esc 关闭", en: "↑↓ move · Enter pick · Esc close" },
+  refDone: { ja: "完了（{n}）", zh: "完成（{n}）", en: "Done ({n})" },
+  refRemove: { ja: "{name} を外す", zh: "去掉 {name}", en: "Remove {name}" },
+  refGone: { ja: "開けません", zh: "打不开了", en: "Can't open" },
+  refGoneHint: { ja: "この記録は開けなくなりました。× で外すか、選び直してください。", zh: "这条记录打不开了，点 × 去掉或重新选一条。", en: "This record can't be opened any more. Remove it with × or pick it again." },
+  refPicked: { ja: "選んだ記録", zh: "已选的记录", en: "Picked records" },
 } as const satisfies OrbitCopyTable;

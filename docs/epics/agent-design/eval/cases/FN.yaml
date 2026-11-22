@@ -1,0 +1,489 @@
+# FN 区：排序、从笔记提取往来和跟进、比较与分组。AG10 的门槛用例。
+# 依据：设计稿 §3.5、§3.8、§3.11、§6、附录 C；SPRINTS.md 的 AG10-1 到 AG10-5。
+
+area: FN
+
+proposed_checks:
+  - name: listed
+    form: "listed: { exact: [...], within: [...], includes: [...], excludes: [...], sequence: [...], count: n }"
+    meaning: "最后一份交付的清单里按展示顺序的记录编号：exact 逐项相同，within 都在集合内，includes 必须出现，excludes 不得出现，sequence 这几项的相对先后，count 条数。各键都可省。"
+  - name: functions_called
+    form: "functions_called: [fn.rank, fn.extractInteractions, fn.extractFollowUps]"
+    meaning: "全程调用过的二级函数恰好是这些，只统计 fn.rank、fn.extractInteractions、fn.extractFollowUps 三个；空列表表示三个都没调。"
+  - name: judgment_question
+    form: "judgment_question: { id: <题号>, asked_min: a, asked_max: b, fallback_min: c }"
+    meaning: "按附录 C 的题号数判断日志：含这道题的判断请求数不少于 a、不多于 b；落到保守结果的次数不少于 c（低于门槛、超时、不可用都算）。三个键都可省。"
+
+proposed_steps:
+  - name: "fault 的 kind 新增 phantom_candidate"
+    form: "fault: { where: judgment, kind: phantom_candidate }"
+    meaning: "在下一次判断返回里混入一个不在所给候选中的编号 E999，等级为“匹配”。"
+
+new_patches:
+  memo-hearsay:
+    summary: 一篇只有转述和打算的笔记，里面没有本人与任何人已经发生的往来
+    add:
+      memos:
+        - { id: M90, version: 1, createdAt: "2026-11-14T21:00:00+09:00", title: 同事转述, contactIds: [C30, C45, C46], body: "听同事说，田中前天和王强通过电话。佐藤那边我打算下周再联系。" }
+  memo-two-promises:
+    summary: 一篇同时有“某天做”和“最迟某天”两种说法的笔记，用来检验计划日与截止日分开保留
+    add:
+      memos:
+        - { id: M91, version: 1, createdAt: "2026-11-14T17:00:00+09:00", title: 王强通话, contactIds: [C46], body: "和王强通了电话。我答应 11 月 20 日把合同草稿发给他，发票最迟 11 月 25 日补齐。" }
+
+cases:
+  - id: AE-FN-001
+    title: 本轮说了标准，在选中的五场里挑三场，开头写明依据
+    sprint: AG10
+    split: dev
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5", "§3.6", "§3.8"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "从 @东京街头摄影展 @街拍工作坊 @SaaS 定价研讨会 @设计师之夜 @独立出版市集 里挑三场，优先周末上午，最好跟 @兴趣笔记 的主题有关。"
+        refs:
+          - { type: event, id: E101, quote: "@东京街头摄影展" }
+          - { type: event, id: E102, quote: "@街拍工作坊" }
+          - { type: event, id: E103, quote: "@SaaS 定价研讨会" }
+          - { type: event, id: E104, quote: "@设计师之夜" }
+          - { type: event, id: E105, quote: "@独立出版市集" }
+          - { type: memo, id: M36, quote: "@兴趣笔记" }
+    hard:
+      - listed: { count: 3, includes: [E101, E102, E105] }
+      - functions_called: [fn.rank]
+      - judgment_candidates_max: 5
+      - judgment_calls_max: 3
+      - model_calls_max: 4
+      - clarifications: { count: 0 }
+      - cites_within_reads: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答开头写明依据：先看是不是周末上午，再看与兴趣笔记 M36 的主题有多相关。"
+      - id: R2
+        text: "每场的理由都能对回活动记录的时间或 M36 的原句，没有记录里没有的说法。"
+      - id: R3
+        text: "三场的日期和时间与记录一致：E101 是 11 月 21 日（周六）10:00，E102 是 11 月 22 日（周日）9:30，E105 是 11 月 22 日（周日）10:00。"
+    notes: "五场里只有 E101、E102、E105 在周末上午，且都与 M36 的主题（摄影展、街拍、独立出版）有关，所以三场是确定的；三场之间的先后不作要求。"
+
+  - id: AE-FN-002
+    title: 没说标准但存了偏好和约束，直接排并写明用了哪两条记忆，重问一次顺序不变
+    sprint: AG10
+    gate: AG14          # 该用例要用到 AG14 才交付的能力，门槛顺延到 AG14
+    split: dev
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5", "§6"]
+    locale: zh
+    world: base-v1
+    patches: [mem-weekend-morning, mem-no-evening]
+    steps:
+      - user: "11 月 21 日和 22 日有哪些活动值得去？帮我挑两场。"
+      - new_conversation: {}
+      - user: "11 月 21 日和 22 日有哪些活动值得去？帮我挑两场。"
+    hard:
+      - memory_recalled: [MM1, MM2]
+      - listed: { count: 2, within: [E101, E102, E105] }
+      - functions_called: [fn.rank]
+      - clarifications: { count: 0 }
+      - cites_within_reads: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "两次回答的开头都写明用了已存的两条记忆：推荐活动时优先周末上午、不要推荐晚上的活动。"
+      - id: R2
+        text: "两次给出的两场活动相同，先后顺序也相同。"
+      - id: R3
+        text: "回答开头有记忆的小标签，带「修改 ›」，点了到设置页里这两条依据（结果文档的 answer.memoryUse；transcript 写明）。"
+    notes: "这两天有四场活动。E104 在周六 19:00，被约束排除；E101、E102、E105 都在周末上午，偏好分不出先后，要靠稳定的次序。稳定次序用什么键设计稿没定，所以只要求两次一致。"
+
+  - id: AE-FN-003
+    title: 问这周该跟进谁，按自己记录里的逾期和过期计划来排并写明依据
+    sprint: AG10
+    split: val
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5", "§3.8"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "这周该跟进谁？"
+    hard:
+      - clarifications: { count: 0 }
+      - functions_called: [fn.rank]
+      - judgment_calls: 0
+      - listed: { includes: [C30, C31] }
+      - cites_within_reads: true
+      - model_calls_max: 4
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答开头写明依据来自用户自己的记录：已到期没做的跟进、过了计划日的待办，没有另立标准。"
+      - id: R2
+        text: "田中的理由写到「跟进田中的分期方案」在 11 月 14 日到期还没完成；李薇的理由写到「给李薇寄样片」的计划日 11 月 10 日已过。"
+      - id: R3
+        text: "回答没有把「给李薇寄样片」说成过了截止日，它只有计划日。"
+      - id: R4
+        text: "回答旁边给了修改排序依据的入口。"
+    notes: "清单里的条目是联系人。田中（C30）和李薇（C31）谁在前设计稿没定，只要求两位都在。信号由代码算，不需要判断模型。"
+
+  - id: AE-FN-004
+    title: 什么依据都没有就说挑最好的，只问一轮，不自己定标准
+    sprint: AG10
+    split: dev
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5", "§3.11"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "帮我挑三场最好的活动。"
+    hard:
+      - clarifications: { count: 1 }
+      - functions_called: []
+      - judgment_calls: 0
+      - parts: [ { quote: "挑三场最好的活动", status: awaiting_clarification } ]
+      - request_status: waiting_user
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应问了一句按什么来挑，并列出两种以上现在能用的排法供选择。"
+      - id: R2
+        text: "回应里没有给出三场活动的推荐名单。"
+      - id: R3
+        text: "回应没有自己定一个标准（例如热度、评分、人气）。"
+    notes: "夹具里没有记忆，本会话没说过目标，活动这个领域也没有可直接用的个人历史信号。“最好的”本身不是标准。"
+
+  - id: AE-FN-005
+    title: 追问之后用户答随便，按开始时间交付并说明，不再问
+    sprint: AG10
+    split: dev
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5", "§3.11"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "这个月剩下的活动里，哪两场最值得去？"
+      - user: "随便，都行。"
+    hard:
+      - clarifications: { count: 1 }
+      - listed: { exact: [E103, E101] }
+      - judgment_calls: 0
+      - cites_within_reads: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二轮回答写明因为没有指定标准，这次是按开始时间先后给的。"
+      - id: R2
+        text: "第二轮回答没有把这两场说成最值得去的，只说是时间最近的两场。"
+    notes: "活动的自然顺序是开始时间。11 月 15 日之后最早的两场是 E103（11 月 19 日 19:00）和 E101（11 月 21 日 10:00）。"
+
+  - id: AE-FN-006
+    title: 按时间排相关活动时，时间没公布的那场保留为未知
+    sprint: AG10
+    split: val
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5", "§6"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "我想去听 AI 和定价方面的活动，把相关的几场按时间先后排一下。"
+    hard:
+      - listed: { includes: [E103], within: [E103, E106] }
+      - functions_called: [fn.rank]
+      - clarifications: { count: 0 }
+      - cites_within_reads: true
+      - model_calls_max: 4
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答没有给 E106（AI 产品沙龙）安上任何日期或时刻：可以不列它（它没有公开）；如果提到它，要说时间未公布。"
+      - id: R2
+        text: "回答没有给 E106 任何具体日期、星期或时段，也没有断言它在 E103 之前或之后。"
+      - id: R3
+        text: "E103 的时间写的是 11 月 19 日（周四）19:00。"
+    notes: "与 AI、定价有关的活动只有 E103 和 E106。E106 可以单列在清单之外，所以 listed 只要求含 E103、且不出别的活动。"
+
+  - id: AE-FN-007
+    title: 模型给出一个不存在的活动，被拒收，结果只含真实候选
+    sprint: AG10
+    split: dev
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5", "§3.8"]
+    locale: zh
+    world: base-v1
+    steps:
+      - fault: { where: judgment, kind: phantom_candidate }
+      - user: "从 11 月 21 日和 22 日的活动里挑两场，最好跟 @兴趣笔记 的主题有关。"
+        refs:
+          - { type: memo, id: M36, quote: "@兴趣笔记" }
+    hard:
+      - judgment_question: { id: match.level, asked_min: 1 }
+      - listed: { count: 2, within: [E101, E102, E105], excludes: [E999] }
+      - functions_called: [fn.rank]
+      - cites_within_reads: true
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答里没有出现 E999，也没有出现活动目录里不存在的活动名称。"
+      - id: R2
+        text: "两场的理由都能对回各自活动记录的标题或主题标签。"
+    notes: "这两天的四场里，与 M36 的主题有关的是 E101、E102、E105。judgment_question 用来保证判断确实被调用过，注入才有机会生效。"
+
+  - id: AE-FN-008
+    title: 只说整理一下，给一段摘要，三个函数都不调，也不查别的资料
+    sprint: AG10
+    split: dev
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5", "§3.11"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "@11 月 10 日笔记 帮我整理一下。"
+        refs:
+          - { type: memo, id: M32, quote: "@11 月 10 日笔记" }
+    hard:
+      - functions_called: []
+      - private_reads_within: [M32]
+      - cites_within_reads: true
+      - clarifications: { count: 0 }
+      - offered_options: { min: 1, max: 3, all_registered: true }
+      - model_calls_max: 4
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答是一段摘要，内容只有 M32 里写的三件事：11 月 10 日小林来电、小陈在审核、答应 11 月 13 日给小林发报价。"
+      - id: R2
+        text: "回答开头写明是把“整理一下”理解成给摘要。"
+      - id: R3
+        text: "回答没有说已经更新往来或已经建了待办。"
+    notes: "没指定产物时默认只给摘要。此时不需要先查联系人档案或任务库，所以读过的记录只有 M32。"
+
+  - id: AE-FN-009
+    title: 用 11 月 10 日的笔记补记小林来电，小陈不记；再整理一次回到已有记录
+    sprint: AG10
+    split: dev
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5", "§4", "附录 E"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "用 @11 月 10 日笔记 更新我和小林的往来。"
+        refs:
+          - { type: memo, id: M32, quote: "@11 月 10 日笔记" }
+      - click: { card: last, decision: confirm }
+      - user: "再用 @11 月 10 日笔记 更新一次我和小林的往来。"
+        refs:
+          - { type: memo, id: M32, quote: "@11 月 10 日笔记" }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: memo.update, target: M32, set: { interaction.actualContactIds: [C17], interaction.channel: phone, interaction.direction: incoming, interaction.occurredOn: "2026-11-10" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - decisions: { count: 1 }
+      - duplicate_effects: 0
+      - functions_called: [fn.extractInteractions]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡上写的是在这篇笔记上补记小林来电、日期 11 月 10 日，卡上没有小陈的往来。"
+      - id: R2
+        text: "卡上或回答里引用了支持这次来电的原句“11 月 10 日小林给我打电话”。"
+      - id: R3
+        text: "第三步的回应说明这次来电已经记在 M32 上，并能打开这篇笔记。"
+    notes: "小陈只在谈话里被提到。用户只要求更新往来，所以不提取跟进，也不出待办。第三步字段与已有的一致，应回到已有记录，全程只有一张卡。"
+
+  - id: AE-FN-010
+    title: 笔记里只有转述别人的通话和下次联系的打算，不登记任何往来
+    sprint: AG10
+    split: val
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5", "§3.8"]
+    locale: zh
+    world: base-v1
+    patches: [memo-hearsay]
+    steps:
+      - user: "把 @同事转述 里的往来都记到对应的联系人上。"
+        refs:
+          - { type: memo, id: M90, quote: "@同事转述" }
+    hard:
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - functions_called: [fn.extractInteractions]
+      - private_reads_within: [M90, C30, C45, C46]
+      - clarifications: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应说明这篇笔记里没有本人与任何联系人已经发生的往来，所以没有可记的。"
+      - id: R2
+        text: "田中和王强的通话被说成是别人之间的事，没有记成本人与田中或王强的往来。"
+      - id: R3
+        text: "打算下周再联系佐藤这句没有被当成已经发生的往来。"
+
+  - id: AE-FN-011
+    title: 日语笔记里本人答应的事，先问只回答，说加到待办才出卡，期限记成截止日
+    sprint: AG10
+    split: dev
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5", "附录 C"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "@山本さん打ち合わせメモ の中で、私が約束したことは何ですか？"
+        refs:
+          - { type: memo, id: M38, quote: "@山本さん打ち合わせメモ" }
+      - user: "それをToDoに追加してください。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.create, set: { plannedDate: null, dueAt: "2026-12-05" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - decisions: { count: 1 }
+      - functions_called: [fn.extractFollowUps]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮只有回答，没有出卡。"
+      - id: R2
+        text: "第一轮回答引用了原句「原稿は12月5日までに送ると約束した」，并说这是本人的承诺。"
+      - id: R3
+        text: "卡上的待办是把原稿发给山本直子，期限写成最迟 12 月 5 日，没有写成计划在那天做。"
+      - id: R4
+        text: "两轮回答和卡片上的说明用的是日语。"
+    notes: "「までに」是最迟的意思，记成截止，不记成计划日。截止只说到日，dueAt 按东京时区的日期比对，时刻不作要求。笔记写于 2026 年 11 月 9 日，「来月」的 12 月 5 日是 2026-12-05。"
+
+  - id: AE-FN-012
+    title: 英语笔记里分清对方的承诺和仅供考虑的事，本人没有承诺就如实说
+    sprint: AG10
+    split: val
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5", "§3.8", "附录 C"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "In @Call with Emily, what did I promise to do, and what is Emily supposed to do?"
+        refs:
+          - { type: memo, id: M39, quote: "@Call with Emily" }
+    hard:
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - functions_called: [fn.extractFollowUps]
+      - private_reads_within: [M39, C40]
+      - cites_within_reads: true
+      - clarifications: { count: 0 }
+      - model_calls_max: 4
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答说明这篇笔记里没有本人已经答应要做的事。"
+      - id: R2
+        text: "发 dashboard spec 被列为 Emily 的承诺，期限是周五之前，并引用了原句。"
+      - id: R3
+        text: "考虑要不要加入 beta 被标为仅供考虑，没有算作本人的承诺。"
+      - id: R4
+        text: "回答用的是英语。"
+
+  - id: AE-FN-013
+    title: 同一篇笔记里计划某天做和最迟某天各一项，分开保留；再整理一次不重复新增
+    sprint: AG10
+    split: dev
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5", "附录 C"]
+    locale: zh
+    world: base-v1
+    patches: [memo-two-promises]
+    steps:
+      - user: "把 @王强通话 里我答应的事加到待办。"
+        refs:
+          - { type: memo, id: M91, quote: "@王强通话" }
+      - click: { card: last, decision: confirm }
+      - user: "把 @王强通话 里我答应的事再加到待办一次。"
+        refs:
+          - { type: memo, id: M91, quote: "@王强通话" }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.create, set: { plannedDate: "2026-11-20", dueAt: null } }
+          - { op: todo.create, set: { plannedDate: null, dueAt: "2026-11-25" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded }, { op: 2, state: succeeded } ]
+      - decisions: { count: 1 }
+      - duplicate_effects: 0
+      - functions_called: [fn.extractFollowUps]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡上第一项写的是计划 11 月 20 日（周五）发合同草稿，第二项写的是最迟 11 月 25 日（周三）补齐发票。"
+      - id: R2
+        text: "两条待办都关联到王强，并能回到 M91 里对应的原句。"
+      - id: R3
+        text: "第三步的回应指回已经建好的两条待办并给出它们现在的状态，没有再提议新增。"
+    notes: "用户只要求整理跟进，所以笔记开头那通电话不提取为往来。截止只说到日，dueAt 按东京时区的日期比对。"
+
+  - id: AE-FN-014
+    title: 比较和按费用分组时，没标价的活动不算免费
+    sprint: AG10
+    split: val
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "对比一下 @街拍工作坊 和 @SaaS 定价研讨会 的时间、费用和主题，再把 11 月 19 日到 22 日的活动按免费和收费分个组。"
+        refs:
+          - { type: event, id: E102, quote: "@街拍工作坊" }
+          - { type: event, id: E103, quote: "@SaaS 定价研讨会" }
+    hard:
+      - parts: [ { quote: "对比一下", status: answered }, { quote: "按免费和收费分个组", status: answered } ]
+      - functions_called: []
+      - clarifications: { count: 0 }
+      - cites_within_reads: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "比较里 E103 的费用写的是未标价，没有写成免费或 0 日元。"
+      - id: R2
+        text: "分组里 E103 单列为未标价，没有放进免费那一组。"
+      - id: R3
+        text: "免费组恰好是 E101 和 E105，收费组恰好是 E102（3000 日元）和 E104（2000 日元）。"
+      - id: R4
+        text: "比较里两场的时间与记录一致：E102 是 11 月 22 日（周日）9:30，E103 是 11 月 19 日（周四）19:00。"
+    notes: "11 月 19 日到 22 日有五场：E103、E101、E104、E102、E105。比较和分组由查询、确定性计算和带出处的摘要完成，不需要排序或提取函数。"

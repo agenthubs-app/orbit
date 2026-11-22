@@ -14,6 +14,8 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/guide/')) return 'guide';
   if (path.startsWith('/api/integrations')) return 'integrations';
   if (path.startsWith('/api/agent/memory')) return 'agent-memory';
+  // agent-design AG11: the @ picker's search and the check of picked records (online-only, never kept on the device).
+  if (path.startsWith('/api/agent/references')) return 'agent-references';
   if (path.startsWith('/api/notes')) return 'notes';
   if (path.startsWith('/api/task-suggestions')) return 'task-suggestions';
   if (path.startsWith('/api/tasks')) return 'tasks';
@@ -58,6 +60,8 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/agent/signals')) return 'agent-signals';
   if (path.startsWith('/api/agent/actions')) return 'agent-actions';
   if (path.startsWith('/api/agent/ledger')) return 'agent-ledger';
+  // agent-design AG15: 「定时任务」 (scheduled tasks, their history and form).
+  if (path.startsWith('/api/agent/automations')) return 'agent-automations';
   // R23: the plan v2.2 generation flow (intakes, drafts, goal type, summary).
   if (path.startsWith('/api/agent/plans')) return 'plans';
   // R17 主催（運営センター / イベント運営 / 受付 / 共同運営）：主办实时运营。
@@ -117,6 +121,10 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     // Push preferences are live account/device state; the settings screen does not read a device mirror.
     || endpointTemplate === '/api/inbox/delivery/preferences'
     || endpointTemplate.startsWith('/api/integrations') || endpointTemplate.startsWith('/api/agent/memory')
+    // agent-design AG11: what the @ picker searched and found is never kept on the device (like global search).
+    || endpointTemplate.startsWith('/api/agent/references')
+    // agent-design AG15: scheduled tasks and their results are online-only pages (page inventory); nothing is kept on the device.
+    || endpointTemplate.startsWith('/api/agent/automations')
     || (consumerFile.startsWith('src/screens/me/') && ['/api/events/center', '/api/search/global', '/api/agent/plans/v2/summary'].includes(endpointTemplate))
     || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/')
     // Private portraits remain network-only until trusted grant/epoch invalidation is available.
@@ -176,6 +184,10 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/me/settings-api.ts","DELETE","/api/agent/memory/:id"],
   ["src/screens/me/settings-api.ts","DELETE","/api/integrations/:id"],
   ["src/screens/me/settings-api.ts","GET","/api/agent/memory"],
+  // agent-design AG14: adding, changing and switching memory are online-only writes (the /api/agent/memory rule above).
+  ["src/screens/me/settings-api.ts","PATCH","/api/agent/memory/:id"],
+  ["src/screens/me/settings-api.ts","PATCH","/api/agent/memory/settings"],
+  ["src/screens/me/settings-api.ts","POST","/api/agent/memory"],
   ["src/screens/me/settings-api.ts","GET","/api/agent/plans/v2/summary"],
   ["src/screens/me/settings-api.ts","GET","/api/integrations"],
   ["src/screens/me/settings-api.ts","GET","/api/search/global"],
@@ -768,7 +780,13 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/ai/AiConversationScreen.tsx","GET","/api/ai/conversations/sessions/:id"],
   ["src/screens/ai/AiConversationScreen.tsx","GET","/api/ai/entity-drafts"],
   ["src/screens/ai/AiConversationScreen.tsx","POST","/api/ai/entity-drafts/:id"],
-  ["src/screens/ai/ContactMentionPicker.tsx","GET","/api/contacts/page"],
+  ["src/api/agent-v1-client.ts","GET","/api/ai/conversations/protocol"],
+  ["src/api/agent-v1-client.ts","POST","/api/ai/conversations"],
+  ["src/api/agent-v1-client.ts","GET","/api/ai/conversations/sessions/:id"],
+  ["src/api/agent-v1-client.ts","GET","/api/agent/ledger/:id"],
+  ["src/api/agent-v1-client.ts","POST","/api/agent/ledger/:id"],
+  ["src/api/agent-v1-client.ts","GET","/api/agent/references/search"],
+  ["src/api/agent-v1-client.ts","POST","/api/agent/references/check"],
   ["src/screens/ai/ContactReferenceChip.tsx","GET","/api/contacts/:id"],
   ["src/screens/ai/AiConversationScreen.tsx","POST","/api/task-suggestions/:id/accept"],
   ["src/screens/ai/AiConversationScreen.tsx","POST","/api/task-suggestions/:id/dismiss"],
@@ -796,6 +814,14 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/inbox/useNotificationInbox.ts","GET","/api/inbox/delivery/preferences"],
   ["src/screens/inbox/useNotificationInbox.ts","POST","/api/inbox/notifications/read"],
   ["src/screens/inbox/useNotificationInbox.ts","POST","/api/inbox/notifications/:id/actions"],
+  // agent-design AG15: 我的 › 设置 › 定时任务 (list, one task's history, pause/resume, delete, new or changed with the form).
+  ["src/screens/me/scheduled-tasks-api.ts","GET","/api/agent/automations"],
+  ["src/screens/me/scheduled-tasks-api.ts","GET","/api/agent/automations/:id/runs"],
+  ["src/screens/me/scheduled-tasks-api.ts","POST","/api/agent/automations"],
+  ["src/screens/me/scheduled-tasks-api.ts","PATCH","/api/agent/automations/:id"],
+  ["src/screens/me/scheduled-tasks-api.ts","DELETE","/api/agent/automations/:id"],
+  // agent-design AG16: a task's own reminder switch (online-only, like the rest of the task page).
+  ["src/screens/me/scheduled-tasks-api.ts","PUT","/api/agent/automations/:id/reminder"],
   // R11a 人脈（一覧・連絡先詳細・編集・削除）。
   ["src/screens/network/ContactEditScreen.tsx","GET","/api/contacts/:id"],
   ["src/screens/network/ContactEditScreen.tsx","PATCH","/api/contacts/:id"],

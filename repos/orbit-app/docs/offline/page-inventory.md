@@ -12,9 +12,9 @@
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 12 |
-| 只能在线 | 58 |
+| 只能在线 | 61 |
 | 不读账号数据（布局、跳转、本机设置） | 40 |
-| 合计（路由文件） | 138 |
+| 合计（路由文件） | 141 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -75,6 +75,9 @@
 | `/settings/notifications/secretary` | 秘書通知设置（R14） | 涉及凭据或会话：读取本账号实时来源开关和推送上限；版本写入须联网 | /api/inbox/delivery/preferences | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/settings/integrations` | 关联服务（R18a） | 涉及凭据或会话：读取真实授权状态；连接和解除均需服务器 | /api/integrations、/api/integrations/:provider | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/settings/schedule` | 日程 · 可约时间（R42） | 需要服务器实时计算：可约时间存在服务器、改动即存；日历连接状态在线读取 | /api/scheduling/availability、/api/integrations | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/settings/tasks` | 定时任务列表（AG15） | 需要服务器实时计算：下次运行、上次结果和需要处理都由服务端的派发器按到期索引算出，手机上没有副本 | GET /api/agent/automations | 读取失败时显示重试卡，不显示旧的运行状态 |
+| `/settings/tasks/[id]` | 一条定时任务：开关、七项、历史（AG15） | 需要服务器实时计算：运行历史和下次运行只在服务端；开关、改、删除是服务端写入 | GET /api/agent/automations/[id]/runs；PATCH、DELETE /api/agent/automations/[id] | 读取失败时显示重试卡；开关和删除不排队 |
+| `/settings/tasks/new` | 用表单新建定时任务（AG15） | 需要服务器实时计算：规则字段由服务端代码写，选的笔记要在服务端核对本人还能打开 | POST /api/agent/automations；GET /api/agent/references/search | 保存失败时留在表单并提示，不排队 |
 | `/account` | 账号与会话 | 涉及凭据或会话：账号、登录会话和退出都在服务器上确认 | /api/account/me | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/login` | 登录 | 涉及凭据或会话：提交密码需要服务器验证 | /api/auth/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/signup` | 注册 | 涉及凭据或会话：建账号需要服务器 | /api/auth/register | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -302,6 +305,9 @@
 | `app/settings/notifications/secretary.tsx` | `/settings/notifications/secretary` | online-only |
 | `app/settings/privacy.tsx` | `/settings/privacy` | device-only |
 | `app/settings/schedule.tsx` | `/settings/schedule` | online-only |
+| `app/settings/tasks/[id].tsx` | `/settings/tasks/[id]` | online-only |
+| `app/settings/tasks/index.tsx` | `/settings/tasks` | online-only |
+| `app/settings/tasks/new.tsx` | `/settings/tasks/new` | online-only |
 | `app/settings/terms.tsx` | `/settings/terms` | device-only |
 | `app/showcase/components/[section].tsx` | `/showcase/components/[section]` | device-only |
 | `app/showcase/components/index.tsx` | `/showcase/components` | device-only |

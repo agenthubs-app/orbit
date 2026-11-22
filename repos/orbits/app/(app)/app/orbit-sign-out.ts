@@ -17,6 +17,7 @@ import { resetChangeWatch } from "./orbit-change-watch";
 import { clearAnswers } from "./orbit-last-answer";
 import { clearHomeResources } from "./orbit-2026/home/use-home-resource";
 import { clearKioskDevice } from "./orbit-2026/host/kiosk-store";
+import { forgetWebPushOnSignOut } from "./orbit-2026/account/web-push-client";
 
 const PERSONAL_KEYS = ["orbit.search.recent", "orbit-agent-chat-active-session-v1"];
 const PERSONAL_PREFIXES = ["orbit.onboarding.v1:", "orbit:inbox:tab:"];
@@ -35,9 +36,13 @@ export function forgetThisAccountOnDevice(): void {
   try { window.sessionStorage.clear(); } catch { /* storage may be unavailable */ }
 }
 
-/** Every sign-out button: forget this account on the device, then sign out. */
+/**
+ * Every sign-out button: forget this account on the device, stop this browser's task reminders (AG16; only a browser
+ * that took them, at most 2 seconds), then sign out.
+ */
 export async function signOutAndForget(callbackUrl: string): Promise<void> {
   forgetThisAccountOnDevice();
   await clearKioskDevice().catch(() => undefined);
+  await forgetWebPushOnSignOut().catch(() => undefined);
   await signOut({ callbackUrl });
 }

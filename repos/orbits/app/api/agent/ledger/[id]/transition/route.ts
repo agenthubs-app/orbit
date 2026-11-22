@@ -18,6 +18,8 @@ import {
   resolveAgentRequestContext,
 } from "../../../../_shared/agent-request-context";
 import { shouldProcessAgentLedgerOutbox } from "./transition-execution-policy";
+import { handleCardDecision, takesCardDecisions } from "../../../../../../features/agent/ledger/card-routes";
+import { conversationCardHook } from "../../../../../../features/agent-v1/entry/card-document";
 
 export const dynamic = "force-dynamic";
 
@@ -70,12 +72,12 @@ async function readJsonBody(request: Request): Promise<JsonRecord> {
   }
 }
 
-async function readInput(
+function readInput(
   request: Request,
   entryId: string,
-): Promise<AgentLedgerTransitionInput> {
+  body: JsonRecord,
+): AgentLedgerTransitionInput {
   const searchParams = new URL(request.url).searchParams;
-  const body = await readJsonBody(request);
 
   return {
     actorLabel: readString(body.actorLabel),
@@ -95,8 +97,24 @@ export async function POST(
   const { id } = await context.params;
   const agentContext = await resolveAgentRequestContext(mode);
   if (!agentContext) return agentRequestUnauthorizedResponse();
+  const body = await readJsonBody(request);
+  // agent-design AG02: a card with an origin is decided only by a button decision (revision,
+  // payloadHash, clientDecisionId); the old body shape cannot reach it through applyTransition.
+  const action = await Promise.resolve().then(() => agentContext.runtime.getAction(id)).catch(() => null);
+  if (takesCardDecisions(action, body)) {
+    const decided = await handleCardDecision({
+      actionId: id,
+      actorLabel: readString(body.actorLabel) ?? undefined,
+      body,
+      onCardRevised: conversationCardHook(mode, agentContext.actorId),
+      processNow: mode === "live",
+      runtime: agentContext.runtime,
+      workerId: `ledger-confirm:${agentContext.actorId ?? "server"}`,
+    });
+    return NextResponse.json(decided.body, { headers: runtimeBoundaryHeaders(mode), status: decided.status });
+  }
   const service = createAgentLedgerForRequest(agentContext);
-  const input = await readInput(request, id);
+  const input = readInput(request, id, body);
   let result = await service.applyTransition(input);
 
   if (result.success === false) {

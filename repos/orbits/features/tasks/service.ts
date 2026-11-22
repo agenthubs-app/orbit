@@ -15,12 +15,15 @@ import type {
 } from "./contract";
 import type { StoredTaskRecord, TaskRepository } from "./repository";
 import { countTaskDeferrals } from "./task-record";
+import { addedPrivateEvents, linkFieldsAfter, type TaskEventRef } from "./task-links";
 
 export type TaskServiceErrorCode =
   | "TASK_NOT_FOUND"
   | "TASK_VERSION_CONFLICT"
   | "TASK_INVALID_TRANSITION"
-  | "TASK_INVALID_PLAN_LINK";
+  | "TASK_INVALID_PLAN_LINK"
+  /** AG13: a linked private event that is not the account's, or no longer exists. */
+  | "TASK_INVALID_LINK";
 
 export interface TaskPlanLinkReader {
   isActiveTypeLink(input: { actorId: string; planId: string; typeItemId: string }): Promise<boolean>;
@@ -53,6 +56,9 @@ export interface TaskCreateInput {
   source?: TaskSource;
   relatedContactId?: string;
   relatedEventId?: string;
+  /** AG13: several people and events (the single fields then mirror the first). */
+  relatedContactIds?: readonly string[];
+  relatedEventRefs?: readonly TaskEventRef[];
   relatedMeetingId?: string;
   relatedConversationId?: string;
   suggestionId?: string;
@@ -71,8 +77,12 @@ export interface TaskUpdatePatch {
   dueAt?: string | null;
   location?: string | null;
   priority?: TaskPriority;
-  relatedContactId?: string;
-  relatedEventId?: string;
+  /** An old client's single fields: only the mirrored item of the arrays is replaced (AG13, task-links.ts). */
+  relatedContactId?: string | null;
+  relatedEventId?: string | null;
+  /** AG13: the whole lists. */
+  relatedContactIds?: readonly string[];
+  relatedEventRefs?: readonly TaskEventRef[];
   relatedMeetingId?: string;
   relatedConversationId?: string;
   planLink?: TaskPlanLink | null;
@@ -232,6 +242,11 @@ function transitionActorType(
   return "user";
 }
 
+/** The link fields with a value (null means "drop the field"; the caller deletes those). */
+function definedLinks(links: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(links).filter(([, value]) => value !== null && value !== undefined));
+}
+
 export function createTaskService(input: {
   repository: TaskRepository;
   planLinkReader?: TaskPlanLinkReader;
@@ -263,6 +278,13 @@ export function createTaskService(input: {
     if (await input.planLinkReader?.isActiveTypeLink({ actorId: task.ownerUserId, ...task.planLink })) return task;
     const { planLink: _planLink, ...withoutLink } = task;
     return withoutLink;
+  }
+
+  /** AG13: a private event newly linked must be the account's own and still there (checked inside the to-do's lock). */
+  async function requirePrivateEvents(actorId: string, ids: readonly string[]): Promise<void> {
+    if (!ids.length) return;
+    const active = await input.repository.privateEventsActive?.(actorId, ids) ?? new Set<string>();
+    if (ids.some((id) => !active.has(id))) throw new TaskServiceError("TASK_INVALID_LINK", "A linked private event is not available");
   }
 
   async function requirePlanLink(actorId: string, link: TaskPlanLink): Promise<void> {
@@ -341,6 +363,7 @@ export function createTaskService(input: {
         );
       }
 
+      await requirePrivateEvents(createInput.actorId, addedPrivateEvents(null, createInput.relatedEventRefs));
       const task: TaskItemDTO = {
         id: taskId,
         accountId: createInput.actorId,
@@ -361,6 +384,10 @@ export function createTaskService(input: {
           : {}),
         ...(createInput.relatedEventId
           ? { relatedEventId: createInput.relatedEventId }
+          : {}),
+        // AG13: the lists, when given; the single fields then mirror their first items.
+        ...definedLinks(createInput.relatedContactIds || createInput.relatedEventRefs
+          ? linkFieldsAfter({ relatedContactIds: [], relatedEventRefs: [] } as unknown as TaskItemDTO, { relatedContactIds: createInput.relatedContactIds ?? [], relatedEventRefs: createInput.relatedEventRefs ?? [] })
           : {}),
         ...(createInput.relatedMeetingId
           ? { relatedMeetingId: createInput.relatedMeetingId }
@@ -429,6 +456,10 @@ export function createTaskService(input: {
       if (updateInput.patch.planLink) await requirePlanLink(updateInput.actorId, updateInput.patch.planLink);
 
       const oldTask = stored.payload.task;
+      // AG13: the people and events (task-links.ts): lists, or an old client's single field that replaces the mirrored item.
+      const { relatedContactId, relatedEventId, relatedContactIds, relatedEventRefs, ...plainPatch } = updateInput.patch;
+      const links = linkFieldsAfter(oldTask, { relatedContactId, relatedContactIds, relatedEventId, relatedEventRefs });
+      await requirePrivateEvents(updateInput.actorId, addedPrivateEvents(oldTask, links.relatedEventRefs as TaskEventRef[] | undefined));
       const previousDates = {
         ...(typeof updateInput.patch.plannedDate === "string" && typeof oldTask.plannedDate === "string" && updateInput.patch.plannedDate > oldTask.plannedDate
           ? { previousPlannedDate: oldTask.plannedDate } : {}),
@@ -437,13 +468,15 @@ export function createTaskService(input: {
       };
       const task: TaskItemDTO = {
         ...stored.payload.task,
-        ...Object.fromEntries(Object.entries(updateInput.patch).filter(([, value]) => value !== null)),
+        ...Object.fromEntries(Object.entries(plainPatch).filter(([, value]) => value !== null)),
+        ...definedLinks(links),
         updatedAt: new Date(Math.max(Date.parse(updateInput.now), Date.parse(stored.payload.task.updatedAt) + 1)).toISOString(),
         deferralCount: countTaskDeferrals(stored.payload.activities) + (Object.keys(previousDates).length > 0 ? 1 : 0),
       };
       for (const field of ["plannedDate", "dueAt", "location", "planLink"] as const) {
         if (updateInput.patch[field] === null) delete task[field];
       }
+      for (const [field, value] of Object.entries(links)) if (value === null) delete (task as unknown as Record<string, unknown>)[field];
       const activity = taskActivity({
         task,
         type: "updated",

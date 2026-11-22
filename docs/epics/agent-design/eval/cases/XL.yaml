@@ -1,0 +1,538 @@
+# XL 区：小林切片。AG06 的门槛用例，共 17 例（013～017 是 2026-11-22 多轮理解引擎移植加的）。
+#
+# 本文件的写法约定（都在 README 词表之内，只是把词表没写死的取值定下来）：
+# - fault 的 where 写设计稿附录 A 的能力名。memo.create 指这项操作的执行器。
+# - select 的 option 写候选记录的编号（如 C17、T43）；候选不是记录时写选项键，并在该例的 notes 里说明。
+# - order 的元素写结果的种类：clarification（追问）、answer（回答）、card（卡片）。只要求所列各项的相对先后。
+# - card_ops 里 set 只列要核对的关键字段，写法与 AE-XL-001 相同。
+# - writes_exact 直接列变化时，每项的写法与 card_ops 相同。
+
+area: XL
+
+proposed_checks:
+  - name: cites
+    form: "cites: { include: [<记录>, ...], exclude: [<记录>, ...] }"
+    meaning: "最后一次回答的引用必须包含 include 里的每条记录，并且不含 exclude 里的任何一条。两项可以只写一项。"
+  - name: recent_interaction
+    form: "recent_interaction: [ { contact: <联系人>, occurredOn: \"<日期>\", source: <记录或 created> }, { contact: <联系人>, unchanged: true } ]"
+    meaning: "运行结束后由运行器调用「最近互动」读取视图：该联系人最近一次往来的发生日和来源记录与所列一致。source 写 created 表示来源是本次运行里新建的那条 Memo；unchanged 表示结果与运行前相同。"
+  - name: no_auto_extraction
+    form: "no_auto_extraction: true"
+    meaning: "Agent 写入的 Memo 没有触发旧流程的自动提取作业，也没有由它引出的联系人资料写入。"
+
+proposed_steps: []
+
+new_patches:
+  yamamoto-draft-todo:
+    summary: 山本名下多一条日语标题的待办，供日语版的混合请求使用
+    add:
+      todos:
+        - { id: T61, title: "山本さんに原稿を送る", status: open, plannedDate: "2026-11-25", dueAt: null, contactId: C41, updatedAt: "2026-11-09T15:20:00+09:00" }
+
+cases:
+  - id: AE-XL-001                 # AE-<区>-<三位序号>，不复用、不重排
+    title: 小林混合请求：一答、一卡、两项
+    sprint: AG06                  # 作为哪个 sprint 的门槛
+    split: dev                    # dev | val | sealed
+    invariant: false              # true 则进入不变量包，从 AG02 起每个 sprint 都跑
+    requirement: [AG-R06]
+    design: ["§1", "§3.2"]
+    locale: zh                    # zh | ja | en
+    world: base-v1
+    patches: []                   # 夹具增量的名字
+    clock: "2026-11-15T10:00:00+09:00"   # 缺省就是这个值，周日
+    settings: {}                  # 覆盖默认设置
+    steps:
+      - user: "查上次和小林聊了什么，把报价待办改到周五，再记下他今天来过电话。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T42, set: { plannedDate: "2026-11-20" } }
+          - { op: memo.create, set: { interaction.actualContactIds: [C17], interaction.channel: phone, interaction.direction: incoming, interaction.occurredOn: "2026-11-15" } }
+      - writes_exact: same_as_card
+      - model_calls_max: 4
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: 回答说出了 11 月 12 日那次谈话的要点（小林希望把实施费单列），并附了可打开的原笔记 M31。
+      - id: R2
+        text: 没有编造今天这通电话的内容；新增的 Memo 只说来过电话。
+      - id: R3
+        text: 卡片文字让人看得出改的是哪条待办、从哪天改到哪天，日期带星期。
+    notes: 设计稿 §1 的基准用例。
+
+  - id: AE-XL-002
+    title: "有两位小林：先选人，再一答一卡"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§1", "§3.2", "§3.11"]
+    locale: zh
+    world: base-v1
+    patches: [two-kobayashi]
+    steps:
+      - user: "查上次和小林聊了什么，把报价待办改到周五，再记下他今天来过电话。"
+      - select: { option: C17 }
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - clarifications: { count: 1 }
+      - order: [clarification, answer]
+      - order: [clarification, card]
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T42, set: { plannedDate: "2026-11-20" } }
+          - { op: memo.create, set: { interaction.actualContactIds: [C17], interaction.channel: phone, interaction.direction: incoming, interaction.occurredOn: "2026-11-15" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded }, { op: 2, state: succeeded } ]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "追问只问是哪位小林，候选是小林健和小林美咲，各带一条能区分的信息（公司或职位）。"
+      - id: R2
+        text: "选定小林健之后，回答说出了 11 月 12 日那次谈话的要点（小林希望把实施费单列）。"
+    notes: "三件事指的是同一个人，所以只问一次，选完后三项一起继续。人没选定之前不交付查询，也不出卡。"
+
+  - id: AE-XL-003
+    title: "报价待办有两条：往来查询先交付，只问改哪一条"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§1", "§3.2", "§3.11"]
+    locale: zh
+    world: base-v1
+    patches: [two-quote-todos]
+    steps:
+      - user: "查上次和小林聊了什么，把报价待办改到周五，再记下他今天来过电话。"
+      - select: { option: T43 }
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - clarifications: { count: 1 }
+      - order: [answer, clarification]
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T43, set: { plannedDate: "2026-11-20" } }
+          - { op: memo.create, set: { interaction.actualContactIds: [C17], interaction.channel: phone, interaction.direction: incoming, interaction.occurredOn: "2026-11-15" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded }, { op: 2, state: succeeded } ]
+      - parts: [ { quote: "查上次和小林聊了什么", status: answered } ]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答说出了 11 月 12 日那次谈话的要点（小林希望把实施费单列），并附了原笔记 M31。"
+      - id: R2
+        text: "追问只问要改哪条待办，候选是「给小林发修订报价」和「报价单内部审批」。"
+      - id: R3
+        text: "追问没有再问小林是谁，也没有问来电的事。"
+      - id: R4
+        text: "卡片写明改的是「报价单内部审批」，计划日期从 11 月 17 日改到 11 月 20 日（周五）。"
+    notes: "故意选了不是第一条的 T43，检验点选被照办。新增往来那一项在追问之前是否已经上卡，设计稿没有写死；本例只要求全程一张卡，最后一版恰好两项。"
+
+  - id: AE-XL-004
+    title: "待办同时有计划日和截止时间：“改到周五”先问清改哪个"
+    sprint: AG06
+    split: val
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.2", "§3.11", "附录 B"]
+    locale: zh
+    world: base-v1
+    patches: [todo-plan-and-due]
+    steps:
+      - user: "小林那条发修订报价的待办，改到周五。"
+      - select: { option: plannedDate }
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - clarifications: { count: 1 }
+      - order: [clarification, card]
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T42, set: { plannedDate: "2026-11-20" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "追问列出了两种读法：改计划日期（现在是 11 月 18 日），还是改截止时间（现在是 11 月 25 日 18:00）。"
+      - id: R2
+        text: "追问没有问是哪条待办或哪位小林。"
+      - id: R3
+        text: "卡片写明只改计划日期，从 11 月 18 日改为 11 月 20 日（周五）。"
+    notes: "选项键 plannedDate 指“改计划日期”那种读法。确认后截止时间仍是 11 月 25 日 18:00，由 writes_exact 判定。"
+
+  - id: AE-XL-005
+    title: "否决整张卡：两项都不执行，数据保持原样"
+    sprint: AG06
+    split: dev
+    invariant: true
+    requirement: [AG-R06]
+    design: ["§1", "§5.2", "附录 D"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "查上次和小林聊了什么，把报价待办改到周五，再记下他今天来过电话。"
+      - click: { card: last, decision: reject }
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_business_writes: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T42, set: { plannedDate: "2026-11-20" } }
+          - { op: memo.create, set: { interaction.actualContactIds: [C17], interaction.channel: phone, interaction.direction: incoming, interaction.occurredOn: "2026-11-15" } }
+      - card_state: { card: last, state: rejected }
+      - decisions: { count: 1 }
+      - decision_result: { reason: CARD_CLOSED }
+    rubric:
+      - id: R1
+        text: "否决之后的回应说明这两项都没有执行。"
+      - id: R2
+        text: "对 11 月 12 日谈话的回答在否决之后仍然留在对话里。"
+      - id: R3
+        text: "对已否决的卡再点确认后，看到的是这张卡已否决的状态，没有出现“已修改”或“已记录”。"
+    notes: "第三步在已否决的卡上再点确认，应被拒收（CARD_CLOSED），被接受的决定只有否决那一次。"
+
+  - id: AE-XL-006
+    title: "在卡上去掉一项：重新出一版，只执行剩下的一项"
+    sprint: AG06
+    split: dev
+    invariant: true
+    requirement: [AG-R06]
+    design: ["§5.1", "§5.2"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "查上次和小林聊了什么，把报价待办改到周五，再记下他今天来过电话。"
+      - card_edit: { card: last, remove_op: 2 }
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_revision: { card: last, min: 2 }
+      - card_ops:
+          - { op: todo.update, target: T42, set: { plannedDate: "2026-11-20" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - decisions: { count: 1 }
+    rubric:
+      - id: R1
+        text: "去掉一项之后，卡片上的总数变成“修改 1 项”，新增往来那一项不再出现。"
+      - id: R2
+        text: "回执只报告待办已修改，没有说已记录来电。"
+    notes: "被去掉的新增往来不得写入：结束时没有新的 Memo。"
+
+  - id: AE-XL-007
+    title: "一项成功一项失败：回执分开报告，补存时不重做已成功的"
+    sprint: AG06
+    split: dev
+    invariant: true
+    requirement: [AG-R06]
+    design: ["§5.1", "§5.2", "附录 D"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "查上次和小林聊了什么，把报价待办改到周五，再记下他今天来过电话。"
+      - fault: { where: memo.create, kind: fail_always }
+      - click: { card: last, decision: confirm }
+      - user: "刚才那条来电记录没存上，再记一次：小林今天来过电话。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 2 }
+      - card_state: { card: 1, state: partially_failed }
+      - card_ops:
+          - { op: memo.create, set: { interaction.actualContactIds: [C17], interaction.channel: phone, interaction.direction: incoming, interaction.occurredOn: "2026-11-15" } }
+      - card_state: { card: last, state: completed }
+      - receipts: [ { op: 1, state: succeeded } ]
+      - writes_exact:
+          - { op: todo.update, target: T42, set: { plannedDate: "2026-11-20" } }
+          - { op: memo.create, set: { interaction.actualContactIds: [C17], interaction.channel: phone, interaction.direction: incoming, interaction.occurredOn: "2026-11-15" } }
+      - duplicate_effects: 0
+    rubric:
+      - id: R1
+        text: "第一张卡的回执把两项分开报告：待办已修改，新增往来保存失败。"
+      - id: R2
+        text: "第一张卡出回执时，回应没有把整批说成“都完成了”。"
+    notes: "故障只作用在第一次确认触发的执行上，属于不可重试的失败。第二张卡只含新增往来一项（由 card_ops 判定），待办只被改一次（由 duplicate_effects 判定）。card_ops 和 receipts 判的是第二张卡。"
+
+  - id: AE-XL-008
+    title: "后一项要等前一项成功：前一项失败，后一项跳过"
+    sprint: AG06
+    split: val
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.2", "§5.1", "§5.2"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "先记下小林今天来过电话；这条记成功了，再把报价待办改到周五。"
+      - fault: { where: memo.create, kind: fail_always }
+      - click: { card: last, decision: confirm }
+    hard:
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: memo.create, set: { interaction.actualContactIds: [C17], interaction.channel: phone, interaction.direction: incoming, interaction.occurredOn: "2026-11-15" } }
+          - { op: todo.update, target: T42, set: { plannedDate: "2026-11-20" } }
+      - receipts: [ { op: 1, state: failed }, { op: 2, state: skipped } ]
+      - card_state: { card: last, state: failed }
+      - no_business_writes: true
+      - duplicate_effects: 0
+    rubric:
+      - id: R1
+        text: "卡片上看得出第二项要等第一项成功之后才执行。"
+      - id: R2
+        text: "回执说明改待办这一项是因为前一项失败而跳过的，没有说成“修改失败”或“已修改”。"
+    notes: "用户明说了先后条件，第二项依赖第一项。没有任何一项成功，整批按失败计。"
+
+  - id: AE-XL-009
+    title: "只说改、却找不到那条待办：不转成新建"
+    sprint: AG06
+    split: val
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.2", "§3.11"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把给小林寄合同那条待办改到周五。"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - clarify_max_per_part: 1
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回答说明没有找到“给小林寄合同”这样的待办。"
+      - id: R2
+        text: "回答没有声称已经新建或修改了任何待办。"
+    notes: "小林名下只有「给小林发修订报价」。可以问是不是指这一条，或附一个“新建一条”的入口；不能直接出新建卡，也不能悄悄改成别的待办。"
+
+  - id: AE-XL-010
+    title: "新增来电往来：不多写别的记录，只被提到的小陈的最近互动不变"
+    sprint: AG06
+    split: val
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§1", "§4", "附录 E"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "记一下：小林今天来电话了，说小陈还在审合同。"
+      - click: { card: last, decision: confirm }
+      - user: "我最近一次和小陈直接联系是什么时候？"
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: memo.create, set: { interaction.actualContactIds: [C17], interaction.channel: phone, interaction.direction: incoming, interaction.occurredOn: "2026-11-15" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - recent_interaction:
+          - { contact: C17, occurredOn: "2026-11-15", source: created }
+          - { contact: C21, unchanged: true }
+      - no_auto_extraction: true
+      - cites_within_reads: true
+    rubric:
+      - id: R1
+        text: "第三步的回答没有把今天这通电话算作和小陈的往来。"
+      - id: R2
+        text: "新增 Memo 的正文只有用户说的内容（小林来电、说小陈还在审合同），没有添加别的细节。"
+    notes: "小陈（C21）只是被提到。新 Memo 可以把他列为关联的人，但实际往来对象只能是小林（C17）。数据的变化只有这一条 Memo，没有另存一份“最近互动”。"
+
+  - id: AE-XL-011
+    title: "英文：记一通来电，正文里有可提取的资料，联系人资料不被自动改写"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§4", "附录 E"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Log that Emily called me today. She said she's moving to the Tokyo office in January."
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: memo.create, set: { interaction.actualContactIds: [C40], interaction.channel: phone, interaction.direction: incoming, interaction.occurredOn: "2026-11-15" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - no_auto_extraction: true
+      - recent_interaction: [ { contact: C40, occurredOn: "2026-11-15", source: created } ]
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回应没有声称已经更新 Emily 的联系人资料（地区、公司等）。"
+      - id: R2
+        text: "新增 Memo 的正文只有用户说的两点：今天来电，她说一月调去东京办公室。"
+      - id: R3
+        text: "对用户的文字回应是英文。"
+    notes: "旧流程在建 Memo 后会自动提取联系人事实并写回。Agent 写入时必须抑制：确认后 C40 的地区仍是新加坡，数据的变化只有这一条 Memo。"
+
+  - id: AE-XL-012
+    title: "日语版的混合请求：一答、一卡、两项"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§1", "§3.2"]
+    locale: ja
+    world: base-v1
+    patches: [yamamoto-draft-todo]
+    steps:
+      - user: "山本さんと前回何を話したか確認して、原稿を送るToDoを金曜日に変更して、今日山本さんから電話があったことも記録しておいて。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T61, set: { plannedDate: "2026-11-20" } }
+          - { op: memo.create, set: { interaction.actualContactIds: [C41], interaction.channel: phone, interaction.direction: incoming, interaction.occurredOn: "2026-11-15" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded }, { op: 2, state: succeeded } ]
+      - cites: { include: [M38] }
+      - recent_interaction: [ { contact: C41, occurredOn: "2026-11-15", source: created } ]
+      - no_auto_extraction: true
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回答说出了 11 月 9 日那次碰头的要点：谈了下个月的特集，答应 12 月 5 日前把稿子发过去。"
+      - id: R2
+        text: "回答是用日语写的。"
+      - id: R3
+        text: "没有编造今天这通电话的内容；新增的 Memo 只说来过电话。"
+      - id: R4
+        text: "卡片写明待办「山本さんに原稿を送る」的计划日期从 11 月 25 日改到 11 月 20 日，日期带星期。"
+    notes: "金曜日按默认时钟是 2026-11-20。山本名下另有中文标题的待办 T47（约山本吃饭），不应被选中。"
+
+  # 多轮理解引擎移植（agent-conv-port，2026-11-22）加的五例：XL-010 的情形、纠正之后的代词、被打断又接上的请求、取消、
+  # 不该带进新任务的条件。全部 dev。
+
+  - id: AE-XL-013
+    title: "记了来电之后再问小陈：卡上关联过的陈一鸣就是他，不再问是哪一位"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.10", "§3.6"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "记一下：小林今天来电话了，说小陈下周回东京。"
+      - click: { card: last, decision: confirm }
+      - user: "小陈在北辰软件负责什么？"
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - clarifications: { count: 0 }
+      - writes_exact: same_as_card
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第三步的回应说的是陈一鸣（北辰软件的法务），没有反问“小陈”指的是哪一位。"
+      - id: R2
+        text: "第三步的回应没有说陈一鸣负责法务以外的工作。"
+    notes: "AE-XL-010 那种情形换一句话：第一轮的卡把陈一鸣（C21，别名小陈）关联进新笔记，第三轮的「小陈」就是他，账号里也只有他叫小陈。"
+
+  - id: AE-XL-014
+    title: "「不是这条，是给李薇寄样片那条」之后的「她」：卡改成 T45，代词指李薇"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.10", "§3.7"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把给小林发修订报价这条待办改到周五。"
+      - user: "不是这条，是给李薇寄样片那条。"
+      - user: "她现在在哪里工作？"
+    hard:
+      - no_business_writes: true
+      - card_ops:
+          - { op: todo.update, target: T45, set: { plannedDate: "2026-11-20" } }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二步之后等用户确认的卡改的是待办「给李薇寄样片」，改到 11 月 20 日（周五），而不是「给小林发修订报价」。"
+      - id: R2
+        text: "第三步的回应说的是李薇（自由职业的摄影师），不是小林健。"
+    notes: "纠正之后的代词：第二轮否定了 T42、指定 T45（李薇的待办），第三轮的「她」只能是李薇（C31）。周五按默认时钟是 2026-11-20。没有点击，不该有任何写入。"
+
+  - id: AE-XL-015
+    title: "建待办被一个日程问题打断，再说「就按刚才那条建吧」：还是给田中的那条，不带上明天"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.10", "§3.7"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "给田中浩建一个待办：周五前回复他的报价。"
+      - user: "先帮我看看明天有什么日程。"
+      - user: "好，就按刚才那条建吧。"
+    hard:
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第三步的回应接着的是给田中浩的那条待办（周五前回复报价），等用户在卡上确认；没有改成明天日程里的事或明天的日期。"
+      - id: R2
+        text: "第三步没有说已经建好了（没有点确认之前什么都不写）。"
+    notes: "被打断又接上：第二轮只是查日程，第三轮回到第一轮那张等确认的卡。周五按默认时钟是 2026-11-20，明天是 2026-11-16。"
+
+  - id: AE-XL-016
+    title: "「算了先别建」：等确认的新建卡不执行，也不再出新卡"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.7", "§5.1"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "给李薇建一个待办：下周三前寄样片。"
+      - user: "算了先别建。"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 1 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二步的回应说明这条待办没有建（卡上的改动不会执行），没有声称已经建好或已经删掉什么。"
+      - id: R2
+        text: "第二步没有再提出别的写入或追问要建什么。"
+    notes: "取消等确认的卡：打字说「算了」不能批准也不能执行卡；整段对话只有第一轮那一张卡。"
+
+  - id: AE-XL-017
+    title: "先问下周的待办，再新建一条：下周这个时间不带进新建的待办"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.10"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "下周有哪些待办？"
+      - user: "再给山本直子建一个待办：约她吃饭。"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 1 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "新建卡上的待办是约山本直子吃饭，没有计划日或截止日（用户没有说日期；上一轮的「下周」只属于那个问题）。"
+      - id: R2
+        text: "第二步没有把新建的待办说成下周要做的事。"
+    notes: "不该带进新任务的条件：第一轮的时间范围是 11-16～11-22（下周），第二轮是新建，没有说日期。山本名下已有 T47（约山本吃饭），回应可以提醒有一条相似的，但不该替用户决定不建。"

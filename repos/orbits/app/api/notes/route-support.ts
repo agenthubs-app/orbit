@@ -35,6 +35,8 @@ export function noteService(dependencies?: NoteRouteDependencies): NoteService {
 
 /** Only persisted, eligible notes reach this hook; the service suppresses replay and enqueue failures. */
 export function noteOnPersisted(note: NoteDTO, dependencies?: NoteRouteDependencies): void {
+  // agent-design AG06 (设计稿 §4): a memo the Agent wrote after a card never feeds the automatic extraction.
+  if (note.autoExtraction === "suppressed") return;
   if (note.usedForPlan !== true || note.noteKind !== "meeting" || note.contactIds.length !== 1) return;
   // R37a（R33 交接）：事实的 `memoDate` = 这条备注的日期。
   const job = {

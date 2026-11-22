@@ -21,7 +21,8 @@ import { Assessing, FillThree, LoginRequired, NotEventPage, PasteText } from "./
 import { AssessmentPage, AssessmentRail, translator, type Translate } from "./AssessmentDetail";
 import { DiscoverHelpRail, DiscoverRail, DiscoverTab, type DiscoverRailState } from "./DiscoverTab";
 import { eventsApi, newIdempotencyKey, pollAssessment } from "./events-api";
-import { cardLine, eventWhen, isShownInGrid, monthOf, orderAssessed, relativeDay, tabOf } from "./events-model";
+import { allDayLabelOf, cardLine, eventWhen, isShownInGrid, monthOf, orderAssessed, relativeDay, tabOf } from "./events-model";
+import { PrivateEventPanel } from "./PrivateEventPanel";
 import { RelevanceChips } from "./Relevance";
 import styles from "./events.module.css";
 import r from "./record.module.css";
@@ -84,6 +85,9 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   // undefined = not read yet; null = the read failed (the card then shows as with the AI on, as before).
   const [availability, setAvailability] = useState<EventAssessmentAvailability | null | undefined>(opening ? opening.availability : undefined);
   const [selected, setSelected] = useState<string | null>(initialAssessmentId ?? null);
+  // agent-design AG13 (D4): the private event opened in place — right rail when wide, bottom sheet otherwise; no page of its own.
+  const [privateOpen, setPrivateOpen] = useState<string | null>(params?.get("privateEvent") ?? null);
+  useEffect(() => { setPrivateOpen(params?.get("privateEvent") ?? null); }, [params]);
   const [flow, setFlow] = useState<Flow>(null);
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -221,10 +225,18 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   // 参加予定页签（b12 #310）：右栏是下一场（有评估记录的）参加予定的「評価の詳細」。
   const goingRailItem = tab === "going" ? (upcoming ?? []).map((event) => (items ?? []).find((item) => item.id === event.assessmentId)).find((item) => item?.status === "ready") ?? null : null;
   const shownRailItem = tab === "assess" && !empty ? railItem : goingRailItem;
+  const privateItem = tab === "going" && privateOpen ? [...(upcoming ?? []), ...(past ?? [])].find((item) => item.eventId === privateOpen && item.privateEvent) ?? null : null;
+  const openPrivate = (id: string | null) => {
+    setPrivateOpen(id);
+    const search = new URLSearchParams(params?.toString() ?? "");
+    if (id) search.set("privateEvent", id); else search.delete("privateEvent");
+    router.replace(`/app/events${search.toString() ? `?${search.toString()}` : ""}`, { scroll: false });
+  };
   // Until the rail's data is in, undefined: the shell keeps its rail skeleton (no-flash rule 3).
   const rail = tier !== "wide" ? false : tab === "discover"
     ? (!discover && !discoverRail.loaded ? undefined : discoverRail.row ? <DiscoverRail row={discoverRail.row} language={language} /> : <DiscoverHelpRail language={language} />)
     : !overviewLoaded ? undefined
+    : privateItem ? <PrivateEventPanel item={privateItem} language={language} />
     : shownRailItem
     ? <AssessmentRail item={shownRailItem} language={language} busy={busy} onAdd={() => void addToPlan(shownRailItem)} />
     : true;
@@ -249,7 +261,12 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
         </>
       ) : !inShell ? <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 12px" }}>{segment}</div> : null}
       {tab === "discover" ? <div data-events-discover="">{discover ?? <DiscoverTab language={language} tier={tier} signedIn onRail={setDiscoverRail} onSubtitle={setDiscoverSubtitle} />}</div> : null}
-      {tab === "going" ? (upcoming === null || past === null ? <GoingSkeleton /> : <MyEvents language={language} upcoming={upcoming} past={past} now={now} t={t} />) : null}
+      {tab === "going" ? (upcoming === null || past === null ? <GoingSkeleton /> : <MyEvents language={language} upcoming={upcoming} past={past} now={now} t={t} selectedPrivate={tier === "wide" ? privateOpen : null} onOpenPrivate={openPrivate} />) : null}
+      {privateItem && tier !== "wide" ? (
+        <Drawer open onClose={() => openPrivate(null)} title={privateItem.title} size="lg">
+          <PrivateEventPanel item={privateItem} language={language} titled />
+        </Drawer>
+      ) : null}
       {tab === "assess" && !overviewLoaded ? <AssessSkeleton tier={tier} /> : null}
       {tab === "assess" && overviewLoaded ? (
         <div className={tier === "narrow" ? styles.stack : styles.wgrid} data-events-assess="">
@@ -429,6 +446,7 @@ function dayChip(iso: string, now: Date, t: Translate) {
 }
 
 function NextCard({ t, tier, item, language, now }: { t: Translate; tier: Tier; item: MyEventItem; language: OrbitLanguage; now: Date }) {
+  const std = useStandardCopy();
   if (tier === "narrow") {
     return (
       <div className={`${styles.card} ${styles.nextRow}`} data-events-next="">
@@ -446,7 +464,7 @@ function NextCard({ t, tier, item, language, now }: { t: Translate; tier: Tier; 
       {item.coverUrl ? <div className={r.nextCover} data-events-next-cover=""><img src={item.coverUrl} alt="" /></div> : null}
       <div className={`${styles.row} ${styles.between}`}><span className={styles.lbl}>{t("nextTitle")}</span>{dayChip(item.startsAt, now, t)}</div>
       <b className={medium ? styles.clamp2 : styles.nextName} style={medium ? { fontSize: "var(--fs-dialog-title)", marginTop: 8 } : undefined}>{item.title}</b>
-      <div className={styles.lbl}>{[eventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</div>
+      <div className={styles.lbl}>{[eventWhen(item.startsAt, language, allDayLabelOf(item, std.myEvents.allDay)), item.venue].filter(Boolean).join(" · ")}</div>
       {item.meetCount ? <div className={styles.row} style={{ marginTop: medium ? 12 : 14 }}><Avatars initials={item.meetInitials ?? []} /><span className={styles.lbl}>{t("meetCount", { n: item.meetCount })}</span></div> : null}
       <a className={`${styles.btn} ${styles.sm} ${styles.primary} ${styles.nextBtn}`} href={item.href}>{t("prepare")}</a>
     </div>
@@ -488,16 +506,23 @@ function emojiOf(item: EventAssessmentContract): string {
   return eventEmoji({ title: item.facts.title ?? "" });
 }
 
-/** 过去活动的标记（两端同规则）：参加した / 取り消し / 未受付（报名了没受付）；被拒、候补、只是想去的不标。 */
-function pastMark(status: MyEventItem["status"], t: Translate) {
-  if (status === "attended") return <span className={`${styles.chip} ${styles.c_teal}`}>{t("attended")}</span>;
-  if (status === "cancelled") return <span className={styles.chip}>{t("statusCancelled")}</span>;
-  if (status === "registered" || status === "pending_review") return <span className={styles.chip}>{t("notCheckedIn")}</span>;
+/** 过去活动的标记（两端同规则）：参加した / 取り消し / 未受付（报名了没受付）；被拒、候补、只是想去的不标。
+ *  AG13 (D2/D1)：私人活动只标「私人」；自己记了「我去过」的不再标未受付（那一行已写在左边）。 */
+function pastMark(item: MyEventItem, t: Translate, privateChip: ReactNode) {
+  if (item.privateEvent) return privateChip;
+  if (item.status === "attended") return <span className={`${styles.chip} ${styles.c_teal}`}>{t("attended")}</span>;
+  if (item.status === "cancelled") return <span className={styles.chip}>{t("statusCancelled")}</span>;
+  if (item.selfAttendance) return null;
+  if (item.status === "registered" || item.status === "pending_review") return <span className={styles.chip}>{t("notCheckedIn")}</span>;
   return null;
 }
 
-function MyEvents({ language, upcoming, past, now, t }: { language: OrbitLanguage; upcoming: MyEventItem[]; past: MyEventItem[]; now: Date; t: Translate }) {
+function MyEvents({ language, upcoming, past, now, t, selectedPrivate, onOpenPrivate }: { language: OrbitLanguage; upcoming: MyEventItem[]; past: MyEventItem[]; now: Date; t: Translate; selectedPrivate: string | null; onOpenPrivate: (id: string) => void }) {
+  const std = useStandardCopy();
   const coming = upcoming.filter((item) => item.status !== "cancelled" && item.status !== "rejected");
+  // AG13 (D2): a private event's chip; (D1) «我去过（自己记的）» on its own line, the right chip only the organizer's status.
+  const privateChip = <span className={`${styles.chip} ${styles.c_lav}`} data-events-private-chip=""><Icon name="lock" size={12} />{std.myEvents.privateChip}</span>;
+  const selfLine = (item: MyEventItem) => (item.selfAttendance ? <span className={styles.selfLine} data-events-self-attended=""><Icon name="check" size={13} />{std.myEvents.selfAttended}</span> : null);
   // 2026-11-21 参加イベント：これから / 過去 是同级的二选一（之前「過去」挂在「これから」标题下面，像它的下级）；
   // 默认これから，0 件也停在这边显示空状态。对标 Luma Upcoming / Past、Peatix 今後 / 過去、Meetup Your events。
   const [when, setWhen] = useState<"upcoming" | "past">("upcoming");
@@ -521,24 +546,31 @@ function MyEvents({ language, upcoming, past, now, t }: { language: OrbitLanguag
       </div>
       {when === "upcoming" ? (coming.length === 0 ? empty : coming.map((item) => (
         <div key={item.eventId} className={`${styles.card} ${styles.span4} ${styles.nextCard}`}>
-          <div className={`${styles.row} ${styles.between}`}><span className={styles.lbl}>{eventWhen(item.startsAt, language)}</span>{dayChip(item.startsAt, now, t)}</div>
+          <div className={`${styles.row} ${styles.between}`}><span className={styles.lbl}>{eventWhen(item.startsAt, language, allDayLabelOf(item, std.myEvents.allDay))}</span><span className={styles.row} style={{ gap: 6 }}>{dayChip(item.startsAt, now, t)}{item.privateEvent ? privateChip : null}</span></div>
           <b className={styles.nextName}>{item.title}</b>
           <div className={styles.lbl}>{item.venue ?? ""}</div>
           {item.meetCount ? <div className={`${styles.row} ${styles.nextMeet}`}><Avatars initials={item.meetInitials ?? []} /><span className={styles.lbl}>{t("meetCount", { n: item.meetCount })}</span></div> : null}
-          <Link className={`${styles.btn} ${styles.sm} ${styles.primary} ${styles.nextBtn}`} href={item.href}>{t("prepare")}</Link>
+          {item.privateEvent
+            ? <button type="button" className={`btn ${styles.btn} ${styles.sm} ${styles.primary} ${styles.nextBtn}`} onClick={() => onOpenPrivate(item.eventId)} data-events-private-open={item.eventId}>{std.myEvents.view}</button>
+            : <Link className={`${styles.btn} ${styles.sm} ${styles.primary} ${styles.nextBtn}`} href={item.href}>{t("prepare")}</Link>}
         </div>
       ))) : past.length === 0 ? (
         <div className={`${styles.card} ${styles.span12} ${styles.lbl}`} data-events-going-past-empty="">{t("goingPastEmpty")}</div>
       ) : (
         <div className={`${styles.card} ${styles.span12} ${styles.pastCard}`} data-events-going-past="">
           <div className={styles.list}>
-            {past.map((item) => (
-              <Link key={item.eventId} className={styles.li} href={item.href} style={{ color: "inherit", textDecoration: "none" }}>
-                <span className={`${styles.emo} ${styles.emoSm} ${item.status === "attended" ? styles.t_teal : styles.t_lav}`}>{item.emoji}</span>
-                <div className={styles.meta}><b>{item.title}</b><span>{[eventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</span></div>
-                {pastMark(item.status, t)}
-              </Link>
-            ))}
+            {past.map((item) => {
+              const body = (
+                <>
+                  <span className={`${styles.emo} ${styles.emoSm} ${item.status === "attended" ? styles.t_teal : styles.t_lav}`}>{item.emoji}</span>
+                  <div className={styles.meta}><b>{item.title}</b><span>{[eventWhen(item.startsAt, language, allDayLabelOf(item, std.myEvents.allDay)), item.venue].filter(Boolean).join(" · ")}</span>{selfLine(item)}</div>
+                  {pastMark(item, t, privateChip)}
+                </>
+              );
+              return item.privateEvent
+                ? <button key={item.eventId} type="button" className={`btn ${styles.li} ${selectedPrivate === item.eventId ? styles.liSel : ""}`} onClick={() => onOpenPrivate(item.eventId)} data-events-private-open={item.eventId}>{body}</button>
+                : <Link key={item.eventId} className={styles.li} href={item.href} style={{ color: "inherit", textDecoration: "none" }}>{body}</Link>;
+            })}
           </div>
         </div>
       )}

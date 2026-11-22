@@ -31,6 +31,8 @@ type AgentMessage =
       /** W0008：固定问题的「补充一句」，在气泡里另起一行显示（仅前端）。 */
       supplement?: string;
       text: string;
+      /** agent-design AG11 (视觉稿第 5 组): where the picked 「@名字」 marks sit in the text, coloured in the bubble. */
+      marks?: readonly { start: number; end: number }[];
     }
   | {
       actionIds?: readonly string[];
@@ -47,6 +49,8 @@ type AgentMessage =
       runId?: string;
       taskInteraction?: AgentTaskInteractionView;
       text: string;
+      /** agent-design AG07: a protocol-3 turn; what it shows comes from this request's result document. */
+      v1RequestId?: string;
     };
 
 export function agentRetryRequestForAssistant(

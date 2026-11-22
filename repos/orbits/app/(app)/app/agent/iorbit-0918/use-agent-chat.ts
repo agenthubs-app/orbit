@@ -21,9 +21,11 @@ import type {
   AiSessionGroupContract,
   AiSessionOrganizationContract,
   AiSessionOriginInputContract,
+  AiSessionReferenceContract,
   AiPageContextContract,
 } from "../../../../../shared/contract/ai-sessions";
 import { reliableAiSendReceiptSchema } from "../../../../../shared/api-schema/ai-sessions";
+import { sendAgentV1 } from "../../orbit-2026/iorbit/action-preview-client";
 import type {
   OrbitAgentHistoryView,
   OrbitAgentViewModel,
@@ -91,7 +93,7 @@ export interface AgentEarlierMessages {
 type EarlierState = { cursor: string | null; hasMore: boolean; loadedPages: number; status: AgentEarlierMessages["status"] };
 const NO_EARLIER: EarlierState = { cursor: null, hasMore: false, loadedPages: 0, status: "idle" };
 
-export function useAgentChat({ history, suggests }: { history: AgentChatHistoryStore; suggests: OrbitAgentViewModel["suggests"] }) {
+export function useAgentChat({ history, suggests, agentV1 = false }: { history: AgentChatHistoryStore; suggests: OrbitAgentViewModel["suggests"]; /** AG07: ORBIT_AGENT_V1_MODE=on — send protocol 3, show the result documents. */ agentV1?: boolean }) {
   const {
     historyMutationQueue,
     setHistoryFeedback,
@@ -330,6 +332,38 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
     }
   }, [historyMutationQueue, rememberPersisted]);
 
+  // agent-design AG07: protocol 3. The send is only acknowledged; the turn shows the request's result document
+  // (it arrives on the session channel). The composer stays open: a message sent while another runs waits its turn
+  // ("已收到，等前一条处理完"). The server writes the session's messages; this page does not persist them.
+  // AG11: the @ references picked in the composer go with the message (protocol 3 only), each with its marker's place.
+  const askV1 = useCallback(async (query: string, originOverride?: AiSessionOriginInputContract, pageContext?: AiPageContextContract, references: readonly AiSessionReferenceContract[] = []) => {
+    const sessionId = activeSessionIdRef.current ?? createAgentSessionId();
+    const clientMessageId = `message:${globalThis.crypto?.randomUUID?.() ?? createAgentSessionId()}`;
+    const started = messagesRef.current.some((message) => message.role === "user");
+    suppressReliableSessionPersistenceRef.current = true;
+    activeSessionIdRef.current = sessionId;
+    setActiveSessionId(sessionId);
+    const marks = references.flatMap((reference) => (typeof reference.start === "number" && typeof reference.end === "number" ? [{ end: reference.end, start: reference.start }] : []));
+    setMessages((current) => [...current, { id: clientMessageId, role: "user", text: query, ...(marks.length ? { marks } : {}) }]);
+    const language = languageRef.current === "ja" || languageRef.current === "zh" ? languageRef.current : "en";
+    const receipt = await sendAgentV1({
+      clientMessageId,
+      locale: language,
+      message: query,
+      references,
+      sessionId,
+      ...(started ? {} : { origin: originOverride ?? { entryClient: "web", entryPointId: "ai.new_chat", initialGroupId: initialGroupIdRef.current, kind: "manual", template: null } }),
+      ...(pageContext ? { pageContext } : {}),
+    }).catch(() => null);
+    if (activeSessionIdRef.current !== sessionId) return;
+    setMessages((current) => [
+      ...current,
+      receipt
+        ? { id: `assistant:${receipt.requestId}`, items: [], kind: "people", panelTitle: "", role: "assistant", text: "", v1RequestId: receipt.requestId }
+        : { items: [], kind: "people", panelTitle: "", retryRequest: query, role: "assistant", text: { en: "The agent could not complete this reply. Please try again.", ja: "iOrbit は今回の返信を完了できませんでした。少し待ってからもう一度お試しください。", zh: "iOrbit 暂时无法完成这次回复，请稍后再试。" }[language] },
+    ]);
+  }, []);
+
   // 真实链路：把用户消息发给 Orbit Agent conversation API（planner → 白名单工具 →
   // 可复核 artifact → synthesis），并把 contact_recommendations artifact 映射到侧边栏。
   const ask = useCallback(async (
@@ -337,7 +371,9 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
     retryAssistantIndex?: number,
     originOverride?: AiSessionOriginInputContract,
     pageContext?: AiPageContextContract,
+    references?: readonly AiSessionReferenceContract[],
   ) => {
+    if (agentV1) return askV1(query, originOverride, pageContext, references);
     // A second click can arrive before React paints `thinking`. Keep the
     // reliable request and its billable execution single-flight per screen.
     if (requestInFlightRef.current) return;
@@ -641,7 +677,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
         setThinking(false);
       }
     }
-  }, []);
+  }, [agentV1, askV1]);
 
   // Sprint 0112: the 20 messages before the oldest one shown, prepended in order.
   const loadEarlier = useCallback(async () => {

@@ -34,6 +34,21 @@ export const KEY_KINDS = {
   "aiCard.added": "toast",
   "aiCard.addFailed": "dialogTitle",
   "aiCard.nothingWritten": "sentence",
+  // agent-design AG07: the confirmation card (status chips, item results, notices, sentences) and the chat's small changes.
+  ...Object.fromEntries([
+    "statusWaiting", "statusProcessing", "statusDone", "statusPartial", "statusFailed", "statusExpired", "statusCanceled", "statusReview", "statusUndone",
+    "badgeChange", "badgeCreate",
+    "itemProcessing", "itemChanged", "itemCreated", "itemFailed", "itemSkipped", "itemReview", "itemUndone", "itemMarkedDone", "itemAbandoned",
+  ].map((key) => [`aiCard.${key}`, "chip"])),
+  ...Object.fromEntries(["nowIs", "changeTo", "notesFootnote"].map((key) => [`aiCard.${key}`, "label"])),
+  ...Object.fromEntries([
+    "changedBanner", "syncFirst", "pendingEditTodo", "pendingEditOther", "offlinePendingOne", "offlinePending", "offlineHint",
+    "queued", "progressReading", "progressWeb", "progressComposing", "progressNote",
+  ].map((key) => [`aiCard.${key}`, "banner"])),
+  ...Object.fromEntries([
+    "beforeConfirm", "beforeConfirmRule", "footerProcessing", "footerDoneOne", "footerDoneAll", "footerPartial", "footerFailed", "footerCanceled", "footerReview",
+    "expiredQuestion", "actionFailed", "typeToAnswer",
+  ].map((key) => [`aiCard.${key}`, "sentence"])),
   "offline.pending": "chip",
   "offline.synced": "toast",
   "error.checkConnection": "sentence",

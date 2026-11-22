@@ -16,6 +16,10 @@ import {useOrbitLanguage} from '../orbit-language-context';
 import {communicationRequest,invalidateInboxActorConfirmation,readContactMessageActor,readContactMessageActorForWrite} from './inbox-request';
 import {notificationInboxView,notificationDetailView,type NotificationRow,type NotificationCategory,type NotificationList} from './notification-inbox-view-model';
 import {NotificationStatusRail,type WeekCounts} from './notification-status-rail';
+// agent-design AG17 (board 9): an outside assistant's proposal has its own line and right column.
+import {ExternalProposalPane,ExternalProposalRow,isExternalProposal} from './external-proposal-entry';
+import {AgentEntryDetail,AgentEntryLine,agentEntryKind,agentEntryTile,agentGroupLabel,useAgentCardStates,waitsForClick} from './agent-inbox-entries';
+import {inboxEntryOfDelivery} from './delivery-entry';
 
 const categories={all:{zh:'全部',en:'All',ja:'すべて'},secretary:{zh:'秘书',en:'Secretary',ja:'秘書'},reminder:{zh:'提醒',en:'Reminders',ja:'リマインダー'},suggestion:{zh:'建议',en:'Suggestions',ja:'提案'},update:{zh:'动态',en:'Updates',ja:'更新'},history:{zh:'历史记录',en:'History',ja:'履歴'}};
 // b5 #6 row actions: 既読 / タスクに追加 / 1時間後.
@@ -48,14 +52,14 @@ function chipUnreadCounts(items:readonly NotificationRow[]) {
  return {all:unread.length,secretary:unread.filter(n=>secretaryKind(n)).length,reminder:unread.filter(n=>n.kind==='reminder').length,suggestion:unread.filter(n=>n.kind==='suggestion').length,update:unread.filter(n=>n.kind==='update').length};
 }
 /** b5 D05 list row: tile, two lines (title, reason · source · due), time and the unread dot. Actions live in the detail pane. */
-export function NotificationRecordCard({notification:n,onSelect,selected=false,timeZone,now}:{notification:NotificationRow;onSelect:()=>void;selected?:boolean;timeZone?:string;now:string}) {
+export function NotificationRecordCard({notification:n,onSelect,selected=false,timeZone,now,waiting=false}:{notification:NotificationRow;onSelect:()=>void;selected?:boolean;timeZone?:string;now:string;waiting?:boolean}) {
  const {t,language}=useOrbitLanguage();
- const zone=notificationDisplayZone(timeZone),tile=notificationTile(n);
+ const zone=notificationDisplayZone(timeZone),agent=agentEntryKind(n),tile=agent?agentEntryTile(n):notificationTile(n);
  const unread=!n.readAt&&n.disposition==='open';
  const subtitle=[n.reason,n.sources[0]?.excerpt,n.dueAt?`${t({zh:'截止时间',en:'Due',ja:'期限'})} · ${new Intl.DateTimeFormat(language,{timeZone:zone,month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(n.dueAt))}`:null].filter(Boolean).join(' · ');
  return <button type="button" aria-pressed={selected} className={`${ws.row}${unread?' '+ws.unread:''}${selected?' '+ws.sel:''}`} onClick={onSelect}>
   <MacTile emoji={tile.emoji} tone={tile.tone} size="sm"/>
-  <span style={{minWidth:0}}><span className={ws.rowTitle}>{n.title}</span>{subtitle?<span className={`${ws.lbl} ${ws.rowSub}`}>{subtitle}</span>:null}</span>
+  <span style={{minWidth:0}}><span className={ws.rowTitle}>{n.title}</span>{agent?<AgentEntryLine n={n} now={now} waiting={waiting}/>:subtitle?<span className={`${ws.lbl} ${ws.rowSub}`}>{subtitle}</span>:null}</span>
   <span className={ws.rowEnd}><span className={ws.lbl}>{inboxListTime(n.occurredAt,now,zone,language,t(days.yesterday))}</span>{unread?<i className={ws.dot} aria-label={t({zh:'未读',en:'Unread',ja:'未読'})}/>:null}</span>
  </button>;
 }
@@ -64,6 +68,8 @@ const sourceLabels:Record<string,{zh:string;en:string;ja:string}>={
  batch:{zh:'名片导入',en:'Card import',ja:'名刺の取り込み'},connection:{zh:'联系',en:'Connection',ja:'つながり'},note:{zh:'笔记',en:'Note',ja:'メモ'},message:{zh:'消息',en:'Message',ja:'メッセージ'},
  contact:{zh:'联系人',en:'Contact',ja:'連絡先'},goal:{zh:'目标',en:'Goal',ja:'目標'},read_cost_alert:{zh:'用量',en:'Usage',ja:'利用量'},event_contact_request:{zh:'活动联系请求',en:'Event contact request',ja:'イベントの連絡先リクエスト'},
  event_deadline:{zh:'报名截止',en:'Registration deadline',ja:'申込の期限'},event_prep:{zh:'活动准备',en:'Event prep',ja:'イベントの準備'},event_pick:{zh:'推荐活动',en:'Event pick',ja:'おすすめイベント'},mail_summary:{zh:'邮件',en:'Mail',ja:'メール'},event_host_notice:{zh:'主办方通知',en:'Host notice',ja:'主催者からのお知らせ'},
+ // agent-design AG15: plain names for the agent's own entries (the rows themselves follow the approved draft later).
+ automation_result:{zh:'定时任务',en:'Scheduled task',ja:'定期タスク'},agent_card:{zh:'等你确认的修改',en:'Change waiting for you',ja:'確認待ちの変更'},external_proposal:{zh:'外部提议',en:'External proposal',ja:'外部からの提案'},
 };
 const sourceIcons:Record<string,IconName>={schedule:'calendar',appointment:'calendar',event_deadline:'ticket',event_prep:'ticket',event_pick:'ticket',event_host_notice:'ticket',event_contact_request:'users',task:'task',contact:'user',connection:'users',note:'note',message:'mail',mail_summary:'mail',goal:'target',batch:'layers',reminder_plan:'clock'};
 const targetLabels:Record<string,{zh:string;en:string;ja:string}>={
@@ -214,6 +220,45 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
  [railReady,language,usage,preferences,weekShown,quietBusy]);
  const now=data?.asOf??new Date().toISOString();
  const chosen=data?.items.find(n=>n.id===selected)??null;
+ // AG15 (D15-4): cards still waiting for a click are their own group on top; no new filter.
+ const cardStates=useAgentCardStates(data?.items);
+ const waitingAll=useMemo(()=>cardStates&&data?data.items.filter(n=>waitsForClick(n,cardStates)):[],[cardStates,data]);
+ // The group is the top of 「全部」; other filters list them in their day like any entry.
+ const waiting=filter==='all'?waitingAll:[];
+ const rest=useMemo(()=>data?data.items.filter(n=>!waiting.includes(n)):[],[data,waiting]);
+ // ?open=<run or card id>: 「看结果」 and 「在收件箱里看」 on a task's page select that period's entry.
+ // AG16 (16-5) ?delivery=<reminder id>: the browser reminder's click; the server says which entry it is for this account.
+ const opened=useRef(false);
+ const [deliveredEntry,setDeliveredEntry]=useState<string|null>(null);
+ useEffect(()=>{
+  const delivery=new URLSearchParams(window.location.search).get('delivery');
+  if(!delivery)return;
+  const controller=new AbortController();
+  void inboxEntryOfDelivery(delivery,controller.signal).then(entry=>{if(!controller.signal.aborted)setDeliveredEntry(entry);}).catch(()=>undefined);
+  return()=>controller.abort();
+ },[]);
+ useEffect(()=>{
+  if(opened.current||!data)return;
+  const params=new URLSearchParams(window.location.search);
+  const open=params.get('open');
+  if(!open&&params.get('delivery')){
+   if(!deliveredEntry)return;
+   const entry=data.items.find(n=>n.id===deliveredEntry);
+   if(entry){opened.current=true;select(entry);}
+   return;
+  }
+  if(!open){opened.current=true;return;}
+  const match=data.items.find(n=>n.sources[0]?.sourceId===open||n.target.id===open);
+  if(match){opened.current=true;select(match);}
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[data,deliveredEntry]);
+ const selectCard=(actionId:string)=>{const match=data?.items.find(n=>n.target.id===actionId);if(match)select(match);};
+ // AG15 + AG17: one row per entry wherever it is listed (AG15's group on top, or its day). An outside assistant's
+ // proposal that has its confirm page keeps AG17's line (board 9); every other entry — a task's result, a card waiting
+ // for a click, the other notifications — is AG15's row.
+ const rowOf=(n:NotificationRow,waits:boolean)=>isExternalProposal(n)
+  ?<ExternalProposalRow key={n.id} notification={n} zone={notificationDisplayZone(timeZone)} now={now} selected={n.id===selected} onSelect={()=>select(n)}/>
+  :<NotificationRecordCard key={n.id} notification={n} timeZone={timeZone} now={now} waiting={waits} selected={n.id===selected} onSelect={()=>select(n)}/>;
  const unread=data?.unreadCount??0;
  const todayCount=data?.items.filter(n=>notificationDayGroup(n.occurredAt,now,timeZone)==='today').length??0;
  let previousGroup='';
@@ -223,7 +268,7 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
  return <div>
   <ShellPage rightRail={rail}/>
   {error?<div role="alert" className={ws.alert}>{error} <button className="btn btn-ghost" type="button" onClick={()=>{pending.current=null;setAttempt(n=>n+1);}}>{t({zh:'刷新',en:'Refresh',ja:'更新'})}</button>{pending.current?<button className="btn btn-ghost" type="button" disabled={busy} onClick={()=>void retryPending()}>{t({zh:'重试操作',en:'Retry action',ja:'操作を再試行'})}</button>:null}</div>:null}
-  {(!data||!zoneKnown)&&!error?<ScopedPageSkeleton kind="inboxCard" label={t({zh:'正在读取通知…',en:'Loading notifications…',ja:'通知を読み込み中…'})}/>:
+  {(!data||!zoneKnown||!cardStates)&&!error?<ScopedPageSkeleton kind="inboxCard" label={t({zh:'正在读取通知…',en:'Loading notifications…',ja:'通知を読み込み中…'})}/>:
   <section className={`${ws.card}${chosen?' '+ws.open:''}`} aria-label={t({zh:'通知列表',en:'Notifications',ja:'通知一覧'})}>
    <div className={ws.list}>
     <div className={ws.tool}>
@@ -236,10 +281,11 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
     </div>
     {!data?<p role="status" className={ws.listNote}>{error?'':t({zh:'正在读取通知…',en:'Loading notifications…',ja:'通知を読み込み中…'})}</p>
      :data.items.length?<div className={ws.rows}>
-      {data.items.map(n=>{
+      {waiting.length?[<div key="g:waiting" className={ws.day}>{agentGroupLabel(language,waiting.length)}</div>,...waiting.map(n=>rowOf(n,true))]:null}
+      {rest.map(n=>{
        const group=notificationDayGroup(n.occurredAt,now,timeZone),heading=group!==previousGroup;previousGroup=group;
        return [heading?<div key={'g:'+group} className={ws.day}>{t(days[group])}</div>:null,
-        <NotificationRecordCard key={n.id} notification={n} timeZone={timeZone} now={now} selected={n.id===selected} onSelect={()=>select(n)}/>];
+        rowOf(n,waitingAll.includes(n))];
       })}
       {data.nextCursor?<button type="button" className={`btn ${ws.btn} ${ws.sm} ${ws.more}`} disabled={busy} onClick={()=>void more()}>{t({zh:'加载更多',en:'Load more',ja:'さらに読み込む'})}</button>:null}
      </div>:<p className={ws.listNote}>{t({zh:'暂无通知',en:'No notifications',ja:'通知はありません'})}</p>}
@@ -247,7 +293,7 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
    <div className={ws.pane}>
     {chosen?<>
      <button type="button" className={`btn ${ws.btn} ${ws.sm} ${ws.back}`} style={{margin:'12px 16px 0',alignSelf:'flex-start'}} onClick={()=>setSelected(null)}><Icon name="left" size={16}/>{t({zh:'返回通知',en:'Back to notifications',ja:'通知に戻る'})}</button>
-     <NotificationDetail notification={chosen} now={now} timeZone={timeZone} disabled={busy} onAction={action=>void actFor(chosen,action)}/>
+     {isExternalProposal(chosen)?<ExternalProposalPane notification={chosen}/>:agentEntryKind(chosen)?<AgentEntryDetail key={chosen.id} n={chosen} now={now} timeZone={timeZone} onSelectCard={selectCard} onChanged={()=>setAttempt(n=>n+1)}/>:<NotificationDetail notification={chosen} now={now} timeZone={timeZone} disabled={busy} onAction={action=>void actFor(chosen,action)}/>}
     </>:data&&!data.items.length&&filter==='all'?<div className={ws.empty}>
      <span className={ws.emptyTile} style={{background:'var(--mac-lav)'}} aria-hidden>🔔</span>
      <h3>{t({zh:'还没有通知',en:'No notifications yet',ja:'通知はまだありません'})}</h3>

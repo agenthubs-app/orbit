@@ -19,6 +19,8 @@ export const AGENT_LEDGER_ENTRY_STATUSES = [
   "canceled",
   "undone",
   "deferred",
+  // agent-design AG02 (设计稿附录 D).
+  "expired",
 ] as const;
 
 export const AGENT_LEDGER_OPERATION_STATUSES = [
@@ -27,6 +29,10 @@ export const AGENT_LEDGER_OPERATION_STATUSES = [
   "succeeded",
   "failed",
   "undone",
+  // agent-design AG02 (设计稿附录 D): outcome unknown, marked done by the user, given up.
+  "needs_review",
+  "user_confirmed",
+  "abandoned",
 ] as const;
 
 export const AGENT_LEDGER_OPERATION_TYPES = [
@@ -44,6 +50,42 @@ export const AGENT_LEDGER_OPERATION_TYPES = [
   "propose_meeting_slots",
   "sync_event_to_calendar",
   "save_memory",
+  // agent-design AG02: the to-do create and update executors (todo.create, todo.update).
+  "create_todo",
+  "update_todo",
+  // agent-design AG06: a new memo with its interaction (memo.create), written by the Agent after a card.
+  "create_memo",
+  // agent-design AG10: the interaction written on an existing memo (memo.update), after a card.
+  "update_memo",
+  // agent-design AG12: the five contact operations (contact.create, update, delete, restore, import), after a card.
+  "create_contact",
+  "update_contact",
+  "delete_contact",
+  "restore_contact",
+  "import_contacts",
+  // agent-design AG13: private events, «我去过» (attendance notes), schedule items, and the other to-do verbs, after a card.
+  "create_private_event",
+  "update_private_event",
+  "delete_private_event",
+  "create_attendance",
+  "update_attendance",
+  "delete_attendance",
+  "create_schedule",
+  "update_schedule",
+  "delete_schedule",
+  "complete_todo",
+  "reopen_todo",
+  "delete_todo",
+  // agent-design AG14: personal memory — a new entry, a change of one, forgetting one — after a card.
+  "create_memory",
+  "update_memory",
+  "delete_memory",
+  // agent-design AG15: scheduled rules (rule.create, update, pause, resume, cancel), after a card.
+  "create_rule",
+  "update_rule",
+  "pause_rule",
+  "resume_rule",
+  "cancel_rule",
 ] as const;
 
 // 语音只允许保存“用户编辑确认后的转写文本”；原始音频永不进入 evidence。
@@ -62,6 +104,9 @@ export const AGENT_LEDGER_TRANSITIONS = [
   "cancel",
   "undo",
   "retry",
+  // agent-design AG02: the two other ways to settle an item whose outcome is unknown.
+  "mark_done",
+  "abandon",
 ] as const;
 
 export const AGENT_LEDGER_ERROR_CODES = [

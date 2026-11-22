@@ -14,17 +14,15 @@ import {
   type OrbitAgentChatRequestStore,
   type ReliableSendRequestRecord,
 } from "../reliable-send-service";
+import { ORBIT_AGENT_CHAT_REQUEST_COLLECTION, orbitAgentChatRequestRecordId } from "./orbit-agent-chat-request-ids";
 
-const REQUEST_COLLECTION = "orbit_agent_chat_requests";
+// agent-design AG01: the collection and record id are shared with the protocol-3 entry.
+const REQUEST_COLLECTION = ORBIT_AGENT_CHAT_REQUEST_COLLECTION;
 const SESSION_REVISION_COLLECTION = "orbit_agent_chat_session_revisions";
 const mockStores = new Map<string, OrbitAgentChatRequestStore>();
 const liveStores = new Map<string, OrbitAgentChatRequestStore>();
 
-function requestRecordId(actorId: string, requestId: string): string {
-  return createHash("sha256")
-    .update(JSON.stringify([actorId, requestId]))
-    .digest("hex");
-}
+const requestRecordId = orbitAgentChatRequestRecordId;
 
 function sessionRevisionRecordId(actorId: string, sessionId: string): string {
   return createHash("sha256")

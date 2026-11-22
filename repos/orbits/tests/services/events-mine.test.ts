@@ -70,3 +70,45 @@ test("R26-12：参加予定的分按当前计划现算（view），读不到评�
   assert.equal(missing.find((row) => row.assessmentId === "evas_1")?.score, 74);
   assert.equal(await withCurrentScores(rows.filter((row) => !row.assessmentId), "actor:a", {} as never).then((out) => out.length), 6, "no assessments → no plan read");
 });
+
+// agent-design AG13-2：自己记的「我去过」只是可选字段——status 不变（签到才是 attended）；私人活动是自己的行（status 用已有的 planned），
+// 将来的算进「计划参加 N 场」（D3）；旧版客户端的 schema 读不懂新字段时整行照常显示，不跳行。
+test("AG13: «我去过（自己记的）» is an optional field and never changes status; private events are rows of their own (D3)", async () => {
+  const service = createMyEventsService({
+    now: () => NOW,
+    reader: {
+      rows: async () => rows,
+      selfRecords: async () => ({
+        attendance: [
+          { attendedOn: "2026-09-20", dayParts: ["evening"], eventRef: { id: "e-past2", kind: "platform" as const } },
+          { attendedOn: "2026-09-25", eventRef: { id: "private_event:old", kind: "private" as const }, selfNote: "见到了十年没见的室友" },
+        ],
+        privateEvents: [
+          { id: "private_event:old", startsAt: "2026-09-25T18:00:00+09:00", title: "大学同学聚会", venue: "新宿" },
+          { id: "private_event:new", startsAt: "2026-10-20T19:00:00+09:00", title: "读书会", venue: null },
+        ],
+        related: async (id: string) => (id === "private_event:old" ? [{ id: "task:t48", kind: "todo" as const, label: "联系老周" }] : []),
+      }),
+    },
+  });
+  const past = await service.list("actor:a", { limit: 20, platform: "web", range: "past" });
+  const checkedIn = past.items.find((item) => item.eventId === "e-past");
+  assert.equal(checkedIn?.status, "attended", "the organizer's check-in still reads attended");
+  assert.equal(checkedIn?.selfAttendance, undefined);
+  const self = past.items.find((item) => item.eventId === "e-past2");
+  assert.equal(self?.status, "registered", "a note of the user's own never turns a registration into attended");
+  assert.deepEqual(self?.selfAttendance, { attendedOn: "2026-09-20", dayParts: ["evening"] });
+  const reunion = past.items.find((item) => item.eventId === "private_event:old");
+  assert.equal(reunion?.privateEvent, true);
+  assert.equal(reunion?.status, "planned");
+  assert.equal(reunion?.selfAttendance?.selfNote, "见到了十年没见的室友");
+  assert.deepEqual(reunion?.related, [{ id: "task:t48", kind: "todo", label: "联系老周" }]);
+  assert.equal(reunion?.href, "/app/events?privateEvent=private_event%3Aold", "no page of its own: the list opens it in place");
+  const upcoming = await service.list("actor:a", { limit: 20, platform: "app", range: "upcoming" });
+  assert.ok(upcoming.items.some((item) => item.eventId === "private_event:new" && item.privateEvent));
+  assert.equal(upcoming.upcomingCount, 4, "a future private event counts in 「计划参加 N 场」");
+  const parsed = myEventsResponseSchema.parse(past);
+  assert.equal(parsed.items.find((item) => item.eventId === "e-past2")?.selfAttendance?.attendedOn, "2026-09-20");
+  const statuses = new Set(["registered", "pending_review", "waitlisted", "planned", "attended", "rejected", "cancelled"]);
+  assert.ok(past.items.every((item) => statuses.has(item.status)), "no new status value");
+});

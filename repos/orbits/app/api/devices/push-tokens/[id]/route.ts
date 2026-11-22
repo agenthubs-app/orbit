@@ -4,3 +4,4 @@ export const dynamic = "force-dynamic";
 
 const handlers = createPushTokenRouteHandlers();
 export const DELETE = handlers.DELETE;
+export const GET = handlers.GET;

@@ -81,6 +81,9 @@ export const proxy = auth(async (request) => {
     // CRON_SECRET guard. Queue consumers remain private Vercel triggers and
     // are not made public here; other internal APIs still require a session.
     !(request.method === "GET" && request.nextUrl.pathname === "/api/internal/maintenance") &&
+    // agent-design AG15: the scheduled-rule dispatch is the same kind of service identity — only this exact POST, whose
+    // handler (handleAutomationDispatchRequest) checks CRON_SECRET in constant time and takes no account from the request.
+    !(request.method === "POST" && request.nextUrl.pathname === "/api/internal/agent/automations") &&
     !request.auth?.user?.id
   ) {
     return NextResponse.json(

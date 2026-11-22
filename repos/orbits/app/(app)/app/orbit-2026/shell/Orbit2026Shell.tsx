@@ -21,6 +21,7 @@ import { networkCopy } from "../copy/network";
 import { eventsCopy } from "../copy/events";
 import { iorbitCopy } from "../copy/iorbit";
 import { accountCopy } from "../copy/account";
+import { agentConnectionsCopy } from "../copy/agent-connections";
 import { monthHeading } from "./month-heading";
 import { standardCopyFor } from "../copy/standard";
 import { useOrbitAsk } from "../../orbit-global-ask/orbit-ask-context";
@@ -179,6 +180,7 @@ const FRAME_TITLE: Record<RouteFrame["title"], (language: OrbitLanguage) => stri
   task: (language) => pickCopy(shellCopy.taskTitle, language),
   inbox: (language) => pickCopy(shellCopy.inboxTitle, language),
   settings: (language) => pickCopy(accountCopy.settings, language),
+  proposal: (language) => agentConnectionsCopy.confirmTitle[language],
 };
 
 function frameSlots(frame: RouteFrame, language: OrbitLanguage): ShellSlots {

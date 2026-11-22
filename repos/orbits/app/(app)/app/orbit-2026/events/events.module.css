@@ -271,3 +271,13 @@
 @keyframes pendShimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .pendBone, .pendSeg::after { animation: none; } }
 :global([data-motion="reduce"]) .pendBone, :global([data-motion="reduce"]) .pendSeg::after { animation: none; }
+
+/* agent-design AG13 (approved visual draft 2026-11-18): «我去过（自己记的）» line, private events and their panel. */
+.selfLine { display: flex; align-items: center; gap: 4px; margin-top: 2px; font-size: var(--fs-caption); font-weight: var(--fw-bold); color: var(--mac-lav-ink); }
+.selfLine svg { width: 13px; height: 13px; flex: none; }
+button.li { width: 100%; text-align: left; background: none; border: 0; font: inherit; color: inherit; cursor: pointer; }
+.liSel { background: var(--surface-2); border-radius: var(--r-md); }
+.privatePanel { display: flex; flex-direction: column; gap: 14px; }
+.privateTitle { display: block; font-size: var(--fs-title); line-height: 1.4; }
+.privateSection { display: flex; flex-direction: column; gap: 6px; }
+.privateSection h4 { margin: 0; font-size: var(--fs-caption); font-weight: var(--fw-bold); color: var(--ink-2); }

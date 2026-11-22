@@ -19,6 +19,8 @@ import {useLocalInbox} from '../../hooks/useLocalInbox';
 import {localInboxDetail} from '../../view-models/inbox-local';
 import {inboxAppTargetHref} from '../../view-models/inbox-target';
 import {withoutMailSummary} from '../../api/compute/secretary-source';
+import {agentEntryKind} from './AgentInboxEntries';
+import {AgentEntryDetail} from './AgentEntryDetail';
 export function NotificationDetailScreen(){
  const auth=useOrbitAuthSession(),server=useOrbitApiBaseUrl(),params=useLocalSearchParams<{id?:string|string[];filter?:string|string[]}>();const id=Array.isArray(params.id)?params.id[0]??'':params.id??'';
  const filter=Array.isArray(params.filter)?params.filter[0]:params.filter;
@@ -59,7 +61,9 @@ function NotificationDetail({actorId,id,scopeKey,filter}:{actorId:string;id:stri
   {offline?<OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt}/>:null}
   {deviceMissing&&!error?<Text style={{color:colors.ink3Text}}>{t('typedInbox.unavailable')}</Text>:null}
   {!record&&!error&&!deviceMissing?<Text style={{color:colors.ink3Text}}>{local.available&&local.freshness.failure?t('typedInbox.error'):t('common.loading')}</Text>:null}
-  {record?<View style={{gap:18}}>
+  {/* AG15 (15-5, 15-6): a result or a card of Orbit's own agent has its own detail. */}
+  {record&&agentEntryKind(record)?<AgentEntryDetail n={record}/>:null}
+  {record&&!agentEntryKind(record)?<View style={{gap:18}}>
     <View style={{flexDirection:'row',alignItems:'center',gap:8}}><Ionicons name={notificationKindIcons[record.kind]} color={colors.accentText} size={24}/><Text style={{color:colors.accentText}}>{t(`typedInbox.${record.kind}`)}</Text></View>
     <Text accessibilityRole="header" style={{color:colors.ink,fontSize:25,lineHeight:35,fontWeight:'700'}}>{record.title}</Text><Text style={{color:colors.ink,lineHeight:27,fontSize:18}}>{record.reason}</Text>
     {/* Plain status: only say something once it is no longer just waiting (read / unread is implied by being here). */}

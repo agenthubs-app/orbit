@@ -1,5 +1,10 @@
 export interface OrbitPushMessage {
   sound?: "default" | null;
+  /**
+   * agent-design AG16: the kind of device the token belongs to. A browser's token is its Web Push subscription and goes
+   * through the Web Push adapter; a phone's goes through Expo. Not set: a phone (every sender before AG16).
+   */
+  platform?: "ios" | "android" | "web";
   token: string;
   title: string;
   body: string;

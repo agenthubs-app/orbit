@@ -7,6 +7,7 @@ import {
 import { resolveFeatureMode } from "../../../../../../shared/config/feature-mode";
 import { AppError } from "../../../../../../shared/errors/app-error";
 import { agentRunProgress } from "../../../../../../features/agent/runtime/service";
+import { handleAgentV1Cancel } from "../../../../../../features/agent-v1/entry/http";
 import {
   agentRequestUnauthorizedResponse,
   resolveAgentRequestContext,
@@ -53,6 +54,10 @@ export async function POST(
     );
   }
   const { id } = await context.params;
+  // agent-design AG01: with ORBIT_AGENT_V1_MODE=on a protocol-3 requestId stops that turn
+  // (an ordinary answer has no run record). Any other id is an agent run, as before.
+  const agentRequestCancel = await handleAgentV1Cancel({ actorId: agentContext.actorId, mode, requestId: id }).catch(() => null);
+  if (agentRequestCancel) return agentRequestCancel;
   try {
     const detail = await agentContext.runtime.cancelRun(id);
     return NextResponse.json(

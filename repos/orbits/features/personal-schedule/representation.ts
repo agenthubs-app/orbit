@@ -2,8 +2,11 @@ import type { PersonalScheduleContract, ScheduleItemContract } from "../../share
 import { personalScheduleSchema } from "../../shared/api-schema/personal-schedule";
 
 export function personalScheduleRepresentation(item: PersonalScheduleContract, request: Request): PersonalScheduleContract {
-  const checked = personalScheduleSchema.parse(item);
+  const parsed = personalScheduleSchema.parse(item);
   const version = request.headers.get("x-orbit-personal-schedule-version");
+  // agent-design AG13: released clients parse schedule items strictly; the event links go only to a client that asks (4).
+  if (version === "4") return parsed;
+  const { eventRefs: _eventRefs, ...checked } = parsed;
   if (version === "3") return checked;
   const { recurrence, reminderMinutes, seriesId, occurrenceDate, ...old } = checked;
   const compatible = { ...old, sourceId: old.id };

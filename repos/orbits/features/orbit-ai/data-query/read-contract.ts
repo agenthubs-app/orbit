@@ -32,6 +32,8 @@ export interface ReadInput {
   status?: string;
   from?: string;
   to?: string;
+  /** agent-design AG05: newest (default) or oldest first. */
+  order?: "newest" | "oldest";
 }
 
 export interface CanonicalRow {
@@ -48,7 +50,11 @@ export interface ReadPage {
   rows: readonly CanonicalRow[];
   nextPosition?: string;
   snapshot: string;
-  partialReasons: readonly ("text_limit" | "byte_limit" | "source_unavailable" | "known_stale")[];
+  partialReasons: readonly ("text_limit" | "byte_limit" | "source_unavailable" | "known_stale" | "withheld")[];
+  /** agent-design AG05: how many readable rows match the filter in all, when the source knows. */
+  total?: number;
+  /** agent-design AG05: rows that match but may not be read now (a withdrawn permission); none is returned. */
+  withheld?: number;
 }
 
 export interface CanonicalRevisionFence {
@@ -82,6 +88,9 @@ export interface AiReadResult {
   nextCursor?: string;
   partialReasons: readonly string[];
   evidenceIds: readonly string[];
+  /** agent-design AG05: the page's total and withheld counts (ReadPage). */
+  total?: number;
+  withheld?: number;
 }
 
 export interface AiReadPermission {

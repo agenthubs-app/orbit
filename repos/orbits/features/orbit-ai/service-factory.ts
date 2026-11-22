@@ -135,6 +135,9 @@ export function createOrbitAgentArtifactTaskServiceForActor(
 export function createOrbitAgentConversationServiceForActor(
   actorId: string,
   mode?: ModuleMode | string,
+  // agent-design AG01: the new entry passes a per-request fetch that refuses
+  // model calls once the user stopped the turn. Omitted, nothing changes.
+  options: { fetchImplementation?: typeof fetch } = {},
 ): OrbitAgentConversationService {
   const resolution = resolveOrbitAgentConversationService(mode);
 
@@ -148,6 +151,7 @@ export function createOrbitAgentConversationServiceForActor(
 
   return createLiveOrbitAgentConversationService({
     artifactTaskService: createOrbitAgentLiveArtifactTaskService({ actorId }),
+    ...(options.fetchImplementation ? { fetchImplementation: options.fetchImplementation } : {}),
   });
 }
 

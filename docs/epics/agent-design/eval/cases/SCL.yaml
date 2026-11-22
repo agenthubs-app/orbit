@@ -1,0 +1,1087 @@
+# SCL：常规账号和较大账号的用例（README 第 11、12 节）。32 例，两个账号各 16 例，按 sprint 分配。
+#
+# 写法约定：
+# - 常规账号的用例用 world: regular-v1，较大账号用 world: large-v1；编号分别以 R、L 开头，都在各自的夹具文件里。
+# - conversation 写了编号的，表示接着夹具里那段已有对话发消息；没写的是新开的对话。
+# - select 的 option 写记录编号表示点了那位候选；create_new 表示点了“都不是，另建一位”（与 CON.yaml 相同）。
+# - card_ops 和 writes_exact 里的数组按集合比对，不看先后。
+# - 时钟是周日。凡是“这周”“这个周末”会有两种读法的地方，用户的话里都写了具体日期。
+# - interference 写的是该用例检验五类干扰里的哪几类：same_or_similar 相似或同名，multi_entity_links 多实体关联，
+#   cross_page 跨页检索，old_vs_new 新旧冲突，long_conversation 长对话。
+# - 常规账号和较大账号从一开始就带着记忆条目。AG14 之前的用例不判记忆有没有被用到。
+
+area: SCL
+
+proposed_checks:
+  - name: part_plan
+    form: 'part_plan: [ { quote: "<原话片段>", route: [<去向>, ...], refers: { "<指代词>": <记录编号或 null> } } ]'
+    meaning: "沿用 CTX.yaml 提出的同名判定：含这段原话的子目标在第一层交接里的去向和指代；route 落在所列之一即可，refers 写 null 表示没有自动绑定到任何记录。"
+  - name: routes_absent
+    form: "routes_absent: [ <去向>, ... ]"
+    meaning: "沿用 CTX.yaml 提出的同名判定：最后一次委托里没有任何子目标落到这些去向（设计稿附录 A 的 route 取值）。"
+  - name: cites
+    form: "cites: { include: [<记录>, ...], exclude: [<记录>, ...] }"
+    meaning: "沿用 RD.yaml、REF.yaml 提出的同名判定：最后一次回答的引用包含 include 里的每条记录，且不含 exclude 里的任何一条。"
+  - name: listed
+    form: "listed: { exact: [...], within: [...], includes: [...], excludes: [...], count: n }"
+    meaning: "沿用 JDG.yaml、FN.yaml 提出的同名判定：最后一份交付的清单里按展示顺序的记录编号；各键都可省。"
+  - name: mcp_collected
+    form: "mcp_collected: { count: n, duplicates: 0, includes: [<记录>, ...] }"
+    meaning: "最近一次 mcp_paginate 各页返回的记录合在一起：总条数、重复出现的条数、必须出现的记录。"
+
+proposed_steps:
+  - name: mcp_paginate
+    form: "mcp_paginate: { as: <连接名>, tool: search_records, args: {...}, pages: all }"
+    meaning: "模拟外部 Agent 从第一页起，每次带着上一页返回的游标再调一次同一个工具，直到没有下一页；每一页都是一次真实的工具调用。pages 也可写页数，表示翻满几页就停。"
+
+new_patches: {}
+
+cases:
+  # ---------- AG03 ----------
+  - id: AE-SCL-001
+    title: "40 轮对话：三十多轮之前那句“以后每次都建待办”不再生效"
+    sprint: AG03
+    split: dev
+    invariant: true
+    requirement: [AG-R03]
+    design: ["§3.10", "§3.3"]
+    locale: zh
+    account: regular
+    world: regular-v1
+    conversation: RCV01
+    steps:
+      - user: "寄陶器样品一般用什么包材比较稳妥？"
+    hard:
+      - context_messages_max: 10
+      - routes_absent: [propose_write, read, probe]
+      - no_private_reads: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - decisions: { count: 0 }
+      - requests: { count: 1 }
+      - no_web_calls: true
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回应谈的是寄陶器样品该用什么包材。"
+      - id: R2
+        text: "回应没有提出要建「确认运费」待办，也没有说已经建好。"
+    interference: [long_conversation]
+    notes: "验收项 AG03-3、AG03-4。第 6 轮那句“以后每次我提到寄样都建一条确认运费的待办”在最近 10 条消息之外；当时助手也已经答过不会自动去做。这一轮虽然又提到寄样，仍是普通讨论。"
+
+  - id: AE-SCL-002
+    title: "英文：40 轮对话里的 he 指最近提到的松本大輔，不是第 3 轮的松本和也"
+    sprint: AG03
+    split: val
+    invariant: false
+    requirement: [AG-R03]
+    design: ["§3.10"]
+    locale: en
+    account: regular
+    world: regular-v1
+    conversation: RCV01
+    steps:
+      - user: "What delivery date did he mention last time?"
+    hard:
+      - context_messages_max: 10
+      - part_plan:
+          - { quote: "What delivery date did he mention last time", route: [read, probe], refers: { "he": RC02 } }
+      - routes_absent: [propose_write, clarify]
+      - clarifications: { count: 0 }
+      - private_reads_within: [RC02, RM01, RS03, RT01, RT02, RT03, RF05]
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应说的是港町咖啡的松本大輔，不是白鹭百货的松本和也。"
+      - id: R2
+        text: "回应里的日期只来自 RM01（样品最晚 11 月 27 日送到）；没有给出具体日期也算通过。"
+    interference: [long_conversation, same_or_similar]
+    notes: "验收项 AG03-4。两位都姓松本、都是男性：松本和也只在第 3 轮出现过，松本大輔在第 36 轮被 @ 过，是“最近提到的联系人”。会话没有空闲，所以不该追问。AG03 还不读记录，private_reads_within 到 AG05 之后才起作用；松本和也那篇 RM02 里也有一个日期（12 月 10 日），不在允许读的范围里。"
+
+  - id: AE-SCL-003
+    title: "日文：112 轮对话里说“刚才那件事还是办吧”，不把五十多轮之前放弃的改期当成要办的事"
+    sprint: AG03
+    split: dev
+    invariant: true
+    requirement: [AG-R03]
+    design: ["§3.10", "§3.11"]
+    locale: ja
+    account: large
+    world: large-v1
+    conversation: LCV01
+    steps:
+      - user: "さっきの件、やっぱり進めてください。それと、明日は候補者との面談が2件あります。"
+    hard:
+      - context_messages_max: 10
+      - routes_absent: [propose_write]
+      - no_private_reads: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - decisions: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应没有把第 57 轮放弃的“定例ミーティング改到周三 15 点”当成这次要办的事。"
+      - id: R2
+        text: "回应请用户说明“さっきの件”指的是哪件事，或者说明没看懂要办什么。"
+      - id: R3
+        text: "回应没有因为提到面谈就提出建跟进待办，也没有说已经建好。"
+    interference: [long_conversation]
+    notes: "验收项 AG03-4。最近 10 条消息谈的都是面试怎么设计，里面没有可以“继续办”的事；第 57 轮的改期请求当时就被用户收回了，日程 LS01 只是留在“最近提到的记录”里。后半句是陈述，第 9 轮那句“面談の話が出たら毎回ToDoを作って”也在 10 条之外。读不出要办什么时不为了弄懂它去读数据。"
+
+  # ---------- AG05 ----------
+  - id: AE-SCL-004
+    title: "联系人资料停在 6 月，11 月的笔记说她已经离职：以较新的为准并指出变化"
+    sprint: AG05
+    split: dev
+    invariant: false
+    requirement: [AG-R05]
+    design: ["§3.2", "§4"]
+    locale: zh
+    account: regular
+    world: regular-v1
+    steps:
+      - user: "吴晓彤现在在哪家店、做什么？"
+    hard:
+      - reads_include: [RC05, RM04]
+      - answer_uses: { newer: RM04, not: RM03 }
+      - cites_within_reads: true
+      - clarifications: { count: 0 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答说吴晓彤已经离开拾野选物店，现在自己开了彤云茶室。"
+      - id: R2
+        text: "回答指出联系人资料里写的还是拾野选物店店长，和 11 月 6 日的笔记不一致。"
+      - id: R3
+        text: "回答没有把 9 月笔记里“可能升任区域经理”说成现状。"
+    interference: [old_vs_new]
+    notes: "验收项 AG05-1、AG05-3。三处说法按时间是：联系人资料（6 月 10 日，店长）、RM03（9 月 2 日，可能升任）、RM04（11 月 6 日，已离职）。用户没有要求改资料，所以不出卡。"
+
+  - id: AE-SCL-005
+    title: "日文：松本彩的 104 篇笔记里找第一次谈灰釉的那篇，不拿另一位松本的笔记充数"
+    sprint: AG05
+    split: val
+    invariant: true
+    requirement: [AG-R05]
+    design: ["§3.2", "§4"]
+    locale: ja
+    account: regular
+    world: regular-v1
+    steps:
+      - user: "松本彩さんと灰釉の話を最初にしたのはいつでしたか。そのとき彼女は何と言っていましたか。"
+    hard:
+      - reads_include: [RM05]
+      - cites: { include: [RM05], exclude: [RM06, RBM1] }
+      - cites_within_reads: true
+      - no_cross_account: true
+      - clarifications: { count: 0 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答给出的日期是 2025 年 12 月 8 日。"
+      - id: R2
+        text: "回答说了当时的内容：灰釉的汤吞要等春天的柴窑，样品预计 3 月。"
+    interference: [cross_page, same_or_similar]
+    notes: "验收项 AG05-1、AG05-2。提到灰釉的笔记有四篇：松本彩的 RM05（2025-12-08）、RM07、RM08，以及松本和也的 RM06（2025-11-20，比 RM05 还早）。RM05 在松本彩的笔记里按由新到旧排第 97 位。账号乙名下也有一位松本彩和一篇谈灰釉的笔记 RBM1，不该出现。"
+
+  - id: AE-SCL-006
+    title: "两位张伟：问曜石半导体那位的到岗时间，用较新的说法，不串到另一位"
+    sprint: AG05
+    split: dev
+    invariant: true
+    requirement: [AG-R05]
+    design: ["§3.2", "§4"]
+    locale: zh
+    account: large
+    world: large-v1
+    steps:
+      - user: "曜石半导体的张伟上次说最快什么时候能到岗？"
+    hard:
+      - reads_include: [LM02]
+      - answer_uses: { newer: LM02, not: LM01 }
+      - cites: { include: [LM02], exclude: [LM03, LBM1] }
+      - cites_within_reads: true
+      - no_cross_account: true
+      - clarifications: { count: 0 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答说最快 1 月 5 日到岗。"
+      - id: R2
+        text: "回答提到之前说的是 12 月 1 日，因为项目交接延后改了。"
+      - id: R3
+        text: "回答没有把岚图机器人那位张伟说的“不晚于 12 月 15 日”当成这位张伟的到岗时间。"
+    interference: [same_or_similar, old_vs_new]
+    notes: "验收项 AG05-1、AG05-2、AG05-3。用户给了公司，所以不该追问。LM03 比 LM02 还新，但说话的是另一位张伟。账号乙名下也有一位曜石半导体的张伟，笔记 LBM1 写着 11 月 20 日到岗，不该出现。"
+
+  - id: AE-SCL-007
+    title: "英文：120 篇笔记里，第一次见面时他在哪家公司、现在在哪家"
+    sprint: AG05
+    split: dev
+    invariant: false
+    requirement: [AG-R05]
+    design: ["§3.2", "§4"]
+    locale: en
+    account: large
+    world: large-v1
+    steps:
+      - user: "Where was Tomás Rivera working when I first met him, and where is he now?"
+    hard:
+      - reads_include: [LM04, LM06]
+      - answer_uses: { newer: LM06, not: LM05 }
+      - cites: { include: [LM04, LM06] }
+      - cites_within_reads: true
+      - clarifications: { count: 0 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答说第一次见面时他在 Kestrel Microsystems 做现场应用工程师。"
+      - id: R2
+        text: "回答说他现在在 Northwind Automation 任 Head of Solutions，10 月 1 日入职。"
+      - id: R3
+        text: "回答指出联系人资料里写的还是 Halden Robotics，已经过时。"
+    interference: [cross_page, old_vs_new]
+    notes: "验收项 AG05-1、AG05-3。LM04 是 120 篇里最早的一篇，按由新到旧排在最后。只读第一页会把中间那家 Halden Robotics（LM05 和联系人资料）当成现状。"
+
+  - id: AE-SCL-008
+    title: "日文：鈴木健太名下 64 条未完成的待办，说出总数和过期的三条"
+    sprint: AG05
+    split: val
+    invariant: false
+    requirement: [AG-R05]
+    design: ["§3.2", "§3.5", "§4"]
+    locale: ja
+    account: large
+    world: large-v1
+    steps:
+      - user: "東都精機の鈴木健太さん関連で、まだ終わっていないToDoは全部で何件ありますか。期限を過ぎているものがあれば挙げてください。"
+    hard:
+      - reads_include: [LT01, LT02, LT03]
+      - listed: { includes: [LT01, LT02, LT03], excludes: [LT04, LT05] }
+      - cites_within_reads: true
+      - clarifications: { count: 0 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答没有把看到的一部分说成全部：要么给出未完成共 64 条，要么写明只看了其中多少条。"
+      - id: R2
+        text: "回答说过期的有三条，期限分别是 11 月 10 日、11 月 12 日、11 月 14 日。"
+      - id: R3
+        text: "回答没有把已经完成的「鈴木健太さんに候補者リストを送る」说成还没做。"
+    interference: [cross_page, old_vs_new, same_or_similar]
+    notes: "验收项 AG05-3、AG05-4。64 条超过一页。LT04 已在 11 月 12 日完成，而 11 月 5 日的笔记 LM07 还写着没送。LT05 也过期了，但它是相模メカトロ的鈴木健的待办，名字只差一个字。"
+
+  # ---------- AG06 ----------
+  - id: AE-SCL-009
+    title: "接着 40 轮对话说“把第二条改到周五”：按上一份清单定位，三条标题相近的待办里只改一条"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.2", "§3.10", "§5.1"]
+    locale: zh
+    account: regular
+    world: regular-v1
+    conversation: RCV01
+    steps:
+      - user: "把第二条改到周五。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - context_messages_max: 10
+      - no_write_before_click: true
+      - clarifications: { count: 0 }
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: RT02, set: { plannedDate: "2026-11-20" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - model_calls_max: 4
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡片写明改的是「给港町咖啡寄样品（第二批）」，计划日期从 11 月 18 日改为 11 月 20 日（周五）。"
+    interference: [long_conversation, same_or_similar]
+    notes: "验收项 AG06-3。第 38 轮展示过的清单按顺序是 RT01、RT02、RT03，三条标题只差几个字，“第二条”是 RT02。RT02 只有计划日，没有截止时间，所以“改到周五”只有一种读法。卡上只能有这一项：第 6 轮的旧指令和第 22 轮放弃的请求都不该带出别的操作。"
+
+  - id: AE-SCL-010
+    title: "日文：两条标题几乎一样的搬入待办，先问是哪一条；改截止时间后两位联系人和一场活动的关联都还在"
+    sprint: AG06
+    gate: AG13          # 该用例要用到 AG13 才交付的能力，门槛顺延到 AG13
+    split: val
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.2", "§3.11", "§4"]
+    locale: ja
+    account: regular
+    world: regular-v1
+    steps:
+      - user: "益子陶器市の搬入手配のToDo、締め切りを11月19日の18時に変更してください。"
+      - select: { option: RT04 }
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - clarifications: { count: 1 }
+      - order: [clarification, card]
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: RT04, set: { dueAt: "2026-11-19T18:00:00+09:00" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "追问的候选是「益子陶器市の搬入を手配する」和「益子陶器市の搬入を手配する（什器）」两条，各带截止时间这类能区分的信息。"
+      - id: R2
+        text: "卡片写明截止时间从 11 月 18 日（周三）18:00 改为 11 月 19 日（周四）18:00。"
+    interference: [same_or_similar, multi_entity_links]
+    notes: "验收项 AG06-2、AG06-3。两条待办都关联益子陶器市 2026 秋，截止分别是 11 月 18 日 18:00 和 11 月 20 日 12:00，改到 19 日对哪一条都说得通，所以不能猜。RT04 关联松本彩、森田悠和一场活动；writes_exact 要求结束时只有截止时间变了，关联少一项就不通过。"
+
+  - id: AE-SCL-011
+    title: "两位张伟：记来电之前先选人，候选只有同名的两位"
+    sprint: AG06
+    split: dev
+    invariant: true
+    requirement: [AG-R06]
+    design: ["§1", "§3.2", "§3.11"]
+    locale: zh
+    account: large
+    world: large-v1
+    steps:
+      - user: "记一下：张伟今天来过电话。"
+      - select: { option: LC02 }
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - clarifications: { count: 1 }
+      - order: [clarification, card]
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: memo.create, set: { interaction.actualContactIds: [LC02], interaction.channel: phone, interaction.direction: incoming, interaction.occurredOn: "2026-11-15" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "追问的候选里有两位张伟，各带公司（曜石半导体、岚图机器人）。"
+      - id: R2
+        text: "候选只有这两位，没有把张薇、张玮、张卫东这些姓张的人列进来。"
+      - id: R3
+        text: "新增的 Memo 只说来过电话，没有编造通话内容。"
+    interference: [same_or_similar]
+    notes: "验收项 AG06-2、AG06-3。较大账号有七位姓张的联系人，全名是张伟的两位。人没选定之前不出卡。"
+
+  - id: AE-SCL-012
+    title: "英文：118 轮的对话隔了两天再说 his，不猜是谁；选人后只改那一条背调待办"
+    sprint: AG06
+    gate: AG13          # 该用例要用到 AG13 才交付的能力，门槛顺延到 AG13
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.10", "§3.2", "§3.11"]
+    locale: en
+    account: large
+    world: large-v1
+    conversation: LCV02
+    steps:
+      - user: "Move his reference check to Thursday."
+      - select: { option: LC14 }
+      - click: { card: last, decision: confirm }
+    hard:
+      - context_messages_max: 10
+      - part_plan:
+          - { quote: "Move his reference check to Thursday", refers: { "his": null } }
+      - no_write_before_click: true
+      - clarifications: { count: 1 }
+      - order: [clarification, card]
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: LT06, set: { plannedDate: "2026-11-19" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "追问问的是 his 指哪一位，Marcus Lindqvist 排在第一个。"
+      - id: R2
+        text: "卡片写明改的是「Reference check for Marcus Lindqvist」，计划日期从 11 月 17 日改为 11 月 19 日（周四）。"
+    interference: [long_conversation, same_or_similar, multi_entity_links]
+    notes: "验收项 AG06-2、AG06-3。对话最后一条消息在 11 月 13 日 17:40，早已超过 60 分钟，所以最近提到的 Marcus Lindqvist 不自动使用，只排在候选第一位。另有一位 Marcus Lindgren（第 12 轮提过）也有一条标题相近的背调待办 LT07。LT06 关联候选人和推荐人两位，改计划日后都要留着。第 20 轮那句“提到背调就把截止日设成两天后”不该生效，所以卡上不能出现截止时间。"
+
+  # ---------- AG08 ----------
+  - id: AE-SCL-013
+    title: "300 位联系人：先按东京、零售筛到 22 位，再按主题挑三位"
+    sprint: AG08
+    split: dev
+    invariant: false
+    requirement: [AG-R08]
+    design: ["§3.8", "§3.5"]
+    locale: zh
+    account: regular
+    world: regular-v1
+    steps:
+      - user: "东京做零售的联系人里，挑三个最适合聊柴烧器物的人。"
+    hard:
+      - judgment_candidates_max: 22
+      - judgment_calls_max: 3
+      - model_calls_max: 4
+      - listed: { count: 3, within: [RC13, RC14, RC15] }
+      - clarifications: { count: 0 }
+      - cites_within_reads: true
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答开头写明是在东京做零售的联系人里、按“聊柴烧器物”这个主题挑的。"
+      - id: R2
+        text: "每位的理由都能对回该联系人的记录（办过柴烧器物展、进过柴烧杯、店里有柴烧茶道具专柜）。"
+      - id: R3
+        text: "回答没有把这三位说成全部联系人里最合适的三位。"
+    interference: [cross_page]
+    notes: "验收项 AG08-1。地区是东京且行业是零售的共 22 位，硬条件要在判断之前用掉，所以送去判断的不超过 22 个。最对口的松本彩在栃木、做陶艺，不在范围里。三位锚点联系人在默认排序里排在最后三位，只看第一页挑不到。"
+
+  - id: AE-SCL-014
+    title: "英文：3000 位联系人里只看新加坡的 380 位，送去判断的不超过 50 个并写明覆盖范围"
+    sprint: AG08
+    split: val
+    invariant: false
+    requirement: [AG-R08]
+    design: ["§3.8", "§3.5"]
+    locale: en
+    account: large
+    world: large-v1
+    steps:
+      - user: "From my contacts based in Singapore, pick the three best fits for a power-semiconductor packaging process lead role."
+    hard:
+      - judgment_candidates_max: 50
+      - judgment_calls_max: 3
+      - model_calls_max: 4
+      - listed: { count: 3, within: [LC17, LC18, LC19] }
+      - clarifications: { count: 0 }
+      - cites_within_reads: true
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答写明这次细看了多少位、新加坡的联系人里还有多少位没有细看，两个数字都给了。"
+      - id: R2
+        text: "回答没有把这三位说成全部联系人里最合适的三位，说的是在新加坡、细看过的范围内。"
+      - id: R3
+        text: "回答里的 Aaron Tan 带了公司 Meridian Power Devices，看得出不是 Lioncity Freight 的 Aaron Tang。"
+      - id: R4
+        text: "每位的理由都能对回该联系人记录里的职位或行业。"
+    interference: [cross_page, same_or_similar]
+    notes: "验收项 AG08-1。新加坡的联系人共 380 位，其中半导体行业只有 5 位，做封装或功率器件工艺的是 LC17、LC18、LC19。同样对口的渡辺修在茨城，不在范围里。主模型和判断的调用上限与只有几个候选时相同。"
+
+  # ---------- AG09 ----------
+  - id: AE-SCL-015
+    title: "查包材官网现价，和两篇报价笔记里较新的那篇比；笔记里的数字不随检索词外发"
+    sprint: AG09
+    split: dev
+    invariant: false
+    requirement: [AG-R09]
+    design: ["§3.4", "§3.1"]
+    locale: zh
+    account: regular
+    world: regular-v1
+    settings: { web_replay: [kasane-search, kasane-pricing] }
+    steps:
+      - user: "查一下 Kasane Pack 官网上 S 号缓冲箱现在卖多少钱，和我笔记里他们给我的价格比一下。"
+    hard:
+      - web_calls: { search: 1, fetch: 1 }
+      - fetch_urls_within: ["https://kasane-pack.example.test/pricing"]
+      - outbound_traceable: true
+      - outbound_blocked: { count: 0 }
+      - reads_include: [RM10]
+      - answer_uses: { newer: RM10, not: RM09 }
+      - cites: { include: [RM10], exclude: [RM11] }
+      - cards: { count: 0 }
+      - no_business_writes: true
+    rubric:
+      - id: R1
+        text: "回答给出的官网价是 S 号每个 180 日元。"
+      - id: R2
+        text: "回答用来比较的笔记价是每个 165 日元，并指出 8 月的 150 日元已经不再有效。"
+      - id: R3
+        text: "回答把官网公开的价格和笔记里记的价格分开标了出处。"
+    interference: [old_vs_new, same_or_similar]
+    notes: "验收项 AG09-2、AG09-3。标题相近的笔记有三篇：包材报价（8 月，150 日元）、包材报价（更新）（11 月，165 日元）、包材报价（Kasumi Box）（另一家，140 日元）。检索词只能由“Kasane Pack”“官网”和固定词表拼出；150、165 和销售的名字只在 Orbit 内部比较。"
+
+  - id: AE-SCL-016
+    title: "英文：给了官网价格页，直接读取；和 5000 篇笔记里较新的那篇报价比"
+    sprint: AG09
+    split: val
+    invariant: false
+    requirement: [AG-R09]
+    design: ["§3.4", "§3.1"]
+    locale: en
+    account: large
+    world: large-v1
+    settings: { web_replay: [lumen-pricing] }
+    steps:
+      - user: "Here is Lumen ATS's pricing page: https://lumen-ats.example.test/pricing. How does the Team plan price compare with the latest quote they gave me?"
+    hard:
+      - web_calls: { search: 0, fetch: 1 }
+      - fetch_urls_within: ["https://lumen-ats.example.test/pricing"]
+      - outbound_traceable: true
+      - outbound_blocked: { count: 0 }
+      - reads_include: [LM09]
+      - answer_uses: { newer: LM09, not: LM08 }
+      - cites: { include: [LM09], exclude: [LM10] }
+      - cards: { count: 0 }
+      - no_business_writes: true
+    rubric:
+      - id: R1
+        text: "回答给出官网 Team 版的价格：每席每月 2,400 日元，年付，2026 年 10 月 1 日起。"
+      - id: R2
+        text: "回答用来比较的是 11 月 2 日的报价：每席每月 2,050 日元、20 席起，并指出 9 月的 1,900 日元已经过期。"
+      - id: R3
+        text: "回答没有把 Lumina HR 的每席 1,500 日元当成 Lumen ATS 的报价。"
+    interference: [old_vs_new, same_or_similar]
+    notes: "验收项 AG09-1、AG09-2。用户给了链接，所以不先搜索。两篇 Lumen ATS 的报价笔记一旧一新；Lumina HR 是另一家，名字相近。"
+
+  # ---------- AG10 ----------
+  - id: AE-SCL-017
+    title: "按过期时间排正式跟进：纯按日期，不调判断；已完成的和没有截止时间的不混进来"
+    sprint: AG10
+    split: dev
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5", "§3.8"]
+    locale: zh
+    account: regular
+    world: regular-v1
+    steps:
+      - user: "列出已经过期、或者 11 月 22 日之前到期的正式跟进，过期最久的排前面，只要前三条。"
+    hard:
+      - listed: { exact: [RF01, RF02, RF03] }
+      - reads_include: [RF01, RF02, RF03]
+      - judgment_calls: 0
+      - model_calls_max: 4
+      - clarifications: { count: 0 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答说明符合条件的一共 5 条，这里列的是前三条。"
+      - id: R2
+        text: "回答开头写明是按过期时间从久到近排的。"
+    interference: [old_vs_new, same_or_similar]
+    notes: "验收项 AG10-1、AG10-2。符合条件的是 RF01 到 RF05。RF06 的截止日更早，但 11 月 14 日已经完成，而 RM18 还写着没催；RF07 没有截止时间，保留为未知，不算过期最久；RT08 标题和 RF02 只差括号、过期更久，但它是普通待办，不是正式跟进。"
+
+  - id: AE-SCL-018
+    title: "日文：关联三个人、两场活动的笔记，只有一次真实往来；承诺已有待办，再加一次不重复新增"
+    sprint: AG10
+    split: dev
+    invariant: true
+    requirement: [AG-R10]
+    design: ["§3.5", "§4", "附录 C"]
+    locale: ja
+    account: regular
+    world: regular-v1
+    steps:
+      - user: "@中村さんと電話 から、実際にあったやり取りと、私が約束したことを整理してください。"
+        refs:
+          - { type: memo, id: RM15, quote: "@中村さんと電話" }
+      - user: "私が約束したことをToDoに追加してください。"
+    hard:
+      - reads_include: [RM15, RT06]
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - decisions: { count: 0 }
+      - duplicate_effects: 0
+      - cites_within_reads: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮列出的往来只有一条：11 月 12 日中村理沙来电。"
+      - id: R2
+        text: "第一轮把“11 月 18 日前把出品清单发给中村”列为本人的承诺，写的是最迟日期。"
+      - id: R3
+        text: "第一轮把“下周联系松本”标为打算或仅供考虑，没有算作已经承诺的事。"
+      - id: R4
+        text: "第二轮指回已有的待办「出品リストを中村さんに送る」并给出它现在的状态，没有再提议新增。"
+    interference: [multi_entity_links, same_or_similar]
+    notes: "验收项 AG10-3、AG10-4、AG10-5。笔记关联中村理沙、松本彩、森田悠和两场活动：松本彩只是被提到，森田悠是中村去联系的。RT06 就是从这篇笔记来的待办；RT07「出品リストを森田さんに送る」标题相近，是另一件事。"
+
+  - id: AE-SCL-019
+    title: "一篇笔记里有张薇、张玮、张伟：只把本人对张薇的承诺建成待办，再加一次不重复"
+    sprint: AG10
+    split: val
+    invariant: true
+    requirement: [AG-R10]
+    design: ["§3.5", "§4", "附录 C"]
+    locale: zh
+    account: large
+    world: large-v1
+    steps:
+      - user: "把 @11 月第二周通话记录 里我答应的事加到待办。"
+        refs:
+          - { type: memo, id: LM11, quote: "@11 月第二周通话记录" }
+      - click: { card: last, decision: confirm }
+      - user: "把 @11 月第二周通话记录 里我答应的事再加到待办一次。"
+        refs:
+          - { type: memo, id: LM11, quote: "@11 月第二周通话记录" }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.create, set: { plannedDate: null, dueAt: "2026-11-19", relatedContactIds: [LC03] } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - decisions: { count: 1 }
+      - duplicate_effects: 0
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡上的待办写的是最迟 11 月 19 日（周四）把 JD 发给星汉精密的张薇。"
+      - id: R2
+        text: "卡片能回到笔记里对应的那句原话。"
+      - id: R3
+        text: "第三步的回应指回已经建好的那条待办，没有再提议新增。"
+    interference: [same_or_similar, multi_entity_links]
+    notes: "验收项 AG10-4、AG10-5。笔记关联张薇、张玮、张伟三位和两场活动。本人的承诺只有一项；“张玮说下周给我回音”是对方的承诺，张伟只是被转述，都不进卡，也不进待办的关联人。截止只说到日，dueAt 按东京时区的日期比对。"
+
+  - id: AE-SCL-020
+    title: "英文：见 Priya 之前的回顾，140 篇笔记里取最近一次真实往来、没做完的事和最新的期望年薪"
+    sprint: AG10
+    split: dev
+    invariant: false
+    requirement: [AG-R10]
+    design: ["§3.5", "§4"]
+    locale: en
+    account: large
+    world: large-v1
+    steps:
+      - user: "I'm meeting Priya Raman tomorrow. Give me a quick review: when we last actually talked, what's still open with her, and her current salary expectation."
+    hard:
+      - reads_include: [LM16, LM14, LT08, LT09, LF01]
+      - answer_uses: { newer: LM14, not: LM13 }
+      - cites: { include: [LM16, LM14] }
+      - cites_within_reads: true
+      - model_calls_max: 4
+      - clarifications: { count: 0 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答说最近一次真实往来是 11 月 10 日那通电话，不是 11 月 12 日那篇只提到她的笔记。"
+      - id: R2
+        text: "回答列出的未完成事项是三条：11 月 18 日前发面试官名单、和 Aster Motion 确认到场日期、跟进她手上的另一个 offer。"
+      - id: R3
+        text: "回答没有把已经完成的“发 JD”说成还没做。"
+      - id: R4
+        text: "回答说她现在的期望是底薪 2,400 万日元加期权，没有把 1,800 万或 2,100 万当成现在的数字。"
+    interference: [cross_page, old_vs_new, multi_entity_links, same_or_similar]
+    notes: "验收项 AG10-3，以及会前回顾这项整理操作。LM17 关联 Kavya Raman 和 Priya Raman 两位，往来对象只有 Kavya。未完成的事是两条待办加一条正式跟进；LT10 已完成，而 LM15 还写着没发。联系人备注里的 2,100 万是 2 月的数字。"
+
+  # ---------- AG11 ----------
+  - id: AE-SCL-021
+    title: "两篇都叫「选品方向」的笔记：@ 的是哪篇就读哪篇，选了旧的那篇也照读"
+    sprint: AG11
+    split: dev
+    invariant: false
+    requirement: [AG-R11]
+    design: ["§3.6"]
+    locale: zh
+    account: regular
+    world: regular-v1
+    steps:
+      - user: "@选品方向 这篇里我定的三个方向是什么？"
+        client: app
+        refs:
+          - { type: memo, id: RM13, quote: "@选品方向" }
+      - user: "那 @选品方向 这一篇呢？"
+        client: app
+        refs:
+          - { type: memo, id: RM12, quote: "@选品方向" }
+    hard:
+      - clarifications: { count: 0 }
+      - private_reads_within: [RM12, RM13]
+      - cites: { include: [RM12], exclude: [RM13, RM14] }
+      - cites_within_reads: true
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮答的是玻璃器、北欧风餐具、花器。"
+      - id: R2
+        text: "第二轮答的是柴烧器物、茶道具、金缮修复过的旧器。"
+      - id: R3
+        text: "两轮的回答都带了日期这类信息，让人分得清说的是哪一篇。"
+    interference: [same_or_similar, old_vs_new]
+    notes: "验收项 AG11-2。RM13 是 5 月写的秋季方向，RM12 是 11 月写的春季方向，标题相同；另有一篇草稿 RM14。第一轮用户选的是旧的那篇，按所选的编号读，不因为另一篇更新就换掉。cites 判的是第二轮的回答。"
+
+  - id: AE-SCL-022
+    title: "日文：@ 同名三期的论坛里 11 月那一场，再 @ 两位张伟里岚图的那位"
+    sprint: AG11
+    split: val
+    invariant: false
+    requirement: [AG-R11]
+    design: ["§3.6", "§4"]
+    locale: ja
+    account: large
+    world: large-v1
+    steps:
+      - user: "@半導体キャリアフォーラム はいつ、どこで開催されますか。あわせて、@张伟 さんとの直近のメモの要点も教えてください。"
+        client: web
+        refs:
+          - { type: event, id: LE01, quote: "@半導体キャリアフォーラム" }
+          - { type: contact, id: LC02, quote: "@张伟" }
+    hard:
+      - clarifications: { count: 0 }
+      - reads_include: [LE01, LM03]
+      - cites: { include: [LE01, LM03], exclude: [LE02, LE03, LM02] }
+      - cites_within_reads: true
+      - no_cross_account: true
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "活动的时间和地点答的是 2026 年 11 月 19 日（周四）13:00、東京国際フォーラム。"
+      - id: R2
+        text: "笔记要点说的是岚图机器人希望到岗不晚于 12 月 15 日。"
+      - id: R3
+        text: "回答里的张伟带了公司，看得出是岚图机器人那位。"
+    interference: [same_or_similar]
+    notes: "验收项 AG11-2。同名的论坛有三期（2026 年 5 月、2026 年 11 月、2027 年 5 月），@ 的是 LE01。两位张伟里 @ 的是 LC02，他最新的一篇笔记是 LM03；另一位张伟的 LM02 日期相近，也在谈到岗时间。"
+
+  # ---------- AG12 ----------
+  - id: AE-SCL-023
+    title: "英文：新增的人和已有的一位同名同公司，另有一位名字只差两个字母；选了已有的就不新建"
+    sprint: AG12
+    split: dev
+    invariant: true
+    requirement: [AG-R12]
+    design: ["§3.2", "§3.8", "附录 B"]
+    locale: en
+    account: regular
+    world: regular-v1
+    steps:
+      - user: "Add a new contact: Hannah Brooks, wholesale buyer at Fernway Goods in Portland."
+      - select: { option: RC06 }
+    hard:
+      - clarifications: { count: 1 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - decisions: { count: 0 }
+      - request_status: completed
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "核对的提示里列出了已有的 Hannah Brooks，带公司 Fernway Goods 或职位。"
+      - id: R2
+        text: "提示没有把 Brooke & Lark Tea 的 Hanna Brooke 说成同一个人。"
+      - id: R3
+        text: "选了已有的那位之后，回应说明没有新建联系人。"
+    interference: [same_or_similar]
+    notes: "验收项 AG12-1。用户给的姓名、公司、职位与 RC06 相同，选了已有的那位之后没有要改的内容，所以不出卡。RC07 的名字是 Hanna Brooke，公司和城市都不同。"
+
+  - id: AE-SCL-024
+    title: "已有两位张伟时再加一位：先核对，选了另建才出新增卡，已有的两位不动"
+    sprint: AG12
+    split: val
+    invariant: true
+    requirement: [AG-R12]
+    design: ["§3.2", "§3.8", "§4", "附录 B"]
+    locale: zh
+    account: large
+    world: large-v1
+    steps:
+      - user: "新增一位联系人：张伟，曜石半导体的工艺总监。"
+      - select: { option: create_new }
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - clarifications: { count: 1 }
+      - order: [clarification, card]
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: contact.create, set: { name: 张伟, org: 曜石半导体, role: 工艺总监 } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - duplicate_effects: 0
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "追问把已有的曜石半导体的张伟（工艺整合总监）列为可能是同一个人，请用户核对。"
+      - id: R2
+        text: "追问没有把岚图机器人的张伟说成和这位是同一个人。"
+      - id: R3
+        text: "追问里有“都不是，另建一位”这样的选项，没有替用户决定合并。"
+    interference: [same_or_similar]
+    notes: "验收项 AG12-1。新联系人与 LC01 同名同公司、职位只差两个字，是疑似重复；LC02 同名但公司不同。用户选了另建，确认后只多出一位新联系人，LC01 和 LC02 都不变，这一点由 writes_exact 判定。"
+
+  # ---------- AG13 ----------
+  - id: AE-SCL-025
+    title: "两个名字相近的周会系列：只改明天这一次，系列不动，关联的两个人和一篇笔记都还在"
+    sprint: AG13
+    split: val
+    invariant: false
+    requirement: [AG-R13]
+    design: ["§4", "附录 B"]
+    locale: zh
+    account: regular
+    world: regular-v1
+    steps:
+      - user: "明天的选品周会改到下午三点开始，只改这一次。"
+      - click: { card: last, decision: confirm }
+      - user: "明天这场周会关联了哪些人和哪篇笔记？"
+    hard:
+      - no_write_before_click: true
+      - clarifications: { count: 0 }
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: schedule.update, target: RS01, set: { scope: this_occurrence, occurrenceDate: "2026-11-16", startsAt: "2026-11-16T15:00:00+09:00", endsAt: "2026-11-16T16:00:00+09:00" } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡片写明只改 11 月 16 日（周一）这一次，从 10:00 改到 15:00，整个系列不变。"
+      - id: R2
+        text: "最后一轮回答列出许嘉宁、顾远两个人和笔记「选品周会纪要」。"
+    interference: [same_or_similar, multi_entity_links]
+    notes: "验收项 AG13-3。「选品周会」每周一，「选品周会（线上）」每周四，明天（周一）只有前者。scope 取 this_occurrence 的写法与 EVT.yaml 相同；时长保持一小时。这一次的时间改了之后，日程上的两位联系人和一篇笔记都要留着。"
+
+  - id: AE-SCL-026
+    title: "给已经关联两个人、一场活动的待办再加一个人和一场活动，原有的都留着"
+    sprint: AG13
+    split: dev
+    invariant: false
+    requirement: [AG-R13]
+    design: ["§4", "附录 B", "附录 E"]
+    locale: zh
+    account: large
+    world: large-v1
+    steps:
+      - user: "给「准备曜石终面的候选人材料」这条待办再关联上张蔚然，另外把 11 月 19 日那场「半導体キャリアフォーラム」也关联上。"
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - clarifications: { count: 0 }
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: LT11, set: { relatedContactIds: [LC01, LC05, LC06], relatedEventRefs: [ { kind: private, id: LP02 }, { kind: platform, id: LE01 } ] } }
+      - writes_exact: same_as_card
+      - receipts: [ { op: 1, state: succeeded } ]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡上写明原有的张伟、张卫东和曜石半导体终面日都保留，新加的是张蔚然和一场活动。"
+      - id: R2
+        text: "卡上新加的活动带了日期，写的是 2026 年 11 月 19 日那一场。"
+    interference: [multi_entity_links, same_or_similar]
+    notes: "验收项 AG13-5 所说的多值关联。张蔚然只有一位，但姓张的有七位；同名的论坛有三期，用户说了日期，所以是 LE01。另有一条标题相近的待办 LT12「准备岚图终面的候选人材料」，不该被动到。"
+
+  # ---------- AG14 ----------
+  - id: AE-SCL-027
+    title: "日文：12 条记忆里只用上与推荐活动有关的三条，约束照常加载，过期的那条不用"
+    sprint: AG14
+    split: dev
+    invariant: false
+    requirement: [AG-R14]
+    design: ["§6", "§3.5"]
+    locale: ja
+    account: regular
+    world: regular-v1
+    steps:
+      - user: "11月21日（土）と22日（日）のイベントから、行く価値がありそうなものを3つ選んでください。"
+    hard:
+      - memory_recalled: [RMM01, RMM02, RMM04]
+      - listed: { count: 3, within: [RE03, RE04, RE05] }
+      - clarifications: { count: 0 }
+      - cites_within_reads: true
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答开头写明用了已存的两条：不推荐 18 点以后开始的活动、优先和器物与茶有关的。"
+      - id: R2
+        text: "回答里的日期都带了星期。"
+      - id: R3
+        text: "回答开头有记忆的小标签，带「修改 ›」，点了到设置页里这些依据（结果文档的 answer.memoryUse；transcript 写明）。"
+    interference: [old_vs_new, same_or_similar]
+    notes: "验收项 AG14-2。适用于推荐活动的约束是 RMM01，不限场景的约束是 RMM02，偏好是 RMM04；RMM05“优先平日晚上”9 月 30 日已过有效期。这两天有 9 场活动：19:00 的「器と酒の夕べ」主题最对口，但被约束排除；同名的「柴烧器物展」另有 10 月和 12 月两期，不在这两天。"
+
+  - id: AE-SCL-028
+    title: "105 轮的对话里再挑活动：约束仍然生效，早先“这次先别管”和没保存的“以后优先周末”都不带过来"
+    sprint: AG14
+    split: val
+    invariant: false
+    requirement: [AG-R14]
+    design: ["§6", "§3.10", "§3.5"]
+    locale: zh
+    account: large
+    world: large-v1
+    conversation: LCV03
+    steps:
+      - user: "下周（11 月 16 日到 22 日）有什么值得去的活动？挑三场。"
+    hard:
+      - context_messages_max: 10
+      - memory_recalled: [LMM01, LMM02, LMM03]
+      - listed: { count: 3, within: [LE01, LE04, LE05] }
+      - clarifications: { count: 0 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答开头写明用了“不要推荐晚上的活动”和“优先半导体和机器人主题”这两条。"
+      - id: R2
+        text: "回答没有提到“优先周末”这条没有保存过的偏好。"
+      - id: R3
+        text: "回答里的时间是 24 小时制。"
+    interference: [long_conversation, old_vs_new]
+    notes: "验收项 AG14-2、AG14-3。40 条记忆里适用的只有约束 LMM01、不限场景的约束 LMM02 和偏好 LMM03；LMM04“优先周末”已过有效期。第 14 轮说过“这次先别管不看晚上活动的习惯”，只管那一次；第 60 轮说过“以后优先周末”，当时学习开关关着，没有保存。这一周有 41 场活动，白天且主题对口的是 LE01、LE04、LE05；晚上的 LE06、LE07 是第 14 轮列过的那两场。"
+
+  # ---------- AG15 ----------
+  - id: AE-SCL-029
+    title: "定时规则连跑两期：第一期从 60 场活动里挑出三场进收件箱，第二期没有候选就不打扰"
+    sprint: AG15
+    split: dev
+    invariant: false
+    requirement: [AG-R15]
+    design: ["§5.3", "§3.8"]
+    locale: zh
+    account: regular
+    world: regular-v1
+    steps:
+      - scheduler_tick: { at: "2026-11-16T09:10:00+09:00" }
+      - scheduler_tick: { at: "2026-11-23T09:10:00+09:00" }
+    hard:
+      - inbox: { count: 1 }
+      - push: { count: 0 }
+      - listed: { count: 3, within: [RE03, RE04, RE05] }
+      - judgment_candidates_max: 9
+      - rule_state: { rule: RRU01, state: active }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "收件箱里那条结果写明了依据：按笔记「选品方向」的主题，在 11 月 21 日、22 日的活动里挑的。"
+      - id: R2
+        text: "第二期在任务历史里记为没有新的内容。"
+    interference: [same_or_similar]
+    notes: "验收项 AG15-3。规则 RRU01 每周一 9:00 运行，范围是当周周六、周日开始的平台活动。第一期有 9 场候选，同名的「柴烧器物展」另有 10 月和 12 月两期，不在范围里。第二期对应 11 月 28 日、29 日，夹具里这两天没有活动。listed 判的是最后一份交付的清单，也就是第一期那份。"
+
+  - id: AE-SCL-030
+    title: "定时规则面对 241 位候选人：每期送去判断的不超过 30 个，按最新的重点职位挑五位"
+    sprint: AG15
+    split: dev
+    invariant: false
+    requirement: [AG-R15]
+    design: ["§5.3", "§3.8", "§6"]
+    locale: zh
+    account: large
+    world: large-v1
+    steps:
+      - scheduler_tick: { at: "2026-11-16T08:40:00+09:00" }
+    hard:
+      - inbox: { count: 1 }
+      - push: { count: 0 }
+      - judgment_candidates_max: 30
+      - judgment_calls_max: 3
+      - listed: { count: 5, within: [LC24, LC25, LC26, LC27, LC28] }
+      - rule_state: { rule: LRU01, state: active }
+      - no_cross_account: true
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "结果写明这一期细看了多少位、范围里还有多少位没有细看。"
+      - id: R2
+        text: "结果没有把这五位说成全部联系人里最合适的五位。"
+      - id: R3
+        text: "结果里每位都写明了公司。"
+      - id: R4
+        text: "结果的依据写的是功率器件方向的工艺负责人，没有按已经关闭的机器视觉算法职位去挑。"
+    interference: [cross_page, old_vs_new, same_or_similar]
+    notes: "验收项 AG15-1 里写在规则上的范围和排序依据，以及设计稿 §3.8 定时任务每期最多 30 个候选。行业是半导体、最近一次真实往来在 60 天以前的共 241 位。规则引用的是 LM18；标题相同的 LM19 是上一周写的，说的是已经关闭的职位，对口的郭敏不该入选。Aaron Tan、渡辺修方向对口，但最近刚联系过，不在范围里。约束 LMM05“推荐联系人时每个人都写明公司”在用户不在场时也要生效。"
+
+  # ---------- AG17 ----------
+  - id: AE-SCL-031
+    title: "外部连接只有读笔记的范围：翻完 400 篇不重不漏，联系方式和记忆不在结果里，越权取待办被拒"
+    sprint: AG17
+    split: dev
+    invariant: true
+    requirement: [AG-R17]
+    design: ["§5.4", "§5.1"]
+    locale: zh
+    account: regular
+    world: regular-v1
+    steps:
+      - mcp_paginate: { as: rconn-claude, tool: search_records, args: { domain: memo }, pages: all }
+      - mcp: { as: rconn-claude, tool: get_record, args: { type: todo, id: RT01 } }
+    hard:
+      - mcp_collected: { count: 400, duplicates: 0, includes: [RM05, RM15, RM17] }
+      - pages_read: { min: 2 }
+      - mcp_result_excludes: ["aya@seiran-kiln.example.test", "+81-90-5550-0101", "不要推荐晚上 18 点以后开始的活动", "RBM1", "给港町咖啡寄样品"]
+      - http_status: 403
+      - no_cross_account: true
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "每页返回的笔记只带笔记自己的内容和关联记录的编号，没有带出联系人的邮箱或电话。"
+      - id: R2
+        text: "越权取待办的那一次，返回说明了缺少哪个范围，没有返回待办的内容。"
+    interference: [cross_page]
+    notes: "验收项 AG17-1、AG17-4。连接 rconn-claude 的范围是 memos:read 和 proposals:read。400 篇远超一页；RM05 是 2025 年的旧笔记，排在很后面。越权时的状态码按 MCP 授权规范取 403（范围不足）。账号乙的笔记 RBM1 不该出现在任何一页里。"
+
+  - id: AE-SCL-032
+    title: "外部连接翻完 3000 位联系人后被撤销：令牌立即失效，没确认的提议作废"
+    sprint: AG17
+    split: dev
+    invariant: true
+    requirement: [AG-R17]
+    design: ["§5.4", "§5.2"]
+    locale: zh
+    account: large
+    world: large-v1
+    steps:
+      - mcp_paginate: { as: lconn-codex, tool: search_records, args: { domain: contact }, pages: all }
+      - mcp: { as: lconn-codex, tool: propose_change, args: { operations: [ { op: todo.update, target: LT08, set: { dueAt: "2026-11-19T18:00:00+09:00" } } ], idempotencyKey: scl-032-p1 } }
+      - revoke: { connection: lconn-codex }
+      - open_link: { proposal: last, as: L }
+      - mcp: { as: lconn-codex, tool: search_records, args: { domain: contact } }
+    hard:
+      - mcp_collected: { count: 3000, duplicates: 0, includes: [LC01, LC02, LC17, LC20] }
+      - pages_read: { min: 2 }
+      - mcp_result_excludes: ["aaron.tan@meridian-power.example.test", "+65-8000-0117", "zhangwei@yaoshi-semi.example.test", "不要推荐晚上的活动", "LBC1", "LBC2"]
+      - cards: { count: 1 }
+      - card_state: { card: last, state: canceled }
+      - decisions: { count: 0 }
+      - http_status: 401
+      - no_cross_account: true
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "各页的联系人只有姓名、公司、职位、行业、地区这类授权内的字段。"
+      - id: R2
+        text: "撤销之后打开确认链接，页面说明这条提议已经作废，没有可点的确认。"
+    interference: [cross_page, same_or_similar]
+    notes: "验收项 AG17-4、AG17-5。连接 lconn-codex 可以读联系人和待办、对待办提议。3000 位里两位张伟、Aaron Tan 和 Aaron Tang 都要作为各自独立的记录出现一次。撤销前提过一项修改，撤销后它作废，LT08 不变。最后一步是撤销后的调用，http_status 判的是它。账号乙名下同名的两位联系人不该出现。"

@@ -3,6 +3,7 @@ import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { randomUUID } from "expo-crypto";
 import { Fragment, useEffect, useRef, useState } from "react";
 import {
+  AppState,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -56,8 +57,10 @@ import { aiConversationListSchema, aiSessionReadSchema, aiSessionReceiptMatches,
 import type { AiSessionOriginInputContract, AiSessionReferenceContract } from "../../api/contract/ai-sessions";
 import { updateAiSessionOrganization } from "../../api/ai-session-management";
 import { useMobileViewport } from "../../platform/use-mobile-viewport";
-import { ContactMentionPicker, type MentionContact } from "./ContactMentionPicker";
-import { ContactReferenceChip } from "./ContactReferenceChip";
+import { atPickerQuery, ContactMentionPicker, referenceKey, useGoneReferences } from "./ContactMentionPicker";
+import { ContactReferenceChip, MarkedDraft, ReferenceChip } from "./ContactReferenceChip";
+import { bindingHolds, insertReference, reconcileBindings, referenceChipHint, referencesForSend, removeBinding, sameNamedKeys, type ReferenceBinding, type ReferenceLanguage } from "../../api/compute/agent-references";
+import type { AgentReferenceCandidateContract } from "../../api/contract/agent-v1";
 import { AiEntityCardList } from "./cards/AiEntityCard";
 import { sessionContactArtifacts, sessionEntityCardTurns } from "../../view-models/ai-artifacts";
 import { aiSessionArtifactRecoverySchema } from "../../api/schema/ai-artifacts";
@@ -79,6 +82,13 @@ import {
 } from "../../view-models/conversations";
 import { noteSourceFromParams } from "../../view-models/note-suggestions";
 import { pendingWriteItems, usePendingWriteCounts } from "../../hooks/usePendingWriteCounts";
+import { agentProtocolForSend, agentProtocolVersion, requestIdOfAssistantMessage, sendAgentV1 } from "../../api/agent-v1-client";
+import { useAgentV1Turns, latestAgentCard, type AgentV1TurnsState } from "../../hooks/useAgentV1Turns";
+import { useCardLocalPendingEdits } from "../../hooks/useCardLocalPendingEdits";
+import { AgentBasisLine, AgentConfirmationCard, AgentMemoryChips, AgentProgress, AgentQuestionOptions, answerTextOf } from "./cards/AgentConfirmationCard";
+import { AgentAnswerBlocks, AgentAnswerText } from "./cards/AgentAnswerBlocks";
+import { answerBlocksOf } from "../../api/compute/agent-answer-blocks";
+import { useAgentAnswerGone } from "../../hooks/useAgentAnswerGone";
 import { chooseReplyPolish, replyPolishTarget } from "../../data/reply-polish-handoff";
 
 function firstParam(value: string | string[] | undefined): string {
@@ -127,6 +137,8 @@ const RECORD_KIND_ICONS = {
   活动: "calendar-outline",
   日历活动: "calendar-outline"
 } as const satisfies Record<ReturnType<typeof conversationRecordLinks>[number]["kind"], string>;
+/** AG07-3: how often a failed conversation read is tried again while the screen is open. */
+const READ_RETRY_MS = 3000;
 /** QA-A2: the check found the message never reached the server, or the run stopped; 重试 is safe. */
 const RETRYABLE_SEND_CODES = ["NOT_DELIVERED", "TIMED_OUT"];
 type PendingSessionSave = { session: AiSession; revision: number; canonicalize: boolean; waitForTask: boolean; delta?: AiSession["messages"] };
@@ -159,6 +171,8 @@ type ConversationJournalState = {
   saveError: string | null; saveNotice: string | null; sendError: string | null; sendCode: string | null; failedRequest: SendRequest | null;
   actionError: string | null; acceptedTaskId: string | null; taskInteractionResolution: "accepted" | "dismissed" | null;
   selectedReferences: AiSessionReferenceContract[];
+  /** AG11: the records picked with @ or 「＋」 and where their marks sit in the draft (restored with it; a removed one stays removed). */
+  referenceBindings: ReferenceBinding[];
 };
 export type AiConversationJournal = Partial<ConversationJournalState> & { draftRevision?: number; interruptedRequest?: SendRequest };
 
@@ -219,6 +233,14 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
   const client = useOrbitApiClient(scopeKey === undefined ? {} : { scopeKey });
+  // agent-design AG07: with the new entry on (the server says protocol 3), messages go through it and each turn shows
+  // its result document: the answer with its basis line, the options under a question, the confirmation card.
+  const [protocolV3, setProtocolV3] = useState(false);
+  useEffect(() => {
+    let current = true;
+    void agentProtocolVersion(client).then((version) => { if (current) setProtocolV3(version === 3); });
+    return () => { current = false; };
+  }, [client]);
   const localJournal = useRef<AiConversationJournal>({});
   const journal = providedJournal ?? localJournal.current;
   const readOptions = scopeKey === undefined ? {} : { scopeKey };
@@ -245,6 +267,9 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const [failedRequest, setFailedRequest] = useJournalState(journal, "failedRequest", null);
   const [actionError, setActionError] = useJournalState(journal, "actionError", null);
   const [selectedReferences, setSelectedReferences] = useJournalState(journal, "selectedReferences", initialReferences.map(reference => ({ ...reference })));
+  const [referenceBindings, setReferenceBindings] = useJournalState(journal, "referenceBindings", []);
+  const bindingsRef = useRef(referenceBindings);
+  bindingsRef.current = referenceBindings;
   const [sending, setSending] = useState(false);
   const [saving, setSaving] = useState(false);
   const [taskInteractionBusy, setTaskInteractionBusy] = useState(false);
@@ -319,6 +344,26 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const conversationRead = loadedData && !isStoredAgentSession ? aiConversationListSchema.safeParse(loadedData) : null;
   const readInvalid = loadedData !== null && (isStoredAgentSession ? !loadedSession : !conversationRead?.success);
   const previousSession = sessionSnapshot ?? loadedSession;
+  // AG07: this device's protocol-3 turns are shown from the snapshot until the server's copy of the session has them.
+  const v1Snapshot = protocolV3 && sessionSnapshot && !(loadedSession && sessionSnapshot.messages.every((message) => !message.id || loadedSession.messages.some((stored) => stored.id === message.id))) ? sessionSnapshot : null;
+  const v1Session = v1Snapshot ?? loadedSession ?? localSession;
+  const v1RequestIds = protocolV3 && v1Session ? v1Session.messages.flatMap((message) => (message.role === "assistant" ? [requestIdOfAssistantMessage(message.id)].filter((id): id is string => Boolean(id)) : [])) : [];
+  const cardEdits = useCardLocalPendingEdits(protocolV3 && Boolean(auth.signedIn && auth.actorId));
+  const v1 = useAgentV1Turns({ client, enabled: protocolV3, pendingTargets: cardEdits.pendingTargets, requestIds: v1RequestIds, sessionId: v1Session?.id ?? null, syncedAt: cardEdits.syncedAt });
+  // AG19-5: cards of older answers whose record is gone or cannot be seen any more.
+  const v1Gone = useAgentAnswerGone(client, v1.documents, protocolV3);
+  // AG07 repair 2 (item 10): a server error (5xx) is not offline; only a server that cannot be reached is.
+  const v1Online = v1.online && state.kind !== "offline";
+  // AG07-3: a read that failed — the server unreachable or answering with an error — is tried again on its own
+  // while the screen is open and when the App comes back; once one succeeds the conversation shows again, no restart.
+  const retryRead = useRef(state.refresh);
+  retryRead.current = state.refresh;
+  useEffect(() => {
+    if (!serverUnreachable || isDraftConversation) return;
+    const timer = setInterval(() => { if (owns()) retryRead.current(); }, READ_RETRY_MS);
+    const subscription = AppState.addEventListener("change", (next) => { if (next === "active" && owns()) retryRead.current(); });
+    return () => { clearInterval(timer); subscription.remove(); };
+  }, [serverUnreachable, isDraftConversation]);
   // Sprint 0112: the first page comes from the resource; older pages are
   // prepended as the reader asks for them, each with its own turns' cards.
   const firstPage = sessionRead?.success ? sessionRead.data.page : undefined;
@@ -344,7 +389,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const submittedMessage = journal.interruptedRequest?.message ?? failedRequest?.message;
   const initialThread: ConversationThreadView | null = !isDraftConversation ? null : submittedMessage ? pendingConversationThreadView(submittedMessage, locale.language)
     : { activeConversationId: null, assistantMessage: "", messages: [], nextAction: "", proposedToolIntents: [], title: locale.t("aiConversation.newChat") };
-  const resolvedThread = generatedThread
+  const resolvedThread = v1Snapshot ? rawSessionThread(withEarlier(v1Snapshot), combinedRecovery, locale.t, locale.language)
+    : generatedThread
     ? previousThread
       ? { ...generatedThread, title: previousThread.title, messages: previousThread.messages, entityCardTurns: previousThread.entityCardTurns ?? [] }
       : generatedThread
@@ -372,6 +418,9 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
 
   function changeDraft(value: string) {
     if (!owns()) return;
+    // AG11: the marks move with the edit; a mark whose words were edited is no longer sent.
+    const kept = reconcileBindings(draftValue.current, value, bindingsRef.current);
+    if (kept.length !== bindingsRef.current.length || kept.some((binding, index) => binding !== bindingsRef.current[index])) { bindingsRef.current = kept; setReferenceBindings(kept); }
     draftValue.current = value;
     draftRevision.current++;
     journal.draftRevision = draftRevision.current;
@@ -452,7 +501,11 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
           }
         } : {}),
         requestId: randomUUID(),
-        references: selectedReferences,
+        // AG11: protocol 2 knows contact, event and note; a picked record of those kinds goes too (without its place).
+        references: [...selectedReferences, ...bindingsRef.current.flatMap((binding): AiSessionReferenceContract[] => {
+          const type = binding.type === "memo" ? "note" : binding.type;
+          return (type === "contact" || type === "event" || type === "note") && bindingHolds(draftValue.current, binding) && !selectedReferences.some((item) => item.id === binding.id) ? [{ id: binding.id, type }] : [];
+        })],
         sessionId,
       },
     };
@@ -591,10 +644,73 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     requests.current.delete(controller); sendOperation.current = null; setSending(false);
   }
 
+  /**
+   * AG07: protocol 3. The send is only acknowledged; the turn shows its result document. Another message can be sent
+   * while one runs (it waits its turn). Offline nothing is sent: the composer says it needs the network.
+   */
+  async function sendV1(message: string, marked: readonly AiSessionReferenceContract[] = []) {
+    if (!owns() || sendOperation.current) return;
+    const controller = new AbortController();
+    sendOperation.current = controller; requests.current.add(controller);
+    setSendError(null); setSendCode(null);
+    // AG11: the picked records go with this message (each with its mark's place); the draft's marks go with it.
+    const picked = bindingsRef.current;
+    draftValue.current = ""; setDraftMessage("");
+    bindingsRef.current = []; setReferenceBindings([]);
+    const sessionId = previousSession?.id ?? `session_${randomUUID()}`;
+    const clientMessageId = `message:${randomUUID()}`;
+    const receipt = await sendAgentV1(client, {
+      clientMessageId,
+      locale: locale.language,
+      message,
+      references: [...selectedReferences, ...marked],
+      sessionId,
+      ...(previousSession ? {} : { origin: sessionOrigin ?? { entryClient: "app", entryPointId: "ai.new_chat", initialGroupId: null, kind: "manual", template: null } }),
+    }).catch(() => null);
+    requests.current.delete(controller); sendOperation.current = null;
+    if (!owns()) return;
+    if (!receipt) {
+      setSendError(locale.t("aiConversation.incomplete"));
+      // The draft comes back trimmed; its marks come back with it.
+      const restored = picked.flatMap((binding) => {
+        const at = marked.find((item) => item.id === binding.id && item.type === binding.type && typeof item.start === "number" && message.slice(item.start, item.end) === `@${binding.name}`);
+        return at ? [{ ...binding, end: at.end!, start: at.start! }] : [];
+      });
+      draftValue.current = message; setDraftMessage(message);
+      bindingsRef.current = restored; setReferenceBindings(restored);
+      return;
+    }
+    const now = new Date().toISOString();
+    const added = [{ createdAt: now, id: clientMessageId, role: "user" as const, text: message }, { createdAt: now, id: `assistant:${receipt.requestId}`, role: "assistant" as const, text: "" }];
+    const base = sessionSnapshot ?? loadedSession;
+    const session: AiSession = base
+      ? { ...base, messages: [...base.messages, ...added], updatedAt: now }
+      : { createdAt: now, id: sessionId, messages: added, pinned: false, title: message.slice(0, 120), updatedAt: now } as AiSession;
+    setSessionSnapshot(session);
+    setSavedSessionId(session.id);
+  }
+
   async function sendMessage() {
     if (!owns()) return;
-    const message = draftValue.current.trim();
+    // AG11: the trimmed message and the places of the marks that still hold in it.
+    const sent = referencesForSend(draftValue.current, bindingsRef.current);
+    const message = sent.message;
     if (!message) return;
+    if (isDraftConversation || isStoredAgentSession || Boolean(previousSession)) {
+      // AG07 repair 2: a send waits for the protocol check; a slow check never sends through protocol 2, and a
+      // check that cannot be answered sends nothing (the draft stays).
+      const version = protocolV3 ? 3 : await agentProtocolForSend(client);
+      if (!owns()) return;
+      if (version === 3) {
+        setProtocolV3(true);
+        await sendV1(message, sent.references);
+        return;
+      }
+      if (version === null) {
+        setSendError(locale.t("aiConversation.notDelivered"));
+        return;
+      }
+    }
     const usesSessionHistory = isDraftConversation || isStoredAgentSession || Boolean(previousSession);
     const history = previousSession ? conversationHistoryForRequest() : undefined;
     const sendPath = usesSessionHistory ? ORBIT_API_ENDPOINTS.conversations
@@ -616,10 +732,37 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     setSending(false);
   }
 
-  function addMention(contact: MentionContact) {
-    if (!owns() || selectedReferences.some(reference => reference.type === "contact" && reference.id === contact.id)) return;
-    setSelectedReferences([...selectedReferences, { id: contact.id, type: "contact" }]);
-    if (!draftValue.current.includes(`@${contact.name}`)) changeDraft(`${draftValue.current}${draftValue.current && !/\s$/u.test(draftValue.current) ? " " : ""}@${contact.name} `);
+  /**
+   * AG11 (D6): put picked records in the sentence — over the typed 「@words」 [from, to) when the @ opened the picker, at
+   * the caret (from = to) when 「＋」 did — each as 「@名字 」 with its mark. Returns the new caret.
+   */
+  function pickReferences(candidates: readonly AgentReferenceCandidateContract[], from: number, to: number): number {
+    if (!owns() || !candidates.length) return to;
+    let state = { bindings: bindingsRef.current, caret: from, text: draftValue.current };
+    let end = to;
+    for (const candidate of candidates) {
+      const hint = referenceChipHint(candidate, locale.language as ReferenceLanguage);
+      const out = insertReference(state.text, state.caret, end, state.bindings, { id: candidate.id, name: candidate.name, type: candidate.type, ...(candidate.eventKind ? { eventKind: candidate.eventKind } : {}), ...(hint ? { hint } : {}) });
+      state = out;
+      end = out.caret;
+    }
+    bindingsRef.current = state.bindings; setReferenceBindings(state.bindings);
+    draftValue.current = state.text; draftRevision.current++; journal.draftRevision = draftRevision.current; setDraftMessage(state.text);
+    return state.caret;
+  }
+
+  /** AG11 (D2): × keeps the words and drops the @; the record is no longer sent. */
+  function removeBindingChip(binding: ReferenceBinding) {
+    if (!owns()) return;
+    const out = removeBinding(draftValue.current, bindingsRef.current, binding);
+    bindingsRef.current = out.bindings; setReferenceBindings(out.bindings);
+    draftValue.current = out.text; draftRevision.current++; journal.draftRevision = draftRevision.current; setDraftMessage(out.text);
+  }
+
+  function markGoneReferences(keys: Set<string>) {
+    if (!owns()) return;
+    const next = bindingsRef.current.map((binding) => (keys.has(`${binding.type}:${binding.id}`) ? { ...binding, gone: true } : binding));
+    bindingsRef.current = next; setReferenceBindings(next);
   }
 
   function removeReference(reference: AiSessionReferenceContract) {
@@ -637,7 +780,28 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       }
       return;
     }
-    void submitRequest(requestForSend({ path: ORBIT_API_ENDPOINTS.conversations, message: initialPrompt, revision: draftRevision.current, ...(sourceNote ? { sourceNote } : {}) }));
+    const legacy = () => submitRequest(requestForSend({ path: ORBIT_API_ENDPOINTS.conversations, message: initialPrompt, revision: draftRevision.current, ...(sourceNote ? { sourceNote } : {}) }));
+    // A note handed to the conversation ("整理这篇笔记") is the protocol-2 entity-draft flow; it keeps that path.
+    if (sourceNote) {
+      void legacy();
+      return;
+    }
+    // AG07 repair 2 (item 9): the first message from the iOrbit home waits for the protocol check, like any send.
+    void (async () => {
+      const version = await agentProtocolForSend(client);
+      if (!owns()) return;
+      if (version === 3) {
+        setProtocolV3(true);
+        await sendV1(initialPrompt);
+        return;
+      }
+      if (version === null) {
+        draftValue.current = initialPrompt; setDraftMessage(initialPrompt);
+        setSendError(locale.t("aiConversation.notDelivered"));
+        return;
+      }
+      await legacy();
+    })();
   }, [client, initialPrompt, isDraftConversation, sourceNote?.id, sourceNote?.version]);
 
   async function recoverRequest(request: SendRequest) {
@@ -771,9 +935,13 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       scopeKey={scopeKey}
       draftMessage={draftMessage}
       selectedReferences={selectedReferences}
+      referenceBindings={referenceBindings}
+      onPickReferences={pickReferences}
+      onRemoveBinding={removeBindingChip}
+      onGoneReferences={markGoneReferences}
+      referencesOnline={!conversationOffline && state.kind !== "offline"}
       onBack={() => openHref("/ai")}
       onChangeDraft={changeDraft}
-      onAddMention={addMention}
       onRemoveReference={removeReference}
       onOpenHref={openHref}
       onResolveTaskSuggestion={resolveTaskSuggestion}
@@ -809,6 +977,10 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       onEditEntityDraftField={(field, value) => setEntityDraftEdits((previous) => ({ ...previous, [field]: value }))}
       onResolveEntityDraft={resolveEntityDraft}
       thread={acceptedTaskId && thread.taskInteraction ? { ...thread, taskInteraction: { ...thread.taskInteraction, taskId: acceptedTaskId } } : thread}
+      v1Turn={protocolV3 ? (messageId) => {
+        const requestId = requestIdOfAssistantMessage(messageId);
+        return requestId ? <AgentV1Turn key={messageId} gone={v1Gone} requestId={requestId} turns={v1} online={v1Online} pendingTargets={cardEdits.pendingTargets} language={locale.language} onOpenHref={openHref} /> : null;
+      } : undefined}
     />
   );
 }
@@ -820,7 +992,11 @@ function ConversationThread({
   selectedReferences,
   onBack,
   onChangeDraft,
-  onAddMention,
+  referenceBindings,
+  onPickReferences,
+  onRemoveBinding,
+  onGoneReferences,
+  referencesOnline,
   onRemoveReference,
   onOpenHref,
   onResolveTaskSuggestion,
@@ -855,7 +1031,8 @@ function ConversationThread({
   draftLinkNotice,
   onEditEntityDraftField,
   onResolveEntityDraft,
-  thread
+  thread,
+  v1Turn
 }: {
   baseUrl: string;
   scopeKey?: string | undefined;
@@ -863,7 +1040,12 @@ function ConversationThread({
   selectedReferences: readonly AiSessionReferenceContract[];
   onBack: () => void;
   onChangeDraft: (value: string) => void;
-  onAddMention: (contact: MentionContact) => void;
+  referenceBindings: readonly ReferenceBinding[];
+  onPickReferences: (candidates: readonly AgentReferenceCandidateContract[], from: number, to: number) => number;
+  onRemoveBinding: (binding: ReferenceBinding) => void;
+  onGoneReferences: (keys: Set<string>) => void;
+  /** AG11: the server can be reached (the picker searches, picked records are checked); offline the picker lists the phone's contacts only. */
+  referencesOnline: boolean;
   onRemoveReference: (reference: AiSessionReferenceContract) => void;
   onOpenHref: (href: string) => void;
   onResolveTaskSuggestion: (action: "accept" | "dismiss") => void;
@@ -901,12 +1083,37 @@ function ConversationThread({
   onEditEntityDraftField: (field: string, value: string) => void;
   onResolveEntityDraft: (action: "confirm" | "cancel") => void;
   thread: ConversationThreadView;
+  /** AG07: a protocol-3 turn, shown from its result document instead of the message bubble. */
+  v1Turn?: ((messageId: string) => React.ReactNode | null) | undefined;
 }) {
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const [routesOpen, setRoutesOpen] = useState(false);
-  const [mentionsOpen, setMentionsOpen] = useState(false);
-  const [referenceNames, setReferenceNames] = useState<Record<string, string>>({});
+  // AG11 (D5, D6): the 「添加上下文」 picker — opened by 「＋」 (pick several) or by typing @ (pick one).
+  const [picker, setPicker] = useState<null | { kind: "at"; start: number } | { kind: "plus"; caret: number }>(null);
+  const [plusQuery, setPlusQuery] = useState("");
+  const selection = useRef(draftMessage.length);
+  const shownBindings = referenceBindings.filter((binding) => bindingHolds(draftMessage, binding));
+  const sameNamed = sameNamedKeys(shownBindings);
+  // D1: the picked 「@名字」 tinted inside the input (nested Text children; react-native-web's input cannot hold styled runs, the chips show the picks there).
+  const tintMarks = Platform.OS !== "web" && shownBindings.length > 0;
+  // D7: a restored draft's records are checked once; one that cannot be opened shows 「打不开了」 and can still be sent.
+  useGoneReferences(shownBindings, referencesOnline, scopeKey, onGoneReferences);
+  const pickerQuery = picker?.kind === "at" ? draftMessage.slice(picker.start + 1, Math.max(picker.start + 1, selection.current)) : plusQuery;
+  const typeDraft = (next: string) => {
+    const previous = draftMessage;
+    let suffix = 0;
+    while (suffix < Math.min(previous.length, next.length) && previous[previous.length - 1 - suffix] === next[next.length - 1 - suffix]) suffix += 1;
+    const caret = Math.max(0, next.length - suffix);
+    selection.current = caret;
+    onChangeDraft(next);
+    setPicker((current) => {
+      if (current?.kind === "plus") return current;
+      const trigger = atPickerQuery(next, caret, referenceBindings);
+      if (current?.kind === "at") return trigger && trigger.start === current.start ? current : null;
+      return next.length > previous.length && next[caret - 1] === "@" && trigger ? { kind: "at", start: trigger.start } : null;
+    });
+  };
   const { fontScale, height: windowHeight } = useWindowDimensions();
   const safeInsets = useSafeAreaInsets();
   const minimumInputHeight = Math.max(44, Math.ceil(22 * fontScale + 12));
@@ -1014,10 +1221,10 @@ function ConversationThread({
             : <UiButton label={locale.t("aiConversation.loadEarlier")} variant="ghost" onPress={requestEarlier} />
           : earlier?.allLoaded ? <UiText style={styles.r21Muted}>{locale.t("aiConversation.allMessagesLoaded")}</UiText> : null}
         {thread.messages.map((message, index) => <Fragment key={message.id}>
-          <View style={message.role === "user" ? styles.r21User : styles.r21Assistant}>
+          {(message.role !== "user" ? v1Turn?.(message.id) : null) ?? <View style={message.role === "user" ? styles.r21User : styles.r21Assistant}>
             {message.role !== "user" ? <View style={styles.r21AssistantIcon}><UiIcon name="sparkle" size={16} color={colors.accentText} /></View> : null}
             <View style={styles.r21Message}><MessageBubble baseUrl={baseUrl} message={message} onOpenHref={onOpenHref} onUseVersion={useVersion} /></View>
-          </View>
+          </View>}
           {turnCards.get(message.id)?.length ? <AiEntityCardList onOpenHref={onOpenHref} views={turnCards.get(message.id)!} /> : null}
           {index === inlinePanelAnchorIndex && thread.entityCards?.cards.length ? <AiEntityCardList onOpenHref={onOpenHref} views={thread.entityCards.cards} /> : null}
         </Fragment>)}
@@ -1037,9 +1244,17 @@ function ConversationThread({
       <View testID="conversation-composer" onLayout={(event) => { const extra = Math.max(0, Math.round(event.nativeEvent.layout.height - (minimumInputHeight + 18))); setComposerExtra((current) => (current === extra ? current : extra)); }} style={styles.r21Composer}>
         {sendLabelSuffix ? <UiText style={styles.r21Muted}>{locale.t("aiConversation.sendMessage") + " · " + sendLabelSuffix}</UiText> : null}
         {pendingNoteChanges ? <UiText style={styles.r21Muted}>{locale.t("aiConversation.pendingChanges", { items: pendingNoteChanges })}</UiText> : null}
-        {selectedReferences.length ? <View style={styles.referenceRow}>{selectedReferences.map((reference) => <ContactReferenceChip key={reference.type + ":" + reference.id} id={reference.id} knownName={referenceNames[reference.id]} scopeKey={scopeKey} onRemove={() => onRemoveReference(reference)} style={styles.referenceChip} textStyle={styles.referenceChipText} />)}</View> : null}
-        {mentionsOpen ? <ContactMentionPicker scopeKey={scopeKey} onSelect={(contact) => { setReferenceNames((names) => ({ ...names, [contact.id]: contact.name })); onAddMention(contact); setMentionsOpen(false); }} selectedIds={selectedReferences.filter((reference) => reference.type === "contact").map((reference) => reference.id)} /> : null}
-        <View style={styles.r21ComposerLine}><UiButton label="@" size="sm" variant="ghost" onPress={() => setMentionsOpen((open) => !open)} /><TextInput accessibilityLabel={locale.t("ai.message")} multiline={false} onChangeText={onChangeDraft} onSubmitEditing={() => { followNewMessages.current = true; onSend(); }} placeholder={locale.t("aiConversation.continuePlaceholder")} placeholderTextColor={colors.ink3Text} returnKeyType="send" style={styles.r21Input} value={draftMessage} /><UiIconButton icon="send" accessibilityLabel={locale.t("aiConversation.sendMessage")} onPress={() => { followNewMessages.current = true; onSend(); }} disabled={sending || writingBlocked || !draftMessage.trim()} solid /></View>
+        {picker ? <ContactMentionPicker scopeKey={scopeKey} mode={{ kind: picker.kind }} query={pickerQuery} onQuery={setPlusQuery} offline={!referencesOnline}
+          pickedKeys={new Set([...shownBindings.map(referenceKey), ...selectedReferences.map(referenceKey)])}
+          onClose={() => { setPicker(null); setPlusQuery(""); }}
+          onPick={(candidate) => { if (picker.kind === "at") selection.current = onPickReferences([candidate], picker.start, Math.max(selection.current, picker.start + 1)); setPicker(null); }}
+          onDone={(candidates) => { selection.current = onPickReferences(candidates, picker.kind === "plus" ? picker.caret : selection.current, picker.kind === "plus" ? picker.caret : selection.current); setPicker(null); setPlusQuery(""); }} /> : null}
+        {selectedReferences.length || shownBindings.length ? <View style={styles.referenceRow}>
+          {selectedReferences.map((reference) => <ContactReferenceChip key={reference.type + ":" + reference.id} id={reference.id} scopeKey={scopeKey} onRemove={() => onRemoveReference(reference)} style={styles.referenceChip} textStyle={styles.referenceChipText} />)}
+          {shownBindings.map((binding) => <ReferenceChip key={`${referenceKey(binding)}@${binding.start}`} binding={binding} showHint={sameNamed.has(`${binding.type}:${binding.name}`)} onRemove={() => onRemoveBinding(binding)} />)}
+        </View> : null}
+        {shownBindings.some((binding) => binding.gone) ? <UiText style={styles.r21Muted}>{locale.t("aiMention.goneHint")}</UiText> : null}
+        <View style={styles.r21ComposerLine}><UiIconButton icon="plus" accessibilityLabel={locale.t("aiMention.add")} onPress={() => { if (picker) { setPicker(null); return; } setPlusQuery(""); setPicker({ caret: selection.current, kind: "plus" }); }} /><TextInput accessibilityLabel={locale.t("ai.message")} multiline={false} onChangeText={typeDraft} onSelectionChange={(event) => { selection.current = event.nativeEvent.selection.start; }} onSubmitEditing={() => { followNewMessages.current = true; setPicker(null); onSend(); }} placeholder={locale.t("aiConversation.continuePlaceholder")} placeholderTextColor={colors.ink3Text} returnKeyType="send" style={styles.r21Input} {...(tintMarks ? {} : { value: draftMessage })}>{tintMarks ? <MarkedDraft text={draftMessage} bindings={shownBindings} /> : null}</TextInput><UiIconButton icon="send" accessibilityLabel={locale.t("aiConversation.sendMessage")} onPress={() => { followNewMessages.current = true; setPicker(null); onSend(); }} disabled={sending || writingBlocked || !draftMessage.trim()} solid /></View>
       </View>
       <ActionSheet visible={routesOpen} title={locale.t("aiConversation.commonEntries")} onClose={() => setRoutesOpen(false)} options={conversationQuickRoutes(locale.language).map((route) => ({ key: route.href, label: route.title }))} onSelect={(key) => { setRoutesOpen(false); onOpenHref(key); }} />
     </AppScreen>
@@ -1179,6 +1394,42 @@ function QuickRouteDock({
             </Text>
           </Pressable>
         ))}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * agent-design AG07: one protocol-3 turn from its result document — progress while it runs (or the note that it waits
+ * for the one before), then the basis line, the answer without the part that stands for the card, the options under a
+ * question and the confirmation card. Offline the card shows only the count (D7: the answer text stays).
+ */
+function AgentV1Turn({ requestId, turns, online, pendingTargets, language, onOpenHref, gone }: { requestId: string; turns: AgentV1TurnsState; online: boolean; pendingTargets: readonly string[]; language: "en" | "ja" | "zh"; onOpenHref: (href: string) => void; gone: ReadonlySet<string> }) {
+  const { colors, styles } = useStyles();
+  const [picking, setPicking] = useState(false);
+  const document = turns.documents.get(requestId);
+  const fromDocument = document?.actionPreview;
+  const card = latestAgentCard(fromDocument, fromDocument ? turns.cards.get(fromDocument.actionId) : undefined);
+  const running = !document || document.status === "queued" || document.status === "running";
+  const text = document ? answerTextOf(document, Boolean(card)) : "";
+  // AG19: the answer in blocks (an older document has none and is shown as text, in the new type size).
+  const blocks = !running && document ? answerBlocksOf(document, Boolean(card)) : null;
+  const hasCards = Boolean(blocks?.some((block) => block.type === "records"));
+  return (
+    <View style={styles.r21Assistant} testID={`agent-turn-${requestId}`}>
+      <View style={styles.r21AssistantIcon}><UiIcon name="sparkle" size={16} color={colors.accentText} /></View>
+      <View style={styles.r21Message}>
+        {running ? <AgentProgress language={language} queued={document?.status === "queued"} /> : null}
+        {!running && document?.answer?.basis ? <AgentBasisLine basis={document.answer.basis} language={language} onOpenHref={onOpenHref} cardsBelow={hasCards} /> : null}
+        {/* AG14 (board 5, D4): the memory chips right after the basis chip. */}
+        {!running && document?.answer?.memoryUse?.length ? <AgentMemoryChips memoryUse={document.answer.memoryUse} language={language} onOpenHref={onOpenHref} /> : null}
+        {blocks ? <AgentAnswerBlocks blocks={blocks} gone={gone} language={language} onOpenHref={onOpenHref} /> : null}
+        {!running && !blocks && text ? <AgentAnswerText text={text} /> : null}
+        {!running && document?.clarifications?.length ? <AgentQuestionOptions clarifications={document.clarifications} language={language} disabled={picking || !online} onSelect={(set, optionId) => {
+          setPicking(true);
+          void turns.select(requestId, set.clarificationId, optionId).finally(() => setPicking(false));
+        }} /> : null}
+        {card ? <AgentConfirmationCard card={card} language={language} online={online} pendingTargets={pendingTargets} onDecide={(decision, operationId) => turns.decide(card, decision, operationId)} onRegenerate={() => turns.regenerate(card)} /> : null}
       </View>
     </View>
   );

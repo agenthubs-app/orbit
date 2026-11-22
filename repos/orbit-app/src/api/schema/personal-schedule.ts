@@ -5,7 +5,9 @@ const instant = z.string().datetime({ offset: true });
 const zone = text.max(100).refine(value => { try { new Intl.DateTimeFormat("en", { timeZone: value }).format(0); return true; } catch { return false; } }, "Invalid time zone");
 const meetingUrl = text.max(2_000).refine(value => { try { const url = new URL(value); return ["https:", "http:"].includes(url.protocol) && !!url.hostname && !url.username && !url.password; } catch { return false; } }, "Invalid meeting URL");
 const ids = z.array(text.max(300)).max(50).refine(value => new Set(value).size === value.length, "Duplicate association ID");
-const metadata = { allDay: z.boolean().optional(), timeZone: zone.optional(), meetingMethod: z.enum(["video", "in_person", "phone", "unspecified"]).optional(), meetingUrl: meetingUrl.optional(), contactIds: ids.optional(), noteIds: ids.optional() };
+// agent-design AG13: the events a schedule item is for (platform or the user's own private event), typed.
+const eventRefs = z.array(z.object({ kind: z.enum(["platform", "private"]), id: text.max(300) }).strict()).max(50).refine(value => new Set(value.map(ref => ref.kind + ":" + ref.id)).size === value.length, "Duplicate event reference");
+const metadata = { allDay: z.boolean().optional(), timeZone: zone.optional(), meetingMethod: z.enum(["video", "in_person", "phone", "unspecified"]).optional(), meetingUrl: meetingUrl.optional(), contactIds: ids.optional(), noteIds: ids.optional(), eventRefs: eventRefs.optional() };
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => { const parsed = new Date(`${value}T00:00:00Z`); return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value; }, "Invalid calendar date");
 export const personalScheduleRecurrenceSchema = z.object({ frequency: z.enum(["daily", "weekly", "monthly"]), until: date.optional() }).strict();
 const reminderMinutes = z.union([z.literal(0), z.literal(5), z.literal(15), z.literal(30), z.literal(60), z.literal(1440)]);
@@ -25,7 +27,7 @@ export const personalScheduleCreateSchema = z.object({
 }).strict();
 export const personalScheduleUpdateSchema = z.object({
   expectedUpdatedAt: instant, idempotencyKey: text.max(200), scope,
-  patch: z.object({ title: text.max(300).optional(), startsAt: instant.optional(), endsAt: instant.nullable().optional(), location: text.max(500).nullable().optional(), ...metadata, allDay: z.boolean().nullable().optional(), timeZone: zone.nullable().optional(), meetingMethod: metadata.meetingMethod.nullable(), meetingUrl: meetingUrl.nullable().optional(), contactIds: ids.nullable().optional(), noteIds: ids.nullable().optional(), recurrence: personalScheduleRecurrenceSchema.nullable().optional(), reminderMinutes: reminderMinutes.nullable().optional() }).strict().refine(value => Object.keys(value).length > 0),
+  patch: z.object({ title: text.max(300).optional(), startsAt: instant.optional(), endsAt: instant.nullable().optional(), location: text.max(500).nullable().optional(), ...metadata, allDay: z.boolean().nullable().optional(), timeZone: zone.nullable().optional(), meetingMethod: metadata.meetingMethod.nullable(), meetingUrl: meetingUrl.nullable().optional(), contactIds: ids.nullable().optional(), noteIds: ids.nullable().optional(), eventRefs: eventRefs.nullable().optional(), recurrence: personalScheduleRecurrenceSchema.nullable().optional(), reminderMinutes: reminderMinutes.nullable().optional() }).strict().refine(value => Object.keys(value).length > 0),
 }).strict();
 export const personalScheduleDeleteSchema = z.object({ expectedUpdatedAt: instant, idempotencyKey: text.max(200), scope }).strict();
 export type PersonalScheduleCreate = z.infer<typeof personalScheduleCreateSchema>;

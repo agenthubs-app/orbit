@@ -55,7 +55,6 @@ export function NotificationDeliverySettings({conversationId,compact=false}:{con
     {row('meeting',copy('meeting'),data.meetingException!==false,{meetingException:data.meetingException===false})}
    </Card>
    <Card title={copy('secretary')}><p className={s.hint}>{copy('secretaryHint')}</p></Card>
-   <p className={s.hint}>{copy('browser')}</p>
   </div>
   {error?<div role="alert" className={s.error}>{copy('unavailable')} <Button label={copy('refresh')} onClick={()=>setAttempt(v=>v+1)}/></div>:null}
  </div>;

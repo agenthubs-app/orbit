@@ -2,6 +2,7 @@ import { runEventOperationsMigrations } from "../../features/events/event-operat
 import { runEventSyncRevisionMigration } from "../../features/events/event-operations/storage/sync-revision";
 import { runRelationshipLifecycleMigrations } from "../../features/connections/lifecycle/migrations";
 import { runRelationshipMessageMigrations } from "../../features/relationship-communication/message-tables";
+import { AGENT_AUTOMATION_DUE_SCHEMA_SQL } from "../../features/agent/automations/due-index";
 
 export const ORBIT_RECORDS_SCHEMA_SQL = `
 create table if not exists orbit_records (
@@ -202,6 +203,27 @@ create table if not exists orbit_read_cost_alerts (
 );
 `;
 
+// agent-design AG13: private events and attendance notes («我去过») live in orbit_records (no new table). One note per
+// account and event (a deleted one does not count); and the reverse lookups a private event's deletion makes — which
+// to-dos, memos, schedule items and notes link to it — go by index, not by scanning the account's records.
+export const ORBIT_AGENT_V1_EVENTS_SCHEMA_SQL = `
+create unique index if not exists orbit_records_attendance_event_uidx
+  on orbit_records (workspace_id, user_id, (payload->'eventRef'->>'kind'), (payload->'eventRef'->>'id'))
+  where collection_name = 'event_attendance_notes' and lifecycle_state <> 'deleted';
+
+create index if not exists orbit_records_tasks_event_refs_idx
+  on orbit_records using gin ((payload->'task'->'relatedEventRefs') jsonb_path_ops)
+  where collection_name = 'tasks' and lifecycle_state <> 'deleted';
+
+create index if not exists orbit_records_notes_event_refs_idx
+  on orbit_records using gin ((payload->'note'->'eventRefs') jsonb_path_ops)
+  where collection_name = 'notes' and lifecycle_state <> 'deleted';
+
+create index if not exists orbit_records_schedule_event_refs_idx
+  on orbit_records using gin ((payload->'eventRefs') jsonb_path_ops)
+  where collection_name = 'personal_schedule_items' and lifecycle_state <> 'deleted';
+`;
+
 export interface OrbitRecordsMigrationClient {
   query: (text: string) => Promise<unknown>;
 }
@@ -219,4 +241,8 @@ export async function runOrbitRecordsMigration(
   await runRelationshipMessageMigrations(client);
   // Sprint 0113: sync_revision on the event head tables. Last, for the same reason.
   await runEventSyncRevisionMigration(client);
+  // agent-design AG13: the private-event and attendance indexes (repeatable). Last, so the earlier steps keep their order.
+  await client.query(ORBIT_AGENT_V1_EVENTS_SCHEMA_SQL);
+  // agent-design AG15: the cross-account due index of scheduled rules, deliveries and one-off timers (repeatable).
+  await client.query(AGENT_AUTOMATION_DUE_SCHEMA_SQL);
 }

@@ -66,6 +66,7 @@ const STATUS_LABELS: Record<AgentLedgerEntryStatusContract, string> = {
   completed: "已完成",
   deferred: "稍后处理",
   executing: "正在执行",
+  expired: "已过期",
   failed: "失败",
   partially_failed: "部分失败",
   rejected: "已忽略",
@@ -76,11 +77,14 @@ const OPERATION_STATUS_LABELS: Record<
   AgentLedgerOperationContractStatus,
   string
 > = {
+  abandoned: "已放弃",
   failed: "失败",
+  needs_review: "需要核对",
   pending: "待处理",
   skipped: "已跳过",
   succeeded: "成功",
-  undone: "已撤销"
+  undone: "已撤销",
+  user_confirmed: "已标为完成"
 };
 
 type AgentLedgerOperationContractStatus =
@@ -132,6 +136,7 @@ function allowedTransitions(
       return [TRANSITION_VIEWS.retry];
     case "canceled":
     case "executing":
+    case "expired":
     case "rejected":
     case "undone":
       return [];
@@ -201,6 +206,7 @@ function todaySection(
       return null;
     case "canceled":
     case "completed":
+    case "expired":
     case "failed":
     case "partially_failed":
     case "rejected":

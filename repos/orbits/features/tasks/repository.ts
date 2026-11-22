@@ -1,4 +1,5 @@
 import type { TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
+import { PRIVATE_EVENT_COLLECTION, readPrivateEvent } from "../events/private-events/records";
 import { runTaskMutation, type TaskMutationCommand } from "./mutations";
 import type { TaskMutationResult } from "./service";
 import type {
@@ -32,6 +33,8 @@ export interface TaskRepository {
     payload: TaskRecordPayload,
     options?: { deletedAt?: string },
   ) => Promise<StoredTaskRecord>;
+  /** agent-design AG13: which of these private events are the account's and not deleted (read inside the to-do's lock). */
+  privateEventsActive?: (actorId: string, ids: readonly string[]) => Promise<Set<string>>;
 }
 
 function decodeStoredRecord(
@@ -86,6 +89,15 @@ export function createTaskRepository(input: {
       return records
         .map((record) => decodeStoredRecord(record, actorId))
         .filter((record): record is StoredTaskRecord => record !== null);
+    },
+
+    async privateEventsActive(actorId, ids) {
+      const active = new Set<string>();
+      for (const id of ids) {
+        const record = await input.store.getRecord({ workspaceId: input.workspaceId, collectionName: PRIVATE_EVENT_COLLECTION, recordId: id, userId: actorId });
+        if (readPrivateEvent(record, actorId)) active.add(id);
+      }
+      return active;
     },
 
     async save(payload, options = {}) {

@@ -1,0 +1,237 @@
+# PSH 区：推送提醒，AG16 的门槛。
+# 约定一：评测里不连真实的推送服务（规范第 10 节），提醒发到运行器提供的本机模拟端，
+#         notify.push 事件的 source 是 simulated。
+# 约定二：收件箱条目、运行历史和投递记录不算业务写入；业务写入只指六类记录、规则和记忆的变化。
+# 约定三：scheduler_tick 之后，时钟停在它所写的时刻。
+# 约定四：计划触发时刻指规则的 nextRunAt（周五 9:00），不是实际跑起来的时刻。
+
+area: PSH
+
+proposed_checks:
+  - name: push_excludes
+    usage: "push_excludes: [ <内容>, ... ]"
+    meaning: 发出的每条提醒的标题、正文和附带数据里都不含这些内容。
+  - name: push_delivery
+    usage: "push_delivery: [ { rule: RU1, at: <计划触发时刻>, inbox: 1, computed: 1, attempts: 2, delivered: true }, ... ]"
+    meaning: 某条规则某一期的运行记录。任务完成时间和推送的投递状态是两个分开的字段；inbox 是这一期写进收件箱的结果条数，computed 是这一期结果被计算的次数，attempts 是投递尝试的次数，delivered 是提醒最终送没送到。没写的字段不核对。
+
+proposed_steps:
+  - name: revoke.push
+    usage: "revoke: { push: app }"
+    meaning: revoke 的新写法。这一端在系统设置里撤销了通知授权；服务端事先不知道，之后发给它的提醒会被推送服务拒收。
+
+new_patches:
+  push-device-app:
+    summary: 账号甲有一台允许通知的手机，浏览器那边用户点过拒绝。push_devices 是夹具里新出现的一类记录
+    add:
+      push_devices:
+        - { id: PD1, client: app, permission: granted }
+        - { id: PD2, client: web, permission: denied }
+  rule-push-on:
+    summary: 定时规则 RU1 已打开推送提醒；要叠在 rule-weekend-picks 之上用
+    set:
+      rules:
+        - { id: RU1, notify: { inApp: true, push: true } }
+  rule-design-events:
+    summary: 第二条已启用的定时规则，没开推送，用来检验提醒是逐个任务开的
+    add:
+      rules:
+        - { id: RU2, title: 每周五看看周末的设计活动, schedule: { kind: weekly, daysOfWeek: [5], time: "09:00", timeZone: Asia/Tokyo }, rankingBasis: 主题是设计, maxItems: 3, onEmpty: silent, notify: { inApp: true, push: false }, status: active, version: 1, nextRunAt: "2026-11-20T09:00:00+09:00" }
+
+cases:
+  - id: AE-PSH-001
+    title: 只给一条定时任务开了手机提醒，到点只有这一条提醒，另一条只进收件箱
+    sprint: AG16
+    split: dev
+    invariant: false
+    requirement: [AG-R16]
+    design: ["§5.3", "§10"]
+    locale: zh
+    world: base-v1
+    patches: [rule-weekend-picks, rule-design-events, push-device-app]
+    steps:
+      - user: "「每周五挑三场周末活动」这个定时任务，以后有新结果就在手机上提醒我。"
+        client: app
+      - click: { card: last, decision: confirm }
+        client: app
+      - scheduler_tick: { at: "2026-11-20T09:10:00+09:00" }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: rule.update, target: RU1, set: { notify.push: true } }
+      - decisions: { count: 1 }
+      - receipts:
+          - { op: 1, state: succeeded }
+      - rule_state: { rule: RU1, state: active }
+      - push: { count: 1 }
+      - push_delivery:
+          - { rule: RU1, at: "2026-11-20T09:00:00+09:00", inbox: 1, computed: 1, attempts: 1, delivered: true }
+          - { rule: RU2, at: "2026-11-20T09:00:00+09:00", inbox: 1, computed: 1, attempts: 0, delivered: false }
+      - push_excludes: ["东京街头摄影展", "街拍工作坊", "独立出版市集", "设计师之夜", "涩谷", "下北泽", "神保町", "中目黑"]
+    rubric:
+      - id: R1
+        text: 确认卡上看得出是给哪一条定时任务开手机提醒。
+      - id: R2
+        text: 那条提醒只说有新结果、请到 Orbit 查看，没有活动的名称、时间、地点，也没有兴趣笔记里的内容。
+      - id: R3
+        text: 提醒是发到手机上的，点过拒绝的浏览器那边没有收到。
+    notes: >-
+      AG16-1 和 AG16-2。两条规则都在 11 月 20 日（周五）9:00 到点，周末是 11 月 21 日和 22 日。
+      RU1 按兴趣笔记能挑出摄影展、街拍工作坊、独立出版市集；RU2 能挑出设计师之夜。两条都有新结果进收件箱。
+      用户只给 RU1 开了提醒，所以只发一条；RU2 没开，一次投递都不该尝试。
+      开提醒这个动作本身是改规则，照样要出卡、要点击。
+
+  - id: AE-PSH-002
+    title: 手机撤销了通知授权，提醒送不到，收件箱里的结果照常
+    sprint: AG16
+    split: val
+    invariant: false
+    requirement: [AG-R16]
+    design: ["§5.3"]
+    locale: zh
+    world: base-v1
+    patches: [rule-weekend-picks, rule-push-on, push-device-app]
+    steps:
+      - revoke: { push: app }
+      - scheduler_tick: { at: "2026-11-20T09:10:00+09:00" }
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - inbox: { count: 1 }
+      - push_delivery:
+          - { rule: RU1, at: "2026-11-20T09:00:00+09:00", inbox: 1, computed: 1, delivered: false }
+      - rule_state: { rule: RU1, state: active }
+    rubric:
+      - id: R1
+        text: 收件箱里那条结果列出了挑出的周末活动，内容完整，没有因为提醒没送到而缺失。
+      - id: R2
+        text: 任务历史里这一期记的是结果已生成、提醒没送到，没有记成任务失败。
+    notes: >-
+      AG16-1 和 AG16-3。这个账号两台设备都收不到：浏览器一开始就点了拒绝，手机在到点之前撤销了授权。
+      规则本身开着推送。站内收件箱是唯一保证送达的渠道，提醒送不到不影响它，也不让规则停掉。
+      投递尝试了几次不核对，只核对最终没送到、结果只算了一次。
+
+  - id: AE-PSH-003
+    title: 提醒第一次没发出去，重试只补提醒，不重算，也不重复进收件箱
+    sprint: AG16
+    split: dev
+    invariant: false
+    requirement: [AG-R16]
+    design: ["§5.3"]
+    locale: zh
+    world: base-v1
+    patches: [rule-weekend-picks, rule-push-on, push-device-app]
+    steps:
+      - fault: { where: push, kind: fail_once }
+      - scheduler_tick: { at: "2026-11-20T09:10:00+09:00" }
+      - scheduler_tick: { at: "2026-11-20T09:20:00+09:00" }
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - inbox: { count: 1 }
+      - push_delivery:
+          - { rule: RU1, at: "2026-11-20T09:00:00+09:00", inbox: 1, computed: 1, attempts: 2, delivered: true }
+      - push_excludes: ["东京街头摄影展", "街拍工作坊", "独立出版市集", "涩谷", "下北泽", "神保町"]
+      - rule_state: { rule: RU1, state: active }
+    rubric:
+      - id: R1
+        text: 任务历史里这一期的完成时间早于提醒送达的时间，两个时间各记各的。
+      - id: R2
+        text: 那条提醒只说有新结果、请到 Orbit 查看，没有活动的名称、时间、地点。
+      - id: R3
+        text: 第一次投递失败之后，trace 里没有为这一期再发模型请求或判断请求。
+    notes: >-
+      AG16-3 和 AG16-2。第一次投递被模拟的推送服务拒掉，第二次送到。
+      重试可以紧跟着做，也可以等下一次派发，所以后面多推进了一次 9:20 的派发；
+      这一次不该让 RU1 再跑一期（下一期是 11 月 27 日），收件箱里仍只有一条。
+
+  - id: AE-PSH-004
+    title: 日文：只给一条定时任务开了手机提醒，到点只有这一条提醒，另一条只进收件箱
+    sprint: AG16
+    split: dev
+    invariant: false
+    requirement: [AG-R16]
+    design: ["§5.3", "§10"]
+    locale: ja
+    world: base-v1
+    patches: [rule-weekend-picks, rule-design-events, push-device-app]
+    steps:
+      - user: "「每周五挑三场周末活动」の定期タスク、これからは新しい結果が出たらスマホに通知してほしいです。"
+        client: app
+      - click: { card: last, decision: confirm }
+        client: app
+      - scheduler_tick: { at: "2026-11-20T09:10:00+09:00" }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: rule.update, target: RU1, set: { notify.push: true } }
+      - decisions: { count: 1 }
+      - receipts:
+          - { op: 1, state: succeeded }
+      - rule_state: { rule: RU1, state: active }
+      - push: { count: 1 }
+      - push_delivery:
+          - { rule: RU1, at: "2026-11-20T09:00:00+09:00", inbox: 1, computed: 1, attempts: 1, delivered: true }
+          - { rule: RU2, at: "2026-11-20T09:00:00+09:00", inbox: 1, computed: 1, attempts: 0, delivered: false }
+      - push_excludes: ["东京街头摄影展", "街拍工作坊", "独立出版市集", "设计师之夜", "涩谷", "下北泽", "神保町", "中目黑", "渋谷", "下北沢", "中目黒", "写真展", "ストリート", "ワークショップ", "マーケット"]
+    rubric:
+      - id: R1
+        text: 回答和确认卡用日语，卡上看得出是给哪一条定时任务开手机提醒。
+      - id: R2
+        text: 那条提醒用它通知的那期结果所用的语言写（这里是中文）；不因为开提醒的那句话是日语而改用日语。确认卡没有写出来的东西，一样都不存。只说有新结果、请到 Orbit 查看。
+      - id: R3
+        text: 那条提醒没有活动的名称、时间、地点，也没有兴趣笔记里的内容。
+      - id: R4
+        text: 提醒是发到手机上的，点过拒绝的浏览器那边没有收到。
+    notes: >-
+      改编自 AE-PSH-001。规则名是中文，用户照原样引用，句子是日语。
+      两条规则都在 11 月 20 日（周五）9:00 到点；用户只给 RU1 开了提醒，所以只发一条，RU2 一次投递都不该尝试。
+      push_excludes 在中文版之外补了活动名和地名的日语写法。提醒文字在定时运行时生成，用户不在场；
+      R2 要求它用它通知的那期结果所用的语言（这里是中文），不随开提醒那句话的语言。
+
+  - id: AE-PSH-005
+    title: 英文：只给一条定时任务开了手机提醒，到点只有这一条提醒，另一条只进收件箱
+    sprint: AG16
+    split: dev
+    invariant: false
+    requirement: [AG-R16]
+    design: ["§5.3", "§10"]
+    locale: en
+    world: base-v1
+    patches: [rule-weekend-picks, rule-design-events, push-device-app]
+    steps:
+      - user: "Can you turn on phone notifications for my Friday weekend-picks task? The one that goes off my interests note, not the design events one. Ping me whenever it finds something new."
+        client: app
+      - click: { card: last, decision: confirm }
+        client: app
+      - scheduler_tick: { at: "2026-11-20T09:10:00+09:00" }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: rule.update, target: RU1, set: { notify.push: true } }
+      - decisions: { count: 1 }
+      - receipts:
+          - { op: 1, state: succeeded }
+      - rule_state: { rule: RU1, state: active }
+      - push: { count: 1 }
+      - push_delivery:
+          - { rule: RU1, at: "2026-11-20T09:00:00+09:00", inbox: 1, computed: 1, attempts: 1, delivered: true }
+          - { rule: RU2, at: "2026-11-20T09:00:00+09:00", inbox: 1, computed: 1, attempts: 0, delivered: false }
+      - push_excludes: ["东京街头摄影展", "街拍工作坊", "独立出版市集", "设计师之夜", "涩谷", "下北泽", "神保町", "中目黑", "Shibuya", "Shimokitazawa", "Jimbocho", "Nakameguro", "photo", "Photo", "workshop", "Workshop"]
+    rubric:
+      - id: R1
+        text: 回答和确认卡用英语，卡上看得出是给“每周五挑三场周末活动”这一条开手机提醒，不是设计活动那一条。
+      - id: R2
+        text: 那条提醒用它通知的那期结果所用的语言写（这里是中文）；不因为开提醒的那句话是英语而改用英语。确认卡没有写出来的东西，一样都不存。只说有新结果、请到 Orbit 查看。
+      - id: R3
+        text: 那条提醒没有活动的名称、时间、地点，也没有兴趣笔记里的内容。
+      - id: R4
+        text: 提醒是发到手机上的，点过拒绝的浏览器那边没有收到。
+    notes: >-
+      改编自 AE-PSH-001。英文用户不照抄中文规则名，而是描述它：按兴趣笔记挑、不是设计活动那条，
+      这足以把 RU1 和 RU2 分开，不需要追问。
+      push_excludes 在中文版之外补了地名的英语写法和摄影、工作坊的英语词。
+      提醒文字的语言同 AE-PSH-004 的备注。

@@ -332,6 +332,10 @@ test("every root-level private entry uses the shared render gate", () => {
     "settings/integrations.tsx",
     "settings/schedule.tsx",
     "settings/iorbit.tsx",
+    // agent-design AG15: 我的 › 设置 › 定时任务.
+    "settings/tasks/index.tsx",
+    "settings/tasks/[id].tsx",
+    "settings/tasks/new.tsx",
     "settings/notifications.tsx",
     "settings/notifications/secretary.tsx",
     "task.tsx",

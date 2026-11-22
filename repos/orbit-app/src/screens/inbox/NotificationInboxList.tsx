@@ -6,6 +6,9 @@ import { CategoryTabs, EmptyState, ListRow, SwipeRow, UiText, Button, type Swipe
 import { useOrbitTheme } from '../../design/theme';
 import { useOrbitLocale } from '../../i18n/OrbitLocaleContext';
 import { SHELL_GUTTER } from '../../components/ShellTopBar';
+import { useEffect, useRef } from 'react';
+import type { AgentActionPreviewContract } from '../../api/contract/agent-v1';
+import { AgentInboxRow, agentEntryKind, waitsForClick } from './AgentInboxEntries';
 
 export const notificationKindIcons: Record<InboxNotificationKind, 'time-outline' | 'sparkles-outline' | 'swap-horizontal-outline'> = {
   reminder: 'time-outline', suggestion: 'sparkles-outline', update: 'swap-horizontal-outline',
@@ -13,7 +16,7 @@ export const notificationKindIcons: Record<InboxNotificationKind, 'time-outline'
 
 export type NotificationFilter = 'all' | 'secretary' | InboxNotificationKind | 'history';
 
-export function NotificationInboxList({ data, onOpen, onMore, onRefresh, onFilter, onAction, filter, busy, error, timeZone }: {
+export function NotificationInboxList({ data, onOpen, onMore, onRefresh, onFilter, onAction, filter, busy, error, timeZone, cardStates, openId }: {
   data: InboxNotificationListDTO;
   onOpen: (item: InboxNotificationDTO) => void;
   onMore: () => void;
@@ -24,6 +27,10 @@ export function NotificationInboxList({ data, onOpen, onMore, onRefresh, onFilte
   busy: boolean;
   error: string;
   timeZone?: string;
+  /** AG15 (D15-4): the cards behind card entries, to group those still waiting on top of 「全部」. */
+  cardStates?: ReadonlyMap<string, AgentActionPreviewContract | null> | null;
+  /** AG15: `open=<run or card id>` — open that entry once the list has it (「看结果」 on a task's page). */
+  openId?: string | null;
 }) {
   const { colors } = useOrbitTheme();
   const { t, language } = useOrbitLocale();
@@ -32,6 +39,16 @@ export function NotificationInboxList({ data, onOpen, onMore, onRefresh, onFilte
     .map(key => ({ key, label: t(`typedInbox.${key}`) }));
   let previousDay = '';
   const zone = notificationDisplayZone(timeZone);
+  const waiting = filter === 'all' ? data.items.filter(item => waitsForClick(item, cardStates ?? new Map())) : [];
+  const rest = data.items.filter(item => !waiting.includes(item));
+  const opened = useRef<string | null>(null);
+  useEffect(() => {
+    if (!openId || opened.current === openId) return;
+    const match = data.items.find(item => item.sources[0]?.sourceId === openId || item.target.id === openId);
+    if (match) { opened.current = openId; onOpen(match); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId, data.items]);
+  const timeOf = (item: InboxNotificationDTO) => new Date(item.occurredAt).toLocaleTimeString(language, { timeZone: zone, hour: '2-digit', minute: '2-digit' });
   return <View style={styles.container}>
     {/* Six filters never fit one row on a phone: one horizontally scrolling row (bleeds to the screen edges) instead of wrapping. */}
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filters} contentContainerStyle={styles.filtersContent}>
@@ -39,7 +56,8 @@ export function NotificationInboxList({ data, onOpen, onMore, onRefresh, onFilte
     </ScrollView>
     {error ? <View><UiText accessibilityRole="alert" style={{ color: colors.ink }}>{error}</UiText><Button label={t('common.retry')} onPress={onRefresh} variant="secondary" /></View> : null}
     {!data.items.length ? <EmptyState title={t('typedInbox.empty')} /> : null}
-    {data.items.map(item => {
+    {waiting.length ? <View testID="agent-waiting-group"><UiText style={[styles.day, { color: colors.ink3Text }]}>{t('scheduledTasks.group', { n: waiting.length })}</UiText>{waiting.map(item => <AgentInboxRow key={item.id} n={item} waiting time={timeOf(item)} onOpen={() => onOpen(item)} />)}</View> : null}
+    {rest.map(item => {
       const day = new Date(item.occurredAt).toLocaleDateString(language, { timeZone: zone, month: 'long', day: 'numeric' });
       const dayKey = notificationLocalDay(item.occurredAt, zone);
       const heading = dayKey !== previousDay;
@@ -59,9 +77,11 @@ export function NotificationInboxList({ data, onOpen, onMore, onRefresh, onFilte
         leading={<View style={[styles.icon, { backgroundColor: colors.surface2 }]}><UiText>{kind ? '✦' : item.kind === 'reminder' ? '◷' : item.kind === 'suggestion' ? '✧' : '↗'}</UiText></View>}
         titleAddon={!item.readAt && item.disposition === 'open' ? <View accessibilityLabel={t('typedInbox.unreadState')} style={[styles.dot, { backgroundColor: colors.accentText }]} /> : undefined}
         trailing={fontScale <= 1.2 ? <UiText style={{ color: colors.ink3Text, fontSize: 13 }}>{new Date(item.occurredAt).toLocaleTimeString(language, { timeZone: zone, hour: '2-digit', minute: '2-digit' })}</UiText> : undefined} />;
+      // AG15 (15-5): an entry Orbit's own agent wrote has its own row (tag and the task's name).
+      const agentRow = agentEntryKind(item) ? <AgentInboxRow n={item} waiting={waitsForClick(item, cardStates ?? new Map())} time={timeOf(item)} onOpen={() => onOpen(item)} /> : null;
       return <View key={item.id}>
         {heading ? <UiText style={[styles.day, { color: colors.ink3Text }]}>{day}</UiText> : null}
-        {actions.length ? <SwipeRow actions={actions}>{row}</SwipeRow> : row}
+        {agentRow ?? (actions.length ? <SwipeRow actions={actions}>{row}</SwipeRow> : row)}
       </View>;
     })}
     {data.nextCursor ? <Button label={t('typedInbox.more')} disabled={busy} onPress={onMore} variant="secondary" /> : null}

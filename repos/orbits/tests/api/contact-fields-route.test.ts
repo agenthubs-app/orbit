@@ -27,3 +27,23 @@ test("R11a: editing name / company / title / email goes through the field writer
   assert.equal((await handler(request({ values: { displayName: null } }), context("c1"))).status, 400);
   assert.equal((await handler(request({ values: { role: "x" } }), context("gone"))).status, 404);
 });
+
+test("AG12-2: an optional expected version goes to the field writer; a stale one is 409; the result carries the new version; old clients unchanged", async () => {
+  const calls: unknown[] = [];
+  const handler = createContactFieldsPatchHandler({ resolveActor: async () => actor, update: async (_actorId, contactId, input) => {
+    calls.push(input);
+    if (input.expectedVersion === 2) throw new ContactFieldWriteError("CONFLICT", "The contact changed since it was read.");
+    return { contactId, changed: ["role"], updatedAt: "2026-11-18T00:00:00.000Z", version: 4 };
+  } });
+  const ok = await handler(request({ expectedVersion: 3, values: { role: "采购部长" } }), context("c1"));
+  assert.equal(ok.status, 200);
+  assert.equal((await ok.json()).data.version, 4);
+  assert.deepEqual(calls[0], { expectedVersion: 3, values: { role: "采购部长" } });
+  const stale = await handler(request({ expectedVersion: 2, values: { role: "x" } }), context("c1"));
+  assert.equal(stale.status, 409);
+  assert.equal((await handler(request({ expectedVersion: -1, values: { role: "x" } }), context("c1"))).status, 400);
+  assert.equal((await handler(request({ expectedVersion: 1.5, values: { role: "x" } }), context("c1"))).status, 400);
+  // An old client sends no expected version: the writer gets none (it re-reads and retries as before).
+  await handler(request({ values: { role: "y" } }), context("c1"));
+  assert.deepEqual(calls.at(-1), { values: { role: "y" } });
+});

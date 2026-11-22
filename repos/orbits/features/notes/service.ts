@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
+import { uniqueRefs } from "../tasks/task-links";
 import { isDeepStrictEqual } from "node:util";
 
-import type { NoteMentionContract } from "../../shared/contract/notes";
+import type { NoteInteractionContract, NoteMentionContract } from "../../shared/contract/notes";
 import type { NoteDTO, NoteOperationKind, NoteOperationReceipt, NoteRecordPayload } from "./contract";
+import { readNoteInteraction } from "./interaction";
 import type { NoteRepository } from "./repository";
 
 export type NoteServiceErrorCode =
@@ -69,6 +71,13 @@ export interface NoteCreateInput {
   usedForPlan?: boolean;
   idempotencyKey: string;
   now: string;
+  /**
+   * agent-design AG06 (设计稿附录 E): the actual interaction the memo records. Its actualContactIds must be
+   * among the memo's contactIds (checked here with readNoteInteraction; an invalid one is refused).
+   */
+  interaction?: NoteInteractionContract;
+  /** AG06: the old automatic extraction must not run on this memo (persisted on it). */
+  autoExtraction?: "suppressed";
   /** Called only after a new write commits; derived work must not affect the note response. */
   onPersisted?: (note: NoteDTO) => void;
 }
@@ -82,8 +91,19 @@ export interface NoteUpdateInput {
   manualContactIds?: readonly string[];
   mentions?: readonly NoteMentionContract[];
   eventIds?: readonly string[];
+  /**
+   * agent-design AG13: the memo's typed event links as a whole. A private event may only be removed here (unlinking a
+   * deleted or to-be-deleted event); `eventIds` follows the platform ones.
+   */
+  eventRefs?: readonly { kind: "platform" | "private"; id: string }[];
   noteKind?: "free" | "meeting" | "voice";
   usedForPlan?: boolean;
+  /**
+   * agent-design AG10 (设计稿附录 E, §3.5 从笔记到联系人往来): the actual interaction this memo records, written on an
+   * existing memo after a confirmed card. Its actualContactIds must be among the memo's contactIds (readNoteInteraction).
+   * Writing it also marks the memo `autoExtraction: "suppressed"` (the old automatic extraction must not run on it).
+   */
+  interaction?: NoteInteractionContract;
   expectedVersion: number;
   idempotencyKey: string;
   now: string;
@@ -326,7 +346,11 @@ export function createNoteService(input: { repository: NoteRepository; associati
       const nextNoteKind = noteKind(createInput.noteKind);
       const nextUsedForPlan = usedForPlan(createInput.usedForPlan);
       const noteId = stableId(createInput.actorId, createInput.idempotencyKey);
-      const operationFingerprint = fingerprint({ title, body, manualContactIds, mentions, eventIds, noteKind: nextNoteKind, usedForPlan: nextUsedForPlan });
+      // AG06 (附录 E): an interaction is kept only when well formed with its actual contacts among the memo's.
+      const interaction = createInput.interaction === undefined ? undefined : readNoteInteraction(createInput.interaction, contactIds);
+      if (createInput.interaction !== undefined && !interaction) throw new NoteServiceError("NOTE_INVALID_INPUT", "interaction is invalid: actualContactIds must be among the memo's contactIds, with a known channel, direction and date");
+      const suppressed = createInput.autoExtraction === "suppressed";
+      const operationFingerprint = fingerprint({ title, body, manualContactIds, mentions, eventIds, noteKind: nextNoteKind, usedForPlan: nextUsedForPlan, ...(interaction ? { interaction } : {}), ...(suppressed ? { autoExtraction: "suppressed" } : {}) });
       return withMutationLock(`${createInput.actorId}\u0000${noteId}`, async () => {
         // Sprint 0142: a committed create is answered from its receipt before
         // access checks, so a lost receipt followed by a revoked event or
@@ -349,6 +373,8 @@ export function createNoteService(input: { repository: NoteRepository; associati
           eventIds,
           ...(nextNoteKind === undefined ? {} : { noteKind: nextNoteKind }),
           ...(nextUsedForPlan === undefined ? {} : { usedForPlan: nextUsedForPlan }),
+          ...(interaction ? { interaction } : {}),
+          ...(suppressed ? { autoExtraction: "suppressed" as const } : {}),
           version: 1,
           createdAt: createInput.now,
           updatedAt: createInput.now,
@@ -371,7 +397,7 @@ export function createNoteService(input: { repository: NoteRepository; associati
     },
     async update(updateInput) {
       const body = updateInput.body === undefined ? undefined : normalizedBody(updateInput.body);
-      if (body === undefined && updateInput.title === undefined && updateInput.contactIds === undefined && updateInput.manualContactIds === undefined && updateInput.mentions === undefined && updateInput.eventIds === undefined && updateInput.noteKind === undefined && updateInput.usedForPlan === undefined) throw new NoteServiceError("NOTE_INVALID_INPUT", "At least one note field is required");
+      if (body === undefined && updateInput.title === undefined && updateInput.contactIds === undefined && updateInput.manualContactIds === undefined && updateInput.mentions === undefined && updateInput.eventIds === undefined && updateInput.eventRefs === undefined && updateInput.noteKind === undefined && updateInput.usedForPlan === undefined && updateInput.interaction === undefined) throw new NoteServiceError("NOTE_INVALID_INPUT", "At least one note field is required");
       return withMutationLock(`${updateInput.actorId}\u0000${updateInput.noteId}`, async () => {
         const stored = requirePayload(await input.repository.get(updateInput.actorId, updateInput.noteId), updateInput.noteId);
         const nextBody = body ?? stored.note.body;
@@ -382,11 +408,22 @@ export function createNoteService(input: { repository: NoteRepository; associati
             ? normalizedIds(updateInput.contactIds)
             : [...stored.note.manualContactIds];
         const mentions = normalizedMentions(updateInput.mentions ?? stored.note.mentions, nextBody, stored.note.mentions);
-        const eventIds = canonicalEventIds(updateInput.eventIds === undefined ? stored.note.eventIds : normalizedIds(updateInput.eventIds), mentions);
+        // AG13: typed links. Given as a whole, the platform ones become eventIds; a private one can only be removed.
+        const storedRefs = stored.note.eventRefs ?? stored.note.eventIds.map((id) => ({ id, kind: "platform" as const }));
+        if (updateInput.eventRefs?.some((ref) => ref.kind === "private" && !storedRefs.some((old) => old.kind === "private" && old.id === ref.id))) throw new NoteServiceError("NOTE_INVALID_INPUT", "A private event can be linked to a memo only by the Agent's card; it can be removed here");
+        const eventRefs = updateInput.eventRefs !== undefined
+          ? uniqueRefs(updateInput.eventRefs)
+          : stored.note.eventRefs && updateInput.eventIds !== undefined
+            ? [...stored.note.eventRefs.filter((ref) => ref.kind === "private"), ...normalizedIds(updateInput.eventIds).map((id) => ({ id, kind: "platform" as const }))]
+            : stored.note.eventRefs;
+        const eventIds = canonicalEventIds(updateInput.eventRefs !== undefined ? eventRefs!.filter((ref) => ref.kind === "platform").map((ref) => ref.id) : updateInput.eventIds === undefined ? stored.note.eventIds : normalizedIds(updateInput.eventIds), mentions);
         const contactIds = canonicalContactIds(manualContactIds, mentions);
         const nextNoteKind = noteKind(updateInput.noteKind);
         const nextUsedForPlan = usedForPlan(updateInput.usedForPlan);
-        const operationFingerprint = fingerprint({ title: updateInput.title, body, contactIds: updateInput.contactIds, manualContactIds: updateInput.manualContactIds, mentions: updateInput.mentions, eventIds: updateInput.eventIds, noteKind: nextNoteKind, usedForPlan: nextUsedForPlan, expectedVersion: updateInput.expectedVersion });
+        // AG10: an interaction is kept only when well formed with its actual contacts among the memo's (as for create).
+        const interaction = updateInput.interaction === undefined ? undefined : readNoteInteraction(updateInput.interaction, contactIds);
+        if (updateInput.interaction !== undefined && !interaction) throw new NoteServiceError("NOTE_INVALID_INPUT", "interaction is invalid: actualContactIds must be among the memo's contactIds, with a known channel, direction and date");
+        const operationFingerprint = fingerprint({ title: updateInput.title, body, contactIds: updateInput.contactIds, manualContactIds: updateInput.manualContactIds, mentions: updateInput.mentions, eventIds: updateInput.eventIds, ...(updateInput.eventRefs !== undefined ? { eventRefs: updateInput.eventRefs } : {}), noteKind: nextNoteKind, usedForPlan: nextUsedForPlan, expectedVersion: updateInput.expectedVersion, ...(interaction ? { interaction } : {}) });
         // Sprint 0142: the receipt is checked before access, as for create.
         const replay = checkReplay(stored, { idempotencyKey: updateInput.idempotencyKey, kind: "update", fingerprint: operationFingerprint });
         if (replay) return replay;
@@ -404,8 +441,10 @@ export function createNoteService(input: { repository: NoteRepository; associati
           mentions,
           contactIds,
           eventIds,
+          ...(eventRefs ? { eventRefs } : {}),
           ...(nextNoteKind === undefined ? {} : { noteKind: nextNoteKind }),
           ...(nextUsedForPlan === undefined ? {} : { usedForPlan: nextUsedForPlan }),
+          ...(interaction ? { autoExtraction: "suppressed" as const, interaction } : {}),
           version: stored.note.version + 1,
           updatedAt: updateInput.now,
         };

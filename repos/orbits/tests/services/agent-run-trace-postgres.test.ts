@@ -121,7 +121,7 @@ function conversationRoute(actorId: string, proposedActionRequests: readonly unk
   };
   const real = [
     "/reliable-send-service", "/orbit-agent-chat-request-store", "/orbit-agent-chat-session-provider-factory",
-    "/orbit-agent-chat-session-live-record-provider", "/ai-session-reference-authorization", "/entity-drafts/contract",
+    "/orbit-agent-chat-session-live-record-provider", "/ai-session-reference-authorization", "/entity-drafts/contract", "/agent-v1/entry/mode",
     "/conversation-runtime-links", "/natural-language-actions/service",
   ];
   return loadRoute<{ POST: (request: Request) => Promise<Response> }>("../../app/api/ai/conversations/route.ts", boundaries, real).POST;

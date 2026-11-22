@@ -186,6 +186,10 @@ const integratedFeatureRoutes = [
   "/settings/notifications/secretary",
   "/settings/integrations",
   "/settings/iorbit",
+  // agent-design AG15: 我的 › 设置 › 定时任务.
+  "/settings/tasks",
+  "/settings/tasks/[id]",
+  "/settings/tasks/new",
   "/plans/flow/[intakeId]",
   "/plans/drafts/[draftId]/edit",
   "/plans/[planId]/types/[itemId]",
