@@ -252,6 +252,9 @@ function onlyAbout(message: string, patterns: readonly RegExp[], item: Item | nu
 const WORDS: Record<CardLocale, {
   dropped: (name: string, before: string, after: string) => string;
   changed: (name: string, before: string, after: string) => string;
+  /** The card's summary did not change: what changed on the item (its rows' labels and new values), or only that it changed. */
+  changedTo: (name: string, rows: { label: string; value: string }[]) => string;
+  droppedOnly: (name: string) => string;
   scope: (name: string, before: string, after: string) => string;
   already: (name: string, scope: string) => string;
   which: (names: string[]) => string;
@@ -270,6 +273,8 @@ const WORDS: Record<CardLocale, {
     needed: (name, others) => `${others.map((other) => `"${other}"`).join(", ")} on the card waits for "${name}", so "${name}" was not taken off alone. Reject the card and ask again if you want neither.`,
     already: (name, scope) => `The card already says "${name}": ${scope}. Nothing was changed; it still needs your click.`,
     changed: (name, before, after) => `OK — "${name}" is changed on the card. The card went from "${before}" to "${after}"; nothing is done until you confirm it.`,
+    changedTo: (name, rows) => (rows.length ? `OK — on the card, "${name}" now has ${rows.map((row) => `${row.label.toLowerCase()} ${row.value}`).join(", ")}. Nothing is done until you confirm it.` : `OK — "${name}" is changed on the card. Nothing is done until you confirm it.`),
+    droppedOnly: (name) => `OK — "${name}" is off the card. Nothing is done until you confirm it.`,
     closed: "That card is no longer waiting for a click, so it was not changed.",
     dropped: (name, before, after) => `OK — "${name}" is off the card. The card went from "${before}" to "${after}"; nothing is done until you confirm it.`,
     last: (name) => `"${name}" is the only item on the card. If you don't want it, reject the card; nothing is done without a click.`,
@@ -287,6 +292,8 @@ const WORDS: Record<CardLocale, {
     needed: (name, others) => `カードの${others.map((other) => `「${other}」`).join("・")}は「${name}」を前提にしているため、「${name}」だけを外すことはしていません。どちらも不要ならカードを却下してから、もう一度お伝えください。`,
     already: (name, scope) => `カードの「${name}」はすでに「${scope}」になっています。変更はありません。確認を押すまで実行しません。`,
     changed: (name, before, after) => `「${name}」をカード上で変更しました。カードは「${before}」から「${after}」になりました。確認を押すまで実行しません。`,
+    changedTo: (name, rows) => (rows.length ? `カードの「${name}」の${rows.map((row) => `${row.label}を${row.value}`).join("、")}に変更しました。確認を押すまで実行しません。` : `「${name}」をカード上で変更しました。確認を押すまで実行しません。`),
+    droppedOnly: (name) => `「${name}」をカードから外しました。確認を押すまで実行しません。`,
     closed: "そのカードはもう確認待ちではないため、変更していません。",
     dropped: (name, before, after) => `「${name}」をカードから外しました。カードは「${before}」から「${after}」になりました。確認を押すまで実行しません。`,
     last: (name) => `カードに残っているのは「${name}」だけです。不要ならカードごと却下してください。押さない限り何も実行しません。`,
@@ -304,6 +311,8 @@ const WORDS: Record<CardLocale, {
     needed: (name, others) => `卡上的${others.map((other) => `「${other}」`).join("、")}要等「${name}」先做成，所以没有单独去掉「${name}」。两项都不要的话，请否决整张卡再重新说。`,
     already: (name, scope) => `卡上的「${name}」已经是「${scope}」了，这次没有改动；点确认之前不会执行。`,
     changed: (name, before, after) => `好的，卡上的「${name}」已改。卡片从「${before}」更新为「${after}」，点确认之前不会执行。`,
+    changedTo: (name, rows) => (rows.length ? `好的，卡上的「${name}」${rows.map((row) => `${row.label}改到${row.value}`).join("，")}。点确认之前不会执行。` : `好的，卡上的「${name}」已改，点确认之前不会执行。`),
+    droppedOnly: (name) => `好的，已从卡上去掉「${name}」，点确认之前不会执行。`,
     closed: "这张卡已经不在等确认了，所以没有改它。",
     dropped: (name, before, after) => `好的，已从卡上去掉「${name}」。卡片从「${before}」更新为「${after}」，点确认之前不会执行。`,
     last: (name) => `卡上只剩「${name}」这一项了，不要的话请否决整张卡；不点确认什么都不会执行。`,
@@ -729,6 +738,15 @@ async function planFor(deps: CardRevisionDeps, card: AgentActionRecord, locale: 
   return null;
 }
 
+/** The rows of an item whose new value differs after the revision (the item found again by its card line's record). */
+function changedRows(item: Item, before: readonly AgentActionOperationPayload[], after: readonly AgentActionOperationPayload[]): { label: string; value: string }[] {
+  const record = item.op.display?.record;
+  const same = record ? after.filter((op) => op.display?.record === record) : [];
+  const next = same.length === 1 ? same[0] : after[item.index] ?? null;
+  const old = new Map((before[item.index]?.display?.rows ?? []).map((row) => [row.field, String(row.after ?? "")]));
+  return (next?.display?.rows ?? []).filter((row) => old.get(row.field) !== String(row.after ?? "")).map((row) => ({ label: row.label, value: String(row.after ?? "") }));
+}
+
 export async function reviseCardByWords(deps: CardRevisionDeps): Promise<CardRevisionResult | null> {
   if (!mayReviseCard(deps.message) || !deps.runtime.reviseCard || !deps.runtime.editCard) return null;
   const card = await waitingCard(deps);
@@ -761,7 +779,9 @@ export async function reviseCardByWords(deps: CardRevisionDeps): Promise<CardRev
   const preview = agentCardPreview(action, await deps.runtime.getRun(action.runId), deps.now());
   if (deps.store) await refreshCardInDocument({ actorId: deps.actorId, now: deps.now(), previous: before, store: deps.store, updated: preview, keepText: true }).catch(() => false);
   const words = WORDS[locale];
-  const lead = plan.kind === "drop" ? words.dropped(plan.item.name, before.title, preview.title) : plan.kind === "retarget" ? words.retargeted(plan.item.name, plan.after) : plan.lead === "scope" && plan.scope ? words.scope(plan.item.name, plan.scope.before, plan.scope.after) : words.changed(plan.item.name, before.title, preview.title);
+  // A summary that stays the same («新增2项» → «新增2项») is never said as a change: the item's new values are said instead.
+  const sameTitle = before.title === preview.title;
+  const lead = plan.kind === "drop" ? (sameTitle ? words.droppedOnly(plan.item.name) : words.dropped(plan.item.name, before.title, preview.title)) : plan.kind === "retarget" ? words.retargeted(plan.item.name, plan.after) : plan.lead === "scope" && plan.scope ? words.scope(plan.item.name, plan.scope.before, plan.scope.after) : sameTitle ? words.changedTo(plan.item.name, changedRows(plan.item, card.operations, action.operations)) : words.changed(plan.item.name, before.title, preview.title);
   const cardLine = cardLineOf(preview, locale);
   emitTrace({ cardId: card.actionId, item: plan.item.op.operationId, kind: plan.kind === "drop" ? "drop" : plan.kind === "retarget" ? "retarget" : plan.lead, revision: preview.revision, type: "card.revised_by_words" });
   return { ...respond(`${lead}\n\n${cardLine}`, preview, "card_revised"), cardLine, ...(plan.kind === "retarget" ? { mentioned: plan.mentioned } : {}) };
