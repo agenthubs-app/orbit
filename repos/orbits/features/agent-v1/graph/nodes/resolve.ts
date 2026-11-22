@@ -19,6 +19,7 @@
  * Record content stays in the run (the answer step's materials); the checkpoint gets refs, versions,
  * gaps and counts only.
  */
+import { variantSpellings } from "../../text/name-variants";
 import { addLinkNames } from "../../answer/link-names";
 import { pinyin } from "pinyin-pro";
 
@@ -408,6 +409,13 @@ export async function findContacts(records: AgentRecordAccess, scope: DomainScop
       if (found.length) break;
     }
     if (!found.length && words.replace(/^@/u, "").trim().length >= 2) found = (await records.reader.read("contact", scope, { limit: 10, status: "within" as never, text: words.replace(/^@/u, "").trim() })).items;
+    // 2026-11-23: a name typed in another script of the same characters (渡边飒太 for 渡辺颯太, 高桥 for 高橋): its other spellings.
+    if (!found.length) {
+      for (const spelling of variantSpellings(words.replace(/^@/u, "").trim())) {
+        found = (await records.reader.read("contact", scope, { limit: 10, text: spelling })).items;
+        if (found.length) { emitTrace({ spelling, type: "resolve.contact_variant_spelling" }); break; }
+      }
+    }
   } catch (error) {
     emitTrace({ error: error instanceof Error ? error.message : String(error), type: "read.error", where: "resolve.contact_search" });
     failed = true;
