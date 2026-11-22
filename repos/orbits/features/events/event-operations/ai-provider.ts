@@ -1704,10 +1704,7 @@ These texts are shown to the reader (the source person) about themselves. Addres
 
 For every pair id:
 - r1 and r2: two different reasons why あなた should meet {TARGET}. Each reason states only what its cited facts say and lists them in ev. A need belongs to its owner and is answered only by the other person's offer that answers it most directly (for a funding need, a funding or investor offer — not an unrelated one); a topic is an interest, never an ability or knowledge; never attribute one person's fact to the other. Build r1 on the strongest supplied basis pair. For r2, in this order: a second need/offer pair if it is equally direct (another offer of {TARGET} for a need of あなた, or an offer of あなた for a need of {TARGET}); else a topic from sharedTopics (cite exactly that pair; only those count as shared — never pair two different interests); else r2 stays on r1's pair (same ev) and names one concrete thing to discuss or ask first. Never stretch an unrelated offer to fit a need.
-Let the sentence shape follow what the reason rests on, and vary it across pairs; these are illustrations, not templates to copy:
-  · an answer to a need can open with {TARGET}: 「{TARGET}さんは〇〇を手がけているので、あなたが探している△△について…」
-  · a shared topic can open with the topic: 「〇〇は、あなたと{TARGET}さんに共通する関心です。…」
-  · a concrete starting point can open with the action: 「まず〇〇について聞くと、…がわかります。」
+Let the sentence shape follow what the reason rests on: a reason about a need and an offer may start from either person or from the need itself; a shared-topic reason may start from the topic; a concrete starting point may start from the action. Use a verb that fits the fact (knowledge is had, a service is offered, an introduction is made). Across the pairs of one person, no two reasons may share the same opening or the same sentence pattern; write each one fresh.
 - q1 and q2: two questions あなた asks {TARGET} directly, in polite Japanese, without any placeholder or name.
 - hint: one practical tip for あなた to start the conversation.
 For an id ending in ".none": none is one sentence explaining to あなた why there is no match.
