@@ -268,6 +268,36 @@ function parseTable(
   return value as unknown as EventOperationsTable;
 }
 
+/**
+ * JSON whose only defect is missing closing brackets at the very end (the model stopped one or two `}` short;
+ * seen in calibration with finish=stop). Appends exactly the missing closers — never changes or adds content —
+ * and the strict shape checks still run on the result. Anything else stays unparseable.
+ */
+export function parseJsonClosingTail(text: string, finishReason?: string | null): unknown | null {
+  const direct = parseJson(text);
+  if (direct !== null) return direct;
+  // Output cut by the length limit is truncated content, never completed.
+  if (finishReason && /length|max_tokens|max_output/iu.test(finishReason)) return null;
+  const body = text.trim();
+  if (!body.startsWith("{")) return null;
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+  for (const char of body) {
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = true;
+    else if (char === "{" || char === "[") stack.push(char === "{" ? "}" : "]");
+    else if (char === "}" || char === "]") { if (stack.pop() !== char) return null; }
+  }
+  if (inString || stack.length === 0 || stack.length > 3) return null;
+  return parseJson(body + stack.reverse().join(""));
+}
+
 function parseJson(text: string): unknown | null {
   try {
     return JSON.parse(text.trim()) as unknown;
@@ -887,6 +917,9 @@ export function mergeTrilingualTable(tables: Readonly<Record<TextLanguage, Event
  */
 export const TRILINGUAL_MAX_RECOMMENDATION_SHARD = 3;
 
+/** Trilingual calls: every invalid-JSON shape is retried (never trimmed or accepted), within the task's attempt limit. */
+const TRILINGUAL_RETRYABLE_JSON_SHAPES: ReadonlySet<EventOperationsJsonFailureShape> = new Set(["empty", "fence_or_prefix", "trailing_text", "unterminated_envelope", "parse_syntax"]);
+
 const BASE_DRAFT_INSTRUCTION = `Write every participant-facing text in natural, polite Japanese only. Each text is specific to the people involved and grounded in their supplied profiles; never use template sentences. Never write a participant's name or company name: refer to a person only as {KEY} and to their company only as {KEY:company}, using the supplied keys exactly, and use {KEY:company} only when that profile has hasCompany=true. Profiles may be written in any language: express every profile term in Japanese, except upper-case abbreviations (AI, DX, VC, M&A …) which stay as written. Write numbers with Arabic digits. Return exactly one JSON document with exactly the documented keys.`;
 
 const TRANSLATION_INSTRUCTION = (language: "zh" | "en") => `You translate Japanese event networking texts into ${language === "zh" ? "idiomatic Simplified Chinese (no Japanese kana; keep upper-case abbreviations such as AI, DX, VC, M&A, IPO and the terms SaaS, Web3, EdTech, FinTech, PoC as written; translate every other English word)" : "natural English (no Chinese or Japanese characters)"}. Translate only: never add, remove, or change a fact, a person, a direction (who needs and who offers), a negation, or a number. Keep every {…} placeholder exactly as it appears in the Japanese text, and keep numbers as Arabic digits with the same values. Return exactly {"items":{"<id>":"<translation>"}} with exactly the same ids.`;
@@ -1231,7 +1264,7 @@ export function createEventOperationsAiProvider({
   }): Promise<{ ok: true; metadata: EventOperationsAiResponseMetadata | undefined } | { ok: false; result: EventOperationsAiResult<never> }> {
     const first = checkScopedSentences(input.scoped, input.participants);
     if (first.structural.length) {
-      return { ok: false, result: trilingualFailure({ kind: input.kind, stage: `check_${first.structural[0]!.split("@")[0]}`, text: input.text, result: trilingualRetryable<never>(`Trilingual output failed: ${[...new Set(first.structural.map((item) => item.split("@")[0]))].join(", ")}.`, input.metadata) }) };
+      return { ok: false, result: trilingualFailure({ kind: input.kind, stage: `check_${first.structural[0]!.split("@")[0]}`, text: JSON.stringify({ problems: first.structural, sentences: input.scoped.map((item) => item.sentence) }), result: trilingualRetryable<never>(`Trilingual output failed: ${[...new Set(first.structural.map((item) => item.split("@")[0]))].join(", ")}.`, input.metadata) }) };
     }
     if (first.flagged.length === 0) return { ok: true, metadata: input.metadata };
     const request = first.flagged.map(({ index, languages }, position) => {
@@ -1311,7 +1344,7 @@ export function createEventOperationsAiProvider({
         return { ok: false, result: failure.success === false ? { ...failure, ...(merged ? { responseMetadata: merged } : {}) } : failure };
       }
       metadata = mergeEventOperationsResponseMetadata(metadata, metadataOf(response));
-      const json = parseJson(response.text);
+      const json = parseJsonClosingTail(response.text, response.responseMetadata?.finishReason);
       const texts = isRecord(json) && exactKeys(json, ["items"]) && isRecord(json.items) ? json.items : null;
       const ids = Object.keys(items);
       if (texts && Object.keys(texts).length === ids.length && ids.every((id) => nonEmptyString(texts[id]))) {
@@ -1384,10 +1417,10 @@ ${JSON.stringify(tokenizedSources.promptSources)}`,
     });
     if (choose.success === false) return modelFailure(choose);
     let metadata = metadataOf(choose);
-    const chosenJson = parseJson(choose.text);
+    const chosenJson = parseJsonClosingTail(choose.text, choose.responseMetadata?.finishReason);
     if (chosenJson === null) {
       const shapeName = classifyJsonFailureShape(choose.text);
-      return trilingualFailure({ kind: "recommendations", stage: `choose_json_${shapeName}`, text: choose.text, result: invalidJson(shapeName, metadata, retryableJsonFailureShapeSet) });
+      return trilingualFailure({ kind: "recommendations", stage: `choose_json_${shapeName}`, text: choose.text, result: invalidJson(shapeName, metadata, TRILINGUAL_RETRYABLE_JSON_SHAPES) });
     }
     const chooseProblem = (() => {
       if (!isRecord(chosenJson) || !exactKeys(chosenJson, tokenizedSources.tokenSources.map((token) => token.sourceKey))) return "rows";
@@ -1447,10 +1480,10 @@ ${JSON.stringify(pairs)}`,
       return (failure.success === false ? { ...failure, ...(merged ? { responseMetadata: merged } : {}) } : failure) as EventOperationsAiResult<readonly EventOperationsParticipantRecommendations[]>;
     }
     metadata = mergeEventOperationsResponseMetadata(metadata, metadataOf(response));
-    const json = parseJson(response.text);
+    const json = parseJsonClosingTail(response.text, response.responseMetadata?.finishReason);
     if (json === null) {
       const shapeName = classifyJsonFailureShape(response.text);
-      return trilingualFailure({ kind: "recommendations", stage: `write_json_${shapeName}`, text: response.text, result: invalidJson(shapeName, metadata, retryableJsonFailureShapeSet) });
+      return trilingualFailure({ kind: "recommendations", stage: `write_json_${shapeName}`, text: response.text, result: invalidJson(shapeName, metadata, TRILINGUAL_RETRYABLE_JSON_SHAPES) });
     }
     const writeOk = isRecord(json) && exactKeys(json, Object.keys(writeShape)) && Object.entries(writeShape).every(([id, fields]) => {
       const row = (json as Record<string, unknown>)[id];
@@ -1550,10 +1583,10 @@ ${JSON.stringify(promptFeatures)}`,
     });
     if (response.success === false) return modelFailure(response);
     let metadata = metadataOf(response);
-    const json = parseJson(response.text);
+    const json = parseJsonClosingTail(response.text, response.responseMetadata?.finishReason);
     if (json === null) {
       const shapeName = classifyJsonFailureShape(response.text);
-      return trilingualFailure({ kind: "table", stage: `json_${shapeName}`, text: response.text, result: invalidJson(shapeName, metadata, retryableJsonFailureShapeSet) });
+      return trilingualFailure({ kind: "table", stage: `json_${shapeName}`, text: response.text, result: invalidJson(shapeName, metadata, TRILINGUAL_RETRYABLE_JSON_SHAPES) });
     }
     const ok = isRecord(json) && exactKeys(json, ["members", "q1", "q2", "q3", "rationale", "theme"])
       && ["q1", "q2", "q3", "rationale", "theme"].every((field) => nonEmptyString(json[field]))

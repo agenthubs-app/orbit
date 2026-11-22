@@ -222,3 +222,23 @@ test("language rules on placeholder text: what passes and what does not", () => 
   assert.equal(v("{S1}さん", "{S1}", "{S1} and Yamada Taro").english.length, 0, "romanised names cannot be detected by characters (known limit)");
   assert.deepEqual(collectChineseOutputPolicyViolations(["利用 iPS 细胞和 mRNA 技术。"], []).disallowedTokens, [], "short mixed-case scientific abbreviations");
 });
+
+test("JSON missing only its final closing brackets is completed (syntax only); anything else stays invalid", async () => {
+  const { parseJsonClosingTail } = await import("../../features/events/event-operations/ai-provider");
+  assert.deepEqual(parseJsonClosingTail('{"a":{"b":"x}"}'), { a: { b: "x}" } }, "a brace inside a string is text, not structure");
+  assert.deepEqual(parseJsonClosingTail('{"a":[1,2]'), { a: [1, 2] });
+  assert.equal(parseJsonClosingTail('{"a":"unfinished'), null, "an unfinished string is not repaired");
+  assert.equal(parseJsonClosingTail('{"a":1]}'), null, "a wrong closer is not repaired");
+  assert.equal(parseJsonClosingTail('{"a":[1,2]', "length"), null, "output cut by the length limit is never completed");
+  const cut = JSON.stringify({ "S1.p1": pair() });
+  const truncated = await provider(model({ base: cut.slice(0, -1) })).generateRecommendations(two);
+  assert.equal(truncated.success, false, "completing a truncated output that lost a whole pair still fails the exact-keys check");
+  const text = JSON.stringify({ "S1.p1": pair(), "S1.p2": pair() });
+  const ok = await provider(model({ base: text.slice(0, -1) })).generateRecommendations(two);
+  assert.equal(ok.success, true, "the write step's output one brace short");
+});
+
+test("trailing markup after the JSON (leaked tool-call tags) is a retryable failure, never trimmed", async () => {
+  const text = `${JSON.stringify({ "S1.p1": pair(), "S1.p2": pair() })}</｜｜DSML｜｜ parameter>`;
+  await failsRetryably(model({ base: text }), two);
+});
