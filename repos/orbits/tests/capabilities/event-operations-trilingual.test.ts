@@ -28,19 +28,33 @@ const yamada = participant("a", "山田太郎", "青空商事");
 const bo = participant("b", "Bo", "Beacon Health");
 
 function text(value: unknown) {
-  return async () => ({ model: "test-model", provider: "openai" as const, source: "provider:openai-responses-api" as const, success: true as const, text: JSON.stringify(value) });
+  return sequence(value);
 }
+/** Model replies in order (the last one repeats); records every prompt. */
+function sequence(...values: unknown[]) {
+  const prompts: string[] = [];
+  const run = async (input: { userText: string }) => {
+    prompts.push(input.userText);
+    const value = values[Math.min(prompts.length - 1, values.length - 1)];
+    return { model: "test-model", provider: "openai" as const, source: "provider:openai-responses-api" as const, success: true as const, text: typeof value === "string" ? value : JSON.stringify(value) };
+  };
+  return Object.assign(run, { prompts });
+}
+const sentence = (ja: string, zh: string, en: string) => ({ en, ja, zh });
 
 const goodRecommendation = {
-  rank: 1, score: 88, targetCandidateKey: "S1C1",
-  ja: { icebreakers: ["最初にどの業務で試しますか？", "導入の決め手は何でしたか？"], memberHint: "山田太郎さんと Bo さんは導入事例の話から始めるとよいです。", reasons: ["山田太郎さんは医療分野での導入先を探しています。"] },
-  zh: { icebreakers: ["您打算先在哪个业务试用？", "当时选择导入的关键是什么？"], memberHint: "山田太郎和 Bo 可以先聊导入案例。", reasons: ["山田太郎正在寻找医疗领域的合作方。"] },
-  en: { icebreakers: ["Which workflow would you pilot first?", "What made the last rollout work?"], memberHint: "山田太郎 and Bo can start from rollout stories.", reasons: ["山田太郎 is looking for a healthcare partner."] },
+  icebreakers: [sentence("最初にどの業務で試しますか？", "您打算先在哪个业务试用？", "Which workflow would you pilot first?"), sentence("導入の決め手は何でしたか？", "当时选择导入的关键是什么？", "What made the last rollout work?")],
+  memberHint: sentence("山田太郎さんと Bo さんは導入事例の話から始めるとよいです。", "山田太郎和 Bo 可以先聊导入案例。", "山田太郎 and Bo can start from rollout stories."),
+  rank: 1,
+  reasons: [sentence("山田太郎さんは医療分野での導入先を探しています。", "山田太郎正在寻找医疗领域的合作方。", "山田太郎 is looking for a healthcare partner.")],
+  score: 88,
+  targetCandidateKey: "S1C1",
 };
 const recommendationInput = { eventId: "event:t", recommendationCount: 4, sources: [{ candidateParticipants: [bo], sourceParticipant: yamada }] };
+const recommendationsDoc = (item: unknown) => ({ recommendations: [{ noMatchReason: null, recommendations: [item], sourceKey: "S1" }] });
 
-test("trilingual recommendations: one output, base fields = zh, i18n carries all three", async () => {
-  const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: text({ recommendations: [{ noMatchReason: null, recommendations: [goodRecommendation], sourceKey: "S1" }] }) });
+test("trilingual recommendations: paired sentences, base fields = zh, i18n carries all three", async () => {
+  const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: text(recommendationsDoc(goodRecommendation)) });
   assert.equal(provider.maxRecommendationShardSize, TRILINGUAL_MAX_RECOMMENDATION_SHARD);
   const result = await provider.generateRecommendations(recommendationInput);
   assert.equal(result.success, true);
@@ -48,14 +62,14 @@ test("trilingual recommendations: one output, base fields = zh, i18n carries all
   const row = result.data[0]!;
   const item = row.recommendations[0]!;
   assert.equal(item.targetParticipantId, "participant:b");
-  assert.deepEqual(item.reasons, goodRecommendation.zh.reasons);
-  assert.deepEqual(item.i18n?.ja.reasons, goodRecommendation.ja.reasons);
-  assert.deepEqual(item.i18n?.en.icebreakers, goodRecommendation.en.icebreakers);
+  assert.deepEqual(item.reasons, ["山田太郎正在寻找医疗领域的合作方。"]);
+  assert.deepEqual(item.i18n?.ja.reasons, ["山田太郎さんは医療分野での導入先を探しています。"]);
+  assert.deepEqual(item.i18n?.en.icebreakers, ["Which workflow would you pilot first?", "What made the last rollout work?"]);
   assert.equal(row.noMatchReasonI18n, undefined);
 });
 
 test("trilingual recommendations: a no-match row carries noMatchReason in three languages", async () => {
-  const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: text({ recommendations: [{ noMatchReason: { ja: "条件に合う相手が今回はいません。", zh: "这次没有符合条件的对象。", en: "No one fits this time." }, recommendations: [], sourceKey: "S1" }] }) });
+  const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: text({ recommendations: [{ noMatchReason: sentence("条件に合う相手が今回はいません。", "这次没有符合条件的对象。", "No one fits this time."), recommendations: [], sourceKey: "S1" }] }) });
   const result = await provider.generateRecommendations(recommendationInput);
   assert.equal(result.success, true);
   if (!result.success) return;
@@ -63,19 +77,57 @@ test("trilingual recommendations: a no-match row carries noMatchReason in three 
   assert.equal(participantRecommendationsIn(result.data[0]!, "en").noMatchReason, "No one fits this time.");
 });
 
-test("trilingual recommendations: wrong-language or inconsistent output is a retryable failure, never a fallback", async () => {
+test("trilingual recommendations: a structural miss is a retryable failure, never a fallback", async () => {
   const cases = {
-    japaneseWrittenInChinese: { ...goodRecommendation, ja: { ...goodRecommendation.ja, memberHint: "山田太郎和 Bo 可以先聊导入案例与采购流程。" } },
-    englishWithChinese: { ...goodRecommendation, en: { ...goodRecommendation.en, reasons: ["山田太郎 正在寻找 healthcare partner."] } },
-    reasonCountDiffers: { ...goodRecommendation, en: { ...goodRecommendation.en, reasons: ["one", "two"] } },
-    missingLanguage: { rank: 1, score: 88, targetCandidateKey: "S1C1", ja: goodRecommendation.ja, zh: goodRecommendation.zh },
+    unpairedSentence: { ...goodRecommendation, memberHint: "山田太郎和 Bo 可以先聊导入案例。" },
+    missingLanguage: { ...goodRecommendation, reasons: [{ ja: "理由です", zh: "理由" }] },
+    threeIcebreakers: { ...goodRecommendation, icebreakers: [...goodRecommendation.icebreakers, goodRecommendation.icebreakers[0]] },
   };
   for (const [name, item] of Object.entries(cases)) {
-    const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: text({ recommendations: [{ noMatchReason: null, recommendations: [item], sourceKey: "S1" }] }) });
+    const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: text(recommendationsDoc(item)) });
     const result = await provider.generateRecommendations(recommendationInput);
     assert.equal(result.success, false, name);
     if (!result.success) assert.equal(result.retryable, true, name);
   }
+});
+
+test("trilingual recommendations: flagged ja/en sentences get one bounded repair from zh, checked again", async () => {
+  const bad = { ...goodRecommendation, reasons: [sentence("山田太郎正在寻找医疗领域的合作方和投资。", "山田太郎正在寻找医疗领域的合作方。", "山田太郎 seeks 資金調達 partners.")] };
+  const runner = sequence(recommendationsDoc(bad), { sentences: { s1: { en: "山田太郎 is looking for funding partners.", ja: "山田太郎さんは医療分野の協業先を探しています。" } } });
+  const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: runner });
+  const result = await provider.generateRecommendations(recommendationInput);
+  assert.equal(result.success, true);
+  if (!result.success) return;
+  assert.equal(runner.prompts.length, 2, "one generation call plus one repair call");
+  assert.match(runner.prompts[1]!, /"rewrite":\["ja","en"\]/u);
+  assert.match(runner.prompts[1]!, /山田太郎正在寻找医疗领域的合作方。/u, "the repair translates from the zh sentence");
+  const item = result.data[0]!.recommendations[0]!;
+  assert.deepEqual(item.i18n?.en.reasons, ["山田太郎 is looking for funding partners."]);
+  assert.deepEqual(item.i18n?.ja.reasons, ["山田太郎さんは医療分野の協業先を探しています。"]);
+});
+
+test("trilingual recommendations: a repair that still fails is a retryable failure and the raw text reaches only the opt-in hook", async () => {
+  const bad = { ...goodRecommendation, reasons: [sentence("山田太郎さんは医療分野での導入先を探しています。", "山田太郎正在寻找医疗领域的合作方。", "山田太郎 seeks 資金調達 partners.")] };
+  const seen: Array<{ kind: string; stage: string; text: string }> = [];
+  const provider = createEventOperationsAiProvider({
+    onTrilingualFailureText: (detail) => seen.push(detail),
+    runModelText: sequence(recommendationsDoc(bad), { sentences: { s1: { en: "Still 資金調達." } } }),
+    trilingual: true,
+  });
+  const result = await provider.generateRecommendations(recommendationInput);
+  assert.equal(result.success, false);
+  if (!result.success) assert.equal(result.retryable, true);
+  assert.deepEqual(seen.map((item) => [item.kind, item.stage]), [["repair", "repair_language"]]);
+  assert.match(seen[0]!.text, /資金調達/u);
+});
+
+test("trilingual output: invalid JSON is reported with its shape to the hook", async () => {
+  const seen: string[] = [];
+  const provider = createEventOperationsAiProvider({ onTrilingualFailureText: (detail) => seen.push(detail.stage), runModelText: sequence('{"recommendations":[{"sourceKey":"S1",'), trilingual: true });
+  const result = await provider.generateRecommendations(recommendationInput);
+  assert.equal(result.success, false);
+  assert.equal(seen.length, 1);
+  assert.match(seen[0]!, /^json_/u);
 });
 
 test("language checks allow names in their own script and short Japanese noun phrases", () => {
@@ -94,8 +146,23 @@ const tableText = (language: "ja" | "zh" | "en"): EventOperationsTableText => ({
 const tableInput = { eventId: "event:t", features: [], members: [yamada, bo], roundNumber: 1 as const, tableNumber: 1 };
 const members = [{ participantId: "participant:a", seat: "R1-T1-S1" }, { participantId: "participant:b", seat: "R1-T1-S2" }];
 
-test("trilingual table: same membership in one output, base = zh, i18n = three languages", async () => {
-  const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: text({ tableNumber: 1, members, ja: tableText("ja"), zh: tableText("zh"), en: tableText("en") }) });
+const pairedTable = (overrides: Record<string, unknown> = {}) => {
+  const ja = tableText("ja"), zh = tableText("zh"), en = tableText("en");
+  const ids = ["participant:a", "participant:b"];
+  return {
+    icebreakers: [0, 1, 2].map((i) => sentence(ja.icebreakers[i]!, zh.icebreakers[i]!, en.icebreakers[i]!)),
+    memberPrompts: Object.fromEntries(ids.map((id) => [id, [0, 1].map((i) => sentence(ja.memberPrompts[id]![i]!, zh.memberPrompts[id]![i]!, en.memberPrompts[id]![i]!))])),
+    memberRationales: Object.fromEntries(ids.map((id) => [id, sentence(ja.memberRationales[id]!, zh.memberRationales[id]!, en.memberRationales[id]!)])),
+    members,
+    rationale: sentence(ja.rationale, zh.rationale, en.rationale),
+    tableNumber: 1,
+    theme: sentence(ja.theme, zh.theme, en.theme),
+    ...overrides,
+  };
+};
+
+test("trilingual table: paired sentences, same membership, base = zh, i18n = three languages", async () => {
+  const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: text(pairedTable()) });
   const result = await provider.generateTableContent(tableInput);
   assert.equal(result.success, true);
   if (!result.success) return;
@@ -104,9 +171,9 @@ test("trilingual table: same membership in one output, base = zh, i18n = three l
   assert.equal(tableIn(result.data, "en").memberRationales["participant:b"], "Has rolled this out before.");
 });
 
-test("trilingual table: a language that misses a member is a retryable failure", async () => {
-  const ja = tableText("ja");
-  const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: text({ tableNumber: 1, members, ja: { ...ja, memberRationales: { "participant:a": ja.memberRationales["participant:a"] } }, zh: tableText("zh"), en: tableText("en") }) });
+test("trilingual table: a member missing from the per-member text is a retryable failure", async () => {
+  const table = pairedTable();
+  const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: text({ ...table, memberRationales: { "participant:a": table.memberRationales["participant:a"] } }) });
   const result = await provider.generateTableContent(tableInput);
   assert.equal(result.success, false);
   if (!result.success) assert.equal(result.retryable, true);
@@ -115,7 +182,7 @@ test("trilingual table: a language that misses a member is a retryable failure",
 test("configured provider is trilingual and fingerprints it", () => {
   const configured = createConfiguredEventOperationsAiProvider();
   assert.equal(configured.maxRecommendationShardSize, 2);
-  assert.match(configured.requestFingerprint ?? "", /"participantTextLanguages":"ja-zh-en-v1"/u);
+  assert.match(configured.requestFingerprint ?? "", /"participantTextLanguages":"ja-zh-en-v2-paired"/u);
   assert.doesNotMatch(createEventOperationsAiProvider().requestFingerprint ?? "", /participantTextLanguages/u);
 });
 
