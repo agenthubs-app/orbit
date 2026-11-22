@@ -135,14 +135,19 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
     if (first && items && answerFresh(listAnswerKey(query, tab, filters), FRESH.list)) return;
     const current = ++generation.current;
     const handle = setTimeout(() => {
-      void Promise.all([networkApi.page(pageQuery), networkApi.summary(networkQuery({ query, tab, filters, facets: summary }))]).then(([page, filtered]) => {
+      // Without a query, tab or filter the matched count is the overall total the page already reads
+      // (loadSummary): asking /api/contacts/summary a second time read the same rows again.
+      const filteredQuery = networkQuery({ query, tab, filters, facets: summary });
+      const filteredRead = filteredQuery ? networkApi.summary(filteredQuery) : Promise.resolve(null);
+      void Promise.all([networkApi.page(pageQuery), filteredRead]).then(([page, filtered]) => {
         if (current !== generation.current) return;
         if (!page.ok) { setFailed(true); return; }
         setFailed(false);
         setItems(page.data.items);
         setCursor(page.data.nextCursor);
-        setMatched(filtered.ok ? filtered.data.total : null);
-        rememberAnswer<NetworkListAnswer>(listAnswerKey(query, tab, filters), { items: page.data.items, cursor: page.data.nextCursor, matched: filtered.ok ? filtered.data.total : null });
+        const matchedTotal = filtered?.ok ? filtered.data.total : null;
+        setMatched(matchedTotal);
+        rememberAnswer<NetworkListAnswer>(listAnswerKey(query, tab, filters), { items: page.data.items, cursor: page.data.nextCursor, matched: matchedTotal });
       });
     }, query ? 250 : 0);
     return () => clearTimeout(handle);
@@ -157,6 +162,8 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
   // Contacts changed elsewhere (another device, an import finishing): read the counts and the list again behind them.
   useAreaChanges(["contacts"], refresh);
   const rows = useMemo(() => (items ?? []).map((card) => networkRow(card, links ?? NO_LINKS)), [items, links]);
+  // Unfiltered: the list matches every contact, so the overall total stands in for the count not read twice.
+  const shownMatched = networkQuery({ query, tab, filters, facets: summary }) ? matched : summary?.total ?? matched;
   const planCandidates = rows.filter((row) => row.goal).slice(0, 2);
   const planCandidateNames = planCandidates.map((row) => language === "ja" ? t("railPersonName", { name: row.name.split(/\s+/u)[0] }) : row.name)
     .join(t("railPersonSeparator"));
@@ -265,7 +272,7 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
                     narrow ? <NetworkMobileList rows={rows} t={t} nowMs={fixtureNowMs ?? nowMs} onOpen={open} />
                       : <NetworkTable rows={rows} t={t} nowMs={fixtureNowMs ?? nowMs} selectedId={openContact} onOpen={open} />
                   ) : <p className={styles.lbl} style={{ marginTop: 16 }}>{t("noMatchTitle")} · {t("noMatchBody")}</p>}
-                  {cursor && items !== null && links !== null ? <div className={styles.moreRow}><button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => void loadMore()}>{t("loadMore", { n: Math.max(0, (matched ?? 0) - rows.length) })}</button></div> : null}
+                  {cursor && items !== null && links !== null ? <div className={styles.moreRow}><button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => void loadMore()}>{t("loadMore", { n: Math.max(0, (shownMatched ?? 0) - rows.length) })}</button></div> : null}
                 </div>
                 {narrow && (header?.total ?? 0) < NETWORK_ANALYSIS_UNLOCK_CONTACTS ? (
                   // 390（b6 / b8 人脈 少量）: the locked 人脈分析 entry under the list; 1440 keeps 「人脈分析 ›」 in つながり (web.html, the page itself is locked).
@@ -279,7 +286,7 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
               </>
             )}
       <Popover open={filterOpen} onClose={() => setFilterOpen(false)} anchor={filterAnchor} label={t("filterTitle")} width={420}>
-        <FilterPanel t={t} language={language} summary={summary} filters={filters} onChange={setFilters} matched={matched} total={header?.total ?? 0} onDone={() => setFilterOpen(false)} />
+        <FilterPanel t={t} language={language} summary={summary} filters={filters} onChange={setFilters} matched={shownMatched} total={header?.total ?? 0} onDone={() => setFilterOpen(false)} />
       </Popover>
       {openContact ? <ContactDrawer contactId={openContact} onClose={() => open(null)} goalLabel={links?.get(openContact)?.label ?? null}
         designMoment={process.env.NODE_ENV !== "production" ? params?.get("design") : null}

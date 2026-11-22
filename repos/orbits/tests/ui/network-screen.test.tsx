@@ -93,6 +93,8 @@ test("1440: header counts in the shell, three cards, tabs with counts, table row
   assert.equal(await page.locator("[data-network-rail]").getByRole("link", { name: "プランで見る" }).getAttribute("href"), "/app/tasks?tab=plan");
   await page.getByRole("button", { name: "さらに表示（283人）" }).waitFor();
   assert.ok((await fetches(page)).every((call) => !call.url.startsWith("/api/contacts?")), "no legacy /api/contacts read");
+  // P1 (2026-11-22): unfiltered, the matched count is the overall total — /api/contacts/summary is read once, not twice.
+  assert.equal((await fetches(page)).filter((call) => call.url.startsWith("/api/contacts/summary")).length, 1);
 });
 
 test("tabs, search and 絞り込み go to the bounded page / summary with the new parameters", async (t) => {
