@@ -10,7 +10,7 @@ import test from "node:test";
 import { applyCarry, applyTurn, carryChangesOf, withPronounsBound } from "../../features/agent-v1/conversation/apply";
 import { appendTurn, runEngine, worldOf, type ConversationLog } from "../../features/agent-v1/conversation/bridge";
 import { openedMode } from "../../features/agent-v1/conversation/mode";
-import { awaitWorldRead, conversationIdsOf, enrichWorld, READ_CONTACTS, READ_RECORDS } from "../../features/agent-v1/conversation/world-read";
+import { awaitWorldRead, conversationIdsOf, enrichWorld, needsWorldRead, READ_CONTACTS, READ_RECORDS } from "../../features/agent-v1/conversation/world-read";
 import type { AgentReply, ModelHint } from "../../features/agent-v1/conversation/types";
 import { createWorldLoader, labIdOf } from "../../features/agent-v1/finder/world";
 import type { GraphPart } from "../../features/agent-v1/graph/state";
@@ -154,9 +154,18 @@ test("the World read: the conversation's contacts and their linked records only 
   assert.equal((await awaitWorldRead(new Promise(() => {}), 5)).status, "timeout", "a slow read is not waited for");
 });
 
-test("switches: the opened decisions are shadow by default, on only under ORBIT_AGENT_CONVERSATION=on, off under legacy", () => {
-  assert.equal(openedMode("pronoun", { ORBIT_AGENT_CONVERSATION: "on" }), "shadow");
-  assert.equal(openedMode("pronoun", { ORBIT_AGENT_CONVERSATION: "on", ORBIT_AGENT_CONVERSATION_PRONOUN: "on" }), "on");
+test("the World is read only for a person reference the agent left unbound (stage A: AE-CTX-002/004, AE-SCL-001/003)", () => {
+  assert.equal(needsWorldRead([partOf("他的电话", ["contact.read"], [{ entity: "contact", words: "他" }])]), true);
+  assert.equal(needsWorldRead([partOf("他的电话", ["contact.read"], [{ entity: "contact", recordId: "contact:wang", words: "他" }])]), false, "a bound person");
+  assert.equal(needsWorldRead([partOf("明天的面谈", ["schedule.read"], [{ entity: "schedule", words: "明天的面谈" }])]), false, "a record clue");
+  assert.equal(needsWorldRead([partOf("包材用什么", [])]), false, "no reference");
+});
+
+test("switches: pronoun on by default under ORBIT_AGENT_CONVERSATION=on, the others shadow; off under legacy", () => {
+  assert.equal(openedMode("pronoun", { ORBIT_AGENT_CONVERSATION: "on" }), "on");
+  assert.equal(openedMode("pronoun", { ORBIT_AGENT_CONVERSATION: "on", ORBIT_AGENT_CONVERSATION_PRONOUN: "shadow" }), "shadow", "the rollback switch");
+  assert.equal(openedMode("pronoun", { ORBIT_AGENT_CONVERSATION: "shadow" }), "shadow");
+  for (const decision of ["world", "carry", "next"] as const) assert.equal(openedMode(decision, { ORBIT_AGENT_CONVERSATION: "on" }), "shadow");
   assert.equal(openedMode("world", { ORBIT_AGENT_CONVERSATION: "shadow", ORBIT_AGENT_CONVERSATION_WORLD: "on" }), "shadow");
   assert.equal(openedMode("carry", { ORBIT_AGENT_CONVERSATION: "legacy", ORBIT_AGENT_CONVERSATION_CARRY: "on" }), "off");
   assert.equal(openedMode("world", { ORBIT_AGENT_CONVERSATION: "on", ORBIT_AGENT_CONVERSATION_WORLD: "off" }), "off");

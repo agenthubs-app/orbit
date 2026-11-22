@@ -6,13 +6,14 @@
  * through the record finder's loader (finder/world.ts: the same store, account + workspace scope, eval deny list, eval
  * read faults and field whitelist as every other read), memoised within the turn.
  *
- * The read starts when the understand step starts (it needs only the log and the context), so it runs beside the first
- * layer's model call; the engine waits for it at most READ_WAIT_MS after that call returns, and goes on without it.
+ * The read is made after the first layer, and only when a part holds a person reference the agent left unbound
+ * (needsWorldRead); the engine waits for it at most READ_WAIT_MS and goes on without it.
  * Events are not read (the engine keeps their names from the conversation); a failure is traced and the World is the
  * names-only one.
  */
 import type { FirstLayerContext } from "../context/build";
 import type { NodeScope } from "../graph/deps";
+import type { GraphPart } from "../graph/state";
 import { emitTrace } from "../observability/trace";
 import { createWorldLoader } from "../finder/world";
 import type { World } from "../finder/types";
@@ -33,6 +34,8 @@ export interface WorldRead {
   contacts: number;
   records: number;
   ms: number;
+  /** How long the turn waited for the read after the first layer's model call returned (the latency it added). */
+  waitedMs?: number;
 }
 
 /** The lab ids this conversation is about, most recent first: contacts and records (T / M / S). */
@@ -51,6 +54,17 @@ export function conversationIdsOf(log: ConversationLog | null, context: FirstLay
   const gone = new Set([...(context?.handles.values() ?? [])].filter((handle) => handle.accessible === false).map((handle) => labIdOf(handle.type, handle.id)));
   const ids = [...new Set(ordered.filter((id) => id && !gone.has(id)))];
   return { contacts: ids.filter((id) => id.startsWith("C-")), records: ids.filter((id) => /^[TMS]-/u.test(id)) };
+}
+
+/**
+ * Whether this turn reads at all: only when a part holds a person reference the agent left unbound (a name or a pronoun
+ * its own code has not settled) — the one thing the read World can change under `on`. Stage A (eval run
+ * 20261123-073911-0440974-CONV-data-A-shadow): reading on every turn read rows four cases forbid (AE-CTX-002, AE-CTX-004:
+ * linked records of a person already bound; AE-SCL-001: a plain question; AE-SCL-003: a schedule clue), while it changed
+ * no decision.
+ */
+export function needsWorldRead(parts: readonly Pick<GraphPart, "refs">[]): boolean {
+  return parts.some((part) => part.refs.some((ref) => ref.entity === "contact" && !ref.recordId));
 }
 
 /** Starts the turn's read (null: nothing to read, or no record access). Never rejects. */
@@ -74,9 +88,10 @@ export function startWorldRead(scope: NodeScope, log: ConversationLog | null, no
 export async function awaitWorldRead(pending: Promise<WorldRead> | null, waitMs = READ_WAIT_MS): Promise<WorldRead> {
   if (!pending) return { contacts: 0, ms: 0, records: 0, rows: 0, status: "nothing", world: null };
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const waiting = Date.now();
   const timeout = new Promise<WorldRead>((resolve) => { timer = setTimeout(() => resolve({ contacts: 0, ms: waitMs, records: 0, rows: 0, status: "timeout", world: null }), waitMs); });
   try {
-    return await Promise.race([pending, timeout]);
+    return { ...(await Promise.race([pending, timeout])), waitedMs: Date.now() - waiting };
   } finally {
     if (timer) clearTimeout(timer);
   }

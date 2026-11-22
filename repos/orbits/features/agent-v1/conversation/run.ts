@@ -34,7 +34,7 @@ export interface ConversationRun {
   diffs: ConversationDiff[];
   applied: Applied[];
   /** The store read for the engine's World (ORBIT_AGENT_CONVERSATION_WORLD; null: off / nothing to read). */
-  world?: { status: WorldRead["status"]; rows: number; contacts: number; records: number; readMs: number; engineMs: number; used: boolean } | null;
+  world?: { status: WorldRead["status"]; rows: number; contacts: number; records: number; readMs: number; waitedMs: number; engineMs: number; used: boolean } | null;
 }
 
 /** More than this many minutes since the conversation's last message is an idle break (R2: a bare pronoun is asked). */
@@ -120,7 +120,7 @@ export function conversationTurn(scope: NodeScope, state: AgentGraphState, outpu
       }
       const engineMs = Date.now() - engineStarted;
       if (engineMs > conversationBudgetMs()) enriched = null;
-      record.world = { contacts: read.contacts, engineMs, readMs: read.ms, records: read.records, rows: read.rows, status: read.status, used: worldMode === "on" && Boolean(enriched) };
+      record.world = { contacts: read.contacts, engineMs, readMs: read.ms, records: read.records, waitedMs: read.waitedMs ?? 0, rows: read.rows, status: read.status, used: worldMode === "on" && Boolean(enriched) };
       emitTrace({ ...record.world, mode: worldMode, type: "conversation.world" });
     }
     const driving = worldMode === "on" && enriched ? enriched : result;
