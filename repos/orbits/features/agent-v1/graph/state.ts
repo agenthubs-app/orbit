@@ -282,4 +282,6 @@ export interface AgentGraphRun {
   memoryNotes: Map<string, MemoryNote>;
   /** AG14 UI (D4–D6): the memory chips at the start of the answer, in the order the parts used them. */
   memoryUse: AgentAnswerMemoryUseContract[];
+  /** ORBIT_AGENT_CONVERSATION: the conversation engine on this turn (conversation/run.ts; null under legacy or before understand). */
+  conversation: import("../conversation/run").ConversationRun | null;
 }

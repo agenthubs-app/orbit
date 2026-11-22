@@ -27,6 +27,7 @@ import { mergePickIntoQuestion, recommendIsRanking } from "../../understand/merg
 import { keepsLookingAt, keepsLookingIn } from "../../rule/parse";
 import { PICK_WORDS } from "../../functions/basis";
 import { roleGroupClue } from "../../understand/role-words";
+import { conversationTurn } from "../../conversation/run";
 
 /** "你", "我", "you", "me": the two people talking, never a contact to look up. */
 const SPEAKER_WORDS = /^(?:你|您|我|咱们?|我们|你们|あなた|私|僕|you|me|i|we|us)$/iu;
@@ -416,6 +417,8 @@ export function understandNode(scope: NodeScope): GraphNode {
       run.understood = followed.output;
       run.plainReply = null;
     }
-    return { budget, language: ruled ?? chosen.language, parts: followed?.parts ?? made, plainChat: followed ? false : covered.output.plainChat, repairs, understanding: "understood" };
+    // ORBIT_AGENT_CONVERSATION: the conversation engine reads the same turn (shadow: compared only; on: its decisions apply).
+    const parts = conversationTurn(scope, state, covered.output, followed?.parts ?? made, { followedList: Boolean(followed) });
+    return { budget, language: ruled ?? chosen.language, parts, plainChat: followed ? false : covered.output.plainChat, repairs, understanding: "understood" };
   };
 }

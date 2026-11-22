@@ -14,6 +14,7 @@ import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage
 import type { LiveRecord } from "../../../shared/storage/live-record-store";
 import type { FeatureMode } from "../../../shared/config/feature-mode";
 import type { RuleAskState } from "../rule/state";
+import { normalizeLog } from "../conversation/bridge";
 
 export const SESSION_STATE_COLLECTION = "agent_v1_session_states";
 
@@ -108,6 +109,11 @@ export interface AgentSessionState {
   noteGoal?: NoteGoal | null;
   /** AG21c (R47): the last list request answered in this session, so "再给我看一次" / "这次把…也加上" runs it again. */
   lastList?: LastListRequest;
+  /**
+   * ORBIT_AGENT_CONVERSATION (shadow / on): the conversation engine's log — per turn the user's words, the first layer's
+   * reading and the reply as references and names (conversation/bridge.ts; at most 30 turns). Absent under legacy.
+   */
+  conversation?: import("../conversation/bridge").ConversationLog;
 }
 
 /**
@@ -175,6 +181,7 @@ function normalizeState(sessionId: string, value: unknown): AgentSessionState | 
     ...(Array.isArray(raw.memoryUses) ? { memoryUses: raw.memoryUses.filter((use) => use && typeof use.requestId === "string" && Array.isArray(use.memories)).map((use) => ({ memories: use.memories.filter((item) => item && typeof item.memoryId === "string" && typeof item.revision === "number").map((item) => ({ memoryId: item.memoryId, revision: item.revision })), requestId: use.requestId })) } : {}),
     ...(raw.lastRanking && typeof raw.lastRanking.requestId === "string" && Array.isArray(raw.lastRanking.listed) && Array.isArray(raw.lastRanking.memories) ? { lastRanking: { ...raw.lastRanking, listed: raw.lastRanking.listed.filter((ref) => typeof ref === "string"), memories: raw.lastRanking.memories.filter((item) => item && typeof item.memoryId === "string" && typeof item.revision === "number") } } : {}),
     ...(lastListOf(raw.lastList) ? { lastList: lastListOf(raw.lastList)! } : {}),
+    ...(normalizeLog(raw.conversation) ? { conversation: normalizeLog(raw.conversation)! } : {}),
     ...(raw.noteGoal && typeof raw.noteGoal === "object" ? { noteGoal: { followUps: raw.noteGoal.followUps === true, interactions: raw.noteGoal.interactions === true, setAt: String(raw.noteGoal.setAt ?? "") } } : {}),
   };
 }

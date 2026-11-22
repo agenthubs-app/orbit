@@ -28,6 +28,7 @@ import { memoryOfSession } from "../../domains/memory/turn";
 import { everyTaskChipsOf } from "../../domains/memory/chips";
 import { asksToOrganize, nextNoteGoalIn } from "./functions";
 import { resumeOf } from "../../propose/asked";
+import { conversationAfterTurn } from "../../conversation/run";
 
 export const OPEN_ITEM_SHELF_AFTER = 2;
 
@@ -485,6 +486,9 @@ function nextSessionState(scope: NodeScope, state: AgentGraphState, previous: Ag
   next.updatedAt = now;
   // AG21c (R47): the list request this turn answered is the one "再给我看一次" repeats next.
   if (run.lastList) next.lastList = { ...run.lastList };
+  // ORBIT_AGENT_CONVERSATION (shadow / on): the engine's comparison is finished and logged; the log gets this turn.
+  const conversation = conversationAfterTurn(scope, state, previous, next);
+  if (conversation) next.conversation = conversation;
   // AG14: the saved entries this turn's answer used (ids and revisions) and its ranking's codes; never an entry's words.
   if (run.memory.loaded && run.memory.snapshot) {
     const kept = memoryOfSession(previous, run.memory, input.requestId);

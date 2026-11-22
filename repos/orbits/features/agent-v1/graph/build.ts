@@ -193,6 +193,7 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     recordSort: new Map(),
     memoryNotes: new Map(),
     memoryUse: [],
+    conversation: null,
   };
 }
 
