@@ -1395,7 +1395,7 @@ export function createEventOperationsAiProvider({
 
   /** Base texts with issues get one bounded rewrite (meaning kept, rules fixed); then the same check again. */
   async function checkAndRepairBase(input: {
-    items: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; reader?: string; text: string }>;
+    items: Array<{ aliases?: Readonly<Record<string, string>>; allowed: ReadonlySet<string>; asked?: string; id: string; reader?: string; text: string }>;
     kind: "recommendations" | "table";
     metadata: EventOperationsAiResponseMetadata | undefined;
     participants: readonly import("./contract").EventOperationsParticipant[];
@@ -1424,7 +1424,12 @@ export function createEventOperationsAiProvider({
     if (!texts || Object.keys(texts).length !== request.length || !request.every((item) => nonEmptyString(texts[item.id]))) {
       return { ok: false, result: trilingualFailure({ kind: "repair", stage: "base_repair_schema", text: repairText, result: trilingualRetryable<never>("The base repair did not return exactly the requested texts.", metadata) }) };
     }
-    for (const item of request) input.items[item.index]!.text = normalizePlaceholders(String(texts[item.id]).trim());
+    for (const item of request) {
+      const target = input.items[item.index]!;
+      // A rewrite may use the pair's role names again ({TARGET}); bind them to the same keys as the draft.
+      target.text = normalizePlaceholders(String(texts[item.id]).trim())
+        .replace(/\{([A-Z]+)(:company)?\}/gu, (match, role: string, company?: string) => (target.aliases?.[role] ? `{${target.aliases[role]}${company ?? ""}}` : match));
+    }
     const second = baseTextIssues(input.items, input.participants);
     if (second.size) {
       return { ok: false, result: trilingualFailure({ kind: "repair", stage: "base_after_repair", text: repairText, result: trilingualRetryable<never>(`The base draft still failed after repair: ${[...new Set([...second.values()].flat())].join(", ")}.`, metadata) }) };
@@ -1649,19 +1654,20 @@ ${JSON.stringify(pairs)}`,
     if (writeProblem) return trilingualFailure({ kind: "recommendations", stage: `write_${writeProblem}`, text: response.text, result: trilingualRetryable(`The base draft failed the fact checks (${writeProblem}).`, metadata) });
     // 2. Base texts, scoped to the pair; {SOURCE}/{TARGET} become that pair's keys (no other person can be named). ev is internal only.
     const written = json as Record<string, Record<string, unknown>>;
-    const base: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; reader?: string; text: string }> = [];
+    const base: Array<{ aliases?: Readonly<Record<string, string>>; allowed: ReadonlySet<string>; asked?: string; id: string; reader?: string; text: string }> = [];
     const bind = (text: string, sourceKey: string, targetKey: string | null) => normalizePlaceholders(text)
       .replace(/\{(SOURCE|TARGET)(:company)?\}/gu, (match, role: string, company?: string) => (role === "SOURCE" ? `{${sourceKey}${company ?? ""}}` : targetKey ? `{${targetKey}${company ?? ""}}` : match));
     for (const token of tokenizedSources.tokenSources) {
       const list = chosen.get(token.sourceKey)!;
-      if (list.length === 0) base.push({ allowed: new Set([token.sourceKey]), id: `${token.sourceKey}.none`, reader: token.sourceKey, text: bind(String(written[`${token.sourceKey}.none`]!.none), token.sourceKey, null) });
+      if (list.length === 0) base.push({ aliases: { SOURCE: token.sourceKey }, allowed: new Set([token.sourceKey]), id: `${token.sourceKey}.none`, reader: token.sourceKey, text: bind(String(written[`${token.sourceKey}.none`]!.none), token.sourceKey, null) });
       list.forEach((item, index) => {
         const id = `${token.sourceKey}.p${index + 1}`;
         const row = written[id]!;
         const allowed = new Set([token.sourceKey, item.target]);
-        for (const field of ["r1", "r2"]) base.push({ allowed, id: `${id}.${field}`, reader: token.sourceKey, text: bind(String((row[field] as Record<string, unknown>).text), token.sourceKey, item.target) });
-        for (const field of ["q1", "q2"]) base.push({ allowed, asked: item.target, id: `${id}.${field}`, reader: token.sourceKey, text: bind(String(row[field]), token.sourceKey, item.target) });
-        base.push({ allowed, id: `${id}.hint`, reader: token.sourceKey, text: bind(String(row.hint), token.sourceKey, item.target) });
+        const aliases = { SOURCE: token.sourceKey, TARGET: item.target };
+        for (const field of ["r1", "r2"]) base.push({ aliases, allowed, id: `${id}.${field}`, reader: token.sourceKey, text: bind(String((row[field] as Record<string, unknown>).text), token.sourceKey, item.target) });
+        for (const field of ["q1", "q2"]) base.push({ aliases, allowed, asked: item.target, id: `${id}.${field}`, reader: token.sourceKey, text: bind(String(row[field]), token.sourceKey, item.target) });
+        base.push({ aliases, allowed, id: `${id}.hint`, reader: token.sourceKey, text: bind(String(row.hint), token.sourceKey, item.target) });
       });
     }
     const baseChecked = await checkAndRepairBase({ items: base, kind: "recommendations", metadata, participants, text: response.text });
