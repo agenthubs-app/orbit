@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { listedCountNote, withListedTotals } from "../../features/agent-v1/answer/counts";
+import { withCodeLateCount } from "../../features/agent-v1/answer/list-or-text";
 import { runFn } from "./functions-kit";
 import { json, type ModelCall } from "./graph-kit";
 
@@ -62,4 +63,14 @@ test("in the graph: 「你有 14 条待办都还没完成」 above 4 cards is de
   assert.doesNotMatch(run.result.text, /14条待办/u, run.result.text);
   assert.match(run.result.text, /你有4条待办都还没完成/u, run.result.text);
   assert.ok(run.events.some((event) => event.type === "answer.listed_total_corrected"));
+});
+
+test("eval AE-H-008 / AE-MEM-005: the overdue-count rule no longer takes the total before 「其中 N 件」 for the overdue number", () => {
+  // The rule's reach ran past the comma to 「过了期限」: 5 became 2 (「你还有2件没做完的待办，其中2件…」).
+  assert.deepEqual(withCodeLateCount("你还有5件没做完的待办，其中2件已经过了期限或计划日。", { dueLate: 1, late: 2 }), { changed: [], text: "你还有5件没做完的待办，其中2件已经过了期限或计划日。" });
+  assert.deepEqual(withCodeLateCount("未完了のToDoは5件あり、そのうち2件が期限切れか計画日を過ぎています。", { dueLate: 1, late: 2 }).changed, []);
+  // A wrong overdue number is still code's.
+  assert.equal(withCodeLateCount("你还有5件没做完的待办，其中3件已经过了期限或计划日。", { dueLate: 1, late: 2 }).text, "你还有5件没做完的待办，其中2件已经过了期限或计划日。");
+  // And a total said with 「没做完的」 is checked against the cards.
+  assert.equal(withListedTotals("你还有2件没做完的待办，其中2件已经过了期限或计划日。", { todo: { listed: 5 } }).text, "你还有5件没做完的待办，其中2件已经过了期限或计划日。");
 });
