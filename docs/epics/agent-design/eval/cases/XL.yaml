@@ -1,4 +1,4 @@
-# XL 区：小林切片。AG06 的门槛用例，共 12 例。
+# XL 区：小林切片。AG06 的门槛用例，共 17 例（013～017 是 2026-11-22 多轮理解引擎移植加的）。
 #
 # 本文件的写法约定（都在 README 词表之内，只是把词表没写死的取值定下来）：
 # - fault 的 where 写设计稿附录 A 的能力名。memo.create 指这项操作的执行器。
@@ -413,3 +413,126 @@ cases:
       - id: R4
         text: "卡片写明待办「山本さんに原稿を送る」的计划日期从 11 月 25 日改到 11 月 20 日，日期带星期。"
     notes: "金曜日按默认时钟是 2026-11-20。山本名下另有中文标题的待办 T47（约山本吃饭），不应被选中。"
+
+  # 多轮理解引擎移植（agent-conv-port，2026-11-22）加的五例：XL-010 的情形、纠正之后的代词、被打断又接上的请求、取消、
+  # 不该带进新任务的条件。全部 dev。
+
+  - id: AE-XL-013
+    title: "记了来电之后再问小陈：卡上关联过的陈一鸣就是他，不再问是哪一位"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.10", "§3.6"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "记一下：小林今天来电话了，说小陈下周回东京。"
+      - click: { card: last, decision: confirm }
+      - user: "小陈在北辰软件负责什么？"
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - clarifications: { count: 0 }
+      - writes_exact: same_as_card
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第三步的回应说的是陈一鸣（北辰软件的法务），没有反问“小陈”指的是哪一位。"
+      - id: R2
+        text: "第三步的回应没有说陈一鸣负责法务以外的工作。"
+    notes: "AE-XL-010 那种情形换一句话：第一轮的卡把陈一鸣（C21，别名小陈）关联进新笔记，第三轮的「小陈」就是他，账号里也只有他叫小陈。"
+
+  - id: AE-XL-014
+    title: "「不是这条，是给李薇寄样片那条」之后的「她」：卡改成 T45，代词指李薇"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.10", "§3.7"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把给小林发修订报价这条待办改到周五。"
+      - user: "不是这条，是给李薇寄样片那条。"
+      - user: "她现在在哪里工作？"
+    hard:
+      - no_business_writes: true
+      - card_ops:
+          - { op: todo.update, target: T45, set: { plannedDate: "2026-11-20" } }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二步之后等用户确认的卡改的是待办「给李薇寄样片」，改到 11 月 20 日（周五），而不是「给小林发修订报价」。"
+      - id: R2
+        text: "第三步的回应说的是李薇（自由职业的摄影师），不是小林健。"
+    notes: "纠正之后的代词：第二轮否定了 T42、指定 T45（李薇的待办），第三轮的「她」只能是李薇（C31）。周五按默认时钟是 2026-11-20。没有点击，不该有任何写入。"
+
+  - id: AE-XL-015
+    title: "建待办被一个日程问题打断，再说「就按刚才那条建吧」：还是给田中的那条，不带上明天"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.10", "§3.7"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "给田中浩建一个待办：周五前回复他的报价。"
+      - user: "先帮我看看明天有什么日程。"
+      - user: "好，就按刚才那条建吧。"
+    hard:
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第三步的回应接着的是给田中浩的那条待办（周五前回复报价），等用户在卡上确认；没有改成明天日程里的事或明天的日期。"
+      - id: R2
+        text: "第三步没有说已经建好了（没有点确认之前什么都不写）。"
+    notes: "被打断又接上：第二轮只是查日程，第三轮回到第一轮那张等确认的卡。周五按默认时钟是 2026-11-20，明天是 2026-11-16。"
+
+  - id: AE-XL-016
+    title: "「算了先别建」：等确认的新建卡不执行，也不再出新卡"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.7", "§5.1"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "给李薇建一个待办：下周三前寄样片。"
+      - user: "算了先别建。"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 1 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二步的回应说明这条待办没有建（卡上的改动不会执行），没有声称已经建好或已经删掉什么。"
+      - id: R2
+        text: "第二步没有再提出别的写入或追问要建什么。"
+    notes: "取消等确认的卡：打字说「算了」不能批准也不能执行卡；整段对话只有第一轮那一张卡。"
+
+  - id: AE-XL-017
+    title: "先问下周的待办，再新建一条：下周这个时间不带进新建的待办"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.10"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "下周有哪些待办？"
+      - user: "再给山本直子建一个待办：约她吃饭。"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 1 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "新建卡上的待办是约山本直子吃饭，没有计划日或截止日（用户没有说日期；上一轮的「下周」只属于那个问题）。"
+      - id: R2
+        text: "第二步没有把新建的待办说成下周要做的事。"
+    notes: "不该带进新任务的条件：第一轮的时间范围是 11-16～11-22（下周），第二轮是新建，没有说日期。山本名下已有 T47（约山本吃饭），回应可以提醒有一条相似的，但不该替用户决定不建。"
