@@ -21,7 +21,7 @@ import type { FirstLayerContext } from "../context/build";
 import type { FollowUpClass, PartResult, RefResult, Slots, TurnResult } from "./types";
 import { agentRefOf, kindVerbOf } from "./bridge";
 
-export type ConversationDiffField = "ref" | "continues" | "follow_up" | "request" | "next" | "shelved" | "cancel";
+export type ConversationDiffField = "ref" | "continues" | "follow_up" | "request" | "next" | "shelved" | "cancel" | "world" | "pronoun" | "carry";
 
 export interface ConversationDiff {
   field: ConversationDiffField;
@@ -176,7 +176,7 @@ export interface ApplyInput extends CompareInput {
 export interface Applied {
   part: string;
   /** ref_refused: the engine bound a record the reference's own words do not name; nothing changed (traced only). */
-  what: "ref_bound" | "ref_added" | "ref_refused" | "continues" | "cancel" | "time";
+  what: "ref_bound" | "ref_added" | "ref_refused" | "continues" | "cancel" | "time" | "pronoun" | "people_add" | "people_drop";
   detail: unknown;
 }
 
@@ -242,4 +242,94 @@ export function applyTurn(input: ApplyInput): { parts: GraphPart[]; applied: App
     return part;
   });
   return { applied, parts };
+}
+
+// ---------------------------------------------------------------- decisions opened 2026-11-23 (conversation/mode.ts openedMode)
+
+/** A bare person pronoun, as a reference's whole words (R27 binds only these). */
+const PERSON_PRONOUN = /^(?:她|他|ta|TA|彼女|彼|she|he|her|him)(?:的|さん|の)?$/iu;
+
+/**
+ * R27 (no gender known, owner decision 2026-11-23): the engine asks about a bare pronoun when it cannot tell a gender,
+ * even when the latest turn that named anyone named exactly one person; that person is the one meant. Its "ask" with one
+ * contact candidate (outside an idle break: R2 still asks) becomes "bound". Returns the result with those refs bound and
+ * the refs changed.
+ */
+export function withPronounsBound(result: TurnResult, idle: boolean): { result: TurnResult; bound: { quote: string; said: string; id: string }[] } {
+  const bound: { quote: string; said: string; id: string }[] = [];
+  if (idle) return { bound, result };
+  const parts = result.parts.map((part) => ({
+    ...part,
+    refs: part.refs.map((ref) => {
+      const only = ref.outcome === "ask" && ref.candidates?.length === 1 ? ref.candidates[0] : null;
+      if (!only || !only.startsWith("C-") || !PERSON_PRONOUN.test(ref.said.trim())) return ref;
+      bound.push({ id: only, quote: part.quote, said: ref.said });
+      return { id: only, outcome: "bound" as const, said: ref.said };
+    }),
+  }));
+  return { bound, result: { ...result, parts } };
+}
+
+export interface CarryChange {
+  part: string;
+  what: "people_add" | "people_drop";
+  ids: string[];
+  followUp: FollowUpClass | null;
+}
+
+/** Follow-ups that keep the request's person (ask_again_about swaps the object, so it does not). */
+const KEEPS_PERSON: FollowUpClass[] = ["repeat", "swap_period", "refine", "adjust", "follow_list"];
+
+/**
+ * The merged request's people against the agent's part:
+ * - people_add: a read that goes back to the request before (KEEPS_PERSON) whose part names no person keeps the people
+ *   of the engine's merged request (「那下周呢」 after 「王磊的待办」);
+ * - people_drop: a new request (followUp new) whose part holds a person the words of this message do not name (no
+ *   words, or words that are not in the message) and that the engine's request does not hold — a person carried in.
+ * Kind, time, place and topic of the merged request stay logged only (the agent has no place or topic slot; time is
+ * the `time` decision of applyTurn).
+ */
+export function carryChangesOf(input: Pick<CompareInput, "message" | "parts" | "result">): CarryChange[] {
+  const out: CarryChange[] = [];
+  for (const part of input.parts) {
+    const item = enginePartOf(input.result, input.message, part);
+    if (!item || item.continues || part.continues) continue;
+    const engine = (item.request?.people ?? []).map((id) => agentRefOf(id)).filter((ref): ref is { type: string; id: string } => ref?.type === "contact").map((ref) => ref.id);
+    const people = part.refs.filter((ref) => ref.entity === "contact");
+    const reads = part.capabilities.some((capability) => /\.read$/u.test(capability));
+    if (item.followUp && KEEPS_PERSON.includes(item.followUp) && reads && !people.length && engine.length) out.push({ followUp: item.followUp, ids: [...new Set(engine)], part: part.localId, what: "people_add" });
+    if (item.followUp === "new") {
+      const carried = people.filter((ref) => ref.recordId && !engine.includes(ref.recordId) && !(ref.quote && ref.quote[1] > ref.quote[0] && input.message.slice(ref.quote[0], ref.quote[1]).trim()));
+      if (carried.length) out.push({ followUp: item.followUp, ids: carried.map((ref) => ref.recordId!), part: part.localId, what: "people_drop" });
+    }
+  }
+  return out;
+}
+
+/** Switch on: the carry changes on the parts (new parts; the originals are not touched). */
+export function applyCarry(parts: readonly GraphPart[], changes: readonly CarryChange[]): GraphPart[] {
+  return parts.map((original) => {
+    const mine = changes.filter((change) => change.part === original.localId);
+    if (!mine.length) return original;
+    let refs = original.refs.map((ref) => ({ ...ref }));
+    for (const change of mine) {
+      if (change.what === "people_add") for (const id of change.ids) if (!refs.some((ref) => ref.recordId === id)) refs.push({ entity: "contact", quote: null, recordId: id });
+      if (change.what === "people_drop") refs = refs.filter((ref) => !(ref.entity === "contact" && ref.recordId && change.ids.includes(ref.recordId)));
+    }
+    return { ...original, refs };
+  });
+}
+
+/** How two engine results differ per part (refs, continues, follow-up, request, next): the enriched World against names only. */
+export function resultDiffs(message: string, parts: readonly GraphPart[], base: TurnResult, other: TurnResult): ConversationDiff[] {
+  const diffs: ConversationDiff[] = [];
+  const view = (item: PartResult | null) => item ? { continues: item.continues, followUp: item.followUp, next: item.next, refs: item.refs.map((ref) => ({ id: ref.id ?? null, outcome: ref.outcome, said: ref.said, ...(ref.candidates ? { candidates: ref.candidates } : {}) })), request: item.request } : null;
+  for (const part of parts) {
+    const left = view(enginePartOf(base, message, part));
+    const right = view(enginePartOf(other, message, part));
+    for (const key of ["refs", "continues", "followUp", "request", "next"] as const) {
+      if (JSON.stringify(left?.[key] ?? null) !== JSON.stringify(right?.[key] ?? null)) diffs.push({ agent: left?.[key] ?? null, engine: right?.[key] ?? null, field: "world", part: `${part.localId}:${key}` });
+    }
+  }
+  return diffs;
 }

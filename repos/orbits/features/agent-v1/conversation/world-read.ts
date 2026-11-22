@@ -1,0 +1,93 @@
+/**
+ * The conversation engine's World from the store (ORBIT_AGENT_CONVERSATION_WORLD, conversation/mode.ts): per turn a small,
+ * bounded read of the people this conversation is about — the contacts it named (name, company, title; the agent keeps
+ * no aliases) and the newest to-dos / notes / schedule items linked to the first few of them. The records it named are
+ * not read again (they stay names only: an answered record is not re-read for a later turn, eval AE-SCL-021). Never a whole collection: at most READ_CONTACTS contact rows and READ_RECORDS record rows per turn, read
+ * through the record finder's loader (finder/world.ts: the same store, account + workspace scope, eval deny list, eval
+ * read faults and field whitelist as every other read), memoised within the turn.
+ *
+ * The read starts when the understand step starts (it needs only the log and the context), so it runs beside the first
+ * layer's model call; the engine waits for it at most READ_WAIT_MS after that call returns, and goes on without it.
+ * Events are not read (the engine keeps their names from the conversation); a failure is traced and the World is the
+ * names-only one.
+ */
+import type { FirstLayerContext } from "../context/build";
+import type { NodeScope } from "../graph/deps";
+import { emitTrace } from "../observability/trace";
+import { createWorldLoader } from "../finder/world";
+import type { World } from "../finder/types";
+import type { ConversationLog } from "./bridge";
+import type { LabWorld } from "./types";
+import { labIdOf } from "./bridge";
+
+export const READ_CONTACTS = 10;
+export const READ_RECORDS = 30;
+/** Contacts (the most recent ones) whose linked records are read. */
+export const READ_LINKED_PEOPLE = 3;
+export const READ_WAIT_MS = 250;
+
+export interface WorldRead {
+  status: "read" | "error" | "timeout" | "nothing";
+  world: World | null;
+  rows: number;
+  contacts: number;
+  records: number;
+  ms: number;
+}
+
+/** The lab ids this conversation is about, most recent first: contacts and records (T / M / S). */
+export function conversationIdsOf(log: ConversationLog | null, context: FirstLayerContext | null): { contacts: string[]; records: string[] } {
+  const ordered: string[] = [];
+  for (const turn of [...(log?.turns ?? [])].reverse()) {
+    for (const part of turn.user.hint?.parts ?? []) for (const ref of part.refs ?? []) if (ref.id) ordered.push(ref.id);
+    for (const part of turn.user.hint?.parts ?? []) ordered.push(...(part.slots?.people ?? []));
+    if (turn.agent?.card?.target) ordered.push(turn.agent.card.target);
+    ordered.push(...(turn.agent?.mentions ?? []), ...(turn.agent?.listed ?? []), ...(turn.agent?.asks?.options ?? []).map((option) => option.id));
+  }
+  for (const item of context?.lastMentionedForCode ?? []) ordered.push(labIdOf(item.type, item.id) ?? "");
+  for (const handle of context?.handles.values() ?? []) if (handle.accessible !== false) ordered.push(labIdOf(handle.type, handle.id) ?? "");
+  for (const item of context?.openItems ?? []) for (const option of item.options ?? []) ordered.push(labIdOf(option.type, option.id) ?? "");
+  ordered.push(...Object.keys(log?.names ?? {}));
+  const gone = new Set([...(context?.handles.values() ?? [])].filter((handle) => handle.accessible === false).map((handle) => labIdOf(handle.type, handle.id)));
+  const ids = [...new Set(ordered.filter((id) => id && !gone.has(id)))];
+  return { contacts: ids.filter((id) => id.startsWith("C-")), records: ids.filter((id) => /^[TMS]-/u.test(id)) };
+}
+
+/** Starts the turn's read (null: nothing to read, or no record access). Never rejects. */
+export function startWorldRead(scope: NodeScope, log: ConversationLog | null, now: string, timeZone: string): Promise<WorldRead> | null {
+  const records = scope.deps.records;
+  if (!records) return null;
+  const ids = conversationIdsOf(log, scope.run.context);
+  if (!ids.contacts.length) return null;
+  const started = Date.now();
+  const loader = createWorldLoader({ now, records, scope: records.scope(scope.input.actorId), timeZone });
+  return loader.conversationWorld({ contacts: ids.contacts, linkedPeople: READ_LINKED_PEOPLE, maxContacts: READ_CONTACTS, maxRecords: READ_RECORDS }).then(
+    (world) => ({ contacts: world.contacts.length, ms: Date.now() - started, records: world.todos.length + world.memos.length + world.schedule.length, rows: loader.reads(), status: "read" as const, world }),
+    (error: unknown) => {
+      emitTrace({ error: error instanceof Error ? error.message : String(error), type: "conversation.world_error" });
+      return { contacts: 0, ms: Date.now() - started, records: 0, rows: loader.reads(), status: "error" as const, world: null };
+    },
+  );
+}
+
+/** The read, waited for at most `waitMs` more (a read still running is "timeout"; its rows still count when it lands). */
+export async function awaitWorldRead(pending: Promise<WorldRead> | null, waitMs = READ_WAIT_MS): Promise<WorldRead> {
+  if (!pending) return { contacts: 0, ms: 0, records: 0, rows: 0, status: "nothing", world: null };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<WorldRead>((resolve) => { timer = setTimeout(() => resolve({ contacts: 0, ms: waitMs, records: 0, rows: 0, status: "timeout", world: null }), waitMs); });
+  try {
+    return await Promise.race([pending, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+/**
+ * The names-only World with the read records laid over it: a record read replaces its names-only entry (same lab id),
+ * a record not named before is added. Genders stay empty (owner decision 2026-11-23: no gender, no inference).
+ */
+export function enrichWorld(base: LabWorld, read: World | null): LabWorld {
+  if (!read) return base;
+  const over = <R extends { id: string }>(mine: R[], theirs: R[]) => [...new Map([...mine, ...theirs].map((item) => [item.id, item])).values()];
+  return { ...base, contacts: over(base.contacts, read.contacts), genders: {}, memos: over(base.memos, read.memos), schedule: over(base.schedule, read.schedule), todos: over(base.todos, read.todos) };
+}

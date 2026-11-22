@@ -27,7 +27,9 @@ import { mergePickIntoQuestion, recommendIsRanking } from "../../understand/merg
 import { keepsLookingAt, keepsLookingIn } from "../../rule/parse";
 import { PICK_WORDS } from "../../functions/basis";
 import { roleGroupClue } from "../../understand/role-words";
-import { conversationTurn } from "../../conversation/run";
+import { conversationTurn, logOf } from "../../conversation/run";
+import { conversationMode, openedMode } from "../../conversation/mode";
+import { awaitWorldRead, startWorldRead } from "../../conversation/world-read";
 
 /** "你", "我", "you", "me": the two people talking, never a contact to look up. */
 const SPEAKER_WORDS = /^(?:你|您|我|咱们?|我们|你们|あなた|私|僕|you|me|i|we|us)$/iu;
@@ -368,6 +370,8 @@ export function understandNode(scope: NodeScope): GraphNode {
     // AG14: the user's saved rules for every answer matter here only for a plain-chat reply this step writes itself.
     const contextText = [context.promptText, ...standingRuleNotes(run.memory)].join("\n");
     const user = understandUserText({ contextText, message: input.message, today });
+    // ORBIT_AGENT_CONVERSATION_WORLD: the engine's small store read runs beside the first layer's model call.
+    const worldRead = conversationMode() !== "legacy" && openedMode("world") !== "off" ? startWorldRead(scope, logOf(run.sessionState), state.asOf || deps.now(), zone) : null;
     emitTrace({ contextMessages: context.messages.length, promptVersion: UNDERSTAND_PROMPT_VERSION, ...(run.memory.rules.length ? { standingRules: run.memory.rules.length } : {}), type: "understand.prompt" });
     let repairs = state.repairs;
     let first = await callMainModel({ budget, fetchImplementation: deps.fetchImplementation, node: "understand", purpose: "first", requestId: input.requestId, system, user });
@@ -418,7 +422,7 @@ export function understandNode(scope: NodeScope): GraphNode {
       run.plainReply = null;
     }
     // ORBIT_AGENT_CONVERSATION: the conversation engine reads the same turn (shadow: compared only; on: its decisions apply).
-    const parts = conversationTurn(scope, state, covered.output, followed?.parts ?? made, { followedList: Boolean(followed) });
+    const parts = conversationTurn(scope, state, covered.output, followed?.parts ?? made, { followedList: Boolean(followed) }, worldRead ? await awaitWorldRead(worldRead) : null);
     return { budget, language: ruled ?? chosen.language, parts, plainChat: followed ? false : covered.output.plainChat, repairs, understanding: "understood" };
   };
 }

@@ -17,9 +17,11 @@ import type { UnderstandOutput } from "../understand/schema";
 import { swapsPeriod } from "../understand/read-window";
 import { emitTrace } from "../observability/trace";
 import { scheduleConversationShadow } from "../rollout/conversation-shadow";
-import { applyTurn, compareTurn, enginePartOf, type Applied, type ConversationDiff } from "./apply";
+import { applyCarry, applyTurn, carryChangesOf, compareTurn, enginePartOf, resultDiffs, withPronounsBound, type Applied, type ConversationDiff } from "./apply";
 import { appendTurn, hintOf, labIdOf, namesOf, normalizeLog, runEngine, TYPE_OF_COLLECTION, worldOf, type ConversationLog } from "./bridge";
-import { conversationBudgetMs, conversationMode, type ConversationMode } from "./mode";
+import { conversationBudgetMs, conversationMode, openedMode, type ConversationMode } from "./mode";
+import { enrichWorld, type WorldRead } from "./world-read";
+import type { World } from "../finder/types";
 import type { AgentReply, FollowUpClass, ModelHint, Question, Slots, TurnResult } from "./types";
 
 export interface ConversationRun {
@@ -31,6 +33,37 @@ export interface ConversationRun {
   ms: number;
   diffs: ConversationDiff[];
   applied: Applied[];
+  /** The store read for the engine's World (ORBIT_AGENT_CONVERSATION_WORLD; null: off / nothing to read). */
+  world?: { status: WorldRead["status"]; rows: number; contacts: number; records: number; readMs: number; engineMs: number; used: boolean } | null;
+}
+
+/** More than this many minutes since the conversation's last message is an idle break (R2: a bare pronoun is asked). */
+const IDLE_MINUTES = 60;
+
+function idleSince(log: ConversationLog | null, now: string): boolean {
+  const last = log?.turns.at(-1);
+  const at = Date.parse(last?.agent?.at ?? last?.user.at ?? "");
+  return Number.isFinite(at) && Date.parse(now) - at > IDLE_MINUTES * 60_000;
+}
+
+/** Names of the records the store read gave (to check a bound record against the reference's words). */
+function namesOfWorld(world: World): Record<string, { type: string; name: string }> {
+  const out: Record<string, { type: string; name: string }> = {};
+  for (const item of world.contacts) out[item.id] = { name: item.name, type: "contact" };
+  for (const item of world.todos) out[item.id] = { name: item.title, type: "todo" };
+  for (const item of world.memos) out[item.id] = { name: item.title, type: "memo" };
+  for (const item of world.schedule) out[item.id] = { name: item.title, type: "schedule" };
+  return out;
+}
+
+const appliedKey = (item: Applied) => JSON.stringify([item.part, item.what, item.detail]);
+/** What `on` would change with `other` that it does not change with `base` (and the reverse). */
+function appliedDelta(base: readonly Applied[], other: readonly Applied[]): { added: Applied[]; removed: Applied[] } | null {
+  const left = new Set(base.map(appliedKey));
+  const right = new Set(other.map(appliedKey));
+  const added = other.filter((item) => !left.has(appliedKey(item)));
+  const removed = base.filter((item) => !right.has(appliedKey(item)));
+  return added.length || removed.length ? { added, removed } : null;
 }
 
 /** The log as the session state holds it (null: none yet). */
@@ -48,28 +81,51 @@ function changeWaits(log: ConversationLog | null): boolean {
  * understand: the engine on this turn. Returns the parts the graph goes on with — the same parts unless the switch is
  * `on` and the engine changed something. Never throws.
  */
-export function conversationTurn(scope: NodeScope, state: AgentGraphState, output: UnderstandOutput | null, parts: GraphPart[], flags: { followedList: boolean } = { followedList: false }): GraphPart[] {
+export function conversationTurn(scope: NodeScope, state: AgentGraphState, output: UnderstandOutput | null, parts: GraphPart[], flags: { followedList: boolean } = { followedList: false }, read: WorldRead | null = null): GraphPart[] {
   const mode = conversationMode();
   if (mode === "legacy") return parts;
   const { input, run } = scope;
   const now = state.asOf || scope.deps.now();
+  const zone = state.timeZone || "Asia/Tokyo";
   const started = Date.now();
   const hint = hintOf(output, run.context);
-  const record: ConversationRun = { applied: [], diffs: [], error: null, hint, mode, ms: 0, result: null, status: "compared" };
+  const record: ConversationRun = { applied: [], diffs: [], error: null, hint, mode, ms: 0, result: null, status: "compared", world: null };
   run.conversation = record;
   try {
     const log = logOf(run.sessionState);
     const gone = [...(run.context?.handles.values() ?? [])].filter((handle) => handle.accessible === false).map((handle) => labIdOf(handle.type, handle.id)).filter((id): id is string => Boolean(id));
     const names = namesOf(log, run.context);
-    const world = worldOf(names, now, state.timeZone || "Asia/Tokyo");
-    const result = runEngine(log, world, { at: now, gone, hint, message: input.message });
+    const world = worldOf(names, now, zone);
+    const turn = { at: now, gone, hint, message: input.message };
+    const result = runEngine(log, world, turn);
     record.ms = Date.now() - started;
     if (record.ms > conversationBudgetMs()) {
       record.status = "over_budget";
       emitTrace({ budgetMs: conversationBudgetMs(), ms: record.ms, type: "conversation.over_budget" });
       return parts;
     }
-    record.result = result;
+    // the World read from the store (ORBIT_AGENT_CONVERSATION_WORLD): a second run; over the budget it is dropped
+    const worldMode = openedMode("world");
+    let enriched: TurnResult | null = null;
+    let enrichedNames = names;
+    if (worldMode !== "off" && read && read.status !== "nothing") {
+      const engineStarted = Date.now();
+      if (read.world) {
+        try {
+          enriched = runEngine(log, enrichWorld(world, read.world), turn);
+          enrichedNames = { ...names, ...namesOfWorld(read.world) };
+        } catch (error) {
+          emitTrace({ error: error instanceof Error ? error.message : String(error), type: "conversation.error", where: "world" });
+        }
+      }
+      const engineMs = Date.now() - engineStarted;
+      if (engineMs > conversationBudgetMs()) enriched = null;
+      record.world = { contacts: read.contacts, engineMs, readMs: read.ms, records: read.records, rows: read.rows, status: read.status, used: worldMode === "on" && Boolean(enriched) };
+      emitTrace({ ...record.world, mode: worldMode, type: "conversation.world" });
+    }
+    const driving = worldMode === "on" && enriched ? enriched : result;
+    const drivingNames = driving === enriched ? enrichedNames : names;
+    record.result = driving;
     const previousAsk = [...(run.context?.messages ?? [])].reverse().find((item) => item.role === "user")?.text;
     const agentFollowUps = new Map<string, FollowUpClass>();
     for (const part of parts) {
@@ -77,14 +133,51 @@ export function conversationTurn(scope: NodeScope, state: AgentGraphState, outpu
       else if (run.carriedQuestions.has(part.localId)) agentFollowUps.set(part.localId, "ask_again_about");
       else if (previousAsk && swapsPeriod(input.message)) agentFollowUps.set(part.localId, "swap_period");
     }
-    const compareInput = { agentFollowUps, message: input.message, parts, result, waitingChange: changeWaits(log) };
+    const compareInput = { agentFollowUps, message: input.message, parts, result: driving, waitingChange: changeWaits(log) };
     record.diffs = compareTurn(compareInput);
+    const applyWith = (engineResult: TurnResult, withNames: Record<string, { type: string; name: string }>) => applyTurn({ ...compareInput, context: run.context, gone: new Set(gone), names: withNames, result: engineResult, timeZone: zone });
+    const idle = idleSince(log, now);
+    const pronounMode = openedMode("pronoun");
+    const carryMode = openedMode("carry");
+    // what `on` decides today (the World as the switch says), then each opened decision on top of it
+    const current = applyWith(driving, drivingNames);
+    // the World: the engine's reading and what `on` would change with it (logged under shadow and on)
+    if (enriched) {
+      record.diffs.push(...resultDiffs(input.message, parts, result, enriched));
+      const delta = appliedDelta(applyWith(result, names).applied, applyWith(enriched, enrichedNames).applied);
+      if (delta) record.diffs.push({ agent: delta.removed, engine: delta.added, field: "world", part: "applied" });
+    }
+    // pronouns (R27) over the World that drives (shadow: over the read World too, when there is one)
+    const probe = pronounMode === "on" || !enriched ? driving : enriched;
+    const probeNames = probe === enriched ? enrichedNames : drivingNames;
+    const pronouns = pronounMode === "off" ? null : withPronounsBound(probe, idle);
+    let final = current;
+    let finalResult = driving;
+    if (pronouns?.bound.length) {
+      const before = probe === driving ? current : applyWith(probe, probeNames);
+      const after = applyWith(pronouns.result, probeNames);
+      const delta = appliedDelta(before.applied, after.applied);
+      record.diffs.push({ agent: delta?.removed ?? [], engine: { applied: delta?.added ?? [], bound: pronouns.bound }, field: "pronoun", part: null });
+      if (pronounMode === "on" && mode === "on") {
+        final = after;
+        finalResult = pronouns.result;
+        const saids = new Set(pronouns.bound.map((item) => item.said));
+        final.applied = final.applied.map((item) => (delta?.added.some((other) => appliedKey(other) === appliedKey(item)) && saids.has(String((item.detail as { said?: string }).said ?? "")) ? { ...item, what: "pronoun" as const } : item));
+      }
+    }
+    // the merged request's people, over the parts as they are after the decisions above
+    const carry = carryMode === "off" ? [] : carryChangesOf({ message: input.message, parts: final.parts, result: carryMode === "on" ? finalResult : (enriched ?? finalResult) });
+    for (const change of carry) record.diffs.push({ agent: final.parts.find((part) => part.localId === change.part)?.refs.filter((ref) => ref.entity === "contact").map((ref) => ref.recordId) ?? [], engine: change, field: "carry", part: change.part });
     if (mode !== "on") return parts;
-    const gonePieces = new Set(gone);
-    const applied = applyTurn({ ...compareInput, context: run.context, gone: gonePieces, names, timeZone: state.timeZone || "Asia/Tokyo" });
-    record.applied = applied.applied;
-    for (const item of applied.applied) emitTrace({ ...item, type: item.what === "ref_refused" ? "conversation.refused" : "conversation.applied" });
-    return applied.parts;
+    let out = final.parts;
+    const applied = [...final.applied];
+    if (carryMode === "on" && carry.length) {
+      out = applyCarry(out, carry);
+      for (const change of carry) applied.push({ detail: { followUp: change.followUp, ids: change.ids }, part: change.part, what: change.what });
+    }
+    record.applied = applied;
+    for (const item of applied) emitTrace({ ...item, type: item.what === "ref_refused" ? "conversation.refused" : "conversation.applied" });
+    return out;
   } catch (error) {
     record.status = "error";
     record.error = error instanceof Error ? error.message : String(error);

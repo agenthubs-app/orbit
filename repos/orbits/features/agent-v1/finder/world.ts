@@ -99,6 +99,22 @@ export interface WorldLoader {
   loaded: Map<string, Record<string, unknown>>;
   /** Store rows read in this request, by query (for tests and traces). */
   reads(): number;
+  /**
+   * The conversation engine's World for one turn (conversation/world-read.ts): the contacts the conversation named, by
+   * id, and the newest records linked to the first few of them — never more than `maxContacts` contact rows and
+   * `maxRecords` record rows in all (each query is capped by an even share of what is left). Records the conversation
+   * named are not read again (the eval's AE-SCL-021: an answered record is not re-read for a later turn).
+   */
+  conversationWorld(input: ConversationWorldInput): Promise<World>;
+}
+
+export interface ConversationWorldInput {
+  /** Lab contact ids, most recent first. */
+  contacts: readonly string[];
+  /** Contacts whose linked records are read (the first ones of `contacts`). */
+  linkedPeople: number;
+  maxContacts: number;
+  maxRecords: number;
 }
 
 export interface WorldOptions {
@@ -272,6 +288,30 @@ export function createWorldLoader(options: WorldOptions): WorldLoader {
   return {
     loaded,
     reads: () => rowCount,
+    async conversationWorld(input) {
+      const world = emptyWorld();
+      const contactIds = [...new Set(input.contacts)].slice(0, input.maxContacts);
+      world.contacts = await contactsById(contactIds);
+      let left = input.maxRecords;
+      const take = async (collection: Collection, spec: RecordSpec, cap: number) => {
+        if (cap <= 0 || left <= 0) return [] as RowsOut;
+        const rows = (await query(collection, spec, Math.min(cap, left))).slice(0, left);
+        left -= rows.length;
+        return rows;
+      };
+      const rows: Record<"todos" | "memos" | "schedule", RowsOut> = { memos: [], schedule: [], todos: [] };
+      // the newest records linked to the first few people, each query capped by an even share of what is left
+      const people = agentIds(contactIds, "contact").slice(0, Math.max(0, input.linkedPeople));
+      const specs: [Collection & keyof typeof rows, RecordSpec][] = people.flatMap((contactId) => (["todos", "memos", "schedule"] as const).map((collection) => [collection, base(collection, { contactId, order: "newest" })] as [Collection & keyof typeof rows, RecordSpec]));
+      const share = specs.length ? Math.max(1, Math.floor(left / specs.length)) : 0;
+      for (const [collection, spec] of specs) rows[collection].push(...(await take(collection, spec, share)));
+      const dedupe = (items: RowsOut) => [...new Map(items.map((item) => [item.row.id, item])).values()];
+      world.todos = dedupe(rows.todos).map(todoOf);
+      world.memos = dedupe(rows.memos).map(memoOf);
+      // (no occurrence exceptions: the engine reads titles, people and dates, and that read is not capped)
+      world.schedule = dedupe(rows.schedule).map((item) => scheduleOf(item, undefined));
+      return world;
+    },
     async findWorld(fn, input) {
       // The lab code caches an index per World object: the plan is made on its own World, the lookup's World is new.
       const peopleWorld = emptyWorld();
