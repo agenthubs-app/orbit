@@ -19,7 +19,7 @@ import type { EventOperationsParticipant } from "../../features/events/event-ope
 function participant(id: string, displayName: string, company: string): EventOperationsParticipant {
   return {
     actorId: `actor:${id}`, company, displayName, energyStyle: null, evidenceIds: [], experienceHighlight: null, industry: "AI",
-    languages: ["ja"], lateRegistration: false, needs: ["資金調達"], offers: ["SaaS 導入"], participantId: `participant:${id}`,
+    languages: ["ja"], lateRegistration: false, needs: ["資金調達"], offers: ["投資家・VCの紹介"], participantId: `participant:${id}`,
     profileCompleteness: "complete", role: "CEO", seniority: null, topics: ["AI"],
   };
 }
@@ -438,4 +438,32 @@ test("a shared topic is the same tag or clearly the same kind; two different int
   assert.match(write, /"sharedTopics":\[\]/u, "the writer is told there is no shared topic");
   const sameAngle = model({ base: { "S1.p1": pair({ r2: { ev: ["S.n1", "T.o1"], text: "まず{TARGET}さんに導入の進め方を聞くと、具体像がつかめます。" } }) }, choose });
   assert.equal((await provider(sameAngle).generateRecommendations(input)).success, true, "r2 may stay on r1's pair with a concrete angle");
+});
+
+test("match concepts: the program decides need/offer answers and shared topics, across vocabularies and languages", async () => {
+  const { offerAnswersNeed, topicsShare: share } = await import("../../features/events/event-operations/match-concepts");
+  assert.equal(offerAnswersNeed("資金調達（シード〜プレA）", "投資家・VCの紹介"), true);
+  assert.equal(offerAnswersNeed("投资人", "Investment & funding"), true, "app options in any language");
+  assert.equal(offerAnswersNeed("事業パートナー / 共同創業者", "中国市場の知見"), false, "a co-founder need is not answered by market knowledge");
+  assert.equal(offerAnswersNeed("その他", "その他"), false, "a generic value never matches");
+  assert.equal(share("起業・資金調達", "Startups & fundraising"), true);
+  assert.equal(share("海外展開（総合）", "北米進出"), true, "same kind");
+  assert.equal(share("海外展開（総合）", "生成AI / LLMの活用"), false);
+});
+
+test("who can be recommended is the program's call: K = min(N, real matches); a pick outside that set fails", async () => {
+  const unrelated = { ...mira, needs: ["SNS運用アドバイス"], offers: ["不動産投資の知見"], topics: ["教育"] };
+  const input = { eventId: "event:t", recommendationCount: 5, sources: [{ candidateParticipants: [bo, unrelated], sourceParticipant: yamada }] };
+  const runner = model({ base: { "S1.p1": pair() }, choose: { S1: [{ basis: [["S1.n1", "S1C1.o1"]], score: 80, target: "S1C1" }] } });
+  const ok = await provider(runner).generateRecommendations(input);
+  assert.equal(ok.success, true, "one real match → exactly one pick, though N is 5");
+  if (ok.success) assert.equal(ok.data[0]!.recommendations.length, 1);
+  const chooseText = runner.calls.find((call) => call.kind === "choose")!.userText;
+  assert.doesNotMatch(chooseText, /"candidateKey":"S1C2"/u, "a candidate without a real match is never offered");
+  assert.match(chooseText, /"matchPairs":\[\["S1\.n1","S1C1\.o1"\]/u);
+  await failsRetryably(model({ base: { "S1.p1": pair() }, choose: { S1: [{ basis: [["S1.n1", "S1C1.o1"]], score: 80, target: "S1C2" }] } }), input, "a pick outside the set");
+  await failsRetryably(model({ base: { "S1.p1": pair() }, choose: { S1: [] } }), input, "fewer picks than K");
+  const none = await provider(model({ base: { "S1.none": { none: "今回は条件の合う相手がいません。" } }, choose: { S1: [] } })).generateRecommendations({ ...input, sources: [{ candidateParticipants: [unrelated], sourceParticipant: yamada }] });
+  assert.equal(none.success, true, "no real match → no-match reason");
+  if (none.success) assert.equal(none.data[0]!.recommendations.length, 0);
 });

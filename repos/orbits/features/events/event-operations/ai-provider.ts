@@ -1,3 +1,4 @@
+import { offerAnswersNeed, topicsShare } from "./match-concepts";
 import {
   DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL,
   DEFAULT_GEMINI_ORBIT_AGENT_MODEL,
@@ -934,6 +935,7 @@ type FactKind = "need" | "offer" | "topic" | "context";
 interface ProfileFact { id: string; kind: FactKind; owner: string; text: string }
 const FACT_PREFIX: Readonly<Record<FactKind, string>> = { context: "c", need: "n", offer: "o", topic: "t" };
 /** A participant's profile as owned, typed facts: needs, offers (incl. the experience highlight), topics, context (industry, role). */
+export { topicsShare };
 export function profileFacts(key: string, participant: import("./contract").EventOperationsParticipant): ProfileFact[] {
   const facts: ProfileFact[] = [];
   const add = (kind: FactKind, text: string | null | undefined) => {
@@ -951,28 +953,20 @@ export function profileFacts(key: string, participant: import("./contract").Even
   return facts;
 }
 const factOwnerTag = (fact: { id: string }) => fact.id.slice(0, fact.id.lastIndexOf("."));
-/** A topic tag reduced for comparison: width/case folded, parenthesised qualifiers (（総合）) and spaces dropped. */
-const topicKey = (text: string) => text.normalize("NFKC").toLocaleLowerCase("en-US").replace(/[(（][^)）]*[)）]/gu, "").replace(/\s+/gu, "");
-const topicParts = (text: string) => new Set(topicKey(text).split(/[\/・、,，×&+]+/u).filter((part) => part.length >= 2));
 /**
- * Two topics are a shared topic only when they are the same tag or clearly the same kind: equal after
- * normalising, one contains the other, or they share a listed part (「生成AI / LLM」 and 「LLM」). Two different
- * interests (海外展開 × 生成AI) are not a shared topic (2026-11-22 reread: 5 of 20 second reasons forced that).
+ * A legal basis pair: a need of one person answered by an offer of the other, or a topic both people share —
+ * both decided by the program's concept table (match-concepts.ts), never by the model (2026-11-22: two different
+ * interests and unrelated need/offer pairs were presented as matches).
  */
-export function topicsShare(left: string, right: string): boolean {
-  const a = topicKey(left);
-  const b = topicKey(right);
-  if (!a || !b) return false;
-  if (a === b || (Math.min(a.length, b.length) >= 2 && (a.includes(b) || b.includes(a)))) return true;
-  const parts = topicParts(right);
-  return [...topicParts(left)].some((part) => parts.has(part));
-}
-/** A legal basis pair: a need of one person with an offer of the other, or a topic both people share. */
 function isLegalFactPair(left: { id: string; kind: FactKind; text?: string }, right: { id: string; kind: FactKind; text?: string }): boolean {
   if (factOwnerTag(left) === factOwnerTag(right)) return false;
   const kinds = [left.kind, right.kind].sort().join("+");
-  if (kinds === "need+offer") return true;
-  return kinds === "topic+topic" && (left.text === undefined || right.text === undefined || topicsShare(left.text, right.text));
+  if (left.text === undefined || right.text === undefined) return kinds === "need+offer" || kinds === "topic+topic";
+  if (kinds === "need+offer") {
+    const [need, offer] = left.kind === "need" ? [left, right] : [right, left];
+    return offerAnswersNeed(need.text!, offer.text!);
+  }
+  return kinds === "topic+topic" && topicsShare(left.text, right.text);
 }
 /** Every legal pair among the cited facts, as sorted "a|b" ids. */
 function legalPairsIn(cited: ReadonlyArray<{ id: string; kind: FactKind; text?: string }>): string[] {
@@ -1570,19 +1564,27 @@ export function createEventOperationsAiProvider({
       const candidateById = new Map(source.candidateParticipants.map((candidate) => [candidate.participantId, candidate]));
       for (const [key, id] of token.candidateIdByKey) participantByKey.set(key, candidateById.get(id)!);
     });
-    // Exactly K picks per source: K = min(N, candidates). The program owns the count, the order (rank) and the targets' validity.
-    const pickCount = new Map(tokenizedSources.tokenSources.map((token) => [token.sourceKey, Math.min(Math.max(0, Math.floor(input.recommendationCount)), token.candidateIdByKey.size)]));
-    const pickKeys = (sourceKey: string) => Array.from({ length: pickCount.get(sourceKey)! }, (_, index) => `p${index + 1}`);
     // Fact anchors (2026-11-22): every profile becomes owned, typed facts. The model must say which facts a
     // recommendation rests on; the program checks owners and types, so a need cannot be presented as an offer,
     // a topic as expertise, or one person's need as the other's.
     const factsByKey = new Map<string, readonly ProfileFact[]>();
     for (const [key, participant] of participantByKey) factsByKey.set(key, profileFacts(key, participant));
+    // The program decides who can be recommended at all: a candidate with at least one legal pair with the source
+    // (a need answered by an offer in either direction, or a shared topic — concept table, no model). Exactly
+    // K = min(N, |E|) picks from that set E; fewer than N only ever means "not enough real matches", never a
+    // model that gave up (2026-11-22: 12 people x N=5 forced unrelated pairs).
+    const legalPairsBetween = (left: string, right: string) => factsByKey.get(left)!.flatMap((own) => factsByKey.get(right)!.filter((fact) => isLegalFactPair(own, fact)).map((fact) => [own.id, fact.id]));
+    const matchable = new Map(tokenizedSources.tokenSources.map((token) => {
+      const sourceFacts = factsByKey.get(token.sourceKey)!;
+      return [token.sourceKey, [...token.candidateIdByKey.keys()].filter((key) => factsByKey.get(key)!.some((fact) => sourceFacts.some((own) => isLegalFactPair(own, fact))))];
+    }));
+    const pickCount = new Map(tokenizedSources.tokenSources.map((token) => [token.sourceKey, Math.min(Math.max(0, Math.floor(input.recommendationCount)), matchable.get(token.sourceKey)!.length)]));
+    const pickKeys = (sourceKey: string) => Array.from({ length: pickCount.get(sourceKey)! }, (_, index) => `p${index + 1}`);
     const promptPerson = (key: string) => ({ facts: factsByKey.get(key)!.map(({ id, kind, text }) => ({ id, kind, text })), hasCompany: registeredCompany(participantByKey.get(key)!) !== null });
     // Step 1a — choose (small output): exactly K distinct shortlist targets per source, best first, with the fact pairs it rests on.
     const chooseShape = Object.fromEntries(tokenizedSources.tokenSources.map((token) => [token.sourceKey, pickKeys(token.sourceKey).map(() => ({ basis: [[`${token.sourceKey}.n1`, `${token.sourceKey}C?.o1`]], score: 80, target: `${token.sourceKey}C?` }))]));
     const chooseSources = tokenizedSources.tokenSources.map((token) => ({
-      candidates: [...token.candidateIdByKey.keys()].map((key) => ({ candidateKey: key, ...promptPerson(key) })),
+      candidates: matchable.get(token.sourceKey)!.map((key) => ({ candidateKey: key, ...promptPerson(key), matchPairs: legalPairsBetween(token.sourceKey, key) })),
       sourceKey: token.sourceKey,
       ...promptPerson(token.sourceKey),
     }));
@@ -1590,7 +1592,7 @@ export function createEventOperationsAiProvider({
       config,
       systemInstruction: `${systemInstruction}\nYou choose who should meet whom at a networking event, from the supplied facts only. Return exactly one JSON document.`,
       userText: `For each sourceKey, choose exactly the number of different people shown in the JSON shape (an empty list when the source has no candidates) from that source's own candidates, best first. score is an integer 0..100.
-For every pick, basis lists the fact pairs the match rests on (at least one). A pair is exactly one of: [a "need" fact of one person, an "offer" fact of the other person], or [a "topic" fact of the source, a "topic" fact of the target that is the same or clearly the same kind of topic (two different interests are not a pair; the server checks)]. Never pair need with need, offer with offer, or two facts of the same person. A topic is an interest, not an ability. Use only the supplied fact ids of the source and that pick's target. Choose by these facts, not by list order.
+Every candidate listed has at least one real match with the source; matchPairs lists all of them (a need answered by the other person's offer, or a topic both share), as decided by the server. For every pick, basis lists one or more pairs copied from that candidate's matchPairs — no other pair is accepted. Rank by how directly and how strongly those pairs connect the two people, not by list order.
 
 JSON shape (exact keys and list lengths):
 ${JSON.stringify(chooseShape)}
@@ -1613,7 +1615,7 @@ ${JSON.stringify(chooseSources)}`,
         const targets = new Set<string>();
         for (const item of list) {
           if (!isRecord(item) || !exactKeys(item, ["basis", "score", "target"])) return "item";
-          if (typeof item.target !== "string" || !token.candidateIdByKey.has(item.target) || targets.has(item.target)) return "target";
+          if (typeof item.target !== "string" || !matchable.get(token.sourceKey)!.includes(item.target) || targets.has(item.target)) return "target";
           targets.add(item.target);
           if (typeof item.score !== "number" || !Number.isInteger(item.score) || item.score < 0 || item.score > 100) return "score";
           const known = new Map([...factsByKey.get(token.sourceKey)!, ...factsByKey.get(item.target)!].map((fact) => [fact.id, fact]));
@@ -1651,9 +1653,11 @@ ${JSON.stringify(chooseSources)}`,
         const topicsOf = (prefix: string) => facts.filter((fact) => fact.kind === "topic" && fact.id.startsWith(prefix));
         // Shared topics are found by the program; only these may carry a topic reason.
         const sharedTopics = topicsOf("S.").flatMap((left) => topicsOf("T.").filter((right) => topicsShare(left.text, right.text)).map((right) => [left.id, right.id]));
+        const answered = facts.filter((fact) => fact.kind === "need").flatMap((need) => facts.filter((offer) => offer.kind === "offer" && isLegalFactPair(need, offer)).map((offer) => [need.id, offer.id]));
         pairs[id] = {
           basis: item.basis.map((pair) => pair.map((factId) => relabel(factId, token.sourceKey, item.target))),
           facts: facts.map(({ id: factId, kind, text }) => ({ id: factId, kind, text })),
+          needAnswers: answered,
           sharedTopics,
           targetHasCompany: registeredCompany(participantByKey.get(item.target)!) !== null,
         };
@@ -1703,7 +1707,7 @@ ${JSON.stringify(chooseSources)}`,
 These texts are shown to the reader (the source person) about themselves. Address the reader as あなた (あなたは… / あなたの…) whenever a sentence needs that subject, never leaving it ambiguous who is meant; never name the reader. Refer to the target only as {TARGET} (the server adds the name and さん), and to the target's company only as {TARGET:company} next to {TARGET}, only when targetHasCompany is true. No other placeholders exist; never add braces.
 
 For every pair id:
-- r1 and r2: two different reasons why あなた should meet {TARGET}. Each reason states only what its cited facts say and lists them in ev. A need belongs to its owner and is answered only by the other person's offer that answers it most directly (for a funding need, a funding or investor offer — not an unrelated one); a topic is an interest, never an ability or knowledge; never attribute one person's fact to the other. Build r1 on the strongest supplied basis pair. For r2, in this order: a second need/offer pair if it is equally direct (another offer of {TARGET} for a need of あなた, or an offer of あなた for a need of {TARGET}); else a topic from sharedTopics (cite exactly that pair; only those count as shared — never pair two different interests); else r2 stays on r1's pair (same ev) and names one concrete thing to discuss or ask first. Never stretch an unrelated offer to fit a need.
+- r1 and r2: two different reasons why あなた should meet {TARGET}. Each reason states only what its cited facts say and lists them in ev. A need belongs to its owner and is answered only by the other person's offer that answers it most directly (for a funding need, a funding or investor offer — not an unrelated one); a topic is an interest, never an ability or knowledge; never attribute one person's fact to the other. Build r1 on the strongest supplied basis pair. The server lists every real pair: needAnswers (a need answered by the other person's offer, either direction) and sharedTopics; a reason's ev must contain one of those pairs exactly — no other pairing is accepted. For r2, in this order: a second pair from needAnswers if it is equally direct; else a pair from sharedTopics; else r2 stays on r1's pair (same ev) and names one concrete thing to discuss or ask first. Never stretch an unrelated offer to fit a need.
 Let the sentence shape follow what the reason rests on: a reason about a need and an offer may start from either person or from the need itself; a shared-topic reason may start from the topic; a concrete starting point may start from the action. Use a verb that fits the fact (knowledge is had, a service is offered, an introduction is made). Across the pairs of one person, no two reasons may share the same opening or the same sentence pattern; write each one fresh.
 - q1 and q2: two questions あなた asks {TARGET} directly, in polite Japanese, without any placeholder or name.
 - hint: one practical tip for あなた to start the conversation.
