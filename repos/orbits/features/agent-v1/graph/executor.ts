@@ -33,7 +33,7 @@ import { createAgentMemoryService } from "../../agent/memory/service-factory";
 import { createAgentAutomationService } from "../../agent/automations/service-factory";
 import { ruleSnapshotOf } from "../domains/rule/apply";
 import type { RuleSnapshot } from "../domains/rule/ops";
-import { reviseCardByWords } from "../entry/card-revision";
+import { reviseCardByWords, type CardRevisionDeps, type FoundRecord } from "../entry/card-revision";
 import { entryTimeZone } from "../entry/time-zone";
 import { isProposalsPausedError } from "../rollout/rollback";
 
@@ -64,15 +64,37 @@ export async function rememberRevisedRecords(store: AgentSessionStateStore, acto
   await store.put(actorId, state);
 }
 
-/** AE-XL-014: the open to-dos whose title holds the words, with the people each is about (names read from the contacts). */
-function todoFinder(records: AgentRecordAccess, actorId: string): (words: string) => Promise<{ id: string; title: string; people: { id: string; name: string }[] }[]> {
-  return async (words) => {
+/**
+ * AE-XL-014: the to-dos, schedule items or notes whose words hold these (a card's change may move to one), with the people
+ * each is about (names read from the contacts) and what a card about it shows: a schedule item's start, end, zone and
+ * repetition; a note's version, people, interaction and linked events (private events' titles read from them).
+ */
+function recordFinder(records: AgentRecordAccess, actorId: string): NonNullable<CardRevisionDeps["findRecords"]> {
+  return async (kind, words) => {
     const scope = records.scope(actorId);
-    const views = (await records.reader.read("todo", scope, { limit: 5, status: "open", text: words })).items;
-    return Promise.all(views.map(async (view) => {
-      const ids = Array.isArray(view.fields.contactIds) ? (view.fields.contactIds as unknown[]).filter((id): id is string => typeof id === "string") : [];
-      const people = await Promise.all(ids.slice(0, 3).map(async (id) => ({ id, name: String((await records.reader.read("contact", scope, { id }).catch(() => null))?.items[0]?.fields.displayName ?? "") })));
-      return { id: view.id, people: people.filter((person) => person.name), title: String(view.fields.title ?? "") };
+    const views = (await records.reader.read(kind, scope, { limit: 5, text: words })).items;
+    const strings = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []);
+    return Promise.all(views.map(async (view): Promise<FoundRecord> => {
+      const fields = view.fields;
+      const ids = strings(fields.contactIds);
+      const people = (await Promise.all(ids.slice(0, 3).map(async (id) => ({ id, name: String((await records.reader.read("contact", scope, { id }).catch(() => null))?.items[0]?.fields.displayName ?? "") })))).filter((person) => person.name);
+      const base: FoundRecord = { id: view.id, people, title: String(fields.title ?? "") };
+      if (kind === "todo") return { ...base, ...(typeof fields.status === "string" ? { status: fields.status } : {}) };
+      if (kind === "schedule") return { ...base, endsAt: typeof fields.endsAt === "string" ? fields.endsAt : null, recurrence: typeof fields.recurrence === "string" ? fields.recurrence : null, ...(typeof fields.startsAt === "string" ? { startsAt: fields.startsAt } : {}), timeZone: typeof fields.timeZone === "string" ? fields.timeZone : null };
+      const eventRefs = strings(fields.eventRefs).flatMap((ref) => {
+        const at = ref.indexOf(":");
+        const refKind = ref.slice(0, at);
+        return (refKind === "platform" || refKind === "private") && at > 0 ? [{ id: ref.slice(at + 1), kind: refKind as "platform" | "private" }] : [];
+      });
+      const eventTitles: Record<string, string> = {};
+      for (const ref of eventRefs.filter((item) => item.kind === "private").slice(0, 5)) {
+        const event = await records.privateEvents?.get(scope.accountId, ref.id).catch(() => null);
+        if (event?.title) eventTitles[`private:${ref.id}`] = event.title;
+      }
+      const platform = eventRefs.filter((item) => item.kind === "platform").map((item) => item.id);
+      if (platform.length && records.eventsByIds) for (const event of await records.eventsByIds(platform).catch(() => [])) if (event.title) eventTitles[`platform:${event.eventId}`] = event.title;
+      const interaction = fields.interaction && typeof fields.interaction === "object" ? (fields.interaction as FoundRecord["interaction"]) : null;
+      return { ...base, contactIds: ids, eventRefs, eventTitles, interaction, version: typeof fields.version === "number" ? fields.version : Number(view.version) || 1 };
     }));
   };
 }
@@ -229,7 +251,7 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       actorId: execution.actorId,
       message: execution.input.message,
       now: deps.now,
-      ...(records ? { findTodos: todoFinder(records, execution.actorId) } : {}),
+      ...(records ? { findRecords: recordFinder(records, execution.actorId) } : {}),
       ...(records ? { readSchedule: async (id: string) => { const view = (await records.reader.read("schedule", records.scope(execution.actorId), { id })).items[0]; return view && typeof view.fields.startsAt === "string" ? { endsAt: typeof view.fields.endsAt === "string" ? view.fields.endsAt : null, recurrence: typeof view.fields.recurrence === "string" ? view.fields.recurrence : null, startsAt: view.fields.startsAt, timeZone: typeof view.fields.timeZone === "string" ? view.fields.timeZone : null } : null; } } : {}),
       runtime,
       sessionId: execution.sessionId,
