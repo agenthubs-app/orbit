@@ -811,7 +811,9 @@ export function collectTrilingualOutputViolations(
     if (!rest) return false;
     if (!HAN_CHARACTER_PATTERN.test(rest) || KANA_PATTERN.test(rest)) return true;
     // Style (2026-11-22 review): Japanese-calque terms, 贵公司 for a person, and 你 (we address readers as 您).
-    if (/贵公司|课题|导入支持|实际业绩|你(?!们)/u.test(rest)) return true;
+    // 贵公司 for a person changes the meaning, and 你 breaks the 您 convention: both are repaired. Calques (课题 …) are
+    // steered by the translation glossary but not failed (a repair from Japanese 課題 reproduces them).
+    if (/贵公司|你(?!们)/u.test(rest)) return true;
     const policy = collectChineseOutputPolicyViolations([rest], []);
     return policy.disallowedTokens.length > 0 || policy.untranslatedValues.length > 0;
   });
@@ -965,7 +967,7 @@ const TRILINGUAL_RETRYABLE_JSON_SHAPES: ReadonlySet<EventOperationsJsonFailureSh
 
 const BASE_DRAFT_INSTRUCTION = `Write every participant-facing text in natural, polite Japanese only. Each text is specific to the people involved and grounded in their supplied profiles; never use template sentences. Never write a participant's name or company name: refer to a person only as {KEY} and to their company only as {KEY:company}, using the supplied keys exactly, and use {KEY:company} only when that profile has hasCompany=true. Profiles may be written in any language: express every profile term in Japanese, except upper-case abbreviations (AI, DX, VC, M&A …) which stay as written. Write numbers with Arabic digits. Return exactly one JSON document with exactly the documented keys.`;
 
-const TRANSLATION_INSTRUCTION = (language: "zh" | "en") => `You translate Japanese event networking texts into ${language === "zh" ? "idiomatic Simplified Chinese as a native Chinese business writer would write it (no Japanese kana; address the reader as 您, never 你; never 贵公司 for a person; avoid Japanese calques such as 课题, 导入支持, 实际业绩; keep upper-case abbreviations such as AI, DX, VC, M&A, IPO and the terms SaaS, Web3, EdTech, FinTech, PoC as written; translate every other English word)" : "natural, concise English (no Chinese or Japanese characters; address the reader as you; refer to a person as they, never it)"}. A Japanese sentence without a subject keeps the same implied person; never turn a person into a company. Translate only: never add, remove, or change a fact, a person, a direction (who needs and who offers), a negation, or a number. Keep every {…} placeholder exactly as it appears in the Japanese text, and keep numbers as Arabic digits with the same values. Return exactly {"items":{"<id>":"<translation>"}} with exactly the same ids.`;
+const TRANSLATION_INSTRUCTION = (language: "zh" | "en") => `You translate Japanese event networking texts into ${language === "zh" ? "idiomatic Simplified Chinese as a native Chinese business writer would write it (no Japanese kana; address the reader as 您, never 你; never 贵公司 for a person; write natural mainland Chinese instead of Japanese calques (課題 → 挑战/难题/问题, 導入支援 → 落地支持/引入支持, 実績 → 经验/成果, not 课题/导入支持/实际业绩); keep upper-case abbreviations such as AI, DX, VC, M&A, IPO and the terms SaaS, Web3, EdTech, FinTech, PoC as written; translate every other English word)" : "natural, concise English (no Chinese or Japanese characters; address the reader as you; refer to a person as they, never it)"}. A Japanese sentence without a subject keeps the same implied person; never turn a person into a company. Translate only: never add, remove, or change a fact, a person, a direction (who needs and who offers), a negation, or a number. Keep every {…} placeholder exactly as it appears in the Japanese text, and keep numbers as Arabic digits with the same values. Return exactly {"items":{"<id>":"<translation>"}} with exactly the same ids.`;
 
 const systemInstruction = `You are Orbit's event operations matching model.
 Return exactly one JSON document and no markdown, explanation, code fences, or trailing text.
@@ -1461,7 +1463,7 @@ export function createEventOperationsAiProvider({
       config,
       systemInstruction: `${systemInstruction}\nYou choose who should meet whom at a networking event, from the supplied facts only. Return exactly one JSON document.`,
       userText: `For each sourceKey, choose exactly the number of different people shown in the JSON shape (an empty list when the source has no candidates) from that source's own candidates, best first. score is an integer 0..100.
-For every pick, basis lists the fact pairs the match rests on (at least one). A pair is either [a need of one person, an offer of the other person] or [a topic of the source, a topic of the target]. A topic is an interest, not an ability. Use only the supplied fact ids of the source and that pick's target. Choose by these facts, not by list order.
+For every pick, basis lists the fact pairs the match rests on (at least one). A pair is exactly one of: [a "need" fact of one person, an "offer" fact of the other person], or [a "topic" fact of the source, a "topic" fact of the target]. Never pair need with need, offer with offer, or two facts of the same person. A topic is an interest, not an ability. Use only the supplied fact ids of the source and that pick's target. Choose by these facts, not by list order.
 
 JSON shape (exact keys and list lengths):
 ${JSON.stringify(chooseShape)}
@@ -1488,11 +1490,12 @@ ${JSON.stringify(chooseSources)}`,
           targets.add(item.target);
           if (typeof item.score !== "number" || !Number.isInteger(item.score) || item.score < 0 || item.score > 100) return "score";
           const known = new Map([...factsByKey.get(token.sourceKey)!, ...factsByKey.get(item.target)!].map((fact) => [fact.id, fact]));
-          if (!Array.isArray(item.basis) || item.basis.length === 0) return "basis_missing";
-          for (const pair of item.basis) {
-            if (!Array.isArray(pair) || pair.length !== 2 || !pair.every((id) => typeof id === "string" && known.has(id))) return "basis_unknown_fact";
-            if (!isLegalFactPair(known.get(pair[0])!, known.get(pair[1])!)) return "basis_illegal_pair";
-          }
+          if (!Array.isArray(item.basis)) return "basis_missing";
+          // The basis is internal evidence: unknown ids and illegal pairs are dropped; at least one legal pair must remain,
+          // and only legal pairs ever reach the writer.
+          item.basis = item.basis.filter((pair): pair is string[] => Array.isArray(pair) && pair.length === 2
+            && pair.every((id) => typeof id === "string" && known.has(id)) && isLegalFactPair(known.get(pair[0])!, known.get(pair[1])!));
+          if ((item.basis as unknown[]).length === 0) return "basis_no_legal_pair";
         }
       }
       return null;
@@ -1531,7 +1534,7 @@ ${JSON.stringify(chooseSources)}`,
 
 For every pair id:
 - r1 and r2: two different reasons why the source person should meet the target. Each reason states only what its cited facts say and lists them in ev. A need belongs to its owner and is answered only by the other person's offer; a topic is an interest, never an ability or knowledge; never attribute one person's fact to the other. Build the two reasons on the supplied basis. Vary the wording; do not write every reason with the same sentence pattern.
-- q1 and q2: two questions the source person asks the target directly. Address the target directly in polite Japanese (no names, no placeholders, no third person).
+- q1 and q2: two questions the source person asks the target directly, in polite Japanese addressed to the target (never {TARGET} or the target's name; the asker may mention {SOURCE}).
 - hint: one practical tip for starting the conversation.
 For an id ending in ".none": none is one sentence explaining why there is no match.
 In r1, r2, hint and none, refer to the source person only as {SOURCE} and the target only as {TARGET} (the server adds the name and さん); a company only as {SOURCE:company} / {TARGET:company} next to that person, and only when that person has a company (sourceHasCompany / targetHasCompany).
@@ -1564,8 +1567,9 @@ ${JSON.stringify(pairs)}`,
         for (const [index, item] of list.entries()) {
           const row = json[`${token.sourceKey}.p${index + 1}`];
           if (!isRecord(row) || !exactKeys(row, ["hint", "q1", "q2", "r1", "r2"]) || !["hint", "q1", "q2"].every((field) => nonEmptyString(row[field]))) return "pair_keys";
-          // Questions are said to the target directly: no placeholder, no name.
-          if (/[{}]/u.test(`${row.q1}${row.q2}`)) return "question_not_direct";
+          // Questions are said to the target directly: the target is never named in the third person ({TARGET});
+          // the asker may mention themselves.
+          if (/\{TARGET(:company)?\}/u.test(`${row.q1}${row.q2}`)) return "question_not_direct";
           const known = new Map(pairFacts(token.sourceKey, item.target).map((fact) => [fact.id, fact]));
           const basis = item.basis.map((pair) => pair.map((factId) => relabel(factId, token.sourceKey, item.target)).sort().join("|"));
           const usedPairs = new Set<string>();

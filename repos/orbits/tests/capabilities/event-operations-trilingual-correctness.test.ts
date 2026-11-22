@@ -272,7 +272,10 @@ test("evidence rules: unknown facts, a need left unanswered, a reason off the ch
   await failsRetryably(model({ base: withReason("r1", ["S.n1", "T.o1", "T.n1"], "{SOURCE}さんと{TARGET}さん") }), two, "T.n1 has no answering offer in this reason");
   assert.equal((await provider(model({ base: withReason("r1", ["S.n1", "T.o1", "T.c2"], "{SOURCE}さんと{TARGET}さん") })).generateRecommendations(two)).success, true, "context facts may accompany a pair");
   await failsRetryably(model({ base: goodBase({ p1: { r1: { ev: ["S.t1", "T.t1"], text: "{SOURCE}さんと{TARGET}さんはAIに関心があります。" }, r2: { ev: ["S.t1", "T.t1"], text: "{TARGET}さんもAIに関心があります。" } } }) }), two, "neither reason uses the chosen need×offer basis");
-  await failsRetryably(model({ base: goodBase(), choose: { S1: [{ basis: [["S1.n1", "S1.o1"]], score: 90, target: "S1C1" }, { basis: [["S1.n1", "S1C2.o1"]], score: 80, target: "S1C2" }] } }), two, "a basis inside one person");
+  await failsRetryably(model({ base: goodBase(), choose: { S1: [{ basis: [["S1.n1", "S1.o1"]], score: 90, target: "S1C1" }, { basis: [["S1.n1", "S1C2.o1"]], score: 80, target: "S1C2" }] } }), two, "a basis with no legal pair left");
+  const mixed = model({ base: goodBase(), choose: { S1: [{ basis: [["S1.n1", "S1C1.n1"], ["S1.n9", "S1C1.o1"], ["S1.n1", "S1C1.o1"]], score: 90, target: "S1C1" }, { basis: [["S1.n1", "S1C2.o1"]], score: 80, target: "S1C2" }] } });
+  assert.equal((await provider(mixed).generateRecommendations(two)).success, true, "illegal and unknown pairs are dropped when a legal one remains");
+  assert.match(mixed.calls.find((call) => call.kind === "base")!.userText, /"basis":\[\["S\.n1","T\.o1"\]\]/u, "the writer gets only the legal pair");
   await failsRetryably(model({ base: goodBase(), choose: { S1: [{ basis: [], score: 90, target: "S1C1" }, { basis: [["S1.n1", "S1C2.o1"]], score: 80, target: "S1C2" }] } }), two, "no basis");
 });
 
@@ -288,19 +291,21 @@ test("the writer sees owned, typed facts and the basis; evidence never reaches a
 
 test("style: questions are addressed directly (no placeholders); Japanese names always get exactly one さん", async () => {
   await failsRetryably(model({ base: goodBase({ p1: { q1: "{TARGET}さんが最初に試す業務は？" } }) }), two, "a question in the third person");
+  assert.equal((await provider(model({ base: goodBase({ p1: { q2: "{SOURCE}の{SOURCE:company}での事例は参考になりそうですか？" } }) })).generateRecommendations(two)).success, true, "the asker may mention themselves");
   const ok = await provider(model({ base: goodBase({ p1: { hint: "{SOURCE}は{TARGET}様に聞くとよいです。" } }) })).generateRecommendations(two);
   assert.equal(ok.success, true);
   if (ok.success) assert.equal(ok.data[0]!.recommendations[0]!.i18n!.ja.memberHint, "山田太郎さんはBoさんに聞くとよいです。");
 });
 
-test("style: zh calques, 贵公司 and 你 are repaired from the Japanese", async () => {
+test("style: 贵公司 and 你 are repaired from the Japanese; calques are steered, not failed", async () => {
   const runner = model({
     base: goodBase(),
     repair: { sentences: { s1: { zh: "{S1}正在寻找医疗领域的合作伙伴。" } } },
-    translate: (language, id) => (language === "zh" && id === "S1.p1.r1" ? "贵公司{S1}的课题是寻找合作方。" : undefined),
+    translate: (language, id) => (language === "zh" && id === "S1.p1.r1" ? "贵公司{S1}正在寻找合作方。" : undefined),
   });
   const ok = await provider(runner).generateRecommendations(two);
   assert.equal(ok.success, true);
   assert.ok(runner.calls.some((call) => call.kind === "repair"));
   assert.equal(collectTrilingualOutputViolations({ en: [], ja: [], zh: ["请问你最近在做什么？"] }, []).chinese.length, 1, "你 → 您");
+  assert.equal(collectTrilingualOutputViolations({ en: [], ja: [], zh: ["您目前面临的课题是什么？"] }, []).chinese.length, 0, "a calque is not a failure");
 });
