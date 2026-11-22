@@ -1816,15 +1816,22 @@ ${JSON.stringify(pairs)}${feedback}`,
       primaryTopic: withoutStageKeys(feature.primaryTopic),
       secondaryTopic: withoutStageKeys(feature.secondaryTopic),
     }));
-    const shape = { members: Object.fromEntries(keys.map((key) => [key, { p1: "…", p2: "…", why: "…" }])), q1: "…", q2: "…", q3: "…", rationale: "…", theme: "…" };
-    const response = await runModelText({
-      config,
-      systemInstruction: baseSystemInstruction,
-      userText: `Write the texts for one already-assigned event table (round ${input.roundNumber}, table ${input.tableNumber}) in Japanese.
+    // Flat keys (2026-11-22): with a nested members object the model closed brackets early in 1 of 3 tables.
+    const fields = ["theme", "rationale", "q1", "q2", "q3", ...keys.flatMap((key) => [`${key}.p1`, `${key}.p2`, `${key}.why`])];
+    const shape = Object.fromEntries(fields.map((field) => [field, "…"]));
+    let metadata: EventOperationsAiResponseMetadata | undefined;
+    let feedback = "";
+    let doc: Record<string, unknown> | null = null;
+    let response!: Extract<Awaited<ReturnType<typeof runModelText>>, { success: true }>;
+    for (let attempt = 1; attempt <= 2 && doc === null; attempt += 1) {
+      const reply = await runModelText({
+        config,
+        systemInstruction: baseSystemInstruction,
+        userText: `Write the texts for one already-assigned event table (round ${input.roundNumber}, table ${input.tableNumber}) in Japanese.
 
 Requirements:
 - theme: a concrete theme for this table. rationale: why these members work as a table. q1..q3: three icebreaker questions for the table.
-- For every member key: p1 and p2 are two questions for that person, addressed to them directly in polite Japanese (no names, no placeholders, no third person), and why is one sentence explaining why that person belongs at this table, stating only what the supplied profile says (a topic is an interest, not an ability).
+- For every member key Mn: Mn.p1 and Mn.p2 are two questions for that person, addressed to them directly in polite Japanese (no names, no placeholders, no third person), and Mn.why is one sentence explaining why that person belongs at this table, stating only what the supplied profile says (a topic is an interest, not an ability).
 - The only placeholders that exist are ${keys.map((key) => `{${key}}`).join(", ")} (the server adds the name and さん; company as {Mn:company} next to {Mn}, only when hasCompany=true). Use the supplied features and profiles.
 
 JSON shape (exact keys):
@@ -1833,28 +1840,30 @@ ${JSON.stringify(shape)}
 Members:
 ${JSON.stringify(promptMembers)}
 Bounded validated grouping features:
-${JSON.stringify(promptFeatures)}`,
-    });
-    if (response.success === false) return modelFailure(response);
-    let metadata = metadataOf(response);
-    const json = parseJsonClosingTail(response.text, response.responseMetadata?.finishReason);
-    if (json === null) {
-      const shapeName = classifyJsonFailureShape(response.text);
-      return trilingualFailure({ kind: "table", stage: `json_${shapeName}`, text: response.text, result: invalidJson(shapeName, metadata, TRILINGUAL_RETRYABLE_JSON_SHAPES) });
+${JSON.stringify(promptFeatures)}${feedback}`,
+      });
+      if (reply.success === false) {
+        const failure = modelFailure<never>(reply);
+        const merged = mergeEventOperationsResponseMetadata(metadata, failure.success === false ? failure.responseMetadata : undefined);
+        return (failure.success === false ? { ...failure, ...(merged ? { responseMetadata: merged } : {}) } : failure) as never;
+      }
+      response = reply;
+      metadata = mergeEventOperationsResponseMetadata(metadata, metadataOf(reply));
+      const json = parseJsonClosingTail(reply.text, reply.responseMetadata?.finishReason);
+      const problem = json === null ? `json_${classifyJsonFailureShape(reply.text)}`
+        : !(isRecord(json) && exactKeys(json, fields) && fields.every((field) => nonEmptyString(json[field]))) ? "base_shape" : "";
+      if (!problem) { doc = json as Record<string, unknown>; break; }
+      trilingualFailure({ kind: "table", stage: problem, text: reply.text, result: trilingualRetryable<never>("x") });
+      feedback = `\n\nYour previous draft was rejected: return exactly one flat JSON object with exactly these keys, each a non-empty string, and nothing after it: ${fields.join(", ")}.`;
     }
-    const ok = isRecord(json) && exactKeys(json, ["members", "q1", "q2", "q3", "rationale", "theme"])
-      && ["q1", "q2", "q3", "rationale", "theme"].every((field) => nonEmptyString(json[field]))
-      && isRecord(json.members) && exactKeys(json.members, keys)
-      && keys.every((key) => { const row = (json.members as Record<string, unknown>)[key]; return isRecord(row) && exactKeys(row, ["p1", "p2", "why"]) && ["p1", "p2", "why"].every((field) => nonEmptyString(row[field])); });
-    if (!ok) return trilingualFailure({ kind: "table", stage: "base_shape", text: response.text, result: trilingualRetryable("The base draft did not match the fixed table shape.", metadata) });
-    const doc = json as Record<string, unknown> & { members: Record<string, Record<string, string>> };
+    if (doc === null) return trilingualRetryable("The table base draft failed twice (shape).", metadata) as never;
     const allowed = new Set(keys);
     const normalize = (text: string) => normalizePlaceholders(text).replace(/\{(\d+)(:company)?\}/gu, (_match, key: string, company?: string) => `{M${key}${company ?? ""}}`);
     const base: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; text: string }> = [
-      ...["theme", "rationale", "q1", "q2", "q3"].map((field) => ({ allowed, id: field, text: normalize(String(doc[field])) })),
+      ...["theme", "rationale", "q1", "q2", "q3"].map((field) => ({ allowed, id: field, text: normalize(String(doc![field])) })),
       ...keys.flatMap((key) => [
-        ...["p1", "p2"].map((field) => ({ allowed, asked: key, id: `${key}.${field}`, text: normalize(doc.members[key]![field]!) })),
-        { allowed, id: `${key}.why`, text: normalize(doc.members[key]!.why!) },
+        ...["p1", "p2"].map((field) => ({ allowed, asked: key, id: `${key}.${field}`, text: normalize(String(doc![`${key}.${field}`])) })),
+        { allowed, id: `${key}.why`, text: normalize(String(doc![`${key}.why`])) },
       ]),
     ];
     const baseChecked = await checkAndRepairBase({ items: base, kind: "table", metadata, participants: input.members, text: response.text });

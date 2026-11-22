@@ -194,7 +194,8 @@ test("a \"none\" company value is never a company, and the word in text is not a
 
 const tableInput = { eventId: "event:t", features: [], members: [yamada, bo], roundNumber: 1 as const, tableNumber: 3 };
 const tableBase = (overrides: Record<string, unknown> = {}) => ({
-  members: { M1: { p1: "最近の挑戦は何ですか？", p2: "次に会いたい人は？", why: "{M1}さんは導入先を探しています。" }, M2: { p1: "検証の期間は？", p2: "成果の指標は？", why: "{M2}さんは導入実績があります。" } },
+  "M1.p1": "最近の挑戦は何ですか？", "M1.p2": "次に会いたい人は？", "M1.why": "{M1}さんは導入先を探しています。",
+  "M2.p1": "検証の期間は？", "M2.p2": "成果の指標は？", "M2.why": "{M2}さんは導入実績があります。",
   q1: "一つ目の質問です。", q2: "二つ目の質問です。", q3: "三つ目の質問です。", rationale: "導入側と提供側がそろう卓です。", theme: "医療 AI の導入",
   ...overrides,
 });
@@ -211,10 +212,10 @@ test("table: fixed keys, seats from the program, names by id, three languages", 
 });
 
 test("table: a missing member row, another member's company, or someone not at the table fails", async () => {
-  const one = tableBase(); delete (one.members as Record<string, unknown>).M2;
+  const one: Record<string, unknown> = tableBase(); delete one["M2.why"];
   for (const [label, base] of [
     ["missing member", one],
-    ["other member's company", tableBase({ members: { ...tableBase().members, M1: { ...tableBase().members.M1, why: "{M1}さんは{M2:company}に詳しいです。" } } })],
+    ["other member's company", tableBase({ "M1.why": "{M1}さんは{M2:company}に詳しいです。" })],
     ["not at this table", tableBase({ theme: "{M3}さんと話す卓" })],
   ] as const) {
     const result = await provider(model({ base })).generateTableContent(tableInput);
@@ -466,4 +467,18 @@ test("who can be recommended is the program's call: K = min(N, real matches); a 
   const none = await provider(model({ base: { "S1.none": { none: "今回は条件の合う相手がいません。" } }, choose: { S1: [] } })).generateRecommendations({ ...input, sources: [{ candidateParticipants: [unrelated], sourceParticipant: yamada }] });
   assert.equal(none.success, true, "no real match → no-match reason");
   if (none.success) assert.equal(none.data[0]!.recommendations.length, 0);
+});
+
+test("table: the base draft is flat; a broken one is re-asked once, saying which keys to return", async () => {
+  const inner = model({ base: tableBase() });
+  let first = true;
+  const runner = Object.assign(async (input: { systemInstruction: string; userText: string }) => {
+    const result = await (inner as unknown as (value: typeof input) => Promise<{ text: string }>)(input);
+    if (first && inner.calls.at(-1)!.kind === "base") { first = false; return { ...result, text: '{"theme":"x","M1.why":"y"}}, "M2.p1":"z"}' }; }
+    return result;
+  }, { calls: inner.calls }) as unknown as EventOperationsModelRunner;
+  assert.equal((await provider(runner).generateTableContent(tableInput)).success, true);
+  const retry = inner.calls.filter((call) => call.kind === "base")[1]!.userText;
+  assert.match(retry, /rejected: return exactly one flat JSON object with exactly these keys/u);
+  assert.match(retry, /M2\.why/u);
 });
