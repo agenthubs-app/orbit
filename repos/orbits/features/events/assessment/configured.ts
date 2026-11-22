@@ -18,11 +18,12 @@ import { AI_QUOTA_MONTHLY_LIMITS, EVENT_ASSESSMENT_DAILY_LIMIT } from "../../ai-
 import { createPostgresAiUsageLedger } from "../../ai-quota/ledger";
 import { resolvePlanV2Service } from "../../plans/v2/service-factory";
 import { createConfiguredEventCoreService } from "../core/runtime";
-import { listRuntimeEventRosterEntries } from "../registration/runtime";
+import type { EventRegistrationRosterEntry } from "../registration/contract";
+import { listRuntimeEventRosterEntries, listRuntimeEventRosterEntriesForEvents } from "../registration/runtime";
 import { createConfiguredEventFactsProvider } from "./extract-provider";
 import { emptyJudgeContext, type JudgeContext } from "./judge";
 import { runEventAssessmentMigrations } from "./migrations";
-import { createOrbitEventFactsReader, type OrbitEventReaders } from "./orbit-event-facts";
+import { createOrbitEventFactsReader, type OrbitEventBase, type OrbitEventReaders, type OrbitEventRegistrant } from "./orbit-event-facts";
 import { createPostgresEventAssessmentRepository, type EventAssessmentRepository } from "./repository";
 import { createEventAssessmentService, type AssessmentPlanPort, type EventAssessmentService } from "./service";
 import { fetchEventPage } from "./url-fetch";
@@ -129,9 +130,30 @@ export function createLiveOrbitEventReaders(): OrbitEventReaders {
       });
       return entries
         .filter((entry) => entry.status !== "cancelled" && entry.status !== "withdrawn")
-        .map((entry) => ({ name: entry.participantProfile?.displayName ?? null, org: entry.participantProfile?.answers.industry ?? null, role: entry.participantProfile?.answers.positioning ?? null }));
+        .map(registrantFromRosterEntry);
+    },
+    async eventsMany(eventIds) {
+      const core = createConfiguredEventCoreService();
+      const byId = new Map<string, OrbitEventBase>();
+      if (!core?.listPublishedEventsByIds || eventIds.length === 0) return byId;
+      for (const event of await core.listPublishedEventsByIds(eventIds)) {
+        byId.set(event.eventId, { description: event.description, endsAt: event.endsAt, eventId: event.eventId, sourcePayload: event.sourcePayload, startsAt: event.startsAt, title: event.title, venue: event.venue });
+      }
+      return byId;
+    },
+    async registrantsMany(eventIds) {
+      // Same rule as `registrants`: a failed read is never "0 people" — it throws and the caller skips judging.
+      const rosters = await listRuntimeEventRosterEntriesForEvents({ eventIds, fields: "attendees" }).catch((error: unknown) => {
+        console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_assessment_roster_batch_read_failed", events: eventIds.length }));
+        throw error;
+      });
+      return new Map([...rosters].map(([eventId, entries]) => [eventId, entries.filter((entry) => entry.status !== "cancelled" && entry.status !== "withdrawn").map(registrantFromRosterEntry)]));
     },
   };
+}
+
+function registrantFromRosterEntry(entry: EventRegistrationRosterEntry): OrbitEventRegistrant {
+  return { name: entry.participantProfile?.displayName ?? null, org: entry.participantProfile?.answers.industry ?? null, role: entry.participantProfile?.answers.positioning ?? null };
 }
 
 export interface ConfiguredEventAssessmentRuntime {

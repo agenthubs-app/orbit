@@ -1172,3 +1172,46 @@ test("SC-02 PG runtime: listRuntimeEventRosterEntries equals eventRegistrationRu
     }
   });
 });
+
+// 2026-11-22 discover judging: many events' rosters in two statements, row-for-row the per-event read.
+type RosterMany = (eventIds: readonly string[], fields: Fields) => Promise<ReadonlyMap<string, readonly unknown[]>>;
+function canonicalRosterMany(repository: object): RosterMany {
+  return (repository as { listCanonicalRosterEntriesForEvents: RosterMany }).listCanonicalRosterEntriesForEvents.bind(repository);
+}
+
+test("batched canonical roster SQL: canonical ids first, then one roster statement over any($2), ordered by event", async () => {
+  const calls: SqlCall[] = [];
+  const client = {
+    async query<TRow>(text: string, values: readonly unknown[] = []) {
+      calls.push({ text, values });
+      return { rows: (calls.length === 1 ? [{ event_id: "event:a" }] : []) as TRow[] };
+    },
+  };
+  const methods = createPostgresCanonicalRegistrationMethods({ client, workspaceId: "workspace:test" } as unknown as EventOperationsPostgresRuntime);
+  const result = await canonicalRosterMany(methods)(["event:a", "event:legacy", "event:a"], "attendees");
+  assert.deepEqual([...result.entries()], [["event:a", []]], "only canonical events are answered");
+  assert.equal(calls.length, 2);
+  assert.match(calls[0]!.text, /registration_migration_state = 'canonical'/u);
+  assert.deepEqual(calls[0]!.values, ["workspace:test", ["event:a", "event:legacy"]]);
+  assertNarrowColumns(calls[1]!.text);
+  assert.match(calls[1]!.text, /membership_head\.event_id = any\(\$2::text\[\]\)\s+order by membership_head\.event_id, membership_head\.participant_id\s*$/u);
+  assert.deepEqual(calls[1]!.values, ["workspace:test", ["event:a"]]);
+});
+
+test("PG batched canonical roster equals the per-event read for every event", pgSkip, async () => {
+  await withSchema(async ({ pool }) => {
+    const { createEvent, register, repository } = await canonicalFixture(pool);
+    await createEvent("event:batch-a");
+    await createEvent("event:batch-b");
+    await createEvent("event:batch-empty");
+    await register("event:batch-a", "actor:a1", { displayName: "A1" });
+    await register("event:batch-a", "actor:a2", { displayName: "A2", status: "cancelled" });
+    await register("event:batch-b", "actor:b1", { displayName: "B1" });
+    const ids = ["event:batch-a", "event:batch-b", "event:batch-empty", "event:not-there"];
+    const many = await canonicalRosterMany(repository)(ids, "attendees");
+    assert.deepEqual([...many.keys()].sort(), ["event:batch-a", "event:batch-b", "event:batch-empty"]);
+    for (const id of ["event:batch-a", "event:batch-b", "event:batch-empty"]) {
+      assert.deepEqual(many.get(id), await canonicalRoster(repository)(id, "attendees"), id);
+    }
+  });
+});

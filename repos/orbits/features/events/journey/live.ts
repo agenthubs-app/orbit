@@ -59,7 +59,6 @@ import {
 } from "./live-mapping";
 import type { JourneyContact, JourneyEvent, JourneyLivePorts, MyEventStatus } from "./ports";
 import { PAST_DAYS } from "./discover-core";
-import { mapLimit } from "../../../shared/performance/map-limit";
 
 type Query = (sql: string, values?: readonly unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>;
 
@@ -399,18 +398,18 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       const ids = [...new Set(eventIds.filter(Boolean))].slice(0, JUDGE_LIMIT);
       const assessmentByEvent = await myAssessmentIdsByEvent(query, workspaceId, actorId, ids).catch(warned("r27_journey_assessment_ids_failed", new Map<string, string>()));
       const results: Awaited<ReturnType<JourneyLivePorts["judge"]>>["results"] = {};
-      await mapLimit(ids, 4, async (eventId) => {
-        let loaded: Awaited<ReturnType<typeof runtime.orbitEvents.facts>>;
-        try {
-          loaded = await runtime.orbitEvents.facts(actorId, eventId, context);
-        } catch {
-          console.warn(JSON.stringify({ event: "r27_judge_failed", eventId }));
-          return;
-        }
-        if (!loaded) return;
+      // 2026-11-22：40 场的活动事实一次批量读（名单一批 + 未缓存的活动一批），不再逐场 mapLimit。
+      // 批量读失败 = 这一次都不判（卡片照常列出，只是没有相关性一行），不当成「0 人」。
+      const loadedById = await runtime.orbitEvents.factsMany(actorId, ids, context).catch(() => {
+        console.warn(JSON.stringify({ event: "r27_judge_failed", events: ids.length }));
+        return new Map<string, never>();
+      });
+      for (const eventId of ids) {
+        const loaded = loadedById.get(eventId);
+        if (!loaded) continue;
         const result = judgeEvent({ context, eventId, facts: loaded.facts, orbit: loaded.extras });
         results[eventId] = judgeEntryFrom(result, { assessmentId: assessmentByEvent.get(eventId) ?? null, goal: context.goalLabel, language, planFitNames: loaded.meetNames ?? [] });
-      });
+      }
       return { goal: context.goalLabel, hasPlan: true, results };
     },
 

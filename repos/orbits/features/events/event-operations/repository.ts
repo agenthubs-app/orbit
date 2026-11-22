@@ -293,6 +293,17 @@ export interface EventOperationsRepository {
     fields: EventRegistrationRosterFields,
   ): Promise<readonly EventRegistrationRosterEntry[]>;
   /**
+   * Batched `listCanonicalRosterEntries` for many events (2026-11-22, discover
+   * judging): two statements in all. Only events whose registration migration
+   * state is `canonical` are answered; the caller reads every other id through
+   * the legacy path, exactly as `listRuntimeEventRosterEntries` would.
+   * Optional: memory repositories leave it out and callers read per event.
+   */
+  listCanonicalRosterEntriesForEvents?(
+    eventIds: readonly string[],
+    fields: EventRegistrationRosterFields,
+  ): Promise<ReadonlyMap<string, readonly EventRegistrationRosterEntry[]>>;
+  /**
    * W0041: the same rows and failure semantics as
    * `listCanonicalRegistrationStatusesForUser(userId, <every published event id>)`,
    * with the published-event restriction joined in SQL instead of reading the

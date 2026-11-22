@@ -111,7 +111,10 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       const [mine, followed, feedback] = await Promise.all([ports.myEvents(actorId), records.follows.followed(actorId), records.feedback.entries(actorId)]);
       // 只给最近的 40 场判分（有界读取）；其余照样出现在すべて，只是没有分。
       const scoredIds = candidates.filter((item) => Date.parse(item.startsAt) >= at.getTime()).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)).map((item) => item.eventId);
-      const judged = await ports.judge(actorId, scoredIds.slice(0, 40), language);
+      // 開催済み不打分（discover-core 对 past 不用判定结果），这时不读计划和活动事实。
+      const judged = query.period === "past" && !forDaily
+        ? { goal: null, hasPlan: false, results: {} as Awaited<ReturnType<typeof ports.judge>>["results"] }
+        : await ports.judge(actorId, scoredIds.slice(0, 40), language);
       if (forDaily && judged.hasPlan) {
         for (let index = 40; index < scoredIds.length; index += 40) {
           const batch = await ports.judge(actorId, scoredIds.slice(index, index + 40), language);

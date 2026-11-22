@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import type {
   EventParticipantProfile,
   EventRegistration,
+  EventRegistrationRosterEntry,
   EventRegistrationRosterFields,
   EventRegistrationStatusRecord,
   RegisterForEventInput,
@@ -48,6 +49,7 @@ type CanonicalRegistrationMethods = Pick<
   | "listCanonicalRegistrationStatusesForUser"
   | "listPublishedCanonicalRegistrationStatusesForUser"
   | "listCanonicalRosterEntries"
+  | "listCanonicalRosterEntriesForEvents"
   | "listCanonicalRegistrationsForUser"
   | "registerCanonicalParticipant"
   | "seedCanonicalRegistration"
@@ -422,19 +424,20 @@ function registrationStatusFromRow(row: SqlRow): EventRegistrationStatusRecord {
 // `registrationFromRow` would throw (any row, cancelled included), so the
 // projection rejects exactly where the full read does; otherwise it is the
 // rsvped row's profile shape. Leaves stay jsonb (see roster-entry.ts).
-function registrationRosterSelect(fields: EventRegistrationRosterFields): string {
+function registrationRosterSelect(fields: EventRegistrationRosterFields, manyEvents = false): string {
   const profile = "(profile_version.profile_payload -> 'registrationProfile')";
   const rsvped = "membership_head.status = 'rsvped'";
   return `
     select
+      ${manyEvents ? "membership_head.event_id as roster_event_id," : ""}
       membership_head.status as s,
       case when not ${REGISTRATION_ROW_VALID} then 'invalid'
         else ${rosterEntryShapeSql(profile, rsvped)} end as k,
       ${rosterEntryLeafColumnsSql(profile, rsvped, fields)}
     ${REGISTRATION_FROM}
     where membership_head.workspace_id = $1
-      and membership_head.event_id = $2
-    order by membership_head.participant_id`;
+      and membership_head.event_id ${manyEvents ? "= any($2::text[])" : "= $2"}
+    order by ${manyEvents ? "membership_head.event_id, " : ""}membership_head.participant_id`;
 }
 
 function registrationSelect(): string {
@@ -1063,6 +1066,31 @@ export function createPostgresCanonicalRegistrationMethods({
       return result.rows.map((row) =>
         rosterEntryFromRow(row as unknown as RosterEntryRow, fields),
       );
+    },
+
+    async listCanonicalRosterEntriesForEvents(eventIds, fields) {
+      const ids = [...new Set(eventIds.filter(Boolean))];
+      const byEvent = new Map<string, EventRegistrationRosterEntry[]>();
+      if (ids.length === 0) return byEvent;
+      // Same enrollment test as the window provider's getEnrollment: only a
+      // `canonical` migration state reads canonical heads.
+      const canonical = await client.query<SqlRow>(
+        `select event_id from event_ops_events
+          where workspace_id = $1 and event_id = any($2::text[])
+            and registration_migration_state = 'canonical'`,
+        [workspaceId, ids],
+      );
+      const canonicalIds = canonical.rows.map((row) => String(row.event_id));
+      for (const id of canonicalIds) byEvent.set(id, []);
+      if (canonicalIds.length === 0) return byEvent;
+      const result = await client.query<SqlRow>(registrationRosterSelect(fields, true), [workspaceId, canonicalIds]);
+      if (result.rows.some((row) => row.k === "invalid")) {
+        throw new Error("Canonical event registration rows contain invalid data.");
+      }
+      for (const row of result.rows) {
+        byEvent.get(String(row.roster_event_id))?.push(rosterEntryFromRow(row as unknown as RosterEntryRow, fields));
+      }
+      return byEvent;
     },
 
     async listCanonicalRegistrationsForUser(userId, eventIds) {

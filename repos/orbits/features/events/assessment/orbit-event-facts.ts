@@ -35,6 +35,9 @@ export interface OrbitEventRegistrant {
 export interface OrbitEventReaders {
   event(eventId: string): Promise<OrbitEventBase | null>;
   registrants(eventId: string): Promise<OrbitEventRegistrant[]>;
+  /** Batched forms for list surfaces (discover). A missing id = not published / no roster read. */
+  eventsMany?(eventIds: readonly string[]): Promise<ReadonlyMap<string, OrbitEventBase>>;
+  registrantsMany?(eventIds: readonly string[]): Promise<ReadonlyMap<string, OrbitEventRegistrant[]>>;
 }
 
 export interface OrbitEventFactsResult {
@@ -74,6 +77,46 @@ export function payloadFacts(payload: Readonly<Record<string, unknown>>): { pric
     matching: typeof payload.matchingEnabled === "boolean" ? payload.matchingEnabled : null,
     nameTags: typeof payload.nameTags === "boolean" ? payload.nameTags : null,
     price,
+  };
+}
+
+function factsFrom(base: OrbitEventBase, registrants: readonly OrbitEventRegistrant[], context: JudgeContext): OrbitEventFactsResult {
+  const payload = payloadFacts(base.sourcePayload);
+  const facts: EventAssessmentFacts = {
+    startsAt: base.startsAt,
+    title: base.title,
+    ...(base.endsAt ? { endsAt: base.endsAt } : {}),
+    ...(base.venue ? { venue: base.venue } : {}),
+    ...(payload.area ? { area: payload.area } : {}),
+    ...(payload.price ? { price: payload.price } : {}),
+    ...(payload.agenda.length ? { agenda: payload.agenda } : {}),
+    ...(registrants.length ? { expectedAttendees: registrants.length } : {}),
+  };
+  const typing = typeAttendees({
+    registrants: registrants.map((person) => ({ name: person.name, org: person.org, role: person.role })),
+    text: [base.title, base.description, ...payload.agenda.map((item) => item.title)].filter(Boolean).join(" "),
+    types: context.types.map((type) => ({ key: type.key, roleSituation: type.roleSituation ?? null, shortLabel: type.shortLabel })),
+  });
+  const names = registrants.map((person) => person.name).filter((name): name is string => Boolean(name));
+  const connections = registrants.length ? connectionCounts({ myContacts: context.contacts, speakerNames: names }) : { firstDegree: null, known: [], secondDegree: null };
+  return {
+    attendeeSignature: `${registrants.length}`,
+    meetNames: Object.values(typing.breakdown).flatMap((entry) => entry.sampleNames).slice(0, 4),
+    emoji: eventEmoji({ emoji: payload.emoji, title: base.title }),
+    extras: {
+      attendeeSource: typing.attendeeSource,
+      breakdown: typing.breakdown,
+      topicText: [base.title, base.description, ...payload.agenda.map((item) => item.title)].filter(Boolean).join(" "),
+      expected: typing.expected,
+      feeYen: payload.feeYen,
+      firstDegree: connections.firstDegree,
+      known: connections.known,
+      matchingEnabled: payload.matching,
+      nameTags: payload.nameTags,
+      registrantCount: registrants.length || null,
+      secondDegree: null,
+    },
+    facts,
   };
 }
 
@@ -127,44 +170,40 @@ export function createOrbitEventFactsReader(readers: OrbitEventReaders, options:
     async facts(_actorId: string, eventId: string, context: JudgeContext): Promise<OrbitEventFactsResult | null> {
       const loaded = await load(eventId);
       if (!loaded) return null;
-      const { base, registrants } = loaded;
-      const payload = payloadFacts(base.sourcePayload);
-      const facts: EventAssessmentFacts = {
-        startsAt: base.startsAt,
-        title: base.title,
-        ...(base.endsAt ? { endsAt: base.endsAt } : {}),
-        ...(base.venue ? { venue: base.venue } : {}),
-        ...(payload.area ? { area: payload.area } : {}),
-        ...(payload.price ? { price: payload.price } : {}),
-        ...(payload.agenda.length ? { agenda: payload.agenda } : {}),
-        ...(registrants.length ? { expectedAttendees: registrants.length } : {}),
-      };
-      const typing = typeAttendees({
-        registrants: registrants.map((person) => ({ name: person.name, org: person.org, role: person.role })),
-        text: [base.title, base.description, ...payload.agenda.map((item) => item.title)].filter(Boolean).join(" "),
-        types: context.types.map((type) => ({ key: type.key, roleSituation: type.roleSituation ?? null, shortLabel: type.shortLabel })),
-      });
-      const names = registrants.map((person) => person.name).filter((name): name is string => Boolean(name));
-      const connections = registrants.length ? connectionCounts({ myContacts: context.contacts, speakerNames: names }) : { firstDegree: null, known: [], secondDegree: null };
-      return {
-        attendeeSignature: `${registrants.length}`,
-        meetNames: Object.values(typing.breakdown).flatMap((entry) => entry.sampleNames).slice(0, 4),
-        emoji: eventEmoji({ emoji: payload.emoji, title: base.title }),
-        extras: {
-          attendeeSource: typing.attendeeSource,
-          breakdown: typing.breakdown,
-          topicText: [base.title, base.description, ...payload.agenda.map((item) => item.title)].filter(Boolean).join(" "),
-          expected: typing.expected,
-          feeYen: payload.feeYen,
-          firstDegree: connections.firstDegree,
-          known: connections.known,
-          matchingEnabled: payload.matching,
-          nameTags: payload.nameTags,
-          registrantCount: registrants.length || null,
-          secondDegree: null,
-        },
-        facts,
-      };
+      return factsFrom(loaded.base, loaded.registrants, context);
+    },
+    /**
+     * Many events at once (discover, 2026-11-22): the same facts as `facts`, read in
+     * one roster batch plus one event batch for ids not cached. Rosters are always
+     * re-read (the same freshness rule as `load`). Without batched readers it falls
+     * back to `facts` per event. An id missing from the result was not judged.
+     */
+    async factsMany(actorId: string, eventIds: readonly string[], context: JudgeContext): Promise<Map<string, OrbitEventFactsResult>> {
+      const ids = [...new Set(eventIds.filter(Boolean))];
+      const out = new Map<string, OrbitEventFactsResult>();
+      if (!readers.eventsMany || !readers.registrantsMany) {
+        for (const id of ids) {
+          const result = await this.facts(actorId, id, context).catch(() => null);
+          if (result) out.set(id, result);
+        }
+        return out;
+      }
+      const at = now();
+      const uncached = ids.filter((id) => { const hit = cache.get(id); return !hit || at - hit.at >= ORBIT_EVENT_FACTS_TTL_MS; });
+      const [bases, rosters] = await Promise.all([uncached.length ? readers.eventsMany(uncached) : new Map<string, OrbitEventBase>(), readers.registrantsMany(ids)]);
+      for (const id of ids) {
+        const registrants = rosters.get(id);
+        if (!registrants) continue;
+        const cached = cache.get(id);
+        const base = uncached.includes(id) ? bases.get(id) : cached?.base;
+        if (!base) { cache.delete(id); continue; }
+        if (uncached.includes(id) || cached!.registrants.length !== registrants.length) {
+          if (cache.size > 500) cache.delete(cache.keys().next().value!);
+          cache.set(id, { at, base, registrants });
+        }
+        out.set(id, factsFrom(base, registrants, context));
+      }
+      return out;
     },
   };
 }

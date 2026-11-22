@@ -303,7 +303,8 @@ export function buildDiscover(input: DiscoverInput, options: { dailyCandidates?:
     planFit: (options.dailyCandidates ? planFitAll : planFitAll.slice(0, PLAN_FIT_ROWS)).map((item) => toRow(item)),
     planFitTotal: planFitAll.length,
     planGoal: scored ? input.planGoal ?? null : null,
-    popularityFallback: !scored,
+    // 開催済み 不判分；前端在这个视图不显示「计划引导」，所以不报 fallback（否则会多读一次保存的目标）。
+    popularityFallback: !scored && !past,
     total: matched.length,
     ...(widen.length ? { widen } : {}),
     ...(past ? {} : endedOf(enriched.filter((item) => matches(item, input.query, periodWindow({ period: "past" }, input.now))).sort((a, b) => byDate(b, a)), (item) => toRow(item, null, true))),

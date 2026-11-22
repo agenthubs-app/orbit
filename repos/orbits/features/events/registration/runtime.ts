@@ -206,6 +206,26 @@ export async function listRuntimeEventRosterEntries(input: {
       );
 }
 
+/**
+ * Many events' rosters at once (discover judging, 2026-11-22): canonical events
+ * are read in two statements; any other event goes through
+ * `listRuntimeEventRosterEntries`, so legacy semantics stay identical.
+ */
+export async function listRuntimeEventRosterEntriesForEvents(input: {
+  eventIds: readonly string[];
+  fields: EventRegistrationRosterFields;
+}): Promise<ReadonlyMap<string, readonly EventRegistrationRosterEntry[]>> {
+  const ids = [...new Set(input.eventIds.filter(Boolean))];
+  const batched = eventOperationsRepository?.listCanonicalRosterEntriesForEvents
+    ? await eventOperationsRepository.listCanonicalRosterEntriesForEvents(ids, input.fields)
+    : new Map<string, readonly EventRegistrationRosterEntry[]>();
+  const byEvent = new Map(batched);
+  await Promise.all(ids.filter((id) => !byEvent.has(id)).map(async (eventId) => {
+    byEvent.set(eventId, await listRuntimeEventRosterEntries({ eventId, fields: input.fields }));
+  }));
+  return byEvent;
+}
+
 export interface RuntimeEventRegistrationState {
   availability: EventRegistrationAvailability;
   registered: boolean;
