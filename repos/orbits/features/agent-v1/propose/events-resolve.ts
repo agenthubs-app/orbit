@@ -474,8 +474,34 @@ async function todoVerbByFinder(ctx: Ctx, part: GraphPart, clues: readonly strin
   return { kind: "ask", views };
 }
 
+const TODO_TARGETS = new Set<string>(["todo.update", "todo.complete", "todo.reopen", "todo.delete"]);
+const overlaps = (left: readonly [number, number], right: readonly [number, number]) => left[0] < right[1] && right[0] < left[1];
+
+/**
+ * 「把A和B这两条待办都改到周五」: one part with several changes of existing to-dos, each with its own words. Each is then found by
+ * its own words only (never the clues of all of them at once); a to-do bound by the first layer goes to the change whose words
+ * hold it; a pick answers only the change whose question offered it.
+ */
+export function ownTodoWords(write: Pick<PartWrite, "intents">, intent: StoredIntent): boolean {
+  return intent.selector.length > 0 && write.intents.filter((other) => TODO_TARGETS.has(other.capability) && other.selector.length).length > 1;
+}
+
+/** The to-do the first layer bound inside this change's own words (several changes of one part). */
+export function ownBoundTodo(part: Pick<GraphPart, "refs">, intent: StoredIntent): string | null {
+  return part.refs.find((ref) => ref.entity === "todo" && ref.recordId && ref.quote && intent.selector.some((span) => overlaps(span, ref.quote!)))?.recordId ?? null;
+}
+
 /** The to-do the words name, among those of the given status (a title inside the words, or the words inside a title). */
-async function findTodo(ctx: Ctx, part: GraphPart, write: PartWrite, clues: readonly string[], quote: string, statuses: ("open" | "completed")[], verb: Verb = "update"): Promise<{ kind: "found"; view: RecordView } | { kind: "ask"; views: RecordView[] } | { kind: "none" }> {
+async function findTodo(ctx: Ctx, part: GraphPart, write: PartWrite, clues: readonly string[], quote: string, statuses: ("open" | "completed")[], verb: Verb = "update", intent?: StoredIntent): Promise<{ kind: "found"; view: RecordView } | { kind: "ask"; views: RecordView[] } | { kind: "none" }> {
+  // Several to-do changes of one part, each with its own words ("把A和B都标成完成"): each is found by its own words; a pick
+  // answers only the change whose question offered it (resolve.ts ownTodoWords).
+  if (intent && ownTodoWords(write, intent)) {
+    const own = { ...write, picks: { ...write.picks, todo: ownBoundTodo(part, intent) ?? undefined } };
+    const found = await findTodo(ctx, { ...part, refs: part.refs.filter((ref) => ref.entity !== "todo") }, own, clues, quote, statuses, verb);
+    const picked = write.picks.todo;
+    if (found.kind === "ask" && picked && found.views.some((view) => view.id === picked)) return { kind: "found", view: found.views.find((view) => view.id === picked)! };
+    return found;
+  }
   // "另外把…也关联上": a sentence that names no to-do goes on with the one this message named before.
   const bound = write.picks.todo ?? part.refs.find((ref) => ref.entity === "todo" && ref.recordId)?.recordId ?? (!clues.length ? (ctx as Ctx).lastTodo?.id : undefined);
   if (bound) {
@@ -524,8 +550,8 @@ async function resolveTodoVerb(ctx: Ctx, part: GraphPart, write: PartWrite, inte
   if (intent.capability === "todo.update" && ctx.deleting && !intent.relations.length && (!intent.events?.length || UNLINK_WORDS.test(quote)) && !intent.title && !intent.date) return { kind: "covered" } as unknown as WriteOutcome;
   let found;
   try {
-    found = await findTodo(ctx, part, write, todoClues, quote, statuses, verbOf(intent.capability));
-    if (found.kind === "none" && intent.capability !== "todo.delete") found = await findTodo(ctx, part, write, todoClues, quote, ["open", "completed"], verbOf(intent.capability));
+    found = await findTodo(ctx, part, write, todoClues, quote, statuses, verbOf(intent.capability), intent);
+    if (found.kind === "none" && intent.capability !== "todo.delete") found = await findTodo(ctx, part, write, todoClues, quote, ["open", "completed"], verbOf(intent.capability), intent);
   } catch {
     return stop("read_failed", failedLine);
   }

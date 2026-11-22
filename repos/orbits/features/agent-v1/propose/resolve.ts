@@ -37,7 +37,7 @@ import { WRITE_WORDS } from "./copy";
 import type { StoredIntent } from "./schema";
 import { CONTACT_WORDS } from "../domains/contact/copy";
 import { importTableOf, ImportTableRejected, previewImport, withHeader } from "../domains/contact/import-preview";
-import { isEventIntent, resolveEventIntent, type EventResolveExtras } from "./events-resolve";
+import { isEventIntent, ownBoundTodo, ownTodoWords, resolveEventIntent, type EventResolveExtras } from "./events-resolve";
 import type { ContactEffect, ContactFieldName } from "../domains/contact/types";
 import type { ModelBudget } from "../models/main";
 import { findRecord, finderMode, finderSessionOf, shownRefsOf, type FinderSession } from "../finder/session";
@@ -371,15 +371,26 @@ export function otherScript(words: string, title: string): boolean {
 type TodoResult ={ kind: "found"; todo: TodoView } | { kind: "ask"; clue: string; candidates: Candidate[]; notFound?: string } | { kind: "none"; words: string } | { kind: "failed" };
 
 async function resolveTodo(ctx: ResolveContext, part: GraphPart, write: PartWrite, intent: StoredIntent, personId: string | null, personWords: string[], inherited = false): Promise<TodoResult> {
+  if (!ownTodoWords(write, intent)) return resolveTodoByWords(ctx, part, write, intent, personId, personWords, inherited, false);
+  const found = await resolveTodoByWords(ctx, part, write, intent, personId, personWords, inherited, true);
+  const picked = write.picks.todo;
+  if (found.kind === "ask" && picked && found.candidates.some((candidate) => candidate.id === picked) && ctx.records && ctx.scope) {
+    const view = (await ctx.records.reader.read("todo", ctx.scope, { id: picked }).catch(() => null))?.items[0];
+    if (view) return { kind: "found", todo: todoOf(view) };
+  }
+  return found;
+}
+
+async function resolveTodoByWords(ctx: ResolveContext, part: GraphPart, write: PartWrite, intent: StoredIntent, personId: string | null, personWords: string[], inherited: boolean, own: boolean): Promise<TodoResult> {
   if (!ctx.records || !ctx.scope) return { kind: "failed" };
   const readOne = async (id: string) => (await ctx.records!.reader.read("todo", ctx.scope!, { id })).items[0] ?? null;
   try {
-    const boundId = write.picks.todo ?? part.refs.find((ref) => ref.entity === "todo" && ref.recordId)?.recordId ?? null;
+    const boundId = own ? ownBoundTodo(part, intent) : write.picks.todo ?? part.refs.find((ref) => ref.entity === "todo" && ref.recordId)?.recordId ?? null;
     if (boundId) {
       const view = await readOne(boundId);
       return view ? { kind: "found", todo: todoOf(view) } : { kind: "none", words: "" };
     }
-    const clues = [...intent.selector.map((span) => words(ctx.message, span)), ...part.refs.filter((ref) => ref.entity === "todo").map((ref) => words(ctx.message, ref.quote))].filter(Boolean);
+    const clues = [...intent.selector.map((span) => words(ctx.message, span)), ...(own ? [] : part.refs.filter((ref) => ref.entity === "todo").map((ref) => words(ctx.message, ref.quote)))].filter(Boolean);
     // "第二条", "the second one": the list the conversation showed last (§3.10).
     const ordinal = clues.map(ordinalOf).find((value) => value !== null) ?? null;
     if (ordinal !== null && ctx.context && !ctx.context.idle) {
@@ -575,7 +586,7 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
     }
     // The people of this item: the model's relations, else the first layer's person clues.
     const relationClues = intent.relations.map((relation) => ({ quote: relation.quote, role: relation.role, text: words(ctx.message, relation.quote) }));
-    const refClues = part.refs.filter((ref) => ref.entity === "contact").map((ref) => ({ quote: ref.quote ?? null, role: (intent.capability === "memo.create" ? "actual_contact" : "about") as StoredIntent["relations"][number]["role"], text: words(ctx.message, ref.quote) || (ref.recordId ? ctx.nameOf(ref.recordId) ?? "" : "") }));
+    const refClues = part.refs.filter((ref) => ref.entity === "contact" && personRefIsOf(intent, write.intents, ref.quote ?? null, ctx.message, part.quote)).map((ref) => ({ quote: ref.quote ?? null, role: (intent.capability === "memo.create" ? "actual_contact" : "about") as StoredIntent["relations"][number]["role"], text: words(ctx.message, ref.quote) || (ref.recordId ? ctx.nameOf(ref.recordId) ?? "" : "") }));
     const clues = relationClues.length ? relationClues : refClues.filter((clue) => clue.text || clue.quote === null);
     const people: { id: string; name: string; role: StoredIntent["relations"][number]["role"]; text: string; detail?: string }[] = [];
     const nameOfContact = async (id: string, known: string) => known || ctx.nameOf(id) || (ctx.records && ctx.scope ? String((await ctx.records.reader.read("contact", ctx.scope, { id }).catch(() => null))?.items[0]?.fields.displayName ?? "") : "");
@@ -696,7 +707,45 @@ export async function resolvePartIntents(ctx: ResolveContext, part: GraphPart, w
     ctx.people.push(...people.filter((item) => !ctx.people.some((known) => known.id === item.id)).map((item) => ({ at: part.quote[0], id: item.id, name: item.name })));
   }
   if (covered && !ops.length) return { kind: "covered" };
-  return { kind: "ready", ops };
+  return { kind: "ready", ops: oneItemPerRecord(ops, part.localId) };
+}
+
+/**
+ * AE-XL-018: in a part of several operations, a person the first layer found inside one operation's words — or in a clause
+ * («，», «、», «；», «：») holding only some operations' words — is those operations' person, not the others'. A person said
+ * outside every operation's clause ("给王强建两条待办：…") goes with each, as before.
+ */
+export function personRefIsOf(intent: StoredIntent, intents: readonly StoredIntent[], quote: [number, number] | null, message: string, partQuote: [number, number]): boolean {
+  if (!quote || intents.length < 2 || !intents.some((item) => item.localId === intent.localId)) return true;
+  const spansOf = (item: StoredIntent) => [item.title, item.body, item.date, item.due, item.time, ...item.selector, ...item.relations.map((relation) => relation.quote)].filter((span): span is [number, number] => Array.isArray(span));
+  const holders = intents.filter((item) => spansOf(item).some((span) => span[0] <= quote[0] && quote[1] <= span[1]));
+  const mine = (list: readonly StoredIntent[]) => list.some((item) => item.localId === intent.localId);
+  if (holders.length) return mine(holders);
+  let start = quote[0];
+  while (start > partQuote[0] && !CLAUSE_BREAK.test(message[start - 1])) start -= 1;
+  let end = quote[1];
+  while (end < partQuote[1] && !CLAUSE_BREAK.test(message[end])) end += 1;
+  const inClause = intents.filter((item) => spansOf(item).some((span) => span[0] >= start && span[1] <= end));
+  return !inClause.length || inClause.length === intents.length || mine(inClause);
+}
+const CLAUSE_BREAK = /[，,、；;：:。！!？?\n]/u;
+
+/** Never the same record twice on a card: changes of one record are one item (a to-do's changes merged; the same delete once). */
+export function oneItemPerRecord<T extends CardOperationIntent & { localId: string }>(ops: T[], partId: string | null = null): T[] {
+  const out: T[] = [];
+  for (const op of ops) {
+    const targetId = (op as { targetId?: unknown }).targetId;
+    const same = typeof targetId === "string" ? out.findIndex((other) => other.capability === op.capability && (other as { targetId?: unknown }).targetId === targetId) : -1;
+    if (same < 0) {
+      out.push(op);
+      continue;
+    }
+    const kept = out[same] as T & { set?: Record<string, unknown> };
+    const set = (op as { set?: Record<string, unknown> }).set;
+    if (op.capability === "todo.update" && set && kept.set) out[same] = { ...kept, set: { ...kept.set, ...set } };
+    emitTrace({ capability: op.capability, localId: op.localId, partId, targetId, type: "propose.same_record_merged" });
+  }
+  return out;
 }
 
 /** AG20a R7: words that make a day a deadline — before the day ("最迟周五", "due Friday") or after it ("11 月 20 日之前", "金曜までに"). */
