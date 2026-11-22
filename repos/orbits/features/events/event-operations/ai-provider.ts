@@ -951,20 +951,37 @@ export function profileFacts(key: string, participant: import("./contract").Even
   return facts;
 }
 const factOwnerTag = (fact: { id: string }) => fact.id.slice(0, fact.id.lastIndexOf("."));
-/** A legal basis pair: a need of one person with an offer of the other, or a topic of each. */
-function isLegalFactPair(left: { id: string; kind: FactKind }, right: { id: string; kind: FactKind }): boolean {
+/** A topic tag reduced for comparison: width/case folded, parenthesised qualifiers (（総合）) and spaces dropped. */
+const topicKey = (text: string) => text.normalize("NFKC").toLocaleLowerCase("en-US").replace(/[(（][^)）]*[)）]/gu, "").replace(/\s+/gu, "");
+const topicParts = (text: string) => new Set(topicKey(text).split(/[\/・、,，×&+]+/u).filter((part) => part.length >= 2));
+/**
+ * Two topics are a shared topic only when they are the same tag or clearly the same kind: equal after
+ * normalising, one contains the other, or they share a listed part (「生成AI / LLM」 and 「LLM」). Two different
+ * interests (海外展開 × 生成AI) are not a shared topic (2026-11-22 reread: 5 of 20 second reasons forced that).
+ */
+export function topicsShare(left: string, right: string): boolean {
+  const a = topicKey(left);
+  const b = topicKey(right);
+  if (!a || !b) return false;
+  if (a === b || (Math.min(a.length, b.length) >= 2 && (a.includes(b) || b.includes(a)))) return true;
+  const parts = topicParts(right);
+  return [...topicParts(left)].some((part) => parts.has(part));
+}
+/** A legal basis pair: a need of one person with an offer of the other, or a topic both people share. */
+function isLegalFactPair(left: { id: string; kind: FactKind; text?: string }, right: { id: string; kind: FactKind; text?: string }): boolean {
   if (factOwnerTag(left) === factOwnerTag(right)) return false;
   const kinds = [left.kind, right.kind].sort().join("+");
-  return kinds === "need+offer" || kinds === "topic+topic";
+  if (kinds === "need+offer") return true;
+  return kinds === "topic+topic" && (left.text === undefined || right.text === undefined || topicsShare(left.text, right.text));
 }
 /** Every legal pair among the cited facts, as sorted "a|b" ids. */
-function legalPairsIn(cited: ReadonlyArray<{ id: string; kind: FactKind }>): string[] {
+function legalPairsIn(cited: ReadonlyArray<{ id: string; kind: FactKind; text?: string }>): string[] {
   const pairs: string[] = [];
   for (let i = 0; i < cited.length; i += 1) for (let j = i + 1; j < cited.length; j += 1) if (isLegalFactPair(cited[i]!, cited[j]!)) pairs.push([cited[i]!.id, cited[j]!.id].sort().join("|"));
   return pairs;
 }
 /** Every cited need/offer/topic is part of a legal pair in the same reason; context facts may only accompany one. */
-function evidenceIsClosed(cited: ReadonlyArray<{ id: string; kind: FactKind }>): boolean {
+function evidenceIsClosed(cited: ReadonlyArray<{ id: string; kind: FactKind; text?: string }>): boolean {
   return cited.every((fact) => fact.kind === "context" || cited.some((other) => other !== fact && isLegalFactPair(fact, other)));
 }
 
@@ -1573,7 +1590,7 @@ export function createEventOperationsAiProvider({
       config,
       systemInstruction: `${systemInstruction}\nYou choose who should meet whom at a networking event, from the supplied facts only. Return exactly one JSON document.`,
       userText: `For each sourceKey, choose exactly the number of different people shown in the JSON shape (an empty list when the source has no candidates) from that source's own candidates, best first. score is an integer 0..100.
-For every pick, basis lists the fact pairs the match rests on (at least one). A pair is exactly one of: [a "need" fact of one person, an "offer" fact of the other person], or [a "topic" fact of the source, a "topic" fact of the target]. Never pair need with need, offer with offer, or two facts of the same person. A topic is an interest, not an ability. Use only the supplied fact ids of the source and that pick's target. Choose by these facts, not by list order.
+For every pick, basis lists the fact pairs the match rests on (at least one). A pair is exactly one of: [a "need" fact of one person, an "offer" fact of the other person], or [a "topic" fact of the source, a "topic" fact of the target that is the same or clearly the same kind of topic (two different interests are not a pair; the server checks)]. Never pair need with need, offer with offer, or two facts of the same person. A topic is an interest, not an ability. Use only the supplied fact ids of the source and that pick's target. Choose by these facts, not by list order.
 
 JSON shape (exact keys and list lengths):
 ${JSON.stringify(chooseShape)}
@@ -1630,9 +1647,14 @@ ${JSON.stringify(chooseSources)}`,
       }
       list.forEach((item, index) => {
         const id = `${token.sourceKey}.p${index + 1}`;
+        const facts = pairFacts(token.sourceKey, item.target);
+        const topicsOf = (prefix: string) => facts.filter((fact) => fact.kind === "topic" && fact.id.startsWith(prefix));
+        // Shared topics are found by the program; only these may carry a topic reason.
+        const sharedTopics = topicsOf("S.").flatMap((left) => topicsOf("T.").filter((right) => topicsShare(left.text, right.text)).map((right) => [left.id, right.id]));
         pairs[id] = {
           basis: item.basis.map((pair) => pair.map((factId) => relabel(factId, token.sourceKey, item.target))),
-          facts: pairFacts(token.sourceKey, item.target).map(({ id: factId, kind, text }) => ({ id: factId, kind, text })),
+          facts: facts.map(({ id: factId, kind, text }) => ({ id: factId, kind, text })),
+          sharedTopics,
           targetHasCompany: registeredCompany(participantByKey.get(item.target)!) !== null,
         };
         writeShape[id] = { hint: "…", q1: "…", q2: "…", r1: { ev: ["S.n1", "T.o1"], text: "…" }, r2: { ev: ["T.n1", "S.o1"], text: "…" } };
@@ -1681,7 +1703,11 @@ ${JSON.stringify(chooseSources)}`,
 These texts are shown to the reader (the source person) about themselves. Address the reader as あなた (あなたは… / あなたの…) whenever a sentence needs that subject, never leaving it ambiguous who is meant; never name the reader. Refer to the target only as {TARGET} (the server adds the name and さん), and to the target's company only as {TARGET:company} next to {TARGET}, only when targetHasCompany is true. No other placeholders exist; never add braces.
 
 For every pair id:
-- r1 and r2: two different reasons why あなた should meet {TARGET}. Each reason states only what its cited facts say and lists them in ev. A need belongs to its owner and is answered only by the other person's offer that answers it most directly (for a funding need, a funding or investor offer — not an unrelated one); a topic is an interest, never an ability or knowledge; never attribute one person's fact to the other. Build r1 on the strongest supplied basis pair. For r2 use a second need/offer pair only if it is equally direct; otherwise write r2 about a topic both share (cite one topic of each). Never stretch an unrelated offer to fit a need. Vary the wording; do not write every reason with the same sentence pattern.
+- r1 and r2: two different reasons why あなた should meet {TARGET}. Each reason states only what its cited facts say and lists them in ev. A need belongs to its owner and is answered only by the other person's offer that answers it most directly (for a funding need, a funding or investor offer — not an unrelated one); a topic is an interest, never an ability or knowledge; never attribute one person's fact to the other. Build r1 on the strongest supplied basis pair. For r2, in this order: a second need/offer pair if it is equally direct (another offer of {TARGET} for a need of あなた, or an offer of あなた for a need of {TARGET}); else a topic from sharedTopics (cite exactly that pair; only those count as shared — never pair two different interests); else r2 stays on r1's pair (same ev) and names one concrete thing to discuss or ask first. Never stretch an unrelated offer to fit a need.
+Let the sentence shape follow what the reason rests on, and vary it across pairs; these are illustrations, not templates to copy:
+  · an answer to a need can open with {TARGET}: 「{TARGET}さんは〇〇を手がけているので、あなたが探している△△について…」
+  · a shared topic can open with the topic: 「〇〇は、あなたと{TARGET}さんに共通する関心です。…」
+  · a concrete starting point can open with the action: 「まず〇〇について聞くと、…がわかります。」
 - q1 and q2: two questions あなた asks {TARGET} directly, in polite Japanese, without any placeholder or name.
 - hint: one practical tip for あなた to start the conversation.
 For an id ending in ".none": none is one sentence explaining to あなた why there is no match.

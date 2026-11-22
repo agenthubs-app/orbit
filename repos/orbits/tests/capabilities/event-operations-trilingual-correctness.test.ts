@@ -11,6 +11,7 @@ import {
   collectTrilingualOutputViolations,
   createEventOperationsAiProvider,
   type EventOperationsModelRunner,
+  topicsShare,
   voiceIssues,
 } from "../../features/events/event-operations/ai-provider";
 import type { EventOperationsParticipant } from "../../features/events/event-operations/contract";
@@ -419,4 +420,22 @@ test("the base draft is one call per person; a broken draft is re-asked for that
     return inner.calls.at(-1)!.kind === "base" && /"S2\.p1"/u.test(input.userText) ? { ...result, text: "{" } : result;
   }, { calls: inner.calls }) as unknown as EventOperationsModelRunner;
   await failsRetryably(twiceBroken, twoSources, "a person whose draft breaks twice fails the batch (retryable)");
+});
+
+test("a shared topic is the same tag or clearly the same kind; two different interests are not a pair", async () => {
+  assert.equal(topicsShare("海外展開（総合）", "海外展開"), true);
+  assert.equal(topicsShare("生成AI / LLMの活用", "LLM"), true);
+  assert.equal(topicsShare("ＡＩ", "ai"), true);
+  assert.equal(topicsShare("海外展開（総合）", "生成AI / LLMの活用"), false);
+  assert.equal(topicsShare("中国ビジネス", "AI × 業界特化"), false);
+  const overseas = { ...yamada, topics: ["海外展開（総合）"] };
+  const genAi = { ...bo, topics: ["生成AI / LLMの活用"] };
+  const input = { eventId: "event:t", recommendationCount: 1, sources: [{ candidateParticipants: [genAi], sourceParticipant: overseas }] };
+  const choose = { S1: [{ basis: [["S1.n1", "S1C1.o1"]], score: 80, target: "S1C1" }] };
+  const forced = model({ base: { "S1.p1": pair({ r2: { ev: ["S.t1", "T.t1"], text: "あなたの海外展開への関心と{TARGET}さんの生成AIへの関心は重なります。" } }) }, choose });
+  await failsRetryably(forced, input, "a forced topic pair is rejected");
+  const write = forced.calls.find((call) => call.kind === "base")!.userText;
+  assert.match(write, /"sharedTopics":\[\]/u, "the writer is told there is no shared topic");
+  const sameAngle = model({ base: { "S1.p1": pair({ r2: { ev: ["S.n1", "T.o1"], text: "まず{TARGET}さんに導入の進め方を聞くと、具体像がつかめます。" } }) }, choose });
+  assert.equal((await provider(sameAngle).generateRecommendations(input)).success, true, "r2 may stay on r1's pair with a concrete angle");
 });
