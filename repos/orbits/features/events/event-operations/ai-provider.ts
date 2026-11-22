@@ -1430,7 +1430,7 @@ export function createEventOperationsAiProvider({
   }
 
   /** Base-draft texts: placeholder form, scope, company pairing, no written names, Japanese reads as Japanese; questions never name the person asked. */
-  function baseTextIssues(items: ReadonlyArray<{ allowed: ReadonlySet<string>; asked?: string; profileTexts?: readonly string[]; reader?: string; text: string }>, participants: readonly import("./contract").EventOperationsParticipant[]): Map<number, string[]> {
+  function baseTextIssues(items: ReadonlyArray<{ allowed: ReadonlySet<string>; asked?: string; profileTexts?: readonly string[]; reader?: string; text: string; wholeTable?: boolean }>, participants: readonly import("./contract").EventOperationsParticipant[]): Map<number, string[]> {
     const issues = new Map<number, string[]>();
     items.forEach((item, index) => {
       const found = nonEmptyString(item.text) ? textIssues(item.text, item.allowed, "ja", participants) : ["empty"];
@@ -1440,6 +1440,8 @@ export function createEventOperationsAiProvider({
       if (item.asked && /[{}]/u.test(item.text)) found.push("question_names_target");
       // A reason or hint may only name profile terms that one of the two people actually has.
       if (item.profileTexts && unsupportedProfileTerms(item.text, item.profileTexts).length) found.push("unsupported_claim");
+      // A table-level text never claims something of every member (calibration: 「全員が…」 was false in 3 of 4 tables).
+      if (item.wholeTable && /全員|皆さん|みんな|誰もが|いずれも|どなたも/u.test(item.text)) found.push("overgeneral");
       if (found.length) issues.set(index, found);
     });
     return issues;
@@ -1455,13 +1457,14 @@ export function createEventOperationsAiProvider({
     question_names_target: "a question is asked directly to the person: write it without any placeholder or name (neither the person asked nor the asker)",
     raw_name: "never write a person's or company's name; use only the placeholders",
     unsupported_claim: "it names something that is in neither person's profile; say only what the two profiles say",
+    overgeneral: "never claim something of every member (全員/誰もが/いずれも…); say what different members bring and how that fits together",
     stray_brace: "no braces outside placeholders",
     bare_key: "a person is written as a bare key (such as M2): use the placeholder with braces, or describe the table without naming members",
   };
 
   /** Base texts with issues get one bounded rewrite (meaning kept, rules fixed); then the same check again. */
   async function checkAndRepairBase(input: {
-    items: Array<{ aliases?: Readonly<Record<string, string>>; allowed: ReadonlySet<string>; asked?: string; id: string; profileTexts?: readonly string[]; reader?: string; text: string }>;
+    items: Array<{ aliases?: Readonly<Record<string, string>>; allowed: ReadonlySet<string>; asked?: string; id: string; profileTexts?: readonly string[]; reader?: string; text: string; wholeTable?: boolean }>;
     kind: "recommendations" | "table";
     metadata: EventOperationsAiResponseMetadata | undefined;
     participants: readonly import("./contract").EventOperationsParticipant[];
@@ -1846,7 +1849,7 @@ ${JSON.stringify(pairs)}${feedback}`,
         userText: `Write the texts for one already-assigned event table (round ${input.roundNumber}, table ${input.tableNumber}) in Japanese.
 
 Requirements:
-- theme: a concrete theme for this table. rationale: why these members work as a table, about the table as a whole: name no individual member (no keys, no placeholders), and say "everyone"/全員 only for what every member's profile actually has. q1..q3: three icebreaker questions for the table.
+- theme: a concrete theme for this table. rationale: why these members work as a table, about the table as a whole: name no individual member (no keys, no placeholders) and never claim something of every member (no 全員/誰もが/いずれも): say what different members bring and how it fits together. q1..q3: three icebreaker questions for the table.
 - For every member key Mn: Mn.p1 and Mn.p2 are two questions for that person, addressed to them directly in polite Japanese (no names, no placeholders, no third person), and Mn.why is one sentence explaining why that person belongs at this table, read by everyone at the table (third person about that member: omit the subject or use {Mn}; never あなた), stating only what the supplied profile says (a topic is an interest, not an ability).
 - The only placeholders that exist are ${keys.map((key) => `{${key}}`).join(", ")} (the server adds the name and さん; company as {Mn:company} next to {Mn}, only when hasCompany=true). Use the supplied features and profiles.
 
@@ -1878,8 +1881,8 @@ ${JSON.stringify(promptFeatures)}${feedback}`,
     // A member's why may only name terms from that member's profile; theme and rationale from the table's profiles.
     const memberTexts = new Map(input.members.map((member) => [keyOf.get(member.participantId)!, profileFacts(keyOf.get(member.participantId)!, member).map((fact) => fact.text)]));
     const tableTexts = [...memberTexts.values()].flat();
-    const base: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; profileTexts?: readonly string[]; text: string; voice?: TextVoice }> = [
-      ...["theme", "rationale", "q1", "q2", "q3"].map((field) => ({ allowed, id: field, ...(field === "theme" || field === "rationale" ? { profileTexts: tableTexts } : {}), text: normalize(String(doc![field])) })),
+    const base: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; profileTexts?: readonly string[]; text: string; voice?: TextVoice; wholeTable?: boolean }> = [
+      ...["theme", "rationale", "q1", "q2", "q3"].map((field) => ({ allowed, id: field, ...(field === "theme" || field === "rationale" ? { profileTexts: tableTexts, wholeTable: true } : {}), text: normalize(String(doc![field])) })),
       ...keys.flatMap((key) => [
         ...["p1", "p2"].map((field) => ({ allowed, asked: key, id: `${key}.${field}`, text: normalize(String(doc![`${key}.${field}`])) })),
         { allowed, id: `${key}.why`, profileTexts: memberTexts.get(key)!, text: normalize(String(doc![`${key}.why`])), voice: "about_member" as const },

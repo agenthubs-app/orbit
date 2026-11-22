@@ -540,3 +540,12 @@ test("table texts: a bare member key is rewritten once; a member's why may only 
   assert.equal((await provider(borrowed).generateTableContent(tableInput)).success, true);
   assert.match(borrowed.calls.find((call) => call.kind === "baseRepair")!.userText, /"notInEitherProfile":\["海外展開"\]/u);
 });
+
+test("a table-level text never claims something of every member; it is rewritten once", async () => {
+  const runner = model({ base: tableBase({ rationale: "全員が導入の経験を持つ卓です。" }), baseRepair: { texts: { t1: "導入を探す人と経験を持つ人がそろう卓です。" } } });
+  assert.equal((await provider(runner).generateTableContent(tableInput)).success, true);
+  assert.match(runner.calls.find((call) => call.kind === "baseRepair")!.userText, /never claim something of every member/u);
+  const still = await provider(model({ base: tableBase({ rationale: "全員が導入の経験を持つ卓です。" }), baseRepair: { texts: { t1: "誰もが導入の経験を持っています。" } } })).generateTableContent(tableInput);
+  assert.equal(still.success, false, "still overgeneral");
+  if (!still.success) assert.equal(still.retryable, true);
+});
