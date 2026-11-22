@@ -536,3 +536,112 @@ cases:
       - id: R2
         text: "第二步没有把新建的待办说成下周要做的事。"
     notes: "不该带进新任务的条件：第一轮的时间范围是 11-16～11-22（下周），第二轮是新建，没有说日期。山本名下已有 T47（约山本吃饭），回应可以提醒有一条相似的，但不该替用户决定不建。"
+
+  - id: AE-XL-018
+    title: "一张卡上两条新待办，「王强那条改到下周二」：只改王强那条，订会议室那条还是下周三"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§5.1", "§3.10"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "帮我新建两条待办：周五给王强回电话，下周三订会议室。"
+      - user: "王强那条改到下周二。"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 1 }
+      - card_revision: { card: last, min: 2 }
+      - card_ops:
+          - { op: todo.create, set: { plannedDate: "2026-11-17" } }
+          - { op: todo.create, set: { plannedDate: "2026-11-18" } }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二步之后卡上给王强回电话的那条改到 11 月 17 日（周二），订会议室那条仍是 11 月 18 日（周三），日期带星期。"
+      - id: R2
+        text: "第二步的回应说明卡已经改好、还要用户点确认才执行，没有说已经改完待办。"
+    notes: "多项卡上按人名指一项：第一轮一张卡新建两条待办（给王强回电话 2026-11-20，订会议室 2026-11-18），第二轮「王强那条」只指第一条，下周二按默认时钟是 2026-11-17。没有点击，不该有写入。"
+
+  - id: AE-XL-019
+    title: "一张卡上两条新待办，「张伟那条改到下周二」：卡上没有张伟，问是哪一项，卡不改"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§5.1", "§3.11"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "帮我新建两条待办：周五给王强回电话，下周三订会议室。"
+      - user: "张伟那条改到下周二。"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.create, set: { plannedDate: "2026-11-20" } }
+          - { op: todo.create, set: { plannedDate: "2026-11-18" } }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二步的回应问用户说的是卡上哪一项，并列出了卡上的两项（给王强回电话、订会议室）；没有猜一项去改。"
+      - id: R2
+        text: "第二步的回应说明卡片没有改；两项的日期还是 11 月 20 日（周五）和 11 月 18 日（周三）。"
+    notes: "说的话对不上卡上任何一项：夹具里没有叫张伟的人，卡上的两项都和他无关。应当简短地问是哪一项，不能把下周二套到某一项上。"
+
+  - id: AE-XL-020
+    title: "「团队周会改到下午一点」之后「不是这个，是和田中午餐那个」：卡改成和田中午餐，同样下午一点"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.10", "§5.1"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把团队周会改到下午一点到两点，整个系列都改。"
+      - user: "不是这个，是和田中午餐那个。"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: schedule.update, target: S11, set: { startsAt: "2026-11-19T13:00:00+09:00", endsAt: "2026-11-19T14:00:00+09:00" } }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二步之后等确认的卡改的是日程「和田中午餐」，时间从 11 月 19 日 12:00–13:00 改到 13:00–14:00，而不再是「团队周会」。"
+      - id: R2
+        text: "第二步的回应说明卡改的是和田中午餐、还要点确认才执行，没有说已经改好日程。"
+    notes: "日程的纠正：第一轮的卡把 S10（每周一的团队周会，10:00–11:00）整个系列改到 13:00–14:00；第二轮否定 S10、指定 S11（11 月 19 日 12:00–13:00，不重复）。同样的新时间放到 S11 自己的那天。"
+
+  - id: AE-XL-021
+    title: "一张卡上一篇往来笔记和一条待办，「笔记那条改到昨天」：只改笔记的日期"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§5.1", "§3.5"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "记一下今天田中浩给我打过电话，再给他建个待办：周五前回复报价。"
+      - user: "笔记那条改到昨天。"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 1 }
+      - card_revision: { card: last, min: 2 }
+      - card_ops:
+          - { op: memo.create, set: { interaction.actualContactIds: [C30], interaction.channel: phone, interaction.direction: incoming, interaction.occurredOn: "2026-11-14" } }
+          - { op: todo.create }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二步之后卡上的往来笔记日期是 11 月 14 日（周六），那条回复报价的待办的日期没有变（仍是周五 11 月 20 日）。"
+      - id: R2
+        text: "第二步的回应说明改的是笔记那一项、还要点确认才执行。"
+    notes: "笔记和待办在同一张卡上：「笔记那条」只指往来笔记，昨天按默认时钟是 2026-11-14。待办的日期是第一轮定的周五（计划日或截止都可以），第二轮不该动它。"
