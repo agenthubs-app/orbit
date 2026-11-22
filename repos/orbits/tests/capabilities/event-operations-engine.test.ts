@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   createEventOperationsEngine,
+  maxRoundTwoRepeatRate,
   type EventOperationsEngine,
 } from "../../features/events/event-operations/engine";
 import {
@@ -1376,3 +1377,24 @@ test("a provider's maxRecommendationShardSize caps the configured shard size (tr
   assert.equal(progress.status, "completed");
   assert.deepEqual(sizes.sort(), [1, 2, 2]);
 });
+
+
+test("round-two repeat bound follows what the table sizes allow (2026-11-22: 6–10 person events could never publish)", () => {
+  assert.equal(maxRoundTwoRepeatRate([6, 6], [6, 6]), 0.4 + 0.05, "2 tables of 6: a perfect 3+3 split still repeats 40%");
+  assert.equal(maxRoundTwoRepeatRate([5, 5], [5, 5]), 0.4 + 0.05, "2 tables of 5: 3+2 repeats 4 of 10 pairs");
+  assert.equal(maxRoundTwoRepeatRate([4, 4, 4], [4, 4, 4]), 0.34, "3 tables: the 34% target is reachable and stays");
+  assert.equal(maxRoundTwoRepeatRate([5, 5, 5, 5], [5, 5, 5, 5]), 0.34);
+});
+
+for (const count of [6, 7, 8, 9, 10]) {
+  test(`a ${count}-person event with tables of 5 generates and publishes both rounds`, async () => {
+    const repository = createMemoryEventOperationsRepository({ configurations: [configuration({ tableSize: 5 })] });
+    const engine = createEventOperationsEngine({ aiProvider: createAiProvider(), repository });
+    const generation = await engine.createGeneration({ actorId: ORGANIZER_ID, capturedSnapshot: capturedSnapshot(participants(count), configuration({ tableSize: 5 })), idempotencyKey: `small-${count}` });
+    const progress = await runUntilTerminal(engine, generation.generationId, 2);
+    assert.equal(progress.status, "completed");
+    const published = await engine.publishGeneration({ actorId: ORGANIZER_ID, generationId: generation.generationId });
+    assert.equal(published.grouping.roundOne.length, 2);
+    assert.equal(published.grouping.roundTwo.length, 2);
+  });
+}

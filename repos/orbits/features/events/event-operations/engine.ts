@@ -241,6 +241,36 @@ function validateRound(input: {
   }
 }
 
+/**
+ * The highest share of round-two table pairs that may repeat a round-one tablemate. 34% is the target, but with
+ * few tables it is unreachable (2 tables of 6: even a perfect 3+3 split repeats 6 of 15 pairs = 40%), which made
+ * every 6–10 person event unpublishable. The bound is max(34%, the best share achievable for these table sizes
+ * + 5 points): a grouping must be near-optimal for its configuration, never better than mathematics allows.
+ */
+export function maxRoundTwoRepeatRate(roundOneSizes: readonly number[], roundTwoSizes: readonly number[]): number {
+  const pairs = (n: number) => (n * (n - 1)) / 2;
+  const available = [...roundOneSizes];
+  let repeated = 0;
+  let total = 0;
+  for (const size of roundTwoSizes) {
+    total += pairs(size);
+    // Spread this table's seats over the round-one tables as evenly as their remaining members allow.
+    const take = available.map(() => 0);
+    for (let seat = 0; seat < size; seat += 1) {
+      let best = -1;
+      for (let index = 0; index < available.length; index += 1) {
+        if (take[index]! >= available[index]!) continue;
+        if (best === -1 || take[index]! < take[best]!) best = index;
+      }
+      if (best === -1) break;
+      take[best]! += 1;
+    }
+    take.forEach((count, index) => { repeated += pairs(count); available[index]! -= count; });
+  }
+  const achievable = total > 0 ? repeated / total : 0;
+  return Math.max(0.34, achievable + 0.05);
+}
+
 function validateGrouping(input: {
   participants: readonly EventOperationsParticipant[];
   tableSize: number;
@@ -307,7 +337,7 @@ function validateGrouping(input: {
         }
       }
     }
-    if (totalPairs > 0 && repeatedPairs / totalPairs > 0.34) {
+    if (totalPairs > 0 && repeatedPairs / totalPairs > maxRoundTwoRepeatRate(input.value.roundOne.map((table) => table.members.length), input.value.roundTwo.map((table) => table.members.length))) {
       throw new EventOperationsError(
         "EVENT_OPERATIONS_AI_SCHEMA_INVALID",
         "Round two repeated too many round-one peer pairs.",
