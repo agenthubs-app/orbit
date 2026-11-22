@@ -4,9 +4,10 @@
  * - The entry never writes a to-do directly and never stores or confirms an entity draft: an
  *   explicit "new to-do" (the model's followups.createTask request or its task draft) becomes a
  *   card in the action ledger, one card per request, its owner the authenticated actor.
- * - Typed words never decide a card. A bare "好的" / "确认" / "OKです" while a card of this
- *   conversation waits is answered with a fixed reminder (press the button on the card); the model
- *   is not asked and no decision is recorded. Inside a longer message the reminder is appended.
+ * - Typed words never decide a card. A bare "好的" / "确认" / "OKです" — or a message that only agrees,
+ *   "好，就按刚才那条建吧" (AE-XL-015) — while a card of this conversation waits is answered with a fixed
+ *   reminder (press the button on the card) and the waiting card; the model is not asked and no decision
+ *   is recorded. Inside a longer message the reminder is appended.
  * - Approval flags and account ids a model writes into its output are stripped and reported as a
  *   `model.approval_claims_rejected` event; ownership comes only from the server's authentication.
  * - Records of other kinds (note, schedule, event, contact drafts) get no card in this sprint;
@@ -48,8 +49,8 @@ export function isBareTypedConfirmation(message: string): boolean {
 
 /** "照刚才的来", "やっぱりさっきの内容で進めてください", "go ahead with that": a sentence that only says to carry on. */
 const PROCEED = [
-  /^(那|那就|好)?(还是|就|也)?(按|照)(刚才|之前|上面|上一张|原来)的?(内容|那样|那个|卡)?(来|做|办|进行|执行|改)(吧|了|就行)?$/u,
-  /^(那|那就)?(就这么办|就这样办|继续|执行|做吧|执行吧|继续吧|改吧|建吧)(吧)?$/u,
+  /^(那|那就|好)?(还是|就|也)?(按|照)(刚才|之前|上面|上一张|原来)的?(内容|那样|那个|那条|那张|那项|这条|这个|卡|说的)?(来|做|办|进行|执行|改|建|记|加|删|发|弄|处理)(吧|了|就行)?$/u,
+  /^(那|那就)?(就这么办|就这样办|继续|执行|做吧|执行吧|继续吧|改吧|建吧|记吧|加吧)(吧)?$/u,
   /^(やっぱり|やはり)?(さっき|先ほど|前|元)の(内容|件|まま|とおり|通り)で(進めて|お願い|やって)(ください|します|下さい)?$/u,
   /^(やっぱり|やはり)?(それで|そのまま)?(進めて|実行して)(ください|下さい)?$/u,
   /^(ok,?\s*)?(please\s+)?(go ahead|proceed|do it|carry on|go on)(\s+with\s+(that|it|the (earlier|previous|last) (one|card|change)))?(,?\s*please)?$/iu,
@@ -63,7 +64,8 @@ const PROCEED = [
 export function isTypedAgreement(message: string): boolean {
   const text = message.trim();
   if (!text || text.length > 80) return false;
-  const sentences = text.split(/[。.!！?？\n]+/u).map((sentence) => sentence.trim().replace(/[，,、\s]+$/u, "")).filter(Boolean);
+  // AE-XL-015: "好，就按刚才那条建吧" — each clause (commas too) only says yes or carry on.
+  const sentences = text.split(/[。.!！?？\n，,、]+/u).map((sentence) => sentence.trim().replace(/[，,、\s]+$/u, "")).filter(Boolean);
   return sentences.length > 0 && sentences.every((sentence) => isBareTypedConfirmation(sentence) || PROCEED.some((pattern) => pattern.test(sentence)));
 }
 
@@ -206,7 +208,7 @@ export async function runWithConfirmBoundary(
   const now = () => deps.now?.() ?? new Date().toISOString();
   const locale = cardLocale(input.locale);
   const open = await openConversationCards(deps.runtime, input.sessionId, now()).catch(() => []);
-  if (open.length && isBareTypedConfirmation(input.message)) {
+  if (open.length && (isBareTypedConfirmation(input.message) || isTypedAgreement(input.message))) {
     const latest = open.sort((left, right) => left.updatedAt.localeCompare(right.updatedAt)).at(-1)!;
     emitTrace({ cardIds: open.map((card) => card.actionId), decided: false, message: input.message, type: "entry.typed_confirmation" });
     return {

@@ -7,7 +7,10 @@
  *   again as the next revision with the new count. A card of one item is not emptied (rejecting it is a click);
  * - "改到周五", "时间改成下午三点", "make it 3pm": the one item with a date or time (or the item named) gets the new value
  *   (reviseCard from its intent with the value replaced);
- * - "就这一次", "整个系列": a repeating schedule item's scope is switched; when the card already says so, nothing changes.
+ * - "就这一次", "整个系列": a repeating schedule item's scope is switched; when the card already says so, nothing changes;
+ * - "不是这条，是给李薇寄样片那条", "それじゃなくて、…の方", "not that one, the … one" (AE-XL-014): the card's one to-do item is
+ *   the wrong record — the same change goes to the to-do those words name (found by its title; none or several found is
+ *   said, the card left as it is). That to-do and its people are the records mentioned last (the next "她").
  *
  * The earlier revision can no longer be confirmed (its revision and hash are stale); the request that showed the card
  * shows the new revision (card-document.ts). Words that name no item of the card, or that say more than the change (a new
@@ -56,6 +59,31 @@ interface Item {
   index: number;
   name: string;
   creates: boolean;
+}
+
+/**
+ * AE-XL-014: a correction of the card's object — "not this one, it is X" — and the words of X. The whole message is the
+ * correction (a sentence beside it is another request, left to the graph).
+ */
+const CORRECTION = [
+  /^(?:不对|错了|搞错了|弄错了)?[，,、\s]*不是(?:这|那)一?(?:条|个|项|件|张)?(?:待办)?[，,、;；\s]*(?:而)?是(?:说)?(.+)$/u,
+  /^(?:不对|错了|搞错了|弄错了)[，,、\s]*(?:我说的|我要改的|要改的)?是(.+)$/u,
+  /^(?:これ|それ|そっち|こっち|この件|その件)(?:じゃなくて|ではなくて|じゃなく|でなく)[、,，\s]*(.+)$/u,
+  /^(?:no[,.]?\s*)?not (?:this|that)(?: one)?[,.;:]?\s*(?:it'?s |i mean |i meant )?(.+)$/iu,
+];
+const POINTER_TAIL = /(?:的)?(?:那|这)一?(?:条|个|项|件)(?:待办)?$|の(?:方|ほう|やつ|件|ToDo|タスク)$|\s+(?:one|to-?do|task)$/iu;
+
+/** The words naming the record meant instead, or null when the message is not such a correction. */
+export function correctionWords(message: string): string | null {
+  const text = message.trim().replace(/[。.!！]+$/u, "").trim();
+  if (!text || text.length > 60) return null;
+  for (const pattern of CORRECTION) {
+    const said = pattern.exec(text)?.[1]?.trim();
+    if (!said || /[。！？!?\n]/u.test(said)) continue;
+    const words = said.replace(/^the\s+/iu, "").replace(POINTER_TAIL, "").replace(/^(?:那|这)(?:条|个)?/u, "").trim();
+    if ([...words].length >= 2) return words;
+  }
+  return null;
 }
 
 const squash = (text: string) => text.toLowerCase().replace(/[\s，,。.！!？?、：:；;「」『』"“”'’（）()·•\-—]/gu, "");
@@ -136,6 +164,9 @@ const WORDS: Record<CardLocale, {
   noDay: (name: string, day: string) => string;
   needed: (name: string, others: string[]) => string;
   closed: string;
+  retargeted: (before: string, after: string) => string;
+  notFound: (words: string) => string;
+  whichRecord: (names: string[]) => string;
 }> = {
   en: {
     needed: (name, others) => `${others.map((other) => `"${other}"`).join(", ")} on the card waits for "${name}", so "${name}" was not taken off alone. Reject the card and ask again if you want neither.`,
@@ -148,6 +179,9 @@ const WORDS: Record<CardLocale, {
     scope: (name, before, after) => `OK — "${name}" now changes ${after} instead of ${before}. Nothing is done until you confirm the card.`,
     which: (names) => `Which item do you mean? The card has: ${names.map((name) => `"${name}"`).join(", ")}. The card was not changed.`,
     whichDay: (name) => `Which day of "${name}" should change? Tell me the date; the card was not changed.`,
+    retargeted: (before, after) => `OK — the card now changes "${after}" instead of "${before}". Nothing is done until you confirm it.`,
+    notFound: (words) => `I found no open to-do called "${words}", so the card was not changed.`,
+    whichRecord: (names) => `Which one do you mean: ${names.map((name) => `"${name}"`).join(", ")}? The card was not changed.`,
   },
   ja: {
     needed: (name, others) => `カードの${others.map((other) => `「${other}」`).join("・")}は「${name}」を前提にしているため、「${name}」だけを外すことはしていません。どちらも不要ならカードを却下してから、もう一度お伝えください。`,
@@ -160,6 +194,9 @@ const WORDS: Record<CardLocale, {
     scope: (name, before, after) => `「${name}」は「${before}」ではなく「${after}」を変更する内容にしました。確認を押すまで実行しません。`,
     which: (names) => `どの項目のことですか？カードには${names.map((name) => `「${name}」`).join("・")}があります。カードはまだ変更していません。`,
     whichDay: (name) => `「${name}」のどの日を変更しますか？日付を教えてください。カードはまだ変更していません。`,
+    retargeted: (before, after) => `カードの対象を「${before}」から「${after}」に変えました。確認を押すまで実行しません。`,
+    notFound: (words) => `「${words}」という未完了のToDoが見つからないため、カードは変更していません。`,
+    whichRecord: (names) => `どれのことですか？${names.map((name) => `「${name}」`).join("・")}があります。カードはまだ変更していません。`,
   },
   zh: {
     needed: (name, others) => `卡上的${others.map((other) => `「${other}」`).join("、")}要等「${name}」先做成，所以没有单独去掉「${name}」。两项都不要的话，请否决整张卡再重新说。`,
@@ -172,6 +209,9 @@ const WORDS: Record<CardLocale, {
     scope: (name, before, after) => `好的，「${name}」从「${before}」改为「${after}」。点确认之前不会执行。`,
     which: (names) => `你说的是哪一项？卡上有${names.map((name) => `「${name}」`).join("、")}。卡片还没有改。`,
     whichDay: (name) => `「${name}」要改哪一天的那次？告诉我日期就行，卡片还没有改。`,
+    retargeted: (before, after) => `好的，卡上改的是「${after}」，不再是「${before}」。点确认之前不会执行。`,
+    notFound: (words) => `没有找到「${words}」这条未完成的待办，卡片没有改。`,
+    whichRecord: (names) => `你说的是哪一条？有${names.map((name) => `「${name}」`).join("、")}。卡片还没有改。`,
   },
 };
 
@@ -191,12 +231,18 @@ export interface CardRevisionDeps {
   timeZone: string;
   /** A schedule item as stored (its series start, zone and repetition), for switching a card between this time and the series. */
   readSchedule?: (id: string) => Promise<{ startsAt: string; endsAt?: string | null; timeZone?: string | null; recurrence?: string | null } | null>;
+  /** AE-XL-014: the open to-dos whose title holds the words, with the people each is about (ids and names only). */
+  findTodos?: (words: string) => Promise<{ id: string; title: string; people: { id: string; name: string }[] }[]>;
 }
+
+/** A card revision's result; `mentioned` are the records the words named (the session's records mentioned last). */
+export type CardRevisionResult = AgentEntryExecuteResult & { mentioned?: { type: string; id: string; name: string }[] };
 
 type Plan =
   | { kind: "drop"; item: Item }
   | { kind: "revise"; item: Item; intents: CardOperationIntent[]; lead: "changed" | "scope"; scope?: { before: string; after: string } }
-  | { kind: "say"; text: string };
+  | { kind: "say"; text: string }
+  | { kind: "retarget"; item: Item; intents: CardOperationIntent[]; after: string; mentioned: { type: string; id: string; name: string }[] };
 
 /** The newest card of this conversation waiting for the click (an import card is revised by import-revision.ts). */
 async function waitingCard(deps: CardRevisionDeps): Promise<AgentActionRecord | null> {
@@ -208,7 +254,7 @@ async function waitingCard(deps: CardRevisionDeps): Promise<AgentActionRecord | 
 
 /** A cheap first look: no word of a change at all, no ledger read. */
 export function mayReviseCard(message: string): boolean {
-  return DROP_STRONG.test(message) || DROP_WEAK.test(message) || CHANGE.test(message) || THIS_TIME_WORDS.test(message) || SERIES_WORDS.test(message);
+  return correctionWords(message) !== null || DROP_STRONG.test(message) || DROP_WEAK.test(message) || CHANGE.test(message) || THIS_TIME_WORDS.test(message) || SERIES_WORDS.test(message);
 }
 
 const zoneOf = (intent: Record<string, unknown>, fallback: string) => {
@@ -333,6 +379,20 @@ async function planFor(deps: CardRevisionDeps, card: AgentActionRecord, locale: 
   const items: Item[] = card.operations.map((op, index) => ({ creates: !op.targetRef, index, name: itemNameOf(op), op }));
   const named = namedItem(message, items);
   const intents = card.operations.map((op) => cardIntentOf(op, card.operations));
+  // 0. AE-XL-014: another record for the card's one to-do item ("不是这条，是给李薇寄样片那条"): the same change, that to-do.
+  const corrected = correctionWords(message);
+  if (corrected) {
+    const targeted = items.filter((item) => item.op.targetRef?.collection === "tasks" && item.op.capability.startsWith("todo.") && (intents[item.index] as { targetId?: unknown } | null)?.targetId);
+    if (targeted.length !== 1 || !deps.findTodos) return null;
+    const item = targeted[0];
+    const found = (await deps.findTodos(corrected)).filter((todo) => todo.id !== item.op.targetRef!.id);
+    const exact = found.filter((todo) => squash(todo.title) === squash(corrected));
+    const meant = exact.length === 1 ? exact : found;
+    if (!meant.length) return { kind: "say", text: WORDS[locale].notFound(corrected) };
+    if (meant.length > 1) return { kind: "say", text: WORDS[locale].whichRecord(meant.slice(0, 3).map((todo) => todo.title)) };
+    const next = intents.map((intent, index) => (index === item.index ? ({ ...(intent as object), targetId: meant[0].id } as unknown as CardOperationIntent) : intent)).filter((intent): intent is CardOperationIntent => intent !== null);
+    return { after: meant[0].title, intents: next, item, kind: "retarget", mentioned: [{ id: meant[0].id, name: meant[0].title, type: "todo" }, ...meant[0].people.map((person) => ({ id: person.id, name: person.name, type: "contact" }))] };
+  }
   // 1. Taking an item off.
   const strong = DROP_STRONG.test(message);
   const weak = !strong && DROP_WEAK.test(message);
@@ -382,7 +442,7 @@ async function planFor(deps: CardRevisionDeps, card: AgentActionRecord, locale: 
   return null;
 }
 
-export async function reviseCardByWords(deps: CardRevisionDeps): Promise<AgentEntryExecuteResult | null> {
+export async function reviseCardByWords(deps: CardRevisionDeps): Promise<CardRevisionResult | null> {
   if (!mayReviseCard(deps.message) || !deps.runtime.reviseCard || !deps.runtime.editCard) return null;
   const card = await waitingCard(deps);
   if (!card) return null;
@@ -414,8 +474,8 @@ export async function reviseCardByWords(deps: CardRevisionDeps): Promise<AgentEn
   const preview = agentCardPreview(action, await deps.runtime.getRun(action.runId), deps.now());
   if (deps.store) await refreshCardInDocument({ actorId: deps.actorId, now: deps.now(), previous: before, store: deps.store, updated: preview, keepText: true }).catch(() => false);
   const words = WORDS[locale];
-  const lead = plan.kind === "drop" ? words.dropped(plan.item.name, before.title, preview.title) : plan.lead === "scope" && plan.scope ? words.scope(plan.item.name, plan.scope.before, plan.scope.after) : words.changed(plan.item.name, before.title, preview.title);
+  const lead = plan.kind === "drop" ? words.dropped(plan.item.name, before.title, preview.title) : plan.kind === "retarget" ? words.retargeted(plan.item.name, plan.after) : plan.lead === "scope" && plan.scope ? words.scope(plan.item.name, plan.scope.before, plan.scope.after) : words.changed(plan.item.name, before.title, preview.title);
   const cardLine = cardLineOf(preview, locale);
-  emitTrace({ cardId: card.actionId, item: plan.item.op.operationId, kind: plan.kind === "drop" ? "drop" : plan.lead, revision: preview.revision, type: "card.revised_by_words" });
-  return { ...respond(`${lead}\n\n${cardLine}`, preview, "card_revised"), cardLine };
+  emitTrace({ cardId: card.actionId, item: plan.item.op.operationId, kind: plan.kind === "drop" ? "drop" : plan.kind === "retarget" ? "retarget" : plan.lead, revision: preview.revision, type: "card.revised_by_words" });
+  return { ...respond(`${lead}\n\n${cardLine}`, preview, "card_revised"), cardLine, ...(plan.kind === "retarget" ? { mentioned: plan.mentioned } : {}) };
 }

@@ -11,7 +11,7 @@ import { createOrbitAgentChatSessionProvider } from "../../orbit-ai/storage/orbi
 import type { AgentAnswerBlockContract, AgentResultDocument } from "../../../shared/contract/agent-v1";
 import { textBlocks } from "../answer/blocks";
 import type { ContextMessage } from "../context/build";
-import { configuredAgentSessionStateStore } from "../context/session-state";
+import { configuredAgentSessionStateStore, emptySessionState, type AgentSessionStateStore, type NamedRecordRef } from "../context/session-state";
 import { configuredRecordAccess } from "../domains/configured";
 import { configuredAgentEntryStore } from "../entry/configured-store";
 import { conversationCardId, runWithConfirmBoundary } from "../entry/confirm-boundary";
@@ -49,6 +49,31 @@ export function ledgerCardAccess(runtime: AgentRuntimeService, now: () => string
       if (!frozen.action) return null;
       return agentCardPreview(frozen.action, await runtime.getRun(frozen.action.runId), now());
     },
+  };
+}
+
+/**
+ * AE-XL-014: the records a card revision's words named (the to-do the card now changes, its people) are the session's
+ * records mentioned last of their kinds, as a graph turn would leave them — the next "她" is that person.
+ */
+export async function rememberRevisedRecords(store: AgentSessionStateStore, actorId: string, sessionId: string, mentioned: readonly Omit<NamedRecordRef, "at">[], now: string): Promise<void> {
+  if (!mentioned.length) return;
+  const state = (await store.get(actorId, sessionId)) ?? emptySessionState(sessionId, now);
+  for (const item of mentioned) state.lastMentioned = [{ at: now, id: item.id, name: item.name, type: item.type }, ...state.lastMentioned.filter((old) => old.type !== item.type)];
+  state.updatedAt = now;
+  await store.put(actorId, state);
+}
+
+/** AE-XL-014: the open to-dos whose title holds the words, with the people each is about (names read from the contacts). */
+function todoFinder(records: AgentRecordAccess, actorId: string): (words: string) => Promise<{ id: string; title: string; people: { id: string; name: string }[] }[]> {
+  return async (words) => {
+    const scope = records.scope(actorId);
+    const views = (await records.reader.read("todo", scope, { limit: 5, status: "open", text: words })).items;
+    return Promise.all(views.map(async (view) => {
+      const ids = Array.isArray(view.fields.contactIds) ? (view.fields.contactIds as unknown[]).filter((id): id is string => typeof id === "string") : [];
+      const people = await Promise.all(ids.slice(0, 3).map(async (id) => ({ id, name: String((await records.reader.read("contact", scope, { id }).catch(() => null))?.items[0]?.fields.displayName ?? "") })));
+      return { id: view.id, people: people.filter((person) => person.name), title: String(view.fields.title ?? "") };
+    }));
   };
 }
 
@@ -204,6 +229,7 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       actorId: execution.actorId,
       message: execution.input.message,
       now: deps.now,
+      ...(records ? { findTodos: todoFinder(records, execution.actorId) } : {}),
       ...(records ? { readSchedule: async (id: string) => { const view = (await records.reader.read("schedule", records.scope(execution.actorId), { id })).items[0]; return view && typeof view.fields.startsAt === "string" ? { endsAt: typeof view.fields.endsAt === "string" ? view.fields.endsAt : null, recurrence: typeof view.fields.recurrence === "string" ? view.fields.recurrence : null, startsAt: view.fields.startsAt, timeZone: typeof view.fields.timeZone === "string" ? view.fields.timeZone : null } : null; } } : {}),
       runtime,
       sessionId: execution.sessionId,
@@ -213,7 +239,11 @@ export function createGraphExecutor(mode: FeatureMode, overrides: GraphExecutorO
       emitTrace({ error: error instanceof Error ? error.message : String(error), type: "error", where: "executor.card_revision" });
       return null;
     });
-    if (cardRevision) return cardRevision;
+    if (cardRevision) {
+      const { mentioned, ...result } = cardRevision;
+      if (mentioned?.length) await rememberRevisedRecords(deps.sessionState, execution.actorId, execution.sessionId, mentioned, deps.now()).catch((error: unknown) => emitTrace({ error: error instanceof Error ? error.message : String(error), type: "error", where: "executor.card_revision_session" }));
+      return result;
+    }
     const cardPrepared = Boolean(await runtime.getAction(conversationCardId(execution.requestId)).catch(() => null));
     let graph: AgentGraphResult | null = null;
     const boundary = await runWithConfirmBoundary({ now: deps.now, runtime }, {

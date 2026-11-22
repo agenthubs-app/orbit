@@ -156,12 +156,18 @@ test("agreeing in words to a rejected card: a fixed sentence says it cannot run 
   assert.equal((await kit.listTasks()).length, 0);
 });
 
-test("a longer message that agrees while a card waits gets the reminder appended; the card stays", async () => {
+test("a longer message that only agrees while a card waits gets the reminder and the card (AE-XL-015); one that also asks something gets it appended; the card stays", async () => {
   const kit = createCardKit();
   const card = await freeze(kit, [{ capability: "todo.create", set: { title: "見積書のドラフトを見直す" } }], undefined, "ja");
   await kit.repository.saveAction({ ...card, origin: { conversationId: SESSION, kind: "conversation", requestId: "agreq_first" } });
-  const result = await runWithConfirmBoundary({ now: kit.now, runtime: kit.runtime }, { locale: "ja", message: "やっぱりさっきの内容で進めてください。OKです。", requestId: "agreq_later", run: turnOf({ reply: "承知しました。" }), sessionId: SESSION });
-  assert.equal(result.modelCalled, true);
-  assert.match(result.text, /カードの「以上 1 件を確定」を押してください/u);
+  // Only agreeing in words (every sentence a yes or a "carry on with that"): code's reminder, no model reply that could read as done.
+  const agreed = await runWithConfirmBoundary({ now: kit.now, runtime: kit.runtime }, { locale: "ja", message: "やっぱりさっきの内容で進めてください。OKです。", requestId: "agreq_later", run: turnOf({ reply: "承知しました。" }), sessionId: SESSION });
+  assert.equal(agreed.modelCalled, false);
+  assert.equal(agreed.actionPreview?.actionId, card.actionId);
+  assert.match(agreed.text, /カードの「以上 1 件を確定」を押してください/u);
+  // Agreeing and asking something else: the model answers the rest, the reminder follows.
+  const more = await runWithConfirmBoundary({ now: kit.now, runtime: kit.runtime }, { locale: "ja", message: "OKです。明日の予定も教えて", requestId: "agreq_more", run: turnOf({ reply: "明日は予定がありません。" }), sessionId: SESSION });
+  assert.equal(more.modelCalled, true);
+  assert.match(more.text, /カードの「以上 1 件を確定」を押してください/u);
   assert.equal((await kit.runtime.getAction(card.actionId))?.status, "awaiting_confirmation");
 });
