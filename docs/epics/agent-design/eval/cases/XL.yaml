@@ -645,3 +645,29 @@ cases:
       - id: R2
         text: "第二步的回应说明改的是笔记那一项、还要点确认才执行。"
     notes: "笔记和待办在同一张卡上：「笔记那条」只指往来笔记，昨天按默认时钟是 2026-11-14。待办的日期是第一轮定的周五（计划日或截止都可以），第二轮不该动它。"
+
+  - id: AE-XL-022
+    title: "「把给小林发修订报价和给李薇寄样片这两条待办都改到周五」：一张卡两项，各改各的，不问哪一条"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§5.1", "§3.10"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把给小林发修订报价和给李薇寄样片这两条待办都改到周五。"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T42, set: { plannedDate: "2026-11-20" } }
+          - { op: todo.update, target: T45, set: { plannedDate: "2026-11-20" } }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应是一张等确认的卡，上面两项：给小林发修订报价、给李薇寄样片，计划日都改到 11 月 20 日（周五），日期带星期；同一条待办不出现两次。"
+      - id: R2
+        text: "没有问用户要改哪一条，也没有说已经改好，说明点确认之前不会改。"
+    notes: "一句话点名两条已有待办（T42 计划日 11-18，T45 计划日 11-10），两个名字各对得上一条。旧行为：两个名字合在一起去找、被问成哪一条，答完后卡上同一条待办出现两次（run 20261123-065853-7d4dece-CARD-multi-new 的 AE-XL-019 旧版）。"
