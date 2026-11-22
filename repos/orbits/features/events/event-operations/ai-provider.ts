@@ -822,7 +822,30 @@ export function collectTrilingualOutputViolations(
 }
 
 /** One model sentence plus the placeholders it may use (its row's source and target, or its table's members). */
-interface ScopedSentence { allowed: ReadonlySet<string>; sentence: TrilingualSentence }
+/**
+ * Who a text speaks to: "to_reader" (a reason, hint or no-match line addressed to the person reading it),
+ * "to_target" (a question the reader asks the other person). Tables carry none (they speak about members).
+ */
+type TextVoice = "to_reader" | "to_target";
+interface ScopedSentence { allowed: ReadonlySet<string>; sentence: TrilingualSentence; voice?: TextVoice }
+
+/**
+ * Person and voice rules of a translation (2026-11-22 calibration: a subject-less Japanese reason came back as
+ * 「我…」/"I'm…", and people as 先生/女士/他/她). Gendered words are never allowed (the program has no gender);
+ * a text spoken to the reader never opens with the writer as subject.
+ */
+export function voiceIssues(text: string, language: "zh" | "en", voice: TextVoice | undefined): string[] {
+  const issues: string[] = [];
+  const bare = text.replace(ANY_BRACES_PATTERN, " ");
+  if (language === "zh") {
+    if (/先生|女士|小姐|[他她]/u.test(bare.replace(/其[他它]|他人/gu, ""))) issues.push("gendered");
+    if (voice === "to_reader" && /^[\s「“"]*我/u.test(bare)) issues.push("writer_voice");
+  } else {
+    if (/\b(he|she|his|him|her|hers|himself|herself|Mr|Mrs|Ms)\b/iu.test(bare)) issues.push("gendered");
+    if (voice === "to_reader" && /^[\s"“]*(I|I'm|I am|I've|I'd|We|We're|We've|Our|My)\b/u.test(bare)) issues.push("writer_voice");
+  }
+  return issues;
+}
 
 const NUMBER_UNITS: Readonly<Record<string, number>> = { "万": 1e4, "萬": 1e4, "億": 1e8, "亿": 1e8, "千": 1e3, k: 1e3, thousand: 1e3, m: 1e6, million: 1e6, b: 1e9, bn: 1e9, billion: 1e9 };
 /**
@@ -876,7 +899,7 @@ const placeholderSet = (text: string) => [...new Set(text.match(ANY_BRACES_PATTE
 function checkScopedSentences(scoped: readonly ScopedSentence[], participants: readonly import("./contract").EventOperationsParticipant[]) {
   const structural: string[] = [];
   const flagged: Array<{ index: number; languages: TextLanguage[] }> = [];
-  scoped.forEach(({ allowed, sentence }, index) => {
+  scoped.forEach(({ allowed, sentence, voice }, index) => {
     for (const language of TEXT_LANGUAGES) (sentence as Record<TextLanguage, string>)[language] = normalizePlaceholders(sentence[language]);
     const jaIssues = textIssues(sentence.ja, allowed, "ja", participants);
     if (jaIssues.length) { structural.push(...jaIssues.map((issue) => `${issue}@${index}`)); return; }
@@ -885,6 +908,7 @@ function checkScopedSentences(scoped: readonly ScopedSentence[], participants: r
       const text = sentence[language];
       const numbers = numericValues(text);
       return textIssues(text, allowed, language, participants).length > 0
+        || voiceIssues(text, language, voice).length > 0
         || placeholderSet(text) !== reference.placeholders
         || (numbers !== "" && reference.numbers !== "" && numbers !== reference.numbers);
     });
@@ -982,7 +1006,7 @@ const TRILINGUAL_RETRYABLE_JSON_SHAPES: ReadonlySet<EventOperationsJsonFailureSh
 
 const BASE_DRAFT_INSTRUCTION = `Write every participant-facing text in natural, polite Japanese only. Each text is specific to the people involved and grounded in their supplied profiles; never use template sentences. Never write a participant's name or company name: refer to a person only as {KEY} and to their company only as {KEY:company}, using the supplied keys exactly, and use {KEY:company} only when that profile has hasCompany=true. Profiles may be written in any language: express every profile term in Japanese, except upper-case abbreviations (AI, DX, VC, M&A …) which stay as written. Write numbers with Arabic digits. Return exactly one JSON document with exactly the documented keys.`;
 
-const TRANSLATION_INSTRUCTION = (language: "zh" | "en") => `You translate Japanese event networking texts into ${language === "zh" ? "idiomatic Simplified Chinese as a native Chinese business writer would write it (no Japanese kana; address the reader as 您, never 你; never 贵公司 for a person; write natural mainland Chinese instead of Japanese calques (課題 → 挑战/难题/问题, 導入支援 → 落地支持/引入支持, 実績 → 经验/成果, not 课题/导入支持/实际业绩); keep upper-case abbreviations such as AI, DX, VC, M&A, IPO and the terms SaaS, Web3, EdTech, FinTech, PoC as written; translate every other English word)" : "natural, concise English (no Chinese or Japanese characters; address the reader as you; refer to a person as they, never it)"}. A Japanese sentence without a subject keeps the same implied person; never turn a person into a company. Translate only: never add, remove, or change a fact, a person, a direction (who needs and who offers), a negation, or a number. Keep every {…} placeholder exactly as it appears in the Japanese text, and keep numbers as Arabic digits with the same values. Return exactly {"items":{"<id>":"<translation>"}} with exactly the same ids.`;
+const TRANSLATION_INSTRUCTION = (language: "zh" | "en") => `You translate Japanese event networking texts into ${language === "zh" ? "idiomatic Simplified Chinese as a native Chinese business writer would write it (no Japanese kana; address the reader as 您, never 你; never 贵公司 for a person; write natural mainland Chinese instead of Japanese calques (課題 → 挑战/难题/问题, 導入支援 → 落地支持/引入支持, 実績 → 经验/成果, not 课题/导入支持/实际业绩); keep upper-case abbreviations such as AI, DX, VC, M&A, IPO and the terms SaaS, Web3, EdTech, FinTech, PoC as written; translate every other English word)" : "natural, concise English (no Chinese or Japanese characters; address the reader as you; refer to a person as they, never it)"}. Each item has a voice. "to_reader": the text speaks to the person reading it — the reader is 您 / you, the other person appears only as a {…} placeholder, and the writer never appears (never 我/我们 or I/We as the subject); a Japanese sentence without a subject is about the reader. "to_target": a question the reader asks the other person directly (您 / you is the person asked). An item without a voice describes the people by their placeholders. Never use a gendered word for anyone (no 先生, 女士, 他, 她; no he, she, his, her, Mr, Ms): repeat the placeholder or use 对方 / 您 / they / you instead. Never turn a person into a company. Translate only: never add, remove, or change a fact, a person, a direction (who needs and who offers), a negation, or a number. Keep every {…} placeholder exactly as it appears in the Japanese text, and keep numbers as Arabic digits with the same values. Return exactly {"items":{"<id>":"<translation>"}} (the translated text only, no voice) with exactly the same ids.`;
 
 const systemInstruction = `You are Orbit's event operations matching model.
 Return exactly one JSON document and no markdown, explanation, code fences, or trailing text.
@@ -1040,7 +1064,7 @@ function requestFingerprint(
     temperature,
     responseSchema: "event-operations-tokenized-recommendations-v1",
     // 2026-11-22: only present when on, so single-language fingerprints are unchanged.
-    ...(trilingual ? { participantTextLanguages: "ja-facts-choose-write-translate-v4" } : {}),
+    ...(trilingual ? { participantTextLanguages: "ja-facts-choose-write-translate-v5" } : {}),
   };
   return JSON.stringify(
     recommendationPromptEncoding === "deduplicated" ||
@@ -1331,14 +1355,15 @@ export function createEventOperationsAiProvider({
       const sentence = input.scoped[index]!.sentence;
       // The Japanese base draft is the source of truth; translate a flagged language from it when it passed.
       const source = (["ja", "zh", "en"] as const).find((language) => !languages.includes(language));
-      return { id: `s${position + 1}`, index, rewrite: languages, source, ...(source ? { source_text: sentence[source] } : {}), ...Object.fromEntries(languages.map((language) => [`current_${language}`, sentence[language]])) };
+      const voice = input.scoped[index]!.voice;
+      return { id: `s${position + 1}`, index, rewrite: languages, source, ...(voice ? { voice } : {}), ...(source ? { source_text: sentence[source] } : {}), ...Object.fromEntries(languages.map((language) => [`current_${language}`, sentence[language]])) };
     });
     if (request.some((item) => !item.source)) {
       return { ok: false, result: trilingualFailure({ kind: input.kind, stage: "all_languages_flagged", text: input.text, result: invalidOutputLanguage<never>(input.metadata) }) };
     }
     const response = await runModelText({
       config,
-      systemInstruction: `${systemInstruction}\nYou are performing one bounded AI-only language repair of event networking sentences. Rewrite only the requested languages of each sentence from its source_text, which is the same sentence in another language: ja in natural Japanese, zh in idiomatic Simplified Chinese, en in natural English with no Chinese or Japanese characters. Keep every {…} placeholder exactly as it appears in source_text, keep every number, and never write a person's or company's name. Never add, remove, or change facts.`,
+      systemInstruction: `${systemInstruction}\nYou are performing one bounded AI-only language repair of event networking sentences. Rewrite only the requested languages of each sentence from its source_text, which is the same sentence in another language: ja in natural Japanese, zh in idiomatic Simplified Chinese, en in natural English with no Chinese or Japanese characters. Keep every {…} placeholder exactly as it appears in source_text, keep every number, and never write a person's or company's name. A sentence with voice "to_reader" speaks to its reader (您 / you; a Japanese sentence without a subject is about the reader) and never has the writer (我/我们, I/We) as its subject; voice "to_target" is a question asked directly to the other person. Never use a gendered word (先生, 女士, 他, 她, he, she, his, her, Mr, Ms): use the placeholder, 对方/您, or they/you. Never add, remove, or change facts.`,
       userText: `Return exactly {"sentences":{"<id>":{<each requested language>:"..."}}} for every id below, with exactly the requested language keys and nothing else.\n${JSON.stringify(request.map(({ index: _index, ...item }) => item))}`,
     });
     if (response.success === false) {
@@ -1387,7 +1412,7 @@ export function createEventOperationsAiProvider({
     language: "write natural, polite Japanese",
     malformed_placeholder: "placeholders must be exactly {KEY} or {KEY:company}",
     out_of_scope: "it mentions a person who is not allowed here",
-    reader_named: "this text is read by the person it is written for: address them directly (omit the subject, or あなた), never name them with a placeholder",
+    reader_named: "this text is read by the person it is written for: address them as あなた, never name them with a placeholder",
     question_names_target: "a question is asked directly to the person: write it without any placeholder or name (neither the person asked nor the asker)",
     raw_name: "never write a person's or company's name; use only the placeholders",
     stray_brace: "no braces outside placeholders",
@@ -1439,7 +1464,7 @@ export function createEventOperationsAiProvider({
   }
 
   /** One language's translation of the base texts; id set must match exactly. One retry of this call on a bad shape. */
-  async function translateBase(language: "zh" | "en", items: Readonly<Record<string, string>>, kind: "recommendations" | "table"): Promise<{ ok: true; texts: Record<string, string>; metadata: EventOperationsAiResponseMetadata | undefined } | { ok: false; result: EventOperationsAiResult<never> }> {
+  async function translateBase(language: "zh" | "en", items: Readonly<Record<string, string | { text: string; voice: TextVoice }>>, kind: "recommendations" | "table"): Promise<{ ok: true; texts: Record<string, string>; metadata: EventOperationsAiResponseMetadata | undefined } | { ok: false; result: EventOperationsAiResult<never> }> {
     let metadata: EventOperationsAiResponseMetadata | undefined;
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       const response = await runModelText({
@@ -1469,13 +1494,17 @@ export function createEventOperationsAiProvider({
    * flagged language (from the Japanese text) → the same full check again. Returns the assembled sentences.
    */
   async function translateAndCheck(input: {
-    base: ReadonlyArray<{ allowed: ReadonlySet<string>; id: string; text: string }>;
+    base: ReadonlyArray<{ allowed: ReadonlySet<string>; asked?: string; id: string; reader?: string; text: string }>;
     kind: "recommendations" | "table";
     metadata: EventOperationsAiResponseMetadata | undefined;
     participants: readonly import("./contract").EventOperationsParticipant[];
     text: string;
   }): Promise<{ ok: true; metadata: EventOperationsAiResponseMetadata | undefined; sentences: Map<string, TrilingualSentence> } | { ok: false; result: EventOperationsAiResult<never> }> {
-    const items = Object.fromEntries(input.base.map((item) => [item.id, item.text]));
+    const voiceOf = (item: { asked?: string; reader?: string }): TextVoice | undefined => (item.asked ? "to_target" : item.reader ? "to_reader" : undefined);
+    const items = Object.fromEntries(input.base.map((item) => {
+      const voice = voiceOf(item);
+      return [item.id, voice ? { text: item.text, voice } : item.text];
+    }));
     const [zh, en] = await Promise.all([translateBase("zh", items, input.kind), translateBase("en", items, input.kind)]);
     type Translated = { ok: true; texts: Record<string, string>; metadata: EventOperationsAiResponseMetadata | undefined };
     type Failed = { ok: false; result: EventOperationsAiResult<never> };
@@ -1490,7 +1519,8 @@ export function createEventOperationsAiProvider({
     const scoped: ScopedSentence[] = input.base.map((item) => {
       const sentence: TrilingualSentence = { en: enTexts[item.id]!, ja: item.text, zh: zhTexts[item.id]! };
       sentences.set(item.id, sentence);
-      return { allowed: item.allowed, sentence };
+      const voice = voiceOf(item);
+      return { allowed: item.allowed, sentence, ...(voice ? { voice } : {}) };
     });
     const checked = await checkAndRepair({ kind: input.kind, metadata, participants: input.participants, scoped, text: input.text });
     if (checked.ok === false) return checked;
@@ -1572,10 +1602,12 @@ ${JSON.stringify(chooseSources)}`,
       ...factsByKey.get(sourceKey)!.map((fact) => ({ ...fact, id: relabel(fact.id, sourceKey, targetKey) })),
       ...(targetKey ? factsByKey.get(targetKey)!.map((fact) => ({ ...fact, id: relabel(fact.id, sourceKey, targetKey) })) : []),
     ];
-    const pairs: Record<string, unknown> = {};
-    const writeShape: Record<string, unknown> = {};
-    for (const token of tokenizedSources.tokenSources) {
+    // One write call per source (1 person x K pairs), in parallel: a small output, and a broken one is re-asked
+    // for that person only (calibration: one call for 3 x 5 pairs broke its JSON mid-document).
+    const writeForSource = async (token: TokenizedRecommendationSource): Promise<{ ok: true; rows: Record<string, unknown>; metadata: EventOperationsAiResponseMetadata | undefined; text: string } | { ok: false; result: EventOperationsAiResult<never> }> => {
       const list = chosen.get(token.sourceKey)!;
+      const pairs: Record<string, unknown> = {};
+      const writeShape: Record<string, unknown> = {};
       if (list.length === 0) {
         pairs[`${token.sourceKey}.none`] = { sourceFacts: pairFacts(token.sourceKey, null).map(({ id, kind, text }) => ({ id, kind, text })) };
         writeShape[`${token.sourceKey}.none`] = { none: "…" };
@@ -1585,45 +1617,12 @@ ${JSON.stringify(chooseSources)}`,
         pairs[id] = {
           basis: item.basis.map((pair) => pair.map((factId) => relabel(factId, token.sourceKey, item.target))),
           facts: pairFacts(token.sourceKey, item.target).map(({ id: factId, kind, text }) => ({ id: factId, kind, text })),
-          sourceHasCompany: registeredCompany(participantByKey.get(token.sourceKey)!) !== null,
           targetHasCompany: registeredCompany(participantByKey.get(item.target)!) !== null,
         };
         writeShape[id] = { hint: "…", q1: "…", q2: "…", r1: { ev: ["S.n1", "T.o1"], text: "…" }, r2: { ev: ["T.n1", "S.o1"], text: "…" } };
       });
-    }
-    const response = await runModelText({
-      config,
-      systemInstruction: baseSystemInstruction,
-      userText: `Write the texts for these already-chosen networking pairs, in Japanese, from the supplied facts only (S.* are the source person's facts, T.* the target's).
-
-For every pair id:
-- r1 and r2: two different reasons why the reader (the source person) should meet the target. Each reason states only what its cited facts say and lists them in ev. A need belongs to its owner and is answered only by the other person's offer that answers it most directly (for a funding need, a funding or investor offer — not an unrelated one); a topic is an interest, never an ability or knowledge; never attribute one person's fact to the other. Build r1 on the strongest supplied basis pair. For r2 use a second need/offer pair only if it is equally direct; otherwise write r2 about a topic both share (cite one topic of each). Never stretch an unrelated offer to fit a need. Vary the wording; do not write every reason with the same sentence pattern.
-- q1 and q2: two questions the source person asks the target directly, in polite Japanese; write them without any placeholder or name (the asker never names themselves or the target).
-- hint: one practical tip for starting the conversation.
-For an id ending in ".none": none is one sentence explaining why there is no match.
-These texts are shown to the source person, who reads them about themselves: address the source person directly as the reader (in Japanese omit the subject, or use あなた sparingly) and never name them. Refer to the target only as {TARGET} (the server adds the name and さん), and to the target's company only as {TARGET:company} next to {TARGET}, only when targetHasCompany is true. No other placeholders exist; never add braces.
-
-JSON shape (exact keys):
-${JSON.stringify(writeShape)}
-
-Pairs:
-${JSON.stringify(pairs)}`,
-    });
-    if (response.success === false) {
-      const failure = modelFailure<readonly EventOperationsParticipantRecommendations[]>(response);
-      const merged = mergeEventOperationsResponseMetadata(metadata, failure.success === false ? failure.responseMetadata : undefined);
-      return (failure.success === false ? { ...failure, ...(merged ? { responseMetadata: merged } : {}) } : failure) as EventOperationsAiResult<readonly EventOperationsParticipantRecommendations[]>;
-    }
-    metadata = mergeEventOperationsResponseMetadata(metadata, metadataOf(response));
-    const json = parseJsonClosingTail(response.text, response.responseMetadata?.finishReason);
-    if (json === null) {
-      const shapeName = classifyJsonFailureShape(response.text);
-      return trilingualFailure({ kind: "recommendations", stage: `write_json_${shapeName}`, text: response.text, result: invalidJson(shapeName, metadata, TRILINGUAL_RETRYABLE_JSON_SHAPES) });
-    }
-    const writeProblem = (() => {
-      if (!isRecord(json) || !exactKeys(json, Object.keys(writeShape))) return "rows";
-      for (const token of tokenizedSources.tokenSources) {
-        const list = chosen.get(token.sourceKey)!;
+      const problemOf = (json: unknown): string | null => {
+        if (!isRecord(json) || !exactKeys(json, Object.keys(writeShape))) return "rows";
         if (list.length === 0) {
           const row = json[`${token.sourceKey}.none`];
           if (!isRecord(row) || !exactKeys(row, ["none"]) || !nonEmptyString(row.none)) return "none";
@@ -1643,15 +1642,55 @@ ${JSON.stringify(pairs)}`,
             if (legal.length === 0) return "evidence_no_legal_pair";
             if (!evidenceIsClosed(cited)) return "evidence_unmatched_fact";
             if (/\{TARGET(:company)?\}/u.test(String(reason.text)) && !cited.some((fact) => fact.id.startsWith("T."))) return "evidence_target_unsupported";
-            if (/\{SOURCE(:company)?\}/u.test(String(reason.text)) && !cited.some((fact) => fact.id.startsWith("S."))) return "evidence_source_unsupported";
             for (const pair of legal) usedPairs.add(pair);
           }
           if (!basis.some((pair) => usedPairs.has(pair))) return "evidence_off_basis";
         }
+        return null;
+      };
+      let metadata: EventOperationsAiResponseMetadata | undefined;
+      let lastText = "";
+      let lastProblem = "rows";
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        const written = await runModelText({
+          config,
+          systemInstruction: baseSystemInstruction,
+          userText: `Write the texts for these already-chosen networking pairs, in Japanese, from the supplied facts only (S.* are the reader's facts, T.* the target's).
+
+These texts are shown to the reader (the source person) about themselves. Address the reader as あなた (あなたは… / あなたの…) whenever a sentence needs that subject, never leaving it ambiguous who is meant; never name the reader. Refer to the target only as {TARGET} (the server adds the name and さん), and to the target's company only as {TARGET:company} next to {TARGET}, only when targetHasCompany is true. No other placeholders exist; never add braces.
+
+For every pair id:
+- r1 and r2: two different reasons why あなた should meet {TARGET}. Each reason states only what its cited facts say and lists them in ev. A need belongs to its owner and is answered only by the other person's offer that answers it most directly (for a funding need, a funding or investor offer — not an unrelated one); a topic is an interest, never an ability or knowledge; never attribute one person's fact to the other. Build r1 on the strongest supplied basis pair. For r2 use a second need/offer pair only if it is equally direct; otherwise write r2 about a topic both share (cite one topic of each). Never stretch an unrelated offer to fit a need. Vary the wording; do not write every reason with the same sentence pattern.
+- q1 and q2: two questions あなた asks {TARGET} directly, in polite Japanese, without any placeholder or name.
+- hint: one practical tip for あなた to start the conversation.
+For an id ending in ".none": none is one sentence explaining to あなた why there is no match.
+
+JSON shape (exact keys):
+${JSON.stringify(writeShape)}
+
+Pairs:
+${JSON.stringify(pairs)}`,
+        });
+        if (written.success === false) {
+          const failure = modelFailure<never>(written);
+          const merged = mergeEventOperationsResponseMetadata(metadata, failure.success === false ? failure.responseMetadata : undefined);
+          return { ok: false, result: (failure.success === false ? { ...failure, ...(merged ? { responseMetadata: merged } : {}) } : failure) as EventOperationsAiResult<never> };
+        }
+        metadata = mergeEventOperationsResponseMetadata(metadata, metadataOf(written));
+        lastText = written.text;
+        const json = parseJsonClosingTail(written.text, written.responseMetadata?.finishReason);
+        lastProblem = json === null ? `json_${classifyJsonFailureShape(written.text)}` : problemOf(json) ?? "";
+        if (!lastProblem) return { metadata, ok: true, rows: json as Record<string, unknown>, text: written.text };
+        trilingualFailure({ kind: "recommendations", stage: `write_${lastProblem}`, text: written.text, result: trilingualRetryable<never>("x") });
       }
-      return null;
-    })();
-    if (writeProblem) return trilingualFailure({ kind: "recommendations", stage: `write_${writeProblem}`, text: response.text, result: trilingualRetryable(`The base draft failed the fact checks (${writeProblem}).`, metadata) });
+      return { ok: false, result: trilingualRetryable<never>(`The base draft for ${token.sourceKey} failed twice (${lastProblem}).`, metadata) };
+    };
+    const writes = await Promise.all(tokenizedSources.tokenSources.map(writeForSource));
+    for (const write of writes) metadata = mergeEventOperationsResponseMetadata(metadata, write.ok === true ? (write as { metadata: EventOperationsAiResponseMetadata | undefined }).metadata : (write as { result: EventOperationsAiResult<never> }).result.responseMetadata);
+    const failedWrite = writes.find((write) => write.ok === false) as { ok: false; result: EventOperationsAiResult<never> } | undefined;
+    if (failedWrite) return { ...failedWrite.result, ...(metadata ? { responseMetadata: metadata } : {}) } as never;
+    const json = Object.assign({}, ...writes.map((write) => (write as { rows: Record<string, unknown> }).rows)) as Record<string, unknown>;
+    const response = { model: choose.model, provider: choose.provider, text: writes.map((write) => (write as { text: string }).text).join("\n") };
     // 2. Base texts, scoped to the pair; {SOURCE}/{TARGET} become that pair's keys (no other person can be named). ev is internal only.
     const written = json as Record<string, Record<string, unknown>>;
     const base: Array<{ aliases?: Readonly<Record<string, string>>; allowed: ReadonlySet<string>; asked?: string; id: string; reader?: string; text: string }> = [];

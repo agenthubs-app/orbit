@@ -11,6 +11,7 @@ import {
   collectTrilingualOutputViolations,
   createEventOperationsAiProvider,
   type EventOperationsModelRunner,
+  voiceIssues,
 } from "../../features/events/event-operations/ai-provider";
 import type { EventOperationsParticipant } from "../../features/events/event-operations/contract";
 
@@ -52,13 +53,20 @@ function model(options: {
     const ok = (value: unknown) => ({ model: "test-model", provider: "openai" as const, responseMetadata: { finishReason: "stop", providerResponseBytes: 10, usage }, source: "provider:openai-responses-api" as const, success: true as const, text: typeof value === "string" ? value : JSON.stringify(value) });
     if (options.fail === kind) return { error: { code: "AI_REQUEST_FAILED" as const, message: "upstream 503" }, model: "test-model", provider: "openai" as const, responseMetadata: { finishReason: null, providerResponseBytes: 1, usage: { ...usage, completionTokens: 7, promptTokens: 70 } }, source: "provider:openai-responses-api" as const, success: false as const };
     if (kind === "choose") return ok(options.choose ?? { S1: [{ basis: [["S1.n1", "S1C1.o1"]], score: 90, target: "S1C1" }, { basis: [["S1.n1", "S1C2.o1"]], score: 80, target: "S1C2" }] });
-    if (kind === "base") return ok(options.base);
+    if (kind === "base") {
+      // One write call per source: answer with that source's rows of the fixture (extra or missing rows of it stay).
+      const shape = /JSON shape \(exact keys\):\n(.*)\n/u.exec(input.userText)?.[1];
+      if (!shape || typeof options.base !== "object" || options.base === null) return ok(options.base);
+      const sources = new Set(Object.keys(JSON.parse(shape)).map((key) => key.split(".")[0]));
+      return ok(Object.fromEntries(Object.entries(options.base as Record<string, unknown>).filter(([key]) => sources.has(key.split(".")[0]))));
+    }
     if (kind === "repair") return ok(options.repair ?? { sentences: {} });
     if (kind === "baseRepair") return ok(options.baseRepair ?? { texts: {} });
     const language = kind;
     const custom = options.translationReply?.(language);
     if (custom !== undefined) return ok(custom);
-    const items = JSON.parse(input.userText.slice(input.userText.indexOf("\n") + 1)).items as Record<string, string>;
+    const raw = JSON.parse(input.userText.slice(input.userText.indexOf("\n") + 1)).items as Record<string, string | { text: string }>;
+    const items = Object.fromEntries(Object.entries(raw).map(([id, value]) => [id, typeof value === "string" ? value : value.text]));
     const stand = (ja: string) => {
       const keep = [...(ja.match(/\{[^{}]+\}/gu) ?? []), ...(ja.match(/\d+/gu) ?? [])].join(" ");
       return language === "zh" ? `中文说明 ${keep}` : `English text ${keep}`;
@@ -102,7 +110,7 @@ test("happy path: exactly K picks, 2 reasons / 2 questions / 1 hint, names fille
   assert.equal(first.i18n!.en.reasons[0], "You are looking for a healthcare partner, so Bo is worth meeting.");
   assert.deepEqual(runner.calls.map((call) => call.kind).sort(), ["base", "choose", "en", "zh"], "choose, one base draft, one call per translation");
   for (const value of ["山田太郎", "青空商事", "Beacon Health", "未来科技"]) assert.doesNotMatch(runner.calls[0]!.userText, new RegExp(value, "u"), `prompt carries no ${value}`);
-  assert.doesNotMatch(runner.calls.find((call) => call.kind === "zh")!.userText, /score|target|S1C2"/u, "translation never sees the choice");
+  assert.doesNotMatch(runner.calls.find((call) => call.kind === "zh")!.userText, /score|"target"|S1C2"/u, "translation never sees the choice");
 });
 
 test("exactly K: fewer picks, a duplicate target, or a target outside the shortlist fails the batch (no dedupe, no shrinking)", async () => {
@@ -336,4 +344,55 @@ test("the reader is addressed, never named: a base text naming them is rewritten
   assert.equal(ok.success, true);
   if (ok.success) assert.equal(ok.data[0]!.recommendations[0]!.i18n!.ja.memberHint, "まずはBoさんに聞いてみましょう。");
   await failsRetryably(model({ base: goodBase({ p1: { hint: "{SOURCE}さんは{TARGET}さんに聞くとよいです。" } }), baseRepair: { texts: { t1: "{SOURCE}さんから聞きましょう。" } } }), two, "still naming the reader");
+});
+
+test("voice and gender: a text to the reader never opens with the writer; nobody is gendered", () => {
+  assert.deepEqual(voiceIssues("我正在寻找海外合作伙伴，可以和{S1C1}聊聊。", "zh", "to_reader"), ["writer_voice"]);
+  assert.deepEqual(voiceIssues("I'm looking for a partner, so {S1C1} is worth meeting.", "en", "to_reader"), ["writer_voice"]);
+  assert.deepEqual(voiceIssues("We could start with {S1C1}'s rollout.", "en", "to_reader"), ["writer_voice"]);
+  assert.deepEqual(voiceIssues("您正在寻找合作伙伴，{S1C1}女士有相关经验。", "zh", "to_reader"), ["gendered"]);
+  assert.deepEqual(voiceIssues("可以先请{S1C1}介绍他的经验。", "zh", "to_reader"), ["gendered"]);
+  assert.deepEqual(voiceIssues("Ask {S1C1} about her rollout.", "en", "to_reader"), ["gendered"]);
+  assert.deepEqual(voiceIssues("您和{S1C1}都关注AI等其他领域。", "zh", "to_reader"), [], "其他 is not a pronoun");
+  assert.deepEqual(voiceIssues("我们公司最近也在考虑AI，您那边如何？", "zh", "to_target"), [], "a question may speak as the asker");
+  assert.deepEqual(voiceIssues("Is this the first AI project for your team?", "en", "to_target"), []);
+  assert.deepEqual(voiceIssues("Item ideas: {S1C1} offers rollout support.", "en", "to_reader"), [], "I only as a whole word");
+});
+
+test("translation requests carry each text's voice; a gendered or first-person translation is re-done from the Japanese", async () => {
+  const runner = model({
+    base: goodBase(),
+    repair: { sentences: { s1: { en: "You are looking for a healthcare partner, so {S1C1} is worth meeting.", zh: "您正在寻找医疗领域的合作伙伴，值得和{S1C1}聊聊。" } } },
+    translate: (language, id) => (id !== "S1.p1.r1" ? undefined : language === "zh" ? "我正在寻找合作伙伴，{S1C1}女士值得一聊。" : "I'm looking for a healthcare partner, so {S1C1} is worth meeting."),
+  });
+  const ok = await provider(runner).generateRecommendations(two);
+  assert.equal(ok.success, true);
+  const zhRequest = JSON.parse(runner.calls.find((call) => call.kind === "zh")!.userText.split("\n")[1]!).items;
+  assert.equal(zhRequest["S1.p1.r1"].voice, "to_reader");
+  assert.equal(zhRequest["S1.p1.q1"].voice, "to_target");
+  assert.equal(zhRequest["S1.p1.hint"].voice, "to_reader");
+  const repair = runner.calls.find((call) => call.kind === "repair")!.userText;
+  assert.match(repair, /"voice":"to_reader"/u);
+  if (ok.success) assert.equal(ok.data[0]!.recommendations[0]!.i18n!.zh.reasons[0], "您正在寻找医疗领域的合作伙伴，值得和Bo聊聊。");
+});
+
+test("the base draft is one call per person; a broken draft is re-asked for that person only", async () => {
+  const twoSources = { eventId: "event:t", recommendationCount: 1, sources: [{ candidateParticipants: [bo], sourceParticipant: yamada }, { candidateParticipants: [yamada], sourceParticipant: mira }] };
+  const choose = { S1: [{ basis: [["S1.n1", "S1C1.o1"]], score: 80, target: "S1C1" }], S2: [{ basis: [["S2.n1", "S2C1.o1"]], score: 80, target: "S2C1" }] };
+  const inner = model({ base: { "S1.p1": pair(), "S2.p1": pair() }, choose });
+  let brokenOnce = false;
+  const runner = Object.assign(async (input: { systemInstruction: string; userText: string }) => {
+    const result = await (inner as unknown as (value: typeof input) => Promise<{ text: string }>)(input);
+    if (!brokenOnce && inner.calls.at(-1)!.kind === "base" && /"S2\.p1"/u.test(input.userText)) { brokenOnce = true; return { ...result, text: '{"S2.p1":{"hint":"x",' }; }
+    return result;
+  }, { calls: inner.calls }) as unknown as EventOperationsModelRunner;
+  const ok = await provider(runner).generateRecommendations(twoSources);
+  assert.equal(ok.success, true);
+  const writes = inner.calls.filter((call) => call.kind === "base").map((call) => (/"(S\d)\.p1"/u.exec(call.userText) ?? [])[1]).sort();
+  assert.deepEqual(writes, ["S1", "S2", "S2"], "S1 written once; S2 re-asked once");
+  const twiceBroken = Object.assign(async (input: { systemInstruction: string; userText: string }) => {
+    const result = await (inner as unknown as (value: typeof input) => Promise<{ text: string }>)(input);
+    return inner.calls.at(-1)!.kind === "base" && /"S2\.p1"/u.test(input.userText) ? { ...result, text: "{" } : result;
+  }, { calls: inner.calls }) as unknown as EventOperationsModelRunner;
+  await failsRetryably(twiceBroken, twoSources, "a person whose draft breaks twice fails the batch (retryable)");
 });
