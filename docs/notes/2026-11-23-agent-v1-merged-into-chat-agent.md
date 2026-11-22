@@ -14,7 +14,7 @@
 
 ## 正式站现在
 
-- 部署 `dpl_pjD3oZ88g5tRhaUDm254E2K922Gn`（`orbit-staging-dlxa8vts2-…`），来自 `chat-agent` 324a2e8b7（又加了：多条记录卡片、日程、笔记上的纠正）（又加了：回答开头的数量由代码核对）（又加了：等待确认的卡片上的纠正和「就按刚才那条建」）（含名字的简繁日异体：联系人搜索 + 记录查找的文字归一表）。
+- 部署 `dpl_8uNcAqRjLF9aRUn1R8bp1wuKSaGZ`（`orbit-staging-2d5l4wfb5-…`），来自 `chat-agent` afd2f417e（又加了：多轮引擎按需读库数据〔shadow〕、代词 R27 打开；子开关 ORBIT_AGENT_CONVERSATION_{WORLD,PRONOUN,CARRY,NEXT}）（又加了：多条记录卡片、日程、笔记上的纠正）（又加了：回答开头的数量由代码核对）（又加了：等待确认的卡片上的纠正和「就按刚才那条建」）（含名字的简繁日异体：联系人搜索 + 记录查找的文字归一表）。
 - 正式环境变量（agent v1 需要的，已在）：`ORBIT_AGENT_V1_MODE=on`、`ORBIT_AGENT_WEB=on`、`ORBIT_GEMINI_DECISION_API_KEY`、`ORBIT_MCP_BASE_URL`、新增 `ORBIT_AGENT_CONVERSATION=on`（多轮理解引擎）。
 - 记录查找的退路：`ORBIT_AGENT_FINDER=legacy`；多轮引擎的退路：`ORBIT_AGENT_CONVERSATION=legacy`。
 
