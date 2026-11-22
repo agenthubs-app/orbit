@@ -66,7 +66,10 @@ export function publicRecommendations(recommendations: EventOperationsParticipan
   return recommendations
     ? {
         noMatchReason: recommendations.noMatchReason,
-        ...(options.includeI18n && recommendations.noMatchReasonI18n ? { noMatchReasonI18n: { ...recommendations.noMatchReasonI18n } } : {}),
+        // 同步契约（与 App 6502fde22 一致）：列表级 i18n = { ja: { noMatchReason }, zh: {...}, en: {...} }。
+        ...(options.includeI18n && recommendations.noMatchReasonI18n
+          ? { i18n: { en: { noMatchReason: recommendations.noMatchReasonI18n.en }, ja: { noMatchReason: recommendations.noMatchReasonI18n.ja }, zh: { noMatchReason: recommendations.noMatchReasonI18n.zh } } }
+          : {}),
         recommendations: recommendations.recommendations.map((recommendation) => ({
           ...(options.includeI18n && recommendation.i18n ? { i18n: JSON.parse(JSON.stringify(recommendation.i18n)) as NonNullable<typeof recommendation.i18n> } : {}),
           icebreakers: [...recommendation.icebreakers],

@@ -8,7 +8,7 @@ import {
   TRILINGUAL_MAX_RECOMMENDATION_SHARD,
 } from "../../features/events/event-operations/ai-provider";
 import { publicRecommendations, publicTable } from "../../features/events/event-operations/attendee-public";
-import type { EventOperationsParticipant, EventOperationsTable } from "../../features/events/event-operations/contract";
+import type { EventOperationsGroupingResult, EventOperationsParticipant, EventOperationsTable, EventOperationsTableText } from "../../features/events/event-operations/contract";
 import {
   eventOperationsRequestLanguage,
   eventOperationsTextLanguage,
@@ -86,11 +86,11 @@ test("language checks allow names in their own script and short Japanese noun ph
   assert.equal(bad.japanese.length, 1);
 });
 
-const tableText = (language: "ja" | "zh" | "en") => ({
+const tableText = (language: "ja" | "zh" | "en"): EventOperationsTableText => ({
   ja: { theme: "医療 AI の導入", rationale: "導入側と提供側がそろう卓です。", icebreakers: ["一つ目の質問です", "二つ目の質問です", "三つ目の質問です"], memberPrompts: { "participant:a": ["導入の壁は何ですか？", "誰が決めますか？"], "participant:b": ["検証の期間は？", "成果の指標は？"] }, memberRationales: { "participant:a": "導入先を探しているからです。", "participant:b": "導入実績があるからです。" } },
   zh: { theme: "医疗 AI 导入", rationale: "导入方与提供方同桌。", icebreakers: ["问题一", "问题二", "问题三"], memberPrompts: { "participant:a": ["导入难点是什么？", "谁来决定？"], "participant:b": ["验证周期多久？", "成果指标是什么？"] }, memberRationales: { "participant:a": "正在寻找导入方。", "participant:b": "有导入经验。" } },
   en: { theme: "Healthcare AI rollout", rationale: "Buyers and builders share this table.", icebreakers: ["Question one", "Question two", "Question three"], memberPrompts: { "participant:a": ["What blocks rollout?", "Who decides?"], "participant:b": ["How long is the pilot?", "What is the success metric?"] }, memberRationales: { "participant:a": "Looking for a rollout partner.", "participant:b": "Has rolled this out before." } },
-})[language];
+})[language] as unknown as EventOperationsTableText;
 const tableInput = { eventId: "event:t", features: [], members: [yamada, bo], roundNumber: 1 as const, tableNumber: 1 };
 const members = [{ participantId: "participant:a", seat: "R1-T1-S1" }, { participantId: "participant:b", seat: "R1-T1-S2" }];
 
@@ -138,10 +138,12 @@ test("offline sync rows carry i18n; online public shapes do not unless asked", (
   const recs = { noMatchReason: null, recommendations: [{ icebreakers: ["a", "b"] as const, i18n: { en: { icebreakers: ["a", "b"] as const, memberHint: "h", reasons: ["r"] as [string] }, ja: { icebreakers: ["あ", "い"] as const, memberHint: "ひ", reasons: ["り"] as [string] }, zh: { icebreakers: ["a", "b"] as const, memberHint: "h", reasons: ["r"] as [string] } }, memberHint: "h", rank: 1, reasons: ["r"] as [string], score: 80, targetParticipantId: "participant:b" }], sourceParticipantId: "participant:a" };
   assert.equal("i18n" in publicRecommendations(recs)!.recommendations[0]!, false);
   assert.equal(publicRecommendations(recs, { includeI18n: true })!.recommendations[0]!.i18n?.ja.memberHint, "ひ");
+  const noMatch = publicRecommendations({ noMatchReason: "无", noMatchReasonI18n: { en: "None", ja: "なし", zh: "无" }, recommendations: [], sourceParticipantId: "participant:a" }, { includeI18n: true })!;
+  assert.deepEqual(noMatch.i18n, { en: { noMatchReason: "None" }, ja: { noMatchReason: "なし" }, zh: { noMatchReason: "无" } });
 });
 
 test("host moves keep each person's own text in every language; host placement is said in each language", () => {
-  const grouping = { roundOne: [storedTable, { ...storedTable, tableNumber: 2, members: [], memberPrompts: {}, memberRationales: {}, i18n: { en: { ...tableText("en"), memberPrompts: {}, memberRationales: {} }, ja: { ...tableText("ja"), memberPrompts: {}, memberRationales: {} }, zh: { ...tableText("zh"), memberPrompts: {}, memberRationales: {} } } }], roundTwo: [] };
+  const grouping: EventOperationsGroupingResult = { roundOne: [storedTable, { ...storedTable, tableNumber: 2, members: [], memberPrompts: {}, memberRationales: {}, i18n: { en: { ...tableText("en"), memberPrompts: {}, memberRationales: {} }, ja: { ...tableText("ja"), memberPrompts: {}, memberRationales: {} }, zh: { ...tableText("zh"), memberPrompts: {}, memberRationales: {} } } }], roundTwo: [] };
   const moved = composeGrouping(grouping, [
     { absent: 0, members: [{ initial: "B", name: "Bo", org: null, participantId: "participant:b", placedByHost: false, role: null, standing: null }], round: 1, table: "A", theme: null, why: null },
     { absent: 0, members: [{ initial: "山", name: "山田太郎", org: null, participantId: "participant:a", placedByHost: true, role: null, standing: null }], round: 1, table: "B", theme: null, why: null },
