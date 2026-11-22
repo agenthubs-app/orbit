@@ -3,13 +3,34 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { relationshipLifecycleMutationSchema, relationshipLifecycleReadSchema } from "../../../../../../shared/api-schema/relationship-lifecycle";
 import type { RelationshipCompletionInput, RelationshipLifecycleSnapshotDTO } from "../../../../../../shared/contract/relationship-lifecycle";
+import { useOrbitLanguage } from "../../../orbit-language-context";
+
+const STAGE_LABELS: Record<string, { ja: string; zh: string; en: string }> = {
+  captured: { ja: "記録済み", zh: "已记录", en: "Captured" },
+  reviewing: { ja: "確認中", zh: "复核中", en: "Reviewing" },
+  needs_follow_up: { ja: "フォローが必要", zh: "需要跟进", en: "Needs follow-up" },
+  active: { ja: "進行中", zh: "进行中", en: "Active" },
+  nurture: { ja: "関係を維持", zh: "培育中", en: "Nurture" },
+  archived: { ja: "アーカイブ済み", zh: "已归档", en: "Archived" },
+};
 
 // Page-owned model: only fields rendered by this editor cross into its presenter.
 type Model = { actorId: string; contactId: string; version: number; stage: string; tasks: { id: string; title: string; version: number; status: string; dueAt: string }[] };
 function view(snapshot: { connection: Pick<RelationshipLifecycleSnapshotDTO["connection"], "actorId" | "contactId" | "version" | "stage">; tasks: RelationshipLifecycleSnapshotDTO["tasks"] }): Model {
   return { actorId: snapshot.connection.actorId, contactId: snapshot.connection.contactId, version: snapshot.connection.version, stage: snapshot.connection.stage, tasks: snapshot.tasks.map(task => ({ id: task.taskId, title: task.title, version: task.version, status: task.status, dueAt: task.dueAt })) };
 }
+const COPY = {
+  doneTask: { ja: "今回完了したフォロー", zh: "本次完成的跟进", en: "Follow-up completed now" },
+  goal: { ja: "関係の目標", zh: "关系目标", en: "Relationship goal" },
+  nextStep: { ja: "関係の次のステップ", zh: "关系下一步", en: "Relationship next step" },
+  nextTitle: { ja: "次回フォローの内容", zh: "下一次跟进内容", en: "Next follow-up" },
+};
+
 export function RelationshipLifecycleEditor({ connectionId }: { connectionId: string }) {
+  const { t } = useOrbitLanguage();
+  // Read through a ref so a new `t` (no provider) never re-triggers the load effect.
+  const tRef = useRef(t);
+  tRef.current = t;
   const [model, setModel] = useState<Model | null>(null);
   const [taskId, setTaskId] = useState("");
   const [kind, setKind] = useState<RelationshipCompletionInput["outcome"]["kind"]>("next_task");
@@ -26,13 +47,13 @@ export function RelationshipLifecycleEditor({ connectionId }: { connectionId: st
     try {
       const response = await fetch(endpoint, { cache: "no-store" });
       const envelope = await response.json();
-      if (!response.ok || !envelope.success) throw new Error(envelope.error?.message ?? "读取失败，请重试。");
+      if (!response.ok || !envelope.success) throw new Error(envelope.error?.message ?? tRef.current({ ja: "読み込めませんでした。もう一度お試しください。", zh: "读取失败，请重试。", en: "Couldn't load. Please try again." }));
       const { snapshot } = relationshipLifecycleReadSchema.parse(envelope.data);
-      if (snapshot.connection.connectionId !== connectionId) throw new Error("返回的关系不一致。");
+      if (snapshot.connection.connectionId !== connectionId) throw new Error(tRef.current({ ja: "返ってきた関係が一致しません。", zh: "返回的关系不一致。", en: "The returned relationship doesn't match." }));
       setModel(view(snapshot));
       setTaskId(current => snapshot.tasks.some(task => task.taskId === current && ["open", "scheduled"].includes(task.status)) ? current : snapshot.tasks.find(task => ["open", "scheduled"].includes(task.status))?.taskId ?? "");
       intent.current = null;
-    } catch (error) { setModel(null); setMessage(error instanceof Error ? error.message : "读取失败。"); }
+    } catch (error) { setModel(null); setMessage(error instanceof Error ? error.message : tRef.current({ ja: "読み込めませんでした。", zh: "读取失败。", en: "Couldn't load." })); }
     finally { setBusy(false); }
   }, [endpoint, connectionId]);
   useEffect(() => { void load(); }, [load]);
@@ -43,7 +64,7 @@ export function RelationshipLifecycleEditor({ connectionId }: { connectionId: st
     if (!model || !task || busy) return;
     setBusy(true); setMessage("");
     try {
-      if (kind === "archived" && !archiveConfirmed) throw new Error("请确认归档并忽略其余未完成跟进。");
+      if (kind === "archived" && !archiveConfirmed) throw new Error(t({ ja: "アーカイブして、残りの未完了フォローを無視することを確認してください。", zh: "请确认归档并忽略其余未完成跟进。", en: "Confirm archiving and dismissing the other open follow-ups." }));
       const fingerprint = JSON.stringify({ connectionId, taskId, version: model.version, taskVersion: task.version, kind, title, due, goal, archiveConfirmed });
       if (intent.current?.fingerprint !== fingerprint) {
         const outcome: RelationshipCompletionInput["outcome"] = kind === "active" ? { kind, activeGoal: goal.trim() }
@@ -53,32 +74,32 @@ export function RelationshipLifecycleEditor({ connectionId }: { connectionId: st
       }
       const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(intent.current.body) });
       const envelope = await response.json();
-      if (!response.ok || !envelope.success) throw new Error(envelope.error?.message ?? "保存失败；输入已保留，可重试或刷新核对。");
+      if (!response.ok || !envelope.success) throw new Error(envelope.error?.message ?? t({ ja: "保存できませんでした。入力は残っています。再試行するか、再読み込みして確認してください。", zh: "保存失败；输入已保留，可重试或刷新核对。", en: "Couldn't save. Your input is kept; retry or refresh to check." }));
       const { snapshot } = relationshipLifecycleMutationSchema.parse(envelope.data);
-      if (snapshot.connection.connectionId !== connectionId || snapshot.connection.actorId !== model.actorId || !snapshot.tasks.some(item => item.taskId === taskId && item.status === "completed")) throw new Error("保存回执不一致，请刷新核对。");
+      if (snapshot.connection.connectionId !== connectionId || snapshot.connection.actorId !== model.actorId || !snapshot.tasks.some(item => item.taskId === taskId && item.status === "completed")) throw new Error(t({ ja: "保存結果が一致しません。再読み込みして確認してください。", zh: "保存回执不一致，请刷新核对。", en: "The save receipt doesn't match. Refresh to check." }));
       setModel(view(snapshot)); setTaskId(""); intent.current = null;
       setTitle(""); setDue(""); setGoal(""); setArchiveConfirmed(false);
-      setMessage("跟进已完成，关系下一步已保存。刷新可重新核对。");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "保存失败，输入已保留。"); }
+      setMessage(t({ ja: "フォローを完了し、次のステップを保存しました。再読み込みで確認できます。", zh: "跟进已完成，关系下一步已保存。刷新可重新核对。", en: "Follow-up done and next step saved. Refresh to check again." }));
+    } catch (error) { setMessage(error instanceof Error ? error.message : t({ ja: "保存できませんでした。入力は残っています。", zh: "保存失败，输入已保留。", en: "Couldn't save. Your input is kept." })); }
     finally { setBusy(false); }
   }
   return <section className="tasks-workspace" style={{ maxWidth: 760, margin: "0 auto", padding: 24 }}>
-    <a href="/app/tasks">返回待办</a><h1>处理人脉跟进</h1>
-    <p>完成当前跟进时，一并确认关系下一步；不会向联系人发送消息。</p>
-    <button className="btn btn-ghost" disabled={busy} onClick={() => { setMessage(""); void load(); }}>刷新关系状态</button>
+    <a href="/app/tasks">{t({ ja: "タスクに戻る", zh: "返回待办", en: "Back to tasks" })}</a><h1>{t({ ja: "人脈のフォロー", zh: "处理人脉跟进", en: "Relationship follow-up" })}</h1>
+    <p>{t({ ja: "フォローを完了するときに、関係の次のステップも決めます。相手にメッセージは送られません。", zh: "完成当前跟进时，一并确认关系下一步；不会向联系人发送消息。", en: "When you complete a follow-up, confirm the relationship's next step too. No message is sent to the contact." })}</p>
+    <button className="btn btn-ghost" disabled={busy} onClick={() => { setMessage(""); void load(); }}>{t({ ja: "関係の状態を再読み込み", zh: "刷新关系状态", en: "Refresh relationship status" })}</button>
     {message ? <p role="status">{message}</p> : null}
-    {model ? <><p>当前阶段：{({ captured: "已记录", reviewing: "复核中", needs_follow_up: "需要跟进", active: "进行中", nurture: "培育中", archived: "已归档" } as Record<string, string>)[model.stage]} · <a href={`/app/contacts/${encodeURIComponent(model.contactId)}`}>查看联系人</a></p>
+    {model ? <><p>{t({ ja: "現在の段階：", zh: "当前阶段：", en: "Current stage: " })}{STAGE_LABELS[model.stage] ? t(STAGE_LABELS[model.stage]!) : model.stage} · <a href={`/app/contacts/${encodeURIComponent(model.contactId)}`}>{t({ ja: "連絡先を見る", zh: "查看联系人", en: "View contact" })}</a></p>
       {currentTasks.length ? <form onSubmit={submit} style={{ display: "grid", gap: 16 }}>
-        <label>本次完成的跟进<select aria-label="本次完成的跟进" required disabled={busy} value={taskId} onChange={event => setTaskId(event.target.value)}><option value="">请选择</option>{currentTasks.map(task => <option key={task.id} value={task.id}>{task.title}</option>)}</select></label>
-        <label>关系下一步<select aria-label="关系下一步" disabled={busy} value={kind} onChange={event => setKind(event.target.value as typeof kind)}>
-          <option value="next_task" disabled={!["needs_follow_up", "nurture"].includes(model.stage)}>继续跟进</option><option value="active">转为进行中</option><option value="nurture">定期维护</option><option value="archived">归档关系</option>
+        <label>{t(COPY.doneTask)}<select aria-label={t(COPY.doneTask)} required disabled={busy} value={taskId} onChange={event => setTaskId(event.target.value)}><option value="">{t({ ja: "選択してください", zh: "请选择", en: "Select" })}</option>{currentTasks.map(task => <option key={task.id} value={task.id}>{task.title}</option>)}</select></label>
+        <label>{t(COPY.nextStep)}<select aria-label={t(COPY.nextStep)} disabled={busy} value={kind} onChange={event => setKind(event.target.value as typeof kind)}>
+          <option value="next_task" disabled={!["needs_follow_up", "nurture"].includes(model.stage)}>{t({ ja: "フォローを続ける", zh: "继续跟进", en: "Keep following up" })}</option><option value="active">{t({ ja: "進行中にする", zh: "转为进行中", en: "Make active" })}</option><option value="nurture">{t({ ja: "定期的に連絡を保つ", zh: "定期维护", en: "Keep in touch regularly" })}</option><option value="archived">{t({ ja: "関係をアーカイブ", zh: "归档关系", en: "Archive relationship" })}</option>
         </select></label>
-        {kind === "next_task" || kind === "nurture" ? <><label>下一次跟进内容<input required maxLength={500} aria-label="下一次跟进内容" value={title} disabled={busy} onChange={event => setTitle(event.target.value)} /></label><label>下次时间（当前设备时区）<input required aria-label="下次跟进时间" type="datetime-local" value={due} disabled={busy} onChange={event => setDue(event.target.value)} /></label></> : null}
-        {kind === "active" ? <label>关系目标<input required maxLength={2000} aria-label="关系目标" value={goal} disabled={busy} onChange={event => setGoal(event.target.value)} /></label> : null}
-        {kind === "archived" ? <label><input type="checkbox" required checked={archiveConfirmed} disabled={busy} onChange={event => setArchiveConfirmed(event.target.checked)} />确认归档，并忽略其余 {Math.max(0, currentTasks.length - 1)} 条未完成跟进</label> : null}
-        <button className="btn btn-primary" disabled={busy || !taskId} type="submit">{busy ? "保存中…" : "完成并保存下一步"}</button>
-      </form> : <p>没有待处理的人脉跟进。</p>}
-      <h2>历史跟进</h2><ul>{model.tasks.filter(task => !["open", "scheduled"].includes(task.status)).map(task => <li key={task.id}>{task.title} · {task.status === "completed" ? "已完成" : "已忽略"}</li>)}</ul>
-    </> : <p>{busy ? "正在读取…" : "暂不可读取此关系。"}</p>}
+        {kind === "next_task" || kind === "nurture" ? <><label>{t(COPY.nextTitle)}<input required maxLength={500} aria-label={t(COPY.nextTitle)} value={title} disabled={busy} onChange={event => setTitle(event.target.value)} /></label><label>{t({ ja: "次回の日時（この端末のタイムゾーン）", zh: "下次时间（当前设备时区）", en: "Next time (this device's time zone)" })}<input required aria-label={t({ ja: "次回フォローの日時", zh: "下次跟进时间", en: "Next follow-up time" })} type="datetime-local" value={due} disabled={busy} onChange={event => setDue(event.target.value)} /></label></> : null}
+        {kind === "active" ? <label>{t(COPY.goal)}<input required maxLength={2000} aria-label={t(COPY.goal)} value={goal} disabled={busy} onChange={event => setGoal(event.target.value)} /></label> : null}
+        {kind === "archived" ? <label><input type="checkbox" required checked={archiveConfirmed} disabled={busy} onChange={event => setArchiveConfirmed(event.target.checked)} />{t({ ja: `アーカイブして、残り ${Math.max(0, currentTasks.length - 1)} 件の未完了フォローを無視する`, zh: `确认归档，并忽略其余 ${Math.max(0, currentTasks.length - 1)} 条未完成跟进`, en: `Archive and dismiss the other ${Math.max(0, currentTasks.length - 1)} open follow-ups` })}</label> : null}
+        <button className="btn btn-primary" disabled={busy || !taskId} type="submit">{busy ? t({ ja: "保存中…", zh: "保存中…", en: "Saving…" }) : t({ ja: "完了して次のステップを保存", zh: "完成并保存下一步", en: "Complete and save next step" })}</button>
+      </form> : <p>{t({ ja: "対応待ちのフォローはありません。", zh: "没有待处理的人脉跟进。", en: "No pending relationship follow-ups." })}</p>}
+      <h2>{t({ ja: "これまでのフォロー", zh: "历史跟进", en: "Past follow-ups" })}</h2><ul>{model.tasks.filter(task => !["open", "scheduled"].includes(task.status)).map(task => <li key={task.id}>{task.title} · {task.status === "completed" ? t({ ja: "完了", zh: "已完成", en: "Completed" }) : t({ ja: "無視", zh: "已忽略", en: "Dismissed" })}</li>)}</ul>
+    </> : <p>{busy ? t({ ja: "読み込み中…", zh: "正在读取…", en: "Loading…" }) : t({ ja: "この関係は今は読み込めません。", zh: "暂不可读取此关系。", en: "This relationship can't be loaded right now." })}</p>}
   </section>;
 }

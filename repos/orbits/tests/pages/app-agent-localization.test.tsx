@@ -89,8 +89,9 @@ test("/app/agent localizes server view models and sends locale through the API b
   // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
   const agentSource = iorbitChatSurfaceSource();
 
-  assert.match(pageSource, /requestedLanguage/);
-  assert.match(pageSource, /localizeOrbitTree/);
+  // 问候里的名字是用户自己填的：不再经 localizeOrbitTree 逐词替换
+  // （英文界面曾把「验收·活动当天」显示成「验收·Events当天」）。
+  assert.doesNotMatch(pageSource, /localizeOrbitTree/);
   const modelSource = readProjectFile(IORBIT_MODEL_PATH);
   const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
   const historyHookSource = readProjectFile(IORBIT_HISTORY_HOOK_PATH);
@@ -101,7 +102,8 @@ test("/app/agent localizes server view models and sends locale through the API b
     /JSON\.stringify\(\{ history, \.\.\.reliableRequest \}\)/,
   );
   assert.match(modelSource, /artifactMetadataValue\(item, \["分数", "Score"\]\)/);
-  assert.match(chatHookSource, /locale === "zh"/);
+  // 界面提示按三语取（ja 不再退成英文）；发给服务端的 locale 仍是 zh / en。
+  assert.match(chatHookSource, /pickCopy\(uiLanguage, \{ ja: /);
   for (const checked of [agentSource, modelSource, chatHookSource, historyHookSource]) {
     assert.doesNotMatch(checked, /localizeOrbitAiPanel/);
   }

@@ -15,10 +15,10 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 
 export type NetworkScreen = "overview" | "pipeline" | "all" | "import" | "analysis";
 
-const TABS: { key: NetworkScreen; href: string; zh: string; en: string }[] = [
-  { key: "overview", href: "/app/contacts/dashboard", zh: "概览", en: "Overview" },
-  { key: "all", href: "/app/contacts", zh: "所有人脉", en: "All contacts" },
-  { key: "import", href: "/app/contacts/new", zh: "导入人脉", en: "Import" },
+const TABS: { key: NetworkScreen; href: string; label: { ja: string; zh: string; en: string } }[] = [
+  { key: "overview", href: "/app/contacts/dashboard", label: { ja: "概要", zh: "概览", en: "Overview" } },
+  { key: "all", href: "/app/contacts", label: { ja: "すべての人脈", zh: "所有人脉", en: "All contacts" } },
+  { key: "import", href: "/app/contacts/new", label: { ja: "人脈を取り込む", zh: "导入人脉", en: "Import" } },
 ];
 
 export function NetworkAvatar({ initial, size = 40 }: { initial: string; size?: 40 | 44 | 56 | 64 }) {
@@ -40,20 +40,20 @@ export function NetworkShell({ screen, children, modal }: { screen: NetworkScree
         <>
           <div className="nw-head">
             <div className="nw-head-copy">
-              <h1 className="nw-h1">{t({ en: "Network", zh: "人脉" })}</h1>
-              <p className="nw-sub">{t({ en: "Understand your network and keep the relationships that matter moving.", zh: "理解你的人脉结构，把重要关系持续向前推进。" })}</p>
+              <h1 className="nw-h1">{t({ ja: "人脈", en: "Network", zh: "人脉" })}</h1>
+              <p className="nw-sub">{t({ ja: "人脈の全体像をつかみ、大切な関係を前に進めましょう。", en: "Understand your network and keep the relationships that matter moving.", zh: "理解你的人脉结构，把重要关系持续向前推进。" })}</p>
             </div>
             <div className="nw-head-actions">
               {screen === "all" ? (
-                <a className="btn nw-btn-ghost" href="/app/contacts/new?method=scan">＋ {t({ en: "Scan a card", zh: "扫描名片" })}</a>
+                <a className="btn nw-btn-ghost" href="/app/contacts/new?method=scan">＋ {t({ ja: "名刺をスキャン", en: "Scan a card", zh: "扫描名片" })}</a>
               ) : null}
-              <a className="btn nw-btn-primary" href="/app/contacts/new">＋ {t({ en: "Import contacts", zh: "导入人脉" })}</a>
+              <a className="btn nw-btn-primary" href="/app/contacts/new">＋ {t({ ja: "人脈を取り込む", en: "Import contacts", zh: "导入人脉" })}</a>
             </div>
           </div>
           <div className="nw-tabs">
             {TABS.map((tab) => (
               <a key={tab.key} className={`nw-tab ${screen === tab.key ? "nw-tab-on" : "nw-tab-off"}`} href={tab.href} aria-current={screen === tab.key ? "page" : undefined}>
-                {t({ en: tab.en, zh: tab.zh })}
+                {t(tab.label)}
               </a>
             ))}
           </div>
@@ -66,6 +66,7 @@ export function NetworkShell({ screen, children, modal }: { screen: NetworkScree
 }
 
 const NETWORK_DEMO_MESSAGE = {
+  ja: "ガイドを終えると、ここがあなたの人脈になります。",
   en: "Once you finish the guide, this becomes your own network.",
   zh: "完成引导后，这里换成你自己的人脉。",
 };

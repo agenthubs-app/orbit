@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+
+import { useOrbitLanguage } from "../../orbit-language-context";
 import type {
   AgentLedgerEntryStatus,
   AgentLedgerOperation,
@@ -84,6 +86,7 @@ export function OrbitTodayDecisionForm({
   operations: readonly AgentLedgerOperation[];
   status: AgentLedgerEntryStatus;
 }) {
+  const { language, t } = useOrbitLanguage();
   const reviewTransitions = agentLedgerReviewTransitionsForStatus(status);
   const [selected, setSelected] = useState<readonly string[]>(
     operations
@@ -117,8 +120,8 @@ export function OrbitTodayDecisionForm({
         if (!value) {
           throw new Error(
             operation.operationType === "save_event_goal"
-              ? "请先填写本场活动目标。"
-              : "消息草稿不能为空。",
+              ? t({ ja: "このイベントの目標を入力してください。", zh: "请先填写本场活动目标。", en: "Enter a goal for this event first." })
+              : t({ ja: "メッセージの下書きが空です。", zh: "消息草稿不能为空。", en: "The message draft can't be empty." }),
           );
         }
         updates.push({
@@ -135,12 +138,12 @@ export function OrbitTodayDecisionForm({
         operation.operationType === "create_followup_reminder"
       ) {
         const title = values.title?.trim() ?? "";
-        if (!title) throw new Error("任务或提醒标题不能为空。");
+        if (!title) throw new Error(t({ ja: "タスクまたはリマインダーのタイトルを入力してください。", zh: "任务或提醒标题不能为空。", en: "Task or reminder title can't be empty." }));
         if (
           operation.operationType === "create_followup_reminder" &&
           !values.dueAt
         ) {
-          throw new Error("请先设置提醒时间。");
+          throw new Error(t({ ja: "リマインド日時を設定してください。", zh: "请先设置提醒时间。", en: "Set a reminder time first." }));
         }
         updates.push({
           operationId: operation.operationId,
@@ -184,7 +187,11 @@ export function OrbitTodayDecisionForm({
       const body = (await response.json()) as unknown;
 
       if (!isLedgerSuccess(body)) {
-        setError(agentLedgerErrorMessage(body, "zh"));
+        setError(
+          language === "ja"
+            ? t({ ja: "操作を完了できませんでした。状態を更新してからもう一度お試しください。", zh: "操作没有完成，请刷新状态后重试。", en: "The action did not complete. Refresh its status and try again." })
+            : agentLedgerErrorMessage(body, language),
+        );
         setPending(false);
         return;
       }
@@ -194,7 +201,7 @@ export function OrbitTodayDecisionForm({
       setError(
         caught instanceof Error
           ? caught.message
-          : "网络错误，操作未执行。请重试。",
+          : t({ ja: "ネットワークエラーのため実行されませんでした。もう一度お試しください。", zh: "网络错误，操作未执行。请重试。", en: "Network error — nothing was run. Please try again." }),
       );
       setPending(false);
     }
@@ -243,13 +250,13 @@ export function OrbitTodayDecisionForm({
                 }}
               >
                 {operation.operationType === "save_event_goal"
-                  ? "本场活动目标"
-                  : "消息草稿"}
+                  ? t({ ja: "このイベントの目標", zh: "本场活动目标", en: "Goal for this event" })
+                  : t({ ja: "メッセージの下書き", zh: "消息草稿", en: "Message draft" })}
                 <textarea
                   aria-label={
                     operation.operationType === "save_event_goal"
-                      ? "本场活动目标"
-                      : "消息草稿"
+                      ? t({ ja: "このイベントの目標", zh: "本场活动目标", en: "Goal for this event" })
+                      : t({ ja: "メッセージの下書き", zh: "消息草稿", en: "Message draft" })
                   }
                   className="field"
                   maxLength={
@@ -266,8 +273,8 @@ export function OrbitTodayDecisionForm({
                   }
                   placeholder={
                     operation.operationType === "save_event_goal"
-                      ? "例如：确认储能试点的决策人和下一步时间"
-                      : "编辑草稿内容；Orbit 不会自动发送"
+                      ? t({ ja: "例：蓄電池実証の決裁者と次の日程を確認する", zh: "例如：确认储能试点的决策人和下一步时间", en: "e.g. Confirm the decision-maker for the storage pilot and the next date" })
+                      : t({ ja: "下書きを編集できます。Orbit が自動で送ることはありません", zh: "编辑草稿内容；Orbit 不会自动发送", en: "Edit the draft — Orbit never sends it automatically" })
                   }
                   rows={3}
                   style={{ display: "block", marginTop: 6, resize: "vertical", width: "100%" }}
@@ -275,8 +282,8 @@ export function OrbitTodayDecisionForm({
                 />
                 <span style={{ color: "var(--ink-3-text)", display: "block", marginTop: 4 }}>
                   {operation.operationType === "save_event_goal"
-                    ? "确认时会先保存你编辑后的目标，再执行写入。"
-                    : "确认只会保存草稿，不会发送消息。"}
+                    ? t({ ja: "確定すると、編集した目標を保存してから反映します。", zh: "确认时会先保存你编辑后的目标，再执行写入。", en: "Confirming saves your edited goal first, then applies the change." })
+                    : t({ ja: "確定しても下書きの保存だけで、送信はしません。", zh: "确认只会保存草稿，不会发送消息。", en: "Confirming only saves the draft — no message is sent." })}
                 </span>
               </label>
             ) : null}
@@ -294,13 +301,13 @@ export function OrbitTodayDecisionForm({
               >
                 <label style={{ color: "var(--ink-2)", fontSize: 13 }}>
                   {operation.operationType === "create_followup_task"
-                    ? "任务标题"
-                    : "提醒标题"}
+                    ? t({ ja: "タスク名", zh: "任务标题", en: "Task title" })
+                    : t({ ja: "リマインダー名", zh: "提醒标题", en: "Reminder title" })}
                   <input
                     aria-label={
                       operation.operationType === "create_followup_task"
-                        ? "任务标题"
-                        : "提醒标题"
+                        ? t({ ja: "タスク名", zh: "任务标题", en: "Task title" })
+                        : t({ ja: "リマインダー名", zh: "提醒标题", en: "Reminder title" })
                     }
                     className="field"
                     maxLength={160}
@@ -319,13 +326,13 @@ export function OrbitTodayDecisionForm({
                 </label>
                 <label style={{ color: "var(--ink-2)", fontSize: 13 }}>
                   {operation.operationType === "create_followup_task"
-                    ? "截止时间（可不填）"
-                    : "提醒时间"}
+                    ? t({ ja: "期限（任意）", zh: "截止时间（可不填）", en: "Due (optional)" })
+                    : t({ ja: "リマインド日時", zh: "提醒时间", en: "Reminder time" })}
                   <input
                     aria-label={
                       operation.operationType === "create_followup_task"
-                        ? "任务截止时间"
-                        : "提醒时间"
+                        ? t({ ja: "タスクの期限", zh: "任务截止时间", en: "Task due date" })
+                        : t({ ja: "リマインド日時", zh: "提醒时间", en: "Reminder time" })
                     }
                     className="field"
                     onChange={(event) =>
@@ -362,7 +369,7 @@ export function OrbitTodayDecisionForm({
             onClick={() => void applyTransition("confirm")}
             type="button"
           >
-            确认执行
+            {t({ ja: "確定して実行", zh: "确认执行", en: "Confirm and run" })}
           </button>
         ) : null}
         {reviewTransitions.includes("defer") ? (
@@ -372,7 +379,7 @@ export function OrbitTodayDecisionForm({
             onClick={() => void applyTransition("defer")}
             type="button"
           >
-            稍后处理
+            {t({ ja: "あとで", zh: "稍后处理", en: "Later" })}
           </button>
         ) : null}
         {reviewTransitions.includes("reject") ? (
@@ -382,7 +389,7 @@ export function OrbitTodayDecisionForm({
             onClick={() => void applyTransition("reject")}
             type="button"
           >
-            忽略
+            {t({ ja: "無視", zh: "忽略", en: "Dismiss" })}
           </button>
         ) : null}
       </div>

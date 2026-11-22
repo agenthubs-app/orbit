@@ -45,7 +45,7 @@ export function DemoHandoffGuard() {
   const demo = useDemoMode();
   const { t } = useOrbitLanguage();
   const guardWrite = demo?.guardWrite;
-  const label = t({ en: "conversation", zh: "对话" });
+  const label = t({ ja: "会話", en: "conversation", zh: "对话" });
   const ranRef = useRef(false);
   useEffect(() => {
     if (!guardWrite || ranRef.current || typeof window === "undefined") return;
@@ -76,7 +76,7 @@ export function DemoAskTarget() {
   const demo = useDemoMode();
   const { t } = useOrbitLanguage();
   const guardWrite = demo?.guardWrite;
-  const label = t({ en: "conversation", zh: "对话" });
+  const label = t({ ja: "会話", en: "conversation", zh: "对话" });
   const onAsk = useCallback(() => guardWrite?.(label), [guardWrite, label]);
   const target = useMemo(
     () => (guardWrite ? { busy: false, chips: NO_ASK_CHIPS, onAsk } : null),

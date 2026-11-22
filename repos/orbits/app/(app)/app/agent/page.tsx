@@ -11,8 +11,6 @@
  * 引导进度由 Task 横条与 `/app/start` 负责。
  * R25：W0008 的 `?plan=<id>` 计划回答卡片随 v1 计划删除；带 `?plan=` 的旧链接落在概览（计划在 Task › プラン）。
  */
-import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
-import type { OrbitLanguage } from "../orbit-language-core";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import { auth } from "../../../../auth";
@@ -33,21 +31,6 @@ export type AppAgentSearchParams = {
   reveal?: string | string[];
 };
 
-async function getAgentPageLanguage(): Promise<OrbitLanguage> {
-  try {
-    return await getOrbitServerLanguage();
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("outside a request scope")
-    ) {
-      return "zh";
-    }
-
-    throw error;
-  }
-}
-
 function firstSearchParam(
   searchParams: AppAgentSearchParams | undefined,
   key: string,
@@ -56,14 +39,6 @@ function firstSearchParam(
   const first = Array.isArray(value) ? value[0] : value;
 
   return typeof first === "string" && first.trim() ? first.trim() : null;
-}
-
-function languageSearchParam(
-  searchParams: AppAgentSearchParams | undefined,
-): OrbitLanguage | null {
-  const value = firstSearchParam(searchParams, "lang");
-
-  return value === "en" || value === "zh" ? value : null;
 }
 
 export default async function AppAgentPage({
@@ -86,16 +61,16 @@ export default async function AppAgentPage({
   const actorId = actor.id;
 
   const resolvedSearchParams = await searchParams;
-  const requestedLanguage = languageSearchParam(resolvedSearchParams);
   // The live iOrbit 2026 screen greets by name and reads nothing else from the server
   // (not the whole home model — events, recommendations, readiness).
   const profileModel = await loadAppProfileRouteViewModel(
     { displayName: session.user.name?.trim() || session.user.email?.trim() || "Orbit member", email: session.user.email, id: actorId },
     { suggestions: "skip" },
   );
-  const language = requestedLanguage ?? (await getAgentPageLanguage());
+  // 名字是用户自己填的，原样显示：以前经服务端词典逐词替换，会把名字里的中文换成英文
+  // （例：「验收·活动当天」在英文界面变成「验收·Events当天」）。没有名字时用不带名字的问候。
   const accountName = profileModel.state === "success"
-    ? localizeOrbitTree(profileModel.profile.profile.displayName || "Orbit operator", language)
+    ? profileModel.profile.profile.displayName?.trim() || null
     : null;
 
   return (

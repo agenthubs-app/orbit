@@ -190,6 +190,7 @@ test("private event composition rejects recommendation and readiness data from a
   const landingEvent = eventChoiceToLandingEvent(
     model.workspace.eventChoices[0]!,
     0,
+    "en",
   );
   assert.equal(
     landingEvent.agenda.find((item) => item.label === "Readiness")?.description,

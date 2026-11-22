@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { useOrbitLanguage } from "../../orbit-language-context";
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -10,12 +12,12 @@ export function isLedgerSuccess(body: unknown): boolean {
   return isRecord(body) && body.success === true;
 }
 
-export function readLedgerError(body: unknown): string {
+export function readLedgerError(body: unknown, fallback: string): string {
   if (isRecord(body) && isRecord(body.error) && typeof body.error.message === "string") {
     return body.error.message;
   }
 
-  return "操作没有完成，请重试。";
+  return fallback;
 }
 
 /**
@@ -33,6 +35,7 @@ export function OrbitAllActionsControls({
   canUndo: boolean;
   entryId: string;
 }) {
+  const { t } = useOrbitLanguage();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,14 +58,14 @@ export function OrbitAllActionsControls({
       const body = (await response.json()) as unknown;
 
       if (!isLedgerSuccess(body)) {
-        setError(readLedgerError(body));
+        setError(readLedgerError(body, t({ ja: "操作を完了できませんでした。もう一度お試しください。", zh: "操作没有完成，请重试。", en: "The action didn't complete. Please try again." })));
         setPending(false);
         return;
       }
 
       window.location.reload();
     } catch {
-      setError("网络错误，操作未执行。请重试。");
+      setError(t({ ja: "ネットワークエラーのため実行されませんでした。もう一度お試しください。", zh: "网络错误，操作未执行。请重试。", en: "Network error — nothing was run. Please try again." }));
       setPending(false);
     }
   }
@@ -83,7 +86,7 @@ export function OrbitAllActionsControls({
           onClick={() => void applyTransition("retry")}
           type="button"
         >
-          重试失败项
+          {t({ ja: "失敗分を再試行", zh: "重试失败项", en: "Retry failed items" })}
         </button>
       ) : null}
       {canUndo ? (
@@ -93,7 +96,7 @@ export function OrbitAllActionsControls({
           onClick={() => void applyTransition("undo")}
           type="button"
         >
-          撤销
+          {t({ ja: "元に戻す", zh: "撤销", en: "Undo" })}
         </button>
       ) : null}
       {canCancel ? (
@@ -103,7 +106,7 @@ export function OrbitAllActionsControls({
           onClick={() => void applyTransition("cancel")}
           type="button"
         >
-          取消执行
+          {t({ ja: "実行を取り消す", zh: "取消执行", en: "Cancel run" })}
         </button>
       ) : null}
     </span>

@@ -16,10 +16,10 @@ export type InitializationView =
   | { state: "initialized"; stage: InitializationStage; goal: string | null; tasks: { id: string; title: string; dueAt: string }[]; taskHref: string };
 
 export const initializationStageLabels = {
-  active: { zh: "进行中", en: "Active" },
-  needs_follow_up: { zh: "需要跟进", en: "Needs follow-up" },
-  nurture: { zh: "维护中", en: "Nurture" },
-  archived: { zh: "已归档", en: "Archived" },
+  active: { ja: "進行中", zh: "进行中", en: "Active" },
+  needs_follow_up: { ja: "要フォロー", zh: "需要跟进", en: "Needs follow-up" },
+  nurture: { ja: "関係を維持", zh: "维护中", en: "Nurture" },
+  archived: { ja: "アーカイブ済み", zh: "已归档", en: "Archived" },
 };
 
 function snapshotView(snapshot: RelationshipLifecycleSnapshotDTO, contactId: string, connectionId?: string): InitializationView {

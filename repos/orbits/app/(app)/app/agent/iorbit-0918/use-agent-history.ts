@@ -84,8 +84,6 @@ export function useAgentHistory() {
     chatRef.current = bridge;
   }, []);
 
-  const languageRef = useRef(language);
-  languageRef.current = language;
 
   const [storedSessions, setStoredSessions] = useState<AgentSessionSummary[]>(() => remembered?.items ?? []);
   const [sessionGroups, setSessionGroups] = useState<AiSessionGroupContract[]>(() => remembered?.groups ?? []);
@@ -241,9 +239,7 @@ export function useAgentHistory() {
           kind: "error",
           text: errorCode === "PIN_LIMIT"
             ? t({ ja: "ピン留めは5件までです。別の会話のピン留めを外してください。", zh: "最多置顶 5 个对话。请先取消其他对话的置顶。", en: "You can pin up to five conversations. Unpin another conversation first." })
-            : languageRef.current === "zh"
-              ? "未能保存对话历史更改，页面保持原状态。请稍后重试。"
-              : "The history change could not be saved, so nothing changed. Please try again.",
+            : t({ ja: "履歴の変更を保存できなかったため、元のままです。しばらくしてからもう一度お試しください。", zh: "未能保存对话历史更改，页面保持原状态。请稍后重试。", en: "The history change could not be saved, so nothing changed. Please try again." }),
         });
         if (errorCode === "PIN_LIMIT" || errorCode === "CONFLICT") setHistoryRefreshVersion((version) => version + 1);
         return false;
@@ -274,8 +270,8 @@ export function useAgentHistory() {
       item.sessionId,
       { pinned: !item.pinned },
       item.pinned
-        ? t({ en: "Conversation unpinned", zh: "已取消置顶" })
-        : t({ en: "Conversation pinned", zh: "对话已置顶" }),
+        ? t({ ja: "ピン留めを外しました", en: "Conversation unpinned", zh: "已取消置顶" })
+        : t({ ja: "会話をピン留めしました", en: "Conversation pinned", zh: "对话已置顶" }),
     );
   };
 
@@ -295,7 +291,7 @@ export function useAgentHistory() {
     void updateHistorySession(
       item.sessionId,
       { customTitle },
-      t({ en: "Conversation renamed", zh: "对话已重命名" }),
+      t({ ja: "会話の名前を変更しました", en: "Conversation renamed", zh: "对话已重命名" }),
     );
   };
 
@@ -304,7 +300,7 @@ export function useAgentHistory() {
     void updateHistorySession(
       item.sessionId,
       { groupId },
-      t({ en: "Conversation moved", zh: "已移动对话" }),
+      t({ ja: "会話を移動しました", en: "Conversation moved", zh: "已移动对话" }),
     );
   };
 
@@ -319,9 +315,9 @@ export function useAgentHistory() {
     });
     if (group) {
       setSessionGroups((current) => [...current.filter((item) => item.id !== group.id), group]);
-      setHistoryFeedback({ kind: "success", text: t({ en: "Group created", zh: "已创建分组" }) });
+      setHistoryFeedback({ kind: "success", text: t({ ja: "グループを作成しました", en: "Group created", zh: "已创建分组" }) });
     } else {
-      setHistoryFeedback({ kind: "error", text: t({ en: "The group was not saved. Refresh and try again.", zh: "分组尚未保存，请刷新后重试。" }) });
+      setHistoryFeedback({ kind: "error", text: t({ ja: "グループを保存できませんでした。再読み込みしてもう一度お試しください。", en: "The group was not saved. Refresh and try again.", zh: "分组尚未保存，请刷新后重试。" }) });
     }
     setGroupMutationPending(false);
   };
@@ -336,9 +332,9 @@ export function useAgentHistory() {
     });
     if (saved) {
       setSessionGroups((current) => current.map((item) => item.id === saved.id ? saved : item));
-      setHistoryFeedback({ kind: "success", text: t({ en: "Group renamed", zh: "已重命名分组" }) });
+      setHistoryFeedback({ kind: "success", text: t({ ja: "グループ名を変更しました", en: "Group renamed", zh: "已重命名分组" }) });
     } else {
-      setHistoryFeedback({ kind: "error", text: t({ en: "The group name was not saved. Refresh and try again.", zh: "分组名称尚未保存，请刷新后重试。" }) });
+      setHistoryFeedback({ kind: "error", text: t({ ja: "グループ名を保存できませんでした。再読み込みしてもう一度お試しください。", en: "The group name was not saved. Refresh and try again.", zh: "分组名称尚未保存，请刷新后重试。" }) });
     }
     setGroupMutationPending(false);
   };
@@ -361,9 +357,9 @@ export function useAgentHistory() {
         return next;
       });
       if (selectedSessionGroupId === group.id) setSelectedSessionGroupId(null);
-      setHistoryFeedback({ kind: "success", text: t({ en: "Group deleted; conversations kept", zh: "已删除分组并保留全部对话" }) });
+      setHistoryFeedback({ kind: "success", text: t({ ja: "グループを削除しました（会話はそのまま残ります）", en: "Group deleted; conversations kept", zh: "已删除分组并保留全部对话" }) });
     } else {
-      setHistoryFeedback({ kind: "error", text: t({ en: "The group was not deleted. Refresh and try again.", zh: "分组尚未删除，请刷新后重试。" }) });
+      setHistoryFeedback({ kind: "error", text: t({ ja: "グループを削除できませんでした。再読み込みしてもう一度お試しください。", en: "The group was not deleted. Refresh and try again.", zh: "分组尚未删除，请刷新后重试。" }) });
     }
     setGroupMutationPending(false);
   };
@@ -397,9 +393,7 @@ export function useAgentHistory() {
       });
       if (!persisted) {
         setHistoryDeleteError(
-          languageRef.current === "zh"
-            ? "未能删除这个对话，历史记录保持不变。请稍后重试。"
-            : "This conversation could not be deleted, so your history is unchanged. Please try again.",
+          t({ ja: "この会話を削除できなかったため、履歴は変わっていません。しばらくしてからもう一度お試しください。", zh: "未能删除这个对话，历史记录保持不变。请稍后重试。", en: "This conversation could not be deleted, so your history is unchanged. Please try again." }),
         );
         return;
       }
@@ -414,7 +408,7 @@ export function useAgentHistory() {
       setPendingDeleteHistory(null);
       setHistoryFeedback({
         kind: "success",
-        text: t({ en: "Conversation deleted", zh: "对话已删除" }),
+        text: t({ ja: "会話を削除しました", en: "Conversation deleted", zh: "对话已删除" }),
       });
 
       // 任务 1c 的唯一文本改动：对话侧重置改走 `bindChat` 注册的桥接对象。

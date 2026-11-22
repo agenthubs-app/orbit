@@ -52,7 +52,7 @@ export function ContactValueLine({
   const { t } = useOrbitLanguage();
   const whyNow = model.whyNow ? (
     <p className="cvl-now" data-value-line-why-now>
-      <span className="cvl-lead">{t({ en: "Why now: ", zh: "为什么现在：" })}</span>
+      <span className="cvl-lead">{t({ ja: "なぜ今：", en: "Why now: ", zh: "为什么现在：" })}</span>
       {model.whyNow}
     </p>
   ) : null;
@@ -61,12 +61,12 @@ export function ContactValueLine({
       <div className="cvl" data-contact-value-line="ready">
         <style>{CONTACT_VALUE_LINE_STYLES}</style>
         <p className="cvl-rel">
-          <span className="cvl-lead">{t({ en: "How they can help: ", zh: "TA 能帮你：" })}</span>
+          <span className="cvl-lead">{t({ ja: "この人に頼めること：", en: "How they can help: ", zh: "TA 能帮你：" })}</span>
           <span data-value-line-relation>{model.relation}</span>
         </p>
         {model.evidence.length > 0 ? (
-          <p className="cvl-ev" aria-label={t({ en: "Evidence", zh: "依据" })} data-value-line-evidence>
-            <span className="cvl-ev-l">{t({ en: "Based on", zh: "依据" })}</span>
+          <p className="cvl-ev" aria-label={t({ ja: "根拠", en: "Evidence", zh: "依据" })} data-value-line-evidence>
+            <span className="cvl-ev-l">{t({ ja: "根拠", en: "Based on", zh: "依据" })}</span>
             {model.evidence.map((evidence, index) => {
               const href = evidenceHref?.(evidence, index) ?? null;
               return href ? (

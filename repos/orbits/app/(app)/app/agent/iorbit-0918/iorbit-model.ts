@@ -107,7 +107,9 @@ export function prepareAgentFailedRequestRetry(
   };
 }
 
-type Copy = { en: string; zh: string };
+type Copy = { en: string; ja?: string; zh: string };
+type Lang3 = "en" | "ja" | "zh";
+const pick3 = (language: Lang3, copy: { en: string; ja: string; zh: string }) => copy[language];
 type Translate = (copy: Copy) => string;
 type AgentHistoryLanguage = "en" | "zh" | "ja";
 type AgentHistoryFeedback = {
@@ -192,9 +194,9 @@ const MAX_AGENT_CHAT_TITLE_LENGTH = 18;
 
 function depthFor(t: Translate) {
   return {
-    to_contact: { label: t({ en: "To break ice · Just met", zh: "待破冰 · 一面之缘" }), color: "var(--mac-apricot-text)", soft: "var(--mac-apricot)", text: "var(--mac-apricot-text)" },
-    in_progress: { label: t({ en: "In progress · In touch", zh: "在推进 · 已有交流" }), color: "var(--mac-blue-text)", soft: "var(--mac-blue)", text: "var(--mac-blue-text)" },
-    partnered: { label: t({ en: "Partnered · Solid", zh: "已合作 · 关系稳固" }), color: "var(--ok-text)", soft: "var(--ok-soft)", text: "var(--ok-text)" },
+    to_contact: { label: t({ ja: "これから · 一度会っただけ", en: "To break ice · Just met", zh: "待破冰 · 一面之缘" }), color: "var(--mac-apricot-text)", soft: "var(--mac-apricot)", text: "var(--mac-apricot-text)" },
+    in_progress: { label: t({ ja: "進行中 · やり取りあり", en: "In progress · In touch", zh: "在推进 · 已有交流" }), color: "var(--mac-blue-text)", soft: "var(--mac-blue)", text: "var(--mac-blue-text)" },
+    partnered: { label: t({ ja: "協業中 · 安定した関係", en: "Partnered · Solid", zh: "已合作 · 关系稳固" }), color: "var(--ok-text)", soft: "var(--ok-soft)", text: "var(--ok-text)" },
   };
 }
 
@@ -207,12 +209,12 @@ const IORBIT_TZ = "Asia/Tokyo";
 
 const TZ = { timeZone: IORBIT_TZ };
 
-function fmtMonth(date: Date, language: "en" | "zh") {
-  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { month: "short", ...TZ }).format(date);
+function fmtMonth(date: Date, language: Lang3) {
+  return new Intl.DateTimeFormat(pick3(language, { ja: "ja-JP", zh: "zh-CN", en: "en-US" }), { month: "short", ...TZ }).format(date);
 }
 
-function fmtDay(date: Date, language: "en" | "zh") {
-  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { day: "2-digit", ...TZ }).format(date);
+function fmtDay(date: Date, language: Lang3) {
+  return new Intl.DateTimeFormat(pick3(language, { ja: "ja-JP", zh: "zh-CN", en: "en-US" }), { day: "2-digit", ...TZ }).format(date);
 }
 
 function parseDate(value: string) {
@@ -681,7 +683,7 @@ export function agentChatHistorySessionsToHistory(
   language: AgentHistoryLanguage,
   groups: readonly AiSessionGroupContract[] = [],
 ): OrbitAgentHistoryView[] {
-  const fallbackGroup = language === "zh" ? "未分组" : "Ungrouped";
+  const fallbackGroup = pick3(language, { ja: "未分類", zh: "未分组", en: "Ungrouped" });
   const groupNames = new Map(groups.map((group) => [group.id, group.name]));
 
   return [...sessions]
@@ -1013,19 +1015,19 @@ export async function copyAgentMessageText(text: string): Promise<boolean> {
   }
 }
 
-function agentSuggestLabel(label: string, language: "en" | "zh") {
-  if (language === "zh") return label;
+/** 旧示例问题按中文原句存；按当前语言换成同一句。未知的原样返回（用户自己写的）。 */
+const AGENT_SUGGEST_LABELS: readonly { en: string; ja: string; zh: string }[] = [
+  { ja: "金融 AI 分野の人脈を探す", zh: "找金融 AI 方向的人脉", en: "Find AI finance contacts" },
+  { ja: "婦人服デザイナーと知り合いたい", zh: "想认识女装设计师", en: "Meet womenswear designers" },
+  { ja: "AI・海外展開のイベントを探す", zh: "推荐 AI / 出海活动", en: "Recommend AI / global events" },
+  { ja: "フォローすべき人脈を探す", zh: "找值得跟进的人脉", en: "Find contacts worth following up" },
+  { ja: "人脈を広げられるイベントを探す", zh: "推荐可拓展活动", en: "Recommend events to grow my network" },
+  { ja: "関係の ToDo を整理する", zh: "整理关系待办", en: "Review relationship to-dos" },
+];
 
-  const labels: Record<string, string> = {
-    "找金融 AI 方向的人脉": "Find AI finance contacts",
-    "想认识女装设计师": "Meet womenswear designers",
-    "推荐 AI / 出海活动": "Recommend AI / global events",
-    "找值得跟进的人脉": "Find contacts worth following up",
-    "推荐可拓展活动": "Recommend events to grow my network",
-    "整理关系待办": "Review relationship to-dos",
-  };
-
-  return labels[label] ?? label;
+function agentSuggestLabel(label: string, language: Lang3) {
+  const copy = AGENT_SUGGEST_LABELS.find((item) => item.zh === label);
+  return copy ? copy[language] : label;
 }
 
 // 跟进队列的主体是**人**，不是任务句子：一个人一张卡，起草是对人的动作。
@@ -1109,24 +1111,24 @@ export function earliestTodoDueAt(
 // 到期展示在客户端按真实时钟算。artifact 里那套「今天/N 天后」的参照系是
 // 「最新记录的 updatedAt」而不是当前时间（见 orbit-followup-queue-clock-bug），
 // 这里有原始 dueAt 就不再信它。
-function todoDueLabel(dueAt: string, language: "en" | "zh"): { label: string; soon: boolean } | null {
+function todoDueLabel(dueAt: string, language: Lang3): { label: string; soon: boolean } | null {
   const due = new Date(dueAt);
   if (!Number.isFinite(due.getTime())) return null;
 
   const days = Math.ceil((due.getTime() - Date.now()) / 86_400_000);
-  const date = new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", {
+  const date = new Intl.DateTimeFormat(pick3(language, { ja: "ja-JP", zh: "zh-CN", en: "en-US" }), {
     day: "numeric",
-    month: language === "zh" ? "long" : "short",
+    month: language === "en" ? "short" : "long",
     timeZone: "Asia/Tokyo",
   }).format(due);
   const relative =
     days < 0
-      ? language === "zh" ? `已逾期 ${-days} 天` : `overdue ${-days}d`
+      ? pick3(language, { ja: `${-days} 日超過`, zh: `已逾期 ${-days} 天`, en: `overdue ${-days}d` })
       : days === 0
-        ? language === "zh" ? "今天" : "today"
+        ? pick3(language, { ja: "今日", zh: "今天", en: "today" })
         : days === 1
-          ? language === "zh" ? "明天" : "tomorrow"
-          : language === "zh" ? `${days} 天后` : `in ${days}d`;
+          ? pick3(language, { ja: "明日", zh: "明天", en: "tomorrow" })
+          : pick3(language, { ja: `${days} 日後`, zh: `${days} 天后`, en: `in ${days}d` });
 
   return { label: `${date} · ${relative}`, soon: days <= 3 };
 }
@@ -1135,7 +1137,7 @@ function todoDueLabel(dueAt: string, language: "en" | "zh"): { label: string; so
 // 你选什么，信里就写什么。
 function draftPurposeFor(
   items: readonly OrbitAgentTodoResultView[],
-  language: "en" | "zh",
+  language: Lang3,
 ): string {
   if (items.length === 0) return "";
   const lines = items.map((item, index) => {
@@ -1143,9 +1145,11 @@ function draftPurposeFor(
       item.task && item.task !== item.title ? `${item.title}：${item.task}` : item.title;
     return `${index + 1}. ${detail}`;
   });
-  return language === "zh"
-    ? `这封跟进邮件需要覆盖以下事项：\n${lines.join("\n")}`
-    : `Cover these follow-up items in the email:\n${lines.join("\n")}`;
+  return pick3(language, {
+    ja: `このフォローアップメールでは次の事項に触れてください：\n${lines.join("\n")}`,
+    zh: `这封跟进邮件需要覆盖以下事项：\n${lines.join("\n")}`,
+    en: `Cover these follow-up items in the email:\n${lines.join("\n")}`,
+  });
 }
 
 // 真实链路是单次请求（planner → 工具 → artifact → synthesis），没有流式分阶段
@@ -1153,10 +1157,10 @@ function draftPurposeFor(
 // 文案只说明这条管线将核对的维度，不伪装成服务端实时进度；按固定节奏轮换，
 // 并明确给出用户可预期的等待范围与副作用边界。
 const THINKING_PHASES: readonly Copy[] = [
-  { en: "Checking your authorized contacts, events, and follow-ups", zh: "正在核对你已授权的人脉、活动与跟进记录" },
-  { en: "Comparing relationship strength, timing, and your goal", zh: "正在比较关系强度、时机与你的目标" },
-  { en: "Ranking the most useful next decisions", zh: "正在排列最值得处理的下一步" },
-  { en: "Preparing the answer and its evidence", zh: "正在整理答复与依据" },
+  { ja: "許可済みの人脈・イベント・フォロー記録を確認しています", en: "Checking your authorized contacts, events, and follow-ups", zh: "正在核对你已授权的人脉、活动与跟进记录" },
+  { ja: "関係の深さ・タイミング・目標を照らし合わせています", en: "Comparing relationship strength, timing, and your goal", zh: "正在比较关系强度、时机与你的目标" },
+  { ja: "次に手をつけるべきことを並べています", en: "Ranking the most useful next decisions", zh: "正在排列最值得处理的下一步" },
+  { ja: "回答と根拠をまとめています", en: "Preparing the answer and its evidence", zh: "正在整理答复与依据" },
 ];
 
 const THINKING_PHASE_INTERVAL_MS = 2200;
@@ -1301,9 +1305,18 @@ function iorbitSelectedDayLabel(
   year: number,
   month: number,
   day: number,
-  language: "en" | "zh",
+  language: Lang3,
 ): string {
   const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (language === "ja") {
+    return new Intl.DateTimeFormat("ja-JP", {
+      day: "numeric",
+      month: "long",
+      timeZone: "UTC",
+      weekday: "short",
+    }).format(date);
+  }
 
   if (language === "en") {
     return new Intl.DateTimeFormat("en-US", {
@@ -1314,9 +1327,11 @@ function iorbitSelectedDayLabel(
     }).format(date);
   }
 
-  const weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getUTCDay()];
+  // 设计口径 `9月18日（周五）`：月日与星期都交给 Intl（zh-CN），只补全角括号。
+  const monthDay = new Intl.DateTimeFormat("zh-CN", { day: "numeric", month: "long", timeZone: "UTC" }).format(date);
+  const weekday = new Intl.DateTimeFormat("zh-CN", { timeZone: "UTC", weekday: "short" }).format(date);
 
-  return `${month}月${day}日（${weekday}）`;
+  return `${monthDay}（${weekday}）`;
 }
 
 /* ══ W0038（RH-04 右栏）：月历两色圆点与「下一场活动」的纯派生 ══════════════
@@ -1382,20 +1397,22 @@ function iorbitCalendarDayLabel(
   month: number,
   day: number,
   mark: IOrbitCalendarMark | undefined,
-  language: "en" | "zh",
+  language: Lang3,
 ): string {
   const parts = [iorbitSelectedDayLabel(year, month, day, language)];
   if (mark && mark.schedule > 0) {
-    parts.push(language === "zh" ? `${mark.schedule} 项日程` : `${mark.schedule} scheduled`);
+    parts.push(pick3(language, { ja: `予定 ${mark.schedule} 件`, zh: `${mark.schedule} 项日程`, en: `${mark.schedule} scheduled` }));
   }
   if (mark && mark.recommended > 0) {
     parts.push(
-      language === "zh"
-        ? `${mark.recommended} 场推荐活动`
-        : `${mark.recommended} recommended event${mark.recommended === 1 ? "" : "s"}`,
+      pick3(language, {
+        ja: `おすすめイベント ${mark.recommended} 件`,
+        zh: `${mark.recommended} 场推荐活动`,
+        en: `${mark.recommended} recommended event${mark.recommended === 1 ? "" : "s"}`,
+      }),
     );
   }
-  return parts.join(language === "zh" ? "，" : ", ");
+  return parts.join(pick3(language, { ja: "、", zh: "，", en: ", " }));
 }
 
 type IOrbitNextEvent<R, P> = { kind: "registered"; event: R } | { kind: "recommended"; item: P };
@@ -1431,7 +1448,7 @@ function iorbitNextEvent<R extends { startsAt: string }, P extends { startsAt: s
 function iorbitRelativeDayLabel(
   iso: string,
   now: Date,
-  language: "en" | "zh",
+  language: Lang3,
 ): string | null {
   const then = Date.parse(iso);
 
@@ -1443,13 +1460,13 @@ function iorbitRelativeDayLabel(
       Date.parse(`${iorbitDayKey(new Date(then))}T00:00:00Z`)) / 86_400_000),
   );
 
-  if (days <= 0) return language === "zh" ? "今天" : "today";
-  if (days === 1) return language === "zh" ? "昨天" : "yesterday";
-  if (days < 7) return language === "zh" ? `${days} 天前` : `${days} days ago`;
+  if (days <= 0) return pick3(language, { ja: "今日", zh: "今天", en: "today" });
+  if (days === 1) return pick3(language, { ja: "昨日", zh: "昨天", en: "yesterday" });
+  if (days < 7) return pick3(language, { ja: `${days} 日前`, zh: `${days} 天前`, en: `${days} days ago` });
 
   const weeks = Math.floor(days / 7);
 
-  return language === "zh" ? `${weeks} 周前` : `${weeks} week${weeks > 1 ? "s" : ""} ago`;
+  return pick3(language, { ja: `${weeks} 週間前`, zh: `${weeks} 周前`, en: `${weeks} week${weeks > 1 ? "s" : ""} ago` });
 }
 
 /**
@@ -1488,7 +1505,7 @@ function iorbitHistoryDateLabel(iso: string, language: AgentHistoryLanguage): st
 
   if (!Number.isFinite(at)) return null;
 
-  return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", {
+  return new Intl.DateTimeFormat(pick3(language, { ja: "ja-JP", zh: "zh-CN", en: "en-US" }), {
     day: "numeric",
     month: "long",
     timeZone: "Asia/Tokyo",

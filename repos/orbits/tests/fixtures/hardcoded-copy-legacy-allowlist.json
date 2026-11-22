@@ -1,48 +1,12 @@
 {
   "_comment": "R03 / RD-24：旧页面写死的界面文字（hardcoded）和缺日文的 {zh, en} 文案对象（missingJa），文件 → 条数。只减不增：重写旧页面时归零并删掉这一行；不得新增文件或调大。规则见 tests/ui/no-hardcoded-copy.test.ts。",
   "files": {
-    "app/(app)/app/_demo/demo-mode-context.tsx": {
-      "hardcoded": 0,
-      "missingJa": 2
-    },
-    "app/(app)/app/_demo/demo-mode-core.tsx": {
-      "hardcoded": 0,
-      "missingJa": 18
-    },
     "app/(app)/app/_demo/demo-network.ts": {
-      "hardcoded": 285,
-      "missingJa": 8
-    },
-    "app/(app)/app/_demo/demo-persona.ts": {
-      "hardcoded": 11,
-      "missingJa": 53
-    },
-    "app/(app)/app/account/reset-password/page.tsx": {
-      "hardcoded": 1,
-      "missingJa": 0
-    },
-    "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx": {
-      "hardcoded": 5,
-      "missingJa": 0
-    },
-    "app/(app)/app/agent/actions/orbit-today-decision-form.tsx": {
-      "hardcoded": 24,
-      "missingJa": 0
-    },
-    "app/(app)/app/agent/agent-action-status-card.tsx": {
-      "hardcoded": 22,
-      "missingJa": 26
-    },
-    "app/(app)/app/agent/agent-chat-history-organization.tsx": {
-      "hardcoded": 21,
-      "missingJa": 0
+      "hardcoded": 0,
+      "missingJa": 1
     },
     "app/(app)/app/agent/agent-outcome-feedback.tsx": {
       "hardcoded": 9,
-      "missingJa": 0
-    },
-    "app/(app)/app/agent/agent-task-interaction-card.tsx": {
-      "hardcoded": 14,
       "missingJa": 0
     },
     "app/(app)/app/agent/home-facts-route-service.ts": {
@@ -58,8 +22,8 @@
       "missingJa": 0
     },
     "app/(app)/app/agent/iorbit-0918/iorbit-actions.tsx": {
-      "hardcoded": 5,
-      "missingJa": 43
+      "hardcoded": 1,
+      "missingJa": 0
     },
     "app/(app)/app/agent/iorbit-0918/iorbit-chat-aside.tsx": {
       "hardcoded": 0,
@@ -82,12 +46,8 @@
       "missingJa": 110
     },
     "app/(app)/app/agent/iorbit-0918/iorbit-model.ts": {
-      "hardcoded": 47,
-      "missingJa": 7
-    },
-    "app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx": {
-      "hardcoded": 0,
-      "missingJa": 51
+      "hardcoded": 21,
+      "missingJa": 0
     },
     "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx": {
       "hardcoded": 0,
@@ -101,41 +61,9 @@
       "hardcoded": 0,
       "missingJa": 21
     },
-    "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts": {
-      "hardcoded": 14,
-      "missingJa": 0
-    },
-    "app/(app)/app/agent/iorbit-0918/use-agent-history.ts": {
-      "hardcoded": 2,
-      "missingJa": 11
-    },
     "app/(app)/app/agent/orbit-agent-next-actions.ts": {
       "hardcoded": 2,
       "missingJa": 0
-    },
-    "app/(app)/app/contacts/[id]/appointment-memo-capture.tsx": {
-      "hardcoded": 14,
-      "missingJa": 0
-    },
-    "app/(app)/app/contacts/analysis/network-copy.ts": {
-      "hardcoded": 0,
-      "missingJa": 66
-    },
-    "app/(app)/app/contacts/analysis/opportunities-report-card.ts": {
-      "hardcoded": 0,
-      "missingJa": 12
-    },
-    "app/(app)/app/contacts/analysis/opportunities-view-model.ts": {
-      "hardcoded": 0,
-      "missingJa": 12
-    },
-    "app/(app)/app/contacts/analysis/structure-tab-model.ts": {
-      "hardcoded": 0,
-      "missingJa": 6
-    },
-    "app/(app)/app/contacts/card-batch-0918/card-batch-model.ts": {
-      "hardcoded": 0,
-      "missingJa": 23
     },
     "app/(app)/app/contacts/card-batch-0918/card-batch-styles.ts": {
       "hardcoded": 1,
@@ -143,30 +71,10 @@
     },
     "app/(app)/app/contacts/card-batch-0918/card-batch-ui.tsx": {
       "hardcoded": 2,
-      "missingJa": 140
-    },
-    "app/(app)/app/contacts/card-batch-0918/card-batch-uploader.tsx": {
-      "hardcoded": 0,
-      "missingJa": 14
-    },
-    "app/(app)/app/contacts/card-batch-0918/use-card-batch.ts": {
-      "hardcoded": 0,
-      "missingJa": 6
-    },
-    "app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter.ts": {
-      "hardcoded": 7,
-      "missingJa": 3
+      "missingJa": 0
     },
     "app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-subroute-route-adapter.tsx": {
       "hardcoded": 6,
-      "missingJa": 0
-    },
-    "app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter.ts": {
-      "hardcoded": 6,
-      "missingJa": 0
-    },
-    "app/(app)/app/contacts/contact-card-view-model.ts": {
-      "hardcoded": 1,
       "missingJa": 0
     },
     "app/(app)/app/contacts/contact-notes-editor.tsx": {
@@ -175,7 +83,7 @@
     },
     "app/(app)/app/contacts/contact-relationship-initialization-view-model.ts": {
       "hardcoded": 10,
-      "missingJa": 4
+      "missingJa": 0
     },
     "app/(app)/app/contacts/contact-relationship-initialization.tsx": {
       "hardcoded": 25,
@@ -185,72 +93,16 @@
       "hardcoded": 2,
       "missingJa": 0
     },
-    "app/(app)/app/contacts/network-0918/contact-enrichment-inline.tsx": {
-      "hardcoded": 0,
-      "missingJa": 26
-    },
-    "app/(app)/app/contacts/network-0918/contact-value-line.tsx": {
-      "hardcoded": 0,
-      "missingJa": 4
-    },
-    "app/(app)/app/contacts/network-0918/contact-value.ts": {
-      "hardcoded": 0,
-      "missingJa": 7
-    },
-    "app/(app)/app/contacts/network-0918/detail-return.ts": {
-      "hardcoded": 0,
-      "missingJa": 7
-    },
-    "app/(app)/app/contacts/network-0918/network-all.tsx": {
-      "hardcoded": 0,
-      "missingJa": 11
-    },
-    "app/(app)/app/contacts/network-0918/network-cards.tsx": {
-      "hardcoded": 0,
-      "missingJa": 21
-    },
-    "app/(app)/app/contacts/network-0918/network-detail-modal.tsx": {
-      "hardcoded": 0,
-      "missingJa": 72
-    },
     "app/(app)/app/contacts/network-0918/network-follow-modal.tsx": {
       "hardcoded": 2,
-      "missingJa": 17
-    },
-    "app/(app)/app/contacts/network-0918/network-insight-copy.ts": {
-      "hardcoded": 0,
-      "missingJa": 23
-    },
-    "app/(app)/app/contacts/network-0918/network-insight-panel.tsx": {
-      "hardcoded": 0,
-      "missingJa": 7
-    },
-    "app/(app)/app/contacts/network-0918/network-model.ts": {
-      "hardcoded": 0,
-      "missingJa": 14
-    },
-    "app/(app)/app/contacts/network-0918/network-overview-cockpit-model.ts": {
-      "hardcoded": 3,
-      "missingJa": 10
+      "missingJa": 0
     },
     "app/(app)/app/contacts/network-0918/network-shell.tsx": {
-      "hardcoded": 4,
-      "missingJa": 6
+      "hardcoded": 1,
+      "missingJa": 0
     },
     "app/(app)/app/events/[id]/operations/admission/event-admission-policy-panel.tsx": {
       "hardcoded": 37,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/[id]/orbit-appointment-negotiation.tsx": {
-      "hardcoded": 0,
-      "missingJa": 40
-    },
-    "app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts": {
-      "hardcoded": 29,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter.ts": {
-      "hardcoded": 1,
       "missingJa": 0
     },
     "app/(app)/app/events/events-0918/community-card.tsx": {
@@ -273,30 +125,6 @@
       "hardcoded": 28,
       "missingJa": 0
     },
-    "app/(app)/app/home/home-demo-localization.ts": {
-      "hardcoded": 39,
-      "missingJa": 0
-    },
-    "app/(app)/app/home/orbit-real-home.tsx": {
-      "hardcoded": 1,
-      "missingJa": 90
-    },
-    "app/(app)/app/inbox/inbox-demo-localization.ts": {
-      "hardcoded": 33,
-      "missingJa": 0
-    },
-    "app/(app)/app/inbox/relationship-inbox-panel.tsx": {
-      "hardcoded": 0,
-      "missingJa": 46
-    },
-    "app/(app)/app/orbit-account-auth-route-view-model.ts": {
-      "hardcoded": 15,
-      "missingJa": 0
-    },
-    "app/(app)/app/orbit-account-shell.tsx": {
-      "hardcoded": 0,
-      "missingJa": 3
-    },
     "app/(app)/app/orbit-agent-context-href.ts": {
       "hardcoded": 5,
       "missingJa": 0
@@ -309,10 +137,6 @@
       "hardcoded": 6,
       "missingJa": 0
     },
-    "app/(app)/app/orbit-contacts-presentation.ts": {
-      "hardcoded": 4,
-      "missingJa": 0
-    },
     "app/(app)/app/orbit-event-registration-view-model.ts": {
       "hardcoded": 0,
       "missingJa": 4
@@ -321,24 +145,12 @@
       "hardcoded": 46,
       "missingJa": 0
     },
-    "app/(app)/app/orbit-event-view-helpers.ts": {
-      "hardcoded": 17,
-      "missingJa": 0
-    },
-    "app/(app)/app/orbit-landing-route-view-model.ts": {
-      "hardcoded": 9,
-      "missingJa": 0
-    },
     "app/(app)/app/orbit-lang-runtime-client.tsx": {
       "hardcoded": 12,
       "missingJa": 0
     },
     "app/(app)/app/orbit-public-shell.tsx": {
       "hardcoded": 2,
-      "missingJa": 36
-    },
-    "app/(app)/app/orbit-reference-primitives.tsx": {
-      "hardcoded": 4,
       "missingJa": 0
     },
     "app/(app)/app/orbit-reference-styles.tsx": {
@@ -373,38 +185,6 @@
       "hardcoded": 39,
       "missingJa": 0
     },
-    "app/(app)/app/profile/goal-editor/goal-editor-model.ts": {
-      "hardcoded": 3,
-      "missingJa": 22
-    },
-    "app/(app)/app/profile/goal-editor/goal-editor.tsx": {
-      "hardcoded": 0,
-      "missingJa": 8
-    },
-    "app/(app)/app/profile/profile-save-model.ts": {
-      "hardcoded": 0,
-      "missingJa": 4
-    },
-    "app/(app)/app/start/start-guide-styles.ts": {
-      "hardcoded": 1,
-      "missingJa": 0
-    },
-    "app/(app)/app/start/start-guide.tsx": {
-      "hardcoded": 2,
-      "missingJa": 19
-    },
-    "app/(app)/app/start/start-step-cards.tsx": {
-      "hardcoded": 0,
-      "missingJa": 8
-    },
-    "app/(app)/app/start/start-step-goal.tsx": {
-      "hardcoded": 0,
-      "missingJa": 10
-    },
-    "app/(app)/app/start/start-step-plan.tsx": {
-      "hardcoded": 0,
-      "missingJa": 14
-    },
     "app/(app)/app/tasks/personal-schedule-association-sheet.tsx": {
       "hardcoded": 16,
       "missingJa": 0
@@ -437,10 +217,6 @@
       "hardcoded": 5,
       "missingJa": 0
     },
-    "app/(app)/app/tasks/relationship/[id]/relationship-lifecycle-editor.tsx": {
-      "hardcoded": 45,
-      "missingJa": 0
-    },
     "app/(app)/app/tasks/task-detail-workspace.tsx": {
       "hardcoded": 1,
       "missingJa": 43
@@ -450,7 +226,7 @@
       "missingJa": 0
     },
     "app/(app)/app/tasks/tasks-client.ts": {
-      "hardcoded": 10,
+      "hardcoded": 1,
       "missingJa": 0
     },
     "app/(app)/app/tasks/tasks-controls.tsx": {
@@ -460,10 +236,6 @@
     "app/(app)/app/tasks/tasks-page-heading.tsx": {
       "hardcoded": 0,
       "missingJa": 4
-    },
-    "app/(app)/app/tasks/tasks-view-model.ts": {
-      "hardcoded": 14,
-      "missingJa": 0
     },
     "app/(app)/app/tasks/tasks-workspace.tsx": {
       "hardcoded": 0,

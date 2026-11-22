@@ -43,10 +43,19 @@ test("source grid counts and pipeline stage counts match the prototype", () => {
 test("the W0004 persona's people are here, at the same companies", () => {
   const vm = buildDemoNetworkViewModel(NOW, "zh");
   for (const person of DEMO_PEOPLE) {
-    const contact = vm.connections.find((item) => item.displayName === person.name);
-    assert.ok(contact, person.name);
+    const contact = vm.connections.find((item) => item.displayName === person.name.zh);
+    assert.ok(contact, person.name.zh);
     // JETRO 东京 / 东京商工会议所 在人脉里的公司名与首页一致。
-    assert.equal(contact.company, person.company, person.name);
+    assert.equal(contact.company, person.company.zh, person.name.zh);
+  }
+});
+
+test("the Japanese UI gets Japanese demo people, never the Chinese copy", () => {
+  const vm = buildDemoNetworkViewModel(NOW, "ja");
+  for (const person of DEMO_PEOPLE) {
+    const contact = vm.connections.find((item) => item.displayName === person.name.ja);
+    assert.ok(contact, person.name.ja);
+    assert.equal(contact.company, person.company.ja, person.name.ja);
   }
 });
 

@@ -63,6 +63,7 @@ test("validateProfileSaveDraft enforces name, industry pair and the shared bio c
   assert.equal(noDirectHandle.ok, false);
   if (noDirectHandle.ok) throw new Error("Expected missing direct handle validation");
   assert.deepEqual(noDirectHandle.message, {
+    ja: "基本情報を保存する前に、WeChat か LINE のどちらかを入力してください。",
     en: "Add either WeChat or LINE before saving the basic profile.",
     zh: "保存基础资料前，请至少填写 WeChat 或 LINE 其中一项。",
   });
@@ -74,10 +75,10 @@ test("validateProfileSaveDraft enforces name, industry pair and the shared bio c
   const tooLong = validateProfileSaveDraft({ profile: longBio, scope: "basic", scopeDirty: new Set(["bio"]) });
   assert.equal(tooLong.ok, false);
   // bio 在新屏的标签是「关于我」（设置屏 / 基础资料屏），校验文案与标签一致，不再叫「一句话介绍」（那是 headline）。
-  assert.deepEqual(tooLong.ok ? undefined : tooLong.message, { en: "Keep About me within 200 visible characters.", zh: "关于我不能超过 200 个可见字符。" });
+  assert.deepEqual(tooLong.ok ? undefined : tooLong.message, { ja: "自己紹介は 200 文字以内にしてください。", en: "Keep About me within 200 visible characters.", zh: "关于我不能超过 200 个可见字符。" });
   const longChinese = validateProfileSaveDraft({ profile: profile({ bio: "界".repeat(81) }), scope: "basic", scopeDirty: new Set(["bio"]) });
   assert.equal(longChinese.ok, false);
-  assert.deepEqual(longChinese.message, { en: "Keep About me within 80 visible characters.", zh: "关于我不能超过 80 个可见字符。" });
+  assert.deepEqual(longChinese.message, { ja: "自己紹介は 80 文字以内にしてください。", en: "Keep About me within 80 visible characters.", zh: "关于我不能超过 80 个可见字符。" });
   assert.equal(validateProfileSaveDraft({ profile: longBio, scope: "basic", scopeDirty }).ok, true, "bio not dirty → not validated");
   assert.equal(validateProfileSaveDraft({ profile: profile({ fullName: "" }), scope: "matching", scopeDirty: new Set(["topics"]) }).ok, true);
 });

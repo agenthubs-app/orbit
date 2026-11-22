@@ -62,7 +62,8 @@ export interface JourneyAttendeeProfileFacts {
   org: string | null;
   role: string | null;
   intro: string | null;
-  answers: readonly { q: string; a: string }[];
+  /** `field` = 申込の項目（業界など）。q/a はその言語の原文；表示時に見る人の言語へ（attendeeAnswerInLanguage）。 */
+  answers: readonly { q: string; a: string; field?: string }[];
 }
 
 export interface JourneyContact {

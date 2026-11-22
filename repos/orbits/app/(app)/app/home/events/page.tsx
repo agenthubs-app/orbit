@@ -3,7 +3,7 @@
  *
  * 与 hub 页共用 live-capable Home route model，只通过 `mode="events"` 切换到活动视图。
  */
-import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
+import { getOrbitServerLanguage } from "../../orbit-language-server";
 import { presentOrbitEvents } from "../../orbit-event-presentation";
 import { auth } from "../../../../../auth";
 import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
@@ -30,6 +30,7 @@ export default async function AppPersonalHomeEventsPage() {
     throw new Error("Authenticated Orbit account membership is unavailable.");
   }
 
+  const language = await getOrbitServerLanguage();
   const routeModel = await loadAppHomeRouteViewModel(undefined, {
     displayName:
       session.user.name?.trim() ||
@@ -38,9 +39,7 @@ export default async function AppPersonalHomeEventsPage() {
     email: session.user.email,
     id: actor.id,
     rawSubject: session.user.id,
-  });
-  const language =
-    routeModel.state === "success" ? await getOrbitServerLanguage() : null;
+  }, { language });
 
   return (
     <>
@@ -48,15 +47,16 @@ export default async function AppPersonalHomeEventsPage() {
       <OrbitVisualFreezeRuntime />
       {routeModel.state === "success" ? (
         <div data-orbit-route="app-home-events-route">
+          {/* No localizeOrbitTree here: its zh→en word dictionary mangled
+              host-written event names and user profile text on the English UI
+              (「验收用: Finance科技Startup者之夜」). The page's own wording is
+              trilingual in OrbitRealHome; event text comes from presentOrbitEvents. */}
           <OrbitRealHome
             mode="events"
-            viewModel={localizeOrbitTree(
-              {
-                ...routeModel.home,
-                events: presentOrbitEvents(routeModel.home.events, language ?? "zh"),
-              },
-              language ?? "zh",
-            )}
+            viewModel={{
+              ...routeModel.home,
+              events: presentOrbitEvents(routeModel.home.events, language),
+            }}
           />
         </div>
       ) : (

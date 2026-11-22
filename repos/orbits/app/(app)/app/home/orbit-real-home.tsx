@@ -22,24 +22,24 @@ import {
 
 type HomeFilter = "active" | "all" | "ended" | "upcoming";
 type HomeMode = "events" | "hub";
-type Translate = (copy: { en: string; zh: string }) => string;
+type Translate = (copy: { en: string; ja?: string; zh: string }) => string;
 
 const tz = { timeZone: "Asia/Tokyo" };
 
 function homeFilters(t: Translate): Array<[HomeFilter, string]> {
   return [
-    ["all", t({ en: "All", zh: "全部" })],
-    ["active", t({ en: "Active", zh: "进行中" })],
-    ["upcoming", t({ en: "Upcoming", zh: "即将" })],
-    ["ended", t({ en: "Past", zh: "历史" })],
+    ["all", t({ ja: "すべて", en: "All", zh: "全部" })],
+    ["active", t({ ja: "開催中", en: "Active", zh: "进行中" })],
+    ["upcoming", t({ ja: "これから", en: "Upcoming", zh: "即将" })],
+    ["ended", t({ ja: "終了", en: "Past", zh: "历史" })],
   ];
 }
 
 function hubEntryCards(t: Translate) {
   return [
-    { g: "g-emerald", href: "/app/profile", icon: "user", sub: t({ en: "Auto-reused for every event", zh: "报名各场自动复用" }), title: t({ en: "Universal profile", zh: "通用画像" }) },
-    { g: "g-rose", href: "/app/contacts", icon: "wallet", sub: t({ en: "Post-event contact CRM", zh: "会后人脉 CRM" }), title: t({ en: "Contacts", zh: "名片夹" }) },
-    { g: "g-sky", href: "/app/tasks?tab=calendar", icon: "clock", sub: t({ en: "Meetings and interaction log", zh: "约见与交往记录" }), title: t({ en: "Schedule", zh: "日程安排" }) },
+    { g: "g-emerald", href: "/app/profile", icon: "user", sub: t({ ja: "どのイベントにも自動で使われます", en: "Auto-reused for every event", zh: "报名各场自动复用" }), title: t({ ja: "共通プロフィール", en: "Universal profile", zh: "通用画像" }) },
+    { g: "g-rose", href: "/app/contacts", icon: "wallet", sub: t({ ja: "イベント後の人脈管理", en: "Post-event contact CRM", zh: "会后人脉 CRM" }), title: t({ ja: "名刺", en: "Contacts", zh: "名片夹" }) },
+    { g: "g-sky", href: "/app/tasks?tab=calendar", icon: "clock", sub: t({ ja: "面談とやりとりの記録", en: "Meetings and interaction log", zh: "约见与交往记录" }), title: t({ ja: "予定", en: "Schedule", zh: "日程安排" }) },
   ];
 }
 
@@ -82,16 +82,16 @@ function ProfileSummary({
     : "";
 
   const facts: Array<{ icon: string; label: string; value: string }> = [];
-  if (industry) facts.push({ icon: "value", label: t({ en: "Industry", zh: "行业" }), value: industry });
-  if (homeMarket) facts.push({ icon: "pin", label: t({ en: "Home market", zh: "主场市场" }), value: homeMarket });
-  if (followUpWindow) facts.push({ icon: "clock", label: t({ en: "Follow-up cadence", zh: "跟进节奏" }), value: followUpWindow });
+  if (industry) facts.push({ icon: "value", label: t({ ja: "業界", en: "Industry", zh: "行业" }), value: industry });
+  if (homeMarket) facts.push({ icon: "pin", label: t({ ja: "主な市場", en: "Home market", zh: "主场市场" }), value: homeMarket });
+  if (followUpWindow) facts.push({ icon: "clock", label: t({ ja: "フォローの間隔", en: "Follow-up cadence", zh: "跟进节奏" }), value: followUpWindow });
 
   const chipGroups: Array<{ icon: string; label: string; items: readonly string[]; tone: string }> = [];
-  if (offering.length) chipGroups.push({ icon: "sparkle", label: t({ en: "I can offer", zh: "我能提供" }), items: offering, tone: "nc-tag-value" });
-  if (seeking.length) chipGroups.push({ icon: "search", label: t({ en: "I'm looking for", zh: "我在寻找" }), items: seeking, tone: "" });
-  if (targets.length) chipGroups.push({ icon: "network", label: t({ en: "I want to meet", zh: "想认识的人" }), items: targets, tone: "" });
-  if (topics.length) chipGroups.push({ icon: "tag", label: t({ en: "Topics", zh: "关注话题" }), items: topics, tone: "" });
-  if (channels.length) chipGroups.push({ icon: "share", label: t({ en: "Intro channels", zh: "引荐渠道" }), items: channels, tone: "" });
+  if (offering.length) chipGroups.push({ icon: "sparkle", label: t({ ja: "提供できること", en: "I can offer", zh: "我能提供" }), items: offering, tone: "nc-tag-value" });
+  if (seeking.length) chipGroups.push({ icon: "search", label: t({ ja: "探していること", en: "I'm looking for", zh: "我在寻找" }), items: seeking, tone: "" });
+  if (targets.length) chipGroups.push({ icon: "network", label: t({ ja: "会いたい人", en: "I want to meet", zh: "想认识的人" }), items: targets, tone: "" });
+  if (topics.length) chipGroups.push({ icon: "tag", label: t({ ja: "関心のあるテーマ", en: "Topics", zh: "关注话题" }), items: topics, tone: "" });
+  if (channels.length) chipGroups.push({ icon: "share", label: t({ ja: "紹介の経路", en: "Intro channels", zh: "引荐渠道" }), items: channels, tone: "" });
 
   if (!facts.length && !goal && !bio && !chipGroups.length) {
     return null;
@@ -101,7 +101,7 @@ function ProfileSummary({
     <div className="card orbit-hub-profile" style={{ marginTop: 18 }}>
       <div className="orbit-hub-profile-title">
         <Icon name="user" size={16} />
-        <h2 className="h-section" style={{ margin: 0 }}>{t({ en: "About me", zh: "个人资料" })}</h2>
+        <h2 className="h-section" style={{ margin: 0 }}>{t({ ja: "プロフィール", en: "About me", zh: "个人资料" })}</h2>
       </div>
       {bio ? <p className="orbit-hub-bio">{bio}</p> : null}
       {facts.length ? (
@@ -121,7 +121,7 @@ function ProfileSummary({
         <div className="orbit-hub-goal">
           <span className="orbit-hub-goal-icon"><Icon name="target" size={15} /></span>
           <span className="orbit-hub-goal-main">
-            <span className="orbit-hub-group-k">{t({ en: "Relationship goal", zh: "关系目标" })}</span>
+            <span className="orbit-hub-group-k">{t({ ja: "関係づくりの目標", en: "Relationship goal", zh: "关系目标" })}</span>
             <p className="orbit-hub-goal-body">{goal}</p>
           </span>
         </div>
@@ -153,7 +153,7 @@ function parseDate(value: string) {
 }
 
 function dateLocale(language: OrbitLanguage) {
-  return language === "en" ? "en-US" : "zh-CN";
+  return language === "en" ? "en-US" : language === "ja" ? "ja-JP" : "zh-CN";
 }
 
 function fmtMonth(date: Date, language: OrbitLanguage) {
@@ -166,7 +166,7 @@ function fmtDay(date: Date, language: OrbitLanguage) {
 
 function homeDate(startsAt: string, language: OrbitLanguage, t: Translate) {
   const date = parseDate(startsAt);
-  if (!date) return { day: "", month: t({ en: "TBD", zh: "待定" }), time: t({ en: "Time TBD", zh: "时间待定" }) };
+  if (!date) return { day: "", month: t({ ja: "未定", en: "TBD", zh: "待定" }), time: t({ ja: "日時未定", en: "Time TBD", zh: "时间待定" }) };
 
   return {
     day: fmtDay(date, language),
@@ -189,7 +189,7 @@ function enterEvent(eventId: string) {
 }
 
 function eventPlace(event: OrbitLandingEventView, t: Translate) {
-  return event.place || event.venue || t({ en: "Venue TBD", zh: "地点待定" });
+  return event.place || event.venue || t({ ja: "会場未定", en: "Venue TBD", zh: "地点待定" });
 }
 
 function eventImageAsset(event: OrbitLandingEventView) {
@@ -204,7 +204,7 @@ function HomeEventRow({ event, language, t }: { event: OrbitLandingEventView; la
   const date = homeDate(event.startsAt, language, t);
   const place = eventPlace(event, t);
   const canEnter = event.status === "active" || event.status === "ended";
-  const enterLabel = event.status === "ended" ? t({ en: "Replay", zh: "回看" }) : t({ en: "Enter event", zh: "进入活动" });
+  const enterLabel = event.status === "ended" ? t({ ja: "振り返る", en: "Replay", zh: "回看" }) : t({ ja: "イベントに入る", en: "Enter event", zh: "进入活动" });
   const name = event.name;
   const content = (
     <>
@@ -247,7 +247,7 @@ function MyEventsBlock({ events, language, t }: { events: OrbitLandingEventView[
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {list.map((event) => <HomeEventRow event={event} key={event.id} language={language} t={t} />)}
-        {!list.length ? <div className="card-flat" style={{ color: "var(--ink-3-text)", fontSize: 14, padding: 20, textAlign: "center" }}>{t({ en: "No events in this state.", zh: "当前没有这个状态的活动。" })}</div> : null}
+        {!list.length ? <div className="card-flat" style={{ color: "var(--ink-3-text)", fontSize: 14, padding: 20, textAlign: "center" }}>{t({ ja: "該当するイベントはありません。", en: "No events in this state.", zh: "当前没有这个状态的活动。" })}</div> : null}
       </div>
     </div>
   );
@@ -256,12 +256,13 @@ function MyEventsBlock({ events, language, t }: { events: OrbitLandingEventView[
 function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView; language: OrbitLanguage; t: Translate }) {
   const date = homeDate(event.startsAt, language, t);
   const canEnter = event.status === "active" || event.status === "ended";
-  const enterLabel = event.status === "ended" ? t({ en: "Replay", zh: "回看" }) : t({ en: "Enter event", zh: "进入活动" });
+  const enterLabel = event.status === "ended" ? t({ ja: "振り返る", en: "Replay", zh: "回看" }) : t({ ja: "イベントに入る", en: "Enter event", zh: "进入活动" });
   const name = event.name;
   const place = eventPlace(event, t);
   const imageAsset = eventImageAsset(event);
   const seenTopics = new Set<string>();
-  const topics = [event.industry, event.theme, ...event.tags]
+  // event.theme is the cover-art id (finance / ai / relationship …), not a topic — never shown as text.
+  const topics = [event.industry, ...event.tags]
     .map((item) => item.trim())
     .filter(Boolean)
     .filter((item) => {
@@ -281,7 +282,7 @@ function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView
       </EventCover>
       <span className="orbit-account-event-module-body">
         <span className="orbit-account-event-module-copy">
-          <span>{event.theme || event.industry || event.host}</span>
+          <span>{event.industry || event.host}</span>
           <strong>{name}</strong>
         </span>
         {topics.length ? (
@@ -292,11 +293,11 @@ function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView
         <span className="orbit-account-event-module-meta">
           <span><Icon color="var(--ink-3-text)" name="clock" size={15} />{date.time}</span>
           {place ? <span><Icon color="var(--ink-3-text)" name="pin" size={15} />{place}</span> : null}
-          {event.participantCount !== null ? <span><Icon color="var(--ink-3-text)" name="users" size={15} />{event.participantCount} 人已报名</span> : null}
+          {event.participantCount !== null ? <span><Icon color="var(--ink-3-text)" name="users" size={15} />{t({ ja: `${event.participantCount}人が申込済み`, en: `${event.participantCount} registered`, zh: `${event.participantCount} 人已报名` })}</span> : null}
         </span>
         <span className="orbit-account-event-module-foot">
-          <span>{event.status === "ended" ? t({ en: "Tap to revisit details", zh: "点击回看活动详情" }) : t({ en: "Tap to view details", zh: "点击查看活动详情" })}</span>
-          <strong>{canEnter ? enterLabel : t({ en: "View event", zh: "查看活动" })}{canEnter ? <Icon name="arrowUR" size={14} /> : <Icon name="chevR" size={14} />}</strong>
+          <span>{event.status === "ended" ? t({ ja: "タップしてイベント詳細を振り返る", en: "Tap to revisit details", zh: "点击回看活动详情" }) : t({ ja: "タップしてイベント詳細を見る", en: "Tap to view details", zh: "点击查看活动详情" })}</span>
+          <strong>{canEnter ? enterLabel : t({ ja: "イベントを見る", en: "View event", zh: "查看活动" })}{canEnter ? <Icon name="arrowUR" size={14} /> : <Icon name="chevR" size={14} />}</strong>
         </span>
       </span>
     </>
@@ -323,7 +324,7 @@ function AccountEventsBlock({ events, language, t }: { events: OrbitLandingEvent
     <section>
       <div className="orbit-account-event-module-list">
         {list.map((event) => <AccountEventCard event={event} key={event.id} language={language} t={t} />)}
-        {!list.length ? <div className="card-flat orbit-empty">{t({ en: "No events in this state.", zh: "当前没有这个状态的活动。" })}</div> : null}
+        {!list.length ? <div className="card-flat orbit-empty">{t({ ja: "該当するイベントはありません。", en: "No events in this state.", zh: "当前没有这个状态的活动。" })}</div> : null}
       </div>
       <div className="orbit-filter-row orbit-account-event-filter-row">
         {homeFilters(t).map(([key, label]) => (
@@ -409,46 +410,46 @@ function TodayEventHero({ event, t }: { event: OrbitLandingEventView; t: Transla
     <div data-console-today style={{ background: "linear-gradient(120deg, #1a7d9b, var(--accent-text) 42%, #c8a24a 135%)", borderRadius: 20, boxShadow: "0 14px 40px -8px rgba(21,94,117,.30)", padding: 2 }}>
       <div style={{ background: "linear-gradient(180deg, var(--surface), var(--surface-2))", borderRadius: 18, display: "grid", gap: "6px 26px", gridTemplateColumns: ops?.topRec ? "1.2fr 1fr" : "1fr", overflow: "hidden", padding: "18px 22px", position: "relative" }}>
         <div style={{ alignItems: "center", display: "flex", gap: 10, gridColumn: "1 / -1" }}>
-          <span className="badge badge-live"><span style={{ animation: "orbit-console-pulse 1.6s infinite", background: "currentcolor", borderRadius: "var(--r-pill)", display: "inline-block", height: 6, width: 6 }} />{t({ en: "Happening now", zh: "正在进行" })}</span>
+          <span className="badge badge-live"><span style={{ animation: "orbit-console-pulse 1.6s infinite", background: "currentcolor", borderRadius: "var(--r-pill)", display: "inline-block", height: 6, width: 6 }} />{t({ ja: "開催中", en: "Happening now", zh: "正在进行" })}</span>
           <span style={{ color: "var(--ink-3-text)", fontSize: 12, fontWeight: 600 }}>{homeDateTimeRange(event, t)}</span>
         </div>
         <div style={{ minWidth: 0 }}>
           <h3 style={{ fontFamily: "var(--font)", fontSize: 21, fontWeight: 600, lineHeight: 1.3, margin: 0 }}>{event.name}</h3>
           <div style={{ color: "var(--ink-3-text)", fontSize: 12.5, marginTop: 3 }}>
-            {eventPlace(event, t)}{ops?.checkedIn ? ` · ${t({ en: "Checked in", zh: "已签到" })} ✓` : ""}
+            {eventPlace(event, t)}{ops?.checkedIn ? ` · ${t({ ja: "チェックイン済み", en: "Checked in", zh: "已签到" })} ✓` : ""}
           </div>
           {ops?.tableNumber ? (
             <div style={{ alignItems: "center", display: "flex", gap: 14, marginTop: 12 }}>
               <div style={{ color: "var(--accent-text)", fontFamily: "var(--font)", fontSize: 46, fontWeight: 600, lineHeight: 0.95 }}>
-                {ops.tableNumber}<span style={{ color: "var(--ink-2)", fontSize: 15, marginLeft: 2 }}>{t({ en: " table", zh: "号桌" })}</span>
+                {ops.tableNumber}<span style={{ color: "var(--ink-2)", fontSize: 15, marginLeft: 2 }}>{t({ ja: "番テーブル", en: " table", zh: "号桌" })}</span>
               </div>
               <div style={{ display: "grid", gap: 4 }}>
-                {ops.seat ? <span className="chip" style={{ width: "max-content" }}>{t({ en: `Seat ${ops.seat}`, zh: `座位 ${ops.seat}` })}</span> : null}
+                {ops.seat ? <span className="chip" style={{ width: "max-content" }}>{t({ ja: `座席 ${ops.seat}`, en: `Seat ${ops.seat}`, zh: `座位 ${ops.seat}` })}</span> : null}
                 {ops.theme ? <span style={{ color: "var(--ink-3-text)", fontSize: 12, maxWidth: 260 }}>{ops.theme}</span> : null}
               </div>
             </div>
           ) : null}
           <div style={{ alignItems: "center", display: "flex", gap: 12, marginTop: 14 }}>
-            <button className="btn btn-primary" onClick={() => enterEvent(event.id)} type="button">{t({ en: "Enter live event", zh: "进入现场" })}<Icon color="var(--on-image)" name="arrowUR" size={15} /></button>
+            <button className="btn btn-primary" onClick={() => enterEvent(event.id)} type="button">{t({ ja: "会場に入る", en: "Enter live event", zh: "进入现场" })}<Icon color="var(--on-image)" name="arrowUR" size={15} /></button>
             {ops ? (
               <span style={{ color: "var(--ink-3-text)", fontSize: 12 }}>
-                {ops.recCount > 0 ? t({ en: `${ops.recCount} matches`, zh: `${ops.recCount} 位推荐` }) : null}
+                {ops.recCount > 0 ? t({ ja: `おすすめ ${ops.recCount}人`, en: `${ops.recCount} matches`, zh: `${ops.recCount} 位推荐` }) : null}
                 {ops.recCount > 0 && ops.pendingRequests > 0 ? " · " : ""}
-                {ops.pendingRequests > 0 ? t({ en: `${ops.pendingRequests} pending`, zh: `${ops.pendingRequests} 条待处理` }) : null}
+                {ops.pendingRequests > 0 ? t({ ja: `対応待ち ${ops.pendingRequests}件`, en: `${ops.pendingRequests} pending`, zh: `${ops.pendingRequests} 条待处理` }) : null}
               </span>
             ) : null}
           </div>
         </div>
         {ops?.topRec ? (
           <div style={{ borderLeft: "1px dashed var(--line)", display: "grid", gap: 8, paddingLeft: 22 }}>
-            <span className="eyebrow" style={{ color: "var(--accent-text)" }}>{t({ en: "TOP MATCH TONIGHT", zh: "今晚最值得见" })}</span>
+            <span className="eyebrow" style={{ color: "var(--accent-text)" }}>{t({ ja: "今夜いちばん会いたい人", en: "TOP MATCH TONIGHT", zh: "今晚最值得见" })}</span>
             <div style={{ alignItems: "center", display: "flex", gap: 10 }}>
               <span className="avatar g-emerald" style={{ fontSize: 15, height: 40, width: 40 }}>{ops.topRec.name.slice(0, 1)}</span>
               <div style={{ minWidth: 0 }}>
                 <strong style={{ display: "block", fontSize: 14.5 }}>{ops.topRec.name}</strong>
                 <span style={{ color: "var(--ink-3-text)", display: "block", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ops.topRec.role}</span>
               </div>
-              <span style={{ background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent-text)", flexShrink: 0, fontSize: 11, fontWeight: 800, marginLeft: "auto", padding: "3px 9px" }}>{t({ en: `Match ${ops.topRec.score}`, zh: `匹配 ${ops.topRec.score}` })}</span>
+              <span style={{ background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent-text)", flexShrink: 0, fontSize: 11, fontWeight: 800, marginLeft: "auto", padding: "3px 9px" }}>{t({ ja: `マッチ ${ops.topRec.score}`, en: `Match ${ops.topRec.score}`, zh: `匹配 ${ops.topRec.score}` })}</span>
             </div>
             <p style={{ color: "var(--ink-2)", fontSize: 12.5, lineHeight: 1.6, margin: 0 }}>{ops.topRec.hint}</p>
           </div>
@@ -464,7 +465,7 @@ function homeDateTimeRange(event: OrbitLandingEventView, t: Translate): string {
   const ends = new Date(event.endsAt);
   if (!Number.isFinite(starts.getTime())) return "";
   const fmt = new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", ...tz });
-  return `${t({ en: "Today", zh: "今天" })} ${fmt.format(starts)}${Number.isFinite(ends.getTime()) ? ` – ${fmt.format(ends)}` : ""}`;
+  return `${t({ ja: "今日", en: "Today", zh: "今天" })} ${fmt.format(starts)}${Number.isFinite(ends.getTime()) ? ` – ${fmt.format(ends)}` : ""}`;
 }
 
 interface ConsoleReminder {
@@ -514,7 +515,7 @@ function ReminderRow({ alert, t }: { alert: ConsoleReminder; t: Translate }) {
           {[alert.contactName, alert.organization].filter(Boolean).join(" · ") || alert.dueLabel}
         </span>
       </span>
-      <span style={{ color: "var(--accent-text)", flexShrink: 0, fontSize: 12.5, fontWeight: 700 }}>{t({ en: "Open", zh: "处理" })}</span>
+      <span style={{ color: "var(--accent-text)", flexShrink: 0, fontSize: 12.5, fontWeight: 700 }}>{t({ ja: "対応する", en: "Open", zh: "处理" })}</span>
     </a>
   );
 }
@@ -526,50 +527,50 @@ function ConsoleReminderPanels({ language, t }: { language: OrbitLanguage; t: Tr
   return (
     <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))" }}>
       <section className="card" data-console-section="schedule" style={{ display: "grid", gap: 11, padding: "16px 18px" }}>
-        <span className="eyebrow">{t({ en: "SCHEDULE · PENDING", zh: "日程 · 待你处理" })}</span>
-        {reminders === null ? <span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>{t({ en: "Loading…", zh: "正在读取…" })}</span> : null}
+        <span className="eyebrow">{t({ ja: "予定 · 対応待ち", en: "SCHEDULE · PENDING", zh: "日程 · 待你处理" })}</span>
+        {reminders === null ? <span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>{t({ ja: "読み込み中…", en: "Loading…", zh: "正在读取…" })}</span> : null}
         {schedule.map((alert) => <ReminderRow alert={alert} key={alert.id} t={t} />)}
         {reminders !== null && schedule.length === 0 ? (
-          <span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>{t({ en: "No appointment needs you right now.", zh: "暂无需要处理的约谈。" })} <a href="/app/tasks?tab=calendar" onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate("/app/tasks?tab=calendar"); }} style={{ color: "var(--accent-text)", fontWeight: 700 }}>{t({ en: "Open schedule", zh: "打开日程" })}</a></span>
+          <span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>{t({ ja: "対応が必要な面談はありません。", en: "No appointment needs you right now.", zh: "暂无需要处理的约谈。" })} <a href="/app/tasks?tab=calendar" onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate("/app/tasks?tab=calendar"); }} style={{ color: "var(--accent-text)", fontWeight: 700 }}>{t({ ja: "予定を開く", en: "Open schedule", zh: "打开日程" })}</a></span>
         ) : null}
       </section>
       <section className="card" data-console-section="contacts" style={{ display: "grid", gap: 11, padding: "16px 18px" }}>
-        <span className="eyebrow">{t({ en: "WORTH FOLLOWING UP", zh: "值得联系" })}</span>
-        {reminders === null ? <span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>{t({ en: "Loading…", zh: "正在读取…" })}</span> : null}
+        <span className="eyebrow">{t({ ja: "連絡したい人", en: "WORTH FOLLOWING UP", zh: "值得联系" })}</span>
+        {reminders === null ? <span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>{t({ ja: "読み込み中…", en: "Loading…", zh: "正在读取…" })}</span> : null}
         {people.map((alert) => <ReminderRow alert={alert} key={alert.id} t={t} />)}
         {reminders !== null && people.length === 0 ? (
-          <span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>{t({ en: "Nothing waiting — contacts appear here after events.", zh: "暂无待跟进——活动之后的关系提醒会出现在这里。" })} <a href="/app/contacts" onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate("/contacts"); }} style={{ color: "var(--accent-text)", fontWeight: 700 }}>{t({ en: "Open contacts", zh: "打开人脉" })}</a></span>
+          <span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>{t({ ja: "フォロー待ちはありません。イベント後の連絡候補がここに表示されます。", en: "Nothing waiting — contacts appear here after events.", zh: "暂无待跟进——活动之后的关系提醒会出现在这里。" })} <a href="/app/contacts" onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate("/contacts"); }} style={{ color: "var(--accent-text)", fontWeight: 700 }}>{t({ ja: "人脈を開く", en: "Open contacts", zh: "打开人脉" })}</a></span>
         ) : null}
       </section>
     </div>
   );
 }
 
-const AGENT_DOCK_SUGGESTIONS: Record<string, readonly { en: string; zh: string }[]> = {
+const AGENT_DOCK_SUGGESTIONS: Record<string, readonly { en: string; ja: string; zh: string }[]> = {
   contacts: [
-    { en: "Who is worth following up this week?", zh: "本周谁值得我优先跟进？" },
-    { en: "Draft a follow-up note for my newest contact", zh: "帮我给最新的联系人起草一段跟进话术" },
+    { ja: "今週、優先してフォローすべきなのは誰？", en: "Who is worth following up this week?", zh: "本周谁值得我优先跟进？" },
+    { ja: "最新の連絡先へのフォロー文面を下書きして", en: "Draft a follow-up note for my newest contact", zh: "帮我给最新的联系人起草一段跟进话术" },
   ],
   contactsEmpty: [
-    { en: "How do I meet the right people fast?", zh: "怎么快速认识第一批对的人？" },
-    { en: "Find an event worth attending", zh: "帮我找一场值得去的活动" },
+    { ja: "最初に会うべき人と早く知り合うには？", en: "How do I meet the right people fast?", zh: "怎么快速认识第一批对的人？" },
+    { ja: "行く価値のあるイベントを探して", en: "Find an event worth attending", zh: "帮我找一场值得去的活动" },
   ],
   eventsLive: [
-    { en: "Who should I prioritize meeting tonight?", zh: "今晚我该优先见谁？" },
-    { en: "Why am I seated at my table?", zh: "我为什么被分到这一桌？" },
-    { en: "Prepare my opener for the top match", zh: "帮我准备和头号推荐对象的开场" },
+    { ja: "今夜は誰に優先して会うべき？", en: "Who should I prioritize meeting tonight?", zh: "今晚我该优先见谁？" },
+    { ja: "なぜこのテーブルになったの？", en: "Why am I seated at my table?", zh: "我为什么被分到这一桌？" },
+    { ja: "いちばんのおすすめ相手との話し出しを準備して", en: "Prepare my opener for the top match", zh: "帮我准备和头号推荐对象的开场" },
   ],
   eventsNone: [
-    { en: "Find an event worth attending", zh: "帮我找一场值得去的活动" },
-    { en: "What kind of events suit my goals?", zh: "什么样的活动适合我的目标？" },
+    { ja: "行く価値のあるイベントを探して", en: "Find an event worth attending", zh: "帮我找一场值得去的活动" },
+    { ja: "自分の目標に合うのはどんなイベント？", en: "What kind of events suit my goals?", zh: "什么样的活动适合我的目标？" },
   ],
   eventsUpcoming: [
-    { en: "What should I prepare before my next event?", zh: "下一场活动我该提前准备什么？" },
-    { en: "Who is worth meeting at my next event?", zh: "下一场活动有谁值得认识？" },
+    { ja: "次のイベントまでに何を準備すべき？", en: "What should I prepare before my next event?", zh: "下一场活动我该提前准备什么？" },
+    { ja: "次のイベントで会っておくべき人は？", en: "Who is worth meeting at my next event?", zh: "下一场活动有谁值得认识？" },
   ],
   schedule: [
-    { en: "Summarize my upcoming appointments", zh: "帮我梳理接下来的约谈安排" },
-    { en: "What should I confirm before tomorrow's meeting?", zh: "明天的约谈之前我该确认什么？" },
+    { ja: "これからの面談予定を整理して", en: "Summarize my upcoming appointments", zh: "帮我梳理接下来的约谈安排" },
+    { ja: "明日の面談の前に何を確認すべき？", en: "What should I confirm before tomorrow's meeting?", zh: "明天的约谈之前我该确认什么？" },
   ],
 };
 
@@ -627,13 +628,13 @@ function AgentDock({ state, t }: { state: AgentDockState; t: Translate }) {
       >
         <span aria-hidden style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent-text)", display: "grid", flexShrink: 0, fontSize: 14, height: 30, placeItems: "center", width: 30 }}>✦</span>
         <input
-          aria-label={t({ en: "Ask iOrbit", zh: "问 iOrbit" })}
+          aria-label={t({ ja: "iOrbit に聞く", en: "Ask iOrbit", zh: "问 iOrbit" })}
           onInput={(inputEvent) => setDraft(inputEvent.currentTarget.value)}
-          placeholder={t({ en: `Ask iOrbit: "${hint}"`, zh: `问问 iOrbit：「${hint}」` })}
+          placeholder={t({ ja: `iOrbit に聞く：「${hint}」`, en: `Ask iOrbit: "${hint}"`, zh: `问问 iOrbit：「${hint}」` })}
           style={{ background: "transparent", border: 0, color: "var(--ink)", flex: 1, fontSize: 14, minWidth: 0, outline: "none" }}
           value={draft}
         />
-        <button aria-label={t({ en: "Send", zh: "发送" })} className="btn btn-primary" style={{ borderRadius: "var(--r-pill)", height: 40, padding: 0, width: 40 }} type="submit">
+        <button aria-label={t({ ja: "送信", en: "Send", zh: "发送" })} className="btn btn-primary" style={{ borderRadius: "var(--r-pill)", height: 40, padding: 0, width: 40 }} type="submit">
           <Icon color="var(--on-image)" name="chevR" size={17} />
         </button>
       </form>
@@ -648,20 +649,20 @@ function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Tr
         <div style={{ alignItems: "center", display: "flex", gap: 20 }}>
           <span className={`avatar g-indigo`} style={{ fontSize: 30, height: 72, width: 72 }}>{viewModel.account.initial}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="eyebrow" style={{ marginBottom: 4 }}>{t({ en: "Good evening", zh: "晚上好" })}</div>
+            <div className="eyebrow" style={{ marginBottom: 4 }}>{t({ ja: "こんばんは", en: "Good evening", zh: "晚上好" })}</div>
             <h1 className="h-display" style={{ margin: 0 }}>{viewModel.account.fullName}</h1>
             <div style={{ color: "var(--ink-2)", fontSize: 15, marginTop: 4 }}>{subtitleFor(viewModel.account, language)}</div>
           </div>
           <div style={{ display: "flex", flexShrink: 0, gap: 10 }}>
-            <a className="btn btn-ghost" href="/app/profile" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/profile"); }}><Icon name="edit" size={16} />{t({ en: "Edit universal profile", zh: "编辑通用画像" })}</a>
-            <button className="btn btn-soft" onClick={() => { void signOutAndForget("/app"); }} type="button"><Icon name="logout" size={16} />{t({ en: "Sign out", zh: "退出登录" })}</button>
+            <a className="btn btn-ghost" href="/app/profile" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/profile"); }}><Icon name="edit" size={16} />{t({ ja: "共通プロフィールを編集", en: "Edit universal profile", zh: "编辑通用画像" })}</a>
+            <button className="btn btn-soft" onClick={() => { void signOutAndForget("/app"); }} type="button"><Icon name="logout" size={16} />{t({ ja: "ログアウト", en: "Sign out", zh: "退出登录" })}</button>
           </div>
         </div>
         <div style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 16, display: "flex", gap: 30, marginTop: 22, padding: "16px 22px" }}>
           {viewModel.stats.events + viewModel.stats.people + viewModel.stats.inProgress === 0 ? (
-            <span style={{ color: "var(--ink-2)", fontSize: 14 }}>{t({ en: "Register for an event and your contacts and follow-ups will build up here.", zh: "报名一场活动后，这里会开始积累你的名片夹和跟进中的关系。" })}</span>
+            <span style={{ color: "var(--ink-2)", fontSize: 14 }}>{t({ ja: "イベントに申し込むと、名刺とフォロー中の関係がここにたまっていきます。", en: "Register for an event and your contacts and follow-ups will build up here.", zh: "报名一场活动后，这里会开始积累你的名片夹和跟进中的关系。" })}</span>
           ) : (
-            ([[t({ en: "Events", zh: "活动" }), viewModel.stats.events], [t({ en: "Contacts", zh: "名片夹" }), viewModel.stats.people], [t({ en: "Following up", zh: "跟进中" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
+            ([[t({ ja: "イベント", en: "Events", zh: "活动" }), viewModel.stats.events], [t({ ja: "名刺", en: "Contacts", zh: "名片夹" }), viewModel.stats.people], [t({ ja: "フォロー中", en: "Following up", zh: "跟进中" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
               <div key={label}><div style={{ color: "var(--ink)", fontFamily: "var(--font)", fontSize: 26, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--ink-3-text)", fontSize: 13, marginTop: 1 }}>{label}</div></div>
             ))
           )}
@@ -674,8 +675,8 @@ function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Tr
         <div data-console-section="events" style={{ alignItems: "start", display: "grid", gap: 30, gridTemplateColumns: "1fr 320px", marginTop: 26 }}>
           <div>
             <div style={{ alignItems: "center", display: "flex", gap: 16, justifyContent: "space-between", marginBottom: 16 }}>
-              <h2 className="h-section" style={{ margin: 0 }}>{t({ en: "My events", zh: "我的活动" })}</h2>
-              <a className="btn btn-ghost btn-sm" href="/app/home/events" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/events"); }}>{t({ en: "All", zh: "全部" })}<Icon name="chevR" size={15} /></a>
+              <h2 className="h-section" style={{ margin: 0 }}>{t({ ja: "参加イベント", en: "My events", zh: "我的活动" })}</h2>
+              <a className="btn btn-ghost btn-sm" href="/app/home/events" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/events"); }}>{t({ ja: "すべて", en: "All", zh: "全部" })}<Icon name="chevR" size={15} /></a>
             </div>
             <MyEventsBlock events={viewModel.events} language={language} t={t} />
           </div>
@@ -693,7 +694,7 @@ function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Tr
           <ConsoleReminderPanels language={language} t={t} />
         </div>
         <details data-console-section="profile" style={{ marginTop: 26 }}>
-          <summary className="h-section" style={{ cursor: "pointer" }}>{t({ en: "My universal profile", zh: "我的通用画像" })}</summary>
+          <summary className="h-section" style={{ cursor: "pointer" }}>{t({ ja: "共通プロフィール", en: "My universal profile", zh: "我的通用画像" })}</summary>
           <ProfileSummary account={viewModel.account} language={language} t={t} />
         </details>
         <div style={{ height: 84 }} />
@@ -713,15 +714,15 @@ function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Tra
       <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 18px 36px" }}>
         <div style={{ alignItems: "center", display: "flex", gap: 14, padding: "8px 0 4px" }}>
           <span className="avatar g-indigo" style={{ fontSize: 21.84, height: 52, width: 52 }}>{viewModel.account.initial}</span>
-          <div style={{ flex: 1, minWidth: 0 }}><div style={{ color: "var(--ink-3-text)", fontSize: 12 }}>{t({ en: "Good evening", zh: "晚上好" })}</div><h1 className="h-title" style={{ color: "var(--ink)", margin: 0 }}>{viewModel.account.fullName}</h1><div style={{ color: "var(--ink-3-text)", fontSize: 12.5, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitleFor(viewModel.account, language)}</div></div>
-          <a aria-label={t({ en: "Edit", zh: "编辑" })} className="hit-44" href="/app/profile" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/profile"); }} style={{ alignItems: "center", background: "var(--surface-2)", borderRadius: "var(--r-pill)", color: "var(--ink-2)", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }}><Icon name="settings" size={19} /></a>
-          <button aria-label={t({ en: "Sign out", zh: "退出" })} className="hit-44" onClick={() => { void signOutAndForget("/app"); }} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: "var(--r-pill)", color: "var(--ink-2)", cursor: "pointer", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }} type="button"><Icon name="logout" size={18} /></button>
+          <div style={{ flex: 1, minWidth: 0 }}><div style={{ color: "var(--ink-3-text)", fontSize: 12 }}>{t({ ja: "こんばんは", en: "Good evening", zh: "晚上好" })}</div><h1 className="h-title" style={{ color: "var(--ink)", margin: 0 }}>{viewModel.account.fullName}</h1><div style={{ color: "var(--ink-3-text)", fontSize: 12.5, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitleFor(viewModel.account, language)}</div></div>
+          <a aria-label={t({ ja: "編集", en: "Edit", zh: "编辑" })} className="hit-44" href="/app/profile" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/profile"); }} style={{ alignItems: "center", background: "var(--surface-2)", borderRadius: "var(--r-pill)", color: "var(--ink-2)", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }}><Icon name="settings" size={19} /></a>
+          <button aria-label={t({ ja: "ログアウト", en: "Sign out", zh: "退出" })} className="hit-44" onClick={() => { void signOutAndForget("/app"); }} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: "var(--r-pill)", color: "var(--ink-2)", cursor: "pointer", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }} type="button"><Icon name="logout" size={18} /></button>
         </div>
         <div style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 16, display: "flex", justifyContent: "space-between", marginTop: 16, padding: "14px 16px" }}>
           {viewModel.stats.events + viewModel.stats.people + viewModel.stats.inProgress === 0 ? (
-            <span style={{ color: "var(--ink-2)", fontSize: 13 }}>{t({ en: "Register for an event and your contacts and follow-ups will build up here.", zh: "报名一场活动后，这里会开始积累你的名片夹和跟进中的关系。" })}</span>
+            <span style={{ color: "var(--ink-2)", fontSize: 13 }}>{t({ ja: "イベントに申し込むと、名刺とフォロー中の関係がここにたまっていきます。", en: "Register for an event and your contacts and follow-ups will build up here.", zh: "报名一场活动后，这里会开始积累你的名片夹和跟进中的关系。" })}</span>
           ) : (
-            ([[t({ en: "Events", zh: "活动" }), viewModel.stats.events], [t({ en: "Cards", zh: "名片" }), viewModel.stats.people], [t({ en: "Following up", zh: "跟进中" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
+            ([[t({ ja: "イベント", en: "Events", zh: "活动" }), viewModel.stats.events], [t({ ja: "名刺", en: "Cards", zh: "名片" }), viewModel.stats.people], [t({ ja: "フォロー中", en: "Following up", zh: "跟进中" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
               <div key={label} style={{ textAlign: "center" }}><div style={{ color: "var(--ink)", fontFamily: "var(--font)", fontSize: 22, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--ink-3-text)", fontSize: 12 }}>{label}</div></div>
             ))
           )}
@@ -742,8 +743,8 @@ function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Tra
         ) : null}
         <div data-console-section="events">
           <div style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between", margin: "24px 0 12px" }}>
-            <h2 className="h-section" style={{ margin: 0 }}>{t({ en: "My events", zh: "我的活动" })}</h2>
-            <a aria-label={t({ en: "View all events", zh: "查看全部活动" })} href="/app/home/events" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/events"); }} style={{ alignItems: "center", color: "var(--accent-text)", display: "flex", fontSize: 13, fontWeight: 600, gap: 2, textDecoration: "none" }}>{t({ en: "All", zh: "全部" })}<Icon name="chevR" size={14} /></a>
+            <h2 className="h-section" style={{ margin: 0 }}>{t({ ja: "参加イベント", en: "My events", zh: "我的活动" })}</h2>
+            <a aria-label={t({ ja: "すべてのイベントを見る", en: "View all events", zh: "查看全部活动" })} href="/app/home/events" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/events"); }} style={{ alignItems: "center", color: "var(--accent-text)", display: "flex", fontSize: 13, fontWeight: 600, gap: 2, textDecoration: "none" }}>{t({ ja: "すべて", en: "All", zh: "全部" })}<Icon name="chevR" size={14} /></a>
           </div>
           <MyEventsBlock events={viewModel.events} language={language} t={t} />
         </div>
@@ -751,7 +752,7 @@ function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Tra
           <ConsoleReminderPanels language={language} t={t} />
         </div>
         <details data-console-section="profile" style={{ marginTop: 22 }}>
-          <summary className="h-section" style={{ cursor: "pointer" }}>{t({ en: "My universal profile", zh: "我的通用画像" })}</summary>
+          <summary className="h-section" style={{ cursor: "pointer" }}>{t({ ja: "共通プロフィール", en: "My universal profile", zh: "我的通用画像" })}</summary>
           <ProfileSummary account={viewModel.account} language={language} t={t} />
         </details>
         <div style={{ height: 92 }} />
@@ -765,7 +766,7 @@ function EventsDesktop({ language, t, viewModel }: { language: OrbitLanguage; t:
   return (
     <div className="orbit-desktop-only">
       <div className="scroll" style={{ margin: "0 auto", maxWidth: 1180, padding: "40px 40px 90px" }}>
-        <div style={{ marginBottom: 22 }}><div className="eyebrow">MY EVENTS</div><h1 className="h-display" style={{ margin: "2px 0 0" }}>{t({ en: "My events", zh: "我的活动" })}</h1></div>
+        <div style={{ marginBottom: 22 }}><div className="eyebrow">{t({ ja: "イベント", en: "MY EVENTS", zh: "活动" })}</div><h1 className="h-display" style={{ margin: "2px 0 0" }}>{t({ ja: "参加イベント", en: "My events", zh: "我的活动" })}</h1></div>
         <AccountEventsBlock events={viewModel.events} language={language} t={t} />
       </div>
     </div>
@@ -776,7 +777,7 @@ function EventsMobile({ language, t, viewModel }: { language: OrbitLanguage; t: 
   return (
     <div className="orbit-mobile-only" style={{ background: "var(--bg)", flexDirection: "column", height: "100dvh", minHeight: "100dvh", overflow: "hidden", position: "relative" }}>
       <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 36px" }}>
-        <h1 className="h-display" style={{ margin: "6px 0 18px" }}>{t({ en: "My events", zh: "我的活动" })}</h1>
+        <h1 className="h-display" style={{ margin: "6px 0 18px" }}>{t({ ja: "参加イベント", en: "My events", zh: "我的活动" })}</h1>
         <AccountEventsBlock events={viewModel.events} language={language} t={t} />
       </div>
     </div>

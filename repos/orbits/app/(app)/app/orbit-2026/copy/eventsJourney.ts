@@ -469,7 +469,7 @@ export const eventsJourneyCopy = {
   vDismissRec: { ja: "おすすめから外す", zh: "从推荐中移除", en: "Remove from suggestions", kind: "button" },
   vNextOrder: { ja: "次に話すと良い順", zh: "接下来先聊谁", en: "Who to talk to next", kind: "cardTitle" },
   vList: { ja: "一覧", zh: "列表", en: "List", kind: "tab" },
-  vSearchPh: { ja: "名前・会社・テーマ", zh: "姓名・公司・主题", en: "Name, company, topic", kind: "placeholder" },
+  vSearchPh: { ja: "名前・会社・テーマ", zh: "姓名 · 公司 · 主题", en: "Name, company, topic", kind: "placeholder" },
   vAllN: { ja: "すべて {n}", zh: "全部{n}", en: "All {n}", kind: "chip" },
   vWantedN: { ja: "会いたい {n}", zh: "想见{n}", en: "Want to meet {n}", kind: "chip" },
   vExchangedN: { ja: "交換済み {n}", zh: "已交换{n}", en: "Swapped {n}", kind: "chip" },
@@ -640,6 +640,6 @@ export const eventsJourneyCopy = {
   kvReview: { ja: "審査", zh: "审核", en: "Screening", kind: "label" },
   kvReviewYes: { ja: "あり", zh: "需要", en: "Yes", kind: "label" },
   peoplePageTitle: { ja: "参加者 {n}名", zh: "参会者{n}人", en: "Attendees · {n}", kind: "pageTitle" },
-  peopleSearch: { ja: "名前・会社", zh: "姓名、公司", en: "Name or company", kind: "placeholder" },
+  peopleSearch: { ja: "名前・会社", zh: "姓名 · 公司", en: "Name or company", kind: "placeholder" },
   peopleNoMatch: { ja: "該当する人はいません", zh: "没有符合的人", en: "No one matches", kind: "label" },
 } satisfies OrbitCopyTable;

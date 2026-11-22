@@ -14,7 +14,7 @@ import {
   type IngestV2Field,
 } from "../ingest-v2/ingest-v2-route-view-model";
 import { isCardAutoImportEligible, isCardAutoMergeEligible, type CardAutoImportFacts } from "../../../../../shared/compute/card-auto-import";
-export type Copy = { zh: string; en: string };
+export type Copy = { ja: string; zh: string; en: string };
 
 export type ParseStage = "upload" | "recognize" | "review";
 
@@ -50,35 +50,35 @@ export function flaggedFields(card: IngestV2CardViewModel, draft: IngestV2CardDr
 
 // 徽标文案说人话：直接说哪个字段可能不对，不暴露「二次识别」这类管线术语。
 const REASON_COPY: Record<string, Copy> = {
-  IDENTITY_MISSING: { zh: "未识别到姓名", en: "No name found" },
-  INVALID_EMAIL: { zh: "邮箱格式不对", en: "Email looks off" },
-  INVALID_PHONE: { zh: "电话格式不对", en: "Phone looks off" },
-  MULTIPLE_OFFICES: { zh: "有多个办公地点", en: "Several offices" },
-  SHARED_CONTACT_VALUE: { zh: "号码归属不清", en: "Shared number" },
-  NATIVE_ROMANIZED_NAME_CONFLICT: { zh: "姓名写法不一", en: "Name spellings differ" },
-  ORG_SUFFIX_MISSING: { zh: "公司名可能少了后缀", en: "Company suffix missing?" },
+  IDENTITY_MISSING: { ja: "名前が読み取れません", zh: "未识别到姓名", en: "No name found" },
+  INVALID_EMAIL: { ja: "メールの形式が違います", zh: "邮箱格式不对", en: "Email looks off" },
+  INVALID_PHONE: { ja: "電話番号の形式が違います", zh: "电话格式不对", en: "Phone looks off" },
+  MULTIPLE_OFFICES: { ja: "拠点が複数あります", zh: "有多个办公地点", en: "Several offices" },
+  SHARED_CONTACT_VALUE: { ja: "番号の持ち主が不明", zh: "号码归属不清", en: "Shared number" },
+  NATIVE_ROMANIZED_NAME_CONFLICT: { ja: "名前の表記が揃っていません", zh: "姓名写法不一", en: "Name spellings differ" },
+  ORG_SUFFIX_MISSING: { ja: "社名の後ろが抜けているかも", zh: "公司名可能少了后缀", en: "Company suffix missing?" },
 };
 
 // 同一张名片读了两遍，某个字段两次读出来不一样 → 这个字段可能有字读错了。
 const MISREAD_COPY: Record<string, Copy> = {
-  contactPoints: { zh: "电话可能有字读错", en: "Phone may be misread" },
-  emails: { zh: "邮箱可能有字读错", en: "Email may be misread" },
-  organization: { zh: "公司名可能有字读错", en: "Company may be misread" },
+  contactPoints: { ja: "電話番号の読み違いかも", zh: "电话可能有字读错", en: "Phone may be misread" },
+  emails: { ja: "メールの読み違いかも", zh: "邮箱可能有字读错", en: "Email may be misread" },
+  organization: { ja: "社名の読み違いかも", zh: "公司名可能有字读错", en: "Company may be misread" },
 };
 
 /** 左侧照片面板上的「⚠ 原因」徽标：取最需要人看的那一条。 */
 export function cardReason(card: IngestV2CardViewModel, draft: IngestV2CardDraft, duplicate: boolean): Copy {
-  if (duplicate) return { zh: "可能重复", en: "Possible duplicate" };
-  if (card.hasTerminalFailure) return { zh: "识别失败", en: "Recognition failed" };
-  if (draft.conflictedFields.length) return { zh: "正反面不一致", en: "Sides disagree" };
-  if (industryNeedsReview(draft)) return { zh: "正反面行业不一致", en: "Sides disagree on industry" };
-  if (draft.seniority?.conflicted) return { zh: "正反面职级不一致", en: "Sides disagree on seniority" };
-  if (draft.region?.conflicted) return { zh: "正反面地区不一致", en: "Sides disagree on region" };
+  if (duplicate) return { ja: "重複の可能性", zh: "可能重复", en: "Possible duplicate" };
+  if (card.hasTerminalFailure) return { ja: "読み取り失敗", zh: "识别失败", en: "Recognition failed" };
+  if (draft.conflictedFields.length) return { ja: "表と裏で不一致", zh: "正反面不一致", en: "Sides disagree" };
+  if (industryNeedsReview(draft)) return { ja: "表と裏で業界が不一致", zh: "正反面行业不一致", en: "Sides disagree on industry" };
+  if (draft.seniority?.conflicted) return { ja: "表と裏で役職層が不一致", zh: "正反面职级不一致", en: "Sides disagree on seniority" };
+  if (draft.region?.conflicted) return { ja: "表と裏で地域が不一致", zh: "正反面地区不一致", en: "Sides disagree on region" };
   const issue = cardIssues(card)[0];
-  if (issue?.code === "VERIFICATION_MISMATCH") return MISREAD_COPY[issue.field] ?? { zh: "可能有字读错", en: "May be misread" };
-  if (issue) return REASON_COPY[issue.code] ?? { zh: "需要核对", en: "Needs a check" };
+  if (issue?.code === "VERIFICATION_MISMATCH") return MISREAD_COPY[issue.field] ?? { ja: "読み違いかも", zh: "可能有字读错", en: "May be misread" };
+  if (issue) return REASON_COPY[issue.code] ?? { ja: "要確認", zh: "需要核对", en: "Needs a check" };
   if (!draft.fields.displayName.trim()) return REASON_COPY.IDENTITY_MISSING!;
-  return { zh: "需要核对", en: "Needs a check" };
+  return { ja: "要確認", zh: "需要核对", en: "Needs a check" };
 }
 
 /** 正反面行业冲突且用户还没选定或清空：这张卡必须人工确认。 */
@@ -178,10 +178,10 @@ export interface FieldTag {
 }
 
 export function fieldTag(input: { edited: boolean; flagged: boolean; value: string }): FieldTag {
-  if (input.edited) return { kind: "edited", label: { zh: "✓ 已修改", en: "✓ Edited" } };
-  if (input.flagged) return { kind: "check", label: { zh: "请核对", en: "Please check" } };
-  if (!input.value.trim()) return { kind: "empty", label: { zh: "未识别到", en: "Not found" } };
-  return { kind: "ok", label: { zh: "已识别", en: "Recognized" } };
+  if (input.edited) return { kind: "edited", label: { ja: "✓ 修正済み", zh: "✓ 已修改", en: "✓ Edited" } };
+  if (input.flagged) return { kind: "check", label: { ja: "確認してください", zh: "请核对", en: "Please check" } };
+  if (!input.value.trim()) return { kind: "empty", label: { ja: "読み取れず", zh: "未识别到", en: "Not found" } };
+  return { kind: "ok", label: { ja: "読み取り済み", zh: "已识别", en: "Recognized" } };
 }
 
 export function parseStage(status: string | undefined): ParseStage {

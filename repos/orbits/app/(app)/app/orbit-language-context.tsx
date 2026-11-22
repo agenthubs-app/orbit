@@ -1,8 +1,9 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { withOrbitLanguageHref, orbitHtmlLang, type OrbitLanguage } from "./orbit-language-core";
+import { parseOrbitLanguage, withOrbitLanguageHref, orbitHtmlLang, type OrbitLanguage } from "./orbit-language-core";
 
 export type { OrbitLanguage } from "./orbit-language-core";
 
@@ -33,6 +34,21 @@ export function OrbitLanguageProvider({
   useEffect(() => {
     document.documentElement.lang = orbitHtmlLang(language);
   }, [language]);
+
+  // 布局（导航栏）只在整页加载时定语言，页面每次换页按 cookie 重新定。两者一旦不同（别的标签页切了语言、
+  // 带 `?lang=` 的链接），同一屏就会一半一种语言：换页后发现 cookie 与当前语言不同，就整页重载，让全屏同一种语言。
+  const pathname = usePathname();
+  useEffect(() => {
+    const cookie = typeof document === "undefined" ? "" : document.cookie;
+    if (typeof cookie !== "string") return;
+    const stored = parseOrbitLanguage(
+      cookie
+        .split("; ")
+        .find((item) => item.startsWith("orbit-lang="))
+        ?.slice("orbit-lang=".length),
+    );
+    if (stored && stored !== language) window.location.reload();
+  }, [pathname, language]);
 
   const value = useMemo<OrbitLanguageContextValue>(() => {
     // preserveHref 在生成站内链接时保留当前语言参数，避免页面切换后语言回退。

@@ -72,11 +72,11 @@ export function AgentMessageCopyButton({ text }: { text: string }) {
 
   return (
     <button
-      aria-label={t({ en: "Copy message", zh: "复制消息" })}
+      aria-label={t({ ja: "メッセージをコピー", en: "Copy message", zh: "复制消息" })}
       className="orbit-agent-message-copy"
       data-orbit-agent-message-copy={copied ? "copied" : "idle"}
       onClick={async () => setCopied(await copyAgentMessageText(text))}
-      title={copied ? t({ en: "Copied", zh: "已复制" }) : t({ en: "Copy", zh: "复制" })}
+      title={copied ? t({ ja: "コピーしました", en: "Copied", zh: "已复制" }) : t({ ja: "コピー", en: "Copy", zh: "复制" })}
       type="button"
       style={{
         alignItems: "center",
@@ -157,14 +157,14 @@ export function AgentHistoryDeleteDialog({
           id="orbit-agent-history-delete-title"
           style={{ color: "var(--ink)", fontSize: 22, margin: 0 }}
         >
-          {t({ en: "Delete this conversation?", zh: "删除这个对话？" })}
+          {t({ ja: "この会話を削除しますか？", en: "Delete this conversation?", zh: "删除这个对话？" })}
         </h2>
         <p
           id="orbit-agent-history-delete-description"
           style={{ color: "var(--ink-2)", fontSize: 14, lineHeight: 1.6, margin: 0 }}
         >
           {t({
-            en: `“${history.title}” and its messages will be permanently removed from your chat history. This cannot be undone.`,
+            ja: `「${history.title}」とそのメッセージは会話履歴から完全に削除されます。元に戻せません。`, en: `“${history.title}” and its messages will be permanently removed from your chat history. This cannot be undone.`,
             zh: `“${history.title}”及其中的消息将从你的对话历史中永久删除，且无法撤销。`,
           })}
         </p>
@@ -181,7 +181,7 @@ export function AgentHistoryDeleteDialog({
             onClick={onCancel}
             type="button"
           >
-            {t({ en: "Keep conversation", zh: "保留对话" })}
+            {t({ ja: "残す", en: "Keep conversation", zh: "保留对话" })}
           </button>
           <button
             aria-busy={pending}
@@ -192,8 +192,8 @@ export function AgentHistoryDeleteDialog({
             type="button"
           >
             {pending
-              ? t({ en: "Deleting…", zh: "正在删除…" })
-              : t({ en: "Delete conversation", zh: "删除对话" })}
+              ? t({ ja: "削除中…", en: "Deleting…", zh: "正在删除…" })
+              : t({ ja: "会話を削除", en: "Delete conversation", zh: "删除对话" })}
           </button>
         </div>
       </div>
@@ -208,17 +208,17 @@ export function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) =>
   return (
     <div className="new-empty">
       <span className="mk"><AgentStar size={22} /></span>
-      <h3>{t({ en: "What should iOrbit do for you?", zh: "你想让 iOrbit 做什么？" })}</h3>
+      <h3>{t({ ja: "iOrbit に何を頼みますか？", en: "What should iOrbit do for you?", zh: "你想让 iOrbit 做什么？" })}</h3>
       <p>
         {t({
-          en: "It can see your events, registration answers, contacts and appointments — just say the goal.",
+          ja: "イベント、申込時の回答、人脈、面談の予定まで見えています。目的をそのまま伝えてください。", en: "It can see your events, registration answers, contacts and appointments — just say the goal.",
           zh: "它能看到你的活动、报名答案、人脉和约谈——直接说目标就行。",
         })}
       </p>
       <div className="chips">
         {viewModel.suggests.map((suggest) => (
           <button className="chip" key={suggest.label} onClick={() => onPick(suggest.q)} type="button">
-            {agentSuggestLabel(suggest.label, language === "ja" ? "en" : language)}
+            {agentSuggestLabel(suggest.label, language)}
           </button>
         ))}
       </div>
@@ -228,7 +228,7 @@ export function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) =>
 
 function useAgentInlineDraft(input: {
   contactId?: string;
-  language: "en" | "zh";
+  language: "en" | "ja" | "zh";
   organization: string;
   recipientName: string;
 }) {
@@ -297,17 +297,17 @@ function AgentInlineDraftResult({
         <span className="w">
           <b>
             {timedOut
-              ? t({ en: "Generation timed out — no draft was written", zh: "生成超时，草稿没有写出来" })
-              : t({ en: "The draft could not be generated", zh: "草稿生成失败" })}
+              ? t({ ja: "時間切れのため、下書きは作成されませんでした", en: "Generation timed out — no draft was written", zh: "生成超时，草稿没有写出来" })
+              : t({ ja: "下書きを作成できませんでした", en: "The draft could not be generated", zh: "草稿生成失败" })}
           </b>
           <span>
             {timedOut
-              ? t({ en: "The model did not answer in time; retrying usually works. No external action was taken.", zh: "模型没有按时返回，通常重试一次即可。未执行任何外部动作。" })
-              : t({ en: "Try again. No external action was taken.", zh: "请重试。未执行任何外部动作。" })}
+              ? t({ ja: "モデルの応答が間に合いませんでした。たいていは再試行でうまくいきます。外部への操作は行っていません。", en: "The model did not answer in time; retrying usually works. No external action was taken.", zh: "模型没有按时返回，通常重试一次即可。未执行任何外部动作。" })
+              : t({ ja: "もう一度お試しください。外部への操作は行っていません。", en: "Try again. No external action was taken.", zh: "请重试。未执行任何外部动作。" })}
           </span>
         </span>
         <button className="btn btn-ghost btn-sm" onClick={() => void draft.generate(currentPurpose)} type="button">
-          {t({ en: "Retry", zh: "重试" })}
+          {t({ ja: "再試行", en: "Retry", zh: "重试" })}
         </button>
       </div>
     );
@@ -324,15 +324,15 @@ function AgentInlineDraftResult({
           <Icon name="check" size={13} />
         </span>
         <span className="w">
-          <b>{t({ en: `Moved to drafts${handedTime ? ` · ${handedTime}` : ""}`, zh: `已转入草稿箱${handedTime ? ` · ${handedTime}` : ""}` })}</b>
-          <span>{t({ en: "Nothing was sent — you confirm the send in your drafts.", zh: "尚未发送任何内容，发送由你在草稿箱确认。" })}</span>
+          <b>{t({ ja: `下書きに移しました${handedTime ? ` · ${handedTime}` : ""}`, en: `Moved to drafts${handedTime ? ` · ${handedTime}` : ""}`, zh: `已转入草稿箱${handedTime ? ` · ${handedTime}` : ""}` })}</b>
+          <span>{t({ ja: "まだ何も送っていません。送信は下書きからご自身で確定します。", en: "Nothing was sent — you confirm the send in your drafts.", zh: "尚未发送任何内容，发送由你在草稿箱确认。" })}</span>
         </span>
         <span className="draft-receipt-acts">
           <button className="linkish" onClick={() => openRelationshipInbox()} type="button">
-            {t({ en: "Open drafts", zh: "打开草稿箱" })}
+            {t({ ja: "下書きを開く", en: "Open drafts", zh: "打开草稿箱" })}
           </button>
           <button className="linkish" onClick={() => draft.reopen()} type="button">
-            {t({ en: "View draft", zh: "查看草稿" })}
+            {t({ ja: "下書きを見る", en: "View draft", zh: "查看草稿" })}
           </button>
         </span>
       </div>
@@ -349,26 +349,26 @@ function AgentInlineDraftResult({
     <div className="draft" data-agent-inline-draft>
       <p className="draft-label">
         {writes > 0
-          ? t({ en: `Draft · covers ${writes} item(s)`, zh: `草稿 · 写进 ${writes} 件事` })
-          : t({ en: "Editable follow-up draft", zh: "可编辑跟进草稿" })}
+          ? t({ ja: `下書き · ${writes} 件を反映`, en: `Draft · covers ${writes} item(s)`, zh: `草稿 · 写进 ${writes} 件事` })
+          : t({ ja: "編集できるフォローアップ下書き", en: "Editable follow-up draft", zh: "可编辑跟进草稿" })}
       </p>
       {stale ? (
         <p className="draft-stale">
-          <span>{t({ en: "Your selection changed after this draft was written.", zh: "生成这份草稿后你改过勾选。" })}</span>
+          <span>{t({ ja: "この下書きを作ったあとで選択が変わりました。", en: "Your selection changed after this draft was written.", zh: "生成这份草稿后你改过勾选。" })}</span>
           <button className="linkish" onClick={() => void draft.generate(currentPurpose)} type="button">
-            {t({ en: "Regenerate", zh: "重新生成" })}
+            {t({ ja: "作り直す", en: "Regenerate", zh: "重新生成" })}
           </button>
         </p>
       ) : null}
-      <input aria-label={t({ en: "Subject", zh: "主题" })} className="draft-subj" onChange={(event) => draft.setSubject(event.target.value)} value={draft.subject} />
-      <textarea aria-label={t({ en: "Message", zh: "正文" })} className="draft-body" onChange={(event) => draft.setBody(event.target.value)} rows={7} value={draft.body} />
+      <input aria-label={t({ ja: "件名", en: "Subject", zh: "主题" })} className="draft-subj" onChange={(event) => draft.setSubject(event.target.value)} value={draft.subject} />
+      <textarea aria-label={t({ ja: "本文", en: "Message", zh: "正文" })} className="draft-body" onChange={(event) => draft.setBody(event.target.value)} rows={7} value={draft.body} />
       <div className="draft-foot">
         {/* 「邮件止于草稿」是产品红线：承诺和主按钮同级同框，不做灰色脚注。 */}
         <p className="draft-guard">
           <Icon name="lock" size={13} />
           <span>
-            <b>{t({ en: "Draft only — not sent", zh: "仅草稿 · 未发送" })}</b>
-            {t({ en: "Orbit never sends on your behalf. You confirm the send in your drafts.", zh: "Orbit 不会代你发送，发送由你在草稿箱确认。" })}
+            <b>{t({ ja: "下書きのみ · 未送信", en: "Draft only — not sent", zh: "仅草稿 · 未发送" })}</b>
+            {t({ ja: "Orbit が代わりに送ることはありません。送信は下書きからご自身で確定します。", en: "Orbit never sends on your behalf. You confirm the send in your drafts.", zh: "Orbit 不会代你发送，发送由你在草稿箱确认。" })}
           </span>
         </p>
         <button
@@ -378,7 +378,7 @@ function AgentInlineDraftResult({
           type="button"
         >
           <Icon name={copied ? "check" : "copy"} size={14} />
-          {copied ? t({ en: "Copied", zh: "已复制" }) : t({ en: "Copy draft", zh: "复制草稿" })}
+          {copied ? t({ ja: "コピーしました", en: "Copied", zh: "已复制" }) : t({ ja: "下書きをコピー", en: "Copy draft", zh: "复制草稿" })}
         </button>
         <button
           className="btn btn-primary btn-sm"
@@ -396,7 +396,7 @@ function AgentInlineDraftResult({
           }}
           type="button"
         >
-          {t({ en: "Continue in drafts", zh: "继续到草稿箱" })}
+          {t({ ja: "下書きで続ける", en: "Continue in drafts", zh: "继续到草稿箱" })}
         </button>
       </div>
     </div>
@@ -406,7 +406,7 @@ function AgentInlineDraftResult({
 // 结果行：设计稿 .panel / .p-person 的紧凑列表（home-console-green.html 对话页）。
 // rank=0 是本次排序里的首选：只有它拿填充主按钮，其余降为次级按钮。一屏一个主 CTA
 // 既是设计规范（primary-action），也让「为什么这条排第一」在视觉上可读。
-function AgentPeopleRow({ item, language, navigate, rank, t }: { item: OrbitAgentPeopleResultView; language: "en" | "zh"; navigate: (href: string) => void; rank: number; t: Translate }) {
+function AgentPeopleRow({ item, language, navigate, rank, t }: { item: OrbitAgentPeopleResultView; language: "en" | "ja" | "zh"; navigate: (href: string) => void; rank: number; t: Translate }) {
   const connection = item.connection;
   // W0059：去详情前记下来路，详情关闭时后退回这里。
   const openContact = (href: string) => {
@@ -433,16 +433,16 @@ function AgentPeopleRow({ item, language, navigate, rank, t }: { item: OrbitAgen
       </span>
       <span className="p-acts">
         <button className="btn btn-ghost btn-sm" onClick={() => openContact(`/app/contacts/${encodeURIComponent(connection.id)}`)} type="button">
-          {t({ en: "View", zh: "查看" })}
+          {t({ ja: "見る", en: "View", zh: "查看" })}
         </button>
         {(() => {
           const drafted = draft.state === "ready" || draft.state === "handed";
           const label =
             draft.state === "generating"
-              ? t({ en: "Drafting…", zh: "正在生成…" })
+              ? t({ ja: "作成中…", en: "Drafting…", zh: "正在生成…" })
               : drafted
-                ? t({ en: "Redraft", zh: "重新起草" })
-                : t({ en: "Generate follow-up draft", zh: "生成跟进草稿" });
+                ? t({ ja: "書き直す", en: "Redraft", zh: "重新起草" })
+                : t({ ja: "フォローアップの下書きを作る", en: "Generate follow-up draft", zh: "生成跟进草稿" });
           return (
             <button
               className={rank === 0 && !drafted ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
@@ -467,16 +467,16 @@ function AgentPeopleRow({ item, language, navigate, rank, t }: { item: OrbitAgen
   );
 }
 
-function AgentEventRow({ item, language, navigate, t }: { item: OrbitAgentEventResultView; language: "en" | "zh"; navigate: (href: string) => void; t: Translate }) {
+function AgentEventRow({ item, language, navigate, t }: { item: OrbitAgentEventResultView; language: "en" | "ja" | "zh"; navigate: (href: string) => void; t: Translate }) {
   const event = item.event;
   const date = parseDate(event.startsAt);
-  const weekday = date ? new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo", weekday: "short" }).format(date) : "";
+  const weekday = date ? new Intl.DateTimeFormat(language === "en" ? "en-US" : language === "ja" ? "ja-JP" : "zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo", weekday: "short" }).format(date) : "";
   const dateLabel = date
     // 逐带归因 2026-09-23：`fmtDay` 在 zh-CN 下用 `day:"2-digit"`，Intl 自己就返回
     // 「18日」，后面再补一个「日」会渲染成「9月18日日 · 周五18:30」。与任务 2 修订轮 1
     // 在月历上改掉的 `18日`→`18` 是同一个坑（EXECUTION.md「合并前终审修正」⑤）。
     ? (language === "en" ? `${fmtMonth(date, language)} ${fmtDay(date, language)} · ${weekday}` : `${fmtMonth(date, language)}${fmtDay(date, language)} · ${weekday}`)
-    : t({ en: "Time TBD", zh: "时间待定" });
+    : t({ ja: "時間未定", en: "Time TBD", zh: "时间待定" });
 
   return (
     <div className="p-person">
@@ -487,7 +487,7 @@ function AgentEventRow({ item, language, navigate, t }: { item: OrbitAgentEventR
       </span>
       <span className="p-acts">
         <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/events/${event.code}`)} type="button">
-          {t({ en: "View", zh: "查看" })}
+          {t({ ja: "見る", en: "View", zh: "查看" })}
         </button>
       </span>
       {item.reason ? <span className="why">{item.reason}</span> : null}
@@ -498,7 +498,7 @@ function AgentEventRow({ item, language, navigate, t }: { item: OrbitAgentEventR
 
 
 
-function AgentTodoRow({ group, language, navigate, rank, t }: { group: AgentTodoGroup; language: "en" | "zh"; navigate: (href: string) => void; rank: number; t: Translate }) {
+function AgentTodoRow({ group, language, navigate, rank, t }: { group: AgentTodoGroup; language: "en" | "ja" | "zh"; navigate: (href: string) => void; rank: number; t: Translate }) {
   const promised = group.items.filter((item) => !isTodoLead(item));
   const leads = group.items.filter(isTodoLead);
   const [open, setOpen] = useState(false);
@@ -523,8 +523,8 @@ function AgentTodoRow({ group, language, navigate, rank, t }: { group: AgentTodo
   const dueAt = earliestTodoDueAt(group.items);
   const due = dueAt ? todoDueLabel(dueAt, language) : null;
   const summary = [
-    promised.length > 0 ? t({ en: `${promised.length} to-do(s)`, zh: `${promised.length} 件待办` }) : "",
-    leads.length > 0 ? t({ en: `${leads.length} lead(s)`, zh: `${leads.length} 条线索` }) : "",
+    promised.length > 0 ? t({ ja: `ToDo ${promised.length} 件`, en: `${promised.length} to-do(s)`, zh: `${promised.length} 件待办` }) : "",
+    leads.length > 0 ? t({ ja: `手がかり ${leads.length} 件`, en: `${leads.length} lead(s)`, zh: `${leads.length} 条线索` }) : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -571,7 +571,7 @@ function AgentTodoRow({ group, language, navigate, rank, t }: { group: AgentTodo
           <span className="todo-sub">{group.organization}</span>
           <button aria-controls={`agent-todo-detail-${rank}`} aria-expanded={open} className="todo-peek" onClick={() => setOpen((value) => !value)} type="button">
             <svg aria-hidden="true" className="todo-tri" fill="currentColor" height="9" viewBox="0 0 12 12" width="9"><path d="M4 2l5 4-5 4z" /></svg>
-            {open ? t({ en: "Collapse", zh: "收起" }) : summary}
+            {open ? t({ ja: "閉じる", en: "Collapse", zh: "收起" }) : summary}
           </button>
         </span>
         <span className="todo-side">
@@ -582,12 +582,12 @@ function AgentTodoRow({ group, language, navigate, rank, t }: { group: AgentTodo
             const drafted = draft.state === "ready" || draft.state === "handed";
             const label =
               draft.state === "generating"
-                ? t({ en: "Drafting…", zh: "正在生成…" })
+                ? t({ ja: "作成中…", en: "Drafting…", zh: "正在生成…" })
                 : drafted
-                  ? t({ en: "Redraft", zh: "重新起草" })
+                  ? t({ ja: "書き直す", en: "Redraft", zh: "重新起草" })
                   : chosen.length === 0
-                    ? t({ en: "Select items first", zh: "先选要写的事" })
-                    : t({ en: `Generate follow-up draft (${chosen.length})`, zh: `起草跟进 ${chosen.length} 件` });
+                    ? t({ ja: "先に項目を選んでください", en: "Select items first", zh: "先选要写的事" })
+                    : t({ ja: `フォローアップの下書きを作る（${chosen.length} 件）`, en: `Generate follow-up draft (${chosen.length})`, zh: `起草跟进 ${chosen.length} 件` });
             return (
               <button
                 className={rank === 0 && !drafted ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
@@ -608,12 +608,12 @@ function AgentTodoRow({ group, language, navigate, rank, t }: { group: AgentTodo
           {promised.length > 0 ? <ul className="todo-items">{promised.map(renderItem)}</ul> : null}
           {leads.length > 0 ? (
             <>
-              <p className="todo-zone">{t({ en: "Leads the system found", zh: "系统发现的线索" })}</p>
+              <p className="todo-zone">{t({ ja: "Orbit が見つけた手がかり", en: "Leads the system found", zh: "系统发现的线索" })}</p>
               <ul className="todo-items">{leads.map(renderItem)}</ul>
             </>
           ) : null}
           <button className="linkish todo-view" onClick={viewContact} type="button">
-            {t({ en: "View contact", zh: "查看联系人" })}
+            {t({ ja: "連絡先を見る", en: "View contact", zh: "查看联系人" })}
           </button>
         </div>
       ) : null}
@@ -623,7 +623,7 @@ function AgentTodoRow({ group, language, navigate, rank, t }: { group: AgentTodo
 }
 
 // 任务 3：`iorbit-0918/` 的新壳与新对话屏复用同一份实现（组件本体未改）。
-export function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; navigate: (href: string) => void; panel: AgentPanel; t: Translate }) {
+export function PanelCards({ language, navigate, panel, t }: { language: "en" | "ja" | "zh"; navigate: (href: string) => void; panel: AgentPanel; t: Translate }) {
   const [showAll, setShowAll] = useState(false);
   const initialLimit = panel.kind === "people" ? 3 : panel.items.length;
   const visibleItems = showAll ? panel.items : panel.items.slice(0, initialLimit);
@@ -640,7 +640,7 @@ export function PanelCards({ language, navigate, panel, t }: { language: "en" | 
       <div className="todo-stack" data-agent-todo-stack>
         <p className="todo-verdict">
           {t({
-            en: `${groups.length} contact(s) have follow-ups waiting on you.`,
+            ja: `フォローが必要な連絡先が ${groups.length} 人います。`, en: `${groups.length} contact(s) have follow-ups waiting on you.`,
             zh: `${groups.length} 位联系人有待跟进的事。`,
           })}
         </p>
@@ -653,8 +653,8 @@ export function PanelCards({ language, navigate, panel, t }: { language: "en" | 
 
   const meta =
     panel.kind === "people"
-      ? t({ en: `${panel.items.length} people`, zh: `${panel.items.length} 位` })
-      : t({ en: `${panel.items.length} events`, zh: `${panel.items.length} 场` });
+      ? t({ ja: `${panel.items.length} 人`, en: `${panel.items.length} people`, zh: `${panel.items.length} 位` })
+      : t({ ja: `${panel.items.length} 件`, en: `${panel.items.length} events`, zh: `${panel.items.length} 场` });
 
   return (
     <div className="panel">
@@ -680,8 +680,8 @@ export function PanelCards({ language, navigate, panel, t }: { language: "en" | 
             type="button"
           >
             {showAll
-              ? t({ en: "Show top 3 only", zh: "只看前三位" })
-              : t({ en: `View ${hiddenCount} more`, zh: `查看另外 ${hiddenCount} 位` })}
+              ? t({ ja: "上位 3 人だけ表示", en: "Show top 3 only", zh: "只看前三位" })
+              : t({ ja: `ほか ${hiddenCount} 人を見る`, en: `View ${hiddenCount} more`, zh: `查看另外 ${hiddenCount} 位` })}
           </button>
         ) : null}
       </div>
@@ -718,7 +718,7 @@ export function ThinkingIndicator({ t }: { t: Translate }) {
     <span aria-live="polite" className="thinking orbit-agent-thinking-indicator" style={{ display: "inline-grid", gap: 4 }}>
       <span><span className="sp" />{t(THINKING_PHASES[phase])}</span>
       <span style={{ color: "var(--ink-3-text)", fontSize: 12 }}>
-        {t({ en: "Usually under a minute · no external action is being taken", zh: "通常不到一分钟 · 当前不会执行任何外部动作" })}
+        {t({ ja: "通常 1 分以内 · 外部への操作は行いません", en: "Usually under a minute · no external action is being taken", zh: "通常不到一分钟 · 当前不会执行任何外部动作" })}
       </span>
     </span>
   );

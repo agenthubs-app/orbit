@@ -56,21 +56,21 @@ export function StepCards({
       })
     : t({
           en: "Your plan looks at who in your network can help. One card per photo — you can pick several at once.",
-          zh: "计划要分析你现有的人脉能帮上什么。一张照片一张名片，可以一次选多张。",
+          zh: "计划要分析你现有的人脉能帮上什么。一张照片一张名片，可以一次选多张。", ja: "人脈を追加し、3 人確認すると次へ進めます。",
         });
 
   return (
     <article className="sg-lead" data-start-module="1">
       <div className="sg-meta">
-        <span className="sg-pill">{t({ en: "Step 1 · Cards", zh: "第 1 步 · 名片" })}</span>
-        {done ? <span className="sg-pill sg-pill-good">{t({ en: "✓ Done", zh: "✓ 已完成" })}</span> : null}
+        <span className="sg-pill">{t({ en: "Step 1 · Cards", zh: "第 1 步 · 名片", ja: "ステップ 1 · 人脈" })}</span>
+        {done ? <span className="sg-pill sg-pill-good">{t({ en: "✓ Done", zh: "✓ 已完成", ja: "完了" })}</span> : null}
       </div>
       <h2>{t({ en: "Confirm 3 contacts", zh: "确认 3 位联系人", ja: "人脈を 3 人確認しましょう" })}</h2>
       <p className="sg-why">{why}</p>
       <div className="sg-slots" data-start-slots>
         {slots.map((slot, index) => (
           <div className="sg-slot" data-slot={slot.kind} key={`${slot.kind}-${index}`}>
-            {slot.kind === "confirmed" ? <i>{t({ en: "✓ Confirmed", zh: "✓ 已确认" })}</i> : null}
+            {slot.kind === "confirmed" ? <i>{t({ en: "✓ Confirmed", zh: "✓ 已确认", ja: "確認済み" })}</i> : null}
             {slot.name ? <b>{slot.name}</b> : null}
             {slot.sub ? <span>{slot.sub}</span> : null}
           </div>
@@ -78,7 +78,7 @@ export function StepCards({
       </div>
       <div className="sg-count" data-start-card-count>
         <span>
-          {t({ en: "Confirmed ", zh: "已确认 " })}
+          {t({ en: "Confirmed ", zh: "已确认 ", ja: "確認済み " })}
           <b>
             {confirmedShown} / {START_REQUIRED_CONTACTS}
           </b>
@@ -88,7 +88,7 @@ export function StepCards({
       <div className="sg-acts">
         {cardScanAvailable ? (
           <a className="btn sg-primary" data-start-scan href={START_SCAN_HREF}>
-            {t({ en: "Scan cards", zh: "扫名片" })}
+            {t({ en: "Scan cards", zh: "扫名片", ja: "名刺をスキャン" })}
           </a>
         ) : null}
         {/* W54-2：导入人脉常驻（CSV／vCard，W0053）；名片识别不可用（且这一步还没完成）时升为主按钮。 */}
@@ -97,11 +97,11 @@ export function StepCards({
           data-start-import
           href={START_IMPORT_HREF}
         >
-          {t({ en: "Import contacts", zh: "导入人脉" })}
+          {t({ en: "Import contacts", zh: "导入人脉", ja: "人脈を取り込む" })}
         </a>
         {done ? (
           <button className="btn sg-primary" data-start-next onClick={onNext} type="button">
-            {t({ en: "Next →", zh: "下一步 →" })}
+            {t({ en: "Next →", zh: "下一步 →", ja: "次へ" })}
           </button>
         ) : null}
       </div>

@@ -10,6 +10,7 @@ import {
   initialFor,
 } from "./orbit-event-view-helpers";
 import { sourceBoundedAgenda } from "./orbit-event-temporal";
+import type { OrbitLanguage } from "./orbit-language-core";
 
 export interface OrbitLandingEventView {
   about?: OrbitEventAboutSection[];
@@ -130,28 +131,48 @@ function mapPositionFor(event: EventDTO): [number, number] {
   return [36 + (hash % 29), 35 + ((hash >> 4) % 34)];
 }
 
-function agendaFor(event: EventDTO): OrbitEventAgendaItem[] {
+type LandingText = { ja: string; zh: string; en: string };
+
+function pickLandingText(text: LandingText, language: OrbitLanguage): string {
+  return text[language] ?? text.zh;
+}
+
+// Product-written fallback wording for events without their own agenda / fee
+// text. Trilingual; callers pass the page language (default zh keeps the old
+// behaviour for callers that have not been updated yet).
+const FEE_LABEL: LandingText = {
+  ja: "参加費は主催者の案内に従います",
+  zh: "费用以主办方说明为准",
+  en: "Fee as stated by the organizer",
+};
+
+function agendaFor(event: EventDTO, language: OrbitLanguage): OrbitEventAgendaItem[] {
+  const industry = eventIndustryFor(event, language);
+  const items: Array<{ label: LandingText; description: LandingText }> = [
+    {
+      label: { ja: "受付・プロフィール確認", zh: "签到与资料确认", en: "Check-in & profile check" },
+      description: { ja: "登録情報をもとに、本人確認と目的を確認します。", zh: "根据报名信息确认身份和参加目的。", en: "Confirm identity and goals from the registration record." },
+    },
+    {
+      label: { ja: "テーマ交流", zh: "主题交流", en: "Theme session" },
+      description: { ja: `${industry}をテーマにした交流。`, zh: `${industry} 相关的结构化交流。`, en: `Structured conversations around ${industry}.` },
+    },
+    {
+      label: { ja: "マッチング", zh: "关系匹配", en: "Matching" },
+      description: { ja: "登録情報から紹介相手と次のアクションを提案します。", zh: "根据报名信息推荐可以认识的人和下一步。", en: "Suggest introductions and next steps from the registration record." },
+    },
+    {
+      label: { ja: "フォローアップ", zh: "会后跟进", en: "Follow-up" },
+      description: { ja: "終了前に、フォローの担当と次の一手を確認します。", zh: "活动结束前确认后续负责人和下一步。", en: "Before closing, confirm who follows up and what comes next." },
+    },
+  ];
   return sourceBoundedAgenda({
     startsAt: event.startsAt,
     endsAt: event.endsAt ?? "",
-    items: [
-      {
-        label: "签到与资料确认",
-        description: "根据本地数据库中的来源资料确认身份和目标。",
-      },
-      {
-        label: "主题交流",
-        description: `${eventIndustryFor(event)} 相关的结构化交流。`,
-      },
-      {
-        label: "关系匹配",
-        description: "使用 source-backed 关系图生成推荐与后续动作。",
-      },
-      {
-        label: "会后跟进",
-        description: "活动结束前确认后续负责人和下一步。",
-      },
-    ],
+    items: items.map((item) => ({
+      label: pickLandingText(item.label, language),
+      description: pickLandingText(item.description, language),
+    })),
   });
 }
 
@@ -160,6 +181,7 @@ function eventView(
   event: EventDTO,
   index: number,
   capacity?: number | null,
+  language: OrbitLanguage = "zh",
 ): OrbitLandingEventView {
   const attendeeCount = catalogue.participantCounts[event.id] ?? null;
   const status = eventStatusFor(event, catalogue.generatedAt);
@@ -174,24 +196,24 @@ function eventView(
 
   return {
     address: event.location ?? "",
-    agenda: agendaFor(event),
+    agenda: agendaFor(event, language),
     brandColor: color,
     ...(capacity !== undefined ? { cap: capacity } : {}),
     code: catalogue.publicCodes?.[event.id] ?? eventCodeFor(event, index),
     descriptionZh: description,
     detailLogoUrl: logoUrl,
     endsAt: event.endsAt ?? event.startsAt,
-    feeLabel: "费用以主办方说明为准",
+    feeLabel: pickLandingText(FEE_LABEL, language),
     host: organizer,
     id: event.id,
-    industry: eventIndustryFor(event),
+    industry: eventIndustryFor(event, language),
     logoUrl,
     mapX,
     mapY,
     name: event.name,
     organizer,
     participantCount: attendeeCount,
-    place: event.location ?? "Local remote database",
+    place: event.location ?? "",
     startsAt: event.startsAt,
     stats: {
       attendees: [],
@@ -201,9 +223,9 @@ function eventView(
     },
     status,
     summaryZh: description,
-    tags: eventTagsFor(event),
+    tags: eventTagsFor(event, language),
     theme,
-    venue: event.location ?? "Local remote database",
+    venue: event.location ?? "",
     youRsvped: false,
   };
 }
@@ -219,6 +241,8 @@ export function getOrbitLandingEventView(input: {
   event: EventDTO;
   evidenceSummary: string;
   generatedAt: string;
+  /** Page language for the product-written agenda / fee fallback (default zh). */
+  language?: OrbitLanguage;
   participantCount: number | null;
   routeCode: string;
 }): OrbitLandingEventView {
@@ -233,11 +257,13 @@ export function getOrbitLandingEventView(input: {
     input.event,
     0,
     input.capacity,
+    input.language,
   );
 }
 
 export function getOrbitLandingViewModelFromCatalogue(
   catalogue: OrbitLandingCatalogueSnapshot,
+  language: OrbitLanguage = "zh",
 ): OrbitLandingViewModel {
   const events = [...catalogue.events].sort(
     (left, right) =>
@@ -248,7 +274,7 @@ export function getOrbitLandingViewModelFromCatalogue(
     account: { fullName: "Orbit" },
     connections: [],
     events: events.map((event, index) =>
-      eventView(catalogue, event, index),
+      eventView(catalogue, event, index, undefined, language),
     ),
   };
 }

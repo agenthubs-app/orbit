@@ -7,7 +7,6 @@ const I18N_SCRIPT_UUID = "3fb21a06-dad4-41b9-bec9-3ec6c3d10e46";
 const CJK = /[一-鿿　-〿＀-￯]/;
 
 let cachedDict: Map<string, string> | null = null;
-let cachedSortedKeys: string[] | null = null;
 
 function decodeJsString(raw: string): string {
   try {
@@ -39,7 +38,6 @@ function getOrbitDict(): Map<string, string> {
   }
 
   cachedDict = dict;
-  cachedSortedKeys = [...dict.keys()].sort((a, b) => b.length - a.length);
   return dict;
 }
 
@@ -54,10 +52,10 @@ function translateString(value: string, dict: Map<string, string>): string {
     .replace(/(\d+)\s*周前/g, "$1w ago")
     .replace(/刚刚/g, "just now");
 
-  for (const key of cachedSortedKeys ?? []) {
-    if (out.includes(key)) out = out.split(key).join(dict.get(key)!);
-  }
-  return out;
+  // 只翻译整句就是词典里某个固定标签的字符串。以前对任意字符串做子串替换，会把用户、主办方写的内容（姓名、活动名、
+  // 地点）替换成半中半英（「验收用: Finance科技Startup者之夜」「TK·丸之内」）；内容保持原文，界面文案应写成三语。
+  const exact = dict.get(out.trim());
+  return exact ?? out;
 }
 
 /**

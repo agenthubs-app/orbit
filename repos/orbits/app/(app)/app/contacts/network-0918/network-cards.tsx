@@ -31,46 +31,46 @@ export function NetworkCards({ view, openDetail }: { view: ContactCardRouteView;
       if (!controller.signal.aborted) setList(result);
     } catch (error) {
       if (!controller.signal.aborted && error instanceof ContactCardAccessRevoked) setAccessRevoked(true);
-      if (!controller.signal.aborted) setError(t({ zh: "读取失败，请重试或返回第一页。", en: "Could not load. Retry or return to the first page." }));
+      if (!controller.signal.aborted) setError(t({ ja: "読み込めませんでした。再試行するか最初のページに戻ってください。", zh: "读取失败，请重试或返回第一页。", en: "Could not load. Retry or return to the first page." }));
     } finally { if (!controller.signal.aborted) setBusy(false); }
   }
   const modal = openDetail ? follow
     ? <NetworkFollowModal contact={openDetail.contact} onClose={() => setFollow(false)} onSaved={() => window.location.reload()} />
     : <NetworkDetailModal contact={openDetail.contact} closeHref={openDetail.closeHref} onFollow={() => setFollow(true)} extra={openDetail.extra} insight={openDetail.insight} planContext={openDetail.planContext} /> : null;
-  if (accessRevoked) return <NetworkShell screen="all"><p role="alert">{t({ zh: "访问权限已变化，请重新加载页面。", en: "Access changed. Reload this page." })}</p><a href="/app/contacts">{t({ zh: "重新加载", en: "Reload" })}</a></NetworkShell>;
+  if (accessRevoked) return <NetworkShell screen="all"><p role="alert">{t({ ja: "アクセス権が変わりました。ページを再読み込みしてください。", zh: "访问权限已变化，请重新加载页面。", en: "Access changed. Reload this page." })}</p><a href="/app/contacts">{t({ ja: "再読み込み", zh: "重新加载", en: "Reload" })}</a></NetworkShell>;
   return <NetworkShell screen="all" modal={modal}>
     <div className="nw-card">
-      <div className="nw-card-head"><h2 className="nw-h2">{t({ zh: "所有人脉", en: "All contacts" })}</h2>
-        <span className="nw-card-hint">{t({ zh: `匹配 ${view.total} 位联系人 · 当前页 ${list.items.length} 位`, en: `${view.total} matching contacts · ${list.items.length} on this page` })}</span></div>
+      <div className="nw-card-head"><h2 className="nw-h2">{t({ ja: "すべての人脈", zh: "所有人脉", en: "All contacts" })}</h2>
+        <span className="nw-card-hint">{t({ ja: `一致 ${view.total} 人 · このページ ${list.items.length} 人`, zh: `匹配 ${view.total} 位联系人 · 当前页 ${list.items.length} 位`, en: `${view.total} matching contacts · ${list.items.length} on this page` })}</span></div>
       <form className="nw-filters" action="/app/contacts" method="get">
-        <input className="nw-search" name="query" defaultValue={view.query} aria-label={t({ zh: "搜索联系人", en: "Search contacts" })} placeholder={t({ zh: "搜索姓名、公司、职位或关键词…", en: "Search name, company, title or keyword…" })} />
-        <select name="sourceGroup" defaultValue={view.source} aria-label={t({ zh: "来源", en: "Source" })}>{NETWORK_SOURCES.map(source => <option key={source} value={source}>{t(SOURCE_LABEL[source])}</option>)}</select>
-        <select name="tier" defaultValue={view.tier} aria-label={t({ zh: "关系档位", en: "Tier" })} data-network-tier-filter>
-          <option value="all">{t({ zh: "全部档位", en: "All tiers" })}</option>
+        <input className="nw-search" name="query" defaultValue={view.query} aria-label={t({ ja: "連絡先を検索", zh: "搜索联系人", en: "Search contacts" })} placeholder={t({ ja: "名前・会社・役職・キーワードで検索…", zh: "搜索姓名、公司、职位或关键词…", en: "Search name, company, title or keyword…" })} />
+        <select name="sourceGroup" defaultValue={view.source} aria-label={t({ ja: "出どころ", zh: "来源", en: "Source" })}>{NETWORK_SOURCES.map(source => <option key={source} value={source}>{t(SOURCE_LABEL[source])}</option>)}</select>
+        <select name="tier" defaultValue={view.tier} aria-label={t({ ja: "関係の段階", zh: "关系档位", en: "Tier" })} data-network-tier-filter>
+          <option value="all">{t({ ja: "すべての段階", zh: "全部档位", en: "All tiers" })}</option>
           {NETWORK_TIER_GROUPS.map(tier => <option key={tier} value={tier}>{t(TIER_LABEL[tier])}</option>)}
         </select>
-        <button type="submit" className="btn">{t({ zh: "搜索", en: "Search" })}</button>
+        <button type="submit" className="btn">{t({ ja: "検索", zh: "搜索", en: "Search" })}</button>
       </form>
       <div className="nw-source-grid">{NETWORK_SOURCES.map(source => <a key={source} className="btn nw-source-card" href={listHref(source)} style={{ background: source === view.source ? "#ECEEFB" : "#FFFFFF" }}>
         <span className="nw-source-icon">{SOURCE_ICON[source]}</span><span className="nw-source-copy"><span className="nw-source-label">{t(SOURCE_LABEL[source])}</span><strong className="nw-source-n">{view.counts[source]}</strong></span>
       </a>)}</div>
-      <div className="nw-table"><div className="nw-thead"><span></span><span></span><span>{t({ zh: "姓名", en: "Name" })}</span><span>{t({ zh: "公司与职位", en: "Company & title" })}</span><span>{t({ zh: "来源", en: "Source" })}</span><span>{t({ zh: "关系档位", en: "Tier" })}</span><span></span><span>{list.insightsHidden ? null : t({ zh: "洞察", en: "Insight" })}</span><span></span></div>
+      <div className="nw-table"><div className="nw-thead"><span></span><span></span><span>{t({ ja: "名前", zh: "姓名", en: "Name" })}</span><span>{t({ ja: "会社・役職", zh: "公司与职位", en: "Company & title" })}</span><span>{t({ ja: "出どころ", zh: "来源", en: "Source" })}</span><span>{t({ ja: "関係の段階", zh: "关系档位", en: "Tier" })}</span><span></span><span>{list.insightsHidden ? null : t({ ja: "インサイト", zh: "洞察", en: "Insight" })}</span><span></span></div>
         {list.items.map(p => <a key={p.id} className="btn nw-row" href={p.href}><span></span><NetworkAvatar initial={p.initial} /><strong className="nw-row-name">{p.name}</strong>
           <span className="nw-row-org"><span className="nw-row-org-1">{p.org}</span><span className="nw-row-org-2">{p.title}</span></span>
           <span><NetworkChip bg="#ECEEFB" fg="#2E3270">{t(SOURCE_LABEL[p.source])}</NetworkChip></span>
           {/* W0047：档位点 + 档位（只由关系时间线推出，待唤醒优先）；没有缓存行显示「未评估」。 */}
           <span data-network-tier={p.tier ?? "unscored"}>{p.tier
             ? <NetworkChip bg={TIER_CHIP[p.tier].bg} fg={TIER_CHIP[p.tier].fg}><span className="nw-tier-dot" aria-hidden="true" style={{ background: TIER_STYLE[p.tier].fg }}></span>{t(TIER_LABEL[p.tier])}</NetworkChip>
-            : <NetworkChip bg="#F7F7FD" fg="#6B6F99">{t({ zh: "未评估", en: "Not scored" })}</NetworkChip>}</span>
+            : <NetworkChip bg="#F7F7FD" fg="#6B6F99">{t({ ja: "未評価", zh: "未评估", en: "Not scored" })}</NetworkChip>}</span>
           <span></span>{/* W0051：洞察一句（「和你目标的关系」，≤60 字）；还没有洞察显示「暂无洞察」。W0054：不足 3 位时整列隐藏。 */}
           {list.insightsHidden
             ? <span className="nw-row-next" data-network-insight="hidden"></span>
-            : <span className="nw-row-next" data-network-insight={p.insight ? "ready" : "none"}>{p.insight ? t(p.insight) : t({ zh: "暂无洞察", en: "No insight yet" })}</span>}
+            : <span className="nw-row-next" data-network-insight={p.insight ? "ready" : "none"}>{p.insight ? t(p.insight) : t({ ja: "インサイトはまだありません", zh: "暂无洞察", en: "No insight yet" })}</span>}
           <span className="nw-row-arrow">›</span></a>)}
-        {!list.items.length && <div className="nw-empty">{t({ zh: "没有匹配的联系人", en: "No matching contacts" })}</div>}
+        {!list.items.length && <div className="nw-empty">{t({ ja: "一致する連絡先はありません", zh: "没有匹配的联系人", en: "No matching contacts" })}</div>}
       </div>
-      <div className="nw-filters"><a href={listHref(view.source)}>{t({ zh: "返回第一页", en: "First page" })}</a>
-        {list.nextPath && <button className="btn" type="button" disabled={busy} onClick={() => void next()}>{t({ zh: busy ? "读取中…" : "下一页", en: busy ? "Loading…" : "Next page" })}</button>}
+      <div className="nw-filters"><a href={listHref(view.source)}>{t({ ja: "最初のページへ", zh: "返回第一页", en: "First page" })}</a>
+        {list.nextPath && <button className="btn" type="button" disabled={busy} onClick={() => void next()}>{t({ ja: busy ? "読み込み中…" : "次のページ", zh: busy ? "读取中…" : "下一页", en: busy ? "Loading…" : "Next page" })}</button>}
         {error && <span role="alert">{error}</span>}</div>
     </div>
   </NetworkShell>;

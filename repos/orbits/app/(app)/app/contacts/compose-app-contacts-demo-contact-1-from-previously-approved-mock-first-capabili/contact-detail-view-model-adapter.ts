@@ -1,5 +1,6 @@
 import { industryLabel, isIndustryIdCode, secondaryIndustryLabel } from "../../../../../shared/domain/industries";
 import { hasPendingInitialization } from "../contact-relationship-initialization-view-model";
+import { PIPELINE_STATUS_LABELS, pipelineStatusOptions } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
 import { CONTACT_DETAIL_TAG_OPTIONS } from "../../../../../features/contacts/detail-contract";
 import type {
   ContactDetailSourceReference,
@@ -62,7 +63,17 @@ function sourceFor(
   return source.type === "manual" ? "manual" : "exchange";
 }
 
-const relationshipTokenLabels: Record<"en" | "zh", Record<string, string>> = {
+const relationshipTokenLabels: Record<OrbitLanguage, Record<string, string>> = {
+  ja: {
+    commercial_opportunity: "商談機会",
+    community_context: "コミュニティの文脈",
+    cross_border_ecommerce: "越境 EC",
+    knowledge_exchange: "知見の交換",
+    referral_path: "紹介ルート",
+    retail_omnichannel: "小売のオムニチャネル",
+    strategic_fit: "戦略的な相性",
+    venture_capital: "投資の関心",
+  },
   en: {
     commercial_opportunity: "commercial opportunity",
     community_context: "community context",
@@ -85,7 +96,85 @@ const relationshipTokenLabels: Record<"en" | "zh", Record<string, string>> = {
   },
 };
 
-const relationshipPhraseLabels: Record<"en" | "zh", readonly [RegExp, string][]> = {
+const relationshipPhraseLabels: Record<OrbitLanguage, readonly [RegExp, string][]> = {
+  // 与 zh 同一组规则、同样的先后顺序（整句模板在前，长短语先于短语，公司名最后）。
+  ja: [
+    [/(.+?) has a concrete current-user relationship record from Confirmed offline meeting note for .+?\.?$/gi, "$1 との対面の記録が確認されています。"],
+    [/(.+?) has a concrete current-user relationship record from Direct QR scan for .+?\.?$/gi, "現地の QR スキャンで $1 とつながりました。"],
+    [/(.+?) has a concrete current-user relationship record from Warm referral for .+?\.?$/gi, "紹介を通じて $1 とつながりました。"],
+    [/(.+?) has a concrete current-user relationship record from Business card exchange for .+?\.?$/gi, "$1 と名刺を交換し、つながりを記録しました。"],
+    [/(.+?) has a concrete current-user relationship record from .+?\.?$/gi, "$1 とのつながりが記録されています。"],
+    [/AI workflow PoC buyer in Japanese SMB manufacturing/gi, "日本の中小製造業で AI 業務フローの PoC を導入する買い手"],
+    [/trusted tax and incorporation advisor for Japan entry/gi, "日本進出のための信頼できる税務・会社設立アドバイザー"],
+    [/Japan market entry advisor for China SaaS sales/gi, "中国 SaaS の日本市場参入アドバイザー"],
+    [/hands-on D2C cross-border logistics and payments/gi, "D2C の越境物流・決済の実務"],
+    [/event sponsor with Chinese business-community reach/gi, "華人ビジネスコミュニティに届くイベントスポンサー"],
+    [/seed investor screening and founder feedback/gi, "シード投資家の選定と創業者へのフィードバック"],
+    [/manufacturing DX requirements and buyer feedback/gi, "製造業 DX のニーズと買い手の声"],
+    [/bilingual Xiaohongshu inbound campaign partner/gi, "バイリンガルの小紅書集客パートナー"],
+    [/restaurant reservation CRM integration pilot/gi, "飲食店予約 CRM 連携の試験導入"],
+    [/semiconductor supply-chain sourcing lead/gi, "半導体サプライチェーンの調達担当"],
+    [/investor warm intro for seed fundraising/gi, "シード資金調達のための投資家紹介"],
+    [/retail live[- ]commerce distribution partner/gi, "小売ライブコマースの販売パートナー"],
+    [/Mandarin Japanese community marketing channel/gi, "中国語・日本語のコミュニティマーケティング窓口"],
+    [/partner channel introductions in Kansai/gi, "関西での販路パートナーの紹介"],
+    [/D2C brand overseas-expansion partner/gi, "D2C ブランドの海外展開パートナー"],
+    [/cross-border ecommerce launch playbook/gi, "越境 EC 立ち上げの手引き"],
+    [/ask the introducer for permission before creating a contact/gi, "連絡先を作る前に紹介者の了承を得る"],
+    [/review source evidence before follow-up/gi, "フォローの前に出どころを確認"],
+    [/Tokyo restaurant operator test site/gi, "東京の飲食店の試験導入先"],
+    [/follow-up message localization/gi, "フォローメッセージの多言語化"],
+    [/bilingual sales deck review/gi, "バイリンガル営業資料のレビュー"],
+    [/tourism and hospitality/gi, "観光・ホスピタリティ"],
+    [/restaurant_inbound/gi, "飲食インバウンド"],
+    [/legal_accounting/gi, "法務・会計"],
+    [/venture_capital/gi, "ベンチャーキャピタル"],
+    [/ai_saas/gi, "AI・SaaS"],
+    [/Confirmed offline meeting note for\s*/gi, "対面で確認："],
+    [/Warm referral for\s*/gi, "紹介："],
+    [/Business card scan/gi, "名刺スキャン"],
+    [/Business card exchange for\s*/gi, "名刺交換："],
+    [/QR scan for\s*/gi, "QR スキャン："],
+    [/QR scan at\s*/gi, "QR スキャン："],
+    [/Direct QR scan for\s*/gi, "直接 QR スキャン："],
+    [/commercial opportunity/gi, "商談機会"],
+    [/relationship context for\s*/gi, "関係の背景："],
+    [/investment interest/gi, "投資の関心"],
+    [/community context/gi, "コミュニティの文脈"],
+    [/referral path/gi, "紹介ルート"],
+    [/investor warm intro for seed fundraising/gi, "シード資金調達のための投資家紹介"],
+    [/event table matching and sponsor visibility/gi, "イベントのテーブルマッチングとスポンサー露出"],
+    [/event table matching/gi, "イベントのテーブルマッチング"],
+    [/next action/gi, "次のアクション"],
+    [/Store Owner/gi, "店舗オーナー"],
+    [/Community Organizer/gi, "コミュニティ主催者"],
+    [/Investor Partner/gi, "投資パートナー"],
+    [/DX Consultant/gi, "DX コンサルタント"],
+    [/Marketing Lead/gi, "マーケティング責任者"],
+    [/Product Manager/gi, "プロダクトマネージャー"],
+    [/Sales Director/gi, "営業ディレクター"],
+    [/Founder CEO/gi, "創業者 CEO"],
+    [/Founder/gi, "創業者"],
+    [/review evidence before follow-up/gi, "フォローの前に根拠を確認"],
+    // 公司名与 orbit-contacts-presentation.ts 的日文写法一致。
+    [/North Star /gi, "ノーススター"],
+    [/Morning Light /gi, "モーニングライト"],
+    [/Blue Harbor /gi, "ブルーハーバー"],
+    [/Bamboo Grove /gi, "バンブーグローブ"],
+    [/Red Bridge /gi, "レッドブリッジ"],
+    [/Aoba /gi, "青葉"],
+    [/Yokohama /gi, "横浜"],
+    [/Kansai /gi, "関西"],
+    [/Umeda /gi, "梅田"],
+    [/Cedar /gi, "シダー"],
+    [/Nanshan /gi, "南山"],
+    [/Ginza /gi, "銀座"],
+    [/Foods\b/g, "フーズ"],
+    [/Technologies\b/g, "テクノロジー"],
+    [/Partners\b/g, "パートナーズ"],
+    [/Capital\b/g, "キャピタル"],
+    [/Community\b/g, "コミュニティ"],
+  ],
   en: [
     [/relationship context for\s*/gi, "Relationship context: "],
     [/investment interest/gi, "investment interest"],
@@ -183,7 +272,18 @@ const relationshipPhraseLabels: Record<"en" | "zh", readonly [RegExp, string][]>
 };
 
 // 已知系统标签显示可读名称；用户自定义文字保留原样，不拆前缀或改写标点。
-const tagValueLabels: Record<string, Record<string, string>> = {
+const tagValueLabels: Record<OrbitLanguage, Record<string, string>> = {
+  ja: {
+    "warm-follow-up": "温度の高いフォロー",
+    nurture: "関係を育てる",
+    "climate-founders-dinner": "気候テック創業者ディナー",
+    "storage-pilots": "蓄電の実証",
+    community: "コミュニティ",
+    "venture-ecosystem": "スタートアップ・エコシステム",
+    "business-card": "名刺",
+    "external-import": "外部から取り込み",
+    "event-import": "イベントから取り込み",
+  },
   en: {
     "warm-follow-up": "warm follow-up",
     nurture: "nurture",
@@ -212,7 +312,7 @@ export function tagLabel(tag: string, language: OrbitLanguage): string {
   if (!(CONTACT_DETAIL_TAG_OPTIONS as readonly string[]).includes(tag)) return tag;
   const value = tag.includes(":") ? tag.slice(tag.indexOf(":") + 1) : tag;
 
-  return tagValueLabels[language === "ja" ? "en" : language]?.[value] ?? value.replace(/[-_]+/g, " ");
+  return tagValueLabels[language]?.[value] ?? value.replace(/[-_]+/g, " ");
 }
 
 function scriptCounts(text: string): { han: number; kana: number; latin: number } {
@@ -254,7 +354,7 @@ function displaySegment(value: string, language: OrbitLanguage): string {
 }
 
 export function displayText(value: string, language: OrbitLanguage): string {
-  const langKey = language === "ja" ? "en" : language;
+  const langKey = language;
   const localizedValue = displaySegment(value, language);
   const withoutRawTokens = localizedValue.replace(/\b[a-z][a-z0-9]+(?:_[a-z0-9]+)+\b/g, (token) =>
     relationshipTokenLabels[langKey][token] ?? token.replace(/[_-]+/g, " "),
@@ -271,11 +371,11 @@ export function displayText(value: string, language: OrbitLanguage): string {
     return withLabels;
   }
 
-  if (language === "zh") {
-    return `${matchTemplate[1]} 与「${matchTemplate[2]}」匹配，依据：${matchTemplate[3]}。`;
-  }
-
-  return `${matchTemplate[1]} matches ${matchTemplate[2]} through ${matchTemplate[3]}.`;
+  return ({
+    ja: `${matchTemplate[1]} は「${matchTemplate[2]}」に合います。根拠：${matchTemplate[3]}。`,
+    zh: `${matchTemplate[1]} 与「${matchTemplate[2]}」匹配，依据：${matchTemplate[3]}。`,
+    en: `${matchTemplate[1]} matches ${matchTemplate[2]} through ${matchTemplate[3]}.`,
+  })[language];
 }
 
 function displayTexts(values: readonly string[], language: OrbitLanguage): string[] {
@@ -467,7 +567,7 @@ export function contactDetailRouteToOrbitContactsViewModel(
     relationshipStatus: model.contact.status,
     seeking: displayTexts(model.contact.publicProfile.seeking, language).join(", "),
     source: sourceFor(model.contact.source),
-    stage: pending ? (language === "zh" ? "待设置关系" : "Pending initialization") : model.contact.status,
+    stage: pending ? PIPELINE_STATUS_LABELS.pending_initialization[language] : model.contact.status,
     title: displayText(model.contact.role, language),
     wechat: model.contact.wechatId ?? "",
     strength:
@@ -514,12 +614,6 @@ export function contactDetailRouteToOrbitContactsViewModel(
         ]
       : [],
     intros: [],
-    pipelineStatuses: [
-      ...(pending ? [{ value: "pending_initialization" as const, label: language === "zh" ? "待设置关系" : "Pending initialization" }] : []),
-      { value: "to_contact", label: "待联系" },
-      { value: "in_progress", label: "在推进" },
-      { value: "partnered", label: "已合作" },
-      { value: "archived", label: "已归档" },
-    ],
+    pipelineStatuses: pipelineStatusOptions(pending, language),
   };
 }

@@ -23,26 +23,27 @@ import type { OrbitHomeViewModel } from "../orbit-home-route-view-model";
 import type { OrbitLandingEventView } from "../orbit-landing-route-view-model";
 import { DEMO_CLOCK_TIME, demoNow } from "./demo-clock";
 
-type Lang = "en" | "zh";
-type Copy = { en: string; zh: string };
+type Lang = "en" | "ja" | "zh";
+type Copy = { en: string; ja: string; zh: string };
 
 /** 示例时钟（`DEMO_CLOCK_TIME` / `demoNow`）在 `demo-clock.ts`，这里原样转出。 */
 export { DEMO_CLOCK_TIME, demoNow };
 
 /** 示例人物的目标（也是「本周推进」栏首的一句）。 */
 export const DEMO_GOAL: Copy = {
+  ja: "今期中に、日本の中小企業5社に AI 議事録をトライアルしてもらう。まずは東京から。",
   en: "Get 5 Japanese SMEs trialling our AI meeting notes this quarter, starting in Tokyo.",
   zh: "本季度找到 5 家日本中小企业试用我们的 AI 会议纪要，先从东京开始。",
 };
 
 /** 示例人物的人脉（W0005 人脉页复用）：姓名、公司、职位。 */
 export const DEMO_PEOPLE = [
-  { company: "北辰精工", name: "王砚", role: { en: "Head of Procurement", zh: "采购部长" } },
-  { company: "丸和工业", name: "佐藤美咲", role: { en: "IT Systems Manager", zh: "情报系统课长" } },
-  { company: "Cloudia", name: "林志远", role: { en: "Partner Sales", zh: "合作伙伴营业" } },
-  { company: "丸和工业", name: "铃木健", role: { en: "Head of IT Systems", zh: "情报系统部 部长" } },
-  { company: "JETRO 东京", name: "山田太郎", role: { en: "Investment Advisor", zh: "投资咨询顾问" } },
-  { company: "东京商工会议所", name: "中村惠", role: { en: "SME Support", zh: "中小企业支援课" } },
+  { company: { ja: "北辰精工", zh: "北辰精工", en: "Hokushin Seiko" }, name: { ja: "王 硯", zh: "王砚", en: "Wang Yan" }, role: { ja: "購買部長", en: "Head of Procurement", zh: "采购部长" } },
+  { company: { ja: "丸和工業", zh: "丸和工业", en: "Maruwa Industries" }, name: { ja: "佐藤 美咲", zh: "佐藤美咲", en: "Sato Misaki" }, role: { ja: "情報システム課長", en: "IT Systems Manager", zh: "情报系统课长" } },
+  { company: { ja: "Cloudia", zh: "Cloudia", en: "Cloudia" }, name: { ja: "林 志遠", zh: "林志远", en: "Lin Zhiyuan" }, role: { ja: "パートナー営業", en: "Partner Sales", zh: "合作伙伴营业" } },
+  { company: { ja: "丸和工業", zh: "丸和工业", en: "Maruwa Industries" }, name: { ja: "鈴木 健", zh: "铃木健", en: "Suzuki Ken" }, role: { ja: "情報システム部 部長", en: "Head of IT Systems", zh: "情报系统部 部长" } },
+  { company: { ja: "JETRO 東京", zh: "JETRO 东京", en: "JETRO Tokyo" }, name: { ja: "山田 太郎", zh: "山田太郎", en: "Yamada Taro" }, role: { ja: "投資アドバイザー", en: "Investment Advisor", zh: "投资咨询顾问" } },
+  { company: { ja: "東京商工会議所", zh: "东京商工会议所", en: "Tokyo Chamber of Commerce" }, name: { ja: "中村 恵", zh: "中村惠", en: "Nakamura Megumi" }, role: { ja: "中小企業支援課", en: "SME Support", zh: "中小企业支援课" } },
 ] as const;
 
 export interface DemoHomeSession {
@@ -74,6 +75,7 @@ export const DEMO_PLAN_SESSION_ID = "demo-session-plan";
 
 /** 那条示例问答的问题（最近对话的标题 = 计划卡片上方的用户气泡）。 */
 const DEMO_PLAN_QUESTION: Copy = {
+  ja: "目標と人脈から考えて、どうすれば目標を達成できる？",
   en: "Given my goal and my network, how do I get there?",
   zh: "根据我的目标和人脉信息，我该如何实现目标？",
 };
@@ -211,7 +213,7 @@ export function buildDemoHomeData(real: Date, lang: Lang): DemoHomeData {
     endsAt: at(0, "15:00"),
     state: "active",
     timeZone: "Asia/Tokyo",
-    title: L({ en: "Meet Wang Yan · Hokushin Seiko (Marunouchi)", zh: "和王砚见面 · 北辰精工（丸之内）" }),
+    title: L({ ja: "王 硯さんと面会 · 北辰精工（丸の内）", en: "Meet Wang Yan · Hokushin Seiko (Marunouchi)", zh: "和王砚见面 · 北辰精工（丸之内）" }),
   };
 
   // 概览屏只读 facts 的 personal / appointments / followups 三段；其余字段示例不需要。
@@ -227,22 +229,25 @@ export function buildDemoHomeData(real: Date, lang: Lang): DemoHomeData {
   const signals = [
     demoSignal({
       ask: L({
+        ja: "今日の王 硯さんとの面会を準備したい。IT 部門の鈴木さんを紹介してもらうには？",
         en: "Help me prepare for today's meeting with Wang Yan: how do I ask him to introduce Suzuki from IT?",
         zh: "帮我准备今天和王砚的会面：怎么请他介绍 IT 部门的铃木？",
       }),
       at: at(0, "08:00"),
       id: "demo-signal-wang",
-      open: { href: "/app/tasks?tab=calendar", label: L({ en: "Meeting prep", zh: "看会面准备" }) },
+      open: { href: "/app/tasks?tab=calendar", label: L({ ja: "面会の準備を見る", en: "Meeting prep", zh: "看会面准备" }) },
       reason: L({
+        ja: "プランの第1段階では「中小企業の IT 担当者」に会う必要があります。王 硯さんは購買部長で、前回の電話でシステム購入の決裁者は鈴木さんだと話していました。",
         en: "Phase 1 of your plan needs an SME IT decision-maker. Wang Yan runs procurement, and on your last call he said Suzuki is the one who buys systems.",
         zh: "你的计划第 1 阶段要认识「中小企业 IT 负责人」。王砚是采购部长，上次通话时提到铃木才是系统采购的决策人。",
       }),
       severity: "critical",
       sources: [
-        { capturedAt: at(-3, "10:00"), sourceLabel: L({ en: "Schedule", zh: "日程" }) },
-        { capturedAt: at(-1, "17:30"), sourceLabel: L({ en: "Progress log", zh: "进展记录" }) },
+        { capturedAt: at(-3, "10:00"), sourceLabel: L({ ja: "予定", en: "Schedule", zh: "日程" }) },
+        { capturedAt: at(-1, "17:30"), sourceLabel: L({ ja: "進捗メモ", en: "Progress log", zh: "进展记录" }) },
       ],
       title: L({
+        ja: "14:00に王 硯さんと面会し、IT 部門の鈴木さんを紹介してもらう",
         en: "14:00 meet Wang Yan and ask him to introduce Suzuki from IT",
         zh: "14:00 和王砚见面，请他介绍 IT 部门的铃木",
       }),
@@ -251,14 +256,16 @@ export function buildDemoHomeData(real: Date, lang: Lang): DemoHomeData {
     demoSignal({
       at: at(-1, "22:14"),
       id: "demo-signal-new-cards",
-      open: { href: "/app/contacts", label: L({ en: "Review", zh: "去确认" }) },
+      open: { href: "/app/contacts", label: L({ ja: "確認する", en: "Review", zh: "去确认" }) },
       reason: L({
+        ja: "昨夜取り込んだ鈴木 健さんと高橋 由美さんの役職が、プランで探している2種類の人に合っています。",
         en: "Suzuki Ken and Takahashi Yumi were imported last night; their roles match two people your plan is looking for.",
         zh: "昨晚导入的铃木健、高桥由美，职位和计划里要找的两类人对得上。",
       }),
       severity: "high",
-      sources: [{ capturedAt: at(-1, "22:14"), sourceLabel: L({ en: "Business cards", zh: "名片" }) }],
+      sources: [{ capturedAt: at(-1, "22:14"), sourceLabel: L({ ja: "名刺", en: "Business cards", zh: "名片" }) }],
       title: L({
+        ja: "新しい連絡先2人が、プランで探している人に当たるかもしれません",
         en: "2 new contacts may match people your plan needs",
         zh: "2 位新联系人可能对应你计划里的人脉需求",
       }),
@@ -267,73 +274,75 @@ export function buildDemoHomeData(real: Date, lang: Lang): DemoHomeData {
     demoSignal({
       at: at(0, "09:00"),
       id: "demo-signal-sato",
-      open: { href: planTaskSegmentHref("web"), label: L({ en: "Pick a time", zh: "定时间" }) },
+      open: { href: planTaskSegmentHref("web"), label: L({ ja: "日時を決める", en: "Pick a time", zh: "定时间" }) },
       reason: L({
+        ja: "佐藤 美咲さんが、プランの「中小企業の IT 担当者」に紐づきました。",
         en: "Sato Misaki was just linked to the plan's “SME IT lead” need.",
         zh: "佐藤美咲刚关联到计划里的人脉需求「中小企业 IT 负责人」。",
       }),
       severity: "medium",
-      sources: [{ capturedAt: at(0, "09:00"), sourceLabel: L({ en: "Plan", zh: "计划" }) }],
-      title: L({ en: "Set up a meeting with Sato Misaki", zh: "约佐藤美咲见面" }),
+      sources: [{ capturedAt: at(0, "09:00"), sourceLabel: L({ ja: "プラン", en: "Plan", zh: "计划" }) }],
+      title: L({ ja: "佐藤 美咲さんと面会を設定する", en: "Set up a meeting with Sato Misaki", zh: "约佐藤美咲见面" }),
       type: "followup_due",
     }),
     demoSignal({
       at: at(-45, "10:00"),
       id: "demo-signal-lin",
-      open: { href: "/app/contacts", label: L({ en: "Open", zh: "打开" }) },
+      open: { href: "/app/contacts", label: L({ ja: "開く", en: "Open", zh: "打开" }) },
       reason: L({
+        ja: "日本の SaaS 代理店のレベニューシェアについて話したのは6週間前です。",
         en: "You last talked about channel revenue share six weeks ago.",
         zh: "上次聊日本 SaaS 渠道分成是六周前。",
       }),
       severity: "low",
-      sources: [{ capturedAt: at(-45, "10:00"), sourceLabel: L({ en: "Progress log", zh: "进展记录" }) }],
-      title: L({ en: "Check in with Lin Zhiyuan about channel pricing", zh: "问候林志远，问渠道定价" }),
+      sources: [{ capturedAt: at(-45, "10:00"), sourceLabel: L({ ja: "進捗メモ", en: "Progress log", zh: "进展记录" }) }],
+      title: L({ ja: "林 志遠さんに近況を聞き、代理店向けの価格を確認する", en: "Check in with Lin Zhiyuan about channel pricing", zh: "问候林志远，问渠道定价" }),
       type: "relationship_stale",
     }),
   ];
 
   const ledger = [
-    demoLedgerEntry({ at: at(-2, "09:00"), id: "demo-act-1", status: "approved", title: L({ en: "Set up a meeting with Sato Misaki", zh: "约佐藤美咲见面" }) }),
-    demoLedgerEntry({ at: at(-2, "09:00"), id: "demo-act-2", status: "executing", title: L({ en: "Meet 2 IT leads at the JETRO mixer", zh: "在 JETRO 交流会认识 2 位 IT 负责人" }) }),
-    demoLedgerEntry({ at: at(-3, "09:00"), id: "demo-act-3", status: "completed", title: L({ en: "Write up the IT pain points of 3 target companies", zh: "整理 3 家目标企业的 IT 痛点" }) }),
-    demoLedgerEntry({ at: at(-6, "09:00"), id: "demo-act-4", status: "completed", title: L({ en: "Draft the Japanese trial offer", zh: "写好日文版试用方案" }) }),
-    demoLedgerEntry({ at: at(-2, "09:00"), id: "demo-act-5", status: "approved", title: L({ en: "Ask Nakamura Megumi for 3 pilot members", zh: "请中村惠推荐 3 家试点会员企业" }) }),
-    demoLedgerEntry({ at: at(-2, "09:00"), id: "demo-act-6", status: "approved", title: L({ en: "Send the 1-minute demo video", zh: "发 1 分钟演示视频" }) }),
-    demoLedgerEntry({ at: at(-2, "09:00"), id: "demo-act-7", status: "approved", title: L({ en: "Register for the SME DX seminar", zh: "报名中小企业 DX 推进研讨会" }) }),
-    demoLedgerEntry({ at: at(-2, "09:00"), id: "demo-act-8", status: "approved", title: L({ en: "Ask Lin Zhiyuan about channel pricing", zh: "问林志远渠道定价" }) }),
-    demoLedgerEntry({ at: at(-2, "09:00"), id: "demo-act-9", status: "approved", title: L({ en: "Share trial progress with Chen Siyuan", zh: "向陈思远同步试用进展" }) }),
+    demoLedgerEntry({ at: at(-2, "09:00"), id: "demo-act-1", status: "approved", title: L({ ja: "佐藤 美咲さんと面会を設定する", en: "Set up a meeting with Sato Misaki", zh: "约佐藤美咲见面" }) }),
+    demoLedgerEntry({ at: at(-2, "09:00"), id: "demo-act-2", status: "executing", title: L({ ja: "JETRO の交流会で IT 担当者2人と知り合う", en: "Meet 2 IT leads at the JETRO mixer", zh: "在 JETRO 交流会认识 2 位 IT 负责人" }) }),
+    demoLedgerEntry({ at: at(-3, "09:00"), id: "demo-act-3", status: "completed", title: L({ ja: "ターゲット企業3社の IT の課題をまとめる", en: "Write up the IT pain points of 3 target companies", zh: "整理 3 家目标企业的 IT 痛点" }) }),
+    demoLedgerEntry({ at: at(-6, "09:00"), id: "demo-act-4", status: "completed", title: L({ ja: "日本語のトライアル提案をつくる", en: "Draft the Japanese trial offer", zh: "写好日文版试用方案" }) }),
+    demoLedgerEntry({ at: at(-2, "09:00"), id: "demo-act-5", status: "approved", title: L({ ja: "中村 恵さんに試験導入の会員企業を3社紹介してもらう", en: "Ask Nakamura Megumi for 3 pilot members", zh: "请中村惠推荐 3 家试点会员企业" }) }),
+    demoLedgerEntry({ at: at(-2, "09:00"), id: "demo-act-6", status: "approved", title: L({ ja: "1分のデモ動画を送る", en: "Send the 1-minute demo video", zh: "发 1 分钟演示视频" }) }),
+    demoLedgerEntry({ at: at(-2, "09:00"), id: "demo-act-7", status: "approved", title: L({ ja: "中小企業 DX 推進セミナーに申し込む", en: "Register for the SME DX seminar", zh: "报名中小企业 DX 推进研讨会" }) }),
+    demoLedgerEntry({ at: at(-2, "09:00"), id: "demo-act-8", status: "approved", title: L({ ja: "林 志遠さんに代理店向けの価格を聞く", en: "Ask Lin Zhiyuan about channel pricing", zh: "问林志远渠道定价" }) }),
+    demoLedgerEntry({ at: at(-2, "09:00"), id: "demo-act-9", status: "approved", title: L({ ja: "陳 思遠さんにトライアルの進捗を共有する", en: "Share trial progress with Chen Siyuan", zh: "向陈思远同步试用进展" }) }),
   ];
 
   const events = [
     demoEvent({
       hours: 2.5,
       id: "demo-event-jetro-founders",
-      name: L({ en: "JETRO Tokyo founders mixer", zh: "JETRO 东京创业者交流会" }),
+      name: L({ ja: "JETRO 東京 起業家交流会", en: "JETRO Tokyo founders mixer", zh: "JETRO 东京创业者交流会" }),
       startsAt: jstAt(today, "18:30"),
-      venue: L({ en: "Akasaka", zh: "赤坂" }),
+      venue: L({ ja: "赤坂", en: "Akasaka", zh: "赤坂" }),
     }),
     demoEvent({
       hours: 2,
       id: "demo-event-jetro-business",
-      name: L({ en: "JETRO business exchange for foreign companies", zh: "JETRO 外资企业商务交流会" }),
+      name: L({ ja: "JETRO 外資系企業ビジネス交流会", en: "JETRO business exchange for foreign companies", zh: "JETRO 外资企业商务交流会" }),
       startsAt: jstAt(shiftDay(today, 11), "15:00"),
-      venue: L({ en: "Akasaka", zh: "赤坂" }),
+      venue: L({ ja: "赤坂", en: "Akasaka", zh: "赤坂" }),
     }),
   ];
 
   return {
     home: {
       account: {
-        fullName: L({ en: "Demo founder", zh: "示例创始人" }),
-        headline: L({ en: "AI meeting notes SaaS · Tokyo", zh: "AI 会议纪要 SaaS · 东京" }),
+        fullName: L({ ja: "サンプルの創業者", en: "Demo founder", zh: "示例创始人" }),
+        headline: L({ ja: "AI 議事録 SaaS · 東京", en: "AI meeting notes SaaS · Tokyo", zh: "AI 会议纪要 SaaS · 东京" }),
         initial: "O",
         relationshipGoal: L(DEMO_GOAL),
         // 对话屏右栏「上下文」（W0014 示例问答）读这两项；概览屏不用。
         targetRelationshipTypes: [
-          L({ en: "SME IT leads", zh: "中小企业 IT 负责人" }),
-          L({ en: "SaaS channel resellers", zh: "SaaS 渠道代理商" }),
+          L({ ja: "中小企業の IT 担当者", en: "SME IT leads", zh: "中小企业 IT 负责人" }),
+          L({ ja: "SaaS 販売代理店", en: "SaaS channel resellers", zh: "SaaS 渠道代理商" }),
         ],
-        topics: [L({ en: "AI meeting notes", zh: "AI 会议纪要" }), L({ en: "Japan SaaS market", zh: "日本 SaaS 市场" })],
+        topics: [L({ ja: "AI 議事録", en: "AI meeting notes", zh: "AI 会议纪要" }), L({ ja: "日本の SaaS 市場", en: "Japan SaaS market", zh: "日本 SaaS 市场" })],
       },
       events,
       stats: { events: events.length, inProgress: 3, people: 30 },
@@ -344,12 +353,12 @@ export function buildDemoHomeData(real: Date, lang: Lang): DemoHomeData {
       {
         createdAt: at(-1, "21:10"),
         id: "demo-session-suzuki",
-        title: L({ en: "How do I get Wang Yan to introduce Suzuki?", zh: "王砚提到的铃木，怎么请他引荐？" }),
+        title: L({ ja: "王 硯さんが話していた鈴木さん、どう紹介してもらう？", en: "How do I get Wang Yan to introduce Suzuki?", zh: "王砚提到的铃木，怎么请他引荐？" }),
       },
       {
         createdAt: at(-4, "10:30"),
         id: "demo-session-pricing",
-        title: L({ en: "How do Japanese SMEs usually price SaaS?", zh: "日本中小企业的 SaaS 一般怎么定价？" }),
+        title: L({ ja: "日本の中小企業向け SaaS はふつうどう価格設定する？", en: "How do Japanese SMEs usually price SaaS?", zh: "日本中小企业的 SaaS 一般怎么定价？" }),
       },
       {
         createdAt: at(-8, "16:00"),
@@ -360,11 +369,11 @@ export function buildDemoHomeData(real: Date, lang: Lang): DemoHomeData {
     signals,
     snapshot,
     writeLabels: {
-      "personal:demo-personal-wang": L({ en: "schedule", zh: "日程" }),
-      "signal:demo-signal-lin": L({ en: "contacts", zh: "人脉" }),
-      "signal:demo-signal-new-cards": L({ en: "contact matches", zh: "人脉匹配" }),
-      "signal:demo-signal-sato": L({ en: "schedule", zh: "日程" }),
-      "signal:demo-signal-wang": L({ en: "meeting prep", zh: "会面准备" }),
+      "personal:demo-personal-wang": L({ ja: "予定", en: "schedule", zh: "日程" }),
+      "signal:demo-signal-lin": L({ ja: "人脈", en: "contacts", zh: "人脉" }),
+      "signal:demo-signal-new-cards": L({ ja: "人脈のマッチ", en: "contact matches", zh: "人脉匹配" }),
+      "signal:demo-signal-sato": L({ ja: "予定", en: "schedule", zh: "日程" }),
+      "signal:demo-signal-wang": L({ ja: "面会の準備", en: "meeting prep", zh: "会面准备" }),
     },
   };
 }

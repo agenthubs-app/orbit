@@ -25,6 +25,7 @@ import type { EventOperationsAttendeeWorkspace } from "../event-operations/servi
 import type { AttendeePostEventAiArtifactView } from "../post-event-artifact/contract";
 import type { EventRegistration } from "../registration/contract";
 import type { AfterAiDraft, AfterMetPerson, AfterPlan } from "./after-core";
+import { FIELD_LABEL_JA } from "./attendee-answer-language";
 import type { JourneyLanguage } from "./prep-core";
 import type { JourneyAttendeeProfileFacts, JourneyContact, JourneyEvent, JourneyLivePorts, JourneyPublicAttendee } from "./ports";
 import type { VenueParticipant, VenueTable, VenueWorkspace } from "./venue-core";
@@ -150,17 +151,6 @@ export function publicAttendeesFromRegistrations(registrations: readonly EventRe
   return { attendees: attendees.slice(0, PUBLIC_ATTENDEES_LIMIT), total: active.length };
 }
 
-/** 回答的问题文：有快照用快照的问题；旧数据只有字段名时用固定的日文标签。 */
-const FIELD_LABEL_JA: Readonly<Record<string, string>> = {
-  desiredOutcome: "参加の目的",
-  energyStyle: "話し方",
-  experienceHighlight: "話せるトピック",
-  followUpPreference: "連絡の希望",
-  industry: "業界",
-  positioning: "会社・役職",
-  targetAttendees: "会いたい人",
-  valueOffered: "提供できること",
-};
 export const ATTENDEE_PROFILE_ANSWERS_LIMIT = 6;
 
 /**
@@ -180,7 +170,7 @@ export function attendeeProfileFromRegistration(registration: EventRegistration)
     // 会社・役職 在名字下、話せるトピック 就是 intro：不在问答里重复。
     if (!a || response.field === "positioning" || response.field === "experienceHighlight") return [];
     const q = text(response.question?.prompt) ?? FIELD_LABEL_JA[response.field] ?? null;
-    return q ? [{ a, q }] : [];
+    return q ? [{ a, field: response.field, q }] : [];
   }).slice(0, ATTENDEE_PROFILE_ANSWERS_LIMIT);
   return { answers, attendeeId: participant.participantId, intro: participant.experienceHighlight, name: participant.displayName, org: participant.company, role: participant.role };
 }
@@ -458,3 +448,4 @@ export function inboxUpsertFor(actorId: string, input: Parameters<JourneyLivePor
     dueAt: input.at,
   };
 }
+

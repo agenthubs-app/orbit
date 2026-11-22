@@ -54,7 +54,7 @@ export function MobileBar({
     >
       {onBack ? (
         <button
-          aria-label={backLabel ?? t({ en: "Back", zh: "返回" })}
+          aria-label={backLabel ?? t({ ja: "戻る", en: "Back", zh: "返回" })}
           className="hit-44"
           onClick={onBack}
           style={{
@@ -118,7 +118,7 @@ export function ModalShell({
     <div className="orbit-modal-overlay" style={{ alignItems: isSheet ? "flex-end" : "center", display: "flex", inset: 0, justifyContent: "center", position: "fixed", zIndex: ORBIT_Z.modal }}>
       <div aria-hidden="true" className="orbit-modal-scrim" onClick={onClose} style={{ backdropFilter: "blur(4px)", background: "var(--scrim-web)", inset: 0, position: "absolute" }} />
       <div
-        aria-label={label ?? t({ en: "Dialog", zh: "对话框" })}
+        aria-label={label ?? t({ ja: "ダイアログ", en: "Dialog", zh: "对话框" })}
         aria-modal="true"
         className={`orbit-modal-card card${className ? ` ${className}` : ""}`}
         ref={cardRef}
@@ -148,7 +148,7 @@ export function ModalShell({
               <Logo size={22} />
               <div style={{ flex: 1 }} />
               {step ? <span className="mono" style={{ color: "var(--ink-3-text)", fontSize: 12, whiteSpace: "nowrap" }}>{step}</span> : null}
-              <button type="button" onClick={onClose} aria-label={t({ en: "Close", zh: "关闭" })} className="hit-44" style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: 999, color: "var(--ink-2)", cursor: "pointer", display: "flex", height: 32, justifyContent: "center", width: 32 }}>
+              <button type="button" onClick={onClose} aria-label={t({ ja: "閉じる", en: "Close", zh: "关闭" })} className="hit-44" style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: 999, color: "var(--ink-2)", cursor: "pointer", display: "flex", height: 32, justifyContent: "center", width: 32 }}>
                 <Icon name="x" size={17} />
               </button>
             </div>

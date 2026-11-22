@@ -21,8 +21,12 @@ import {
   type AppEventsRouteServices,
 } from "./events-service-factory";
 
+import { ORBIT_DEFAULT_LANGUAGE, type OrbitLanguage } from "../../orbit-language-core";
+
 export type AppEventsRouteScenario = "empty" | "pending" | "failure";
 export interface AppEventsRouteControls {
+  /** Page language for the copy below; defaults to the product default (ja). */
+  language?: OrbitLanguage;
   scenario?: AppEventsRouteScenario;
 }
 
@@ -158,8 +162,10 @@ export type AppEventsRouteViewModel =
       routeState: AppEventsRouteStateViewModel;
     };
 
-function bilingualText(chinese: string, english: string): string {
-  return `${chinese} / ${english}`;
+type RouteCopy = { ja: string; zh: string; en: string };
+
+function localized(language: OrbitLanguage, copy: RouteCopy): string {
+  return copy[language];
 }
 
 function firstFailure(results: readonly RouteResult[]): RouteFailure | null {
@@ -210,7 +216,10 @@ function productCopy(value: string): string {
   }, value);
 }
 
-function evidenceLabel(evidenceId: string): string {
+function evidenceLabel(
+  evidenceId: string,
+  language: OrbitLanguage = ORBIT_DEFAULT_LANGUAGE,
+): string {
   const words = evidenceId
     .replace(/^evidence:/, "")
     .split(/[-_:]+/)
@@ -230,13 +239,20 @@ function evidenceLabel(evidenceId: string): string {
   const label = words.join(" ");
   const englishLabel = label.charAt(0).toUpperCase() + label.slice(1);
 
-  return bilingualText(`证据 ${englishLabel}`, englishLabel);
+  return localized(language, {
+    ja: `根拠: ${englishLabel}`,
+    zh: `证据：${englishLabel}`,
+    en: englishLabel,
+  });
 }
 
-function evidenceViewModels(evidenceIds: readonly string[]): AppEventsEvidenceViewModel[] {
+function evidenceViewModels(
+  evidenceIds: readonly string[],
+  language: OrbitLanguage = ORBIT_DEFAULT_LANGUAGE,
+): AppEventsEvidenceViewModel[] {
   return Array.from(new Set(evidenceIds)).map((id) => ({
     id,
-    label: evidenceLabel(id),
+    label: evidenceLabel(id, language),
   }));
 }
 
@@ -254,92 +270,115 @@ function relationshipValueCopy(event: Pick<EventRecord, "relationshipContext">):
   return context;
 }
 
-function stateCopy(scenario: AppEventsRouteScenario) {
-  if (scenario === "empty") {
-    return {
-      description: bilingualText(
-        "先创建或导入有来源的活动，再复核推荐和准备度。",
-        "Create or import a sourced event before reviewing recommendations and readiness.",
-      ),
-      emptyState: bilingualText(
-        "还没有活动、价值推荐、参会人推荐或准备记录可用。",
-        "No event, value recommendation, attendee recommendation, or readiness record is ready.",
-      ),
-      guardrail: bilingualText(
-        "此屏幕不会更新日历、保存记录、联系活动来源、发送消息或通知任何人。",
-        "Nothing will update calendars, save records, contact event sources, send messages, or notify anyone from this screen.",
-      ),
-      nextStep: bilingualText(
-        "返回有来源活动，或通过已批准的活动流程添加活动。",
-        "Return to sourced events or add an event through the approved event workflow.",
-      ),
-      purpose: bilingualText(
-        "仅在来源证据存在后展示活动准备。",
-        "Show event preparation only after source evidence exists.",
-      ),
-      title: bilingualText("没有可用活动背景", "No event context is ready"),
-    };
-  }
+const STATE_COPY: Record<AppEventsRouteScenario, Record<"description" | "emptyState" | "guardrail" | "nextStep" | "purpose" | "title", RouteCopy>> = {
+  empty: {
+    description: {
+      ja: "出典のあるイベントを作成または取り込んでから、おすすめと準備状況を確認します。",
+      zh: "先创建或导入有来源的活动，再复核推荐和准备度。",
+      en: "Create or import a sourced event before reviewing recommendations and readiness.",
+    },
+    emptyState: {
+      ja: "まだイベント、おすすめ、参加者のおすすめ、準備記録がありません。",
+      zh: "还没有活动、价值推荐、参会人推荐或准备记录可用。",
+      en: "No event, value recommendation, attendee recommendation, or readiness record is ready.",
+    },
+    guardrail: {
+      ja: "この画面からカレンダーの更新、記録の保存、主催者への連絡、メッセージ送信、通知は行いません。",
+      zh: "此屏幕不会更新日历、保存记录、联系活动来源、发送消息或通知任何人。",
+      en: "Nothing will update calendars, save records, contact event sources, send messages, or notify anyone from this screen.",
+    },
+    nextStep: {
+      ja: "出典のあるイベントに戻るか、所定の手順でイベントを追加してください。",
+      zh: "返回有来源活动，或通过已批准的活动流程添加活动。",
+      en: "Return to sourced events or add an event through the approved event workflow.",
+    },
+    purpose: {
+      ja: "出典が揃ってから、イベントの準備を表示します。",
+      zh: "仅在来源证据存在后展示活动准备。",
+      en: "Show event preparation only after source evidence exists.",
+    },
+    title: { ja: "表示できるイベントがありません", zh: "没有可用活动背景", en: "No event context is ready" },
+  },
+  pending: {
+    description: {
+      ja: "イベントの出典、おすすめの条件、準備チェックを用意しています。",
+      zh: "活动来源、推荐规则和准备检查仍在准备中。",
+      en: "Event sources, recommendation rules, and readiness checks are still being prepared.",
+    },
+    emptyState: {
+      ja: "出典の確認が終わるまで、イベントの準備は表示しません。",
+      zh: "当前来源复核完成前，活动准备会保持隐藏。",
+      en: "Event preparation stays hidden until the current source review finishes.",
+    },
+    guardrail: {
+      ja: "確認中は、カレンダーの更新、記録の保存、主催者への連絡、メッセージ送信、通知は行いません。",
+      zh: "复核待处理期间，不会更新日历、保存记录、联系活动来源、发送消息或通知任何人。",
+      en: "Nothing will update calendars, save records, contact event sources, send messages, or notify anyone while review is pending.",
+    },
+    nextStep: {
+      ja: "出典の確認が終わったら、準備済みのイベントに戻ってください。",
+      zh: "来源复核完成后返回已准备活动。",
+      en: "Return to ready events after the source review completes.",
+    },
+    purpose: {
+      ja: "準備データの読み込み中も、画面が崩れないようにします。",
+      zh: "活动准备数据仍在加载时，保持工作区稳定。",
+      en: "Keep the workspace stable while event preparation data is still loading.",
+    },
+    title: { ja: "イベントを読み込み中", zh: "活动背景加载中", en: "Event context is loading" },
+  },
+  failure: {
+    description: {
+      ja: "イベントの出典を読み込めないため、おすすめと準備状況を止めています。",
+      zh: "活动来源无法加载，因此推荐和准备状态已暂停。",
+      en: "Event sources could not be loaded, so recommendations and readiness are paused.",
+    },
+    emptyState: {
+      ja: "出典が戻るまで、イベントの概要は表示できません。",
+      zh: "活动简报会在活动来源恢复前保持不可用。",
+      en: "The event briefing is unavailable until event sources recover.",
+    },
+    guardrail: {
+      ja: "利用できない間は、カレンダーの更新、記録の保存、主催者への連絡、メッセージ送信、通知は行いません。",
+      zh: "不可用期间，不会更新日历、保存记录、联系活动来源、发送消息或通知任何人。",
+      en: "Nothing will update calendars, save records, contact event sources, send messages, or notify anyone while this is unavailable.",
+    },
+    nextStep: {
+      ja: "操作の前に、イベントを再読み込みするか準備状況を確認してください。",
+      zh: "采取动作前，重新加载活动或检查准备状态。",
+      en: "Reload events or check readiness status before taking action.",
+    },
+    purpose: {
+      ja: "出典のあるイベント情報が使えないときは、復旧の手順を示します。",
+      zh: "当有来源支撑的活动背景不可用时，展示可见恢复路径。",
+      en: "Show a visible recovery path when source-backed event context is unavailable.",
+    },
+    title: { ja: "イベントを読み込めませんでした", zh: "活动无法加载", en: "Events could not load" },
+  },
+};
 
-  if (scenario === "pending") {
-    return {
-      description: bilingualText(
-        "活动来源、推荐规则和准备检查仍在准备中。",
-        "Event sources, recommendation rules, and readiness checks are still being prepared.",
-      ),
-      emptyState: bilingualText(
-        "当前来源复核完成前，活动准备会保持隐藏。",
-        "Event preparation stays hidden until the current source review finishes.",
-      ),
-      guardrail: bilingualText(
-        "复核待处理期间，不会更新日历、保存记录、联系活动来源、发送消息或通知任何人。",
-        "Nothing will update calendars, save records, contact event sources, send messages, or notify anyone while review is pending.",
-      ),
-      nextStep: bilingualText(
-        "来源复核完成后返回已准备活动。",
-        "Return to ready events after the source review completes.",
-      ),
-      purpose: bilingualText(
-        "活动准备数据仍在加载时，保持工作区稳定。",
-        "Keep the workspace stable while event preparation data is still loading.",
-      ),
-      title: bilingualText("活动背景加载中", "Event context is loading"),
-    };
-  }
+function stateCopy(scenario: AppEventsRouteScenario, language: OrbitLanguage) {
+  const copy = STATE_COPY[scenario];
 
   return {
-    description: bilingualText(
-      "活动来源无法加载，因此推荐和准备状态已暂停。",
-      "Event sources could not be loaded, so recommendations and readiness are paused.",
-    ),
-    emptyState: bilingualText(
-      "活动简报会在活动来源恢复前保持不可用。",
-      "The event briefing is unavailable until event sources recover.",
-    ),
-    guardrail: bilingualText(
-      "不可用期间，不会更新日历、保存记录、联系活动来源、发送消息或通知任何人。",
-      "Nothing will update calendars, save records, contact event sources, send messages, or notify anyone while this is unavailable.",
-    ),
-    nextStep: bilingualText(
-      "采取动作前，重新加载活动或检查准备状态。",
-      "Reload events or check readiness status before taking action.",
-    ),
-    purpose: bilingualText(
-      "当有来源支撑的活动背景不可用时，展示可见恢复路径。",
-      "Show a visible recovery path when source-backed event context is unavailable.",
-    ),
-    title: bilingualText("活动无法加载", "Events could not load"),
+    description: localized(language, copy.description),
+    emptyState: localized(language, copy.emptyState),
+    guardrail: localized(language, copy.guardrail),
+    nextStep: localized(language, copy.nextStep),
+    purpose: localized(language, copy.purpose),
+    title: localized(language, copy.title),
   };
 }
 
 function routeRecoveryActions(
   scenario: AppEventsRouteScenario,
+  language: OrbitLanguage,
 ): readonly { href: string; label: string }[] {
   if (scenario === "empty") {
     return [
       {
         href: "/app/events",
-        label: bilingualText("显示有来源活动", "Show sourced events"),
+        label: localized(language, { ja: "出典のあるイベントを表示", zh: "显示有来源活动", en: "Show sourced events" }),
       },
     ];
   }
@@ -348,7 +387,7 @@ function routeRecoveryActions(
     return [
       {
         href: "/app/events",
-        label: bilingualText("返回已准备活动", "Return to ready events"),
+        label: localized(language, { ja: "準備済みのイベントに戻る", zh: "返回已准备活动", en: "Return to ready events" }),
       },
     ];
   }
@@ -356,24 +395,25 @@ function routeRecoveryActions(
   return [
     {
       href: "/app/events",
-      label: bilingualText("重新加载活动", "Reload events"),
+      label: localized(language, { ja: "イベントを再読み込み", zh: "重新加载活动", en: "Reload events" }),
     },
     {
       href: "/app/settings",
-      label: bilingualText("检查活动设置", "Check event settings"),
+      label: localized(language, { ja: "イベント設定を確認", zh: "检查活动设置", en: "Check event settings" }),
     },
   ];
 }
 
 function routeStateViewModel(input: {
   failure?: RouteFailure | null;
+  language: OrbitLanguage;
   scenario: AppEventsRouteScenario;
 }): AppEventsRouteStateViewModel {
   return {
-    copy: stateCopy(input.scenario),
+    copy: stateCopy(input.scenario, input.language),
     errorCode: input.failure?.code ?? null,
-    evidence: evidenceViewModels(input.failure?.evidenceIds ?? []),
-    recoveryActions: routeRecoveryActions(input.scenario),
+    evidence: evidenceViewModels(input.failure?.evidenceIds ?? [], input.language),
+    recoveryActions: routeRecoveryActions(input.scenario, input.language),
     scenario: input.scenario,
   };
 }
@@ -405,6 +445,7 @@ function eventChoiceViewModel(input: {
 
 function readinessViewModel(
   payload: EventGoalReadinessPayload,
+  language: OrbitLanguage,
 ): AppEventsReadinessViewModel {
   return {
     checklist: payload.readinessChecklist.map(
@@ -416,7 +457,7 @@ function readinessViewModel(
         status: item.status,
       }),
     ),
-    evidence: evidenceViewModels(payload.provenance.evidenceIds),
+    evidence: evidenceViewModels(payload.provenance.evidenceIds, language),
     nextPreparationStep: productCopy(payload.preparationState.nextPreparationStep),
     readinessScore: payload.preparationState.readinessScore,
   };
@@ -425,6 +466,7 @@ function readinessViewModel(
 function successViewModel(input: {
   attendeePayload: EventRecommendationsPayload | null;
   eventPayload: EventListPayload;
+  language: OrbitLanguage;
   primaryEventId: string;
   readinessPayload: EventGoalReadinessPayload | null;
   valuePayload: EventValueRecommendationsPayload | null;
@@ -450,10 +492,11 @@ function successViewModel(input: {
       ? input.readinessPayload
       : null;
   const detailActionLabel = currentEvent
-    ? bilingualText(
-        `打开 ${currentEvent.title} 工作区`,
-        `Open ${currentEvent.title} workspace`,
-      )
+    ? localized(input.language, {
+        ja: `${currentEvent.title} を開く`,
+        zh: `打开 ${currentEvent.title} 工作区`,
+        en: `Open ${currentEvent.title} workspace`,
+      })
     : "";
 
   return {
@@ -461,7 +504,7 @@ function successViewModel(input: {
       recommendation: topAttendee
         ? {
             attendeeName: topAttendee.attendee.displayName,
-            evidence: evidenceViewModels(topAttendee.evidenceIds),
+            evidence: evidenceViewModels(topAttendee.evidenceIds, input.language),
             openingLine: topAttendee.openingLine.text,
             organization: topAttendee.attendee.organization,
             recommendedAction: productCopy(topAttendee.recommendedAction),
@@ -471,10 +514,11 @@ function successViewModel(input: {
         : null,
       summary: input.attendeePayload
         ? productCopy(input.attendeePayload.summary)
-        : bilingualText(
-            "当前活动暂无可用参会人推荐。",
-            "No attendee recommendation is available for this event.",
-          ),
+        : localized(input.language, {
+            ja: "このイベントでおすすめできる参加者はまだいません。",
+            zh: "当前活动暂无可用参会人推荐。",
+            en: "No attendee recommendation is available for this event.",
+          }),
     },
     currentPriority:
       currentEvent && topAttendee
@@ -496,7 +540,7 @@ function successViewModel(input: {
         attendeeName:
           event.id === input.primaryEventId && topAttendee
             ? topAttendee.attendee.displayName
-            : bilingualText("复核参会人名单", "review attendee roster"),
+            : localized(input.language, { ja: "参加者名簿を確認", zh: "复核参会人名单", en: "review attendee roster" }),
         event,
         readinessScore:
           event.id === input.primaryEventId
@@ -510,13 +554,13 @@ function successViewModel(input: {
       importedRecordCount: input.eventPayload.importedRecords.length,
       primaryStatus:
         currentEvent?.status ??
-        bilingualText("不可用", "unavailable"),
+        localized(input.language, { ja: "利用不可", zh: "不可用", en: "unavailable" }),
       primaryTitle:
         currentEvent?.title ??
-        bilingualText("没有有来源活动", "No sourced event"),
+        localized(input.language, { ja: "出典のあるイベントはありません", zh: "没有有来源活动", en: "No sourced event" }),
     },
     readiness: readinessPayload
-      ? readinessViewModel(readinessPayload)
+      ? readinessViewModel(readinessPayload, input.language)
       : null,
     topCandidate: topValueEvent
       ? {
@@ -528,7 +572,7 @@ function successViewModel(input: {
       recommendation: topValueEvent
         ? {
             attendeeDensity: topValueEvent.attendeeDensity,
-            evidence: evidenceViewModels(topValueEvent.evidenceIds),
+            evidence: evidenceViewModels(topValueEvent.evidenceIds, input.language),
             location: topValueEvent.location,
             recommendedAction: productCopy(topValueEvent.recommendedAction),
             title: topValueEvent.title,
@@ -537,10 +581,11 @@ function successViewModel(input: {
         : null,
       summary: input.valuePayload
         ? productCopy(input.valuePayload.summary)
-        : bilingualText(
-            "当前账户暂无可用活动价值推荐。",
-            "No event value recommendation is available for this account.",
-          ),
+        : localized(input.language, {
+            ja: "このアカウントでおすすめできるイベントはまだありません。",
+            zh: "当前账户暂无可用活动价值推荐。",
+            en: "No event value recommendation is available for this account.",
+          }),
     },
   };
 }
@@ -551,6 +596,7 @@ export async function loadAppEventsRouteViewModel(
   services: AppEventsRouteServices = createAppEventsRouteServices({ actorId }),
 ): Promise<AppEventsRouteViewModel> {
   const scenario = controls.scenario ?? null;
+  const language = controls.language ?? ORBIT_DEFAULT_LANGUAGE;
   const eventResult = await services.events.listEvents({ actorId, scenario });
   const eventFailure = firstFailure([eventResult]);
 
@@ -559,6 +605,7 @@ export async function loadAppEventsRouteViewModel(
       state: "route-state",
       routeState: routeStateViewModel({
         failure: eventFailure,
+        language,
         scenario: "failure",
       }),
     };
@@ -569,6 +616,7 @@ export async function loadAppEventsRouteViewModel(
       state: "route-state",
       routeState: routeStateViewModel({
         failure: eventResult.error,
+        language,
         scenario: "failure",
       }),
     };
@@ -577,14 +625,14 @@ export async function loadAppEventsRouteViewModel(
   if (scenario === "empty" || eventResult.data.state === "empty") {
     return {
       state: "route-state",
-      routeState: routeStateViewModel({ scenario: "empty" }),
+      routeState: routeStateViewModel({ language, scenario: "empty" }),
     };
   }
 
   if (scenario === "pending" || eventResult.data.state === "pending") {
     return {
       state: "route-state",
-      routeState: routeStateViewModel({ scenario: "pending" }),
+      routeState: routeStateViewModel({ language, scenario: "pending" }),
     };
   }
 
@@ -611,7 +659,7 @@ export async function loadAppEventsRouteViewModel(
   if (!primaryEventId) {
     return {
       state: "route-state",
-      routeState: routeStateViewModel({ scenario: "empty" }),
+      routeState: routeStateViewModel({ language, scenario: "empty" }),
     };
   }
 
@@ -641,6 +689,7 @@ export async function loadAppEventsRouteViewModel(
     workspace: successViewModel({
       attendeePayload,
       eventPayload: eventResult.data,
+      language,
       primaryEventId,
       readinessPayload,
       valuePayload,

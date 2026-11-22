@@ -49,6 +49,10 @@ export const proxy = auth(async (request) => {
   // 复用产品语言命名空间，但保留 null 语义，避免非法 query 污染 header/cookie。
   const language = parseOrbitLanguage(request.nextUrl.searchParams.get("lang"));
   const requestHeaders = new Headers(request.headers);
+  // 只有页面地址里的 `?lang=` 是「用户选了语言」，才写进 cookie。API 的 `?lang=` 是数据参数（例如
+  // value-lines 只分 zh/en，日文界面也传 en）：若也写 cookie，日文界面会被悄悄改成英文——导航栏（布局首次加载
+  // 时定）还是日文，之后每次换页的页面主体却变英文（2026-11-21 会場の記録 中日英混杂的根因）。
+  const rememberLanguage = request.nextUrl.pathname.startsWith("/api/") ? null : language;
 
   // CORS preflight 按规范不携带业务会话，只声明随后请求的方法和 headers。
   // 这里仅确认 `/api` 的传输能力；真正的 GET/POST/PUT/PATCH/DELETE 仍继续
@@ -106,8 +110,8 @@ export const proxy = auth(async (request) => {
     );
 
     const redirectResponse = NextResponse.redirect(loginUrl);
-    if (language) {
-      redirectResponse.cookies.set("orbit-lang", language, {
+    if (rememberLanguage) {
+      redirectResponse.cookies.set("orbit-lang", rememberLanguage, {
         maxAge: 31536000,
         path: "/",
         sameSite: "lax",
@@ -167,8 +171,8 @@ export const proxy = auth(async (request) => {
         ),
       );
       redirectResponse.headers.set("cache-control", "no-store");
-      if (language) {
-        redirectResponse.cookies.set("orbit-lang", language, {
+      if (rememberLanguage) {
+        redirectResponse.cookies.set("orbit-lang", rememberLanguage, {
           maxAge: 31536000,
           path: "/",
           sameSite: "lax",
@@ -191,9 +195,9 @@ export const proxy = auth(async (request) => {
     response.headers.set("cache-control", "private, no-store");
   }
 
-  if (language) {
+  if (rememberLanguage) {
     // cookie 让后续没有 query 参数的 `/app` 页面继续使用用户选择的语言。
-    response.cookies.set("orbit-lang", language, {
+    response.cookies.set("orbit-lang", rememberLanguage, {
       maxAge: 31536000,
       path: "/",
       sameSite: "lax",

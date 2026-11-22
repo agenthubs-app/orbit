@@ -49,7 +49,7 @@ export const inviteSenderCopy = {
   shareFailed: { ja: "変更できませんでした", zh: "无法更改", en: "Couldn't update it", kind: "toast" },
   shareNone: { ja: "プロフィールに入れた項目から選べます。", zh: "可以从资料里已填写的项目中选择。", en: "You can choose from what's in your profile.", kind: "sentence" },
   keyName: { ja: "名前", zh: "名字", en: "Name", kind: "label" },
-  keyOrganization: { ja: "会社・役職", zh: "公司・职位", en: "Company and title", kind: "label" },
+  keyOrganization: { ja: "会社・役職", zh: "公司、职位", en: "Company and title", kind: "label" },
   keyOffering: { ja: "提供できること", zh: "能提供的", en: "What I can offer", kind: "label" },
   keySeeking: { ja: "求めていること", zh: "正在寻找的", en: "What I'm looking for", kind: "label" },
   keyEmail: { ja: "メール", zh: "邮箱", en: "Email", kind: "label" },

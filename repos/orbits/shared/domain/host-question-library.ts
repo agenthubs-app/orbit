@@ -481,3 +481,45 @@ export function searchLibrary(query: string, category: HostQuestionCategory | "a
     return words.every((word) => text.includes(word));
   });
 }
+
+const OPTION_BY_TEXT: ReadonlyMap<string, Tri> = (() => {
+  const map = new Map<string, Tri>();
+  for (const entry of HOST_QUESTION_LIBRARY_ENTRIES) for (const option of entry.options) for (const text of option) if (!map.has(text)) map.set(text, option);
+  return map;
+})();
+const PROMPT_BY_TEXT: ReadonlyMap<string, Tri> = new Map(HOST_QUESTION_LIBRARY_ENTRIES.flatMap((entry) => entry.prompt.map((text) => [text, entry.prompt] as const)));
+
+/**
+ * 申込の回答（選択肢の表示文）を見る人の言語にする。質問集の選択肢と一致する部分だけ訳し、主催者が自分で書いた選択肢・
+ * 自由記述はそのまま（主催者・本人の原文）。複数選択は「、」/「, 」区切り。
+ */
+export function localizeLibraryAnswerText(text: string, language: OrbitLanguage): string {
+  const parts = text.split(/\s*(、|，|, )\s*/u);
+  // parts = [文, 区切り, 文, 区切り, …]。中文の選択肢自体に「、」が入る（「AI、数据」）ので、長い組み合わせから先に照合する。
+  const words = parts.filter((_, i) => i % 2 === 0);
+  const seps = parts.filter((_, i) => i % 2 === 1);
+  let mapped = false;
+  const out: string[] = [];
+  for (let i = 0; i < words.length; ) {
+    let hit: { option: Tri; next: number } | null = null;
+    for (let j = words.length; j > i && !hit; j -= 1) {
+      const joined = words.slice(i, j).map((word, k) => (k === 0 ? word : `${seps[i + k - 1]}${word}`)).join("");
+      const option = OPTION_BY_TEXT.get(joined);
+      if (option) hit = { next: j, option };
+    }
+    if (hit) {
+      mapped = true;
+      out.push(hit.option[LANG_INDEX[language]]);
+      i = hit.next;
+    } else {
+      out.push(words[i]!);
+      i += 1;
+    }
+  }
+  return mapped ? out.join(language === "en" ? ", " : "、") : text;
+}
+
+/** 質問集の質問文なら見る人の言語に；主催者が書いた質問文はそのまま。 */
+export function localizeLibraryPrompt(prompt: string, language: OrbitLanguage): string {
+  return PROMPT_BY_TEXT.get(prompt)?.[LANG_INDEX[language]] ?? prompt;
+}

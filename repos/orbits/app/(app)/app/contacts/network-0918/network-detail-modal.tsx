@@ -41,7 +41,7 @@ import { buildMemoPatch, tokyoDayWindow, tokyoToday } from "./network-follow-mod
 import { NetworkInsightPanel } from "./network-insight-panel";
 import { SOURCE_LABEL, TIER_CHIP, TIER_LABEL, TIER_STYLE, metSummary, sourceOf, tierGroupOf } from "./network-model";
 
-type Translate = (copy: { en: string; zh: string }) => string;
+type Translate = (copy: { ja?: string; en: string; zh: string }) => string;
 const EN_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /**
@@ -55,7 +55,7 @@ export function formatNoteTime(iso: string, t: Translate = (copy) => copy.zh): s
   const m = d.getUTCMonth() + 1;
   const day = d.getUTCDate();
   const hm = `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
-  return t({ zh: `${m}月${day}日 ${hm}`, en: `${EN_MONTHS[m - 1]} ${day} ${hm}` });
+  return t({ ja: `${m}月${day}日 ${hm}`, zh: `${m}月${day}日 ${hm}`, en: `${EN_MONTHS[m - 1]} ${day} ${hm}` });
 }
 
 const TOKYO_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -71,19 +71,19 @@ export function formatTimelineTime(item: Pick<RelationshipTimelineItem, "occurre
   const p = (n: number) => String(n).padStart(2, "0");
   const m = d.getUTCMonth() + 1;
   const day = d.getUTCDate();
-  if (item.occurredAtPrecision === "day") return t({ zh: `${m}月${day}日`, en: `${EN_MONTHS[m - 1]} ${day}` });
+  if (item.occurredAtPrecision === "day") return t({ ja: `${m}月${day}日`, zh: `${m}月${day}日`, en: `${EN_MONTHS[m - 1]} ${day}` });
   const hm = `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
-  return t({ zh: `${m}月${day}日 ${hm}`, en: `${EN_MONTHS[m - 1]} ${day} ${hm}` });
+  return t({ ja: `${m}月${day}日 ${hm}`, zh: `${m}月${day}日 ${hm}`, en: `${EN_MONTHS[m - 1]} ${day} ${hm}` });
 }
 
-export const TIMELINE_SOURCE_LABEL: Record<RelationshipTimelineSource, { zh: string; en: string }> = {
-  memo: { zh: "memo", en: "Memo" },
-  encounter: { zh: "见面", en: "Met" },
-  note: { zh: "笔记", en: "Note" },
-  plan: { zh: "计划", en: "Plan" },
-  schedule: { zh: "日程", en: "Schedule" },
-  followup_done: { zh: "跟进", en: "Follow-up" },
-  capture: { zh: "建立联系", en: "Connected" },
+export const TIMELINE_SOURCE_LABEL: Record<RelationshipTimelineSource, { ja: string; zh: string; en: string }> = {
+  memo: { ja: "メモ", zh: "memo", en: "Memo" },
+  encounter: { ja: "対面", zh: "见面", en: "Met" },
+  note: { ja: "ノート", zh: "笔记", en: "Note" },
+  plan: { ja: "プラン", zh: "计划", en: "Plan" },
+  schedule: { ja: "予定", zh: "日程", en: "Schedule" },
+  followup_done: { ja: "フォロー", zh: "跟进", en: "Follow-up" },
+  capture: { ja: "つながり", zh: "建立联系", en: "Connected" },
 };
 
 /** 「最近互动」：聚合时间线（W0046）。没有 timeline（旧调用方）时退回详情 notes。 */
@@ -93,11 +93,11 @@ function RecentInteractions({ contact, t }: { contact: OrbitContactView; t: Tran
     const notes = sortedNotes(contact.notes);
     return (
       <div className="nw-tl">
-        {notes.length === 0 ? <span className="nw-tl-empty">{t({ en: "No interactions recorded yet", zh: "还没有互动记录" })}</span> : null}
+        {notes.length === 0 ? <span className="nw-tl-empty">{t({ ja: "まだやりとりの記録がありません", en: "No interactions recorded yet", zh: "还没有互动记录" })}</span> : null}
         {notes.map((note, i) => (
           <div key={note.id} className="nw-tl-row">
             <span className="nw-tl-rail"><span className="nw-tl-dot" style={{ background: i === 0 ? "#4B4FC7" : "#B9BCEB" }}></span><span className="nw-tl-line" style={{ background: i === notes.length - 1 ? "transparent" : "#DDDEFA" }}></span></span>
-            <span className="nw-tl-body"><span className="nw-tl-meta"><span className="nw-tl-time">{formatNoteTime(note.createdAt, t)}</span><strong className="nw-tl-kind">{t({ en: "Note", zh: "备注" })}</strong></span><span className="nw-tl-text">{note.body}</span></span>
+            <span className="nw-tl-body"><span className="nw-tl-meta"><span className="nw-tl-time">{formatNoteTime(note.createdAt, t)}</span><strong className="nw-tl-kind">{t({ ja: "備考", en: "Note", zh: "备注" })}</strong></span><span className="nw-tl-text">{note.body}</span></span>
           </div>
         ))}
       </div>
@@ -108,8 +108,8 @@ function RecentInteractions({ contact, t }: { contact: OrbitContactView; t: Tran
   const partial = timeline.unavailableSources.length > 0;
   return (
     <div className="nw-tl" data-network-timeline>
-      {partial ? <span className="nw-tl-partial" role="status">{t({ en: "Some records can't be loaded right now.", zh: "部分记录暂时读不到" })}</span> : null}
-      {items.length === 0 && !partial ? <span className="nw-tl-empty">{t({ en: "No interactions recorded yet", zh: "还没有互动记录" })}</span> : null}
+      {partial ? <span className="nw-tl-partial" role="status">{t({ ja: "一部の記録を読み込めません", en: "Some records can't be loaded right now.", zh: "部分记录暂时读不到" })}</span> : null}
+      {items.length === 0 && !partial ? <span className="nw-tl-empty">{t({ ja: "まだやりとりの記録がありません", en: "No interactions recorded yet", zh: "还没有互动记录" })}</span> : null}
       {items.map((item, i) => (
         <div key={item.id} id={timelineAnchorId(item.id)} className="nw-tl-row" data-timeline-source={item.source}>
           <span className="nw-tl-rail"><span className="nw-tl-dot" style={{ background: i === 0 ? "#4B4FC7" : "#B9BCEB" }}></span><span className="nw-tl-line" style={{ background: i === items.length - 1 ? "transparent" : "#DDDEFA" }}></span></span>
@@ -120,7 +120,7 @@ function RecentInteractions({ contact, t }: { contact: OrbitContactView; t: Tran
           </span>
         </div>
       ))}
-      {total > items.length ? <span className="nw-tl-more">{t({ en: `${total} records in total · showing the latest ${items.length}`, zh: `共 ${total} 条 · 显示最近 ${items.length} 条` })}</span> : null}
+      {total > items.length ? <span className="nw-tl-more">{t({ ja: `全 ${total} 件 · 最新 ${items.length} 件を表示`, en: `${total} records in total · showing the latest ${items.length}`, zh: `共 ${total} 条 · 显示最近 ${items.length} 条` })}</span> : null}
     </div>
   );
 }
@@ -134,9 +134,9 @@ function RelationshipBasis({ contact, t }: { contact: OrbitContactView; t: Trans
   const byId = new Map([...(contact.timeline?.items ?? []), ...(contact.relationshipSignalItems ?? [])].map((item) => [item.id, item]));
   const signals = strength?.signals ?? [];
   return (
-    <div className="nw-basis" data-network-basis role="region" aria-label={t({ en: "Why this tier", zh: "档位依据" })}>
-      <span className="nw-basis-head">{t({ en: "Based on these records (updated automatically):", zh: "根据以下记录自动判断：" })}</span>
-      {signals.length === 0 ? <span className="nw-tl-empty">{t({ en: "No interaction records yet", zh: "还没有往来记录" })}</span> : null}
+    <div className="nw-basis" data-network-basis role="region" aria-label={t({ ja: "段階の根拠", en: "Why this tier", zh: "档位依据" })}>
+      <span className="nw-basis-head">{t({ ja: "次の記録から自動で判定しています：", en: "Based on these records (updated automatically):", zh: "根据以下记录自动判断：" })}</span>
+      {signals.length === 0 ? <span className="nw-tl-empty">{t({ ja: "まだやりとりの記録がありません", en: "No interaction records yet", zh: "还没有往来记录" })}</span> : null}
       {signals.map((signal) => {
         const item = byId.get(signal.timelineItemId);
         return (
@@ -147,7 +147,7 @@ function RelationshipBasis({ contact, t }: { contact: OrbitContactView; t: Trans
           </span>
         );
       })}
-      {strength?.dormant ? <span className="nw-basis-foot">{t({ en: "No interactions in the last 60 days.", zh: "最近 60 天没有往来。" })}</span> : null}
+      {strength?.dormant ? <span className="nw-basis-foot">{t({ ja: "直近 60 日間やりとりがありません。", en: "No interactions in the last 60 days.", zh: "最近 60 天没有往来。" })}</span> : null}
     </div>
   );
 }
@@ -211,7 +211,7 @@ function QuickMemo({ contact, guardWrite, t }: { contact: OrbitContactView; guar
     event?.preventDefault();
     if (!canSave || inFlight.current) return;
     if (guardWrite) {
-      guardWrite(t({ en: "memo", zh: "memo" }));
+      guardWrite(t({ ja: "メモ", en: "memo", zh: "memo" }));
       return;
     }
     inFlight.current = true;
@@ -233,32 +233,32 @@ function QuickMemo({ contact, guardWrite, t }: { contact: OrbitContactView; guar
   return (
     <form className="nw-qm" data-network-quick-memo={status} onSubmit={(event) => void save(event)}>
       <div className="nw-qm-row">
-        <label className="nw-sr" htmlFor={`nw-qm-${contact.id}`}>{t({ en: "Quick memo", zh: "快速记一句" })}</label>
+        <label className="nw-sr" htmlFor={`nw-qm-${contact.id}`}>{t({ ja: "ひとことメモ", en: "Quick memo", zh: "快速记一句" })}</label>
         <input
           id={`nw-qm-${contact.id}`}
           className="nw-qm-input"
           value={body}
           maxLength={2000}
           disabled={status === "saving" || status === "saved"}
-          placeholder={t({ en: "Note it: what you talked about, what they need…", zh: "记一句：今天聊了什么、TA 提到什么需要…" })}
+          placeholder={t({ ja: "ひとこと：今日話したこと、相手が必要としていること…", en: "Note it: what you talked about, what they need…", zh: "记一句：今天聊了什么、TA 提到什么需要…" })}
           onChange={(event) => { setBody(event.target.value); if (status === "error") setStatus("idle"); }}
         />
         <input
           className="nw-qm-date"
           type="date"
-          aria-label={t({ en: "Date", zh: "日期" })}
+          aria-label={t({ ja: "日付", en: "Date", zh: "日期" })}
           value={date}
           max={tokyoToday()}
           disabled={status === "saving" || status === "saved"}
           onChange={(event) => setDate(event.target.value)}
         />
         <button type="submit" className="btn nw-dv-primary" data-network-quick-memo-save disabled={!canSave}>
-          {status === "saving" ? t({ en: "Saving…", zh: "正在保存…" }) : t({ en: "Save", zh: "保存" })}
+          {status === "saving" ? t({ ja: "保存中…", en: "Saving…", zh: "正在保存…" }) : t({ ja: "保存", en: "Save", zh: "保存" })}
         </button>
       </div>
-      <span className="nw-qm-hint">{t({ en: "Used to organise “can offer / needs / topics” with AI. Only you can see it.", zh: "会用于 AI 整理「能给你的／需要的／话题」，仅你可见" })}</span>
-      {status === "error" ? <span className="nw-qm-error" role="alert">{t({ en: "Couldn't save. Your text is still here — try again.", zh: "没能保存，文字还在，请重试。" })}</span> : null}
-      {status === "saved" ? <span className="nw-qm-hint" role="status">{t({ en: "Saved", zh: "已保存" })}</span> : null}
+      <span className="nw-qm-hint">{t({ ja: "AI が「提供できること／必要なこと／話題」を整理するのに使います。見られるのはあなただけです", en: "Used to organise “can offer / needs / topics” with AI. Only you can see it.", zh: "会用于 AI 整理「能给你的／需要的／话题」，仅你可见" })}</span>
+      {status === "error" ? <span className="nw-qm-error" role="alert">{t({ ja: "保存できませんでした。文章は残っています。もう一度お試しください。", en: "Couldn't save. Your text is still here — try again.", zh: "没能保存，文字还在，请重试。" })}</span> : null}
+      {status === "saved" ? <span className="nw-qm-hint" role="status">{t({ ja: "保存しました", en: "Saved", zh: "已保存" })}</span> : null}
     </form>
   );
 }
@@ -293,16 +293,16 @@ function useEmailDraft(contactId: string, language: "zh" | "en" | "ja") {
 }
 
 function ProfileColumnCard({ title, hint, view, topics = false, t }: { title: string; hint?: string; view: ProfileColumnView; topics?: boolean; t: Translate }) {
-  const guessTag = <span className="nw-guess">{t({ en: "Inferred from card", zh: "据名片推测" })}</span>;
+  const guessTag = <span className="nw-guess">{t({ ja: "名刺から推定", en: "Inferred from card", zh: "据名片推测" })}</span>;
   return (
     <div className="nw-panel nw-dv-col" data-network-profile-column data-profile-inferred={view.inferred ? "true" : undefined}>
       <strong className="nw-dv-col-t">{title}{hint ? <span className="nw-dv-col-hint">{hint}</span> : null}</strong>
       {view.items.length === 0 ? (
-        <span className="nw-dv-col-empty" data-network-profile-empty>{t({ en: "Write a memo and AI will organise this.", zh: "写一条 memo，AI 会帮你整理" })}</span>
+        <span className="nw-dv-col-empty" data-network-profile-empty>{t({ ja: "メモを書くと AI が整理します", en: "Write a memo and AI will organise this.", zh: "写一条 memo，AI 会帮你整理" })}</span>
       ) : topics ? (
         <div className="nw-topic-wrap">
           {view.items.map((item) => view.inferred
-            ? <span key={item} className="nw-topic nw-topic-guess" data-profile-guess>{item} · {t({ en: "inferred", zh: "推测" })}</span>
+            ? <span key={item} className="nw-topic nw-topic-guess" data-profile-guess>{item} · {t({ ja: "推定", en: "inferred", zh: "推测" })}</span>
             : <span key={item} className="nw-topic">{item}</span>)}
         </div>
       ) : (
@@ -332,7 +332,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
   const demo = useDemoMode();
   const guardWrite = demo?.guardWrite;
   // 示例里「写 memo」弹拦截层；真实页面打开「写 memo」弹窗。
-  const onFollow = guardWrite ? () => guardWrite(t({ en: "memo", zh: "memo" })) : openFollow;
+  const onFollow = guardWrite ? () => guardWrite(t({ ja: "メモ", en: "memo", zh: "memo" })) : openFollow;
   const [basisOpen, setBasisOpen] = useState(false);
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [copyNote, setCopyNote] = useState<{ label: string; kind: "copied" | "selected" } | null>(null);
@@ -401,19 +401,19 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
 
   // 设计 selOverview：图标 / 标签 / 值 / 说明；「联系频率」无数据源不渲染。
   const overview: { icon: string; label: string; value: string; desc: string }[] = [
-    { icon: "⇢", label: t({ en: "Relationship tier", zh: "关系档位" }), value: tier ? t(TIER_LABEL[tier]) : t({ en: "Not scored yet", zh: "暂未评估" }), desc: tier ? t(TIER_STYLE[tier].desc) : t({ en: "Updates automatically after the next visit", zh: "下次打开时自动更新" }) },
+    { icon: "⇢", label: t({ ja: "関係の段階", en: "Relationship tier", zh: "关系档位" }), value: tier ? t(TIER_LABEL[tier]) : t({ ja: "未評価", en: "Not scored yet", zh: "暂未评估" }), desc: tier ? t(TIER_STYLE[tier].desc) : t({ ja: "次に開いたときに自動で更新", en: "Updates automatically after the next visit", zh: "下次打开时自动更新" }) },
     // 上次互动：值 = 互动时间，说明 = 互动摘要（无则下一步）；下次计划的 reason 与互动摘要相同时不重复。
-    { icon: "◷", label: t({ en: "Last contact", zh: "上次互动" }), value: interactionAt, desc: interactionSummary || next?.text || dash },
-    { icon: "▦", label: t({ en: "Next plan", zh: "下次计划" }), value: next?.text || dash, desc: next?.reason && next.reason.trim() !== interactionSummary ? next.reason : "" },
+    { icon: "◷", label: t({ ja: "前回の接点", en: "Last contact", zh: "上次互动" }), value: interactionAt, desc: interactionSummary || next?.text || dash },
+    { icon: "▦", label: t({ ja: "次の予定", en: "Next plan", zh: "下次计划" }), value: next?.text || dash, desc: next?.reason && next.reason.trim() !== interactionSummary ? next.reason : "" },
     // 来源说明经 metSummary 清洗：账号邮箱 / 「confirmed by」句不渲染（空则省略说明）。
-    { icon: "◎", label: t({ en: "Source", zh: "来源" }), value: t(SOURCE_LABEL[source]), desc: metSummary(contact.met) },
+    { icon: "◎", label: t({ ja: "出どころ", en: "Source", zh: "来源" }), value: t(SOURCE_LABEL[source]), desc: metSummary(contact.met) },
   ];
 
   // 联系方式胶囊（头卡分隔线下）：只渲染非空字段，四项全空则整行省略；点击复制。
   const channels: { key: string; icon: string; label: string; value: string }[] = [
-    { key: "email", icon: "✉", label: t({ en: "Email", zh: "邮箱" }), value: (contact.email ?? "").trim() },
-    { key: "phone", icon: "☎", label: t({ en: "Phone", zh: "电话" }), value: (contact.phone ?? "").trim() },
-    { key: "wechat", icon: "", label: t({ en: "WeChat", zh: "微信" }), value: (contact.wechat ?? "").trim() },
+    { key: "email", icon: "✉", label: t({ ja: "メール", en: "Email", zh: "邮箱" }), value: (contact.email ?? "").trim() },
+    { key: "phone", icon: "☎", label: t({ ja: "電話", en: "Phone", zh: "电话" }), value: (contact.phone ?? "").trim() },
+    { key: "wechat", icon: "", label: t({ ja: "WeChat", en: "WeChat", zh: "微信" }), value: (contact.wechat ?? "").trim() },
     { key: "line", icon: "", label: "LINE", value: (contact.lineId ?? "").trim() },
   ].filter((c) => c.value);
 
@@ -429,11 +429,11 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
   const onSchedule = (event: MouseEvent<HTMLAnchorElement>) => {
     if (!guardWrite) return;
     event.preventDefault();
-    guardWrite(t({ en: "schedule", zh: "约 TA" }));
+    guardWrite(t({ ja: "日程調整", en: "schedule", zh: "约 TA" }));
   };
   const onDraft = () => {
     if (guardWrite) {
-      guardWrite(t({ en: "email draft", zh: "邮件草稿" }));
+      guardWrite(t({ ja: "メール下書き", en: "email draft", zh: "邮件草稿" }));
       return;
     }
     void draftEmail.request();
@@ -442,16 +442,16 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
     setCopyNote({ kind: await copyChannel(value, element), label });
   };
   const scheduleButton = (
-    <a className="btn nw-dv-primary" href={SCHEDULE_HREF} onClick={onSchedule} data-network-detail-schedule>{t({ en: "Meet", zh: "约 TA" })}</a>
+    <a className="btn nw-dv-primary" href={SCHEDULE_HREF} onClick={onSchedule} data-network-detail-schedule>{t({ ja: "日程を調整", en: "Meet", zh: "约 TA" })}</a>
   );
   const linkedNeeds = planContext?.linkedNeeds ?? [];
   // R25：旧的「+ 关联到计划需求」（`PlanNeedLinkPanel`）随 v1 计划界面删除；只剩已关联需求的只读 chip，没有就不渲染。
   const planStrip = linkedNeeds.length === 0 ? null : (
     <div className="nw-why-needs" data-network-detail-plan-link>
-      <span className="nw-why-needs-l">{t({ en: "Plan needs", zh: "对应计划需求" })}</span>
+      <span className="nw-why-needs-l">{t({ ja: "該当するプランの必要人脈", en: "Plan needs", zh: "对应计划需求" })}</span>
       {linkedNeeds.map((need) => (
         <span key={need.needId} className="nw-chip nw-why-need" data-plan-linked-need={need.needId}>
-          {need.phaseNo !== null ? t({ en: `Phase ${need.phaseNo} · `, zh: `阶段 ${need.phaseNo} · ` }) : ""}{need.title} ✓
+          {need.phaseNo !== null ? t({ ja: `フェーズ ${need.phaseNo} · `, en: `Phase ${need.phaseNo} · `, zh: `阶段 ${need.phaseNo} · ` }) : ""}{need.title} ✓
         </span>
       ))}
     </div>
@@ -460,7 +460,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
     <>
       {scheduleButton}
       <button type="button" className="btn nw-dv-ghost" data-network-detail-draft disabled={draftEmail.state === "loading"} onClick={onDraft}>
-        {draftEmail.state === "loading" ? t({ en: "Drafting…", zh: "正在起草…" }) : t({ en: "Draft email", zh: "起草邮件" })}
+        {draftEmail.state === "loading" ? t({ ja: "下書き中…", en: "Drafting…", zh: "正在起草…" }) : t({ ja: "メールを下書き", en: "Draft email", zh: "起草邮件" })}
       </button>
     </>
   );
@@ -470,10 +470,10 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
 
   return (
     <div className="nw-overlay" onClick={onOverlayClick} data-network-modal="detail">
-      <div ref={dialogRef} className="nw-modal nw-modal-detail" role="dialog" aria-modal="true" aria-label={t({ en: "Contact detail", zh: "联系人详情" })}>
+      <div ref={dialogRef} className="nw-modal nw-modal-detail" role="dialog" aria-modal="true" aria-label={t({ ja: "連絡先の詳細", en: "Contact detail", zh: "联系人详情" })}>
         <div className="nw-modal-head">
           <a className="btn nw-detail-back" href={closeHref} onClick={onCloseLink} data-network-detail-back>‹ {t(backLabel)}</a>
-          <a ref={closeRef} className="btn nw-modal-close" href={closeHref} onClick={onCloseLink} aria-label={t({ en: "Close", zh: "关闭" })}>×</a>
+          <a ref={closeRef} className="btn nw-modal-close" href={closeHref} onClick={onCloseLink} aria-label={t({ ja: "閉じる", en: "Close", zh: "关闭" })}>×</a>
         </div>
 
         {/* ① 名片头卡 */}
@@ -486,7 +486,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
                 {tier ? (
                   <>
                     <span className="nw-detail-stage" data-network-tier={tier} style={{ background: TIER_CHIP[tier].bg, color: TIER_CHIP[tier].fg }}>{t(TIER_LABEL[tier])}</span>
-                    <button type="button" className="btn nw-basis-toggle" aria-expanded={basisOpen} onClick={() => setBasisOpen((open) => !open)}>{t({ en: "Why?", zh: "依据" })} {basisOpen ? "▴" : "▾"}</button>
+                    <button type="button" className="btn nw-basis-toggle" aria-expanded={basisOpen} onClick={() => setBasisOpen((open) => !open)}>{t({ ja: "根拠", en: "Why?", zh: "依据" })} {basisOpen ? "▴" : "▾"}</button>
                   </>
                 ) : null}
               </div>
@@ -498,12 +498,12 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
                 guardWrite={guardWrite}
                 language={language}
                 t={t}
-                trailing={<span className="nw-dv-src" data-network-detail-source>· {t({ en: "From", zh: "来自" })} {t(SOURCE_LABEL[source])}{capturedDate ? ` · ${capturedDate}` : ""}</span>}
+                trailing={<span className="nw-dv-src" data-network-detail-source>· {t({ ja: "出どころ", en: "From", zh: "来自" })} {t(SOURCE_LABEL[source])}{capturedDate ? ` · ${capturedDate}` : ""}</span>}
               />
               {tier && basisOpen ? <RelationshipBasis contact={contact} t={t} /> : null}
             </div>
             <div className="nw-dv-head-acts">
-              <button type="button" className="btn nw-detail-follow" onClick={onFollow}>✎ {t({ en: "Write memo", zh: "写 memo" })}</button>
+              <button type="button" className="btn nw-detail-follow" onClick={onFollow}>✎ {t({ ja: "メモを書く", en: "Write memo", zh: "写 memo" })}</button>
               {scheduleButton}
             </div>
           </div>
@@ -515,17 +515,17 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
                   type="button"
                   className="btn nw-dv-channel"
                   data-network-channel={c.key}
-                  aria-label={t({ en: `Copy ${c.label}: ${c.value}`, zh: `复制${c.label}：${c.value}` })}
+                  aria-label={t({ ja: `${c.label}をコピー：${c.value}`, en: `Copy ${c.label}: ${c.value}`, zh: `复制${c.label}：${c.value}` })}
                   onClick={(event) => void onCopy(c.label, c.value, event.currentTarget.querySelector("[data-channel-value]"))}
                 >
                   {c.icon ? <span className="nw-dv-channel-i" aria-hidden="true">{c.icon}</span> : <span className="nw-dv-channel-l">{c.label}</span>}
                   <span data-channel-value>{c.value}</span>
                 </button>
               ))}
-              <span className="nw-dv-channels-hint">{t({ en: "Click to copy", zh: "点击复制" })}</span>
+              <span className="nw-dv-channels-hint">{t({ ja: "クリックでコピー", en: "Click to copy", zh: "点击复制" })}</span>
               {copyNote ? (
                 <span className="nw-dv-copied" role="status" data-network-copy-status={copyNote.kind}>
-                  {copyNote.kind === "copied" ? t({ en: `${copyNote.label} copied`, zh: `已复制${copyNote.label}` }) : t({ en: "Selected — copy it manually", zh: "已选中，可手动复制" })}
+                  {copyNote.kind === "copied" ? t({ ja: `${copyNote.label}をコピーしました`, en: `${copyNote.label} copied`, zh: `已复制${copyNote.label}` }) : t({ ja: "選択しました。手動でコピーしてください", en: "Selected — copy it manually", zh: "已选中，可手动复制" })}
                 </span>
               ) : null}
             </div>
@@ -550,12 +550,12 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
               <div className="nw-op-draft nw-why-draft" data-network-detail-draft-result>
                 {draftEmail.draft ? (
                   <>
-                    <input className="nw-op-draft-subject" aria-label={t({ en: "Subject", zh: "主题" })} value={draftEmail.draft.subject} onChange={(event) => draftEmail.setDraft({ ...draftEmail.draft!, subject: event.target.value })} />
-                    <textarea className="nw-op-draft-body" aria-label={t({ en: "Email draft", zh: "邮件草稿" })} rows={8} value={draftEmail.draft.body} onChange={(event) => draftEmail.setDraft({ ...draftEmail.draft!, body: event.target.value })} />
-                    <span className="nw-ai-desc">{t({ en: "Only a draft — Orbit never sends it.", zh: "只是草稿，Orbit 不会替你发送。" })}</span>
+                    <input className="nw-op-draft-subject" aria-label={t({ ja: "件名", en: "Subject", zh: "主题" })} value={draftEmail.draft.subject} onChange={(event) => draftEmail.setDraft({ ...draftEmail.draft!, subject: event.target.value })} />
+                    <textarea className="nw-op-draft-body" aria-label={t({ ja: "メール下書き", en: "Email draft", zh: "邮件草稿" })} rows={8} value={draftEmail.draft.body} onChange={(event) => draftEmail.setDraft({ ...draftEmail.draft!, body: event.target.value })} />
+                    <span className="nw-ai-desc">{t({ ja: "下書きです。Orbit が代わりに送ることはありません。", en: "Only a draft — Orbit never sends it.", zh: "只是草稿，Orbit 不会替你发送。" })}</span>
                   </>
                 ) : null}
-                {draftEmail.state === "error" ? <span className="nw-op-error" role="alert">{t({ en: "Couldn't draft the email. Try again.", zh: "没能起草邮件，请重试。" })}</span> : null}
+                {draftEmail.state === "error" ? <span className="nw-op-error" role="alert">{t({ ja: "メールを下書きできませんでした。もう一度お試しください。", en: "Couldn't draft the email. Try again.", zh: "没能起草邮件，请重试。" })}</span> : null}
               </div>
             ) : null}
           />
@@ -564,15 +564,15 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
         {/* ③ 能给／需要／话题（D54 标签语义） */}
         {showProfile ? (
           <div className="nw-dv-cols" data-network-detail-section="profile">
-            <ProfileColumnCard title={t({ en: "What they can offer you", zh: "TA 能给你的" })} view={offering} t={t} />
-            <ProfileColumnCard title={t({ en: "What they need", zh: "TA 需要的" })} hint={t({ en: "you may help", zh: "你也许帮得上" })} view={seeking} t={t} />
-            <ProfileColumnCard title={t({ en: "Topics to talk about", zh: "可以聊的话题" })} view={topics} topics t={t} />
+            <ProfileColumnCard title={t({ ja: "この人が提供できること", en: "What they can offer you", zh: "TA 能给你的" })} view={offering} t={t} />
+            <ProfileColumnCard title={t({ ja: "この人が必要としていること", en: "What they need", zh: "TA 需要的" })} hint={t({ ja: "あなたが力になれるかも", en: "you may help", zh: "你也许帮得上" })} view={seeking} t={t} />
+            <ProfileColumnCard title={t({ ja: "話せる話題", en: "Topics to talk about", zh: "可以聊的话题" })} view={topics} topics t={t} />
           </div>
         ) : null}
 
         {/* ④ 最近互动（顶部快速 memo；会后纪要／约谈附加态在本块顶部） */}
         <div className="nw-panel nw-panel-16" data-network-detail-section="recent">
-          <div className="nw-panel-head"><strong className="nw-panel-t">{t({ en: "Recent interactions", zh: "最近互动" })}</strong></div>
+          <div className="nw-panel-head"><strong className="nw-panel-t">{t({ ja: "最近のやりとり", en: "Recent interactions", zh: "最近互动" })}</strong></div>
           {extra}
           <QuickMemo contact={contact} guardWrite={guardWrite} t={t} />
           <RecentInteractions contact={contact} t={t} />
@@ -581,8 +581,8 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
         {/* ⑤ 关系概览 · 名片备注（默认收起，不持久化） */}
         <div className="nw-panel nw-dv-fold" data-network-detail-section="overview">
           <button type="button" className="btn nw-dv-fold-btn" aria-expanded={overviewOpen} aria-controls={`nw-dv-overview-${contact.id}`} onClick={() => setOverviewOpen((open) => !open)}>
-            <span className="nw-dv-fold-t">{cardNotes ? t({ en: "Relationship overview · Card notes", zh: "关系概览 · 名片备注" }) : t({ en: "Relationship overview", zh: "关系概览" })}</span>
-            <span className="nw-dv-fold-s">{overviewOpen ? t({ en: "Collapse ▴", zh: "收起 ▴" }) : t({ en: "Expand ▾", zh: "展开 ▾" })}</span>
+            <span className="nw-dv-fold-t">{cardNotes ? t({ ja: "関係の概要 · 名刺メモ", en: "Relationship overview · Card notes", zh: "关系概览 · 名片备注" }) : t({ ja: "関係の概要", en: "Relationship overview", zh: "关系概览" })}</span>
+            <span className="nw-dv-fold-s">{overviewOpen ? t({ ja: "閉じる ▴", en: "Collapse ▴", zh: "收起 ▴" }) : t({ ja: "開く ▾", en: "Expand ▾", zh: "展开 ▾" })}</span>
           </button>
           {overviewOpen ? (
             <div id={`nw-dv-overview-${contact.id}`} className="nw-dv-fold-body">
@@ -596,7 +596,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
               </div>
               {cardNotes ? (
                 <div className="nw-dv-notes" data-network-detail-card-notes>
-                  <span className="nw-ov-l">{t({ en: "Business card notes", zh: "名片备注" })}</span>
+                  <span className="nw-ov-l">{t({ ja: "名刺メモ", en: "Business card notes", zh: "名片备注" })}</span>
                   <p className="nw-card-notes">{cardNotes}</p>
                 </div>
               ) : null}
@@ -605,7 +605,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
         </div>
 
         <div className="nw-detail-foot">
-          <a className="btn nw-detail-close" href={closeHref} onClick={onCloseLink}>{t({ en: "Close", zh: "关闭" })}</a>
+          <a className="btn nw-detail-close" href={closeHref} onClick={onCloseLink}>{t({ ja: "閉じる", en: "Close", zh: "关闭" })}</a>
         </div>
       </div>
     </div>
@@ -659,7 +659,7 @@ export function useNetworkDemoDetail(closeHref: string): {
     trigger.focus?.();
   }, [openId]);
   const contact = useMemo(
-    () => (inDemo && openId ? buildDemoNetworkDetail(openId, new Date(), language === "en" ? "en" : "zh") : null),
+    () => (inDemo && openId ? buildDemoNetworkDetail(openId, new Date(), language) : null),
     [inDemo, language, openId],
   );
   const modal = contact ? <NetworkDemoDetailDialog closeHref={closeHref} contact={contact} onClose={close} /> : null;

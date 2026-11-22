@@ -6,20 +6,21 @@ import type { AgentTaskInteractionView } from "./agent-task-interaction-view-mod
 
 export function AgentTaskInteractionCard({ interaction, language, busy, error, onResolve }: {
   interaction: AgentTaskInteractionView;
-  language: "en" | "zh";
+  language: "en" | "ja" | "zh";
   busy: boolean;
   error?: unknown;
   onResolve: (action: "accept" | "dismiss") => Promise<void>;
 }) {
   const { preserveHref } = useOrbitLanguage();
   const english = language === "en";
+  const pick = (copy: { en: string; ja: string; zh: string }) => copy[language];
   const failed = interaction.state === "failed" || interaction.state === "unavailable";
   const status = {
-    created: english ? "Task created" : "已创建待办",
-    suggested: english ? "Add this to your tasks?" : "加入待办吗？",
-    failed: english ? "Task could not be created" : "未能创建待办",
-    dismissed: english ? "Suggestion dismissed" : "已忽略这条建议",
-    unavailable: english ? "Task details are unavailable" : "待办信息暂时无法读取",
+    created: pick({ ja: "タスクを作成しました", zh: "已创建待办", en: "Task created" }),
+    suggested: pick({ ja: "タスクに追加しますか？", zh: "加入待办吗？", en: "Add this to your tasks?" }),
+    failed: pick({ ja: "タスクを作成できませんでした", zh: "未能创建待办", en: "Task could not be created" }),
+    dismissed: pick({ ja: "この提案は見送りました", zh: "已忽略这条建议", en: "Suggestion dismissed" }),
+    unavailable: pick({ ja: "タスクの情報を読み込めません", zh: "待办信息暂时无法读取", en: "Task details are unavailable" }),
   }[interaction.state];
 
   return (
@@ -28,26 +29,26 @@ export function AgentTaskInteractionCard({ interaction, language, busy, error, o
       <div role={failed ? "alert" : "status"} style={{ color: "var(--ink-3-text)", fontSize: 12 }}>{status}</div>
       {interaction.title ? <div style={{ color: "var(--ink)", fontWeight: 600, marginTop: 5 }}>{interaction.title}</div> : null}
       {interaction.dueAt ? <div style={{ color: "var(--ink-3-text)", fontSize: 12, marginTop: 5 }}>
-        {english ? "Due: " : "到期："}<time dateTime={interaction.dueAt}>{new Intl.DateTimeFormat(english ? "en-US" : "zh-CN", {
+        {pick({ ja: "期限：", zh: "到期：", en: "Due: " })}<time dateTime={interaction.dueAt}>{new Intl.DateTimeFormat(pick({ ja: "ja-JP", zh: "zh-CN", en: "en-US" }), {
           timeZone: "Asia/Tokyo", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
         }).format(new Date(interaction.dueAt))} JST</time>
       </div> : null}
       {interaction.reason && interaction.state === "suggested" ? <p style={{ color: "var(--ink-3-text)", fontSize: 13, margin: "6px 0 0" }}>{interaction.reason}</p> : null}
       {failed ? <p style={{ color: "var(--ink-3-text)", fontSize: 13, margin: "6px 0 0" }}>
-        {english ? "Check All tasks before trying again." : "请先在全部待办中核实，再重试。"}
+        {pick({ ja: "「すべてのタスク」で確認してから、もう一度お試しください。", zh: "请先在全部待办中核实，再重试。", en: "Check All tasks before trying again." })}
       </p> : null}
-      {error ? <p role="alert" style={{ color: "var(--coral-text)", fontSize: 13, margin: "8px 0 0" }}>{tasksErrorMessage(error, english)}</p> : null}
+      {error ? <p role="alert" style={{ color: "var(--coral-text)", fontSize: 13, margin: "8px 0 0" }}>{tasksErrorMessage(error, language)}</p> : null}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
         {interaction.state === "suggested" ? <>
-          <button className="btn btn-primary" type="button" disabled={busy} aria-label={`${english ? "Add task" : "加入待办"}：${interaction.title}`} onClick={() => onResolve("accept")}>
-            {busy ? (english ? "Saving…" : "正在保存…") : (english ? "Add task" : "加入待办")}
+          <button className="btn btn-primary" type="button" disabled={busy} aria-label={`${pick({ ja: "タスクに追加", zh: "加入待办", en: "Add task" })}${english ? ": " : "："}${interaction.title}`} onClick={() => onResolve("accept")}>
+            {busy ? pick({ ja: "保存中…", zh: "正在保存…", en: "Saving…" }) : pick({ ja: "タスクに追加", zh: "加入待办", en: "Add task" })}
           </button>
-          <button className="btn btn-quiet" type="button" disabled={busy} aria-label={`${english ? "Not now" : "暂不需要"}：${interaction.title}`} onClick={() => onResolve("dismiss")}>
-            {english ? "Not now" : "暂不需要"}
+          <button className="btn btn-quiet" type="button" disabled={busy} aria-label={`${pick({ ja: "今はしない", zh: "暂不需要", en: "Not now" })}${english ? ": " : "："}${interaction.title}`} onClick={() => onResolve("dismiss")}>
+            {pick({ ja: "今はしない", zh: "暂不需要", en: "Not now" })}
           </button>
         </> : null}
-        {interaction.state === "created" && interaction.taskId ? <a className="btn btn-quiet" href={preserveHref(`/app/tasks/${encodeURIComponent(interaction.taskId)}`)}>{english ? "View task" : "查看待办"}</a> : null}
-        {failed ? <a className="btn btn-quiet" href={preserveHref("/app/tasks")}>{english ? "All tasks" : "全部待办"}</a> : null}
+        {interaction.state === "created" && interaction.taskId ? <a className="btn btn-quiet" href={preserveHref(`/app/tasks/${encodeURIComponent(interaction.taskId)}`)}>{pick({ ja: "タスクを見る", zh: "查看待办", en: "View task" })}</a> : null}
+        {failed ? <a className="btn btn-quiet" href={preserveHref("/app/tasks")}>{pick({ ja: "すべてのタスク", zh: "全部待办", en: "All tasks" })}</a> : null}
       </div>
     </section>
   );

@@ -62,7 +62,7 @@ test("SC-W0052-01: snapshot read failure → numbers as usual, no sentences, met
 test("SC-W0052-01: no plan → card ② becomes the 「生成计划」 entry, card ③ counts only pending matches", () => {
   const data = buildNetworkOverviewData(parts({ pendingMatches: 0, plan: null }), ANALYSIS_35);
   const [, gap, week] = data.cards;
-  assert.deepEqual([gap!.cta, gap!.n, gap!.value, gap!.href, gap!.sentence], [true, null, { en: "Create a plan →", zh: "生成计划 →" }, "/app/tasks?tab=plan", null]);
+  assert.deepEqual([gap!.cta, gap!.n, gap!.value, gap!.href, gap!.sentence], [true, null, { ja: "プランを作る →", en: "Create a plan →", zh: "生成计划 →" }, "/app/tasks?tab=plan", null]);
   assert.deepEqual([week!.n, week!.value?.zh], [0, "0 项建议动作"]);
   // 计划读取失败：②③ 数字位为「—」，其余卡照常。
   const failed = buildNetworkOverviewData(parts({ pendingMatches: null, plan: undefined }), ANALYSIS_35);
@@ -124,13 +124,13 @@ test("SC-W0052-03 main: 6 people / 9 records → the latest 5 in time order with
 });
 
 test("SC-W0052-03 (review P2): summaries come from the closed template set per source + structured detail; the item title is never rendered", () => {
-  assert.deepEqual(activitySummary({ excerpt: "原文", source: "memo" }), { en: "原文", zh: "原文" });
-  assert.deepEqual(activitySummary({ source: "memo" }), { en: "Wrote a memo", zh: "写了 memo" });
-  assert.deepEqual(activitySummary({ excerpt: "（会场备注）", source: "capture", detail: { captureMethod: "qr" } }), { en: "Connected by QR code", zh: "扫码交换，建立联系" });
-  assert.deepEqual(activitySummary({ source: "encounter" }), { en: "Logged a meeting", zh: "记录了一次见面" });
-  assert.deepEqual(activitySummary({ source: "plan", detail: { planEvent: "something_new" } }), { en: "Plan: updated", zh: "计划：更新" });
-  assert.deepEqual(activitySummary({ source: "schedule", detail: { scheduleKind: "event" } }), { en: "Attended an event", zh: "参加了活动" });
-  assert.deepEqual(activitySummary({ source: "followup_done" }), { en: "Completed a follow-up", zh: "完成了一次跟进" });
+  assert.deepEqual(activitySummary({ excerpt: "原文", source: "memo" }), { ja: "原文", en: "原文", zh: "原文" });
+  assert.deepEqual(activitySummary({ source: "memo" }), { ja: "メモを書いた", en: "Wrote a memo", zh: "写了 memo" });
+  assert.deepEqual(activitySummary({ excerpt: "（会场备注）", source: "capture", detail: { captureMethod: "qr" } }), { ja: "QR コードでつながった", en: "Connected by QR code", zh: "扫码交换，建立联系" });
+  assert.deepEqual(activitySummary({ source: "encounter" }), { ja: "面会を記録", en: "Logged a meeting", zh: "记录了一次见面" });
+  assert.deepEqual(activitySummary({ source: "plan", detail: { planEvent: "something_new" } }), { ja: "プラン：更新", en: "Plan: updated", zh: "计划：更新" });
+  assert.deepEqual(activitySummary({ source: "schedule", detail: { scheduleKind: "event" } }), { ja: "イベントに参加", en: "Attended an event", zh: "参加了活动" });
+  assert.deepEqual(activitySummary({ source: "followup_done" }), { ja: "フォローを完了", en: "Completed a follow-up", zh: "完成了一次跟进" });
   // 白名单：每条的后端 title 都是英文调试句（夹具），组装结果里 0 命中。
   const data = buildNetworkOverviewData(parts(), ANALYSIS_35);
   const json = JSON.stringify(data);

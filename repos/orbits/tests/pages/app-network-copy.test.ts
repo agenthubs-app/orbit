@@ -4,29 +4,29 @@ import test from "node:test";
 import { activitySourceLabel, activityTypeLabel, contactIdFromActivityId, dueLabelCopy, systemBucketName } from "../../app/(app)/app/contacts/analysis/network-copy";
 
 // W0043 SC-03：后端系统分组 id 封闭集（shared/compute/dashboard-distribution.ts）全覆盖。
-const SYSTEM_BUCKETS: Array<[string, string, string]> = [
-  ["unclassified", "未分类", "Unclassified"],
-  ["location_unknown", "地区待完善", "Location missing"],
-  ["location_tokyo", "东京", "Tokyo"],
-  ["location_osaka", "大阪", "Osaka"],
-  ["location_kyoto", "京都", "Kyoto"],
-  ["location_kobe", "神户", "Kobe"],
-  ["location_yokohama", "横滨", "Yokohama"],
-  ["role_unknown", "角色待完善", "Role missing"],
-  ["role_decision_maker", "经营决策者", "Decision makers"],
-  ["role_business_growth", "业务拓展", "Business development"],
-  ["role_professional_advisor", "专业顾问", "Professional advisors"],
-  ["role_operations", "运营与专业角色", "Operations & specialists"],
-  ["strong", "强关系", "Strong ties"],
-  ["warm", "保持联系", "Keep in touch"],
-  ["weak", "待重新联系", "To reconnect"],
+const SYSTEM_BUCKETS: Array<[string, string, string, string]> = [
+  ["unclassified", "未分类", "Unclassified", "未分類"],
+  ["location_unknown", "地区待完善", "Location missing", "地域未設定"],
+  ["location_tokyo", "东京", "Tokyo", "東京"],
+  ["location_osaka", "大阪", "Osaka", "大阪"],
+  ["location_kyoto", "京都", "Kyoto", "京都"],
+  ["location_kobe", "神户", "Kobe", "神戸"],
+  ["location_yokohama", "横滨", "Yokohama", "横浜"],
+  ["role_unknown", "角色待完善", "Role missing", "役職未設定"],
+  ["role_decision_maker", "经营决策者", "Decision makers", "経営・意思決定者"],
+  ["role_business_growth", "业务拓展", "Business development", "事業開発"],
+  ["role_professional_advisor", "专业顾问", "Professional advisors", "専門アドバイザー"],
+  ["role_operations", "运营与专业角色", "Operations & specialists", "運営・専門職"],
+  ["strong", "强关系", "Strong ties", "強いつながり"],
+  ["warm", "保持联系", "Keep in touch", "連絡を保つ"],
+  ["weak", "待重新联系", "To reconnect", "再連絡待ち"],
 ];
 
-test("system bucket ids map to bilingual names (zh matches the backend name; ja falls back to en)", () => {
-  for (const [id, zh, en] of SYSTEM_BUCKETS) {
+test("system bucket ids map to trilingual names (zh matches the backend name)", () => {
+  for (const [id, zh, en, ja] of SYSTEM_BUCKETS) {
     assert.equal(systemBucketName(id, "zh"), zh);
     assert.equal(systemBucketName(id, "en"), en);
-    assert.equal(systemBucketName(id, "ja"), en);
+    assert.equal(systemBucketName(id, "ja"), ja);
   }
 });
 

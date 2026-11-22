@@ -27,7 +27,7 @@ export function visibleCharacterCount(text: string): number {
 
 export type ProfileSaveValidation =
   | { ok: true }
-  | { ok: false; message: { en: string; zh: string } };
+  | { ok: false; message: { ja: string; en: string; zh: string } };
 
 export function validateProfileSaveDraft(input: {
   profile: OrbitProfileEditorView;
@@ -38,18 +38,18 @@ export function validateProfileSaveDraft(input: {
   const { profile, requireDirectHandle = false, scope, scopeDirty } = input;
   if (scope !== "basic") return { ok: true };
   if (!profile.fullName.trim()) {
-    return { ok: false, message: { en: "Add your name before saving the profile.", zh: "请填写姓名后再保存档案。" } };
+    return { ok: false, message: { ja: "保存する前に名前を入力してください。", en: "Add your name before saving the profile.", zh: "请填写姓名后再保存档案。" } };
   }
   if (!profile.primaryIndustryId || !profile.secondaryIndustryId || !validateIndustrySelection(profile).valid) {
-    return { ok: false, message: { en: "Choose both industry levels before saving the basic profile.", zh: "保存基础资料前，请选择完整的一级和二级行业。" } };
+    return { ok: false, message: { ja: "基本情報を保存する前に、業界を大分類・小分類まで選んでください。", en: "Choose both industry levels before saving the basic profile.", zh: "保存基础资料前，请选择完整的一级和二级行业。" } };
   }
   if (requireDirectHandle && !profile.wechatName.trim() && !profile.lineId.trim()) {
-    return { ok: false, message: { en: "Add either WeChat or LINE before saving the basic profile.", zh: "保存基础资料前，请至少填写 WeChat 或 LINE 其中一项。" } };
+    return { ok: false, message: { ja: "基本情報を保存する前に、WeChat か LINE のどちらかを入力してください。", en: "Add either WeChat or LINE before saving the basic profile.", zh: "保存基础资料前，请至少填写 WeChat 或 LINE 其中一项。" } };
   }
   // 含中日韩文字 80，其余 200：与服务端 PUT /api/profile 同一份规则。
   const bioLimit = profileBioLimit(profile.bio.trim());
   if (scopeDirty.has("bio") && visibleCharacterCount(profile.bio.trim()) > bioLimit) {
-    return { ok: false, message: { en: `Keep About me within ${bioLimit} visible characters.`, zh: `关于我不能超过 ${bioLimit} 个可见字符。` } };
+    return { ok: false, message: { ja: `自己紹介は ${bioLimit} 文字以内にしてください。`, en: `Keep About me within ${bioLimit} visible characters.`, zh: `关于我不能超过 ${bioLimit} 个可见字符。` } };
   }
   return { ok: true };
 }

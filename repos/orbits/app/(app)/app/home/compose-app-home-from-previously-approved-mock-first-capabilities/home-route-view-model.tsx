@@ -9,7 +9,8 @@ import type { AppContactsRouteViewModel } from "../../contacts/compose-app-conta
 import { loadAppContactsRouteViewModel } from "../../contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import type { AppEventsRouteViewModel } from "../../events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { loadAppEventsRouteViewModel } from "../../events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
-import { eventChoiceToLandingEvent } from "../../events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
+import { eventChoiceToLandingEventIn } from "../../events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
+import type { OrbitLanguage } from "../../orbit-language-core";
 import {
   getOrbitLandingEventView,
   type OrbitLandingEventView,
@@ -35,6 +36,8 @@ export interface AppHomeRouteDependencies {
   readCanonicalParticipantEventJourneys?: (
     rawSubject: string,
   ) => Promise<readonly PublishedCanonicalEvent[]>;
+  /** Page language for product-written event text (industry, tags, agenda, fee). Default ja. */
+  language?: OrbitLanguage;
 }
 
 export interface AppHomeRouteStateViewModel {
@@ -127,8 +130,10 @@ async function loadHomeContacts(
 
 function canonicalEventToLandingEvent(
   event: PublishedCanonicalEvent,
+  language: OrbitLanguage,
 ): OrbitLandingEventView {
   const eventView = getOrbitLandingEventView({
+    language,
     event: publishedCanonicalEventToEventDTO(event),
     evidenceSummary:
       event.description?.trim() ||
@@ -172,15 +177,16 @@ function homeViewModel(input: {
   events: AppEventsRouteViewModel;
   participantEvents: readonly PublishedCanonicalEvent[];
   profile: Extract<AppProfileRouteViewModel, { state: "success" }>;
+  language: OrbitLanguage;
 }): OrbitHomeViewModel {
   const profile = input.profile.profile.profile;
   const fullName = profile.displayName || "Orbit operator";
   const ownedEvents =
     input.events.state === "success"
-      ? input.events.workspace.eventChoices.map(eventChoiceToLandingEvent)
+      ? input.events.workspace.eventChoices.map(eventChoiceToLandingEventIn(input.language))
       : [];
-  const participantEvents = input.participantEvents.map(
-    canonicalEventToLandingEvent,
+  const participantEvents = input.participantEvents.map((event) =>
+    canonicalEventToLandingEvent(event, input.language),
   );
   const events = mergeHomeEventJourneys(ownedEvents, participantEvents);
 
@@ -357,6 +363,7 @@ export async function loadAppHomeRouteViewModel(
       events,
       participantEvents,
       profile,
+      language: dependencies.language ?? "ja",
     }),
   };
 }

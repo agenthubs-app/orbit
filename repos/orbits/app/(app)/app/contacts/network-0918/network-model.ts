@@ -32,18 +32,18 @@ export function stageOf(contact: Pick<OrbitContactView, "pipelineStatus" | "rela
 export type NetworkTierGroup = RelationshipTierGroup;
 export const NETWORK_TIER_GROUPS = ["new", "active", "core", "dormant"] as const satisfies readonly NetworkTierGroup[];
 
-export const TIER_LABEL: Record<NetworkTierGroup, { zh: string; en: string }> = {
-  new: { zh: "新认识", en: "New" },
-  active: { zh: "有往来", en: "Active" },
-  core: { zh: "核心", en: "Core" },
-  dormant: { zh: "待唤醒", en: "To re-engage" },
+export const TIER_LABEL: Record<NetworkTierGroup, { ja: string; zh: string; en: string }> = {
+  new: { ja: "新しい知り合い", zh: "新认识", en: "New" },
+  active: { ja: "やりとりあり", zh: "有往来", en: "Active" },
+  core: { ja: "コア", zh: "核心", en: "Core" },
+  dormant: { ja: "休眠中", zh: "待唤醒", en: "To re-engage" },
 };
 
-export const TIER_STYLE: Record<NetworkTierGroup, { bg: string; fg: string; icon: string; desc: { zh: string; en: string } }> = {
-  new: { bg: "#F0F1F8", fg: "#6B6F99", icon: "◌", desc: { zh: "刚建立联系，往来还不多", en: "Recently connected, few interactions yet" } },
-  active: { bg: "#ECEEFB", fg: "#4B4FC7", icon: "▦", desc: { zh: "近期有见面、会议或 memo 往来", en: "Recent meetings, encounters or memos" } },
-  core: { bg: "#E4E5FA", fg: "#2E3270", icon: "◈", desc: { zh: "往来频繁、互动深入的关系", en: "Frequent, in-depth interactions" } },
-  dormant: { bg: "#FBF1DC", fg: "#8A6420", icon: "◷", desc: { zh: "曾经热络，60 天没有往来", en: "Was active, quiet for 60 days" } },
+export const TIER_STYLE: Record<NetworkTierGroup, { bg: string; fg: string; icon: string; desc: { ja: string; zh: string; en: string } }> = {
+  new: { bg: "#F0F1F8", fg: "#6B6F99", icon: "◌", desc: { ja: "つながったばかりで、やりとりはまだ少なめ", zh: "刚建立联系，往来还不多", en: "Recently connected, few interactions yet" } },
+  active: { bg: "#ECEEFB", fg: "#4B4FC7", icon: "▦", desc: { ja: "最近、対面・ミーティング・メモのやりとりがある", zh: "近期有见面、会议或 memo 往来", en: "Recent meetings, encounters or memos" } },
+  core: { bg: "#E4E5FA", fg: "#2E3270", icon: "◈", desc: { ja: "やりとりが多く、深い関係", zh: "往来频繁、互动深入的关系", en: "Frequent, in-depth interactions" } },
+  dormant: { bg: "#FBF1DC", fg: "#8A6420", icon: "◷", desc: { ja: "以前は活発で、60 日間やりとりがない", zh: "曾经热络，60 天没有往来", en: "Was active, quiet for 60 days" } },
 };
 
 export const TIER_CHIP: Record<NetworkTierGroup, { bg: string; fg: string }> = {
@@ -90,13 +90,13 @@ export function tierFromStrength(strength: OrbitContactStrength | undefined): Ne
 
 export type NetworkSource = "event" | "referral" | "contact" | "scan" | "other";
 export const NETWORK_SOURCES = ["all", "event", "referral", "contact", "scan", "other"] as const;
-export const SOURCE_LABEL: Record<NetworkSource | "all", { zh: string; en: string }> = {
-  all: { zh: "全部联系人", en: "All contacts" },
-  event: { zh: "活动认识", en: "Met at events" },
-  referral: { zh: "朋友引荐", en: "Referred" },
-  contact: { zh: "通讯录", en: "Address book" },
-  scan: { zh: "名片导入", en: "Business cards" },
-  other: { zh: "其他来源", en: "Other" },
+export const SOURCE_LABEL: Record<NetworkSource | "all", { ja: string; zh: string; en: string }> = {
+  all: { ja: "すべての連絡先", zh: "全部联系人", en: "All contacts" },
+  event: { ja: "イベントで知り合った", zh: "活动认识", en: "Met at events" },
+  referral: { ja: "紹介", zh: "朋友引荐", en: "Referred" },
+  contact: { ja: "アドレス帳", zh: "通讯录", en: "Address book" },
+  scan: { ja: "名刺", zh: "名片导入", en: "Business cards" },
+  other: { ja: "その他", zh: "其他来源", en: "Other" },
 };
 export const SOURCE_ICON: Record<NetworkSource | "all", string> = { all: "◎", event: "▦", referral: "⇢", contact: "▤", scan: "▭", other: "···" };
 

@@ -40,3 +40,14 @@ test("home list localization maps each item and defaults to Chinese", () => {
 
   assert.deepEqual(localizeHomeList(undefined, "zh"), []);
 });
+
+test("home value localization uses Japanese wording on the Japanese UI, never the Chinese segment", () => {
+  assert.equal(localizeHomeValue("Tokyo", "ja"), "東京");
+  assert.equal(localizeHomeValue("Founder", "ja"), "創業者");
+  assert.equal(localizeHomeValue("暖介绍 / warm intro", "ja"), "知人からの紹介");
+  assert.equal(localizeHomeValue("人工智能 / Computer vision", "ja"), "Computer vision");
+  assert.match(
+    localizeHomeHeadline("Founder managing source-backed relationship follow-up", "Founder", "ja"),
+    /^創業者 · 根拠に基づく関係フォロー$/,
+  );
+});

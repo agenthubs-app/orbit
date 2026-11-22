@@ -5,49 +5,49 @@
  * recommendedAction、gap／activity 的 label、sourceLabel、lastTouchpointLabel、actionBrief 的 judgment／steps／evidence）
  * 一律不进视图；用户可见文字只来自用户数据（姓名、公司、任务标题、用户填写的地区原文、关系目标）
  * 与本文件的模板 × 结构化字段（计数、id、type、bucketId、dueLabel 封闭集）。
- * 语言：zh 用中文，其余（en、ja）用英文，沿用 `t()` 的 ja→en 回退惯例。
+ * 语言：ja／zh／en 三语齐全，按当前语言取对应文案。
  */
 import type { SecondaryIndustryIdCode } from "../../../../../shared/contract/industries";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { industryLabel, isIndustryIdCode, SECONDARY_INDUSTRY_CATALOG, secondaryIndustryLabel } from "../../../../../shared/domain/industries";
 import { regionDisplayName } from "../../../../../shared/domain/regions";
 
-export type NetworkCopy = { zh: string; en: string };
+export type NetworkCopy = { ja: string; zh: string; en: string };
 
 export function pickCopy(copy: NetworkCopy, language: OrbitLanguage): string {
-  return language === "zh" ? copy.zh : copy.en;
+  return language === "ja" ? copy.ja : language === "zh" ? copy.zh : copy.en;
 }
 
-/** 后端系统分组 id（`shared/compute/dashboard-distribution.ts` 的封闭集）→ 双语名；中文与后端原名一致。 */
+/** 后端系统分组 id（`shared/compute/dashboard-distribution.ts` 的封闭集）→ 三语名；中文与后端原名一致。 */
 const SYSTEM_BUCKET_NAMES: Readonly<Record<string, NetworkCopy>> = {
-  unclassified: { zh: "未分类", en: "Unclassified" },
-  location_unknown: { zh: "地区待完善", en: "Location missing" },
-  location_tokyo: { zh: "东京", en: "Tokyo" },
-  location_osaka: { zh: "大阪", en: "Osaka" },
-  location_kyoto: { zh: "京都", en: "Kyoto" },
-  location_kobe: { zh: "神户", en: "Kobe" },
-  location_yokohama: { zh: "横滨", en: "Yokohama" },
-  role_unknown: { zh: "角色待完善", en: "Role missing" },
-  role_decision_maker: { zh: "经营决策者", en: "Decision makers" },
-  role_business_growth: { zh: "业务拓展", en: "Business development" },
-  role_professional_advisor: { zh: "专业顾问", en: "Professional advisors" },
-  role_operations: { zh: "运营与专业角色", en: "Operations & specialists" },
-  strong: { zh: "强关系", en: "Strong ties" },
-  warm: { zh: "保持联系", en: "Keep in touch" },
-  weak: { zh: "待重新联系", en: "To reconnect" },
+  unclassified: { ja: "未分類", zh: "未分类", en: "Unclassified" },
+  location_unknown: { ja: "地域未設定", zh: "地区待完善", en: "Location missing" },
+  location_tokyo: { ja: "東京", zh: "东京", en: "Tokyo" },
+  location_osaka: { ja: "大阪", zh: "大阪", en: "Osaka" },
+  location_kyoto: { ja: "京都", zh: "京都", en: "Kyoto" },
+  location_kobe: { ja: "神戸", zh: "神户", en: "Kobe" },
+  location_yokohama: { ja: "横浜", zh: "横滨", en: "Yokohama" },
+  role_unknown: { ja: "役職未設定", zh: "角色待完善", en: "Role missing" },
+  role_decision_maker: { ja: "経営・意思決定者", zh: "经营决策者", en: "Decision makers" },
+  role_business_growth: { ja: "事業開発", zh: "业务拓展", en: "Business development" },
+  role_professional_advisor: { ja: "専門アドバイザー", zh: "专业顾问", en: "Professional advisors" },
+  role_operations: { ja: "運営・専門職", zh: "运营与专业角色", en: "Operations & specialists" },
+  strong: { ja: "強いつながり", zh: "强关系", en: "Strong ties" },
+  warm: { ja: "連絡を保つ", zh: "保持联系", en: "Keep in touch" },
+  weak: { ja: "再連絡待ち", zh: "待重新联系", en: "To reconnect" },
 };
 
 /** W0049：结构标签新维度的系统分组名（职级四组、地区缺失、关系强度四档、行业未细分）。 */
 const STRUCTURE_BUCKET_NAMES: Readonly<Record<string, NetworkCopy>> = {
-  seniority_decision: { zh: "决策层", en: "Decision makers" },
-  seniority_manager: { zh: "管理层", en: "Managers" },
-  seniority_staff: { zh: "执行层", en: "Individual contributors" },
-  seniority_other: { zh: "其他", en: "Other" },
-  region_unknown: { zh: "地区待完善", en: "Region missing" },
-  new: { zh: "新认识", en: "New" },
-  active: { zh: "有往来", en: "Active" },
-  core: { zh: "核心", en: "Core" },
-  dormant: { zh: "待唤醒", en: "To re-engage" },
+  seniority_decision: { ja: "経営層", zh: "决策层", en: "Decision makers" },
+  seniority_manager: { ja: "部長クラス", zh: "管理层", en: "Managers" },
+  seniority_staff: { ja: "担当者", zh: "执行层", en: "Individual contributors" },
+  seniority_other: { ja: "その他", zh: "其他", en: "Other" },
+  region_unknown: { ja: "地域未設定", zh: "地区待完善", en: "Region missing" },
+  new: { ja: "新しい知り合い", zh: "新认识", en: "New" },
+  active: { ja: "やりとりあり", zh: "有往来", en: "Active" },
+  core: { ja: "コア", zh: "核心", en: "Core" },
+  dormant: { ja: "休眠中", zh: "待唤醒", en: "To re-engage" },
 };
 
 const SECONDARY_IDS = new Set<string>(SECONDARY_INDUSTRY_CATALOG.map((item) => item.id));
@@ -69,12 +69,12 @@ function regionFromBucketId(bucketId: string): { countryCode: string; city: stri
  * 都不认识时回退到后端分组名（用户填写的地区原文等用户数据）。
  */
 export function structureBucketLabel(dimension: string, bucketId: string, fallback: string, language: OrbitLanguage): string {
-  const lang = language === "zh" ? "zh" : "en";
+  const lang = language;
   if (dimension === "industry" && isIndustryIdCode(bucketId)) return industryLabel(bucketId, lang);
   if (dimension === "industry_secondary") {
     return SECONDARY_IDS.has(bucketId)
       ? secondaryIndustryLabel(bucketId as SecondaryIndustryIdCode, lang)
-      : pickCopy({ zh: "未细分", en: "Unspecified" }, language);
+      : pickCopy({ ja: "小分類なし", zh: "未细分", en: "Unspecified" }, language);
   }
   if (dimension === "region") {
     const region = regionFromBucketId(bucketId);
@@ -99,37 +99,37 @@ export function systemBucketName(bucketId: string, language: OrbitLanguage): str
  */
 export function dueLabelCopy(dueLabel: string, language: OrbitLanguage): string {
   const value = dueLabel.trim();
-  if (value === "No due date") return pickCopy({ zh: "未设截止", en: "No deadline" }, language);
-  if (value === "Due today") return pickCopy({ zh: "今天到期或已逾期", en: "Today or overdue" }, language);
-  if (value === "Due tomorrow") return pickCopy({ zh: "明天到期", en: "Tomorrow" }, language);
+  if (value === "No due date") return pickCopy({ ja: "期限なし", zh: "未设截止", en: "No deadline" }, language);
+  if (value === "Due today") return pickCopy({ ja: "今日まで・期限切れ", zh: "今天到期或已逾期", en: "Today or overdue" }, language);
+  if (value === "Due tomorrow") return pickCopy({ ja: "明日まで", zh: "明天到期", en: "Tomorrow" }, language);
   const days = /^Due in (\d+) days$/.exec(value);
-  if (days) return pickCopy({ zh: `${days[1]} 天后到期`, en: `In ${days[1]} days` }, language);
+  if (days) return pickCopy({ ja: `${days[1]} 日後まで`, zh: `${days[1]} 天后到期`, en: `In ${days[1]} days` }, language);
   return "";
 }
 
 /** 建议动作标题：任务标题（用户数据）为空时用模板。 */
 export function contactActionTitle(contactName: string, language: OrbitLanguage): string {
-  return pickCopy({ zh: `联系 ${contactName}`, en: `Contact ${contactName}` }, language);
+  return pickCopy({ ja: `${contactName}さんに連絡`, zh: `联系 ${contactName}`, en: `Contact ${contactName}` }, language);
 }
 
 export function actionLinkLabel(kind: string, language: OrbitLanguage): string {
-  if (kind === "open_pipeline") return pickCopy({ zh: "查看关系管线", en: "View pipeline" }, language);
-  if (kind === "open_contacts") return pickCopy({ zh: "查看全部人脉", en: "View all contacts" }, language);
-  return pickCopy({ zh: "查看联系人", en: "View contact" }, language);
+  if (kind === "open_pipeline") return pickCopy({ ja: "関係パイプラインを見る", zh: "查看关系管线", en: "View pipeline" }, language);
+  if (kind === "open_contacts") return pickCopy({ ja: "人脈をすべて見る", zh: "查看全部人脉", en: "View all contacts" }, language);
+  return pickCopy({ ja: "連絡先を見る", zh: "查看联系人", en: "View contact" }, language);
 }
 
 export type ActivityType = "new_contact" | "high_value" | "followup_due" | "dormant";
 
 /** 最近动态的标题模板（`followup_due` 用任务标题，不走这里）。 */
 export function activityTypeLabel(type: Exclude<ActivityType, "followup_due">, language: OrbitLanguage): string {
-  if (type === "high_value") return pickCopy({ zh: "高价值关系", en: "High-value relationship" }, language);
-  if (type === "dormant") return pickCopy({ zh: "待唤醒关系", en: "Dormant relationship" }, language);
-  return pickCopy({ zh: "新增联系人", en: "New contact" }, language);
+  if (type === "high_value") return pickCopy({ ja: "価値の高い関係", zh: "高价值关系", en: "High-value relationship" }, language);
+  if (type === "dormant") return pickCopy({ ja: "休眠中の関係", zh: "待唤醒关系", en: "Dormant relationship" }, language);
+  return pickCopy({ ja: "新しい連絡先", zh: "新增联系人", en: "New contact" }, language);
 }
 
 /** 最近动态的来源列：按 type 给「联系人／跟进」，不渲染后端 sourceLabel。 */
 export function activitySourceLabel(type: ActivityType, language: OrbitLanguage): string {
-  return type === "followup_due" ? pickCopy({ zh: "跟进", en: "Follow-up" }, language) : pickCopy({ zh: "联系人", en: "Contact" }, language);
+  return type === "followup_due" ? pickCopy({ ja: "フォロー", zh: "跟进", en: "Follow-up" }, language) : pickCopy({ ja: "連絡先", zh: "联系人", en: "Contact" }, language);
 }
 
 const CONTACT_ACTIVITY_PREFIX = "activity:dashboard:contact:";
@@ -142,17 +142,18 @@ export function contactIdFromActivityId(activityId: string): string | undefined 
 }
 
 const DETAIL_STRENGTH: Readonly<Record<"strong" | "warm" | "weak", NetworkCopy>> = {
-  strong: { zh: "强关系", en: "strong ties" },
-  warm: { zh: "中关系", en: "warm ties" },
-  weak: { zh: "弱关系", en: "weak ties" },
+  strong: { ja: "強いつながり", zh: "强关系", en: "strong ties" },
+  warm: { ja: "中程度のつながり", zh: "中关系", en: "warm ties" },
+  weak: { ja: "弱いつながり", zh: "弱关系", en: "weak ties" },
 };
 
 /** 分组详情页的洞察句：由计数与主要关系质量拼出，不用后端 insight。 */
 export function structureDetailInsight(input: { label: string; count: number; strongest: "strong" | "warm" | "weak" }, language: OrbitLanguage): string {
-  if (input.count <= 0) return pickCopy({ zh: "该分组暂时没有联系人。", en: "No contacts in this group yet." }, language);
+  if (input.count <= 0) return pickCopy({ ja: "このグループにはまだ連絡先がありません。", zh: "该分组暂时没有联系人。", en: "No contacts in this group yet." }, language);
   // 用详情页「关系质量」同一套名称（强／中／弱关系），同页不出现两套叫法。
   const strength = DETAIL_STRENGTH[input.strongest];
   return pickCopy({
+    ja: `${input.label}には ${input.count} 人。主に${strength.ja}です。`,
     zh: `${input.label}共有 ${input.count} 位联系人，当前以${strength.zh}为主。`,
     en: `This group has ${input.count} ${input.count === 1 ? "contact" : "contacts"}; most are ${strength.en}.`,
   }, language);
@@ -164,24 +165,24 @@ export function structureDetailInsight(input: { label: string; count: number; st
 
 /** 计划日志事件（`plan_log.event` 封闭集）→ 双语模板；未知事件走通用句。 */
 const TIMELINE_PLAN_EVENT_COPY: Readonly<Record<string, NetworkCopy>> = {
-  action_deferred: { zh: "计划：行动顺延", en: "Plan: action deferred" },
-  contact_established: { zh: "计划：确认已建立联系", en: "Plan: connection confirmed" },
-  contact_linked: { zh: "计划：关联到计划人脉需求", en: "Plan: linked to a plan need" },
-  contact_unlinked: { zh: "计划：取消关联", en: "Plan: unlinked" },
-  item_status_changed: { zh: "计划：行动状态更新", en: "Plan: action status updated" },
-  note: { zh: "计划：记录", en: "Plan: note" },
+  action_deferred: { ja: "プラン：アクションを延期", zh: "计划：行动顺延", en: "Plan: action deferred" },
+  contact_established: { ja: "プラン：つながりを確認", zh: "计划：确认已建立联系", en: "Plan: connection confirmed" },
+  contact_linked: { ja: "プラン：必要人脈に紐づけ", zh: "计划：关联到计划人脉需求", en: "Plan: linked to a plan need" },
+  contact_unlinked: { ja: "プラン：紐づけを解除", zh: "计划：取消关联", en: "Plan: unlinked" },
+  item_status_changed: { ja: "プラン：アクションの状態を更新", zh: "计划：行动状态更新", en: "Plan: action status updated" },
+  note: { ja: "プラン：記録", zh: "计划：记录", en: "Plan: note" },
 };
 
 const TIMELINE_CAPTURE_COPY: Readonly<Record<string, NetworkCopy>> = {
-  business_card: { zh: "扫描名片，建立联系", en: "Added from a business card" },
-  event_exchange: { zh: "在活动中交换名片", en: "Exchanged cards at an event" },
-  manual: { zh: "手动添加联系人", en: "Added manually" },
-  qr: { zh: "扫码交换，建立联系", en: "Connected by QR code" },
+  business_card: { ja: "名刺から追加", zh: "扫描名片，建立联系", en: "Added from a business card" },
+  event_exchange: { ja: "イベントで名刺交換", zh: "在活动中交换名片", en: "Exchanged cards at an event" },
+  manual: { ja: "手入力で追加", zh: "手动添加联系人", en: "Added manually" },
+  qr: { ja: "QR コードでつながった", zh: "扫码交换，建立联系", en: "Connected by QR code" },
 };
 
 const TIMELINE_SCHEDULE_COPY: Readonly<Record<string, NetworkCopy>> = {
-  event: { zh: "参加了活动", en: "Attended an event" },
-  meeting: { zh: "会面", en: "Meeting" },
+  event: { ja: "イベントに参加", zh: "参加了活动", en: "Attended an event" },
+  meeting: { ja: "面談", zh: "会面", en: "Meeting" },
 };
 
 const own = <T>(table: Readonly<Record<string, T>>, key: string | undefined): T | undefined =>
@@ -201,20 +202,20 @@ export function timelineSummaryCopy(item: {
   const userText = item.excerpt?.trim();
   switch (item.source) {
     case "memo":
-      return userText ? { zh: userText, en: userText } : { zh: "写了 memo", en: "Wrote a memo" };
+      return userText ? { ja: userText, zh: userText, en: userText } : { ja: "メモを書いた", zh: "写了 memo", en: "Wrote a memo" };
     case "note":
-      return userText ? { zh: userText, en: userText } : { zh: "写了笔记", en: "Wrote a note" };
+      return userText ? { ja: userText, zh: userText, en: userText } : { ja: "ノートを書いた", zh: "写了笔记", en: "Wrote a note" };
     case "encounter":
-      return item.eventId ? { zh: "在活动上见面", en: "Met at an event" } : { zh: "记录了一次见面", en: "Logged a meeting" };
+      return item.eventId ? { ja: "イベントで会った", zh: "在活动上见面", en: "Met at an event" } : { ja: "面会を記録", zh: "记录了一次见面", en: "Logged a meeting" };
     case "plan":
-      return own(TIMELINE_PLAN_EVENT_COPY, item.detail?.planEvent) ?? { zh: "计划：更新", en: "Plan: updated" };
+      return own(TIMELINE_PLAN_EVENT_COPY, item.detail?.planEvent) ?? { ja: "プラン：更新", zh: "计划：更新", en: "Plan: updated" };
     case "schedule":
-      return own(TIMELINE_SCHEDULE_COPY, item.detail?.scheduleKind) ?? { zh: "日程", en: "Schedule item" };
+      return own(TIMELINE_SCHEDULE_COPY, item.detail?.scheduleKind) ?? { ja: "予定", zh: "日程", en: "Schedule item" };
     case "followup_done":
-      return { zh: "完成了一次跟进", en: "Completed a follow-up" };
+      return { ja: "フォローを完了", zh: "完成了一次跟进", en: "Completed a follow-up" };
     case "capture":
-      return own(TIMELINE_CAPTURE_COPY, item.detail?.captureMethod) ?? { zh: "建立联系", en: "Connected" };
+      return own(TIMELINE_CAPTURE_COPY, item.detail?.captureMethod) ?? { ja: "つながった", zh: "建立联系", en: "Connected" };
     default:
-      return { zh: "有一条新记录", en: "New record" };
+      return { ja: "新しい記録", zh: "有一条新记录", en: "New record" };
   }
 }

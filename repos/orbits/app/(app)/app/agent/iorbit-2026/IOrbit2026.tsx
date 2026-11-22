@@ -330,7 +330,8 @@ export function IOrbit2026({ accountName, initialHistoryOpen = false }: {
   const titlePending = !activeTitle && Boolean(chat.activeSessionId) && history.historyPageLoading && !history.storedHistory.length;
   const dictation = useDictation(language, (text) => { chat.setChatDraft(`${chat.chatDraft}${chat.chatDraft ? " " : ""}${text}`); inputRef.current?.focus(); });
   const shortcut = typeof navigator !== "undefined" && /Mac|iPhone|iPad/u.test(navigator.platform) ? "⌘" : "Ctrl";
-  const panelLanguage = language === "zh" ? "zh" : "en";
+  // 卡片自带三语文案：日文界面直接传 ja，不再退成英文。
+  const panelLanguage = language;
   return (
     <Orbit2026Scope language={language} className={`${styles.scope} ${inConversation ? styles.conversationScope : ""}`}>
     <div aria-busy={chat.thinking} data-orbit-agent-request-state={chat.thinking ? "pending" : "idle"}>

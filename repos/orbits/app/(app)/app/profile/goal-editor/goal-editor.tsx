@@ -23,9 +23,11 @@ import {
   type Copy,
   type GoalDraft,
   type GoalHorizon,
+  type GoalLang,
 } from "./goal-editor-model";
 
 export const GOAL_REMINDER: Copy = {
+  ja: "丁寧に書いてください。iOrbit の AI がこの一文をもとに人脈を分析し、ステップに分け、会うべき人を提案します。",
   zh: "请认真写。iOrbit 会用 AI 根据这句话分析你的人脉、拆出步骤、推荐要认识的人。",
   en: "Take a moment over this. iOrbit's AI uses this sentence to analyse your network, break the goal into steps and recommend who to meet.",
 };
@@ -66,7 +68,7 @@ export function GoalEditor({ disabled = false, horizon, onHorizonChange, onTextC
     if (matched) onHorizonChange(matched);
   }
 
-  const label = t({ zh: "你的目标", en: "Your goal" });
+  const label = t({ ja: "あなたの目標", zh: "你的目标", en: "Your goal" });
   return (
     <div className="ge">
       <style>{GOAL_EDITOR_STYLES}</style>
@@ -78,18 +80,18 @@ export function GoalEditor({ disabled = false, horizon, onHorizonChange, onTextC
           disabled={disabled}
           maxLength={GOAL_TEXT_LIMIT}
           onChange={event => onTextChange(event.target.value)}
-          placeholder={t({ zh: "写下你的目标，或点击下方示例快速填入", en: "Write your goal, or tap an example below" })}
+          placeholder={t({ ja: "目標を書くか、下の例をクリックして入力", zh: "写下你的目标，或点击下方示例快速填入", en: "Write your goal, or tap an example below" })}
           ref={inputRef}
           rows={2}
           value={text}
         />
         <span className="ge-box-foot">
-          <span>{t({ zh: "写清楚做什么、做到多少、在哪里", en: "Say what, how much, and where" })}</span>
+          <span>{t({ ja: "何を、どれだけ、どこで、をはっきりと", zh: "写清楚做什么、做到多少、在哪里", en: "Say what, how much, and where" })}</span>
           <em className="ge-count">{Array.from(text).length} / {GOAL_TEXT_LIMIT}</em>
         </span>
       </label>
-      <span className="ge-ex-head">{t({ zh: "示例，点一下填入，再改成你自己的：", en: "Examples — tap one to fill it in, then make it your own:" })}</span>
-      <span className="ge-examples" role="group" aria-label={t({ zh: "目标示例", en: "Goal examples" })}>
+      <span className="ge-ex-head">{t({ ja: "例：クリックで入力して、自分の言葉に直してください：", zh: "示例，点一下填入，再改成你自己的：", en: "Examples — tap one to fill it in, then make it your own:" })}</span>
+      <span className="ge-examples" role="group" aria-label={t({ ja: "目標の例", zh: "目标示例", en: "Goal examples" })}>
         {GOAL_EXAMPLES.map(example => (
           <button
             aria-pressed={goalExampleMatches(example, text)}
@@ -104,8 +106,8 @@ export function GoalEditor({ disabled = false, horizon, onHorizonChange, onTextC
         ))}
       </span>
       <span className="ge-row">
-        <span className="ge-row-label">{t({ zh: "期限", en: "Time frame" })}</span>
-        <span className="ge-horizons" role="group" aria-label={t({ zh: "期限", en: "Time frame" })}>
+        <span className="ge-row-label">{t({ ja: "期間", zh: "期限", en: "Time frame" })}</span>
+        <span className="ge-horizons" role="group" aria-label={t({ ja: "期間", zh: "期限", en: "Time frame" })}>
           {GOAL_HORIZONS.map(option => (
             <button
               aria-label={t(option.label)}
@@ -130,7 +132,7 @@ export function GoalEditor({ disabled = false, horizon, onHorizonChange, onTextC
  * 资料页桥接：存储只有一段 relationshipGoal 文字（intro）。本地保留未修剪的正文与期限（打字时的尾随空格不被
  * compose 的 trim 吃掉），每次改动把合成后的文字写回；外部换了存储值（重载、取消）才按新值重新解析。
  */
-export function useStoredGoal(stored: string, onStore: (value: string) => void, language: "zh" | "en") {
+export function useStoredGoal(stored: string, onStore: (value: string) => void, language: GoalLang) {
   const [draft, setDraft] = useState<GoalDraft>(() => parseRelationshipGoal(stored));
   // 点示例会在同一次点击里先改正文再改期限：用 ref 读最新草稿，第二次写入不会拿旧正文覆盖。
   const current = useRef(draft);

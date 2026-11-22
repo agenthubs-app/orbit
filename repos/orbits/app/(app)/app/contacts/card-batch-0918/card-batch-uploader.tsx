@@ -59,12 +59,12 @@ export function CardBatchUploader({ onStarted, t }: { onStarted: (batchId: strin
     setError("");
     const oversize = files.find(file => file.size > INGEST_V2_MAX_RAW_BYTES);
     if (oversize) {
-      setError(t({ zh: `${oversize.name} 超过 10MB，请压缩后再选。`, en: `${oversize.name} is over 10MB — please compress it first.` }));
+      setError(t({ ja: `${oversize.name} は 10MB を超えています。圧縮してから選んでください。`, zh: `${oversize.name} 超过 10MB，请压缩后再选。`, en: `${oversize.name} is over 10MB — please compress it first.` }));
       return;
     }
     setStaged(current => {
       const room = INGEST_V2_MAX_ITEMS - current.length;
-      if (files.length > room) setError(t({ zh: `一批最多 ${INGEST_V2_MAX_ITEMS} 张，多出的没有加入。`, en: `Up to ${INGEST_V2_MAX_ITEMS} photos per batch; extras were left out.` }));
+      if (files.length > room) setError(t({ ja: `1 回に送れるのは ${INGEST_V2_MAX_ITEMS} 枚までです。超えた分は追加していません。`, zh: `一批最多 ${INGEST_V2_MAX_ITEMS} 张，多出的没有加入。`, en: `Up to ${INGEST_V2_MAX_ITEMS} photos per batch; extras were left out.` }));
       return [...current, ...files.slice(0, Math.max(0, room)).map(file => ({ file, id: crypto.randomUUID(), url: URL.createObjectURL(file) }))];
     });
   }
@@ -100,7 +100,7 @@ export function CardBatchUploader({ onStarted, t }: { onStarted: (batchId: strin
       const body = (await response.json().catch(() => null)) as { data?: { batch?: { id: string } }; error?: { message?: string } } | null;
       const batchId = body?.data?.batch?.id;
       if (!response.ok || !batchId) {
-        setError(body?.error?.message ?? t({ zh: "没能开始上传，请重试。", en: "Couldn't start the upload — please try again." }));
+        setError(body?.error?.message ?? t({ ja: "アップロードを開始できませんでした。もう一度お試しください。", zh: "没能开始上传，请重试。", en: "Couldn't start the upload — please try again." }));
         return;
       }
       stashPendingFiles(batchId, byDigest);
@@ -108,7 +108,7 @@ export function CardBatchUploader({ onStarted, t }: { onStarted: (batchId: strin
       registerActiveBatch(batchId);
       onStarted(batchId);
     } catch {
-      setError(t({ zh: "没能开始上传，请重试。", en: "Couldn't start the upload — please try again." }));
+      setError(t({ ja: "アップロードを開始できませんでした。もう一度お試しください。", zh: "没能开始上传，请重试。", en: "Couldn't start the upload — please try again." }));
     } finally {
       setStarting(false);
     }
@@ -134,17 +134,17 @@ export function CardBatchUploader({ onStarted, t }: { onStarted: (batchId: strin
       <input accept={ACCEPT} aria-hidden className="cb-sr" multiple onChange={event => { add(event.target.files); event.target.value = ""; }} ref={inputRef} tabIndex={-1} type="file" />
       <div className="cb-up-head">
         <span className="cb-up-title">
-          <strong>{t({ zh: "批量上传名片照片", en: "Upload business card photos" })}</strong>
-          <span>{t({ zh: "一张照片一张名片。可以分几次选，全部选好后统一在后台解析。", en: "One photo per card. Add them in as many rounds as you like; they're read together in the background." })}</span>
+          <strong>{t({ ja: "名刺の写真をまとめてアップロード", zh: "批量上传名片照片", en: "Upload business card photos" })}</strong>
+          <span>{t({ ja: "写真 1 枚に名刺 1 枚。何回かに分けて選べます。すべて選んだら、まとめてバックグラウンドで読み取ります。", zh: "一张照片一张名片。可以分几次选，全部选好后统一在后台解析。", en: "One photo per card. Add them in as many rounds as you like; they're read together in the background." })}</span>
         </span>
-        {staged.length ? <span className="cb-up-badge">{t({ zh: `已暂存 ${staged.length} 张`, en: `${staged.length} staged` })}</span> : null}
+        {staged.length ? <span className="cb-up-badge">{t({ ja: `${staged.length} 枚 選択済み`, zh: `已暂存 ${staged.length} 张`, en: `${staged.length} staged` })}</span> : null}
       </div>
 
       {staged.length === 0 ? (
         <button className={`btn cb-drop${dragging ? " cb-drop-on" : ""}`} onClick={() => inputRef.current?.click()} type="button" {...dropProps}>
           <span className="cb-drop-icon" aria-hidden>⇪</span>
-          <strong>{t({ zh: "选择或拖入名片照片", en: "Choose or drop card photos" })}</strong>
-          <span>{t({ zh: `JPG / PNG / HEIC · 一次可选多张 · 每批最多 ${INGEST_V2_MAX_ITEMS} 张`, en: `JPG / PNG / HEIC · multiple at once · up to ${INGEST_V2_MAX_ITEMS} per batch` })}</span>
+          <strong>{t({ ja: "名刺の写真を選ぶかドロップ", zh: "选择或拖入名片照片", en: "Choose or drop card photos" })}</strong>
+          <span>{t({ ja: `JPG / PNG / HEIC · 複数選択可 · 1 回 ${INGEST_V2_MAX_ITEMS} 枚まで`, zh: `JPG / PNG / HEIC · 一次可选多张 · 每批最多 ${INGEST_V2_MAX_ITEMS} 张`, en: `JPG / PNG / HEIC · multiple at once · up to ${INGEST_V2_MAX_ITEMS} per batch` })}</span>
         </button>
       ) : (
         <div className={`cb-thumbs${dragging ? " cb-thumbs-on" : ""}`} {...dropProps}>
@@ -152,12 +152,12 @@ export function CardBatchUploader({ onStarted, t }: { onStarted: (batchId: strin
             <span className="cb-thumb" key={entry.id}>
               <img alt="" className="cb-thumb-img" onError={event => { event.currentTarget.style.display = "none"; }} src={entry.url} />
               <span className="cb-thumb-name">{entry.file.name}</span>
-              <button aria-label={t({ zh: `移除 ${entry.file.name}`, en: `Remove ${entry.file.name}` })} className="btn cb-thumb-x" disabled={starting} onClick={() => remove(entry.id)} type="button">×</button>
+              <button aria-label={t({ ja: `${entry.file.name} を外す`, zh: `移除 ${entry.file.name}`, en: `Remove ${entry.file.name}` })} className="btn cb-thumb-x" disabled={starting} onClick={() => remove(entry.id)} type="button">×</button>
             </span>
           ))}
           {staged.length < INGEST_V2_MAX_ITEMS ? (
             <button className="btn cb-thumb-add" disabled={starting} onClick={() => inputRef.current?.click()} type="button">
-              <span aria-hidden>＋</span>{t({ zh: "继续添加", en: "Add more" })}
+              <span aria-hidden>＋</span>{t({ ja: "さらに追加", zh: "继续添加", en: "Add more" })}
             </button>
           ) : null}
         </div>
@@ -166,10 +166,10 @@ export function CardBatchUploader({ onStarted, t }: { onStarted: (batchId: strin
       {error ? <div className="cb-notice cb-notice-warning" role="alert">{error}</div> : null}
 
       <div className="cb-up-foot">
-        <span>{t({ zh: "一卡一照、正对拍摄、避开反光识别最准。点「开始解析」后才会上传；传完可以直接离开，解析完会提醒你。", en: "One card per photo, shot straight on, no glare. Nothing uploads until you start; you can leave right after — we'll let you know when it's done." })}</span>
+        <span>{t({ ja: "名刺 1 枚ずつ、正面から、反射を避けて撮ると精度が上がります。「読み取りを開始」を押すまではアップロードしません。アップロード後はページを離れても大丈夫です。終わったらお知らせします。", zh: "一卡一照、正对拍摄、避开反光识别最准。点「开始解析」后才会上传；传完可以直接离开，解析完会提醒你。", en: "One card per photo, shot straight on, no glare. Nothing uploads until you start; you can leave right after — we'll let you know when it's done." })}</span>
         {staged.length ? (
           <button aria-busy={starting || undefined} className="btn cb-btn-dark" disabled={starting} onClick={() => void start()} type="button">
-            {starting ? t({ zh: "正在准备…", en: "Preparing…" }) : t({ zh: `上传完毕，开始解析（${staged.length} 张）`, en: `Start reading (${staged.length})` })}
+            {starting ? t({ ja: "準備中…", zh: "正在准备…", en: "Preparing…" }) : t({ ja: `読み取りを開始（${staged.length} 枚）`, zh: `上传完毕，开始解析（${staged.length} 张）`, en: `Start reading (${staged.length})` })}
           </button>
         ) : null}
       </div>

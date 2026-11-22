@@ -29,7 +29,7 @@ ${S} .sg-lk { color: #4B4FC7; font-size: 13.5px; }
 ${S} .sg-lk:hover { color: #2E3270; text-decoration: underline; text-underline-offset: 3px; }
 ${S} .sg-lk.sg-muted { color: #6B6F99; }
 
-/* 顶栏 */
+/* Top bar */
 ${S} .sg-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 40px; }
 ${S} .sg-logo { font-family: var(--font); font-weight: 900; font-size: 22px; letter-spacing: -.02em; color: #0E1225; }
 ${S} .sg-nav-step { font-size: 13px; color: #6B6F99; font-variant-numeric: tabular-nums; }
@@ -41,7 +41,7 @@ ${S} .sg-mast { display: flex; flex-direction: column; gap: 14px; }
 ${S} .sg-title { margin: 0; font-family: var(--font); font-weight: 900; font-size: clamp(28px, 3vw, 38px); letter-spacing: -.03em; line-height: 1.2; }
 ${S} .sg-lede { margin: 0; font-size: 18px; line-height: 1.6; color: #3B3F7A; max-width: 44em; }
 
-/* 步骤条 */
+/* Step bar */
 ${S} .sg-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 ${S} .btn.sg-step { width: 100%; justify-content: flex-start; text-align: left; white-space: normal; border: 0; border-top: 2px solid #DDDEFA; border-radius: 0; background: none; padding: 12px 2px 4px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: baseline; color: #0E1225; font-size: 15px; font-weight: 400; }
 ${S} .sg-step-n { font-family: var(--font); font-weight: 900; font-size: 22px; color: #B9BCEB; grid-row: span 2; line-height: 1; font-variant-numeric: tabular-nums; }
@@ -57,7 +57,7 @@ ${S} .sg-steps-mini { display: none; }
 ${S} .sg-locked-note { margin: -12px 0 0; font-size: 13px; color: #C4461B; }
 ${S} .sg-locked-note:empty { display: none; }
 
-/* 当前步骤模块：页面上唯一的卡片 */
+/* Current step module: the only card on the page */
 ${S} .sg-lead { background: #FFFFFF; border: 1px solid #E8E9F6; border-radius: 18px; box-shadow: 0 10px 34px rgba(46,50,112,.08); padding: 28px 30px 26px; display: flex; flex-direction: column; gap: 14px; }
 ${S} .sg-lead h2 { margin: 0; font-family: var(--font); font-weight: 900; font-size: 27px; line-height: 1.3; letter-spacing: -.02em; }
 ${S} .sg-why { margin: 0; font-size: 15.5px; line-height: 1.75; color: #3B3F7A; max-width: 38em; }
@@ -70,7 +70,7 @@ ${S} .sg-error:empty { display: none; }
 ${S} .sg-status { margin: 0; font-size: 13.5px; line-height: 1.6; color: #2E3270; background: #ECEEFB; border-radius: 10px; padding: 10px 14px; }
 ${S} .sg-status:empty { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); }
 
-/* 第 1 步：三张名片槽位 */
+/* Step 1: three card slots */
 ${S} .sg-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 ${S} .sg-slot { border: 1px solid #E8E9F6; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 3px; min-width: 0; background: #F4F5FC; min-height: 74px; }
 ${S} .sg-slot b { font-size: 14.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -83,11 +83,11 @@ ${S} .sg-slot[data-slot="empty"] { border-style: dashed; border-color: #B9BCEB; 
 ${S} .sg-count { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: #6B6F99; }
 ${S} .sg-count b { color: #0E1225; font-weight: 500; font-variant-numeric: tabular-nums; }
 
-/* 第 2 步 */
+/* Step 2 */
 ${S} .sg-from-ob { font-size: 13.5px; color: #3B3F7A; background: #F4F5FC; border-radius: 10px; padding: 10px 14px; }
 ${S} .sg-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
 
-/* 第 3 步 */
+/* Step 3 */
 ${S} .sg-goalbox { border-left: 3px solid #4B4FC7; background: #F4F5FC; border-radius: 0 12px 12px 0; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
 ${S} .sg-goalbox[data-editing="true"] { border-left: 0; background: transparent; padding: 0; border-radius: 0; }
 ${S} .sg-goalbox-h { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; font-size: 12px; color: #6B6F99; letter-spacing: .08em; }
@@ -105,7 +105,7 @@ ${S} .sg-outline-list { margin: 0; padding: 0; list-style: none; display: grid; 
 ${S} .sg-outline-list li { display: flex; gap: 8px; align-items: baseline; }
 ${S} .sg-outline-list li::before { content: counter(sg-o); counter-increment: sg-o; font-family: var(--font); font-weight: 900; font-size: 12px; color: #B9BCEB; min-width: 14px; }
 
-/* 完成卡片 */
+/* Finish card */
 ${S} .sg-finish { display: flex; flex-direction: column; gap: 12px; padding: 24px 26px; border-radius: 18px; background: #E6F3EC; }
 ${S} .sg-finish h2 { margin: 0; font-family: var(--font); font-weight: 900; font-size: 24px; color: #0E1225; }
 ${S} .sg-finish p { margin: 0; font-size: 15px; line-height: 1.7; color: #3B3F7A; }
@@ -132,7 +132,7 @@ ${S} .sg-finish p { margin: 0; font-size: 15px; line-height: 1.7; color: #3B3F7A
   ${S} .sg-foot .btn.sg-primary { justify-content: center; }
 }
 
-/* R28 の独立したガイド画面。三段階と保存済みの目標を短い行で読めるようにする。 */
+/* R28 standalone guide screen: three steps and the saved goal read as short lines. */
 ${S} { background: #F7F5F8; color: #24212B; }
 ${S} .sg-nav { min-height: 54px; padding: 0 20px; border-bottom: 1px solid #ECE9EE; background: #FFFFFF; }
 ${S} .sg-logo { font-size: 14px; font-weight: 700; color: #24212B; }

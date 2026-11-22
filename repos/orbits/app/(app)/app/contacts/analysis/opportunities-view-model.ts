@@ -102,7 +102,8 @@ export interface DormantInsight {
 export function applyDormantInsights(rows: readonly DormantRow[], insights: ReadonlyMap<string, DormantInsight>, language: OrbitLanguage): DormantRow[] {
   return rows.map((row) => {
     const insight = insights.get(row.recordId ?? row.contactId);
-    if (insight?.state === "ready" && insight.nextStep) return { ...row, why: pickCopy(insight.nextStep, language), whySource: "insight" };
+    // AI 洞察只有 zh／en 两种（AI 内容语言，另行处理）；日文界面先用英文。
+    if (insight?.state === "ready" && insight.nextStep) return { ...row, why: language === "zh" ? insight.nextStep.zh : insight.nextStep.en, whySource: "insight" };
     return { ...row, whySource: "rule" };
   });
 }
@@ -236,34 +237,34 @@ export interface DormantCandidate {
 }
 
 const SOURCE_COPY: Readonly<Record<RelationshipTimelineSource, NetworkCopy>> = {
-  capture: { en: "added as a contact", zh: "添加为联系人" },
-  encounter: { en: "met in person", zh: "见面" },
-  followup_done: { en: "follow-up completed", zh: "完成跟进" },
-  memo: { en: "memo", zh: "备忘" },
-  note: { en: "note", zh: "笔记" },
-  plan: { en: "plan record", zh: "计划记录" },
-  schedule: { en: "meeting", zh: "日程" },
+  capture: { ja: "連絡先に追加", en: "added as a contact", zh: "添加为联系人" },
+  encounter: { ja: "対面", en: "met in person", zh: "见面" },
+  followup_done: { ja: "フォロー完了", en: "follow-up completed", zh: "完成跟进" },
+  memo: { ja: "メモ", en: "memo", zh: "备忘" },
+  note: { ja: "ノート", en: "note", zh: "笔记" },
+  plan: { ja: "プランの記録", en: "plan record", zh: "计划记录" },
+  schedule: { ja: "予定", en: "meeting", zh: "日程" },
 };
 
 export function timelineSourceLabel(source: RelationshipTimelineSource, language: OrbitLanguage): string {
-  return pickCopy(SOURCE_COPY[source] ?? { en: "record", zh: "记录" }, language);
+  return pickCopy(SOURCE_COPY[source] ?? { ja: "記録", en: "record", zh: "记录" }, language);
 }
 
 export function formatDormantDate(iso: string, language: OrbitLanguage): string {
   const date = new Date(iso);
   if (!Number.isFinite(date.getTime())) return "—";
-  return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", { day: "numeric", month: language === "zh" ? "numeric" : "short", timeZone: "Asia/Tokyo", year: "numeric" }).format(date);
+  return new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US", { day: "numeric", month: language === "en" ? "short" : "numeric", timeZone: "Asia/Tokyo", year: "numeric" }).format(date);
 }
 
 type Relevance = { kind: "need"; title: string } | { kind: "industry"; industryId: string } | { kind: "keyword"; keyword: string };
 
 function relevanceCopy(relevance: Relevance, language: OrbitLanguage): string {
-  if (relevance.kind === "need") return pickCopy({ en: `plan need “${relevance.title}”`, zh: `计划需求「${relevance.title}」` }, language);
+  if (relevance.kind === "need") return pickCopy({ ja: `プランの必要人脈「${relevance.title}」`, en: `plan need “${relevance.title}”`, zh: `计划需求「${relevance.title}」` }, language);
   if (relevance.kind === "industry") {
-    const label = isIndustryIdCode(relevance.industryId) ? industryLabel(relevance.industryId, language === "zh" ? "zh" : "en") : relevance.industryId;
-    return pickCopy({ en: `same industry (${label})`, zh: `同属${label}` }, language);
+    const label = isIndustryIdCode(relevance.industryId) ? industryLabel(relevance.industryId, language) : relevance.industryId;
+    return pickCopy({ ja: `同じ業界（${label}）`, en: `same industry (${label})`, zh: `同属${label}` }, language);
   }
-  return pickCopy({ en: `role matches “${relevance.keyword}”`, zh: `职位相关（${relevance.keyword}）` }, language);
+  return pickCopy({ ja: `役職が一致（${relevance.keyword}）`, en: `role matches “${relevance.keyword}”`, zh: `职位相关（${relevance.keyword}）` }, language);
 }
 
 export function dormantWhy(input: { lastSignal: NonNullable<DormantCandidate["lastSignal"]>; relevance: Relevance }, language: OrbitLanguage): string {
@@ -271,6 +272,7 @@ export function dormantWhy(input: { lastSignal: NonNullable<DormantCandidate["la
   const type = timelineSourceLabel(input.lastSignal.source, language);
   return pickCopy(
     {
+      ja: `前回の接点：${date} ${type}。目標との関係：${relevanceCopy(input.relevance, "ja")}`,
       en: `Last contact: ${date} ${type}; relevant to your goal: ${relevanceCopy(input.relevance, "en")}`,
       zh: `上次往来：${date} ${type}；与目标相关：${relevanceCopy(input.relevance, "zh")}`,
     },

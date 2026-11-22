@@ -30,7 +30,7 @@ export function StepGoal({
   profileUpdatedAt: string | null;
 }) {
   const { language, t } = useStartCopy();
-  const lang = language === "en" ? "en" : "zh";
+  const lang = language;
   const [initial] = useState(() => parseRelationshipGoal(goal));
   const [text, setText] = useState(initial.text);
   // 期限只有用户明确选择时才写入；新目标不预设期限。
@@ -54,7 +54,7 @@ export function StepGoal({
     } catch (caught) {
       setError(caught instanceof Error && "code" in caught && caught.code === "PROFILE_VERSION_CONFLICT"
         ? t({ en: "Your goal changed elsewhere. Refresh and review it before saving.", zh: "目标已在另一处更新。请刷新并核对后再保存。", ja: "別の画面で目標が更新されました。再読み込みして内容を確認してください。" })
-        : t({ en: "Couldn't save your goal. Please try again.", zh: "目标没有保存成功，请再试一次。" }));
+        : t({ en: "Couldn't save your goal. Please try again.", zh: "目标没有保存成功，请再试一次。", ja: "目標を保存できませんでした。もう一度お試しください。" }));
     } finally {
       setSaving(false);
     }
@@ -65,16 +65,16 @@ export function StepGoal({
   return (
     <article className="sg-lead" data-start-module="2">
       <div className="sg-meta">
-        <span className="sg-pill">{t({ en: "Step 2 · Goal", zh: "第 2 步 · 目标" })}</span>
-        {done ? <span className="sg-pill sg-pill-good">{t({ en: "✓ Done", zh: "✓ 已完成" })}</span> : null}
+        <span className="sg-pill">{t({ en: "Step 2 · Goal", zh: "第 2 步 · 目标", ja: "ステップ 2 · 目標" })}</span>
+        {done ? <span className="sg-pill sg-pill-good">{t({ en: "✓ Done", zh: "✓ 已完成", ja: "完了" })}</span> : null}
       </div>
-      <h2>{t({ en: "What do you most want to achieve next?", zh: "你接下来最想达成什么？" })}</h2>
+      <h2>{t({ en: "What do you most want to achieve next?", zh: "你接下来最想达成什么？", ja: "次に達成したいことは？" })}</h2>
       <GoalReminder />
       {hadGoal ? (
         <div className="sg-from-ob" data-start-goal-carried>
           {t({
             en: "You wrote a goal when you signed up — it's already here. Making it more specific makes the plan more accurate.",
-            zh: "注册时你写过目标，已经带进来了。改得更具体一些，计划会更准。",
+            zh: "注册时你写过目标，已经带进来了。改得更具体一些，计划会更准。", ja: "登録時に書いた目標を引き継ぎました。必要なら具体的に書き直せます。",
           })}
         </div>
       ) : null}
@@ -83,9 +83,9 @@ export function StepGoal({
         <span className="sg-hint">
           {text.trim()
             ? horizonLabel
-              ? t({ en: `iOrbit will plan for "${horizonLabel}"`, zh: `iOrbit 会按「${horizonLabel}」排你的计划` })
-              : t({ en: "Pick a time frame, or keep it open", zh: "可以选一个期限，也可以先不选" })
-            : t({ en: "Write one sentence to continue", zh: "写一句目标就可以继续" })}
+              ? t({ en: `iOrbit will plan for "${horizonLabel}"`, zh: `iOrbit 会按「${horizonLabel}」排你的计划`, ja: `「${horizonLabel}」を目安にプランをつくります` })
+              : t({ en: "Pick a time frame, or keep it open", zh: "可以选一个期限，也可以先不选", ja: "期限はあとから決められます" })
+            : t({ en: "Write one sentence to continue", zh: "写一句目标就可以继续", ja: "目標を一文で書いてください" })}
         </span>
         <button
           aria-busy={saving ? "true" : undefined}
@@ -96,8 +96,8 @@ export function StepGoal({
           type="button"
         >
           {saving
-            ? t({ en: "Saving…", zh: "正在保存…" })
-            : t({ en: "Save goal, next step →", zh: "保存目标，下一步 →" })}
+            ? t({ en: "Saving…", zh: "正在保存…", ja: "保存中…" })
+            : t({ en: "Save goal, next step →", zh: "保存目标，下一步 →", ja: "目標を保存して次へ" })}
         </button>
       </div>
       <p className="sg-error" role="alert">

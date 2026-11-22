@@ -21,11 +21,11 @@ import { pickCopy } from "./network-copy";
 export const STRUCTURE_TAB_DIMENSIONS = ["industry", "region", "seniority", "tier"] as const;
 export type StructureTabDimension = (typeof STRUCTURE_TAB_DIMENSIONS)[number];
 
-export const STRUCTURE_TAB_DIMENSION_COPY: Readonly<Record<StructureTabDimension, { zh: string; en: string }>> = {
-  industry: { zh: "行业", en: "Industry" },
-  region: { zh: "地区", en: "Region" },
-  seniority: { zh: "角色层级", en: "Seniority" },
-  tier: { zh: "关系强度", en: "Relationship tier" },
+export const STRUCTURE_TAB_DIMENSION_COPY: Readonly<Record<StructureTabDimension, { ja: string; zh: string; en: string }>> = {
+  industry: { ja: "業界", zh: "行业", en: "Industry" },
+  region: { ja: "地域", zh: "地区", en: "Region" },
+  seniority: { ja: "役職層", zh: "角色层级", en: "Seniority" },
+  tier: { ja: "関係の強さ", zh: "关系强度", en: "Relationship tier" },
 };
 
 export const TIER_ORDER: readonly RelationshipTierGroup[] = ["new", "active", "core", "dormant"];
@@ -163,9 +163,9 @@ export function healthTiles(health: readonly { id: RelationshipTierGroup; count:
 }
 
 export function tierChangeLabel(change: TierChange, language: OrbitLanguage): string {
-  if (change.kind === "insufficient") return pickCopy({ zh: "数据不足", en: "Not enough data" }, language);
+  if (change.kind === "insufficient") return pickCopy({ ja: "データ不足", zh: "数据不足", en: "Not enough data" }, language);
   if (change.kind === "unavailable") return "—";
-  if (change.delta === 0) return pickCopy({ zh: "持平", en: "No change" }, language);
+  if (change.delta === 0) return pickCopy({ ja: "変化なし", zh: "持平", en: "No change" }, language);
   return change.delta > 0 ? `+${change.delta}` : `−${Math.abs(change.delta)}`;
 }
 

@@ -85,8 +85,8 @@ function localizeCompany(company: string, language: OrbitLanguage): string {
 
 // Recurring nextAction / prompt phrases that show verbatim on cards + detail.
 const COMMON_PHRASE: Record<string, Tri> = {
-  "review evidence before follow-up": { zh: "跟进前先核对证据", en: "review evidence before follow-up", ja: "フォローアップ前に証跡を確認" },
-  "Review the matched contacts with source evidence before creating tasks.": { zh: "创建任务前，先核对匹配联系人的来源证据。", en: "Review the matched contacts with source evidence before creating tasks.", ja: "タスク作成前に、一致した連絡先のソース証跡を確認する。" },
+  "review evidence before follow-up": { zh: "跟进前先核对证据", en: "review evidence before follow-up", ja: "フォローの前に根拠を確認" },
+  "Review the matched contacts with source evidence before creating tasks.": { zh: "创建任务前，先核对匹配联系人的来源证据。", en: "Review the matched contacts with source evidence before creating tasks.", ja: "タスクを作る前に、一致した連絡先の出どころを確認する。" },
 };
 
 export function localizeNextActionText(text: string, language: OrbitLanguage): string {
@@ -95,16 +95,12 @@ export function localizeNextActionText(text: string, language: OrbitLanguage): s
   let match = text.match(/^Review (.+) with source evidence before agent use\.?$/);
   if (match) {
     const name = match[1];
-    return language === "ja"
-      ? `ソース証跡を確認してから ${name} に対応する。`
-      : `先核对来源证据，再跟进 ${name}。`;
+    return ({ ja: `出どころの記録を確認してから ${name} に対応する。`, zh: `先核对来源证据，再跟进 ${name}。`, en: text } satisfies Tri)[language];
   }
   match = text.match(/^Review the next follow-up for (.+?)\.?$/);
   if (match) {
     const name = match[1];
-    return language === "ja"
-      ? `${name} の次のフォローアップを確認する。`
-      : `跟进 ${name} 的下一步。`;
+    return ({ ja: `${name} との次のフォローを確認する。`, zh: `跟进 ${name} 的下一步。`, en: text } satisfies Tri)[language];
   }
   return text;
 }

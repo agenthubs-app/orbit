@@ -157,7 +157,7 @@ export async function LegacyContactDetailPage({
     const guide = await readDemoModeViewForActor({ actorId: actor.id, userId: session.user.id });
     if (!guide) notFound();
     const now = new Date();
-    const lang = (await getContactDetailPageLanguage()) === "en" ? "en" : "zh";
+    const lang = await getContactDetailPageLanguage();
     const demoDetail = buildDemoNetworkDetail(contactId, now, lang);
     if (!demoDetail) notFound();
     return (
@@ -208,7 +208,7 @@ export async function LegacyContactDetailPage({
     : undefined;
   const listVm =
     listRoute?.state === "success"
-      ? localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(listRoute, listTiers), language), language)
+      ? localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(listRoute, listTiers, language), language), language)
       : { connections: [], events: [], intros: [], pipelineStatuses: [] };
   const detailBase = contactDetailPageViewModel(routeModel, language).connections[0];
   if (!detailBase) {

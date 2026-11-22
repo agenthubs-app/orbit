@@ -7,7 +7,22 @@ import {
   agentLedgerReviewTransitionsForStatus,
 } from "../../../../features/agent/ledger/presentation";
 
-type AgentActionStatusLanguage = "en" | "zh";
+type AgentActionStatusLanguage = "en" | "ja" | "zh";
+
+type LocalizedCopy = { en: string; ja: string; zh: string };
+
+function pick(language: AgentActionStatusLanguage, copy: LocalizedCopy): string {
+  return copy[language];
+}
+
+/** 账本的错误文案只有中英两版；日文界面用同一句通用说法。 */
+function ledgerErrorMessage(body: unknown, language: AgentActionStatusLanguage): string {
+  return pick(language, {
+    ja: "操作を完了できませんでした。状態を更新してからもう一度お試しください。",
+    zh: agentLedgerErrorMessage(body, "zh"),
+    en: agentLedgerErrorMessage(body, "en"),
+  });
+}
 
 export interface AgentChatLinkedAction {
   actionId: string;
@@ -167,24 +182,24 @@ export function parseAgentChatRunView(value: unknown): AgentChatRunView | null {
 }
 
 function runStepLabel(name: string, language: AgentActionStatusLanguage) {
-  const labels: Record<string, { en: string; zh: string }> = {
-    local_boundary: { en: "Safety check", zh: "安全边界检查" },
-    planner: { en: "Plan", zh: "理解与规划" },
-    replan: { en: "Replan from evidence", zh: "根据证据继续规划" },
-    tool_mapping: { en: "Choose tools", zh: "选择可信工具" },
-    artifact_generation: { en: "Read context", zh: "读取关系上下文" },
+  const labels: Record<string, LocalizedCopy> = {
+    local_boundary: { ja: "安全チェック", en: "Safety check", zh: "安全边界检查" },
+    planner: { ja: "理解と計画", en: "Plan", zh: "理解与规划" },
+    replan: { ja: "根拠をもとに再計画", en: "Replan from evidence", zh: "根据证据继续规划" },
+    tool_mapping: { ja: "ツールを選ぶ", en: "Choose tools", zh: "选择可信工具" },
+    artifact_generation: { ja: "関係の文脈を読む", en: "Read context", zh: "读取关系上下文" },
     artifact_generation_replan: {
-      en: "Read additional context",
+      ja: "文脈を追加で読む", en: "Read additional context",
       zh: "补充读取上下文",
     },
-    synthesis: { en: "Synthesize", zh: "综合证据" },
-    final_response: { en: "Prepare response", zh: "生成答复" },
+    synthesis: { ja: "根拠をまとめる", en: "Synthesize", zh: "综合证据" },
+    final_response: { ja: "回答を作成", en: "Prepare response", zh: "生成答复" },
     validate_natural_language_action_proposals: {
-      en: "Validate actions",
+      ja: "操作内容を検証", en: "Validate actions",
       zh: "校验操作方案",
     },
   };
-  return (labels[name] ?? { en: name, zh: name })[language];
+  return labels[name]?.[language] ?? name;
 }
 
 function parseTransitionedAction(value: unknown): AgentChatLinkedAction | null {
@@ -220,18 +235,18 @@ export function agentChatActionStatusLabel(
   status: string,
   language: AgentActionStatusLanguage,
 ): string {
-  const labels: Record<string, { en: string; zh: string }> = {
-    approved: { en: "Approved", zh: "已确认" },
-    awaiting_confirmation: { en: "Needs confirmation", zh: "等待确认" },
-    canceled: { en: "Canceled", zh: "已取消" },
-    completed: { en: "Completed", zh: "已完成" },
-    deferred: { en: "Later", zh: "稍后处理" },
-    executing: { en: "Running", zh: "执行中" },
-    failed: { en: "Failed", zh: "执行失败" },
-    partially_failed: { en: "Partially failed", zh: "部分失败" },
-    rejected: { en: "Ignored", zh: "已忽略" },
-    undone: { en: "Undone", zh: "已撤销" },
-    unknown: { en: "Checking", zh: "正在同步" },
+  const labels: Record<string, LocalizedCopy> = {
+    approved: { ja: "確定済み", en: "Approved", zh: "已确认" },
+    awaiting_confirmation: { ja: "確認待ち", en: "Needs confirmation", zh: "等待确认" },
+    canceled: { ja: "取り消し済み", en: "Canceled", zh: "已取消" },
+    completed: { ja: "完了", en: "Completed", zh: "已完成" },
+    deferred: { ja: "あとで", en: "Later", zh: "稍后处理" },
+    executing: { ja: "実行中", en: "Running", zh: "执行中" },
+    failed: { ja: "失敗", en: "Failed", zh: "执行失败" },
+    partially_failed: { ja: "一部失敗", en: "Partially failed", zh: "部分失败" },
+    rejected: { ja: "無視済み", en: "Ignored", zh: "已忽略" },
+    undone: { ja: "元に戻しました", en: "Undone", zh: "已撤销" },
+    unknown: { ja: "同期中", en: "Checking", zh: "正在同步" },
   };
 
   return (labels[status] ?? labels.unknown)[language];
@@ -254,14 +269,15 @@ function actionRiskLabel(
   riskLevel: string,
   language: AgentActionStatusLanguage,
 ): string {
-  const labels: Record<string, { en: string; zh: string }> = {
-    draft: { en: "Save draft", zh: "保存草稿" },
-    external: { en: "External action", zh: "外部操作" },
-    read: { en: "Read only", zh: "只读" },
-    write: { en: "Writes to Orbit", zh: "写入 Orbit" },
+  const labels: Record<string, LocalizedCopy> = {
+    draft: { ja: "下書きを保存", en: "Save draft", zh: "保存草稿" },
+    external: { ja: "外部への操作", en: "External action", zh: "外部操作" },
+    read: { ja: "読み取りのみ", en: "Read only", zh: "只读" },
+    write: { ja: "Orbit に書き込む", en: "Writes to Orbit", zh: "写入 Orbit" },
   };
   return (labels[riskLevel] ?? {
     en: "Review required",
+    ja: "確認が必要",
     zh: "需要复核",
   })[language];
 }
@@ -301,17 +317,13 @@ export function AgentActionStatusCard({
           setError(
             response.ok
               ? null
-              : language === "zh"
-                ? "暂时无法同步操作状态。"
-                : "Action status could not be synced.",
+              : pick(language, { ja: "操作の状態を同期できませんでした。", zh: "暂时无法同步操作状态。", en: "Action status could not be synced." }),
           );
         }
       } catch {
         if (!cancelled) {
           setError(
-            language === "zh"
-              ? "暂时无法同步操作状态。"
-              : "Action status could not be synced.",
+            pick(language, { ja: "操作の状態を同期できませんでした。", zh: "暂时无法同步操作状态。", en: "Action status could not be synced." }),
           );
         }
       } finally {
@@ -386,16 +398,14 @@ export function AgentActionStatusCard({
       const body = (await response.json().catch(() => null)) as unknown;
       const updated = parseAgentChatRunView(body);
       if (!response.ok || !updated) {
-        setError(agentLedgerErrorMessage(body, language));
+        setError(ledgerErrorMessage(body, language));
         return;
       }
       setRunView(updated);
       setActions(parseAgentChatRunActions(body, stableActionIds));
     } catch {
       setError(
-        language === "zh"
-          ? "本次请求没有取消，请检查网络后重试。"
-          : "This request was not canceled. Check your connection and try again.",
+        pick(language, { ja: "リクエストは取り消されていません。接続を確認してもう一度お試しください。", zh: "本次请求没有取消，请检查网络后重试。", en: "This request was not canceled. Check your connection and try again." }),
       );
     } finally {
       setPendingActionId(null);
@@ -410,9 +420,7 @@ export function AgentActionStatusCard({
       await onRetryRequest();
     } catch {
       setError(
-        language === "zh"
-          ? "请求没有重新提交，请再试一次。"
-          : "The request was not retried. Please try again.",
+        pick(language, { ja: "リクエストを再送できませんでした。もう一度お試しください。", zh: "请求没有重新提交，请再试一次。", en: "The request was not retried. Please try again." }),
       );
     } finally {
       setPendingActionId(null);
@@ -443,7 +451,7 @@ export function AgentActionStatusCard({
       const updated = parseTransitionedAction(body);
 
       if (!response.ok || !updated) {
-        setError(agentLedgerErrorMessage(body, language));
+        setError(ledgerErrorMessage(body, language));
         return;
       }
 
@@ -454,9 +462,7 @@ export function AgentActionStatusCard({
       );
     } catch {
       setError(
-        language === "zh"
-          ? "网络错误，操作未执行。"
-          : "Network error. The action was not changed.",
+        pick(language, { ja: "ネットワークエラーのため、操作は変更されていません。", zh: "网络错误，操作未执行。", en: "Network error. The action was not changed." }),
       );
     } finally {
       setPendingActionId(null);
@@ -477,7 +483,7 @@ export function AgentActionStatusCard({
 
   return (
     <section
-      aria-label={language === "zh" ? "本次 Agent 操作" : "Agent actions from this turn"}
+      aria-label={pick(language, { ja: "この返信のアクション", zh: "本次 Agent 操作", en: "Agent actions from this turn" })}
       data-agent-run-id={runId}
       style={{
         background: "var(--bg)",
@@ -492,17 +498,15 @@ export function AgentActionStatusCard({
       <div style={{ alignItems: "center", display: "flex", gap: 8, justifyContent: "space-between" }}>
         <strong style={{ fontSize: 13 }}>
           {showRunDetails
-            ? language === "zh" ? "本次 Agent 过程" : "Agent run"
-            : language === "zh" ? "本次安排" : "Actions from this reply"}
+            ? pick(language, { ja: "Agent の処理状況", zh: "本次 Agent 过程", en: "Agent run" })
+            : pick(language, { ja: "この返信のアクション", zh: "本次安排", en: "Actions from this reply" })}
         </strong>
         <span style={{ color: "var(--ink-3-text)", fontSize: 11 }}>
           {!showRunDetails && !loading
-            ? language === "zh" ? `${visibleActions.length} 项` : `${visibleActions.length} actions`
+            ? pick(language, { ja: `${visibleActions.length} 件`, zh: `${visibleActions.length} 项`, en: `${visibleActions.length} actions` })
             : showRunDetails && runView
             ? `${runView.progress.completedSteps}/${runView.progress.totalSteps}`
-            : language === "zh"
-              ? "正在同步"
-              : "Syncing"}
+            : pick(language, { ja: "同期中", zh: "正在同步", en: "Syncing" })}
         </span>
       </div>
 
@@ -513,9 +517,7 @@ export function AgentActionStatusCard({
         >
           <div
             aria-label={
-              language === "zh"
-                ? `Agent 进度 ${runView.progress.percent}%`
-                : `Agent progress ${runView.progress.percent}%`
+              pick(language, { ja: `Agent の進捗 ${runView.progress.percent}%`, zh: `Agent 进度 ${runView.progress.percent}%`, en: `Agent progress ${runView.progress.percent}%` })
             }
             style={{
               background: "var(--surface-3)",
@@ -578,12 +580,8 @@ export function AgentActionStatusCard({
                   type="button"
                 >
                   {pendingActionId === "run:cancel"
-                    ? language === "zh"
-                      ? "正在取消…"
-                      : "Canceling…"
-                    : language === "zh"
-                      ? "取消本次请求"
-                      : "Cancel this request"}
+                    ? pick(language, { ja: "取り消し中…", zh: "正在取消…", en: "Canceling…" })
+                    : pick(language, { ja: "このリクエストを取り消す", zh: "取消本次请求", en: "Cancel this request" })}
                 </button>
               ) : null}
               {runView.progress.canRetry && onRetryRequest ? (
@@ -594,7 +592,7 @@ export function AgentActionStatusCard({
                   onClick={() => void retryRequest()}
                   type="button"
                 >
-                  {language === "zh" ? "重新提交请求" : "Retry request"}
+                  {pick(language, { ja: "リクエストを再送", zh: "重新提交请求", en: "Retry request" })}
                 </button>
               ) : null}
             </div>
@@ -621,7 +619,7 @@ export function AgentActionStatusCard({
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>
                   {action.title === action.actionId
-                    ? language === "zh" ? "操作详情" : "Action details"
+                    ? pick(language, { ja: "操作の詳細", zh: "操作详情", en: "Action details" })
                     : action.title}
                 </div>
                 <div style={{ color: "var(--ink-3-text)", fontSize: 11, marginTop: 3 }}>
@@ -630,9 +628,7 @@ export function AgentActionStatusCard({
               </div>
               <span className="chip" data-agent-action-status={action.status} style={{ flexShrink: 0, fontSize: 11 }}>
                 {loading && action.status === "unknown"
-                  ? language === "zh"
-                    ? "正在同步"
-                    : "Syncing"
+                  ? pick(language, { ja: "同期中", zh: "正在同步", en: "Syncing" })
                   : agentChatActionStatusLabel(action.status, language)}
               </span>
             </div>
@@ -667,7 +663,7 @@ export function AgentActionStatusCard({
                   }
                   type="button"
                 >
-                  {language === "zh" ? "在安排里查看" : "Open in arrangements"}
+                  {pick(language, { ja: "アクション一覧で見る", zh: "在安排里查看", en: "Open in arrangements" })}
                 </button>
               ) : null}
               <button
@@ -679,7 +675,7 @@ export function AgentActionStatusCard({
                 }
                 type="button"
               >
-                {language === "zh" ? "全部安排" : "All arrangements"}
+                {pick(language, { ja: "すべてのアクション", zh: "全部安排", en: "All arrangements" })}
               </button>
               {confirmableInChat ? (
                 <button
@@ -688,14 +684,12 @@ export function AgentActionStatusCard({
                   onClick={() => void applyTransition(action, "confirm")}
                   type="button"
                 >
-                  {language === "zh" ? "确认执行" : "Confirm"}
+                  {pick(language, { ja: "確定して実行", zh: "确认执行", en: "Confirm" })}
                 </button>
               ) : null}
               {editable && action.riskLevel === "external" ? (
                 <span style={{ color: "var(--ink-3-text)", flexBasis: "100%", fontSize: 11 }}>
-                  {language === "zh"
-                    ? "外部操作请在「全部安排」查看详情后确认"
-                    : "Review external action details in All arrangements before confirming"}
+                  {pick(language, { ja: "外部への操作は「すべてのアクション」で詳細を確認してから確定してください", zh: "外部操作请在「全部安排」查看详情后确认", en: "Review external action details in All arrangements before confirming" })}
                 </span>
               ) : null}
               {canDefer ? (
@@ -705,7 +699,7 @@ export function AgentActionStatusCard({
                   onClick={() => void applyTransition(action, "defer")}
                   type="button"
                 >
-                  {language === "zh" ? "稍后处理" : "Later"}
+                  {pick(language, { ja: "あとで", zh: "稍后处理", en: "Later" })}
                 </button>
               ) : null}
               {canReject ? (
@@ -715,7 +709,7 @@ export function AgentActionStatusCard({
                   onClick={() => void applyTransition(action, "reject")}
                   type="button"
                 >
-                  {language === "zh" ? "忽略" : "Ignore"}
+                  {pick(language, { ja: "無視", zh: "忽略", en: "Ignore" })}
                 </button>
               ) : null}
             </div>

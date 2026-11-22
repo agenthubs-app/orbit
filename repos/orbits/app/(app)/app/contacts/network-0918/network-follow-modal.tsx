@@ -106,7 +106,7 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
   async function save() {
     if (!canSave) return;
     if (demo) {
-      demo.guardWrite(t({ en: "memo", zh: "memo" }));
+      demo.guardWrite(t({ ja: "メモ", en: "memo", zh: "memo" }));
       return;
     }
     setStatus("saving");
@@ -125,13 +125,13 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
 
   return (
     <div className="nw-overlay nw-overlay-follow" onClick={onOverlayClick} data-network-modal="follow">
-      <div className="nw-modal nw-modal-follow" role="dialog" aria-modal="true" aria-label={t({ en: "Write a memo", zh: "写 memo" })}>
+      <div className="nw-modal nw-modal-follow" role="dialog" aria-modal="true" aria-label={t({ ja: "メモを書く", en: "Write a memo", zh: "写 memo" })}>
         <div className="nw-fu-head">
           <div className="nw-fu-head-copy">
-            <strong className="nw-fu-title">{t({ en: "Write a memo", zh: "写 memo" })}</strong>
-            <span className="nw-fu-sub">{t({ en: "Note what happened with this contact, in your own words.", zh: "用自己的话记下和这位联系人之间发生的事。" })}</span>
+            <strong className="nw-fu-title">{t({ ja: "メモを書く", en: "Write a memo", zh: "写 memo" })}</strong>
+            <span className="nw-fu-sub">{t({ ja: "この人とのあいだにあったことを、自分の言葉で残しましょう。", en: "Note what happened with this contact, in your own words.", zh: "用自己的话记下和这位联系人之间发生的事。" })}</span>
           </div>
-          <button type="button" className="btn nw-modal-close" onClick={onClose} aria-label={t({ en: "Close", zh: "关闭" })}>×</button>
+          <button type="button" className="btn nw-modal-close" onClick={onClose} aria-label={t({ ja: "閉じる", en: "Close", zh: "关闭" })}>×</button>
         </div>
         <div className="nw-fu-card">
           <span className="nw-fu-avatar">{contact.initial || contact.displayName.slice(0, 1)}</span>
@@ -139,35 +139,35 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
             <strong className="nw-fu-card-name">{contact.displayName}</strong>
             <span className="nw-fu-card-org">{orgTitle}</span>
           </span>
-          <button type="button" className="btn nw-fu-detail-link" onClick={onClose}>{t({ en: "View detail →", zh: "查看详情 →" })}</button>
+          <button type="button" className="btn nw-fu-detail-link" onClick={onClose}>{t({ ja: "詳細を見る →", en: "View detail →", zh: "查看详情 →" })}</button>
         </div>
         <div className="nw-fu-form">
-          <label className="nw-fu-label" htmlFor="nw-fu-memo">{t({ en: "Memo", zh: "memo" })} <span className="nw-fu-req">*</span></label>
-          <textarea id="nw-fu-memo" className="nw-fu-textarea" rows={5} autoFocus value={body} onChange={(e) => { setBody(e.target.value); if (status === "error") setStatus("idle"); }} placeholder={t({ en: "What did you talk about? What do they need, what can you offer?", zh: "聊了什么？对方需要什么、你能提供什么？" })} />
-          <label className="nw-fu-label" htmlFor="nw-fu-date">{t({ en: "Date", zh: "日期" })} <span className="nw-fu-req">*</span></label>
+          <label className="nw-fu-label" htmlFor="nw-fu-memo">{t({ ja: "メモ", en: "Memo", zh: "memo" })} <span className="nw-fu-req">*</span></label>
+          <textarea id="nw-fu-memo" className="nw-fu-textarea" rows={5} autoFocus value={body} onChange={(e) => { setBody(e.target.value); if (status === "error") setStatus("idle"); }} placeholder={t({ ja: "何を話した？相手が求めていること、あなたが出せることは？", en: "What did you talk about? What do they need, what can you offer?", zh: "聊了什么？对方需要什么、你能提供什么？" })} />
+          <label className="nw-fu-label" htmlFor="nw-fu-date">{t({ ja: "日付", en: "Date", zh: "日期" })} <span className="nw-fu-req">*</span></label>
           <input id="nw-fu-date" className="nw-fu-input" type="date" value={date} max={tokyoToday()} onChange={(e) => setDate(e.target.value)} />
         </div>
         {suggestions.length ? (
           <div className="nw-fu-block" data-memo-event-suggestions>
-            <span className="nw-fu-block-t">{t({ en: "Related event (optional)", zh: "关联活动（可选）" })}</span>
-            <div className="nw-fu-events" role="group" aria-label={t({ en: "Events that day", zh: "当天的活动" })}>
+            <span className="nw-fu-block-t">{t({ ja: "関連イベント（任意）", en: "Related event (optional)", zh: "关联活动（可选）" })}</span>
+            <div className="nw-fu-events" role="group" aria-label={t({ ja: "その日のイベント", en: "Events that day", zh: "当天的活动" })}>
               {suggestions.map((item) => (
                 <button key={item.eventId} type="button" className={`btn nw-fu-event${eventId === item.eventId ? " nw-fu-event-on" : ""}`} aria-pressed={eventId === item.eventId} onClick={() => setEventId(eventId === item.eventId ? null : item.eventId)}>{item.title}</button>
               ))}
             </div>
           </div>
         ) : null}
-        <span className="nw-fu-hint" data-memo-privacy-hint>{t({ en: "Memos are used to build your network analysis. Only you can see them.", zh: "memo 会用于为你生成人脉分析，仅你可见" })}</span>
-        {status === "error" ? <p role="alert" className="nw-fu-error">{t({ en: "Saving failed. Please try again.", zh: "保存失败，请重试。" })}</p> : null}
+        <span className="nw-fu-hint" data-memo-privacy-hint>{t({ ja: "メモは人脈分析に使われます。見られるのはあなただけです", en: "Memos are used to build your network analysis. Only you can see them.", zh: "memo 会用于为你生成人脉分析，仅你可见" })}</span>
+        {status === "error" ? <p role="alert" className="nw-fu-error">{t({ ja: "保存できませんでした。もう一度お試しください。", en: "Saving failed. Please try again.", zh: "保存失败，请重试。" })}</p> : null}
         <div className="nw-fu-foot">
           <span />
           <div className="nw-fu-foot-actions">
-            <button type="button" className="btn nw-fu-cancel" onClick={onClose} disabled={status === "saving" || status === "saved"}>{t({ en: "Cancel", zh: "取消" })}</button>
-            <button type="button" className="btn nw-fu-save" disabled={!canSave} onClick={save}>{status === "saving" ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save memo", zh: "保存 memo" })}</button>
+            <button type="button" className="btn nw-fu-cancel" onClick={onClose} disabled={status === "saving" || status === "saved"}>{t({ ja: "キャンセル", en: "Cancel", zh: "取消" })}</button>
+            <button type="button" className="btn nw-fu-save" disabled={!canSave} onClick={save}>{status === "saving" ? t({ ja: "保存中…", en: "Saving…", zh: "保存中…" }) : t({ ja: "メモを保存", en: "Save memo", zh: "保存 memo" })}</button>
           </div>
         </div>
       </div>
-      {status === "saved" ? <div className="nw-toast" role="status">✓ {t({ en: "Memo saved", zh: "已保存 memo" })}</div> : null}
+      {status === "saved" ? <div className="nw-toast" role="status">✓ {t({ ja: "メモを保存しました", en: "Memo saved", zh: "已保存 memo" })}</div> : null}
     </div>
   );
 }

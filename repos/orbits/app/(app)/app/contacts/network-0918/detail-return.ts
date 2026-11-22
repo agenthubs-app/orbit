@@ -166,19 +166,19 @@ export function sanitizeReturnTo(raw: unknown, contactId: string): string | null
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
-type Copy = { zh: string; en: string };
+type Copy = { ja: string; zh: string; en: string };
 
 /** 最长前缀优先（按路径段匹配，`/app/contactsX` 不算 `/app/contacts`）。 */
 const RETURN_LABELS: readonly { prefix: string; label: Copy }[] = [
-  { prefix: "/app/plans", label: { zh: "返回我的计划", en: "Back to My plan" } },
-  { prefix: "/app/agent", label: { zh: "返回 iOrbit", en: "Back to iOrbit" } },
-  { prefix: "/app/contacts/dashboard", label: { zh: "返回人脉分析", en: "Back to Network analysis" } },
-  { prefix: "/app/contacts/analysis", label: { zh: "返回人脉分析", en: "Back to Network analysis" } },
-  { prefix: "/app/contacts", label: { zh: "返回人脉", en: "Back to Network" } },
-  { prefix: "/app/events", label: { zh: "返回活动", en: "Back to Events" } },
+  { prefix: "/app/plans", label: { ja: "マイプランに戻る", zh: "返回我的计划", en: "Back to My plan" } },
+  { prefix: "/app/agent", label: { ja: "iOrbit に戻る", zh: "返回 iOrbit", en: "Back to iOrbit" } },
+  { prefix: "/app/contacts/dashboard", label: { ja: "人脈分析に戻る", zh: "返回人脉分析", en: "Back to Network analysis" } },
+  { prefix: "/app/contacts/analysis", label: { ja: "人脈分析に戻る", zh: "返回人脉分析", en: "Back to Network analysis" } },
+  { prefix: "/app/contacts", label: { ja: "人脈に戻る", zh: "返回人脉", en: "Back to Network" } },
+  { prefix: "/app/events", label: { ja: "イベントに戻る", zh: "返回活动", en: "Back to Events" } },
 ];
 
-const GENERIC_BACK: Copy = { zh: "返回", en: "Back" };
+const GENERIC_BACK: Copy = { ja: "戻る", zh: "返回", en: "Back" };
 
 /** 来源路径 → 「返回 {来源}」中英文案；null（无来路且无 returnTo）= 返回人脉。 */
 export function detailReturnLabel(path: string | null): Copy {

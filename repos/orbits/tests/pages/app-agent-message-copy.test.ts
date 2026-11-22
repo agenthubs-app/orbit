@@ -61,7 +61,7 @@ test("agent chat bubbles expose copy buttons for user and assistant messages", (
   const source = iorbitChatSurfaceSource();
 
   assert.match(source, /data-orbit-agent-message-copy/);
-  assert.match(source, /aria-label=\{t\(\{ en: "Copy message", zh: "复制消息" \}\)\}/);
+  assert.match(source, /aria-label=\{t\(\{ ja: "メッセージをコピー", en: "Copy message", zh: "复制消息" \}\)\}/);
   assert.match(source, /<AgentMessageCopyButton text=\{message\.text\}/);
   // 复制的实现（clipboard / textarea 兜底）搬到了 model，按钮仍在 JSX。
   assert.match(readProjectFile(IORBIT_MODEL_PATH), /navigator\.clipboard\.writeText/);

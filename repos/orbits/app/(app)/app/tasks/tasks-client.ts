@@ -5,24 +5,35 @@ import {
   activitiesToView, remindersToView, suggestionsToView, taskToView,
   type TaskView, type TaskRowView,
 } from "./tasks-view-model";
+import type { OrbitLanguage } from "../orbit-language-core";
 
 export class TasksClientError extends Error {
   constructor(public readonly code: string, message: string) { super(message); }
 }
 
-export function tasksErrorMessage(error: unknown, english: boolean): string {
+type TasksErrorCopy = Record<OrbitLanguage, string>;
+
+const TASKS_ERROR_COPY: Record<string, TasksErrorCopy> = {
+  UNAUTHORIZED: { ja: "ログインの有効期限が切れました。もう一度ログインしてください。", zh: "登录已失效，请重新登录。", en: "Your session expired. Sign in again." },
+  NOT_FOUND: { ja: "このタスクは削除されたか、表示する権限がありません。", zh: "这条待办已删除或无权查看。", en: "This task was deleted or is not accessible." },
+  CONFLICT: { ja: "このタスクは別の画面で更新されました。入力は残したまま、再読み込みしてから保存してください。", zh: "待办已在其他页面更新。请保留输入，刷新后再保存。", en: "This task changed elsewhere. Keep your draft and refresh before saving." },
+  INVALID_RESPONSE: { ja: "タスクを読み込めませんでした。もう一度お試しください。", zh: "待办数据暂时无法读取，请重试。", en: "Task data could not be read. Try again." },
+  NETWORK_ERROR: { ja: "接続できませんでした。ネットワークを確認して、もう一度お試しください。", zh: "连接失败，请检查网络后重试。", en: "Connection failed. Check your network and try again." },
+  EMPTY_TITLE: { ja: "タスク名を入力してください。", zh: "请填写待办标题。", en: "Enter a task title." },
+  NOTES_CLEAR_UNSUPPORTED: { ja: "既存のメモはまだ空にできません。残すか、内容を書き換えてください。", zh: "暂不支持清空已有备注，请保留或修改内容。", en: "Existing notes cannot be cleared yet. Keep or edit the text." },
+  INVALID_REMINDER: { ja: "リマインダーの時刻が過ぎているか、正しくありません。一覧に戻ってタスクを開き直し、新しいリマインダーを設定してください。", zh: "提醒时间已过或无效。请返回列表并重新打开待办，再设置新提醒。", en: "The reminder time has passed or is invalid. Return to All tasks and reopen this task to set a new reminder." },
+};
+
+const TASKS_ERROR_FALLBACK: TasksErrorCopy = { ja: "操作を完了できませんでした。もう一度お試しください。", zh: "操作未完成，请重试。", en: "The action failed. Try again." };
+
+/**
+ * `language` is the page language. The legacy boolean form (`true` = English,
+ * `false` = Chinese) is still accepted for older callers.
+ */
+export function tasksErrorMessage(error: unknown, language: OrbitLanguage | boolean): string {
   const code = error instanceof TasksClientError ? error.code : "UNKNOWN";
-  const copy: Record<string, [string, string]> = {
-    UNAUTHORIZED: ["登录已失效，请重新登录。", "Your session expired. Sign in again."],
-    NOT_FOUND: ["这条待办已删除或无权查看。", "This task was deleted or is not accessible."],
-    CONFLICT: ["待办已在其他页面更新。请保留输入，刷新后再保存。", "This task changed elsewhere. Keep your draft and refresh before saving."],
-    INVALID_RESPONSE: ["待办数据暂时无法读取，请重试。", "Task data could not be read. Try again."],
-    NETWORK_ERROR: ["连接失败，请检查网络后重试。", "Connection failed. Check your network and try again."],
-    EMPTY_TITLE: ["请填写待办标题。", "Enter a task title."],
-    NOTES_CLEAR_UNSUPPORTED: ["暂不支持清空已有备注，请保留或修改内容。", "Existing notes cannot be cleared yet. Keep or edit the text."],
-    INVALID_REMINDER: ["提醒时间已过或无效。请返回列表并重新打开待办，再设置新提醒。", "The reminder time has passed or is invalid. Return to All tasks and reopen this task to set a new reminder."],
-  };
-  return copy[code]?.[english ? 1 : 0] ?? (english ? "The action failed. Try again." : "操作未完成，请重试。");
+  const lang: OrbitLanguage = typeof language === "boolean" ? (language ? "en" : "zh") : language;
+  return (TASKS_ERROR_COPY[code] ?? TASKS_ERROR_FALLBACK)[lang];
 }
 
 export function createTasksClient(fetcher: typeof fetch = fetch) {

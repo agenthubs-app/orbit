@@ -88,7 +88,7 @@ function OrbitNavAccountControl({
     return (
       <span
         aria-busy="true"
-        aria-label={t({ en: "Checking sign-in status", zh: "正在确认登录状态" })}
+        aria-label={t({ ja: "ログイン状態を確認しています", en: "Checking sign-in status", zh: "正在确认登录状态" })}
         role="status"
         style={{
           background: "var(--surface-2)",
@@ -110,7 +110,7 @@ function OrbitNavAccountControl({
           className="orbit-me-link"
           href={preserveHref(`/app/account/login?next=${encodeURIComponent(nextPath)}`)}
         >
-          {t({ en: "Sign in", zh: "登录" })}
+          {t({ ja: "ログイン", en: "Sign in", zh: "登录" })}
         </a>
         {/* Orbit_0918: the dark join pill only appears once the header is in
             its scrolled state (design 首页 header, sc-if scrolled). Visibility
@@ -119,7 +119,7 @@ function OrbitNavAccountControl({
           className="orbit-nav-join-cta"
           href={preserveHref(`/app/account/signup?next=${encodeURIComponent(nextPath)}`)}
         >
-          {t({ en: "Join now", zh: "立即加入" })}
+          {t({ ja: "今すぐ参加", en: "Join now", zh: "立即加入" })}
         </a>
       </span>
     );
@@ -130,7 +130,7 @@ function OrbitNavAccountControl({
       <button
         aria-expanded={menuOpen}
         aria-haspopup="menu"
-        aria-label={t({ en: "Account menu", zh: "账号菜单" })}
+        aria-label={t({ ja: "アカウントメニュー", en: "Account menu", zh: "账号菜单" })}
         data-orbit-nav-account={sessionUser.id}
         onClick={() => setMenuOpen((current) => !current)}
         type="button"
@@ -166,7 +166,7 @@ function OrbitNavAccountControl({
             style={{ alignItems: "center", borderRadius: 8, color: "var(--ink)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="users" size={15} />
-            {t({ en: "Profile", zh: "个人资料" })}
+            {t({ ja: "プロフィール", en: "Profile", zh: "个人资料" })}
           </a>
           <a
             href={preserveHref("/app/events?scope=registered")}
@@ -174,7 +174,7 @@ function OrbitNavAccountControl({
             style={{ alignItems: "center", borderRadius: 8, color: "var(--ink)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="calendar" size={15} />
-            {t({ en: "My events", zh: "我的活动" })}
+            {t({ ja: "参加イベント", en: "My events", zh: "我的活动" })}
           </a>
           <a
             href={preserveHref("/app/events/center")}
@@ -182,7 +182,7 @@ function OrbitNavAccountControl({
             style={{ alignItems: "center", borderRadius: 8, color: "var(--ink)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="settings" size={15} />
-            {t({ en: "Event operations", zh: "活动运营中心" })}
+            {t({ ja: "イベント運営", en: "Event operations", zh: "活动运营中心" })}
           </a>
           <a
             href={preserveHref("/app/settings")}
@@ -190,7 +190,7 @@ function OrbitNavAccountControl({
             style={{ alignItems: "center", borderRadius: 8, color: "var(--ink)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="settings" size={15} />
-            {t({ en: "Settings", zh: "设置" })}
+            {t({ ja: "設定", en: "Settings", zh: "设置" })}
           </a>
           <button
             onClick={() => {
@@ -202,7 +202,7 @@ function OrbitNavAccountControl({
             style={{ alignItems: "center", background: "transparent", border: 0, borderRadius: 8, color: "var(--coral-text, #C2410C)", cursor: "pointer", display: "flex", fontFamily: "var(--font)", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textAlign: "left", width: "100%" }}
           >
             <Icon name="x" size={15} />
-            {t({ en: "Sign out", zh: "退出登录" })}
+            {t({ ja: "ログアウト", en: "Sign out", zh: "退出登录" })}
           </button>
         </div>
       ) : null}
@@ -213,11 +213,11 @@ function OrbitNavAccountControl({
 const ORBIT_LANG_BUTTONS: readonly {
   code: "zh" | "en" | "ja";
   label: string;
-  aria: { en: string; zh: string };
+  aria: { en: string; ja: string; zh: string };
 }[] = [
-  { aria: { en: "Switch to Chinese", zh: "切换到中文" }, code: "zh", label: "中" },
-  { aria: { en: "Switch to English", zh: "切换到英文" }, code: "en", label: "EN" },
-  { aria: { en: "Switch to Japanese", zh: "切换到日文" }, code: "ja", label: "日" },
+  { aria: { ja: "中国語に切り替え", en: "Switch to Chinese", zh: "切换到中文" }, code: "zh", label: "中" },
+  { aria: { ja: "英語に切り替え", en: "Switch to English", zh: "切换到英文" }, code: "en", label: "EN" },
+  { aria: { ja: "日本語に切り替え", en: "Switch to Japanese", zh: "切换到日文" }, code: "ja", label: "日" },
 ];
 
 /**
@@ -264,7 +264,7 @@ function OrbitNavMobileAccountLinks({
   if (status === "loading") {
     return (
       <span className="orbit-nav-menu-status" role="status">
-        {t({ en: "Checking sign-in status…", zh: "正在确认登录状态…" })}
+        {t({ ja: "ログイン状態を確認しています…", en: "Checking sign-in status…", zh: "正在确认登录状态…" })}
       </span>
     );
   }
@@ -277,26 +277,26 @@ function OrbitNavMobileAccountLinks({
           className={`orbit-nav-menu-item${active === "me" || active === "home" ? " is-active" : ""}`}
           href={preserveHref(meHref)}
         >
-          {t({ en: "Me", zh: "我的" })}
+          {t({ ja: "マイページ", en: "Me", zh: "我的" })}
         </a>
         <a
           className="orbit-nav-menu-item"
           href={preserveHref("/app/events?scope=registered")}
         >
-          {t({ en: "My events", zh: "我的活动" })}
+          {t({ ja: "参加イベント", en: "My events", zh: "我的活动" })}
         </a>
         <a
           className="orbit-nav-menu-item"
           href={preserveHref("/app/events/center")}
         >
-          {t({ en: "Event operations", zh: "活动运营中心" })}
+          {t({ ja: "イベント運営", en: "Event operations", zh: "活动运营中心" })}
         </a>
         <a
           aria-current={active === "settings" ? "page" : undefined}
           className={`orbit-nav-menu-item is-accent${active === "settings" ? " is-active" : ""}`}
           href={preserveHref("/app/settings")}
         >
-          {t({ en: "Settings", zh: "设置" })}
+          {t({ ja: "設定", en: "Settings", zh: "设置" })}
         </a>
       </>
     );
@@ -310,13 +310,13 @@ function OrbitNavMobileAccountLinks({
         className="orbit-nav-menu-item"
         href={preserveHref(`/app/account/login?next=${encodeURIComponent(nextPath)}`)}
       >
-        {t({ en: "Sign in", zh: "登录" })}
+        {t({ ja: "ログイン", en: "Sign in", zh: "登录" })}
       </a>
       <a
         className="orbit-nav-menu-item is-accent"
         href={preserveHref(`/app/account/signup?next=${encodeURIComponent(nextPath)}`)}
       >
-        {t({ en: "Sign up", zh: "注册" })}
+        {t({ ja: "新規登録", en: "Sign up", zh: "注册" })}
       </a>
     </>
   );
@@ -372,28 +372,28 @@ export function OrbitTopNav({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [menuOpen]);
 
-  const pageLabels: Record<OrbitNavActive, { en: string; zh: string }> = {
-    agent: { en: "iOrbit", zh: "iOrbit" },
-    cards: { en: "Contacts", zh: "人脉" },
-    events: { en: "Events", zh: "活动" },
-    home: { en: "Me", zh: "我的" },
-    me: { en: "Me", zh: "我的" },
+  const pageLabels: Record<OrbitNavActive, { en: string; ja: string; zh: string }> = {
+    agent: { ja: "iOrbit", en: "iOrbit", zh: "iOrbit" },
+    cards: { ja: "人脈", en: "Contacts", zh: "人脉" },
+    events: { ja: "イベント", en: "Events", zh: "活动" },
+    home: { ja: "マイページ", en: "Me", zh: "我的" },
+    me: { ja: "マイページ", en: "Me", zh: "我的" },
     // Unreachable via the nav (see the OrbitNavActive comment above) but kept
     // for the two orphaned components that still pass active="schedule".
-    schedule: { en: "Calendar", zh: "日程" },
-    settings: { en: "Settings", zh: "设置" },
-    today: { en: "Schedule", zh: "日程" },
+    schedule: { ja: "予定", en: "Calendar", zh: "日程" },
+    settings: { ja: "設定", en: "Settings", zh: "设置" },
+    today: { ja: "予定", en: "Schedule", zh: "日程" },
   };
   const links = [
-    ["/events", t({ en: "Events", zh: "活动" }), "events"],
-    ["/contacts", t({ en: "Contacts", zh: "人脉" }), "cards"],
+    ["/events", t({ ja: "イベント", en: "Events", zh: "活动" }), "events"],
+    ["/contacts", t({ ja: "人脈", en: "Contacts", zh: "人脉" }), "cards"],
   ] as const;
   // 2026-09-18 用户决定：导航不再有 Calendar/日程 tab——日历能力合入 iOrbit。
   // /today 与 /schedule 路由保留，从 iOrbit 内进入；menuItems 同步移除日程项。
   const menuItems = [
     { active: isAgent, href: "/app/agent", key: "agent", label: "iOrbit" },
-    { active: active === "events", href: productHref("/events"), key: "events", label: t({ en: "Events", zh: "活动" }) },
-    { active: active === "cards", href: productHref("/contacts"), key: "cards", label: t({ en: "Contacts", zh: "人脉" }) },
+    { active: active === "events", href: productHref("/events"), key: "events", label: t({ ja: "イベント", en: "Events", zh: "活动" }) },
+    { active: active === "cards", href: productHref("/contacts"), key: "cards", label: t({ ja: "人脈", en: "Contacts", zh: "人脉" }) },
   ];
 
   return (
@@ -413,7 +413,7 @@ export function OrbitTopNav({
           {active ? <span className="orbit-nav-page-title">{t(pageLabels[active])}</span> : null}
         </div>
 
-        <nav aria-label={t({ en: "Primary", zh: "主导航" })} className="orbit-nav-links">
+        <nav aria-label={t({ ja: "メインナビゲーション", en: "Primary", zh: "主导航" })} className="orbit-nav-links">
           <a aria-current={isAgent ? "page" : undefined} className={`orbit-nav-link${isAgent ? " is-active" : ""}`} href={preserveHref("/app/agent")}>iOrbit</a>
           {links.map(([href, label, key]) => (
             <a
@@ -434,7 +434,7 @@ export function OrbitTopNav({
           <span className="orbit-nav-account-slot"><OrbitNavAccountControl authenticatedFallback={authenticatedFallback} /></span>
           <button
             aria-expanded={menuOpen}
-            aria-label={menuOpen ? t({ en: "Close menu", zh: "关闭菜单" }) : t({ en: "Open menu", zh: "打开菜单" })}
+            aria-label={menuOpen ? t({ ja: "メニューを閉じる", en: "Close menu", zh: "关闭菜单" }) : t({ ja: "メニューを開く", en: "Open menu", zh: "打开菜单" })}
             className="orbit-nav-menu-btn hit-44"
             onClick={() => setMenuOpen((open) => !open)}
             type="button"
@@ -446,8 +446,8 @@ export function OrbitTopNav({
       </header>
       {menuOpen ? (
         <div className="orbit-nav-menu-layer">
-          <button aria-label={t({ en: "Close menu", zh: "关闭菜单" })} className="orbit-nav-menu-scrim" onClick={() => setMenuOpen(false)} type="button" />
-          <nav aria-label={t({ en: "Primary", zh: "主导航" })} className="orbit-nav-menu-panel">
+          <button aria-label={t({ ja: "メニューを閉じる", en: "Close menu", zh: "关闭菜单" })} className="orbit-nav-menu-scrim" onClick={() => setMenuOpen(false)} type="button" />
+          <nav aria-label={t({ ja: "メインナビゲーション", en: "Primary", zh: "主导航" })} className="orbit-nav-menu-panel">
             {menuItems.map((item) => (
               <a
                 aria-current={item.active ? "page" : undefined}

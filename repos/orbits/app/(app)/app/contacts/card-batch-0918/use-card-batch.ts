@@ -523,17 +523,17 @@ export function useCardBatch(batchId: string | null, t: T) {
           // 候选已由 confirmCard 写入 matches，复核页随即显示「可能是同一个联系人」。
         } else if (result === "blocked") {
           setError(t(draft.conflictedFields.length
-            ? { zh: "正反面识别结果不一致，请为标出的字段选一个值或直接填写。", en: "The two sides disagree — pick a value or type one for the flagged fields." }
+            ? { ja: "表と裏で読み取り結果が違います。印の付いた項目は値を選ぶか直接入力してください。", zh: "正反面识别结果不一致，请为标出的字段选一个值或直接填写。", en: "The two sides disagree — pick a value or type one for the flagged fields." }
             : !draft.fields.displayName.trim()
-              ? { zh: "请先填写姓名再确认。", en: "Add a name before confirming." }
-              : { zh: "这张名片的数据已过期，请刷新后再确认。", en: "This card's data changed — refresh and try again." }));
+              ? { ja: "確定する前に名前を入力してください。", zh: "请先填写姓名再确认。", en: "Add a name before confirming." }
+              : { ja: "この名刺のデータは古くなっています。再読み込みしてから確定してください。", zh: "这张名片的数据已过期，请刷新后再确认。", en: "This card's data changed — refresh and try again." }));
         } else {
-          setError(t({ zh: "没有保存成功，请重试。", en: "That didn't save — please try again." }));
+          setError(t({ ja: "保存できませんでした。もう一度お試しください。", zh: "没有保存成功，请重试。", en: "That didn't save — please try again." }));
         }
       }
       await refresh();
     } catch {
-      setError(t({ zh: "没有保存成功，请重试。", en: "That didn't save — please try again." }));
+      setError(t({ ja: "保存できませんでした。もう一度お試しください。", zh: "没有保存成功，请重试。", en: "That didn't save — please try again." }));
     } finally {
       setBusy(false);
     }
@@ -579,7 +579,7 @@ export function useCardBatch(batchId: string | null, t: T) {
       autoAttempted.current.delete(card.cardId);
       await refresh();
     } catch {
-      setError(t({ zh: "没能重新识别，请稍后再试。", en: "Couldn't retry recognition — try again later." }));
+      setError(t({ ja: "読み取り直しができませんでした。しばらくしてからお試しください。", zh: "没能重新识别，请稍后再试。", en: "Couldn't retry recognition — try again later." }));
     } finally {
       setBusy(false);
     }

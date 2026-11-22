@@ -40,9 +40,9 @@ export function contactHref(contactId: string): string {
   return `/app/contacts/${encodeURIComponent(contactId)}`;
 }
 
-/** 英文单复数（中文不变）。 */
-export function countCopy(n: number, zhUnit: string, enOne: string, enMany: string): NetworkCopy {
-  return { zh: `${n} ${zhUnit}`, en: `${n} ${n === 1 ? enOne : enMany}` };
+/** 数量 + 单位：日文、中文单位不变；英文 unit.en 是单数，enMany 是复数。 */
+export function countCopy(n: number, unit: NetworkCopy, enMany: string): NetworkCopy {
+  return { ja: `${n} ${unit.ja}`, zh: `${n} ${unit.zh}`, en: `${n} ${n === 1 ? unit.en : enMany}` };
 }
 
 // ---------------------------------------------------------------------------
@@ -198,7 +198,7 @@ export function overviewNameIds(input: Pick<OverviewCockpitParts, "snapshot" | "
 // 组装
 // ---------------------------------------------------------------------------
 
-const same = (text: string): NetworkCopy => ({ en: text, zh: text });
+const same = (text: string): NetworkCopy => ({ ja: text, en: text, zh: text });
 
 function cards(parts: OverviewCockpitParts, total: number | null, dormant: number | null): OverviewCockpitCard[] {
   const snapshotReady = parts.snapshot.state === "ready";
@@ -219,9 +219,9 @@ function cards(parts: OverviewCockpitParts, total: number | null, dormant: numbe
   const covered = plan ? plan.needs.reduce((sum, need) => sum + Math.min(need.have, need.target), 0) : 0;
   const target = plan ? plan.needs.reduce((sum, need) => sum + need.target, 0) : 0;
   const gapValue: NetworkCopy | null = plan === undefined ? null
-    : plan === null ? { zh: "生成计划 →", en: "Create a plan →" }
-    : target === 0 ? { zh: "计划里还没有人脉需求", en: "No network needs in the plan yet" }
-    : { zh: `已有 ${covered}／共 ${target}`, en: `${covered} of ${target} covered` };
+    : plan === null ? { ja: "プランを作る →", zh: "生成计划 →", en: "Create a plan →" }
+    : target === 0 ? { ja: "プランにまだ必要人脈がありません", zh: "计划里还没有人脉需求", en: "No network needs in the plan yet" }
+    : { ja: `${target} 人中 ${covered} 人`, zh: `已有 ${covered}／共 ${target}`, en: `${covered} of ${target} covered` };
 
   // ③ 本周行动：计划引用句 + 本周建议动作数（计划本周行动 + 待确认匹配；无计划时只含待确认匹配）。
   const planBlock = snapshotReady ? parts.snapshot.blocks.find((block) => block.kind === "plan")?.text ?? null : null;
@@ -229,34 +229,34 @@ function cards(parts: OverviewCockpitParts, total: number | null, dormant: numbe
 
   // ④ 待唤醒：全量 dormant 人数 + 数字模板句（只在有快照时渲染句子，无快照时 4 卡只有标题与数字）。
   const dormantSentence: NetworkCopy | null = snapshotReady && dormant !== null && dormant > 0
-    ? { zh: `${dormant} 位曾有往来、60 天没有新记录`, en: `${dormant} ${dormant === 1 ? "contact you were in touch with has" : "contacts you were in touch with have"} had no new records for 60 days` }
+    ? { ja: `以前やりとりのあった ${dormant} 人に、60 日間新しい記録がありません`, zh: `${dormant} 位曾有往来、60 天没有新记录`, en: `${dormant} ${dormant === 1 ? "contact you were in touch with has" : "contacts you were in touch with have"} had no new records for 60 days` }
     : null;
 
   return [
     {
       cta: false, href: STRUCTURE_TAB_HREF, icon: "◎", id: "structure", n: total,
       sentence: diagnosis ? same(diagnosis) : null,
-      title: { zh: "人脉结构", en: "Network structure" },
-      value: total === null ? null : countCopy(total, "位联系人", "contact", "contacts"),
+      title: { ja: "人脈の構造", zh: "人脉结构", en: "Network structure" },
+      value: total === null ? null : countCopy(total, { ja: "人", zh: "位联系人", en: "contact" }, "contacts"),
     },
     {
       cta: plan === null, href: plan === null ? PLAN_HREF : OPPORTUNITIES_TAB_HREF, icon: "➶", id: "gap",
       n: plan ? covered : null,
       sentence: gapSentence ? same(gapSentence) : null,
-      title: { zh: "目标缺口", en: "Goal gaps" },
+      title: { ja: "目標とのギャップ", zh: "目标缺口", en: "Goal gaps" },
       value: gapValue,
     },
     {
       cta: false, href: PLAN_HREF, icon: "▦", id: "week", n: week,
       sentence: planBlock ? same(planBlock) : null,
-      title: { zh: "本周行动", en: "This week" },
-      value: week === null ? null : countCopy(week, "项建议动作", "suggested action", "suggested actions"),
+      title: { ja: "今週のアクション", zh: "本周行动", en: "This week" },
+      value: week === null ? null : countCopy(week, { ja: "件の提案", zh: "项建议动作", en: "suggested action" }, "suggested actions"),
     },
     {
       cta: false, href: OPPORTUNITIES_TAB_HREF, icon: "◷", id: "dormant", n: dormant,
       sentence: dormantSentence,
-      title: { zh: "待唤醒", en: "To re-engage" },
-      value: dormant === null ? null : countCopy(dormant, "位待唤醒", "to re-engage", "to re-engage"),
+      title: { ja: "休眠中", zh: "待唤醒", en: "To re-engage" },
+      value: dormant === null ? null : countCopy(dormant, { ja: "人が休眠中", zh: "位待唤醒", en: "to re-engage" }, "to re-engage"),
     },
   ];
 }

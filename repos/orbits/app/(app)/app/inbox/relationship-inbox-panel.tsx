@@ -433,7 +433,7 @@ function ReplyComposer({
   t,
 }: {
   detail: InboxThreadDetail;
-  t: (copy: { en: string; zh: string }) => string;
+  t: (copy: { en: string; zh: string; ja?: string }) => string;
 }) {
   const [body, setBody] = useState(detail.draftReplyBody);
   const [rewriting, setRewriting] = useState(false);
@@ -464,15 +464,15 @@ function ReplyComposer({
       <div className="ri-staged">
         <div className="ri-staged-head">
           <Icon name="lock" size={14} />
-          <span>{t({ en: "Staged for review — not sent", zh: "已暂存待复核 — 未发送" })}</span>
+          <span>{t({ ja: "確認用に保存しました · 未送信", en: "Staged for review — not sent", zh: "已暂存待复核 — 未发送" })}</span>
         </div>
         <div className="ri-staged-body">{body}</div>
         <div className="ri-boundary">
           <Icon name="lock" size={13} />
-          <span>{t({ en: "No external message, notification, calendar entry, saved record, or network request happened.", zh: "未发生任何外部消息、通知、日历、保存记录或网络请求。" })}</span>
+          <span>{t({ ja: "外部へのメッセージ・通知・カレンダー登録・記録の保存・通信は一切行っていません。", en: "No external message, notification, calendar entry, saved record, or network request happened.", zh: "未发生任何外部消息、通知、日历、保存记录或网络请求。" })}</span>
         </div>
         <button className="btn btn-quiet btn-sm" onClick={() => setStaged(false)} type="button">
-          {t({ en: "Edit draft", zh: "继续编辑" })}
+          {t({ ja: "下書きを編集", en: "Edit draft", zh: "继续编辑" })}
         </button>
       </div>
     );
@@ -480,25 +480,25 @@ function ReplyComposer({
 
   return (
     <div className="ri-composer">
-      <label className="ri-composer-label">{t({ en: "Draft reply", zh: "回复草稿" })}</label>
+      <label className="ri-composer-label">{t({ ja: "返信の下書き", en: "Draft reply", zh: "回复草稿" })}</label>
       <textarea
         className="field ri-composer-input"
         onChange={(event) => setBody(event.target.value)}
-        placeholder={t({ en: "Write a reply…", zh: "写一条回复…" })}
+        placeholder={t({ ja: "返信を書く…", en: "Write a reply…", zh: "写一条回复…" })}
         value={body}
       />
       <div className="ri-boundary">
         <Icon name="lock" size={13} />
-        <span>{t({ en: "Draft & review only — sending requires confirmation, no message is sent automatically.", zh: "仅草稿与复核 — 发送需确认，不会自动发送任何消息。" })}</span>
+        <span>{t({ ja: "下書きと確認のみ · 送信には確認が必要で、自動で送ることはありません。", en: "Draft & review only — sending requires confirmation, no message is sent automatically.", zh: "仅草稿与复核 — 发送需确认，不会自动发送任何消息。" })}</span>
       </div>
       <div className="ri-composer-actions">
         <button className="btn btn-ghost btn-sm" disabled={rewriting || !body.trim()} onClick={onRewrite} type="button">
           <Icon name="sparkle" size={15} />
-          {rewriting ? t({ en: "Rewriting…", zh: "改写中…" }) : t({ en: "Rule-based rewrite", zh: "规则改写" })}
+          {rewriting ? t({ ja: "書き直し中…", en: "Rewriting…", zh: "改写中…" }) : t({ ja: "ルールで書き直す", en: "Rule-based rewrite", zh: "规则改写" })}
         </button>
         <button className="btn btn-primary btn-sm" disabled={!body.trim()} onClick={() => setStaged(true)} style={{ flex: 1, justifyContent: "center" }} type="button">
           <Icon name="mail" size={15} />
-          {t({ en: "Stage for review", zh: "暂存待复核" })}
+          {t({ ja: "確認用に保存", en: "Stage for review", zh: "暂存待复核" })}
         </button>
       </div>
     </div>
@@ -514,14 +514,14 @@ function ThreadDetailView({
   detail: InboxThreadDetail;
   currentUserName: string;
   onBack: () => void;
-  t: (copy: { en: string; zh: string }) => string;
+  t: (copy: { en: string; zh: string; ja?: string }) => string;
 }) {
   const { language } = useOrbitLanguage();
 
   return (
     <div className="ri-detail">
       <div className="ri-detail-head">
-        <button aria-label={t({ en: "Back to list", zh: "返回列表" })} className="ri-back" onClick={onBack} type="button">
+        <button aria-label={t({ ja: "一覧に戻る", en: "Back to list", zh: "返回列表" })} className="ri-back" onClick={onBack} type="button">
           <Icon name="chevL" size={18} />
         </button>
         <div style={{ minWidth: 0 }}>
@@ -560,7 +560,7 @@ function ThreadContextRail({
   t,
 }: {
   detail: InboxThreadDetail;
-  t: (copy: { en: string; zh: string }) => string;
+  t: (copy: { en: string; zh: string; ja?: string }) => string;
 }) {
   return (
     <aside className="ri-thread-context">
@@ -574,19 +574,19 @@ function ThreadContextRail({
           <div className="ri-context-name">{detail.participantName}</div>
           <div className="ri-context-org">
             {detail.organization ||
-              t({ en: "Organization not listed", zh: "未填写组织" })}
+              t({ ja: "所属未入力", en: "Organization not listed", zh: "未填写组织" })}
           </div>
         </div>
       </div>
 
       <div className="ri-context-section">
         <div className="ri-context-label">
-          {t({ en: "Relationship context", zh: "关系上下文" })}
+          {t({ ja: "関係の背景", en: "Relationship context", zh: "关系上下文" })}
         </div>
         <p className="ri-context-summary">
           {detail.summary ||
             t({
-              en: "Review the conversation before deciding the next follow-up.",
+              ja: "次のフォローを決める前に、やり取りを確認しましょう。", en: "Review the conversation before deciding the next follow-up.",
               zh: "先复核对话，再决定下一步跟进。",
             })}
         </p>
@@ -595,7 +595,7 @@ function ThreadContextRail({
       {detail.sourceContextLabels.length ? (
         <div className="ri-context-section">
           <div className="ri-context-label">
-            {t({ en: "Source signals", zh: "来源线索" })}
+            {t({ ja: "出典の手がかり", en: "Source signals", zh: "来源线索" })}
           </div>
           <div className="ri-context-signals">
             {detail.sourceContextLabels.map((label) => (
@@ -609,7 +609,7 @@ function ThreadContextRail({
         <Icon name="lock" size={14} />
         <span>
           {t({
-            en: "Draft-only workspace. Nothing is delivered without confirmation.",
+            ja: "下書き専用です。確認なしに届けられることはありません。", en: "Draft-only workspace. Nothing is delivered without confirmation.",
             zh: "仅用于草稿复核。未经确认不会投递任何内容。",
           })}
         </span>
@@ -703,32 +703,32 @@ function NewThreadForm({
   return (
     <div className="ri-new">
       <div className="ri-new-head">
-        <button aria-label={t({ en: "Back to list", zh: "返回列表" })} className="ri-back" onClick={onCancel} type="button">
+        <button aria-label={t({ ja: "一覧に戻る", en: "Back to list", zh: "返回列表" })} className="ri-back" onClick={onCancel} type="button">
           <Icon name="chevL" size={18} />
         </button>
-        <div className="ri-detail-subject">{t({ en: "New conversation", zh: "发起新对话" })}</div>
+        <div className="ri-detail-subject">{t({ ja: "新しい会話", en: "New conversation", zh: "发起新对话" })}</div>
       </div>
 
-      <label className="ri-new-label">{t({ en: "Recipient", zh: "收件人" })}</label>
-      <input className="field" onChange={(event) => setRecipient(event.target.value)} placeholder={t({ en: "Contact name", zh: "联系人姓名" })} value={recipient} />
+      <label className="ri-new-label">{t({ ja: "宛先", en: "Recipient", zh: "收件人" })}</label>
+      <input className="field" onChange={(event) => setRecipient(event.target.value)} placeholder={t({ ja: "連絡先の名前", en: "Contact name", zh: "联系人姓名" })} value={recipient} />
 
-      <label className="ri-new-label">{t({ en: "Organization", zh: "公司/组织" })}</label>
-      <input className="field" onChange={(event) => setOrganization(event.target.value)} placeholder={t({ en: "Optional", zh: "选填" })} value={organization} />
+      <label className="ri-new-label">{t({ ja: "所属", en: "Organization", zh: "公司/组织" })}</label>
+      <input className="field" onChange={(event) => setOrganization(event.target.value)} placeholder={t({ ja: "任意", en: "Optional", zh: "选填" })} value={organization} />
 
       <button className="btn btn-ghost btn-sm" disabled={!recipient.trim() || busy !== "idle"} onClick={onGenerate} type="button">
         <Icon name="sparkle" size={15} />
         {busy === "generating" ? t({ en: "AI is drafting…", zh: "AI 起草中…", ja: "AI が下書きを作成中…" }) : t({ en: "Draft with AI", zh: "AI 起草邮件", ja: "AI で下書きを作成" })}
       </button>
 
-      <label className="ri-new-label">{t({ en: "Subject", zh: "主题" })}</label>
-      <input className="field" onChange={(event) => setSubject(event.target.value)} placeholder={t({ en: "Thread title", zh: "对话标题" })} value={subject} />
+      <label className="ri-new-label">{t({ ja: "件名", en: "Subject", zh: "主题" })}</label>
+      <input className="field" onChange={(event) => setSubject(event.target.value)} placeholder={t({ ja: "会話のタイトル", en: "Thread title", zh: "对话标题" })} value={subject} />
 
-      <label className="ri-new-label">{t({ en: "Message", zh: "正文" })}</label>
-      <textarea className="field ri-composer-input" onChange={(event) => setBody(event.target.value)} placeholder={t({ en: "Write the first message…", zh: "写下第一条消息…" })} value={body} />
+      <label className="ri-new-label">{t({ ja: "本文", en: "Message", zh: "正文" })}</label>
+      <textarea className="field ri-composer-input" onChange={(event) => setBody(event.target.value)} placeholder={t({ ja: "最初のメッセージを書く…", en: "Write the first message…", zh: "写下第一条消息…" })} value={body} />
 
       <div className="ri-boundary">
         <Icon name="lock" size={13} />
-        <span>{t({ en: "Creates a staged draft thread — nothing is sent, confirm before any real send.", zh: "创建的是本地暂存草稿线程 — 不发送任何消息，真实发送前需确认。" })}</span>
+        <span>{t({ ja: "下書きの会話を作るだけで、何も送信しません。実際に送る前に確認があります。", en: "Creates a staged draft thread — nothing is sent, confirm before any real send.", zh: "创建的是本地暂存草稿线程 — 不发送任何消息，真实发送前需确认。" })}</span>
       </div>
 
       {error === "ai_unconfigured" ? (
@@ -740,7 +740,7 @@ function NewThreadForm({
           })}
         </div>
       ) : error === "generic" ? (
-        <div className="ri-new-error">{t({ en: "Something went wrong. Please try again.", zh: "出了点问题，请重试。" })}</div>
+        <div className="ri-new-error">{t({ ja: "うまくいきませんでした。もう一度お試しください。", en: "Something went wrong. Please try again.", zh: "出了点问题，请重试。" })}</div>
       ) : null}
 
       <button className="btn btn-primary btn-sm" disabled={!canCreate} onClick={onCreate} type="button">
@@ -766,8 +766,8 @@ function ThreadsTab({
   const [created, setCreated] = useState<ReturnType<typeof toCreatedThread>[]>([]);
   const [search, setSearch] = useState("");
   const emptyWorkspace: InboxPanelViewModel = {
-    title: t({ en: "Relationship inbox", zh: "关系收件箱" }),
-    currentUserName: t({ en: "You", zh: "我" }),
+    title: t({ ja: "関係の受信箱", en: "Relationship inbox", zh: "关系收件箱" }),
+    currentUserName: t({ ja: "自分", en: "You", zh: "我" }),
     threads: [],
     selected: null,
   };
@@ -816,15 +816,15 @@ function ThreadsTab({
       <div style={{ display: "grid", justifyItems: "center" }}>
         <EmptyState
           hint={t({
-            en: "No live mailbox provider is connected. You can still prepare a local draft without sending it.",
+            ja: "メールボックスが接続されていません。送信しないローカルの下書きなら準備できます。", en: "No live mailbox provider is connected. You can still prepare a local draft without sending it.",
             zh: "当前未连接在线邮箱，但仍可准备一份不会自动发送的本地草稿。",
           })}
           icon="message"
-          title={t({ en: "Mailbox not connected", zh: "邮箱尚未连接" })}
+          title={t({ ja: "メールボックス未接続", en: "Mailbox not connected", zh: "邮箱尚未连接" })}
         />
         <button className="btn btn-primary btn-sm" onClick={() => setComposing(true)} type="button">
           <Icon name="plus" size={15} />
-          {t({ en: "Prepare a local draft", zh: "准备本地草稿" })}
+          {t({ ja: "ローカルの下書きを準備", en: "Prepare a local draft", zh: "准备本地草稿" })}
         </button>
       </div>
     );
@@ -865,14 +865,14 @@ function ThreadsTab({
         <div className="ri-list-head">
           <div>
             <span className="ri-list-count">
-              {t({ en: "Conversation history", zh: "对话历史" })}
+              {t({ ja: "会話の履歴", en: "Conversation history", zh: "对话历史" })}
             </span>
             <span className="ri-list-total">
               {allThreads.length}
             </span>
           </div>
           <button
-            aria-label={t({ en: "New conversation", zh: "发起新对话" })}
+            aria-label={t({ ja: "新しい会話", en: "New conversation", zh: "发起新对话" })}
             className="ri-new-thread"
             onClick={() => setComposing(true)}
             type="button"
@@ -884,11 +884,11 @@ function ThreadsTab({
           <Icon name="search" size={15} />
           <input
             aria-label={t({
-              en: "Search conversation history",
+              ja: "会話の履歴を検索", en: "Search conversation history",
               zh: "搜索对话历史",
             })}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder={t({ en: "Search conversations", zh: "搜索对话" })}
+            placeholder={t({ ja: "会話を検索", en: "Search conversations", zh: "搜索对话" })}
             type="search"
             value={search}
           />
@@ -906,11 +906,11 @@ function ThreadsTab({
           ) : (
             <EmptyState
               hint={t({
-                en: "Try another name or subject.",
+                ja: "別の名前や件名で試してください。", en: "Try another name or subject.",
                 zh: "换一个姓名或主题试试。",
               })}
               icon="search"
-              title={t({ en: "No matches", zh: "没有匹配对话" })}
+              title={t({ ja: "該当する会話はありません", en: "No matches", zh: "没有匹配对话" })}
             />
           )}
         </div>
@@ -946,11 +946,11 @@ function ThreadsTab({
         ) : (
           <EmptyState
             hint={t({
-              en: "Select a conversation to review its history and prepare a reply.",
+              ja: "会話を選ぶと、やり取りの履歴を見て返信を準備できます。", en: "Select a conversation to review its history and prepare a reply.",
               zh: "选择一段对话，查看往来历史并准备回复。",
             })}
             icon="message"
-            title={t({ en: "Choose a conversation", zh: "选择对话" })}
+            title={t({ ja: "会話を選択", en: "Choose a conversation", zh: "选择对话" })}
           />
         )}
       </section>
@@ -1214,14 +1214,14 @@ function RelationshipInboxPanel({
         {inline ? null : <><div className="ri-panel-header">
           <div>
             <h2 className="h-section" style={{ margin: 0 }}>
-              {t({ en: "Inbox", zh: "收件箱" })}
+              {t({ ja: "受信箱", en: "Inbox", zh: "收件箱" })}
             </h2>
             <div className="ri-panel-kicker">
-              {t({ en: "Relationships and follow-ups", zh: "关系与跟进" })}
+              {t({ ja: "関係とフォロー", en: "Relationships and follow-ups", zh: "关系与跟进" })}
             </div>
           </div>
           <button
-            aria-label={t({ en: "Close", zh: "关闭" })}
+            aria-label={t({ ja: "閉じる", en: "Close", zh: "关闭" })}
             className="hit-44"
             onClick={onClose}
             style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: 999, color: "var(--ink-2)", cursor: "pointer", display: "flex", height: 32, justifyContent: "center", width: 32 }}
@@ -1233,7 +1233,7 @@ function RelationshipInboxPanel({
 
         <button
           aria-label={t({
-            en: "Resize inbox. Use left and right arrow keys.",
+            ja: "受信箱の幅を変更します。左右の矢印キーでも調整できます。", en: "Resize inbox. Use left and right arrow keys.",
             zh: "调整收件箱宽度，可使用左右方向键。",
           })}
           aria-orientation="vertical"
@@ -1251,7 +1251,7 @@ function RelationshipInboxPanel({
           onPointerDown={startPanelResize}
           role="separator"
           title={t({
-            en: "Drag to resize · Double-click to reset",
+            ja: "ドラッグで幅を変更 · ダブルクリックで元に戻す", en: "Drag to resize · Double-click to reset",
             zh: "拖动调整宽度 · 双击恢复默认",
           })}
           type="button"
@@ -1508,7 +1508,7 @@ export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: nu
       <button
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={t({ en: "Open inbox", zh: "打开收件箱" })}
+        aria-label={t({ ja: "受信箱を開く", en: "Open inbox", zh: "打开收件箱" })}
         className="hit-44 ri-trigger"
         ref={triggerRef}
         onClick={() => {

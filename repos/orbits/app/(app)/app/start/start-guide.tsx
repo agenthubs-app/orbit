@@ -106,10 +106,10 @@ function useGuideStateQueue(initial: GuideStartStep | null) {
   }, []);
 }
 
-const STEP_TITLES: Record<GuideStartStep, { en: string; zh: string }> = {
-  1: { en: "Cards", zh: "名片" },
-  2: { en: "Goal", zh: "目标" },
-  3: { en: "Plan", zh: "计划" },
+const STEP_TITLES: Record<GuideStartStep, { en: string; zh: string; ja: string }> = {
+  1: { en: "Cards", zh: "名片", ja: "人脈" },
+  2: { en: "Goal", zh: "目标", ja: "目標" },
+  3: { en: "Plan", zh: "计划", ja: "プラン" },
 };
 
 function LockIcon() {
@@ -146,7 +146,7 @@ function stepSubtitle(input: {
               zh: `已确认 ${Math.min(confirmedContacts, 3)} / 3 · 进行中`,
               ja: `${Math.min(confirmedContacts, 3)} / 3 人確認済み`,
             })
-          : t({ en: "In progress", zh: "进行中" }),
+          : t({ en: "In progress", zh: "进行中", ja: "進行中" }),
     };
   }
   if (step === 1) {
@@ -158,10 +158,10 @@ function stepSubtitle(input: {
       lock: false,
       text: horizon
         ? t({ en: `${horizonOption(horizon).label.en} · set`, zh: `${horizonOption(horizon).label.zh} · 已设定`, ja: "設定済み" })
-        : t({ en: "Set", zh: "已设定" }),
+        : t({ en: "Set", zh: "已设定", ja: "設定済み" }),
     };
   }
-  return { lock: false, text: t({ en: "Plan ready", zh: "计划已生成" }) };
+  return { lock: false, text: t({ en: "Plan ready", zh: "计划已生成", ja: "プラン完成" }) };
 }
 
 export function StartGuide(props: StartGuideProps) {
@@ -198,7 +198,7 @@ export function StartGuide(props: StartGuideProps) {
     (step: GuideStartStep) => {
       if (!canOpenStartStep(flags, step)) {
         const first = firstIncompleteStartStep(flags) ?? 1;
-        setLockedNote(t({ en: `Finish step ${first} first`, zh: `先完成第 ${first} 步` }));
+        setLockedNote(t({ en: `Finish step ${first} first`, zh: `先完成第 ${first} 步`, ja: `先にステップ ${first} を完了してください` }));
         return;
       }
       setLockedNote("");
@@ -243,43 +243,43 @@ export function StartGuide(props: StartGuideProps) {
     <div className="sg" data-start-guide data-start-view={String(view)}>
       <style>{START_GUIDE_STYLES}</style>
       <header className="sg-nav">
-        <a className="sg-logo" data-start-back href={preserveHref("/app/agent")}>{t({ en: "← Look around first", zh: "← 先回去看看" })}</a>
+        <a className="sg-logo" data-start-back href={preserveHref("/app/agent")}>{t({ en: "← Look around first", zh: "← 先回去看看", ja: "‹ ホーム" })}</a>
         <span className="sg-nav-step" data-start-nav-step>
           {viewNumber
             ? t({ en: `Guide · Step ${viewNumber} of 3`, zh: `引导 · 第 ${viewNumber} 步 / 共 3 步`, ja: "はじめのガイド" })
-            : t({ en: "Guide · All 3 steps done", zh: "引导 · 3 步已完成" })}
+            : t({ en: "Guide · All 3 steps done", zh: "引导 · 3 步已完成", ja: "はじめのガイド · 完了" })}
         </span>
       </header>
       <main className="sg-wrap">
         <header className="sg-mast">
           <span className="sg-progress">{t({ en: `Your first 3 steps · ${Number(flags.contacts) + Number(flags.goal) + Number(flags.plan)} / 3`, zh: `开始的 3 步 · ${Number(flags.contacts) + Number(flags.goal) + Number(flags.plan)} / 3`, ja: `はじめの 3 ステップ · ${Number(flags.contacts) + Number(flags.goal) + Number(flags.plan)} / 3` })}</span>
-          <h1 className="sg-title">{t({ en: "3 steps to put iOrbit to work for you", zh: "3 步，让 iOrbit 开始为你工作" })}</h1>
+          <h1 className="sg-title">{t({ en: "3 steps to put iOrbit to work for you", zh: "3 步，让 iOrbit 开始为你工作", ja: "最初のプランまで、あと少し" })}</h1>
           <p className="sg-lede">
             {t({
               en: "Finish these 3 steps and iOrbit and your network switch from the demo to your own data.",
-              zh: "做完这 3 步，iOrbit 和人脉页就会从示例换成你自己的数据。",
+              zh: "做完这 3 步，iOrbit 和人脉页就会从示例换成你自己的数据。", ja: "この 3 ステップで、あなたのデータを使ったプランを始められます。",
             })}
           </p>
         </header>
 
         {view === "finish" ? (
           <section className="sg-finish" data-start-finish>
-            <h2>{t({ en: "✓ All 3 steps are done", zh: "✓ 3 步都完成了" })}</h2>
+            <h2>{t({ en: "✓ All 3 steps are done", zh: "✓ 3 步都完成了", ja: "3 ステップ完了" })}</h2>
             <p>
               {t({
                 en: "iOrbit, your network and your plan now show your own data.",
-                zh: "iOrbit、人脉和计划已经换成你自己的数据。",
+                zh: "iOrbit、人脉和计划已经换成你自己的数据。", ja: "人脈とプランに、あなたのデータが反映されました。",
               })}
             </p>
             <div className="sg-acts">
               <a className="btn sg-primary" data-start-go-iorbit href={preserveHref("/app/agent")}>
-                {t({ en: "Go to iOrbit →", zh: "去 iOrbit →" })}
+                {t({ en: "Go to iOrbit →", zh: "去 iOrbit →", ja: "iOrbit へ" })}
               </a>
             </div>
           </section>
         ) : (
           <>
-            <ol aria-label={t({ en: "Guide, 3 steps", zh: "引导 3 步" })} className="sg-steps">
+            <ol aria-label={t({ en: "Guide, 3 steps", zh: "引导 3 步", ja: "はじめの 3 ステップ" })} className="sg-steps">
               {GUIDE_START_STEPS.map((step) => {
                 const status = startStepStatus(flags, step);
                 const sub = stepSubtitle({ confirmedContacts: snapshot.confirmedContacts, flags, goal, step, t });
@@ -322,7 +322,7 @@ export function StartGuide(props: StartGuideProps) {
                   <>{t({ en: "Step", zh: "第", ja: "ステップ" })} <b>{viewNumber}</b> / 3</>
                 ) : (
                   <>
-                    第 <b>{viewNumber}</b> 步 / 共 3 步
+                    {t({ en: "Step", zh: "第", ja: "ステップ" })} <b>{viewNumber}</b> {t({ en: "of 3", zh: "步 / 共 3 步", ja: "/ 3" })}
                   </>
                 )}
               </span>
@@ -359,7 +359,7 @@ export function StartGuide(props: StartGuideProps) {
                 samples={snapshot.contactSamples}
               />
             ) : null}
-            <p className="sg-hint">{t({ en: "Leave any time — your progress is kept", zh: "可以随时离开，进度会保留" })}</p>
+            <p className="sg-hint">{t({ en: "Leave any time — your progress is kept", zh: "可以随时离开，进度会保留", ja: "途中で離れても、続きから再開できます" })}</p>
           </>
         )}
       </main>
@@ -378,16 +378,16 @@ export function StartGuideUnavailable() {
       </header>
       <main className="sg-wrap">
         <section className="sg-lead" role="alert">
-          <h2>{t({ en: "The guide can't load right now", zh: "引导暂时打不开" })}</h2>
+          <h2>{t({ en: "The guide can't load right now", zh: "引导暂时打不开", ja: "ガイドを読み込めません" })}</h2>
           <p className="sg-why">
             {t({
               en: "We couldn't read your progress. Nothing was changed — please try again in a moment.",
-              zh: "没有读到你的进度，什么都没有改动。请稍后再试。",
+              zh: "没有读到你的进度，什么都没有改动。请稍后再试。", ja: "進捗を読み込めませんでした。変更は保存されていません。少し待ってから再試行してください。",
             })}
           </p>
           <div className="sg-acts">
             <a className="btn sg-primary" href={preserveHref("/app/agent")}>
-              {t({ en: "Back to iOrbit", zh: "回到 iOrbit" })}
+              {t({ en: "Back to iOrbit", zh: "回到 iOrbit", ja: "iOrbit に戻る" })}
             </a>
           </div>
         </section>

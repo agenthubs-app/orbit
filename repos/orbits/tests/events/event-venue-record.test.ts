@@ -187,7 +187,7 @@ test("attendee profile mapping: only attendee-visible answers, ≤ 6, no positio
   assert.equal(profile.attendeeId, "pp1");
   assert.deepEqual([profile.name, profile.org, profile.role, profile.intro], ["王 磊", "華東キャピタル", "パートナー", "クロスボーダー投資"]);
   assert.equal(profile.answers.length, 6);
-  assert.deepEqual(profile.answers[0], { a: "製造業 DX", q: "どんな人に会いたい？" });
+  assert.deepEqual(profile.answers[0], { a: "製造業 DX", field: "targetAttendees", q: "どんな人に会いたい？" });
   assert.equal(profile.answers[1]!.q, "参加の目的");
   assert.ok(!profile.answers.some((item) => item.a === "非公開の回答"));
   assert.equal(attendeeProfileFromRegistration(registration([response("valueOffered", "matching_only", "x")])), null);

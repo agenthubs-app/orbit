@@ -16,7 +16,7 @@ import { REGION_CITY_ALIASES, REGION_COMMON_COUNTRY_CODES, countryDisplayName, r
 import { SENIORITY_GROUP_LABELS, SENIORITY_LEVELS, SENIORITY_LEVEL_LABELS, isSeniorityLevelValue, seniorityGroup } from "../../../../../shared/domain/seniority";
 import type { OrbitContactView } from "../../orbit-contacts-route-view-model";
 
-type Translate = (copy: { en: string; zh: string }) => string;
+type Translate = (copy: { ja?: string; en: string; zh: string }) => string;
 type Origin = "ai" | "user" | "card";
 type Field = "industry" | "seniorityLevel" | "region";
 
@@ -53,10 +53,10 @@ function valuesOf(contact: OrbitContactView): EnrichmentValues {
 
 const SAVE_TIMEOUT_MS = 20_000;
 
-const ORIGIN_COPY: Record<Origin, { en: string; zh: string }> = {
-  ai: { en: "AI", zh: "AI 推断" },
-  card: { en: "From card", zh: "名片规则" },
-  user: { en: "Manual", zh: "手动" },
+const ORIGIN_COPY: Record<Origin, { ja: string; en: string; zh: string }> = {
+  ai: { ja: "AI 推定", en: "AI", zh: "AI 推断" },
+  card: { ja: "名刺から", en: "From card", zh: "名片规则" },
+  user: { ja: "手入力", en: "Manual", zh: "手动" },
 };
 
 export function ContactEnrichmentInline({ contact, guardWrite, language, t, trailing = null }: {
@@ -94,7 +94,7 @@ export function ContactEnrichmentInline({ contact, guardWrite, language, t, trai
 
   function startEdit() {
     if (guardWrite) {
-      guardWrite(t({ en: "contact profile", zh: "联系人资料" }));
+      guardWrite(t({ ja: "連絡先情報", en: "contact profile", zh: "联系人资料" }));
       return;
     }
     setDraft(saved);
@@ -140,10 +140,10 @@ export function ContactEnrichmentInline({ contact, guardWrite, language, t, trai
     }
   }
 
-  const FIELD_LABEL: Record<Field, { en: string; zh: string }> = {
-    industry: { en: "Industry", zh: "行业" },
-    region: { en: "Region", zh: "地区" },
-    seniorityLevel: { en: "Seniority", zh: "职级" },
+  const FIELD_LABEL: Record<Field, { ja: string; en: string; zh: string }> = {
+    industry: { ja: "業界", en: "Industry", zh: "行业" },
+    region: { ja: "地域", en: "Region", zh: "地区" },
+    seniorityLevel: { ja: "役職層", en: "Seniority", zh: "职级" },
   };
   const chip = (field: Field, value: string | null, detail: string | null = value) => {
     const origin = origins[field];
@@ -157,7 +157,7 @@ export function ContactEnrichmentInline({ contact, guardWrite, language, t, trai
         data-enrichment-edit={field}
         data-enrichment-origin={origin}
         title={hint}
-        aria-label={t({ en: `Edit ${label.toLowerCase()}: ${detail ?? "not set"}`, zh: `编辑${label}：${detail ?? "未填写"}` })}
+        aria-label={t({ ja: `${label}を編集：${detail ?? "未入力"}`, en: `Edit ${label.toLowerCase()}: ${detail ?? "not set"}`, zh: `编辑${label}：${detail ?? "未填写"}` })}
         onClick={startEdit}
       >
         {value ?? `＋ ${label}`}
@@ -175,47 +175,47 @@ export function ContactEnrichmentInline({ contact, guardWrite, language, t, trai
           {chip("seniorityLevel", seniorityText, seniorityDetail)}
           {chip("region", regionText)}
           {trailing}
-          {status === "saved" ? <span role="status" className="nw-enrich-status">{t({ en: "Saved", zh: "已保存" })}</span> : null}
+          {status === "saved" ? <span role="status" className="nw-enrich-status">{t({ ja: "保存しました", en: "Saved", zh: "已保存" })}</span> : null}
         </div>
       ) : (
         <div className="nw-enrich-form">
           <label className="nw-enrich-field">
-            <span className="nw-enrich-l">{t({ en: "Industry", zh: "行业" })}</span>
+            <span className="nw-enrich-l">{t({ ja: "業界", en: "Industry", zh: "行业" })}</span>
             <span className="nw-enrich-pair">
-              <select aria-label={t({ en: "Primary industry", zh: "一级行业" })} disabled={busy} value={draft.primaryIndustryId ?? ""} onChange={event => setDraft(current => ({ ...current, primaryIndustryId: event.target.value || null, secondaryIndustryId: event.target.value === current.primaryIndustryId ? current.secondaryIndustryId : null }))}>
-                <option value="">{t({ en: "Unclassified", zh: "未分类" })}</option>
+              <select aria-label={t({ ja: "業界（大分類）", en: "Primary industry", zh: "一级行业" })} disabled={busy} value={draft.primaryIndustryId ?? ""} onChange={event => setDraft(current => ({ ...current, primaryIndustryId: event.target.value || null, secondaryIndustryId: event.target.value === current.primaryIndustryId ? current.secondaryIndustryId : null }))}>
+                <option value="">{t({ ja: "未分類", en: "Unclassified", zh: "未分类" })}</option>
                 {INDUSTRY_CATALOG.map(industry => <option key={industry.id} value={industry.id}>{industry.labels[language]}</option>)}
               </select>
-              <select aria-label={t({ en: "Secondary industry", zh: "二级行业" })} disabled={busy || !isIndustryIdCode(draft.primaryIndustryId)} value={draft.secondaryIndustryId ?? ""} onChange={event => setDraft(current => ({ ...current, secondaryIndustryId: event.target.value || null }))}>
-                <option value="">{t({ en: "Not set", zh: "二级未填写" })}</option>
+              <select aria-label={t({ ja: "業界（小分類）", en: "Secondary industry", zh: "二级行业" })} disabled={busy || !isIndustryIdCode(draft.primaryIndustryId)} value={draft.secondaryIndustryId ?? ""} onChange={event => setDraft(current => ({ ...current, secondaryIndustryId: event.target.value || null }))}>
+                <option value="">{t({ ja: "小分類は未入力", en: "Not set", zh: "二级未填写" })}</option>
                 {isIndustryIdCode(draft.primaryIndustryId) ? listSecondaryIndustries(draft.primaryIndustryId).map(industry => <option key={industry.id} value={industry.id}>{industry.labels[language]}</option>) : null}
               </select>
             </span>
           </label>
           <label className="nw-enrich-field">
-            <span className="nw-enrich-l">{t({ en: "Seniority", zh: "职级" })}</span>
-            <select aria-label={t({ en: "Seniority", zh: "职级" })} disabled={busy} value={draft.seniorityLevel ?? ""} onChange={event => setDraft(current => ({ ...current, seniorityLevel: event.target.value || null }))}>
-              <option value="">{t({ en: "Not set", zh: "未填写" })}</option>
+            <span className="nw-enrich-l">{t({ ja: "役職層", en: "Seniority", zh: "职级" })}</span>
+            <select aria-label={t({ ja: "役職層", en: "Seniority", zh: "职级" })} disabled={busy} value={draft.seniorityLevel ?? ""} onChange={event => setDraft(current => ({ ...current, seniorityLevel: event.target.value || null }))}>
+              <option value="">{t({ ja: "未入力", en: "Not set", zh: "未填写" })}</option>
               {SENIORITY_LEVELS.map(level => <option key={level} value={level}>{t(SENIORITY_LEVEL_LABELS[level])}</option>)}
             </select>
           </label>
           <label className="nw-enrich-field">
-            <span className="nw-enrich-l">{t({ en: "Region", zh: "地区" })}</span>
+            <span className="nw-enrich-l">{t({ ja: "地域", en: "Region", zh: "地区" })}</span>
             <span className="nw-enrich-pair">
-              <select aria-label={t({ en: "Country", zh: "国家／地区" })} disabled={busy} value={draft.countryCode ?? ""} onChange={event => setDraft(current => ({ ...current, countryCode: event.target.value || null, city: event.target.value === current.countryCode ? current.city : null }))}>
-                <option value="">{t({ en: "Not set", zh: "未填写" })}</option>
+              <select aria-label={t({ ja: "国・地域", en: "Country", zh: "国家／地区" })} disabled={busy} value={draft.countryCode ?? ""} onChange={event => setDraft(current => ({ ...current, countryCode: event.target.value || null, city: event.target.value === current.countryCode ? current.city : null }))}>
+                <option value="">{t({ ja: "未入力", en: "Not set", zh: "未填写" })}</option>
                 {countries.map(code => <option key={code} value={code}>{countryDisplayName(code, lang)}</option>)}
               </select>
-              <input aria-label={t({ en: "City", zh: "城市" })} disabled={busy || !draft.countryCode} list="nw-enrich-cities" placeholder={t({ en: "City (e.g. Tokyo)", zh: "城市（英文，如 Tokyo）" })} value={draft.city ?? ""} onChange={event => setDraft(current => ({ ...current, city: event.target.value }))} />
+              <input aria-label={t({ ja: "都市", en: "City", zh: "城市" })} disabled={busy || !draft.countryCode} list="nw-enrich-cities" placeholder={t({ ja: "都市（英語。例：Tokyo）", en: "City (e.g. Tokyo)", zh: "城市（英文，如 Tokyo）" })} value={draft.city ?? ""} onChange={event => setDraft(current => ({ ...current, city: event.target.value }))} />
               <datalist id="nw-enrich-cities">
                 {REGION_CITY_ALIASES.filter(entry => entry.countryCode === draft.countryCode).map(entry => <option key={entry.city} value={entry.city}>{entry.labels[language]}</option>)}
               </datalist>
             </span>
           </label>
-          {status === "error" ? <p role="alert" className="nw-enrich-error">{t({ en: "Could not save. Your changes are still here; please retry.", zh: "未能保存，修改仍保留，请重试。" })}</p> : null}
+          {status === "error" ? <p role="alert" className="nw-enrich-error">{t({ ja: "保存できませんでした。変更はそのまま残っています。もう一度お試しください。", en: "Could not save. Your changes are still here; please retry.", zh: "未能保存，修改仍保留，请重试。" })}</p> : null}
           <span className="nw-enrich-actions">
-            <button type="button" className="btn btn-quiet" disabled={busy} onClick={() => { setEditing(false); setStatus("idle"); }}>{t({ en: "Cancel", zh: "取消" })}</button>
-            <button type="button" className="btn btn-primary" data-enrichment-save disabled={busy || !dirty || !industryValid} onClick={save}>{busy ? t({ en: "Saving…", zh: "正在保存…" }) : t({ en: "Save", zh: "保存" })}</button>
+            <button type="button" className="btn btn-quiet" disabled={busy} onClick={() => { setEditing(false); setStatus("idle"); }}>{t({ ja: "キャンセル", en: "Cancel", zh: "取消" })}</button>
+            <button type="button" className="btn btn-primary" data-enrichment-save disabled={busy || !dirty || !industryValid} onClick={save}>{busy ? t({ ja: "保存中…", en: "Saving…", zh: "正在保存…" }) : t({ ja: "保存", en: "Save", zh: "保存" })}</button>
           </span>
         </div>
       )}

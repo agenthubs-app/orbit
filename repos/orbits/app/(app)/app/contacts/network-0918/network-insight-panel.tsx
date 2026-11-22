@@ -160,7 +160,7 @@ export function NetworkInsightPanel({
   return (
     <section
       className="nw-panel nw-why"
-      aria-label={t({ en: "Why this person", zh: "为什么是 TA" })}
+      aria-label={t({ ja: "なぜこの人か", en: "Why this person", zh: "为什么是 TA" })}
       data-network-why
       data-network-detail-section="why"
       data-network-insight-panel={view?.state}
@@ -169,10 +169,10 @@ export function NetworkInsightPanel({
       data-insight-polling={polling ? "true" : undefined}
     >
       <div className="nw-why-head">
-        <strong className="nw-why-t">{t({ en: "Why this person", zh: "为什么是 TA" })}</strong>
+        <strong className="nw-why-t">{t({ ja: "なぜこの人か", en: "Why this person", zh: "为什么是 TA" })}</strong>
         {view?.goalUpdated ? <span className="nw-chip" data-insight-badge="goal-updated" style={{ background: "#FFF4E5", color: "#8A5300" }}>{t(INSIGHT_STATE_COPY.goalUpdated)}</span>
           : view?.stale && view.state === "ready" ? <span className="nw-chip" data-insight-badge="stale" style={{ background: "#F1F1FB", color: "#4A4E80" }}>{t(INSIGHT_STATE_COPY.stale)}</span> : null}
-        {goalText ? <span className="nw-why-goal" data-network-why-goal>{t({ en: "Against your goal: ", zh: "对照目标：" })}{goalText}</span> : null}
+        {goalText ? <span className="nw-why-goal" data-network-why-goal>{t({ ja: "目標と照らして：", en: "Against your goal: ", zh: "对照目标：" })}{goalText}</span> : null}
       </div>
       {showText && view ? (
         <div className="nw-insight-body nw-why-rel" data-insight-goal-relation>
@@ -192,7 +192,7 @@ export function NetworkInsightPanel({
       ) : null}
       {status ? <p className="nw-insight-status" data-insight-status>{t(status)}</p> : null}
       {pollStopped ? <p className="nw-insight-status" role="status" data-insight-poll-stopped>{t(INSIGHT_STATE_COPY.pollStopped)}</p> : null}
-      {view?.state === "no_goal" ? <a className="btn nw-op-pending" href={INSIGHT_GOAL_HREF} data-insight-set-goal>{t({ en: "Set relationship goal", zh: "设置关系目标" })}</a> : null}
+      {view?.state === "no_goal" ? <a className="btn nw-op-pending" href={INSIGHT_GOAL_HREF} data-insight-set-goal>{t({ ja: "関係の目標を設定", en: "Set relationship goal", zh: "设置关系目标" })}</a> : null}
       {view?.canRegenerate ? (
         <div className="nw-insight-actions">
           <button type="button" className="btn nw-op-pending" data-insight-regenerate disabled={phase === "busy" || phase === "scheduled" || phase === "unchanged" || phase === "limited"} aria-disabled={phase === "limited" || undefined} onClick={() => void regenerate()}>
@@ -201,7 +201,7 @@ export function NetworkInsightPanel({
           {phase === "limited" ? <span role="status" data-insight-quota-used>{t(INSIGHT_STATE_COPY.quotaUsed)}</span> : null}
           {phase === "scheduled" ? <span role="status">{t(INSIGHT_STATE_COPY.regenerating)}</span> : null}
           {phase === "unchanged" ? <span role="status">{t(INSIGHT_STATE_COPY.unchanged)}</span> : null}
-          {phase === "error" ? <span role="alert">{t({ en: "Could not start. Try again later.", zh: "暂时无法重新生成，请稍后再试。" })}</span> : null}
+          {phase === "error" ? <span role="alert">{t({ ja: "いまは作り直せません。しばらくしてからお試しください。", en: "Could not start. Try again later.", zh: "暂时无法重新生成，请稍后再试。" })}</span> : null}
         </div>
       ) : null}
       {planStrip}
@@ -209,9 +209,9 @@ export function NetworkInsightPanel({
         <div className="nw-why-next">
           {nextStep ? (
             <div className="nw-why-next-copy">
-              <span className="nw-why-next-l">{t({ en: "Next step", zh: "下一步" })}</span>
+              <span className="nw-why-next-l">{t({ ja: "次の一歩", en: "Next step", zh: "下一步" })}</span>
               <strong className="nw-why-next-t" data-insight-next-step>{nextStep}</strong>
-              {whyNow ? <span className="nw-why-now" data-network-why-now>{t({ en: "Why now: ", zh: "为什么现在：" })}{whyNow}</span> : null}
+              {whyNow ? <span className="nw-why-now" data-network-why-now>{t({ ja: "なぜ今：", en: "Why now: ", zh: "为什么现在：" })}{whyNow}</span> : null}
             </div>
           ) : <span className="nw-why-next-copy" />}
           {actions ? <div className="nw-why-acts">{actions}</div> : null}

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { TaskCategory, TaskItemContract, TaskStatus } from "../../../../shared/contract/tasks";
+import type { OrbitLanguage } from "../orbit-language-core";
 
 export interface TaskView {
   accountId?: string;
@@ -85,28 +86,50 @@ export function remindersToView(value: unknown): TaskReminderView[] {
   return (parsed.reminders as TaskReminderView[]).filter((item) => item.status === "scheduled");
 }
 
-export function taskCategoryLabel(value: TaskCategory, english: boolean): string {
-  const labels: Record<TaskCategory, [string, string]> = {
-    relationship: ["人脉", "People"], meeting: ["会面", "Meeting"], event: ["活动", "Event"],
-    work: ["工作", "Work"], personal: ["个人", "Personal"], other: ["其他", "Other"],
-  };
-  return labels[value][english ? 1 : 0];
+type LabelLanguage = OrbitLanguage | boolean;
+
+/** Legacy callers pass a boolean (`true` = English, `false` = Chinese). */
+function labelLanguage(value: LabelLanguage): OrbitLanguage {
+  return typeof value === "boolean" ? (value ? "en" : "zh") : value;
 }
 
-export function taskTimeLabel(value: string | undefined, english: boolean, timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone): string {
-  if (!value) return english ? "No date set" : "未安排日期";
+const TASK_CATEGORY_LABELS: Record<TaskCategory, Record<OrbitLanguage, string>> = {
+  relationship: { ja: "人脈", zh: "人脉", en: "People" },
+  meeting: { ja: "面談", zh: "会面", en: "Meeting" },
+  event: { ja: "イベント", zh: "活动", en: "Event" },
+  work: { ja: "仕事", zh: "工作", en: "Work" },
+  personal: { ja: "個人", zh: "个人", en: "Personal" },
+  other: { ja: "その他", zh: "其他", en: "Other" },
+};
+
+export function taskCategoryLabel(value: TaskCategory, language: LabelLanguage): string {
+  return TASK_CATEGORY_LABELS[value][labelLanguage(language)];
+}
+
+const NO_DATE_LABEL: Record<OrbitLanguage, string> = { ja: "日付未定", zh: "未安排日期", en: "No date set" };
+const DATE_LOCALE: Record<OrbitLanguage, string> = { ja: "ja-JP", zh: "zh-CN", en: "en-GB" };
+
+export function taskTimeLabel(value: string | undefined, language: LabelLanguage, timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone): string {
+  const lang = labelLanguage(language);
+  if (!value) return NO_DATE_LABEL[lang];
   const dayOnly = value.length === 10;
   const date = new Date(dayOnly ? `${value}T12:00:00Z` : value);
-  return new Intl.DateTimeFormat(english ? "en-GB" : "zh-CN", {
+  return new Intl.DateTimeFormat(DATE_LOCALE[lang], {
     month: "short", day: "numeric", year: "numeric", timeZone: dayOnly ? "UTC" : timeZone,
     ...(dayOnly ? {} : { hour: "2-digit", minute: "2-digit" }),
   }).format(date);
 }
 
-export function taskActivityLabel(value: string, english: boolean): string {
-  const labels: Record<string, [string, string]> = {
-    created: ["新增待办", "Created"], updated: ["修改待办", "Edited"], rescheduled: ["调整日期", "Rescheduled"],
-    completed: ["已完成", "Completed"], reopened: ["恢复待办", "Reopened"], cancelled: ["已取消", "Cancelled"], deleted: ["已删除", "Deleted"],
-  };
-  return labels[value]?.[english ? 1 : 0] ?? value;
+const TASK_ACTIVITY_LABELS: Record<string, Record<OrbitLanguage, string>> = {
+  created: { ja: "タスクを追加", zh: "新增待办", en: "Created" },
+  updated: { ja: "タスクを編集", zh: "修改待办", en: "Edited" },
+  rescheduled: { ja: "日付を変更", zh: "调整日期", en: "Rescheduled" },
+  completed: { ja: "完了", zh: "已完成", en: "Completed" },
+  reopened: { ja: "未完了に戻す", zh: "恢复待办", en: "Reopened" },
+  cancelled: { ja: "取り消し", zh: "已取消", en: "Cancelled" },
+  deleted: { ja: "削除", zh: "已删除", en: "Deleted" },
+};
+
+export function taskActivityLabel(value: string, language: LabelLanguage): string {
+  return TASK_ACTIVITY_LABELS[value]?.[labelLanguage(language)] ?? value;
 }

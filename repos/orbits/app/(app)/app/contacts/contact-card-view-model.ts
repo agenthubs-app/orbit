@@ -80,7 +80,7 @@ export async function fetchContactCardView(path: string, params: string, signal:
   const response = await fetch(path, { signal, cache: "no-store", credentials: "same-origin" });
   if (response.status === 401 || response.status === 403) throw new ContactCardAccessRevoked("Contact access must be revalidated");
   const body = await response.json();
-  if (!response.ok || body.success !== true) throw new Error("联系人页面暂时无法读取，请刷新重试。");
+  if (!response.ok || body.success !== true) throw new Error("Contact list page could not be read");
   const page = contactCardPageSchema.parse(body.data);
   const tiers = contactCardTiersSchema.safeParse(body.data?.relationshipTiers ?? []);
   const hidden = z.boolean().safeParse(body.data?.insightsHidden ?? false);

@@ -1,6 +1,7 @@
 import { strengthFromTier, type NetworkTierLookup } from "../network-0918/network-model";
 import { industryLabel, isIndustryIdCode } from "../../../../../shared/domain/industries";
 import { hasPendingInitialization } from "../contact-relationship-initialization-view-model";
+import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import type {
   AppContactListItemViewModel,
   AppContactsRouteViewModel,
@@ -87,14 +88,35 @@ function nextActionFor(
   };
 }
 
+/** 关系状态的显示名（列表与详情适配器共用）；`pending_initialization` 只用于显示。 */
+export const PIPELINE_STATUS_LABELS = {
+  pending_initialization: { ja: "関係を未設定", zh: "待设置关系", en: "Pending initialization" },
+  to_contact: { ja: "連絡待ち", zh: "待联系", en: "To contact" },
+  in_progress: { ja: "進行中", zh: "在推进", en: "In progress" },
+  partnered: { ja: "協業中", zh: "已合作", en: "Partnered" },
+  archived: { ja: "アーカイブ済み", zh: "已归档", en: "Archived" },
+} as const satisfies Record<string, { ja: string; zh: string; en: string }>;
+
+/** 列表与详情共用的状态选项；有待设置关系的联系人时把它排在最前。 */
+export function pipelineStatusOptions(includePending: boolean, language: OrbitLanguage) {
+  return [
+    ...(includePending ? [{ value: "pending_initialization" as const, label: PIPELINE_STATUS_LABELS.pending_initialization[language] }] : []),
+    { value: "to_contact" as const, label: PIPELINE_STATUS_LABELS.to_contact[language] },
+    { value: "in_progress" as const, label: PIPELINE_STATUS_LABELS.in_progress[language] },
+    { value: "partnered" as const, label: PIPELINE_STATUS_LABELS.partnered[language] },
+    { value: "archived" as const, label: PIPELINE_STATUS_LABELS.archived[language] },
+  ];
+}
+
 function contactToOrbitView(
   contact: AppContactListItemViewModel,
   index: number,
-  tiers?: NetworkTierLookup,
+  tiers: NetworkTierLookup | undefined,
+  language: OrbitLanguage,
 ): OrbitContactView {
   const eventId = eventIdFor(contact);
   const industry = isIndustryIdCode(contact.primaryIndustryId)
-    ? industryLabel(contact.primaryIndustryId, "zh")
+    ? industryLabel(contact.primaryIndustryId, language)
     : contact.primaryIndustryLabel?.trim() ?? "";
   const relationshipContext =
     contact.relationshipContextCopy || contact.profileSnippet || contact.nextAction;
@@ -146,7 +168,7 @@ function contactToOrbitView(
     relationshipStatus: contact.status,
     seeking: contact.nextAction,
     source: sourceFor(contact),
-    stage: hasPendingInitialization(contact) ? "待设置关系" : contact.statusLabel,
+    stage: hasPendingInitialization(contact) ? PIPELINE_STATUS_LABELS.pending_initialization[language] : contact.statusLabel,
     title: contact.role,
     wechat: "",
     strength: strengthFromTier(tiers?.get(contact.id)),
@@ -164,6 +186,7 @@ function contactToOrbitView(
 export function contactsRouteToOrbitContactsViewModel(
   model: AppContactsSuccessRouteViewModel,
   tiers?: NetworkTierLookup,
+  language: OrbitLanguage = "zh",
 ): OrbitContactsViewModel {
   const sourceLabels = Array.from(
     new Set(
@@ -174,18 +197,12 @@ export function contactsRouteToOrbitContactsViewModel(
   );
 
   return {
-    connections: model.payload.contacts.map((contact, index) => contactToOrbitView(contact, index, tiers)),
+    connections: model.payload.contacts.map((contact, index) => contactToOrbitView(contact, index, tiers, language)),
     events: sourceLabels.map((sourceLabel) => ({
       id: `source:${sourceLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "contact"}`,
       name: sourceLabel,
     })),
     intros: [],
-    pipelineStatuses: [
-      ...(model.payload.contacts.some(hasPendingInitialization) ? [{ value: "pending_initialization" as const, label: "待设置关系" }] : []),
-      { value: "to_contact", label: "待联系" },
-      { value: "in_progress", label: "在推进" },
-      { value: "partnered", label: "已合作" },
-      { value: "archived", label: "已归档" },
-    ],
+    pipelineStatuses: pipelineStatusOptions(model.payload.contacts.some(hasPendingInitialization), language),
   };
 }

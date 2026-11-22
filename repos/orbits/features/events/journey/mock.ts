@@ -133,9 +133,9 @@ export function createJourneyMockService(): JourneyService {
       if (eventId !== JOURNEY_EVENT_ID && !knownEvent(eventId)) return null;
       return { attendeeId, memo: await memos.put(actorId, JOURNEY_EVENT_ID, attendeeId, text) };
     },
-    async attendeeProfile(actorId, eventId, attendeeId) {
+    async attendeeProfile(actorId, eventId, attendeeId, language) {
       const record = recordFor(eventId);
-      if (record) return record.attendeeProfile(actorId, eventId, attendeeId);
+      if (record) return record.attendeeProfile(actorId, eventId, attendeeId, language);
       if (eventId !== JOURNEY_EVENT_ID && !knownEvent(eventId)) return null;
       // 演示世界：从会場示例里的同一个人拼出详情（只读示例，不读任何真实资料；与示例会場一样不按报名状态挡）。
       const venue = journeyVenue("checked_in", "web");

@@ -89,11 +89,11 @@ const IMPORT_RETURN = "/app/profile/onboarding?screen=5";
 
 // b1 #17: the six goal tiles (emoji tile + who it is about).
 const GOAL_TILES: Record<string, { emoji: string; tone: AvatarTone; sub: Copy }> = {
-  funding: { emoji: "💰", tone: "pink", sub: { ja: "投資家・金融機関", zh: "投资人・金融机构", en: "Investors · lenders" } },
-  customers: { emoji: "🏭", tone: "blue", sub: { ja: "決裁者・購買担当", zh: "决策者・采购负责人", en: "Decision makers · buyers" } },
-  hiring: { emoji: "🧑‍💼", tone: "teal", sub: { ja: "候補者・紹介者", zh: "候选人・推荐人", en: "Candidates · referrers" } },
-  partners: { emoji: "🤝", tone: "apricot", sub: { ja: "協業・販路", zh: "合作・渠道", en: "Alliances · channels" } },
-  awareness: { emoji: "📣", tone: "lav", sub: { ja: "登壇・メディア", zh: "演讲・媒体", en: "Talks · media" } },
+  funding: { emoji: "💰", tone: "pink", sub: { ja: "投資家・金融機関", zh: "投资人、金融机构", en: "Investors · lenders" } },
+  customers: { emoji: "🏭", tone: "blue", sub: { ja: "決裁者・購買担当", zh: "决策者、采购负责人", en: "Decision makers · buyers" } },
+  hiring: { emoji: "🧑‍💼", tone: "teal", sub: { ja: "候補者・紹介者", zh: "候选人、推荐人", en: "Candidates · referrers" } },
+  partners: { emoji: "🤝", tone: "apricot", sub: { ja: "協業・販路", zh: "合作、渠道", en: "Alliances · channels" } },
+  awareness: { emoji: "📣", tone: "lav", sub: { ja: "登壇・メディア", zh: "演讲、媒体", en: "Talks · media" } },
   research: { emoji: "📚", tone: "blue", sub: { ja: "業界の知見", zh: "行业见解", en: "Industry insight" } },
 };
 
@@ -775,13 +775,13 @@ function ImportStep({ cardScanAvailable, t }: { cardScanAvailable: boolean; t: T
       {cardScanAvailable ? <div className={styles.drop}>
         <span className={styles.dropEmoji} aria-hidden>📇</span>
         <b>{t({ ja: "名刺の画像をここから取り込む", zh: "从这里导入名片图片", en: "Bring in card photos here" })}</b>
-        <div className={styles.lbl}>{t({ ja: "JPG・PNG・HEIC · 最大100枚 · 表と裏はペアにできます", zh: "JPG・PNG・HEIC · 最多 100 张 · 正反面可以配对", en: "JPG · PNG · HEIC · up to 100 · pair fronts and backs" })}</div>
+        <div className={styles.lbl}>{t({ ja: "JPG・PNG・HEIC · 最大100枚 · 表と裏はペアにできます", zh: "JPG / PNG / HEIC · 最多 100 张 · 正反面可以配对", en: "JPG · PNG · HEIC · up to 100 · pair fronts and backs" })}</div>
         <a className={`btn ${styles.pick}`} href={scan}>{t({ ja: "ファイルを選ぶ", zh: "选择文件", en: "Choose files" })}</a>
       </div> : null}
       <div className={styles.grid3}>
         <div className={styles.method}><MacTile emoji="📱" tone="blue" size="sm" /><div><b>{t({ ja: "スマホで連続撮影", zh: "用手机连拍", en: "Shoot on your phone" })}</b><div className={styles.lbl}>{t({ ja: "アプリから自動で同期", zh: "从 App 自动同步", en: "Synced from the app" })}</div></div></div>
         <a className={styles.method} href={csv}><MacTile emoji="🗂️" tone="pink" size="sm" /><div><b>CSV · Eight</b><div className={styles.lbl}>{t({ ja: "列の対応づけを自動で", zh: "自动匹配列", en: "Columns matched automatically" })}</div></div></a>
-        <a className={styles.method} href={vcard}><MacTile emoji="👤" tone="teal" size="sm" /><div><b>vCard</b><div className={styles.lbl}>{t({ ja: "iPhone・Google 連絡先", zh: "iPhone・Google 通讯录", en: "iPhone · Google contacts" })}</div></div></a>
+        <a className={styles.method} href={vcard}><MacTile emoji="👤" tone="teal" size="sm" /><div><b>vCard</b><div className={styles.lbl}>{t({ ja: "iPhone・Google 連絡先", zh: "iPhone、Google 通讯录", en: "iPhone · Google contacts" })}</div></div></a>
       </div>
     </div>
   );

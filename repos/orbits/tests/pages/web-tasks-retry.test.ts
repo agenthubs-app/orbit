@@ -80,6 +80,8 @@ test("an expired uncertain reminder offers an explicit recovery instead of an un
   now += 2 * 60 * 60 * 1000;
   await assert.rejects(client.addReminder(task), (error: unknown) => {
     assert.match(tasksErrorMessage(error, false), /返回列表.*重新打开/);
+    assert.match(tasksErrorMessage(error, "ja"), /一覧に戻って/);
+    assert.match(tasksErrorMessage(error, "en"), /Return to All tasks/);
     return true;
   });
 });

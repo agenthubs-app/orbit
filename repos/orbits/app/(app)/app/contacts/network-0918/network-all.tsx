@@ -51,12 +51,12 @@ export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { v
     <NetworkShell screen="all" modal={modal}>
       <div className="nw-card">
         <div className="nw-card-head">
-          <h2 className="nw-h2">{t({ en: "All contacts", zh: "所有人脉" })}</h2>
-          <span className="nw-card-hint">{t({ en: `${people.length} contacts — manage all of your relationships.`, zh: `共 ${people.length} 位联系人，管理你所有的人脉资源。` })}</span>
+          <h2 className="nw-h2">{t({ ja: "すべての人脈", en: "All contacts", zh: "所有人脉" })}</h2>
+          <span className="nw-card-hint">{t({ ja: `${people.length} 人の連絡先。人脈をまとめて管理できます。`, en: `${people.length} contacts — manage all of your relationships.`, zh: `共 ${people.length} 位联系人，管理你所有的人脉资源。` })}</span>
         </div>
         {/* W0055：只留能改变列表的筛选（搜索框 + 下面的来源卡片）；原来四个只显示文字、点不动的筛选框已删除。 */}
         <div className="nw-filters">
-          <input className="nw-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t({ en: "Search name, company, title or keyword…", zh: "搜索姓名、公司、职位或关键词…" })} />
+          <input className="nw-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t({ ja: "名前・会社・役職・キーワードで検索…", en: "Search name, company, title or keyword…", zh: "搜索姓名、公司、职位或关键词…" })} />
         </div>
         <div className="nw-source-grid">
           {NETWORK_SOURCES.map((key) => {
@@ -71,7 +71,7 @@ export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { v
         </div>
         <div className="nw-table">
           <div className="nw-thead">
-            <span className="nw-check"></span><span></span><span>{t({ en: "Name", zh: "姓名" })}</span><span>{t({ en: "Company & title", zh: "公司与职位" })}</span><span>{t({ en: "Source", zh: "来源" })}</span><span>{t({ en: "Tier", zh: "关系档位" })}</span><span>{t({ en: "Last contact", zh: "最近互动" })}</span><span>{t({ en: "Next step / notes", zh: "下一步 / 备注" })}</span><span></span>
+            <span className="nw-check"></span><span></span><span>{t({ ja: "名前", en: "Name", zh: "姓名" })}</span><span>{t({ ja: "会社・役職", en: "Company & title", zh: "公司与职位" })}</span><span>{t({ ja: "出どころ", en: "Source", zh: "来源" })}</span><span>{t({ ja: "関係の段階", en: "Tier", zh: "关系档位" })}</span><span>{t({ ja: "最近の接点", en: "Last contact", zh: "最近互动" })}</span><span>{t({ ja: "次の一歩・メモ", en: "Next step / notes", zh: "下一步 / 备注" })}</span><span></span>
           </div>
           {filtered.map((p) => (
             <a key={p.id} className="btn nw-row" href={p.href} onClick={(event) => demoDetail.openFromHref(event, p.href)}>
@@ -84,7 +84,7 @@ export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { v
                 const tier = tiers.get(p.id) ?? null;
                 return <span data-network-tier={tier ?? "unscored"}>{tier
                   ? <NetworkChip bg={TIER_CHIP[tier].bg} fg={TIER_CHIP[tier].fg}><span className="nw-tier-dot" aria-hidden="true" style={{ background: TIER_STYLE[tier].fg }}></span>{t(TIER_LABEL[tier])}</NetworkChip>
-                  : <NetworkChip bg="#F7F7FD" fg="#6B6F99">{t({ zh: "未评估", en: "Not scored" })}</NetworkChip>}</span>;
+                  : <NetworkChip bg="#F7F7FD" fg="#6B6F99">{t({ ja: "未評価", zh: "未评估", en: "Not scored" })}</NetworkChip>}</span>;
               })()}
               <span className="nw-row-last">{p.last}</span>
               <span className="nw-row-next">{p.next}</span>
@@ -92,7 +92,7 @@ export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { v
             </a>
           ))}
           {filtered.length === 0 ? (
-            <div className="nw-empty">{t({ en: "No matching contacts", zh: "没有匹配的联系人" })}</div>
+            <div className="nw-empty">{t({ ja: "一致する連絡先はありません", en: "No matching contacts", zh: "没有匹配的联系人" })}</div>
           ) : null}
         </div>
       </div>

@@ -147,21 +147,21 @@ test("SC-W0059-02: returnTo accepts only a single-slash /app/ relative path that
 });
 
 test("SC-W0059-01: 返回 {来源} label — longest prefix wins, segment-aware, zh and en", () => {
-  const cases: [string | null, string, string][] = [
-    ["/app/plans/plan-1", "返回我的计划", "Back to My plan"],
-    ["/app/plans/plan-1/types/t1?lang=en#x", "返回我的计划", "Back to My plan"],
-    ["/app/agent", "返回 iOrbit", "Back to iOrbit"],
-    ["/app/agent?q=hi", "返回 iOrbit", "Back to iOrbit"],
-    ["/app/agent/actions", "返回 iOrbit", "Back to iOrbit"],
-    ["/app/contacts/dashboard", "返回人脉分析", "Back to Network analysis"],
-    ["/app/contacts/analysis/structure", "返回人脉分析", "Back to Network analysis"],
-    ["/app/contacts", "返回人脉", "Back to Network"],
-    ["/app/contacts?tier=core", "返回人脉", "Back to Network"],
-    ["/app/contacts/c2", "返回人脉", "Back to Network"],
-    ["/app/events/e1", "返回活动", "Back to Events"],
-    ["/app/agentx", "返回", "Back"],
-    ["/app/tasks/personal", "返回", "Back"],
-    [null, "返回人脉", "Back to Network"],
+  const cases: [string | null, string, string, string][] = [
+    ["/app/plans/plan-1", "返回我的计划", "Back to My plan", "マイプランに戻る"],
+    ["/app/plans/plan-1/types/t1?lang=en#x", "返回我的计划", "Back to My plan", "マイプランに戻る"],
+    ["/app/agent", "返回 iOrbit", "Back to iOrbit", "iOrbit に戻る"],
+    ["/app/agent?q=hi", "返回 iOrbit", "Back to iOrbit", "iOrbit に戻る"],
+    ["/app/agent/actions", "返回 iOrbit", "Back to iOrbit", "iOrbit に戻る"],
+    ["/app/contacts/dashboard", "返回人脉分析", "Back to Network analysis", "人脈分析に戻る"],
+    ["/app/contacts/analysis/structure", "返回人脉分析", "Back to Network analysis", "人脈分析に戻る"],
+    ["/app/contacts", "返回人脉", "Back to Network", "人脈に戻る"],
+    ["/app/contacts?tier=core", "返回人脉", "Back to Network", "人脈に戻る"],
+    ["/app/contacts/c2", "返回人脉", "Back to Network", "人脈に戻る"],
+    ["/app/events/e1", "返回活动", "Back to Events", "イベントに戻る"],
+    ["/app/agentx", "返回", "Back", "戻る"],
+    ["/app/tasks/personal", "返回", "Back", "戻る"],
+    [null, "返回人脉", "Back to Network", "人脈に戻る"],
   ];
-  for (const [path, zh, en] of cases) assert.deepEqual(detailReturnLabel(path), { zh, en }, String(path));
+  for (const [path, zh, en, ja] of cases) assert.deepEqual(detailReturnLabel(path), { ja, zh, en }, String(path));
 });

@@ -368,7 +368,7 @@ export const planFlowCopy = {
   sampleShortB: { ja: "ブランドづくりの経験者", zh: "做过品牌的人", en: "Brand builder", kind: "label" },
   sampleShortC: { ja: "名刺 SaaS の経験者", zh: "做过名片 SaaS 的人", en: "Card-SaaS veteran", kind: "label" },
   sampleTypeA: { ja: "月1回以上・50〜200名規模の交流会を主催するコミュニティ運営者", zh: "每月至少办一次、50～200人规模交流会的社群运营者", en: "A community runner hosting 50–200-person meetups at least monthly", kind: "label" },
-  sampleTypeB: { ja: "0→1 で SaaS や D2C のブランドを立ち上げた、ブランドと PR の責任者", zh: "从0到1做起过 SaaS 或 D2C 品牌的品牌・公关负责人", en: "A brand and PR lead who launched a SaaS or D2C brand from zero", kind: "label" },
+  sampleTypeB: { ja: "0→1 で SaaS や D2C のブランドを立ち上げた、ブランドと PR の責任者", zh: "从0到1做起过 SaaS 或 D2C 品牌的品牌、公关负责人", en: "A brand and PR lead who launched a SaaS or D2C brand from zero", kind: "label" },
   sampleTypeC: { ja: "Eight や Sansan など名刺 / CRM の SaaS で法人営業か PdM をしていた人", zh: "在 Eight、Sansan 等名片／CRM SaaS 做过企业销售或产品经理的人", en: "Someone who sold or managed product at a card or CRM SaaS such as Eight or Sansan", kind: "label" },
   sampleUnitsA: { ja: "1人 4点", zh: "每人4分", en: "4 pts each", kind: "label" },
   sampleUnitsB: { ja: "1人 10点", zh: "每人10分", en: "10 pts each", kind: "label" },

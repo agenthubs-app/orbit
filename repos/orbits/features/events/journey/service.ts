@@ -22,6 +22,7 @@ import { buildAfter } from "./after-core";
 import type { createEventFeedbackService, createOrganizerFollowService, createPrepChecklistService, createVenueMemoService } from "./attendee-records";
 import { buildDiscover, eventArea, eventThemes, type DiscoverCandidate } from "./discover-core";
 import type { JourneyContact, JourneyEvent, JourneyLivePorts } from "./ports";
+import { attendeeAnswerInLanguage } from "./attendee-answer-language";
 import { buildPrep, meetingSlotsAfter, type JourneyLanguage, type PrepAttendee } from "./prep-core";
 import { searchEvents } from "./search-core";
 import { buildVenue, venueExchangeRelation, venueRecordFrom, venueSharedRounds } from "./venue-core";
@@ -46,7 +47,7 @@ export interface JourneyService {
   venue(actorId: string, eventId: string, platform?: "web" | "app"): Promise<EventVenueResponse | null>;
   saveVenueMemo(actorId: string, eventId: string, attendeeId: string, text: string): Promise<EventVenueMemoResult | null>;
   /** 参加者の詳細：我是该活动的报名者且对方报名资料对参加者公开，否则 null（路由一律 404）。 */
-  attendeeProfile(actorId: string, eventId: string, attendeeId: string): Promise<EventAttendeeProfile | null>;
+  attendeeProfile(actorId: string, eventId: string, attendeeId: string, language?: JourneyLanguage): Promise<EventAttendeeProfile | null>;
   after(actorId: string, eventId: string, language: JourneyLanguage): Promise<EventAfterResponse | null>;
   confirmAfter(actorId: string, eventId: string, input: EventAfterConfirmInput): Promise<EventAfterConfirmResult | null>;
   dismiss(actorId: string, eventId: string, input: { reason: EventRecommendationDismissReason; idempotencyKey: string }): Promise<EventRecommendationDismissResult | null>;
@@ -304,7 +305,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       return { attendeeId, memo: await records.memos.put(actorId, eventId, attendeeId, text) };
     },
 
-    async attendeeProfile(actorId, eventId, attendeeId) {
+    async attendeeProfile(actorId, eventId, attendeeId, language = "ja") {
       if (!ports.attendeeProfile || !attendeeId.trim()) return null;
       // 三项互不依赖：并行读（之前串行 3 段往返）。名单规则 A（roster-policy）：只有本场的报名者能看；
       // 不区分「不存在」与「无权」——没报名时读到的 facts 直接丢掉，不返回。
@@ -328,7 +329,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       const ended = eventEnded(event, at);
       const endsAt = event.endsAt ?? event.startsAt;
       return {
-        answers: facts.answers.slice(0, 6),
+        answers: facts.answers.slice(0, 6).map((answer) => attendeeAnswerInLanguage(answer, language)),
         attendeeId: facts.attendeeId,
         // 运营服务开场前不接受交换申请：开场前也不给按钮。
         canRequestExchange: !self && relation.exchange === "none" && at.getTime() >= Date.parse(event.startsAt) && eventExchangeOpen(endsAt, at),

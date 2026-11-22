@@ -68,6 +68,10 @@ import {
   type AgentStoredChatSession,
 } from "./iorbit-model";
 
+function pickCopy(language: "en" | "ja" | "zh", copy: { en: string; ja: string; zh: string }): string {
+  return copy[language];
+}
+
 // 任务 1c：会话列表 / 分组 / 乐观写队列 / toast 的所有权在 `use-agent-history`，
 // 这里只接收它的 ref 与 setter（不复制一份 state）。
 export interface AgentChatHistoryStore {
@@ -165,7 +169,11 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
       setMessages((current) => [...current, {
         items: [], kind: "people", panelTitle: "", reliableRequest: request,
         retryRequest: request.message, role: "assistant", stopped: true,
-        text: "応答の確認を停止しました。再開すると同じリクエストを確認します。",
+        text: pickCopy(languageRef.current, {
+          ja: "応答の確認を停止しました。再開すると同じリクエストを確認します。",
+          zh: "已停止等待回复。继续时会确认同一条请求。",
+          en: "Stopped waiting for the reply. Resuming checks the same request.",
+        }),
       }]);
     }
   }, []);
@@ -309,9 +317,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
         setHistoryFeedback({
           kind: "error",
           text:
-            languageRef.current === "zh"
-              ? "对话已显示在当前页面，但未能保存到历史记录。请检查存储配置后重试。"
-              : "This conversation is visible for now but could not be saved to history. Check storage and try again.",
+            pickCopy(languageRef.current, { ja: "会話はこの画面に表示されていますが、履歴に保存できませんでした。保存設定を確認してもう一度お試しください。", zh: "对话已显示在当前页面，但未能保存到历史记录。请检查存储配置后重试。", en: "This conversation is visible for now but could not be saved to history. Check storage and try again." }),
         });
       }
     });
@@ -340,10 +346,9 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
     const requestController = new AbortController();
     activeRequestRef.current = requestController;
     const locale = languageRef.current === "zh" ? "zh" : "en";
+    const uiLanguage = languageRef.current;
     const failureText =
-      locale === "zh"
-        ? "iOrbit 暂时无法完成这次回复，请稍后再试。"
-        : "The agent could not complete this reply. Please try again.";
+      pickCopy(uiLanguage, { ja: "iOrbit が今回の返信を完了できませんでした。しばらくしてからもう一度お試しください。", zh: "iOrbit 暂时无法完成这次回复，请稍后再试。", en: "The agent could not complete this reply. Please try again." });
 
     // 发送前抓取已有轮次作为对话历史，让服务端 planner 能接住追问里的指代；
     // 推荐轮附带结构化明细，追问时间/地点/理由时模型可直接作答。
@@ -459,9 +464,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
             retryRequest: query,
             role: "assistant",
             text:
-              locale === "zh"
-                ? "请求结果尚未确认。再次检查会复用同一请求，不会重复生成。"
-                : "The result is not confirmed yet. Checking again reuses this request without generating twice.",
+              pickCopy(uiLanguage, { ja: "結果はまだ確定していません。もう一度確認しても同じリクエストを使うので、二重に生成されることはありません。", zh: "请求结果尚未确认。再次检查会复用同一请求，不会重复生成。", en: "The result is not confirmed yet. Checking again reuses this request without generating twice." }),
           },
         ]);
         return;
@@ -483,9 +486,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
           payload?.error?.code === "MODEL_REQUEST_FAILED" ||
           /timed out/i.test(payload?.error?.message ?? "");
         const errorText = providerTimedOut
-          ? locale === "zh"
-            ? "iOrbit 的模型没有按时返回，这通常是临时的，请重新提交一次。未执行任何外部动作。"
-            : "The model did not answer in time — this is usually temporary. Resubmit the request. No external action was taken."
+          ? pickCopy(uiLanguage, { ja: "モデルの応答が間に合いませんでした。たいていは一時的なものなので、もう一度送信してください。外部への操作は行っていません。", zh: "iOrbit 的模型没有按时返回，这通常是临时的，请重新提交一次。未执行任何外部动作。", en: "The model did not answer in time — this is usually temporary. Resubmit the request. No external action was taken." })
           : failureText;
 
         setMessages((current) => [
@@ -535,29 +536,21 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
       const panelTitle =
         activeArtifact?.result?.presentation?.title?.trim() ||
         (kind === "events"
-          ? locale === "zh"
-            ? "活动推荐"
-            : "Recommended events"
+          ? pickCopy(uiLanguage, { ja: "おすすめのイベント", zh: "活动推荐", en: "Recommended events" })
           : kind === "todos"
-            ? locale === "zh"
-              ? "行程与跟进"
-              : "Schedule & follow-ups"
-            : locale === "zh"
-              ? "人脉推荐"
-              : "Recommended contacts");
+            ? pickCopy(uiLanguage, { ja: "予定とフォローアップ", zh: "行程与跟进", en: "Schedule & follow-ups" })
+            : pickCopy(uiLanguage, { ja: "おすすめの人脈", zh: "人脉推荐", en: "Recommended contacts" }));
       const evidenceRefs = evidenceRefsFromArtifacts(payload.data.artifacts);
       const taskInteraction = parseAgentTaskInteraction(payload.data.taskInteraction);
       const taskOnlyMessage = taskInteraction?.state === "created"
-        ? locale === "zh" ? `已创建待办：${taskInteraction.title}` : `Task created: ${taskInteraction.title}`
+        ? pickCopy(uiLanguage, { ja: `タスクを作成しました：${taskInteraction.title}`, zh: `已创建待办：${taskInteraction.title}`, en: `Task created: ${taskInteraction.title}` })
         : taskInteraction?.state === "suggested"
-          ? locale === "zh" ? `要把“${taskInteraction.title}”加入待办吗？` : `Add "${taskInteraction.title}" to your tasks?`
+          ? pickCopy(uiLanguage, { ja: `「${taskInteraction.title}」をタスクに追加しますか？`, zh: `要把“${taskInteraction.title}”加入待办吗？`, en: `Add "${taskInteraction.title}" to your tasks?` })
           : taskInteraction?.state === "failed"
-            ? locale === "zh" ? `待办“${taskInteraction.title}”暂时没有写入成功，请稍后重试。` : `The task "${taskInteraction.title}" was not saved. Please try again.`
+            ? pickCopy(uiLanguage, { ja: `タスク「${taskInteraction.title}」を保存できませんでした。しばらくしてからもう一度お試しください。`, zh: `待办“${taskInteraction.title}”暂时没有写入成功，请稍后重试。`, en: `The task "${taskInteraction.title}" was not saved. Please try again.` })
             : null;
       const assistantText = items.length === 0 && evidenceRefs.length === 0
-        ? taskOnlyMessage ?? (locale === "zh"
-          ? "本次没有从你已授权的人脉、活动或跟进记录中找到可核查的结果，因此不会把泛化回答展示成真实推荐，也没有执行任何外部动作。请先导入联系人或补充可用记录后重试。"
-          : "No verifiable result was found in your authorized contacts, events, or follow-ups. A generic answer will not be presented as a real recommendation, and no external action was taken. Import contacts or add usable records, then retry.")
+        ? taskOnlyMessage ?? (pickCopy(uiLanguage, { ja: "許可済みの人脈・イベント・フォロー記録から、確かめられる結果は見つかりませんでした。一般的な回答をおすすめとして出すことはせず、外部への操作も行っていません。連絡先を取り込むか記録を追加してから、もう一度お試しください。", zh: "本次没有从你已授权的人脉、活动或跟进记录中找到可核查的结果，因此不会把泛化回答展示成真实推荐，也没有执行任何外部动作。请先导入联系人或补充可用记录后重试。", en: "No verifiable result was found in your authorized contacts, events, or follow-ups. A generic answer will not be presented as a real recommendation, and no external action was taken. Import contacts or add usable records, then retry." }))
         : payload.data.assistantMessage?.trim() ||
           activeArtifact?.result?.generatedView?.summary ||
           failureText;
@@ -597,9 +590,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
         } else {
           setHistoryFeedback({
             kind: "error",
-            text: locale === "zh"
-              ? "回复已保存，但会话暂未加入所选分组。请在历史记录中重试移动。"
-              : "The reply was saved, but the conversation was not added to the selected group. Move it from history to retry.",
+            text: pickCopy(uiLanguage, { ja: "返信は保存しましたが、会話を選んだグループに入れられませんでした。履歴から移動し直してください。", zh: "回复已保存，但会话暂未加入所选分组。请在历史记录中重试移动。", en: "The reply was saved, but the conversation was not added to the selected group. Move it from history to retry." }),
           });
         }
       }
@@ -628,9 +619,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
       if (requestRun !== requestRunRef.current) return;
       const requestFailureText =
         error instanceof AgentRequestTimeoutError
-          ? locale === "zh"
-            ? "浏览器已停止等待，服务器结果尚未确认。再次检查会复用同一请求，不会重复生成。"
-            : "The browser stopped waiting before the server confirmed a result. Checking again reuses the same request and will not generate it twice."
+          ? pickCopy(uiLanguage, { ja: "サーバーの結果が確定する前にブラウザーの待機が終わりました。もう一度確認しても同じリクエストを使うので、二重に生成されることはありません。", zh: "浏览器已停止等待，服务器结果尚未确认。再次检查会复用同一请求，不会重复生成。", en: "The browser stopped waiting before the server confirmed a result. Checking again reuses the same request and will not generate it twice." })
           : failureText;
       setMessages((current) => [
         ...current,
@@ -808,7 +797,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
   const orbChips = useMemo(
     () =>
       suggests.slice(0, 3).map((suggest) => ({
-        label: agentSuggestLabel(suggest.label, language === "ja" ? "en" : language),
+        label: agentSuggestLabel(suggest.label, language),
         query: suggest.q,
       })),
     [language, suggests],

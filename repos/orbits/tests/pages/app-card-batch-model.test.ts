@@ -102,7 +102,7 @@ test("different industries on two sides are not auto-imported or auto-merged unt
     assert.equal(draft.industry.primaryIndustryId, null, "no side is silently preferred");
     assert.equal(isAutoImportEligible(card, draft), false);
     assert.equal(isAutoMergeEligible(card, draft), false);
-    assert.deepEqual(cardReason(card, draft, false), { zh: "正反面行业不一致", en: "Sides disagree on industry" });
+    assert.deepEqual(cardReason(card, draft, false), { ja: "表と裏で業界が不一致", zh: "正反面行业不一致", en: "Sides disagree on industry" });
     assert.equal(needsReview(card, new Set()), true);
 
     const picked = setDraftIndustry(draft, { primaryIndustryId: back[0], secondaryIndustryId: back[1] });
@@ -139,14 +139,14 @@ test("W0045 disagreeing seniority or region blocks auto import and auto merge un
   assert.equal(seniority.draft.seniority.value, null, "no side is silently preferred");
   assert.equal(isAutoImportEligible(seniority.card, seniority.draft), false);
   assert.equal(isAutoMergeEligible(seniority.card, seniority.draft), false);
-  assert.deepEqual(cardReason(seniority.card, seniority.draft, false), { zh: "正反面职级不一致", en: "Sides disagree on seniority" });
+  assert.deepEqual(cardReason(seniority.card, seniority.draft, false), { ja: "表と裏で役職層が不一致", zh: "正反面职级不一致", en: "Sides disagree on seniority" });
   const picked = setDraftSeniority(seniority.draft, "manager");
   assert.equal(isAutoImportEligible(seniority.card, picked), true);
   assert.equal(isAutoMergeEligible(seniority.card, picked), true);
 
   const region = twoSidedEnrichment({ regionCountryCode: "JP", regionCity: "Tokyo" }, { regionCountryCode: "JP", regionCity: "Osaka" });
   assert.equal(isAutoImportEligible(region.card, region.draft), false);
-  assert.deepEqual(cardReason(region.card, region.draft, false), { zh: "正反面地区不一致", en: "Sides disagree on region" });
+  assert.deepEqual(cardReason(region.card, region.draft, false), { ja: "表と裏で地域が不一致", zh: "正反面地区不一致", en: "Sides disagree on region" });
   const cleared = setDraftRegion(region.draft, { countryCode: null, city: null });
   assert.equal(enrichmentNeedsReview(cleared), false, "clearing also resolves the conflict");
   assert.equal(isAutoMergeEligible(region.card, cleared), true);

@@ -159,10 +159,10 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
     // 参加者の詳細：我是报名者 + 对方资料对参加者公开，否则一律 404（不区分「不存在」与「无权」）。
     // 2026-11-21：participant id 可能本身含 `%`（party-app 导入的 `…party-app%3Aprofile%3A…`）。放在路径里会被平台与路由各解码一次 → 对不上 → 404；
     // 所以优先读 `?attendeeId=`（只解码一次），路径段只作旧客户端的退路。
-    attendeeProfile: journeyRoute({ auth: "required", schema: eventAttendeeProfileSchema }, async ({ actorId, params, request, service }) => {
+    attendeeProfile: journeyRoute({ auth: "required", schema: eventAttendeeProfileSchema }, async ({ actorId, language, params, request, service }) => {
       const attendeeId = (new URL(request.url).searchParams.get("attendeeId") ?? params.attendeeId ?? "").trim();
       if (!attendeeId || attendeeId.length > 200) return null;
-      return service.attendeeProfile(actorId!, eventId(params), attendeeId);
+      return service.attendeeProfile(actorId!, eventId(params), attendeeId, language);
     }, deps),
     after: journeyRoute({ auth: "required", schema: eventAfterResponseSchema }, async ({ actorId, language, params, service }) => service.after(actorId!, eventId(params), language), deps),
     confirmAfter: journeyRoute({ auth: "required", schema: eventAfterConfirmResultSchema, write: true }, async ({ actorId, params, request, service }) => {

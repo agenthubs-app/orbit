@@ -10,6 +10,7 @@
 
 import { useEffect, useRef } from "react";
 
+import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { INDUSTRY_CATALOG, isIndustryIdCode, listSecondaryIndustries } from "../../../../../shared/domain/industries";
 import { REGION_CITY_ALIASES, REGION_COMMON_COUNTRY_CODES, countryDisplayName, regionDisplayName } from "../../../../../shared/domain/regions";
 import { SENIORITY_GROUP_LABELS, SENIORITY_LEVELS, SENIORITY_LEVEL_LABELS, seniorityGroup } from "../../../../../shared/domain/seniority";
@@ -47,12 +48,12 @@ type T = (copy: Copy) => string;
 export type BrowseTarget = "home" | "events";
 
 const FIELD_LABELS: Record<IngestV2Field, Copy> = {
-  displayName: { zh: "姓名", en: "Name" },
-  organization: { zh: "公司", en: "Company" },
-  role: { zh: "职位", en: "Title" },
-  email: { zh: "邮箱", en: "Email" },
-  phone: { zh: "电话", en: "Phone" },
-  address: { zh: "地址", en: "Address" },
+  displayName: { ja: "名前", zh: "姓名", en: "Name" },
+  organization: { ja: "会社", zh: "公司", en: "Company" },
+  role: { ja: "役職", zh: "职位", en: "Title" },
+  email: { ja: "メール", zh: "邮箱", en: "Email" },
+  phone: { ja: "電話", zh: "电话", en: "Phone" },
+  address: { ja: "住所", zh: "地址", en: "Address" },
 };
 
 function industryPairLabel(pair: { primaryIndustryId: string; secondaryIndustryId: string | null }, t: T): string {
@@ -116,11 +117,11 @@ export function IndustryField({ baseline, busy, candidates = [], draft, onChange
     && (primary !== baseline.industry.primaryIndustryId || secondary !== baseline.industry.secondaryIndustryId);
   // 正反面行业不一致：不预选，标「请核对」，直到用户选定或清空（选「未分类」也算处理过）。
   const tag = fieldTag({ edited, flagged: draft.industry.conflicted, value: primary ?? "" });
-  const primaryLabel = t({ zh: "一级行业", en: "Primary industry" });
-  const secondaryLabel = t({ zh: "二级行业", en: "Secondary industry" });
+  const primaryLabel = t({ ja: "業界（大分類）", zh: "一级行业", en: "Primary industry" });
+  const secondaryLabel = t({ ja: "業界（小分類）", zh: "二级行业", en: "Secondary industry" });
   return (
     <div className={`cb-rfield cb-rfield-${tag.kind}`} data-review-field="industry">
-      <span className="cb-rfield-head"><span>{t({ zh: "行业", en: "Industry" })}</span><span className={`cb-rtag cb-rtag-${tag.kind}`}>{t(tag.label)}</span></span>
+      <span className="cb-rfield-head"><span>{t({ ja: "業界", zh: "行业", en: "Industry" })}</span><span className={`cb-rtag cb-rtag-${tag.kind}`}>{t(tag.label)}</span></span>
       <span className="cb-rindustry">
         <select
           aria-label={primaryLabel}
@@ -129,7 +130,7 @@ export function IndustryField({ baseline, busy, candidates = [], draft, onChange
           onChange={event => onChange({ primaryIndustryId: event.target.value || null, secondaryIndustryId: event.target.value === primary ? secondary : null })}
           value={primary ?? ""}
         >
-          <option value="">{t({ zh: "未分类", en: "Unclassified" })}</option>
+          <option value="">{t({ ja: "未分類", zh: "未分类", en: "Unclassified" })}</option>
           {INDUSTRY_CATALOG.map(industry => <option key={industry.id} value={industry.id}>{t(industry.labels)}</option>)}
         </select>
         <span aria-hidden className="cb-rindustry-sep">›</span>
@@ -140,19 +141,19 @@ export function IndustryField({ baseline, busy, candidates = [], draft, onChange
           onChange={event => onChange({ primaryIndustryId: primary, secondaryIndustryId: event.target.value || null })}
           value={secondary ?? ""}
         >
-          <option value="">{t({ zh: "二级未填写", en: "Not set" })}</option>
+          <option value="">{t({ ja: "小分類は未入力", zh: "二级未填写", en: "Not set" })}</option>
           {isIndustryIdCode(primary) ? listSecondaryIndustries(primary).map(industry => <option key={industry.id} value={industry.id}>{t(industry.labels)}</option>) : null}
         </select>
       </span>
       {draft.industry.conflicted ? (
         <span className="cb-alts" data-industry-conflict>
-          {t({ zh: "正反面行业不一致，可能是", en: "The sides disagree — maybe" })}
+          {t({ ja: "表と裏で業界が違います。候補：", zh: "正反面行业不一致，可能是", en: "The sides disagree — maybe" })}
           {candidates.map(candidate => (
             <button className="btn cb-alt" key={`${candidate.primaryIndustryId}|${candidate.secondaryIndustryId}`} onClick={() => onChange(candidate)} type="button">
               {industryPairLabel(candidate, t)}
             </button>
           ))}
-          <button className="btn cb-alt" onClick={() => onChange({ primaryIndustryId: null, secondaryIndustryId: null })} type="button">{t({ zh: "都不对，留空", en: "Neither — leave empty" })}</button>
+          <button className="btn cb-alt" onClick={() => onChange({ primaryIndustryId: null, secondaryIndustryId: null })} type="button">{t({ ja: "どちらも違う。空欄にする", zh: "都不对，留空", en: "Neither — leave empty" })}</button>
         </span>
       ) : null}
     </div>
@@ -175,22 +176,22 @@ export function SeniorityField({ baseline, busy, candidates = [], draft, onChang
   const edited = Boolean(draft.seniority?.edited) && value !== (baseline.seniority?.value ?? null);
   const conflicted = draft.seniority?.conflicted === true;
   const tag = fieldTag({ edited, flagged: conflicted, value: value ?? "" });
-  const levelLabel = (level: string) => SENIORITY_LEVEL_LABELS[level as keyof typeof SENIORITY_LEVEL_LABELS] ?? { zh: level, en: level };
+  const levelLabel = (level: string) => SENIORITY_LEVEL_LABELS[level as keyof typeof SENIORITY_LEVEL_LABELS] ?? { ja: level, zh: level, en: level };
   return (
     <div className={`cb-rfield cb-rfield-${tag.kind}`} data-review-field="seniority">
-      <span className="cb-rfield-head"><span>{t({ zh: "职级", en: "Seniority" })}</span><span className={`cb-rtag cb-rtag-${tag.kind}`}>{t(tag.label)}</span></span>
+      <span className="cb-rfield-head"><span>{t({ ja: "役職層", zh: "职级", en: "Seniority" })}</span><span className={`cb-rtag cb-rtag-${tag.kind}`}>{t(tag.label)}</span></span>
       <span className="cb-rindustry">
-        <select aria-label={t({ zh: "职级", en: "Seniority" })} className="cb-rinput" disabled={busy} onChange={event => onChange(event.target.value || null)} value={value ?? ""}>
-          <option value="">{t({ zh: "未填写", en: "Not set" })}</option>
+        <select aria-label={t({ ja: "役職層", zh: "职级", en: "Seniority" })} className="cb-rinput" disabled={busy} onChange={event => onChange(event.target.value || null)} value={value ?? ""}>
+          <option value="">{t({ ja: "未入力", zh: "未填写", en: "Not set" })}</option>
           {SENIORITY_LEVELS.map(level => <option key={level} value={level}>{t(levelLabel(level))}</option>)}
         </select>
-        {value ? <span className="cb-rhint" data-seniority-group>{t({ zh: "分组：", en: "Group: " })}{t(SENIORITY_GROUP_LABELS[seniorityGroup(value)])}</span> : null}
+        {value ? <span className="cb-rhint" data-seniority-group>{t({ ja: "グループ：", zh: "分组：", en: "Group: " })}{t(SENIORITY_GROUP_LABELS[seniorityGroup(value)])}</span> : null}
       </span>
       {conflicted ? (
         <span className="cb-alts" data-seniority-conflict>
-          {t({ zh: "正反面职级不一致，可能是", en: "The sides disagree — maybe" })}
+          {t({ ja: "表と裏で役職層が違います。候補：", zh: "正反面职级不一致，可能是", en: "The sides disagree — maybe" })}
           {candidates.map(level => <button className="btn cb-alt" key={level} onClick={() => onChange(level)} type="button">{t(levelLabel(level))}</button>)}
-          <button className="btn cb-alt" onClick={() => onChange(null)} type="button">{t({ zh: "都不对，留空", en: "Neither — leave empty" })}</button>
+          <button className="btn cb-alt" onClick={() => onChange(null)} type="button">{t({ ja: "どちらも違う。空欄にする", zh: "都不对，留空", en: "Neither — leave empty" })}</button>
         </span>
       ) : null}
     </div>
@@ -209,8 +210,9 @@ export function RegionField({ baseline, busy, candidates = [], draft, onChange, 
   onChange: (selection: { countryCode: string | null; city: string | null }) => void;
   t: T;
 }) {
-  // 本页文案只有中英两种；国家显示名跟随同一语言（Intl.DisplayNames 生成）。
-  const language = t({ zh: "zh", en: "en" }) === "en" ? "en" : "zh";
+  // 国家显示名跟随当前界面语言（Intl.DisplayNames 生成）。
+  const picked = t({ ja: "ja", zh: "zh", en: "en" });
+  const language: OrbitLanguage = picked === "ja" || picked === "en" ? picked : "zh";
   const countryCode = draft.region?.countryCode ?? null;
   const city = draft.region?.city ?? null;
   const edited = Boolean(draft.region?.edited)
@@ -221,26 +223,26 @@ export function RegionField({ baseline, busy, candidates = [], draft, onChange, 
   const cityListId = "cb-region-cities";
   return (
     <div className={`cb-rfield cb-rfield-${tag.kind}`} data-review-field="region">
-      <span className="cb-rfield-head"><span>{t({ zh: "地区", en: "Region" })}</span><span className={`cb-rtag cb-rtag-${tag.kind}`}>{t(tag.label)}</span></span>
+      <span className="cb-rfield-head"><span>{t({ ja: "地域", zh: "地区", en: "Region" })}</span><span className={`cb-rtag cb-rtag-${tag.kind}`}>{t(tag.label)}</span></span>
       <span className="cb-rindustry">
         <select
-          aria-label={t({ zh: "国家／地区", en: "Country" })}
+          aria-label={t({ ja: "国・地域", zh: "国家／地区", en: "Country" })}
           className="cb-rinput"
           disabled={busy}
           onChange={event => onChange({ countryCode: event.target.value || null, city: event.target.value === countryCode ? city : null })}
           value={countryCode ?? ""}
         >
-          <option value="">{t({ zh: "未填写", en: "Not set" })}</option>
+          <option value="">{t({ ja: "未入力", zh: "未填写", en: "Not set" })}</option>
           {countries.map(code => <option key={code} value={code}>{countryDisplayName(code, language)}</option>)}
         </select>
         <span aria-hidden className="cb-rindustry-sep">›</span>
         <input
-          aria-label={t({ zh: "城市", en: "City" })}
+          aria-label={t({ ja: "都市", zh: "城市", en: "City" })}
           className="cb-rinput"
           disabled={busy || !countryCode}
           list={cityListId}
           onChange={event => onChange({ countryCode, city: event.target.value })}
-          placeholder={t({ zh: "城市（英文，如 Tokyo）", en: "City (e.g. Tokyo)" })}
+          placeholder={t({ ja: "都市（英語。例：Tokyo）", zh: "城市（英文，如 Tokyo）", en: "City (e.g. Tokyo)" })}
           value={city ?? ""}
         />
         <datalist id={cityListId}>
@@ -249,13 +251,13 @@ export function RegionField({ baseline, busy, candidates = [], draft, onChange, 
       </span>
       {conflicted ? (
         <span className="cb-alts" data-region-conflict>
-          {t({ zh: "正反面地区不一致，可能是", en: "The sides disagree — maybe" })}
+          {t({ ja: "表と裏で地域が違います。候補：", zh: "正反面地区不一致，可能是", en: "The sides disagree — maybe" })}
           {candidates.map(candidate => (
             <button className="btn cb-alt" key={`${candidate.countryCode}|${candidate.city ?? ""}`} onClick={() => onChange(candidate)} type="button">
               {regionDisplayName(candidate, language)}
             </button>
           ))}
-          <button className="btn cb-alt" onClick={() => onChange({ countryCode: null, city: null })} type="button">{t({ zh: "都不对，留空", en: "Neither — leave empty" })}</button>
+          <button className="btn cb-alt" onClick={() => onChange({ countryCode: null, city: null })} type="button">{t({ ja: "どちらも違う。空欄にする", zh: "都不对，留空", en: "Neither — leave empty" })}</button>
         </span>
       ) : null}
     </div>
@@ -271,6 +273,7 @@ function attributionDate(startsAt: string, t: T): string {
   const month = parts.find(part => part.type === "month")?.value ?? "";
   const day = parts.find(part => part.type === "day")?.value ?? "";
   return t({
+    ja: `${month}月${day}日`,
     zh: `${month}月${day}日`,
     en: new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", timeZone: ATTRIBUTION_TIME_ZONE }).format(date),
   });
@@ -293,9 +296,10 @@ export function EventAttributionPrompt({ busy, event, on, onChange, t }: {
     <label className="cb-attr" data-event-attribution={event.eventId}>
       <input checked={on} disabled={busy} onChange={changeEvent => onChange(changeEvent.target.checked)} type="checkbox" />
       <span className="cb-attr-copy">
-        <strong>{t({ zh: `这张名片是在「${event.title}」认识的吗？`, en: `Did you meet this person at “${event.title}”?` })}</strong>
+        <strong>{t({ ja: `この名刺の人とは「${event.title}」で出会いましたか？`, zh: `这张名片是在「${event.title}」认识的吗？`, en: `Did you meet this person at “${event.title}”?` })}</strong>
         <span>
           {t({
+            ja: `このイベント（${date}）に申し込んでいて、名刺は当日か翌日にスキャンされています。チェックすると、確認した連絡先に出会ったイベントとして記録し、プランのこのイベントを参加済みにします。`,
             zh: `你报名了这场活动（${date}），这张名片是在当天或次日扫的。勾选后，确认的联系人会记下来源活动，计划里这场活动标为已参加。`,
             en: `You registered for this event (${date}) and scanned this card that day or the next. If ticked, the confirmed contact records it as where you met, and the event is marked attended in your plan.`,
           })}
@@ -338,8 +342,8 @@ function CardBatchImportBody({
       <div className="cb-source cb-source-off">
         <span className="cb-source-glyph" aria-hidden>▭</span>
         <span className="cb-source-body">
-          <strong>{t({ zh: "扫描名片夹", en: "Scan business cards" })}</strong>
-          <span>{t({ zh: "名片识别暂未开放，之后可在人脉页使用", en: "Card recognition isn't available yet — use it later from Network" })}</span>
+          <strong>{t({ ja: "名刺をまとめてスキャン", zh: "扫描名片夹", en: "Scan business cards" })}</strong>
+          <span>{t({ ja: "名刺の読み取りはまだ使えません。あとで人脈ページから使えます", zh: "名片识别暂未开放，之后可在人脉页使用", en: "Card recognition isn't available yet — use it later from Network" })}</span>
         </span>
       </div>
     );
@@ -366,8 +370,8 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
   if (!detail) {
     return loadFailed ? (
       <div className="cb-notice cb-notice-warning" role="alert">
-        {t({ zh: "这批名片读取不到了（可能已过期）。", en: "This batch can't be loaded (it may have expired)." })}
-        <button className="btn cb-btn-soft" onClick={onReset} type="button">{t({ zh: "重新上传", en: "Upload again" })}</button>
+        {t({ ja: "この名刺のまとまりを読み込めません（期限切れの可能性があります）。", zh: "这批名片读取不到了（可能已过期）。", en: "This batch can't be loaded (it may have expired)." })}
+        <button className="btn cb-btn-soft" onClick={onReset} type="button">{t({ ja: "もう一度アップロード", zh: "重新上传", en: "Upload again" })}</button>
       </div>
     ) : <ParsingPanel autoRunning={false} cards={[]} drafts={{}} missing={0} onBrowse={onBrowse} onReattach={() => undefined} onRetry={() => undefined} settled={0} stage="upload" t={t} total={0} uploadFailed={false} />;
   }
@@ -375,8 +379,8 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
   if (status === "cancelled" || status === "expired") {
     return (
       <div className="cb-notice cb-notice-warning" role="alert">
-        {status === "expired" ? t({ zh: "这批名片已过期，已确认的联系人都保留了。", en: "This batch expired; confirmed contacts were kept." }) : t({ zh: "这批名片已取消。", en: "This batch was cancelled." })}
-        <button className="btn cb-btn-soft" onClick={onReset} type="button">{t({ zh: "重新上传", en: "Upload again" })}</button>
+        {status === "expired" ? t({ ja: "このまとまりは期限切れです。確認済みの連絡先は残っています。", zh: "这批名片已过期，已确认的联系人都保留了。", en: "This batch expired; confirmed contacts were kept." }) : t({ ja: "このまとまりは取り消されました。", zh: "这批名片已取消。", en: "This batch was cancelled." })}
+        <button className="btn cb-btn-soft" onClick={onReset} type="button">{t({ ja: "もう一度アップロード", zh: "重新上传", en: "Upload again" })}</button>
       </div>
     );
   }
@@ -415,6 +419,7 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
           return (
             <p className="cb-attr-done" data-event-attribution-done={eventId} key={eventId}>
               {t({
+                ja: `${count} 人を「${title}」で出会った人として記録しました。プランにこのイベントがあれば、参加済みにしました。`,
                 zh: `${count} 位联系人记为在「${title}」认识；你的计划里有这场活动时，已标为已参加。`,
                 en: `${count} contact(s) recorded as met at “${title}”; if it's in your plan, it's now marked attended.`,
               })}
@@ -446,16 +451,16 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
     <div className="cb-review" data-screen-label="10 名片确认">
       <div className="cb-review-top">
         <div className="cb-review-head">
-          <h3 className="cb-review-h">{t({ zh: "确认名片识别结果", en: "Confirm the recognized cards" })}</h3>
+          <h3 className="cb-review-h">{t({ ja: "名刺の読み取り結果を確認", zh: "确认名片识别结果", en: "Confirm the recognized cards" })}</h3>
           <p className="cb-p">
             {autoCount
-              ? t({ zh: `本批 ${cards.length} 张。${autoCount} 张识别可靠，已自动导入；下面 ${queue.length} 张不太确定，请对照照片逐张确认。`, en: `${cards.length} cards. ${autoCount} were clear and imported automatically; please check the ${queue.length} below against the photo.` })
-              : t({ zh: `本批 ${cards.length} 张，下面 ${queue.length} 张不太确定，请对照照片逐张确认。`, en: `${cards.length} cards — please check the ${queue.length} below against the photo.` })}
+              ? t({ ja: `今回 ${cards.length} 枚。${autoCount} 枚は確実に読み取れたので自動で取り込みました。下の ${queue.length} 枚は不確かなので、写真と見比べて 1 枚ずつ確認してください。`, zh: `本批 ${cards.length} 张。${autoCount} 张识别可靠，已自动导入；下面 ${queue.length} 张不太确定，请对照照片逐张确认。`, en: `${cards.length} cards. ${autoCount} were clear and imported automatically; please check the ${queue.length} below against the photo.` })
+              : t({ ja: `今回 ${cards.length} 枚。下の ${queue.length} 枚は不確かなので、写真と見比べて 1 枚ずつ確認してください。`, zh: `本批 ${cards.length} 张，下面 ${queue.length} 张不太确定，请对照照片逐张确认。`, en: `${cards.length} cards — please check the ${queue.length} below against the photo.` })}
           </p>
         </div>
         <div className="cb-review-stats">
-          <span className="cb-stat cb-stat-green"><strong>{autoCount}</strong><span>{t({ zh: "已自动导入", en: "Auto-imported" })}</span></span>
-          <span className="cb-stat cb-stat-indigo"><strong>{handledCount} / {queue.length}</strong><span>{t({ zh: "已确认", en: "Checked" })}</span></span>
+          <span className="cb-stat cb-stat-green"><strong>{autoCount}</strong><span>{t({ ja: "自動で取り込み済み", zh: "已自动导入", en: "Auto-imported" })}</span></span>
+          <span className="cb-stat cb-stat-indigo"><strong>{handledCount} / {queue.length}</strong><span>{t({ ja: "確認済み", zh: "已确认", en: "Checked" })}</span></span>
         </div>
       </div>
 
@@ -475,11 +480,11 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
           const cardDraft = drafts[card.cardId] ?? initialCardDraft(card);
           const on = card.cardId === active.cardId;
           const state = card.allConfirmed
-            ? { copy: { zh: "✓ 已确认", en: "✓ Confirmed" }, tone: "ok" }
+            ? { copy: { ja: "✓ 確認済み", zh: "✓ 已确认", en: "✓ Confirmed" }, tone: "ok" }
             : isCardSkipped(card)
-              ? { copy: { zh: "已删除", en: "Removed" }, tone: "muted" }
+              ? { copy: { ja: "削除済み", zh: "已删除", en: "Removed" }, tone: "muted" }
               : laterSet.has(card.cardId)
-                ? { copy: { zh: "稍后处理", en: "Later" }, tone: "later" }
+                ? { copy: { ja: "あとで", zh: "稍后处理", en: "Later" }, tone: "later" }
                 : { copy: cardReason(card, cardDraft, duplicates.has(card.cardId)), tone: "plain" };
           return (
             <button
@@ -491,7 +496,7 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
             >
               <span className="cb-queue-n">{index + 1}</span>
               <span className="cb-queue-copy">
-                <strong>{cardDraft.fields.displayName.trim() || t({ zh: "未识别姓名", en: "No name" })}</strong>
+                <strong>{cardDraft.fields.displayName.trim() || t({ ja: "名前なし", zh: "未识别姓名", en: "No name" })}</strong>
                 <span className={`cb-queue-st cb-queue-st-${state.tone}`}>{t(state.copy)}</span>
               </span>
             </button>
@@ -510,13 +515,13 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
               {shownItem.derivativeObjectKey && shownItem.imageDigest ? (
                 <IngestV2PrivateImage
                   alt={shownItem.sourceFileName}
-                  errorLabel={t({ zh: "照片暂时无法显示", en: "Photo unavailable" })}
-                  expiredLabel={t({ zh: "照片已过期", en: "Photo expired" })}
+                  errorLabel={t({ ja: "写真を表示できません", zh: "照片暂时无法显示", en: "Photo unavailable" })}
+                  expiredLabel={t({ ja: "写真の期限切れ", zh: "照片已过期", en: "Photo expired" })}
                   key={`${shownItem.id}:${shownItem.version}`}
-                  loadingLabel={t({ zh: "正在加载照片…", en: "Loading photo…" })}
+                  loadingLabel={t({ ja: "写真を読み込み中…", zh: "正在加载照片…", en: "Loading photo…" })}
                   src={`${INGEST_V2_API_BASE}/${batchId}/items/${shownItem.id}/image`}
                 />
-              ) : <span className="cb-photo-missing">{t({ zh: "这张照片没有可显示的图像", en: "No image to show for this photo" })}</span>}
+              ) : <span className="cb-photo-missing">{t({ ja: "この写真には表示できる画像がありません", zh: "这张照片没有可显示的图像", en: "No image to show for this photo" })}</span>}
             </div>
           </div>
           <div className="cb-photo-foot">
@@ -524,27 +529,27 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
               {active.isTwoSided ? (
                 <span className="cb-side-toggle">
                   {(["front", "back"] as const).map(value => (
-                    <button className={`btn cb-side-btn${side === value ? " cb-side-on" : ""}`} key={value} onClick={() => setSide(value)} type="button">{value === "front" ? t({ zh: "正面", en: "Front" }) : t({ zh: "反面", en: "Back" })}</button>
+                    <button className={`btn cb-side-btn${side === value ? " cb-side-on" : ""}`} key={value} onClick={() => setSide(value)} type="button">{value === "front" ? t({ ja: "表", zh: "正面", en: "Front" }) : t({ ja: "裏", zh: "反面", en: "Back" })}</button>
                   ))}
                 </span>
-              ) : t({ zh: "对照照片核对右侧字段", en: "Check the fields against the photo" })}
+              ) : t({ ja: "写真と見比べて右の項目を確認", zh: "对照照片核对右侧字段", en: "Check the fields against the photo" })}
             </span>
-            <button className="btn cb-photo-zoom" onClick={() => setZoom(value => !value)} type="button">{zoom ? t({ zh: "缩小", en: "Zoom out" }) : t({ zh: "放大查看", en: "Zoom in" })}</button>
+            <button className="btn cb-photo-zoom" onClick={() => setZoom(value => !value)} type="button">{zoom ? t({ ja: "縮小", zh: "缩小", en: "Zoom out" }) : t({ ja: "拡大", zh: "放大查看", en: "Zoom in" })}</button>
           </div>
         </section>
 
         <section className="cb-fields-panel">
           <div className="cb-fields-head">
             <span className="cb-fields-title">
-              <strong>{t({ zh: "识别出的文字", en: "Recognized text" })}</strong>
+              <strong>{t({ ja: "読み取った文字", zh: "识别出的文字", en: "Recognized text" })}</strong>
               <span>{duplicate && !unresolved
-                ? t({ zh: "人脉里有一位可能是同一个人，见下方。", en: "Someone in your network may be this person — see below." })
+                ? t({ ja: "人脈に同じ人かもしれない連絡先があります。下をご覧ください。", zh: "人脉里有一位可能是同一个人，见下方。", en: "Someone in your network may be this person — see below." })
                 : unresolved
-                  ? t({ zh: "黄色字段需要核对，请对照左侧照片。", en: "Check the amber fields against the photo." })
-                  : t({ zh: "需要核对的字段已处理，确认后进入下一张。", en: "Flagged fields are handled — confirm to move on." })}</span>
+                  ? t({ ja: "黄色の項目は確認が必要です。左の写真と見比べてください。", zh: "黄色字段需要核对，请对照左侧照片。", en: "Check the amber fields against the photo." })
+                  : t({ ja: "確認が必要な項目は済みました。確定すると次の名刺に進みます。", zh: "需要核对的字段已处理，确认后进入下一张。", en: "Flagged fields are handled — confirm to move on." })}</span>
             </span>
             <span className={`cb-check-chip${unresolved ? "" : " cb-check-chip-ok"}`}>
-              {unresolved ? t({ zh: `${unresolved} 处需核对`, en: `${unresolved} to check` }) : t({ zh: "已核对", en: "Checked" })}
+              {unresolved ? t({ ja: `要確認 ${unresolved} か所`, zh: `${unresolved} 处需核对`, en: `${unresolved} to check` }) : t({ ja: "確認済み", zh: "已核对", en: "Checked" })}
             </span>
           </div>
 
@@ -552,8 +557,8 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
 
           {active.hasTerminalFailure ? (
             <div className="cb-notice cb-notice-warning">
-              {t({ zh: "这张没有识别出来，可以重新识别、对照照片手动填写，或者跳过。", en: "This one wasn't recognized — retry, type it in from the photo, or skip it." })}
-              <button className="btn cb-btn-soft" disabled={busy} onClick={() => void batch.retryRecognition(active)} type="button">{t({ zh: "重新识别", en: "Retry" })}</button>
+              {t({ ja: "この名刺は読み取れませんでした。読み取り直す、写真を見て手入力する、またはスキップできます。", zh: "这张没有识别出来，可以重新识别、对照照片手动填写，或者跳过。", en: "This one wasn't recognized — retry, type it in from the photo, or skip it." })}
+              <button className="btn cb-btn-soft" disabled={busy} onClick={() => void batch.retryRecognition(active)} type="button">{t({ ja: "読み取り直す", zh: "重新识别", en: "Retry" })}</button>
             </div>
           ) : null}
 
@@ -571,12 +576,12 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
                   className="cb-rinput"
                   disabled={busy}
                   onChange={event => setDrafts(current => ({ ...current, [active.cardId]: setManualDraftField(current[active.cardId] ?? draft, field, event.target.value) }))}
-                  placeholder={value ? "" : t({ zh: "未识别到，请对照照片填写", en: "Not found — type it from the photo" })}
+                  placeholder={value ? "" : t({ ja: "読み取れませんでした。写真を見て入力してください", zh: "未识别到，请对照照片填写", en: "Not found — type it from the photo" })}
                   value={value}
                 />
                 {alternatives.length && !edited ? (
                   <span className="cb-alts">
-                    {t({ zh: "可能是", en: "Maybe" })}
+                    {t({ ja: "候補", zh: "可能是", en: "Maybe" })}
                     {alternatives.map(alternative => {
                       const candidate = active.items.flatMap(item => fieldCandidates(item)).find(entry => entry.field === field && entry.value === alternative)!;
                       return <button className="btn cb-alt" key={alternative} onClick={() => setDrafts(current => ({ ...current, [active.cardId]: setDraftFieldSource(current[active.cardId] ?? draft, field, candidate) }))} type="button">{alternative}</button>;
@@ -615,13 +620,13 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
           />
 
           <div className="cb-rfield cb-rfield-notes">
-            <span className="cb-rfield-head"><span>{t({ zh: "备注", en: "Notes" })}</span><span className="cb-rtag cb-rtag-ok">{t({ zh: "名片上的其他信息", en: "Everything else on the card" })}</span></span>
+            <span className="cb-rfield-head"><span>{t({ ja: "備考", zh: "备注", en: "Notes" })}</span><span className="cb-rtag cb-rtag-ok">{t({ ja: "名刺のその他の情報", zh: "名片上的其他信息", en: "Everything else on the card" })}</span></span>
             <textarea
-              aria-label={t({ zh: "备注", en: "Notes" })}
+              aria-label={t({ ja: "備考", zh: "备注", en: "Notes" })}
               className="cb-rinput cb-rnotes"
               disabled={busy}
               onChange={event => setDrafts(current => ({ ...current, [active.cardId]: setManualDraftNotes(current[active.cardId] ?? draft, event.target.value) }))}
-              placeholder={t({ zh: "传真、微信、网址等没有单独字段的信息会放在这里，可以修改", en: "Fax, WeChat, website and other details land here — edit freely" })}
+              placeholder={t({ ja: "FAX・WeChat・URL など専用欄のない情報はここに入ります。編集できます", zh: "传真、微信、网址等没有单独字段的信息会放在这里，可以修改", en: "Fax, WeChat, website and other details land here — edit freely" })}
               rows={Math.min(8, Math.max(3, draft.fields.notes.split("\n").length))}
               value={draft.fields.notes}
             />
@@ -635,30 +640,30 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
             <div className={candidate ? "cb-review-pair" : "cb-review-single"}>
               {candidate ? (
                 <button className="btn cb-review-merge" disabled={busy} onClick={() => void act("merge")} type="button">
-                  {t({ zh: "已有联系人，合并", en: "Existing contact — merge" })}
+                  {t({ ja: "既存の連絡先と統合", zh: "已有联系人，合并", en: "Existing contact — merge" })}
                 </button>
               ) : null}
               <button className="btn cb-review-confirm" disabled={busy} onClick={() => void act("confirm")} type="button">
                 {busy
-                  ? t({ zh: "保存中…", en: "Saving…" })
+                  ? t({ ja: "保存中…", zh: "保存中…", en: "Saving…" })
                   : remainingAfter
-                    ? unresolved ? t({ zh: "照原样确认，下一张", en: "Confirm as is, next" }) : t({ zh: "确认无误，下一张", en: "Looks right, next" })
-                    : t({ zh: "确认，完成本批", en: "Confirm and finish" })}
+                    ? unresolved ? t({ ja: "このまま確定して次へ", zh: "照原样确认，下一张", en: "Confirm as is, next" }) : t({ ja: "問題なし、次へ", zh: "确认无误，下一张", en: "Looks right, next" })
+                    : t({ ja: "確定してこのまとまりを完了", zh: "确认，完成本批", en: "Confirm and finish" })}
                 <span className="cb-kbd" aria-hidden>↵</span>
               </button>
             </div>
             {candidate ? (
-              <span className="cb-review-hint">{t({ zh: "「确认无误」会新建一位联系人；「合并」把名片上的新信息补进已有联系人，不覆盖原有内容。", en: "“Looks right” adds a new contact; “Merge” adds the card’s new details to the existing one without overwriting anything." })}</span>
+              <span className="cb-review-hint">{t({ ja: "「問題なし」で新しい連絡先を作成します。「統合」は名刺の新しい情報を既存の連絡先に追加し、元の内容は上書きしません。", zh: "「确认无误」会新建一位联系人；「合并」把名片上的新信息补进已有联系人，不覆盖原有内容。", en: "“Looks right” adds a new contact; “Merge” adds the card’s new details to the existing one without overwriting anything." })}</span>
             ) : null}
             <div className="cb-review-minor">
               <button className="btn cb-btn-ghost cb-btn-ghost-sm" disabled={busy || queue.length < 2} onClick={() => {
                 const index = queue.findIndex(card => card.cardId === active.cardId);
                 const previous = [...queue.slice(0, index).reverse(), ...queue.slice(index + 1).reverse()].find(card => !card.allConfirmed && !isCardSkipped(card));
                 if (previous) openCard(previous.cardId);
-              }} type="button">{t({ zh: "← 上一张", en: "← Previous" })}</button>
+              }} type="button">{t({ ja: "← 前へ", zh: "← 上一张", en: "← Previous" })}</button>
               <span className="cb-review-links">
-                <button className="btn cb-text-btn" disabled={busy} onClick={() => void act("later")} type="button">{t({ zh: "稍后处理", en: "Later" })}</button>
-                <button className="btn cb-text-btn cb-text-danger" disabled={busy} onClick={() => void act("skip")} type="button">{t({ zh: "不是名片，删除", en: "Not a card — remove" })}</button>
+                <button className="btn cb-text-btn" disabled={busy} onClick={() => void act("later")} type="button">{t({ ja: "あとで", zh: "稍后处理", en: "Later" })}</button>
+                <button className="btn cb-text-btn cb-text-danger" disabled={busy} onClick={() => void act("skip")} type="button">{t({ ja: "名刺ではないので削除", zh: "不是名片，删除", en: "Not a card — remove" })}</button>
               </span>
             </div>
           </div>
@@ -691,25 +696,25 @@ function ParsingPanel({
       : stage === "recognize" ? 30 + Math.round((settled / total) * 62)
         : 96;
   const steps: { key: "upload" | "recognize" | "review"; label: Copy }[] = [
-    { key: "upload", label: { zh: "上传照片", en: "Upload" } },
-    { key: "recognize", label: { zh: "识别文字", en: "Read text" } },
-    { key: "review", label: { zh: "整理核对", en: "Sort & check" } },
+    { key: "upload", label: { ja: "写真をアップロード", zh: "上传照片", en: "Upload" } },
+    { key: "recognize", label: { ja: "文字を読み取り", zh: "识别文字", en: "Read text" } },
+    { key: "review", label: { ja: "整理・確認", zh: "整理核对", en: "Sort & check" } },
   ];
   const order = ["upload", "recognize", "review"];
   // 名片 V2 worker 实测每张约 5–15 秒（并发处理），按 10 秒/张粗估，至少 1 分钟。
   const minutes = Math.max(1, Math.round(((total - settled) * 10) / 60));
   const current = order.indexOf(stage);
   const sub = stage === "upload"
-    ? t({ zh: `正在上传 ${uploaded} / ${itemsAll.length || total} 张照片，传完会自动开始识别。`, en: `Uploading ${uploaded} / ${itemsAll.length || total} photos — recognition starts automatically.` })
+    ? t({ ja: `${itemsAll.length || total} 枚中 ${uploaded} 枚をアップロード中。終わると自動で読み取りを始めます。`, zh: `正在上传 ${uploaded} / ${itemsAll.length || total} 张照片，传完会自动开始识别。`, en: `Uploading ${uploaded} / ${itemsAll.length || total} photos — recognition starts automatically.` })
     : stage === "recognize"
-      ? t({ zh: `大约需要 ${minutes} 分钟，不用等在这里。解析完成后会提醒你——只有识别不确定的几张需要你看一眼。`, en: `About ${minutes} min — no need to wait here. We'll let you know when it's done; only the uncertain cards need a look.` })
-      : t({ zh: "正在把识别可靠的名片直接导入，其余的马上交给你确认…", en: "Importing the clear cards; the rest are coming to you for a quick check…" });
+      ? t({ ja: `約 ${minutes} 分かかります。ここで待つ必要はありません。終わったらお知らせします。確認が必要なのは不確かな数枚だけです。`, zh: `大约需要 ${minutes} 分钟，不用等在这里。解析完成后会提醒你——只有识别不确定的几张需要你看一眼。`, en: `About ${minutes} min — no need to wait here. We'll let you know when it's done; only the uncertain cards need a look.` })
+      : t({ ja: "確実な名刺はそのまま取り込み中。残りはすぐ確認に回します…", zh: "正在把识别可靠的名片直接导入，其余的马上交给你确认…", en: "Importing the clear cards; the rest are coming to you for a quick check…" });
 
   return (
     <div className="cb-parse" aria-live="polite" data-screen-label="10a 正在解析">
       <div className="cb-parse-head">
-        <span className="cb-kicker">{stage === "upload" ? t({ zh: `正在上传 · 共 ${total || "…"} 张`, en: `Uploading · ${total || "…"} cards` }) : t({ zh: `✓ 已接收 ${total} 张名片照片`, en: `✓ ${total} card photos received` })}</span>
-        <h3 className="cb-review-h">{autoRunning ? t({ zh: "快好了，正在整理结果", en: "Almost there — sorting results" }) : t({ zh: "名片正在后台批量解析。", en: "Your cards are being read in the background." })}</h3>
+        <span className="cb-kicker">{stage === "upload" ? t({ ja: `アップロード中 · 全 ${total || "…"} 枚`, zh: `正在上传 · 共 ${total || "…"} 张`, en: `Uploading · ${total || "…"} cards` }) : t({ ja: `✓ 名刺の写真 ${total} 枚を受け取りました`, zh: `✓ 已接收 ${total} 张名片照片`, en: `✓ ${total} card photos received` })}</span>
+        <h3 className="cb-review-h">{autoRunning ? t({ ja: "もうすぐです。結果を整理しています", zh: "快好了，正在整理结果", en: "Almost there — sorting results" }) : t({ ja: "名刺をバックグラウンドで読み取っています。", zh: "名片正在后台批量解析。", en: "Your cards are being read in the background." })}</h3>
         <p className="cb-p">{sub}</p>
       </div>
       <div className="cb-parse-steps">
@@ -721,19 +726,19 @@ function ParsingPanel({
         ))}
       </div>
       {stage !== "upload" ? (
-        <span className="cb-parse-count"><span>{t({ zh: `已解析 ${settled} / ${total}`, en: `${settled} / ${total} read` })}</span><span>{total ? Math.round((settled / total) * 100) : 0}%</span></span>
+        <span className="cb-parse-count"><span>{t({ ja: `${settled} / ${total} 枚 読み取り済み`, zh: `已解析 ${settled} / ${total}`, en: `${settled} / ${total} read` })}</span><span>{total ? Math.round((settled / total) * 100) : 0}%</span></span>
       ) : null}
       <span className="cb-parse-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}><span style={{ width: `${percent}%` }} /></span>
       {missing > 0 ? (
         <div className="cb-notice cb-notice-warning">
-          {t({ zh: `页面刷新过，还有 ${missing} 张照片需要重新选择（选同一批即可，会按内容自动匹配）。`, en: `The page reloaded — re-select ${missing} photo(s) (same ones; they're matched by content).` })}
-          <button className="btn cb-btn-soft" onClick={onReattach} type="button">{t({ zh: "重新选择照片", en: "Re-select photos" })}</button>
+          {t({ ja: `ページが再読み込みされました。写真 ${missing} 枚を選び直してください（同じものを選べば内容で自動的に照合します）。`, zh: `页面刷新过，还有 ${missing} 张照片需要重新选择（选同一批即可，会按内容自动匹配）。`, en: `The page reloaded — re-select ${missing} photo(s) (same ones; they're matched by content).` })}
+          <button className="btn cb-btn-soft" onClick={onReattach} type="button">{t({ ja: "写真を選び直す", zh: "重新选择照片", en: "Re-select photos" })}</button>
         </div>
       ) : null}
       {uploadFailed ? (
         <div className="cb-notice cb-notice-warning">
-          {t({ zh: "有照片没传上去。", en: "Some photos didn't upload." })}
-          <button className="btn cb-btn-soft" onClick={onRetry} type="button">{t({ zh: "重试上传", en: "Retry upload" })}</button>
+          {t({ ja: "アップロードできなかった写真があります。", zh: "有照片没传上去。", en: "Some photos didn't upload." })}
+          <button className="btn cb-btn-soft" onClick={onRetry} type="button">{t({ ja: "アップロードを再試行", zh: "重试上传", en: "Retry upload" })}</button>
         </div>
       ) : null}
       <div className="cb-parse-wall">
@@ -750,7 +755,7 @@ function ParsingPanel({
                   ? "upload"
                   : "wait";
           const fields = drafts[card.cardId]?.fields;
-          const label: Copy = kind === "done" ? { zh: "已识别", en: "Read" } : kind === "fail" ? { zh: "识别失败", en: "Failed" } : kind === "reading" ? { zh: "识别中", en: "Reading" } : kind === "upload" ? { zh: "上传中", en: "Uploading" } : { zh: "排队中", en: "Queued" };
+          const label: Copy = kind === "done" ? { ja: "読み取り済み", zh: "已识别", en: "Read" } : kind === "fail" ? { ja: "読み取り失敗", zh: "识别失败", en: "Failed" } : kind === "reading" ? { ja: "読み取り中", zh: "识别中", en: "Reading" } : kind === "upload" ? { ja: "アップロード中", zh: "上传中", en: "Uploading" } : { ja: "待機中", zh: "排队中", en: "Queued" };
           return (
             <span className={`cb-mini cb-mini-${kind}`} key={card.cardId}>
               {kind === "reading" ? <span className="cb-mini-scan" aria-hidden /> : null}
@@ -764,17 +769,17 @@ function ParsingPanel({
       </div>
       {stage !== "upload" ? (
         <div className="cb-parse-wait">
-          <span>{t({ zh: "等待的时候，可以先", en: "While you wait, you can" })}</span>
+          <span>{t({ ja: "待っているあいだに", zh: "等待的时候，可以先", en: "While you wait, you can" })}</span>
           <div className="cb-actions cb-actions-tight">
             {onBrowse ? (
               <>
-                <button className="btn cb-btn-dark" onClick={() => onBrowse("events")} type="button">{t({ zh: "看看近期活动", en: "Browse upcoming events" })}</button>
-                <button className="btn cb-btn-outline" onClick={() => onBrowse("home")} type="button">{t({ zh: "去 iOrbit 探索", en: "Explore iOrbit" })}</button>
+                <button className="btn cb-btn-dark" onClick={() => onBrowse("events")} type="button">{t({ ja: "近日のイベントを見る", zh: "看看近期活动", en: "Browse upcoming events" })}</button>
+                <button className="btn cb-btn-outline" onClick={() => onBrowse("home")} type="button">{t({ ja: "iOrbit で探す", zh: "去 iOrbit 探索", en: "Explore iOrbit" })}</button>
               </>
             ) : (
               <>
-                <a className="cb-btn-dark cb-link-btn" href="/app/events">{t({ zh: "看看近期活动", en: "Browse upcoming events" })}</a>
-                <a className="cb-btn-outline cb-link-btn" href="/app/agent">{t({ zh: "去 iOrbit 探索", en: "Explore iOrbit" })}</a>
+                <a className="cb-btn-dark cb-link-btn" href="/app/events">{t({ ja: "近日のイベントを見る", zh: "看看近期活动", en: "Browse upcoming events" })}</a>
+                <a className="cb-btn-outline cb-link-btn" href="/app/agent">{t({ ja: "iOrbit で探す", zh: "去 iOrbit 探索", en: "Explore iOrbit" })}</a>
               </>
             )}
           </div>
@@ -782,7 +787,7 @@ function ParsingPanel({
       ) : null}
       <div className="cb-tip cb-tip-sm">
         <span className="cb-spark" aria-hidden>⛨</span>
-        <span>{t({ zh: "只有没有疑点的名片会自动导入；拿不准的会交给你逐张确认。Orbit 不会以你的名义给任何人发消息。", en: "Only cards with no doubts are imported automatically; anything uncertain comes to you. Orbit never messages anyone on your behalf." })}</span>
+        <span>{t({ ja: "疑わしい点のない名刺だけを自動で取り込みます。迷うものは 1 枚ずつ確認をお願いします。Orbit があなたの名前で誰かにメッセージを送ることはありません。", zh: "只有没有疑点的名片会自动导入；拿不准的会交给你逐张确认。Orbit 不会以你的名义给任何人发消息。", en: "Only cards with no doubts are imported automatically; anything uncertain comes to you. Orbit never messages anyone on your behalf." })}</span>
       </div>
     </div>
   );
@@ -815,23 +820,23 @@ function CardBatchRemindersBody({ batch, hidePendingPill = false, onOpen, t, vie
     return (
       <div className="cb-modal-scrim" role="dialog" aria-modal="true" aria-labelledby="cb-parse-done-title">
         <div className="cb-modal">
-          <button aria-label={t({ zh: "关闭", en: "Close" })} className="btn cb-modal-close" onClick={markNotified} type="button">×</button>
+          <button aria-label={t({ ja: "閉じる", zh: "关闭", en: "Close" })} className="btn cb-modal-close" onClick={markNotified} type="button">×</button>
           <span className="cb-modal-badge" aria-hidden>✓</span>
           <div className="cb-head">
-            <h2 className="cb-modal-title" id="cb-parse-done-title">{t({ zh: `${total} 张名片解析完毕`, en: `${total} cards read` })}</h2>
+            <h2 className="cb-modal-title" id="cb-parse-done-title">{t({ ja: `名刺 ${total} 枚の読み取りが完了`, zh: `${total} 张名片解析完毕`, en: `${total} cards read` })}</h2>
             <p className="cb-p cb-p-sm">{pending.length
-              ? t({ zh: "识别可靠的已自动导入。还有几张不太确定，需要你对照照片看一眼，大约 1 分钟。", en: "The clear ones are already imported. A few are uncertain — check them against the photo, about a minute." })
-              : t({ zh: "全部识别可靠，已自动导入你的人脉。", en: "All of them were clear and are now in your network." })}</p>
+              ? t({ ja: "確実なものは自動で取り込みました。不確かなものが数枚あるので、写真と見比べて確認してください。1 分ほどで終わります。", zh: "识别可靠的已自动导入。还有几张不太确定，需要你对照照片看一眼，大约 1 分钟。", en: "The clear ones are already imported. A few are uncertain — check them against the photo, about a minute." })
+              : t({ ja: "すべて確実に読み取れたので、人脈に自動で取り込みました。", zh: "全部识别可靠，已自动导入你的人脉。", en: "All of them were clear and are now in your network." })}</p>
           </div>
           <div className="cb-modal-stats">
-            <span className="cb-fin-stat"><strong>{autoCount}</strong><span>{t({ zh: "已自动导入", en: "Auto-imported" })}</span></span>
-            <span className="cb-fin-stat cb-fin-stat-amber"><strong>{pending.length}</strong><span>{t({ zh: "需要你确认", en: "Need your check" })}</span></span>
+            <span className="cb-fin-stat"><strong>{autoCount}</strong><span>{t({ ja: "自動で取り込み済み", zh: "已自动导入", en: "Auto-imported" })}</span></span>
+            <span className="cb-fin-stat cb-fin-stat-amber"><strong>{pending.length}</strong><span>{t({ ja: "確認が必要", zh: "需要你确认", en: "Need your check" })}</span></span>
           </div>
           <div className="cb-modal-actions">
             <button className="btn cb-review-confirm" onClick={() => { markNotified(); onOpen(); }} type="button">
-              {pending.length ? t({ zh: `去确认 ${pending.length} 张名片`, en: `Check ${pending.length} card(s)` }) : t({ zh: "查看结果", en: "See results" })}
+              {pending.length ? t({ ja: `名刺 ${pending.length} 枚を確認する`, zh: `去确认 ${pending.length} 张名片`, en: `Check ${pending.length} card(s)` }) : t({ ja: "結果を見る", zh: "查看结果", en: "See results" })}
             </button>
-            <button className="btn cb-text-btn cb-modal-later" onClick={markNotified} type="button">{t({ zh: "稍后再说", en: "Later" })}</button>
+            <button className="btn cb-text-btn cb-modal-later" onClick={markNotified} type="button">{t({ ja: "あとで", zh: "稍后再说", en: "Later" })}</button>
           </div>
         </div>
       </div>
@@ -843,7 +848,7 @@ function CardBatchRemindersBody({ batch, hidePendingPill = false, onOpen, t, vie
       <button className="btn cb-float-pill" onClick={onOpen} type="button">
         <span className="cb-spark" aria-hidden>✦</span>
         <span className="cb-float-copy">
-          <span>{status === "collecting" ? t({ zh: "正在上传名片", en: "Uploading cards" }) : t({ zh: `正在解析名片 ${settledCount}/${total}`, en: `Reading cards ${settledCount}/${total}` })}</span>
+          <span>{status === "collecting" ? t({ ja: "名刺をアップロード中", zh: "正在上传名片", en: "Uploading cards" }) : t({ ja: `名刺を読み取り中 ${settledCount}/${total}`, zh: `正在解析名片 ${settledCount}/${total}`, en: `Reading cards ${settledCount}/${total}` })}</span>
           <span className="cb-float-track"><span style={{ width: `${status === "collecting" ? 8 : percent}%` }} /></span>
         </span>
       </button>
@@ -853,7 +858,7 @@ function CardBatchRemindersBody({ batch, hidePendingPill = false, onOpen, t, vie
   if (pending.length > 0 && !hidePendingPill) {
     return (
       <button className="btn cb-float-pill cb-float-pill-dark" onClick={onOpen} type="button">
-        {t({ zh: `${pending.length} 张名片待你确认 →`, en: `${pending.length} card(s) to check →` })}
+        {t({ ja: `確認待ちの名刺 ${pending.length} 枚 →`, zh: `${pending.length} 张名片待你确认 →`, en: `${pending.length} card(s) to check →` })}
       </button>
     );
   }
@@ -863,19 +868,19 @@ function CardBatchRemindersBody({ batch, hidePendingPill = false, onOpen, t, vie
 // R12：同名候选（DESIGN §2.3，只提示不统合）。
 const SAME_NAME_REASON = { ja: "同じ名前", zh: "同名", en: "Same name" };
 const MATCH_REASON: Record<ContactCandidate["matchedOn"][number], Copy> = {
-  email: { zh: "同邮箱", en: "Same email" },
+  email: { ja: "同じメール", zh: "同邮箱", en: "Same email" },
   name: SAME_NAME_REASON,
-  name_organization: { zh: "同名同公司", en: "Same name & company" },
-  phone: { zh: "同电话", en: "Same phone" },
+  name_organization: { ja: "同じ名前・会社", zh: "同名同公司", en: "Same name & company" },
+  phone: { ja: "同じ電話番号", zh: "同电话", en: "Same phone" },
 };
 
 const CANDIDATE_ROWS: readonly { field: "displayName" | "organization" | "role" | "phone" | "email" | "address"; label: Copy }[] = [
-  { field: "displayName", label: { zh: "姓名", en: "Name" } },
-  { field: "organization", label: { zh: "公司", en: "Company" } },
-  { field: "role", label: { zh: "职位", en: "Title" } },
-  { field: "phone", label: { zh: "电话", en: "Phone" } },
-  { field: "email", label: { zh: "邮箱", en: "Email" } },
-  { field: "address", label: { zh: "地址", en: "Address" } },
+  { field: "displayName", label: { ja: "名前", zh: "姓名", en: "Name" } },
+  { field: "organization", label: { ja: "会社", zh: "公司", en: "Company" } },
+  { field: "role", label: { ja: "役職", zh: "职位", en: "Title" } },
+  { field: "phone", label: { ja: "電話", zh: "电话", en: "Phone" } },
+  { field: "email", label: { ja: "メール", zh: "邮箱", en: "Email" } },
+  { field: "address", label: { ja: "住所", zh: "地址", en: "Address" } },
 ];
 
 function sameValue(field: string, left: string, right: string): boolean {
@@ -889,7 +894,7 @@ function CandidatePanel({ candidate, draft, t }: { candidate: ContactCandidate; 
   return (
     <div className="cb-match">
       <div className="cb-match-head">
-        <span className="cb-match-title"><span className="cb-spark" aria-hidden>✦</span><strong>{t({ zh: "可能是同一个联系人", en: "Possibly the same person" })}</strong></span>
+        <span className="cb-match-title"><span className="cb-spark" aria-hidden>✦</span><strong>{t({ ja: "同じ連絡先かもしれません", zh: "可能是同一个联系人", en: "Possibly the same person" })}</strong></span>
         <span className="cb-match-why">{candidate.matchedOn.map(reason => t(MATCH_REASON[reason])).join(" · ")}</span>
       </div>
       <dl className="cb-match-grid">
@@ -898,11 +903,11 @@ function CandidatePanel({ candidate, draft, t }: { candidate: ContactCandidate; 
           const card = draft.fields[field].trim();
           const state = !existing && !card ? "none" : !existing ? "fill" : !card ? "keep" : sameValue(field, existing, card) ? "same" : "diff";
           const tag: Record<string, Copy | null> = {
-            diff: { zh: "与名片不同", en: "Differs" },
-            fill: { zh: "名片可补充", en: "Card adds this" },
+            diff: { ja: "名刺と違う", zh: "与名片不同", en: "Differs" },
+            fill: { ja: "名刺で補える", zh: "名片可补充", en: "Card adds this" },
             keep: null,
             none: null,
-            same: { zh: "一致", en: "Same" },
+            same: { ja: "一致", zh: "一致", en: "Same" },
           };
           return (
             <div className={`cb-match-row cb-match-${state}`} key={field}>
@@ -923,20 +928,20 @@ function FinishedPanel({ autoCount, laterCount, mergedCount, onReset, setAside, 
   return (
     <section className="cb-fin">
       <div className="cb-head">
-        <span className="cb-fin-kicker">{t({ zh: "✓ 本批名片已全部处理", en: "✓ This batch is done" })}</span>
+        <span className="cb-fin-kicker">{t({ ja: "✓ このまとまりはすべて処理しました", zh: "✓ 本批名片已全部处理", en: "✓ This batch is done" })}</span>
         <h3 className="cb-review-h">{mergedCount
-          ? t({ zh: `本批 ${total} 张名片，${autoCount + userCount} 位新联系人已进入你的人脉，${mergedCount} 张并入了已有联系人。`, en: `${total} cards — ${autoCount + userCount} new contacts added, ${mergedCount} merged into existing ones.` })
-          : t({ zh: `本批 ${total} 张名片，${autoCount + userCount} 位联系人已进入你的人脉。`, en: `${total} cards — ${autoCount + userCount} contacts are now in your network.` })}</h3>
+          ? t({ ja: `今回の名刺 ${total} 枚。新しい連絡先 ${autoCount + userCount} 人を人脈に追加し、${mergedCount} 枚を既存の連絡先に統合しました。`, zh: `本批 ${total} 张名片，${autoCount + userCount} 位新联系人已进入你的人脉，${mergedCount} 张并入了已有联系人。`, en: `${total} cards — ${autoCount + userCount} new contacts added, ${mergedCount} merged into existing ones.` })
+          : t({ ja: `今回の名刺 ${total} 枚。${autoCount + userCount} 人が人脈に追加されました。`, zh: `本批 ${total} 张名片，${autoCount + userCount} 位联系人已进入你的人脉。`, en: `${total} cards — ${autoCount + userCount} contacts are now in your network.` })}</h3>
       </div>
       <div className="cb-fin-stats">
-        <span className="cb-fin-stat"><strong>{autoCount}</strong><span>{t({ zh: "自动导入", en: "Auto-imported" })}</span></span>
-        <span className="cb-fin-stat cb-fin-stat-indigo"><strong>{userCount}</strong><span>{t({ zh: "经你确认", en: "Confirmed by you" })}</span></span>
-        {mergedCount ? <span className="cb-fin-stat cb-fin-stat-indigo"><strong>{mergedCount}</strong><span>{t({ zh: "并入已有联系人", en: "Merged into existing" })}</span></span> : null}
-        <span className="cb-fin-stat"><strong>{setAside}</strong><span>{t({ zh: "稍后处理 / 已删除", en: "Later / removed" })}</span></span>
+        <span className="cb-fin-stat"><strong>{autoCount}</strong><span>{t({ ja: "自動で取り込み", zh: "自动导入", en: "Auto-imported" })}</span></span>
+        <span className="cb-fin-stat cb-fin-stat-indigo"><strong>{userCount}</strong><span>{t({ ja: "あなたが確認", zh: "经你确认", en: "Confirmed by you" })}</span></span>
+        {mergedCount ? <span className="cb-fin-stat cb-fin-stat-indigo"><strong>{mergedCount}</strong><span>{t({ ja: "既存の連絡先に統合", zh: "并入已有联系人", en: "Merged into existing" })}</span></span> : null}
+        <span className="cb-fin-stat"><strong>{setAside}</strong><span>{t({ ja: "あとで・削除", zh: "稍后处理 / 已删除", en: "Later / removed" })}</span></span>
       </div>
-      {laterCount ? <span className="cb-label-note cb-privacy">{t({ zh: `${laterCount} 张「稍后处理」的名片会留在人脉 → 导入人脉里，随时可以继续确认。`, en: `${laterCount} card(s) set aside stay under Network → Import, ready whenever you are.` })}</span> : null}
+      {laterCount ? <span className="cb-label-note cb-privacy">{t({ ja: `「あとで」にした名刺 ${laterCount} 枚は「人脈 → 人脈を取り込む」に残ります。いつでも確認を続けられます。`, zh: `${laterCount} 张「稍后处理」的名片会留在人脉 → 导入人脉里，随时可以继续确认。`, en: `${laterCount} card(s) set aside stay under Network → Import, ready whenever you are.` })}</span> : null}
       <div className="cb-actions">
-        <button className="btn cb-link-under cb-link-under-strong" onClick={onReset} type="button">{t({ zh: "再上传一批名片", en: "Upload another batch" })}</button>
+        <button className="btn cb-link-under cb-link-under-strong" onClick={onReset} type="button">{t({ ja: "別の名刺をアップロード", zh: "再上传一批名片", en: "Upload another batch" })}</button>
       </div>
     </section>
   );

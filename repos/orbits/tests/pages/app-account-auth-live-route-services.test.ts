@@ -225,7 +225,6 @@ test("app account auth loader returns form copy without consulting mock account 
   assert.equal(routeModel.state, "success");
   if (routeModel.state === "success") {
     assert.equal(routeModel.auth.mode, "signup");
-    assert.equal(routeModel.auth.title, "创建你的 Orbit 账号");
     assert.equal(routeModel.auth.defaultNext, "/app/home");
     assert.ok(!("session" in routeModel));
   }

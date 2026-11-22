@@ -387,11 +387,12 @@ export function FormField({
 }
 
 export function StatusBadge({ language = "zh", status }: { language?: OrbitLanguage; status: string }) {
+  const pick = (text: { ja: string; zh: string; en: string }) => text[language] ?? text.zh;
   const copy = {
-    active: language === "en" ? "Live" : "进行中",
-    ended: language === "en" ? "Ended" : "已结束",
-    unknown: language === "en" ? "TBD" : "时间待定",
-    upcoming: language === "en" ? "Upcoming" : "即将开始",
+    active: pick({ ja: "開催中", zh: "进行中", en: "Live" }),
+    ended: pick({ ja: "終了", zh: "已结束", en: "Ended" }),
+    unknown: pick({ ja: "日時未定", zh: "时间待定", en: "TBD" }),
+    upcoming: pick({ ja: "開催予定", zh: "即将开始", en: "Upcoming" }),
   };
 
   if (status === "active" || status === "live") {

@@ -51,7 +51,7 @@ export function StepPlan({
   samples: readonly StartContactSample[];
 }) {
   const { language, preserveHref, t } = useStartCopy();
-  const editorLang = language === "en" ? "en" : "zh";
+  const editorLang = language;
   const parsed = parseRelationshipGoal(goal);
   const [priority, setPriority] = useState(0);
   const plan = planGoalFor(goal, priority);
@@ -120,7 +120,7 @@ export function StepPlan({
     } catch (caught) {
       setError(caught instanceof Error && "code" in caught && caught.code === "PROFILE_VERSION_CONFLICT"
         ? t({ en: "Your goal changed elsewhere. Refresh and review it before saving.", zh: "目标已在另一处更新。请刷新并核对后再保存。", ja: "別の画面で目標が更新されました。再読み込みして内容を確認してください。" })
-        : t({ en: "Couldn't save your goal. Please try again.", zh: "目标没有保存成功，请再试一次。" }));
+        : t({ en: "Couldn't save your goal. Please try again.", zh: "目标没有保存成功，请再试一次。", ja: "目標を保存できませんでした。もう一度お試しください。" }));
     } finally {
       setSaving(false);
     }
@@ -147,18 +147,18 @@ export function StepPlan({
   return (
     <article className="sg-lead" data-start-module="3">
       <div className="sg-meta">
-        <span className="sg-pill">{t({ en: "Step 3 · Plan", zh: "第 3 步 · 计划" })}</span>
-        {planDone ? <span className="sg-pill sg-pill-good">{t({ en: "✓ Done", zh: "✓ 已完成" })}</span> : null}
+        <span className="sg-pill">{t({ en: "Step 3 · Plan", zh: "第 3 步 · 计划", ja: "ステップ 3 · プラン" })}</span>
+        {planDone ? <span className="sg-pill sg-pill-good">{t({ en: "✓ Done", zh: "✓ 已完成", ja: "完了" })}</span> : null}
       </div>
 
-      <h2>{t({ en: "Let iOrbit make your first plan", zh: "让 iOrbit 做你的第一份计划" })}</h2>
+      <h2>{t({ en: "Let iOrbit make your first plan", zh: "让 iOrbit 做你的第一份计划", ja: "最初のプランをつくる" })}</h2>
 
       <div className="sg-goalbox" data-editing={editing ? "true" : "false"} data-start-goalbox>
         <div className="sg-goalbox-h">
-          <span>{t({ en: "Your goal · you can change it before asking", zh: "你的目标 · 问之前可以再改一次" })}</span>
+          <span>{t({ en: "Your goal · you can change it before asking", zh: "你的目标 · 问之前可以再改一次", ja: "保存済みの目標 · 変更できます" })}</span>
           {editing ? null : (
             <button className="btn sg-link" data-start-goal-edit onClick={startEdit} type="button">
-              {parsed.text ? t({ en: "Edit", zh: "修改" }) : t({ en: "Write one", zh: "写目标" })}
+              {parsed.text ? t({ en: "Edit", zh: "修改", ja: "変更" }) : t({ en: "Write one", zh: "写目标", ja: "目標を書く" })}
             </button>
           )}
         </div>
@@ -182,7 +182,7 @@ export function StepPlan({
                 }}
                 type="button"
               >
-                {t({ en: "Cancel", zh: "取消" })}
+                {t({ en: "Cancel", zh: "取消", ja: "キャンセル" })}
               </button>
               <button
                 aria-busy={saving ? "true" : undefined}
@@ -192,7 +192,7 @@ export function StepPlan({
                 onClick={() => void saveEdit()}
                 type="button"
               >
-                {saving ? t({ en: "Saving…", zh: "正在保存…" }) : t({ en: "Save changes", zh: "保存修改" })}
+                {saving ? t({ en: "Saving…", zh: "正在保存…", ja: "保存中…" }) : t({ en: "Save changes", zh: "保存修改", ja: "変更を保存" })}
               </button>
             </div>
             <p className="sg-error" role="alert">
@@ -210,7 +210,7 @@ export function StepPlan({
           </>
         ) : (
           <p className="sg-goal-empty">
-            {t({ en: "No goal yet — write one before asking.", zh: "还没有目标，先写一句再问。" })}
+            {t({ en: "No goal yet — write one before asking.", zh: "还没有目标，先写一句再问。", ja: "まず目標を一文で書いてください。" })}
           </p>
         )}
       </div>
@@ -239,9 +239,9 @@ export function StepPlan({
       ) : null}
 
       <div className="sg-reads">
-        <span>{t({ en: "iOrbit will read:", zh: "iOrbit 会读到：" })}</span>
+        <span>{t({ en: "iOrbit will read:", zh: "iOrbit 会读到：", ja: "プランに使う情報：" })}</span>
         <span>
-          <b>{t({ en: "your goal", zh: "你的目标" })}</b>
+          <b>{t({ en: "your goal", zh: "你的目标", ja: "目標" })}</b>
         </span>
         <span>
           <b>{t({ en: `${confirmedContacts} contacts`, zh: `${confirmedContacts} 位联系人`, ja: `${confirmedContacts} 人の連絡先` })}</b>
@@ -251,7 +251,7 @@ export function StepPlan({
 
       <p className="sg-question" data-start-question>
         <span aria-hidden className="sg-ask-badge">
-          {t({ en: "Q", zh: "问" })}
+          {t({ en: "Q", zh: "问", ja: "質問" })}
         </span>
         {t(START_PLAN_QUESTION)}
       </p>

@@ -8,7 +8,7 @@ import { taskCategoryLabel, taskTimeLabel, type TaskSuggestionView, type TaskRow
 export function TasksFeedback({ error, message }: { error: unknown; message?: string }) {
   const { language } = useOrbitLanguage();
   return <>
-    {error ? <p className="task-error" role="alert">{tasksErrorMessage(error, language !== "zh")}</p> : null}
+    {error ? <p className="task-error" role="alert">{tasksErrorMessage(error, language)}</p> : null}
     {message ? <p className="task-success" role="status">{message}</p> : null}
   </>;
 }

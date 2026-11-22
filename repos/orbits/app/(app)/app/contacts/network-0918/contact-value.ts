@@ -20,7 +20,7 @@ import {
 import type { RelationshipTimelineItem } from "../../../../../shared/contract/relationship-timeline";
 import type { ContactValueInsight } from "../../../../../features/contacts/insights/value-lines";
 
-type Copy = { en: string; zh: string };
+type Copy = { ja: string; en: string; zh: string };
 
 export interface InsightNextStepInput {
   state: string;
@@ -53,7 +53,7 @@ export function contactWhyNow(weekAction: ContactWhyNowAction | null | undefined
   if (!weekAction || !detail) return null;
   const phaseTitle = weekAction.phaseTitle?.trim();
   if (weekAction.phaseNo !== null && phaseTitle) {
-    return `${t({ en: `Phase ${weekAction.phaseNo} · ${phaseTitle}`, zh: `阶段 ${weekAction.phaseNo} · ${phaseTitle}` })}${t({ en: ": ", zh: "：" })}${detail}`;
+    return `${t({ ja: `フェーズ ${weekAction.phaseNo} · ${phaseTitle}`, en: `Phase ${weekAction.phaseNo} · ${phaseTitle}`, zh: `阶段 ${weekAction.phaseNo} · ${phaseTitle}` })}${t({ ja: "：", en: ": ", zh: "：" })}${detail}`;
   }
   return detail;
 }
@@ -133,15 +133,15 @@ export function contactValueLine(input: ContactValueLineInput, t: (copy: Copy) =
   const who = input.subtitle?.trim() || input.name.trim() || "—";
   const parts: string[] = [];
   const needTitle = input.needTitle?.trim();
-  if (needTitle) parts.push(t({ en: `May fit: plan need “${needTitle}”`, zh: `可能对应：计划需求『${needTitle}』` }));
+  if (needTitle) parts.push(t({ ja: `該当しそう：プランの必要人脈「${needTitle}」`, en: `May fit: plan need “${needTitle}”`, zh: `可能对应：计划需求『${needTitle}』` }));
   const industry = input.industry?.trim();
-  if (industry) parts.push(t({ en: `Same industry: ${industry}`, zh: `同属 ${industry}` }));
+  if (industry) parts.push(t({ ja: `同じ業界：${industry}`, en: `Same industry: ${industry}`, zh: `同属 ${industry}` }));
   const tail =
     state === "failed"
-      ? t({ en: "“How they can help” couldn't be generated for now", zh: "「TA 能帮你」暂时没生成出来" })
+      ? t({ ja: "「この人に頼めること」をまだ作れませんでした", en: "“How they can help” couldn't be generated for now", zh: "「TA 能帮你」暂时没生成出来" })
       : state === "no_goal"
-        ? t({ en: "Set a relationship goal to see how they can help", zh: "设置关系目标后生成「TA 能帮你」" })
-        : t({ en: "“How they can help” is being generated — usually within a minute", zh: "「TA 能帮你」生成中，通常 1 分钟内出现" });
+        ? t({ ja: "関係の目標を設定すると「この人に頼めること」が出ます", en: "Set a relationship goal to see how they can help", zh: "设置关系目标后生成「TA 能帮你」" })
+        : t({ ja: "「この人に頼めること」を作成中です。通常 1 分以内に表示されます", en: "“How they can help” is being generated — usually within a minute", zh: "「TA 能帮你」生成中，通常 1 分钟内出现" });
   return {
     context: parts.length ? parts.join(" · ") : null,
     kind: "fallback",

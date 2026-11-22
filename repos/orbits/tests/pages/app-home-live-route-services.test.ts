@@ -148,7 +148,7 @@ test("app home does not relabel event records as registrations", () => {
 
   assert.doesNotMatch(homeRouteSource, /youRsvped: true/);
   assert.doesNotMatch(homeRouteSource, /function eventChoiceToLandingEvent/);
-  assert.match(homeRouteSource, /import \{ eventChoiceToLandingEvent \}/);
+  assert.match(homeRouteSource, /import \{ eventChoiceToLandingEventIn \}/);
   assert.doesNotMatch(homeUiSource, /报名活动/);
   assert.match(homeUiSource, /en: "Events", zh: "活动"/);
 });
@@ -189,8 +189,8 @@ test("app home hub entry cards link to live app routes", () => {
   assert.match(homeUiSource, /href: "\/app\/profile"/);
   assert.match(homeUiSource, /href: "\/app\/contacts"/);
   assert.match(homeUiSource, /href: "\/app\/tasks\?tab=calendar"/);
-  assert.match(homeUiSource, /title: t\(\{ en: "Universal profile", zh: "通用画像" \}\)/);
-  assert.match(homeUiSource, /sub: t\(\{ en: "Meetings and interaction log", zh: "约见与交往记录" \}\)/);
+  assert.match(homeUiSource, /title: t\(\{ ja: "共通プロフィール", en: "Universal profile", zh: "通用画像" \}\)/);
+  assert.match(homeUiSource, /sub: t\(\{ ja: "面談とやりとりの記録", en: "Meetings and interaction log", zh: "约见与交往记录" \}\)/);
   assert.match(homeUiSource, /<h3 className="h-section"[^>]*>\{item\.title\}<\/h3>/);
   assert.match(homeUiSource, /<span style=\{\{ color: "var\(--ink-3-text\)".*>\{item\.sub\}<\/span>/);
   assert.doesNotMatch(homeUiSource, /mobileTitle:/);

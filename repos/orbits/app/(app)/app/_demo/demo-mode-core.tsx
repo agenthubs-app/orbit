@@ -134,20 +134,21 @@ function useGuideCopy(view: DemoModeView | null) {
   if (!view) return null;
   const cta =
     view.completed === 0
-      ? t({ en: "Start the guide →", zh: "开始引导 →" })
-      : t({ en: "Continue the guide →", zh: "继续引导 →" });
+      ? t({ ja: "ガイドを始める →", en: "Start the guide →", zh: "开始引导 →" })
+      : t({ ja: "ガイドを続ける →", en: "Continue the guide →", zh: "继续引导 →" });
   const next =
     view.nextStep === "contacts"
       ? view.confirmedContacts === 0
-        ? t({ en: "add 3 business cards", zh: "放进 3 张名片" })
-        : t({ en: "confirm cards until you have 3", zh: "确认名片，凑够 3 位" })
+        ? t({ ja: "名刺を3枚追加する", en: "add 3 business cards", zh: "放进 3 张名片" })
+        : t({ ja: "名刺を確認して3人にする", en: "confirm cards until you have 3", zh: "确认名片，凑够 3 位" })
       : view.nextStep === "goal"
-        ? t({ en: "set your goal", zh: "设定目标" })
-        : t({ en: "generate your first plan", zh: "生成第一份计划" });
+        ? t({ ja: "目標を決める", en: "set your goal", zh: "设定目标" })
+        : t({ ja: "最初のプランをつくる", en: "generate your first plan", zh: "生成第一份计划" });
   const sub =
     view.completed === 0
-      ? t({ en: "3 steps and this becomes your own data", zh: "3 步就能换成你的数据" })
+      ? t({ ja: "3ステップで、あなた自身のデータに切り替わります", en: "3 steps and this becomes your own data", zh: "3 步就能换成你的数据" })
       : t({
+          ja: `進捗 ${view.completed} / 3 · 次は${next}`,
           en: `Progress ${view.completed} / 3 · Next: ${next}`,
           zh: `进度 ${view.completed} / 3 · 下一步：${next}`,
         });
@@ -155,6 +156,7 @@ function useGuideCopy(view: DemoModeView | null) {
 }
 
 const HOME_BANNER_MESSAGE = {
+  ja: "ガイドを終えると、ここがあなた自身の今日の予定とプランになります。",
   en: "Once you finish the guide, this becomes your own today and your own plan.",
   zh: "完成引导后，这里会是你自己的今日要事和计划。",
 };
@@ -163,7 +165,7 @@ const HOME_BANNER_MESSAGE = {
  * 页面顶部的「示例预览」横条；收起后不渲染（改由导航药丸承接）。`message` 是各页自己的
  * 一句话（W0005 人脉页：「完成引导后，这里换成你自己的人脉。」），缺省为首页那句。
  */
-export function DemoBanner({ message = HOME_BANNER_MESSAGE }: { message?: { en: string; zh: string } } = {}) {
+export function DemoBanner({ message = HOME_BANNER_MESSAGE }: { message?: { en: string; ja?: string; zh: string } } = {}) {
   const demo = useDemoMode();
   const view = demo?.view ?? null;
   const copy = useGuideCopy(view);
@@ -171,7 +173,7 @@ export function DemoBanner({ message = HOME_BANNER_MESSAGE }: { message?: { en: 
   const { cta, sub, t } = copy;
   return (
     <div className="ir-demo-bar" data-orbit-guide-demo-banner role="note">
-      <span className="ir-demo-tagline">{t({ en: "DEMO PREVIEW", zh: "示例预览" })}</span>
+      <span className="ir-demo-tagline">{t({ ja: "サンプル表示", en: "DEMO PREVIEW", zh: "示例预览" })}</span>
       <p className="ir-demo-msg">
         {t(message)}
         <small>{sub}</small>
@@ -185,13 +187,13 @@ export function DemoBanner({ message = HOME_BANNER_MESSAGE }: { message?: { en: 
         {cta}
       </a>
       <button
-        aria-label={t({ en: "Collapse the demo notice", zh: "收起提示" })}
+        aria-label={t({ ja: "案内をたたむ", en: "Collapse the demo notice", zh: "收起提示" })}
         className="btn ir-demo-collapse"
         data-orbit-guide-demo-collapse
         onClick={() => demo.setCollapsed(true)}
         type="button"
       >
-        {t({ en: "Collapse", zh: "收起" })}
+        {t({ ja: "たたむ", en: "Collapse", zh: "收起" })}
       </button>
     </div>
   );
@@ -203,7 +205,7 @@ export function DemoTag() {
   const { t } = useOrbitLanguage();
   return (
     <span className="ir-demo-tag" data-orbit-guide-demo-tag>
-      {t({ en: "Demo", zh: "示例" })}
+      {t({ ja: "サンプル", en: "Demo", zh: "示例" })}
     </span>
   );
 }
@@ -221,8 +223,8 @@ function DemoWriteGuard({
   const cardRef = useOrbitModalA11y(onClose);
   const cta =
     view.completed === 0
-      ? t({ en: "Start the guide →", zh: "开始引导 →" })
-      : t({ en: "Continue the guide →", zh: "继续引导 →" });
+      ? t({ ja: "ガイドを始める →", en: "Start the guide →", zh: "开始引导 →" })
+      : t({ ja: "ガイドを続ける →", en: "Continue the guide →", zh: "继续引导 →" });
   return (
     <div
       className="ir-demo-scrim"
@@ -240,16 +242,17 @@ function DemoWriteGuard({
         role="dialog"
         tabIndex={-1}
       >
-        <h3 id="ir-demo-intercept-title">{t({ en: "This is a demo", zh: "这是示例" })}</h3>
+        <h3 id="ir-demo-intercept-title">{t({ ja: "これはサンプルです", en: "This is a demo", zh: "这是示例" })}</h3>
         <p>
           {t({
+            ja: `ガイドを終えると、ここはあなた自身の${label}になり、そのまま操作できます。現在の進捗 ${view.completed} / 3。`,
             en: `Once you finish the guide, this will be your own ${label}, and you can act on it directly. Progress: ${view.completed} / 3.`,
             zh: `完成引导后，这里会是你自己的${label}，可以直接操作。现在进度 ${view.completed} / 3。`,
           })}
         </p>
         <div className="ir-demo-sheet-acts">
           <button className="btn ir-demo-dismiss" data-orbit-guide-demo-dismiss onClick={onClose} type="button">
-            {t({ en: "Got it", zh: "知道了" })}
+            {t({ ja: "OK", en: "Got it", zh: "知道了" })}
           </button>
           <a className="ir-demo-cta ir-demo-cta-primary" href={GUIDE_START_HREF}>
             {cta}

@@ -65,7 +65,8 @@ export function discoverWhen(iso: string, language: OrbitLanguage, withTime = tr
   if (!p) return "";
   const wd = WEEKDAYS[language][p.weekday];
   const date = language === "en" ? `${wd} ${p.month}/${p.day}` : `${p.month}/${p.day}（${wd}）`;
-  return withTime && Number(p.hh) >= 17 ? `${date}${p.hh}:${p.mm}` : date;
+  // 英文「Tue 10/27 19:00」要空格；日中「10/27（火）19:00」括号后不空。
+  return withTime && Number(p.hh) >= 17 ? `${date}${language === "en" ? " " : ""}${p.hh}:${p.mm}` : date;
 }
 export const monthDay = (iso: string) => { const p = tokyo(iso); return p ? `${p.month}/${p.day}` : ""; };
 export const dayMonth = (iso: string, t: JourneyT) => { const p = tokyo(iso); return p ? { day: p.day, month: t("monthLabel", { m: p.month }) } : { day: 0, month: "" }; };

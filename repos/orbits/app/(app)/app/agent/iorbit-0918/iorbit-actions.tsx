@@ -52,42 +52,43 @@ const TIER_SKIN: Record<
  */
 const OPERATION_SKIN: Record<
   string,
-  { cta: { en: string; zh: string }; glyph: string }
+  { cta: { en: string; ja: string; zh: string }; glyph: string }
 > = {
-  accept_intro_request: { cta: { en: "View intro ›", zh: "查看引荐 ›" }, glyph: "⚇" },
-  add_to_orbit_schedule: { cta: { en: "View schedule ›", zh: "查看日程 ›" }, glyph: "▦" },
-  archive_contacts: { cta: { en: "View contacts ›", zh: "查看联系人 ›" }, glyph: "⚇" },
-  create_followup_reminder: { cta: { en: "View reminder ›", zh: "查看提醒 ›" }, glyph: "◷" },
-  create_followup_task: { cta: { en: "View task ›", zh: "查看任务 ›" }, glyph: "▤" },
-  create_intro_request: { cta: { en: "View intro ›", zh: "查看引荐 ›" }, glyph: "⚇" },
-  create_preparation_task: { cta: { en: "View task ›", zh: "查看任务 ›" }, glyph: "▤" },
-  generate_meeting_brief: { cta: { en: "View brief ›", zh: "查看简报 ›" }, glyph: "▥" },
-  propose_meeting_slots: { cta: { en: "View slots ›", zh: "查看时间 ›" }, glyph: "▦" },
-  save_event_goal: { cta: { en: "View goal ›", zh: "查看目标 ›" }, glyph: "◎" },
-  save_meeting_note: { cta: { en: "View note ›", zh: "查看纪要 ›" }, glyph: "▥" },
-  save_memory: { cta: { en: "View memory ›", zh: "查看记忆 ›" }, glyph: "✦" },
-  save_message_draft: { cta: { en: "View draft ›", zh: "查看草稿 ›" }, glyph: "✉" },
-  sync_event_to_calendar: { cta: { en: "View schedule ›", zh: "查看日程 ›" }, glyph: "▦" },
+  accept_intro_request: { cta: { ja: "紹介を見る ›", en: "View intro ›", zh: "查看引荐 ›" }, glyph: "⚇" },
+  add_to_orbit_schedule: { cta: { ja: "予定を見る ›", en: "View schedule ›", zh: "查看日程 ›" }, glyph: "▦" },
+  archive_contacts: { cta: { ja: "連絡先を見る ›", en: "View contacts ›", zh: "查看联系人 ›" }, glyph: "⚇" },
+  create_followup_reminder: { cta: { ja: "リマインダーを見る ›", en: "View reminder ›", zh: "查看提醒 ›" }, glyph: "◷" },
+  create_followup_task: { cta: { ja: "タスクを見る ›", en: "View task ›", zh: "查看任务 ›" }, glyph: "▤" },
+  create_intro_request: { cta: { ja: "紹介を見る ›", en: "View intro ›", zh: "查看引荐 ›" }, glyph: "⚇" },
+  create_preparation_task: { cta: { ja: "タスクを見る ›", en: "View task ›", zh: "查看任务 ›" }, glyph: "▤" },
+  generate_meeting_brief: { cta: { ja: "ブリーフを見る ›", en: "View brief ›", zh: "查看简报 ›" }, glyph: "▥" },
+  propose_meeting_slots: { cta: { ja: "候補日時を見る ›", en: "View slots ›", zh: "查看时间 ›" }, glyph: "▦" },
+  save_event_goal: { cta: { ja: "目標を見る ›", en: "View goal ›", zh: "查看目标 ›" }, glyph: "◎" },
+  save_meeting_note: { cta: { ja: "メモを見る ›", en: "View note ›", zh: "查看纪要 ›" }, glyph: "▥" },
+  save_memory: { cta: { ja: "記憶を見る ›", en: "View memory ›", zh: "查看记忆 ›" }, glyph: "✦" },
+  save_message_draft: { cta: { ja: "下書きを見る ›", en: "View draft ›", zh: "查看草稿 ›" }, glyph: "✉" },
+  sync_event_to_calendar: { cta: { ja: "予定を見る ›", en: "View schedule ›", zh: "查看日程 ›" }, glyph: "▦" },
 };
 
 /** 旧屏（`orbit-agent-actions.tsx`）的本地化状态标签，逐字保留。 */
-const STATUS_LABELS: Record<string, { en: string; zh: string }> = {
-  approved: { en: "Confirmed", zh: "已确认" },
-  awaiting_confirmation: { en: "Awaiting confirmation", zh: "等待确认" },
-  deferred: { en: "Deferred", zh: "稍后处理" },
-  executing: { en: "Executing", zh: "正在执行" },
+const STATUS_LABELS: Record<string, { en: string; ja: string; zh: string }> = {
+  approved: { ja: "確定済み", en: "Confirmed", zh: "已确认" },
+  awaiting_confirmation: { ja: "確認待ち", en: "Awaiting confirmation", zh: "等待确认" },
+  deferred: { ja: "保留中", en: "Deferred", zh: "稍后处理" },
+  executing: { ja: "実行中", en: "Executing", zh: "正在执行" },
 };
 
-const ENTRY_TITLE_LABELS: Record<string, string> = {
-  "Save to Agent Memory": "保存到智能记忆",
-  "保存到 Agent Memory": "保存到智能记忆",
+/** 账本里旧条目存的是固定英文 / 中英混写标题，按当前语言换成同一个说法。 */
+const ENTRY_TITLE_LABELS: Record<string, { en: string; ja: string; zh: string }> = {
+  "Save to Agent Memory": { ja: "スマートメモリーに保存", zh: "保存到智能记忆", en: "Save to smart memory" },
+  "保存到 Agent Memory": { ja: "スマートメモリーに保存", zh: "保存到智能记忆", en: "Save to smart memory" },
 };
 
 function operationSkin(entry: AgentLedgerEntry) {
   const type = entry.operations[0]?.operationType;
   return (
     (type ? OPERATION_SKIN[type] : undefined) ?? {
-      cta: { en: "View details ›", zh: "查看详情 ›" },
+      cta: { ja: "詳細を見る ›", en: "View details ›", zh: "查看详情 ›" },
       glyph: "▤",
     }
   );
@@ -98,16 +99,15 @@ export interface IOrbitActionsProps {
 }
 
 export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
-  const { language, t } = useOrbitLanguage();
-  const zh = language === "zh";
+  const { t } = useOrbitLanguage();
 
   const tierCopy: Record<AgentActionsTierKey, string> = {
-    decide: t({ en: "Needs your decision", zh: "需要你决定" }),
-    later: t({ en: "Can wait", zh: "可以稍后处理" }),
-    today: t({ en: "Do today", zh: "建议今天做" }),
+    decide: t({ ja: "判断が必要", en: "Needs your decision", zh: "需要你决定" }),
+    later: t({ ja: "あとでよい", en: "Can wait", zh: "可以稍后处理" }),
+    today: t({ ja: "今日やる", en: "Do today", zh: "建议今天做" }),
   };
   const countLabel = (value: number) =>
-    zh ? `${value} 项` : `${value} item${value === 1 ? "" : "s"}`;
+    t({ ja: `${value} 件`, zh: `${value} 项`, en: `${value} item${value === 1 ? "" : "s"}` });
 
   // 「加载更多」（Sprint 0122，Codex 103-A）：沿服务端 cursor 取更早的记录，按同一
   // 分档规则并入；换一份 viewModel（刷新、换账号）就丢弃已取的页和迟到响应。
@@ -162,23 +162,23 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
   return (
     <IOrbitScreenFrame
       ready
-      screenTitle={t({ en: "Suggested actions", zh: "建议与行动" })}
+      screenTitle={t({ ja: "提案とアクション", en: "Suggested actions", zh: "建议与行动" })}
     >
       <div className="ir-screen">
         {/* 351 */}
         <span className="ir-crumb">
-          <a href="/app/agent">iOrbit</a> / {t({ en: "Suggested actions", zh: "建议与行动" })}
+          <a href="/app/agent">iOrbit</a> / {t({ ja: "提案とアクション", en: "Suggested actions", zh: "建议与行动" })}
         </span>
 
         {/* 353–356 */}
         <div className="ir-title-col">
           <a className="ir-back" href="/app/agent">
-            {t({ en: "← Back to overview", zh: "← 返回概览" })}
+            {t({ ja: "← 概要に戻る", en: "← Back to overview", zh: "← 返回概览" })}
           </a>
-          <h2 className="ir-h1-sub">{t({ en: "Suggested actions", zh: "建议与行动" })}</h2>
+          <h2 className="ir-h1-sub">{t({ ja: "提案とアクション", en: "Suggested actions", zh: "建议与行动" })}</h2>
           <p className="ir-lede">
             {t({
-              en: "Today's work, sorted by what deserves your attention first.",
+              ja: "今日やることを、優先度の高い順にまとめました。", en: "Today's work, sorted by what deserves your attention first.",
               zh: "把今天最值得处理的事情，按优先顺序整理给你。",
             })}
           </p>
@@ -191,13 +191,13 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
               <section className="ir-panel" role="alert">
                 <strong className="ir-panel-h">
                   {t({
-                    en: "The action ledger is temporarily unavailable.",
+                    ja: "アクション履歴を一時的に読み込めません。", en: "The action ledger is temporarily unavailable.",
                     zh: "操作账本暂时不可用。",
                   })}
                 </strong>
                 <span className="ir-panel-note">{viewModel.failureMessage}</span>
                 <a className="ir-row-cta" href="/app/agent/actions">
-                  {t({ en: "Reload ›", zh: "重新加载 ›" })}
+                  {t({ ja: "再読み込み ›", en: "Reload ›", zh: "重新加载 ›" })}
                 </a>
               </section>
             ) : null}
@@ -206,7 +206,7 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
               <section className="ir-panel">
                 <span className="ir-panel-note">
                   {t({
-                    en: "Nothing needs you right now — Orbit is watching the rest.",
+                    ja: "いま対応が必要なものはありません。ほかは Orbit が見ています。", en: "Nothing needs you right now — Orbit is watching the rest.",
                     zh: "当前没有待你处理的事——其余的 Orbit 都盯着。",
                   })}
                 </span>
@@ -236,7 +236,7 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
                   </div>
                   {tier.entries.length === 0 ? (
                     <span className="ir-panel-note">
-                      {t({ en: "Nothing in this tier.", zh: "这一档现在是空的。" })}
+                      {t({ ja: "ここには何もありません。", en: "Nothing in this tier.", zh: "这一档现在是空的。" })}
                     </span>
                   ) : null}
                   {tier.entries.map((entry) => {
@@ -257,7 +257,7 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
                         </span>
                         <span className="ir-row-copy">
                           <strong className="ir-row-title">
-                            {ENTRY_TITLE_LABELS[entry.title] ?? entry.title}
+                            {ENTRY_TITLE_LABELS[entry.title] ? t(ENTRY_TITLE_LABELS[entry.title]) : entry.title}
                           </strong>
                           <span className="ir-row-desc">
                             {[entry.contactName, entry.organization]
@@ -271,7 +271,7 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
                               证据 chips（「处处有据」，设计无槽位 → 记偏差）、
                               preview（展开态里）。 */}
                           {status ? (
-                            <span className="ir-row-status">{zh ? status.zh : status.en}</span>
+                            <span className="ir-row-status">{t(status)}</span>
                           ) : null}
                           {entry.evidenceChips.length > 0 ? (
                             <span className="ir-chips-inline" data-orbit-agent-action-evidence>
@@ -286,7 +286,7 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
                             <span className="ir-row-preview" data-orbit-agent-action-preview>
                               {entry.preview ??
                                 t({
-                                  en: "This action has no preview text.",
+                                  ja: "このアクションにはプレビューがありません。", en: "This action has no preview text.",
                                   zh: "这条动作没有预览内容。",
                                 })}
                             </span>
@@ -326,7 +326,7 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
                                 : `/app/agent/actions?entry=${encodeURIComponent(entry.entryId)}`
                             }
                           >
-                            {expanded ? t({ en: "Collapse ›", zh: "收起 ›" }) : t(skinForEntry.cta)}
+                            {expanded ? t({ ja: "閉じる ›", en: "Collapse ›", zh: "收起 ›" }) : t(skinForEntry.cta)}
                           </a>
                         </span>
                       </div>
@@ -340,17 +340,17 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
               <div className="ir-panel" data-orbit-agent-actions-paging="true">
                 <span className="ir-panel-note" role="status">
                   {nextCursor
-                    ? t({ en: `Showing ${loadedCount} entries; older entries are available.`, zh: `已显示 ${loadedCount} 条记录，还有更早的记录。` })
-                    : t({ en: `All ${loadedCount} entries are loaded.`, zh: `已加载全部 ${loadedCount} 条记录。` })}
+                    ? t({ ja: `${loadedCount} 件を表示中。さらに前の記録があります。`, en: `Showing ${loadedCount} entries; older entries are available.`, zh: `已显示 ${loadedCount} 条记录，还有更早的记录。` })
+                    : t({ ja: `全 ${loadedCount} 件を読み込みました。`, en: `All ${loadedCount} entries are loaded.`, zh: `已加载全部 ${loadedCount} 条记录。` })}
                 </span>
                 {loadMoreFailed ? (
                   <span className="ir-panel-note" role="alert">
-                    {t({ en: "Older entries could not be loaded. Try again.", zh: "更早的记录暂时读不出来，可以重试。" })}
+                    {t({ ja: "前の記録を読み込めませんでした。もう一度お試しください。", en: "Older entries could not be loaded. Try again.", zh: "更早的记录暂时读不出来，可以重试。" })}
                   </span>
                 ) : null}
                 {nextCursor ? (
                   <button className="btn ir-chip" disabled={loadingMore} onClick={() => void loadMore()} type="button">
-                    {loadingMore ? t({ en: "Loading…", zh: "正在加载…" }) : t({ en: "Load more", zh: "加载更多" })}
+                    {loadingMore ? t({ ja: "読み込み中…", en: "Loading…", zh: "正在加载…" }) : t({ ja: "さらに読み込む", en: "Load more", zh: "加载更多" })}
                   </button>
                 ) : null}
               </div>
@@ -363,7 +363,7 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
               <span className="ir-aside-title">
                 <span className="ir-aside-icon">◎</span>
                 <strong className="ir-aside-h">
-                  {t({ en: "Today's focus", zh: "今天的重点" })}
+                  {t({ ja: "今日の重点", en: "Today's focus", zh: "今天的重点" })}
                 </strong>
               </span>
               {(["decide", "today", "later"] as const).map((key) => (
@@ -389,18 +389,16 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
                 </span>
                 <span className="ir-ring-copy">
                   <strong className="ir-ring-title">
-                    {t({ en: "Today's progress", zh: "今日进度" })}
+                    {t({ ja: "今日の進み具合", en: "Today's progress", zh: "今日进度" })}
                   </strong>
                   <span className="ir-ring-sub">
                     {total > 0
-                      ? zh
-                        ? `${done} / ${total} 项已完成`
-                        : `${done} of ${total} done`
-                      : t({ en: "Nothing tracked yet.", zh: "还没有可统计的条目。" })}
+                      ? t({ ja: `${done} / ${total} 件完了`, zh: `${done} / ${total} 项已完成`, en: `${done} of ${total} done` })
+                      : t({ ja: "まだ集計できる項目がありません。", en: "Nothing tracked yet.", zh: "还没有可统计的条目。" })}
                   </span>
                   <span className="ir-ring-hint">
                     {t({
-                      en: "Start with the first one and today moves forward.",
+                      ja: "まずはひとつ目から。今日が一歩進みます。", en: "Start with the first one and today moves forward.",
                       zh: "从第一项开始，让今天更进一步。",
                     })}
                   </span>
@@ -411,7 +409,7 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
               <span className="ir-quote-icon">✦</span>
               <span className="ir-quote-text">
                 {t({
-                  en: "Focusing on what matters makes every day more valuable.",
+                  ja: "大事なことに集中すると、毎日がもっと実りあるものになります。", en: "Focusing on what matters makes every day more valuable.",
                   zh: "专注于重要的事情，会让每一天都更有价值。",
                 })}
               </span>
