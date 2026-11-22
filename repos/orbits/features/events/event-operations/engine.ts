@@ -1169,7 +1169,10 @@ export function createEventOperationsEngine({
               error instanceof Error ? error.message : "The AI task failed.",
             );
       if (eventError.code === "EVENT_OPERATIONS_LEASE_LOST") return;
-      await fail(eventError.code, eventError.message);
+      // 2026-11-22 review: a model output the engine's own validation rejects (wrong table number, duplicate
+      // seat, bad grouping) is a content error of this attempt — retry it within the attempt limit, like the
+      // provider's own schema failures. Configuration and readiness errors stay terminal.
+      await fail(eventError.code, eventError.message, eventError.code === "EVENT_OPERATIONS_AI_SCHEMA_INVALID" ? true : undefined);
     }
   }
 

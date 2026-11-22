@@ -685,7 +685,8 @@ test("engine fails a table task when member rationales have missing, extra, or u
           task.status === "failed",
       );
       assert.ok(failedTableTasks.length > 0);
-      assert.equal(tableContentCalls, failedTableTasks.length);
+      // 2026-11-22: an engine-side schema rejection of model output is retried up to the attempt limit.
+      assert.equal(tableContentCalls, failedTableTasks.length * 3);
       const attempts = await repository.listTaskAttempts(generation.generationId);
       for (const failedTableTask of failedTableTasks) {
         assert.equal(
@@ -698,7 +699,7 @@ test("engine fails a table task when member rationales have missing, extra, or u
           attempts
             .filter((attempt) => attempt.taskId === failedTableTask.taskId)
             .map((attempt) => attempt.outcome),
-          ["terminal_failed"],
+          ["retryable_failed", "retryable_failed", "terminal_failed"],
         );
       }
     });

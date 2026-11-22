@@ -433,8 +433,12 @@ const CHINESE_OUTPUT_TECHNICAL_TOKENS = new Set(
 const CHINESE_OUTPUT_MIXED_CASE_TERMS = new Set(["saas", "web3", "edtech", "fintech", "healthtech", "deeptech", "poc", "tiktok", "iot", "ipo", "pre-a"]);
 function isChineseOutputTechnicalToken(token: string): boolean {
   const lower = token.toLocaleLowerCase("en-US");
-  return CHINESE_OUTPUT_TECHNICAL_TOKENS.has(lower) || CHINESE_OUTPUT_MIXED_CASE_TERMS.has(lower) || /^[A-Z][A-Z0-9]{0,5}$/u.test(token);
+  return CHINESE_OUTPUT_TECHNICAL_TOKENS.has(lower) || CHINESE_OUTPUT_MIXED_CASE_TERMS.has(lower) || /^[A-Z][A-Z0-9]{0,5}$/u.test(token)
+    // short mixed-case scientific / product abbreviations: iPS, mRNA, eKYC
+    || /^[a-z]?[A-Z]{2,4}[a-z]?$/u.test(token);
 }
+/** Only the explicit term lists (not the generic abbreviation shapes) may stand alone without any Han. */
+const isListedChineseTerm = (token: string) => CHINESE_OUTPUT_TECHNICAL_TOKENS.has(token.toLocaleLowerCase("en-US")) || CHINESE_OUTPUT_MIXED_CASE_TERMS.has(token.toLocaleLowerCase("en-US"));
 const LATIN_TOKEN_PATTERN =
   /\p{Script=Latin}[\p{Script=Latin}\p{Mark}\p{Number}]*(?:[-'’]\p{Script=Latin}[\p{Script=Latin}\p{Mark}\p{Number}]*)*/gu;
 const HAN_CHARACTER_PATTERN = /\p{Script=Han}/u;
@@ -477,10 +481,12 @@ export function collectChineseOutputPolicyViolations(
         disallowedTokens.add(token);
       }
     }
+    // A value without Han is untranslated unless it is only listed terms (e.g. "SaaS"); "HELLO WORLD" is not.
+    // Kana outside participant / company names means Japanese text in the zh slot.
+    const withoutNames = withoutProperNames(value, properNamesOf(participants));
     if (
-      !HAN_CHARACTER_PATTERN.test(value) &&
-      tokens.length > 0 &&
-      !tokens.every(isChineseOutputTechnicalToken)
+      (!HAN_CHARACTER_PATTERN.test(value) && tokens.length > 0 && !tokens.every(isListedChineseTerm)) ||
+      KANA_PATTERN.test(withoutNames)
     ) {
       untranslatedValues.push(value);
     }
@@ -710,7 +716,7 @@ export function fillParticipantPlaceholders(
       const normalized = sentence[language].replace(/\{[^{}]{1,24}\}/gu, (inner) => inner.replace(/[МмΜ]/gu, "M").replace(/[СсϹ]/gu, "S"));
       const filled = normalized.replace(PLACEHOLDER_PATTERN, (match: string, key: string, company?: string) => {
         const participant = byKey.get(key);
-        const value = company ? participant?.company : participant?.displayName;
+        const value = company ? (participant ? registeredCompany(participant) : null) : participant?.displayName;
         if (!value?.trim()) { problems.push(match); return match; }
         return value.trim();
       });
@@ -722,55 +728,118 @@ export function fillParticipantPlaceholders(
 }
 
 export interface TrilingualOutputViolations {
-  /** ja values that read as another language (no kana in a sentence-length value), or carry an altered name. */
+  /** ja values that read as another language: no kana in a sentence (ends with 。！？ or 12+ characters). */
   japanese: readonly string[];
-  /** en values with Han / kana outside exact registered names and companies. */
+  /** en values with any Han / kana outside placeholders. */
   english: readonly string[];
-  /** zh values that carry an altered form of a registered name or company. */
+  /** zh values with no Han, with kana, or with Latin words outside the abbreviation rules. */
   chinese: readonly string[];
+  /** values (any language) that write a registered name or company instead of a placeholder. */
+  names: readonly string[];
 }
+
+/** Values people type into the company field when they have none; never shown as a company. */
+const NON_ENTITY_COMPANIES = new Set(["无", "暂无", "無", "無し", "なし", "ナシ", "省略", "调整中", "調整中", "未定", "未定义", "個人", "个人", "-", "—", "n/a", "na", "none", "null", "🈚"]);
+/** The registered company, or null when the field is blank or a "none" placeholder value. */
+export function registeredCompany(participant: import("./contract").EventOperationsParticipant): string | null {
+  const value = participant.company?.trim() ?? "";
+  return value && !NON_ENTITY_COMPANIES.has(value.toLocaleLowerCase("en-US")) ? value : null;
+}
+
+const ANY_BRACES_PATTERN = /\{[^{}]{0,40}\}/gu;
+const CANONICAL_PLACEHOLDER_PATTERN = /^\{([A-Z][A-Z0-9]*)(:company)?\}$/u;
+
+/** Look-alike letters and spaces inside braces → canonical `{KEY}` / `{KEY:company}`. Text outside braces is untouched. */
+export function normalizePlaceholders(text: string): string {
+  return text.replace(ANY_BRACES_PATTERN, (inner) => inner.replace(/\s+/gu, "").replace(/[МмΜ]/gu, "M").replace(/[СсϹ]/gu, "S").replace(/:COMPANY\}$/u, ":company}"));
+}
+const stripPlaceholders = (text: string) => text.replace(ANY_BRACES_PATTERN, " ");
 
 /**
- * A same-length run that differs from a registered name or company (3+ characters, compared without
- * spaces) in exactly one character: a script variant or a miscopy (例: 管沙羅 → 管沙罗). Never shown.
+ * Character-level language rules on placeholder text (names are never in it). They are diagnostics, not a
+ * proof of meaning: they catch untranslated text and text written in the wrong language.
  */
-function hasAlteredName(value: string, compactNames: readonly string[]): boolean {
-  const text = value.replace(/\s+/gu, "");
-  return compactNames.some((name) => {
-    const chars = [...name];
-    if (chars.length < 3 || text.includes(name)) return false;
-    const textChars = [...text];
-    for (let start = 0; start + chars.length <= textChars.length; start += 1) {
-      // 只有「汉字换成另一个汉字」才是繁简/异体的改写；数字、假名不同（例如「参加者1」对「参加者を」）不算。
-      let diff = 0;
-      let hanSwap = true;
-      for (let index = 0; index < chars.length && diff <= 1; index += 1) {
-        if (textChars[start + index] === chars[index]) continue;
-        diff += 1;
-        hanSwap = HAN_CHAR_PATTERN.test(textChars[start + index]!) && HAN_CHAR_PATTERN.test(chars[index]!);
-      }
-      if (diff === 1 && hanSwap) return true;
-    }
-    return false;
-  });
-}
-
 export function collectTrilingualOutputViolations(
   values: Readonly<Record<TextLanguage, readonly string[]>>,
   participants: readonly import("./contract").EventOperationsParticipant[],
 ): TrilingualOutputViolations {
-  const names = properNamesOf(participants);
-  const compactNames = names.map((name) => name.replace(/\s+/gu, "")).filter((name) => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(name));
+  // Names of 2+ characters; companies of 3+ (short company values collide with ordinary words).
+  const registered = [...new Set([
+    ...participants.map((participant) => participant.displayName).filter((name) => name.trim().length >= 2),
+    ...participants.map(registeredCompany).filter((name): name is string => name !== null && name.length >= 3),
+  ].flatMap((name) => [name.trim(), name.replace(/\s+/gu, "")]))];
+  const writesName = (value: string) => { const text = stripPlaceholders(value); return registered.some((name) => text.includes(name)); };
   const japanese = values.ja.filter((value) => {
-    const rest = withoutProperNames(value, names).trim();
-    // 名词短语（例如「AI 投資」）可以没有假名；一句话长度还没有假名，就是写成了中文或英文。
-    return (rest.length >= 8 && !KANA_PATTERN.test(rest)) || hasAlteredName(withoutProperNames(value, names), compactNames);
+    const rest = stripPlaceholders(value).trim();
+    return !KANA_PATTERN.test(rest) && (/[。！？]/u.test(rest) || rest.length >= 12);
   });
-  // 英文：除了资料里原样的姓名、公司名（服务端按 id 填入），不得有任何汉字或假名——姓的一半、繁简变体、
-  // 去掉空格的写法都不算原样，判失败（不放宽，展示的名字只能是资料原文）。
-  const english = values.en.filter((value) => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(withoutProperNames(value, names)));
-  const chinese = values.zh.filter((value) => hasAlteredName(withoutProperNames(value, names), compactNames));
-  return { chinese, english, japanese };
+  const english = values.en.filter((value) => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(stripPlaceholders(value)));
+  const chinese = values.zh.filter((value) => {
+    const rest = stripPlaceholders(value).trim();
+    if (!rest) return false;
+    if (!HAN_CHARACTER_PATTERN.test(rest) || KANA_PATTERN.test(rest)) return true;
+    const policy = collectChineseOutputPolicyViolations([rest], []);
+    return policy.disallowedTokens.length > 0 || policy.untranslatedValues.length > 0;
+  });
+  const names = [...values.ja, ...values.zh, ...values.en].filter(writesName);
+  return { chinese, english, japanese, names };
+}
+
+/** One model sentence plus the placeholders it may use (its row's source and target, or its table's members). */
+interface ScopedSentence { allowed: ReadonlySet<string>; sentence: TrilingualSentence }
+
+const NUMBER_UNITS: Readonly<Record<string, number>> = { "万": 1e4, "萬": 1e4, "億": 1e8, "亿": 1e8, "千": 1e3, k: 1e3, thousand: 1e3, m: 1e6, million: 1e6, b: 1e9, bn: 1e9, billion: 1e9 };
+/**
+ * Arabic-digit numbers with their unit applied (100万 = 1 million = 1000000), as a set. A language that writes
+ * no digits (one million / 百万 / a decade) has an empty set and is not compared — calibration showed that
+ * comparing raw digit strings rejected only equivalent wordings.
+ */
+function numericValues(text: string): string {
+  const plain = stripPlaceholders(text).replace(/[０-９]/gu, (digit) => String.fromCharCode(digit.charCodeAt(0) - 0xfee0));
+  const values = new Set<number>();
+  for (const match of plain.matchAll(/(\d+(?:[.,]\d+)?)\s*(万|萬|億|亿|千|billion|million|thousand|bn|[kKmMbB](?![a-zA-Z]))?/gu)) {
+    const base = Number(match[1]!.replace(/,(?=\d{3}\b)/gu, "").replace(",", "."));
+    values.add(Math.round(base * (match[2] ? NUMBER_UNITS[match[2].toLocaleLowerCase("en-US")] ?? 1 : 1) * 1000) / 1000);
+  }
+  return [...values].sort((left, right) => left - right).join("|");
+}
+
+/**
+ * Full check of every sentence, run after generation and again after any repair:
+ * placeholders well-formed and in scope, a company only with its person, the same placeholders and the
+ * same numbers in all three languages, no registered name written by hand (structural: the batch fails);
+ * then the language rules (flagged languages may get one repair).
+ */
+function checkScopedSentences(scoped: readonly ScopedSentence[], participants: readonly import("./contract").EventOperationsParticipant[]) {
+  const structural: string[] = [];
+  const flagged: Array<{ index: number; languages: TextLanguage[] }> = [];
+  scoped.forEach(({ allowed, sentence }, index) => {
+    const sets: string[] = [];
+    for (const language of TEXT_LANGUAGES) {
+      const text = normalizePlaceholders(sentence[language]);
+      (sentence as Record<TextLanguage, string>)[language] = text;
+      const found = text.match(ANY_BRACES_PATTERN) ?? [];
+      const people = new Set<string>();
+      const companies: string[] = [];
+      for (const placeholder of found) {
+        const match = CANONICAL_PLACEHOLDER_PATTERN.exec(placeholder);
+        if (!match) { structural.push(`malformed_placeholder@${index}`); continue; }
+        if (!allowed.has(match[1]!)) structural.push(`out_of_scope@${index}`);
+        if (match[2]) companies.push(match[1]!); else people.add(match[1]!);
+      }
+      if (companies.some((key) => !people.has(key))) structural.push(`company_without_person@${index}`);
+      if (/[{}]/u.test(text.replace(ANY_BRACES_PATTERN, ""))) structural.push(`stray_brace@${index}`);
+      sets.push([...new Set(found)].sort().join(","));
+    }
+    if (new Set(sets).size !== 1) structural.push(`placeholder_mismatch@${index}`);
+    const numberSets = TEXT_LANGUAGES.map((language) => numericValues(sentence[language])).filter((set) => set !== "");
+    if (new Set(numberSets).size > 1) structural.push(`number_mismatch@${index}`);
+    const violations = collectTrilingualOutputViolations({ en: [sentence.en], ja: [sentence.ja], zh: [sentence.zh] }, participants);
+    if (violations.names.length) structural.push(`raw_name@${index}`);
+    const languages = TEXT_LANGUAGES.filter((language) => (language === "ja" ? violations.japanese : language === "zh" ? violations.chinese : violations.english).length > 0);
+    if (languages.length) flagged.push({ index, languages });
+  });
+  return { flagged, structural };
 }
 
 function trilingualRetryable<TValue>(message: string, responseMetadata?: EventOperationsAiResponseMetadata): EventOperationsAiResult<TValue> {
@@ -918,7 +987,7 @@ export function mergeTrilingualTable(tables: Readonly<Record<TextLanguage, Event
 /** Two sources x 4 recommendations x three languages stays well under the 8192-token output cap. */
 export const TRILINGUAL_MAX_RECOMMENDATION_SHARD = 2;
 
-const TRILINGUAL_INSTRUCTION = `Every natural-language sentence is one object {"ja":"...","zh":"...","en":"..."}: ja natural Japanese, zh idiomatic Simplified Chinese, en natural English. The three are the same sentence in three languages: decide once, then write that one sentence three times. Never write a participant's name or company name yourself, in any language: refer to a person only as {KEY} and to their company only as {KEY:company}, using the supplied keys exactly (for example {S1C2} or {M3:company}); the server inserts the registered name. Participant profiles may be written in any language: translate every profile term (needs, offers, industry, topics, roles, highlights) into the language of the value you are writing, so an en value contains no Chinese or Japanese characters and a ja value reads as Japanese. Keep keys, ids, numbers, and JSON syntax unchanged.`;
+const TRILINGUAL_INSTRUCTION = `Every natural-language sentence is one object {"ja":"...","zh":"...","en":"..."}: ja natural Japanese, zh idiomatic Simplified Chinese, en natural English. The three are the same sentence in three languages: decide once, then write that one sentence three times. Never write a participant's name or company name yourself, in any language: refer to a person only as {KEY} and to their company only as {KEY:company}, using the supplied keys exactly (for example {S1C2} or {M3:company}); the server inserts the registered name. Participant profiles may be written in any language: translate every profile term (needs, offers, industry, topics, roles, highlights) into the language of the value you are writing, so an en value contains no Chinese or Japanese characters and a ja value reads as Japanese. Write every number with Arabic digits in all three languages (for example 100万 / 100万 / 1 million, 3社 / 3家 / 3 companies). Keep keys, ids, numbers, and JSON syntax unchanged.`;
 
 const systemInstruction = `You are Orbit's event operations matching model.
 Return exactly one JSON document and no markdown, explanation, code fences, or trailing text.
@@ -976,7 +1045,7 @@ function requestFingerprint(
     temperature,
     responseSchema: "event-operations-tokenized-recommendations-v1",
     // 2026-11-22: only present when on, so single-language fingerprints are unchanged.
-    ...(trilingual ? { participantTextLanguages: "ja-zh-en-v7" } : {}),
+    ...(trilingual ? { participantTextLanguages: "ja-zh-en-v8-scoped" } : {}),
   };
   return JSON.stringify(
     recommendationPromptEncoding === "deduplicated" ||
@@ -1044,8 +1113,8 @@ function compactRecommendationSources(
   const compactParticipantWithoutId = (participant: import("./contract").EventOperationsParticipant) => {
     const profile = compactParticipantWithoutIdFull(participant);
     if (!omitNames) return profile;
-    const { displayName: _name, ...rest } = profile;
-    return rest;
+    const { company: _company, displayName: _name, ...rest } = profile;
+    return { ...rest, hasCompany: registeredCompany(participant) !== null };
   };
   const tokenSources: TokenizedRecommendationSource[] = [];
   const promptSources = sources.map((source, sourceIndex) => {
@@ -1246,38 +1315,40 @@ export function createEventOperationsAiProvider({
     return input.result;
   }
 
-  const sentenceViolates = (sentence: TrilingualSentence, participants: readonly import("./contract").EventOperationsParticipant[]) => {
-    const violations = collectTrilingualOutputViolations({ en: [sentence.en], ja: [sentence.ja], zh: [] }, participants);
-    return { en: violations.english.length > 0, ja: violations.japanese.length > 0 };
-  };
-
   /**
-   * One bounded repair for ja/en sentences that failed the language check: the model rewrites only the
-   * flagged languages from the zh sentence of the same pair. Patched in place, then checked again with the
-   * same rules; anything still failing fails the batch (retryable). Never substitutes another language.
+   * Check → (at most one repair of the flagged languages of flagged sentences) → the same full check again.
+   * The repair rewrites a flagged language from a language of the same sentence that passed, keeps every
+   * placeholder, and can never touch structure, people, ranks, or scores. Anything still wrong fails the batch.
    */
-  async function repairTrilingualSentences(input: {
+  async function checkAndRepair(input: {
     kind: "recommendations" | "table";
     metadata: EventOperationsAiResponseMetadata | undefined;
     participants: readonly import("./contract").EventOperationsParticipant[];
-    sentences: readonly TrilingualSentence[];
+    scoped: readonly ScopedSentence[];
+    text: string;
   }): Promise<{ ok: true; metadata: EventOperationsAiResponseMetadata | undefined } | { ok: false; result: EventOperationsAiResult<never> }> {
-    const flagged = input.sentences.flatMap((sentence) => {
-      const bad = sentenceViolates(sentence, input.participants);
-      const languages = (["ja", "en"] as const).filter((language) => bad[language]);
-      return languages.length ? [{ languages, sentence }] : [];
+    const first = checkScopedSentences(input.scoped, input.participants);
+    if (first.structural.length) {
+      return { ok: false, result: trilingualFailure({ kind: input.kind, stage: `check_${first.structural[0]!.split("@")[0]}`, text: input.text, result: trilingualRetryable<never>(`Trilingual output failed: ${[...new Set(first.structural.map((item) => item.split("@")[0]))].join(", ")}.`, input.metadata) }) };
+    }
+    if (first.flagged.length === 0) return { ok: true, metadata: input.metadata };
+    const request = first.flagged.map(({ index, languages }, position) => {
+      const sentence = input.scoped[index]!.sentence;
+      const source = (["zh", "ja", "en"] as const).find((language) => !languages.includes(language));
+      return { id: `s${position + 1}`, index, rewrite: languages, source, ...(source ? { source_text: sentence[source] } : {}), ...Object.fromEntries(languages.map((language) => [`current_${language}`, sentence[language]])) };
     });
-    if (flagged.length === 0) return { ok: true, metadata: input.metadata };
-    const names = properNamesOf(input.participants);
-    const request = flagged.map((item, index) => ({ id: `s${index + 1}`, rewrite: item.languages, zh: item.sentence.zh, ...Object.fromEntries(item.languages.map((language) => [`current_${language}`, item.sentence[language]])) }));
+    if (request.some((item) => !item.source)) {
+      return { ok: false, result: trilingualFailure({ kind: input.kind, stage: "all_languages_flagged", text: input.text, result: invalidOutputLanguage<never>(input.metadata) }) };
+    }
     const response = await runModelText({
       config,
-      systemInstruction: `${systemInstruction}\nYou are performing one bounded AI-only language repair of event networking sentences. Rewrite only the requested languages of each sentence from its zh version: ja in natural Japanese, en in natural English with no Chinese or Japanese characters. Keep these names exactly as written: ${JSON.stringify(names)}. Translate every other term. Never add, remove, or summarize facts.`,
-      userText: `Return exactly {"sentences":{"<id>":{<each requested language>:"..."}}} for every id below, with exactly the requested language keys and nothing else.\n${JSON.stringify(request)}`,
+      systemInstruction: `${systemInstruction}\nYou are performing one bounded AI-only language repair of event networking sentences. Rewrite only the requested languages of each sentence from its source_text, which is the same sentence in another language: ja in natural Japanese, zh in idiomatic Simplified Chinese, en in natural English with no Chinese or Japanese characters. Keep every {…} placeholder exactly as it appears in source_text, keep every number, and never write a person's or company's name. Never add, remove, or change facts.`,
+      userText: `Return exactly {"sentences":{"<id>":{<each requested language>:"..."}}} for every id below, with exactly the requested language keys and nothing else.\n${JSON.stringify(request.map(({ index: _index, ...item }) => item))}`,
     });
     if (response.success === false) {
       const failure = modelFailure<never>(response);
-      return { ok: false, result: failure };
+      const merged = mergeEventOperationsResponseMetadata(input.metadata, failure.success === false ? failure.responseMetadata : undefined);
+      return { ok: false, result: failure.success === false ? { ...failure, ...(merged ? { responseMetadata: merged } : {}) } : failure };
     }
     const metadata = mergeEventOperationsResponseMetadata(input.metadata, metadataOf(response));
     const json = parseJson(response.text);
@@ -1286,23 +1357,23 @@ export function createEventOperationsAiProvider({
       const row = rows[item.id];
       return isRecord(row) && exactKeys(row, [...item.rewrite]) && item.rewrite.every((language) => nonEmptyString(row[language]));
     });
-    if (!valid) {
-      return { ok: false, result: trilingualFailure({ kind: "repair", stage: "repair_schema", text: JSON.stringify({ request, response: response.text }), result: invalidOutputLanguage<never>(metadata) }) };
+    const repairText = JSON.stringify({ request: request.map(({ index: _index, ...item }) => item), response: response.text });
+    if (!valid) return { ok: false, result: trilingualFailure({ kind: "repair", stage: "repair_schema", text: repairText, result: invalidOutputLanguage<never>(metadata) }) };
+    for (const item of request) {
+      const row = rows![item.id] as Record<string, string>;
+      for (const language of item.rewrite) (input.scoped[item.index]!.sentence as Record<TextLanguage, string>)[language] = row[language]!.trim();
     }
-    flagged.forEach((item, index) => {
-      const row = rows![`s${index + 1}`] as Record<string, string>;
-      for (const language of item.languages) (item.sentence as Record<TextLanguage, string>)[language] = row[language]!.trim();
-    });
-    const still = flagged.filter((item) => { const bad = sentenceViolates(item.sentence, input.participants); return bad.en || bad.ja; });
-    if (still.length) {
-      return { ok: false, result: trilingualFailure({ kind: "repair", stage: "repair_language", text: JSON.stringify({ request, response: response.text }), result: invalidOutputLanguage<never>(metadata) }) };
+    const second = checkScopedSentences(input.scoped, input.participants);
+    if (second.structural.length || second.flagged.length) {
+      return { ok: false, result: trilingualFailure({ kind: "repair", stage: "after_repair", text: repairText, result: invalidOutputLanguage<never>(metadata) }) };
     }
-    process.stderr.write(`${JSON.stringify({ event: "event_operations_trilingual_repaired", kind: input.kind, sentences: flagged.length })}\n`);
+    process.stderr.write(`${JSON.stringify({ event: "event_operations_trilingual_repaired", kind: input.kind, sentences: request.length })}\n`);
     return { ok: true, metadata };
   }
 
   async function trilingualRecommendations(input: Parameters<EventOperationsAiProvider["generateRecommendations"]>[0]): ReturnType<EventOperationsAiProvider["generateRecommendations"]> {
     const tokenizedSources = compactRecommendationSources(input.sources, recommendationPromptEncoding, true);
+    const participants = input.sources.flatMap((source) => [source.sourceParticipant, ...source.candidateParticipants]);
     const participantByKey = new Map<string, import("./contract").EventOperationsParticipant>();
     tokenizedSources.tokenSources.forEach((token, index) => {
       const source = input.sources[index]!;
@@ -1310,7 +1381,6 @@ export function createEventOperationsAiProvider({
       const candidateById = new Map(source.candidateParticipants.map((candidate) => [candidate.participantId, candidate]));
       for (const [key, id] of token.candidateIdByKey) participantByKey.set(key, candidateById.get(id)!);
     });
-    const participants = input.sources.flatMap((source) => [source.sourceParticipant, ...source.candidateParticipants]);
     const response = await runModelText({
       config,
       systemInstruction: trilingualSystemInstruction,
@@ -1322,12 +1392,13 @@ Requirements:
 - Return at most ${input.recommendationCount} unique targets per source, ordered with rank 1..N; never recommend the source itself.
 - score is 0..100; reasons is a non-empty list of sentences; icebreakers is exactly 2 sentences; memberHint is one specific sentence.
 - noMatchReason is required: null when recommendations is non-empty, otherwise one concrete sentence.
-- Refer to the person a row is for as {<that row's sourceKey>} (for example {S1}) and to a recommended person as {<their targetCandidateKey>} (for example {S1C2}).
+- In a recommendation, the only people you may refer to are that row's person {<sourceKey>} (for example {S1}) and that recommendation's target {<targetCandidateKey>} (for example {S1C2}); a company only as {<same key>:company} next to that person, and only when that profile has hasCompany=true. noMatchReason may refer only to {<sourceKey>}.
+- The three languages of a sentence use exactly the same placeholders and the same numbers.
 - Every object must contain exactly the documented keys.
 ${strictChineseOutputRequirement(participants).replace("Every natural-language value", "Every zh value")}
 ${recommendationPromptEncoding === "deduplicated" ? "- Resolve sourceProfileKey and each candidate profileKey from the supplied profiles lookup before making a recommendation.\n" : ""}
 JSON shape:
-{"recommendations":[{"sourceKey":"S1","noMatchReason":null,"recommendations":[{"targetCandidateKey":"S1C1","rank":1,"score":90,"reasons":[{"ja":"理由","zh":"理由","en":"reason"}],"icebreakers":[{"ja":"質問1","zh":"问题1","en":"question 1"},{"ja":"質問2","zh":"问题2","en":"question 2"}],"memberHint":{"ja":"具体的なヒント","zh":"具体提示","en":"specific hint"}}]}]}
+{"recommendations":[{"sourceKey":"S1","noMatchReason":null,"recommendations":[{"targetCandidateKey":"S1C1","rank":1,"score":90,"reasons":[{"ja":"理由","zh":"理由","en":"reason"}],"icebreakers":[{"ja":"質問1","zh":"问题1","en":"question 1"},{"ja":"質問2","zh":"问题2","en":"question 2"}],"memberHint":{"ja":"{S1}さんは{S1C1}さんと…","zh":"{S1}可以和{S1C1}…","en":"{S1} could ask {S1C1} …"}}]}]}
 
 Event id: ${input.eventId}
 Sources and deterministic shortlists:
@@ -1340,104 +1411,88 @@ ${JSON.stringify(tokenizedSources.promptSources)}`,
       const shape = classifyJsonFailureShape(response.text);
       return trilingualFailure({ kind: "recommendations", stage: `json_${shape}`, text: response.text, result: invalidJson(shape, metadata, retryableJsonFailureShapeSet) });
     }
-    // A target recommended twice in one row: keep the first, renumber ranks (no text is invented).
-    for (const row of isRecord(json) && Array.isArray(json.recommendations) ? (json.recommendations as Array<Record<string, unknown>>) : []) {
-      if (!isRecord(row) || !Array.isArray(row.recommendations)) continue;
+    // 1. Structure first (every row and item is a well-formed record) — nothing below touches unchecked values.
+    if (!trilingualRecommendationSentences(json)) return trilingualFailure({ kind: "recommendations", stage: "paired_schema", text: response.text, result: trilingualRetryable("The model JSON did not match the trilingual recommendation schema.", metadata) });
+    const rows = (json as { recommendations: Array<Record<string, unknown>> }).recommendations;
+    // 2. A target recommended twice in one row: keep the first, renumber ranks ("at most N" contract; no text invented).
+    for (const row of rows) {
       const seen = new Set<unknown>();
       row.recommendations = (row.recommendations as Array<Record<string, unknown>>)
         .filter((item) => (seen.has(item.targetCandidateKey) ? false : (seen.add(item.targetCandidateKey), true)))
         .map((item, index) => ({ ...item, rank: index + 1 }));
     }
-    const sentences = trilingualRecommendationSentences(json);
-    if (!sentences) return trilingualFailure({ kind: "recommendations", stage: "paired_schema", text: response.text, result: trilingualRetryable("The model JSON did not match the trilingual recommendation schema.", metadata) });
-    // The model often calls a row's own subject {SOURCE}; within that row it is unambiguous.
-    for (const row of (json as { recommendations: Array<Record<string, unknown>> }).recommendations) {
-      const rowSentences = trilingualRecommendationSentences({ recommendations: [row] }) ?? [];
-      for (const sentence of rowSentences) for (const language of TEXT_LANGUAGES) (sentence as Record<TextLanguage, string>)[language] = sentence[language].replace(/\{SOURCE(:company)?\}/gu, (_match, company?: string) => `{${String(row.sourceKey)}${company ?? ""}}`);
+    // 3. Scope every sentence to its row's source and its own target; {SOURCE} is the row's source.
+    const scoped: ScopedSentence[] = [];
+    for (const row of rows) {
+      const sourceKey = String(row.sourceKey);
+      const own = (sentence: TrilingualSentence, allowed: ReadonlySet<string>) => {
+        // Only S-keys exist here, so a key that lost its prefix ({2C11}, {1}) is unambiguous; scope is still checked.
+        for (const language of TEXT_LANGUAGES) (sentence as Record<TextLanguage, string>)[language] = normalizePlaceholders(sentence[language])
+          .replace(/\{SOURCE(:company)?\}/gu, (_match, company?: string) => `{${sourceKey}${company ?? ""}}`)
+          .replace(/\{(\d+(?:C\d+)?)(:company)?\}/gu, (_match, key: string, company?: string) => `{S${key}${company ?? ""}}`);
+        scoped.push({ allowed, sentence });
+      };
+      if (row.noMatchReason !== null) own(row.noMatchReason as TrilingualSentence, new Set([sourceKey]));
+      for (const item of row.recommendations as Array<Record<string, unknown>>) {
+        const allowed = new Set([sourceKey, String(item.targetCandidateKey)]);
+        for (const sentence of [...(item.reasons as TrilingualSentence[]), ...(item.icebreakers as TrilingualSentence[]), item.memberHint as TrilingualSentence]) own(sentence, allowed);
+      }
     }
-    if (fillParticipantPlaceholders(sentences, participantByKey).length) return trilingualFailure({ kind: "recommendations", stage: "placeholders", text: response.text, result: trilingualRetryable("The model used an unknown participant placeholder.", metadata) });
-    if (collectTrilingualOutputViolations({ en: [], ja: [], zh: sentences.map((sentence) => sentence.zh) }, participants).chinese.length) return trilingualFailure({ kind: "recommendations", stage: "altered_name_zh", text: response.text, result: invalidOutputLanguage(metadata) });
-    const repairedLanguages = await repairTrilingualSentences({ kind: "recommendations", metadata, participants, sentences });
-    if (repairedLanguages.ok === false) return repairedLanguages.result as never;
-    metadata = repairedLanguages.metadata;
+    // 4. Full check → at most one repair → full check again.
+    const checked = await checkAndRepair({ kind: "recommendations", metadata, participants, scoped, text: response.text });
+    if (checked.ok === false) return checked.result as never;
+    metadata = checked.metadata;
+    // 5. Names last: every placeholder is now known and in scope; insert the registered name / company by id.
+    if (fillParticipantPlaceholders(scoped.map((item) => item.sentence), participantByKey).length) {
+      return trilingualFailure({ kind: "recommendations", stage: "fill", text: response.text, result: trilingualRetryable("A placeholder had no registered value.", metadata) });
+    }
+    // 6. The original closed schema per language (shortlist membership, ranks, counts), then merge (base = zh).
     const split = splitTrilingualRecommendations(json)!;
     const mapped = {} as Record<TextLanguage, readonly EventOperationsParticipantRecommendations[]>;
     for (const language of TEXT_LANGUAGES) {
       const tokenRows = parseTokenRecommendationRows(split[language]);
-      const rows = tokenRows ? mapTokenRecommendationRows(tokenRows, tokenizedSources.tokenSources) : null;
-      if (!rows) return trilingualFailure({ kind: "recommendations", stage: `closed_schema_${language}`, text: response.text, result: trilingualRetryable(`The ${language} recommendations did not match the closed schema.`, metadata) });
-      mapped[language] = rows;
+      const mappedRows = tokenRows ? mapTokenRecommendationRows(tokenRows, tokenizedSources.tokenSources) : null;
+      if (!mappedRows) return trilingualFailure({ kind: "recommendations", stage: "closed_schema", text: response.text, result: trilingualRetryable("The recommendations did not match the closed schema.", metadata) });
+      mapped[language] = mappedRows;
     }
-    let model = response.model;
-    let provider: typeof response.provider = response.provider;
-    const zhViolations = collectChineseOutputPolicyViolations(recommendationNaturalLanguageValues(mapped.zh), participants);
-    if (zhViolations.disallowedTokens.length > 0 || zhViolations.untranslatedValues.length > 0) {
-      const repaired = await repairChineseNaturalLanguage({
-        config,
-        naturalLanguageFields: "noMatchReason, reasons, icebreakers, and memberHint",
-        originalJson: split.zh,
-        originalResponseMetadata: metadata,
-        participants,
-        parseValue(value) {
-          const repairedRows = parseTokenRecommendationRows(value);
-          return repairedRows ? mapTokenRecommendationRows(repairedRows, tokenizedSources.tokenSources) : null;
-        },
-        runModelText,
-        values: recommendationNaturalLanguageValues,
-        violations: zhViolations,
-      });
-      if (repaired.success === false) return repaired;
-      const sameShape = repaired.data.length === mapped.zh.length && repaired.data.every((row, index) => {
-        const original = mapped.zh[index]!;
-        return row.sourceParticipantId === original.sourceParticipantId && (row.noMatchReason === null) === (original.noMatchReason === null) && row.recommendations.length === original.recommendations.length
-          && row.recommendations.every((item, itemIndex) => item.targetParticipantId === original.recommendations[itemIndex]!.targetParticipantId && item.rank === original.recommendations[itemIndex]!.rank && item.reasons.length === original.recommendations[itemIndex]!.reasons.length && item.icebreakers.length === original.recommendations[itemIndex]!.icebreakers.length);
-      });
-      if (!sameShape) return trilingualRetryable("The zh repair changed recommendation structure.", repaired.responseMetadata);
-      mapped.zh = repaired.data;
-      metadata = repaired.responseMetadata;
-      model = repaired.model;
-      provider = repaired.provider as typeof provider;
-    }
-    return { data: mergeTrilingualRecommendations(mapped), model, provider, ...(metadata ? { responseMetadata: metadata } : {}), success: true };
+    return { data: mergeTrilingualRecommendations(mapped), model: response.model, provider: response.provider, ...(metadata ? { responseMetadata: metadata } : {}), success: true };
   }
 
   async function trilingualTable(input: Parameters<EventOperationsAiProvider["generateTableContent"]>[0]): ReturnType<EventOperationsAiProvider["generateTableContent"]> {
     const memberIds = new Set(input.members.map((member) => member.participantId));
-    // 2026-11-22 calibration: the model miscopied long participant ids in per-member keys
-    // ("participant:sim-48" → "participant:sim:48"). It now sees short keys M1..Mn only (as the
-    // recommendation shortlist uses S1C1), and the server maps them back before the closed schema.
+    // Short member keys (M1..Mn) instead of long participant ids; the server maps them back.
     const keyOf = new Map(input.members.map((member, index) => [member.participantId, `M${index + 1}`]));
     const idOfKey = new Map([...keyOf].map(([id, key]) => [key, id]));
     const promptMembers = input.members.map((member) => {
-      const { displayName: _name, participantId: _id, ...rest } = compactParticipant(member);
-      return { memberKey: keyOf.get(member.participantId)!, ...rest };
+      const { company: _company, displayName: _name, participantId: _id, ...rest } = compactParticipant(member);
+      return { hasCompany: registeredCompany(member) !== null, memberKey: keyOf.get(member.participantId)!, ...rest };
     });
-    // Feature text came from the recommendation stage and may mention its keys (S5, S5C1); this table
-    // has only M-keys, so those are removed before the model can copy them.
+    // Feature text came from the recommendation stage and may mention its keys (S5, S5C1); removed here.
     const withoutStageKeys = (text: string) => text.replace(/\{?\bS\d+(?:C\d+)?\b\}?/gu, "").replace(/\s{2,}/gu, " ").trim();
     const promptFeatures = input.features.map((feature) => ({
       ...feature,
+      affinityParticipantIds: feature.affinityParticipantIds.flatMap((id) => (keyOf.has(id) ? [keyOf.get(id)!] : [])),
       facilitationHint: withoutStageKeys(feature.facilitationHint),
+      participantId: keyOf.get(feature.participantId) ?? feature.participantId,
       primaryTopic: withoutStageKeys(feature.primaryTopic),
       secondaryTopic: withoutStageKeys(feature.secondaryTopic),
-      affinityParticipantIds: feature.affinityParticipantIds.flatMap((id) => (keyOf.has(id) ? [keyOf.get(id)!] : [])),
-      participantId: keyOf.get(feature.participantId) ?? feature.participantId,
     }));
+    const keys = [...idOfKey.keys()];
     const response = await runModelText({
       config,
       systemInstruction: trilingualSystemInstruction,
       userText: `Generate content for exactly one already-assigned event table. Every sentence is a {"ja","zh","en"} object.
 
 Requirements:
-- Keep tableNumber=${input.tableNumber}. members has exactly one row for each supplied memberKey (${[...idOfKey.keys()].join(", ")}) and no other key, each with a unique seat.
+- Keep tableNumber=${input.tableNumber}. members has exactly one row for each supplied memberKey (${keys.join(", ")}) and no other key, each with a unique seat.
 - round ${input.roundNumber} content must use the supplied bounded features and member profiles.
 - A concrete theme, an evidence-based table rationale, and exactly 3 icebreakers for the table; in every member row, exactly 2 prompts for that person and one specific rationale explaining why that person belongs at this table.
-- The only placeholders that exist here are ${[...idOfKey.keys()].map((key) => `{${key}}`).join(", ")} (and {Mn:company}); never use any other key.
+- The only placeholders that exist here are ${keys.map((key) => `{${key}}`).join(", ")}; a company only as {Mn:company} next to {Mn}, and only when that member has hasCompany=true. The three languages of a sentence use exactly the same placeholders and the same numbers.
 - Do not change membership. Every object must contain exactly the documented keys.
 ${strictChineseOutputRequirement(input.members).replace("Every natural-language value", "Every zh value")}
 
 JSON shape:
-{"tableNumber":${input.tableNumber},"theme":{"ja":"具体的なテーマ","zh":"具体主题","en":"specific theme"},"rationale":{"ja":"この卓の理由","zh":"同桌理由","en":"why these members work as a table"},"icebreakers":[{"ja":"一","zh":"一","en":"one"},{"ja":"二","zh":"二","en":"two"},{"ja":"三","zh":"三","en":"three"}],"members":[{"memberKey":"M1","seat":"R${input.roundNumber}-T${input.tableNumber}-S1","prompts":[{"ja":"問い1","zh":"问题1","en":"prompt one"},{"ja":"問い2","zh":"问题2","en":"prompt two"}],"rationale":{"ja":"この人がこの卓にいる理由","zh":"此人为何在这一桌","en":"why this member belongs here"}}]}
+{"tableNumber":${input.tableNumber},"theme":{"ja":"具体的なテーマ","zh":"具体主题","en":"specific theme"},"rationale":{"ja":"この卓の理由","zh":"同桌理由","en":"why these members work as a table"},"icebreakers":[{"ja":"一","zh":"一","en":"one"},{"ja":"二","zh":"二","en":"two"},{"ja":"三","zh":"三","en":"three"}],"members":[{"memberKey":"M1","seat":"R${input.roundNumber}-T${input.tableNumber}-S1","prompts":[{"ja":"問い1","zh":"问题1","en":"prompt one"},{"ja":"問い2","zh":"问题2","en":"prompt two"}],"rationale":{"ja":"{M1}さんがこの卓にいる理由","zh":"{M1}为何在这一桌","en":"why {M1} belongs here"}}]}
 
 Event id: ${input.eventId}
 Round: ${input.roundNumber}
@@ -1457,44 +1512,25 @@ ${JSON.stringify(promptFeatures)}`,
     if (!keyed) return trilingualFailure({ kind: "table", stage: "member_keys", text: response.text, result: trilingualRetryable("The model table did not use exactly the supplied member keys.", metadata) });
     const sentences = trilingualTableSentences(keyed);
     if (!sentences) return trilingualFailure({ kind: "table", stage: "paired_schema", text: response.text, result: trilingualRetryable("The model JSON did not match the trilingual table schema.", metadata) });
+    const allowed = new Set(keys);
+    // Only M-keys exist at a table, so {3} is {M3}; scope is still checked.
+    for (const sentence of sentences) for (const language of TEXT_LANGUAGES) (sentence as Record<TextLanguage, string>)[language] = normalizePlaceholders(sentence[language]).replace(/\{(\d+)(:company)?\}/gu, (_match, key: string, company?: string) => `{M${key}${company ?? ""}}`);
+    const scoped = sentences.map((sentence) => ({ allowed, sentence }));
+    const checked = await checkAndRepair({ kind: "table", metadata, participants: input.members, scoped, text: response.text });
+    if (checked.ok === false) return checked.result as never;
+    metadata = checked.metadata;
     const memberByKey = new Map(input.members.map((member) => [keyOf.get(member.participantId)!, member]));
-    if (fillParticipantPlaceholders(sentences, memberByKey).length) return trilingualFailure({ kind: "table", stage: "placeholders", text: response.text, result: trilingualRetryable("The model used an unknown member placeholder.", metadata) });
-    if (collectTrilingualOutputViolations({ en: [], ja: [], zh: sentences.map((sentence) => sentence.zh) }, input.members).chinese.length) return trilingualFailure({ kind: "table", stage: "altered_name_zh", text: response.text, result: invalidOutputLanguage(metadata) });
-    const repairedLanguages = await repairTrilingualSentences({ kind: "table", metadata, participants: input.members, sentences });
-    if (repairedLanguages.ok === false) return repairedLanguages.result as never;
-    metadata = repairedLanguages.metadata;
+    if (fillParticipantPlaceholders(sentences, memberByKey).length) {
+      return trilingualFailure({ kind: "table", stage: "fill", text: response.text, result: trilingualRetryable("A placeholder had no registered value.", metadata) });
+    }
     const split = splitTrilingualTable(keyed)!;
     const tables = {} as Record<TextLanguage, EventOperationsTable>;
     for (const language of TEXT_LANGUAGES) {
       const table = parseTable(split[language], memberIds);
-      if (!table) return trilingualFailure({ kind: "table", stage: `closed_schema_${language}`, text: response.text, result: trilingualRetryable(`The ${language} table did not match the closed schema.`, metadata) });
+      if (!table) return trilingualFailure({ kind: "table", stage: "closed_schema", text: response.text, result: trilingualRetryable("The table did not match the closed schema.", metadata) });
       tables[language] = table;
     }
-    let model = response.model;
-    let provider: typeof response.provider = response.provider;
-    const zhViolations = collectChineseOutputPolicyViolations(tableNaturalLanguageValues(tables.zh), input.members);
-    if (zhViolations.disallowedTokens.length > 0 || zhViolations.untranslatedValues.length > 0) {
-      const repaired = await repairChineseNaturalLanguage({
-        config,
-        naturalLanguageFields: "theme, rationale, icebreakers, memberPrompts, and memberRationales",
-        originalJson: split.zh,
-        originalResponseMetadata: metadata,
-        participants: input.members,
-        parseValue: (value) => parseTable(value, memberIds),
-        runModelText,
-        values: tableNaturalLanguageValues,
-        violations: zhViolations,
-      });
-      if (repaired.success === false) return repaired;
-      if (JSON.stringify(repaired.data.members) !== JSON.stringify(tables.zh.members) || repaired.data.tableNumber !== tables.zh.tableNumber) {
-        return trilingualRetryable("The zh repair changed table membership.", repaired.responseMetadata);
-      }
-      tables.zh = repaired.data;
-      metadata = repaired.responseMetadata;
-      model = repaired.model;
-      provider = repaired.provider as typeof provider;
-    }
-    return { data: mergeTrilingualTable(tables), model, provider, ...(metadata ? { responseMetadata: metadata } : {}), success: true };
+    return { data: mergeTrilingualTable(tables), model: response.model, provider: response.provider, ...(metadata ? { responseMetadata: metadata } : {}), success: true };
   }
 
   return {
