@@ -88,6 +88,16 @@ export function cardFactsOf(sentences: readonly string[]): string[] {
  */
 export function withCodeLateCount(text: string, counts: { late: number; dueLate: number }): { text: string; changed: { from: number; to: number }[] } {
   const changed: { from: number; to: number }[] = [];
+  // Eval 2026-11-23 (AE-CMP-001 「其中2件已经过了计划日或期限」, AE-ANS-018 「期限または予定日を過ぎた…4件」): whether the phrase
+  // names both is read from its whole clause, not only from the words the pattern took.
+  const clause = (source: string, start: number, end: number): string => {
+    const stop = /[。；;\n，,、]/u;
+    let from = start;
+    while (from > 0 && !stop.test(source[from - 1])) from -= 1;
+    let to = end;
+    while (to < source.length && !stop.test(source[to])) to += 1;
+    return source.slice(from, to);
+  };
   const fix = (said: string, phrase: string): string => {
     const n = Number(said);
     const both = /(或|和|及|与|または|や|\bor\b|\band\b).{0,6}(计划|予定日|planned)|(计划|予定日|planned).{0,6}(或|和|または|\bor\b)/iu.test(phrase);
@@ -101,10 +111,10 @@ export function withCodeLateCount(text: string, counts: { late: number; dueLate:
   const late = "(?:已经|都|已)?(?:过期|逾期|超期|过了计划日|已过计划日|过了期限)(?:或(?:者)?(?:已经)?过了计划日|或计划日已过)?";
   // Eval 2026-11-23 (AE-H-008, AE-MEM-005): the phrase after a number holds no other number — 「5件没做完的待办，其中2件已经过了期限」
   // counts 2 overdue, not 5.
-  let out = text.replace(new RegExp(`(\\d+)(\\s*(?:项|件|条|个)[^。；;\\n\\d]{0,12}?${late})`, "gu"), (_m, said: string, rest: string) => `${fix(said, rest)}${rest}`);
-  out = out.replace(new RegExp(`((?:过期|逾期|过了计划日)[^。；;\\n\\d]{0,8}?)(\\d+)(\\s*(?:项|件|条|个))`, "gu"), (_m, head: string, said: string, unit: string) => `${head}${fix(said, head)}${unit}`);
-  out = out.replace(/(\d+)(\s*件[^。\n\d]{0,10}?(?:期限を過ぎ|期限切れ|期限超過|予定日を過ぎ)[^。\n]{0,12})/gu, (_m, said: string, rest: string) => `${fix(said, rest)}${rest}`);
-  out = out.replace(/((?:期限を過ぎ|期限切れ|期限超過|予定日を過ぎ)[^。\n\d]{0,12}?)(\d+)(\s*件)/gu, (_m, head: string, said: string, unit: string) => `${head}${fix(said, head)}${unit}`);
+  let out = text.replace(new RegExp(`(\\d+)(\\s*(?:项|件|条|个)[^。；;\\n\\d]{0,12}?${late})`, "gu"), (m: string, said: string, rest: string, at: number, source: string) => `${fix(said, clause(source, at, at + m.length))}${rest}`);
+  out = out.replace(new RegExp(`((?:过期|逾期|过了计划日)[^。；;\\n\\d]{0,8}?)(\\d+)(\\s*(?:项|件|条|个))`, "gu"), (m: string, head: string, said: string, unit: string, at: number, source: string) => `${head}${fix(said, clause(source, at, at + m.length))}${unit}`);
+  out = out.replace(/(\d+)(\s*件[^。\n\d]{0,10}?(?:期限を過ぎ|期限切れ|期限超過|予定日を過ぎ)[^。\n]{0,12})/gu, (m: string, said: string, rest: string, at: number, source: string) => `${fix(said, clause(source, at, at + m.length))}${rest}`);
+  out = out.replace(/((?:期限を過ぎ|期限切れ|期限超過|予定日を過ぎ)[^。\n\d]{0,12}?)(\d+)(\s*件)/gu, (m: string, head: string, said: string, unit: string, at: number, source: string) => `${head}${fix(said, clause(source, at, at + m.length))}${unit}`);
   out = out.replace(/\b(\d+)(\s+(?:of them\s+)?(?:(?:are|is|were)\s+)?(?:overdue|past (?:their|its|the) (?:deadline|due date|planned day)(?:\s+or\s+planned day)?))/giu, (_m, said: string, rest: string) => `${fix(said, rest)}${rest}`);
   return { changed, text: out };
 }

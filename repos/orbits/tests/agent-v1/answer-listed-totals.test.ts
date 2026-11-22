@@ -74,3 +74,11 @@ test("eval AE-H-008 / AE-MEM-005: the overdue-count rule no longer takes the tot
   // And a total said with 「没做完的」 is checked against the cards.
   assert.equal(withListedTotals("你还有2件没做完的待办，其中2件已经过了期限或计划日。", { todo: { listed: 5 } }).text, "你还有5件没做完的待办，其中2件已经过了期限或计划日。");
 });
+
+test("eval AE-CMP-001, AE-ENT-008, AE-ANS-018: a phrase naming the planned day and the deadline counts both", () => {
+  assert.deepEqual(withCodeLateCount("你现在还有5件待办没做完，其中2件已经过了计划日或期限。", { dueLate: 1, late: 2 }).changed, []);
+  assert.deepEqual(withCodeLateCount("你还有 5 个待办没做完，其中 2 个已经过了计划日或截止时间。", { dueLate: 1, late: 2 }).changed, []);
+  assert.deepEqual(withCodeLateCount("期限または予定日を過ぎたまま未完了のものが4件残っています。", { dueLate: 2, late: 4 }).changed, []);
+  // The planned day alone still counts only those.
+  assert.equal(withCodeLateCount("其中 2 项过了计划日。", { dueLate: 1, late: 2 }).text, "其中 1 项过了计划日。");
+});
