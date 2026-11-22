@@ -180,7 +180,7 @@ function parseTokenGroupingFeatures(value: unknown): readonly TokenGroupingFeatu
       ]) ||
       !Array.isArray(feature.affinityCandidateKeys) ||
       !feature.affinityCandidateKeys.every(nonEmptyString) ||
-      new Set(feature.affinityCandidateKeys).size !== feature.affinityCandidateKeys.length ||
+      // Repeated keys are judged when mapping (rejected, or dropped in trilingual mode).
       !nonEmptyString(feature.facilitationHint) ||
       !nonEmptyString(feature.sourceKey) ||
       !nonEmptyString(feature.primaryTopic) ||
@@ -1313,6 +1313,8 @@ function mapTokenGroupingFeatures(
   features: readonly TokenGroupingFeature[],
   tokenSources: readonly TokenizedGroupingSource[],
   maxAffinityCount: number,
+  /** Trilingual mode: affinity is internal evidence (never shown) — unknown or repeated keys are dropped and the list capped, like the choose step's basis. */
+  internalAffinity = false,
 ): readonly EventOperationsGroupingFeature[] | null {
   if (features.length !== tokenSources.length) return null;
   const sourceByKey = new Map(tokenSources.map((source) => [source.sourceKey, source]));
@@ -1320,13 +1322,17 @@ function mapTokenGroupingFeatures(
   const mapped: EventOperationsGroupingFeature[] = [];
   for (const feature of features) {
     const source = sourceByKey.get(feature.sourceKey);
-    if (!source || seenSources.has(feature.sourceKey) || feature.affinityCandidateKeys.length > maxAffinityCount) return null;
+    if (!source || seenSources.has(feature.sourceKey) || (!internalAffinity && feature.affinityCandidateKeys.length > maxAffinityCount)) return null;
     seenSources.add(feature.sourceKey);
     const affinityParticipantIds: string[] = [];
     const seenAffinity = new Set<string>();
     for (const candidateKey of feature.affinityCandidateKeys) {
       const participantId = source.candidateIdByKey.get(candidateKey);
-      if (!participantId || seenAffinity.has(candidateKey)) return null;
+      if (!participantId || seenAffinity.has(candidateKey)) {
+        if (internalAffinity) continue;
+        return null;
+      }
+      if (internalAffinity && affinityParticipantIds.length >= maxAffinityCount) break;
       seenAffinity.add(candidateKey);
       affinityParticipantIds.push(participantId);
     }
@@ -2019,9 +2025,12 @@ ${JSON.stringify(tokenizedSources.prompt)}`,
       const json = parseJson(response.text);
       if (json === null) return invalidJson(classifyJsonFailureShape(response.text), response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined, retryableJsonFailureShapeSet);
       const tokenFeatures = parseTokenGroupingFeatures(json);
-      if (!tokenFeatures) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
-      const features = mapTokenGroupingFeatures(tokenFeatures, tokenizedSources.tokenSources, input.maxAffinityCount);
-      if (!features) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
+      const features = tokenFeatures ? mapTokenGroupingFeatures(tokenFeatures, tokenizedSources.tokenSources, input.maxAffinityCount, trilingual) : null;
+      if (!features) {
+        const metadata = response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined;
+        // Trilingual mode: a schema miss here is retried like every other trilingual call (it stopped a whole generation).
+        return trilingual ? trilingualFailure({ kind: "table", stage: "grouping_features_schema", text: response.text, result: trilingualRetryable("The grouping features did not match the closed schema.", metadata) }) : invalidSchema(metadata);
+      }
       const groupingViolations =
         enforceOutputLanguage && outputLanguage === "zh-CN"
           ? collectChineseOutputPolicyViolations(

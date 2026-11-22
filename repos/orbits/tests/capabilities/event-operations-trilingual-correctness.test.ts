@@ -505,3 +505,16 @@ test("concept table corrections from the 2026-11-22 reread", async () => {
   assert.equal(offerAnswersNeed("エンジニアの採用", "技術チーム構築"), true);
   assert.equal(share("スタートアップ経営", "経営者のメンタルヘルス"), false);
 });
+
+test("trilingual grouping features: internal affinity keys outside the shortlist are dropped; any other schema miss is retried", async () => {
+  const sources = [{ candidateParticipants: [bo], recommendations: { noMatchReason: null, recommendations: [], sourceParticipantId: yamada.participantId }, sourceParticipant: yamada }];
+  const feature = (affinity: string[]) => ({ features: [{ affinityCandidateKeys: affinity, facilitationHint: "先聊导入经验。", primaryTopic: "医疗 AI", secondaryTopic: "融资", sourceKey: "S1" }] });
+  const ok = await provider(model({ base: feature(["S1C1", "S1C9", "S1C1"]) })).generateGroupingFeatures({ eventId: "event:t", maxAffinityCount: 1, sources });
+  assert.equal(ok.success, true);
+  if (ok.success) assert.deepEqual(ok.data[0]!.affinityParticipantIds, [bo.participantId]);
+  const missed = await provider(model({ base: { features: [] } })).generateGroupingFeatures({ eventId: "event:t", maxAffinityCount: 1, sources });
+  assert.equal(missed.success, false);
+  if (!missed.success) assert.equal(missed.retryable, true);
+  const strict = await createEventOperationsAiProvider({ runModelText: model({ base: feature(["S1C9"]) }) }).generateGroupingFeatures({ eventId: "event:t", maxAffinityCount: 1, sources });
+  assert.equal(strict.success, false, "the legacy single-language path keeps its strict rule");
+});
