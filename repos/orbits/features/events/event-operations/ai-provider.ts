@@ -846,34 +846,49 @@ function numericValues(text: string): string {
  * same numbers in all three languages, no registered name written by hand (structural: the batch fails);
  * then the language rules (flagged languages may get one repair).
  */
+/** Placeholder and identity problems of one text (any language). */
+function textIssues(text: string, allowed: ReadonlySet<string>, language: TextLanguage, participants: readonly import("./contract").EventOperationsParticipant[]): string[] {
+  const issues: string[] = [];
+  const people = new Set<string>();
+  const companies: string[] = [];
+  for (const placeholder of text.match(ANY_BRACES_PATTERN) ?? []) {
+    const match = CANONICAL_PLACEHOLDER_PATTERN.exec(placeholder);
+    if (!match) { issues.push("malformed_placeholder"); continue; }
+    if (!allowed.has(match[1]!)) issues.push("out_of_scope");
+    if (match[2]) companies.push(match[1]!); else people.add(match[1]!);
+  }
+  if (companies.some((key) => !people.has(key))) issues.push("company_without_person");
+  if (/[{}]/u.test(text.replace(ANY_BRACES_PATTERN, ""))) issues.push("stray_brace");
+  const values = { en: language === "en" ? [text] : [], ja: language === "ja" ? [text] : [], zh: language === "zh" ? [text] : [] };
+  const violations = collectTrilingualOutputViolations(values, participants);
+  if (violations.names.length) issues.push("raw_name");
+  if ((language === "ja" ? violations.japanese : language === "zh" ? violations.chinese : violations.english).length) issues.push("language");
+  return [...new Set(issues)];
+}
+const placeholderSet = (text: string) => [...new Set(text.match(ANY_BRACES_PATTERN) ?? [])].sort().join(",");
+
+/**
+ * Full check of every sentence, run after translation and again after any repair. The Japanese base text is the
+ * reference (it already passed its own check): a zh/en text whose placeholders or numbers differ from it, or that
+ * breaks a placeholder, identity or language rule, is flagged for one repair from the Japanese. A problem in the
+ * Japanese itself is structural (the batch fails).
+ */
 function checkScopedSentences(scoped: readonly ScopedSentence[], participants: readonly import("./contract").EventOperationsParticipant[]) {
   const structural: string[] = [];
   const flagged: Array<{ index: number; languages: TextLanguage[] }> = [];
   scoped.forEach(({ allowed, sentence }, index) => {
-    const sets: string[] = [];
-    for (const language of TEXT_LANGUAGES) {
-      const text = normalizePlaceholders(sentence[language]);
-      (sentence as Record<TextLanguage, string>)[language] = text;
-      const found = text.match(ANY_BRACES_PATTERN) ?? [];
-      const people = new Set<string>();
-      const companies: string[] = [];
-      for (const placeholder of found) {
-        const match = CANONICAL_PLACEHOLDER_PATTERN.exec(placeholder);
-        if (!match) { structural.push(`malformed_placeholder@${index}`); continue; }
-        if (!allowed.has(match[1]!)) structural.push(`out_of_scope@${index}`);
-        if (match[2]) companies.push(match[1]!); else people.add(match[1]!);
-      }
-      if (companies.some((key) => !people.has(key))) structural.push(`company_without_person@${index}`);
-      if (/[{}]/u.test(text.replace(ANY_BRACES_PATTERN, ""))) structural.push(`stray_brace@${index}`);
-      sets.push([...new Set(found)].sort().join(","));
-    }
-    if (new Set(sets).size !== 1) structural.push(`placeholder_mismatch@${index}`);
-    const numberSets = TEXT_LANGUAGES.map((language) => numericValues(sentence[language])).filter((set) => set !== "");
-    if (new Set(numberSets).size > 1) structural.push(`number_mismatch@${index}`);
-    const violations = collectTrilingualOutputViolations({ en: [sentence.en], ja: [sentence.ja], zh: [sentence.zh] }, participants);
-    if (violations.names.length) structural.push(`raw_name@${index}`);
-    const languages = TEXT_LANGUAGES.filter((language) => (language === "ja" ? violations.japanese : language === "zh" ? violations.chinese : violations.english).length > 0);
-    if (languages.length) flagged.push({ index, languages });
+    for (const language of TEXT_LANGUAGES) (sentence as Record<TextLanguage, string>)[language] = normalizePlaceholders(sentence[language]);
+    const jaIssues = textIssues(sentence.ja, allowed, "ja", participants);
+    if (jaIssues.length) { structural.push(...jaIssues.map((issue) => `${issue}@${index}`)); return; }
+    const reference = { numbers: numericValues(sentence.ja), placeholders: placeholderSet(sentence.ja) };
+    const languages = (["zh", "en"] as const).filter((language) => {
+      const text = sentence[language];
+      const numbers = numericValues(text);
+      return textIssues(text, allowed, language, participants).length > 0
+        || placeholderSet(text) !== reference.placeholders
+        || (numbers !== "" && reference.numbers !== "" && numbers !== reference.numbers);
+    });
+    if (languages.length) flagged.push({ index, languages: [...languages] });
   });
   return { flagged, structural };
 }
@@ -1025,7 +1040,7 @@ function requestFingerprint(
     temperature,
     responseSchema: "event-operations-tokenized-recommendations-v1",
     // 2026-11-22: only present when on, so single-language fingerprints are unchanged.
-    ...(trilingual ? { participantTextLanguages: "ja-facts-choose-write-translate-v1" } : {}),
+    ...(trilingual ? { participantTextLanguages: "ja-facts-choose-write-translate-v2" } : {}),
   };
   return JSON.stringify(
     recommendationPromptEncoding === "deduplicated" ||
@@ -1352,26 +1367,66 @@ export function createEventOperationsAiProvider({
     return { ok: true, metadata };
   }
 
-  /** Base-draft texts: placeholder form, scope, company pairing, no written names, Japanese reads as Japanese. */
-  function baseTextProblems(items: ReadonlyArray<{ allowed: ReadonlySet<string>; text: string }>, participants: readonly import("./contract").EventOperationsParticipant[]): string[] {
-    const problems: string[] = [];
-    for (const { allowed, text } of items) {
-      if (!nonEmptyString(text)) { problems.push("empty"); continue; }
-      const people = new Set<string>();
-      const companies: string[] = [];
-      for (const placeholder of text.match(ANY_BRACES_PATTERN) ?? []) {
-        const match = CANONICAL_PLACEHOLDER_PATTERN.exec(placeholder);
-        if (!match) { problems.push("malformed_placeholder"); continue; }
-        if (!allowed.has(match[1]!)) problems.push("out_of_scope");
-        if (match[2]) companies.push(match[1]!); else people.add(match[1]!);
-      }
-      if (companies.some((key) => !people.has(key))) problems.push("company_without_person");
-      if (/[{}]/u.test(text.replace(ANY_BRACES_PATTERN, ""))) problems.push("stray_brace");
-      const violations = collectTrilingualOutputViolations({ en: [], ja: [text], zh: [] }, participants);
-      if (violations.names.length) problems.push("raw_name");
-      if (violations.japanese.length) problems.push("base_not_japanese");
+  /** Base-draft texts: placeholder form, scope, company pairing, no written names, Japanese reads as Japanese; questions never name the person asked. */
+  function baseTextIssues(items: ReadonlyArray<{ allowed: ReadonlySet<string>; asked?: string; text: string }>, participants: readonly import("./contract").EventOperationsParticipant[]): Map<number, string[]> {
+    const issues = new Map<number, string[]>();
+    items.forEach((item, index) => {
+      const found = nonEmptyString(item.text) ? textIssues(item.text, item.allowed, "ja", participants) : ["empty"];
+      if (item.asked && new RegExp(`\\{${item.asked}(:company)?\\}`, "u").test(item.text)) found.push("question_names_target");
+      if (found.length) issues.set(index, found);
+    });
+    return issues;
+  }
+
+  const BASE_ISSUE_RULE: Readonly<Record<string, string>> = {
+    company_without_person: "a {KEY:company} placeholder must appear together with the same person's {KEY}",
+    empty: "the text is empty",
+    language: "write natural, polite Japanese",
+    malformed_placeholder: "placeholders must be exactly {KEY} or {KEY:company}",
+    out_of_scope: "it mentions a person who is not allowed here",
+    question_names_target: "a question must address the person being asked directly, without naming them",
+    raw_name: "never write a person's or company's name; use only the placeholders",
+    stray_brace: "no braces outside placeholders",
+  };
+
+  /** Base texts with issues get one bounded rewrite (meaning kept, rules fixed); then the same check again. */
+  async function checkAndRepairBase(input: {
+    items: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; text: string }>;
+    kind: "recommendations" | "table";
+    metadata: EventOperationsAiResponseMetadata | undefined;
+    participants: readonly import("./contract").EventOperationsParticipant[];
+    text: string;
+  }): Promise<{ ok: true; metadata: EventOperationsAiResponseMetadata | undefined } | { ok: false; result: EventOperationsAiResult<never> }> {
+    const first = baseTextIssues(input.items, input.participants);
+    if (first.size === 0) return { ok: true, metadata: input.metadata };
+    const request = [...first].map(([index, issues], position) => {
+      const item = input.items[index]!;
+      return { allowedPlaceholders: [...item.allowed].map((key) => `{${key}}`), ...(item.asked ? { personBeingAsked: `{${item.asked}}` } : {}), id: `t${position + 1}`, index, problems: issues.map((issue) => BASE_ISSUE_RULE[issue] ?? issue), text: item.text };
+    });
+    const response = await runModelText({
+      config,
+      systemInstruction: `${systemInstruction}\nYou fix single Japanese event networking texts. Keep the meaning and facts; change only what the listed problems require. Use only the allowed placeholders, exactly as written ({KEY} or {KEY:company}); the server inserts names and さん. Return exactly one json document {"texts":{"<id>":"<fixed text>"}} with exactly the given ids.`,
+      userText: JSON.stringify({ texts: request.map(({ index: _index, ...item }) => item) }),
+    });
+    if (response.success === false) {
+      const failure = modelFailure<never>(response);
+      const merged = mergeEventOperationsResponseMetadata(input.metadata, failure.success === false ? failure.responseMetadata : undefined);
+      return { ok: false, result: failure.success === false ? { ...failure, ...(merged ? { responseMetadata: merged } : {}) } : failure };
     }
-    return [...new Set(problems)];
+    const metadata = mergeEventOperationsResponseMetadata(input.metadata, metadataOf(response));
+    const json = parseJsonClosingTail(response.text, response.responseMetadata?.finishReason);
+    const texts = isRecord(json) && exactKeys(json, ["texts"]) && isRecord(json.texts) ? json.texts : null;
+    const repairText = JSON.stringify({ request: request.map(({ index: _index, ...item }) => item), response: response.text });
+    if (!texts || Object.keys(texts).length !== request.length || !request.every((item) => nonEmptyString(texts[item.id]))) {
+      return { ok: false, result: trilingualFailure({ kind: "repair", stage: "base_repair_schema", text: repairText, result: trilingualRetryable<never>("The base repair did not return exactly the requested texts.", metadata) }) };
+    }
+    for (const item of request) input.items[item.index]!.text = normalizePlaceholders(String(texts[item.id]).trim());
+    const second = baseTextIssues(input.items, input.participants);
+    if (second.size) {
+      return { ok: false, result: trilingualFailure({ kind: "repair", stage: "base_after_repair", text: repairText, result: trilingualRetryable<never>(`The base draft still failed after repair: ${[...new Set([...second.values()].flat())].join(", ")}.`, metadata) }) };
+    }
+    process.stderr.write(`${JSON.stringify({ event: "event_operations_trilingual_base_repaired", kind: input.kind, texts: request.length })}\n`);
+    return { ok: true, metadata };
   }
 
   /** One language's translation of the base texts; id set must match exactly. One retry of this call on a bad shape. */
@@ -1567,9 +1622,6 @@ ${JSON.stringify(pairs)}`,
         for (const [index, item] of list.entries()) {
           const row = json[`${token.sourceKey}.p${index + 1}`];
           if (!isRecord(row) || !exactKeys(row, ["hint", "q1", "q2", "r1", "r2"]) || !["hint", "q1", "q2"].every((field) => nonEmptyString(row[field]))) return "pair_keys";
-          // Questions are said to the target directly: the target is never named in the third person ({TARGET});
-          // the asker may mention themselves.
-          if (/\{TARGET(:company)?\}/u.test(`${row.q1}${row.q2}`)) return "question_not_direct";
           const known = new Map(pairFacts(token.sourceKey, item.target).map((fact) => [fact.id, fact]));
           const basis = item.basis.map((pair) => pair.map((factId) => relabel(factId, token.sourceKey, item.target)).sort().join("|"));
           const usedPairs = new Set<string>();
@@ -1593,7 +1645,7 @@ ${JSON.stringify(pairs)}`,
     if (writeProblem) return trilingualFailure({ kind: "recommendations", stage: `write_${writeProblem}`, text: response.text, result: trilingualRetryable(`The base draft failed the fact checks (${writeProblem}).`, metadata) });
     // 2. Base texts, scoped to the pair; {SOURCE}/{TARGET} become that pair's keys (no other person can be named). ev is internal only.
     const written = json as Record<string, Record<string, unknown>>;
-    const base: Array<{ allowed: ReadonlySet<string>; id: string; text: string }> = [];
+    const base: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; text: string }> = [];
     const bind = (text: string, sourceKey: string, targetKey: string | null) => normalizePlaceholders(text)
       .replace(/\{(SOURCE|TARGET)(:company)?\}/gu, (match, role: string, company?: string) => (role === "SOURCE" ? `{${sourceKey}${company ?? ""}}` : targetKey ? `{${targetKey}${company ?? ""}}` : match));
     for (const token of tokenizedSources.tokenSources) {
@@ -1604,11 +1656,13 @@ ${JSON.stringify(pairs)}`,
         const row = written[id]!;
         const allowed = new Set([token.sourceKey, item.target]);
         for (const field of ["r1", "r2"]) base.push({ allowed, id: `${id}.${field}`, text: bind(String((row[field] as Record<string, unknown>).text), token.sourceKey, item.target) });
-        for (const field of ["q1", "q2", "hint"]) base.push({ allowed, id: `${id}.${field}`, text: bind(String(row[field]), token.sourceKey, item.target) });
+        for (const field of ["q1", "q2"]) base.push({ allowed, asked: item.target, id: `${id}.${field}`, text: bind(String(row[field]), token.sourceKey, item.target) });
+        base.push({ allowed, id: `${id}.hint`, text: bind(String(row.hint), token.sourceKey, item.target) });
       });
     }
-    const baseProblems = baseTextProblems(base, participants);
-    if (baseProblems.length) return trilingualFailure({ kind: "recommendations", stage: `base_check_${baseProblems[0]}`, text: response.text, result: trilingualRetryable(`The base draft failed: ${baseProblems.join(", ")}.`, metadata) });
+    const baseChecked = await checkAndRepairBase({ items: base, kind: "recommendations", metadata, participants, text: response.text });
+    if (baseChecked.ok === false) return baseChecked.result as never;
+    metadata = baseChecked.metadata;
     // 3. Translate (zh, en) → full check → at most one repair → full check.
     const translated = await translateAndCheck({ base, kind: "recommendations", metadata, participants, text: response.text });
     if (translated.ok === false) return translated.result as never;
@@ -1698,15 +1752,16 @@ ${JSON.stringify(promptFeatures)}`,
     const doc = json as Record<string, unknown> & { members: Record<string, Record<string, string>> };
     const allowed = new Set(keys);
     const normalize = (text: string) => normalizePlaceholders(text).replace(/\{(\d+)(:company)?\}/gu, (_match, key: string, company?: string) => `{M${key}${company ?? ""}}`);
-    const base = [
+    const base: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; text: string }> = [
       ...["theme", "rationale", "q1", "q2", "q3"].map((field) => ({ allowed, id: field, text: normalize(String(doc[field])) })),
-      ...keys.flatMap((key) => ["p1", "p2", "why"].map((field) => ({ allowed, id: `${key}.${field}`, text: normalize(doc.members[key]![field]!) }))),
+      ...keys.flatMap((key) => [
+        ...["p1", "p2"].map((field) => ({ allowed, asked: key, id: `${key}.${field}`, text: normalize(doc.members[key]![field]!) })),
+        { allowed, id: `${key}.why`, text: normalize(doc.members[key]!.why!) },
+      ]),
     ];
-    if (keys.some((key) => /[{}]/u.test(`${doc.members[key]!.p1}${doc.members[key]!.p2}`))) {
-      return trilingualFailure({ kind: "table", stage: "base_prompt_not_direct", text: response.text, result: trilingualRetryable("Member prompts must address the member directly.", metadata) });
-    }
-    const baseProblems = baseTextProblems(base, input.members);
-    if (baseProblems.length) return trilingualFailure({ kind: "table", stage: `base_check_${baseProblems[0]}`, text: response.text, result: trilingualRetryable(`The base draft failed: ${baseProblems.join(", ")}.`, metadata) });
+    const baseChecked = await checkAndRepairBase({ items: base, kind: "table", metadata, participants: input.members, text: response.text });
+    if (baseChecked.ok === false) return baseChecked.result as never;
+    metadata = baseChecked.metadata;
     const translated = await translateAndCheck({ base, kind: "table", metadata, participants: input.members, text: response.text });
     if (translated.ok === false) return translated.result as never;
     metadata = translated.metadata;

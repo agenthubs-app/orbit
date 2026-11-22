@@ -26,7 +26,7 @@ const bo = participant("b", "Bo", "Beacon Health");
 const mira = participant("c", "Mira", "未来科技");
 const kai = participant("d", "Kai", "暂无");
 
-type Kind = "choose" | "base" | "zh" | "en" | "repair";
+type Kind = "choose" | "base" | "baseRepair" | "zh" | "en" | "repair";
 /**
  * A fake model that answers by call kind. Translations default to a faithful stand-in (keeps the placeholders and
  * digits of the Japanese text) unless a test overrides them.
@@ -37,12 +37,14 @@ function model(options: {
   translate?: (language: "zh" | "en", id: string, ja: string) => string | undefined;
   translationReply?: (language: "zh" | "en") => unknown;
   repair?: unknown;
+  baseRepair?: unknown;
   fail?: Kind;
 }) {
   const calls: Array<{ kind: Kind; userText: string }> = [];
   const usage = { cacheHitTokens: 0, completionTokens: 100, promptTokens: 1000, reasoningTokens: null };
   const run = async (input: { systemInstruction: string; userText: string }) => {
     const kind: Kind = input.systemInstruction.includes("You choose who should meet whom") ? "choose"
+      : input.systemInstruction.includes("You fix single Japanese") ? "baseRepair"
       : input.systemInstruction.includes("language repair") ? "repair"
       : input.systemInstruction.includes("You translate Japanese") ? (input.systemInstruction.includes("Simplified Chinese") ? "zh" : "en")
       : "base";
@@ -52,6 +54,7 @@ function model(options: {
     if (kind === "choose") return ok(options.choose ?? { S1: [{ basis: [["S1.n1", "S1C1.o1"]], score: 90, target: "S1C1" }, { basis: [["S1.n1", "S1C2.o1"]], score: 80, target: "S1C2" }] });
     if (kind === "base") return ok(options.base);
     if (kind === "repair") return ok(options.repair ?? { sentences: {} });
+    if (kind === "baseRepair") return ok(options.baseRepair ?? { texts: {} });
     const language = kind;
     const custom = options.translationReply?.(language);
     if (custom !== undefined) return ok(custom);
@@ -308,4 +311,21 @@ test("style: 贵公司 and 你 are repaired from the Japanese; calques are steer
   assert.ok(runner.calls.some((call) => call.kind === "repair"));
   assert.equal(collectTrilingualOutputViolations({ en: [], ja: [], zh: ["请问你最近在做什么？"] }, []).chinese.length, 1, "你 → 您");
   assert.equal(collectTrilingualOutputViolations({ en: [], ja: [], zh: ["您目前面临的课题是什么？"] }, []).chinese.length, 0, "a calque is not a failure");
+});
+
+test("per-text repair: a base text breaking a rule is rewritten once and checked again; a translation that drifts is re-translated from the Japanese", async () => {
+  const fixedQuestion = model({ base: goodBase({ p1: { q1: "{TARGET}さんが最初に試す業務は？" } }), baseRepair: { texts: { t1: "最初にどの業務で試しますか？" } } });
+  const ok = await provider(fixedQuestion).generateRecommendations(two);
+  assert.equal(ok.success, true, "question naming the target is fixed by one rewrite");
+  assert.ok(fixedQuestion.calls.some((call) => call.kind === "baseRepair"));
+  const stillBad = model({ base: goodBase({ p1: { q1: "{TARGET}さんが最初に試す業務は？" } }), baseRepair: { texts: { t1: "{TARGET}さんは何から始めますか？" } } });
+  await failsRetryably(stillBad, two, "a rewrite that keeps the problem fails the batch");
+  const drifted = model({
+    base: goodBase(),
+    repair: { sentences: { s1: { en: "{S1} and {S1C1} can start from rollout stories." } } },
+    translate: (language, id) => (language === "en" && id === "S1.p1.hint" ? "{S1} should ask {S1C2} first." : undefined),
+  });
+  const reTranslated = await provider(drifted).generateRecommendations(two);
+  assert.equal(reTranslated.success, true, "a translation naming another person is re-translated from the Japanese");
+  assert.match(drifted.calls.find((call) => call.kind === "repair")!.userText, /"source":"ja"/u);
 });
