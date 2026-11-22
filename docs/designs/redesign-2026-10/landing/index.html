@@ -1,0 +1,53 @@
+<!doctype html><html lang="zh" data-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Orbit 展示页方案</title>
+<style>
+@import url("../kit/tokens.css");
+*{box-sizing:border-box;margin:0}
+body{font-family:var(--font);background:#e9e6ec;color:var(--ink);min-height:100vh}
+.bar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;padding:12px 20px;background:#fff;border-bottom:1px solid var(--surface-3)}
+.bar h1{font-size:15px;font-weight:800;margin-right:auto}
+.seg{display:inline-flex;padding:3px;border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:none;font:inherit;font-size:13px;font-weight:700;color:var(--ink-2);padding:6px 14px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed=true]{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(60,40,90,.16)}
+.bar a{font-size:13px;font-weight:700;color:var(--plum-900)}
+.desc{padding:14px 20px 0;font-size:13px;color:var(--ink-2);line-height:1.7}
+.stage{display:flex;gap:24px;align-items:flex-start;padding:20px;overflow-x:auto}
+.dev{flex:none}
+.dev h2{font-size:12px;font-weight:800;color:var(--ink-2);margin-bottom:8px}
+.dev .box{border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 10px 30px -14px rgba(60,40,90,.4)}
+.dev iframe{display:block;border:0;transform-origin:0 0}
+</style></head><body>
+<div class="bar">
+  <h1>Orbit 登录前展示页 · 三个方案</h1>
+  <div class="seg" id="v"><button data-v="a">方案 A</button><button data-v="b">方案 B</button><button data-v="c">方案 C</button></div>
+  <div class="seg" id="d"><button data-d="all">三端并排</button><button data-d="phone">手机</button><button data-d="pad">iPad</button><button data-d="desk">桌面</button></div>
+  <a id="open" target="_blank" rel="noopener">单独打开这个方案</a>
+</div>
+<p class="desc" id="desc"></p>
+<div class="stage" id="stage"></div>
+<script>
+const DEV = { phone: ["手机 390", 390, 844], pad: ["iPad 820", 820, 1180], desk: ["桌面 1440", 1440, 900] };
+const DESC = {
+  a: "方案 A：推荐卡片做主角。首屏右侧直接放一张真实样子的推荐卡片（可切日 / 中 / 英），访客第一眼就看到产品给什么。",
+  b: "方案 B：活动做主角。首屏下方就是可以报名的活动，访客不用注册先看到能去哪；推荐卡片放在第二屏。",
+  c: "方案 C：一句话加轨道图。首屏最简，用「70 人里选出 5 人」的图表达核心；细节靠后面几屏展开。",
+};
+let v = localStorage.getItem("lp-v") || "a", d = localStorage.getItem("lp-d") || "all";
+function draw() {
+  document.querySelectorAll("#v button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === v));
+  document.querySelectorAll("#d button").forEach(b => b.setAttribute("aria-pressed", b.dataset.d === d));
+  document.getElementById("open").href = v + ".html";
+  document.getElementById("desc").textContent = DESC[v] + " 每个画框内都可以上下滚动看完 7 屏。";
+  const keys = d === "all" ? ["phone", "pad", "desk"] : [d];
+  const avail = innerWidth - 40;
+  document.getElementById("stage").innerHTML = keys.map(k => {
+    const [name, w, h] = DEV[k];
+    const s = d === "all" ? (k === "desk" ? .5 : k === "pad" ? .6 : .8) : Math.min(1, avail / w);
+    const vh = d === "all" ? h : Math.max(h, (innerHeight - 150) / s);
+    return `<div class="dev"><h2>${name}${s < 1 ? "（缩小到 " + Math.round(s * 100) + "%）" : ""}</h2><div class="box" style="width:${w * s}px;height:${vh * s}px"><iframe src="${v}.html" width="${w}" height="${vh}" style="transform:scale(${s})" title="${name}"></iframe></div></div>`;
+  }).join("");
+}
+document.getElementById("v").onclick = e => { if (e.target.dataset.v) { v = e.target.dataset.v; try { localStorage.setItem("lp-v", v); } catch {} draw(); } };
+document.getElementById("d").onclick = e => { if (e.target.dataset.d) { d = e.target.dataset.d; try { localStorage.setItem("lp-d", d); } catch {} draw(); } };
+addEventListener("resize", draw); draw();
+</script></body></html>

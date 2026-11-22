@@ -1,0 +1,195 @@
+<!doctype html><html lang="ja" data-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Orbit 展示页 v2 · 首屏不变，新屏接在下面</title>
+<link rel="stylesheet" href="v2.css"></head><body>
+
+<!-- ═════ 首屏：现有页面原样（LandingPage.tsx / b1 #0），不改 ═════ -->
+<main class="page">
+  <header class="header">
+    <a class="brand" href="#"><span class="logo">O</span><strong>Orbit</strong></a>
+    <nav class="nav"><a href="#features">機能</a><a href="#">よくある質問</a></nav>
+    <div class="account"><a class="ghost" href="#">ログイン</a><a class="primary" href="#">無料で始める</a></div>
+  </header>
+  <div class="body">
+    <section class="hero">
+      <div class="copy">
+        <span class="eyebrow">名刺から始まる、人脈の作戦室</span>
+        <h1>名刺の束を、<br>次に会うべき人の<br>リストに。</h1>
+        <p>撮るだけで名刺を整理。あなたの目標から逆算して、話すべき人のタイプ・行くべきイベント・お礼メールの下書きまで用意します。</p>
+        <div class="ctas"><a class="primary cta" href="#">無料で始める<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/></svg></a><a class="google" href="#"><span class="g">G</span>Google で続ける</a></div>
+        <small>登録は1分 · クレジットカード不要</small>
+      </div>
+      <div class="art">
+        <span class="sampleLabel">サンプル</span>
+        <div style="left:10px;top:150px;rotate:-9deg"><div class="paper"><span class="pCo">林電機工業</span><span class="pR">代表取締役</span><b class="pN">林 俊介</b><span class="pM">s.hayashi@hayashi-denki.example<br>03-5555-0142</span></div></div>
+        <div style="left:40px;top:182px;rotate:-3deg"><div class="paper"><span class="pCo">森田精機株式会社</span><span class="pR">購買部 課長</span><b class="pN">森田 恵</b><span class="pM">m.morita@morita-seiki.example<br>03-5555-0142</span></div></div>
+        <div style="left:74px;top:214px;rotate:4deg"><div class="paper"><span class="pCo">Kibo Ventures</span><span class="pR">パートナー</span><b class="pN">山口 大樹</b><span class="pM">y.yamaguchi@kibo-vc.example<br>03-5555-0142</span></div></div>
+        <div class="float today"><div class="row"><span class="tile sm">✨</span><b>今日の一手</b></div><div class="todayText">山口さん（Kibo Ventures）へ、昨日のお礼と資料のご案内を。</div><div class="row" style="gap:6px"><span class="chip">下書きの例</span><span class="lbl">送信はあなたが行います</span></div></div>
+        <div class="float d2 score"><div class="between"><span class="lbl">プラン スコア</span><span class="chance">今日 +10</span></div><div class="scoreRow"><b class="scoreNum">46</b><b>シリーズA 資金調達</b></div>
+          <div class="bar"><span class="sg" style="flex:10"></span><span class="sg" style="flex:15"><b style="width:40%"></b></span><span class="sg" style="flex:10"></span><span class="sg" style="flex:30"><b style="width:66.67%"></b></span><span class="sg" style="flex:15"></span><span class="sg sk" style="flex:10"></span><span class="sg" style="flex:10"><b style="width:100%"></b></span></div></div>
+        <div class="float d3 scanned"><span class="tile sm teal">✓</span><div><b>12枚を読み取りました</b><div class="lbl">うち3人がプランに合いそうです</div></div></div>
+      </div>
+      <div class="sample">
+        <span class="sampleLabel">サンプル</span>
+        <div class="sampleCard">📇 名刺を12枚読み取りました<br><small>うち3人がプランに合いそうです</small></div>
+        <div class="sampleCard sampleOffset">🎯 プラン スコア 46 · 今日 +10</div>
+        <div class="sampleCard">✨ 山口さんへのお礼と資料のご案内<br><small class="draft">下書きの例</small></div>
+      </div>
+    </section>
+    <section class="features" id="features">
+      <article><span class="tile apricot">📇</span><div><strong>撮るだけで、名刺が人脈に</strong><p>連続撮影・表裏の自動ペア・重複の統合まで。</p></div></article>
+      <article><span class="tile">🎯</span><div><strong>目標から逆算した、次の一手</strong><p>資金調達・新規開拓など最大2つの目標ごとに、ステップ別に話すべき人を提案。</p></div></article>
+      <article><span class="tile pink">✉️</span><div><strong>下書きまで。送信はあなたが行います</strong><p>お礼や紹介依頼のメールを下書きします。勝手に送ることはありません。</p></div></article>
+    </section>
+  </div>
+</main>
+
+<!-- ═════ 新增各屏：形式与首屏一致 ═════ -->
+<div class="more">
+
+  <!-- ① 名片管理 -->
+  <section class="sec" id="cards">
+    <div class="txt">
+      <span class="eyebrow">名刺の管理</span>
+      <h2>たまった名刺が、<br>その日のうちに片づく。</h2>
+      <p>交流会の帰りに、まとめて撮るだけです。会社名も役職も、探せる形で人脈に入ります。</p>
+      <ul class="pts">
+        <li><span class="tile sm apricot">📷</span><div><strong>何枚でも続けて撮れる</strong><span>表と裏は自動でペアになり、同じ人は一つにまとまります。</span></div></li>
+        <li><span class="tile sm blue">🗂</span><div><strong>どこで会ったかが残る</strong><span>名刺、QR交換、イベントなど、出会った経路ごとに絞り込めます。</span></div></li>
+        <li><span class="tile sm teal">⤵︎</span><div><strong>手持ちの連絡先もまとめて</strong><span>スマホの連絡先や LinkedIn の書き出しファイルから取り込めます。</span></div></li>
+      </ul>
+    </div>
+    <div class="panel"><span class="sampleLabel">サンプル</span>
+      <div class="fan">
+        <div class="paper"><span class="pCo">林電機工業</span><span class="pR">代表取締役</span><b class="pN">林 俊介</b></div>
+        <div class="paper"><span class="pCo">森田精機株式会社</span><span class="pR">購買部 課長</span><b class="pN">森田 恵</b></div>
+        <div class="paper"><span class="pCo">Kibo Ventures</span><span class="pR">パートナー</span><b class="pN">山口 大樹</b></div>
+      </div>
+      <div class="card">
+        <div class="row"><span class="tile sm teal">✓</span><h3>12枚を読み取りました</h3></div>
+        <div class="person"><span class="tile sm pink">山</span><div><b>山口 大樹</b><small>Kibo Ventures　パートナー</small></div><span class="chip apricot">名刺</span></div>
+        <div class="person"><span class="tile sm teal">森</span><div><b>森田 恵</b><small>森田精機株式会社　購買部 課長</small></div><span class="chip apricot">名刺</span></div>
+        <div class="person"><span class="tile sm blue">林</span><div><b>林 俊介</b><small>林電機工業　代表取締役</small></div><span class="chip blue">QR交換</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ② 人脉挖掘 -->
+  <section class="sec flip" id="network">
+    <div class="txt">
+      <span class="eyebrow">人脈を掘る</span>
+      <h2>次に会うべき人は、<br>もう人脈の中にいるかもしれない。</h2>
+      <p>目標を一つ決めると、そこまでに話しておくべき人のタイプが並びます。手持ちの人脈に当てはまる人と、まだ足りないタイプが分かります。</p>
+      <ul class="pts">
+        <li><span class="tile sm">🎯</span><div><strong>目標から、会う人を逆算する</strong><span>資金調達や新規開拓など、目標ごとに必要な人のタイプを出します。</span></div></li>
+        <li><span class="tile sm pink">🔎</span><div><strong>埋もれている人を見つける</strong><span>何年も前に交換した名刺の中から、いまの目標に合う人を挙げます。</span></div></li>
+        <li><span class="tile sm teal">🧭</span><div><strong>足りない人には、会える場所を</strong><span>人脈にいないタイプは、その人たちが参加するイベントを案内します。</span></div></li>
+      </ul>
+    </div>
+    <div class="panel"><span class="sampleLabel">サンプル</span>
+      <div class="card">
+        <div class="between"><span class="lbl">プラン スコア</span><span class="chance">今日 +10</span></div>
+        <div class="scoreRow"><b class="scoreNum">46</b><b>シリーズA 資金調達</b></div>
+        <div class="bar"><span class="sg" style="flex:10"></span><span class="sg" style="flex:15"><b style="width:40%"></b></span><span class="sg" style="flex:10"></span><span class="sg" style="flex:30"><b style="width:66.67%"></b></span><span class="sg" style="flex:15"></span><span class="sg sk" style="flex:10"></span><span class="sg" style="flex:10"><b style="width:100%"></b></span></div>
+      </div>
+      <div class="card">
+        <h3>話しておくべき人</h3>
+        <div class="type"><div class="between"><b>シード期に投資している投資家</b><span class="chip teal">人脈に2人</span></div><p>山口 大樹さん、ほか1人。2年前に名刺を交換しています。</p></div>
+        <div class="type"><div class="between"><b>同じ業界で調達を終えた起業家</b><span class="chip teal">人脈に1人</span></div><p>林 俊介さん。先月のイベントで会っています。</p></div>
+        <div class="type"><div class="between"><b>事業会社の投資担当</b><span class="chip pink">まだいません</span></div><p>12月12日の交流会に、当てはまる人が2人参加します。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ③ 跟进 -->
+  <section class="sec" id="follow">
+    <div class="txt">
+      <span class="eyebrow">会ったあと</span>
+      <h2>会って終わりに、<br>しない。</h2>
+      <p>話した内容と次に連絡する日を残しておくと、その日に Orbit が知らせます。お礼の文面は下書きまで用意します。</p>
+      <ul class="pts">
+        <li><span class="tile sm apricot">📝</span><div><strong>会った日のメモ</strong><span>何を話したか、次に何を送るかを一言で残せます。</span></div></li>
+        <li><span class="tile sm">⏰</span><div><strong>連絡する日が並ぶ</strong><span>今日やること、遅れていることが一目で分かります。</span></div></li>
+        <li><span class="tile sm pink">✉️</span><div><strong>送信はあなたが行います</strong><span>下書きを直して、自分のメールから送ります。</span></div></li>
+      </ul>
+    </div>
+    <div class="panel"><span class="sampleLabel">サンプル</span>
+      <div class="card">
+        <div class="row"><span class="tile sm">✨</span><h3>今日の一手</h3></div>
+        <div class="todo"><span class="when">今日</span><div><b>山口さんへ、昨日のお礼と資料のご案内</b><small><span class="chip">下書きあり</span></small></div></div>
+        <div class="todo"><span class="when">3日後</span><div><b>森田さんに、見積もりの件で連絡する</b><small class="lbl">メモ　代理店契約の条件を知りたいとのこと</small></div></div>
+        <div class="todo"><span class="when">来週</span><div><b>林さんと、面談の日程を決める</b><small class="lbl">メモ　1月に工場を見に行く話が出た</small></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ④ 活动：会前推荐 -->
+  <section class="sec flip" id="events-feature">
+    <div class="txt">
+      <span class="eyebrow">イベント</span>
+      <h2>交流会の前に、<br>会うべき5人が届く。</h2>
+      <p>申し込んだイベントの参加者から、あなたに合う人を最大5人選びます。理由と最初の質問が付くので、会場で迷いません。</p>
+      <ul class="pts">
+        <li><span class="tile sm teal">🤝</span><div><strong>求めていることと、提供できること</strong><span>二人のプロフィールに書かれていることだけで理由を作ります。</span></div></li>
+        <li><span class="tile sm blue">🌐</span><div><strong>日本語、中文、English</strong><span>相手が何語で書いていても、あなたの言語で読めます。</span></div></li>
+        <li><span class="tile sm apricot">📇</span><div><strong>会った人は、そのまま人脈に</strong><span>名刺を撮るか QR で交換すると、上の流れにつながります。</span></div></li>
+      </ul>
+    </div>
+    <div class="panel"><span class="sampleLabel">サンプル</span>
+      <div class="card rec">
+        <div class="person" style="padding-top:0"><span class="tile pink">山</span><div><b>山口 大樹</b><small>Kibo Ventures　パートナー</small></div><span class="chip">おすすめ 1人目</span></div>
+        <div class="chips"><span class="chip teal">提供　海外市場の販路</span><span class="chip teal">提供　中国市場の知見</span><span class="chip blue">話題　新規事業の立ち上げ</span></div>
+        <span class="lbl">おすすめの理由</span>
+        <p>あなたは海外展開のパートナーを探していて、山口さんは海外市場の販路と中国市場の知見を提供できると書いています。新規事業の立ち上げという話題も共通しています。</p>
+        <span class="lbl">聞いてみること</span>
+        <ul><li>中国市場で販路をつくるとき、最初に押さえることは何でしょうか。</li><li>海外展開のパートナーを選ぶとき、何を一番重く見ていますか。</li></ul>
+        <div class="hint">まず自分の海外展開の構想を短く伝えてから、具体的な事例を聞くと話が進みます。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ⑤ 真实活动 -->
+  <section class="sec solo" id="events">
+    <div class="evtop"><div><span class="eyebrow">開催予定</span><h2>いま申し込めるイベント</h2><p>Orbit は、実際の交流会で使われながら作られています。</p></div>
+      <div class="nums"><div><b>4</b>回の日中交流会</div><div><b>223</b>人が参加</div></div></div>
+    <div class="cards three">
+      <article class="ev"><div class="day"><div><b>12</b><br><span>12月 土</span></div></div><div class="in"><strong>日中創新創業交流会 Vol.5</strong><p>東京・渋谷　18:30 開始　定員70人</p><div class="between"><span class="chip">残り12席</span><a class="primary" href="#">申し込む</a></div></div></article>
+      <article class="ev"><div class="day"><div><b>19</b><br><span>12月 土</span></div></div><div class="in"><strong>AIスタートアップ ミートアップ</strong><p>東京・六本木　19:00 開始　定員40人</p><div class="between"><span class="chip">残り8席</span><a class="primary" href="#">申し込む</a></div></div></article>
+      <article class="ev"><div class="day"><div><b>16</b><br><span>1月 金</span></div></div><div class="in"><strong>海外展開の勉強会と懇親会</strong><p>大阪・梅田　18:00 開始　定員30人</p><div class="between"><span class="chip teal">受付中</span><a class="primary" href="#">申し込む</a></div></div></article>
+    </div>
+    <a class="line" href="#">すべてのイベントを見る</a>
+  </section>
+
+  <!-- ⑥ 主办方 -->
+  <section class="sec solo" id="host">
+    <span class="eyebrow">主催者の方へ</span>
+    <h2>席決めと紹介文は、Orbit が用意します。</h2>
+    <p>70人の会でも、参加者ごとの紹介文とテーブル分けが2分ほどで出来上がります。公開する前に、すべて確認できます。</p>
+    <div class="cards three">
+      <article><span class="tile apricot">📣</span><div><strong>申込ページを公開する</strong><p>日時、場所、定員を入れるだけです。</p></div></article>
+      <article><span class="tile blue">📋</span><div><strong>名簿がそのまま揃う</strong><p>参加者が書いたプロフィールが一覧になります。</p></div></article>
+      <article><span class="tile">🪑</span><div><strong>紹介とテーブルを作って配る</strong><p>確認して公開すると、参加者それぞれの言語で届きます。</p></div></article>
+    </div>
+    <a class="line" href="#">イベントを開く</a>
+  </section>
+
+  <!-- ⑦ 隐私 -->
+  <section class="sec solo" id="privacy">
+    <span class="eyebrow">データの扱い</span>
+    <h2>名刺と人脈を預かるので、<br>決めていることがあります。</h2>
+    <div class="cards two">
+      <article><span class="tile teal">🔒</span><div><strong>人脈は、あなただけのもの</strong><p>登録した名刺やメモが、他の利用者に見えることはありません。</p></div></article>
+      <article><span class="tile blue">👥</span><div><strong>プロフィールを見られるのは、同じイベントの参加者だけ</strong><p>検索エンジンにも、他のイベントの参加者にも表示されません。</p></div></article>
+      <article><span class="tile pink">✉️</span><div><strong>メールは下書きまで</strong><p>お礼も紹介依頼も、Orbit が勝手に送ることはありません。</p></div></article>
+      <article><span class="tile apricot">📤</span><div><strong>書き出しと退会は、いつでも</strong><p>人脈のデータは自分で持ち出せます。退会するとデータは削除されます。</p></div></article>
+    </div>
+  </section>
+
+  <!-- ⑧ 结尾 -->
+  <section class="end">
+    <h2>まず、手元の名刺を10枚撮ってみませんか。</h2>
+    <div class="ctas"><a class="primary cta" href="#">無料で始める</a><a class="google" href="#events">イベントを探す</a></div>
+    <small>登録は1分 · クレジットカード不要</small>
+  </section>
+  <footer class="foot"><span>© 2026 Orbit</span><a href="#">利用規約</a><a href="#">プライバシーポリシー</a><a href="#">よくある質問</a><span class="lang"><b>日本語</b><a href="#">中文</a><a href="#">English</a></span></footer>
+</div>
+</body></html>
