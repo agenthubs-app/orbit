@@ -26,13 +26,14 @@ const bo = participant("b", "Bo", "Beacon Health");
 const mira = participant("c", "Mira", "未来科技");
 const kai = participant("d", "Kai", "暂无");
 
-type Kind = "base" | "zh" | "en" | "repair";
+type Kind = "choose" | "base" | "zh" | "en" | "repair";
 /**
  * A fake model that answers by call kind. Translations default to a faithful stand-in (keeps the placeholders and
  * digits of the Japanese text) unless a test overrides them.
  */
 function model(options: {
   base: unknown;
+  choose?: unknown;
   translate?: (language: "zh" | "en", id: string, ja: string) => string | undefined;
   translationReply?: (language: "zh" | "en") => unknown;
   repair?: unknown;
@@ -41,12 +42,14 @@ function model(options: {
   const calls: Array<{ kind: Kind; userText: string }> = [];
   const usage = { cacheHitTokens: 0, completionTokens: 100, promptTokens: 1000, reasoningTokens: null };
   const run = async (input: { systemInstruction: string; userText: string }) => {
-    const kind: Kind = input.systemInstruction.includes("language repair") ? "repair"
+    const kind: Kind = input.systemInstruction.includes("You choose who should meet whom") ? "choose"
+      : input.systemInstruction.includes("language repair") ? "repair"
       : input.systemInstruction.includes("You translate Japanese") ? (input.systemInstruction.includes("Simplified Chinese") ? "zh" : "en")
       : "base";
     calls.push({ kind, userText: input.userText });
     const ok = (value: unknown) => ({ model: "test-model", provider: "openai" as const, responseMetadata: { finishReason: "stop", providerResponseBytes: 10, usage }, source: "provider:openai-responses-api" as const, success: true as const, text: typeof value === "string" ? value : JSON.stringify(value) });
     if (options.fail === kind) return { error: { code: "AI_REQUEST_FAILED" as const, message: "upstream 503" }, model: "test-model", provider: "openai" as const, responseMetadata: { finishReason: null, providerResponseBytes: 1, usage: { ...usage, completionTokens: 7, promptTokens: 70 } }, source: "provider:openai-responses-api" as const, success: false as const };
+    if (kind === "choose") return ok(options.choose ?? { S1: [{ score: 90, target: "S1C1" }, { score: 80, target: "S1C2" }] });
     if (kind === "base") return ok(options.base);
     if (kind === "repair") return ok(options.repair ?? { sentences: {} });
     const language = kind;
@@ -63,18 +66,16 @@ function model(options: {
 }
 const provider = (runner: EventOperationsModelRunner) => createEventOperationsAiProvider({ trilingual: true, runModelText: runner });
 
-const pick = (target: string, overrides: Record<string, unknown> = {}) => ({
-  hint: `{S1}さんは{${target}}さんに導入事例から聞くとよいです。`,
+const pair = (overrides: Record<string, unknown> = {}) => ({
+  hint: "{SOURCE}さんは{TARGET}さんに導入事例から聞くとよいです。",
   q1: "最初にどの業務で試しますか？",
   q2: "導入の決め手は何でしたか？",
-  r1: `{S1}さんは医療分野の導入先を探しています。`,
-  r2: `{${target}}さんは導入支援の経験があります。`,
-  score: 80,
-  target,
+  r1: "{SOURCE}さんは医療分野の導入先を探しています。",
+  r2: "{TARGET}さんは導入支援の経験があります。",
   ...overrides,
 });
 const two = { eventId: "event:t", recommendationCount: 2, sources: [{ candidateParticipants: [bo, mira], sourceParticipant: yamada }] };
-const goodBase = (overrides: { p1?: Record<string, unknown>; p2?: Record<string, unknown> } = {}) => ({ S1: { none: null, p1: pick("S1C1", overrides.p1), p2: pick("S1C2", overrides.p2) } });
+const goodBase = (overrides: { p1?: Record<string, unknown>; p2?: Record<string, unknown> } = {}) => ({ "S1.p1": pair(overrides.p1), "S1.p2": pair(overrides.p2) });
 
 async function failsRetryably(runner: EventOperationsModelRunner, input = two, label = "") {
   const result = await provider(runner).generateRecommendations(input);
@@ -96,36 +97,47 @@ test("happy path: exactly K picks, 2 reasons / 2 questions / 1 hint, names fille
   assert.equal(first.reasons[0], "山田太郎正在寻找医疗领域的合作方。", "base string fields are the zh translation, names filled");
   assert.equal(first.i18n!.ja.reasons[0], "山田太郎さんは医療分野の導入先を探しています。");
   assert.equal(first.i18n!.en.reasons[0], "山田太郎 is looking for a healthcare partner.");
-  assert.deepEqual(runner.calls.map((call) => call.kind).sort(), ["base", "en", "zh"], "one base draft, one call per translation");
+  assert.deepEqual(runner.calls.map((call) => call.kind).sort(), ["base", "choose", "en", "zh"], "choose, one base draft, one call per translation");
   for (const value of ["山田太郎", "青空商事", "Beacon Health", "未来科技"]) assert.doesNotMatch(runner.calls[0]!.userText, new RegExp(value, "u"), `prompt carries no ${value}`);
   assert.doesNotMatch(runner.calls.find((call) => call.kind === "zh")!.userText, /score|target|S1C2"/u, "translation never sees the choice");
 });
 
 test("exactly K: fewer picks, a duplicate target, or a target outside the shortlist fails the batch (no dedupe, no shrinking)", async () => {
-  await failsRetryably(model({ base: { S1: { none: null, p1: pick("S1C1") } } }), two, "one pick where two are required");
-  await failsRetryably(model({ base: goodBase({ p2: { target: "S1C1" } }) }), two, "duplicate target");
-  await failsRetryably(model({ base: goodBase({ p2: { target: "S1C9" } }) }), two, "not in the shortlist");
-  await failsRetryably(model({ base: goodBase({ p1: { score: 80.5 } }) }), two, "score must be an integer");
-  await failsRetryably(model({ base: { S1: { none: null, p1: pick("S1C1"), p2: null } } }), two, "a null pick is a structured failure");
+  await failsRetryably(model({ base: goodBase(), choose: { S1: [{ score: 90, target: "S1C1" }] } }), two, "one pick where two are required");
+  await failsRetryably(model({ base: goodBase(), choose: { S1: [{ score: 90, target: "S1C1" }, { score: 80, target: "S1C1" }] } }), two, "duplicate target");
+  await failsRetryably(model({ base: goodBase(), choose: { S1: [{ score: 90, target: "S1C1" }, { score: 80, target: "S1C9" }] } }), two, "not in the shortlist");
+  await failsRetryably(model({ base: goodBase(), choose: { S1: [{ score: 90.5, target: "S1C1" }, { score: 80, target: "S1C2" }] } }), two, "score must be an integer");
+  await failsRetryably(model({ base: goodBase(), choose: { S1: [{ score: 90, target: "S1C1" }, null] } }), two, "a null pick is a structured failure");
+  await failsRetryably(model({ base: { "S1.p1": pair() } }), two, "a text row missing for a chosen pair");
+});
+
+test("the text is bound to its pair: only {SOURCE} and {TARGET} exist, so it cannot drift to another candidate", async () => {
+  const runner = model({ base: goodBase(), choose: { S1: [{ score: 90, target: "S1C2" }, { score: 80, target: "S1C1" }] } });
+  const result = await provider(runner).generateRecommendations(two);
+  assert.equal(result.success, true);
+  if (!result.success) return;
+  assert.equal(result.data[0]!.recommendations[0]!.targetParticipantId, "participant:c");
+  assert.equal(result.data[0]!.recommendations[0]!.i18n!.ja.memberHint, "山田太郎さんはMiraさんに導入事例から聞くとよいです。", "{TARGET} is this pick's target");
+  const writePrompt = runner.calls.find((call) => call.kind === "base")!.userText;
+  assert.doesNotMatch(writePrompt, /S1C\d/u, "the writer never sees candidate keys");
+  await failsRetryably(model({ base: goodBase({ p1: { hint: "{SOURCE}さんは{S1C2}さんにも会うとよいです。" } }) }), two, "a candidate key written into text");
 });
 
 test("no candidates: none is one sentence and there are no picks", async () => {
   const empty = { eventId: "event:t", recommendationCount: 4, sources: [{ candidateParticipants: [], sourceParticipant: yamada }] };
-  const ok = await provider(model({ base: { S1: { none: "{S1}さんの条件に合う参加者は今回いません。" } } })).generateRecommendations(empty);
+  const ok = await provider(model({ base: { "S1.none": { none: "{SOURCE}さんの条件に合う参加者は今回いません。" } }, choose: { S1: [] } })).generateRecommendations(empty);
   assert.equal(ok.success, true);
   if (ok.success) assert.equal(ok.data[0]!.noMatchReasonI18n?.ja, "山田太郎さんの条件に合う参加者は今回いません。");
-  await failsRetryably(model({ base: { S1: { none: null } } }), empty, "none missing");
+  await failsRetryably(model({ base: { "S1.none": { none: "" } }, choose: { S1: [] } }), empty, "none empty");
 });
 
-test("placeholder scope and pairing in the base draft", async () => {
-  await failsRetryably(model({ base: goodBase({ p1: { hint: "{S1}さんは{S1C2}さんにも会うとよいです。" } }) }), two, "p1 text names p2's target");
-  await failsRetryably(model({ base: goodBase({ p1: { r2: "{S1C1:company}の事例が参考になります。" } }) }), two, "company without its person");
-  await failsRetryably(model({ base: goodBase({ p1: { r2: "{S1}さんは{S1C2:company}と話すとよいです。" } }) }), two, "company of someone not in this pick");
+test("company pairing in the base draft", async () => {
+  await failsRetryably(model({ base: goodBase({ p1: { r2: "{TARGET:company}の事例が参考になります。" } }) }), two, "company without its person");
 });
 
 test("a translation that changes people, placeholders, or numbers fails; it cannot re-choose", async () => {
   await failsRetryably(model({ base: goodBase(), translate: (language, id) => (language === "en" && id === "S1.p1.hint" ? "{S1} should ask {S1C2} first." : undefined) }), two, "en swaps the person");
-  await failsRetryably(model({ base: goodBase({ p1: { r2: "{S1C1}さんは3社を支援しています。" } }), translate: (language, id) => (language === "en" && id === "S1.p1.r2" ? "{S1C1} has supported 5 companies." : undefined) }), two, "number changed");
+  await failsRetryably(model({ base: goodBase({ p1: { r2: "{TARGET}さんは3社を支援しています。" } }), translate: (language, id) => (language === "en" && id === "S1.p1.r2" ? "{S1C1} has supported 5 companies." : undefined) }), two, "number changed");
 });
 
 test("translation ids must match exactly; a bad shape is retried once, then the batch fails", async () => {
@@ -162,17 +174,11 @@ test("usage of earlier calls is kept when a translation request fails", async ()
 
 test("a \"none\" company value is never a company, and the word in text is not a written name", async () => {
   const input = { eventId: "event:t", recommendationCount: 1, sources: [{ candidateParticipants: [kai], sourceParticipant: yamada }] };
-  await failsRetryably(model({ base: { S1: { none: null, p1: pick("S1C1", { hint: "{S1C1:company}の{S1C1}さんに聞きましょう。" }) } } }), input, "no company to insert");
-  const ok = await provider(model({ base: { S1: { none: null, p1: pick("S1C1", { r2: "{S1C1}さんは提携先がまだ暂无のようです。" }) } } })).generateRecommendations(input);
+  await failsRetryably(model({ base: { "S1.p1": pair({ hint: "{TARGET:company}の{TARGET}さんに聞きましょう。" }) }, choose: { S1: [{ score: 80, target: "S1C1" }] } }), input, "no company to insert");
+  const ok = await provider(model({ base: { "S1.p1": pair({ r2: "{TARGET}さんは提携先がまだ暂无のようです。" }) }, choose: { S1: [{ score: 80, target: "S1C1" }] } })).generateRecommendations(input);
   assert.equal(ok.success, true);
 });
 
-test("prefix-less and {SOURCE} keys are the row's S-keys, still scope-checked", async () => {
-  const ok = await provider(model({ base: goodBase({ p1: { hint: "{SOURCE}さんは{1C1}さんに聞くとよいです。" } }) })).generateRecommendations(two);
-  assert.equal(ok.success, true);
-  if (ok.success) assert.equal(ok.data[0]!.recommendations[0]!.i18n!.ja.memberHint, "山田太郎さんはBoさんに聞くとよいです。");
-  await failsRetryably(model({ base: goodBase({ p1: { hint: "{1}さんは{1C2}さんに聞くとよいです。" } }) }), two, "{1C2} is not p1's target");
-});
 
 const tableInput = { eventId: "event:t", features: [], members: [yamada, bo], roundNumber: 1 as const, tableNumber: 3 };
 const tableBase = (overrides: Record<string, unknown> = {}) => ({

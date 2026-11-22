@@ -947,7 +947,7 @@ function requestFingerprint(
     temperature,
     responseSchema: "event-operations-tokenized-recommendations-v1",
     // 2026-11-22: only present when on, so single-language fingerprints are unchanged.
-    ...(trilingual ? { participantTextLanguages: "ja-base-then-translate-v1" } : {}),
+    ...(trilingual ? { participantTextLanguages: "ja-choose-write-translate-v1" } : {}),
   };
   return JSON.stringify(
     recommendationPromptEncoding === "deduplicated" ||
@@ -1368,70 +1368,109 @@ export function createEventOperationsAiProvider({
     // Exactly K picks per source: K = min(N, candidates). The program owns the count, the order (rank) and the targets' validity.
     const pickCount = new Map(tokenizedSources.tokenSources.map((token) => [token.sourceKey, Math.min(Math.max(0, Math.floor(input.recommendationCount)), token.candidateIdByKey.size)]));
     const pickKeys = (sourceKey: string) => Array.from({ length: pickCount.get(sourceKey)! }, (_, index) => `p${index + 1}`);
-    const shape = Object.fromEntries(tokenizedSources.tokenSources.map((token) => [token.sourceKey, pickCount.get(token.sourceKey)! > 0
-      ? { ...Object.fromEntries(pickKeys(token.sourceKey).map((key) => [key, { hint: "…", q1: "…", q2: "…", r1: "…", r2: "…", score: 80, target: `${token.sourceKey}C1` }])), none: null }
-      : { none: "…" }]));
-    const response = await runModelText({
+    // Step 1a — choose (small output): exactly K distinct shortlist targets per source, best first, with scores.
+    const chooseShape = Object.fromEntries(tokenizedSources.tokenSources.map((token) => [token.sourceKey, pickKeys(token.sourceKey).map(() => ({ score: 80, target: `${token.sourceKey}C?` }))]));
+    const choose = await runModelText({
       config,
-      systemInstruction: baseSystemInstruction,
-      userText: `Choose networking recommendations for this shard and write their texts in Japanese.
-
-Requirements:
-- For each sourceKey, return exactly the picks listed in the JSON shape below (p1..pK, where K is that source's count), best first. Each target is a different candidateKey from that source's own shortlist; never the source itself.
-- score is an integer 0..100.
-- r1 and r2 are two different concrete reasons, grounded in both profiles, why these two people should meet (who needs what and who offers it). q1 and q2 are two questions the source person can ask the target. hint is one practical tip for starting the conversation.
-- In a pick, refer only to that row's person {<sourceKey>} and that pick's target {<target>}.
-- A source with no candidates has "none": one sentence explaining why there is no match, referring only to {<sourceKey>}; otherwise "none" is null.
-${recommendationPromptEncoding === "deduplicated" ? "- Resolve sourceProfileKey and each candidate profileKey from the supplied profiles lookup.\n" : ""}
-JSON shape (exact keys):
-${JSON.stringify(shape)}
+      systemInstruction: `${systemInstruction}\nYou choose who should meet whom at a networking event. Judge from the supplied profiles only (needs, offers, industry, topics, role). Return exactly one JSON document.`,
+      userText: `For each sourceKey, choose exactly the number of different people shown in the JSON shape (a list of that length; an empty list when the source has no candidates) from that source's own candidateParticipants shortlist, best first. Each target is a candidateKey from that source's shortlist, never repeated within a source. score is an integer 0..100 for how strongly they should meet. Choose by fit (one needs what the other offers, shared topics), not by list order.
+${recommendationPromptEncoding === "deduplicated" ? "Resolve sourceProfileKey and each candidate profileKey from the supplied profiles lookup.\n" : ""}
+JSON shape (exact keys and list lengths):
+${JSON.stringify(chooseShape)}
 
 Event id: ${input.eventId}
 Sources and deterministic shortlists:
 ${JSON.stringify(tokenizedSources.promptSources)}`,
     });
-    if (response.success === false) return modelFailure(response);
-    let metadata = metadataOf(response);
-    const json = parseJson(response.text);
-    if (json === null) {
-      const shapeName = classifyJsonFailureShape(response.text);
-      return trilingualFailure({ kind: "recommendations", stage: `json_${shapeName}`, text: response.text, result: invalidJson(shapeName, metadata, retryableJsonFailureShapeSet) });
+    if (choose.success === false) return modelFailure(choose);
+    let metadata = metadataOf(choose);
+    const chosenJson = parseJson(choose.text);
+    if (chosenJson === null) {
+      const shapeName = classifyJsonFailureShape(choose.text);
+      return trilingualFailure({ kind: "recommendations", stage: `choose_json_${shapeName}`, text: choose.text, result: invalidJson(shapeName, metadata, retryableJsonFailureShapeSet) });
     }
-    // 1. Structure: exact rows, exactly K distinct targets from the shortlist, integer scores, every text present.
-    const structureProblem = (() => {
-      if (!isRecord(json) || !exactKeys(json, tokenizedSources.tokenSources.map((token) => token.sourceKey))) return "rows";
+    const chooseProblem = (() => {
+      if (!isRecord(chosenJson) || !exactKeys(chosenJson, tokenizedSources.tokenSources.map((token) => token.sourceKey))) return "rows";
       for (const token of tokenizedSources.tokenSources) {
-        const row = json[token.sourceKey];
-        const keys = pickKeys(token.sourceKey);
-        if (!isRecord(row) || !exactKeys(row, [...keys, "none"])) return "picks";
-        if (keys.length === 0 ? !nonEmptyString(row.none) : row.none !== null) return "none";
+        const list = chosenJson[token.sourceKey];
+        if (!Array.isArray(list) || list.length !== pickCount.get(token.sourceKey)) return "count";
         const targets = new Set<string>();
-        for (const key of keys) {
-          const item = row[key];
-          if (!isRecord(item) || !exactKeys(item, ["hint", "q1", "q2", "r1", "r2", "score", "target"])) return "pick_keys";
+        for (const item of list) {
+          if (!isRecord(item) || !exactKeys(item, ["score", "target"])) return "item";
           if (typeof item.target !== "string" || !token.candidateIdByKey.has(item.target) || targets.has(item.target)) return "target";
           targets.add(item.target);
           if (typeof item.score !== "number" || !Number.isInteger(item.score) || item.score < 0 || item.score > 100) return "score";
-          if (!["hint", "q1", "q2", "r1", "r2"].every((field) => nonEmptyString(item[field]))) return "text";
         }
       }
       return null;
     })();
-    if (structureProblem) return trilingualFailure({ kind: "recommendations", stage: `base_${structureProblem}`, text: response.text, result: trilingualRetryable(`The base draft did not match the fixed recommendation shape (${structureProblem}).`, metadata) });
-    // 2. Base texts, scoped; {SOURCE} and prefix-less keys are the row's S-keys.
-    const rows = json as Record<string, Record<string, unknown>>;
-    const base: Array<{ allowed: ReadonlySet<string>; id: string; text: string }> = [];
-    const normalize = (sourceKey: string, text: string) => normalizePlaceholders(text)
-      .replace(/\{SOURCE(:company)?\}/gu, (_match, company?: string) => `{${sourceKey}${company ?? ""}}`)
-      .replace(/\{(\d+(?:C\d+)?)(:company)?\}/gu, (_match, key: string, company?: string) => `{S${key}${company ?? ""}}`);
+    if (chooseProblem) return trilingualFailure({ kind: "recommendations", stage: `choose_${chooseProblem}`, text: choose.text, result: trilingualRetryable(`The choice did not match the required picks (${chooseProblem}).`, metadata) });
+    const chosen = new Map(tokenizedSources.tokenSources.map((token) => [token.sourceKey, (chosenJson as Record<string, Array<{ score: number; target: string }>>)[token.sourceKey]!]));
+    // Step 1b — write the Japanese base draft for exactly the chosen pairs. Text names only {SOURCE} and {TARGET}.
+    const promptProfile = (participant: import("./contract").EventOperationsParticipant) => {
+      const { company: _company, displayName: _name, participantId: _id, ...rest } = compactParticipant(participant);
+      return { ...rest, hasCompany: registeredCompany(participant) !== null };
+    };
+    const pairs: Record<string, unknown> = {};
+    const writeShape: Record<string, unknown> = {};
     for (const token of tokenizedSources.tokenSources) {
-      const row = rows[token.sourceKey]!;
-      if (pickKeys(token.sourceKey).length === 0) base.push({ allowed: new Set([token.sourceKey]), id: `${token.sourceKey}.none`, text: normalize(token.sourceKey, String(row.none)) });
-      for (const key of pickKeys(token.sourceKey)) {
-        const item = row[key] as Record<string, unknown>;
-        const allowed = new Set([token.sourceKey, String(item.target)]);
-        for (const field of ["r1", "r2", "q1", "q2", "hint"]) base.push({ allowed, id: `${token.sourceKey}.${key}.${field}`, text: normalize(token.sourceKey, String(item[field])) });
+      const source = participantByKey.get(token.sourceKey)!;
+      const list = chosen.get(token.sourceKey)!;
+      if (list.length === 0) {
+        pairs[`${token.sourceKey}.none`] = { source: promptProfile(source) };
+        writeShape[`${token.sourceKey}.none`] = { none: "…" };
       }
+      list.forEach((item, index) => {
+        const id = `${token.sourceKey}.p${index + 1}`;
+        pairs[id] = { source: promptProfile(source), target: promptProfile(participantByKey.get(item.target)!) };
+        writeShape[id] = { hint: "…", q1: "…", q2: "…", r1: "…", r2: "…" };
+      });
+    }
+    const response = await runModelText({
+      config,
+      systemInstruction: baseSystemInstruction,
+      userText: `Write the texts for these already-chosen networking pairs, in Japanese.
+
+For every pair id: r1 and r2 are two different concrete reasons, grounded in both profiles, why the source person should meet the target (who needs what and who offers it). q1 and q2 are two questions the source person can ask the target. hint is one practical tip for starting the conversation.
+For an id ending in ".none" (a source with nobody to recommend): none is one sentence explaining why there is no match.
+Refer to the source person only as {SOURCE} and to the target only as {TARGET}; a company only as {SOURCE:company} / {TARGET:company} next to that person, and only when that profile has hasCompany=true. No other placeholders exist.
+
+JSON shape (exact keys):
+${JSON.stringify(writeShape)}
+
+Pairs:
+${JSON.stringify(pairs)}`,
+    });
+    if (response.success === false) {
+      const failure = modelFailure<readonly EventOperationsParticipantRecommendations[]>(response);
+      const merged = mergeEventOperationsResponseMetadata(metadata, failure.success === false ? failure.responseMetadata : undefined);
+      return (failure.success === false ? { ...failure, ...(merged ? { responseMetadata: merged } : {}) } : failure) as EventOperationsAiResult<readonly EventOperationsParticipantRecommendations[]>;
+    }
+    metadata = mergeEventOperationsResponseMetadata(metadata, metadataOf(response));
+    const json = parseJson(response.text);
+    if (json === null) {
+      const shapeName = classifyJsonFailureShape(response.text);
+      return trilingualFailure({ kind: "recommendations", stage: `write_json_${shapeName}`, text: response.text, result: invalidJson(shapeName, metadata, retryableJsonFailureShapeSet) });
+    }
+    const writeOk = isRecord(json) && exactKeys(json, Object.keys(writeShape)) && Object.entries(writeShape).every(([id, fields]) => {
+      const row = (json as Record<string, unknown>)[id];
+      const required = Object.keys(fields as Record<string, unknown>);
+      return isRecord(row) && exactKeys(row, required) && required.every((field) => nonEmptyString(row[field]));
+    });
+    if (!writeOk) return trilingualFailure({ kind: "recommendations", stage: "write_shape", text: response.text, result: trilingualRetryable("The base draft did not match the fixed pair shape.", metadata) });
+    // 2. Base texts, scoped to the pair; {SOURCE}/{TARGET} become that pair's keys (no other person can be named).
+    const written = json as Record<string, Record<string, string>>;
+    const base: Array<{ allowed: ReadonlySet<string>; id: string; text: string }> = [];
+    const bind = (text: string, sourceKey: string, targetKey: string | null) => normalizePlaceholders(text)
+      .replace(/\{(SOURCE|TARGET)(:company)?\}/gu, (match, role: string, company?: string) => (role === "SOURCE" ? `{${sourceKey}${company ?? ""}}` : targetKey ? `{${targetKey}${company ?? ""}}` : match));
+    for (const token of tokenizedSources.tokenSources) {
+      const list = chosen.get(token.sourceKey)!;
+      if (list.length === 0) base.push({ allowed: new Set([token.sourceKey]), id: `${token.sourceKey}.none`, text: bind(written[`${token.sourceKey}.none`]!.none!, token.sourceKey, null) });
+      list.forEach((item, index) => {
+        const id = `${token.sourceKey}.p${index + 1}`;
+        const allowed = new Set([token.sourceKey, item.target]);
+        for (const field of ["r1", "r2", "q1", "q2", "hint"]) base.push({ allowed, id: `${id}.${field}`, text: bind(written[id]![field]!, token.sourceKey, item.target) });
+      });
     }
     const baseProblems = baseTextProblems(base, participants);
     if (baseProblems.length) return trilingualFailure({ kind: "recommendations", stage: `base_check_${baseProblems[0]}`, text: response.text, result: trilingualRetryable(`The base draft failed: ${baseProblems.join(", ")}.`, metadata) });
@@ -1449,15 +1488,18 @@ ${JSON.stringify(tokenizedSources.promptSources)}`,
       const text = (id: string) => translated.sentences.get(id)![language];
       const document = {
         recommendations: tokenizedSources.tokenSources.map((token) => ({
-          noMatchReason: pickKeys(token.sourceKey).length === 0 ? text(`${token.sourceKey}.none`) : null,
-          recommendations: pickKeys(token.sourceKey).map((key, index) => ({
-            icebreakers: [text(`${token.sourceKey}.${key}.q1`), text(`${token.sourceKey}.${key}.q2`)],
-            memberHint: text(`${token.sourceKey}.${key}.hint`),
-            rank: index + 1,
-            reasons: [text(`${token.sourceKey}.${key}.r1`), text(`${token.sourceKey}.${key}.r2`)],
-            score: (rows[token.sourceKey]![key] as Record<string, unknown>).score,
-            targetCandidateKey: (rows[token.sourceKey]![key] as Record<string, unknown>).target,
-          })),
+          noMatchReason: chosen.get(token.sourceKey)!.length === 0 ? text(`${token.sourceKey}.none`) : null,
+          recommendations: chosen.get(token.sourceKey)!.map((item, index) => {
+            const key = `p${index + 1}`;
+            return {
+              icebreakers: [text(`${token.sourceKey}.${key}.q1`), text(`${token.sourceKey}.${key}.q2`)],
+              memberHint: text(`${token.sourceKey}.${key}.hint`),
+              rank: index + 1,
+              reasons: [text(`${token.sourceKey}.${key}.r1`), text(`${token.sourceKey}.${key}.r2`)],
+              score: item.score,
+              targetCandidateKey: item.target,
+            };
+          }),
           sourceKey: token.sourceKey,
         })),
       };
