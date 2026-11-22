@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/engine.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/impl/engine.ts
-// (lab commit c8717763a, r07 accepted). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/engine.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r09-maintenance/impl/engine.ts
+// (lab commit 567915f70, r09 = r08 + reference spans stop at function words). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * The conversation engine: one memory, fed message by message, used both by the session and (replayed over the
  * transcript) by the six pure functions. See plan.json for the structure and every tunable number.
@@ -192,8 +192,10 @@ export class Engine {
     return ctx.hintedPick(pf, oq, r.pick, ctx.hintPart(message, 0, 1));
   }
 
-  analyse(message: string, at: string, hint: ModelHint | null, gone: readonly string[], partsOverride?: string[]): Analysis {
+  /** keepSaid: a reference the caller asks about by its exact words (resolveReference): never widened or dropped. */
+  analyse(message: string, at: string, hint: ModelHint | null, gone: readonly string[], partsOverride?: string[], keepSaid?: string): Analysis {
     const ctx = new TurnCtx(this, message, at, hint, gone);
+    ctx.keepSaid = keepSaid;
     const quotes = partsOverride ?? ctx.splitParts();
     const results: PartResult[] = [];
     for (let i = 0; i < quotes.length; i++) results.push(ctx.part(quotes[i], i, quotes.length));
@@ -257,7 +259,7 @@ class TurnCtx {
 
   splitParts(): string[] {
     const hp = this.hint?.parts ?? [];
-    if (hp.length && hp.every((p) => p.quote && this.message.includes(p.quote))) return hp.map((p) => p.quote);
+    if (hp.length && hp.every((p) => p.quote && this.message.includes(p.quote))) return this.mergeBareHintParts(hp);
     const open = [...this.e.questions.values()].filter((q) => q.status !== "closed");
     if (!open.length) return [this.message];
     // split at sentence ends and at "and also" markers; keep a split only if one side answers a question and the other is a new request
@@ -282,6 +284,60 @@ class TurnCtx {
     return out.map((o) => o.text.trim().replace(/^[，,、]\s*/u, "").replace(/[，,、]\s*$/u, "")).filter(Boolean);
   }
 
+  /** r08: hint parts merged into one quote (a greeting split off by the model), the part whose reading stands for it. */
+  private mergedHint = new Map<string, HintPart>();
+  keepSaid?: string;
+  /**
+   * r08: a model may give a bare greeting / acknowledgement its own part (a hello / OK / 好的) before or after the
+   * real request. A hint part that continues nothing, refers to nothing, reads no condition, and has nothing of a request
+   * of its own (no kind word, verb, time, person or question) is no part: it joins its neighbour, whose reading is kept.
+   */
+  private mergeBareHintParts(hp: HintPart[]): string[] {
+    const bare = (p: HintPart) => {
+      if (p.continues || p.pick || (p.refs ?? []).length) return false;
+      if (Object.keys(p.slots ?? {}).length) return false;
+      const pf = fold(p.quote);
+      const core = pf.replace(/[\s\p{P}\p{S}]/gu, "");
+      return core.length > 0 && core.length <= PARAMS.bareHintPartMaxChars && !this.ownsRequest(pf) && !kindIn(pf) && !verbIn(pf) && !isQuestion(pf)
+        && (core.length <= 2 || !parseTime(pf, this.today).win) && !peopleOf(this.ix, pf).hits.length;
+    };
+    // r08: with no question open, a clause with nothing of a request of its own (no kind word, action verb or question:
+    // <person>不在的那天，<request> / <time clause>、<request>) only sets the scene for its neighbour: one part with it
+    const noOpen = ![...this.e.questions.values()].some((q) => q.status !== "closed");
+    const dependent = (p: HintPart) => {
+      if (!noOpen || p.continues || p.pick) return false;
+      const pf = fold(p.quote);
+      return !this.ownsRequest(pf) && !kindIn(pf) && !verbIn(pf) && !isQuestion(pf);
+    };
+    const joins = (p: HintPart) => bare(p) || dependent(p);
+    if (hp.length < 2 || !hp.some(joins)) return hp.map((p) => p.quote);
+    // nothing of a request in any part (a greeting and a remark): one part, read as the longest piece
+    if (hp.every(bare)) {
+      const whole = this.span(hp[0].quote, hp[hp.length - 1].quote);
+      this.mergedHint.set(whole, [...hp].sort((a, b) => b.quote.length - a.quote.length)[0]);
+      return [whole];
+    }
+    const out: { quote: string; part: HintPart }[] = [];
+    const withRefs = (main: HintPart, extra: HintPart[]): HintPart => (extra.some((x) => (x.refs ?? []).length) ? { ...main, refs: [...extra.flatMap((x) => x.refs ?? []), ...(main.refs ?? [])] } : main);
+    let pending: HintPart[] = [];
+    for (const p of hp) {
+      if (hp.every(joins) ? bare(p) : joins(p)) {
+        if (out.length && !pending.length) { const last = out[out.length - 1]; last.quote = this.span(last.quote, p.quote); last.part = withRefs(last.part, [p]); }
+        else pending.push(p);
+        continue;
+      }
+      out.push({ quote: pending.length ? this.span(pending[0].quote, p.quote) : p.quote, part: withRefs(p, pending) });
+      pending = [];
+    }
+    for (const o of out) this.mergedHint.set(o.quote, o.part);
+    return out.map((o) => o.quote);
+  }
+  /** The stretch of the message from the start of a to the end of b. */
+  private span(a: string, b: string): string {
+    const i = this.message.indexOf(a), j = this.message.indexOf(b, Math.max(0, i));
+    return i >= 0 && j >= i ? this.message.slice(i, j + b.length) : a + b;
+  }
+
   /** Does a clause carry a request of its own (kind word / question / action verb)? */
   ownsRequest(pf: string): boolean {
     const kind = kindIn(pf);
@@ -291,6 +347,8 @@ class TurnCtx {
   }
 
   hintPart(quote: string, i: number, n: number): HintPart | undefined {
+    const merged = this.mergedHint.get(quote);
+    if (merged) return merged;
     const hp = this.hint?.parts ?? [];
     return hp.find((p) => p.quote === quote) ?? (hp.length === n ? hp[i] : undefined) ?? (n === 1 ? hp[0] : undefined);
   }
@@ -847,8 +905,62 @@ class TurnCtx {
 
   refWords(quote: string, pf: string, hp?: HintPart): string[] {
     const hr = (hp?.refs ?? []).map((r) => r.said).filter((s) => s && quote.includes(s));
-    if (hp?.refs?.length && hr.length) return uniq(hr);
-    return spotRefs(this, quote);
+    // r09: a span starts at the first word of the reference and ends at its last (function words on either end go)
+    const trim = (xs: string[]) => uniq(xs.map((x) => (x === this.keepSaid ? x : trimRefSpan(this.ix, x))));
+    if (hp?.refs?.length && hr.length) return trim(this.reconcileHintSaids(quote, uniq(hr)));
+    return trim(spotRefs(this, quote));
+  }
+
+  /**
+   * r08: a model often reports only part of a reference: the owner of a record pointer as a person of its own
+   * (<person> + 那条 / のメモ / 's notes → "<person>"), a pointer split from its owner ("<person>", "那条"), or a title
+   * without its pointer word. A hint said that is a strict part of a reference this message itself shows is widened to
+   * that reference (the owner part never stands in for the record); a said wholly inside another said is dropped.
+   */
+  private reconcileHintSaids(quote: string, hr: string[]): string[] {
+    const own = spotRefs(this, quote).filter((s) => quote.includes(s));
+    const out: string[] = [];
+    // a lone 那 / 这 is the frame of a follow-up (那<kind>呢), no reference, unless the message's own reading has one there
+    hr = hr.filter((s) => s === this.keepSaid || !/^\s*[那这]\s*$/u.test(s) || own.some((o) => o.includes(s.trim())));
+    for (const s of hr) {
+      if (s === this.keepSaid) { out.push(s); continue; }
+      // a person said is widened only over a record pointer after it (<person>那条 / のメモ), never over a person
+      // pointer (<person>のほう / 那位: still the person)
+      const person = peopleOf(this.ix, fold(s)).hits.length > 0 || !!pronounOf(fold(s));
+      // pointer (<person>のほう / 那位: still the person) unless the message's own reading of the wider words binds one
+      // record (<person>の方 + a copy marker after a change: that person's record of the change's kind)
+      const recordOf = (o: string) => { const r = this.ownResolve(o, fold(quote)); return r.outcome === "bound" && !!r.id && kindOfId(r.id) !== "contact"; };
+      const wider = own.filter((o) => o.length > s.length && o.includes(s) && (!person || RECORD_TAIL.test(fold(o.slice(o.indexOf(s) + s.length))) || recordOf(o)))
+        .sort((a, b) => b.length - a.length)[0];
+      out.push(wider ?? s);
+    }
+    // a position in a list (the second …) the model left out while it reported the list's owner as a person of its own
+    // (the second thing on <person>'s list → "<person>"): the position is the reference, the owner only says whose list
+    const ords = own.filter((o) => L.ordinalOf(fold(o)) && !out.some((s) => s.includes(o) || o.includes(s)));
+    if (ords.length) {
+      const owner = (s: string) => {
+        const sf = fold(s);
+        if (!peopleOf(this.ix, sf).hits.length || L.ordinalOf(sf) || pronounOf(sf)) return false;
+        const i = quote.indexOf(s);
+        return /^\s*(?:'s|’s|的|の|さんの)/u.test(quote.slice(i + s.length));
+      };
+      const before = out.length;
+      for (let k = out.length - 1; k >= 0; k--) if (owner(out[k]) && out[k] !== this.keepSaid) out.splice(k, 1);
+      if (out.length < before) out.push(...ords);
+    }
+    // a record pointer with a kind word of its own (<title words>のタスク / 那条<x>待办) the model did not report at all
+    // is still a reference of the message (it may point at nothing the account has)
+    const at = (s: string) => { const i = quote.indexOf(s); return [i, i + s.length] as const; };
+    for (const o of own) {
+      const k = kindIn(fold(o));
+      if (!k || k === "contact" || pronounOf(fold(o)) || out.some((s) => { const [a, b] = at(s), [c, d] = at(o); return a < d && c < b; })) continue;
+      out.push(o);
+    }
+    const u = uniq(out);
+    // a said that overlaps a widened one in the message (the pointer half the model split off) goes with it
+    const span = (s: string) => { const i = quote.indexOf(s); return [i, i + s.length] as const; };
+    const widened = new Set(out.filter((s) => !hr.includes(s)));
+    return u.filter((s) => s === this.keepSaid || !u.some((o) => o !== s && (o.includes(s) || (widened.has(o) && !widened.has(s) && span(o)[0] < span(s)[1] && span(s)[0] < span(o)[1]))));
   }
 
   // -------------------------------------------------------------- references
@@ -946,7 +1058,9 @@ class TurnCtx {
     const tms = this.turnMentions();
 
     // ---- r07: "the other one": the item of the list shown last that the talk has not acted on or named since
-    if (hasAny(sf, L.OTHER_WORDS) && !ord) {
+    // r08: a bare もう一つ (one more / the other one) is "the other one" only when the message creates nothing
+    const otherBare = /^もう(?:一|1|ひと)つ$/u.test(squash(sf)) && verbIn(pf) !== "create";
+    if ((hasAny(sf, L.OTHER_WORDS) || otherBare) && !ord) {
       const kinds = pointerKinds && !pointerKinds.includes("contact") ? pointerKinds : null;
       const li = this.e.lastListTurn(kinds);
       if (li < 0) return none;
@@ -955,7 +1069,15 @@ class TurnCtx {
       for (let k = li + 1; k < this.e.turns.length; k++) { const t = this.e.turns[k]; for (const id of [...t.mentions, ...t.done.map((d) => d.target ?? "")]) since.add(id); }
       let rest = items.filter((id) => !since.has(id) && this.vis(id));
       const words = content.filter((w) => !hasAny(w, L.OTHER_WORDS));
-      if (words.length) { const fit = rest.filter((id) => words.some((w) => (this.ix.recs.get(id)?.titleF ?? "").includes(w))); if (fit.length) rest = fit; }
+      if (words.length) {
+        let fit = rest.filter((id) => words.some((w) => (this.ix.recs.get(id)?.titleF ?? "").includes(w)));
+        // r08: the words in another language than the titles: the items whose title has a concept the words name
+        if (!fit.length) {
+          const cs = [...conceptHits(words.join(" ")).keys()];
+          fit = cs.length ? rest.filter((id) => cs.some((c) => conceptsOf(this.ix.recs.get(id)?.titleF ?? "").has(c))) : [];
+        }
+        if (fit.length) rest = fit;
+      }
       if (rest.length === 1 && since.size) return bind(rest[0]);
       return rest.length ? ask(rest) : none;
     }
@@ -1098,7 +1220,14 @@ class TurnCtx {
         }
         return ask(this.orderByRecency(live));
       }
-      const kinds = pointerKinds?.filter((k) => k !== "contact") ?? null;
+      let kinds = pointerKinds?.filter((k) => k !== "contact") ?? null;
+      // r08: "what about the <name> one" / 那 <name> 的呢 / じゃあ <name> のは: a pointer without a kind of its own in a
+      // "same question, other object" follow-up is of the kind the previous request asked for
+      // (a copy of the latest change — <name>のも + same day — is of that change's kind)
+      const lastTask = [...this.e.tasks].filter((t) => t.status !== "cancelled").sort((a, b) => b.seen - a.seen)[0];
+      const copyKind = hasAny(pf, L.COPY_MARKERS) || hasAny(pf, L.SAME_DAY) ? lastTask?.slots.kind ?? (lastTask?.target ? kindOfId(lastTask.target) : undefined) : undefined;
+      const prevKind = FOLLOW_ABOUT.test(pf) ? this.e.prevRequest()?.kind : copyKind;
+      if (!kinds && prevKind && prevKind !== "contact" && !isPlainName && GENERIC_ONE.test(sf)) kinds = [prevKind];
       const cands = this.allMentions().filter((id) => {
         const r = this.ix.recs.get(id);
         return r && r.kind !== "contact" && (!kinds || kinds.length === 0 || kinds.includes(r.kind));
@@ -1144,7 +1273,15 @@ class TurnCtx {
           if (content.length) {
             const sc = world.map((r) => Math.max(...content.map((w) => contentRun(w, r.titleF))));
             const best = Math.max(0, ...sc);
-            world = best >= 2 ? world.filter((_, k) => sc[k] === best) : [];
+            if (best >= 2) world = world.filter((_, k) => sc[k] === best);
+            else {
+              // r08: the words in another language than the title (a loanword for a Chinese title): the concepts the
+              // reference names; the record(s) with the most of them, none when no record has one
+              const said = conceptHits(sf);
+              const cc = world.map((r) => [...said.keys()].filter((c) => conceptsOf(r.titleF).has(c)).length);
+              const top = Math.max(0, ...cc);
+              world = top >= 1 ? world.filter((_, k) => cc[k] === top) : [];
+            }
           } else if (isPlainName) world = [];
           // r07: the company word itself in one record of that person (<company> 那篇)
           if (world.length > 1 && coWords.length) {
@@ -1565,6 +1702,14 @@ class TurnCtx {
       if (pPos) own.place = pPos;
       else if (pNeg && own.place === pNeg) delete own.place;
       else if (tNeg && own.time && sameWin(own.time, tNeg)) delete own.time;
+      // r08: a person only the negated side names (a reference the model reported for 不是X) is no person of the request
+      if (own.people?.length) {
+        const posIds = new Set(peopleOf(this.ix, cs.pos).hits.flatMap((h) => h.ids));
+        const negIds = new Set(peopleOf(this.ix, cs.neg).hits.flatMap((h) => h.ids));
+        const negOnly = refs.filter((r) => r.outcome === "bound" && r.id && cs.neg.includes(fold(r.said)) && !cs.pos.includes(fold(r.said))).map((r) => r.id!);
+        const kept = own.people.filter((p) => !(negOnly.includes(p) && negIds.has(p) && !posIds.has(p)));
+        if (kept.length) own.people = kept;
+      }
       const kPos = kindIn(cs.pos);
       if (kPos && kPos !== "contact") own.kind = kPos;
       else if (own.kind && kindIn(cs.neg) === own.kind) delete own.kind;
@@ -1904,6 +2049,14 @@ const STRIP_WORDS = [...L.BARE_POINTERS, ...L.PERSON_PRONOUN_F, ...L.PERSON_PRON
   ...FUNCTION_WORDS, ...L.KIND_WORDS.flatMap(([, w]) => w), ...L.VERB_WORDS.flatMap(([, w]) => w), ...["往前", "往后", "提前", "推迟", "标", "吧", "前倒し", "後ろ倒し", "しといて", "にして", "して", "ずらして"].map(fold)]
   .filter((w) => w.length >= 1).sort((a, b) => b.length - a.length);
 const FUNCTION_SUBSTR =["那个", "这个", "那条", "这条", "那篇", "那场", "那位", "一下", "帮我", "给我", "我的", "的那", "那边", "什么", "哪个", "哪位", "那天", "そっ", "あの", "その", "この"].map(fold);
+/** r08: words after a person that make the reference one of their records (folded text). */
+const RECORD_TAIL = /那条|这条|那篇|这篇|那份|这份|那场|那次|那个|那件|那几条|的那|の件|のやつ|の[^ぁ-ゖ]{0,12}?(?:メモ|めも|タスク|たすく|予定|議事録)|めも|たすく|予定|議事録|纪要|笔记|备忘|待办|日程|活动|报告|报价|\bnotes?\b|\bmemos?\b|\btasks?\b|\btodos?\b|\bevents?\b|\bone\b|\blist\b/u;
+/** r08: a pointer that names no kind (the <x> one / <x> 那个 / <x> のやつ). */
+const GENERIC_ONE = /\b(?:one|ones)\b|(?:的那个|那个|的)$|(?:のやつ|のもの|の方|のほう)$/u;
+/** r08: "same question, other object" markers at the edge of a message (what about … / 那 … 呢 / じゃあ … は？). */
+const FOLLOW_ABOUT = /^(?:what|how)\s+about\b|^and\s|呢\s*[？?]?\s*$|^那(?![个些])|^じゃあ|^では|は\s*[？?]\s*$/u;
+/** r08: kind words whose second character is also a word of its own after a pointer (要 = want). */
+const SPLIT_KIND_WORDS = ["纪要", "摘要", "概要", "要点"];
 const GENERIC_REF_WORDS = ["事", "事情", "东西", "那件事", "件"].map(fold);
 const EN_STOP = ["the", "one", "ones", "that", "this", "it", "and", "of", "to", "for", "with", "my", "me", "please", "is", "on", "in", "at", "about", "from", "s", "up", "do", "did", "what", "when", "where", "who", "ok", "so", "be", "an", "a", "go", "ahead", "too", "also", "again", "done", "mark", "push", "share", "note", "notes", "todo", "task", "event"];
 
@@ -2186,8 +2339,8 @@ export function spotRefs(ctx: TurnCtx, quote: string): string[] {
   const ix = ctx.ix;
   const f = fold(q);
   for (const h of peopleOf(ix, f).groups) {
-    const after = q.slice(h.at[1], h.at[1] + 14);
-    const m = /^(?:的|さんの|の|'s)?\s*(?:(?:那个|那条)\s*(?:todo|task|memo|note|event)|那条|那篇|那场|那个|那份|那几条|那边的?|方|ほう|やつ|件|タスク|メモ|one|todos?|tasks?|那位|notes?|memos?|events?|meetings?|(?:さん|様)?との\s*[\p{Script=Han}\p{Script=Katakana}ーa-z]{2,8})/u.exec(after);
+    const after = q.slice(h.at[1], h.at[1] + 24);
+    const m = /^\s*(?:(?:さん|様)?の\s*[\p{Script=Han}\p{Script=Katakana}ーA-Za-z0-9](?:[\p{Script=Han}\p{Script=Katakana}ーA-Za-z0-9 ]|(?![にをがはへでとも])\p{Script=Hiragana}){1,13}?\s*(?:の(?:件|やつ|メモ|タスク|予定)|(?<!の)(?:メモ|タスク|議事録|予定))|(?:的|さんの|の|'s)?\s*(?:(?:那个|那条)\s*(?:todo|task|memo|note|event)|那条|那篇|那场|那个|那份|那几条|那边的?|方|ほう|やつ|件|タスク|メモ|one|todos?|tasks?|那位|notes?|memos?|events?|meetings?|(?:さん|様)?との\s*[\p{Script=Han}\p{Script=Katakana}ーa-z]{2,8}))/u.exec(after);
     const before = /(?:那个|这个|那位|这位)$/u.exec(q.slice(0, h.at[0]));
     const start = before ? h.at[0] - before[0].length : h.at[0];
     if (m) out.push(q.slice(start, h.at[1] + m[0].length));
@@ -2230,11 +2383,71 @@ export function spotRefs(ctx: TurnCtx, quote: string): string[] {
     const m = /^\s*(?:的|の)?\s*(?:纪要|笔记|备忘录?|待办|日程|活动|メモ|議事録|タスク|予定|イベント|notes?|memo|task|todo|event)/u.exec(q.slice(i + out[k].length));
     if (m) out[k] = q.slice(i, i + out[k].length + m[0].length);
   }
+  // r08: a span cut inside a two-character kind word (<pointer><noun first char> | 要…: the pointer stopped before 要) gets the rest of it
+  for (let k = 0; k < out.length; k++) {
+    const i = q.indexOf(out[k]);
+    if (i < 0) continue;
+    const rest = q.slice(i + out[k].length);
+    for (const w of SPLIT_KIND_WORDS) if (out[k].endsWith(w[0]) && rest.startsWith(w.slice(1))) { out[k] += w.slice(1); break; }
+  }
   // overlapping spans: keep the longer
   const spans = uniq(out).sort((a, b) => b.length - a.length);
   const keep: string[] = [];
   for (const s of spans) if (!keep.some((k) => k.includes(s))) keep.push(s);
   return keep;
+}
+
+/**
+ * r09: function words on the ends of a reference span are not part of it. zh: a disposal marker (把 / 将) with the
+ * request words before it, a framing clause (我要问的是 …), and a preposition (跟 / 给 / 和 …) when all that follows it up
+ * to the pointer is one person (跟<person>那条 — but 跟<person>打球那个 keeps it: the preposition is inside the
+ * description); ja: a conjunction or a case particle in front, a topic / case particle at the end; en: discourse words,
+ * articles and verbs in front, a preposition in front only before a pointer or a person, a preposition at the end.
+ * A leading character that starts a person's name is never cut.
+ */
+const ZH_DISPOSAL = /^(?:(?:请你?|麻烦你?|帮忙|帮我|替我|给我|你|我想|我要|想|要|能不能|能否|可不可以|可以)\s*)*(?:把|将)\s*/u;
+const ZH_FRAME = /^(?:[^，,。、\s]{0,8}?的是|就是|是)\s*/u;
+const ZH_PREP = /^(?:跟|和|与|同|给|对|向|在|从|替|让|叫|被|问)\s*/u;
+const JA_CONJ = /^(?:じゃあ|じゃ|では|それじゃあ?|それから|それと|ところで|ちなみに|あと|で)\s*(?:[、,]\s*|(?=[\p{Script=Han}\p{Script=Katakana}A-Za-z0-9]))/u;
+const JA_PARTICLE_HEAD = /^(?:から|まで|を|が|に|で|と|へ|は|も)(?=[\p{Script=Han}\p{Script=Katakana}A-Za-z0-9])/u;
+const JA_PARTICLE_TAIL = /(?<=[\p{Script=Han}\p{Script=Katakana}ーA-Za-z0-9]|ほう|やつ|もの)(?:って|から|まで|は|も|を|が|に|へ|で|と)$/u;
+const EN_HEAD = /^(?:ok(?:ay)?|so|and|then|also|please|pls|can you|could you|would you|a|an|move|change|update|mark|delete|remove|set|push|check|show|find|ask|tell|cancel|reschedule|open)\b[,\s]+/iu;
+const EN_PREP = /^(?:to|for|about|with|on|in|at|from|of|by)\s+/iu;
+const EN_POINTER = /^(?:the|that|this|those|these|my|his|her|their)\b/iu;
+const EN_TAIL = /\s+(?:to|for|about|with|on|in|at|from|of|by|is|was|and|again)$/iu;
+function trimRefSpan(ix: WorldIx, said: string): string {
+  let s = said.trim();
+  // a cut is kept only when something of at least two characters is left and no person's name starts at the cut
+  const namedAt0 = (x: string) => peopleOf(ix, fold(x)).hits.some((h) => h.at[0] === 0 && h.at[1] > 1);
+  const cut = (n: number) => { const r = s.slice(n).trim(); if (r.length < 2 || namedAt0(s)) return false; s = r; return true; };
+  // one person (or pronoun) and nothing else up to the pointer
+  const personHead = (r: string) => {
+    const m = /^(.+?)\s*(?:的|の|さんの|'s|’s)?\s*(?:那|这|那个|这个)?\s*(?:条|个|篇|场|次|件|位|份|几条|one|notes?|memos?|tasks?|todos?|events?|meetings?)?\s*$/u.exec(r)
+      ?? /^(.+?)\s*(?:的|の|さんの|'s|’s)?\s*(?:那|这)/u.exec(r);
+    const head = m?.[1]?.trim();
+    if (!head) return false;
+    const hf = fold(head);
+    if (pronounOf(hf)) return true;
+    return peopleOf(ix, hf).hits.some((h) => h.at[0] === 0 && h.at[1] >= hf.length - 1);
+  };
+  for (let changed = true; changed;) {
+    changed = false;
+    let m: RegExpExecArray | null;
+    if ((m = ZH_DISPOSAL.exec(s)) && cut(m[0].length)) { changed = true; continue; }
+    if ((m = ZH_FRAME.exec(s)) && m[0].length < s.length && cut(m[0].length)) { changed = true; continue; }
+    // (跟<person>的那个<noun> keeps it: with 的 the preposition is part of the description, "the <noun> with <person>")
+    if ((m = ZH_PREP.exec(s)) && !/的\s*[那这]/u.test(s) && personHead(s.slice(m[0].length)) && cut(m[0].length)) { changed = true; continue; }
+    if ((m = JA_CONJ.exec(s)) && cut(m[0].length)) { changed = true; continue; }
+    if ((m = JA_PARTICLE_HEAD.exec(s)) && cut(m[0].length)) { changed = true; continue; }
+    if ((m = EN_HEAD.exec(s)) && cut(m[0].length)) { changed = true; continue; }
+    if ((m = EN_PREP.exec(s))) {
+      const r = s.slice(m[0].length);
+      if ((EN_POINTER.test(r) || personHead(r)) && cut(m[0].length)) { changed = true; continue; }
+    }
+    const t = JA_PARTICLE_TAIL.exec(s) ?? EN_TAIL.exec(s);
+    if (t && s.length - t[0].length >= 2) { s = s.slice(0, s.length - t[0].length).trim(); changed = true; }
+  }
+  return s;
 }
 
 export type { TurnCtx };

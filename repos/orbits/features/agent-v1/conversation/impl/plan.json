@@ -25,7 +25,10 @@
     "engine.ts#facts": "r07: statement facts split per subject (me / one contact) when a sentence states several; <person>がいる方 / my side → that subject's place; the day of <person> → that person's fact day; 那附近 / その辺 → latest fact place; userAlias (我说X就是Y / Xって言ったら / when I say X I mean) binds X to the one contact Y describes; companyContact keyed by stored company.",
     "engine.ts#refs": "r07: the other one (另一个 / もう一つ / the other one) = the last list minus what was acted on or named since (bind only if exactly one is left and something was acted on); <company>の方 / 的窗口 → that company's people (company fact first, bind only if the company has one contact); <field>的那位 → among the latest turn's people the one whose stored details have that field; a person named earlier in the same sentence is the latest mention for a pronoun after it; overlapping reference spans merge; time-anchored pointers (今夜の… / tonight's …).",
     "engine.ts#picks": "r07: a plain yes answers a one-option confirmation; the part of the day (morning / afternoon / evening) picks the one option whose label time is in it; a responsive answer goes to the question whose options share the name it says.",
-    "world.ts#r07": "r07: kana place words only as whole kana words; placeDisplay keeps the stored spelling; umlaut ue/oe/ae forms; a kanji surname learned from readings also names Latin-named contacts with that family name; kanji spellings of kana given names also before a person pointer; name groups do not merge across a clause break / contrast when the later side names its own person."
+    "world.ts#r07": "r07: kana place words only as whole kana words; placeDisplay keeps the stored spelling; umlaut ue/oe/ae forms; a kanji surname learned from readings also names Latin-named contacts with that family name; kanji spellings of kana given names also before a person pointer; name groups do not merge across a clause break / contrast when the later side names its own person.",
+    "parts": "undefined; r08: hint parts that are bare (a greeting / acknowledgement ≤ bareHintPartMaxChars with no refs, slots, kind, verb, question, person) join their neighbour; with no question open, a hint part with nothing of a request of its own (no kind word, verb, question) joins the neighbouring request, its refs kept",
+    "resolveReference": "undefined; r08 (real-model hints): hint saids are reconciled with the message's own spans — a said that is a strict part of an own span is widened to it (a person said only over a record-pointer tail, or when the wider words bind one record), split pointer halves overlapping a widened said are dropped, a lone 那/这 is no reference, a list position the hint left out replaces a possessive owner said, own record pointers with a kind word the hint missed are added; <person>の<title words>(の)メモ/タスク/件 spans (Latin / hiragana words allowed, no particles); a span cut inside 纪要-type words is completed; person + concepts in another language pick the record with most concepts; a kind-less pointer (the X one / Xの方) in a what-about follow-up takes the previous request's kind, in a copy the latest change's kind; bare もう一つ (no create verb) = the other one, with concept fit on titles; r09: every reference span (own or reconciled, not the caller keepSaid) is trimmed of function words on both ends (trimRefSpan): zh 把/将 with request words before, framing …的是, a preposition (跟/给/和…) only before a bare person + pointer (kept before a description or 的); ja leading conjunction / case particle, trailing particle; en leading discourse words / articles / verbs, a preposition before a pointer or person, a trailing preposition; never cuts the start of a person name",
+    "carryOverSlots": "; r08: in a contrast (不是A，是B) a person only the negated side names (via a model reference) is dropped"
   },
   "params": {
     "idleMinutes": 60,
@@ -72,6 +75,7 @@
       "am": "<12",
       "pm": "12-16",
       "eve": ">=17"
-    }
+    },
+    "bareHintPartMaxChars": 8
   }
 }

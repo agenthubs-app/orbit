@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/lexicon.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/impl/lexicon.ts
-// (lab commit c8717763a, r07 accepted). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/lexicon.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r09-maintenance/impl/lexicon.ts
+// (lab commit 567915f70, r09 = r08 + reference spans stop at function words). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * General vocabulary (zh / ja / en): pronouns, pointer words, ordinals, record-kind words, follow-up markers, honorifics,
  * role synonyms, generic company suffixes and city names. Nothing here is this world's content. Everything is compared

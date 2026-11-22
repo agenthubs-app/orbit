@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/time.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/impl/time.ts
-// (lab commit c8717763a, r07 accepted). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/time.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r09-maintenance/impl/time.ts
+// (lab commit 567915f70, r09 = r08 + reference spans stop at function words). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * Time expressions (zh / ja / en, on folded text) → a window of local days. General calendar rules only:
  * weeks start on Monday; a bare weekday is its next occurrence (today counts); a bare month earlier than this month is

@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/text.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/impl/text.ts
-// (lab commit c8717763a, r07 accepted). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/text.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r09-maintenance/impl/text.ts
+// (lab commit 567915f70, r09 = r08 + reference spans stop at function words). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * Text normalisation shared by every part of the implementation: NFKC, lower case, Latin diacritics stripped,
  * traditional Chinese and Japanese shinjitai folded onto simplified Chinese, katakana folded onto hiragana.

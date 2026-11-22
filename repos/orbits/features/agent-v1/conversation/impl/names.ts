@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/names.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/impl/names.ts
-// (lab commit c8717763a, r07 accepted). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/names.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r09-maintenance/impl/names.ts
+// (lab commit 567915f70, r09 = r08 + reference spans stop at function words). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * Name sounds across scripts (general rules and tables only, nothing of this world):
  *   - soundKey(): a rough key of how a Latin-letter name is pronounced (consonant classes, whether it starts with a

@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/index.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/impl/index.ts
-// (lab commit c8717763a, r07 accepted). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/index.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r09-maintenance/impl/index.ts
+// (lab commit 567915f70, r09 = r08 + reference spans stop at function words). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * The implementation the RSI loop improves (RSI-BRIEF.md). One engine (engine.ts) holds the in-session memory; the
  * session feeds it message by message, and each pure function replays the transcript it is given through a fresh
@@ -40,7 +40,7 @@ const impl: Conversation = {
     const parts = quotes.length ? quotes : [input.message];
     const withSaid = parts.findIndex((q) => q.includes(said));
     const forced = hint.parts.length ? hint : { parts: [{ quote: input.message, refs: [{ said }] }] };
-    const res = e.analyse(input.message, input.at, forced, input.gone, parts).result;
+    const res = e.analyse(input.message, input.at, forced, input.gone, parts, said).result;
     const part = res.parts[withSaid >= 0 ? withSaid : 0];
     const r = part?.refs.find((x) => x.said === said) ?? part?.refs[0];
     return r ?? { said, outcome: "none" };
