@@ -1,5 +1,6 @@
 // @ts-nocheck -- finder/impl/text.ts: copied byte for byte from lab-rsi repos/orbits/lab/record-finder/rsi/archive/r10/impl/text.ts
-// (lab commit 931bae340, r10 accepted). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// (lab commit 931bae340, r10 accepted). Differs only in these header lines and one added VARIANT_GROUPS line (2026-11-23,
+// name characters: 颯飒 槇槙 濵滨); the lab code does not pass this repo's build typecheck.
 /**
  * Text folding and script helpers shared by every component: NFKC, case, kana folding (katakana → hiragana, long
  * vowel mark dropped), traditional / Japanese shinjitai → simplified Chinese, CJK numerals next to a counter → digits,
@@ -84,6 +85,7 @@ const VARIANT_GROUPS = [
   "隷隶", "雇雇", "霞霞", "頃顷", "頒颁", "頬颊", "顛颠", "飢饥", "飾饰", "餌饵", "駄驮", "駒驹", "騰腾", "髙高",
   "鬱郁", "魂魂", "鯉鲤", "鯛鲷", "鶴鹤", "鹸碱", "麺麵面", "麹麴曲", "黙默", "鼓鼓", "鼻鼻", "嶋岛", "崎崎", "﨑崎",
   "桥桥", "橋桥", "則则", "刪删", "羅罗", "馮冯", "鄧邓", "蕭萧", "蔣蒋", "呂吕", "盧卢", "譚谭", "賈贾", "韋韦", "鄒邹", "龔龚", "龐庞", "聶聂", "畢毕", "駱骆", "鮑鲍", "饒饶", "繆缪", "婁娄", "竇窦", "宮宫", "閔闵", "鄔邬", "欒栾", "鞏巩", "鄺邝", "備备", "幾几", "們们", "嗎吗", "於于", "掃扫", "髪发", "渋澀涩", "芝芝", "浜滨", "亀龟", "恒恆恒", "弁辩", "辯辩", "瓣瓣", "辨辨",
+  "颯飒", "槇槙", "濵滨",
 ];
 const VARIANT = new Map<string, string>();
 for (const g of VARIANT_GROUPS) {

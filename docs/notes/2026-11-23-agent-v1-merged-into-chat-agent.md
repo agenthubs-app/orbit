@@ -14,7 +14,7 @@
 
 ## 正式站现在
 
-- 部署 `dpl_FUDWavXQKXSATFtGcG3t54rhX51m`（`orbit-staging-bjwpuinzs-…`），来自 `chat-agent` 6ffe68b69（含联系人名字的简繁日异体搜索修复）。
+- 部署 `dpl_FUDWavXQKXSATFtGcG3t54rhX51m`（`orbit-staging-bjwpuinzs-…`），来自 `chat-agent` 6ffe68b69（含名字的简繁日异体：联系人搜索 + 记录查找的文字归一表）。
 - 正式环境变量（agent v1 需要的，已在）：`ORBIT_AGENT_V1_MODE=on`、`ORBIT_AGENT_WEB=on`、`ORBIT_GEMINI_DECISION_API_KEY`、`ORBIT_MCP_BASE_URL`、新增 `ORBIT_AGENT_CONVERSATION=on`（多轮理解引擎）。
 - 记录查找的退路：`ORBIT_AGENT_FINDER=legacy`；多轮引擎的退路：`ORBIT_AGENT_CONVERSATION=legacy`。
 

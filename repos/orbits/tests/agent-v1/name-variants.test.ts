@@ -31,3 +31,8 @@ test("findContacts: 「渡边飒太」 finds the contact stored as 渡辺颯太 
   const none = await findContacts(records, scope, "渡边一郎", "渡边一郎有什么记录？", "渡边一郎有什么记录？");
   assert.equal(none.matches.length, 0);
 });
+
+test("record finder fold: name characters it lacked (颯飒 槇槙 濵滨) fold together, so notes and to-dos naming 渡辺颯太 match 「渡边飒太」", async () => {
+  const { fold } = await import("../../features/agent-v1/finder/impl/text");
+  for (const [a, b] of [["渡辺颯太", "渡边飒太"], ["槇原", "槙原"], ["濵田", "浜田"], ["髙橋", "高桥"]]) assert.equal(fold(a), fold(b), `${a} / ${b}`);
+});
