@@ -1095,7 +1095,7 @@ function requestFingerprint(
     temperature,
     responseSchema: "event-operations-tokenized-recommendations-v1",
     // 2026-11-22: only present when on, so single-language fingerprints are unchanged.
-    ...(trilingual ? { participantTextLanguages: "ja-facts-choose-write-translate-v5" } : {}),
+    ...(trilingual ? { participantTextLanguages: "ja-facts-choose-write-translate-v6" } : {}),
   };
   return JSON.stringify(
     recommendationPromptEncoding === "deduplicated" ||
@@ -1823,7 +1823,8 @@ ${JSON.stringify(pairs)}${feedback}`,
     const keys = [...keyOf.values()];
     const promptMembers = input.members.map((member) => {
       const { company: _company, displayName: _name, participantId: _id, ...rest } = compactParticipant(member);
-      return { hasCompany: registeredCompany(member) !== null, memberKey: keyOf.get(member.participantId)!, ...rest };
+      const profileEmpty = member.needs.length === 0 && member.offers.length === 0 && member.topics.length === 0 && !member.experienceHighlight?.trim();
+      return { hasCompany: registeredCompany(member) !== null, memberKey: keyOf.get(member.participantId)!, ...(profileEmpty ? { profileEmpty: true } : {}), ...rest };
     });
     // Feature text came from the recommendation stage and may mention its keys (S5, S5C1); removed here.
     const withoutStageKeys = (text: string) => text.replace(/\{?\bS\d+(?:C\d+)?\b\}?/gu, "").replace(/\s{2,}/gu, " ").trim();
@@ -1850,7 +1851,7 @@ ${JSON.stringify(pairs)}${feedback}`,
 
 Requirements:
 - theme: a concrete theme for this table. rationale: why these members work as a table, about the table as a whole: name no individual member (no keys, no placeholders) and never claim something of every member (no 全員/誰もが/いずれも): say what different members bring and how it fits together. q1..q3: three icebreaker questions for the table.
-- For every member key Mn: Mn.p1 and Mn.p2 are two questions for that person, addressed to them directly in polite Japanese (no names, no placeholders, no third person), and Mn.why is one sentence explaining why that person belongs at this table, read by everyone at the table (third person about that member: omit the subject or use {Mn}; never あなた), stating only what the supplied profile says (a topic is an interest, not an ability).
+- For every member key Mn: Mn.p1 and Mn.p2 are two questions for that person, addressed to them directly in polite Japanese (no names, no placeholders, no third person), and Mn.why is one sentence explaining why that person belongs at this table, read by everyone at the table (third person about that member: omit the subject or use {Mn}; never あなた), stating only what the supplied profile says (a topic is an interest, not an ability; never add a role, title, trait or habit the profile does not state). For a member with profileEmpty, Mn.why says only that the profile is not filled in yet and what little it does show (such as languages), and Mn.p1/Mn.p2 are open questions about their work and interests.
 - The only placeholders that exist are ${keys.map((key) => `{${key}}`).join(", ")} (the server adds the name and さん; company as {Mn:company} next to {Mn}, only when hasCompany=true). Use the supplied features and profiles.
 
 JSON shape (exact keys):

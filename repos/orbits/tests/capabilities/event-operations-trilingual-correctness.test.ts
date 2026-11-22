@@ -549,3 +549,12 @@ test("a table-level text never claims something of every member; it is rewritten
   assert.equal(still.success, false, "still overgeneral");
   if (!still.success) assert.equal(still.retryable, true);
 });
+
+test("a table member with an empty profile is marked so the draft invents nothing about them", async () => {
+  const empty = { ...bo, experienceHighlight: null, needs: [], offers: [], topics: [] };
+  const runner = model({ base: tableBase() });
+  await provider(runner).generateTableContent({ ...tableInput, members: [yamada, empty] });
+  const text = runner.calls.find((call) => call.kind === "base")!.userText;
+  assert.match(text, /"memberKey":"M2","profileEmpty":true/u);
+  assert.doesNotMatch(text, /"memberKey":"M1","profileEmpty"/u);
+});
