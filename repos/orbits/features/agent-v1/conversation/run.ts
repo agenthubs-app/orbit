@@ -60,7 +60,8 @@ export function conversationTurn(scope: NodeScope, state: AgentGraphState, outpu
   try {
     const log = logOf(run.sessionState);
     const gone = [...(run.context?.handles.values() ?? [])].filter((handle) => handle.accessible === false).map((handle) => labIdOf(handle.type, handle.id)).filter((id): id is string => Boolean(id));
-    const world = worldOf(namesOf(log, run.context), now, state.timeZone || "Asia/Tokyo");
+    const names = namesOf(log, run.context);
+    const world = worldOf(names, now, state.timeZone || "Asia/Tokyo");
     const result = runEngine(log, world, { at: now, gone, hint, message: input.message });
     record.ms = Date.now() - started;
     if (record.ms > conversationBudgetMs()) {
@@ -80,9 +81,9 @@ export function conversationTurn(scope: NodeScope, state: AgentGraphState, outpu
     record.diffs = compareTurn(compareInput);
     if (mode !== "on") return parts;
     const gonePieces = new Set(gone);
-    const applied = applyTurn({ ...compareInput, context: run.context, gone: gonePieces, timeZone: state.timeZone || "Asia/Tokyo" });
+    const applied = applyTurn({ ...compareInput, context: run.context, gone: gonePieces, names, timeZone: state.timeZone || "Asia/Tokyo" });
     record.applied = applied.applied;
-    for (const item of applied.applied) emitTrace({ ...item, type: "conversation.applied" });
+    for (const item of applied.applied) emitTrace({ ...item, type: item.what === "ref_refused" ? "conversation.refused" : "conversation.applied" });
     return applied.parts;
   } catch (error) {
     record.status = "error";

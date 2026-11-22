@@ -62,6 +62,35 @@ function refOfSaid(part: GraphPart, message: string, said: string): GraphPart["r
 
 const sameKind = (entity: string, type: string) => entity === type || (entity === "attendance" && type === "event");
 
+/** Pointer, pronoun, ordinal and kind words: what is left of a reference after them is its content. */
+const POINTER_WORDS = /[「」『』“”"'（）()\s，,。.!！?？]|这|那|哪|條|条|篇|个|個|件|项|場|场|次|份|张|些|一|第|的|位|他|她|它|们|们|待办|笔记|日程|活动|联系人|记录|この|その|あの|どの|件|やつ|方|人|彼女|彼|メモ|タスク|予定|イベント|最初|最後|最后|二|三|四|上|下|前|后|後|刚才|さっき|\b(?:the|this|that|these|those|one|ones|first|second|last|it|him|her|them|note|task|to-?do|event|memo)\b/giu;
+
+/** The longest run of characters two strings share (case folded). */
+function sharedRun(left: string, right: string): number {
+  const a = left.toLowerCase();
+  const b = right.toLowerCase();
+  let best = 0;
+  for (let i = 0; i < a.length; i += 1) for (let j = 0; j < b.length; j += 1) {
+    let k = 0;
+    while (i + k < a.length && j + k < b.length && a[i + k] === b[j + k]) k += 1;
+    if (k > best) best = k;
+  }
+  return best;
+}
+
+/**
+ * A record the engine bound that the reference's own words contradict. The engine's World holds only the records this
+ * conversation named, so a described record the conversation never showed («给李薇寄样片那条» after a card on 给小林发修订报价)
+ * can come out bound to the only to-do it knows (eval on run: AE-XL-014). A reference with content words of its own binds
+ * a record (not a contact) only when the record's name shares two characters in a row with those words.
+ */
+export function contentContradicts(said: string, recordName: string | undefined, type: string): boolean {
+  if (type === "contact") return false;
+  const content = said.replace(POINTER_WORDS, "");
+  if ([...content].length < 2) return false;
+  return !recordName || sharedRun(content, recordName) < 2;
+}
+
 /** The engine's id as the agent's record, when it is a record of this conversation that can be opened now. */
 function liveRef(ref: RefResult, gone: ReadonlySet<string>): { type: string; id: string } | null {
   if (ref.outcome !== "bound" || !ref.id || gone.has(ref.id)) return null;
@@ -138,13 +167,16 @@ export function compareTurn(input: CompareInput): ConversationDiff[] {
 
 export interface ApplyInput extends CompareInput {
   context: FirstLayerContext | null;
+  /** The World's names (lab id → name), to check a bound record against the reference's words. */
+  names?: Record<string, { type: string; name: string }>;
   gone: ReadonlySet<string>;
   timeZone: string;
 }
 
 export interface Applied {
   part: string;
-  what: "ref_bound" | "ref_added" | "continues" | "cancel" | "time";
+  /** ref_refused: the engine bound a record the reference's own words do not name; nothing changed (traced only). */
+  what: "ref_bound" | "ref_added" | "ref_refused" | "continues" | "cancel" | "time";
   detail: unknown;
 }
 
@@ -172,6 +204,10 @@ export function applyTurn(input: ApplyInput): { parts: GraphPart[]; applied: App
     for (const ref of meant) {
       const live = liveRef(ref, input.gone);
       if (!live) continue;
+      if (contentContradicts(ref.said, input.names?.[ref.id!]?.name, live.type)) {
+        applied.push({ detail: { id: live.id, said: ref.said }, part: part.localId, what: "ref_refused" });
+        continue;
+      }
       // A clue of another kind inside the words (the person 「王磊」 of 「王磊那条」) is not this reference: the record is added.
       const own = part.refs.find((other) => sameKind(other.entity, live.type) && other === refOfSaid({ ...part, refs: [other] }, input.message, ref.said));
       if (own) {

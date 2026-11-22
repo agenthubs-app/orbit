@@ -104,7 +104,7 @@ test("XL-010: turn 3 「小陈」 is the 陈一鸣 the card of turn 1 linked —
     const part = partOf(message, ["contact.read", "view.recentInteraction"], [{ entity: "contact", words: "小陈" }]);
     const compared = compareTurn({ agentFollowUps: new Map(), message, parts: [part], result, waitingChange: true });
     assert.ok(compared.some((diff) => diff.field === "ref" && (diff.engine as { id: string }).id === "contact:chen"), "shadow logs the difference");
-    const { applied, parts } = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, parts: [part], result, timeZone: "Asia/Tokyo", waitingChange: true });
+    const { applied, parts } = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, names: NAMES, parts: [part], result, timeZone: "Asia/Tokyo", waitingChange: true });
     assert.equal(parts[0].refs[0].recordId, "contact:chen");
     assert.equal(part.refs[0].recordId, null, "the agent's own part is not mutated");
     assert.deepEqual(applied.map((item) => item.what), ["ref_bound"]);
@@ -121,7 +121,7 @@ test("a correction 「不是这个，是王磊那个」 binds 王磊's to-do (ne
   const result = turnOf(log, message, 4);
   assert.equal(result.parts[0].followUp, "correct");
   const part = partOf(message, ["todo.update"], [{ entity: "todo", words: "这个", recordId: "task:shen" }, { entity: "todo", words: "王磊那个" }]);
-  const { parts } = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, parts: [part], result, timeZone: "Asia/Tokyo", waitingChange: true });
+  const { parts } = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, names: NAMES, parts: [part], result, timeZone: "Asia/Tokyo", waitingChange: true });
   assert.equal(parts[0].refs[1].recordId, "task:wang", "the record meant");
   assert.equal(parts[0].refs[0].recordId, "task:shen", "the rejected pointer is left as the agent had it, never re-bound by the engine");
   log = appendTurn(log, { agent: reply(5, { card: { id: "k2", op: "todo.update", set: { plannedDate: "2026-11-27" }, target: "T-task:wang" }, mentions: ["T-task:wang", "C-contact:wang"] }), requestId: "r3", user: user(message, 4) }, NAMES);
@@ -144,10 +144,10 @@ test("a cancel 「算了先别建」: no request, nothing redone; on drops the p
   assert.deepEqual(result.parts[0].request, {});
   assert.deepEqual(result.parts[0].redo, []);
   const part = partOf(message, ["todo.create"]);
-  const on = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, parts: [part], result, timeZone: "Asia/Tokyo", waitingChange: true });
+  const on = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, names: NAMES, parts: [part], result, timeZone: "Asia/Tokyo", waitingChange: true });
   assert.deepEqual(on.parts[0].capabilities, []);
   assert.equal(on.parts[0].plan.negation, true);
-  const nothingWaits = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, parts: [part], result, timeZone: "Asia/Tokyo", waitingChange: false });
+  const nothingWaits = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, names: NAMES, parts: [part], result, timeZone: "Asia/Tokyo", waitingChange: false });
   assert.deepEqual(nothingWaits.parts[0].capabilities, ["todo.create"]);
 });
 
@@ -159,9 +159,9 @@ test("a window does not carry into a new task; 「那下下周呢」 swaps only 
   const message = "那下下周呢？";
   const swap = turnOf(log, message, 2);
   assert.equal(swap.parts[0].followUp, "swap_period");
-  const { parts } = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, parts: [partOf(message, ["todo.read"])], result: swap, timeZone: "Asia/Tokyo", waitingChange: false });
+  const { parts } = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, names: NAMES, parts: [partOf(message, ["todo.read"])], result: swap, timeZone: "Asia/Tokyo", waitingChange: false });
   assert.deepEqual([parts[0].plan.readFilter?.from, parts[0].plan.readFilter?.to], ["2026-11-30", "2026-12-06"]);
-  const elsewhere = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, parts: [partOf(message, ["todo.read"])], result: swap, timeZone: "Europe/Berlin", waitingChange: false });
+  const elsewhere = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, names: NAMES, parts: [partOf(message, ["todo.read"])], result: swap, timeZone: "Europe/Berlin", waitingChange: false });
   assert.equal(elsewhere.parts[0].plan.readFilter, undefined, "the engine's calendar is Asia/Tokyo's: no window applied elsewhere");
 });
 
@@ -169,7 +169,7 @@ test("a record gone since is never bound", () => {
   const log = appendTurn(null, { agent: reply(1, { mentions: ["T-task:wang"] }), requestId: "r1", user: user("和王磊确认报价那条什么时候到期？", 0) }, NAMES);
   const message = "把那条标成完成";
   const result = turnOf(log, message, 2, null, ["T-task:wang"]);
-  const { parts } = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(["T-task:wang"]), message, parts: [partOf(message, ["todo.complete"], [{ entity: "todo", words: "那条" }])], result, timeZone: "Asia/Tokyo", waitingChange: false });
+  const { parts } = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(["T-task:wang"]), message, names: NAMES, parts: [partOf(message, ["todo.complete"], [{ entity: "todo", words: "那条" }])], result, timeZone: "Asia/Tokyo", waitingChange: false });
   assert.equal(parts[0].refs[0].recordId, null, JSON.stringify(result));
 });
 
@@ -283,7 +283,7 @@ test("「王磊那条」: the person the first layer reports is not the referenc
   const ref = result.parts[0].refs[0];
   assert.deepEqual({ id: ref.id, outcome: ref.outcome }, { id: "T-task:wang", outcome: "bound" }, JSON.stringify(result));
   const part = partOf(message, ["todo.update"], [{ entity: "contact", words: "王磊" }]);
-  const { parts } = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, parts: [part], result, timeZone: "Asia/Tokyo", waitingChange: false });
+  const { parts } = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, names: NAMES, parts: [part], result, timeZone: "Asia/Tokyo", waitingChange: false });
   assert.equal(parts[0].refs[0].recordId, null, "the person clue is not turned into a to-do");
   assert.deepEqual(parts[0].refs[1], { entity: "todo", quote: [1, 5], recordId: "task:wang" });
   for (const words of ["王磊的那条", "王さんのあの件"]) assert.ok(hintOf({ ...output, parts: [{ ...output.parts[0], objectClues: [{ entity: "contact", text: words.startsWith("王磊") ? "王磊" : "王さん" }], sourceQuote: `${words}改到周五` }] } as UnderstandOutput, null)!.parts[0].refs![0].said === words, words);
@@ -294,7 +294,7 @@ test("on never overrides the agent: a record it bound (an @ pick) stays, and its
   const message = "那这一条呢";
   const result = turnOf(log, message, 2);
   const picked = partOf(message, ["todo.read"], [{ entity: "todo", recordId: "task:wang", words: "这一条" }]);
-  const bound = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, parts: [picked], result, timeZone: "Asia/Tokyo", waitingChange: false });
+  const bound = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, names: NAMES, parts: [picked], result, timeZone: "Asia/Tokyo", waitingChange: false });
   assert.equal(bound.parts[0].refs[0].recordId, "task:wang", JSON.stringify(result));
   assert.deepEqual(bound.applied, []);
   // The agent says p1 answers q1; the engine says it is new: the agent's attribution stays.
@@ -304,4 +304,19 @@ test("on never overrides the agent: a record it bound (an @ pick) stays, and its
   assert.deepEqual(kept.parts[0].continues, { kind: "clarification", ref: "q1" });
   const added = applyTurn({ agentFollowUps: new Map(), context, gone: new Set(), message, parts: [partOf(message, [])], result: { ...fake, parts: [{ ...fake.parts[0], continues: "q1", followUp: null as never, request: null as never }] }, timeZone: "Asia/Tokyo", waitingChange: false });
   assert.deepEqual(added.parts[0].continues, { kind: "clarification", ref: "q1" }, "a part the agent left new is attributed");
+});
+
+test("AE-XL-014 (eval on run): a described to-do the conversation never showed is not bound to the only to-do the engine knows", async () => {
+  const { contentContradicts } = await import("../../features/agent-v1/conversation/apply");
+  const names = { ...NAMES, "T-task:quote": { name: "给小林发修订报价", type: "todo" } };
+  const log = appendTurn(null, { agent: reply(1, { card: { id: "k1", op: "todo.update", set: { plannedDate: "2026-11-20" }, target: "T-task:quote" }, mentions: ["T-task:quote"] }), requestId: "r1", user: user("把给小林发修订报价这条待办改到周五。", 0) }, { "T-task:quote": names["T-task:quote"] });
+  const message = "不是这条，是给李薇寄样片那条。";
+  const result = runEngine(log, worldOf(log.names, at(2), "Asia/Tokyo"), { at: at(2), gone: [], hint: { parts: [{ clarity: "clear", continues: null, quote: message, refs: [{ id: null, kind: "todo", said: "给李薇寄样片那条" }], slots: { kind: "todo", verb: "update" } }] }, message });
+  const part = partOf(message, ["todo.update"], [{ entity: "todo", words: "给李薇寄样片那条" }]);
+  const { applied, parts } = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, names: log.names, parts: [part], result, timeZone: "Asia/Tokyo", waitingChange: true });
+  assert.equal(parts[0].refs[0].recordId, null, JSON.stringify(result));
+  assert.ok(!applied.some((item) => item.what === "ref_bound" || item.what === "ref_added"), JSON.stringify(applied));
+  assert.equal(contentContradicts("那条", "给小林发修订报价", "todo"), false, "a bare pointer has no words of its own");
+  assert.equal(contentContradicts("「给小林发修订报价（实施费单列）」这条待办", "给小林发修订报价", "todo"), false);
+  assert.equal(contentContradicts("小陈", "陈一鸣", "contact"), false, "names are the engine's own matching");
 });
