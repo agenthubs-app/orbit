@@ -2,6 +2,15 @@ import type {
   EventOperationsCandidate,
   EventOperationsParticipant,
 } from "./contract";
+import {
+  needConcept,
+  needConceptsAnsweredBy,
+  offerAnswersNeed,
+  offerConcept,
+  offerConceptsAnswering,
+  topicConcept,
+  topicsShare,
+} from "./match-concepts";
 
 const MAX_CANDIDATES_PER_SOURCE = 32;
 const MAX_FACETS_PER_KIND = 8;
@@ -153,6 +162,22 @@ export function buildDeterministicCandidates(input: {
   const offerIndex = indexFor(ordered, features, (value) => value.offers);
   const topicIndex = indexFor(ordered, features, (value) => value.topics);
   const languageIndex = indexFor(ordered, features, (value) => value.language);
+  // Real-match recall (2026-11-22): the same concept table the AI step uses decides who truly matches, so a
+  // person with a sparse profile still gets every real match into the shortlist before any token-overlap guess.
+  const conceptIndex = (select: (participant: EventOperationsParticipant) => readonly (string | null)[]) => {
+    const mutable = new Map<string, string[]>();
+    for (const participant of ordered) {
+      for (const concept of new Set(select(participant).filter((value): value is string => value !== null))) {
+        const bucket = mutable.get(concept) ?? [];
+        bucket.push(participant.participantId);
+        mutable.set(concept, bucket);
+      }
+    }
+    return mutable as FacetIndex;
+  };
+  const offerConceptIndex = conceptIndex((participant) => participant.offers.map(offerConcept));
+  const needConceptIndex = conceptIndex((participant) => participant.needs.map(needConcept));
+  const topicConceptIndex = conceptIndex((participant) => participant.topics.map(topicConcept));
   const limit = Math.min(
     Math.max(0, ordered.length - 1),
     eventOperationsCandidateLimit(input.recommendationCount),
@@ -169,6 +194,36 @@ export function buildDeterministicCandidates(input: {
 
   for (const source of ordered) {
     const sourceFeatures = features.get(source.participantId)!;
+    // 1. Real matches: a need answered by an offer (either direction) or a topic of the same concept.
+    const realIds = new Set<string>();
+    const realBuckets: readonly [string, FacetIndex, readonly string[]][] = [
+      ["real-need-offer", offerConceptIndex, [...new Set(source.needs.flatMap(offerConceptsAnswering))]],
+      ["real-offer-need", needConceptIndex, [...new Set(source.offers.flatMap(needConceptsAnsweredBy))]],
+      ["real-topic", topicConceptIndex, [...new Set(source.topics.map(topicConcept).filter((value): value is string => value !== null))]],
+    ];
+    for (const [kind, index, concepts] of realBuckets) {
+      for (const concept of concepts) {
+        if (realIds.size >= candidatePoolLimit) break;
+        metrics.facetBucketVisits += gatherBucket({
+          bucket: index.get(concept) ?? [],
+          into: realIds,
+          limit: Math.min(bucketVisitLimit, candidatePoolLimit - realIds.size + 1),
+          seed: `${source.participantId}\u0000${kind}\u0000${concept}`,
+          sourceParticipantId: source.participantId,
+        });
+      }
+    }
+    const realMatches = [...realIds].slice(0, candidatePoolLimit).map((targetParticipantId) => {
+      metrics.pairComparisons += 1;
+      const target = participantById.get(targetParticipantId)!;
+      const needOffer = source.needs.reduce((count, need) => count + target.offers.filter((offer) => offerAnswersNeed(need, offer)).length, 0)
+        + target.needs.reduce((count, need) => count + source.offers.filter((offer) => offerAnswersNeed(need, offer)).length, 0);
+      const sharedTopics = source.topics.reduce((count, topic) => count + target.topics.filter((other) => topicsShare(topic, other)).length, 0);
+      return { needOffer, sharedTopics, targetParticipantId };
+    }).filter((match) => match.needOffer > 0 || match.sharedTopics > 0);
+    const realById = new Map(realMatches.map((match) => [match.targetParticipantId, match]));
+
+    // 2. The original token-overlap pool fills what real matches leave (same budget as before).
     const candidateIds = new Set<string>();
     const facetBuckets: readonly [string, FacetIndex, readonly string[]][] = [
       ["need-offer", offerIndex, sourceFeatures.needs],
@@ -195,21 +250,25 @@ export function buildDeterministicCandidates(input: {
             stableNumber(`${source.participantId}\u0000${right}`) ||
           left.localeCompare(right),
       )
-      .slice(0, candidatePoolLimit);
+      .filter((id) => !realById.has(id))
+      .slice(0, Math.max(0, candidatePoolLimit - realMatches.length));
     const stablePoolIds = new Set(stablePool);
+    // Fill only up to the shortlist size together with the real matches.
+    if (realMatches.length >= limit) stablePool.length = 0;
     if (stablePool.length < limit && ordered.length > 1) {
       const start = stableNumber(source.participantId) % ordered.length;
       for (
         let offset = 0;
         offset < Math.min(ordered.length, limit * 3 + 1) &&
-        stablePool.length < limit;
+        stablePool.length + realMatches.length < limit;
         offset += 1
       ) {
         metrics.supplementVisits += 1;
         const target = ordered[(start + offset) % ordered.length]!;
         if (
           target.participantId !== source.participantId &&
-          !stablePoolIds.has(target.participantId)
+          !stablePoolIds.has(target.participantId) &&
+          !realById.has(target.participantId)
         ) {
           stablePool.push(target.participantId);
           stablePoolIds.add(target.participantId);
@@ -217,8 +276,9 @@ export function buildDeterministicCandidates(input: {
       }
     }
 
-    const scored = stablePool.map((targetParticipantId) => {
-      metrics.pairComparisons += 1;
+    const scored = [...realMatches.map((match) => match.targetParticipantId), ...stablePool].map((targetParticipantId) => {
+      // A real match was already compared once above.
+      if (!realById.has(targetParticipantId)) metrics.pairComparisons += 1;
       const target = participantById.get(targetParticipantId)!;
       const targetFeatures = features.get(targetParticipantId)!;
       const sourceNeedTargetOffer = overlap(
@@ -243,7 +303,11 @@ export function buildDeterministicCandidates(input: {
           source.company.trim().toLocaleLowerCase("en") !==
             target.company.trim().toLocaleLowerCase("en"),
       );
+      const real = realById.get(targetParticipantId);
+      // Real matches rank first: need/offer answers, then shared topics, then the original overlap score.
+      const realScore = real ? 1_000_000 + real.needOffer * 100_000 + real.sharedTopics * 1_000 : 0;
       const retrievalScore =
+        realScore +
         sourceNeedTargetOffer * 18 +
         targetNeedSourceOffer * 14 +
         topicOverlap * 8 +
@@ -258,6 +322,8 @@ export function buildDeterministicCandidates(input: {
         featurePayload: {
           differentCompany,
           languageOverlap,
+          realNeedOffer: real?.needOffer ?? 0,
+          realSharedTopics: real?.sharedTopics ?? 0,
           sourceNeedTargetOffer,
           targetNeedSourceOffer,
           topicOverlap,

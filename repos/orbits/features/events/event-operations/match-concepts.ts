@@ -182,3 +182,14 @@ export function unsupportedProfileTerms(text: string, profileTexts: readonly str
   const own = profileTexts.map(tagKey).join("|");
   return PROFILE_TERM_PARTS.filter((part) => normalized.includes(part) && !own.includes(part));
 }
+
+/** The offer concepts that answer a need (empty for a value outside the table). */
+export function offerConceptsAnswering(need: string): readonly string[] {
+  const concept = needConcept(need);
+  return concept ? ANSWERS[concept] ?? [] : [];
+}
+/** The need concepts an offer answers (empty for a value outside the table). */
+export function needConceptsAnsweredBy(offer: string): readonly string[] {
+  const concept = offerConcept(offer);
+  return concept ? Object.entries(ANSWERS).filter(([, offers]) => offers.includes(concept)).map(([need]) => need) : [];
+}
