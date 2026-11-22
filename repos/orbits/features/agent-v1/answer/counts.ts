@@ -235,3 +235,71 @@ export function withoutPartialCounts(text: string, language: "zh" | "ja" | "en",
   }
   return { changed, text: kept.map((part, index) => (index > 0 && /\.$/u.test(kept[index - 1]) && /^[A-Za-z]/u.test(part) ? ` ${part}` : part)).join("").trim() };
 }
+
+/**
+ * Production 2026-11-23 (test account, 「我有哪些还没完成的待办？」): basis 「按你的20条记录回答」 and 20 cards under the model's
+ * 「你有16条待办都还没完成，其中4条已过期。」 — 16 passed unsourcedCounts because some record's date holds the number. A total
+ * the answer states for one kind of record ("你有 N 条待办", "未完了のタスクは N 件", "you have N open to-dos") is the number of
+ * that kind's records it lists, or a count the read itself gave (`also`: coverage seen / total); any other number is replaced
+ * by the listed count and the sentence stays. Only a total counts: the phrase opens its clause (no "其中", "うち", a time word or
+ * a person before it) and nothing narrows it after the noun ("和田中有关", "about Tanaka").
+ */
+export type ListedKind = "todo" | "schedule" | "memo" | "event" | "contact";
+
+const ZH_KIND: Record<ListedKind, string> = { contact: "联系人", event: "活动", memo: "笔记|备忘(?:录)?", schedule: "日程|安排", todo: "待办(?:事项)?|任务" };
+const JA_KIND: Record<ListedKind, string> = { contact: "連絡先", event: "イベント", memo: "メモ", schedule: "予定", todo: "タスク|ToDo|やること" };
+const EN_KIND: Record<ListedKind, string> = { contact: "contacts?", event: "events?", memo: "notes?|memos?", schedule: "schedule items?|appointments?", todo: "to-?dos?|tasks?" };
+const ZH_OPEN = "(?:还没(?:有)?完成的|没(?:有)?完成的|未完成的|待处理的|待完成的|未处理的)?";
+const JA_OPEN = "(?:未完了の|未完了|まだ終わっていない|完了していない)?";
+const EN_OPEN = "(?:(?:open|unfinished|pending|outstanding|incomplete|uncompleted)\\s+)?";
+const CLAUSE = "(^|[。！？!?\\n，,；;：:])";
+const ZH_END = "(?=$|[。！？!?\\n，,；;：:]|\\s*(?:都|全都|全部|还|尚|未|没))";
+const JA_END = "(?=$|[。！？!?\\n、，,；;：:（(]|です|でした|あります|ありました|残っています|\\s*(?:で|あり))";
+const EN_END = "(?=\\s*(?:$|[,.;:!?(—–]|in (?:total|all)\\b|still\\b|left\\b|not yet\\b|(?:that|which) (?:are|is) (?:still |not )|(?:are|is) (?:still )?(?:open|not|pending|outstanding|unfinished)\\b))";
+
+function totalPatterns(kind: ListedKind): RegExp[] {
+  const zh = ZH_KIND[kind];
+  const ja = JA_KIND[kind];
+  return [
+    // zh: 你有 16 条待办, 目前你一共有 16 项还没完成的待办
+    new RegExp(`${CLAUSE}(\\s*(?:目前|现在|当前)?\\s*(?:你|您)?\\s*(?:目前|现在|当前)?\\s*(?:一共|总共|共|总计|合计)?\\s*还?\\s*有\\s*)${N}(\\s*(?:条|项|个|件|篇|场|位)\\s*${ZH_OPEN}\\s*(?:${zh}))${ZH_END}`, "gu"),
+    // zh: 还没完成的待办一共有 16 条, 你的笔记共 5 篇
+    new RegExp(`${CLAUSE}(\\s*(?:你的|您的)?\\s*${ZH_OPEN}\\s*(?:${zh})\\s*(?:一共有?|总共有?|共有?|总计|合计|有)\\s*)${N}(\\s*(?:条|项|个|件|篇|场|位))${ZH_END}`, "gu"),
+    // ja: 未完了のタスクは 16 件です
+    new RegExp(`${CLAUSE}(\\s*${JA_OPEN}\\s*(?:${ja})\\s*(?:は|が)\\s*(?:全部で|合計で?|計)?\\s*)${N}(\\s*(?:件|人|つ))${JA_END}`, "gu"),
+    // ja: 全部で 16 件のタスクがあります
+    new RegExp(`${CLAUSE}(\\s*(?:全部で|合計で?)?\\s*)${N}(\\s*(?:件|人|つ)の\\s*${JA_OPEN}\\s*(?:${ja}))(?=\\s*(?:が|は)?\\s*(?:あります|ありました|残っています)|[。、]|$)`, "gu"),
+    // en: you have 16 open to-dos
+    new RegExp(`(^|[.!?;:\\n]\\s*|,\\s*|—\\s*)((?:in total,?\\s+|right now,?\\s+|currently,?\\s+)?(?:you have|you've got|you currently have|there are|i found)\\s+(?:a total of\\s+)?)${EN_N}(\\s+${EN_OPEN}(?:${EN_KIND[kind]}))\\b${EN_END}`, "giu"),
+  ];
+}
+
+export function withListedTotals(text: string, kinds: Partial<Record<ListedKind, { listed: number; also?: readonly number[] }>>): { text: string; changed: { kind: ListedKind; from: number; to: number }[] } {
+  const changed: { kind: ListedKind; from: number; to: number }[] = [];
+  let out = text;
+  for (const [kind, count] of Object.entries(kinds) as [ListedKind, { listed: number; also?: readonly number[] }][]) {
+    if (!count || count.listed < 1) continue;
+    const ok = new Set([count.listed, ...(count.also ?? [])]);
+    for (const pattern of totalPatterns(kind)) {
+      out = out.replace(pattern, (whole: string, start: string, head: string, said: string, tail: string) => {
+        const value = valueOf(said);
+        if (value === null || ok.has(value)) return whole;
+        changed.push({ from: value, kind, to: count.listed });
+        return `${start}${head}${count.listed}${tail}`;
+      });
+    }
+  }
+  return { changed, text: out };
+}
+
+const EN_KIND_NOUN: Record<ListedKind | "attendance", [string, string]> = { attendance: ["record of an event you went to", "records of events you went to"], contact: ["contact", "contacts"], event: ["event", "events"], memo: ["note", "notes"], schedule: ["schedule item", "schedule items"], todo: ["to-do", "to-dos"] };
+
+/** The note telling the answer step how many records of each kind it was given (a kind with two or more), in code's numbers. */
+export function listedCountNote(kinds: readonly { kind: string; read: number; late: number; total: number | null }[]): string | null {
+  const said = kinds.filter((item) => item.read >= 2 && item.kind in EN_KIND_NOUN).map((item) => {
+    const [one, many] = EN_KIND_NOUN[item.kind as ListedKind];
+    const extra = [item.total !== null && item.total > item.read ? `of ${item.total} in all` : "", item.late ? `${item.late} of them past ${item.late === 1 ? "its" : "their"} deadline or planned day` : ""].filter(Boolean);
+    return `${item.read} ${item.read === 1 ? one : many}${extra.length ? ` (${extra.join("; ")})` : ""}`;
+  });
+  return said.length ? `Code's count of the records read for this item: ${said.join("; ")}. If you say how many there are, use these numbers.` : null;
+}

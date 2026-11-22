@@ -6,7 +6,7 @@
  * if the round's budget is used up they stay unfinished, saying why.
  */
 import { datesIn, localizeAnswerDates, unsourcedDates, WEEKDAY_WORD, withoutUnsourcedDates } from "../../answer/dates";
-import { numbersIn, seenAllowedBy, unsourcedCounts, withoutPartialCounts, withoutUnsourcedCounts, withoutWrongSeenCounts } from "../../answer/counts";
+import { listedCountNote, numbersIn, seenAllowedBy, unsourcedCounts, withListedTotals, withoutPartialCounts, withoutUnsourcedCounts, withoutWrongSeenCounts, type ListedKind } from "../../answer/counts";
 import { withoutOnly, withoutWrongDirection } from "../../answer/gap-copy";
 import { localDayOf } from "../../propose/dates";
 import { gapWords } from "../../answer/gap-copy";
@@ -146,7 +146,9 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
     // replacement in "changes", so code can state the newer record's reason.
     const changes = changeCheckOf(recordMaterials);
     if (changes) changeParts.set(part.localId, recordMaterials);
-    return { constraints: source?.constraints ?? [], goal: source?.goal ?? quote, kind: materials.length ? "records" : "discussion", materials, notes: [...(run.readNotes.get(part.localId) ?? []), ...(contacts.length ? [profileCheckNote(contacts)] : []), ...(changes ? [changeCheckNote()] : [])], partId: part.localId, quote };
+    // Production 2026-11-23 (「你有16条待办」 above 20 cards): how many of each kind this part read, in code's numbers.
+    const counted = countNoteOf(scope, part, state.language);
+    return { constraints: source?.constraints ?? [], goal: source?.goal ?? quote, kind: materials.length ? "records" : "discussion", materials, notes: [...(run.readNotes.get(part.localId) ?? []), ...(counted ? [counted] : []), ...(contacts.length ? [profileCheckNote(contacts)] : []), ...(changes ? [changeCheckNote()] : [])], partId: part.localId, quote };
   });
   const allMaterials = [...new Map(items.flatMap((item) => item.materials).map((material) => [material.handle, material])).values()];
   const readParts = new Set(items.filter((item) => item.kind === "records").map((item) => item.partId));
@@ -337,6 +339,15 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
           emitTrace({ added, partId: part.localId, type: "answer.all_read_shown" });
         }
       }
+      // Production 2026-11-23 (「你有16条待办都还没完成」 above 20 cards): a total the model states for a kind of record is the
+      // number of that kind's cards this part shows (or the read's own count); the sentence stays with code's number.
+      if (run.modelAnswers.has(part.localId)) {
+        const totals = withListedTotals(run.answers.get(part.localId) ?? "", listedTotalsOf(scope, part));
+        if (totals.changed.length) {
+          run.answers.set(part.localId, totals.text);
+          emitTrace({ changed: totals.changed, partId: part.localId, type: "answer.listed_total_corrected" });
+        }
+      }
       // AG19 repair round 1 (decision 1, D1): a list-type read is written by code from the records the answer picked —
       // the lead says how many, of what kind and for which window, each record is its card and is not written out again.
       // The order is code's, not the one the model happened to cite them in: schedule items and events by their time,
@@ -415,6 +426,33 @@ async function groundedAnswer(scope: NodeScope, state: AgentGraphState, parts: G
   }
   settleDependencies(parts);
   return { budget, parts, repairs };
+}
+
+const LISTED_KINDS = new Set<string>(["todo", "schedule", "memo", "event", "contact"]);
+
+/** Production 2026-11-23: per kind, how many records this part read (its own materials), the overdue ones, the read's total. */
+function countNoteOf(scope: NodeScope, part: GraphPart, language: "zh" | "ja" | "en"): string | null {
+  const refs = [...new Set((scope.run.materials.get(part.localId) ?? []).filter((material) => material.kind !== "web").map((material) => material.ref))];
+  const kinds = [...new Set(refs.map((ref) => ref.slice(0, ref.indexOf(":"))))];
+  return listedCountNote(kinds.map((kind) => {
+    const mine = refs.filter((ref) => ref.startsWith(`${kind}:`));
+    const cards = mine.map((ref) => scope.run.recordCards.get(ref)).filter((card): card is AgentAnswerRecordContract => Boolean(card));
+    const coverage = (part.coverage ?? []).filter((item) => item.kind === kind);
+    const total = coverage.length && coverage.every((item) => item.total !== null) ? coverage.reduce((sum, item) => sum + (item.total ?? 0), 0) : null;
+    return { kind, late: kind === "todo" ? lateCount(cards, language) : 0, read: mine.length, total };
+  }));
+}
+
+/** Production 2026-11-23: per kind, the cards this part shows (its citations) and the counts its read gave (seen, total). */
+function listedTotalsOf(scope: NodeScope, part: GraphPart): Partial<Record<ListedKind, { listed: number; also: number[] }>> {
+  const out: Partial<Record<ListedKind, { listed: number; also: number[] }>> = {};
+  const cards = [...new Set(part.cites ?? [])].map((ref) => scope.run.recordCards.get(ref)).filter((card): card is AgentAnswerRecordContract => Boolean(card));
+  for (const kind of new Set(cards.map((card) => card.kind))) {
+    if (!LISTED_KINDS.has(kind)) continue;
+    const also = (part.coverage ?? []).filter((item) => item.kind === kind).flatMap((item) => [item.seen, ...(item.total !== null ? [item.total] : [])]);
+    out[kind as ListedKind] = { also, listed: cards.filter((card) => card.kind === kind).length };
+  }
+  return out;
 }
 
 /** A numbered line of a reply ("1. …", "2、…", "（3）…", "4) …"). */
