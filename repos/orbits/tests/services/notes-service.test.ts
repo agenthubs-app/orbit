@@ -595,3 +595,17 @@ test("a committed create or edit replays its original result after event or cont
   await assert.rejects(service.update({ ...updateInput, body: "Different edit" }), conflict);
   assert.equal((await service.get({ actorId: "account:one", noteId: created.id }))?.version, 2);
 });
+
+test("P1 (2026-11-22): one search returns the counts of all three kind tabs for the same search, whichever tab is asked", async () => {
+  const { service } = fixture();
+  const kinds = ["meeting", "meeting", undefined, "free"] as const;
+  for (const [index, kind] of kinds.entries()) {
+    await service.create({ actorId: "account:one", body: index === 3 ? "other" : `match ${index}`, ...(kind ? { noteKind: kind } : {}), idempotencyKey: `kinds:${index}`, now: `2026-09-15T00:0${index}:00.000Z` });
+  }
+  const meeting = await service.search({ actorId: "account:one", noteKind: "meeting", limit: 20 });
+  assert.equal(meeting.total, 2);
+  assert.deepEqual(meeting.kindCounts, { all: 4, meeting: 2, free: 2 });
+  const searched = await service.search({ actorId: "account:one", q: "match", noteKind: "free", limit: 20 });
+  assert.equal(searched.total, 1);
+  assert.deepEqual(searched.kindCounts, { all: 3, meeting: 2, free: 1 });
+});

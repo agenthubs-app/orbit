@@ -95,8 +95,12 @@ test("memo search, kind filter, selection and versioned edit read back through t
         return Response.json({success:true,data:{note:row}});
       }
       const query=new URL(url,"https://example.test").searchParams;
-      const rows=window.memoRows.filter(row=>(query.get("noteKind")==="all"||row.noteKind===query.get("noteKind"))&&(!query.get("q")||row.title.includes(query.get("q"))));
-      return Response.json({success:true,data:{notes:rows,total:rows.length}});
+      const searched=window.memoRows.filter(row=>!query.get("q")||row.title.includes(query.get("q")));
+      const rows=searched.filter(row=>query.get("noteKind")==="all"||row.noteKind===query.get("noteKind"));
+      // P1: the tab counts come with the list (one read), no separate count requests.
+      const meeting=searched.filter(row=>row.noteKind==="meeting").length;
+      if(String(url).startsWith("/api/notes?"))(window.memoListUrls=window.memoListUrls||[]).push(String(url));
+      return Response.json({success:true,data:{notes:rows,total:rows.length,kindCounts:{all:searched.length,meeting,free:searched.length-meeting}}});
     };
   </script>` });
   t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
@@ -104,6 +108,7 @@ test("memo search, kind filter, selection and versioned edit read back through t
   await page.getByRole("radio", { name: "すべて 2" }).waitFor();
   await page.getByRole("radio", { name: "面談 1" }).waitFor();
   await page.getByRole("radio", { name: "自由メモ 1" }).waitFor();
+  assert.deepEqual(await page.evaluate(() => (window as any).memoListUrls), ["/api/notes?limit=20&noteKind=all"], "one list read brings the list and all three tab counts");
   await page.getByRole("button", { name: "アイデア" }).click();
   await page.locator("section[aria-label='アイデア']").getByText("A free note").waitFor();
   assert.match(page.url(), /memo=memo%3A2/u);

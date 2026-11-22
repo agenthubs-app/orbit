@@ -121,6 +121,8 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
       if (generation.current !== current) return;
       setNotes(previous => more ? [...(previous ?? []), ...rows.filter(row => !previous?.some(item => item.id === row.id))] : rows);
       setTotal(page.total); setCursor(page.nextCursor);
+      // The tab counts come with the list (same server read); a "load more" page carries the same numbers.
+      if (!more && page.kindCounts) { setCounts(page.kindCounts); rememberAnswer(countsKey(settledQuery), page.kindCounts); }
       if (!more) setSelected(value => value && rows.some(row => row.id === value) ? value : rows[0]?.id ?? "");
     } catch {
       if (generation.current === current) setFailed(true);
@@ -130,30 +132,12 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
   }, [cursor, settledQuery, tab]);
   useEffect(() => { setNotes(null); setCursor(undefined); void read(); return () => { generation.current++; }; }, [tab, settledQuery]); // read is intentionally triggered only by the query, not each page cursor
   // Notes changed elsewhere: the list and the tab counts read again behind what is shown.
-  const [notesMoved, setNotesMoved] = useState(0);
-  useAreaChanges(["memo"], () => { void read(); setNotesMoved((value) => value + 1); });
+  useAreaChanges(["memo"], () => { void read(); });
+  // A new search keeps the shown numbers until the list read brings the new ones (or the remembered ones for that search).
   useEffect(() => {
-    const controller = new AbortController();
-    // A new search keeps the shown numbers until the new ones are in (or the remembered ones for that search).
     const remembered = lastAnswer<Counts>(countsKey(settledQuery));
     if (remembered) setCounts(remembered);
-    if (remembered && answerFresh(countsKey(settledQuery), FRESH.list)) return () => controller.abort();
-    void Promise.all((["all", "meeting", "free"] as const).map(async kind => {
-      const params = new URLSearchParams({ limit: "20", noteKind: kind });
-      if (settledQuery) params.set("q", settledQuery);
-      try {
-        const response = await fetch(`/api/notes?${params}`, { credentials: "same-origin", signal: controller.signal });
-        if (!response.ok) throw new Error(String(response.status));
-        return memoPage(dataOf(await response.json()))?.total ?? null;
-      } catch { return null; /* The current list keeps its own retry state. */ }
-    })).then(([all, meeting, free]) => {
-      if (controller.signal.aborted) return;
-      const next: Counts = { all: all ?? null, meeting: meeting ?? null, free: free ?? null };
-      if (next.all !== null && next.meeting !== null && next.free !== null) rememberAnswer(countsKey(settledQuery), next);
-      setCounts(next);
-    });
-    return () => controller.abort();
-  }, [settledQuery, notesMoved]);
+  }, [settledQuery]);
   const select = (id: string) => {
     pinnedId.current = id;
     setSelected(id);

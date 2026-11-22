@@ -79,7 +79,9 @@ export function rebaseMemoMentions(previousBody: string, nextBody: string, menti
   return output;
 }
 
-export function memoPage(value: unknown): { notes: MemoRow[]; total: number; nextCursor?: string } | null {
+export type MemoKindCounts = { all: number; meeting: number; free: number };
+
+export function memoPage(value: unknown): { notes: MemoRow[]; total: number; nextCursor?: string; kindCounts?: MemoKindCounts } | null {
   if (!record(value) || !Array.isArray(value.notes) || !Number.isSafeInteger(value.total) || Number(value.total) < 0) return null;
   if (value.nextCursor !== undefined && (typeof value.nextCursor !== "string" || !value.nextCursor)) return null;
   const notes = value.notes.filter((row): row is MemoRow => record(row)
@@ -92,7 +94,11 @@ export function memoPage(value: unknown): { notes: MemoRow[]; total: number; nex
     && Array.isArray(row.manualContactIds) && row.manualContactIds.every((id: unknown) => typeof id === "string")
     && validMentions(row.mentions, row.body));
   if (Number(value.total) < notes.length) return null;
-  return { notes, total: Number(value.total), ...(value.nextCursor ? { nextCursor: value.nextCursor as string } : {}) };
+  const counts = value.kindCounts;
+  const kindCounts = record(counts) && (["all", "meeting", "free"] as const).every((key) => Number.isSafeInteger(counts[key]) && Number(counts[key]) >= 0)
+    ? { all: Number(counts.all), meeting: Number(counts.meeting), free: Number(counts.free) }
+    : undefined;
+  return { notes, total: Number(value.total), ...(value.nextCursor ? { nextCursor: value.nextCursor as string } : {}), ...(kindCounts ? { kindCounts } : {}) };
 }
 
 export function memoRequest(input: {

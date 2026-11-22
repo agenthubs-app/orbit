@@ -78,13 +78,13 @@ function TaskContainerContent({ initialTab, calendar, todo, plan, memo, planStar
     };
     const offline = () => { latest++; setMemoOnline(false); };
     probe();
-    // Focus probes again, so a tab in the background skips its turns.
-    const timer = window.setInterval(() => { if (typeof document !== "undefined" && document.visibilityState === "hidden") return; probe(); }, 15_000);
+    // Entering the tab, focus and coming back online probe again. No timer: each probe is a full notes read plus
+    // the auth checks, and the 15-second interval repeated it four times a minute while the tab stayed open (P1).
     window.addEventListener("focus", probe);
     window.addEventListener("online", probe);
     window.addEventListener("offline", offline);
     return () => {
-      active = false; controller.abort(); window.clearInterval(timer);
+      active = false; controller.abort();
       window.removeEventListener("focus", probe);
       window.removeEventListener("online", probe);
       window.removeEventListener("offline", offline);

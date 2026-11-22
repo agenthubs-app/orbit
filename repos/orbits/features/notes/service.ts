@@ -53,6 +53,8 @@ export interface NoteSearchResult {
   notes: readonly NoteDTO[];
   total: number;
   nextCursor?: string;
+  /** Matches per kind tab for the same filters and search, counted from the same read (P1: the list no longer asks three times). */
+  kindCounts?: { all: number; meeting: number; free: number };
 }
 
 export interface NoteCreateInput {
@@ -280,11 +282,9 @@ export function createNoteService(input: { repository: NoteRepository; associati
         ? new Set(await associationReader.searchContactIds({ actorId: query.actorId, query: query.q!.trim() }))
         : new Set<string>();
       const records = await input.repository.list(query.actorId);
-      const notes = records
+      const matching = records
         .map((record) => record.note)
         .filter((note) => !query.contactId || note.contactIds.includes(query.contactId))
-        .filter((note) => query.noteKind === undefined || query.noteKind === "all" ||
-          (query.noteKind === "meeting" ? note.noteKind === "meeting" : note.noteKind !== "meeting"))
         .filter((note) => {
           const association = query.association ?? "all";
           if (association === "contacts" && note.contactIds.length === 0) return false;
@@ -292,7 +292,12 @@ export function createNoteService(input: { repository: NoteRepository; associati
           if (association === "unlinked" && (note.contactIds.length > 0 || note.eventIds.length > 0)) return false;
           return true;
         })
-        .filter((note) => !search || `${note.title}\n${note.body}`.toLocaleLowerCase().includes(search) || note.contactIds.some((id) => matchedContactIds.has(id)))
+        .filter((note) => !search || `${note.title}\n${note.body}`.toLocaleLowerCase().includes(search) || note.contactIds.some((id) => matchedContactIds.has(id)));
+      const meetingCount = matching.filter((note) => note.noteKind === "meeting").length;
+      const kindCounts = { all: matching.length, meeting: meetingCount, free: matching.length - meetingCount };
+      const notes = matching
+        .filter((note) => query.noteKind === undefined || query.noteKind === "all" ||
+          (query.noteKind === "meeting" ? note.noteKind === "meeting" : note.noteKind !== "meeting"))
         .sort((left, right) => (query.sort === "updated_asc" ? left.updatedAt.localeCompare(right.updatedAt) : right.updatedAt.localeCompare(left.updatedAt)) || left.id.localeCompare(right.id));
       // An offset is valid only for this exact authorized source collection.
       // Until the canonical source exposes snapshots, reject changed history
@@ -305,6 +310,7 @@ export function createNoteService(input: { repository: NoteRepository; associati
         notes: page,
         total: notes.length,
         ...(nextOffset < notes.length ? { nextCursor: encodeCursor(nextOffset, scope) } : {}),
+        kindCounts,
       };
     },
     async get(query) {
