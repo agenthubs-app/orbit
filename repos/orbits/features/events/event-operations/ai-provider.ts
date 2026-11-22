@@ -1040,7 +1040,7 @@ function requestFingerprint(
     temperature,
     responseSchema: "event-operations-tokenized-recommendations-v1",
     // 2026-11-22: only present when on, so single-language fingerprints are unchanged.
-    ...(trilingual ? { participantTextLanguages: "ja-facts-choose-write-translate-v2" } : {}),
+    ...(trilingual ? { participantTextLanguages: "ja-facts-choose-write-translate-v3" } : {}),
   };
   return JSON.stringify(
     recommendationPromptEncoding === "deduplicated" ||
@@ -1372,7 +1372,8 @@ export function createEventOperationsAiProvider({
     const issues = new Map<number, string[]>();
     items.forEach((item, index) => {
       const found = nonEmptyString(item.text) ? textIssues(item.text, item.allowed, "ja", participants) : ["empty"];
-      if (item.asked && new RegExp(`\\{${item.asked}(:company)?\\}`, "u").test(item.text)) found.push("question_names_target");
+      // A question is said by the asker to the person asked: neither is named (no self-honorific, no third person).
+      if (item.asked && /[{}]/u.test(item.text)) found.push("question_names_target");
       if (found.length) issues.set(index, found);
     });
     return issues;
@@ -1384,7 +1385,7 @@ export function createEventOperationsAiProvider({
     language: "write natural, polite Japanese",
     malformed_placeholder: "placeholders must be exactly {KEY} or {KEY:company}",
     out_of_scope: "it mentions a person who is not allowed here",
-    question_names_target: "a question must address the person being asked directly, without naming them",
+    question_names_target: "a question is asked directly to the person: write it without any placeholder or name (neither the person asked nor the asker)",
     raw_name: "never write a person's or company's name; use only the placeholders",
     stray_brace: "no braces outside placeholders",
   };
@@ -1588,8 +1589,8 @@ ${JSON.stringify(chooseSources)}`,
       userText: `Write the texts for these already-chosen networking pairs, in Japanese, from the supplied facts only (S.* are the source person's facts, T.* the target's).
 
 For every pair id:
-- r1 and r2: two different reasons why the source person should meet the target. Each reason states only what its cited facts say and lists them in ev. A need belongs to its owner and is answered only by the other person's offer; a topic is an interest, never an ability or knowledge; never attribute one person's fact to the other. Build the two reasons on the supplied basis. Vary the wording; do not write every reason with the same sentence pattern.
-- q1 and q2: two questions the source person asks the target directly, in polite Japanese addressed to the target (never {TARGET} or the target's name; the asker may mention {SOURCE}).
+- r1 and r2: two different reasons why the source person should meet the target. Each reason states only what its cited facts say and lists them in ev. A need belongs to its owner and is answered only by the other person's offer that answers it most directly (for a funding need, a funding or investor offer — not an unrelated one); a topic is an interest, never an ability or knowledge; never attribute one person's fact to the other. Build r1 on the strongest supplied basis pair. For r2 use a second need/offer pair only if it is equally direct; otherwise write r2 about a topic both share (cite one topic of each). Never stretch an unrelated offer to fit a need. Vary the wording; do not write every reason with the same sentence pattern.
+- q1 and q2: two questions the source person asks the target directly, in polite Japanese; write them without any placeholder or name (the asker never names themselves or the target).
 - hint: one practical tip for starting the conversation.
 For an id ending in ".none": none is one sentence explaining why there is no match.
 In r1, r2, hint and none, refer to the source person only as {SOURCE} and the target only as {TARGET} (the server adds the name and さん); a company only as {SOURCE:company} / {TARGET:company} next to that person, and only when that person has a company (sourceHasCompany / targetHasCompany).

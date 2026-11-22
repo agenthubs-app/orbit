@@ -294,7 +294,7 @@ test("the writer sees owned, typed facts and the basis; evidence never reaches a
 
 test("style: questions are addressed directly (no placeholders); Japanese names always get exactly one さん", async () => {
   await failsRetryably(model({ base: goodBase({ p1: { q1: "{TARGET}さんが最初に試す業務は？" } }) }), two, "a question in the third person");
-  assert.equal((await provider(model({ base: goodBase({ p1: { q2: "{SOURCE}の{SOURCE:company}での事例は参考になりそうですか？" } }) })).generateRecommendations(two)).success, true, "the asker may mention themselves");
+  await failsRetryably(model({ base: goodBase({ p1: { q2: "{SOURCE}さんの事例は参考になりそうですか？" } }) }), two, "the asker never names themselves either (no self-honorific)");
   const ok = await provider(model({ base: goodBase({ p1: { hint: "{SOURCE}は{TARGET}様に聞くとよいです。" } }) })).generateRecommendations(two);
   assert.equal(ok.success, true);
   if (ok.success) assert.equal(ok.data[0]!.recommendations[0]!.i18n!.ja.memberHint, "山田太郎さんはBoさんに聞くとよいです。");
