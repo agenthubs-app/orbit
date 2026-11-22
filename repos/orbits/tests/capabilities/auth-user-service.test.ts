@@ -99,6 +99,11 @@ test("live auth provisioning creates one account and profile and preserves them 
     })?.userId,
     userId,
   );
+  // The account label is the person's name — no fixed-language "X 的 Orbit" suffix.
+  assert.equal(
+    store.getRecord({ workspaceId, collectionName: "accounts", recordId: userId })?.payload.name,
+    "Member",
+  );
   assert.equal(
     store.getRecord({
       workspaceId,

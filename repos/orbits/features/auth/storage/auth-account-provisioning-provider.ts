@@ -60,7 +60,9 @@ function accountRecord(
 ): LiveRecord<Record<string, unknown>> {
   const account: AccountDTO = {
     id: user.id,
-    name: `${user.displayName} 的 Orbit`,
+    // The account label is the person's own name. A fixed-language suffix ("X 的 Orbit")
+    // leaked into other languages and was mistaken for a company.
+    name: user.displayName,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
