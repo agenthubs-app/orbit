@@ -70,10 +70,10 @@ function model(options: {
 const provider = (runner: EventOperationsModelRunner) => createEventOperationsAiProvider({ trilingual: true, runModelText: runner });
 
 const pair = (overrides: Record<string, unknown> = {}) => ({
-  hint: "{SOURCE}さんは{TARGET}さんに導入事例から聞くとよいです。",
+  hint: "まずは{TARGET}さんに導入事例から聞いてみましょう。",
   q1: "最初にどの業務で試しますか？",
   q2: "導入の決め手は何でしたか？",
-  r1: { ev: ["S.n1", "T.o1"], text: "{SOURCE}さんは医療分野の導入先を探しています。" },
+  r1: { ev: ["S.n1", "T.o1"], text: "医療分野の導入先を探しているので、{TARGET}さんと話す価値があります。" },
   r2: { ev: ["T.n1", "S.o1"], text: "{TARGET}さんは導入支援の経験があります。" },
   ...overrides,
 });
@@ -88,7 +88,7 @@ async function failsRetryably(runner: EventOperationsModelRunner, input = two, l
 }
 
 test("happy path: exactly K picks, 2 reasons / 2 questions / 1 hint, names filled by id, base fields zh, i18n ja/zh/en", async () => {
-  const runner = model({ base: goodBase(), translate: (language, id) => (id === "S1.p1.r1" ? (language === "zh" ? "{S1}正在寻找医疗领域的合作方。" : "{S1} is looking for a healthcare partner.") : undefined) });
+  const runner = model({ base: goodBase(), translate: (language, id) => (id === "S1.p1.r1" ? (language === "zh" ? "您正在寻找医疗领域的合作方，值得和{S1C1}聊聊。" : "You are looking for a healthcare partner, so {S1C1} is worth meeting.") : undefined) });
   const result = await provider(runner).generateRecommendations(two);
   assert.equal(result.success, true);
   if (!result.success) return;
@@ -97,9 +97,9 @@ test("happy path: exactly K picks, 2 reasons / 2 questions / 1 hint, names fille
   const first = row.recommendations[0]!;
   assert.equal(first.reasons.length, 2);
   assert.equal(first.icebreakers.length, 2);
-  assert.equal(first.reasons[0], "山田太郎正在寻找医疗领域的合作方。", "base string fields are the zh translation, names filled");
-  assert.equal(first.i18n!.ja.reasons[0], "山田太郎さんは医療分野の導入先を探しています。");
-  assert.equal(first.i18n!.en.reasons[0], "山田太郎 is looking for a healthcare partner.");
+  assert.equal(first.reasons[0], "您正在寻找医疗领域的合作方，值得和Bo聊聊。", "base string fields are the zh translation, names filled; the reader is 您");
+  assert.equal(first.i18n!.ja.reasons[0], "医療分野の導入先を探しているので、Boさんと話す価値があります。");
+  assert.equal(first.i18n!.en.reasons[0], "You are looking for a healthcare partner, so Bo is worth meeting.");
   assert.deepEqual(runner.calls.map((call) => call.kind).sort(), ["base", "choose", "en", "zh"], "choose, one base draft, one call per translation");
   for (const value of ["山田太郎", "青空商事", "Beacon Health", "未来科技"]) assert.doesNotMatch(runner.calls[0]!.userText, new RegExp(value, "u"), `prompt carries no ${value}`);
   assert.doesNotMatch(runner.calls.find((call) => call.kind === "zh")!.userText, /score|target|S1C2"/u, "translation never sees the choice");
@@ -114,23 +114,23 @@ test("exactly K: fewer picks, a duplicate target, or a target outside the shortl
   await failsRetryably(model({ base: { "S1.p1": pair() } }), two, "a text row missing for a chosen pair");
 });
 
-test("the text is bound to its pair: only {SOURCE} and {TARGET} exist, so it cannot drift to another candidate", async () => {
+test("the text is bound to its pair: only {TARGET} exists (the reader is addressed, not named), so it cannot drift to another candidate", async () => {
   const runner = model({ base: goodBase(), choose: { S1: [{ basis: [["S1.n1", "S1C2.o1"]], score: 90, target: "S1C2" }, { basis: [["S1.n1", "S1C1.o1"]], score: 80, target: "S1C1" }] } });
   const result = await provider(runner).generateRecommendations(two);
   assert.equal(result.success, true);
   if (!result.success) return;
   assert.equal(result.data[0]!.recommendations[0]!.targetParticipantId, "participant:c");
-  assert.equal(result.data[0]!.recommendations[0]!.i18n!.ja.memberHint, "山田太郎さんはMiraさんに導入事例から聞くとよいです。", "{TARGET} is this pick's target");
+  assert.equal(result.data[0]!.recommendations[0]!.i18n!.ja.memberHint, "まずはMiraさんに導入事例から聞いてみましょう。", "{TARGET} is this pick's target");
   const writePrompt = runner.calls.find((call) => call.kind === "base")!.userText;
   assert.doesNotMatch(writePrompt, /S1C\d/u, "the writer never sees candidate keys");
-  await failsRetryably(model({ base: goodBase({ p1: { hint: "{SOURCE}さんは{S1C2}さんにも会うとよいです。" } }) }), two, "a candidate key written into text");
+  await failsRetryably(model({ base: goodBase({ p1: { hint: "{S1C2}さんにも会うとよいです。" } }) }), two, "a candidate key written into text");
 });
 
 test("no candidates: none is one sentence and there are no picks", async () => {
   const empty = { eventId: "event:t", recommendationCount: 4, sources: [{ candidateParticipants: [], sourceParticipant: yamada }] };
-  const ok = await provider(model({ base: { "S1.none": { none: "{SOURCE}さんの条件に合う参加者は今回いません。" } }, choose: { S1: [] } })).generateRecommendations(empty);
+  const ok = await provider(model({ base: { "S1.none": { none: "今回は条件に合う参加者がいません。" } }, choose: { S1: [] } })).generateRecommendations(empty);
   assert.equal(ok.success, true);
-  if (ok.success) assert.equal(ok.data[0]!.noMatchReasonI18n?.ja, "山田太郎さんの条件に合う参加者は今回いません。");
+  if (ok.success) assert.equal(ok.data[0]!.noMatchReasonI18n?.ja, "今回は条件に合う参加者がいません。");
   await failsRetryably(model({ base: { "S1.none": { none: "" } }, choose: { S1: [] } }), empty, "none empty");
 });
 
@@ -139,7 +139,7 @@ test("company pairing in the base draft", async () => {
 });
 
 test("a translation that changes people, placeholders, or numbers fails; it cannot re-choose", async () => {
-  await failsRetryably(model({ base: goodBase(), translate: (language, id) => (language === "en" && id === "S1.p1.hint" ? "{S1} should ask {S1C2} first." : undefined) }), two, "en swaps the person");
+  await failsRetryably(model({ base: goodBase(), translate: (language, id) => (language === "en" && id === "S1.p1.hint" ? "Ask {S1C2} first." : undefined) }), two, "en swaps the person");
   await failsRetryably(model({ base: goodBase({ p1: { r2: { ev: ["T.n1", "S.o1"], text: "{TARGET}さんは3社を支援しています。" } } }), translate: (language, id) => (language === "en" && id === "S1.p1.r2" ? "{S1C1} has supported 5 companies." : undefined) }), two, "number changed");
 });
 
@@ -157,15 +157,15 @@ test("names: a registered name or company written in the base or in a translatio
 test("language: a flagged translation gets one repair from the Japanese, keeping placeholders; the full check runs again", async () => {
   const good = model({
     base: goodBase(),
-    repair: { sentences: { s1: { en: "{S1} is looking for a healthcare partner." } } },
-    translate: (language, id) => (language === "en" && id === "S1.p1.r1" ? "{S1} seeks 医療 partners." : undefined),
+    repair: { sentences: { s1: { en: "You are looking for a healthcare partner, so {S1C1} is worth meeting." } } },
+    translate: (language, id) => (language === "en" && id === "S1.p1.r1" ? "You seek 医療 partners; meet {S1C1}." : undefined),
   });
   const ok = await provider(good).generateRecommendations(two);
   assert.equal(ok.success, true);
   const repairCall = good.calls.find((call) => call.kind === "repair")!;
-  assert.match(repairCall.userText, /"source":"ja"/u);
-  assert.match(repairCall.userText, /\{S1\}さんは医療分野の導入先を探しています。/u);
-  const stillBad = model({ base: goodBase(), repair: { sentences: { s1: { en: "Meet {S1C2} about healthcare." } } }, translate: (language, id) => (language === "en" && id === "S1.p1.r1" ? "{S1} seeks 医療 partners." : undefined) });
+  assert.match(repairCall.userText, /医療分野の導入先を探しているので、\{S1C1\}さんと話す価値があります。/u);
+  assert.match(repairCall.userText, /医療分野の導入先を探しているので、\{S1C1\}さんと話す価値があります。/u);
+  const stillBad = model({ base: goodBase(), repair: { sentences: { s1: { en: "Meet {S1C2} about healthcare." } } }, translate: (language, id) => (language === "en" && id === "S1.p1.r1" ? "You seek 医療 partners; meet {S1C1}." : undefined) });
   await failsRetryably(stillBad, two, "repair that swaps the person");
 });
 
@@ -254,27 +254,27 @@ test("trailing markup after the JSON (leaked tool-call tags) is a retryable fail
 const withReason = (field: "r1" | "r2", ev: string[], text: string) => goodBase({ p1: { [field]: { ev, text } } });
 
 test("error kind 1 — one person's need presented as the other's: a need and an offer of the same owner is not a pair", async () => {
-  await failsRetryably(model({ base: withReason("r2", ["T.o1", "T.n1"], "{TARGET}さんはSaaS導入を支援でき、{SOURCE}さんが相談したい資金調達に応えられます。") }), two);
+  await failsRetryably(model({ base: withReason("r2", ["T.o1", "T.n1"], "{TARGET}さんはSaaS導入を支援でき、あなたが相談したい資金調達に応えられます。") }), two);
 });
 
 test("error kind 2 — a topic presented as expertise: need × topic is not a pair", async () => {
-  await failsRetryably(model({ base: withReason("r1", ["S.n1", "T.t1"], "{TARGET}さんのAIの知見が{SOURCE}さんの資金調達に役立ちます。") }), two);
+  await failsRetryably(model({ base: withReason("r1", ["S.n1", "T.t1"], "{TARGET}さんのAIの知見があなたの資金調達に役立ちます。") }), two);
 });
 
 test("error kind 4 — a need presented as an offer: need × need is not a pair", async () => {
-  await failsRetryably(model({ base: withReason("r1", ["S.n1", "T.n1"], "{TARGET}さんの資金調達の経験が{SOURCE}さんに役立ちます。") }), two);
+  await failsRetryably(model({ base: withReason("r1", ["S.n1", "T.n1"], "{TARGET}さんの資金調達の経験があなたに役立ちます。") }), two);
 });
 
 test("error kind 3 — a stretched claim on a legal need × offer pair passes the program (left to semantic review)", async () => {
-  const ok = await provider(model({ base: withReason("r1", ["S.n1", "T.o1"], "{TARGET}さんのSaaS導入の人脈が{SOURCE}さんの投資家探しの橋渡しになります。") })).generateRecommendations(two);
+  const ok = await provider(model({ base: withReason("r1", ["S.n1", "T.o1"], "{TARGET}さんのSaaS導入の人脈が、あなたの投資家探しの橋渡しになります。") })).generateRecommendations(two);
   assert.equal(ok.success, true);
 });
 
 test("evidence rules: unknown facts, a need left unanswered, a reason off the chosen basis, and an illegal basis all fail", async () => {
-  await failsRetryably(model({ base: withReason("r1", ["S.n9", "T.o1"], "{SOURCE}さんと{TARGET}さん") }), two, "unknown fact");
-  await failsRetryably(model({ base: withReason("r1", ["S.n1", "T.o1", "T.n1"], "{SOURCE}さんと{TARGET}さん") }), two, "T.n1 has no answering offer in this reason");
-  assert.equal((await provider(model({ base: withReason("r1", ["S.n1", "T.o1", "T.c2"], "{SOURCE}さんと{TARGET}さん") })).generateRecommendations(two)).success, true, "context facts may accompany a pair");
-  await failsRetryably(model({ base: goodBase({ p1: { r1: { ev: ["S.t1", "T.t1"], text: "{SOURCE}さんと{TARGET}さんはAIに関心があります。" }, r2: { ev: ["S.t1", "T.t1"], text: "{TARGET}さんもAIに関心があります。" } } }) }), two, "neither reason uses the chosen need×offer basis");
+  await failsRetryably(model({ base: withReason("r1", ["S.n9", "T.o1"], "資金調達について{TARGET}さんと話せます。") }), two, "unknown fact");
+  await failsRetryably(model({ base: withReason("r1", ["S.n1", "T.o1", "T.n1"], "資金調達について{TARGET}さんと話せます。") }), two, "T.n1 has no answering offer in this reason");
+  assert.equal((await provider(model({ base: withReason("r1", ["S.n1", "T.o1", "T.c2"], "資金調達について{TARGET}さんと話せます。") })).generateRecommendations(two)).success, true, "context facts may accompany a pair");
+  await failsRetryably(model({ base: goodBase({ p1: { r1: { ev: ["S.t1", "T.t1"], text: "あなたと{TARGET}さんはAIに関心があります。" }, r2: { ev: ["S.t1", "T.t1"], text: "{TARGET}さんもAIに関心があります。" } } }) }), two, "neither reason uses the chosen need×offer basis");
   await failsRetryably(model({ base: goodBase(), choose: { S1: [{ basis: [["S1.n1", "S1.o1"]], score: 90, target: "S1C1" }, { basis: [["S1.n1", "S1C2.o1"]], score: 80, target: "S1C2" }] } }), two, "a basis with no legal pair left");
   const mixed = model({ base: goodBase(), choose: { S1: [{ basis: [["S1.n1", "S1C1.n1"], ["S1.n9", "S1C1.o1"], ["S1.n1", "S1C1.o1"]], score: 90, target: "S1C1" }, { basis: [["S1.n1", "S1C2.o1"]], score: 80, target: "S1C2" }] } });
   assert.equal((await provider(mixed).generateRecommendations(two)).success, true, "illegal and unknown pairs are dropped when a legal one remains");
@@ -294,17 +294,17 @@ test("the writer sees owned, typed facts and the basis; evidence never reaches a
 
 test("style: questions are addressed directly (no placeholders); Japanese names always get exactly one さん", async () => {
   await failsRetryably(model({ base: goodBase({ p1: { q1: "{TARGET}さんが最初に試す業務は？" } }) }), two, "a question in the third person");
-  await failsRetryably(model({ base: goodBase({ p1: { q2: "{SOURCE}さんの事例は参考になりそうですか？" } }) }), two, "the asker never names themselves either (no self-honorific)");
-  const ok = await provider(model({ base: goodBase({ p1: { hint: "{SOURCE}は{TARGET}様に聞くとよいです。" } }) })).generateRecommendations(two);
+  await failsRetryably(model({ base: goodBase({ p1: { q2: "{S1}さんの事例は参考になりそうですか？" } }) }), two, "the asker never names themselves either (no self-honorific)");
+  const ok = await provider(model({ base: goodBase({ p1: { hint: "まずは{TARGET}様に聞くとよいです。" } }) })).generateRecommendations(two);
   assert.equal(ok.success, true);
-  if (ok.success) assert.equal(ok.data[0]!.recommendations[0]!.i18n!.ja.memberHint, "山田太郎さんはBoさんに聞くとよいです。");
+  if (ok.success) assert.equal(ok.data[0]!.recommendations[0]!.i18n!.ja.memberHint, "まずはBoさんに聞くとよいです。");
 });
 
 test("style: 贵公司 and 你 are repaired from the Japanese; calques are steered, not failed", async () => {
   const runner = model({
     base: goodBase(),
-    repair: { sentences: { s1: { zh: "{S1}正在寻找医疗领域的合作伙伴。" } } },
-    translate: (language, id) => (language === "zh" && id === "S1.p1.r1" ? "贵公司{S1}正在寻找合作方。" : undefined),
+    repair: { sentences: { s1: { zh: "您正在寻找医疗领域的合作伙伴，值得和{S1C1}聊聊。" } } },
+    translate: (language, id) => (language === "zh" && id === "S1.p1.r1" ? "你正在寻找合作方，可以和{S1C1}聊聊。" : undefined),
   });
   const ok = await provider(runner).generateRecommendations(two);
   assert.equal(ok.success, true);
@@ -322,10 +322,18 @@ test("per-text repair: a base text breaking a rule is rewritten once and checked
   await failsRetryably(stillBad, two, "a rewrite that keeps the problem fails the batch");
   const drifted = model({
     base: goodBase(),
-    repair: { sentences: { s1: { en: "{S1} and {S1C1} can start from rollout stories." } } },
-    translate: (language, id) => (language === "en" && id === "S1.p1.hint" ? "{S1} should ask {S1C2} first." : undefined),
+    repair: { sentences: { s1: { en: "Start by asking {S1C1} about rollout stories." } } },
+    translate: (language, id) => (language === "en" && id === "S1.p1.hint" ? "Ask {S1C2} first." : undefined),
   });
   const reTranslated = await provider(drifted).generateRecommendations(two);
   assert.equal(reTranslated.success, true, "a translation naming another person is re-translated from the Japanese");
   assert.match(drifted.calls.find((call) => call.kind === "repair")!.userText, /"source":"ja"/u);
+});
+
+test("the reader is addressed, never named: a base text naming them is rewritten once, or the batch fails", async () => {
+  const fixed = model({ base: goodBase({ p1: { hint: "{SOURCE}さんは{TARGET}さんに聞くとよいです。" } }), baseRepair: { texts: { t1: "まずは{TARGET}さんに聞いてみましょう。" } } });
+  const ok = await provider(fixed).generateRecommendations(two);
+  assert.equal(ok.success, true);
+  if (ok.success) assert.equal(ok.data[0]!.recommendations[0]!.i18n!.ja.memberHint, "まずはBoさんに聞いてみましょう。");
+  await failsRetryably(model({ base: goodBase({ p1: { hint: "{SOURCE}さんは{TARGET}さんに聞くとよいです。" } }), baseRepair: { texts: { t1: "{SOURCE}さんから聞きましょう。" } } }), two, "still naming the reader");
 });

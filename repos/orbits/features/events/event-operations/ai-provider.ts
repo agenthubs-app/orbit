@@ -811,9 +811,9 @@ export function collectTrilingualOutputViolations(
     if (!rest) return false;
     if (!HAN_CHARACTER_PATTERN.test(rest) || KANA_PATTERN.test(rest)) return true;
     // Style (2026-11-22 review): Japanese-calque terms, 贵公司 for a person, and 你 (we address readers as 您).
-    // 贵公司 for a person changes the meaning, and 你 breaks the 您 convention: both are repaired. Calques (课题 …) are
-    // steered by the translation glossary but not failed (a repair from Japanese 課題 reproduces them).
-    if (/贵公司|你(?!们)/u.test(rest)) return true;
+    // 你 breaks the 您 convention and is repaired. 贵公司 is the right translation of 御社, so it is not failed (the
+    // prompt forbids turning a person into a company). Calques (课题 …) are steered by the glossary, not failed.
+    if (/你(?!们)/u.test(rest)) return true;
     const policy = collectChineseOutputPolicyViolations([rest], []);
     return policy.disallowedTokens.length > 0 || policy.untranslatedValues.length > 0;
   });
@@ -1040,7 +1040,7 @@ function requestFingerprint(
     temperature,
     responseSchema: "event-operations-tokenized-recommendations-v1",
     // 2026-11-22: only present when on, so single-language fingerprints are unchanged.
-    ...(trilingual ? { participantTextLanguages: "ja-facts-choose-write-translate-v3" } : {}),
+    ...(trilingual ? { participantTextLanguages: "ja-facts-choose-write-translate-v4" } : {}),
   };
   return JSON.stringify(
     recommendationPromptEncoding === "deduplicated" ||
@@ -1368,10 +1368,12 @@ export function createEventOperationsAiProvider({
   }
 
   /** Base-draft texts: placeholder form, scope, company pairing, no written names, Japanese reads as Japanese; questions never name the person asked. */
-  function baseTextIssues(items: ReadonlyArray<{ allowed: ReadonlySet<string>; asked?: string; text: string }>, participants: readonly import("./contract").EventOperationsParticipant[]): Map<number, string[]> {
+  function baseTextIssues(items: ReadonlyArray<{ allowed: ReadonlySet<string>; asked?: string; reader?: string; text: string }>, participants: readonly import("./contract").EventOperationsParticipant[]): Map<number, string[]> {
     const issues = new Map<number, string[]>();
     items.forEach((item, index) => {
       const found = nonEmptyString(item.text) ? textIssues(item.text, item.allowed, "ja", participants) : ["empty"];
+      // A recommendation is read by its source person: they are addressed, never named.
+      if (item.reader && new RegExp(`\\{${item.reader}(:company)?\\}`, "u").test(item.text)) found.push("reader_named");
       // A question is said by the asker to the person asked: neither is named (no self-honorific, no third person).
       if (item.asked && /[{}]/u.test(item.text)) found.push("question_names_target");
       if (found.length) issues.set(index, found);
@@ -1385,6 +1387,7 @@ export function createEventOperationsAiProvider({
     language: "write natural, polite Japanese",
     malformed_placeholder: "placeholders must be exactly {KEY} or {KEY:company}",
     out_of_scope: "it mentions a person who is not allowed here",
+    reader_named: "this text is read by the person it is written for: address them directly (omit the subject, or あなた), never name them with a placeholder",
     question_names_target: "a question is asked directly to the person: write it without any placeholder or name (neither the person asked nor the asker)",
     raw_name: "never write a person's or company's name; use only the placeholders",
     stray_brace: "no braces outside placeholders",
@@ -1392,7 +1395,7 @@ export function createEventOperationsAiProvider({
 
   /** Base texts with issues get one bounded rewrite (meaning kept, rules fixed); then the same check again. */
   async function checkAndRepairBase(input: {
-    items: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; text: string }>;
+    items: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; reader?: string; text: string }>;
     kind: "recommendations" | "table";
     metadata: EventOperationsAiResponseMetadata | undefined;
     participants: readonly import("./contract").EventOperationsParticipant[];
@@ -1589,11 +1592,11 @@ ${JSON.stringify(chooseSources)}`,
       userText: `Write the texts for these already-chosen networking pairs, in Japanese, from the supplied facts only (S.* are the source person's facts, T.* the target's).
 
 For every pair id:
-- r1 and r2: two different reasons why the source person should meet the target. Each reason states only what its cited facts say and lists them in ev. A need belongs to its owner and is answered only by the other person's offer that answers it most directly (for a funding need, a funding or investor offer — not an unrelated one); a topic is an interest, never an ability or knowledge; never attribute one person's fact to the other. Build r1 on the strongest supplied basis pair. For r2 use a second need/offer pair only if it is equally direct; otherwise write r2 about a topic both share (cite one topic of each). Never stretch an unrelated offer to fit a need. Vary the wording; do not write every reason with the same sentence pattern.
+- r1 and r2: two different reasons why the reader (the source person) should meet the target. Each reason states only what its cited facts say and lists them in ev. A need belongs to its owner and is answered only by the other person's offer that answers it most directly (for a funding need, a funding or investor offer — not an unrelated one); a topic is an interest, never an ability or knowledge; never attribute one person's fact to the other. Build r1 on the strongest supplied basis pair. For r2 use a second need/offer pair only if it is equally direct; otherwise write r2 about a topic both share (cite one topic of each). Never stretch an unrelated offer to fit a need. Vary the wording; do not write every reason with the same sentence pattern.
 - q1 and q2: two questions the source person asks the target directly, in polite Japanese; write them without any placeholder or name (the asker never names themselves or the target).
 - hint: one practical tip for starting the conversation.
 For an id ending in ".none": none is one sentence explaining why there is no match.
-In r1, r2, hint and none, refer to the source person only as {SOURCE} and the target only as {TARGET} (the server adds the name and さん); a company only as {SOURCE:company} / {TARGET:company} next to that person, and only when that person has a company (sourceHasCompany / targetHasCompany).
+These texts are shown to the source person, who reads them about themselves: address the source person directly as the reader (in Japanese omit the subject, or use あなた sparingly) and never name them. Refer to the target only as {TARGET} (the server adds the name and さん), and to the target's company only as {TARGET:company} next to {TARGET}, only when targetHasCompany is true. No other placeholders exist; never add braces.
 
 JSON shape (exact keys):
 ${JSON.stringify(writeShape)}
@@ -1646,19 +1649,19 @@ ${JSON.stringify(pairs)}`,
     if (writeProblem) return trilingualFailure({ kind: "recommendations", stage: `write_${writeProblem}`, text: response.text, result: trilingualRetryable(`The base draft failed the fact checks (${writeProblem}).`, metadata) });
     // 2. Base texts, scoped to the pair; {SOURCE}/{TARGET} become that pair's keys (no other person can be named). ev is internal only.
     const written = json as Record<string, Record<string, unknown>>;
-    const base: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; text: string }> = [];
+    const base: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; reader?: string; text: string }> = [];
     const bind = (text: string, sourceKey: string, targetKey: string | null) => normalizePlaceholders(text)
       .replace(/\{(SOURCE|TARGET)(:company)?\}/gu, (match, role: string, company?: string) => (role === "SOURCE" ? `{${sourceKey}${company ?? ""}}` : targetKey ? `{${targetKey}${company ?? ""}}` : match));
     for (const token of tokenizedSources.tokenSources) {
       const list = chosen.get(token.sourceKey)!;
-      if (list.length === 0) base.push({ allowed: new Set([token.sourceKey]), id: `${token.sourceKey}.none`, text: bind(String(written[`${token.sourceKey}.none`]!.none), token.sourceKey, null) });
+      if (list.length === 0) base.push({ allowed: new Set([token.sourceKey]), id: `${token.sourceKey}.none`, reader: token.sourceKey, text: bind(String(written[`${token.sourceKey}.none`]!.none), token.sourceKey, null) });
       list.forEach((item, index) => {
         const id = `${token.sourceKey}.p${index + 1}`;
         const row = written[id]!;
         const allowed = new Set([token.sourceKey, item.target]);
-        for (const field of ["r1", "r2"]) base.push({ allowed, id: `${id}.${field}`, text: bind(String((row[field] as Record<string, unknown>).text), token.sourceKey, item.target) });
-        for (const field of ["q1", "q2"]) base.push({ allowed, asked: item.target, id: `${id}.${field}`, text: bind(String(row[field]), token.sourceKey, item.target) });
-        base.push({ allowed, id: `${id}.hint`, text: bind(String(row.hint), token.sourceKey, item.target) });
+        for (const field of ["r1", "r2"]) base.push({ allowed, id: `${id}.${field}`, reader: token.sourceKey, text: bind(String((row[field] as Record<string, unknown>).text), token.sourceKey, item.target) });
+        for (const field of ["q1", "q2"]) base.push({ allowed, asked: item.target, id: `${id}.${field}`, reader: token.sourceKey, text: bind(String(row[field]), token.sourceKey, item.target) });
+        base.push({ allowed, id: `${id}.hint`, reader: token.sourceKey, text: bind(String(row.hint), token.sourceKey, item.target) });
       });
     }
     const baseChecked = await checkAndRepairBase({ items: base, kind: "recommendations", metadata, participants, text: response.text });
