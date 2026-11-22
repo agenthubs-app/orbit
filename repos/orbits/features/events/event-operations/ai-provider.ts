@@ -1,4 +1,4 @@
-import { offerAnswersNeed, topicsShare } from "./match-concepts";
+import { offerAnswersNeed, topicsShare, unsupportedProfileTerms } from "./match-concepts";
 import {
   DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL,
   DEFAULT_GEMINI_ORBIT_AGENT_MODEL,
@@ -1428,7 +1428,7 @@ export function createEventOperationsAiProvider({
   }
 
   /** Base-draft texts: placeholder form, scope, company pairing, no written names, Japanese reads as Japanese; questions never name the person asked. */
-  function baseTextIssues(items: ReadonlyArray<{ allowed: ReadonlySet<string>; asked?: string; reader?: string; text: string }>, participants: readonly import("./contract").EventOperationsParticipant[]): Map<number, string[]> {
+  function baseTextIssues(items: ReadonlyArray<{ allowed: ReadonlySet<string>; asked?: string; profileTexts?: readonly string[]; reader?: string; text: string }>, participants: readonly import("./contract").EventOperationsParticipant[]): Map<number, string[]> {
     const issues = new Map<number, string[]>();
     items.forEach((item, index) => {
       const found = nonEmptyString(item.text) ? textIssues(item.text, item.allowed, "ja", participants) : ["empty"];
@@ -1436,6 +1436,8 @@ export function createEventOperationsAiProvider({
       if (item.reader && new RegExp(`\\{${item.reader}(:company)?\\}`, "u").test(item.text)) found.push("reader_named");
       // A question is said by the asker to the person asked: neither is named (no self-honorific, no third person).
       if (item.asked && /[{}]/u.test(item.text)) found.push("question_names_target");
+      // A reason or hint may only name profile terms that one of the two people actually has.
+      if (item.profileTexts && unsupportedProfileTerms(item.text, item.profileTexts).length) found.push("unsupported_claim");
       if (found.length) issues.set(index, found);
     });
     return issues;
@@ -1450,12 +1452,13 @@ export function createEventOperationsAiProvider({
     reader_named: "this text is read by the person it is written for: address them as あなた, never name them with a placeholder",
     question_names_target: "a question is asked directly to the person: write it without any placeholder or name (neither the person asked nor the asker)",
     raw_name: "never write a person's or company's name; use only the placeholders",
+    unsupported_claim: "it names something that is in neither person's profile; say only what the two profiles say",
     stray_brace: "no braces outside placeholders",
   };
 
   /** Base texts with issues get one bounded rewrite (meaning kept, rules fixed); then the same check again. */
   async function checkAndRepairBase(input: {
-    items: Array<{ aliases?: Readonly<Record<string, string>>; allowed: ReadonlySet<string>; asked?: string; id: string; reader?: string; text: string }>;
+    items: Array<{ aliases?: Readonly<Record<string, string>>; allowed: ReadonlySet<string>; asked?: string; id: string; profileTexts?: readonly string[]; reader?: string; text: string }>;
     kind: "recommendations" | "table";
     metadata: EventOperationsAiResponseMetadata | undefined;
     participants: readonly import("./contract").EventOperationsParticipant[];
@@ -1466,7 +1469,8 @@ export function createEventOperationsAiProvider({
     const request = [...first].map(([index, issues], position) => {
       const item = input.items[index]!;
       // The reader is addressed as あなた, so their own placeholder is never offered to the rewrite.
-      return { allowedPlaceholders: [...item.allowed].filter((key) => key !== item.reader).map((key) => `{${key}}`), ...(item.reader ? { reader: "あなた (never a placeholder)" } : {}), ...(item.asked ? { personBeingAsked: `{${item.asked}}` } : {}), id: `t${position + 1}`, index, problems: issues.map((issue) => BASE_ISSUE_RULE[issue] ?? issue), text: item.text };
+      return { allowedPlaceholders: [...item.allowed].filter((key) => key !== item.reader).map((key) => `{${key}}`), ...(item.reader ? { reader: "あなた (never a placeholder)" } : {}), ...(item.asked ? { personBeingAsked: `{${item.asked}}` } : {}), id: `t${position + 1}`, index, problems: issues.map((issue) => BASE_ISSUE_RULE[issue] ?? issue), text: item.text,
+        ...(issues.includes("unsupported_claim") && item.profileTexts ? { notInEitherProfile: unsupportedProfileTerms(item.text, item.profileTexts), profiles: item.profileTexts } : {}) };
     });
     const response = await runModelText({
       config,
@@ -1750,7 +1754,7 @@ ${JSON.stringify(pairs)}${feedback}`,
     const response = { model: choose.model, provider: choose.provider, text: writes.map((write) => (write as { text: string }).text).join("\n") };
     // 2. Base texts, scoped to the pair; {SOURCE}/{TARGET} become that pair's keys (no other person can be named). ev is internal only.
     const written = json as Record<string, Record<string, unknown>>;
-    const base: Array<{ aliases?: Readonly<Record<string, string>>; allowed: ReadonlySet<string>; asked?: string; id: string; reader?: string; text: string }> = [];
+    const base: Array<{ aliases?: Readonly<Record<string, string>>; allowed: ReadonlySet<string>; asked?: string; id: string; profileTexts?: readonly string[]; reader?: string; text: string }> = [];
     const bind = (text: string, sourceKey: string, targetKey: string | null) => normalizePlaceholders(text)
       .replace(/\{(SOURCE|TARGET)(:company)?\}/gu, (match, role: string, company?: string) => (role === "SOURCE" ? `{${sourceKey}${company ?? ""}}` : targetKey ? `{${targetKey}${company ?? ""}}` : match));
     for (const token of tokenizedSources.tokenSources) {
@@ -1761,9 +1765,10 @@ ${JSON.stringify(pairs)}${feedback}`,
         const row = written[id]!;
         const allowed = new Set([token.sourceKey, item.target]);
         const aliases = { SOURCE: token.sourceKey, TARGET: item.target };
-        for (const field of ["r1", "r2"]) base.push({ aliases, allowed, id: `${id}.${field}`, reader: token.sourceKey, text: bind(String((row[field] as Record<string, unknown>).text), token.sourceKey, item.target) });
+        const profileTexts = [token.sourceKey, item.target].flatMap((key) => factsByKey.get(key)!.map((fact) => fact.text));
+        for (const field of ["r1", "r2"]) base.push({ aliases, allowed, id: `${id}.${field}`, profileTexts, reader: token.sourceKey, text: bind(String((row[field] as Record<string, unknown>).text), token.sourceKey, item.target) });
         for (const field of ["q1", "q2"]) base.push({ aliases, allowed, asked: item.target, id: `${id}.${field}`, reader: token.sourceKey, text: bind(String(row[field]), token.sourceKey, item.target) });
-        base.push({ aliases, allowed, id: `${id}.hint`, reader: token.sourceKey, text: bind(String(row.hint), token.sourceKey, item.target) });
+        base.push({ aliases, allowed, id: `${id}.hint`, profileTexts, reader: token.sourceKey, text: bind(String(row.hint), token.sourceKey, item.target) });
       });
     }
     const baseChecked = await checkAndRepairBase({ items: base, kind: "recommendations", metadata, participants, text: response.text });

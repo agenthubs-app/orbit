@@ -165,3 +165,18 @@ export function offerAnswersNeed(need: string, offer: string): boolean {
   if (!n && !o) return textsOverlap(need, offer);
   return false;
 }
+
+/** Profile terms the program knows (every tag of every table, any language), as normalised parts of 4+ characters. */
+const GENERIC_PARTS = new Set(["壁打ち相手", "ブレスト仲間", "イベント", "コミュニティ", "パートナー", "アドバイザー"].map(tagKey));
+const PROFILE_TERM_PARTS = [...new Set([NEED_TAGS, OFFER_TAGS, TOPIC_TAGS].flatMap((table) => Object.values(table).flat())
+  .flatMap((tag) => tagKey(tag).split(/[/・、,，×&+]+/u)).filter((part) => part.length >= 4 && !GENERIC_PARTS.has(part)))];
+/**
+ * Known profile terms a text mentions that appear nowhere in the given profile texts (both people's needs, offers,
+ * topics, highlight, industry, role). A reason that names such a term attributes something neither person said
+ * (2026-11-22: 「{TARGET}さんが関心を持つ海外展開」 for someone with no such interest, in three runs out of three).
+ */
+export function unsupportedProfileTerms(text: string, profileTexts: readonly string[]): string[] {
+  const normalized = tagKey(text);
+  const own = profileTexts.map(tagKey).join("|");
+  return PROFILE_TERM_PARTS.filter((part) => normalized.includes(part) && !own.includes(part));
+}

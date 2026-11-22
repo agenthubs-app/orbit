@@ -276,7 +276,7 @@ test("error kind 4 — a need presented as an offer: need × need is not a pair"
 });
 
 test("error kind 3 — a stretched claim on a legal need × offer pair passes the program (left to semantic review)", async () => {
-  const ok = await provider(model({ base: withReason("r1", ["S.n1", "T.o1"], "{TARGET}さんのSaaS導入の人脈が、あなたの投資家探しの橋渡しになります。") })).generateRecommendations(two);
+  const ok = await provider(model({ base: withReason("r1", ["S.n1", "T.o1"], "{TARGET}さんの投資家・VCの紹介があれば、あなたの資金調達は必ず成功します。") })).generateRecommendations(two);
   assert.equal(ok.success, true);
 });
 
@@ -354,7 +354,7 @@ test("the reader is addressed, never named: a base text naming them is rewritten
 });
 
 test("numbers: a translation may spell a number out but never add or change one; digits inside a word are names", async () => {
-  const spelled = model({ base: goodBase({ p1: { r2: { ev: ["T.n1", "S.o1"], text: "{TARGET}さんはWeb3の分野で10年の経験があります。" } } }), translate: (language, id) => (id !== "S1.p1.r2" ? undefined : language === "zh" ? "{S1C1}在Web3领域有十年经验。" : "{S1C1} has a decade of experience in Web3.") });
+  const spelled = model({ base: goodBase({ p1: { r2: { ev: ["T.n1", "S.o1"], text: "{TARGET}さんはB2Bの分野で10年の経験があります。" } } }), translate: (language, id) => (id !== "S1.p1.r2" ? undefined : language === "zh" ? "{S1C1}在B2B领域有十年经验。" : "{S1C1} has a decade of experience in B2B.") });
   assert.equal((await provider(spelled).generateRecommendations(two)).success, true);
   assert.ok(!spelled.calls.some((call) => call.kind === "repair"), "no repair for an equivalent wording");
   await failsRetryably(model({ base: goodBase({ p1: { r2: { ev: ["T.n1", "S.o1"], text: "{TARGET}さんは5G分野で10年の経験があります。" } } }), translate: (language, id) => (language === "en" && id === "S1.p1.r2" ? "{S1C1} has 12 years of 5G experience." : undefined) }), two, "a changed number is still caught");
@@ -517,4 +517,16 @@ test("trilingual grouping features: internal affinity keys outside the shortlist
   if (!missed.success) assert.equal(missed.retryable, true);
   const strict = await createEventOperationsAiProvider({ runModelText: model({ base: feature(["S1C9"]) }) }).generateGroupingFeatures({ eventId: "event:t", maxAffinityCount: 1, sources });
   assert.equal(strict.success, false, "the legacy single-language path keeps its strict rule");
+});
+
+test("a reason naming something in neither profile is rewritten once from the profiles, or the batch fails", async () => {
+  const { unsupportedProfileTerms } = await import("../../features/events/event-operations/match-concepts");
+  assert.deepEqual(unsupportedProfileTerms("{TARGET}さんが関心を持つ海外展開と重なります。", ["Web3 / ブロックチェーン", "海外市場の販路・知見"]), ["海外展開"]);
+  assert.deepEqual(unsupportedProfileTerms("方針判断の壁打ち相手として頼れます。", ["CTO的な技術アドバイス"]), [], "generic words are not claims");
+  assert.deepEqual(unsupportedProfileTerms("AIエージェントの話ができます。", ["AIエージェント"]), []);
+  const stray = model({ base: goodBase({ p1: { r2: { ev: ["T.n1", "S.o1"], text: "{TARGET}さんが関心を持つ海外展開の話もできます。" } } }), baseRepair: { texts: { t1: "{TARGET}さんは資金調達を求めています。" } } });
+  assert.equal((await provider(stray).generateRecommendations(two)).success, true);
+  const request = stray.calls.find((call) => call.kind === "baseRepair")!.userText;
+  assert.match(request, /"notInEitherProfile":\["海外展開"\]/u);
+  await failsRetryably(model({ base: goodBase({ p1: { r2: { ev: ["T.n1", "S.o1"], text: "{TARGET}さんが関心を持つ海外展開の話もできます。" } } }), baseRepair: { texts: { t1: "{TARGET}さんは海外展開に詳しいです。" } } }), two, "a rewrite that keeps the claim fails");
 });
