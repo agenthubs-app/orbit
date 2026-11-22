@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  collectChineseOutputPolicyViolations,
   collectTrilingualOutputViolations,
   createConfiguredEventOperationsAiProvider,
   createEventOperationsAiProvider,
@@ -121,6 +122,48 @@ test("trilingual recommendations: a repair that still fails is a retryable failu
   assert.match(seen[0]!.text, /資金調達/u);
 });
 
+test("names are never written by the model: placeholders are filled with the registered name and company", async () => {
+  const withPlaceholders = { ...goodRecommendation, memberHint: sentence("{S1}さんは{S1C1:company}の{S1C1}さんと話すとよいです。", "{S1}可以和{S1C1:company}的{S1C1}聊。", "{S1} should talk with {S1C1} of {S1C1:company}.") };
+  const runner = sequence(recommendationsDoc(withPlaceholders));
+  const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: runner });
+  const result = await provider.generateRecommendations(recommendationInput);
+  assert.equal(result.success, true);
+  if (!result.success) return;
+  assert.doesNotMatch(runner.prompts[0]!, /山田太郎/u, "the prompt carries no names to copy");
+  const hint = result.data[0]!.recommendations[0]!.i18n!;
+  assert.equal(hint.en.memberHint, "山田太郎 should talk with Bo of Beacon Health.");
+  assert.equal(hint.ja.memberHint, "山田太郎さんはBeacon HealthのBoさんと話すとよいです。");
+  const sourceAlias = createEventOperationsAiProvider({ trilingual: true, runModelText: sequence(recommendationsDoc({ ...goodRecommendation, memberHint: sentence("{SOURCE}さんへ", "给{SOURCE}", "For {SOURCE} of {SOURCE:company}") })) });
+  const aliased = await sourceAlias.generateRecommendations(recommendationInput);
+  assert.equal(aliased.success, true);
+  if (aliased.success) assert.equal(aliased.data[0]!.recommendations[0]!.i18n!.en.memberHint, "For 山田太郎 of 青空商事");
+  const cyrillic = createEventOperationsAiProvider({ trilingual: true, runModelText: sequence(recommendationsDoc({ ...goodRecommendation, memberHint: sentence("{Ѕ1}さん", "{S1}", "{\u0421" + "1C1}") })) });
+  const lookalike = await cyrillic.generateRecommendations(recommendationInput);
+  assert.equal(lookalike.success, false, "only М/С look-alikes are mapped; other letters stay unknown");
+  const cyrillicOk = createEventOperationsAiProvider({ trilingual: true, runModelText: sequence(recommendationsDoc({ ...goodRecommendation, memberHint: sentence("{\u04211}さん", "{S1}", "{S1C1}") })) });
+  const mapped = await cyrillicOk.generateRecommendations(recommendationInput);
+  assert.equal(mapped.success, true);
+  if (mapped.success) assert.equal(mapped.data[0]!.recommendations[0]!.i18n!.ja.memberHint, "山田太郎さん");
+  const unknown = createEventOperationsAiProvider({ trilingual: true, runModelText: sequence(recommendationsDoc({ ...goodRecommendation, memberHint: sentence("{S9}さん", "{S9}", "{S9}") })) });
+  const failed = await unknown.generateRecommendations(recommendationInput);
+  assert.equal(failed.success, false);
+  if (!failed.success) assert.equal(failed.retryable, true);
+});
+
+test("a target recommended twice keeps its first entry and ranks are renumbered", async () => {
+  const second = { ...goodRecommendation, rank: 2 };
+  const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: sequence({ recommendations: [{ noMatchReason: null, recommendations: [goodRecommendation, second], sourceKey: "S1" }] }) });
+  const result = await provider.generateRecommendations(recommendationInput);
+  assert.equal(result.success, true);
+  if (result.success) assert.deepEqual(result.data[0]!.recommendations.map((item) => [item.targetParticipantId, item.rank]), [["participant:b", 1]]);
+});
+
+test("zh keeps upper-case abbreviations and a few terms; ordinary English words are still violations", () => {
+  const ok = collectChineseOutputPolicyViolations(["他关注 M&A、DX、LLM 和 Web3 领域的 IPO 机会。"], []);
+  assert.deepEqual(ok.disallowedTokens, []);
+  assert.deepEqual(collectChineseOutputPolicyViolations(["他是 investment-ready 的创始人。"], []).disallowedTokens, ["investment-ready"]);
+});
+
 test("trilingual output: invalid JSON is reported with its shape to the hook", async () => {
   const seen: string[] = [];
   const provider = createEventOperationsAiProvider({ onTrilingualFailureText: (detail) => seen.push(detail.stage), runModelText: sequence('{"recommendations":[{"sourceKey":"S1",'), trilingual: true });
@@ -132,7 +175,20 @@ test("trilingual output: invalid JSON is reported with its shape to the hook", a
 
 test("language checks allow names in their own script and short Japanese noun phrases", () => {
   const ok = collectTrilingualOutputViolations({ en: ["Meet 山田太郎 of 青空商事 about pilots."], ja: ["AI 投資", "山田太郎さんと話す"], zh: [] }, [yamada]);
-  assert.deepEqual(ok, { english: [], japanese: [] });
+  assert.deepEqual(ok, { chinese: [], english: [], japanese: [] });
+  const okada = participant("c", "岡田 健太", "アクセンチュア株式会社");
+  assert.deepEqual(collectTrilingualOutputViolations({ en: ["Ask 岡田 健太 at アクセンチュア株式会社."], ja: [], zh: [] }, [okada]).english, [], "exact registered name and company are fine");
+  for (const shown of ["Ask 岡田 about it.", "Meet 岡田健太.", "Visit アクセンチュア."]) {
+    assert.equal(collectTrilingualOutputViolations({ en: [shown], ja: [], zh: [] }, [okada]).english.length, 1, `a partial or respaced name is never shown: ${shown}`);
+  }
+  assert.equal(collectTrilingualOutputViolations({ en: ["岡田 健太 wants 資金調達."], ja: [], zh: [] }, [okada]).english.length, 1, "an untranslated term is a violation");
+  const kan = participant("d", "管 沙羅", "華星");
+  const variant = collectTrilingualOutputViolations({ en: ["Meet 管沙罗 today."], ja: ["管沙罗さんと話す予定です。"], zh: ["可以先和管沙罗聊聊。"] }, [kan]);
+  assert.equal(variant.english.length, 1, "a simplified variant of a name is never shown (en)");
+  assert.equal(variant.japanese.length, 1, "… nor in ja");
+  assert.equal(variant.chinese.length, 1, "… nor in zh");
+  const generic = participant("e", "参加者1", "株式会社サンプル");
+  assert.deepEqual(collectTrilingualOutputViolations({ en: [], ja: ["関心がある参加者を紹介します。"], zh: [] }, [generic]).japanese, [], "a kana/digit difference is not a renamed name");
   const bad = collectTrilingualOutputViolations({ en: ["Talk about 资金"], ja: ["他正在寻找医疗领域的合作方"], zh: [] }, [yamada]);
   assert.equal(bad.english.length, 1);
   assert.equal(bad.japanese.length, 1);
@@ -151,9 +207,12 @@ const pairedTable = (overrides: Record<string, unknown> = {}) => {
   const ids = ["participant:a", "participant:b"];
   return {
     icebreakers: [0, 1, 2].map((i) => sentence(ja.icebreakers[i]!, zh.icebreakers[i]!, en.icebreakers[i]!)),
-    memberPrompts: Object.fromEntries(ids.map((id) => [id, [0, 1].map((i) => sentence(ja.memberPrompts[id]![i]!, zh.memberPrompts[id]![i]!, en.memberPrompts[id]![i]!))])),
-    memberRationales: Object.fromEntries(ids.map((id) => [id, sentence(ja.memberRationales[id]!, zh.memberRationales[id]!, en.memberRationales[id]!)])),
-    members,
+    members: ids.map((id, index) => ({
+      memberKey: `M${index + 1}`,
+      prompts: [0, 1].map((i) => sentence(ja.memberPrompts[id]![i]!, zh.memberPrompts[id]![i]!, en.memberPrompts[id]![i]!)),
+      rationale: sentence(ja.memberRationales[id]!, zh.memberRationales[id]!, en.memberRationales[id]!),
+      seat: `R1-T1-S${index + 1}`,
+    })),
     rationale: sentence(ja.rationale, zh.rationale, en.rationale),
     tableNumber: 1,
     theme: sentence(ja.theme, zh.theme, en.theme),
@@ -171,9 +230,25 @@ test("trilingual table: paired sentences, same membership, base = zh, i18n = thr
   assert.equal(tableIn(result.data, "en").memberRationales["participant:b"], "Has rolled this out before.");
 });
 
+test("trilingual table: the model sees short member keys only, and they map back to participant ids", async () => {
+  const runner = sequence(pairedTable());
+  const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: runner });
+  const result = await provider.generateTableContent(tableInput);
+  assert.equal(result.success, true);
+  if (!result.success) return;
+  assert.doesNotMatch(runner.prompts[0]!, /participant:a/u, "no long ids to copy");
+  assert.deepEqual(result.data.members.map((member) => member.participantId), ["participant:a", "participant:b"]);
+  assert.deepEqual(Object.keys(result.data.i18n!.ja.memberRationales), ["participant:a", "participant:b"]);
+  const table = pairedTable();
+  const miscopied = createEventOperationsAiProvider({ trilingual: true, runModelText: text({ ...table, members: [table.members[0], { ...table.members[1]!, memberKey: "M:2" }] }) });
+  const failed = await miscopied.generateTableContent(tableInput);
+  assert.equal(failed.success, false);
+  if (!failed.success) assert.equal(failed.retryable, true);
+});
+
 test("trilingual table: a member missing from the per-member text is a retryable failure", async () => {
   const table = pairedTable();
-  const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: text({ ...table, memberRationales: { "participant:a": table.memberRationales["participant:a"] } }) });
+  const provider = createEventOperationsAiProvider({ trilingual: true, runModelText: text({ ...table, members: [table.members[0]] }) });
   const result = await provider.generateTableContent(tableInput);
   assert.equal(result.success, false);
   if (!result.success) assert.equal(result.retryable, true);
@@ -182,7 +257,7 @@ test("trilingual table: a member missing from the per-member text is a retryable
 test("configured provider is trilingual and fingerprints it", () => {
   const configured = createConfiguredEventOperationsAiProvider();
   assert.equal(configured.maxRecommendationShardSize, 2);
-  assert.match(configured.requestFingerprint ?? "", /"participantTextLanguages":"ja-zh-en-v2-paired"/u);
+  assert.match(configured.requestFingerprint ?? "", /"participantTextLanguages":"ja-zh-en-v7"/u);
   assert.doesNotMatch(createEventOperationsAiProvider().requestFingerprint ?? "", /participantTextLanguages/u);
 });
 

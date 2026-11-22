@@ -425,6 +425,16 @@ const CHINESE_OUTPUT_TECHNICAL_TOKENS = new Set(
     (token) => token.toLocaleLowerCase("en-US"),
   ),
 );
+/**
+ * 2026-11-22 calibration with real attendee data: Chinese business writing keeps upper-case abbreviations
+ * (DX, VC, IPO, M&A, LLM, ESG …) and a few mixed-case terms as written. Ordinary English words still have
+ * to be translated.
+ */
+const CHINESE_OUTPUT_MIXED_CASE_TERMS = new Set(["saas", "web3", "edtech", "fintech", "healthtech", "deeptech", "poc", "tiktok", "iot", "ipo", "pre-a"]);
+function isChineseOutputTechnicalToken(token: string): boolean {
+  const lower = token.toLocaleLowerCase("en-US");
+  return CHINESE_OUTPUT_TECHNICAL_TOKENS.has(lower) || CHINESE_OUTPUT_MIXED_CASE_TERMS.has(lower) || /^[A-Z][A-Z0-9]{0,5}$/u.test(token);
+}
 const LATIN_TOKEN_PATTERN =
   /\p{Script=Latin}[\p{Script=Latin}\p{Mark}\p{Number}]*(?:[-'’]\p{Script=Latin}[\p{Script=Latin}\p{Mark}\p{Number}]*)*/gu;
 const HAN_CHARACTER_PATTERN = /\p{Script=Han}/u;
@@ -463,16 +473,14 @@ export function collectChineseOutputPolicyViolations(
   for (const value of values) {
     const tokens = latinTokens(value);
     for (const token of tokens) {
-      if (!allowed.has(token.toLocaleLowerCase("en-US"))) {
+      if (!allowed.has(token.toLocaleLowerCase("en-US")) && !isChineseOutputTechnicalToken(token)) {
         disallowedTokens.add(token);
       }
     }
     if (
       !HAN_CHARACTER_PATTERN.test(value) &&
       tokens.length > 0 &&
-      !tokens.every((token) =>
-        CHINESE_OUTPUT_TECHNICAL_TOKENS.has(token.toLocaleLowerCase("en-US")),
-      )
+      !tokens.every(isChineseOutputTechnicalToken)
     ) {
       untranslatedValues.push(value);
     }
@@ -670,7 +678,6 @@ function tableNaturalLanguageValues(
 const TEXT_LANGUAGES = ["ja", "zh", "en"] as const;
 type TextLanguage = (typeof TEXT_LANGUAGES)[number];
 const KANA_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}]/u;
-const CJK_PATTERN = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u;
 
 function properNamesOf(participants: readonly import("./contract").EventOperationsParticipant[]): readonly string[] {
   return [...new Set(participants.flatMap((participant) => [participant.displayName, participant.company]).filter((name): name is string => typeof name === "string" && name.trim().length > 0).map((name) => name.trim()))]
@@ -683,11 +690,69 @@ function withoutProperNames(value: string, names: readonly string[]): string {
   return rest;
 }
 
+const HAN_CHAR_PATTERN = /^\p{Script=Han}$/u;
+const PLACEHOLDER_PATTERN = /\{\s*([A-Z][A-Z0-9]*)\s*(:\s*company)?\s*\}/gu;
+
+/**
+ * Names are never written by the model (2026-11-22): it refers to people as {KEY} and to their company
+ * as {KEY:company}; this inserts the registered name / company of the participant behind that key, so
+ * attendees always see the exact record. Returns the placeholders that could not be filled (unknown key,
+ * no company on record) or stray braces — a retryable batch failure.
+ */
+export function fillParticipantPlaceholders(
+  sentences: readonly TrilingualSentence[],
+  byKey: ReadonlyMap<string, import("./contract").EventOperationsParticipant>,
+): string[] {
+  const problems: string[] = [];
+  for (const sentence of sentences) {
+    for (const language of TEXT_LANGUAGES) {
+      // Look-alike letters inside braces (Cyrillic М/С seen in calibration) are the Latin key letters.
+      const normalized = sentence[language].replace(/\{[^{}]{1,24}\}/gu, (inner) => inner.replace(/[МмΜ]/gu, "M").replace(/[СсϹ]/gu, "S"));
+      const filled = normalized.replace(PLACEHOLDER_PATTERN, (match: string, key: string, company?: string) => {
+        const participant = byKey.get(key);
+        const value = company ? participant?.company : participant?.displayName;
+        if (!value?.trim()) { problems.push(match); return match; }
+        return value.trim();
+      });
+      if (/[{}]/u.test(filled)) problems.push("stray-brace");
+      (sentence as Record<TextLanguage, string>)[language] = filled;
+    }
+  }
+  return problems;
+}
+
 export interface TrilingualOutputViolations {
-  /** ja values that read as another language (no kana in a sentence-length value). */
+  /** ja values that read as another language (no kana in a sentence-length value), or carry an altered name. */
   japanese: readonly string[];
-  /** en values that still contain Han / kana outside participant and company names. */
+  /** en values with Han / kana outside exact registered names and companies. */
   english: readonly string[];
+  /** zh values that carry an altered form of a registered name or company. */
+  chinese: readonly string[];
+}
+
+/**
+ * A same-length run that differs from a registered name or company (3+ characters, compared without
+ * spaces) in exactly one character: a script variant or a miscopy (例: 管沙羅 → 管沙罗). Never shown.
+ */
+function hasAlteredName(value: string, compactNames: readonly string[]): boolean {
+  const text = value.replace(/\s+/gu, "");
+  return compactNames.some((name) => {
+    const chars = [...name];
+    if (chars.length < 3 || text.includes(name)) return false;
+    const textChars = [...text];
+    for (let start = 0; start + chars.length <= textChars.length; start += 1) {
+      // 只有「汉字换成另一个汉字」才是繁简/异体的改写；数字、假名不同（例如「参加者1」对「参加者を」）不算。
+      let diff = 0;
+      let hanSwap = true;
+      for (let index = 0; index < chars.length && diff <= 1; index += 1) {
+        if (textChars[start + index] === chars[index]) continue;
+        diff += 1;
+        hanSwap = HAN_CHAR_PATTERN.test(textChars[start + index]!) && HAN_CHAR_PATTERN.test(chars[index]!);
+      }
+      if (diff === 1 && hanSwap) return true;
+    }
+    return false;
+  });
 }
 
 export function collectTrilingualOutputViolations(
@@ -695,13 +760,17 @@ export function collectTrilingualOutputViolations(
   participants: readonly import("./contract").EventOperationsParticipant[],
 ): TrilingualOutputViolations {
   const names = properNamesOf(participants);
+  const compactNames = names.map((name) => name.replace(/\s+/gu, "")).filter((name) => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(name));
   const japanese = values.ja.filter((value) => {
     const rest = withoutProperNames(value, names).trim();
     // 名词短语（例如「AI 投資」）可以没有假名；一句话长度还没有假名，就是写成了中文或英文。
-    return rest.length >= 8 && !KANA_PATTERN.test(rest);
+    return (rest.length >= 8 && !KANA_PATTERN.test(rest)) || hasAlteredName(withoutProperNames(value, names), compactNames);
   });
-  const english = values.en.filter((value) => CJK_PATTERN.test(withoutProperNames(value, names)));
-  return { english, japanese };
+  // 英文：除了资料里原样的姓名、公司名（服务端按 id 填入），不得有任何汉字或假名——姓的一半、繁简变体、
+  // 去掉空格的写法都不算原样，判失败（不放宽，展示的名字只能是资料原文）。
+  const english = values.en.filter((value) => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(withoutProperNames(value, names)));
+  const chinese = values.zh.filter((value) => hasAlteredName(withoutProperNames(value, names), compactNames));
+  return { chinese, english, japanese };
 }
 
 function trilingualRetryable<TValue>(message: string, responseMetadata?: EventOperationsAiResponseMetadata): EventOperationsAiResult<TValue> {
@@ -796,6 +865,31 @@ export function trilingualTableSentences(value: unknown): TrilingualSentence[] |
   ];
 }
 
+/**
+ * Table output keyed by memberKey (M1..Mn) → the same document keyed by participantId. Null when the
+ * keys are not exactly the supplied ones (missing, unknown, or duplicated) — a retryable batch failure.
+ */
+export function tableFromMemberKeys(value: unknown, idOfKey: ReadonlyMap<string, string>): Record<string, unknown> | null {
+  // 2026-11-22 calibration: per-member text lives in each members[] row ({memberKey, seat, prompts,
+  // rationale}); the earlier memberKey→list maps made the model drop closing braces.
+  if (!isRecord(value) || !exactKeys(value, ["icebreakers", "members", "rationale", "tableNumber", "theme"]) || !Array.isArray(value.members)) return null;
+  const rows = value.members;
+  if (!rows.every((row) => isRecord(row) && exactKeys(row, ["memberKey", "prompts", "rationale", "seat"]) && typeof row.memberKey === "string")) return null;
+  const keys = rows.map((row) => (row as Record<string, unknown>).memberKey as string);
+  if (keys.length !== idOfKey.size || new Set(keys).size !== keys.length || !keys.every((key) => idOfKey.has(key))) return null;
+  const byId = (pickField: (row: Record<string, unknown>) => unknown) =>
+    Object.fromEntries((rows as Record<string, unknown>[]).map((row) => [idOfKey.get(row.memberKey as string)!, pickField(row)]));
+  return {
+    icebreakers: value.icebreakers,
+    memberPrompts: byId((row) => row.prompts),
+    memberRationales: byId((row) => row.rationale),
+    members: (rows as Record<string, unknown>[]).map((row) => ({ participantId: idOfKey.get(row.memberKey as string)!, seat: row.seat })),
+    rationale: value.rationale,
+    tableNumber: value.tableNumber,
+    theme: value.theme,
+  };
+}
+
 /** Paired table document → one single-language table per language, in the original shape. */
 export function splitTrilingualTable(value: unknown): Record<TextLanguage, unknown> | null {
   if (!trilingualTableSentences(value)) return null;
@@ -824,7 +918,7 @@ export function mergeTrilingualTable(tables: Readonly<Record<TextLanguage, Event
 /** Two sources x 4 recommendations x three languages stays well under the 8192-token output cap. */
 export const TRILINGUAL_MAX_RECOMMENDATION_SHARD = 2;
 
-const TRILINGUAL_INSTRUCTION = `Every natural-language sentence is one object {"ja":"...","zh":"...","en":"..."}: ja natural Japanese, zh idiomatic Simplified Chinese, en natural English. The three are the same sentence in three languages: decide once, then write that one sentence three times. Participant profiles may be written in any language: translate every profile term (needs, offers, industry, topics, roles, highlights) into the language of the value you are writing, so an en value contains no Chinese or Japanese characters and a ja value reads as Japanese. The only text kept exactly as supplied in every language is participant names and company names; never translate or romanize them. Keep keys, ids, numbers, and JSON syntax unchanged.`;
+const TRILINGUAL_INSTRUCTION = `Every natural-language sentence is one object {"ja":"...","zh":"...","en":"..."}: ja natural Japanese, zh idiomatic Simplified Chinese, en natural English. The three are the same sentence in three languages: decide once, then write that one sentence three times. Never write a participant's name or company name yourself, in any language: refer to a person only as {KEY} and to their company only as {KEY:company}, using the supplied keys exactly (for example {S1C2} or {M3:company}); the server inserts the registered name. Participant profiles may be written in any language: translate every profile term (needs, offers, industry, topics, roles, highlights) into the language of the value you are writing, so an en value contains no Chinese or Japanese characters and a ja value reads as Japanese. Keep keys, ids, numbers, and JSON syntax unchanged.`;
 
 const systemInstruction = `You are Orbit's event operations matching model.
 Return exactly one JSON document and no markdown, explanation, code fences, or trailing text.
@@ -882,7 +976,7 @@ function requestFingerprint(
     temperature,
     responseSchema: "event-operations-tokenized-recommendations-v1",
     // 2026-11-22: only present when on, so single-language fingerprints are unchanged.
-    ...(trilingual ? { participantTextLanguages: "ja-zh-en-v2-paired" } : {}),
+    ...(trilingual ? { participantTextLanguages: "ja-zh-en-v7" } : {}),
   };
   return JSON.stringify(
     recommendationPromptEncoding === "deduplicated" ||
@@ -940,10 +1034,19 @@ function compactRecommendationSources(
     EventOperationsAiProvider["generateRecommendations"]
   >[0]["sources"],
   recommendationPromptEncoding: "expanded" | "deduplicated" = "expanded",
+  omitNames = false,
 ): {
   promptSources: unknown;
   tokenSources: readonly TokenizedRecommendationSource[];
 } {
+  // Trilingual (2026-11-22): the model never sees names, so it cannot write a variant of one;
+  // it refers to people as {S1} / {S1C1} and the server inserts the registered name by id.
+  const compactParticipantWithoutId = (participant: import("./contract").EventOperationsParticipant) => {
+    const profile = compactParticipantWithoutIdFull(participant);
+    if (!omitNames) return profile;
+    const { displayName: _name, ...rest } = profile;
+    return rest;
+  };
   const tokenSources: TokenizedRecommendationSource[] = [];
   const promptSources = sources.map((source, sourceIndex) => {
     const sourceKey = `S${sourceIndex + 1}`;
@@ -1001,7 +1104,7 @@ function compactRecommendationSources(
   };
 }
 
-function compactParticipantWithoutId(
+function compactParticipantWithoutIdFull(
   participant: import("./contract").EventOperationsParticipant,
 ) {
   const { participantId: _participantId, ...profile } = compactParticipant(participant);
@@ -1057,7 +1160,7 @@ function compactGroupingSources(
     if (existing) return existing;
     const key = `P${profileKeyByParticipantId.size + 1}`;
     profileKeyByParticipantId.set(participant.participantId, key);
-    profiles.push({ profile: compactParticipantWithoutId(participant), profileKey: key });
+    profiles.push({ profile: compactParticipantWithoutIdFull(participant), profileKey: key });
     return key;
   };
   const tokenSources: TokenizedGroupingSource[] = [];
@@ -1133,7 +1236,7 @@ export function createEventOperationsAiProvider({
   const effectiveSystemInstruction = `${systemInstruction}\n${outputLanguage === "zh-CN"
     ? "Write every natural-language output value in idiomatic Simplified Chinese, including reasons, hints, topics, themes, rationales, icebreakers, member prompts, and no-match explanations. Translate ordinary source wording into natural Chinese instead of copying English fragments. Latin text is allowed only for participant names, organization or product proper names, ids, and this exact technical whitelist: AI, SaaS, KPI, API, B2B, LP, IP, CEO, Scope 3. Translate every other English common noun; for example, translate copilot as 智能助手 and investment-ready as 具备投资条件. Keep keys, numbers, and JSON syntax unchanged."
     : "Write every natural-language output value in English. Keep ids, keys, numbers, and JSON syntax unchanged."}`;
-  const trilingualSystemInstruction = `${systemInstruction}\n${TRILINGUAL_INSTRUCTION}\nFor the zh values: Latin text is allowed only for participant names, organization or product proper names, ids, and this exact technical whitelist: AI, SaaS, KPI, API, B2B, LP, IP, CEO, Scope 3. Translate every other English common noun into natural Chinese.`;
+  const trilingualSystemInstruction = `${systemInstruction}\n${TRILINGUAL_INSTRUCTION}\nFor the zh values: keep upper-case abbreviations as written (for example AI, DX, VC, IPO, M&A, LLM, ESG) and these terms: SaaS, Web3, EdTech, FinTech, PoC; translate every other English word into natural Chinese.`;
   const metadataOf = (response: { responseMetadata?: Parameters<typeof toEventOperationsMetadata>[0] }) =>
     response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined;
   /** Shape-only stderr line (no model text); the raw text goes only to the opt-in calibration hook. */
@@ -1184,7 +1287,7 @@ export function createEventOperationsAiProvider({
       return isRecord(row) && exactKeys(row, [...item.rewrite]) && item.rewrite.every((language) => nonEmptyString(row[language]));
     });
     if (!valid) {
-      return { ok: false, result: trilingualFailure({ kind: "repair", stage: "repair_schema", text: response.text, result: invalidOutputLanguage<never>(metadata) }) };
+      return { ok: false, result: trilingualFailure({ kind: "repair", stage: "repair_schema", text: JSON.stringify({ request, response: response.text }), result: invalidOutputLanguage<never>(metadata) }) };
     }
     flagged.forEach((item, index) => {
       const row = rows![`s${index + 1}`] as Record<string, string>;
@@ -1192,14 +1295,21 @@ export function createEventOperationsAiProvider({
     });
     const still = flagged.filter((item) => { const bad = sentenceViolates(item.sentence, input.participants); return bad.en || bad.ja; });
     if (still.length) {
-      return { ok: false, result: trilingualFailure({ kind: "repair", stage: "repair_language", text: response.text, result: invalidOutputLanguage<never>(metadata) }) };
+      return { ok: false, result: trilingualFailure({ kind: "repair", stage: "repair_language", text: JSON.stringify({ request, response: response.text }), result: invalidOutputLanguage<never>(metadata) }) };
     }
     process.stderr.write(`${JSON.stringify({ event: "event_operations_trilingual_repaired", kind: input.kind, sentences: flagged.length })}\n`);
     return { ok: true, metadata };
   }
 
   async function trilingualRecommendations(input: Parameters<EventOperationsAiProvider["generateRecommendations"]>[0]): ReturnType<EventOperationsAiProvider["generateRecommendations"]> {
-    const tokenizedSources = compactRecommendationSources(input.sources, recommendationPromptEncoding);
+    const tokenizedSources = compactRecommendationSources(input.sources, recommendationPromptEncoding, true);
+    const participantByKey = new Map<string, import("./contract").EventOperationsParticipant>();
+    tokenizedSources.tokenSources.forEach((token, index) => {
+      const source = input.sources[index]!;
+      participantByKey.set(token.sourceKey, source.sourceParticipant);
+      const candidateById = new Map(source.candidateParticipants.map((candidate) => [candidate.participantId, candidate]));
+      for (const [key, id] of token.candidateIdByKey) participantByKey.set(key, candidateById.get(id)!);
+    });
     const participants = input.sources.flatMap((source) => [source.sourceParticipant, ...source.candidateParticipants]);
     const response = await runModelText({
       config,
@@ -1212,6 +1322,7 @@ Requirements:
 - Return at most ${input.recommendationCount} unique targets per source, ordered with rank 1..N; never recommend the source itself.
 - score is 0..100; reasons is a non-empty list of sentences; icebreakers is exactly 2 sentences; memberHint is one specific sentence.
 - noMatchReason is required: null when recommendations is non-empty, otherwise one concrete sentence.
+- Refer to the person a row is for as {<that row's sourceKey>} (for example {S1}) and to a recommended person as {<their targetCandidateKey>} (for example {S1C2}).
 - Every object must contain exactly the documented keys.
 ${strictChineseOutputRequirement(participants).replace("Every natural-language value", "Every zh value")}
 ${recommendationPromptEncoding === "deduplicated" ? "- Resolve sourceProfileKey and each candidate profileKey from the supplied profiles lookup before making a recommendation.\n" : ""}
@@ -1229,8 +1340,23 @@ ${JSON.stringify(tokenizedSources.promptSources)}`,
       const shape = classifyJsonFailureShape(response.text);
       return trilingualFailure({ kind: "recommendations", stage: `json_${shape}`, text: response.text, result: invalidJson(shape, metadata, retryableJsonFailureShapeSet) });
     }
+    // A target recommended twice in one row: keep the first, renumber ranks (no text is invented).
+    for (const row of isRecord(json) && Array.isArray(json.recommendations) ? (json.recommendations as Array<Record<string, unknown>>) : []) {
+      if (!isRecord(row) || !Array.isArray(row.recommendations)) continue;
+      const seen = new Set<unknown>();
+      row.recommendations = (row.recommendations as Array<Record<string, unknown>>)
+        .filter((item) => (seen.has(item.targetCandidateKey) ? false : (seen.add(item.targetCandidateKey), true)))
+        .map((item, index) => ({ ...item, rank: index + 1 }));
+    }
     const sentences = trilingualRecommendationSentences(json);
     if (!sentences) return trilingualFailure({ kind: "recommendations", stage: "paired_schema", text: response.text, result: trilingualRetryable("The model JSON did not match the trilingual recommendation schema.", metadata) });
+    // The model often calls a row's own subject {SOURCE}; within that row it is unambiguous.
+    for (const row of (json as { recommendations: Array<Record<string, unknown>> }).recommendations) {
+      const rowSentences = trilingualRecommendationSentences({ recommendations: [row] }) ?? [];
+      for (const sentence of rowSentences) for (const language of TEXT_LANGUAGES) (sentence as Record<TextLanguage, string>)[language] = sentence[language].replace(/\{SOURCE(:company)?\}/gu, (_match, company?: string) => `{${String(row.sourceKey)}${company ?? ""}}`);
+    }
+    if (fillParticipantPlaceholders(sentences, participantByKey).length) return trilingualFailure({ kind: "recommendations", stage: "placeholders", text: response.text, result: trilingualRetryable("The model used an unknown participant placeholder.", metadata) });
+    if (collectTrilingualOutputViolations({ en: [], ja: [], zh: sentences.map((sentence) => sentence.zh) }, participants).chinese.length) return trilingualFailure({ kind: "recommendations", stage: "altered_name_zh", text: response.text, result: invalidOutputLanguage(metadata) });
     const repairedLanguages = await repairTrilingualSentences({ kind: "recommendations", metadata, participants, sentences });
     if (repairedLanguages.ok === false) return repairedLanguages.result as never;
     metadata = repairedLanguages.metadata;
@@ -1277,28 +1403,48 @@ ${JSON.stringify(tokenizedSources.promptSources)}`,
 
   async function trilingualTable(input: Parameters<EventOperationsAiProvider["generateTableContent"]>[0]): ReturnType<EventOperationsAiProvider["generateTableContent"]> {
     const memberIds = new Set(input.members.map((member) => member.participantId));
+    // 2026-11-22 calibration: the model miscopied long participant ids in per-member keys
+    // ("participant:sim-48" → "participant:sim:48"). It now sees short keys M1..Mn only (as the
+    // recommendation shortlist uses S1C1), and the server maps them back before the closed schema.
+    const keyOf = new Map(input.members.map((member, index) => [member.participantId, `M${index + 1}`]));
+    const idOfKey = new Map([...keyOf].map(([id, key]) => [key, id]));
+    const promptMembers = input.members.map((member) => {
+      const { displayName: _name, participantId: _id, ...rest } = compactParticipant(member);
+      return { memberKey: keyOf.get(member.participantId)!, ...rest };
+    });
+    // Feature text came from the recommendation stage and may mention its keys (S5, S5C1); this table
+    // has only M-keys, so those are removed before the model can copy them.
+    const withoutStageKeys = (text: string) => text.replace(/\{?\bS\d+(?:C\d+)?\b\}?/gu, "").replace(/\s{2,}/gu, " ").trim();
+    const promptFeatures = input.features.map((feature) => ({
+      ...feature,
+      facilitationHint: withoutStageKeys(feature.facilitationHint),
+      primaryTopic: withoutStageKeys(feature.primaryTopic),
+      secondaryTopic: withoutStageKeys(feature.secondaryTopic),
+      affinityParticipantIds: feature.affinityParticipantIds.flatMap((id) => (keyOf.has(id) ? [keyOf.get(id)!] : [])),
+      participantId: keyOf.get(feature.participantId) ?? feature.participantId,
+    }));
     const response = await runModelText({
       config,
       systemInstruction: trilingualSystemInstruction,
       userText: `Generate content for exactly one already-assigned event table. Every sentence is a {"ja","zh","en"} object.
 
 Requirements:
-- Keep tableNumber=${input.tableNumber}; return every supplied member exactly once in members and no other id, one unique seat per member.
+- Keep tableNumber=${input.tableNumber}. members has exactly one row for each supplied memberKey (${[...idOfKey.keys()].join(", ")}) and no other key, each with a unique seat.
 - round ${input.roundNumber} content must use the supplied bounded features and member profiles.
-- A concrete theme, an evidence-based table rationale, exactly 3 icebreakers, exactly 2 memberPrompts under every member id, and one specific memberRationale under every member id explaining why that person belongs at this table.
-- members, memberPrompts, and memberRationales must each cover exactly the supplied member ids: no missing, duplicate, unknown, or extra member id.
+- A concrete theme, an evidence-based table rationale, and exactly 3 icebreakers for the table; in every member row, exactly 2 prompts for that person and one specific rationale explaining why that person belongs at this table.
+- The only placeholders that exist here are ${[...idOfKey.keys()].map((key) => `{${key}}`).join(", ")} (and {Mn:company}); never use any other key.
 - Do not change membership. Every object must contain exactly the documented keys.
 ${strictChineseOutputRequirement(input.members).replace("Every natural-language value", "Every zh value")}
 
 JSON shape:
-{"tableNumber":${input.tableNumber},"members":[{"participantId":"id","seat":"R${input.roundNumber}-T${input.tableNumber}-S1"}],"theme":{"ja":"具体的なテーマ","zh":"具体主题","en":"specific theme"},"rationale":{"ja":"この卓の理由","zh":"同桌理由","en":"why these members work as a table"},"icebreakers":[{"ja":"一","zh":"一","en":"one"},{"ja":"二","zh":"二","en":"two"},{"ja":"三","zh":"三","en":"three"}],"memberPrompts":{"id":[{"ja":"問い1","zh":"问题1","en":"prompt one"},{"ja":"問い2","zh":"问题2","en":"prompt two"}]},"memberRationales":{"id":{"ja":"この人がこの卓にいる理由","zh":"此人为何在这一桌","en":"why this member belongs here"}}}
+{"tableNumber":${input.tableNumber},"theme":{"ja":"具体的なテーマ","zh":"具体主题","en":"specific theme"},"rationale":{"ja":"この卓の理由","zh":"同桌理由","en":"why these members work as a table"},"icebreakers":[{"ja":"一","zh":"一","en":"one"},{"ja":"二","zh":"二","en":"two"},{"ja":"三","zh":"三","en":"three"}],"members":[{"memberKey":"M1","seat":"R${input.roundNumber}-T${input.tableNumber}-S1","prompts":[{"ja":"問い1","zh":"问题1","en":"prompt one"},{"ja":"問い2","zh":"问题2","en":"prompt two"}],"rationale":{"ja":"この人がこの卓にいる理由","zh":"此人为何在这一桌","en":"why this member belongs here"}}]}
 
 Event id: ${input.eventId}
 Round: ${input.roundNumber}
 Assigned members:
-${JSON.stringify(input.members.map(compactParticipant))}
+${JSON.stringify(promptMembers)}
 Bounded validated grouping features:
-${JSON.stringify(input.features)}`,
+${JSON.stringify(promptFeatures)}`,
     });
     if (response.success === false) return modelFailure(response);
     let metadata = metadataOf(response);
@@ -1307,12 +1453,17 @@ ${JSON.stringify(input.features)}`,
       const shape = classifyJsonFailureShape(response.text);
       return trilingualFailure({ kind: "table", stage: `json_${shape}`, text: response.text, result: invalidJson(shape, metadata, retryableJsonFailureShapeSet) });
     }
-    const sentences = trilingualTableSentences(json);
+    const keyed = tableFromMemberKeys(json, idOfKey);
+    if (!keyed) return trilingualFailure({ kind: "table", stage: "member_keys", text: response.text, result: trilingualRetryable("The model table did not use exactly the supplied member keys.", metadata) });
+    const sentences = trilingualTableSentences(keyed);
     if (!sentences) return trilingualFailure({ kind: "table", stage: "paired_schema", text: response.text, result: trilingualRetryable("The model JSON did not match the trilingual table schema.", metadata) });
+    const memberByKey = new Map(input.members.map((member) => [keyOf.get(member.participantId)!, member]));
+    if (fillParticipantPlaceholders(sentences, memberByKey).length) return trilingualFailure({ kind: "table", stage: "placeholders", text: response.text, result: trilingualRetryable("The model used an unknown member placeholder.", metadata) });
+    if (collectTrilingualOutputViolations({ en: [], ja: [], zh: sentences.map((sentence) => sentence.zh) }, input.members).chinese.length) return trilingualFailure({ kind: "table", stage: "altered_name_zh", text: response.text, result: invalidOutputLanguage(metadata) });
     const repairedLanguages = await repairTrilingualSentences({ kind: "table", metadata, participants: input.members, sentences });
     if (repairedLanguages.ok === false) return repairedLanguages.result as never;
     metadata = repairedLanguages.metadata;
-    const split = splitTrilingualTable(json)!;
+    const split = splitTrilingualTable(keyed)!;
     const tables = {} as Record<TextLanguage, EventOperationsTable>;
     for (const language of TEXT_LANGUAGES) {
       const table = parseTable(split[language], memberIds);
