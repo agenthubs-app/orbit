@@ -825,9 +825,10 @@ export function collectTrilingualOutputViolations(
 /** One model sentence plus the placeholders it may use (its row's source and target, or its table's members). */
 /**
  * Who a text speaks to: "to_reader" (a reason, hint or no-match line addressed to the person reading it),
- * "to_target" (a question the reader asks the other person). Tables carry none (they speak about members).
+ * "to_target" (a question the reader asks the other person), "about_member" (a table member's rationale, which
+ * other attendees also read: third person, never "you"). Other table texts carry none.
  */
-type TextVoice = "to_reader" | "to_target";
+type TextVoice = "to_reader" | "to_target" | "about_member";
 interface ScopedSentence { allowed: ReadonlySet<string>; sentence: TrilingualSentence; voice?: TextVoice }
 
 /**
@@ -838,6 +839,7 @@ interface ScopedSentence { allowed: ReadonlySet<string>; sentence: TrilingualSen
 export function voiceIssues(text: string, language: "zh" | "en", voice: TextVoice | undefined): string[] {
   const issues: string[] = [];
   const bare = text.replace(ANY_BRACES_PATTERN, " ");
+  if (voice === "about_member" && (language === "zh" ? /[您你]/u : /\byou(r|rs|rself)?\b/iu).test(bare)) issues.push("addressed");
   if (language === "zh") {
     if (/先生|女士|小姐|[他她]/u.test(bare.replace(/其[他它]|他人/gu, ""))) issues.push("gendered");
     if (voice === "to_reader" && /^[\s「“"]*我/u.test(bare)) issues.push("writer_voice");
@@ -1020,7 +1022,7 @@ const TRILINGUAL_RETRYABLE_JSON_SHAPES: ReadonlySet<EventOperationsJsonFailureSh
 
 const BASE_DRAFT_INSTRUCTION = `Write every participant-facing text in natural, polite Japanese only. Each text is specific to the people involved and grounded in their supplied profiles; never use template sentences. Never write a participant's name or company name: refer to a person only by the placeholder the task defines for them, and to their company only by that placeholder with ":company" added inside the braces, only when that profile has hasCompany=true. Never write a generic word such as KEY inside braces. Profiles may be written in any language: express every profile term in Japanese, except upper-case abbreviations (AI, DX, VC, M&A …) which stay as written. Write numbers with Arabic digits. Return exactly one JSON document with exactly the documented keys.`;
 
-const TRANSLATION_INSTRUCTION = (language: "zh" | "en") => `You translate Japanese event networking texts into ${language === "zh" ? "idiomatic Simplified Chinese as a native Chinese business writer would write it (no Japanese kana; address the reader as 您, never 你; never 贵公司 for a person; write natural mainland Chinese instead of Japanese calques (課題 → 挑战/难题/问题, 導入支援 → 落地支持/引入支持, 実績 → 经验/成果, not 课题/导入支持/实际业绩); keep upper-case abbreviations such as AI, DX, VC, M&A, IPO and the terms SaaS, Web3, EdTech, FinTech, PoC as written; translate every other English word)" : "natural, concise English (no Chinese or Japanese characters; address the reader as you; refer to a person as they, never it)"}. Each id may have a voice. "to_reader": the text speaks to the person reading it — the reader is 您 / you, the other person appears only as a {…} placeholder, and the writer never appears (never 我/我们 or I/We as the subject); a Japanese sentence without a subject is about the reader. "to_target": a question the reader asks the other person directly (您 / you is the person asked). A text without a voice describes the people by their placeholders. Never use a gendered word for anyone (no 先生, 女士, 他, 她; no he, she, his, her, Mr, Ms): repeat the placeholder or use 对方 / 您 / they / you instead. Never turn a person into a company. Translate only: never add, remove, or change a fact, a person, a direction (who needs and who offers), a negation, or a number. Keep every {…} placeholder exactly as it appears in the Japanese text, and keep numbers as Arabic digits with the same values. Return exactly {"items":{"<id>":"<translation>"}} (the translated text only, no voice) with exactly the same ids.`;
+const TRANSLATION_INSTRUCTION = (language: "zh" | "en") => `You translate Japanese event networking texts into ${language === "zh" ? "idiomatic Simplified Chinese as a native Chinese business writer would write it (no Japanese kana; address the reader as 您, never 你; never 贵公司 for a person; write natural mainland Chinese instead of Japanese calques (課題 → 挑战/难题/问题, 導入支援 → 落地支持/引入支持, 実績 → 经验/成果, not 课题/导入支持/实际业绩); keep upper-case abbreviations such as AI, DX, VC, M&A, IPO and the terms SaaS, Web3, EdTech, FinTech, PoC as written; translate every other English word)" : "natural, concise English (no Chinese or Japanese characters; address the reader as you; refer to a person as they, never it)"}. Each id may have a voice. "to_reader": the text speaks to the person reading it — the reader is 您 / you, the other person appears only as a {…} placeholder, and the writer never appears (never 我/我们 or I/We as the subject); a Japanese sentence without a subject is about the reader. "to_target": a question the reader asks the other person directly (您 / you is the person asked). "about_member": why a table member is at the table, read by the other attendees too — third person about that member, never 您/你/you (keep the subject omitted, use the placeholder, or they). A text without a voice describes the people by their placeholders. Never use a gendered word for anyone (no 先生, 女士, 他, 她; no he, she, his, her, Mr, Ms): repeat the placeholder or use 对方 / 您 / they / you instead. Never turn a person into a company. Translate only: never add, remove, or change a fact, a person, a direction (who needs and who offers), a negation, or a number. Keep every {…} placeholder exactly as it appears in the Japanese text, and keep numbers as Arabic digits with the same values. Return exactly {"items":{"<id>":"<translation>"}} (the translated text only, no voice) with exactly the same ids.`;
 
 /** What a rejected recommendation draft broke, said back to the model on its one retry. */
 const WRITE_PROBLEM_RULE: Readonly<Record<string, string>> = {
@@ -1390,7 +1392,7 @@ export function createEventOperationsAiProvider({
     }
     const response = await runModelText({
       config,
-      systemInstruction: `${systemInstruction}\nYou are performing one bounded AI-only language repair of event networking sentences. Rewrite only the requested languages of each sentence from its source_text, which is the same sentence in another language: ja in natural Japanese, zh in idiomatic Simplified Chinese, en in natural English with no Chinese or Japanese characters. Keep every {…} placeholder exactly as it appears in source_text, keep every number, and never write a person's or company's name. A sentence with voice "to_reader" speaks to its reader (您 / you; a Japanese sentence without a subject is about the reader) and never has the writer (我/我们, I/We) as its subject; voice "to_target" is a question asked directly to the other person. Never use a gendered word (先生, 女士, 他, 她, he, she, his, her, Mr, Ms): use the placeholder, 对方/您, or they/you. Never add, remove, or change facts.`,
+      systemInstruction: `${systemInstruction}\nYou are performing one bounded AI-only language repair of event networking sentences. Rewrite only the requested languages of each sentence from its source_text, which is the same sentence in another language: ja in natural Japanese, zh in idiomatic Simplified Chinese, en in natural English with no Chinese or Japanese characters. Keep every {…} placeholder exactly as it appears in source_text, keep every number, and never write a person's or company's name. A sentence with voice "to_reader" speaks to its reader (您 / you; a Japanese sentence without a subject is about the reader) and never has the writer (我/我们, I/We) as its subject; voice "to_target" is a question asked directly to the other person; voice "about_member" describes a table member in the third person for everyone at the table (never 您/你/you). Never use a gendered word (先生, 女士, 他, 她, he, she, his, her, Mr, Ms): use the placeholder, 对方/您, or they/you. Never add, remove, or change facts.`,
       userText: `Return exactly {"sentences":{"<id>":{<each requested language>:"..."}}} for every id below, with exactly the requested language keys and nothing else.\n${JSON.stringify(request.map(({ index: _index, ...item }) => item))}`,
     });
     if (response.success === false) {
@@ -1522,13 +1524,13 @@ export function createEventOperationsAiProvider({
    * flagged language (from the Japanese text) → the same full check again. Returns the assembled sentences.
    */
   async function translateAndCheck(input: {
-    base: ReadonlyArray<{ allowed: ReadonlySet<string>; asked?: string; id: string; reader?: string; text: string }>;
+    base: ReadonlyArray<{ allowed: ReadonlySet<string>; asked?: string; id: string; reader?: string; text: string; voice?: TextVoice }>;
     kind: "recommendations" | "table";
     metadata: EventOperationsAiResponseMetadata | undefined;
     participants: readonly import("./contract").EventOperationsParticipant[];
     text: string;
   }): Promise<{ ok: true; metadata: EventOperationsAiResponseMetadata | undefined; sentences: Map<string, TrilingualSentence> } | { ok: false; result: EventOperationsAiResult<never> }> {
-    const voiceOf = (item: { asked?: string; reader?: string }): TextVoice | undefined => (item.asked ? "to_target" : item.reader ? "to_reader" : undefined);
+    const voiceOf = (item: { asked?: string; reader?: string; voice?: TextVoice }): TextVoice | undefined => item.voice ?? (item.asked ? "to_target" : item.reader ? "to_reader" : undefined);
     // Items stay a flat id → text map (one shape in, one shape out); the voices ride alongside.
     const items = Object.fromEntries(input.base.map((item) => [item.id, item.text]));
     const voices = Object.fromEntries(input.base.flatMap((item) => (voiceOf(item) ? [[item.id, voiceOf(item)!]] : [])));
@@ -1831,7 +1833,7 @@ ${JSON.stringify(pairs)}${feedback}`,
 
 Requirements:
 - theme: a concrete theme for this table. rationale: why these members work as a table. q1..q3: three icebreaker questions for the table.
-- For every member key Mn: Mn.p1 and Mn.p2 are two questions for that person, addressed to them directly in polite Japanese (no names, no placeholders, no third person), and Mn.why is one sentence explaining why that person belongs at this table, stating only what the supplied profile says (a topic is an interest, not an ability).
+- For every member key Mn: Mn.p1 and Mn.p2 are two questions for that person, addressed to them directly in polite Japanese (no names, no placeholders, no third person), and Mn.why is one sentence explaining why that person belongs at this table, read by everyone at the table (third person about that member: omit the subject or use {Mn}; never あなた), stating only what the supplied profile says (a topic is an interest, not an ability).
 - The only placeholders that exist are ${keys.map((key) => `{${key}}`).join(", ")} (the server adds the name and さん; company as {Mn:company} next to {Mn}, only when hasCompany=true). Use the supplied features and profiles.
 
 JSON shape (exact keys):
@@ -1859,11 +1861,11 @@ ${JSON.stringify(promptFeatures)}${feedback}`,
     if (doc === null) return trilingualRetryable("The table base draft failed twice (shape).", metadata) as never;
     const allowed = new Set(keys);
     const normalize = (text: string) => normalizePlaceholders(text).replace(/\{(\d+)(:company)?\}/gu, (_match, key: string, company?: string) => `{M${key}${company ?? ""}}`);
-    const base: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; text: string }> = [
+    const base: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; text: string; voice?: TextVoice }> = [
       ...["theme", "rationale", "q1", "q2", "q3"].map((field) => ({ allowed, id: field, text: normalize(String(doc![field])) })),
       ...keys.flatMap((key) => [
         ...["p1", "p2"].map((field) => ({ allowed, asked: key, id: `${key}.${field}`, text: normalize(String(doc![`${key}.${field}`])) })),
-        { allowed, id: `${key}.why`, text: normalize(String(doc![`${key}.why`])) },
+        { allowed, id: `${key}.why`, text: normalize(String(doc![`${key}.why`])), voice: "about_member" as const },
       ]),
     ];
     const baseChecked = await checkAndRepairBase({ items: base, kind: "table", metadata, participants: input.members, text: response.text });

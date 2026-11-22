@@ -482,3 +482,26 @@ test("table: the base draft is flat; a broken one is re-asked once, saying which
   assert.match(retry, /rejected: return exactly one flat JSON object with exactly these keys/u);
   assert.match(retry, /M2\.why/u);
 });
+
+test("a table member's rationale is about them, read by everyone: never addressed as you", async () => {
+  assert.deepEqual(voiceIssues("因为您关注海外拓展。", "zh", "about_member"), ["addressed"]);
+  assert.deepEqual(voiceIssues("Because you are interested in AI.", "en", "about_member"), ["addressed"]);
+  assert.deepEqual(voiceIssues("They offer knowledge of the China market.", "en", "about_member"), []);
+  const runner = model({
+    base: tableBase(),
+    repair: { sentences: { s1: { zh: "{M1}正在寻找导入方。" } } },
+    translate: (language, id) => (language === "zh" && id === "M1.why" ? "因为您正在寻找导入方。" : undefined),
+  });
+  const result = await provider(runner).generateTableContent(tableInput);
+  assert.equal(result.success, true);
+  assert.match(runner.calls.find((call) => call.kind === "repair")!.userText, /"voice":"about_member"/u);
+  if (result.success) assert.equal(result.data.i18n!.zh.memberRationales["participant:a"], "山田太郎正在寻找导入方。");
+});
+
+test("concept table corrections from the 2026-11-22 reread", async () => {
+  const { offerAnswersNeed, topicsShare: share } = await import("../../features/events/event-operations/match-concepts");
+  assert.equal(offerAnswersNeed("法務 / 契約アドバイス", "財務・経理支援"), false);
+  assert.equal(offerAnswersNeed("エンジニアの採用", "システム設計・アーキテクチャ"), false);
+  assert.equal(offerAnswersNeed("エンジニアの採用", "技術チーム構築"), true);
+  assert.equal(share("スタートアップ経営", "経営者のメンタルヘルス"), false);
+});
