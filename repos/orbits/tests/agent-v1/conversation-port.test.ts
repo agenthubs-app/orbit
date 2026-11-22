@@ -288,3 +288,20 @@ test("「王磊那条」: the person the first layer reports is not the referenc
   assert.deepEqual(parts[0].refs[1], { entity: "todo", quote: [1, 5], recordId: "task:wang" });
   for (const words of ["王磊的那条", "王さんのあの件"]) assert.ok(hintOf({ ...output, parts: [{ ...output.parts[0], objectClues: [{ entity: "contact", text: words.startsWith("王磊") ? "王磊" : "王さん" }], sourceQuote: `${words}改到周五` }] } as UnderstandOutput, null)!.parts[0].refs![0].said === words, words);
 });
+
+test("on never overrides the agent: a record it bound (an @ pick) stays, and its own question attribution is not moved or cleared", () => {
+  const log = appendTurn(null, { agent: reply(1, { mentions: ["T-task:shen"] }), requestId: "r1", user: user("催沈佳怡要样品测试报告那条什么时候到期？", 0) }, NAMES);
+  const message = "那这一条呢";
+  const result = turnOf(log, message, 2);
+  const picked = partOf(message, ["todo.read"], [{ entity: "todo", recordId: "task:wang", words: "这一条" }]);
+  const bound = applyTurn({ agentFollowUps: new Map(), context: null, gone: new Set(), message, parts: [picked], result, timeZone: "Asia/Tokyo", waitingChange: false });
+  assert.equal(bound.parts[0].refs[0].recordId, "task:wang", JSON.stringify(result));
+  assert.deepEqual(bound.applied, []);
+  // The agent says p1 answers q1; the engine says it is new: the agent's attribution stays.
+  const context = { openItems: [{ kind: "clarification", ref: "q1" }] } as never;
+  const fake = { parts: [{ continues: null, followUp: "new" as const, next: "go" as const, quote: message, redo: [], refs: [], request: {} }], shelved: [] };
+  const kept = applyTurn({ agentFollowUps: new Map(), context, gone: new Set(), message, parts: [partOf(message, [], [], { continues: { kind: "clarification", ref: "q1" } })], result: fake, timeZone: "Asia/Tokyo", waitingChange: false });
+  assert.deepEqual(kept.parts[0].continues, { kind: "clarification", ref: "q1" });
+  const added = applyTurn({ agentFollowUps: new Map(), context, gone: new Set(), message, parts: [partOf(message, [])], result: { ...fake, parts: [{ ...fake.parts[0], continues: "q1", followUp: null as never, request: null as never }] }, timeZone: "Asia/Tokyo", waitingChange: false });
+  assert.deepEqual(added.parts[0].continues, { kind: "clarification", ref: "q1" }, "a part the agent left new is attributed");
+});

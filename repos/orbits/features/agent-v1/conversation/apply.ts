@@ -3,10 +3,12 @@
  * agent's parts. Pure functions over the graph's parts; nothing here reads or writes a store.
  *
  * What `on` changes (each change is traced as conversation.applied):
- * - refs: a reference the engine bound to one record of this conversation is that record (the part's clue gets its
- *   recordId, or a clue is added when the part acts on that kind and gave none) — e.g. XL-010's 「小陈」 after a card that
+ * - refs: a reference the engine bound to one record of this conversation is that record when the agent left it unbound
+ *   (the part's clue gets its recordId, or a clue is added when the part acts on that kind and gave none); a record the
+ *   agent bound itself is never replaced — e.g. XL-010's 「小陈」 after a card that
  *   linked 陈一鸣. An engine "ask" or "none" never binds and never unbinds (the agent's own resolver goes on asking).
- * - continues: which open question a part answers (questions only; alternatives and cards stay with the first layer).
+ * - continues: a part the agent left new that the engine attributes to an open question nobody took (questions only;
+ *   the agent's own attribution is never moved or cleared).
  * - cancel: a part the engine reads as calling off the change that waits (「算了先别建」) proposes no write.
  * - time: a read part that goes back to the request before (repeat / swap_period / refine / adjust / follow_list /
  *   ask_again_about) reads the engine's window when the agent's part has none (Asia/Tokyo only: the engine's calendar).
@@ -151,18 +153,19 @@ export function applyTurn(input: ApplyInput): { parts: GraphPart[]; applied: App
   const applied: Applied[] = [];
   const openQuestions = new Map((input.context?.openItems ?? []).filter((item) => item.kind === "clarification").map((item) => [item.ref, item]));
   const taken = new Set<string>();
+  const agentTaken = new Set(input.parts.map((part) => part.continues?.ref).filter((ref): ref is string => Boolean(ref)));
   const parts = input.parts.map((original) => {
     const part: GraphPart = { ...original, capabilities: [...original.capabilities], plan: { ...original.plan }, refs: original.refs.map((ref) => ({ ...ref })) };
     const item = enginePartOf(input.result, input.message, part);
     if (!item) return part;
-    // continues (questions only)
-    const engineQ = item.continues && openQuestions.has(item.continues) && !taken.has(item.continues) ? item.continues : null;
-    const agentQ = part.continues?.kind === "clarification" ? part.continues.ref : null;
-    if (engineQ !== agentQ && (engineQ || agentQ)) {
-      part.continues = engineQ ? { kind: "clarification", ref: engineQ } : null;
-      applied.push({ detail: { from: agentQ, to: engineQ }, part: part.localId, what: "continues" });
+    // continues (questions only): the engine attributes a part the agent left new to an open question no part of the
+    // agent's took; it never moves or clears the agent's own attribution (eval shadow run: AE-AMB-009, AE-EVT-009).
+    const engineQ = item.continues && openQuestions.has(item.continues) && !taken.has(item.continues) && !agentTaken.has(item.continues) ? item.continues : null;
+    if (!part.continues && engineQ) {
+      part.continues = { kind: "clarification", ref: engineQ };
+      taken.add(engineQ);
+      applied.push({ detail: { to: engineQ }, part: part.localId, what: "continues" });
     }
-    if (engineQ) taken.add(engineQ);
     // refs: bind what the engine bound. In a correction (「不是这个，是王磊那个」) only the last reference is the one meant;
     // the engine also binds the negated pointer to the record it rejects, which is never applied.
     const meant = item.followUp === "correct" ? [...item.refs].sort((left, right) => input.message.lastIndexOf(right.said) - input.message.lastIndexOf(left.said)).slice(0, 1) : item.refs;
@@ -172,7 +175,9 @@ export function applyTurn(input: ApplyInput): { parts: GraphPart[]; applied: App
       // A clue of another kind inside the words (the person 「王磊」 of 「王磊那条」) is not this reference: the record is added.
       const own = part.refs.find((other) => sameKind(other.entity, live.type) && other === refOfSaid({ ...part, refs: [other] }, input.message, ref.said));
       if (own) {
-        if (own.recordId === live.id) continue;
+        // Only a clue the agent left unbound: a record the agent bound (an @ pick, a context handle, code) stays, whatever
+        // the engine says (eval shadow run: AE-SCL-021 「那 @选品方向 呢」 bound by the engine to the earlier note).
+        if (own.recordId) continue;
         applied.push({ detail: { from: own.recordId, said: ref.said, to: live.id }, part: part.localId, what: "ref_bound" });
         own.recordId = live.id;
         continue;
