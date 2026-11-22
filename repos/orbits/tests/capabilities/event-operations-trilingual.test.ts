@@ -38,7 +38,7 @@ const members = [{ participantId: "participant:a", seat: "R1-T1-S1" }, { partici
 test("configured provider is trilingual and fingerprints it", () => {
   const configured = createConfiguredEventOperationsAiProvider();
   assert.equal(configured.maxRecommendationShardSize, 3);
-  assert.match(configured.requestFingerprint ?? "", /"participantTextLanguages":"ja-base-then-translate-v1"/u);
+  assert.match(configured.requestFingerprint ?? "", /"participantTextLanguages":"ja-choose-write-translate-v1"/u);
   assert.doesNotMatch(createEventOperationsAiProvider().requestFingerprint ?? "", /participantTextLanguages/u);
 });
 
