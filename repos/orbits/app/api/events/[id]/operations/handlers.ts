@@ -27,6 +27,7 @@ import {
   type EventCapabilityAccessDependencies,
 } from "../event-capability-access";
 import { toAttendeeOperationsResponse } from "./attendee-response";
+import { eventOperationsRequestLanguage } from "../../../../../features/events/event-operations/text-language";
 
 interface EventOperationsRouteContext {
   params: Promise<{ id: string }>;
@@ -179,7 +180,7 @@ export function createEventOperationsGetHandler(
   dependencies: EventOperationsHandlerDependencies = {},
 ) {
   return withRegisteredEventAccess(async function getEventOperations(
-    _request: Request,
+    request: Request,
     _context: EventOperationsRouteContext,
     access,
   ) {
@@ -188,7 +189,7 @@ export function createEventOperationsGetHandler(
         actorId: access.actor.id,
         eventId: access.eventId,
       });
-      return NextResponse.json(success(toAttendeeOperationsResponse(workspace)), {
+      return NextResponse.json(success(toAttendeeOperationsResponse(workspace, eventOperationsRequestLanguage(request))), {
         headers: runtimeBoundaryHeaders(access.mode),
       });
     } catch (error) {

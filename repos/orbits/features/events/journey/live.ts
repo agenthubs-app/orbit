@@ -439,13 +439,13 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       return registration?.status === "rsvped" && registration.eventId === eventId;
     },
 
-    async venueWorkspace(actorId, eventId) {
+    async venueWorkspace(actorId, eventId, language) {
       const workspace = await attendeeWorkspace(actorId, eventId);
       if (!workspace) return null;
       const published = workspace.resultsState === "ready"
         ? await publishedResult(eventId).catch(warned("r27_journey_published_result_failed", null, { eventId }))
         : null;
-      return venueWorkspaceFrom(workspace, published);
+      return venueWorkspaceFrom(workspace, published, language);
     },
 
     // R17（host/DESIGN.md §2.6）：受付 QR v2（签名令牌）+ 受付番号。admitted 事务里已分配的直接读；

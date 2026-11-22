@@ -44,7 +44,7 @@ export interface JourneyService {
   overview(actorId: string | null, eventId: string, language: JourneyLanguage, platform?: "web" | "app", options?: { allAttendees?: boolean }): Promise<EventOverviewResponse | null>;
   prep(actorId: string, eventId: string, language: JourneyLanguage): Promise<EventPrepResponse | null>;
   patchChecklist(actorId: string, eventId: string, items: readonly EventPrepChecklistItem[]): Promise<EventPrepChecklistItem[]>;
-  venue(actorId: string, eventId: string, platform?: "web" | "app"): Promise<EventVenueResponse | null>;
+  venue(actorId: string, eventId: string, platform?: "web" | "app", language?: JourneyLanguage): Promise<EventVenueResponse | null>;
   saveVenueMemo(actorId: string, eventId: string, attendeeId: string, text: string): Promise<EventVenueMemoResult | null>;
   /** 参加者の詳細：我是该活动的报名者且对方报名资料对参加者公开，否则 null（路由一律 404）。 */
   attendeeProfile(actorId: string, eventId: string, attendeeId: string, language?: JourneyLanguage): Promise<EventAttendeeProfile | null>;
@@ -214,7 +214,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         rosterVisible ? ports.planTypesFor(actorId, roster.attendees) : Promise.resolve({}),
         event.organizerKey ? records.follows.followed(actorId) : Promise.resolve(new Set<string>()),
         ports.hosting ? ports.hosting(actorId, eventId).catch(() => false) : Promise.resolve(false),
-        recordEligible ? ports.venueWorkspace(actorId, eventId).catch(() => null) : Promise.resolve(null),
+        recordEligible ? ports.venueWorkspace(actorId, eventId, language).catch(() => null) : Promise.resolve(null),
       ]);
       const venueRecord = recordWorkspace ? venueRecordFrom(recordWorkspace) : null;
       const contactNames = new Set(contacts.map((contact) => contact.name.replace(/\s+/g, "")));
@@ -258,7 +258,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         ports.contacts(actorId),
         records.checklist.read(actorId, eventId),
         ports.selfIntro(actorId, eventId),
-        ports.registered(actorId, eventId).then((ok) => (ok ? ports.venueWorkspace(actorId, eventId) : null)).catch(() => null),
+        ports.registered(actorId, eventId).then((ok) => (ok ? ports.venueWorkspace(actorId, eventId, language) : null)).catch(() => null),
       ]);
       const types = await ports.planTypesFor(actorId, roster.attendees);
       const byName = new Map(contacts.map((contact) => [contact.name.replace(/\s+/g, ""), contact]));
@@ -288,12 +288,12 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       return records.checklist.patch(actorId, eventId, items);
     },
 
-    async venue(actorId, eventId) {
+    async venue(actorId, eventId, _platform, language) {
       const event = await ports.event(eventId);
       if (!event) return null;
       const registered = await ports.registered(actorId, eventId);
       if (!registered) return buildVenue({ agenda: [], event, myContacts: [], now: now(), registered: false, wantedParticipantIds: new Set(), workspace: null });
-      const [workspace, contacts] = await Promise.all([ports.venueWorkspace(actorId, eventId), ports.contacts(actorId)]);
+      const [workspace, contacts] = await Promise.all([ports.venueWorkspace(actorId, eventId, language), ports.contacts(actorId)]);
       const directory = workspace?.directory ?? [];
       const types = await ports.planTypesFor(actorId, directory.map((item) => ({ attendeeId: item.participantId, name: item.displayName, org: item.company, role: item.role })));
       const wanted = new Set(directory.filter((item) => types[item.participantId]).map((item) => item.participantId));
@@ -320,7 +320,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       if (!event || !registered || !facts) return null;
       const at = now();
       const [workspace, contacts, memos] = await Promise.all([
-        ports.venueWorkspace(actorId, eventId).catch(() => null),
+        ports.venueWorkspace(actorId, eventId, language).catch(() => null),
         ports.contactNames ? ports.contactNames(actorId) : ports.contacts(actorId),
         records.memos.read(actorId, eventId),
       ]);

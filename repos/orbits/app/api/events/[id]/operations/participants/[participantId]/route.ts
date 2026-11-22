@@ -6,6 +6,7 @@ import { createConfiguredEventOperationsService } from "../../../../../../../fea
 import { failure, success } from "../../../../../../../shared/api/envelope";
 import { AppError } from "../../../../../../../shared/errors/app-error";
 import { withRegisteredEventAccess } from "../../../registered-event-access";
+import { eventOperationsRequestLanguage } from "../../../../../../../features/events/event-operations/text-language";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export const GET = withRegisteredEventAccess<{
   id: string;
   participantId: string;
 }>(
-  async function getEventParticipantDetail(_request, context, access) {
+  async function getEventParticipantDetail(request, context, access) {
     const { participantId } = await context.params;
     const repository = createConfiguredEventOperationsRepository();
     const operationsService = createConfiguredEventOperationsService();
@@ -33,6 +34,7 @@ export const GET = withRegisteredEventAccess<{
       repository,
     }).get({
       eventId: access.eventId,
+      language: eventOperationsRequestLanguage(request),
       targetParticipantId: participantId.trim(),
       viewerActorId: access.actor.id,
     });

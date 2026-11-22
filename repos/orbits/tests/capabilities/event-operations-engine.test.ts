@@ -1352,3 +1352,26 @@ test("R17: publish composes the host's table moves before the freeze; an oversiz
     generationId: other.generation.generationId,
   }), /TABLE_TOO_LARGE/u);
 });
+
+test("a provider's maxRecommendationShardSize caps the configured shard size (trilingual output, 2026-11-22)", async () => {
+  const sizes: number[] = [];
+  const baseProvider = createAiProvider();
+  const aiProvider: EventOperationsAiProvider = {
+    ...baseProvider,
+    maxRecommendationShardSize: 2,
+    async generateRecommendations(input) {
+      sizes.push(input.sources.length);
+      return baseProvider.generateRecommendations(input);
+    },
+  };
+  const repository = createMemoryEventOperationsRepository({ configurations: [configuration({ shardSize: 6 })] });
+  const engine = createEventOperationsEngine({ aiProvider, repository });
+  const generation = await engine.createGeneration({
+    actorId: ORGANIZER_ID,
+    capturedSnapshot: capturedSnapshot(participants(5), configuration({ shardSize: 6 })),
+    idempotencyKey: "shard-cap",
+  });
+  const progress = await engine.runGeneration({ actorId: ORGANIZER_ID, generationId: generation.generationId, workerId: "worker:shard-cap" });
+  assert.equal(progress.status, "completed");
+  assert.deepEqual(sizes.sort(), [1, 2, 2]);
+});

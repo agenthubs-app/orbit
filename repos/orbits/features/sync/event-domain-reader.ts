@@ -190,9 +190,10 @@ function publishedPayload(eventId: string, participantId: string, published: Eve
     me: publicParticipant(me),
     directory,
     directoryComplete,
-    recommendations: publicRecommendations(recommendations),
-    roundOneTable: publicTable(roundOne),
-    roundTwoTable: publicTable(roundTwo),
+    // 三语（2026-11-22）：同步行带齐 ja/zh/en（i18n），App 按界面语言挑；切换语言不用重拉。
+    recommendations: publicRecommendations(recommendations, { includeI18n: true }),
+    roundOneTable: publicTable(roundOne, { includeI18n: true }),
+    roundTwoTable: publicTable(roundTwo, { includeI18n: true }),
   };
 }
 

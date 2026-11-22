@@ -20,6 +20,7 @@ import type { JudgeResult } from "../assessment/judge";
 import { canonicalPublicOrganizerLabel } from "../core/public-organizer-identity";
 import type { EventOperationsParticipant, EventOperationsPublishedResult, EventOperationsTable } from "../event-operations/contract";
 import { eventOperationsParticipantFromRegistration } from "../event-operations/participant";
+import { eventOperationsTextLanguage, participantRecommendationsIn, tableIn } from "../event-operations/text-language";
 import { profileResponsesForParticipantDetail } from "../event-operations/profile-response-policy";
 import type { EventOperationsAttendeeWorkspace } from "../event-operations/service";
 import type { AttendeePostEventAiArtifactView } from "../post-event-artifact/contract";
@@ -277,7 +278,11 @@ function venueTable(table: EventOperationsTable | null): VenueTable | null {
 }
 
 /** 参加者侧运营投影（与 `toAttendeeOperationsResponse` 同一组字段）→ 会場モード输入；已发布分组给出全部桌。 */
-export function venueWorkspaceFrom(workspace: EventOperationsAttendeeWorkspace, published: Pick<EventOperationsPublishedResult, "grouping"> | null): VenueWorkspace {
+export function venueWorkspaceFrom(workspace: EventOperationsAttendeeWorkspace, published: Pick<EventOperationsPublishedResult, "grouping"> | null, language?: string): VenueWorkspace {
+  // 三语（2026-11-22）：带语言时把 AI 文字换成查看者语言；不带 = 存储的原文（旧行为）。
+  const text = language ? eventOperationsTextLanguage(language) : null;
+  const localTable = (table: EventOperationsTable | null) => (table && text ? tableIn(table, text) : table);
+  const recommendations = workspace.recommendations && text ? participantRecommendationsIn(workspace.recommendations, text) : workspace.recommendations;
   return {
     checkIn: workspace.checkIn ? { checkedInAt: workspace.checkIn.checkedInAt, participantId: workspace.checkIn.participantId } : null,
     checkInAvailable: workspace.checkInAvailable,
@@ -299,13 +304,13 @@ export function venueWorkspaceFrom(workspace: EventOperationsAttendeeWorkspace, 
     })),
     directory: workspace.directory.map(venueParticipant),
     me: venueParticipant(workspace.me),
-    recommendations: workspace.recommendations
-      ? { recommendations: workspace.recommendations.recommendations.map((item) => ({ icebreakers: [...item.icebreakers], reasons: [...item.reasons], score: item.score, targetParticipantId: item.targetParticipantId })) }
+    recommendations: recommendations
+      ? { recommendations: recommendations.recommendations.map((item) => ({ icebreakers: [...item.icebreakers], reasons: [...item.reasons], score: item.score, targetParticipantId: item.targetParticipantId })) }
       : null,
-    roundOneTable: venueTable(workspace.roundOneTable),
-    roundTwoTable: venueTable(workspace.roundTwoTable),
+    roundOneTable: venueTable(localTable(workspace.roundOneTable)),
+    roundTwoTable: venueTable(localTable(workspace.roundTwoTable)),
     rounds: published
-      ? { one: published.grouping.roundOne.map((table) => venueTable(table)!), two: published.grouping.roundTwo.map((table) => venueTable(table)!) }
+      ? { one: published.grouping.roundOne.map((table) => venueTable(localTable(table))!), two: published.grouping.roundTwo.map((table) => venueTable(localTable(table))!) }
       : null,
   };
 }

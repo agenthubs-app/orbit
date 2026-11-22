@@ -32,6 +32,8 @@ export interface EventOperationsAiProviderOptions {
   recommendationPromptEncoding?: "expanded" | "deduplicated";
   retryableJsonFailureShapes?: readonly EventOperationsJsonFailureShape[];
   runModelText?: EventOperationsModelRunner;
+  /** 2026-11-22: write participant-facing text in ja/zh/en in one output (base fields = zh, plus `i18n`). */
+  trilingual?: boolean;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -653,6 +655,133 @@ function tableNaturalLanguageValues(
   ];
 }
 
+
+// ---------------------------------------------------------------------------
+// 2026-11-22 三语：一次输出 ja/zh/en，同一次推理写三种语言（选人、排名、分数、分桌只有一份）。
+// 模型返回的三语文档先拆成三份「原有形状」的单语文档，各自走原有的封闭 schema 解析，
+// 再合并：原字段 = zh（旧读者照旧），三语进 `i18n`。
+// ---------------------------------------------------------------------------
+
+const TEXT_LANGUAGES = ["ja", "zh", "en"] as const;
+type TextLanguage = (typeof TEXT_LANGUAGES)[number];
+const KANA_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}]/u;
+const CJK_PATTERN = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u;
+
+function properNamesOf(participants: readonly import("./contract").EventOperationsParticipant[]): readonly string[] {
+  return [...new Set(participants.flatMap((participant) => [participant.displayName, participant.company]).filter((name): name is string => typeof name === "string" && name.trim().length > 0).map((name) => name.trim()))]
+    .sort((left, right) => right.length - left.length);
+}
+
+function withoutProperNames(value: string, names: readonly string[]): string {
+  let rest = value;
+  for (const name of names) rest = rest.split(name).join(" ");
+  return rest;
+}
+
+export interface TrilingualOutputViolations {
+  /** ja values that read as another language (no kana in a sentence-length value). */
+  japanese: readonly string[];
+  /** en values that still contain Han / kana outside participant and company names. */
+  english: readonly string[];
+}
+
+export function collectTrilingualOutputViolations(
+  values: Readonly<Record<TextLanguage, readonly string[]>>,
+  participants: readonly import("./contract").EventOperationsParticipant[],
+): TrilingualOutputViolations {
+  const names = properNamesOf(participants);
+  const japanese = values.ja.filter((value) => {
+    const rest = withoutProperNames(value, names).trim();
+    // 名词短语（例如「AI 投資」）可以没有假名；一句话长度还没有假名，就是写成了中文或英文。
+    return rest.length >= 8 && !KANA_PATTERN.test(rest);
+  });
+  const english = values.en.filter((value) => CJK_PATTERN.test(withoutProperNames(value, names)));
+  return { english, japanese };
+}
+
+function trilingualRetryable<TValue>(message: string, responseMetadata?: EventOperationsAiResponseMetadata): EventOperationsAiResult<TValue> {
+  return {
+    error: { code: "AI_SCHEMA_INVALID", message },
+    ...(responseMetadata ? { responseMetadata } : {}),
+    retryable: true,
+    success: false,
+  };
+}
+
+function isTrilingualString(value: unknown): value is Record<TextLanguage, string> {
+  return isRecord(value) && exactKeys(value, [...TEXT_LANGUAGES]) && TEXT_LANGUAGES.every((language) => nonEmptyString(value[language]));
+}
+
+/** Trilingual recommendations document → one single-language document per language, in the original shape. */
+export function splitTrilingualRecommendations(value: unknown): Record<TextLanguage, unknown> | null {
+  if (!isRecord(value) || !exactKeys(value, ["recommendations"]) || !Array.isArray(value.recommendations)) return null;
+  const out = { en: [] as unknown[], ja: [] as unknown[], zh: [] as unknown[] };
+  for (const row of value.recommendations) {
+    if (!isRecord(row) || !exactKeys(row, ["noMatchReason", "recommendations", "sourceKey"]) || !Array.isArray(row.recommendations)) return null;
+    if (row.noMatchReason !== null && !isTrilingualString(row.noMatchReason)) return null;
+    const perLanguage = { en: [] as unknown[], ja: [] as unknown[], zh: [] as unknown[] };
+    for (const item of row.recommendations) {
+      if (!isRecord(item) || !exactKeys(item, ["en", "ja", "rank", "score", "targetCandidateKey", "zh"])) return null;
+      const texts = TEXT_LANGUAGES.map((language) => item[language]);
+      if (!texts.every((text) => isRecord(text) && exactKeys(text, ["icebreakers", "memberHint", "reasons"]))) return null;
+      // 三种语言是同一份内容：理由条数必须一致。
+      const reasonCounts = new Set(texts.map((text) => (Array.isArray((text as Record<string, unknown>).reasons) ? ((text as Record<string, unknown>).reasons as unknown[]).length : -1)));
+      if (reasonCounts.size !== 1) return null;
+      for (const language of TEXT_LANGUAGES) {
+        const text = item[language] as Record<string, unknown>;
+        perLanguage[language].push({ icebreakers: text.icebreakers, memberHint: text.memberHint, rank: item.rank, reasons: text.reasons, score: item.score, targetCandidateKey: item.targetCandidateKey });
+      }
+    }
+    for (const language of TEXT_LANGUAGES) {
+      out[language].push({ noMatchReason: row.noMatchReason === null ? null : (row.noMatchReason as Record<TextLanguage, string>)[language], recommendations: perLanguage[language], sourceKey: row.sourceKey });
+    }
+  }
+  return { en: { recommendations: out.en }, ja: { recommendations: out.ja }, zh: { recommendations: out.zh } };
+}
+
+/** Merge per-language mapped rows: base fields from zh, every language into `i18n`. Rows are index-aligned by construction. */
+export function mergeTrilingualRecommendations(
+  rows: Readonly<Record<TextLanguage, readonly EventOperationsParticipantRecommendations[]>>,
+): readonly EventOperationsParticipantRecommendations[] {
+  return rows.zh.map((row, rowIndex) => ({
+    ...row,
+    ...(row.noMatchReason !== null ? { noMatchReasonI18n: { en: rows.en[rowIndex]!.noMatchReason!, ja: rows.ja[rowIndex]!.noMatchReason!, zh: row.noMatchReason } } : {}),
+    recommendations: row.recommendations.map((item, itemIndex) => ({
+      ...item,
+      i18n: Object.fromEntries(TEXT_LANGUAGES.map((language) => {
+        const text = rows[language][rowIndex]!.recommendations[itemIndex]!;
+        return [language, { icebreakers: text.icebreakers, memberHint: text.memberHint, reasons: text.reasons }];
+      })) as NonNullable<EventOperationsParticipantRecommendations["recommendations"][number]["i18n"]>,
+    })),
+  }));
+}
+
+/** Trilingual table document → one single-language table per language, in the original shape. */
+export function splitTrilingualTable(value: unknown): Record<TextLanguage, unknown> | null {
+  if (!isRecord(value) || !exactKeys(value, ["en", "ja", "members", "tableNumber", "zh"])) return null;
+  const texts = TEXT_LANGUAGES.map((language) => value[language]);
+  if (!texts.every((text) => isRecord(text) && exactKeys(text, ["icebreakers", "memberPrompts", "memberRationales", "rationale", "theme"]))) return null;
+  return Object.fromEntries(TEXT_LANGUAGES.map((language) => {
+    const text = value[language] as Record<string, unknown>;
+    return [language, { icebreakers: text.icebreakers, memberPrompts: text.memberPrompts, memberRationales: text.memberRationales, members: value.members, rationale: text.rationale, tableNumber: value.tableNumber, theme: text.theme }];
+  })) as Record<TextLanguage, unknown>;
+}
+
+export function mergeTrilingualTable(tables: Readonly<Record<TextLanguage, EventOperationsTable>>): EventOperationsTable {
+  return {
+    ...tables.zh,
+    i18n: Object.fromEntries(TEXT_LANGUAGES.map((language) => {
+      const table = tables[language];
+      return [language, { icebreakers: table.icebreakers, memberPrompts: table.memberPrompts, memberRationales: table.memberRationales, rationale: table.rationale, theme: table.theme }];
+    })) as NonNullable<EventOperationsTable["i18n"]>,
+  };
+}
+
+/** Two sources x 4 recommendations x three languages stays well under the 8192-token output cap. */
+export const TRILINGUAL_MAX_RECOMMENDATION_SHARD = 2;
+
+const TRILINGUAL_INSTRUCTION = `Write every natural-language value three times, under the keys ja, zh and en: ja in natural Japanese, zh in idiomatic Simplified Chinese, en in natural English. The three are the same content in three languages: decide once, then write the same facts, the same number of reasons in the same order, the same questions. Keep participant names and company names exactly as supplied in all three languages; never translate or romanize them. Keep keys, ids, numbers, and JSON syntax unchanged.`;
+
 const systemInstruction = `You are Orbit's event operations matching model.
 Return exactly one JSON document and no markdown, explanation, code fences, or trailing text.
 Treat every documented object as a closed schema: never add keys and never omit required keys.
@@ -670,6 +799,7 @@ function requestFingerprint(
   retryableJsonFailureShapes: readonly EventOperationsJsonFailureShape[] = [],
   outputLanguage: "en" | "zh-CN" = "zh-CN",
   enforceOutputLanguage = false,
+  trilingual = false,
 ): string {
   // 与 runOrbitAgentModelText 内部的 provider 选择保持一致（含未设置
   // ORBIT_AGENT_PROVIDER 时按已配置 key 自动选择），否则缓存 fingerprint 会记错 provider。
@@ -707,6 +837,8 @@ function requestFingerprint(
     thinking: config?.deepseekThinking ?? null,
     temperature,
     responseSchema: "event-operations-tokenized-recommendations-v1",
+    // 2026-11-22: only present when on, so single-language fingerprints are unchanged.
+    ...(trilingual ? { participantTextLanguages: "ja-zh-en-v1" } : {}),
   };
   return JSON.stringify(
     recommendationPromptEncoding === "deduplicated" ||
@@ -946,6 +1078,7 @@ export function createEventOperationsAiProvider({
   recommendationPromptEncoding = "expanded",
   retryableJsonFailureShapes = [],
   runModelText = runOrbitAgentModelText,
+  trilingual = false,
 }: EventOperationsAiProviderOptions = {}): EventOperationsAiProvider {
   const effectiveRetryableJsonFailureShapes =
     normalizeRetryableJsonFailureShapes(retryableJsonFailureShapes);
@@ -955,6 +1088,152 @@ export function createEventOperationsAiProvider({
   const effectiveSystemInstruction = `${systemInstruction}\n${outputLanguage === "zh-CN"
     ? "Write every natural-language output value in idiomatic Simplified Chinese, including reasons, hints, topics, themes, rationales, icebreakers, member prompts, and no-match explanations. Translate ordinary source wording into natural Chinese instead of copying English fragments. Latin text is allowed only for participant names, organization or product proper names, ids, and this exact technical whitelist: AI, SaaS, KPI, API, B2B, LP, IP, CEO, Scope 3. Translate every other English common noun; for example, translate copilot as 智能助手 and investment-ready as 具备投资条件. Keep keys, numbers, and JSON syntax unchanged."
     : "Write every natural-language output value in English. Keep ids, keys, numbers, and JSON syntax unchanged."}`;
+  const trilingualSystemInstruction = `${systemInstruction}\n${TRILINGUAL_INSTRUCTION}\nFor the zh values: Latin text is allowed only for participant names, organization or product proper names, ids, and this exact technical whitelist: AI, SaaS, KPI, API, B2B, LP, IP, CEO, Scope 3. Translate every other English common noun into natural Chinese.`;
+  const metadataOf = (response: { responseMetadata?: Parameters<typeof toEventOperationsMetadata>[0] }) =>
+    response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined;
+  function trilingualLanguageFailure<TValue>(violations: TrilingualOutputViolations, metadata: EventOperationsAiResponseMetadata | undefined): EventOperationsAiResult<TValue> {
+    process.stderr.write(`${JSON.stringify({ event: "event_operations_trilingual_language_violation", englishValues: violations.english.length, japaneseValues: violations.japanese.length })}\n`);
+    return invalidOutputLanguage(metadata);
+  }
+
+  async function trilingualRecommendations(input: Parameters<EventOperationsAiProvider["generateRecommendations"]>[0]): ReturnType<EventOperationsAiProvider["generateRecommendations"]> {
+    const tokenizedSources = compactRecommendationSources(input.sources, recommendationPromptEncoding);
+    const participants = input.sources.flatMap((source) => [source.sourceParticipant, ...source.candidateParticipants]);
+    const response = await runModelText({
+      config,
+      systemInstruction: trilingualSystemInstruction,
+      userText: `Generate networking recommendations for this bounded source shard, written in Japanese, Simplified Chinese and English.
+
+Requirements:
+- Return one row for every supplied sourceKey and no other sourceKey; use every sourceKey exactly once.
+- Select targetCandidateKey only from that sourceKey's deterministic candidateParticipants shortlist; never reuse a targetCandidateKey within a source.
+- Return at most ${input.recommendationCount} unique targets per source, ordered with rank 1..N; never recommend the source itself.
+- score is 0..100. Under each of ja, zh and en: reasons is non-empty (the same count in all three), icebreakers has exactly 2 strings, memberHint is specific.
+- noMatchReason is required: null when recommendations is non-empty, otherwise {"ja":"...","zh":"...","en":"..."} with a concrete reason.
+- Every object must contain exactly the documented keys.
+${strictChineseOutputRequirement(participants).replace("Every natural-language value", "Every zh value")}
+${recommendationPromptEncoding === "deduplicated" ? "- Resolve sourceProfileKey and each candidate profileKey from the supplied profiles lookup before making a recommendation.\n" : ""}
+JSON shape:
+{"recommendations":[{"sourceKey":"S1","noMatchReason":null,"recommendations":[{"targetCandidateKey":"S1C1","rank":1,"score":90,"ja":{"reasons":["理由1","理由2"],"icebreakers":["質問1","質問2"],"memberHint":"具体的なヒント"},"zh":{"reasons":["理由1","理由2"],"icebreakers":["问题1","问题2"],"memberHint":"具体提示"},"en":{"reasons":["reason 1","reason 2"],"icebreakers":["question 1","question 2"],"memberHint":"specific hint"}}]}]}
+
+Event id: ${input.eventId}
+Sources and deterministic shortlists:
+${JSON.stringify(tokenizedSources.promptSources)}`,
+    });
+    if (response.success === false) return modelFailure(response);
+    let metadata = metadataOf(response);
+    const json = parseJson(response.text);
+    if (json === null) return invalidJson(classifyJsonFailureShape(response.text), metadata, retryableJsonFailureShapeSet);
+    const split = splitTrilingualRecommendations(json);
+    if (!split) return trilingualRetryable("The model JSON did not match the trilingual recommendation schema.", metadata);
+    const mapped = {} as Record<TextLanguage, readonly EventOperationsParticipantRecommendations[]>;
+    for (const language of TEXT_LANGUAGES) {
+      const tokenRows = parseTokenRecommendationRows(split[language]);
+      const rows = tokenRows ? mapTokenRecommendationRows(tokenRows, tokenizedSources.tokenSources) : null;
+      if (!rows) return trilingualRetryable(`The ${language} recommendations did not match the closed schema.`, metadata);
+      mapped[language] = rows;
+    }
+    const violations = collectTrilingualOutputViolations({ en: recommendationNaturalLanguageValues(mapped.en), ja: recommendationNaturalLanguageValues(mapped.ja), zh: [] }, participants);
+    if (violations.japanese.length || violations.english.length) return trilingualLanguageFailure(violations, metadata);
+    let model = response.model;
+    let provider: typeof response.provider = response.provider;
+    const zhViolations = collectChineseOutputPolicyViolations(recommendationNaturalLanguageValues(mapped.zh), participants);
+    if (zhViolations.disallowedTokens.length > 0 || zhViolations.untranslatedValues.length > 0) {
+      const repaired = await repairChineseNaturalLanguage({
+        config,
+        naturalLanguageFields: "noMatchReason, reasons, icebreakers, and memberHint",
+        originalJson: split.zh,
+        originalResponseMetadata: metadata,
+        participants,
+        parseValue(value) {
+          const repairedRows = parseTokenRecommendationRows(value);
+          return repairedRows ? mapTokenRecommendationRows(repairedRows, tokenizedSources.tokenSources) : null;
+        },
+        runModelText,
+        values: recommendationNaturalLanguageValues,
+        violations: zhViolations,
+      });
+      if (repaired.success === false) return repaired;
+      const sameShape = repaired.data.length === mapped.zh.length && repaired.data.every((row, index) => {
+        const original = mapped.zh[index]!;
+        return row.sourceParticipantId === original.sourceParticipantId && (row.noMatchReason === null) === (original.noMatchReason === null) && row.recommendations.length === original.recommendations.length
+          && row.recommendations.every((item, itemIndex) => item.targetParticipantId === original.recommendations[itemIndex]!.targetParticipantId && item.rank === original.recommendations[itemIndex]!.rank && item.reasons.length === original.recommendations[itemIndex]!.reasons.length);
+      });
+      if (!sameShape) return trilingualRetryable("The zh repair changed recommendation structure.", repaired.responseMetadata);
+      mapped.zh = repaired.data;
+      metadata = repaired.responseMetadata;
+      model = repaired.model;
+      provider = repaired.provider as typeof provider;
+    }
+    return { data: mergeTrilingualRecommendations(mapped), model, provider, ...(metadata ? { responseMetadata: metadata } : {}), success: true };
+  }
+
+  async function trilingualTable(input: Parameters<EventOperationsAiProvider["generateTableContent"]>[0]): ReturnType<EventOperationsAiProvider["generateTableContent"]> {
+    const memberIds = new Set(input.members.map((member) => member.participantId));
+    const response = await runModelText({
+      config,
+      systemInstruction: trilingualSystemInstruction,
+      userText: `Generate content for exactly one already-assigned event table, written in Japanese, Simplified Chinese and English.
+
+Requirements:
+- Keep tableNumber=${input.tableNumber}; return every supplied member exactly once in members and no other id, one unique seat per member.
+- round ${input.roundNumber} content must use the supplied bounded features and member profiles.
+- Under each of ja, zh and en: a concrete theme, an evidence-based table rationale, exactly 3 icebreakers, exactly 2 memberPrompts under every member id, and one specific memberRationale under every member id explaining why that person belongs at this table.
+- members, and memberPrompts and memberRationales in every language, must each cover exactly the supplied member ids: no missing, duplicate, unknown, or extra member id.
+- Do not change membership. Every object must contain exactly the documented keys.
+${strictChineseOutputRequirement(input.members).replace("Every natural-language value", "Every zh value")}
+
+JSON shape:
+{"tableNumber":${input.tableNumber},"members":[{"participantId":"id","seat":"R${input.roundNumber}-T${input.tableNumber}-S1"}],"ja":{"theme":"具体的なテーマ","rationale":"このメンバーで組む理由","icebreakers":["一","二","三"],"memberPrompts":{"id":["問い1","問い2"]},"memberRationales":{"id":"この人がこの卓にいる理由"}},"zh":{"theme":"具体主题","rationale":"为什么这些人同桌","icebreakers":["一","二","三"],"memberPrompts":{"id":["问题1","问题2"]},"memberRationales":{"id":"此人为何在这一桌"}},"en":{"theme":"specific theme","rationale":"why these members work as a table","icebreakers":["one","two","three"],"memberPrompts":{"id":["prompt one","prompt two"]},"memberRationales":{"id":"why this member belongs at this table"}}}
+
+Event id: ${input.eventId}
+Round: ${input.roundNumber}
+Assigned members:
+${JSON.stringify(input.members.map(compactParticipant))}
+Bounded validated grouping features:
+${JSON.stringify(input.features)}`,
+    });
+    if (response.success === false) return modelFailure(response);
+    let metadata = metadataOf(response);
+    const json = parseJson(response.text);
+    if (json === null) return invalidJson(classifyJsonFailureShape(response.text), metadata, retryableJsonFailureShapeSet);
+    const split = splitTrilingualTable(json);
+    if (!split) return trilingualRetryable("The model JSON did not match the trilingual table schema.", metadata);
+    const tables = {} as Record<TextLanguage, EventOperationsTable>;
+    for (const language of TEXT_LANGUAGES) {
+      const table = parseTable(split[language], memberIds);
+      if (!table) return trilingualRetryable(`The ${language} table did not match the closed schema.`, metadata);
+      tables[language] = table;
+    }
+    const violations = collectTrilingualOutputViolations({ en: tableNaturalLanguageValues(tables.en), ja: tableNaturalLanguageValues(tables.ja), zh: [] }, input.members);
+    if (violations.japanese.length || violations.english.length) return trilingualLanguageFailure(violations, metadata);
+    let model = response.model;
+    let provider: typeof response.provider = response.provider;
+    const zhViolations = collectChineseOutputPolicyViolations(tableNaturalLanguageValues(tables.zh), input.members);
+    if (zhViolations.disallowedTokens.length > 0 || zhViolations.untranslatedValues.length > 0) {
+      const repaired = await repairChineseNaturalLanguage({
+        config,
+        naturalLanguageFields: "theme, rationale, icebreakers, memberPrompts, and memberRationales",
+        originalJson: split.zh,
+        originalResponseMetadata: metadata,
+        participants: input.members,
+        parseValue: (value) => parseTable(value, memberIds),
+        runModelText,
+        values: tableNaturalLanguageValues,
+        violations: zhViolations,
+      });
+      if (repaired.success === false) return repaired;
+      if (JSON.stringify(repaired.data.members) !== JSON.stringify(tables.zh.members) || repaired.data.tableNumber !== tables.zh.tableNumber) {
+        return trilingualRetryable("The zh repair changed table membership.", repaired.responseMetadata);
+      }
+      tables.zh = repaired.data;
+      metadata = repaired.responseMetadata;
+      model = repaired.model;
+      provider = repaired.provider as typeof provider;
+    }
+    return { data: mergeTrilingualTable(tables), model, provider, ...(metadata ? { responseMetadata: metadata } : {}), success: true };
+  }
+
   return {
     requestFingerprint: requestFingerprint(
       config,
@@ -962,8 +1241,11 @@ export function createEventOperationsAiProvider({
       effectiveRetryableJsonFailureShapes,
       outputLanguage,
       enforceOutputLanguage,
+      trilingual,
     ),
+    ...(trilingual ? { maxRecommendationShardSize: TRILINGUAL_MAX_RECOMMENDATION_SHARD } : {}),
     async generateRecommendations(input) {
+      if (trilingual) return trilingualRecommendations(input);
       const tokenizedSources = compactRecommendationSources(input.sources, recommendationPromptEncoding);
       const participants = input.sources.flatMap((source) => [
         source.sourceParticipant,
@@ -1125,6 +1407,7 @@ ${JSON.stringify(tokenizedSources.prompt)}`,
     },
 
     async generateTableContent(input) {
+      if (trilingual) return trilingualTable(input);
       const response = await runModelText({
         config,
         systemInstruction: effectiveSystemInstruction,
@@ -1218,6 +1501,8 @@ export function createConfiguredEventOperationsAiProvider({
     outputLanguage: "zh-CN",
     recommendationPromptEncoding: "deduplicated",
     retryableJsonFailureShapes: ["empty", "parse_syntax", "unterminated_envelope"],
+    // 2026-11-22: participant-facing text is generated once in ja/zh/en.
+    trilingual: true,
   });
 }
 

@@ -111,7 +111,8 @@ export interface JourneyLivePorts {
   /** Canonical registration is `rsvped` for this actor and event. */
   registered(actorId: string, eventId: string): Promise<boolean>;
   /** Attendee-side operations projection (published results only). */
-  venueWorkspace(actorId: string, eventId: string): Promise<VenueWorkspace | null>;
+  /** `language` picks the AI text of a trilingual published result (2026-11-22); omitted = the stored base text. */
+  venueWorkspace(actorId: string, eventId: string, language?: string): Promise<VenueWorkspace | null>;
   /** R17：受付 QR v2 与受付番号（可选；没有的端口不显示 QR / 番号）。 */
   checkInPass?(actorId: string, eventId: string, participantId: string, eventEndsAt: string): Promise<{ qrPayload: string | null; receptionNumber: string | null }>;
 

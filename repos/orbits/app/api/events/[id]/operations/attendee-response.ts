@@ -6,6 +6,11 @@ import {
   publicTable,
 } from "../../../../../features/events/event-operations/attendee-public";
 import type { EventOperationsAttendeeWorkspace } from "../../../../../features/events/event-operations/service";
+import {
+  participantRecommendationsIn,
+  tableIn,
+} from "../../../../../features/events/event-operations/text-language";
+import type { EventOperationsTextLanguage } from "../../../../../features/events/event-operations/contract";
 
 function publicGraph(graph: EventOperationsRelationshipGraph | null) {
   if (!graph) return null;
@@ -22,6 +27,7 @@ function publicGraph(graph: EventOperationsRelationshipGraph | null) {
  */
 export function toAttendeeOperationsResponse(
   workspace: EventOperationsAttendeeWorkspace,
+  language: EventOperationsTextLanguage = "zh",
 ) {
   return {
     checkIn: workspace.checkIn
@@ -47,9 +53,10 @@ export function toAttendeeOperationsResponse(
     graph: publicGraph(workspace.graph),
     me: publicParticipant(workspace.me),
     profileEditable: workspace.profileEditable,
-    recommendations: publicRecommendations(workspace.recommendations),
+    // AI 文字按查看者语言（2026-11-22 三语）；旧发布结果没有三语时原样返回。
+    recommendations: publicRecommendations(workspace.recommendations ? participantRecommendationsIn(workspace.recommendations, language) : null),
     resultsState: workspace.resultsState,
-    roundOneTable: publicTable(workspace.roundOneTable),
-    roundTwoTable: publicTable(workspace.roundTwoTable),
+    roundOneTable: publicTable(workspace.roundOneTable ? tableIn(workspace.roundOneTable, language) : null),
+    roundTwoTable: publicTable(workspace.roundTwoTable ? tableIn(workspace.roundTwoTable, language) : null),
   };
 }

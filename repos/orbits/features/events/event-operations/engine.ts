@@ -1278,7 +1278,7 @@ export function createEventOperationsEngine({
         eventId: configuration.eventId,
         idempotencyKey: resolvedIdempotencyKey,
       }).slice(0, 32)}`;
-      const shardSize = Math.max(1, Math.floor(configuration.shardSize));
+      const shardSize = Math.max(1, Math.floor(Math.min(configuration.shardSize, aiProvider.maxRecommendationShardSize ?? Number.POSITIVE_INFINITY)));
       const shardTaskIds = Array.from(
         { length: Math.ceil(normalized.length / shardSize) },
         (_, shardIndex) => `${generationId}:recommendations:${shardIndex}`,

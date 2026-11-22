@@ -147,8 +147,8 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       return service.prep(actorId!, eventId(params), language);
     }, deps),
     // 2026-11-21 `?view=record`：结束后的只读回看只回回看用得上的字段（venueRecordView）；活动中照常返回完整内容。
-    venue: journeyRoute({ auth: "required", schema: eventVenueResponseSchema }, async ({ actorId, params, platform, request, service }) => {
-      const venue = await service.venue(actorId!, eventId(params), platform);
+    venue: journeyRoute({ auth: "required", schema: eventVenueResponseSchema }, async ({ actorId, language, params, platform, request, service }) => {
+      const venue = await service.venue(actorId!, eventId(params), platform, language);
       return venue && new URL(request.url).searchParams.get("view") === "record" ? venueRecordView(venue) : venue;
     }, deps),
     venueMemo: journeyRoute({ auth: "required", schema: eventVenueMemoResultSchema, write: true }, async ({ actorId, params, request, service }) => {

@@ -9,7 +9,8 @@
  */
 import { applyMatchingMoves, avoidPreviousTablemates, ensureInvestorPerTable, pairKey, separateSameCompany } from "../../../../shared/compute/table-constraints";
 import type { HostMatchingConditions, HostMatchingMember, HostMatchingMove, HostMatchingTable } from "../../../../shared/contract/host-console";
-import type { EventOperationsGroupingResult, EventOperationsParticipant, EventOperationsTable } from "../../event-operations/contract";
+import { EVENT_OPERATIONS_TEXT_LANGUAGES, type EventOperationsGroupingResult, type EventOperationsParticipant, type EventOperationsTable, type EventOperationsTextLanguage } from "../../event-operations/contract";
+import { HOST_PLACED_REASON_I18N } from "../../event-operations/text-language";
 import type { EventOperationsPostgresClient } from "../../event-operations/storage/postgres-client";
 import { HostError } from "../service";
 
@@ -74,12 +75,29 @@ export function composeGrouping(base: EventOperationsGroupingResult, tables: rea
     for (const [id, prompts] of Object.entries(table.memberPrompts)) promptsOf.set(id, prompts);
     for (const [id, reason] of Object.entries(table.memberRationales)) rationaleOf.set(id, reason);
   }
+  // 三语（2026-11-22）：每种语言各自按人收集，移动的人带着自己的提示和理由走，和旧字段同一规则。
+  const textTables = [...base.roundOne, ...base.roundTwo].filter((table) => table.i18n);
+  const i18nPromptsOf = (language: EventOperationsTextLanguage) => new Map(textTables.flatMap((table) => Object.entries(table.i18n![language].memberPrompts)));
+  const i18nRationaleOf = (language: EventOperationsTextLanguage) => new Map(textTables.flatMap((table) => Object.entries(table.i18n![language].memberRationales)));
+  const perLanguage = Object.fromEntries(EVENT_OPERATIONS_TEXT_LANGUAGES.map((language) => [language, { prompts: i18nPromptsOf(language), rationales: i18nRationaleOf(language) }])) as Record<EventOperationsTextLanguage, { prompts: Map<string, readonly [string, string]>; rationales: Map<string, string> }>;
   const rebuild = (round: readonly EventOperationsTable[], index: number): EventOperationsTable[] => round.map((table) => {
     const draft = tables.find((item) => item.round === index && tableNumber(item.table) === table.tableNumber);
     const members = (draft?.members ?? []).filter((member) => snapshotIds.has(member.participantId));
     if (members.length > tableSize) throw new HostError("VALIDATION", "TABLE_TOO_LARGE");
+    const i18n = table.i18n
+      ? Object.fromEntries(EVENT_OPERATIONS_TEXT_LANGUAGES.map((language) => {
+        const text = table.i18n![language];
+        const known = perLanguage[language];
+        return [language, {
+          ...text,
+          memberPrompts: Object.fromEntries(members.map((member) => [member.participantId, known.prompts.get(member.participantId) ?? text.icebreakers.slice(0, 2) as unknown as readonly [string, string]])),
+          memberRationales: Object.fromEntries(members.map((member) => [member.participantId, member.placedByHost ? HOST_PLACED_REASON_I18N[language] : known.rationales.get(member.participantId) ?? text.rationale])),
+        }];
+      })) as EventOperationsTable["i18n"]
+      : undefined;
     return {
       ...table,
+      ...(i18n ? { i18n } : {}),
       memberPrompts: Object.fromEntries(members.map((member) => [member.participantId, promptsOf.get(member.participantId) ?? table.icebreakers.slice(0, 2) as unknown as readonly [string, string]])),
       memberRationales: Object.fromEntries(members.map((member) => [member.participantId, member.placedByHost ? HOST_PLACED_REASON : rationaleOf.get(member.participantId) ?? table.rationale])),
       members: members.map((member, seat) => ({ participantId: member.participantId, seat: String(seat + 1) })),

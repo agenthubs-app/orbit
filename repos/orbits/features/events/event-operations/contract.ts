@@ -92,8 +92,23 @@ export interface EventOperationsCapturedSnapshot {
   sourceVersions: readonly EventOperationsSnapshotSourceVersion[];
 }
 
+/**
+ * 2026-11-22 三语：AI 写给参加者看的文字一次生成 ja/zh/en。原有字符串字段保持原义
+ * （= zh，旧读者和旧版 App 照旧），三语放在可选的 `i18n` 里；读取时按查看者语言替换。
+ */
+export type EventOperationsTextLanguage = "ja" | "zh" | "en";
+export const EVENT_OPERATIONS_TEXT_LANGUAGES: readonly EventOperationsTextLanguage[] = ["ja", "zh", "en"];
+export type EventOperationsI18n<T> = Readonly<Record<EventOperationsTextLanguage, T>>;
+
+export interface EventOperationsRecommendationText {
+  icebreakers: readonly [string, string];
+  memberHint: string;
+  reasons: readonly [string, ...string[]];
+}
+
 export interface EventOperationsRecommendation {
   icebreakers: readonly [string, string];
+  i18n?: EventOperationsI18n<EventOperationsRecommendationText>;
   memberHint: string;
   rank: number;
   reasons: readonly [string, ...string[]];
@@ -103,6 +118,8 @@ export interface EventOperationsRecommendation {
 
 export interface EventOperationsParticipantRecommendations {
   noMatchReason: string | null;
+  /** 三语的 noMatchReason（只在 noMatchReason 非空时存在）。 */
+  noMatchReasonI18n?: EventOperationsI18n<string>;
   recommendations: readonly EventOperationsRecommendation[];
   sourceParticipantId: string;
 }
@@ -112,8 +129,17 @@ export interface EventOperationsTableMember {
   seat: string;
 }
 
+export interface EventOperationsTableText {
+  icebreakers: readonly [string, string, string];
+  memberPrompts: Readonly<Record<string, readonly [string, string]>>;
+  memberRationales: Readonly<Record<string, string>>;
+  rationale: string;
+  theme: string;
+}
+
 export interface EventOperationsTable {
   icebreakers: readonly [string, string, string];
+  i18n?: EventOperationsI18n<EventOperationsTableText>;
   memberPrompts: Readonly<Record<string, readonly [string, string]>>;
   memberRationales: Readonly<Record<string, string>>;
   members: readonly EventOperationsTableMember[];
@@ -362,6 +388,12 @@ export type EventOperationsAiResult<TValue> =
 
 export interface EventOperationsAiProvider {
   readonly requestFingerprint?: string;
+  /**
+   * Largest recommendation shard this provider can answer in one bounded output
+   * (2026-11-22: trilingual output is ~3x longer, so it caps the shard at 2).
+   * The engine uses min(configuration.shardSize, this) when it plans a generation.
+   */
+  readonly maxRecommendationShardSize?: number;
   generateGroupingFeatures(input: {
     eventId: string;
     maxAffinityCount: number;

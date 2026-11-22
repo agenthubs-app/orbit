@@ -1,7 +1,9 @@
+import { recommendationIn, tableIn } from "./text-language";
 import type {
   EventContactRequest,
   EventOperationsParticipant,
   EventOperationsPublishedResult,
+  EventOperationsTextLanguage,
   EventOperationsTable,
 } from "./contract";
 import type { EventOperationsRepository } from "./repository";
@@ -73,6 +75,8 @@ export interface EventParticipantDetailView {
 export interface EventParticipantDetailService {
   get(input: {
     eventId: string;
+    /** Viewer language for AI text of a trilingual published result (2026-11-22); omitted = stored base text. */
+    language?: EventOperationsTextLanguage;
     targetParticipantId: string;
     viewerActorId: string;
   }): Promise<EventParticipantDetailView | null>;
@@ -223,7 +227,7 @@ export function createEventParticipantDetailService(input: {
       ? createConfiguredEventProfileResponseReader()
       : input.responseReader;
   return {
-    async get({ eventId, targetParticipantId, viewerActorId }) {
+    async get({ eventId, language, targetParticipantId, viewerActorId }) {
       const workspace = await input.operationsService.attendeeWorkspace({
         actorId: viewerActorId,
         eventId,
@@ -232,10 +236,13 @@ export function createEventParticipantDetailService(input: {
         (value) => value.participantId === targetParticipantId,
       );
       if (!participant) return null;
-      const published =
+      const stored =
         workspace.resultsState === "ready"
           ? await input.repository.getPublishedResultForAttendee(eventId)
           : null;
+      const published = stored && language
+        ? { ...stored, grouping: { roundOne: stored.grouping.roundOne.map((table) => tableIn(table, language)), roundTwo: stored.grouping.roundTwo.map((table) => tableIn(table, language)) } }
+        : stored;
       const responseVersion = responseReader
         ? await responseReader.read({
             eventId,
@@ -243,9 +250,10 @@ export function createEventParticipantDetailService(input: {
             participantId: participant.participantId,
           })
         : null;
-      const recommendation = workspace.recommendations?.recommendations.find(
+      const found = workspace.recommendations?.recommendations.find(
         (value) => value.targetParticipantId === participant.participantId,
       );
+      const recommendation = found && language ? recommendationIn(found, language) : found;
       const viewerOwnsTarget =
         participant.participantId === workspace.me.participantId;
       const visible = visibleParticipantFields(

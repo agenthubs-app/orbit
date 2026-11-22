@@ -277,7 +277,7 @@ export function getConfiguredEventOperationsCloudWorker(): ConfiguredEventOperat
         Math.max(1, Math.floor(taskLeaseMs / 3)),
       ),
       leaseMs: taskLeaseMs,
-      maxConcurrency: positiveInteger("ORBIT_EVENT_OPERATIONS_TASK_CONCURRENCY", 8),
+      maxConcurrency: positiveInteger("ORBIT_EVENT_OPERATIONS_TASK_CONCURRENCY", 16),
       repository,
     }),
     generationConcurrency: positiveInteger("ORBIT_EVENT_OPERATIONS_GENERATION_CONCURRENCY", 2),
@@ -302,7 +302,7 @@ export function getConfiguredEventOperationsCloudWorker(): ConfiguredEventOperat
     }),
     outboxRepository: createPostgresEventOperationsOutboxRepository(runtime),
     runtime,
-    taskConcurrency: positiveInteger("ORBIT_EVENT_OPERATIONS_TASK_CONCURRENCY", 8),
+    taskConcurrency: positiveInteger("ORBIT_EVENT_OPERATIONS_TASK_CONCURRENCY", 16),
     workerId,
   });
   const configured: ConfiguredEventOperationsCloudWorker = {
