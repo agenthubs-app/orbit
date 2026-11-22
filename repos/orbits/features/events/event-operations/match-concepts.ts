@@ -168,8 +168,10 @@ export function offerAnswersNeed(need: string, offer: string): boolean {
 
 /** Profile terms the program knows (every tag of every table, any language), as normalised parts of 4+ characters. */
 const GENERIC_PARTS = new Set(["壁打ち相手", "ブレスト仲間", "イベント", "コミュニティ", "パートナー", "アドバイザー"].map(tagKey));
+// Whole tags only: a fragment (「メディア」 of 「メディア・ブランド露出」) also appears in free-text profiles written in
+// another language, where it cannot be found (replay: the only false positives came from fragments).
 const PROFILE_TERM_PARTS = [...new Set([NEED_TAGS, OFFER_TAGS, TOPIC_TAGS].flatMap((table) => Object.values(table).flat())
-  .flatMap((tag) => tagKey(tag).split(/[/・、,，×&+]+/u)).filter((part) => part.length >= 4 && !GENERIC_PARTS.has(part)))];
+  .map((tag) => tagKey(tag)).filter((part) => part.length >= 4 && !GENERIC_PARTS.has(part)))];
 /**
  * Known profile terms a text mentions that appear nowhere in the given profile texts (both people's needs, offers,
  * topics, highlight, industry, role). A reason that names such a term attributes something neither person said

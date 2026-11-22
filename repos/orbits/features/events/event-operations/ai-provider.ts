@@ -887,6 +887,8 @@ function textIssues(text: string, allowed: ReadonlySet<string>, language: TextLa
   }
   if (companies.some((key) => !people.has(key))) issues.push("company_without_person");
   if (/[{}]/u.test(text.replace(ANY_BRACES_PATTERN, ""))) issues.push("stray_brace");
+  // A key written without braces (「M2とM3は…」) would reach attendees as a bare code.
+  if (/(?<![A-Za-z0-9])(?:M\d+|S\d+(?:C\d+)?)(?![A-Za-z0-9])/u.test(text.replace(ANY_BRACES_PATTERN, " "))) issues.push("bare_key");
   const values = { en: language === "en" ? [text] : [], ja: language === "ja" ? [text] : [], zh: language === "zh" ? [text] : [] };
   const violations = collectTrilingualOutputViolations(values, participants);
   if (violations.names.length) issues.push("raw_name");
@@ -1454,6 +1456,7 @@ export function createEventOperationsAiProvider({
     raw_name: "never write a person's or company's name; use only the placeholders",
     unsupported_claim: "it names something that is in neither person's profile; say only what the two profiles say",
     stray_brace: "no braces outside placeholders",
+    bare_key: "a person is written as a bare key (such as M2): use the placeholder with braces, or describe the table without naming members",
   };
 
   /** Base texts with issues get one bounded rewrite (meaning kept, rules fixed); then the same check again. */
@@ -1843,7 +1846,7 @@ ${JSON.stringify(pairs)}${feedback}`,
         userText: `Write the texts for one already-assigned event table (round ${input.roundNumber}, table ${input.tableNumber}) in Japanese.
 
 Requirements:
-- theme: a concrete theme for this table. rationale: why these members work as a table. q1..q3: three icebreaker questions for the table.
+- theme: a concrete theme for this table. rationale: why these members work as a table, about the table as a whole: name no individual member (no keys, no placeholders), and say "everyone"/全員 only for what every member's profile actually has. q1..q3: three icebreaker questions for the table.
 - For every member key Mn: Mn.p1 and Mn.p2 are two questions for that person, addressed to them directly in polite Japanese (no names, no placeholders, no third person), and Mn.why is one sentence explaining why that person belongs at this table, read by everyone at the table (third person about that member: omit the subject or use {Mn}; never あなた), stating only what the supplied profile says (a topic is an interest, not an ability).
 - The only placeholders that exist are ${keys.map((key) => `{${key}}`).join(", ")} (the server adds the name and さん; company as {Mn:company} next to {Mn}, only when hasCompany=true). Use the supplied features and profiles.
 
@@ -1872,11 +1875,14 @@ ${JSON.stringify(promptFeatures)}${feedback}`,
     if (doc === null) return trilingualRetryable("The table base draft failed twice (shape).", metadata) as never;
     const allowed = new Set(keys);
     const normalize = (text: string) => normalizePlaceholders(text).replace(/\{(\d+)(:company)?\}/gu, (_match, key: string, company?: string) => `{M${key}${company ?? ""}}`);
-    const base: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; text: string; voice?: TextVoice }> = [
-      ...["theme", "rationale", "q1", "q2", "q3"].map((field) => ({ allowed, id: field, text: normalize(String(doc![field])) })),
+    // A member's why may only name terms from that member's profile; theme and rationale from the table's profiles.
+    const memberTexts = new Map(input.members.map((member) => [keyOf.get(member.participantId)!, profileFacts(keyOf.get(member.participantId)!, member).map((fact) => fact.text)]));
+    const tableTexts = [...memberTexts.values()].flat();
+    const base: Array<{ allowed: ReadonlySet<string>; asked?: string; id: string; profileTexts?: readonly string[]; text: string; voice?: TextVoice }> = [
+      ...["theme", "rationale", "q1", "q2", "q3"].map((field) => ({ allowed, id: field, ...(field === "theme" || field === "rationale" ? { profileTexts: tableTexts } : {}), text: normalize(String(doc![field])) })),
       ...keys.flatMap((key) => [
         ...["p1", "p2"].map((field) => ({ allowed, asked: key, id: `${key}.${field}`, text: normalize(String(doc![`${key}.${field}`])) })),
-        { allowed, id: `${key}.why`, text: normalize(String(doc![`${key}.why`])), voice: "about_member" as const },
+        { allowed, id: `${key}.why`, profileTexts: memberTexts.get(key)!, text: normalize(String(doc![`${key}.why`])), voice: "about_member" as const },
       ]),
     ];
     const baseChecked = await checkAndRepairBase({ items: base, kind: "table", metadata, participants: input.members, text: response.text });

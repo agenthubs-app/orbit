@@ -530,3 +530,13 @@ test("a reason naming something in neither profile is rewritten once from the pr
   assert.match(request, /"notInEitherProfile":\["海外展開"\]/u);
   await failsRetryably(model({ base: goodBase({ p1: { r2: { ev: ["T.n1", "S.o1"], text: "{TARGET}さんが関心を持つ海外展開の話もできます。" } } }), baseRepair: { texts: { t1: "{TARGET}さんは海外展開に詳しいです。" } } }), two, "a rewrite that keeps the claim fails");
 });
+
+test("table texts: a bare member key is rewritten once; a member's why may only name that member's own profile terms", async () => {
+  const bare = model({ base: tableBase({ rationale: "M1とM2が補い合う卓です。" }), baseRepair: { texts: { t1: "導入側と提供側がそろう卓です。" } } });
+  const ok = await provider(bare).generateTableContent(tableInput);
+  assert.equal(ok.success, true);
+  assert.match(bare.calls.find((call) => call.kind === "baseRepair")!.userText, /bare key/u);
+  const borrowed = model({ base: tableBase({ "M1.why": "{M1}さんは海外展開に詳しい方です。" }), baseRepair: { texts: { t1: "{M1}さんは資金調達を探しています。" } } });
+  assert.equal((await provider(borrowed).generateTableContent(tableInput)).success, true);
+  assert.match(borrowed.calls.find((call) => call.kind === "baseRepair")!.userText, /"notInEitherProfile":\["海外展開"\]/u);
+});
