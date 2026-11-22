@@ -18,14 +18,15 @@ export function readContactInitialization(value: unknown, actorId: string, conta
   return snapshot?.connection.contactId === contactId ? { state: "initialized", snapshot } : null;
 }
 
+// Errors carry only their code: ContactInitializationForm shows them in the reader's language.
 export function buildContactInitialization(pending: Extract<RelationshipInitializationRead, { state: "pending" }>, draft: ContactInitializationDraft, zone: string, idempotencyKey: string, taskId: string): RelationshipInitializationInput {
-  if (!draft.stage) throw new Error("CHOICE_REQUIRED: 请明确选择关系阶段 / Choose a relationship stage / 関係段階を選択してください");
-  if (draft.stage === "archived" && !draft.archiveConfirmed) throw new Error("ARCHIVE_CONFIRMATION_REQUIRED: 请确认归档 / Confirm archive / アーカイブを確認してください");
+  if (!draft.stage) throw new Error("CHOICE_REQUIRED");
+  if (draft.stage === "archived" && !draft.archiveConfirmed) throw new Error("ARCHIVE_CONFIRMATION_REQUIRED");
   const choice = draft.stage === "active" ? { stage: draft.stage, activeGoal: draft.goal.trim() }
     : draft.stage === "archived" ? { stage: draft.stage }
       : { stage: draft.stage, nextTask: { taskId, title: draft.title.trim(), dueAt: resolveLocalDateTime(draft.date, draft.time, zone) ?? "" } };
   const parsed = relationshipInitializationSchema.safeParse({ expectedRevision: pending.revision, idempotencyKey, choice });
-  if (!parsed.success) throw new Error("INVALID_INPUT: 请填写目标或有效的跟进内容及日期时间 / Enter a goal or a dated next step / 目標または日時付きの次のステップを入力してください");
+  if (!parsed.success) throw new Error("INVALID_INPUT");
   return parsed.data;
 }
 

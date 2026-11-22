@@ -23,6 +23,7 @@ import { createThemedStyles } from "../../design/theme";
 import {
   accountAuthToView,
   accountAuthPasswordError,
+  isGoogleSignInCancelled,
   localizeAuthMessage,
   nextHrefForAccountAuthSubmit,
   normalizedNext,
@@ -266,7 +267,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
 
       if (!isCurrent()) return;
       if (!result.success) {
-        if (result.message === "已取消 Google 登录。") {
+        if (isGoogleSignInCancelled(result.message)) {
           setNotice(locale.t("auth.googleCancelled"));
         } else {
           setError(localizeAuthMessage(result.message, locale.t) ?? locale.t("auth.googleIncomplete"));

@@ -7,6 +7,12 @@ import {
   signInWithMobileCredentials,
   type MobileAuthProviderId
 } from "./mobile-auth";
+import { currentTranslator, type MessageKey } from "../i18n/messages";
+
+// QA 2026-11-21: transport failures read in the published screen language (zh is the key source).
+function authText(key: MessageKey): string {
+  return currentTranslator()(key);
+}
 
 export type AuthFetchLike = (
   input: RequestInfo | URL,
@@ -350,6 +356,15 @@ export async function signInWithCredentials({
   };
 }
 
+// The server's own sentence is English developer text or fixed Chinese; the screen
+// shows the wording for its reason in the screen language instead.
+function registerFailureKey(code: string, status: number): MessageKey {
+  if (status === 409 || code === "CONFLICT") return "auth.err.emailTaken";
+  if (status === 429 || code === "RATE_LIMITED") return "auth.err.rateLimited";
+  if (status === 400 || code === "VALIDATION_ERROR") return "auth.err.signupInvalid";
+  return "auth.err.signupFailed";
+}
+
 export async function registerOrbitAccount({
   baseUrl,
   displayName,
@@ -368,7 +383,7 @@ export async function registerOrbitAccount({
   if (!normalizedEmail || password.length < 8) {
     return registerFailure(
       "ORBIT_APP_AUTH_INVALID_INPUT",
-      "请输入邮箱，并设置至少 8 位密码。"
+      authText("auth.err.signupInput")
     );
   }
 
@@ -388,10 +403,10 @@ export async function registerOrbitAccount({
       },
       method: "POST"
     });
-  } catch (error) {
+  } catch {
     return registerFailure(
       "ORBIT_APP_AUTH_NETWORK_ERROR",
-      error instanceof Error ? error.message : "网络连接失败。"
+      authText("auth.err.networkShort")
     );
   }
 
@@ -404,13 +419,10 @@ export async function registerOrbitAccount({
         ? (payload.error as JsonBody)
         : {};
     const code = stringField(errorBody, "code");
-    const message = stringField(errorBody, "message");
 
     return registerFailure(
       code === "CONFLICT" ? "ORBIT_APP_AUTH_EMAIL_TAKEN" : code || "ORBIT_APP_AUTH_REGISTER_FAILED",
-      response.status === 409
-        ? "该邮箱已注册，请直接登录。"
-        : message || "创建账号失败，请稍后再试。",
+      authText(registerFailureKey(code, response.status)),
       response.status
     );
   }
@@ -439,17 +451,17 @@ export async function signOutOrbitSession({
         method: "POST"
       }
     );
-  } catch (error) {
+  } catch {
     return authFailure(
       "ORBIT_APP_AUTH_NETWORK_ERROR",
-      error instanceof Error ? error.message : "网络连接失败。"
+      authText("auth.err.networkShort")
     );
   }
 
   if (!response.ok) {
     return authFailure(
       "ORBIT_APP_AUTH_SIGN_OUT_FAILED",
-      "退出登录失败，请稍后再试。",
+      authText("auth.err.signOutFailed"),
       response.status
     );
   }
@@ -463,7 +475,7 @@ export async function signOutOrbitSession({
 
     return authFailure(
       stringField(errorBody, "code") || "ORBIT_APP_AUTH_SIGN_OUT_FAILED",
-      stringField(errorBody, "message") || "退出登录失败，请稍后再试。",
+      authText("auth.err.signOutFailed"),
       response.status
     );
   }

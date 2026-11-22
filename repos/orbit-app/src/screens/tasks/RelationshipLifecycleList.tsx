@@ -10,6 +10,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { DataCard } from "../../components/DataCard";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { useStandardCopy } from "../../i18n/standard-copy";
 import { useOrbitTheme as useTheme } from "../../design/theme";
 
 /**
@@ -49,9 +50,9 @@ function ScopedLifecycleList({ scopeKey, actorId, ready, mode }: { scopeKey: str
   const offline = cursor === null && first.copy?.offline === true;
   const router = useRouter();
   const locale = useOrbitLocale();
-  const { language } = locale;
+  const { t } = locale;
+  const copy = useStandardCopy();
   const { colors } = useTheme();
-  const text = (zh: string, en: string, ja: string) => language === "zh" ? zh : language === "ja" ? ja : en;
   const refresh = () => { setCursor(null); state.refresh(); };
   const refreshRef = useRef(refresh); refreshRef.current = refresh;
   // Returning from a task mutation starts at the current first page; changing
@@ -59,13 +60,13 @@ function ScopedLifecycleList({ scopeKey, actorId, ready, mode }: { scopeKey: str
   useFocusEffect(useCallback(() => { refreshRef.current(); }, []));
   const page = decodeRelationshipTaskPage(ready && (state.kind === "success" || state.kind === "empty") ? state.data : null, actorId, mode);
   const items = page?.items;
-  return <DataCard title={text("人脉跟进", "Relationship follow-ups", "関係のフォローアップ")} detail={text("完成时需确认关系下一步", "Complete with a relationship next step", "完了時に関係の次のステップを確認")}>
+  return <DataCard title={t("tasks.lifecycle.title")} detail={t("tasks.lifecycle.detail")}>
     {offline ? <OfflineNotice lastSyncedAt={first.copy?.lastSyncedAt ?? null} reason={first.copy?.reason ?? null} /> : null}
-    <Pressable accessibilityRole="button" onPress={refresh} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ color: colors.accentText }}>{text("刷新人脉跟进", "Refresh follow-ups", "フォローアップを更新")}</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={refresh} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ color: colors.accentText }}>{t("tasks.lifecycle.refresh")}</Text></Pressable>
     {items ? items.length ? items.map(task => <Pressable key={task.itemKey} accessibilityRole="button" onPress={() => router.push(`/tasks/relationship/${encodeURIComponent(task.connectionId)}${task.status === "open" || task.status === "scheduled" ? `?taskId=${encodeURIComponent(task.taskId)}&contactId=${encodeURIComponent(task.contactId)}` : ""}` as Href)} style={{ paddingVertical: 12 }}>
-      <Text style={{ color: colors.ink }}>{task.titlePreview}</Text><Text style={{ color: colors.ink3Text }}>{task.contactNamePreview} · {task.status === "completed" ? text("已完成", "Completed", "完了") : task.status === "dismissed" ? text("已忽略", "Dismissed", "終了") : text("待处理", "Open", "未完了")}</Text>
-    </Pressable>) : <Text style={{ color: colors.ink3Text }}>{text("暂无人脉跟进", "No follow-ups", "フォローアップはありません")}</Text> : <View><Text style={{ color: colors.ink3Text }}>{state.kind === "loading" ? text("正在读取…", "Loading…", "読み込み中…") : state.kind === "offline" ? locale.t("sync.notOnDevice") : text("跟进读取失败，请刷新重试。", "Unable to load follow-ups. Refresh to retry.", "読み込めませんでした。再試行してください。")}</Text></View>}
-    {page?.hasMore && !offline ? <Pressable accessibilityRole="button" onPress={() => setCursor(page.nextCursor)} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ color: colors.accentText }}>{text("下一页跟进", "Next follow-up page", "次のフォローアップ")}</Text></Pressable> : null}
-    {cursor ? <Pressable accessibilityRole="button" onPress={refresh} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ color: colors.accentText }}>{text("返回跟进第一页", "First follow-up page", "最初のフォローアップ")}</Text></Pressable> : null}
+      <Text style={{ color: colors.ink }}>{task.titlePreview}</Text><Text style={{ color: colors.ink3Text }}>{task.contactNamePreview} · {task.status === "completed" ? t("tasks.lifecycle.statusCompleted") : task.status === "dismissed" ? t("tasks.lifecycle.statusDismissed") : t("tasks.lifecycle.statusOpen")}</Text>
+    </Pressable>) : <Text style={{ color: colors.ink3Text }}>{t("tasks.lifecycle.empty")}</Text> : <View><Text style={{ color: colors.ink3Text }}>{state.kind === "loading" ? copy.loading.loading : state.kind === "offline" ? t("sync.notOnDevice") : t("tasks.lifecycle.readFailed")}</Text></View>}
+    {page?.hasMore && !offline ? <Pressable accessibilityRole="button" onPress={() => setCursor(page.nextCursor)} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ color: colors.accentText }}>{t("tasks.lifecycle.nextPage")}</Text></Pressable> : null}
+    {cursor ? <Pressable accessibilityRole="button" onPress={refresh} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ color: colors.accentText }}>{t("tasks.lifecycle.firstPage")}</Text></Pressable> : null}
   </DataCard>;
 }

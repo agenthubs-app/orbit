@@ -298,7 +298,7 @@ export const plan = {
   "plan.pending.candidateOpen": "查看{type}的候选{name}",
   "plan.step.title": "步骤",
   "plan.step.criteria": "完成标准",
-  "plan.step.number": "Step {number}",
+  "plan.step.number": "第 {number} 步",
   "plan.step.suggestion": "「{title}」完成了吗？",
   "plan.step.suggestionNote": "是否完成由你决定",
   "plan.step.notYet": "还没有",

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { AppState, Text } from "react-native";
 import { validTimeZone } from "./date-time";
+import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
 
 export interface DeviceTimeZone { timeZone: string; canSave: boolean; error: boolean }
 const Context = createContext<DeviceTimeZone | null>(null);
@@ -27,8 +28,9 @@ function useDeviceTimeZone(enabled: boolean): DeviceTimeZone {
 
 export function OrbitTimeZoneProvider({ children }: { children: ReactNode }) {
   const state = useDeviceTimeZone(true);
+  const { t } = useOrbitLocale();
   return <Context.Provider value={state}>
-    {state.error ? <Text accessibilityRole="alert">{state.canSave ? `无法更新设备时区，暂按 ${state.timeZone} 显示。` : "无法读取设备时区，当前以 UTC 只读显示。日期草稿会保留。"}</Text> : null}
+    {state.error ? <Text accessibilityRole="alert">{state.canSave ? t("schedule.timeZoneStale", { timeZone: state.timeZone }) : t("schedule.timeZoneUnavailable")}</Text> : null}
     {children}
   </Context.Provider>;
 }

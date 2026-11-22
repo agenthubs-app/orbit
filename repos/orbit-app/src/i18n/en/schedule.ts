@@ -97,4 +97,8 @@ export const schedule = {
   "schedule.deleteAsk": "Delete this event?",
   "schedule.discardChanges": "Discard Changes",
   "schedule.keepEditing": "Keep Editing",
+  "schedule.outboxReadFailed": "Can't read the schedule items waiting to sync on this device right now.",
+  "schedule.outboxNotReady": "Schedule sync on this device isn't ready yet.",
+  "schedule.timeZoneStale": "Couldn't update the device time zone. Showing times in {timeZone} for now.",
+  "schedule.timeZoneUnavailable": "Couldn't read the device time zone. Showing UTC, read-only. Date drafts are kept.",
 } as const;

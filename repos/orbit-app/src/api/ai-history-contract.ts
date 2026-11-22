@@ -4,6 +4,8 @@ import { aiSessionOrganizationSchema, aiSessionOriginSchema, reliableAiSendRecei
 import type { ReliableAiSendReceiptContract } from "./contract/ai-sessions";
 import { aiSessionArtifactRecoverySchema } from "./schema/ai-artifacts";
 import { aiSessionMessagePageSchema, aiSessionSummaryPageSchema } from "./schema/ai-session-page";
+import { currentOrbitLanguage } from "../i18n/locale-core";
+import { currentTranslator } from "../i18n/messages";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -109,15 +111,18 @@ export type AiHistoryRow = { groupId: string | null; id: string; organizationRev
 export function aiHistoryRows(conversations: z.infer<typeof aiConversationListSchema> | null, sessions: z.infer<typeof aiSessionSummaryPageSchema> | null, now = new Date()): AiHistoryRow[] {
   const dayFormat = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" });
   const today = dayFormat.format(now), yesterday = dayFormat.format(new Date(now.getTime() - 86400000));
+  const language = currentOrbitLanguage(), t = currentTranslator();
+  // zh / ja: 11月21日; en: Nov 21.
+  const monthDay = new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP" : "en-US", { timeZone: "Asia/Tokyo", month: language === "en" ? "short" : "long", day: "numeric" });
   const rows: Omit<AiHistoryRow, "when">[] = [
     ...(conversations?.conversations ?? []).filter(item => !(item.conversationId === "live-orbit-agent-conversation"
       && conversations?.messages.length === 1 && conversations.messages[0]?.messageId === "orbit-agent-live-ready"
       && conversations.messages[0]?.content === "Orbit Agent is ready for a natural-language request.")).map(item => ({
-      groupId: null, id: item.conversationId, organizationRevision: 0, title: item.title.trim() || "未命名会话", preview: item.lastMessagePreview, updatedAt: item.updatedAt, pinned: false, source: "conversation" as const
+      groupId: null, id: item.conversationId, organizationRevision: 0, title: item.title.trim() || t("common.untitledConversation"), preview: item.lastMessagePreview, updatedAt: item.updatedAt, pinned: false, source: "conversation" as const
     })),
     ...(sessions?.items ?? []).map(item => ({
       groupId: item.organization.groupId, id: item.id, organizationRevision: item.organization.revision,
-      title: item.organization.customTitle?.trim() || item.title.trim() || item.firstUserText.trim() || "未命名会话",
+      title: item.organization.customTitle?.trim() || item.title.trim() || item.firstUserText.trim() || t("common.untitledConversation"),
       preview: item.lastMessagePreview, updatedAt: item.updatedAt, pinned: item.organization.pinned, source: "session" as const
     }))
   ];
@@ -126,8 +131,7 @@ export function aiHistoryRows(conversations: z.infer<typeof aiConversationListSc
   // summaries remain a distinct source and are placed before persisted pages.
   return rows.map(item => {
     const date = new Date(item.updatedAt), day = dayFormat.format(date);
-    const parts = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric" }).formatToParts(date);
-    const when = day === today ? "今天" : day === yesterday ? "昨天" : `${parts.find(part => part.type === "month")?.value}月${parts.find(part => part.type === "day")?.value}日`;
+    const when = day === today ? t("common.today") : day === yesterday ? t("common.yesterday") : monthDay.format(date);
     return { ...item, when };
   });
 }

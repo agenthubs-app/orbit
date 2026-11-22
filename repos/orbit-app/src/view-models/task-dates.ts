@@ -1,6 +1,7 @@
 import type { TaskItemContract } from "../api/contract/tasks";
 import { taskDetailToView } from "./today-tasks";
 import { resolveLocalDateTime, validTimeZone } from "../time/date-time";
+import { currentTranslator, type OrbitTranslator } from "../i18n/messages";
 
 export type TaskDateDraft = { plannedDate: string; dueDate: string; dueTime: string; location?: string };
 export type TaskDatePatch = { plannedDate?: string | null; dueAt?: string | null; location?: string | null };
@@ -27,15 +28,15 @@ export function taskDateDraftFromView(view: TaskDates | null, timeZone = "Asia/T
   return { ...draft, dueDate: `${part("year")}-${part("month")}-${part("day")}`, dueTime: `${part("hour")}:${part("minute")}` };
 }
 
-export function buildTaskDatePatch(baseline: TaskDates, draft: TaskDateDraft, timeZone = "Asia/Tokyo"): TaskDateChange {
-  if (!validTimeZone(timeZone)) return { kind: "invalid", message: "无法读取设备时区，草稿已保留。请恢复时区后保存。" };
+export function buildTaskDatePatch(baseline: TaskDates, draft: TaskDateDraft, timeZone = "Asia/Tokyo", t: OrbitTranslator = currentTranslator()): TaskDateChange {
+  if (!validTimeZone(timeZone)) return { kind: "invalid", message: t("tasks.dates.timeZoneUnavailable") };
   const plannedDate = draft.plannedDate.trim();
   const dueDate = draft.dueDate.trim();
   const dueTime = draft.dueTime.trim();
-  if (plannedDate && !isLocalDate(plannedDate)) return { kind: "invalid", message: "请输入有效的安排日期，格式为 YYYY-MM-DD。" };
-  if (Boolean(dueDate) !== Boolean(dueTime)) return { kind: "invalid", message: "截止日期和时间需要一起填写。不确定时间时，可只填写安排日期。" };
-  if (dueDate && !isLocalDate(dueDate)) return { kind: "invalid", message: "请输入有效的截止日期，格式为 YYYY-MM-DD。" };
-  if (dueTime && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(dueTime)) return { kind: "invalid", message: "截止时间请使用 24 小时制，格式为 HH:mm。" };
+  if (plannedDate && !isLocalDate(plannedDate)) return { kind: "invalid", message: t("tasks.dates.plannedDateInvalid") };
+  if (Boolean(dueDate) !== Boolean(dueTime)) return { kind: "invalid", message: t("tasks.dates.dueDateTimeTogether") };
+  if (dueDate && !isLocalDate(dueDate)) return { kind: "invalid", message: t("tasks.dates.dueDateInvalid") };
+  if (dueTime && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(dueTime)) return { kind: "invalid", message: t("tasks.dates.dueTimeInvalid") };
   const previous = taskDateDraftFromView(baseline, timeZone);
   const patch: TaskDatePatch = {};
   if (plannedDate !== previous.plannedDate) patch.plannedDate = plannedDate || null;
@@ -44,7 +45,7 @@ export function buildTaskDatePatch(baseline: TaskDates, draft: TaskDateDraft, ti
   // Do not overwrite seconds/offset when the minute-resolution editor is unchanged.
   if (dueDate && (dueDate !== previous.dueDate || dueTime !== previous.dueTime)) {
     const dueAt = resolveLocalDateTime(dueDate, dueTime, timeZone);
-    if (!dueAt) return { kind: "invalid", message: "此当地时间不存在或有两个可能的时刻，请选择明确的时间。草稿已保留。" };
+    if (!dueAt) return { kind: "invalid", message: t("tasks.dates.ambiguousLocalTime") };
     patch.dueAt = dueAt;
   }
   return Object.keys(patch).length ? { kind: "ready", patch } : { kind: "unchanged" };

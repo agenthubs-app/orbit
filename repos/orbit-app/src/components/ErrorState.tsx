@@ -2,6 +2,7 @@ import { Text } from "react-native";
 import { textStyles } from "../design/tokens";
 import { useOrbitTheme } from "../design/theme";
 import { DataCard } from "./DataCard";
+import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
 
 interface ErrorStateProps {
   message: string;
@@ -10,11 +11,12 @@ interface ErrorStateProps {
 
 export function ErrorState({
   message,
-  title = "页面暂时无法加载"
+  title
 }: ErrorStateProps) {
   const { colors } = useOrbitTheme();
+  const { t } = useOrbitLocale();
   return (
-    <DataCard title={title} variant="inset">
+    <DataCard title={title ?? t("common.loadFailedTitle")} variant="inset">
       <Text
         style={{
           ...textStyles.small,

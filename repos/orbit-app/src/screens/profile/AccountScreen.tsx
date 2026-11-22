@@ -63,7 +63,7 @@ function AccountOverview({ view, onRefresh }: { view: AccountSessionView; onRefr
     let active = true;
     void Promise.all([auth.readPendingWritesOnDevice(), auth.listDebugPendingWriteIds()]).then(([count, ids]) => {
       if (active) { setDebugPendingCount(count); setDebugPendingIds(ids); }
-    }).catch(() => { if (active) setFeedback("无法读取这台设备上的待同步修改数量。"); });
+    }).catch(() => { if (active) setFeedback(locale.t("me.debug.pendingReadFailed")); });
     return () => { active = false; };
   }, [auth.signedIn, auth.readPendingWritesOnDevice, auth.listDebugPendingWriteIds]);
   async function signOut() {
@@ -79,7 +79,7 @@ function AccountOverview({ view, onRefresh }: { view: AccountSessionView; onRefr
       setDebugPendingCount(await auth.enqueueDebugPendingWrite());
       setDebugPendingIds(await auth.listDebugPendingWriteIds());
       setFeedback(null);
-    } catch { setFeedback("Debug 测试修改未能写入本机队列。"); }
+    } catch { setFeedback(locale.t("me.debug.enqueueFailed")); }
   }
   async function clearDebugPendingWrites() {
     try {
@@ -89,7 +89,7 @@ function AccountOverview({ view, onRefresh }: { view: AccountSessionView; onRefr
       setDebugPendingIds(await auth.listDebugPendingWriteIds());
       setDebugPendingCount(await auth.readPendingWritesOnDevice());
       setFeedback(null);
-    } catch { setFeedback("Debug 测试修改未能全部清理，请保留队列并检查设备。"); }
+    } catch { setFeedback(locale.t("me.debug.clearFailed")); }
   }
   const chevron = <Icon color={colors.ink3Text} name="right" size={16} />;
   return <View style={styles.page}>
@@ -134,8 +134,8 @@ function AccountOverview({ view, onRefresh }: { view: AccountSessionView; onRefr
       <ListRow title={locale.t("account.serverSettings")} trailing={chevron} onPress={() => open("/settings/api")} />
       {__DEV__ && Platform.OS !== "web" && auth.signedIn ? <>
         <View style={styles.rule} />
-        <ListRow title={`Debug 待同步修改 · ${debugPendingCount ?? "—"}`} onPress={() => { void addDebugPendingWrite(); }} />
-        {debugPendingIds.length > 0 ? <ListRow title={`清理 Debug 测试修改 · ${debugPendingIds.length}`} onPress={() => { void clearDebugPendingWrites(); }} /> : null}
+        <ListRow title={locale.t("me.debug.pendingWrites", { count: debugPendingCount ?? "—" })} onPress={() => { void addDebugPendingWrite(); }} />
+        {debugPendingIds.length > 0 ? <ListRow title={locale.t("me.debug.clearWrites", { count: debugPendingIds.length })} onPress={() => { void clearDebugPendingWrites(); }} /> : null}
       </> : null}
     </Card>
     {feedback ? <UiText accessibilityRole="alert" style={styles.feedback}>{feedback}</UiText> : null}

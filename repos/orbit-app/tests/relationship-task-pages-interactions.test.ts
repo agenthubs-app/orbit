@@ -8,6 +8,7 @@ const require=createRequire(import.meta.url);
 let browser:Browser,script:string;
 const fixture=`
 import React,{useEffect,useSyncExternalStore} from 'react';
+import {createTranslator} from './src/i18n/messages';
 let revision=0,next=0;const listeners=new Set();
 const state=window.fixture={actor:'owner',ready:true,mode:'open',baseUrl:'https://orbit.example',cookie:'',navigation:[],requests:[],snapshots:0,...window.initialFixture,
 update(patch){Object.assign(state,patch);revision++;listeners.forEach(fn=>fn());}};
@@ -17,7 +18,7 @@ export const useOrbitAuthSession=()=>{useFixture();return{actorId:state.actor,re
 export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: [], refresh: async () => null, invalidate: async () => null, currentSession: () => null });
 export const useSyncCoordinatorSession = () => null;
 export const useOrbitApiBaseUrl=()=>{useFixture();return{ready:true,baseUrl:state.baseUrl};};
-export const useOrbitLocale=()=>({language:'zh'});
+export const useOrbitLocale=()=>({language:'zh',t:createTranslator('zh')});
 export const useRouter=()=>({push(href){state.navigation.push(href);}});
 export const useFocusEffect=callback=>useEffect(callback,[]);
 export const readSnapshot=async()=>{state.snapshots++;return null;};

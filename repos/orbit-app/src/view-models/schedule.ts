@@ -4,7 +4,7 @@ import { eventsToSummaries } from "./events";
 import type { FollowupTaskContract } from "../api/contract/followups";
 import type { OrbitLanguage } from "../api/contract/language";
 import type { TaskPageContract } from "../api/contract/task-page";
-import { createTranslator, type OrbitTranslator } from "../i18n/messages";
+import { createTranslator, type MessageKey, type OrbitTranslator } from "../i18n/messages";
 
 export interface ScheduleItem {
   contactName: string;
@@ -487,7 +487,7 @@ function eventTimelineItems(
 ): TimelineItemWithSort[] {
   const t = createTranslator(language);
   const summaryById = new Map(
-    eventsToSummaries(events, timeZone).map((event) => [event.id, event])
+    eventsToSummaries(events, timeZone, language).map((event) => [event.id, event])
   );
 
   return listFromPayload(events, "events")
@@ -663,26 +663,35 @@ function dateForKey(dateKey: string): Date | null {
   return Number.isFinite(parsed) ? new Date(parsed) : null;
 }
 
-const japaneseHolidayNameZh: Record<string, string> = {
-  "こどもの日": "儿童节",
-  "みどりの日": "绿之日",
-  "スポーツの日": "体育日",
-  "休日": "法定休息日",
-  "元日": "元旦",
-  "勤労感謝の日": "劳动感谢日",
-  "天皇誕生日": "天皇诞辰日",
-  "山の日": "山之日",
-  "建国記念の日": "建国纪念日",
-  "成人の日": "成人日",
-  "振替休日": "补休日",
-  "敬老の日": "敬老日",
-  "文化の日": "文化日",
-  "春分の日": "春分日",
-  "海の日": "海之日",
-  "秋分の日": "秋分日",
-  "憲法記念日": "宪法纪念日",
-  "昭和の日": "昭和日"
+// Keyed by the library's English name, so every 振替休日 variant maps to one entry.
+const japaneseHolidayKeys: Record<string, MessageKey> = {
+  "Autumnal Equinox Day": "scheduleVm.holiday.autumnalEquinox",
+  "Children's Day": "scheduleVm.holiday.childrensDay",
+  "Citizen's Holiday": "scheduleVm.holiday.citizensHoliday",
+  "Coming of Age Day": "scheduleVm.holiday.comingOfAge",
+  "Constitution Memorial Day": "scheduleVm.holiday.constitution",
+  "Emperor's Birthday": "scheduleVm.holiday.emperorsBirthday",
+  "Greenery Day": "scheduleVm.holiday.greenery",
+  "Health and Sports Day": "scheduleVm.holiday.sports",
+  "Holiday in lieu": "scheduleVm.holiday.substitute",
+  "Labor Thanksgiving Day": "scheduleVm.holiday.laborThanksgiving",
+  "Marine Day": "scheduleVm.holiday.marine",
+  "Mountain Day": "scheduleVm.holiday.mountain",
+  "National Culture Day": "scheduleVm.holiday.culture",
+  "National Foundation Day": "scheduleVm.holiday.nationalFoundation",
+  "New Year's Day": "scheduleVm.holiday.newYear",
+  "Respect for the Aged Day": "scheduleVm.holiday.respectForAged",
+  "Showa Day": "scheduleVm.holiday.showa",
+  "Vernal Equinox Day": "scheduleVm.holiday.vernalEquinox"
 };
+
+function japaneseHolidayName(holiday: { name: string; name_en: string }, language: OrbitLanguage): string {
+  const t = createTranslator(language);
+  // Japanese readers get the official name (it also spells out which day a 振替休日 replaces).
+  if (language === "ja") return holiday.name || t("scheduleVm.japanHoliday");
+  const key = japaneseHolidayKeys[holiday.name_en];
+  return key ? t(key) : t("scheduleVm.japanHoliday");
+}
 
 export function japanCalendarDateInfo(
   dateKey: string,
@@ -704,9 +713,7 @@ export function japanCalendarDateInfo(
   return {
     ...(holiday
       ? {
-          holidayName: language === "zh"
-            ? japaneseHolidayNameZh[holiday.name] ?? createTranslator(language)("scheduleVm.japanHoliday")
-            : holiday.name || createTranslator(language)("scheduleVm.japanHoliday")
+          holidayName: japaneseHolidayName(holiday, language)
         }
       : {}),
     isHoliday: Boolean(holiday),

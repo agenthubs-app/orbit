@@ -97,4 +97,8 @@ export const schedule = {
   "schedule.deleteAsk": "この予定を削除しますか？",
   "schedule.discardChanges": "変更を破棄",
   "schedule.keepEditing": "編集を続ける",
+  "schedule.outboxReadFailed": "この端末の同期待ちの予定を今は読み取れません。",
+  "schedule.outboxNotReady": "この端末の予定の同期はまだ準備ができていません。",
+  "schedule.timeZoneStale": "端末のタイムゾーンを更新できません。いまは {timeZone} で表示しています。",
+  "schedule.timeZoneUnavailable": "端末のタイムゾーンを読み取れません。UTC で表示し、編集はできません。日付の下書きは残ります。",
 } as const;

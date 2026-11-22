@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { LocalSyncQueuedMutation } from "./local-sync-repository";
 import type { OfflineScheduleMutationInput } from "./sync-coordinator";
 import type { useSyncedCollection } from "../../hooks/useSyncedCollection";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 
 type SyncedSchedule = ReturnType<typeof useSyncedCollection<Record<string, unknown>>>;
 
@@ -20,6 +21,7 @@ export interface ScheduleOutbox {
 export function useOfflineScheduleOutbox(state: SyncedSchedule, enabled = true): ScheduleOutbox | null {
   const [queuedMutations, setQueuedMutations] = useState<LocalSyncQueuedMutation[]>([]);
   const [queueFailure, setQueueFailure] = useState<string | null>(null);
+  const { t } = useOrbitLocale();
   const refresh = useCallback(async () => {
     const session = state.currentSession();
     if (!session) { setQueuedMutations(previous => previous.length ? [] : previous); return; }
@@ -30,34 +32,34 @@ export function useOfflineScheduleOutbox(state: SyncedSchedule, enabled = true):
       setQueuedMutations(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
       setQueueFailure(null);
     } catch {
-      setQueueFailure("本机待同步日程暂时无法读取。");
+      setQueueFailure(t("schedule.outboxReadFailed"));
     }
-  }, [state.currentSession]);
+  }, [state.currentSession, t]);
   useEffect(() => { if (enabled) void refresh(); else { setQueuedMutations(previous => previous.length ? [] : previous); setQueueFailure(null); } }, [enabled, refresh, state.lastSyncedAt, state.records, state.status]);
   const enqueue = useCallback(async (mutation: OfflineScheduleMutationInput) => {
     const session = state.currentSession();
-    if (!session || !enabled) throw new Error("本机日程同步范围尚未就绪。");
+    if (!session || !enabled) throw new Error(t("schedule.outboxNotReady"));
     await session.enqueueOfflineScheduleMutation(mutation);
     await refresh();
-  }, [enabled, refresh, state.currentSession]);
+  }, [enabled, refresh, state.currentSession, t]);
   const resolveConflict = useCallback(async (input: Parameters<ScheduleOutbox["resolveConflict"]>[0]) => {
     const session = state.currentSession();
-    if (!session?.resolveScheduleConflict || !enabled) throw new Error("本机日程同步范围尚未就绪。");
+    if (!session?.resolveScheduleConflict || !enabled) throw new Error(t("schedule.outboxNotReady"));
     await session.resolveScheduleConflict(input);
     await refresh();
-  }, [enabled, refresh, state.currentSession]);
+  }, [enabled, refresh, state.currentSession, t]);
   const retry = useCallback(async (mutationId: string) => {
     const session = state.currentSession();
-    if (!session?.retryOfflineWrite || !enabled) throw new Error("本机日程同步范围尚未就绪。");
+    if (!session?.retryOfflineWrite || !enabled) throw new Error(t("schedule.outboxNotReady"));
     await session.retryOfflineWrite("personal_schedule", mutationId);
     await refresh();
-  }, [enabled, refresh, state.currentSession]);
+  }, [enabled, refresh, state.currentSession, t]);
   const discard = useCallback(async (mutationId: string) => {
     const session = state.currentSession();
-    if (!session?.discardOfflineWrite || !enabled) throw new Error("本机日程同步范围尚未就绪。");
+    if (!session?.discardOfflineWrite || !enabled) throw new Error(t("schedule.outboxNotReady"));
     await session.discardOfflineWrite("personal_schedule", mutationId);
     await refresh();
-  }, [enabled, refresh, state.currentSession]);
+  }, [enabled, refresh, state.currentSession, t]);
   return useMemo(() => enabled ? { queuedMutations, queueFailure, enqueue, resolveConflict, refresh, retry, discard } : null,
     [enabled, queuedMutations, queueFailure, enqueue, resolveConflict, refresh, retry, discard]);
 }

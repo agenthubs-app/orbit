@@ -162,4 +162,10 @@ export const notes = {
   "notes.deletePending": "This note has changes that haven't synced yet. You can delete it once they sync.",
   "notes.deleted": "Note deleted",
   "notes.removeRelatedNote": "Remove related note “{name}”",
+  "notes.queueReadFailed": "Couldn't read the notes waiting to sync on this device.",
+  "notes.localScopeNotReady": "Sync on this device isn't ready yet.",
+  "notes.localRetryUnavailable": "Retry isn't available on this device right now.",
+  "notes.localDiscardUnavailable": "Discarding isn't available on this device right now.",
+  "notes.localConflictUnavailable": "Resolving conflicts isn't available on this device right now.",
+  "notes.conflictChanged": "The note conflict has changed. Refresh and try again.",
 } as const;

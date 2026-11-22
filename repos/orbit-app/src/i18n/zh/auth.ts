@@ -118,4 +118,6 @@ export const auth = {
   "auth.changeConflict": "密码刚刚已被修改，请重新登录后再试。",
   "auth.changeUnauthorized": "登录已失效，请重新登录。",
   "auth.changeFailed": "修改失败，请稍后重试。",
+  "auth.err.rateLimited": "尝试次数过多，请稍后再试。",
+  "auth.err.signupInvalid": "请输入有效的邮箱，并设置至少 8 位、不超过 72 字节的密码。",
 } as const;

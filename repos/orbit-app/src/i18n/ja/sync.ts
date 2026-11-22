@@ -15,4 +15,7 @@ export const sync = {
   "sync.discardChange": "破棄",
   "sync.retryChangeNamed": "保存を再試行：{title}",
   "sync.discardChangeNamed": "この変更を破棄：{title}",
+  "sync.changeNotSaved": "変更は保存されていません。更新してからもう一度お試しください。",
+  "sync.timeout": "同期がタイムアウトしました。もう一度お試しください。",
+  "sync.outboxReadFailed": "この端末の送信待ちメッセージを読み込めませんでした。",
 } as const;

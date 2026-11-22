@@ -12,6 +12,9 @@ import {
 } from "./base-url";
 import { notifySessionExpired } from "./session-expiry";
 import { iorbitR21Copy } from "../i18n/iorbitR21";
+import { currentOrbitLanguage } from "../i18n/locale-core";
+import { currentTranslator, type MessageKey } from "../i18n/messages";
+import type { OrbitLanguage } from "./contract/language";
 
 export type FetchLike = (
   input: RequestInfo | URL,
@@ -147,37 +150,28 @@ const inFlightGetsByFetch = new WeakMap<
   Map<string, Promise<ApiResult<unknown>>>
 >();
 
-const INVALID_ENVELOPE_MESSAGE =
-  "Orbit 服务返回的数据格式暂时无法识别，请稍后重试。";
-const INVALID_JSON_MESSAGE = "Orbit 服务返回的数据暂时无法解析，请稍后重试。";
-const NETWORK_ERROR_MESSAGE = "暂时无法连接 Orbit 服务，请检查网络后再试。";
-const NON_JSON_RESPONSE_MESSAGE =
-  "Orbit 服务返回了无法识别的内容，请稍后重试。";
-const API_ERROR_MESSAGES: Readonly<Record<string, string>> = {
-  CONFLICT: "当前状态已经变化，请刷新后再试。",
-  PIN_LIMIT: iorbitR21Copy.zh.pinLimit,
-  FORBIDDEN: "当前账号没有权限完成这项操作。",
-  INTERNAL_ERROR: "Orbit 服务暂时出了问题，请稍后重试。",
-  NOT_FOUND: "没有找到对应内容，它可能已被移除或不可用。",
-  SERVICE_UNAVAILABLE: "Orbit 服务暂不可用，请稍后再试。",
-  UNAUTHORIZED: "登录状态已失效，请重新登录后再试。",
-  VALIDATION_ERROR: "提交内容不符合要求，请检查后再试。"
+// QA 2026-11-21: the device-made failure text follows the published screen language
+// (OrbitLocaleProvider publishes it), so a ja / en screen never shows Chinese errors.
+function apiMessage(key: MessageKey): string {
+  return currentTranslator()(key);
+}
+const API_ERROR_MESSAGE_KEYS: Readonly<Record<string, MessageKey>> = {
+  CONFLICT: "common.api.conflict",
+  FORBIDDEN: "common.api.forbidden",
+  INTERNAL_ERROR: "common.api.internal",
+  NOT_FOUND: "common.api.notFound",
+  SERVICE_UNAVAILABLE: "common.api.unavailable",
+  UNAUTHORIZED: "common.api.unauthorized",
+  VALIDATION_ERROR: "common.api.validation"
 };
-const BUSINESS_CARD_SCAN_ERROR_MESSAGES: Readonly<Record<string, string>> = {
-  BUSINESS_CARD_IMAGE_REQUIRED:
-    "请先拍摄或选择一张清晰的名片图片，再生成待确认候选。",
-  BUSINESS_CARD_IMAGE_TOO_LARGE:
-    "名片图片不能超过 10 MiB，请压缩图片或换一张后再试。",
-  BUSINESS_CARD_IMAGE_UNSUPPORTED:
-    "仅支持 JPEG、PNG 或 WebP 名片图片，请更换文件后再试。",
-  BUSINESS_CARD_OCR_PROVIDER_FAILED:
-    "这张名片暂时无法识别。当前不会生成候选或写入联系人，请换一张更清晰的图片，或使用手动录入。",
-  BUSINESS_CARD_OCR_UNCONFIGURED:
-    "名片识别服务尚未配置。当前不会生成候选或写入联系人；你可以先使用手动录入，或稍后再试。",
-  BUSINESS_CARD_SCAN_OCR_LIVE_STORE_FAILED:
-    "名片识别记录暂时无法读取，请稍后再试。",
-  BUSINESS_CARD_SCAN_OCR_LIVE_STORE_UNCONFIGURED:
-    "名片识别记录服务尚未配置，当前不会生成候选或写入联系人。"
+const BUSINESS_CARD_SCAN_ERROR_MESSAGE_KEYS: Readonly<Record<string, MessageKey>> = {
+  BUSINESS_CARD_IMAGE_REQUIRED: "common.api.cardImageRequired",
+  BUSINESS_CARD_IMAGE_TOO_LARGE: "common.api.cardImageTooLarge",
+  BUSINESS_CARD_IMAGE_UNSUPPORTED: "common.api.cardImageUnsupported",
+  BUSINESS_CARD_OCR_PROVIDER_FAILED: "common.api.cardOcrFailed",
+  BUSINESS_CARD_OCR_UNCONFIGURED: "common.api.cardOcrUnconfigured",
+  BUSINESS_CARD_SCAN_OCR_LIVE_STORE_FAILED: "common.api.cardScanStoreFailed",
+  BUSINESS_CARD_SCAN_OCR_LIVE_STORE_UNCONFIGURED: "common.api.cardScanStoreUnconfigured"
 };
 
 function configuredBaseUrl(): string {
@@ -213,7 +207,6 @@ export type OrbitConditionalCache = Map<string, RememberedConditionalResponse>;
 
 // 屏幕各自 useMemo 出 client 实例；记忆必须跨实例共享，否则换个屏幕就永远命不中。
 const sharedConditionalCache: OrbitConditionalCache = new Map();
-const STALE_CONDITIONAL_MESSAGE = "Orbit 服务返回了未变化标记，但本地没有可复用的数据，请重试。";
 
 function conditionalGetKey(
   baseUrl: string,
@@ -262,8 +255,15 @@ function isEnvelope<TData>(value: unknown): value is ApiEnvelope<TData> {
   return value.success === false && isApiErrorBody(value.error);
 }
 
-function hasChineseCopy(value: string): boolean {
-  return /[\u3400-\u9fff]/u.test(value);
+// A server sentence is shown as written only when it is in the screen language:
+// Japanese text carries kana, Chinese text has Han without kana. Anything else
+// (the server's English developer text, a Chinese sentence on a ja screen) falls
+// back to the device's own wording for the error code.
+function isInLanguage(value: string, language: OrbitLanguage): boolean {
+  const kana = /[\u3040-\u30ff]/u.test(value);
+  if (language === "ja") return kana;
+  if (language === "zh") return !kana && /[\u3400-\u9fff]/u.test(value);
+  return false;
 }
 
 /** Sprint 0117: exported so a device-computed failure shows the text the server's answer would. */
@@ -271,30 +271,33 @@ export function localizedApiErrorMessage(
   error: ApiErrorBody,
   status: number
 ): string {
+  const language = currentOrbitLanguage();
   const businessCardErrorCode =
     error.context?.businessCardScanOcrErrorCode?.trim() ?? "";
-  const businessCardMessage =
-    BUSINESS_CARD_SCAN_ERROR_MESSAGES[businessCardErrorCode];
+  const businessCardMessageKey =
+    BUSINESS_CARD_SCAN_ERROR_MESSAGE_KEYS[businessCardErrorCode];
 
-  if (businessCardMessage) {
-    return businessCardMessage;
+  if (businessCardMessageKey) {
+    return apiMessage(businessCardMessageKey);
   }
 
   const serverMessage = error.message.trim();
 
-  if (hasChineseCopy(serverMessage)) {
+  if (isInLanguage(serverMessage, language)) {
     return serverMessage;
   }
 
   if (status === 429) {
-    return "操作过于频繁，请稍后再试。";
+    return apiMessage("common.api.rateLimited");
   }
 
-  return (
-    API_ERROR_MESSAGES[error.code] ??
-    (status >= 500
-      ? "Orbit 服务暂不可用，请稍后再试。"
-      : "这项操作暂时无法完成，请稍后再试。")
+  if (error.code === "PIN_LIMIT") {
+    return iorbitR21Copy[language].pinLimit;
+  }
+
+  const key = API_ERROR_MESSAGE_KEYS[error.code];
+  return apiMessage(
+    key ?? (status >= 500 ? "common.api.unavailable" : "common.api.failed")
   );
 }
 
@@ -310,7 +313,7 @@ async function readJson(response: Response): Promise<
   } catch {
     return {
       ok: false,
-      message: INVALID_JSON_MESSAGE
+      message: apiMessage("common.api.invalidJson")
     };
   }
 }
@@ -369,7 +372,7 @@ function networkFailure(): ApiResult<never> {
     0,
     { featureMode: null, privacy: null, runtimeBoundary: null },
     "ORBIT_APP_NETWORK_ERROR",
-    NETWORK_ERROR_MESSAGE
+    apiMessage("common.api.network")
   );
 }
 
@@ -407,10 +410,10 @@ async function requestOnce<TData>(
   if (options.rawBody !== undefined) {
     const meta = { featureMode: null, privacy: null, runtimeBoundary: null };
     if (options.body !== undefined) {
-      return failureResult(0, meta, "ORBIT_APP_INVALID_BODY", INVALID_ENVELOPE_MESSAGE);
+      return failureResult(0, meta, "ORBIT_APP_INVALID_BODY", apiMessage("common.api.invalidEnvelope"));
     }
     if (options.rawBody.byteLength > MAX_ORBIT_BINARY_BYTES) {
-      return failureResult(0, meta, "ORBIT_APP_BINARY_TOO_LARGE", NON_JSON_RESPONSE_MESSAGE);
+      return failureResult(0, meta, "ORBIT_APP_BINARY_TOO_LARGE", apiMessage("common.api.nonJson"));
     }
   }
   const conditionalKey = method === "GET" ? conditionalGetKey(baseUrl, authCookieHeader, path, options) : null;
@@ -448,7 +451,7 @@ async function requestOnce<TData>(
 
   if (response.status === 304 && conditionalKey) {
     if (!remembered) {
-      return failureResult(304, meta, "ORBIT_APP_STALE_CONDITIONAL_RESPONSE", STALE_CONDITIONAL_MESSAGE);
+      return failureResult(304, meta, "ORBIT_APP_STALE_CONDITIONAL_RESPONSE", apiMessage("common.api.staleConditional"));
     }
     return {
       ...(remembered.envelope as ApiResult<TData>),
@@ -462,17 +465,17 @@ async function requestOnce<TData>(
   if (options.responseType === "bytes" && response.ok &&
       !contentType.toLowerCase().includes("application/json")) {
     if (Number(response.headers.get("Content-Length")) > MAX_ORBIT_BINARY_BYTES) {
-      return failureResult(response.status, meta, "ORBIT_APP_BINARY_TOO_LARGE", NON_JSON_RESPONSE_MESSAGE);
+      return failureResult(response.status, meta, "ORBIT_APP_BINARY_TOO_LARGE", apiMessage("common.api.nonJson"));
     }
     try {
       const bytes = new Uint8Array(await deadline.until(response.arrayBuffer()));
       if (bytes.byteLength > MAX_ORBIT_BINARY_BYTES) {
-        return failureResult(response.status, meta, "ORBIT_APP_BINARY_TOO_LARGE", NON_JSON_RESPONSE_MESSAGE);
+        return failureResult(response.status, meta, "ORBIT_APP_BINARY_TOO_LARGE", apiMessage("common.api.nonJson"));
       }
       return { success: true, data: { bytes, contentType } as TData, meta, status: response.status };
     } catch (error) {
       if (error === REQUEST_STOPPED) throw error;
-      return failureResult(response.status, meta, "ORBIT_APP_BINARY_READ_ERROR", NETWORK_ERROR_MESSAGE);
+      return failureResult(response.status, meta, "ORBIT_APP_BINARY_READ_ERROR", apiMessage("common.api.network"));
     }
   }
 
@@ -481,7 +484,7 @@ async function requestOnce<TData>(
       response.status,
       meta,
       "ORBIT_APP_NON_JSON_RESPONSE",
-      NON_JSON_RESPONSE_MESSAGE
+      apiMessage("common.api.nonJson")
     );
   }
 
@@ -503,7 +506,7 @@ async function requestOnce<TData>(
       response.status,
       meta,
       "ORBIT_APP_INVALID_ENVELOPE",
-      INVALID_ENVELOPE_MESSAGE
+      apiMessage("common.api.invalidEnvelope")
     );
   }
 
@@ -520,7 +523,7 @@ async function requestOnce<TData>(
   }
 
   if (options.responseType === "bytes") {
-    return failureResult(response.status, meta, "ORBIT_APP_NON_BINARY_RESPONSE", NON_JSON_RESPONSE_MESSAGE);
+    return failureResult(response.status, meta, "ORBIT_APP_NON_BINARY_RESPONSE", apiMessage("common.api.nonJson"));
   }
 
   const result: ApiResult<TData> = { ...payload.value, meta, status: response.status };

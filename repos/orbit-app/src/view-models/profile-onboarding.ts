@@ -144,6 +144,16 @@ export function isKnownOption(options: readonly Copy[], value: string): boolean 
   return options.some(option => optionMatches(option, value));
 }
 
+/**
+ * Display label for a saved tag. Saved values stay exactly as stored (in whichever language
+ * they were picked); a value that equals a known option is shown in the reader's language,
+ * a custom value is shown as typed.
+ */
+export function savedOptionLabel(options: readonly Copy[], value: string, language: OrbitLanguage): string {
+  const option = options.find(item => optionMatches(item, value));
+  return option ? option[language] : value;
+}
+
 export function toggleValue(values: readonly string[], value: string, limit?: number): string[] {
   if (values.includes(value)) return values.filter(item => item !== value);
   if (limit !== undefined && values.length >= limit) return [...values];

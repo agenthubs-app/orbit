@@ -1,6 +1,8 @@
 // Release builds (__DEV__ false) talk to production unless EXPO_PUBLIC_ORBIT_API_BASE_URL says otherwise;
 // development builds and Node tests keep the local server.
 // React Native defines __DEV__; the Web project's typecheck also reads this file, so declare it here.
+import { currentTranslator } from "../i18n/messages";
+
 declare const __DEV__: boolean | undefined;
 export const PRODUCTION_ORBIT_API_BASE_URL = "https://orbitailink.com";
 const releaseBuild = typeof __DEV__ !== "undefined" && !__DEV__;
@@ -28,7 +30,7 @@ export function validateOrbitApiBaseUrl(
 
   if (!normalizedValue) {
     return {
-      error: "请输入服务器地址。",
+      error: currentTranslator()("common.serverUrlRequired"),
       success: false
     };
   }
@@ -39,14 +41,14 @@ export function validateOrbitApiBaseUrl(
     parsedUrl = new URL(normalizedValue);
   } catch {
     return {
-      error: "请输入有效的服务器地址。",
+      error: currentTranslator()("common.serverUrlInvalid"),
       success: false
     };
   }
 
   if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
     return {
-      error: "请使用 http:// 或 https:// 开头的服务器地址。",
+      error: currentTranslator()("common.serverUrlScheme"),
       success: false
     };
   }

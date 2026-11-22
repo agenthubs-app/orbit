@@ -4,6 +4,8 @@ import test from "node:test";
 import type { IngestBatchDetailContract, IngestItemContract } from "../src/api/contract/business-card-batch";
 import { profileDetailSchema } from "../src/api/profile-detail-contract";
 import {
+  savedOptionLabel,
+  SEEK_OPTIONS as SAVED_LABEL_SEEK_OPTIONS,
   GOAL_LIMIT,
   HORIZONS,
   INTRO_REGENERATE_LIMIT,
@@ -145,4 +147,10 @@ test("import summary counts cards, not images, and points at the batch that need
   ]);
   assert.deepEqual(summary, { imported: 1, review: 2, recognizing: 2, reviewBatchId: "b1" });
   assert.deepEqual(onboardingImportSummary([]), { imported: 0, review: 0, recognizing: 0, reviewBatchId: null });
+});
+
+test("saved tags show in the reader's language without changing what is stored", () => {
+  assert.equal(savedOptionLabel(SAVED_LABEL_SEEK_OPTIONS, "投资人", "en"), "Investors");
+  assert.equal(savedOptionLabel(SAVED_LABEL_SEEK_OPTIONS, "Investors", "ja"), "投資家");
+  assert.equal(savedOptionLabel(SAVED_LABEL_SEEK_OPTIONS, "我自己写的", "en"), "我自己写的");
 });

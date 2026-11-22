@@ -19,13 +19,14 @@ import {
   aiConversationGroupPath,
   aiConversationSessionPath,
 } from "./endpoints";
+import { currentTranslator } from "../i18n/messages";
 
 export type AiSessionManagementResult<T> =
   | { ok: true; value: T }
   | { code?: string; error: string; ok: false };
 
 function failed(message?: string, code?: string): AiSessionManagementResult<never> {
-  return { ...(code ? { code } : {}), error: message?.trim() || "更改尚未保存，请刷新后重试。", ok: false };
+  return { ...(code ? { code } : {}), error: message?.trim() || currentTranslator()("sync.changeNotSaved"), ok: false };
 }
 
 export async function updateAiSessionOrganization(

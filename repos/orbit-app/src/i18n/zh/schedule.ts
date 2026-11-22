@@ -97,4 +97,8 @@ export const schedule = {
   "schedule.deleteAsk": "删除这个日程？",
   "schedule.discardChanges": "放弃修改",
   "schedule.keepEditing": "继续编辑",
+  "schedule.outboxReadFailed": "本机待同步日程暂时无法读取。",
+  "schedule.outboxNotReady": "本机日程同步范围尚未就绪。",
+  "schedule.timeZoneStale": "无法更新设备时区，暂按 {timeZone} 显示。",
+  "schedule.timeZoneUnavailable": "无法读取设备时区，当前以 UTC 只读显示。日期草稿会保留。",
 } as const;

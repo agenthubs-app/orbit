@@ -13,6 +13,7 @@ import {
   measureAppPerformance,
   setAppPerformanceScope,
 } from "../performance/app-performance";
+import { currentTranslator } from "../i18n/messages";
 
 export type ApiResourceState<TData> = RouteState<TData> & {
   refresh: () => void;
@@ -24,7 +25,7 @@ function unexpectedErrorState<TData>(_error: unknown): RouteState<TData> {
     kind: "failure",
     error: {
       code: "ORBIT_APP_UNEXPECTED_ERROR",
-      message: "请求暂时无法完成，请稍后重试。"
+      message: currentTranslator()("common.api.requestFailed")
     },
     meta: { featureMode: null, privacy: null, runtimeBoundary: null },
     status: 0
@@ -135,7 +136,7 @@ export function useApiResource<TData>(
             )
           : await client.get<TData>(path, controller ? { signal: controller.signal } : undefined);
         const result = controller && received.success && (received.status < 200 || received.status >= 300)
-          ? { ...received, success: false as const, error: { code: "ORBIT_APP_UNEXPECTED_STATUS", message: "请求暂时无法完成，请稍后重试。" } }
+          ? { ...received, success: false as const, error: { code: "ORBIT_APP_UNEXPECTED_STATUS", message: currentTranslator()("common.api.requestFailed") } }
           : received;
 
         if (!active) {

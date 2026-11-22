@@ -162,4 +162,10 @@ export const notes = {
   "notes.deletePending": "这条笔记还有修改没同步，同步完成后才能删除。",
   "notes.deleted": "已删除笔记",
   "notes.removeRelatedNote": "移除关联笔记「{name}」",
+  "notes.queueReadFailed": "本机待同步笔记暂时无法读取。",
+  "notes.localScopeNotReady": "本机同步范围尚未就绪。",
+  "notes.localRetryUnavailable": "本机重试暂不可用。",
+  "notes.localDiscardUnavailable": "本机放弃操作暂不可用。",
+  "notes.localConflictUnavailable": "本机冲突操作暂不可用。",
+  "notes.conflictChanged": "笔记冲突已变化，请刷新后重试。",
 } as const;

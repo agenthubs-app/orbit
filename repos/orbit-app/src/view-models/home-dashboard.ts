@@ -14,11 +14,10 @@ const categoryKeys = {
   personal: "home.taskCategoryPersonal",
   other: "home.taskCategoryOther",
 } as const satisfies Record<string, MessageKey>;
-const weekdays: Record<OrbitLanguage, readonly string[]> = {
-  zh: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
-  en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-  ja: ["日", "月", "火", "水", "木", "金", "土"],
-};
+function weekdayLabel(date: Date, language: OrbitLanguage): string {
+  const locale = language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP" : "en-US";
+  return new Intl.DateTimeFormat(locale, { timeZone: "UTC", weekday: "short" }).format(date);
+}
 
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -60,13 +59,13 @@ export function homeDateView(now: Date, selectedDateKey?: string, timeZone = "As
   return {
     selectedDateKey: selected,
     dateLabel: dateNumber(selected),
-    weekdayLabel: weekdays[language][weekday]!,
+    weekdayLabel: weekdayLabel(date, language),
     isToday: selected === today,
     week: Array.from({ length: 7 }, (_, index) => {
       const day = new Date(monday);
       day.setUTCDate(day.getUTCDate() + index);
       const dateKey = day.toISOString().slice(0, 10);
-      return { dateKey, dayNumber: String(day.getUTCDate()), weekdayLabel: weekdays[language][day.getUTCDay()]!, isSelected: dateKey === selected, isToday: dateKey === today };
+      return { dateKey, dayNumber: String(day.getUTCDate()), weekdayLabel: weekdayLabel(day, language), isSelected: dateKey === selected, isToday: dateKey === today };
     })
   };
 }

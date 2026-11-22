@@ -5,6 +5,12 @@ import {
   type MobileAuthResult,
   type MobileAuthSession
 } from "./mobile-auth";
+import { currentTranslator, type MessageKey } from "../i18n/messages";
+
+// QA 2026-11-21: transport failures read in the published screen language (zh is the key source).
+function authText(key: MessageKey): string {
+  return currentTranslator()(key);
+}
 
 function failure(code: string, message: string, status = 0): MobileAuthResult<never> {
   return { error: { code, message, status }, success: false };
@@ -47,7 +53,7 @@ export async function signInWithBrowserCredentials({
   const normalizedEmail = email.trim().toLowerCase();
 
   if (!normalizedEmail || !password) {
-    return failure("ORBIT_APP_AUTH_MISSING_CREDENTIALS", "请输入邮箱和密码。");
+    return failure("ORBIT_APP_AUTH_MISSING_CREDENTIALS", authText("auth.err.missing"));
   }
 
   try {
@@ -61,7 +67,7 @@ export async function signInWithBrowserCredentials({
     if (!csrfResponse.ok || !token) {
       return failure(
         "ORBIT_APP_AUTH_CSRF_UNAVAILABLE",
-        "登录服务暂时不可用，请稍后再试。",
+        authText("auth.err.serviceUnavailable"),
         csrfResponse.status
       );
     }
@@ -90,7 +96,7 @@ export async function signInWithBrowserCredentials({
     if (callbackResponse.status >= 500) {
       return failure(
         "ORBIT_APP_AUTH_SERVICE_UNAVAILABLE",
-        "登录服务暂时不可用，请稍后再试。",
+        authText("auth.err.serviceUnavailable"),
         callbackResponse.status
       );
     }
@@ -99,7 +105,7 @@ export async function signInWithBrowserCredentials({
     if (!callbackResponse.ok || !callbackUrl) {
       return failure(
         "ORBIT_APP_AUTH_SERVICE_UNAVAILABLE",
-        "登录服务暂时不可用，请稍后再试。",
+        authText("auth.err.serviceUnavailable"),
         callbackResponse.status
       );
     }
@@ -110,7 +116,7 @@ export async function signInWithBrowserCredentials({
     } catch {
       return failure(
         "ORBIT_APP_AUTH_SERVICE_UNAVAILABLE",
-        "登录服务暂时不可用，请稍后再试。",
+        authText("auth.err.serviceUnavailable"),
         callbackResponse.status
       );
     }
@@ -120,8 +126,8 @@ export async function signInWithBrowserCredentials({
           ? "ORBIT_APP_AUTH_INVALID_CREDENTIALS"
           : "ORBIT_APP_AUTH_CALLBACK_FAILED",
         callbackError === "CredentialsSignin"
-          ? "邮箱或密码不正确。"
-          : "登录没有完成，请重新登录。",
+          ? authText("auth.err.invalidCredentials")
+          : authText("auth.err.incomplete"),
         401
       );
     }
@@ -135,14 +141,14 @@ export async function signInWithBrowserCredentials({
       if (session.error.code === "ORBIT_APP_AUTH_NETWORK_ERROR" || session.error.code === "ORBIT_APP_AUTH_SERVER_UNAVAILABLE") return session;
       return failure(
         "ORBIT_APP_AUTH_INVALID_CREDENTIALS",
-        "邮箱或密码不正确。",
+        authText("auth.err.invalidCredentials"),
         session.error.status
       );
     }
     if (session.data.user.email.trim().toLowerCase() !== normalizedEmail) {
       return failure(
         "ORBIT_APP_AUTH_IDENTITY_MISMATCH",
-        "登录身份校验失败，请重新登录。",
+        authText("auth.err.identity"),
         401
       );
     }
@@ -158,7 +164,7 @@ export async function signInWithBrowserCredentials({
   } catch {
     return failure(
       "ORBIT_APP_AUTH_NETWORK_ERROR",
-      "网络连接失败，请检查网络后重试。"
+      authText("auth.err.network")
     );
   }
 }

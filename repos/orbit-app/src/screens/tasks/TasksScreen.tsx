@@ -341,8 +341,8 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
         );
       })}
       </View>
-      {source.nextCursor ? <Pressable accessibilityRole="button" onPress={()=>setPosition({scope:pageScope,cursor:source.nextCursor})} style={styles.contactLink}><Text style={styles.contactText}>{locale.language==="zh"?"下一页待办":locale.language==="ja"?"次のタスク":"Next task page"}</Text></Pressable>:null}
-      {cursor ? <Pressable accessibilityRole="button" onPress={refreshTasks} style={styles.contactLink}><Text style={styles.contactText}>{locale.language==="zh"?"返回待办第一页":locale.language==="ja"?"最初のタスク":"First task page"}</Text></Pressable>:null}
+      {source.nextCursor ? <Pressable accessibilityRole="button" onPress={()=>setPosition({scope:pageScope,cursor:source.nextCursor})} style={styles.contactLink}><Text style={styles.contactText}>{locale.t("tasks.nextPage")}</Text></Pressable>:null}
+      {cursor ? <Pressable accessibilityRole="button" onPress={refreshTasks} style={styles.contactLink}><Text style={styles.contactText}>{locale.t("tasks.firstPage")}</Text></Pressable>:null}
       {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
       {mode === "open" && followUps.hasMore && !moreFollowUps ? <Pressable accessibilityRole="button" onPress={() => setMoreFollowUps(true)} style={[styles.contactLink, styles.moreRow]}>
         <Text style={styles.contactText}>{locale.t("tasks.moreFollowUps", { count: followUps.total - (followUps.items?.length ?? 0) })}</Text>

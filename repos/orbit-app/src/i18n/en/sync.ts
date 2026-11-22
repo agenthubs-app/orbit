@@ -15,4 +15,7 @@ export const sync = {
   "sync.discardChange": "Discard",
   "sync.retryChangeNamed": "Retry saving: {title}",
   "sync.discardChangeNamed": "Discard this change: {title}",
+  "sync.changeNotSaved": "Your change wasn't saved. Refresh and try again.",
+  "sync.timeout": "Sync timed out. Please try again.",
+  "sync.outboxReadFailed": "Couldn't read the messages waiting to send on this device.",
 } as const;

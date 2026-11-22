@@ -9,7 +9,8 @@ const errorStateSource = readFileSync(
   "utf8"
 );
 
-test("ErrorState default title is Chinese across native screens", () => {
-  assert.match(errorStateSource, /title = "页面暂时无法加载"/u);
+// 2026-11-21 language audit: the default title follows the screen language.
+test("ErrorState default title comes from the dictionary, not a fixed language", () => {
+  assert.match(errorStateSource, /t\("common\.loadFailedTitle"\)/u);
   assert.doesNotMatch(errorStateSource, /Could not load this view/u);
 });

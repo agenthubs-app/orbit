@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { buildOfflineMessageMutation } from "../data/sync/message-outbox-mutation";
 import { outboxRelationshipMessages, type OutboxRelationshipMessage } from "../view-models/relationship-outbox";
 import type { LocalRelationshipConversationsState } from "./local-relationship-messages-source";
+import { currentTranslator } from "../i18n/messages";
 
 export interface RelationshipMessageOutbox {
   /** Offline sending is open here (native, device mirror in use; the browser stays online-only, design D2). */
@@ -45,7 +46,7 @@ export function useRelationshipMessageOutbox(source: Pick<LocalRelationshipConve
       setMessages(previous => sameMessages(previous, next) ? previous : next);
       setFailure(previous => previous === null ? previous : null);
     } catch {
-      setFailure(previous => previous ?? "本机待发送消息暂时无法读取。");
+      setFailure(previous => previous ?? currentTranslator()("sync.outboxReadFailed"));
     }
   }, [session]);
   useEffect(() => { void refresh(); }, [refresh, source.freshness.lastSyncedAt, source.freshness.refreshing, source.freshness.offline]);

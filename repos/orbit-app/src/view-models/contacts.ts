@@ -3,6 +3,7 @@ import type { ContactListItemContract } from "../api/contract/contacts";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../api/contract/industries";
 import type { OrbitLanguage } from "../api/contract/language";
 import { industryLabel, isIndustryIdCode, secondaryIndustryLabel, validateIndustrySelection } from "../api/domain/industries";
+import { currentOrbitLanguage } from "../i18n/locale-core";
 import { createTranslator, type MessageKey } from "../i18n/messages";
 
 export interface ContactSummary {
@@ -255,12 +256,8 @@ export function isContactInitializationPending(contact: unknown): boolean {
   return isRecord(contact) && contactField(contact, "lifecycleInitialization") === "pending";
 }
 
-export function contactPendingInitializationCopy(language: OrbitLanguage = "zh") {
-  return {
-    zh: { title: "待设置关系", body: "交换仅确认已认识。请在 Web 联系人详情中设置你自己的关系目标或有日期的下一步；当前 App 尚不支持此设置。" },
-    en: { title: "Pending initialization", body: "An exchange only confirms you know each other. Set your own relationship goal or dated next step in the Web contact detail. This setting is not yet available in the app." },
-    ja: { title: "関係設定待ち", body: "交換は知り合ったことの確認のみです。Web の連絡先詳細で、自分の関係目標または日付付きの次のステップを設定してください。現在、この設定はアプリでは利用できません。" },
-  }[language];
+export function contactPendingInitializationCopy(language: OrbitLanguage = currentOrbitLanguage()) {
+  return { title: createTranslator(language)("contacts.pendingInitTitle") };
 }
 
 function numberField(
@@ -321,28 +318,6 @@ function valueScore(contact: Record<string, unknown>): number | null {
   return isRecord(value) ? numberField(value, "score") : null;
 }
 
-function valueLabels(contact: Record<string, unknown>): string[] {
-  const value = contact.value;
-  const valueTypes = isRecord(value) && Array.isArray(value.valueTypes)
-    ? value.valueTypes
-    : [];
-  const labels: Record<string, string> = {
-    business_opportunity: "商业机会",
-    commercial_opportunity: "商业机会",
-    community_context: "社群资源",
-    community_resource: "社群资源",
-    intro_path: "引荐路径",
-    knowledge_exchange: "知识交流",
-    referral_path: "引荐路径",
-    strategic_fit: "战略契合"
-  };
-
-  return valueTypes
-    .filter((valueType): valueType is string => typeof valueType === "string")
-    .map((valueType) => labels[valueType] ?? labelFromToken(valueType, valueType))
-    .filter(Boolean);
-}
-
 function stringListField(
   record: Record<string, unknown>,
   fieldName: string
@@ -357,20 +332,6 @@ function uniqueStrings(values: string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
-function statusLabel(value: string): string {
-  const normalized = value.trim().toLowerCase();
-  const labels: Record<string, string> = {
-    active: "推进中",
-    archived: "暂不推进",
-    dormant: "待唤醒",
-    needs_follow_up: "需要联系",
-    nurture: "长期维护",
-    weak: "弱关系"
-  };
-
-  return labels[normalized] ?? labelFromToken(value, "推进中");
-}
-
 const localizedStatusKeys: Readonly<Record<string, MessageKey>> = {
   active: "contacts.statusActive",
   archived: "contacts.statusArchived",
@@ -381,14 +342,12 @@ const localizedStatusKeys: Readonly<Record<string, MessageKey>> = {
 };
 
 function statusLabelForLanguage(value: string, language: OrbitLanguage): string {
-  if (language === "zh") return statusLabel(value);
   const normalized = value.trim().toLowerCase();
   const key = localizedStatusKeys[normalized];
   return key ? createTranslator(language)(key) : labelFromToken(value, createTranslator(language)("contacts.statusActive"));
 }
 
 function valueLabelsForLanguage(contact: Record<string, unknown>, language: OrbitLanguage): string[] {
-  if (language === "zh") return valueLabels(contact);
   const value = contact.value;
   const valueTypes = isRecord(value) && Array.isArray(value.valueTypes) ? value.valueTypes : [];
   const keys: Readonly<Record<string, MessageKey>> = {
@@ -1026,57 +985,11 @@ export function contactsSearchToView(data: unknown, language: OrbitLanguage = "z
   };
 }
 
-function statusAction(
-  rawStatus: string,
-  name: string
-): ContactDetailStatusActionView | null {
-  const normalized = rawStatus.trim().toLowerCase();
-
-  if (normalized === "needs_follow_up") {
-    return {
-      label: "标记为推进中",
-      nextStatus: "active",
-      pendingLabel: "更新中",
-      successMessage: `已把 ${name} 标记为推进中。`
-    };
-  }
-
-  if (normalized === "active" || normalized === "nurture") {
-    return {
-      label: "放回待联系",
-      nextStatus: "needs_follow_up",
-      pendingLabel: "更新中",
-      successMessage: `已把 ${name} 放回待联系。`
-    };
-  }
-
-  return null;
-}
-
-function archiveAction(
-  rawStatus: string,
-  name: string
-): ContactDetailStatusActionView | null {
-  const normalized = rawStatus.trim().toLowerCase();
-
-  if (normalized === "archived") {
-    return null;
-  }
-
-  return {
-    label: "归档联系人",
-    nextStatus: "archived",
-    pendingLabel: "归档中",
-    successMessage: `已归档 ${name}。`
-  };
-}
-
 function statusActionForLanguage(
   rawStatus: string,
   name: string,
   language: OrbitLanguage
 ): ContactDetailStatusActionView | null {
-  if (language === "zh") return statusAction(rawStatus, name);
   const normalized = rawStatus.trim().toLowerCase();
   const t = createTranslator(language);
   if (normalized === "needs_follow_up") return {
@@ -1095,7 +1008,6 @@ function archiveActionForLanguage(
   name: string,
   language: OrbitLanguage
 ): ContactDetailStatusActionView | null {
-  if (language === "zh") return archiveAction(rawStatus, name);
   if (rawStatus.trim().toLowerCase() === "archived") return null;
   const t = createTranslator(language);
   return {
@@ -1104,22 +1016,24 @@ function archiveActionForLanguage(
   };
 }
 
+// Chinese reading only: rewrites English seed text into Chinese (see localizedRelationshipText).
 function relationshipText(contact: Record<string, unknown>): string {
+  const t = createTranslator("zh");
   const snippet = stringField(contact, "profileSnippet");
   const relationship = stringField(contact, "relationshipContext");
-  const publicBio = publicProfileBio(contact);
+  const publicBio = publicProfileBio(contact, "zh");
 
   if (snippet) {
     const localizedSnippet = localizedRelationshipText(contact, snippet);
-    return localizedSnippet || publicBio || "关系背景待补充。";
+    return localizedSnippet || publicBio || t("contacts.relationshipPending");
   }
 
   if (relationship && !containsImplementationLabel(relationship)) {
     const localizedRelationship = localizedRelationshipText(contact, relationship);
-    return localizedRelationship || publicBio || "关系背景待补充。";
+    return localizedRelationship || publicBio || t("contacts.relationshipPending");
   }
 
-  return publicBio || stringField(contact, "role", "关系信息待补充");
+  return publicBio || stringField(contact, "role", t("contacts.relationshipInfoPending"));
 }
 
 function nextActionText(contact: Record<string, unknown>, name: string): string {
@@ -1129,7 +1043,7 @@ function nextActionText(contact: Record<string, unknown>, name: string): string 
     !value ||
     /\b(review|agent|source evidence|before agent use)\b/i.test(value)
   ) {
-    return `查看来源证据后再联系 ${name}。`;
+    return createTranslator("zh")("contacts.reviewEvidenceBeforeContact", { name });
   }
 
   return localizedNextActionText(value, name);
@@ -1183,7 +1097,7 @@ function locationLabel(value: string): string {
   const normalized = trimmed.toLowerCase();
 
   if (!trimmed || normalized === "unknown location" || normalized === "unknown") {
-    return "地区待补充";
+    return createTranslator("zh")("contacts.locationPending");
   }
 
   return trimmed;
@@ -1375,7 +1289,7 @@ function relationshipTextForLanguage(
   const candidates = [
     stringField(contact, "profileSnippet"),
     stringField(contact, "relationshipContext"),
-    publicProfileBio(contact),
+    publicProfileBio(contact, language),
     stringField(contact, "role")
   ];
   return candidates.find(value => value.trim() && !containsImplementationLabel(value))
@@ -1431,7 +1345,7 @@ export function contactRoleCountsFromPayload(
 
 export function contactsToSummaries(
   data: unknown,
-  language: OrbitLanguage = "zh"
+  language: OrbitLanguage = currentOrbitLanguage()
 ): ContactSummary[] {
   return listFromPayload(data, "contacts")
     .filter(isRecord)
@@ -1494,28 +1408,28 @@ function sourceLabel(contact: Record<string, unknown>): string {
   const label = stringField(source, "label") || stringField(publicSource, "label");
   const normalized = label.trim().toLowerCase();
   const qrMatch = /^QR scan (?:at|for) (.+)$/iu.exec(label);
-  const labels: Record<string, string> = {
-    "manual note": "手动记录"
-  };
+  const t = createTranslator("zh");
 
   if (qrMatch?.[1]?.trim()) {
     const detail = qrMatch[1].trim();
-    return /^(?:二维码|扫码)/u.test(detail) ? detail : `QR 扫码：${detail}`;
+    return /^(?:二维码|扫码)/u.test(detail) ? detail : t("contacts.sourceQrScan", { detail });
   }
 
-  if (labels[normalized]) {
-    return labels[normalized];
+  if (normalized === "manual note") {
+    return t("contacts.channelManualNote");
   }
 
   const chinese = preferredChineseSegment(label);
   return segmentLooksChinese(chinese) ? chinese : "";
 }
 
-function publicProfileBio(contact: Record<string, unknown>): string {
+// Only the Chinese reading rewrites seed text into Chinese; other languages show what the person wrote.
+function publicProfileBio(contact: Record<string, unknown>, language: OrbitLanguage): string {
   const publicProfile = nestedRecord(contact, "publicProfile");
   const rawBio =
     stringField(publicProfile, "bio") ||
     stringField(publicProfile, "selfIntroduction");
+  if (language !== "zh") return containsImplementationLabel(rawBio) ? "" : rawBio.trim();
   const localizedBio = localizedRelationshipText(contact, rawBio);
   const chineseBio = preferredChineseSegment(rawBio);
 
@@ -1569,7 +1483,8 @@ function localizedPublicProfileItem(value: string): string {
 
 function publicProfileList(
   contact: Record<string, unknown>,
-  fieldName: string
+  fieldName: string,
+  language: OrbitLanguage
 ): string[] {
   const publicProfile = nestedRecord(contact, "publicProfile");
   const organization = stringField(contact, "organization").toLowerCase();
@@ -1584,7 +1499,7 @@ function publicProfileList(
           return "";
         }
 
-        return localizedPublicProfileItem(item);
+        return language === "zh" ? localizedPublicProfileItem(item) : item.trim();
       })
       .filter((item) => item && !containsImplementationLabel(item))
   );
@@ -1645,7 +1560,7 @@ function noteSummaries(contact: Record<string, unknown>): string[] {
 
 export function contactDetailToSummary(
   data: unknown,
-  language: OrbitLanguage = "zh"
+  language: OrbitLanguage = currentOrbitLanguage()
 ): ContactDetailSummary {
   const contact = contactRecordFromPayload(data);
   const t = createTranslator(language);
@@ -1656,7 +1571,7 @@ export function contactDetailToSummary(
       detailTags: [],
       evidenceExcerpts: [],
       id: "contact",
-      lastInteractionAt: language === "zh" ? "暂无记录" : t("profile.notFilled"),
+      lastInteractionAt: t("contacts.noRecord"),
       location: "",
       name: "Contact",
       nextAction: t("contacts.reviewEvidenceBeforeContact", { name: "Contact" }),
@@ -1692,8 +1607,8 @@ export function contactDetailToSummary(
     id: stringField(contact, "id", "contact"),
     ...(imageUrl ? { imageUrl } : {}),
     lastInteractionAt: isRecord(contact.lastInteraction)
-      ? stringField(contact.lastInteraction, "occurredAt", language === "zh" ? "暂无记录" : t("profile.notFilled"))
-      : stringField(contact, "lastInteractionAt", language === "zh" ? "暂无记录" : t("profile.notFilled")),
+      ? stringField(contact.lastInteraction, "occurredAt", t("contacts.noRecord"))
+      : stringField(contact, "lastInteractionAt", t("contacts.noRecord")),
     ...(isRecord(contact.lastInteraction)
       ? { lastInteractionSummary: stringField(contact.lastInteraction, "summary") }
       : {}),
@@ -1702,11 +1617,11 @@ export function contactDetailToSummary(
     nextAction: isContactInitializationPending(contact) ? "" : nextActionTextForLanguage(contact, name, language),
     noteSummaries: language === "zh" ? noteSummaries(contact) : uniqueStrings(listFromPayload(contact, "notes").filter(isRecord).filter(note => note.privacy !== "private").map(note => stringField(note, "body")).filter(value => value && !containsImplementationLabel(value))).slice(0, 2),
     organization: language === "zh" ? organizationLabel(stringField(contact, "organization")) : stringField(contact, "organization"),
-    publicBio: publicProfileBio(contact),
-    publicOffering: publicProfileList(contact, "offering"),
-    publicPrompts: publicProfileList(contact, "conversationPrompts"),
-    publicSeeking: publicProfileList(contact, "seeking"),
-    publicTopics: publicProfileList(contact, "topics"),
+    publicBio: publicProfileBio(contact, language),
+    publicOffering: publicProfileList(contact, "offering", language),
+    publicPrompts: publicProfileList(contact, "conversationPrompts", language),
+    publicSeeking: publicProfileList(contact, "seeking", language),
+    publicTopics: publicProfileList(contact, "topics", language),
     ...(isIndustryIdCode(contact.primaryIndustryId)
       ? { primaryIndustryId: contact.primaryIndustryId }
       : {}),

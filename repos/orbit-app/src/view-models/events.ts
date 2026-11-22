@@ -1,4 +1,7 @@
 import type { EventRecordContract } from "../api/contract/events";
+import type { OrbitLanguage } from "../api/contract/language";
+import { createTranslator, type OrbitTranslator } from "../i18n/messages";
+import { currentOrbitLanguage } from "../i18n/locale-core";
 export interface EventSummary {
   actionLabel: string;
   coverPath: string;
@@ -23,11 +26,12 @@ export interface EventDiscoveryFilters {
 export function eventDiscoveryState(
   event: EventSummary
 ): Exclude<EventDiscoveryStatusFilter, "all"> {
-  if (/已结束|已取消|取消|结束|ended|cancelled|canceled|past/iu.test(event.status)) {
+  // Labels come from statusLabel / eventActionLabel in whichever language built the summary.
+  if (/已结束|已取消|取消|结束|終了|中止|キャンセル|ended|cancelled|canceled|past/iu.test(event.status)) {
     return "ended";
   }
 
-  if (event.actionLabel === "查看") {
+  if (VIEW_ACTION_LABELS.has(event.actionLabel)) {
     return "ended";
   }
 
@@ -36,6 +40,14 @@ export function eventDiscoveryState(
   }
 
   return "upcoming";
+}
+
+const VIEW_ACTION_LABELS = new Set(
+  (["zh", "ja", "en"] as const).map((language) => createTranslator(language)("events.vm.view"))
+);
+
+function localeTag(language: OrbitLanguage): string {
+  return language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP" : "en-US";
 }
 
 export function eventDiscoveryFilterCounts(
@@ -306,16 +318,6 @@ function arrayField(
   return Array.isArray(value) ? value : [];
 }
 
-const enWeekdayToZh: Record<string, string> = {
-  Fri: "周五",
-  Mon: "周一",
-  Sat: "周六",
-  Sun: "周日",
-  Thu: "周四",
-  Tue: "周二",
-  Wed: "周三",
-};
-
 function nestedStringField(
   record: Record<string, unknown>,
   parentField: string,
@@ -383,7 +385,7 @@ function chineseDisplayText(value: string, fallback: string): string {
   return cleanEventDisplayText(chinese);
 }
 
-function eventTitle(event: Record<string, unknown>): string {
+function eventTitle(event: Record<string, unknown>, t: OrbitTranslator): string {
   const rawTitle = eventField(event, "title") || stringField(event, "name");
   const preferredTitle = cleanEventDisplayText(preferredChineseSegment(rawTitle));
 
@@ -395,7 +397,7 @@ function eventTitle(event: Record<string, unknown>): string {
   return (
     cleanEventDisplayText(preferredChineseSegment(sourceLabel)) ||
     preferredTitle ||
-    "活动"
+    t("events.vm.fallbackTitle")
   );
 }
 
@@ -416,11 +418,16 @@ function eventCoverPath(event: Record<string, unknown>): string {
   );
 }
 
-function formatDateTime(value: string, timeZone = "Asia/Tokyo"): string {
+function formatDateTime(
+  value: string,
+  timeZone = "Asia/Tokyo",
+  language: OrbitLanguage = currentOrbitLanguage()
+): string {
+  const t = createTranslator(language);
   const timestamp = Date.parse(value);
 
   if (!Number.isFinite(timestamp)) {
-    return value || "Time pending";
+    return value || t("events.vm.timePending");
   }
 
   const date = new Date(timestamp);
@@ -435,12 +442,17 @@ function formatDateTime(value: string, timeZone = "Asia/Tokyo"): string {
   const partValue = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((part) => part.type === type)?.value ?? "";
 
-  const tokyoWeekday = enWeekdayToZh[new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(date)] ?? "";
+  const weekday = new Intl.DateTimeFormat(localeTag(language), { timeZone, weekday: "short" }).format(date);
   const time = [partValue("hour"), partValue("minute")]
     .filter(Boolean)
     .join(":");
 
-  return `${partValue("month")}月${partValue("day")}日 ${tokyoWeekday} ${time}`.trim();
+  return t("events.vm.dateTime", {
+    day: partValue("day"),
+    month: partValue("month"),
+    time,
+    weekday
+  }).trim();
 }
 
 function listFromPayload(value: unknown, fieldName: string): readonly unknown[] {
@@ -460,22 +472,22 @@ function uniqueStrings(values: string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
-function statusLabel(value: string): string {
+function statusLabel(value: string, t: OrbitTranslator): string {
   const normalized = value.trim().toLowerCase();
 
   if (normalized === "cancelled" || normalized === "canceled") {
-    return "已取消";
+    return t("events.vm.statusCancelled");
   }
 
   if (normalized === "completed" || normalized === "ended") {
-    return "已结束";
+    return t("events.vm.statusEnded");
   }
 
   if (normalized === "confirmed" || normalized === "scheduled") {
-    return "已确认";
+    return t("events.vm.statusConfirmed");
   }
 
-  return value || "待确认";
+  return value || t("events.vm.statusPending");
 }
 
 function sourceLabel(event: Record<string, unknown>): string {
@@ -521,13 +533,14 @@ function eventAboutSections(
     description: string;
     preparation: string;
     relationshipContext: string;
-  }
+  },
+  t: OrbitTranslator
 ): EventDetailAboutSectionView[] {
   const explicitSections = arrayField(event, "about")
     .filter(isRecord)
     .map((section, index) => {
       const title =
-        userFacingText(stringField(section, "label"), "") || `活动信息 ${index + 1}`;
+        userFacingText(stringField(section, "label"), "") || t("events.vm.aboutSection", { number: index + 1 });
       const body = userFacingText(stringField(section, "body"), "");
 
       return {
@@ -548,19 +561,19 @@ function eventAboutSections(
       body: input.description,
       iconName: "information-circle-outline",
       id: "overview",
-      title: "活动背景"
+      title: t("events.vm.aboutOverview")
     },
     {
       body: input.relationshipContext,
       iconName: "git-network-outline",
       id: "relationship",
-      title: "关系价值"
+      title: t("events.vm.aboutRelationship")
     },
     {
       body: input.preparation,
       iconName: "flag-outline",
       id: "preparation",
-      title: "会前准备"
+      title: t("events.vm.aboutPreparation")
     }
   ].filter((section) => section.body);
 }
@@ -570,7 +583,8 @@ function eventAgenda(
   input: {
     location: string;
     startsAt: string;
-  }
+  },
+  t: OrbitTranslator
 ): EventDetailAgendaItemView[] {
   const explicitAgenda = arrayField(event, "agenda")
     .filter(isRecord)
@@ -579,7 +593,7 @@ function eventAgenda(
       const title =
         userFacingText(stringField(item, "label"), "") ||
         userFacingText(stringField(item, "title"), "") ||
-        `环节 ${index + 1}`;
+        t("events.vm.agendaItem", { number: index + 1 });
       const description = userFacingText(stringField(item, "description"), "");
 
       return {
@@ -595,7 +609,7 @@ function eventAgenda(
     return explicitAgenda;
   }
 
-  if (!input.startsAt || input.startsAt === "Time pending") {
+  if (!input.startsAt || input.startsAt === t("events.vm.timePending")) {
     return [];
   }
 
@@ -604,20 +618,21 @@ function eventAgenda(
       description: input.location,
       id: "start",
       time: input.startsAt,
-      title: "活动开始"
+      title: t("events.vm.agendaStart")
     }
   ];
 }
 
 function attendeePreview(
-  event: Record<string, unknown>
+  event: Record<string, unknown>,
+  t: OrbitTranslator
 ): EventDetailAttendeePreviewView[] {
   const stats = recordField(event, "stats");
 
   return arrayField(stats, "attendees")
     .filter(isRecord)
     .map((attendee, index) => {
-      const name = stringField(attendee, "name", `参会者 ${index + 1}`);
+      const name = stringField(attendee, "name", t("events.vm.attendeeFallback", { number: index + 1 }));
 
       return {
         id: `${name}-${index}`,
@@ -631,7 +646,8 @@ function attendeePreview(
 
 function attendeeCountLabel(
   event: Record<string, unknown>,
-  attendees: EventDetailAttendeePreviewView[]
+  attendees: EventDetailAttendeePreviewView[],
+  t: OrbitTranslator
 ): string {
   const stats = recordField(event, "stats");
   const count =
@@ -639,16 +655,16 @@ function attendeeCountLabel(
     optionalNumberField(event, "participantCount") ??
     attendees.length;
 
-  return count > 0 ? `${count} 位参会者` : "参会者待确认";
+  return count > 0 ? t("events.vm.attendeeCount", { count }) : t("events.vm.attendeesPending");
 }
 
-function eventParticipantCountLabel(event: Record<string, unknown>): string {
+function eventParticipantCountLabel(event: Record<string, unknown>, t: OrbitTranslator): string {
   const stats = recordField(event, "stats");
   const count =
     optionalNumberField(stats, "count") ??
     optionalNumberField(event, "participantCount");
 
-  return count !== null ? `${count} 人已报名` : "报名人数待确认";
+  return count !== null ? t("events.vm.registeredCount", { count }) : t("events.vm.registeredPending");
 }
 
 /** A placeholder organizer label (「Organizer #1Q8PXWU」) is an internal id, never shown. */
@@ -681,55 +697,60 @@ function eventTopics(event: Record<string, unknown>): string[] {
   ]);
 }
 
-function eventActionLabel(rawStatus: string): string {
+function eventActionLabel(rawStatus: string, t: OrbitTranslator): string {
   const normalized = rawStatus.trim().toLowerCase();
 
   return normalized === "ended" ||
     normalized === "completed" ||
     normalized === "cancelled" ||
     normalized === "canceled"
-    ? "查看"
-    : "报名";
+    ? t("events.vm.view")
+    : t("events.vm.register");
 }
 
-function eventVenueDetail(location: string, address: string): string {
-  return uniqueStrings([location, address]).join(" · ") || "地点待定";
+function eventVenueDetail(location: string, address: string, t: OrbitTranslator): string {
+  return uniqueStrings([location, address]).join(" · ") || t("events.vm.venuePending");
 }
 
-function eventRegistrationActionLabel(rawStatus: string, youRsvped: boolean): string {
+function eventRegistrationActionLabel(rawStatus: string, youRsvped: boolean, t: OrbitTranslator): string {
   const status = rawStatus.trim().toLowerCase();
 
   if (status === "ended" || status === "completed" || status === "cancelled") {
-    return "查看活动";
+    return t("events.vm.viewEvent");
   }
 
-  return youRsvped ? "管理报名" : "报名参加";
+  return youRsvped ? t("events.vm.manageRegistration") : t("events.vm.registerAction");
 }
 
-function eventRegistrationDetail(youRsvped: boolean): string {
+function eventRegistrationDetail(youRsvped: boolean, t: OrbitTranslator): string {
   return youRsvped
-    ? "已报名，可继续查看现场入口和参会者名单。"
-    : "确认参加后可见完整参会者名单。";
+    ? t("events.vm.registeredDetail")
+    : t("events.vm.registerDetail");
 }
 
-export function eventsToSummaries(data: unknown, timeZone = "Asia/Tokyo"): EventSummary[] {
+export function eventsToSummaries(
+  data: unknown,
+  timeZone = "Asia/Tokyo",
+  language: OrbitLanguage = currentOrbitLanguage()
+): EventSummary[] {
+  const t = createTranslator(language);
   return listFromPayload(data, "events")
     .filter(isRecord)
     .map((event) => {
-      const title = eventTitle(event);
+      const title = eventTitle(event, t);
       const rawStatus = eventField(event, "status", "scheduled");
 
       return {
-        actionLabel: eventActionLabel(rawStatus),
+        actionLabel: eventActionLabel(rawStatus, t),
         coverPath: eventCoverPath(event),
         id: eventField(event, "id", "event"),
         location:
           eventField(event, "venue") ||
           stringField(event, "location") ||
           stringField(event, "locationLabel"),
-        participantCountLabel: eventParticipantCountLabel(event),
-        startsAt: formatDateTime(eventField(event, "startsAt", "Time pending"), timeZone),
-        status: statusLabel(rawStatus),
+        participantCountLabel: eventParticipantCountLabel(event, t),
+        startsAt: formatDateTime(eventField(event, "startsAt"), timeZone, language),
+        status: statusLabel(rawStatus, t),
         subtitle: eventSubtitle(event),
         topics: eventTopics(event),
         title
@@ -757,100 +778,105 @@ function eventRecordFromPayload(data: unknown): Record<string, unknown> | null {
   return isRecord(data) ? data : null;
 }
 
-export function eventDetailToSummary(data: unknown, timeZone = "Asia/Tokyo"): EventDetailSummary {
+export function eventDetailToSummary(
+  data: unknown,
+  timeZone = "Asia/Tokyo",
+  language: OrbitLanguage = currentOrbitLanguage()
+): EventDetailSummary {
+  const t = createTranslator(language);
   const event = eventRecordFromPayload(data);
 
   if (!event) {
     return {
-      actionLabel: "报名",
+      actionLabel: t("events.vm.register"),
       aboutSections: [],
       address: "",
       agenda: [],
-      attendeeCountLabel: "参会者待确认",
+      attendeeCountLabel: t("events.vm.attendeesPending"),
       attendeePreview: [],
       coverPath: "/orbit-covers/meeting.jpg",
       description: "",
       evidenceExcerpts: [],
-      feeLabel: "现场确认",
+      feeLabel: t("events.vm.feeOnSite"),
       id: "event",
       location: "",
-      nextAction: "先看活动信息，再决定要准备的介绍和会谈重点。",
-      organizerName: "主办方待确认",
-      participantCountLabel: "报名人数待确认",
-      preparation: "整理参会者背景、想认识的人和可以主动提供的资源。",
-      registrationActionLabel: "报名参加",
-      registrationDetail: "确认参加后可见完整参会者名单。",
-      relationshipContext: "关系线索待补充。",
+      nextAction: t("events.vm.nextActionInfo"),
+      organizerName: t("events.vm.organizerPending"),
+      participantCountLabel: t("events.vm.registeredPending"),
+      preparation: t("events.vm.preparationDefault"),
+      registrationActionLabel: t("events.vm.registerAction"),
+      registrationDetail: t("events.vm.registerDetail"),
+      relationshipContext: t("events.vm.relationshipPending"),
       sourceLabel: "",
-      startsAt: "Time pending",
+      startsAt: t("events.vm.timePending"),
       status: "scheduled",
       subtitle: "",
-      title: "Event",
+      title: t("events.vm.fallbackTitle"),
       topics: [],
-      venueDetail: "地点待定"
+      venueDetail: t("events.vm.venuePending")
     };
   }
 
-  const title = eventTitle(event);
+  const title = eventTitle(event, t);
   const rawStatus = eventField(event, "status", "scheduled");
   const location =
     eventField(event, "venue") ||
     stringField(event, "location") ||
     stringField(event, "locationLabel");
-  const startsAt = formatDateTime(eventField(event, "startsAt", "Time pending"), timeZone);
+  const startsAt = formatDateTime(eventField(event, "startsAt"), timeZone, language);
   const description = userFacingText(eventField(event, "description"), "");
   const nextAction = userFacingText(
     eventField(event, "nextAction"),
-    "先看报名信息，再决定要准备的介绍和会谈重点。"
+    t("events.vm.nextActionRegistration")
   );
   const preparation = userFacingText(
     eventField(event, "recommendedPreparation"),
-    "整理参会者背景、想认识的人和可以主动提供的资源。"
+    t("events.vm.preparationDefault")
   );
   const relationshipContext = userFacingText(
     eventField(event, "relationshipContext"),
-    "关系线索待补充。"
+    t("events.vm.relationshipPending")
   );
   const stats = recordField(event, "stats");
   const youRsvped = Boolean(stats.youRsvped);
   const source = sourceLabel(event);
   const address = stringField(event, "address");
-  const attendees = attendeePreview(event);
+  const attendees = attendeePreview(event, t);
 
   return {
-    actionLabel: eventActionLabel(rawStatus),
+    actionLabel: eventActionLabel(rawStatus, t),
     aboutSections: eventAboutSections(event, {
       description,
       preparation,
       relationshipContext
-    }),
+    }, t),
     address,
-    agenda: eventAgenda(event, { location, startsAt }),
-    attendeeCountLabel: attendeeCountLabel(event, attendees),
+    agenda: eventAgenda(event, { location, startsAt }, t),
+    attendeeCountLabel: attendeeCountLabel(event, attendees, t),
     attendeePreview: attendees,
     coverPath: eventCoverPath(event),
     description,
     evidenceExcerpts: evidenceExcerpts(event),
-    feeLabel: userFacingText(stringField(event, "feeLabel"), "现场确认"),
+    feeLabel: userFacingText(stringField(event, "feeLabel"), t("events.vm.feeOnSite")),
     id: eventField(event, "id", "event"),
     location,
     nextAction,
     organizerName:
       publicHostText(userFacingText(stringField(event, "organizer"), "")) ||
       publicHostText(userFacingText(stringField(event, "host"), "")) ||
-      "主办方待确认",
-    participantCountLabel: eventParticipantCountLabel(event),
+      t("events.vm.organizerPending"),
+    participantCountLabel: eventParticipantCountLabel(event, t),
     preparation,
-    registrationActionLabel: eventRegistrationActionLabel(rawStatus, youRsvped),
-    registrationDetail: eventRegistrationDetail(youRsvped),
+    registrationActionLabel: eventRegistrationActionLabel(rawStatus, youRsvped, t),
+    registrationDetail: eventRegistrationDetail(youRsvped, t),
     relationshipContext,
     sourceLabel: source,
     startsAt,
-    status: statusLabel(rawStatus),
+    status: statusLabel(rawStatus, t),
     subtitle: eventSubtitle(event),
     title,
     topics: eventTopics(event),
-    venueDetail: eventVenueDetail(location, address)
+    venueDetail: eventVenueDetail(location, address, t)
   };
 }
 

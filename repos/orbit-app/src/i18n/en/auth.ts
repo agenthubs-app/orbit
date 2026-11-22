@@ -118,4 +118,6 @@ export const auth = {
   "auth.changeConflict": "Your password was just changed elsewhere. Sign in again and retry.",
   "auth.changeUnauthorized": "Your session has ended. Please sign in again.",
   "auth.changeFailed": "Could not change the password. Please try again later.",
+  "auth.err.rateLimited": "Too many attempts. Please try again later.",
+  "auth.err.signupInvalid": "Enter a valid email and a password of at least 8 characters (up to 72 bytes).",
 } as const;

@@ -9,7 +9,8 @@ const providerSource = readFileSync(
   "utf8"
 );
 
-test("API base URL provider exposes storage failures in Chinese", () => {
-  assert.match(providerSource, /"无法读取已保存的服务器地址。"/u);
+// 2026-11-21 language audit: the storage failure is shown in the screen language.
+test("API base URL provider exposes storage failures through the dictionary", () => {
+  assert.match(providerSource, /"common\.serverUrlReadFailed"/u);
   assert.doesNotMatch(providerSource, /"Could not read saved server address\."/u);
 });

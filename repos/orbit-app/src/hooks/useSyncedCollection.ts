@@ -24,6 +24,7 @@ import {
 import { subscribeToSyncAppState } from "../data/sync/sync-freshness";
 import { syncLifecycle } from "../data/sync/sync-lifecycle";
 import { useOrbitApiClient } from "./useOrbitApiClient";
+import { currentTranslator } from "../i18n/messages";
 
 const appSyncCoordinator = createSyncCoordinator({
   lifecycle: syncLifecycle,
@@ -164,7 +165,7 @@ export function useSyncedCollection<TPayload = unknown>(input: {
         const current = snapshotRef.current;
         const timedOut: SyncedCollectionSnapshot<TPayload> = {
           ...current,
-          error: "同步请求超时，请重试。",
+          error: currentTranslator()("sync.timeout"),
           status: current.records.length > 0 ? "stale" : "failure",
         };
         snapshotRef.current = timedOut;

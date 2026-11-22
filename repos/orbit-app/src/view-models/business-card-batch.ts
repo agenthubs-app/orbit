@@ -56,22 +56,28 @@ function fieldNotesReviewFields(extraction: BusinessCardStructuredExtractionCont
   fields.email = extraction.emails.find(value => value.value.trim())?.value ?? "";
   const phoneIndex = extraction.contactPoints.findIndex(point => (point.type === "phone" || point.type === "mobile") && point.value.trim());
   fields.phone = extraction.contactPoints[phoneIndex]?.value ?? "";
+  // The labels are written into the note the person reviews and saves, so they follow the reader's language.
+  const t = currentTranslator();
+  const pointLabels: Readonly<Record<BusinessCardStructuredExtractionContract["contactPoints"][number]["type"], string>> = {
+    phone: t("businessCard.pointPhone"), mobile: t("businessCard.pointMobile"), fax: t("businessCard.pointFax"), wechat: t("businessCard.pointWechat"),
+    line: t("businessCard.pointLine"), whatsapp: t("businessCard.pointWhatsapp"), website: t("businessCard.noteWebsite"), other: t("businessCard.pointOther"),
+  };
   const notes: string[] = [];
   const seen = new Set<string>();
   const add = (label: string, value: string | null, key = JSON.stringify(["note", label, value])) => {
     if (value?.trim() && !seen.has(key)) { seen.add(key); notes.push(`${label}: ${value}`); }
   };
   for (const name of new Set([extraction.fullName, extraction.nativeFullName, extraction.romanizedFullName])) {
-    if (name?.trim() !== fields.displayName) add("姓名", name);
+    if (name?.trim() !== fields.displayName) add(t("businessCard.fieldName"), name);
   }
-  extraction.departments.forEach(value => add("部门", value));
-  extraction.emails.forEach(value => { if (value.value !== fields.email || value.label) add(value.label || "邮箱", value.value); });
+  extraction.departments.forEach(value => add(t("businessCard.noteDepartment"), value));
+  extraction.emails.forEach(value => { if (value.value !== fields.email || value.label) add(value.label || t("businessCard.fieldEmail"), value.value); });
   extraction.contactPoints.forEach((point, index) => {
-    if (index !== phoneIndex || point.label) add(point.label ? `${point.type} (${point.label})` : point.type, point.value, JSON.stringify(["contact", point.type, point.label, point.value]));
+    if (index !== phoneIndex || point.label) add(point.label ? `${pointLabels[point.type]} (${point.label})` : pointLabels[point.type], point.value, JSON.stringify(["contact", point.type, point.label, point.value]));
   });
-  add("网站", extraction.website);
-  extraction.addresses.forEach(value => add(value.label || "地址", value.value));
-  extraction.certifications.forEach(value => add("资格", value));
+  add(t("businessCard.noteWebsite"), extraction.website);
+  extraction.addresses.forEach(value => add(value.label || t("businessCard.noteAddress"), value.value));
+  extraction.certifications.forEach(value => add(t("businessCard.noteCertification"), value));
   fields.notes = notes.join("\n");
   return fields;
 }

@@ -175,3 +175,16 @@ test("normalizedNext accepts supported app routes and rejects redirect or route-
   assert.equal(normalizedNext("/account/reset-password#token=redacted"), "/home");
   assert.equal(normalizedNext(undefined), "/home");
 });
+
+// 2026-11-21 language audit: the transport writes its fixed messages in the screen
+// language, so a cancelled Google sign-in is recognised (and re-read) in any of them.
+test("a cancelled Google sign-in is recognised in zh, ja and en", async () => {
+  const { isGoogleSignInCancelled, localizeAuthMessage } = await import("../src/view-models/account-auth");
+  const { createTranslator } = await import("../src/i18n/messages");
+  for (const language of ["zh", "ja", "en"] as const) {
+    const text = createTranslator(language)("auth.err.googleCancelled");
+    assert.equal(isGoogleSignInCancelled(text), true, language);
+    assert.equal(localizeAuthMessage(text, createTranslator("en")), createTranslator("en")("auth.err.googleCancelled"));
+  }
+  assert.equal(isGoogleSignInCancelled("Network request failed"), false);
+});

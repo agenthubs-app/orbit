@@ -217,8 +217,14 @@ const AUTH_MESSAGE_KEYS: readonly MessageKey[] = [
   "auth.err.providers",
   "auth.err.accountState",
 ];
-// The zh copy of each key is exactly the transport's fixed text, so the zh dictionary is the lookup table.
-const AUTH_MESSAGES_BY_TEXT = new Map(AUTH_MESSAGE_KEYS.map(key => [createTranslator("zh")(key), key] as const));
+// The transport returns these keys' text in the screen language (any of the three), so
+// every language's copy is a lookup row: a message is re-read in the language shown now.
+const AUTH_MESSAGES_BY_TEXT = new Map((["zh", "ja", "en"] as const).flatMap(language => AUTH_MESSAGE_KEYS.map(key => [createTranslator(language)(key), key] as const)));
+
+/** The user closed the Google sheet themselves (a notice, not an error), in whatever language the transport wrote it. */
+export function isGoogleSignInCancelled(message: string | null | undefined): boolean {
+  return !!message && AUTH_MESSAGES_BY_TEXT.get(message.trim()) === "auth.err.googleCancelled";
+}
 
 export function localizeAuthMessage(message: string | null | undefined, t: OrbitTranslator): string | undefined {
   if (!message) return undefined;

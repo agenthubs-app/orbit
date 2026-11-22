@@ -107,4 +107,9 @@ export const me = {
   "me.saved": "保存しました",
   "me.saveError": "保存できませんでした。もう一度お試しください。",
   "me.schedule": "日程",
+  "me.debug.pendingReadFailed": "この端末の未同期の変更数を読み込めませんでした。",
+  "me.debug.enqueueFailed": "Debug 用のテスト変更を端末のキューに書き込めませんでした。",
+  "me.debug.clearFailed": "Debug 用のテスト変更をすべて削除できませんでした。キューを残したまま端末を確認してください。",
+  "me.debug.pendingWrites": "Debug 未同期の変更・{count}",
+  "me.debug.clearWrites": "Debug テスト変更を削除・{count}",
 } as const;

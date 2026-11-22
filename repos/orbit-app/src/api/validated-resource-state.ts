@@ -1,4 +1,5 @@
 import type { RouteState } from "../view-models/route-state";
+import { currentTranslator } from "../i18n/messages";
 
 type SafeParseResult<TData> =
   | { success: true; data: TData }
@@ -31,7 +32,7 @@ export function validateApiResourceState<TData>(
       kind: "failure",
       error: {
         code: "ORBIT_APP_CONTRACT_MISMATCH",
-        message: "服务返回的数据版本暂时无法识别，请更新 App 后重试。"
+        message: currentTranslator()("common.api.contractMismatch")
       },
       meta: state.meta,
       status: state.status,

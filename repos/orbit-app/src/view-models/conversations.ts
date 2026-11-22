@@ -3,7 +3,7 @@ import { conversationContactArtifacts, conversationEntityCards, type Conversatio
 import type { AiEntityCardView } from "./ai-entity-card";
 import { readAiEntityDraft, type AiEntityDraft } from "./ai-entity-draft";
 import type { OrbitLanguage } from "../api/contract/language";
-import { createTranslator } from "../i18n/messages";
+import { createTranslator, type MessageKey, type OrbitTranslator } from "../i18n/messages";
 import type {
   OrbitAiConversationSummaryContract,
   OrbitAiMessageContract,
@@ -27,7 +27,21 @@ export interface ConversationRecordLink {
   external: boolean;
   href: string;
   id: string;
+  // An internal code (the screen picks the icon by it); show it with conversationRecordKindLabel.
   kind: "活动" | "人脉" | "待办" | "日历活动" | "行动";
+}
+
+const RECORD_KIND_KEYS: Readonly<Record<ConversationRecordLink["kind"], MessageKey>> = {
+  活动: "aiEntityDraft.kindEvent",
+  人脉: "aiEntityDraft.kindContact",
+  待办: "aiEntityDraft.kindTask",
+  日历活动: "aiEntityDraft.kindSchedule",
+  行动: "contacts.recordKindAction",
+};
+
+/** The record kind in the reader's language. */
+export function conversationRecordKindLabel(kind: ConversationRecordLink["kind"], t: OrbitTranslator): string {
+  return t(RECORD_KIND_KEYS[kind]);
 }
 
 function validConversationRecordId(id: string): boolean {

@@ -21,7 +21,8 @@ test("FinalFix I1 labeled channels deduplicate by meaning, retaining phone fax a
     { type: "whatsapp", label: "Tokyo", value: "same-account" },
   ] });
   assert.equal(fields.phone, "0312345678");
-  for (const line of ["phone (Office): 0312345678", "fax (Office): 0312345678", "wechat (Tokyo): same-account", "whatsapp (Tokyo): same-account"]) {
+  // Point types are written in the reader's language (the legacy test language is Chinese).
+  for (const line of ["电话 (Office): 0312345678", "传真 (Office): 0312345678", "微信 (Tokyo): same-account", "WhatsApp (Tokyo): same-account"]) {
     assert.equal(fields.notes.split("\n").filter(note => note === line).length, 1, line);
   }
 });
@@ -56,8 +57,9 @@ for (const selectedType of ["phone", "mobile"] as const) for (const alternateTyp
     { type: alternateType, label: null, value: "0312345678" },
   ] });
   assert.equal(fields.phone, "0312345678");
-  assert.ok(fields.notes.split("\n").includes(`${alternateType}: 0312345678`), fields.notes);
-  assert.ok(!fields.notes.split("\n").includes(`${selectedType}: 0312345678`));
+  const zh = { phone: "电话", mobile: "手机", fax: "传真", wechat: "微信", other: "其他" } as const;
+  assert.ok(fields.notes.split("\n").includes(`${zh[alternateType]}: 0312345678`), fields.notes);
+  assert.ok(!fields.notes.split("\n").includes(`${zh[selectedType]}: 0312345678`));
 });
 test("selection stays on the current unresolved item; processing polls; settled failures may finish", () => {
   assert.deepEqual(legacyBatchPresentation(detail("processing", ["processing", "extracted"]), "item:1"), { selectedId: "item:1", polling: true, canFinish: false });

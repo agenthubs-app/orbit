@@ -162,4 +162,10 @@ export const notes = {
   "notes.deletePending": "このメモにはまだ同期していない変更があります。同期が終わってから削除できます。",
   "notes.deleted": "メモを削除しました",
   "notes.removeRelatedNote": "関係するメモ「{name}」を外す",
+  "notes.queueReadFailed": "この端末で同期待ちのノートを読み込めません。",
+  "notes.localScopeNotReady": "この端末の同期はまだ準備できていません。",
+  "notes.localRetryUnavailable": "この端末では今は再試行できません。",
+  "notes.localDiscardUnavailable": "この端末では今は破棄できません。",
+  "notes.localConflictUnavailable": "この端末では今は競合を解決できません。",
+  "notes.conflictChanged": "ノートの競合が変わりました。更新してからもう一度お試しください。",
 } as const;

@@ -59,8 +59,8 @@ test("the Debug outbox fixture is hidden outside signed-in development builds", 
   assert.match(accountScreenSource, /\{__DEV__ && Platform\.OS !== "web" && auth\.signedIn \? <>/u);
   assert.match(accountScreenSource, /if \(!__DEV__ \|\| Platform\.OS === "web" \|\| !auth\.signedIn\) return;/u);
   assert.match(accountScreenSource, /enqueueDebugPendingWrite/u);
-  assert.match(accountScreenSource, /Promise\.all\([\s\S]*?\)\.catch\([\s\S]*?无法读取这台设备上的待同步修改数量/u);
-  assert.match(accountScreenSource, /Debug 测试修改未能写入本机队列/u);
+  assert.match(accountScreenSource, /Promise\.all\([\s\S]*?\)\.catch\([\s\S]*?me\.debug\.pendingReadFailed/u);
+  assert.match(accountScreenSource, /me\.debug\.enqueueFailed/u);
   assert.match(accountScreenSource, /catch/u);
   assert.match(authProviderSource, /if \(!__DEV__ \|\| usesBrowserManagedSession \|\| !accountId/u);
   assert.match(authProviderSource, /domainId: "test-offline-write"/u);

@@ -65,6 +65,7 @@ import {
   conversationAiRunReferencesFor,
   conversationPayloadToThreadView,
   conversationQuickRoutes,
+  conversationRecordKindLabel,
   conversationRecordLinks,
   conversationTaskDetailHref,
   markdownBlocksFor,
@@ -116,6 +117,16 @@ type ReliableSendAttempt = {
 type SendRequest = { path: string; message: string; history?: { content: string; role: "user" | "assistant" }[] | undefined; reliable?: ReliableSendAttempt; revision: number; sourceNote?: { id: string; version: number }; /** QA-A2: when it was first sent (never sent to the server). */ sentAt?: number };
 /** QA-A2: a reliable send still "pending" this long after it was sent has stopped (the server run timed out). */
 const STALE_PENDING_MS = 5 * 60 * 1000;
+
+// conversationRecordLinks tags each link with a fixed kind code; the label comes from
+// conversationRecordKindLabel in the screen language, the icon from here.
+const RECORD_KIND_ICONS = {
+  人脉: "person-outline",
+  待办: "checkbox-outline",
+  行动: "flash-outline",
+  活动: "calendar-outline",
+  日历活动: "calendar-outline"
+} as const satisfies Record<ReturnType<typeof conversationRecordLinks>[number]["kind"], string>;
 /** QA-A2: the check found the message never reached the server, or the run stopped; 重试 is safe. */
 const RETRYABLE_SEND_CODES = ["NOT_DELIVERED", "TIMED_OUT"];
 type PendingSessionSave = { session: AiSession; revision: number; canonicalize: boolean; waitForTask: boolean; delta?: AiSession["messages"] };
@@ -1186,7 +1197,7 @@ function MessageBubble({ baseUrl, message, onOpenHref, onUseVersion }: { baseUrl
       {isUser ? <Text selectable style={[styles.messageText, styles.messageTextUser]}>{message.content}</Text> : <MarkdownContent content={message.content} isUser={false} onUseVersion={onUseVersion} />}
       {links.map((link) => (
         <Pressable
-          accessibilityLabel={locale.t("aiConversation.openRecordNamed", { kind: link.kind, id: link.id })}
+          accessibilityLabel={locale.t("aiConversation.openRecordNamed", { kind: conversationRecordKindLabel(link.kind, locale.t), id: link.id })}
           accessibilityRole="link"
           key={link.href}
           onPress={() => {
@@ -1197,8 +1208,8 @@ function MessageBubble({ baseUrl, message, onOpenHref, onUseVersion }: { baseUrl
           }}
           style={styles.recordLink}
         >
-          <Ionicons color={colors.accentText} name={link.kind === "人脉" ? "person-outline" : link.kind === "待办" ? "checkbox-outline" : link.kind === "行动" ? "flash-outline" : "calendar-outline"} size={20} />
-          <Text style={styles.recordLinkText}>{locale.t("aiConversation.recordDetail", { kind: link.kind, id: link.id, web: link.external ? locale.t("aiConversation.web") : "" })}</Text>
+          <Ionicons color={colors.accentText} name={RECORD_KIND_ICONS[link.kind]} size={20} />
+          <Text style={styles.recordLinkText}>{locale.t("aiConversation.recordDetail", { kind: conversationRecordKindLabel(link.kind, locale.t), id: link.id, web: link.external ? locale.t("aiConversation.web") : "" })}</Text>
           <Ionicons color={colors.accentText} name="arrow-up-right-box-outline" size={18} />
         </Pressable>
       ))}

@@ -6,7 +6,7 @@ import { Button, Card, Chip, IconButton, Skeleton, TextField, UiPressable, UiTex
 import { normalizeProfileTagValues } from "../../data/profile-edit-session";
 import { createThemedStyles } from "../../design/theme";
 import { spacing, typography } from "../../design/tokens";
-import { OFFER_OPTIONS, optionMatches, SEEK_OPTIONS } from "../../view-models/profile-onboarding";
+import { OFFER_OPTIONS, optionMatches, savedOptionLabel, SEEK_OPTIONS } from "../../view-models/profile-onboarding";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { accountDestination } from "./account-api";
 import { useAccountEditor } from "./useAccountEditor";
@@ -20,7 +20,8 @@ export function AccountTagsScreen() {
   const selected = state.session?.draft[field] ?? [];
   function patch(values: string[]) { state.patch({ [field]: normalizeProfileTagValues(values) }); }
   // QA-D: the same choices onboarding offers, so editing later is not a blank text box.
-  const suggestions = (field === "offering" ? OFFER_OPTIONS : SEEK_OPTIONS).filter(option => !selected.some(value => optionMatches(option, value))).map(option => option[language]);
+  const options = field === "offering" ? OFFER_OPTIONS : SEEK_OPTIONS;
+  const suggestions = options.filter(option => !selected.some(value => optionMatches(option, value))).map(option => option[language]);
   function add() { if (selected.length < 5 && query.trim()) { patch([...selected, query]); setQuery(""); } }
   if (!state.session) return <AppScreen inset="kit" title={t(field === "offering" ? "me.offering" : "me.seeking")}>
     {state.resource.kind === "loading" ? <Skeleton onRetry={state.refresh} /> : <Card><UiText style={styles.body}>{t(state.resource.kind === "offline" ? "sync.notOnDevice" : "me.loadError")}</UiText>
@@ -30,8 +31,8 @@ export function AccountTagsScreen() {
       <Button label={t("me.save")} size="sm" disabled={!state.canSave} onPress={() => void state.save().then(saved => { if (saved) router.replace(accountDestination("/profile", state.path) as Href); })} />}>
     <AccountCopyNotice copy={state.copy} language={language} t={t} />
     {state.feedback ? <UiText accessibilityRole="alert" style={styles.body}>{state.feedback}</UiText> : null}
-    <Card><UiText style={styles.label}>{t("profile.selectedCount", { count: selected.length })}</UiText><View style={styles.tags}>{selected.map(value => <View key={value} style={styles.row}><Chip label={value} tone={field === "offering" ? "lav" : "pink"} />
-      <IconButton icon="x" accessibilityLabel={t("onboarding.removeNamed", { name: value })} onPress={() => patch(selected.filter(item => item !== value))} /></View>)}</View></Card>
+    <Card><UiText style={styles.label}>{t("profile.selectedCount", { count: selected.length })}</UiText><View style={styles.tags}>{selected.map(value => <View key={value} style={styles.row}><Chip label={savedOptionLabel(options, value, language)} tone={field === "offering" ? "lav" : "pink"} />
+      <IconButton icon="x" accessibilityLabel={t("onboarding.removeNamed", { name: savedOptionLabel(options, value, language) })} onPress={() => patch(selected.filter(item => item !== value))} /></View>)}</View></Card>
     <Card>
       <TextField label={t("profile.addCustomTag")} value={query} onChangeText={setQuery} onSubmitEditing={add} />
       <Button label={t("me.add")} variant="secondary" disabled={!state.session || !query.trim() || selected.length >= 5} onPress={add} />{selected.length >= 5 ? <UiText style={styles.label}>{t("profile.tagLimit")}</UiText> : null}</Card>

@@ -96,16 +96,16 @@ function useNotesMirror(actorId: string, enabled: boolean) {
       setQueuedMutations([...(overlay?.queuedMutations ?? [])]);
       setQueueFailure(null);
     } catch {
-      setQueueFailure("本机待同步笔记暂时无法读取。");
+      setQueueFailure(locale.t("notes.queueReadFailed"));
     }
-  }, [state.currentSession]);
+  }, [locale, state.currentSession]);
   useEffect(() => { void refreshQueued(); }, [refreshQueued, state.lastSyncedAt, state.records, state.status]);
   const enqueueOfflineMutation = useCallback(async (mutation: OfflineNoteMutationInput) => {
     const session = state.currentSession();
-    if (!session) throw new Error("本机同步范围尚未就绪。");
+    if (!session) throw new Error(locale.t("notes.localScopeNotReady"));
     await session.enqueueOfflineNoteMutation(mutation);
     await refreshQueued();
-  }, [refreshQueued, state.currentSession]);
+  }, [locale, refreshQueued, state.currentSession]);
   const serverNotes = useMemo(() => freshness.readable ? notesFromMirror(state.records, actorId, locale.language) : null, [actorId, freshness.readable, locale.language, state.records]);
   const notes = useMemo(() => serverNotes ? overlayQueuedNotes(serverNotes, queuedMutations, actorId, locale.language) : null,
     [actorId, locale.language, queuedMutations, serverNotes]);
@@ -174,13 +174,13 @@ export function useMirrorNoteDetail(input: { actorId: string; noteId: string; sc
     failedMutation,
     async retryFailed(mutationId) {
       const session = state.currentSession();
-      if (!session?.retryOfflineWrite) throw new Error("本机重试暂不可用。");
+      if (!session?.retryOfflineWrite) throw new Error(locale.t("notes.localRetryUnavailable"));
       await session.retryOfflineWrite("note", mutationId);
       await refreshQueued();
     },
     async discardFailed(mutationId) {
       const session = state.currentSession();
-      if (!session?.discardOfflineWrite) throw new Error("本机放弃操作暂不可用。");
+      if (!session?.discardOfflineWrite) throw new Error(locale.t("notes.localDiscardUnavailable"));
       await session.discardOfflineWrite("note", mutationId);
       await refreshQueued();
     },
@@ -196,8 +196,8 @@ export function useMirrorNoteDetail(input: { actorId: string; noteId: string; sc
     confirmSaved: (noteId, version) => confirmSaved(state, input.actorId, locale.language, noteId, version),
     async resolveConflict(resolution) {
       const session = state.currentSession();
-      if (!session?.resolveNoteConflict) throw new Error("本机冲突操作暂不可用。");
-      if (!conflictMutation || conflictMutation.mutationId !== resolution.mutationId) throw new Error("笔记冲突已变化，请刷新后重试。");
+      if (!session?.resolveNoteConflict) throw new Error(locale.t("notes.localConflictUnavailable"));
+      if (!conflictMutation || conflictMutation.mutationId !== resolution.mutationId) throw new Error(locale.t("notes.conflictChanged"));
       await session.resolveNoteConflict(resolution);
       await refreshQueued();
       if (resolution.resolution === "replace") state.refresh();
@@ -224,10 +224,10 @@ export function useMirrorNotesWriteStatus(actorId: string, enabled = true): Note
   useEffect(() => { void refreshQueued(); }, [refreshQueued, state.lastSyncedAt, state.records, state.status]);
   const enqueueOfflineMutation = useCallback(async (mutation: OfflineNoteMutationInput) => {
     const session = state.currentSession();
-    if (!session) throw new Error("本机同步范围尚未就绪。");
+    if (!session) throw new Error(locale.t("notes.localScopeNotReady"));
     await session.enqueueOfflineNoteMutation(mutation);
     await refreshQueued();
-  }, [refreshQueued, state.currentSession]);
+  }, [locale, refreshQueued, state.currentSession]);
   return {
     offline: freshness.offline,
     lastSyncedAt: freshness.lastSyncedAt,

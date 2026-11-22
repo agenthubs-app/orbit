@@ -1145,10 +1145,12 @@ function ThreadDetail({
   const locale = useOrbitLocale();
   const { styles } = useStyles();
   const [showEmptyRecords, setShowEmptyRecords] = useState(false);
-  const emptyCount = detail.messages.filter(message => message.body === "暂无消息正文").length;
+  // The view model fills an empty body with this same placeholder, in the screen language.
+  const noBody = locale.t("inbox.noMessageBody");
+  const emptyCount = detail.messages.filter(message => message.body === noBody).length;
   const visibleMessages = showEmptyRecords
     ? detail.messages
-    : detail.messages.filter(message => message.body !== "暂无消息正文");
+    : detail.messages.filter(message => message.body !== noBody);
   const pinnedAppointment = delivery && focusAppointmentId && !detail.messages.some(message => message.appointmentId === focusAppointmentId) ? focusAppointmentId : "";
   return (
     <View style={styles.readingPane}>

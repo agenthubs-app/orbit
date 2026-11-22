@@ -7,8 +7,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { openMainTab } from "../../components/shell-navigation";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
-import { createTranslator } from "../../i18n/messages";
-import { localizeAuthMessage } from "../../view-models/account-auth";
+import { isGoogleSignInCancelled, localizeAuthMessage } from "../../view-models/account-auth";
 
 export function WelcomeScreen() {
   const { colors, styles } = useStyles();
@@ -49,7 +48,7 @@ export function WelcomeScreen() {
     try {
       const result = await auth.startGoogleSignIn({ redirectTo: "/home" });
       if (result.success) openMainTab(router, "/home");
-      else setGoogleError(result.message === createTranslator("zh")("auth.googleCancelled") ? t("auth.googleCancelled") : localizeAuthMessage(result.message, t) ?? t("auth.googleIncomplete"));
+      else setGoogleError(isGoogleSignInCancelled(result.message) ? t("auth.googleCancelled") : localizeAuthMessage(result.message, t) ?? t("auth.googleIncomplete"));
     } finally {
       setGooglePending(false);
     }

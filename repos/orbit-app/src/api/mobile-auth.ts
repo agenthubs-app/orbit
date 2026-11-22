@@ -1,5 +1,11 @@
 import { normalizeOrbitApiBaseUrl } from "./base-url";
 import { ORBIT_API_ENDPOINTS } from "./endpoints";
+import { currentTranslator, type MessageKey } from "../i18n/messages";
+
+// QA 2026-11-21: transport failures read in the published screen language (zh is the key source).
+function authText(key: MessageKey): string {
+  return currentTranslator()(key);
+}
 
 export const MOBILE_AUTH_CALLBACK_URI = "orbit://account/oauth";
 
@@ -85,20 +91,20 @@ export const SESSION_CHECK_TIMEOUT_MS = 12_000;
 function networkFailure(_error: unknown): MobileAuthFailure {
   return failure(
     "ORBIT_APP_AUTH_NETWORK_ERROR",
-    "网络连接失败，请检查网络后重试。"
+    authText("auth.err.network")
   );
 }
 
-const mobileAuthMessages: Record<string, string> = {
-  MOBILE_AUTH_CODE_EXPIRED: "这次登录已过期，请重新登录。",
-  MOBILE_AUTH_CODE_USED: "这次登录已经完成，请重新打开登录。",
-  MOBILE_AUTH_CONFIGURATION_UNAVAILABLE: "登录服务暂时不可用，请稍后再试。",
-  MOBILE_AUTH_INVALID_BROKER_REQUEST: "Google 登录校验失败，请重新登录。",
-  MOBILE_AUTH_INVALID_INPUT: "登录请求无效，请重新尝试。",
-  MOBILE_AUTH_INVALID_REDIRECT: "登录回调无效，请重新尝试。",
-  MOBILE_AUTH_PKCE_MISMATCH: "Google 登录校验失败，请重新登录。",
-  MOBILE_AUTH_STATE_MISMATCH: "Google 登录校验失败，请重新登录。",
-  MOBILE_AUTH_UNAUTHORIZED: "邮箱或密码不正确。"
+const mobileAuthMessageKeys: Readonly<Record<string, MessageKey>> = {
+  MOBILE_AUTH_CODE_EXPIRED: "auth.err.expired",
+  MOBILE_AUTH_CODE_USED: "auth.err.codeUsed",
+  MOBILE_AUTH_CONFIGURATION_UNAVAILABLE: "auth.err.serviceUnavailable",
+  MOBILE_AUTH_INVALID_BROKER_REQUEST: "auth.err.googleVerify",
+  MOBILE_AUTH_INVALID_INPUT: "auth.err.invalidRequest",
+  MOBILE_AUTH_INVALID_REDIRECT: "auth.err.invalidRedirect",
+  MOBILE_AUTH_PKCE_MISMATCH: "auth.err.googleVerify",
+  MOBILE_AUTH_STATE_MISMATCH: "auth.err.googleVerify",
+  MOBILE_AUTH_UNAUTHORIZED: "auth.err.invalidCredentials"
 };
 
 function responseFailure(
@@ -109,8 +115,8 @@ function responseFailure(
 ): MobileAuthFailure {
   // HTTP availability and response verification precede credential rejection.
   // In particular a gateway/Neon 5xx may have no JSON body at all.
-  if (response.status >= 500) return failure("ORBIT_APP_AUTH_SERVICE_UNAVAILABLE", "登录服务暂时不可用，请稍后再试。", response.status);
-  if (response.ok || (!payload && response.status !== 401)) return failure("ORBIT_APP_AUTH_INVALID_RESPONSE", "暂时无法验证登录结果，请稍后重试。", response.status);
+  if (response.status >= 500) return failure("ORBIT_APP_AUTH_SERVICE_UNAVAILABLE", authText("auth.err.serviceUnavailable"), response.status);
+  if (response.ok || (!payload && response.status !== 401)) return failure("ORBIT_APP_AUTH_INVALID_RESPONSE", authText("auth.err.unverified"), response.status);
   const error = isRecord(payload?.error) ? payload.error : null;
   const context = isRecord(error?.context) ? error.context : null;
   const detailedCode =
@@ -119,11 +125,11 @@ function responseFailure(
     fallbackCode;
 
   if (response.status !== 401 && (detailedCode === "MOBILE_AUTH_UNAUTHORIZED" || detailedCode === "ORBIT_APP_AUTH_INVALID_CREDENTIALS")) {
-    return failure("ORBIT_APP_AUTH_INVALID_RESPONSE", "暂时无法验证登录结果，请稍后重试。", response.status);
+    return failure("ORBIT_APP_AUTH_INVALID_RESPONSE", authText("auth.err.unverified"), response.status);
   }
   return failure(
     detailedCode,
-    mobileAuthMessages[detailedCode] ?? fallbackMessage,
+    (mobileAuthMessageKeys[detailedCode] ? authText(mobileAuthMessageKeys[detailedCode]) : fallbackMessage),
     response.status
   );
 }
@@ -248,7 +254,7 @@ export async function fetchMobileAuthProviders({
       response,
       payload,
       "ORBIT_APP_AUTH_PROVIDERS_UNAVAILABLE",
-      "登录方式暂时无法加载。"
+      authText("auth.err.providers")
     );
   }
 
@@ -271,7 +277,7 @@ export async function signInWithMobileCredentials({
   if (!normalizedEmail || !password) {
     return failure(
       "ORBIT_APP_AUTH_MISSING_CREDENTIALS",
-      "请输入邮箱和密码。"
+      authText("auth.err.missing")
     );
   }
 
@@ -279,7 +285,7 @@ export async function signInWithMobileCredentials({
     baseUrl,
     body: { email: normalizedEmail, password },
     fallbackCode: "ORBIT_APP_AUTH_INVALID_CREDENTIALS",
-    fallbackMessage: "邮箱或密码不正确。",
+    fallbackMessage: authText("auth.err.invalidCredentials"),
     fetchImpl,
     path: ORBIT_API_ENDPOINTS.authMobileCredentials
   });
@@ -364,7 +370,7 @@ export function parseGoogleOAuthCallback(
   } catch {
     return failure(
       "ORBIT_APP_GOOGLE_CALLBACK_INVALID",
-      "Google 登录没有正确返回，请重新登录。"
+      authText("auth.err.googleReturn")
     );
   }
 
@@ -378,7 +384,7 @@ export function parseGoogleOAuthCallback(
   if (!fixedCallback || !code || !state || state !== expectedState) {
     return failure(
       "ORBIT_APP_GOOGLE_CALLBACK_INVALID",
-      "Google 登录校验失败，请重新登录。"
+      authText("auth.err.googleVerify")
     );
   }
 
@@ -394,7 +400,7 @@ export function parseGoogleOAuthBrowserResult(
   if (result.type !== "success" || !result.url) {
     return failure(
       "ORBIT_APP_GOOGLE_CANCELLED",
-      "已取消 Google 登录。"
+      authText("auth.err.googleCancelled")
     );
   }
 
@@ -418,7 +424,7 @@ export async function exchangeGoogleOAuthCode({
     baseUrl,
     body: { code, codeVerifier, state },
     fallbackCode: "ORBIT_APP_GOOGLE_EXCHANGE_FAILED",
-    fallbackMessage: "Google 登录没有完成，请重新登录。",
+    fallbackMessage: authText("auth.err.googleIncomplete"),
     fetchImpl,
     path: ORBIT_API_ENDPOINTS.authMobileGoogleExchange
   });
@@ -476,7 +482,7 @@ export async function validateAuthSession({
     if (response.ok) {
       return failure(
         "ORBIT_APP_AUTH_SERVER_UNAVAILABLE",
-        "暂时无法连接登录服务，请稍后再试。",
+        authText("auth.err.serviceUnreachable"),
         response.status
       );
     }
@@ -490,7 +496,7 @@ export async function validateAuthSession({
   if (!response.ok || !user) {
     return failure(
       "ORBIT_APP_AUTH_SESSION_INVALID",
-      "登录状态已失效，请重新登录。",
+      authText("auth.err.sessionExpired"),
       response.status
     );
   }
@@ -534,7 +540,7 @@ export async function fetchMobileAccountStatus({
   }
   return failure(
     response.status === 503 ? "ORBIT_APP_ACCOUNT_STATUS_UNAVAILABLE" : "ORBIT_APP_ACCOUNT_STATUS_REJECTED",
-    "暂时无法确认账号状态。",
+    authText("auth.err.accountState"),
     response.status
   );
 }

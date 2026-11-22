@@ -10,6 +10,7 @@ import type {
   RelationshipMessageView,
   RelationshipThreadDetailView,
 } from "../view-models/relationship-inbox";
+import { currentTranslator } from "../i18n/messages";
 
 export const MESSAGE_STATE_FOREGROUND_REFRESH_MS = 15_000;
 
@@ -97,19 +98,20 @@ function remoteParticipant(value: RelationshipConversationDTO, actorId: string):
 
 function conversationView(value: RelationshipConversationDTO, actorId: string): RelationshipConversationView {
   const remote = remoteParticipant(value, actorId);
+  const t = currentTranslator();
   const lastMessage = value.messages.at(-1);
   return {
     contactId: value.contactId,
     id: value.conversationId,
     lastAt: formattedDate(lastMessage?.sentAt ?? value.updatedAt),
     name: remote.name,
-    nextAction: value.unreadCount > 0 ? "查看新消息" : "",
+    nextAction: value.unreadCount > 0 ? t("common.messageViewNew") : "",
     organization: "",
-    preview: lastMessage?.body ?? "暂无消息",
-    sourceLabels: ["已验证联系人"],
-    subject: `与${remote.name}的对话`,
+    preview: lastMessage?.body ?? t("inbox.noMessages"),
+    sourceLabels: [t("common.messageVerifiedContact")],
+    subject: t("inbox.verifiedSubject", { name: remote.name }),
     unreadCount: value.unreadCount,
-    unreadLabel: value.unreadCount > 0 ? `${value.unreadCount} 条新消息` : "",
+    unreadLabel: value.unreadCount > 0 ? t("inboxVm.newMessages", { count: value.unreadCount }) : "",
   };
 }
 
@@ -119,7 +121,7 @@ function messageView(value: RelationshipMessageDTO, actorId: string): Relationsh
     body: value.body,
     fromMe,
     id: value.messageId,
-    sender: fromMe ? "我" : value.senderDisplayName,
+    sender: fromMe ? currentTranslator()("inbox.me") : value.senderDisplayName,
     time: formattedDate(value.sentAt),
   };
 }
@@ -136,12 +138,13 @@ export function relationshipConversationListToInbox(value: unknown, actorId: str
   if (payload.unreadTotal !== undefined && (!Number.isSafeInteger(payload.unreadTotal) || (payload.unreadTotal as number) < pageUnreadTotal)) return null;
   if (payload.nextCursor !== undefined && payload.nextCursor !== null && !exactString(payload.nextCursor)) return null;
   const unreadTotal = typeof payload.unreadTotal === "number" ? payload.unreadTotal : pageUnreadTotal;
+  const t = currentTranslator();
   return {
     conversations,
     selected: null,
     ...(payload.unreadTotal !== undefined ? { unreadTotal } : {}),
-    summary: conversations.length ? `${conversations.length} 段对话 · ${unreadTotal} 条未读消息` : "暂无对话",
-    title: "收件箱",
+    summary: conversations.length ? t("common.messageSummary", { count: conversations.length, unread: unreadTotal }) : t("inboxVm.noConversations"),
+    title: t("inbox.title"),
   };
 }
 
@@ -149,16 +152,17 @@ export function relationshipConversationToThread(value: unknown, actorId: string
   const decoded = conversation(value, actorId);
   if (!decoded) return null;
   const remote = remoteParticipant(decoded, actorId);
+  const t = currentTranslator();
   return {
     conversationId: decoded.conversationId,
     currentUserName: decoded.participantDisplayNames[actorId]!,
     draftReply: "",
     messages: decoded.messages.map(value => messageView(value, actorId)),
     participantName: remote.name,
-    safetyText: "消息来自已验证的联系人身份绑定。",
-    sourceLabels: ["已验证联系人"],
-    subject: `与${remote.name}的对话`,
-    summary: decoded.messages.length ? `${decoded.messages.length} 条已投递消息` : "暂无消息",
+    safetyText: t("inbox.verifiedSafety"),
+    sourceLabels: [t("common.messageVerifiedContact")],
+    subject: t("inbox.verifiedSubject", { name: remote.name }),
+    summary: decoded.messages.length ? t("common.messageDeliveredCount", { count: decoded.messages.length }) : t("inbox.noMessages"),
   };
 }
 

@@ -47,3 +47,9 @@ test("canonical read/replayed receipt shows goal or dated task and task entry in
   assert.match(html, /Meet again/); assert.match(html, /处理关系跟进/);
   assert.equal(render({ ...blank, view: { kind: "hidden" } }), "");
 });
+test("device-side error codes and copy read in the chosen language, with no other language mixed in", () => {
+  const en = render({ ...blank, error: "CHOICE_REQUIRED" }, "en");
+  assert.match(en, /Choose a relationship stage\./); assert.doesNotMatch(en, /[一-鿿]/u);
+  const ja = render({ ...blank, error: "INVALID_RESPONSE", draft: { ...blank.draft, stage: "nurture" } }, "ja");
+  assert.match(ja, /関係の応答が一致しません/); assert.doesNotMatch(ja, /Relationship|返回|无法/u);
+});

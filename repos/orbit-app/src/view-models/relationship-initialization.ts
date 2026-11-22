@@ -31,7 +31,8 @@ export function createContactInitializationController(options: {
   const current = (token: number) => active && epoch === token && options.isCurrent();
   const publish = (patch: Partial<ContactInitializationState>) => { state = { ...state, ...patch }; listeners.forEach(listener => listener()); };
   const message = (cause: unknown) => cause instanceof Error ? cause.message : String(cause);
-  const invalidResponse = "INVALID_RESPONSE: 返回的关系身份或保存回执不一致 / Relationship response mismatch / 関係の応答が一致しません";
+  // Device-side failures carry only their code; the form shows them in the reader's language.
+  const invalidResponse = "INVALID_RESPONSE";
 
   async function refresh() {
     const token = epoch;
@@ -73,7 +74,7 @@ export function createContactInitializationController(options: {
     const token = epoch;
     if (!current(token) || state.busy || read?.state !== "pending") return;
     const dated = state.draft.stage === "needs_follow_up" || state.draft.stage === "nurture";
-    if (!intent && dated && !canSave) { publish({ error: "TIME_ZONE_UNAVAILABLE: 无法确认时区 / Time zone unavailable / タイムゾーンを確認できません" }); return; }
+    if (!intent && dated && !canSave) { publish({ error: "TIME_ZONE_UNAVAILABLE" }); return; }
     const controller = new AbortController(); request = controller;
     publish({ busy: true, error: "", notice: null });
     try {

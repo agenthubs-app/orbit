@@ -13,6 +13,7 @@ import {
   validateOrbitApiBaseUrl,
   type OrbitApiBaseUrlValidation
 } from "./base-url";
+import { currentTranslator } from "../i18n/messages";
 
 const STORAGE_KEY = "orbit.apiBaseUrl";
 
@@ -47,13 +48,10 @@ export function OrbitApiBaseUrlProvider({ children }: PropsWithChildren) {
           void AsyncStorage.removeItem(STORAGE_KEY);
         }
       })
-      .catch((storageError: unknown) => {
+      .catch(() => {
         if (active) {
-          setError(
-            storageError instanceof Error
-              ? storageError.message
-              : "无法读取已保存的服务器地址。"
-          );
+          // The storage error's own text is the platform's English; show ours.
+          setError(currentTranslator()("common.serverUrlReadFailed"));
         }
       })
       .finally(() => {

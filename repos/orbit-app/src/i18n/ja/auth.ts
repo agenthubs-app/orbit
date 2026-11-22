@@ -118,4 +118,6 @@ export const auth = {
   "auth.changeConflict": "パスワードが別の場所で変更されました。もう一度ログインしてからお試しください。",
   "auth.changeUnauthorized": "ログインの有効期限が切れました。もう一度ログインしてください。",
   "auth.changeFailed": "パスワードを変更できませんでした。しばらくしてからお試しください。",
+  "auth.err.rateLimited": "試行回数が多すぎます。しばらくしてからお試しください。",
+  "auth.err.signupInvalid": "有効なメールアドレスと、8 文字以上・72 バイト以内のパスワードを入力してください。",
 } as const;

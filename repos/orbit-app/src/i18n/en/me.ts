@@ -107,4 +107,9 @@ export const me = {
   "me.saved": "Saved",
   "me.saveError": "Could not save. Please try again.",
   "me.schedule": "Scheduling",
+  "me.debug.pendingReadFailed": "Couldn't read how many changes are waiting to sync on this device.",
+  "me.debug.enqueueFailed": "Couldn't add the debug test change to this device's queue.",
+  "me.debug.clearFailed": "Couldn't clear all debug test changes. Keep the queue and check the device.",
+  "me.debug.pendingWrites": "Debug pending changes · {count}",
+  "me.debug.clearWrites": "Clear debug test changes · {count}",
 } as const;

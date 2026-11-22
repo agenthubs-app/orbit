@@ -15,4 +15,7 @@ export const sync = {
   "sync.discardChange": "放弃",
   "sync.retryChangeNamed": "重试保存：{title}",
   "sync.discardChangeNamed": "放弃这次修改：{title}",
+  "sync.changeNotSaved": "更改尚未保存，请刷新后重试。",
+  "sync.timeout": "同步请求超时，请重试。",
+  "sync.outboxReadFailed": "本机待发送消息暂时无法读取。",
 } as const;
