@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/time.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r10/impl/time.ts
-// (lab commit 41c7a53d6, r10 = r09 + when to ask: confirmations, missing values, requests that ask for nothing). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/time.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r11-maintenance/impl/time.ts
+// (lab commit ce0b76fe4, r11 = r10 + when to ask round 2: exact @ / quoted picks on reads, typed confirmations while a card waits, 他们 for a company). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * Time expressions (zh / ja / en, on folded text) → a window of local days. General calendar rules only:
  * weeks start on Monday; a bare weekday is its next occurrence (today counts); a bare month earlier than this month is

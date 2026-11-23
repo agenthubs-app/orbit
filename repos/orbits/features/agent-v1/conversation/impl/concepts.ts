@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/concepts.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r10/impl/concepts.ts
-// (lab commit 41c7a53d6, r10 = r09 + when to ask: confirmations, missing values, requests that ask for nothing). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/concepts.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r11-maintenance/impl/concepts.ts
+// (lab commit ce0b76fe4, r11 = r10 + when to ask round 2: exact @ / quoted picks on reads, typed confirmations while a card waits, 他们 for a company). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * Cross-language matching helpers (general vocabulary, nothing of this world):
  *   - CONCEPTS: common business / office nouns in zh / ja / en, each group one concept, so a reply in one language can

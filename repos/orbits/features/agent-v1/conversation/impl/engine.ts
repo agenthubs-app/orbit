@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/engine.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r10/impl/engine.ts
-// (lab commit 41c7a53d6, r10 = r09 + when to ask: confirmations, missing values, requests that ask for nothing). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/engine.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r11-maintenance/impl/engine.ts
+// (lab commit ce0b76fe4, r11 = r10 + when to ask round 2: exact @ / quoted picks on reads, typed confirmations while a card waits, 他们 for a company). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * The conversation engine: one memory, fed message by message, used both by the session and (replayed over the
  * transcript) by the six pure functions. See plan.json for the structure and every tunable number.
@@ -403,7 +403,13 @@ class TurnCtx {
     // r07: a person named earlier in this same sentence is the latest mention for a pronoun after it (in <name>'s
     // notes, where did she …): only one named person, only before the pronoun
     const namedHere = peopleOf(this.ix, pf).groups.filter((g) => g.named && g.ids.length === 1 && this.vis(g.ids[0]));
+    // r11: an exact pick binds its record; the words outside it say what is asked (a name inside a title is no person to ask about)
+    const picks = this.exactPicks(quote).filter((p) => p.ids.length === 1);
+    let pfOut = pf;
+    for (const p of picks) pfOut = pfOut.replace(fold(p.said), " ".repeat(fold(p.said).length));
     let refs = saids.map((s) => {
+      const pk = picks.find((p) => p.said === s);
+      if (pk) return { said: s, outcome: "bound" as const, id: pk.ids[0] };
       const sf = fold(s);
       if (pronounOf(sf) && !peopleOf(this.ix, sf).hits.length && namedHere.length === 1) {
         const at = pf.indexOf(sf);
@@ -420,9 +426,11 @@ class TurnCtx {
     let followUp = this.followUp(pf, hp);
     if (ch) followUp = ch.mode === "amend" && ch.correction ? "correct" : ch.mode === "amend" ? (followUp === "correct" ? "correct" : "new") : "new";
     const request = ch?.mode === "cancel" ? {} : this.request(pf, followUp, refs, hp, ch);
+    // r11: a verb word inside a picked title is not the request's (a question about the picked record is a read)
+    if (picks.length && request && request.verb && request.verb !== "read" && !verbIn(pfOut) && isQuestion(pfOut)) request.verb = "read";
     if (ch?.mode === "cancel") this.taskOps.push(() => { ch.task.status = "cancelled"; this.e.touch(ch.task); });
     refs = this.narrowSeries(pf, refs);
-    const unresolved = refs.some((r) => r.outcome !== "bound") || this.ambiguousPeople(pf).length > 0;
+    const unresolved = refs.some((r) => r.outcome !== "bound") || this.ambiguousPeople(pfOut).length > 0;
     const budget = clarificationBudget({ asked: 0, unrelatedMessages: 0, idleMinutes: this.idle, replyClear: !unresolved });
     const next = this.decideNext(budget === "go" ? "go" : "ask", pf, refs, request, ch, hp);
     return { quote, continues: null, followUp, refs, request, next, redo: [] };
@@ -440,6 +448,12 @@ class TurnCtx {
   private decideNext(own: "go" | "ask", pf: string, refs: RefResult[], request: Slots | null, ch: ReturnType<TurnCtx["changeOf"]>, hp?: HintPart): "go" | "ask" {
     if (this.confirmReason(pf, refs, request, ch)) return "ask";
     const clarity = hp?.clarity;
+    // r11: a typed confirmation while a card waits: nothing is unclear (the answer says the card is to be clicked)
+    if (own === "go" && this.bareConfirmWithCard(pf)) return "go";
+    // r11: a read whose record the user picked exactly (@ + its whole title): several readings of the words do not matter,
+    // nothing is written (a write still asks)
+    if (own === "go" && clarity === "none" && request?.verb === "read" && refs.length && refs.every((r) => r.outcome === "bound")
+      && this.exactPicks(this.message).some((p) => p.ids.length === 1 && refs.some((r) => r.id === p.ids[0]))) return "go";
     if (clarity === "missing_one" || clarity === "none") return "ask";
     if (own === "ask" && (clarity === "clear" || clarity === "statement")) return "go";
     return own;
@@ -449,7 +463,7 @@ class TurnCtx {
   confirmReason(pf: string, refs: RefResult[], request: Slots | null, ch: ReturnType<TurnCtx["changeOf"]>): string | null {
     if (notARequest(pf)) return "not-a-request";
     // R44: a plural pronoun whose count does not agree with the people of the latest turn (or with no people to point at)
-    if (PLURAL_PRONOUN.test(pf) && !peopleOf(this.ix, pf).named.length && !this.pluralGroup(pf)?.fits) return "plural";
+    if (PLURAL_PRONOUN.test(pf) && !peopleOf(this.ix, pf).named.length && !this.pluralIsCompany(pf) && !this.pluralGroup(pf)?.fits) return "plural";
     if (!request || ch?.mode === "cancel" || ch?.mode === "amend" || ch?.mode === "resume") return null;
     const verb = request.verb;
     const kind = request.kind;
@@ -498,7 +512,7 @@ class TurnCtx {
   /** r10 (R44): the people a plural pronoun points at: every person the latest turn naming people mentioned; fits = the count said agrees. */
   pluralGroup(pf: string): { ids: string[]; fits: boolean } | null {
     const m = PLURAL_PRONOUN.exec(pf);
-    if (!m || peopleOf(this.ix, pf).named.length) return null;
+    if (!m || peopleOf(this.ix, pf).named.length || this.pluralIsCompany(pf)) return null;
     for (let k = this.e.turns.length - 1; k >= 0; k--) {
       const ids = this.e.turns[k].mentions.filter((id) => kindOfId(id) === "contact" && this.vis(id));
       if (!ids.length) continue;
@@ -506,6 +520,68 @@ class TurnCtx {
       return { ids, fits: ids.length >= 2 && (!n || n === ids.length) };
     }
     return null;
+  }
+
+  /**
+   * r11: a plural pronoun right after a company was named (in this sentence before it, or in the latest turns, with none
+   * of the company's people listed since) points at that company's side, not at a count of people.
+   */
+  pluralIsCompany(pf: string): boolean {
+    const m = PLURAL_PRONOUN.exec(pf);
+    if (!m) return false;
+    const company = (t: string) => peopleOf(this.ix, t).hits.some((h) => h.how === "company");
+    const here = peopleOf(this.ix, pf.slice(0, m.index));
+    if (here.named.length) return false;
+    if (company(pf.slice(0, m.index))) return true;
+    let seen = 0;
+    for (let k = this.e.turns.length - 1; k >= 0 && seen < PARAMS.pluralCompanyTurns; k--) {
+      const t = this.e.turns[k];
+      if (t.filler && !company(t.tf)) continue;
+      seen++;
+      if (t.mentions.some((id) => kindOfId(id) === "contact" && this.vis(id))) return false;
+      if (company(t.tf)) return true;
+    }
+    return false;
+  }
+
+  /** r11: a bare typed confirmation (确认 / OK / confirm) while a change card waits for its click. */
+  bareConfirmWithCard(pf: string): boolean {
+    if (!this.e.openTasks().some((t) => t.card)) return false;
+    const toks = pf.split(/[\s,，、。.！!？?…~〜\-—:：;；'"“”]+/u).filter(Boolean).map((t) => t.replace(/(?:呀|啊|哈|哦|喔|嘛|吧|よ|ね|です|で)+$/u, "")).filter(Boolean);
+    if (!toks.length) return false;
+    const ok = (w: string) => L.CONFIRM_WORDS.includes(w) || L.ACK_ONLY.includes(w);
+    return ok(toks.join(" ")) || toks.every(ok);
+  }
+
+  /**
+   * r11: records the user picked exactly: an @ mention followed by a record's whole title, or a quoted title (「…」 / "…").
+   * said = the title words as written; ids = every visible record with that title (more than one is no exact pick).
+   */
+  exactPicks(quote: string): { said: string; ids: string[] }[] {
+    const out: { said: string; ids: string[] }[] = [];
+    const recs = [...this.ix.recs.values()].filter((r) => r.kind !== "contact" && r.titleF.length >= 2 && this.vis(r.id));
+    const take = (start: number, ids: string[], titleF: string) => {
+      for (let n = 1; start + n <= quote.length; n++) if (squash(quote.slice(start, start + n)) === titleF) { out.push({ said: quote.slice(start, start + n), ids }); return; }
+    };
+    for (const m of quote.matchAll(/[@＠]/gu)) {
+      const start = (m.index ?? 0) + 1;
+      const rest = squash(quote.slice(start));
+      let best = 0;
+      let ids: string[] = [];
+      for (const r of recs) {
+        if (!rest.startsWith(r.titleF)) continue;
+        // a Latin title ends at a word boundary
+        if (/[a-z0-9]$/u.test(r.titleF) && /^[a-z0-9]/u.test(rest.slice(r.titleF.length))) continue;
+        if (r.titleF.length > best) { best = r.titleF.length; ids = [r.id]; } else if (r.titleF.length === best) ids.push(r.id);
+      }
+      if (best) take(start, ids, rest.slice(0, best));
+    }
+    for (const m of quote.matchAll(/[「『“"]([^」』”"]{2,80})[」』”"]/gu)) {
+      const inner = squash(m[1]);
+      const ids = recs.filter((r) => r.titleF === inner).map((r) => r.id);
+      if (ids.length) take((m.index ?? 0) + 1, ids, inner);
+    }
+    return out;
   }
 
   /** r10: most of a record's title (two content units or more, at least 60%) is in the words. */
@@ -1082,7 +1158,8 @@ class TurnCtx {
   refWords(quote: string, pf: string, hp?: HintPart): string[] {
     const hr = (hp?.refs ?? []).map((r) => r.said).filter((s) => s && quote.includes(s));
     // r09: a span starts at the first word of the reference and ends at its last (function words on either end go)
-    const trim = (xs: string[]) => uniq(xs.map((x) => (x === this.keepSaid ? x : trimRefSpan(this.ix, x))));
+    const picks = this.exactPicks(quote).map((p) => p.said);
+    const trim = (xs: string[]) => uniq(xs.map((x) => (x === this.keepSaid || picks.includes(x) ? x : trimRefSpan(this.ix, x))));
     if (hp?.refs?.length && hr.length) return trim(this.reconcileHintSaids(quote, uniq(hr)));
     return trim(spotRefs(this, quote));
   }
@@ -2564,7 +2641,8 @@ function groupByKind(list: string[]): Map<RecordKind, string[]> {
 
 /** Reference words of a part when the model gives none: pronouns, pointers with their noun, ordinals, names + pointer. */
 export function spotRefs(ctx: TurnCtx, quote: string): string[] {
-  const out: string[] = [];
+  // r11: an exact pick (@ + a whole title) is one reference; nothing inside it is another
+  const out: string[] = ctx.exactPicks(quote).filter((p) => p.ids.length === 1).map((p) => p.said);
   const q = quote;
   const re = new RegExp([
     // ordinals with their noun

@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/names.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r10/impl/names.ts
-// (lab commit 41c7a53d6, r10 = r09 + when to ask: confirmations, missing values, requests that ask for nothing). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/names.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r11-maintenance/impl/names.ts
+// (lab commit ce0b76fe4, r11 = r10 + when to ask round 2: exact @ / quoted picks on reads, typed confirmations while a card waits, 他们 for a company). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * Name sounds across scripts (general rules and tables only, nothing of this world):
  *   - soundKey(): a rough key of how a Latin-letter name is pronounced (consonant classes, whether it starts with a

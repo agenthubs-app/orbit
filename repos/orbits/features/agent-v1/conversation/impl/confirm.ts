@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/confirm.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r10/impl/confirm.ts
-// (lab commit 41c7a53d6, r10 = r09 + when to ask: confirmations, missing values, requests that ask for nothing). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/confirm.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r11-maintenance/impl/confirm.ts
+// (lab commit ce0b76fe4, r11 = r10 + when to ask round 2: exact @ / quoted picks on reads, typed confirmations while a card waits, 他们 for a company). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * r10: writes a careful person confirms before carrying them out (SPEC R34, R35, R37), computed from the world passed
  * in at runtime. Nothing here knows this world's records: duplicates are found by comparing what the user says with the

@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/lexicon.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r10/impl/lexicon.ts
-// (lab commit 41c7a53d6, r10 = r09 + when to ask: confirmations, missing values, requests that ask for nothing). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/lexicon.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r11-maintenance/impl/lexicon.ts
+// (lab commit ce0b76fe4, r11 = r10 + when to ask round 2: exact @ / quoted picks on reads, typed confirmations while a card waits, 他们 for a company). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * General vocabulary (zh / ja / en): pronouns, pointer words, ordinals, record-kind words, follow-up markers, honorifics,
  * role synonyms, generic company suffixes and city names. Nothing here is this world's content. Everything is compared
@@ -143,6 +143,10 @@ export const UNSURE_MARKERS = F(["我想想", "让我想想", "想一想", "考�
 export const VAGUE_TIME = F(["过几天", "过阵子", "过段时间", "以后", "回头", "改天", "そのうち", "近いうち", "いつか", "later", "sometime", "some day", "soon"]);
 export const NEGATION_AFTER = F(["别动", "不动", "不要", "不用", "不改", "别改", "そのまま", "じゃなくて", "ではなく", "はいい", "stays", "unchanged", "not"]);
 export const ACK_ONLY = F(["嗯", "好", "好的", "知道了", "明白", "了解", "收到", "行", "ok", "okay", "got it", "thanks", "うん", "わかった", "了解です", "はい"]);
+/** r11: a typed confirmation (the words a person types instead of clicking a confirm button). */
+export const CONFIRM_WORDS = F(["确认", "確認", "确定", "確定", "确认无误", "没问题", "可以", "对", "对的", "是的", "执行", "就这样", "就这么办", "嗯嗯",
+  "承認", "お願いします", "お願い", "それで", "それでお願いします", "いいよ", "いいです", "大丈夫", "オッケー", "おけ", "おっけー", "了解しました", "承知しました",
+  "confirm", "confirmed", "i confirm", "yes", "yep", "yeah", "yup", "sure", "go ahead", "do it", "approve", "approved", "sounds good", "looks good", "lgtm", "please do"]);
 
 // ---------------------------------------------------------------- verbs, status
 
