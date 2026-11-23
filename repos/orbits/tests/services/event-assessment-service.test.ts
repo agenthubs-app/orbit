@@ -299,3 +299,18 @@ test("QA-B2: delete removes my assessment and its poster; someone else's id is r
   assert.equal(await service.get(ALICE, created.id, "ja"), null);
   assert.equal(await service.remove(ALICE, created.id), false);
 });
+
+test("2026-11-23 list: the plan context is read only when a finished assessment is judged against it", async () => {
+  let planReads = 0;
+  const { service } = setup({ plan: { addToPlan: async () => ({ itemId: "pitem-1", planId: "plan-1" }), context: async () => { planReads += 1; return context; } } });
+  assert.deepEqual(await service.list(ALICE, "ja"), []);
+  assert.equal(planReads, 0, "an empty list does not read the plan");
+  const made = await service.create(ALICE, { eventId: "evt-cfo", idempotencyKey: "o1", sourceKind: "orbit_event" }, "ja");
+  await flush();
+  planReads = 0;
+  const [view] = await service.list(ALICE, "ja");
+  assert.equal(view?.id, made.id);
+  assert.ok(view?.status === "ready" || view?.status === "needs_input");
+  assert.equal(planReads, 1, "a finished row is judged with the plan, read once for the whole list");
+  assert.ok(Array.isArray(view?.basisLines), "the judged fields are still there");
+});

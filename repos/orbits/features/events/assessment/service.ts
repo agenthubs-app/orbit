@@ -159,13 +159,18 @@ export interface EventAssessmentService {
   view(row: AssessmentRow, context: JudgeContext): Promise<EventAssessmentContract>;
 }
 
+/** Only a finished assessment (ready / needs input) is judged against the plan context. */
+function judgedWithPlan(row: Pick<AssessmentRow, "status">): boolean {
+  return row.status === "ready" || row.status === "needs_input";
+}
+
 export function createEventAssessmentService(deps: EventAssessmentServiceDeps): EventAssessmentService {
   const now = deps.now ?? (() => new Date());
   const newId = deps.newId ?? (() => randomUUID());
   /** 贴正文只在内存里交给处理器（不落库，DESIGN §9 #9）。 */
   const pendingText = new Map<string, string>();
 
-  async function viewOf(row: AssessmentRow, context: JudgeContext): Promise<EventAssessmentContract> {
+  async function viewOf(row: AssessmentRow, context: JudgeContext | null): Promise<EventAssessmentContract> {
     const base: EventAssessmentContract = {
       createdAt: row.createdAt,
       facts: row.facts,
@@ -190,7 +195,8 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
       ...(row.readMs !== null ? { readSeconds: Math.max(1, Math.round(row.readMs / 1000)) } : {}),
       ...(row.posterAssetIds.length ? { posterAssetIds: row.posterAssetIds } : {}),
     };
-    if (row.status !== "ready" && row.status !== "needs_input") return base;
+    if (!judgedWithPlan(row)) return base;
+    if (!context) throw new Error("A finished assessment is judged against the plan context.");
     const orbit = row.eventId ? await deps.orbitEvents.facts(row.actorId, row.eventId, context) : null;
     const facts = orbit ? mergeFacts(userFilledFacts(row.facts, row.userFilledFields), orbit.facts) : row.facts;
     const judged = judgeEvent({ context, eventId: row.eventId, facts, orbit: orbit?.extras ?? null });
@@ -385,9 +391,12 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
       return viewOf(row, await deps.plan.context(actorId, language));
     },
     async list(actorId, language) {
-      // The rows and the plan context do not depend on each other; up to 100 rows each read their
-      // event's facts, four at a time (as the journey judge does) instead of all at once.
-      const [rows, context] = await Promise.all([deps.repository.list(actorId, ASSESSMENT_LIST_LIMIT), deps.plan.context(actorId, language)]);
+      // 2026-11-23: the rows first, and the plan context (~20 statements, ~50 KB) only when a row will
+      // be judged against it — an account with no finished assessment used to read the whole plan to
+      // answer an empty list. Up to 100 rows each read their event's facts, four at a time (as the
+      // journey judge does) instead of all at once.
+      const rows = await deps.repository.list(actorId, ASSESSMENT_LIST_LIMIT);
+      const context = rows.some(judgedWithPlan) ? await deps.plan.context(actorId, language) : null;
       const views = await mapLimit(rows, 4, (row) => viewOf(row, context));
       // 評価したイベント · スコア順；見送り沉到底部（DESIGN §2.1）。
       return views.sort((a, b) => Number(a.userDecision === "dismissed") - Number(b.userDecision === "dismissed") || b.total - a.total || b.createdAt.localeCompare(a.createdAt));
