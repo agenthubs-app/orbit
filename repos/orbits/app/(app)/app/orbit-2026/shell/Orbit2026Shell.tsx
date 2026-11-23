@@ -2,7 +2,6 @@
 
 import { useSession } from "next-auth/react";
 
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -31,11 +30,14 @@ import { initials } from "../ui/Basics";
 import { CommandPalette, useCommandPaletteShortcut } from "./CommandPalette";
 import { InboxEventBridge } from "./inbox-bridge";
 import { ShellToastBridge } from "./shell-toast-bridge";
+import { ShellLink, useDeferredShellPrefetch } from "./nav-prefetch";
 import { SHELL_NAV, onboardingImportFocus, shellAppliesTo, shellFrameFor, shellNavKeyFor, type ShellFrame as RouteFrame, type ShellNavKey } from "./shell-routes";
 import { ShellSlotsProvider, useShellSlots, useShellSlotsFilled, type ShellPhoneAction, type ShellSlots } from "./slots";
 import { WebVersionBannerGate } from "../auth-public/WebVersionBanner";
 import { OnboardingImportHeader } from "../onboarding/OnboardingImportHeader";
 import styles from "./shell.module.css";
+
+const SHELL_NAV_HREFS = SHELL_NAV.map((item) => item.href);
 
 // R07 Orbit2026Shell (RD-02 / RD-19): the one frame of every signed-in page, mounted
 // by app/(app)/app/layout.tsx. Left rail (84; 72 icons-only under 1280; under 768
@@ -98,6 +100,7 @@ function ShellFrame({ language, pathname, currentBuildId, focus = null, children
   const railContent = slots.rightRail === true ? <DefaultRail onOpenPalette={openPalette} /> : slots.rightRail;
   const active = shellNavKeyFor(pathname);
   const dot = useInboxDot(language, pathname);
+  useDeferredShellPrefetch(SHELL_NAV_HREFS);
   const hasHeader = Boolean(slots.title || slots.left || slots.right || slots.demoPill || rail);
   const headRef = useRef<HTMLElement | null>(null);
   usePhoneHeadCrowding(headRef, hasHeader);
@@ -272,9 +275,9 @@ export function ShellBellButton() {
   if (!chrome) return null;
   const label = chrome.inboxDot ? `${copy.nav.inbox} · ${pickCopy(shellCopy.inboxUnread, language)}` : copy.nav.inbox;
   return (
-    <Link href="/app/inbox" className={styles.rbtn} aria-label={label}>
+    <ShellLink href="/app/inbox" className={styles.rbtn} aria-label={label}>
       <Icon name="bell" size={20} />{chrome.inboxDot ? <i className={styles.rdot} aria-hidden /> : null}
-    </Link>
+    </ShellLink>
   );
 }
 
@@ -324,31 +327,32 @@ function useInboxDot(language: OrbitLanguage, pathname: string): boolean {
 
 function ShellSidebar({ active, dot }: { active: ShellNavKey | null; dot: boolean }) {
   const copy = useStandardCopy();
-  // The six left-rail pages are prefetched whole (`prefetch`, kept for next.config staleTimes.static) as soon as
-  // the rail is on screen and again on hover once stale, so switching between them shows the page at once.
+  // The six left-rail pages are prefetched whole (kept for next.config staleTimes.static), so switching between
+  // them shows the page at once — 2026-11-23: not on mount any more (it raced the page's first data requests) but
+  // once the network is quiet (useDeferredShellPrefetch in ShellFrame), and at once on hover / focus / touch.
   // data-tip: the compact rail (768–1279) shows the label as a tooltip on hover and keyboard focus.
   // ⌘K has no rail item (web.html): the shortcut stays, its button is the header's 🔍.
   return (
     <nav className={styles.side} aria-label={copy.nav.main}>
-      <Link className={styles.logo} href="/app/home" aria-label="Orbit">O</Link>
+      <ShellLink className={styles.logo} href="/app/home" aria-label="Orbit">O</ShellLink>
       {SHELL_NAV.map((item) => {
         const label = copy.nav[item.key];
         return (
-          <Link key={item.key} href={item.href} prefetch className={`${styles.item} ${active === item.key ? styles.itemOn : ""}`} aria-current={active === item.key ? "page" : undefined} data-tip={label}>
+          <ShellLink key={item.key} href={item.href} className={`${styles.item} ${active === item.key ? styles.itemOn : ""}`} aria-current={active === item.key ? "page" : undefined} data-tip={label}>
             <span className={styles.itemIcon}><Icon name={item.icon} size={20} />{item.key === "inbox" && dot ? <i className={styles.dot} aria-hidden /> : null}</span>
             <span className={styles.itemLabel}>{label}</span>
-          </Link>
+          </ShellLink>
         );
       })}
       <span className={styles.spacer} />
-      <Link href="/app/events/center" className={`${styles.item} ${active === "host" ? styles.itemOn : ""}`} aria-current={active === "host" ? "page" : undefined} data-tip={copy.nav.host}>
+      <ShellLink href="/app/events/center" className={`${styles.item} ${active === "host" ? styles.itemOn : ""}`} aria-current={active === "host" ? "page" : undefined} data-tip={copy.nav.host}>
         <span className={styles.itemIcon}><Icon name="brief" size={20} /></span>
         <span className={styles.itemLabel}>{copy.nav.host}</span>
-      </Link>
-      <Link href="/app/settings" className={`${styles.item} ${active === "settings" ? styles.itemOn : ""}`} aria-current={active === "settings" ? "page" : undefined} data-tip={copy.nav.settings}>
+      </ShellLink>
+      <ShellLink href="/app/settings" className={`${styles.item} ${active === "settings" ? styles.itemOn : ""}`} aria-current={active === "settings" ? "page" : undefined} data-tip={copy.nav.settings}>
         <span className={styles.itemIcon}><Icon name="settings" size={20} /></span>
         <span className={styles.itemLabel}>{copy.nav.settings}</span>
-      </Link>
+      </ShellLink>
       <AccountMenu active={active === "me"} />
     </nav>
   );
@@ -395,7 +399,7 @@ function ShellPhoneBar({ pathname, slots, active, dot, language, openRail }: { p
   const actions = slots.phoneActions ?? [];
   const run = (action: ShellPhoneAction) => { if (action.kind === "rail") openRail(); else action.onClick?.(); };
   const button = (action: ShellPhoneAction) => action.href
-    ? <Link key={action.key} href={action.href} className={`${styles.rbtn} ${styles.phoneBtn} ${action.active ? styles.rbtnOn : ""}`} aria-label={action.label}><Icon name={action.icon} size={20} />{action.dot ? <i className={styles.rdot} aria-hidden /> : null}</Link>
+    ? <ShellLink key={action.key} href={action.href} className={`${styles.rbtn} ${styles.phoneBtn} ${action.active ? styles.rbtnOn : ""}`} aria-label={action.label}><Icon name={action.icon} size={20} />{action.dot ? <i className={styles.rdot} aria-hidden /> : null}</ShellLink>
     : <button key={action.key} type="button" className={`btn ${styles.rbtn} ${styles.phoneBtn} ${action.active ? styles.rbtnOn : ""}`} aria-label={action.label} aria-pressed={action.active} onClick={() => run(action)}><Icon name={action.icon} size={20} />{action.dot ? <i className={styles.rdot} aria-hidden /> : null}</button>;
   const room = first ? 2 : 1;
   const shown = actions.length > room ? actions.slice(0, room - 1) : actions;
@@ -418,15 +422,15 @@ function ShellPhoneBar({ pathname, slots, active, dot, language, openRail }: { p
       {first ? (
         <div className={styles.phoneBar} data-orbit-phone-bar="first">
           {path === "/app/home"
-            ? <Link className={styles.phoneBrand} href="/app/home" aria-label="Orbit"><span className={styles.phoneLogo} aria-hidden>O</span><b className={styles.phoneTitle}>Orbit</b></Link>
+            ? <ShellLink className={styles.phoneBrand} href="/app/home" aria-label="Orbit"><span className={styles.phoneLogo} aria-hidden>O</span><b className={styles.phoneTitle}>Orbit</b></ShellLink>
             : <h1 className={styles.phoneTitle}>{title}</h1>}
           {slots.demoPill ? <span className={styles.phoneDemo}>{slots.demoPill}</span> : null}
           {shown.map(button)}
           {more}
           {active === "inbox" ? null : (
-            <Link href="/app/inbox" className={`${styles.rbtn} ${styles.phoneBtn}`} aria-label={copy.nav.inbox}>
+            <ShellLink href="/app/inbox" className={`${styles.rbtn} ${styles.phoneBtn}`} aria-label={copy.nav.inbox}>
               <Icon name="inbox" size={20} />{dot ? <i className={styles.rdot} aria-hidden /> : null}
-            </Link>
+            </ShellLink>
           )}
           <AccountMenu active={active === "me"} compact />
         </div>
@@ -490,7 +494,7 @@ function AccountMenuBody({ name, email, compact, onDone }: { name: string; email
         <span className={`${styles.avatar} ${styles.menuAvatar}`} aria-hidden>{initials(name)}</span>
         <span className={styles.menuWho}><b>{name}</b>{email && email !== name ? <small>{email}</small> : null}</span>
       </div>
-      <Link className={styles.menuRow} href="/app/profile" onClick={onDone}><Icon name="user" size={16} />{copy.nav.me}<span className={styles.menuGo}><Icon name="right" size={16} /></span></Link>
+      <ShellLink className={styles.menuRow} href="/app/profile" onClick={onDone}><Icon name="user" size={16} />{copy.nav.me}<span className={styles.menuGo}><Icon name="right" size={16} /></span></ShellLink>
       <span className={styles.menuSep} aria-hidden />
       <span className={styles.menuLabel}>{t(shellCopy.language)}</span>
       <div className={styles.menuSeg}>
@@ -513,10 +517,10 @@ function ShellBottomBar({ active }: { active: ShellNavKey | null }) {
   return (
     <nav className={styles.bottom} aria-label={copy.nav.main}>
       {SHELL_NAV.filter((item) => item.key !== "inbox").map((item) => (
-        <Link key={item.key} href={item.href} prefetch className={`${styles.bottomItem} ${active === item.key ? styles.bottomOn : ""}`} aria-current={active === item.key ? "page" : undefined}>
+        <ShellLink key={item.key} href={item.href} className={`${styles.bottomItem} ${active === item.key ? styles.bottomOn : ""}`} aria-current={active === item.key ? "page" : undefined}>
           <Icon name={item.icon} size={21} />
           <span>{copy.nav[item.key]}</span>
-        </Link>
+        </ShellLink>
       ))}
     </nav>
   );
