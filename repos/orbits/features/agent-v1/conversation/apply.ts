@@ -28,6 +28,8 @@ export interface ConversationDiff {
   part: string | null;
   agent: unknown;
   engine: unknown;
+  /** next: the engine's references that did not bind (what it would ask about). */
+  why?: unknown;
 }
 
 const WRITE = /\.(create|update|complete|reopen|delete|unlink|restore|import|link)$/u;

@@ -18,7 +18,7 @@ import { swapsPeriod } from "../understand/read-window";
 import { emitTrace } from "../observability/trace";
 import { scheduleConversationShadow } from "../rollout/conversation-shadow";
 import { applyCarry, applyTurn, carryChangesOf, compareTurn, enginePartOf, resultDiffs, withPronounsBound, type Applied, type ConversationDiff } from "./apply";
-import { appendTurn, hintOf, labIdOf, namesOf, normalizeLog, runEngine, TYPE_OF_COLLECTION, worldOf, type ConversationLog } from "./bridge";
+import { appendTurn, formsOf, hintOf, labIdOf, namesOf, normalizeLog, runAskGo, runEngine, TYPE_OF_COLLECTION, worldOf, type ConversationLog, type EngineTurn } from "./bridge";
 import { conversationBudgetMs, conversationMode, openedMode, type ConversationMode } from "./mode";
 import { enrichWorld, type WorldRead } from "./world-read";
 import type { World } from "../finder/types";
@@ -33,6 +33,10 @@ export interface ConversationRun {
   ms: number;
   diffs: ConversationDiff[];
   applied: Applied[];
+  /** The engine's input of this turn and the names its World had (the ask / go run at deliver starts from them). */
+  turn?: EngineTurn;
+  names?: Record<string, { type: string; name: string }>;
+  plainChat?: boolean;
   /** The store read for the engine's World (ORBIT_AGENT_CONVERSATION_WORLD; null: off / nothing to read). */
   world?: { status: WorldRead["status"]; rows: number; contacts: number; records: number; readMs: number; waitedMs: number; engineMs: number; used: boolean } | null;
 }
@@ -97,6 +101,9 @@ export function conversationTurn(scope: NodeScope, state: AgentGraphState, outpu
     const names = namesOf(log, run.context);
     const world = worldOf(names, now, zone);
     const turn = { at: now, gone, hint, message: input.message };
+    record.turn = turn;
+    record.names = names;
+    record.plainChat = Boolean(output?.plainChat);
     const result = runEngine(log, world, turn);
     record.ms = Date.now() - started;
     if (record.ms > conversationBudgetMs()) {
@@ -222,6 +229,40 @@ function cardMentions(preview: NodeScope["run"]["actionPreview"]): { ids: string
 }
 
 /**
+ * The engine's ask / go at deliver: its World has the records the conversation named plus what the store gave this turn
+ * (the records read, bound, shown, offered), each bound record known also by the words that named it. Under the lab's
+ * World (the whole account) a name binds when one record has it and asks when several do; this is the nearest the agent
+ * has to that without another read. Throws what the engine throws (the caller catches).
+ */
+function askGoRun(scope: NodeScope, state: AgentGraphState, next: AgentSessionState, log: ConversationLog | null, record: ConversationRun): TurnResult {
+  const { input, run } = scope;
+  const now = state.asOf || scope.deps.now();
+  const names: Record<string, { type: string; name: string }> = { ...(record.names ?? {}) };
+  const add = (type: string, id: string, name: string | null | undefined) => {
+    const lab = labIdOf(type === "attendance" ? "event" : type, id);
+    if (lab && !names[lab]) names[lab] = { name: name || "", type };
+  };
+  for (const [id, item] of run.readNames) add(item.type, id, item.name);
+  for (const item of next.lastMentioned.filter((entry) => entry.at === now)) add(item.type, item.id, item.name);
+  for (const item of next.shownList?.shownAt === now ? next.shownList.items : []) add(item.type, item.id, item.name);
+  for (const item of next.openItems.filter((entry) => entry.requestId === input.requestId)) for (const option of item.options ?? []) add(option.type, option.id, option.label.replace(/[（(].*$/u, "").trim());
+  const bound: { labId: string; words: string }[] = [];
+  for (const part of state.parts) for (const ref of part.refs) {
+    if (!ref.recordId) continue;
+    const type = ref.entity === "attendance" ? "event" : ref.entity;
+    add(type, ref.recordId, run.names.get(ref.recordId) ?? [...(run.context?.handles.values() ?? [])].find((handle) => handle.id === ref.recordId)?.name);
+    const lab = labIdOf(type, ref.recordId);
+    if (lab && ref.quote) bound.push({ labId: lab, words: input.message.slice(ref.quote[0], ref.quote[1]) });
+  }
+  const forms = formsOf(bound);
+  for (const id of Object.keys(names)) if (!names[id].name) {
+    if (forms[id]?.length) names[id] = { ...names[id], name: forms[id][0] };
+    else delete names[id];
+  }
+  return runAskGo(log, names, record.turn!, Boolean(record.plainChat), forms, state.timeZone || "Asia/Tokyo");
+}
+
+/**
  * deliver (a new turn's session state): the rest of the comparison, the trace and the shadow record, and the log with
  * this turn. Returns undefined when the switch is legacy (the state keeps no log). Never throws.
  */
@@ -234,14 +275,17 @@ export function conversationAfterTurn(scope: NodeScope, state: AgentGraphState, 
   const record = run.conversation ?? null;
   try {
     const result = record?.result ?? null;
-    // ask / go, and the questions shelved this turn
+    // ask / go (the engine as the lab runs it: a World with what the store gave this turn, see bridge.ts runAskGo),
+    // and the questions shelved this turn
     if (record && result) {
+      const askGo = record.turn ? askGoRun(scope, state, next, log, record) : result;
       for (const part of state.parts) {
-        const item = enginePartOf(result, input.message, part);
+        const item = enginePartOf(askGo, input.message, part);
         if (!item) continue;
         const agentNext = part.status === "awaiting_clarification" ? "ask" : "go";
         const engineNext = item.next === "ask" ? "ask" : "go";
-        if (agentNext !== engineNext) record.diffs.push({ agent: agentNext, engine: item.next, field: "next", part: part.localId });
+        const why = item.refs.filter((ref) => ref.outcome !== "bound").map((ref) => ({ outcome: ref.outcome, said: ref.said, ...(ref.candidates ? { candidates: ref.candidates.length } : {}) }));
+        if (agentNext !== engineNext) record.diffs.push({ agent: agentNext, engine: item.next, field: "next", part: part.localId, ...(why.length ? { why } : {}) });
       }
       const kept = new Set(next.openItems.map((item) => item.ref));
       const continued = new Set(state.parts.map((part) => part.continues?.ref).filter(Boolean) as string[]);

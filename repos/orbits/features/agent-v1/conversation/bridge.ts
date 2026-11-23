@@ -14,7 +14,7 @@
  */
 import type { ContextHandle, FirstLayerContext } from "../context/build";
 import type { UnderstandOutput, UnderstandPart } from "../understand/schema";
-import type { AgentReply, HintPart, LabWorld, ModelHint, RecordKind, Slots, TurnResult } from "./types";
+import type { AgentReply, HintPart, LabWorld, ModelHint, PartResult, RecordKind, Slots, TurnResult } from "./types";
 import type { Contact, Memo, PlatformEvent, PrivateEvent, ScheduleItem, Todo } from "../finder/types";
 import engine from "./impl/index";
 
@@ -95,7 +95,10 @@ export function namesOf(log: ConversationLog | null, context: FirstLayerContext 
   return out;
 }
 
-export function worldOf(names: Record<string, { type: string; name: string }>, now: string, timeZone: string): LabWorld {
+/** `forms`: words of this turn the agent's store bound to a record (「田中」 for 田中浩, 「@11 月 10 日笔记」 for a note without
+ * a title): the World knows the record by them too — a contact as aliases, another record as its title (a note keeps
+ * its stored name as the body). */
+export function worldOf(names: Record<string, { type: string; name: string }>, now: string, timeZone: string, forms: Record<string, string[]> = {}): LabWorld {
   const day = now.slice(0, 10);
   const contacts: Contact[] = [];
   const todos: Todo[] = [];
@@ -105,12 +108,14 @@ export function worldOf(names: Record<string, { type: string; name: string }>, n
   const privateEvents: PrivateEvent[] = [];
   for (const [id, { name }] of Object.entries(names)) {
     const prefix = id.slice(0, 1);
-    if (prefix === "C") contacts.push({ account: LAB_ACCOUNT, id, name });
-    else if (prefix === "T") todos.push({ account: LAB_ACCOUNT, createdAt: now, id, status: "open", title: name, updatedAt: now });
-    else if (prefix === "M") memos.push({ account: LAB_ACCOUNT, body: "", id, title: name, updatedAt: now, writtenOn: day });
-    else if (prefix === "S") schedule.push({ account: LAB_ACCOUNT, endsAt: now, id, startsAt: now, title: name });
-    else if (prefix === "E") platformEvents.push({ endsAt: now, id, startsAt: now, title: name });
-    else if (prefix === "P") privateEvents.push({ account: LAB_ACCOUNT, id, startsAt: now, title: name });
+    const said = (forms[id] ?? []).filter((form) => form && form !== name);
+    const title = prefix !== "C" && said.length ? said[0] : name;
+    if (prefix === "C") contacts.push({ account: LAB_ACCOUNT, id, name, ...(said.length ? { aliases: said } : {}) });
+    else if (prefix === "T") todos.push({ account: LAB_ACCOUNT, createdAt: now, id, status: "open", title, updatedAt: now });
+    else if (prefix === "M") memos.push({ account: LAB_ACCOUNT, body: title === name ? "" : name, id, title, updatedAt: now, writtenOn: day });
+    else if (prefix === "S") schedule.push({ account: LAB_ACCOUNT, endsAt: now, id, startsAt: now, title });
+    else if (prefix === "E") platformEvents.push({ endsAt: now, id, startsAt: now, title });
+    else if (prefix === "P") privateEvents.push({ account: LAB_ACCOUNT, id, startsAt: now, title });
   }
   return { aliases: [], attendance: [], contacts, genders: {}, memos, now, platformEvents, privateEvents, schedule, timeZone, todos };
 }
@@ -194,4 +199,88 @@ export function runEngine(log: ConversationLog | null, world: LabWorld, turn: En
     if (item.agent) session.reply(item.agent);
   }
   return session.turn({ at: turn.at, gone: turn.gone, hint: turn.hint, message: turn.message });
+}
+
+// ---------------------------------------------------------------- ask / go (ORBIT_AGENT_CONVERSATION_NEXT)
+//
+// The lab's engine asks when a reference points at nothing (`none`) or at more than one record. In the lab the World is
+// the whole account and the hint names references only. Here the World holds only the records the talk named, and the
+// first layer's clues are wider than references; read as they are, the engine wanted to ask on ~230 turns the agent
+// answered right (fix3 run, 2026-11-23). For the ask / go decision only (the logged hint and the other decisions stay as
+// they are), the bridge gives the engine what the lab gives it:
+// - the hint's references only: a pick loses its「@」mark; the record a create part makes and words that describe a set
+//   (a kind word with no pointer, no quoted title, no ordinal) are dropped (nextHintOf);
+// - a World with the records the store gave this turn (the caller's names: the reply's records and the turn's reads),
+//   each known also by the words of this turn the agent bound to it (a name, a title, a pick — never a pronoun or a
+//   pointer, which the engine reads from the talk itself: formsOf);
+// - a reference pointing at nothing is no reason to ask when the first layer gave it a visible record's id (an exact
+//   pick), or when the engine found the words by itself where the first layer saw no reference (askGoOf).
+
+/** Words naming a kind of record (a set: 活动 / イベント / 联系人 / my contacts …). */
+const KIND_WORD = /活动|会面|イベント|催し|events?\b|待办|待辦|to-?dos?\b|タスク|tasks?\b|笔记|筆記|メモ|notes?\b|日程|予定|安排|schedule|联系人|聯絡人|人脉|人脈|連絡先|contacts?\b|relationships?\b/iu;
+/** A pointer, a quoted title or an ordinal: the words then point at a record (这条待办 / 「X」这条 / 第二条 / the to-do about …). */
+const POINTS = /[那这這此该該它]|その|あの|この|どの|[「『“"]|第\s*[一二三四五六七八九十\d]|\d+\s*番目|\b(?:that|this|these|those|the|it|first|second|third|last)\b/iu;
+
+function setWords(said: string): boolean {
+  return KIND_WORD.test(said) && !POINTS.test(said);
+}
+
+/** The hint as the lab writes one for ask / go: references only (see above). */
+export function nextHintOf(hint: ModelHint | null): ModelHint | null {
+  if (!hint) return null;
+  return {
+    parts: hint.parts.map((part) => {
+      const making = part.slots?.verb === "create" ? part.slots.kind : undefined;
+      const refs = (part.refs ?? [])
+        .map((ref) => (ref.said.trimStart().startsWith("@") ? { ...ref, said: ref.said.trimStart().slice(1).trim() } : ref))
+        .filter((ref) => ref.said && (ref.id || !((making && ref.kind === making) || setWords(ref.said))));
+      return { ...part, refs };
+    }),
+  };
+}
+
+/** A pronoun or a pointer: the engine reads what it points at from the talk, never from the store's binding. */
+const TALK_POINTER = /[他她它彼]|\b(?:he|she|him|her|his|they|them|it)\b/iu;
+
+/** The words the agent bound to a record this turn → that record's extra forms (lab id → words; see worldOf). */
+export function formsOf(bound: readonly { labId: string; words: string }[]): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const { labId, words } of bound) {
+    const form = words.trim().replace(/^@\s*/u, "").trim();
+    if (!form || POINTS.test(form) || TALK_POINTER.test(form) || setWords(form)) continue;
+    (out[labId] ??= []).includes(form) || out[labId].push(form);
+  }
+  return out;
+}
+
+const overlaps = (a: string, b: string) => a.includes(b) || b.includes(a);
+
+/**
+ * A part's ask / go: the engine's `next`, except that a reference pointing at nothing is no reason to ask when
+ * - the first layer gave it the id of a record the context handed it (a pick, an earlier record), still visible: the
+ *   pick is exact, the World only lacks the words it was picked by (a note without a title, picked by its date);
+ * - the engine found the words by itself (no reference of the hint overlaps them) and the first layer read the turn
+ *   (a hint, or plain chat).
+ * A part whose references all bound and that still asks names a person more than one contact has: that stays.
+ */
+export function askGoOf(part: PartResult, hint: ModelHint | null, plainChat: boolean, visible: ReadonlySet<string> = new Set()): PartResult["next"] {
+  if (part.next !== "ask") return part.next;
+  const unbound = part.refs.filter((ref) => ref.outcome !== "bound");
+  if (!unbound.length) return part.next;
+  const hinted = (hint?.parts ?? []).flatMap((item) => item.refs ?? []).filter((ref) => ref.said);
+  const excused = (said: string) => {
+    const over = hinted.filter((ref) => overlaps(ref.said, said));
+    if (over.some((ref) => ref.id && visible.has(ref.id))) return true;
+    return !over.length && Boolean(hint || plainChat);
+  };
+  return unbound.every((ref) => ref.outcome === "none" && excused(ref.said)) ? "go" : part.next;
+}
+
+/** The engine's ask / go on this turn: the lab's hint and a World with the store's records (see above). */
+export function runAskGo(log: ConversationLog | null, names: Record<string, { type: string; name: string }>, turn: EngineTurn, plainChat: boolean, forms: Record<string, string[]> = {}, timeZone = "Asia/Tokyo"): TurnResult {
+  const hint = nextHintOf(turn.hint);
+  const result = runEngine(log, worldOf(names, turn.at, timeZone, forms), { ...turn, hint });
+  const gone = new Set(turn.gone);
+  const visible = new Set(Object.keys(names).filter((id) => !gone.has(id)));
+  return { ...result, parts: result.parts.map((part) => ({ ...part, next: askGoOf(part, hint, plainChat, visible) })) };
 }
