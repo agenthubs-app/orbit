@@ -284,9 +284,10 @@ const overlaps = (a: string, b: string) => a.includes(b) || b.includes(a);
  *   (a hint, or plain chat).
  * A part whose references all bound and that still asks names a person more than one contact has: that stays.
  */
-export function askGoOf(part: PartResult, hint: ModelHint | null, plainChat: boolean, visible: ReadonlySet<string> = new Set(), before: PartResult = part): PartResult["next"] {
+export function askGoOf(part: PartResult, hint: ModelHint | null, plainChat: boolean, visible: ReadonlySet<string> = new Set(), before: PartResult = part, agent: AgentBinding | null = null): PartResult["next"] {
   if (part.next !== "ask") return part.next;
-  const unbound = part.refs.filter((ref) => ref.outcome !== "bound");
+  // what the agent bound this turn counts as bound (2026-11-23 production: 「高桥智子」 found only by a variant spelling)
+  const unbound = part.refs.filter((ref) => ref.outcome !== "bound" && !(agent && agentCovers(agent, ref)));
   // every reference bound: the engine asks about a person more than one contact has — unless a decision opened after
   // the engine (R27) bound what it asked about
   if (!unbound.length) return before.refs.some((ref) => ref.outcome !== "bound") ? "go" : part.next;
@@ -304,11 +305,11 @@ export function askGoOf(part: PartResult, hint: ModelHint | null, plainChat: boo
  * `extend`: the World with the records the turn's store read gave (r10's write confirmations, conversation/world-read.ts).
  * An「@」pick is exact (the picker gave the id): another record of the same kind with the same name is left out of this
  * World, so the engine's r11 exact-pick rule sees one record by that title (AE-SCL-021: two notes 「选品方向」). */
-export function runAskGo(log: ConversationLog | null, allNames: Record<string, { type: string; name: string }>, turn: EngineTurn, plainChat: boolean, forms: Record<string, string[]> = {}, timeZone = "Asia/Tokyo", bind?: (result: TurnResult) => TurnResult, extend?: (world: LabWorld) => LabWorld): TurnResult {
+export function runAskGo(log: ConversationLog | null, allNames: Record<string, { type: string; name: string }>, turn: EngineTurn, plainChat: boolean, forms: Record<string, string[]> = {}, timeZone = "Asia/Tokyo", bind?: (result: TurnResult) => TurnResult, extend?: (world: LabWorld) => LabWorld, agent: readonly AgentBinding[] = []): TurnResult {
   const picked = (turn.hint?.parts ?? []).flatMap((part) => part.refs ?? []).filter((ref) => ref.id && allNames[ref.id] && ref.said.trimStart().startsWith("@")).map((ref) => ref.id!);
   const shadowed = new Set(Object.entries(allNames).filter(([id, item]) => !picked.includes(id) && picked.some((pick) => pick[0] === id[0] && allNames[pick].name.trim() === item.name.trim())).map(([id]) => id));
   const names = shadowed.size ? Object.fromEntries(Object.entries(allNames).filter(([id]) => !shadowed.has(id))) : allNames;
-  const hint = nextHintOf(turn.hint);
+  const hint = settledHintOf(nextHintOf(turn.hint), agent);
   const all: Record<string, string[]> = { ...familyFormsOf(names) };
   for (const [id, words] of Object.entries(forms)) all[id] = [...new Set([...(all[id] ?? []), ...words])];
   const base = worldOf(names, turn.at, timeZone, all);
@@ -316,5 +317,44 @@ export function runAskGo(log: ConversationLog | null, allNames: Record<string, {
   const result = bind ? bind(raw) : raw;
   const gone = new Set(turn.gone);
   const visible = new Set(Object.keys(names).filter((id) => !gone.has(id)));
-  return { ...result, parts: result.parts.map((part, index) => ({ ...part, next: askGoOf(part, hint, plainChat, visible, raw.parts[index]) })) };
+  return { ...result, parts: result.parts.map((part, index) => ({ ...part, next: askGoOf(part, hint, plainChat, visible, raw.parts[index], bindingOf(agent, part.quote)) })) };
+}
+
+/**
+ * What the agent bound in one part this turn, by any route (a pick, a card, the finder, a variant or romanized spelling,
+ * a company's people, an antecedent): the records (lab ids) and the words of the message that named them.
+ * `settled`: every reference of the part is bound (a read part only) — the first layer's clarity doubt
+ * (missing_one / none: it did not know the name yet) was about what the agent has now found.
+ */
+export interface AgentBinding {
+  quote: string;
+  ids: string[];
+  words: string[];
+  settled: boolean;
+}
+
+/** The agent's binding for an engine or hint part (by quote overlap). */
+export function bindingOf(agent: readonly AgentBinding[], quote: string): AgentBinding | null {
+  const plain = quote.trim();
+  if (!plain) return null;
+  return agent.find((item) => item.quote && overlaps(item.quote, plain)) ?? null;
+}
+
+/** An engine reference the agent bound: its words are words the agent bound, or one of its candidates is a record the agent bound. */
+export function agentCovers(agent: AgentBinding, ref: PartResult["refs"][number]): boolean {
+  const said = ref.said.replace(/^@/u, "").trim();
+  if (said && agent.words.some((words) => words && overlaps(words, said))) return true;
+  if (ref.id && agent.ids.includes(ref.id)) return true;
+  return (ref.candidates ?? []).some((id) => agent.ids.includes(id));
+}
+
+/** The hint for ask / go with the first layer's clarity doubt lifted on read parts the agent settled (see AgentBinding). */
+export function settledHintOf(hint: ModelHint | null, agent: readonly AgentBinding[]): ModelHint | null {
+  if (!hint || !agent.some((item) => item.settled)) return hint;
+  return {
+    parts: hint.parts.map((part) => {
+      const binding = bindingOf(agent, part.quote);
+      return binding?.settled && (part.clarity === "missing_one" || part.clarity === "none") ? { ...part, clarity: "clear" as const } : part;
+    }),
+  };
 }

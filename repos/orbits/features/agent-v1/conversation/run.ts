@@ -18,11 +18,12 @@ import { swapsPeriod } from "../understand/read-window";
 import { emitTrace } from "../observability/trace";
 import { scheduleConversationShadow } from "../rollout/conversation-shadow";
 import { applyCarry, applyTurn, carryChangesOf, compareTurn, enginePartOf, resultDiffs, withPronounsBound, type Applied, type ConversationDiff } from "./apply";
-import { appendTurn, formsOf, hintOf, labIdOf, namesOf, normalizeLog, runAskGo, runEngine, TYPE_OF_COLLECTION, worldOf, type ConversationLog, type EngineTurn } from "./bridge";
+import { agentRefOf, appendTurn, formsOf, hintOf, labIdOf, namesOf, normalizeLog, runAskGo, runEngine, TYPE_OF_COLLECTION, worldOf, type AgentBinding, type ConversationLog, type EngineTurn } from "./bridge";
+import { capabilityKind } from "../route/capabilities";
 import { conversationBudgetMs, conversationMode, openedMode, type ConversationMode } from "./mode";
 import { awaitWorldRead, confirmNeedsOf, enrichWorld, READ_RECORDS, startWorldRead, type WorldRead } from "./world-read";
 import type { World } from "../finder/types";
-import type { AgentReply, FollowUpClass, ModelHint, Question, Slots, TurnResult } from "./types";
+import type { AgentReply, FollowUpClass, ModelHint, PartResult, Question, Slots, TurnResult } from "./types";
 
 export interface ConversationRun {
   mode: Exclude<ConversationMode, "legacy">;
@@ -300,12 +301,33 @@ function askGoRun(scope: NodeScope, state: AgentGraphState, next: AgentSessionSt
   const card = cardMentions(run.actionPreview);
   for (const id of card.ids) if (card.names[id] && !names[id]) names[id] = card.names[id];
   const bound: { labId: string; words: string }[] = [];
-  for (const part of state.parts) for (const ref of part.refs) {
-    if (!ref.recordId) continue;
-    const type = ref.entity === "attendance" ? "event" : ref.entity;
-    add(type, ref.recordId, run.names.get(ref.recordId) ?? [...(run.context?.handles.values() ?? [])].find((handle) => handle.id === ref.recordId)?.name);
-    const lab = labIdOf(type, ref.recordId);
-    if (lab && ref.quote) bound.push({ labId: lab, words: input.message.slice(ref.quote[0], ref.quote[1]) });
+  // 2026-11-23 (production, NEXT on): what the agent bound this turn, by any route, is in the World and counts as bound
+  // for the engine's reference doubts (bridge.ts AgentBinding) — 「高桥智子」 was found only by a variant spelling
+  const agent: AgentBinding[] = [];
+  const nameOfRecord = (id: string) => run.readNames.get(id)?.name || run.names.get(id) || [...(run.context?.handles.values() ?? [])].find((handle) => handle.id === id)?.name;
+  for (const part of state.parts) {
+    const ids: string[] = [];
+    const words: string[] = [];
+    for (const ref of part.refs) {
+      if (!ref.recordId) continue;
+      const type = ref.entity === "attendance" ? "event" : ref.entity;
+      add(type, ref.recordId, nameOfRecord(ref.recordId));
+      const lab = labIdOf(type, ref.recordId);
+      if (lab) ids.push(lab);
+      if (lab && ref.quote) {
+        bound.push({ labId: lab, words: input.message.slice(ref.quote[0], ref.quote[1]) });
+        words.push(input.message.slice(ref.quote[0], ref.quote[1]).replace(/^@/u, "").trim());
+      }
+    }
+    // the people resolve read the part for (a company's people, an inherited subject …): a contact clue left without a
+    // record is theirs
+    const people = (run.partPeople?.get(part.localId) ?? []).map((id) => { add("contact", id, nameOfRecord(id)); return labIdOf("contact", id); }).filter((id): id is string => Boolean(id));
+    ids.push(...people);
+    const open = part.refs.filter((ref) => !ref.recordId);
+    if (people.length) for (const ref of open) if (ref.entity === "contact" && ref.quote) words.push(input.message.slice(ref.quote[0], ref.quote[1]).replace(/^@/u, "").trim());
+    const reads = part.route === "read" && !part.capabilities.some((capability) => capabilityKind(capability) === "write");
+    const settled = reads && ids.length > 0 && open.every((ref) => ref.entity === "contact" && people.length > 0);
+    if (ids.length) agent.push({ ids: [...new Set(ids)], quote: input.message.slice(part.quote[0], part.quote[1]), settled, words: [...new Set(words.filter(Boolean))] });
   }
   const forms = formsOf(bound);
   for (const id of Object.keys(names)) if (!names[id].name) {
@@ -317,7 +339,29 @@ function askGoRun(scope: NodeScope, state: AgentGraphState, next: AgentSessionSt
   // r10: the records the turn's store read gave (open records of a kind created, a deleted contact's linked records, a
   // changed schedule item) — what the engine's write confirmations are checked against
   const read = record.readWorld ?? null;
-  return runAskGo(log, names, record.turn!, Boolean(record.plainChat), forms, state.timeZone || "Asia/Tokyo", bind, read ? (world) => enrichWorld(world, read) : undefined);
+  const result = runAskGo(log, names, record.turn!, Boolean(record.plainChat), forms, state.timeZone || "Asia/Tokyo", bind, read ? (world) => enrichWorld(world, read) : undefined, agent);
+  askGoNames.set(result, names);
+  return result;
+}
+
+/** The World's names of an ask / go run (the options a NEXT question offers). */
+const askGoNames = new WeakMap<TurnResult, Record<string, { type: string; name: string }>>();
+
+/**
+ * The records an engine ask offers: the candidates of its references that ask, as the agent's records with their names
+ * (lab ids the agent cannot map, or without a name, are left out). Empty: the ask has nothing to offer.
+ */
+export function askOptionsOf(item: PartResult, names: Record<string, { type: string; name: string }>): NamedRecordRef[] {
+  const out: NamedRecordRef[] = [];
+  for (const ref of item.refs) {
+    if (ref.outcome !== "ask") continue;
+    for (const lab of ref.candidates ?? []) {
+      const agentRef = agentRefOf(lab);
+      const name = names[lab]?.name;
+      if (agentRef && name && !out.some((other) => other.id === agentRef.id)) out.push({ id: agentRef.id, name, type: agentRef.type } as NamedRecordRef);
+    }
+  }
+  return out.slice(0, 3);
 }
 
 /**
@@ -347,7 +391,21 @@ export function conversationNextAsks(scope: NodeScope, state: AgentGraphState): 
   let ids: string[] = [];
   try {
     const askGo = askGoRun(scope, state, null, logOf(run.sessionState), record);
-    ids = eligible.filter((part) => enginePartOf(askGo, scope.input.message, part)?.next === "ask").map((part) => part.localId);
+    const names = askGoNames.get(askGo) ?? {};
+    const skipped: string[] = [];
+    for (const part of eligible) {
+      const item = enginePartOf(askGo, scope.input.message, part);
+      if (item?.next !== "ask") continue;
+      // an ask with nothing to offer never becomes a question (2026-11-23 production: 「which one?」 with no options)
+      const options = run.candidates.get(part.localId)?.length ? run.candidates.get(part.localId)! : askOptionsOf(item, names);
+      if (!options.length) {
+        skipped.push(part.localId);
+        continue;
+      }
+      if (!run.candidates.get(part.localId)?.length) run.candidates.set(part.localId, options);
+      ids.push(part.localId);
+    }
+    if (skipped.length) emitTrace({ parts: skipped, type: "conversation.next_no_options" });
     if (ids.length) emitTrace({ parts: ids, type: "conversation.next_asked" });
   } catch (error) {
     emitTrace({ error: error instanceof Error ? error.message : String(error), type: "conversation.error", where: "next" });

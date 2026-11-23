@@ -28,6 +28,15 @@ new_patches:
     add:
       todos:
         - { id: T61, title: "山本さんに原稿を送る", status: open, plannedDate: "2026-11-25", dueAt: null, contactId: C41, updatedAt: "2026-11-09T15:20:00+09:00" }
+  kanji-takahashi:
+    summary: "2026-11-23：账号甲多一位名字用日本汉字存的联系人高橋智子（「橋」不是简体），名下一条笔记、一条没做完的待办；用简体写「高桥智子」时只有异体写法的联系人搜索找得到她"
+    add:
+      contacts:
+        - { id: C48, name: 高橋智子, org: 青葉飲食, role: 店长, industry: 餐饮, region: 东京 }
+      memos:
+        - { id: M48, version: 1, createdAt: "2026-11-13T17:00:00+09:00", contactIds: [C48], body: "和高橋智子聊了新店的事：她说新店 12 月中旬开业，想要一份菜单印刷的报价。" }
+      todos:
+        - { id: T48, title: 给高橋智子发菜单印刷报价, status: open, plannedDate: "2026-11-19", dueAt: null, contactId: C48, updatedAt: "2026-11-13T17:10:00+09:00" }
 
 cases:
   - id: AE-XL-001                 # AE-<区>-<三位序号>，不复用、不重排
@@ -671,3 +680,54 @@ cases:
       - id: R2
         text: "没有问用户要改哪一条，也没有说已经改好，说明点确认之前不会改。"
     notes: "一句话点名两条已有待办（T42 计划日 11-18，T45 计划日 11-10），两个名字各对得上一条。旧行为：两个名字合在一起去找、被问成哪一条，答完后卡上同一条待办出现两次（run 20261123-065853-7d4dece-CARD-multi-new 的 AE-XL-019 旧版）。"
+
+  - id: AE-XL-023
+    title: "第一次说到「高桥智子」（存的是高橋智子）：读她的记录，接着问「她」，两步都直接回答，不问是哪一位"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.10", "§3.11"]
+    locale: zh
+    world: base-v1
+    patches: [kanji-takahashi]
+    steps:
+      - user: "高桥智子最近有什么记录？"
+      - user: "她还有什么没做完的事？"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - clarifications: { count: 0 }
+      - reads_include: [M48, T48]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一步的回应说的是高橋智子（青葉飲食的店长），说出了 11 月 13 日那条笔记的内容（新店 12 月中旬开业、想要菜单印刷的报价），没有问用户指的是哪一位或哪一条。"
+      - id: R2
+        text: "第二步的回应说她还没做完的是待办「给高橋智子发菜单印刷报价」（计划 11 月 19 日），没有把别人的待办算成她的，也没有反问「她」是谁。"
+    notes: "2026-11-23 正式站（NEXT on）的事故：第一层没见过这个名字，把它报成 missing_one / 几种读法；Agent 靠异体写法的联系人搜索（高桥 → 高橋）找到了她，引擎却按第一层的疑问要「问」，回答被换成了没有选项的「是哪一条」。账号里只有一位高橋智子。"
+
+  - id: AE-XL-024
+    title: "第一次用拼音说「Li Wei」：读李薇的记录，接着问「她」，两步都直接回答，不问是哪一位"
+    sprint: AG06
+    split: dev
+    invariant: false
+    requirement: [AG-R06]
+    design: ["§3.10", "§3.11"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "Li Wei 最近有什么记录？"
+      - user: "她还有什么没做完的事？"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - clarifications: { count: 0 }
+      - reads_include: [M40, T45]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一步的回应说的是李薇（自由职业的摄影师），说出了她推荐街拍工作坊的那条笔记，没有问用户指的是哪一位。"
+      - id: R2
+        text: "第二步的回应说她还没做完的是待办「给李薇寄样片」（已过计划日 11 月 10 日），没有反问「她」是谁。"
+    notes: "账号里只有李薇读作 Li Wei；Agent 按拼音读联系人的中文名找到她（AG07 AE-UIX-008 的路子）。引擎的 World 里没有这个拼音写法，第一层也可能报 missing_one：Agent 绑定的人算绑定，不该被换成追问。"

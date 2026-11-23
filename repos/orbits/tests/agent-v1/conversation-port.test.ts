@@ -326,7 +326,7 @@ test("AE-XL-014 (eval on run): a described to-do the conversation never showed i
 const VAGUE = "Review a discussion with a contact";
 
 for (const next of ["shadow", "on"] as const) {
-  test(`next ${next}: 「${VAGUE}」 (AE-ANS-026) — the agent would answer, the engine asks; on makes it the agent's own question`, async () => {
+  test(`next ${next}: 「${VAGUE}」 (AE-ANS-026) — the agent would answer, the engine asks with no one to offer; on never shows a question without options (2026-11-23)`, async () => {
     const world = people();
     const holder = globalThis as { __orbitAgentEval?: unknown };
     const before = { main: process.env.ORBIT_AGENT_CONVERSATION, next: process.env.ORBIT_AGENT_CONVERSATION_NEXT };
@@ -340,10 +340,11 @@ for (const next of ["shadow", "on"] as const) {
       const shadow = run.events.find((event) => event.type === "conversation.shadow");
       const nextDiffs = ((shadow?.diffs ?? []) as { field: string }[]).filter((diff) => diff.field === "next");
       if (next === "on") {
-        assert.equal(gate.length, 1, JSON.stringify(run.events.map((event) => event.type)));
-        assert.equal(asked.length, 1, run.result.text);
-        assert.equal(run.result.status, "waiting_user");
-        assert.equal(nextDiffs.length, 0, "the agent now asks as the engine does");
+        assert.equal(gate.length, 0, JSON.stringify(run.events.map((event) => event.type)));
+        assert.ok(run.events.some((event) => event.type === "conversation.next_no_options"));
+        assert.equal(asked.length, 0, run.result.text);
+        assert.notEqual(run.result.status, "waiting_user");
+        assert.equal(nextDiffs.length, 1, "the difference is still logged");
       } else {
         assert.equal(gate.length, 0);
         assert.equal(asked.length, 0, run.result.text);

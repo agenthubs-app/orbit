@@ -38,7 +38,9 @@ export type OpenedDecision = "world" | "pronoun" | "carry" | "next";
 export type OpenedMode = "off" | "shadow" | "on";
 export const OPENED_DECISIONS: readonly OpenedDecision[] = ["world", "pronoun", "carry", "next"];
 // Stage B (2026-11-23, eval runs in docs/epics/agent-design/conversation-port.md §5): pronoun on; r12 port: next on (add-only,
-// conversation/run.ts conversationNextAsks); world and carry stay shadow.
+// conversation/run.ts conversationNextAsks) — back to shadow the same day: on production it asked "which one" about a
+// person the agent found only by a variant spelling (高桥智子 → 高橋智子), whom the engine World did not have — on again after the
+// fix (what the agent bound counts as bound, an ask with no options is never shown; eval NEXT-bound-on); world and carry stay shadow.
 const OPENED_DEFAULT: Record<OpenedDecision, OpenedMode> = { carry: "shadow", next: "on", pronoun: "on", world: "shadow" };
 
 export function openedMode(decision: OpenedDecision, env: Record<string, string | undefined> = process.env): OpenedMode {

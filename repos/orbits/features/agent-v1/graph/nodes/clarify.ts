@@ -160,13 +160,20 @@ function prepare(scope: NodeScope, state: AgentGraphState): Partial<AgentGraphSt
   // ORBIT_AGENT_CONVERSATION_NEXT=on (add-only): a part the agent would answer and the engine asks about is asked as
   // the agent asks for a missing object (the same step, options and pause as resolve's).
   const asked = conversationNextAsks(scope, state);
-  const parts: GraphPart[] = asked.length ? state.parts.map((part) => (asked.includes(part.localId) ? { ...part, route: "clarify", status: "awaiting_clarification", step: "ask_missing", waitReason: "object_ambiguous" } : part)) : state.parts;
+  let parts: GraphPart[] = asked.length ? state.parts.map((part) => (asked.includes(part.localId) ? { ...part, route: "clarify", status: "awaiting_clarification", step: "ask_missing", waitReason: "object_ambiguous" } : part)) : state.parts;
+  const stepsBefore = new Map(asked.map((id) => [id, scope.run.steps.get(id)]));
   for (const id of asked) scope.run.steps.set(id, { kind: "ask_missing" });
+  const dropped: string[] = [];
   for (const part of parts) {
     if (state.touched && !state.touched.includes(part.localId)) continue;
     const step = scope.run.steps.get(part.localId);
     if (!needsDirections(part, step, sets)) continue;
     const made = setOf(scope, state.language, part, step, parts);
+    // the engine's ask (NEXT) with no option to offer is never shown: the part is answered as the agent had it
+    if (asked.includes(part.localId) && !made?.options.length) {
+      dropped.push(part.localId);
+      continue;
+    }
     if (!made || !made.options.length && made.set.kind !== "question") continue;
     const labels = new Map(made.options.map((option) => [option.optionId, { label: option.label, ...(option.ref ? { refName: option.ref.name } : {}) }]));
     scope.run.optionLabels.set(made.set.clarificationId, labels);
@@ -174,7 +181,17 @@ function prepare(scope: NodeScope, state: AgentGraphState): Partial<AgentGraphSt
     if (made.set.kind !== "entry") emitTrace({ clarificationId: made.set.clarificationId, kind: made.set.kind, options: made.options.length, partId: part.localId, subgoal: made.set.subgoal, type: "clarify.asked" });
     else emitTrace({ clarificationId: made.set.clarificationId, options: made.options.length, partId: part.localId, purpose: made.set.purpose, type: "clarify.entry_offered" });
   }
-  return { optionSets: sets, ...(asked.length ? { parts } : {}) };
+  if (dropped.length) {
+    parts = parts.map((part) => (dropped.includes(part.localId) ? state.parts.find((item) => item.localId === part.localId) ?? part : part));
+    for (const id of dropped) {
+      const before = stepsBefore.get(id);
+      if (before) scope.run.steps.set(id, before);
+      else scope.run.steps.delete(id);
+    }
+    emitTrace({ parts: dropped, type: "conversation.next_no_options" });
+  }
+  const changed = asked.some((id) => !dropped.includes(id));
+  return { optionSets: sets, ...(changed ? { parts } : {}) };
 }
 
 const writes = (capabilities: readonly Capability[]) => capabilities.some((capability) => capabilityKind(capability) === "write");

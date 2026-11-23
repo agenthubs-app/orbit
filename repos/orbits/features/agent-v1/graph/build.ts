@@ -144,6 +144,7 @@ function newRun(input: AgentGraphInput, extras: ResumeExtras = {}): AgentGraphRu
     actorId: input.actorId,
     answers: new Map(),
     candidates: new Map(),
+    partPeople: new Map(),
     cardPrepared: input.cardPrepared,
     judgment: newJudgmentBudget(),
     clarifications: [],
