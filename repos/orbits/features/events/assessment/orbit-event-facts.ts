@@ -53,10 +53,34 @@ export const ORBIT_EVENT_FACTS_TTL_MS = 6 * 3_600_000;
 
 const asString = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
 
+const legacyFeeYen = (payload: Readonly<Record<string, unknown>>): number | null => {
+  const rawFee = payload.feeYen ?? payload.fee ?? payload.price ?? payload.ticketPrice ?? payload.participationFee;
+  return typeof rawFee === "number" && Number.isFinite(rawFee) ? Math.max(0, Math.round(rawFee)) : parsePriceYen(asString(rawFee));
+};
+
+/**
+ * 2026-11-23：主办方表单存的是 source_payload.host.{feeKind, feeAmountYen, feeUrl}（features/events/host/storage/lifecycle.ts），
+ * 参加者端以前只认旧写法（feeYen / fee / price …），主办方填的费用在详情、简介栏、列表、评估里都读不到。
+ * amount → 金额；free → 0（「免费」）；external_link → 金额不知道（null，同「没有费用」的显示规则）。
+ * 没有 feeKind（导入 / 旧活动）→ undefined，交给旧写法。也认顶层的 feeKind。
+ */
+const hostFeeYen = (payload: Readonly<Record<string, unknown>>): number | null | undefined => {
+  const host = payload.host && typeof payload.host === "object" && !Array.isArray(payload.host) ? payload.host as Record<string, unknown> : null;
+  const source = host && host.feeKind !== undefined ? host : payload;
+  const kind = source.feeKind;
+  if (kind === "amount") {
+    const amount = source.feeAmountYen;
+    return typeof amount === "number" && Number.isFinite(amount) ? Math.max(0, Math.round(amount)) : null;
+  }
+  if (kind === "free") return 0;
+  if (kind === "external_link") return null;
+  return undefined;
+};
+
 /** sourcePayload 里常见的费用 / 议程写法（主办方建活动或日历导入时写入）。 */
 export function payloadFacts(payload: Readonly<Record<string, unknown>>): { price: string | null; feeYen: number | null; agenda: EventAssessmentAgendaItem[]; area: string | null; emoji: string | null; matching: boolean | null; nameTags: boolean | null } {
-  const rawFee = payload.feeYen ?? payload.fee ?? payload.price ?? payload.ticketPrice ?? payload.participationFee;
-  const feeYen = typeof rawFee === "number" && Number.isFinite(rawFee) ? Math.max(0, Math.round(rawFee)) : parsePriceYen(asString(rawFee));
+  const fromHost = hostFeeYen(payload);
+  const feeYen = fromHost !== undefined ? fromHost : legacyFeeYen(payload);
   const price = feeYen === null ? null : feeYen === 0 ? "無料" : `¥${feeYen.toLocaleString("en-US")}`;
   const agendaRaw = Array.isArray(payload.agenda) ? payload.agenda : Array.isArray(payload.timetable) ? payload.timetable : [];
   const agenda = agendaRaw.flatMap((item): EventAssessmentAgendaItem[] => {
