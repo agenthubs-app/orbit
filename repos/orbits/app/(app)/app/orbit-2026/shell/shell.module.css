@@ -353,23 +353,11 @@
   .frame[data-phone-bare="true"] .content { padding-bottom: 0; }
   /* 2026-11-23 手机顶栏（mobile-top-height-proposal，用户确认）：品牌行取消，外壳的主标题行在手机上不画，
      由 .phoneTop 统一画一行 52 + 8（一级页：左标题 · 操作 · 收件箱 · 头像；其余页：‹ · 居中标题 · 一个操作），
-     有页签再加一行 40 + 10；两行一起吸顶，正文从 60 / 110 开始。 */
+     有页签再加一行 40 + 10，正文从 60 / 110 开始。 */
   .mainhead { display: none; }
-  /* 不用 backdrop-filter：它会让顶栏里打开的 fixed 弹层（头像菜单、更多、次の一手抽屉）以顶栏为定位基准。 */
-  /* 层级在浮层级：顶栏里打开的菜单 / 抽屉要盖过底部胶囊（z-sticky）；页面自己的弹窗在 DOM 更后面，仍盖在顶栏上。 */
-  /* 2026-11-23 顶端时不画底色（透出 .frame 的雾状渐变，和页面是一体的）；内容滚进来后由 ::before 淡入一层
-     取自页面底色 --bg 的半透明毛玻璃（iOS 导航栏滚到顶时透明、内容滚入才出现材质）。毛玻璃放在伪元素上，
-     不放在 .headScope 本身：那样会改变顶栏里 fixed 弹层的定位基准。data-scrolled 由 ShellFrame 按 scrollY 设。 */
-  .headScope { position: sticky; top: 0; z-index: var(--z-overlay); background: transparent; isolation: isolate; }
-  .headScope::before {
-    content: ""; position: absolute; inset: 0; pointer-events: none;
-    background: color-mix(in srgb, var(--bg) 72%, transparent);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4);
-    opacity: 0; transition: opacity var(--dur-dialog) var(--ease);
-  }
-  .frame[data-scrolled="true"] .headScope::before { opacity: 1; }
-  /* 不用负 z-index：定位元素按文档顺序画，::before 在最前，顶栏 .phoneTop 设为 relative 就画在毛玻璃之上（不动同层的抽屉、⌘K、Toast 这些 fixed 元素）。 */
-  .headScope .phoneTop { position: relative; }
+  /* 2026-11-23 用户：顶栏不是单独一块设计——不吸顶、不画底色，跟页面一起滑上去。
+     relative + 浮层级：顶栏里打开的菜单 / 抽屉要盖过底部胶囊（z-sticky）。 */
+  .headScope { position: relative; z-index: var(--z-overlay); }
   .headScope .phoneTop { display: block; }
 }
 .phoneTop { display: none; }
