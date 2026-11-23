@@ -298,12 +298,14 @@ export function askGoOf(part: PartResult, hint: ModelHint | null, plainChat: boo
 }
 
 /** The engine's ask / go on this turn: the lab's hint and a World with the store's records (see above). */
-/** `bind`: decisions opened after the engine that bind references (R27 pronouns when ORBIT_AGENT_CONVERSATION_PRONOUN is on). */
-export function runAskGo(log: ConversationLog | null, names: Record<string, { type: string; name: string }>, turn: EngineTurn, plainChat: boolean, forms: Record<string, string[]> = {}, timeZone = "Asia/Tokyo", bind?: (result: TurnResult) => TurnResult): TurnResult {
+/** `bind`: decisions opened after the engine that bind references (R27 pronouns when ORBIT_AGENT_CONVERSATION_PRONOUN is on).
+ * `extend`: the World with the records the turn's store read gave (r10's write confirmations, conversation/world-read.ts). */
+export function runAskGo(log: ConversationLog | null, names: Record<string, { type: string; name: string }>, turn: EngineTurn, plainChat: boolean, forms: Record<string, string[]> = {}, timeZone = "Asia/Tokyo", bind?: (result: TurnResult) => TurnResult, extend?: (world: LabWorld) => LabWorld): TurnResult {
   const hint = nextHintOf(turn.hint);
   const all: Record<string, string[]> = { ...familyFormsOf(names) };
   for (const [id, words] of Object.entries(forms)) all[id] = [...new Set([...(all[id] ?? []), ...words])];
-  const raw = runEngine(log, worldOf(names, turn.at, timeZone, all), { ...turn, hint });
+  const base = worldOf(names, turn.at, timeZone, all);
+  const raw = runEngine(log, extend ? extend(base) : base, { ...turn, hint });
   const result = bind ? bind(raw) : raw;
   const gone = new Set(turn.gone);
   const visible = new Set(Object.keys(names).filter((id) => !gone.has(id)));

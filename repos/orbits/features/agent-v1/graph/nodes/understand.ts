@@ -29,7 +29,7 @@ import { PICK_WORDS } from "../../functions/basis";
 import { roleGroupClue } from "../../understand/role-words";
 import { conversationTurn, logOf } from "../../conversation/run";
 import { conversationMode, openedMode } from "../../conversation/mode";
-import { awaitWorldRead, needsWorldRead, startWorldRead } from "../../conversation/world-read";
+import { awaitWorldRead, confirmNeedsOf, needsWorldRead, startWorldRead } from "../../conversation/world-read";
 
 /** "你", "我", "you", "me": the two people talking, never a contact to look up. */
 const SPEAKER_WORDS = /^(?:你|您|我|咱们?|我们|你们|あなた|私|僕|you|me|i|we|us)$/iu;
@@ -422,7 +422,11 @@ export function understandNode(scope: NodeScope): GraphNode {
     // ORBIT_AGENT_CONVERSATION: the conversation engine reads the same turn (shadow: compared only; on: its decisions apply).
     // ORBIT_AGENT_CONVERSATION_WORLD: the engine's small store read, only for a person reference the agent left unbound.
     const ready = followed?.parts ?? made;
-    const worldRead = conversationMode() !== "legacy" && openedMode("world") !== "off" && needsWorldRead(ready) ? startWorldRead(scope, logOf(run.sessionState), state.asOf || deps.now(), zone) : null;
+    // r10: also for a write part that needs records to confirm against (duplicates, linked records, a series).
+    const reading = conversationMode() !== "legacy" && openedMode("world") !== "off";
+    const unboundPerson = reading && needsWorldRead(ready);
+    const confirm = reading ? confirmNeedsOf(ready) : null;
+    const worldRead = unboundPerson || confirm ? startWorldRead(scope, logOf(run.sessionState), state.asOf || deps.now(), zone, unboundPerson, confirm) : null;
     const parts = conversationTurn(scope, state, covered.output, ready, { followedList: Boolean(followed) }, worldRead ? await awaitWorldRead(worldRead) : null);
     return { budget, language: ruled ?? chosen.language, parts, plainChat: followed ? false : covered.output.plainChat, repairs, understanding: "understood" };
   };

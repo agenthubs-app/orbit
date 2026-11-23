@@ -39,6 +39,8 @@ export interface ConversationRun {
   plainChat?: boolean;
   /** The store read for the engine's World (ORBIT_AGENT_CONVERSATION_WORLD; null: off / nothing to read). */
   world?: { status: WorldRead["status"]; rows: number; contacts: number; records: number; readMs: number; waitedMs: number; engineMs: number; used: boolean } | null;
+  /** The records that read gave (kept for the ask / go run at deliver: r10's write confirmations need them). Not logged. */
+  readWorld?: World | null;
 }
 
 /** More than this many minutes since the conversation's last message is an idle break (R2: a bare pronoun is asked). */
@@ -118,6 +120,7 @@ export function conversationTurn(scope: NodeScope, state: AgentGraphState, outpu
     if (worldMode !== "off" && read && read.status !== "nothing") {
       const engineStarted = Date.now();
       if (read.world) {
+        record.readWorld = read.world;
         try {
           enriched = runEngine(log, enrichWorld(world, read.world), turn);
           enrichedNames = { ...names, ...namesOfWorld(read.world) };
@@ -264,7 +267,10 @@ function askGoRun(scope: NodeScope, state: AgentGraphState, next: AgentSessionSt
   }
   // R27 counts for ask / go when it is on (ORBIT_AGENT_CONVERSATION_PRONOUN), as it does for the parts
   const bind = openedMode("pronoun") === "on" ? (result: TurnResult) => withPronounsBound(result, idleSince(log, now)).result : undefined;
-  return runAskGo(log, names, record.turn!, Boolean(record.plainChat), forms, state.timeZone || "Asia/Tokyo", bind);
+  // r10: the records the turn's store read gave (open records of a kind created, a deleted contact's linked records, a
+  // changed schedule item) — what the engine's write confirmations are checked against
+  const read = record.readWorld ?? null;
+  return runAskGo(log, names, record.turn!, Boolean(record.plainChat), forms, state.timeZone || "Asia/Tokyo", bind, read ? (world) => enrichWorld(world, read) : undefined);
 }
 
 /**

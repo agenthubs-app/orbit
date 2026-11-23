@@ -7,7 +7,8 @@
  * read faults and field whitelist as every other read), memoised within the turn.
  *
  * The read is made after the first layer, and only when a part holds a person reference the agent left unbound
- * (needsWorldRead); the engine waits for it at most READ_WAIT_MS and goes on without it.
+ * (needsWorldRead) or a write part needs records to confirm against (confirmNeedsOf, r10); the engine waits for it at
+ * most READ_WAIT_MS and goes on without it.
  * Events are not read (the engine keeps their names from the conversation); a failure is traced and the World is the
  * names-only one.
  */
@@ -67,15 +68,49 @@ export function needsWorldRead(parts: readonly Pick<GraphPart, "refs">[]): boole
   return parts.some((part) => part.refs.some((ref) => ref.entity === "contact" && !ref.recordId));
 }
 
-/** Starts the turn's read (null: nothing to read, or no record access). Never rejects. */
-export function startWorldRead(scope: NodeScope, log: ConversationLog | null, now: string, timeZone: string): Promise<WorldRead> | null {
+export interface ConfirmNeeds {
+  creates: ("todo" | "memo" | "schedule")[];
+  /** Lab ids of contacts a part deletes (their linked records). */
+  linkedTo: string[];
+  /** Lab ids of schedule items a part changes or deletes (a recurring series). */
+  schedules: string[];
+}
+
+const CREATES: Record<string, ConfirmNeeds["creates"][number]> = { "memo.create": "memo", "schedule.create": "schedule", "todo.create": "todo" };
+
+/**
+ * r10's write confirmations need records the names-only World lacks (SPEC R34 duplicates, R35 deletes with links, R37
+ * recurring items): a part that creates a to-do / note / schedule item (the newest open ones of that kind), deletes a
+ * contact the agent already bound (that contact's linked records), or changes / deletes a schedule item it bound (the
+ * item, for its recurrence). Only write parts; null: nothing to confirm. A target named for the first time is not
+ * bound yet at this point and is not read (the agent's own confirmations still apply).
+ */
+export function confirmNeedsOf(parts: readonly Pick<GraphPart, "refs" | "capabilities">[]): ConfirmNeeds | null {
+  const needs: ConfirmNeeds = { creates: [], linkedTo: [], schedules: [] };
+  for (const part of parts) {
+    for (const capability of part.capabilities) {
+      const kind = CREATES[capability];
+      if (kind && !needs.creates.includes(kind)) needs.creates.push(kind);
+      if (capability === "contact.delete") for (const ref of part.refs) if (ref.entity === "contact" && ref.recordId) needs.linkedTo.push(labIdOf("contact", ref.recordId)!);
+      if (capability === "schedule.update" || capability === "schedule.delete") for (const ref of part.refs) if (ref.entity === "schedule" && ref.recordId) needs.schedules.push(labIdOf("schedule", ref.recordId)!);
+    }
+  }
+  return needs.creates.length || needs.linkedTo.length || needs.schedules.length ? { creates: needs.creates, linkedTo: [...new Set(needs.linkedTo)], schedules: [...new Set(needs.schedules)] } : null;
+}
+
+/**
+ * Starts the turn's read (null: nothing to read, or no record access). Never rejects. `people`: a part holds a person
+ * reference the agent left unbound (needsWorldRead) — the contacts the conversation named and their linked records are
+ * read; `confirm`: the write confirmations (confirmNeedsOf), read first, within the same caps.
+ */
+export function startWorldRead(scope: NodeScope, log: ConversationLog | null, now: string, timeZone: string, people = true, confirm: ConfirmNeeds | null = null): Promise<WorldRead> | null {
   const records = scope.deps.records;
   if (!records) return null;
-  const ids = conversationIdsOf(log, scope.run.context);
-  if (!ids.contacts.length) return null;
+  const ids = people ? conversationIdsOf(log, scope.run.context) : { contacts: [], records: [] };
+  if (!ids.contacts.length && !confirm) return null;
   const started = Date.now();
   const loader = createWorldLoader({ now, records, scope: records.scope(scope.input.actorId), timeZone });
-  return loader.conversationWorld({ contacts: ids.contacts, linkedPeople: READ_LINKED_PEOPLE, maxContacts: READ_CONTACTS, maxRecords: READ_RECORDS }).then(
+  return loader.conversationWorld({ contacts: ids.contacts, linkedPeople: people ? READ_LINKED_PEOPLE : 0, maxContacts: READ_CONTACTS, maxRecords: READ_RECORDS, ...(confirm ? { confirm } : {}) }).then(
     (world) => ({ contacts: world.contacts.length, ms: Date.now() - started, records: world.todos.length + world.memos.length + world.schedule.length, rows: loader.reads(), status: "read" as const, world }),
     (error: unknown) => {
       emitTrace({ error: error instanceof Error ? error.message : String(error), type: "conversation.world_error" });

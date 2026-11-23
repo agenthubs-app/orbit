@@ -115,6 +115,12 @@ export interface ConversationWorldInput {
   linkedPeople: number;
   maxContacts: number;
   maxRecords: number;
+  /**
+   * r10's write confirmations (conversation/world-read.ts confirmNeedsOf), read first and within the same caps: the
+   * newest open records of each kind a part creates (a duplicate), the records linked to a contact a part deletes, and
+   * the schedule items a part changes (a recurring series). Lab ids.
+   */
+  confirm?: { creates: readonly ("todo" | "memo" | "schedule")[]; linkedTo: readonly string[]; schedules: readonly string[] };
 }
 
 export interface WorldOptions {
@@ -300,9 +306,21 @@ export function createWorldLoader(options: WorldOptions): WorldLoader {
         return rows;
       };
       const rows: Record<"todos" | "memos" | "schedule", RowsOut> = { memos: [], schedule: [], todos: [] };
+      type Spec = [Collection & keyof typeof rows, RecordSpec];
+      const linked = (contactId: string) => (["todos", "memos", "schedule"] as const).map((collection) => [collection, base(collection, { contactId, order: "newest" })] as Spec);
+      // the write confirmations first (r10): the schedule items changed, the records of a contact deleted, the newest
+      // open records of a kind created — each query capped by an even share of what is left
+      const confirm = input.confirm;
+      const confirmSpecs: Spec[] = confirm ? [
+        ...(agentIds(confirm.schedules, "schedule").length ? [["schedule", { ...base("schedule", {}), ids: agentIds(confirm.schedules, "schedule") }] as Spec] : []),
+        ...agentIds(confirm.linkedTo, "contact").flatMap(linked),
+        ...confirm.creates.map((kind) => (kind === "todo" ? ["todos", base("todos", { order: "newest", status: "open" })] : kind === "memo" ? ["memos", base("memos", { order: "newest" })] : ["schedule", base("schedule", { order: "newest" })]) as Spec),
+      ] : [];
+      const confirmShare = confirmSpecs.length ? Math.max(1, Math.floor(left / confirmSpecs.length)) : 0;
+      for (const [collection, spec] of confirmSpecs) rows[collection].push(...(await take(collection, spec, confirmShare)));
       // the newest records linked to the first few people, each query capped by an even share of what is left
       const people = agentIds(contactIds, "contact").slice(0, Math.max(0, input.linkedPeople));
-      const specs: [Collection & keyof typeof rows, RecordSpec][] = people.flatMap((contactId) => (["todos", "memos", "schedule"] as const).map((collection) => [collection, base(collection, { contactId, order: "newest" })] as [Collection & keyof typeof rows, RecordSpec]));
+      const specs: Spec[] = people.flatMap(linked);
       const share = specs.length ? Math.max(1, Math.floor(left / specs.length)) : 0;
       for (const [collection, spec] of specs) rows[collection].push(...(await take(collection, spec, share)));
       const dedupe = (items: RowsOut) => [...new Map(items.map((item) => [item.row.id, item])).values()];
