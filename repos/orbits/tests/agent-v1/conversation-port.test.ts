@@ -359,17 +359,19 @@ for (const next of ["shadow", "on"] as const) {
   });
 }
 
-test("next on: never while the request has a card (an engine ask on a write is left out), never on a resume", () => {
+test("next on: never while the request has a card (an engine ask on a write is left out), never on a resume, never a discussion part", () => {
   const before = { main: process.env.ORBIT_AGENT_CONVERSATION, next: process.env.ORBIT_AGENT_CONVERSATION_NEXT };
   process.env.ORBIT_AGENT_CONVERSATION = "on";
   process.env.ORBIT_AGENT_CONVERSATION_NEXT = "on";
   try {
-    const part = partOf(VAGUE, ["contact.read"], [{ entity: "contact", words: "a contact" }], { status: "answered", route: "answer" });
+    const part = partOf(VAGUE, ["contact.read"], [{ entity: "contact", words: "a contact" }], { gaps: ["no_record"], route: "read", status: "answered" } as Partial<GraphPart>);
+    const discussion = partOf(VAGUE, ["answer"], [], { route: "answer", status: "answered" });
     const record = { result: { parts: [{ next: "ask", quote: VAGUE, refs: [] }], shelved: [] }, turn: { at: at(5), gone: [], hint: null, message: VAGUE } };
     const scopeWith = (actionPreview: unknown) => ({ deps: {}, input: { message: VAGUE, requestId: "r1" }, run: { actionPreview, conversation: record, sessionState: null } }) as never;
-    const state = (touched: string[] | null) => ({ asOf: at(5), optionSets: [], parts: [part], timeZone: "Asia/Tokyo", touched }) as never;
+    const state = (touched: string[] | null, parts = [part]) => ({ asOf: at(5), optionSets: [], parts, timeZone: "Asia/Tokyo", touched }) as never;
     assert.deepEqual(conversationNextAsks(scopeWith({ actionId: "card" }), state(null)), []);
     assert.deepEqual(conversationNextAsks(scopeWith(null), state(["p1"])), []);
+    assert.deepEqual(conversationNextAsks(scopeWith(null), state(null, [discussion])), [], "AE-ANS-038: a discussion part asks inside its answer");
   } finally {
     for (const [key, value] of [["ORBIT_AGENT_CONVERSATION", before.main], ["ORBIT_AGENT_CONVERSATION_NEXT", before.next]] as const) {
       if (value === undefined) delete process.env[key];

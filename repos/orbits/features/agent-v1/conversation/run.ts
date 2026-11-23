@@ -325,7 +325,8 @@ function askGoRun(scope: NodeScope, state: AgentGraphState, next: AgentSessionSt
  * answer that the engine asks about. They become the agent's own clarification (clarify's prepare, step ask_missing),
  * so the question, its options and its pause are the agent's. Only where the agent goes: the engine's "go" never
  * removes an ask (the agent's clarifications, entries, budget and write cards stay as they are). Only parts settled
- * as answered by a read or an answer, new this turn (not continuing an open item, not a resume), with no set of
+ * as answered by a read of the user's records (the engine's ask is about which record; a discussion part — route
+ * answer, AE-ANS-038 「Help me plan for a new goal.」 — asks inside its own answer and was asked 「which one」), new this turn (not continuing an open item, not a resume), with no set of
  * directions yet; never while the request has a card (an engine ask on a write — R34 duplicates of AE-XL-015/016/017 —
  * is left out: the one-card flow stays). Computed once per pass (the edges ask again; the parts do not change between).
  * Never throws: an engine error is traced and nothing is added.
@@ -337,7 +338,7 @@ export function conversationNextAsks(scope: NodeScope, state: AgentGraphState): 
   const { run } = scope;
   const record = run.conversation;
   if (!record?.result || !record.turn || run.actionPreview) return [];
-  const eligible = state.parts.filter((part) => part.status === "answered" && (part.route === "answer" || (part.route === "read" && Boolean(part.reads || part.gaps))) && !part.continues
+  const eligible = state.parts.filter((part) => part.status === "answered" && part.route === "read" && Boolean(part.reads || part.gaps) && !part.continues
     && !state.optionSets.some((set) => set.partId === part.localId));
   if (!eligible.length) return [];
   const key = eligible.map((part) => part.localId).join(",");
