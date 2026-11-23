@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>手机顶部留白审计</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<style>
+  .doc { max-width: 1280px; }
+  .box { background: var(--surface); border-radius: 22px; padding: 20px 22px; font-size: 13px; line-height: 1.75; color: var(--ink-2); margin-bottom: 18px; }
+  .box h3 { font-size: 15px; font-weight: 800; color: var(--ink); margin-bottom: 10px; }
+  .box b { color: var(--ink); }
+  .box ol, .box ul { padding-left: 18px; display: grid; gap: 6px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--surface); border-radius: 22px; overflow: hidden; font-size: 12.5px; color: var(--ink-2); margin-bottom: 18px; }
+  th, td { text-align: left; vertical-align: middle; padding: 8px 12px; border-bottom: 1px solid var(--line); line-height: 1.5; }
+  th { background: var(--surface-2); color: var(--ink); font-weight: 800; font-size: 12px; }
+  tr:last-child td { border-bottom: 0; }
+  td.num { font-family: var(--font-num); font-weight: 800; color: var(--ink); white-space: nowrap; }
+  td.lv { font-weight: 800; color: var(--ink); white-space: nowrap; }
+  .bar { position: relative; height: 18px; width: 340px; background: var(--surface-2); border-radius: 6px; overflow: hidden; }
+  .bar span { position: absolute; top: 0; bottom: 0; }
+  .bar .b { background: var(--mac-lav); } .bar .t { background: var(--mac-blue); } .bar .c { background: var(--mac-apricot); }
+  .bar .x { left: auto; width: 2px; background: var(--coral); }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--ink-3); margin: -8px 0 14px; }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; background: var(--c); }
+  .bad { color: var(--coral); font-weight: 800; }
+  code { font-size: 12px; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <div>
+      <div class="doc-kicker">Orbit Redesign · 2026-11-23 · Web 手机端（390）· 审计 · 待用户确认后才实现</div>
+      <h1>手机顶部留白：现状实测与根因</h1>
+      <p>配合 <a href="mobile-top-height-proposal.html">mobile-top-height-proposal.html</a>（同一级页面同一个高度）。这一页是 390 宽、深色、本地生产构建下逐页实测的数字，按页面层级排；末尾是对提案需要补充的三条。</p>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>怎么量的</h3>
+    <ul>
+      <li>本地生产构建（<code>next build</code> + <code>next start</code>），iPhone 尺寸 390×844、深色、中文，验收账号；每页加载后截图，按截图上的刻度读出各层的位置（误差约 ±4px）。</li>
+      <li>「第一块正文」= 第一块不是顶栏、标题、页签、搜索框、筛选按钮的内容（卡片、列表、表单）。</li>
+      <li>线上 375 宽的数字见提案页；两者同一套 CSS，只差 15px 宽度，纵向位置基本一致。</li>
+    </ul>
+  </div>
+
+  <div class="legend"><span style="--c: var(--mac-lav)">品牌行（O Orbit · 收件箱 · 头像）</span><span style="--c: var(--mac-blue)">页面标题行</span><span style="--c: var(--mac-apricot)">页签 / 搜索 / 筛选</span><span style="--c: var(--coral)">第一块正文起点</span></div>
+  <table id="t"></table>
+
+  <div class="grid2">
+    <div class="box">
+      <h3>根因：差异来自哪里</h3>
+      <ol>
+        <li><b>品牌行</b> <code>shell.module.css .mobileTop</code>：上 6 + 按钮 40 + 下 14 ≈ <b>60px</b>，除了标了 <code>phoneBare</code> 的页面，每页都有。</li>
+        <li><b>壳的标题行</b> <code>.mainhead</code>（手机）：上 16 + 一行 40 + 下 22 ≈ <b>78px</b>。用壳标题的页面（收件箱、iOrbit、参加者名单、会场记录）是品牌行 + 这一行，正文最早从 ~140px 开始。</li>
+        <li><b>页面自己画标题</b>（<code>phoneFold</code>：首页、Task、人脉、活动）：壳不画标题，各页自己画，大小、对齐、间距各不相同——首页没有标题、Task 没有标题只有页签、人脉和活动靠左大标题、活动「发现」又有自己的一行（🔍 · 活动 + 副标题 · 📅）。</li>
+        <li><b>活动「发现」叠层最多</b>：品牌行 → 自己的标题行 → 三段页签 → 搜索框 → 筛选一行 → 正文，<span class="bad">~310px</span>。</li>
+        <li><b>二级页两种做法并存</b>：标了 <code>phoneBare</code> 的（活动详情、报名、设置）去掉品牌行，返回 + 标题一行，正文 ~90px；没标的（参加者名单、会场记录）保留品牌行再加壳标题行，正文 <span class="bad">~180–285px</span>，同级相差近 200px。</li>
+        <li><b>设置子页重复标题</b>：个人资料、账户由 <code>AccountLayout</code> 画「‹ 个人资料」一行后，页面正文又画一遍同名大标题和说明（~45px），正文 ~152px。</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h3>对提案需要补充的三条</h3>
+      <ol>
+        <li><b>二级页统一「无品牌行 + 返回 · 标题一行」</b>：提案写的是「二级页不变」，但现状二级页本身就不一致。参加者名单、会场记录、会后、会う準備 也改成和活动详情一样（壳的 <code>phoneBare</code>），正文统一从 ~68px 开始（顶栏 52 + 间距 16）。对标 iOS 导航栏与 Material 顶部应用栏：进入二级页后，一级的标志栏换成返回栏，不叠加。</li>
+        <li><b>设置子页去掉正文里的重复标题</b>：标题只在顶栏出现一次，说明文字（如「管理 Orbit 名片和公开资料……」）作为正文第一段或删掉。对标 iOS「设置」：子页只有导航栏标题。</li>
+        <li><b>浮层不受顶栏规则影响，但自身统一</b>：全屏抽屉（联系人）顶部是「✕ · 操作」一行 52px；底部面板（活动简介、筛选）是抓手 + 内容，最高 76%。对标 Apple 地图 / Google 地图的底部面板与 iOS 全屏模态。</li>
+      </ol>
+      <p style="margin-top:12px">其余按提案：一级页只有一行顶栏 52px（左标题、右操作 + 收件箱 + 头像），有页签再加 40px，筛选 / 搜索 / 统计跟正文滚动。结果：没有页签的一级页正文从 ~60px 开始，有页签的从 ~110px，二级页 ~68px。</p>
+    </div>
+  </div>
+</div>
+<script>
+/* 实测（390 · 深色 · 本地生产构建）：brand = 品牌行底边，title = 标题行底边，ctrl = 页签/搜索/筛选底边，first = 第一块正文顶边（px）。 */
+const R = [
+  ['一级页', '首页', 60, null, null, 88, '品牌行后直接是卡片（无标题）'],
+  ['一级页', 'Task（待办 / 计划）', 60, null, 128, 145, '无标题，只有页签'],
+  ['一级页', '活动 · 评估', 60, 124, 172, 185, '靠左大标题「活动」+ 页签'],
+  ['一级页', '人脉', 60, 126, 172, 188, '靠左大标题 + 人数 + 搜索框'],
+  ['一级页', 'iOrbit', 60, 152, null, 200, '居中标题行（☰ · iOrbit · ＋）'],
+  ['一级页', '活动 · 参加的活动', 60, 124, 222, 232, '标题 + 两层页签（活动页签 + 接下来/过去）'],
+  ['一级页', '收件箱', 60, 150, 288, 300, '居中标题 + 下一步 + 页签 + 搜索框'],
+  ['一级页', '活动 · 发现', 60, 142, 300, 310, '🔍 · 活动 + 副标题 · 📅 + 页签 + 搜索 + 筛选'],
+  ['二级页', '设置', 0, 76, null, 88, 'phoneBare：返回 · 标题一行'],
+  ['二级页', '活动详情', 0, 76, null, 90, 'phoneBare：返回 · 分享'],
+  ['二级页', '报名', 0, 80, null, 95, 'phoneBare：✕ · 标题 + 副标题'],
+  ['二级页', '个人资料 / 账户', 0, 76, 135, 152, 'phoneBare + 正文里重复的大标题'],
+  ['二级页', '会场记录', 60, 162, null, 180, '品牌行 + 壳标题行（返回 · 标题 · 副标题）'],
+  ['二级页', '参加者名单', 60, 162, 270, 285, '品牌行 + 壳标题行 + 页签 + 搜索'],
+  ['浮层', '联系人抽屉（全屏）', 0, 92, null, 100, '✕ · 操作一行'],
+  ['浮层', '活动简介（底部面板）', 0, null, null, 225, '面板顶边约 203（最高 76%）+ 抓手 22'],
+];
+const s = 340 / 340;
+const bar = (b, t, c, f) => { const x = (v) => Math.min(340, v); let h = ''; if (b) h += `<span class="b" style="left:0;width:${x(b) * s}px"></span>`; if (t) h += `<span class="t" style="left:${x(b || 0) * s}px;width:${(x(t) - x(b || 0)) * s}px"></span>`; if (c) h += `<span class="c" style="left:${x(t || b || 0) * s}px;width:${(x(c) - x(t || b || 0)) * s}px"></span>`; h += `<span class="x" style="left:${x(f) * s}px"></span>`; return `<div class="bar">${h}</div>`; };
+document.getElementById('t').innerHTML = `<tr><th>层级</th><th>页面</th><th>正文起点</th><th>0 → 340px</th><th>顶部构成</th></tr>` + R.map(([lv, n, b, t, c, f, note]) => `<tr><td class="lv">${lv}</td><td>${n}</td><td class="num">${f}px</td><td>${bar(b, t, c, f)}</td><td>${note}</td></tr>`).join('');
+</script>
+</body>
+</html>
