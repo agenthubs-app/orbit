@@ -14,7 +14,7 @@
 
 ## 正式站现在
 
-- 部署 `dpl_4T3RrTTtWZ2jG5XYaC7ho1hKtcP5`（`orbit-staging-c4cz8on4x-…`），来自 `chat-agent` b59a27732。比 agent-v1-integration 多出的、11-23 当天上线的改动：
+- 部署 `orbit-staging-jbylzszmp-…`，来自 `chat-agent` 2317c95e8（多轮引擎换成实验台 r10「什么时候该问」；问/办仍只记录）。比 agent-v1-integration 多出的、11-23 当天上线的改动：
   - 人名的简繁日异体写法（联系人搜索 + 记录查找的文字归一表）；
   - 等待确认的卡片上的纠正（含多条记录、日程、笔记）和「就按刚才那条建」；
   - 回答开头的数量由代码核对；
