@@ -71,7 +71,8 @@ export function VenueRecordView({ data, eventId, language, t }: { data: EventVen
   // 宽屏一打开就和画板一样右栏有人（第一轮第一个同桌）；窄屏不自动弹抽屉。
   const [autoPicked, setAutoPicked] = useState(false);
   useEffect(() => {
-    if (autoPicked || !wide) return;
+    // useWide() 首帧是 true（还没量屏幕）：直接量一次，手机上不会先按宽屏自动选人、再变成全屏抽屉弹出（2026-11-23 用户反馈）。
+    if (autoPicked || !wide || !window.matchMedia("(min-width: 1280px)").matches) return;
     setAutoPicked(true);
     const first = firstRecordPerson(data);
     if (first) detail.open(first);
@@ -153,7 +154,7 @@ export function VenueRecordView({ data, eventId, language, t }: { data: EventVen
         </div>
         {rounds.map((round) => (
           <div key={round.round} className={`${styles.card} ${styles.span4} ${r.rnd}`} data-record-round={round.round}>
-            <div className={r.rndHead}><span className={styles.lbl}>{round.title ? `R${round.round} · ${round.title.replace(/^R\d+\s*·\s*/u, "")}` : `R${round.round}`}</span>{round.theme ? <span className={styles.chip}>{round.theme}</span> : null}</div>
+            <div className={r.rndHead}><span className={styles.lbl}>{round.title ? `${t("roundN", { n: round.round })} · ${round.title.replace(/^R(?:ound)?\s*\d+\s*·\s*/u, "")}` : t("roundN", { n: round.round })}</span>{round.theme ? <span className={styles.chip}>{round.theme}</span> : null}</div>
             <div className={r.tb}>{round.table}</div>
             {round.why ? (
               <>
@@ -171,7 +172,7 @@ export function VenueRecordView({ data, eventId, language, t }: { data: EventVen
               {otherRounds.length > 1 ? (
                 <div className={styles.seg} role="tablist">
                   {otherRounds.map((item) => (
-                    <button key={item.round} type="button" role="tab" aria-selected={item.round === otherRound?.round} className={`btn ${styles.segBtn} ${item.round === otherRound?.round ? styles.segOn : ""}`} onClick={() => { setOtherRoundNo(item.round); setOpenTable(null); }} data-record-other-round={item.round}>R{item.round}</button>
+                    <button key={item.round} type="button" role="tab" aria-selected={item.round === otherRound?.round} className={`btn ${styles.segBtn} ${item.round === otherRound?.round ? styles.segOn : ""}`} onClick={() => { setOtherRoundNo(item.round); setOpenTable(null); }} data-record-other-round={item.round}>{t("roundN", { n: item.round })}</button>
                   ))}
                 </div>
               ) : null}

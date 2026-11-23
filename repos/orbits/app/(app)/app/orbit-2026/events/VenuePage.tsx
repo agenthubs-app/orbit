@@ -225,7 +225,8 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
   // 2026-11-20 会場の記録：结束后的只读回看（手机也直接在 Web 看，不出「App で」引导）。
   if (data && data.state === "ended" && data.readOnly) return <VenueRecordView data={data} eventId={eventId} language={language} t={t} />;
 
-  if (phone && !webAnyway) {
+  // 「会場モードは App で」只在读到数据、确认不是结束后的回看之后才出（2026-11-23：回看入口先闪这一页）。
+  if (phone && !webAnyway && data) {
     return (
       <>
         <ShellPage title={t("liveTitle")} subtitle={data?.title ?? ""} left={<Link className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("back")}><Icon name="left" size={16} /></Link>} rightRail={false} phoneBare />
@@ -338,7 +339,7 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
                 <div className={styles.lbl}>{t("seatLbl", { n: round?.index ?? 1 })}</div>
                 <div className={v.big}>{data.mySeat.table}</div>
                 <div className={v.rdots}>
-                  {(data.seats ?? []).map((seat) => <div key={seat.round} className={round && seat.round < round.index ? v.rdPast : round && seat.round === round.index ? v.rdNow : undefined}><b>{seat.table}</b>R{seat.round}</div>)}
+                  {(data.seats ?? []).map((seat) => <div key={seat.round} className={round && seat.round < round.index ? v.rdPast : round && seat.round === round.index ? v.rdNow : undefined}><b>{seat.table}</b>{t("roundN", { n: seat.round })}</div>)}
                 </div>
                 {data.mySeat.why ? (
                   <>

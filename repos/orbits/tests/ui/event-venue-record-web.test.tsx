@@ -90,7 +90,7 @@ test("record page groups: no write actions; stats with ふりかえり link only
   assert.match(html, /当日の記録 · 閲覧のみ/);
   assert.doesNotMatch(html, /交換を申請|承認して交換|下書きをつくる|現場|マップ/);
   assert.match(html, /data-record-after=""[^>]*>今日のふりかえりへ/);
-  assert.match(html, /data-record-round="1"[\s\S]*R1 · 自己紹介[\s\S]*資金調達[\s\S]*A-1[\s\S]*投資家が揃うテーブル/);
+  assert.match(html, /data-record-round="1"[\s\S]*Round 1 · 自己紹介[\s\S]*資金調達[\s\S]*A-1[\s\S]*投資家が揃うテーブル/);
   assert.match(html, /data-record-person="l"/);
   assert.doesNotMatch(render(<VenueRecordView data={venue({ checkedIn: false })} eventId="e1" language="ja" t={t} />), /data-record-after/);
   const empty = render(<VenueRecordView data={venue({ recommendations: [], rounds: [] })} eventId="e1" language="ja" t={t} />);
@@ -135,4 +135,15 @@ test("参加者の詳細 first paint (2026-11-21): skeleton while nothing is kno
   assert.match(warm, /越境 EC の話ができます/);
   setSharedReadAccount(null);
   resetLastAnswersForTests();
+});
+
+test("rounds read 「Round n」, never a bare 「R1」 (2026-11-23: R1 / R2 meant nothing to people)", async () => {
+  const { eventsJourneyCopy } = await import("../../app/(app)/app/orbit-2026/copy/eventsJourney");
+  const bare = Object.entries(eventsJourneyCopy).flatMap(([key, entry]) => (["ja", "zh", "en"] as const).filter((lang) => /(^|[^A-Za-z])R\{|(^|[^A-Za-z])R\d/u.test((entry as Record<string, string>)[lang] ?? "")).map((lang) => `${key}.${lang}`));
+  assert.deepEqual(bare, []);
+  const { readFileSync } = await import("node:fs");
+  for (const file of ["VenuePage.tsx", "VenueRecord.tsx", "AttendeeProfile.tsx"]) {
+    const source = readFileSync(`app/(app)/app/orbit-2026/events/${file}`, "utf8");
+    assert.doesNotMatch(source, />R\{|`R\$\{/u, file);
+  }
 });
