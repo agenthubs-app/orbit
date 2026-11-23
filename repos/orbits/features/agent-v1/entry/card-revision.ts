@@ -4,7 +4,10 @@
  * changes the card — by code, no model, nothing written:
  *
  * - "设备清单那项不要了", "drop the second one", "その項目はいらない": that item is taken off (editCard); the rest is frozen
- *   again as the next revision with the new count. A card of one item is not emptied (rejecting it is a click);
+ *   again as the next revision with the new count. A card of one item is not emptied: taking its item off rejects it;
+ * - "算了先别建", "やっぱりやめとく", "never mind, don't create it" (AE-XL-016): the change is called off — the card is rejected
+ *   as its reject button does (the same decision; the request that showed it follows), with a short reply. A hold
+ *   ("先等等"), or words naming something else, leave it waiting;
  * - "改到周五", "时间改成下午三点", "make it 3pm": the one item with a date or time (or the item named) gets the new value
  *   (reviseCard from its intent with the value replaced);
  * - "就这一次", "整个系列": a repeating schedule item's scope is switched; when the card already says so, nothing changes;
@@ -31,6 +34,7 @@ import { cardLineOf } from "../propose/copy";
 import { instantOf, localDayOf, localTimeOf, resolveSaidDate } from "../propose/dates";
 import { NOT_ONLY_THIS_WORDS, SERIES_WORDS, THIS_TIME_WORDS } from "../propose/events-resolve";
 import { resolveSaidTimes, type SaidTimes } from "../propose/times";
+import { languageOfText } from "../answer/blocks";
 import { refreshCardInDocument } from "./card-document";
 import type { AgentEntryExecuteResult } from "./service";
 import type { AgentEntryStore } from "./store";
@@ -39,6 +43,17 @@ import type { AgentEntryStore } from "./store";
 const DROP_STRONG = /(不要了|不需要了|不用了|不用加|别加了?|不加了|先不加|先不要|不建了|别建了?|先不建|不记了|别记了?|去掉|拿掉|划掉|撤掉|删去|いらない|いりません|要らない|不要です|外して|外しといて|除いて|\bdrop\b|\bskip\b|\bleave (?:it |that )?out\b|\bdon'?t (?:add|need|create|include|make)\b|\bno need for\b|\btake (?:it |that )?off\b)/iu;
 /** Words that also delete records: they take an item off only when it is a new record, or the words say "that item". */
 const DROP_WEAK = /(删掉|删了|删除|取消|不做了|やめて|削除して|消して|\bremove\b|\bdelete\b|\bcancel\b)/iu;
+/**
+ * AE-XL-016: words that call off the waiting card's change as a whole (「算了先别建」「やっぱりやめとく」"never mind, don't create
+ * it"). Bare 「不用了」「不要了」 are not among them (they may answer something else; with 「这条」 they take the item off).
+ */
+const CANCEL = /(算了|罢了|作罢|(?:先|就|还是)?(?:别|不要|不用|甭)(?:再)?(?:新建|创建|添加|修改|删除|建|加|记|改|删|做|弄|发|执行|办|动)了?|(?:先|就|还是)?不(?:新建|创建|添加|修改|删除|建|加|记|改|删|做|弄|发|执行|办|动)了|先不(?:建|加|记|改|删|做|弄|发)|(?:やっぱり|やはり)?(?:やめ|止め)(?:とく|ておく|ておきます|ます|る|よう|ましょう|とき)|(?:作ら|登録し|追加し|作成し|変更し|削除し|入れ|送ら)(?:ないで|なくて(?:いい|大丈夫|結構))|\bnever\s*mind\b|\bforget (?:it|that|about it)\b|\bscratch that\b|\bcall it off\b|\bdon['’]?t (?:create|add|make|do|change|delete|save|send|schedule|record|bother)\b|\bdo not (?:create|add|make|do|change|delete|save|send)\b)/iu;
+/** Calling off words that may also mean the record itself (「取消那个会」): they call the card off only when it only creates. */
+const CANCEL_WEAK = /(取消|作废|撤销|キャンセル|取り消して|取りやめ|やめて|\bcancel\b)/iu;
+/** A hold is not a cancel: 「先等等」「ちょっと待って」"hold on" leave the card waiting. */
+const HOLD = /(等等|等一下|等一等|等会|等我|稍等|先放|放一放|搁着|再说|回头|晚点|待会|考虑|想想|保留|暂缓|ちょっと待|待って|後で|あとで|考え|\bwait\b|\bhold\b|\blater\b|\bnot yet\b|\bhang on\b|\bthink\b|\bpause\b)/iu;
+/** The kind words a cancel may say beside it (「这个待办先别建」). */
+const KIND_WORDS = /(待办|日程|笔记|安排|备忘|全部|所有|ToDo|タスク|予定|メモ|全部|\bto-?dos?\b|\btasks?\b|\bnotes?\b|\ball\b|\bthem\b|\bany of (?:it|them)\b)/giu;
 const ITEM_WORDS = /(这一?项|那一?项|这一?条|那一?条|这一?个|那一?个|その項目|この項目|その件|\bthat (?:one|item)\b|\bthis (?:one|item)\b)/iu;
 const CHANGE = /(改成|改到|改为|改在|换成|换到|挪到|推到|移到|调到|变成|定在|放到|に変更|にして|に変えて|へ変更|にずらして|\bchange (?:it |that |this )?to\b|\bmove (?:it |that |this )?to\b|\b(?:change|move|shift|push|reschedule)\s+the\s+(?:[^\s,.;:!?]+\s+){0,5}?(?:one|item|to-?do|task|note|meeting|event)\s+(?:to|for)\b|\bmake it\b|\binstead\b|\bshift (?:it )?to\b|\breschedule (?:it )?(?:to|for)\b|\bpush (?:it )?to\b)/iu;
 const DUE = /(截止|最迟|最晚|期限|締め切り|締切|〆切|まで|\bdue\b|\bdeadline\b|\bby\b)/iu;
@@ -237,7 +252,7 @@ function namedItem(message: string, items: readonly Item[]): Item | null {
 }
 
 /** True when nothing but the change, the item's own name and small words is in the message (no other request beside it). */
-function onlyAbout(message: string, patterns: readonly RegExp[], item: Item | null): boolean {
+function onlyAbout(message: string, patterns: readonly RegExp[], item: Item | null, limit = RESIDUE_LIMIT): boolean {
   let rest = message;
   for (const pattern of patterns) rest = rest.replace(new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`), " ");
   rest = rest.replace(ORDINAL, " ").replace(FILLER, "");
@@ -246,7 +261,7 @@ function onlyAbout(message: string, patterns: readonly RegExp[], item: Item | nu
     rest = [...rest].filter((char) => !own.has(char.toLowerCase())).join("");
     for (const word of item.name.toLowerCase().match(/[a-z][a-z0-9'-]{2,}/gu) ?? []) rest = rest.toLowerCase().split(word).join("");
   }
-  return [...rest.replace(/\s+/gu, "")].length <= RESIDUE_LIMIT;
+  return [...rest.replace(/\s+/gu, "")].length <= limit;
 }
 
 const WORDS: Record<CardLocale, {
@@ -379,6 +394,7 @@ type Plan =
   | { kind: "drop"; item: Item }
   | { kind: "revise"; item: Item; intents: CardOperationIntent[]; lead: "changed" | "scope"; scope?: { before: string; after: string } }
   | { kind: "say"; text: string }
+  | { kind: "reject" }
   | { kind: "retarget"; item: Item; intents: CardOperationIntent[]; after: string; mentioned: { type: string; id: string; name: string }[] };
 
 /** The newest card of this conversation waiting for the click (an import card is revised by import-revision.ts). */
@@ -391,7 +407,7 @@ async function waitingCard(deps: CardRevisionDeps): Promise<AgentActionRecord | 
 
 /** A cheap first look: no word of a change at all, no ledger read. */
 export function mayReviseCard(message: string): boolean {
-  return correctionWords(message) !== null || DROP_STRONG.test(message) || DROP_WEAK.test(message) || CHANGE.test(message) || THIS_TIME_WORDS.test(message) || SERIES_WORDS.test(message);
+  return correctionWords(message) !== null || CANCEL.test(message) || CANCEL_WEAK.test(message) || DROP_STRONG.test(message) || DROP_WEAK.test(message) || CHANGE.test(message) || THIS_TIME_WORDS.test(message) || SERIES_WORDS.test(message);
 }
 
 const zoneOf = (intent: Record<string, unknown>, fallback: string) => {
@@ -687,6 +703,17 @@ async function planFor(deps: CardRevisionDeps, card: AgentActionRecord, locale: 
   const rest = ref ? message.replace(ref.span, " ") : message;
   const ask = (patterns: readonly RegExp[]): Plan | null => (onlyAbout(rest, patterns, null) ? { kind: "say", text: WORDS[locale].which((referred && referred.length > 1 ? referred : items).map((item) => item.name)) } : null);
   if (referred && !referred.length && !unresolved) return null;
+  // 0b. AE-XL-016: calling off the card's change (「算了先别建」「やっぱりやめとく」"never mind, don't create it") rejects the card,
+  // as its reject button does. On a card of one item, taking that item off is the same (「这条不要了」). A hold, a new value,
+  // an item of several named, or any word beyond the cancel leaves the card waiting.
+  if (!HOLD.test(message) && !CHANGE.test(message) && !unresolved) {
+    const saysItem = ITEM_WORDS.test(message) || ordinalOf(message) !== null || ref !== null;
+    const cancels = CANCEL.test(message) || (items.every((item) => item.creates) && CANCEL_WEAK.test(message));
+    const single = items.length === 1 && Boolean(named || saysItem);
+    if ((cancels && (single || (!named && !saysItem))) || (single && DROP_STRONG.test(message))) {
+      if (onlyAbout(rest, [CANCEL, CANCEL_WEAK, DROP_STRONG, ITEM_WORDS, KIND_WORDS], single ? items[0] : null, 0)) return { kind: "reject" };
+    }
+  }
   // 1. Taking an item off.
   const strong = DROP_STRONG.test(message);
   const weak = !strong && DROP_WEAK.test(message);
@@ -747,6 +774,35 @@ function changedRows(item: Item, before: readonly AgentActionOperationPayload[],
   return (next?.display?.rows ?? []).filter((row) => old.get(row.field) !== String(row.after ?? "")).map((row) => ({ label: row.label, value: String(row.after ?? "") }));
 }
 
+/** AE-XL-016: the short reply to a cancel, in the user's language: nothing is created (or changed). */
+const CANCELLED: Record<CardLocale, (creates: boolean, count: number) => string> = {
+  en: (creates, count) => (creates ? `OK, I won't create ${count > 1 ? "them" : "it"}.` : "OK, I won't make that change."),
+  ja: (creates) => (creates ? "わかりました。今回は作成しません。" : "わかりました。今回は変更しません。"),
+  zh: (creates, count) => (creates ? `好，这${count > 1 ? "几" : ""}条先不建了。` : "好，这次先不改了。"),
+};
+
+/**
+ * AE-XL-016: the card is rejected as its reject button rejects it — the same decision (decideAction, recorded with its
+ * revision and hash), the same state, and the request that showed the card follows it (refreshCardInDocument, as the
+ * button's route hook does), so both clients show it rejected. This turn shows no card; nothing is written.
+ */
+async function rejectByWords(deps: CardRevisionDeps, card: AgentActionRecord, before: AgentActionPreviewContract, revision: number, cardLanguage: CardLocale): Promise<CardRevisionResult | null> {
+  if (!deps.runtime.decideAction) return null;
+  const decision = await deps.runtime.decideAction({ actionId: card.actionId, clientDecisionId: `words:${card.actionId}:${revision}`, decision: "reject", payloadHash: card.payloadHash ?? "", revision });
+  if (!decision) return null;
+  const action = await deps.runtime.getAction(card.actionId);
+  const preview = action ? agentCardPreview(action, await deps.runtime.getRun(action.runId), deps.now()) : null;
+  if (preview && deps.store) await refreshCardInDocument({ actorId: deps.actorId, now: deps.now(), previous: before, store: deps.store, updated: preview }).catch(() => false);
+  if (action?.status !== "rejected") {
+    emitTrace({ cardId: card.actionId, reason: decision.reason ?? decision.outcome, type: "card.revision_refused" });
+    return { partResults: [{ partId: "p1", reason: "card_closed", route: "answer", sourceQuote: deps.message, status: "answered" }], sourceRefs: [], status: "completed", text: WORDS[cardLanguage].closed };
+  }
+  emitTrace({ cardId: card.actionId, revision, type: "card.rejected_by_words" });
+  const language = deps.message.trim() ? (languageOfText(deps.message) as CardLocale) : cardLanguage;
+  const creates = card.operations.every((op) => !op.targetRef);
+  return { partResults: [{ partId: "p1", reason: "card_rejected_by_words", route: "answer", sourceQuote: deps.message, status: "answered" }], sourceRefs: [], status: "completed", text: CANCELLED[language](creates, card.operations.length) };
+}
+
 export async function reviseCardByWords(deps: CardRevisionDeps): Promise<CardRevisionResult | null> {
   if (!mayReviseCard(deps.message) || !deps.runtime.reviseCard || !deps.runtime.editCard) return null;
   const card = await waitingCard(deps);
@@ -767,6 +823,7 @@ export async function reviseCardByWords(deps: CardRevisionDeps): Promise<CardRev
     return respond(plan.text, before, "card_unchanged");
   }
   const revision = card.revision ?? 1;
+  if (plan.kind === "reject") return rejectByWords(deps, card, before, revision, locale);
   const outcome = plan.kind === "drop"
     ? await deps.runtime.editCard({ actionId: card.actionId, payloadHash: card.payloadHash ?? "", removeOperationId: plan.item.op.operationId, revision })
     : await deps.runtime.reviseCard({ actionId: card.actionId, intents: plan.intents });

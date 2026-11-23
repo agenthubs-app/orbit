@@ -4,7 +4,7 @@
  * - The entry never writes a to-do directly and never stores or confirms an entity draft: an
  *   explicit "new to-do" (the model's followups.createTask request or its task draft) becomes a
  *   card in the action ledger, one card per request, its owner the authenticated actor.
- * - Typed words never decide a card. A bare "好的" / "确认" / "OKです" — or a message that only agrees,
+ * - Typed words never carry out a card (an explicit cancel rejects it: card-revision.ts, AE-XL-016). A bare "好的" / "确认" / "OKです" — or a message that only agrees,
  *   "好，就按刚才那条建吧" (AE-XL-015) — while a card of this conversation waits is answered with a fixed
  *   reminder (press the button on the card) and the waiting card; the model is not asked and no decision
  *   is recorded. Inside a longer message the reminder is appended.

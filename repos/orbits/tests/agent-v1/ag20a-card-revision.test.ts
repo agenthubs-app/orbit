@@ -65,10 +65,11 @@ test("R1: other ways to name the item; words that name none of it, or another re
   // By its place on the card.
   const second = await revise(kit, "第一项先不加了");
   assert.deepEqual(second!.actionPreview!.operations.map((op) => op.text), ["新增待办「整理音响设备清单」，计划日 11月20日（周五）"]);
-  // The last item is not dropped by words (rejecting the card is a click).
+  // AE-XL-016: taking the last item off calls the card off — it is rejected as its reject button does, nothing written.
   const last = await revise(kit, "整理音响设备清单这项也不要了");
-  assert.match(last!.text, /卡上只剩「整理音响设备清单」这一项了，不要的话请否决整张卡/u);
-  assert.equal((await kit.runtime.getAction(card.actionId))!.operations.length, 1);
+  assert.equal(last!.text, "好，这条先不建了。");
+  assert.equal((await kit.runtime.getAction(card.actionId))!.status, "rejected");
+  assert.equal((await kit.listTasks()).length, 0);
   // Another conversation's card is never touched.
   assert.equal(await reviseCardByWords({ actorId: "actor:r1", message: "第一项先不加了", now: kit.now, runtime: kit.runtime, sessionId: "session:other", store: null, timeZone: "Asia/Tokyo" }), null);
 });
