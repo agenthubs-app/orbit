@@ -82,7 +82,7 @@ followUp 和 pick 第一层不给，留空由引擎自己判。**「王磊那条
 | `ORBIT_AGENT_CONVERSATION_WORLD` | 引擎的 World 用读来的数据（第二遍引擎，差别记 `world`） | shadow | `off` 连读都不读 |
 | `ORBIT_AGENT_CONVERSATION_PRONOUN` | R27：引擎对光秃代词「问」且只有一位候选（不在空闲之后）→ 当作定了，走原来的「只绑 Agent 没绑的线索」 | **on** | `shadow` |
 | `ORBIT_AGENT_CONVERSATION_CARRY` | 合并请求里的人：回到上一个请求的读取补上那个人；新请求去掉话里没说、引擎也不带的人 | shadow | — |
-| `ORBIT_AGENT_CONVERSATION_NEXT` | 引擎的 ask / go | shadow（只记 `next` 差别） | — |
+| `ORBIT_AGENT_CONVERSATION_NEXT` | 引擎的 ask / go（r12 起只加不减：读取部分 Agent 要答、引擎要问 → Agent 自己的追问；见本节末） | **on**（r12 移植起；之前 shadow） | `shadow` |
 
 **阶段 A**（`20261123-073911-0440974-CONV-data-A-shadow`，全部影子、每轮都读，275/281）：读数据让 AE-CTX-002、AE-CTX-004（已绑定的人的关联记录）、
 AE-SCL-001（闲聊）、AE-SCL-003（日程线索）的读取检查不过，而读来的 World 一个决定都没改变（`world` 的应用差为零），引擎读法只有 3 轮不同：
@@ -143,3 +143,12 @@ AE-SCL-015、AE-WEB-009（「Kasane Pack / Borealis …他们」：r11 认公司
 **NEXT 留影子，`ORBIT_AGENT_CONVERSATION_NEXT=on` 仍没有接**：错的 4 处都会把该直接回答 / 该出卡的请求变成追问，对的 3 处又都是写入卡已经在等确认的地方（把卡换成问题会让 AE-XL-016 / 017 的「一张卡」检查不过，只能做成卡上的提醒）。
 要打开至少还要：实验室让联系人的「@」也算精确选中、「标题叫「…」」里的词不决定类型；桥接给 World 补上对话里出现的公司（这需要读联系人的公司，现在只读部分不许多读）；on 对写入部分只在卡上加重复提醒，不把卡换成问题。
 r11 在 on 下改变的部分（applied）和 r10 那次相比多了 3 处、少了 1 处（AE-EVT-010 不再按第一层的编号绑「联系老周聊独立出版」，AE-EVT-011、AE-XL-007 各拒了一处绑定，AE-XL-016 记下取消），4 例回答意思不变，双评见 RUNS.md。
+
+**r12 移植与 NEXT 打开**（2026-11-23，实验室 c13d85089，`c933a3e`、`7dff460`、`5fc11fe`）：impl 换成 r12（r11 + 三条：联系人的「@」/ 引号全名也算精确选中；新建时用户说的类型压过标题里的类型词；最近 4 轮没提到人时复数代词不绑定、不问）。每个 .ts 仍是逐字节拷贝加两行头；单元测试和桥接都不用改（`@` 原样在 message 里，联系人全名在 World 里，类型词就在部分原文里）。
+影子全量（`R12-NEXT-shadow`，277/282：AE-H-008 已知，AE-RD-012 已知波动，AE-FN-010、AE-REF-004、AE-SCL-008 单独重跑两次都过，三例没有一处引擎决定和上一轮不同）：next 差别 33 → 25。上一轮错的 4 处（AE-AMB-006、AE-CMP-005 第四轮、AE-SCL-015、AE-WEB-009）全不再出现。
+引擎要问、Agent 答的只剩 4 处：AE-ANS-024 / 026（「回看与某位人脉的讨论」：Agent 的回答本来就是在问是哪一位，等价）、AE-XL-016 / 017（R34 重复，对，但卡已经在等确认）。Agent 问、引擎不问 21 处仍是引擎没有的规则，add-only 不碰。
+→ 没有会伤人的错，**NEXT 打开，缺省 on**（`mode.ts`），规则只加不减（`conversation/run.ts conversationNextAsks`、`graph/build.ts directionsDue`、`clarify.ts prepare`）：
+读用户记录的部分（route read、读已做完、本轮新的、不接已开的问题、不是恢复、还没有方向）Agent 要直接答、引擎（deliver 那套 ask / go World，只是还没有本轮的会话状态）要问 → 走 Agent 自己的 clarify，和 resolve 找不到对象时一样（step ask_missing、awaiting_clarification、选项和暂停都是 Agent 的）。
+引擎的 go 从不去掉 Agent 的问题（确认卡、入口、预算、查重 / 删除确认照旧）；请求上有卡时引擎的 ask 一律不用（AE-XL-016 / 017 的重复提醒没做成卡上的提醒，留着不用，一张卡的流程不变）；讨论类部分（route answer）不用：on 第一次全量里 AE-ANS-038「Help me plan for a new goal.」被问成「which one it is」，比原来的回答差 → `5fc11fe` 只留读取部分。
+on 全量（`R12-NEXT-on`，7dff460，280/282：AE-H-008 已知；AE-EVT-006 第一层把改重复日程读成了提议替代方案，没有经过引擎，单独重跑两次都过）。引擎在 AE-ANS-024、AE-ANS-038 两例改了回答；修完后 AE-ANS-024 / 025 / 026 / 038、AE-H-001、AE-EVT-006 单独两次全过（`R12-NEXT-on-fix-1/2`），读取部分改成的追问出现在 AE-ANS-024（两次）、AE-ANS-026、AE-ANS-025（这例没改时 Agent 自己挑了 5 个人回顾，改了之后是问哪一位，正合用例）。双评见 RUNS.md。
+回滚：`ORBIT_AGENT_CONVERSATION_NEXT=shadow`（只记差别，不改任何回答）。
