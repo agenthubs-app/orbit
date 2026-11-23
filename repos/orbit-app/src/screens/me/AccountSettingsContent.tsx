@@ -20,6 +20,8 @@ export function AccountSettingsContent({ t, name, email, accountName, accountEma
       <ListRow title={rowName} subtitle={rowEmail} leading={<Avatar name={rowName} />} onPress={() => onOpen("/account")} /></Card>
     <Card style={styles.group}>
       <AccountRow icon="target" title={t("me.iorbit")} onPress={() => onOpen("/settings/iorbit")} />
+      {/* agent-design AG15 (approved draft D15-1): 定时任务 under the iOrbit row. */}
+      <AccountRow icon="clock" title={t("scheduledTasks.title")} onPress={() => onOpen("/settings/tasks")} />
       <AccountRow icon="link" title={t("me.integrations")} onPress={() => onOpen("/settings/integrations")} />
       <AccountRow icon="calendar" title={t("me.schedule")} onPress={() => onOpen("/settings/schedule")} />
       <AccountRow icon="bell" title={t("me.notification")} onPress={() => onOpen("/settings/notifications")} />

@@ -5,7 +5,9 @@ export type ShellNavKey = "home" | "network" | "iorbit" | "events" | "task" | "i
 
 // Pages with their own frame: the public landing, sign-in, the admin host console,
 // the public organizer page, registration hand-offs and the profile onboarding (b1 A3 draws its own header).
-const NO_SHELL_EXACT = new Set(["/app", "/app/platform", "/app/profile/onboarding"]);
+// agent-design AG17 (approved draft, board 1): the page Claude or Codex sends the user to has no navigation either.
+export const AGENT_CONSENT_PATH = "/app/settings/agent-connections/authorize";
+const NO_SHELL_EXACT = new Set(["/app", "/app/platform", "/app/profile/onboarding", AGENT_CONSENT_PATH]);
 const NO_SHELL_PREFIXES = ["/app/account", "/app/login-admin", "/app/admin", "/app/o", "/app/register"];
 
 function matches(path: string, prefix: string): boolean {
@@ -72,7 +74,7 @@ export const SHELL_NAV: readonly { key: Exclude<ShellNavKey, "host" | "settings"
  * page's slots arrive. `toolbar` lists placeholder widths for the left / right controls (b11 TT2 row);
  * `subtitle` is the date range, the copy's own line, or a placeholder for a count the page reads.
  */
-export type ShellFrameTitle = "month" | "network" | "iorbit" | "events" | "task" | "inbox" | "settings";
+export type ShellFrameTitle = "month" | "network" | "iorbit" | "events" | "task" | "inbox" | "settings" | "proposal";
 export type ShellFrame = {
   title: ShellFrameTitle;
   subtitle: "range" | "iorbit" | "pending" | null;
@@ -96,8 +98,13 @@ const SHELL_FRAMES: Readonly<Record<string, ShellFrame>> = {
 // it on desktop) has the public-preview rail, the other sections none.
 const SETTINGS_FRAME: ShellFrame = { title: "settings", subtitle: null, toolbar: null, rail: false, phoneFold: true, phoneBare: true };
 
+// agent-design AG17 (approved draft, board 5): 「确认修改」 above the confirm page; a phone shows its own back + title.
+const PROPOSAL_FRAME: ShellFrame = { title: "proposal", subtitle: null, toolbar: null, rail: false, phoneFold: true, phoneBare: true };
+
 export function shellFrameFor(pathname: string): ShellFrame | null {
   const path = pathname.replace(/\/+$/u, "");
+  if (path === AGENT_CONSENT_PATH) return null;
+  if (/^\/app\/agent\/proposals\/[^/]+$/u.test(path)) return PROPOSAL_FRAME;
   if (path === "/app/profile" || path === "/app/settings") return { ...SETTINGS_FRAME, rail: true };
   if (path.startsWith("/app/settings/")) return SETTINGS_FRAME;
   return SHELL_FRAMES[path] ?? null;

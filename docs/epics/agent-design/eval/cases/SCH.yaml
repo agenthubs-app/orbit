@@ -1,0 +1,406 @@
+# SCH 区：定时任务、一次性定时器、站内收件箱。AG15 的门槛用例。
+# 日历：11 月 16 日周一，11 月 20 日周五，11 月 27 日周五，12 月 4 日周五。
+# RU1 在 11 月 20 日那期看的是 11 月 21、22 日的周末：与兴趣笔记 M36 主题相关的是 E101、E102、E105，
+# E104 是设计主题、不相关。11 月 27 日那期看 11 月 28、29 日：只有 E107。12 月 4 日那期没有活动。
+# 推送属于 AG16，本区的规则都没开推送，push 一律是 0。
+# 对话里出的卡是否另写一条收件箱记录，设计稿没说；所以有对话卡的用例不判 inbox 条数，改判 rule_runs。
+
+area: SCH
+
+proposed_checks:
+  - name: rule_runs
+    form: "rule_runs: [ { rule: <编号>, scheduledAt: \"<计划触发时刻>\", outcome: <结果>, skipped: <期数> }, ... ]"
+    meaning: "全程的定时运行历史恰好是这些。outcome 取 delivered（已送达）、no_match（没有新的）、undelivered（已算出但没送出）、failed、needs_attention（需处理）；skipped 是这次运行标出的跳过期数，不写表示 0；rule 写 new 指本用例对话里新建的那条规则。"
+
+proposed_steps: []
+
+new_patches:
+  rule-daily-photo:
+    summary: 一条每天运行的已启用规则，候选范围是本月内主题含摄影的平台活动，用来检验同一场活动不重复告知
+    add:
+      rules:
+        - { id: RU2, title: 本月每天留意摄影主题的活动, schedule: { kind: daily, time: "09:00", timeZone: Asia/Tokyo }, rankingBasis: 按开始时间从早到晚, maxItems: 3, onEmpty: silent, validUntil: "2026-11-30", notify: { inApp: true, push: false }, status: active, version: 1, nextRunAt: "2026-11-16T09:00:00+09:00" }
+  rule-monday-replan:
+    summary: 一条已启用的定时规则，每期把过了计划日还没完成的待办提议改到当天，会产生一张待确认的卡，用来检验在收件箱里确认
+    add:
+      rules:
+        - { id: RU3, title: 每周一把过了计划日还没完成的待办改到当天, schedule: { kind: weekly, daysOfWeek: [1], time: "09:00", timeZone: Asia/Tokyo }, rankingBasis: 按计划日从早到晚, maxItems: 5, onEmpty: silent, notify: { inApp: true, push: false }, status: active, version: 1, nextRunAt: "2026-11-16T09:00:00+09:00" }
+
+cases:
+  - id: AE-SCH-001
+    title: "聊天里建定时任务：卡上六样分开列，不点就不启用"
+    sprint: AG15
+    split: dev
+    invariant: false
+    requirement: [AG-R15]
+    design: ["§5.3", "§3.5", "§10", "附录 E"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "每周五上午九点，用 @兴趣笔记 给我挑三场周末活动。结果放站内收件箱就行，不用推送，先跑到 11 月底。"
+        refs: [ { type: memo, id: M36, quote: "@兴趣笔记" } ]
+      - scheduler_tick: { at: "2026-11-20T09:10:00+09:00" }
+    hard:
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: rule.create, set: { schedule: { kind: weekly, daysOfWeek: [5], time: "09:00", timeZone: Asia/Tokyo }, references: [ { type: memo, id: M36 } ], maxItems: 3, validUntil: "2026-11-30", notify: { inApp: true, push: false } } }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - decisions: { count: 0 }
+      - no_business_writes: true
+      - rule_runs: []
+      - push: { count: 0 }
+      - clarifications: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "检查时间、候选范围、排序依据、条数、有效期、提醒方式六样都在卡上，而且每一样都分得出来；可以合并成三行来写（用户 2026-11-20 的决定）。"
+      - id: R2
+        text: "卡上的检查时间写成“每周五 9:00 之后约 10 分钟内”，没有承诺整点。"
+      - id: R3
+        text: "卡上的排序依据写的是按兴趣笔记的主题。"
+      - id: R4
+        text: "卡上显示了下次预计运行时间：11 月 20 日（周五）。"
+    notes: "验收项 AG15-1。没点确认就到了周五 9:10，这时不应有任何运行。排序依据是一句话，不判原文，由评审项判。"
+
+  - id: AE-SCH-002
+    title: "点了才启用：到点运行，结果进收件箱"
+    sprint: AG15
+    split: dev
+    invariant: false
+    requirement: [AG-R15]
+    design: ["§5.3", "§3.5", "附录 B"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Every Friday at 9am, send me up to three events happening that weekend, soonest first. In-app inbox only, no push. Keep it running through the end of November."
+      - click: { card: last, decision: confirm }
+      - scheduler_tick: { at: "2026-11-20T09:10:00+09:00" }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: rule.create, set: { schedule: { kind: weekly, daysOfWeek: [5], time: "09:00", timeZone: Asia/Tokyo }, maxItems: 3, validUntil: "2026-11-30", notify: { inApp: true, push: false } } }
+      - receipts: [ { op: 1, state: succeeded } ]
+      - decisions: { count: 1 }
+      - rule_runs: [ { rule: new, scheduledAt: "2026-11-20T09:00:00+09:00", outcome: delivered } ]
+      - push: { count: 0 }
+      - clarifications: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "卡上的检查时间写的是 9:00 之后约 10 分钟内，没有承诺整点。"
+      - id: R2
+        text: "卡上的排序依据写的是按开始时间从早到晚。"
+      - id: R3
+        text: "11 月 20 日那期的结果依次是 E101（周六 10:00）、E104（周六 19:00）、E102（周日 9:30）。"
+      - id: R4
+        text: "卡片说明和回答用英语。"
+    notes: "验收项 AG15-1。排序依据是用户原话里的 soonest first，不需要追问。周末有四场活动，按开始时间取前三，E105（周日 10:00）排第四、不在结果里。"
+
+  - id: AE-SCH-003
+    title: "没说按什么挑：先问清排序依据，再出卡"
+    sprint: AG15
+    split: dev
+    invariant: false
+    requirement: [AG-R15]
+    design: ["§5.3", "§3.5", "§3.11"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "毎週金曜の朝9時に、その週末のイベントを3つ選んで知らせて。通知はアプリ内の受信箱だけでいいよ。11月末まで続けて。"
+      - user: "開始時間が早い順でお願い。"
+    hard:
+      - clarifications: { count: 1 }
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: rule.create, set: { schedule: { kind: weekly, daysOfWeek: [5], time: "09:00", timeZone: Asia/Tokyo }, maxItems: 3, validUntil: "2026-11-30", notify: { inApp: true, push: false } } }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - decisions: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮没有出规则卡，只问了按什么来挑。"
+      - id: R2
+        text: "第一轮的追问给出了几种可选的排法。"
+      - id: R3
+        text: "卡上的排序依据是按开始时间从早到晚，与用户的回答一致。"
+      - id: R4
+        text: "追问和卡片说明用日语。"
+    notes: "验收项 AG15-1。§3.5：定时规则无人值守地重复执行，排序依据必须写在规则卡上，建规则时缺了就先问清。账号甲没有存任何记忆。"
+
+  - id: AE-SCH-004
+    title: "两个账号设同一时刻：各读各的，本期各一份结果"
+    sprint: AG15
+    split: dev
+    invariant: true
+    requirement: [AG-R15]
+    design: ["§5.3", "§9"]
+    locale: zh
+    world: base-v1
+    patches: [rule-weekend-picks, rule-b-same-time]
+    steps:
+      - scheduler_tick: { at: "2026-11-20T09:10:00+09:00" }
+    hard:
+      - rule_runs:
+          - { rule: RU1, scheduledAt: "2026-11-20T09:00:00+09:00", outcome: delivered }
+          - { rule: RUB1, scheduledAt: "2026-11-20T09:00:00+09:00", outcome: delivered }
+      - inbox: { count: 2 }
+      - push: { count: 0 }
+      - no_cross_account: true
+      - private_reads_within: [M36, E101, E102, E103, E104, E105, E106, E107]
+      - cards: { count: 0 }
+      - no_business_writes: true
+    rubric:
+      - id: R1
+        text: "甲收件箱里的结果是 E101、E102、E105 三场，没有 E104。"
+      - id: R2
+        text: "乙的结果没有以兴趣笔记或摄影兴趣作为挑选依据。"
+      - id: R3
+        text: "两份结果各自只出现在本人的收件箱里。"
+    notes: "验收项 AG15-2。全程没有客户端在线。乙的规则没有引用，也没有资料可读，读过的记录里不应出现乙以外的私有记录，甲这边只读 M36。这一例是跨账号隔离，协调者可考虑标为不变量。"
+
+  - id: AE-SCH-005
+    title: "通知没送成再补送：不重算，每人本期仍只有一份"
+    sprint: AG15
+    split: dev
+    invariant: false
+    requirement: [AG-R15]
+    design: ["§5.3"]
+    locale: zh
+    world: base-v1
+    patches: [rule-weekend-picks, rule-b-same-time]
+    steps:
+      - fault: { where: notify.inbox, kind: fail_always }
+      - scheduler_tick: { at: "2026-11-20T09:10:00+09:00" }
+      - scheduler_tick: { at: "2026-11-20T09:20:00+09:00" }
+      - scheduler_tick: { at: "2026-11-20T09:30:00+09:00" }
+    hard:
+      - rule_runs:
+          - { rule: RU1, scheduledAt: "2026-11-20T09:00:00+09:00", outcome: delivered }
+          - { rule: RUB1, scheduledAt: "2026-11-20T09:00:00+09:00", outcome: delivered }
+      - inbox: { count: 2 }
+      - push: { count: 0 }
+      - no_cross_account: true
+      - cards: { count: 0 }
+      - no_business_writes: true
+    rubric:
+      - id: R1
+        text: "第二次派发只补送了通知，日志里没有再读资料、也没有再调模型来算结果。"
+      - id: R2
+        text: "补送到甲收件箱的内容与第一次算出的一致：E101、E102、E105。"
+    notes: "验收项 AG15-2。故障只作用于第一次派发：结果算出来了，写收件箱全部失败。§5.3：运行结果与待投递记录一起持久化，投递重试只补通知。第三次派发时已经没有要补的。"
+
+  - id: AE-SCH-006
+    title: "连续三期：告知过的活动不再告知，新出现的才进收件箱"
+    sprint: AG15
+    split: dev
+    invariant: false
+    requirement: [AG-R15]
+    design: ["§5.3", "§9", "§10"]
+    locale: zh
+    world: base-v1
+    patches: [rule-daily-photo]
+    steps:
+      - scheduler_tick: { at: "2026-11-16T09:10:00+09:00" }
+      - scheduler_tick: { at: "2026-11-17T09:10:00+09:00" }
+      - external_change: { target: E106, set: { startsAt: "2026-11-28T14:00:00+09:00", venue: 六本木, topics: [AI, 摄影] } }
+      - scheduler_tick: { at: "2026-11-18T09:10:00+09:00" }
+    hard:
+      - rule_runs:
+          - { rule: RU2, scheduledAt: "2026-11-16T09:00:00+09:00", outcome: delivered }
+          - { rule: RU2, scheduledAt: "2026-11-17T09:00:00+09:00", outcome: no_match }
+          - { rule: RU2, scheduledAt: "2026-11-18T09:00:00+09:00", outcome: delivered }
+      - inbox: { count: 2 }
+      - push: { count: 0 }
+      - cards: { count: 0 }
+    rubric:
+      - id: R1
+        text: "第一期的结果是 E101、E102、E107 三场。"
+      - id: R2
+        text: "第三期的结果只有 E106 一场，没有再出现 E101、E102、E107。"
+      - id: R3
+        text: "第二期在任务历史里记的是“没有新的”这类说法，没有写成失败。"
+    notes: "验收项 AG15-3。第二期的候选全是上一期告知过的，所以不进收件箱。第二期之后主办方给 E106 公布了时间（11 月 28 日周六）并补了摄影主题，第三期只告知这一场。"
+
+  - id: AE-SCH-007
+    title: "连续三周：没有活动的那一期不进收件箱、不提醒"
+    sprint: AG15
+    split: val
+    invariant: false
+    requirement: [AG-R15]
+    design: ["§5.3", "§6"]
+    locale: zh
+    world: base-v1
+    patches: [rule-weekend-picks]
+    steps:
+      - scheduler_tick: { at: "2026-11-20T09:10:00+09:00" }
+      - scheduler_tick: { at: "2026-11-27T09:10:00+09:00" }
+      - scheduler_tick: { at: "2026-12-04T09:10:00+09:00" }
+    hard:
+      - rule_runs:
+          - { rule: RU1, scheduledAt: "2026-11-20T09:00:00+09:00", outcome: delivered }
+          - { rule: RU1, scheduledAt: "2026-11-27T09:00:00+09:00", outcome: delivered }
+          - { rule: RU1, scheduledAt: "2026-12-04T09:00:00+09:00", outcome: no_match }
+      - inbox: { count: 2 }
+      - push: { count: 0 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+    rubric:
+      - id: R1
+        text: "第二期的结果只有 E107（11 月 29 日的东京摄影展·冬季场）。"
+      - id: R2
+        text: "时间未公布的 E106 没有被当成周末活动放进任何一期的结果。"
+    notes: "验收项 AG15-3。第三期对应的周末（12 月 5、6 日）没有任何平台活动，只在任务历史留一条记录。"
+
+  - id: AE-SCH-008
+    title: "暂停之后，还没送出的那一期不再送，下一期也不跑"
+    sprint: AG15
+    split: dev
+    invariant: false
+    requirement: [AG-R15]
+    design: ["§5.3", "附录 A", "附录 B"]
+    locale: zh
+    world: base-v1
+    patches: [rule-weekend-picks]
+    steps:
+      - fault: { where: notify.inbox, kind: fail_always }
+      - scheduler_tick: { at: "2026-11-20T09:10:00+09:00" }
+      - user: "把「每周五挑三场周末活动」这条定时任务先暂停。"
+      - click: { card: last, decision: confirm }
+      - scheduler_tick: { at: "2026-11-20T09:20:00+09:00" }
+      - scheduler_tick: { at: "2026-11-27T09:10:00+09:00" }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: rule.pause, target: RU1 }
+      - receipts: [ { op: 1, state: succeeded } ]
+      - rule_state: { rule: RU1, state: paused }
+      - rule_runs:
+          - { rule: RU1, scheduledAt: "2026-11-20T09:00:00+09:00", outcome: undelivered }
+      - push: { count: 0 }
+    rubric:
+      - id: R1
+        text: "暂停之后的两次派发，日志里都没有把 11 月 20 日那期的活动结果写进收件箱。"
+      - id: R2
+        text: "暂停卡写明停的是哪条任务，并说明之后不再运行，直到恢复。"
+    notes: "验收项 AG15-4。第一次派发算出了结果，但写收件箱失败、留作待送；用户随后暂停。§5.3：服务端在投递前重查规则状态，停用后不再发送。运行历史只有 11 月 20 日这一条，11 月 27 日那期没有运行。"
+
+  - id: AE-SCH-009
+    title: "中断恢复：只补最近一期，并标出跳过了几期"
+    sprint: AG15
+    split: val
+    invariant: false
+    requirement: [AG-R15]
+    design: ["§5.3", "附录 E"]
+    locale: zh
+    world: base-v1
+    patches: [rule-weekend-picks]
+    steps:
+      - scheduler_tick: { at: "2026-11-28T08:00:00+09:00" }
+    hard:
+      - rule_runs:
+          - { rule: RU1, scheduledAt: "2026-11-27T09:00:00+09:00", outcome: delivered, skipped: 1 }
+      - inbox: { count: 1 }
+      - push: { count: 0 }
+      - rule_state: { rule: RU1, state: active }
+      - cards: { count: 0 }
+      - no_business_writes: true
+    rubric:
+      - id: R1
+        text: "结果只有 E107（11 月 29 日），没有已经过去的 11 月 21、22 日的活动。"
+      - id: R2
+        text: "任务历史让人看得出中间漏了 11 月 20 日那一期，没有装作每期都跑了。"
+    notes: "验收项 AG15-4。从 11 月 15 日到 11 月 28 日早上之间没有任何派发，等同于服务中断；这期间到期的有 11 月 20 日和 11 月 27 日两期，只补后一期。"
+
+  - id: AE-SCH-010
+    title: "引用的笔记读不到了：这一期标为需处理，不硬挑"
+    sprint: AG15
+    split: val
+    invariant: false
+    requirement: [AG-R15]
+    design: ["§5.3", "§3.6", "附录 E"]
+    locale: zh
+    world: base-v1
+    patches: [rule-weekend-picks]
+    steps:
+      - external_change: { target: M36, delete: true }
+      - scheduler_tick: { at: "2026-11-20T09:10:00+09:00" }
+    hard:
+      - rule_runs:
+          - { rule: RU1, scheduledAt: "2026-11-20T09:00:00+09:00", outcome: needs_attention }
+      - push: { count: 0 }
+      - cards: { count: 0 }
+    rubric:
+      - id: R1
+        text: "这一期没有在缺少兴趣笔记的情况下照常送出三场活动。"
+      - id: R2
+        text: "用户能看到这条任务需要处理，原因写的是引用的“兴趣笔记”读不到了。"
+      - id: R3
+        text: "没有改用别的笔记或记忆顶替排序依据。"
+    notes: "§5.3：运行时再读取笔记最新的可见版本，关键引用失效时本次标为需处理。需处理的提示是否进收件箱，设计稿没说，所以不判 inbox 条数。"
+
+  - id: AE-SCH-011
+    title: "卡放满七天被定时器标为过期：点了不执行，重新生成后仍要再点"
+    sprint: AG15
+    split: val
+    invariant: false
+    requirement: [AG-R15, AG-R02]
+    design: ["§5.2", "§5.3", "附录 D"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把「约山本吃饭」这条待办的计划日定在 11 月 30 日。"
+      - advance_clock: { to: "2026-11-22T10:20:00+09:00" }
+      - scheduler_tick: { at: "2026-11-22T10:20:00+09:00" }
+      - click: { card: last, decision: confirm }
+      - regenerate: { card: last }
+    hard:
+      - no_business_writes: true
+      - decisions: { count: 0 }
+      - decision_result: { reason: CARD_EXPIRED }
+      - card_revision: { card: last, min: 2 }
+      - card_state: { card: last, state: awaiting_confirmation }
+      - card_ops:
+          - { op: todo.update, target: T47, set: { plannedDate: "2026-11-30" } }
+    rubric:
+      - id: R1
+        text: "点过期卡之后看到的是“这张卡放太久了，要重新生成一张吗？”这类说法。"
+      - id: R2
+        text: "点过期卡之后的提示没有说“已修改”。"
+      - id: R3
+        text: "重新生成的卡上日期带星期：11 月 30 日（周一）。"
+    notes: "验收项 AG15-5。卡在 11 月 15 日 10:00 出，11 月 22 日 10:00 到期；一次性定时器随 10:20 的派发触发。重新生成沿用原来的修改、出新一版，结束时仍在等确认，T47 没有变。"
+
+  - id: AE-SCH-012
+    title: "定时任务产生的卡，在收件箱里确认"
+    sprint: AG15
+    split: dev
+    invariant: false
+    requirement: [AG-R15, AG-R02]
+    design: ["§5.1", "§5.3", "§10", "附录 E"]
+    locale: zh
+    world: base-v1
+    patches: [rule-monday-replan]
+    steps:
+      - scheduler_tick: { at: "2026-11-16T09:10:00+09:00" }
+      - click: { card: last, decision: confirm }
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T45, set: { plannedDate: "2026-11-16" } }
+      - writes_exact: same_as_card
+      - decisions: { count: 1 }
+      - receipts: [ { op: 1, state: succeeded } ]
+      - duplicate_effects: 0
+      - push: { count: 0 }
+    rubric:
+      - id: R1
+        text: "这张卡出现在站内收件箱里，不挂在任何对话下。"
+      - id: R2
+        text: "卡的出处写的是定时任务 RU3 和它的触发时刻。"
+      - id: R3
+        text: "卡上写明把「给李薇寄样片」的计划日从 11 月 10 日（周二）改到 11 月 16 日（周一）。"
+    notes: "验收项 AG15-5。全程没有对话，点击只能来自收件箱。过了计划日还没完成的待办只有 T45；T42 的计划日还没到，T44、T47 没有计划日。这一期算“已送达”还是别的结果，设计稿没定，所以不判 rule_runs。"

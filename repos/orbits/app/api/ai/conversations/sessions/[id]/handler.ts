@@ -37,6 +37,10 @@ import {
   resolveAuthenticatedApiActor,
   type ResolveAuthenticatedApiActor,
 } from "../../../../_shared/authenticated-actor";
+import type { AgentResultDocument } from "../../../../../../shared/contract/agent-v1";
+import { readAgentV1RequestDocument } from "../../../../../../features/agent-v1/entry/http";
+import { configuredRecordAccess } from "../../../../../../features/agent-v1/domains/configured";
+import { withholdRevokedAnswers, withholdRevokedDocument, type VisibleRefs } from "../../../../../../features/agent-v1/rollout/history-access";
 
 export interface OrbitAgentChatSessionRouteContext {
   params: Promise<{
@@ -58,7 +62,16 @@ export interface OrbitAgentChatSessionHandlerDependencies {
     mode: FeatureMode,
     actorId: string,
   ) => OrbitAgentChatRequestStore | null;
+  /** agent-design AG01: the protocol-3 result document; null while ORBIT_AGENT_V1_MODE is off. */
+  agentRequestReader?: (input: { mode: FeatureMode; actorId: string; requestId: string; sessionId: string }) => Promise<AgentResultDocument | null>;
+  /** agent-design AG18-1: which typed record refs this account may read now (null: not checked, e.g. without a database). */
+  visibleRefsForActor?: (actorId: string) => VisibleRefs | null;
   resolveActor?: ResolveAuthenticatedApiActor;
+}
+
+function configuredVisibleRefs(actorId: string): VisibleRefs | null {
+  const access = configuredRecordAccess();
+  return access ? (refs) => access.visible(actorId, refs) : null;
 }
 
 function responseForError(
@@ -93,6 +106,8 @@ export function createOrbitAgentChatSessionHandlers(
   const requestStoreForActor =
     dependencies.requestStoreForActor ?? createOrbitAgentChatRequestStore;
   const artifactReaderForActor = dependencies.artifactReaderForActor ?? createOrbitAgentChatSessionArtifactReader;
+  const agentRequestReader = dependencies.agentRequestReader ?? readAgentV1RequestDocument;
+  const visibleRefsForActor = dependencies.visibleRefsForActor ?? configuredVisibleRefs;
 
   async function providerForRequest(mode: FeatureMode) {
     const actor = await resolveActor();
@@ -194,9 +209,19 @@ export function createOrbitAgentChatSessionHandlers(
       if (!resolved) return authenticatedApiActorRequiredResponse(mode);
 
       const { id } = await context.params;
+      // agent-design AG01 (GET conversation/request): the result document of a protocol-3
+      // request, read the same way by every client. Only its owner gets it.
+      const agentRequestId = new URL(request.url).searchParams.get("requestId")?.trim();
+      const readDocument = agentRequestId
+        ? await agentRequestReader({ actorId: resolved.actor.id, mode, requestId: agentRequestId, sessionId: id }).catch(() => null)
+        : null;
+      // AG18-1 (设计稿 §7 旧回答与撤权): checked online at every read; an answer from a record gone or withdrawn is not returned.
+      const visible = visibleRefsForActor(resolved.actor.id);
+      const agentRequest = readDocument && visible ? await withholdRevokedDocument(readDocument, visible).catch(() => readDocument) : readDocument;
       if (!resolved.provider) {
         return NextResponse.json(
           success({
+            ...(agentRequest ? { agentRequest } : {}),
             session: null,
             storage: { configured: false, persisted: false },
           }),
@@ -230,6 +255,13 @@ export function createOrbitAgentChatSessionHandlers(
         const storedSession = sessionPage?.session;
 
         if (!sessionPage || !storedSession) {
+          // A protocol-3 request still queued has no session messages yet; its document is readable.
+          if (agentRequest) {
+            return NextResponse.json(
+              success({ agentRequest, session: null, storage: { configured: true, persisted: true, source: resolved.provider.source } }),
+              { headers: runtimeBoundaryHeaders(mode), status: 200 },
+            );
+          }
           return responseForError(
             mode,
             new AppError(
@@ -250,12 +282,16 @@ export function createOrbitAgentChatSessionHandlers(
               pinned: storedSession.pinned === true,
               revision: 0,
             };
-        const session = {
+        const organized = {
           ...storedSession,
           customTitle: organization.customTitle ?? undefined,
           organization,
           pinned: organization.pinned,
         };
+        const checked = visible ? await withholdRevokedAnswers(organized, visible).catch(() => null) : { session: organized, withheld: 0 };
+        // The check could not be made: the messages are not returned as if they were still readable.
+        if (!checked) return responseForError(mode, new AppError("SERVICE_UNAVAILABLE", "Access to this conversation's records could not be checked."));
+        const session = checked.session;
 
         const requestId = new URL(request.url).searchParams.get("requestId")?.trim();
         const artifactReader = artifactReaderForActor(mode, resolved.actor.id);
@@ -263,7 +299,7 @@ export function createOrbitAgentChatSessionHandlers(
         const artifactRecovery = artifactReader
           ? await artifactReader.read(session, { precedingMessage: sessionPage.precedingMessage }).catch(() => ({ turns: [], truncated: false, unavailable: true }))
           : { turns: [], truncated: false };
-        const requestRecord = requestId
+        const requestRecord = requestId && !agentRequest
           ? await requestStoreForActor(mode, resolved.actor.id)?.get(requestId)
           : null;
         const reliableSend =
@@ -280,6 +316,7 @@ export function createOrbitAgentChatSessionHandlers(
 
         return NextResponse.json(
           success({
+            ...(agentRequest ? { agentRequest } : {}),
             ...(reliableSend ? { reliableSend } : {}),
             artifactRecovery,
             page: sessionPage.page,

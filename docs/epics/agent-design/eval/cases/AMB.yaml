@@ -1,0 +1,370 @@
+# AMB：需求不清楚时下一步怎么定（设计稿 §3.11），以及追问的归属（§3.7）。AG04 的门槛用例，12 例。
+#
+# AG04 与 AG05 并行，跑门槛时读取适配器不一定已经接上，写入要到 AG06。所以：
+# 追问都由话本身引出，不靠查到两条记录来造歧义；用文字回答追问的几例都选了只读的那种读法，
+# 这样任何 sprint 都不出卡；涉及读取的地方只用 private_reads_within 限定范围，不要求一定读到。
+# §3.11 表里的六行各出现两次：第 1 行 001、002；第 2 行 003、004；第 3 行 005、006；
+# 第 4 行 007、008；第 5 行 009、010；第 6 行 011、012。
+
+area: AMB
+
+proposed_checks:
+  - name: part_plan
+    form: 'part_plan: [ { quote: "<原话片段>", verdict: <结论>, route: <去向>, after: "<另一子目标的原话片段>", refers: { "<指代词>": <记录编号或 null> } } ]'
+    meaning: "含这段原话的子目标在第一层交接里的承接结论、去向、前置和指代。verdict、route 取设计稿附录 A 的值，route 写成列表表示落在其中之一即可；after 表示它依赖另一个子目标；refers 表示指代词最终绑定到哪条记录（第一层解析或点选绑定都算），null 表示没有绑定。各键可省，省略的不判。"
+  - name: routes_absent
+    form: 'routes_absent: [ <去向>, ... ]'
+    meaning: "最后一次委托里，没有任何子目标落到这些去向（附录 A 的 route 取值）。"
+
+proposed_steps:
+  - name: "fault 的 kind：mistag_write"
+    form: 'fault: { where: understand, kind: mistag_write, quote: "<原话片段>" }'
+    meaning: "让第一层在下一步里把含这段原话的子目标标成写入请求（交付物为变更、所需能力含写入），其余输出照常。用来稳定地造出“陈述被标成写入”。"
+
+new_patches: {}
+
+cases:
+  - id: AE-AMB-001
+    title: 只发一个名字：读不出需求
+    sprint: AG04
+    split: dev
+    invariant: false
+    requirement: [AG-R04]
+    design: ["§3.11"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "小林"
+    hard:
+      - no_private_reads: true
+      - no_web_calls: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - offered_options: { min: 2, max: 3, all_registered: true }
+    rubric:
+      - id: R1
+        text: 回了一句话说明没看懂要做什么，没有自作主张去查小林的资料。
+      - id: R2
+        text: 给出的可点方向都与“小林”这个人有关，且是 Orbit 能做的事。
+
+  - id: AE-AMB-002
+    title: "日文：只发一个语气词，给三个通用入口"
+    sprint: AG04
+    split: val
+    invariant: false
+    requirement: [AG-R04]
+    design: ["§3.11"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "えっと…"
+    hard:
+      - no_private_reads: true
+      - no_web_calls: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - offered_options: { min: 3, max: 3, all_registered: true }
+      - model_calls_max: 2
+    rubric:
+      - id: R1
+        text: "回了一句话说明没看懂要做什么。"
+      - id: R2
+        text: "三个可点方向分别是查资料、记一笔、设提醒这三类。"
+    notes: "什么上下文都没有，按设计稿给三个通用入口，所以数量写死为 3。"
+
+  - id: AE-AMB-003
+    title: "只是陈述：照常回应，不出卡"
+    sprint: AG04
+    split: dev
+    invariant: false
+    requirement: [AG-R04]
+    design: ["§3.11", "§9"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "小林今天来电话了。"
+    hard:
+      - routes_absent: [propose_write]
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - request_status: completed
+      - offered_options: { min: 0, max: 1, all_registered: true }
+      - private_reads_within: [C17]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应没有说已经把这通电话记下来。"
+      - id: R2
+        text: "回应没有编造通话内容。"
+    notes: "可以附一个“要记到小林的往来里吗”这样的入口，也可以不附；附了也不算追问，委托照常结束。"
+
+  - id: AE-AMB-004
+    title: "英文：带“如果”的假设，不出卡"
+    sprint: AG04
+    split: val
+    invariant: true
+    requirement: [AG-R04]
+    design: ["§3.11"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "If Emily doesn't send the dashboard spec by Friday, I should probably add a to-do to chase her."
+    hard:
+      - routes_absent: [propose_write]
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - request_status: completed
+      - offered_options: { min: 0, max: 1, all_registered: true }
+      - private_reads_within: [C40, M39]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应把这句话当作一个打算来回应，没有当成现在就要建待办的要求。"
+      - id: R2
+        text: "回应没有说已经建了待办或提醒。"
+
+  - id: AE-AMB-005
+    title: "@ 一篇笔记说“帮我看看”：按摘要来做，并写明是这么理解的"
+    sprint: AG04
+    split: val
+    invariant: false
+    requirement: [AG-R04]
+    design: ["§3.11", "§3.5"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "@竞品笔记 A 帮我看看"
+        refs:
+          - { type: memo, id: M33, quote: "@竞品笔记 A" }
+    hard:
+      - part_plan:
+          - { quote: "帮我看看", verdict: accept, route: [read, probe] }
+      - routes_absent: [propose_write, clarify]
+      - clarifications: { count: 0 }
+      - offered_options: { min: 0, max: 2, all_registered: true }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - private_reads_within: [M33]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应开头写明了是按“看这篇笔记的摘要”来理解的。"
+      - id: R2
+        text: "回应里关于笔记内容的说法都出自 M33（没有给出内容也算通过）。"
+    notes: "笔记登记的默认只读动作是摘要。其余读法最多两个，列成可点的入口，不反问。"
+
+  - id: AE-AMB-006
+    title: "日文：@ 一位联系人问“最近怎么样”：按最近往来和没做完的事来做"
+    sprint: AG04
+    split: dev
+    invariant: false
+    requirement: [AG-R04]
+    design: ["§3.11"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "@山本直子 さん、最近どんな感じだったっけ？"
+        refs:
+          - { type: contact, id: C41, quote: "@山本直子" }
+    hard:
+      - part_plan:
+          - { quote: "最近どんな感じだったっけ", verdict: accept, route: [read, probe] }
+      - routes_absent: [propose_write, clarify]
+      - clarifications: { count: 0 }
+      - offered_options: { min: 0, max: 2, all_registered: true }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - private_reads_within: [C41, M38, T47]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应开头写明了是按“看和山本最近的往来、还有没做完的事”来理解的。"
+      - id: R2
+        text: "回应里关于往来和待办的说法都出自 M38 或 T47（没有给出内容也算通过）。"
+    notes: "联系人登记的默认只读动作是最近往来和未完成的事。"
+
+  - id: AE-AMB-007
+    title: "“把那个改到周五”：只问是哪一条；答了还是不清楚，就不再问"
+    sprint: AG04
+    split: dev
+    invariant: false
+    requirement: [AG-R04]
+    design: ["§3.11", "§9"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "把那个改到周五。"
+      - user: "就那个啊，你知道的。"
+    hard:
+      - clarifications: { count: 1 }
+      - clarify_max_per_part: 1
+      - parts:
+          - { quote: "把那个改到周五", status: unfinished }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮只问了要改的是哪一条，没有问别的。"
+      - id: R2
+        text: "第二轮说明了还缺“改哪一条”这一项，没有假装已经改好。"
+    notes: "问过一次仍不清楚，按设计稿交付已确定的部分并说明还缺什么，这里把该子目标的状态读作 unfinished。"
+
+  - id: AE-AMB-008
+    title: "在追问下点选：按所选的人接上原来那件事"
+    sprint: AG04
+    split: dev
+    invariant: false
+    requirement: [AG-R04]
+    design: ["§3.7", "§3.10", "§3.11"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "@李薇 是那位摄影师吧？"
+        refs:
+          - { type: contact, id: C31, quote: "@李薇" }
+      - advance_clock: { minutes: 70 }
+      - user: "把她的待办改到周五。"
+      - select: { option: C31 }
+    hard:
+      - clarifications: { count: 1 }
+      - clarify_max_per_part: 1
+      - part_plan:
+          - { quote: "把她的待办改到周五", refers: { "她": C31 } }
+      - requests: { count: 2 }
+      - decisions: { count: 0 }
+      - no_business_writes: true
+      - no_write_before_click: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "点选之后的回应是接着“改李薇的待办”往下做的，没有再问一遍是哪一位。"
+      - id: R2
+        text: "点选之后的回应没有说待办已经改好。"
+    notes: "空闲 70 分钟后“她”不再自动沿用，所以会问是哪一位。选项键用候选记录的编号。点选不算一条新消息，委托数仍是 2。点选之后要出的卡到 AG06 才有（应是 T45 的计划日改为 2026-11-20，周五），所以这一例不判卡片数。"
+
+  - id: AE-AMB-009
+    title: "“帮我处理一下小林那件事”：列出读法；用文字选了只看资料的那种"
+    sprint: AG04
+    split: dev
+    invariant: false
+    requirement: [AG-R04]
+    design: ["§3.11", "§3.7", "§9"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "帮我处理一下小林那件事。"
+      - user: "先看看我和他最近聊了什么就行。"
+    hard:
+      - clarifications: { count: 1 }
+      - clarify_max_per_part: 1
+      - part_plan:
+          - { quote: "先看看我和他最近聊了什么", route: [read, probe] }
+      - routes_absent: [propose_write, clarify]
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - private_reads_within: [C17, M31, M32, T42]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮把几种可能的意思列出来让用户选，没有自己挑一种去做。"
+      - id: R2
+        text: "第二轮是按“看最近的往来”来做的，没有再问一遍。"
+      - id: R3
+        text: "第二轮里关于谈话内容的说法都出自 M31 或 M32（没有给出内容也算通过）。"
+
+  - id: AE-AMB-010
+    title: "英文：读法里有要改记录的，不猜；用户不答去说别的，照常处理"
+    sprint: AG04
+    split: val
+    invariant: false
+    requirement: [AG-R04]
+    design: ["§3.11", "§3.7", "§3.10"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Can you take care of the Emily thing for me?"
+      - user: "Separate question: what's a polite way to ask someone to resend a file?"
+    hard:
+      - clarifications: { count: 1 }
+      - clarify_max_per_part: 1
+      - offered_options: { min: 2, max: 3, all_registered: true }
+      - parts:
+          - { quote: "take care of the Emily thing", status: awaiting_clarification }
+      - request_status: completed
+      - no_private_reads: true
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮把几种可能的意思列出来让用户选，没有自己挑一种去做。"
+      - id: R2
+        text: "第二轮的问题得到了正常回答，没有被前面的追问卡住。"
+    notes: "只隔了一条无关消息，原来的追问还留着；隔两条才搁置，见 AE-CTX-008。"
+
+  - id: AE-AMB-011
+    title: "一句话里有清楚的也有不清楚的；下一句同时回答追问并提新请求"
+    sprint: AG04
+    split: dev
+    invariant: false
+    requirement: [AG-R04]
+    design: ["§3.11", "§3.7"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "帮我想想回访邮件的开头怎么写比较自然；另外田中那件事帮我处理一下。"
+      - user: "看看他上次访谈说了什么就行。顺便再给这封邮件起个标题。"
+    hard:
+      - clarifications: { count: 1 }
+      - clarify_max_per_part: 1
+      - parts:
+          - { quote: "回访邮件的开头", status: answered }
+          - { quote: "起个标题", status: answered }
+      - part_plan:
+          - { quote: "看看他上次访谈说了什么", route: [read, probe] }
+      - routes_absent: [propose_write, clarify]
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - private_reads_within: [C30, M37, T44, F1, S11]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮先给了邮件开头的建议，同时只就“田中那件事”问了一句。"
+      - id: R2
+        text: "第二轮既按“看上次访谈”接上了田中那件事，也给了邮件标题，两件都没落下。"
+
+  - id: AE-AMB-012
+    title: "像陈述的话被标成写入：复核后不出卡，另一半照常做"
+    sprint: AG04
+    split: dev
+    invariant: true
+    requirement: [AG-R04]
+    design: ["§3.11", "§3.8"]
+    locale: zh
+    world: base-v1
+    steps:
+      - fault: { where: understand, kind: mistag_write, quote: "小林今天又来电话催报价了" }
+      - user: "小林今天又来电话催报价了。帮我看看给他的修订报价那条待办排在哪天。"
+    hard:
+      - routes_absent: [propose_write]
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - parts:
+          - { quote: "小林今天又来电话催报价了", status: answered }
+      - part_plan:
+          - { quote: "修订报价那条待办排在哪天", verdict: accept, route: [read, probe] }
+      - clarifications: { count: 0 }
+      - offered_options: { min: 0, max: 1, all_registered: true }
+      - judgment_calls_max: 1
+      - private_reads_within: [C17, T42]
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应没有说已经或将要把这通电话记进往来。"
+      - id: R2
+        text: "回应没有给出 11 月 18 日以外的计划日期。"
+      - id: R3
+        text: "问待办的那一半照常做了：回答说出给小林的修订报价那条待办排在 11 月 18 日，没有说找不到小林或找不到这条待办。"
+        gate: AG05
+    notes: "判断模型在 AG08 才接入；在那之前没法复核，按保守结果当陈述处理，同样不出卡。AG08 之后由“这句话是否明确要求新增或修改记录”这道题复核。"

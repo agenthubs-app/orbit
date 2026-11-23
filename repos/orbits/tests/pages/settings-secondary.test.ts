@@ -64,7 +64,10 @@ test("secondary routes and memory controls are wired without a Google Contacts a
   assert.match(integrations, /contactsName/);
   assert.doesNotMatch(integrations, /google_contacts.*authorize/);
   const iorbit = source("app/(app)/app/orbit-2026/account/IorbitSettings.tsx");
-  assert.match(iorbit, /\/api\/agent\/memory/);
+  // AG14: the memory part is its own component (switches, groups, add, edit, delete, a last day).
+  assert.match(iorbit, /<MemorySettings /);
+  const memory = source("app/(app)/app/orbit-2026/account/MemorySettings.tsx");
+  for (const call of [/fetch\("\/api\/agent\/memory"/, /\/api\/agent\/memory\/settings/, /expectedRevision=\$\{entry\.revision\}/, /method: before \? "PATCH" : "POST"/]) assert.match(memory, call);
   assert.match(iorbit, /writeSemanticPreference/);
   assert.match(iorbit, /profileBioWithinLimit/);
   assert.match(iorbit, /language === "ja"/);

@@ -28,11 +28,31 @@ const patchKeys = [
   "planLink",
   "priority",
   "relatedContactId",
+  "relatedContactIds",
   "relatedConversationId",
   "relatedEventId",
+  "relatedEventRefs",
   "relatedMeetingId",
   "title",
 ] as const;
+
+/** AG13: a list of person ids (no duplicates kept, at most 50). */
+function parseContactIds(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length > 50) throw new AppError("VALIDATION_ERROR", "relatedContactIds must be a list.");
+  return [...new Set(value.map((item) => requireString(item, "relatedContactIds")))];
+}
+
+/** AG13: a list of typed event references ({ kind: platform | private, id }). */
+function parseEventRefs(value: unknown): { kind: "platform" | "private"; id: string }[] {
+  if (!Array.isArray(value) || value.length > 50) throw new AppError("VALIDATION_ERROR", "relatedEventRefs must be a list.");
+  return value.map((item) => {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) throw new AppError("VALIDATION_ERROR", "relatedEventRefs items must be objects.");
+    const ref = item as Record<string, unknown>;
+    requireExactKeys(ref, ["id", "kind"]);
+    if (ref.kind !== "platform" && ref.kind !== "private") throw new AppError("VALIDATION_ERROR", "relatedEventRefs kind is invalid.");
+    return { id: requireString(ref.id, "relatedEventRefs.id"), kind: ref.kind };
+  });
+}
 
 function parsePatch(value: unknown): TaskUpdatePatch {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -44,6 +64,8 @@ function parsePatch(value: unknown): TaskUpdatePatch {
   for (const key of Object.keys(patch)) {
     parsed[key] = key === "planLink"
       ? patch[key] === null ? null : parseTaskPlanLink(patch[key])
+      : key === "relatedContactIds" ? parseContactIds(patch[key])
+      : key === "relatedEventRefs" ? parseEventRefs(patch[key])
       : patch[key] === null && ["plannedDate", "dueAt", "location"].includes(key) ? null : requireString(patch[key], key);
   }
   return parsed as TaskUpdatePatch;

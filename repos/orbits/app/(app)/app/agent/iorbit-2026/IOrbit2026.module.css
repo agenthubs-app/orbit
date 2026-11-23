@@ -71,6 +71,8 @@
 .answer { flex: 1; min-width: 0; display: grid; gap: var(--space-6); font-size: var(--fs-body-sm); line-height: 1.6; }
 .answer > b { font-size: var(--fs-body-sm); }
 .answer p { margin: 0; }
+/* agent-design AG19 (board 6): an answer with no blocks (an older conversation) is still text, in the new size. */
+.answerText { max-width: 36em; font-size: var(--fs-emph); line-height: 1.75; }
 .sources { font-size: var(--fs-label); color: var(--ink-3-text); }
 .followups { display: flex; justify-content: flex-end; }
 .contextCard { display: flex; align-items: center; gap: var(--space-14); justify-content: space-between; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card-web); padding: var(--space-12) var(--space-18); max-width: 760px; width: 100%; margin: var(--space-12) auto; }
@@ -88,6 +90,57 @@
 .anywhere { display: inline; white-space: nowrap; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
 .composer textarea { flex: 1; min-width: 0; border: 0; resize: none; background: transparent; color: var(--ink); font: inherit; padding: 0; outline: 0; line-height: var(--lh-body); }
 .composer textarea::placeholder { color: var(--ink-3); }
+/* agent-design AG11（获批视觉稿 D1–D8）：@ 选择器浮在输入框上方（不推动页面），标签行在句子上方，句子里的「@名字」着色。 */
+.composer { position: relative; flex-wrap: wrap; }
+.composer.composerWithRefs { padding-left: 10px; }
+.field { flex: 1; min-width: 0; display: grid; }
+.field > textarea, .field > .mirror { grid-area: 1 / 1; }
+.mirror { visibility: hidden; pointer-events: none; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); font: inherit; line-height: var(--lh-body); overflow: hidden; max-height: 100%; }
+.fieldMarked > .mirror { visibility: visible; }
+.fieldMarked > textarea { color: transparent; caret-color: var(--ink); }
+.mark { color: var(--plum-700, var(--accent-text)); font-weight: var(--fw-semibold, 600); }
+.markGone { color: var(--ink-3); text-decoration: line-through; }
+.chipsBlock { flex-basis: 100%; display: flex; flex-direction: column; gap: 6px; padding-bottom: 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chipsNote { margin: 0; font-size: var(--fs-label); color: var(--ink-3-text, var(--ink-3)); }
+.chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 4px 3px 4px; border-radius: var(--r-pill); background: var(--surface-2); font-size: var(--fs-label); color: var(--ink); }
+.chip b { font-weight: var(--fw-semibold, 600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chipHint { color: var(--ink-3-text, var(--ink-3)); white-space: nowrap; }
+.chipGone { background: var(--surface); border: 1px dashed var(--ink-3); }
+.chipGone b { color: var(--ink-2); }
+.chipGoneText { color: var(--coral-text, #B83E23); font-weight: var(--fw-semibold, 600); white-space: nowrap; }
+.scope .chipRemove { width: 22px; height: 22px; min-height: 22px; padding: 0; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--ink-3); display: grid; place-items: center; font-size: 14px; line-height: 1; cursor: pointer; }
+.kindBadge { flex: none; display: inline-block; font-size: 11px; font-weight: var(--fw-semibold, 600); line-height: 16px; padding: 1px 6px; border-radius: 6px; white-space: nowrap; }
+.kindContact { background: var(--mac-lav); color: var(--mac-lav-text); }
+.kindMemo { background: var(--mac-apricot); color: var(--mac-apricot-text); }
+.kindTodo { background: var(--mac-blue); color: var(--mac-blue-text); }
+.kindSchedule { background: var(--mac-teal); color: var(--mac-teal-text); }
+.kindEvent { background: var(--mac-pink); color: var(--mac-pink-text); }
+.kindWent { background: var(--accent-soft); color: var(--accent-text); }
+.picker { position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: var(--z-popover, 30); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card-web); box-shadow: var(--shadow-float); padding: 10px; display: flex; flex-direction: column; gap: 8px; color: var(--ink); max-height: min(560px, 62dvh); }
+.pickerSearch { display: flex; align-items: center; gap: 8px; height: 40px; border-radius: 12px; background: var(--surface-2); padding: 0 12px; }
+.pickerSearchIcon { color: var(--ink-3); display: grid; place-items: center; }
+.pickerSearch input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; color: var(--ink); outline: 0; }
+.pickerKinds { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex: none; }
+.pickerKinds::-webkit-scrollbar { display: none; }
+.scope .pickerKind { flex: none; min-height: 28px; height: 28px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-label); font-weight: var(--fw-semibold, 600); cursor: pointer; }
+.scope .pickerKindOn { background: var(--ink); color: var(--bg); }
+.pickerList { overflow-y: auto; min-height: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.pickerGroup { display: flex; flex-direction: column; }
+.pickerGroupTitle { font-size: var(--fs-label); font-weight: var(--fw-semibold, 600); color: var(--ink-3-text, var(--ink-3)); padding: 6px 8px 2px; }
+.scope .pickerRow { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 6px 8px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
+.scope .pickerRowActive { background: var(--surface-2); }
+.pickerRowText { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pickerRowText b { font-size: var(--fs-body-sm); font-weight: var(--fw-semibold, 600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pickerRowText small { font-size: var(--fs-label); color: var(--ink-3-text, var(--ink-3)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pickerCheck { width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--ink-3); display: grid; place-items: center; font-size: 12px; flex: none; }
+.pickerCheckOn { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.pickerNote { margin: 0; padding: 8px; font-size: var(--fs-label); color: var(--ink-3-text, var(--ink-3)); }
+.pickerFoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding: 8px 8px 0; font-size: var(--fs-label); color: var(--ink-3-text, var(--ink-3)); flex: none; }
+.pickerKeys { white-space: nowrap; }
+.scope .pickerDone { min-height: 34px; height: 34px; padding: 0 16px; border: 0; border-radius: var(--r-pill); background: var(--ink); color: var(--bg); font-weight: var(--fw-semibold, 600); cursor: pointer; }
+.scope .pickerDone:disabled { opacity: .45; cursor: default; }
+@media (max-width: 767px) { .picker { max-height: 50dvh; } .pickerKeys { display: none; } }
 .privacy { max-width: 680px; width: 100%; margin: 8px auto 0; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); text-align: center; line-height: var(--lh-body); }
 @media (min-width: 768px) { .layout { height: calc(100dvh - 99px); box-sizing: border-box; } .main { height: 100%; } .start, .thread { flex: 1; overflow: auto; } .composer { margin-top: auto; } }
 /* b8 #9: at 1024 the header keeps only ⌘ K. */
@@ -96,4 +149,7 @@
 /* b8 #12 .r8adrawer (≤767): full-height sheet from the left, 「会話」 at 17px, no collapse button (the scrim and Esc close it). */
 @media (max-width: 767px) { .historyScrim { position: fixed; inset: 0; z-index: var(--z-overlay); border-radius: 0; background: var(--scrim); } .historyDrawer { position: fixed; z-index: var(--z-overlay); top: 0; bottom: 0; left: 0; width: 318px; padding: 58px 14px 30px; border-radius: 0 var(--r-sheet) var(--r-sheet) 0; } .historyDrawer .historyHead { padding: 0 4px 12px; } .historyDrawer .historyHead b { font-size: var(--fs-logo); } .historyCollapse:global(.btn) { display: none; } }
 @media (max-width: 767px) { .layout { display: block; padding: var(--space-18); } .phoneHeader { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-title-sm); } .start { margin-top: var(--space-18); gap: var(--space-12); } .start h1 { font-size: var(--fs-title); } .suggestions { grid-template-columns: minmax(0, 1fr); } .scope .suggestion { min-height: 64px; padding: var(--space-12); } .capabilities { display: none; } .layout { display: block; } .thread { padding-top: var(--space-12); } .conversationScope { min-height: 100dvh; display: flex; flex-direction: column; } .conversationScope > [data-orbit-agent-request-state] { flex: 1; display: flex; flex-direction: column; } .conversationScope .layout { flex: 1; display: flex; flex-direction: column; padding-inline: 0; } .conversationScope .main { flex: 1; min-height: 0; padding-bottom: calc(var(--space-40) + var(--space-20)); } .conversationScope .thread { flex: 1; min-height: 0; overflow-y: auto; } .conversationScope .followups { transform: translateY(var(--space-28)); } }
+/* agent-design AG19-8: at ≤767 the conversation page keeps a 16px gutter on both sides. It had none: the assistant icon
+   touched the left edge, text and buttons the right. Its own rule, after the phone layout above, so it can be taken out alone. */
+@media (max-width: 767px) { .conversationScope .layout { padding-inline: var(--space-16); } }
 @media (prefers-reduced-motion: reduce) { .suggestion:hover { transform: none; } }

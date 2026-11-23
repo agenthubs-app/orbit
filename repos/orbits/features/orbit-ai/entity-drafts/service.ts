@@ -6,6 +6,7 @@ import {
   type EntityDraftKind,
   type EntityDraftProposal,
 } from "./contract";
+import { emitTrace } from "../../agent-v1/observability/trace";
 
 /**
  * Sprint 0085: the confirm → write → read-back path, held by code.
@@ -115,6 +116,8 @@ export function createEntityDraftService(input: {
         updatedAt: request.now,
       };
       await input.repository.save(draft);
+      // AG00: no-op outside the agent eval.
+      emitTrace({ type: "card.frozen", cardKind: "entity_draft", cardId: draft.draftId, version: draft.revision, card: draft });
       return draft;
     },
 
@@ -146,8 +149,11 @@ export function createEntityDraftService(input: {
         return { draft, kind: "not_pending" };
       }
       const adapter = adapters.get(draft.kind);
+      emitTrace({ type: "card.decision", cardKind: "entity_draft", cardId: draft.draftId, decision: "confirm", version: draft.revision });
       if (!adapter) return { draft, kind: "unsupported" };
 
+      const execTrace = { cardId: draft.draftId, executorKey: `entity_draft.${draft.kind}`, idempotencyKey: entityDraftIdempotencyKey(draft) };
+      emitTrace({ type: "exec.call", source: "real", ...execTrace, fields: draft.fields });
       try {
         const written = await adapter.write({
           actorId: request.actorId,
@@ -155,6 +161,7 @@ export function createEntityDraftService(input: {
           idempotencyKey: entityDraftIdempotencyKey(draft),
           now: request.now,
         });
+        emitTrace({ type: "exec.receipt", source: "real", ...execTrace, status: "completed", resultRef: written.recordId });
         const created: EntityDraft = {
           ...draft,
           createdRecordId: written.recordId,
@@ -165,6 +172,7 @@ export function createEntityDraftService(input: {
         return { draft: created, kind: "created" };
       } catch (error) {
         const reason = error instanceof Error ? error.message : "写入未成功";
+        emitTrace({ type: "exec.receipt", source: "real", ...execTrace, status: "failed", error: reason });
         // Stay pending, not failed-and-gone: the user can fix a field and
         // confirm again without the model having to re-draft it.
         const failed: EntityDraft = {
@@ -186,6 +194,7 @@ export function createEntityDraftService(input: {
       if (!draft || draft.state !== "pending_confirmation") return null;
       const cancelled: EntityDraft = { ...draft, state: "cancelled", updatedAt: request.now };
       await input.repository.save(cancelled);
+      emitTrace({ type: "card.decision", cardKind: "entity_draft", cardId: draft.draftId, decision: "reject", version: draft.revision });
       return cancelled;
     },
 

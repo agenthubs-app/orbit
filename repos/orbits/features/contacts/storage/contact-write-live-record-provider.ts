@@ -9,6 +9,7 @@ import {
 } from "../../../shared/domain/source-types";
 import type { LiveDatabaseEnv } from "../../../shared/storage/live-database-config";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
+import { withNextContactVersion } from "../contact-version";
 import type {
   LiveRecord,
   LiveRecordStoreLike,
@@ -276,13 +277,16 @@ export function createStorageBusinessCardContactWriteProvider({
     },
 
     async saveContact(contact, actorId) {
+      // AG12: a new contact stores version 1 (an acquisition's own 1 is kept); saved over a stored one, the next version.
+      const stored = await store.getRecord({ collectionName: "contacts", includeDeleted: true, recordId: contact.id, workspaceId });
+      const payload = withNextContactVersion(stored && stored.userId === actorId ? stored.payload : null, contact as unknown as Record<string, unknown>);
       const record: LiveRecord<Record<string, unknown>> = {
         collectionName: "contacts",
         createdAt: contact.createdAt,
         evidenceIds: contact.evidenceIds,
         lifecycleState: "active",
         occurredAt: contact.createdAt,
-        payload: contact as unknown as Record<string, unknown>,
+        payload,
         provider: recordProvider,
         providerRecordId: contact.id,
         recordId: contact.id,

@@ -1,0 +1,100 @@
+/* agent-design AG07: the confirmation card and the four small changes of the approved visual draft (design tokens only). */
+.card {
+  width: 100%;
+  max-width: 620px;
+  box-sizing: border-box;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-float);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+.head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.title { font-size: var(--fs-dialog-title); font-weight: 700; line-height: 1.4; }
+.chip { font-size: var(--fs-meta); font-weight: 700; padding: 3px 9px; border-radius: var(--r-pill); white-space: nowrap; }
+.plum { background: var(--plum-100); color: var(--plum-900); }
+.teal { background: var(--mac-teal); color: var(--mac-teal-text); }
+.apricot { background: var(--mac-apricot); color: var(--mac-apricot-text); }
+.grey { background: var(--surface-3); color: var(--ink-2); }
+.banner { display: flex; align-items: center; gap: 8px; background: var(--mac-apricot); color: var(--mac-apricot-text); border-radius: var(--r-sm); padding: 8px 12px; font-size: var(--fs-body-sm); font-weight: 700; line-height: 1.4; }
+.item { background: var(--surface-2); border-radius: var(--r-md); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.itemChanged { background: var(--mac-apricot); box-shadow: inset 0 0 0 1.5px var(--mac-apricot-ink); }
+.dim { opacity: 0.55; }
+.itemHead { display: flex; align-items: center; gap: 8px; }
+.badge { font-size: var(--fs-caption); font-weight: 700; padding: 2px 7px; border-radius: var(--r-seg); flex: none; }
+.badgeUpdate { background: var(--mac-lav); color: var(--mac-lav-text); }
+.badgeCreate { background: var(--mac-teal); color: var(--mac-teal-text); }
+/* AG14 (approved draft board 3): the third badge, 删除, in coral. */
+.badgeDelete { background: var(--coral-soft); color: var(--coral-text); }
+/* AG14 (D1): before and after side by side, each in a white box; before struck through and lighter, after bold. */
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.pair > div { background: var(--surface); border-radius: var(--r-chip); padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pairLabel { font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.5; }
+.pair s { font-size: var(--fs-body-sm); color: var(--ink-2); line-height: 1.5; overflow-wrap: anywhere; }
+.pair b { font-size: var(--fs-body-sm); font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+/* AG14 (board 5, D4): the memory chip after the basis chip; 修改 › in plum. */
+.memoryEdit { color: var(--plum-900); font-weight: 700; white-space: nowrap; }
+.record { font-size: var(--fs-body); font-weight: 700; line-height: 1.4; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.itemStatus { font-size: var(--fs-meta); font-weight: 700; white-space: nowrap; }
+.statusplum { color: var(--plum-900); }
+.statusteal { color: var(--mac-teal-text); }
+.statuscoral { color: var(--coral-text); }
+.statusapricot { color: var(--mac-apricot-text); }
+.more { font: inherit; font-size: var(--fs-meta); color: var(--ink-2); background: none; border: 0; padding: 4px 0; cursor: pointer; white-space: nowrap; }
+.note { display: flex; align-items: center; gap: 6px; font-size: var(--fs-meta); font-weight: 600; color: var(--mac-apricot-text); background: var(--mac-apricot); border-radius: var(--r-chip); padding: 5px 8px; line-height: 1.4; }
+.row { display: flex; gap: 8px; align-items: baseline; }
+.rowChanged { background: var(--mac-apricot); border-radius: var(--r-chip); padding: 4px 6px; margin: 0 -6px; }
+.label { font-size: var(--fs-meta); color: var(--ink-2); width: 56px; flex: none; line-height: 1.5; }
+.value { font-size: var(--fs-body-sm); line-height: 1.5; overflow-wrap: anywhere; }
+.old { color: var(--ink-2); }
+.arrow { color: var(--ink-2); }
+.actions { display: flex; flex-direction: column; gap: 6px; }
+.buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.confirm { height: 44px; padding: 0 18px; border-radius: var(--r-pill); border: 0; background: var(--ink); color: var(--on-accent); font: inherit; font-size: var(--fs-body); font-weight: 700; flex: 1; cursor: pointer; }
+.confirm:disabled { background: var(--surface-3); color: var(--ink-3-text); cursor: not-allowed; }
+.dismiss { height: 44px; padding: 0 18px; border-radius: var(--r-pill); border: 0; background: var(--surface-2); color: var(--ink); font: inherit; font-size: var(--fs-body); font-weight: 700; cursor: pointer; }
+.dismiss:disabled { color: var(--ink-3-text); cursor: not-allowed; }
+.small { height: 36px; padding: 0 14px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--fs-body-sm); font-weight: 600; cursor: pointer; }
+.smallPrimary { background: var(--ink); color: var(--on-accent); border: 0; font-weight: 700; }
+.blocked { display: flex; align-items: center; gap: 6px; font-size: var(--fs-body-sm); font-weight: 700; color: var(--mac-apricot-text); }
+.hint { font-size: var(--fs-meta); color: var(--ink-2); }
+.footer { font-size: var(--fs-body-sm); color: var(--ink-2); line-height: 1.5; }
+.regen { display: flex; flex-direction: column; gap: 8px; }
+/* AG15 (D15-5, D15-6): the small line under an expired card, and 「看新的那张」. */
+.expiredNote { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.6; }
+.regenQuestion { font-size: var(--fs-body); font-weight: 700; line-height: 1.5; }
+.offline { margin-top: 12px; max-width: 620px; box-sizing: border-box; border-radius: var(--r-md); background: var(--surface-2); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.offline b { font-size: var(--fs-body); }
+.offline span { font-size: var(--fs-body-sm); color: var(--ink-2); }
+.error { font-size: var(--fs-control); color: var(--coral-text); }
+/* small change 2: the basis line at the top of the answer */
+.basis { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.basisChip { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 4px 12px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); font: inherit; font-size: var(--fs-body-sm); text-decoration: none; }
+.basisOpen { color: var(--plum-900); font-weight: 700; }
+/* small change 3: the options under a question */
+.options { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.optionList { display: flex; gap: 8px; flex-wrap: wrap; }
+.option { min-height: 40px; padding: 6px 16px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--fs-body); cursor: pointer; text-align: left; }
+.option:disabled { cursor: default; opacity: 0.6; }
+.optionPicked { border-color: var(--plum-900); box-shadow: inset 0 0 0 1px var(--plum-900); opacity: 1; }
+.typeHint { font-size: var(--fs-control); color: var(--ink-2); }
+/* small changes 1 and 4: queued and progress */
+.queued { display: flex; align-items: center; gap: 5px; font-size: var(--fs-control); color: var(--ink-2); margin-top: 6px; justify-content: flex-end; }
+.progress { display: flex; flex-direction: column; gap: 4px; }
+.progressLine { display: flex; align-items: center; gap: 10px; font-size: var(--fs-emph); }
+.progressNote { font-size: var(--fs-control); color: var(--ink-2); }
+.item .more { font-size: var(--fs-meta); font-weight: 400; color: var(--ink-2); padding: 4px 0; min-height: 0; height: auto; background: none; border: 0; }
+.card .confirm, .card .dismiss { font-size: var(--fs-body); }
+@media (max-width: 767px) {
+  .card, .offline { max-width: none; }
+}
+
+/* AG16 (draft 16-2): under a card that turned a reminder on, whether this browser will show it. */
+.afterCard { width: 100%; max-width: 620px; box-sizing: border-box; margin-top: 8px; }
+.afterCard:empty { display: none; }
+@media (max-width: 767px) { .afterCard { max-width: none; } }

@@ -6,9 +6,25 @@ import { getOrbitAccountAuthViewModel } from "../../orbit-account-auth-route-vie
 import { AuthEmailField, AuthGoogleButton, AuthNoticeCard, AuthPasswordField, AuthPrimaryButton, useAuthSubmit } from "./auth-form";
 import { authRoutePath, authTitleId } from "./auth-model";
 import { useAccountAuth } from "./use-account-auth";
+import type { SignInNote } from "../../../../api/_shared/mcp-access";
+import type { OrbitLanguage } from "../../../../../shared/contract/language";
+import { agentConnectionsWords } from "../copy/agent-connections";
+import { ClientTile } from "../agent-connections/parts";
+import note from "../agent-connections/sign-in-note.module.css";
 
-export function AuthLogin({ defaultNext, oauthProviders }: { defaultNext: string; oauthProviders: readonly string[] }) {
-  const { t } = useOrbitLanguage();
+/** agent-design AG17 (approved draft D8): why the sign-in comes up — an assistant wants to connect, or a change waits. The rest of the dialog is unchanged. */
+function SignInNoteLine({ note: value, language }: { note: SignInNote; language: OrbitLanguage }) {
+  const t = agentConnectionsWords(language);
+  return (
+    <div className={note.note} role="note" data-orbit-sign-in-note={value.kind}>
+      {value.kind === "connect" ? <ClientTile name={value.clientName} size="sm" /> : <span className={note.orbit} aria-hidden>O</span>}
+      <div><b>{value.kind === "connect" ? t("signInConnect", { client: value.clientName }) : t("signInProposal")}</b><span>{value.kind === "connect" ? t("signInConnectLine") : t("signInProposalLine")}</span></div>
+    </div>
+  );
+}
+
+export function AuthLogin({ defaultNext, oauthProviders, signInNote = null }: { defaultNext: string; oauthProviders: readonly string[]; signInNote?: SignInNote | null }) {
+  const { t, language } = useOrbitLanguage();
   const session = useAccountAuth({ ...getOrbitAccountAuthViewModel("login"), defaultNext });
   const { error, localField, label, onSubmit } = useAuthSubmit(session, "login");
   // b1 #2: the failure message sits under the field it belongs to (wrong pair → under パスワード).
@@ -22,6 +38,7 @@ export function AuthLogin({ defaultNext, oauthProviders }: { defaultNext: string
         <h2 className="au-h2" id={authTitleId("login")}>{t({ en: "Sign in", ja: "ログイン", zh: "登录" })}</h2>
         <p className="au-sub">{t({ en: "Welcome back.", ja: "おかえりなさい。", zh: "欢迎回来。" })}</p>
       </div>
+      {signInNote ? <SignInNoteLine note={signInNote} language={language} /> : null}
       <AuthNoticeCard notice={session.message} />
       {oauthProviders.includes("google") ? <AuthGoogleButton aria-label={t({ en: "Sign in with Google", ja: "Google でログイン", zh: "使用 Google 登录" })} label={t({ en: "Sign in with Google", ja: "Google でログイン", zh: "使用 Google 登录" })} onClick={session.onGoogleSignIn} /> : null}
       {oauthProviders.includes("google") ? <span className="au-divider">{t({ en: "Or use your email", ja: "またはメールアドレスで", zh: "或使用邮箱" })}</span> : null}

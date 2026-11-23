@@ -88,6 +88,9 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   // contact-reach R42 ⑤: 可約時間 is read and saved on the server (GET/PUT /api/scheduling/availability); each change saves at once.
   { file: 'app/settings/schedule.tsx', path: '/settings/schedule', title: '日程 · 可约时间（R42）', classification: 'online-only', reasonCategory: 'server-computed', reason: '可约时间存在服务器、改动即存；日历连接状态在线读取', reads: '/api/scheduling/availability、/api/integrations', offline: NEEDS_NETWORK },
   { file: 'app/settings/iorbit.tsx', path: '/settings/iorbit', title: 'iOrbit 使用的信息（R18a）', classification: 'local-first', sprint: '0131', reads: '页面副本 self-profile；目标、记忆、搜索能力在线读取；语义搜索偏好仅本机', offline: '自我介绍副本可读；保存、AI 草稿和删除记忆需要联网' },
+  { file: 'app/settings/tasks/index.tsx', path: '/settings/tasks', title: '定时任务列表（AG15）', classification: 'online-only', reasonCategory: 'server-computed', reason: '下次运行、上次结果和需要处理都由服务端的派发器按到期索引算出，手机上没有副本', reads: 'GET /api/agent/automations', offline: '读取失败时显示重试卡，不显示旧的运行状态' },
+  { file: 'app/settings/tasks/[id].tsx', path: '/settings/tasks/[id]', title: '一条定时任务：开关、七项、历史（AG15）', classification: 'online-only', reasonCategory: 'server-computed', reason: '运行历史和下次运行只在服务端；开关、改、删除是服务端写入', reads: 'GET /api/agent/automations/[id]/runs；PATCH、DELETE /api/agent/automations/[id]', offline: '读取失败时显示重试卡；开关和删除不排队' },
+  { file: 'app/settings/tasks/new.tsx', path: '/settings/tasks/new', title: '用表单新建定时任务（AG15）', classification: 'online-only', reasonCategory: 'server-computed', reason: '规则字段由服务端代码写，选的笔记要在服务端核对本人还能打开', reads: 'POST /api/agent/automations；GET /api/agent/references/search', offline: '保存失败时留在表单并提示，不排队' },
   { file: 'app/settings/api.tsx', path: '/settings/api', title: '服务器地址设置', classification: 'device-only', reads: '本机保存的服务器地址；「检查连接」按需读 /api/health', offline: '可以改地址；检查连接会显示连不上' },
 
   // ── earlier sprints: local-first ──

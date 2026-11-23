@@ -35,7 +35,9 @@ test("authenticated delivery detail exposes an inbox target without device or pu
     params: Promise.resolve({ id: "delivery:a" }),
   });
   assert.equal(response.status, 200);
-  const body = (await response.json()) as { data: Record<string, unknown> };
+  const body = (await response.json()) as { success?: unknown; data: Record<string, unknown> };
+  // The App's client accepts only { success: true, data }: without it a tap on this push ends in 「这条提醒暂时无法读取」.
+  assert.equal(body.success, true);
   assert.deepEqual(body.data.data, { deliveryId: "delivery:a" });
   assert.deepEqual(body.data.target, { deliveryId: "delivery:a", kind: "inbox" });
   assert.equal("deviceId" in body.data, false);
@@ -48,5 +50,5 @@ test('typed delivery resolves navigation from current authorized source, not per
  const record={actorId:'a',deliveryId:'d',policySource:{kind:'message',id:'m',eventKey:'m'},title:'stale secret',body:'old text',data:{deliveryId:'d'}};
  let available=true;const handler=createNotificationDeliveryRouteHandler({resolveActor:async()=>({id:'a'}),serviceForActor:()=>({get:async()=>record}) as never,resolveTyped:async()=>available?{href:'/inbox/c',title:'佐藤健一',body:'新消息',subject:{channel:'message'}}:null} as never);
  const read=async()=>await(await handler(new Request('http://localhost'),{params:Promise.resolve({id:'d'})})).json();
- assert.equal((await read()).data.target.href,'/inbox/c');available=false;const revoked=await read();assert.equal(revoked.data.target.status,'unavailable');assert.equal(revoked.data.target.href,undefined);assert.equal(revoked.data.body,'');assert.equal(revoked.data.policySource,undefined);
+ const first=await read();assert.equal(first.success,true,'the App reads only { success: true, data }');assert.equal(first.data.target.href,'/inbox/c');available=false;const revoked=await read();assert.equal(revoked.data.target.status,'unavailable');assert.equal(revoked.data.target.href,undefined);assert.equal(revoked.data.body,'');assert.equal(revoked.data.policySource,undefined);
 });

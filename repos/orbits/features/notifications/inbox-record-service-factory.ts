@@ -24,6 +24,7 @@ import {readCostAlertSourceState} from '../operations/read-cost/alerts';
 import {isReadCostAdmin} from '../operations/read-cost/config';
 import {eventContactRequestSourceState} from './event-contact-request-inbox';
 import {readEventSecretarySourceState} from './secretary/source-access';
+import {isAgentInboxSourceKind,readAgentInboxSourceState} from './agent-inbox-source';
 
 /**
  * Typed notifications (reminder / suggestion / update) are the inbox. The rollout
@@ -53,6 +54,8 @@ export function createInboxRuntime(input:{client:TransactionalPostgresClient;wor
       return readEventSecretarySourceState(client,input.workspaceId,actorId,source,now());
     // R17：主催の定型お知らせ（审核结果 / 中止 / 变更 / 共同运营邀请）只写给本人，指向活动页，没有逐条授权的私有源。
     if(source.sourceKind==='event_host_notice')return 'available';
+    // agent-design AG15: a scheduled task's result (its run) or a card waiting for a click, in the reader's own partition.
+    if(isAgentInboxSourceKind(source.sourceKind))return readAgentInboxSourceState(client,input.workspaceId,actorId,source);
     if(source.objectId==='discovery') {
       const adapters=createDiscoverySourceAdapters({client,store:storeFor(tx),workspaceId:input.workspaceId,now,preferences:actor=>createDiscoveryRepository({...input,client:{...input.client,query:client.query}}).preferences(actor)});
       return await adapters.read(actorId,{kind:source.sourceKind,id:source.sourceId,revision:source.sourceRevision,at:source.occurredAt,key:source.sourceKind+':'+source.sourceId},false)?'available':'unavailable';

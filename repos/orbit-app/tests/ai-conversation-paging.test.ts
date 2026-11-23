@@ -65,6 +65,8 @@ function page(cursor) {
 window.fetch = (input, init) => {
   const url = new URL(String(input));
   const method = (init && init.method) || "GET";
+  // agent-design AG07: the conversation asks once which protocol the server speaks; this fixture speaks 2.
+  if (url.pathname === "/api/ai/conversations/protocol") return Promise.resolve(new Response(JSON.stringify({ success: true, data: { protocolVersion: 2 } }), { status: 200, headers: { "content-type": "application/json" } }));
   state.requests.push(method + " " + url.pathname + url.search);
   if (method !== "GET") { state.posts.push({ path: url.pathname, body: init && init.body ? String(init.body) : "" }); return Promise.resolve(new Response(JSON.stringify({ success: false, error: { code: "UNEXPECTED", message: "no writes in this test" } }), { status: 500, headers: { "content-type": "application/json" } })); }
   const respond = () => state.failNext

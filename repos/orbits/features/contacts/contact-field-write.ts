@@ -17,6 +17,7 @@
 import type { LiveRecord, LiveRecordStoreLike } from "../../shared/storage/live-record-store";
 import { ownedByActor } from "./business-card-contact-match";
 import { applyEnrichedValues, type EnrichedValue } from "./enrichment/apply-enrichment";
+import { contactVersionMatches, contactVersionOf, withNextContactVersion } from "./contact-version";
 
 export type ContactWritableField = "displayName" | "organization" | "role" | "email" | "phone";
 export type ContactFieldWriteSource = "manual" | "invite" | "invite_sync" | "completion";
@@ -71,6 +72,11 @@ export interface ApplyContactFieldValuesInput {
   /** 0146：行业等补全值，按名片并入的规则写（`mergeIntoExisting`：只补空、只替换 `ai`）。 */
   fillEnrichment?: readonly EnrichedValue[];
   now?: () => Date;
+  /**
+   * AG12：期望的联系人版本（contact-version.ts）。带了就只试一次：读到的版本不同、或条件更新没写上，都是 `CONFLICT`，
+   * 不重读重试、不覆盖。不带的旧调用方照旧（冲突重读重试最多 3 次）。
+   */
+  expectedVersion?: number;
 }
 
 export interface ApplyContactFieldValuesResult {
@@ -80,6 +86,8 @@ export interface ApplyContactFieldValuesResult {
   /** 没有任何变化时为 false（不写库）。 */
   written: boolean;
   updatedAt: string;
+  /** AG12：写入后的联系人版本（没有写入时是读到的版本）。 */
+  version: number;
 }
 
 function text(value: unknown): string | null {
@@ -158,22 +166,30 @@ function nextPayload(record: ContactRecord, input: ApplyContactFieldValuesInput,
 export async function applyContactFieldValues(input: ApplyContactFieldValuesInput): Promise<ApplyContactFieldValuesResult> {
   const updateRecordIfCurrent = input.store.updateRecordIfCurrent?.bind(input.store);
   if (!updateRecordIfCurrent) throw new ContactFieldWriteError("UNSUPPORTED", "Contact storage does not support conditional updates.");
-  for (let attempt = 0; attempt < CONTACT_FIELD_WRITE_MAX_ATTEMPTS; attempt++) {
+  const expected = input.expectedVersion;
+  if (expected !== undefined && (!Number.isSafeInteger(expected) || expected < 0)) throw new ContactFieldWriteError("INVALID", "expectedVersion must be a non-negative integer.");
+  const attempts = expected === undefined ? CONTACT_FIELD_WRITE_MAX_ATTEMPTS : 1;
+  for (let attempt = 0; attempt < attempts; attempt++) {
     const record = await input.store.getRecord({ collectionName: "contacts", recordId: input.contactId, workspaceId: input.workspaceId });
     if (!record || record.lifecycleState !== "active" || !ownedByActor(record, input.actorId)) {
       throw new ContactFieldWriteError("NOT_FOUND", "The contact was not found.");
+    }
+    if (expected !== undefined && !contactVersionMatches(record.payload, expected)) {
+      throw new ContactFieldWriteError("CONFLICT", "The contact changed since it was read. Refresh and try again.");
     }
     const now = input.now?.() ?? new Date();
     // 条件更新要求新的 updatedAt 严格大于旧值（同一毫秒内的连续写也成立）。
     const updatedAt = new Date(Math.max(now.getTime(), Date.parse(record.updatedAt) + 1)).toISOString();
     const next = nextPayload(record, input, updatedAt);
-    if (!next) return { changed: [], contactId: record.recordId, updatedAt: record.updatedAt, written: false };
+    if (!next) return { changed: [], contactId: record.recordId, updatedAt: record.updatedAt, version: contactVersionOf(record.payload), written: false };
     next.payload.updatedAt = updatedAt;
+    const payload = withNextContactVersion(record.payload, next.payload);
     const written = await updateRecordIfCurrent(
-      { ...record, payload: next.payload, searchText: searchTextFor(next.payload), updatedAt },
+      { ...record, payload, searchText: searchTextFor(payload), updatedAt },
       { updatedAt: record.updatedAt, userId: record.userId ?? null },
     );
-    if (written) return { changed: next.changed, contactId: record.recordId, updatedAt, written: true };
+    if (written) return { changed: next.changed, contactId: record.recordId, updatedAt, version: payload.version, written: true };
   }
+  if (expected !== undefined) throw new ContactFieldWriteError("CONFLICT", "The contact changed since it was read. Refresh and try again.");
   throw new ContactFieldWriteError("CONFLICT", "The contact kept changing while saving. Refresh and try again.");
 }

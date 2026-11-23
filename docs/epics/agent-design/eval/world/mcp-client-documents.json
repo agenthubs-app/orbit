@@ -1,0 +1,22 @@
+{
+  "note": "AG17：外部客户端的身份文档（Client ID Metadata Document）的本机副本。评测里授权服务器不联网取文档，由评测预载按 client_id 交回这里的副本。2026-11-19 按两个地址当时公开的内容录下服务端会读的字段；模拟外部客户端用它们走授权流程，回调地址只用来从跳转里取授权码，从不访问。",
+  "recordedAt": "2026-11-19",
+  "documents": {
+    "https://claude.ai/oauth/mcp-oauth-client-metadata": {
+      "client_id": "https://claude.ai/oauth/mcp-oauth-client-metadata",
+      "client_name": "Claude",
+      "redirect_uris": ["https://claude.ai/api/mcp/auth_callback"],
+      "grant_types": ["authorization_code", "refresh_token", "urn:ietf:params:oauth:grant-type:jwt-bearer"],
+      "response_types": ["code"],
+      "token_endpoint_auth_method": "none"
+    },
+    "https://claude.ai/oauth/claude-code-client-metadata": {
+      "client_id": "https://claude.ai/oauth/claude-code-client-metadata",
+      "client_name": "Claude Code",
+      "redirect_uris": ["http://localhost/callback", "http://127.0.0.1/callback"],
+      "grant_types": ["authorization_code", "refresh_token"],
+      "response_types": ["code"],
+      "token_endpoint_auth_method": "none"
+    }
+  }
+}

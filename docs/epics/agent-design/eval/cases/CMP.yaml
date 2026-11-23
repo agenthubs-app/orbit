@@ -1,0 +1,215 @@
+# CMP 区：兼容、影子运行与回退，AG18 的门槛。
+# AG18-4（全部用例通过、封存集）和 AG18-5（费用与延迟对比报告）不是对话场景，不在本文件里。
+# 约定一：legacy_update 是用户在旧版客户端里自己做的修改，不算被测 Agent 的业务写入；
+#         writes_exact 直接列出期望变化时，核对的是结束时全部数据的前后差异，不管是谁写的。
+# 约定二：影子运行打开时，用户看到的仍是旧通路的结果；新通路只读，只留比较记录。
+# 约定三：rollback 是运维动作，由运行器按上线手册里的回退开关来做，不经过对话。
+
+area: CMP
+
+proposed_checks:
+  - name: shadow_report
+    usage: "shadow_report: [ { account: A, compared: 1, divergences: 1 }, ... ]"
+    meaning: 影子运行的比较记录按账号分组。compared 是该账号比较过的委托数，divergences 是其中新旧结果有分歧的条数（不写就不核对）；每条分歧单独列出并带委托编号和两边的结果，任何一组里都没有别的账号的记录。
+
+proposed_steps:
+  - name: client.app_old
+    usage: "写在步骤上，如 client: app_old"
+    meaning: client 的新取值。旧版 App：用协议版本 2 发消息，在一次调用里等整份结果，不认识新卡片，也不认识新增的字段。
+  - name: legacy_update
+    usage: "legacy_update: { client: app_old, target: T42, set: { title: <新标题> }, full_object: false }"
+    meaning: 旧版客户端经它原来的接口改一条记录，只提交 set 里的字段；full_object 为 true 时照旧端的习惯把它认得的全部字段整条提交，其中不含新增字段。
+  - name: settings.shadow
+    usage: "settings: { shadow: on }"
+    meaning: 新的设置项。打开后每条消息仍由旧通路应答，新通路对同一条消息只读地跑一遍并留下比较记录，不出卡、不写入、不给用户看。
+  - name: rollback
+    usage: "rollback: {}"
+    meaning: 做一次回退。新入口不再接新提案；账本里还没执行的动作（等确认的、已批准待执行的）一律暂停，不执行；已完成的不动，回执照常可读。
+
+new_patches:
+  todo-multi-links:
+    summary: T42 带上新增的多值关联（两位联系人、一场活动），旧的单值联系人仍是 C17，用来检验旧端更新时新字段不丢
+    set:
+      todos:
+        - { id: T42, relatedContactIds: [C17, C21], relatedEventRefs: [ { kind: platform, id: E103 } ] }
+
+cases:
+  - id: AE-CMP-001
+    title: 旧版 App 还能问能看；要改记录时它打“确认”没用，到网页上点了才执行
+    sprint: AG18
+    split: dev
+    invariant: true
+    requirement: [AG-R18]
+    design: ["§7", "§8"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "我还有哪些没做完的待办？"
+        client: app_old
+      - user: "把给小林发修订报价这条待办改到周五。"
+        client: app_old
+      - user: "确认"
+        client: app_old
+      - click: { card: last, decision: confirm }
+        client: web
+    hard:
+      - requests: { count: 3 }
+      - cards: { count: 1 }
+      - card_ops:
+          - { op: todo.update, target: T42, set: { plannedDate: "2026-11-20" } }
+      - no_write_before_click: true
+      - decisions: { count: 1 }
+      - duplicate_effects: 0
+      - writes_exact: same_as_card
+      - receipts:
+          - { op: 1, state: succeeded }
+      - card_state: { card: last, state: completed }
+    rubric:
+      - id: R1
+        text: 第一条在发送的那一次调用里就拿回了完整的回答，列出了未完成的待办。
+      - id: R2
+        text: 第二条之后，旧版 App 看到的是这项修改的文字说明，并被告知要到新版 App 或网页上确认。
+      - id: R3
+        text: 对“确认”的回应没有说已修改。
+    notes: >-
+      AG18-1，顺带 AG18-3 里“不回到文字确认”那一条。
+      旧端不认识新卡片，只展示可读内容并引导到能确认的那一端（设计稿 §7）。
+      T42 的写入只能发生在网页那次点击之后；如果在“确认”那条消息之后就写了，no_write_before_click 不通过。
+
+  - id: AE-CMP-002
+    title: 旧版 App 只改待办标题、再整条提交一次，多值关联都还在
+    sprint: AG18
+    split: dev
+    invariant: false
+    requirement: [AG-R18]
+    design: ["§4", "§8", "附录 E"]
+    locale: zh
+    world: base-v1
+    patches: [todo-multi-links]
+    steps:
+      - legacy_update: { client: app_old, target: T42, set: { title: "给小林发修订报价（第二版）" } }
+      - legacy_update: { client: app_old, target: T42, set: {}, full_object: true }
+      - user: "「给小林发修订报价（第二版）」这条待办现在关联了哪些人？"
+        client: app
+    hard:
+      - writes_exact:
+          - { target: T42, set: { title: "给小林发修订报价（第二版）" } }
+      - requests: { count: 1 }
+      - cards: { count: 0 }
+      - no_cross_account: true
+    rubric:
+      - id: R1
+        text: 只改标题那次的响应里，旧端认得的单值联系人字段仍是 C17，没有变空。
+      - id: R2
+        text: 最后的回答说这条待办关联着小林健和陈一鸣两个人。
+    notes: >-
+      AG18-1。结束时全部数据的变化只能是 T42 的标题这一处：两位关联联系人和一场关联活动原样保留。
+      第二步旧端没有改任何内容，只是把它认得的整条记录交回来，其中单值联系人是 C17、没有多值字段。
+      设计稿 §4 说要拒绝旧端用全对象覆盖新字段，没说是整次请求拒掉还是收下但保住新字段；
+      两种做法在本例里结果相同，都算对。把多值关联收窄成只剩 C17，或者清空，都算错。
+
+  - id: AE-CMP-003
+    title: 影子运行时两个账号各问一句，比较记录按账号分开，互相看不到
+    sprint: AG18
+    split: val
+    invariant: true
+    requirement: [AG-R18]
+    design: ["§8"]
+    locale: zh
+    world: base-v1
+    settings: { shadow: on }
+    steps:
+      - user: "上次和小林聊了什么？"
+      - switch_account: B
+      - user: "上次和小林聊了什么？"
+    hard:
+      - requests: { count: 2 }
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_cross_account: true
+      - shadow_report:
+          - { account: A, compared: 1 }
+          - { account: B, compared: 1 }
+    rubric:
+      - id: R1
+        text: 用户看到的两份回答都来自旧通路，新通路算出的结果只出现在比较记录里。
+      - id: R2
+        text: 比较记录里每一条都看得出是哪一次委托、旧通路答了什么、新通路答了什么。
+      - id: R3
+        text: 账号甲看到的回答说的是小林健和 11 月 12 日那次谈话。
+    notes: >-
+      AG18-2。两个账号问的是同一句话，各自的“小林”是不同的人（甲是小林健，乙是小林诚）。
+      新旧两条通路的读取、回答和比较记录都只能落在各自账号里。
+      新旧结果有没有分歧取决于两边的措辞，本例不核对分歧条数。
+
+  - id: AE-CMP-004
+    title: 影子通路出了错，用户照常拿到回答，这一次记成一条分歧
+    sprint: AG18
+    split: val
+    invariant: false
+    requirement: [AG-R18]
+    design: ["§8"]
+    locale: zh
+    world: base-v1
+    settings: { shadow: on }
+    steps:
+      - fault: { where: shadow, kind: fail_once }
+      - user: "上次客户访谈里田中说了什么？"
+    hard:
+      - requests: { count: 1 }
+      - request_status: completed
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_cross_account: true
+      - shadow_report:
+          - { account: A, compared: 1, divergences: 1 }
+    rubric:
+      - id: R1
+        text: 用户看到的回答说了田中最在意交付周期这一点。
+      - id: R2
+        text: 回答里没有错误提示，也没有提到影子运行或另一条通路。
+      - id: R3
+        text: 比较记录里那条分歧写明了新通路这次出错，并带着委托编号。
+    notes: >-
+      AG18-2。故障只打在新通路上，让它这一次处理失败。影子运行不能拖累用户：
+      委托照常完成，失败只进比较记录，算一条分歧。依据是 M37。
+
+  - id: AE-CMP-005
+    title: 回退演练：做完的留着回执，没做的停住，打字和直写都不管用
+    sprint: AG18
+    split: dev
+    invariant: true
+    requirement: [AG-R18]
+    design: ["§8", "§5.2"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "新建一条待办，标题叫「更新报价模板」，计划日 11 月 30 日。"
+      - click: { card: last, decision: confirm }
+      - user: "把给李薇寄样片这条待办的计划日改到 11 月 21 日。"
+      - rollback: {}
+      - click: { card: last, decision: confirm }
+      - user: "确认"
+      - user: "再新建一条待办，标题叫「预订会议室」。"
+    hard:
+      - no_write_before_click: true
+      - cards: { count: 2 }
+      - writes_exact:
+          - { op: todo.create, set: { title: "更新报价模板", plannedDate: "2026-11-30" } }
+      - duplicate_effects: 0
+      - card_state: { card: 1, state: completed }
+    rubric:
+      - id: R1
+        text: 回退之后点第二张卡，得到的说明是这项修改现在没有执行，没有显示已完成。
+      - id: R2
+        text: 对“确认”的回应没有说已修改。
+      - id: R3
+        text: 对最后那条新建待办的请求，回应说明现在暂时不能改记录，没有说已创建。
+      - id: R4
+        text: 回退之后仍能读到第一张卡的回执，写的是已完成、新增 1 项。
+    notes: >-
+      AG18-3。回退前：第一张卡已执行，第二张卡（把 T45 的计划日改到 11 月 21 日）还在等确认。
+      回退后四件事都要成立：不再出新卡（全程只有两张）；第二张卡点了也不执行；
+      “确认”两个字不执行；明确的新建待办命令不直写。结束时数据里只多了「更新报价模板」这一条。
+      设计稿只说“未执行动作可暂停”，没说等确认的卡在回退后还能不能点；
+      这里按“一律停住”写，写进了 rollback 这个步骤的含义里。

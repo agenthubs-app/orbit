@@ -31,6 +31,7 @@ import {
   type TextEnrichmentUsage,
 } from "./text-enrichment";
 import { markContactInsightsDirty } from "../insights/repository";
+import { nextContactVersion } from "../contact-version";
 
 export const BACKFILL_DEFAULT_MAX_CALLS = 50;
 export const BACKFILL_MIN_INTERVAL_MS = 1_000;
@@ -269,6 +270,7 @@ export async function applyContactEnrichmentBackfillPlan(
       }
       const updatedAt = new Date(Math.max(Date.parse(plan.appliedAt), Date.parse(version) + 1)).toISOString();
       payload.updatedAt = updatedAt;
+      payload.version = nextContactVersion(row.payload);
       const updated = await sql.query(
         `update orbit_records set payload = $4::jsonb, updated_at = $5::timestamptz where ${scope} and ${owner} and updated_at = $6::timestamptz returning record_id`,
         [plan.workspaceId, entry.recordId, entry.userId, JSON.stringify(payload), updatedAt, row.version_text],

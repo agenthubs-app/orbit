@@ -1,0 +1,305 @@
+# 判断题的校准样本（agent-design AG08，设计稿 §3.8“置信度怎么用”）。
+# 全部合成，取自三个夹具世界（base-v1、regular-v1、large-v1）里 dev 组用例用到的人物、活动和笔记，以及按同样的
+# 写法改写的同类句子。标注由 AG08 的 Generator 写，按设计稿附录 C 的选项。
+#
+# group: dev 用来定门槛；val 只用来核对，不据它调门槛（eval/README.md §8）。
+# 每题每种语言 dev 至少 20 条；不足 20 条的格子不启用。
+# 候选的写法与产品发给判断模型的一致（graph/nodes/functions.ts 的 contactLine / eventLine）。
+#
+# 标注口径（非保守答案的“误判”）：
+# - match.level：答“部分匹配”或“匹配”，而标注是“证据不足”。
+# - intent.explicitWrite：答“是”，而标注是“否”。
+# - duplicate.same：答“同一件事”或“不同”，而标注不是这一项（标注“说不准”时，任何确定的回答都算误判）。
+
+version: judgment-samples-v1
+
+match.level:
+  - set: ml-zh-publishing
+    language: zh
+    group: dev
+    world: base-v1
+    basis: 聊独立出版
+    candidates:
+      - { key: c1, label: match, text: "山本直子（山手出版 · 編集者，东京，行业：出版）" }
+      - { key: c2, label: match, text: "周望舒（远山书房 · 编辑，东京，行业：出版）" }
+      - { key: c3, label: partial, text: "吴若溪（青禾文化 · 发行经理，大阪，行业：出版）" }
+      - { key: c4, label: partial, text: "郑清和（白杨出版社 · 版权经理，上海，行业：出版）" }
+      - { key: c5, label: insufficient, text: "小林健（北辰软件 · 销售总监，东京，行业：软件）" }
+      - { key: c6, label: insufficient, text: "田中浩（东和商事 · 采购主管，大阪，行业：贸易）" }
+      - { key: c7, label: insufficient, text: "王强（远帆物流 · 运营经理，上海，行业：物流）" }
+      - { key: c8, label: insufficient, text: "Emily Carter（Harbor Analytics · Product Manager，新加坡，行业：软件）" }
+      - { key: c9, label: insufficient, text: "钱嘉怡（长桥资本 · 分析师，横滨，行业：金融）" }
+      - { key: c10, label: insufficient, text: "孙浩然（海岸物流 · 调度主管，东京，行业：物流）" }
+      - { key: c11, label: partial, text: "佐藤健一（青叶设计 · 设计总监，横滨，行业：设计）" }
+      - { key: c12, label: insufficient, text: "冯明轩（雪松学堂 · 讲师，大阪，行业：教育）" }
+  - set: ml-zh-kiln
+    language: zh
+    group: dev
+    world: regular-v1
+    basis: 聊柴烧器物
+    candidates:
+      - { key: c1, label: match, text: "石川結衣（器と暮らし 谷中店 · 店主，东京，行业：零售，标签：柴烧、器物店，备注：2026 年 4 月在店里办过柴烧器物展）" }
+      - { key: c2, label: match, text: "大野誠（日々の器 吉祥寺 · 买手，东京，行业：零售，标签：柴烧，备注：去年进过青岚窑的柴烧杯，卖得不错）" }
+      - { key: c3, label: match, text: "西村美帆（茶と器 つむぎ · 店长，东京，行业：零售，标签：柴烧、茶道具，备注：店里常设柴烧茶道具专柜）" }
+      - { key: c4, label: insufficient, text: "赵一帆（星野商事 · 采购，东京，行业：零售）" }
+      - { key: c5, label: insufficient, text: "钱子涵（南风贸易 · 销售经理，东京，行业：零售）" }
+      - { key: c6, label: insufficient, text: "孙雨桐（北岭国际 · 业务主管，东京，行业：零售）" }
+      - { key: c7, label: insufficient, text: "李晨曦（朝露科技 · 工程师，东京，行业：零售）" }
+      - { key: c8, label: partial, text: "顾远（拾野选物店 · 采购，上海，行业：零售）" }
+      - { key: c9, label: insufficient, text: "周思远（晴川数据 · 产品经理，东京，行业：零售）" }
+      - { key: c10, label: insufficient, text: "吴俊杰（石门仓储 · 运营，东京，行业：零售）" }
+      - { key: c11, label: partial, text: "郑静怡（雪松创意 · 设计师，东京，行业：零售，标签：器物）" }
+  - set: ml-zh-creators
+    language: zh
+    group: val
+    world: base-v1
+    basis: 认识独立创作者
+    candidates:
+      - { key: c1, label: match, text: "独立出版市集（11月22日（周日） 10:00，神保町，主题：出版）" }
+      - { key: c2, label: partial, text: "街拍工作坊（11月22日（周日） 09:30，下北泽，主题：摄影、街拍）" }
+      - { key: c3, label: insufficient, text: "SaaS 定价研讨会（11月19日（周四） 19:00，丸之内，主题：定价、SaaS）" }
+      - { key: c4, label: partial, text: "设计师之夜（11月21日（周六） 19:00，中目黑，主题：设计）" }
+  - set: ml-ja-photo
+    language: ja
+    group: dev
+    world: base-v1
+    basis: 写真やストリートスナップに興味がある
+    candidates:
+      - { key: c1, label: match, text: "东京街头摄影展（11月21日（土） 10:00，涩谷，テーマ：摄影）" }
+      - { key: c2, label: match, text: "街拍工作坊（11月22日（日） 09:30，下北泽，テーマ：摄影、街拍）" }
+      - { key: c3, label: match, text: "东京摄影展·冬季场（11月29日（日） 10:00，上野，テーマ：摄影）" }
+      - { key: c4, label: insufficient, text: "SaaS 定价研讨会（11月19日（木） 19:00，丸之内，テーマ：定价、SaaS）" }
+      - { key: c5, label: partial, text: "设计师之夜（11月21日（土） 19:00，中目黑，テーマ：设计）" }
+      - { key: c6, label: insufficient, text: "独立出版市集（11月22日（日） 10:00，神保町，テーマ：出版）" }
+      - { key: c7, label: insufficient, text: "AI 产品沙龙（待定，テーマ：AI）" }
+  - set: ml-ja-kiln
+    language: ja
+    group: dev
+    world: regular-v1
+    basis: 薪窯や焼き締めの器について話せる人
+    candidates:
+      - { key: c1, label: match, text: "石川結衣（器と暮らし 谷中店 · 店主，东京，業種：零售，タグ：柴烧、器物店，メモ：2026 年 4 月在店里办过柴烧器物展）" }
+      - { key: c2, label: match, text: "松本彩（青岚窑 · 窑主，栃木，業種：陶艺，タグ：柴烧、供应方，メモ：益子的柴窑，每年春、秋各烧一次）" }
+      - { key: c3, label: match, text: "西村美帆（茶と器 つむぎ · 店长，东京，業種：零售，タグ：柴烧、茶道具，メモ：店里常设柴烧茶道具专柜）" }
+      - { key: c4, label: insufficient, text: "鈴木健太（東都精機 · 技術部長，东京，業種：制造）" }
+      - { key: c5, label: insufficient, text: "赵梓轩（白杨科技 · 工程师，大阪，業種：软件）" }
+      - { key: c6, label: insufficient, text: "钱欣妍（海岸资本 · 投资经理，横滨，業種：金融）" }
+      - { key: c7, label: insufficient, text: "孙宇航（南风物流 · 客户经理，上海，業種：物流）" }
+      - { key: c8, label: partial, text: "大野誠（日々の器 吉祥寺 · 买手，东京，業種：零售，タグ：柴烧）" }
+      - { key: c9, label: insufficient, text: "周诗涵（朝露学堂 · 讲师，东京，業種：教育）" }
+  - set: ml-ja-publishing
+    language: ja
+    group: dev
+    world: base-v1
+    basis: 出版の企画について相談できる人
+    candidates:
+      - { key: c1, label: match, text: "山本直子（山手出版 · 編集者，东京，業種：出版）" }
+      - { key: c2, label: match, text: "吴文博（远山书房 · 编辑，东京，業種：出版）" }
+      - { key: c3, label: insufficient, text: "小林健（北辰软件 · 销售总监，东京，業種：软件）" }
+      - { key: c4, label: insufficient, text: "王强（远帆物流 · 运营经理，上海，業種：物流）" }
+      - { key: c5, label: insufficient, text: "田中浩（东和商事 · 采购主管，大阪，業種：贸易）" }
+      - { key: c6, label: partial, text: "郑可馨（青禾文化 · 发行经理，大阪，業種：出版）" }
+  - set: ml-ja-val
+    language: ja
+    group: val
+    world: base-v1
+    basis: 独立系のクリエイターと知り合える
+    candidates:
+      - { key: c1, label: match, text: "独立出版市集（11月22日（日） 10:00，神保町，テーマ：出版）" }
+      - { key: c2, label: insufficient, text: "SaaS 定价研讨会（11月19日（木） 19:00，丸之内，テーマ：定价、SaaS）" }
+      - { key: c3, label: partial, text: "街拍工作坊（11月22日（日） 09:30，下北泽，テーマ：摄影、街拍）" }
+  - set: ml-en-packaging
+    language: en
+    group: dev
+    world: large-v1
+    basis: a power-semiconductor packaging process lead role
+    candidates:
+      - { key: c1, label: match, text: "Aaron Tan (Meridian Power Devices · Packaging Process Manager, 新加坡, industry: 半导体 (semiconductor))" }
+      - { key: c2, label: match, text: "Mei Ling Goh (Straits Silicon · Senior Packaging Engineer, SiC Modules, 新加坡, industry: 半导体 (semiconductor))" }
+      - { key: c3, label: match, text: "Rajesh Iyer (Meridian Power Devices · Process Integration Lead, Power Devices, 新加坡, industry: 半导体 (semiconductor))" }
+      - { key: c4, label: partial, text: "Grace Lim (Straits Silicon · Regional Sales Director, 新加坡, industry: 半导体 (semiconductor))" }
+      - { key: c5, label: partial, text: "Daniel Wee (Meridian Power Devices · HR Business Partner, 新加坡, industry: 半导体 (semiconductor))" }
+      - { key: c6, label: insufficient, text: "Aaron Tang (Lioncity Freight · Sales Director, 新加坡, industry: 物流 (logistics))" }
+      - { key: c7, label: insufficient, text: "Priya Raman (Aster Motion · Recruiter, 新加坡, industry: 机器人 (robotics))" }
+      - { key: c8, label: insufficient, text: "Marcus Lindqvist (Nordlys Software · Backend Engineer, 新加坡, industry: 软件 (software))" }
+      - { key: c9, label: insufficient, text: "Kavya Iyer (Harbor Analytics · Data Analyst, 新加坡, industry: 软件 (software))" }
+      - { key: c10, label: insufficient, text: "Tomás Rivera (Sunda Trading · Account Manager, 新加坡, industry: 贸易 (trade))" }
+      - { key: c11, label: insufficient, text: "Ingrid Solberg (Aster Motion · CTO, 东京, industry: 机器人 (robotics))" }
+      - { key: c12, label: insufficient, text: "Wee Lim (Lion Gate Capital · Analyst, 新加坡, industry: 金融 (finance))" }
+  - set: ml-en-photo
+    language: en
+    group: dev
+    world: base-v1
+    basis: meeting independent creators
+    candidates:
+      - { key: c1, label: match, text: "独立出版市集 (Sun, Nov 22, 2026 10:00, 神保町, topics: 出版)" }
+      - { key: c2, label: partial, text: "街拍工作坊 (Sun, Nov 22, 2026 09:30, 下北泽, topics: 摄影、街拍)" }
+      - { key: c3, label: partial, text: "设计师之夜 (Sat, Nov 21, 2026 19:00, 中目黑, topics: 设计)" }
+      - { key: c4, label: insufficient, text: "SaaS 定价研讨会 (Thu, Nov 19, 2026 19:00, 丸之内, topics: 定价、SaaS)" }
+      - { key: c5, label: partial, text: "东京街头摄影展 (Sat, Nov 21, 2026 10:00, 涩谷, topics: 摄影)" }
+  - set: ml-en-publishing
+    language: en
+    group: dev
+    world: base-v1
+    basis: talking about independent publishing
+    candidates:
+      - { key: c1, label: match, text: "山本直子 (山手出版 · 編集者, 东京, industry: 出版 (publishing))" }
+      - { key: c2, label: insufficient, text: "Emily Carter (Harbor Analytics · Product Manager, 新加坡, industry: 软件 (software))" }
+      - { key: c3, label: insufficient, text: "小林健 (北辰软件 · 销售总监, 东京, industry: 软件 (software))" }
+      - { key: c4, label: insufficient, text: "王强 (远帆物流 · 运营经理, 上海, industry: 物流 (logistics))" }
+      - { key: c5, label: partial, text: "李薇 (自由职业 · 摄影师, 东京, industry: 摄影 (photography))" }
+  - set: ml-en-val
+    language: en
+    group: val
+    world: large-v1
+    basis: a semiconductor packaging engineer
+    candidates:
+      - { key: c1, label: match, text: "Mei Ling Goh (Straits Silicon · Senior Packaging Engineer, SiC Modules, 新加坡, industry: 半导体 (semiconductor))" }
+      - { key: c2, label: insufficient, text: "Aaron Tang (Lioncity Freight · Sales Director, 新加坡, industry: 物流 (logistics))" }
+      - { key: c3, label: partial, text: "Grace Lim (Straits Silicon · Regional Sales Director, 新加坡, industry: 半导体 (semiconductor))" }
+
+intent.explicitWrite:
+  # zh
+  - { id: iw-zh-01, language: zh, group: dev, world: base-v1, label: no, message: "小林今天来电话了。" }
+  - { id: iw-zh-02, language: zh, group: dev, world: base-v1, label: no, message: "小林今天又来电话催报价了。" }
+  - { id: iw-zh-03, language: zh, group: dev, world: base-v1, label: no, message: "要是把给小林发修订报价那条待办改到周五，会不会来不及？" }
+  - { id: iw-zh-04, language: zh, group: dev, world: base-v1, label: no, message: "如果田中下周还不回复，我是不是该再催一次？" }
+  - { id: iw-zh-05, language: zh, group: dev, world: base-v1, label: no, message: "今天早上在车站碰到了小林。" }
+  - { id: iw-zh-06, language: zh, group: dev, world: base-v1, label: no, message: "山本说原稿可能要晚两天。" }
+  - { id: iw-zh-07, language: zh, group: dev, world: base-v1, label: no, message: "李薇推荐的那个街拍工作坊听起来不错。" }
+  - { id: iw-zh-08, language: zh, group: dev, world: base-v1, label: no, message: "你觉得把报价待办改到周五合适吗？" }
+  - { id: iw-zh-09, language: zh, group: dev, world: base-v1, label: no, message: "上司说要把山本那边的饭局都取消，你怎么看？" }
+  - { id: iw-zh-10, language: zh, group: dev, world: base-v1, label: no, message: "先别改，我再想想。" }
+  - { id: iw-zh-11, language: zh, group: dev, world: regular-v1, label: no, message: "顾远说拾野的秋季结款月中会安排。" }
+  - { id: iw-zh-12, language: zh, group: dev, world: base-v1, label: no, message: "王强昨天也给我发了消息。" }
+  - { id: iw-zh-13, language: zh, group: dev, world: base-v1, label: yes, message: "记一下：今天早上在车站碰到了小林。" }
+  - { id: iw-zh-14, language: zh, group: dev, world: base-v1, label: yes, message: "把给小林发修订报价那条待办改到周五。" }
+  - { id: iw-zh-15, language: zh, group: dev, world: base-v1, label: yes, message: "帮我记下小林今天来过电话。" }
+  - { id: iw-zh-16, language: zh, group: dev, world: base-v1, label: yes, message: "新建一条待办：下周一给田中回电。" }
+  - { id: iw-zh-17, language: zh, group: dev, world: base-v1, label: yes, message: "把约山本吃饭这条待办的计划日定在 11 月 21 日。" }
+  - { id: iw-zh-18, language: zh, group: dev, world: base-v1, label: yes, message: "把小林今天来电话这件事记到他的往来里。" }
+  - { id: iw-zh-19, language: zh, group: dev, world: base-v1, label: yes, message: "把整理十月发票那条标成已完成。" }
+  - { id: iw-zh-20, language: zh, group: dev, world: regular-v1, label: yes, message: "给顾远加一条跟进：月底前确认秋季结款。" }
+  - { id: iw-zh-21, language: zh, group: dev, world: base-v1, label: yes, message: "删掉给李薇寄样片那条待办。" }
+  - { id: iw-zh-22, language: zh, group: dev, world: base-v1, label: no, message: "小林这周好像很忙。" }
+  - { id: iw-zh-v1, language: zh, group: val, world: base-v1, label: no, message: "要是小林明天再来电话，我该怎么说？" }
+  - { id: iw-zh-v2, language: zh, group: val, world: base-v1, label: yes, message: "记一笔：今天和田中通了电话。" }
+  # ja
+  - { id: iw-ja-01, language: ja, group: dev, world: base-v1, label: no, message: "今日、小林さんから電話がありました。" }
+  - { id: iw-ja-02, language: ja, group: dev, world: base-v1, label: no, message: "もし今週中に山本さんから返事が来なかったら、食事に誘うToDoはもう消しちゃったほうがいいのかな？" }
+  - { id: iw-ja-03, language: ja, group: dev, world: base-v1, label: no, message: "上司から「山本さんとの食事の件は全部キャンセルしておいて」ってメッセージが来たんだけど、これってどういうつもりだと思う？" }
+  - { id: iw-ja-04, language: ja, group: dev, world: base-v1, label: no, message: "山本さん、原稿が少し遅れそうだと言っていました。" }
+  - { id: iw-ja-05, language: ja, group: dev, world: base-v1, label: no, message: "今朝、駅で小林さんにばったり会った。" }
+  - { id: iw-ja-06, language: ja, group: dev, world: base-v1, label: no, message: "見積もりのToDoを金曜日にずらしたら間に合うと思う？" }
+  - { id: iw-ja-07, language: ja, group: dev, world: regular-v1, label: no, message: "松本さんは春の窯焚きの準備で忙しいらしい。" }
+  - { id: iw-ja-08, language: ja, group: dev, world: base-v1, label: no, message: "まだ変更しないでください。" }
+  - { id: iw-ja-09, language: ja, group: dev, world: base-v1, label: no, message: "田中さんから昨日メールが来ていた。" }
+  - { id: iw-ja-10, language: ja, group: dev, world: base-v1, label: no, message: "仮にEmilyが金曜までに仕様を送らなかったら、どうしよう。" }
+  - { id: iw-ja-11, language: ja, group: dev, world: base-v1, label: no, message: "山本さんとの打ち合わせ、楽しかったな。" }
+  - { id: iw-ja-12, language: ja, group: dev, world: base-v1, label: yes, message: "今日小林さんから電話があったことを記録しておいて。" }
+  - { id: iw-ja-13, language: ja, group: dev, world: base-v1, label: yes, message: "山本さんとの食事のToDo、11月20日に予定を入れて。" }
+  - { id: iw-ja-14, language: ja, group: dev, world: base-v1, label: yes, message: "見積もりのToDoを金曜日に変更してください。" }
+  - { id: iw-ja-15, language: ja, group: dev, world: base-v1, label: yes, message: "メモして：今朝、駅で小林さんに会った。" }
+  - { id: iw-ja-16, language: ja, group: dev, world: base-v1, label: yes, message: "田中さんに折り返すToDoを追加して。" }
+  - { id: iw-ja-17, language: ja, group: dev, world: base-v1, label: yes, message: "李薇さんにサンプルを送るToDoを削除して。" }
+  - { id: iw-ja-18, language: ja, group: dev, world: regular-v1, label: yes, message: "松本さんとの打ち合わせを記録しておいてください。" }
+  - { id: iw-ja-19, language: ja, group: dev, world: base-v1, label: yes, message: "十月の請求書の整理を完了にして。" }
+  - { id: iw-ja-20, language: ja, group: dev, world: base-v1, label: yes, message: "山本さんに原稿の件で連絡するToDoを作って。" }
+  - { id: iw-ja-21, language: ja, group: dev, world: base-v1, label: no, message: "小林さん、最近元気がなさそうだった。" }
+  - { id: iw-ja-v1, language: ja, group: val, world: base-v1, label: no, message: "もし山本さんが来週来られなかったら、どう伝えればいい？" }
+  - { id: iw-ja-v2, language: ja, group: val, world: base-v1, label: yes, message: "田中さんと電話したことを記録して。" }
+  # en
+  - { id: iw-en-01, language: en, group: dev, world: base-v1, label: no, message: "Kobayashi called me today." }
+  - { id: iw-en-02, language: en, group: dev, world: base-v1, label: no, message: "If Emily doesn't send the dashboard spec by Friday, I should probably add a to-do to chase her." }
+  - { id: iw-en-03, language: en, group: dev, world: base-v1, label: no, message: "Would moving the quote to-do to Friday be too late?" }
+  - { id: iw-en-04, language: en, group: dev, world: base-v1, label: no, message: "Emily said the spec might slip a few days." }
+  - { id: iw-en-05, language: en, group: dev, world: base-v1, label: no, message: "I ran into Kobayashi at the station this morning." }
+  - { id: iw-en-06, language: en, group: dev, world: large-v1, label: no, message: "Priya mentioned she is talking to two other companies." }
+  - { id: iw-en-07, language: en, group: dev, world: base-v1, label: no, message: "Don't change anything yet." }
+  - { id: iw-en-08, language: en, group: dev, world: base-v1, label: no, message: "My boss told me to cancel all the dinners with Yamamoto — what do you think he means?" }
+  - { id: iw-en-09, language: en, group: dev, world: base-v1, label: no, message: "Suppose Tanaka never replies, what then?" }
+  - { id: iw-en-10, language: en, group: dev, world: large-v1, label: no, message: "Aaron Tan seemed interested in the packaging role." }
+  - { id: iw-en-11, language: en, group: dev, world: base-v1, label: no, message: "The meeting with Emily went well." }
+  - { id: iw-en-12, language: en, group: dev, world: base-v1, label: yes, message: "Log that Emily called me today." }
+  - { id: iw-en-13, language: en, group: dev, world: base-v1, label: yes, message: "Move the quote to-do for Kobayashi to Friday." }
+  - { id: iw-en-14, language: en, group: dev, world: base-v1, label: yes, message: "Can you push the to-do about sending Li Wei the sample prints to November 17?" }
+  - { id: iw-en-15, language: en, group: dev, world: base-v1, label: yes, message: "Add a to-do to call Tanaka back on Monday." }
+  - { id: iw-en-16, language: en, group: dev, world: base-v1, label: yes, message: "Make a note that I met Kobayashi at the station this morning." }
+  - { id: iw-en-17, language: en, group: dev, world: base-v1, label: yes, message: "Mark the October invoices to-do as done." }
+  - { id: iw-en-18, language: en, group: dev, world: large-v1, label: yes, message: "Create a follow-up for Priya Raman: confirm her start date by Friday." }
+  - { id: iw-en-19, language: en, group: dev, world: base-v1, label: yes, message: "Delete the to-do about sending Li Wei the samples." }
+  - { id: iw-en-20, language: en, group: dev, world: base-v1, label: yes, message: "Please record that Yamamoto and I met today." }
+  - { id: iw-en-21, language: en, group: dev, world: base-v1, label: no, message: "Kobayashi seemed busy this week." }
+  - { id: iw-en-v1, language: en, group: val, world: base-v1, label: no, message: "What if Kobayashi calls again tomorrow?" }
+  - { id: iw-en-v2, language: en, group: val, world: base-v1, label: yes, message: "Note down that Tanaka phoned me." }
+
+duplicate.same:
+  # zh
+  - { id: ds-zh-01, language: zh, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-15", channel: meeting, body: "今天早上在车站碰到了小林" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  - { id: ds-zh-02, language: zh, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-10", channel: phone, body: "小林今天给我打了电话，说小陈在审核" }, existing: { day: "2026-11-10", channel: phone, body: "11 月 10 日小林给我打电话，说小陈在审核。我答应 11 月 13 日给小林发报价。" } }
+  - { id: ds-zh-03, language: zh, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-12", channel: meeting, body: "和小林聊了报价初稿，他想把实施费单列" }, existing: { day: "2026-11-12", channel: meeting, body: "和小林聊了报价初稿。小林希望把实施费单列，下周再对一次。" } }
+  - { id: ds-zh-04, language: zh, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-11", channel: meeting, body: "田中访谈：最在意交付周期" }, existing: { day: "2026-11-11", channel: meeting, body: "田中说他们最在意交付周期，报价可以分两期，希望月底前看到修订版。" } }
+  - { id: ds-zh-05, language: zh, group: dev, world: regular-v1, label: same, fresh: { day: "2026-11-11", channel: message, body: "顾远说秋季结款月中安排" }, existing: { day: "2026-11-11", channel: message, body: "拾野的秋季结款还没催，顾远说月中会安排。" } }
+  - { id: ds-zh-06, language: zh, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-05", channel: meeting, body: "李薇推荐了一个街拍工作坊" }, existing: { day: "2026-11-05", channel: meeting, body: "李薇推荐了一个街拍工作坊，说可以考虑带作品去。" } }
+  - { id: ds-zh-07, language: zh, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-15", channel: phone, body: "小林今天来电话催报价" }, existing: { day: "2026-11-15", channel: phone, body: "小林上午打电话来，问修订报价什么时候能发。" } }
+  - { id: ds-zh-08, language: zh, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-15", channel: phone, body: "晚上小林又打电话说合同的事" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  - { id: ds-zh-09, language: zh, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-15", channel: meeting, body: "下午在展会上见到了田中" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  - { id: ds-zh-10, language: zh, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-12", channel: phone, body: "小林打电话来说法务那边有新意见" }, existing: { day: "2026-11-12", channel: meeting, body: "和小林聊了报价初稿。小林希望把实施费单列，下周再对一次。" } }
+  - { id: ds-zh-11, language: zh, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-10", channel: message, body: "王强发消息确认了发货时间" }, existing: { day: "2026-11-10", channel: phone, body: "11 月 10 日小林给我打电话，说小陈在审核。我答应 11 月 13 日给小林发报价。" } }
+  - { id: ds-zh-12, language: zh, group: dev, world: regular-v1, label: different, fresh: { day: "2026-11-06", channel: meeting, body: "去彤云茶室看了试营业的布置" }, existing: { day: "2026-11-06", channel: message, body: "晓彤已经从拾野选物店离职，自己开了彤云茶室，11 月 22 日试营业。" } }
+  - { id: ds-zh-13, language: zh, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-09", channel: phone, body: "晚上山本打电话说特集的页数要加" }, existing: { day: "2026-11-09", channel: meeting, body: "山本さんと打ち合わせ。来月の特集について、原稿は12月5日までに送ると約束した。" } }
+  - { id: ds-zh-14, language: zh, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-13", channel: meeting, body: "和 Emily 当面过了一遍仪表盘的原型" }, existing: { day: "2026-11-13", channel: phone, body: "Call with Emily. She will send the dashboard spec by Friday." } }
+  - { id: ds-zh-15, language: zh, group: dev, world: base-v1, label: unsure, fresh: { day: "2026-11-15", channel: meeting, body: "今天见到了小林" }, existing: { day: "2026-11-15", channel: meeting, body: "和小林见了一面。" } }
+  - { id: ds-zh-16, language: zh, group: dev, world: base-v1, label: unsure, fresh: { day: "2026-11-15", channel: phone, body: "和小林通了电话" }, existing: { day: "2026-11-15", channel: phone, body: "跟小林打了个电话。" } }
+  - { id: ds-zh-17, language: zh, group: dev, world: base-v1, label: unsure, fresh: { day: "2026-11-14", channel: message, body: "田中发了消息" }, existing: { day: "2026-11-14", channel: message, body: "收到田中的消息。" } }
+  - { id: ds-zh-18, language: zh, group: dev, world: regular-v1, label: unsure, fresh: { day: "2026-11-02", channel: meeting, body: "和松本彩聊了一会儿" }, existing: { day: "2026-11-02", channel: meeting, body: "和松本彩见面。" } }
+  - { id: ds-zh-19, language: zh, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-13", channel: phone, body: "Emily 电话里说周五前发仪表盘规格" }, existing: { day: "2026-11-13", channel: phone, body: "Call with Emily. She will send the dashboard spec by Friday. I should think about whether to join their beta." } }
+  - { id: ds-zh-20, language: zh, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-15", channel: meeting, body: "晚上和陈一鸣吃饭聊了合同条款" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  - { id: ds-zh-v1, language: zh, group: val, world: base-v1, label: same, fresh: { day: "2026-11-15", channel: meeting, body: "早上车站偶遇小林，约好下周对报价" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  - { id: ds-zh-v2, language: zh, group: val, world: base-v1, label: different, fresh: { day: "2026-11-15", channel: phone, body: "晚上田中来电话问发票" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  # ja
+  - { id: ds-ja-01, language: ja, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-09", channel: meeting, body: "山本さんと特集の打ち合わせ。原稿は12月5日まで" }, existing: { day: "2026-11-09", channel: meeting, body: "山本さんと打ち合わせ。来月の特集について、原稿は12月5日までに送ると約束した。" } }
+  - { id: ds-ja-02, language: ja, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-15", channel: meeting, body: "今朝、駅で小林さんに会った" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  - { id: ds-ja-03, language: ja, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-10", channel: phone, body: "小林さんから電話。陳さんが審査中とのこと" }, existing: { day: "2026-11-10", channel: phone, body: "11 月 10 日小林给我打电话，说小陈在审核。我答应 11 月 13 日给小林发报价。" } }
+  - { id: ds-ja-04, language: ja, group: dev, world: regular-v1, label: same, fresh: { day: "2026-10-05", channel: meeting, body: "選品の定例：春は小ロットで試す" }, existing: { day: "2026-10-05", channel: meeting, body: "周会结论：春季先做小批量试卖；许嘉宁负责包装打样，顾远汇总拾野的销售数据。" } }
+  - { id: ds-ja-05, language: ja, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-13", channel: phone, body: "Emilyと電話。金曜までにダッシュボード仕様を送ってくれる" }, existing: { day: "2026-11-13", channel: phone, body: "Call with Emily. She will send the dashboard spec by Friday." } }
+  - { id: ds-ja-06, language: ja, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-12", channel: meeting, body: "小林さんと見積もり初稿の相談。実施費は別にしたいそう" }, existing: { day: "2026-11-12", channel: meeting, body: "和小林聊了报价初稿。小林希望把实施费单列，下周再对一次。" } }
+  - { id: ds-ja-07, language: ja, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-11", channel: meeting, body: "田中さんのヒアリング。納期を一番気にしている" }, existing: { day: "2026-11-11", channel: meeting, body: "田中说他们最在意交付周期，报价可以分两期，希望月底前看到修订版。" } }
+  - { id: ds-ja-08, language: ja, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-09", channel: phone, body: "夜に山本さんから電話、ページ数を増やしたいとのこと" }, existing: { day: "2026-11-09", channel: meeting, body: "山本さんと打ち合わせ。来月の特集について、原稿は12月5日までに送ると約束した。" } }
+  - { id: ds-ja-09, language: ja, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-15", channel: meeting, body: "午後、展示会で田中さんに会った" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  - { id: ds-ja-10, language: ja, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-12", channel: phone, body: "小林さんから電話、法務から新しい指摘があった" }, existing: { day: "2026-11-12", channel: meeting, body: "和小林聊了报价初稿。小林希望把实施费单列，下周再对一次。" } }
+  - { id: ds-ja-11, language: ja, group: dev, world: regular-v1, label: different, fresh: { day: "2026-11-06", channel: meeting, body: "彤雲茶室の内装を見に行った" }, existing: { day: "2026-11-06", channel: message, body: "晓彤已经从拾野选物店离职，自己开了彤云茶室，11 月 22 日试营业。" } }
+  - { id: ds-ja-12, language: ja, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-13", channel: meeting, body: "Emilyと対面でプロトタイプを確認" }, existing: { day: "2026-11-13", channel: phone, body: "Call with Emily. She will send the dashboard spec by Friday." } }
+  - { id: ds-ja-13, language: ja, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-15", channel: message, body: "王強さんから出荷日の確認メッセージ" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  - { id: ds-ja-14, language: ja, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-05", channel: phone, body: "李薇さんから電話、サンプルはまだ届いていないとのこと" }, existing: { day: "2026-11-05", channel: meeting, body: "李薇推荐了一个街拍工作坊，说可以考虑带作品去。" } }
+  - { id: ds-ja-15, language: ja, group: dev, world: base-v1, label: unsure, fresh: { day: "2026-11-15", channel: meeting, body: "小林さんに会った" }, existing: { day: "2026-11-15", channel: meeting, body: "小林さんと会いました。" } }
+  - { id: ds-ja-16, language: ja, group: dev, world: base-v1, label: unsure, fresh: { day: "2026-11-15", channel: phone, body: "山本さんと電話した" }, existing: { day: "2026-11-15", channel: phone, body: "山本さんに電話。" } }
+  - { id: ds-ja-17, language: ja, group: dev, world: base-v1, label: unsure, fresh: { day: "2026-11-14", channel: message, body: "田中さんから連絡があった" }, existing: { day: "2026-11-14", channel: message, body: "田中さんからメッセージ。" } }
+  - { id: ds-ja-18, language: ja, group: dev, world: regular-v1, label: unsure, fresh: { day: "2026-11-02", channel: meeting, body: "松本さんと少し話した" }, existing: { day: "2026-11-02", channel: meeting, body: "松本彩さんと会う。" } }
+  - { id: ds-ja-19, language: ja, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-15", channel: meeting, body: "夜、陳一鳴さんと食事して契約の話をした" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  - { id: ds-ja-20, language: ja, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-05", channel: meeting, body: "李薇さんがストリートスナップのワークショップを勧めてくれた" }, existing: { day: "2026-11-05", channel: meeting, body: "李薇推荐了一个街拍工作坊，说可以考虑带作品去。" } }
+  - { id: ds-ja-v1, language: ja, group: val, world: base-v1, label: same, fresh: { day: "2026-11-15", channel: meeting, body: "朝の駅で小林さんと偶然会い、来週見積もりを詰める約束をした" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  - { id: ds-ja-v2, language: ja, group: val, world: base-v1, label: different, fresh: { day: "2026-11-15", channel: phone, body: "夜に田中さんから請求書の件で電話" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  # en
+  - { id: ds-en-01, language: en, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-13", channel: phone, body: "Emily called: she'll send the dashboard spec by Friday" }, existing: { day: "2026-11-13", channel: phone, body: "Call with Emily. She will send the dashboard spec by Friday. I should think about whether to join their beta." } }
+  - { id: ds-en-02, language: en, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-15", channel: meeting, body: "Ran into Kobayashi at the station this morning" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  - { id: ds-en-03, language: en, group: dev, world: large-v1, label: same, fresh: { day: "2026-11-10", channel: phone, body: "Call with Aaron Tan about the packaging lead role" }, existing: { day: "2026-11-10", channel: phone, body: "Phoned Aaron Tan; he is open to a packaging process lead role." } }
+  - { id: ds-en-04, language: en, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-12", channel: meeting, body: "Talked through the first quote draft with Kobayashi; he wants implementation listed separately" }, existing: { day: "2026-11-12", channel: meeting, body: "和小林聊了报价初稿。小林希望把实施费单列，下周再对一次。" } }
+  - { id: ds-en-05, language: en, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-11", channel: meeting, body: "Interview with Tanaka: delivery time matters most" }, existing: { day: "2026-11-11", channel: meeting, body: "田中说他们最在意交付周期，报价可以分两期，希望月底前看到修订版。" } }
+  - { id: ds-en-06, language: en, group: dev, world: large-v1, label: same, fresh: { day: "2026-10-20", channel: meeting, body: "Met Mei Ling Goh to talk about SiC module packaging" }, existing: { day: "2026-10-20", channel: meeting, body: "Coffee with Mei Ling Goh, SiC module packaging and her next move." } }
+  - { id: ds-en-07, language: en, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-13", channel: meeting, body: "Went over the prototype with Emily in person" }, existing: { day: "2026-11-13", channel: phone, body: "Call with Emily. She will send the dashboard spec by Friday." } }
+  - { id: ds-en-08, language: en, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-15", channel: phone, body: "Tanaka phoned in the evening about the invoice" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  - { id: ds-en-09, language: en, group: dev, world: large-v1, label: different, fresh: { day: "2026-11-10", channel: message, body: "Aaron Tang messaged about a freight quote" }, existing: { day: "2026-11-10", channel: phone, body: "Phoned Aaron Tan; he is open to a packaging process lead role." } }
+  - { id: ds-en-10, language: en, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-12", channel: phone, body: "Kobayashi called later about legal's new comments" }, existing: { day: "2026-11-12", channel: meeting, body: "和小林聊了报价初稿。小林希望把实施费单列，下周再对一次。" } }
+  - { id: ds-en-11, language: en, group: dev, world: large-v1, label: different, fresh: { day: "2026-10-28", channel: meeting, body: "Lunch with Rajesh Iyer on process integration" }, existing: { day: "2026-10-28", channel: phone, body: "Grace Lim called about the regional sales targets." } }
+  - { id: ds-en-12, language: en, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-09", channel: phone, body: "Yamamoto called at night: more pages for the feature" }, existing: { day: "2026-11-09", channel: meeting, body: "山本さんと打ち合わせ。来月の特集について、原稿は12月5日までに送ると約束した。" } }
+  - { id: ds-en-13, language: en, group: dev, world: base-v1, label: different, fresh: { day: "2026-11-15", channel: meeting, body: "Dinner with Chen Yiming about contract terms" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  - { id: ds-en-14, language: en, group: dev, world: base-v1, label: unsure, fresh: { day: "2026-11-15", channel: meeting, body: "Saw Kobayashi" }, existing: { day: "2026-11-15", channel: meeting, body: "Met Kobayashi." } }
+  - { id: ds-en-15, language: en, group: dev, world: base-v1, label: unsure, fresh: { day: "2026-11-15", channel: phone, body: "Spoke with Emily on the phone" }, existing: { day: "2026-11-15", channel: phone, body: "Call with Emily." } }
+  - { id: ds-en-16, language: en, group: dev, world: large-v1, label: unsure, fresh: { day: "2026-11-14", channel: message, body: "Message from Priya" }, existing: { day: "2026-11-14", channel: message, body: "Priya texted." } }
+  - { id: ds-en-17, language: en, group: dev, world: base-v1, label: unsure, fresh: { day: "2026-11-14", channel: meeting, body: "Met Tanaka briefly" }, existing: { day: "2026-11-14", channel: meeting, body: "Saw Tanaka." } }
+  - { id: ds-en-18, language: en, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-05", channel: meeting, body: "Li Wei suggested a street photography workshop" }, existing: { day: "2026-11-05", channel: meeting, body: "李薇推荐了一个街拍工作坊，说可以考虑带作品去。" } }
+  - { id: ds-en-19, language: en, group: dev, world: large-v1, label: different, fresh: { day: "2026-09-28", channel: meeting, body: "Daniel Wee walked me through Meridian's hiring plan in person" }, existing: { day: "2026-09-28", channel: message, body: "Daniel Wee sent the HR contact list." } }
+  - { id: ds-en-20, language: en, group: dev, world: base-v1, label: same, fresh: { day: "2026-11-10", channel: phone, body: "Kobayashi phoned; Chen is reviewing" }, existing: { day: "2026-11-10", channel: phone, body: "11 月 10 日小林给我打电话，说小陈在审核。我答应 11 月 13 日给小林发报价。" } }
+  - { id: ds-en-v1, language: en, group: val, world: base-v1, label: same, fresh: { day: "2026-11-15", channel: meeting, body: "Bumped into Kobayashi at the station; we agreed to go over the quote next week" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }
+  - { id: ds-en-v2, language: en, group: val, world: base-v1, label: different, fresh: { day: "2026-11-15", channel: phone, body: "Tanaka called about the invoice in the evening" }, existing: { day: "2026-11-15", channel: meeting, body: "早上和小林在车站碰到，约了下周对报价。" } }

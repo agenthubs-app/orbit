@@ -1,5 +1,9 @@
+import { createHash } from "node:crypto";
+
 import type {
+  AgentActionDecisionRecord,
   AgentActionRecord,
+  AgentActionStatus,
   AgentExecutionReceipt,
   AgentOutboxEvent,
   AgentRun,
@@ -124,6 +128,66 @@ export interface AgentRuntimeRepository {
     /** Receipts belong to one run; the lookup reads only that run's rows (0103). */
     runId: string,
   ) => Promise<AgentExecutionReceipt | null>;
+  /** agent-design AG02: the decision a card already got for this client decision key. */
+  getDecision?: (
+    actionId: string,
+    clientDecisionId: string,
+  ) => Promise<AgentActionDecisionRecord | null>;
+  /**
+   * agent-design AG02: one atomic change of a card. The card row is locked; the change is written
+   * only while the card is still in one of `expect.statuses`, at `expect.revision` and unchanged
+   * since `expect.updatedAt`, and only if no decision with the same client key exists. The card,
+   * its outbox events, receipts and the decision record are written in one transaction, or none.
+   */
+  commitCardChange?: (input: AgentCardChangeInput) => Promise<AgentCardChangeResult>;
+}
+
+export interface AgentCardChangeInput {
+  actionId: string;
+  /** Omitted: nothing about the card is checked (a refusal only records its decision). */
+  expect?: {
+    statuses: readonly AgentActionStatus[];
+    revision: number;
+    updatedAt: string;
+  };
+  /** Omitted: the card itself is not written. */
+  next?: AgentActionRecord;
+  outbox?: readonly AgentOutboxEvent[];
+  receipts?: readonly AgentExecutionReceipt[];
+  decision?: AgentActionDecisionRecord;
+}
+
+export type AgentCardChangeResult =
+  | { committed: true }
+  | {
+      committed: false;
+      /** The card as it is now (null if it no longer exists). */
+      current: AgentActionRecord | null;
+      /** Set when a decision with the same client key was already recorded. */
+      existingDecision: AgentActionDecisionRecord | null;
+    };
+
+export function agentDecisionRecordId(actionId: string, clientDecisionId: string): string {
+  return `decision:${createHash("sha256").update(`${actionId}\u0000${clientDecisionId}`).digest("hex").slice(0, 32)}`;
+}
+
+/** The checks of commitCardChange, shared by the memory and the SQL implementation. */
+export function cardChangeBlocked(
+  current: AgentActionRecord | null,
+  existingDecision: AgentActionDecisionRecord | null,
+  input: AgentCardChangeInput,
+): AgentCardChangeResult | null {
+  if (existingDecision) return { committed: false, current, existingDecision };
+  if (!input.expect) return null;
+  if (
+    !current ||
+    !input.expect.statuses.includes(current.status) ||
+    (current.revision ?? 1) !== input.expect.revision ||
+    current.updatedAt !== input.expect.updatedAt
+  ) {
+    return { committed: false, current, existingDecision: null };
+  }
+  return null;
 }
 
 function clone<TValue>(value: TValue): TValue {
@@ -136,8 +200,25 @@ export function createMemoryAgentRuntimeRepository(): AgentRuntimeRepository {
   const actions = new Map<string, AgentActionRecord>();
   const outbox = new Map<string, AgentOutboxEvent>();
   const receipts = new Map<string, AgentExecutionReceipt>();
+  const decisions = new Map<string, AgentActionDecisionRecord>();
 
   return {
+    async getDecision(actionId, clientDecisionId) {
+      const decision = decisions.get(agentDecisionRecordId(actionId, clientDecisionId));
+      return decision ? clone(decision) : null;
+    },
+    async commitCardChange(input) {
+      // No await between the checks and the writes: atomic within this process.
+      const current = actions.get(input.actionId) ?? null;
+      const existing = input.decision ? decisions.get(input.decision.decisionId) ?? null : null;
+      const blocked = cardChangeBlocked(current ? clone(current) : null, existing ? clone(existing) : null, input);
+      if (blocked) return blocked;
+      if (input.next) actions.set(input.next.actionId, clone(input.next));
+      for (const event of input.outbox ?? []) outbox.set(event.outboxId, clone(event));
+      for (const receipt of input.receipts ?? []) receipts.set(receipt.receiptId, clone(receipt));
+      if (input.decision) decisions.set(input.decision.decisionId, clone(input.decision));
+      return { committed: true };
+    },
     async getRun(runId) {
       const run = runs.get(runId);
       if (!run) return null;

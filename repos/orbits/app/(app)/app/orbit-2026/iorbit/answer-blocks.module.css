@@ -1,0 +1,83 @@
+/* agent-design AG19: the answer's blocks (approved visual draft 2026-11-19, board 6 — web values; design tokens only:
+   --fs-emph 15, --fs-dialog-title 16, --fs-card-title 14.5, --fs-row 13.5, --fs-body-sm 13, --fs-meta 12, --fs-caption 11;
+   --r-bubble 18, --r-md 14, --r-emo 13, --r-sm 10, --r-tag 6).
+   Body 15 / 1.75, at most 36 characters a line; conclusion 16 bold / 1.6; card title 14.5 bold, small text 12, kind
+   badge 11; the note 13 / 1.65. Paragraphs 10 apart, cards 8, text ↔ cards and answer ↔ note 18. */
+.answer { display: flex; flex-direction: column; gap: 18px; min-width: 0; color: var(--ink); }
+.text { display: flex; flex-direction: column; gap: 10px; max-width: 36em; font-size: var(--fs-emph); line-height: 1.75; }
+.text p { margin: 0; }
+.conclusion { font-size: var(--fs-dialog-title); line-height: 1.6; font-weight: 700; }
+.paragraph { font-size: var(--fs-emph); line-height: 1.75; overflow-wrap: anywhere; }
+.points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-emph); line-height: 1.75; }
+.points li { display: flex; gap: 10px; overflow-wrap: anywhere; }
+.points li::before { content: ""; flex: none; width: 5px; height: 5px; border-radius: var(--r-pill); background: var(--ink-3); margin-top: calc(15px * 1.75 / 2 - 2.5px); }
+.points b { font-weight: 700; }
+
+.cards { display: flex; flex-direction: column; gap: 8px; max-width: 520px; min-width: 0; }
+.cardList { display: flex; flex-direction: column; gap: 8px; }
+.cardsMini { max-width: 520px; }
+.miniGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.caption { font-size: var(--fs-meta); line-height: 18px; font-weight: 700; color: var(--ink-3-text, var(--ink-3)); }
+
+.card { display: flex; align-items: center; gap: 10px; padding: 12px 12px 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-bubble); min-width: 0; color: var(--ink); text-decoration: none; box-sizing: border-box; }
+a.card { cursor: pointer; }
+a.card:hover { border-color: var(--ink-4); }
+a.card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.card::after { content: ""; flex: none; width: 7px; height: 7px; border-top: 2px solid var(--ink-4); border-right: 2px solid var(--ink-4); transform: rotate(45deg); margin: 0 3px 0 2px; }
+.tile { flex: none; width: 40px; height: 40px; border-radius: var(--r-emo); display: grid; place-items: center; font-size: var(--fs-emoji-md); line-height: 1; }
+.tile svg { width: 20px; height: 20px; }
+.avatar { border-radius: var(--r-pill); font-size: var(--fs-emph); font-weight: 800; }
+.tLav { background: var(--mac-lav); color: var(--mac-lav-text); }
+.tPink { background: var(--mac-pink); color: var(--mac-pink-text); }
+.tBlue { background: var(--mac-blue); color: var(--mac-blue-text); }
+.tTeal { background: var(--mac-teal); color: var(--mac-teal-text); }
+.tApricot { background: var(--mac-apricot); color: var(--mac-apricot-text); }
+.tPlum { background: var(--plum-100); color: var(--plum-900); }
+.meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.top { display: flex; align-items: center; gap: 6px; font-size: var(--fs-meta); line-height: 18px; font-weight: 500; color: var(--ink-3-text, var(--ink-3)); min-width: 0; }
+.topText { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kind { flex: none; display: inline-block; font-size: var(--fs-caption); font-weight: 700; line-height: 16px; padding: 1px 6px; border-radius: var(--r-tag); white-space: nowrap; }
+.kContact { background: var(--mac-lav); color: var(--mac-lav-text); }
+.kMemo { background: var(--mac-apricot); color: var(--mac-apricot-text); }
+.kTodo { background: var(--mac-blue); color: var(--mac-blue-text); }
+.kSchedule { background: var(--mac-teal); color: var(--mac-teal-text); }
+.kEvent { background: var(--mac-pink); color: var(--mac-pink-text); }
+.kWent { background: var(--plum-100); color: var(--plum-900); }
+/* D6: the full card never cuts a name or a place: a long one folds to a second line. */
+.title { font-size: var(--fs-card-title); line-height: 22px; font-weight: 700; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.sub { font-size: var(--fs-meta); line-height: 18px; color: var(--ink-3-text, var(--ink-3)); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.late { color: var(--coral-text); font-weight: 600; }
+.why { font-size: var(--fs-meta); line-height: 18px; color: var(--ink-2); margin-top: 3px; overflow-wrap: anywhere; }
+
+.mini { padding: 9px 12px; border-radius: var(--r-md); }
+.mini .tile { width: 32px; height: 32px; border-radius: var(--r-sm); font-size: var(--fs-emoji-sm); }
+.mini .tile svg { width: 16px; height: 16px; }
+.mini .avatar { border-radius: var(--r-pill); font-size: var(--fs-body-sm); }
+.mini .title { font-size: var(--fs-row); line-height: 20px; -webkit-line-clamp: 1; display: block; white-space: nowrap; text-overflow: ellipsis; }
+.mini .sub { -webkit-line-clamp: 1; display: block; white-space: nowrap; text-overflow: ellipsis; }
+
+/* A record that is gone or cannot be seen any more: dashed, no arrow, not a link (as in the @ picker). */
+.gone { background: transparent; border: 1px dashed var(--ink-3); }
+.gone::after { display: none; }
+.gone .title { color: var(--ink-2); }
+.gone .tile { background: var(--surface-2); color: var(--ink-3); }
+.goneWord { color: var(--coral-text); font-weight: 700; }
+
+.cards .more:global(.btn) { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 44px; height: auto; padding: 0 12px; border: 0; border-radius: var(--r-md); background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-row); font-weight: 700; cursor: pointer; }
+.cards .more:global(.btn)::after { content: ""; width: 6px; height: 6px; border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3); transform: translateY(-2px) rotate(45deg); }
+.cards .moreUp:global(.btn)::after { transform: translateY(2px) rotate(-135deg); }
+
+.note { max-width: 36em; background: var(--surface-2); border-radius: var(--r-md); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; color: var(--ink-2); font-size: var(--fs-body-sm); line-height: 1.65; box-sizing: border-box; }
+.noteHead { display: flex; align-items: center; gap: 6px; font-size: var(--fs-meta); line-height: 18px; font-weight: 700; color: var(--ink-3-text, var(--ink-3)); }
+.noteHead svg { flex: none; width: 14px; height: 14px; }
+.noteItem { overflow-wrap: anywhere; }
+.noteItem b { display: block; color: var(--ink); font-weight: 600; }
+.noteDo { color: var(--ink); }
+/* AG14 (board 4): the memory note's 「去设置 ›」. */
+.noteGo { align-self: flex-start; color: var(--plum-900); font-weight: 700; text-decoration: none; }
+.noteItem + .noteItem { border-top: 1px solid var(--line); padding-top: 10px; }
+
+@media (max-width: 767px) {
+  .miniGrid { grid-template-columns: minmax(0, 1fr); }
+  .cards, .cardsMini, .note, .text { max-width: 100%; }
+}

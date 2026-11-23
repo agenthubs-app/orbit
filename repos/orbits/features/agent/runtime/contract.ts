@@ -3,6 +3,7 @@ import type {
   AgentLedgerOperationType,
 } from "../ledger/contract";
 import type { AgentActionSourceReference } from "../contract";
+import type { AgentCardOperationDisplayContract } from "../../../shared/contract/agent-v1";
 
 export const AGENT_RUN_STATUSES = [
   "queued",
@@ -32,6 +33,8 @@ export const AGENT_ACTION_STATUSES = [
   "rejected",
   "canceled",
   "undone",
+  // agent-design AG02 (设计稿附录 D): left too long; never executed. Judged from expiresAt.
+  "expired",
 ] as const;
 
 export const AGENT_ACTION_RISK_LEVELS = [
@@ -48,6 +51,8 @@ export const AGENT_OUTBOX_STATUSES = [
   "retry_scheduled",
   "dead_letter",
   "canceled",
+  // AG02: the executor's outcome is unknown; not retried until the user decides (设计稿 §5.2).
+  "needs_review",
 ] as const;
 
 export type AgentRunStatus = (typeof AGENT_RUN_STATUSES)[number];
@@ -131,6 +136,80 @@ export interface AgentActionOperationPayload {
   preview: string;
   riskLevel: AgentActionRiskLevel;
   compensation: AgentActionCompensation;
+  // ── agent-design AG02 (设计稿 §5.1, 附录 B/E). Present on cards that carry an `origin`. ──
+  /** The sub-goal of the request this item belongs to. */
+  partId?: string;
+  /** Operation catalogue name, e.g. todo.create, todo.update (附录 B). */
+  capability?: string;
+  /** The existing record this item changes; absent for a create. */
+  targetRef?: AgentActionTargetRef;
+  /** Only the fields being changed, as the card showed them. */
+  before?: Readonly<Record<string, unknown>>;
+  after?: Readonly<Record<string, unknown>>;
+  /** What the card used to name the record (its title), checked again at the click. */
+  shown?: Readonly<Record<string, unknown>>;
+  preconditions?: {
+    /** The domain's own version mark (for a to-do its updatedAt). Not part of the card hash. */
+    versionToken?: string;
+    targetExists: boolean;
+  };
+  dependsOn?: readonly string[];
+  effects?: readonly string[];
+  /** agent-design AG07: how the card shows this item (written by code in the card's language, frozen, hashed). */
+  display?: AgentCardOperationDisplayContract;
+}
+
+export interface AgentActionTargetRef {
+  collection: string;
+  id: string;
+}
+
+/** Where a card came from (设计稿 §5.1): one of a conversation, a rule run or an external connection. */
+export type AgentActionOrigin =
+  | { kind: "conversation"; conversationId: string; requestId: string }
+  | { kind: "automation"; ruleId: string; firedAt: string }
+  | { kind: "connection"; connectionId: string; externalRequestKey: string };
+
+/** An earlier version of a card, kept when the card gets a new revision (附录 D). */
+export interface AgentActionRevisionRecord {
+  revision: number;
+  payloadHash: string;
+  title: string;
+  preview: string;
+  operations: readonly AgentActionOperationPayload[];
+  expiresAt?: string;
+  frozenAt: string;
+  supersededAt: string;
+  /** AG06: edited — the user took an item off the card; the rest was frozen again (设计稿 §5.1). */
+  reason: "content_changed" | "regenerated" | "edited";
+}
+
+/** One row of the difference shown when a card is re-issued because its data changed. */
+export interface AgentCardChange {
+  operationId: string;
+  /** field, or "title" when the record's name changed, or "record" when it is gone. */
+  field: string;
+  shownBefore: unknown;
+  now: unknown;
+  to?: unknown;
+}
+
+/** A button decision (设计稿 §5.1). Unique per card and clientDecisionId; a resend returns it. */
+export interface AgentActionDecisionRecord {
+  decisionId: string;
+  actionId: string;
+  clientDecisionId: string;
+  decision: "confirm" | "reject" | "retry" | "mark_done" | "abandon";
+  operationId?: string;
+  revision: number;
+  payloadHash: string;
+  outcome: "accepted" | "already_decided" | "refused";
+  reason?: string;
+  message: string;
+  /** Card revision after the decision (a content change issues a new one). */
+  resultRevision: number;
+  changes?: readonly AgentCardChange[];
+  decidedAt: string;
 }
 
 export interface AgentActionRecord {
@@ -166,6 +245,23 @@ export interface AgentActionRecord {
   viewedAt?: string;
   approvedBy?: string;
   immutablePayloadHash: string;
+  // ── agent-design AG02 (附录 E「动作账本」). Cards without `origin` keep the old behaviour. ──
+  origin?: AgentActionOrigin;
+  /** Starts at 1; a content change or a regeneration adds one. */
+  revision?: number;
+  /** SHA-256 over order, items, targets, dependencies, revision and every visible text. */
+  payloadHash?: string;
+  expiresAt?: string;
+  expiredAt?: string;
+  /** agent-design AG15: why it expired — the next period of the same scheduled task made a new card. Absent: left too long. */
+  expiredReason?: "superseded";
+  /** agent-design AG15 (D15-6): the card of the next period that took this one's place. */
+  supersededBy?: { actionId: string; firedAt: string };
+  /** The card's language (zh, ja, en) for its own texts. */
+  locale?: string;
+  revisions?: readonly AgentActionRevisionRecord[];
+  /** The difference of the latest content change, shown until the user clicks again. */
+  contentChanges?: readonly AgentCardChange[];
 }
 
 export interface AgentOutboxEvent {
@@ -198,7 +294,11 @@ export interface AgentExecutionReceipt {
   runId: string;
   idempotencyKey: string;
   executorKey: string;
-  status: "completed" | "failed" | "undone";
+  /**
+   * AG02 adds: needs_review (outcome unknown), user_confirmed (the user marked it done; not a
+   * system success), abandoned (the user gave up) and skipped (a prerequisite was abandoned).
+   */
+  status: "completed" | "failed" | "undone" | "needs_review" | "user_confirmed" | "abandoned" | "skipped";
   resultRef?: string;
   resultSummary: string;
   createdAt: string;

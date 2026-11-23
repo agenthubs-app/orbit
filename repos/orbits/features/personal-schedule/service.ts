@@ -15,6 +15,7 @@ import { createPersonalScheduleReminderRepository, createMemoryPersonalScheduleR
 import type { InboxProjectionWriter } from "../notifications/storage/inbox-projection-work";
 import { canonicalInboxProjectionRevision } from "../notifications/canonical-inbox-projection-revision";
 import { createScheduleReminderWindowRepository } from "./reminder-window-storage";
+import { PRIVATE_EVENT_COLLECTION, readPrivateEvent } from "../events/private-events/records";
 
 const collectionName = "personal_schedule_items";
 const locks = new WeakMap<object, Map<string, Promise<void>>>();
@@ -42,7 +43,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
   }
   function patchPersonalScheduleFields(item: PersonalScheduleContract, patch: PersonalScheduleUpdate["patch"]) {
     const result = { ...item, ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== null)) };
-    for (const key of ["location", "endsAt", "allDay", "timeZone", "meetingMethod", "meetingUrl", "contactIds", "noteIds", "recurrence", "reminderMinutes"] as const) if (patch[key] === null) delete result[key];
+    for (const key of ["location", "endsAt", "allDay", "timeZone", "meetingMethod", "meetingUrl", "contactIds", "noteIds", "eventRefs", "recurrence", "reminderMinutes"] as const) if (patch[key] === null) delete result[key];
     return result;
   }
   async function personalScheduleOccurrences(store: typeof input.store, actorId: string, item: PersonalScheduleContract, window: { from: string; to: string }, exact?: { date: string; exceptions: readonly PersonalScheduleOccurrenceException[] }, executor: TransactionalSqlExecutor | undefined = input.executor ?? input.client, overlapFrom?: string): Promise<PersonalScheduleContract[]> {
@@ -146,7 +147,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
         const fields = personalScheduleCreateSchema.parse(body);
         item = { id, sourceId: id, ownerUserId: actorId, accountId: actorId, kind: "personal", category: "personal", state: "upcoming", title: fields.title, startsAt: fields.startsAt,
           ...(fields.endsAt ? { endsAt: fields.endsAt } : {}), ...(fields.location ? { location: fields.location } : {}),
-          ...Object.fromEntries(Object.entries(fields).filter(([key, value]) => value !== null && ["allDay", "timeZone", "meetingMethod", "meetingUrl", "contactIds", "noteIds", "recurrence", "reminderMinutes"].includes(key))), createdAt: at, updatedAt: at };
+          ...Object.fromEntries(Object.entries(fields).filter(([key, value]) => value !== null && ["allDay", "timeZone", "meetingMethod", "meetingUrl", "contactIds", "noteIds", "eventRefs", "recurrence", "reminderMinutes"].includes(key))), createdAt: at, updatedAt: at };
       } else {
         item = await readPersonalScheduleOccurrence(store, actorId, id);
         base = item.seriesId ? await read(store, actorId, item.seriesId) : item;
@@ -175,6 +176,14 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
           if (!ids?.length) continue;
           const accessible = associationReader ? await associationReader.accessibleIds({ actorId, kind, ids }) : [];
           if (accessible.length !== ids.length || ids.some(id => !accessible.includes(id))) throw new AppError("VALIDATION_ERROR", "A schedule association is unavailable. Remove it before saving.");
+        }
+        // agent-design AG13: a private event newly linked must be the account's and not deleted (read under the schedule
+        // lock, which a private event's deletion takes too).
+        const before = new Set((base?.eventRefs ?? []).filter(ref => ref.kind === "private").map(ref => ref.id));
+        for (const ref of item.eventRefs ?? []) {
+          if (ref.kind !== "private" || before.has(ref.id)) continue;
+          const record = await store.getRecord({ workspaceId: input.workspaceId, collectionName: PRIVATE_EVENT_COLLECTION, recordId: ref.id, userId: actorId });
+          if (!readPrivateEvent(record, actorId)) throw new AppError("VALIDATION_ERROR", "A linked private event is unavailable. Remove it before saving.");
         }
       }
       if (item.allDay) {

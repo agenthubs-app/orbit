@@ -33,6 +33,8 @@ test("ledger entry statuses cover proposal, approval, execution, rejection, and 
       "canceled",
       "undone",
       "deferred",
+      // agent-design AG02 (设计稿附录 D).
+      "expired",
     ],
   );
 });
@@ -40,7 +42,8 @@ test("ledger entry statuses cover proposal, approval, execution, rejection, and 
 test("operation statuses cover selection, execution, and undo", () => {
   assert.deepEqual(
     [...AGENT_LEDGER_OPERATION_STATUSES],
-    ["pending", "skipped", "succeeded", "failed", "undone"],
+    // agent-design AG02 adds the three review receipts (设计稿附录 D).
+    ["pending", "skipped", "succeeded", "failed", "undone", "needs_review", "user_confirmed", "abandoned"],
   );
 });
 
@@ -62,6 +65,42 @@ test("operation types cover the design-derived write operations", () => {
       "propose_meeting_slots",
       "sync_event_to_calendar",
       "save_memory",
+      // agent-design AG02: the to-do create and update executors.
+      "create_todo",
+      "update_todo",
+      // agent-design AG06: a new memo with its interaction (memo.create).
+      "create_memo",
+      // agent-design AG10: the interaction written on an existing memo (memo.update).
+      "update_memo",
+      // agent-design AG12: the five contact operations.
+      "create_contact",
+      "update_contact",
+      "delete_contact",
+      "restore_contact",
+      "import_contacts",
+      // agent-design AG13: private events, «我去过», schedule items, and the other to-do verbs.
+      "create_private_event",
+      "update_private_event",
+      "delete_private_event",
+      "create_attendance",
+      "update_attendance",
+      "delete_attendance",
+      "create_schedule",
+      "update_schedule",
+      "delete_schedule",
+      "complete_todo",
+      "reopen_todo",
+      "delete_todo",
+      // agent-design AG14: personal memory — a new entry, a change of one, forgetting one.
+      "create_memory",
+      "update_memory",
+      "delete_memory",
+      // agent-design AG15: scheduled rules, after a card.
+      "create_rule",
+      "update_rule",
+      "pause_rule",
+      "resume_rule",
+      "cancel_rule",
     ],
   );
 });
@@ -83,7 +122,8 @@ test("evidence kinds allow confirmed transcripts but never raw voice or audio", 
 test("transitions cover confirmation, refusal, cancellation, and recovery", () => {
   assert.deepEqual(
     [...AGENT_LEDGER_TRANSITIONS],
-    ["confirm", "defer", "reject", "cancel", "undo", "retry"],
+    // agent-design AG02: mark_done and abandon settle an item whose outcome is unknown.
+    ["confirm", "defer", "reject", "cancel", "undo", "retry", "mark_done", "abandon"],
   );
 });
 

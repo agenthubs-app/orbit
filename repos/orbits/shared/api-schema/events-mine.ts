@@ -20,6 +20,12 @@ export const myEventItemObject = z.object({
   score: z.number().int().min(0).max(100).nullable().optional().catch(null),
   href: z.string().min(1),
   sample: z.literal(true).optional(),
+  // agent-design AG13（只加，可选；读不懂就当没有，不跳行）：自己记的「我去过」、私人活动、私人活动关联的记录。
+  selfAttendance: z.object({ attendedOn: z.string(), dayParts: z.array(z.string()).max(5).optional(), selfNote: z.string().nullable().optional() }).nullable().optional().catch(undefined),
+  privateEvent: z.literal(true).optional().catch(undefined),
+  // AG20a（只加，可选）：全天的私人活动。
+  allDay: z.boolean().optional().catch(undefined),
+  related: z.array(z.object({ id: z.string().min(1), kind: z.enum(["memo", "todo", "schedule"]), label: z.string() })).max(20).optional().catch(undefined),
 });
 
 export const myEventsResponseObject = z.object({

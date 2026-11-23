@@ -38,11 +38,11 @@ test("optional fetch adapter makes legacy settings envelopes readable before cli
     if (init?.method === "DELETE") return new Response(null, { status: 204 });
     return Response.json({ data: path === "/api/integrations"
       ? [{ provider: "gmail", status: "active", healthStatus: "healthy" }]
-      : { memories: [{ memoryId: "m1", content: "A memo", source: "manual", createdAt: "2026-10-01" }] } });
+      : { memories: [{ appliesTo: [], category: "preference", content: "A memo", createdAt: "2026-10-01T00:00:00.000Z", memoryId: "m1", revision: 1, source: "manual", sourceMessageRef: null, status: "active", structured: null, updatedAt: "2026-10-01T00:00:00.000Z", validFrom: null, validUntil: null }], settings: { allowConversationLearning: false, enabled: true, updatedAt: "" } } });
   }, { fetchAdapter: settingsFetch });
   const api = createAccountSettingsApi(client);
   assert.equal((await api.integrations())?.[0]?.provider, "gmail");
-  assert.equal((await api.memories())?.[0]?.memoryId, "m1");
+  assert.equal((await api.memories())?.memories[0]?.memoryId, "m1");
   assert.equal(await api.removeMemory("m1"), true);
   assert.deepEqual(requests, ["/api/integrations", "/api/agent/memory", "/api/agent/memory/m1"].map(path => ({ path, cookie: "orbit_session=auth", lang: "zh" })));
 });

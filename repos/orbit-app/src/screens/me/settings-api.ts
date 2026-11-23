@@ -1,12 +1,22 @@
 import { z } from "zod";
 import type { OrbitApiClient } from "../../api/client";
 import { profileBioWithinLimit } from "../../api/schema/profile-bio";
+import { agentMemoryEntrySchema, agentMemorySettingsSchema } from "../../api/schema/agent-v1";
+import type { AgentMemoryEntryContract, AgentMemoryListContract, AgentMemorySettingsContract } from "../../api/contract/agent-v1";
+import type { memoryEditorInput } from "../../api/compute/agent-memory-view";
 
 export { settingsFetch } from "./settings-transport";
 export const integrationSchema = z.object({ provider: z.enum(["gmail", "google_calendar", "microsoft_graph"]), status: z.string(), healthStatus: z.string(), healthMessage: z.string().optional() });
 export type AccountIntegration = z.infer<typeof integrationSchema>;
 export const memorySchema = z.object({ memoryId: z.string(), content: z.string(), source: z.enum(["manual", "conversation"]), createdAt: z.string() });
-export type AccountMemory = z.infer<typeof memorySchema>;
+export type AccountMemory = AgentMemoryEntryContract;
+/** AG14: what the iOrbit settings screen reads (the settings API's list without its version counter). */
+export type AccountMemoryList = Pick<AgentMemoryListContract, "memories" | "settings" | "ruleLimit">;
+export type MemorySaveInput = ReturnType<typeof memoryEditorInput>;
+/** An entry of the older shape (design fixtures) as a list entry: no task yet, 酌情参考的. */
+export function memoryEntryOf(value: { memoryId: string; content: string; source: "manual" | "conversation"; createdAt: string }): AgentMemoryEntryContract {
+  return { appliesTo: [], category: "preference", content: value.content, createdAt: value.createdAt, memoryId: value.memoryId, revision: 1, source: value.source, sourceMessageRef: null, status: "active", structured: null, updatedAt: value.createdAt, validFrom: null, validUntil: null };
+}
 export function integrationState(record?: Pick<AccountIntegration, "status" | "healthStatus">): "connected" | "disconnected" | "preparing" | "action_required" {
   if (!record || record.status === "unavailable" || record.healthStatus === "unavailable") return "preparing";
   if (record.status === "active" && ["healthy", "not_checked"].includes(record.healthStatus)) return "connected";
@@ -31,13 +41,23 @@ export function createAccountSettingsApi(client: OrbitApiClient) {
       const receipt = result.success ? z.object({ provider: z.literal(provider), status: z.literal("revoked") }).safeParse(result.data) : null;
       return receipt?.success === true;
     },
-    async memories(signal?: AbortSignal): Promise<AccountMemory[] | null> {
+    /** AG14: the whole list — entries, both switches, the rule limit. An entry this build cannot read is left out. */
+    async memories(signal?: AbortSignal): Promise<AccountMemoryList | null> {
       const result = await client.get<unknown>("/api/agent/memory", signal ? { signal } : {});
-      const parsed = result.success ? z.object({ memories: z.array(z.unknown()) }).safeParse(result.data) : null;
+      const parsed = result.success ? z.object({ memories: z.array(z.unknown()), ruleLimit: z.number().int().optional(), settings: agentMemorySettingsSchema.optional() }).safeParse(result.data) : null;
       if (!parsed?.success) return null;
-      return parsed.data.memories.flatMap(value => { const memory = memorySchema.safeParse(value); return memory.success ? [memory.data] : []; });
+      const memories = parsed.data.memories.flatMap(value => { const memory = agentMemoryEntrySchema.safeParse(value); return memory.success ? [memory.data] : []; });
+      return { memories, ruleLimit: parsed.data.ruleLimit, settings: parsed.data.settings ?? { allowConversationLearning: false, enabled: true, updatedAt: "" } };
     },
-    async removeMemory(id: string, signal?: AbortSignal): Promise<boolean> { return (await client.delete<unknown>(`/api/agent/memory/${encodeURIComponent(id)}`, signal ? { signal } : {})).success; },
+    /** AG14: the user's own add (POST) or change (PATCH, at the revision shown); no card. */
+    async saveMemory(input: MemorySaveInput, memoryId: string | null, signal?: AbortSignal): Promise<boolean> {
+      const options = { body: input, ...(signal ? { signal } : {}) };
+      return (memoryId ? await client.patch<unknown>(`/api/agent/memory/${encodeURIComponent(memoryId)}`, options) : await client.post<unknown>("/api/agent/memory", options)).success;
+    },
+    async memorySettings(patch: Partial<Pick<AgentMemorySettingsContract, "enabled" | "allowConversationLearning">>, signal?: AbortSignal): Promise<boolean> {
+      return (await client.patch<unknown>("/api/agent/memory/settings", { body: patch, ...(signal ? { signal } : {}) })).success;
+    },
+    async removeMemory(id: string, signal?: AbortSignal, expectedRevision?: number): Promise<boolean> { return (await client.delete<unknown>(`/api/agent/memory/${encodeURIComponent(id)}${expectedRevision ? `?expectedRevision=${expectedRevision}` : ""}`, signal ? { signal } : {})).success; },
     async introDraft(language: string, signal?: AbortSignal): Promise<string | null> {
       const result = await client.post<unknown>("/api/profile/intro-draft", { body: { language }, ...(signal ? { signal } : {}) });
       const parsed = result.success ? z.object({ bio: z.string().refine(profileBioWithinLimit) }).safeParse(result.data) : null;

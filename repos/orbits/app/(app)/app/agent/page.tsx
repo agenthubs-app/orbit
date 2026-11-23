@@ -17,6 +17,7 @@ import { auth } from "../../../../auth";
 import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/authenticated-actor";
 import { redirect } from "next/navigation";
 import { IOrbit2026 } from "./iorbit-2026/IOrbit2026";
+import { agentV1EntryEnabled } from "../../../../features/agent-v1/entry/mode";
 import { loadAppProfileRouteViewModel } from "../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 
 export type AppAgentSearchParams = {
@@ -80,6 +81,7 @@ export default async function AppAgentPage({
       <div data-orbit-route="app-agent-route">
           <IOrbit2026
             accountName={accountName}
+            agentV1={agentV1EntryEnabled()}
             initialHistoryOpen={
               firstSearchParam(resolvedSearchParams, "history") === "1"
             }

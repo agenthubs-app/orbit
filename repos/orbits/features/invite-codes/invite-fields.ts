@@ -10,6 +10,7 @@
 import type { InviteSharedFieldKey, InviteSharedFields } from "../../shared/contract/invite-codes";
 import type { LiveRecord, LiveRecordStoreLike } from "../../shared/storage/live-record-store";
 import { ownedByActor } from "../contacts/business-card-contact-match";
+import { nextContactVersion } from "../contacts/contact-version";
 import {
   applyContactFieldValues,
   CONTACT_FIELD_HISTORY_LIMIT,
@@ -156,6 +157,7 @@ async function writeListFields(input: InviteFieldWriteInput, values: Partial<Rec
     else delete payload.publicProfile;
     payload.fieldHistory = history.slice(-CONTACT_FIELD_HISTORY_LIMIT);
     payload.updatedAt = updatedAt;
+    payload.version = nextContactVersion(record.payload);
     const written = await updateRecordIfCurrent({ ...record, payload, updatedAt }, { updatedAt: record.updatedAt, userId: record.userId ?? null });
     if (written) return;
   }

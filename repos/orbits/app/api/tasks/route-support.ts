@@ -60,6 +60,8 @@ export function taskErrorResponse(error: unknown): Response {
       appError = new AppError("CONFLICT", "Task has changed. Reload and try again.");
     } else if (error.code === "TASK_INVALID_PLAN_LINK") {
       appError = new AppError("VALIDATION_ERROR", "Plan link is invalid.");
+    } else if (error.code === "TASK_INVALID_LINK") {
+      appError = new AppError("VALIDATION_ERROR", "A linked event is not available.");
     } else {
       appError = new AppError("CONFLICT", error.message);
     }

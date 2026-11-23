@@ -54,6 +54,71 @@ export type AgentAutomationTrigger =
       minimumImportance: number;
     };
 
+/**
+ * agent-design AG15 (设计稿 §5.3, 附录 E 定时规则): what a rule checks, as capability and parameters — never the text of
+ * a note read when it was made. The card lists these one by one; the dispatcher reads them again at every period.
+ */
+export interface AgentRuleNotify {
+  inApp: boolean;
+  /** The task's own reminder switch (AG16): a period with a result also sends one reminder to the owner's phone and browser. */
+  push: boolean;
+  /**
+   * Written by the first AG16 build only and ignored since: the reminder's sentence follows the language of the task's
+   * results (the run's locale) when it is sent, and switching the reminder drops this field. Kept so older records read.
+   */
+  pushLocale?: "zh" | "en" | "ja";
+}
+
+export interface AgentRuleReference {
+  type: "memo";
+  id: string;
+  /** The name shown on the card; the record is read again by its id at every period. */
+  title?: string;
+}
+
+export type AgentRuleScope =
+  /** Orbit's public events starting in a window counted from the period: the weekend, the next 7 days, the rest of the month. */
+  | { domain: "event"; window: "weekend" | "week" | "month" | "upcoming"; topics?: readonly string[] }
+  /** The owner's contacts, narrowed by code: industry, place, days since the last recorded interaction. */
+  | { domain: "contact"; industries?: readonly string[]; places?: readonly string[]; quietDays?: number }
+  /** The owner's open to-dos past their planned day. */
+  | { domain: "todo"; filter: "past_planned" };
+
+export type AgentRuleRankField = "startsAt" | "lastInteraction" | "dueAt" | "plannedDate";
+
+export interface AgentRuleRanking {
+  /** A record field to order by. */
+  field?: { name: AgentRuleRankField; direction: "asc" | "desc" };
+  /** The user's own words of what makes one fit; a referenced note gives its text at run time instead. */
+  topic?: string;
+}
+
+export interface AgentRuleSpec {
+  /** pick: a list of records for the inbox. replan: a card that moves past-planned to-dos to the day of the period. */
+  action: "pick" | "replan";
+  scope: AgentRuleScope;
+  /** The scope in the user's words, as the card shows it. */
+  scopeText: string;
+  references: readonly AgentRuleReference[];
+  ranking: AgentRuleRanking;
+  /** The ranking basis in one sentence, as the card shows it. */
+  rankingBasis: string;
+  maxItems: number;
+  /** A period with nothing new is only written to the history. */
+  onEmpty: "silent";
+  /** The last local day (YYYY-MM-DD, the schedule's time zone) a period may fall on; null: no end. */
+  validUntil: string | null;
+  notify: AgentRuleNotify;
+  locale: "zh" | "en" | "ja";
+  /**
+   * AG16: the earliest version whose periods still count as "already told". A change of the reminder switch alone makes
+   * a new version but does not change what the task picks, so what it told before is not told again. Not set: this version.
+   */
+  toldFromVersion?: number;
+}
+
+export const AGENT_RULE_MAX_ITEMS = 20;
+
 export interface AgentAutomationRevision {
   version: number;
   capabilityId: string;
@@ -61,6 +126,8 @@ export interface AgentAutomationRevision {
   instruction: string;
   trigger: AgentAutomationTrigger;
   delivery: AgentAutomationDeliveryChannel;
+  /** AG15: the rule's parameters at this version. */
+  rule?: AgentRuleSpec;
   source: "manual" | "natural_language";
   changeNote: string;
   createdAt: string;
@@ -83,7 +150,13 @@ export interface AgentAutomation {
   instruction: string;
   trigger: AgentAutomationTrigger;
   delivery: AgentAutomationDeliveryChannel;
+  /** AG15: present on rules made with the fields of 设计稿 §5.3; absent on older playbooks. */
+  rule?: AgentRuleSpec;
   status: AgentAutomationStatus;
+  /**
+   * AG15: with a due index attached, the next period lives there (the dispatcher never rewrites this record for a
+   * run); this value is then only what was computed when the rule was last written.
+   */
   nextRunAt: string | null;
   lastRun: AgentAutomationRunOutcome | null;
   runCount: number;
@@ -107,11 +180,17 @@ export interface AgentAutomationRecordPayload extends Record<string, unknown> {
 }
 
 export interface CreateAgentAutomationInput {
+  /**
+   * AG15: set only by server code that needs a replay to find the same rule (a card's executor derives it from its
+   * operation key). Never taken from a request body. A rule with this id that exists already is returned as it is.
+   */
+  automationId?: string;
   capabilityId: string;
   title: string;
   instruction: string;
   trigger: AgentAutomationTrigger;
   delivery: AgentAutomationDeliveryChannel;
+  rule?: AgentRuleSpec;
   source?: "manual" | "natural_language";
 }
 
@@ -121,6 +200,7 @@ export interface UpdateAgentAutomationInput {
   instruction?: string;
   trigger?: AgentAutomationTrigger;
   delivery?: AgentAutomationDeliveryChannel;
+  rule?: AgentRuleSpec;
   status?: "active" | "paused";
   source?: "manual" | "natural_language";
   changeNote?: string;
@@ -226,6 +306,11 @@ function zonedParts(instantMs: number, timeZone: string): ZonedParts {
   };
 }
 
+/**
+ * The instant a local wall-clock time stands for (agent-design AG15, PLANNER 易错边界 3). A local time that occurs
+ * twice (clocks set back) is its first occurrence, so a rule runs once that day; one that does not exist (clocks set
+ * forward) is moved on by the width of the gap (02:30 → 03:30), so the period is not lost.
+ */
 function zonedLocalToInstant(
   local: ZonedParts,
   timeZone: string,
@@ -237,23 +322,42 @@ function zonedLocalToInstant(
     local.hour,
     local.minute,
   );
-  let candidate = targetAsUtc;
-
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const observed = zonedParts(candidate, timeZone);
-    const observedAsUtc = Date.UTC(
-      observed.year,
-      observed.month - 1,
-      observed.day,
-      observed.hour,
-      observed.minute,
+  const offsetAt = (instant: number) => {
+    const observed = zonedParts(instant, timeZone);
+    return (
+      Date.UTC(
+        observed.year,
+        observed.month - 1,
+        observed.day,
+        observed.hour,
+        observed.minute,
+      ) - instant
     );
-    const correction = targetAsUtc - observedAsUtc;
-    candidate += correction;
-    if (correction === 0) break;
+  };
+  // The offsets in force a day before and a day after cover any single transition around this local time.
+  const offsets = [
+    ...new Set([
+      offsetAt(targetAsUtc - 86_400_000),
+      offsetAt(targetAsUtc + 86_400_000),
+    ]),
+  ];
+  const matching = offsets
+    .map((offset) => targetAsUtc - offset)
+    .filter((instant) => offsetAt(instant) === targetAsUtc - instant)
+    .sort((left, right) => left - right);
+  if (matching.length > 0) return matching[0];
+  // AG21c (decision D5): in the gap (clocks went forward, so the offset grew) the task runs at the first valid minute after
+  // it (02:30 → 03:00): the instant of the change, found between the two readings of the local time.
+  const after = Math.max(...offsets);
+  let early = targetAsUtc - after;
+  let late = targetAsUtc - Math.min(...offsets);
+  while (late - early > 60_000) {
+    const middle = early + Math.floor((late - early) / 120_000) * 60_000;
+    if (middle <= early) break;
+    if (offsetAt(middle) === after) late = middle;
+    else early = middle;
   }
-
-  return candidate;
+  return late;
 }
 
 function weekdayForLocalDate(input: Pick<ZonedParts, "year" | "month" | "day">) {
@@ -363,4 +467,101 @@ export function nextAgentAutomationRunAt(
   }
 
   throw new Error("Unable to resolve the next automation occurrence.");
+}
+
+/** The local day (YYYY-MM-DD) of an instant in a time zone. */
+export function agentAutomationLocalDay(instant: string, timeZone: string): string {
+  const parts = zonedParts(requireInstant(instant, "Instant"), requireTimeZone(timeZone));
+  return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
+}
+
+/** The instant a local day starts at in a time zone (00:00 wall clock; moved on when that time does not exist). */
+export function agentAutomationDayStart(day: string, timeZone: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!match) throw new Error("A local day must use YYYY-MM-DD.");
+  return new Date(
+    zonedLocalToInstant(
+      { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]), hour: 0, minute: 0 },
+      requireTimeZone(timeZone),
+    ),
+  ).toISOString();
+}
+
+export function agentAutomationScheduleTimeZone(schedule: AgentAutomationSchedule): string {
+  return schedule.kind === "once" ? "UTC" : schedule.timeZone;
+}
+
+/** Whether a period at this instant is still inside the rule's validity (its last local day included). */
+export function agentRulePeriodValid(
+  schedule: AgentAutomationSchedule,
+  validUntil: string | null | undefined,
+  scheduledAt: string,
+): boolean {
+  if (!validUntil) return true;
+  return agentAutomationLocalDay(scheduledAt, agentAutomationScheduleTimeZone(schedule)) <= validUntil;
+}
+
+/**
+ * The next period after `after` that is still valid, or null when the rule has run out (a one-off that fired, or a
+ * recurring rule past its last day).
+ */
+export function nextAgentRulePeriod(
+  schedule: AgentAutomationSchedule,
+  validUntil: string | null | undefined,
+  after: string,
+): string | null {
+  const next = nextAgentAutomationRunAt(schedule, after);
+  return next && agentRulePeriodValid(schedule, validUntil, next) ? next : null;
+}
+
+/**
+ * Catch-up after an interruption (设计稿 §5.3: 只补最近一期): of the periods from `firstDue` up to `now`, only the
+ * latest is run; the others are counted as skipped and written to that run's history line.
+ */
+export function latestDueAgentRulePeriod(
+  schedule: AgentAutomationSchedule,
+  validUntil: string | null | undefined,
+  firstDue: string,
+  now: string,
+): { scheduledAt: string; skipped: number; skippedAt: string[] } | null {
+  const nowMs = requireInstant(now, "Comparison time");
+  if (requireInstant(firstDue, "First due period") > nowMs) return null;
+  if (!agentRulePeriodValid(schedule, validUntil, firstDue)) return null;
+  let latest = new Date(firstDue).toISOString();
+  let skipped = 0;
+  // The planned times passed over, oldest first (the history names them; only the first few are kept).
+  const skippedAt: string[] = [];
+  // Bounded: a daily rule left for ten years is 3,650 periods.
+  for (let step = 0; step < 4_000; step += 1) {
+    const next = nextAgentRulePeriod(schedule, validUntil, latest);
+    if (!next || Date.parse(next) > nowMs) break;
+    if (skippedAt.length < 12) skippedAt.push(latest);
+    latest = next;
+    skipped += 1;
+  }
+  return { scheduledAt: latest, skipped, skippedAt };
+}
+
+/** How a rule tells its owner (older playbooks keep one `delivery` value; it reads as this). */
+export function agentAutomationNotify(
+  automation: Pick<AgentAutomation, "delivery" | "rule">,
+): AgentRuleNotify {
+  return automation.rule?.notify ?? { inApp: true, push: automation.delivery === "push" };
+}
+
+export function validateAgentRuleSpec(rule: AgentRuleSpec): void {
+  if (rule.action !== "pick" && rule.action !== "replan") throw new Error("A rule must pick records or re-plan to-dos.");
+  if (!rule.scope || !["event", "contact", "todo"].includes(rule.scope.domain)) throw new Error("A rule needs a candidate scope.");
+  if (rule.action === "replan" && rule.scope.domain !== "todo") throw new Error("Only to-dos can be re-planned by a rule.");
+  if (!Number.isInteger(rule.maxItems) || rule.maxItems < 1 || rule.maxItems > AGENT_RULE_MAX_ITEMS) {
+    throw new Error(`A rule lists from 1 to ${AGENT_RULE_MAX_ITEMS} items.`);
+  }
+  if (rule.validUntil !== null && !/^\d{4}-\d{2}-\d{2}$/.test(rule.validUntil)) throw new Error("A rule's last day must use YYYY-MM-DD.");
+  if (!rule.scopeText?.trim() || !rule.rankingBasis?.trim()) throw new Error("A rule needs its scope and ranking basis in words.");
+  if (rule.action === "pick" && !rule.ranking.field && !rule.ranking.topic && rule.references.length === 0) {
+    throw new Error("A rule that picks records needs a ranking basis: a field, a topic or a referenced note.");
+  }
+  if (!rule.notify || rule.notify.inApp !== true) throw new Error("A rule's results always go to the in-app inbox.");
+  if (rule.references.some((reference) => reference.type !== "memo" || !reference.id?.trim())) throw new Error("A rule may reference notes only.");
+  if (!["zh", "en", "ja"].includes(rule.locale)) throw new Error("A rule's language must be zh, en or ja.");
 }

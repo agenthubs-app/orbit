@@ -1,0 +1,403 @@
+# 夹具世界 regular-v1：常规账号。全部是合成数据，人物、公司、网址都是虚构的。
+# 与 base-v1、large-v1 互相独立，人物和故事都不共用。本文件的编号一律以 R 开头。
+# 锚点记录逐条写在 anchors 里，用例用编号指认；其余记录由 AG00 的生成器按 bulk 的规则和固定种子生成。
+
+version: regular-v1
+clock: "2026-11-15T10:00:00+09:00"   # 周日
+timezone: Asia/Tokyo
+
+# 日历备查：10-17 周六，11-07 周六，11-08 周日，11-09 周一，11-10 周二，11-12 周四，11-13 周五，
+# 11-14 周六，11-15 周日，11-16 周一，11-17 周二，11-18 周三，11-19 周四，11-20 周五，11-21 周六，
+# 11-22 周日，11-23 周一，11-24 周二，11-27 周五，11-28 周六，11-29 周日，12-12 周六。
+
+accounts:
+  R: { name: 测试用户丙, workspace: WR, locale: zh, role: "常规账号。经营一个进口日本茶器的小品牌；平时写中文，和日本的窑、茶铺用日语，和海外买手用英语" }
+  B: { name: 测试用户乙, workspace: W2, locale: zh, role: "只用来检验隔离，与 base-v1 的账号乙是同一个；本文件给它加的记录见 anchors.account_B" }
+
+defaults:
+  settings: { web: on, memory_use: on, memory_learn: off, judgment: on }
+
+conventions:
+  turn: "一轮是一条用户消息加紧随其后的一条助手回复。第 n 轮对应第 2n-1、2n 条消息；最近 10 条消息就是最后 5 轮"
+  default_sort:
+    contacts: "最近更新的在前（updatedAt 由新到旧），同一时刻按编号"
+    memos: "发生时间由新到旧，没有发生时间的用创建时间"
+    todos: "先按截止时间由近到远，再按计划日；两者都没有的排最后"
+    schedule: "按开始时间"
+    platform_events: "按开始时间，时间未公布的排最后"
+  page_size: "各读取接口单页不超过 50 条。标了“第一页之外”的锚点，在默认排序里都排在第 60 位之后"
+  links: "Todo 的多值关联写作 relatedContactIds、relatedEventRefs（设计稿附录 E）；Memo 和日程的活动关联写作 eventRefs"
+  ids: "锚点用两位序号（RC01）；批量记录从 1001 起（RC1001），两者不重叠"
+
+# 第 11 节规定的数量。anchors_plus_bulk 写的是 [锚点数, 批量数]，两者相加等于总数。
+scale:
+  contacts: 300
+  memos: 400
+  todos: { total: 120, formal_followups: 20 }
+  schedule: { total: 80, recurring_series: 8 }
+  private_events: 12
+  platform_events: { total: 60, related_to_me: 25 }
+  memory: 12
+  conversations: { total: 15, longest_turns: 40 }
+  anchors_plus_bulk:
+    contacts: [15, 285]
+    memos: [18, 382]
+    todos_plain: [8, 92]
+    formal_followups: [7, 13]
+    schedule: [3, 77]
+    private_events: [1, 11]
+    platform_events: [9, 51]
+    related_to_me: [2, 23]
+    memory: [12, 0]
+    conversations: [1, 14]
+
+# 批量记录的生成规则。同一个种子每次生成的结果相同。
+bulk:
+  seed: 261115
+  languages: { zh: 0.6, ja: 0.25, en: 0.15 }
+  contacts:
+    count: 285
+    ids: "RC1001 到 RC1285"
+    name_pools:
+      zh_surnames: [赵, 钱, 孙, 郑, 冯, 褚, 蒋, 沈, 韩, 杨, 朱, 秦, 何, 吕, 施, 孔, 曹, 严, 华, 金, 魏, 陶, 姜]
+      ja_surnames: [井上, 木村, 清水, 山崎, 池田, 橋本, 阿部, 石井, 山下, 前田, 藤田, 岡田, 長谷川, 村上, 近藤]
+      en_given: [Alex, Jordan, Morgan, Casey, Riley, Avery, Quinn, Rowan, Devon, Harper]
+      en_surnames: [Fischer, Novak, Okafor, Haddad, Moreau, Petrov, Castillo, Lindholm, Ferrand, Whitlock]
+    mix: { zh: 0.45, ja: 0.40, en: 0.15 }
+    industries: [零售, 餐饮, 茶饮, 陶艺, 设计, 物流, 会展, 媒体]
+    regions: [东京, 横滨, 京都, 大阪, 栃木, 上海, 杭州, 台北, 波特兰, 伦敦]
+    rules:
+      - "RC1001 到 RC1019 这 19 位的地区是东京、行业是零售；其余批量联系人不同时是东京和零售"
+      - "updatedAt 落在 2026-01-01 到 2026-11-14 之间"
+      - "八成有往来记录，最近一次往来在时钟之前 400 天以内；两成没有往来记录"
+      - "每位都有邮箱和电话，格式为 <编号小写>@bulk.example.test 和 +81-90-7000-<四位序号>"
+      - "全名不与任何锚点联系人相同，也不与另一位批量联系人相同"
+  memos:
+    count: 382
+    ids: "RM1001 到 RM1382"
+    date_range: ["2025-06-01", "2026-11-14"]
+    over_time: "2025 年 6 月到 12 月每月 10 篇；2026 年 1 月到 10 月每月 29 篇；2026 年 11 月 1 日到 14 日共 22 篇"
+    over_contacts:
+      - "100 篇只关联 RC01（松本彩）：7 篇在 2025-06-01 到 2025-12-07 之间，93 篇在 2025-12-09 到 2026-11-14 之间"
+      - "其余 282 篇各关联 0 到 2 位批量联系人，同一位批量联系人不超过 12 篇"
+      - "除 RC01 外，批量笔记不关联任何锚点联系人，也不关联任何锚点活动"
+    rules:
+      - "三成带往来字段，实际对象是它关联的联系人之一"
+      - "正文一到三句，讲订单数量、付款、拜访、展位、物流时效、库存这类事"
+      - "正文里不出现邮箱、电话和网址"
+      - "标题不与任何锚点笔记的标题相同或只差括号里的字"
+  todos:
+    plain: { count: 92, ids: "RT1001 到 RT1092", open: 19, completed: 73 }
+    formal_followups: { count: 13, ids: "RF1001 到 RF1013", open: 4, completed: 9 }
+    rules:
+      - "未完成的普通待办：14 条的计划日或截止时间在 2026-11-16 到 2026-12-31 之间，5 条两者都没有"
+      - "未完成的正式跟进：截止时间都在 2026-11-23 到 2026-12-20 之间，没有空的截止时间"
+      - "已完成的普通待办和正式跟进：完成时间在 2025-09-01 到 2026-11-14 之间"
+      - "只关联批量联系人，每条 0 到 1 位；两成另关联一场批量平台活动"
+  schedule:
+    count: 77
+    ids: "RS1001 到 RS1077"
+    series: { count: 6, ids: "RS1001 到 RS1006", titles: [晨间盘点, 月度对账, 仓库整理, 英语课, 瑜伽, 家庭晚餐] }
+    singles: { count: 71, date_range: ["2026-09-01", "2026-12-31"] }
+    rules:
+      - "2026-11-16 这一天没有批量日程"
+      - "只关联批量联系人"
+  private_events:
+    count: 11
+    ids: "RP1001 到 RP1011"
+    date_range: ["2025-12-01", "2027-03-31"]
+    rules:
+      - "不落在 2026-11-21、11-22、11-28、11-29"
+  platform_events:
+    count: 51
+    ids: "RE1001 到 RE1051"
+    date_range: ["2026-09-01", "2027-03-31"]
+    topics: [咖啡, 烘焙, 植物, 手账, 古着, 独立书店, 香氛, 木工]
+    rules:
+      - "RE1001 到 RE1005 这 5 场在 2026-11-21 或 11-22 开始：3 场在 10:00 到 16:00 之间，2 场在 18:00 之后"
+      - "没有任何批量活动在 2026-11-28 或 11-29 开始"
+      - "每场都有开始时间"
+      - "与本人有关的 23 场都在 2026-11-15 之前开始，状态为已报名或已参加"
+  conversations:
+    count: 14
+    ids: "RCV1001 到 RCV1014"
+    rules:
+      - "每段 2 到 18 轮，最后活动时间早于 2026-11-14 22:00"
+      - "结束时没有未答的追问，也没有未决的卡"
+  must_not_produce:
+    surnames: [松本, 中村, 森田, 石川, 大野, 西村, 吴, 梁, 许, 顾, 小林, 陈, 田中, 李, 山本, 佐藤, 王]
+    en_names: [Hannah, Hanna, Brooks, Brooke, Emily, Carter]
+    orgs: [青岚窑, 港町咖啡, 白鹭百货, 汐见物流, 拾野, 彤云, Fernway, "Brooke & Lark", 山吹茶舗, 东京手作市集, 南窗茶空间, 器と暮らし, 日々の器, つむぎ, Kasane, Kasumi]
+    words: [灰釉, 柴烧, 柴窑, 薪窯, 薪窑, wood-fired, 金缮, 茶道具, 器物, 陶器市, 选品方向, 包材报价, 缓冲箱, 寄样, 样品, 搬入, 出品リスト, 结款, 确认运费, 报价单, 周会, 交期]
+    note: "以上不出现在任何批量记录的姓名、机构、标题、正文、标签和主题里。批量平台活动的主题另外不含“茶”“陶器”“日本酒”"
+  facts:
+    contacts_tokyo_retail: { count: 22, members: "RC13、RC14、RC15 加 RC1001 到 RC1019" }
+    memos_linked_to_RC01: { count: 104, anchors: [RM05, RM07, RM08, RM15], note: "按由新到旧排，RM05 排第 97 位" }
+    memos_with_word_灰釉: [RM05, RM06, RM07, RM08]
+    open_todos: { total: 37, plain: 27, formal_followups: 10 }
+    followups_overdue_or_due_by_2026-11-22: { count: 5, members: [RF01, RF02, RF03, RF04, RF05] }
+    platform_events_starting_2026-11-21_or_22: { count: 9, members: "RE03、RE04、RE05、RE09 加 RE1001 到 RE1005" }
+    platform_events_starting_2026-11-28_or_29: { count: 0 }
+
+anchors:
+  contacts:
+    - { id: RC01, name: 松本彩, org: 青岚窑, role: 窑主, industry: 陶艺, region: 栃木, email: aya@seiran-kiln.example.test, phone: "+81-90-5550-0101", tags: [柴烧, 供应方], notes: "益子的柴窑，每年春、秋各烧一次", version: 4, updatedAt: "2026-10-02T11:00:00+09:00" }
+    - { id: RC02, name: 松本大輔, org: 港町咖啡, role: 采购负责人, industry: 餐饮, region: 横滨, email: daisuke@minatomachi-coffee.example.test, phone: "+81-90-5550-0102", version: 2, updatedAt: "2026-11-10T17:25:00+09:00" }
+    - { id: RC03, name: 松本和也, org: 白鹭百货, role: 家居馆买手, industry: 零售, region: 京都, email: kazuya@shirasagi-dept.example.test, phone: "+81-90-5550-0103", version: 2, updatedAt: "2026-11-08T15:10:00+09:00" }
+    - { id: RC04, name: 松本千夏, org: 汐见物流, role: 报关专员, industry: 物流, region: 东京, version: 1, updatedAt: "2026-07-21T10:00:00+09:00" }
+    - { id: RC05, name: 吴晓彤, org: 拾野选物店, role: 店长, industry: 零售, region: 上海, version: 3, updatedAt: "2026-06-10T14:00:00+09:00", note: "资料停在 6 月，比 RM04 旧" }
+    - { id: RC06, name: Hannah Brooks, org: Fernway Goods, role: Wholesale Buyer, industry: 零售, region: 波特兰, email: hannah@fernway-goods.example.test, version: 2, updatedAt: "2026-11-09T09:30:00+09:00" }
+    - { id: RC07, name: Hanna Brooke, org: "Brooke & Lark Tea", role: Founder, industry: 茶饮, region: 伦敦, version: 1, updatedAt: "2026-05-19T18:00:00+09:00" }
+    - { id: RC08, name: 中村理沙, org: 山吹茶舗, role: 営業担当, industry: 茶饮, region: 京都, version: 2, updatedAt: "2026-11-12T16:00:00+09:00" }
+    - { id: RC09, name: 森田悠, org: 东京手作市集事务局, role: 招商负责人, industry: 会展, region: 东京, version: 1, updatedAt: "2026-10-20T12:00:00+09:00" }
+    - { id: RC10, name: 梁思齐, org: 南窗茶空间, role: 主理人, industry: 茶饮, region: 台北, version: 1, updatedAt: "2026-09-15T12:00:00+09:00" }
+    - { id: RC11, name: 许嘉宁, org: 自由职业, role: 包装设计师, industry: 设计, region: 上海, version: 1, updatedAt: "2026-10-05T19:00:00+09:00" }
+    - { id: RC12, name: 顾远, org: 拾野选物店, role: 采购, industry: 零售, region: 上海, version: 1, updatedAt: "2026-11-11T10:00:00+09:00" }
+    - { id: RC13, name: 石川結衣, org: 器と暮らし 谷中店, role: 店主, industry: 零售, region: 东京, tags: [柴烧, 器物店], notes: "2026 年 4 月在店里办过柴烧器物展", version: 1, updatedAt: "2025-08-12T10:00:00+09:00" }
+    - { id: RC14, name: 大野誠, org: 日々の器 吉祥寺, role: 买手, industry: 零售, region: 东京, tags: [柴烧], notes: "去年进过青岚窑的柴烧杯，卖得不错", version: 1, updatedAt: "2025-08-05T10:00:00+09:00" }
+    - { id: RC15, name: 西村美帆, org: 茶と器 つむぎ, role: 店长, industry: 零售, region: 东京, tags: [柴烧, 茶道具], notes: "店里常设柴烧茶道具专柜", version: 1, updatedAt: "2025-07-28T10:00:00+09:00" }
+
+  memos:
+    - id: RM01
+      version: 1
+      createdAt: "2026-11-10T17:20:00+09:00"
+      contactIds: [RC02]
+      body: "松本大輔来电：港町咖啡的新店 12 月 5 日开业，样品最晚 11 月 27 日要送到元町店。"
+      interaction: { actualContactIds: [RC02], channel: phone, direction: incoming, occurredOn: "2026-11-10", precision: day }
+    - id: RM02
+      version: 1
+      createdAt: "2026-11-08T15:00:00+09:00"
+      contactIds: [RC03]
+      body: "和松本和也见面。白鹭百货冬季陈列的样品 12 月 10 日前送到京都店即可。"
+      interaction: { actualContactIds: [RC03], channel: meeting, direction: mutual, occurredOn: "2026-11-08", precision: day }
+    - { id: RM03, version: 1, createdAt: "2026-09-02T20:00:00+09:00", contactIds: [RC05], body: "晓彤说拾野选物店十月要调整架构，她可能升任区域经理。" }
+    - { id: RM04, version: 1, createdAt: "2026-11-06T21:00:00+09:00", contactIds: [RC05, RC12], body: "晓彤已经从拾野选物店离职，自己开了彤云茶室，11 月 22 日试营业。以后选品直接找她本人；拾野那边改由顾远对接。" }
+    - id: RM05
+      version: 1
+      locale: ja
+      createdAt: "2025-12-08T18:00:00+09:00"
+      contactIds: [RC01]
+      body: "益子で松本彩さんと打ち合わせ。灰釉の湯呑みは春の薪窯まで待ってほしいとのこと。サンプルは3月になる見込み。"
+      interaction: { actualContactIds: [RC01], channel: meeting, direction: mutual, occurredOn: "2025-12-08", precision: day }
+      note: "第一次谈灰釉。在松本彩的 104 篇笔记里按由新到旧排第 97 位"
+    - { id: RM06, version: 1, createdAt: "2025-11-20T16:00:00+09:00", contactIds: [RC03], body: "松本和也问有没有灰釉的茶碗，想放进白鹭百货的冬季陈列。" }
+    - { id: RM07, version: 1, createdAt: "2026-03-18T13:00:00+09:00", contactIds: [RC01], body: "松本彩寄来第一批灰釉汤吞的样品，釉色比预想的深。" }
+    - { id: RM08, version: 1, createdAt: "2026-08-27T17:00:00+09:00", contactIds: [RC01], body: "和松本彩确认秋季订单：灰釉汤吞 60 只，10 月底交货。" }
+    - { id: RM09, version: 1, createdAt: "2026-08-20T11:00:00+09:00", title: 包材报价, body: "Kasane Pack 的销售远藤说，S 号缓冲箱可以给到每个 150 日元，100 个起订。" }
+    - { id: RM10, version: 1, createdAt: "2026-11-04T15:00:00+09:00", title: 包材报价（更新）, body: "Kasane Pack 来电：原料涨价，S 号缓冲箱改为每个 165 日元，之前说的 150 日元不再有效，起订量不变。" }
+    - { id: RM11, version: 1, createdAt: "2026-10-15T11:00:00+09:00", title: 包材报价（Kasumi Box）, body: "Kasumi Box 的 S 号箱每个 140 日元，但要 500 个起订。" }
+    - { id: RM12, version: 2, createdAt: "2026-11-02T22:00:00+09:00", title: 选品方向, body: "明年春季的选品方向：柴烧器物、茶道具、金缮修复过的旧器。想多看相关的展和工作坊。" }
+    - { id: RM13, version: 1, createdAt: "2026-05-10T22:00:00+09:00", title: 选品方向, body: "今年秋季的选品方向：玻璃器、北欧风餐具、花器。" }
+    - { id: RM14, version: 1, createdAt: "2026-10-28T23:00:00+09:00", title: 选品方向（草稿）, body: "还在犹豫春季要不要加漆器，先放着。" }
+    - id: RM15
+      version: 2
+      locale: ja
+      createdAt: "2026-11-12T16:30:00+09:00"
+      title: 中村さんと電話
+      contactIds: [RC08, RC01, RC09]
+      eventRefs: [ { kind: platform, id: RE01 }, { kind: private, id: RP01 } ]
+      body: "11月12日、中村さんから電話。新茶試飲会のお礼も伝えた。益子陶器市のブースは松本彩さんの隣になるとのこと。森田さんには中村さんが別途連絡済みだそうだ。私は11月18日までに出品リストを中村さんに送ると約束した。松本さんには来週あたり連絡しようと思う。"
+      note: "关联 3 位联系人和 2 场活动；实际往来只有中村理沙来电这一次。还没有往来字段"
+    - { id: RM16, version: 1, createdAt: "2026-10-05T12:00:00+09:00", title: 选品周会纪要, contactIds: [RC11, RC12], body: "周会结论：春季先做小批量试卖；许嘉宁负责包装打样，顾远汇总拾野的销售数据。" }
+    - id: RM17
+      version: 1
+      locale: en
+      createdAt: "2026-11-09T09:20:00+09:00"
+      contactIds: [RC06]
+      body: "Call with Hannah Brooks. Fernway wants a second sample box before Thanksgiving. She will confirm quantities by November 20."
+      interaction: { actualContactIds: [RC06], channel: phone, direction: outgoing, occurredOn: "2026-11-09", precision: day }
+    - { id: RM18, version: 1, createdAt: "2026-11-11T10:00:00+09:00", contactIds: [RC12], body: "拾野的秋季结款还没催，顾远说月中会安排。" }
+
+  todos:
+    - { id: RT01, title: 给港町咖啡寄样品, status: open, plannedDate: "2026-11-17", dueAt: null, relatedContactIds: [RC02], updatedAt: "2026-11-10T17:30:00+09:00" }
+    - { id: RT02, title: 给港町咖啡寄样品（第二批）, status: open, plannedDate: "2026-11-18", dueAt: null, relatedContactIds: [RC02], updatedAt: "2026-11-10T17:32:00+09:00" }
+    - { id: RT03, title: 给港町咖啡寄样品册, status: open, plannedDate: "2026-11-24", dueAt: null, relatedContactIds: [RC02], updatedAt: "2026-11-10T17:34:00+09:00" }
+    - { id: RT04, title: 益子陶器市の搬入を手配する, status: open, plannedDate: null, dueAt: "2026-11-18T18:00:00+09:00", relatedContactIds: [RC01, RC09], relatedEventRefs: [ { kind: platform, id: RE01 } ], updatedAt: "2026-11-05T10:00:00+09:00" }
+    - { id: RT05, title: 益子陶器市の搬入を手配する（什器）, status: open, plannedDate: null, dueAt: "2026-11-20T12:00:00+09:00", relatedContactIds: [RC09], relatedEventRefs: [ { kind: platform, id: RE01 } ], updatedAt: "2026-11-05T10:05:00+09:00" }
+    - { id: RT06, title: 出品リストを中村さんに送る, status: open, plannedDate: null, dueAt: "2026-11-18T23:59:00+09:00", relatedContactIds: [RC08], source: { memoId: RM15, memoVersion: 2 }, updatedAt: "2026-11-12T16:40:00+09:00" }
+    - { id: RT07, title: 出品リストを森田さんに送る, status: open, plannedDate: null, dueAt: "2026-11-25T18:00:00+09:00", relatedContactIds: [RC09], updatedAt: "2026-11-06T09:00:00+09:00" }
+    - { id: RT08, title: 跟进白鹭百货冬季陈列（样品）, status: open, plannedDate: null, dueAt: "2026-11-09T18:00:00+09:00", relatedContactIds: [RC03], updatedAt: "2026-11-02T09:00:00+09:00", note: "普通待办，不是正式跟进；已过期 6 天" }
+
+  formal_followups:
+    - { id: RF01, contactId: RC10, title: 跟进南窗茶空间的年度订单, dueAt: "2026-11-10T18:00:00+09:00", status: open, note: 已过期 5 天 }
+    - { id: RF02, contactId: RC03, title: 跟进白鹭百货冬季陈列, dueAt: "2026-11-13T18:00:00+09:00", status: open, note: 已过期 2 天 }
+    - { id: RF03, contactId: RC06, title: "Follow up on Fernway's second sample box", dueAt: "2026-11-14T18:00:00+09:00", status: open, note: 已过期 1 天 }
+    - { id: RF04, contactId: RC08, title: 山吹茶舗の新茶サンプルをフォローする, dueAt: "2026-11-17T18:00:00+09:00", status: open }
+    - { id: RF05, contactId: RC02, title: 跟进港町咖啡新店订单, dueAt: "2026-11-20T18:00:00+09:00", status: open }
+    - { id: RF06, contactId: RC12, title: 跟进拾野的秋季结款, dueAt: "2026-11-12T18:00:00+09:00", status: completed, completedAt: "2026-11-14T11:00:00+09:00", note: "已完成，而 RM18 还写着没催" }
+    - { id: RF07, contactId: RC09, title: 跟进手作市集摊位确认, dueAt: null, status: open, note: 没有截止时间 }
+
+  schedule:
+    - { id: RS01, title: 选品周会, startsAt: "2026-11-16T10:00:00+09:00", endsAt: "2026-11-16T11:00:00+09:00", timeZone: Asia/Tokyo, recurrence: { frequency: weekly }, contactIds: [RC11, RC12], memoIds: [RM16], note: "每周一，系列从 2026-09-07 开始" }
+    - { id: RS02, title: 选品周会（线上）, startsAt: "2026-11-19T20:00:00+09:00", endsAt: "2026-11-19T20:45:00+09:00", timeZone: Asia/Tokyo, recurrence: { frequency: weekly }, contactIds: [RC10], note: 每周四 }
+    - { id: RS03, title: 港町咖啡看样, startsAt: "2026-11-18T14:00:00+09:00", endsAt: "2026-11-18T15:00:00+09:00", timeZone: Asia/Tokyo, contactIds: [RC02] }
+
+  private_events:
+    - { id: RP01, title: 山吹茶舗 新茶試飲会, startsAt: "2026-11-07T14:00:00+09:00", venue: 京都, version: 1 }
+
+  attendance:
+    - { id: RA01, eventRef: { kind: private, id: RP01 }, attendedOn: "2026-11-07", dayParts: [afternoon], selfNote: 试了三款新茶，和中村聊了春季合作, version: 1 }
+
+  platform_events:
+    - { id: RE01, title: 益子陶器市 2026 秋, startsAt: "2026-11-23T09:00:00+09:00", venue: 益子, topics: [陶器, 市集], fee: 免费 }
+    - { id: RE02, title: 益子陶器市 2027 春, startsAt: "2027-04-29T09:00:00+09:00", venue: 益子, topics: [陶器, 市集], fee: 免费 }
+    - { id: RE03, title: 柴烧器物展, startsAt: "2026-11-21T10:00:00+09:00", venue: 青山, topics: [柴烧, 器物], fee: 免费 }
+    - { id: RE04, title: 金缮入门工作坊, startsAt: "2026-11-22T13:00:00+09:00", venue: 藏前, topics: [金缮], fee: 4500 日元 }
+    - { id: RE05, title: 茶道具市集, startsAt: "2026-11-21T14:00:00+09:00", venue: 神乐坂, topics: [茶道具, 市集], fee: 免费 }
+    - { id: RE06, title: 柴烧器物展, startsAt: "2026-10-17T10:00:00+09:00", venue: 青山, topics: [柴烧, 器物], fee: 免费, note: 同名的上一期，已经办完 }
+    - { id: RE07, title: 柴烧器物展·冬季场, startsAt: "2026-12-12T10:00:00+09:00", venue: 青山, topics: [柴烧, 器物], fee: 1000 日元 }
+    - { id: RE08, title: 茶器交流会, startsAt: null, venue: 待定, topics: [茶道具], note: 时间未公布 }
+    - { id: RE09, title: 器と酒の夕べ, startsAt: "2026-11-21T19:00:00+09:00", venue: 中目黑, topics: [器物, 日本酒], fee: 3000 日元 }
+
+  my_events:
+    - { eventId: RE01, status: registered }
+    - { eventId: RE06, status: attended }
+
+  # 12 条记忆全部手写。appliesTo 写的是任务类型：event.recommend 推荐活动，contact.recommend 推荐或挑选联系人，
+  # memo.summarize 整理笔记，todo.plan 安排待办，schedule.plan 安排日程，all 不限。
+  memory:
+    - { id: RMM01, category: constraint, content: 不要推荐晚上 18 点以后开始的活动, appliesTo: [event.recommend], revision: 1 }
+    - { id: RMM02, category: constraint, content: 回答里的日期都带上星期, appliesTo: [all], revision: 2 }
+    - { id: RMM03, category: constraint, content: 不要把没和我做过生意的人推荐成供应方, appliesTo: [contact.recommend], revision: 1 }
+    - { id: RMM04, category: preference, content: 推荐活动时优先和器物、茶有关的, appliesTo: [event.recommend], structured: { topics: [器物, 茶], strength: prefer }, revision: 1 }
+    - { id: RMM05, category: preference, content: 推荐活动时优先平日晚上, appliesTo: [event.recommend], validUntil: "2026-09-30", revision: 1, note: "已过有效期，不该再用" }
+    - { id: RMM06, category: preference, content: 整理笔记时先列结论再列细节, appliesTo: [memo.summarize], revision: 1 }
+    - { id: RMM07, category: preference, content: 安排待办时把要跑邮局的事排在上午, appliesTo: [todo.plan], revision: 1 }
+    - { id: RMM08, category: preference, content: 推荐联系人时优先半年内见过面的, appliesTo: [contact.recommend], revision: 1 }
+    - { id: RMM09, category: goal, content: 明年春天前找到两家新的窑, appliesTo: [contact.recommend], revision: 1 }
+    - { id: RMM10, category: goal, content: 年底前把包材成本降一成, appliesTo: [todo.plan], revision: 1 }
+    - { id: RMM11, category: identity, content: 我经营一个进口日本茶器的小品牌, appliesTo: [contact.recommend, memo.summarize], revision: 1 }
+    - { id: RMM12, category: identity, content: 我常驻东京，每月去一次上海, appliesTo: [schedule.plan], revision: 1 }
+
+  rules:
+    - id: RRU01
+      title: 每周一挑三场那个周末的活动
+      schedule: { kind: weekly, daysOfWeek: [1], time: "09:00", timeZone: Asia/Tokyo }
+      candidateScope: 当周周六、周日开始的平台活动
+      references: [ { type: memo, id: RM12 } ]
+      rankingBasis: 与笔记「选品方向」的主题相关
+      maxItems: 3
+      onEmpty: silent
+      notify: { inApp: true, push: false }
+      status: active
+      version: 1
+      nextRunAt: "2026-11-16T09:00:00+09:00"
+
+  connections:
+    - { id: rconn-claude, client: Claude, scopes: ["memos:read", "proposals:read"] }
+
+  # 加在账号乙名下的引子，用来检验隔离。账号丙的回答、卡片、读取和工具结果里都不该出现。
+  account_B:
+    contacts:
+      - { id: RBC1, name: 松本彩, org: 乙的茶具供应商, role: 窑主 }
+    memos:
+      - { id: RBM1, version: 1, createdAt: "2026-11-10T10:00:00+09:00", contactIds: [RBC1], body: "乙的笔记：松本彩说灰釉系列年底停产。" }
+
+# 五类干扰（README 第 12 节）。anchors 列的是组成这一类的锚点，hard 是难在哪里。
+interference:
+  same_or_similar:
+    anchors: [RC01, RC02, RC03, RC04, RC06, RC07, RT01, RT02, RT03, RT04, RT05, RT06, RT07, RT08, RF02, RM05, RM06, RM09, RM10, RM11, RM12, RM13, RM14, RE01, RE02, RE03, RE06, RE07, RS01, RS02]
+    hard: "四位姓松本的人、两位名字只差一两个字母的英文联系人；标题只差括号的待办和笔记；同名不同期的柴烧器物展和益子陶器市。只说姓或只说标题分不出是哪一条"
+  multi_entity_links:
+    anchors: [RM15, RT04, RS01, RM04, RA01]
+    hard: "RM15 关联 3 位联系人和 2 场活动，但真正通话的只有中村理沙；RT04 关联 2 位联系人和 1 场活动；RS01 关联 2 位联系人和 1 篇笔记。改其中一项时其余关联要原样留着"
+  cross_page:
+    anchors: [RM05, RC13, RC14, RC15, RM17]
+    hard: "松本彩有 104 篇笔记，第一次谈灰釉的 RM05 排第 97 位；RC13 到 RC15 在 300 位联系人的默认排序里排最后三位；全部笔记有 400 篇，一页读不完"
+  old_vs_new:
+    anchors: [RC05, RM03, RM04, RM09, RM10, RF06, RM18, RM12, RM13, RMM04, RMM05]
+    hard: "联系人资料停在 6 月而 11 月的笔记说她已经离职；报价从 150 改到 165；跟进已完成而旧笔记说还没催；同名笔记有春、秋两版；一条偏好已过有效期"
+  long_conversation:
+    anchors: [RCV01]
+    hard: "40 轮：第 3 轮提到松本和也，第 6 轮给过一条“以后每次都建待办”的指令，第 22 轮有一个放弃的请求，第 36 轮起说的是松本大輔，第 38 轮列过一份待办清单"
+
+conversations:
+  - id: RCV01
+    title: 寄样、陈列和市集的杂问
+    turns: 40
+    startedAt: "2026-11-15T08:20:00+09:00"
+    lastActivityAt: "2026-11-15T09:52:00+09:00"
+    language: "以中文为主；第 13 到 15 轮是日语，第 35、36 轮是英语"
+    key_turns:
+      - turn: 1
+        why: 开场
+        user: "今天想把寄样、陈列和市集的几件事一起理一理。"
+        assistant: "好，一件一件来。"
+      - turn: 3
+        why: 很早提过的对象
+        user: "先说个背景：白鹭百货的松本和也想在冬季陈列里放我们的器物，这周要给他回话。"
+        assistant: "明白。需要查他的资料或者你们的往来时，告诉我一声。"
+      - turn: 6
+        why: 几十轮之前的指令
+        user: "以后每次我提到寄样，你都顺手帮我建一条「确认运费」的待办。"
+        assistant: "这件事我不会自动去做。每次需要的时候告诉我，我出一张卡，你点了才会建。"
+      - turn: 14
+        why: 换话题，日语
+        user: "山吹茶舗の中村さんへのお礼メール、どのくらい丁寧に書けばいいでしょうか。"
+        assistant: "取引が続いている相手なら丁寧語を基本にして、冒頭に先日のお礼を一文添えれば十分です。"
+      - turn: 22
+        why: 中途放弃的请求
+        user: "帮我把给港町咖啡的报价单整理成一份……算了，先不弄了。"
+        assistant: "好，这件事先放下，没有做任何改动。"
+      - turn: 29
+        why: 换话题
+        user: "换个话题：益子陶器市那几天住哪儿比较方便？"
+        assistant: "会场附近的住处不多，住在宇都宫再坐早班车过去比较稳妥。"
+      - turn: 36
+        why: 最近提到的联系人
+        at: "2026-11-15T09:40:00+09:00"
+        user: "@松本大輔 is coming to see samples next week. Anything I should prepare?"
+        refs: [ { type: contact, id: RC02, quote: "@松本大輔" } ]
+        assistant: "A short list helps: the pieces you want him to handle, a price sheet, and packaging you would actually ship in."
+        recordRefs: ["contact:RC02"]
+      - turn: 37
+        why: 接着说同一个人
+        user: "他们新店的灯光偏暖，深色釉会不会显脏？"
+        assistant: "暖光下深色釉容易发闷，可以带一两件浅色的做对比，让他在店里的灯下看。"
+      - turn: 38
+        why: 上一份展示过的清单
+        at: "2026-11-15T09:46:00+09:00"
+        user: "列一下给港町咖啡寄样有关的待办。"
+        assistant: "有三条，按计划日排好了。"
+        recordRefs: ["todo:RT01", "todo:RT02", "todo:RT03"]
+      - turn: 39
+        why: 普通讨论
+        user: "寄样用哪家快递比较稳？"
+        assistant: "易碎品选有专门陶瓷件服务的那几家，寄之前先问清保价上限。"
+      - turn: 40
+        why: 收尾
+        at: "2026-11-15T09:52:00+09:00"
+        user: "好，知道了。"
+        assistant: "好的。"
+    state:
+      shownList:
+        shownAtTurn: 38
+        items:
+          - { type: todo, id: RT01, name: 给港町咖啡寄样品 }
+          - { type: todo, id: RT02, name: 给港町咖啡寄样品（第二批） }
+          - { type: todo, id: RT03, name: 给港町咖啡寄样品册 }
+      lastMentioned:
+        - { type: contact, id: RC02, name: 松本大輔, turn: 36 }
+      openItems: []
+    filler:
+      turns: "其余 29 轮"
+      rule: "普通问答：包材、邮件措辞、定价的说法、出差和住宿。用户每条不超过 60 个字，助手每条不超过 120 个字，没有引用，也没有记录编号"
+      must_not: "不出现任何联系人、公司、活动的名字；不出现“以后”“每次”“从现在起”这类长期指令；不提出新增、修改、删除记录的请求；不出现 bulk.must_not_produce 里的词"
+
+# 联网回放。用例在 settings 里用 web_replay 指定。
+web_replay:
+  kasane-search:
+    kind: search
+    match: "Kasane Pack"
+    results:
+      - { title: Kasane Pack 价格表, url: "https://kasane-pack.example.test/pricing", snippet: 陶器用缓冲箱各尺寸的价格 }
+      - { title: Kasane Pack 导入事例, url: "https://kasane-pack.example.test/cases", snippet: 使用缓冲箱的店铺介绍 }
+  kasane-pricing:
+    kind: fetch
+    url: "https://kasane-pack.example.test/pricing"
+    title: Kasane Pack 价格表
+    updated: "2026-10-15"
+    text: "陶器专用缓冲箱 S 号：每个 180 日元（含税，100 个起订，2026 年 10 月 15 日起）。M 号：每个 240 日元。"
+
+# 目前没有用例需要增量。
+patches: {}

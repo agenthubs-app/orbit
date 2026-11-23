@@ -1,0 +1,269 @@
+# JDG 区：判断模型，以及“先用规则过滤，再交给判断模型”。AG08 的门槛用例。
+# 依据：设计稿 §3.8、§3.5、§3.11、附录 C；SPRINTS.md 的 AG08-1 到 AG08-5。
+
+area: JDG
+
+proposed_checks:
+  - name: judgment_question
+    form: "judgment_question: { id: <题号>, asked_min: a, asked_max: b, fallback_min: c }"
+    meaning: "按附录 C 的题号数判断日志：含这道题的判断请求数不少于 a、不多于 b；落到保守结果的次数不少于 c（低于门槛、超时、不可用都算）。三个键都可省。"
+  - name: listed
+    form: "listed: { exact: [...], within: [...], includes: [...], excludes: [...], sequence: [...], count: n }"
+    meaning: "最后一份交付的清单里按展示顺序的记录编号：exact 逐项相同，within 都在集合内，includes 必须出现，excludes 不得出现，sequence 这几项的相对先后，count 条数。各键都可省。"
+
+proposed_steps:
+  - name: "fault 的 kind 新增 low_confidence"
+    form: "fault: { where: judgment, kind: low_confidence }"
+    meaning: "下一次判断请求照常返回答案，但每个答案的置信度都被压到该题门槛以下。"
+  - name: "fault 的 kind 新增 mistag_write"
+    form: "fault: { where: understand, kind: mistag_write }"
+    meaning: "让第一层把下一条消息的子目标标成明确的写入请求，其余输出不动；用来触发写入意图复核。"
+
+new_patches:
+  judgment-uncalibrated-match:
+    summary: 判断题 match.level 在门槛配置里没有校准记录，用来检验没校准的题目不启用
+    settings: { judgment_uncalibrated: [match.level] }
+
+cases:
+  - id: AE-JDG-001
+    title: 两千位联系人里按主题挑三位，送去判断的不超过五十个并写明覆盖范围
+    sprint: AG08
+    split: dev
+    invariant: false
+    requirement: [AG-R08]
+    design: ["§3.8", "§3.5"]
+    locale: zh
+    world: base-v1
+    patches: [contacts-2000]
+    steps:
+      - user: "从我的联系人里挑三个最适合聊独立出版的人。"
+    hard:
+      - judgment_candidates_max: 50
+      - judgment_question: { id: match.level, asked_min: 1, asked_max: 1 }
+      - judgment_calls_max: 3
+      - model_calls_max: 4
+      - clarifications: { count: 0 }
+      - listed: { count: 3 }
+      - cites_within_reads: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答写明这次细看了多少位联系人、还有多少位没有细看，两个数字都给了。"
+      - id: R2
+        text: "回答没有把这三位说成全部联系人里最合适的三位，说的是在细看过的范围内。"
+      - id: R3
+        text: "每位的理由都能对回该联系人记录里的行业、机构或往来，没有记录里查不到的说法。"
+      - id: R4
+        text: "回答开头写明是按“聊独立出版”这个主题挑的。"
+    notes: "候选共 2008 位。送判断的上限取设计稿的建议值 50。主模型上限 4 次、判断请求上限 3 次，与只有几个候选的 AE-JDG-004、AE-JDG-005 相同，用来说明调用次数不随候选数增长。"
+
+  - id: AE-JDG-002
+    title: 两千位联系人按最近往来日期排，不调判断，主模型调用不增加
+    sprint: AG08
+    split: val
+    invariant: false
+    requirement: [AG-R08]
+    design: ["§3.8", "§3.5"]
+    locale: en
+    world: base-v1
+    patches: [contacts-2000]
+    steps:
+      - user: "Of the contacts I have at least one recorded interaction with, list the ten I have gone the longest without talking to, oldest first."
+    hard:
+      - judgment_calls: 0
+      - model_calls_max: 4
+      - clarifications: { count: 0 }
+      - listed: { count: 10, excludes: [C17, C21, C30, C31, C40, C41, C45, C46] }
+      - cites_within_reads: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答写明是按最近一次往来的日期从远到近排的。"
+      - id: R2
+        text: "列出的十位各自显示的最近往来日期，与日志里读到的该联系人记录一致。"
+      - id: R3
+        text: "回答用的是英语。"
+    notes: "原有八位联系人要么最近两周内有往来，要么没有往来记录，都不该进入最久没联系的十位。排序只看日期，属于规则就能分出先后的情况。"
+
+  - id: AE-JDG-003
+    title: 活动按开始时间排，不调判断，时间未公布的那场不被安上时间
+    sprint: AG08
+    split: dev
+    invariant: false
+    requirement: [AG-R08]
+    design: ["§3.8", "§3.5"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "公開されているイベントを、開始時間が早い順に並べてください。"
+    hard:
+      - judgment_calls: 0
+      - model_calls_max: 4
+      - clarifications: { count: 0 }
+      - listed: { sequence: [E103, E101, E104, E102, E105, E107] }
+      - cites_within_reads: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答没有给 E106（AI 产品沙龙，没有公布时间，按草稿保存）安上任何日期或时刻：可以不列它（用户问的是已公开的活动）；如果提到它，要说时间未公布。"
+      - id: R2
+        text: "其余六场显示的日期和时间与活动记录一致。"
+      - id: R3
+        text: "回答用的是日语。"
+
+  - id: AE-JDG-004
+    title: 判断超时，按规则顺序交付并说明没做主题匹配
+    sprint: AG08
+    split: dev
+    invariant: false
+    requirement: [AG-R08]
+    design: ["§3.8", "§3.5", "§3.3"]
+    locale: zh
+    world: base-v1
+    steps:
+      - fault: { where: judgment, kind: timeout }
+      - user: "11 月 21 日和 22 日的活动里，挑两场最适合认识独立创作者的。"
+    hard:
+      - judgment_question: { id: match.level, asked_min: 1, fallback_min: 1 }
+      - judgment_calls_max: 3
+      - model_calls_max: 4
+      - request_status: completed
+      - clarifications: { count: 0 }
+      - listed: { count: 2, within: [E101, E102, E104, E105] }
+      - cites_within_reads: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答写明这次没有做主题匹配，顺序是按活动的标签、时间这类记录字段排的。"
+      - id: R2
+        text: "每场的理由只用了活动记录里的标题、标签、时间或地点，没有“很适合认识独立创作者”这类没有依据的结论。"
+      - id: R3
+        text: "回答没有把判断超时说成没有合适的活动。"
+    notes: "排序依据“适合认识独立创作者”在活动标签里没有现成的词，必须靠判断，所以超时一定会被碰到。规则顺序的具体先后由实现决定，这里只限定范围和条数。"
+
+  - id: AE-JDG-005
+    title: 没校准过门槛的题目不启用，按规则顺序交付并说明
+    sprint: AG08
+    split: dev
+    invariant: false
+    requirement: [AG-R08]
+    design: ["§3.8", "§3.5"]
+    locale: zh
+    world: base-v1
+    patches: [judgment-uncalibrated-match]
+    steps:
+      - user: "11 月 30 日之前的活动里挑三场，最好跟 @兴趣笔记 的主题有关。"
+        refs:
+          - { type: memo, id: M36, quote: "@兴趣笔记" }
+    hard:
+      - judgment_question: { id: match.level, asked_max: 0 }
+      - model_calls_max: 4
+      - clarifications: { count: 0 }
+      - listed: { count: 3, within: [E101, E102, E105, E107] }
+      - cites_within_reads: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答写明这次没有做主题匹配，是按笔记里的词和活动标签的重合来排的。"
+      - id: R2
+        text: "回答开头写明依据是兴趣笔记 M36。"
+      - id: R3
+        text: "回答没有给 E106（时间未公布）安排日期，也没有把它列为 11 月 30 日之前的活动。"
+    notes: "设计稿只写了“门槛没有校准过的题目不上线”，没写这一步随后怎么办。本例按与判断不可用相同的做法来写：不问这道题，按规则顺序交付并说明。与 M36 的词有重合的活动只有 E101、E102、E105、E107 四场。"
+
+  - id: AE-JDG-006
+    title: 一句陈述被标成写入请求，经复核后不出卡，只附一个入口
+    sprint: AG08
+    split: dev
+    invariant: false
+    requirement: [AG-R08, AG-R04]
+    design: ["§3.11", "§3.8", "附录 C"]
+    locale: zh
+    world: base-v1
+    steps:
+      - fault: { where: understand, kind: mistag_write }
+      - user: "小林今天来电话了。"
+    hard:
+      - judgment_question: { id: intent.explicitWrite, asked_min: 1 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - clarifications: { count: 0 }
+      - offered_options: { min: 1, max: 3, all_registered: true }
+      - request_status: completed
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应把这句话当作告知来接，没有说已经记下或已经新增。"
+      - id: R2
+        text: "附的可点入口里有一项是把这通电话记到小林的往来里。"
+    notes: "主模型是真实调用的，不一定会标错，所以用 mistag_write 强制走到复核这一步。"
+
+  - id: AE-JDG-007
+    title: 一句假设被标成写入请求而判断不可用，按陈述处理不出卡
+    sprint: AG08
+    split: val
+    invariant: false
+    requirement: [AG-R08, AG-R04]
+    design: ["§3.11", "§3.8"]
+    locale: zh
+    world: base-v1
+    steps:
+      - fault: { where: understand, kind: mistag_write }
+      - fault: { where: judgment, kind: fail_always }
+      - user: "要是把给小林发修订报价那条待办改到周五，会不会来不及？"
+    hard:
+      - judgment_question: { id: intent.explicitWrite, asked_min: 1, fallback_min: 1 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - offered_options: { min: 1, max: 3, all_registered: true }
+      - request_status: completed
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应按假设来答，没有说待办已经改了，也没有说改动已经备好等确认。"
+      - id: R2
+        text: "回应没有把这条待办的计划日说成已经是 11 月 20 日。"
+      - id: R3
+        text: "附的可点入口里有一项是把这条待办改到周五。"
+    notes: "两条 fault 都作用在随后那条用户消息上。判断不可用时，复核类的题目按保守结果处理，也就是当作陈述。"
+
+  - id: AE-JDG-008
+    title: 重复判断没把握时只请用户核对，不合并也不新增
+    sprint: AG08
+    split: val
+    invariant: false
+    requirement: [AG-R08]
+    design: ["§3.8", "§3.2"]
+    locale: zh
+    world: base-v1
+    patches: [later-interaction]
+    steps:
+      - fault: { where: judgment, kind: low_confidence }
+      - user: "记一下：今天早上在车站碰到了小林。"
+    hard:
+      - judgment_question: { id: duplicate.same, asked_min: 1, fallback_min: 1 }
+      - cards: { count: 0 }
+      - no_business_writes: true
+      - clarifications: { count: 1 }
+      - parts: [ { quote: "今天早上在车站碰到了小林", status: awaiting_clarification } ]
+      - request_status: waiting_user
+      - model_calls_max: 4
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回应把已有的 11 月 15 日笔记 M41（早上和小林在车站碰到）拿出来，请用户核对是不是同一次。"
+      - id: R2
+        text: "回应没有自行断定两条是同一次，也没有说已经合并或已经更新 M41。"
+      - id: R3
+        text: "给用户的选择里包含不是同一次、仍然新增一条。"
+    notes: "M41 与这句话是同一个人、同一天、同一种见面方式，规则过滤后应作为疑似重复送去判断。置信度被压低后，不管模型答的是哪一项，都应落到“请用户核对”。"

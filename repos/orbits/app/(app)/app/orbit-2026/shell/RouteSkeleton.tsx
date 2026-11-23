@@ -6,6 +6,7 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import { AccountLayout, accountSectionFor } from "../account/AccountLayout";
 import { ProfileSkeleton } from "../account/AccountProfilePage";
 import { Bone, Orbit2026Scope, Skeleton, useStandardCopy } from "../ui";
+import { agentConnectionPageSkeleton } from "../agent-connections/skeletons";
 import { PageSkeletonBody, pageSkeletonFor, type PageSkeletonKind } from "./PageSkeleton";
 
 /**
@@ -17,6 +18,9 @@ export function RouteSkeleton({ plainClassName }: { plainClassName: string }) {
   const kind = pageSkeletonFor(pathname);
   const copy = useStandardCopy();
   if (kind) return <PageSkeletonBody kind={kind} label={copy.loading.loading} />;
+  // agent-design AG17: the consent page (no navigation) and the confirm page draw their own columns.
+  const agentPage = agentConnectionPageSkeleton(pathname, copy.loading.loading);
+  if (agentPage) return agentPage;
   if (/^\/app\/(profile|settings)(\/[^/]+)*\/?$/u.test(pathname) && !/^\/app\/profile\/./u.test(pathname)) {
     const section = accountSectionFor(pathname === "/app/profile" ? "/app/profile" : pathname);
     return <AccountLayout active={section} shell={false}>{section === "profile" || section === "home" ? <ProfileSkeleton /> : <Skeleton lines={5} />}</AccountLayout>;

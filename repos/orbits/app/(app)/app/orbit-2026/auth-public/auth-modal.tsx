@@ -7,6 +7,7 @@ import { useOrbitModalA11y } from "../../orbit-modal-a11y";
 import { Icon, Orbit2026Scope } from "../ui";
 import { AuthChangePassword, AUTH_CHANGE_PASSWORD_TITLE_ID } from "./auth-change-password";
 import { AuthForgot } from "./auth-forgot";
+import type { SignInNote } from "../../../../api/_shared/mcp-access";
 import { AuthLogin } from "./auth-login";
 import { authTitleId, type AuthView } from "./auth-model";
 import { AuthRegister } from "./auth-register";
@@ -28,9 +29,12 @@ export function AuthModal({
   closeHref = "/",
   defaultNext = "/app/home",
   oauthProviders = [],
+  signInNote = null,
   view,
 }: {
   changePassword?: AuthModalChangePassword;
+  /** agent-design AG17（视觉稿 D8）：登录框前面是同意页或确认链接时多出的那一行。 */
+  signInNote?: SignInNote | null;
   /** 关闭去哪；未登录四态回落地页，改密屏回 next。 */
   closeHref?: string;
   defaultNext?: string;
@@ -62,7 +66,7 @@ export function AuthModal({
           : view === "forgot" ? <AuthForgot defaultNext={defaultNext} oauthProviders={oauthProviders} />
           : view === "reset" ? <AuthReset />
           : view === "change-password" ? <AuthChangePassword email={changePassword?.email ?? ""} first={changePassword?.first ?? false} next={changePassword?.next ?? defaultNext} />
-          : <AuthLogin defaultNext={defaultNext} oauthProviders={oauthProviders} />}
+          : <AuthLogin defaultNext={defaultNext} oauthProviders={oauthProviders} signInNote={signInNote} />}
       </div>
     </div>
   </Orbit2026Scope>;

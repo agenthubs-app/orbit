@@ -11,6 +11,7 @@ import type { AiQuotaGate } from "../ai-quota/gate";
 import type { NetworkAnalysisRuntime } from "./runtime";
 import { confirmedContactPredicate } from "./repository";
 import { markContactInsightsDirty } from "../contacts/insights/repository";
+import { nextContactVersion } from "../contacts/contact-version";
 import { runNewContactLayers, type LayerContactRecord, type NewContactLayersDeps, type RunNewContactLayersInput } from "./new-contact-layers";
 
 type Row = Record<string, unknown>;
@@ -63,7 +64,7 @@ export function createNewContactLayersDeps(input: {
       if (!current || current.userId !== actorId || current.updatedAt !== record.updatedAt) return false;
       const updatedAt = new Date(Math.max(Date.parse(at), Date.parse(current.updatedAt) + 1)).toISOString();
       const written = await store.updateRecordIfCurrent(
-        { ...current, payload: { ...nextPayload, updatedAt }, updatedAt },
+        { ...current, payload: { ...nextPayload, updatedAt, version: nextContactVersion(current.payload) }, updatedAt },
         { updatedAt: current.updatedAt, userId: current.userId ?? null },
       );
       return Boolean(written);

@@ -2,19 +2,31 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createOrbitApiClient } from "../src/api/client";
 import { globalSearchPath } from "../src/screens/search/search-model";
+const MEMORY = { appliesTo: ["event.recommend"], category: "preference", content: "memo", createdAt: "2026-10-01T00:00:00.000Z", memoryId: "m1", revision: 1, source: "manual", sourceMessageRef: null, status: "active", structured: null, updatedAt: "2026-10-01T00:00:00.000Z", validFrom: null, validUntil: null };
 test("R18a private settings transport reads actual data-only envelopes and acknowledges 204 deletion", async () => {
   const module = await import("../src/screens/me/settings-api").catch(() => null); assert.ok(module);
   const calls: string[] = [];
   const fetchImpl = module.settingsFetch(async (url, init) => {
     calls.push(`${init?.method} ${String(url)}`);
     if (init?.method === "DELETE") return new Response(null, { status: 204 });
-    return Response.json({ data: String(url).includes("integrations") ? [{ provider: "gmail", status: "active", healthStatus: "healthy" }] : { memories: [{ memoryId: "m1", content: "memo", source: "manual", createdAt: "2026-10-01" }, { memoryId: "unknown", content: "ignore", source: "future", createdAt: "2026-10-01" }] } });
+    return Response.json({ data: String(url).includes("integrations") ? [{ provider: "gmail", status: "active", healthStatus: "healthy" }] : { memories: [MEMORY, { ...MEMORY, memoryId: "unknown", source: "future" }], ruleLimit: 20, settings: { allowConversationLearning: false, enabled: true, updatedAt: "2026-11-20T00:00:00.000Z" } } });
   });
   const api = module.createAccountSettingsApi(createOrbitApiClient({ baseUrl: "http://localhost:3400", fetchImpl }));
   assert.equal((await api.integrations())?.[0]?.provider, "gmail");
-  assert.equal((await api.memories())?.length, 1);
+  // AG14: the whole list — an entry this build cannot read is left out; the switches and the rule limit come along.
+  const list = await api.memories();
+  assert.equal(list?.memories.length, 1);
+  assert.deepEqual([list?.settings.enabled, list?.settings.allowConversationLearning, list?.ruleLimit], [true, false, 20]);
   assert.equal(await api.removeMemory("m1"), true);
   assert.ok(calls.some(value => value.includes("DELETE http://localhost:3400/api/agent/memory/m1")));
+  assert.equal(await api.removeMemory("m1", undefined, 3), true);
+  assert.ok(calls.some(value => value.includes("DELETE http://localhost:3400/api/agent/memory/m1?expectedRevision=3")));
+  assert.equal(await api.saveMemory({ appliesTo: ["event.recommend"], category: "preference", content: "推荐活动时优先周末", validUntil: null }, null), true);
+  assert.equal(await api.saveMemory({ appliesTo: ["all"], category: "constraint", content: "时间一律写 24 小时制", expectedRevision: 1, validUntil: null }, "m1"), true);
+  assert.equal(await api.memorySettings({ allowConversationLearning: true }), true);
+  assert.ok(calls.includes("POST http://localhost:3400/api/agent/memory"));
+  assert.ok(calls.includes("PATCH http://localhost:3400/api/agent/memory/m1"));
+  assert.ok(calls.includes("PATCH http://localhost:3400/api/agent/memory/settings"));
   assert.equal(module.integrationState({ status: "active", healthStatus: "healthy" }), "connected");
   assert.equal(module.integrationState({ status: "unavailable", healthStatus: "unavailable" }), "preparing");
 });

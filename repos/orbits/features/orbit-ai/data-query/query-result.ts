@@ -20,6 +20,7 @@ function canonicalFilter(input: ReadInput): string {
     query: input.query,
     id: input.id ?? null,
     limit: input.limit ?? null,
+    order: input.order ?? null,
     contactId: input.contactId ?? null,
     eventId: input.eventId ?? null,
     status: input.status ?? null,
@@ -177,6 +178,8 @@ export async function executeAiRead(
 
   const buildResult = (continuation: string | undefined): AiReadResult => {
     const value = resultShape(tool, normalized, deps.now(), returnedRows, items, partialReasons);
+    if (page.total !== undefined) value.total = page.total;
+    if (page.withheld) value.withheld = page.withheld;
     if (continuation) {
       value.nextCursor = sealReadCursor({
         ...binding,

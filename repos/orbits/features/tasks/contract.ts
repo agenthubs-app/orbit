@@ -42,6 +42,9 @@ export interface TaskItemDTO {
   source: TaskSource;
   relatedContactId?: string;
   relatedEventId?: string;
+  /** agent-design AG13 (task-links.ts): every person and event; the single fields mirror the first. */
+  relatedContactIds?: readonly string[];
+  relatedEventRefs?: readonly { kind: "platform" | "private"; id: string }[];
   relatedMeetingId?: string;
   relatedConversationId?: string;
   suggestionId?: string;

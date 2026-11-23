@@ -6,7 +6,11 @@ export const accountCopy = {
   profile: { ja: "プロフィール", zh: "个人资料", en: "Profile", kind: "menu" },
   account: { ja: "アカウント", zh: "账户", en: "Account", kind: "menu" },
   iorbit: { ja: "iOrbit が使う情報", zh: "iOrbit 使用的信息", en: "Information iOrbit uses", kind: "menu" },
+  // agent-design AG15 (approved draft D15-1): 「定时任务」 under the iOrbit entry.
+  tasks: { ja: "定期タスク", zh: "定时任务", en: "Scheduled tasks", kind: "menu" },
   integrations: { ja: "連携", zh: "连接", en: "Connections", kind: "menu" },
+  // agent-design AG17 (approved draft D3): Claude and Codex reading Orbit, the other way round from 「连接」.
+  agentConnections: { ja: "外部 AI アシスタント", zh: "外部 AI 助手", en: "Outside AI assistants", kind: "menu" },
   schedule: { ja: "日程", zh: "日程", en: "Scheduling", kind: "menu" },
   notifications: { ja: "通知", zh: "通知", en: "Notifications", kind: "menu" },
   appearance: { ja: "言語と外観", zh: "语言和外观", en: "Language and appearance", kind: "menu" },

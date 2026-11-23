@@ -14,7 +14,9 @@ export const AGENT_LEDGER_ENTRY_STATUSES = [
   "rejected",
   "canceled",
   "undone",
-  "deferred"
+  "deferred",
+  // agent-design AG02 (server ledger contract): a card left too long; never executed.
+  "expired"
 ] as const;
 
 export const AGENT_LEDGER_TRANSITIONS = [
@@ -46,7 +48,16 @@ export interface AgentLedgerOperationContract {
   operationType: string;
   preview?: string;
   selectedByDefault: boolean;
-  status: "pending" | "skipped" | "succeeded" | "failed" | "undone";
+  // agent-design AG02 adds needs_review, user_confirmed and abandoned (server ledger contract).
+  status:
+    | "pending"
+    | "skipped"
+    | "succeeded"
+    | "failed"
+    | "undone"
+    | "needs_review"
+    | "user_confirmed"
+    | "abandoned";
   title: string;
 }
 

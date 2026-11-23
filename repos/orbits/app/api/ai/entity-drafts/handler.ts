@@ -18,6 +18,9 @@ import {
   resolveAuthenticatedApiActor,
   type ResolveAuthenticatedApiActor,
 } from "../../_shared/authenticated-actor";
+import { agentV1EntryEnabled } from "../../../../features/agent-v1/entry/mode";
+import { agentProposalsPaused } from "../../../../features/agent-v1/rollout/rollback";
+import { LEGACY_CONFIRM_ELSEWHERE, legacyDraftConfirmWords } from "../../../../features/agent-v1/rollout/legacy-words";
 
 /**
  * Sprint 0085: the only way a drafted record becomes a real one.
@@ -138,6 +141,16 @@ export function createEntityDraftRouteHandlers(
           return refused(mode, "VALIDATION_ERROR", "action must be confirm, revise or cancel.");
         }
 
+        // agent-design AG18-1: with the new entry on (and while proposals are paused) a draft made by the old pipeline is
+        // never written by this old button: it stays readable, and the user is sent to the new App or the web, where the
+        // change is asked again and checked against the data now (设计稿 §8「旧待确认卡保留可读，重新核实后出新版卡」).
+        if (agentV1EntryEnabled() || agentProposalsPaused()) {
+          return json(
+            mode,
+            failure(new AppError("CONFLICT", legacyDraftConfirmWords(isRecord(body) ? body.locale : undefined)), { mode, reason: LEGACY_CONFIRM_ELSEWHERE }),
+            409,
+          );
+        }
         const outcome = await service.confirm({ actorId, draftId, now });
         if (outcome.kind === "created") {
           return json(mode, success({ draft: entityDraftView(outcome.draft) }), 200);

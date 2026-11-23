@@ -9,7 +9,10 @@ export const inboxNotificationActionSchema = z.object({
 export const inboxNotificationReadBatchSchema: z.ZodType<InboxNotificationReadBatchInput> = z.object({
   items:z.array(z.object({id,expectedRevision:z.number().int().positive()}).strict()).min(1).max(50), idempotencyKey:id,
 }).strict();
-const SOURCE_KINDS = ['reminder_plan','task','schedule','appointment','batch','connection','note','message','contact','goal','read_cost_alert','event_contact_request','event_deadline','event_prep','event_pick','mail_summary','event_host_notice'] as const;
+const SOURCE_KINDS = ['reminder_plan','task','schedule','appointment','batch','connection','note','message','contact','goal','read_cost_alert','event_contact_request','event_deadline','event_prep','event_pick','mail_summary','event_host_notice',
+  // agent-design AG15: scheduled-task results, cards waiting for a click, external proposals (AG17).
+  'automation_result','agent_card','external_proposal'] as const;
+const TARGET_KINDS = ['task','schedule','appointment','event','conversation','batch','source','card','automation'] as const;
 const ACTIONS = ['read','dismiss','handle','snooze','accept'] as const;
 const copyShape = (text: z.ZodString) => z.object({zh:z.object({title:text,reason:text}),en:z.object({title:text,reason:text}),ja:z.object({title:text,reason:text})});
 
@@ -21,7 +24,7 @@ export const inboxNotificationWriteSchema = z.object({
   id,actorId:id,revision:z.number().int().positive(),kind:z.enum(['reminder','suggestion','update']),origin:z.enum(['user','automation','business']),semanticKey:id,
   title:z.string().min(1).max(1000),reason:z.string().min(1).max(4000),object:z.object({id,name:z.string().min(1)}).optional(),
   sources:z.array(z.object({sourceKind:z.enum(SOURCE_KINDS),sourceId:id,sourceRevision:id,occurredAt:instant,readAt:instant,authorId:id.optional(),objectId:id.optional(),excerpt:z.string().max(4000).optional()})).min(1).max(20),
-  target:z.object({kind:z.enum(['task','schedule','appointment','event','conversation','batch','source']),id,href:z.string().regex(/^\/(?!\/)/).nullable(),status:z.enum(['available','changed','unavailable'])}),
+  target:z.object({kind:z.enum(TARGET_KINDS),id,href:z.string().regex(/^\/(?!\/)/).nullable(),status:z.enum(['available','changed','unavailable'])}),
   actions:z.array(z.enum(ACTIONS)),occurredAt:instant,updatedAt:instant,readAt:instant.nullable(),dueAt:instant.optional(),scheduledFor:instant.optional(),expiresAt:instant.optional(),disposition:z.enum(['open','dismissed','handled','accepted','expired','archived']),legacyId:id.optional(),createdTaskId:id.optional(),
   copy:copyShape(z.string()).optional(),
   sample:z.literal(true).optional(),
@@ -39,7 +42,7 @@ export const inboxNotificationSchema = z.object({
   id,actorId:id,revision:z.number().int().positive(),kind:z.enum(['reminder','suggestion','update']),origin:tolerantEnum(['user','automation','business'],'automation'),semanticKey:id,
   title:z.string().min(1).max(1000),reason:z.string().min(1).max(4000),object:z.object({id,name:z.string().min(1)}).optional(),
   sources:z.array(z.object({sourceKind:z.enum(SOURCE_KINDS),sourceId:id,sourceRevision:id,occurredAt:instant,readAt:instant,authorId:id.optional(),objectId:id.optional(),excerpt:z.string().max(4000).optional()})).min(1).max(20),
-  target:z.object({kind:tolerantEnum(['task','schedule','appointment','event','conversation','batch','source'],'source'),id,href:z.string().regex(/^\/(?!\/)/).nullable(),status:tolerantEnum(['available','changed','unavailable'],'unavailable')}),
+  target:z.object({kind:tolerantEnum(TARGET_KINDS,'source'),id,href:z.string().regex(/^\/(?!\/)/).nullable(),status:tolerantEnum(['available','changed','unavailable'],'unavailable')}),
   actions:knownValues(ACTIONS),occurredAt:instant,updatedAt:instant,readAt:instant.nullable(),dueAt:instant.optional(),scheduledFor:instant.optional(),expiresAt:instant.optional(),disposition:tolerantEnum(['open','dismissed','handled','accepted','expired','archived'],'open'),legacyId:id.optional(),createdTaskId:id.optional(),
   copy:copyShape(z.string()).optional(),
   sample:z.literal(true).optional(),

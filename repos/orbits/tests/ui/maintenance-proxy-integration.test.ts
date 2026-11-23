@@ -5,6 +5,7 @@ import test from "node:test";
 import { transformSync } from "esbuild";
 import { NextRequest } from "next/server";
 import { handleMaintenanceRequest } from "../../features/operations/maintenance/http";
+import { handleAutomationDispatchRequest } from "../../features/agent/automations/dispatch-configured";
 
 // Execute the real proxy callback with only session lookup replaced. The
 // route-level Cron secret check remains real, so this tests both boundaries.
@@ -49,4 +50,25 @@ test("Cron exemption does not grant sessionless access to any adjacent or person
   const post = new NextRequest("https://test/api/internal/maintenance", { method: "POST" }) as NextRequest & { auth: unknown };
   post.auth = null;
   assert.equal((await proxy(post)).status, 401);
+});
+
+test("agent-design AG15: the scheduled-rule dispatch reaches its own secret guard without a session; nothing next to it does", async () => {
+  const secret = "synthetic-cron-secret-at-least-32-characters";
+  let runs = 0;
+  const run = async () => {
+    runs++;
+    return { claimed: 0, delivered: 0, deliveriesRetried: 0, failed: 0, needsAttention: 0, noMatch: 0, periods: 0, skippedPeriods: 0, timersFired: 0, undelivered: 0 };
+  };
+  for (const auth of [undefined, "Bearer incorrect", `Bearer ${secret}`]) {
+    const request = new NextRequest("https://test/api/internal/agent/automations", { headers: auth ? { authorization: auth } : {}, method: "POST" }) as NextRequest & { auth: unknown };
+    request.auth = null;
+    assert.equal((await proxy(request)).headers.get("x-middleware-next"), "1");
+    assert.equal((await handleAutomationDispatchRequest(request, run, secret)).status, auth === `Bearer ${secret}` ? 200 : 401);
+  }
+  assert.equal(runs, 1);
+  for (const [method, path] of [["GET", "/api/internal/agent/automations"], ["POST", "/api/internal/agent/automations/extra"], ["POST", "/api/agent/automations"], ["GET", "/api/agent/automations"]]) {
+    const request = new NextRequest(`https://test${path}`, { method }) as NextRequest & { auth: unknown };
+    request.auth = null;
+    assert.equal((await proxy(request)).status, 401, `${method} ${path}`);
+  }
 });

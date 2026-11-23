@@ -5,6 +5,7 @@ import {
 import {
   createMemoryLiveRecordStore,
 } from "../../../shared/storage/live-record-store";
+import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/storage/transactional-postgres";
 import {
   resolveModuleMode,
   type ModuleMode,
@@ -13,16 +14,35 @@ import type {
   AgentAutomationRecordPayload,
   AgentAutomationService,
 } from "./contract";
+import { createMemoryAutomationStorage, createPostgresAutomationStorage, type AutomationStorage } from "./due-index";
 import { createStorageAgentAutomationService } from "./service";
 
 const memoryStore =
   createMemoryLiveRecordStore<AgentAutomationRecordPayload>();
+const memoryStorage = createMemoryAutomationStorage("mock-agent-automations", { store: memoryStore as never });
 const cachedServices = new Map<string, AgentAutomationService>();
+const cachedStorages = new Map<string, AutomationStorage>();
 
 export interface CreateAgentAutomationServiceOptions
   extends CreateConfiguredPostgresLiveRecordStoreOptions {
   actorId: string;
   mode?: ModuleMode | string;
+}
+
+/**
+ * agent-design AG15: rules, their run history and the due index as one store (one transaction). Live mode needs the
+ * transactional database client; null when no database is configured.
+ */
+export function configuredAutomationStorage(requestedMode?: ModuleMode | string): AutomationStorage | null {
+  const mode = resolveModuleMode(requestedMode);
+  if (mode !== "live") return memoryStorage;
+  const runtime = createConfiguredTransactionalPostgresRuntime();
+  if (!runtime) return null;
+  const cached = cachedStorages.get(runtime.workspaceId);
+  if (cached) return cached;
+  const storage = createPostgresAutomationStorage(runtime);
+  cachedStorages.set(runtime.workspaceId, storage);
+  return storage;
 }
 
 export function createAgentAutomationService({
@@ -50,9 +70,12 @@ export function createAgentAutomationService({
   const cacheKey = `${mode}\u0000${workspaceId}\u0000${normalizedActorId}`;
   const cached = cachedServices.get(cacheKey);
   if (cached) return cached;
+  const storage = configuredAutomationStorage(mode);
   const service = createStorageAgentAutomationService({
     actorId: normalizedActorId,
     store: configured?.store ?? memoryStore,
+    // AG15: a rule and its row of the due index are one transaction; the dispatcher claims across accounts from it.
+    ...(storage && storage.workspaceId === workspaceId ? { storage } : {}),
     workspaceId,
   });
   cachedServices.set(cacheKey, service);
@@ -61,4 +84,5 @@ export function createAgentAutomationService({
 
 export function resetAgentAutomationServicesForTests(): void {
   cachedServices.clear();
+  cachedStorages.clear();
 }

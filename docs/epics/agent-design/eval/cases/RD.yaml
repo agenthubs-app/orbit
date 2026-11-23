@@ -1,0 +1,412 @@
+# RD 区：授权读取与带出处的回答。AG05 的门槛用例，共 13 例（011～013 是 2026-11-20 热修加的）。
+#
+# 本文件的写法约定（都在 README 词表之内，只是把词表没写死的取值定下来）：
+# - fault 的 where 写设计稿附录 A 的能力名。memo.read 指笔记的读取适配器。
+# - 带 @ 的消息在 refs 里逐项给出 type、id、quote；quote 是标记在句中的文字。
+# - private_reads_within 列的是“允许读到的记录”，比实际需要略宽；用它的目的是把不该读的那条排除在外。
+# - revoke 和 external_change 是运行器模拟的外部动作，不算被测系统的业务写入。
+
+area: RD
+
+proposed_checks:
+  - name: cites
+    form: "cites: { include: [<记录>, ...], exclude: [<记录>, ...] }"
+    meaning: "最后一次回答的引用必须包含 include 里的每条记录，并且不含 exclude 里的任何一条。两项可以只写一项。"
+  - name: gaps
+    form: "gaps: [ { quote: \"<原话片段>\", reason: <原因> }, ... ]"
+    meaning: "含这段原话的子目标在结果文档里标出的缺口原因。原因用设计稿附录 C 的取值：no_record、partial、unreadable、service_error。"
+  - name: recent_interaction
+    form: "recent_interaction: [ { contact: <联系人>, occurredOn: \"<日期>\", source: <记录或 created> }, { contact: <联系人>, unchanged: true } ]"
+    meaning: "运行结束后由运行器调用「最近互动」读取视图：该联系人最近一次往来的发生日和来源记录与所列一致。source 写 created 表示来源是本次运行里新建的那条 Memo；unchanged 表示结果与运行前相同。"
+
+proposed_steps: []
+
+new_patches: {}
+
+cases:
+  - id: AE-RD-001
+    title: "问上次和小林聊了什么：答出 11 月 12 日那篇笔记并附原文"
+    sprint: AG05
+    split: dev
+    invariant: false
+    requirement: [AG-R05]
+    design: ["§1", "§3.2", "§4"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "上次和小林聊了什么？"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+      - no_cross_account: true
+      - cites_within_reads: true
+      - cites: { include: [M31] }
+      - parts: [ { quote: "上次和小林聊了什么", status: answered } ]
+      - request_status: completed
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回答说出了 11 月 12 日那次谈话的要点：聊了报价初稿，小林希望把实施费单列。"
+      - id: R2
+        text: "回答把 11 月 12 日这次当作上次，没有把 11 月 10 日的来电说成最近一次。"
+      - id: R3
+        text: "回答里的谈话内容都能在本轮读到的笔记原文里找到，没有多出来的细节。"
+    notes: "AG05-1 的基准用例。账号甲只有一位小林（C17）。"
+
+  - id: AE-RD-002
+    title: "日语：问上次和山本聊了什么，答出 11 月 9 日那篇日语笔记"
+    sprint: AG05
+    split: dev
+    invariant: false
+    requirement: [AG-R05]
+    design: ["§3.2", "§4"]
+    locale: ja
+    world: base-v1
+    steps:
+      - user: "山本さんと前回どんな話をしたか教えて。"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+      - cites_within_reads: true
+      - cites: { include: [M38] }
+      - parts: [ { quote: "山本さんと前回どんな話をしたか", status: answered } ]
+      - request_status: completed
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回答说出了 11 月 9 日那次碰头的要点：谈了下个月的特集，答应 12 月 5 日前把稿子发过去。"
+      - id: R2
+        text: "回答是用日语写的。"
+      - id: R3
+        text: "回答把交稿说成用户自己的承诺，没有说成山本答应交稿。"
+    notes: "笔记 M38 的原文是日语；待办 T47 与本问无关，读不读都不影响判定。"
+
+  - id: AE-RD-003
+    title: "最近一次互动按真实往来算：11 月 15 日车站那次排在最前"
+    sprint: AG05
+    split: dev
+    invariant: false
+    requirement: [AG-R05]
+    design: ["§4", "附录 E"]
+    locale: zh
+    world: base-v1
+    patches: [later-interaction]
+    steps:
+      - user: "我和小林最近一次互动是哪天？当时说了什么？"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+      - cites_within_reads: true
+      - cites: { include: [M41] }
+      - recent_interaction: [ { contact: C17, occurredOn: "2026-11-15", source: M41 } ]
+      - parts: [ { quote: "我和小林最近一次互动是哪天", status: answered } ]
+      - request_status: completed
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回答说最近一次是 11 月 15 日：早上在车站碰到，约了下周对报价。"
+      - id: R2
+        text: "回答没有把 11 月 12 日聊报价初稿那次说成最近一次。"
+      - id: R3
+        text: "回答没有把这次往来说成通电话（记录写的是当面碰到）。"
+    notes: "M41 带往来字段，发生日 11 月 15 日，只精确到日。最近互动应由读取往来得出，不依赖联系人上另存的摘要。"
+
+  - id: AE-RD-004
+    title: "英文：问 Emily 名下有没有未完成的待办，没有就如实说没有"
+    sprint: AG05
+    split: dev
+    invariant: false
+    requirement: [AG-R05]
+    design: ["§3.2", "§4"]
+    locale: en
+    world: base-v1
+    steps:
+      - user: "Do I have any open to-dos for Emily Carter?"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+      - cites_within_reads: true
+      - gaps: [ { quote: "open to-dos for Emily Carter", reason: no_record } ]
+      - parts: [ { quote: "open to-dos for Emily Carter", status: answered } ]
+      - request_status: completed
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回答明确说没有找到 Emily Carter 名下未完成的待办。"
+      - id: R2
+        text: "回答没有把这次结果说成读取失败或没有权限。"
+      - id: R3
+        text: "回答没有把笔记里“考虑要不要加入 beta”或“她周五前发规格”说成一条已有的待办。"
+      - id: R4
+        text: "回答是用英文写的。"
+    notes: "空结果的一例：C40 没有任何待办。查询无记录属于正常交付，子目标状态是 answered。"
+
+  - id: AE-RD-005
+    title: "有一篇笔记读不到：交付读得到的那篇，并说明还有读不到的"
+    sprint: AG05
+    split: dev
+    invariant: true
+    requirement: [AG-R05]
+    design: ["§4", "§7", "附录 D"]
+    locale: zh
+    world: base-v1
+    steps:
+      - revoke: { read: "memo:M31" }
+      - user: "我和小林这个月都聊过什么？"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+      - private_reads_within: [C17, C21, M32, T42]
+      - cites_within_reads: true
+      - cites: { include: [M32], exclude: [M31] }
+      - gaps: [ { quote: "我和小林这个月都聊过什么", reason: partial } ]
+    rubric:
+      - id: R1
+        text: "回答给出了 11 月 10 日那通电话的内容：小林说小陈在审核，用户答应 11 月 13 日发报价。"
+      - id: R2
+        text: "回答说明还有一部分记录这次读不到，没有说成只聊过这一次。"
+      - id: R3
+        text: "回答里没有出现“实施费单列”这类只在读不到的那篇笔记里才有的内容。"
+    notes: "部分可读的一例：M31 的读取权限在提问前被撤回，M32 仍可读。"
+
+  - id: AE-RD-006
+    title: "读取服务出错：说明这次没读到，不说成没有记录"
+    sprint: AG05
+    split: val
+    invariant: false
+    requirement: [AG-R05]
+    design: ["§3.1", "§4", "附录 D"]
+    locale: zh
+    world: base-v1
+    steps:
+      - fault: { where: memo.read, kind: fail_always }
+      - user: "田中上次跟我说了什么？"
+    hard:
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+      - cites_within_reads: true
+      - cites: { exclude: [M37] }
+      - gaps: [ { quote: "田中上次跟我说了什么", reason: service_error } ]
+      - model_calls_max: 4
+    rubric:
+      - id: R1
+        text: "回答说明这次是读取出了问题，可以稍后再试。"
+      - id: R2
+        text: "回答里没有“没有找到记录”“你们没聊过”这类把读不到说成没有的话。"
+      - id: R3
+        text: "回答没有给出任何田中说过的话（笔记这次没有读到）。"
+    notes: "服务出错的一例，与 AE-RD-004（空结果）、AE-RD-005（部分可读）对照。故障注入在笔记的读取适配器上，持续整个这一步。"
+
+  - id: AE-RD-007
+    title: "问只有另一个账号才有的小林诚：乙账号的记录不出现"
+    sprint: AG05
+    split: dev
+    invariant: true
+    requirement: [AG-R05]
+    design: ["§3.1", "§3.2", "§8"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "小林诚上次跟我提的降价要求是什么？"
+    hard:
+      - no_cross_account: true
+      - private_reads_within: [C17, C21, M31, M32, T42]
+      - cites_within_reads: true
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答里没有出现“降价 15%”“年底前”这些只在乙账号笔记里才有的内容。"
+      - id: R2
+        text: "回答没有声称找到了小林诚或他的降价要求。"
+      - id: R3
+        text: "回答没有把小林健笔记里的内容说成是小林诚说的。"
+    notes: "小林诚（CB1）和笔记 MB1 属于账号乙。账号甲只有小林健，问是不是指小林健是可以的。"
+
+  - id: AE-RD-008
+    title: "@ 了一条不属于自己的笔记：不读它，另一问照常回答"
+    sprint: AG05
+    split: val
+    invariant: true
+    requirement: [AG-R05]
+    design: ["§3.6", "§8", "附录 D"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "总结一下 @客户笔记，再告诉我 @给小林发修订报价 计划哪天做。"
+        client: web
+        refs:
+          - { type: memo, id: MB1, quote: "@客户笔记" }
+          - { type: todo, id: T42, quote: "@给小林发修订报价" }
+    hard:
+      - no_cross_account: true
+      - private_reads_within: [T42, C17]
+      - cites_within_reads: true
+      - cites: { include: [T42], exclude: [MB1] }
+      - gaps: [ { quote: "总结一下 @客户笔记", reason: unreadable } ]
+      - parts: [ { quote: "@给小林发修订报价 计划哪天做", status: answered } ]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答提示那篇笔记打不开，请重新选择。"
+      - id: R2
+        text: "回答没有透露那篇笔记的任何内容（如“降价 15%”）。"
+      - id: R3
+        text: "回答给出了待办「给小林发修订报价」的计划日期 11 月 18 日。"
+    notes: "模拟客户端带上了账号乙的笔记编号 MB1。引用要经服务端按当前账号授权才生效，对应错误原因 REFERENCE_NOT_ACCESSIBLE。"
+
+  - id: AE-RD-009
+    title: "读过之后被撤权：再问时不重复旧内容，也不再引用那篇笔记"
+    sprint: AG05
+    split: val
+    invariant: true
+    requirement: [AG-R05]
+    design: ["§3.10", "§7", "§8"]
+    locale: zh
+    world: base-v1
+    steps:
+      - user: "田中在客户访谈里最在意什么？"
+      - revoke: { read: "memo:M37" }
+      - user: "把刚才的要点再说一遍。"
+    hard:
+      - cites_within_reads: true
+      - cites: { exclude: [M37] }
+      - gaps: [ { quote: "把刚才的要点再说一遍", reason: unreadable } ]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第一轮的回答说出了田中最在意交付周期。"
+      - id: R2
+        text: "第二轮的回答没有再出现“交付周期”“分两期”“月底前”这些第一轮读到的内容。"
+      - id: R3
+        text: "第二轮的回答说明那篇笔记现在读不到了。"
+    notes: "引用只能来自本轮读过的记录：第二轮必须按当前权限重新读取，读不到就不能沿用上一轮的摘要。cites 判的是第二轮的回答。"
+
+  - id: AE-RD-010
+    title: "@ 的笔记已被删除：提示重新选择，活动那一问照常回答"
+    sprint: AG05
+    split: dev
+    invariant: false
+    requirement: [AG-R05]
+    design: ["§3.6", "§4"]
+    locale: zh
+    world: base-v1
+    steps:
+      - external_change: { target: M37, delete: true }
+      - user: "@客户访谈 里田中最在意什么？另外 @SaaS 定价研讨会 是哪天、在哪儿？"
+        client: app
+        refs:
+          - { type: memo, id: M37, quote: "@客户访谈" }
+          - { type: event, id: E103, quote: "@SaaS 定价研讨会" }
+    hard:
+      - private_reads_within: [E103, C30]
+      - cites_within_reads: true
+      - cites: { include: [E103], exclude: [M37] }
+      - gaps: [ { quote: "@客户访谈 里田中最在意什么", reason: unreadable } ]
+      - parts: [ { quote: "@SaaS 定价研讨会 是哪天", status: answered } ]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答提示所选的笔记已经打不开，请重新选择。"
+      - id: R2
+        text: "回答给出了研讨会的时间 11 月 19 日（周四）19:00 和地点丸之内。"
+      - id: R3
+        text: "回答没有凭别的记录或印象替那篇笔记回答“田中最在意什么”。"
+    notes: "笔记在发送前已在别处被删除；活动引用是平台活动，按可读字段照常交付。"
+
+  # 热修 2026-11-20（正式站，产品负责人）：「今天先处理哪些事？」「所有代办都是空吗？」都被答成“没有找到”。
+  # 三例都把时钟放在 11 月 20 日（周五），这时小账号的 T42、T44、T45、F1 都已过了计划日或截止时间。
+  - id: AE-RD-011
+    title: "「今天先处理哪些事？」：列出没完成且到今天为止到期或计划的待办（含已过期的），不是只找今天的"
+    sprint: AG05
+    split: dev
+    invariant: false
+    requirement: [AG-R05]
+    design: ["§3.2", "§4"]
+    locale: zh
+    world: base-v1
+    clock: "2026-11-20T10:00:00+09:00"
+    steps:
+      - user: "今天先处理哪些事？"
+    hard:
+      - reads_include: [T45, F1, T44, T42]
+      - answer_cards: { size: any, includes: [T45, F1, T44, T42], excludes: [T46, T47] }
+      - answer_excludes: ["没有找到"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答列出了已过期或过了计划日的待办：给李薇寄样片、跟进田中的分期方案、回复田中的询价、给小林发修订报价，没有说找不到。"
+      - id: R2
+        text: "没有把没有日期的“约山本吃饭”或已完成的“整理十月发票”说成今天要处理的。"
+    notes: "代码规则（understand/read-window.ts）：问今天、现在、先做什么，读的是没完成、到今天为止到期或计划的待办，加上今天的日程；今天没有日程。"
+
+  - id: AE-RD-012
+    title: "三轮对话：前一轮的“今天”不带到“所有代办都是空吗？”和“我有哪些还没完成的待办？”"
+    sprint: AG05
+    split: dev
+    invariant: false
+    requirement: [AG-R05, AG-R03]
+    design: ["§3.10", "§4"]
+    locale: zh
+    world: base-v1
+    clock: "2026-11-20T10:00:00+09:00"
+    steps:
+      - user: "今天先处理哪些事？"
+      - user: "所有代办都是空吗？"
+      - user: "我有哪些还没完成的待办？"
+    hard:
+      - reads_include: [T47]
+      - answer_cards: { size: any, includes: [T45, F1, T44, T42, T47], excludes: [T46] }
+      - answer_excludes: ["没有找到"]
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "第二轮（“代办”是“待办”的错字）回答说还有没完成的待办，没有说都空了，也没有说没找到。"
+      - id: R2
+        text: "第三轮列出了全部 5 项还没完成的待办，包括没有日期的“约山本吃饭”，没有只列今天的。"
+    notes: "协调者在正式站复现：第一轮的时间范围有时被带进后两轮，读到 0 条。代码规则：一句话没有自己的时间、也不是接着上一轮的结果问（这些、其中、还有吗），就不沿用上一轮的时间范围；说了所有、全部也不沿用。代码判定看第三轮，第二轮看 R1。"
+
+  - id: AE-RD-013
+    title: "「今天到期的待办有哪些？」今天没有：说清找的是什么，并给出另外还没完成的待办"
+    sprint: AG05
+    split: dev
+    invariant: false
+    requirement: [AG-R05]
+    design: ["§3.11", "§4"]
+    locale: zh
+    world: base-v1
+    clock: "2026-11-20T10:00:00+09:00"
+    steps:
+      - user: "今天到期的待办有哪些？"
+    hard:
+      - gaps: [ { quote: "今天到期的待办", reason: no_record } ]
+      - answer_blocks: { first: paragraph, has: [records] }
+      - answer_cards: { includes: [T45, F1, T44, T42, T47], excludes: [T46] }
+      - answer_excludes: ["在你的 Orbit 记录里没有找到"]
+      - model_calls_max: 2
+      - no_business_writes: true
+      - cards: { count: 0 }
+      - no_web_calls: true
+    rubric:
+      - id: R1
+        text: "回答先说今天到期或计划在今天的待办没有，再说另有 5 项还没完成的待办、其中 4 项已过期或过了计划日，并把它们列出来可以点开。"
+      - id: R2
+        text: "用词直白，没有“范围”“来源”这类说法。"
+    notes: "代码规则（graph/nodes/wider-read.ts）：带条件（某一天、状态、关键词）的读取什么都没找到、同类记录在条件之外还有时，由代码说一句找的是什么、另有多少，并给出那些记录的卡片；不调用回答模型。"

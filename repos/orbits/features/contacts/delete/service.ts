@@ -6,6 +6,7 @@
  */
 import { AppError } from "../../../shared/errors/app-error";
 import { SYNC_COMMIT_ORDER_LOCK_CTE } from "../../sync/commit-order-lock";
+import { contactNextVersionSql } from "../contact-version";
 import type { ContactDeleteResult, ContactRestoreResult } from "../../../shared/contract/contact-delete";
 
 export const CONTACT_RESTORE_WINDOW_DAYS = 30;
@@ -23,14 +24,14 @@ const OWNED = `orbit_records.workspace_id = $1 and orbit_records.collection_name
 // so the new sync_revision commits in order and App mirrors see the tombstone / the restore (features/sync/commit-order-lock.ts).
 export const CONTACT_SOFT_DELETE_SQL = `with ${SYNC_COMMIT_ORDER_LOCK_CTE}
 update orbit_records
-  set lifecycle_state = 'deleted', deleted_at = $4::timestamptz, updated_at = $4::timestamptz
+  set lifecycle_state = 'deleted', deleted_at = $4::timestamptz, updated_at = $4::timestamptz, payload = orbit_records.payload || ${contactNextVersionSql()}
   from sync_write_lock
   where ${OWNED} and orbit_records.lifecycle_state <> 'deleted'
   returning orbit_records.record_id, orbit_records.deleted_at`;
 export const CONTACT_DELETED_STATE_SQL = `select record_id, lifecycle_state, deleted_at from orbit_records where ${OWNED}`;
 export const CONTACT_RESTORE_SQL = `with ${SYNC_COMMIT_ORDER_LOCK_CTE}
 update orbit_records
-  set lifecycle_state = 'active', deleted_at = null, updated_at = $4::timestamptz
+  set lifecycle_state = 'active', deleted_at = null, updated_at = $4::timestamptz, payload = orbit_records.payload || ${contactNextVersionSql()}
   from sync_write_lock
   where ${OWNED} and orbit_records.lifecycle_state = 'deleted' and orbit_records.deleted_at is not null and orbit_records.deleted_at > $5::timestamptz
   returning orbit_records.record_id`;
