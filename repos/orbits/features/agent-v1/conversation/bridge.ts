@@ -165,7 +165,9 @@ export function hintPartOf(part: UnderstandPart, context: FirstLayerContext | nu
   };
   const continued = part.continues ? context?.openItemHandles.get(part.continues.ref) : undefined;
   return {
-    clarity: part.clarity === "multiple_readings" ? "missing_one" : part.clarity,
+    // several readings is the lab's "none" (r11 FEEDBACK: "clarity none / multiple readings"): the engine reads clarity
+    // only for ask / go, where both ask except a read whose record was picked exactly (r11)
+    clarity: part.clarity === "multiple_readings" ? "none" : part.clarity,
     continues: continued && continued.kind === "clarification" ? continued.ref : null,
     quote: part.sourceQuote,
     refs,
@@ -299,8 +301,13 @@ export function askGoOf(part: PartResult, hint: ModelHint | null, plainChat: boo
 
 /** The engine's ask / go on this turn: the lab's hint and a World with the store's records (see above). */
 /** `bind`: decisions opened after the engine that bind references (R27 pronouns when ORBIT_AGENT_CONVERSATION_PRONOUN is on).
- * `extend`: the World with the records the turn's store read gave (r10's write confirmations, conversation/world-read.ts). */
-export function runAskGo(log: ConversationLog | null, names: Record<string, { type: string; name: string }>, turn: EngineTurn, plainChat: boolean, forms: Record<string, string[]> = {}, timeZone = "Asia/Tokyo", bind?: (result: TurnResult) => TurnResult, extend?: (world: LabWorld) => LabWorld): TurnResult {
+ * `extend`: the World with the records the turn's store read gave (r10's write confirmations, conversation/world-read.ts).
+ * An「@」pick is exact (the picker gave the id): another record of the same kind with the same name is left out of this
+ * World, so the engine's r11 exact-pick rule sees one record by that title (AE-SCL-021: two notes 「选品方向」). */
+export function runAskGo(log: ConversationLog | null, allNames: Record<string, { type: string; name: string }>, turn: EngineTurn, plainChat: boolean, forms: Record<string, string[]> = {}, timeZone = "Asia/Tokyo", bind?: (result: TurnResult) => TurnResult, extend?: (world: LabWorld) => LabWorld): TurnResult {
+  const picked = (turn.hint?.parts ?? []).flatMap((part) => part.refs ?? []).filter((ref) => ref.id && allNames[ref.id] && ref.said.trimStart().startsWith("@")).map((ref) => ref.id!);
+  const shadowed = new Set(Object.entries(allNames).filter(([id, item]) => !picked.includes(id) && picked.some((pick) => pick[0] === id[0] && allNames[pick].name.trim() === item.name.trim())).map(([id]) => id));
+  const names = shadowed.size ? Object.fromEntries(Object.entries(allNames).filter(([id]) => !shadowed.has(id))) : allNames;
   const hint = nextHintOf(turn.hint);
   const all: Record<string, string[]> = { ...familyFormsOf(names) };
   for (const [id, words] of Object.entries(forms)) all[id] = [...new Set([...(all[id] ?? []), ...words])];

@@ -242,7 +242,25 @@ export async function conversationLateRead(scope: NodeScope, state: AgentGraphSt
   const record = scope.run.conversation;
   if (!record?.turn || conversationMode() === "legacy" || openedMode("world") === "off") return;
   try {
-    const needs = confirmNeedsOf(state.parts);
+    // the people a part's card operations link (「给李薇建一个待办」 binds 李薇 only on the card, not in the part's refs)
+    const onCard = new Map<string, string[]>();
+    const visit = (value: unknown, out: string[]) => {
+      if (typeof value === "string" && value.startsWith("contact:")) out.push(value);
+      else if (Array.isArray(value)) value.forEach((item) => visit(item, out));
+      else if (value && typeof value === "object") Object.values(value).forEach((item) => visit(item, out));
+    };
+    for (const operation of scope.run.actionPreview?.operations ?? []) {
+      if (!operation.partId) continue;
+      const ids = onCard.get(operation.partId) ?? [];
+      visit(operation.after, ids);
+      onCard.set(operation.partId, ids);
+    }
+    const parts = state.parts.map((part) => {
+      const known = new Set(part.refs.map((ref) => ref.recordId));
+      const extra = [...new Set(onCard.get(part.localId) ?? [])].filter((id) => !known.has(id));
+      return extra.length ? { ...part, refs: [...part.refs, ...extra.map((id) => ({ entity: "contact" as const, quote: null, recordId: id }))] } : part;
+    });
+    const needs = confirmNeedsOf(parts as GraphPart[]);
     if (!needs) return;
     const early = new Set((record.hint?.parts ?? []).flatMap((part) => (part.refs ?? []).map((ref) => ref.id)).filter(Boolean));
     const linkedTo = needs.linkedTo.filter((id) => !early.has(id));

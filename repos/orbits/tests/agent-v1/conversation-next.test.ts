@@ -130,3 +130,22 @@ test("r10: the first layer's clarity is evidence — clear lifts an ask that onl
   const bound = [part(message, [{ id: null, kind: "contact", said: "田中浩" }], { kind: "contact", verb: "update" }, "missing_one")];
   assert.deepEqual(nextOf(message, tanaka, bound), ["ask"], "the first layer misses one value: ask even with the reference bound");
 });
+
+test("r11 through the bridge: an「@」pick of a whole title on a read goes although the first layer saw several readings; a write with several readings still asks; two notes of one title, one picked, go", async () => {
+  const { hintPartOf } = await import("../../features/agent-v1/conversation/bridge");
+  assert.equal(hintPartOf({ clarity: "multiple_readings", objectClues: [], requiredCapabilities: ["memo.read"], sourceQuote: "x" } as never, null).clarity, "none", "several readings is the lab's none");
+  const note = { "M-note:c1": { name: "竞品笔记 A", type: "memo" } };
+  const message = "@竞品笔记 A 帮我看看";
+  const pick = [{ id: "M-note:c1", kind: "memo" as const, said: "@竞品笔记 A" }];
+  const bound = [{ labId: "M-note:c1", words: "@竞品笔记 A" }];
+  assert.deepEqual(nextOf(message, note, [part(message, pick, { kind: "memo", verb: "read" }, "none")], { bound }), ["go"], "an exact pick on a read");
+  assert.deepEqual(nextOf(message, note, [part(message, pick, { kind: "memo", verb: "read" }, "missing_one")], { bound }), ["ask"], "missing one value still asks");
+  const write = "@竞品笔记 A 删掉";
+  assert.deepEqual(nextOf(write, note, [part(write, [{ ...pick[0] }], { kind: "memo", verb: "delete" }, "none")], { bound }), ["ask"], "a write with several readings asks");
+  const two = { "M-note:d1": { name: "选品方向", type: "memo" }, "M-note:d2": { name: "选品方向", type: "memo" } };
+  const asked = "那 @选品方向 这一篇呢？";
+  const picked = [part(asked, [{ id: "M-note:d2", kind: "memo", said: "@选品方向" }], { kind: "memo", verb: "read" })];
+  assert.deepEqual(nextOf(asked, two, picked, { bound: [{ labId: "M-note:d2", words: "@选品方向" }] }), ["go"], "the picker told them apart");
+  const unpicked = "那 选品方向 这一篇呢？";
+  assert.deepEqual(nextOf(unpicked, two, [part(unpicked, [{ id: null, kind: "memo", said: "选品方向" }], { kind: "memo", verb: "read" })]), ["ask"], "without a pick two notes of one title still ask");
+});

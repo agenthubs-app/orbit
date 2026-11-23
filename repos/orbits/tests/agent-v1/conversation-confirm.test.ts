@@ -102,9 +102,9 @@ test("the late confirm read at deliver: a write part's person bound after unders
   records.push(todo(ME, "task:li", "给李薇寄样片", { relatedContactId: "contact:li" }));
   const access = recordAccessOf({ events: [], records });
   const tanaka = [{ entity: "contact", recordId: "contact:tanaka" }];
-  const run = (parts: Pick<GraphPart, "refs" | "capabilities" | "plan">[], hintIds: string[], firstRecords: number) => {
+  const run = (parts: Pick<GraphPart, "refs" | "capabilities" | "plan">[], hintIds: string[], firstRecords: number, card: unknown = null) => {
     const conversation = { hint: { parts: [{ clarity: "clear", continues: null, quote: "", refs: hintIds.map((id) => ({ id, kind: "contact", said: "x" })), slots: {} }] }, readWorld: null, turn: { at: NOW, gone: [], hint: null, message: "" }, world: firstRecords ? { records: firstRecords } : null } as Record<string, unknown>;
-    const scope = { deps: { now: () => NOW, records: access }, input: { actorId: ME }, run: { context: null, conversation } } as never;
+    const scope = { deps: { now: () => NOW, records: access }, input: { actorId: ME }, run: { actionPreview: card, context: null, conversation } } as never;
     return conversationLateRead(scope, { asOf: NOW, parts, timeZone: "Asia/Tokyo" } as never).then(() => conversation.readWorld as World | null);
   };
   const late = await run([partOf(["todo.create"], tanaka)], [], 0);
@@ -115,5 +115,7 @@ test("the late confirm read at deliver: a write part's person bound after unders
   assert.equal(await run([partOf(["todo.create"], tanaka)], [], READ_RECORDS), null, "nothing left: no read");
   assert.equal(await run([partOf(["todo.create"], tanaka)], ["C-contact:tanaka"], 0), null, "bound by the hint: read at understand already");
   assert.equal(await run([partOf(["todo.read"], tanaka)], [], 0), null, "a read part reads nothing");
+  const onCard = { operations: [{ after: { relatedContactId: "contact:tanaka", title: "回复报价" }, capability: "todo.create", operationId: "op1", partId: "p1" }] };
+  assert.equal((await run([{ ...partOf(["todo.create"]), localId: "p1" } as never], [], 0, onCard))?.todos.length, 8, "a person bound only on the card (AE-XL-016: 给李薇建一个待办)");
   assert.equal(await run([partOf(["todo.create"], tanaka, { clarity: "multiple_readings" } as Partial<Plan>)], [], 0), null, "a part that only might write reads nothing");
 });
