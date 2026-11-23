@@ -22,7 +22,7 @@ const HAN = /[㐀-鿿豈-﫿]/;
 // written capitalised or as acronyms; English interface wording leaks in as lowercase
 // words ("people", "view only") or as a value with no Japanese / Chinese at all ("Ended").
 const LOWERCASE_OK = new Set(["https", "http", "localhost", "csv", "vcf", "vol", "example", "com", "mirai", "seiki", "ryo", "takayama", "iOS", "iPad", "iPhone", "iOrbit", "vCard", "connpass"]);
-const PROPER = new Set(["Orbit", "iOrbit", "IORBIT", "LinkedIn", "LINE", "WeChat", "iPhone", "Google", "SaaS", "CSV", "URL", "English", "Step", "Task", "ToDo", "App", "Web", "LIVE", "Connections", "XXXX", "WhatsApp", "FAX"]);
+const PROPER = new Set(["Orbit", "iOrbit", "IORBIT", "LinkedIn", "LINE", "WeChat", "iPhone", "Google", "SaaS", "CSV", "URL", "English", "Step", "Task", "ToDo", "App", "Web", "LIVE", "Connections", "XXXX", "WhatsApp", "FAX", "Round"]);
 const words = (value: string) => [...value.replace(/\{[A-Za-z0-9_]+\}/g, "").replace(/\S+@\S+/g, "").matchAll(/[A-Za-z]{3,}/g)].map((m) => m[0]);
 const englishWords = (value: string) => {
   const all = words(value);
@@ -117,4 +117,18 @@ test("the English scan sees JSX text and text props, and lets brand names throug
   assert.equal(hardcodedEnglish('const b = <Button label="Open" />;', "x.tsx").length, 1);
   assert.equal(hardcodedEnglish('const c = <Header title="iOrbit" />; const d = <Text>Orbit</Text>;', "x.tsx").length, 0);
   assert.equal(hardcodedEnglish('const e = <View testID="save-button" />;', "x.tsx").length, 0);
+});
+
+// 2026-11-23 user feedback: 「R1 / R2」 read as nothing; event rounds are written 「Round 1 / Round 2」 in all three languages.
+test("event round labels say Round, never a bare R + number", () => {
+  const bare = /(^|[^A-Za-z])R(\{[a-z]+\}|\d)/u;
+  const offenders: string[] = [];
+  for (const [language, dictionary] of Object.entries(dictionaries)) {
+    for (const [key, value] of Object.entries(dictionary)) if (key.startsWith("eventsJourney.") && bare.test(String(value))) offenders.push(`${language} ${key}: ${value}`);
+  }
+  for (const file of ["VenueTabs.tsx", "VenuePage.tsx", "AttendeeSheet.tsx", "AfterPage.tsx", "EventDetailPage.tsx"]) {
+    const source = readFileSync(join("src/screens/events/v2", file), "utf8");
+    if (/[`"']R\$\{|[`"']R\d[`"']/u.test(source)) offenders.push(`src/screens/events/v2/${file}`);
+  }
+  assert.deepEqual(offenders, []);
 });

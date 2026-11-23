@@ -309,8 +309,11 @@ function GoingCard({ item, now, language, width, style, gradientKey, band = null
   const fullWidth = useFullCardWidth();
   const cover = useCoverUri(item.coverUrl);
   const bandWidth = width ?? fullWidth;
+  // 2026-11-23: the whole card opens the event (as its button does); before, only the button reacted and a tap on the
+  // cover / title did nothing.
+  const openCard = () => (item.privateEvent && onOpenPrivate ? onOpenPrivate(item) : router.push(item.href as Href));
   return (
-    <View style={[styles.evCard, width ? { width } : null, band ? styles.evCardBand : null, style]} testID={`events-going-${item.eventId}`}>
+    <UiPressable accessibilityRole="button" accessibilityLabel={item.title} onPress={openCard} style={[styles.evCard, width ? { width } : null, band ? styles.evCardBand : null, style]} testID={`events-going-${item.eventId}`}>
       {band === "image" && cover ? <Image source={{ uri: cover }} resizeMode="cover" style={{ height: bandWidth / 2, width: bandWidth }} accessibilityIgnoresInvertColors testID={`events-going-cover-${item.eventId}`} />
         : band === "emoji" ? <View style={[styles.bandEmoji, { height: bandWidth / 2, width: bandWidth }]}><UiText style={styles.bandEmojiText}>{item.emoji || eventEmoji({ title: item.title })}</UiText></View> : null}
       {band ? null : <KitGradient id={`events-going-bg-${gradientKey}-${item.eventId}`} from={colors.macLav} to={colors.surface} stop={0.6} angle={160} />}
@@ -332,7 +335,7 @@ function GoingCard({ item, now, language, width, style, gradientKey, band = null
         ? <UiPressable accessibilityRole="button" accessibilityLabel={copy.myEvents.view} onPress={() => onOpenPrivate(item)} style={[styles.btnBlock]} testID={`events-private-open-${item.eventId}`}><UiText style={styles.btnBlockText}>{copy.myEvents.view}</UiText></UiPressable>
         : <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.prepare")} onPress={() => router.push(item.href as Href)} style={[styles.btnBlock]}><UiText style={styles.btnBlockText}>{t("eventsV2.prepare")}</UiText></UiPressable>}
       </View>
-    </View>
+    </UiPressable>
   );
 }
 

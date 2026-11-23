@@ -141,3 +141,13 @@ test("参加的活动 (2026-11-21, same as Web): これから / 過去 switch, s
   await empty.getByText("接下来没有要参加的活动", { exact: true }).waitFor();
   assert.equal(await empty.getByRole("tab", { name: "过去 0" }).count(), 0, "no switch when both sides are empty");
 });
+
+test("参加的活动: tapping an upcoming card itself opens the event (before only its button reacted)", async (t) => {
+  const item = { emoji: "🥂", eventId: "u1", href: "/events/u1", startsAt: "2099-10-07T10:00:00.000Z", status: "registered", title: "Event u1", venue: "渋谷" };
+  const upcoming = { items: [item], upcomingCount: 1, asOf: syncedAt, nextCursor: null, range: "upcoming" };
+  const page = await harness.open(t, { screen: "events", online: false, params: { tab: "going" }, copies: {
+    "event-assessments|main": { data: [], syncedAt }, "events-mine|upcoming": { data: upcoming, syncedAt }, "events-mine|past": { data: { ...upcoming, items: [], upcomingCount: 1, range: "past" }, syncedAt },
+  } });
+  await page.getByText("Event u1", { exact: true }).first().click();
+  await page.waitForFunction(() => (window as unknown as { fixture: { navigation: unknown[] } }).fixture.navigation.some((entry) => JSON.stringify(entry).includes("/events/u1")));
+});

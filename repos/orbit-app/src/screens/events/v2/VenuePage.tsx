@@ -107,6 +107,8 @@ export function VenuePage() {
   const copy = useKeyedPageCopy<EventVenueResponse>("event-venue", eventId, (value) => eventVenueResponseSchema.safeParse(value).success);
   const [offlineAt, setOfflineAt] = useState<string | null>(null);
   const savedAt = useRef<string | null>(null);
+  const heldBack = useRef<EventVenueResponse | null>(null);
+  const recordEntry = params.record === "1";
   const [tab, setTab] = useState<Tab | null>(isTab(params.tab) ? params.tab : null);
   const [sheetPerson, setSheetPerson] = useState<AttendeeSheetPerson | null>(null);
   const [view, setView] = useState<"list" | "map">(params.view === "map" ? "map" : "list");
@@ -131,6 +133,8 @@ export function VenuePage() {
   const load = useCallback(() => api.venue(eventId).then((res) => {
     if (res.ok) { setData(res.data); setOfflineAt(null); setMissing(null); void copy.save(res.data); return res; }
     const unreachable = res.reason === "network" || res.reason === "unavailable";
+    // Offline: the copy held back below (saved during the event) is still better than nothing.
+    if (unreachable && heldBack.current) { setData(heldBack.current); heldBack.current = null; }
     if (unreachable && savedAt.current) setOfflineAt(savedAt.current);
     else setMissing(unreachable ? "network" : "not_found");
     return res;
@@ -139,11 +143,19 @@ export function VenuePage() {
     let live = true;
     void copy.read().then((saved) => {
       if (!live) return undefined;
-      if (saved) { savedAt.current = saved.syncedAt; setData(saved.data); }
+      if (saved) {
+        savedAt.current = saved.syncedAt;
+        // 2026-11-23: a copy saved while the event was running, read after it ended (or opened from 「会場の記録を見る」 ?record=1),
+        // would first draw the live venue (check-in / seats / a person's panel) and then flip to the record. Hold it back; the
+        // skeleton shows until the answer (the held copy is still used offline).
+        const endedSince = Date.parse(saved.data.endsAt ?? "") <= Date.now();
+        if (saved.data.state !== "ended" && (recordEntry || endedSince)) heldBack.current = saved.data;
+        else setData(saved.data);
+      }
       return load();
     });
     return () => { live = false; };
-  }, [copy, load]);
+  }, [copy, load, recordEntry]);
 
   const people = useMemo(() => {
     if (!data) return [] as EventVenuePerson[];

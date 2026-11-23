@@ -46,7 +46,7 @@ test("会場の記録: an ended event opens on グループ (every round), witho
   await page.getByRole("button", { name: mate.name }).first().click();
   await page.getByTestId("events-attendee-sheet").waitFor();
   await page.getByText("这场活动里的交集", { exact: true }).waitFor();
-  await page.getByText("R2 同桌 B-4", { exact: true }).waitFor();
+  await page.getByText("Round 2 同桌 B-4", { exact: true }).waitFor();
   await page.getByText("資本政策の相談歓迎です。", { exact: true }).waitFor();
   await page.getByTestId("events-attendee-request").waitFor();
   await page.getByText("活动结束后 30 天内可以申请（截至 11/6）", { exact: true }).waitFor();
@@ -142,9 +142,9 @@ test("会場の記録 ほかのテーブル: switch rounds, open a table to see 
   await page.getByTestId("events-venue-other-tables").waitFor();
   await page.getByText("AI・SaaS", { exact: true }).waitFor();
   assert.equal(await page.getByText("飲食・小売", { exact: true }).count(), 0);
-  await page.getByRole("tab", { name: "R2" }).click();
+  await page.getByRole("tab", { name: "Round 2" }).click();
   await page.getByText("飲食・小売", { exact: true }).waitFor();
-  await page.getByRole("tab", { name: "R1" }).click();
+  await page.getByRole("tab", { name: "Round 1" }).click();
   await page.getByTestId("events-venue-other-table-B-1").click();
   await page.getByTestId("events-venue-other-tables").getByRole("button", { name: mate.name }).click();
   await page.getByTestId("events-attendee-sheet").waitFor();
@@ -252,4 +252,21 @@ test("参加者 page: full roster (attendees=all), plan-fit / known / all, searc
   await page.getByRole("tab", { name: `全部${registered.attendeeCounts.all}` }).click();
   await page.getByRole("button", { name: first.name }).first().click();
   await page.getByTestId("events-attendee-sheet").waitFor();
+});
+
+test("会場の記録 from 記録を見る: a copy saved while the event was running is not drawn first (no live venue flash)", async (t) => {
+  const during = { ...journeyVenue("checked_in", "app"), endsAt: "2026-01-01T03:00:00.000Z" };
+  const page = await harness.open(t, { screen: "venue", params: { id: eventId, record: "1" }, slowPrefix: `${path}/venue`,
+    copies: { [`event-venue|${eventId}`]: { data: during, syncedAt: "2026-01-01T02:00:00.000Z" } },
+    responses: { [`${path}/venue`]: { ...ended, rounds } } });
+  await page.getByTestId("events-venue-loading").waitFor();
+  assert.equal(await page.getByTestId("events-venue-tab-now").count(), 0, "the live venue's 現場 tab never shows");
+  await page.getByTestId("events-venue-round-1").waitFor();
+});
+
+test("会場の記録 offline: the copy saved during the event is still shown when the answer cannot arrive", async (t) => {
+  const during = { ...journeyVenue("checked_in", "app"), endsAt: "2026-01-01T03:00:00.000Z" };
+  const page = await harness.open(t, { screen: "venue", params: { id: eventId, record: "1" }, online: false,
+    copies: { [`event-venue|${eventId}`]: { data: during, syncedAt: "2026-01-01T02:00:00.000Z" } }, responses: {} });
+  await page.getByTestId("events-venue-tab-now").waitFor();
 });

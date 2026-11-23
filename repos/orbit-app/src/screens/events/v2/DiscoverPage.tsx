@@ -16,7 +16,11 @@ import { planNewGoalHref } from "../../../api/compute/plan-href";
 import { BottomSheet, FilterOption, FullScreenSearch, Icon, Toggle, UiPressable, UiText } from "../../../components/ui";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
 import { createThemedStyles } from "../../../design/theme";
-import { colors as photoColors, radius } from "../../../design/tokens";
+import { radius } from "../../../design/tokens";
+import { designColors } from "../../../api/design/tokens";
+
+// The 「已结束」 tag sits on the cover photo, so it is the same in light and dark (kit .endtag): the light palette on purpose.
+const photoColors = designColors.light;
 import { addDesignMock } from "../../add/add-design-mock";
 import { useJourneyApi } from "./journey-api";
 import { AREAS, PERIODS, THEMES, areaLabel, discoverWhen, feeText, periodLabel, rowTone, themeLabel, tokyo, type JourneyTone } from "./journey-model";
@@ -477,7 +481,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   ecSel: { borderColor: colors.ink, borderRadius: 22, borderWidth: 2, bottom: -2, left: -2, position: "absolute", right: -2, top: -2 },
   // kit .cb .endtag：左上 6 · 高 20 · 左右 7 · 10.5/700 白字 · 深色 62%。叠在照片上，深浅主题同一个：取浅色主题的 ink / onAccent。
   endTag: { alignItems: "center", borderRadius: 999, height: 20, justifyContent: "center", left: 6, overflow: "hidden", paddingHorizontal: 7, position: "absolute", top: 6 },
-  endTagBg: { ...StyleSheet.absoluteFillObject, backgroundColor: photoColors.ink, opacity: 0.62 },
+  endTagBg: { bottom: 0, left: 0, position: "absolute", right: 0, top: 0, backgroundColor: photoColors.ink, opacity: 0.62 },
   endTagText: { color: photoColors.onAccent, fontSize: 10.5, fontWeight: "700", lineHeight: 15.75 },
   // kit .lh：上 18 下 10 左右 2 · 15/800 · 右「最近的在前」11.5/500 ink3。
   lh: { alignItems: "baseline", flexDirection: "row", justifyContent: "space-between", marginBottom: 10, marginHorizontal: 2, marginTop: 18 },

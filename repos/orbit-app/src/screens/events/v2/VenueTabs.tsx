@@ -106,7 +106,7 @@ export function NowTab({ data, t, toneOf, onRecap, onMoreOpeners }: { data: Even
                 return (
                   <View key={item.round} style={[v.rdot, now ? v.rdotNow : null, done ? { opacity: 0.7 } : null]}>
                     <UiText style={[v.rdotTable, now ? { color: colors.bg } : null]}>{item.table}</UiText>
-                    <UiText style={[v.rdotRound, now ? { color: colors.bg } : null]}>{`R${item.round}`}</UiText>
+                    <UiText style={[v.rdotRound, now ? { color: colors.bg } : null]}>{t("vRoundShort", { n: item.round })}</UiText>
                   </View>
                 );
               })}
