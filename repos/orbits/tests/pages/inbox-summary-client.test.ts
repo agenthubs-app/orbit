@@ -41,3 +41,28 @@ test("desktop and mobile Web triggers merge concurrent reads and share one ident
     assert.deepEqual(calls, ["/api/account/me", "/api/inbox/summary"]);
   } finally { globalThis.fetch = previous; }
 });
+
+test("2026-11-23: the summary goes out together with the identity confirmation, and is still refused for another account", async () => {
+  const previous = globalThis.fetch;
+  const { invalidateInboxActorConfirmation } = await import("../../app/(app)/app/inbox/inbox-request");
+  const calls: string[] = [];
+  let releaseMe!: () => void;
+  const meGate = new Promise<void>((resolve) => { releaseMe = resolve; });
+  let summaryActor = "a";
+  try {
+    invalidateInboxActorConfirmation();
+    globalThis.fetch = (async (url) => {
+      calls.push(String(url));
+      if (String(url) === "/api/account/me") { await meGate; return Response.json({ success: true, data: { account: { id: "a" } } }); }
+      return Response.json({ success: true, data: { actorId: summaryActor, messagesUnread: 1, notificationMode: "legacy", notificationRead: "ready", notificationsUnread: 0, asOf: "2026-11-23T00:00:00Z" } });
+    }) as typeof fetch;
+    const read = readInboxUnreadCounts("zh", "a");
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(calls, ["/api/account/me", "/api/inbox/summary"], "both requests are in flight before /api/account/me answers");
+    releaseMe();
+    assert.deepEqual(await read, { threads: 1, alerts: 0 });
+    invalidateInboxActorConfirmation();
+    summaryActor = "b";
+    await assert.rejects(readInboxUnreadCounts("zh", "a"), /Account changed/);
+  } finally { globalThis.fetch = previous; invalidateInboxActorConfirmation(); }
+});

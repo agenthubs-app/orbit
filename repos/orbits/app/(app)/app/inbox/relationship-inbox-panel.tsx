@@ -178,9 +178,14 @@ export async function readInboxUnreadCounts(language: OrbitLanguage, expectedAct
   // at most one `/api/account/me` together with the open tab's own confirmations.
   const read = (async () => {
   try {
-  const actor = await readContactMessageActor();
-  if (expectedActor && actor !== expectedActor) throw new Error("Account changed");
-  const bounded = await readWebInboxSummary(actor, language);
+  // 2026-11-23: the summary no longer waits for the confirmation; both go out together and the
+  // summary is accepted only for the confirmed account (its own actorId must match).
+  const confirmed = readContactMessageActor().then((actor) => {
+    if (expectedActor && actor !== expectedActor) throw new Error("Account changed");
+    return actor;
+  });
+  const bounded = await readWebInboxSummary(confirmed, language);
+  const actor = await confirmed;
   if (await readContactMessageActor() !== actor) throw new Error("Account changed");
   return bounded;
   } catch (error) { invalidateInboxActorConfirmation(); throw error; }
