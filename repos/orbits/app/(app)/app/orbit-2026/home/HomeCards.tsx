@@ -218,7 +218,7 @@ function EventCard({ controls }: { controls?: ReactNode }) {
       const event = selectNextRegisteredEvent(data.items, new Date(data.asOf ?? Date.now()));
       return event ? <>
         <span className={styles.when}><Chip label={eventWhen(event.startsAt, t)} tone="apricot" /></span>
-        <Link className={styles.eventTitle} href={event.href}>{event.title}</Link>
+        <Link className={styles.eventTitle} href={event.href} data-home-card-target="">{event.title}</Link>
         {event.venue ? <div className={styles.sub}>{event.venue}</div> : null}
         <Foot href={event.href} label={event.meetCount != null ? t("meetCount", { count: event.meetCount }) : t("prep")} />
       </> : <>

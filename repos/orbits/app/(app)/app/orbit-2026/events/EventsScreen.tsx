@@ -5,7 +5,7 @@
 // 参加イベント（2026-11-21 由「参加予定」改名）：events/mine upcoming + past，これから / 過去 二选一。 探す: R27 `DiscoverTab`（コミュニティ / プランに効く / すべて，右栏「選択中のイベント」）。
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 
 import { eventEmoji } from "../../../../../shared/compute/event-emoji";
 import type { EventAssessmentAvailability, EventAssessmentContract, EventAssessmentCreateInput, EventAssessmentFacts } from "../../../../../shared/contract/event-assessment";
@@ -448,9 +448,12 @@ function dayChip(iso: string, now: Date, t: Translate) {
 
 function NextCard({ t, tier, item, language, now }: { t: Translate; tier: Tier; item: MyEventItem; language: OrbitLanguage; now: Date }) {
   const std = useStandardCopy();
+  const router = useRouter();
+  // 2026-11-23：整张卡可点（手机上只有「准备」按钮有反应）；卡上的链接照旧自己处理。
+  const whole = { onClick: (event: ReactMouseEvent) => { if (!(event.target as HTMLElement).closest("a, button")) router.push(item.href); }, onKeyDown: (event: ReactKeyboardEvent) => { if (event.key === "Enter" && !(event.target as HTMLElement).closest("a, button")) router.push(item.href); }, role: "link", style: { cursor: "pointer" }, tabIndex: 0 } as const;
   if (tier === "narrow") {
     return (
-      <div className={`${styles.card} ${styles.nextRow}`} data-events-next="">
+      <div className={`${styles.card} ${styles.nextRow}`} data-events-next="" {...whole}>
         <span className={`${styles.emo} ${styles.t_lav}`}>{item.emoji}</span>
         <div style={{ flex: 1, minWidth: 0 }}><div className={styles.row} style={{ gap: 6 }}><span className={styles.lbl}>{t("nextTitle")}</span>{dayChip(item.startsAt, now, t)}</div><b className={styles.nextRowName}>{item.title}</b></div>
         <a className={`${styles.btn} ${styles.sm} ${styles.primary}`} href={item.href}>{t("prepareShort")}</a>
@@ -459,7 +462,7 @@ function NextCard({ t, tier, item, language, now }: { t: Translate; tier: Tier; 
   }
   const medium = tier === "medium";
   return (
-    <div className={`${styles.card} ${medium ? styles.span5 : styles.span4} ${styles.nextCard}`} data-events-next="">
+    <div className={`${styles.card} ${medium ? styles.span5 : styles.span4} ${styles.nextCard}`} data-events-next="" {...whole}>
       {/* 2026-11-20 活动图片：顶部 2:1 出血；没有图保持现样。 */}
       {/* eslint-disable-next-line @next/next/no-img-element -- 主办方上传的图（Blob / 站内路径），服务端已裁成 2:1 */}
       {item.coverUrl ? <div className={r.nextCover} data-events-next-cover=""><img src={item.coverUrl} alt="" /></div> : null}
@@ -519,6 +522,7 @@ function pastMark(item: MyEventItem, t: Translate, privateChip: ReactNode) {
 }
 
 function MyEvents({ language, upcoming, past, now, t, selectedPrivate, onOpenPrivate }: { language: OrbitLanguage; upcoming: MyEventItem[]; past: MyEventItem[]; now: Date; t: Translate; selectedPrivate: string | null; onOpenPrivate: (id: string) => void }) {
+  const router = useRouter();
   const std = useStandardCopy();
   const coming = upcoming.filter((item) => item.status !== "cancelled" && item.status !== "rejected");
   // AG13 (D2): a private event's chip; (D1) «我去过（自己记的）» on its own line, the right chip only the organizer's status.
@@ -546,7 +550,10 @@ function MyEvents({ language, upcoming, past, now, t, selectedPrivate, onOpenPri
           segments={[{ key: "upcoming", label: t("goingUpcomingN", { n: coming.length }) }, { key: "past", label: t("goingPastN", { n: past.length }) }]} />
       </div>
       {when === "upcoming" ? (coming.length === 0 ? empty : coming.map((item) => (
-        <div key={item.eventId} className={`${styles.card} ${styles.span4} ${styles.nextCard}`}>
+        // 2026-11-23：整张卡可点（手机上点封面 / 标题没反应）；卡上的按钮照旧自己处理。
+        <div key={item.eventId} role="link" tabIndex={0} className={`${styles.card} ${styles.span4} ${styles.nextCard}`} data-events-going-card={item.eventId} style={{ cursor: "pointer" }}
+          onClick={(event) => { if ((event.target as HTMLElement).closest("a, button")) return; if (item.privateEvent) onOpenPrivate(item.eventId); else router.push(item.href); }}
+          onKeyDown={(event) => { if (event.key !== "Enter" || (event.target as HTMLElement).closest("a, button")) return; if (item.privateEvent) onOpenPrivate(item.eventId); else router.push(item.href); }}>
           <div className={`${styles.row} ${styles.between}`}><span className={styles.lbl}>{eventWhen(item.startsAt, language, allDayLabelOf(item, std.myEvents.allDay))}</span><span className={styles.row} style={{ gap: 6 }}>{dayChip(item.startsAt, now, t)}{item.privateEvent ? privateChip : null}</span></div>
           <b className={styles.nextName}>{item.title}</b>
           <div className={styles.lbl}>{item.venue ?? ""}</div>

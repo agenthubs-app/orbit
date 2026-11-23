@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { z } from "zod";
 
@@ -43,6 +44,7 @@ export function HomePlaceholder() {
 }
 
 function HomeWorkspace() {
+  const router = useRouter();
   const { language } = useOrbitLanguage();
   const t: T = (key) => pickCopy(homeCopy[key], language);
   const { month, range } = monthHeading(language);
@@ -133,7 +135,14 @@ function HomeWorkspace() {
         <div className={`${styles.grid} ${homeOpeningGeometry(layout) && JSON.stringify(items) === JSON.stringify(layout.web) ? styles.opening : ""}`}>
           {items.map((slot, index) => <section key={slot.key} className={`${styles.card} ${slot.size === "m" ? styles.medium : styles.small} ${editing ? styles.editing : ""} ${drag.dragging === slot.key ? styles.dragging : ""}`} data-widget={slot.key} aria-label={t(TITLE[slot.key])}
             {...dragProps(slot.key)}
-            onClickCapture={(event) => { if (!editing) return; event.preventDefault(); if (drag.consumeClick()) { event.stopPropagation(); return; } if (!(event.target as HTMLElement).closest("button")) setSizing(slot.key); }}>
+            onClickCapture={(event) => { if (!editing) return; event.preventDefault(); if (drag.consumeClick()) { event.stopPropagation(); return; } if (!(event.target as HTMLElement).closest("button")) setSizing(slot.key); }}
+            // 2026-11-23：点卡片空白处也进对应的页（手机上只有右上角小箭头和行能点）：卡里标了 data-home-card-target 的链接优先（下一场活动 → 那场活动），否则卡头那页。
+            onClick={(event) => {
+              if (editing || (event.target as HTMLElement).closest("a, button, input, textarea, select, label, [role=button], [role=link]")) return;
+              if (window.getSelection()?.toString()) return;
+              const target = event.currentTarget.querySelector<HTMLAnchorElement>("a[data-home-card-target]")?.getAttribute("href") ?? HOME_HEAD[slot.key].href;
+              router.push(target);
+            }}>
             {editing ? <>
               {/* b11 #25: the − badge removes; clicking the card opens 小 4 列 / 中 8 列. ↑↓ stay for the keyboard (visible on focus). */}
               <button type="button" data-no-drag="" className={`btn ${styles.minus}`} aria-label={`${t(TITLE[slot.key])} ${t("remove")}`} onClick={() => remove(slot.key)}>−</button>
