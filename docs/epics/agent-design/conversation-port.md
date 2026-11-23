@@ -152,3 +152,10 @@ r11 在 on 下改变的部分（applied）和 r10 那次相比多了 3 处、少
 引擎的 go 从不去掉 Agent 的问题（确认卡、入口、预算、查重 / 删除确认照旧）；请求上有卡时引擎的 ask 一律不用（AE-XL-016 / 017 的重复提醒没做成卡上的提醒，留着不用，一张卡的流程不变）；讨论类部分（route answer）不用：on 第一次全量里 AE-ANS-038「Help me plan for a new goal.」被问成「which one it is」，比原来的回答差 → `5fc11fe` 只留读取部分。
 on 全量（`R12-NEXT-on`，7dff460，280/282：AE-H-008 已知；AE-EVT-006 第一层把改重复日程读成了提议替代方案，没有经过引擎，单独重跑两次都过）。引擎在 AE-ANS-024、AE-ANS-038 两例改了回答；修完后 AE-ANS-024 / 025 / 026 / 038、AE-H-001、AE-EVT-006 单独两次全过（`R12-NEXT-on-fix-1/2`），读取部分改成的追问出现在 AE-ANS-024（两次）、AE-ANS-026、AE-ANS-025（这例没改时 Agent 自己挑了 5 个人回顾，改了之后是问哪一位，正合用例）。双评见 RUNS.md。
 回滚：`ORBIT_AGENT_CONVERSATION_NEXT=shadow`（只记差别，不改任何回答）。
+
+**正式站「高桥智子」事故与修复**（2026-11-23，`853ee3c8b` 回滚到 shadow，修复 `ab56e242d`）：NEXT on 上线后「高桥智子最近有什么记录？」（存的是高橋智子）被问成没有选项的「要改的是哪一条？」。
+根因：第一层没见过这个名字，报成 `missing_one` / 几种读法；Agent 靠异体写法的联系人搜索找到了她，但 r10 的「missing_one / none 一律问」只看第一层的疑问，引擎照样「问」；clarify 的 ask_missing 没有候选，也照样出了问题。
+修法都在桥接（impl 不改）：本轮 Agent 绑定的记录——部分的 refs，加上 resolve 为这部分读的人（`run.partPeople`：异体 / 拼音 / 部分写法、公司的人、前文的人、继承的主语）——进 World、按名字和绑定它的词都认得；
+引擎没绑上但被 Agent 绑定覆盖的指代算绑定（`bridge.ts AgentBinding`、`askGoOf`）；读取部分没有剩下没绑定的指代时，第一层的疑问在 ask / go 里不算（`settledHintOf`）。
+引擎的「问」只有在有选项（resolve 的候选，否则引擎自己的候选对上 Agent 的记录）时才变成 Agent 的问题，clarify prepare 里没有选项的一律丢掉（trace `conversation.next_no_options`）。
+单元测试 `conversation-next-bound.test.ts`；新用例 AE-XL-023 / 024。全量（`NEXT-bound-on`，283/284，只有 AE-H-008）里 NEXT 没有改变任何一轮回答：剩下引擎要问的 AE-ANS-024 / 025 / 026 都没有选项。**NEXT 缺省改回 on**；回滚照旧 `ORBIT_AGENT_CONVERSATION_NEXT=shadow`。

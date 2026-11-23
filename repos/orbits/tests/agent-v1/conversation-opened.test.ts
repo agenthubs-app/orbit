@@ -161,12 +161,12 @@ test("the World is read only for a person reference the agent left unbound (stag
   assert.equal(needsWorldRead([partOf("包材用什么", [])]), false, "no reference");
 });
 
-test("switches: pronoun on and next shadow by default (next back to shadow after the 2026-11-23 production check) under ORBIT_AGENT_CONVERSATION=on, the others shadow; off under legacy", () => {
+test("switches: pronoun and next on by default (next on again after the 2026-11-23 bound-record fix) under ORBIT_AGENT_CONVERSATION=on, the others shadow; off under legacy", () => {
   assert.equal(openedMode("pronoun", { ORBIT_AGENT_CONVERSATION: "on" }), "on");
   assert.equal(openedMode("pronoun", { ORBIT_AGENT_CONVERSATION: "on", ORBIT_AGENT_CONVERSATION_PRONOUN: "shadow" }), "shadow", "the rollback switch");
   assert.equal(openedMode("pronoun", { ORBIT_AGENT_CONVERSATION: "shadow" }), "shadow");
   for (const decision of ["world", "carry"] as const) assert.equal(openedMode(decision, { ORBIT_AGENT_CONVERSATION: "on" }), "shadow");
-  assert.equal(openedMode("next", { ORBIT_AGENT_CONVERSATION: "on" }), "shadow", "next back to shadow: on production it asked about 「高桥智子」 found only by a variant spelling");
+  assert.equal(openedMode("next", { ORBIT_AGENT_CONVERSATION: "on" }), "on", "next on: what the agent bound counts as bound, an ask with no options is never shown");
   assert.equal(openedMode("next", { ORBIT_AGENT_CONVERSATION: "on", ORBIT_AGENT_CONVERSATION_NEXT: "shadow" }), "shadow", "the rollback switch");
   assert.equal(openedMode("next", { ORBIT_AGENT_CONVERSATION: "shadow" }), "shadow");
   assert.equal(openedMode("world", { ORBIT_AGENT_CONVERSATION: "shadow", ORBIT_AGENT_CONVERSATION_WORLD: "on" }), "shadow");
