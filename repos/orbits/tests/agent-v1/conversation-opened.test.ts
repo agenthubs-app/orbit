@@ -161,11 +161,14 @@ test("the World is read only for a person reference the agent left unbound (stag
   assert.equal(needsWorldRead([partOf("包材用什么", [])]), false, "no reference");
 });
 
-test("switches: pronoun on by default under ORBIT_AGENT_CONVERSATION=on, the others shadow; off under legacy", () => {
+test("switches: pronoun and next on by default under ORBIT_AGENT_CONVERSATION=on, the others shadow; off under legacy", () => {
   assert.equal(openedMode("pronoun", { ORBIT_AGENT_CONVERSATION: "on" }), "on");
   assert.equal(openedMode("pronoun", { ORBIT_AGENT_CONVERSATION: "on", ORBIT_AGENT_CONVERSATION_PRONOUN: "shadow" }), "shadow", "the rollback switch");
   assert.equal(openedMode("pronoun", { ORBIT_AGENT_CONVERSATION: "shadow" }), "shadow");
-  for (const decision of ["world", "carry", "next"] as const) assert.equal(openedMode(decision, { ORBIT_AGENT_CONVERSATION: "on" }), "shadow");
+  for (const decision of ["world", "carry"] as const) assert.equal(openedMode(decision, { ORBIT_AGENT_CONVERSATION: "on" }), "shadow");
+  assert.equal(openedMode("next", { ORBIT_AGENT_CONVERSATION: "on" }), "on", "r12 port: next on (add-only)");
+  assert.equal(openedMode("next", { ORBIT_AGENT_CONVERSATION: "on", ORBIT_AGENT_CONVERSATION_NEXT: "shadow" }), "shadow", "the rollback switch");
+  assert.equal(openedMode("next", { ORBIT_AGENT_CONVERSATION: "shadow" }), "shadow");
   assert.equal(openedMode("world", { ORBIT_AGENT_CONVERSATION: "shadow", ORBIT_AGENT_CONVERSATION_WORLD: "on" }), "shadow");
   assert.equal(openedMode("carry", { ORBIT_AGENT_CONVERSATION: "legacy", ORBIT_AGENT_CONVERSATION_CARRY: "on" }), "off");
   assert.equal(openedMode("world", { ORBIT_AGENT_CONVERSATION: "on", ORBIT_AGENT_CONVERSATION_WORLD: "off" }), "off");

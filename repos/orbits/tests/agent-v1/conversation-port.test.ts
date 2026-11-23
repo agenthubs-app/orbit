@@ -11,7 +11,7 @@ import test from "node:test";
 import { agentRefOf, appendTurn, hintOf, labIdOf, namesOf, normalizeLog, runEngine, worldOf, type ConversationLog } from "../../features/agent-v1/conversation/bridge";
 import { applyTurn, compareTurn, isCancel } from "../../features/agent-v1/conversation/apply";
 import { conversationMode } from "../../features/agent-v1/conversation/mode";
-import { conversationTurn } from "../../features/agent-v1/conversation/run";
+import { conversationNextAsks, conversationTurn } from "../../features/agent-v1/conversation/run";
 import type { AgentReply, ModelHint } from "../../features/agent-v1/conversation/types";
 import { buildFirstLayerContext } from "../../features/agent-v1/context/build";
 import type { GraphPart } from "../../features/agent-v1/graph/state";
@@ -319,4 +319,61 @@ test("AE-XL-014 (eval on run): a described to-do the conversation never showed i
   assert.equal(contentContradicts("那条", "给小林发修订报价", "todo"), false, "a bare pointer has no words of its own");
   assert.equal(contentContradicts("「给小林发修订报价（实施费单列）」这条待办", "给小林发修订报价", "todo"), false);
   assert.equal(contentContradicts("小陈", "陈一鸣", "contact"), false, "names are the engine's own matching");
+});
+
+// ---------------------------------------------------------------- ORBIT_AGENT_CONVERSATION_NEXT=on (add-only, r12 port)
+
+const VAGUE = "Review a discussion with a contact";
+
+for (const next of ["shadow", "on"] as const) {
+  test(`next ${next}: 「${VAGUE}」 (AE-ANS-026) — the agent would answer, the engine asks; on makes it the agent's own question`, async () => {
+    const world = people();
+    const holder = globalThis as { __orbitAgentEval?: unknown };
+    const before = { main: process.env.ORBIT_AGENT_CONVERSATION, next: process.env.ORBIT_AGENT_CONVERSATION_NEXT };
+    process.env.ORBIT_AGENT_CONVERSATION = "on";
+    process.env.ORBIT_AGENT_CONVERSATION_NEXT = next;
+    const previous = holder.__orbitAgentEval;
+    try {
+      const run = await runFn(VAGUE, [{ clarity: "missing_one", dataSources: ["orbit_records"], objectClues: [{ entity: "contact", text: "a contact" }], requiredCapabilities: ["contact.read"], sourceQuote: VAGUE }], { answer: ANSWER, language: "en", world });
+      const asked = run.events.filter((event) => event.type === "clarify.asked");
+      const gate = run.events.filter((event) => event.type === "conversation.next_asked");
+      const shadow = run.events.find((event) => event.type === "conversation.shadow");
+      const nextDiffs = ((shadow?.diffs ?? []) as { field: string }[]).filter((diff) => diff.field === "next");
+      if (next === "on") {
+        assert.equal(gate.length, 1, JSON.stringify(run.events.map((event) => event.type)));
+        assert.equal(asked.length, 1, run.result.text);
+        assert.equal(run.result.status, "waiting_user");
+        assert.equal(nextDiffs.length, 0, "the agent now asks as the engine does");
+      } else {
+        assert.equal(gate.length, 0);
+        assert.equal(asked.length, 0, run.result.text);
+        assert.equal(nextDiffs.length, 1, JSON.stringify(shadow));
+      }
+    } finally {
+      holder.__orbitAgentEval = previous;
+      for (const [key, value] of [["ORBIT_AGENT_CONVERSATION", before.main], ["ORBIT_AGENT_CONVERSATION_NEXT", before.next]] as const) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
+}
+
+test("next on: never while the request has a card (an engine ask on a write is left out), never on a resume", () => {
+  const before = { main: process.env.ORBIT_AGENT_CONVERSATION, next: process.env.ORBIT_AGENT_CONVERSATION_NEXT };
+  process.env.ORBIT_AGENT_CONVERSATION = "on";
+  process.env.ORBIT_AGENT_CONVERSATION_NEXT = "on";
+  try {
+    const part = partOf(VAGUE, ["contact.read"], [{ entity: "contact", words: "a contact" }], { status: "answered", route: "answer" });
+    const record = { result: { parts: [{ next: "ask", quote: VAGUE, refs: [] }], shelved: [] }, turn: { at: at(5), gone: [], hint: null, message: VAGUE } };
+    const scopeWith = (actionPreview: unknown) => ({ deps: {}, input: { message: VAGUE, requestId: "r1" }, run: { actionPreview, conversation: record, sessionState: null } }) as never;
+    const state = (touched: string[] | null) => ({ asOf: at(5), optionSets: [], parts: [part], timeZone: "Asia/Tokyo", touched }) as never;
+    assert.deepEqual(conversationNextAsks(scopeWith({ actionId: "card" }), state(null)), []);
+    assert.deepEqual(conversationNextAsks(scopeWith(null), state(["p1"])), []);
+  } finally {
+    for (const [key, value] of [["ORBIT_AGENT_CONVERSATION", before.main], ["ORBIT_AGENT_CONVERSATION_NEXT", before.next]] as const) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
 });

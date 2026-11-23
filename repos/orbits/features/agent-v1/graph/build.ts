@@ -26,6 +26,7 @@ import { probeNode, webDue, webPartReads } from "./nodes/probe";
 import { resolveNode } from "./nodes/resolve";
 import { routeNode } from "./nodes/route";
 import { understandNode } from "./nodes/understand";
+import { conversationNextAsks } from "../conversation/run";
 import { verifyNode } from "./nodes/verify";
 import { AgentGraphAnnotation, type AgentGraphRun, type AgentGraphState, type GraphResolution } from "./state";
 import type { AgentActionPreviewContract, AgentAnswerBasisContract, AgentAnswerBlockContract, AgentAnswerMemoryUseContract, AgentClarificationContract, AgentPartResult, AgentRunStage, AgentWebResultContract } from "../../../shared/contract/agent-v1";
@@ -72,6 +73,8 @@ export function buildAgentGraph(scope: NodeScope) {
   const answerDue = (state: AgentGraphState) => (state.touched === null && state.parts.some((part) => part.route === "answer" && part.status === "answered"))
     || state.parts.some((part) => (part.route === "read" || part.route === "web_lookup") && part.status === "answered" && (scope.run.materials.get(part.localId)?.length ?? 0) > 0 && touchedBy(state, part));
   const web = (state: AgentGraphState) => webDue(scope, state);
+  // ORBIT_AGENT_CONVERSATION_NEXT=on: a part the engine asks about goes to clarify too (add-only, conversationNextAsks)
+  const directionsDue = (state: AgentGraphState) => scope.run.needsDirections || conversationNextAsks(scope, state).length > 0;
   return new StateGraph(AgentGraphAnnotation)
     .addNode("intake", traced("intake", id, intakeNode(scope)))
     .addNode("understand", traced("understand", id, understandNode(scope)))
@@ -91,14 +94,14 @@ export function buildAgentGraph(scope: NodeScope) {
     // AG04: parts that need questions or directions go through clarify's prepare pass.
     // AG06: parts that write go through propose (after the reads, so a person found by a read is known).
     // AG08: parts that pick or order contacts or events go through functions first (code, one judgment at most).
-    .addConditionalEdges("route", (state: AgentGraphState) => (functionsDue(state, scope) ? "functions" : readDue(state) ? "resolve" : web(state) ? "probe" : proposeDue(state) ? "propose" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["functions", "resolve", "probe", "propose", "clarify", "answer", "deliver"])
-    .addConditionalEdges("functions", (state: AgentGraphState) => (readDue(state) ? "resolve" : web(state) ? "probe" : proposeDue(state) ? "propose" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "verify"), ["resolve", "probe", "propose", "clarify", "answer", "verify"])
+    .addConditionalEdges("route", (state: AgentGraphState) => (functionsDue(state, scope) ? "functions" : readDue(state) ? "resolve" : web(state) ? "probe" : proposeDue(state) ? "propose" : directionsDue(state) ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["functions", "resolve", "probe", "propose", "clarify", "answer", "deliver"])
+    .addConditionalEdges("functions", (state: AgentGraphState) => (readDue(state) ? "resolve" : web(state) ? "probe" : proposeDue(state) ? "propose" : directionsDue(state) ? "clarify" : answerDue(state) ? "answer" : "verify"), ["resolve", "probe", "propose", "clarify", "answer", "verify"])
     // Hotfix 2026-11-20: a read answered by code alone (resolve's wider read) still has its citations checked.
-    .addConditionalEdges("resolve", (state: AgentGraphState) => (web(state) ? "probe" : proposeDue(state) ? "propose" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : state.parts.some((part) => part.cites?.length) ? "verify" : "deliver"), ["probe", "propose", "clarify", "answer", "verify", "deliver"])
+    .addConditionalEdges("resolve", (state: AgentGraphState) => (web(state) ? "probe" : proposeDue(state) ? "propose" : directionsDue(state) ? "clarify" : answerDue(state) ? "answer" : state.parts.some((part) => part.cites?.length) ? "verify" : "deliver"), ["probe", "propose", "clarify", "answer", "verify", "deliver"])
     // AG09: the web step, after the record reads and before the card and the answer.
-    .addConditionalEdges("probe", (state: AgentGraphState) => (proposeDue(state) ? "propose" : scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["propose", "clarify", "answer", "deliver"])
+    .addConditionalEdges("probe", (state: AgentGraphState) => (proposeDue(state) ? "propose" : directionsDue(state) ? "clarify" : answerDue(state) ? "answer" : "deliver"), ["propose", "clarify", "answer", "deliver"])
     // AG10: a card turn that cites a record (an extraction) is verified like an answer (its links, the basis line).
-    .addConditionalEdges("propose", (state: AgentGraphState) => (scope.run.needsDirections ? "clarify" : answerDue(state) ? "answer" : state.parts.some((part) => part.cites?.length) ? "verify" : "deliver"), ["clarify", "answer", "verify", "deliver"])
+    .addConditionalEdges("propose", (state: AgentGraphState) => (directionsDue(state) ? "clarify" : answerDue(state) ? "answer" : state.parts.some((part) => part.cites?.length) ? "verify" : "deliver"), ["clarify", "answer", "verify", "deliver"])
     // After prepare: answer or deliver. After a resume: route again (a click to carry out) or deliver (closed from outside).
     .addConditionalEdges("clarify", (state: AgentGraphState) => state.resumeNext ?? (answerDue(state) ? "answer" : "deliver"), ["route", "answer", "deliver"])
     .addEdge("answer", "verify")

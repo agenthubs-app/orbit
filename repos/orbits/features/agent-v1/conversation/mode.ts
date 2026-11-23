@@ -37,8 +37,9 @@ export function conversationBudgetMs(env: Record<string, string | undefined> = p
 export type OpenedDecision = "world" | "pronoun" | "carry" | "next";
 export type OpenedMode = "off" | "shadow" | "on";
 export const OPENED_DECISIONS: readonly OpenedDecision[] = ["world", "pronoun", "carry", "next"];
-// Stage B (2026-11-23, eval runs in docs/epics/agent-design/conversation-port.md §5): pronoun on; the others stay shadow.
-const OPENED_DEFAULT: Record<OpenedDecision, OpenedMode> = { carry: "shadow", next: "shadow", pronoun: "on", world: "shadow" };
+// Stage B (2026-11-23, eval runs in docs/epics/agent-design/conversation-port.md §5): pronoun on; r12 port: next on (add-only,
+// conversation/run.ts conversationNextAsks); world and carry stay shadow.
+const OPENED_DEFAULT: Record<OpenedDecision, OpenedMode> = { carry: "shadow", next: "on", pronoun: "on", world: "shadow" };
 
 export function openedMode(decision: OpenedDecision, env: Record<string, string | undefined> = process.env): OpenedMode {
   const main = conversationMode(env);

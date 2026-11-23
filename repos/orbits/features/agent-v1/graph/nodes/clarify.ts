@@ -21,6 +21,7 @@ import { recordKindOf, type RecordKind } from "../../clarify/default-readings";
 import type { NextStep } from "../../clarify/next-step";
 import { optionsFor, type ClarifyOption, type OptionObject } from "../../clarify/options";
 import type { NamedRecordRef } from "../../context/session-state";
+import { conversationNextAsks } from "../../conversation/run";
 import { emitTrace } from "../../observability/trace";
 import { capabilityKind, type Capability } from "../../route/capabilities";
 import type { ReplyLanguage } from "../../route/handoff-copy";
@@ -156,11 +157,16 @@ export function needsDirections(part: GraphPart, step: NextStep | undefined, set
 
 function prepare(scope: NodeScope, state: AgentGraphState): Partial<AgentGraphState> {
   const sets = [...state.optionSets];
-  for (const part of state.parts) {
+  // ORBIT_AGENT_CONVERSATION_NEXT=on (add-only): a part the agent would answer and the engine asks about is asked as
+  // the agent asks for a missing object (the same step, options and pause as resolve's).
+  const asked = conversationNextAsks(scope, state);
+  const parts: GraphPart[] = asked.length ? state.parts.map((part) => (asked.includes(part.localId) ? { ...part, route: "clarify", status: "awaiting_clarification", step: "ask_missing", waitReason: "object_ambiguous" } : part)) : state.parts;
+  for (const id of asked) scope.run.steps.set(id, { kind: "ask_missing" });
+  for (const part of parts) {
     if (state.touched && !state.touched.includes(part.localId)) continue;
     const step = scope.run.steps.get(part.localId);
     if (!needsDirections(part, step, sets)) continue;
-    const made = setOf(scope, state.language, part, step, state.parts);
+    const made = setOf(scope, state.language, part, step, parts);
     if (!made || !made.options.length && made.set.kind !== "question") continue;
     const labels = new Map(made.options.map((option) => [option.optionId, { label: option.label, ...(option.ref ? { refName: option.ref.name } : {}) }]));
     scope.run.optionLabels.set(made.set.clarificationId, labels);
@@ -168,7 +174,7 @@ function prepare(scope: NodeScope, state: AgentGraphState): Partial<AgentGraphSt
     if (made.set.kind !== "entry") emitTrace({ clarificationId: made.set.clarificationId, kind: made.set.kind, options: made.options.length, partId: part.localId, subgoal: made.set.subgoal, type: "clarify.asked" });
     else emitTrace({ clarificationId: made.set.clarificationId, options: made.options.length, partId: part.localId, purpose: made.set.purpose, type: "clarify.entry_offered" });
   }
-  return { optionSets: sets };
+  return { optionSets: sets, ...(asked.length ? { parts } : {}) };
 }
 
 const writes = (capabilities: readonly Capability[]) => capabilities.some((capability) => capabilityKind(capability) === "write");

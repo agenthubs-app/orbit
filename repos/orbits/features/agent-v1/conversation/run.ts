@@ -283,7 +283,7 @@ export async function conversationLateRead(scope: NodeScope, state: AgentGraphSt
  * World (the whole account) a name binds when one record has it and asks when several do; this is the nearest the agent
  * has to that without another read. Throws what the engine throws (the caller catches).
  */
-function askGoRun(scope: NodeScope, state: AgentGraphState, next: AgentSessionState, log: ConversationLog | null, record: ConversationRun): TurnResult {
+function askGoRun(scope: NodeScope, state: AgentGraphState, next: AgentSessionState | null, log: ConversationLog | null, record: ConversationRun): TurnResult {
   const { input, run } = scope;
   const now = state.asOf || scope.deps.now();
   const names: Record<string, { type: string; name: string }> = { ...(record.names ?? {}) };
@@ -292,9 +292,10 @@ function askGoRun(scope: NodeScope, state: AgentGraphState, next: AgentSessionSt
     if (lab && !names[lab]) names[lab] = { name: name || "", type };
   };
   for (const [id, item] of run.readNames) add(item.type, id, item.name);
-  for (const item of next.lastMentioned.filter((entry) => entry.at === now)) add(item.type, item.id, item.name);
-  for (const item of next.shownList?.shownAt === now ? next.shownList.items : []) add(item.type, item.id, item.name);
-  for (const item of next.openItems.filter((entry) => entry.requestId === input.requestId)) for (const option of item.options ?? []) add(option.type, option.id, option.label.replace(/[（(].*$/u, "").trim());
+  // (next is null before the answer — conversationNextAsks: the session state of this turn is not made yet)
+  for (const item of next?.lastMentioned.filter((entry) => entry.at === now) ?? []) add(item.type, item.id, item.name);
+  for (const item of next?.shownList?.shownAt === now ? next.shownList.items : []) add(item.type, item.id, item.name);
+  for (const item of next?.openItems.filter((entry) => entry.requestId === input.requestId) ?? []) for (const option of item.options ?? []) add(option.type, option.id, option.label.replace(/[（(].*$/u, "").trim());
   // the card's records (a to-do it changes, the people it links: 「给李薇建一个待办」 binds 李薇 only on the card)
   const card = cardMentions(run.actionPreview);
   for (const id of card.ids) if (card.names[id] && !names[id]) names[id] = card.names[id];
@@ -317,6 +318,41 @@ function askGoRun(scope: NodeScope, state: AgentGraphState, next: AgentSessionSt
   // changed schedule item) — what the engine's write confirmations are checked against
   const read = record.readWorld ?? null;
   return runAskGo(log, names, record.turn!, Boolean(record.plainChat), forms, state.timeZone || "Asia/Tokyo", bind, read ? (world) => enrichWorld(world, read) : undefined);
+}
+
+/**
+ * ORBIT_AGENT_CONVERSATION_NEXT=on (add-only, 2026-11-23, conversation-port.md §5): the parts the agent is about to
+ * answer that the engine asks about. They become the agent's own clarification (clarify's prepare, step ask_missing),
+ * so the question, its options and its pause are the agent's. Only where the agent goes: the engine's "go" never
+ * removes an ask (the agent's clarifications, entries, budget and write cards stay as they are). Only parts settled
+ * as answered by a read or an answer, new this turn (not continuing an open item, not a resume), with no set of
+ * directions yet; never while the request has a card (an engine ask on a write — R34 duplicates of AE-XL-015/016/017 —
+ * is left out: the one-card flow stays). Computed once per pass (the edges ask again; the parts do not change between).
+ * Never throws: an engine error is traced and nothing is added.
+ */
+const nextAsked = new WeakMap<object, { key: string; ids: string[] }>();
+
+export function conversationNextAsks(scope: NodeScope, state: AgentGraphState): string[] {
+  if (state.touched !== null || openedMode("next") !== "on") return [];
+  const { run } = scope;
+  const record = run.conversation;
+  if (!record?.result || !record.turn || run.actionPreview) return [];
+  const eligible = state.parts.filter((part) => part.status === "answered" && (part.route === "answer" || (part.route === "read" && Boolean(part.reads || part.gaps))) && !part.continues
+    && !state.optionSets.some((set) => set.partId === part.localId));
+  if (!eligible.length) return [];
+  const key = eligible.map((part) => part.localId).join(",");
+  const cached = nextAsked.get(run);
+  if (cached?.key === key) return cached.ids;
+  let ids: string[] = [];
+  try {
+    const askGo = askGoRun(scope, state, null, logOf(run.sessionState), record);
+    ids = eligible.filter((part) => enginePartOf(askGo, scope.input.message, part)?.next === "ask").map((part) => part.localId);
+    if (ids.length) emitTrace({ parts: ids, type: "conversation.next_asked" });
+  } catch (error) {
+    emitTrace({ error: error instanceof Error ? error.message : String(error), type: "conversation.error", where: "next" });
+  }
+  nextAsked.set(run, { ids, key });
+  return ids;
 }
 
 /**
