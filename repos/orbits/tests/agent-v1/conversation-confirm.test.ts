@@ -19,20 +19,29 @@ import { contact, memo, schedule, todo } from "./read-kit";
 const ME = "actor:a";
 const NOW = "2026-11-21T14:00:00+09:00";
 
-function partOf(capabilities: string[], refs: { entity: string; recordId?: string | null }[] = []): Pick<GraphPart, "refs" | "capabilities"> {
-  return { capabilities: capabilities as GraphPart["capabilities"], refs: refs.map((ref) => ({ entity: ref.entity, quote: null, recordId: ref.recordId ?? null })) };
+type Plan = GraphPart["plan"];
+const PLAIN: Plan = { clarity: "clear", dataOwner: "self", dataSources: ["orbit_records"], deliverable: "change", hypothesis: false, intentBasis: "instruction", negation: false, persistence: "this_turn", readings: [] } as unknown as Plan;
+function partOf(capabilities: string[], refs: { entity: string; recordId?: string | null }[] = [], plan: Partial<Plan> = {}): Pick<GraphPart, "refs" | "capabilities" | "plan"> {
+  return { capabilities: capabilities as GraphPart["capabilities"], plan: { ...PLAIN, ...plan } as Plan, refs: refs.map((ref) => ({ entity: ref.entity, quote: null, recordId: ref.recordId ?? null })) };
 }
 
-test("the confirm read is asked for by write parts only: creates of a to-do / note / schedule item, a bound contact deleted, a bound schedule item changed", () => {
+test("the confirm read is asked for by plain write parts only, for their bound targets: a person a record is created for, a contact deleted, a schedule item changed", () => {
   assert.equal(confirmNeedsOf([partOf(["todo.read"]), partOf(["contact.read"], [{ entity: "contact" }])]), null, "reads never");
-  assert.deepEqual(confirmNeedsOf([partOf(["todo.create"], [{ entity: "contact", recordId: "contact:wang" }])]), { creates: ["todo"], linkedTo: [], schedules: [] });
+  assert.deepEqual(confirmNeedsOf([partOf(["todo.create"], [{ entity: "contact", recordId: "contact:wang" }])]), { creates: ["todo"], linkedTo: ["C-contact:wang"], schedules: [] });
+  assert.equal(confirmNeedsOf([partOf(["todo.create"])]), null, "a create for no bound person reads nothing (not the newest records of the kind)");
+  // R10-NEXT-shadow: parts that only might write (AE-AMB-010, AE-FN-010, AE-UND-010, AE-CTX-005) read nothing
+  const wang = [{ entity: "contact", recordId: "contact:wang" }];
+  assert.equal(confirmNeedsOf([partOf(["todo.create"], wang, { clarity: "multiple_readings" } as Partial<Plan>)]), null, "several readings");
+  assert.equal(confirmNeedsOf([partOf(["memo.create"], wang, { negation: true })]), null, "a negation");
+  assert.equal(confirmNeedsOf([partOf(["memo.create"], wang, { clarity: "statement" } as Partial<Plan>)]), null, "a statement");
+  assert.equal(confirmNeedsOf([partOf(["todo.create"], wang, { readings: [{ capabilities: ["contact.read"], deliverable: "answer" }] } as Partial<Plan>)]), null, "other readings");
   assert.deepEqual(confirmNeedsOf([partOf(["contact.delete"], [{ entity: "contact", recordId: "contact:wang" }])]), { creates: [], linkedTo: ["C-contact:wang"], schedules: [] });
   assert.equal(confirmNeedsOf([partOf(["contact.delete"], [{ entity: "contact" }])]), null, "a target not bound yet is not read");
-  assert.deepEqual(confirmNeedsOf([partOf(["schedule.update"], [{ entity: "schedule", recordId: "sched:weekly" }]), partOf(["memo.create"])]), { creates: ["memo"], linkedTo: [], schedules: ["S-sched:weekly"] });
+  assert.deepEqual(confirmNeedsOf([partOf(["schedule.update"], [{ entity: "schedule", recordId: "sched:weekly" }]), partOf(["memo.create"])]), { creates: [], linkedTo: [], schedules: ["S-sched:weekly"] });
   assert.equal(confirmNeedsOf([partOf(["contact.update"], [{ entity: "contact", recordId: "contact:wang" }])]), null, "an update of a contact confirms nothing");
 });
 
-test("the confirm read: open records of the kind created, a contact's linked records, the series — within the caps, the account's rows only, no people read", async () => {
+test("the confirm read: the named contact's linked records, the series — within the caps, the account's rows only, no other records, no contact rows", async () => {
   const records = [contact(ME, "contact:wang", "王强"), contact("actor:b", "contact:theirs", "王强")];
   for (let index = 0; index < 40; index += 1) records.push(todo(ME, `task:t${index}`, `待办${index}`, index % 2 ? { status: "completed" } : {}));
   for (let index = 0; index < 12; index += 1) records.push(memo(ME, `note:w${index}`, `和王强通话${index}`, "2026-11-10T00:00:00.000Z", ["contact:wang"]));
@@ -46,7 +55,7 @@ test("the confirm read: open records of the kind created, a contact's linked rec
   assert.equal(world.contacts.length, 0, "no contact rows: the people read is not asked for");
   assert.ok(world.memos.length > 0 && world.memos.every((item) => item.contactIds?.includes("C-contact:wang")), "the deleted contact's linked notes");
   assert.equal(world.schedule.find((item) => item.id === "S-sched:weekly")?.recurrence?.frequency, "weekly", "the series with its rule");
-  assert.ok(world.todos.length > 0 && world.todos.every((item) => item.status === "open"), "open to-dos only");
+  assert.equal(world.todos.length, 0, "to-dos linked to no one named are not read");
   assert.ok(!read.includes("task:theirs") && !read.includes("contact:theirs"), "nothing of another account");
 });
 

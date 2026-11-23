@@ -80,22 +80,31 @@ const CREATES: Record<string, ConfirmNeeds["creates"][number]> = { "memo.create"
 
 /**
  * r10's write confirmations need records the names-only World lacks (SPEC R34 duplicates, R35 deletes with links, R37
- * recurring items): a part that creates a to-do / note / schedule item (the newest open ones of that kind), deletes a
- * contact the agent already bound (that contact's linked records), or changes / deletes a schedule item it bound (the
- * item, for its recurrence). Only write parts; null: nothing to confirm. A target named for the first time is not
- * bound yet at this point and is not read (the agent's own confirmations still apply).
+ * recurring items). Only a part that is plainly a write (clarity clear, an instruction or a selection, no negation, no
+ * hypothesis, no other readings) and only the records its bound targets point at: a to-do / note / schedule item created
+ * for a person the agent already bound (that person's linked records), a contact deleted (its linked records), a
+ * schedule item changed or deleted (the item, for its recurrence). Null: nothing to confirm. A target named for the
+ * first time is not bound yet at this point and is not read (the agent's own confirmations still apply).
+ * R10-NEXT-shadow (2026-11-23): reading the newest open records of a kind for every create part, also on parts that only
+ * might write, read records six cases forbid (AE-AMB-009/010/012, AE-CTX-005, AE-FN-010, AE-UND-010).
  */
-export function confirmNeedsOf(parts: readonly Pick<GraphPart, "refs" | "capabilities">[]): ConfirmNeeds | null {
+export function confirmNeedsOf(parts: readonly Pick<GraphPart, "refs" | "capabilities" | "plan">[]): ConfirmNeeds | null {
   const needs: ConfirmNeeds = { creates: [], linkedTo: [], schedules: [] };
   for (const part of parts) {
+    const plan = part.plan;
+    if (!plan || plan.clarity !== "clear" || (plan.intentBasis !== "instruction" && plan.intentBasis !== "selection") || plan.negation || plan.hypothesis || plan.readings.length) continue;
+    const people = part.refs.filter((ref) => ref.entity === "contact" && ref.recordId).map((ref) => labIdOf("contact", ref.recordId!)!);
     for (const capability of part.capabilities) {
       const kind = CREATES[capability];
-      if (kind && !needs.creates.includes(kind)) needs.creates.push(kind);
-      if (capability === "contact.delete") for (const ref of part.refs) if (ref.entity === "contact" && ref.recordId) needs.linkedTo.push(labIdOf("contact", ref.recordId)!);
+      if (kind && people.length) {
+        if (!needs.creates.includes(kind)) needs.creates.push(kind);
+        needs.linkedTo.push(...people);
+      }
+      if (capability === "contact.delete") needs.linkedTo.push(...people);
       if (capability === "schedule.update" || capability === "schedule.delete") for (const ref of part.refs) if (ref.entity === "schedule" && ref.recordId) needs.schedules.push(labIdOf("schedule", ref.recordId)!);
     }
   }
-  return needs.creates.length || needs.linkedTo.length || needs.schedules.length ? { creates: needs.creates, linkedTo: [...new Set(needs.linkedTo)], schedules: [...new Set(needs.schedules)] } : null;
+  return needs.linkedTo.length || needs.schedules.length ? { creates: needs.creates, linkedTo: [...new Set(needs.linkedTo)], schedules: [...new Set(needs.schedules)] } : null;
 }
 
 /**
