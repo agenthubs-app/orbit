@@ -1743,13 +1743,16 @@ export function createPostgresEventOperationsRepository({
     async listCatalogueSummaries(eventIds) {
       const normalizedEventIds = [...new Set(eventIds.filter(Boolean))];
       if (normalizedEventIds.length === 0) return [];
+      // 2026-11-23: the registration count is aggregated per event in a lateral
+      // subquery. Joining memberships first and grouping by the whole
+      // `published_dto` jsonb detoasted and hashed the published result once per
+      // attendee row (production discover ~1.7s for four past events with
+      // results); now the jsonb is read once per event for one field.
       const result = await client.query<SqlRow>(
         `
           select
             event_row.event_id,
-            count(membership_head.actor_id) filter (
-              where membership_head.status = 'rsvped'
-            )::text as active_registration_count,
+            registration.active_registration_count::text as active_registration_count,
             (publication.publication_id is not null) as has_published_results,
             (
               publication.publication_id is not null
@@ -1757,9 +1760,14 @@ export function createPostgresEventOperationsRepository({
                 <= statement_timestamp()
             ) as attendee_results_available
           from event_ops_events event_row
-          left join event_ops_membership_heads membership_head
-            on membership_head.workspace_id = event_row.workspace_id
-            and membership_head.event_id = event_row.event_id
+          cross join lateral (
+            select count(membership_head.actor_id) filter (
+              where membership_head.status = 'rsvped'
+            ) as active_registration_count
+            from event_ops_membership_heads membership_head
+            where membership_head.workspace_id = event_row.workspace_id
+              and membership_head.event_id = event_row.event_id
+          ) registration
           left join event_ops_publication_heads publication_head
             on publication_head.workspace_id = event_row.workspace_id
             and publication_head.event_id = event_row.event_id
@@ -1776,10 +1784,6 @@ export function createPostgresEventOperationsRepository({
               )
             )
             and event_row.registration_migration_state = 'canonical'
-          group by
-            event_row.event_id,
-            publication.publication_id,
-            publication.published_dto
           order by event_row.event_id
         `,
         [workspaceId, normalizedEventIds],
