@@ -20,5 +20,6 @@
 .input input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; padding: 0; background: transparent; font: inherit; font-family: var(--font-num); font-size: var(--fs-emph); letter-spacing: 0.06em; color: var(--ink); }
 @media (max-width: 767px) {
   .top { height: 64px; padding: 0 18px; }
-  .wrap { margin-top: 12px; }
+  /* 2026-11-23：手机顶栏已留出 8，页面不再加顶部外边距。 */
+  .wrap { margin-top: 0; }
 }

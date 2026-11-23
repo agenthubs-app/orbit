@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
@@ -26,13 +26,13 @@ import { monthHeading } from "./month-heading";
 import { standardCopyFor } from "../copy/standard";
 import { useOrbitAsk } from "../../orbit-global-ask/orbit-ask-context";
 import { orbitAskPageContext } from "../../orbit-global-ask/orbit-ask-routes";
-import { BottomSheet, Button, Drawer, Icon, Kbd, Orbit2026Scope, Popover, Segmented, ToastProvider, useStandardCopy } from "../ui";
+import { BottomSheet, Button, ContextMenu, Drawer, Icon, Kbd, Orbit2026Scope, Popover, Segmented, ToastProvider, useStandardCopy } from "../ui";
 import { initials } from "../ui/Basics";
 import { CommandPalette, useCommandPaletteShortcut } from "./CommandPalette";
 import { InboxEventBridge } from "./inbox-bridge";
 import { ShellToastBridge } from "./shell-toast-bridge";
 import { SHELL_NAV, onboardingImportFocus, shellAppliesTo, shellFrameFor, shellNavKeyFor, type ShellFrame as RouteFrame, type ShellNavKey } from "./shell-routes";
-import { ShellSlotsProvider, useShellSlots, useShellSlotsFilled, type ShellSlots } from "./slots";
+import { ShellSlotsProvider, useShellSlots, useShellSlotsFilled, type ShellPhoneAction, type ShellSlots } from "./slots";
 import { WebVersionBannerGate } from "../auth-public/WebVersionBanner";
 import { OnboardingImportHeader } from "../onboarding/OnboardingImportHeader";
 import styles from "./shell.module.css";
@@ -118,7 +118,7 @@ function ShellFrame({ language, pathname, currentBuildId, focus = null, children
       <div className={styles.main}>
         <Orbit2026Scope language={language} className={styles.headScope}>
           <ToastProvider>
-            {focus ? null : <ShellMobileTop active={active} dot={dot} />}
+            {focus ? null : <ShellPhoneBar pathname={pathname} slots={slots} active={active} dot={dot} language={language} openRail={() => setRailDrawer(true)} />}
             {hasHeader ? (
               <header ref={headRef} className={`${styles.mainhead} ${twoTier ? styles.twoTier : ""} ${slots.phoneFold ? styles.mainheadFold : ""}`} data-orbit-2026-mainhead="" data-two-tier={twoTier ? "true" : undefined}>
                 <div className={styles.headSide}>{slots.left}{slots.demoPill ? <span className={styles.demoSlot}>{slots.demoPill}</span> : null}</div>
@@ -196,6 +196,7 @@ function frameSlots(frame: RouteFrame, language: OrbitLanguage): ShellSlots {
     rightRail: frame.rail ? <FrameRail /> : undefined,
     phoneFold: frame.phoneFold,
     ...(frame.phoneBare ? { phoneBare: true } : {}),
+    ...(frame.phoneTabs ? { phoneTabs: <i className={`${styles.framePill} ${styles.frameTabs}`} aria-hidden /> } : {}),
   };
 }
 
@@ -355,16 +356,92 @@ function ShellSidebar({ active, dot }: { active: ShellNavKey | null; dot: boolea
 
 // Under 768 (b6 mwHead): the 「O Orbit」 wordmark, 受信箱 as a round button with
 // the unread dot, and the avatar menu (a bottom sheet; 設定 / 主催 are reached via マイページ).
-function ShellMobileTop({ active, dot }: { active: ShellNavKey | null; dot: boolean }) {
+/** Pages a sub-page's 「‹」 falls back to when there is no previous page in this tab (opened from a link or a reload). */
+export function phoneParentHref(pathname: string): string {
+  const path = pathname.replace(/\/+$/u, "");
+  if (/^\/app\/events\/assessments\//u.test(path)) return "/app/events?tab=assess";
+  if (/^\/app\/plans\//u.test(path)) return "/app/tasks?tab=plan";
+  if (/^\/app\/(tasks|inbox|agent|home)\//u.test(path)) return `/app/${path.split("/")[2]}`;
+  if (path === "/app/start") return "/app/home";
+  if (path === "/app/profile" || path.startsWith("/app/profile/")) return "/app/settings";
+  if (path === "/app/settings") return "/app/home";
+  if (path === "/app/events/center") return "/app/events";
+  if (path === "/app/host/join") return "/app/events/center";
+  const parent = path.slice(0, path.lastIndexOf("/"));
+  return parent && parent !== "/app" ? parent : "/app/home";
+}
+
+// Whether this tab has moved between app pages since it loaded: then 「‹」 is the browser's back (as in the App),
+// otherwise (a shared link, a reload) it goes to the parent page.
+let phoneHistoryDepth = 0;
+
+/**
+ * 2026-11-23 phone top bar (< 768, mobile-top-height-proposal, user-approved): one 52px row drawn by the shell for every
+ * framed page, then the page's tabs (40 + 10) when it has them; both stay on top while the content scrolls.
+ * A first-level page (the five tabs and 受信箱): its title on the left (home: the Orbit mark), up to two of its own icon
+ * actions (more go into 「更多」), 受信箱 and the avatar. Any other page: 「‹」, the centred title, one action.
+ * The page only declares title / actions / tabs; it no longer draws its own heading row or top margin.
+ */
+function ShellPhoneBar({ pathname, slots, active, dot, language, openRail }: { pathname: string; slots: ShellSlots; active: ShellNavKey | null; dot: boolean; language: OrbitLanguage; openRail: () => void }) {
   const copy = useStandardCopy();
+  const router = useRouter();
+  const path = pathname.replace(/\/+$/u, "");
+  const first = !slots.phoneSub && SHELL_NAV.some((item) => item.href === path);
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const seen = useRef<string | null>(null);
+  useEffect(() => { if (seen.current !== null && seen.current !== pathname) phoneHistoryDepth += 1; seen.current = pathname; }, [pathname]);
+  const title = slots.phoneTitle === null ? "" : slots.phoneTitle ?? slots.title ?? "";
+  const actions = slots.phoneActions ?? [];
+  const run = (action: ShellPhoneAction) => { if (action.kind === "rail") openRail(); else action.onClick?.(); };
+  const button = (action: ShellPhoneAction) => action.href
+    ? <Link key={action.key} href={action.href} className={`${styles.rbtn} ${styles.phoneBtn} ${action.active ? styles.rbtnOn : ""}`} aria-label={action.label}><Icon name={action.icon} size={20} />{action.dot ? <i className={styles.rdot} aria-hidden /> : null}</Link>
+    : <button key={action.key} type="button" className={`btn ${styles.rbtn} ${styles.phoneBtn} ${action.active ? styles.rbtnOn : ""}`} aria-label={action.label} aria-pressed={action.active} onClick={() => run(action)}><Icon name={action.icon} size={20} />{action.dot ? <i className={styles.rdot} aria-hidden /> : null}</button>;
+  const room = first ? 2 : 1;
+  const shown = actions.length > room ? actions.slice(0, room - 1) : actions;
+  const rest = actions.length > room ? actions.slice(room - 1) : [];
+  const more = rest.length ? (
+    <>
+      <button ref={moreRef} type="button" className={`btn ${styles.rbtn} ${styles.phoneBtn}`} aria-label={pickCopy(shellCopy.phoneMore, language)} aria-haspopup="menu" aria-expanded={moreOpen} onClick={() => setMoreOpen((open) => !open)}><Icon name="more" size={20} /></button>
+      <ContextMenu open={moreOpen} onClose={() => setMoreOpen(false)} anchor={moreRef} label={pickCopy(shellCopy.phoneMore, language)}
+        items={rest.map((action) => ({ key: action.key, label: action.label, onSelect: () => { if (action.href) router.push(action.href); else run(action); } }))} />
+    </>
+  ) : null;
+  const back = slots.phoneBack === false ? null : (
+    <button type="button" className={`btn ${styles.rbtn} ${styles.phoneBtn}`} aria-label={pickCopy(shellCopy.phoneBack, language)} data-orbit-phone-back=""
+      onClick={() => { if (typeof slots.phoneBack === "string") router.push(slots.phoneBack); else if (phoneHistoryDepth > 0) { phoneHistoryDepth -= 1; router.back(); } else router.push(phoneParentHref(pathname)); }}>
+      <Icon name="left" size={20} />
+    </button>
+  );
   return (
-    <div className={styles.mobileTop} data-orbit-2026-mobile-top="">
-      <Link className={styles.mobileBrand} href="/app/home" aria-label="Orbit"><span className={styles.mobileLogo} aria-hidden>O</span><b aria-hidden>Orbit</b></Link>
-      <span className={styles.spacer} />
-      <Link href="/app/inbox" className={`${styles.rbtn} ${active === "inbox" ? styles.rbtnOn : ""}`} aria-label={copy.nav.inbox} aria-current={active === "inbox" ? "page" : undefined}>
-        <Icon name="inbox" size={20} />{dot ? <i className={styles.rdot} aria-hidden /> : null}
-      </Link>
-      <AccountMenu active={active === "me"} compact />
+    <div className={styles.phoneTop} data-orbit-phone-top="">
+      {first ? (
+        <div className={styles.phoneBar} data-orbit-phone-bar="first">
+          {path === "/app/home"
+            ? <Link className={styles.phoneBrand} href="/app/home" aria-label="Orbit"><span className={styles.phoneLogo} aria-hidden>O</span><b className={styles.phoneTitle}>Orbit</b></Link>
+            : <h1 className={styles.phoneTitle}>{title}</h1>}
+          {slots.demoPill ? <span className={styles.phoneDemo}>{slots.demoPill}</span> : null}
+          {shown.map(button)}
+          {more}
+          {active === "inbox" ? null : (
+            <Link href="/app/inbox" className={`${styles.rbtn} ${styles.phoneBtn}`} aria-label={copy.nav.inbox}>
+              <Icon name="inbox" size={20} />{dot ? <i className={styles.rdot} aria-hidden /> : null}
+            </Link>
+          )}
+          <AccountMenu active={active === "me"} compact />
+        </div>
+      ) : (
+        <div className={`${styles.phoneBar} ${styles.phoneSub}`} data-orbit-phone-bar="sub">
+          {back ?? <span className={styles.phoneGap} aria-hidden />}
+          <div className={styles.phoneCenter}>
+            {title ? <h1 className={styles.phoneSubTitle}>{title}</h1> : null}
+            {title && slots.subtitle ? <small className={styles.phoneSubLine}>{slots.subtitle}</small> : null}
+          </div>
+          {shown.length ? shown.map(button) : more ?? <span className={styles.phoneGap} aria-hidden />}
+          {shown.length ? more : null}
+        </div>
+      )}
+      {slots.phoneTabs ? <div className={styles.phoneTabs} data-orbit-phone-tabs="">{slots.phoneTabs}</div> : null}
     </div>
   );
 }

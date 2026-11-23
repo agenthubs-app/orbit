@@ -365,7 +365,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     <>
       {phone && !reviewing && !result ? (
         <>
-          <ShellPage title={t("regTitle")} subtitle={event?.title ?? ""} left={<a className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("close")}><Icon name="x" size={20} /></a>} rightRail={false} phoneBare />
+          <ShellPage title={t("regTitle")} subtitle={event?.title ?? ""} left={<a className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("close")}><Icon name="x" size={20} /></a>} rightRail={false} phoneBare phoneBack={detailHref} />
           {loadError ?? phoneChat}
         </>
       ) : <>
@@ -374,6 +374,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
         subtitle={event?.title ?? ""}
         left={<a className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("close")}><Icon name="x" size={16} /></a>}
         right={headRight ? <span className={styles.lbl}>{headRight}</span> : undefined}
+        phoneBack={detailHref}
         rightRail={wide ? rail : false}
       />
       <div className={styles.wgrid} data-join={eventId}>

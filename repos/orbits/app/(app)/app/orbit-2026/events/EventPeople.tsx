@@ -104,6 +104,7 @@ function PeopleInner({ eventId, language }: { eventId: string; language: OrbitLa
         title={data ? t("peoplePageTitle", { n: total }) : ""}
         subtitle={data?.title ?? ""}
         left={<Link className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("back")} onClick={back}><Icon name="left" size={phone ? 20 : 16} /></Link>}
+        phoneBack={detailHref}
         rightRail={wide && !phone ? person.rail : false}
       />
       {body}

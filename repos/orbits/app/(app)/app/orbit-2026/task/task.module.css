@@ -38,7 +38,9 @@
   :global(.btn).addWide { display: none; }
 }
 @media (max-width: 767px) {
-  .bar { display: block; padding: 0 var(--space-18) var(--space-12); }
+  /* 2026-11-23：页签改由外壳画在顶栏下（phoneTabs），页面里不再画这一行。 */
+  .bar { display: none; }
   .mobileTabs [role="tablist"] { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; }
   .mobileTabs [role="tablist"] [role="tab"] { padding: 7px 0; }
+  .mobileTabs, .mobileTabs [role="tablist"] { height: 100%; }
 }

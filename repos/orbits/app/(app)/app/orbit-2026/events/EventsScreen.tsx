@@ -19,7 +19,7 @@ import { ShellPage, useInShell } from "../shell/slots";
 import { Drawer, Icon, Kbd, Modal, Orbit2026Scope, SampleTag, Segmented, ToastProvider, useStandardCopy, useToast } from "../ui";
 import { Assessing, FillThree, LoginRequired, NotEventPage, PasteText } from "./AssessFlow";
 import { AssessmentPage, AssessmentRail, translator, type Translate } from "./AssessmentDetail";
-import { DiscoverHelpRail, DiscoverRail, DiscoverTab, type DiscoverRailState } from "./DiscoverTab";
+import { DiscoverHelpRail, DiscoverRail, DiscoverTab, journeyTranslator, type DiscoverRailState } from "./DiscoverTab";
 import { EventSidePanel } from "./EventSidePanel";
 import { eventsApi, newIdempotencyKey, pollAssessment } from "./events-api";
 import { allDayLabelOf, cardLine, eventWhen, isShownInGrid, monthOf, orderAssessed, relativeDay, tabOf } from "./events-model";
@@ -96,6 +96,8 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   const [dragging, setDragging] = useState(false);
   const [discoverRail, setDiscoverRail] = useState<DiscoverRailState>({ loaded: false, row: null, signedOut: false });
   const [discoverSubtitle, setDiscoverSubtitle] = useState<string | null>(null);
+  // 2026-11-23 手机：发现页的搜索框收进顶栏的搜索图标（点开才显示）。
+  const [phoneSearch, setPhoneSearch] = useState(() => Boolean(params?.get("q")));
   const fileRef = useRef<HTMLInputElement | null>(null);
   const abort = useRef<AbortController | null>(null);
 
@@ -244,24 +246,12 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
 
   return (
     <>
-      <ShellPage title={t("title")} subtitle={subtitle} left={segment} right={<ShellSearchButton />} rightRail={rail} phoneFold={tier === "narrow"} />
-      {tier === "narrow" && tab === "discover" ? (
-        <>
-          {/* b12 #348（探す 390）：App 式 topbar（🔍 · イベント + 件数 · 📅）+ 全宽 seg。 */}
-          <div className={styles.ptop} data-events-phone-top="">
-            <ShellSearchButton />
-            <div className={styles.ptopT}><b>{t("title")}</b>{discoverSubtitle ? <small>{discoverSubtitle}</small> : discover ? null : <small>{pendingLine}</small>}</div>
-            <Link className={`btn ${styles.ptopBtn}`} href="/app/events?tab=going" aria-label={t("tabGoing")}><Icon name="calendar" size={20} /></Link>
-          </div>
-          <div className={styles.phoneSeg}>{segmentFor(true)}</div>
-        </>
-      ) : tier === "narrow" ? (
-        <>
-          <div className={styles.r8ttl}>{t("title")}{items === null ? <i className={styles.pendBone} style={{ width: 64 }} aria-hidden /> : assessedCount > 0 ? <span className={styles.lbl}>{t("assessedCount", { n: assessedCount })}</span> : null}</div>
-          <div className={styles.phoneSeg}>{segmentFor(true)}</div>
-        </>
-      ) : !inShell ? <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 12px" }}>{segment}</div> : null}
-      {tab === "discover" ? <div data-events-discover="">{discover ?? <DiscoverTab language={language} tier={tier} signedIn nowIso={nowIso} onRail={setDiscoverRail} onSubtitle={setDiscoverSubtitle} />}</div> : null}
+      <ShellPage title={t("title")} subtitle={subtitle} left={segment} right={<ShellSearchButton />} rightRail={rail} phoneFold={tier === "narrow"}
+        phoneTabs={initialAssessmentId ? undefined : segmentFor(true)}
+        phoneActions={tab === "discover" ? [{ active: phoneSearch, icon: "search", key: "search", label: journeyTranslator(language)("searchPlaceholder"), onClick: () => setPhoneSearch((open) => !open) }] : undefined} />
+      {/* 2026-11-23 手机顶栏：标题与页签由外壳画（phoneTabs）；页面不再画自己的顶部行。 */}
+      {tier !== "narrow" && !inShell ? <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 12px" }}>{segment}</div> : null}
+      {tab === "discover" ? <div data-events-discover="">{discover ?? <DiscoverTab language={language} tier={tier} signedIn nowIso={nowIso} onRail={setDiscoverRail} onSubtitle={setDiscoverSubtitle} phoneSearch={phoneSearch} />}</div> : null}
       {tab === "going" ? (upcoming === null || past === null ? <GoingSkeleton /> : <MyEvents language={language} upcoming={upcoming} past={past} now={now} t={t} selectedPrivate={tier === "wide" ? privateOpen : null} onOpenPrivate={openPrivate} />) : null}
       {privateItem && tier !== "wide" ? (
         <Drawer open onClose={() => openPrivate(null)} title={privateItem.title} size="lg">

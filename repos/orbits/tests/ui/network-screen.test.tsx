@@ -259,7 +259,8 @@ test("390 dark: no 🔍 in the page (G12), the list still renders without errors
   await page.locator("[data-network-mobile-overview]").waitFor();
   await page.locator("[data-network-row='c-ito']").waitFor();
   const heading = page.locator("[data-network-mobile-heading]");
-  assert.match(await heading.innerText(), /人脈\s*286人.*今月 \+24/u);
+  // 2026-11-23 手机顶栏：标题「人脈」在外壳顶栏，页面里只留人数统计这一行。
+  assert.match(await heading.innerText(), /^286人.*今月 \+24$/u);
   const headingBox = await heading.boundingBox();
   assert.ok(headingBox && headingBox.x < 30, "the phone heading starts at the left page inset");
   assert.equal(await page.locator("[data-orbit-2026-search]:visible").count(), 0);

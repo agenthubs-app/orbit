@@ -232,7 +232,7 @@ function useCardsPerRow(): number {
   return perRow;
 }
 
-export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle, nowIso }: { language: OrbitLanguage; tier: Tier; signedIn: boolean; onRail: (state: DiscoverRailState) => void; onSubtitle: (text: string) => void; /** 服务端给的「今」（本机示例时钟）；缺省 = 现在。 */ nowIso?: string }) {
+export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle, nowIso, phoneSearch = true }: { language: OrbitLanguage; tier: Tier; signedIn: boolean; onRail: (state: DiscoverRailState) => void; onSubtitle: (text: string) => void; /** 服务端给的「今」（本机示例时钟）；缺省 = 现在。 */ nowIso?: string; /** 2026-11-23 手机：搜索框收进顶栏的搜索图标，打开时才显示（宽屏一直显示）。 */ phoneSearch?: boolean }) {
   const t = useMemo(() => journeyTranslator(language), [language]);
   const at = useMemo(() => assessTranslator(language), [language]);
   const toast = useToast();
@@ -247,6 +247,9 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle, nowI
   // R30：全局搜索「イベントで探す」带 ?q= 进来时直接开始搜（App 的 DiscoverPage 同一参数）。
   const [search, setSearch] = useState(() => params.get("q") ?? "");
   const [results, setResults] = useState<EventSearchResponse | null>(null);
+  const showSearch = tier !== "narrow" || phoneSearch;
+  // 手机上收起搜索框 = 不再搜索（与 iOS「取消」相同）。
+  useEffect(() => { if (!showSearch) setSearch(""); }, [showSearch]);
 
   const load = useCallback(async (next: EventDiscoverQuery) => {
     const result = await journeyApi.discover(next);
@@ -339,11 +342,11 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle, nowI
   const themeCount = query.themes?.length ?? 0;
   const filters = (
     <div className={`${styles.span12} ${styles.row} ${d.filterRow}`}>
-      <label className={d.search}>
+      {showSearch ? <label className={d.search}>
         <Icon name="search" size={16} />
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} />
         {tier === "wide" ? <span className={styles.lbl} style={{ marginLeft: "auto" }}>{t("kbdSearch")}</span> : null}
-      </label>
+      </label> : null}
       <div className={d.filterScroll}>
       <div className={d.popWrap}>
         <button type="button" className={`btn ${d.wfilter} ${filterOn ? d.on : ""}`} onClick={() => setPop(pop === "period" ? null : "period")}><Icon name="calendar" size={16} />{t("filterPeriod", { v: periodLabel(query.period ?? "upcoming", t) })}<Icon name="down" size={16} /></button>
@@ -393,7 +396,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle, nowI
   ) : null;
 
   if (tier === "narrow" && (past || (!data.popularityFallback && !flat)) && !data.signedOut) {
-    return <>{overlay}<PhoneDiscover onPick={pick} data={data} query={query} language={language} t={t} search={search} onSearch={setSearch} onQuery={(patch) => setQuery((current) => ({ ...current, ...patch }))} onClear={(key) => setQuery((current) => { const next = { ...current }; delete next[key]; return key === "period" ? { ...next, period: "upcoming" } : next; })} onOpen={open} /></>;
+    return <>{overlay}<PhoneDiscover showSearch={showSearch} onPick={pick} data={data} query={query} language={language} t={t} search={search} onSearch={setSearch} onQuery={(patch) => setQuery((current) => ({ ...current, ...patch }))} onClear={(key) => setQuery((current) => { const next = { ...current }; delete next[key]; return key === "period" ? { ...next, period: "upcoming" } : next; })} onOpen={open} /></>;
   }
 
   const card = (row: EventDiscoverRow, index: number, band = false) => <EventCard key={row.eventId} row={row} index={index} band={band} language={language} t={t} selected={selected === row.eventId} onSelect={() => pick(row)} onOpen={() => open(row.href)} />;
@@ -578,7 +581,7 @@ export function DiscoverRail({ row, language }: { row: EventDiscoverRow; languag
 
 /** 探す 没有选中活动时的右栏（b2 #11）：iOrbit 的探す专用开场与两条提问。 */
 // ---------- 390（b12 #348）：App 式探す——搜索 + 筛选按钮（件数）、已选 chip、コミュニティ列表、プランに効く横滑卡、すべて列表 ----------
-function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, onClear, onOpen, onPick }: { data: EventDiscoverResponse; query: EventDiscoverQuery; language: OrbitLanguage; t: JourneyT; search: string; onSearch: (value: string) => void; onQuery: (patch: Partial<EventDiscoverQuery>) => void; onClear: (key: keyof EventDiscoverQuery) => void; onOpen: (href: string) => void; /** 2026-11-23：卡片点开底部简介面板。 */ onPick: (row: EventDiscoverRow) => void }) {
+function PhoneDiscover({ showSearch, data, query, language, t, search, onSearch, onQuery, onClear, onOpen, onPick }: { showSearch: boolean; data: EventDiscoverResponse; query: EventDiscoverQuery; language: OrbitLanguage; t: JourneyT; search: string; onSearch: (value: string) => void; onQuery: (patch: Partial<EventDiscoverQuery>) => void; onClear: (key: keyof EventDiscoverQuery) => void; onOpen: (href: string) => void; /** 2026-11-23：卡片点开底部简介面板。 */ onPick: (row: EventDiscoverRow) => void }) {
   const [sheet, setSheet] = useState(false);
   const [page, setPage] = useState(0);
   const count = (query.period && query.period !== "upcoming" ? 1 : 0) + (query.areas?.length ?? 0) + (query.themes?.length ?? 0) + (query.freeOnly ? 1 : 0);
@@ -589,11 +592,12 @@ function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, on
   const listRows = (list: readonly EventDiscoverRow[], ended: boolean) => <div className={d.pRows}>{list.map((row, index) => <EventCard key={row.eventId} listRow ended={ended} row={row} index={index} language={language} t={t} onSelect={() => onPick(row)} onOpen={() => onOpen(row.href)} />)}</div>;
   return (
     <div data-events-discover-tab="" data-discover-phone="">
-      <div className={`${styles.row} ${d.pSearchRow}`}>
-        <label className={d.pSearch}><Icon name="search" size={16} /><input value={search} onChange={(event) => onSearch(event.target.value)} placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} /></label>
+      {/* 2026-11-23：搜索框只在点了顶栏的搜索图标后出现；筛选按钮是正文第一行的开头（随内容滚走）。 */}
+      {showSearch ? <div className={`${styles.row} ${d.pSearchRow}`}>
+        <label className={d.pSearch}><Icon name="search" size={16} /><input autoFocus value={search} onChange={(event) => onSearch(event.target.value)} placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} /></label>
+      </div> : null}
+      <div className={`${styles.chips} ${d.pChips} ${showSearch ? "" : d.pChipsFirst}`} data-discover-active="">
         <button type="button" className={`btn ${d.pFilter}`} aria-label={t("filtersLbl")} onClick={() => setSheet(true)}><Icon name="sliders" size={20} />{count ? <span className={d.pBadge}>{count}</span> : null}</button>
-      </div>
-      <div className={`${styles.chips} ${d.pChips}`} data-discover-active="">
         {query.period && query.period !== "upcoming" ? <button type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => onClear("period")}>{periodLabel(query.period, t)} ✕</button> : null}
         {(query.areas ?? []).map((a) => <button key={a} type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => onQuery({ areas: (query.areas ?? []).filter((x) => x !== a) })}>{areaLabel(a, t)} ✕</button>)}
         {(query.themes ?? []).map((x) => <button key={x} type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => onQuery({ themes: (query.themes ?? []).filter((v) => v !== x) })}>{themeLabel(x, t)} ✕</button>)}

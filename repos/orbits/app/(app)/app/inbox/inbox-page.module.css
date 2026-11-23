@@ -2,4 +2,5 @@
 .page { padding: 0 var(--space-34) var(--space-34); }
 @media (max-width: 1279px) { .page { padding: 0 var(--space-26) var(--space-26); } }
 /* Under 768 the inline panel is already the full width (its own padding), so no side margins. */
-@media (max-width: 767px) { .page { padding: var(--space-12) 0 var(--space-18); } }
+/* 2026-11-23：手机顶栏 + 页签已留出间距，页面不再加顶部内边距。 */
+@media (max-width: 767px) { .page { padding: 0 0 var(--space-18); } }

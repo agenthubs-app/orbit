@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ShellPage } from "../../../orbit-2026/shell/slots";
+import phoneTop from "../../../orbit-2026/shell/phone-top.module.css";
 import { relationshipLifecycleMutationSchema, relationshipLifecycleReadSchema } from "../../../../../../shared/api-schema/relationship-lifecycle";
 import type { RelationshipCompletionInput, RelationshipLifecycleSnapshotDTO } from "../../../../../../shared/contract/relationship-lifecycle";
 import { useOrbitLanguage } from "../../../orbit-language-context";
@@ -83,8 +85,9 @@ export function RelationshipLifecycleEditor({ connectionId }: { connectionId: st
     } catch (error) { setMessage(error instanceof Error ? error.message : t({ ja: "保存できませんでした。入力は残っています。", zh: "保存失败，输入已保留。", en: "Couldn't save. Your input is kept." })); }
     finally { setBusy(false); }
   }
-  return <section className="tasks-workspace" style={{ maxWidth: 760, margin: "0 auto", padding: 24 }}>
-    <a href="/app/tasks">{t({ ja: "タスクに戻る", zh: "返回待办", en: "Back to tasks" })}</a><h1>{t({ ja: "人脈のフォロー", zh: "处理人脉跟进", en: "Relationship follow-up" })}</h1>
+  return <section className={`tasks-workspace ${phoneTop.phoneFlushTop}`} style={{ maxWidth: 760, margin: "0 auto", padding: 24 }}>
+    <ShellPage phoneTitle={t({ ja: "人脈のフォロー", zh: "处理人脉跟进", en: "Relationship follow-up" })} phoneBack="/app/tasks" />
+    <a className={phoneTop.phoneHide} href="/app/tasks">{t({ ja: "タスクに戻る", zh: "返回待办", en: "Back to tasks" })}</a><h1 className={phoneTop.phoneHide}>{t({ ja: "人脈のフォロー", zh: "处理人脉跟进", en: "Relationship follow-up" })}</h1>
     <p>{t({ ja: "フォローを完了するときに、関係の次のステップも決めます。相手にメッセージは送られません。", zh: "完成当前跟进时，一并确认关系下一步；不会向联系人发送消息。", en: "When you complete a follow-up, confirm the relationship's next step too. No message is sent to the contact." })}</p>
     <button className="btn btn-ghost" disabled={busy} onClick={() => { setMessage(""); void load(); }}>{t({ ja: "関係の状態を再読み込み", zh: "刷新关系状态", en: "Refresh relationship status" })}</button>
     {message ? <p role="status">{message}</p> : null}

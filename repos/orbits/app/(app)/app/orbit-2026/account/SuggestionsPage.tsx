@@ -187,7 +187,7 @@ export function SuggestionsPage({ designCards, sampleExample }: { designCards?: 
         <Button label={t("skipAll")} onClick={skipAll} disabled={sampleMode || busy || blocked} />
         <Button label={t("applyCount").replace("{n}", String(yes))} variant="primary" loading={busy} disabled={sampleMode || !decided || blocked} onClick={() => void apply()} />
       </> : undefined}
-      rightRail={<SuggestionsRail counts={counts} language={language} />} phoneFold phoneBare />
+      rightRail={<SuggestionsRail counts={counts} language={language} />} phoneFold phoneBare phoneBack="/app/profile" />
     <div className={styles.page}>
       {/* b12 W-R18a-25 (390): full screen with the kit .topbar — back + centred title; the bulk actions move into the page. */}
       <div className={styles.phoneTopbar}><a className={`btn ${styles.back}`} href="/app/profile" aria-label={t("back")}><Icon name="left" size={20} /></a><b>{t("title")}</b><span /></div>

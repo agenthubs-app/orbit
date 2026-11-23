@@ -237,3 +237,11 @@
   .drawerLeft { left: calc((100vw - 1440px) / 2 + 14px); right: auto; }
   .sheet { left: calc((100vw - 1440px) / 2 + 8px); right: calc((100vw - 1440px) / 2 + 8px); }
 }
+
+/* 2026-11-23 手机顶部统一（mobile-top-height-proposal）：浮层顶部也是一行 52（上下 6 + 40 的按钮），正文从 60 开始。
+   放在文件末尾：要压过上面的基础 .drawerHead / .drawerBody / .drawerBare。 */
+@media (max-width: 767px) {
+  .drawerHead { min-height: 52px; padding: 6px var(--space-18); }
+  .drawerBody { padding: 8px var(--space-18) var(--space-22); }
+  .drawerBare { padding: 6px var(--space-18) var(--space-20); }
+}

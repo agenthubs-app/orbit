@@ -69,7 +69,9 @@ export function AccountLayout({ active, title, subtitle, children, rightRail, ra
   return (
     <Orbit2026Scope language={language} className={`${s.page} ${home ? s.home : s.detail}`}>
       <ToastProvider>
-        {shell ? <ShellPage title={t("settings")} rightRail={railPending ? undefined : rightRail ?? false} phoneFold phoneBare /> : null}
+        {/* 2026-11-23 手机顶栏：外壳画「‹ · 分区标题」（设置首页是「设置」，返回首页）；页面自己的手机顶栏和正文里的同名大标题不再画。 */}
+        {shell ? <ShellPage title={t("settings")} rightRail={railPending ? undefined : rightRail ?? false} phoneFold phoneBare
+          phoneTitle={home ? t("settings") : back ? back.label : title ?? ""} phoneBack={home ? "/app/home" : back?.href ?? "/app/settings"} /> : null}
         <div className={s.grid} data-account-section={active}>
           {/* b12 W-R18a-20 (390): kit .topbar「‹ 設定」, the account card, then one .sgroup card of rows. */}
           <div className={s.phoneTopbar}><a className={`btn ${s.phoneBack}`} href="/app/home" aria-label={t("backToHome")}><Icon name="left" size={20} /></a><b>{t("settings")}</b><span /></div>

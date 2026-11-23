@@ -15,6 +15,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ShellPage } from "../orbit-2026/shell/slots";
+import phoneTop from "../orbit-2026/shell/phone-top.module.css";
 
 import {
   canOpenStartStep,
@@ -242,7 +244,11 @@ export function StartGuide(props: StartGuideProps) {
   return (
     <div className="sg" data-start-guide data-start-view={String(view)}>
       <style>{START_GUIDE_STYLES}</style>
-      <header className="sg-nav">
+      {/* 2026-11-23 手机：「‹ · 引导 · 第 N 步」由外壳顶栏画，页面里的导航行和顶部空白不再出现。 */}
+      <ShellPage phoneBack={preserveHref("/app/agent")} phoneTitle={viewNumber
+        ? t({ en: `Guide · Step ${viewNumber} of 3`, zh: `引导 · 第 ${viewNumber} 步 / 共 3 步`, ja: "はじめのガイド" })
+        : t({ en: "Guide · All 3 steps done", zh: "引导 · 3 步已完成", ja: "はじめのガイド · 完了" })} />
+      <header className={`sg-nav ${phoneTop.phoneHide}`}>
         <a className="sg-logo" data-start-back href={preserveHref("/app/agent")}>{t({ en: "← Look around first", zh: "← 先回去看看", ja: "‹ ホーム" })}</a>
         <span className="sg-nav-step" data-start-nav-step>
           {viewNumber
@@ -250,7 +256,7 @@ export function StartGuide(props: StartGuideProps) {
             : t({ en: "Guide · All 3 steps done", zh: "引导 · 3 步已完成", ja: "はじめのガイド · 完了" })}
         </span>
       </header>
-      <main className="sg-wrap">
+      <main className={`sg-wrap ${phoneTop.phoneFlushTop}`}>
         <header className="sg-mast">
           <span className="sg-progress">{t({ en: `Your first 3 steps · ${Number(flags.contacts) + Number(flags.goal) + Number(flags.plan)} / 3`, zh: `开始的 3 步 · ${Number(flags.contacts) + Number(flags.goal) + Number(flags.plan)} / 3`, ja: `はじめの 3 ステップ · ${Number(flags.contacts) + Number(flags.goal) + Number(flags.plan)} / 3` })}</span>
           <h1 className="sg-title">{t({ en: "3 steps to put iOrbit to work for you", zh: "3 步，让 iOrbit 开始为你工作", ja: "最初のプランまで、あと少し" })}</h1>
@@ -373,10 +379,11 @@ export function StartGuideUnavailable() {
   return (
     <div className="sg" data-start-guide-unavailable>
       <style>{START_GUIDE_STYLES}</style>
-      <header className="sg-nav">
+      <ShellPage phoneBack="/app/agent" phoneTitle="iOrbit" />
+      <header className={`sg-nav ${phoneTop.phoneHide}`}>
         <span className="sg-logo">iOrbit</span>
       </header>
-      <main className="sg-wrap">
+      <main className={`sg-wrap ${phoneTop.phoneFlushTop}`}>
         <section className="sg-lead" role="alert">
           <h2>{t({ en: "The guide can't load right now", zh: "引导暂时打不开", ja: "ガイドを読み込めません" })}</h2>
           <p className="sg-why">

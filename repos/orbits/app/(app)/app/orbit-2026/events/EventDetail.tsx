@@ -693,6 +693,8 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
         subtitle={phone ? undefined : data ? hostName(data, t) : ""}
         left={<Link className={`btn ${x.rbtn}`} href="/app/events?tab=discover" aria-label={t("back")}><Icon name="left" size={16} /></Link>}
         right={right}
+        phoneBack="/app/events?tab=discover"
+        phoneActions={[{ icon: "share", key: "share", label: t("share"), onClick: () => void share() }]}
         rightRail={wide ? (data ? person.rail : missing || answer.failure ? false : <JourneyRailSkeleton kind="detail" />) : false}
         phoneBare={phone}
       />

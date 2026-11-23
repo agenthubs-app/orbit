@@ -500,11 +500,13 @@ test("the real 390 shell keeps Task search and add usable inside the page", asyn
   const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
   const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 390 });
   t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
-  await current.locator("main").getByRole("heading", { name: "タスク一覧" }).waitFor();
+  // 2026-11-23 手机顶栏：「‹ · タスク一覧 · ＋」由外壳画（子视图顶栏），页面里不再画标题行。
+  const bar = current.locator('[data-orbit-phone-bar="sub"]');
+  await bar.getByRole("heading", { name: "タスク一覧" }).waitFor();
   const search = current.getByRole("searchbox", { name: "タスクを検索" });
   await search.fill("今日");
   await current.getByRole("button", { name: "今日の資料の詳細" }).waitFor();
-  await current.getByRole("button", { name: "タスクを追加" }).click();
+  await bar.getByRole("button", { name: "タスクを追加" }).click();
   await current.getByRole("dialog", { name: "タスクを追加" }).waitFor();
   assert.equal(await current.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   assert.ok(await current.locator("[data-task-list-card]").getByText("1件", { exact: true }).evaluate(element => element.getBoundingClientRect().width > 20));

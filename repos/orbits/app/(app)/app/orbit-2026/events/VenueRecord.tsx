@@ -217,6 +217,7 @@ export function VenueRecordView({ data, eventId, language, t }: { data: EventVen
       <ShellPage title={t("venueRecord")} subtitle={t("recordSub", { date, title: data.title })}
         left={<a className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("back")}><Icon name="left" size={16} /></a>}
         right={<button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void share()} data-record-share=""><Icon name="share" size={16} /></button>}
+        phoneBack={detailHref} phoneActions={[{ icon: "share", key: "share", label: t("share"), onClick: () => void share() }]}
         rightRail={rail} />
       <div className={styles.wgrid} data-venue={eventId} data-venue-record="">{body}</div>
       {drawer}

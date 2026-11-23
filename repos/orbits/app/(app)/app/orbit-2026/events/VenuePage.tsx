@@ -229,7 +229,7 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
   if (phone && !webAnyway && data) {
     return (
       <>
-        <ShellPage title={t("liveTitle")} subtitle={data?.title ?? ""} left={<Link className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("back")}><Icon name="left" size={16} /></Link>} rightRail={false} phoneBare />
+        <ShellPage title={t("liveTitle")} subtitle={data?.title ?? ""} left={<Link className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("back")}><Icon name="left" size={16} /></Link>} rightRail={false} phoneBare phoneBack={detailHref} />
         <div className={`${styles.card} ${v.appOnly}`} data-venue-app-only="">
           <div className={v.appEmoji}>📱</div>
           <b className={v.appTitle}>{t("appOnlyTitle")}</b>
@@ -245,7 +245,7 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
     const message = missing ? t("notFound") : data?.state === "not_registered" ? t("liveNotRegistered") : data?.state === "before_check_in" ? t("liveBeforeCheckIn", { n: data.checkIn?.receptionNumber ?? "—" }) : t("liveEnded");
     return (
       <>
-        <ShellPage title={data?.title ?? t("liveTitle")} left={exit} rightRail={false} />
+        <ShellPage title={data?.title ?? t("liveTitle")} left={exit} rightRail={false} phoneBack={detailHref} />
         <div className={`${styles.card} ${x.missing}`} data-venue-state={data?.state ?? "missing"}>
           <b>{message}</b>
           {data?.state === "ended" ? <div className={v.stateAct}><Link className={`btn ${styles.btn} ${styles.primary}`} href={`${detailHref}/after`}>{t("toAfter")}</Link></div> : null}
@@ -253,7 +253,7 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
       </>
     );
   }
-  if (!data) return <><ShellPage title="" left={exit} rightRail={wide && !answer.failure ? <JourneyRailSkeleton /> : false} />{answer.failure ? <RetryCard title={at("genericError")} onRetry={() => void load()} /> : <JourneySkeleton kind="venue" />}</>;
+  if (!data) return <><ShellPage title="" left={exit} phoneBack={detailHref} rightRail={wide && !answer.failure ? <JourneyRailSkeleton /> : false} />{answer.failure ? <RetryCard title={at("genericError")} onRetry={() => void load()} /> : <JourneySkeleton kind="venue" />}</>;
 
   const round = data.round;
   const openers = data.openers.length > 2 ? [0, 1].map((n) => data.openers[(openerPage * 2 + n) % data.openers.length]!) : data.openers;
@@ -326,7 +326,8 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
 
   return (
     <>
-      <ShellPage title={data.title} subtitle={subtitle} left={exit} right={<button type="button" className={`btn ${x.rbtn}`} aria-label={t("checkInQr")} onClick={() => toast.info(data.checkIn?.receptionNumber ? t("vReception", { n: data.checkIn.receptionNumber }) : t("checkInQr"))}><Icon name="scan" size={20} /></button>} rightRail={wide ? rail : false} />
+      <ShellPage title={data.title} subtitle={subtitle} left={exit} right={<button type="button" className={`btn ${x.rbtn}`} aria-label={t("checkInQr")} onClick={() => toast.info(data.checkIn?.receptionNumber ? t("vReception", { n: data.checkIn.receptionNumber }) : t("checkInQr"))}><Icon name="scan" size={20} /></button>} rightRail={wide ? rail : false} phoneBack={detailHref}
+        phoneActions={[{ icon: "scan", key: "qr", label: t("checkInQr"), onClick: () => toast.info(data.checkIn?.receptionNumber ? t("vReception", { n: data.checkIn.receptionNumber }) : t("checkInQr")) }]} />
       {!wide && rail ? <Drawer open={drawer} onClose={() => setDrawer(false)} title={t("detailTitle")} size="sm">{rail}</Drawer> : null}
       <div className={styles.wgrid} data-venue={eventId}>
         <div className={styles.span12}>

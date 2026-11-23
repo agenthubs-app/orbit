@@ -103,7 +103,8 @@
 }
 /* Phone: one pane at a time; a selection shows the detail with a back button. */
 @media (max-width: 767px) {
-  .tabs { padding: 0 var(--space-16); }
+  /* 2026-11-23：页签由外壳画在顶栏下（phoneTabs）。 */
+  .tabs { display: none; }
   .tabsNote { display: none; }
   .card { display: block; height: auto; min-height: 0; border-radius: var(--r-none); }
   .list { border-right: 0; }

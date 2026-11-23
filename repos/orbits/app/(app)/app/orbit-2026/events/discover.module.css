@@ -66,12 +66,15 @@
 .faded { opacity: 0.5; filter: saturate(0.7); pointer-events: none; }
 
 /* ---------- 390（b12 #348 App 式探す） ---------- */
-.pSearchRow.pSearchRow { gap: 8px; margin-top: 12px; }
+.pSearchRow.pSearchRow { gap: 8px; margin-top: 0; }
 .pSearch { flex: 1; height: 44px; border-radius: var(--r-pill); background: var(--surface); display: flex; align-items: center; gap: 8px; padding: 0 16px; color: var(--ink-3); font-size: var(--fs-row); }
 .pSearch input { flex: 1; min-width: 0; border: 0; padding: 0; background: transparent; font: inherit; color: var(--ink); }
 .pFilter.pFilter { position: relative; width: 40px; height: 40px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface); display: grid; place-items: center; color: var(--ink-2); }
 .pBadge { position: absolute; top: -2px; right: -2px; min-width: 17px; height: 17px; border-radius: var(--r-sm); background: var(--ink); color: var(--bg); font-size: var(--fs-tab); font-weight: var(--fw-heavy); display: grid; place-items: center; padding: 0 4px; }
-.pChips.pChips { margin: 10px 0 0; }
+.pChips.pChips { margin: 10px 0 0; align-items: center; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+/* 2026-11-23：没有搜索框时，筛选这一行就是正文第一行（顶栏已留 8 / 页签已留 10）。 */
+.pChips.pChipsFirst { margin-top: 0; }
+.pChips .pFilter { flex: none; width: 34px; height: 34px; }
 .pChips :global(svg) { width: 12px; height: 12px; }
 .pComm.pComm { padding: 14px 16px; margin-top: 14px; }
 .pCardH.pCardH { margin-bottom: 4px; }

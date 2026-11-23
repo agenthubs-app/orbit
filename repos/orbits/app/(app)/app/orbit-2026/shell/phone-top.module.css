@@ -1,0 +1,8 @@
+/* 2026-11-23 手机顶栏（mobile-top-height-proposal）：旧页面里自己画的返回链接、面包屑和大标题，在手机上改由外壳顶栏画，这里隐藏。 */
+@media (max-width: 767px) {
+  .phoneHide { display: none !important; }
+  /* 旧页面的正文容器：顶部不再留空（顶栏已经留了 8）。 */
+  .phoneFlushTop { padding-top: 0 !important; margin-top: 0 !important; }
+  /* 隐藏的标题之后的第一块，以及它自己的第一行，也不留顶部空白。 */
+  .phoneFlushTop > .phoneHide + :not(.phoneHide), .phoneFlushTop > .phoneHide + :not(.phoneHide) > :first-child { margin-top: 0 !important; }
+}

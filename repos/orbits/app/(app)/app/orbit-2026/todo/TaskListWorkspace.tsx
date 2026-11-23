@@ -458,7 +458,10 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     <ShellPage title={t(taskCopy.sourceTask)} subtitle={shellSubtitle}
       left={<a href="/app/tasks?tab=todo" className={`btn ${styles.shellBack}`} aria-label={t(taskCopy.taskListBack)}><Icon name="left" size={20} /></a>}
       right={<div className={styles.shellActions}><SearchField value={query} onChange={search} placeholder={t(taskCopy.taskListSearch)} /><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="accent" onClick={() => setAdding(true)} /></div>}
-      rightRail={wideShell === true ? selectedId ? detailRail : emptyGuide ? emptyRail : false : false} phoneFold />
+      rightRail={wideShell === true ? selectedId ? detailRail : emptyGuide ? emptyRail : false : false} phoneFold
+      // 2026-11-23 手机顶栏：全部待办是 Task 里打开的子视图 —「‹ · 全部待办 · ＋」，不画 Task 的页签行（TaskContainer 不声明）；页面自己的返回和标题行不再画。
+      phoneSub phoneTitle={t(taskCopy.taskListTitle)} phoneBack="/app/tasks?tab=todo"
+      phoneActions={[{ icon: "plus", key: "add", label: t(taskCopy.taskListAdd), onClick: () => setAdding(true) }]} />
     <main className={`${styles.page} ${inShell ? styles.pageInShell : ""}`}>
       <div className={`${styles.top} ${inShell ? styles.topInShell : ""}`}><a href="/app/tasks?tab=todo" className={styles.back}>{t(taskCopy.taskListBack)}</a><h1>{t(taskCopy.taskListTitle)}</h1><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="accent" onClick={() => setAdding(true)} /></div>
       <Button hidden style={{ display: "none" }} data-task-add="" label={t(taskCopy.taskListAdd)} onClick={() => setAdding(true)} />

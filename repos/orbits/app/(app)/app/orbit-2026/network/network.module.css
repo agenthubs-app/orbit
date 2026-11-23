@@ -98,6 +98,8 @@
 .moreRow { display: flex; margin-top: 12px; }
 .mobileAdd { width: 40px; height: 40px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); display: grid; place-items: center; text-decoration: none; }
 .mobileHeading { display: flex; align-items: baseline; gap: 8px; margin: 4px 0 1px; min-height: 33px; }
+/* 2026-11-23：标题进外壳顶栏后，人数统计是正文第一行。 */
+.mobileStat { margin: 0 0 10px; }
 .mobileHeading h1 { margin: 0; font-size: var(--fs-number); font-weight: var(--fw-heavy); line-height: 1.5; }
 .mobileHeading .mobileAdd { margin-left: auto; align-self: center; }
 .mobileTools { display: flex; gap: 8px; margin-bottom: 12px; }

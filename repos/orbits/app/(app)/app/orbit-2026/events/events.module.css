@@ -227,6 +227,8 @@
 .segFull .segBtn.segBtn { flex: 1 1 0%; }
 .stack > .card + .card { margin-top: var(--gap); }
 .evalBox { display: block; margin-top: 12px; padding: 16px; }
+/* 2026-11-23：手机顶栏 + 页签已留出间距，这张卡是正文第一块，不再加上边距。 */
+@media (max-width: 767px) { .stack > .evalBox:first-child { margin-top: 0; } }
 .evalBox .input { height: 44px; }
 .evalBox .btn.tall { height: 44px; }
 .nextRow { flex-direction: row; align-items: center; gap: 12px; padding: 14px; background: linear-gradient(135deg, var(--mac-lav), var(--surface) 70%); }

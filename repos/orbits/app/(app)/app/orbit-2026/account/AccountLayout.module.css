@@ -43,7 +43,10 @@
   .phoneAccount div span { display: block; color: var(--ink-3); font-size: var(--fs-label); font-weight: var(--fw-medium); }
   .home .content, .detail .menu { display: none; }
   .sectionBack { display: none; }
-  .phoneTopbar { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 6px 0 14px; }
+  /* 2026-11-23：「‹ · 标题」改由外壳顶栏画；正文不再重复标题（说明文字仍是正文第一段）。 */
+  .phoneTopbar, .grid > .phoneTopbar, .content > .phoneTopbar { display: none; }
+  .heading h1 { display: none; }
+  .heading:not(:has(p)) { display: none; }
   .phoneTopbar b { text-align: center; font-size: var(--fs-emoji-sm); font-weight: var(--fw-heavy); letter-spacing: .01em; }
   .phoneTopbar .phoneBack { width: 40px; height: 40px; min-height: 40px; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface); color: var(--ink-2); display: grid; place-items: center; }
 }

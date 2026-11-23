@@ -1,6 +1,8 @@
 'use client';
 import {useEffect,useState} from 'react';
 import {useOrbitLanguage} from '../orbit-language-context';
+import {ShellPage} from '../orbit-2026/shell/slots';
+import phoneTop from '../orbit-2026/shell/phone-top.module.css';
 import {communicationRequest,invalidateInboxActorConfirmation,readContactMessageActor} from './inbox-request';
 import {notificationDetailView,type NotificationRow} from './notification-inbox-view-model';
 import {notificationDetailPath,verifiedSourceNote} from './notification-source-view-model';
@@ -19,8 +21,9 @@ export function NotificationSourcePage({notificationId}:{notificationId:string})
   void load();const timer=setInterval(()=>{if(shouldRefreshInBackground())void load();},AREA_FALLBACK_MS);document.addEventListener('visibilitychange',visibility);
   return()=>{controller.abort();clearInterval(timer);document.removeEventListener('visibilitychange',visibility);};
  },[notificationId,language,attempt]);
- return <section style={{maxWidth:720,margin:'32px auto',padding:24}}>
-  <h1>{t({zh:'通知来源',en:'Notification source',ja:'通知の参照元'})}</h1>
+ return <section className={phoneTop.phoneFlushTop} style={{maxWidth:720,margin:'32px auto',padding:24}}>
+  <ShellPage phoneTitle={t({zh:'通知来源',en:'Notification source',ja:'通知の参照元'})} phoneBack="/app/inbox?tab=notifications" />
+  <h1 className={phoneTop.phoneHide}>{t({zh:'通知来源',en:'Notification source',ja:'通知の参照元'})}</h1>
   {error?<div role="alert"><p>{t({zh:'来源已变化或暂不可用，请返回通知刷新。',en:'The source changed or is unavailable. Refresh the notification.',ja:'参照元が変更されたか利用できません。通知を更新してください。'})}</p><button className="btn btn-secondary" onClick={()=>setAttempt(v=>v+1)}>{t({zh:'重试',en:'Retry',ja:'再試行'})}</button></div>:!record?<p role="status">{t({zh:'正在读取…',en:'Loading…',ja:'読み込み中…'})}</p>:<>
    <h2>{note?.title||record.title}</h2>
    {note?<p style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',lineHeight:1.8}}>{note.body}</p>:<><h3>{t({zh:'原文摘录',en:'Source excerpts',ja:'原文の抜粋'})}</h3>{record.sources.map((source,index)=><p key={index} style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',lineHeight:1.8}}>{source.excerpt}</p>)}</>}

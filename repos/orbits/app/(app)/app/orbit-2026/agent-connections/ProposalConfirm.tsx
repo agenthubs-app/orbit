@@ -104,7 +104,7 @@ export function ProposalConfirmPage({ initial }: { initial: ProposalPageInitial 
   const signedInAs = initial.kind === "not_here" ? initial.account.name || initial.account.email || "" : "";
   return (
     <Orbit2026Scope language={language}>
-      <ShellPage title={t("confirmTitle")} rightRail={false} phoneFold phoneBare />
+      <ShellPage title={t("confirmTitle")} rightRail={false} phoneFold phoneBare phoneBack="/app/inbox" />
       <div className={s.confirmPage} data-orbit-proposal-page={initial.kind}>
         <div className={s.phoneTop}><Link className={`btn ${s.phoneBack}`} href="/app/inbox" aria-label={t("backToInbox")}><Icon name="left" size={20} /></Link><b>{t("confirmTitle")}</b><span /></div>
         {initial.kind === "found" ? <ProposalBody view={initial.view} language={language} place="page" />

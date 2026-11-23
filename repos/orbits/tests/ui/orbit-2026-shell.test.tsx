@@ -167,17 +167,21 @@ test("390: a legacy page's own dialog sits above the capsule (the shell's bars s
   await page.getByRole("button", { name: "dialog action" }).click();
 });
 
-test("390: a top bar with the 「O Orbit」 wordmark, 受信箱 (with the unread dot) and the avatar menu as a bottom sheet (マイページ, language, appearance, sign out); no header row", async (t) => {
+test("390 (2026-11-23 mobile-top-height-proposal): a first-level page has one 52 bar — its title on the left, 受信箱 (unread dot) and the avatar menu as a bottom sheet; no brand row, no header row; content from 60", async (t) => {
   const page = await shell(t, { path: "/app/tasks", unread: true, rail: true, fold: true }, { width: 390 });
-  const top = page.locator("[data-orbit-2026-mobile-top]");
-  assert.equal(await top.isVisible(), true);
-  assert.equal(await top.getByRole("link", { name: "Orbit" }).innerText(), "O\nOrbit");
-  assert.equal(await top.getByRole("button", { name: /検索/u }).count(), 0, "b6 mwHead: no search button in the top bar");
-  assert.equal(await page.locator("[data-orbit-2026-mainhead] h1").isVisible(), false, "390: the title folds into the page (b6 / b8)");
-  const inbox = top.getByRole("link", { name: "受信箱" });
+  assert.equal(await page.locator("[data-orbit-2026-mobile-top]").count(), 0, "the brand row is gone");
+  assert.equal(await page.locator("[data-orbit-2026-mainhead]").isVisible(), false, "the desktop header row is not drawn on a phone");
+  const bar = page.locator('[data-orbit-phone-bar="first"]');
+  const box = (await bar.boundingBox())!;
+  assert.deepEqual([Math.round(box.y), Math.round(box.height)], [0, 52]);
+  assert.equal(await bar.locator("h1").innerText(), "ホーム", "the page title sits in the bar, left");
+  const content = (await page.locator("[data-orbit-2026-content]").boundingBox())!;
+  assert.equal(Math.round(content.y), 60, "52 + 8: the content starts at 60");
+  assert.equal(await bar.getByRole("button", { name: /検索/u }).count(), 0, "no actions declared, none drawn");
+  const inbox = bar.getByRole("link", { name: "受信箱" });
   assert.equal(await inbox.getAttribute("href"), "/app/inbox");
   await inbox.locator("i").waitFor();
-  await top.getByRole("button", { name: "アカウント" }).click();
+  await bar.getByRole("button", { name: "アカウント" }).click();
   const menu = page.getByRole("dialog", { name: "アカウント" });
   // b12 W-R07-07b (user-approved 2026-10-12): a bottom sheet with the same items as 1440 — 設定 / 主催 via マイページ.
   assert.deepEqual(await menu.getByRole("link").evaluateAll((links) => links.map((link) => link.getAttribute("href"))), ["/app/profile"]);
@@ -191,17 +195,23 @@ test("390: a top bar with the 「O Orbit」 wordmark, 受信箱 (with the unread
   assert.equal(reads, 1, "the rail and the top bar share one unread read");
 });
 
-test("390: a page that does not fold its title (phoneFold) keeps the header row — title, its slots and the 次の一手 button", async (t) => {
-  const page = await shell(t, { path: "/app/tasks", unread: true, rail: true }, { width: 390 });
-  const head = page.locator("[data-orbit-2026-mainhead]");
-  assert.equal(await head.locator("h1").isVisible(), true);
-  assert.equal(await head.locator("[data-orbit-2026-search]").isVisible(), true, "the left slot (a back button on 名刺スキャン) stays");
-  assert.equal(await head.getByRole("link", { name: /^受信箱/u }).isVisible(), true, "the right slot stays");
-  const railButton = head.getByRole("button", { name: "次の一手を開く" });
-  assert.equal(await railButton.getAttribute("aria-expanded"), "false");
-  await railButton.click();
-  await page.getByRole("dialog", { name: "次の一手" }).waitFor();
-  assert.equal(await railButton.getAttribute("aria-expanded"), "true");
+test("390: a first-level page shows two of its actions, the third goes into 「その他」; the rail action opens 次の一手; a sub-page bar is ‹ · centred title", async (t) => {
+  const page = await shell(t, { path: "/app/tasks", unread: true, rail: true, phoneActions: true }, { width: 390 });
+  const bar = page.locator('[data-orbit-phone-bar="first"]');
+  assert.equal(await bar.getByRole("button", { name: "検索する" }).isVisible(), true);
+  assert.equal(await bar.getByRole("link", { name: "追加する" }).count(), 0, "the third action is in the more menu");
+  await bar.getByRole("button", { name: "その他" }).click();
+  await page.getByRole("menu").getByText("追加する").waitFor();
+  await page.keyboard.press("Escape");
+  const sub = await shell(t, { path: "/app/contacts/new/scan", rail: true, phoneActions: true }, { width: 390 });
+  const subBar = sub.locator('[data-orbit-phone-bar="sub"]');
+  assert.equal(await subBar.locator("[data-orbit-phone-back]").isVisible(), true, "‹ on the left");
+  const title = (await subBar.locator("h1").boundingBox())!;
+  assert.ok(Math.abs(title.x + title.width / 2 - 195) <= 1, `the title is centred: ${JSON.stringify(title)}`);
+  assert.equal(await subBar.getByRole("button", { name: "その他" }).isVisible(), true, "a sub-page shows one slot: more than one action goes into その他");
+  await subBar.getByRole("button", { name: "その他" }).click();
+  await sub.getByRole("menu").getByText("次の一手").click();
+  await sub.getByRole("dialog", { name: "次の一手" }).waitFor();
 });
 
 test("1024: the drawer fits its foot — 「iOrbit に聞く…」 sits inside the drawer without scrolling", async (t) => {

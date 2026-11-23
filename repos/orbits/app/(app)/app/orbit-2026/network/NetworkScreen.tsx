@@ -89,6 +89,7 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
   const [densityWhy, setDensityWhy] = useState(false);
   const [openContact, setOpenContact] = useState<string | null>(initialContactId ?? params?.get("contact") ?? null);
   const filterAnchor = useRef<HTMLButtonElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const generation = useRef(0);
 
   const loadSummary = useCallback(async () => {
@@ -211,18 +212,17 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
     <>
       <ShellPage title={t("title")} subtitle={subtitle} left={narrow ? undefined : <ShellSearchButton />}
         right={narrow ? undefined : <a className={`btn ${styles.btn} ${styles.accent}`} href="/app/contacts/new" data-network-add=""><span aria-hidden="true">＋</span>{t("addPeople")}</a>}
-        rightRail={narrow ? undefined : rail} phoneFold={narrow} />
-      {narrow ? <div className={styles.mobileHeading} data-network-mobile-heading="">
-        <h1>{t("title")}</h1><span className={styles.lbl}>{subtitle}</span>
-        <a className={styles.mobileAdd} href="/app/contacts/new" aria-label={t("addPeople")} data-network-add=""><Icon name="plus" size={20} /></a>
-      </div> : null}
+        rightRail={narrow ? undefined : rail} phoneFold={narrow}
+        // 2026-11-23 手机顶栏：标题进外壳顶栏，操作 = 搜索（聚焦正文的搜索框）· 添加人脉；人数统计是正文第一行。
+        phoneActions={[{ icon: "search", key: "search", label: t("searchPlaceholder"), onClick: () => { const input = searchRef.current; input?.scrollIntoView({ block: "center" }); input?.focus(); } }, { href: "/app/contacts/new", icon: "plus", key: "add", label: t("addPeople") }]} />
+      {narrow && subtitle ? <div className={`${styles.lbl} ${styles.mobileStat}`} data-network-mobile-heading="">{subtitle}</div> : null}
       {summary === null && !failed ? <div className={styles.card} data-network-loading=""><Skeleton lines={6} /></div>
         : failed && summary === null ? <div className={styles.card} role="alert"><p>{t("loadFailed")}</p><button type="button" className={`btn ${styles.btn}`} onClick={refresh}>{t("filterClear")}</button></div>
           : empty ? <NetworkEmpty t={t} nowMs={nowMs} />
             : (
               <>
               {narrow ? <div className={styles.mobileTools}>
-                <div className={styles.search}><Icon name="search" size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} />
+                <div className={styles.search}><Icon name="search" size={16} /><input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} />
                 <button ref={filterAnchor} type="button" className={`btn ${styles.lbtn}`} onClick={() => setFilterOpen(true)} aria-label={t("filter")} data-network-filter=""><Icon name="sliders" size={16} />{filterCount(filters) ? <span className={styles.badge}>{filterCount(filters)}</span> : null}</button></div>
               </div> : null}
               <div className={styles.wgrid} data-network-list="">

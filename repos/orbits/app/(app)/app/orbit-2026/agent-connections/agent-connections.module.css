@@ -99,7 +99,8 @@
 .cardBone { height: 320px; border-radius: var(--r-xl); background: var(--surface); }
 @media (max-width: 767px) {
   .confirmPage { padding: 0 16px 32px; box-sizing: border-box; }
-  .phoneTop { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; height: 56px; margin: 0 0 4px; }
+  /* 2026-11-23：「‹ · 确认修改」改由外壳顶栏画。 */
+  .phoneTop { display: none; }
   .phoneTop b { text-align: center; font-size: var(--fs-logo); }
   .phoneBack { width: 44px; height: 44px; border-radius: var(--r-pill); background: var(--surface); display: grid; place-items: center; color: var(--ink); }
 }

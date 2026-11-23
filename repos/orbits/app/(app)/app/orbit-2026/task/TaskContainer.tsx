@@ -136,7 +136,10 @@ function TaskContainerContent({ initialTab, calendar, todo, plan, memo, planStar
   const slotRail = tab === "calendar" ? Boolean(calendar) : tab === "todo" ? Boolean(todo) : tab === "plan" ? plan !== null : false;
   return (
     <>
-      <ShellPage title={pickCopy(shellCopy.taskTitle, language)} subtitle={monthHeading(language).range} left={tabs} right={add} rightRail={slotRail ? undefined : true} phoneFold />
+      <ShellPage title={pickCopy(shellCopy.taskTitle, language)} subtitle={monthHeading(language).range} left={tabs} right={add} rightRail={slotRail ? undefined : true} phoneFold
+        // 2026-11-23 手机顶栏：标题「Task」在外壳顶栏，四个页签是外壳画的第二行（铺满宽度）。
+        // 全部待办（?view=all）是子视图，由 TaskListWorkspace 画「‹ · 全部待办」，这里不画页签。
+        phoneTabs={tab === "todo" && searchParams?.get("view") === "all" ? undefined : <div className={styles.mobileTabs} data-task-bar="phone"><TaskTabs tab={tab} onChange={choose} /></div>} />
       {/* Outside the shell (a page on its own) there is no header: the tabs stay on the page. */}
       <Orbit2026Scope language={language} className={inShell ? styles.bar : styles.barAlone}>
         <div data-task-bar="" className={styles.mobileTabs}>

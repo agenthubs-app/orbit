@@ -191,7 +191,7 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
   if (phone && !empty) {
     return (
       <>
-        <ShellPage title={t("afterTitle")} subtitle={`${data.title} · ${dateP ? `${dateP.month}/${dateP.day}` : data.date}`} left={back} right={<button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void shareRecap()}><Icon name="share" size={20} /></button>} rightRail={false} phoneBare />
+        <ShellPage title={t("afterTitle")} subtitle={`${data.title} · ${dateP ? `${dateP.month}/${dateP.day}` : data.date}`} left={back} right={<button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void shareRecap()}><Icon name="share" size={20} /></button>} phoneActions={[{ icon: "share", key: "share", label: t("share"), onClick: () => void shareRecap() }]} rightRail={false} phoneBare />
         <div className={a.phone} data-after={eventId} data-after-phone="">
           <div className={`${styles.card} ${a.pCard}`} data-after-met="">
             <div className={a.heroRow}>
@@ -251,7 +251,7 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
 
   return (
     <>
-      <ShellPage title={t("afterTitle")} subtitle={subtitle} left={back} right={<button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void shareRecap()}><Icon name="share" size={20} /></button>} rightRail={rail} />
+      <ShellPage title={t("afterTitle")} subtitle={subtitle} left={back} right={<button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void shareRecap()}><Icon name="share" size={20} /></button>} phoneActions={[{ icon: "share", key: "share", label: t("share"), onClick: () => void shareRecap() }]} rightRail={rail} />
       <div className={styles.wgrid} data-after={eventId}>
         {empty ? <EmptyAfter eventId={eventId} t={t} /> : (
           <>

@@ -47,4 +47,7 @@ export const shellCopy = {
   railCloseHint: { ja: "で閉じる", zh: "关闭", en: "to close", kind: "label" },
   inboxUnread: { ja: "未読あり", zh: "有未读", en: "unread", kind: "label" },
   searchAndAsk: { ja: "検索 · iOrbit に聞く", zh: "搜索 · 问 iOrbit", en: "Search or ask iOrbit", kind: "label" },
+  // 2026-11-23 手机顶栏（mobile-top-height-proposal）。
+  phoneBack: { ja: "戻る", zh: "返回", en: "Back", kind: "label" },
+  phoneMore: { ja: "その他", zh: "更多", en: "More", kind: "label" },
 } satisfies OrbitCopyTable;

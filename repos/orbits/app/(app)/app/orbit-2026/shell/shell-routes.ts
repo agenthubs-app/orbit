@@ -83,15 +83,17 @@ export type ShellFrame = {
   rail: boolean;
   phoneFold: boolean;
   phoneBare?: boolean;
+  /** 2026-11-23 < 768: the page has a tabs row under the top bar — the frame holds its 40 + 10 so nothing moves when the page fills it. */
+  phoneTabs?: boolean;
 };
 
 const SHELL_FRAMES: Readonly<Record<string, ShellFrame>> = {
   "/app/home": { title: "month", subtitle: "range", toolbar: { left: [40], right: [40, 96] }, rail: true, phoneFold: true },
   "/app/contacts": { title: "network", subtitle: "pending", toolbar: { left: [40], right: [128] }, rail: true, phoneFold: true },
   "/app/agent": { title: "iorbit", subtitle: "iorbit", toolbar: { left: [], right: [148, 112] }, rail: true, phoneFold: true },
-  "/app/events": { title: "events", subtitle: "pending", toolbar: { left: [232], right: [40], height: 46 }, rail: true, phoneFold: true },
-  "/app/tasks": { title: "task", subtitle: "range", toolbar: { left: [300], right: [40] }, rail: true, phoneFold: true },
-  "/app/inbox": { title: "inbox", subtitle: null, toolbar: null, rail: true, phoneFold: false },
+  "/app/events": { title: "events", subtitle: "pending", toolbar: { left: [232], right: [40], height: 46 }, rail: true, phoneFold: true, phoneTabs: true },
+  "/app/tasks": { title: "task", subtitle: "range", toolbar: { left: [300], right: [40] }, rail: true, phoneFold: true, phoneTabs: true },
+  "/app/inbox": { title: "inbox", subtitle: null, toolbar: null, rail: true, phoneFold: false, phoneTabs: true },
 };
 
 // 設定 (AccountLayout): 「設定」 above every section; the profile (/app/profile, and /app/settings, which opens

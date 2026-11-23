@@ -12,7 +12,7 @@ import { iorbitCopy } from "../../orbit-2026/copy/iorbit";
 import { standardCopyFor } from "../../orbit-2026/copy/standard";
 import { ShellPage } from "../../orbit-2026/shell/slots";
 import { useCloseShellRail } from "../../orbit-2026/shell/Orbit2026Shell";
-import { Bone, Button, Card, ConfirmDialog, ContextMenu, Icon, IconButton, Kbd, MacTile, Orbit2026Scope, SearchField, Toggle } from "../../orbit-2026/ui";
+import { Bone, Button, Card, ConfirmDialog, ContextMenu, Icon, Kbd, MacTile, Orbit2026Scope, SearchField, Toggle } from "../../orbit-2026/ui";
 import { AgentActionStatusCard } from "../agent-action-status-card";
 import { AgentTaskInteractionCard } from "../agent-task-interaction-card";
 import { AgentMessageCopyButton, PanelCards, ThinkingIndicator } from "../iorbit-0918/iorbit-rich-components";
@@ -424,11 +424,13 @@ export function IOrbit2026({ accountName, initialHistoryOpen = false, agentV1 = 
       <ShellPage title="iOrbit" subtitle={inConversation ? activeTitle || (titlePending ? "\u00a0" : t(iorbitCopy.inConversation)) : t(iorbitCopy.subtitle)}
         right={<><span className={styles.anywhere}><Kbd>{shortcut}</Kbd> <Kbd>K</Kbd><span className={styles.anywhereText}> {t(iorbitCopy.anywhere)}</span></span><Button label={t(iorbitCopy.newChat)} icon="plus" onClick={startNew} /></>}
         rightRail={phone ? false : <div className={styles.railHistory}><HistoryPane history={history} onNew={startNew} onPick={pick} /></div>}
-        railLabel={t(iorbitCopy.list)} phoneFold phoneBare={inConversation} />
+        railLabel={t(iorbitCopy.list)} phoneFold phoneBare={inConversation}
+        // 2026-11-23 手机顶栏：iOrbit 标题在外壳顶栏；操作 = 会话列表 · 新对话（对话中是「关闭」）。
+        phoneActions={[{ icon: "menu", key: "history", label: t(iorbitCopy.list), onClick: () => setHistoryOpen(true) }, { icon: inConversation ? "x" : "plus", key: "new", label: inConversation ? standardCopyFor(language).action.close : t(iorbitCopy.newChat), onClick: startNew }]} />
       <div className={styles.layout}>
         {historyOpen && phone ? <HistoryDrawer label={t(iorbitCopy.list)} onClose={() => setHistoryOpen(false)}><HistoryPane history={history} onNew={startNew} onPick={pick} onCollapse={() => setHistoryOpen(false)} /></HistoryDrawer> : null}
         <main className={styles.main}>
-          <div className={styles.phoneHeader}><IconButton icon="menu" label={t(iorbitCopy.list)} onClick={() => setHistoryOpen(true)} /><div className={styles.phoneHeaderTitle}><strong>iOrbit</strong>{inConversation && activeTitle ? <small>{activeTitle}</small> : null}</div><IconButton icon={inConversation ? "x" : "plus"} label={inConversation ? standardCopyFor(language).action.close : t(iorbitCopy.newChat)} onClick={startNew} /></div>
+          {/* 2026-11-23：手机的头部行改由外壳顶栏画。 */}
           {!inConversation ? <section className={styles.start} aria-label={t(iorbitCopy.newChat)}>
             <div className={styles.greeting}>
               <span className={styles.star} aria-hidden>✨</span>

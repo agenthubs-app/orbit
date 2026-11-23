@@ -24,6 +24,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ShellPage } from "../../orbit-2026/shell/slots";
+import phoneTop from "../../orbit-2026/shell/phone-top.module.css";
 
 import type { AgentLedgerEntry } from "../../../../../features/agent/ledger/contract";
 import { groupAgentActionEntries } from "../actions/action-tiers";
@@ -166,16 +168,18 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
     >
       <div className="ir-screen">
         {/* 351 */}
-        <span className="ir-crumb">
+        {/* 2026-11-23 手机：标题与返回由外壳顶栏画。 */}
+        <ShellPage phoneTitle={t({ ja: "提案とアクション", en: "Suggested actions", zh: "建议与行动" })} phoneBack="/app/agent" />
+        <span className={`ir-crumb ${phoneTop.phoneHide}`}>
           <a href="/app/agent">iOrbit</a> / {t({ ja: "提案とアクション", en: "Suggested actions", zh: "建议与行动" })}
         </span>
 
         {/* 353–356 */}
         <div className="ir-title-col">
-          <a className="ir-back" href="/app/agent">
+          <a className={`ir-back ${phoneTop.phoneHide}`} href="/app/agent">
             {t({ ja: "← 概要に戻る", en: "← Back to overview", zh: "← 返回概览" })}
           </a>
-          <h2 className="ir-h1-sub">{t({ ja: "提案とアクション", en: "Suggested actions", zh: "建议与行动" })}</h2>
+          <h2 className={`ir-h1-sub ${phoneTop.phoneHide}`}>{t({ ja: "提案とアクション", en: "Suggested actions", zh: "建议与行动" })}</h2>
           <p className="ir-lede">
             {t({
               ja: "今日やることを、優先度の高い順にまとめました。", en: "Today's work, sorted by what deserves your attention first.",

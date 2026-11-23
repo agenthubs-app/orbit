@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ShellPage } from "../orbit-2026/shell/slots";
 import { signOutAndForget } from "../orbit-sign-out";
 
 import { ORBIT_Z } from "../orbit-z";
@@ -776,8 +777,9 @@ function EventsDesktop({ language, t, viewModel }: { language: OrbitLanguage; t:
 function EventsMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Translate; viewModel: OrbitHomeViewModel }) {
   return (
     <div className="orbit-mobile-only" style={{ background: "var(--bg)", flexDirection: "column", height: "100dvh", minHeight: "100dvh", overflow: "hidden", position: "relative" }}>
-      <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 36px" }}>
-        <h1 className="h-display" style={{ margin: "6px 0 18px" }}>{t({ ja: "参加イベント", en: "My events", zh: "我的活动" })}</h1>
+      {/* 2026-11-23 手机：标题与返回由外壳顶栏画，这里不再画标题、不留顶部空白。 */}
+      <ShellPage phoneTitle={t({ ja: "参加イベント", en: "My events", zh: "我的活动" })} phoneBack="/app/home" />
+      <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 18px 36px" }}>
         <AccountEventsBlock events={viewModel.events} language={language} t={t} />
       </div>
     </div>

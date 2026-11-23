@@ -2,6 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import type { IconName } from "../ui/Icon";
+
 // R07 shell slots (frozen): a page fills the main header and the optional right
 // rail by rendering <ShellPage …/> anywhere in its tree; the shell draws them.
 //   title / subtitle — the centred main title (mainhead);
@@ -33,6 +35,33 @@ export type ShellSlots = {
   phoneBare?: boolean;
   /** A sub-page laid out like its primary page: title row, then back / controls on a toolbar row (b11 TT2). */
   twoTier?: boolean;
+  /**
+   * 2026-11-23 phone top bar (< 768, mobile-top-height-proposal): the page's own actions as icons. A first-level page shows the
+   * first two (more go into 「更多」), a sub-page the first one. Built-in `kind: "rail"` opens the 次の一手 drawer.
+   */
+  phoneActions?: readonly ShellPhoneAction[];
+  /** < 768: the page's tabs, drawn by the shell as the one row under the top bar (40 + 10), sticky with it. */
+  phoneTabs?: ReactNode;
+  /** < 768 sub-page: where 「‹」 goes (default: the previous page, else the parent path). `false` = no back (a first screen of a flow). */
+  phoneBack?: string | false;
+  /** < 768: the bar title when it differs from `title` (e.g. 活动详情 shows no title in the bar: the cover title is right below). */
+  phoneTitle?: string | null;
+  /** < 768: a sub-view opened inside a first-level route (Task › 全部待办): draw the sub-page bar (‹ · title · action). */
+  phoneSub?: boolean;
+};
+
+export type ShellPhoneAction = {
+  key: string;
+  icon: IconName;
+  label: string;
+  href?: string;
+  onClick?: () => void;
+  /** A small dot (unread). */
+  dot?: boolean;
+  /** Pressed state (a toggle such as the search field shown). */
+  active?: boolean;
+  /** `rail`: opens the shell's 次の一手 drawer (no href / onClick needed). */
+  kind?: "rail";
 };
 
 type SetSlots = (id: string, slots: ShellSlots | null) => void;
@@ -45,7 +74,7 @@ const FilledContext = createContext(false);
 // re-render (and re-run its effect) every time the slots change.
 const SetSlotsContext = createContext<SetSlots | null>(null);
 
-const SLOT_KEYS = ["title", "subtitle", "left", "right", "demoPill", "rightRail", "railLabel", "railCount", "phoneFold", "phoneBare", "twoTier"] as const;
+const SLOT_KEYS = ["title", "subtitle", "left", "right", "demoPill", "rightRail", "railLabel", "railCount", "phoneFold", "phoneBare", "twoTier", "phoneActions", "phoneTabs", "phoneBack", "phoneTitle", "phoneSub"] as const;
 const sameSlots = (a: ShellSlots, b: ShellSlots) => SLOT_KEYS.every((key) => Object.is(a[key], b[key]));
 
 export function ShellSlotsProvider({ children }: { children: ReactNode }) {
@@ -97,9 +126,9 @@ const useBeforePaint = typeof window === "undefined" ? useEffect : useLayoutEffe
 export function ShellPage(props: ShellSlots) {
   const id = useId();
   const set = useContext(SetSlotsContext);
-  const { title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier } = props;
+  const { title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier, phoneActions, phoneTabs, phoneBack, phoneTitle, phoneSub } = props;
   const latest = useRef<ShellSlots>({});
-  latest.current = { title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier };
+  latest.current = { title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier, phoneActions, phoneTabs, phoneBack, phoneTitle, phoneSub };
   useBeforePaint(() => {
     if (!set) return undefined;
     set(id, latest.current);
@@ -107,7 +136,7 @@ export function ShellPage(props: ShellSlots) {
   }, [set, id]);
   useEffect(() => {
     if (!set) return;
-    set(id, { title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier });
-  }, [set, id, title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier]);
+    set(id, { title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier, phoneActions, phoneTabs, phoneBack, phoneTitle, phoneSub });
+  }, [set, id, title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier, phoneActions, phoneTabs, phoneBack, phoneTitle, phoneSub]);
   return null;
 }
