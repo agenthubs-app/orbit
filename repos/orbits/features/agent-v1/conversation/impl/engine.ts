@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/engine.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r11-maintenance/impl/engine.ts
-// (lab commit ce0b76fe4, r11 = r10 + when to ask round 2: exact @ / quoted picks on reads, typed confirmations while a card waits, 他们 for a company). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/engine.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r12-maintenance/impl/engine.ts
+// (lab commit c13d85089, r12 = r11 + when to ask round 3: contact exact picks, the stated kind wins over title words, a plural pronoun with no recent people goes without binding). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * The conversation engine: one memory, fed message by message, used both by the session and (replayed over the
  * transcript) by the six pure functions. See plan.json for the structure and every tunable number.
@@ -452,8 +452,9 @@ class TurnCtx {
     if (own === "go" && this.bareConfirmWithCard(pf)) return "go";
     // r11: a read whose record the user picked exactly (@ + its whole title): several readings of the words do not matter,
     // nothing is written (a write still asks)
-    if (own === "go" && clarity === "none" && request?.verb === "read" && refs.length && refs.every((r) => r.outcome === "bound")
-      && this.exactPicks(this.message).some((p) => p.ids.length === 1 && refs.some((r) => r.id === p.ids[0]))) return "go";
+    // r12: an exact pick of a contact (@ + the full name, or the quoted full name) counts the same as one of a record
+    if (own === "go" && clarity === "none" && request?.verb === "read" && refs.every((r) => r.outcome === "bound")
+      && [...this.exactPicks(this.message), ...this.contactPicks(this.message)].some((p) => p.ids.length === 1 && (refs.some((r) => r.id === p.ids[0]) || (request.people ?? []).includes(p.ids[0])))) return "go";
     if (clarity === "missing_one" || clarity === "none") return "ask";
     if (own === "ask" && (clarity === "clear" || clarity === "statement")) return "go";
     return own;
@@ -462,8 +463,12 @@ class TurnCtx {
   /** Why this part must ask before going on (null: nothing to confirm). */
   confirmReason(pf: string, refs: RefResult[], request: Slots | null, ch: ReturnType<TurnCtx["changeOf"]>): string | null {
     if (notARequest(pf)) return "not-a-request";
-    // R44: a plural pronoun whose count does not agree with the people of the latest turn (or with no people to point at)
-    if (PLURAL_PRONOUN.test(pf) && !peopleOf(this.ix, pf).named.length && !this.pluralIsCompany(pf) && !this.pluralGroup(pf)?.fits) return "plural";
+    // R44: a plural pronoun whose count does not agree with the people of the latest turn; r12: with no person mentioned
+    // in the recent turns it points at no one we can see (an organisation, a group): nothing to bind, nothing to ask
+    if (PLURAL_PRONOUN.test(pf) && !peopleOf(this.ix, pf).named.length && !this.pluralIsCompany(pf)) {
+      const g = this.pluralGroup(pf);
+      if (g && !g.fits) return "plural";
+    }
     if (!request || ch?.mode === "cancel" || ch?.mode === "amend" || ch?.mode === "resume") return null;
     const verb = request.verb;
     const kind = request.kind;
@@ -513,8 +518,11 @@ class TurnCtx {
   pluralGroup(pf: string): { ids: string[]; fits: boolean } | null {
     const m = PLURAL_PRONOUN.exec(pf);
     if (!m || peopleOf(this.ix, pf).named.length || this.pluralIsCompany(pf)) return null;
-    for (let k = this.e.turns.length - 1; k >= 0; k--) {
+    // r12: only people of the recent turns (filler not counted); none there → null
+    let seen = 0;
+    for (let k = this.e.turns.length - 1; k >= 0 && seen < PARAMS.pluralPeopleTurns; k--) {
       const ids = this.e.turns[k].mentions.filter((id) => kindOfId(id) === "contact" && this.vis(id));
+      if (!this.e.turns[k].filler || ids.length) seen++;
       if (!ids.length) continue;
       const n = /俩|两|二|二人|two|both/u.test(m[0]) ? 2 : /三/u.test(m[0]) || /three/u.test(m[0]) ? 3 : 0;
       return { ids, fits: ids.length >= 2 && (!n || n === ids.length) };
@@ -529,7 +537,8 @@ class TurnCtx {
   pluralIsCompany(pf: string): boolean {
     const m = PLURAL_PRONOUN.exec(pf);
     if (!m) return false;
-    const company = (t: string) => peopleOf(this.ix, t).hits.some((h) => h.how === "company");
+    // r12: also an organisation the world does not have, told by a generic company ending (…科技 / …株式会社 / … Inc.)
+    const company = (t: string) => peopleOf(this.ix, t).hits.some((h) => h.how === "company") || namesOrganisation(t);
     const here = peopleOf(this.ix, pf.slice(0, m.index));
     if (here.named.length) return false;
     if (company(pf.slice(0, m.index))) return true;
@@ -579,6 +588,36 @@ class TurnCtx {
     for (const m of quote.matchAll(/[「『“"]([^」』”"]{2,80})[」』”"]/gu)) {
       const inner = squash(m[1]);
       const ids = recs.filter((r) => r.titleF === inner).map((r) => r.id);
+      if (ids.length) take((m.index ?? 0) + 1, ids, inner);
+    }
+    return out;
+  }
+
+  /**
+   * r12: contacts the user picked exactly: an @ mention followed by a visible contact's whole name (longest match, a Latin
+   * name ends on a word boundary) or a quoted whole name. ids = every visible contact of that name (more than one is no
+   * exact pick).
+   */
+  contactPicks(quote: string): { said: string; ids: string[] }[] {
+    const out: { said: string; ids: string[] }[] = [];
+    const cs = this.ix.contacts.filter((c) => c.titleF.length >= 2 && this.vis(c.id));
+    const take = (start: number, ids: string[], nameF: string) => {
+      for (let n = 1; start + n <= quote.length; n++) if (squash(quote.slice(start, start + n)) === nameF) { out.push({ said: quote.slice(start, start + n), ids }); return; }
+    };
+    for (const m of quote.matchAll(/[@＠]/gu)) {
+      const start = (m.index ?? 0) + 1;
+      const rest = squash(quote.slice(start));
+      let best = 0;
+      for (const c of cs) {
+        if (!rest.startsWith(c.titleF)) continue;
+        if (/[a-z0-9]$/u.test(c.titleF) && /^[a-z0-9]/u.test(rest.slice(c.titleF.length))) continue;
+        best = Math.max(best, c.titleF.length);
+      }
+      if (best) { const nameF = rest.slice(0, best); take(start, cs.filter((c) => c.titleF === nameF).map((c) => c.id), nameF); }
+    }
+    for (const m of quote.matchAll(/[「『“"]([^」』”"]{2,80})[」』”"]/gu)) {
+      const inner = squash(m[1]);
+      const ids = cs.filter((c) => c.titleF === inner).map((c) => c.id);
       if (ids.length) take((m.index ?? 0) + 1, ids, inner);
     }
     return out;
@@ -1948,6 +1987,11 @@ class TurnCtx {
       const ck: RecordKind = counter[1] === "条" ? "todo" : "memo";
       if (kindIn(pf.slice(0, counter.index)) === kind && ck !== kind && (kind === "event" || kind === "schedule" || (ck === "memo" && kind === "todo"))) kind = ck;
     }
+    // r12: a new record: the kind the user states wins over kind words inside its title
+    if (verbIn(pf) === "create" || NEW_RECORD.test(pf)) {
+      const sk = statedKindIn(pf);
+      if (sk) kind = sk;
+    }
     // r07: no kind word, but the message names a stored record by its title (<title>里…): that record's kind
     if (!kind) {
       const sq = squash(pf);
@@ -2558,6 +2602,35 @@ export function kindIn(pf: string): RecordKind | undefined {
     }
   }
   return best?.k;
+}
+
+/**
+ * r12: the kind the user states for a new record: a kind word governed by a create verb (建个<kind> / 新建<kind> /
+ * <kind>を追加 / <kind>作って / create a <kind>) or a kind word opening a title with a colon (<kind>：…). Words inside the
+ * title that follows never supply the kind. Several different stated kinds: none.
+ */
+const STATED_KIND_RES: [RecordKind, RegExp][] = (["todo", "memo", "schedule"] as RecordKind[]).map((k) => {
+  const ws = (L.KIND_WORDS.find(([kk]) => kk === k)?.[1] ?? []).filter((w) => w.length >= 2 || /[^\x00-\x7f]/u.test(w));
+  const alt = [...ws].sort((a, b) => b.length - a.length).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  const K = `(?:${alt})`;
+  return [k, new RegExp([
+    `(?:建|新建|创建|加|添加|增加|记|写|设|设置|开|整|弄)\\s*(?:一|1)?\\s*(?:个|条|篇|项|则|份)?\\s*(?:新的?)?\\s*${K}`,
+    `${K}\\s*(?:を|に|も)?\\s*(?:新規)?\\s*(?:作|追加|登録|作成|入れ|立て)`,
+    `\\b(?:create|add|make|new|set up|start|write|log|open)\\s+(?:me\\s+)?(?:a|an|one|another|one more)?\\s*(?:new\\s+)?${K}(?![a-z])`,
+    `(?:^|[\\s，,。.!！?？])${K}\\s*[：:]`,
+  ].join("|"), "u")];
+});
+/** r12: a generic organisation name: a CJK / kana run ending with a generic company ending of 2+ chars (at least 2 chars before it), or Latin words + a corporate ending. */
+const ORG_SUFFIXES = [...L.COMPANY_SUFFIXES].filter((w) => [...w].length >= 2 && !/[a-z]/u.test(w)).sort((a, b) => b.length - a.length);
+const LATIN_ORG = /\b[a-z][a-z&.-]+\s+(?:inc|ltd|llc|corp|corporation|co|gmbh|group|holdings|capital|partners|ventures|labs|bank|technologies|systems)\b/u;
+export function namesOrganisation(tf: string): boolean {
+  if (LATIN_ORG.test(tf)) return true;
+  return chunks(tf).some((c) => { const run = /^[\p{Script=Han}ぁ-ゖァ-ヺー]+/u.exec(c)?.[0] ?? ""; return ORG_SUFFIXES.some((x) => [...run].length >= [...x].length + 2 && run.includes(x) && run.indexOf(x) >= 2); });
+}
+
+export function statedKindIn(pf: string): RecordKind | undefined {
+  const ks = STATED_KIND_RES.filter(([, re]) => re.test(pf)).map(([k]) => k);
+  return ks.length === 1 ? ks[0] : undefined;
 }
 
 export function verbIn(pf: string): string | undefined {

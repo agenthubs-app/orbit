@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/index.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r11-maintenance/impl/index.ts
-// (lab commit ce0b76fe4, r11 = r10 + when to ask round 2: exact @ / quoted picks on reads, typed confirmations while a card waits, 他们 for a company). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/index.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r12-maintenance/impl/index.ts
+// (lab commit c13d85089, r12 = r11 + when to ask round 3: contact exact picks, the stated kind wins over title words, a plural pronoun with no recent people goes without binding). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * The implementation the RSI loop improves (RSI-BRIEF.md). One engine (engine.ts) holds the in-session memory; the
  * session feeds it message by message, and each pure function replays the transcript it is given through a fresh

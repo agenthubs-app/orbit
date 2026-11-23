@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/time.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r11-maintenance/impl/time.ts
-// (lab commit ce0b76fe4, r11 = r10 + when to ask round 2: exact @ / quoted picks on reads, typed confirmations while a card waits, 他们 for a company). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/time.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r12-maintenance/impl/time.ts
+// (lab commit c13d85089, r12 = r11 + when to ask round 3: contact exact picks, the stated kind wins over title words, a plural pronoun with no recent people goes without binding). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * Time expressions (zh / ja / en, on folded text) → a window of local days. General calendar rules only:
  * weeks start on Monday; a bare weekday is its next occurrence (today counts); a bare month earlier than this month is

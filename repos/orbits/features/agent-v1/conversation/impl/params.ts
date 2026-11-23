@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/params.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r11-maintenance/impl/params.ts
-// (lab commit ce0b76fe4, r11 = r10 + when to ask round 2: exact @ / quoted picks on reads, typed confirmations while a card waits, 他们 for a company). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/params.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r12-maintenance/impl/params.ts
+// (lab commit c13d85089, r12 = r11 + when to ask round 3: contact exact picks, the stated kind wins over title words, a plural pronoun with no recent people goes without binding). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /** Every tunable number of the implementation (mirrored in plan.json). */
 export const PARAMS = {
   /** Idle longer than this (minutes) breaks "the latest mention" (R2) and shelves an open question. Exactly 60 does not. */
@@ -32,4 +32,6 @@ export const PARAMS = {
   undecidedMaxWords: 3,
   /** r11 (R44): a plural pronoun points at a company named this many turns back at most (filler turns not counted). */
   pluralCompanyTurns: 2,
+  /** r12 (R44): a plural pronoun points at the people of a turn at most this many turns back (filler not counted); none → no one, no question. */
+  pluralPeopleTurns: 4,
 };
