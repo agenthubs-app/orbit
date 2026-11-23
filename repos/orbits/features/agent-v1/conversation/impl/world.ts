@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/world.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r09-maintenance/impl/world.ts
-// (lab commit 567915f70, r09 = r08 + reference spans stop at function words). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/world.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r10/impl/world.ts
+// (lab commit 41c7a53d6, r10 = r09 + when to ask: confirmations, missing values, requests that ask for nothing). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * The world as the implementation sees it: every record by id (with its kind, account, visibility and a searchable
  * text), and person spotting — which contacts of the account a piece of text names, and how (full name, given name,

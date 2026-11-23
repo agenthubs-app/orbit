@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/params.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r09-maintenance/impl/params.ts
-// (lab commit 567915f70, r09 = r08 + reference spans stop at function words). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/params.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r10/impl/params.ts
+// (lab commit 41c7a53d6, r10 = r09 + when to ask: confirmations, missing values, requests that ask for nothing). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /** Every tunable number of the implementation (mirrored in plan.json). */
 export const PARAMS = {
   /** Idle longer than this (minutes) breaks "the latest mention" (R2) and shelves an open question. Exactly 60 does not. */
@@ -18,4 +18,16 @@ export const PARAMS = {
   followListTurns: 4,
   /** r08: a hint part this short (characters, punctuation aside) with nothing of a request is merged into its neighbour. */
   bareHintPartMaxChars: 8,
+  /** r10: a title counts as said when at least this many of its content units are in the words … */
+  titleCoverMinUnits: 2,
+  /** … and at least this share of them. */
+  titleCoverShare: 0.6,
+  /** r10 (R34): a to-do with no person duplicates an open one when they share this many units, at least half of the title's (capped). */
+  dupMinShared: 2,
+  dupTitleUnitsCap: 6,
+  /** r10 (R43): a pointer with one content word binds the one title that has it only when the word has this many characters. */
+  looseBindMinChars: 3,
+  /** r10 (R41): an undecided reply that answers nothing is no request when it is this short (characters / words). */
+  undecidedMaxChars: 12,
+  undecidedMaxWords: 3,
 };

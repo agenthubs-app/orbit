@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/index.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r09-maintenance/impl/index.ts
-// (lab commit 567915f70, r09 = r08 + reference spans stop at function words). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/index.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r10/impl/index.ts
+// (lab commit 41c7a53d6, r10 = r09 + when to ask: confirmations, missing values, requests that ask for nothing). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * The implementation the RSI loop improves (RSI-BRIEF.md). One engine (engine.ts) holds the in-session memory; the
  * session feeds it message by message, and each pure function replays the transcript it is given through a fresh

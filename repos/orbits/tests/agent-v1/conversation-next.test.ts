@@ -15,7 +15,8 @@ import type { AgentReply, HintPart } from "../../features/agent-v1/conversation/
 const START = Date.parse("2026-11-21T14:00:00+09:00");
 const at = (minutes: number) => new Date(START + minutes * 60_000).toISOString();
 const reply = (minutes: number, extra: Partial<AgentReply> = {}): AgentReply => ({ at: at(minutes), done: [], listed: [], mentions: [], text: "", ...extra });
-const part = (quote: string, refs: HintPart["refs"], slots: HintPart["slots"] = {}): HintPart => ({ clarity: "clear", continues: null, quote, refs, slots });
+// No clarity: the engine's own reading of the references (r10 lets the first layer's clarity decide too, see the last test).
+const part = (quote: string, refs: HintPart["refs"], slots: HintPart["slots"] = {}, clarity?: HintPart["clarity"]): HintPart => ({ ...(clarity ? { clarity } : {}), continues: null, quote, refs, slots });
 type Names = Record<string, { type: string; name: string }>;
 const nextOf = (message: string, names: Names, hint: HintPart[] | null, options: { log?: ConversationLog | null; plainChat?: boolean; bound?: { labId: string; words: string }[] } = {}) =>
   runAskGo(options.log ?? null, names, { at: at(5), gone: [], hint: hint ? { parts: hint } : null, message }, Boolean(options.plainChat), formsOf(options.bound ?? [])).parts.map((item) => item.next);
@@ -117,4 +118,15 @@ test("round 2: R27 (pronoun on) counts for ask / go — the one person of the la
   const run = (bind?: boolean) => runAskGo(log, names, { at: at(5), gone: [], hint: { parts: hint }, message }, false, {}, "Asia/Tokyo", bind ? (result) => ({ ...result, parts: result.parts.map((item) => ({ ...item, refs: item.refs.map((ref) => (ref.outcome === "ask" && ref.candidates?.length === 1 ? { id: ref.candidates[0], outcome: "bound" as const, said: ref.said } : ref)) })) }) : undefined).parts.map((item) => item.next);
   assert.deepEqual(run(), ["ask"], "the engine alone asks (no gender known)");
   assert.deepEqual(run(true), ["go"]);
+});
+
+test("r10: the first layer's clarity is evidence — clear lifts an ask that only came from the engine's own reading, missing_one always asks", () => {
+  const pointer = "那篇笔记帮我整理一下。";
+  const refs: HintPart["refs"] = [{ id: null, kind: "memo", said: "那篇笔记" }];
+  assert.deepEqual(nextOf(pointer, {}, [part(pointer, refs, { kind: "memo", verb: "read" })]), ["ask"], "own reading: nothing to point at");
+  assert.deepEqual(nextOf(pointer, {}, [part(pointer, refs, { kind: "memo", verb: "read" }, "clear")]), ["go"], "the first layer read it as clear");
+  const tanaka = { "C-contact:tanaka": { name: "田中浩", type: "contact" } };
+  const message = "把田中浩的职位改成采购部长。";
+  const bound = [part(message, [{ id: null, kind: "contact", said: "田中浩" }], { kind: "contact", verb: "update" }, "missing_one")];
+  assert.deepEqual(nextOf(message, tanaka, bound), ["ask"], "the first layer misses one value: ask even with the reference bound");
 });

@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/time.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r09-maintenance/impl/time.ts
-// (lab commit 567915f70, r09 = r08 + reference spans stop at function words). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/time.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r10/impl/time.ts
+// (lab commit 41c7a53d6, r10 = r09 + when to ask: confirmations, missing values, requests that ask for nothing). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * Time expressions (zh / ja / en, on folded text) → a window of local days. General calendar rules only:
  * weeks start on Monday; a bare weekday is its next occurrence (today counts); a bare month earlier than this month is
@@ -143,6 +143,8 @@ export function parseTime(t: string, today: string, prev?: TimeWindow | null): T
     return { kind: "weekday", wd: CN_NUM[m[3]], weekOffset: off };
   });
   take(/([月火水木金土日])曜(日)?/u, (m) => ({ kind: "weekday", wd: JA_WD[m[1]] }));
+  // r10: "the Monday after next" is the Monday of the week after next
+  for (const [re, wd] of EN_WD) take(new RegExp(`${re.source} after next\\b`, "u"), () => ({ kind: "weekday", wd, weekOffset: 2 }));
   for (const [re, wd] of EN_WD) take(new RegExp(`(next |this |coming )?${re.source}`, "u"), (m) => ({ kind: "weekday", wd, weekOffset: m[1]?.startsWith("next") ? 1 : m[1]?.startsWith("this") ? 0 : undefined }));
   take(fre(/周末|週末|weekend/u), () => ({ kind: "partweek", part: "weekend" }));
   take(/工作日|平日|weekdays?/u, () => ({ kind: "partweek", part: "workdays" }));

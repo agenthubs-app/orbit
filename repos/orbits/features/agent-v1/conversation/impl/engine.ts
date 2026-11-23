@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/engine.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r09-maintenance/impl/engine.ts
-// (lab commit 567915f70, r09 = r08 + reference spans stop at function words). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/engine.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r10/impl/engine.ts
+// (lab commit 41c7a53d6, r10 = r09 + when to ask: confirmations, missing values, requests that ask for nothing). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * The conversation engine: one memory, fed message by message, used both by the session and (replayed over the
  * transcript) by the six pure functions. See plan.json for the structure and every tunable number.
@@ -21,6 +21,7 @@ import { FIELD_CONCEPTS, conceptHits, conceptsOf, kanaSkeleton, kanaWords, latin
 import { PARAMS } from "./params";
 import { kanaSoundsLike, tonesOf } from "./names";
 import { tonesOfChars } from "./pinyin";
+import { anotherOnPurpose, contentUnits, duplicatesOf, isObjectUnit, isRecurring, linksOf, occurrencesIn, sharedUnits } from "./confirm";
 
 // ---------------------------------------------------------------- memory
 
@@ -45,7 +46,7 @@ interface Fact { place?: string; time?: TimeWindow; turn: number; who?: string }
  * r07: a change the user asked for (a write request, a write question, a card), from the request until it is carried
  * out (done), called off (cancelled) or replaced. Its slots are the merged request of that change.
  */
-interface Task { slots: Slots; turn: number; status: "open" | "done" | "cancelled"; card?: Card; target?: string | null; qid?: string; seen: number }
+interface Task { slots: Slots; turn: number; status: "open" | "done" | "cancelled"; card?: Card; target?: string | null; qid?: string; seen: number; text?: string }
 interface Standing { kinds: RecordKind[] | "all"; place?: string; status?: "open" | "done"; topic?: string[]; named?: boolean }
 
 export interface Analysis { result: TurnResult; commit: () => void }
@@ -125,6 +126,8 @@ export class Engine {
       if (t && t.card && t.card.id !== a.card.id && t.card.op === a.card.op && t.card.target === a.card.target) { /* the same card again */ }
       if (!t) t = this.addTask({});
       t.card = a.card;
+      // r10: what the card says the change is (its words in the agent's language), for telling a repeat later
+      t.text = `${t.text ?? ""} ${fold(a.text)}`;
       t.target = a.card.target;
       if (kind) t.slots.kind = kind;
       if (verb) t.slots.verb = verb;
@@ -270,8 +273,15 @@ class TurnCtx {
     if (!answers.some(Boolean)) return [this.message];
     // roles: an answer, a clause with a request of its own, or neither (a filler like "yes," / "OK" / "对了") that
     // stays with its neighbour; consecutive clauses of the same role are one part
-    const roles = pieces.map((p, i) => (answers[i] && !this.ownsRequest(fold(p)) ? "ans" : this.ownsRequest(fold(p)) ? "req" : "neutral"));
-    for (let i = 0; i < roles.length; i++) if (roles[i] === "neutral") roles[i] = roles.slice(0, i).reverse().find((r) => r !== "neutral") ?? roles.slice(i + 1).find((r) => r !== "neutral") ?? "ans";
+    // r10: a clause that opens with an also-word and asks for something done (还有<事>帮我弄一下 / それと<事>やっといて) is a request
+    const req = (p: string) => this.ownsRequest(fold(p)) || ALSO_ASK.test(fold(p).trim());
+    const roles = pieces.map((p, i) => (answers[i] && !req(p) ? "ans" : req(p) ? "req" : "neutral"));
+    // r10: after a sentence end (。) or from an also-word on, a neutral piece belongs to what follows it
+    const forward = pieces.map((p, i) => i > 0 && (/[。.!！?？]\s*$/u.test(pieces[i - 1]) || /^(?:还有|另外|それと|あと|also|and also|plus)/u.test(fold(p).trim())));
+    for (let i = 0; i < roles.length; i++) if (roles[i] === "neutral") {
+      const back = roles.slice(0, i).reverse().find((r) => r !== "neutral"), fwd = roles.slice(i + 1).find((r) => r !== "neutral");
+      roles[i] = (forward[i] || (i > 0 && forward[i - 1] && roles[i - 1] === fwd)) && fwd ? fwd : back ?? fwd ?? "ans";
+    }
     const out: { text: string; ans: boolean; q: string | null }[] = [];
     for (let i = 0; i < pieces.length; i++) {
       const ans = roles[i] === "ans";
@@ -373,9 +383,23 @@ class TurnCtx {
         if (pick.kind === "value" && pick.field === "date") task.slots.time = { from: pick.value, to: pick.value };
         this.e.touch(task);
       });
-      return { quote, continues: att.q, pick, followUp: null, refs: [], request: oq.q.for ?? null, next: budget === "go" ? "go" : budget === "ask" ? "ask" : "deliver", redo: [] };
+      // r10: an answer that names the kind of record to make completes the request it was asked for
+      const kindPick = pick.kind === "value" && pick.field === "kind" ? (pick.value as RecordKind) : undefined;
+      if (task && kindPick) this.taskOps.push(() => { task.slots.kind = kindPick; });
+      const request = kindPick ? { ...(oq.q.for ?? {}), kind: kindPick } : oq.q.for ?? null;
+      return { quote, continues: att.q, pick, followUp: null, refs: [], request, next: budget === "go" ? "go" : budget === "ask" ? "ask" : "deliver", redo: [] };
     }
-    const saids = this.refWords(quote, pf, hp);
+    let saids = this.refWords(quote, pf, hp);
+    const ownVerb = verbIn(pf);
+    // r10: "one more" in a create (同じ…をもう1つ作って) is the new record, not "the other one"
+    if (ownVerb === "create") saids = saids.filter((s) => !/^もう(?:一|1|ひと)つ$/u.test(squash(s)));
+    // r10 (R32): a change with no object at all (删掉 / 消して / <day>にずらして): the predicate is the reference
+    if (!saids.length && (ownVerb === "delete" || ownVerb === "complete" || ownVerb === "update") && !this.keepSaid && !peopleOf(this.ix, pf).hits.length
+      && !this.residualContent(pf).some((w) => !kindIn(w) && !verbIn(w) && !DISCOURSE.test(w)) && !this.e.openTasks().some((t) => t.card || t.qid)) {
+      const vi = firstAt(pf, L.VERB_WORDS.find(([v]) => v === ownVerb)?.[1] ?? []);
+      const said = (vi >= 0 ? quote.slice(vi) : quote).replace(/[。.！!？?…\s]+$/u, "").trim();
+      if (said.length >= 2) saids = [said];
+    }
     // r07: a person named earlier in this same sentence is the latest mention for a pronoun after it (in <name>'s
     // notes, where did she …): only one named person, only before the pronoun
     const namedHere = peopleOf(this.ix, pf).groups.filter((g) => g.named && g.ids.length === 1 && this.vis(g.ids[0]));
@@ -397,9 +421,154 @@ class TurnCtx {
     if (ch) followUp = ch.mode === "amend" && ch.correction ? "correct" : ch.mode === "amend" ? (followUp === "correct" ? "correct" : "new") : "new";
     const request = ch?.mode === "cancel" ? {} : this.request(pf, followUp, refs, hp, ch);
     if (ch?.mode === "cancel") this.taskOps.push(() => { ch.task.status = "cancelled"; this.e.touch(ch.task); });
+    refs = this.narrowSeries(pf, refs);
     const unresolved = refs.some((r) => r.outcome !== "bound") || this.ambiguousPeople(pf).length > 0;
     const budget = clarificationBudget({ asked: 0, unrelatedMessages: 0, idleMinutes: this.idle, replyClear: !unresolved });
-    return { quote, continues: null, followUp, refs, request, next: budget === "go" ? "go" : budget === "ask" ? "ask" : "deliver", redo: [] };
+    const next = this.decideNext(budget === "go" ? "go" : "ask", pf, refs, request, ch, hp);
+    return { quote, continues: null, followUp, refs, request, next, redo: [] };
+  }
+
+  // -------------------------------------------------------------- r10: when to ask (R34–R41)
+
+  /**
+   * r10: the next step of a new part from the whole picture: references that need the user (own reading), a message
+   * that asks for nothing (R38), a kind that cannot be told (R39), a missing required value (R40), and writes a careful
+   * person confirms first — a duplicate (R34), a delete with linked records (R35), a recurring item without the
+   * occurrence (R37). The model's clarity is evidence: "missing_one" / "none" always asks (the safe side); "clear" lifts
+   * an ask that only came from this code's own reading of the references, never a confirmation.
+   */
+  private decideNext(own: "go" | "ask", pf: string, refs: RefResult[], request: Slots | null, ch: ReturnType<TurnCtx["changeOf"]>, hp?: HintPart): "go" | "ask" {
+    if (this.confirmReason(pf, refs, request, ch)) return "ask";
+    const clarity = hp?.clarity;
+    if (clarity === "missing_one" || clarity === "none") return "ask";
+    if (own === "ask" && (clarity === "clear" || clarity === "statement")) return "go";
+    return own;
+  }
+
+  /** Why this part must ask before going on (null: nothing to confirm). */
+  confirmReason(pf: string, refs: RefResult[], request: Slots | null, ch: ReturnType<TurnCtx["changeOf"]>): string | null {
+    if (notARequest(pf)) return "not-a-request";
+    // R44: a plural pronoun whose count does not agree with the people of the latest turn (or with no people to point at)
+    if (PLURAL_PRONOUN.test(pf) && !peopleOf(this.ix, pf).named.length && !this.pluralGroup(pf)?.fits) return "plural";
+    if (!request || ch?.mode === "cancel" || ch?.mode === "amend" || ch?.mode === "resume") return null;
+    const verb = request.verb;
+    const kind = request.kind;
+    if (verb === "create") {
+      // R39: "note this down" with no kind word, about what someone said (to note what they said, or a to-do to follow up)
+      const said = peopleOf(this.ix, pf).hits.some((h) => SAID_AFTER_NAME.test(pf.slice(h.at[1])));
+      if (!kind && peopleOf(this.ix, pf).named.length && (REPORTED_SPEECH.test(pf) || said)) return "kind";
+      // R40: a schedule item needs its day
+      if (kind === "schedule" && !parseTime(this.maskPeople(pf), this.today).win) return "missing-day";
+      if ((kind === "todo" || kind === "memo" || kind === "schedule") && !anotherOnPurpose(pf) && this.duplicates(pf, request).length) return "duplicate";
+      return null;
+    }
+    if (verb === "update" && VAGUE_SHIFT.test(pf) && !DURATION.test(pf) && !parseTime(this.maskPeople(pf), this.today).win) return "missing-value";
+    if (verb === "update" || verb === "delete") {
+      const targets = this.writeTargets(pf, refs, request);
+      // R35: a contact or an event other records still point at
+      if (verb === "delete" && targets.some((id) => linksOf(this.ix, id, this.vis).length)) return "links";
+      // R37: a recurring item: which occurrence (or all of them) must be said
+      for (const id of targets) {
+        if (!isRecurring(this.ix, id)) continue;
+        if (ALL_OCCURRENCES.test(pf)) continue;
+        const w = this.targetWindow(pf);
+        const occ = w ? occurrencesIn(this.ix, id, w) : [];
+        if (occ.filter((o) => !o.cancelled).length !== 1 || occ.some((o) => o.cancelled)) return "recurring";
+      }
+    }
+    return null;
+  }
+
+  /** The records a change is about: bound references, the person of a contact change, else a record the words name. */
+  private writeTargets(pf: string, refs: RefResult[], request: Slots): string[] {
+    const ids = refs.filter((r) => r.outcome === "bound" && r.id).map((r) => r.id!);
+    if (request.kind === "contact") ids.push(...(request.people ?? []));
+    if (!ids.length && request.kind && request.kind !== "contact") {
+      const named = this.namedRecords(pf, request.kind);
+      if (named.length === 1) ids.push(named[0]);
+    }
+    return uniq(ids).filter((id) => !request.kind || kindOfId(id) === request.kind);
+  }
+
+  /** r10 (R43): the message names (by most of its title) a record that is not among these: it is about that record. */
+  namesUnlisted(pf: string, ids: string[]): boolean {
+    return [...this.ix.recs.values()].some((r) => r.kind !== "contact" && !ids.includes(r.id) && this.vis(r.id) && r.titleF.length >= 3 && this.titleCovered(r, pf));
+  }
+
+  /** r10 (R44): the people a plural pronoun points at: every person the latest turn naming people mentioned; fits = the count said agrees. */
+  pluralGroup(pf: string): { ids: string[]; fits: boolean } | null {
+    const m = PLURAL_PRONOUN.exec(pf);
+    if (!m || peopleOf(this.ix, pf).named.length) return null;
+    for (let k = this.e.turns.length - 1; k >= 0; k--) {
+      const ids = this.e.turns[k].mentions.filter((id) => kindOfId(id) === "contact" && this.vis(id));
+      if (!ids.length) continue;
+      const n = /俩|两|二|二人|two|both/u.test(m[0]) ? 2 : /三/u.test(m[0]) || /three/u.test(m[0]) ? 3 : 0;
+      return { ids, fits: ids.length >= 2 && (!n || n === ids.length) };
+    }
+    return null;
+  }
+
+  /** r10: most of a record's title (two content units or more, at least 60%) is in the words. */
+  titleCovered(r: Rec, words: string): boolean {
+    // only the words themselves count (bigrams, Latin words): a concept would count the same word twice
+    const tu = [...contentUnits(r.titleF.replace(/[の的]/gu, " "))].filter((u) => !/^[aoc]\d/u.test(u));
+    if (tu.length < 2) return false;
+    const mu = contentUnits(words.replace(/[の的]/gu, " "));
+    const hit = tu.filter((u) => mu.has(u)).length;
+    return hit >= PARAMS.titleCoverMinUnits && hit / tu.length >= PARAMS.titleCoverShare;
+  }
+
+  /** r10: records of a kind whose title the message covers (most of the title's content units are said). */
+  namedRecords(pf: string, kind: RecordKind): string[] {
+    const units = contentUnits(this.maskPeople(pf).replace(/[の的]/gu, " "));
+    const out: { id: string; cov: number }[] = [];
+    for (const r of this.ix.recs.values()) {
+      if (r.kind !== kind || !this.vis(r.id)) continue;
+      const tu = [...contentUnits(r.titleF.replace(/[の的]/gu, " "))].filter((u) => !/^[aoc]\d/u.test(u));
+      if (tu.length < 1) continue;
+      const hit = tu.filter((u) => units.has(u)).length;
+      const cov = hit / tu.length;
+      if (hit >= PARAMS.titleCoverMinUnits && cov >= PARAMS.titleCoverShare) out.push({ id: r.id, cov });
+    }
+    const best = Math.max(0, ...out.map((o) => o.cov));
+    return out.filter((o) => o.cov === best).map((o) => o.id);
+  }
+
+  /** The window that says which occurrence a change is about: the time words before the change verb. */
+  private targetWindow(pf: string): TimeWindow | null {
+    const vi = firstAt(pf, [...(L.VERB_WORDS.find(([v]) => v === "update")?.[1] ?? []), ...(L.VERB_WORDS.find(([v]) => v === "delete")?.[1] ?? [])]);
+    const head = vi > 0 ? pf.slice(0, vi) : "";
+    return head ? parseTime(this.maskPeople(head), this.today).win : null;
+  }
+
+  /** r10: several recurring series of the same title: the occurrence the message names keeps the series that has it. */
+  private narrowSeries(pf: string, refs: RefResult[]): RefResult[] {
+    return refs.map((r) => {
+      if (r.outcome !== "ask" || !(r.candidates ?? []).length || !r.candidates!.every((id) => kindOfId(id) === "schedule" && isRecurring(this.ix, id))) return r;
+      const w = this.targetWindow(pf) ?? (verbIn(pf) === "read" ? parseTime(this.maskPeople(pf), this.today).win : null);
+      if (!w || this.afterIdle()) return r;
+      const fit = r.candidates!.filter((id) => occurrencesIn(this.ix, id, w).some((o) => !o.cancelled));
+      return fit.length === 1 ? { said: r.said, outcome: "bound" as const, id: fit[0] } : r;
+    });
+  }
+
+  /** R34: the account's records (and this conversation's carried-out writes) the new record would duplicate. */
+  private duplicates(pf: string, request: Slots): string[] {
+    const kind = request.kind as "todo" | "memo" | "schedule";
+    const masked = this.maskPeople(pf);
+    const units = contentUnits(canonPlaces(masked));
+    const day = request.time && request.time.from === request.time.to ? request.time.from : undefined;
+    const title = /[「『"“]([^」』"”]{2,30})[」』"”]/u.exec(pf)?.[1] ?? /(?:标题|題名|タイトル|title)(?:叫|是|为|は|:|：|\s)\s*([^，,。、\s]{2,20})/u.exec(pf)?.[1];
+    const out = duplicatesOf(this.ix, { kind, units, people: request.people ?? [], day, clock: parseClock(masked), title, vis: this.vis });
+    // a write carried out earlier in this conversation, asked for again (R34: ask, never redo it)
+    for (const t of this.e.tasks) {
+      if (t.status !== "done" || t.slots.verb !== "create" || t.slots.kind !== kind || !t.text) continue;
+      const shared = sharedUnits(units, contentUnits(t.text));
+      const sameDay = !!day && !!t.slots.time && t.slots.time.from === day;
+      const objects = shared.filter(isObjectUnit);
+      if (objects.length >= 1 && (shared.length >= 2 || sameDay)) out.push(`task:${t.turn}`);
+    }
+    return out;
   }
 
   // -------------------------------------------------------------- attribution and picks
@@ -424,6 +593,12 @@ class TurnCtx {
     const explicit = ev.filter((x) => x.strength === "explicit");
     const unsure = hasAny(pf, L.UNSURE_MARKERS) && !kindIn(pf);
     const newReq = this.ownsRequest(pf) && !this.refersToQuestion(pf, qs) && !unsure;
+    // r10 (R45): a question about what to make (no options: a note or a to-do?) is answered by naming the kind
+    const kindSaid = kindIn(pf);
+    if (kindSaid && kindSaid !== "contact" && !isQuestion(pf)) {
+      const intent = qs.filter((q) => q.status === "open" && (q.q.about === "intent" || q.q.about === "plan") && !(q.q.options ?? []).length && !q.q.for?.kind);
+      if (intent.length && !peopleOf(this.ix, pf).named.some((p) => !(intent[0].q.for?.people ?? []).includes(p))) return { q: intent[0].q.id, pick: { kind: "value", field: "kind", value: kindSaid } };
+    }
     // a part that names the kind of record a question is about, and asks for nothing else, is about that question (議事録は…のやつで)
     if (!newReq && !isQuestion(pf)) {
       const k = kindIn(pf);
@@ -722,7 +897,7 @@ class TurnCtx {
       case "adjust": return f.prevRead && !f.create && !f.statement && !f.fresh && f.content;
       case "ask_again_about": return !f.write && (!f.time || f.sameTime) && !f.statement && f.object && !f.kindChange && !this.asksOtherContent(pf, prev);
       case "correct": return f.contrast;
-      case "follow_list": return this.recentMentions(PARAMS.followListTurns).length > 1 && !this.namesOutsider(pf, this.recentMentions(PARAMS.followListTurns)) && !f.statement && (f.question || hasAny(pf, L.LIST_POINTERS) || !!L.ordinalOf(pf));
+      case "follow_list": return this.recentMentions(PARAMS.followListTurns).length > 1 && !this.namesOutsider(pf, this.recentMentions(PARAMS.followListTurns)) && !f.statement && (f.question || hasAny(pf, L.LIST_POINTERS) || !!listOrdinal(pf));
       default: return false;
     }
   }
@@ -737,7 +912,8 @@ class TurnCtx {
     const noStatus = stripWords(pf, [...L.DONE_WORDS, ...L.OPEN_WORDS]);
     const verb = verbIn(stripWords(noStatus, [...L.ADJUST_ADD, ...L.ADJUST_REMOVE]));
     const write = !!verb && verb !== "read";
-    const create = verb === "create" && !addsItems(pf);
+    // r10: <kind>を追加して：<content> / add a note: … makes a new record (no item added to a result)
+    const create = (verb === "create" && !addsItems(pf)) || NEW_RECORD.test(pf);
     const kindChange = !!kind && !!prev.kind && kind !== prev.kind && (kind !== "contact" || contactInfoAsked(pf));
     const statement = this.isStatement(pf);
     const question = isQuestion(pf);
@@ -836,7 +1012,7 @@ class TurnCtx {
     const listKind = kind === "contact" && !contactInfoAsked(pf) ? undefined : kind;
     const recentList = this.recentMentions(PARAMS.followListTurns);
     const outsider = this.namesOutsider(pf, recentList);
-    if (recentList.length && !outsider && !statement && (hasAny(pf, L.LIST_POINTERS) || (!!L.ordinalOf(pf) && !write)) && isQuestion(pf) && (!listKind || listKind === prev.kind)) return { cls: "follow_list", strong: false };
+    if (recentList.length && !outsider && !statement && !this.namesUnlisted(pf, recentList) && (hasAny(pf, L.LIST_POINTERS) || (!!listOrdinal(pf) && !write)) && isQuestion(pf) && (!listKind || listKind === prev.kind)) return { cls: "follow_list", strong: false };
     if ((followMark || backRef) && !write && !statement && !tp.win) {
       const object = people.hits.length > 0 || !!this.placeIn(pf) || this.pronounOnly(pf) || this.namesRecord(pf) || this.residualContent(pf).length > 0 || this.mySideAsked(pf);
       if (object && sameKind && !this.asksOtherContent(pf, prev)) return { cls: "ask_again_about", strong: false };
@@ -844,11 +1020,11 @@ class TurnCtx {
     // a question about the list just shown (which of these / the second one / where is X from the list)
     const lt = this.e.turns.length - 1;
     const recent = this.recentMentions(PARAMS.followListTurns);
-    if (recent.length && !outsider && !statement && hasAny(pf, L.LIST_POINTERS) && isQuestion(pf) && (!kind || kind === prev.kind)) return { cls: "follow_list", strong: false };
-    if (recent.length && !outsider && !write && !statement) {
+    if (recent.length && !outsider && !statement && !this.namesUnlisted(pf, recent) && hasAny(pf, L.LIST_POINTERS) && isQuestion(pf) && (!kind || kind === prev.kind)) return { cls: "follow_list", strong: false };
+    if (recent.length && !outsider && !write && !statement && !this.namesUnlisted(pf, recent)) {
       if (hasAny(pf, L.LIST_POINTERS) && !kind) return { cls: "follow_list", strong: false };
       if (hasAny(pf, L.LIST_POINTERS) && kind && kind === prev.kind) return { cls: "follow_list", strong: false };
-      const ord = L.ordinalOf(pf);
+      const ord = listOrdinal(pf);
       if (ord && isQuestion(pf)) return { cls: "follow_list", strong: false };
       if (!kind && !tp.win && isQuestion(pf) && this.namesListedItem(pf, recent)) return { cls: "follow_list", strong: false };
       if (!kind && !tp.win && fre(/^(在哪|几点|哪天|どこ|何時|いつ|where|when)/u).test(pf.trim()) && lt >= 0) return { cls: "follow_list", strong: false };
@@ -1056,6 +1232,20 @@ class TurnCtx {
     const idle = this.afterIdle();
     const anchored = hasAny(pf, L.ANCHOR_WORDS) || nameHits.length > 0 || content.length > 0;
     const tms = this.turnMentions();
+
+    // ---- r10 (R43): "the <event> I went to last time" is a lookup in the attendance records, not a pointer back
+    if (WENT_LAST.test(pf) && (kindIn(sf) === "event" || pointerKinds?.includes("event") || (!pointerKinds && kindIn(pf) === "event"))) {
+      const nouns = (L.KIND_WORDS.find(([k]) => k === "event")?.[1] ?? []).filter((w) => !GENERIC_EVENT.includes(w) && containsTerm(sf, w));
+      const went = this.ix.world.attendance.filter((a) => a.account === this.ix.account && a.went).map((a) => a.eventId).filter(this.vis);
+      const ev = (id: string) => [...this.ix.world.platformEvents, ...this.ix.world.privateEvents].find((x) => x.id === id);
+      const fits = went.filter((id) => {
+        const r = this.ix.recs.get(id);
+        const e = ev(id);
+        if (!r || !e || Date.parse(e.startsAt) > Date.parse(this.at)) return false;
+        return !nouns.length || nouns.some((w) => r.titleF.includes(w) || [...conceptsOf(w)].some((c) => conceptsOf(r.titleF).has(c)));
+      }).sort((a, b) => Date.parse(ev(b)!.startsAt) - Date.parse(ev(a)!.startsAt));
+      if (fits.length) return bind(fits[0]);
+    }
 
     // ---- r07: "the other one": the item of the list shown last that the talk has not acted on or named since
     // r08: a bare もう一つ (one more / the other one) is "the other one" only when the message creates nothing
@@ -1289,7 +1479,25 @@ class TurnCtx {
             if (own.length === 1) world = own;
           }
         } else {
-          world = world.filter((r) => content.some((w) => (/^[a-z]{4,}$/.test(w) ? containsTerm(fold(r.title), w) : w.length >= 2 && r.titleF.includes(w) && w.length * 2 >= r.titleF.length)));
+          // r10: or most of the title said, in pieces (<words>の<words> for a title written in one run)
+          const all = world;
+          world = world.filter((r) => content.some((w) => (/^[a-z]{4,}$/.test(w) ? containsTerm(fold(r.title), w) : w.length >= 2 && r.titleF.includes(w) && w.length * 2 >= r.titleF.length)) || this.titleCovered(r, sf));
+          // r10 (R43): a pointer with a content word (<word>那条 / <word>のタスク / the <word> one) that only part of titles have:
+          // the records whose title has it — one with a word of 3+ characters binds, otherwise the user is asked
+          // r10: a counter of another kind (<event title>那条): the one record of any kind whose title the words cover
+          if (!world.length && kinds?.length) {
+            const any = [...this.ix.recs.values()].filter((r) => r.kind !== "contact" && this.vis(r.id) && this.titleCovered(r, sf));
+            if (any.length === 1) return bind(any[0].id);
+          }
+          const v = verbIn(pf);
+          if (!world.length && (v === "update" || v === "complete" || v === "delete") && (POINTER_TAIL.test(sf) || !!kinds?.length)) {
+            const words = content.filter((w) => /^[a-z]{4,}$/.test(w) || [...w].filter(isCjk).length >= 2);
+            // every content word of the reference is in the title (a description with more words names something else)
+            let loose = words.length ? all.filter((r) => words.every((w) => (/^[a-z]/.test(w) ? containsTerm(fold(r.title), w) : r.titleF.includes(w)))) : [];
+            if (v === "update" || v === "complete") { const open = loose.filter((r) => r.status !== "done"); if (open.length) loose = open; }
+            if (loose.length === 1 && words.some((w) => w.length >= PARAMS.looseBindMinChars && loose[0].titleF.includes(w))) return bind(loose[0].id);
+            if (loose.length) return ask(loose.map((r) => r.id));
+          }
         }
         if (world.length === 1) return bind(world[0].id);
         if (world.length > 1) return ask(world.map((r) => r.id));
@@ -1636,6 +1844,8 @@ class TurnCtx {
     }
     if (open[0] && hasAny(pf, L.RESUME_MARKERS) && !readQuestion && !named.some((p) => !(open[0].slots.people ?? []).includes(p)) && (!kind || kind === open[0].slots.kind)) return { mode: "resume", task: open[0], correction: false };
     const correction = hasAny(pf, STRONG_CORRECT) || !!contrastSides(pf) || /^(いや|いいえ|ううん|no[,，. ]|nope|不不|错了|不对|啊不对|哦不对|ごめん|sorry)/u.test(pf.trim()) || hasAny(pf, L.CORRECT_MARKERS);
+    // r10: a person added to the change that waits (把 <name> 也加上 / <name>も追加 / add <name> as well): a change of mind
+    if (waiting[0] && named.length && ADD_PERSON.test(pf) && !readQuestion && (!kind || kind === waiting[0].slots.kind) && !named.every((p) => (waiting[0].slots.people ?? []).includes(p))) return { mode: "amend", task: waiting[0], correction: false };
     // the same kind of change again, for another person or record
     if (last.status !== "cancelled" && last.slots.verb && last.slots.verb !== "read" && !readQuestion && (!kind || kind === last.slots.kind) && (!verb || verb === "read" || verb === last.slots.verb)) {
       const other = hasAny(pf, L.OTHER_WORDS) || named.some((p) => !(last.slots.people ?? []).includes(p)) || otherRecord(last);
@@ -1667,6 +1877,8 @@ class TurnCtx {
       const ks = uniq([...this.ix.recs.values()].filter((r) => r.kind !== "contact" && r.titleF.length >= 4 && sq.includes(squash(r.titleF)) && this.vis(r.id)).map((r) => r.kind as RecordKind));
       if (ks.length === 1) kind = ks[0];
     }
+    // r10: a question whether someone is free (有空吗 / 空いてる / am I free) is about the calendar
+    if (!kind && AVAILABLE.test(pf)) kind = "schedule";
     if (kind) own.kind = kind;
     const verb = verbIn(pf);
     if (verb) own.verb = verb as Slots["verb"];
@@ -1677,6 +1889,9 @@ class TurnCtx {
     const aliased = this.aliasHit(pf);
     if (aliased) people = uniq([aliased.id, ...people.filter((p) => !aliased.alsoFits.includes(p))]);
     // a reference bound to a record of a person (他那条) is not the person filter; people named by role alone are
+    // r10 (R44): a plural pronoun (他们俩 / 彼ら二人 / the two of them) is every person of the latest turn that named people
+    const pl = this.pluralGroup(pf);
+    if (pl && pl.fits) people = uniq([...people, ...pl.ids]);
     if (people.length) own.people = people;
     const place = this.placeIn(pf);
     if (place) own.place = place;
@@ -1764,6 +1979,12 @@ class TurnCtx {
       const f = fact((x) => !!x.time && x.time.from !== x.time.to) ?? fact((x) => !!x.time);
       if (f?.time) own.time = f.time;
     }
+    // r10: the day before / of the departure the user stated (出发前一天 / 出発の前日 / the day before I fly)
+    const dep = DEPARTURE_DAY.exec(pf);
+    if (!own.time && dep) {
+      const f = fact((x) => !!x.time && (x.who === "me" || !x.who));
+      if (f?.time) { const d = dep[1] || dep[2] || dep[3] ? addDays(f.time.from, -1) : f.time.from; own.time = { from: d, to: d }; }
+    }
     if (!own.time && /请假|休み|off/u.test(pf)) {
       const f = fact((x) => !!x.time);
       if (f?.time) own.time = f.time;
@@ -1779,6 +2000,8 @@ class TurnCtx {
       else if (ch.mode === "amend") {
         Object.assign(merged, t);
         for (const k of ["time", "people", "topic", "place"] as const) if (own[k] !== undefined) (merged as Record<string, unknown>)[k] = own[k];
+        // r10: a person added to the change (把 <name> 也加上 / <name>さんも追加 / add <name> as well) joins the ones it has
+        if (own.people && t.people?.length && (addsItems(pf) || /也|も追加|もいれ|も入れ|\b(?:too|as well|also)\b/u.test(pf))) merged.people = uniq([...t.people, ...own.people]);
       } else {
         if (t.kind) merged.kind = t.kind;
         merged.verb = own.verb && own.verb !== "read" ? own.verb : t.verb;
@@ -1792,7 +2015,7 @@ class TurnCtx {
       this.noteRequest(pf, merged, own, tp.win ?? null, fu, refs);
       const task = ch.task;
       const at = this.e.turns.length;
-      if (ch.mode === "copy") this.taskOps.push(() => { this.e.addTask(merged, { turn: at }); });
+      if (ch.mode === "copy") { const text = this.tf; this.taskOps.push(() => { this.e.addTask(merged, { turn: at, text }); }); }
       else this.taskOps.push(() => { if (ch.mode === "amend") task.slots = { ...merged }; this.e.touch(task); });
       return merged;
     }
@@ -1895,6 +2118,11 @@ class TurnCtx {
       if (ks.length === 1) merged.kind = ks[0];
     }
     if (!merged.kind && own.status && (verb ?? "read") === "read") merged.kind = "todo";
+    // r10: one more / the same again (再加一条 / もう1件 / another one) is of the kind of the latest change, else of the request before
+    if (!merged.kind && verb === "create" && (ONE_MORE.test(pf) || anotherOnPurpose(pf))) {
+      const k = this.e.lastTask()?.slots.kind ?? prev?.kind;
+      if (k && k !== "contact") merged.kind = k;
+    }
     if (!merged.verb && merged.kind) merged.verb = "read";
     // the hint fills a gap only with what this message itself says (checked field by field): a value the message does
     // not show, or one an earlier request already had, is never taken from the hint
@@ -1904,7 +2132,8 @@ class TurnCtx {
     if (merged.verb && merged.verb !== "read" && merged.kind) {
       const at = this.e.turns.length;
       const target = refs.find((r) => r.outcome === "bound" && r.id && kindOfId(r.id) === merged.kind)?.id ?? null;
-      this.taskOps.push(() => { this.e.addTask(merged, { turn: at, target }); });
+      const text = this.tf;
+      this.taskOps.push(() => { this.e.addTask(merged, { turn: at, target, text }); });
     }
     return merged;
   }
@@ -2026,6 +2255,66 @@ function stripWords(t: string, ws: readonly string[]): string {
   return s;
 }
 /** Words that open another topic (对了 / ところで / by the way). */
+// ---------------------------------------------------------------- r10: when to ask (general vocabulary)
+
+/** r10 (R43): the one the user went to last time (上次去的 / 前回行った / the last one I went to). */
+const WENT_LAST = fre(/(?:上次|上回|上一次|最近一次|前回|この前|last time|the last)[^，,。、？?]{0,6}?(?:去|参加|行った|行って|出た|went|attended)|(?:去|参加)的上一[次场个]|i went to last/u);
+const GENERIC_EVENT = ["活动", "いべんと", "event", "events"].map(fold);
+/** r10: a pointer word at the end of a reference (<word>那条 / <word>のタスク / the <word> one). */
+const POINTER_TAIL = fre(/(?:那|这)(?:条|个|篇|场|件|份|项)$|的(?:待办|笔记|日程|活动|纪要|任务)$|の(?:やつ|件|タスク|メモ|予定|イベント)$|\bone$|\b(?:todo|task|note|memo|event|meeting)$/u);
+/** r10: done as a state of the thing named (<verb>済みの / 已完成的): no completion asked for. */
+const DONE_STATE = fre(/(?:済み|完了済み|完成|已完成|完了)(?:の|的)/gu);
+/** r10: a new record of a kind with its content after a colon (<kind>を追加：… / 加个<kind>：… / add a note: …). */
+const NEW_RECORD = fre(/(?:メモ|タスク|todo|予定|笔记|待办|日程|备忘)を?(?:新規)?(?:追加|作成)(?:して|しといて|で)?\s*[：:]|\b(?:add|create) an? (?:new )?(?:note|memo|todo|task|reminder)\b/u);
+/** r10: the day before the trip starts (group 1) or the day it starts. */
+const DEPARTURE_DAY = fre(/(?:出发|出差|出発|出国|起飞|飛ぶ|発つ)(?:的)?(前一天|前日|の前日)|(前一天|前日)(?:に)?(?:出发|出発)|(?:the )?(day before) (?:i|we) (?:fly|leave|depart|go)|(?:出发|出発)(?:那天|当天|の日)|the day (?:i|we) (?:fly|leave|depart)/u);
+/** r10: an also-clause asking for something to be done. */
+const ALSO_ASK = fre(/^(?:还有|另外|然后|顺便|それと|あと|ついでに|also|and also|plus)[，,、\s]*.*(?:帮我|帮忙|弄|处理|办一下|做一下|やって|やっと|しといて|して(?:ほしい|おいて)|お願い|please|handle|take care)/u);
+const STATE_SUMI = fre(/[\p{Script=Han}ぁ-ゖ]{0,5}済みの/gu);
+/** r10: adding a person to a change (也加上 / も追加 / add … to that). */
+const ADD_PERSON = fre(/也加上|也加进|加上(?:吧|去)?$|也算上|も追加|も入れ|も加え|\badd\b.{1,30}\b(?:to (?:that|it|this)|too|as well)\b|\binclude\b/u);
+/** r10: is someone free (有空 / 空いてる / am I free). */
+const AVAILABLE = fre(/有空|有没有空|空吗|有时间吗|空いて|空き(?:は|ある)|都合(?:が|は)|\b(?:am i|are you|is \w+|be) (?:free|available)\b|\bfree (?:on|at|next|this|tomorrow)\b/u);
+/** r10: one more of the kind just made (再加一条 / もう1件 / add one more). */
+const ONE_MORE = fre(/再(?:加|建|记|来)一(?:条|个|件|篇)|もう(?:一|1|ひと)(?:件|つ)|\bone more\b|\banother\b/u);
+/** r10 (R44): plural person pronouns. */
+const PLURAL_PRONOUN = fre(/(?:他们|她们|他們|她們)(?:俩|两个|二位|两位|三个|三位)?|彼ら(?:二人|2人|三人)?|彼女ら|彼女たち|あの(?:二人|2人)|その(?:二人|2人)|お二人|二人とも|the two of them|both of them|them both|the three of them/u);
+/** r10: discourse words around a bare change (算了 / 那就 / nah). */
+const DISCOURSE = fre(/^(?:算了|好吧|那就|还是|那|就|やっぱり|やっぱ|じゃあ|nah|just|then|ok|okay)$/u);
+/** r10: what follows an ordinal of the talk (the last question / the first thing to do), not of a list. */
+const META_AFTER = fre(/^\s*(?:个|つ)?(?:问题|问一?句|件(?:事)?(?:该|应该|要|得|先)|事(?:该|应该|要)|该|应该|にひとつ|の?(?:議題|议题|批|轮|章|节|阶段|段階|ステップ|步)|things? (?:i|we|you)\b|things? to\b|question\b|step|priority|of all)/u);
+/** An ordinal that can be a list position (not an ordinal of the talk). */
+export function listOrdinal(pf: string) {
+  const o = L.ordinalOf(pf);
+  return o && !META_AFTER.test(pf.slice(o.at[1])) ? o : null;
+}
+
+const PUT_INTO = fre(/(?:加进|加到|放进|放到|排进|排到|写进|记进|记到)\s*(?:我的)?\s*(?:日程|日历|行程|calendar|待办|todo|笔记|notes?)|予定に(?:入れ|追加)|カレンダーに(?:入れ|追加)|\b(?:add|put)\b.{0,24}\b(?:to|on|in|into)\b.{0,8}\b(?:calendar|schedule|to-?do list|notes)\b/u);
+
+/** R38: a greeting or a filler word says nothing to do (thanks / OK / a closing need nothing and are not here). */
+const GREETING = fre(/^(?:你好|您好|大家好|早上好|早安|早|上午好|中午好|下午好|晚上好|嗨|哈喽|哈啰|喂|hello|hi|hey|hiya|yo|morning|good morning|good afternoon|good evening|evening|おはよう(?:ございます)?|おはよ|こんにちは|こんばんは|もしもし|やあ)$/u);
+const FILLER = fre(/^(?:呃+|额+|唔+|嗯哼|啊这|那个+|这个+|就是+|えっと|ええと|えーと|えー+|あのー*|うーん|うーむ|んー+|ん+と|u+h+|u+m+|h+m+|e+r+m*|well|so|ah+|oh+)$/u);
+export function notARequest(pf: string): boolean {
+  const toks = pf.split(/[\s,，、。.！!？?…~〜\-—:：;；'"“”]+/u).filter(Boolean);
+  if (!toks.length) return /[…?？]/u.test(pf);
+  // a trailing particle (你好呀 / おはよ〜ね) and a greeting of two words (good morning / hi there) change nothing
+  const bare = (t: string) => t.replace(/(?:呀|啊|哈|哦|喔|嘛|よ|ね|です)+$/u, "");
+  const whole = toks.map(bare).join(" ");
+  if (GREETING.test(whole) || /^(?:good (?:morning|afternoon|evening)|hi there|hello there|hey there)(?: (?:all|everyone))?$/u.test(whole)) return true;
+  if (toks.every((t) => GREETING.test(bare(t)) || FILLER.test(bare(t)) || /^(?:there|again|all|everyone)$/u.test(t)) && toks.some((t) => GREETING.test(bare(t)) || FILLER.test(bare(t)))) return true;
+  // R41: an undecided word that answers nothing and asks for nothing (都行 / whatever) is no request either
+  return toks.length <= PARAMS.undecidedMaxWords && hasAny(pf, L.UNSURE_MARKERS) && !kindIn(pf) && (verbIn(pf) ?? "read") === "read" && pf.replace(/[\s\p{P}]/gu, "").length <= PARAMS.undecidedMaxChars;
+}
+/** R39: someone else said something (<person>说要… / <person>が…って言って / <person> said …). */
+const REPORTED_SPEECH = fre(/说要|说会|说过|说他|说她|提到|提过|讲过|讲了|告诉我|言って|言った|言ってた|って言|話して|said|says|told me|mentioned/u);
+/** R39: what a named person said (<person>说… / <person>さんが言って / <person> said). */
+const SAID_AFTER_NAME = fre(/^\s*(?:さん|先生|总|老师|様)?\s*(?:说|提到|讲|告诉我|が言|は言|から聞|said|says|told|mentioned)/u);
+/** R40: "push it back / move it a bit" without saying how far. */
+const VAGUE_SHIFT = fre(/推一推|挪一挪|往后推|往后挪|往后延|往后放|推后|延后一下|延期一下|晚一点|后ろにずら|後ろにずら|後ろ倒し|ずらしといて$|ずらして$|延ばして$|遅らせて$|push (?:it |that |this )?back|postpone it|move it later|a bit later/u);
+const DURATION = fre(/(?:\d+|[一两二三四五六七八九十半几])\s*(?:个)?(?:天|日|周|週|星期|礼拜|个月|ヶ月|か月|小时|時間|分钟|分|days?|weeks?|months?|hours?|minutes?)/u);
+/** R37: every occurrence of a recurring item (以后都 / 毎回 / all of them). */
+const ALL_OCCURRENCES = fre(/以后都|以后每|每次|每周都|每个月都|全部|所有的|都改|整个系列|毎回|毎週|今後|以降|全部|すべて|every (?:time|week|one)|all (?:of them|future|occurrences)|from now on|the whole series|going forward/u);
+
 const TOPIC_TURN = ["别件", "別件", "另一件事", "别的事", "对了", "另外", "顺便", "还有个事", "换个话题", "ところで", "そういえば", "それと", "あと、", "話変わるけど", "by the way", "btw", "unrelated", "also,"].map(fold);
 /** Follow-up framing words (那…呢 / じゃあ…は / what about / instead), stripped before looking for the swapped object. */
 const FOLLOW_WORDS = ["那么", "那就", "那", "要是", "如果是", "如果", "换成", "换", "改成", "的话", "怎么样", "如何", "呢", "じゃあ", "じゃ", "では", "それなら", "それじゃ", "だったら", "なら", "の場合", "場合", "はどう", "どう", "の方", "のほう", "ほう", "は",
@@ -2195,7 +2484,11 @@ export function kindIn(pf: string): RecordKind | undefined {
 }
 
 export function verbIn(pf: string): string | undefined {
-  for (const [v, ws] of L.VERB_WORDS) if (hasAny(pf, ws)) {
+  // r10: putting something into a calendar / list (加进日程 / 放进日历 / add it to my calendar) creates it
+  if (PUT_INTO.test(pf)) return "create";
+  // r10: <verb>済みの<noun> (<verb>済みの<kind>) names things by a state: no verb of the request
+  const pv = pf.replace(STATE_SUMI, " ");
+  for (const [v, ws] of L.VERB_WORDS) if (hasAny(v === "complete" ? pv.replace(DONE_STATE, " ") : pv, ws)) {
     // "is it done / 済み？ / 完成了吗": a question about the state, not an instruction to change it
     if (v === "complete" && STATE_QUESTION.test(pf.trim()) && !IMPERATIVE.test(pf)) return "read";
     return v;
@@ -2275,7 +2568,7 @@ export function spotRefs(ctx: TurnCtx, quote: string): string[] {
   const q = quote;
   const re = new RegExp([
     // ordinals with their noun
-    "(?:上から)?第\\s*[一二两三四五六七八九十\\d]+\\s*(?:个人|个|条|篇|场|位|件|项|名)?",
+    "(?:上から)?第\\s*[一二两三四五六七八九十\\d]+(?![\\d一二两三四五六七八九十]|\\s*(?:届|回|期|次|版|号|代|年|季|天|周|週))\\s*(?:个人|个|条|篇|场|位|件|项|名)?",
     "[一二三四五六七八九十\\d]+\\s*(?:番目|つ目|個目|个目|件目|人目|本目)(?:の(?:人|方|やつ|タスク|メモ|予定|イベント))?",
     "(?:the\\s+)?(?:first|second|third|fourth|fifth|1st|2nd|3rd|4th|5th)(?:\\s+one)?",
     "#\\s*\\d+",
@@ -2283,6 +2576,8 @@ export function spotRefs(ctx: TurnCtx, quote: string): string[] {
     // r07: a record anchored by a time word (今夜の交流会 / 昨天的会 / tonight's wine event)
     "(?:今夜|今晩|今日|昨日|明日|昨夜|昨晩|今朝)の[\\p{Script=Han}\\p{Script=Katakana}ー]{2,6}",
     "\\b(?:tonight's|today's|yesterday's|tomorrow's|this morning's)\\s+(?:[a-z]+\\s+){0,2}?(?:event|meeting|party|dinner|lunch|call|session|one)\\b",
+    // r10 (R43): the <event> the user went to last time (上次去的<event> / 前回行った<event>)
+    "(?:上次|上回|上一次|前回|この前)[^，、。？?\\s]{0,4}?(?:去|参加|行った|参加した)(?:的|の)?(?:那个|那场)?[\\p{Script=Han}\\p{Script=Katakana}ー]{2,8}",
     // r07: the contact person of a company (<company>の窓口 / <company>的对接人)
     "[\\p{Script=Han}\\p{Script=Katakana}A-Za-z]{2,10}?(?:の窓口|的窗口|的对接人|的联系人|の担当者?)",
     // r07: "the other one" (另一条<noun>的 / もう一つの方 / the other one)
@@ -2291,9 +2586,11 @@ export function spotRefs(ctx: TurnCtx, quote: string): string[] {
     "剩下(?:的)?(?:那|这|一)?(?:个|条|篇|场|件)|残りの(?:やつ|方|ほう|件|タスク)?|\\bthe remaining one\\b",
     "\\bthe other(?:\\s+(?:one|task|todo|note|memo|event|meeting))?\\b",
     // pronouns (+ what of theirs)
-    "(?:她|他|它)",
+    "(?:她|他|它)(?!们|們)",
     "彼女|彼(?!ら)",
     "\\b(?:she|her|he|him|his|it)\\b",
+    // r10: 这人 / 那人 (this person)
+    "(?:这|那)人(?!家|们|們)",
     // pointers with a Latin noun (那个 <noun>)
     "(?:那个|这个|那|这)\\s*[a-zA-Z][a-zA-Z0-9-]{1,}(?:\\s+(?:one|event|meeting|notes?))?",
     // pointers with a noun
@@ -2301,7 +2598,7 @@ export function spotRefs(ctx: TurnCtx, quote: string): string[] {
     "(?:さっきの|あの|その|この|例の|前の|前回の)[^、。？?！!\\s]{1,8}?(?=[、。？?！!\\s]|って|は|を|に|の|も|で|が|だと|と|、|$)",
     // a content word with a pointer noun (<noun>の予定 / <noun>のやつ / <noun> 那条 / the <noun> one / those <noun> notes)
     "[\\p{Script=Han}\\p{Script=Katakana}A-Za-z0-9ー]{2,8}の(?:やつ|件|予定|タスク|メモ|イベント)",
-    "[\\p{L}\\p{N}][\\p{L}\\p{N} ]{1,14}?\\s*(?:的那|那)(?:条|个|篇|场|次|件|位)[\\p{Script=Han}]{0,2}?(?=[，。？?！!、\\s]|几|是|在|的|呢|吧|改|标|也|现在|$)",
+    "[\\p{L}\\p{N}][\\p{L}\\p{N} ]{1,14}?\\s*(?:的那|那)(?:条|个|篇|场|次|件|位)[\\p{Script=Han}]{0,2}?(?=[，。？?！!、\\s]|几|是|在|的|呢|吧|改|标|也|现在|做|办|弄|完|删|发|处理|取消|挪|推|$)",
     "\\b(?:the|those|that|this)\\s+(?:[a-z0-9-]+\\s+){1,3}(?:one|ones|notes?|todo|task|event|memo|meeting|list)\\b",
     "(?:さっきの|あの|その|この|例の)(?:件|やつ)",
     "(?:that|this)\\s+(?:one|note|event|meeting|lunch|task|todo|memo)",
@@ -2312,6 +2609,8 @@ export function spotRefs(ctx: TurnCtx, quote: string): string[] {
   const qf = fold(q);
   const qTime = parseTime(qf, "2000-01-03").spans;
   for (const m of q.matchAll(re)) {
+    // r10: an ordinal of the talk itself (最后一个<问题> / the first thing to …) points at no list item
+    if (L.ordinalOf(fold(m[0])) && META_AFTER.test(fold(q.slice((m.index ?? 0) + m[0].length)))) continue;
     // r07: a connective in front (顺便 / 另外 / 还有 / 然后) is not part of the reference
     const s = m[0].trim().replace(/^(?:顺便|另外(?!一)|还有|对了|然后|而且|并且|ついでに|それと)\s*[，,、]?\s*/u, "");
     // a pointer before a Latin word that belongs to a time expression (a pointer and then "next" + a week word) is no record reference
@@ -2325,7 +2624,7 @@ export function spotRefs(ctx: TurnCtx, quote: string): string[] {
       if (pm && !parseTime(fold(pre), "2000-01-01").win) out.push(pm[0]);
       continue;
     }
-    if (!s || /^(その|あの|この|那|这)(日|天|时候|時|週|周|間|期間|期间|時期|頃|几天|边|辺|ほう|边儿|里|次|後|前|あと)$/u.test(s) || /^(そっち|あっち|こっち)$/u.test(s) && /で|に|は/u.test(q.slice(q.indexOf(s) + s.length, q.indexOf(s) + s.length + 1)) && false) continue;
+    if (!s || /^(その|あの|この|那|这)(日|天|时候|時|週|周|間|期間|期间|時期|頃|几天|边|辺|ほう|边儿|里|次|後|前|あと|先|个月|个星期|个礼拜|个周末|周末|个时候|阵子|会儿|一阵|年|月)$/u.test(s) || /^(そっち|あっち|こっち)$/u.test(s) && /で|に|は/u.test(q.slice(q.indexOf(s) + s.length, q.indexOf(s) + s.length + 1)) && false) continue;
     out.push(s);
   }
   // r07: a pointer with a Latin noun is looked for on its own too (an earlier match may have taken its pointer:
@@ -2335,6 +2634,16 @@ export function spotRefs(ctx: TurnCtx, quote: string): string[] {
     if (qTime.some(([a, b]) => a <= at && at < b)) continue;
     out.push(m[0].trim());
   }
+  // r10: the object of a change described by its content and kind (把<words>的待办推到<day>)
+  if (/^(?:update|delete|complete)$/u.test(verbIn(fold(q)) ?? "")) for (const m of q.matchAll(/([\p{Script=Han}A-Za-z0-9]{2,10})的(?:待办|笔记|日程|活动|纪要|任务)/gu)) {
+    // only the words right before 的 (no pointer, pronoun or connective of the sentence), and only where no other reference is
+    // a description under a pointer or pronoun (她那条<words>的待办) is that pointer's, not a reference of its own
+    if (/[那这她他它]/u.test(m[1])) continue;
+    const head = m[1].split(/[把将]/u).pop()!.replace(/^(?:另外|还有|然后|顺便|对了)/u, "");
+    const span = head + m[0].slice(m[1].length);
+    const at = (m.index ?? 0) + m[0].length - span.length;
+    if (head.length >= 2 && !out.some((o) => { const i = q.indexOf(o); return i >= 0 && i < at + span.length && at < i + o.length; })) out.push(span);
+  }
   // a name with a pointer (<name>那条 / <name>さんの方 / <name>的那条)
   const ix = ctx.ix;
   const f = fold(q);
@@ -2343,7 +2652,9 @@ export function spotRefs(ctx: TurnCtx, quote: string): string[] {
     const m = /^\s*(?:(?:さん|様)?の\s*[\p{Script=Han}\p{Script=Katakana}ーA-Za-z0-9](?:[\p{Script=Han}\p{Script=Katakana}ーA-Za-z0-9 ]|(?![にをがはへでとも])\p{Script=Hiragana}){1,13}?\s*(?:の(?:件|やつ|メモ|タスク|予定)|(?<!の)(?:メモ|タスク|議事録|予定))|(?:的|さんの|の|'s)?\s*(?:(?:那个|那条)\s*(?:todo|task|memo|note|event)|那条|那篇|那场|那个|那份|那几条|那边的?|方|ほう|やつ|件|タスク|メモ|one|todos?|tasks?|那位|notes?|memos?|events?|meetings?|(?:さん|様)?との\s*[\p{Script=Han}\p{Script=Katakana}ーa-z]{2,8}))/u.exec(after);
     const before = /(?:那个|这个|那位|这位)$/u.exec(q.slice(0, h.at[0]));
     const start = before ? h.at[0] - before[0].length : h.at[0];
-    if (m) out.push(q.slice(start, h.at[1] + m[0].length));
+    // r10: <person>の<time>の予定 in a question is the set of that person's items in that time (来週の予定), not one record
+    const setByTime = !!m && verbIn(f) === "read" && !!parseTime(fold(m[0]), "2000-01-03").win && !/那条|那个|那篇|那场|这条|这个/u.test(m[0]);
+    if (m && !setByTime) out.push(q.slice(start, h.at[1] + m[0].length));
     else if (h.named && (h.ids.length > 1 || before || peopleOf(ix, f).hits.filter((x) => x.at[0] >= h.at[0] && x.at[1] <= h.at[1]).length > 1)) out.push(q.slice(start, h.at[1]));
   }
   // a record named by its title (<title>挪到…)
@@ -2352,6 +2663,8 @@ export function spotRefs(ctx: TurnCtx, quote: string): string[] {
     for (const r of ix.recs.values()) {
       if (r.kind === "contact" || r.titleF.length < 2 || !sq.includes(r.titleF) || !visible(ix, r.id, ctx.gone)) continue;
       const i = f.indexOf(r.titleF);
+      // r10: a title inside a time expression (下周会… holds 周会) is not said
+      if (i >= 0 && qTime.some(([x, y]) => x < i + r.titleF.length && i < y)) continue;
       out.push(i >= 0 ? q.slice(i, i + r.titleF.length) : r.title);
     }
   }

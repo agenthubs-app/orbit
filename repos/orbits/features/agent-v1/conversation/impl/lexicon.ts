@@ -1,5 +1,5 @@
-// @ts-nocheck -- conversation/impl/lexicon.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r09-maintenance/impl/lexicon.ts
-// (lab commit 567915f70, r09 = r08 + reference spans stop at function words). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
+// @ts-nocheck -- conversation/impl/lexicon.ts: copied byte for byte from lab-conv repos/orbits/lab/conversation/rsi/archive/r10/impl/lexicon.ts
+// (lab commit 41c7a53d6, r10 = r09 + when to ask: confirmations, missing values, requests that ask for nothing). Only these two header lines differ; the lab code does not pass this repo's build typecheck.
 /**
  * General vocabulary (zh / ja / en): pronouns, pointer words, ordinals, record-kind words, follow-up markers, honorifics,
  * role synonyms, generic company suffixes and city names. Nothing here is this world's content. Everything is compared
@@ -50,7 +50,7 @@ export const CITY_WORDS = F(["上海", "北京", "深圳", "广州", "杭州", "
 
 export const PERSON_PRONOUN_F = F(["她", "彼女", "she", "her"]);
 export const PERSON_PRONOUN_M = F(["他", "彼", "he", "him", "his"]);
-export const PERSON_PRONOUN_ANY = F(["その人", "あの人", "この人", "那个人", "这个人", "那位", "这位", "その方", "あの方", "them", "they", "ta"]);
+export const PERSON_PRONOUN_ANY = F(["这人", "那人", "此人", "その人", "あの人", "この人", "那个人", "这个人", "那位", "这位", "その方", "あの方", "them", "they", "ta"]);
 
 /** Classifier / pointer words → the kinds of record they can point at. */
 export const POINTER_KINDS: [string[], RecordKind[]][] = [
@@ -77,7 +77,8 @@ const num = (s: string) => (/^\d+$/.test(s) ? Number(s) : CN_DIGIT[s] ?? (s === 
 
 /** The ordinal a phrase uses (第二个 / 2番目 / 二番目 / 3つ目 / 1人目 / the second one / #3), 0 = none; -1 = the last one. */
 export function ordinalOf(t: string): { n: number; kind?: RecordKind; at: [number, number] } | null {
-  let m = /第\s*([一二两三四五六七八九十\d]+)\s*(个|条|篇|场|位|件|项|个人|名|点)?/u.exec(t);
+  // r10: an edition number (第<n>届 / 第3回) and a day count (第二天) are no list positions
+  let m = /第\s*([一二两三四五六七八九十\d]+)(?![\d一二两三四五六七八九十]|\s*(?:届|回|期|次|版|号|代|年|季|天|周|週))\s*(个|条|篇|场|位|件|项|个人|名|点)?/u.exec(t);
   if (m && m[2] !== "点") {
     const k = m[2] === "位" || m[2] === "个人" || m[2] === "名" ? "contact" : m[2] === "篇" ? "memo" : m[2] === "场" ? "event" : undefined;
     return { n: num(m[1]), kind: k, at: [m.index, m.index + m[0].length] };
@@ -135,10 +136,10 @@ export const LIST_POINTERS = F([
 ]);
 
 export const DEFER_MARKERS = F(["先不管", "先放", "放一放", "放放", "等会儿", "等一下再", "回头再", "以后再说", "再说吧", "先别管", "别管", "先搁", "不急", "晚点再", "改天",
-  "後で", "あとで", "後回し", "あと回し", "置いといて", "置いておいて", "一旦置", "また今度", "今度でいい", "それは後", "暂缓", "回头说", "later", "hold off", "put that aside", "on hold", "park that", "never mind", "forget it", "hold that", "skip that"]);
+  "後で", "あとで", "後回し", "あと回し", "置いといて", "置いておいて", "一旦置", "また今度", "今度でいい", "それは後", "暂缓", "回头说", "later", "hold off", "put that aside", "on hold", "park that", "never mind", "forget it", "hold that", "skip that", "先不说", "不说这个", "这个先不说", "それはさておき", "それは置いといて"]);
 export const UNSURE_MARKERS = F(["我想想", "让我想想", "想一想", "考虑一下", "考える", "考えさせて", "考えます", "検討します", "let me think", "think about it", "need to think", "记不清", "想不起", "忘了", "不记得", "不确定", "说不清", "都行", "都可以", "无所谓", "随便", "你定", "你看着办", "你决定", "差不多", "哪个都", "你懂的", "都一样",
   "忘れ", "思い出せ", "わからない", "分からない", "どっちでも", "どちらでも", "任せ", "まかせ", "どれでも", "だってば", "なんでもいい",
-  "not sure", "can't remember", "cannot remember", "don't remember", "no idea", "whichever", "either", "you pick", "you choose", "up to you", "any of", "doesn't matter", "dunno"]);
+  "not sure", "can't remember", "cannot remember", "don't remember", "no idea", "whichever", "either", "you pick", "you choose", "up to you", "any of", "doesn't matter", "dunno", "no preference", "either is fine", "either way", "whatever works"]);
 export const VAGUE_TIME = F(["过几天", "过阵子", "过段时间", "以后", "回头", "改天", "そのうち", "近いうち", "いつか", "later", "sometime", "some day", "soon"]);
 export const NEGATION_AFTER = F(["别动", "不动", "不要", "不用", "不改", "别改", "そのまま", "じゃなくて", "ではなく", "はいい", "stays", "unchanged", "not"]);
 export const ACK_ONLY = F(["嗯", "好", "好的", "知道了", "明白", "了解", "收到", "行", "ok", "okay", "got it", "thanks", "うん", "わかった", "了解です", "はい"]);
@@ -149,8 +150,8 @@ export const VERB_WORDS: [string, string[]][] = [
   ["delete", F(["删", "删除", "去掉这", "消して", "消しと", "消しておい", "消去", "削除", "delete", "remove"])],
   ["complete", F(["完成", "勾掉", "搞定", "做完了", "弄完了", "标成完成", "标完成", "完了に", "完了で", "済み", "done", "mark", "complete", "finished"])],
   ["link", F(["关联", "紐づけ", "紐付け", "link"])],
-  ["create", F(["建个", "建一个", "创建", "新建", "加个", "加一个", "添加", "记个", "记一下", "记一个", "作って", "作っと", "追加", "入れて", "入れと", "入れたい", "入れよう", "make a", "add a", "create", "remind me", "提醒我", "リマインド", "约他", "约个", "set up", "帮我记", "建一条", "也建"])],
-  ["update", F(["改到", "改成", "改个", "改一下", "挪", "推到", "推迟", "延后", "提前", "前倒し", "延ば", "ずら", "移して", "変えて", "変えと", "変えてお", "変更", "push", "move", "reschedule", "备注", "メモ足", "postpone", "报个名", "申し込", "停一次", "sign up", "转给", "分享给", "共有", "転送", "share", "早め", "遅らせ", "ずらせ", "変更でき", "動かせ", "に変更", "に移動", "改为", "调到", "换到"])],
+  ["create", F(["建个", "建一个", "创建", "新建", "加个", "加一个", "添加", "记个", "记一下", "记一个", "作って", "作っと", "追加", "入れて", "入れと", "入れたい", "入れよう", "make a", "add a", "create", "remind me", "提醒我", "リマインド", "约他", "约个", "set up", "帮我记", "建一条", "也建", "新規作成", "作成して", "作成しと", "记一篇", "记一条", "写一篇", "加一条", "add one more", "one more todo", "one more task"])],
+  ["update", F(["改到", "改成", "改个", "改一下", "挪", "推到", "推迟", "延后", "提前", "前倒し", "延ば", "ずら", "移して", "変えて", "変えと", "変えてお", "変更", "push", "move", "reschedule", "备注", "メモ足", "postpone", "报个名", "申し込", "停一次", "sign up", "转给", "分享给", "共有", "転送", "share", "早め", "遅らせ", "ずらせ", "変更でき", "動かせ", "に変更", "に移動", "改为", "调到", "换到", "往后推", "推一推", "后ろにず", "後ろにず"])],
 ];
 
 export const OPEN_WORDS = F(["没做", "未完成", "还没", "没完成", "没做完", "没弄", "开着", "未完了", "終わってない", "終わっていない", "まだ", "残って", "open", "still need", "pending", "outstanding", "still owe", "not done", "unfinished", "留没做", "没做的"]);
