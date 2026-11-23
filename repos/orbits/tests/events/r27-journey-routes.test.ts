@@ -222,3 +222,22 @@ test("QA-B2: overview says hosting (owner / co-host) and gives the organizer pag
   assert.equal((await other.overview("actor:b", "ev1", "zh", "app"))?.hosting, false);
   assert.equal((await other.overview(null, "ev1", "zh", "app"))?.hosting, undefined, "signed out: no host check");
 });
+
+test("2026-11-23 the full roster page (?attendees=all) reads only what it shows: no organizer history, plan scoring or venue record", async () => {
+  const reads: string[] = [];
+  const { ports } = fakePorts({
+    judge: async () => { reads.push("judge"); return { goal: null, hasPlan: true, results: {} }; },
+    organizerStats: async () => { reads.push("organizerStats"); return null; },
+    publicAttendees: async () => ({ attendees: [{ attendeeId: "p1", name: "清水 健", note: null, org: "A社", role: null, speaker: false }], total: 1 }),
+    registered: async () => true,
+    venueWorkspace: async () => { reads.push("venueWorkspace"); return null; },
+  });
+  const routes = liveRoutes(ports);
+  const ctx = { params: Promise.resolve({ id: "ev1" }) };
+  const people = await (await routes.overview(new Request("http://localhost/api/events/ev1/overview?attendees=all"), ctx)).json();
+  assert.equal(people.data.attendees.length, 1);
+  assert.equal(people.data.registration.status, "registered");
+  assert.deepEqual(reads, [], "nothing the roster page does not show");
+  await routes.overview(new Request("http://localhost/api/events/ev1/overview"), ctx);
+  assert.deepEqual([...reads].sort(), ["judge", "organizerStats", "venueWorkspace"], "the detail page still reads them");
+});

@@ -169,13 +169,16 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
 
     async overview(actorId, eventId, language, _platform, options) {
       const cap = options?.allAttendees ? 200 : 8;
-      const event = await ports.event(eventId);
+      // 2026-11-23「参加者 N 名」全名单页（两端）只显示名单、人数、我的报名状态与是否主办：主办方历史、计划评分、关注、
+      // 会場记录这些详情页才用的读取跳过（生产上 38 条 SQL → 见 tests；读取只取页面要显示的）。
+      const peopleOnly = Boolean(options?.allAttendees);
+      // An event-scoped membership is the authority, not the bounded "my events" timeline. Read alongside the event (not after it).
+      const [event, [mine, registered]] = await Promise.all([
+        ports.event(eventId),
+        actorId ? Promise.all([ports.myEvents(actorId), ports.registered(actorId, eventId)]) : Promise.resolve([[], false] as const),
+      ]);
       if (!event) return null;
       const at = now();
-      // An event-scoped membership is the authority, not the bounded "my events" timeline.
-      const [mine, registered] = actorId
-        ? await Promise.all([ports.myEvents(actorId), ports.registered(actorId, eventId)])
-        : [[], false] as const;
       const mineRow = mine.find((item) => item.eventId === eventId);
       const status: EventOverviewResponse["registration"]["status"] = registered
         ? mineRow?.status === "attended" ? "attended" : "registered"
@@ -184,7 +187,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       // Do not fetch portraits and answers merely to remove them from the response later.
       const [roster, stats] = await Promise.all([
         rosterVisible ? ports.publicAttendees(eventId) : Promise.resolve({ total: event.registrationCount, attendees: [] }),
-        event.organizerKey ? ports.organizerStats(event.organizerKey, eventId) : Promise.resolve(null),
+        event.organizerKey && !peopleOnly ? ports.organizerStats(event.organizerKey, eventId) : Promise.resolve(null),
       ]);
       const base: EventOverviewResponse = {
         agenda: event.agenda,
@@ -211,12 +214,12 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       // 未登录只给人数：报名资料的「参加者に表示」是给同场参加者看的，不给匿名访客（旧的公开预览也只有聚合桶）。
       if (!actorId) return { ...base, attendees: [], rosterLocked: !canSeeRoster({ signedIn: false }), signedOut: true };
       // 会場の記録入口：只在已结束 + 我是报名者时读工作区（其余情况不多读）。
-      const recordEligible = (status === "registered" || status === "attended") && eventEnded(event, at);
+      const recordEligible = !peopleOnly && (status === "registered" || status === "attended") && eventEnded(event, at);
       const [contacts, judged, types, followed, hosting, recordWorkspace] = await Promise.all([
         ports.contacts(actorId),
-        ports.judge(actorId, [eventId], language),
+        peopleOnly ? Promise.resolve(null) : ports.judge(actorId, [eventId], language),
         rosterVisible ? ports.planTypesFor(actorId, roster.attendees) : Promise.resolve({}),
-        event.organizerKey ? records.follows.followed(actorId) : Promise.resolve(new Set<string>()),
+        event.organizerKey && !peopleOnly ? records.follows.followed(actorId) : Promise.resolve(new Set<string>()),
         ports.hosting ? ports.hosting(actorId, eventId).catch(() => false) : Promise.resolve(false),
         recordEligible ? ports.venueWorkspace(actorId, eventId, language).catch(() => null) : Promise.resolve(null),
       ]);
@@ -232,12 +235,12 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       });
       const order = (a: typeof attendees[number], b: typeof attendees[number]) => Number(b.planFit) - Number(a.planFit) || Number(b.known) - Number(a.known);
       const known = roster.attendees.filter((item) => contactNames.has(item.name.replace(/\s+/g, "")));
-      const result = judged.results[eventId];
+      const result = judged?.results[eventId];
       return {
         ...base,
         assessment: result ? { assessmentId: result.assessmentId, basis: result.basis, display: result.display, relevance: result.relevance, score: result.score, verdict: result.verdict } : null,
         ...(result && roster.total === 0 ? { assessmentPeopleUnknown: true } : {}),
-        hasPlan: judged.hasPlan,
+        ...(judged ? { hasPlan: judged.hasPlan } : {}),
         attendeeCounts: { all: roster.total, known: lockedCounts?.known ?? known.length, planFit: lockedCounts?.planFit ?? attendees.filter((item) => item.planFit).length },
         attendees: rosterVisible ? [...attendees].sort(order).slice(0, cap) : [],
         knownAttendees: rosterVisible ? known.slice(0, 5).map((item) => ({ initial: item.name.trim().charAt(0), name: item.name.split(" ")[0] ?? item.name, speaker: item.speaker })) : [],
@@ -330,18 +333,21 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
     },
 
     async venue(actorId, eventId, _platform, language) {
-      const event = await ports.event(eventId);
+      // 2026-11-23：6 段串行 → 3 段（活动与报名状态一起读；工作区 / 联系人名字 / 备注一起读；计划类型与受付 QR 一起读）。
+      const [event, registered] = await Promise.all([ports.event(eventId), ports.registered(actorId, eventId)]);
       if (!event) return null;
-      const registered = await ports.registered(actorId, eventId);
       if (!registered) return buildVenue({ agenda: [], event, myContacts: [], now: now(), registered: false, wantedParticipantIds: new Set(), workspace: null });
-      const [workspace, contacts] = await Promise.all([ports.venueWorkspace(actorId, eventId, language), ports.contacts(actorId)]);
-      const directory = workspace?.directory ?? [];
-      const types = await ports.planTypesFor(actorId, directory.map((item) => ({ attendeeId: item.participantId, name: item.displayName, org: item.company, role: item.role })));
-      const wanted = new Set(directory.filter((item) => types[item.participantId]).map((item) => item.participantId));
       const at = now();
+      // 会場只用联系人的 id 与名字（认人），不需要往来记录。
+      const [workspace, contacts, memos] = await Promise.all([ports.venueWorkspace(actorId, eventId, language), (ports.contactNames ?? ports.contacts)(actorId), records.memos.read(actorId, eventId)]);
+      const directory = workspace?.directory ?? [];
+      const [types, checkInPass] = await Promise.all([
+        ports.planTypesFor(actorId, directory.map((item) => ({ attendeeId: item.participantId, name: item.displayName, org: item.company, role: item.role }))),
+        workspace && ports.checkInPass ? ports.checkInPass(actorId, eventId, workspace.me.participantId, event.endsAt ?? workspace.configuration.eventEndsAt).catch(() => null) : Promise.resolve(null),
+      ]);
+      const wanted = new Set(directory.filter((item) => types[item.participantId]).map((item) => item.participantId));
       const slots = meetingSlotsAfter(event.startsAt);
-      const checkInPass = workspace && ports.checkInPass ? await ports.checkInPass(actorId, eventId, workspace.me.participantId, event.endsAt ?? workspace.configuration.eventEndsAt).catch(() => null) : null;
-      return withVenueMemos(buildVenue({ agenda: event.agenda, checkInPass, event, meetingSlots: slots, myContacts: contacts, now: at, registered: true, wantedParticipantIds: wanted, workspace }), await records.memos.read(actorId, eventId));
+      return withVenueMemos(buildVenue({ agenda: event.agenda, checkInPass, event, meetingSlots: slots, myContacts: contacts, now: at, registered: true, wantedParticipantIds: wanted, workspace }), memos);
     },
 
     async saveVenueMemo(actorId, eventId, attendeeId, text) {
