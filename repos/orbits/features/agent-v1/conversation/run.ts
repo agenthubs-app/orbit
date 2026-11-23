@@ -246,6 +246,9 @@ function askGoRun(scope: NodeScope, state: AgentGraphState, next: AgentSessionSt
   for (const item of next.lastMentioned.filter((entry) => entry.at === now)) add(item.type, item.id, item.name);
   for (const item of next.shownList?.shownAt === now ? next.shownList.items : []) add(item.type, item.id, item.name);
   for (const item of next.openItems.filter((entry) => entry.requestId === input.requestId)) for (const option of item.options ?? []) add(option.type, option.id, option.label.replace(/[（(].*$/u, "").trim());
+  // the card's records (a to-do it changes, the people it links: 「给李薇建一个待办」 binds 李薇 only on the card)
+  const card = cardMentions(run.actionPreview);
+  for (const id of card.ids) if (card.names[id] && !names[id]) names[id] = card.names[id];
   const bound: { labId: string; words: string }[] = [];
   for (const part of state.parts) for (const ref of part.refs) {
     if (!ref.recordId) continue;
@@ -259,7 +262,9 @@ function askGoRun(scope: NodeScope, state: AgentGraphState, next: AgentSessionSt
     if (forms[id]?.length) names[id] = { ...names[id], name: forms[id][0] };
     else delete names[id];
   }
-  return runAskGo(log, names, record.turn!, Boolean(record.plainChat), forms, state.timeZone || "Asia/Tokyo");
+  // R27 counts for ask / go when it is on (ORBIT_AGENT_CONVERSATION_PRONOUN), as it does for the parts
+  const bind = openedMode("pronoun") === "on" ? (result: TurnResult) => withPronounsBound(result, idleSince(log, now)).result : undefined;
+  return runAskGo(log, names, record.turn!, Boolean(record.plainChat), forms, state.timeZone || "Asia/Tokyo", bind);
 }
 
 /**

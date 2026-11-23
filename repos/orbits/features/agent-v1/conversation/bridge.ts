@@ -246,9 +246,28 @@ const TALK_POINTER = /[他她它彼]|\b(?:he|she|him|her|his|they|them|it)\b/iu;
 export function formsOf(bound: readonly { labId: string; words: string }[]): Record<string, string[]> {
   const out: Record<string, string[]> = {};
   for (const { labId, words } of bound) {
-    const form = words.trim().replace(/^@\s*/u, "").trim();
-    if (!form || POINTS.test(form) || TALK_POINTER.test(form) || setWords(form)) continue;
+    // a title with its pointer after it (给小林寄合同那条待办 / 「X」这条待办 / XのToDo): the title
+    const form = words.trim().replace(/^@\s*/u, "").replace(/[「」『』“”"]/gu, "")
+      .replace(/(?:的)?[这那這][一]?(?:条|篇|个|件|项|场|次|份|张|位)\S{0,6}$|(?:という|の)\s*(?:タスク|ToDo|メモ|予定|イベント)$/iu, "").trim();
+    if ([...form].length < 2 || POINTS_START.test(form) || TALK_POINTER.test(form) || setWords(form)) continue;
     (out[labId] ??= []).includes(form) || out[labId].push(form);
+  }
+  return out;
+}
+
+/** A form that is itself a pointer or an ordinal (那条 / その件 / 第二个 / the other one). */
+const POINTS_START = /^(?:[那这這此该該它]|その|あの|この|どの|第\s*[一二三四五六七八九十\d]+\s*\S?$|\d+\s*番目)|^(?:that|this|these|those|the|it)\b/iu;
+
+/**
+ * The store keeps a CJK name without the space the lab's World has (田中浩, not 田中 浩), so the engine reads its family
+ * name as the first character only. A three- or four-character CJK name is also known by its first two characters
+ * (田中浩 → 田中, 小林健 → 小林, 山本直子 → 山本); two contacts sharing them still make the engine ask.
+ */
+export function familyFormsOf(names: Record<string, { type: string; name: string }>): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [id, { name }] of Object.entries(names)) {
+    const plain = name.trim();
+    if (id.startsWith("C-") && /^[\p{Script=Han}]{3,4}$/u.test(plain)) out[id] = [plain.slice(0, 2)];
   }
   return out;
 }
@@ -263,10 +282,12 @@ const overlaps = (a: string, b: string) => a.includes(b) || b.includes(a);
  *   (a hint, or plain chat).
  * A part whose references all bound and that still asks names a person more than one contact has: that stays.
  */
-export function askGoOf(part: PartResult, hint: ModelHint | null, plainChat: boolean, visible: ReadonlySet<string> = new Set()): PartResult["next"] {
+export function askGoOf(part: PartResult, hint: ModelHint | null, plainChat: boolean, visible: ReadonlySet<string> = new Set(), before: PartResult = part): PartResult["next"] {
   if (part.next !== "ask") return part.next;
   const unbound = part.refs.filter((ref) => ref.outcome !== "bound");
-  if (!unbound.length) return part.next;
+  // every reference bound: the engine asks about a person more than one contact has — unless a decision opened after
+  // the engine (R27) bound what it asked about
+  if (!unbound.length) return before.refs.some((ref) => ref.outcome !== "bound") ? "go" : part.next;
   const hinted = (hint?.parts ?? []).flatMap((item) => item.refs ?? []).filter((ref) => ref.said);
   const excused = (said: string) => {
     const over = hinted.filter((ref) => overlaps(ref.said, said));
@@ -277,10 +298,14 @@ export function askGoOf(part: PartResult, hint: ModelHint | null, plainChat: boo
 }
 
 /** The engine's ask / go on this turn: the lab's hint and a World with the store's records (see above). */
-export function runAskGo(log: ConversationLog | null, names: Record<string, { type: string; name: string }>, turn: EngineTurn, plainChat: boolean, forms: Record<string, string[]> = {}, timeZone = "Asia/Tokyo"): TurnResult {
+/** `bind`: decisions opened after the engine that bind references (R27 pronouns when ORBIT_AGENT_CONVERSATION_PRONOUN is on). */
+export function runAskGo(log: ConversationLog | null, names: Record<string, { type: string; name: string }>, turn: EngineTurn, plainChat: boolean, forms: Record<string, string[]> = {}, timeZone = "Asia/Tokyo", bind?: (result: TurnResult) => TurnResult): TurnResult {
   const hint = nextHintOf(turn.hint);
-  const result = runEngine(log, worldOf(names, turn.at, timeZone, forms), { ...turn, hint });
+  const all: Record<string, string[]> = { ...familyFormsOf(names) };
+  for (const [id, words] of Object.entries(forms)) all[id] = [...new Set([...(all[id] ?? []), ...words])];
+  const raw = runEngine(log, worldOf(names, turn.at, timeZone, all), { ...turn, hint });
+  const result = bind ? bind(raw) : raw;
   const gone = new Set(turn.gone);
   const visible = new Set(Object.keys(names).filter((id) => !gone.has(id)));
-  return { ...result, parts: result.parts.map((part) => ({ ...part, next: askGoOf(part, hint, plainChat, visible) })) };
+  return { ...result, parts: result.parts.map((part, index) => ({ ...part, next: askGoOf(part, hint, plainChat, visible, raw.parts[index]) })) };
 }

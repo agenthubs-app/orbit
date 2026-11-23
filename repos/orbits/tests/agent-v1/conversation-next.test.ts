@@ -69,8 +69,8 @@ test("the World has what the store gave this turn: a name said for the first tim
   // a family name alone (the store keeps 田中浩 without a space): the words the agent bound are a form of the contact
   const short = "田中上次说了什么？";
   const shortHint = [part(short, [{ id: null, kind: "contact", said: "田中" }], { kind: "memo", verb: "read" })];
-  assert.deepEqual(nextOf(short, tanaka, shortHint), ["ask"]);
-  assert.deepEqual(nextOf(short, tanaka, shortHint, { bound: [{ labId: "C-contact:tanaka", words: "田中" }] }), ["go"]);
+  assert.deepEqual(nextOf(short, tanaka, shortHint), ["go"], "the first two characters (round 2)");
+  assert.deepEqual(nextOf(short, { "C-contact:tanaka": { name: "田中浩", type: "contact" }, "C-contact:tanaka2": { name: "田中美咲", type: "contact" } }, shortHint), ["ask"], "two 田中, none bound: ask");
   // a pronoun or a pointer the agent bound is never a form: the engine reads it from the talk
   assert.deepEqual(formsOf([{ labId: "C-contact:tanaka", words: "他" }, { labId: "T-task:x", words: "那条待办" }, { labId: "C-contact:tanaka", words: "田中" }]), { "C-contact:tanaka": ["田中"] });
   const two = { "C-contact:lin1": { name: "小林健", type: "contact" }, "C-contact:lin2": { name: "小林诚", type: "contact" } };
@@ -93,4 +93,28 @@ test("still asks where it should: a pointer the first layer reported with nothin
   const log = appendTurn(null, { agent: reply(1, { mentions: ["C-contact:shen", "C-contact:wang"] }), requestId: "r1", user: { at: at(0), hint: null, text: "沈佳怡和王磊最近怎么样？" } }, names);
   const asked = "她的电话是多少？";
   assert.deepEqual(nextOf(asked, names, [part(asked, [{ id: null, kind: "contact", said: "她" }], { kind: "contact", verb: "read" })], { log }), ["ask"]);
+});
+
+test("round 2: a CJK name kept without a space is known by its first two characters too (小林 → 小林健); two such still ask", () => {
+  const message = "记一下：小林今天来电话了。";
+  const hint = [part(message, [{ id: null, kind: "contact", said: "小林" }], { kind: "memo", verb: "create" })];
+  assert.deepEqual(nextOf(message, { "C-contact:lin": { name: "小林健", type: "contact" } }, hint), ["go"]);
+  assert.deepEqual(nextOf(message, { "C-contact:lin": { name: "小林健", type: "contact" }, "C-contact:lin2": { name: "小林诚", type: "contact" } }, hint), ["ask"]);
+});
+
+test("round 2: a bound title with a pointer after it is known by the title (给小林寄合同那条待办 → 给小林寄合同)", () => {
+  assert.deepEqual(formsOf([{ labId: "T-task:c", words: "给小林寄合同那条待办" }, { labId: "T-task:q", words: "「给小林发修订报价（第二版）」这条待办" }, { labId: "C-contact:x", words: "他那条" }]), { "T-task:c": ["给小林寄合同"], "T-task:q": ["给小林发修订报价（第二版）"] });
+  const message = "把给小林寄合同那条待办改到周五。";
+  const hint = [part(message, [{ id: null, kind: "todo", said: "给小林寄合同那条待办" }], { kind: "todo", verb: "update" })];
+  assert.deepEqual(nextOf(message, { "T-task:c": { name: "寄合同给小林健", type: "todo" } }, hint, { bound: [{ labId: "T-task:c", words: "给小林寄合同那条待办" }] }), ["go"]);
+});
+
+test("round 2: R27 (pronoun on) counts for ask / go — the one person of the latest turn binds 他, then the part goes", () => {
+  const names = { "C-contact:lin": { name: "小林健", type: "contact" } };
+  const log = appendTurn(null, { agent: reply(1, { mentions: ["C-contact:lin"] }), requestId: "r1", user: { at: at(0), hint: null, text: "查上次和小林健聊了什么" } }, names);
+  const message = "再记下他今天来过电话";
+  const hint = [part(message, [{ id: null, kind: "contact", said: "他" }], { kind: "memo", verb: "create" })];
+  const run = (bind?: boolean) => runAskGo(log, names, { at: at(5), gone: [], hint: { parts: hint }, message }, false, {}, "Asia/Tokyo", bind ? (result) => ({ ...result, parts: result.parts.map((item) => ({ ...item, refs: item.refs.map((ref) => (ref.outcome === "ask" && ref.candidates?.length === 1 ? { id: ref.candidates[0], outcome: "bound" as const, said: ref.said } : ref)) })) }) : undefined).parts.map((item) => item.next);
+  assert.deepEqual(run(), ["ask"], "the engine alone asks (no gender known)");
+  assert.deepEqual(run(true), ["go"]);
 });
