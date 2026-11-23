@@ -14,6 +14,7 @@ import type { EventOverviewResponse } from "../../../api/contract/event-overview
 import type { EventPrepChecklistItem, EventPrepResponse } from "../../../api/contract/event-prep";
 import type { EventRecommendationDismissReason } from "../../../api/contract/event-recommendation-feedback";
 import type { EventSearchResponse } from "../../../api/contract/event-search";
+import type { EventSummaryResponse } from "../../../api/contract/event-summary";
 import type { EventVenueMemoResult, EventVenueResponse } from "../../../api/contract/event-venue";
 import type { OrganizerFollowResult } from "../../../api/contract/organizer-follow";
 import { eventAfterConfirmResultSchema, eventAfterResponseSchema } from "../../../api/schema/event-after";
@@ -25,6 +26,7 @@ import { eventOverviewResponseSchema } from "../../../api/schema/event-overview"
 import { eventPrepResponseSchema } from "../../../api/schema/event-prep";
 import { eventRecommendationDismissResultSchema } from "../../../api/schema/event-recommendation-feedback";
 import { eventSearchResponseSchema } from "../../../api/schema/event-search";
+import { eventSummaryResponseSchema } from "../../../api/schema/event-summary";
 import { eventVenueMemoResultSchema, eventVenueResponseSchema } from "../../../api/schema/event-venue";
 import { organizerFollowResultSchema } from "../../../api/schema/organizer-follow";
 import { useOrbitApiClient } from "../../../hooks/useOrbitApiClient";
@@ -56,6 +58,8 @@ export function createJourneyApi(client: OrbitApiClient, read: Read) {
     byCode: (code: string) => read(client.get<unknown>(`/api/events/by-code/${id(code)}`), eventCodeResolveResponseSchema as ZodType<EventCodeResolveResponse>),
     // allAttendees: the full roster for the 参加者 page (/events/[id]/people); the detail page reads the capped preview.
     overview: (eventId: string, allAttendees = false) => read(client.get<unknown>(`/api/events/${id(eventId)}/overview?platform=app${allAttendees ? "&attendees=all" : ""}`), eventOverviewResponseSchema as ZodType<EventOverviewResponse>),
+    // 2026-11-23 探す 简介面板：列表行没有的几项（说明 / 名额 / 我的状态 / 参加者首字 / 见过的人 / 下一场）。
+    summary: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/summary?platform=app`), eventSummaryResponseSchema as ZodType<EventSummaryResponse>),
     prep: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/prep?platform=app`), eventPrepResponseSchema as ZodType<EventPrepResponse>),
     checklist: (eventId: string, items: readonly EventPrepChecklistItem[]) => read(client.patch<unknown>(`/api/events/${id(eventId)}/prep/checklist`, { body: { items } }), eventPrepResponseSchema as ZodType<EventPrepResponse>),
     // view=record: after the event (read-only record) the server leaves out the live-only parts (seats, check-in, openers, memos,

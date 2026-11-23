@@ -242,6 +242,8 @@ export const eventsV2 = {
   "eventsV2.relExampleType": "VC 合伙人",
   // 2026-11-23 探す 简介面板（event-side-panel-proposal ④ M1 / M2 · ② S1–S6）。
   "eventsV2.panelWhen": "{m}月{d}日（{wd}）{time}",
+  "eventsV2.panelPendingReview": "审核中",
+  "eventsV2.panelWaitlisted": "候补中",
   "eventsV2.panelSeeDetail": "查看详情",
   "eventsV2.panelJoin": "参加",
   "eventsV2.panelMyRegistration": "查看我的报名",

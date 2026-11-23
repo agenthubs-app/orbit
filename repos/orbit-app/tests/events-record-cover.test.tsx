@@ -270,3 +270,40 @@ test("会場の記録 offline: the copy saved during the event is still shown wh
     copies: { [`event-venue|${eventId}`]: { data: during, syncedAt: "2026-01-01T02:00:00.000Z" } }, responses: {} });
   await page.getByTestId("events-venue-tab-now").waitFor();
 });
+
+// 2026-11-23 先出布局再填内容: the summary sheet opens at its final height with the list's facts, skeletons where the summary
+// fills in, and both buttons in place; the answer (1.5 s late here) replaces the skeletons without moving the sheet or buttons.
+test("探す summary sheet: final height and fixed buttons from the first frame; the late summary fills in place; reopening uses it", async (t) => {
+  const row = { emoji: "🤝", eventId: "ev-6", href: "/events/ev-6", priceYen: 3000, registrationCount: 128, relevance: null, startsAt: "2099-11-28T05:00:00.000Z", endsAt: "2099-11-28T08:30:00.000Z", title: "第六期 中日创业交流会", venue: "山田屋ビル B2", organizerId: "org-1", organizerName: "日中创新创业协会" };
+  const summary = { attendeeInitials: ["王", "田", "L", "佐"], capacity: 140, description: "在日华人创业者、投资人和日本本地企业负责人的线下交流会。上半场三位创业者分享在日本拿到第一批客户的经过，下半场按报名时填写的需求分桌交流。", emoji: "🤝", ended: false, eventId: "ev-6", organizer: { following: false, name: "日中创新创业协会", organizerId: "org-1" }, registrationClosesAt: "2099-11-26T14:59:00.000Z", registrationCount: 128, remaining: 12, startsAt: row.startsAt, status: "none", title: row.title, waitlistEnabled: false };
+  const page = await harness.open(t, { screen: "discover", slowPrefix: "/api/events/ev-6/summary", slowMs: 1500, responses: {
+    "/api/events/discover": { all: [], community: [], planFit: [row], planFitTotal: 1, popularityFallback: false, total: 1 },
+    "/api/events/ev-6/summary": summary,
+  } });
+  // Positions inside the sheet (the harness has no portal host: the sheet sits in the page, which a wait may scroll).
+  const sheetId = "events-summary-ev-6";
+  const measure = async (primaryId: string) => {
+    const sheet = (await page.getByTestId(sheetId).boundingBox())!, detail = (await page.getByTestId("events-summary-detail").boundingBox())!, primary = (await page.getByTestId(primaryId).boundingBox())!;
+    const at = (b: { x: number; y: number; width: number; height: number }) => ({ h: Math.round(b.height), w: Math.round(b.width), x: Math.round(b.x - sheet.x), y: Math.round(b.y - sheet.y) });
+    return { detail: at(detail), primary: at(primary), sheetH: Math.round(sheet.height) };
+  };
+  await page.getByTestId("events-discover-card-ev-6").click();
+  await page.getByTestId("events-summary-primary-pending").waitFor();
+  await page.waitForTimeout(700); // past the slide-in
+  const first = await measure("events-summary-primary-pending");
+  assert.equal(first.sheetH, Math.round(844 * 0.76), "opens at the final 76% height");
+  for (const id of ["events-summary-seats-pending", "events-summary-intro-pending", "events-summary-people-pending"]) assert.equal(await page.getByTestId(id).count(), 1, `${id} on the first frame`);
+  assert.equal(await page.getByTestId(sheetId).getByText("¥3,000", { exact: true }).count(), 1, "a list fact on the first frame");
+  await page.getByTestId("events-summary-primary").waitFor({ timeout: 4000 });
+  assert.equal(await page.getByTestId(sheetId).getByText("还剩 12 个名额 · 报名到 11/26", { exact: true }).count(), 1);
+  const after = await measure("events-summary-primary");
+  assert.equal(after.sheetH, first.sheetH, "the sheet keeps its height");
+  assert.deepEqual(after.detail, first.detail, "查看详情 does not move");
+  assert.deepEqual(after.primary, first.primary, "the primary replaces its placeholder at the same size and place");
+  // The harness page scrolls with the sheet in it: press ✕ and the card on the elements themselves.
+  await page.getByTestId("events-summary-close").evaluate((el) => (el as HTMLElement).click());
+  await page.getByTestId(sheetId).waitFor({ state: "detached" });
+  await page.getByTestId("events-discover-card-ev-6").evaluate((el) => (el as HTMLElement).click());
+  await page.getByTestId("events-summary-primary").waitFor({ timeout: 500 });
+  assert.equal(await page.getByTestId("events-summary-intro-pending").count(), 0, "reopening the same event uses the last answer");
+});

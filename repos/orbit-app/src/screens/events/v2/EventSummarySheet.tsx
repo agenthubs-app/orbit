@@ -17,12 +17,21 @@ import { useBackHandler } from "../../../components/ui/useBackHandler";
 import { createThemedStyles } from "../../../design/theme";
 import { useOrbitApiBaseUrl } from "../../../api/ApiBaseUrlProvider";
 import { coverUri } from "./event-cover";
-import { eventSummary, nextEventLine, type EventSummaryNext, type EventSummaryPerson, type EventSummaryRow } from "./event-summary-model";
+import type { EventSummaryResponse } from "../../../api/contract/event-summary";
+import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
+import { eventSummary, nextEventLine, rowWithSummary, type EventSummaryNext, type EventSummaryPerson, type EventSummaryRow } from "./event-summary-model";
+import { Bone, Bones } from "./loading-ui";
 import { useJourneyApi } from "./journey-api";
 import { useRelevanceT } from "./Relevance";
 import { useJourneyT } from "./useJourneyT";
 
 export const SUMMARY_SHEET_RATIO = 0.76;
+
+// 2026-11-23 先出布局再填内容：同一活动再次打开先用上次的摘要（按 服务器 + 账号 + 语言 + 活动 区分），后台再刷新。
+const lastSummary = new Map<string, EventSummaryResponse>();
+const LAST_SUMMARY_MAX = 40;
+/** Tests: forget the remembered summaries. */
+export function clearSummaryCache(): void { lastSummary.clear(); }
 /** 往上拖超过这么多就展开到全屏。 */
 const EXPAND_DRAG = 60;
 
@@ -42,7 +51,33 @@ export function EventSummarySheet({ row, tone, onClose, now = Date.now() }: { ro
   const [following, setFollowing] = useState<Record<string, boolean>>({});
   useEffect(() => { setShown(row); setExpanded(false); }, [row]);
   const visible = shown !== null;
-  const summary = useMemo(() => (shown ? eventSummary(shown, { language, now, t }) : null), [language, now, shown, t]);
+  const auth = useOrbitAuthSession();
+  const keyOf = useCallback((eventId: string) => `${baseUrl}\n${auth.actorId ?? ""}\n${language}\n${eventId}`, [auth.actorId, baseUrl, language]);
+  // The summary answer for the shown event: the remembered one at once, then the fresh one in place. `failed` = keep the
+  // list facts and decide the button from them (as before the summary existed).
+  const [answer, setAnswer] = useState<{ key: string; data: EventSummaryResponse | null } | null>(null);
+  const shownId = shown?.eventId ?? null;
+  useEffect(() => {
+    if (!shownId) return;
+    const key = keyOf(shownId);
+    let live = true;
+    setAnswer(lastSummary.has(key) ? { data: lastSummary.get(key)!, key } : null);
+    void api.summary(shownId).then((result) => {
+      if (!live) return;
+      if (result.ok) {
+        lastSummary.delete(key); lastSummary.set(key, result.data);
+        if (lastSummary.size > LAST_SUMMARY_MAX) lastSummary.delete(lastSummary.keys().next().value!);
+        setAnswer({ data: result.data, key });
+      } else setAnswer((current) => (current?.key === key && current.data ? current : { data: null, key }));
+    });
+    return () => { live = false; };
+  }, [api, keyOf, shownId]);
+  const merged = useMemo<EventSummaryRow | null>(() => {
+    if (!shown) return null;
+    if (!answer || answer.key !== keyOf(shown.eventId)) return shown;
+    return answer.data ? rowWithSummary(shown, answer.data, now) : { ...shown, summaryLoaded: true };
+  }, [answer, keyOf, now, shown]);
+  const summary = useMemo(() => (merged ? eventSummary(merged, { language, now, t }) : null), [language, merged, now, t]);
 
   const offset = useSharedValue(reduced ? 0 : height);
   useEffect(() => {
@@ -74,21 +109,23 @@ export function EventSummarySheet({ row, tone, onClose, now = Date.now() }: { ro
       case "myRegistration": return { label: t("eventsV2.panelMyRegistration"), onPress: () => go(action.href) };
       case "waitlist": return { label: t("eventsV2.panelWaitlist"), onPress: () => go(action.href) };
       case "venueRecord": return { label: t("eventsV2.panelVenueRecord"), onPress: () => go(action.href) };
-      case "nextEvent": return { label: t("eventsV2.panelNextEvent"), onPress: () => setShown(action.next as EventSummaryRow) };
+      case "nextEvent": return { label: t("eventsV2.panelNextEvent"), onPress: () => setShown({ area: null, emoji: action.next.emoji ?? "", ...action.next } as EventSummaryRow) };
       case "disabled": return { disabled: true, label: t(action.reason === "full" ? "eventsV2.panelFull" : "eventsV2.panelClosed") };
       case "follow": return isFollowing || !action.organizerId
         ? { disabled: true, label: t(isFollowing ? "eventsV2.panelFollowing" : "eventsV2.panelFollowOrganizer") }
         : { label: t("eventsV2.panelFollowOrganizer"), onPress: () => { const id = shown.eventId; setFollowing((current) => ({ ...current, [id]: true })); void api.follow(action.organizerId!, true).then((result) => { if (!result.ok) setFollowing((current) => ({ ...current, [id]: false })); }); } };
+      case "pending": return null;
     }
   })();
-  const markLabel = (key: "ended" | "registered" | "attended") => t(key === "ended" ? "eventsV2.panelEnded" : key === "registered" ? "eventsV2.panelRegistered" : "eventsV2.panelAttended");
+  const markLabel = (key: (typeof summary.marks)[number]["key"]) => t(key === "ended" ? "eventsV2.panelEnded" : key === "registered" ? "eventsV2.panelRegistered" : key === "attended" ? "eventsV2.panelAttended" : key === "pending_review" ? "eventsV2.panelPendingReview" : "eventsV2.panelWaitlisted");
+  const people = summary.people;
 
   return (
     <UiPortal>
       <View accessibilityViewIsModal onAccessibilityEscape={close} style={StyleSheet.absoluteFill} testID="events-summary">
         <Scrim onPress={close} />
         <View pointerEvents="box-none" style={styles.anchor}>
-          <Animated.View accessibilityLabel={summary.title} onLayout={(event) => setSheetHeight(event.nativeEvent.layout.height)} style={[styles.sheet, { maxHeight }, expanded ? { height: maxHeight } : null, sheetStyle]} testID={`events-summary-${summary.eventId}`}>
+          <Animated.View accessibilityLabel={summary.title} onLayout={(event) => setSheetHeight(event.nativeEvent.layout.height)} style={[styles.sheet, { height: maxHeight }, sheetStyle]} testID={`events-summary-${summary.eventId}`}>
             <GestureDetector gesture={drag}>
               <View accessibilityRole="adjustable" accessibilityLabel={summary.title} style={styles.grabArea}><View style={styles.grab} /></View>
             </GestureDetector>
@@ -107,7 +144,7 @@ export function EventSummarySheet({ row, tone, onClose, now = Date.now() }: { ro
               ) : null}
               {summary.marks.length ? (
                 <View style={styles.marks} testID="events-summary-marks">
-                  {summary.marks.map((mark) => <Chip key={mark.key} label={markLabel(mark.key)} tone={mark.tone === "teal" ? "teal" : "neutral"} {...(mark.key === "ended" ? {} : { icon: "check" as const })} />)}
+                  {summary.marks.map((mark) => <Chip key={mark.key} label={markLabel(mark.key)} tone={mark.tone === "teal" ? "teal" : "neutral"} {...(mark.tone === "teal" ? { icon: "check" as const } : {})} />)}
                 </View>
               ) : null}
               <View style={styles.facts}>
@@ -116,12 +153,18 @@ export function EventSummarySheet({ row, tone, onClose, now = Date.now() }: { ro
                     <View style={styles.factIcon}><Icon name={fact.icon} size={16} color={colors.ink3} /></View>
                     <View style={styles.grow}>
                       <UiText style={styles.factMain}>{fact.main}</UiText>
-                      {fact.sub ? <UiText style={styles.factSub}>{fact.sub}</UiText> : null}
+                      {fact.sub === "pending" ? <Bones testID="events-summary-seats-pending"><Bone w="58%" h={12} style={styles.subBone} /></Bones>
+                        : fact.sub ? <UiText style={styles.factSub}>{fact.sub}</UiText> : null}
                     </View>
                   </View>
                 ))}
               </View>
-              {summary.intro ? <Section title={t("eventsV2.panelIntro")}><UiText style={styles.intro} numberOfLines={4}>{summary.intro}</UiText></Section> : null}
+              {summary.intro === "pending" ? (
+                // 4 lines at the intro's own line height, so the text replaces it in place.
+                <Section title={t("eventsV2.panelIntro")} testID="events-summary-intro-pending">
+                  <Bones>{[100, 96, 92, 64].map((w) => <View key={w} style={styles.introLine}><Bone w={`${w}%`} h={12} /></View>)}</Bones>
+                </Section>
+              ) : summary.intro ? <Section title={t("eventsV2.panelIntro")}><UiText style={styles.intro} numberOfLines={4}>{summary.intro}</UiText></Section> : null}
               {summary.relevance.length ? (
                 <Section title={t("eventsV2.relTitle")} testID="events-summary-relevance">
                   <View style={styles.rel}>
@@ -134,11 +177,16 @@ export function EventSummarySheet({ row, tone, onClose, now = Date.now() }: { ro
                   </View>
                 </Section>
               ) : null}
-              {summary.people ? (
-                <Section title={t(summary.people.title === "met" ? "eventsV2.panelMet" : "eventsV2.panelAttendees")} testID="events-summary-people">
+              {people && "pending" in people ? (
+                // One avatar row (28 tall), the same height as the filled row.
+                <Section title={people.title ? t("eventsV2.panelAttendees") : null} testID="events-summary-people-pending">
+                  <Bones style={styles.ppl}><Bone w={28} h={28} r={14} /><Bone w="40%" h={12} /></Bones>
+                </Section>
+              ) : people ? (
+                <Section title={t(people.title === "met" ? "eventsV2.panelMet" : "eventsV2.panelAttendees")} testID="events-summary-people">
                   <View style={styles.ppl}>
-                    {summary.people.preview.length ? <Avatars people={summary.people.preview} /> : null}
-                    {summary.people.text ? <UiText style={styles.pplText}>{summary.people.text}</UiText> : null}
+                    {people.preview.length ? <Avatars people={people.preview} /> : null}
+                    {people.text ? <UiText style={styles.pplText}>{people.text}</UiText> : null}
                   </View>
                 </Section>
               ) : null}
@@ -148,9 +196,11 @@ export function EventSummarySheet({ row, tone, onClose, now = Date.now() }: { ro
               <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.panelSeeDetail")} onPress={() => go(summary.detailHref)} style={[styles.btn, styles.btnSoft]} testID="events-summary-detail">
                 <UiText style={styles.btnText} numberOfLines={1}>{t("eventsV2.panelSeeDetail")}</UiText>
               </UiPressable>
-              <UiPressable accessibilityRole="button" accessibilityLabel={primary.label} accessibilityState={{ disabled: Boolean(primary.disabled) }} disabled={Boolean(primary.disabled)} onPress={primary.onPress} style={[styles.btn, primary.disabled ? styles.btnSoft : styles.btnPrimary]} testID="events-summary-primary">
-                <UiText style={[styles.btnText, primary.disabled ? { color: colors.ink3 } : { color: colors.bg }]} numberOfLines={1}>{primary.label}</UiText>
-              </UiPressable>
+              {primary ? (
+                <UiPressable accessibilityRole="button" accessibilityLabel={primary.label} accessibilityState={{ disabled: Boolean(primary.disabled) }} disabled={Boolean(primary.disabled)} onPress={primary.onPress} style={[styles.btn, primary.disabled ? styles.btnSoft : styles.btnPrimary]} testID="events-summary-primary">
+                  <UiText style={[styles.btnText, primary.disabled ? { color: colors.ink3 } : { color: colors.bg }]} numberOfLines={1}>{primary.label}</UiText>
+                </UiPressable>
+              ) : <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.btn, styles.btnSoft]} testID="events-summary-primary-pending" />}
             </View>
           </Animated.View>
         </View>
@@ -159,9 +209,10 @@ export function EventSummarySheet({ row, tone, onClose, now = Date.now() }: { ro
   );
 }
 
-function Section({ title, children, testID }: { title: string; children: React.ReactNode; testID?: string }) {
+function Section({ title, children, testID }: { title: string | null; children: React.ReactNode; testID?: string }) {
   const { styles } = useStyles();
-  return <View style={styles.sec} {...(testID ? { testID } : {})}><UiText style={styles.secTitle}>{title}</UiText>{children}</View>;
+  // title null = not known yet (an ended event: 参加者 or 你在这场见过的人): a bone at the title's height.
+  return <View style={styles.sec} {...(testID ? { testID } : {})}>{title ? <UiText style={styles.secTitle}>{title}</UiText> : <Bones style={styles.secTitleBone}><Bone w={72} h={12} /></Bones>}{children}</View>;
 }
 
 /** kit .avs：28 圆、2px 白边、互相压 8；颜色按位置 c1 c3 c5 c1。 */
@@ -246,4 +297,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   btnSoft: { backgroundColor: colors.surface2 },
   btnPrimary: { backgroundColor: colors.ink },
   btnText: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
+  // Skeletons keep the filled block's height: sub line 18 · intro line 22.1 · title 18 + 8; the primary's placeholder is the button's own box.
+  subBone: { marginVertical: 3 },
+  introLine: { height: 22.1, justifyContent: "center" },
+  secTitleBone: { height: 18, justifyContent: "center", marginBottom: 8 },
 }));
