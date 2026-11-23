@@ -7,13 +7,16 @@ import type { CSSProperties } from "react";
 import styles from "./PageSkeleton.module.css";
 
 // `inboxCard`: the inbox's 420 / 1fr card alone, under tabs the page has already drawn.
-export type PageSkeletonKind = "home" | "network" | "agent" | "events" | "todo" | "inbox" | "inboxCard";
+// 2026-11-24 eventsAssess / eventsGoing：活动的 評価 / 参加予定 页签（路由骨架按 ?tab= 选，见 RouteSkeleton）；宽屏同 events。
+export type PageSkeletonKind = "home" | "network" | "agent" | "events" | "eventsAssess" | "eventsGoing" | "todo" | "inbox" | "inboxCard";
 
 // Column span (of 12) and height of each card, in the order the page draws them.
 const CARDS: Record<Exclude<PageSkeletonKind, "agent" | "inbox" | "inboxCard">, ReadonlyArray<readonly [number, number]>> = {
   home: [[8, 236], [4, 236], [4, 208], [8, 208]],
   network: [[4, 176], [5, 176], [3, 176], [12, 440]],
   events: [[12, 120], [4, 280], [4, 280], [4, 280]],
+  eventsAssess: [[12, 120], [4, 280], [4, 280], [4, 280]],
+  eventsGoing: [[12, 120], [4, 280], [4, 280], [4, 280]],
   todo: [[7, 300], [5, 300], [12, 240]],
 };
 
@@ -44,6 +47,8 @@ const PHONE: Partial<Record<PageSkeletonKind, { inset?: 16; bareFrom?: number; b
   network: { bareFrom: 0, blocks: [[0, 17, "line"], [27, 40, "pill"], [79, 99, "card"], [193, 32, "line"], [243, 420, "card"]] },
   agent: { blocks: [[0, 154, "plain"], [166, 84, "card"], [260, 84, "card"], [354, 84, "card"], [448, 84, "card"], [560, 54, "pill"]] },
   events: { bareFrom: 52, blocks: [[0, 40, "pill"], [52, 443, "card"], [515, 22, "line"], [561, 112, "card"], [685, 112, "card"]] },
+  eventsAssess: { bareFrom: 0, blocks: [[0, 82, "card"], [96, 123, "card"], [233, 80, "card"]] },
+  eventsGoing: { bareFrom: 0, blocks: [[0, 36, "pill"], [48, 266, "card"]] },
   todo: { inset: 16, blocks: [[0, 98, "card"], [116, 117, "plain"], [251, 101, "card"]] },
 };
 

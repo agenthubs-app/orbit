@@ -16,6 +16,7 @@ import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { ShellSearchButton } from "../shell/Orbit2026Shell";
 import { ShellPage, useInShell } from "../shell/slots";
+import { PageSkeletonBody } from "../shell/PageSkeleton";
 import { Drawer, Icon, Kbd, Modal, Orbit2026Scope, SampleTag, Segmented, ToastProvider, useStandardCopy, useToast } from "../ui";
 import { Assessing, FillThree, LoginRequired, NotEventPage, PasteText } from "./AssessFlow";
 import { AssessmentPage, AssessmentRail, translator, type Translate } from "./AssessmentDetail";
@@ -257,7 +258,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
       {/* 2026-11-23 手机顶栏：标题与页签由外壳画（phoneTabs）；页面不再画自己的顶部行。 */}
       {tier !== "narrow" && !inShell ? <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 12px" }}>{segment}</div> : null}
       {tab === "discover" ? <div data-events-discover="">{discover ?? <DiscoverTab language={language} tier={tier} signedIn nowIso={nowIso} onRail={setDiscoverRail} onSubtitle={setDiscoverSubtitle} phoneSearch={phoneSearch} myStatus={myStatus} />}</div> : null}
-      {tab === "going" ? (upcoming === null || past === null ? <GoingSkeleton /> : <MyEvents language={language} upcoming={upcoming} past={past} now={now} t={t} selectedPrivate={tier === "wide" ? privateOpen : null} onOpenPrivate={openPrivate} />) : null}
+      {tab === "going" ? (upcoming === null || past === null ? <GoingSkeleton tier={tier} /> : <MyEvents language={language} upcoming={upcoming} past={past} now={now} t={t} selectedPrivate={tier === "wide" ? privateOpen : null} onOpenPrivate={openPrivate} />) : null}
       {privateItem && tier !== "wide" ? (
         <Drawer open onClose={() => openPrivate(null)} title={privateItem.title} size="lg">
           <PrivateEventPanel item={privateItem} language={language} titled />
@@ -377,14 +378,8 @@ function AssessCard({ t, tier, big, url, setUrl, onAssessUrl, busy, availability
 function AssessSkeleton({ tier }: { tier: Tier }) {
   const label = useStandardCopy().loading.loading;
   const lines = (widths: readonly (number | string)[]) => widths.map((width, index) => <i key={index} className={`${styles.pendBone} ${styles.pendBlock}`} style={{ width, height: index === 0 ? 16 : 12 }} />);
-  if (tier === "narrow") {
-    return (
-      <div className={styles.stack} data-events-assess="" role="progressbar" aria-busy aria-label={label} data-events-assess-pending="">
-        <div className={`${styles.card} ${styles.evalBox} ${styles.pendCard}`} style={{ display: "flex", minHeight: 150 }}>{lines(["40%", "100%", "100%"])}</div>
-        <div className={`${styles.card} ${styles.nextRow}`} style={{ minHeight: 72 }}>{lines(["60%"])}</div>
-      </div>
-    );
-  }
+  // 2026-11-24 手机：和路由骨架同一套块（PageSkeleton eventsAssess），直接打开和切换页签时都不跳。
+  if (tier === "narrow") return <div data-events-assess="" data-events-assess-pending=""><PageSkeletonBody kind="eventsAssess" label={label} bare /></div>;
   const medium = tier === "medium";
   return (
     <div className={styles.wgrid} data-events-assess="" role="progressbar" aria-busy aria-label={label} data-events-assess-pending="">
@@ -396,8 +391,10 @@ function AssessSkeleton({ tier }: { tier: Tier }) {
 }
 
 // The 参加予定 tab before its reads are in: the heading line and the three upcoming cards (span 4).
-function GoingSkeleton() {
+function GoingSkeleton({ tier }: { tier: Tier }) {
   const label = useStandardCopy().loading.loading;
+  // 2026-11-24 手机：和路由骨架同一套块（PageSkeleton eventsGoing：子页签一行 36 + 卡片）。
+  if (tier === "narrow") return <div data-events-going="pending"><PageSkeletonBody kind="eventsGoing" label={label} bare /></div>;
   return (
     <div className={styles.wgrid} role="progressbar" aria-busy aria-label={label} data-events-going="pending">
       <div className={`${styles.span12} ${styles.cardH}`} style={{ margin: "0 0 -6px" }}><i className={styles.pendBone} style={{ width: 120, height: 16 }} /></div>
