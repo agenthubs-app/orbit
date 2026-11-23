@@ -141,7 +141,7 @@ export function LandingMore({ events }: { events: readonly LandingEvent[] | null
         <p>{t({ ja: "申し込んだイベントの参加者から、あなたに合う人を最大5人選びます。理由と最初の質問が付くので、会場で迷いません。", zh: "从你报名的活动参加者里，选出最多 5 位适合你的人，附上理由和开场问题，到了会场不用发愁。", en: "From the attendees of an event you joined, Orbit picks up to 5 people who suit you, with reasons and an opening question." })}</p>
         <Points t={t} items={[
           { body: { ja: "二人のプロフィールに書かれていることだけで理由を作ります。", zh: "理由只来自两人资料里写的内容。", en: "Reasons come only from what both profiles say." }, emoji: "🤝", title: { ja: "求めていることと、提供できること", zh: "想找的和能提供的", en: "What you need, what they offer" }, tone: "teal" },
-          { body: { ja: "相手が何語で書いていても、あなたの言語で読めます。", zh: "对方用什么语言写，你都能用自己的语言读。", en: "Whatever language they wrote in, you read it in yours." }, emoji: "🌐", title: { ja: "日本語、中文、English", zh: "日本語、中文、English", en: "日本語, 中文, English" }, tone: "blue" },
+          { body: { ja: "相手が何語で書いていても、あなたの言語で読めます。", zh: "对方用什么语言写，你都能用自己的语言读。", en: "Whatever language they wrote in, you read it in yours." }, emoji: "🌐", title: { ja: "日本語、中文、English", zh: "日本語、中文、English", en: "Japanese, Chinese, English" }, tone: "blue" },
           { body: { ja: "名刺を撮るか QR で交換すると、上の流れにつながります。", zh: "拍下名片或用 QR 交换，就接上前面的流程。", en: "Snap their card or swap by QR, and they join the flow above." }, emoji: "📇", title: { ja: "会った人は、そのまま人脈に", zh: "见过的人直接进人脉", en: "Who you meet joins your network" }, tone: "apricot" },
         ]} />
       </div>
@@ -231,7 +231,7 @@ export function LandingMore({ events }: { events: readonly LandingEvent[] | null
       <span className={s.lang}>
         {([["ja", shellCopy.languageJa.ja], ["zh", shellCopy.languageZh.zh], ["en", "English"]] as const).map(([code, label]) => code === language
           ? <b key={code} aria-current="true">{label}</b>
-          : <button key={code} type="button" lang={code} onClick={() => setLanguage(code)}>{label}</button>)}
+          : <button key={code} type="button" className={`btn ${s.langBtn}`} lang={code} onClick={() => setLanguage(code)}>{label}</button>)}
       </span>
     </footer>
   </Orbit2026Scope>;

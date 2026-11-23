@@ -20,6 +20,7 @@ import { Drawer, Icon, Kbd, Modal, Orbit2026Scope, SampleTag, Segmented, ToastPr
 import { Assessing, FillThree, LoginRequired, NotEventPage, PasteText } from "./AssessFlow";
 import { AssessmentPage, AssessmentRail, translator, type Translate } from "./AssessmentDetail";
 import { DiscoverHelpRail, DiscoverRail, DiscoverTab, type DiscoverRailState } from "./DiscoverTab";
+import { EventSidePanel } from "./EventSidePanel";
 import { eventsApi, newIdempotencyKey, pollAssessment } from "./events-api";
 import { allDayLabelOf, cardLine, eventWhen, isShownInGrid, monthOf, orderAssessed, relativeDay, tabOf } from "./events-model";
 import { PrivateEventPanel } from "./PrivateEventPanel";
@@ -234,7 +235,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   };
   // Until the rail's data is in, undefined: the shell keeps its rail skeleton (no-flash rule 3).
   const rail = tier !== "wide" ? false : tab === "discover"
-    ? (!discover && !discoverRail.loaded ? undefined : discoverRail.row ? <DiscoverRail row={discoverRail.row} language={language} /> : <DiscoverHelpRail language={language} />)
+    ? (!discover && !discoverRail.loaded ? undefined : discoverRail.panel ? <EventSidePanel key={discoverRail.panel.eventId} eventId={discoverRail.panel.eventId} seed={discoverRail.panel.seed} tone={discoverRail.panel.tone} language={language} now={discoverRail.panel.now} mode="rail" onClose={discoverRail.panel.onClose} onSelect={discoverRail.panel.onSelect} /> : discoverRail.row ? <DiscoverRail row={discoverRail.row} language={language} /> : <DiscoverHelpRail language={language} />)
     : !overviewLoaded ? undefined
     : privateItem ? <PrivateEventPanel item={privateItem} language={language} />
     : shownRailItem
@@ -260,7 +261,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
           <div className={styles.phoneSeg}>{segmentFor(true)}</div>
         </>
       ) : !inShell ? <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 12px" }}>{segment}</div> : null}
-      {tab === "discover" ? <div data-events-discover="">{discover ?? <DiscoverTab language={language} tier={tier} signedIn onRail={setDiscoverRail} onSubtitle={setDiscoverSubtitle} />}</div> : null}
+      {tab === "discover" ? <div data-events-discover="">{discover ?? <DiscoverTab language={language} tier={tier} signedIn nowIso={nowIso} onRail={setDiscoverRail} onSubtitle={setDiscoverSubtitle} />}</div> : null}
       {tab === "going" ? (upcoming === null || past === null ? <GoingSkeleton /> : <MyEvents language={language} upcoming={upcoming} past={past} now={now} t={t} selectedPrivate={tier === "wide" ? privateOpen : null} onOpenPrivate={openPrivate} />) : null}
       {privateItem && tier !== "wide" ? (
         <Drawer open onClose={() => openPrivate(null)} title={privateItem.title} size="lg">

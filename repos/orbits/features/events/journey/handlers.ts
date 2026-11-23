@@ -15,6 +15,7 @@ import { eventOverviewResponseSchema } from "../../../shared/api-schema/event-ov
 import { eventPrepChecklistPatchSchema, eventPrepResponseSchema } from "../../../shared/api-schema/event-prep";
 import { eventRecommendationDismissInputSchema, eventRecommendationDismissResultSchema } from "../../../shared/api-schema/event-recommendation-feedback";
 import { eventSearchQueryObject, eventSearchResponseSchema } from "../../../shared/api-schema/event-search";
+import { eventSummaryResponseSchema } from "../../../shared/api-schema/event-summary";
 import { eventCodeResolveResponseSchema } from "../../../shared/api-schema/event-code";
 import { eventVenueMemoInputObject, eventVenueMemoResultSchema, eventVenueResponseSchema } from "../../../shared/api-schema/event-venue";
 import { organizerFollowResultSchema } from "../../../shared/api-schema/organizer-follow";
@@ -139,6 +140,8 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       const allAttendees = new URL(request.url).searchParams.get("attendees") === "all";
       return service.overview(actorId, eventId(params), language, platform, allAttendees ? { allAttendees } : undefined);
     }, deps),
+    // 2026-11-23 探す 简介栏：按活动 ID 的轻量读取（未登录也可读公开部分）。
+    summary: journeyRoute({ auth: "optional", schema: eventSummaryResponseSchema }, async ({ actorId, language, params, service }) => service.summary(actorId, eventId(params), language), deps),
     prep: journeyRoute({ auth: "required", schema: eventPrepResponseSchema }, async ({ actorId, language, params, service }) => service.prep(actorId!, eventId(params), language), deps),
     patchChecklist: journeyRoute({ auth: "required", schema: eventPrepResponseSchema, write: true }, async ({ actorId, language, params, request, service }) => {
       const parsed = await body(request, eventPrepChecklistPatchSchema);

@@ -105,7 +105,8 @@
 .foot { display: flex; flex-wrap: wrap; gap: 10px 26px; padding: 22px 0 36px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: var(--fs-meta); }
 .lang { margin-left: auto; display: flex; gap: 14px; font-weight: var(--fw-bold); }
 .lang b { color: var(--ink); }
-.lang button { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+/* Two classes beat the global `.btn` (height / padding / radius / background): a plain text link look. */
+.langBtn.langBtn { display: inline; height: auto; min-height: 0; padding: 0; border: 0; border-radius: var(--r-none); background: none; color: inherit; font: inherit; line-height: inherit; letter-spacing: inherit; white-space: nowrap; box-shadow: none; cursor: pointer; }
 
 /* ≤1220: same breakpoint as the first screen. */
 @media (max-width: 1220px) {

@@ -13,6 +13,7 @@ import { eventOverviewResponseSchema } from "../../../../../shared/api-schema/ev
 import { eventPrepResponseSchema } from "../../../../../shared/api-schema/event-prep";
 import { eventRecommendationDismissResultSchema } from "../../../../../shared/api-schema/event-recommendation-feedback";
 import { eventSearchResponseSchema } from "../../../../../shared/api-schema/event-search";
+import { eventSummaryResponseSchema } from "../../../../../shared/api-schema/event-summary";
 import { eventVenueMemoResultSchema, eventVenueResponseSchema } from "../../../../../shared/api-schema/event-venue";
 import { organizerFollowResultSchema } from "../../../../../shared/api-schema/organizer-follow";
 import type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterResponse } from "../../../../../shared/contract/event-after";
@@ -22,6 +23,7 @@ import type { EventOverviewResponse } from "../../../../../shared/contract/event
 import type { EventPrepChecklistItem, EventPrepResponse } from "../../../../../shared/contract/event-prep";
 import type { EventRecommendationDismissReason, EventRecommendationDismissResult } from "../../../../../shared/contract/event-recommendation-feedback";
 import type { EventSearchResponse } from "../../../../../shared/contract/event-search";
+import type { EventSummaryResponse } from "../../../../../shared/contract/event-summary";
 import type { EventVenueResponse } from "../../../../../shared/contract/event-venue";
 import type { OrganizerFollowResult } from "../../../../../shared/contract/organizer-follow";
 import { eventsCall as call, newIdempotencyKey } from "./events-api";
@@ -46,6 +48,7 @@ export function discoverQueryString(query: EventDiscoverQuery): string {
 export const journeyApi = {
   discover: (query: EventDiscoverQuery) => call(`/api/events/discover?${discoverQueryString(query)}`, undefined, eventDiscoverResponseSchema as ZodType<EventDiscoverResponse>),
   search: (q: string, limit = 5) => call(`/api/events/search?q=${encodeURIComponent(q)}&limit=${limit}`, undefined, eventSearchResponseSchema as ZodType<EventSearchResponse>),
+  summary: (eventId: string) => call(`/api/events/${id(eventId)}/summary`, undefined, eventSummaryResponseSchema as ZodType<EventSummaryResponse>),
   overview: (eventId: string, allAttendees = false) => call(`/api/events/${id(eventId)}/overview${allAttendees ? "?attendees=all" : ""}`, undefined, eventOverviewResponseSchema as ZodType<EventOverviewResponse>),
   prep: (eventId: string) => call(`/api/events/${id(eventId)}/prep`, undefined, eventPrepResponseSchema as ZodType<EventPrepResponse>),
   checklist: (eventId: string, items: readonly EventPrepChecklistItem[]) => call(`/api/events/${id(eventId)}/prep/checklist`, { body: JSON.stringify({ items }), method: "PATCH" }, eventPrepResponseSchema as ZodType<EventPrepResponse>),

@@ -11129,6 +11129,132 @@
         }
       }
     },
+    "event-summary.ts::EventSummaryResponse": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "coverUrl": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "endsAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "venue": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "priceYen": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "description": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "capacity": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "remaining": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "registrationClosesAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "waitlistEnabled": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "registrationCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "EventOverviewRegistrationStatus"
+        },
+        "ended": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "organizer": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "organizerId": {
+              "optional": false,
+              "kind": "text",
+              "type": "string | null"
+            },
+            "name": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "unnamed": {
+              "optional": true,
+              "kind": "text",
+              "type": "boolean"
+            },
+            "following": {
+              "optional": false,
+              "kind": "text",
+              "type": "boolean"
+            }
+          }
+        },
+        "attendeeInitials": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "met": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ count: number; notInContacts: number; initials: readonly string[]; hasRecord: boolean; } | null"
+        },
+        "next": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ eventId: string; title: string; startsAt: string; venue: string | null; coverUrl: string | null; emoji: string; } | null"
+        }
+      }
+    },
     "event-venue.ts::EventVenueState": {
       "kind": "enum",
       "values": [
@@ -16957,6 +17083,7 @@
         "EventSearchPersonHit",
         "EventSearchResponse",
         "EventStatusCode",
+        "EventSummaryResponse",
         "EventVenueExchangeState",
         "EventVenuePerson",
         "EventVenueRelation",

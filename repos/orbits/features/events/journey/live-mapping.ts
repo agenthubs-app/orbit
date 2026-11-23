@@ -61,6 +61,8 @@ export interface AdmissionFacts {
   capacity: number | null;
   admissionMode: string | null;
   registrationClosesAt: string | null;
+  /** 2026-11-23 探す 简介栏：满员 / 截止后可排候补。旧读取没有这一项 = false。 */
+  waitlistEnabled?: boolean;
 }
 
 export interface CanonicalEventLike {
@@ -123,6 +125,7 @@ export function journeyEventFromCanonical(event: CanonicalEventLike, extra: { re
     startsAt: event.startsAt,
     title: event.title,
     venue: event.venue?.trim() || null,
+    waitlistEnabled: Boolean(extra.policy?.waitlistEnabled),
   };
 }
 

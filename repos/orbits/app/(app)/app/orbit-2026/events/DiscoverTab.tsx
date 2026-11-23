@@ -18,7 +18,8 @@ import { PageSkeletonBody } from "../shell/PageSkeleton";
 import { eventsJourneyCopy as jc } from "../copy/eventsJourney";
 import { DefaultRail } from "../shell/Orbit2026Shell";
 import { pickCopy } from "../copy/types";
-import { BottomSheet, ContextMenu, FilterOption, Icon, Kbd, SampleTag, Toggle, useStandardCopy, useToast, type MenuItem } from "../ui";
+import { BottomSheet, ContextMenu, Drawer, FilterOption, Icon, Kbd, SampleTag, Toggle, useStandardCopy, useToast, type MenuItem } from "../ui";
+import { EventSidePanel, type PanelSeed, type PanelTone } from "./EventSidePanel";
 import { translator as assessTranslator } from "./AssessmentDetail";
 import { eventsApi, newIdempotencyKey } from "./events-api";
 import { ringColor } from "./events-model";
@@ -28,6 +29,7 @@ import { readSavedPlanGoal, type SavedPlanGoal } from "../plan/saved-goal";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
 import r from "./record.module.css";
+import sp from "./side-panel.module.css";
 
 export type JourneyT = (key: keyof typeof jc, values?: Record<string, string | number>) => string;
 export function journeyTranslator(language: OrbitLanguage): JourneyT {
@@ -103,8 +105,10 @@ export function queryFromParams(params: URLSearchParams | null): EventDiscoverQu
   };
 }
 
+/** 2026-11-23 简介栏：点了哪张卡（1440 画在右栏；834 / 390 由 DiscoverTab 自己画浮层 / 底部面板）。 */
+export interface DiscoverPanelState { eventId: string; seed: PanelSeed | null; tone: PanelTone; now: Date; onClose: () => void; onSelect: (eventId: string) => void }
 /** `loaded`: false until the first discover answer is in (the page keeps the shell's rail skeleton till then). */
-export interface DiscoverRailState { loaded: boolean; row: EventDiscoverRow | null; signedOut: boolean }
+export interface DiscoverRailState { loaded: boolean; row: EventDiscoverRow | null; signedOut: boolean; panel?: DiscoverPanelState | null }
 
 /** The saved goal (no-plan guide card) as last read: `{ goal }` so a remembered "no goal" is told apart from "not read". */
 const SAVED_GOAL_KEY = "events:discover:savedGoal";
@@ -142,15 +146,17 @@ export function EventCard({ row, index, language, t, selected, faded, ended, met
   const fee = feeText(row.priceYen, t);
   const tone = emoTone(index);
   const activate = onSelect ?? onOpen;
+  // 2026-11-23：已结束卡封面保持原色，左上角加「已结束」（取代 10-29 的灰卡片）；底部不再放「終了」chip。
+  const endTag = ended ? <span className={sp.endTag} data-discover-end-tag="">{t("endedChip")}</span> : null;
   const card = (
-    <div role="button" tabIndex={0} className={`${styles.evc} ${d.evc} ${d.ec} ${selected ? styles.sel : ""}`} onClick={activate} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); activate(); } }} data-discover-card={row.eventId} style={faded ? { flex: 1 } : undefined}>
+    <div role="button" tabIndex={0} className={`${styles.evc} ${d.evc} ${d.ec} ${selected ? `${styles.sel} ${sp.sel}` : ""}`} onClick={activate} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); activate(); } }} data-discover-card={row.eventId} style={faded ? { flex: 1 } : undefined}>
       {row.coverUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- 主办方上传的图（Blob / 站内路径），服务端已裁成 2:1
-        <div className={d.ecCover} data-discover-cover=""><img src={row.coverUrl} alt="" loading="lazy" style={coverPosition ? { objectPosition: coverPosition } : undefined} /></div>
+        <div className={d.ecCover} data-discover-cover=""><img src={row.coverUrl} alt="" loading="lazy" style={coverPosition ? { objectPosition: coverPosition } : undefined} />{endTag}</div>
       ) : band ? (
-        <div className={`${d.ecTile} ${d.ecBand} ${r[`band_${tone}`]} ${d[`tile_${tone}`]}`} data-discover-band=""><span className={`${styles.emo} ${r.bandEmo} ${d.ecEmo}`}>{row.emoji}</span></div>
+        <div className={`${d.ecTile} ${d.ecBand} ${r[`band_${tone}`]} ${d[`tile_${tone}`]}`} data-discover-band=""><span className={`${styles.emo} ${r.bandEmo} ${d.ecEmo}`}>{row.emoji}</span>{endTag}</div>
       ) : (
-        <div className={`${d.ecTile} ${d.ecPlain} ${d[`tile_${tone}`]}`}><span className={`${styles.emo} ${styles[`t_${tone}`]} ${d.ecEmo}`}>{row.emoji}</span></div>
+        <div className={`${d.ecTile} ${d.ecPlain} ${d[`tile_${tone}`]}`}><span className={`${styles.emo} ${styles[`t_${tone}`]} ${d.ecEmo}`}>{row.emoji}</span>{endTag}</div>
       )}
       {registered ? <span className={`${styles.chip} ${styles.regChip} ${row.coverUrl || band ? r.onImg : ""} ${d.ecReg}`} data-discover-registered="">{registered}</span> : null}
       <div className={d.ecBody}>
@@ -159,12 +165,12 @@ export function EventCard({ row, index, language, t, selected, faded, ended, met
         <div className={d.ecFoot}>
           <div className={d.ecChips}>{ended ? null : <RelevanceChips relevance={row.relevance} language={language} className={d.ecChipRow} />}</div>
           {registered ? <span className={`${styles.lbl} ${d.ecRegText}`}>{registered}</span> : null}
-          {ended ? <span className={`${styles.chip} ${d.ecEnd}`}>{t("endedChip")}</span> : fee ? <b className={d.ecFee}>{fee}</b> : null}
+          {ended ? null : fee ? <b className={d.ecFee}>{fee}</b> : null}
         </div>
       </div>
     </div>
   );
-  return <div className={`${styles.span4} ${d.ecCell} ${faded ? d.faded : ended ? d.ended : ""}`} style={{ display: "flex" }} data-discover-ended={ended ? "" : undefined} data-discover-row={listRow ? "" : undefined}>{card}</div>;
+  return <div className={`${styles.span4} ${d.ecCell} ${faded ? d.faded : ""}`} style={{ display: "flex" }} data-discover-ended={ended ? "" : undefined} data-discover-row={listRow ? "" : undefined}>{card}</div>;
 }
 
 function FilterPopover({ open, onClose, children, align }: { open: boolean; onClose: () => void; children: ReactNode; align?: "right" }) {
@@ -226,7 +232,7 @@ function useCardsPerRow(): number {
   return perRow;
 }
 
-export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { language: OrbitLanguage; tier: Tier; signedIn: boolean; onRail: (state: DiscoverRailState) => void; onSubtitle: (text: string) => void }) {
+export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle, nowIso }: { language: OrbitLanguage; tier: Tier; signedIn: boolean; onRail: (state: DiscoverRailState) => void; onSubtitle: (text: string) => void; /** 服务端给的「今」（本机示例时钟）；缺省 = 现在。 */ nowIso?: string }) {
   const t = useMemo(() => journeyTranslator(language), [language]);
   const at = useMemo(() => assessTranslator(language), [language]);
   const toast = useToast();
@@ -272,8 +278,21 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
   const past = query.period === "past";
   const flat = data !== null && !past && !data.popularityFallback && data.total <= 5 && data.all.length > 0;
   const firstRow = data ? (flat ? data.all[0] : data.planFit[0]) ?? null : null;
-  const railRow = data ? ([...data.planFit, ...data.all, ...data.community].find((row) => row.eventId === selected) ?? firstRow) : null;
-  useEffect(() => { onRail({ loaded: data !== null, row: data && !past && !data.popularityFallback ? railRow : null, signedOut: Boolean(data?.signedOut) }); }, [data, past, railRow, onRail]);
+  // 2026-11-23：没点卡片时右栏照旧（第一场的「選択中のイベント」或帮你挑活动）；点了卡片右栏换成简介栏（EventSidePanel）。
+  const railRow = firstRow;
+  const now = useMemo(() => (nowIso ? new Date(nowIso) : new Date()), [nowIso]);
+  // 可点开简介的卡片（按页面上的顺序，↑↓ 用）与各自的色调；「看下一场」换到列表外的活动时 seed 为 null。
+  const panelRows = useMemo(() => {
+    if (!data) return [] as { row: EventDiscoverRow; tone: PanelTone }[];
+    const lists = past ? [data.all] : data.popularityFallback ? [data.past ?? []] : flat ? [data.all, data.past ?? []] : tier === "narrow" ? [data.planFit, data.all, data.past ?? []] : [data.planFit, data.past ?? []];
+    return lists.flatMap((list) => list.map((row, index) => ({ row, tone: emoTone(index) as PanelTone })));
+  }, [data, past, flat, tier]);
+  const closePanel = useCallback(() => setSelected(null), []);
+  const panelEntry = selected ? panelRows.find((item) => item.row.eventId === selected) ?? null : null;
+  const panel: DiscoverPanelState | null = selected ? { eventId: selected, now, onClose: closePanel, onSelect: setSelected, seed: panelEntry?.row ?? null, tone: panelEntry?.tone ?? "teal" } : null;
+  const panelKey = selected ? `${selected}:${panelEntry ? "seed" : "none"}` : "";
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- panel 由 panelKey 决定（seed 对象每次渲染都是新的）
+  useEffect(() => { onRail({ loaded: data !== null, panel: tier === "wide" ? panel : null, row: data && !past && !data.popularityFallback ? railRow : null, signedOut: Boolean(data?.signedOut) }); }, [data, past, railRow, onRail, panelKey, tier, now]);
   useEffect(() => {
     if (!data) return;
     onSubtitle(past ? t("dSubtitlePast", { n: data.total }) : data.popularityFallback ? t("dSubtitleEmpty") : flat ? t("dSubtitleFew", { n: data.total }) : t("dSubtitleMany", { n: data.planFitTotal, period: query.period ? periodLabel(query.period, t) : "", total: data.total }));
@@ -282,6 +301,29 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
   // 2026-11-21 站内跳转（不整页重载：外壳、脚本、登录不重来，详情页能先画上次的结果）。
   const router = useRouter();
   const open = (href: string) => { router.push(`/app${href}`); };
+  // 点卡片：1440 第一次点 → 右栏简介，栏开着再点同一张 → 进详情；834 / 390 → 浮层 / 底部面板（只靠「查看详情」进详情）。
+  const pick = (row: EventDiscoverRow) => { if (tier === "wide" && selected === row.eventId) open(row.href); else setSelected(row.eventId); };
+  const pickRef = useRef(pick);
+  pickRef.current = pick;
+  // 键盘（1440，栏开着）：↑ ↓ 换卡，Enter 进详情，Esc 关闭。输入框、弹层里不接管。
+  useEffect(() => {
+    if (tier !== "wide" || !selected) return;
+    const key = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.closest("input, textarea, select, [contenteditable], [role=dialog], [role=menu]") !== null)) return;
+      if (event.key === "Escape") { setSelected(null); return; }
+      const at = panelRows.findIndex((item) => item.row.eventId === selected);
+      if (event.key === "Enter") { const row = panelRows[at]?.row; if (row && !target?.closest("a, button, [role=button]")) { event.preventDefault(); router.push(`/app${row.href}`); } return; }
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      const next = panelRows[at + (event.key === "ArrowDown" ? 1 : -1)];
+      if (!next) return;
+      event.preventDefault();
+      setSelected(next.row.eventId);
+      document.querySelector(`[data-discover-card="${CSS.escape(next.row.eventId)}"]`)?.scrollIntoView({ block: "nearest" });
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [tier, selected, panelRows, router]);
   const filterOn = data ? past || !data.popularityFallback : false;
   const set = (patch: Partial<EventDiscoverQuery>) => { setQuery((current) => ({ ...current, ...patch })); setPop(null); };
   const dismiss = async (row: EventDiscoverRow, reason: EventRecommendationDismissReason) => {
@@ -330,7 +372,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
   if (!data) return <div className={styles.wgrid} data-events-discover-tab="">{filters}<div className={styles.span12}><PageSkeletonBody kind="events" label={std.loading.loading} bare /></div></div>;
 
   // 2026-10-29：活动还少，開催済み以灰卡片平铺在结果下方（不折叠成入口行）；超过上限才给「すべて見る」。
-  const endedCards = (rows: readonly EventDiscoverRow[]) => { const bands = coverBands(rows, perRow); return rows.map((row, index) => <EventCard key={row.eventId} ended row={row} index={index} band={bands[index]} language={language} t={t} onOpen={() => open(row.href)} />); };
+  const endedCards = (rows: readonly EventDiscoverRow[]) => { const bands = coverBands(rows, perRow); return rows.map((row, index) => <EventCard key={row.eventId} ended row={row} index={index} band={bands[index]} language={language} t={t} selected={selected === row.eventId} onSelect={() => pick(row)} onOpen={() => open(row.href)} />); };
   const pastSection = !past && data.past?.length ? (
     <>
       <div className={`${styles.span12} ${styles.cardH} ${d.sectionHead}`} data-discover-past-section=""><h3>{t("pastTitle", { n: data.pastTotal ?? data.past.length })}</h3>{(data.pastTotal ?? 0) > data.past.length ? <button type="button" className={`btn ${styles.more} ${d.moreBtn}`} onClick={() => set({ period: "past" })}>{t("pastSeeAll")} <Icon name="right" size={16} /></button> : <span className={styles.lbl}>{t("byNewest")}</span>}</div>
@@ -338,11 +380,23 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
     </>
   ) : null;
 
+  const overlay = panel && tier !== "wide" ? (
+    tier === "medium" ? (
+      <Drawer open bare size="sm" className={sp.drawer} onClose={closePanel} title={panelEntry?.row.title ?? t("seeDetail")}>
+        <EventSidePanel key={panel.eventId} eventId={panel.eventId} seed={panel.seed} tone={panel.tone} language={language} now={now} mode="drawer" onClose={closePanel} onSelect={setSelected} />
+      </Drawer>
+    ) : (
+      <BottomSheet open className={sp.sheet} onClose={closePanel} label={panelEntry?.row.title ?? t("seeDetail")}>
+        <EventSidePanel key={panel.eventId} eventId={panel.eventId} seed={panel.seed} tone={panel.tone} language={language} now={now} mode="sheet" onClose={closePanel} onSelect={setSelected} />
+      </BottomSheet>
+    )
+  ) : null;
+
   if (tier === "narrow" && (past || (!data.popularityFallback && !flat)) && !data.signedOut) {
-    return <PhoneDiscover data={data} query={query} language={language} t={t} search={search} onSearch={setSearch} onQuery={(patch) => setQuery((current) => ({ ...current, ...patch }))} onClear={(key) => setQuery((current) => { const next = { ...current }; delete next[key]; return key === "period" ? { ...next, period: "upcoming" } : next; })} onOpen={open} />;
+    return <>{overlay}<PhoneDiscover onPick={pick} data={data} query={query} language={language} t={t} search={search} onSearch={setSearch} onQuery={(patch) => setQuery((current) => ({ ...current, ...patch }))} onClear={(key) => setQuery((current) => { const next = { ...current }; delete next[key]; return key === "period" ? { ...next, period: "upcoming" } : next; })} onOpen={open} /></>;
   }
 
-  const card = (row: EventDiscoverRow, index: number, band = false) => <EventCard key={row.eventId} row={row} index={index} band={band} language={language} t={t} selected={tier !== "narrow" && railRow?.eventId === row.eventId} onSelect={() => setSelected(row.eventId)} onOpen={() => open(row.href)} />;
+  const card = (row: EventDiscoverRow, index: number, band = false) => <EventCard key={row.eventId} row={row} index={index} band={band} language={language} t={t} selected={selected === row.eventId} onSelect={() => pick(row)} onOpen={() => open(row.href)} />;
 
   return (
     <div className={styles.wgrid} data-events-discover-tab="">
@@ -435,6 +489,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
         </>
       )}
       {pastSection}
+      {overlay}
     </div>
   );
 }
@@ -523,7 +578,7 @@ export function DiscoverRail({ row, language }: { row: EventDiscoverRow; languag
 
 /** 探す 没有选中活动时的右栏（b2 #11）：iOrbit 的探す专用开场与两条提问。 */
 // ---------- 390（b12 #348）：App 式探す——搜索 + 筛选按钮（件数）、已选 chip、コミュニティ列表、プランに効く横滑卡、すべて列表 ----------
-function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, onClear, onOpen }: { data: EventDiscoverResponse; query: EventDiscoverQuery; language: OrbitLanguage; t: JourneyT; search: string; onSearch: (value: string) => void; onQuery: (patch: Partial<EventDiscoverQuery>) => void; onClear: (key: keyof EventDiscoverQuery) => void; onOpen: (href: string) => void }) {
+function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, onClear, onOpen, onPick }: { data: EventDiscoverResponse; query: EventDiscoverQuery; language: OrbitLanguage; t: JourneyT; search: string; onSearch: (value: string) => void; onQuery: (patch: Partial<EventDiscoverQuery>) => void; onClear: (key: keyof EventDiscoverQuery) => void; onOpen: (href: string) => void; /** 2026-11-23：卡片点开底部简介面板。 */ onPick: (row: EventDiscoverRow) => void }) {
   const [sheet, setSheet] = useState(false);
   const [page, setPage] = useState(0);
   const count = (query.period && query.period !== "upcoming" ? 1 : 0) + (query.areas?.length ?? 0) + (query.themes?.length ?? 0) + (query.freeOnly ? 1 : 0);
@@ -531,7 +586,7 @@ function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, on
   const rows = data.all;
   const datebox = (iso: string) => { const dm = dayMonth(iso, t); return <div className={d.pDate}><b>{dm.day}</b><small>{dm.month}</small></div>; };
   // 2026-11-21 方案 B：すべて / 開催済み 都是左图右文列表行（EventCard 在 <768 的样子），整行可点。
-  const listRows = (list: readonly EventDiscoverRow[], ended: boolean) => <div className={d.pRows}>{list.map((row, index) => <EventCard key={row.eventId} listRow ended={ended} row={row} index={index} language={language} t={t} onOpen={() => onOpen(row.href)} />)}</div>;
+  const listRows = (list: readonly EventDiscoverRow[], ended: boolean) => <div className={d.pRows}>{list.map((row, index) => <EventCard key={row.eventId} listRow ended={ended} row={row} index={index} language={language} t={t} onSelect={() => onPick(row)} onOpen={() => onOpen(row.href)} />)}</div>;
   return (
     <div data-events-discover-tab="" data-discover-phone="">
       <div className={`${styles.row} ${d.pSearchRow}`}>
@@ -568,7 +623,7 @@ function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, on
           <div className={styles.cardH}><h3>{t("planFitTitle")}</h3><span className={d.pMore}>{t("countN", { n: data.planFitTotal })}</span></div>
           <div className={d.pCarousel} onScroll={(event) => { const el = event.currentTarget; setPage(Math.round(el.scrollLeft / 272)); }}>
             {data.planFit.map((row, index) => (
-              <div key={row.eventId} className={d.pCard} role="button" tabIndex={0} data-discover-card={row.eventId} onClick={() => onOpen(row.href)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(row.href); } }}>
+              <div key={row.eventId} className={d.pCard} role="button" tabIndex={0} data-discover-card={row.eventId} onClick={() => onPick(row)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onPick(row); } }}>
                 <div className={`${styles.row} ${styles.between}`}>
                   <span className={`${styles.emo} ${styles[`t_${emoTone(index)}`]}`}>{row.emoji}</span>
                   {registrationChipText(row.registrationCount, language) ? <span className={`${styles.chip} ${styles.regChip}`}>{registrationChipText(row.registrationCount, language)}</span> : null}

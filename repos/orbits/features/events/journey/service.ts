@@ -15,6 +15,7 @@ import { canSeeHostContact } from "../../../shared/compute/host-contact";
 import type { EventOverviewResponse } from "../../../shared/contract/event-overview";
 import type { EventPrepChecklistItem, EventPrepResponse } from "../../../shared/contract/event-prep";
 import type { EventSearchResponse } from "../../../shared/contract/event-search";
+import type { EventSummaryResponse } from "../../../shared/contract/event-summary";
 import type { EventVenueMemoResult, EventVenueResponse } from "../../../shared/contract/event-venue";
 import type { OrganizerFollowResult } from "../../../shared/contract/organizer-follow";
 import { eventDiscoverQueryObject, type EventDiscoverParsedQuery } from "../../../shared/api-schema/event-discover";
@@ -25,6 +26,7 @@ import type { JourneyContact, JourneyEvent, JourneyLivePorts } from "./ports";
 import { attendeeAnswerInLanguage } from "./attendee-answer-language";
 import { buildPrep, meetingSlotsAfter, type JourneyLanguage, type PrepAttendee } from "./prep-core";
 import { searchEvents } from "./search-core";
+import { buildEventSummary, metPeople } from "./summary-core";
 import { buildVenue, venueExchangeRelation, venueRecordFrom, venueSharedRounds } from "./venue-core";
 
 export interface JourneyRecords {
@@ -42,6 +44,8 @@ export interface JourneyService {
   /** `platform`: which client asks (the sample world shows each board's own text; live ignores it). */
   /** `allAttendees`：「すべて見る」—— 公开资料的参加者全部返回（上限 200），否则前 8 人。 */
   overview(actorId: string | null, eventId: string, language: JourneyLanguage, platform?: "web" | "app", options?: { allAttendees?: boolean }): Promise<EventOverviewResponse | null>;
+  /** 2026-11-23 探す 简介栏：只读栏里要显示、列表行没有的字段（介绍、名额与截止、我的状态、参加者首字、会场记录、主办方下一场、关注）。 */
+  summary(actorId: string | null, eventId: string, language: JourneyLanguage): Promise<EventSummaryResponse | null>;
   prep(actorId: string, eventId: string, language: JourneyLanguage): Promise<EventPrepResponse | null>;
   patchChecklist(actorId: string, eventId: string, items: readonly EventPrepChecklistItem[]): Promise<EventPrepChecklistItem[]>;
   venue(actorId: string, eventId: string, platform?: "web" | "app", language?: JourneyLanguage): Promise<EventVenueResponse | null>;
@@ -245,6 +249,43 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         hosting,
         ...(venueRecord ? { venueRecord } : {}),
       };
+    },
+
+    async summary(actorId, eventId, language) {
+      const event = await ports.event(eventId);
+      if (!event) return null;
+      const at = now();
+      const ended = eventEnded(event, at);
+      const [mine, registered] = actorId
+        ? await Promise.all([ports.myEvents(actorId), ports.registered(actorId, eventId)])
+        : [[], false] as const;
+      const mineRow = mine.find((item) => item.eventId === eventId);
+      const status: EventSummaryResponse["status"] = registered
+        ? mineRow?.status === "attended" ? "attended" : "registered"
+        : mineRow && mineRow.status !== "planned" && mineRow.status !== "registered" && mineRow.status !== "attended" ? mineRow.status : "none";
+      const went = ended && (status === "registered" || status === "attended");
+      // 只读这一栏要画的：参加者首字（名单对我公开且不是「见过的人」时）、会场记录（参加过）、主办方下一场（没参加的已结束活动）、关注。
+      const rosterVisible = !went && canSeeRoster({ registrationStatus: status, signedIn: Boolean(actorId) });
+      const [roster, stats, followed, workspace, contacts] = await Promise.all([
+        rosterVisible ? ports.publicAttendees(eventId).catch(() => null) : Promise.resolve(null),
+        ended && !went && event.organizerKey ? ports.organizerStats(event.organizerKey, eventId).catch(() => null) : Promise.resolve(null),
+        actorId && event.organizerKey ? records.follows.followed(actorId) : Promise.resolve(new Set<string>()),
+        went && actorId ? ports.venueWorkspace(actorId, eventId, language).catch(() => null) : Promise.resolve(null),
+        went && actorId ? (ports.contactNames ?? ports.contacts)(actorId).catch(() => []) : Promise.resolve([]),
+      ]);
+      // 下一场：只给还能报名的（未截止、未满员）。
+      const nextEvent = stats?.next ? await ports.event(stats.next.eventId).catch(() => null) : null;
+      const nextOpen = nextEvent && !(nextEvent.registrationClosesAt && Date.parse(nextEvent.registrationClosesAt) <= at.getTime()) && !(nextEvent.capacity && nextEvent.registrationCount >= nextEvent.capacity);
+      const contactNames = new Set(contacts.map((contact) => contact.name.normalize("NFKC").replace(/\s+/g, "")));
+      return buildEventSummary({
+        attendeeNames: roster ? roster.attendees.map((item) => item.name) : [],
+        event,
+        ...(went ? { met: workspace ? metPeople(workspace, contactNames) : { count: 0, hasRecord: false, initials: [], notInContacts: 0 } } : {}),
+        ...(ended && !went ? { next: nextEvent && nextOpen ? { coverUrl: nextEvent.coverUrl ?? null, emoji: nextEvent.emoji, eventId: nextEvent.eventId, startsAt: nextEvent.startsAt, title: nextEvent.title, venue: nextEvent.venue } : null } : {}),
+        now: at,
+        organizer: { following: event.organizerKey ? followed.has(event.organizerKey) : false, name: event.organizerName ?? "", organizerId: actorId ? event.organizerKey : null, ...(isCanonicalPublicOrganizerLabel(event.organizerName) ? { unnamed: true } : {}) },
+        status,
+      });
     },
 
     async prep(actorId, eventId, language) {

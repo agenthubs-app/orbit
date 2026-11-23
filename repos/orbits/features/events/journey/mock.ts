@@ -24,6 +24,8 @@ import { previewAfterScore } from "./after-core";
 import { createMemoryActorRecordStore } from "../actor-records/store";
 import { createEventFeedbackService, createOrganizerFollowService, createPrepChecklistService, createVenueMemoService } from "./attendee-records";
 import { withVenueMemos, type JourneyService } from "./service";
+import { summaryFromOverview } from "./summary-core";
+import { designFixtureNow } from "../dev-clock";
 
 export interface JourneyMockState {
   discover: EventJourneyVariant;
@@ -110,6 +112,11 @@ export function createJourneyMockService(): JourneyService {
         return { ...withContact, attendees: [], knownAttendees: [], knownNote: null, rosterLocked: true };
       }
       return withContact;
+    },
+    async summary(actorId, eventId, language) {
+      const overview = await this.overview(actorId, eventId, language, "web");
+      // 示例世界的详情只有一套数据（未知 id 也回 JOURNEY_EVENT_ID 的那场）：摘要按请求的 id 回，栏才对得上。
+      return overview ? summaryFromOverview({ ...overview, eventId }, new Date(designFixtureNow() ?? Date.now())) : null;
     },
     async prep(_actorId, eventId, language) {
       const record = recordFor(eventId);

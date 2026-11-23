@@ -109,7 +109,7 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
   async function policiesFor(eventIds: readonly string[]): Promise<Map<string, AdmissionFacts>> {
     if (!eventIds.length) return new Map();
     const result = await query(
-      `/* events:r27-journey:policies */ select head.event_id, policy.capacity, policy.admission_mode, policy.registration_closes_at
+      `/* events:r27-journey:policies */ select head.event_id, policy.capacity, policy.admission_mode, policy.registration_closes_at, policy.waitlist_enabled
          from event_ops_admission_policy_heads head
          join event_ops_admission_policy_versions policy on policy.workspace_id = head.workspace_id and policy.event_id = head.event_id and policy.policy_version = head.policy_version
         where head.workspace_id = $1 and head.event_id = any($2::text[]) limit $3`,
@@ -117,7 +117,7 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
     ).catch(warned("r27_journey_policies_failed", { rows: [] as Array<Record<string, unknown>> }));
     return new Map(result.rows.map((row) => {
       const capacity = row.capacity === null || row.capacity === undefined ? null : Number(row.capacity);
-      return [String(row.event_id), { admissionMode: str(row.admission_mode), capacity: capacity !== null && Number.isSafeInteger(capacity) && capacity > 0 ? capacity : null, registrationClosesAt: iso(row.registration_closes_at) }];
+      return [String(row.event_id), { admissionMode: str(row.admission_mode), capacity: capacity !== null && Number.isSafeInteger(capacity) && capacity > 0 ? capacity : null, registrationClosesAt: iso(row.registration_closes_at), waitlistEnabled: row.waitlist_enabled === true }];
     }));
   }
 

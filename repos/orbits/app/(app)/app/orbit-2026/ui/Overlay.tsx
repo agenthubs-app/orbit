@@ -159,7 +159,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel,
 // screen (no margins, no radius) — for a form that is the whole task on a phone (R12 手入力, b8).
 // Head (R31b, b4 #12 / b6 #20): title (20 / 800, `titleSize` 18 = b4's 18 bold) with an optional grey `subtitle`
 // under it (long titles wrap, the ✕ keeps its size), the ✕ is kit .rbtn (40, white round on --bg).
-export function Drawer({ open, onClose, title, subtitle, titleSize = 20, size = "lg", side = "right", children, footer, fullOnPhone = false, bare = false }: {
+export function Drawer({ open, onClose, title, subtitle, titleSize = 20, size = "lg", side = "right", children, footer, fullOnPhone = false, bare = false, className }: {
   open: boolean;
   onClose: () => void;
   title: string;
@@ -173,12 +173,14 @@ export function Drawer({ open, onClose, title, subtitle, titleSize = 20, size = 
   fullOnPhone?: boolean;
   /** No title row and no ✕ (b6 1024 rail drawer): the content brings its own heading; Esc and the scrim close it, the title stays its accessible name. */
   bare?: boolean;
+  /** Extra class on the panel (a page that needs its own inset / width, e.g. 探す 简介栏 380 · inset 12). */
+  className?: string;
 }) {
   const id = useId();
   const copy = useStandardCopy();
   if (!open) return null;
   return (
-    <DialogFrame onClose={onClose} labelledBy={`${id}-title`} scrimClassName={`${styles.scrim} ${styles.drawerScrim}`} className={`${styles.drawer} ${styles[`drawer_${size}`]}${side === "left" ? ` ${styles.drawerLeft}` : ""}${fullOnPhone ? ` ${styles.drawerFullPhone}` : ""}${bare ? ` ${styles.drawerBareFrame}` : ""}`}>
+    <DialogFrame onClose={onClose} labelledBy={`${id}-title`} scrimClassName={`${styles.scrim} ${styles.drawerScrim}`} className={`${styles.drawer} ${styles[`drawer_${size}`]}${side === "left" ? ` ${styles.drawerLeft}` : ""}${fullOnPhone ? ` ${styles.drawerFullPhone}` : ""}${bare ? ` ${styles.drawerBareFrame}` : ""}${className ? ` ${className}` : ""}`}>
       {bare ? <h2 id={`${id}-title`} className={styles.srOnly}>{title}</h2> : (
         <div className={styles.drawerHead}>
           <div className={styles.drawerTitleBlock}>
@@ -196,11 +198,11 @@ export function Drawer({ open, onClose, title, subtitle, titleSize = 20, size = 
 
 // kit .sheet (390): a bottom sheet — 8 from the edges, radius 34, grab handle, the
 // darker sheet scrim; Esc and the scrim close it, focus is trapped like a dialog.
-export function BottomSheet({ open, onClose, label, tight = false, children }: { open: boolean; onClose: () => void; label: string; /** 10 / 14 / 18 padding for a menu of full-width rows (b12 .sheet.amenu). */ tight?: boolean; children: ReactNode }) {
+export function BottomSheet({ open, onClose, label, tight = false, children, className }: { open: boolean; onClose: () => void; label: string; /** 10 / 14 / 18 padding for a menu of full-width rows (b12 .sheet.amenu). */ tight?: boolean; children: ReactNode; /** Extra class on the sheet (e.g. 探す 简介 max 76%). */ className?: string }) {
   const id = useId();
   if (!open) return null;
   return (
-    <DialogFrame onClose={onClose} labelledBy={`${id}-title`} scrimClassName={`${styles.scrim} ${styles.sheetScrim}`} className={`${styles.sheet}${tight ? ` ${styles.sheetTight}` : ""}`}>
+    <DialogFrame onClose={onClose} labelledBy={`${id}-title`} scrimClassName={`${styles.scrim} ${styles.sheetScrim}`} className={`${styles.sheet}${tight ? ` ${styles.sheetTight}` : ""}${className ? ` ${className}` : ""}`}>
       <h2 id={`${id}-title`} className={styles.srOnly}>{label}</h2>
       <span className={styles.grab} aria-hidden />
       {children}

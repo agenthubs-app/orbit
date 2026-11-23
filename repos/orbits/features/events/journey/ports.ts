@@ -27,6 +27,8 @@ export interface JourneyEvent {
   capacity: number | null;
   review: boolean;
   registrationClosesAt: string | null;
+  /** 2026-11-23：主办方开了候补（满员 / 截止后仍可排队）；缺省 = 没开。 */
+  waitlistEnabled?: boolean;
   agenda: readonly { at: string; title: string; detail?: string | null }[];
   /** One-way digest of the organizer actor id (never the actor id itself). */
   organizerKey: string | null;
