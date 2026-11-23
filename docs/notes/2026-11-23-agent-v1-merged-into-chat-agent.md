@@ -14,7 +14,7 @@
 
 ## 正式站现在
 
-- 部署 `orbit-staging-lw6pbjpal-…`，来自 `chat-agent` 91b7d8c9d（多轮引擎 r12；问/办已接线但默认 shadow，开关 ORBIT_AGENT_CONVERSATION_NEXT；打字「算了先别建」等同点卡片的拒绝）。比 agent-v1-integration 多出的、11-23 当天上线的改动：
+- 部署 `orbit-staging-kkuma2oku-…`，来自 `chat-agent` 3284b68b7（多轮引擎 r12；问/办已打开〔只加问题、无选项不问、agent 已认出的不再问〕，退路 ORBIT_AGENT_CONVERSATION_NEXT=shadow；打字「算了先别建」等同点卡片的拒绝）。比 agent-v1-integration 多出的、11-23 当天上线的改动：
   - 人名的简繁日异体写法（联系人搜索 + 记录查找的文字归一表）；
   - 等待确认的卡片上的纠正（含多条记录、日程、笔记）和「就按刚才那条建」；
   - 回答开头的数量由代码核对；
