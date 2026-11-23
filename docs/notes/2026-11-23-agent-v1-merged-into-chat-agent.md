@@ -14,7 +14,12 @@
 
 ## 正式站现在
 
-- 部署 `dpl_4M61XLMbL9HXLGy3NNSL4yY3vaCb`（`orbit-staging-6uqq4sv1w-…`），来自 `chat-agent` de0f3d62a（又加了：卡片改动说明不再「X→X」、一句改两条待办出双条卡片、一句两件事拆成两部分）（又加了：多轮引擎按需读库数据〔shadow〕、代词 R27 打开；子开关 ORBIT_AGENT_CONVERSATION_{WORLD,PRONOUN,CARRY,NEXT}）（又加了：多条记录卡片、日程、笔记上的纠正）（又加了：回答开头的数量由代码核对）（又加了：等待确认的卡片上的纠正和「就按刚才那条建」）（含名字的简繁日异体：联系人搜索 + 记录查找的文字归一表）。
+- 部署 `dpl_4T3RrTTtWZ2jG5XYaC7ho1hKtcP5`（`orbit-staging-c4cz8on4x-…`），来自 `chat-agent` b59a27732。比 agent-v1-integration 多出的、11-23 当天上线的改动：
+  - 人名的简繁日异体写法（联系人搜索 + 记录查找的文字归一表）；
+  - 等待确认的卡片上的纠正（含多条记录、日程、笔记）和「就按刚才那条建」；
+  - 回答开头的数量由代码核对；
+  - 卡片改动说明不再「X→X」、一句改两条待办出双条卡片、一句两件事拆成两部分（第一层提示词 understand@ag09.2）；
+  - 多轮引擎按需读库数据（shadow）、代词 R27 打开、「问还是办」只记录；子开关 ORBIT_AGENT_CONVERSATION_{WORLD,PRONOUN,CARRY,NEXT}=off|shadow|on。
 - 正式环境变量（agent v1 需要的，已在）：`ORBIT_AGENT_V1_MODE=on`、`ORBIT_AGENT_WEB=on`、`ORBIT_GEMINI_DECISION_API_KEY`、`ORBIT_MCP_BASE_URL`、新增 `ORBIT_AGENT_CONVERSATION=on`（多轮理解引擎）。
 - 记录查找的退路：`ORBIT_AGENT_FINDER=legacy`；多轮引擎的退路：`ORBIT_AGENT_CONVERSATION=legacy`。
 
