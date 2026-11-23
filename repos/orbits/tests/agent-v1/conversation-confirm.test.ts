@@ -94,3 +94,26 @@ test("R37: changing a recurring item without saying which occurrence asks; the o
   const one = "下周一的团队周会改到下午三点";
   assert.deepEqual(nextOf(one, names, parts(one), series), ["go"], "the occurrence is said");
 });
+
+test("the late confirm read at deliver: a write part's person bound after understand gets their linked records, within what the first read left; a person the hint bound, or a read part, gets none", async () => {
+  const { conversationLateRead } = await import("../../features/agent-v1/conversation/run");
+  const records = [contact(ME, "contact:tanaka", "田中浩"), contact(ME, "contact:li", "李薇")];
+  for (let index = 0; index < 8; index += 1) records.push(todo(ME, `task:k${index}`, `回复田中${index}`, { relatedContactId: "contact:tanaka" }));
+  records.push(todo(ME, "task:li", "给李薇寄样片", { relatedContactId: "contact:li" }));
+  const access = recordAccessOf({ events: [], records });
+  const tanaka = [{ entity: "contact", recordId: "contact:tanaka" }];
+  const run = (parts: Pick<GraphPart, "refs" | "capabilities" | "plan">[], hintIds: string[], firstRecords: number) => {
+    const conversation = { hint: { parts: [{ clarity: "clear", continues: null, quote: "", refs: hintIds.map((id) => ({ id, kind: "contact", said: "x" })), slots: {} }] }, readWorld: null, turn: { at: NOW, gone: [], hint: null, message: "" }, world: firstRecords ? { records: firstRecords } : null } as Record<string, unknown>;
+    const scope = { deps: { now: () => NOW, records: access }, input: { actorId: ME }, run: { context: null, conversation } } as never;
+    return conversationLateRead(scope, { asOf: NOW, parts, timeZone: "Asia/Tokyo" } as never).then(() => conversation.readWorld as World | null);
+  };
+  const late = await run([partOf(["todo.create"], tanaka)], [], 0);
+  assert.equal(late?.todos.length, 8, "the person's linked to-dos");
+  assert.ok(!late!.todos.some((item) => item.title === "给李薇寄样片"), "nobody else's records");
+  const capped = (await run([partOf(["todo.create"], tanaka)], [], READ_RECORDS - 3))!;
+  assert.ok(capped.todos.length >= 1 && capped.todos.length + capped.memos.length + capped.schedule.length <= 3, "within what the first read left");
+  assert.equal(await run([partOf(["todo.create"], tanaka)], [], READ_RECORDS), null, "nothing left: no read");
+  assert.equal(await run([partOf(["todo.create"], tanaka)], ["C-contact:tanaka"], 0), null, "bound by the hint: read at understand already");
+  assert.equal(await run([partOf(["todo.read"], tanaka)], [], 0), null, "a read part reads nothing");
+  assert.equal(await run([partOf(["todo.create"], tanaka, { clarity: "multiple_readings" } as Partial<Plan>)], [], 0), null, "a part that only might write reads nothing");
+});

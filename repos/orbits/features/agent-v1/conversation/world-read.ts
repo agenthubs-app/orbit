@@ -110,16 +110,17 @@ export function confirmNeedsOf(parts: readonly Pick<GraphPart, "refs" | "capabil
 /**
  * Starts the turn's read (null: nothing to read, or no record access). Never rejects. `people`: a part holds a person
  * reference the agent left unbound (needsWorldRead) — the contacts the conversation named and their linked records are
- * read; `confirm`: the write confirmations (confirmNeedsOf), read first, within the same caps.
+ * read; `confirm`: the write confirmations (confirmNeedsOf), read first, within the same caps; `maxRecords`: the record
+ * cap (the late read at deliver, conversation/run.ts conversationLateRead, gets what the first read left).
  */
-export function startWorldRead(scope: NodeScope, log: ConversationLog | null, now: string, timeZone: string, people = true, confirm: ConfirmNeeds | null = null): Promise<WorldRead> | null {
+export function startWorldRead(scope: NodeScope, log: ConversationLog | null, now: string, timeZone: string, people = true, confirm: ConfirmNeeds | null = null, maxRecords = READ_RECORDS): Promise<WorldRead> | null {
   const records = scope.deps.records;
   if (!records) return null;
   const ids = people ? conversationIdsOf(log, scope.run.context) : { contacts: [], records: [] };
   if (!ids.contacts.length && !confirm) return null;
   const started = Date.now();
   const loader = createWorldLoader({ now, records, scope: records.scope(scope.input.actorId), timeZone });
-  return loader.conversationWorld({ contacts: ids.contacts, linkedPeople: people ? READ_LINKED_PEOPLE : 0, maxContacts: READ_CONTACTS, maxRecords: READ_RECORDS, ...(confirm ? { confirm } : {}) }).then(
+  return loader.conversationWorld({ contacts: ids.contacts, linkedPeople: people ? READ_LINKED_PEOPLE : 0, maxContacts: READ_CONTACTS, maxRecords, ...(confirm ? { confirm } : {}) }).then(
     (world) => ({ contacts: world.contacts.length, ms: Date.now() - started, records: world.todos.length + world.memos.length + world.schedule.length, rows: loader.reads(), status: "read" as const, world }),
     (error: unknown) => {
       emitTrace({ error: error instanceof Error ? error.message : String(error), type: "conversation.world_error" });

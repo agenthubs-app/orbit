@@ -28,7 +28,7 @@ import { memoryOfSession } from "../../domains/memory/turn";
 import { everyTaskChipsOf } from "../../domains/memory/chips";
 import { asksToOrganize, nextNoteGoalIn } from "./functions";
 import { resumeOf } from "../../propose/asked";
-import { conversationAfterTurn } from "../../conversation/run";
+import { conversationAfterTurn, conversationLateRead } from "../../conversation/run";
 
 export const OPEN_ITEM_SHELF_AFTER = 2;
 
@@ -575,6 +575,8 @@ export function deliverNode(scope: NodeScope): GraphNode {
     const requestStatus = partResults.some((part) => part.status === "awaiting_acceptance" || part.status === "awaiting_clarification") ? "waiting_user" : "completed";
     const clicked = resume && (state.touched?.length ?? 0) > 0;
     if (!resume || clicked) {
+      // the conversation engine's late confirm read (people a write part bound after understand), for its ask / go
+      if (!clicked) await conversationLateRead(scope, state);
       try {
         const previous = await deps.sessionState.get(input.actorId, input.sessionId);
         await deps.sessionState.put(input.actorId, clicked ? sessionStateAfterClick(scope, state, previous) : nextSessionState(scope, state, previous));

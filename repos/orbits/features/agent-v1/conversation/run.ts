@@ -20,7 +20,7 @@ import { scheduleConversationShadow } from "../rollout/conversation-shadow";
 import { applyCarry, applyTurn, carryChangesOf, compareTurn, enginePartOf, resultDiffs, withPronounsBound, type Applied, type ConversationDiff } from "./apply";
 import { appendTurn, formsOf, hintOf, labIdOf, namesOf, normalizeLog, runAskGo, runEngine, TYPE_OF_COLLECTION, worldOf, type ConversationLog, type EngineTurn } from "./bridge";
 import { conversationBudgetMs, conversationMode, openedMode, type ConversationMode } from "./mode";
-import { enrichWorld, type WorldRead } from "./world-read";
+import { awaitWorldRead, confirmNeedsOf, enrichWorld, READ_RECORDS, startWorldRead, type WorldRead } from "./world-read";
 import type { World } from "../finder/types";
 import type { AgentReply, FollowUpClass, ModelHint, Question, Slots, TurnResult } from "./types";
 
@@ -229,6 +229,34 @@ function cardMentions(preview: NodeScope["run"]["actionPreview"]): { ids: string
     visit(operation.after, "");
   }
   return { ids: [...new Set(ids)], names, op, set, target };
+}
+
+/**
+ * deliver, before the session state: a plain write part whose person the agent bound only after understand (a name said
+ * for the first time, bound by the reads or the card — AE-XL-015 / 016 / 017) gets that person's linked records for r10's
+ * duplicate check, through the same bounded read (confirmNeedsOf's rules), within the records the turn's first read left.
+ * People the first layer's hint already bound were read (or not needed) at understand; read-only parts are never read.
+ * The records only feed the ask / go run (askGoRun). Never throws.
+ */
+export async function conversationLateRead(scope: NodeScope, state: AgentGraphState): Promise<void> {
+  const record = scope.run.conversation;
+  if (!record?.turn || conversationMode() === "legacy" || openedMode("world") === "off") return;
+  try {
+    const needs = confirmNeedsOf(state.parts);
+    if (!needs) return;
+    const early = new Set((record.hint?.parts ?? []).flatMap((part) => (part.refs ?? []).map((ref) => ref.id)).filter(Boolean));
+    const linkedTo = needs.linkedTo.filter((id) => !early.has(id));
+    const left = READ_RECORDS - (record.world?.records ?? 0);
+    if (!linkedTo.length || left <= 0) return;
+    const read = await awaitWorldRead(startWorldRead(scope, null, state.asOf || scope.deps.now(), state.timeZone || "Asia/Tokyo", false, { creates: needs.creates, linkedTo, schedules: [] }, left));
+    emitTrace({ contacts: linkedTo.length, ms: read.ms, records: read.records, rows: read.rows, status: read.status, type: "conversation.world_late", waitedMs: read.waitedMs ?? 0 });
+    if (!read.world) return;
+    const earlier = record.readWorld;
+    const over = <R extends { id: string }>(mine: R[], theirs: R[]) => [...new Map([...mine, ...theirs].map((item) => [item.id, item])).values()];
+    record.readWorld = earlier ? { ...earlier, contacts: over(earlier.contacts, read.world.contacts), memos: over(earlier.memos, read.world.memos), schedule: over(earlier.schedule, read.world.schedule), todos: over(earlier.todos, read.world.todos) } : read.world;
+  } catch (error) {
+    emitTrace({ error: error instanceof Error ? error.message : String(error), type: "conversation.error", where: "world_late" });
+  }
 }
 
 /**
