@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>活动 点卡片右侧看简介</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<script src="kit/data.js"></script>
+<style>
+  .doc { min-width: 1520px; }
+  .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .clamp4 { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .decide { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; margin-bottom: 18px; max-width: 1440px; }
+  .decide .box { background: var(--surface); border-radius: 22px; padding: 20px 22px; font-size: 13px; line-height: 1.75; color: var(--ink-2); }
+  .decide .box h3 { font-size: 15px; font-weight: 800; color: var(--ink); margin-bottom: 10px; }
+  .decide .box b { color: var(--ink); }
+  .decide ol { padding-left: 18px; display: grid; gap: 6px; }
+  .cmp { width: 1440px; border-collapse: separate; border-spacing: 0; background: var(--surface); border-radius: 22px; overflow: hidden; font-size: 12.5px; color: var(--ink-2); }
+  .cmp th, .cmp td { text-align: left; vertical-align: top; padding: 9px 14px; border-bottom: 1px solid var(--line); line-height: 1.6; }
+  .cmp th { background: var(--surface-2); color: var(--ink); font-weight: 800; font-size: 12px; }
+  .cmp td:first-child { font-weight: 800; color: var(--ink); white-space: nowrap; }
+  .cmp tr:last-child td { border-bottom: 0; }
+
+  /* 列表（沿用已定稿的紧凑卡：宽屏 A 卡、手机 B 行） */
+  .ca { background: var(--surface); border-radius: 22px; overflow: hidden; position: relative; display: block; }
+  .ca .cov, .ca .band { aspect-ratio: 2 / 1; background-size: cover; background-position: center; }
+  .ca .band { display: flex; align-items: flex-end; padding: 0 14px 12px; }
+  .ca .band .emo { background: var(--surface); }
+  .ca .bd { padding: 14px 16px 16px; }
+  .ca .t { font-size: 14.5px; font-weight: 700; line-height: 1.45; }
+  .ca .m { display: block; font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+  .ca .ft { display: flex; align-items: center; gap: 8px; margin-top: 10px; min-width: 0; }
+  .ca .ft .chips { flex: 1; min-width: 0; flex-wrap: nowrap; overflow: hidden; }
+  .ca .fee { font-family: var(--font-num); font-size: 13px; font-weight: 800; flex: none; }
+  /* 已结束：封面保持原色，只在封面左上角加「已结束」标记，日期地点照常 */
+  .ca, .cb .th { position: relative; }
+  .endtag { position: absolute; top: 10px; left: 10px; height: 24px; padding: 0 10px; border-radius: 999px; display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 700; color: #fff; background: rgba(24, 18, 32, .62); backdrop-filter: blur(6px); }
+  .cb .endtag { top: 6px; left: 6px; height: 20px; padding: 0 7px; font-size: 10.5px; }
+  .sel { box-shadow: 0 0 0 2px var(--ink); }
+  .cb { background: var(--surface); border-radius: 20px; padding: 12px; display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 12px; align-items: stretch; }
+  .cb .th { width: 88px; height: 88px; border-radius: 14px; background-size: cover; background-position: center; display: grid; place-items: center; font-size: 34px; }
+  .cb .tx { min-width: 0; display: flex; flex-direction: column; }
+  .cb .t { font-size: 14px; font-weight: 700; line-height: 1.4; }
+  .cb .m { display: block; font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+  .cb .ft { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 6px; min-width: 0; }
+  .cb .ft .chips { flex: 1; min-width: 0; flex-wrap: nowrap; overflow: hidden; }
+  .cb .fee { font-family: var(--font-num); font-size: 13px; font-weight: 800; flex: none; }
+  .tone-lav { background: var(--mac-lav); } .tone-teal { background: var(--mac-teal); }
+  .list > * + * { margin-top: 12px; }
+  .g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
+  .g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  .wfl { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+  .wfl .search { flex: 1; max-width: 360px; height: 40px; }
+  .wfl .chip, .fl .chip { height: 32px; padding: 0 12px; font-size: 12.5px; background: var(--surface); }
+  .lh { display: flex; justify-content: space-between; align-items: baseline; margin: 18px 2px 10px; }
+  .lh b { font-size: 15px; font-weight: 800; }
+  .ghost-lines i { display: block; height: 9px; border-radius: 5px; background: var(--surface-2); margin: 8px 0; }
+  .mw-head { display: flex; align-items: center; gap: 8px; padding: 6px 0 10px; }
+  .mw-head .logo { width: 34px; height: 34px; border-radius: 11px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; }
+  .fl { display: flex; gap: 6px; margin: 10px 0 4px; }
+  .web.w834 { width: 834px; height: 1000px; grid-template-columns: 72px 1fr; }
+  .w834 .side a { width: 48px; padding: 12px 0; font-size: 0; gap: 0; }
+  .w834 .side .logo { margin-bottom: 14px; }
+  .w834 .main { padding: 22px 26px 40px; }
+
+  /* ---------- 右侧简介栏 ---------- */
+  .ep { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+  .ep-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 2px 16px; scrollbar-width: none; }
+  .ep-top { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+  .ep-cov { aspect-ratio: 2 / 1; border-radius: 18px; background-size: cover; background-position: center; }
+  .ep-cov.band { display: flex; align-items: flex-end; padding: 0 14px 12px; }
+  .ep-cov.band .emo { background: var(--surface); }
+  .ep h3 { font-size: 17px; font-weight: 800; line-height: 1.4; margin-top: 14px; }
+  .ep-org { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12.5px; color: var(--ink-2); }
+  .ep-org .av { width: 24px; height: 24px; font-size: 10.5px; }
+  .ep-state { margin-top: 12px; }
+  .ep-facts { margin-top: 14px; display: grid; gap: 9px; }
+  .ep-facts div { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; align-items: start; font-size: 13px; line-height: 1.5; }
+  .ep-facts .i { width: 16px; height: 16px; margin-top: 2px; color: var(--ink-3); }
+  .ep-facts small { display: block; font-size: 12px; color: var(--ink-3); }
+  .ep-sec { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .ep-sec h5 { font-size: 12px; font-weight: 800; color: var(--ink-3); margin-bottom: 8px; }
+  .ep-sec p { font-size: 13px; line-height: 1.7; color: var(--ink-2); }
+  .ep-rel { display: grid; gap: 8px; }
+  .ep-rel div { display: flex; gap: 8px; align-items: baseline; font-size: 13px; line-height: 1.5; }
+  .ep-rel .chip { flex: none; }
+  .ep-ppl { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .ep-ppl .av { width: 28px; height: 28px; font-size: 11px; }
+  .ep-next { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; align-items: center; background: var(--surface); border-radius: 14px; padding: 8px; }
+  .ep-next .th { width: 44px; height: 44px; border-radius: 10px; background-size: cover; background-position: center; }
+  .ep-next b { display: block; font-size: 13px; }
+  .ep-next small { font-size: 12px; color: var(--ink-3); }
+  .ep-foot { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .ep-foot .btn { height: 44px; }
+  .ep-foot .btn[disabled] { background: var(--surface-2); color: var(--ink-3); }
+  .rail.ep-rail { padding: 18px 20px 20px; gap: 0; overflow: hidden; }
+  /* 834：右侧浮层 */
+  .ep-drawer { position: absolute; top: 12px; right: 12px; bottom: 12px; width: 380px; border-radius: 26px; background: var(--bg); z-index: 21; padding: 18px 20px 20px; box-shadow: var(--shadow-float); }
+  .dim { position: absolute; inset: 0; background: var(--scrim); z-index: 20; }
+  /* 390：底部面板 */
+  .sheet.ep-sheet { padding: 10px 18px 22px; max-height: 76%; display: flex; flex-direction: column; }
+  .ep-sheet .ep { height: auto; min-height: 0; flex: 1; }
+  .ep-sheet .ep-cov { aspect-ratio: 5 / 2; }
+  /* 单独展示各状态的栏 */
+  .ep-solo { width: 360px; height: 880px; border-radius: 24px; background: color-mix(in srgb, var(--surface) 55%, var(--bg)); box-shadow: 0 0 0 1px var(--line); padding: 18px 20px 20px; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <div>
+      <div class="doc-kicker">Orbit Redesign · 2026-11-23 · Web 提案（1440 / 834 / 390）· 待用户确认</div>
+      <h1>活动：点卡片，右侧先看简介；再点一次进活动</h1>
+      <p>适用于「发现」里的全部卡片，招募中和已结束都一样。右侧栏只放决定「去不去」要看的内容，底部固定两个按钮。议程、报名问题、完整名单仍在详情页。</p>
+    </div>
+    <div class="doc-tools">
+      <div class="seg" data-ctl="theme"><button data-v="light">浅色</button><button data-v="dark">深色</button></div>
+      <div class="seg" data-ctl="pins"><button data-v="on" class="on">标注 ON</button><button data-v="off">OFF</button></div>
+    </div>
+  </div>
+  <div class="decide">
+    <div class="box">
+      <h3>点击规则</h3>
+      <ol>
+        <li><b>第一次点卡片</b>：右侧出现这场活动的简介，卡片加深色描边，列表不动、不跳页。</li>
+        <li><b>栏开着时再点同一张卡</b>：进入活动详情页（和底部「查看详情」同一个去处）。</li>
+        <li><b>点另一张卡</b>：右侧换成那一场，不用先关。</li>
+        <li><b>关闭</b>：右上角 ✕ 或 Esc。1440 关闭后右栏回到原来的「下一步」。</li>
+        <li><b>键盘</b>：↑ ↓ 换卡，Enter 进详情。</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h3>三种宽度</h3>
+      <ol>
+        <li><b>1440</b>：用现有右栏的位置（360px），不盖住列表。</li>
+        <li><b>834</b>：没有右栏，从右侧浮出 380px 的面板，列表变暗；点暗处关闭。</li>
+        <li><b>390</b>：从底部升起的面板，最高到屏幕 76%，内容可上下滚，按钮固定在面板底部。手机上「再点一次卡片」做不到（卡片被面板盖住），所以只靠「查看详情」按钮进入。</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h3>对标成熟产品的做法</h3>
+      <ol>
+        <li><b>Luma（桌面日历）</b>：点活动，右侧滑出简介面板，底部是报名按钮，面板里另有进入完整页面的入口。</li>
+        <li><b>Google 日历 / Outlook</b>：单击出简介，双击或点「打开」进完整页面。</li>
+        <li><b>Airbnb 地图列表、Linear</b>：选中的行有描边，右侧预览跟着换，不离开列表。</li>
+        <li>手机用底部面板而不是侧栏：Luma、Apple 地图、Google 地图都这样做。</li>
+      </ol>
+    </div>
+  </div>
+  <nav class="doc-nav" id="docnav"></nav>
+  <div id="out"></div>
+</div>
+<script>
+const IMG1 = 'proposal-assets/chinese-business-community-salon.jpg';
+const IMG2 = 'proposal-assets/investor-founder-salon.jpg';
+const E = [
+  { img: IMG1, n: '第六期 中日创业交流会', m: '11/28（六）· 東京都港区新橋', chips: [['blue', '主题相近']], fee: '¥3,000' },
+  { emoji: '🥂', tone: 'lav', n: 'CFO Night Tokyo vol.18', m: '12/05（五）19:00 · 渋谷ストリーム', chips: [['lav', '前 CFO 3位']], fee: '¥5,000' },
+  { emoji: '📊', tone: 'teal', n: 'SaaS 财务实务研讨会', m: '12/03（三）18:30 · 丸の内', chips: [], fee: '免费' },
+  { img: IMG2, n: '第4回 中日创业交流会', m: '6/21（日）18:30 · 東京タワーズ', chips: [], ended: true },
+  { img: IMG1, n: '第3回 中日创业交流会', m: '5/24（日）· The Public Stand 銀座', chips: [], ended: true },
+];
+const NAVZ = [['home', '首页'], ['users', '人脉'], ['sparkle', 'iOrbit'], ['calendar', '活动'], ['task', 'Task']];
+const SIDEZ = [...NAVZ, ['inbox', '收件箱']];
+const webZ = ({ body, rail = '', railCls = '', pins = '', cls = '', overlay = '' }) => `<div class="web ${rail ? '' : 'no-rail'} ${cls}"><aside class="side"><div class="logo">O</div>${SIDEZ.map(([i, l], k) => `<a class="${k === 3 ? 'on' : ''}">${ic(i)}${l}</a>`).join('')}<div class="sp"></div><a>${ic('brief')}主办</a><a>${ic('settings')}设置</a><div class="avatar-btn" style="margin-top:8px">佐</div></aside><section class="main">${body}</section>${rail ? `<aside class="rail ${railCls}">${rail}</aside>` : ''}${overlay}${pins}</div>`;
+
+const chipsH = (e) => `<div class="chips">${e.chips.map(([c, t]) => `<span class="chip ${c}">${t}</span>`).join('')}</div>`;
+const aCard = (e, sel) => `<div class="ca ${e.ended ? 'ended' : ''} ${sel ? 'sel' : ''}">${e.img ? `<div class="cov" style="background-image:url(${e.img})"></div>` : `<div class="band tone-${e.tone}"><span class="emo">${e.emoji}</span></div>`}
+  <div class="bd"><div class="t clamp2">${e.n}</div><span class="m ell">${e.m}</span><div class="ft">${chipsH(e)}${e.ended ? '' : `<span class="fee">${e.fee}</span>`}</div></div>${e.ended ? '<span class="endtag">已结束</span>' : ''}</div>`;
+const bCard = (e, sel) => `<div class="cb ${e.ended ? 'ended' : ''} ${sel ? 'sel' : ''}">${e.img ? `<div class="th" style="background-image:url(${e.img})">${e.ended ? '<span class="endtag">已结束</span>' : ''}</div>` : `<div class="th tone-${e.tone}">${e.emoji}</div>`}
+  <div class="tx"><div class="t clamp2">${e.n}</div><span class="m ell">${e.m}</span><div class="ft">${chipsH(e)}${e.ended ? '' : `<span class="fee">${e.fee}</span>`}</div></div></div>`;
+
+/* ---------- 右侧栏内容 ---------- */
+const INTRO = '在日华人创业者、投资人和日本本地企业负责人的线下交流会。上半场三位创业者分享在日本拿到第一批客户的经过，下半场按报名时填写的需求分桌交流，每桌 6 人，换两轮。会后在同一场地有自由交流时间。';
+const avs = (list) => `<div class="avs">${list.map(([t, c]) => `<span class="av ${c}">${t}</span>`).join('')}</div>`;
+const PPL = [['王', 'c1'], ['田', 'c3'], ['L', 'c5'], ['佐', 'c1']];
+const facts = (rows) => `<div class="ep-facts">${rows.map(([i, t, s]) => `<div>${ic(i)}<span>${t}${s ? `<small>${s}</small>` : ''}</span></div>`).join('')}</div>`;
+const sec = (h, body) => `<div class="ep-sec"><h5>${h}</h5>${body}</div>`;
+const rel = (rows) => sec('和你有关', `<div class="ep-rel">${rows.map(([c, k, t]) => `<div><span class="chip ${c}">${k}</span><span>${t}</span></div>`).join('')}</div>`);
+const panel = ({ e, state = '', factRows, blocks, foot }) => `<div class="ep"><div class="ep-scroll">
+  <div class="ep-top"><button class="rbtn soft">${ic('x')}</button></div>
+  ${e.img ? `<div class="ep-cov" style="background-image:url(${e.img})"></div>` : `<div class="ep-cov band tone-${e.tone}"><span class="emo">${e.emoji}</span></div>`}
+  <h3>${e.n}</h3>
+  <div class="ep-org"><span class="av c3">日</span>日中创新创业协会</div>
+  ${state ? `<div class="ep-state">${state}</div>` : ''}
+  ${facts(factRows)}${blocks.join('')}
+</div><div class="ep-foot">${foot}</div></div>`;
+
+const OPEN_FACTS = [['calendar', '11月28日（六）14:00 – 17:30'], ['pin', '山田屋ビル B2', '東京都港区新橋6-5-3'], ['ticket', '¥3,000', '还剩 12 个名额 · 报名到 11/26']];
+const ENDED_FACTS = [['calendar', '6月21日（日）18:30 – 21:00'], ['pin', '東京タワーズ シータワー', '東京都中央区勝どき']];
+const REL = rel([['blue', '主题相近', '你的目标里写了「找日本本地的渠道伙伴」'], ['teal', '认识的人', '王 伟、田中 美咲 已报名']]);
+const P = {
+  open: panel({ e: E[0], factRows: OPEN_FACTS, blocks: [sec('介绍', `<p class="clamp4">${INTRO}</p>`), REL, sec('参加者', `<div class="ep-ppl">${avs(PPL)}<span>已报名 128 人</span></div>`)], foot: `<button class="btn">查看详情</button><button class="btn primary">参加</button>` }),
+  joined: panel({ e: E[0], state: `<span class="chip teal">${ic('check', 'sm')}已报名</span>`, factRows: OPEN_FACTS.slice(0, 2), blocks: [sec('介绍', `<p class="clamp4">${INTRO}</p>`), REL, sec('参加者', `<div class="ep-ppl">${avs(PPL)}<span>已报名 128 人</span></div>`)], foot: `<button class="btn">查看详情</button><button class="btn primary">查看我的报名</button>` }),
+  full: panel({ e: E[1], factRows: [['calendar', '12月5日（五）19:00 – 21:30'], ['pin', '渋谷ストリーム', '東京都渋谷区渋谷3-21-3'], ['ticket', '¥5,000', '名额已满']], blocks: [sec('介绍', `<p class="clamp4">上市公司和成长期企业的 CFO、财务负责人的定期聚会。本期主题是上市前一年的内控准备，两位嘉宾各讲 20 分钟，之后自由交流。</p>`), rel([['lav', '前 CFO', '参加者里有 3 位做过 CFO']]), sec('参加者', `<div class="ep-ppl"><span>已报名 40 人</span></div>`)], foot: `<button class="btn">查看详情</button><button class="btn" disabled>名额已满</button>` }),
+  went: panel({ e: E[3], state: `<span class="chip">已结束</span> <span class="chip teal">${ic('check', 'sm')}你参加了</span>`, factRows: ENDED_FACTS, blocks: [sec('介绍', `<p class="clamp4">${INTRO}</p>`), sec('你在这场见过的人', `<div class="ep-ppl">${avs(PPL)}<span>6 人，其中 2 人还没加为人脉</span></div>`)], foot: `<button class="btn">查看详情</button><button class="btn primary">看会场记录</button>` }),
+  missed: panel({ e: E[3], state: `<span class="chip">已结束</span>`, factRows: ENDED_FACTS, blocks: [sec('介绍', `<p class="clamp4">${INTRO}</p>`), sec('参加者', `<div class="ep-ppl"><span>35 人参加</span></div>`), sec('这个主办方的下一场', `<div class="ep-next"><div class="th" style="background-image:url(${IMG1})"></div><div><b class="ell">第六期 中日创业交流会</b><small>11/28（六）· 新橋 · 报名中</small></div></div>`)], foot: `<button class="btn">查看详情</button><button class="btn primary">看下一场</button>` }),
+  missedNoNext: panel({ e: { ...E[3], n: '投资人 × 创始人 早餐会 #12' }, state: `<span class="chip">已结束</span>`, factRows: [['calendar', '10月24日（五）8:00 – 9:30'], ['pin', '丸の内', '東京都千代田区丸の内']], blocks: [sec('介绍', `<p class="clamp4">每月一次的早餐会，12 位以内，投资人和种子轮前后的创始人各占一半。</p>`), sec('参加者', `<div class="ep-ppl"><span>11 人参加</span></div>`)], foot: `<button class="btn">查看详情</button><button class="btn primary">关注主办方</button>` }),
+};
+
+const notesHTML = (notes, w = 390) => notes && notes.length ? `<ul class="note-list" style="max-width:${w}px">${notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : '';
+const boards = (items) => `<div class="boards">${items.map(([label, tag, html, notes, w]) => `<div class="board"><div class="board-label">${label}${tag ? `<span class="tag">${tag}</span>` : ''}</div>${html}${notesHTML(notes, w)}</div>`).join('')}</div>`;
+const secT = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+
+const wHead = mainhead('活动', '符合条件 1 场', '', '') + `<div class="seg" style="margin-bottom:14px"><button>评估</button><button>参加的活动</button><button class="on">发现</button></div><div class="wfl"><div class="search">${ic('search', 'sm')}活动名、主办方、关键词</div><span class="chip">时间：即将举办</span><span class="chip">地点：全部</span><span class="chip">主题</span></div>`;
+const listD = (selIdx, cols = 'g3') => `<div class="${cols}">${E.slice(0, 3).map((e, k) => aCard(e, k === selIdx)).join('')}</div><div class="lh"><b>已结束 · 4场</b><span class="lbl">最近的在前</span></div><div class="${cols}">${E.slice(3).map((e, k) => aCard(e, k + 3 === selIdx)).join('')}</div>`;
+const railIdle = `<h4>${ic('sparkle', 'sm')}下一步</h4><div class="card"><div class="ghost-lines"><i style="width:60%"></i><i style="width:92%"></i><i style="width:80%"></i></div></div><div class="card"><div class="ghost-lines"><i style="width:50%"></i><i style="width:88%"></i></div></div>`;
+
+let h = '';
+h += secT('① 桌面 1440', '右侧简介用现有右栏的位置；列表保持三列不变');
+h += boards([
+  ['D0 · 没选中任何卡（现状）', '现状', webZ({ rail: railIdle, body: wHead + listD(-1) }), ['右栏是「下一步」；点任意一张卡后变成 D1'], 1440],
+]);
+h += `<div style="height:28px"></div>` + boards([
+  ['D1 · 点了招募中的活动', '推荐', webZ({ rail: P.open, railCls: 'ep-rail', body: wHead + listD(0), pins: pin(1, '.ca.sel') + pin(2, '.ep-facts') + pin(3, '.ep-rel') + pin(4, '.ep-foot') }), ['选中的卡有深色描边；再点它进入活动详情页', '时间、地点、费用三行；名额和报名截止写在费用下面', '「和你有关」只列事实，不打分；没有就整块不显示', '底部固定：左「查看详情」，右「参加」；内容再长也不会把按钮顶走'], 1440],
+]);
+h += `<div style="height:28px"></div>` + boards([
+  ['D2 · 点了已结束的活动（参加过）', '推荐', webZ({ rail: P.went, railCls: 'ep-rail', body: wHead + listD(3), pins: pin(1, '.ep-state') + pin(2, '.ep-ppl') + pin(3, '.ep-foot') }), ['标题下标出「已结束」「你参加了」；费用、名额不再显示', '把「参加者」换成「你在这场见过的人」', '主按钮换成「看会场记录」'], 1440],
+]);
+
+h += secT('② 底部按钮随状态怎么变', '栏宽 360px；只有主按钮（右）变，「查看详情」（左）一直在');
+h += boards([
+  ['S1 · 招募中', '', `<div class="ep-solo">${P.open}</div>`, ['参加'], 360],
+  ['S2 · 已报名', '', `<div class="ep-solo">${P.joined}</div>`, ['查看我的报名（报名内容、参加码）'], 360],
+  ['S3 · 名额已满 / 报名已截止', '', `<div class="ep-solo">${P.full}</div>`, ['灰色不可点，文字写原因：「名额已满」或「报名已截止」；开了候补的活动写「排队候补」并可点'], 360],
+]);
+h += `<div style="height:28px"></div>` + boards([
+  ['S4 · 已结束 · 参加过', '', `<div class="ep-solo">${P.went}</div>`, ['看会场记录（当时同桌和交换过的人）'], 360],
+  ['S5 · 已结束 · 没参加 · 主办方有下一场', '', `<div class="ep-solo">${P.missed}</div>`, ['看下一场：右侧栏直接换成那一场'], 360],
+  ['S6 · 已结束 · 没参加 · 没有下一场', '', `<div class="ep-solo">${P.missedNoNext}</div>`, ['关注主办方：下一场开放报名时通知；已关注则显示「已关注」'], 360],
+]);
+
+h += secT('③ iPad 834', '没有右栏：从右侧浮出，列表变暗');
+h += boards([
+  ['T1 · 834 · 右侧浮层', '推荐', webZ({ cls: 'w834', body: wHead + listD(0, 'g2'), overlay: `<div class="dim"></div><div class="ep-drawer">${P.open}</div>`, pins: pin(1, '.ep-drawer') }), ['宽 380px，内容和 1440 完全相同；点暗处或 ✕ 关闭。被盖住的卡片点不到，所以这里也靠「查看详情」进入'], 834],
+]);
+
+h += secT('④ 手机 390', '底部面板；内容相同，封面压矮');
+const brand = `<div class="mw-head"><div class="logo">O</div><b style="font-size:16px">Orbit</b><div style="flex:1"></div><button class="rbtn">${ic('inbox')}</button><button class="avatar-btn">佐</button></div>`;
+const seg = `<div class="seg" style="display:flex"><button style="flex:1">评估</button><button style="flex:1">参加的活动</button><button class="on" style="flex:1">发现</button></div>`;
+const pHead = brand + seg + `<div class="search" style="margin-top:10px">${ic('search', 'sm')}活动名、主办方、关键词</div><div class="fl"><span class="chip">时间：即将举办</span><span class="chip">地点：全部</span><span class="chip">主题</span></div>`;
+const pList = (sel) => pHead + `<div class="list" style="margin-top:12px">${E.slice(0, 3).map((e, k) => bCard(e, k === sel)).join('')}</div><div class="lh"><b>已结束 · 4场</b><span class="lbl">最近的在前</span></div><div class="list">${E.slice(3).map((e, k) => bCard(e, k + 3 === sel)).join('')}</div>`;
+const m390 = (sel, p, pins = '') => phone({ tab: -1, body: pList(sel), overlay: `<div class="sheet-scrim"></div><div class="sheet ep-sheet"><div class="grab"></div>${p}</div>`, pins }).replace('class="phone"', 'class="phone mweb"');
+h += boards([
+  ['M1 · 招募中', '推荐', m390(0, P.open, pin(1, '.ep-sheet') + pin(2, '.ep-foot')), ['面板最高到屏幕 76%，往上拖可到全屏；往下拖或点暗处关闭', '两个按钮固定在面板底部，拇指够得到']],
+  ['M2 · 已结束 · 没参加', '', m390(3, P.missed), ['主按钮「看下一场」：面板内容换成下一场']],
+]);
+
+h += secT('字段表', '每一块从哪来、没有时怎么显示');
+h += `<table class="cmp"><tr><th style="width:170px">内容</th><th style="width:330px">来源</th><th style="width:230px">上限</th><th>没有时</th></tr>
+<tr><td>封面</td><td>主办方上传的封面</td><td>2:1（手机 5:2），居中裁切</td><td>emoji 色带，同列表卡</td></tr>
+<tr><td>活动名 / 主办方</td><td>活动基本信息、主办方页面名</td><td>活动名最多 2 行</td><td>必有</td></tr>
+<tr><td>状态标记</td><td>活动是否结束、本人报名和签到记录</td><td>最多 2 个</td><td>招募中且未报名时不显示这一行</td></tr>
+<tr><td>时间 / 地点</td><td>活动基本信息</td><td>地点名 1 行 + 地址 1 行</td><td>线上活动写「线上」，不显示地址</td></tr>
+<tr><td>费用 / 名额 / 截止</td><td>报名设置；名额 = 定员 − 已报名</td><td>1 行 + 说明 1 行</td><td>已结束整行不显示；不限名额只写截止日；免费写「免费」</td></tr>
+<tr><td>介绍</td><td>活动说明（Markdown 取纯文字）</td><td>4 行，超出省略</td><td>没写说明则整块不显示</td></tr>
+<tr><td>和你有关</td><td>现有的「和你有关」事实（不打分），每条配一句依据</td><td>最多 3 条</td><td>没有则整块不显示；未登录不显示</td></tr>
+<tr><td>参加者</td><td>已报名人数；名单公开后显示最多 4 个头像</td><td>4 个头像 + 人数</td><td>名单未公开只显示人数；不足 10 人不显示人数</td></tr>
+<tr><td>你在这场见过的人</td><td>会场记录（同桌、交换）</td><td>4 个头像 + 人数</td><td>参加了但没有记录：写「这场没有留下见面记录」</td></tr>
+<tr><td>这个主办方的下一场</td><td>同一主办方最近一场还能报名的活动</td><td>1 场</td><td>没有则不显示，主按钮改为「关注主办方」</td></tr></table>`;
+
+document.getElementById('out').innerHTML = h;
+docNav(''); orbitChrome();
+</script>
+</body>
+</html>
