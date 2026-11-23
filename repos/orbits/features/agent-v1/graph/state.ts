@@ -232,6 +232,10 @@ export interface AgentGraphRun {
   readNames: Map<string, { type: string; name: string }>;
   /** AG05: per part, several people match its name: the candidates to ask about. */
   candidates: Map<string, NamedRecordRef[]>;
+  /** 2026-11-23 (NEXT incident): per read part, the people resolve read it for, by any route (a bound ref, a variant or
+   * romanized spelling, a company's people, an antecedent, an inherited subject): what the conversation engine's ask / go
+   * counts as bound (conversation/run.ts askGoRun). Optional: a run built by hand may lack it. */
+  partPeople?: Map<string, string[]>;
   /** AG05: the delivered answer's verified source refs (filled by verify). */
   sourceRefs: string[];
   /** AG07: what a link needs of each record read in this request (ref → kind, id, title, day), and the basis line verify writes. */

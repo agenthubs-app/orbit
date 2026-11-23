@@ -779,6 +779,7 @@ export function resolveNode(scope: NodeScope): GraphNode {
         }
       }
       resolvedParts.set(part.localId, { contacts: [...contacts], filter, partId: part.localId });
+      if (contacts.length) run.partPeople?.set(part.localId, [...new Set(contacts.map((item) => item.id))]);
       // A person pointed at only by a pronoun that nothing resolved: do not read everyone's records instead —
       // unless the part names what to look for (its words, or a record it points at). It never says the person
       // is missing: no lookup found no one (run-02 repair 2).
