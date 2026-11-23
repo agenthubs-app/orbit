@@ -45,16 +45,25 @@
 .nextText b { display: block; font-size: var(--fs-body-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nextText small { font-size: var(--fs-meta); color: var(--ink-3); }
 .foot { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
-.foot > * { height: 44px; min-width: 0; }
+/* 三个类：压过 events 的 `.btn.btn`（40 高），占位和真按钮都是 44，按钮行从第一帧到内容到齐都不动。 */
+.ep .foot.foot > * { height: 44px; min-height: 0; min-width: 0; }
 .foot > :only-child { grid-column: 1 / -1; }
 .off.off { background: var(--surface-2); color: var(--ink-3); opacity: 1; }
 .pendBtn.pendBtn { height: 44px; border-radius: var(--r-pill); }
+/* 骨架按最终内容的高度留位：介绍 4 行（13px × 1.7）、参加者一行（28 的头像）、名额截止一行。 */
+.boneIntro { display: grid; grid-template-rows: repeat(4, 1fr); align-items: center; height: calc(var(--fs-body-sm) * 1.7 * 4); }
+.boneIntro > i { height: 10px; }
+.boneLine.boneLine { width: 120px; height: 12px; }
+.boneSmall.boneSmall { width: 150px; height: 10px; }
+.boneAvs.boneAvs { width: 88px; height: 28px; border-radius: var(--r-pill); }
+.facts small:has(.boneSmall) { height: 18px; display: flex; align-items: center; }
 
 /* 834：右侧浮层（380，四周留 12，背景 --bg）。 */
 .drawer.drawer { top: 12px; right: 12px; bottom: 12px; width: min(380px, calc(100vw - 24px)); border-radius: var(--r-cta); }
 .drawer.drawer > :last-child { padding: 18px 20px 20px; overflow: hidden; }
 /* 390：底部面板，最高 76%，内容可滚，按钮固定在底部。 */
-.sheet.sheet { padding: 10px 18px 22px; max-height: 76dvh; display: flex; flex-direction: column; overflow: hidden; }
+/* 2026-11-23：底部面板固定 76% 高（不随内容长短伸缩，后补的内容在里面滚动）。 */
+.sheet.sheet { padding: 10px 18px 22px; height: 76dvh; max-height: 76dvh; display: flex; flex-direction: column; overflow: hidden; }
 .mode_sheet { height: auto; flex: 1; min-height: 0; }
 .mode_sheet .cover { aspect-ratio: 5 / 2; }
 

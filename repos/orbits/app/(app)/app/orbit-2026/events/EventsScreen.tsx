@@ -21,6 +21,8 @@ import { Assessing, FillThree, LoginRequired, NotEventPage, PasteText } from "./
 import { AssessmentPage, AssessmentRail, translator, type Translate } from "./AssessmentDetail";
 import { DiscoverHelpRail, DiscoverRail, DiscoverTab, journeyTranslator, type DiscoverRailState } from "./DiscoverTab";
 import { EventSidePanel } from "./EventSidePanel";
+import type { EventSummaryResponse } from "../../../../../shared/contract/event-summary";
+type EventSummaryStatus = EventSummaryResponse["status"];
 import { eventsApi, newIdempotencyKey, pollAssessment } from "./events-api";
 import { allDayLabelOf, cardLine, eventWhen, isShownInGrid, monthOf, orderAssessed, relativeDay, tabOf } from "./events-model";
 import { PrivateEventPanel } from "./PrivateEventPanel";
@@ -98,6 +100,9 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   const [discoverSubtitle, setDiscoverSubtitle] = useState<string | null>(null);
   // 2026-11-23 手机：发现页的搜索框收进顶栏的搜索图标（点开才显示）。
   const [phoneSearch, setPhoneSearch] = useState(() => Boolean(params?.get("q")));
+  // 简介栏第一帧的报名状态：页面已读的「参加的活动」（还没读到 = undefined，面板就不提前画状态行）。
+  const myStatus = useMemo(() => upcoming === null || past === null ? undefined
+    : Object.fromEntries([...upcoming, ...past].map((item) => [item.eventId, item.status === "planned" ? "none" : item.status] as const)) as Readonly<Record<string, EventSummaryStatus>>, [upcoming, past]);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const abort = useRef<AbortController | null>(null);
 
@@ -237,7 +242,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   };
   // Until the rail's data is in, undefined: the shell keeps its rail skeleton (no-flash rule 3).
   const rail = tier !== "wide" ? false : tab === "discover"
-    ? (!discover && !discoverRail.loaded ? undefined : discoverRail.panel ? <EventSidePanel key={discoverRail.panel.eventId} eventId={discoverRail.panel.eventId} seed={discoverRail.panel.seed} tone={discoverRail.panel.tone} language={language} now={discoverRail.panel.now} mode="rail" onClose={discoverRail.panel.onClose} onSelect={discoverRail.panel.onSelect} /> : discoverRail.row ? <DiscoverRail row={discoverRail.row} language={language} /> : <DiscoverHelpRail language={language} />)
+    ? (!discover && !discoverRail.loaded ? undefined : discoverRail.panel ? <EventSidePanel key={discoverRail.panel.eventId} eventId={discoverRail.panel.eventId} seed={discoverRail.panel.seed} tone={discoverRail.panel.tone} language={language} now={discoverRail.panel.now} mode="rail" onClose={discoverRail.panel.onClose} onSelect={discoverRail.panel.onSelect} statusHint={myStatus ? myStatus[discoverRail.panel.eventId] ?? "none" : undefined} /> : discoverRail.row ? <DiscoverRail row={discoverRail.row} language={language} /> : <DiscoverHelpRail language={language} />)
     : !overviewLoaded ? undefined
     : privateItem ? <PrivateEventPanel item={privateItem} language={language} />
     : shownRailItem
@@ -251,7 +256,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
         phoneActions={tab === "discover" ? [{ active: phoneSearch, icon: "search", key: "search", label: journeyTranslator(language)("searchPlaceholder"), onClick: () => setPhoneSearch((open) => !open) }] : undefined} />
       {/* 2026-11-23 手机顶栏：标题与页签由外壳画（phoneTabs）；页面不再画自己的顶部行。 */}
       {tier !== "narrow" && !inShell ? <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 12px" }}>{segment}</div> : null}
-      {tab === "discover" ? <div data-events-discover="">{discover ?? <DiscoverTab language={language} tier={tier} signedIn nowIso={nowIso} onRail={setDiscoverRail} onSubtitle={setDiscoverSubtitle} phoneSearch={phoneSearch} />}</div> : null}
+      {tab === "discover" ? <div data-events-discover="">{discover ?? <DiscoverTab language={language} tier={tier} signedIn nowIso={nowIso} onRail={setDiscoverRail} onSubtitle={setDiscoverSubtitle} phoneSearch={phoneSearch} myStatus={myStatus} />}</div> : null}
       {tab === "going" ? (upcoming === null || past === null ? <GoingSkeleton /> : <MyEvents language={language} upcoming={upcoming} past={past} now={now} t={t} selectedPrivate={tier === "wide" ? privateOpen : null} onOpenPrivate={openPrivate} />) : null}
       {privateItem && tier !== "wide" ? (
         <Drawer open onClose={() => openPrivate(null)} title={privateItem.title} size="lg">

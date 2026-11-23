@@ -12,6 +12,7 @@ import type { EventDiscoverArea, EventDiscoverFormat, EventDiscoverPeriod, Event
 import type { EventRelevance } from "../../../../../shared/contract/event-relevance";
 import type { EventRecommendationDismissReason } from "../../../../../shared/contract/event-recommendation-feedback";
 import type { EventSearchResponse } from "../../../../../shared/contract/event-search";
+import type { EventSummaryResponse } from "../../../../../shared/contract/event-summary";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { PageSkeletonBody } from "../shell/PageSkeleton";
@@ -232,7 +233,7 @@ function useCardsPerRow(): number {
   return perRow;
 }
 
-export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle, nowIso, phoneSearch = true }: { language: OrbitLanguage; tier: Tier; signedIn: boolean; onRail: (state: DiscoverRailState) => void; onSubtitle: (text: string) => void; /** 服务端给的「今」（本机示例时钟）；缺省 = 现在。 */ nowIso?: string; /** 2026-11-23 手机：搜索框收进顶栏的搜索图标，打开时才显示（宽屏一直显示）。 */ phoneSearch?: boolean }) {
+export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle, nowIso, phoneSearch = true, myStatus }: { language: OrbitLanguage; tier: Tier; signedIn: boolean; onRail: (state: DiscoverRailState) => void; onSubtitle: (text: string) => void; /** 服务端给的「今」（本机示例时钟）；缺省 = 现在。 */ nowIso?: string; /** 2026-11-23 手机：搜索框收进顶栏的搜索图标，打开时才显示（宽屏一直显示）。 */ phoneSearch?: boolean; /** 简介栏第一帧的报名状态（页面已读的「参加的活动」）；undefined = 还不知道。 */ myStatus?: Readonly<Record<string, EventSummaryResponse["status"]>> }) {
   const t = useMemo(() => journeyTranslator(language), [language]);
   const at = useMemo(() => assessTranslator(language), [language]);
   const toast = useToast();
@@ -386,11 +387,11 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle, nowI
   const overlay = panel && tier !== "wide" ? (
     tier === "medium" ? (
       <Drawer open bare size="sm" className={sp.drawer} onClose={closePanel} title={panelEntry?.row.title ?? t("seeDetail")}>
-        <EventSidePanel key={panel.eventId} eventId={panel.eventId} seed={panel.seed} tone={panel.tone} language={language} now={now} mode="drawer" onClose={closePanel} onSelect={setSelected} />
+        <EventSidePanel key={panel.eventId} eventId={panel.eventId} seed={panel.seed} tone={panel.tone} language={language} now={now} mode="drawer" onClose={closePanel} onSelect={setSelected} statusHint={myStatus ? myStatus[panel.eventId] ?? "none" : undefined} />
       </Drawer>
     ) : (
       <BottomSheet open className={sp.sheet} onClose={closePanel} label={panelEntry?.row.title ?? t("seeDetail")}>
-        <EventSidePanel key={panel.eventId} eventId={panel.eventId} seed={panel.seed} tone={panel.tone} language={language} now={now} mode="sheet" onClose={closePanel} onSelect={setSelected} />
+        <EventSidePanel key={panel.eventId} eventId={panel.eventId} seed={panel.seed} tone={panel.tone} language={language} now={now} mode="sheet" onClose={closePanel} onSelect={setSelected} statusHint={myStatus ? myStatus[panel.eventId] ?? "none" : undefined} />
       </BottomSheet>
     )
   ) : null;

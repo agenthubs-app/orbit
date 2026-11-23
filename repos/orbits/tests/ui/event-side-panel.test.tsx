@@ -81,6 +81,12 @@ test("panel paints from the list row at once: cover band, title, organizer, time
   assert.match(html, /data-panel-related=""/);
   assert.match(html, /data-panel-detail="" href="\/app\/events\/e1">查看详情/);
   assert.match(html, /aria-label="关闭"/);
+  // 2026-11-23 先出布局、再填内容：要另读的块在第一帧是同高骨架，主按钮是同尺寸占位；报名状态由页面已读的列表给出。
+  assert.match(html, /data-panel-pending="intro"/);
+  assert.match(html, /data-panel-pending="people"/);
+  assert.doesNotMatch(html, /data-panel-primary=/, "the primary button waits as a same-size bone");
+  const registered = render(<EventSidePanel eventId="e1" tone="lav" language="zh" now={now} mode="sheet" statusHint="registered" onClose={() => {}} onSelect={() => {}} seed={{ emoji: "🥂", eventId: "e1", href: "/events/e1", startsAt: "2026-11-28T05:00:00.000Z", title: "T" }} />);
+  assert.match(registered, /已报名/, "the state row is there in the first frame");
 });
 
 test("ended card: original colours (no greyed class), 「已结束」 tag on the cover, no ended chip at the foot", () => {

@@ -83,8 +83,13 @@ export function seatsLine(summary: Pick<EventSummaryResponse, "ended" | "remaini
   return closes ? t("spUntil", { d: closes }) : null;
 }
 
-export function EventSidePanel({ eventId, seed, tone, language, now, mode, onClose, onSelect }: {
+export function EventSidePanel({ eventId, seed, tone, language, now, mode, onClose, onSelect, statusHint }: {
   eventId: string;
+  /**
+   * 2026-11-23（先出布局、再填内容）：我和这场的关系，来自页面已读的「参加的活动」列表——状态行在打开的第一帧就定下来，
+   * 不等摘要请求。undefined = 还不知道（列表没读到）。
+   */
+  statusHint?: EventSummaryResponse["status"];
   seed: PanelSeed | null;
   tone: PanelTone;
   language: OrbitLanguage;
@@ -123,15 +128,18 @@ export function EventSidePanel({ eventId, seed, tone, language, now, mode, onClo
   const ended = s?.ended ?? (startsAt ? now.getTime() >= Date.parse(endsAt || startsAt) : false);
   const fee = feeText(seed ? seed.priceYen : s?.priceYen, t);
   const organizer = s?.organizer.unnamed ? null : (seed?.organizerName ?? s?.organizer.name ?? null);
-  const went = ended && (s?.status === "registered" || s?.status === "attended");
+  const status = s?.status ?? statusHint;
+  const went = ended && (status === "registered" || status === "attended");
   const states = [
     ended ? <span key="ended" className={styles.chip}>{t("endedChip")}</span> : null,
     went ? <span key="went" className={`${styles.chip} ${styles.c_teal}`}><Icon name="check" size={16} />{t("spStWent")}</span> : null,
-    !ended && s && (s.status === "registered" || s.status === "attended") ? <span key="reg" className={`${styles.chip} ${styles.c_teal}`}><Icon name="check" size={16} />{t("spStRegistered")}</span> : null,
-    !ended && s?.status === "pending_review" ? <span key="pending" className={styles.chip}>{t("stPending")}</span> : null,
-    !ended && s?.status === "waitlisted" ? <span key="wait" className={styles.chip}>{t("spStWaitlisted")}</span> : null,
+    !ended && (status === "registered" || status === "attended") ? <span key="reg" className={`${styles.chip} ${styles.c_teal}`}><Icon name="check" size={16} />{t("spStRegistered")}</span> : null,
+    !ended && status === "pending_review" ? <span key="pending" className={styles.chip}>{t("stPending")}</span> : null,
+    !ended && status === "waitlisted" ? <span key="wait" className={styles.chip}>{t("spStWaitlisted")}</span> : null,
   ].filter(Boolean).slice(0, 2);
   const seats = s ? seatsLine(s, now, t) : null;
+  // 摘要还没回来：要另读的块先画同高的骨架（介绍 4 行、参加者一行、名额截止一行），回来后原位替换。
+  const pending = !s;
   const rel = ended ? [] : relevanceRows(seed?.relevance, language).slice(0, 3);
   const count = s?.registrationCount ?? seed?.registrationCount ?? null;
   const action = s ? primaryAction({ ...s, organizer: { ...s.organizer, following: following ?? s.organizer.following } }, now) : null;
@@ -168,9 +176,10 @@ export function EventSidePanel({ eventId, seed, tone, language, now, mode, onClo
         <div className={p.facts}>
           {startsAt ? <div><Icon name="calendar" size={16} /><span>{panelWhen(startsAt, endsAt, language, t)}</span></div> : null}
           {online ? <div><Icon name="pin" size={16} /><span>{t("spOnline")}</span></div> : venue ? <div><Icon name="pin" size={16} /><span>{venue}</span></div> : null}
-          {!ended && (fee || seats) ? <div data-panel-fee=""><Icon name="ticket" size={16} /><span>{fee ?? seats}{fee && seats ? <small>{seats}</small> : null}</span></div> : null}
+          {!ended && (fee || seats || pending) ? <div data-panel-fee=""><Icon name="ticket" size={16} /><span>{fee ?? seats ?? <i className={`${styles.pendBone} ${p.boneLine}`} aria-hidden />}{fee && (seats || pending) ? <small>{seats ?? <i className={`${styles.pendBone} ${p.boneSmall}`} aria-hidden />}</small> : null}</span></div> : null}
         </div>
-        {s?.description ? <section className={p.sec}><h5>{t("spIntro")}</h5><p className={p.clamp4}>{s.description}</p></section> : null}
+        {pending ? <section className={p.sec} data-panel-pending="intro" aria-hidden><h5>{t("spIntro")}</h5><div className={p.boneIntro}>{[92, 100, 86, 60].map((width) => <i key={width} className={styles.pendBone} style={{ width: `${width}%` }} />)}</div></section>
+          : s.description ? <section className={p.sec}><h5>{t("spIntro")}</h5><p className={p.clamp4}>{s.description}</p></section> : null}
         {rel.length ? (
           <section className={p.sec} data-panel-related="">
             <h5>{relevanceTitle(language)}</h5>
@@ -183,6 +192,11 @@ export function EventSidePanel({ eventId, seed, tone, language, now, mode, onClo
             {s.met.hasRecord
               ? <div className={p.ppl}>{s.met.initials.length ? <Avatars initials={s.met.initials} /> : null}<span>{s.met.notInContacts ? t("spMetNotAdded", { k: s.met.notInContacts, n: s.met.count }) : t("spMetN", { n: s.met.count })}</span></div>
               : <p>{t("spMetNone")}</p>}
+          </section>
+        ) : pending ? (
+          <section className={p.sec} data-panel-pending="people" aria-hidden>
+            <h5>{t(went ? "spMetTitle" : "spPeople")}</h5>
+            <div className={p.ppl}><i className={`${styles.pendBone} ${p.boneAvs}`} /><i className={`${styles.pendBone} ${p.boneLine}`} /></div>
           </section>
         ) : s && !went && (s.attendeeInitials.length || (count !== null && count >= 10)) ? (
           <section className={p.sec} data-panel-people="">
