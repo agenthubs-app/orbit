@@ -425,6 +425,8 @@ export function IOrbit2026({ accountName, initialHistoryOpen = false, agentV1 = 
         right={<><span className={styles.anywhere}><Kbd>{shortcut}</Kbd> <Kbd>K</Kbd><span className={styles.anywhereText}> {t(iorbitCopy.anywhere)}</span></span><Button label={t(iorbitCopy.newChat)} icon="plus" onClick={startNew} /></>}
         rightRail={phone ? false : <div className={styles.railHistory}><HistoryPane history={history} onNew={startNew} onPick={pick} /></div>}
         railLabel={t(iorbitCopy.list)} phoneFold phoneBare={inConversation}
+        // 2026-11-23：对话中顶栏标题是会话标题（没有标题时是 iOrbit），一行，过长省略。
+        phoneTitle={inConversation && activeTitle ? activeTitle : undefined}
         // 2026-11-23 手机顶栏：iOrbit 标题在外壳顶栏；操作 = 会话列表 · 新对话（对话中是「关闭」）。
         phoneActions={[{ icon: "menu", key: "history", label: t(iorbitCopy.list), onClick: () => setHistoryOpen(true) }, { icon: inConversation ? "x" : "plus", key: "new", label: inConversation ? standardCopyFor(language).action.close : t(iorbitCopy.newChat), onClick: startNew }]} />
       <div className={styles.layout}>

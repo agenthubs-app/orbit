@@ -48,6 +48,8 @@ export type ShellSlots = {
   phoneTitle?: string | null;
   /** < 768: a sub-view opened inside a first-level route (Task › 全部待办): draw the sub-page bar (‹ · title · action). */
   phoneSub?: boolean;
+  /** < 768 sub-page: the small line under the bar title when it differs from `subtitle` (报名: 「第 i / n 题 · 约 m 分钟」). Stays inside the 52 row. */
+  phoneSubtitle?: ReactNode;
 };
 
 export type ShellPhoneAction = {
@@ -74,7 +76,7 @@ const FilledContext = createContext(false);
 // re-render (and re-run its effect) every time the slots change.
 const SetSlotsContext = createContext<SetSlots | null>(null);
 
-const SLOT_KEYS = ["title", "subtitle", "left", "right", "demoPill", "rightRail", "railLabel", "railCount", "phoneFold", "phoneBare", "twoTier", "phoneActions", "phoneTabs", "phoneBack", "phoneTitle", "phoneSub"] as const;
+const SLOT_KEYS = ["title", "subtitle", "left", "right", "demoPill", "rightRail", "railLabel", "railCount", "phoneFold", "phoneBare", "twoTier", "phoneActions", "phoneTabs", "phoneBack", "phoneTitle", "phoneSub", "phoneSubtitle"] as const;
 const sameSlots = (a: ShellSlots, b: ShellSlots) => SLOT_KEYS.every((key) => Object.is(a[key], b[key]));
 
 export function ShellSlotsProvider({ children }: { children: ReactNode }) {
@@ -126,9 +128,9 @@ const useBeforePaint = typeof window === "undefined" ? useEffect : useLayoutEffe
 export function ShellPage(props: ShellSlots) {
   const id = useId();
   const set = useContext(SetSlotsContext);
-  const { title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier, phoneActions, phoneTabs, phoneBack, phoneTitle, phoneSub } = props;
+  const { title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier, phoneActions, phoneTabs, phoneBack, phoneTitle, phoneSub, phoneSubtitle } = props;
   const latest = useRef<ShellSlots>({});
-  latest.current = { title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier, phoneActions, phoneTabs, phoneBack, phoneTitle, phoneSub };
+  latest.current = { title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier, phoneActions, phoneTabs, phoneBack, phoneTitle, phoneSub, phoneSubtitle };
   useBeforePaint(() => {
     if (!set) return undefined;
     set(id, latest.current);
@@ -136,7 +138,7 @@ export function ShellPage(props: ShellSlots) {
   }, [set, id]);
   useEffect(() => {
     if (!set) return;
-    set(id, { title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier, phoneActions, phoneTabs, phoneBack, phoneTitle, phoneSub });
-  }, [set, id, title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier, phoneActions, phoneTabs, phoneBack, phoneTitle, phoneSub]);
+    set(id, { title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier, phoneActions, phoneTabs, phoneBack, phoneTitle, phoneSub, phoneSubtitle });
+  }, [set, id, title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare, twoTier, phoneActions, phoneTabs, phoneBack, phoneTitle, phoneSub, phoneSubtitle]);
   return null;
 }

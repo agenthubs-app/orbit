@@ -435,7 +435,7 @@ function ShellPhoneBar({ pathname, slots, active, dot, language, openRail }: { p
           {back ?? <span className={styles.phoneGap} aria-hidden />}
           <div className={styles.phoneCenter}>
             {title ? <h1 className={styles.phoneSubTitle}>{title}</h1> : null}
-            {title && slots.subtitle ? <small className={styles.phoneSubLine}>{slots.subtitle}</small> : null}
+            {title && (slots.phoneSubtitle ?? slots.subtitle) ? <small className={styles.phoneSubLine}>{slots.phoneSubtitle ?? slots.subtitle}</small> : null}
           </div>
           {shown.length ? shown.map(button) : more ?? <span className={styles.phoneGap} aria-hidden />}
           {shown.length ? more : null}

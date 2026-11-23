@@ -365,7 +365,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     <>
       {phone && !reviewing && !result ? (
         <>
-          <ShellPage title={t("regTitle")} subtitle={event?.title ?? ""} left={<a className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("close")}><Icon name="x" size={20} /></a>} rightRail={false} phoneBare phoneBack={detailHref} />
+          <ShellPage title={t("regTitle")} subtitle={event?.title ?? ""} left={<a className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("close")}><Icon name="x" size={20} /></a>} rightRail={false} phoneBare phoneBack={detailHref} phoneSubtitle={headRight ?? undefined} />
           {loadError ?? phoneChat}
         </>
       ) : <>
@@ -375,6 +375,8 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
         left={<a className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("close")}><Icon name="x" size={16} /></a>}
         right={headRight ? <span className={styles.lbl}>{headRight}</span> : undefined}
         phoneBack={detailHref}
+        // 2026-11-23：手机顶栏标题下的小字是答题进度（代替活动名），仍在 52 这一行之内。
+        phoneSubtitle={headRight ?? undefined}
         rightRail={wide ? rail : false}
       />
       <div className={styles.wgrid} data-join={eventId}>
