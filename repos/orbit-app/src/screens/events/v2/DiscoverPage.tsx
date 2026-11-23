@@ -16,7 +16,7 @@ import { planNewGoalHref } from "../../../api/compute/plan-href";
 import { BottomSheet, FilterOption, FullScreenSearch, Icon, Toggle, UiPressable, UiText } from "../../../components/ui";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
 import { createThemedStyles } from "../../../design/theme";
-import { radius } from "../../../design/tokens";
+import { colors as photoColors, radius } from "../../../design/tokens";
 import { addDesignMock } from "../../add/add-design-mock";
 import { useJourneyApi } from "./journey-api";
 import { AREAS, PERIODS, THEMES, areaLabel, discoverWhen, feeText, periodLabel, rowTone, themeLabel, tokyo, type JourneyTone } from "./journey-model";
@@ -29,6 +29,7 @@ import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
 import { recentSearchKey } from "../../../data/account-local-caches";
 import { useOrbitApiBaseUrl } from "../../../api/ApiBaseUrlProvider";
 import { coverUri } from "./event-cover";
+import { EventSummarySheet } from "./EventSummarySheet";
 
 // Opens on this month with no area: a fixed 东京 filter left people elsewhere (and online events) with an empty page.
 export const APP_DISCOVER_QUERY: EventDiscoverQuery = { areas: [], period: "this_month", planFirst: true, sort: "date", themes: [] };
@@ -124,7 +125,10 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
     onSubtitle(data.popularityFallback ? t("dSubtitleEmpty") : data.total <= 5 && data.all.length > 0 ? t("dSubtitleFewLong", { n: data.total }) : t("dSubtitleMany", { n: data.planFitTotal, period: query.period ? periodLabel(query.period, t) : "", total: data.total }));
   }, [data, onSubtitle, query.period, t]);
 
-  const open = useCallback((row: EventDiscoverRow) => router.push(row.href as Href), [router]);
+  // 2026-11-23 event-side-panel-proposal ④：点卡片 / 行先出底部简介面板；进详情靠面板里的「查看详情」。
+  const [selected, setSelected] = useState<{ row: EventDiscoverRow; tone: string } | null>(null);
+  const open = useCallback((row: EventDiscoverRow, tone?: string) => setSelected({ row, tone: tone ?? colors.macTeal }), [colors.macTeal]);
+  const closeSummary = useCallback(() => setSelected(null), []);
   const patch = (next: Partial<EventDiscoverQuery>) => setQuery((current) => ({ ...current, ...next }));
   const clear = (key: keyof EventDiscoverQuery) => setQuery((current) => { const next = { ...current }; delete next[key]; if (key === "period") { delete next.from; delete next.to; } return next; });
   const flat = data !== null && !data.popularityFallback && data.total <= 5 && data.all.length > 0;
@@ -270,7 +274,8 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
               const cover = coverUri(row.coverUrl, baseUrl);
               const fee = feeText(row.priceYen, t);
               return (
-                <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={styles.ecRow} testID={`events-discover-card-${row.eventId}`}>
+                <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row, toneBg(rowTone(index)))} style={styles.ecRow} testID={`events-discover-card-${row.eventId}`}>
+                  {selected?.row.eventId === row.eventId ? <View pointerEvents="none" style={styles.ecSel} /> : null}
                   {cover ? <Image source={{ uri: cover }} resizeMode="cover" style={styles.ecThumb} accessibilityIgnoresInvertColors testID={`events-discover-cover-${row.eventId}`} />
                     : <View style={[styles.ecThumb, styles.ecThumbEmoji, { backgroundColor: toneBg(rowTone(index)) }]}><UiText style={styles.ecEmoji}>{row.emoji}</UiText></View>}
                   <View style={styles.ecText}>
@@ -302,6 +307,33 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
               <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</UiText><RelevanceChips style={styles.rowChips} chips={relevanceChips(row.relevance, rt)} /></View>
             </UiPressable>
           ))}
+        </View>
+      ) : null}
+
+      {/* 已结束（2026-11-23 ④ M2）：封面保持原色，左上角「已结束」角标；不放费用和标签。最近的在前。 */}
+      {data && !data.popularityFallback && data.past?.length ? (
+        <View testID="events-discover-past">
+          <View style={styles.lh}><UiText style={styles.lhTitle}>{rt("eventsV2.pastTitle", { n: data.pastTotal ?? data.past.length })}</UiText><UiText style={styles.lhLbl}>{rt("eventsV2.pastNewest")}</UiText></View>
+          <View style={styles.ecList}>
+            {data.past.map((row, index) => {
+              const cover = coverUri(row.coverUrl, baseUrl);
+              const tone = toneBg(rowTone(index));
+              return (
+                <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row, tone)} style={styles.ecRow} testID={`events-discover-past-${row.eventId}`}>
+                  {selected?.row.eventId === row.eventId ? <View pointerEvents="none" style={styles.ecSel} /> : null}
+                  <View>
+                    {cover ? <Image source={{ uri: cover }} resizeMode="cover" style={styles.ecThumb} accessibilityIgnoresInvertColors />
+                      : <View style={[styles.ecThumb, styles.ecThumbEmoji, { backgroundColor: tone }]}><UiText style={styles.ecEmoji}>{row.emoji}</UiText></View>}
+                    <View style={styles.endTag} testID={`events-discover-ended-${row.eventId}`}><View style={styles.endTagBg} /><UiText style={styles.endTagText}>{rt("eventsV2.panelEnded")}</UiText></View>
+                  </View>
+                  <View style={styles.ecText}>
+                    <UiText style={styles.ecTitle} numberOfLines={2}>{row.title}</UiText>
+                    <UiText style={styles.ecMeta} numberOfLines={1}>{[discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ")}</UiText>
+                  </View>
+                </UiPressable>
+              );
+            })}
+          </View>
         </View>
       ) : null}
 
@@ -393,6 +425,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
           </View>
         </View>
       </FullScreenSearch>
+      <EventSummarySheet row={selected?.row ?? null} tone={selected?.tone ?? colors.macTeal} onClose={closeSummary} />
     </ScrollView>
   );
 }
@@ -440,6 +473,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   ecSample: { backgroundColor: "transparent", opacity: 0.5, padding: 0 },
   ecRow: { backgroundColor: colors.surface, borderRadius: 20, flexDirection: "row", gap: 12, minHeight: 112, padding: 12 },
   ecThumb: { borderRadius: 14, height: 88, width: 88 },
+  // 面板开着时被选中的卡：kit .sel = 0 0 0 2px ink（外圈，不占位）。
+  ecSel: { borderColor: colors.ink, borderRadius: 22, borderWidth: 2, bottom: -2, left: -2, position: "absolute", right: -2, top: -2 },
+  // kit .cb .endtag：左上 6 · 高 20 · 左右 7 · 10.5/700 白字 · 深色 62%。叠在照片上，深浅主题同一个：取浅色主题的 ink / onAccent。
+  endTag: { alignItems: "center", borderRadius: 999, height: 20, justifyContent: "center", left: 6, overflow: "hidden", paddingHorizontal: 7, position: "absolute", top: 6 },
+  endTagBg: { ...StyleSheet.absoluteFillObject, backgroundColor: photoColors.ink, opacity: 0.62 },
+  endTagText: { color: photoColors.onAccent, fontSize: 10.5, fontWeight: "700", lineHeight: 15.75 },
+  // kit .lh：上 18 下 10 左右 2 · 15/800 · 右「最近的在前」11.5/500 ink3。
+  lh: { alignItems: "baseline", flexDirection: "row", justifyContent: "space-between", marginBottom: 10, marginHorizontal: 2, marginTop: 18 },
+  lhTitle: { color: colors.ink, fontSize: 15, fontWeight: "800", lineHeight: 22.5 },
+  lhLbl: { color: colors.ink3, fontSize: 11.5, fontWeight: "500", lineHeight: 17.25 },
   ecThumbEmoji: { alignItems: "center", justifyContent: "center" },
   ecEmoji: { fontSize: 34, lineHeight: 42 },
   ecText: { flex: 1, minWidth: 0 },

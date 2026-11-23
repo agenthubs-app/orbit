@@ -20,7 +20,8 @@ export function discoverWhen(iso: string, language: string, withTime = true): st
   if (!p) return "";
   const wd = weekday(language, p.weekday);
   const date = language === "en" ? `${wd} ${p.month}/${p.day}` : `${p.month}/${p.day}（${wd}）`;
-  return withTime && p.hh >= 17 ? `${date}${p.hh}:${String(p.mm).padStart(2, "0")}` : date;
+  // en 「Sat 12/5 19:00」 needs the space the closing （）gives zh / ja.
+  return withTime && p.hh >= 17 ? `${date}${language === "en" ? " " : ""}${p.hh}:${String(p.mm).padStart(2, "0")}` : date;
 }
 /** 「10/7（水）19:00–21:30」 */
 export function eventRange(startsAt: string, endsAt: string | null | undefined, language: string): string {
