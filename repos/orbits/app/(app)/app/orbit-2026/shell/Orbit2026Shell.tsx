@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { readInboxUnreadCounts } from "../../inbox/relationship-inbox-panel";
@@ -109,10 +109,12 @@ function ShellFrame({ language, pathname, currentBuildId, focus = null, children
   const twoTier = Boolean(slots.left || slots.right) && (Boolean(slots.twoTier) || SHELL_NAV.some((item) => item.href === pathname.replace(/\/+$/u, "")));
   const chrome: ShellChrome = { openPalette, openRail: () => setRailDrawer(true), inboxDot: dot, rail, railLabel, railOpenLabel };
   useEffect(() => { setRailDrawer(false); }, [pathname]);
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  useScrolledFlag(frameRef);
   return (
     <ShellChromeContext.Provider value={chrome}>
     <CloseRailContext.Provider value={closeRail}>
-    <div className={styles.frame} data-orbit-2026-shell="" data-rail={rail ? "true" : "false"} data-phone-bare={slots.phoneBare ? "true" : undefined} data-focus={focus ? "true" : undefined}>
+    <div ref={frameRef} className={styles.frame} data-orbit-2026-shell="" data-rail={rail ? "true" : "false"} data-phone-bare={slots.phoneBare ? "true" : undefined} data-focus={focus ? "true" : undefined}>
       {focus ? <Orbit2026Scope language={language} className={styles.focusScope}>{focus}</Orbit2026Scope> : (
         <Orbit2026Scope language={language} className={styles.sideScope}>
           <ShellSidebar active={active} dot={dot} />
@@ -323,6 +325,16 @@ function useInboxDot(language: OrbitLanguage, pathname: string): boolean {
     return () => { live = false; };
   }, [language, onInbox, moved]);
   return dot && !onInbox;
+}
+
+/** `data-scrolled` on the frame while the page is not at its top: the phone top bar shows its material only then. */
+function useScrolledFlag(ref: RefObject<HTMLDivElement | null>): void {
+  useEffect(() => {
+    const update = () => { const el = ref.current; if (el) el.dataset.scrolled = window.scrollY > 0 ? "true" : "false"; };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, [ref]);
 }
 
 function ShellSidebar({ active, dot }: { active: ShellNavKey | null; dot: boolean }) {
