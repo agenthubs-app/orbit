@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>手机端 顶部高度统一</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<script src="kit/data.js"></script>
+<style>
+  .doc { min-width: 1520px; }
+  .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .decide { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 18px; margin-bottom: 18px; max-width: 1440px; }
+  .decide .box { background: var(--surface); border-radius: 22px; padding: 20px 22px; font-size: 13px; line-height: 1.75; color: var(--ink-2); }
+  .decide .box h3 { font-size: 15px; font-weight: 800; color: var(--ink); margin-bottom: 10px; }
+  .decide .box b { color: var(--ink); }
+  .decide ol { padding-left: 18px; display: grid; gap: 6px; }
+  .cmp { width: 1440px; border-collapse: separate; border-spacing: 0; background: var(--surface); border-radius: 22px; overflow: hidden; font-size: 12.5px; color: var(--ink-2); }
+  .cmp th, .cmp td { text-align: left; vertical-align: top; padding: 9px 14px; border-bottom: 1px solid var(--line); line-height: 1.6; }
+  .cmp th { background: var(--surface-2); color: var(--ink); font-weight: 800; font-size: 12px; }
+  .cmp td:first-child { font-weight: 800; color: var(--ink); white-space: nowrap; }
+  .cmp tr:last-child td { border-bottom: 0; }
+  .cmp .num { font-family: var(--font-num); font-weight: 800; color: var(--ink); }
+
+  /* 正文起点标线 */
+  .vis { position: absolute; left: 0; right: 0; z-index: 45; border-top: 2px dashed var(--rose-500); pointer-events: none; }
+  .vis span { position: absolute; right: 8px; top: -22px; font-size: 10.5px; font-weight: 800; color: var(--rose-700); background: var(--surface); padding: 1px 6px; border-radius: 6px; }
+  .phone .scroll { padding-top: 0; }
+
+  /* 占位正文 */
+  .gc { background: var(--surface); border-radius: 22px; padding: 18px; }
+  .gc + .gc { margin-top: 12px; }
+  .gc i { display: block; height: 9px; border-radius: 5px; background: var(--surface-2); margin: 9px 0; }
+  .rowc { background: var(--surface); border-radius: 20px; padding: 12px; display: grid; grid-template-columns: 76px 1fr; gap: 12px; }
+  .rowc + .rowc { margin-top: 12px; }
+  .rowc .th { width: 76px; height: 76px; border-radius: 14px; background: var(--mac-lav); }
+  .rowc i { display: block; height: 9px; border-radius: 5px; background: var(--surface-2); margin: 9px 0; }
+  .lh { display: flex; justify-content: space-between; align-items: baseline; margin: 0 2px 10px; font-size: 12.5px; color: var(--ink-3); }
+  .lh b { font-size: 14px; font-weight: 800; color: var(--ink); }
+
+  /* ---------- 现状 ---------- */
+  .brand { display: flex; align-items: center; gap: 8px; height: 56px; padding-top: 6px; }
+  .brand .logo { width: 34px; height: 34px; border-radius: 11px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; }
+  .n-left { display: flex; align-items: center; justify-content: space-between; height: 44px; margin-bottom: 5px; }
+  .n-left b { font-size: 22px; font-weight: 800; }
+  .n-center { position: relative; display: grid; place-items: center; text-align: center; }
+  .n-center b { font-size: 19px; font-weight: 800; }
+  .n-center small { display: block; font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+  .n-center .l, .n-center .r { position: absolute; top: 50%; transform: translateY(-50%); }
+  .n-center .l { left: 0; } .n-center .r { right: 0; }
+  .chipsrow { display: flex; gap: 6px; overflow: hidden; }
+  .chipsrow .chip { flex: none; height: 34px; padding: 0 12px; font-size: 12.5px; background: var(--surface); }
+  .hero { margin-bottom: 14px; }
+  .hero .emo { width: 46px; height: 46px; border-radius: 14px; }
+  .hero b { display: block; font-size: 22px; font-weight: 800; line-height: 1.35; margin-top: 12px; }
+  .hero span { font-size: 12.5px; color: var(--ink-3); }
+
+  /* ---------- 提案：统一顶栏 ---------- */
+  .tb { display: flex; align-items: center; gap: 8px; height: 52px; margin-bottom: 8px; }
+  .tb .t { font-size: 20px; font-weight: 800; flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+  .tb .t .logo { width: 30px; height: 30px; border-radius: 10px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; font-size: 14px; }
+  .tb .rbtn, .tb .avatar-btn { width: 36px; height: 36px; flex: none; }
+  .tb.sub { justify-content: space-between; }
+  .tb.sub .c { position: absolute; left: 0; right: 0; text-align: center; font-size: 16px; font-weight: 800; pointer-events: none; }
+  .row2 { margin-bottom: 10px; }
+  .row2 .seg { display: flex; }
+  .row2 .seg button { flex: 1; padding: 8px 0; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <div>
+      <div class="doc-kicker">Orbit Redesign · 2026-11-23 · Web 手机端提案（390）· 待用户确认</div>
+      <h1>手机端顶部：同一级页面同一个高度</h1>
+      <p>现状取自线上（orbitailink.com，375 宽）11-23 的实测。红色虚线是正文第一块内容的起点，数字是它离浏览器可视区顶端的距离。左边现状，右边提案。</p>
+    </div>
+    <div class="doc-tools">
+      <div class="seg" data-ctl="theme"><button data-v="light">浅色</button><button data-v="dark">深色</button></div>
+    </div>
+  </div>
+  <div class="decide">
+    <div class="box">
+      <h3>现状的问题</h3>
+      <ol>
+        <li><b>每页都有两层顶部</b>：先是「O Orbit + 收件箱 + 头像」一行，下面再来一行页面标题。品牌行在应用内不提供信息，底部导航已经说明了你在哪。</li>
+        <li><b>标题有四种画法</b>：首页、Task 没有标题；人脉靠左；iOrbit、活动、收件箱居中，其中活动还带一行副标题。</li>
+        <li><b>活动页叠了五层</b>：品牌行、标题、页签（右边还竖着放了搜索和「下一步」）、搜索框、筛选，正文从 <span class="num" data-n="events">—</span>px 才开始，一屏 812px 的四成多。</li>
+        <li><b>同级页面起点相差近 300px</b>：首页 <span class="num" data-n="home">—</span>px，活动 <span class="num" data-n="events">—</span>px。</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h3>提案：三条规则</h3>
+      <ol>
+        <li><b>一级页（底部导航的五个 + 收件箱）只有一行顶栏，高 52px</b>：左边是页面标题（20px 粗体），右边是这一页的操作（最多 2 个图标）、收件箱、头像。品牌行取消；首页的标题就是 Orbit 标志。</li>
+        <li><b>有页签的页面多一行页签，高 40px</b>：页签铺满宽度。除此之外顶部不再加任何固定行。</li>
+        <li><b>筛选、搜索框、统计数字属于正文</b>：跟着内容一起滚走，不占固定高度。活动页的搜索框收进顶栏的搜索图标；「下一步」改成顶栏里的一个图标；副标题「符合条件 N 场」移到列表上方。</li>
+        <li><b>二级页（详情、设置）不变</b>：返回 + 居中标题一行，也是 52px。</li>
+        <li><b>结果</b>：没有页签的一级页正文从 60px 开始，有页签的从 110px 开始。</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h3>对标成熟产品的做法</h3>
+      <ol>
+        <li><b>Instagram、LinkedIn、X 的手机网页</b>：一行顶栏，左标题或标志，右两三个图标；没有单独的品牌行。</li>
+        <li><b>Luma、Notion 手机端</b>：页签紧贴顶栏下方，筛选在正文里。</li>
+        <li><b>iOS 大标题导航</b>：标题靠左，下滑后收进顶栏；二级页才用居中标题 + 返回。这里一级靠左、二级居中，沿用同一套区分。</li>
+        <li><b>Material 的顶部应用栏</b>：操作图标最多 3 个，再多收进「更多」。这里页面操作限 2 个，加收件箱、头像共 4 个。</li>
+      </ol>
+    </div>
+  </div>
+  <nav class="doc-nav" id="docnav"></nav>
+  <div id="out"></div>
+</div>
+<script>
+const NAVZ = [['home', '首页'], ['users', '人脉'], ['sparkle', 'iOrbit'], ['calendar', '活动'], ['task', 'Task']];
+const mNav = (on) => `<nav class="tabbar">${NAVZ.map(([i, l], k) => `<button class="${k === on ? 'on' : ''}">${ic(i)}${l}</button>`).join('')}</nav>`;
+const frame = (key, on, body) => `<div data-k="${key}">${phone({ tab: -1, body, overlay: on >= 0 ? mNav(on) : '' }).replace('class="phone"', 'class="phone mweb"')}</div>`;
+const gc = (first, lines = [45, 92, 70]) => `<div class="gc" ${first ? 'data-first' : ''}>${lines.map((w) => `<i style="width:${w}%"></i>`).join('')}<div style="height:70px"></div></div>`;
+const cards = (n = 3) => Array.from({ length: n }, (_, k) => gc(k === 0)).join('');
+const rowc = (first) => `<div class="rowc" ${first ? 'data-first' : ''}><div class="th"></div><div><i style="width:80%"></i><i style="width:60%"></i><i style="width:35%"></i></div></div>`;
+const rows = (n = 4) => Array.from({ length: n }, (_, k) => rowc(k === 0)).join('');
+const chips = (arr) => `<div class="chipsrow">${arr.map((t) => `<span class="chip">${t}</span>`).join('')}</div>`;
+const EV_CHIPS = ['时间：即将举办', '地点：全部', '主题'];
+const IN_CHIPS = ['全部', '要处理', '提醒', '活动'];
+
+/* ---------- 现状 ---------- */
+const brand = `<div class="brand"><div class="logo">O</div><b style="font-size:16px">Orbit</b><div style="flex:1"></div><button class="rbtn">${ic('inbox')}</button><button class="avatar-btn">C</button></div>`;
+const NOW = {
+  home: brand + `<div style="height:5px"></div>` + cards(),
+  contacts: brand + `<div class="n-left"><b>人脉</b><button class="rbtn">${ic('plus')}</button></div>` + cards(2),
+  agent: brand + `<div class="n-center" style="height:44px;margin:20px 0 42px"><button class="rbtn l">${ic('menu')}</button><b>iOrbit</b><button class="rbtn r">${ic('plus')}</button></div><div class="hero" data-first><span class="emo lav">✨</span><b>小雨，<br>有什么可以帮你？</b><span>关于人脉、活动或计划，都可以问 iOrbit。</span></div>` + `<div class="gc"><i style="width:40%"></i></div><div class="gc"><i style="width:48%"></i></div>`,
+  tasks: brand + `<div class="seg" style="display:flex;margin:4px 0 14px"><button style="flex:1">日历</button><button class="on" style="flex:1">待办</button><button style="flex:1">计划</button><button style="flex:1">笔记</button></div>` + cards(),
+  inbox: brand + `<div class="n-center" style="height:40px;margin:20px 0 26px"><b>收件箱</b><button class="btn sm r">${ic('sparkle', 'sm')}下一步</button></div><div style="margin-bottom:22px">${chips(IN_CHIPS.slice(0, 1))}</div>` + cards(2),
+  events: brand + `<div class="n-center" style="margin:14px 0 22px"><div><b>活动</b><small>符合条件 1 场</small></div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:26px"><div class="seg"><button>评估</button><button>参加的活动</button><button class="on">发现</button></div><div style="display:grid;justify-items:end;gap:14px"><button class="rbtn">${ic('search')}</button><button class="btn sm">${ic('sparkle', 'sm')}下一步</button></div></div>
+    <div class="search" style="margin-bottom:14px">${ic('search', 'sm')}活动名、主办方、关键词</div><div style="margin-bottom:12px">${chips(EV_CHIPS)}</div>` + rows(),
+};
+
+/* ---------- 提案 ---------- */
+const tb = (title, acts = [], { inbox = true, logo = false } = {}) => `<div class="tb"><div class="t">${logo ? '<span class="logo">O</span>' : ''}<span class="ell">${title}</span></div>${acts.map((i) => `<button class="rbtn">${ic(i)}</button>`).join('')}${inbox ? `<button class="rbtn">${ic('inbox')}</button>` : ''}<button class="avatar-btn">C</button></div>`;
+const seg = (arr, on) => `<div class="row2"><div class="seg">${arr.map((t, k) => `<button class="${k === on ? 'on' : ''}">${t}</button>`).join('')}</div></div>`;
+const NEXT = {
+  home: tb('Orbit', [], { logo: true }) + cards(),
+  contacts: tb('人脉', ['search', 'plus']) + cards(2),
+  agent: tb('iOrbit', ['menu', 'plus']) + `<div class="hero" data-first style="margin-top:6px"><span class="emo lav">✨</span><b>小雨，<br>有什么可以帮你？</b><span>关于人脉、活动或计划，都可以问 iOrbit。</span></div>` + `<div class="gc"><i style="width:40%"></i></div><div class="gc"><i style="width:48%"></i></div><div class="gc"><i style="width:44%"></i></div>`,
+  tasks: tb('Task') + seg(['日历', '待办', '计划', '笔记'], 1) + cards(),
+  inbox: tb('收件箱', ['sparkle'], { inbox: false }) + `<div data-first style="margin-bottom:12px">${chips(IN_CHIPS)}</div>` + cards(2).replace(' data-first', ''),
+  events: tb('活动', ['search', 'sparkle']) + seg(['评估', '参加的活动', '发现'], 2) + `<div data-first style="margin-bottom:14px">${chips(EV_CHIPS)}</div><div class="lh"><b>符合条件 1 场</b><span>按日期</span></div>` + rows().replace(' data-first', ''),
+};
+const SUB = (key, title, right) => `<div data-k="${key}">${phone({ tab: -1, body: `<div class="tb sub" style="position:relative"><button class="rbtn">${ic('right').replace('<svg', '<svg style="transform:scaleX(-1)"')}</button><span class="c">${title}</span>${right ? `<button class="rbtn">${ic(right)}</button>` : '<span style="width:36px"></span>'}</div>` + cards() }).replace('class="phone"', 'class="phone mweb"')}</div>`;
+
+const notesHTML = (notes, w = 390) => notes && notes.length ? `<ul class="note-list" style="max-width:${w}px">${notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : '';
+const boards = (items) => `<div class="boards">${items.map(([label, tag, html, notes]) => `<div class="board"><div class="board-label">${label}${tag ? `<span class="tag">${tag}</span>` : ''}</div>${html}${notesHTML(notes)}</div>`).join('')}</div>`;
+const secT = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+
+const PAGES6 = [
+  ['events', '活动', 3, ['品牌行 + 居中标题和副标题 + 页签（右边竖排搜索、下一步）+ 搜索框 + 筛选，五层'], ['顶栏：标题 + 搜索 + 下一步 + 收件箱 + 头像；页签铺满；筛选是正文的第一行，会跟着滚走', '搜索框不再常驻，点顶栏的搜索图标展开；「符合条件 N 场」移到列表上方']],
+  ['inbox', '收件箱', 9, ['品牌行 + 居中标题（右边「下一步」）+ 筛选'], ['顶栏右边不再放收件箱图标（已经在收件箱里）；筛选是正文第一行']],
+  ['agent', 'iOrbit', 2, ['品牌行 + 居中标题（左会话列表、右新建）上下各留了一大段空白'], ['会话列表和新建并进顶栏，问候语紧跟其后']],
+  ['contacts', '人脉', 1, ['品牌行 + 靠左标题（右边新建）'], ['标题进顶栏；搜索和新建是这一页的两个操作']],
+  ['tasks', 'Task', 4, ['品牌行 + 页签，没有标题'], ['补上标题，页签在第二行；高度和活动页一致']],
+  ['home', '首页', 0, ['只有品牌行，没有标题'], ['品牌行本身就是首页的顶栏，高度从 56 收到 52，其余不变']],
+];
+let h = '';
+h += secT('① 一级页：现状 → 提案', '六个页面逐个对比；红线 = 正文起点');
+for (const [k, name, on, nNow, nNext] of PAGES6) {
+  h += boards([
+    [`${name} · 现状`, '现状', frame('now-' + k, on, NOW[k]), nNow],
+    [`${name} · 提案`, '提案', frame('next-' + k, on, NEXT[k]), nNext],
+  ]) + `<div style="height:30px"></div>`;
+}
+h += secT('② 二级页', '已经是一行顶栏，只统一到 52px；不需要重新设计');
+h += boards([
+  ['设置', '不变', SUB('sub-settings', '设置', ''), ['返回 + 居中标题']],
+  ['活动详情', '不变', SUB('sub-event', '', 'share'), ['返回 + 右边一个操作；标题在正文的封面下面，顶栏不重复']],
+]);
+h += secT('对比', '正文起点离可视区顶端的距离（本页实测）');
+h += `<table class="cmp"><tr><th style="width:150px">页面</th><th style="width:150px">现状</th><th style="width:150px">提案</th><th style="width:150px">省出</th><th>顶部由什么组成（提案）</th></tr>
+${PAGES6.map(([k, name]) => `<tr><td>${name}</td><td class="num" data-n="${k}">—</td><td class="num" data-p="${k}">—</td><td class="num" data-d="${k}">—</td><td>${({ events: '顶栏 + 页签', tasks: '顶栏 + 页签', inbox: '顶栏', agent: '顶栏', contacts: '顶栏', home: '顶栏' })[k]}</td></tr>`).join('')}
+<tr><td>设置 / 活动详情</td><td class="num">52 + 8</td><td class="num" data-p="sub">—</td><td>—</td><td>返回栏</td></tr></table>`;
+h += secT('实现时要守的规则', '给开发的清单');
+h += `<table class="cmp"><tr><th style="width:220px">规则</th><th>内容</th></tr>
+<tr><td>顶栏由外壳统一画</td><td>页面只声明：标题、最多 2 个操作、有没有页签。页面自己不再画标题行，也不再加顶部外边距。这是现在各页不一致的根因：外壳画品牌行，每个页面又各自画一行标题并各留各的空。</td></tr>
+<tr><td>高度</td><td>顶栏 52px + 下方 8px；页签 40px + 下方 10px。一级页正文起点只有两个值：60px（无页签）、110px（有页签）。</td></tr>
+<tr><td>操作超过 2 个</td><td>第 3 个起收进「更多」菜单。</td></tr>
+<tr><td>滚动</td><td>顶栏和页签吸顶；筛选、搜索框、统计行随正文滚走。</td></tr>
+<tr><td>范围</td><td>只动手机宽度（＜768）。834 和 1440 不变。App 已经是单行顶栏，不在这次范围内。</td></tr></table>`;
+
+document.getElementById('out').innerHTML = h;
+docNav(''); orbitChrome();
+
+const measure = (k) => {
+  const wrap = document.querySelector(`[data-k="${k}"]`); if (!wrap) return null;
+  const ph = wrap.querySelector('.phone'), sc = ph.querySelector('.scroll'), first = ph.querySelector('[data-first]'); if (!first) return null;
+  const y = Math.round(first.getBoundingClientRect().top - sc.getBoundingClientRect().top);
+  const vis = document.createElement('div'); vis.className = 'vis'; vis.style.top = (first.getBoundingClientRect().top - ph.getBoundingClientRect().top) + 'px'; vis.innerHTML = `<span>正文起点 ${y}px</span>`; ph.appendChild(vis);
+  return y;
+};
+requestAnimationFrame(() => setTimeout(() => {
+  for (const [k] of PAGES6) {
+    const a = measure('now-' + k), b = measure('next-' + k);
+    document.querySelectorAll(`[data-n="${k}"]`).forEach((e) => e.textContent = a);
+    document.querySelectorAll(`[data-p="${k}"]`).forEach((e) => e.textContent = b + 'px');
+    document.querySelectorAll(`[data-d="${k}"]`).forEach((e) => e.textContent = (a - b) + 'px');
+  }
+  document.querySelectorAll('.cmp td[data-n]').forEach((e) => e.textContent += 'px');
+  const s = measure('sub-settings'); measure('sub-event');
+  document.querySelectorAll('[data-p="sub"]').forEach((e) => e.textContent = s + 'px');
+}, 300));
+</script>
+</body>
+</html>
