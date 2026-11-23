@@ -31,6 +31,8 @@
 @media (max-width: 767px) {
   .page { padding: 0 var(--space-18) 40px; }
   .card { grid-column: span 12; }
-  .split { grid-template-columns: minmax(0, 1fr); }
+  /* 2026-11-24 收件箱手机不再画整块面板（inbox-workspace）：骨架也只画行，不画容器。 */
+  .split { grid-template-columns: minmax(0, 1fr); height: auto; background: transparent; border-radius: var(--r-none); overflow: visible; }
+  .list { padding: 0; border-right: 0; }
   .pane { display: none; }
 }
