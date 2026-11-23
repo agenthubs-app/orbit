@@ -1266,7 +1266,7 @@ function RelationshipInboxPanel({
 
         {/* b5 D05: on the page the tabs sit over the fog with a one-line note; the drawer keeps its strip. */}
         {/* 2026-11-23 手机顶栏：消息 / 通知 是外壳画的第二行（phoneTabs），操作 = 下一步（打开右栏）；页面里的这一行只在宽屏出现。 */}
-        {inline ? <ShellPage phoneTabs={inline && !counts && !seed ? <ScopedBone width={150} height={INBOX_TABS_HEIGHT} round label={t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })} /> : <Segmented label={t({zh:'收件箱',en:'Inbox',ja:'受信箱'})} variant="seg" wide value={tab} onChange={selectTab}
+        {inline ? <ShellPage phoneTabs={inline && !counts && !seed ? <ScopedBone width="100%" height={40} round label={t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })} /> : <Segmented label={t({zh:'收件箱',en:'Inbox',ja:'受信箱'})} variant="seg" wide value={tab} onChange={selectTab}
           segments={tabs.map(item => ({key:item.id,label:`${item.label}${(counts?.[item.id] ?? 0) > 0 ? ` ${counts![item.id]}` : ''}`}))} />}
           phoneActions={[{ icon: "sparkle", key: "next", kind: "rail", label: t({ zh: "下一步", en: "Next steps", ja: "次の一手" }) }]} /> : null}
         <div className={inline ? workspace.tabs : "ri-panel-tabs"}>{inline && !counts && !seed ? <ScopedBone width={150} height={INBOX_TABS_HEIGHT} round label={t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })} /> : <Segmented label={t({zh:'收件箱',en:'Inbox',ja:'受信箱'})} variant="seg" wide={!inline} value={tab} onChange={selectTab}

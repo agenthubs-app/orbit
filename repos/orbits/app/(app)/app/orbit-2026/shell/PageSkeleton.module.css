@@ -20,6 +20,7 @@
 .split { display: grid; grid-template-columns: 420px minmax(0, 1fr); height: calc(100vh - 184px); height: calc(100dvh - 184px); border-radius: var(--r-card-web); background: var(--surface); overflow: hidden; }
 .list { display: grid; align-content: start; gap: 18px; padding: var(--space-20); border-right: 1px solid var(--line); }
 .pane { min-width: 0; }
+.phoneInbox, .phone { display: none; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .bone { animation: none; } }
 :global([data-motion="reduce"]) .bone { animation: none; }
@@ -31,8 +32,26 @@
 @media (max-width: 767px) {
   .page { padding: 0 var(--space-18) 40px; }
   .card { grid-column: span 12; }
-  /* 2026-11-24 收件箱手机不再画整块面板（inbox-workspace）：骨架也只画行，不画容器。 */
-  .split { grid-template-columns: minmax(0, 1fr); height: auto; background: transparent; border-radius: var(--r-none); overflow: visible; }
-  .list { padding: 0; border-right: 0; }
-  .pane { display: none; }
+  /* 2026-11-24 收件箱手机：骨架按最终布局画（inbox-workspace 手机规则）——页签由外壳顶栏画，这里不再画；
+     搜索框 40 在 y=110，下方 12 处一张圆角卡片（上 4 / 左右 10），每行 65、头像 38；左右 18 页边距
+     （路由骨架的 .page 自带 18；收件箱页内的 bare 骨架所在页面手机上没有左右内边距，自己加）。 */
+  .split, .inboxTabs { display: none; }
+  .phoneInbox { display: grid; gap: var(--space-12); }
+  .bare .phoneInbox { padding: 0 var(--space-18); }
+  .phoneSearch.phoneSearch { width: 100%; height: 40px; }
+  .phoneRows { padding: 4px 10px 12px; border-radius: var(--r-card-web); background: var(--surface); }
+  .phoneRow { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: var(--space-11); align-items: center; height: 65px; padding: 0 10px; }
+  .phoneAvatar { width: 38px; height: 38px; border-radius: var(--r-pill); background: var(--surface-2); }
+  .phoneLines { display: grid; gap: 8px; }
+  /* 2026-11-24 其余一级页的手机路由骨架（PageSkeleton.tsx PHONE）：桌面的卡片栅格 / iOrbit 欢迎列不画，按块的 y 与高度画。 */
+  .page:has(.phone) > :not(.phone) { display: none; }
+  .phone { display: block; }
+  .page:has(.phoneInset16) { padding-left: var(--space-16); padding-right: var(--space-16); }
+  .phone > * { display: block; }
+  .phoneCard, .phonePlain { display: flex; flex-direction: column; justify-content: center; gap: 12px; padding: 0 var(--space-20); border-radius: var(--r-card-web); min-width: 0; }
+  .phoneCard { background: var(--surface); }
+  .phonePlain { padding: 0; }
+  .phone > .phoneHalf { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-12); }
+  .phoneBlock { width: 100%; }
+  .phoneLine { width: 40%; }
 }

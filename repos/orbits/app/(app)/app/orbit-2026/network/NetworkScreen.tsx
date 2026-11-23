@@ -15,7 +15,8 @@ import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { TodayQuestionCard } from "../add/TodayQuestionCard";
 import { ShellSearchButton } from "../shell/Orbit2026Shell";
 import { ShellPage } from "../shell/slots";
-import { FilterOption, Icon, Orbit2026Scope, Popover, SampleTag, Skeleton, ToastProvider, useToast } from "../ui";
+import { FilterOption, Icon, Orbit2026Scope, Popover, SampleTag, Skeleton, ToastProvider, useStandardCopy, useToast } from "../ui";
+import { PageSkeletonBody } from "../shell/PageSkeleton";
 import { ContactAvatar, ContactDrawer, useNetworkT, type NetworkT } from "./ContactDrawer";
 import { networkApi } from "./network-api";
 import {
@@ -64,6 +65,7 @@ const listAnswerKey = (query: string, tab: NetworkTab, filters: NetworkFilters) 
 
 function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScreenProps) {
   const t = useNetworkT();
+  const loadingLabel = useStandardCopy().loading.loading;
   const router = useRouter();
   const params = useSearchParams();
   const designLoading = process.env.NODE_ENV !== "production" && params?.get("design") === "loading";
@@ -215,8 +217,9 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
         rightRail={narrow ? undefined : rail} phoneFold={narrow}
         // 2026-11-23 手机顶栏：标题进外壳顶栏，操作 = 搜索（聚焦正文的搜索框）· 添加人脉；人数统计是正文第一行。
         phoneActions={[{ icon: "search", key: "search", label: t("searchPlaceholder"), onClick: () => { const input = searchRef.current; input?.scrollIntoView({ block: "center" }); input?.focus(); } }, { href: "/app/contacts/new", icon: "plus", key: "add", label: t("addPeople") }]} />
-      {narrow && subtitle ? <div className={`${styles.lbl} ${styles.mobileStat}`} data-network-mobile-heading="">{subtitle}</div> : null}
-      {summary === null && !failed ? <div className={styles.card} data-network-loading=""><Skeleton lines={6} /></div>
+      {/* 2026-11-24 手机：读取中画和最终布局同位置的骨架（人数行 · 搜索 · 邀请卡 · 筛选 · 列表卡），人数行也在骨架里。 */}
+      {narrow && subtitle && !(summary === null && !failed) ? <div className={`${styles.lbl} ${styles.mobileStat}`} data-network-mobile-heading="">{subtitle}</div> : null}
+      {summary === null && !failed ? (narrow ? <div data-network-loading=""><PageSkeletonBody kind="network" label={loadingLabel} bare /></div> : <div className={styles.card} data-network-loading=""><Skeleton lines={6} /></div>)
         : failed && summary === null ? <div className={styles.card} role="alert"><p>{t("loadFailed")}</p><button type="button" className={`btn ${styles.btn}`} onClick={refresh}>{t("filterClear")}</button></div>
           : empty ? <NetworkEmpty t={t} nowMs={nowMs} />
             : (
