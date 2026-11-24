@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
@@ -7,16 +8,28 @@ import { AccountLayout, accountSectionFor } from "../account/AccountLayout";
 import { ProfileSkeleton } from "../account/AccountProfilePage";
 import { Bone, Orbit2026Scope, Skeleton, useStandardCopy } from "../ui";
 import { agentConnectionPageSkeleton } from "../agent-connections/skeletons";
+import { LandingPage } from "../auth-public/LandingPage";
+import { PublicEventDetailFrame, PublicEventListFrame } from "../events/PublicEvents";
+import { publicRouteLoadingFor } from "./public-route-loading";
 import { PageSkeletonBody, pageSkeletonFor, type PageSkeletonKind } from "./PageSkeleton";
 
 /**
  * app/(app)/app/loading.tsx: a left-rail page's own layout in skeletons; a settings section, the settings
  * menu (real, the section selected) beside its heading and body as bones; any other page, the plain lines.
+ * A page with no shell (landing + sign-in dialog, the public event pages, account status pages) gets its own
+ * final layout or nothing (public-route-loading), never the bones or the shell.
  */
-export function RouteSkeleton({ plainClassName }: { plainClassName: string }) {
+export function RouteSkeleton({ plainClassName, googleEnabled }: { plainClassName: string; googleEnabled: boolean }) {
   const pathname = usePathname() ?? "";
+  const signedIn = useSession().status === "authenticated";
+  const { language } = useOrbitLanguage();
   const kind = pageSkeletonFor(pathname);
   const copy = useStandardCopy();
+  const bare = publicRouteLoadingFor(pathname, signedIn);
+  if (bare === "landing") return <LandingPage googleEnabled={googleEnabled} />;
+  if (bare === "publicEvents") return <PublicEventListFrame language={language} />;
+  if (bare === "publicEvent") return <PublicEventDetailFrame language={language} />;
+  if (bare === "blank") return null;
   if (kind === "events") return <EventsRouteSkeleton label={copy.loading.loading} />;
   if (kind) return <PageSkeletonBody kind={kind} label={copy.loading.loading} />;
   // agent-design AG17: the consent page (no navigation) and the confirm page draw their own columns.

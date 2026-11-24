@@ -51,10 +51,10 @@ export function LoginAssessCard({ t, language }: { t: JourneyT; language: OrbitL
 /** 公开活动页（未登录落地）：照旧「公開イベント · {month}月」= 今月 · 東京（DISCOVER-RULES 只改登录后的探す）。 */
 const PUBLIC_LIST_QUERY = { ...DEFAULT_DISCOVER_QUERY, areas: ["tokyo"] as const, period: "this_month" as const };
 
-function ListInner({ language, nowIso }: { language: OrbitLanguage; nowIso: string }) {
+function ListInner({ language, nowIso, frame = false }: { language: OrbitLanguage; nowIso: string; frame?: boolean }) {
   const t = useMemo(() => journeyTranslator(language), [language]);
   const [data, setData] = useState<EventDiscoverResponse | null>(null);
-  useEffect(() => { void journeyApi.discover(PUBLIC_LIST_QUERY).then((result) => setData(result.ok ? result.data : null)); }, []);
+  useEffect(() => { if (!frame) void journeyApi.discover(PUBLIC_LIST_QUERY).then((result) => setData(result.ok ? result.data : null)); }, [frame]);
   const month = new Date(Date.parse(nowIso) + 9 * 3_600_000).getUTCMonth() + 1;
   return (
     <div className={p.page}>
@@ -117,14 +117,14 @@ function InviteCodeCard({ code, data, t }: { code: string; data: EventOverviewRe
   );
 }
 
-function DetailInner({ eventId, language, inviteCode }: { eventId: string; language: OrbitLanguage; inviteCode?: string }) {
+function DetailInner({ eventId, language, inviteCode, frame = false }: { eventId: string; language: OrbitLanguage; inviteCode?: string; frame?: boolean }) {
   const t = useMemo(() => journeyTranslator(language), [language]);
   const [data, setData] = useState<EventOverviewResponse | null>(null);
   const [missing, setMissing] = useState(false);
   const { canRegister } = useDetailTiming(data);
   // < 768：和登录后一样用 App 式详情（b12 W-R27-20u-390）；桌面 12 栏网格在手机宽度会挤成窄列。
   const phone = usePhone();
-  useEffect(() => { void journeyApi.overview(eventId).then((result) => { if (result.ok) setData({ ...result.data, signedOut: true }); else setMissing(true); }); }, [eventId]);
+  useEffect(() => { if (!frame) void journeyApi.overview(eventId).then((result) => { if (result.ok) setData({ ...result.data, signedOut: true }); else setMissing(true); }); }, [eventId, frame]);
   return (
     <div className={p.page}>
       <PublicNav t={t} />
@@ -153,6 +153,18 @@ export function PublicEventList({ language, nowIso }: { language: OrbitLanguage;
 
 export function PublicEventDetail({ eventId, language, inviteCode }: { eventId: string; language: OrbitLanguage; inviteCode?: string }) {
   return <Orbit2026Scope language={language} className={p.scope}><ToastProvider><DetailInner eventId={eventId} language={language} inviteCode={inviteCode} /></ToastProvider></Orbit2026Scope>;
+}
+
+/**
+ * 2026-11-24 路由加载态（public-route-loading）：页面读数据前的同一画面——公开顶栏与页头，不读接口。
+ * 用页面自己的组件画，保证加载态与页面首帧一致。
+ */
+export function PublicEventListFrame({ language }: { language: OrbitLanguage }) {
+  return <Orbit2026Scope language={language} className={p.scope}><ToastProvider><ListInner language={language} nowIso={new Date().toISOString()} frame /></ToastProvider></Orbit2026Scope>;
+}
+
+export function PublicEventDetailFrame({ language }: { language: OrbitLanguage }) {
+  return <Orbit2026Scope language={language} className={p.scope}><ToastProvider><DetailInner eventId="" language={language} frame /></ToastProvider></Orbit2026Scope>;
 }
 
 /** 参加コードが見つからない（/register/〈コード〉）：公开顶栏 + 一张说明卡 + 去活动列表。 */

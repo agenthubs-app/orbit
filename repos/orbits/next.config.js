@@ -47,6 +47,16 @@ const nextConfig = {
         destination: "/i?expired=legacy",
         permanent: false,
       },
+      // 2026-11-24 旧登录 / 注册地址（曾是 404）：送到现在的登录 / 注册弹窗；查询参数（next 等）由 Next 原样带上。
+      // `/app/register?code=…` 仍是参加コード入口（页面自己处理），只有不带 code 的才去注册。
+      { source: "/app/login", destination: "/app/account/login", permanent: false },
+      { source: "/app/signup", destination: "/app/account/signup", permanent: false },
+      {
+        source: "/app/register",
+        missing: [{ type: "query", key: "code" }],
+        destination: "/app/account/signup",
+        permanent: false,
+      },
     ];
   },
   async headers() {
