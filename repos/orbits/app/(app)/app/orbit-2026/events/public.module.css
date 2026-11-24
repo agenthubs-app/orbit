@@ -20,7 +20,12 @@
 .t small { color: var(--ink-3); font-size: var(--fs-meta); }
 .l, .r { display: flex; gap: 8px; align-items: center; }
 .r { justify-content: flex-end; }
-@media (max-width: 767px) { .lpNav { padding: 0 16px; } .links { display: none; } .pubmain { padding: 4px 16px 32px; } }
+@media (max-width: 767px) { .lpNav { padding: 0 16px; } .pubmain { padding: 4px 16px 32px; } }
+/* 2026-11-24 手机顶栏与落地页同一断点（LandingPage.module.css ≤700）、同一取舍：收起中间导航，只留「ログイン」。
+   带 .lpNav 前缀 + 双类名：`.links` 还带 events.module.css 的 `.row { display: flex }`、按钮还带 `.btn.btn { display: inline-flex }`，
+   同权重时按生产构建的 CSS 顺序决定，曾让链接被挤成竖排。 */
+.links, .start { white-space: nowrap; }
+@media (max-width: 700px) { .lpNav .links.links, .lpNav .start.start { display: none; } }
 .scope { display: block; line-height: var(--lh-body); }
 
 /* /register/〈コード〉着地页的参加コード卡（b12 #376）。 */

@@ -28,7 +28,7 @@ export function PublicNav({ t }: { t: JourneyT }) {
       <div className={`${styles.row} ${p.links}`}><a href="/#features">{t("navFeatures")}</a><a href="/#how">{t("navHowTo")}</a><a href="/app/events">{t("navEvents")}</a></div>
       <div className={styles.row} style={{ gap: 8 }}>
         <a className={`btn ${styles.btn} ${p.ghost}`} href={LOGIN}>{t("navLogin")}</a>
-        <a className={`btn ${styles.btn} ${styles.primary}`} href="/app/account/signup">{t("navStart")}</a>
+        <a className={`btn ${styles.btn} ${styles.primary} ${p.start}`} href="/app/account/signup">{t("navStart")}</a>
       </div>
     </nav>
   );

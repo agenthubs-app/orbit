@@ -45,3 +45,13 @@ test("RouteSkeleton consults the rule before any skeleton, and the legacy sign-i
   assert.match(config, /source: "\/app\/login", destination: "\/app\/account\/login"/u);
   assert.match(config, /source: "\/app\/register",\s*missing: \[\{ type: "query", key: "code" \}\],\s*destination: "\/app\/account\/signup"/u);
 });
+
+test("the public events nav folds on the landing's phone breakpoint: no middle links, sign-in only", () => {
+  const nav = readFileSync(new URL("../../app/(app)/app/orbit-2026/events/public.module.css", import.meta.url), "utf8");
+  const landing = readFileSync(new URL("../../app/(app)/app/orbit-2026/auth-public/LandingPage.module.css", import.meta.url), "utf8");
+  assert.match(landing, /@media \(max-width: 700px\) \{[^\n]*\.nav \{ display: none; \}[^\n]*\.account \.primary \{ display: none; \}/u);
+  // .lpNav prefix + doubled class: `.links` also carries `.row { display: flex }` and the button `.btn.btn { display: inline-flex }`; same weight would let bundle order decide.
+  assert.match(nav, /@media \(max-width: 700px\) \{ \.lpNav \.links\.links, \.lpNav \.start\.start \{ display: none; \} \}/u);
+  const tsx = readFileSync(new URL("../../app/(app)/app/orbit-2026/events/PublicEvents.tsx", import.meta.url), "utf8");
+  assert.match(tsx, /\$\{p\.start\}`\} href="\/app\/account\/signup"/u);
+});
