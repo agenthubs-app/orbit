@@ -589,8 +589,8 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
         <OnboardingProgress eta={t("onboarding.v3.eta")} index={index} label={t("onboarding.v3.step", { step: index + 1, total: ONBOARDING_STEPS.length, name: t(STEP_NAME[view]) })} total={ONBOARDING_STEPS.length} />
         <OnceNotice scan={view === "profile"} />
         {view === "profile" ? (
-          <ProfileStep basic={basic} birthLabel={birthLabel} disabled={saving} errors={errors} inputs={inputs} marks={marks} onBirth={() => setDateOpen(true)} onClearBirth={() => setBasic(current => ({ ...current, birthDate: "" }))} onFieldLayout={onFieldLayout}
-            onPick={setPicker} onScan={source => void scanWith(source)} onText={(key, value) => { setBasic(current => ({ ...current, [key]: value })); unmark(key); }} scan={scan}
+          <ProfileStep basic={basic} birthLabel={birthLabel} disabled={saving} errors={errors} inputs={inputs} marks={marks} onBirth={() => { Keyboard.dismiss(); setDateOpen(true); }} onClearBirth={() => setBasic(current => ({ ...current, birthDate: "" }))} onFieldLayout={onFieldLayout}
+            onPick={key => { Keyboard.dismiss(); setPicker(key); }} onScan={source => void scanWith(source)} onText={(key, value) => { setBasic(current => ({ ...current, [key]: value })); unmark(key); }} scan={scan}
             showEmail={Boolean(marks.email || basic.email || detail?.profile?.handles?.email)} showPhone={Boolean(marks.phone || basic.phone || detail?.profile?.handles?.phone)} />
         ) : view === "goals" ? (
           <GoalsStep disabled={saving} error={errors.has("goals")} focus={focus} goals={goals} marks={marks} offer={offer} onFocus={setFocus} onGoal={(goal, selected) => setGoals(current => (selected ? current.filter(value => value !== selected) : toggleValue(current, goal, GOAL_LIMIT)))}
