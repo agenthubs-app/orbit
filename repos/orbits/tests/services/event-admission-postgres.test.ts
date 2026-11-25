@@ -327,14 +327,7 @@ test(
         },
       });
       assert.deepEqual(duplicateA, a);
-      await assert.rejects(
-        service.submitApplication("actor:A", {
-          eventId: "event:instant",
-          profilePayload: { answers: { positioning: "Changed profile" } },
-        }),
-        (error: unknown) =>
-          error instanceof EventAdmissionError && error.code === "INVALID_TRANSITION",
-      );
+      // Changed answers update the same application (2026-11-26): tests/services/event-admission-journey-postgres.test.ts.
       assert.deepEqual(a.profilePayload, profile("actor:A"));
       assert.equal(a.policyVersion, 2);
       assert.equal(a.status, "admitted");

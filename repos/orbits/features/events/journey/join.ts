@@ -11,7 +11,14 @@ import type { EventJoinAnswer, EventJoinCancelResult, EventJoinProfile, EventJoi
 import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../../../shared/compute/profile-tag-options";
 import { PROFILE_ONBOARDING_GOALS } from "../../../shared/compute/profile-onboarding-goal";
 import { HOST_QUESTION_PROFILE_ITEM, hostQuestionOptionAliases, hostQuestionProfilePrefill, localizeQuestion } from "../../../shared/domain/host-question-library";
+import { AppError } from "../../../shared/errors/app-error";
 import type { JourneyLanguage } from "./prep-core";
+
+/** 报名 / 改资料被拒的原因（409 的 context.reason）：已截止 / 主办方已审核，不能改 / 被拒 / 已取消（要重新报名）。 */
+export type JoinRefusal = "JOIN_CLOSED" | "JOIN_LOCKED" | "JOIN_REJECTED" | "JOIN_CANCELLED";
+export class JoinRefusedError extends AppError {
+  constructor(readonly reason: JoinRefusal, message: string) { super("CONFLICT", message); }
+}
 
 export const JOIN_TOTAL = 5;
 /** 满 5 题后仍缺项：确认页「追加」只针对缺的那一项再问，缺几项补几项（目的・话题・想见的人・能提供 最多 4 项），不无限追问。 */
@@ -259,6 +266,7 @@ export interface JoinPorts {
   saveTentative(actorId: string, eventId: string, record: { scheduleItemId: string; final: boolean; removed?: boolean }): Promise<void>;
   renameSchedule(actorId: string, scheduleItemId: string, title: string): Promise<void>;
   removeSchedule(actorId: string, scheduleItemId: string): Promise<void>;
+  now?(): number;
   registrationStatus(actorId: string, eventId: string): Promise<"registered" | "pending_review" | "rejected" | "cancelled" | "none">;
   /** R17（host/DESIGN.md §2.7）：主办方公开的申込質問（先问，再由访谈补足到 5 问）。没有就不问。 */
   hostQuestions?(eventId: string): Promise<readonly HostSetupQuestion[]>;
@@ -362,9 +370,18 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       const profileItems = resolveCoreAnswers(answers, tags, language).derived.filter((item) => item.source === "profile").map((item) => (item.field === "targetAttendees" ? "target" : "offer") as EventJoinProfileItemKey);
       return profileFromAnswers(answers, { editableUntil, profileItems, personaTopics: persona?.topics ?? [], review: event.review, reviewUntil: event.review ? event.registrationClosesAt : null, selfIntro: intro, selfIntroBasis: basis });
     },
-    async submit(actorId: string, eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, selfIntro?: string): Promise<EventJoinResult | null> {
+    async submit(actorId: string, eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, selfIntro?: string, edit = false): Promise<EventJoinResult | null> {
       const event = await ports.event(eventId);
       if (!event) return null;
+      // 截止后什么都不改（回答没变时报名接口会照常返回，介绍也不能借机改）。
+      const closesAt = Date.parse(event.registrationClosesAt ?? event.startsAt);
+      if (Number.isFinite(closesAt) && (ports.now?.() ?? Date.now()) >= closesAt) throw new JoinRefusedError("JOIN_CLOSED", "Registration has closed.");
+      // 改资料时报名已经取消 / 被拒：不当成重新报名。
+      if (edit) {
+        const status = await ports.registrationStatus(actorId, eventId);
+        if (status === "cancelled" || status === "none") throw new JoinRefusedError("JOIN_CANCELLED", "The registration was cancelled.");
+        if (status === "rejected") throw new JoinRefusedError("JOIN_REJECTED", "The application was not accepted.");
+      }
       const hostQuestions = ports.hostQuestions ? await ports.hostQuestions(eventId).catch(() => []) : [];
       // 访谈没问到的核心项：用主办方题 / 资料标签补成签名固定题（否则报名接口与审核申请都会因缺核心项拒绝）。
       const filled = filledItems(answers.filter((answer) => !isHostAnswer(answer)));

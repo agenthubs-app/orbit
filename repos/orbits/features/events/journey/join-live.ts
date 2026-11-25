@@ -8,17 +8,25 @@ import type { EventJoinAnswer, EventJoinQuestion } from "../../../shared/contrac
 import { AppError } from "../../../shared/errors/app-error";
 import type { HostSetupQuestion } from "../../../shared/contract/host-console";
 import { createPostgresActorRecordStore } from "../actor-records/store";
-import { profileFactQuestions, type JoinDerivedAnswer, type JoinPorts } from "./join";
+import { JoinRefusedError, profileFactQuestions, type JoinDerivedAnswer, type JoinPorts, type JoinRefusal } from "./join";
 import type { JourneyLivePorts } from "./ports";
 import type { JourneyLanguage } from "./prep-core";
 
 type Handler = (request: Request, context: { params: Promise<{ id: string }> }) => Promise<Response>;
 
-async function callHandler(handler: Handler, eventId: string, path: string, body: unknown, method: "POST" | "GET" | "DELETE" = "POST"): Promise<{ status: number; data: unknown; message: string | null }> {
+async function callHandler(handler: Handler, eventId: string, path: string, body: unknown, method: "POST" | "GET" | "DELETE" = "POST"): Promise<{ status: number; data: unknown; message: string | null; reason: string | null }> {
   const request = new Request(`http://orbit.internal/api/events/${encodeURIComponent(eventId)}/${path}`, method === "GET" ? { method } : { body: JSON.stringify(body), headers: { "content-type": "application/json" }, method });
   const response = await handler(request, { params: Promise.resolve({ id: eventId }) });
-  const json = (await response.json().catch(() => null)) as { data?: unknown; error?: { message?: unknown } } | null;
-  return { data: json?.data ?? null, message: typeof json?.error?.message === "string" ? json.error.message : null, status: response.status };
+  const json = (await response.json().catch(() => null)) as { data?: unknown; error?: { context?: { reason?: unknown }; message?: unknown } } | null;
+  const reason = json?.error?.context?.reason;
+  return { data: json?.data ?? null, message: typeof json?.error?.message === "string" ? json.error.message : null, reason: typeof reason === "string" ? reason : null, status: response.status };
+}
+
+/** 申请接口的 409 → 报名页能说清的原因；其余照旧是一般冲突。 */
+const REFUSAL_OF_ADMISSION: Readonly<Record<string, JoinRefusal>> = { APPLICATION_REJECTED: "JOIN_REJECTED", PROFILE_EDIT_CLOSED: "JOIN_CLOSED", PROFILE_LOCKED: "JOIN_LOCKED", WINDOW_CLOSED: "JOIN_CLOSED" };
+function refused(reply: { message: string | null; reason: string | null }): AppError {
+  const reason = reply.reason ? REFUSAL_OF_ADMISSION[reply.reason] : undefined;
+  return reason ? new JoinRefusedError(reason, reply.message ?? "The registration cannot be changed.") : new AppError("CONFLICT", reply.message ?? "This event is not open for registration.");
 }
 
 const transcript = (answers: readonly EventJoinAnswer[]) => answers.map((answer) => ({ answer: answer.answer, field: answer.field, prompt: answer.prompt }));
@@ -136,7 +144,7 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
         const { createEventAdmissionApplicationPostHandler } = await import("../../../app/api/events/[id]/admission/application/handler");
         const applied = await callHandler(createEventAdmissionApplicationPostHandler(), eventId, "admission/application", { responses });
         if (applied.status < 300) return { status: "pending_review", submittedAt: new Date().toISOString() };
-        if (applied.status === 409) throw new AppError("CONFLICT", applied.message ?? "This event is not open for registration.");
+        if (applied.status === 409) throw refused(applied);
         throw Object.assign(new Error("admission application failed"), { status: applied.status });
       }
       // 不带 intent / expectedRegistrationVersion：服务端按现状推断 register / reactivate（取消后再报）/ update（改资料）。
@@ -151,7 +159,7 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
           const status = (applied.data as { status?: string } | null)?.status;
           return { status: status === "admitted" ? "registered" : "pending_review", submittedAt: new Date().toISOString() };
         }
-        if (applied.status === 409) throw new AppError("CONFLICT", applied.message ?? "This event is not open for registration.");
+        if (applied.status === 409) throw refused(applied);
         throw Object.assign(new Error("admission application failed"), { status: applied.status });
       }
       if (registered.status === 409) throw new AppError("CONFLICT", registered.message ?? "This event is not open for registration.");

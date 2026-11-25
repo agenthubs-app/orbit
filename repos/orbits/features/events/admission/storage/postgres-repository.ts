@@ -675,13 +675,15 @@ function registrationSideEffects(): EventRegistration["sideEffects"] {
 async function projectCanonicalMembership(input: {
   application: EventAdmissionApplication;
   executor: EventOperationsSqlExecutor;
+  /** 已确定参加的人改资料：写新的资料版本，报名时间、状态、再开始时间都不动。 */
+  profileEdit?: boolean;
   profileEditDeadlineAt: string;
   status: "cancelled" | "rsvped";
   workspaceId: string;
 }): Promise<EventRegistration> {
   const currentResult = await input.executor.query<SqlRow>(
     `select head.membership_version, head.profile_version, head.status,
-            version.registered_at
+            version.registered_at, version.reactivated_at
      from event_ops_membership_heads head
      join event_ops_membership_versions version
        on version.workspace_id = head.workspace_id
@@ -693,16 +695,17 @@ async function projectCanonicalMembership(input: {
   );
   const current = currentResult.rows[0];
   if (
-    (input.status === "rsvped" && current && current.status !== "cancelled") ||
+    (input.status === "rsvped" && !input.profileEdit && current && current.status !== "cancelled") ||
+    (input.profileEdit && current?.status !== "rsvped") ||
     (input.status === "cancelled" && (!current || current.status !== "rsvped"))
   ) invalid("Admission membership projection state is invalid.");
   const membershipVersion = current
     ? positiveVersion(current.membership_version, "membershipVersion") + 1
     : 1;
   // Reactivation (a withdrawn application submitted again) writes a new profile version.
-  const reactivated = input.status === "rsvped" && Boolean(current);
+  const reactivated = input.status === "rsvped" && !input.profileEdit && Boolean(current);
   const profileVersion = current
-    ? positiveVersion(current.profile_version, "profileVersion") + (reactivated ? 1 : 0)
+    ? positiveVersion(current.profile_version, "profileVersion") + (reactivated || input.profileEdit ? 1 : 0)
     : 1;
   const participantProfileId = canonicalParticipantProfileId(
     input.application.eventId,
@@ -715,6 +718,8 @@ async function projectCanonicalMembership(input: {
   const registeredAt = current
     ? isoTimestamp(current.registered_at, "registeredAt")
     : input.application.updatedAt;
+  // The profile's own time: the submission, or the edit when an admitted person changes their answers.
+  const profileAt = input.profileEdit ? input.application.updatedAt : input.application.submittedAt;
   const registration: EventRegistration = {
     cancelledAt: input.status === "cancelled" ? input.application.updatedAt : null,
     eventId: input.application.eventId,
@@ -736,11 +741,12 @@ async function projectCanonicalMembership(input: {
       ...(input.application.profilePayload.questionSetVersion
         ? { questionSetVersion: input.application.profilePayload.questionSetVersion }
         : {}),
-      updatedAt: input.application.submittedAt,
+      updatedAt: profileAt,
       userId: input.application.actorId,
     },
     participantProfileId,
-    reactivatedAt: reactivated ? input.application.updatedAt : null,
+    reactivatedAt: reactivated ? input.application.updatedAt
+      : input.profileEdit && current?.reactivated_at != null ? isoTimestamp(current.reactivated_at, "reactivatedAt") : null,
     registeredAt,
     sideEffects: registrationSideEffects(),
     status: input.status,
@@ -757,11 +763,53 @@ async function projectCanonicalMembership(input: {
     origin: "admission_application",
     profileChanged: input.status === "rsvped",
     profileEditDeadlineAt: input.profileEditDeadlineAt,
-    profileEffectiveAt: input.application.submittedAt,
+    profileEffectiveAt: profileAt,
     profileVersion,
     registration,
     workspaceId: input.workspaceId,
   });
+}
+
+/**
+ * 已报名的人在截止前再次提交 = 更新这份报名的回答：不新增报名，名额、候补顺位（submitted_at）、报名时间、审核结果都不变。
+ * 能改：審査中的申请；即时确定活动里没有经主办方决定的 确定 / 候补。主办方已通过（或安排候补）的、被拒的、已截止的不能改
+ * （审核后改内容要不要重新审核是产品决定，没定前保持不能改）。
+ */
+async function updateApplicationProfile(
+  executor: EventOperationsSqlExecutor,
+  input: { existing: EventAdmissionApplication; profilePayload: EventAdmissionProfileSnapshot; workspaceId: string },
+): Promise<EventAdmissionApplication> {
+  const { existing, profilePayload, workspaceId } = input;
+  const { actorId, eventId } = existing;
+  const label = `Admission application ${eventId}/${actorId}`;
+  if (existing.status === "rejected") throw new EventAdmissionError("APPLICATION_REJECTED", `${label} was rejected and cannot be submitted again.`);
+  const policy = await currentPolicy(executor, workspaceId, eventId);
+  if (!policy) throw new EventAdmissionError("NOT_CONFIGURED", `Admission policy for ${eventId} is not configured.`);
+  const now = await databaseNow(executor);
+  if (Date.parse(now) >= Math.min(Date.parse(policy.registrationClosesAt), Date.parse(policy.profileEditDeadlineAt))) {
+    throw new EventAdmissionError("PROFILE_EDIT_CLOSED", `${label} can no longer be changed.`);
+  }
+  const undecided = existing.decidedAt === null && policy.admissionMode === "instant";
+  if (existing.status !== "pending_review" && !undecided) {
+    throw new EventAdmissionError("PROFILE_LOCKED", `${label} was decided by the organizer and cannot be changed.`);
+  }
+  const next: EventAdmissionApplication = { ...existing, applicationVersion: existing.applicationVersion + 1, profilePayload, updatedAt: now };
+  await appendApplication(executor, workspaceId, next);
+  if (next.status === "admitted") {
+    await projectCanonicalMembership({ application: next, executor, profileEdit: true, profileEditDeadlineAt: policy.profileEditDeadlineAt, status: "rsvped", workspaceId });
+  }
+  await audit(executor, {
+    action: "admission.application.profile_updated",
+    actorId,
+    after: applicationAuditPayload(next),
+    aggregateId: `${eventId}:${actorId}`,
+    aggregateType: "admission_application",
+    before: applicationAuditPayload(existing),
+    eventId,
+    occurredAt: now,
+    workspaceId,
+  });
+  return next;
 }
 
 async function runTransaction<TValue>(
@@ -1155,10 +1203,7 @@ export function createPostgresEventAdmissionRepository(input: {
             JSON.stringify(stableApplicationProfile(existing.profilePayload)) ===
             JSON.stringify(stableApplicationProfile(profilePayload))
           ) return existing;
-          throw new EventAdmissionError(
-            "INVALID_TRANSITION",
-            `Admission application ${eventId}/${actorId} already exists with different profile content.`,
-          );
+          return updateApplicationProfile(executor, { existing, profilePayload, workspaceId });
         }
         const policy = await currentPolicy(executor, workspaceId, eventId);
         if (!policy) throw new EventAdmissionError("NOT_CONFIGURED", `Admission policy for ${eventId} is not configured.`);

@@ -284,6 +284,14 @@ export interface EventOperationsRepository {
     eventId: string,
   ): Promise<readonly EventRegistration[]>;
   /**
+   * `listCanonicalRegistrations` for showing people: one statement, with each person's current profile name in place of
+   * the name stored at registration (which stays when there is no profile name). Not for matching, exports or writes.
+   * Optional: memory repositories leave it out and callers use `listCanonicalRegistrations`.
+   */
+  listCanonicalRegistrationsForDisplay?(
+    eventId: string,
+  ): Promise<readonly EventRegistration[]>;
+  /**
    * Same rows, order and failure semantics as `listCanonicalRegistrations`,
    * trimmed to what the roster (`attendees`) or the anonymous preview
    * (`preview`) reads (W0029).

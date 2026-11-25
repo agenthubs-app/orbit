@@ -9,6 +9,8 @@ const EVENT = { endsAt: "2026-10-07T21:30:00+09:00", registrationClosesAt: JOURN
 export function createJoinMockPorts(): JoinPorts {
   const tentative = new Map<string, { scheduleItemId: string; final: boolean; removed?: boolean }>();
   return {
+    // 示例活动的截止日是固定日期：示例里的「现在」在截止之前。
+    now: () => Date.parse(JOURNEY_JOIN_SUBMITTED_AT),
     async event(eventId) { return eventId === JOURNEY_EVENT_ID ? EVENT : null; },
     // 示例访谈问到「会いたい人」（第 3 问）就认为够了；确认页点「追加」（more）再问下一题（画板 #370：86 % · 提供できること △）。
     // `plan`：跳过已覆盖的字段；满 5 题后的追问只问缺的项（同 live 访谈）。

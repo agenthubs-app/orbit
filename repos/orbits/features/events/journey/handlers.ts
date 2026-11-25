@@ -33,7 +33,7 @@ import { createJourneyMockService } from "./mock";
 import type { JourneyLanguage } from "./prep-core";
 import { venueRecordView } from "./venue-core";
 import { createJourneyService, type JourneyService } from "./service";
-import { createJoinService, type JoinService } from "./join";
+import { createJoinService, JoinRefusedError, type JoinService } from "./join";
 import { createJoinMockPorts } from "./join-mock";
 import { eventJoinCancelInputObject, eventJoinCancelResultSchema, eventJoinNextInputObject, eventJoinProfileInputObject, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinSubmitInputObject, eventJoinTentativeInputObject, eventJoinTentativeResultSchema } from "../../../shared/api-schema/event-join";
 
@@ -197,7 +197,12 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       if (parsed.ok === false) return parsed.reply;
       const service = await join();
       if (!service) return { context: { reason: "EVENT_JOIN_UNCONFIGURED" }, error: new AppError("SERVICE_UNAVAILABLE", "Registration is unavailable.") };
-      return service.submit(actorId!, eventId(params), parsed.value.answers, language, parsed.value.selfIntro);
+      try {
+        return await service.submit(actorId!, eventId(params), parsed.value.answers, language, parsed.value.selfIntro, parsed.value.edit);
+      } catch (error) {
+        if (error instanceof JoinRefusedError) return { context: { reason: error.reason }, error };
+        throw error;
+      }
     }, deps),
     joinTentative: journeyRoute({ auth: "required", schema: eventJoinTentativeResultSchema, write: true }, async ({ actorId, join, language, params, request }) => {
       const parsed = await body(request, eventJoinTentativeInputObject);

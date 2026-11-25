@@ -29,6 +29,7 @@ import type { PublishedCanonicalEvent } from "../core/contract";
 import { createConfiguredEventCoreService } from "../core/runtime";
 import { readEventOperationsCatalogueSummaries } from "../event-operations/catalogue-summary";
 import { createConfiguredEventOperationsRepository } from "../event-operations/repository";
+import { profileNameSql } from "../event-operations/storage/canonical-registration-repository";
 import { createConfiguredEventOperationsService } from "../event-operations/runtime";
 import { createPostgresMyEventsReader, mergeMyEvents } from "../mine/service";
 import { createConfiguredAttendeePostEventAiArtifactReader } from "../post-event-artifact/runtime";
@@ -86,12 +87,13 @@ const str = (value: unknown): string | null => (typeof value === "string" && val
  * 参加者の詳細的报名者：只认这场活动的有效报名（rsvped；取消 / 审核中 / 被拒都不算），同一条查询带出他为这场活动确认的自我介绍
  * （eventJoinIntros，报名提交时写；再次报名时覆盖），不多一次往返。
  */
-export async function readAttendeeOwner(query: Query, workspaceId: string, eventId: string, attendeeId: string): Promise<{ actorId: string; intro: string | null } | null> {
+export async function readAttendeeOwner(query: Query, workspaceId: string, eventId: string, attendeeId: string): Promise<{ actorId: string; intro: string | null; name: string | null } | null> {
   const owner = await query(`/* events:r27-journey:attendee-owner */ select h.actor_id,
-      (select r.payload ->> 'text' from orbit_records r where r.workspace_id = h.workspace_id and r.collection_name = 'eventJoinIntros' and r.user_id = h.actor_id and r.lifecycle_state <> 'deleted' and r.payload ->> 'eventId' = h.event_id order by r.updated_at desc limit 1) as join_intro
+      (select r.payload ->> 'text' from orbit_records r where r.workspace_id = h.workspace_id and r.collection_name = 'eventJoinIntros' and r.user_id = h.actor_id and r.lifecycle_state <> 'deleted' and r.payload ->> 'eventId' = h.event_id order by r.updated_at desc limit 1) as join_intro,
+      ${profileNameSql("h.workspace_id", "h.actor_id")} as profile_name
     from event_ops_membership_heads h where h.workspace_id = $1 and h.event_id = $2 and h.participant_id = $3 and h.status = 'rsvped' limit 1`, [workspaceId, eventId, attendeeId]);
   const actorId = str(owner.rows[0]?.actor_id);
-  return actorId ? { actorId, intro: str(owner.rows[0]?.join_intro) } : null;
+  return actorId ? { actorId, intro: str(owner.rows[0]?.join_intro), name: str(owner.rows[0]?.profile_name) } : null;
 }
 
 export function createJourneyLivePorts(): JourneyLivePorts | null {
@@ -292,7 +294,8 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
     async publicAttendees(eventId) {
       const event = await publishedEvent(eventId).catch(warned("r27_journey_event_read_failed", null, { eventId }));
       if (!event) return { attendees: [], total: 0 };
-      const registrations = await operations.listCanonicalRegistrations(event.eventId);
+      // 显示用：同一条查询带出每个人当前的资料姓名（改名后名单跟着变）；没有资料姓名才用报名时存的名字。
+      const registrations = await (operations.listCanonicalRegistrationsForDisplay ?? operations.listCanonicalRegistrations)(event.eventId);
       return publicAttendeesFromRegistrations(registrations, payloadSpeakerNames(event.sourcePayload ?? {}));
     },
 
@@ -302,7 +305,7 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       if (!owner) return null;
       const registration = await operations.getCanonicalRegistration(eventId, owner.actorId);
       if (!registration || registration.eventId !== eventId || registration.participantProfileId !== attendeeId) return null;
-      return attendeeProfileFromRegistration(registration, owner.intro);
+      return attendeeProfileFromRegistration(registration, owner.intro, owner.name);
     },
 
     async hosting(actorId, eventId) {
@@ -324,7 +327,7 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
                      and r.participant_id=m.participant_id and r.profile_version=m.profile_version
                      and r.field_key='positioning' and r.visibility in ('event_attendees','public')
                    order by r.answered_at desc, r.response_id limit 1), '') as positioning,
-                   regexp_replace(p.profile_payload #>> '{registrationProfile,displayName}', '\\s', '', 'g') = any($3::text[]) as known
+                   regexp_replace(coalesce(nullif(btrim(${profileNameSql("m.workspace_id", "m.actor_id")}), ''), p.profile_payload #>> '{registrationProfile,displayName}'), '\\s', '', 'g') = any($3::text[]) as known
               from event_ops_membership_heads m
               join event_ops_profile_versions p on p.workspace_id=m.workspace_id and p.event_id=m.event_id
                and p.participant_id=m.participant_id and p.profile_version=m.profile_version

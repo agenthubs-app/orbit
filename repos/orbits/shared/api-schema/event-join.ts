@@ -62,6 +62,7 @@ const answers = z.array(eventJoinAnswerObject).max(9);
 export const eventJoinNextInputObject = z.object({ answers, focus: z.enum(ITEM_KEYS).optional(), more: z.boolean().default(false) }).strict();
 export const eventJoinProfileInputObject = z.object({ answers, draft: z.boolean().default(false) }).strict();
 /** `selfIntro`: the self-introduction as edited on the review step (kept with this registration). */
-export const eventJoinSubmitInputObject = z.object({ answers: answers.min(1), idempotencyKey: z.string().min(1).max(200), selfIntro: z.string().trim().min(1).max(400).optional() }).strict();
+/** `edit`: changing an existing registration — a cancelled or rejected one is refused instead of being registered again. */
+export const eventJoinSubmitInputObject = z.object({ answers: answers.min(1), edit: z.boolean().default(false), idempotencyKey: z.string().min(1).max(200), selfIntro: z.string().trim().min(1).max(400).optional() }).strict();
 export const eventJoinTentativeInputObject = z.object({ idempotencyKey: z.string().min(1).max(200) }).strict();
 export const eventJoinCancelInputObject = z.object({ idempotencyKey: z.string().min(1).max(200) }).strict();

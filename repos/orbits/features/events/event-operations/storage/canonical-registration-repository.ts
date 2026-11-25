@@ -46,6 +46,7 @@ type CanonicalRegistrationMethods = Pick<
   | "getCanonicalRegistration"
   | "getCanonicalRegistrationStatus"
   | "listCanonicalRegistrations"
+  | "listCanonicalRegistrationsForDisplay"
   | "listCanonicalRegistrationStatusesForUser"
   | "listPublishedCanonicalRegistrationStatusesForUser"
   | "listCanonicalRosterEntries"
@@ -440,7 +441,14 @@ function registrationRosterSelect(fields: EventRegistrationRosterFields, manyEve
     order by ${manyEvents ? "membership_head.event_id, " : ""}membership_head.participant_id`;
 }
 
-function registrationSelect(): string {
+/** 这个人当前的资料姓名（走 workspace + collection + user_id 索引；没有资料 = null）。参数都是可信的 SQL 列名。 */
+export function profileNameSql(workspace: string, actor: string): string {
+  return `(select person.payload ->> 'displayName' from orbit_records person
+        where person.workspace_id = ${workspace} and person.collection_name = 'profiles' and person.user_id = ${actor}
+          and person.lifecycle_state <> 'deleted' order by person.updated_at desc limit 1)`;
+}
+
+function registrationSelect(extraColumns = ""): string {
   return `
     select
       membership_head.event_id,
@@ -455,7 +463,7 @@ function registrationSelect(): string {
       membership_version.reactivated_at,
       membership_version.late_registration,
       membership_version.source_registration_id,
-      profile_version.profile_payload
+      profile_version.profile_payload${extraColumns}
     ${REGISTRATION_FROM}
   `;
 }
@@ -1051,6 +1059,24 @@ export function createPostgresCanonicalRegistrationMethods({
         eventId,
         executor: client,
         workspaceId,
+      });
+    },
+
+    async listCanonicalRegistrationsForDisplay(eventId) {
+      const result = await client.query<SqlRow>(
+        `${registrationSelect(`,
+      ${profileNameSql("membership_head.workspace_id", "membership_head.actor_id")} as profile_name`)}
+         where membership_head.workspace_id = $1
+           and membership_head.event_id = $2
+         order by membership_head.participant_id`,
+        [workspaceId, eventId],
+      );
+      return result.rows.map((row) => {
+        const registration = registrationFromRow(row);
+        const name = typeof row.profile_name === "string" ? row.profile_name.trim() : "";
+        return name
+          ? { ...registration, participantProfile: { ...registration.participantProfile, displayName: name } }
+          : registration;
       });
     },
 

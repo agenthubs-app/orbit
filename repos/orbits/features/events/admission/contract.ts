@@ -18,6 +18,10 @@ export type EventAdmissionErrorCode =
   | "CAPACITY_FULL"
   | "VERSION_CONFLICT"
   | "INVALID_TRANSITION"
+  /** 已报名的人再次提交：已过修改截止 / 主办方已审核通过（或安排候补），现行规则不能改 / 被拒。 */
+  | "PROFILE_EDIT_CLOSED"
+  | "PROFILE_LOCKED"
+  | "APPLICATION_REJECTED"
   | "FORBIDDEN"
   | "DATA_INVALID";
 

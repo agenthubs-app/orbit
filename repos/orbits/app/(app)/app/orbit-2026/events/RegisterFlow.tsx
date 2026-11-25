@@ -32,7 +32,7 @@ export function joinApiFor(language: OrbitLanguage) {
   return {
     next: (eventId: string, answers: readonly EventJoinAnswer[], more = false, focus?: EventJoinProfileItemKey) => eventsCall(`/api/events/${id(eventId)}/join/next`, { body: JSON.stringify({ answers, more, ...(focus ? { focus } : {}) }), headers, method: "POST" }, eventJoinStepSchema as ZodType<EventJoinStep>),
     profile: (eventId: string, answers: readonly EventJoinAnswer[], draft: boolean) => eventsCall(`/api/events/${id(eventId)}/join/profile`, { body: JSON.stringify({ answers, draft }), headers, method: "POST" }, eventJoinProfileSchema as ZodType<EventJoinProfile>),
-    submit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string) => eventsCall(`/api/events/${id(eventId)}/join/submit`, { body: JSON.stringify({ answers, idempotencyKey: newIdempotencyKey(), ...(selfIntro ? { selfIntro } : {}) }), headers, method: "POST" }, eventJoinResultSchema as ZodType<EventJoinResult>),
+    submit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string, edit = false) => eventsCall(`/api/events/${id(eventId)}/join/submit`, { body: JSON.stringify({ answers, idempotencyKey: newIdempotencyKey(), ...(edit ? { edit } : {}), ...(selfIntro ? { selfIntro } : {}) }), headers, method: "POST" }, eventJoinResultSchema as ZodType<EventJoinResult>),
     cancel: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/cancel`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), headers, method: "POST" }, eventJoinCancelResultSchema),
     tentative: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/tentative`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), headers, method: "POST" }, eventJoinTentativeResultSchema),
   };
@@ -58,6 +58,9 @@ function dateTimeLong(iso: string, t: JourneyT): string {
   const p = parts(iso);
   return p ? t("dateTimeLong", { d: p.day, hm: p.hm, m: p.month }) : "";
 }
+
+const REFUSAL_KEY: Readonly<Record<string, "joinClosed" | "joinLocked" | "joinRejected" | "joinCancelled">> = { JOIN_CANCELLED: "joinCancelled", JOIN_CLOSED: "joinClosed", JOIN_LOCKED: "joinLocked", JOIN_REJECTED: "joinRejected" };
+const refusalKey = (code: string | undefined) => (code ? REFUSAL_KEY[code] : undefined);
 
 type ProfileMode = "live" | "review" | "applied";
 
@@ -140,6 +143,11 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     return () => { live = false; };
   }, [eventId, attempt, joinApi]);
 
+  // 已报名 / 审核中 / 候补的人再来 = 改资料；改不了的（已截止、主办方已通过、被拒）一进来就说明，不让人白答一遍。
+  const status = event?.registration.status;
+  const editing = status === "registered" || status === "pending_review" || status === "waitlisted";
+  const closed = Boolean(event) && Date.parse(event!.registrationClosesAt ?? event!.startsAt) <= Date.now();
+  const blocked = result ? null : status === "rejected" ? "joinRejected" : editing && closed ? "joinClosed" : status === "registered" && profile?.review ? "joinLocked" : null;
   const question = step?.question ?? null;
   const reviewing = Boolean(step?.done) && !result;
   const total = step?.total ?? 5;
@@ -177,9 +185,9 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     setBusy(true);
     // 2026-11-26：确认页上的自我介绍（AI 草稿原样或改过的）都随报名留存——它会显示给这场活动的其他参会者。
     const confirmed = (intro ?? profile?.selfIntro?.text ?? "").trim().slice(0, 400);
-    const res = await joinApi.submit(eventId, answers, confirmed || undefined);
+    const res = await joinApi.submit(eventId, answers, confirmed || undefined, editing);
     setBusy(false);
-    if (res.ok) { setResult(res.data); setContactOpen(hostContactHasId(res.data.hostContact)); } else toast.error(t("submitFailed"));
+    if (res.ok) { setResult(res.data); setContactOpen(!editing && hostContactHasId(res.data.hostContact)); } else toast.error(t(refusalKey("code" in res ? res.code : undefined) ?? "submitFailed"));
   };
   const addTentative = async () => {
     if (busy) return;
@@ -200,7 +208,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const reviewUntil = profile?.reviewUntil ?? result?.reviewUntil ?? null;
   // 审核制才有「审核 / 结果通知」两段；先到先得报名即确定（结果出来前按资料里的 review 判断，提交后按结果）。
   const screened = result ? result.status === "pending_review" : profile?.review ?? true;
-  const headRight = result ? t("doneTitle") : reviewing ? t("reviewStep", { i: Math.min(total, answers.length + 1), n: total }) : step ? t("regProgress", { i: step.index, m: step.remainingMinutes, n: total }) : null;
+  const headRight = blocked ? null : result ? t("doneTitle") : reviewing ? t("reviewStep", { i: Math.min(total, answers.length + 1), n: total }) : step ? t("regProgress", { i: step.index, m: step.remainingMinutes, n: total }) : null;
   const shownIntro = intro ?? profile?.selfIntro?.text ?? "";
   const detailHref = `/app/events/${id(eventId)}`;
 
@@ -221,12 +229,17 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
           <div key={title} className={`${x.tline} ${index === (result ? 1 : 0) ? r.now : ""}`}><time>{index + 1}</time><span className={x.dot} /><div><b>{t(title)}</b><span className={styles.lbl}>{title === "flowReview" ? t(sub, { date: reviewUntil ? monthDaySlash(reviewUntil) : "—" }) : t(sub)}</span></div></div>
         ))}
       </div>
-      <div className={`${styles.mac} ${r.lav} ${r.note}`}>{t("prefilledNote")}</div>
+      <div className={`${styles.mac} ${r.lav} ${r.note}`}>{t("regPrefilledLine")}</div>
     </div>
   );
 
   // 第一题都取不到：给提示与重试（不留空白页）。
-  const loadError = loadFailed && !step ? (
+  const loadError = blocked ? (
+    <div className={`${styles.card} ${x.span7}`} data-join-blocked={blocked}>
+      <b>{t(blocked)}</b>
+      <div className={r.gap}><a className={`btn ${styles.btn}`} href={detailHref}>{t("toDetail")}</a></div>
+    </div>
+  ) : loadFailed && !step ? (
     <div className={`${styles.card} ${x.span7}`} data-join-error="">
       <b>{t("regLoadFailed")}</b>
       <div className={r.gap}><button type="button" className={`btn ${styles.btn}`} onClick={() => setAttempt((value) => value + 1)}>{t("retryLoad")}</button></div>
@@ -342,7 +355,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     <div className={`${styles.card} ${x.span7} ${r.chat}`} data-join-done="">
       <div className={`${styles.card} ${r.inner} ${r.check}`}>
         <div className={r.popcheck}><Icon name="check" size={24} /></div>
-        <div className={r.doneTitle}>{t("received")}</div>
+        <div className={r.doneTitle}>{t(editing ? "joinUpdated" : "received")}</div>
         <div className={styles.lbl}>{`${event?.title ?? ""} · ${dateTimeLong(result.submittedAt, t)}`}</div>
       </div>
       <div className={`${styles.card} ${r.inner} ${r.gap}`}>
@@ -365,7 +378,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
         {result.status === "pending_review" ? <div className={`${styles.sub} ${r.doneSub}`}>{contactLine ?? t("reviewWait")}</div> : null}
       </div>
       {result.hostContact !== undefined ? <HostContactCard contact={result.hostContact} t={t} className={r.gap} /> : null}
-      {result.tentative && calendar === "asked" ? (
+      {result.tentative && calendar === "asked" && !editing ? (
         <div className={`${styles.card} ${r.confirm}`} data-join-calendar="">
           <div className={styles.row} style={{ gap: 8 }}><span className={`${styles.emo} ${styles.t_lav} ${r.emoSm}`}>📅</span><b className={r.confirmTitle}>{t(result.status === "registered" ? "calAskFinal" : "calAsk")}</b></div>
           <div className={`${styles.sub} ${r.confirmSub}`}>{t(result.status === "registered" ? "calendarLineFinal" : "calendarLine", { range: eventRange(result.tentative.startsAt, result.tentative.endsAt, language), title: result.tentative.title })}</div>

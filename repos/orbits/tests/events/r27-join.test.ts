@@ -2,6 +2,7 @@
  * R27 SC-R27-06 参加登録 facade：≤5 问、多选 / 上限按字段、カバー率规则（44 + 14×4）、确认页「追加」再问一题、改过的自己紹介随报名留存、只在 draft 时调 persona、
  * 审核制活动 409 → 审核申请、仮予定确认后才写 + 结果出来后改名 / 删除、示例模式不写库；公開範囲按字段（服务端策略）。
  */
+import { eventsJourneyCopy } from "../../app/(app)/app/orbit-2026/copy/eventsJourney";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -101,6 +102,7 @@ function fakePorts(overrides: Partial<JoinPorts> = {}): JoinPorts {
   return {
     cancel: async () => undefined,
     createSchedule: async () => "sch",
+    now: () => Date.parse("2026-09-20T00:00:00.000Z"),
     event: async () => ({ endsAt: "2026-10-07T12:30:00.000Z", registrationClosesAt: "2026-10-03T14:59:00.000Z", review: true, startsAt: "2026-10-07T10:00:00.000Z", title: "CFO Night Tokyo vol.18" }),
     next: async () => null,
     persona: async () => null,
@@ -285,4 +287,30 @@ test("資料の「提供・求めていること」を非公開にした人：�
       assert.deepEqual(submitted.at(-1), [], "nothing from the profile is submitted");
     }
   }
+});
+
+test("changing a registration: closed, cancelled, rejected and decided ones are refused with a reason the page can show; nothing is written", async () => {
+  const { JoinRefusedError } = await import("../../features/events/journey/join");
+  const calls: string[] = [];
+  const ports = (status: "registered" | "cancelled" | "rejected" | "none", overrides: Partial<JoinPorts> = {}) => fakePorts({ registrationStatus: async () => status, removeIntro: async () => { calls.push("removeIntro"); }, saveIntro: async () => { calls.push("saveIntro"); }, submit: async () => { calls.push("submit"); return { status: "registered", submittedAt: "2026-09-20T05:32:00.000Z" }; }, ...overrides });
+  const reason = (expected: string) => (error: unknown) => error instanceof JoinRefusedError && error.reason === expected && error.code === "CONFLICT";
+  await assert.rejects(createJoinService({ ports: ports("registered", { now: () => Date.parse("2026-10-04T00:00:00.000Z") }) }).submit("a", "ev", [], "zh", "介绍", true), reason("JOIN_CLOSED"));
+  await assert.rejects(createJoinService({ ports: ports("cancelled") }).submit("a", "ev", [], "zh", "介绍", true), reason("JOIN_CANCELLED"));
+  await assert.rejects(createJoinService({ ports: ports("rejected") }).submit("a", "ev", [], "zh", "介绍", true), reason("JOIN_REJECTED"));
+  assert.deepEqual(calls, []);
+  // Without `edit`, a cancelled person registers again as before.
+  assert.equal((await createJoinService({ ports: ports("cancelled") }).submit("a", "ev", [], "zh", "介绍"))?.status, "registered");
+  assert.equal((await createJoinService({ ports: ports("registered") }).submit("a", "ev", [], "zh", "新的介绍", true))?.status, "registered");
+  assert.deepEqual(calls, ["submit", "saveIntro", "submit", "saveIntro"]);
+  // The route says why.
+  const routes = createEventJourneyRoutes({ liveJoin: async () => createJoinService({ ports: ports("registered", { submit: async () => { throw new JoinRefusedError("JOIN_LOCKED", "decided"); } }) }) as never, liveService: async () => ({}) as never, resolveActor: async () => ({ id: "actor:a" }) as never, resolveMode: () => "live" });
+  const response = await routes.joinSubmit(post({ answers: [answer("targetAttendees", "VC", 1)], edit: true, idempotencyKey: "k" }), params);
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).error.context.reason, "JOIN_LOCKED");
+  for (const key of ["joinClosed", "joinLocked", "joinRejected", "joinCancelled", "joinUpdated"] as const) for (const language of ["ja", "zh", "en"] as const) assert.ok(eventsJourneyCopy[key][language]);
+});
+
+test("the line above the questions names no number of questions (it can be more than five)", () => {
+  for (const language of ["ja", "zh", "en"] as const) assert.doesNotMatch(eventsJourneyCopy.regPrefilledLine[language], /\d|五|five/i);
+  assert.match(eventsJourneyCopy.regPrefilledLine.zh, /只需回答几个问题$/);
 });

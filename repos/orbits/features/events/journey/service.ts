@@ -372,9 +372,12 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         records.memos.read(actorId, eventId),
       ]);
       const self = workspace?.me.participantId === facts.attendeeId;
+      // 认人：人脉里可能按当前姓名、也可能按报名时的名字存着，哪个对得上用哪个。
+      const plainName = (value: string) => value.normalize("NFKC").replace(/\s+/g, "");
+      const contactName = [facts.name, facts.registeredName ?? ""].find((name) => name && contacts.some((contact) => plainName(contact.name) === plainName(name))) ?? facts.name;
       const relation = workspace
-        ? venueExchangeRelation(workspace, { displayName: facts.name, participantId: facts.attendeeId }, contacts)
-        : { contactId: contacts.find((contact) => contact.name.normalize("NFKC").replace(/\s+/g, "") === facts.name.normalize("NFKC").replace(/\s+/g, ""))?.id ?? null, exchange: "none" as const, known: false, request: null };
+        ? venueExchangeRelation(workspace, { displayName: contactName, participantId: facts.attendeeId }, contacts)
+        : { contactId: contacts.find((contact) => plainName(contact.name) === plainName(contactName))?.id ?? null, exchange: "none" as const, known: false, request: null };
       const rec = workspace?.recommendations?.recommendations.find((item) => item.targetParticipantId === facts.attendeeId);
       const ended = eventEnded(event, at);
       const started = at.getTime() >= Date.parse(event.startsAt);

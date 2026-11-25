@@ -9,7 +9,7 @@ import type { MyEventsRange, MyEventsResponse } from "../../../../../shared/cont
 import type { ZodType } from "zod";
 
 export type EventsApiFailure = "rate_limited" | "unavailable" | "sample" | "not_found" | "invalid" | "network";
-export type EventsApiResult<T> = { ok: true; data: T } | { ok: false; reason: EventsApiFailure };
+export type EventsApiResult<T> = { ok: true; data: T } | { ok: false; reason: EventsApiFailure; /** 服务端给的原因代码（error.context.reason）。 */ code?: string };
 
 const BASE = "/api/events/assessments";
 
@@ -23,7 +23,7 @@ async function call<T>(url: string, init: RequestInit | undefined, schema: ZodTy
       if (reason === "SAMPLE_READ_ONLY") return { ok: false, reason: "sample" };
       if (response.status === 404) return { ok: false, reason: "not_found" };
       if (response.status === 400) return { ok: false, reason: "invalid" };
-      return { ok: false, reason: "unavailable" };
+      return { ok: false, reason: "unavailable", ...(reason ? { code: reason } : {}) };
     }
     const parsed = schema.safeParse(body?.data);
     return parsed.success ? { data: parsed.data, ok: true } : { ok: false, reason: "invalid" };

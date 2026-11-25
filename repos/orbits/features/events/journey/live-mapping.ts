@@ -162,9 +162,10 @@ export const ATTENDEE_PROFILE_ANSWERS_LIMIT = 8;
  * 参加者の詳細：一位报名者对参加者公开的资料（与 `publicAttendeesFromRegistrations` 同一边界：只用 `event_attendees` / `public`
  * 的回答，一个都没有 = 不公开 → null）。
  * 2026-11-26 用户定：intro = 这个人报名这场活动时确认的自我介绍（`joinIntro`，eventJoinIntros）；没有就不显示（缺位，不退到别的字段）。
+ * 名字 = 当前的资料姓名（`profileName`，与名单同一规则），没有才用报名时存的名字；`registeredName` 只用来认人（会場的名字、人脉里按旧名存的人）。
  * 话题（experienceHighlight）作为一条问答显示（画板「自己紹介（参加用プロフィール）」：介绍一段 + 今日話したいこと / 提供できること）。
  */
-export function attendeeProfileFromRegistration(registration: EventRegistration, joinIntro: string | null = null): JourneyAttendeeProfileFacts | null {
+export function attendeeProfileFromRegistration(registration: EventRegistration, joinIntro: string | null = null, profileName: string | null = null): JourneyAttendeeProfileFacts | null {
   if (registration.status !== "rsvped") return null;
   const visible = profileResponsesForParticipantDetail(registration.participantProfile.interviewResponses ?? [], { viewerOwnsTarget: false });
   if (!visible.length) return null;
@@ -179,7 +180,7 @@ export function attendeeProfileFromRegistration(registration: EventRegistration,
     const q = text(response.question?.prompt) ?? FIELD_LABEL_JA[response.field] ?? null;
     return q ? [{ a, field: response.field, q }] : [];
   }).slice(0, ATTENDEE_PROFILE_ANSWERS_LIMIT);
-  return { answers, attendeeId: participant.participantId, intro: joinIntro?.trim() || null, name: participant.displayName, org: participant.company, role: participant.role };
+  return { answers, attendeeId: participant.participantId, intro: joinIntro?.trim() || null, name: profileName?.trim() || participant.displayName, registeredName: participant.displayName, org: participant.company, role: participant.role };
 }
 
 type JudgeOut = Awaited<ReturnType<JourneyLivePorts["judge"]>>["results"][string];

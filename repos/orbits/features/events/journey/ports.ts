@@ -61,6 +61,8 @@ export interface JourneyPublicAttendee {
 export interface JourneyAttendeeProfileFacts {
   attendeeId: string;
   name: string;
+  /** 報名時に保存した名前（人脈との照合用、表示しない）。 */
+  registeredName?: string;
   org: string | null;
   role: string | null;
   intro: string | null;

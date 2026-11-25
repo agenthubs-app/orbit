@@ -101,6 +101,7 @@ async function insertOperationsConfiguration(input: {
 function signedResponses(input: {
   actorId: string;
   eventId: string;
+  suffix?: string;
 }): readonly EventInterviewResponseSubmission[] {
   const fields: readonly EventParticipantProfileField[] = [
     "positioning",
@@ -110,7 +111,7 @@ function signedResponses(input: {
     "energyStyle",
   ];
   return fields.map((field, index) => {
-    const answer = `${field} answer ${index + 1} grounded in this event`;
+    const answer = `${field} answer ${index + 1} grounded in this event${input.suffix ?? ""}`;
     return {
       answer,
       questionToken: signAdaptiveInterviewQuestion({
@@ -330,6 +331,89 @@ test(
         [workspaceId, instantEventId],
       );
       assert.equal(responseCount.rows[0]?.count, 10);
+    } finally {
+      await client.close();
+      await adminPool.query(`drop schema if exists ${schema} cascade`);
+      await adminPool.end();
+    }
+  },
+);
+
+test(
+  "registered people change their answers before the deadline; decided, rejected and closed registrations are refused with a reason",
+  { skip: databaseUrl ? false : "ORBIT_EVENT_DATABASE_URL is not configured", timeout: 90_000 },
+  async () => {
+    assert.ok(databaseUrl);
+    const suffix = randomUUID().replaceAll("-", "");
+    const schema = `event_admission_edit_${suffix}`;
+    const workspaceId = `workspace:admission-edit:${suffix}`;
+    const adminPool = new Pool({ connectionString: databaseUrl, max: 1 });
+    const pool = new Pool({ connectionString: databaseUrl, max: 4, options: `-c search_path=${schema}` });
+    const client = createEventOperationsPostgresClient({ connectionString: databaseUrl, max: 4, pool });
+    const instant = "event:edit:instant";
+    const review = "event:edit:review";
+    const manager = "account:journey-organizer";
+    try {
+      await adminPool.query(`create schema ${schema}`);
+      await runEventOperationsMigrations(pool);
+      await runEventSyncRevisionMigration(pool);
+      for (const [eventId, publicCode] of [[instant, "EDIT-INSTANT"], [review, "EDIT-REVIEW"]] as const) {
+        await insertPublishedCanonicalEvent({ eventId, pool, publicCode, workspaceId });
+        await insertOperationsConfiguration({ eventId, pool, profileEditDeadlineAt: "2099-08-31T00:00:00.000Z", registrationCutoffAt: "2099-08-31T00:00:00.000Z", workspaceId });
+      }
+      const service = createEventAdmissionService({ async requireCapability() { /* organizer */ }, repository: createPostgresEventAdmissionRepository({ client, workspaceId }) });
+      const window = { profileEditDeadlineAt: "2099-08-31T00:00:00.000Z", registrationClosesAt: "2099-08-31T00:00:00.000Z", registrationOpensAt: "2000-01-01T00:00:00.000Z" };
+      await service.configurePolicy(manager, { ...window, admissionMode: "instant", capacity: 1, eventId: instant, waitlistEnabled: true });
+      await service.configurePolicy(manager, { ...window, admissionMode: "approval_required", capacity: 10, eventId: review, waitlistEnabled: true });
+      const journey = createEventAdmissionJourneyService({
+        admissionService: service,
+        eventCoreService: createEventCoreService(createPostgresEventCoreRepository({ client, workspaceId })),
+        verifyResponses: (input) => verifyInterviewResponseSubmissions({ ...input, secret: signingSecret }),
+      });
+      const apply = (actorId: string, eventId: string, change?: string) => journey.apply({ actorId, displayName: actorId, eventReference: eventId, responses: signedResponses({ actorId, eventId, ...(change ? { suffix: change } : {}) }) });
+      const code = (expected: string) => (error: unknown) => error instanceof EventAdmissionError && error.code === expected;
+      const membership = async () => (await pool.query(
+        `select h.actor_id, h.status, h.membership_version::int as mv, h.profile_version::int as pv, v.registered_at, v.reactivated_at
+           from event_ops_membership_heads h join event_ops_membership_versions v using (workspace_id, event_id, actor_id, membership_version)
+          where h.workspace_id = $1 and h.event_id = $2 order by h.actor_id`, [workspaceId, instant])).rows;
+
+      // Confirmed (instant): same registration, same place and time; new profile version with the new answers.
+      const first = await apply("a:in", instant);
+      const waiting = await apply("a:wait", instant);
+      const before = await membership();
+      // An old answer that was stored for the organizer only.
+      await pool.query(`update event_ops_profile_response_versions set visibility = 'matching_only' where workspace_id = $1 and field_key = 'targetAttendees'`, [workspaceId]);
+      const edited = await apply("a:in", instant, " (edited)");
+      assert.deepEqual([edited.status, edited.applicationVersion, edited.submittedAt], ["admitted", first.applicationVersion + 1, first.submittedAt]);
+      const after = await membership();
+      assert.equal(after.length, 1, "no second registration");
+      assert.deepEqual([after[0].status, after[0].mv, after[0].pv, after[0].registered_at, after[0].reactivated_at], ["rsvped", before[0].mv + 1, before[0].pv + 1, before[0].registered_at, null]);
+      const answers = (await pool.query(
+        `select r.response_payload #>> '{answer,displayText}' as answer, r.visibility from event_ops_profile_response_versions r
+           join event_ops_membership_heads h using (workspace_id, event_id, participant_id, profile_version)
+          where r.workspace_id = $1 and r.event_id = $2 and r.field_key = 'targetAttendees'`, [workspaceId, instant])).rows;
+      assert.deepEqual(answers, [{ answer: "targetAttendees answer 2 grounded in this event (edited)", visibility: "event_attendees" }], "the replaced answer follows the new rule");
+      assert.deepEqual(await apply("a:in", instant, " (edited)"), edited, "the same answers again change nothing");
+
+      // Waitlisted: the place in the queue stays.
+      const waitingEdit = await apply("a:wait", instant, " (edited)");
+      assert.deepEqual([waitingEdit.status, waitingEdit.submittedAt], ["waitlisted", waiting.submittedAt]);
+      assert.equal((await membership()).length, 1);
+
+      // In review: changeable; once the organizer has decided it is not (the present rule), and a rejected one is refused.
+      const pending = await apply("a:review", review);
+      const pendingEdit = await apply("a:review", review, " (edited)");
+      assert.deepEqual([pendingEdit.status, pendingEdit.submittedAt, pendingEdit.applicationVersion], ["pending_review", pending.submittedAt, 2]);
+      await assert.rejects(service.decideApplication(manager, { actorId: "a:review", decision: "approve", eventId: review, expectedApplicationVersion: 1 }), code("INVALID_TRANSITION"), "a stale review page cannot decide on answers it has not shown");
+      await service.decideApplication(manager, { actorId: "a:review", decision: "approve", eventId: review, expectedApplicationVersion: 2 });
+      await assert.rejects(apply("a:review", review, " (again)"), code("PROFILE_LOCKED"));
+      const refused = await apply("a:no", review);
+      await service.decideApplication(manager, { actorId: "a:no", decision: "reject", eventId: review, expectedApplicationVersion: refused.applicationVersion });
+      await assert.rejects(apply("a:no", review, " (again)"), code("APPLICATION_REJECTED"));
+
+      // Closed: nothing changes.
+      await pool.query(`update event_ops_admission_policy_versions set registration_opens_at = '2000-01-01', registration_closes_at = '2001-01-01', profile_edit_deadline_at = '2001-01-01' where workspace_id = $1 and event_id = $2`, [workspaceId, instant]);
+      await assert.rejects(apply("a:in", instant, " (late)"), code("PROFILE_EDIT_CLOSED"));
     } finally {
       await client.close();
       await adminPool.query(`drop schema if exists ${schema} cascade`);

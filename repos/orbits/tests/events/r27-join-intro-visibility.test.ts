@@ -56,7 +56,8 @@ test("one query reads the registrant and their confirmed self-introduction (rsvp
   const w = world();
   w.heads.set("pp-wang", { actorId: "u-wang", status: "rsvped" });
   w.intros.set("u-wang", "上海の VC で日本のスタートアップに投資しています。");
-  assert.deepEqual(await readAttendeeOwner(w.query, "ws", VENUE_RECORD_EVENT_ID, "pp-wang"), { actorId: "u-wang", intro: "上海の VC で日本のスタートアップに投資しています。" });
+  assert.deepEqual(await readAttendeeOwner(w.query, "ws", VENUE_RECORD_EVENT_ID, "pp-wang"), { actorId: "u-wang", intro: "上海の VC で日本のスタートアップに投資しています。", name: null });
+  assert.match(w.sql[0]!, /collection_name = 'profiles'/, "the current profile name comes in the same statement");
   assert.equal(w.sql.length, 1, "no extra round trip for the intro");
   assert.match(w.sql[0]!, /h\.status = 'rsvped'/);
   assert.match(w.sql[0]!, /collection_name = 'eventJoinIntros'/);
@@ -107,7 +108,7 @@ test("edits show at once; cancelling hides it; no intro → no intro line (the t
 
 test("the confirmed intro is kept with the registration (a re-registration overwrites it)", async () => {
   const saved: string[] = [];
-  const ports = { cancel: async () => undefined, createSchedule: async () => "s", event: async () => ({ endsAt: null, registrationClosesAt: null, review: false, startsAt: "2026-12-07T10:00:00.000Z", title: "T" }), next: async () => null, persona: async () => null, profileIntro: async () => null, readTentative: async () => null, registrationStatus: async () => "none" as const, removeSchedule: async () => undefined, renameSchedule: async () => undefined, saveIntro: async (_a: string, _e: string, text: string) => { saved.push(text); }, saveTentative: async () => undefined, submit: async () => ({ status: "registered" as const, submittedAt: "x" }) } satisfies JoinPorts;
+  const ports = { now: () => Date.parse("2026-11-26T00:00:00.000Z"), cancel: async () => undefined, createSchedule: async () => "s", event: async () => ({ endsAt: null, registrationClosesAt: null, review: false, startsAt: "2026-12-07T10:00:00.000Z", title: "T" }), next: async () => null, persona: async () => null, profileIntro: async () => null, readTentative: async () => null, registrationStatus: async () => "none" as const, removeSchedule: async () => undefined, renameSchedule: async () => undefined, saveIntro: async (_a: string, _e: string, text: string) => { saved.push(text); }, saveTentative: async () => undefined, submit: async () => ({ status: "registered" as const, submittedAt: "x" }) } satisfies JoinPorts;
   const service = createJoinService({ ports });
   await service.submit("u", "ev", [], "zh", "AI 草稿原样");
   await service.submit("u", "ev", [], "zh", "改过的介绍");
@@ -126,7 +127,7 @@ test("the visibility line names networking style and follow-up too (three langua
 test("cancelling clears the intro text; a registration without an intro clears the old one (no stale intro after re-registering)", async () => {
   const intros = new Map<string, string>();
   const calls: string[] = [];
-  const ports = { cancel: async () => { calls.push("cancel"); }, createSchedule: async () => "s", event: async () => ({ endsAt: null, registrationClosesAt: null, review: false, startsAt: "2026-12-07T10:00:00.000Z", title: "T" }), next: async () => null, persona: async () => null, profileIntro: async () => null, readTentative: async () => null, registrationStatus: async () => "none" as const, removeIntro: async (actor: string, event: string) => { calls.push("removeIntro"); intros.delete(`${actor}:${event}`); }, removeSchedule: async () => undefined, renameSchedule: async () => undefined, saveIntro: async (actor: string, event: string, text: string) => { intros.set(`${actor}:${event}`, text); }, saveTentative: async () => undefined, submit: async () => ({ status: "registered" as const, submittedAt: "x" }) } satisfies JoinPorts;
+  const ports = { now: () => Date.parse("2026-11-26T00:00:00.000Z"), cancel: async () => { calls.push("cancel"); }, createSchedule: async () => "s", event: async () => ({ endsAt: null, registrationClosesAt: null, review: false, startsAt: "2026-12-07T10:00:00.000Z", title: "T" }), next: async () => null, persona: async () => null, profileIntro: async () => null, readTentative: async () => null, registrationStatus: async () => "none" as const, removeIntro: async (actor: string, event: string) => { calls.push("removeIntro"); intros.delete(`${actor}:${event}`); }, removeSchedule: async () => undefined, renameSchedule: async () => undefined, saveIntro: async (actor: string, event: string, text: string) => { intros.set(`${actor}:${event}`, text); }, saveTentative: async () => undefined, submit: async () => ({ status: "registered" as const, submittedAt: "x" }) } satisfies JoinPorts;
   const service = createJoinService({ ports });
   await service.submit("u", "ev", [], "zh", "第一次的介绍");
   assert.equal(intros.get("u:ev"), "第一次的介绍");
@@ -136,4 +137,11 @@ test("cancelling clears the intro text; a registration without an intro clears t
   await service.submit("u", "ev", [], "zh", "再报名的介绍");
   await service.submit("u", "ev", [], "zh");
   assert.equal(intros.has("u:ev"), false, "a registration that confirmed no intro leaves none behind");
+});
+
+test("the detail shows the current profile name; the registered name is the fallback and only used to recognise contacts", () => {
+  const stored = attendeeProfileFromRegistration(registration("pp-x"), null);
+  assert.equal(attendeeProfileFromRegistration(registration("pp-x"), null, "佐藤 健一")?.name, "佐藤 健一");
+  assert.equal(attendeeProfileFromRegistration(registration("pp-x"), null, "佐藤 健一")?.registeredName, stored?.name);
+  assert.equal(attendeeProfileFromRegistration(registration("pp-x"), null, "  ")?.name, stored?.name);
 });
