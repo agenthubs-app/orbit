@@ -10,7 +10,7 @@ export type EventJoinProfileItemKey = "company" | "purpose" | "topics" | "target
 export interface EventJoinQuestion {
   field: string;
   prompt: string;
-  /** Small line under the prompt (「席決めとおすすめに使い、参加者にも表示されます（複数可）」). */
+  /** Small line under the prompt (「参加者にも表示されます（複数可）」). */
   help?: string | null;
   options: readonly string[];
   multi: boolean;

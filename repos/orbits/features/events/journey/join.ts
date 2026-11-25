@@ -82,7 +82,7 @@ const OTHER_TEXTS = new Set(["その他", "其他", "Other"]);
 const tri = (language: JourneyLanguage, ja: string, zh: string, en: string) => (language === "zh" ? zh : language === "en" ? en : ja);
 
 export function questionShape(field: string, language: JourneyLanguage): Pick<EventJoinQuestion, "multi" | "max" | "help"> {
-  if (field === "targetAttendees") return { help: tri(language, "席決めとおすすめに使い、参加者にも表示されます（複数可）", "用于排座和推荐，参会者也能看到（可多选）", "Used for seating and suggestions, and shown to attendees (choose any)"), max: null, multi: true };
+  if (field === "targetAttendees") return { help: tri(language, "参加者にも表示されます（複数可）", "同场参会者也能看到（可多选）", "Also shown to attendees (choose any)"), max: null, multi: true };
   if (field === "experienceHighlight") return { help: null, max: 2, multi: true };
   // 2026-11-26：资料里的强项 / 目标各自一个选项、各自预选，可以单独取消（以前并成「A · B · C」一个选项）。
   if (field === "valueOffered") return { help: null, max: null, multi: true };
