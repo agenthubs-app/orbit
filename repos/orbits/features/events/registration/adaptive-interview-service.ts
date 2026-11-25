@@ -61,6 +61,8 @@ export interface EventPersona {
   tags: readonly string[];
   /** R27 E4：参加用「自己紹介（下書き）」（≤200 字、第一人称）；旧版本 / 模型没给时缺省。 */
   selfIntroDraft?: string;
+  /** 2026-11-26：用户说要聊的话题（≤5）；模型没给时缺省。 */
+  topics?: readonly string[];
   promptVersion?: string;
 }
 
@@ -122,6 +124,59 @@ const sensitivePattern =
 export interface AdaptiveInterviewPlan {
   skipFields?: readonly EventParticipantProfileField[];
   focusFields?: readonly EventParticipantProfileField[];
+  /** 报名页会把资料里已有的选项（会いたい人・提供できること・话题・目的）单独列出并预选；模型不要再生成同义项。 */
+  knownOptions?: Partial<Record<EventParticipantProfileField, readonly string[]>>;
+}
+
+/** 读请求体里的 knownOptions（只留枚举内字段，每个字段最多 12 个、每个 ≤60 字）。 */
+export function readInterviewKnownOptions(value: unknown): AdaptiveInterviewPlan["knownOptions"] | undefined {
+  if (!isRecord(value)) return undefined;
+  const out: Partial<Record<EventParticipantProfileField, readonly string[]>> = {};
+  for (const field of EVENT_PARTICIPANT_PROFILE_FIELDS) {
+    const list = value[field];
+    if (!Array.isArray(list)) continue;
+    const items = list.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter((item) => item && item.length <= 60).slice(0, 12);
+    if (items.length) out[field] = items;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+/**
+ * 各字段问什么（写进提示词）。2026-11-26：experienceHighlight 在报名里问的是「这次想聊的话题」（参加者页面上本来就显示为「話せるトピック」），
+ * 不再问经历；任何题的选项都不能替用户断言经历、成就、资质。
+ */
+const FIELD_MEANINGS = [
+  "targetAttendees: which kinds of people they want to meet at this event. Options are kinds of people.",
+  "valueOffered: what kind of help they can give others. Options are kinds of help (e.g. introductions, legal advice), never claims about their past work.",
+  "desiredOutcome: what they want to get from this event. Options are goals.",
+  "experienceHighlight: which topics they want to talk about at THIS event. Options are topics drawn from the event's theme. Never ask about their past experience or achievements.",
+  "energyStyle: how they like to talk with people at events.",
+  "followUpPreference: how they want to keep in touch afterwards.",
+  "positioning / industry: their role and industry (usually already known; ask plainly if asked).",
+].join("\n");
+
+/** 提示词的问法规则（三语共用；模型按 language 写）。 */
+const QUESTION_STYLE_RULES = [
+  "The question is ONE short sentence that asks exactly ONE thing. No greeting, no welcome, no thanks, no preamble, no explanation of why you ask, no self-reference.",
+  "Use plain everyday words an older reader understands at a glance. No jargon or service-speak such as 精准对接 / マッチング精度 / precise matching.",
+  "Chinese: address the person as 你, never 您.",
+  "Options never state facts about the person (past experience, achievements, credentials, clients, years). Anything about the person's own experience is left for them to type themselves.",
+].join("\n");
+
+/** 选项里替用户断言经历 / 成就 / 资质的写法（「处理过…」「搭建过…」「携わった」「I have led…」）。 */
+const EXPERIENCE_CLAIM = /(处理过|搭建过|协助过|帮助过|做过|负责过|主导过|参与过|曾经|曾在|多年|年经验|年以上经验|経験あり|経験がある|携わった|担当した|手がけた|支援した|実績|年の経験|\bI have\b|\bI've\b|\byears of\b|\bhave led\b|\bhave built\b|\bhandled\b)/iu;
+/** 问题开头的寒暄、说明腔。 */
+const QUESTION_PREAMBLE = /^(欢迎|歡迎|感谢|感謝|ようこそ|ご参加|ありがとう|welcome|thanks|thank you)|精准对接|精準対接|为了帮你|为了帮您|為了/iu;
+
+/** 问法的轻量检查：一题一问、一句话、不寒暄、中文不用「您」、不问本人经历。不合规 → 无效（报名页改问固定题）。 */
+export function questionTextAcceptable(prompt: string, options: readonly string[]): boolean {
+  if ((prompt.match(/[?？]/gu) ?? []).length > 1) return false;
+  if (/[。！!]\s*\S/u.test(prompt.replace(/[?？]\s*$/u, ""))) return false;
+  if (/\.\s+\S.*[?？]/u.test(prompt)) return false;
+  if (QUESTION_PREAMBLE.test(prompt.trim())) return false;
+  if (/您/u.test(prompt) || options.some((option) => /您/u.test(option))) return false;
+  if (/(经历|經歷|経験談|实战|実戦|past experience|achievement)/iu.test(prompt)) return false;
+  return !options.some((option) => EXPERIENCE_CLAIM.test(option));
 }
 
 interface AdaptiveInterviewInput {
@@ -212,6 +267,7 @@ function readModelQuestion(
   if (
     !field ||
     !remainingFields.includes(field) ||
+    !questionTextAcceptable(prompt, options) ||
     prompt.length < 8 ||
     prompt.length > 240 ||
     sensitivePattern.test(prompt) ||
@@ -257,9 +313,13 @@ export async function nextAdaptiveInterviewQuestion(
       "Generate exactly ONE next question. Return strict JSON only: {\"acknowledgment\", \"field\", \"prompt\", \"options\"}.",
       `Write everything in ${language === "zh" ? "Chinese" : language === "ja" ? "Japanese" : "English"}.`,
       "acknowledgment: one short sentence that reacts to the person's LATEST answer (empty string if there is no previous answer). Never repeat the answer verbatim; show you understood it.",
-      "field: pick the most valuable unanswered field from remainingFields, informed by what the person just said. The persona feeds attendee matching, so cover diverse dimensions: positioning, industry, who to meet, value offered, desired outcome, social energy style, experience highlight, follow-up preference.",
-      "prompt: the next question. Make it follow naturally from the latest answer — reference what they said. Keep it under 90 characters if possible.",
-      "options: 2 to 4 short answer chips tailored to THIS person's situation (from their answers), not generic placeholders.",
+      "field: pick the most valuable unanswered field from remainingFields, informed by what the person just said. The persona feeds attendee matching, so cover diverse dimensions.",
+      "What each field asks:",
+      FIELD_MEANINGS,
+      "prompt: the next question, following naturally from the latest answer. Keep it under 40 characters if possible.",
+      QUESTION_STYLE_RULES,
+      "options: 2 to 4 short answer chips (choices, not statements about the person), fitting this event and this person's answers.",
+      "knownOptions lists options the page already shows (preselected from the person's profile) for a field: do not repeat them or generate synonyms of them; add only different choices.",
       "Never ask for sensitive identity, credential, financial, or health data.",
     ].join("\n"),
     userText: JSON.stringify({
@@ -269,6 +329,7 @@ export async function nextAdaptiveInterviewQuestion(
         title: input.event.title,
         venue: input.event.venue,
       },
+      knownOptions: input.plan?.knownOptions ?? {},
       language,
       remainingFields,
       transcript,
@@ -351,7 +412,7 @@ export function fixedInterviewQuestion(input: { language?: "en" | "zh" | "ja"; p
   };
 }
 
-function readModelPersona(text: string): Omit<EventPersona, "provenance"> | null {
+function readModelPersona(text: string, sourceText = ""): Omit<EventPersona, "provenance"> | null {
   let parsed: unknown;
 
   try {
@@ -425,8 +486,18 @@ function readModelPersona(text: string): Omit<EventPersona, "provenance"> | null
 
   // R27 E4：可选字段；给了就校验长度，不合格只丢掉这一项（不让整份画像失败）。
   const selfIntroDraft = typeof parsed.selfIntroDraft === "string" ? parsed.selfIntroDraft.trim() : "";
-  const intro = selfIntroDraft.length >= 10 && selfIntroDraft.length <= 200 && !sensitivePattern.test(selfIntroDraft) ? { selfIntroDraft } : {};
-  return { energyStyle, industryTags, offering, openers, seeking, tagline, tags, ...intro };
+  const introOk = selfIntroDraft.length >= 10 && selfIntroDraft.length <= 200 && !sensitivePattern.test(selfIntroDraft) && !unsupportedClaim(selfIntroDraft, sourceText);
+  const intro = introOk ? { selfIntroDraft } : {};
+  // 2026-11-26：只放用户说要聊的话题（报名确认页的话题 chip 用它，不混入能提供的 / 目的）。
+  const topicList = Array.isArray(parsed.topics) ? parsed.topics.filter((topic): topic is string => typeof topic === "string").map((topic) => topic.trim()).filter((topic) => topic && topic.length <= 16 && !sensitivePattern.test(topic)).slice(0, 5) : [];
+  return { energyStyle, industryTags, offering, openers, seeking, tagline, tags, ...intro, ...(topicList.length ? { topics: topicList } : {}) };
+}
+
+/** 自我介绍里「专注… / 擅长… / 専門…」这类定位，原话里没有这个词就算编的（整句草稿丢掉，改用资料里的自我介绍）。 */
+const POSITIONING_CLAIM = /(专注|專注|擅长|擅長|精通|专精|専門|得意|特化|specializ\w*|expert in|focus(?:es|ed)? on)/giu;
+export function unsupportedClaim(text: string, sourceText: string): boolean {
+  const source = sourceText.toLowerCase();
+  return [...text.matchAll(POSITIONING_CLAIM)].some((match) => !source.includes(match[0].toLowerCase()));
 }
 
 /**
@@ -441,9 +512,11 @@ export async function generateEventPersona(
   const modelRunner = input.modelRunner ?? runOrbitAgentModelText;
   const systemInstruction = [
       "You write an event-facing attendee persona from an interview transcript. It powers attendee matching, so every dimension matters.",
-      "Return strict JSON only: {\"tagline\", \"tags\", \"industryTags\", \"energyStyle\", \"seeking\", \"offering\", \"openers\", \"selfIntroDraft\"}.",
+      "Return strict JSON only: {\"tagline\", \"tags\", \"industryTags\", \"energyStyle\", \"seeking\", \"offering\", \"openers\", \"selfIntroDraft\", \"topics\"}.",
       `Write everything in ${language === "zh" ? "Chinese" : language === "ja" ? "Japanese" : "English"}.`,
       "selfIntroDraft: a first-person self-introduction for other attendees (60-200 chars): who I am, what I want to talk about at THIS event, what I can offer. No revenue or other numbers unless they appear in the transcript.",
+      "selfIntroDraft uses ONLY facts stated in the transcript. Never add a specialty, focus or strength the person did not say themselves (no 专注… / 擅长… / 専門… / 得意… / specializes in… / expert in…), and never turn a chosen option into a claim about their past work.",
+      "topics: 1-5 short labels (<=16 chars each) — ONLY the subjects they said they want to talk about. Not what they offer, not their goals, not who they want to meet. Empty array if they named none.",
       "tagline: one line (<=60 chars) positioning this person for THIS event.",
       "tags: 3-5 short labels (<=16 chars each) covering their strongest matching signals.",
       "industryTags: 1-3 industry labels (<=16 chars each).",
@@ -475,13 +548,15 @@ export async function generateEventPersona(
     );
   }
 
-  let persona = readModelPersona(modelResult.text);
+  // 自我介绍只能用回答里明确出现的事实（readModelPersona 拿原话核对定位词）。
+  const sourceText = transcript.map((turn) => `${turn.prompt}\n${turn.answer}`).join("\n");
+  let persona = readModelPersona(modelResult.text, sourceText);
   if (!persona) {
     // R27 E4：不合格时带着原答案修复 1 次（DESIGN §5 共同规矩），还不过才失败。
     const repaired = await modelRunner({ config: personaConfig, systemInstruction: `${systemInstruction}\nYour previous answer was rejected (invalid JSON or a field outside its limits). Return the corrected JSON object only.`, userText: `${userText}\n\nPrevious answer:\n${modelResult.text.slice(0, 4000)}` });
     if (repaired.success === true) {
       modelResult = repaired;
-      persona = readModelPersona(repaired.text);
+      persona = readModelPersona(repaired.text, sourceText);
     }
   }
 

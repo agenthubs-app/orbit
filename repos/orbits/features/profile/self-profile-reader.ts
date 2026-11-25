@@ -17,6 +17,9 @@ export type SelfProfileForAi = {
   offering: readonly string[];
   seeking: readonly string[];
   topics: readonly string[];
+  /** 资料里的目标原文（profile-onboarding-goal 的写法）；没填为 null。 */
+  relationshipGoal: string | null;
+  seniorityLevel: string | null;
   spokenLanguages: readonly string[];
   industry: {
     primaryIndustryId: IndustryIdCode | null;
@@ -71,6 +74,8 @@ export async function getSelfProfileForAi(
         offering: [...(publicProfile.offering ?? [])],
         seeking: [...(publicProfile.seeking ?? [])],
         topics: [...(publicProfile.topics ?? [])],
+        relationshipGoal: profile.relationshipGoal?.trim() || null,
+        seniorityLevel: profile.seniorityLevel ?? null,
         spokenLanguages: [...(publicProfile.spokenLanguages ?? [])],
         industry: {
           primaryIndustryId,

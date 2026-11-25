@@ -197,6 +197,8 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   };
 
   const reviewUntil = profile?.reviewUntil ?? result?.reviewUntil ?? null;
+  // 审核制才有「审核 / 结果通知」两段；先到先得报名即确定（结果出来前按资料里的 review 判断，提交后按结果）。
+  const screened = result ? result.status === "pending_review" : profile?.review ?? true;
   const headRight = result ? t("doneTitle") : reviewing ? t("reviewStep", { i: Math.min(total, answers.length + 1), n: total }) : step ? t("regProgress", { i: step.index, m: step.remainingMinutes, n: total }) : null;
   const shownIntro = intro ?? profile?.selfIntro?.text ?? "";
   const detailHref = `/app/events/${id(eventId)}`;
@@ -214,7 +216,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       ) : null}
       <div className={`${styles.card} ${r.railCard}`}>
         <div className={`${styles.lbl} ${r.flowLbl}`}>{t("nextFlow")}</div>
-        {([["flowApply", "flowApplySub"], ["flowReview", "flowReviewSub"], ["flowResult", "flowResultSub"], ["flowDay", "flowDaySub"]] as const).map(([title, sub], index) => (
+        {(screened ? ([["flowApply", "flowApplySub"], ["flowReview", "flowReviewSub"], ["flowResult", "flowResultSub"], ["flowDay", "flowDaySub"]] as const) : ([["flowApply", "flowApplySub"], ["flowConfirmed", "flowConfirmedSub"], ["flowDay", "flowDaySub"]] as const)).map(([title, sub], index) => (
           <div key={title} className={`${x.tline} ${index === (result ? 1 : 0) ? r.now : ""}`}><time>{index + 1}</time><span className={x.dot} /><div><b>{t(title)}</b><span className={styles.lbl}>{title === "flowReview" ? t(sub, { date: reviewUntil ? monthDaySlash(reviewUntil) : "—" }) : t(sub)}</span></div></div>
         ))}
       </div>
@@ -343,19 +345,28 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       </div>
       <div className={`${styles.card} ${r.inner} ${r.gap}`}>
         <div className={`${styles.row} ${styles.between}`}><b className={r.statusTitle}>{t("statusNow")}</b><span className={`${styles.chip} ${result.status === "registered" ? styles.c_teal : styles.c_lav}`}>{result.status === "registered" ? t("statusConfirmed") : t("statusReview")}</span></div>
-        <div className={r.steps4}>
-          <div className={r.stepDone}>{t("flowApply")}<br />{monthDaySlash(result.submittedAt)}</div>
-          {result.status === "pending_review" ? <div className={r.stepNow}>{t("flowReview")}<br />{reviewUntil ? t("reviewBy", { date: monthDaySlash(reviewUntil) }) : null}</div> : <div className={r.stepDone}>{t("flowReview")}</div>}
-          <div className={result.status === "registered" ? r.stepNow : undefined}>{t("flowResult")}</div>
-          <div>{t("flowDay")}<br />{monthDaySlash(result.startsAt)}</div>
-        </div>
+        {result.status === "pending_review" ? (
+          <div className={r.steps4}>
+            <div className={r.stepDone}>{t("flowApply")}<br />{monthDaySlash(result.submittedAt)}</div>
+            <div className={r.stepNow}>{t("flowReview")}<br />{reviewUntil ? t("reviewBy", { date: monthDaySlash(reviewUntil) }) : null}</div>
+            <div>{t("flowResult")}</div>
+            <div>{t("flowDay")}<br />{monthDaySlash(result.startsAt)}</div>
+          </div>
+        ) : (
+          // 先着順で確定：審査・結果通知の段はない（申込 → 参加確定 → 当日）。
+          <div className={r.steps4} style={{ gridTemplateColumns: "repeat(3, 1fr)" }} data-join-steps="confirmed">
+            <div className={r.stepDone}>{t("flowApply")}<br />{monthDaySlash(result.submittedAt)}</div>
+            <div className={r.stepNow}>{t("flowConfirmed")}</div>
+            <div>{t("flowDay")}<br />{monthDaySlash(result.startsAt)}</div>
+          </div>
+        )}
         {result.status === "pending_review" ? <div className={`${styles.sub} ${r.doneSub}`}>{contactLine ?? t("reviewWait")}</div> : null}
       </div>
       {result.hostContact !== undefined ? <HostContactCard contact={result.hostContact} t={t} className={r.gap} /> : null}
       {result.tentative && calendar === "asked" ? (
         <div className={`${styles.card} ${r.confirm}`} data-join-calendar="">
           <div className={styles.row} style={{ gap: 8 }}><span className={`${styles.emo} ${styles.t_lav} ${r.emoSm}`}>📅</span><b className={r.confirmTitle}>{t("calAsk")}</b></div>
-          <div className={`${styles.sub} ${r.confirmSub}`}>{t("calendarLine", { range: eventRange(result.tentative.startsAt, result.tentative.endsAt, language), title: result.tentative.title })}</div>
+          <div className={`${styles.sub} ${r.confirmSub}`}>{t(result.status === "registered" ? "calendarLineFinal" : "calendarLine", { range: eventRange(result.tentative.startsAt, result.tentative.endsAt, language), title: result.tentative.title })}</div>
           <div className={styles.row} style={{ gap: 8 }}>
             <button type="button" className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`} onClick={() => void addTentative()}>{t("addIt")}</button>
             <button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => setCalendar("declined")}>{t("noNeed")}</button>

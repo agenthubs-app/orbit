@@ -17,7 +17,8 @@ const post = (body: unknown) => new Request("http://localhost/x", { body: JSON.s
 const params = { params: Promise.resolve({ id: JOURNEY_EVENT_ID }) };
 
 test("questions: 会いたい人 is multi-select, 話したいテーマ at most 2, the rest single; never more than 5", async () => {
-  assert.deepEqual([questionShape("targetAttendees", "ja").multi, questionShape("experienceHighlight", "ja").max, questionShape("desiredOutcome", "ja").multi], [true, 2, false]);
+  // 2026-11-26: 提供できること / 目的 are multi too (profile strengths / goals are separate, preselected options); 目的 at most 2.
+  assert.deepEqual([questionShape("targetAttendees", "ja").multi, questionShape("experienceHighlight", "ja").max, questionShape("desiredOutcome", "ja").max, questionShape("valueOffered", "ja").multi, questionShape("energyStyle", "ja").multi], [true, 2, 2, true, false]);
   const routes = createEventJourneyRoutes({ resolveActor: async () => ({ id: "actor:a" }) as never, resolveMode: () => "mock" });
   const first = eventJoinStepSchema.parse((await (await routes.joinNext(post({ answers: [] }), params)).json()).data);
   assert.deepEqual([first.index, first.total, first.question?.field], [1, 5, "desiredOutcome"]);
@@ -123,8 +124,8 @@ test("会いたい人 / 提供できること: what the profile already says com
   }) });
   const ask = async () => (await service.next("ev", [], "ja", false, "actor:a"))?.question;
   assert.deepEqual([(await ask())?.options, (await ask())?.prefill], [["投資家", "顧客", "同業者"], ["投資家", "顧客"]]);
-  field = "valueOffered"; // single choice: one option
-  assert.deepEqual([(await ask())?.options, (await ask())?.prefill], [["紹介 · 業界の知見", "投資家", "同業者"], ["紹介 · 業界の知見"]]);
+  field = "valueOffered"; // 2026-11-26: one option per strength, each preselected and removable on its own
+  assert.deepEqual([(await ask())?.options, (await ask())?.prefill], [["紹介", "業界の知見", "投資家", "同業者"], ["紹介", "業界の知見"]]);
   field = "desiredOutcome";
   assert.equal((await ask())?.prefill, undefined);
   field = "targetAttendees";

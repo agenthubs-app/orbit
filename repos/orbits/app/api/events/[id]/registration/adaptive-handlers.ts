@@ -6,6 +6,7 @@ import {
   generateEventPersona,
   nextAdaptiveInterviewQuestion,
   readInterviewFieldList,
+  readInterviewKnownOptions,
   readInterviewTranscript,
 } from "../../../../../features/events/registration/adaptive-interview-service";
 import { signAdaptiveInterviewQuestion } from "../../../../../features/events/registration/interview-question-token.server";
@@ -97,6 +98,7 @@ export function createRegistrationInterviewPostHandler(
       fallback?: unknown;
       skipFields?: unknown;
       focusFields?: unknown;
+      knownOptions?: unknown;
     };
     if (body.mode === "renew-stored-question") {
       try {
@@ -121,7 +123,8 @@ export function createRegistrationInterviewPostHandler(
     // 报名页（join/next）的出题计划：跳过资料已有 / 主办方题已覆盖的字段，满 5 题后只追问缺的项。
     const skipFields = readInterviewFieldList(body.skipFields);
     const focusFields = readInterviewFieldList(body.focusFields);
-    const plan = skipFields || focusFields ? { ...(skipFields ? { skipFields } : {}), ...(focusFields ? { focusFields } : {}) } : undefined;
+    const knownOptions = readInterviewKnownOptions(body.knownOptions);
+    const plan = skipFields || focusFields ? { ...(skipFields ? { skipFields } : {}), ...(focusFields ? { focusFields } : {}), ...(knownOptions ? { knownOptions } : {}) } : undefined;
     let step;
     // LF13: every question is one ledgered operation (event_registration_question, 40 a Tokyo day); a refused ledger sends nothing.
     const ledgered = createLedgeredRunner({ actorId: actor.id, gate: getLedger(), idempotencyKey: `event-question:${event.id}:${Date.now()}`, purpose: "event_registration_question", refuseWithoutLedger: true, runner: runOrbitAgentModelText });

@@ -19,7 +19,7 @@ export function createJoinMockPorts(): JoinPorts {
       const question = JOURNEY_JOIN_QUESTIONS[index];
       return question ? { allowCustom: true, field: question.field, options: [...question.options], prompt: question.prompt, questionToken: `sample-question-${index + 1}` } : null;
     },
-    async persona() { return { selfIntroDraft: JOURNEY_JOIN_SELF_INTRO, tags: ["SaaS の KPI 開示"] }; },
+    async persona() { return { selfIntroDraft: JOURNEY_JOIN_SELF_INTRO, tags: ["SaaS の KPI 開示"], topics: ["SaaS の KPI 開示"] }; },
     async profileIntro() { return null; },
     async submit() { return { status: "pending_review", submittedAt: JOURNEY_JOIN_SUBMITTED_AT }; },
     async saveIntro() { /* sample: nothing is written */ },

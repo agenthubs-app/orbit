@@ -444,6 +444,43 @@ export function hostQuestionOptionAliases(question: HostSetupQuestion): Readonly
   return map;
 }
 
+/** 参加登録の予選に使うプロフィールの事実（どれも任意）。topicKeys = プロフィール話題の中国語ラベル（profile-tag-options の TOPIC_OPTIONS.zh）。 */
+export interface HostPrefillFacts {
+  seniority?: string | null;
+  industryId?: string | null;
+  secondaryIndustryId?: string | null;
+  /** relationshipGoal から読んだ目標 id（profile-onboarding-goal の PROFILE_ONBOARDING_GOALS.id）。 */
+  goalIds?: readonly string[];
+  topicKeys?: readonly string[];
+}
+
+/** lib-purpose：プロフィールの目標 id → 選択肢の位置（ブランド認知は対応する選択肢がないので選ばない）。 */
+const PURPOSE_OPTION_OF_GOAL: Readonly<Record<string, number>> = { customers: 1, funding: 5, hiring: 4, partners: 1, research: 2 };
+/** lib-topic：プロフィール話題（TOPIC_OPTIONS.zh）→ 選択肢の位置。近い選択肢がない話題は選ばない。 */
+const TOPIC_OPTION_OF_PROFILE_TOPIC: Readonly<Record<string, number>> = { "产品与增长": 8, "出海与跨境": 6, "创业与融资": 0, "团队与管理": 1, "生成式 AI": 7, "跨境电商": 6 };
+
+/** lib-role：職級・業界から一番近い立場（選択肢の位置）。決め手がなければ null。 */
+function roleOptionFor(facts: HostPrefillFacts): number | null {
+  if (facts.secondaryIndustryId === "finance_investment.venture_capital" || facts.secondaryIndustryId === "finance_investment.private_equity") return 2;
+  if (facts.industryId === "professional_services") return 4;
+  if (facts.seniority === "founder" || facts.seniority === "c_level") return 0;
+  if (facts.industryId === "government_public_affairs" || facts.industryId === "community_nonprofit") return 5;
+  if (facts.seniority === "individual_contributor" || facts.seniority === "manager" || facts.seniority === "director" || facts.seniority === "vp") return 1;
+  return null;
+}
+
+/**
+ * 参加登録で、プロフィールから先に選んでおける選択肢（公開された質問の選択肢の位置）。参加者は取り消せる。
+ * 質問集のまま（主催者が手で変えていない）の lib-role / lib-purpose / lib-topic だけ。対応しなければ空（無理に選ばない）。
+ */
+export function hostQuestionProfilePrefill(question: HostSetupQuestion, facts: HostPrefillFacts | null): number[] {
+  if (!facts || !untouchedLibraryEntry(question)) return [];
+  if (question.id === "lib-role") { const index = roleOptionFor(facts); return index === null ? [] : [index]; }
+  const indices = question.id === "lib-purpose" ? (facts.goalIds ?? []).map((id) => PURPOSE_OPTION_OF_GOAL[id])
+    : question.id === "lib-topic" ? (facts.topicKeys ?? []).map((key) => TOPIC_OPTION_OF_PROFILE_TOPIC[key]) : [];
+  return [...new Set(indices.filter((index): index is number => index !== undefined))];
+}
+
 /** 参加登録の確認資料で、この質問の回答が埋める項目（参加目的 / 話したいテーマ / 会いたい人 / 提供できること）。文面ではなく質問集の id で決める。 */
 export type HostQuestionProfileItem = "purpose" | "topics" | "target" | "offer";
 export const HOST_QUESTION_PROFILE_ITEM: Readonly<Record<string, HostQuestionProfileItem>> = {
