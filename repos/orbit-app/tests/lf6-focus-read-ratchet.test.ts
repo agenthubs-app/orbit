@@ -9,7 +9,6 @@ import test from "node:test";
 // the reviewed exceptions, and the list can only shrink.
 const ALLOWED: Readonly<Record<string, string>> = {
   "src/screens/guide/StartGuideScreen.tsx": "onboarding only (a new account, a few visits)",
-  "src/screens/profile/onboarding/ProfileOnboardingScreen.tsx": "onboarding only",
   "src/screens/home/use-home-layout.ts": "skips the read inside HOME_COPY_FRESH_MS (LF1)",
   "src/screens/home/use-home-widget-snapshot.ts": "throttled to WIDGET_REFRESH_INTERVAL_MS (LF1), WidgetKit builds only",
   "src/screens/plan/PlanSegment.tsx": "reads through page copies with PLAN_COPY_FRESH_MS (LF9)",

@@ -107,7 +107,7 @@ function todayKey(now: Date, timeZone: string): string {
 function GuideSteps({ progress, navigate }: { progress: GuideProgress; navigate: Navigate }) {
   const { styles } = useStyles(); const { t } = useOrbitLocale();
   const steps = [
-    { key: "contacts", label: t("home.widgetGuideContacts"), href: "/contacts" },
+    { key: "contacts", label: t("home.widgetGuideContacts"), href: "/contacts/new/scan" },
     { key: "goal", label: t("home.widgetGuideGoal"), href: "/task?seg=plan" },
     { key: "plan", label: t("home.widgetGuidePlan"), href: "/task?seg=plan" },
   ] as const;

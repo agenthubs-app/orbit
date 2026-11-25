@@ -212,6 +212,8 @@ test("RootLayout records first commit and auth restoration after assigning the a
     export function trackRootNavigationState() {}
     export function mainTabForPath() { return "home"; }
     export function AppErrorScreen() { return null; }
+    export const OnboardingGateProvider = Wrapper;
+    export function OnboardingGateRedirect() { return null; }
     export function OrbitRouteAccessBoundary() { return null; }
     export function DevOpenPath() { return null; }
     export function OrbitNotificationsCoordinator() { return null; }
@@ -320,6 +322,8 @@ test("RootLayout does not expose the shell tabs or reserve their toast space on 
     export function validAppStoreUrl() { return null; }
     export function formatMaintenanceUntil() { return null; }
     export function AppErrorScreen() { return null; }
+    export const OnboardingGateProvider = Wrapper;
+    export function OnboardingGateRedirect() { return null; }
     export function OrbitRouteAccessBoundary() { return null; }
     export function DevOpenPath() { return null; }
     export function OrbitNotificationsCoordinator() { return null; }

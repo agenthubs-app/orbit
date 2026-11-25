@@ -1,91 +1,81 @@
 /**
- * New-user onboarding (Sprint 0106), the App counterpart of web /app/profile/onboarding.
- * Welcome → 5 steps; each 「继续」 saves through PUT /api/profile, verifies the receipt and
- * reads the profile back before moving on. Re-entry opens the 「继续设置你的资料」 card at
- * the first unfinished step inferred from saved fields. "Later" never locks the App.
+ * New-user onboarding, three steps and no way around it (docs/designs/redesign-2026-10/onboarding-3step-proposal.html):
+ * ① card + basics ② goals + strengths ③ introduction. 「次へ」 is always tappable: what is missing is marked, listed
+ * above the button and scrolled to. Each 「次へ」 saves through PUT /api/profile, verifies the receipt and reads the
+ * profile back; everything typed in between stays in a draft on the device, so leaving or killing the App loses nothing.
  */
-import { Ionicons } from "@expo/vector-icons";
 import * as Crypto from "expo-crypto";
 import * as ImagePicker from "expo-image-picker";
-import { type Href, useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndustryLabel } from "../../../api/domain/industries";
+import { type Href, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AccessibilityInfo, findNodeHandle, Linking, Platform, View, type LayoutChangeEvent, type ScrollView, type TextInput } from "react-native";
+
+import { useOrbitApiBaseUrl } from "../../../api/ApiBaseUrlProvider";
+import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
+import { encodeDirectScanImage } from "../../../api/batch-images";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../api/contract/industries";
-import type { ProfileDetail } from "../../../api/profile-detail-contract";
 import type { ProfileOnboardingProgressCommandContract } from "../../../api/contract/profile";
-import {
-  readProfileOnboardingProgress,
-  updateProfileOnboardingProgress,
-  type AppProfileOnboardingProgress,
-} from "../../../api/profile-onboarding-progress";
+import { INDUSTRY_CATALOG, listSecondaryIndustries } from "../../../api/domain/industries";
+import type { ProfileDetail } from "../../../api/profile-detail-contract";
 import {
   generateOnboardingIntro,
-  readOnboardingImportSummary,
+  inferOnboardingAutofill,
   readOnboardingProfile,
   saveOnboardingFields,
   scanOwnBusinessCard,
-  type OnboardingProfileFields
+  suggestOnboardingSeeking,
+  type OnboardingProfileFields,
 } from "../../../api/profile-onboarding";
-import { LoadingState } from "../../../components/LoadingState";
+import { readProfileOnboardingProgress, updateProfileOnboardingProgress, type AppProfileOnboardingProgress } from "../../../api/profile-onboarding-progress";
+import { isTabPageHref, openMainTab, resetStackTo } from "../../../components/shell-navigation";
+import { BottomSheet, Skeleton, UiText } from "../../../components/ui";
 import { presentConfirm } from "../../../components/ui/feedback-requests";
-import { PersonalScheduleDateTimePicker } from "../../schedule/PersonalScheduleDateTimePicker";
-import { useOrbitTimeZone } from "../../../time/OrbitTimeZoneProvider";
-import { isTabPageHref, openMainTab } from "../../../components/shell-navigation";
-import { profileVisibleCharacterCount } from "../../../data/profile-edit-session";
+import { clearProfileEditSession } from "../../../data/profile-edit-session";
 import { useOrbitApiClient } from "../../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../../i18n/messages";
+import { useOnboardingGate } from "../../../onboarding/OnboardingGateProvider";
+import { profileOnboardingStorage, type OnboardingDraft, type OnboardingMarkedField } from "../../../storage/profile-onboarding-storage";
+import { useOrbitTimeZone } from "../../../time/OrbitTimeZoneProvider";
+import { localizeAuthMessage } from "../../../view-models/account-auth";
 import {
-  bioCounter,
   EMPTY_BASIC,
-  FOCUS_LIMIT,
-  GOAL_GROUPS,
-  GOAL_LIMIT,
-  HEADLINE_LIMIT,
   INTRO_REGENERATE_LIMIT,
-  OFFER_LIMIT,
-  OFFER_OPTIONS,
   ONBOARDING_STEPS,
-  SEEK_LIMIT,
   SEEK_OPTIONS,
-  TOPIC_LIMIT,
-  TOPIC_OPTIONS,
-  addCustomValue,
+  STEP_SCREENS,
   basicDraftFromProfile,
-  basicDraftValid,
-  basicIndustryValid,
+  bioCounter,
   composeRelationshipGoal,
   introDraftLanguage,
-  isKnownOption,
   isValidProfileBirthDate,
   onboardingDestination,
+  onboardingGoals,
+  onboardingMissing,
+  onboardingRequired,
   optionLabel,
-  optionMatches,
-  parseRelationshipGoal,
+  stepForConfirmedScreen,
   toggleValue,
+  GOAL_LIMIT,
   type BasicDraft,
-  type Copy,
-  type OnboardingImportSummary,
-  type OnboardingStep
+  type OnboardingMissingField,
+  type OnboardingStep,
 } from "../../../view-models/profile-onboarding";
-import { batchRoutePath } from "../../../view-models/business-card-ingest";
-import { encodeDirectScanImage } from "../../../api/batch-images";
-import { appendAppGuideReturnTo } from "../../../view-models/guide-return-to";
-import { Banner, Chip, CustomChip, Field, PrimaryButton, SecondaryButton, StepFrame, StepHead, useOnboardingStyles } from "./OnboardingParts";
+import { PersonalScheduleDateTimePicker } from "../../schedule/PersonalScheduleDateTimePicker";
+import { KitButton, MissLine, OnboardingFrame, OnboardingProgress, OnboardingTopBar, OnceNotice, useOnboardingStyles } from "./OnboardingParts";
+import { GoalsStep, IntroStep, ProfileStep, SheetRow, type IntroStatus, type IntroTone, type Marks, type ScanState, type TextKey } from "./OnboardingSteps";
 
-type View_ = "loading" | "loadError" | "welcome" | "resume" | OnboardingStep;
-type Notice = { kind: "failed" | "offline" | "conflict" } | null;
-type IntroStatus = "idle" | "generating" | "ready" | "error";
-const COLLAPSED_OPTION_COUNT = 8;
+type View_ = "loading" | "loadError" | OnboardingStep;
+type Notice = "failed" | "offline" | "conflict" | null;
 
-const STEP_TITLE_KEYS: Record<OnboardingStep, MessageKey> = {
-  profile: "onboarding.step.profile", goals: "onboarding.step.goals", persona: "onboarding.step.persona", intro: "onboarding.step.intro", import: "onboarding.step.import"
+const STEP_NAME: Record<OnboardingStep, MessageKey> = { profile: "onboarding.v3.step.profile", goals: "onboarding.v3.step.goals", intro: "onboarding.v3.step.intro" };
+const MISSING_NAME: Record<OnboardingMissingField, MessageKey> = {
+  name: "onboarding.v3.name", primaryIndustry: "onboarding.v3.primaryIndustry", secondaryIndustry: "onboarding.v3.secondaryIndustry", goals: "onboarding.v3.missGoalsName", intro: "onboarding.v3.bio",
 };
-const STEP_TIME_KEYS: Record<OnboardingStep, MessageKey> = {
-  profile: "onboarding.time.quick", goals: "onboarding.time.quick", persona: "onboarding.time.quick", intro: "onboarding.time.ai", import: "onboarding.time.optional"
-};
+const DRAFT_DELAY_MS = 250;
+/** A chosen goal rests this long before candidates are asked for, and at most this many times per visit (paid AI). */
+const SEEK_DELAY_MS = 1200;
+const SEEK_REQUEST_LIMIT = 3;
 
 /** Home (or another tab page) becomes the only page, with no way back to login, signup or onboarding. */
 function leaveOnboarding(router: ReturnType<typeof useRouter>, href: string): void {
@@ -98,19 +88,27 @@ function localToday(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
-export function ProfileOnboardingScreen({ next, screen }: { next?: string | string[] | undefined; screen?: string | string[] | undefined }) {
+const HANDLE_KEYS = ["email", "phone", "wechatId", "lineId", "website", "linkedinUrl", "xHandle"] as const;
+const basicIndustryPair = (basic: BasicDraft) => (basic.primaryIndustryId && basic.secondaryIndustryId ? { primary: basic.primaryIndustryId, secondary: basic.secondaryIndustryId } : null);
+const stepIndex = (step: OnboardingStep) => ONBOARDING_STEPS.indexOf(step);
+
+export function ProfileOnboardingScreen({ next }: { next?: string | string[] | undefined }) {
   const { styles } = useOnboardingStyles();
   const locale = useOrbitLocale();
   const t = locale.t;
   const router = useRouter();
   const client = useOrbitApiClient();
+  const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
+  const gate = useOnboardingGate();
+  const { timeZone } = useOrbitTimeZone();
   const destination = onboardingDestination(next);
+  const scope = useMemo(() => (auth.actorId ? { actorId: auth.actorId, baseUrl: server.baseUrl } : null), [auth.actorId, server.baseUrl]);
   const mounted = useRef(true);
   // Set it again on every mount: Fast Refresh re-runs effects after their cleanup.
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   const [view, setView] = useState<View_>("loading");
-  const [resume, setResume] = useState<{ completed: number; step: OnboardingStep } | null>(null);
   const [detail, setDetail] = useState<ProfileDetail | null>(null);
   const [basic, setBasic] = useState<BasicDraft>(EMPTY_BASIC);
   const [goals, setGoals] = useState<string[]>([]);
@@ -121,648 +119,478 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
   const [topics, setTopics] = useState<string[]>([]);
   const [bio, setBio] = useState("");
   const [headline, setHeadline] = useState("");
+  // Counts AI fills of the chip rows, which then show the chosen ones first again.
+  const [fillRevision, setFillRevision] = useState(0);
+  const [marks, setMarks] = useState<Marks>({});
+  const [scan, setScan] = useState<ScanState>({ kind: "idle" });
   const [introStatus, setIntroStatus] = useState<IntroStatus>("idle");
+  const [tone, setTone] = useState<IntroTone>("native");
+  const [editing, setEditing] = useState(false);
   const [regenerations, setRegenerations] = useState(0);
-  const [notice, setNotice] = useState<Notice>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice>(null);
+  const [attempted, setAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [picker, setPicker] = useState<"primary" | "secondary" | null>(null);
+  const [dateOpen, setDateOpen] = useState(false);
+  const today = localToday();
+
   const flowRef = useRef<AppProfileOnboardingProgress | null>(null);
   const initMutationRef = useRef<string | null>(null);
-  const flowFailureRef = useRef<"offline" | "failed">("failed");
   const pendingConfirmRef = useRef<ProfileOnboardingProgressCommandContract | null>(null);
-  const pendingFieldsRef = useRef<string | null>(null);
   const finishMutationRef = useRef<string | null>(null);
   const introActionKeyRef = useRef<string | null>(null);
-  const [scanning, setScanning] = useState(false);
-  const [importSince, setImportSince] = useState<number | null>(null);
-  const [importSummary, setImportSummary] = useState<OnboardingImportSummary | null>(null);
-  const [importReadFailed, setImportReadFailed] = useState(false);
-  const today = localToday();
+  const introDrafts = useRef<Partial<Record<IntroTone, { bio: string; headline: string }>>>({});
+  const generating = useRef(false);
+  const signingOut = useRef(false);
+  const busy = useRef(false);
+
+  const scrollRef = useRef<ScrollView | null>(null);
+  const fieldY = useRef<Partial<Record<OnboardingMissingField, number>>>({});
+  const nameInput = useRef<TextInput | null>(null);
+  const bioInput = useRef<TextInput | null>(null);
+  const primaryButton = useRef<View | null>(null);
+  const secondaryButton = useRef<View | null>(null);
+  const inputs = useMemo(() => ({ name: nameInput, primary: primaryButton, secondary: secondaryButton }), []);
 
   const routerRef = useRef(router); routerRef.current = router;
   const destinationRef = useRef(destination); destinationRef.current = destination;
-  const load = useCallback(async () => {
-    setView("loading");
-    const [result, progress] = await Promise.all([readOnboardingProfile(client), readProfileOnboardingProgress(client)]);
-    if (!mounted.current) return;
-    if (!result.ok || !progress.ok) { setView("loadError"); return; }
-    flowRef.current = progress.progress;
-    // A complete profile whose setup was put off (「稍后」) is set up: do not bring the 继续设置 card back on every sign-in.
-    if (progress.progress?.finishedAt || (result.detail.onboarding?.status === "complete" && (!progress.progress || progress.progress.deferred))) {
-      leaveOnboarding(routerRef.current, destinationRef.current); return;
-    }
-    const profile = result.detail.profile;
-    setDetail(result.detail);
-    setBasic(basicDraftFromProfile(profile));
-    const restored = parseRelationshipGoal(profile?.relationshipGoal ?? "");
-    setGoals([...restored.goals]); setFocus(restored.focus); setHorizon(restored.horizon);
-    setOffer([...(profile?.offering ?? [])]); setSeek([...(profile?.seeking ?? [])]); setTopics([...(profile?.topics ?? [])]);
-    setBio(profile?.bio ?? ""); setHeadline(profile?.headline ?? "");
-    if (progress.progress?.currentScreen) {
-      const step = ONBOARDING_STEPS[progress.progress.currentScreen - 1]!;
-      if (screen === "5" && step === "import" && progress.progress.lastConfirmedScreen >= 4) go("import");
-      else { setResume({ completed: progress.progress.lastConfirmedScreen, step }); setView("resume"); }
-    } else setView("welcome");
-  }, [client, screen]);
+  const settleRef = useRef(gate.settle); settleRef.current = gate.settle;
 
-  // Read once per mount (and per signed-in client); later edits stay local until 「继续」.
+  // ── Load: server profile + progress, then what this device still holds unsaved ──
+  const load = useCallback(async () => {
+    setView("loading"); setNotice(null); setAttempted(false);
+    const [result, progress, draft] = await Promise.all([
+      readOnboardingProfile(client), readProfileOnboardingProgress(client), scope ? profileOnboardingStorage.readDraft(scope) : null,
+    ]);
+    if (!mounted.current) return;
+    if (!result.ok || !progress.ok) {
+      // Nothing known yet about this account on this device: it stays held until the server says it is done.
+      if (gate.status === "unknown" || gate.status === "open") void settleRef.current("required");
+      setView("loadError");
+      return;
+    }
+    flowRef.current = progress.progress;
+    if (!onboardingRequired(result.detail, progress.progress)) {
+      await settleRef.current("clear");
+      if (scope) await profileOnboardingStorage.clearDraft(scope);
+      if (mounted.current) leaveOnboarding(routerRef.current, destinationRef.current);
+      return;
+    }
+    void settleRef.current("required");
+    const profile = result.detail.profile;
+    const confirmed = progress.progress?.lastConfirmedScreen ?? 0;
+    const savedGoal = onboardingGoals(profile?.relationshipGoal ?? "");
+    const saved = { basic: basicDraftFromProfile(profile), goals: [...savedGoal.goals], bio: profile?.bio ?? "" };
+    // The draft speaks for every step while the profile has not moved on elsewhere; otherwise only for steps not confirmed yet.
+    const fresh = draft !== null && draft.updatedAt === (profile?.updatedAt ?? null);
+    const from = (step: OnboardingStep) => (draft && (fresh || confirmed < STEP_SCREENS[step][0]!) ? draft : null);
+    const values = { basic: from("profile")?.basic ?? saved.basic, goals: from("goals")?.goals ?? saved.goals, bio: from("intro")?.bio ?? saved.bio };
+    setDetail(result.detail);
+    setBasic(values.basic);
+    setGoals(values.goals); setFocus(from("goals")?.focus ?? savedGoal.focus); setHorizon(savedGoal.horizon);
+    setOffer(from("goals")?.offer ?? [...(profile?.offering ?? [])]);
+    setSeek(from("goals")?.seek ?? [...(profile?.seeking ?? [])]);
+    setTopics(from("goals")?.topics ?? [...(profile?.topics ?? [])]);
+    setBio(values.bio); setHeadline(from("intro")?.headline ?? profile?.headline ?? "");
+    setMarks(draft?.marks ?? {});
+    setScan(draft?.scan ? { kind: "done", ...draft.scan } : { kind: "idle" });
+    // Same step as before, but never past one that is not complete.
+    const reached = progress.progress?.finishedAt ? "intro" : stepForConfirmedScreen(confirmed);
+    const incomplete = ONBOARDING_STEPS.find(step => onboardingMissing(step, saved).length > 0) ?? reached;
+    const start = stepIndex(incomplete) < stepIndex(reached) ? incomplete : reached;
+    setView(draft && stepIndex(draft.step) < stepIndex(start) ? draft.step : start);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client, scope]);
+
+  // Read once per mount (and per signed-in client); later edits stay local until 「次へ」.
   useEffect(() => { void load(); }, [load]);
 
-  function go(target: View_) {
-    setNotice(null); setMessage(null); setView(target);
-    if (target === "import" && importSince === null) setImportSince(Date.now() - 5000);
-  }
-  async function ensureFlow(): Promise<AppProfileOnboardingProgress | null> {
+  // ── Draft on this device ──
+  const draft: OnboardingDraft | null = view === "loading" || view === "loadError" ? null : {
+    step: view, updatedAt: detail?.profile?.updatedAt ?? null, basic, goals, focus, offer, seek, topics, bio, headline, marks,
+    scan: scan.kind === "done" ? { card: scan.card, ai: scan.ai } : null,
+  };
+  const draftText = draft ? JSON.stringify(draft) : null;
+  const unsaved = useRef<{ scope: NonNullable<typeof scope>; draft: OnboardingDraft } | null>(null);
+  const flushDraft = useCallback(() => {
+    if (unsaved.current) void profileOnboardingStorage.writeDraft(unsaved.current.scope, unsaved.current.draft);
+    unsaved.current = null;
+  }, []);
+  useEffect(() => {
+    if (!scope || !draftText) return;
+    unsaved.current = { scope, draft: JSON.parse(draftText) as OnboardingDraft };
+    const timer = setTimeout(flushDraft, DRAFT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [draftText, flushDraft, scope]);
+  useEffect(() => flushDraft, [flushDraft]);
+
+  // ── Progress on the server (five screens, see STEP_SCREENS) ──
+  async function ensureFlow(): Promise<AppProfileOnboardingProgress | Notice> {
     if (flowRef.current) return flowRef.current;
     initMutationRef.current ??= `ios:onboarding:init:${Crypto.randomUUID()}`;
     const result = await updateProfileOnboardingProgress(client, { action: "initialize", expectedRevision: null, mutationId: initMutationRef.current });
-    if (!result.ok || !result.progress) {
-      flowFailureRef.current = result.ok ? "failed" : result.kind;
-      return null;
-    }
+    if (!result.ok || !result.progress) return result.ok ? "failed" : result.kind;
     flowRef.current = result.progress;
     return result.progress;
   }
 
-  async function confirmScreen(screen: 1 | 2 | 3 | 4 | 5): Promise<boolean> {
-    const flow = await ensureFlow();
-    if (!flow) return false;
-    if (flow.lastConfirmedScreen >= screen) { pendingConfirmRef.current = null; pendingFieldsRef.current = null; return true; }
-    if (!pendingConfirmRef.current || pendingConfirmRef.current.action !== "confirm" || pendingConfirmRef.current.screen !== screen) {
-      pendingConfirmRef.current = { action: "confirm", screen, expectedRevision: flow.revision, mutationId: `ios:onboarding:screen:${Crypto.randomUUID()}` };
-    }
-    const result = await updateProfileOnboardingProgress(client, pendingConfirmRef.current);
-    if (!result.ok || !result.progress) {
-      flowFailureRef.current = result.ok ? "failed" : result.kind;
-      const latest = await readProfileOnboardingProgress(client);
-      if (latest.ok && latest.progress && latest.progress.lastConfirmedScreen >= screen) {
-        flowRef.current = latest.progress;
-        pendingConfirmRef.current = null;
-        pendingFieldsRef.current = null;
-        return true;
+  async function confirmStep(step: OnboardingStep): Promise<Notice> {
+    for (const screen of STEP_SCREENS[step]) {
+      const flow = await ensureFlow();
+      if (!flow || typeof flow === "string") return flow ?? "failed";
+      if (flow.finishedAt || flow.lastConfirmedScreen >= screen) { pendingConfirmRef.current = null; continue; }
+      const pending = pendingConfirmRef.current;
+      if (pending?.action !== "confirm" || pending.screen !== screen) {
+        pendingConfirmRef.current = { action: "confirm", screen, expectedRevision: flow.revision, mutationId: `ios:onboarding:screen:${Crypto.randomUUID()}` };
       }
-      return false;
+      const result = await updateProfileOnboardingProgress(client, pendingConfirmRef.current!);
+      if (!result.ok || !result.progress) {
+        const latest = await readProfileOnboardingProgress(client);
+        if (!latest.ok || !latest.progress || latest.progress.lastConfirmedScreen < screen) return result.ok ? "failed" : result.kind;
+        flowRef.current = latest.progress;
+      } else flowRef.current = result.progress;
+      pendingConfirmRef.current = null;
     }
-    flowRef.current = result.progress;
-    pendingConfirmRef.current = null;
-    pendingFieldsRef.current = null;
-    return true;
+    return null;
   }
 
-  async function leave() {
-    if (saving) return;
-    setSaving(true);
-    const flow = await ensureFlow();
-    const result = flow && await updateProfileOnboardingProgress(client, {
-      action: "defer", expectedRevision: flow.revision, mutationId: `ios:onboarding:defer:${Crypto.randomUUID()}`,
-    });
-    if (result && result.ok && result.progress) {
-      flowRef.current = result.progress;
-      leaveOnboarding(router, destination);
-    } else setNotice({ kind: "failed" });
-    if (mounted.current) setSaving(false);
+  async function finishFlow(): Promise<Notice> {
+    const flow = flowRef.current;
+    if (!flow || flow.finishedAt) return null;
+    finishMutationRef.current ??= `ios:onboarding:finish:${Crypto.randomUUID()}`;
+    const result = await updateProfileOnboardingProgress(client, { action: "finish", expectedRevision: flow.revision, mutationId: finishMutationRef.current });
+    if (result.ok && result.progress?.finishedAt) { flowRef.current = result.progress; return null; }
+    const latest = await readProfileOnboardingProgress(client);
+    if (latest.ok && latest.progress?.finishedAt) { flowRef.current = latest.progress; return null; }
+    return result.ok ? "failed" : result.kind;
   }
 
-  async function finish() {
-    if (saving) return;
-    setSaving(true);
-    try {
-      if (!await confirmScreen(5)) { setNotice({ kind: "failed" }); return; }
-      const flow = flowRef.current!;
-      finishMutationRef.current ??= `ios:onboarding:finish:${Crypto.randomUUID()}`;
-      const result = await updateProfileOnboardingProgress(client, { action: "finish", expectedRevision: flow.revision, mutationId: finishMutationRef.current });
-      if (!result.ok || !result.progress) { setNotice({ kind: "failed" }); return; }
-      flowRef.current = result.progress;
-      leaveOnboarding(router, destination);
-    } finally {
-      if (mounted.current) setSaving(false);
+  function fieldsFor(step: OnboardingStep): OnboardingProfileFields {
+    if (step === "goals") return { relationshipGoal: composeRelationshipGoal({ goals, focus, horizon }, locale.language), offering: offer, seeking: seek, topics };
+    if (step === "intro") return { bio: bio.trim(), headline: headline.trim() };
+    // PUT replaces handles as a whole: keep what is saved, in the response schema's key order (the receipt is compared as text).
+    const saved = detail?.profile?.handles;
+    const merged: Record<string, string | undefined> = { ...saved, email: basic.email.trim(), phone: basic.phone.trim() };
+    const handles = Object.fromEntries(HANDLE_KEYS.filter(key => merged[key]).map(key => [key, merged[key]!]));
+    const contacts = saved || Object.keys(handles).length ? { handles } : {};
+    return {
+      birthDate: basic.birthDate || null, displayName: basic.name.trim(), organization: basic.company.trim(),
+      primaryIndustryId: basic.primaryIndustryId as IndustryIdCode, role: basic.title.trim(), secondaryIndustryId: basic.secondaryIndustryId as SecondaryIndustryIdCode, ...contacts,
+    } as OnboardingProfileFields;
+  }
+
+  // ── 「次へ」 ──
+  const missing = view === "loading" || view === "loadError" ? [] : onboardingMissing(view, { basic, goals, bio });
+  const introBlocked = view === "intro" && introStatus === "generating";
+  const shown = attempted ? (introBlocked ? ["intro" as const] : missing) : [];
+  const errors = new Set<OnboardingMissingField>(shown);
+  const bioCount = bioCounter(bio);
+  const fieldError = (field: OnboardingMissingField): string => {
+    if (field === "name") return t("onboarding.v3.missName");
+    if (field === "primaryIndustry") return t("onboarding.v3.missIndustry");
+    if (field === "secondaryIndustry") return t("onboarding.v3.missDetail");
+    if (field === "goals") return t("onboarding.v3.missGoals");
+    if (introBlocked) return t("onboarding.v3.missIntroGenerating");
+    return bioCount.over ? t("onboarding.v3.bioTooLong", { limit: bioCount.limit }) : t("onboarding.v3.missIntro");
+  };
+  const summaryOf = (fields: readonly OnboardingMissingField[]) => t("onboarding.v3.missing", { count: fields.length, fields: fields.map(field => t(MISSING_NAME[field])).join(t("onboarding.v3.missingSeparator")) });
+
+  /** Scroll to the first missing field and put the focus there (keyboard for text, VoiceOver for buttons). */
+  function showMissing(fields: readonly OnboardingMissingField[]) {
+    const first = fields[0]!;
+    scrollRef.current?.scrollTo({ y: Math.max(0, (fieldY.current[first] ?? 0) - 24), animated: true });
+    if (first === "name") nameInput.current?.focus();
+    else if (first === "intro") bioInput.current?.focus();
+    else {
+      const target = first === "primaryIndustry" ? primaryButton.current : first === "secondaryIndustry" ? secondaryButton.current : null;
+      const handle = target && Platform.OS !== "web" ? findNodeHandle(target) : null;
+      if (handle != null) AccessibilityInfo.setAccessibilityFocus(handle);
+      else (target as (View & { focus?: () => void }) | null)?.focus?.();
     }
+    AccessibilityInfo.announceForAccessibility([summaryOf(fields), ...fields.map(fieldError)].join("。"));
   }
 
-  async function save(fields: OnboardingProfileFields, then: OnboardingStep | "finish"): Promise<void> {
-    if (!detail || saving) return;
+  async function onNext(step: OnboardingStep) {
+    if (busy.current || saving) return;
+    const blocked = introBlocked ? (["intro"] as const) : missing;
+    if (blocked.length) { setAttempted(true); setNotice(null); showMissing(blocked); return; }
+    if (!detail) return;
+    busy.current = true;
     setSaving(true); setNotice(null); setMessage(null);
     try {
-      if (!await ensureFlow()) { setNotice({ kind: flowFailureRef.current }); return; }
-      const screen = ONBOARDING_STEPS.indexOf(view as OnboardingStep) + 1 as 1 | 2 | 3 | 4;
-      const fingerprint = JSON.stringify(fields);
-      const pendingScreen = pendingConfirmRef.current?.action === "confirm" ? pendingConfirmRef.current.screen : null;
-      if (pendingScreen && (pendingScreen !== screen || pendingFieldsRef.current !== fingerprint)) {
-        if (!await confirmScreen(pendingScreen)) { setNotice({ kind: flowFailureRef.current }); return; }
+      const fields = fieldsFor(step);
+      const profile = detail.profile as Record<string, unknown> | null;
+      const unchanged = profile !== null && Object.entries(fields).every(([key, value]) => JSON.stringify(profile[key] ?? null) === JSON.stringify(value ?? null));
+      if (!unchanged) {
+        const result = await saveOnboardingFields(client, fields, detail, () => `ios:onboarding:${Crypto.randomUUID()}`);
+        if (!mounted.current) return;
+        if (!result.ok) {
+          setNotice(result.kind);
+          // Another device moved the profile on: take its version, keep what was typed here.
+          if (result.kind === "conflict") {
+            const latest = await readOnboardingProfile(client);
+            if (mounted.current && latest.ok) setDetail(latest.detail);
+          }
+          return;
+        }
+        setDetail(result.detail);
       }
-      const samePending = pendingConfirmRef.current?.action === "confirm" && pendingConfirmRef.current.screen === screen && pendingFieldsRef.current === fingerprint;
-      const result = samePending
-        ? { ok: true as const, detail }
-        : await saveOnboardingFields(client, fields, detail, () => `ios:onboarding:${Crypto.randomUUID()}`);
+      const confirmFailure = await confirmStep(step);
       if (!mounted.current) return;
-      if (!result.ok) { setNotice({ kind: result.kind }); return; }
-      setDetail(result.detail);
-      if (!samePending) pendingFieldsRef.current = fingerprint;
-      if (!await confirmScreen(screen)) { setNotice({ kind: flowFailureRef.current }); return; }
-      if (then === "finish") leave(); else go(then);
+      if (confirmFailure) { setNotice(confirmFailure); return; }
+      // No card read: guess strengths and topics from what was typed, while the next step opens.
+      if (step === "profile" && !offer.length && !topics.length) {
+        void infer({ displayName: basic.name, organization: basic.company, role: basic.title, industry: basicIndustryPair(basic) });
+      }
+      if (step !== "intro") { go(ONBOARDING_STEPS[stepIndex(step) + 1]!); return; }
+      const finishFailure = await finishFlow();
+      if (!mounted.current) return;
+      if (finishFailure) { setNotice(finishFailure); return; }
+      unsaved.current = null;
+      setView("loading");
+      if (scope) await profileOnboardingStorage.clearDraft(scope);
+      await gate.settle("clear");
+      leaveOnboarding(router, destination);
     } catch {
-      if (mounted.current) setNotice({ kind: "failed" });
+      if (mounted.current) setNotice("failed");
     } finally {
+      busy.current = false;
       if (mounted.current) setSaving(false);
     }
   }
 
-  const profileValid = basicDraftValid(basic, today);
-  const bioCount = bioCounter(bio);
-  const introValid = !bioCount.over && profileVisibleCharacterCount(headline.trim()) <= HEADLINE_LIMIT;
-
-  function onContinue() {
-    if (view === "profile" && profileValid) {
-      void save({
-        birthDate: basic.birthDate || null, displayName: basic.name.trim(), organization: basic.company.trim(),
-        primaryIndustryId: basic.primaryIndustryId as IndustryIdCode, role: basic.title.trim(),
-        secondaryIndustryId: basic.secondaryIndustryId as SecondaryIndustryIdCode
-      }, "goals");
-    } else if (view === "goals" && goals.length) {
-      void save({ relationshipGoal: composeRelationshipGoal({ goals, focus, horizon }, locale.language) }, "persona");
-    } else if (view === "persona") {
-      void save({ offering: offer, seeking: seek, topics }, "intro");
-    } else if (view === "intro" && introValid && introStatus !== "generating") {
-      void save({ bio: bio.trim(), headline: headline.trim() }, "import");
-    }
+  function go(target: OnboardingStep) {
+    setNotice(null); setMessage(null); setAttempted(false); setEditing(false);
+    fieldY.current = {};
+    setView(target);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
   }
 
-  // ── AI introduction: auto-draft on entry when empty; 「换一版」 counts only on success ──
-  const generating = useRef(false);
-  async function generateIntro(kind: "auto" | "retry" | "regenerate") {
-    if (generating.current) return;
-    if (kind === "regenerate" && regenerations >= INTRO_REGENERATE_LIMIT) return;
-    const hadDraft = Boolean(bio.trim() || headline.trim());
-    const previousStatus = introStatus;
-    generating.current = true;
-    setIntroStatus("generating"); setMessage(null);
+  // ── Log out: what was typed stays for the next sign-in ──
+  async function logOut() {
+    if (signingOut.current) return;
+    signingOut.current = true;
+    setSignOutError(null);
+    flushDraft();
+    const actorId = auth.actorId;
     try {
-      if (kind === "regenerate" || (kind === "retry" && !introActionKeyRef.current)) {
-        introActionKeyRef.current = `ios:onboarding:intro:${Crypto.randomUUID()}`;
-      }
-      introActionKeyRef.current ??= `ios:onboarding:intro:first:${detail?.profile?.updatedAt ?? "new"}`;
-      const result = await generateOnboardingIntro(client, introDraftLanguage(locale.language), introActionKeyRef.current);
-      if (!mounted.current) return;
-      if (result.ok) {
-        introActionKeyRef.current = null;
-        setBio(result.bio); setHeadline(result.headline); setIntroStatus("ready");
-        if (kind === "regenerate") setRegenerations(count => count + 1);
-      } else if (kind === "regenerate" && hadDraft) {
-        if (result.kind !== "offline") introActionKeyRef.current = null;
-        setIntroStatus(previousStatus === "error" ? "ready" : previousStatus);
-        setMessage(t("onboarding.regenerateFailed"));
-      } else {
-        if (result.kind !== "offline") introActionKeyRef.current = null;
-        setIntroStatus("error");
-      }
+      const result = await auth.signOut({
+        confirmSignOut: () => presentConfirm({ title: t("me.logoutConfirm"), confirmLabel: t("me.logout"), cancelLabel: t("common.cancel"), destructive: true, icon: "out" }),
+      });
+      if (result.cancelled) return;
+      if (result.success) {
+        if (actorId) clearProfileEditSession({ actorId, apiOrigin: server.baseUrl });
+        resetStackTo(router, "/account/login");
+      } else if (mounted.current) setSignOutError(localizeAuthMessage(result.message, t) ?? t("account.signOutFailure"));
     } finally {
-      generating.current = false;
+      signingOut.current = false;
     }
   }
-  useEffect(() => {
-    if (view === "intro" && introStatus === "idle" && !bio.trim() && !headline.trim()) void generateIntro("auto");
-    // Entering the step triggers the draft; later edits never do.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view]);
 
-  // ── Own business card → name / company / title ──
+  // ── Own business card ──
+  const unmark = (...fields: OnboardingMarkedField[]) => setMarks(current => {
+    if (!fields.some(field => current[field])) return current;
+    const rest = { ...current };
+    for (const field of fields) delete rest[field];
+    return rest;
+  });
   async function scanWith(source: "camera" | "library") {
-    if (scanning) return;
-    setMessage(null); setNotice(null);
+    if (scan.kind === "scanning") return;
+    const before = scan;
     try {
-      // The iOS photo picker runs out of process and needs no library access; only ask for it elsewhere.
+      // The iOS photo picker needs no library access; only Android and the camera ask.
       const permission = source === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : Platform.OS === "ios" ? { granted: true, canAskAgain: true } : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!mounted.current) return;
       if (!permission.granted) {
-        const denied = t(source === "camera" ? "onboarding.cameraDenied" : "onboarding.libraryDenied");
-        setMessage(denied);
-        // iOS asks only once; after a refusal the only way back is the Settings app.
-        if (!permission.canAskAgain && Platform.OS !== "web") void presentConfirm({ title: denied, confirmLabel: t("add.scan.openSettings"), cancelLabel: t("onboarding.cancel"), icon: "settings" })
-          .then(open => { if (open) void Linking.openSettings().catch(() => undefined); });
+        const denied = t(source === "camera" ? "onboarding.v3.cameraDenied" : "onboarding.v3.libraryDenied");
+        if (before.kind !== "done") setScan({ kind: "failed", message: denied });
+        if (!permission.canAskAgain && Platform.OS !== "web" && await presentConfirm({ title: denied, confirmLabel: t("add.scan.openSettings"), cancelLabel: t("common.cancel"), icon: "settings" })) void Linking.openSettings().catch(() => undefined);
         return;
       }
       const options: ImagePicker.ImagePickerOptions = { allowsEditing: false, mediaTypes: ["images"], quality: 0.86 };
       const picked = source === "camera" ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
       const asset = picked.canceled ? null : picked.assets?.[0];
-      if (!asset) return;
-      setScanning(true);
+      if (!asset || !mounted.current) return;
+      setScan({ kind: "scanning" });
       const image = await encodeDirectScanImage({ ...asset, fileName: asset.fileName || "business-card.jpg" });
       if (!mounted.current) return;
       const card = await scanOwnBusinessCard(client, image);
       if (!mounted.current) return;
-      if (!card.ok) { setMessage(t("onboarding.scanFailed")); return; }
-      setBasic(current => ({ ...current, company: card.company || current.company, name: card.name || current.name, title: card.title || current.title }));
-      setMessage(t("onboarding.scanFilled"));
+      if (!card.ok) { setScan({ kind: "failed", message: t("onboarding.v3.scanFailed") }); return; }
+      const read = { name: card.name, company: card.company, title: card.title, email: card.email, phone: card.phone };
+      const found = (Object.keys(read) as TextKey[]).filter(key => read[key]);
+      if (!found.length) { setScan({ kind: "failed", message: t("onboarding.v3.scanFailed") }); return; }
+      setBasic(current => ({
+        ...current, ...Object.fromEntries(found.map(key => [key, read[key]])),
+        ...(card.industry ? { primaryIndustryId: card.industry.primary, secondaryIndustryId: card.industry.secondary } : {}),
+      }));
+      setMarks(current => ({
+        ...current, ...Object.fromEntries(found.map(key => [key, "card" as const])),
+        ...(card.industry ? { primaryIndustryId: "ai" as const, secondaryIndustryId: "ai" as const } : {}),
+      }));
+      setScan({ kind: "done", card: found.length, ai: card.industry ? 2 : 0 });
+      void infer({ displayName: card.name, organization: card.company, role: card.title, industry: card.industry });
     } catch {
-      if (mounted.current) setMessage(t("onboarding.scanFailed"));
-    } finally {
-      if (mounted.current) setScanning(false);
+      if (mounted.current) setScan(before.kind === "done" ? before : { kind: "failed", message: t("onboarding.v3.scanFailed") });
     }
   }
-  function startScan() {
-    if (Platform.OS === "web") { void scanWith("library"); return; }
-    Alert.alert(t("onboarding.scanCard"), undefined, [
-      { text: t("onboarding.scanCamera"), onPress: () => void scanWith("camera") },
-      { text: t("onboarding.scanLibrary"), onPress: () => void scanWith("library") },
-      { text: t("onboarding.cancel"), style: "cancel" }
-    ]);
+
+  // ── AI guesses from company + title: in the background, never over something the person chose ──
+  const latest = useRef({ basic, offer, topics }); latest.current = { basic, offer, topics };
+  const inferredFor = useRef<string | null>(null);
+  async function infer(input: { displayName: string; organization: string; role: string; industry: { primary: IndustryIdCode; secondary: SecondaryIndustryIdCode } | null }) {
+    const source = `${input.organization.trim()}\u0000${input.role.trim()}`;
+    if ((!input.organization.trim() && !input.role.trim()) || inferredFor.current === source) return;
+    inferredFor.current = source;
+    const before = latest.current;
+    const result = await inferOnboardingAutofill(client, {
+      displayName: input.displayName.trim(), organization: input.organization.trim(), role: input.role.trim(), language: locale.language,
+      ...(input.industry ? { primaryIndustryId: input.industry.primary, secondaryIndustryId: input.industry.secondary } : {}),
+    }).catch(() => null);
+    if (!mounted.current || !result) return;
+    const industry = result.industry;
+    if (industry && !input.industry && !latest.current.basic.primaryIndustryId) {
+      setBasic(current => ({ ...current, primaryIndustryId: industry.primary, secondaryIndustryId: industry.secondary }));
+      setMarks(current => ({ ...current, primaryIndustryId: "ai", secondaryIndustryId: "ai" }));
+      setScan(current => (current.kind === "done" ? { ...current, ai: 2 } : current));
+    }
+    const fill = (apply: () => void) => { apply(); setFillRevision(value => value + 1); };
+    // Untouched since the request and still empty, or still exactly an earlier guess.
+    if (result.offering.length && latest.current.offer === before.offer && (!before.offer.length || marksRef.current.offer === "ai")) {
+      fill(() => { setOffer(result.offering); setMarks(current => ({ ...current, offer: "ai" })); });
+    }
+    if (result.topics.length && latest.current.topics === before.topics && (!before.topics.length || marksRef.current.topics === "ai")) {
+      fill(() => { setTopics(result.topics); setMarks(current => ({ ...current, topics: "ai" })); });
+    }
+  }
+  const marksRef = useRef(marks); marksRef.current = marks;
+
+  const [seekSuggestions, setSeekSuggestions] = useState<string[]>([]);
+  const seekRequests = useRef(new Set<string>());
+  const goalText = composeRelationshipGoal({ goals, focus: "", horizon: "" }, locale.language);
+  useEffect(() => {
+    if (view !== "goals" || !goalText || seekRequests.current.has(goalText) || seekRequests.current.size >= SEEK_REQUEST_LIMIT) return;
+    const timer = setTimeout(() => {
+      seekRequests.current.add(goalText);
+      void suggestOnboardingSeeking(client, { candidates: SEEK_OPTIONS.map(option => optionLabel(option, locale.language)), goal: goalText, language: locale.language }).then(values => {
+        if (mounted.current && values.length) setSeekSuggestions(values);
+      }, () => undefined);
+    }, SEEK_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [client, goalText, locale.language, view]);
+
+  // ── Introduction: drafted once on entry when there is none; 「別の案」 counts only on success ──
+  async function generateIntro(kind: "auto" | "retry" | "regenerate", target: IntroTone = tone) {
+    if (generating.current || (kind === "regenerate" && regenerations >= INTRO_REGENERATE_LIMIT)) return;
+    const hadDraft = Boolean(bio.trim());
+    const previous = introStatus;
+    generating.current = true;
+    setIntroStatus("generating"); setMessage(null); setEditing(false); setTone(target);
+    try {
+      if (kind === "regenerate" || (kind === "retry" && !introActionKeyRef.current)) introActionKeyRef.current = `ios:onboarding:intro:${Crypto.randomUUID()}`;
+      introActionKeyRef.current ??= `ios:onboarding:intro:first:${detail?.profile?.updatedAt ?? "new"}`;
+      const result = await generateOnboardingIntro(client, target === "en" ? "en" : introDraftLanguage(locale.language), introActionKeyRef.current);
+      if (!mounted.current) return;
+      if (result.ok) {
+        introActionKeyRef.current = null;
+        introDrafts.current[target] = { bio: result.bio, headline: result.headline };
+        setBio(result.bio); setHeadline(result.headline); setIntroStatus("ready");
+        if (kind === "regenerate") setRegenerations(count => count + 1);
+        return;
+      }
+      if (result.kind !== "offline") introActionKeyRef.current = null;
+      if (result.kind === "limit") { setIntroStatus("limit"); return; }
+      if (kind === "regenerate" && hadDraft) {
+        setIntroStatus(previous === "error" ? "ready" : previous);
+        setMessage(t("onboarding.v3.introFailed"));
+      } else setIntroStatus("error");
+    } finally {
+      generating.current = false;
+    }
+  }
+  useEffect(() => {
+    if (view === "intro" && introStatus === "idle") {
+      if (bio.trim()) setIntroStatus("ready");
+      else void generateIntro("auto");
+    }
+    // Entering the step triggers the draft; later edits never do.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
+  function onTone(target: IntroTone) {
+    if (target === tone) return;
+    const known = introDrafts.current[target];
+    if (bio.trim()) introDrafts.current[tone] = { bio, headline };
+    if (known) { setTone(target); setBio(known.bio); setHeadline(known.headline); setEditing(false); return; }
+    void generateIntro("regenerate", target);
   }
 
-  // ── Import step: counts for batches started from here, refreshed on focus and while reading ──
-  const refreshImport = useCallback(async () => {
-    if (importSince === null) return;
-    const result = await readOnboardingImportSummary(client, importSince, null);
-    if (!mounted.current) return;
-    if (result.ok) { setImportSummary(result.summary); setImportReadFailed(false); } else setImportReadFailed(true);
-  }, [client, importSince]);
-  useFocusEffect(useCallback(() => { if (view === "import") void refreshImport(); }, [view, refreshImport]));
-  useEffect(() => {
-    if (view !== "import" || !importSummary?.recognizing) return;
-    const timer = setInterval(() => { void refreshImport(); }, 5000);
-    return () => clearInterval(timer);
-  }, [view, importSummary?.recognizing, refreshImport]);
-
   // ── Render ──
+  const onFieldLayout = (field: OnboardingMissingField, event: LayoutChangeEvent) => { fieldY.current[field] = event.nativeEvent.layout.y; };
   if (view === "loading") {
-    return <SafeAreaView edges={["top", "bottom"]} style={styles.screen}><LoadingState accessibilityLabel={t("onboarding.loading")} /></SafeAreaView>;
+    return <OnboardingFrame footer={null}><View accessibilityLabel={t("onboarding.v3.loading")} accessible style={{ marginTop: 60 }}><Skeleton lines={3} /></View></OnboardingFrame>;
   }
   if (view === "loadError") {
     return (
-      <SafeAreaView edges={["top", "bottom"]} style={styles.screen}>
-        <View style={styles.center}>
-          <Banner actionLabel={t("onboarding.retry")} kind="failed" message={t("onboarding.loadFailed")} onAction={() => void load()} />
-          <SecondaryButton grow={false} label={t("onboarding.later")} onPress={() => void load()} />
-        </View>
-      </SafeAreaView>
+      <OnboardingFrame footer={<KitButton block label={t("onboarding.v3.retry")} onPress={() => void load()} variant="primary" />}>
+        <OnboardingTopBar onLogout={() => void logOut()} />
+        <View style={{ marginTop: 160 }}><MissLine text={signOutError ?? t("onboarding.v3.loadFailed")} /></View>
+      </OnboardingFrame>
     );
   }
-  if (view === "welcome" || view === "resume") {
-    return (
-      <SafeAreaView edges={["top", "bottom"]} style={styles.screen}>
-        <ScrollView contentContainerStyle={styles.welcome}>
-          <Text style={styles.logo}>Orbit<Text style={styles.logoDot}>.</Text></Text>
-          {view === "welcome" ? (
-            <>
-              <View style={styles.welcomeIntro}>
-                <Text style={styles.kicker}>{t("onboarding.kicker")}</Text>
-                <Text accessibilityRole="header" style={styles.welcomeTitle}>{t("onboarding.welcomeTitle")}</Text>
-                <Text style={styles.lead}>{t("onboarding.welcomeLead")}</Text>
-              </View>
-              <View style={styles.stepList}>
-                {ONBOARDING_STEPS.map((step, index) => (
-                  <View key={step} style={styles.stepRow}>
-                    <Text style={styles.stepNo}>{String(index + 1).padStart(2, "0")}</Text>
-                    <Text style={styles.stepTitle}>{t(STEP_TITLE_KEYS[step])}</Text>
-                    <Text style={styles.stepHint}>{t(STEP_TIME_KEYS[step])}</Text>
-                  </View>
-                ))}
-              </View>
-              <View style={styles.spacer} />
-              <View style={styles.actions}>
-                <PrimaryButton label={t("onboarding.start")} onPress={() => go("profile")} />
-                <Pressable accessibilityLabel={t("onboarding.browse")} accessibilityRole="button" onPress={() => void leave()} style={styles.textButton}>
-                  <Text style={styles.textButtonText}>{t("onboarding.browse")}</Text>
-                </Pressable>
-              </View>
-            </>
-          ) : resume ? (
-            <View style={styles.resumeCard}>
-              <View style={styles.head}>
-                <Text accessibilityRole="header" style={styles.resumeTitle}>{t("onboarding.resumeTitle")}</Text>
-                <Text style={styles.resumeBody}>{t("onboarding.resumeBody", { done: resume.completed, total: ONBOARDING_STEPS.length, step: t(STEP_TITLE_KEYS[resume.step]) })}</Text>
-              </View>
-              <View style={styles.resumeActions}>
-                <View style={{ flex: 1 }}><PrimaryButton label={t("onboarding.continue")} onPress={() => go(resume.step)} /></View>
-                <SecondaryButton grow={false} label={t("onboarding.later")} onPress={() => void leave()} />
-              </View>
-            </View>
-          ) : null}
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
-
-  const index = ONBOARDING_STEPS.indexOf(view);
-  const back = () => go(index === 0 ? "welcome" : ONBOARDING_STEPS[index - 1]!);
-  const banner = notice ? (
-    <Banner actionLabel={notice.kind === "failed" ? t("onboarding.retry") : undefined} kind={notice.kind === "conflict" ? "failed" : notice.kind}
-      message={t(notice.kind === "conflict" ? "onboarding.conflict" : notice.kind === "failed" ? "onboarding.saveFailed" : "onboarding.offline")}
-      onAction={notice.kind === "failed" ? onContinue : undefined} />
-  ) : null;
-  const continueDisabled = saving
-    || (view === "profile" && !profileValid)
-    || (view === "goals" && goals.length === 0)
-    || (view === "intro" && (!introValid || introStatus === "generating"));
-  const footer = view === "import" ? (
+  const index = stepIndex(view);
+  const noticeText = signOutError ?? (notice ? t(notice === "conflict" ? "onboarding.v3.conflict" : notice === "offline" ? "onboarding.v3.offline" : "onboarding.v3.saveFailed") : null);
+  const label = saving ? t("onboarding.v3.saving") : view === "intro" ? t("onboarding.v3.start") : t("onboarding.v3.next");
+  const footer = (
     <>
-      {banner}
-      <SecondaryButton label={t("onboarding.takeCards")} onPress={() => router.push(appendAppGuideReturnTo("/contacts/new/scan", "/profile/onboarding?screen=5") as Href)} />
-      <SecondaryButton label={t("onboarding.importContacts")} onPress={() => router.push(appendAppGuideReturnTo("/contacts/new/import?kind=contacts", "/profile/onboarding?screen=5") as Href)} />
-      <PrimaryButton label={t("onboarding.finish")} onPress={() => void finish()} />
-    </>
-  ) : (
-    <>
-      {banner}
-      <PrimaryButton disabled={continueDisabled} label={saving ? t("onboarding.saving") : t(view === "intro" ? "onboarding.useIntro" : "onboarding.continue")} onPress={onContinue} />
+      {shown.length ? <MissLine text={summaryOf(shown)} /> : noticeText ? <MissLine text={noticeText} /> : null}
+      <KitButton block label={label} onPress={() => void onNext(view)} testID="onboarding-next" variant="primary"
+        trailing={view === "goals" && goals.length && !saving ? t("onboarding.v3.nextGoals", { count: goals.length, limit: GOAL_LIMIT }) : undefined} />
     </>
   );
-
-  return (
-    <StepFrame backLabel={t(index === 0 ? "onboarding.backWelcome" : "onboarding.back")} footer={footer} index={index} onBack={back} total={ONBOARDING_STEPS.length}>
-      {view === "profile" ? <ProfileStep basic={basic} disabled={saving} message={message} onScan={startScan} scanning={scanning} setBasic={setBasic} today={today} /> : null}
-      {view === "goals" ? <GoalsStep focus={focus} goals={goals} setFocus={setFocus} setGoals={setGoals} /> : null}
-      {view === "persona" ? <PersonaStep offer={offer} seek={seek} setOffer={setOffer} setSeek={setSeek} setTopics={setTopics} topics={topics} /> : null}
-      {view === "intro" ? (
-        <IntroStep bio={bio} bioCount={bioCount} headline={headline} message={message} onRegenerate={() => void generateIntro(introStatus === "error" ? "retry" : "regenerate")}
-          regenerationsLeft={INTRO_REGENERATE_LIMIT - regenerations} setBio={setBio} setHeadline={setHeadline} status={introStatus} />
-      ) : null}
-      {view === "import" ? (
-        <ImportStep failed={importReadFailed} onReview={id => router.push(appendAppGuideReturnTo(batchRoutePath("current", id), "/profile/onboarding?screen=5") as Href)} summary={importSummary} />
-      ) : null}
-    </StepFrame>
-  );
-}
-
-function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, today }: {
-  basic: BasicDraft;
-  disabled: boolean;
-  message: string | null;
-  onScan: () => void;
-  scanning: boolean;
-  setBasic: (update: (current: BasicDraft) => BasicDraft) => void;
-  today: string;
-}) {
-  const { colors, styles } = useOnboardingStyles();
-  const locale = useOrbitLocale();
-  const t = locale.t;
-  const [picker, setPicker] = useState<"primary" | "secondary" | null>(null);
-  const set = (key: keyof BasicDraft) => (value: string) => setBasic(current => ({ ...current, [key]: value }));
-  const primaryLabel = basic.primaryIndustryId ? industryLabel(basic.primaryIndustryId, locale.language) : null;
-  const secondaryLabel = basic.secondaryIndustryId && basicIndustryValid(basic) ? secondaryIndustryLabel(basic.secondaryIndustryId, locale.language) : null;
-  const options = picker === "primary"
-    ? INDUSTRY_CATALOG.map(item => ({ id: item.id as string, label: item.labels[locale.language] }))
-    : picker === "secondary" && basic.primaryIndustryId
-      ? listSecondaryIndustries(basic.primaryIndustryId).map(item => ({ id: item.id as string, label: item.labels[locale.language] }))
-      : [];
-  const showBirthError = basic.birthDate.length >= 10 && !isValidProfileBirthDate(basic.birthDate, today);
-  const { timeZone } = useOrbitTimeZone();
-  const [dateOpen, setDateOpen] = useState(false);
-  // Stored as YYYY-MM-DD (what PUT /api/profile expects); shown as a local date.
   const birthLabel = isValidProfileBirthDate(basic.birthDate, today)
-    ? new Intl.DateTimeFormat(locale.language, { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }).format(new Date(`${basic.birthDate}T12:00:00Z`))
-    : basic.birthDate || null;
-  function select(id: string) {
-    if (picker === "primary") setBasic(current => ({ ...current, primaryIndustryId: id as IndustryIdCode, secondaryIndustryId: current.primaryIndustryId === id ? current.secondaryIndustryId : "" }));
-    else setBasic(current => ({ ...current, secondaryIndustryId: id as SecondaryIndustryIdCode }));
+    ? new Intl.DateTimeFormat(locale.language, { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }).format(new Date(`${basic.birthDate}T12:00:00Z`)) : null;
+  const pickerOptions = picker === "primary" ? INDUSTRY_CATALOG.map(item => ({ id: item.id as string, label: item.labels[locale.language] }))
+    : picker === "secondary" && basic.primaryIndustryId ? listSecondaryIndustries(basic.primaryIndustryId).map(item => ({ id: item.id as string, label: item.labels[locale.language] })) : [];
+  function pick(id: string) {
+    if (picker === "primary") {
+      setBasic(current => ({ ...current, primaryIndustryId: id as IndustryIdCode, secondaryIndustryId: current.primaryIndustryId === id ? current.secondaryIndustryId : "" }));
+      if (id !== basic.primaryIndustryId) unmark("primaryIndustryId", "secondaryIndustryId");
+    } else {
+      setBasic(current => ({ ...current, secondaryIndustryId: id as SecondaryIndustryIdCode }));
+      if (id !== basic.secondaryIndustryId) unmark("secondaryIndustryId");
+    }
     setPicker(null);
   }
-  const selectButton = (which: "primary" | "secondary", label: string, value: string | null, placeholder: string, enabled: boolean) => (
-    <Field half label={label}>
-      <Pressable accessibilityLabel={`${label}：${value ?? placeholder}`} accessibilityRole="button" accessibilityState={{ disabled: !enabled, expanded: picker === which }} disabled={!enabled}
-        onPress={() => setPicker(current => (current === which ? null : which))} style={[styles.selectButton, !enabled && styles.disabled]}>
-        <Text style={[styles.selectText, !value && styles.selectPlaceholder]}>{value ?? placeholder}</Text>
-        <Ionicons color={colors.ink3Text} name={picker === which ? "chevron-up" : "chevron-down"} size={14} />
-      </Pressable>
-    </Field>
-  );
+  const pickerTitle = t(picker === "secondary" ? "onboarding.v3.secondaryIndustry" : "onboarding.v3.primaryIndustry");
+
   return (
     <>
-      <StepHead lead={t("onboarding.profileLead")} title={t("onboarding.profileTitle")} />
-      <SecondaryButton disabled={disabled || scanning} icon="scan-outline" label={scanning ? t("onboarding.scanning") : t("onboarding.scanCard")} onPress={onScan} />
-      {message ? <Text accessibilityLiveRegion="polite" style={message === t("onboarding.scanFilled") ? styles.toast : styles.warning}>{message}</Text> : null}
-      <View style={styles.fields}>
-        <Field label={t("onboarding.name")}>
-          <TextInput accessibilityLabel={t("onboarding.name")} returnKeyType="done" editable={!disabled} maxLength={60} onChangeText={set("name")} placeholder={t("onboarding.namePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.name} />
-        </Field>
-        <View style={styles.fieldRow}>
-          {selectButton("primary", t("onboarding.primaryIndustry"), primaryLabel, t("onboarding.select"), !disabled)}
-          {selectButton("secondary", t("onboarding.secondaryIndustry"), secondaryLabel, basic.primaryIndustryId ? t("onboarding.select") : t("onboarding.selectPrimaryFirst"), !disabled && Boolean(basic.primaryIndustryId))}
-        </View>
-        {picker ? (
-          <View style={styles.optionList}>
-            {options.map(option => {
-              const selected = option.id === (picker === "primary" ? basic.primaryIndustryId : basic.secondaryIndustryId);
-              return (
-                <Pressable accessibilityLabel={option.label} accessibilityRole="button" accessibilityState={{ selected }} key={option.id} onPress={() => select(option.id)} style={styles.optionRow}>
-                  <Text style={styles.optionText}>{option.label}</Text>
-                  {selected ? <Ionicons color={colors.ink} name="checkmark" size={18} /> : null}
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : null}
-        <View style={styles.fieldRow}>
-          <Field half label={t("onboarding.role")} optional>
-            <TextInput accessibilityLabel={t("onboarding.role")} returnKeyType="done" editable={!disabled} maxLength={80} onChangeText={set("title")} placeholder={t("onboarding.rolePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.title} />
-          </Field>
-          <Field half label={t("onboarding.company")} optional>
-            <TextInput accessibilityLabel={t("onboarding.company")} returnKeyType="done" editable={!disabled} maxLength={80} onChangeText={set("company")} placeholder={t("onboarding.companyPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.company} />
-          </Field>
-        </View>
-        <Field helper={t("onboarding.birthDateHelp")} label={t("onboarding.birthDate")} optional>
-          <View style={styles.dateRow}>
-            <Pressable accessibilityLabel={`${t("onboarding.birthDate")}：${birthLabel ?? t("onboarding.birthDatePlaceholder")}`} accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled}
-              onPress={() => setDateOpen(true)} style={[styles.selectButton, styles.dateButton, disabled && styles.disabled]}>
-              <Text style={[styles.selectText, !birthLabel && styles.selectPlaceholder]}>{birthLabel ?? t("onboarding.birthDatePlaceholder")}</Text>
-              <Ionicons color={colors.ink3Text} name="calendar-outline" size={16} />
-            </Pressable>
-            {basic.birthDate ? (
-              <Pressable accessibilityLabel={t("onboarding.birthDateClear")} accessibilityRole="button" disabled={disabled} hitSlop={8} onPress={() => set("birthDate")("")} style={styles.linkButton}>
-                <Ionicons color={colors.ink3Text} name="close-circle" size={20} />
-              </Pressable>
-            ) : null}
-          </View>
-        </Field>
-        {dateOpen ? (
-          <PersonalScheduleDateTimePicker kind="date" value={isValidProfileBirthDate(basic.birthDate, today) ? basic.birthDate : ""} zone={timeZone} disabled={disabled} yearJump max={today} title={t("onboarding.birthDate")}
-            initialMonth={`${Number(today.slice(0, 4)) - 30}-01`} onCancel={() => setDateOpen(false)} onConfirm={value => { setDateOpen(false); set("birthDate")(value); }} />
-        ) : null}
-        {showBirthError ? <Text accessibilityRole="alert" style={styles.warning}>{t("onboarding.birthDateInvalid")}</Text> : null}
-      </View>
-    </>
-  );
-}
-
-function ChipSet({ limit, options, setValues, values }: { limit?: number; options: readonly Copy[]; setValues: (update: (current: string[]) => string[]) => void; values: readonly string[] }) {
-  const { styles } = useOnboardingStyles();
-  const locale = useOrbitLocale();
-  const [expanded, setExpanded] = useState(false);
-  const full = limit !== undefined && values.length >= limit;
-  const custom = values.filter(value => !isKnownOption(options, value));
-  // Collapsed: the first 8 options, plus any selected option further down so a saved choice is never hidden.
-  const collapsible = options.length > COLLAPSED_OPTION_COUNT;
-  const visible = expanded || !collapsible
-    ? options
-    : options.filter((option, index) => index < COLLAPSED_OPTION_COUNT || values.some(value => optionMatches(option, value)));
-  return (
-    <View style={styles.chips}>
-      {visible.map(option => {
-        const selected = values.find(value => optionMatches(option, value));
-        return (
-          <Chip disabled={!selected && full} key={option.zh} label={optionLabel(option, locale.language)} selected={Boolean(selected)}
-            onPress={() => setValues(current => (selected ? current.filter(value => value !== selected) : toggleValue(current, optionLabel(option, locale.language), limit)))} />
-        );
-      })}
-      {custom.map(value => <Chip key={value} label={value} onPress={() => setValues(current => current.filter(item => item !== value))} removable selected />)}
-      <CustomChip disabled={full} onAdd={value => setValues(current => addCustomValue(current, value, limit))} />
-      {collapsible && !expanded ? (
-        <Pressable accessibilityLabel={locale.t("onboarding.showMore")} accessibilityRole="button" onPress={() => setExpanded(true)} style={styles.linkButton}>
-          <Text style={styles.linkText}>{locale.t("onboarding.showMore")}</Text>
-        </Pressable>
+      <OnboardingFrame footer={footer} scrollRef={scrollRef}>
+        <OnboardingTopBar onBack={index ? () => go(ONBOARDING_STEPS[index - 1]!) : undefined} onLogout={() => void logOut()} />
+        <OnboardingProgress eta={t("onboarding.v3.eta")} index={index} label={t("onboarding.v3.step", { step: index + 1, total: ONBOARDING_STEPS.length, name: t(STEP_NAME[view]) })} total={ONBOARDING_STEPS.length} />
+        <OnceNotice scan={view === "profile"} />
+        {view === "profile" ? (
+          <ProfileStep basic={basic} birthLabel={birthLabel} disabled={saving} errors={errors} inputs={inputs} marks={marks} onBirth={() => setDateOpen(true)} onClearBirth={() => setBasic(current => ({ ...current, birthDate: "" }))} onFieldLayout={onFieldLayout}
+            onPick={setPicker} onScan={source => void scanWith(source)} onText={(key, value) => { setBasic(current => ({ ...current, [key]: value })); unmark(key); }} scan={scan}
+            showEmail={Boolean(marks.email || basic.email || detail?.profile?.handles?.email)} showPhone={Boolean(marks.phone || basic.phone || detail?.profile?.handles?.phone)} />
+        ) : view === "goals" ? (
+          <GoalsStep disabled={saving} error={errors.has("goals")} focus={focus} goals={goals} marks={marks} offer={offer} onFocus={setFocus} onGoal={(goal, selected) => setGoals(current => (selected ? current.filter(value => value !== selected) : toggleValue(current, goal, GOAL_LIMIT)))}
+            onGoalsLayout={event => onFieldLayout("goals", event)} onGroup={(group, values) => { (group === "offer" ? setOffer : group === "seek" ? setSeek : setTopics)(values); if (group !== "seek") unmark(group); }} revision={fillRevision} seek={seek} seekSuggestions={goals.length ? seekSuggestions : []} topics={topics} />
+        ) : (
+          <IntroStep bio={bio} bioCount={bioCount} disabled={saving} editing={editing} error={errors.has("intro") ? fieldError("intro") : null} goals={goals.length} input={bioInput} message={message} offer={offer.length} onBio={setBio} onCardLayout={event => onFieldLayout("intro", event)}
+            onEdit={() => setEditing(open => !open)} onRegenerate={() => void generateIntro(introStatus === "error" ? "retry" : "regenerate")} onTone={onTone} regenerationsLeft={INTRO_REGENERATE_LIMIT - regenerations} status={introStatus} tone={tone}
+            tones={locale.language === "en" ? [{ key: "native", label: t("onboarding.v3.toneEnglish") }] : [{ key: "native", label: t("onboarding.v3.toneNative") }, { key: "en", label: t("onboarding.v3.toneEnglish") }]} topics={topics.length} />
+        )}
+      </OnboardingFrame>
+      <BottomSheet accessibilityLabel={pickerTitle} header={<UiText accessibilityRole="header" style={styles.sheetTitle}>{pickerTitle}</UiText>} onClose={() => setPicker(null)} visible={picker !== null}>
+        {pickerOptions.map(option => <SheetRow key={option.id} label={option.label} on={option.id === (picker === "primary" ? basic.primaryIndustryId : basic.secondaryIndustryId)} onPress={() => pick(option.id)} />)}
+      </BottomSheet>
+      {dateOpen ? (
+        <PersonalScheduleDateTimePicker kind="date" value={isValidProfileBirthDate(basic.birthDate, today) ? basic.birthDate : ""} zone={timeZone} disabled={saving} yearJump max={today} title={t("onboarding.v3.birthDate")}
+          initialMonth={`${Number(today.slice(0, 4)) - 30}-01`} onCancel={() => setDateOpen(false)} onConfirm={value => { setDateOpen(false); setBasic(current => ({ ...current, birthDate: value })); }} />
       ) : null}
-    </View>
-  );
-}
-
-function GoalsStep({ focus, goals, setFocus, setGoals }: {
-  focus: string;
-  goals: string[];
-  setFocus: (value: string) => void;
-  setGoals: (update: (current: string[]) => string[]) => void;
-}) {
-  const { colors, styles } = useOnboardingStyles();
-  const locale = useOrbitLocale();
-  const t = locale.t;
-  const full = goals.length >= GOAL_LIMIT;
-  const known = GOAL_GROUPS.flatMap(group => group.options);
-  const custom = goals.filter(goal => !isKnownOption(known, goal));
-  return (
-    <>
-      <StepHead lead={t("onboarding.goalsLead")} title={t("onboarding.goalsTitle")} />
-      <View style={styles.sectionHead}>
-        <Text style={styles.groupHeading}>{t("onboarding.goalsPick")}</Text>
-        <Text style={styles.count}>{`${goals.length} / ${GOAL_LIMIT}`}</Text>
-      </View>
-      {GOAL_GROUPS.map(group => (
-        <View key={group.title.zh} style={styles.group}>
-          <Text style={styles.groupName}>{optionLabel(group.title, locale.language)}</Text>
-          <View style={styles.chips}>
-            {group.options.map(option => {
-              const selected = goals.find(goal => optionMatches(option, goal));
-              return <Chip disabled={!selected && full} key={option.zh} label={optionLabel(option, locale.language)} selected={Boolean(selected)}
-                onPress={() => setGoals(current => (selected ? current.filter(goal => goal !== selected) : toggleValue(current, optionLabel(option, locale.language), GOAL_LIMIT)))} />;
-            })}
-          </View>
-        </View>
-      ))}
-      <View style={styles.chips}>
-        {custom.map(goal => <Chip key={goal} label={goal} onPress={() => setGoals(current => current.filter(item => item !== goal))} removable selected />)}
-        <CustomChip disabled={full} onAdd={value => setGoals(current => addCustomValue(current, value, GOAL_LIMIT))} />
-      </View>
-      <Field label={t("onboarding.focus")} optional>
-        <TextInput accessibilityLabel={t("onboarding.focus")} returnKeyType="done" submitBehavior="blurAndSubmit" maxLength={FOCUS_LIMIT} multiline onChangeText={setFocus} placeholder={t("onboarding.focusPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.multiline} value={focus} />
-      </Field>
-    </>
-  );
-}
-
-function PersonaStep({ offer, seek, setOffer, setSeek, setTopics, topics }: {
-  offer: string[];
-  seek: string[];
-  setOffer: (update: (current: string[]) => string[]) => void;
-  setSeek: (update: (current: string[]) => string[]) => void;
-  setTopics: (update: (current: string[]) => string[]) => void;
-  topics: string[];
-}) {
-  const { styles } = useOnboardingStyles();
-  const t = useOrbitLocale().t;
-  const section = (title: string, meta: string, count: string, set: typeof setOffer, values: string[], options: readonly Copy[], limit: number) => (
-    <View style={styles.group}>
-      <View style={styles.sectionHead}>
-        <Text accessibilityRole="header" style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.sectionMeta}>{`${meta} · ${count}`}</Text>
-      </View>
-      <ChipSet limit={limit} options={options} setValues={set} values={values} />
-    </View>
-  );
-  return (
-    <>
-      <StepHead lead={t("onboarding.personaLead")} title={t("onboarding.personaTitle")} />
-      {section(t("onboarding.offer"), t("onboarding.upTo", { count: OFFER_LIMIT }), `${offer.length}/${OFFER_LIMIT}`, setOffer, offer, OFFER_OPTIONS, OFFER_LIMIT)}
-      {section(t("onboarding.seek"), t("onboarding.upTo", { count: SEEK_LIMIT }), `${seek.length}/${SEEK_LIMIT}`, setSeek, seek, SEEK_OPTIONS, SEEK_LIMIT)}
-      {section(t("onboarding.topics"), t("onboarding.optional"), `${topics.length}/${TOPIC_LIMIT}`, setTopics, topics, TOPIC_OPTIONS, TOPIC_LIMIT)}
-    </>
-  );
-}
-
-function IntroStep({ bio, bioCount, headline, message, onRegenerate, regenerationsLeft, setBio, setHeadline, status }: {
-  bio: string;
-  bioCount: { count: number; limit: number; over: boolean };
-  headline: string;
-  message: string | null;
-  onRegenerate: () => void;
-  regenerationsLeft: number;
-  setBio: (value: string) => void;
-  setHeadline: (value: string) => void;
-  status: IntroStatus;
-}) {
-  const { colors, styles } = useOnboardingStyles();
-  const t = useOrbitLocale().t;
-  const generating = status === "generating";
-  const canRegenerate = !generating && regenerationsLeft > 0;
-  return (
-    <>
-      <StepHead lead={t("onboarding.introLead")} title={t("onboarding.introTitle")} />
-      {status === "error" ? (
-        <View accessibilityRole="alert" style={styles.aiFailed}>
-          <Text style={styles.sectionTitle}>{t("onboarding.introFailedTitle")}</Text>
-          <Text style={styles.aiFailedBody}>{t("onboarding.introFailedBody")}</Text>
-          <Pressable accessibilityLabel={t("onboarding.introRetry")} accessibilityRole="button" onPress={onRegenerate} style={[styles.linkButton, { justifyContent: "flex-start", paddingHorizontal: 0 }]}>
-            <Text style={styles.linkText}>{t("onboarding.introRetry")}</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.aiRow}>
-          <View style={styles.aiLabel}>
-            <View style={styles.aiMark}><View style={styles.aiMarkDot} /></View>
-            <Text style={generating ? styles.sectionMeta : styles.groupHeading}>{generating ? t("onboarding.introGenerating") : t("onboarding.introDraftLabel")}</Text>
-          </View>
-          <Pressable accessibilityLabel={regenerationsLeft > 0 ? t("onboarding.regenerate", { count: regenerationsLeft }) : t("onboarding.regenerateUsed")} accessibilityRole="button"
-            accessibilityState={{ disabled: !canRegenerate }} disabled={!canRegenerate} onPress={onRegenerate} style={styles.linkButton}>
-            <Ionicons color={canRegenerate ? colors.accentText : colors.ink3Text} name="refresh" size={16} />
-            <Text style={[styles.linkText, !canRegenerate && styles.mutedLink]}>{regenerationsLeft > 0 ? t("onboarding.regenerate", { count: regenerationsLeft }) : t("onboarding.regenerateUsed")}</Text>
-          </Pressable>
-        </View>
-      )}
-      {message ? <Text accessibilityLiveRegion="polite" style={styles.warning}>{message}</Text> : null}
-      <Field label={t("onboarding.headline")}>
-        <TextInput accessibilityLabel={t("onboarding.headline")} returnKeyType="done" submitBehavior="blurAndSubmit" multiline editable={!generating} maxLength={HEADLINE_LIMIT} onChangeText={value => setHeadline(value.replace(/\s*\n\s*/gu, " "))} placeholder={t("onboarding.headlinePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.headlineInput} value={headline} />
-      </Field>
-      <Field label={t("onboarding.bio")}>
-        <TextInput accessibilityLabel={t("onboarding.bio")} returnKeyType="done" submitBehavior="blurAndSubmit" editable={!generating} multiline onChangeText={setBio} style={styles.bioInput} value={bio} />
-        <Text style={[styles.counter, bioCount.over && styles.counterOver]}>{t("onboarding.charCount", { count: bioCount.count, limit: bioCount.limit })}</Text>
-        {bioCount.over ? <Text accessibilityRole="alert" style={styles.warning}>{t("onboarding.bioTooLong", { limit: bioCount.limit })}</Text> : null}
-      </Field>
-    </>
-  );
-}
-
-function ImportStep({ failed, onReview, summary }: { failed: boolean; onReview: (batchId: string) => void; summary: OnboardingImportSummary | null }) {
-  const { colors, styles } = useOnboardingStyles();
-  const t = useOrbitLocale().t;
-  const hasCards = Boolean(summary && (summary.imported || summary.review || summary.recognizing));
-  return (
-    <>
-      <StepHead lead={t("onboarding.importLead")} title={t("onboarding.importTitle")} />
-      <View style={styles.importCard}>
-        <View style={styles.importIcon}><Ionicons color={colors.ink} name="scan-outline" size={28} /></View>
-        <Text style={styles.sectionTitle}>{t("onboarding.importCardTitle")}</Text>
-        <Text style={styles.importBody}>{t("onboarding.importCardBody")}</Text>
-      </View>
-      {hasCards && summary ? (
-        <View style={styles.statList}>
-          <View style={styles.statRow}><Text style={styles.statLabel}>{t("onboarding.imported")}</Text><Text style={styles.statValue}>{summary.imported}</Text></View>
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>{t("onboarding.needsReview")}</Text>
-            {summary.review && summary.reviewBatchId ? (
-              <Pressable accessibilityLabel={`${t("onboarding.needsReview")} ${t("onboarding.reviewCount", { count: summary.review })}`} accessibilityRole="link" onPress={() => onReview(summary.reviewBatchId!)}>
-                <Text style={styles.statLink}>{t("onboarding.reviewCount", { count: summary.review })}</Text>
-              </Pressable>
-            ) : <Text style={styles.statValue}>0</Text>}
-          </View>
-          <View style={styles.statRow}><Text style={[styles.statLabel, styles.statMuted]}>{t("onboarding.recognizing")}</Text><Text style={[styles.statValue, styles.statMuted]}>{summary.recognizing}</Text></View>
-        </View>
-      ) : null}
-      {failed ? <Text style={styles.helper}>{t("onboarding.importReadFailed")}</Text> : null}
     </>
   );
 }

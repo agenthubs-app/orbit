@@ -4,10 +4,11 @@ import test from "node:test";
 import { createOrbitApiClient } from "../src/api/client";
 import {
   generateOnboardingIntro,
-  readOnboardingImportSummary,
+  inferOnboardingAutofill,
   readOnboardingProfile,
   saveOnboardingFields,
-  scanOwnBusinessCard
+  scanOwnBusinessCard,
+  suggestOnboardingSeeking
 } from "../src/api/profile-onboarding";
 import { profileDetailSchema, profileOnboardingSchema } from "../src/api/profile-detail-contract";
 import { emptyProfilePayload, profilePayload } from "./helpers/profile-detail-fixtures";
@@ -168,29 +169,34 @@ test("intro draft posts the language and accepts only a complete draft", async (
   assert.deepEqual(await generateOnboardingIntro(offline.client, "en", "intro-3"), { ok: false, kind: "offline" });
 });
 
-test("own business card scan maps the reviewed draft to name, company and title only", async () => {
-  const server = aiServer(() => ok({ draft: { displayName: " 林晓 ", organization: "Orbit", role: "产品负责人", email: "x@y.z" } }));
+test("own business card scan keeps what is printed apart from the industry AI judged", async () => {
+  const server = aiServer(() => ok({ draft: { displayName: " 林晓 ", organization: "Orbit", role: "产品负责人", email: "x@y.z" }, ocr: { structuredExtraction: { primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data" } } }));
   const result = await scanOwnBusinessCard(server.client, { base64: "AAAA", mimeType: "image/jpeg", fileName: "card.jpg", size: 3 });
-  assert.deepEqual(result, { ok: true, name: "林晓", company: "Orbit", title: "产品负责人" });
+  assert.deepEqual(result, { ok: true, name: "林晓", company: "Orbit", title: "产品负责人", email: "x@y.z", phone: "", industry: { primary: "technology_internet", secondary: "technology_internet.ai_data" } });
+  const mismatched = await scanOwnBusinessCard(aiServer(() => ok({ draft: { displayName: "林晓" }, ocr: { structuredExtraction: { primaryIndustryId: "technology_internet", secondaryIndustryId: "food_hospitality.restaurants" } } })).client, { base64: "A", mimeType: "image/jpeg", fileName: "c.jpg", size: 1 });
+  assert.equal(mismatched.ok && mismatched.industry, null, "never half an industry");
   assert.deepEqual(server.requests[0], { path: "/api/contact-drafts/business-card/scan", body: { imageBase64: "AAAA", imageName: "card.jpg", imageSizeBytes: 3, mimeType: "image/jpeg" } });
   assert.equal((await scanOwnBusinessCard(aiServer(() => fail(422, "BUSINESS_CARD_OCR_PROVIDER_FAILED")).client, { base64: "A", mimeType: "image/jpeg", fileName: "c.jpg", size: 1 })).ok, false);
   assert.equal((await scanOwnBusinessCard(aiServer(() => ok({ draft: null })).client, { base64: "A", mimeType: "image/jpeg", fileName: "c.jpg", size: 1 })).ok, false);
 });
 
-test("import summary reads only v2 batches started since the step opened", async () => {
-  const at = (s: string) => `2026-09-27T0${s}:00:00.000Z`;
-  const batch = (id: string, createdAt: string) => ({ id, actorId: "actor:1", status: "processing", expectedItems: 1, version: 1, reviewGeneration: 0, idempotencyKey: `k-${id}`, manifestFingerprint: "b".repeat(64), statusReason: null, createdAt, updatedAt: createdAt, finalizedAt: null, expiresAt: "2026-10-27T00:00:00.000Z" });
-  const item = (batchId: string, status: string) => ({ id: `${batchId}:i1`, batchId, cardId: "card:1", side: "front", seq: 1, status, version: 1, sourceFileName: "1.jpg", rawSize: 10, rawMimeType: "image/jpeg", clientDigest: "sha256:" + "a".repeat(64), imageDigest: null, derivativeObjectKey: null, derivativeSize: null, extraction: null, extractionSchemaVersion: null, reviewIssues: [], usage: null, confirmedContactId: status === "confirmed" ? "contact:1" : null, attemptCount: 0, nextRetryAt: null, leaseExpiresAt: null, errorStage: null, errorCode: null, createdAt: at("1"), updatedAt: at("1") });
-  const paths: string[] = [];
-  const client = createOrbitApiClient({ baseUrl: "https://orbit.test", fetchImpl: async input => {
-    const path = new URL(String(input)).pathname;
-    paths.push(path);
-    if (path.endsWith("/v2")) return ok({ batches: [batch("old", at("1")), batch("new", at("3"))] });
-    if (path.endsWith("/v2/new")) return ok({ batch: batch("new", at("3")), items: [item("new", "confirmed")] });
-    return fail(404, "NOT_FOUND");
-  } });
-  const summary = await readOnboardingImportSummary(client, Date.parse(at("2")), "actor:1");
-  assert.equal(summary.ok, true, JSON.stringify(summary));
-  if (summary.ok) assert.deepEqual(summary.summary, { imported: 1, review: 0, recognizing: 0, reviewBatchId: null });
-  assert.deepEqual(paths, ["/api/contact-drafts/business-card/batches/v2", "/api/contact-drafts/business-card/batches/v2/new"]);
+test("autofill inference: only a ready answer counts; everything else leaves the fields to the person", async () => {
+  const request = { organization: "Orbit", role: "CEO", language: "ja" as const };
+  const ready = aiServer(() => ok({ status: "ready", primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data", seniorityLevel: "founder", offering: ["顧客紹介", "顧客紹介", " "], topics: ["生成 AI"] }));
+  assert.deepEqual(await inferOnboardingAutofill(ready.client, request), { industry: { primary: "technology_internet", secondary: "technology_internet.ai_data" }, offering: ["顧客紹介"], topics: ["生成 AI"] });
+  assert.deepEqual(ready.requests, [{ path: "/api/profile/autofill-inference", body: request }]);
+  for (const reply of [() => ok({ status: "unavailable", primaryIndustryId: null, secondaryIndustryId: null, seniorityLevel: null, offering: [], topics: [] }), () => fail(400, "VALIDATION_ERROR"), () => fail(503, "DOWN"), () => { throw new TypeError("offline"); }]) {
+    assert.equal(await inferOnboardingAutofill(aiServer(reply).client, request), null);
+  }
+});
+
+test("seek candidates: the unsaved goal goes along and only offered texts come back", async () => {
+  const server = aiServer(() => ok({ suggestions: ["投資家", "でたらめ"] }));
+  assert.deepEqual(await suggestOnboardingSeeking(server.client, { candidates: ["投資家", "サプライヤー"], goal: "資金調達", language: "ja" }), ["投資家"]);
+  assert.deepEqual(server.requests[0]!.body, { candidates: ["投資家", "サプライヤー"], goal: "資金調達", language: "ja" });
+  assert.deepEqual(await suggestOnboardingSeeking(aiServer(() => fail(503, "DOWN")).client, { candidates: [], goal: "x", language: "zh" }), []);
+});
+
+test("a spent introduction quota is told apart from a failure", async () => {
+  assert.deepEqual(await generateOnboardingIntro(aiServer(() => fail(409, "INTRO_LIMIT_REACHED")).client, "zh", "k"), { ok: false, kind: "limit" });
 });

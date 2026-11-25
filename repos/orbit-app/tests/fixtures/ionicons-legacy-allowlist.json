@@ -17,8 +17,6 @@
     "src/screens/notes/NoteEventPicker.tsx",
     "src/screens/notes/NoteMentionEditor.tsx",
     "src/screens/profile/AccountAuthScreen.tsx",
-    "src/screens/profile/onboarding/OnboardingParts.tsx",
-    "src/screens/profile/onboarding/ProfileOnboardingScreen.tsx",
     "src/screens/schedule/MeetingDetailScreen.tsx",
     "src/screens/schedule/ScheduleEventPreviewScreen.tsx",
     "src/screens/schedule/ScheduleScreen.tsx",

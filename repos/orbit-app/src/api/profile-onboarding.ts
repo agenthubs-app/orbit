@@ -1,25 +1,29 @@
 /**
  * HTTP layer for new-user onboarding. Same endpoints and checks as the web flow
  * (orbit-2026/onboarding/onboarding-client.ts): GET/PUT /api/profile with a verified mutation
- * receipt and a readback, a visible version conflict, the intro draft, the own
- * business-card scan, and the business-card batch v2 collection for the import step.
+ * receipt and a readback, a visible version conflict, the intro draft and the own
+ * business-card scan.
  */
 import type { OrbitApiClient } from "./client";
-import type { IngestBatchDetailContract } from "./contract/business-card-batch";
 import type { ManualProfileContract } from "./contract/profile";
+import type { OwnCardScanContract, ProfileAutofillInferenceContract, ProfileAutofillInferenceRequestContract } from "./contract/profile-autofill";
+import { isIndustryIdCode, validateIndustrySelection } from "./domain/industries";
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "./contract/industries";
 import { ORBIT_API_ENDPOINTS } from "./endpoints";
 import { profileDetailSchema, profileSaveReceiptSchema, type ProfileDetail, type ProfileSaveRequest } from "./profile-detail-contract";
 import type { ApiResult } from "./types";
-import { acceptedBatchCollection, acceptedIngestDetail, INGEST_COLLECTION_PATH, ingestBatchPath } from "../view-models/business-card-ingest";
-import { onboardingImportSummary, type OnboardingImportSummary } from "../view-models/profile-onboarding";
 
 export const PROFILE_INTRO_DRAFT_PATH = "/api/profile/intro-draft";
+export const PROFILE_AUTOFILL_PATH = "/api/profile/autofill-inference";
+export const PROFILE_SEEK_SUGGESTIONS_PATH = "/api/profile/seek-suggestions";
+/** The server answers within 15 s; later than this counts as unavailable (profile-autofill contract). */
+const AUTOFILL_TIMEOUT_MS = 20_000;
 
 export type OnboardingFailure = { ok: false; kind: "offline" | "failed" };
 export type OnboardingSaveFailure = OnboardingFailure | { ok: false; kind: "conflict" };
 export type OnboardingProfileFields = Partial<Pick<ManualProfileContract,
   "birthDate" | "displayName" | "organization" | "primaryIndustryId" | "role" | "secondaryIndustryId"
-  | "relationshipGoal" | "offering" | "seeking" | "topics" | "bio" | "headline">>;
+  | "handles" | "relationshipGoal" | "offering" | "seeking" | "topics" | "bio" | "headline">>;
 
 function failure(result: ApiResult<unknown>): OnboardingFailure {
   return { ok: false, kind: !result.success && result.error.code === "ORBIT_APP_NETWORK_ERROR" ? "offline" : "failed" };
@@ -68,8 +72,9 @@ export async function generateOnboardingIntro(
   client: OrbitApiClient,
   language: "zh" | "en" | "ja",
   idempotencyKey: string,
-): Promise<{ ok: true; bio: string; headline: string } | OnboardingFailure> {
+): Promise<{ ok: true; bio: string; headline: string } | OnboardingFailure | { ok: false; kind: "limit" }> {
   const result = await client.post<unknown>(PROFILE_INTRO_DRAFT_PATH, { body: { language, idempotencyKey } });
+  if (!result.success && result.error.code === "INTRO_LIMIT_REACHED") return { ok: false, kind: "limit" };
   if (!succeeded(result) || !result.success) return failure(result);
   const data = result.data as { bio?: unknown; headline?: unknown } | null;
   if (typeof data?.bio !== "string" || typeof data.headline !== "string") return { ok: false, kind: "failed" };
@@ -83,36 +88,58 @@ export interface OwnCardImage {
   size: number | null;
 }
 
+export interface OwnCard {
+  name: string;
+  company: string;
+  title: string;
+  email: string;
+  phone: string;
+  /** Judged by AI from the card, both or neither. */
+  industry: { primary: IndustryIdCode; secondary: SecondaryIndustryIdCode } | null;
+}
+
+const text = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
+
+function industryPair(primary: unknown, secondary: unknown): OwnCard["industry"] {
+  if (!isIndustryIdCode(primary) || typeof secondary !== "string") return null;
+  return validateIndustrySelection({ primaryIndustryId: primary, secondaryIndustryId: secondary }).valid ? { primary, secondary: secondary as SecondaryIndustryIdCode } : null;
+}
+
 /** The scan only returns a draft for review; it does not create a contact. */
 export async function scanOwnBusinessCard(
   client: OrbitApiClient,
   image: OwnCardImage,
   signal?: AbortSignal,
-): Promise<{ ok: true; name: string; company: string; title: string } | OnboardingFailure> {
+): Promise<({ ok: true } & OwnCard) | OnboardingFailure> {
   const body = { imageBase64: image.base64, imageName: image.fileName, ...(image.size && image.size > 0 ? { imageSizeBytes: image.size } : {}), mimeType: image.mimeType };
   const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.contactDraftBusinessCardScan, { body, ...(signal ? { signal } : {}) });
   if (!succeeded(result) || !result.success) return failure(result);
-  const draft = (result.data as { draft?: { displayName?: unknown; organization?: unknown; role?: unknown } | null } | null)?.draft;
-  if (!draft) return { ok: false, kind: "failed" };
-  const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
-  return { ok: true, name: text(draft.displayName), company: text(draft.organization), title: text(draft.role) };
+  const data = result.data as Partial<OwnCardScanContract> | null;
+  if (!data?.draft) return { ok: false, kind: "failed" };
+  const judged = data.ocr?.structuredExtraction;
+  return {
+    ok: true, name: text(data.draft.displayName), company: text(data.draft.organization), title: text(data.draft.role), email: text(data.draft.email), phone: text(data.draft.phone),
+    industry: industryPair(judged?.primaryIndustryId, judged?.secondaryIndustryId),
+  };
 }
 
-export async function readOnboardingImportSummary(
+const labels = (value: unknown, limit: number): string[] => (Array.isArray(value) ? [...new Set(value.map(text).filter(Boolean))].slice(0, limit) : []);
+
+/** Industry and candidate tags from company + title. Anything but a ready answer is null: the fields stay for the person to fill. */
+export async function inferOnboardingAutofill(
   client: OrbitApiClient,
-  sinceMs: number,
-  ownerId: string | null
-): Promise<{ ok: true; summary: OnboardingImportSummary } | OnboardingFailure> {
-  const list = await client.get<unknown>(INGEST_COLLECTION_PATH);
-  const batches = acceptedBatchCollection(list, "current");
-  if (!batches) return failure(list);
-  const recent = batches.filter(batch => Date.parse(batch.createdAt) >= sinceMs).slice(0, 5);
-  const details: IngestBatchDetailContract[] = [];
-  for (const batch of recent) {
-    const result = await client.get<unknown>(ingestBatchPath(batch.id));
-    const detail = acceptedIngestDetail(result, batch.id, ownerId);
-    if (!detail) return failure(result);
-    details.push(detail);
-  }
-  return { ok: true, summary: onboardingImportSummary(details) };
+  request: ProfileAutofillInferenceRequestContract,
+): Promise<{ industry: OwnCard["industry"]; offering: string[]; topics: string[] } | null> {
+  const result = await client.post<unknown>(PROFILE_AUTOFILL_PATH, { body: request, timeoutMs: AUTOFILL_TIMEOUT_MS });
+  if (!succeeded(result) || !result.success) return null;
+  const data = result.data as Partial<ProfileAutofillInferenceContract> | null;
+  if (data?.status !== "ready") return null;
+  return { industry: industryPair(data.primaryIndustryId, data.secondaryIndustryId), offering: labels(data.offering, 5), topics: labels(data.topics, 8) };
+}
+
+/** Dashed candidates for 「求めていること」; only the texts offered come back. Empty on any failure. */
+export async function suggestOnboardingSeeking(client: OrbitApiClient, input: { candidates: readonly string[]; goal: string; language: "zh" | "en" | "ja" }): Promise<string[]> {
+  const result = await client.post<unknown>(PROFILE_SEEK_SUGGESTIONS_PATH, { body: input, timeoutMs: AUTOFILL_TIMEOUT_MS });
+  if (!succeeded(result) || !result.success) return [];
+  return labels((result.data as { suggestions?: unknown } | null)?.suggestions, 4).filter(label => input.candidates.includes(label));
 }

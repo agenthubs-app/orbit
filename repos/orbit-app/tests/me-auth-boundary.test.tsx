@@ -5,10 +5,11 @@ import test from "node:test";
 import * as React from "react";
 import * as jsxRuntime from "react/jsx-runtime";
 import ts from "typescript";
+import { onboardingExemptRoute } from "../src/onboarding/onboarding-gate";
 import { mobileSignInHref } from "../src/view-models/mobile-route-access";
 import { renderToHtml } from "./helpers/render";
 
-function privateAccountHtml(auth: { ready: boolean; signedIn: boolean }, pathname = "/settings/integrations", params: Record<string, string> = {}): string {
+function privateAccountHtml(auth: { ready: boolean; signedIn: boolean }, pathname = "/settings/integrations", params: Record<string, string> = {}, gate = auth.signedIn ? "clear" : "off"): string {
   const source = readFileSync("src/components/OrbitRouteAccessBoundary.tsx", "utf8");
   const code = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS } }).outputText;
   const colors = { bg: "white", accentText: "black" };
@@ -24,6 +25,8 @@ function privateAccountHtml(auth: { ready: boolean; signedIn: boolean }, pathnam
     if (name.endsWith("/tokens")) return { spacing: { md: 12, sm: 8 }, typography: { body: 14 } };
     if (name.endsWith("/theme")) return { useOrbitTheme: () => ({ colors }), createThemedStyles: (factory: (value: unknown) => unknown) => () => ({ colors, styles: factory(colors) }) };
     if (name.endsWith("/mobile-route-access")) return { mobileSignInHref };
+    if (name.endsWith("/OnboardingGateProvider")) return { useOnboardingGate: () => ({ status: gate }) };
+    if (name.endsWith("/onboarding-gate")) return { onboardingExemptRoute };
     if (name.endsWith("/shell-navigation")) return { rootStackScreenOptions: () => ({}) };
     if (name === "expo-router") return { Stack: div, usePathname: () => pathname, useGlobalSearchParams: () => params, Redirect: ({ href }: { href: string }) => React.createElement("div", { "data-redirect": href }) };
     throw new Error(`Unexpected boundary dependency ${name}`);
@@ -53,6 +56,14 @@ test("R18a unconfirmed auth never renders protected account content", () => {
 });
 test("R18a confirmed private route retains authenticated account content", () => {
   assert.ok(privateAccountHtml({ ready: true, signedIn: true }).includes("PRIVATE_ACCOUNT_CONTENT"));
+});
+test("onboarding cannot be gone around: a private page draws nothing until it is known to be done", () => {
+  const signedIn = { ready: true, signedIn: true };
+  for (const gate of ["unknown", "required"]) {
+    for (const route of ["/home", "/contacts", "/events/event-1", "/settings/integrations"]) assert.ok(!privateAccountHtml(signedIn, route, {}, gate).includes("PRIVATE_ACCOUNT_CONTENT"), `${gate} ${route}`);
+    for (const route of ["/profile/onboarding", "/account/deletion"]) assert.ok(privateAccountHtml(signedIn, route, {}, gate).includes("PRIVATE_ACCOUNT_CONTENT"), `${gate} ${route}`);
+  }
+  for (const gate of ["clear", "open"]) assert.ok(privateAccountHtml(signedIn, "/home", {}, gate).includes("PRIVATE_ACCOUNT_CONTENT"), gate);
 });
 test("every R18a App account entry uses the proven private route boundary", () => {
   for (const route of ["app/(app)/profile.tsx", "app/profile/edit.tsx", "app/profile/preview.tsx", "app/profile/tags.tsx", "app/profile/suggestions.tsx", "app/profile/more.tsx", "app/account/permissions.tsx", "app/settings.tsx", "app/settings/[section].tsx", "app/settings/integrations.tsx", "app/settings/iorbit.tsx", "app/settings/api.tsx"]) {

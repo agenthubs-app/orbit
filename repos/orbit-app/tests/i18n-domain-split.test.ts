@@ -21,10 +21,11 @@ const PRE_SPLIT = {
   // Recheck 2026-10-27 (personal schedule delete moved to a dialog: its confirm button is a short "Delete") updated more.
   // 2026-10-27 relationship messages stop at drafts: the four send keys (inbox.sendMessage / sendingMessage /
   // retrySend / sendUnconfirmed) are gone; merged with redesign's copy updates of the same day.
-  en: { keys: 2249, sha256: "a73787e6ba20f50de2465520f312d4b5530101db73995e0b600482b912b5984d" },
+  // 2026-11-25 three-step onboarding: the five-step screens' onboarding.* keys are gone (the new ones are onboarding.v3.*).
+  en: { keys: 2166, sha256: "06ae01a2aa88c322496dd9a51174cf4c0b78e66c1ded21905709bf178b918513" },
   // 36 original ja values were updated by later copy work; the key set is still R03's.
-  ja: { keys: 2249, sha256: "4d7f8600f8d28bc4bda8cfd0684e791813ab010d782748ead0ea381d8dc562e3" },
-  zh: { keys: 2249, sha256: "77c324ea240b140d537d4b2908c20e1e8809e67a012efd1727fcb940ca3691d2" },
+  ja: { keys: 2166, sha256: "e83b86f72691f017f1785be7c2eb15db4c36484760ee0300df792732443705e3" },
+  zh: { keys: 2166, sha256: "0edb4b8845260ef939e35f8a68b91f4cd14343441cc76be5e19595261e9e7e82" },
 };
 const dictionaries = { en, ja, zh } as const;
 // Captured from 4cb76ad8c, excluding the post-split shell/session domains.

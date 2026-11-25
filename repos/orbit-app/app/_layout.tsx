@@ -20,6 +20,8 @@ import {
   AppErrorScreen
 } from "../src/components/AppErrorBoundary";
 import { OrbitRouteAccessBoundary } from "../src/components/OrbitRouteAccessBoundary";
+import { OnboardingGateProvider } from "../src/onboarding/OnboardingGateProvider";
+import { OnboardingGateRedirect } from "../src/onboarding/OnboardingGateRedirect";
 import { OrbitNotificationsCoordinator } from "../src/components/OrbitNotificationsCoordinator";
 import { OrbitNotificationLifecycle } from "../src/notifications/NotificationLifecycle";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -209,13 +211,16 @@ export default function RootLayout() {
             <WidgetScopeObserver />
             <OrbitLocaleProvider>
               <OrbitTimeZoneProvider>
+                <OnboardingGateProvider>
                 <RootVersionBoundary>{allowed => <UiRoot blocked={!allowed}>
                   <OrbitNotificationsCoordinator />
                   <OrbitNotificationLifecycle />
                   <OrbitRouteAccessBoundary />
+                  <OnboardingGateRedirect />
                   <DevOpenPath />
                   <StatusBar style={scheme === "dark" ? "light" : "dark"} />
                 </UiRoot>}</RootVersionBoundary>
+                </OnboardingGateProvider>
               </OrbitTimeZoneProvider>
             </OrbitLocaleProvider>
           </OrbitAuthSessionProvider>

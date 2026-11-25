@@ -1,0 +1,52 @@
+{
+ "_note": "新用户引导三步版 App A1–A7（onboarding-3step-proposal.html ④）。实现侧 = /profile/onboarding?design=A1…A7（开发包、已登录、界面语言日语），Metro 带 EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=open-path,onboarding,no-keyboard。在 repos/orbits 下跑：node scripts/visual/compare-redesign-app.mjs --suite ../orbit-app/scripts/visual/app-onboarding-3step.json --simulator <udid> --out <dir>",
+ "defaults": {
+  "design": "onboarding-3step-proposal.html",
+  "grid": 30,
+  "wait": 12000,
+  "themes": [
+   "light"
+  ]
+ },
+ "sources": [
+  "repos/orbit-app/src/screens/profile/onboarding/**",
+  "repos/orbit-app/src/i18n/ja/onboarding.ts"
+ ],
+ "views": [
+  {
+   "id": "A-OB3-A1",
+   "path": "/profile/onboarding?design=A1",
+   "board-index": 16
+  },
+  {
+   "id": "A-OB3-A2",
+   "path": "/profile/onboarding?design=A2",
+   "board-index": 17
+  },
+  {
+   "id": "A-OB3-A3",
+   "path": "/profile/onboarding?design=A3",
+   "board-index": 18
+  },
+  {
+   "id": "A-OB3-A4",
+   "path": "/profile/onboarding?design=A4",
+   "board-index": 19
+  },
+  {
+   "id": "A-OB3-A5",
+   "path": "/profile/onboarding?design=A5",
+   "board-index": 20
+  },
+  {
+   "id": "A-OB3-A6",
+   "path": "/profile/onboarding?design=A6",
+   "board-index": 21
+  },
+  {
+   "id": "A-OB3-A7",
+   "path": "/profile/onboarding?design=A7",
+   "board-index": 22
+  }
+ ]
+}

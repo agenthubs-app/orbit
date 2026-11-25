@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { IngestBatchDetailContract, IngestItemContract } from "../src/api/contract/business-card-batch";
 import { profileDetailSchema } from "../src/api/profile-detail-contract";
 import {
   savedOptionLabel,
@@ -17,8 +16,12 @@ import {
   introDraftLanguage,
   isValidProfileBirthDate,
   onboardingDestination,
-  onboardingEntry,
-  onboardingImportSummary,
+  onboardingGoals,
+  onboardingMissing,
+  onboardingRequired,
+  stepForConfirmedScreen,
+  EMPTY_BASIC,
+  STEP_SCREENS,
   optionLabel,
   optionMatches,
   parseRelationshipGoal,
@@ -37,30 +40,42 @@ function detail(profilePatch: Record<string, unknown>, onboarding: unknown = inc
 
 const blank = { relationshipGoal: "", offering: [], seeking: [], bio: "", headline: "" };
 
-test("entry: a new account with nothing saved starts at the welcome screen", () => {
-  const empty = profileDetailSchema.parse({ ...emptyProfilePayload, onboarding: incomplete });
-  assert.deepEqual(onboardingEntry(empty), { kind: "welcome" });
-  assert.deepEqual(onboardingEntry(detail(blank)), { kind: "welcome" });
+test("three steps sit on the server's five screens, both ways", () => {
+  assert.deepEqual(Object.values(STEP_SCREENS).flat(), [1, 2, 3, 4, 5]);
+  assert.deepEqual([0, 1, 2, 3, 4, 5].map(stepForConfirmedScreen), ["profile", "goals", "goals", "intro", "intro", "intro"]);
 });
 
-test("entry: resume starts at the first unfinished step inferred from saved fields", () => {
-  // Step 1 and 2 saved, persona empty → the OnbStates D example: 2 / 5 from persona.
-  assert.deepEqual(onboardingEntry(detail({ ...blank, relationshipGoal: "获取客户（本季度）" }, complete)), { kind: "resume", completed: 2, step: "persona" });
-  // Only step 1 saved.
-  assert.deepEqual(onboardingEntry(detail(blank, complete)), { kind: "resume", completed: 1, step: "goals" });
-  // Later steps saved elsewhere but the completion policy still misses fields → step 1 first.
-  assert.deepEqual(onboardingEntry(detail({ ...blank, bio: "做产品" }, incomplete)), { kind: "resume", completed: 1, step: "profile" });
-  // Through intro, not persona: persona is the first gap.
-  assert.deepEqual(onboardingEntry(detail({ ...blank, relationshipGoal: "x", headline: "h" }, complete)), { kind: "resume", completed: 3, step: "persona" });
+test("missing: name, industry, then detail; one goal; an introduction within its limit", () => {
+  const basic = { ...EMPTY_BASIC, name: "林晓", primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data" } as const;
+  const draft = { basic, goals: [], bio: "" };
+  assert.deepEqual(onboardingMissing("profile", { ...draft, basic: EMPTY_BASIC }), ["name", "primaryIndustry"]);
+  assert.deepEqual(onboardingMissing("profile", { ...draft, basic: { ...basic, secondaryIndustryId: "" } }), ["secondaryIndustry"]);
+  assert.deepEqual(onboardingMissing("profile", { ...draft, basic: { ...basic, name: "  " } }), ["name"]);
+  assert.deepEqual(onboardingMissing("profile", draft), [], "company, title, contacts and birthday are optional");
+  assert.deepEqual(onboardingMissing("goals", draft), ["goals"]);
+  assert.deepEqual(onboardingMissing("goals", { ...draft, goals: ["招聘人才"] }), []);
+  assert.deepEqual(onboardingMissing("intro", draft), ["intro"]);
+  assert.deepEqual(onboardingMissing("intro", { ...draft, bio: "界".repeat(81) }), ["intro"]);
+  assert.deepEqual(onboardingMissing("intro", { ...draft, bio: "界".repeat(80) }), []);
 });
 
-test("entry: an account with steps 1–4 saved leaves onboarding immediately", () => {
-  assert.deepEqual(onboardingEntry(detail({ relationshipGoal: "x", offering: ["a"], seeking: [], bio: "", headline: "h" }, complete)), { kind: "done" });
+test("who still has to go through onboarding", () => {
+  const flow = (patch: Partial<{ deferred: boolean; finishedAt: string | null }> = {}) => ({ deferred: false, finishedAt: null, ...patch });
+  const filled = detail({ relationshipGoal: "获取客户", bio: "介绍" }, complete);
+  assert.equal(onboardingRequired(detail(blank), null), true, "an incomplete profile, with or without a flow");
+  assert.equal(onboardingRequired(detail(blank), flow({ deferred: true })), true, "putting it off no longer counts");
+  assert.equal(onboardingRequired(detail(blank), flow({ finishedAt: "2026-10-20T00:00:00.000Z" })), true, "finished once, then a required field went missing");
+  assert.equal(onboardingRequired(filled, flow()), true, "started and not finished");
+  assert.equal(onboardingRequired(detail(blank, complete), flow({ deferred: true })), true, "put off before the goal and the introduction");
+  assert.equal(onboardingRequired(filled, flow({ deferred: true })), false, "put off, but everything required is there");
+  assert.equal(onboardingRequired(filled, flow({ finishedAt: "2026-10-20T00:00:00.000Z" })), false);
+  assert.equal(onboardingRequired(detail(blank, complete), null), false, "an older complete account that never had a flow");
+  assert.equal(onboardingRequired(detail(blank, undefined), null), true, "the fixture default is incomplete");
 });
 
-test("entry: an absent completion policy is not read as complete", () => {
-  const parsed = profileDetailSchema.parse({ ...profilePayload, onboarding: undefined });
-  assert.equal(onboardingEntry(parsed).kind, "resume");
+test("goals of earlier lists have no card: their text stays in the one line", () => {
+  assert.deepEqual(onboardingGoals("获取客户、开拓新市场：日本（本季度）"), { goals: ["获取客户"], focus: "开拓新市场、日本", horizon: "本季度" });
+  assert.deepEqual(onboardingGoals("自由文字"), { goals: [], focus: "自由文字", horizon: "" });
 });
 
 test("destination keeps a safe next, allows the profile page and rejects loops", () => {
@@ -94,6 +109,7 @@ test("options match across the three languages and label in the current one", ()
   assert.equal(optionMatches(option, "Customer introductions"), true);
   assert.equal(optionMatches(option, "顧客紹介"), true);
   assert.equal(optionMatches(option, "别的"), false);
+  assert.equal(optionMatches(OFFER_OPTIONS.find(item => item.zh === "市场渠道")!, "販売チャネル"), true, "a label the App saved before the shared table");
   assert.equal(optionLabel(option, "ja"), "顧客紹介");
   assert.equal(HORIZONS.length, 3);
 });
@@ -130,23 +146,6 @@ test("intro drafts preserve Japanese and allow two alternatives after the first"
   assert.equal(introDraftLanguage("en"), "en");
   assert.equal(introDraftLanguage("ja"), "ja");
   assert.equal(INTRO_REGENERATE_LIMIT, 2);
-});
-
-function item(cardId: string, status: IngestItemContract["status"], seq: number, side: "front" | "back" = "front"): IngestItemContract {
-  return { id: `item:${seq}`, batchId: "batch:1", cardId, side, seq, status, version: 1, sourceFileName: `${seq}.jpg`, rawSize: 1, rawMimeType: "image/jpeg", clientDigest: `d${seq}`,
-    imageDigest: null, derivativeObjectKey: null, derivativeSize: null, confirmedContactId: status === "confirmed" ? "contact:1" : null } as unknown as IngestItemContract;
-}
-function batch(id: string, items: IngestItemContract[]): IngestBatchDetailContract {
-  return { batch: { id } as IngestBatchDetailContract["batch"], items: items.map(entry => ({ ...entry, batchId: id })) };
-}
-
-test("import summary counts cards, not images, and points at the batch that needs review", () => {
-  const summary = onboardingImportSummary([
-    batch("b1", [item("c1", "confirmed", 1), item("c1", "confirmed", 2, "back"), item("c2", "extracted", 3), item("c3", "processing", 4)]),
-    batch("b2", [item("c4", "terminal_failed", 1), item("c5", "skipped", 2), item("c6", "queued", 3)])
-  ]);
-  assert.deepEqual(summary, { imported: 1, review: 2, recognizing: 2, reviewBatchId: "b1" });
-  assert.deepEqual(onboardingImportSummary([]), { imported: 0, review: 0, recognizing: 0, reviewBatchId: null });
 });
 
 test("saved tags show in the reader's language without changing what is stored", () => {

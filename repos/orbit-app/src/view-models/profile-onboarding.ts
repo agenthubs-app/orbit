@@ -1,22 +1,31 @@
 /**
- * New-user onboarding (web /app/profile/onboarding, orbit-2026/onboarding) as a pure App model.
- * Same steps, limits, option lists and relationship-goal format as the web flow; the App
- * adds Japanese labels. No React, no HTTP. Progress is inferred from saved profile fields.
+ * New-user onboarding (docs/designs/redesign-2026-10/onboarding-3step-proposal.html) as a pure App model:
+ * three steps, no skipping. Same limits, option lists and relationship-goal format as Web. No React, no HTTP.
  */
-import type { IngestBatchDetailContract } from "../api/contract/business-card-batch";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../api/contract/industries";
 import type { OrbitLanguage } from "../api/contract/language";
 import { isIndustryIdCode, validateIndustrySelection } from "../api/domain/industries";
 import type { ProfileDetail } from "../api/profile-detail-contract";
 import { profileBioLimit, profileVisibleLength } from "../api/schema/profile-bio";
 import { PROFILE_ONBOARDING_GOALS } from "../api/compute/profile-onboarding-goal";
-import { ingestCards } from "./business-card-ingest";
+import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../api/compute/profile-tag-options";
 import { safeProfileContinuationNext } from "./profile-continuation-route";
 
 export type Copy = { readonly zh: string; readonly en: string; readonly ja: string };
-export type OnboardingStep = "profile" | "goals" | "persona" | "intro" | "import";
+export type OnboardingStep = "profile" | "goals" | "intro";
 
-export const ONBOARDING_STEPS: readonly OnboardingStep[] = ["profile", "goals", "persona", "intro", "import"];
+export const ONBOARDING_STEPS: readonly OnboardingStep[] = ["profile", "goals", "intro"];
+
+/**
+ * The server's progress keeps its five screens (shared with Web and older Apps): step ① confirms screen 1,
+ * step ② (goals + strengths) screens 2 and 3, step ③ screens 4 and 5, then finishes.
+ */
+export const STEP_SCREENS: Readonly<Record<OnboardingStep, readonly (1 | 2 | 3 | 4 | 5)[]>> = { profile: [1], goals: [2, 3], intro: [4, 5] };
+
+/** The step that continues a flow whose last confirmed screen is `lastConfirmed`. */
+export function stepForConfirmedScreen(lastConfirmed: number): OnboardingStep {
+  return lastConfirmed < 1 ? "profile" : lastConfirmed < 3 ? "goals" : "intro";
+}
 
 // Same limits as the web model (and the server's ink-signal validation for offering/seeking).
 export const GOAL_LIMIT = 2;
@@ -37,17 +46,24 @@ export const CUSTOM_TAG_LIMIT = 24;
 // 「换一版」 attempts; the automatic first draft and failed attempts do not count.
 export const INTRO_REGENERATE_LIMIT = 2;
 
-export interface GoalGroup {
-  readonly title: Copy;
-  readonly options: readonly Copy[];
+export type GoalTone = "pink" | "apricot" | "blue" | "teal" | "lav";
+export interface GoalOption extends Copy {
+  readonly id: string;
+  readonly emoji: string;
+  readonly tone: GoalTone;
+  readonly sub: Copy;
 }
 
-export const GOAL_GROUPS: readonly GoalGroup[] = [{
-  title: { zh: "当前目标", en: "Current goal", ja: "今の目標" },
-  options: PROFILE_ONBOARDING_GOALS.map(({ zh, en, ja }) => ({ zh, en, ja })),
-}];
+const GOAL_TILES: Readonly<Record<string, { emoji: string; tone: GoalTone; sub: Copy }>> = {
+  funding: { emoji: "💰", tone: "pink", sub: { ja: "投資家・金融機関", zh: "投资人、金融机构", en: "Investors · lenders" } },
+  customers: { emoji: "🏭", tone: "blue", sub: { ja: "決裁者・購買担当", zh: "决策者、采购负责人", en: "Decision makers · buyers" } },
+  hiring: { emoji: "🧑‍💼", tone: "teal", sub: { ja: "候補者・紹介者", zh: "候选人、推荐人", en: "Candidates · referrers" } },
+  partners: { emoji: "🤝", tone: "apricot", sub: { ja: "協業・販路", zh: "合作、渠道", en: "Alliances · channels" } },
+  awareness: { emoji: "📣", tone: "lav", sub: { ja: "登壇・メディア", zh: "演讲、媒体", en: "Talks · media" } },
+  research: { emoji: "📚", tone: "blue", sub: { ja: "業界の知見", zh: "行业见解", en: "Industry insight" } },
+};
 
-const GOAL_OPTIONS_FLAT: readonly Copy[] = GOAL_GROUPS.flatMap(group => group.options);
+export const GOAL_OPTIONS: readonly GoalOption[] = PROFILE_ONBOARDING_GOALS.map(({ id, zh, en, ja }) => ({ id, zh, en, ja, ...GOAL_TILES[id]! }));
 const LEGACY_GOAL_LABELS = new Set([
   "开拓新市场", "出海拓展", "寻找供应商", "寻找投资机会", "寻找联合创始人", "拓展行业人脉", "寻找导师", "职业发展", "组织活动与社群", "探索新方向",
   "Enter a new market", "Expand overseas", "Source suppliers", "Find deals to invest in", "Find a co-founder", "Grow my industry network", "Find a mentor", "Advance my career", "Build a community", "Explore a new direction",
@@ -60,76 +76,38 @@ export const HORIZONS: readonly Copy[] = [
   { zh: "今年", en: "This year", ja: "今年" }
 ];
 
-export const OFFER_OPTIONS: readonly Copy[] = [
-  { zh: "投融资资源", en: "Investment & funding", ja: "投資・資金調達の人脈" },
-  { zh: "客户引荐", en: "Customer introductions", ja: "顧客紹介" },
-  { zh: "市场渠道", en: "Market channels", ja: "販売チャネル" },
-  { zh: "行业经验", en: "Industry expertise", ja: "業界経験" },
-  { zh: "产品与技术咨询", en: "Product & tech advice", ja: "プロダクト・技術の相談" },
-  { zh: "创业辅导", en: "Startup mentoring", ja: "起業支援" },
-  { zh: "日本市场资源", en: "Japan market access", ja: "日本市場のつながり" },
-  { zh: "中国市场资源", en: "China market access", ja: "中国市場のつながり" },
-  { zh: "出海落地支持", en: "Overseas expansion support", ja: "海外進出サポート" },
-  { zh: "供应链资源", en: "Supply chain resources", ja: "サプライチェーン" },
-  { zh: "人才推荐", en: "Talent referrals", ja: "人材紹介" },
-  { zh: "媒体与品牌曝光", en: "Media & brand exposure", ja: "メディア・ブランド露出" },
-  { zh: "活动与社群资源", en: "Events & community access", ja: "イベント・コミュニティ" },
-  { zh: "法务财税咨询", en: "Legal, tax & finance advice", ja: "法務・税務・財務の相談" },
-  { zh: "AI 落地经验", en: "Hands-on AI adoption", ja: "AI 導入の実務経験" },
-  { zh: "技术开发能力", en: "Engineering capacity", ja: "技術開発力" },
-  { zh: "设计与创意", en: "Design & creative", ja: "デザイン・クリエイティブ" },
-  { zh: "销售与商务拓展", en: "Sales & business development", ja: "営業・事業開発" },
-  { zh: "数据分析", en: "Data & analytics", ja: "データ分析" },
-  { zh: "翻译与跨文化沟通", en: "Translation & cross-cultural support", ja: "翻訳・異文化コミュニケーション" },
-  { zh: "办公场地与孵化", en: "Office space & incubation", ja: "オフィス・インキュベーション" },
-  { zh: "政府与政策资源", en: "Government & policy contacts", ja: "行政・政策のつながり" }
-];
+export { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS };
 
-export const SEEK_OPTIONS: readonly Copy[] = [
-  { zh: "投资人", en: "Investors", ja: "投資家" },
-  { zh: "联合创始人", en: "Co-founders", ja: "共同創業者" },
-  { zh: "潜在客户", en: "Potential customers", ja: "見込み顧客" },
-  { zh: "渠道合作伙伴", en: "Channel partners", ja: "販売パートナー" },
-  { zh: "战略合作伙伴", en: "Strategic partners", ja: "戦略パートナー" },
-  { zh: "出海合作伙伴", en: "Overseas expansion partners", ja: "海外展開のパートナー" },
-  { zh: "供应商", en: "Suppliers", ja: "仕入れ先" },
-  { zh: "行业导师", en: "Mentors & advisors", ja: "メンター・アドバイザー" },
-  { zh: "技术人才", en: "Technical talent", ja: "技術人材" },
-  { zh: "媒体与 KOL", en: "Media & KOLs", ja: "メディア・KOL" },
-  { zh: "活动主办方", en: "Event organisers", ja: "イベント主催者" },
-  { zh: "同行交流", en: "Industry peers", ja: "同業者との交流" },
-  { zh: "早期用户", en: "Early adopters", ja: "アーリーアダプター" },
-  { zh: "行业专家", en: "Industry experts", ja: "業界の専門家" },
-  { zh: "本地向导", en: "Local guides", ja: "現地ガイド" },
-  { zh: "创业者", en: "Founders", ja: "起業家" },
-  { zh: "业务人才", en: "Business talent", ja: "ビジネス人材" },
-  { zh: "服务商", en: "Service providers", ja: "サービス提供者" },
-  { zh: "社群运营者", en: "Community builders", ja: "コミュニティ運営者" },
-  { zh: "企业决策者", en: "Enterprise decision-makers", ja: "企業の意思決定者" }
-];
-
-export const TOPIC_OPTIONS: readonly Copy[] = [
-  { zh: "生成式 AI", en: "Generative AI", ja: "生成 AI" },
-  { zh: "创业与融资", en: "Startups & fundraising", ja: "起業・資金調達" },
-  { zh: "出海与跨境", en: "Going global", ja: "海外進出・越境" },
-  { zh: "日本市场", en: "Japan market", ja: "日本市場" },
-  { zh: "中国市场", en: "China market", ja: "中国市場" },
-  { zh: "SaaS 与企业服务", en: "SaaS & enterprise", ja: "SaaS・法人向けサービス" },
-  { zh: "金融科技", en: "Fintech", ja: "フィンテック" },
-  { zh: "消费品牌", en: "Consumer brands", ja: "消費者ブランド" },
-  { zh: "产品与增长", en: "Product & growth", ja: "プロダクト・グロース" },
-  { zh: "投资趋势", en: "Investment trends", ja: "投資トレンド" },
-  { zh: "可持续发展", en: "Sustainability", ja: "サステナビリティ" },
-  { zh: "医疗健康", en: "Healthcare", ja: "医療・ヘルスケア" },
-  { zh: "Web3", en: "Web3", ja: "Web3" },
-  { zh: "团队与管理", en: "Leadership & teams", ja: "チーム・マネジメント" },
-  { zh: "跨境电商", en: "Cross-border e-commerce", ja: "越境 EC" },
-  { zh: "机器人与硬件", en: "Robotics & hardware", ja: "ロボット・ハードウェア" },
-  { zh: "新能源", en: "New energy", ja: "新エネルギー" },
-  { zh: "内容与媒体", en: "Content & media", ja: "コンテンツ・メディア" },
-  { zh: "教育", en: "Education", ja: "教育" },
-  { zh: "文旅与餐饮", en: "Travel, food & hospitality", ja: "旅行・飲食・ホスピタリティ" }
-];
+/** Japanese labels the App used before it shared the candidate table (2026-11-25); saved profiles still hold them. */
+const EARLIER_JA: Readonly<Record<string, string>> = {
+  "投融资资源": "投資・資金調達の人脈",
+  "市场渠道": "販売チャネル",
+  "产品与技术咨询": "プロダクト・技術の相談",
+  "日本市场资源": "日本市場のつながり",
+  "中国市场资源": "中国市場のつながり",
+  "出海落地支持": "海外進出サポート",
+  "法务财税咨询": "法務・税務・財務の相談",
+  "AI 落地经验": "AI 導入の実務経験",
+  "技术开发能力": "技術開発力",
+  "政府与政策资源": "行政・政策のつながり",
+  "渠道合作伙伴": "販売パートナー",
+  "战略合作伙伴": "戦略パートナー",
+  "出海合作伙伴": "海外展開のパートナー",
+  "供应商": "仕入れ先",
+  "行业导师": "メンター・アドバイザー",
+  "早期用户": "アーリーアダプター",
+  "行业专家": "業界の専門家",
+  "业务人才": "ビジネス人材",
+  "服务商": "サービス提供者",
+  "出海与跨境": "海外進出・越境",
+  "SaaS 与企业服务": "SaaS・法人向けサービス",
+  "消费品牌": "消費者ブランド",
+  "产品与增长": "プロダクト・グロース",
+  "投资趋势": "投資トレンド",
+  "医疗健康": "医療・ヘルスケア",
+  "机器人与硬件": "ロボット・ハードウェア",
+  "文旅与餐饮": "旅行・飲食・ホスピタリティ",
+};
 
 export function optionLabel(option: Copy, language: OrbitLanguage): string {
   return option[language];
@@ -137,7 +115,7 @@ export function optionLabel(option: Copy, language: OrbitLanguage): string {
 
 /** A saved tag equals an option when it matches the option in any language. */
 export function optionMatches(option: Copy, value: string): boolean {
-  return value === option.zh || value === option.en || value === option.ja;
+  return value === option.zh || value === option.en || value === option.ja || value === EARLIER_JA[option.zh];
 }
 
 export function isKnownOption(options: readonly Copy[], value: string): boolean {
@@ -203,9 +181,17 @@ export function parseRelationshipGoal(text: string): GoalDraft {
   const head = split ? split[1]! : rest;
   const focus = split ? split[2]!.trim() : "";
   const candidates = head.split(/、|, /u).map(item => item.trim()).filter(Boolean);
-  const known = candidates.length > 0 && candidates.length <= GOAL_LIMIT && candidates.every(item => isKnownOption(GOAL_OPTIONS_FLAT, item) || LEGACY_GOAL_LABELS.has(item));
+  const known = candidates.length > 0 && candidates.length <= GOAL_LIMIT && candidates.every(item => isKnownOption(GOAL_OPTIONS, item) || LEGACY_GOAL_LABELS.has(item));
   if (known) return { goals: candidates, focus, horizon };
   return { goals: [], focus: rest, horizon };
+}
+
+/** The saved goal as the six cards + one line: goals of earlier lists have no card, so their text stays in the line. */
+export function onboardingGoals(text: string): GoalDraft {
+  const { goals, focus, horizon } = parseRelationshipGoal(text);
+  const known = goals.filter(goal => isKnownOption(GOAL_OPTIONS, goal));
+  const earlier = goals.filter(goal => !known.includes(goal));
+  return { goals: known, focus: [...earlier, focus].filter(Boolean).join("、").slice(0, FOCUS_LIMIT), horizon };
 }
 
 // Same rule as the server's completion policy: calendar strings, never a local instant.
@@ -221,19 +207,24 @@ export function isValidProfileBirthDate(value: unknown, today: string): value is
 export interface BasicDraft {
   birthDate: string;
   company: string;
+  /** Contact details read off the own card; kept private (no row when nothing was read). */
+  email: string;
+  phone: string;
   name: string;
   primaryIndustryId: IndustryIdCode | "";
   secondaryIndustryId: SecondaryIndustryIdCode | "";
   title: string;
 }
 
-export const EMPTY_BASIC: BasicDraft = { birthDate: "", company: "", name: "", primaryIndustryId: "", secondaryIndustryId: "", title: "" };
+export const EMPTY_BASIC: BasicDraft = { birthDate: "", company: "", email: "", phone: "", name: "", primaryIndustryId: "", secondaryIndustryId: "", title: "" };
 
 export function basicDraftFromProfile(profile: ProfileDetail["profile"]): BasicDraft {
   if (!profile) return EMPTY_BASIC;
   return {
     birthDate: profile.birthDate ?? "",
     company: profile.organization ?? "",
+    email: profile.handles?.email ?? "",
+    phone: profile.handles?.phone ?? "",
     name: profile.displayName ?? "",
     primaryIndustryId: isIndustryIdCode(profile.primaryIndustryId) ? profile.primaryIndustryId : "",
     secondaryIndustryId: (profile.secondaryIndustryId as SecondaryIndustryIdCode | null | undefined) ?? "",
@@ -250,44 +241,36 @@ export function basicDraftValid(draft: BasicDraft, today: string): boolean {
   return Boolean(draft.name.trim()) && basicIndustryValid(draft) && (!draft.birthDate || isValidProfileBirthDate(draft.birthDate, today));
 }
 
-export interface OnboardingProgress {
-  profile: boolean;
-  goals: boolean;
-  persona: boolean;
-  intro: boolean;
-}
+export type OnboardingMissingField = "name" | "primaryIndustry" | "secondaryIndustry" | "goals" | "intro";
 
-/** Which steps the saved profile already covers (the web preview uses the same rules). */
-export function onboardingProgress(detail: ProfileDetail): OnboardingProgress {
-  const profile = detail.profile;
-  return {
-    profile: detail.onboarding?.status === "complete",
-    goals: Boolean(profile?.relationshipGoal.trim()),
-    persona: Boolean(profile?.offering?.length || profile?.seeking?.length),
-    intro: Boolean(profile?.bio?.trim() || profile?.headline.trim())
-  };
+/** What still stops 「次へ」 on a step, in screen order. 詳細 is asked for only once 業界 is chosen. */
+export function onboardingMissing(step: OnboardingStep, draft: { basic: BasicDraft; goals: readonly string[]; bio: string }): OnboardingMissingField[] {
+  if (step === "goals") return draft.goals.length ? [] : ["goals"];
+  if (step === "intro") return draft.bio.trim() && !bioCounter(draft.bio).over ? [] : ["intro"];
+  const missing: OnboardingMissingField[] = [];
+  if (!draft.basic.name.trim()) missing.push("name");
+  if (!draft.basic.primaryIndustryId) missing.push("primaryIndustry");
+  else if (!basicIndustryValid(draft.basic)) missing.push("secondaryIndustry");
+  return missing;
 }
-
-export type OnboardingEntry =
-  | { kind: "done" }
-  | { kind: "welcome" }
-  | { kind: "resume"; completed: number; step: OnboardingStep };
 
 /**
- * Where the flow opens. Steps 1–4 all saved → leave; none → welcome; otherwise the
- * 「继续设置你的资料」 card pointing at the first unfinished step. The import step is
- * never inferable, so it is only reached through the flow itself.
+ * Whether this account still has to go through onboarding. A finished flow only needs the server's own
+ * completion policy; an unfinished one also needs a goal and an introduction when it was once put off
+ * (「あとで」 of the five-step flow), and everything otherwise. An account that never had a flow and is
+ * complete by the server's policy is left alone.
  */
-export function onboardingEntry(detail: ProfileDetail): OnboardingEntry {
-  const progress = onboardingProgress(detail);
-  const order: (keyof OnboardingProgress)[] = ["profile", "goals", "persona", "intro"];
-  const completed = order.filter(step => progress[step]).length;
-  if (completed === order.length) return { kind: "done" };
-  if (completed === 0) return { kind: "welcome" };
-  return { kind: "resume", completed, step: order.find(step => !progress[step])! };
+export function onboardingRequired(
+  detail: ProfileDetail,
+  flow: { deferred: boolean; finishedAt: string | null } | null
+): boolean {
+  if (detail.onboarding?.status === "incomplete") return true;
+  if (!flow || flow.finishedAt) return false;
+  if (!flow.deferred) return true;
+  return !detail.profile?.relationshipGoal.trim() || !detail.profile?.bio?.trim();
 }
 
-/** Finish/"later" destination: a safe next, the plain profile page, or /home. */
+/** Where a finished onboarding goes: a safe next, the plain profile page, or /home. */
 export function onboardingDestination(next: string | string[] | undefined): string {
   const first = (Array.isArray(next) ? next[0] : next)?.trim();
   if (first === "/profile") return "/profile";
@@ -297,32 +280,4 @@ export function onboardingDestination(next: string | string[] | undefined): stri
 /** The intro-draft endpoint writes Chinese or English (web sends "en" for every non-zh language). */
 export function introDraftLanguage(language: OrbitLanguage): "zh" | "en" | "ja" {
   return language;
-}
-
-export interface OnboardingImportSummary {
-  imported: number;
-  review: number;
-  recognizing: number;
-  reviewBatchId: string | null;
-}
-
-const RECOGNIZING = new Set(["awaiting_upload", "uploaded", "queued", "processing"]);
-const SET_ASIDE = new Set(["skipped", "excluded"]);
-
-/** Per-card counts for the batches started from the import step. */
-export function onboardingImportSummary(details: readonly IngestBatchDetailContract[]): OnboardingImportSummary {
-  const summary: OnboardingImportSummary = { imported: 0, review: 0, recognizing: 0, reviewBatchId: null };
-  for (const detail of details) {
-    for (const card of ingestCards(detail)) {
-      const statuses = card.items.map(item => item.status);
-      if (statuses.every(status => status === "confirmed")) summary.imported++;
-      else if (statuses.some(status => RECOGNIZING.has(status))) summary.recognizing++;
-      else if (statuses.every(status => SET_ASIDE.has(status))) continue;
-      else {
-        summary.review++;
-        summary.reviewBatchId ??= detail.batch.id;
-      }
-    }
-  }
-  return summary;
 }

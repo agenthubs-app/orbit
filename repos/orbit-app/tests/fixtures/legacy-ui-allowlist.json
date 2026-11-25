@@ -54,13 +54,6 @@
     "src/screens/profile/AccountScreen.tsx": {
       "oldComponent": 2
     },
-    "src/screens/profile/onboarding/OnboardingParts.tsx": {
-      "controls": 1
-    },
-    "src/screens/profile/onboarding/ProfileOnboardingScreen.tsx": {
-      "oldComponent": 1,
-      "alert": 1
-    },
     "src/screens/schedule/MeetingDetailScreen.tsx": {
       "oldComponent": 3,
       "controls": 1

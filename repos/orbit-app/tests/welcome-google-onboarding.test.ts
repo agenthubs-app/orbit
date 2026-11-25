@@ -13,7 +13,7 @@ const fixture = `
 import React, { useEffect, useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 let revision = 0; const listeners = new Set();
-const state = window.fixture = { user: null, deletionPending: false, navigation: [], requests: [], result: { success: true }, ...window.initialFixture,
+const state = window.fixture = { user: null, deletionPending: false, navigation: [], requests: [], gate: "clear", result: { success: true }, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
 export const useOrbitAuthSession = () => { const s = useFixture(); return { ready: true, user: s.user, deletionPending: s.deletionPending, googleEnabled: true,
@@ -21,6 +21,7 @@ export const useOrbitAuthSession = () => { const s = useFixture(); return { read
   startGoogleSignIn: async payload => { s.requests.push(payload); await new Promise(resolve => s.release = resolve);
     if (s.result.success) { s.update({ user: { id: "u1" }, deletionPending: s.result.pendingDeletion === true }); await new Promise(resolve => setTimeout(resolve, 30)); }
     return s.result; } }; };
+export const useOnboardingGate = () => { const s = useFixture(); return { status: s.user ? s.gate : "off" }; };
 export const useRouter = () => ({ push(href) { state.navigation.push("push:" + href); }, replace(href) { state.navigation.push("replace:" + href); } });
 export const Redirect = ({ href }) => { useEffect(() => { state.navigation.push("redirect:" + href); }, [href]); return null; };
 export const SafeAreaView = ({ edges, ...props }) => <View {...props} />;
@@ -33,7 +34,7 @@ test.before(async () => {
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env.EXPO_PUBLIC_ORBIT_INITIAL_ROUTE": "undefined", __DEV__: "false" },
     plugins: [{ name: "welcome-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
-      plugin.onResolve({ filter: /^(expo-router|react-native-safe-area-context)$|\/AuthSessionProvider$/ }, () => ({ path: "fixture", namespace: "welcome" }));
+      plugin.onResolve({ filter: /^(expo-router|react-native-safe-area-context)$|\/(AuthSessionProvider|OnboardingGateProvider)$/ }, () => ({ path: "fixture", namespace: "welcome" }));
       plugin.onLoad({ filter: /.*/, namespace: "welcome" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }]
   });
@@ -92,4 +93,13 @@ test("someone already signed in still goes straight to Home", async t => {
   const page = await open(t, { user: { id: "u1" } });
   await page.waitForFunction(() => (window as any).fixture.navigation.length > 0);
   assert.deepEqual(await navigation(page), ["redirect:/home"]);
+});
+
+test("a cold start with unfinished onboarding opens it, not Home; nothing opens before that is known", async t => {
+  const page = await open(t, { user: { id: "u1" }, gate: "unknown" });
+  await page.waitForTimeout(50);
+  assert.deepEqual(await navigation(page), []);
+  await page.evaluate(() => (window as any).fixture.update({ gate: "required" }));
+  await page.waitForFunction(() => (window as any).fixture.navigation.length > 0);
+  assert.deepEqual(await navigation(page), ["redirect:/profile/onboarding?next=%2Fhome"]);
 });

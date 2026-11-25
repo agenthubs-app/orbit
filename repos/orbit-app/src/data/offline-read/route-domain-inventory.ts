@@ -694,11 +694,11 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/api/mobile-auth.ts","POST","/api/auth/mobile/google/exchange"],
   ["src/api/mobile-auth.ts","GET","/api/auth/mobile/providers"],
   ["src/api/mobile-auth.ts","GET","/api/auth/session"],
-  ["src/api/profile-onboarding.ts","GET","/api/contact-drafts/business-card/batches/v2"],
-  ["src/api/profile-onboarding.ts","GET","/api/contact-drafts/business-card/batches/v2/:id"],
   ["src/api/profile-onboarding.ts","GET","/api/profile"],
   ["src/api/profile-onboarding.ts","POST","/api/contact-drafts/business-card/scan"],
+  ["src/api/profile-onboarding.ts","POST","/api/profile/autofill-inference"],
   ["src/api/profile-onboarding.ts","POST","/api/profile/intro-draft"],
+  ["src/api/profile-onboarding.ts","POST","/api/profile/seek-suggestions"],
   ["src/api/profile-onboarding.ts","PUT","/api/profile"],
   ["src/api/inbox-summary.ts","GET","/api/inbox/summary"],
   // Sprint 0131: the reconnect probe and the online-only boundary's retry read the unauthenticated health route.

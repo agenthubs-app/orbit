@@ -49,7 +49,7 @@ export const home = {
   "home.widgetAdded": "Added this month",
   "home.widgetAddedShort": "+{count} this month",
   "home.widgetGuide": "Your first three steps",
-  "home.widgetGuideContacts": "Add three contacts",
+  "home.widgetGuideContacts": "Import business cards",
   "home.widgetGuideGoal": "Set a goal",
   "home.widgetGuidePlan": "Make a plan",
   "home.widgetSample": "Sample",

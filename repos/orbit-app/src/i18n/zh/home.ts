@@ -49,7 +49,7 @@ export const home = {
   "home.widgetAdded": "本月新增",
   "home.widgetAddedShort": "本月 +{count}",
   "home.widgetGuide": "开始的三步",
-  "home.widgetGuideContacts": "添加三张名片",
+  "home.widgetGuideContacts": "导入名片",
   "home.widgetGuideGoal": "设定目标",
   "home.widgetGuidePlan": "创建计划",
   "home.widgetSample": "示例",

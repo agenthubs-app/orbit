@@ -14,6 +14,8 @@ import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { spacing, typography } from "../design/tokens";
 import { createThemedStyles, useOrbitTheme } from "../design/theme";
 import { mobileSignInHref } from "../view-models/mobile-route-access";
+import { useOnboardingGate } from "../onboarding/OnboardingGateProvider";
+import { onboardingExemptRoute } from "../onboarding/onboarding-gate";
 import { rootStackScreenOptions } from "./shell-navigation";
 
 export function OrbitRouteAccessBoundary() {
@@ -31,6 +33,13 @@ export function OrbitPrivateRouteBoundary({
     string | string[] | undefined
   >;
   const auth = useOrbitAuthSession();
+  const gate = useOnboardingGate();
+  const { colors } = useOrbitTheme();
+
+  // Onboarding cannot be skipped: nothing of a private page is drawn until it is known to be done (the redirect is OnboardingGateRedirect's).
+  if (enabled && auth.signedIn && (gate.status === "unknown" || gate.status === "required") && !onboardingExemptRoute(pathname)) {
+    return <View style={{ backgroundColor: colors.bg, flex: 1 }} />;
+  }
 
   if (!enabled || auth.signedIn) {
     return children;

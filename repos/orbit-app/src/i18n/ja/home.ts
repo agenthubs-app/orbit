@@ -49,7 +49,7 @@ export const home = {
   "home.widgetAdded": "今月追加",
   "home.widgetAddedShort": "今月 +{count}",
   "home.widgetGuide": "はじめの3ステップ",
-  "home.widgetGuideContacts": "名刺を3枚追加",
+  "home.widgetGuideContacts": "名刺を取り込む",
   "home.widgetGuideGoal": "目標を決める",
   "home.widgetGuidePlan": "プランを作る",
   "home.widgetSample": "サンプル",

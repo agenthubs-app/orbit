@@ -7,6 +7,7 @@ import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoun
 import { RetryCard, Skeleton } from "../../src/components/ui";
 import { useOrbitApiClient } from "../../src/hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../src/i18n/OrbitLocaleContext";
+import { onboardingRequired } from "../../src/view-models/profile-onboarding";
 import { profileContinuationHref, safeProfileContinuationNext } from "../../src/view-models/profile-continuation-route";
 
 function ProfileContinueRoute() {
@@ -18,13 +19,13 @@ function ProfileContinueRoute() {
     setResult("loading");
     const [profile, flow] = await Promise.all([readOnboardingProfile(client), readProfileOnboardingProgress(client)]);
     if (!profile.ok || !flow.ok) { setResult("error"); return; }
-    setResult(profile.detail.onboarding?.status === "complete" && (!flow.progress || flow.progress.finishedAt || flow.progress.deferred) ? "next" : "onboarding");
+    setResult(onboardingRequired(profile.detail, flow.progress) ? "onboarding" : "next");
   }, [client]);
   useEffect(() => { void reload(); }, [reload]);
   if (result === "onboarding") return <Redirect href={profileContinuationHref(params.next) as Href} />;
   if (result === "next") return <Redirect href={safeProfileContinuationNext(params.next) as Href} />;
-  return <AppScreen inset="kit" title={t("onboarding.resumeTitle")}>
-    {result === "loading" ? <Skeleton lines={3} /> : <RetryCard title={t("onboarding.loadFailed")} onRetry={() => void reload()} />}
+  return <AppScreen inset="kit" title={t("onboarding.v3.title")}>
+    {result === "loading" ? <Skeleton lines={3} /> : <RetryCard title={t("onboarding.v3.loadFailed")} onRetry={() => void reload()} />}
   </AppScreen>;
 }
 

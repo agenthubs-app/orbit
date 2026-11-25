@@ -610,3 +610,4 @@ export type { NetworkAnalysisBucket, NetworkAnalysisDimension, NetworkAnalysisDi
 export type { ProfileCardCompletenessContract, ProfilePublicFieldsContract } from "./profile";
 // contact-reach R40 可约时间（GET/PUT /api/scheduling/availability；计算在 shared/compute/meeting-slots.ts）
 export type { SchedulingAvailabilityContract, SchedulingAvailabilitySettings, SchedulingAvailabilityUpdateInput, SchedulingBufferMinutes, SchedulingDurationMinutes, SchedulingMinimumNotice, SchedulingTimeRange, SchedulingTimeZoneMode, SchedulingWeekday } from "./scheduling-availability";
+export type { OwnCardScanContract, ProfileAutofillInferenceContract, ProfileAutofillInferenceRequestContract } from "./profile-autofill";
