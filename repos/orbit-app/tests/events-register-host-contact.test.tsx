@@ -127,3 +127,78 @@ test("without fromProfile (an older server) the list is as before, with the same
   const asked = await page.evaluate(() => (window as any).fixture.postBodies.filter((call: any) => call.path.endsWith("/join/next")).at(-1).body);
   assert.deepEqual(asked, { answers: [], more: true });
 });
+
+// 改资料（2026-11-26）：已报名 / 审核中 / 候补再次提交 = 更新同一份；改不了的先说明。
+const open = { ...overview, endsAt: "2099-12-10T21:30:00+09:00", registrationClosesAt: "2099-12-03T23:59:00+09:00", startsAt: "2099-12-10T19:00:00+09:00" };
+const registered = (status: string, patch: object = {}) => ({ ...open, registration: { ...overview.registration, status }, ...patch });
+const submits = (page: { evaluate<T>(fn: () => T): Promise<T> }) => page.evaluate(() => ((window as any).fixture.postBodies ?? []).filter((call: any) => call.path.endsWith("/join/submit")).map((call: any) => call.body));
+
+test("someone already registered, in review or waitlisted changes the same registration: edit is sent and the done page says it was saved, without the calendar or the host contact popup", async (t) => {
+  const tentative = { endsAt: open.endsAt, startsAt: open.startsAt, title: open.title };
+  for (const status of ["pending_review", "waitlisted", "registered"]) {
+    const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/overview`]: registered(status), [`${base}/join/profile`]: { ...profile, review: status !== "registered" },
+      [`${base}/join/submit`]: { ...result({ lineId: "orbit_line", note: null, wechatId: null }), status: status === "registered" ? "registered" : "pending_review", tentative } } });
+    await page.getByRole("button", { name: "按这个内容报名", exact: true }).click();
+    await page.getByText("修改已保存", { exact: true }).waitFor();
+    assert.equal((await submits(page))[0].edit, true, status);
+    assert.equal(await page.getByText("已收到报名", { exact: true }).count(), 0);
+    assert.equal(await page.getByTestId("events-join-calendar").count(), 0);
+    assert.equal(await page.getByTestId("host-contact-sheet").count(), 0);
+  }
+  for (const status of ["none", "cancelled"]) {
+    const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/overview`]: registered(status), [`${base}/join/submit`]: { ...result(null), tentative } } });
+    await page.getByRole("button", { name: "按这个内容报名", exact: true }).click();
+    await page.getByText("已收到报名", { exact: true }).waitFor();
+    assert.ok(!("edit" in (await submits(page))[0]), `${status} registers anew`);
+    assert.equal(await page.getByTestId("events-join-calendar").count(), 1);
+  }
+});
+
+test("what cannot be changed is said on arrival, with the way to the event page", async (t) => {
+  const past = { registrationClosesAt: "2026-10-03T23:59:00+09:00" };
+  for (const [event, review, text] of [
+    [registered("rejected"), true, "报名未通过，不能再次提交"],
+    [registered("registered", past), false, "报名已截止"],
+    [registered("pending_review", past), true, "报名已截止"],
+    [registered("registered"), true, "报名已通过审核，不能再修改"],
+  ] as const) {
+    const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/overview`]: event, [`${base}/join/profile`]: { ...profile, review } } });
+    const card = page.getByTestId("events-join-blocked");
+    await card.getByText(text, { exact: true }).waitFor();
+    assert.equal(await page.getByRole("button", { name: "按这个内容报名", exact: true }).count(), 0);
+    await card.getByRole("button", { name: "去活动详情", exact: true }).click();
+    assert.ok((await page.evaluate(() => JSON.stringify((window as any).fixture.navigation))).includes(`/events/${encodeURIComponent(eventId)}`));
+  }
+});
+
+test("a refusal says why and the page follows what changed: after a cancellation the next one registers anew", async (t) => {
+  const page = await harness.open(t, { screen: "register", toasts: true, params: { id: eventId }, responses: { ...responses(null), [`${base}/overview`]: registered("pending_review"), [`${base}/join/submit`]: { __code: "CONFLICT", __reason: "JOIN_CANCELLED", __status: 409 } } });
+  const apply = page.getByRole("button", { name: "按这个内容报名", exact: true });
+  await apply.waitFor();
+  await page.evaluate(([key, value]) => { (window as any).fixture.responses[key as string] = value; }, [`${base}/overview`, registered("cancelled")] as const);
+  await apply.click();
+  await page.getByText("报名已取消，请重新报名", { exact: true }).waitFor();
+  await page.evaluate(([key, value]) => { (window as any).fixture.responses[key as string] = value; }, [`${base}/join/submit`, result(null)] as const);
+  await page.waitForTimeout(200);
+  await apply.click();
+  await page.getByText("已收到报名", { exact: true }).waitFor();
+  assert.deepEqual((await submits(page)).map((body: any) => body.edit), [true, undefined]);
+  const reasons = [["JOIN_CLOSED", "报名已截止"], ["JOIN_LOCKED", "报名已通过审核，不能再修改"], ["JOIN_REJECTED", "报名未通过，不能再次提交"], [undefined, "没能报名"]] as const;
+  for (const [reason, text] of reasons) {
+    const refused = await harness.open(t, { screen: "register", toasts: true, params: { id: eventId }, responses: { ...responses(null), [`${base}/overview`]: registered("none"), [`${base}/join/submit`]: { __code: "CONFLICT", __reason: reason, __status: 409 } } });
+    await refused.getByRole("button", { name: "按这个内容报名", exact: true }).click();
+    await refused.getByText(text, { exact: true }).waitFor();
+  }
+});
+
+test("sent before the event overview arrived: whether it changes a registration is still known", async (t) => {
+  for (const [status, edit, title] of [["registered", true, "修改已保存"], ["none", undefined, "已收到报名"]] as const) {
+    const page = await harness.open(t, { screen: "register", params: { id: eventId }, slowPrefix: `${base}/overview`, slowMs: 2500, responses: { ...responses(null), [`${base}/overview`]: registered(status), [`${base}/join/profile`]: { ...profile, review: false }, [`${base}/join/submit`]: { ...result(null), status: "registered" } } });
+    await page.getByRole("button", { name: "按这个内容报名", exact: true }).click();
+    await page.getByText(title, { exact: true }).waitFor();
+    assert.equal((await submits(page))[0].edit, edit, status);
+    // A new registration reads as 「registered」 from now on; the page keeps what was sent.
+    await page.waitForTimeout(400);
+    assert.equal(await page.getByText(title, { exact: true }).count(), 1);
+  }
+});

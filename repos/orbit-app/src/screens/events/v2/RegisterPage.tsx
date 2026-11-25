@@ -23,6 +23,12 @@ import { useJourneyT } from "./useJourneyT";
 
 const ITEM_LABEL: Record<EventJoinProfileItemKey, string> = { company: "itemCompany", offer: "itemOffer", purpose: "itemPurpose", target: "itemTarget", topics: "itemTopics" };
 
+/** Why a registration cannot be sent or changed (409 context.reason). */
+const REFUSAL: Readonly<Record<string, "joinCancelled" | "joinClosed" | "joinLocked" | "joinRejected">> = { JOIN_CANCELLED: "joinCancelled", JOIN_CLOSED: "joinClosed", JOIN_LOCKED: "joinLocked", JOIN_REJECTED: "joinRejected" };
+
+/** Already has a registration, so sending it again changes that one. */
+const holds = (status: string | undefined) => status === "registered" || status === "pending_review" || status === "waitlisted";
+
 /** kit .bar：surface-3 底 + plum-300→plum-700 渐变 + 14px 圆钮（plum-700 3px 边）。 */
 function ProgressBar({ share }: { share: number }) {
   const { styles, colors } = useStyles();
@@ -66,6 +72,8 @@ function RegisterFlow() {
   const [free, setFree] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<EventJoinResult | null>(null);
+  // Decided when it is sent: the overview read afterwards says 「registered」 for a new registration too.
+  const [edited, setEdited] = useState(false);
   // 申込完了直後：主催者の連絡先（ID がある時だけ）を自動で開く。閉じても完了ページのカードに残る。
   const [contactOpen, setContactOpen] = useState(false);
   const [calendar, setCalendar] = useState<"asked" | "added" | "declined">("asked");
@@ -126,6 +134,11 @@ function RegisterFlow() {
   const question = step?.question ?? null;
   const reviewing = Boolean(step?.done) && !result;
   const total = step?.total ?? 5;
+  // 已报名 / 审核中 / 候补的人再来 = 改资料；改不了的（被拒、已截止、主办方已通过）一进来就说明，不让人白答一遍（同 Web）。
+  const status = event?.registration.status;
+  const editing = holds(status);
+  const closed = Boolean(event && Date.parse(event.registrationClosesAt ?? event.startsAt) <= Date.now());
+  const blocked = result ? null : status === "rejected" ? "joinRejected" : editing && closed ? "joinClosed" : status === "registered" && profile?.review ? "joinLocked" : null;
   const toggle = (option: string) => {
     if (!question) return;
     if (!question.multi) { setSelected([option]); return; }
@@ -161,9 +174,17 @@ function RegisterFlow() {
     // The introduction on the review page goes with the registration, edited or not: the event's other attendees see it, and
     // one that is not sent is cleared on the server.
     const confirmed = (intro ?? profile?.selfIntro?.text ?? "").trim().slice(0, 400);
-    const res = await api.joinSubmit(eventId, answers, confirmed || undefined);
+    // The overview may still be on its way: whether this changes a registration has to be known before sending.
+    let current = event;
+    if (!current) { const now = await api.overview(eventId); if (now.ok) { current = now.data; setEvent(now.data); } }
+    const edit = holds(current?.registration.status);
+    const res = await api.joinSubmit(eventId, answers, confirmed || undefined, edit);
     setBusy(false);
-    if (res.ok) { setResult(res.data); setContactOpen(shouldOpenHostContact(res.data.hostContact)); announceEventChanged(eventId); } else toast.error(t("submitFailed"));
+    if (res.ok) { setEdited(edit); setResult(res.data); setContactOpen(!edit && shouldOpenHostContact(res.data.hostContact)); announceEventChanged(eventId); return; }
+    const refusal = res.code ? REFUSAL[res.code] : undefined;
+    toast.error(t(refusal ?? "submitFailed"));
+    // It changed meanwhile (cancelled, decided, closed): the page follows, so applying again after a cancellation is a new registration.
+    if (refusal) { const now = await api.overview(eventId); if (now.ok) setEvent(now.data); }
   };
   const addTentative = async () => {
     if (busy) return;
@@ -188,7 +209,7 @@ function RegisterFlow() {
               {designIcons.check.map((shape, index) => (shape.tag === "path" ? <Path key={index} d={shape.d} /> : null))}
             </Svg>
           </View>
-          <UiText style={styles.doneTitle}>{t("received")}</UiText>
+          <UiText style={styles.doneTitle}>{t(edited ? "joinUpdated" : "received")}</UiText>
           <UiText style={[styles.lbl, { textAlign: "center" }]}>{`${event?.title ?? ""} · ${submitted ? t("dateTimeLong", { d: submitted.day, hm: `${submitted.hh}:${String(submitted.mm).padStart(2, "0")}`, m: submitted.month }) : ""}`}</UiText>
         </View>
         <View style={[styles.card, styles.gap]}>
@@ -216,7 +237,7 @@ function RegisterFlow() {
           {pending ? <UiText style={[styles.sub, { marginTop: 12 }]}>{contactLine ?? t("reviewWait")}</UiText> : null}
         </View>
         {result.hostContact !== undefined ? <HostContactCard contact={result.hostContact} t={t} style={styles.gap} /> : null}
-        {result.tentative && calendar === "asked" ? (
+        {result.tentative && calendar === "asked" && !edited ? (
           <View style={[styles.card, styles.gap, styles.confirm]} testID="events-join-calendar">
             <View style={[styles.row, { gap: 8 }]}>
               <View style={[styles.emoSm, { backgroundColor: colors.macLav }]}><UiText style={styles.emoSmText}>📅</UiText></View>
@@ -231,6 +252,17 @@ function RegisterFlow() {
         ) : null}
         <UiPressable accessibilityRole="button" accessibilityLabel={t("editProfile")} onPress={() => router.push("/profile" as Href)} style={styles.ghostBlock}><UiText style={styles.ghostText}>{t("editProfile")}</UiText></UiPressable>
         <HostContactSheet visible={contactOpen} contact={result.hostContact} t={t} reviewLine={contactLine} onClose={() => setContactOpen(false)} />
+      </JourneyPage>
+    );
+  }
+
+  if (blocked) {
+    return (
+      <JourneyPage key="blocked" title={t("regTitle")} subtitle={event?.title ?? ""} leftIcon="x" leftLabel={t("close")} fallback={detail} onLeft={close} testID="events-join-blocked">
+        <View style={styles.card}>
+          <UiText style={styles.h3}>{t(blocked)}</UiText>
+          <UiPressable accessibilityRole="button" accessibilityLabel={t("toDetail")} onPress={() => router.dismissTo(detail as Href)} style={[styles.btnSm, { alignSelf: "flex-start", marginTop: 12 }]}><UiText style={styles.btnSmText}>{t("toDetail")}</UiText></UiPressable>
+        </View>
       </JourneyPage>
     );
   }
@@ -307,7 +339,7 @@ function RegisterFlow() {
       ) : undefined}>
       {loadFailed && !step && event && Date.parse(event.registrationClosesAt ?? event.endsAt ?? event.startsAt) < Date.now() ? (
         // 报名已截止 / 活动已结束：说清楚，不给「再试一次」。
-        <View style={styles.card} testID="events-join-closed"><UiText style={styles.h3}>{t("regClosed")}</UiText></View>
+        <View style={styles.card} testID="events-join-closed"><UiText style={styles.h3}>{t("joinClosed")}</UiText></View>
       ) : loadFailed && !step ? (
         <View style={styles.card} testID="events-join-error">
           <UiText style={styles.h3}>{t("regLoadFailed")}</UiText>

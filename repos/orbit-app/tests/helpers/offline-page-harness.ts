@@ -69,7 +69,7 @@ function answer(method, path) {
   if (state.status5xx) return { success: false, status: 503, error: { code: "SERVICE_UNAVAILABLE", message: "service unavailable" }, meta: {} };
   const keys = Object.keys(state.responses).filter((prefix) => path.startsWith(prefix)).sort((a, b) => b.length - a.length);
   const hit = keys.length ? state.responses[keys[0]] : null;
-  if (hit && hit.__status) return { success: false, status: hit.__status, error: { code: hit.__code ?? "NOT_FOUND", message: hit.__message ?? "not found" }, meta: {} };
+  if (hit && hit.__status) return { success: false, status: hit.__status, error: { code: hit.__code ?? "NOT_FOUND", message: hit.__message ?? "not found", ...(hit.__reason ? { context: { reason: hit.__reason } } : {}) }, meta: {} };
   if (hit) return { success: true, status: 200, data: JSON.parse(JSON.stringify(hit)), meta: {} };
   return { success: false, status: 404, error: { code: "NOT_FOUND", message: "no fixture for " + path }, meta: {} };
 }

@@ -56,7 +56,12 @@ export interface EventJoinProfile {
   review: boolean;
 }
 
-/** `POST /api/events/[id]/join/submit` */
+/**
+ * `POST /api/events/[id]/join/submit` — submitting again before registration closes updates the same registration (answers and
+ * self-introduction; place, waitlist order and registration time stay). Body `edit: true` = changing an existing registration.
+ * Refused with 409 and `context.reason`: JOIN_CLOSED (closed), JOIN_LOCKED (the organizer already decided), JOIN_REJECTED,
+ * JOIN_CANCELLED (register again instead).
+ */
 export interface EventJoinResult {
   eventId: string;
   status: "registered" | "pending_review";

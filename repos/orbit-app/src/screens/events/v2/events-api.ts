@@ -12,7 +12,7 @@ import type { MyEventsRange, MyEventsResponse } from "../../../api/contract/even
 import { useOrbitApiClient } from "../../../hooks/useOrbitApiClient";
 
 export type EventsFailure = "rate_limited" | "sample" | "not_found" | "invalid" | "network" | "unavailable";
-export type EventsResult<T> = { ok: true; data: T } | { ok: false; reason: EventsFailure };
+export type EventsResult<T> = { ok: true; data: T } | { ok: false; reason: EventsFailure; /** The server's own reason (error.context.reason). */ code?: string };
 
 const BASE = "/api/events/assessments";
 
@@ -29,7 +29,10 @@ function failureOf(result: ApiResult<unknown>): EventsFailure {
 
 export async function read<T>(call: Promise<ApiResult<unknown>>, schema: ZodType<T>): Promise<EventsResult<T>> {
   const result = await call;
-  if (!result.success) return { ok: false, reason: failureOf(result) };
+  if (!result.success) {
+    const code = result.error.context?.reason;
+    return { ok: false, reason: failureOf(result), ...(typeof code === "string" ? { code } : {}) };
+  }
   const parsed = schema.safeParse(result.data);
   return parsed.success ? { data: parsed.data, ok: true } : { ok: false, reason: "invalid" };
 }
