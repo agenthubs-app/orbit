@@ -2,7 +2,7 @@
 // 数据：/api/events/[id]/join/*（问题 = 现有 AI 访谈 ≤5 问；资料按规则实时更新，只在问完时生成自己紹介草稿）。与 Web RegisterFlow 同一套接口与文案。
 // 门禁开发开关 open-path 下可带 `?replay=答1|答2a,答2b|答3a,答3b&to=select|review|done` 自动答到指定状态（画板从不画点击过程）。
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, TextInput, View } from "react-native";
 
 import type { EventJoinAnswer, EventJoinProfile, EventJoinProfileItemKey, EventJoinResult, EventJoinStep } from "../../../api/contract/event-join";
@@ -69,6 +69,8 @@ export function RegisterPage() {
   const [why, setWhy] = useState(false);
   const freeRef = useRef<TextInput | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  // What the profile already says is selected from the start (2026-11-25, as Web); it can be unselected like any option.
+  const showStep = useCallback((next: EventJoinStep) => { setStep(next); setSelected([...(next.question?.prefill ?? [])]); }, []);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -82,13 +84,14 @@ export function RegisterPage() {
       if (!first.ok) { setLoadFailed(true); return; }
       let current = first.data;
       let given: EventJoinAnswer[] = [];
+      let picked: string[] | null = null;
       // 开发回放：依次回答，最后一组按 `to` 决定只选中（select）还是也提交。
       if (replay) {
         const submitAll = params.to === "review" || params.to === "done";
         for (const [index, group] of replay.entries()) {
           const question = current.question;
           if (!question) break;
-          if (index === replay.length - 1 && !submitAll) { setSelected(group); break; }
+          if (index === replay.length - 1 && !submitAll) { picked = group; break; }
           given = [...given, { answer: group.join(" · "), field: question.field, prompt: question.prompt, questionToken: question.questionToken }];
           const next = await api.joinNext(eventId, given);
           if (!next.ok) break;
@@ -98,7 +101,8 @@ export function RegisterPage() {
       const shown = await api.joinProfile(eventId, given, Boolean(current.done));
       if (!live) return;
       setAnswers(given);
-      setStep(current);
+      showStep(current);
+      if (picked) setSelected(picked);
       if (shown.ok) { setProfile(shown.data); setIntro(shown.data.selfIntro?.text ?? null); }
       if (replay && params.to === "done" && current.done) {
         const res = await api.joinSubmit(eventId, given);
@@ -106,7 +110,7 @@ export function RegisterPage() {
       }
     })();
     return () => { live = false; };
-  }, [api, eventId, params.replay, params.to, attempt]);
+  }, [api, eventId, params.replay, params.to, attempt, showStep]);
 
   const question = step?.question ?? null;
   const reviewing = Boolean(step?.done) && !result;
@@ -125,8 +129,8 @@ export function RegisterPage() {
     const [nextStep, nextProfile] = await Promise.all([api.joinNext(eventId, next), api.joinProfile(eventId, next, false)]);
     // 成功才记下这一答（失败时题目不变、选项保留，重答不会带着同一个 questionToken 重复入列）。
     if (!nextStep.ok) { toast.error(t("submitFailed")); setBusy(false); return; }
-    setAnswers(next); setSelected([]); setFree("");
-    setStep(nextStep.data);
+    setAnswers(next); setFree("");
+    showStep(nextStep.data);
     if (nextProfile.ok) setProfile(nextProfile.data);
     if (nextStep.ok && nextStep.data.done) {
       const drafted = await api.joinProfile(eventId, next, true);
@@ -139,7 +143,7 @@ export function RegisterPage() {
     setBusy(true);
     const res = await api.joinNext(eventId, answers, true);
     setBusy(false);
-    if (res.ok) setStep(res.data); else toast.error(t("submitFailed"));
+    if (res.ok) showStep(res.data); else toast.error(t("submitFailed"));
   };
   const apply = async () => {
     setBusy(true);

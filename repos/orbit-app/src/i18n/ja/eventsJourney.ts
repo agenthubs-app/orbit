@@ -284,7 +284,7 @@ export const eventsJourney = {
   "eventsJourney.flowResultSub": "通知とメールで届きます",
   "eventsJourney.flowDay": "当日",
   "eventsJourney.flowDaySub": "受付 QR · 会場モード",
-  "eventsJourney.prefilledNote": "✓ 会社 · 役職 · 業界 · 所在地はプロフィールから入力済み",
+  "eventsJourney.prefilledNote": "✓ 会社 · 役職 · 業界はプロフィールから入力済み",
   "eventsJourney.draftedByAi": "回答から AI が下書きしました",
   "eventsJourney.add": "追加",
   "eventsJourney.offerHint": "「提供できること」を足すと、相手からも声をかけられやすくなります",

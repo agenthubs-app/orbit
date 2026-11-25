@@ -284,7 +284,7 @@ export const eventsJourney = {
   "eventsJourney.flowResultSub": "By notification and email",
   "eventsJourney.flowDay": "On the day",
   "eventsJourney.flowDaySub": "Entry QR · venue mode",
-  "eventsJourney.prefilledNote": "✓ Company, title, industry and location come from your profile",
+  "eventsJourney.prefilledNote": "✓ Company, title and industry come from your profile",
   "eventsJourney.draftedByAi": "AI drafted this from your answers",
   "eventsJourney.add": "Add",
   "eventsJourney.offerHint": "Add what you offer and people will find it easier to approach you",

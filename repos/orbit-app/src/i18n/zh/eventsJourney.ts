@@ -284,7 +284,7 @@ export const eventsJourney = {
   "eventsJourney.flowResultSub": "通过通知和邮件告知",
   "eventsJourney.flowDay": "当天",
   "eventsJourney.flowDaySub": "签到二维码 · 会场模式",
-  "eventsJourney.prefilledNote": "✓ 公司、职位、行业、所在地已从资料填好",
+  "eventsJourney.prefilledNote": "✓ 公司、职位、行业已从资料填好",
   "eventsJourney.draftedByAi": "AI 根据回答写好了草稿",
   "eventsJourney.add": "添加",
   "eventsJourney.offerHint": "补上「能提供的」，别人也更容易来找你",
