@@ -40,7 +40,7 @@ test("账号页的状态行", () => {
 });
 
 test("发送结果写清发到哪、为什么没发", () => {
-  assert.equal(sendResultText({ kind: "sent" }, "a@example.test", "zh"), "已发送到 a@example.test");
+  assert.equal(sendResultText({ kind: "sent" }, "a@example.test", "zh"), "已发送到a@example.test");
   assert.equal(sendResultText({ kind: "wait", seconds: 45 }, "", "ja"), "あと 45 秒で再送できます");
   assert.equal(sendResultText({ kind: "limit" }, "", "zh"), "今天不能再发了，请明天再试");
   assert.equal(sendResultText({ kind: "fail" }, "", "en"), "Could not send it. Try again shortly");
